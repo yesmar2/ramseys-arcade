@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
+import { GameStage } from '../../components/GameStage'
 import { ScoreSaveCard } from '../../components/ScoreSaveCard'
 import { TournamentScoreCard } from '../../components/TournamentScoreCard'
+import { STAGE_ASPECT } from '../../lib/stage'
 import { useTournamentPlay } from '../../tournaments/TournamentPlayContext'
 import {
   createInitialState,
@@ -53,10 +55,12 @@ export function StackerGame() {
       const canvas = canvasRef.current
       if (canvas) {
         const parent = canvas.parentElement
-        const w = parent?.clientWidth || window.innerWidth
-        const h = parent?.clientHeight || window.innerHeight
-        const ctx = canvas.getContext('2d')
-        if (ctx) renderGame(ctx, stateRef.current, w, h)
+        const w = parent?.clientWidth || 0
+        const h = parent?.clientHeight || 0
+        if (w > 0 && h > 0) {
+          const ctx = canvas.getContext('2d')
+          if (ctx) renderGame(ctx, stateRef.current, w, h)
+        }
       }
 
       raf = requestAnimationFrame(loop)
@@ -104,43 +108,48 @@ export function StackerGame() {
 
   return (
     <section className="stacker stacker--fullscreen" onPointerDown={act}>
-      <canvas ref={canvasRef} className="stacker__viewport" />
+      <GameStage
+        aspectWidth={STAGE_ASPECT.stacker.w}
+        aspectHeight={STAGE_ASPECT.stacker.h}
+      >
+        <canvas ref={canvasRef} className="stacker__viewport" />
 
-      <div className="stacker__hud" aria-live="polite">
-        <div className="stacker__stat">
-          <span className="stacker__label">Score</span>
-          <strong>{ui.score}</strong>
-        </div>
-        <div className="stacker__stat">
-          <span className="stacker__label">Best</span>
-          <strong>{ui.best}</strong>
-        </div>
-      </div>
-
-      <div className="stacker__overlay">
-        {ui.status === 'menu' && !saveOpen && (
-          <div className="stacker__centerMessage" aria-hidden="true">
-            Tap or Space to start
+        <div className="stacker__hud" aria-live="polite">
+          <div className="stacker__stat">
+            <span className="stacker__label">Score</span>
+            <strong>{ui.score}</strong>
           </div>
-        )}
-        {ui.status === 'gameover' && saveOpen && (
-          tournament ? (
-            <TournamentScoreCard
-              tournamentId={tournament.tournamentId}
-              gameSlug="stacker"
-              score={ui.score}
-              onDone={restart}
-            />
-          ) : (
-            <ScoreSaveCard
-              gameSlug="stacker"
-              score={ui.score}
-              title="Nice stack"
-              onDone={restart}
-            />
-          )
-        )}
-      </div>
+          <div className="stacker__stat">
+            <span className="stacker__label">Best</span>
+            <strong>{ui.best}</strong>
+          </div>
+        </div>
+
+        <div className="stacker__overlay">
+          {ui.status === 'menu' && !saveOpen && (
+            <div className="stacker__centerMessage" aria-hidden="true">
+              Tap or Space to start
+            </div>
+          )}
+          {ui.status === 'gameover' && saveOpen && (
+            tournament ? (
+              <TournamentScoreCard
+                tournamentId={tournament.tournamentId}
+                gameSlug="stacker"
+                score={ui.score}
+                onDone={restart}
+              />
+            ) : (
+              <ScoreSaveCard
+                gameSlug="stacker"
+                score={ui.score}
+                title="Nice stack"
+                onDone={restart}
+              />
+            )
+          )}
+        </div>
+      </GameStage>
     </section>
   )
 }

@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import { GameStage } from '../../components/GameStage'
 import { ScoreSaveCard } from '../../components/ScoreSaveCard'
 import { TournamentScoreCard } from '../../components/TournamentScoreCard'
+import { STAGE_ASPECT } from '../../lib/stage'
 import { useTournamentPlay } from '../../tournaments/TournamentPlayContext'
 import {
   createInitialState,
@@ -48,10 +50,12 @@ export function SnakeGame() {
       const canvas = canvasRef.current
       if (canvas) {
         const parent = canvas.parentElement
-        const w = parent?.clientWidth || window.innerWidth
-        const h = parent?.clientHeight || window.innerHeight
-        const ctx = canvas.getContext('2d')
-        if (ctx) renderGame(ctx, stateRef.current, w, h)
+        const w = parent?.clientWidth || 0
+        const h = parent?.clientHeight || 0
+        if (w > 0 && h > 0) {
+          const ctx = canvas.getContext('2d')
+          if (ctx) renderGame(ctx, stateRef.current, w, h)
+        }
       }
 
       raf = requestAnimationFrame(loop)
@@ -140,50 +144,55 @@ export function SnakeGame() {
         swipeStart.current = null
       }}
     >
-      <canvas ref={canvasRef} className="snake__viewport" />
+      <GameStage
+        aspectWidth={STAGE_ASPECT.snake.w}
+        aspectHeight={STAGE_ASPECT.snake.h}
+      >
+        <canvas ref={canvasRef} className="snake__viewport" />
 
-      <div className="snake__hud" aria-live="polite">
-        <div className="snake__stat">
-          <span className="snake__label">Score</span>
-          <strong>{ui.score}</strong>
-        </div>
-        <div className="snake__stat">
-          <span className="snake__label">Best</span>
-          <strong>{ui.best}</strong>
-        </div>
-        <div className="snake__stat">
-          <span className="snake__label">Length</span>
-          <strong>{ui.length}</strong>
-        </div>
-      </div>
-
-      <div className="snake__overlay">
-        {ui.phase === 'menu' && !saveOpen && (
-          <div className="snake__card" aria-hidden="true">
-            <h2>Snake</h2>
-            <p>Swipe or use arrows. Eat. Grow. Don’t crash.</p>
-            <span>Tap or press a direction to start</span>
+        <div className="snake__hud" aria-live="polite">
+          <div className="snake__stat">
+            <span className="snake__label">Score</span>
+            <strong>{ui.score}</strong>
           </div>
-        )}
-        {ui.phase === 'gameover' && saveOpen && (
-          tournament ? (
-            <TournamentScoreCard
-              tournamentId={tournament.tournamentId}
-              gameSlug="snake"
-              score={ui.score}
-              onDone={restart}
-            />
-          ) : (
-            <ScoreSaveCard
-              gameSlug="snake"
-              score={ui.score}
-              title="Ouch"
-              subtitle={`Best ${ui.best}`}
-              onDone={restart}
-            />
-          )
-        )}
-      </div>
+          <div className="snake__stat">
+            <span className="snake__label">Best</span>
+            <strong>{ui.best}</strong>
+          </div>
+          <div className="snake__stat">
+            <span className="snake__label">Length</span>
+            <strong>{ui.length}</strong>
+          </div>
+        </div>
+
+        <div className="snake__overlay">
+          {ui.phase === 'menu' && !saveOpen && (
+            <div className="snake__card" aria-hidden="true">
+              <h2>Snake</h2>
+              <p>Swipe or use arrows. Eat. Grow. Don’t crash.</p>
+              <span>Tap or press a direction to start</span>
+            </div>
+          )}
+          {ui.phase === 'gameover' && saveOpen && (
+            tournament ? (
+              <TournamentScoreCard
+                tournamentId={tournament.tournamentId}
+                gameSlug="snake"
+                score={ui.score}
+                onDone={restart}
+              />
+            ) : (
+              <ScoreSaveCard
+                gameSlug="snake"
+                score={ui.score}
+                title="Ouch"
+                subtitle={`Best ${ui.best}`}
+                onDone={restart}
+              />
+            )
+          )}
+        </div>
+      </GameStage>
     </section>
   )
 }

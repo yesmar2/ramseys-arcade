@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import { GameStage } from '../../components/GameStage'
 import { ScoreSaveCard } from '../../components/ScoreSaveCard'
 import { TournamentScoreCard } from '../../components/TournamentScoreCard'
+import { STAGE_ASPECT } from '../../lib/stage'
 import { useTournamentPlay } from '../../tournaments/TournamentPlayContext'
 import {
   createInitialState,
@@ -40,7 +42,7 @@ export function PatriotGame() {
   const tournament = useTournamentPlay()
   const stateRef = useRef<GameState>(createInitialState())
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const sizeRef = useRef({ w: 800, h: 600 })
+  const sizeRef = useRef({ w: 800, h: 450 })
   const [ui, setUi] = useState<Snapshot>(() => toSnapshot(stateRef.current))
   const [saveOpen, setSaveOpen] = useState(false)
   const [infoOpen, setInfoOpen] = useState(false)
@@ -61,16 +63,16 @@ export function PatriotGame() {
 
       const canvas = canvasRef.current
       const parent = canvas?.parentElement
-      const w = parent?.clientWidth || window.innerWidth
-      const h = parent?.clientHeight || window.innerHeight
+      const w = parent?.clientWidth || 0
+      const h = parent?.clientHeight || 0
 
-      if (w !== sizeRef.current.w || h !== sizeRef.current.h) {
+      if (w > 0 && h > 0 && (w !== sizeRef.current.w || h !== sizeRef.current.h)) {
         sizeRef.current = { w, h }
         stateRef.current = resizeState(stateRef.current, w, h)
       }
 
       // Pause simulation while the phone is in portrait
-      if (!pausedRef.current) {
+      if (!pausedRef.current && w > 0) {
         stateRef.current = tick(stateRef.current, dt, w)
       }
 
@@ -85,7 +87,7 @@ export function PatriotGame() {
         }
       }
 
-      if (canvas) {
+      if (canvas && w > 0 && h > 0) {
         const ctx = canvas.getContext('2d')
         if (ctx) renderGame(ctx, stateRef.current, w, h)
       }
@@ -150,115 +152,122 @@ export function PatriotGame() {
   }, [saveOpen, infoOpen])
 
   return (
-    <section
-      className="patriot patriot--fullscreen"
-      onPointerMove={onPointerMove}
-      onPointerDown={act}
-    >
-      <canvas ref={canvasRef} className="patriot__viewport" />
-
-      <div className="patriot__hud" aria-live="polite">
-        <div className="patriot__stat">
-          <span className="patriot__label">Score</span>
-          <strong>{ui.score}</strong>
-        </div>
-        <div className="patriot__stat">
-          <span className="patriot__label">Wave</span>
-          <strong>{ui.wave}</strong>
-        </div>
-        <div className="patriot__stat">
-          <span className="patriot__label">Ammo</span>
-          <strong>{ui.ammoLeft}</strong>
-        </div>
-        <button
-          type="button"
-          className="patriot__info"
-          aria-label="Scoring info"
-          aria-expanded={infoOpen}
-          onPointerDown={(e) => {
-            e.stopPropagation()
-            setInfoOpen((open) => !open)
-          }}
-        >
-          i
-        </button>
-      </div>
-
-      {infoOpen && (
+    <section className="patriot patriot--fullscreen">
+      <GameStage
+        aspectWidth={STAGE_ASPECT.patriot.w}
+        aspectHeight={STAGE_ASPECT.patriot.h}
+      >
         <div
-          className="patriot__info-panel"
-          role="dialog"
-          aria-label="How scoring works"
-          onPointerDown={(e) => e.stopPropagation()}
+          className="patriot__play"
+          onPointerMove={onPointerMove}
+          onPointerDown={act}
         >
-          <div className="patriot__info-head">
-            <span className="patriot__label">Scoring</span>
+          <canvas ref={canvasRef} className="patriot__viewport" />
+
+          <div className="patriot__hud" aria-live="polite">
+            <div className="patriot__stat">
+              <span className="patriot__label">Score</span>
+              <strong>{ui.score}</strong>
+            </div>
+            <div className="patriot__stat">
+              <span className="patriot__label">Wave</span>
+              <strong>{ui.wave}</strong>
+            </div>
+            <div className="patriot__stat">
+              <span className="patriot__label">Ammo</span>
+              <strong>{ui.ammoLeft}</strong>
+            </div>
             <button
               type="button"
-              className="patriot__info-close"
-              aria-label="Close scoring info"
-              onClick={() => setInfoOpen(false)}
+              className="patriot__info"
+              aria-label="Scoring info"
+              aria-expanded={infoOpen}
+              onPointerDown={(e) => {
+                e.stopPropagation()
+                setInfoOpen((open) => !open)
+              }}
             >
-              ×
+              i
             </button>
           </div>
-          <ul className="patriot__info-list">
-            <li>
-              <span>Splash hit</span>
-              <strong>+25</strong>
-            </li>
-            <li>
-              <span>Direct hit</span>
-              <strong>+100</strong>
-            </li>
-            <li>
-              <span>4 hits in a row</span>
-              <strong>+200</strong>
-            </li>
-            <li>
-              <span>City saved (wave clear)</span>
-              <strong>+100</strong>
-            </li>
-            <li>
-              <span>Unused ammo (wave clear)</span>
-              <strong>+5 each</strong>
-            </li>
-          </ul>
-        </div>
-      )}
 
-      <div className="patriot__overlay">
-        {ui.phase === 'menu' && !saveOpen && !needsRotate && (
-          <div className="patriot__card" aria-hidden="true">
-            <h2>Patriot</h2>
-            <p>Defend the cities. Aim and tap to fire.</p>
-            <span>Tap to start · best in landscape</span>
+          {infoOpen && (
+            <div
+              className="patriot__info-panel"
+              role="dialog"
+              aria-label="How scoring works"
+              onPointerDown={(e) => e.stopPropagation()}
+            >
+              <div className="patriot__info-head">
+                <span className="patriot__label">Scoring</span>
+                <button
+                  type="button"
+                  className="patriot__info-close"
+                  aria-label="Close scoring info"
+                  onClick={() => setInfoOpen(false)}
+                >
+                  ×
+                </button>
+              </div>
+              <ul className="patriot__info-list">
+                <li>
+                  <span>Splash hit</span>
+                  <strong>+25</strong>
+                </li>
+                <li>
+                  <span>Direct hit</span>
+                  <strong>+100</strong>
+                </li>
+                <li>
+                  <span>4 hits in a row</span>
+                  <strong>+200</strong>
+                </li>
+                <li>
+                  <span>City saved (wave clear)</span>
+                  <strong>+100</strong>
+                </li>
+                <li>
+                  <span>Unused ammo (wave clear)</span>
+                  <strong>+5 each</strong>
+                </li>
+              </ul>
+            </div>
+          )}
+
+          <div className="patriot__overlay">
+            {ui.phase === 'menu' && !saveOpen && !needsRotate && (
+              <div className="patriot__card" aria-hidden="true">
+                <h2>Patriot</h2>
+                <p>Defend the cities. Aim and tap to fire.</p>
+                <span>Tap to start · best in landscape</span>
+              </div>
+            )}
+            {ui.phase === 'waveClear' && !needsRotate && (
+              <div className="patriot__card patriot__card--small" aria-hidden="true">
+                Wave {ui.wave} clear
+              </div>
+            )}
+            {ui.phase === 'gameover' && saveOpen && !needsRotate && (
+              tournament ? (
+                <TournamentScoreCard
+                  tournamentId={tournament.tournamentId}
+                  gameSlug="patriot"
+                  score={ui.score}
+                  onDone={restart}
+                />
+              ) : (
+                <ScoreSaveCard
+                  gameSlug="patriot"
+                  score={ui.score}
+                  title="Cities lost"
+                  subtitle={`Best ${ui.best}`}
+                  onDone={restart}
+                />
+              )
+            )}
           </div>
-        )}
-        {ui.phase === 'waveClear' && !needsRotate && (
-          <div className="patriot__card patriot__card--small" aria-hidden="true">
-            Wave {ui.wave} clear
-          </div>
-        )}
-        {ui.phase === 'gameover' && saveOpen && !needsRotate && (
-          tournament ? (
-            <TournamentScoreCard
-              tournamentId={tournament.tournamentId}
-              gameSlug="patriot"
-              score={ui.score}
-              onDone={restart}
-            />
-          ) : (
-            <ScoreSaveCard
-              gameSlug="patriot"
-              score={ui.score}
-              title="Cities lost"
-              subtitle={`Best ${ui.best}`}
-              onDone={restart}
-            />
-          )
-        )}
-      </div>
+        </div>
+      </GameStage>
 
       {needsRotate && (
         <div className="patriot__rotate" role="dialog" aria-label="Rotate your device">
