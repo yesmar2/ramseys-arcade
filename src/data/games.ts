@@ -3,20 +3,30 @@ export type Game = {
   slug: string
   description: string
   accent: string
+  playable?: boolean
 }
 
 export const games: Game[] = [
+  {
+    name: 'Stacker',
+    slug: 'stacker',
+    description: 'Time the drop. Stack higher. Don’t miss.',
+    accent: '#4aa8e8',
+    playable: true,
+  },
+  {
+    name: 'Patriot',
+    slug: 'patriot',
+    description: 'Defend the cities. Aim. Fire. Survive the wave.',
+    accent: '#e85d75',
+    playable: true,
+  },
   {
     name: 'Snake',
     slug: 'snake',
     description: 'Grow longer. Don’t bite yourself.',
     accent: '#3ecf8e',
-  },
-  {
-    name: 'Stacker',
-    slug: 'stacker',
-    description: 'Drop blocks. Clear lines. Keep stacking.',
-    accent: '#4aa8e8',
+    playable: true,
   },
   {
     name: 'Memory Match',
@@ -37,16 +47,10 @@ export const games: Game[] = [
     accent: '#c47a3a',
   },
   {
-    name: 'Sky Hop',
-    slug: 'sky-hop',
-    description: 'Tap to hop through the clouds.',
-    accent: '#5bc0de',
-  },
-  {
     name: 'Breakout',
     slug: 'breakout',
     description: 'Bounce the ball. Smash every brick.',
-    accent: '#e85d75',
+    accent: '#5bc0de',
   },
   {
     name: 'Minesweeper',
@@ -67,3 +71,15 @@ export const games: Game[] = [
     accent: '#7a6cf0',
   },
 ]
+
+export function getGame(slug: string) {
+  return games.find((game) => game.slug === slug)
+}
+
+export function playableGames() {
+  return games.filter((g) => g.playable)
+}
+
+export function comingSoonGames() {
+  return games.filter((g) => !g.playable)
+}
