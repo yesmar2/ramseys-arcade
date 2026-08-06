@@ -80,6 +80,16 @@ export type GameState = {
   flash: number
   groundY: number
   hitStreak: number
+  /** Scale vs design 16:9 stage (960×540). */
+  scale: number
+}
+
+/** Design reference for the fixed 16:9 playfield. */
+export const DESIGN_W = 960
+export const DESIGN_H = 540
+
+export function worldScale(w: number, h: number) {
+  return Math.min(w / DESIGN_W, h / DESIGN_H) || 1
 }
 
 const BEST_KEY = 'patriot-best'
@@ -90,6 +100,8 @@ const SCORE_SPLASH = 25
 const SCORE_DIRECT = 100
 const STREAK_LENGTH = 4
 const SCORE_STREAK = 200
+/** Horizontal distance at which a ground hit also kills a battery (at design scale). */
+const BATTERY_HIT_RANGE = 36
 
 let nextId = 1
 function uid() {
@@ -116,8 +128,8 @@ function layoutWorld(w: number, h: number) {
   const groundY = h * 0.88
   const margin = w * 0.08
   const usable = w - margin * 2
+  const scale = worldScale(w, h)
 
-  // Batteries at left, center, right
   const batteryXs = [margin + usable * 0.08, w / 2, margin + usable * 0.92]
   const batteries: Battery[] = batteryXs.map((x, i) => ({
     id: i,
@@ -126,7 +138,6 @@ function layoutWorld(w: number, h: number) {
     alive: true,
   }))
 
-  // Cities between batteries
   const citySlots = [0.2, 0.32, 0.44, 0.56, 0.68, 0.8]
   const cities: City[] = citySlots.map((t, i) => ({
     id: i,
@@ -134,11 +145,11 @@ function layoutWorld(w: number, h: number) {
     alive: true,
   }))
 
-  return { groundY, cities, batteries }
+  return { groundY, cities, batteries, scale }
 }
 
-export function createInitialState(w = 800, h = 600): GameState {
-  const { groundY, cities, batteries } = layoutWorld(w, h)
+export function createInitialState(w = DESIGN_W, h = DESIGN_H): GameState {
+  const { groundY, cities, batteries, scale } = layoutWorld(w, h)
   return {
     phase: 'menu',
     score: 0,
@@ -157,14 +168,16 @@ export function createInitialState(w = 800, h = 600): GameState {
     flash: 0,
     groundY,
     hitStreak: 0,
+    scale,
   }
 }
 
 export function resizeState(state: GameState, w: number, h: number): GameState {
-  const { groundY, cities, batteries } = layoutWorld(w, h)
+  const { groundY, cities, batteries, scale } = layoutWorld(w, h)
   return {
     ...state,
     groundY,
+    scale,
     cities: cities.map((c, i) => ({
       ...c,
       alive: state.cities[i]?.alive ?? true,
@@ -181,8 +194,8 @@ function waveIncomingCount(wave: number) {
   return 6 + wave * 2
 }
 
-function waveSpeed(wave: number) {
-  return 55 + wave * 8
+function waveSpeed(wave: number, scale: number) {
+  return (55 + wave * 8) * scale
 }
 
 export function startGame(prev: GameState, w: number, h: number): GameState {
@@ -217,9 +230,10 @@ function beginWave(state: GameState, wave: number): GameState {
 }
 
 export function setCursor(state: GameState, x: number, y: number): GameState {
+  const pad = 24 * state.scale
   return {
     ...state,
-    cursor: { x, y: Math.min(y, state.groundY - 24) },
+    cursor: { x, y: Math.min(y, state.groundY - pad) },
   }
 }
 
@@ -230,7 +244,6 @@ export function fire(state: GameState): GameState {
   if (alive.length === 0) return state
 
   const target = state.cursor
-  // Nearest battery with ammo
   let best = alive[0]
   let bestDist = Math.abs(best.x - target.x)
   for (const b of alive) {
@@ -245,15 +258,16 @@ export function fire(state: GameState): GameState {
     b.id === best.id ? { ...b, ammo: b.ammo - 1 } : b,
   )
 
+  const muzzleY = state.groundY - 18 * state.scale
   const shot: Shot = {
     id: uid(),
     x0: best.x,
-    y0: state.groundY - 18,
+    y0: muzzleY,
     x1: target.x,
     y1: target.y,
     x: best.x,
-    y: state.groundY - 18,
-    speed: 420,
+    y: muzzleY,
+    speed: 420 * state.scale,
   }
 
   return { ...state, batteries, shots: [...state.shots, shot] }
@@ -265,16 +279,16 @@ function spawnIncoming(state: GameState, w: number): GameState {
 
   const city = aliveCities[Math.floor(Math.random() * aliveCities.length)]
   const x0 = w * (0.05 + Math.random() * 0.9)
-  const speed = waveSpeed(state.wave) * (0.85 + Math.random() * 0.3)
+  const speed = waveSpeed(state.wave, state.scale) * (0.85 + Math.random() * 0.3)
 
   const missile: Incoming = {
     id: uid(),
     x0,
-    y0: -10,
+    y0: -10 * state.scale,
     x1: city.x,
-    y1: state.groundY - 8,
+    y1: state.groundY - 8 * state.scale,
     x: x0,
-    y: -10,
+    y: -10 * state.scale,
     speed,
     targetCity: city.id,
   }
@@ -315,12 +329,13 @@ function advanceAlong(
 }
 
 export function tick(state: GameState, dt: number, w: number): GameState {
+  const scale = state.scale
   let s = { ...state }
   s.flash = Math.max(0, s.flash - dt * 1.8)
   s.floaters = s.floaters
     .map((f) => ({
       ...f,
-      y: f.y - 28 * dt,
+      y: f.y - 28 * scale * dt,
       life: f.life - dt * 1.15,
     }))
     .filter((f) => f.life > 0)
@@ -337,7 +352,6 @@ export function tick(state: GameState, dt: number, w: number): GameState {
 
   if (s.phase === 'gameover') return s
 
-  // Spawn
   if (s.toSpawn > 0) {
     s.spawnTimer -= dt
     if (s.spawnTimer <= 0) {
@@ -345,7 +359,6 @@ export function tick(state: GameState, dt: number, w: number): GameState {
     }
   }
 
-  // Move shots → blasts
   const newShots: Shot[] = []
   const newBlasts = [...s.blasts]
   for (const shot of s.shots) {
@@ -357,8 +370,8 @@ export function tick(state: GameState, dt: number, w: number): GameState {
         id: uid(),
         x: shot.x1,
         y: shot.y1,
-        r: 6,
-        maxR: BLAST_MAX,
+        r: 6 * scale,
+        maxR: BLAST_MAX * scale,
         growing: true,
       })
     } else {
@@ -367,24 +380,22 @@ export function tick(state: GameState, dt: number, w: number): GameState {
   }
   s.shots = newShots
 
-  // Grow / shrink blasts
   const liveBlasts: Blast[] = []
   for (const b of newBlasts) {
     if (b.growing) {
-      const r = b.r + 120 * dt
+      const r = b.r + 120 * scale * dt
       if (r >= b.maxR) {
         liveBlasts.push({ ...b, r: b.maxR, growing: false })
       } else {
         liveBlasts.push({ ...b, r })
       }
     } else {
-      const r = b.r - 70 * dt
-      if (r > 2) liveBlasts.push({ ...b, r })
+      const r = b.r - 70 * scale * dt
+      if (r > 2 * scale) liveBlasts.push({ ...b, r })
     }
   }
   s.blasts = liveBlasts
 
-  // Move incoming; check blast hits and ground hits
   const liveIncoming: Incoming[] = []
   const newFloaters = [...s.floaters]
   let cities = s.cities.map((c) => ({ ...c }))
@@ -392,24 +403,27 @@ export function tick(state: GameState, dt: number, w: number): GameState {
   let scoreAdd = 0
   let flash = s.flash
   let hitStreak = s.hitStreak
+  const hitPad = 4 * scale
+  const directR = DIRECT_HIT_RADIUS * scale
+  const batRange = BATTERY_HIT_RANGE * scale
 
   for (const m of s.incoming) {
     let hitBlast: Blast | null = null
     for (const b of s.blasts) {
-      if (dist(m.x, m.y, b.x, b.y) <= b.r + 4) {
+      if (dist(m.x, m.y, b.x, b.y) <= b.r + hitPad) {
         hitBlast = b
         break
       }
     }
 
     if (hitBlast) {
-      const direct = dist(m.x, m.y, hitBlast.x, hitBlast.y) <= DIRECT_HIT_RADIUS
+      const direct = dist(m.x, m.y, hitBlast.x, hitBlast.y) <= directR
       if (direct) {
         scoreAdd += SCORE_DIRECT
         newFloaters.push({
           id: uid(),
           x: m.x,
-          y: m.y - 10,
+          y: m.y - 10 * scale,
           text: 'DIRECT HIT +100',
           life: 1.15,
         })
@@ -424,7 +438,7 @@ export function tick(state: GameState, dt: number, w: number): GameState {
         newFloaters.push({
           id: uid(),
           x: m.x,
-          y: m.y - (direct ? 34 : 10),
+          y: m.y - (direct ? 34 : 10) * scale,
           text: `4 IN A ROW +${SCORE_STREAK}`,
           life: 1.35,
         })
@@ -438,17 +452,14 @@ export function tick(state: GameState, dt: number, w: number): GameState {
       m.x0, m.y0, m.x1, m.y1, m.x, m.y, m.speed, dt,
     )
     if (step.done) {
-      // Missed intercept — streak breaks
       hitStreak = 0
-      // Hit ground target
       const city = cities.find((c) => c.id === m.targetCity)
       if (city?.alive) {
         city.alive = false
         flash = 0.55
       }
-      // Also destroy nearby battery if close
       for (const bat of batteries) {
-        if (bat.alive && Math.abs(bat.x - m.x1) < 36) {
+        if (bat.alive && Math.abs(bat.x - m.x1) < batRange) {
           bat.alive = false
           bat.ammo = 0
         }
@@ -473,7 +484,6 @@ export function tick(state: GameState, dt: number, w: number): GameState {
     return { ...s, phase: 'gameover', best }
   }
 
-  // Wave clear: nothing left to spawn / fly / explode
   if (
     s.toSpawn <= 0 &&
     s.incoming.length === 0 &&
