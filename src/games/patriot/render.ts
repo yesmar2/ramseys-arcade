@@ -1,24 +1,7 @@
 import type { Battery, City, GameState } from './game'
 
-function pathRoundRect(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  w: number,
-  h: number,
-  r: number,
-) {
-  const radius = Math.min(r, w / 2, h / 2)
-  ctx.beginPath()
-  ctx.moveTo(x + radius, y)
-  ctx.arcTo(x + w, y, x + w, y + h, radius)
-  ctx.arcTo(x + w, y + h, x, y + h, radius)
-  ctx.arcTo(x + w, y + h, x, y, radius)
-  ctx.arcTo(x, y, x + w, y, radius)
-  ctx.closePath()
-}
-
-function fillBlock(
+/** Plain rectangles only — scales cleanly on any stage size. */
+function fillRect(
   ctx: CanvasRenderingContext2D,
   x: number,
   y: number,
@@ -26,23 +9,12 @@ function fillBlock(
   h: number,
   color: string,
   alpha = 1,
-  scale = 1,
 ) {
+  if (w <= 0 || h <= 0) return
   ctx.save()
   ctx.globalAlpha = alpha
   ctx.fillStyle = color
-  pathRoundRect(ctx, x, y, w, h, 5 * scale)
-  ctx.fill()
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.28)'
-  pathRoundRect(
-    ctx,
-    x + 2 * scale,
-    y + 2 * scale,
-    Math.max(4 * scale, w - 4 * scale),
-    Math.max(4 * scale, h * 0.28),
-    3 * scale,
-  )
-  ctx.fill()
+  ctx.fillRect(x, y, w, h)
   ctx.restore()
 }
 
@@ -73,7 +45,13 @@ function drawBackground(ctx: CanvasRenderingContext2D, w: number, h: number) {
   }
 }
 
-function drawGround(ctx: CanvasRenderingContext2D, w: number, groundY: number, h: number, scale: number) {
+function drawGround(
+  ctx: CanvasRenderingContext2D,
+  w: number,
+  groundY: number,
+  h: number,
+  scale: number,
+) {
   const g = ctx.createLinearGradient(0, groundY - 8 * scale, 0, h)
   g.addColorStop(0, '#cfe8d8')
   g.addColorStop(1, '#b7dcc8')
@@ -81,56 +59,50 @@ function drawGround(ctx: CanvasRenderingContext2D, w: number, groundY: number, h
   ctx.fillRect(0, groundY, w, h - groundY)
 
   ctx.fillStyle = 'rgba(46, 184, 160, 0.45)'
-  ctx.fillRect(0, groundY, w, 3 * scale)
+  ctx.fillRect(0, groundY, w, Math.max(2, 3 * scale))
 }
 
 const CITY_COLORS = ['#4aa8e8', '#2eb8a0', '#f5b942', '#5bc0de', '#3ecf8e', '#e87a4a']
 
-/** Simple skyline blocks — scales cleanly, no fragile roof geometry. */
+/** Each city = a few axis-aligned rectangles (classic Missile Command vibe). */
 function drawCity(ctx: CanvasRenderingContext2D, city: City, groundY: number, scale: number) {
   const color = CITY_COLORS[city.id % CITY_COLORS.length]
   const s = scale
 
-  // Slight variety per city so the row doesn’t look identical
   const layouts = [
     [
-      { x: -18, w: 12, h: 22 },
-      { x: -4, w: 14, h: 34 },
-      { x: 12, w: 10, h: 18 },
+      { x: -16, w: 10, h: 20 },
+      { x: -4, w: 12, h: 32 },
+      { x: 10, w: 8, h: 16 },
     ],
     [
-      { x: -16, w: 14, h: 28 },
-      { x: 0, w: 16, h: 40 },
+      { x: -14, w: 12, h: 26 },
+      { x: 0, w: 14, h: 36 },
     ],
     [
-      { x: -20, w: 10, h: 18 },
-      { x: -8, w: 12, h: 30 },
-      { x: 6, w: 14, h: 24 },
+      { x: -18, w: 8, h: 16 },
+      { x: -8, w: 10, h: 28 },
+      { x: 4, w: 12, h: 22 },
     ],
     [
-      { x: -14, w: 28, h: 26 },
-      { x: -6, w: 12, h: 36 },
+      { x: -12, w: 24, h: 22 },
+      { x: -4, w: 10, h: 34 },
     ],
     [
-      { x: -18, w: 11, h: 20 },
-      { x: -5, w: 10, h: 32 },
-      { x: 7, w: 13, h: 22 },
+      { x: -16, w: 9, h: 18 },
+      { x: -5, w: 9, h: 30 },
+      { x: 6, w: 11, h: 20 },
     ],
     [
-      { x: -16, w: 32, h: 24 },
-      { x: -10, w: 10, h: 38 },
-      { x: 4, w: 12, h: 28 },
+      { x: -14, w: 11, h: 24 },
+      { x: -1, w: 9, h: 34 },
+      { x: 10, w: 10, h: 18 },
     ],
   ]
   const blocks = layouts[city.id % layouts.length]
 
   if (!city.alive) {
-    ctx.globalAlpha = 0.35
-    ctx.fillStyle = color
-    const rubbleW = 36 * s
-    pathRoundRect(ctx, city.x - rubbleW / 2, groundY - 6 * s, rubbleW, 6 * s, 3 * s)
-    ctx.fill()
-    ctx.globalAlpha = 1
+    fillRect(ctx, city.x - 16 * s, groundY - 5 * s, 32 * s, 5 * s, color, 0.35)
     return
   }
 
@@ -140,26 +112,22 @@ function drawCity(ctx: CanvasRenderingContext2D, city: City, groundY: number, sc
     const bx = city.x + b.x * s
     const by = groundY - bh
 
-    ctx.fillStyle = color
-    pathRoundRect(ctx, bx, by, bw, bh, 3 * s)
-    ctx.fill()
+    fillRect(ctx, bx, by, bw, bh, color)
 
-    // Soft top lip
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.28)'
-    pathRoundRect(ctx, bx + 1.5 * s, by + 1.5 * s, Math.max(2 * s, bw - 3 * s), 3 * s, 2 * s)
-    ctx.fill()
+    // Simple top highlight strip
+    fillRect(ctx, bx, by, bw, Math.max(2, 3 * s), 'rgba(255, 255, 255, 0.3)')
 
-    // Tiny window dots — only when tall enough
-    if (bh > 22 * s) {
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.45)'
-      const cols = Math.max(1, Math.floor((bw - 4 * s) / (6 * s)))
-      const rows = Math.max(1, Math.floor((bh - 8 * s) / (7 * s)))
-      for (let row = 0; row < Math.min(rows, 3); row++) {
-        for (let col = 0; col < Math.min(cols, 3); col++) {
-          const wx = bx + 3 * s + col * 6 * s
-          const wy = by + 6 * s + row * 7 * s
-          pathRoundRect(ctx, wx, wy, 3 * s, 3 * s, s)
-          ctx.fill()
+    // Window squares
+    if (bh > 20 * s && bw > 8 * s) {
+      const win = Math.max(2, 2.5 * s)
+      const gap = Math.max(4, 5 * s)
+      for (let row = 0; row < 2; row++) {
+        for (let col = 0; col < 2; col++) {
+          const wx = bx + 2.5 * s + col * gap
+          const wy = by + 6 * s + row * gap
+          if (wx + win < bx + bw - s && wy + win < groundY - 3 * s) {
+            fillRect(ctx, wx, wy, win, win, 'rgba(255, 255, 255, 0.5)')
+          }
         }
       }
     }
@@ -169,16 +137,17 @@ function drawCity(ctx: CanvasRenderingContext2D, city: City, groundY: number, sc
 function drawBattery(ctx: CanvasRenderingContext2D, bat: Battery, groundY: number, scale: number) {
   const s = scale
   if (!bat.alive) {
-    fillBlock(ctx, bat.x - 16 * s, groundY - 8 * s, 32 * s, 8 * s, '#6b8cae', 0.3, s)
+    fillRect(ctx, bat.x - 16 * s, groundY - 6 * s, 32 * s, 6 * s, '#6b8cae', 0.35)
     return
   }
 
-  // Base pad
-  fillBlock(ctx, bat.x - 18 * s, groundY - 12 * s, 36 * s, 12 * s, '#4aa8e8', 1, s)
-  // Turret / barrel
-  fillBlock(ctx, bat.x - 5 * s, groundY - 28 * s, 10 * s, 18 * s, '#2eb8a0', 1, s)
-  // Muzzle tip
-  fillBlock(ctx, bat.x - 3 * s, groundY - 34 * s, 6 * s, 8 * s, '#1a8f7a', 1, s)
+  // Base
+  fillRect(ctx, bat.x - 18 * s, groundY - 10 * s, 36 * s, 10 * s, '#4aa8e8')
+  fillRect(ctx, bat.x - 18 * s, groundY - 10 * s, 36 * s, 3 * s, 'rgba(255, 255, 255, 0.28)')
+  // Turret
+  fillRect(ctx, bat.x - 5 * s, groundY - 26 * s, 10 * s, 16 * s, '#2eb8a0')
+  // Barrel
+  fillRect(ctx, bat.x - 2.5 * s, groundY - 34 * s, 5 * s, 10 * s, '#1a8f7a')
 
   for (let i = 0; i < bat.ammo; i++) {
     const col = i % 5
