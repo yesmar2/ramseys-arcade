@@ -24,7 +24,7 @@ export const games: Game[] = [
   {
     name: 'Snake',
     slug: 'snake',
-    description: 'Grow longer. Don’t bite yourself.',
+    description: 'Grow longer. Don’t crash.',
     accent: '#3ecf8e',
     playable: true,
   },

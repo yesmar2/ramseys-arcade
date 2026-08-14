@@ -4,7 +4,7 @@ import { SnakeGame } from '../games/snake/SnakeGame'
 import { StackerGame } from '../games/stacker/StackerGame'
 import { getGame } from '../data/games'
 import { usePlayerName } from '../hooks/usePlayerName'
-import { rememberPlayerName } from '../lib/leaderboard'
+import { ApiError, rememberPlayerName } from '../lib/leaderboard'
 import { getTournament, joinTournament, type TournamentDetail } from '../lib/tournaments'
 import { TournamentPlayProvider } from '../tournaments/TournamentPlayContext'
 
@@ -72,12 +72,16 @@ export function TournamentPlayPage({
     setJoining(true)
     setJoinError(null)
     try {
-      rememberPlayerName(name)
+      await rememberPlayerName(name)
       const result = await joinTournament(tournamentId, name)
       setDetail(result.tournament)
       setReady(true)
     } catch (err) {
-      setJoinError(err instanceof Error ? err.message : 'Could not join')
+      if (err instanceof ApiError && err.code === 'NAME_TAKEN') {
+        setJoinError('That name is taken — pick another')
+      } else {
+        setJoinError(err instanceof Error ? err.message : 'Could not join')
+      }
     } finally {
       setJoining(false)
     }

@@ -3,6 +3,7 @@ import { Footer } from '../components/Footer'
 import { Header } from '../components/Header'
 import { InfoTip } from '../components/InfoTip'
 import { getGame } from '../data/games'
+import { leaderboardHref } from '../hooks/useHashRoute'
 import {
   getLeaderboard,
   LEADERBOARD_GAMES,
@@ -24,7 +25,15 @@ function formatDate(at: number) {
   }
 }
 
-export function LeaderboardsPage() {
+type LeaderboardsPageProps = {
+  game?: LeaderboardGame
+  period?: LeaderboardPeriod
+}
+
+export function LeaderboardsPage({
+  game: gameFromRoute,
+  period: periodFromRoute,
+}: LeaderboardsPageProps) {
   const tabs = useMemo(
     () =>
       LEADERBOARD_GAMES.map((slug) => ({
@@ -35,12 +44,20 @@ export function LeaderboardsPage() {
     [],
   )
 
-  const [active, setActive] = useState<LeaderboardGame>('stacker')
-  const [period, setPeriod] = useState<LeaderboardPeriod>('daily')
+  const active: LeaderboardGame = gameFromRoute ?? 'stacker'
+  const period: LeaderboardPeriod = periodFromRoute ?? 'daily'
   const [entries, setEntries] = useState<LeaderboardEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const activeMeta = tabs.find((t) => t.slug === active) ?? tabs[0]
+
+  // Normalize incomplete/invalid deep links to a canonical URL
+  useEffect(() => {
+    const canonical = leaderboardHref(active, period)
+    if (window.location.hash !== canonical) {
+      window.history.replaceState(null, '', canonical)
+    }
+  }, [active, period])
 
   useEffect(() => {
     let cancelled = false
@@ -64,6 +81,14 @@ export function LeaderboardsPage() {
     }
   }, [active, period])
 
+  const selectGame = (slug: LeaderboardGame) => {
+    window.location.hash = leaderboardHref(slug, period)
+  }
+
+  const selectPeriod = (next: LeaderboardPeriod) => {
+    window.location.hash = leaderboardHref(active, next)
+  }
+
   return (
     <>
       <Header />
@@ -81,32 +106,38 @@ export function LeaderboardsPage() {
 
           <div className="lb-tabs" role="tablist" aria-label="Games">
             {tabs.map((tab) => (
-              <button
+              <a
                 key={tab.slug}
-                type="button"
+                href={leaderboardHref(tab.slug, period)}
                 role="tab"
                 aria-selected={tab.slug === active}
                 className={`lb-tab${tab.slug === active ? ' lb-tab--active' : ''}`}
                 style={{ '--tab-accent': tab.accent } as CSSProperties}
-                onClick={() => setActive(tab.slug)}
+                onClick={(e) => {
+                  e.preventDefault()
+                  selectGame(tab.slug)
+                }}
               >
                 {tab.name}
-              </button>
+              </a>
             ))}
           </div>
 
           <div className="lb-periods" role="tablist" aria-label="Time period">
             {LEADERBOARD_PERIODS.map((p) => (
-              <button
+              <a
                 key={p}
-                type="button"
+                href={leaderboardHref(active, p)}
                 role="tab"
                 aria-selected={period === p}
                 className={`lb-period${period === p ? ' lb-period--active' : ''}`}
-                onClick={() => setPeriod(p)}
+                onClick={(e) => {
+                  e.preventDefault()
+                  selectPeriod(p)
+                }}
               >
                 {PERIOD_LABELS[p]}
-              </button>
+              </a>
             ))}
           </div>
 

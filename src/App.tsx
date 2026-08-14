@@ -41,7 +41,9 @@ function App() {
   const route = useHashRoute()
 
   if (route.name === 'home') return <HomePage />
-  if (route.name === 'leaderboards') return <LeaderboardsPage />
+  if (route.name === 'leaderboards') {
+    return <LeaderboardsPage game={route.game} period={route.period} />
+  }
   if (route.name === 'tournaments') return <TournamentsPage />
   if (route.name === 'tournamentPlay') {
     return <TournamentPlayPage tournamentId={route.id} gameSlug={route.game} />

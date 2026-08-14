@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { usePlayerName } from '../hooks/usePlayerName'
-import { rememberPlayerName } from '../lib/leaderboard'
+import { ApiError, rememberPlayerName } from '../lib/leaderboard'
 
 type PlayerBadgeProps = {
   /** Compact chip for tight headers / game overlays */
@@ -11,21 +11,41 @@ export function PlayerBadge({ compact = false }: PlayerBadgeProps) {
   const name = usePlayerName()
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(name || '')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const rootRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
   const startEdit = () => {
     setDraft(name || '')
+    setError(null)
     setEditing(true)
   }
 
-  const save = () => {
+  const save = async () => {
     const cleaned = draft.trim().slice(0, 12).toUpperCase()
-    if (cleaned) rememberPlayerName(cleaned)
-    setEditing(false)
+    if (!cleaned || busy) return
+    setBusy(true)
+    setError(null)
+    try {
+      await rememberPlayerName(cleaned)
+      setEditing(false)
+    } catch (err) {
+      if (err instanceof ApiError && err.code === 'NAME_TAKEN') {
+        setError('That name is taken')
+      } else {
+        setError(err instanceof Error ? err.message : 'Could not save name')
+      }
+    } finally {
+      setBusy(false)
+    }
   }
 
-  const cancel = () => setEditing(false)
+  const cancel = () => {
+    if (busy) return
+    setEditing(false)
+    setError(null)
+  }
 
   useEffect(() => {
     if (!editing) return
@@ -44,7 +64,7 @@ export function PlayerBadge({ compact = false }: PlayerBadgeProps) {
       window.removeEventListener('pointerdown', onPointer)
       window.removeEventListener('keydown', onKey)
     }
-  }, [editing])
+  }, [editing, busy])
 
   return (
     <div className="player-badge-wrap" ref={rootRef}>
@@ -82,22 +102,28 @@ export function PlayerBadge({ compact = false }: PlayerBadgeProps) {
               className="player-badge__input"
               value={draft}
               maxLength={12}
-              onChange={(e) => setDraft(e.target.value.toUpperCase())}
+              disabled={busy}
+              onChange={(e) => {
+                setDraft(e.target.value.toUpperCase())
+                setError(null)
+              }}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                   e.preventDefault()
-                  save()
+                  void save()
                 }
               }}
             />
           </label>
+          {error && <p className="player-badge__error">{error}</p>}
           <div className="player-badge__panel-actions">
-            <button type="button" className="player-badge__btn" onClick={save}>
-              Save
+            <button type="button" className="player-badge__btn" disabled={busy} onClick={() => void save()}>
+              {busy ? 'Saving…' : 'Save'}
             </button>
             <button
               type="button"
               className="player-badge__btn player-badge__btn--ghost"
+              disabled={busy}
               onClick={cancel}
             >
               Cancel

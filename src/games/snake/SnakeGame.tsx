@@ -135,64 +135,109 @@ export function SnakeGame() {
     else turn(dy > 0 ? 'down' : 'up')
   }
 
+  const onPad = (dir: Dir) => (e: ReactPointerEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    turn(dir)
+  }
+
   return (
-    <section
-      className="snake snake--fullscreen"
-      onPointerDown={onPointerDown}
-      onPointerUp={onPointerUp}
-      onPointerCancel={() => {
-        swipeStart.current = null
-      }}
-    >
-      <GameStage
-        aspectWidth={STAGE_ASPECT.snake.w}
-        aspectHeight={STAGE_ASPECT.snake.h}
+    <section className={`snake snake--fullscreen${saveOpen ? ' snake--saving' : ''}`}>
+      <div
+        className="snake__play"
+        onPointerDown={onPointerDown}
+        onPointerUp={onPointerUp}
+        onPointerCancel={() => {
+          swipeStart.current = null
+        }}
       >
-        <canvas ref={canvasRef} className="snake__viewport" />
+        <GameStage
+          aspectWidth={STAGE_ASPECT.snake.w}
+          aspectHeight={STAGE_ASPECT.snake.h}
+        >
+          <canvas ref={canvasRef} className="snake__viewport" />
 
-        <div className="snake__hud" aria-live="polite">
-          <div className="snake__stat">
-            <span className="snake__label">Score</span>
-            <strong>{ui.score}</strong>
-          </div>
-          <div className="snake__stat">
-            <span className="snake__label">Best</span>
-            <strong>{ui.best}</strong>
-          </div>
-          <div className="snake__stat">
-            <span className="snake__label">Length</span>
-            <strong>{ui.length}</strong>
-          </div>
-        </div>
-
-        <div className="snake__overlay">
-          {ui.phase === 'menu' && !saveOpen && (
-            <div className="snake__card" aria-hidden="true">
-              <h2>Snake</h2>
-              <p>Swipe or use arrows. Eat. Grow. Don’t crash.</p>
-              <span>Tap or press a direction to start</span>
+          <div className="snake__hud" aria-live="polite">
+            <div className="snake__stat">
+              <span className="snake__label">Score</span>
+              <strong>{ui.score}</strong>
             </div>
-          )}
-          {ui.phase === 'gameover' && saveOpen && (
-            tournament ? (
-              <TournamentScoreCard
-                tournamentId={tournament.tournamentId}
-                gameSlug="snake"
-                score={ui.score}
-                onDone={restart}
-              />
-            ) : (
-              <ScoreSaveCard
-                gameSlug="snake"
-                score={ui.score}
-                title="Ouch"
-                subtitle={`Best ${ui.best}`}
-                onDone={restart}
-              />
-            )
-          )}
-        </div>
-      </GameStage>
+            <div className="snake__stat">
+              <span className="snake__label">Best</span>
+              <strong>{ui.best}</strong>
+            </div>
+            <div className="snake__stat">
+              <span className="snake__label">Length</span>
+              <strong>{ui.length}</strong>
+            </div>
+          </div>
+
+          <div className="snake__overlay">
+            {ui.phase === 'menu' && !saveOpen && (
+              <div className="snake__card" aria-hidden="true">
+                <h2>Snake</h2>
+                <p>Steer with the arrows. Eat. Grow. Don’t crash.</p>
+                <span>Tap an arrow to start</span>
+              </div>
+            )}
+            {ui.phase === 'gameover' && saveOpen && (
+              tournament ? (
+                <TournamentScoreCard
+                  tournamentId={tournament.tournamentId}
+                  gameSlug="snake"
+                  score={ui.score}
+                  onDone={restart}
+                />
+              ) : (
+                <ScoreSaveCard
+                  gameSlug="snake"
+                  score={ui.score}
+                  title="Ouch"
+                  subtitle={`Best ${ui.best}`}
+                  onDone={restart}
+                />
+              )
+            )}
+          </div>
+        </GameStage>
+      </div>
+
+      <nav className="snake__pad" aria-label="Direction">
+        <PadButton dir="up" label="Up" onPad={onPad} />
+        <PadButton dir="left" label="Left" onPad={onPad} />
+        <PadButton dir="right" label="Right" onPad={onPad} />
+        <PadButton dir="down" label="Down" onPad={onPad} />
+      </nav>
     </section>
+  )
+}
+
+function PadButton({
+  dir,
+  label,
+  onPad,
+}: {
+  dir: Dir
+  label: string
+  onPad: (dir: Dir) => (e: ReactPointerEvent) => void
+}) {
+  return (
+    <button
+      type="button"
+      className={`snake__pad-btn snake__pad-btn--${dir}`}
+      aria-label={label}
+      onPointerDown={onPad(dir)}
+    >
+      <svg className="snake__pad-icon" viewBox="0 0 24 24" aria-hidden="true">
+        <path
+          d="M6 14.5 12 8l6 6.5"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.6"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    </button>
   )
 }

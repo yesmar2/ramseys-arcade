@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { usePlayerName } from '../hooks/usePlayerName'
-import { getLastPlayerName } from '../lib/leaderboard'
+import { ApiError, getLastPlayerName, rememberPlayerName } from '../lib/leaderboard'
 import {
   getTournament,
   joinTournament,
@@ -15,6 +15,10 @@ type TournamentScoreCardProps = {
   onDone: () => void
 }
 
+function cleanName(raw: string) {
+  return raw.trim().slice(0, 12).toUpperCase()
+}
+
 export function TournamentScoreCard({
   tournamentId,
   gameSlug,
@@ -22,24 +26,36 @@ export function TournamentScoreCard({
   onDone,
 }: TournamentScoreCardProps) {
   const playerName = usePlayerName()
-  const name = (playerName || getLastPlayerName()).trim().toUpperCase()
-  const [status, setStatus] = useState<'saving' | 'done' | 'error'>('saving')
+  const knownName = (playerName || getLastPlayerName()).trim().toUpperCase()
+  const [name, setName] = useState(knownName)
+  const [nameDraft, setNameDraft] = useState('')
+  const [status, setStatus] = useState<'needName' | 'saving' | 'done' | 'error'>(() =>
+    knownName ? 'saving' : 'needName',
+  )
   const [error, setError] = useState<string | null>(null)
   const [improved, setImproved] = useState(false)
   const [best, setBest] = useState(score)
   const [detail, setDetail] = useState<TournamentDetail | null>(null)
+  const nameInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
+    if (knownName && !name) setName(knownName)
+  }, [knownName, name])
+
+  useEffect(() => {
+    if (status === 'needName') nameInputRef.current?.focus()
+  }, [status])
+
+  useEffect(() => {
+    if (!name) return
+
     let cancelled = false
 
     async function run() {
-      if (!name) {
-        setStatus('error')
-        setError('Set your name in the header, then try again.')
-        return
-      }
+      setStatus('saving')
+      setError(null)
+
       if (score <= 0) {
-        setStatus('done')
         setImproved(false)
         setBest(0)
         try {
@@ -48,11 +64,11 @@ export function TournamentScoreCard({
         } catch {
           /* ignore */
         }
+        if (!cancelled) setStatus('done')
         return
       }
 
       try {
-        // Ensure they're on the roster
         await joinTournament(tournamentId, name)
         const result = await submitTournamentScore(tournamentId, name, gameSlug, score)
         if (cancelled) return
@@ -64,6 +80,17 @@ export function TournamentScoreCard({
         setStatus('done')
       } catch (err) {
         if (cancelled) return
+        const code =
+          err instanceof ApiError
+            ? err.code
+            : (err as Error & { code?: string }).code
+        if (code === 'NAME_TAKEN') {
+          setName('')
+          setNameDraft('')
+          setStatus('needName')
+          setError('That name is taken — pick another')
+          return
+        }
         setStatus('error')
         setError(err instanceof Error ? err.message : 'Could not submit score')
       }
@@ -75,6 +102,22 @@ export function TournamentScoreCard({
     }
   }, [tournamentId, gameSlug, score, name])
 
+  const submitName = async () => {
+    const cleaned = cleanName(nameDraft)
+    if (!cleaned) return
+    setError(null)
+    try {
+      const claimed = await rememberPlayerName(cleaned)
+      setName(claimed)
+    } catch (err) {
+      if (err instanceof ApiError && err.code === 'NAME_TAKEN') {
+        setError('That name is taken — pick another')
+      } else {
+        setError(err instanceof Error ? err.message : 'Could not claim name')
+      }
+    }
+  }
+
   const standing = detail?.standings.find((s) => s.name === name)
   const gameCell = standing?.byGame[gameSlug]
   const overallPlace =
@@ -85,16 +128,61 @@ export function TournamentScoreCard({
   return (
     <div className="score-save tour-score" onPointerDown={(e) => e.stopPropagation()}>
       <div className="score-save__hero">
-        <span className="score-save__eyebrow">
-          {detail?.title ?? 'Tournament'}
-        </span>
+        <span className="score-save__eyebrow">{detail?.title ?? 'Tournament'}</span>
         <strong className="score-save__score">{score}</strong>
       </div>
+
+      {status === 'needName' && (
+        <>
+          <label className="score-save__field">
+            <span className="score-save__label">Name</span>
+            <input
+              ref={nameInputRef}
+              className="score-save__input"
+              value={nameDraft}
+              maxLength={12}
+              placeholder="YOU"
+              autoComplete="off"
+              spellCheck={false}
+              onChange={(e) => setNameDraft(e.target.value.toUpperCase())}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  void submitName()
+                }
+              }}
+            />
+          </label>
+          {error && status === 'needName' && (
+            <p className="score-save__note score-save__note--error">{error}</p>
+          )}
+          <div className="score-save__actions">
+            <button
+              type="button"
+              className="score-save__btn"
+              disabled={!cleanName(nameDraft)}
+              onClick={() => void submitName()}
+            >
+              Submit score
+            </button>
+            <button type="button" className="score-save__btn score-save__btn--ghost" onClick={onDone}>
+              Skip
+            </button>
+          </div>
+        </>
+      )}
 
       {status === 'saving' && <p className="score-save__note">Submitting…</p>}
 
       {status === 'error' && (
-        <p className="score-save__note score-save__note--error">{error}</p>
+        <>
+          <p className="score-save__note score-save__note--error">{error}</p>
+          <div className="score-save__actions">
+            <button type="button" className="score-save__btn" onClick={onDone}>
+              Play again
+            </button>
+          </div>
+        </>
       )}
 
       {status === 'done' && (
@@ -128,14 +216,14 @@ export function TournamentScoreCard({
               )}
             </ul>
           )}
+          <div className="score-save__actions">
+            <button type="button" className="score-save__btn" onClick={onDone}>
+              Play again
+            </button>
+          </div>
         </>
       )}
 
-      <div className="score-save__actions">
-        <button type="button" className="score-save__btn" onClick={onDone}>
-          Play again
-        </button>
-      </div>
       <div className="score-save__links">
         <a href={`#/tournaments/${tournamentId}`}>Standings</a>
       </div>

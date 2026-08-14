@@ -1,6 +1,11 @@
 import type { GameState } from './game'
 import { visualSegments } from './game'
 
+const HEAD_HUE = 158
+/** Hue the tail drifts per food eaten, and how far it can ever get from the head. */
+const HUE_PER_FOOD = 4
+const MAX_HUE_SPREAD = 120
+
 export function renderGame(
   ctx: CanvasRenderingContext2D,
   state: GameState,
@@ -105,15 +110,20 @@ export function renderGame(
   const sw = cell - gap * 2
   const sh = cell - gap * 2
 
+  // Head stays green; the tail drifts further through teal and blue as you grow
+  const hueSpread = Math.min(MAX_HUE_SPREAD, (state.segments - 3) * HUE_PER_FOOD)
+
   for (let i = segments.length - 1; i >= 0; i--) {
     const seg = segments[i]
     const sx = ox + seg.x * cell + gap
     const sy = oy + seg.y * cell + gap
     const t = i / Math.max(1, segments.length - 1)
     const light = i === 0 ? 52 : 42 + (1 - t) * 10
+    const hue = HEAD_HUE + hueSpread * t
+    const sat = 58 + hueSpread * 0.06
 
     roundRect(ctx, sx, sy, sw, sh, segR)
-    ctx.fillStyle = `hsla(158, 58%, ${light}%, 1)`
+    ctx.fillStyle = `hsla(${hue}, ${sat}%, ${light}%, 1)`
     ctx.fill()
 
     if (i === 0) {

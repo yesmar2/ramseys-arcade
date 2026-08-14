@@ -93,12 +93,16 @@ export async function getTournament(id: string): Promise<TournamentDetail> {
   return api(`/tournaments/${id}`)
 }
 
-export async function renameTournamentPlayer(from: string, to: string) {
+export async function renameTournamentPlayer(
+  from: string,
+  to: string,
+  tokens: { fromToken?: string; toToken?: string } = {},
+) {
   return api<{ from: string; to: string; updatedTournaments: string[] }>(
     '/tournaments/rename-player',
     {
       method: 'POST',
-      body: JSON.stringify({ from, to }),
+      body: JSON.stringify({ from, to, ...tokens }),
     },
   )
 }
