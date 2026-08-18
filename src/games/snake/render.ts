@@ -1,5 +1,5 @@
 import type { GameState } from './game'
-import { visualSegments } from './game'
+import { BEAD_SPACING, visualSegments } from './game'
 
 const HEAD_HUE = 158
 /** Hue the tail drifts per food eaten, and how far it can ever get from the head. */
@@ -93,22 +93,26 @@ export function renderGame(
     ctx.arc(fx, fy, r * 2.2, 0, Math.PI * 2)
     ctx.fill()
 
-    ctx.fillStyle = '#f5b942'
+    ctx.fillStyle = 'hsla(38, 58%, 58%, 0.22)'
     ctx.beginPath()
     ctx.arc(fx, fy, r, 0, Math.PI * 2)
     ctx.fill()
+    ctx.strokeStyle = 'hsla(38, 58%, 42%, 0.95)'
+    ctx.lineWidth = Math.max(1.4, cell * 0.08)
+    ctx.stroke()
     ctx.fillStyle = 'rgba(255, 255, 255, 0.45)'
     ctx.beginPath()
     ctx.arc(fx - r * 0.25, fy - r * 0.28, r * 0.28, 0, Math.PI * 2)
     ctx.fill()
   }
 
-  // Snake — chunky rounded cells, positions lerped between steps
+  // Snake — fixed bead size and spacing so they kiss at every length
   const segments = visualSegments(state)
-  const gap = cell * 0.12
-  const segR = Math.max(4, cell * 0.28)
-  const sw = cell - gap * 2
-  const sh = cell - gap * 2
+  const lineW = Math.max(1.2, cell * 0.07)
+  const sw = cell * BEAD_SPACING - lineW
+  const sh = sw
+  const gap = (cell - sw) / 2
+  const segR = sw / 2
 
   // Head stays green; the tail drifts further through teal and blue as you grow
   const hueSpread = Math.min(MAX_HUE_SPREAD, (state.segments - 3) * HUE_PER_FOOD)
@@ -118,13 +122,16 @@ export function renderGame(
     const sx = ox + seg.x * cell + gap
     const sy = oy + seg.y * cell + gap
     const t = i / Math.max(1, segments.length - 1)
-    const light = i === 0 ? 52 : 42 + (1 - t) * 10
     const hue = HEAD_HUE + hueSpread * t
     const sat = 58 + hueSpread * 0.06
 
     roundRect(ctx, sx, sy, sw, sh, segR)
-    ctx.fillStyle = `hsla(${hue}, ${sat}%, ${light}%, 1)`
+    ctx.fillStyle = `hsla(${hue}, ${sat}%, 58%, 0.22)`
     ctx.fill()
+    ctx.strokeStyle = `hsla(${hue}, ${sat}%, 42%, 0.95)`
+    ctx.lineWidth = lineW
+    ctx.lineJoin = 'round'
+    ctx.stroke()
 
     if (i === 0) {
       const face = state.pendingDir ?? state.dir
@@ -167,7 +174,7 @@ export function renderGame(
     const alpha = Math.min(1, f.life * 2) * Math.min(1, f.life * 1.4)
     ctx.save()
     ctx.globalAlpha = Math.max(0, alpha)
-    ctx.font = `700 ${Math.max(14, cell * 0.55)}px Fredoka, Nunito, system-ui, sans-serif`
+    ctx.font = `600 ${Math.max(14, cell * 0.55)}px Outfit, system-ui, sans-serif`
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
     ctx.fillStyle = '#c98a12'

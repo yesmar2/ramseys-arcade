@@ -1,9 +1,12 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { DeviceIcon } from '../components/DeviceIcon'
 import { Footer } from '../components/Footer'
 import { Header } from '../components/Header'
 import { InfoTip } from '../components/InfoTip'
-import { getGame } from '../data/games'
+import { getGame, gamePlayableOn } from '../data/games'
 import { leaderboardHref } from '../hooks/useHashRoute'
+import { useDeviceType } from '../lib/device'
+import { usePlayerName } from '../hooks/usePlayerName'
 import {
   getLeaderboard,
   LEADERBOARD_GAMES,
@@ -12,7 +15,10 @@ import {
   type LeaderboardEntry,
   type LeaderboardGame,
   type LeaderboardPeriod,
+  type YouEntry,
 } from '../lib/leaderboard'
+
+const INITIAL_ROWS = 10
 
 function formatDate(at: number) {
   try {
@@ -46,12 +52,17 @@ export function LeaderboardsPage({
 
   const active: LeaderboardGame = gameFromRoute ?? 'stacker'
   const period: LeaderboardPeriod = periodFromRoute ?? 'daily'
+  const playerName = usePlayerName().trim().toUpperCase()
+  const device = useDeviceType()
   const [entries, setEntries] = useState<LeaderboardEntry[]>([])
+  const [you, setYou] = useState<YouEntry | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [shown, setShown] = useState(INITIAL_ROWS)
   const activeMeta = tabs.find((t) => t.slug === active) ?? tabs[0]
+  const activeGame = getGame(active)
+  const canPlay = activeGame ? gamePlayableOn(activeGame, device) : true
 
-  // Normalize incomplete/invalid deep links to a canonical URL
   useEffect(() => {
     const canonical = leaderboardHref(active, period)
     if (window.location.hash !== canonical) {
@@ -63,14 +74,17 @@ export function LeaderboardsPage({
     let cancelled = false
     setLoading(true)
     setError(null)
-    getLeaderboard(active, period)
+    setShown(INITIAL_ROWS)
+    getLeaderboard(active, period, playerName || undefined)
       .then((board) => {
         if (cancelled) return
-        setEntries(board)
+        setEntries(board.entries)
+        setYou(board.you)
       })
       .catch((err) => {
         if (cancelled) return
         setEntries([])
+        setYou(null)
         setError(err instanceof Error ? err.message : 'Failed to load')
       })
       .finally(() => {
@@ -79,7 +93,7 @@ export function LeaderboardsPage({
     return () => {
       cancelled = true
     }
-  }, [active, period])
+  }, [active, period, playerName])
 
   const selectGame = (slug: LeaderboardGame) => {
     window.location.hash = leaderboardHref(slug, period)
@@ -88,6 +102,31 @@ export function LeaderboardsPage({
   const selectPeriod = (next: LeaderboardPeriod) => {
     window.location.hash = leaderboardHref(active, next)
   }
+
+  const visible = entries.slice(0, shown)
+  const youOnVisible = Boolean(you && visible.some((entry) => entry.id === you.id))
+  const youOffVisible = Boolean(you && !youOnVisible)
+  const youStyle = {
+    '--lb-you-accent': activeMeta.accent,
+  } as CSSProperties
+
+  const renderRow = (entry: LeaderboardEntry, rank: number, isYou: boolean) => (
+    <li
+      key={entry.id}
+      className={`lb-row${isYou ? ' lb-row--you' : ''}`}
+      style={isYou ? youStyle : undefined}
+      aria-current={isYou ? 'true' : undefined}
+    >
+      <span className="lb-row__rank">#{rank}</span>
+      <span className="lb-row__name">
+        <DeviceIcon device={entry.device} />
+        {entry.name}
+        {isYou ? <span className="lb-row__you-tag">You</span> : null}
+      </span>
+      <span className="lb-row__score">{entry.score}</span>
+      <span className="lb-row__date">{formatDate(entry.at)}</span>
+    </li>
+  )
 
   return (
     <>
@@ -99,10 +138,25 @@ export function LeaderboardsPage({
               Leaderboards
               <InfoTip label="About leaderboards">
                 Shared high scores by day, week, month, and all time. Periods use
-                America/New_York time.
+                America/New_York time. Icons show whether a score was set on
+                phone, tablet, or desktop.
               </InfoTip>
             </h1>
           </header>
+
+          <label className="lb-game-pick">
+            <span className="visually-hidden">Game</span>
+            <select
+              value={active}
+              onChange={(e) => selectGame(e.target.value as LeaderboardGame)}
+            >
+              {tabs.map((tab) => (
+                <option key={tab.slug} value={tab.slug}>
+                  {tab.name}
+                </option>
+              ))}
+            </select>
+          </label>
 
           <div className="lb-tabs" role="tablist" aria-label="Games">
             {tabs.map((tab) => (
@@ -154,10 +208,6 @@ export function LeaderboardsPage({
                 <span className="lb-stat__label">Period</span>
                 <strong>{PERIOD_LABELS[period]}</strong>
               </div>
-              <div className="lb-stat">
-                <span className="lb-stat__label">Entries</span>
-                <strong>{loading ? '…' : entries.length}</strong>
-              </div>
             </div>
 
             {loading ? (
@@ -166,32 +216,58 @@ export function LeaderboardsPage({
               <p className="lb-empty">
                 Couldn’t load leaderboards. Is the API running?
               </p>
-            ) : entries.length === 0 ? (
+            ) : entries.length === 0 && !you ? (
               <p className="lb-empty">
                 No scores for {PERIOD_LABELS[period].toLowerCase()} yet.{' '}
-                <a href={`#/games/${active}`}>Play {activeMeta.name}</a> to
-                claim the top spot.
+                {canPlay ? (
+                  <>
+                    <a href={`#/games/${active}`}>Play {activeMeta.name}</a> to
+                    claim the top spot.
+                  </>
+                ) : (
+                  'Play it on a supported device to claim the top spot.'
+                )}
               </p>
             ) : (
               <ol className="lb-list">
-                {entries.map((entry, index) => (
-                  <li key={entry.id} className="lb-row">
-                    <span className="lb-row__rank">#{index + 1}</span>
-                    <span className="lb-row__name">{entry.name}</span>
-                    <span className="lb-row__score">{entry.score}</span>
-                    <span className="lb-row__date">{formatDate(entry.at)}</span>
-                  </li>
-                ))}
+                {youOffVisible && you ? (
+                  <>
+                    {renderRow(you, you.rank, true)}
+                    {visible.length > 0 ? (
+                      <li className="lb-you-split">Top {shown}</li>
+                    ) : null}
+                  </>
+                ) : null}
+                {visible.map((entry, index) =>
+                  renderRow(
+                    entry,
+                    index + 1,
+                    Boolean(playerName) &&
+                      (entry.name ?? '').toUpperCase() === playerName,
+                  ),
+                )}
               </ol>
             )}
 
-            <a
-              className="lb-play"
-              href={`#/games/${active}`}
-              style={{ background: activeMeta.accent }}
-            >
-              Play {activeMeta.name}
-            </a>
+            {!loading && !error && entries.length > shown ? (
+              <button
+                type="button"
+                className="lb-more"
+                onClick={() => setShown(entries.length)}
+              >
+                Show top {entries.length}
+              </button>
+            ) : null}
+
+            {canPlay ? (
+              <a
+                className="lb-play"
+                href={`#/games/${active}`}
+                style={{ background: activeMeta.accent }}
+              >
+                Play {activeMeta.name}
+              </a>
+            ) : null}
           </section>
         </div>
       </main>

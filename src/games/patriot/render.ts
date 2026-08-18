@@ -1,21 +1,61 @@
-import type { Battery, City, GameState } from './game'
+import type { Battery, City, GameState, Plane } from './game'
 
 /** Plain rectangles only — scales cleanly on any stage size. */
-function fillRect(
+function washBox(
   ctx: CanvasRenderingContext2D,
   x: number,
   y: number,
   w: number,
   h: number,
-  color: string,
-  alpha = 1,
+  hue: number,
+  scale: number,
+  sat = 52,
 ) {
   if (w <= 0 || h <= 0) return
-  ctx.save()
-  ctx.globalAlpha = alpha
-  ctx.fillStyle = color
+  ctx.fillStyle = `hsla(${hue}, ${sat}%, 58%, 0.22)`
   ctx.fillRect(x, y, w, h)
-  ctx.restore()
+  ctx.strokeStyle = `hsla(${hue}, ${sat}%, 42%, 0.95)`
+  ctx.lineWidth = Math.max(1.2, 1.5 * scale)
+  ctx.lineJoin = 'round'
+  ctx.strokeRect(x + 0.5, y + 0.5, Math.max(0, w - 1), Math.max(0, h - 1))
+}
+
+function washCircle(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  r: number,
+  hue: number,
+  scale: number,
+  sat = 52,
+) {
+  ctx.beginPath()
+  ctx.arc(x, y, r, 0, Math.PI * 2)
+  ctx.fillStyle = `hsla(${hue}, ${sat}%, 58%, 0.22)`
+  ctx.fill()
+  ctx.strokeStyle = `hsla(${hue}, ${sat}%, 42%, 0.95)`
+  ctx.lineWidth = Math.max(1.2, 1.5 * scale)
+  ctx.stroke()
+}
+
+function washPoly(
+  ctx: CanvasRenderingContext2D,
+  pts: { x: number; y: number }[],
+  hue: number,
+  scale: number,
+  sat = 52,
+) {
+  if (pts.length < 3) return
+  ctx.beginPath()
+  ctx.moveTo(pts[0].x, pts[0].y)
+  for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y)
+  ctx.closePath()
+  ctx.fillStyle = `hsla(${hue}, ${sat}%, 58%, 0.22)`
+  ctx.fill()
+  ctx.strokeStyle = `hsla(${hue}, ${sat}%, 42%, 0.95)`
+  ctx.lineWidth = Math.max(1.2, 1.5 * scale)
+  ctx.lineJoin = 'round'
+  ctx.stroke()
 }
 
 function drawBackground(ctx: CanvasRenderingContext2D, w: number, h: number) {
@@ -53,56 +93,42 @@ function drawGround(
   scale: number,
 ) {
   const g = ctx.createLinearGradient(0, groundY - 8 * scale, 0, h)
-  g.addColorStop(0, '#cfe8d8')
-  g.addColorStop(1, '#b7dcc8')
+  g.addColorStop(0, 'hsla(172, 40%, 58%, 0.16)')
+  g.addColorStop(1, 'hsla(172, 35%, 52%, 0.22)')
   ctx.fillStyle = g
   ctx.fillRect(0, groundY, w, h - groundY)
 
-  ctx.fillStyle = 'rgba(46, 184, 160, 0.45)'
-  ctx.fillRect(0, groundY, w, Math.max(2, 3 * scale))
+  ctx.strokeStyle = 'hsla(172, 52%, 42%, 0.7)'
+  ctx.lineWidth = Math.max(2, 3 * scale)
+  ctx.beginPath()
+  ctx.moveTo(0, groundY)
+  ctx.lineTo(w, groundY)
+  ctx.stroke()
 }
 
-const CITY_COLORS = ['#4aa8e8', '#2eb8a0', '#f5b942', '#5bc0de', '#3ecf8e', '#e87a4a']
+const CITY_HUES = [198, 172, 38, 272, 18, 128]
+const CITY_HEIGHTS = [
+  [20, 30, 18],
+  [18, 28, 22],
+  [22, 26, 16],
+  [16, 32, 20],
+  [20, 24, 18],
+  [18, 30, 16],
+]
 
-/** Each city = a few axis-aligned rectangles (classic Missile Command vibe). */
+/** Same 3-building skyline for every city — no overlapping blocks. */
 function drawCity(ctx: CanvasRenderingContext2D, city: City, groundY: number, scale: number) {
-  const color = CITY_COLORS[city.id % CITY_COLORS.length]
+  const hue = CITY_HUES[city.id % CITY_HUES.length]
   const s = scale
-
-  const layouts = [
-    [
-      { x: -16, w: 10, h: 20 },
-      { x: -4, w: 12, h: 32 },
-      { x: 10, w: 8, h: 16 },
-    ],
-    [
-      { x: -14, w: 12, h: 26 },
-      { x: 0, w: 14, h: 36 },
-    ],
-    [
-      { x: -18, w: 8, h: 16 },
-      { x: -8, w: 10, h: 28 },
-      { x: 4, w: 12, h: 22 },
-    ],
-    [
-      { x: -12, w: 24, h: 22 },
-      { x: -4, w: 10, h: 34 },
-    ],
-    [
-      { x: -16, w: 9, h: 18 },
-      { x: -5, w: 9, h: 30 },
-      { x: 6, w: 11, h: 20 },
-    ],
-    [
-      { x: -14, w: 11, h: 24 },
-      { x: -1, w: 9, h: 34 },
-      { x: 10, w: 10, h: 18 },
-    ],
+  const heights = CITY_HEIGHTS[city.id % CITY_HEIGHTS.length]
+  const blocks = [
+    { x: -18, w: 10, h: heights[0] },
+    { x: -5, w: 10, h: heights[1] },
+    { x: 8, w: 10, h: heights[2] },
   ]
-  const blocks = layouts[city.id % layouts.length]
 
   if (!city.alive) {
-    fillRect(ctx, city.x - 16 * s, groundY - 5 * s, 32 * s, 5 * s, color, 0.35)
+    washBox(ctx, city.x - 16 * s, groundY - 5 * s, 32 * s, 5 * s, hue, s, 40)
     return
   }
 
@@ -111,58 +137,125 @@ function drawCity(ctx: CanvasRenderingContext2D, city: City, groundY: number, sc
     const bh = b.h * s
     const bx = city.x + b.x * s
     const by = groundY - bh
-
-    fillRect(ctx, bx, by, bw, bh, color)
-
-    // Simple top highlight strip
-    fillRect(ctx, bx, by, bw, Math.max(2, 3 * s), 'rgba(255, 255, 255, 0.3)')
-
-    // Window squares
-    if (bh > 20 * s && bw > 8 * s) {
-      const win = Math.max(2, 2.5 * s)
-      const gap = Math.max(4, 5 * s)
-      for (let row = 0; row < 2; row++) {
-        for (let col = 0; col < 2; col++) {
-          const wx = bx + 2.5 * s + col * gap
-          const wy = by + 6 * s + row * gap
-          if (wx + win < bx + bw - s && wy + win < groundY - 3 * s) {
-            fillRect(ctx, wx, wy, win, win, 'rgba(255, 255, 255, 0.5)')
-          }
-        }
-      }
-    }
+    washBox(ctx, bx, by, bw, bh, hue, s)
   }
+}
+
+/** Draw a trail that stops at the circle's outer edge instead of running through it. */
+function washMissile(
+  ctx: CanvasRenderingContext2D,
+  x0: number,
+  y0: number,
+  x: number,
+  y: number,
+  r: number,
+  hue: number,
+  scale: number,
+) {
+  const dx = x - x0
+  const dy = y - y0
+  const len = Math.hypot(dx, dy)
+  const stop = r + Math.max(1.2, 1.5 * scale) * 0.5
+  if (len > stop + 0.5) {
+    const t = (len - stop) / len
+    ctx.strokeStyle = `hsla(${hue}, 52%, 42%, 0.4)`
+    ctx.lineWidth = 2 * scale
+    ctx.lineCap = 'butt'
+    ctx.beginPath()
+    ctx.moveTo(x0, y0)
+    ctx.lineTo(x0 + dx * t, y0 + dy * t)
+    ctx.stroke()
+  }
+  washCircle(ctx, x, y, r, hue, scale)
 }
 
 function drawBattery(ctx: CanvasRenderingContext2D, bat: Battery, groundY: number, scale: number) {
   const s = scale
+  const x = bat.x
+  const y = groundY
+
   if (!bat.alive) {
-    fillRect(ctx, bat.x - 16 * s, groundY - 6 * s, 32 * s, 6 * s, '#6b8cae', 0.35)
+    washBox(ctx, x - 16 * s, y - 6 * s, 32 * s, 6 * s, 198, s, 40)
     return
   }
 
-  // Base
-  fillRect(ctx, bat.x - 18 * s, groundY - 10 * s, 36 * s, 10 * s, '#4aa8e8')
-  fillRect(ctx, bat.x - 18 * s, groundY - 10 * s, 36 * s, 3 * s, 'rgba(255, 255, 255, 0.28)')
-  // Turret
-  fillRect(ctx, bat.x - 5 * s, groundY - 26 * s, 10 * s, 16 * s, '#2eb8a0')
-  // Barrel
-  fillRect(ctx, bat.x - 2.5 * s, groundY - 34 * s, 5 * s, 10 * s, '#1a8f7a')
+  washPoly(
+    ctx,
+    [
+      { x: x - 16 * s, y },
+      { x: x - 16 * s, y: y - 10 * s },
+      { x: x - 6 * s, y: y - 10 * s },
+      { x: x - 6 * s, y: y - 26 * s },
+      { x: x - 2.5 * s, y: y - 26 * s },
+      { x: x - 2.5 * s, y: y - 36 * s },
+      { x: x + 2.5 * s, y: y - 36 * s },
+      { x: x + 2.5 * s, y: y - 26 * s },
+      { x: x + 6 * s, y: y - 26 * s },
+      { x: x + 6 * s, y: y - 10 * s },
+      { x: x + 16 * s, y: y - 10 * s },
+      { x: x + 16 * s, y },
+    ],
+    198,
+    s,
+  )
 
   for (let i = 0; i < bat.ammo; i++) {
     const col = i % 5
     const row = Math.floor(i / 5)
-    ctx.fillStyle = '#f5b942'
-    ctx.beginPath()
-    ctx.arc(
-      bat.x - 10 * s + col * 5 * s,
-      groundY + 9 * s + row * 5 * s,
-      1.6 * s,
-      0,
-      Math.PI * 2,
+    washCircle(
+      ctx,
+      x - 12 * s + col * 6 * s,
+      y + 8 * s + row * 6 * s,
+      1.8 * s,
+      38,
+      s,
     )
-    ctx.fill()
   }
+}
+
+function drawPlane(ctx: CanvasRenderingContext2D, plane: Plane, scale: number) {
+  const s = scale
+  const dir = plane.vx >= 0 ? 1 : -1
+  const x = plane.x
+  const y = plane.y
+  const rear = x - 16 * s * dir
+
+  const trailFrom = x - 28 * s * dir
+  const stop = Math.max(1.2, 1.5 * s) * 0.5
+  if (Math.abs(rear - trailFrom) > stop + 0.5) {
+    ctx.strokeStyle = 'hsla(198, 30%, 42%, 0.35)'
+    ctx.lineWidth = 1.5 * s
+    ctx.lineCap = 'butt'
+    ctx.beginPath()
+    ctx.moveTo(trailFrom, y)
+    ctx.lineTo(rear - stop * dir, y)
+    ctx.stroke()
+  }
+
+  const body: { x: number; y: number }[] = [
+    { x: -16, y: -3 },
+    { x: -16, y: -10 },
+    { x: -10, y: -10 },
+    { x: -10, y: -3 },
+    { x: -5, y: -3 },
+    { x: -5, y: -11 },
+    { x: 5, y: -11 },
+    { x: 5, y: -3 },
+    { x: 16, y: -3 },
+    { x: 16, y: 3 },
+    { x: 5, y: 3 },
+    { x: 5, y: 11 },
+    { x: -5, y: 11 },
+    { x: -5, y: 3 },
+    { x: -16, y: 3 },
+  ]
+  washPoly(
+    ctx,
+    body.map((p) => ({ x: x + p.x * s * dir, y: y + p.y * s })),
+    198,
+    s,
+    40,
+  )
 }
 
 export function renderGame(
@@ -187,40 +280,24 @@ export function renderGame(
   for (const bat of state.batteries) drawBattery(ctx, bat, state.groundY, scale)
 
   for (const m of state.incoming) {
-    ctx.strokeStyle = 'rgba(232, 93, 117, 0.35)'
-    ctx.lineWidth = 2 * scale
-    ctx.beginPath()
-    ctx.moveTo(m.x0, m.y0)
-    ctx.lineTo(m.x, m.y)
-    ctx.stroke()
-
-    ctx.fillStyle = '#e85d75'
-    ctx.beginPath()
-    ctx.arc(m.x, m.y, 3.5 * scale, 0, Math.PI * 2)
-    ctx.fill()
+    const split = m.kind === 'split'
+    const hue = split ? 272 : 348
+    washMissile(ctx, m.x0, m.y0, m.x, m.y, (split ? 4.4 : 3.5) * scale, hue, scale)
   }
 
-  for (const s of state.shots) {
-    ctx.strokeStyle = 'rgba(74, 168, 232, 0.45)'
-    ctx.lineWidth = 2 * scale
-    ctx.beginPath()
-    ctx.moveTo(s.x0, s.y0)
-    ctx.lineTo(s.x, s.y)
-    ctx.stroke()
+  for (const plane of state.planes) drawPlane(ctx, plane, scale)
 
-    ctx.fillStyle = '#4aa8e8'
-    ctx.beginPath()
-    ctx.arc(s.x, s.y, 3 * scale, 0, Math.PI * 2)
-    ctx.fill()
+  for (const s of state.shots) {
+    washMissile(ctx, s.x0, s.y0, s.x, s.y, 3 * scale, 198, scale)
   }
 
   for (const b of state.blasts) {
     const alpha = b.growing ? 0.28 : 0.16
-    ctx.fillStyle = `rgba(245, 185, 66, ${alpha})`
+    ctx.fillStyle = `hsla(38, 58%, 58%, ${alpha})`
     ctx.beginPath()
     ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2)
     ctx.fill()
-    ctx.strokeStyle = 'rgba(46, 184, 160, 0.55)'
+    ctx.strokeStyle = 'hsla(172, 52%, 42%, 0.7)'
     ctx.lineWidth = 2 * scale
     ctx.stroke()
   }
@@ -229,7 +306,7 @@ export function renderGame(
     const alpha = Math.min(1, f.life * 2) * Math.min(1, f.life * 1.4)
     ctx.save()
     ctx.globalAlpha = Math.max(0, alpha)
-    ctx.font = `700 ${18 * scale}px Fredoka, Nunito, system-ui, sans-serif`
+    ctx.font = `600 ${18 * scale}px Outfit, system-ui, sans-serif`
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
     ctx.fillStyle = '#c98a12'
@@ -237,21 +314,6 @@ export function renderGame(
     ctx.shadowBlur = 8 * scale
     ctx.fillText(f.text, f.x, f.y)
     ctx.restore()
-  }
-
-  if (state.phase === 'playing' || state.phase === 'menu') {
-    const { x, y } = state.cursor
-    ctx.strokeStyle = 'rgba(26, 43, 60, 0.45)'
-    ctx.lineWidth = 1.5 * scale
-    ctx.beginPath()
-    ctx.moveTo(x - 10 * scale, y)
-    ctx.lineTo(x + 10 * scale, y)
-    ctx.moveTo(x, y - 10 * scale)
-    ctx.lineTo(x, y + 10 * scale)
-    ctx.stroke()
-    ctx.beginPath()
-    ctx.arc(x, y, 6 * scale, 0, Math.PI * 2)
-    ctx.stroke()
   }
 
   if (state.flash > 0) {

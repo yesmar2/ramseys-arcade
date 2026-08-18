@@ -1,3 +1,6 @@
+import { getPersonalBest } from '../../lib/personalBest'
+import { sfx } from '../../lib/sound'
+
 export type Dir = 'up' | 'down' | 'left' | 'right'
 export type Phase = 'menu' | 'playing' | 'gameover'
 
@@ -43,18 +46,31 @@ export type GameState = {
   floaters: Floater[]
 }
 
-const BEST_KEY = 'snake-best'
-export const COLS = 21
-export const ROWS = 15
+function loadBest() {
+  return getPersonalBest('snake')
+}
+
+function saveBest(_score: number) {}
+
+export const GRID_LONG = 21
+export const GRID_SHORT = 15
+export const COLS = GRID_LONG
+export const ROWS = GRID_SHORT
+
+/** Same 21×15 board, rotated so the long side matches the screen. */
+export function snakeLayout(portrait: boolean) {
+  return portrait
+    ? { cols: GRID_SHORT, rows: GRID_LONG, dir: 'down' as Dir, aspectW: 5, aspectH: 7 }
+    : { cols: GRID_LONG, rows: GRID_SHORT, dir: 'right' as Dir, aspectW: 7, aspectH: 5 }
+}
 const START_SEGMENTS = 3
 const SCORE_FOOD = 10
 
-/** Distance between body segment centers. */
-const SEG_SPACING = 1
-/** Extra samples drawn per segment so the body reads as one tube around corners. */
-const RENDER_STEPS = 2
+/** Distance between body / visual bead centers in grid cells. */
+export const BEAD_SPACING = 0.7
+const SEG_SPACING = BEAD_SPACING
 /** Body length near the head that can't kill you. */
-const NECK_SKIP = 1.5
+const NECK_SKIP = 1.5 * SEG_SPACING
 const HIT_DIST = 0.68
 const EAT_DIST = 0.55
 
@@ -71,8 +87,8 @@ const WALL_SOFT = 0.5
 const WALL_HARD = 0.22
 
 const START_SPEED = 7
-const MAX_SPEED = 14.3
-const SPEED_PER_FOOD = 0.16
+const MAX_SPEED = 11.2
+const SPEED_PER_FOOD = 0.07
 
 const OPPOSITE: Record<Dir, Dir> = {
   up: 'down',
@@ -86,22 +102,6 @@ const VEC: Record<Dir, Cell> = {
   down: { x: 0, y: 1 },
   left: { x: -1, y: 0 },
   right: { x: 1, y: 0 },
-}
-
-function loadBest() {
-  try {
-    return Number(localStorage.getItem(BEST_KEY) || 0) || 0
-  } catch {
-    return 0
-  }
-}
-
-function saveBest(score: number) {
-  try {
-    localStorage.setItem(BEST_KEY, String(score))
-  } catch {
-    /* ignore */
-  }
 }
 
 function dist(a: Cell, b: Cell) {
@@ -213,12 +213,22 @@ function randomFood(state: Pick<GameState, 'cols' | 'rows' | 'trail' | 'segments
   return free[Math.floor(Math.random() * free.length)]
 }
 
-export function createInitialState(cols = COLS, rows = ROWS): GameState {
+export function createInitialState(
+  cols = COLS,
+  rows = ROWS,
+  dir: Dir = rows > cols ? 'down' : 'right',
+): GameState {
   const head = { x: Math.floor(cols / 2) + 0.5, y: Math.floor(rows / 2) + 0.5 }
-  const trail = [
-    { ...head },
-    { x: head.x - (bodyLength(START_SEGMENTS) + 2), y: head.y },
-  ]
+  const back = bodyLength(START_SEGMENTS) + 2
+  const tail =
+    dir === 'down'
+      ? { x: head.x, y: head.y - back }
+      : dir === 'up'
+        ? { x: head.x, y: head.y + back }
+        : dir === 'left'
+          ? { x: head.x + back, y: head.y }
+          : { x: head.x - back, y: head.y }
+  const trail = [{ ...head }, tail]
 
   const base: GameState = {
     phase: 'menu',
@@ -228,7 +238,7 @@ export function createInitialState(cols = COLS, rows = ROWS): GameState {
     rows,
     head,
     trail,
-    dir: 'right',
+    dir,
     pendingDir: null,
     bufferedDir: null,
     lineBreak: false,
@@ -275,6 +285,7 @@ export function queueDir(state: GameState, next: Dir): GameState {
 function die(state: GameState): GameState {
   const best = Math.max(state.best, state.score)
   saveBest(best)
+  sfx('die')
   return {
     ...state,
     phase: 'gameover',
@@ -404,6 +415,7 @@ function tryEat(s: GameState, previousBest: number) {
   const foodCenter = { x: s.food.x + 0.5, y: s.food.y + 0.5 }
   if (dist(s.head, foodCenter) >= EAT_DIST) return
 
+  sfx('eat')
   s.segments += 1
   s.score += SCORE_FOOD
   s.best = Math.max(s.best, s.score)
@@ -449,8 +461,7 @@ export function tick(state: GameState, dt: number): GameState {
 
 /** Segment top-left corners in grid units, head first. */
 export function visualSegments(state: GameState): Cell[] {
-  const count = (state.segments - 1) * RENDER_STEPS + 1
-  const points = sampleTrail(state.trail, count, SEG_SPACING / RENDER_STEPS)
+  const points = sampleTrail(state.trail, state.segments, BEAD_SPACING)
   return points.map((p) => ({ x: p.x - 0.5, y: p.y - 0.5 }))
 }
 

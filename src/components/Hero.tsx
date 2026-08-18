@@ -6,7 +6,7 @@ export function Hero() {
       <div className="hero__orb hero__orb--c" aria-hidden="true" />
       <div className="hero__content">
         <h1 id="hero-title" className="hero__title">
-          Ramsey’s <span>Arcade</span>
+          Archiv<span>ade</span>
         </h1>
         <p className="hero__tagline">Simple games. No ads. Just play.</p>
       </div>

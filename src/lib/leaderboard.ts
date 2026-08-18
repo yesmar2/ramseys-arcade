@@ -1,11 +1,26 @@
+import type { DeviceType } from './device'
+import { detectDeviceType, DEVICE_LABELS, isDeviceType } from './device'
+
+export type { DeviceType }
+export { detectDeviceType, DEVICE_LABELS, isDeviceType }
+
 export type LeaderboardEntry = {
   id: string
   name: string
   score: number
   at: number
+  device?: DeviceType
 }
 
-export const LEADERBOARD_GAMES = ['stacker', 'patriot', 'snake'] as const
+export const LEADERBOARD_GAMES = [
+  'stacker',
+  'patriot',
+  'snake',
+  'pop',
+  'dead-center',
+  'asteroids',
+  'simon',
+] as const
 export type LeaderboardGame = (typeof LEADERBOARD_GAMES)[number]
 
 export const LEADERBOARD_PERIODS = ['daily', 'weekly', 'monthly', 'all'] as const
@@ -116,6 +131,7 @@ export function getLastPlayerName(): string {
 }
 
 const PLAYER_NAME_EVENT = 'arcade-player-name'
+export { PLAYER_NAME_EVENT }
 
 function setLocalPlayerName(cleaned: string) {
   try {
@@ -183,14 +199,36 @@ export async function checkNameAvailable(name: string): Promise<boolean> {
   return data.available
 }
 
+export type YouEntry = LeaderboardEntry & { rank: number }
+
 export async function getLeaderboard(
   slug: string,
   period: LeaderboardPeriod = 'all',
-): Promise<LeaderboardEntry[]> {
-  const data = await api<{ entries: LeaderboardEntry[] }>(
-    `/leaderboards/${slug}?period=${encodeURIComponent(period)}`,
+  name?: string,
+): Promise<{ entries: LeaderboardEntry[]; you: YouEntry | null }> {
+  const params = new URLSearchParams({ period })
+  const cleaned = name?.trim().slice(0, 12).toUpperCase()
+  if (cleaned) params.set('name', cleaned)
+  const data = await api<{ entries: LeaderboardEntry[]; you?: YouEntry | null }>(
+    `/leaderboards/${slug}?${params.toString()}`,
   )
-  return data.entries ?? []
+  return { entries: data.entries ?? [], you: data.you ?? null }
+}
+
+export async function fetchTopScore(slug: string): Promise<number> {
+  const { entries } = await getLeaderboard(slug, 'all')
+  return entries[0]?.score ?? 0
+}
+
+export async function fetchPlayerBests(
+  name: string,
+): Promise<Record<string, number>> {
+  const cleaned = name.trim().slice(0, 12).toUpperCase()
+  if (!cleaned) return {}
+  const data = await api<{ bests?: Record<string, number> }>(
+    `/leaderboards/bests?name=${encodeURIComponent(cleaned)}`,
+  )
+  return data.bests ?? {}
 }
 
 export type QualifiesResult = {
@@ -229,6 +267,7 @@ export async function addLeaderboardScore(
     body: JSON.stringify({
       name: cleaned,
       score,
+      device: detectDeviceType(),
       ...(token ? { token } : {}),
     }),
   })

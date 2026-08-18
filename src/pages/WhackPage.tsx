@@ -1,11 +1,11 @@
 import { DeviceUnavailable } from '../components/DeviceUnavailable'
 import { getGame, gamePlayableOn } from '../data/games'
-import { PatriotGame } from '../games/patriot/PatriotGame'
+import { WhackGame } from '../games/whack/WhackGame'
 import { useDeviceType } from '../lib/device'
 
-export function PatriotPage() {
+export function WhackPage() {
   const device = useDeviceType()
-  const game = getGame('patriot')
+  const game = getGame('pop')
   if (game && !gamePlayableOn(game, device)) {
     return <DeviceUnavailable game={game} />
   }
@@ -15,7 +15,7 @@ export function PatriotPage() {
       <a className="game-page__back game-page__back--overlay" href="#/">
         ← Games
       </a>
-      <PatriotGame />
+      <WhackGame />
     </main>
   )
 }

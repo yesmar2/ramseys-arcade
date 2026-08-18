@@ -1,14 +1,37 @@
 import type { FallingPiece, GameState, Slab } from './StackerEngine'
 import { SLAB_H } from './StackerEngine'
 
+/** Playfield wash — same as the other games' canvas background. */
+const PLAY_BG = { r: 237, g: 247, b: 244 }
+
+function hslToRgb(h: number, sPct: number, lPct: number) {
+  const s = sPct / 100
+  const l = lPct / 100
+  const a = s * Math.min(l, 1 - l)
+  const f = (n: number) => {
+    const k = (n + h / 30) % 12
+    return l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1)
+  }
+  return { r: f(0) * 255, g: f(8) * 255, b: f(4) * 255 }
+}
+
+/** Opaque stand-in for `hsla(h, s%, 58%, 0.22)` over the playfield. */
+function washFill(hue: number, sat = 52, light = 58, amount = 0.22) {
+  const c = hslToRgb(hue, sat, light)
+  const r = Math.round(c.r * amount + PLAY_BG.r * (1 - amount))
+  const g = Math.round(c.g * amount + PLAY_BG.g * (1 - amount))
+  const b = Math.round(c.b * amount + PLAY_BG.b * (1 - amount))
+  return `rgb(${r}, ${g}, ${b})`
+}
+
+function washStroke(hue: number, sat = 52, alpha = 0.95) {
+  return `hsla(${hue}, ${sat}%, 42%, ${alpha})`
+}
+
 function project(x: number, y: number, z: number, cx: number, cy: number) {
   const isoX = (x - z) * 0.9
   const isoY = (x + z) * 0.5 - y
   return { x: cx + isoX, y: cy + isoY }
-}
-
-function slabColor(hue: number, sat: number, light: number, alpha = 1) {
-  return `hsla(${hue}, ${sat}%, ${light}%, ${alpha})`
 }
 
 function pathPoly(ctx: CanvasRenderingContext2D, pts: { x: number; y: number }[]) {
@@ -53,29 +76,28 @@ function drawSlab(
   ]
 
   const hue = slab.hue
-  const sat = 58
+  const sat = 52
+  ctx.save()
+  ctx.globalAlpha = alpha
+  ctx.lineJoin = 'round'
+  ctx.lineWidth = 1.4
+  ctx.strokeStyle = washStroke(hue, sat)
 
-  // Right face
-  ctx.fillStyle = slabColor(hue, sat, 52, alpha)
+  ctx.fillStyle = washFill(hue, sat, 52)
   pathPoly(ctx, midR)
   ctx.fill()
+  ctx.stroke()
 
-  // Left face
-  ctx.fillStyle = slabColor(hue, sat, 42, alpha)
+  ctx.fillStyle = washFill(hue, sat, 46)
   pathPoly(ctx, midL)
   ctx.fill()
+  ctx.stroke()
 
-  // Top face
-  const topLight = slab.perfect ? 78 : 68
-  ctx.fillStyle = slabColor(hue, sat, topLight, alpha)
+  ctx.fillStyle = washFill(hue, sat, slab.perfect ? 62 : 58)
   pathPoly(ctx, top)
   ctx.fill()
-
-  // Edge highlight
-  ctx.strokeStyle = slabColor(hue, 30, 90, 0.4 * alpha)
-  ctx.lineWidth = 1.25
-  pathPoly(ctx, top)
   ctx.stroke()
+  ctx.restore()
 }
 
 function drawFalling(ctx: CanvasRenderingContext2D, piece: FallingPiece, cx: number, cy: number) {
@@ -175,7 +197,7 @@ export function renderGame(
     const alpha = Math.min(1, f.life * 2) * Math.min(1, f.life * 1.4)
     ctx.save()
     ctx.globalAlpha = Math.max(0, alpha)
-    ctx.font = '700 20px Fredoka, Nunito, system-ui, sans-serif'
+    ctx.font = '600 20px Outfit, system-ui, sans-serif'
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
     ctx.fillStyle = '#c98a12'

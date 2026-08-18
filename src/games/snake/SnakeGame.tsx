@@ -1,12 +1,18 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import { GameHud, GameHudStat } from '../../components/GameHud'
 import { GameStage } from '../../components/GameStage'
+import { PauseButton, PauseOverlay } from '../../components/PauseControls'
+import { PersonalBestHint } from '../../components/PersonalBestHint'
 import { ScoreSaveCard } from '../../components/ScoreSaveCard'
 import { TournamentScoreCard } from '../../components/TournamentScoreCard'
-import { STAGE_ASPECT } from '../../lib/stage'
+import { useGamePause } from '../../hooks/useGamePause'
+import { usePersonalBest } from '../../hooks/usePersonalBest'
+import { getPersonalBest } from '../../lib/personalBest'
 import { useTournamentPlay } from '../../tournaments/TournamentPlayContext'
 import {
   createInitialState,
   queueDir,
+  snakeLayout,
   startGame,
   tick,
   toSnapshot,
@@ -16,15 +22,30 @@ import {
 } from './game'
 import { renderGame } from './render'
 
+function currentLayout() {
+  return snakeLayout(typeof window !== 'undefined' && window.innerHeight > window.innerWidth)
+}
+
 export function SnakeGame() {
   const tournament = useTournamentPlay()
-  const stateRef = useRef<GameState>(createInitialState())
+  const apiBest = usePersonalBest('snake')
+  const layout0 = currentLayout()
+  const stateRef = useRef<GameState>(createInitialState(layout0.cols, layout0.rows, layout0.dir))
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const [aspect, setAspect] = useState({ w: layout0.aspectW, h: layout0.aspectH })
   const [ui, setUi] = useState<Snapshot>(() => toSnapshot(stateRef.current))
   const [saveOpen, setSaveOpen] = useState(false)
   const offeredScore = useRef<number | null>(null)
+  const previousBestRef = useRef(getPersonalBest('snake'))
   const swipeStart = useRef<{ x: number; y: number } | null>(null)
   const startGrace = useRef(0)
+  const stickWellRef = useRef<HTMLDivElement>(null)
+  const stickKnobRef = useRef<HTMLDivElement>(null)
+  const lastStickDir = useRef<Dir | null>(null)
+  const pausable = ui.phase === 'playing' && !saveOpen
+  const { paused, toggle: togglePause, resume } = useGamePause(pausable)
+  const pausedRef = useRef(false)
+  pausedRef.current = paused
 
   useEffect(() => {
     let raf = 0
@@ -35,7 +56,9 @@ export function SnakeGame() {
       const dt = Math.min(0.033, (now - last) / 1000)
       last = now
 
-      stateRef.current = tick(stateRef.current, dt)
+      if (!pausedRef.current) {
+        stateRef.current = tick(stateRef.current, dt)
+      }
       uiAcc += dt
       if (uiAcc > 0.08) {
         uiAcc = 0
@@ -65,16 +88,47 @@ export function SnakeGame() {
     return () => cancelAnimationFrame(raf)
   }, [])
 
+  useEffect(() => {
+    if (ui.phase === 'menu') previousBestRef.current = apiBest
+  }, [apiBest, ui.phase])
+
+  useEffect(() => {
+    const sync = () => {
+      const s = stateRef.current
+      if (s.phase !== 'menu') return
+      const next = currentLayout()
+      if (s.cols === next.cols && s.rows === next.rows) return
+      stateRef.current = createInitialState(next.cols, next.rows, next.dir)
+      setAspect({ w: next.aspectW, h: next.aspectH })
+      setUi(toSnapshot(stateRef.current))
+    }
+    sync()
+    window.addEventListener('resize', sync)
+    window.addEventListener('orientationchange', sync)
+    return () => {
+      window.removeEventListener('resize', sync)
+      window.removeEventListener('orientationchange', sync)
+    }
+  }, [])
+
   const restart = () => {
     setSaveOpen(false)
     offeredScore.current = null
-    stateRef.current = startGame(stateRef.current)
+    const next = currentLayout()
+    stateRef.current = startGame({
+      ...stateRef.current,
+      cols: next.cols,
+      rows: next.rows,
+    })
+    setAspect({ w: next.aspectW, h: next.aspectH })
+    previousBestRef.current = getPersonalBest('snake')
     startGrace.current = performance.now() + 220
     setUi(toSnapshot(stateRef.current))
+    resetStick()
   }
 
   const turn = (dir: Dir) => {
-    if (saveOpen) return
+    if (saveOpen || pausedRef.current) return
     const s = stateRef.current
     if (s.phase === 'menu') {
       restart()
@@ -88,7 +142,7 @@ export function SnakeGame() {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (saveOpen) return
+      if (saveOpen || pausedRef.current) return
       const map: Record<string, Dir> = {
         ArrowUp: 'up',
         ArrowDown: 'down',
@@ -116,7 +170,8 @@ export function SnakeGame() {
   }, [saveOpen])
 
   const onPointerDown = (e: ReactPointerEvent) => {
-    if (saveOpen) return
+    e.preventDefault()
+    if (saveOpen || pausedRef.current) return
     swipeStart.current = { x: e.clientX, y: e.clientY }
     if (stateRef.current.phase === 'menu') {
       if (performance.now() < startGrace.current) return
@@ -127,7 +182,7 @@ export function SnakeGame() {
   const onPointerUp = (e: ReactPointerEvent) => {
     const start = swipeStart.current
     swipeStart.current = null
-    if (!start || saveOpen) return
+    if (!start || saveOpen || pausedRef.current) return
     const dx = e.clientX - start.x
     const dy = e.clientY - start.y
     if (Math.hypot(dx, dy) < 28) return
@@ -135,14 +190,90 @@ export function SnakeGame() {
     else turn(dy > 0 ? 'down' : 'up')
   }
 
-  const onPad = (dir: Dir) => (e: ReactPointerEvent) => {
+  const resetStick = () => {
+    lastStickDir.current = null
+    if (stickKnobRef.current) stickKnobRef.current.style.transform = 'translate(0px, 0px)'
+  }
+
+  const applyStick = (clientX: number, clientY: number) => {
+    const well = stickWellRef.current
+    if (!well) return
+    const r = well.getBoundingClientRect()
+    const cx = r.left + r.width / 2
+    const cy = r.top + r.height / 2
+    const maxR = Math.max(12, r.width * 0.34)
+    let dx = clientX - cx
+    let dy = clientY - cy
+    const dist = Math.hypot(dx, dy)
+    if (dist > maxR && dist > 0) {
+      dx = (dx / dist) * maxR
+      dy = (dy / dist) * maxR
+    }
+    if (stickKnobRef.current) {
+      stickKnobRef.current.style.transform = `translate(${dx}px, ${dy}px)`
+    }
+    const dead = maxR * 0.28
+    if (Math.hypot(dx, dy) < dead) {
+      lastStickDir.current = null
+      return
+    }
+    const dir: Dir =
+      Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : dy > 0 ? 'down' : 'up'
+    if (dir === lastStickDir.current) return
+    lastStickDir.current = dir
+    turn(dir)
+  }
+
+  const onStickDown = (e: ReactPointerEvent<HTMLDivElement>) => {
     e.preventDefault()
     e.stopPropagation()
-    turn(dir)
+    if (saveOpen || pausedRef.current) return
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId)
+    } catch {
+      /* ignore */
+    }
+    applyStick(e.clientX, e.clientY)
+    const target = e.currentTarget
+    const pointerId = e.pointerId
+    const onMove = (ev: PointerEvent) => {
+      if (ev.pointerId !== pointerId) return
+      applyStick(ev.clientX, ev.clientY)
+    }
+    const onUp = (ev: PointerEvent) => {
+      if (ev.pointerId !== pointerId) return
+      resetStick()
+      target.removeEventListener('pointermove', onMove)
+      target.removeEventListener('pointerup', onUp)
+      target.removeEventListener('pointercancel', onUp)
+      target.removeEventListener('lostpointercapture', onUp)
+    }
+    target.addEventListener('pointermove', onMove)
+    target.addEventListener('pointerup', onUp)
+    target.addEventListener('pointercancel', onUp)
+    target.addEventListener('lostpointercapture', onUp)
   }
 
   return (
     <section className={`snake snake--fullscreen${saveOpen ? ' snake--saving' : ''}`}>
+      <GameHud
+        slug="snake"
+        personalBest={ui.phase === 'playing' ? previousBestRef.current : apiBest}
+        extra={
+          (pausable || paused) ? (
+            <PauseButton paused={paused} onToggle={togglePause} />
+          ) : undefined
+        }
+      >
+        <GameHudStat
+          label="Score"
+          hot={ui.phase === 'playing' && ui.score > previousBestRef.current}
+        >
+          {ui.score}
+        </GameHudStat>
+        <GameHudStat label="Length">{ui.length}</GameHudStat>
+      </GameHud>
+      <div className="snake__body">
       <div
         className="snake__play"
         onPointerDown={onPointerDown}
@@ -152,32 +283,20 @@ export function SnakeGame() {
         }}
       >
         <GameStage
-          aspectWidth={STAGE_ASPECT.snake.w}
-          aspectHeight={STAGE_ASPECT.snake.h}
+          aspectWidth={aspect.w}
+          aspectHeight={aspect.h}
         >
           <canvas ref={canvasRef} className="snake__viewport" />
 
-          <div className="snake__hud" aria-live="polite">
-            <div className="snake__stat">
-              <span className="snake__label">Score</span>
-              <strong>{ui.score}</strong>
-            </div>
-            <div className="snake__stat">
-              <span className="snake__label">Best</span>
-              <strong>{ui.best}</strong>
-            </div>
-            <div className="snake__stat">
-              <span className="snake__label">Length</span>
-              <strong>{ui.length}</strong>
-            </div>
-          </div>
-
           <div className="snake__overlay">
-            {ui.phase === 'menu' && !saveOpen && (
+            <PauseOverlay paused={paused} onResume={resume} />
+            {ui.phase === 'menu' && !saveOpen && !paused && (
               <div className="snake__card" aria-hidden="true">
                 <h2>Snake</h2>
                 <p>Steer with the arrows. Eat. Grow. Don’t crash.</p>
-                <span>Tap an arrow to start</span>
+                <PersonalBestHint slug="snake" />
+                <span className="snake__hint snake__hint--keys">Tap an arrow to start</span>
+                <span className="snake__hint snake__hint--touch">Slide the stick to steer</span>
               </div>
             )}
             {ui.phase === 'gameover' && saveOpen && (
@@ -192,8 +311,8 @@ export function SnakeGame() {
                 <ScoreSaveCard
                   gameSlug="snake"
                   score={ui.score}
-                  title="Ouch"
-                  subtitle={`Best ${ui.best}`}
+                  title="Game over"
+                  previousBest={Math.max(previousBestRef.current, apiBest)}
                   onDone={restart}
                 />
               )
@@ -202,42 +321,25 @@ export function SnakeGame() {
         </GameStage>
       </div>
 
-      <nav className="snake__pad" aria-label="Direction">
-        <PadButton dir="up" label="Up" onPad={onPad} />
-        <PadButton dir="left" label="Left" onPad={onPad} />
-        <PadButton dir="right" label="Right" onPad={onPad} />
-        <PadButton dir="down" label="Down" onPad={onPad} />
-      </nav>
+        <div className="snake__touch" aria-label="Steer">
+          <div
+            className="snake__stick"
+            role="group"
+            aria-label="Direction stick"
+            onPointerDown={onStickDown}
+          >
+            <div className="snake__stick-well" ref={stickWellRef}>
+              <span className="snake__stick-hints" aria-hidden="true">
+                <span className="snake__chevron snake__chevron--up" />
+                <span className="snake__chevron snake__chevron--right" />
+                <span className="snake__chevron snake__chevron--down" />
+                <span className="snake__chevron snake__chevron--left" />
+              </span>
+              <div className="snake__stick-knob" ref={stickKnobRef} />
+            </div>
+          </div>
+        </div>
+      </div>
     </section>
-  )
-}
-
-function PadButton({
-  dir,
-  label,
-  onPad,
-}: {
-  dir: Dir
-  label: string
-  onPad: (dir: Dir) => (e: ReactPointerEvent) => void
-}) {
-  return (
-    <button
-      type="button"
-      className={`snake__pad-btn snake__pad-btn--${dir}`}
-      aria-label={label}
-      onPointerDown={onPad(dir)}
-    >
-      <svg className="snake__pad-icon" viewBox="0 0 24 24" aria-hidden="true">
-        <path
-          d="M6 14.5 12 8l6 6.5"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2.6"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      </svg>
-    </button>
   )
 }

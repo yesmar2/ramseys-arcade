@@ -3,7 +3,7 @@ export function Footer() {
 
   return (
     <footer className="site-footer">
-      <p>© {year} Ramsey’s Arcade</p>
+      <p>© {year} Archivade</p>
     </footer>
   )
 }

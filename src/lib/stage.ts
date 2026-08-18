@@ -22,6 +22,11 @@ export function fitStage(
 export const STAGE_ASPECT = {
   stacker: { w: 3, h: 4 },
   patriot: { w: 16, h: 9 },
-  /** Matches Snake grid 21×15 */
+  /** Snake grid 21×15 landscape; portrait uses 15×21 (same board, rotated). */
   snake: { w: 7, h: 5 },
+  whack: { w: 3, h: 4 },
+  deadCenter: { w: 4, h: 3 },
+  /** Asteroids 16×9 landscape; portrait uses 9×16 (same field, rotated). */
+  asteroids: { w: 16, h: 9 },
+  simon: { w: 1, h: 1 },
 } as const

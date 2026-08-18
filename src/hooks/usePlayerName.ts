@@ -1,7 +1,5 @@
 import { useEffect, useState } from 'react'
-import { getLastPlayerName } from '../lib/leaderboard'
-
-const PLAYER_NAME_EVENT = 'arcade-player-name'
+import { getLastPlayerName, PLAYER_NAME_EVENT } from '../lib/leaderboard'
 
 /** Live player display name from localStorage. */
 export function usePlayerName() {

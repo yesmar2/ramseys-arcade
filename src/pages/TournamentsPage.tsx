@@ -259,7 +259,7 @@ export function TournamentDetailPage({ id }: { id: string }) {
                       </button>
                     ) : (
                       <p className="tour-note tour-note--compact">
-                        Set <strong>Playing as</strong> in the header first.
+                        Set your name in the header first.
                       </p>
                     )}
                     {joinNote && (

@@ -12,6 +12,7 @@ type TournamentScoreCardProps = {
   tournamentId: string
   gameSlug: string
   score: number
+  subtitle?: string
   onDone: () => void
 }
 
@@ -23,6 +24,7 @@ export function TournamentScoreCard({
   tournamentId,
   gameSlug,
   score,
+  subtitle,
   onDone,
 }: TournamentScoreCardProps) {
   const playerName = usePlayerName()
@@ -130,6 +132,9 @@ export function TournamentScoreCard({
       <div className="score-save__hero">
         <span className="score-save__eyebrow">{detail?.title ?? 'Tournament'}</span>
         <strong className="score-save__score">{score}</strong>
+        {subtitle && status !== 'saving' && (
+          <p className="score-save__sub">{subtitle}</p>
+        )}
       </div>
 
       {status === 'needName' && (

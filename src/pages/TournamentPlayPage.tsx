@@ -1,14 +1,20 @@
 import { useEffect, useState } from 'react'
+import { AsteroidsGame } from '../games/asteroids/AsteroidsGame'
+import { DeadCenterGame } from '../games/dead-center/DeadCenterGame'
 import { PatriotGame } from '../games/patriot/PatriotGame'
+import { SimonGame } from '../games/simon/SimonGame'
 import { SnakeGame } from '../games/snake/SnakeGame'
 import { StackerGame } from '../games/stacker/StackerGame'
-import { getGame } from '../data/games'
+import { WhackGame } from '../games/whack/WhackGame'
+import { DeviceUnavailable } from '../components/DeviceUnavailable'
+import { getGame, gamePlayableOn } from '../data/games'
+import { useDeviceType } from '../lib/device'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { ApiError, rememberPlayerName } from '../lib/leaderboard'
 import { getTournament, joinTournament, type TournamentDetail } from '../lib/tournaments'
 import { TournamentPlayProvider } from '../tournaments/TournamentPlayContext'
 
-const PLAYABLE = new Set(['stacker', 'patriot', 'snake'])
+const PLAYABLE = new Set(['stacker', 'patriot', 'snake', 'dead-center', 'asteroids', 'pop', 'simon'])
 
 export function TournamentPlayPage({
   tournamentId,
@@ -18,6 +24,7 @@ export function TournamentPlayPage({
   gameSlug: string
 }) {
   const playerName = usePlayerName()
+  const device = useDeviceType()
   const [detail, setDetail] = useState<TournamentDetail | null>(null)
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
@@ -85,6 +92,10 @@ export function TournamentPlayPage({
     } finally {
       setJoining(false)
     }
+  }
+
+  if (game && !gamePlayableOn(game, device)) {
+    return <DeviceUnavailable game={game} />
   }
 
   if (loading) {
@@ -185,6 +196,10 @@ export function TournamentPlayPage({
         {gameSlug === 'stacker' && <StackerGame />}
         {gameSlug === 'patriot' && <PatriotGame />}
         {gameSlug === 'snake' && <SnakeGame />}
+        {gameSlug === 'pop' && <WhackGame />}
+        {gameSlug === 'simon' && <SimonGame />}
+        {gameSlug === 'dead-center' && <DeadCenterGame />}
+        {gameSlug === 'asteroids' && <AsteroidsGame />}
       </main>
     </TournamentPlayProvider>
   )

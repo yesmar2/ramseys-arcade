@@ -1,7 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
+import { GameHud, GameHudStat } from '../../components/GameHud'
 import { GameStage } from '../../components/GameStage'
+import { PauseButton, PauseOverlay } from '../../components/PauseControls'
+import { PersonalBestHint } from '../../components/PersonalBestHint'
 import { ScoreSaveCard } from '../../components/ScoreSaveCard'
 import { TournamentScoreCard } from '../../components/TournamentScoreCard'
+import { useGamePause } from '../../hooks/useGamePause'
+import { usePersonalBest } from '../../hooks/usePersonalBest'
+import { getPersonalBest } from '../../lib/personalBest'
 import { STAGE_ASPECT } from '../../lib/stage'
 import { useTournamentPlay } from '../../tournaments/TournamentPlayContext'
 import {
@@ -20,6 +26,7 @@ function toSnapshot(s: GameState): StackerSnapshot {
 
 export function StackerGame() {
   const tournament = useTournamentPlay()
+  const apiBest = usePersonalBest('stacker')
   const stateRef = useRef<GameState>(createInitialState())
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [ui, setUi] = useState<StackerSnapshot>(() => toSnapshot(stateRef.current))
@@ -27,6 +34,11 @@ export function StackerGame() {
   const placedLock = useRef(false)
   const startGrace = useRef(0)
   const offeredScore = useRef<number | null>(null)
+  const previousBestRef = useRef(getPersonalBest('stacker'))
+  const pausable = ui.status === 'playing' && !saveOpen
+  const { paused, toggle: togglePause, resume } = useGamePause(pausable)
+  const pausedRef = useRef(false)
+  pausedRef.current = paused
 
   useEffect(() => {
     let raf = 0
@@ -37,7 +49,9 @@ export function StackerGame() {
       const dt = Math.min(0.033, (now - last) / 1000)
       last = now
 
-      stateRef.current = tick(stateRef.current, dt)
+      if (!pausedRef.current) {
+        stateRef.current = tick(stateRef.current, dt)
+      }
       uiAcc += dt
       if (uiAcc > 0.08) {
         uiAcc = 0
@@ -70,16 +84,22 @@ export function StackerGame() {
     return () => cancelAnimationFrame(raf)
   }, [])
 
+  useEffect(() => {
+    if (ui.status === 'menu') previousBestRef.current = apiBest
+  }, [apiBest, ui.status])
+
   const restart = () => {
     setSaveOpen(false)
     offeredScore.current = null
     stateRef.current = startGame(stateRef.current)
+    previousBestRef.current = getPersonalBest('stacker')
     startGrace.current = performance.now() + 280
     setUi(toSnapshot(stateRef.current))
   }
 
-  const act = () => {
-    if (saveOpen) return
+  const act = (e?: { preventDefault?: () => void }) => {
+    e?.preventDefault?.()
+    if (saveOpen || pausedRef.current) return
     if (placedLock.current) return
     placedLock.current = true
     setTimeout(() => { placedLock.current = false }, 140)
@@ -107,28 +127,36 @@ export function StackerGame() {
   }, [saveOpen])
 
   return (
-    <section className="stacker stacker--fullscreen" onPointerDown={act}>
+    <section className="stacker stacker--fullscreen">
+      <GameHud
+        slug="stacker"
+        personalBest={ui.status === 'playing' ? previousBestRef.current : apiBest}
+        extra={
+          (pausable || paused) ? (
+            <PauseButton paused={paused} onToggle={togglePause} />
+          ) : undefined
+        }
+      >
+        <GameHudStat
+          label="Score"
+          hot={ui.status === 'playing' && ui.score > previousBestRef.current}
+        >
+          {ui.score}
+        </GameHudStat>
+      </GameHud>
+      <div className="game-play" onPointerDown={act}>
       <GameStage
         aspectWidth={STAGE_ASPECT.stacker.w}
         aspectHeight={STAGE_ASPECT.stacker.h}
       >
         <canvas ref={canvasRef} className="stacker__viewport" />
 
-        <div className="stacker__hud" aria-live="polite">
-          <div className="stacker__stat">
-            <span className="stacker__label">Score</span>
-            <strong>{ui.score}</strong>
-          </div>
-          <div className="stacker__stat">
-            <span className="stacker__label">Best</span>
-            <strong>{ui.best}</strong>
-          </div>
-        </div>
-
         <div className="stacker__overlay">
-          {ui.status === 'menu' && !saveOpen && (
+          <PauseOverlay paused={paused} onResume={resume} />
+          {ui.status === 'menu' && !saveOpen && !paused && (
             <div className="stacker__centerMessage" aria-hidden="true">
-              Tap or Space to start
+              <strong>Tap or Space to start</strong>
+              <PersonalBestHint slug="stacker" />
             </div>
           )}
           {ui.status === 'gameover' && saveOpen && (
@@ -144,12 +172,14 @@ export function StackerGame() {
                 gameSlug="stacker"
                 score={ui.score}
                 title="Nice stack"
+                previousBest={Math.max(previousBestRef.current, apiBest)}
                 onDone={restart}
               />
             )
           )}
         </div>
       </GameStage>
+      </div>
     </section>
   )
 }

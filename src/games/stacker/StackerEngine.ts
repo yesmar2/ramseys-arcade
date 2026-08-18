@@ -1,3 +1,6 @@
+import { getPersonalBest } from '../../lib/personalBest'
+import { sfx } from '../../lib/sound'
+
 export type Axis = 'x' | 'z'
 
 export type Slab = {
@@ -57,30 +60,21 @@ export type GameState = {
   flash: number
 }
 
-const BEST_KEY = 'stacker-best'
+function loadBest(): number {
+  return getPersonalBest('stacker')
+}
+
+function saveBest(_score: number) {}
+
 export const BASE_SIZE = 132
 export const SLAB_H = 16
 export const TRAVEL = 200
 export const PERFECT_EPS = 2.8
 
-function loadBest(): number {
-  try {
-    return Number(localStorage.getItem(BEST_KEY) || 0) || 0
-  } catch {
-    return 0
-  }
-}
-
-function saveBest(score: number) {
-  try {
-    localStorage.setItem(BEST_KEY, String(score))
-  } catch {
-    /* ignore */
-  }
-}
+const SLAB_HUES = [198, 172, 38, 348, 272, 18, 128]
 
 export function hueFor(index: number): number {
-  return (178 + index * 22) % 360
+  return SLAB_HUES[index % SLAB_HUES.length]
 }
 
 export function createInitialState(): GameState {
@@ -98,7 +92,7 @@ export function createInitialState(): GameState {
     score: 0,
     best: loadBest(),
     perfectStreak: 0,
-    speed: 1.35,
+    speed: 1.58,
     axis: 'x',
     stack: [base],
     moving: {
@@ -196,6 +190,7 @@ export function placeBlock(state: GameState): GameState {
     }
     const best = Math.max(state.best, state.score)
     saveBest(best)
+    sfx('chop')
     return {
       ...state,
       phase: 'gameover',
@@ -215,45 +210,6 @@ export function placeBlock(state: GameState): GameState {
     perfect: false,
   }
 
-  const falling = [...state.falling]
-  const y = state.stack.length * SLAB_H
-
-  if (axis === 'x') {
-    const cutLeft = left - (mx - mw / 2)
-    const cutRight = mx + mw / 2 - right
-    if (cutLeft > 0.5) {
-      falling.push({
-        x: mx - mw / 2 + cutLeft / 2, z: mz, w: cutLeft, d: md,
-        hue: state.moving.hue, vx: -1.8 - Math.random(),
-        vz: (Math.random() - 0.5) * 0.6, vy: 0.4, y, life: 1.2,
-      })
-    }
-    if (cutRight > 0.5) {
-      falling.push({
-        x: mx + mw / 2 - cutRight / 2, z: mz, w: cutRight, d: md,
-        hue: state.moving.hue, vx: 1.8 + Math.random(),
-        vz: (Math.random() - 0.5) * 0.6, vy: 0.4, y, life: 1.2,
-      })
-    }
-  } else {
-    const cutFront = front - (mz - md / 2)
-    const cutBack = mz + md / 2 - back
-    if (cutFront > 0.5) {
-      falling.push({
-        x: mx, z: mz - md / 2 + cutFront / 2, w: mw, d: cutFront,
-        hue: state.moving.hue, vx: (Math.random() - 0.5) * 0.6,
-        vz: -1.8 - Math.random(), vy: 0.4, y, life: 1.2,
-      })
-    }
-    if (cutBack > 0.5) {
-      falling.push({
-        x: mx, z: mz + md / 2 - cutBack / 2, w: mw, d: cutBack,
-        hue: state.moving.hue, vx: (Math.random() - 0.5) * 0.6,
-        vz: 1.8 + Math.random(), vy: 0.4, y, life: 1.2,
-      })
-    }
-  }
-
   const posErr = axis === 'x' ? Math.abs(mx - top.x) : Math.abs(mz - top.z)
   const sizeErr = axis === 'x'
     ? Math.abs(mw - top.w) + Math.abs(overlapW - Math.min(mw, top.w))
@@ -268,6 +224,47 @@ export function placeBlock(state: GameState): GameState {
     placed.perfect = true
   }
 
+  const falling = [...state.falling]
+  const y = state.stack.length * SLAB_H
+
+  if (!positionalPerfect) {
+    if (axis === 'x') {
+      const cutLeft = left - (mx - mw / 2)
+      const cutRight = mx + mw / 2 - right
+      if (cutLeft > 0.5) {
+        falling.push({
+          x: mx - mw / 2 + cutLeft / 2, z: mz, w: cutLeft, d: md,
+          hue: state.moving.hue, vx: -1.8 - Math.random(),
+          vz: (Math.random() - 0.5) * 0.6, vy: 0.4, y, life: 1.2,
+        })
+      }
+      if (cutRight > 0.5) {
+        falling.push({
+          x: mx + mw / 2 - cutRight / 2, z: mz, w: cutRight, d: md,
+          hue: state.moving.hue, vx: 1.8 + Math.random(),
+          vz: (Math.random() - 0.5) * 0.6, vy: 0.4, y, life: 1.2,
+        })
+      }
+    } else {
+      const cutFront = front - (mz - md / 2)
+      const cutBack = mz + md / 2 - back
+      if (cutFront > 0.5) {
+        falling.push({
+          x: mx, z: mz - md / 2 + cutFront / 2, w: mw, d: cutFront,
+          hue: state.moving.hue, vx: (Math.random() - 0.5) * 0.6,
+          vz: -1.8 - Math.random(), vy: 0.4, y, life: 1.2,
+        })
+      }
+      if (cutBack > 0.5) {
+        falling.push({
+          x: mx, z: mz + md / 2 - cutBack / 2, w: mw, d: cutBack,
+          hue: state.moving.hue, vx: (Math.random() - 0.5) * 0.6,
+          vz: 1.8 + Math.random(), vy: 0.4, y, life: 1.2,
+        })
+      }
+    }
+  }
+
   let next: GameState = {
     ...state,
     score: state.score + 1,
@@ -278,6 +275,8 @@ export function placeBlock(state: GameState): GameState {
     shake: positionalPerfect ? 0.35 : 0.18,
     flash: positionalPerfect ? 0.5 : 0,
   }
+
+  sfx(positionalPerfect ? 'perfect' : 'place')
 
   if (positionalPerfect) {
     next.perfectStreak += 1
