@@ -154,7 +154,7 @@ function spawnTarget(state: GameState, elapsed: number): GameState {
       : {
           ...p,
           target: {
-            kind: gold ? 'gold' : 'normal',
+            kind: gold ? ('gold' as const) : ('normal' as const),
             hue: gold ? 38 : PAD_HUES[id],
             age: 0,
             life: targetLife(elapsed) * (gold ? 0.85 : 1),

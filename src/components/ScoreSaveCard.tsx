@@ -436,6 +436,13 @@ export function ScoreSaveCard({
       {celebHits && (
         <ScoreCelebration hits={celebHits} onDone={() => setCelebHits(null)} />
       )}
+      {pending && !celebrating && (
+        <div className="score-save" onPointerDown={(e) => e.stopPropagation()}>
+          <p className="score-save__note">
+            {phase === 'checking' ? 'Checking boards…' : 'Saving…'}
+          </p>
+        </div>
+      )}
       {showResults && (
     <div className="score-save" onPointerDown={(e) => e.stopPropagation()}>
       <div className="score-save__hero">
@@ -448,19 +455,13 @@ export function ScoreSaveCard({
         {pb?.gain != null && (
           <span className="score-save__gain">+{pb.gain}</span>
         )}
-        {subParts.length > 0 && phase !== 'checking' && phase !== 'saving' && (
+        {subParts.length > 0 && (
           <p className="score-save__sub">{subParts.join(' · ')}</p>
         )}
       </div>
 
       {(phase === 'saved' || phase === 'needName') && (
         <RankChips ranks={ranks} />
-      )}
-
-      {(phase === 'checking' || phase === 'saving') && (
-        <p className="score-save__note">
-          {phase === 'checking' ? 'Checking boards…' : 'Saving…'}
-        </p>
       )}
 
       {phase === 'needName' && (

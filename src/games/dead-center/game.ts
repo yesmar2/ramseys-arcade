@@ -149,7 +149,9 @@ function isTrickyEnough(pts: Point[]) {
   const angles = triangleAngles(pts)
   const minA = Math.min(...angles)
   const maxA = Math.max(...angles)
-  const [a, b, c] = sideLengths(pts).sort((x, y) => x - y)
+  const sorted = sideLengths(pts).sort((x, y) => x - y)
+  const a = sorted[0]
+  const b = sorted[1]
   const skinny = minA <= 28 || b / a >= 1.85
   const obtuse = maxA >= 105
   return skinny || obtuse
