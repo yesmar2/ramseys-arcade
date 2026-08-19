@@ -27,8 +27,7 @@ type RankHit = { kind: 'rank'; period: LeaderboardPeriod; rank: number }
 type RecordHit = { kind: 'record'; score: number; gain: number | null }
 type CelebHit = RankHit | RecordHit
 
-const PERIOD_ORDER: LeaderboardPeriod[] = ['daily', 'weekly', 'monthly', 'all']
-const CELEB_PERIODS: LeaderboardPeriod[] = ['daily', 'weekly', 'monthly']
+const PERIOD_ORDER: LeaderboardPeriod[] = ['all', 'monthly', 'weekly', 'daily']
 const TOP_TEN = 10
 
 function rankedPeriods(
@@ -44,13 +43,11 @@ function rankedPeriods(
 function celebrationHits(
   ranks?: Partial<Record<LeaderboardPeriod, number>>,
 ): RankHit[] {
-  if (!ranks) return []
-  return CELEB_PERIODS.flatMap((period) => {
-    const rank = ranks[period]
-    return rank != null && rank >= 1 && rank <= TOP_TEN
-      ? [{ kind: 'rank' as const, period, rank }]
-      : []
-  })
+  return rankedPeriods(ranks).map(({ period, rank }) => ({
+    kind: 'rank' as const,
+    period,
+    rank,
+  }))
 }
 
 function recordHit(score: number, allTime: number): RecordHit | null {
@@ -328,15 +325,16 @@ export function ScoreSaveCard({
   const openCelebration = (
     allTime: number,
     nextRanks?: Partial<Record<LeaderboardPeriod, number>>,
-    ranksOnly = false,
   ) => {
-    const hits: CelebHit[] = []
-    if (!ranksOnly) {
-      if (celebShown.current) return
+    if (celebShown.current) return
+    const hits: CelebHit[] = [...celebrationHits(nextRanks)]
+    const allTimeFirst = hits.some(
+      (hit) => hit.kind === 'rank' && hit.period === 'all' && hit.rank === 1,
+    )
+    if (!allTimeFirst) {
       const rec = recordHit(score, allTime)
       if (rec) hits.push(rec)
     }
-    hits.push(...celebrationHits(nextRanks))
     if (!hits.length) return
     celebShown.current = true
     setCelebHits(hits)
@@ -372,7 +370,6 @@ export function ScoreSaveCard({
         }
 
         if (!name) {
-          openCelebration(recordRef.current)
           setPhase('needName')
           return
         }
@@ -388,7 +385,6 @@ export function ScoreSaveCard({
       } catch (err) {
         if (cancelled) return
         if (err instanceof ApiError && err.code === 'NAME_TAKEN') {
-          openCelebration(recordRef.current)
           setPhase('needName')
           setError('That name is taken — pick another')
           return
@@ -415,7 +411,7 @@ export function ScoreSaveCard({
       setRanks(saved.ranks)
       savedRef.current = true
       setPhase('saved')
-      openCelebration(recordRef.current, saved.ranks, celebShown.current)
+      openCelebration(recordRef.current, saved.ranks)
     } catch (err) {
       if (err instanceof ApiError && err.code === 'NAME_TAKEN') {
         setError('That name is taken — pick another')

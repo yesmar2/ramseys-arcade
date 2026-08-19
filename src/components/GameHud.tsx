@@ -3,6 +3,7 @@ import { scoringFor } from '../data/scoring'
 import { leaderboardHref } from '../hooks/useHashRoute'
 import { useBoardRecord } from '../hooks/useBoardRecord'
 import { LEADERBOARD_GAMES, type LeaderboardGame } from '../lib/leaderboard'
+import { useTournamentPlay } from '../tournaments/TournamentPlayContext'
 import { ScoreGuide } from './ScoreGuide'
 import { SoundToggle } from './SoundToggle'
 
@@ -48,6 +49,11 @@ export function GameHud({
 }) {
   const allTime = useBoardRecord(slug)
   const scoring = scoringFor(slug)
+  const tournament = useTournamentPlay()
+  const backHref = tournament
+    ? `#/tournaments/${tournament.tournamentId}`
+    : '#/'
+  const backLabel = tournament ? 'Event' : 'Games'
 
   return (
     <div
@@ -55,6 +61,14 @@ export function GameHud({
       aria-live="polite"
       onPointerDown={(e) => e.stopPropagation()}
     >
+      <a
+        className="game-hud__back"
+        href={backHref}
+        aria-label={`Back to ${backLabel.toLowerCase()}`}
+      >
+        <span aria-hidden="true">←</span>
+        <span className="game-hud__back-text">{backLabel}</span>
+      </a>
       <div className="game-hud__stats">
         {children}
         {!hideBest && (

@@ -93,24 +93,30 @@ export function startGame(prev: GameState): GameState {
 }
 
 export function padLayout(w: number, h: number) {
-  const size = Math.min(w, h)
-  const pad = size * 0.08
-  const gap = size * 0.06
-  const inner = size - pad * 2
-  const cell = (inner - gap) / 2
-  const r = cell * 0.42
-  const ox = (w - size) / 2 + pad
-  const oy = (h - size) / 2 + pad
+  const padX = w * 0.1
+  const padY = h * 0.1
+  const gap = Math.min(w, h) * 0.07
+  const innerW = w - padX * 2
+  const innerH = h - padY * 2
+  const cellW = (innerW - gap) / 2
+  const cellH = (innerH - gap) / 2
+  const r = Math.min(cellW, cellH) * 0.42
   return [0, 1, 2, 3].map((id) => {
     const col = id % 2
     const row = Math.floor(id / 2)
     return {
       id,
-      x: ox + col * (cell + gap) + cell / 2,
-      y: oy + row * (cell + gap) + cell / 2,
+      x: padX + col * (cellW + gap) + cellW / 2,
+      y: padY + row * (cellH + gap) + cellH / 2,
       r,
     }
   })
+}
+
+export function simonLayout(portrait: boolean) {
+  return portrait
+    ? { aspectW: 3, aspectH: 4 }
+    : { aspectW: 1, aspectH: 1 }
 }
 
 export function tapPadId(state: GameState, hit: number): GameState {

@@ -3,8 +3,8 @@ import { BEAD_SPACING, visualSegments } from './game'
 
 const HEAD_HUE = 158
 /** Hue the tail drifts per food eaten, and how far it can ever get from the head. */
-const HUE_PER_FOOD = 4
-const MAX_HUE_SPREAD = 120
+const HUE_PER_FOOD = 8
+const MAX_HUE_SPREAD = 150
 
 export function renderGame(
   ctx: CanvasRenderingContext2D,

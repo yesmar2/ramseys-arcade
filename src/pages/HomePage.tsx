@@ -1,15 +1,13 @@
 import { Footer } from '../components/Footer'
 import { GameGrid } from '../components/GameGrid'
-import { Header } from '../components/Header'
-import { Hero } from '../components/Hero'
+import { HomeBar } from '../components/HomeBar'
 
 export function HomePage() {
   return (
     <>
-      <Header />
       <main>
-        <div className="home-stage">
-          <Hero />
+        <div className="home-stage home-stage--bare">
+          <HomeBar />
           <GameGrid />
         </div>
       </main>

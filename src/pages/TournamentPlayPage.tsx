@@ -186,9 +186,6 @@ export function TournamentPlayPage({
       }}
     >
       <main className="game-page game-page--fullscreen tour-play">
-        <a className="game-page__back game-page__back--overlay" href={backHref}>
-          ← {detail.title}
-        </a>
         <div className="tour-play__banner" aria-hidden="true">
           <span>{detail.title}</span>
           <strong>{game?.name ?? gameSlug}</strong>

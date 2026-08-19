@@ -8,11 +8,11 @@ import { TournamentScoreCard } from '../../components/TournamentScoreCard'
 import { useGamePause } from '../../hooks/useGamePause'
 import { usePersonalBest } from '../../hooks/usePersonalBest'
 import { getPersonalBest } from '../../lib/personalBest'
-import { STAGE_ASPECT } from '../../lib/stage'
 import { useTournamentPlay } from '../../tournaments/TournamentPlayContext'
 import {
   createInitialState,
   resizeState,
+  simonLayout,
   startGame,
   tapPad,
   tapPadId,
@@ -23,12 +23,18 @@ import {
 } from './game'
 import { renderGame } from './render'
 
+function currentLayout() {
+  return simonLayout(typeof window !== 'undefined' && window.innerHeight > window.innerWidth)
+}
+
 export function SimonGame() {
   const tournament = useTournamentPlay()
   const apiBest = usePersonalBest('simon')
+  const layout0 = currentLayout()
   const stateRef = useRef<GameState>(createInitialState())
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const sizeRef = useRef({ w: 540, h: 540 })
+  const [aspect, setAspect] = useState({ w: layout0.aspectW, h: layout0.aspectH })
   const [ui, setUi] = useState<Snapshot>(() => toSnapshot(stateRef.current))
   const [saveOpen, setSaveOpen] = useState(false)
   const offeredScore = useRef<number | null>(null)
@@ -38,6 +44,19 @@ export function SimonGame() {
   const { paused, toggle: togglePause, resume } = useGamePause(pausable)
   const pausedRef = useRef(false)
   pausedRef.current = paused
+
+  useEffect(() => {
+    const sync = () => {
+      const next = currentLayout()
+      setAspect({ w: next.aspectW, h: next.aspectH })
+    }
+    window.addEventListener('resize', sync)
+    window.addEventListener('orientationchange', sync)
+    return () => {
+      window.removeEventListener('resize', sync)
+      window.removeEventListener('orientationchange', sync)
+    }
+  }, [])
 
   useEffect(() => {
     let raf = 0
@@ -172,43 +191,42 @@ export function SimonGame() {
       </GameHud>
       <div className="game-play">
         <GameStage
-          aspectWidth={STAGE_ASPECT.simon.w}
-          aspectHeight={STAGE_ASPECT.simon.h}
+          aspectWidth={aspect.w}
+          aspectHeight={aspect.h}
         >
           <div className="simon__play" onPointerDown={onPointerDown}>
             <canvas ref={canvasRef} className="simon__viewport" />
-
-            <div className="simon__overlay">
-            <PauseOverlay paused={paused} onResume={resume} />
-            {ui.phase === 'menu' && !saveOpen && !paused && (
-              <div className="simon__card" aria-hidden="true">
-                <h2>Simon</h2>
-                <p>Watch the pattern. Repeat it. Don’t miss.</p>
-                <PersonalBestHint slug="simon" />
-                <span>Tap to start</span>
-              </div>
-            )}
-            {ui.phase === 'gameover' && saveOpen && (
-              tournament ? (
-                <TournamentScoreCard
-                  tournamentId={tournament.tournamentId}
-                  gameSlug="simon"
-                  score={ui.score}
-                  onDone={restart}
-                />
-              ) : (
-                <ScoreSaveCard
-                  gameSlug="simon"
-                  score={ui.score}
-                  title="Pattern broke"
-                  previousBest={Math.max(previousBestRef.current, apiBest)}
-                  onDone={restart}
-                />
-              )
-            )}
-            </div>
           </div>
         </GameStage>
+        <div className="simon__overlay">
+          <PauseOverlay paused={paused} onResume={resume} />
+          {ui.phase === 'menu' && !saveOpen && !paused && (
+            <div className="simon__card" aria-hidden="true">
+              <h2>Simon</h2>
+              <p>Watch the pattern. Repeat it. Don’t miss.</p>
+              <PersonalBestHint slug="simon" />
+              <span>Tap to start</span>
+            </div>
+          )}
+          {ui.phase === 'gameover' && saveOpen && (
+            tournament ? (
+              <TournamentScoreCard
+                tournamentId={tournament.tournamentId}
+                gameSlug="simon"
+                score={ui.score}
+                onDone={restart}
+              />
+            ) : (
+              <ScoreSaveCard
+                gameSlug="simon"
+                score={ui.score}
+                title="Pattern broke"
+                previousBest={Math.max(previousBestRef.current, apiBest)}
+                onDone={restart}
+              />
+            )
+          )}
+        </div>
       </div>
     </section>
   )

@@ -21,6 +21,11 @@ export function detectDeviceType(): DeviceType {
   if (/iPad/i.test(ua) || (/Macintosh/i.test(ua) && maxTouch > 1)) return 'tablet'
   if (/Android/i.test(ua)) return /Mobile/i.test(ua) ? 'phone' : 'tablet'
 
+  const cssPhone =
+    typeof window !== 'undefined' &&
+    Boolean(window.matchMedia?.('(max-width: 639px)').matches)
+  if (cssPhone) return 'phone'
+
   const coarse =
     typeof window !== 'undefined' &&
     Boolean(window.matchMedia?.('(pointer: coarse)').matches)

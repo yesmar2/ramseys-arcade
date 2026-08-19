@@ -5,9 +5,11 @@ import { ApiError, rememberPlayerName } from '../lib/leaderboard'
 type PlayerBadgeProps = {
   /** Compact chip for tight headers / game overlays */
   compact?: boolean
+  /** Round icon button instead of the name chip */
+  icon?: boolean
 }
 
-export function PlayerBadge({ compact = false }: PlayerBadgeProps) {
+export function PlayerBadge({ compact = false, icon = false }: PlayerBadgeProps) {
   const name = usePlayerName()
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(name || '')
@@ -66,30 +68,46 @@ export function PlayerBadge({ compact = false }: PlayerBadgeProps) {
     }
   }, [editing, busy])
 
+  const triggerClass = icon
+    ? `player-badge player-badge--icon${name ? ' player-badge--named' : ''}`
+    : `player-badge${compact ? ' player-badge--compact' : ''}${name ? '' : ' player-badge--empty'}`
+  const triggerLabel = name ? `Player ${name}` : 'Set player name'
+
   return (
     <div className="player-badge-wrap" ref={rootRef}>
-      {name ? (
-        <button
-          type="button"
-          className={`player-badge${compact ? ' player-badge--compact' : ''}`}
-          onClick={startEdit}
-          aria-expanded={editing}
-          aria-haspopup="dialog"
-          title="Change player name"
-        >
+      <button
+        type="button"
+        className={triggerClass}
+        onClick={startEdit}
+        aria-expanded={editing}
+        aria-haspopup="dialog"
+        aria-label={triggerLabel}
+        title={triggerLabel}
+      >
+        {icon ? (
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle
+              cx="12"
+              cy="8.2"
+              r="3.1"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+            />
+            <path
+              d="M6.2 18.6c.7-3.2 3-4.8 5.8-4.8s5.1 1.6 5.8 4.8"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+            />
+          </svg>
+        ) : name ? (
           <strong className="player-badge__name">{name}</strong>
-        </button>
-      ) : (
-        <button
-          type="button"
-          className={`player-badge player-badge--empty${compact ? ' player-badge--compact' : ''}`}
-          onClick={startEdit}
-          aria-expanded={editing}
-          aria-haspopup="dialog"
-        >
-          Set player name
-        </button>
-      )}
+        ) : (
+          'Set player name'
+        )}
+      </button>
 
       {editing && (
         <div className="player-badge__panel" role="dialog" aria-label="Change player name">
