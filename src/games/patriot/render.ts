@@ -1,4 +1,5 @@
-import type { Battery, City, GameState, Plane } from './game'
+import type { Battery, City, Drone, GameState, Plane } from './game'
+import { POWER_HUE, shieldRadius } from './game'
 
 /** Plain rectangles only — scales cleanly on any stage size. */
 function washBox(
@@ -119,7 +120,7 @@ const CITY_HEIGHTS = [
 /** Same 3-building skyline for every city — no overlapping blocks. */
 function drawCity(ctx: CanvasRenderingContext2D, city: City, groundY: number, scale: number) {
   const hue = CITY_HUES[city.id % CITY_HUES.length]
-  const s = scale
+  const s = scale * 1.85
   const heights = CITY_HEIGHTS[city.id % CITY_HEIGHTS.length]
   const blocks = [
     { x: -18, w: 10, h: heights[0] },
@@ -128,7 +129,7 @@ function drawCity(ctx: CanvasRenderingContext2D, city: City, groundY: number, sc
   ]
 
   if (!city.alive) {
-    washBox(ctx, city.x - 16 * s, groundY - 5 * s, 32 * s, 5 * s, hue, s, 40)
+    washBox(ctx, city.x - 16 * s, groundY - 5 * s, 32 * s, 5 * s, hue, scale, 40)
     return
   }
 
@@ -137,7 +138,7 @@ function drawCity(ctx: CanvasRenderingContext2D, city: City, groundY: number, sc
     const bh = b.h * s
     const bx = city.x + b.x * s
     const by = groundY - bh
-    washBox(ctx, bx, by, bw, bh, hue, s)
+    washBox(ctx, bx, by, bw, bh, hue, scale)
   }
 }
 
@@ -202,11 +203,12 @@ function drawBattery(ctx: CanvasRenderingContext2D, bat: Battery, groundY: numbe
   for (let i = 0; i < bat.ammo; i++) {
     const col = i % 5
     const row = Math.floor(i / 5)
+    const gap = 10.2 * s
     washCircle(
       ctx,
-      x - 12 * s + col * 6 * s,
-      y + 8 * s + row * 6 * s,
-      1.8 * s,
+      x - gap * 2 + col * gap,
+      y + 14 * s + row * gap,
+      4.2 * s,
       38,
       s,
     )
@@ -258,6 +260,51 @@ function drawPlane(ctx: CanvasRenderingContext2D, plane: Plane, scale: number) {
   )
 }
 
+function drawDrone(ctx: CanvasRenderingContext2D, drone: Drone, scale: number) {
+  const s = scale
+  const dir = drone.vx >= 0 ? 1 : -1
+  const x = drone.x
+  const y = drone.y
+  const hue = POWER_HUE[drone.kind]
+  const rear = x - 10 * s * dir
+  const trailFrom = x - 22 * s * dir
+  const stop = Math.max(1.2, 1.5 * s) * 0.5
+  if (Math.abs(rear - trailFrom) > stop + 0.5) {
+    ctx.strokeStyle = `hsla(${hue}, 52%, 42%, 0.35)`
+    ctx.lineWidth = 1.5 * s
+    ctx.lineCap = 'butt'
+    ctx.beginPath()
+    ctx.moveTo(trailFrom, y)
+    ctx.lineTo(rear - stop * dir, y)
+    ctx.stroke()
+  }
+
+  washPoly(
+    ctx,
+    [
+      { x: x - 11 * s * dir, y: y },
+      { x: x, y: y - 8 * s },
+      { x: x + 13 * s * dir, y: y },
+      { x: x, y: y + 8 * s },
+    ],
+    hue,
+    s,
+    62,
+  )
+
+  if (drone.kind === 'ammo') {
+    const plus = 2.1 * s
+    washBox(ctx, x - plus * 2, y - plus * 0.45, plus * 4, plus * 0.9, hue, s, 68)
+    washBox(ctx, x - plus * 0.45, y - plus * 2, plus * 0.9, plus * 4, hue, s, 68)
+  } else if (drone.kind === 'shield') {
+    washCircle(ctx, x, y, 3.6 * s, hue, s, 68)
+  } else if (drone.kind === 'slow') {
+    washBox(ctx, x - 3.2 * s, y - 1.1 * s, 6.4 * s, 2.2 * s, hue, s, 68)
+  } else {
+    washCircle(ctx, x, y, 4.4 * s, hue, s, 72)
+  }
+}
+
 export function renderGame(
   ctx: CanvasRenderingContext2D,
   state: GameState,
@@ -276,29 +323,52 @@ export function renderGame(
   drawBackground(ctx, w, h)
   drawGround(ctx, w, state.groundY, h, scale)
 
+  if (state.slowT > 0) {
+    ctx.fillStyle = 'rgba(74, 168, 232, 0.08)'
+    ctx.fillRect(0, 0, w, state.groundY)
+  }
+
   for (const city of state.cities) drawCity(ctx, city, state.groundY, scale)
   for (const bat of state.batteries) drawBattery(ctx, bat, state.groundY, scale)
+
+  if (state.shieldT > 0) {
+    const r = shieldRadius(scale)
+    const pulse = 0.14 + Math.min(1, state.shieldT / 5) * 0.16
+    for (const city of state.cities) {
+      if (!city.alive) continue
+      ctx.beginPath()
+      ctx.arc(city.x, state.groundY, r, Math.PI, 0)
+      ctx.fillStyle = `hsla(172, 52%, 48%, ${pulse})`
+      ctx.fill()
+      ctx.strokeStyle = 'hsla(172, 52%, 42%, 0.9)'
+      ctx.lineWidth = 2.4 * scale
+      ctx.stroke()
+    }
+  }
 
   for (const m of state.incoming) {
     const split = m.kind === 'split'
     const hue = split ? 272 : 348
-    washMissile(ctx, m.x0, m.y0, m.x, m.y, (split ? 4.4 : 3.5) * scale, hue, scale)
+    washMissile(ctx, m.x0, m.y0, m.x, m.y, (split ? 5.6 : 4.6) * scale, hue, scale)
   }
 
   for (const plane of state.planes) drawPlane(ctx, plane, scale)
+  for (const drone of state.drones ?? []) drawDrone(ctx, drone, scale)
 
   for (const s of state.shots) {
-    washMissile(ctx, s.x0, s.y0, s.x, s.y, 3 * scale, 198, scale)
+    washMissile(ctx, s.x0, s.y0, s.x, s.y, (s.burst ? 5.4 : 4) * scale, s.burst ? 272 : 198, scale)
   }
 
   for (const b of state.blasts) {
+    if ((b.wait ?? 0) > 0 || b.r < 2) continue
+    const hue = b.burst ? 272 : 38
     const alpha = b.growing ? 0.28 : 0.16
-    ctx.fillStyle = `hsla(38, 58%, 58%, ${alpha})`
+    ctx.fillStyle = `hsla(${hue}, 58%, 58%, ${alpha})`
     ctx.beginPath()
     ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2)
     ctx.fill()
-    ctx.strokeStyle = 'hsla(172, 52%, 42%, 0.7)'
-    ctx.lineWidth = 2 * scale
+    ctx.strokeStyle = b.burst ? 'hsla(272, 52%, 42%, 0.75)' : 'hsla(172, 52%, 42%, 0.7)'
+    ctx.lineWidth = (b.burst ? 3 : 2) * scale
     ctx.stroke()
   }
 

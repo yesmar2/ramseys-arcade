@@ -22,6 +22,8 @@ export type GameState = {
   watchIndex: number
   watchTimer: number
   lit: number | null
+  pressId: number | null
+  pressLife: number
   flash: number
   scale: number
   stageW: number
@@ -29,6 +31,7 @@ export type GameState = {
 }
 
 const NOTE_GAP = 0.16
+const PRESS_LIFE = 0.34
 
 function loadBest() {
   return getPersonalBest('simon')
@@ -54,6 +57,8 @@ export function createInitialState(w = 540, h = 540): GameState {
     watchIndex: 0,
     watchTimer: 0,
     lit: null,
+    pressId: null,
+    pressLife: 0,
     flash: 0,
     scale: 1,
     stageW: w,
@@ -123,6 +128,8 @@ export function tapPadId(state: GameState, hit: number): GameState {
       phase: 'gameover',
       best: bestScore,
       lit: hit,
+      pressId: hit,
+      pressLife: PRESS_LIFE,
       flash: 0.28,
     }
   }
@@ -130,16 +137,24 @@ export function tapPadId(state: GameState, hit: number): GameState {
   sfx('pad', hit)
   const inputIndex = state.inputIndex + 1
   if (inputIndex >= state.sequence.length) {
-    sfx('good')
     return beginRound({
       ...state,
       score: state.score + 1,
       lit: hit,
+      pressId: hit,
+      pressLife: PRESS_LIFE,
       flash: 0.18,
     })
   }
 
-  return { ...state, inputIndex, lit: hit, flash: 0.12 }
+  return {
+    ...state,
+    inputIndex,
+    lit: hit,
+    pressId: hit,
+    pressLife: PRESS_LIFE,
+    flash: 0.12,
+  }
 }
 
 export function tapPad(state: GameState, x: number, y: number): GameState {
@@ -162,8 +177,9 @@ export function tapPad(state: GameState, x: number, y: number): GameState {
 export function tick(state: GameState, dt: number): GameState {
   let s = { ...state }
   s.flash = Math.max(0, s.flash - dt * 1.8)
-  if (s.phase === 'input' && s.lit != null) {
-    // brief player flash then clear
+  s.pressLife = Math.max(0, s.pressLife - dt)
+  if (s.pressLife <= 0) s.pressId = null
+  if (s.phase === 'input' && s.lit != null && s.pressId !== s.lit) {
     if (s.flash <= 0.02) s.lit = null
   }
 

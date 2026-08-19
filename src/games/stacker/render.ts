@@ -47,9 +47,10 @@ function drawSlab(
   y: number,
   cx: number,
   cy: number,
-  opts: { alpha?: number } = {},
+  opts: { alpha?: number; fillAmount?: number } = {},
 ) {
   const alpha = opts.alpha ?? 1
+  const fillAmount = opts.fillAmount ?? 0.22
   const hw = slab.w / 2
   const hd = slab.d / 2
   const x = slab.x
@@ -83,17 +84,17 @@ function drawSlab(
   ctx.lineWidth = 1.4
   ctx.strokeStyle = washStroke(hue, sat)
 
-  ctx.fillStyle = washFill(hue, sat, 52)
+  ctx.fillStyle = washFill(hue, sat, 52, fillAmount)
   pathPoly(ctx, midR)
   ctx.fill()
   ctx.stroke()
 
-  ctx.fillStyle = washFill(hue, sat, 46)
+  ctx.fillStyle = washFill(hue, sat, 46, fillAmount)
   pathPoly(ctx, midL)
   ctx.fill()
   ctx.stroke()
 
-  ctx.fillStyle = washFill(hue, sat, slab.perfect ? 62 : 58)
+  ctx.fillStyle = washFill(hue, sat, slab.perfect ? 62 : 58, fillAmount)
   pathPoly(ctx, top)
   ctx.fill()
   ctx.stroke()
@@ -186,9 +187,7 @@ export function renderGame(
   // Moving slab
   if (state.phase === 'playing' || state.phase === 'menu') {
     const y = state.stack.length * SLAB_H
-    drawSlab(ctx, state.moving, y, cx, cy, {
-      alpha: state.phase === 'menu' ? 0.85 : 1,
-    })
+    drawSlab(ctx, state.moving, y, cx, cy)
   }
 
   // Perfect-stack floaters

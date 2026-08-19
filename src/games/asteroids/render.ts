@@ -167,4 +167,17 @@ export function renderGame(
     ctx.fillText(f.text, f.x, f.y)
     ctx.restore()
   }
+
+  if (state.phase === 'playing' && state.combo > 1) {
+    const size = Math.round(26 * scale)
+    ctx.save()
+    ctx.font = `700 ${size}px Outfit, system-ui, sans-serif`
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'bottom'
+    ctx.fillStyle = ACCENT_GOLD
+    ctx.shadowColor = 'rgba(255,255,255,0.9)'
+    ctx.shadowBlur = 10 * scale
+    ctx.fillText(`×${state.combo}`, w / 2, h - 18 * scale)
+    ctx.restore()
+  }
 }

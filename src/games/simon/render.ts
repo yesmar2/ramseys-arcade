@@ -45,13 +45,16 @@ export function renderGame(
   const pads = padLayout(w, h)
   for (const pad of pads) {
     const hue = PAD_HUES[pad.id]
-    const lit = state.lit === pad.id
-    const alpha = lit ? 0.5 : 0.22
+    const watching = state.lit === pad.id
+    const pressed = state.pressId === pad.id && state.pressLife > 0
+    const on = watching || pressed
+    const punch = pressed ? Math.max(0.45, Math.min(1, state.pressLife / 0.18)) : 1
+    const alpha = on ? 0.22 + 0.28 * punch : 0.22
     ctx.fillStyle = `hsla(${hue}, 52%, 58%, ${alpha})`
     ctx.strokeStyle = `hsla(${hue}, 52%, 42%, 0.95)`
     ctx.lineWidth = Math.max(2, pad.r * 0.08)
     ctx.beginPath()
-    ctx.arc(pad.x, pad.y, pad.r * (lit ? 1.04 : 1), 0, Math.PI * 2)
+    ctx.arc(pad.x, pad.y, pad.r * (on ? 1.03 + 0.05 * punch : 1), 0, Math.PI * 2)
     ctx.fill()
     ctx.stroke()
   }

@@ -6,11 +6,11 @@ import { ScoreSaveCard } from '../../components/ScoreSaveCard'
 import { TournamentScoreCard } from '../../components/TournamentScoreCard'
 import { usePersonalBest } from '../../hooks/usePersonalBest'
 import { getPersonalBest } from '../../lib/personalBest'
-import { STAGE_ASPECT } from '../../lib/stage'
 import { useTournamentPlay } from '../../tournaments/TournamentPlayContext'
 import {
   aim,
   createInitialState,
+  deadCenterLayout,
   nextRound,
   resizeState,
   startGame,
@@ -21,12 +21,18 @@ import {
 } from './game'
 import { renderGame } from './render'
 
+function currentLayout() {
+  return deadCenterLayout(typeof window !== 'undefined' && window.innerHeight > window.innerWidth)
+}
+
 export function DeadCenterGame() {
   const tournament = useTournamentPlay()
   const apiBest = usePersonalBest('dead-center')
+  const layout0 = currentLayout()
   const stateRef = useRef<GameState>(createInitialState())
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const sizeRef = useRef({ w: 720, h: 540 })
+  const [aspect, setAspect] = useState({ w: layout0.aspectW, h: layout0.aspectH })
   const [ui, setUi] = useState<Snapshot>(() => toSnapshot(stateRef.current))
   const [saveOpen, setSaveOpen] = useState(false)
   const offeredScore = useRef<number | null>(null)
@@ -80,9 +86,28 @@ export function DeadCenterGame() {
     if (ui.phase === 'menu') previousBestRef.current = apiBest
   }, [apiBest, ui.phase])
 
+  useEffect(() => {
+    const sync = () => {
+      if (stateRef.current.phase !== 'menu') return
+      const next = currentLayout()
+      setAspect((cur) =>
+        cur.w === next.aspectW && cur.h === next.aspectH ? cur : { w: next.aspectW, h: next.aspectH },
+      )
+    }
+    sync()
+    window.addEventListener('resize', sync)
+    window.addEventListener('orientationchange', sync)
+    return () => {
+      window.removeEventListener('resize', sync)
+      window.removeEventListener('orientationchange', sync)
+    }
+  }, [])
+
   const restart = () => {
     setSaveOpen(false)
     offeredScore.current = null
+    const next = currentLayout()
+    setAspect({ w: next.aspectW, h: next.aspectH })
     const { w, h } = sizeRef.current
     stateRef.current = startGame(resizeState(createInitialState(w, h), w, h))
     previousBestRef.current = getPersonalBest('dead-center')
@@ -168,8 +193,8 @@ export function DeadCenterGame() {
       </GameHud>
       <div className="game-play">
       <GameStage
-        aspectWidth={STAGE_ASPECT.deadCenter.w}
-        aspectHeight={STAGE_ASPECT.deadCenter.h}
+        aspectWidth={aspect.w}
+        aspectHeight={aspect.h}
       >
         <div className="deadcenter__play" onPointerDown={onPointerDown}>
           <canvas ref={canvasRef} className="deadcenter__viewport" />

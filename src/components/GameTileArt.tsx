@@ -379,10 +379,10 @@ export function AsteroidsArt() {
 
 export function SimonArt() {
   const pads = [
-    { x: 49, y: 17, hue: HUE.sky },
-    { x: 83, y: 17, hue: HUE.teal },
-    { x: 49, y: 51, hue: HUE.gold },
-    { x: 83, y: 51, hue: HUE.rose },
+    { cx: 63, cy: 32, hue: HUE.sky },
+    { cx: 97, cy: 32, hue: HUE.teal },
+    { cx: 63, cy: 66, hue: HUE.gold },
+    { cx: 97, cy: 66, hue: HUE.rose },
   ]
 
   return (
@@ -396,13 +396,11 @@ export function SimonArt() {
       {pads.map((p) => {
         const { fill, stroke } = wash(p.hue)
         return (
-          <rect
-            key={`${p.x}-${p.y}`}
-            x={p.x}
-            y={p.y}
-            width="28"
-            height="28"
-            rx="8"
+          <circle
+            key={`${p.cx}-${p.cy}`}
+            cx={p.cx}
+            cy={p.cy}
+            r="14"
             fill={fill}
             stroke={stroke}
             strokeWidth="1.8"

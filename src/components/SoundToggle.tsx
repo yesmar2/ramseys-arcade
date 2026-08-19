@@ -1,17 +1,14 @@
 import { useEffect, useState } from 'react'
 import {
   acquireMusic,
-  getMusicVolume,
   isMuted,
   releaseMusic,
-  setMusicVolume,
   setMuted,
   unlockSound,
 } from '../lib/sound'
 
 export function SoundToggle() {
   const [mute, setMute] = useState(isMuted)
-  const [music, setMusic] = useState(getMusicVolume)
 
   useEffect(() => {
     acquireMusic()
@@ -26,7 +23,7 @@ export function SoundToggle() {
       <button
         type="button"
         className="game-pause-btn"
-        aria-label={mute ? 'Unmute sounds' : 'Mute sounds'}
+        aria-label={mute ? 'Unmute music and sounds' : 'Mute music and sounds'}
         aria-pressed={mute}
         title={mute ? 'Unmute' : 'Mute'}
         onClick={(e) => {
@@ -67,22 +64,6 @@ export function SoundToggle() {
           </svg>
         )}
       </button>
-      <label className="game-sound__slider">
-        <input
-          type="range"
-          min="0"
-          max="100"
-          step="1"
-          value={Math.round(music * 100)}
-          aria-label="Music volume"
-          onChange={(e) => {
-            const next = Number(e.target.value) / 100
-            setMusic(next)
-            setMusicVolume(next)
-            setMute(isMuted())
-          }}
-        />
-      </label>
     </div>
   )
 }

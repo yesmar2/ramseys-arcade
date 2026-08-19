@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import { useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react'
 import { GameHud, GameHudStat } from '../../components/GameHud'
 import { GameStage } from '../../components/GameStage'
 import { PauseButton, PauseOverlay } from '../../components/PauseControls'
@@ -13,15 +13,39 @@ import { useTournamentPlay } from '../../tournaments/TournamentPlayContext'
 import {
   createInitialState,
   fire,
+  POWER_HUE,
+  POWER_LABEL,
+  POWER_ORDER,
   resizeState,
   setCursor,
   startGame,
   tick,
   toSnapshot,
+  usePower,
   type GameState,
+  type PowerKind,
   type Snapshot,
 } from './game'
 import { renderGame } from './render'
+
+function PowerMark({ kind }: { kind: PowerKind }) {
+  return (
+    <svg className="patriot__power-mark" viewBox="0 0 24 24" aria-hidden="true">
+      {kind === 'ammo' ? (
+        <path d="M12 5v14M5 12h14" />
+      ) : kind === 'shield' ? (
+        <path d="M7 15c0-3.4 2.2-7 5-7s5 3.6 5 7" />
+      ) : kind === 'slow' ? (
+        <>
+          <path d="M6 12h12" />
+          <path d="M9 8 5 12l4 4M15 8l4 4-4 4" />
+        </>
+      ) : (
+        <circle cx="12" cy="12" r="4.2" />
+      )}
+    </svg>
+  )
+}
 
 function useNeedsLandscape() {
   const [portrait, setPortrait] = useState(() => {
@@ -52,13 +76,12 @@ export function PatriotGame() {
   const sizeRef = useRef({ w: 800, h: 450 })
   const [ui, setUi] = useState<Snapshot>(() => toSnapshot(stateRef.current))
   const [saveOpen, setSaveOpen] = useState(false)
-  const [infoOpen, setInfoOpen] = useState(false)
   const fireLock = useRef(false)
   const offeredScore = useRef<number | null>(null)
   const previousBestRef = useRef(getPersonalBest('patriot'))
   const needsRotate = useNeedsLandscape()
   const ignorePauseKeys = useRef(false)
-  ignorePauseKeys.current = saveOpen || infoOpen
+  ignorePauseKeys.current = saveOpen
   const pausable = (ui.phase === 'playing' || ui.phase === 'waveClear') && !saveOpen
   const { paused, toggle: togglePause, resume } = useGamePause(pausable, ignorePauseKeys)
   const pausedRef = useRef(false)
@@ -139,7 +162,7 @@ export function PatriotGame() {
   }
 
   const act = () => {
-    if (pausedRef.current || saveOpen || infoOpen) return
+    if (pausedRef.current || saveOpen) return
     if (fireLock.current) return
     fireLock.current = true
     setTimeout(() => {
@@ -156,9 +179,15 @@ export function PatriotGame() {
     setUi(toSnapshot(stateRef.current))
   }
 
+  const activate = (kind: PowerKind) => {
+    if (pausedRef.current || saveOpen) return
+    stateRef.current = usePower(stateRef.current, kind)
+    setUi(toSnapshot(stateRef.current))
+  }
+
   const onPointerDown = (e: ReactPointerEvent<HTMLElement>) => {
     e.preventDefault()
-    if (pausedRef.current || saveOpen || infoOpen) return
+    if (pausedRef.current || saveOpen) return
     // Touch often skips pointermove — aim at the tap first.
     aimFromEvent(e)
     act()
@@ -166,19 +195,23 @@ export function PatriotGame() {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.code === 'Escape' && infoOpen) {
-        setInfoOpen(false)
+      if (saveOpen || pausedRef.current) return
+      const powerAt = ['Digit1', 'Digit2', 'Digit3', 'Digit4'].indexOf(e.code)
+      const padAt = ['Numpad1', 'Numpad2', 'Numpad3', 'Numpad4'].indexOf(e.code)
+      const slot = powerAt >= 0 ? powerAt : padAt
+      if (slot >= 0) {
+        e.preventDefault()
+        activate(POWER_ORDER[slot])
         return
       }
       if (e.code === 'Space' || e.code === 'Enter') {
-        if (saveOpen || pausedRef.current || infoOpen) return
         e.preventDefault()
         act()
       }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [saveOpen, infoOpen])
+  }, [saveOpen])
 
   return (
     <section className="patriot patriot--fullscreen">
@@ -190,23 +223,9 @@ export function PatriotGame() {
             : apiBest
         }
         extra={
-          <>
-            <button
-              type="button"
-              className="patriot__info"
-              aria-label="Scoring info"
-              aria-expanded={infoOpen}
-              onPointerDown={(e) => {
-                e.stopPropagation()
-                setInfoOpen((open) => !open)
-              }}
-            >
-              i
-            </button>
-            {(pausable || paused) && !needsRotate && (
-              <PauseButton paused={paused} onToggle={togglePause} />
-            )}
-          </>
+          (pausable || paused) && !needsRotate ? (
+            <PauseButton paused={paused} onToggle={togglePause} />
+          ) : undefined
         }
       >
         <GameHudStat
@@ -219,7 +238,6 @@ export function PatriotGame() {
           {ui.score}
         </GameHudStat>
         <GameHudStat label="Wave">{ui.wave}</GameHudStat>
-        <GameHudStat label="Ammo">{ui.ammoLeft}</GameHudStat>
       </GameHud>
       <div className="game-play">
       <GameStage
@@ -233,6 +251,40 @@ export function PatriotGame() {
         >
           <canvas ref={canvasRef} className="patriot__viewport" />
 
+          {(ui.phase === 'playing' || ui.phase === 'waveClear') &&
+            !needsRotate &&
+            POWER_ORDER.some((kind) => (ui.pack?.[kind] ?? 0) > 0) && (
+            <div
+              className="patriot__powers"
+              onPointerDown={(e) => e.stopPropagation()}
+            >
+              {POWER_ORDER.flatMap((kind) => {
+                const count = ui.pack?.[kind] ?? 0
+                const hot =
+                  (kind === 'shield' && ui.shieldT > 0) ||
+                  (kind === 'slow' && ui.slowT > 0) ||
+                  (kind === 'burst' && ui.burstArmed)
+                return Array.from({ length: count }, (_, n) => (
+                  <button
+                    key={`${kind}-${n}`}
+                    type="button"
+                    className={`patriot__power${hot ? ' patriot__power--hot' : ''}`}
+                    style={{ '--hue': String(POWER_HUE[kind]) } as CSSProperties}
+                    disabled={ui.phase !== 'playing' || paused}
+                    aria-label={POWER_LABEL[kind]}
+                    onPointerDown={(e) => {
+                      e.stopPropagation()
+                      e.preventDefault()
+                      activate(kind)
+                    }}
+                  >
+                    <PowerMark kind={kind} />
+                  </button>
+                ))
+              })}
+            </div>
+          )}
+
           <div className="patriot__overlay">
             <PauseOverlay paused={paused && !needsRotate} onResume={resume} />
             {ui.phase === 'menu' && !saveOpen && !needsRotate && !paused && (
@@ -240,7 +292,7 @@ export function PatriotGame() {
                 <h2>Patriot</h2>
                 <p>Defend the cities. Aim and tap to fire.</p>
                 <PersonalBestHint slug="patriot" />
-                <span>Bombers some waves · missiles hit cities and turrets</span>
+                <span>Shoot drones. Tap a circle to use it</span>
               </div>
             )}
             {ui.phase === 'waveClear' && !needsRotate && !paused && (
@@ -304,73 +356,6 @@ export function PatriotGame() {
         </div>
       </GameStage>
       </div>
-
-      {infoOpen && (
-        <div
-          className="patriot__info-backdrop"
-          onPointerDown={(e) => {
-            e.stopPropagation()
-            setInfoOpen(false)
-          }}
-        >
-          <div
-            className="patriot__info-panel"
-            role="dialog"
-            aria-label="How scoring works"
-            onPointerDown={(e) => e.stopPropagation()}
-          >
-            <div className="patriot__info-head">
-              <span className="patriot__label">Scoring</span>
-              <button
-                type="button"
-                className="patriot__info-close"
-                aria-label="Close scoring info"
-                onClick={() => setInfoOpen(false)}
-              >
-                ×
-              </button>
-            </div>
-            <ul className="patriot__info-list">
-              <li>
-                <span>Splash hit</span>
-                <strong>+25</strong>
-              </li>
-              <li>
-                <span>Direct hit</span>
-                <strong>+100</strong>
-              </li>
-              <li>
-                <span>City saved (wave clear)</span>
-                <strong>+100</strong>
-              </li>
-              <li>
-                <span>Perfect wave</span>
-                <strong>all 6 cities</strong>
-              </li>
-              <li>
-                <span>Unused ammo (wave clear)</span>
-                <strong>+5 each</strong>
-              </li>
-              <li>
-                <span>Two clean waves</span>
-                <strong>rebuild a city</strong>
-              </li>
-              <li>
-                <span>Plane shot down</span>
-                <strong>+200</strong>
-              </li>
-              <li>
-                <span>Violet missile</span>
-                <strong>splits halfway</strong>
-              </li>
-              <li>
-                <span>Incoming fire</span>
-                <strong>cities, turrets, misses</strong>
-              </li>
-            </ul>
-          </div>
-        </div>
-      )}
 
       {needsRotate && (
         <div className="patriot__rotate" role="dialog" aria-label="Rotate your device">

@@ -77,7 +77,6 @@ export function PlayerBadge({ compact = false }: PlayerBadgeProps) {
           aria-haspopup="dialog"
           title="Change player name"
         >
-          <span className="player-badge__label">Welcome</span>
           <strong className="player-badge__name">{name}</strong>
         </button>
       ) : (

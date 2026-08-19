@@ -154,9 +154,11 @@ export function StackerGame() {
         <div className="stacker__overlay">
           <PauseOverlay paused={paused} onResume={resume} />
           {ui.status === 'menu' && !saveOpen && !paused && (
-            <div className="stacker__centerMessage" aria-hidden="true">
-              <strong>Tap or Space to start</strong>
+            <div className="stacker__card" aria-hidden="true">
+              <h2>Stacker</h2>
+              <p>Time the drop. Stack higher. Don’t miss.</p>
               <PersonalBestHint slug="stacker" />
+              <span>Tap or Space to start</span>
             </div>
           )}
           {ui.status === 'gameover' && saveOpen && (

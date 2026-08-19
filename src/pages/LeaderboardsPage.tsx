@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { DeviceIcon } from '../components/DeviceIcon'
 import { Footer } from '../components/Footer'
 import { Header } from '../components/Header'
-import { InfoTip } from '../components/InfoTip'
 import { getGame, gamePlayableOn } from '../data/games'
 import { leaderboardHref } from '../hooks/useHashRoute'
 import { useDeviceType } from '../lib/device'
@@ -134,14 +133,7 @@ export function LeaderboardsPage({
       <main className="lb-page">
         <div className="lb-page__inner">
           <header className="lb-page__header">
-            <h1 className="lb-page__title lb-page__title--with-tip">
-              Leaderboards
-              <InfoTip label="About leaderboards">
-                Shared high scores by day, week, month, and all time. Periods use
-                America/New_York time. Icons show whether a score was set on
-                phone, tablet, or desktop.
-              </InfoTip>
-            </h1>
+            <h1 className="lb-page__title">Leaderboards</h1>
           </header>
 
           <label className="lb-game-pick">

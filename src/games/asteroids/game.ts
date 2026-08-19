@@ -139,7 +139,6 @@ const BULLET_LIFE = 0.55
 const SHIP_RADIUS = 22
 const START_LIVES = 3
 const COMBO_WINDOW = 0.75
-const COMBO_MAX = 5
 
 function comboMultiplier(combo: number) {
   return Math.min(2, 1 + Math.max(0, combo - 1) * 0.25)
@@ -657,7 +656,7 @@ export function tick(state: GameState, dt: number): GameState {
       if (dist(b.x, b.y, r.x, r.y) < r.radius + 3 * sc) {
         hitBullet.add(b.id)
         hitRock.add(r.id)
-        combo = Math.min(COMBO_MAX, combo + 1)
+        combo += 1
         comboTimer = COMBO_WINDOW
         comboBest = Math.max(comboBest, combo)
         const gained = Math.round(ROCK_SCORE[r.size] * comboMultiplier(combo))
@@ -668,7 +667,7 @@ export function tick(state: GameState, dt: number): GameState {
         floaters.push({
           x: r.x,
           y: r.y,
-          text: `+${gained}`,
+          text: combo > 1 ? `+${gained}  ×${combo}` : `+${gained}`,
           life: 0.7,
           maxLife: 0.7,
         })

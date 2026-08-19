@@ -12,6 +12,7 @@ import { useTournamentPlay } from '../../tournaments/TournamentPlayContext'
 import {
   createInitialState,
   queueDir,
+  queueTurn,
   snakeLayout,
   startGame,
   tick,
@@ -37,11 +38,9 @@ export function SnakeGame() {
   const [saveOpen, setSaveOpen] = useState(false)
   const offeredScore = useRef<number | null>(null)
   const previousBestRef = useRef(getPersonalBest('snake'))
-  const swipeStart = useRef<{ x: number; y: number } | null>(null)
+  const swipeRef = useRef<{ x: number; y: number } | null>(null)
   const startGrace = useRef(0)
-  const stickWellRef = useRef<HTMLDivElement>(null)
-  const stickKnobRef = useRef<HTMLDivElement>(null)
-  const lastStickDir = useRef<Dir | null>(null)
+  const holdTimer = useRef<number | null>(null)
   const pausable = ui.phase === 'playing' && !saveOpen
   const { paused, toggle: togglePause, resume } = useGamePause(pausable)
   const pausedRef = useRef(false)
@@ -124,7 +123,6 @@ export function SnakeGame() {
     previousBestRef.current = getPersonalBest('snake')
     startGrace.current = performance.now() + 220
     setUi(toSnapshot(stateRef.current))
-    resetStick()
   }
 
   const turn = (dir: Dir) => {
@@ -139,6 +137,38 @@ export function SnakeGame() {
     if (s.phase !== 'playing') return
     stateRef.current = queueDir(s, dir)
   }
+
+  const steer = (side: 'left' | 'right') => {
+    if (saveOpen || pausedRef.current) return
+    const s = stateRef.current
+    if (s.phase === 'menu') {
+      restart()
+      stateRef.current = queueTurn(stateRef.current, side)
+      setUi(toSnapshot(stateRef.current))
+      return
+    }
+    if (s.phase !== 'playing') return
+    stateRef.current = queueTurn(s, side)
+  }
+
+  const stopHold = () => {
+    if (holdTimer.current != null) {
+      window.clearTimeout(holdTimer.current)
+      holdTimer.current = null
+    }
+  }
+
+  const startHold = (side: 'left' | 'right') => {
+    stopHold()
+    steer(side)
+    const pulse = () => {
+      steer(side)
+      holdTimer.current = window.setTimeout(pulse, 170)
+    }
+    holdTimer.current = window.setTimeout(pulse, 260)
+  }
+
+  useEffect(() => () => stopHold(), [])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -169,89 +199,41 @@ export function SnakeGame() {
     return () => window.removeEventListener('keydown', onKey)
   }, [saveOpen])
 
+  const SWIPE = 26
+
+  const commitSwipe = (x: number, y: number) => {
+    const start = swipeRef.current
+    if (!start || saveOpen || pausedRef.current) return
+    const dx = x - start.x
+    const dy = y - start.y
+    if (Math.hypot(dx, dy) < SWIPE) return
+    if (Math.abs(dx) > Math.abs(dy)) turn(dx > 0 ? 'right' : 'left')
+    else turn(dy > 0 ? 'down' : 'up')
+    swipeRef.current = { x, y }
+  }
+
   const onPointerDown = (e: ReactPointerEvent) => {
     e.preventDefault()
     if (saveOpen || pausedRef.current) return
-    swipeStart.current = { x: e.clientX, y: e.clientY }
+    swipeRef.current = { x: e.clientX, y: e.clientY }
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId)
+    } catch {
+      /* ignore */
+    }
     if (stateRef.current.phase === 'menu') {
       if (performance.now() < startGrace.current) return
       restart()
     }
   }
 
-  const onPointerUp = (e: ReactPointerEvent) => {
-    const start = swipeStart.current
-    swipeStart.current = null
-    if (!start || saveOpen || pausedRef.current) return
-    const dx = e.clientX - start.x
-    const dy = e.clientY - start.y
-    if (Math.hypot(dx, dy) < 28) return
-    if (Math.abs(dx) > Math.abs(dy)) turn(dx > 0 ? 'right' : 'left')
-    else turn(dy > 0 ? 'down' : 'up')
+  const onPointerMove = (e: ReactPointerEvent) => {
+    if (!swipeRef.current) return
+    commitSwipe(e.clientX, e.clientY)
   }
 
-  const resetStick = () => {
-    lastStickDir.current = null
-    if (stickKnobRef.current) stickKnobRef.current.style.transform = 'translate(0px, 0px)'
-  }
-
-  const applyStick = (clientX: number, clientY: number) => {
-    const well = stickWellRef.current
-    if (!well) return
-    const r = well.getBoundingClientRect()
-    const cx = r.left + r.width / 2
-    const cy = r.top + r.height / 2
-    const maxR = Math.max(12, r.width * 0.34)
-    let dx = clientX - cx
-    let dy = clientY - cy
-    const dist = Math.hypot(dx, dy)
-    if (dist > maxR && dist > 0) {
-      dx = (dx / dist) * maxR
-      dy = (dy / dist) * maxR
-    }
-    if (stickKnobRef.current) {
-      stickKnobRef.current.style.transform = `translate(${dx}px, ${dy}px)`
-    }
-    const dead = maxR * 0.28
-    if (Math.hypot(dx, dy) < dead) {
-      lastStickDir.current = null
-      return
-    }
-    const dir: Dir =
-      Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : dy > 0 ? 'down' : 'up'
-    if (dir === lastStickDir.current) return
-    lastStickDir.current = dir
-    turn(dir)
-  }
-
-  const onStickDown = (e: ReactPointerEvent<HTMLDivElement>) => {
-    e.preventDefault()
-    e.stopPropagation()
-    if (saveOpen || pausedRef.current) return
-    try {
-      e.currentTarget.setPointerCapture(e.pointerId)
-    } catch {
-      /* ignore */
-    }
-    applyStick(e.clientX, e.clientY)
-    const target = e.currentTarget
-    const pointerId = e.pointerId
-    const onMove = (ev: PointerEvent) => {
-      if (ev.pointerId !== pointerId) return
-      applyStick(ev.clientX, ev.clientY)
-    }
-    const onUp = (ev: PointerEvent) => {
-      if (ev.pointerId !== pointerId) return
-      resetStick()
-      target.removeEventListener('pointermove', onMove)
-      target.removeEventListener('pointerup', onUp)
-      target.removeEventListener('pointercancel', onUp)
-      target.removeEventListener('lostpointercapture', onUp)
-    }
-    target.addEventListener('pointermove', onMove)
-    target.addEventListener('pointerup', onUp)
-    target.addEventListener('pointercancel', onUp)
-    target.addEventListener('lostpointercapture', onUp)
+  const onPointerUp = () => {
+    swipeRef.current = null
   }
 
   return (
@@ -277,10 +259,9 @@ export function SnakeGame() {
       <div
         className="snake__play"
         onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
-        onPointerCancel={() => {
-          swipeStart.current = null
-        }}
+        onPointerCancel={onPointerUp}
       >
         <GameStage
           aspectWidth={aspect.w}
@@ -293,10 +274,10 @@ export function SnakeGame() {
             {ui.phase === 'menu' && !saveOpen && !paused && (
               <div className="snake__card" aria-hidden="true">
                 <h2>Snake</h2>
-                <p>Steer with the arrows. Eat. Grow. Don’t crash.</p>
+                <p>Eat. Grow. Don’t crash.</p>
                 <PersonalBestHint slug="snake" />
-                <span className="snake__hint snake__hint--keys">Tap an arrow to start</span>
-                <span className="snake__hint snake__hint--touch">Slide the stick to steer</span>
+                <span className="snake__hint snake__hint--keys">Arrows or WASD to steer</span>
+                <span className="snake__hint snake__hint--touch">Swipe the board, or tap to turn</span>
               </div>
             )}
             {ui.phase === 'gameover' && saveOpen && (
@@ -321,23 +302,65 @@ export function SnakeGame() {
         </GameStage>
       </div>
 
-        <div className="snake__touch" aria-label="Steer">
-          <div
-            className="snake__stick"
-            role="group"
-            aria-label="Direction stick"
-            onPointerDown={onStickDown}
+        <div className="snake__touch" aria-label="Turn">
+          <button
+            type="button"
+            className="snake__turn"
+            aria-label="Turn left"
+            onPointerDown={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              startHold('left')
+            }}
+            onPointerUp={stopHold}
+            onPointerCancel={stopHold}
+            onPointerLeave={stopHold}
           >
-            <div className="snake__stick-well" ref={stickWellRef}>
-              <span className="snake__stick-hints" aria-hidden="true">
-                <span className="snake__chevron snake__chevron--up" />
-                <span className="snake__chevron snake__chevron--right" />
-                <span className="snake__chevron snake__chevron--down" />
-                <span className="snake__chevron snake__chevron--left" />
-              </span>
-              <div className="snake__stick-knob" ref={stickKnobRef} />
-            </div>
-          </div>
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path
+                d="M8 9H7a5 5 0 1 0 5 5"
+                stroke="currentColor"
+                strokeWidth="1.9"
+                strokeLinecap="round"
+              />
+              <path
+                d="M8 5.5 L8 9.5 L12 9.5"
+                stroke="currentColor"
+                strokeWidth="1.9"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </button>
+          <button
+            type="button"
+            className="snake__turn"
+            aria-label="Turn right"
+            onPointerDown={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              startHold('right')
+            }}
+            onPointerUp={stopHold}
+            onPointerCancel={stopHold}
+            onPointerLeave={stopHold}
+          >
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path
+                d="M16 9H17a5 5 0 1 1 -5 5"
+                stroke="currentColor"
+                strokeWidth="1.9"
+                strokeLinecap="round"
+              />
+              <path
+                d="M16 5.5 L16 9.5 L12 9.5"
+                stroke="currentColor"
+                strokeWidth="1.9"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </button>
         </div>
       </div>
     </section>

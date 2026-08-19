@@ -282,6 +282,26 @@ export function queueDir(state: GameState, next: Dir): GameState {
   return { ...state, bufferedDir: next }
 }
 
+const LEFT_OF: Record<Dir, Dir> = {
+  up: 'left',
+  left: 'down',
+  down: 'right',
+  right: 'up',
+}
+
+const RIGHT_OF: Record<Dir, Dir> = {
+  up: 'right',
+  right: 'down',
+  down: 'left',
+  left: 'up',
+}
+
+/** Turn relative to the latest queued heading (left = counterclockwise). */
+export function queueTurn(state: GameState, side: 'left' | 'right'): GameState {
+  const from = state.bufferedDir ?? state.pendingDir ?? state.dir
+  return queueDir(state, side === 'left' ? LEFT_OF[from] : RIGHT_OF[from])
+}
+
 function die(state: GameState): GameState {
   const best = Math.max(state.best, state.score)
   saveBest(best)

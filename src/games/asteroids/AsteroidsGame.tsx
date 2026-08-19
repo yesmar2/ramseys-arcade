@@ -7,6 +7,7 @@ import { ScoreSaveCard } from '../../components/ScoreSaveCard'
 import { TournamentScoreCard } from '../../components/TournamentScoreCard'
 import { useGamePause } from '../../hooks/useGamePause'
 import { usePersonalBest } from '../../hooks/usePersonalBest'
+import { useDeviceType } from '../../lib/device'
 import { getPersonalBest } from '../../lib/personalBest'
 import { useTournamentPlay } from '../../tournaments/TournamentPlayContext'
 import {
@@ -54,6 +55,7 @@ function currentLayout() {
 
 export function AsteroidsGame() {
   const tournament = useTournamentPlay()
+  const device = useDeviceType()
   const apiBest = usePersonalBest('asteroids')
   const layout0 = currentLayout()
   const stateRef = useRef<GameState>(createInitialState())
@@ -63,51 +65,31 @@ export function AsteroidsGame() {
   const pressedRef = useRef(emptyPressed())
   /** Last pressed turn wins — left+right never cancel each other out. */
   const turnDirRef = useRef<-1 | 0 | 1>(0)
-  /** Slide pads: -1 … 1. Turn is left/right; thrust is up/down. */
-  const slideTurnRef = useRef(0)
-  const slideThrustRef = useRef(0)
-  const slideTurnHeldRef = useRef(false)
-  const slideThrustHeldRef = useRef(false)
-  const turnKnobRef = useRef<HTMLDivElement>(null)
-  const thrustKnobRef = useRef<HTMLDivElement>(null)
   const saveOpenRef = useRef(false)
   const [ui, setUi] = useState<Snapshot>(() => toSnapshot(stateRef.current))
   const [saveOpen, setSaveOpen] = useState(false)
-  const [infoOpen, setInfoOpen] = useState(false)
   const offeredScore = useRef<number | null>(null)
   const previousBestRef = useRef(getPersonalBest('asteroids'))
   const startGrace = useRef(0)
   const ignorePauseKeys = useRef(false)
-  const infoOpenRef = useRef(false)
-  ignorePauseKeys.current = saveOpen || infoOpen
-  infoOpenRef.current = infoOpen
+  ignorePauseKeys.current = saveOpen
   const pausable = ui.phase === 'playing' && !saveOpen
   const { paused, toggle: togglePause, resume } = useGamePause(pausable, ignorePauseKeys)
   const pausedRef = useRef(false)
-  pausedRef.current = paused || infoOpen
+  pausedRef.current = paused
   saveOpenRef.current = saveOpen
-
-  const resetSlideVisuals = () => {
-    if (turnKnobRef.current) turnKnobRef.current.style.transform = 'translate(0px, 0px)'
-    if (thrustKnobRef.current) thrustKnobRef.current.style.transform = 'translate(0px, 0px)'
-  }
 
   const syncControls = () => {
     const p = pressedRef.current
     const s = stateRef.current
-    const analogTurn = slideTurnHeldRef.current
-    const rawTurn = Math.max(-1, Math.min(1, slideTurnRef.current))
-    const turn = analogTurn && Math.abs(rawTurn) > 0.12 ? rawTurn : 0
-    const turnLeft = analogTurn ? false : turnDirRef.current === -1
-    const turnRight = analogTurn ? false : turnDirRef.current === 1
-    const analogThrust = slideThrustHeldRef.current
-    const rawThrust = Math.max(-1, Math.min(1, slideThrustRef.current))
-    const thrust = analogThrust ? rawThrust > 0.18 : p.thrust.size > 0
-    const reverse = analogThrust ? rawThrust < -0.18 : p.reverse.size > 0
+    const turnLeft = turnDirRef.current === -1
+    const turnRight = turnDirRef.current === 1
+    const thrust = p.thrust.size > 0
+    const reverse = p.reverse.size > 0
     if (
       s.turnLeft === turnLeft &&
       s.turnRight === turnRight &&
-      s.turn === turn &&
+      s.turn === 0 &&
       s.thrust === thrust &&
       s.reverse === reverse &&
       s.fireHeld === false
@@ -118,7 +100,7 @@ export function AsteroidsGame() {
       ...s,
       turnLeft,
       turnRight,
-      turn,
+      turn: 0,
       thrust,
       reverse,
       fireHeld: false,
@@ -131,17 +113,11 @@ export function AsteroidsGame() {
     if (left && !right) turnDirRef.current = -1
     else if (right && !left) turnDirRef.current = 1
     else if (!left && !right) turnDirRef.current = 0
-    // if both: keep turnDirRef as last pressed (set in press)
   }
 
   const clearPressed = () => {
     pressedRef.current = emptyPressed()
     turnDirRef.current = 0
-    slideTurnRef.current = 0
-    slideThrustRef.current = 0
-    slideTurnHeldRef.current = false
-    slideThrustHeldRef.current = false
-    resetSlideVisuals()
     syncControls()
   }
 
@@ -245,73 +221,30 @@ export function AsteroidsGame() {
     syncControls()
   }
 
-  const onSlidePad =
-    (axis: 'turn' | 'thrust') => (e: ReactPointerEvent<HTMLDivElement>) => {
+  const holdPad = (key: HoldKey) => ({
+    onPointerDown: (e: ReactPointerEvent<HTMLButtonElement>) => {
       e.preventDefault()
       e.stopPropagation()
-      if (saveOpenRef.current || pausedRef.current) return
-      const s = stateRef.current
-      if (s.phase === 'menu') restart()
-      else if (s.phase !== 'playing') return
-
-      const originX = e.clientX
-      const originY = e.clientY
-      const range = 56
-      const knobMax = 34
-      const knob = axis === 'turn' ? turnKnobRef.current : thrustKnobRef.current
-      const clamp = (n: number) => Math.max(-knobMax, Math.min(knobMax, n))
-
-      if (axis === 'turn') slideTurnHeldRef.current = true
-      else slideThrustHeldRef.current = true
-
       try {
         e.currentTarget.setPointerCapture(e.pointerId)
       } catch {
         /* ignore */
       }
-
-      const apply = (clientX: number, clientY: number) => {
-        if (axis === 'turn') {
-          const dx = clientX - originX
-          slideTurnRef.current = Math.max(-1, Math.min(1, dx / range))
-          if (knob) knob.style.transform = `translate(${clamp(dx)}px, 0px)`
-        } else {
-          const dy = clientY - originY
-          slideThrustRef.current = Math.max(-1, Math.min(1, -dy / range))
-          if (knob) knob.style.transform = `translate(0px, ${clamp(dy)}px)`
-        }
-        syncControls()
-      }
-
-      apply(e.clientX, e.clientY)
-      const target = e.currentTarget
-      const pointerId = e.pointerId
-      const onMove = (ev: PointerEvent) => {
-        if (ev.pointerId !== pointerId) return
-        apply(ev.clientX, ev.clientY)
-      }
-      const onUp = (ev: PointerEvent) => {
-        if (ev.pointerId !== pointerId) return
-        if (axis === 'turn') {
-          slideTurnHeldRef.current = false
-          slideTurnRef.current = 0
-          if (turnKnobRef.current) turnKnobRef.current.style.transform = 'translate(0px, 0px)'
-        } else {
-          slideThrustHeldRef.current = false
-          slideThrustRef.current = 0
-          if (thrustKnobRef.current) thrustKnobRef.current.style.transform = 'translate(0px, 0px)'
-        }
-        syncControls()
-        target.removeEventListener('pointermove', onMove)
-        target.removeEventListener('pointerup', onUp)
-        target.removeEventListener('pointercancel', onUp)
-        target.removeEventListener('lostpointercapture', onUp)
-      }
-      target.addEventListener('pointermove', onMove)
-      target.addEventListener('pointerup', onUp)
-      target.addEventListener('pointercancel', onUp)
-      target.addEventListener('lostpointercapture', onUp)
-    }
+      press(key, `pad:${e.pointerId}`)
+    },
+    onPointerUp: (e: ReactPointerEvent<HTMLButtonElement>) => {
+      release(key, `pad:${e.pointerId}`)
+    },
+    onPointerCancel: (e: ReactPointerEvent<HTMLButtonElement>) => {
+      release(key, `pad:${e.pointerId}`)
+    },
+    onLostPointerCapture: (e: ReactPointerEvent<HTMLButtonElement>) => {
+      release(key, `pad:${e.pointerId}`)
+    },
+    onContextMenu: (e: { preventDefault: () => void }) => {
+      e.preventDefault()
+    },
+  })
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
@@ -329,14 +262,8 @@ export function AsteroidsGame() {
                 : null
       const key = fromCode ?? fromKey
       if (!key) {
-        if (e.code === 'Escape' && infoOpenRef.current) {
-          e.preventDefault()
-          setInfoOpen(false)
-          return
-        }
         if (e.code === 'Enter' || e.key === 'Enter' || e.code === 'Space' || e.key === ' ') {
           e.preventDefault()
-          if (infoOpenRef.current) return
           const s = stateRef.current
           if (s.phase === 'waveClear') continueWave()
           else if (s.phase === 'menu' || s.phase === 'gameover') restart()
@@ -400,28 +327,15 @@ export function AsteroidsGame() {
   }
 
   return (
-    <section className={`asteroids asteroids--fullscreen${saveOpen || infoOpen || ui.phase === 'waveClear' ? ' asteroids--saving' : ''}`}>
+    <section className={`asteroids asteroids--fullscreen${device === 'tablet' ? ' asteroids--tablet' : ''}${saveOpen || ui.phase === 'waveClear' ? ' asteroids--saving' : ''}`}>
       <GameHud
         slug="asteroids"
         personalBest={ui.phase === 'playing' ? previousBestRef.current : apiBest}
+        hideBest
         extra={
-          <>
-            <button
-              type="button"
-              className="patriot__info"
-              aria-label="Scoring info"
-              aria-expanded={infoOpen}
-              onPointerDown={(e) => {
-                e.stopPropagation()
-                setInfoOpen((open) => !open)
-              }}
-            >
-              i
-            </button>
-            {(pausable || paused) ? (
-              <PauseButton paused={paused} onToggle={togglePause} />
-            ) : null}
-          </>
+          (pausable || paused) ? (
+            <PauseButton paused={paused} onToggle={togglePause} />
+          ) : undefined
         }
       >
         <GameHudStat
@@ -439,11 +353,6 @@ export function AsteroidsGame() {
             : '—'}
         </GameHudStat>
         <GameHudStat label="Lives">{ui.lives}</GameHudStat>
-        {ui.phase === 'playing' && ui.combo > 1 ? (
-          <GameHudStat label="Combo" hot>
-            {ui.combo}
-          </GameHudStat>
-        ) : null}
       </GameHud>
       <div className="asteroids__body">
       <div className="asteroids__play" onPointerDown={onPlayTap}>
@@ -483,7 +392,7 @@ export function AsteroidsGame() {
                   ← → turn · ↑ thrust · ↓ reverse · auto-fire
                 </span>
                 <span className="asteroids__hint asteroids__hint--touch">
-                  Slide left to turn · slide right to thrust · auto-fire
+                  Hold to turn and thrust · auto-fire
                 </span>
               </div>
             )}
@@ -511,101 +420,102 @@ export function AsteroidsGame() {
       </div>
 
         <div className="asteroids__touch" aria-label="Ship controls">
-          <div
-            className="asteroids__slide asteroids__slide--turn"
-            role="slider"
-            aria-label="Slide left and right to turn"
-            aria-valuemin={-1}
-            aria-valuemax={1}
-            aria-orientation="horizontal"
-            onPointerDown={onSlidePad('turn')}
-          >
-            <div className="asteroids__slide-well">
-              <span className="asteroids__slide-hint" aria-hidden="true">
-                <span className="asteroids__chevron asteroids__chevron--left" />
-                <span className="asteroids__chevron asteroids__chevron--right" />
-              </span>
-              <div className="asteroids__slide-knob" ref={turnKnobRef} />
-            </div>
+          <div className="asteroids__turns">
+            <button
+              type="button"
+              className="asteroids__btn"
+              aria-label="Turn left"
+              {...holdPad('turnLeft')}
+            >
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path
+                  d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"
+                  stroke="currentColor"
+                  strokeWidth="1.9"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d="M3 3v5h5"
+                  stroke="currentColor"
+                  strokeWidth="1.9"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </button>
+            <button
+              type="button"
+              className="asteroids__btn"
+              aria-label="Turn right"
+              {...holdPad('turnRight')}
+            >
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path
+                  d="M21 12a9 9 0 1 1-9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"
+                  stroke="currentColor"
+                  strokeWidth="1.9"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d="M21 3v5h-5"
+                  stroke="currentColor"
+                  strokeWidth="1.9"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </button>
           </div>
-          <div
-            className="asteroids__slide asteroids__slide--thrust"
-            role="slider"
-            aria-label="Slide up and down to thrust"
-            aria-valuemin={-1}
-            aria-valuemax={1}
-            aria-orientation="vertical"
-            onPointerDown={onSlidePad('thrust')}
-          >
-            <div className="asteroids__slide-well">
-              <span className="asteroids__slide-hint asteroids__slide-hint--vert" aria-hidden="true">
-                <span className="asteroids__chevron asteroids__chevron--up" />
-                <span className="asteroids__chevron asteroids__chevron--down" />
-              </span>
-              <div className="asteroids__slide-knob" ref={thrustKnobRef} />
-            </div>
+          <div className="asteroids__drive">
+            <button
+              type="button"
+              className="asteroids__btn asteroids__btn--thrust"
+              aria-label="Thrust"
+              {...holdPad('thrust')}
+            >
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path
+                  d="M12 5.5 L12 18.5"
+                  stroke="currentColor"
+                  strokeWidth="1.9"
+                  strokeLinecap="round"
+                />
+                <path
+                  d="M7.5 10.5 L12 5.5 L16.5 10.5"
+                  stroke="currentColor"
+                  strokeWidth="1.9"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </button>
+            <button
+              type="button"
+              className="asteroids__btn asteroids__btn--reverse"
+              aria-label="Reverse"
+              {...holdPad('reverse')}
+            >
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path
+                  d="M12 5.5 L12 18.5"
+                  stroke="currentColor"
+                  strokeWidth="1.9"
+                  strokeLinecap="round"
+                />
+                <path
+                  d="M7.5 13.5 L12 18.5 L16.5 13.5"
+                  stroke="currentColor"
+                  strokeWidth="1.9"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </button>
           </div>
         </div>
       </div>
-
-      {infoOpen && (
-        <div
-          className="patriot__info-backdrop"
-          onPointerDown={(e) => {
-            e.stopPropagation()
-            setInfoOpen(false)
-          }}
-        >
-          <div
-            className="patriot__info-panel"
-            role="dialog"
-            aria-label="How scoring works"
-            onPointerDown={(e) => e.stopPropagation()}
-          >
-            <div className="patriot__info-head">
-              <span className="patriot__label">Scoring</span>
-              <button
-                type="button"
-                className="patriot__info-close"
-                aria-label="Close scoring info"
-                onClick={() => setInfoOpen(false)}
-              >
-                ×
-              </button>
-            </div>
-            <ul className="patriot__info-list">
-              <li>
-                <span>Large rock</span>
-                <strong>+20</strong>
-              </li>
-              <li>
-                <span>Medium rock</span>
-                <strong>+50</strong>
-              </li>
-              <li>
-                <span>Small rock</span>
-                <strong>+100</strong>
-              </li>
-              <li>
-                <span>Combo (hits within 0.75s)</span>
-                <strong>up to 2×</strong>
-              </li>
-              <li>
-                <span>Wave 1 / 2 / 3 clear</span>
-                <strong>+100 / +150 / +200</strong>
-              </li>
-              <li>
-                <span>Time under par</span>
-                <strong>+20 / sec</strong>
-              </li>
-              <li>
-                <span>Par</span>
-                <strong>48s, −2s each wave</strong>
-              </li>
-            </ul>
-          </div>
-        </div>
-      )}
     </section>
   )
 }

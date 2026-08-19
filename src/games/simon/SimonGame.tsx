@@ -33,7 +33,6 @@ export function SimonGame() {
   const [saveOpen, setSaveOpen] = useState(false)
   const offeredScore = useRef<number | null>(null)
   const previousBestRef = useRef(getPersonalBest('simon'))
-  const tapLock = useRef(false)
   const startGrace = useRef(0)
   const pausable = (ui.phase === 'watch' || ui.phase === 'input') && !saveOpen
   const { paused, toggle: togglePause, resume } = useGamePause(pausable)
@@ -102,11 +101,6 @@ export function SimonGame() {
   const onPointerDown = (e: ReactPointerEvent<HTMLElement>) => {
     e.preventDefault()
     if (saveOpen || pausedRef.current) return
-    if (tapLock.current) return
-    tapLock.current = true
-    setTimeout(() => {
-      tapLock.current = false
-    }, 80)
 
     const s = stateRef.current
     if (s.phase === 'menu' || s.phase === 'gameover') {
@@ -167,15 +161,14 @@ export function SimonGame() {
         }
       >
         <GameHudStat
-          label="Score"
+          label="Round"
           hot={
             (ui.phase === 'watch' || ui.phase === 'input') &&
             ui.score > previousBestRef.current
           }
         >
-          {ui.score}
+          {ui.round || 1}
         </GameHudStat>
-        <GameHudStat label="Round">{ui.round || 1}</GameHudStat>
       </GameHud>
       <div className="game-play">
         <GameStage

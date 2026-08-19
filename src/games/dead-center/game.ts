@@ -66,10 +66,26 @@ export type GameState = {
   finishedRounds: number
 }
 
-export const DESIGN_W = 720
-export const DESIGN_H = 540
+export const DESIGN_LONG = 720
+export const DESIGN_SHORT = 540
+export const DESIGN_W = DESIGN_LONG
+export const DESIGN_H = DESIGN_SHORT
 export const TOTAL_ROUNDS = 5
 export const ROUND_SECS = 5
+
+/** Same 4×3 field, rotated so the long side matches the screen. */
+export function deadCenterLayout(portrait: boolean) {
+  return portrait
+    ? { aspectW: 3, aspectH: 4 }
+    : { aspectW: 4, aspectH: 3 }
+}
+
+function designScale(w: number, h: number) {
+  const portrait = h > w
+  const dw = portrait ? DESIGN_SHORT : DESIGN_LONG
+  const dh = portrait ? DESIGN_LONG : DESIGN_SHORT
+  return Math.min(w / dw, h / dh) || 1
+}
 
 const MAX_ROUND_SCORE = 1000
 
@@ -440,7 +456,7 @@ export function createInitialState(w = DESIGN_W, h = DESIGN_H): GameState {
     result: null,
     floaters: [],
     flash: 0,
-    scale: Math.min(w / DESIGN_W, h / DESIGN_H) || 1,
+    scale: designScale(w, h),
     stageW: w,
     stageH: h,
     accuracySum: 0,
@@ -449,7 +465,7 @@ export function createInitialState(w = DESIGN_W, h = DESIGN_H): GameState {
 }
 
 export function resizeState(state: GameState, w: number, h: number): GameState {
-  const scale = Math.min(w / DESIGN_W, h / DESIGN_H) || 1
+  const scale = designScale(w, h)
   if (state.phase === 'playing' && state.shape) {
     return {
       ...state,
