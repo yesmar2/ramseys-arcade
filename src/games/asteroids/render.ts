@@ -1,12 +1,12 @@
 import { shipRadius, type GameState, type Point, type Rock } from './game'
+import { inkColor, playfieldColor } from '../../lib/theme'
 
-const INK = '#1a2b3c'
 const ACCENT = '#2eb8a0'
 const ACCENT_SKY = '#4aa8e8'
 const ACCENT_GOLD = '#f5b942'
 
 function drawBackground(ctx: CanvasRenderingContext2D, w: number, h: number) {
-  ctx.fillStyle = '#edf7f4'
+  ctx.fillStyle = playfieldColor()
   ctx.fillRect(0, 0, w, h)
 
   const a = ctx.createRadialGradient(w * 0.15, 0, 10, w * 0.25, 0, w * 0.65)
@@ -161,7 +161,7 @@ export function renderGame(
     ctx.font = `600 ${Math.round((f.text.includes('×') ? 16 : 14) * scale)}px Outfit, system-ui, sans-serif`
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
-    ctx.fillStyle = f.text.includes('×') ? ACCENT_GOLD : INK
+    ctx.fillStyle = f.text.includes('×') ? ACCENT_GOLD : inkColor()
     ctx.shadowColor = 'rgba(255,255,255,0.9)'
     ctx.shadowBlur = 8 * scale
     ctx.fillText(f.text, f.x, f.y)

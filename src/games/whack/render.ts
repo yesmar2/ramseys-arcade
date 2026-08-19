@@ -1,7 +1,8 @@
 import { PAD_COUNT, PAD_INNER, padDisc, padLayout, type GameState, type Pad } from './game'
+import { inkColor, playfieldColor } from '../../lib/theme'
 
 function drawBackground(ctx: CanvasRenderingContext2D, w: number, h: number) {
-  ctx.fillStyle = '#edf7f4'
+  ctx.fillStyle = playfieldColor()
   ctx.fillRect(0, 0, w, h)
 
   const a = ctx.createRadialGradient(w * 0.2, 0, 12, w * 0.28, 0, w * 0.7)
@@ -98,7 +99,7 @@ export function renderGame(
     ctx.font = `600 ${Math.round(20 * state.scale)}px Outfit, system-ui, sans-serif`
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
-    ctx.fillStyle = '#1a2b3c'
+    ctx.fillStyle = inkColor()
     ctx.shadowColor = 'rgba(255,255,255,0.85)'
     ctx.shadowBlur = 8 * state.scale
     ctx.fillText(f.text, f.x, f.y)

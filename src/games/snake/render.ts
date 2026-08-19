@@ -1,5 +1,6 @@
 import type { GameState } from './game'
 import { BEAD_SPACING, visualSegments } from './game'
+import { playfieldColor } from '../../lib/theme'
 
 const HEAD_HUE = 158
 /** Hue the tail drifts per food eaten, and how far it can ever get from the head. */
@@ -20,7 +21,7 @@ export function renderGame(
   }
 
   // Soft playground wash
-  ctx.fillStyle = '#edf7f4'
+  ctx.fillStyle = playfieldColor()
   ctx.fillRect(0, 0, w, h)
 
   const sky = ctx.createRadialGradient(w * 0.18, h * -0.05, 20, w * 0.22, 0, w * 0.85)

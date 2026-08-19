@@ -1,5 +1,6 @@
 import { leaderboardHref } from '../hooks/useHashRoute'
 import { PlayerBadge } from './PlayerBadge'
+import { ThemeToggle } from './ThemeToggle'
 
 export function HomeBar() {
   return (
@@ -57,6 +58,7 @@ export function HomeBar() {
             />
           </svg>
         </a>
+        <ThemeToggle className="home-bar__icon" />
         <PlayerBadge icon />
       </div>
     </nav>

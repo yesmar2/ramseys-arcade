@@ -1,7 +1,8 @@
 import { PAD_HUES, padLayout, type GameState } from './game'
+import { playfieldColor } from '../../lib/theme'
 
 function drawBackground(ctx: CanvasRenderingContext2D, w: number, h: number) {
-  ctx.fillStyle = '#edf7f4'
+  ctx.fillStyle = playfieldColor()
   ctx.fillRect(0, 0, w, h)
 
   const a = ctx.createRadialGradient(w * 0.18, 0, 10, w * 0.25, 0, w * 0.65)

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { PlayerBadge } from './PlayerBadge'
+import { ThemeToggle } from './ThemeToggle'
 
 const NAV = [
   { href: '#/', label: 'Games' },
@@ -76,6 +77,7 @@ export function Header() {
           ))}
         </nav>
         <div className="site-header__player">
+          <ThemeToggle />
           <PlayerBadge compact />
         </div>
       </div>

@@ -1,8 +1,6 @@
 import type { FallingPiece, GameState, Slab } from './StackerEngine'
 import { SLAB_H } from './StackerEngine'
-
-/** Playfield wash — same as the other games' canvas background. */
-const PLAY_BG = { r: 237, g: 247, b: 244 }
+import { playfieldColor, playfieldRgb } from '../../lib/theme'
 
 function hslToRgb(h: number, sPct: number, lPct: number) {
   const s = sPct / 100
@@ -18,9 +16,10 @@ function hslToRgb(h: number, sPct: number, lPct: number) {
 /** Opaque stand-in for `hsla(h, s%, 58%, 0.22)` over the playfield. */
 function washFill(hue: number, sat = 52, light = 58, amount = 0.22) {
   const c = hslToRgb(hue, sat, light)
-  const r = Math.round(c.r * amount + PLAY_BG.r * (1 - amount))
-  const g = Math.round(c.g * amount + PLAY_BG.g * (1 - amount))
-  const b = Math.round(c.b * amount + PLAY_BG.b * (1 - amount))
+  const bg = playfieldRgb()
+  const r = Math.round(c.r * amount + bg.r * (1 - amount))
+  const g = Math.round(c.g * amount + bg.g * (1 - amount))
+  const b = Math.round(c.b * amount + bg.b * (1 - amount))
   return `rgb(${r}, ${g}, ${b})`
 }
 
@@ -123,7 +122,7 @@ export function renderGame(
   }
 
   // Soft light wash — no hard mid-band
-  ctx.fillStyle = '#edf7f4'
+  ctx.fillStyle = playfieldColor()
   ctx.fillRect(0, 0, w, h)
 
   const sky = ctx.createRadialGradient(w * 0.2, h * -0.05, 20, w * 0.25, 0, w * 0.9)

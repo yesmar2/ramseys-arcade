@@ -1,5 +1,6 @@
 import type { Battery, City, Drone, GameState, Plane } from './game'
 import { POWER_HUE, shieldRadius } from './game'
+import { playfieldColor } from '../../lib/theme'
 
 /** Plain rectangles only — scales cleanly on any stage size. */
 function washBox(
@@ -60,7 +61,7 @@ function washPoly(
 }
 
 function drawBackground(ctx: CanvasRenderingContext2D, w: number, h: number) {
-  ctx.fillStyle = '#edf7f4'
+  ctx.fillStyle = playfieldColor()
   ctx.fillRect(0, 0, w, h)
 
   const sky = ctx.createRadialGradient(w * 0.25, 0, 20, w * 0.3, 0, w * 0.85)

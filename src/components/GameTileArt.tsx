@@ -21,7 +21,7 @@ function wash(hue: number, sat = 52) {
 /** More solid pastel for small thumbnails — alpha washes read as empty rings. */
 function pastel(hue: number, sat = 52, mix = 40) {
   return {
-    fill: `color-mix(in srgb, hsla(${hue}, ${sat}%, 58%, 1) ${mix}%, #edf7f4)`,
+    fill: `color-mix(in srgb, hsla(${hue}, ${sat}%, 58%, 1) ${mix}%, var(--playfield))`,
     stroke: `hsla(${hue}, ${sat}%, 42%, 0.95)`,
   }
 }
@@ -41,7 +41,7 @@ function TileBg({
 }) {
   return (
     <>
-      <rect width="160" height="120" fill="#edf7f4" />
+      <rect width="160" height="120" fill="var(--playfield)" />
       {dots.map(([x, y], i) => (
         <circle key={i} cx={x} cy={y} r="1.3" fill="rgba(74,168,232,0.28)" />
       ))}
@@ -115,9 +115,9 @@ function IsoSlab({
     p(x - hw, 0, z + hd, cx, cy),
   ]
   const sat = 52
-  const fill = `color-mix(in srgb, hsla(${hue}, ${sat}%, 58%, 1) 40%, #edf7f4)`
-  const side = `color-mix(in srgb, hsla(${hue}, ${sat}%, 52%, 1) 40%, #edf7f4)`
-  const sideDark = `color-mix(in srgb, hsla(${hue}, ${sat}%, 46%, 1) 40%, #edf7f4)`
+  const fill = `color-mix(in srgb, hsla(${hue}, ${sat}%, 58%, 1) 40%, var(--playfield))`
+  const side = `color-mix(in srgb, hsla(${hue}, ${sat}%, 52%, 1) 40%, var(--playfield))`
+  const sideDark = `color-mix(in srgb, hsla(${hue}, ${sat}%, 46%, 1) 40%, var(--playfield))`
   const stroke = `hsla(${hue}, ${sat}%, 42%, 0.95)`
 
   return (

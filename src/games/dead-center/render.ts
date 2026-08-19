@@ -5,14 +5,14 @@ import {
   type Shape,
 } from './game'
 
-/** Site palette (matches :root in styles.css). */
-const INK = '#1a2b3c'
+import { inkColor, playfieldColor } from '../../lib/theme'
+
 const ACCENT = '#2eb8a0'
 const ACCENT_SKY = '#4aa8e8'
 const ACCENT_GOLD = '#f5b942'
 
 function drawBackground(ctx: CanvasRenderingContext2D, w: number, h: number) {
-  ctx.fillStyle = '#edf7f4'
+  ctx.fillStyle = playfieldColor()
   ctx.fillRect(0, 0, w, h)
 
   const a = ctx.createRadialGradient(w * 0.2, 0, 12, w * 0.28, 0, w * 0.7)
@@ -145,7 +145,7 @@ export function renderGame(
       ctx.font = `600 ${Math.round(15 * scale)}px Outfit, system-ui, sans-serif`
       ctx.shadowColor = 'rgba(255,255,255,0.92)'
       ctx.shadowBlur = 8 * scale
-      ctx.fillStyle = INK
+      ctx.fillStyle = inkColor()
       ctx.fillText('Too slow', center.x, center.y + 28 * scale)
       ctx.restore()
     }
