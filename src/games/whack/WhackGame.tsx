@@ -32,6 +32,7 @@ export function WhackGame() {
   const sizeRef = useRef({ w: 540, h: 720 })
   const [ui, setUi] = useState<Snapshot>(() => toSnapshot(stateRef.current))
   const [saveOpen, setSaveOpen] = useState(false)
+  const saveOpenRef = useRef(false)
   const offeredScore = useRef<number | null>(null)
   const previousBestRef = useRef(getPersonalBest('pop'))
   const hitLock = useRef(false)
@@ -63,15 +64,21 @@ export function WhackGame() {
         stateRef.current = tick(stateRef.current, dt)
       }
 
+      const snap = toSnapshot(stateRef.current)
+      // Open the score card as soon as the round ends — don't wait on the UI
+      // throttle, or a leftover tap can restart before the card mounts.
+      if (snap.phase === 'gameover' && offeredScore.current !== snap.score) {
+        offeredScore.current = snap.score
+        saveOpenRef.current = true
+        setSaveOpen(true)
+        setUi(snap)
+        startGrace.current = performance.now() + 400
+      }
+
       uiAcc += dt
       if (uiAcc > 0.08) {
         uiAcc = 0
-        const snap = toSnapshot(stateRef.current)
         setUi(snap)
-        if (snap.phase === 'gameover' && offeredScore.current !== snap.score) {
-          offeredScore.current = snap.score
-          setSaveOpen(true)
-        }
       }
 
       if (canvas && w > 0 && h > 0) {
@@ -91,18 +98,19 @@ export function WhackGame() {
   }, [apiBest, ui.phase])
 
   const restart = () => {
+    saveOpenRef.current = false
     setSaveOpen(false)
     offeredScore.current = null
     const { w, h } = sizeRef.current
     stateRef.current = setScale(startGame(stateRef.current), w, h)
     previousBestRef.current = getPersonalBest('pop')
-    startGrace.current = performance.now() + 180
+    startGrace.current = performance.now() + 220
     setUi(toSnapshot(stateRef.current))
   }
 
   const onPointerDown = (e: ReactPointerEvent<HTMLElement>) => {
     e.preventDefault()
-    if (saveOpen || pausedRef.current) return
+    if (saveOpenRef.current || pausedRef.current) return
     if (hitLock.current) return
     hitLock.current = true
     setTimeout(() => {
@@ -110,12 +118,15 @@ export function WhackGame() {
     }, 70)
 
     const s = stateRef.current
-    if (s.phase === 'menu' || s.phase === 'gameover') {
+    // Only the menu starts a run from a tap. Game over waits for the score card
+    // (a final frantic tap used to skip straight into a new round).
+    if (s.phase === 'menu') {
       if (performance.now() < startGrace.current) return
       restart()
       return
     }
     if (s.phase !== 'playing') return
+    if (performance.now() < startGrace.current) return
 
     const rect = e.currentTarget.getBoundingClientRect()
     const { w, h } = sizeRef.current
@@ -131,11 +142,14 @@ export function WhackGame() {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (saveOpen || pausedRef.current) return
+      if (saveOpenRef.current || pausedRef.current) return
       if (e.code === 'Space' || e.code === 'Enter') {
         e.preventDefault()
         const s = stateRef.current
-        if (s.phase === 'menu' || s.phase === 'gameover') restart()
+        if (s.phase === 'menu') {
+          if (performance.now() < startGrace.current) return
+          restart()
+        }
         return
       }
       const map: Record<string, number> = {
@@ -161,6 +175,7 @@ export function WhackGame() {
       const hole = map[e.code]
       if (hole == null || hole >= HOLE_COUNT) return
       if (stateRef.current.phase !== 'playing') return
+      if (performance.now() < startGrace.current) return
       e.preventDefault()
       const { w, h } = sizeRef.current
       stateRef.current = hitHole(stateRef.current, hole, w, h)
@@ -168,7 +183,7 @@ export function WhackGame() {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [saveOpen])
+  }, [])
 
   return (
     <section className="whack whack--fullscreen">
