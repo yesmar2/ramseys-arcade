@@ -10,6 +10,7 @@ const empty: GlobalRankResult = {
   score: 0,
   totalPlayers: 0,
   byGame: {},
+  nearby: [],
 }
 
 let cachedName = ''

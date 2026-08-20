@@ -8,7 +8,7 @@ import { LEADERBOARD_GAMES, normalizePlayerName } from '../lib/leaderboard'
 
 export function RankPage() {
   const name = normalizePlayerName(usePlayerName())
-  const { rank, score, totalPlayers, byGame } = useGlobalRank()
+  const { rank, score, totalPlayers, byGame, nearby = [] } = useGlobalRank()
 
   return (
     <>
@@ -38,6 +38,32 @@ export function RankPage() {
               <strong>{totalPlayers > 0 ? totalPlayers : '—'}</strong>
             </div>
           </section>
+
+          {nearby.length > 0 ? (
+            <section className="rank-page__near" aria-labelledby="rank-near-heading">
+              <h2 id="rank-near-heading" className="rank-page__h">
+                Near you
+              </h2>
+              <ul className="rank-page__near-list">
+                {nearby.map((row) => {
+                  const isYou = row.name === name
+                  return (
+                    <li
+                      key={`${row.rank}-${row.name}`}
+                      className={`rank-page__near-row${isYou ? ' rank-page__near-row--you' : ''}`}
+                    >
+                      <span className="rank-page__near-rank">#{row.rank}</span>
+                      <span className="rank-page__near-name" title={row.name}>
+                        {row.name}
+                        {isYou ? <em>you</em> : null}
+                      </span>
+                      <span className="rank-page__near-pts">{row.score}</span>
+                    </li>
+                  )
+                })}
+              </ul>
+            </section>
+          ) : null}
 
           <section className="rank-page__board" aria-labelledby="rank-games-heading">
             <h2 id="rank-games-heading" className="rank-page__h">

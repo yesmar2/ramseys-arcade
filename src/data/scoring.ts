@@ -15,7 +15,7 @@ const SCORING: Record<string, ScoreRow[]> = {
     { label: 'City saved (wave clear)', value: '+100' },
     { label: 'Perfect wave', value: 'all 6 cities' },
     { label: 'Unused ammo (wave clear)', value: '+5 each' },
-    { label: 'Two clean waves', value: 'rebuild a city' },
+    { label: 'Clean wave', value: 'rebuild a city' },
     { label: 'Plane shot down', value: '+200' },
     { label: 'Power drone', value: 'set waves, some send two' },
     { label: 'Hold', value: 'up to 3 of each' },

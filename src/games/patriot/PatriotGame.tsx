@@ -325,13 +325,6 @@ export function PatriotGame() {
                 {ui.clearBonus && ui.clearBonus.ammoBonus > 0 && (
                   <span>Unused ammo +{ui.clearBonus.ammoBonus}</span>
                 )}
-                {ui.clearBonus &&
-                  !ui.clearBonus.rebuilt &&
-                  !ui.clearBonus.perfect &&
-                  ui.clearBonus.cleanStreak === 1 &&
-                  ui.clearBonus.cities < 6 && (
-                    <span>One more clean wave to rebuild</span>
-                  )}
               </div>
             )}
             {ui.phase === 'gameover' && saveOpen && !needsRotate && (

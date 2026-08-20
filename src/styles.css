@@ -1521,6 +1521,11 @@ a.game-hud__board {
     display: none;
   }
 
+  .asteroids .game-hud__stat--time,
+  .asteroids .game-hud__stat--lives {
+    display: none;
+  }
+
   .game-hud__stat--time {
     min-width: 0;
   }
@@ -2852,7 +2857,7 @@ a.game-hud__board {
 .asteroids__btn {
   flex: 1 1 0;
   min-width: 0;
-  min-height: 5.2rem;
+  min-height: 6.25rem;
   margin: 0;
   padding: 0;
   display: grid;
@@ -2876,8 +2881,8 @@ a.game-hud__board {
 
 .asteroids__btn svg {
   display: block;
-  width: 2.35rem;
-  height: 2.35rem;
+  width: 2.85rem;
+  height: 2.85rem;
 }
 
 .asteroids__btn--thrust {
@@ -2891,8 +2896,8 @@ a.game-hud__board {
 }
 
 .asteroids__btn--reverse svg {
-  width: 1.85rem;
-  height: 1.85rem;
+  width: 2.25rem;
+  height: 2.25rem;
 }
 
 .asteroids--saving .asteroids__touch,
@@ -2915,6 +2920,49 @@ a.game-hud__board {
   .asteroids__hint--touch,
   .snake__hint--touch {
     display: block;
+  }
+
+  @media (orientation: portrait) {
+    /* Playfield takes what it needs; controls claim leftover height. */
+    .asteroids__play {
+      flex: 1 1 52%;
+      min-height: 0;
+    }
+
+    .asteroids__touch {
+      flex: 1 1 48%;
+      min-height: 8.5rem;
+      max-height: none;
+      align-items: stretch;
+    }
+
+    .asteroids__turns,
+    .asteroids__drive {
+      align-self: stretch;
+      min-height: 0;
+      height: 100%;
+    }
+
+    .asteroids__btn {
+      min-height: 0;
+      height: 100%;
+      align-self: stretch;
+    }
+
+    .asteroids__btn--thrust,
+    .asteroids__btn--reverse {
+      min-height: 0;
+    }
+
+    .asteroids__btn svg {
+      width: clamp(2.4rem, 12vmin, 3.6rem);
+      height: clamp(2.4rem, 12vmin, 3.6rem);
+    }
+
+    .asteroids__btn--reverse svg {
+      width: clamp(1.9rem, 9.5vmin, 2.9rem);
+      height: clamp(1.9rem, 9.5vmin, 2.9rem);
+    }
   }
 
   @media (orientation: landscape) and (max-height: 540px) {
@@ -3120,6 +3168,74 @@ a.game-hud__board {
 .rank-page__summary {
   display: flex;
   gap: 0.6rem;
+}
+
+.rank-page__near {
+  margin: 0;
+}
+
+.rank-page__near-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid rgba(var(--ink-rgb), 0.08);
+  border-radius: 0.95rem;
+  background: rgba(var(--surface-rgb), 0.72);
+  overflow: hidden;
+}
+
+.rank-page__near-row {
+  display: grid;
+  grid-template-columns: 3.2rem minmax(0, 1fr) auto;
+  gap: 0.65rem;
+  align-items: center;
+  padding: 0.7rem 0.9rem;
+  border-top: 1px solid rgba(var(--ink-rgb), 0.06);
+}
+
+.rank-page__near-row:first-child {
+  border-top: 0;
+}
+
+.rank-page__near-row--you {
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+}
+
+.rank-page__near-rank {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--muted);
+}
+
+.rank-page__near-row--you .rank-page__near-rank {
+  color: var(--ink);
+}
+
+.rank-page__near-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.rank-page__near-name em {
+  margin-left: 0.4rem;
+  font-style: normal;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.rank-page__near-pts {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
 }
 
 .rank-page__h {

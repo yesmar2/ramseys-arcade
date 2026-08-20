@@ -352,7 +352,9 @@ export function AsteroidsGame() {
             ? `${formatWaveTime(ui.time)}s`
             : '—'}
         </GameHudStat>
-        <GameHudStat label="Lives">{ui.lives}</GameHudStat>
+        <GameHudStat label="Lives" className="game-hud__stat--lives">
+          {ui.lives}
+        </GameHudStat>
       </GameHud>
       <div className="asteroids__body">
       <div className="asteroids__play" onPointerDown={onPlayTap}>

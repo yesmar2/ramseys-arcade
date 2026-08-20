@@ -1,6 +1,5 @@
 import {
   POWER_HUE,
-  POWER_LABEL,
   shipRadius,
   type GameState,
   type Point,
@@ -47,6 +46,88 @@ function drawRock(ctx: CanvasRenderingContext2D, rock: Rock, scale: number) {
   ctx.restore()
 }
 
+function drawPowerupGlyph(
+  ctx: CanvasRenderingContext2D,
+  kind: Powerup['kind'],
+  r: number,
+  scale: number,
+  hue: number,
+) {
+  const stroke = `hsla(${hue}, 50%, 28%, 0.98)`
+  ctx.strokeStyle = stroke
+  ctx.fillStyle = stroke
+  ctx.lineWidth = Math.max(2.2, 2.6 * scale)
+  ctx.lineCap = 'round'
+  ctx.lineJoin = 'round'
+
+  if (kind === 'rapid') {
+    // Lightning bolt
+    const s = r * 0.55
+    ctx.beginPath()
+    ctx.moveTo(s * 0.15, -s)
+    ctx.lineTo(-s * 0.25, s * 0.05)
+    ctx.lineTo(s * 0.05, s * 0.05)
+    ctx.lineTo(-s * 0.15, s)
+    ctx.lineTo(s * 0.35, -s * 0.05)
+    ctx.lineTo(s * 0.05, -s * 0.05)
+    ctx.closePath()
+    ctx.fill()
+    return
+  }
+
+  if (kind === 'spread') {
+    // Triple fan shots
+    const s = r * 0.5
+    for (const ang of [-0.55, 0, 0.55]) {
+      ctx.beginPath()
+      ctx.moveTo(0, 0)
+      ctx.lineTo(Math.cos(ang - Math.PI / 2) * s, Math.sin(ang - Math.PI / 2) * s)
+      ctx.stroke()
+      ctx.beginPath()
+      ctx.arc(
+        Math.cos(ang - Math.PI / 2) * s * 0.92,
+        Math.sin(ang - Math.PI / 2) * s * 0.92,
+        Math.max(1.6, 2.1 * scale),
+        0,
+        Math.PI * 2,
+      )
+      ctx.fill()
+    }
+    return
+  }
+
+  if (kind === 'shield') {
+    // Hex shield
+    const s = r * 0.48
+    ctx.beginPath()
+    for (let i = 0; i < 6; i++) {
+      const a = (Math.PI / 3) * i - Math.PI / 2
+      const x = Math.cos(a) * s
+      const y = Math.sin(a) * s
+      if (i === 0) ctx.moveTo(x, y)
+      else ctx.lineTo(x, y)
+    }
+    ctx.closePath()
+    ctx.stroke()
+    ctx.beginPath()
+    ctx.arc(0, 0, s * 0.28, 0, Math.PI * 2)
+    ctx.fill()
+    return
+  }
+
+  // Slow — clock
+  const s = r * 0.48
+  ctx.beginPath()
+  ctx.arc(0, 0, s, 0, Math.PI * 2)
+  ctx.stroke()
+  ctx.beginPath()
+  ctx.moveTo(0, 0)
+  ctx.lineTo(0, -s * 0.55)
+  ctx.moveTo(0, 0)
+  ctx.lineTo(s * 0.42, s * 0.1)
+  ctx.stroke()
+}
+
 function drawPowerup(ctx: CanvasRenderingContext2D, p: Powerup, scale: number) {
   const hue = POWER_HUE[p.kind]
   const fade = p.life < 2 ? Math.max(0.25, p.life / 2) : 1
@@ -57,21 +138,12 @@ function drawPowerup(ctx: CanvasRenderingContext2D, p: Powerup, scale: number) {
   ctx.translate(p.x, p.y)
   ctx.beginPath()
   ctx.arc(0, 0, r, 0, Math.PI * 2)
-  ctx.fillStyle = `hsla(${hue}, 62%, 58%, 0.28)`
+  ctx.fillStyle = `hsla(${hue}, 62%, 58%, 0.32)`
   ctx.fill()
   ctx.strokeStyle = `hsla(${hue}, 58%, 42%, 0.95)`
-  ctx.lineWidth = Math.max(1.6, 2 * scale)
+  ctx.lineWidth = Math.max(2, 2.4 * scale)
   ctx.stroke()
-  ctx.beginPath()
-  ctx.arc(0, 0, r * 0.42, 0, Math.PI * 2)
-  ctx.strokeStyle = `hsla(${hue}, 55%, 38%, 0.9)`
-  ctx.lineWidth = Math.max(1.2, 1.5 * scale)
-  ctx.stroke()
-  ctx.fillStyle = `hsla(${hue}, 50%, 32%, 0.95)`
-  ctx.font = `700 ${Math.round(9 * scale)}px Outfit, system-ui, sans-serif`
-  ctx.textAlign = 'center'
-  ctx.textBaseline = 'middle'
-  ctx.fillText(POWER_LABEL[p.kind][0], 0, 0.5 * scale)
+  drawPowerupGlyph(ctx, p.kind, r, scale, hue)
   ctx.restore()
 }
 

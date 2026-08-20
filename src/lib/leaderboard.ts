@@ -259,17 +259,24 @@ export type GlobalGamePlace = {
   points: number
 }
 
+export type GlobalRankNearby = {
+  name: string
+  rank: number
+  score: number
+}
+
 export type GlobalRankResult = {
   rank: number | null
   score: number
   totalPlayers: number
   byGame: Partial<Record<string, GlobalGamePlace>>
+  nearby?: GlobalRankNearby[]
 }
 
 export async function fetchGlobalRank(name: string): Promise<GlobalRankResult> {
   const cleaned = normalizePlayerName(name)
   if (!cleaned) {
-    return { rank: null, score: 0, totalPlayers: 0, byGame: {} }
+    return { rank: null, score: 0, totalPlayers: 0, byGame: {}, nearby: [] }
   }
   return api<GlobalRankResult>(
     `/leaderboards/rank?name=${encodeURIComponent(cleaned)}`,

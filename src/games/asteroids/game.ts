@@ -379,7 +379,7 @@ function maybeSpawnPowerup(rock: Rock, scale: number): Powerup | null {
     vy: (Math.random() - 0.5) * drift,
     kind,
     life: POWER_LIFE,
-    radius: 14 * scale,
+    radius: 20 * scale,
   }
 }
 
