@@ -6,6 +6,8 @@ export type Game = {
   slug: string
   description: string
   accent: string
+  /** One-line how to play, shown on the game page. */
+  how: string
   playable?: boolean
   /** If set, the game is only offered on these devices. */
   devices?: DeviceType[]
@@ -13,16 +15,18 @@ export type Game = {
 
 export const games: Game[] = [
   {
-    name: 'Stacker',
-    slug: 'stacker',
-    description: 'Time the drop. Stack higher. Don’t miss.',
-    accent: '#4aa8e8',
+    name: 'Asteroids',
+    slug: 'asteroids',
+    description: 'Spin, thrust, clear the rocks. Chain hits for more.',
+    how: 'Arrow keys or WASD to turn and thrust. Space fires. Break rocks into smaller ones without getting hit.',
+    accent: '#5a8fd4',
     playable: true,
   },
   {
     name: 'Patriot',
     slug: 'patriot',
     description: 'Defend the cities. Aim. Fire. Survive the wave.',
+    how: 'Move to aim. Click or tap to shoot. Protect the cities through each wave. Keys 1–4 use powers.',
     accent: '#e85d75',
     playable: true,
     devices: ['desktop', 'tablet'],
@@ -31,6 +35,7 @@ export const games: Game[] = [
     name: 'Snake',
     slug: 'snake',
     description: 'Grow longer. Don’t crash.',
+    how: 'Swipe or use arrow keys. Eat, grow, and don’t hit the walls or yourself.',
     accent: '#3ecf8e',
     playable: true,
   },
@@ -38,29 +43,33 @@ export const games: Game[] = [
     name: 'Pop',
     slug: 'pop',
     description: 'Tap the circles before they fade. Center hits score more.',
+    how: 'Tap circles before they fade. Hits closer to the center score more.',
     accent: '#4aa8e8',
     playable: true,
     devices: ['tablet', 'phone'],
   },
   {
-    name: 'Simon',
-    slug: 'simon',
-    description: 'Watch the pattern. Repeat it. Don’t miss.',
-    accent: '#8a6ad4',
+    name: 'Stacker',
+    slug: 'stacker',
+    description: 'Time the drop. Stack higher. Don’t miss.',
+    how: 'Tap or press space to drop the block. Land it on the stack — miss and the round is over.',
+    accent: '#4aa8e8',
     playable: true,
   },
   {
     name: 'Centroid',
     slug: 'dead-center',
     description: 'Find the shape’s true center. Closer scores more.',
+    how: 'Tap where you think the center is. Closer scores more. Ten shapes, five seconds each.',
     accent: '#4aa8e8',
     playable: true,
   },
   {
-    name: 'Asteroids',
-    slug: 'asteroids',
-    description: 'Spin, thrust, clear the rocks. Chain hits for more.',
-    accent: '#5a8fd4',
+    name: 'Simon',
+    slug: 'simon',
+    description: 'Watch the pattern. Repeat it. Don’t miss.',
+    how: 'Watch the pads light up, then tap the same pattern. Each round adds a step.',
+    accent: '#8a6ad4',
     playable: true,
   },
 ]

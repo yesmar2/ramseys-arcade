@@ -4,11 +4,15 @@ import { Header } from './components/Header'
 import { getGame } from './data/games'
 import { useHashRoute } from './hooks/useHashRoute'
 import { PLAYER_NAME_EVENT } from './lib/leaderboard'
+import { refreshGlobalRank } from './lib/globalRank'
 import { refreshPersonalBests } from './lib/personalBest'
-import { unlockSound } from './lib/sound'
+import { silenceMusic, unlockSound } from './lib/sound'
 import { AsteroidsPage } from './pages/AsteroidsPage'
+import { AuthVerifyPage } from './pages/AuthVerifyPage'
 import { DeadCenterPage } from './pages/DeadCenterPage'
+import { GamePreviewPage } from './pages/GamePreviewPage'
 import { HomePage } from './pages/HomePage'
+import { RankPage } from './pages/RankPage'
 import { LeaderboardsPage } from './pages/LeaderboardsPage'
 import { PatriotPage } from './pages/PatriotPage'
 import { SimonPage } from './pages/SimonPage'
@@ -41,13 +45,20 @@ function ComingSoonPage({ slug }: { slug: string }) {
   )
 }
 
+function isGameScreen(route: ReturnType<typeof useHashRoute>) {
+  return route.name === 'gamePlay' || route.name === 'tournamentPlay'
+}
+
 function App() {
   const route = useHashRoute()
+  const onGameScreen = isGameScreen(route)
 
   useEffect(() => {
     void refreshPersonalBests()
+    void refreshGlobalRank()
     const sync = () => {
       void refreshPersonalBests()
+      void refreshGlobalRank()
     }
     const unlock = () => unlockSound()
     window.addEventListener(PLAYER_NAME_EVENT, sync)
@@ -62,7 +73,13 @@ function App() {
     }
   }, [])
 
+  useEffect(() => {
+    if (!onGameScreen) silenceMusic()
+  }, [onGameScreen])
+
   if (route.name === 'home') return <HomePage />
+  if (route.name === 'authVerify') return <AuthVerifyPage token={route.token} />
+  if (route.name === 'rank') return <RankPage />
   if (route.name === 'leaderboards') {
     return <LeaderboardsPage game={route.game} period={route.period} />
   }
@@ -71,14 +88,15 @@ function App() {
     return <TournamentPlayPage tournamentId={route.id} gameSlug={route.game} />
   }
   if (route.name === 'tournament') return <TournamentDetailPage id={route.id} />
-  if (route.name === 'game' && route.slug === 'stacker') return <StackerPage />
-  if (route.name === 'game' && route.slug === 'patriot') return <PatriotPage />
-  if (route.name === 'game' && route.slug === 'snake') return <SnakePage />
-  if (route.name === 'game' && route.slug === 'pop') return <WhackPage />
-  if (route.name === 'game' && route.slug === 'simon') return <SimonPage />
-  if (route.name === 'game' && route.slug === 'dead-center') return <DeadCenterPage />
-  if (route.name === 'game' && route.slug === 'asteroids') return <AsteroidsPage />
-  if (route.name === 'game') return <ComingSoonPage slug={route.slug} />
+  if (route.name === 'game') return <GamePreviewPage slug={route.slug} />
+  if (route.name === 'gamePlay' && route.slug === 'stacker') return <StackerPage />
+  if (route.name === 'gamePlay' && route.slug === 'patriot') return <PatriotPage />
+  if (route.name === 'gamePlay' && route.slug === 'snake') return <SnakePage />
+  if (route.name === 'gamePlay' && route.slug === 'pop') return <WhackPage />
+  if (route.name === 'gamePlay' && route.slug === 'simon') return <SimonPage />
+  if (route.name === 'gamePlay' && route.slug === 'dead-center') return <DeadCenterPage />
+  if (route.name === 'gamePlay' && route.slug === 'asteroids') return <AsteroidsPage />
+  if (route.name === 'gamePlay') return <ComingSoonPage slug={route.slug} />
   return <HomePage />
 }
 

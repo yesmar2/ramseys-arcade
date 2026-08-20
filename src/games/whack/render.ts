@@ -5,18 +5,6 @@ function drawBackground(ctx: CanvasRenderingContext2D, w: number, h: number) {
   ctx.fillStyle = playfieldColor()
   ctx.fillRect(0, 0, w, h)
 
-  const a = ctx.createRadialGradient(w * 0.2, 0, 12, w * 0.28, 0, w * 0.7)
-  a.addColorStop(0, 'rgba(200, 232, 248, 0.9)')
-  a.addColorStop(1, 'rgba(200, 232, 248, 0)')
-  ctx.fillStyle = a
-  ctx.fillRect(0, 0, w, h)
-
-  const b = ctx.createRadialGradient(w * 0.85, h * 0.9, 8, w, h, w * 0.55)
-  b.addColorStop(0, 'rgba(197, 240, 228, 0.65)')
-  b.addColorStop(1, 'rgba(197, 240, 228, 0)')
-  ctx.fillStyle = b
-  ctx.fillRect(0, 0, w, h)
-
   const step = 26 * Math.max(0.7, Math.min(w, h) / 540)
   ctx.fillStyle = 'rgba(74, 168, 232, 0.09)'
   for (let py = step * 0.5; py < h; py += step) {

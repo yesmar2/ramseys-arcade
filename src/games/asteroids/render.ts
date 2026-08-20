@@ -1,4 +1,12 @@
-import { shipRadius, type GameState, type Point, type Rock } from './game'
+import {
+  POWER_HUE,
+  POWER_LABEL,
+  shipRadius,
+  type GameState,
+  type Point,
+  type Powerup,
+  type Rock,
+} from './game'
 import { inkColor, playfieldColor } from '../../lib/theme'
 
 const ACCENT = '#2eb8a0'
@@ -7,18 +15,6 @@ const ACCENT_GOLD = '#f5b942'
 
 function drawBackground(ctx: CanvasRenderingContext2D, w: number, h: number) {
   ctx.fillStyle = playfieldColor()
-  ctx.fillRect(0, 0, w, h)
-
-  const a = ctx.createRadialGradient(w * 0.15, 0, 10, w * 0.25, 0, w * 0.65)
-  a.addColorStop(0, 'rgba(200, 232, 248, 0.95)')
-  a.addColorStop(1, 'rgba(200, 232, 248, 0)')
-  ctx.fillStyle = a
-  ctx.fillRect(0, 0, w, h)
-
-  const b = ctx.createRadialGradient(w * 0.92, h * 0.9, 8, w, h, w * 0.55)
-  b.addColorStop(0, 'rgba(197, 240, 228, 0.7)')
-  b.addColorStop(1, 'rgba(197, 240, 228, 0)')
-  ctx.fillStyle = b
   ctx.fillRect(0, 0, w, h)
 
   const step = 28 * Math.max(0.7, Math.min(w, h) / 540)
@@ -51,6 +47,34 @@ function drawRock(ctx: CanvasRenderingContext2D, rock: Rock, scale: number) {
   ctx.restore()
 }
 
+function drawPowerup(ctx: CanvasRenderingContext2D, p: Powerup, scale: number) {
+  const hue = POWER_HUE[p.kind]
+  const fade = p.life < 2 ? Math.max(0.25, p.life / 2) : 1
+  const pulse = 0.92 + Math.sin(performance.now() / 180 + p.id) * 0.08
+  const r = p.radius * pulse
+  ctx.save()
+  ctx.globalAlpha = fade
+  ctx.translate(p.x, p.y)
+  ctx.beginPath()
+  ctx.arc(0, 0, r, 0, Math.PI * 2)
+  ctx.fillStyle = `hsla(${hue}, 62%, 58%, 0.28)`
+  ctx.fill()
+  ctx.strokeStyle = `hsla(${hue}, 58%, 42%, 0.95)`
+  ctx.lineWidth = Math.max(1.6, 2 * scale)
+  ctx.stroke()
+  ctx.beginPath()
+  ctx.arc(0, 0, r * 0.42, 0, Math.PI * 2)
+  ctx.strokeStyle = `hsla(${hue}, 55%, 38%, 0.9)`
+  ctx.lineWidth = Math.max(1.2, 1.5 * scale)
+  ctx.stroke()
+  ctx.fillStyle = `hsla(${hue}, 50%, 32%, 0.95)`
+  ctx.font = `700 ${Math.round(9 * scale)}px Outfit, system-ui, sans-serif`
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  ctx.fillText(POWER_LABEL[p.kind][0], 0, 0.5 * scale)
+  ctx.restore()
+}
+
 function shipPoints(angle: number, r: number): Point[] {
   const nose = { x: Math.cos(angle) * r, y: Math.sin(angle) * r }
   const left = {
@@ -66,7 +90,9 @@ function shipPoints(angle: number, r: number): Point[] {
 
 function drawShip(ctx: CanvasRenderingContext2D, state: GameState, scale: number) {
   const { ship } = state
-  if (ship.invuln > 0 && Math.floor(ship.invuln * 12) % 2 === 0) return
+  const shielded = (state.buffShield ?? 0) > 0
+  // Blink only after respawn — shield stays solid
+  if (!shielded && ship.invuln > 0 && Math.floor(ship.invuln * 12) % 2 === 0) return
 
   const r = shipRadius(scale)
   const pts = shipPoints(ship.angle, r)
@@ -83,6 +109,14 @@ function drawShip(ctx: CanvasRenderingContext2D, state: GameState, scale: number
   ctx.lineWidth = Math.max(2.5, 3.2 * scale)
   ctx.lineJoin = 'round'
   ctx.stroke()
+
+  if (shielded) {
+    ctx.beginPath()
+    ctx.arc(0, 0, r * 1.45, 0, Math.PI * 2)
+    ctx.strokeStyle = `hsla(${POWER_HUE.shield}, 55%, 45%, 0.85)`
+    ctx.lineWidth = Math.max(1.6, 2 * scale)
+    ctx.stroke()
+  }
 
   if (ship.thrusting) {
     const flicker = 0.7 + Math.random() * 0.5
@@ -127,6 +161,8 @@ export function renderGame(
   drawBackground(ctx, w, h)
 
   for (const rock of state.rocks) drawRock(ctx, rock, scale)
+
+  for (const p of state.powerups ?? []) drawPowerup(ctx, p, scale)
 
   for (const b of state.bullets) {
     ctx.beginPath()

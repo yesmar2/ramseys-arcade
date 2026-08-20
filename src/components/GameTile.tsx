@@ -13,16 +13,22 @@ export function GameTile({ game, index }: GameTileProps) {
     animationDelay: `${0.05 + index * 0.05}s`,
   } as CSSProperties
 
+  const hideOnPhone = Boolean(game.devices && !game.devices.includes('phone'))
+
   return (
-    <li>
+    <li className={hideOnPhone ? 'game-grid__item--no-phone' : undefined}>
       <a
         className="game-tile"
         href={`#/games/${game.slug}`}
         style={style}
         aria-label={game.name}
       >
-        <GameTileArt slug={game.slug} />
-        <h3 className="game-tile__title">{game.name}</h3>
+        <div className="game-tile__art">
+          <div className="game-tile__stage">
+            <GameTileArt slug={game.slug} />
+          </div>
+          <h3 className="game-tile__title">{game.name}</h3>
+        </div>
       </a>
     </li>
   )

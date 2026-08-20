@@ -125,24 +125,6 @@ export function renderGame(
   ctx.fillStyle = playfieldColor()
   ctx.fillRect(0, 0, w, h)
 
-  const sky = ctx.createRadialGradient(w * 0.2, h * -0.05, 20, w * 0.25, 0, w * 0.9)
-  sky.addColorStop(0, 'rgba(200, 232, 248, 0.9)')
-  sky.addColorStop(1, 'rgba(200, 232, 248, 0)')
-  ctx.fillStyle = sky
-  ctx.fillRect(0, 0, w, h)
-
-  const mint = ctx.createRadialGradient(w * 0.95, h * 0.15, 10, w, h * 0.2, w * 0.7)
-  mint.addColorStop(0, 'rgba(197, 240, 228, 0.75)')
-  mint.addColorStop(1, 'rgba(197, 240, 228, 0)')
-  ctx.fillStyle = mint
-  ctx.fillRect(0, 0, w, h)
-
-  const sun = ctx.createRadialGradient(w * 0.5, h * 1.05, 20, w * 0.5, h, w * 0.65)
-  sun.addColorStop(0, 'rgba(255, 233, 184, 0.55)')
-  sun.addColorStop(1, 'rgba(255, 233, 184, 0)')
-  ctx.fillStyle = sun
-  ctx.fillRect(0, 0, w, h)
-
   // Subtle dot pattern
   ctx.fillStyle = 'rgba(74, 168, 232, 0.1)'
   for (let py = 14; py < h; py += 28) {

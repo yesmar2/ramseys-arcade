@@ -318,13 +318,14 @@ export function SnakeGame() {
           >
             <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
               <path
-                d="M8 9H7a5 5 0 1 0 5 5"
+                d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"
                 stroke="currentColor"
                 strokeWidth="1.9"
                 strokeLinecap="round"
+                strokeLinejoin="round"
               />
               <path
-                d="M8 5.5 L8 9.5 L12 9.5"
+                d="M3 3v5h5"
                 stroke="currentColor"
                 strokeWidth="1.9"
                 strokeLinecap="round"
@@ -347,13 +348,14 @@ export function SnakeGame() {
           >
             <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
               <path
-                d="M16 9H17a5 5 0 1 1 -5 5"
+                d="M21 12a9 9 0 1 1-9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"
                 stroke="currentColor"
                 strokeWidth="1.9"
                 strokeLinecap="round"
+                strokeLinejoin="round"
               />
               <path
-                d="M16 5.5 L16 9.5 L12 9.5"
+                d="M21 3v5h-5"
                 stroke="currentColor"
                 strokeWidth="1.9"
                 strokeLinecap="round"

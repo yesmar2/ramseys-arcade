@@ -205,7 +205,7 @@ export function DeadCenterGame() {
                 <h2>Centroid</h2>
                 <p>Tap the shape’s true center. Closer scores more.</p>
                 <PersonalBestHint slug="dead-center" />
-                <span>5 shapes · 5 seconds each</span>
+                <span>10 shapes · 5 seconds each</span>
               </div>
             )}
             {ui.phase === 'reveal' && gradeLabel && (

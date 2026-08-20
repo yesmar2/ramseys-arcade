@@ -1,11 +1,10 @@
 import type { GameState } from './game'
 import { BEAD_SPACING, visualSegments } from './game'
-import { playfieldColor } from '../../lib/theme'
+import { isDarkTheme, playfieldColor } from '../../lib/theme'
 
 const HEAD_HUE = 158
-/** Hue the tail drifts per food eaten, and how far it can ever get from the head. */
-const HUE_PER_FOOD = 8
-const MAX_HUE_SPREAD = 150
+/** Degrees of hue each bead steps away from the head — wraps the rainbow as you grow. */
+const HUE_PER_BEAD = 10
 
 export function renderGame(
   ctx: CanvasRenderingContext2D,
@@ -20,29 +19,12 @@ export function renderGame(
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
   }
 
-  // Soft playground wash
+  const dark = isDarkTheme()
+
   ctx.fillStyle = playfieldColor()
   ctx.fillRect(0, 0, w, h)
 
-  const sky = ctx.createRadialGradient(w * 0.18, h * -0.05, 20, w * 0.22, 0, w * 0.85)
-  sky.addColorStop(0, 'rgba(200, 232, 248, 0.9)')
-  sky.addColorStop(1, 'rgba(200, 232, 248, 0)')
-  ctx.fillStyle = sky
-  ctx.fillRect(0, 0, w, h)
-
-  const mint = ctx.createRadialGradient(w * 0.95, h * 0.12, 10, w, h * 0.18, w * 0.7)
-  mint.addColorStop(0, 'rgba(197, 240, 228, 0.75)')
-  mint.addColorStop(1, 'rgba(197, 240, 228, 0)')
-  ctx.fillStyle = mint
-  ctx.fillRect(0, 0, w, h)
-
-  const sun = ctx.createRadialGradient(w * 0.5, h * 1.05, 20, w * 0.5, h, w * 0.65)
-  sun.addColorStop(0, 'rgba(255, 233, 184, 0.5)')
-  sun.addColorStop(1, 'rgba(255, 233, 184, 0)')
-  ctx.fillStyle = sun
-  ctx.fillRect(0, 0, w, h)
-
-  ctx.fillStyle = 'rgba(74, 168, 232, 0.1)'
+  ctx.fillStyle = dark ? 'rgba(74, 168, 232, 0.08)' : 'rgba(74, 168, 232, 0.1)'
   for (let py = 14; py < h; py += 28) {
     for (let px = 14; px < w; px += 28) {
       ctx.beginPath()
@@ -63,14 +45,14 @@ export function renderGame(
   // Board panel
   const radius = Math.max(12, cell * 0.55)
   roundRect(ctx, ox - 10, oy - 10, gridW + 20, gridH + 20, radius)
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.55)'
+  ctx.fillStyle = dark ? 'rgba(8, 14, 20, 0.55)' : 'rgba(255, 255, 255, 0.55)'
   ctx.fill()
-  ctx.strokeStyle = 'rgba(26, 43, 60, 0.06)'
+  ctx.strokeStyle = dark ? 'rgba(231, 238, 243, 0.08)' : 'rgba(26, 43, 60, 0.06)'
   ctx.lineWidth = 1
   ctx.stroke()
 
   // Soft grid dots
-  ctx.fillStyle = 'rgba(46, 184, 160, 0.12)'
+  ctx.fillStyle = dark ? 'rgba(46, 184, 160, 0.14)' : 'rgba(46, 184, 160, 0.12)'
   for (let y = 0; y < state.rows; y++) {
     for (let x = 0; x < state.cols; x++) {
       const cx = ox + (x + 0.5) * cell
@@ -115,16 +97,13 @@ export function renderGame(
   const gap = (cell - sw) / 2
   const segR = sw / 2
 
-  // Head stays green; the tail drifts further through teal and blue as you grow
-  const hueSpread = Math.min(MAX_HUE_SPREAD, (state.segments - 3) * HUE_PER_FOOD)
-
+  // Head stays green; each bead steps through the rainbow and wraps when long enough
   for (let i = segments.length - 1; i >= 0; i--) {
     const seg = segments[i]
     const sx = ox + seg.x * cell + gap
     const sy = oy + seg.y * cell + gap
-    const t = i / Math.max(1, segments.length - 1)
-    const hue = HEAD_HUE + hueSpread * t
-    const sat = 58 + hueSpread * 0.06
+    const hue = ((HEAD_HUE + i * HUE_PER_BEAD) % 360 + 360) % 360
+    const sat = 58 + Math.min(12, i * 0.15)
 
     roundRect(ctx, sx, sy, sw, sh, segR)
     ctx.fillStyle = `hsla(${hue}, ${sat}%, 58%, 0.22)`

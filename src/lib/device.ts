@@ -12,24 +12,31 @@ export function isDeviceType(value: unknown): value is DeviceType {
   return value === 'phone' || value === 'tablet' || value === 'desktop'
 }
 
+function isNarrowPhoneViewport() {
+  if (typeof window === 'undefined') return false
+  return Boolean(window.matchMedia?.('(max-width: 767px)').matches)
+}
+
 export function detectDeviceType(): DeviceType {
   if (typeof navigator === 'undefined') return 'desktop'
   const ua = navigator.userAgent || ''
   const maxTouch = navigator.maxTouchPoints || 0
+  const narrow = isNarrowPhoneViewport()
 
   if (/iPhone|iPod/i.test(ua)) return 'phone'
   if (/iPad/i.test(ua) || (/Macintosh/i.test(ua) && maxTouch > 1)) return 'tablet'
-  if (/Android/i.test(ua)) return /Mobile/i.test(ua) ? 'phone' : 'tablet'
+  if (/Android/i.test(ua)) {
+    if (/Mobile/i.test(ua) || narrow) return 'phone'
+    return 'tablet'
+  }
 
-  const cssPhone =
-    typeof window !== 'undefined' &&
-    Boolean(window.matchMedia?.('(max-width: 639px)').matches)
-  if (cssPhone) return 'phone'
+  if (narrow) return 'phone'
 
   const coarse =
     typeof window !== 'undefined' &&
     Boolean(window.matchMedia?.('(pointer: coarse)').matches)
-  if (!coarse && maxTouch < 2) return 'desktop'
+  // Windows / desktop often report many touch points — fine pointer still means desktop
+  if (!coarse) return 'desktop'
 
   const shortest = Math.min(
     window.screen?.width || Number.POSITIVE_INFINITY,
@@ -38,8 +45,7 @@ export function detectDeviceType(): DeviceType {
     window.innerHeight || Number.POSITIVE_INFINITY,
   )
   if (Number.isFinite(shortest) && shortest < 600) return 'phone'
-  if (coarse) return 'tablet'
-  return 'desktop'
+  return 'tablet'
 }
 
 export function useDeviceType(): DeviceType {
@@ -47,11 +53,14 @@ export function useDeviceType(): DeviceType {
 
   useEffect(() => {
     const sync = () => setDevice(detectDeviceType())
+    const narrowMq = window.matchMedia('(max-width: 767px)')
     window.addEventListener('resize', sync)
     window.addEventListener('orientationchange', sync)
+    narrowMq.addEventListener('change', sync)
     return () => {
       window.removeEventListener('resize', sync)
       window.removeEventListener('orientationchange', sync)
+      narrowMq.removeEventListener('change', sync)
     }
   }, [])
 

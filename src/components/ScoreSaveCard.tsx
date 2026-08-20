@@ -7,11 +7,14 @@ import {
   fetchPlayerBests,
   getLastPlayerName,
   LEADERBOARD_GAMES,
+  normalizePlayerName,
   PERIOD_LABELS,
+  PLAYER_NAME_MAX,
   type LeaderboardGame,
   type LeaderboardPeriod,
 } from '../lib/leaderboard'
 import { describePersonalBest, rememberPersonalBest } from '../lib/personalBest'
+import { refreshGlobalRank } from '../lib/globalRank'
 
 type ScoreSaveProps = {
   gameSlug: string
@@ -281,7 +284,7 @@ function ScoreCelebration({
 }
 
 function cleanName(raw: string) {
-  return raw.trim().slice(0, 12).toUpperCase()
+  return normalizePlayerName(raw)
 }
 
 function boardsHref(gameSlug: string) {
@@ -378,6 +381,7 @@ export function ScoreSaveCard({
         const saved = await addLeaderboardScore(gameSlug, name, score)
         if (cancelled) return
         rememberPersonalBest(gameSlug, Math.max(recordRef.current, score))
+        void refreshGlobalRank()
         setRanks(saved.ranks)
         savedRef.current = true
         setPhase('saved')
@@ -386,7 +390,9 @@ export function ScoreSaveCard({
         if (cancelled) return
         if (err instanceof ApiError && err.code === 'NAME_TAKEN') {
           setPhase('needName')
-          setError('That name is taken — pick another')
+          setError(
+            'That gamer tag is taken. Sign in or pick another.',
+          )
           return
         }
         setError(err instanceof Error ? err.message : 'Could not save score')
@@ -408,13 +414,16 @@ export function ScoreSaveCard({
     try {
       const saved = await addLeaderboardScore(gameSlug, name, score)
       rememberPersonalBest(gameSlug, Math.max(recordRef.current, score))
+      void refreshGlobalRank()
       setRanks(saved.ranks)
       savedRef.current = true
       setPhase('saved')
       openCelebration(recordRef.current, saved.ranks)
     } catch (err) {
       if (err instanceof ApiError && err.code === 'NAME_TAKEN') {
-        setError('That name is taken — pick another')
+        setError(
+          'That gamer tag is taken. Sign in or pick another.',
+        )
         setPhase('needName')
         return
       }
@@ -463,16 +472,16 @@ export function ScoreSaveCard({
       {phase === 'needName' && (
         <>
           <label className="score-save__field">
-            <span className="score-save__label">Name</span>
+            <span className="score-save__label">Gamer tag</span>
             <input
               ref={nameInputRef}
               className="score-save__input"
               value={nameDraft}
-              maxLength={12}
+              maxLength={PLAYER_NAME_MAX}
               placeholder="YOU"
               autoComplete="off"
               spellCheck={false}
-              onChange={(e) => setNameDraft(e.target.value.toUpperCase())}
+              onChange={(e) => setNameDraft(e.target.value.toUpperCase().slice(0, PLAYER_NAME_MAX))}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                   e.preventDefault()

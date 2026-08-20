@@ -5,7 +5,7 @@ import { ThemeToggle } from './ThemeToggle'
 const NAV = [
   { href: '#/', label: 'Games' },
   { href: '#/tournaments', label: 'Tournaments' },
-  { href: '#/leaderboards/stacker/daily', label: 'Leaderboards' },
+  { href: '#/leaderboards/asteroids/daily', label: 'Leaderboards' },
 ]
 
 export function Header() {

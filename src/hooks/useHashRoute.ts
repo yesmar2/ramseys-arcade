@@ -9,10 +9,13 @@ import {
 export type Route =
   | { name: 'home' }
   | { name: 'leaderboards'; game?: LeaderboardGame; period?: LeaderboardPeriod }
+  | { name: 'rank' }
   | { name: 'tournaments' }
   | { name: 'tournament'; id: string }
   | { name: 'tournamentPlay'; id: string; game: string }
   | { name: 'game'; slug: string }
+  | { name: 'gamePlay'; slug: string }
+  | { name: 'authVerify'; token: string }
 
 function isLeaderboardGame(value: string): value is LeaderboardGame {
   return (LEADERBOARD_GAMES as readonly string[]).includes(value)
@@ -23,16 +26,29 @@ function isLeaderboardPeriod(value: string): value is LeaderboardPeriod {
 }
 
 export function leaderboardHref(
-  game: LeaderboardGame = 'stacker',
+  game: LeaderboardGame = LEADERBOARD_GAMES[0],
   period: LeaderboardPeriod = 'daily',
 ) {
   return `#/leaderboards/${game}/${period}`
+}
+
+export function rankHref() {
+  return '#/rank'
+}
+
+export function gameHref(slug: string) {
+  return `#/games/${slug}`
+}
+
+export function gamePlayHref(slug: string) {
+  return `#/games/${slug}/play`
 }
 
 function parseHash(hash: string): Route {
   const path = hash.replace(/^#\/?/, '').replace(/\/$/, '')
   if (!path) return { name: 'home' }
   if (path === 'leaderboards') return { name: 'leaderboards' }
+  if (path === 'rank') return { name: 'rank' }
 
   const boardsMatch = /^leaderboards\/([^/]+)(?:\/([^/]+))?$/.exec(path)
   if (boardsMatch) {
@@ -47,6 +63,11 @@ function parseHash(hash: string): Route {
 
   if (path === 'tournaments') return { name: 'tournaments' }
 
+  const authVerifyMatch = /^auth\/verify\/([^/]+)$/.exec(path)
+  if (authVerifyMatch) {
+    return { name: 'authVerify', token: decodeURIComponent(authVerifyMatch[1]) }
+  }
+
   const tournamentPlayMatch = /^tournaments\/([^/]+)\/play\/([^/]+)$/.exec(path)
   if (tournamentPlayMatch) {
     return {
@@ -59,6 +80,11 @@ function parseHash(hash: string): Route {
   const tournamentMatch = /^tournaments\/([^/]+)$/.exec(path)
   if (tournamentMatch) {
     return { name: 'tournament', id: decodeURIComponent(tournamentMatch[1]) }
+  }
+
+  const gamePlayMatch = /^games\/([^/]+)\/play$/.exec(path)
+  if (gamePlayMatch) {
+    return { name: 'gamePlay', slug: decodeURIComponent(gamePlayMatch[1]) }
   }
 
   const gameMatch = /^games\/([^/]+)$/.exec(path)

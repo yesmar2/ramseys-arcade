@@ -13,12 +13,12 @@ export type LeaderboardEntry = {
 }
 
 export const LEADERBOARD_GAMES = [
-  'stacker',
+  'asteroids',
   'patriot',
   'snake',
   'pop',
+  'stacker',
   'dead-center',
-  'asteroids',
   'simon',
 ] as const
 export type LeaderboardGame = (typeof LEADERBOARD_GAMES)[number]
@@ -31,6 +31,14 @@ export const PERIOD_LABELS: Record<LeaderboardPeriod, string> = {
   weekly: 'This week',
   monthly: 'This month',
   all: 'All time',
+}
+
+/** Hard cap for player names (API + UI). */
+export const PLAYER_NAME_MAX = 12
+
+/** Trim, uppercase, and clamp to {@link PLAYER_NAME_MAX}. */
+export function normalizePlayerName(name: string) {
+  return name.trim().slice(0, PLAYER_NAME_MAX).toUpperCase()
 }
 
 const LAST_NAME_KEY = 'arcade-last-name'
@@ -62,10 +70,18 @@ export class ApiError extends Error {
 }
 
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
+  let sessionHeader: Record<string, string> = {}
+  try {
+    const session = localStorage.getItem('arcade-session')
+    if (session) sessionHeader = { Authorization: `Bearer ${session}` }
+  } catch {
+    /* ignore */
+  }
   const res = await fetch(`${API_BASE}${path}`, {
     ...init,
     headers: {
       'Content-Type': 'application/json',
+      ...sessionHeader,
       ...(init?.headers ?? {}),
     },
   })
@@ -109,13 +125,13 @@ function writeClaims(claims: Record<string, string>) {
 }
 
 export function getClaimToken(name: string): string | null {
-  const cleaned = name.trim().slice(0, 12).toUpperCase()
+  const cleaned = normalizePlayerName(name)
   if (!cleaned) return null
   return readClaims()[cleaned] ?? null
 }
 
 export function rememberClaimToken(name: string, token: string) {
-  const cleaned = name.trim().slice(0, 12).toUpperCase()
+  const cleaned = normalizePlayerName(name)
   if (!cleaned || !token) return
   const claims = readClaims()
   claims[cleaned] = token
@@ -124,7 +140,7 @@ export function rememberClaimToken(name: string, token: string) {
 
 export function getLastPlayerName(): string {
   try {
-    return localStorage.getItem(LAST_NAME_KEY) || ''
+    return normalizePlayerName(localStorage.getItem(LAST_NAME_KEY) || '')
   } catch {
     return ''
   }
@@ -144,9 +160,16 @@ function setLocalPlayerName(cleaned: string) {
   }
 }
 
+/** Persist display name locally and notify listeners (no server claim). */
+export function setPlayerNameLocal(cleaned: string) {
+  const name = normalizePlayerName(cleaned)
+  if (!name) return
+  setLocalPlayerName(name)
+}
+
 /** Persist name locally and claim it on the server (unique across players). */
 export async function rememberPlayerName(name: string): Promise<string> {
-  const cleaned = name.trim().slice(0, 12).toUpperCase() || 'YOU'
+  const cleaned = normalizePlayerName(name) || 'YOU'
   const previous = getLastPlayerName()
   const existingToken = getClaimToken(cleaned)
 
@@ -189,7 +212,7 @@ export function clearPlayerName() {
 }
 
 export async function checkNameAvailable(name: string): Promise<boolean> {
-  const cleaned = name.trim().slice(0, 12).toUpperCase()
+  const cleaned = normalizePlayerName(name)
   if (!cleaned) return false
   const token = getClaimToken(cleaned)
   const q = token ? `?token=${encodeURIComponent(token)}` : ''
@@ -207,7 +230,7 @@ export async function getLeaderboard(
   name?: string,
 ): Promise<{ entries: LeaderboardEntry[]; you: YouEntry | null }> {
   const params = new URLSearchParams({ period })
-  const cleaned = name?.trim().slice(0, 12).toUpperCase()
+  const cleaned = normalizePlayerName(name ?? '')
   if (cleaned) params.set('name', cleaned)
   const data = await api<{ entries: LeaderboardEntry[]; you?: YouEntry | null }>(
     `/leaderboards/${slug}?${params.toString()}`,
@@ -223,12 +246,34 @@ export async function fetchTopScore(slug: string): Promise<number> {
 export async function fetchPlayerBests(
   name: string,
 ): Promise<Record<string, number>> {
-  const cleaned = name.trim().slice(0, 12).toUpperCase()
+  const cleaned = normalizePlayerName(name)
   if (!cleaned) return {}
   const data = await api<{ bests?: Record<string, number> }>(
     `/leaderboards/bests?name=${encodeURIComponent(cleaned)}`,
   )
   return data.bests ?? {}
+}
+
+export type GlobalGamePlace = {
+  place: number
+  points: number
+}
+
+export type GlobalRankResult = {
+  rank: number | null
+  score: number
+  totalPlayers: number
+  byGame: Partial<Record<string, GlobalGamePlace>>
+}
+
+export async function fetchGlobalRank(name: string): Promise<GlobalRankResult> {
+  const cleaned = normalizePlayerName(name)
+  if (!cleaned) {
+    return { rank: null, score: 0, totalPlayers: 0, byGame: {} }
+  }
+  return api<GlobalRankResult>(
+    `/leaderboards/rank?name=${encodeURIComponent(cleaned)}`,
+  )
 }
 
 export type QualifiesResult = {
@@ -254,7 +299,7 @@ export async function addLeaderboardScore(
   rank: number | null
   ranks?: Partial<Record<LeaderboardPeriod, number>>
 }> {
-  const cleaned = name.trim().slice(0, 12).toUpperCase() || 'PLAYER'
+  const cleaned = normalizePlayerName(name) || 'PLAYER'
   const token = getClaimToken(cleaned)
   const data = await api<{
     entries: LeaderboardEntry[]

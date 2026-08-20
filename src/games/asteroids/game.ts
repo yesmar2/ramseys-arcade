@@ -7,6 +7,19 @@ export type Point = { x: number; y: number }
 
 export type RockSize = 'large' | 'medium' | 'small'
 
+export type PowerKind = 'rapid' | 'spread' | 'shield' | 'slow'
+
+export type Powerup = {
+  id: number
+  x: number
+  y: number
+  vx: number
+  vy: number
+  kind: PowerKind
+  life: number
+  radius: number
+}
+
 export type Rock = {
   id: number
   x: number
@@ -73,6 +86,10 @@ export type Snapshot = {
   timeBonus: number
   combo: number
   comboBest: number
+  buffRapid: boolean
+  buffSpread: boolean
+  buffShield: boolean
+  buffSlow: boolean
 }
 
 export type GameState = {
@@ -86,6 +103,7 @@ export type GameState = {
   rocks: Rock[]
   bullets: Bullet[]
   particles: Particle[]
+  powerups: Powerup[]
   turnLeft: boolean
   turnRight: boolean
   /** -1 left … 1 right. Used when analog stick is active. */
@@ -107,6 +125,10 @@ export type GameState = {
   comboBest: number
   lastComboBest: number
   floaters: Floater[]
+  buffRapid: number
+  buffSpread: number
+  buffShield: number
+  buffSlow: number
 }
 
 export const DESIGN_LONG = 960
@@ -139,6 +161,23 @@ const BULLET_LIFE = 0.55
 const SHIP_RADIUS = 22
 const START_LIVES = 3
 const COMBO_WINDOW = 0.75
+const POWER_LIFE = 6
+const BUFF_DURATION = 8
+const POWER_KINDS: PowerKind[] = ['rapid', 'spread', 'shield', 'slow']
+
+export const POWER_LABEL: Record<PowerKind, string> = {
+  rapid: 'Rapid',
+  spread: 'Spread',
+  shield: 'Shield',
+  slow: 'Slow',
+}
+
+export const POWER_HUE: Record<PowerKind, number> = {
+  rapid: 38,
+  spread: 272,
+  shield: 172,
+  slow: 198,
+}
 
 function comboMultiplier(combo: number) {
   return Math.min(2, 1 + Math.max(0, combo - 1) * 0.25)
@@ -322,6 +361,57 @@ function splitRock(rock: Rock, speedScale: number, worldScale: number): Rock[] {
   return kids
 }
 
+function dropChance(size: RockSize) {
+  if (size === 'large') return 0.34
+  if (size === 'medium') return 0.2
+  return 0.08
+}
+
+function maybeSpawnPowerup(rock: Rock, scale: number): Powerup | null {
+  if (Math.random() > dropChance(rock.size)) return null
+  const kind = POWER_KINDS[Math.floor(Math.random() * POWER_KINDS.length)]
+  const drift = 28 * scale
+  return {
+    id: uid(),
+    x: rock.x,
+    y: rock.y,
+    vx: (Math.random() - 0.5) * drift,
+    vy: (Math.random() - 0.5) * drift,
+    kind,
+    life: POWER_LIFE,
+    radius: 14 * scale,
+  }
+}
+
+function applyPowerup(state: GameState, kind: PowerKind): GameState {
+  sfx('good')
+  const label = POWER_LABEL[kind].toUpperCase()
+  const floaters = [
+    ...state.floaters,
+    {
+      x: state.ship.x,
+      y: state.ship.y - 28 * state.scale,
+      text: label,
+      life: 0.9,
+      maxLife: 0.9,
+    },
+  ]
+  if (kind === 'rapid') {
+    return { ...state, buffRapid: BUFF_DURATION, floaters }
+  }
+  if (kind === 'spread') {
+    return { ...state, buffSpread: BUFF_DURATION, floaters }
+  }
+  if (kind === 'shield') {
+    return {
+      ...state,
+      buffShield: BUFF_DURATION,
+      floaters,
+    }
+  }
+  return { ...state, buffSlow: BUFF_DURATION, floaters }
+}
+
 export function createInitialState(w = DESIGN_W, h = DESIGN_H): GameState {
   const scale = designScale(w, h)
   return {
@@ -335,6 +425,7 @@ export function createInitialState(w = DESIGN_W, h = DESIGN_H): GameState {
     rocks: [],
     bullets: [],
     particles: [],
+    powerups: [],
     turnLeft: false,
     turnRight: false,
     turn: 0,
@@ -355,6 +446,10 @@ export function createInitialState(w = DESIGN_W, h = DESIGN_H): GameState {
     comboBest: 0,
     lastComboBest: 0,
     floaters: [],
+    buffRapid: 0,
+    buffSpread: 0,
+    buffShield: 0,
+    buffSlow: 0,
   }
 }
 
@@ -404,6 +499,14 @@ export function resizeState(state: GameState, w: number, h: number): GameState {
       x: f.x * sx,
       y: f.y * sy,
     })),
+    powerups: (state.powerups ?? []).map((p) => ({
+      ...p,
+      x: p.x * sx,
+      y: p.y * sy,
+      vx: p.vx * k,
+      vy: p.vy * k,
+      radius: p.radius * k,
+    })),
   }
 }
 
@@ -436,6 +539,7 @@ export function beginNextWave(state: GameState): GameState {
     phase: 'playing',
     ship,
     bullets: [],
+    powerups: [],
     waveElapsed: 0,
     wavePause: 0,
     turnLeft: false,
@@ -466,27 +570,32 @@ function shipRadius(scale: number) {
 }
 
 function tryFire(state: GameState): GameState {
-  if (state.fireCooldown > 0 || state.bullets.length >= MAX_BULLETS) return state
-  if (state.ship.invuln > 1.6) return state
+  const rapid = state.buffRapid > 0
+  const spread = state.buffSpread > 0
+  const cooldown = rapid ? FIRE_COOLDOWN * 0.42 : FIRE_COOLDOWN
+  const maxBullets = rapid || spread ? MAX_BULLETS + 4 : MAX_BULLETS
+  if (state.fireCooldown > 0 || state.bullets.length >= maxBullets) return state
+  // Brief no-fire only after respawn — shield invuln must still allow shooting
+  if ((state.buffShield ?? 0) <= 0 && state.ship.invuln > 1.6) return state
   const { ship } = state
   const r = shipRadius(state.scale)
   const bulletSpeed = BULLET_SPEED * state.scale
-  const bx = ship.x + Math.cos(ship.angle) * (r + 4 * state.scale)
-  const by = ship.y + Math.sin(ship.angle) * (r + 4 * state.scale)
+  const nose = r + 4 * state.scale
+  const angles = spread
+    ? [ship.angle - 0.22, ship.angle, ship.angle + 0.22]
+    : [ship.angle]
+  const nextBullets = angles.map((angle) => ({
+    id: uid(),
+    x: ship.x + Math.cos(angle) * nose,
+    y: ship.y + Math.sin(angle) * nose,
+    vx: Math.cos(angle) * bulletSpeed + ship.vx * 0.2,
+    vy: Math.sin(angle) * bulletSpeed + ship.vy * 0.2,
+    life: BULLET_LIFE,
+  }))
   return {
     ...state,
-    fireCooldown: FIRE_COOLDOWN,
-    bullets: [
-      ...state.bullets,
-      {
-        id: uid(),
-        x: bx,
-        y: by,
-        vx: Math.cos(ship.angle) * bulletSpeed + ship.vx * 0.2,
-        vy: Math.sin(ship.angle) * bulletSpeed + ship.vy * 0.2,
-        life: BULLET_LIFE,
-      },
-    ],
+    fireCooldown: cooldown,
+    bullets: [...state.bullets, ...nextBullets],
   }
 }
 
@@ -505,12 +614,17 @@ function killShip(state: GameState): GameState {
       best,
       particles,
       bullets: [],
+      powerups: [],
       flash: 0.35,
       thrust: false,
       reverse: false,
       fireHeld: false,
       combo: 0,
       comboTimer: 0,
+      buffRapid: 0,
+      buffSpread: 0,
+      buffShield: 0,
+      buffSlow: 0,
     }
   }
   sfx('hurt')
@@ -561,6 +675,11 @@ export function tick(state: GameState, dt: number): GameState {
     waveElapsed: state.waveElapsed + dt,
     comboTimer: Math.max(0, state.comboTimer - dt),
     floaters: tickFloaters(state.floaters, dt, state.scale),
+    buffRapid: Math.max(0, (state.buffRapid ?? 0) - dt),
+    buffSpread: Math.max(0, (state.buffSpread ?? 0) - dt),
+    buffShield: Math.max(0, (state.buffShield ?? 0) - dt),
+    buffSlow: Math.max(0, (state.buffSlow ?? 0) - dt),
+    powerups: state.powerups ?? [],
   }
   if (s.comboTimer <= 0 && s.combo > 0) {
     s = { ...s, combo: 0 }
@@ -569,6 +688,7 @@ export function tick(state: GameState, dt: number): GameState {
   let ship = { ...s.ship }
   const sc = s.scale
   const hull = shipRadius(sc)
+  const rockDt = s.buffSlow > 0 ? dt * 0.42 : dt
   if (s.turnLeft) ship.angle -= TURN_SPEED * dt
   if (s.turnRight) ship.angle += TURN_SPEED * dt
   if (!s.turnLeft && !s.turnRight && s.turn) {
@@ -599,6 +719,7 @@ export function tick(state: GameState, dt: number): GameState {
 
   // Always auto-fire — holding a fire key + arrows ghosts on many keyboards
   s = tryFire(s)
+  ship = s.ship
 
   let particles = s.particles
     .map((p) => ({
@@ -635,10 +756,19 @@ export function tick(state: GameState, dt: number): GameState {
 
   let rocks = s.rocks.map((r) => ({
     ...r,
-    x: wrap(r.x + r.vx * dt, s.stageW),
-    y: wrap(r.y + r.vy * dt, s.stageH),
-    angle: r.angle + r.spin * dt,
+    x: wrap(r.x + r.vx * rockDt, s.stageW),
+    y: wrap(r.y + r.vy * rockDt, s.stageH),
+    angle: r.angle + r.spin * rockDt,
   }))
+
+  let powerups = (s.powerups ?? [])
+    .map((p) => ({
+      ...p,
+      x: wrap(p.x + p.vx * dt, s.stageW),
+      y: wrap(p.y + p.vy * dt, s.stageH),
+      life: p.life - dt,
+    }))
+    .filter((p) => p.life > 0)
 
   const speedScale = 1 + (s.wave - 1) * 0.08
   let score = s.score
@@ -649,6 +779,7 @@ export function tick(state: GameState, dt: number): GameState {
   const hitBullet = new Set<number>()
   const hitRock = new Set<number>()
   const spawned: Rock[] = []
+  const dropped: Powerup[] = []
 
   for (const b of bullets) {
     for (const r of rocks) {
@@ -664,6 +795,8 @@ export function tick(state: GameState, dt: number): GameState {
         burst(particles, r.x, r.y, r.hue, r.size === 'large' ? 14 : 9, 120)
         sfx('hit', combo)
         spawned.push(...splitRock(r, speedScale, sc))
+        const drop = maybeSpawnPowerup(r, sc)
+        if (drop) dropped.push(drop)
         floaters.push({
           x: r.x,
           y: r.y,
@@ -678,11 +811,34 @@ export function tick(state: GameState, dt: number): GameState {
   if (hitBullet.size || hitRock.size) {
     bullets = bullets.filter((b) => !hitBullet.has(b.id))
     rocks = [...rocks.filter((r) => !hitRock.has(r.id)), ...spawned]
+    powerups = [...powerups, ...dropped]
   }
 
-  s = { ...s, score, bullets, rocks, particles, combo, comboTimer, comboBest, floaters }
+  s = {
+    ...s,
+    score,
+    bullets,
+    rocks,
+    particles,
+    powerups,
+    combo,
+    comboTimer,
+    comboBest,
+    floaters,
+  }
 
-  if (ship.invuln <= 0) {
+  const stillPowerups: Powerup[] = []
+  for (const p of s.powerups) {
+    if (dist(ship.x, ship.y, p.x, p.y) < p.radius + hull * 0.85) {
+      s = applyPowerup(s, p.kind)
+      ship = s.ship
+    } else {
+      stillPowerups.push(p)
+    }
+  }
+  s = { ...s, powerups: stillPowerups, ship }
+
+  if (ship.invuln <= 0 && (s.buffShield ?? 0) <= 0) {
     for (const r of rocks) {
       if (dist(ship.x, ship.y, r.x, r.y) < r.radius + hull * 0.7) {
         return killShip(s)
@@ -711,6 +867,7 @@ export function tick(state: GameState, dt: number): GameState {
       comboBest: 0,
       rocks: [],
       bullets: [],
+      powerups: [],
       turnLeft: false,
       turnRight: false,
       turn: 0,
@@ -742,6 +899,10 @@ export function toSnapshot(s: GameState): Snapshot {
     timeBonus: s.timeBonus,
     combo: s.combo,
     comboBest: s.phase === 'waveClear' ? s.lastComboBest : s.comboBest,
+    buffRapid: (s.buffRapid ?? 0) > 0,
+    buffSpread: (s.buffSpread ?? 0) > 0,
+    buffShield: (s.buffShield ?? 0) > 0,
+    buffSlow: (s.buffSlow ?? 0) > 0,
   }
 }
 

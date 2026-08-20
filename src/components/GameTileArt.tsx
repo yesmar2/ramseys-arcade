@@ -11,14 +11,6 @@ const HUE = {
   green: 128,
 }
 
-function wash(hue: number, sat = 52) {
-  return {
-    fill: `hsla(${hue}, ${sat}%, 58%, 0.42)`,
-    stroke: `hsla(${hue}, ${sat}%, 42%, 0.95)`,
-  }
-}
-
-/** More solid pastel for small thumbnails — alpha washes read as empty rings. */
 function pastel(hue: number, sat = 52, mix = 40) {
   return {
     fill: `color-mix(in srgb, hsla(${hue}, ${sat}%, 58%, 1) ${mix}%, var(--playfield))`,
@@ -26,34 +18,15 @@ function pastel(hue: number, sat = 52, mix = 40) {
   }
 }
 
-function TileBg({
-  dots = [
-    [22, 14],
-    [140, 20],
-    [48, 34],
-    [118, 42],
-    [70, 18],
-    [36, 102],
-    [124, 108],
-  ],
-}: {
-  dots?: [number, number][]
-}) {
-  return (
-    <>
-      <rect width="160" height="120" fill="var(--playfield)" />
-      {dots.map(([x, y], i) => (
-        <circle key={i} cx={x} cy={y} r="1.3" fill="rgba(74,168,232,0.28)" />
-      ))}
-    </>
-  )
+function TileBg() {
+  return <rect width="160" height="100" fill="var(--playfield)" />
 }
 
 function SvgFrame({ children }: { children: ReactNode }) {
   return (
     <svg
       className="game-tile__art-svg"
-      viewBox="0 0 160 120"
+      viewBox="0 0 160 100"
       preserveAspectRatio="xMidYMid meet"
       fill="none"
       aria-hidden="true"
@@ -130,13 +103,13 @@ function IsoSlab({
 }
 
 export function StackerArt() {
-  const baseCy = 42
+  const baseCy = 62
   const cx = 80
 
   return (
     <SvgFrame>
       <TileBg />
-      <ellipse cx="80" cy="50" rx="44" ry="7" fill="rgba(26,43,60,0.08)" />
+      <ellipse cx="80" cy="72" rx="44" ry="7" fill="rgba(26,43,60,0.08)" />
       <IsoSlab cx={cx} cy={baseCy} w={52} d={52} h={11} hue={HUE.teal} />
       <g transform="translate(0, -11)">
         <IsoSlab cx={cx} cy={baseCy} w={44} d={44} h={11} hue={HUE.sky} />
@@ -162,62 +135,78 @@ function CitySkyline({
   hue: number
   heights: [number, number, number]
 }) {
-  const { fill, stroke } = wash(hue)
   const blocks = [
-    { dx: -16, w: 9, h: heights[0] },
-    { dx: -5, w: 9, h: heights[1] },
-    { dx: 6, w: 9, h: heights[2] },
+    { dx: -14, w: 8, h: heights[0] },
+    { dx: -4, w: 8, h: heights[1] },
+    { dx: 6, w: 8, h: heights[2] },
   ]
   return (
     <g>
-      {blocks.map((b) => (
-        <rect
-          key={b.dx}
-          x={x + b.dx}
-          y={ground - b.h}
-          width={b.w}
-          height={b.h}
-          fill={fill}
-          stroke={stroke}
-          strokeWidth="1.4"
-        />
-      ))}
+      {blocks.map((b) => {
+        const { fill, stroke } = pastel(hue, 52, 36)
+        return (
+          <rect
+            key={b.dx}
+            x={x + b.dx}
+            y={ground - b.h}
+            width={b.w}
+            height={b.h}
+            fill={fill}
+            stroke={stroke}
+            strokeWidth="1.5"
+            strokeLinejoin="round"
+          />
+        )
+      })}
     </g>
   )
 }
 
 export function PatriotArt() {
-  const turret = wash(HUE.sky)
-  const missile = wash(HUE.rose, 56)
-  const ground = 54
+  const turret = pastel(HUE.sky, 52, 36)
+  const incoming = pastel(HUE.rose, 56, 40)
+  const ground = 78
 
   return (
     <SvgFrame>
       <TileBg />
-      <rect x="0" y={ground} width="160" height="58" fill="hsla(172, 40%, 58%, 0.16)" />
-      <line x1="0" y1={ground} x2="160" y2={ground} stroke="hsla(172, 52%, 42%, 0.7)" strokeWidth="2" />
 
-      <CitySkyline x={30} ground={ground} hue={HUE.sky} heights={[16, 24, 14]} />
-      <CitySkyline x={130} ground={ground} hue={HUE.teal} heights={[14, 22, 18]} />
+      <CitySkyline x={28} ground={ground} hue={HUE.sky} heights={[18, 28, 16]} />
+      <CitySkyline x={132} ground={ground} hue={HUE.teal} heights={[16, 26, 20]} />
 
       <path
-        d="M71 54 L71 44 L77 44 L77 32 L79.5 32 L79.5 24 L84.5 24 L84.5 32 L87 32 L87 44 L93 44 L93 54 Z"
+        d="M68 78 L68 68 L74 68 L74 52 L77 52 L77 42 L83 42 L83 52 L86 52 L86 68 L92 68 L92 78 Z"
         fill={turret.fill}
         stroke={turret.stroke}
-        strokeWidth="1.5"
+        strokeWidth="1.7"
         strokeLinejoin="round"
       />
 
+      {/* Incoming — higher, aimed at the right city */}
       <line
-        x1="126"
-        y1="8"
-        x2="102"
-        y2="28"
-        stroke={missile.stroke}
-        strokeWidth="2"
+        x1="118"
+        y1="4"
+        x2="128"
+        y2="20"
+        stroke={incoming.stroke}
+        strokeWidth="1.7"
         strokeLinecap="butt"
+        opacity="0.85"
       />
-      <circle cx="98" cy="32" r="4" fill={missile.fill} stroke={missile.stroke} strokeWidth="1.4" />
+      <circle cx="130" cy="24" r="3.8" fill={incoming.fill} stroke={incoming.stroke} strokeWidth="1.5" />
+
+      {/* Incoming — lower, from the left */}
+      <line
+        x1="42"
+        y1="22"
+        x2="54"
+        y2="40"
+        stroke={incoming.stroke}
+        strokeWidth="1.7"
+        strokeLinecap="butt"
+        opacity="0.85"
+      />
+      <circle cx="56" cy="44" r="3.8" fill={incoming.fill} stroke={incoming.stroke} strokeWidth="1.5" />
     </SvgFrame>
   )
 }
@@ -227,13 +216,14 @@ export function SnakeArt() {
   const size = 14
   const step = 14
   const x0 = 42
-  const y0 = 18
+  const y0 = 22
+  // Head green → teal → blue → violet along the body (matches in-game rainbow step)
   const cells = [
-    { c: 0, r: 0, hue: 210 },
+    { c: 0, r: 0, hue: 208 },
     { c: 1, r: 0, hue: 198 },
-    { c: 2, r: 0, hue: 186 },
-    { c: 2, r: 1, hue: 174 },
-    { c: 2, r: 2, hue: 166 },
+    { c: 2, r: 0, hue: 188 },
+    { c: 2, r: 1, hue: 178 },
+    { c: 2, r: 2, hue: 168 },
     { c: 3, r: 2, hue: 158 },
   ]
   const headCx = x0 + 3 * step + size / 2
@@ -241,27 +231,7 @@ export function SnakeArt() {
 
   return (
     <SvgFrame>
-      <TileBg dots={[]} />
-      <rect
-        x="28"
-        y="10"
-        width="104"
-        height="64"
-        rx="10"
-        fill="rgba(255,255,255,0.55)"
-        stroke="rgba(26,43,60,0.06)"
-      />
-      {Array.from({ length: 5 }, (_, r) =>
-        Array.from({ length: 7 }, (_, c) => (
-          <circle
-            key={`${c}-${r}`}
-            cx={38 + c * 14}
-            cy={22 + r * 14}
-            r="1.05"
-            fill="rgba(46, 184, 160, 0.18)"
-          />
-        )),
-      )}
+      <TileBg />
       {cells.map((b) => {
         const { fill, stroke } = pastel(b.hue, 58, 42)
         return (
@@ -298,7 +268,7 @@ export function WhackArt() {
   const gap = 24
   const r = 10
   const originX = 80 - gap
-  const originY = 12
+  const originY = 26
 
   return (
     <SvgFrame>
@@ -311,13 +281,12 @@ export function WhackArt() {
         const sat = i === gold ? 58 : 52
         const on = live.has(i)
         const { fill, stroke } = pastel(hue, sat, on ? 72 : 16)
-        const outer = on ? r : r * 0.78
         return (
           <g key={i}>
             <circle
               cx={cx}
               cy={cy}
-              r={outer}
+              r={r}
               fill={fill}
               stroke={stroke}
               strokeOpacity={on ? 1 : 0.7}
@@ -327,7 +296,7 @@ export function WhackArt() {
               <circle
                 cx={cx}
                 cy={cy}
-                r={outer * 0.42}
+                r={r * 0.42}
                 fill="none"
                 stroke={stroke}
                 strokeWidth="1.5"
@@ -345,56 +314,66 @@ export function DeadCenterArt() {
 
   return (
     <SvgFrame>
-      <TileBg dots={[]} />
-      <path d="M44 52 L84 8 L126 48 Z" {...tri} strokeWidth="2" strokeLinejoin="round" />
-      <circle cx={(44 + 84 + 126) / 3} cy={(52 + 8 + 48) / 3} r="3.4" fill="#2eb8a0" />
+      <TileBg />
+      <path d="M44 70 L84 24 L126 66 Z" {...tri} strokeWidth="2" strokeLinejoin="round" />
+      <circle cx={(44 + 84 + 126) / 3} cy={(70 + 24 + 66) / 3} r="3.4" fill="#2eb8a0" />
     </SvgFrame>
   )
 }
 
 export function AsteroidsArt() {
-  const rockA = wash(HUE.sky)
-  const rockB = wash(HUE.violet)
-  const rockC = wash(HUE.gold)
-  const ship = wash(HUE.teal, 55)
+  const large = pastel(HUE.sky, 52, 34)
+  const med = pastel(HUE.violet, 52, 34)
+  const small = pastel(HUE.gold, 54, 36)
+  const shipFill = 'rgba(46, 184, 160, 0.2)'
+  const shipStroke = '#2eb8a0'
 
   return (
     <SvgFrame>
       <TileBg />
-      <g transform="translate(0, -8)">
+      {/* Spread rocks to the corners; ship alone in the middle */}
+      <path
+        d="M14 28 L26 14 L48 16 L54 34 L40 46 L18 42 Z"
+        {...large}
+        strokeWidth="1.8"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M118 14 L134 12 L148 24 L142 40 L124 38 L114 24 Z"
+        {...med}
+        strokeWidth="1.7"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M118 68 L130 60 L146 66 L140 82 L122 84 L112 74 Z"
+        {...small}
+        strokeWidth="1.6"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M18 72 L28 64 L42 70 L36 82 L22 82 Z"
+        {...small}
+        strokeWidth="1.5"
+        strokeLinejoin="round"
+      />
+      <g transform="translate(80 50)">
         <path
-          d="M26 50 L36 36 L52 38 L56 52 L44 62 L28 58 Z"
-          {...rockA}
-          strokeWidth="1.8"
+          d="M0 -13 L-9.5 10 L0 5 L9.5 10 Z"
+          fill={shipFill}
+          stroke={shipStroke}
+          strokeWidth="2.3"
           strokeLinejoin="round"
         />
         <path
-          d="M116 24 L128 18 L140 28 L134 42 L120 40 Z"
-          {...rockB}
-          strokeWidth="1.8"
-          strokeLinejoin="round"
-        />
-        <path
-          d="M112 54 L120 48 L130 52 L126 62 L114 60 Z"
-          {...rockC}
-          strokeWidth="1.6"
-          strokeLinejoin="round"
-        />
-        <path
-          d="M78 28 L68 46 L88 46 Z"
-          {...ship}
-          strokeWidth="2"
-          strokeLinejoin="round"
-        />
-        <path
-          d="M74 46 L78 54 L82 46"
+          d="M-4.5 8.5 L0 16.5 L4.5 8.5"
           fill="none"
-          stroke={`hsla(${HUE.gold}, 58%, 42%, 0.95)`}
-          strokeWidth="1.6"
+          stroke="#f5b942"
+          strokeWidth="1.9"
           strokeLinejoin="round"
+          strokeLinecap="round"
         />
-        <circle cx="90" cy="20" r="2.4" fill={`hsla(${HUE.sky}, 52%, 48%, 0.9)`} />
       </g>
+      <circle cx="80" cy="22" r="1.8" fill="#4aa8e8" />
     </SvgFrame>
   )
 }
@@ -403,7 +382,7 @@ export function SimonArt() {
   const r = 15
   const gap = 7
   const cx = 80
-  const cy = 34
+  const cy = 50
   const d = r + gap / 2
   const pads = [
     { x: cx - d, y: cy - d, hue: 198, lit: false },
@@ -414,7 +393,7 @@ export function SimonArt() {
 
   return (
     <SvgFrame>
-      <TileBg dots={[]} />
+      <TileBg />
       {pads.map((p) => {
         const { fill, stroke } = pastel(p.hue, 52, p.lit ? 52 : 38)
         return (
@@ -445,10 +424,6 @@ const artBySlug: Record<string, () => JSX.Element> = {
 
 export function GameTileArt({ slug }: { slug: string }) {
   const Art = artBySlug[slug]
-  if (!Art) return <div className="game-tile__swatch" aria-hidden="true" />
-  return (
-    <div className="game-tile__art" aria-hidden="true">
-      <Art />
-    </div>
-  )
+  if (!Art) return <div className="game-tile__swatch" />
+  return <Art />
 }

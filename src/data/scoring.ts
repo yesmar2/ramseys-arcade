@@ -45,7 +45,7 @@ const SCORING: Record<string, ScoreRow[]> = {
     { label: 'Closer to center', value: 'more points' },
     { label: 'Dead-on', value: 'up to 1100' },
     { label: 'Time left (if close)', value: 'small bonus' },
-    { label: 'Round', value: '5 shapes · 5s each' },
+    { label: 'Round', value: '10 shapes · 5s each' },
   ],
   asteroids: [
     { label: 'Large rock', value: '+20' },
@@ -55,6 +55,11 @@ const SCORING: Record<string, ScoreRow[]> = {
     { label: 'Wave 1 / 2 / 3 clear', value: '+100 / +150 / +200' },
     { label: 'Time under par', value: '+20 / sec' },
     { label: 'Par', value: '48s, −2s each wave' },
+    { label: 'Rapid (pickup)', value: 'faster fire' },
+    { label: 'Spread (pickup)', value: 'triple shot' },
+    { label: 'Shield (pickup)', value: 'brief invulnerability' },
+    { label: 'Slow (pickup)', value: 'rocks crawl' },
+    { label: 'Powerup on field', value: 'vanishes after 6s' },
   ],
 }
 

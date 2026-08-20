@@ -64,18 +64,6 @@ function drawBackground(ctx: CanvasRenderingContext2D, w: number, h: number) {
   ctx.fillStyle = playfieldColor()
   ctx.fillRect(0, 0, w, h)
 
-  const sky = ctx.createRadialGradient(w * 0.25, 0, 20, w * 0.3, 0, w * 0.85)
-  sky.addColorStop(0, 'rgba(200, 232, 248, 0.95)')
-  sky.addColorStop(1, 'rgba(200, 232, 248, 0)')
-  ctx.fillStyle = sky
-  ctx.fillRect(0, 0, w, h)
-
-  const mint = ctx.createRadialGradient(w * 0.9, h * 0.2, 10, w, h * 0.25, w * 0.7)
-  mint.addColorStop(0, 'rgba(197, 240, 228, 0.7)')
-  mint.addColorStop(1, 'rgba(197, 240, 228, 0)')
-  ctx.fillStyle = mint
-  ctx.fillRect(0, 0, w, h)
-
   const step = 28 * Math.max(0.65, Math.min(w, h) / 540)
   ctx.fillStyle = 'rgba(74, 168, 232, 0.1)'
   for (let py = step * 0.5; py < h; py += step) {

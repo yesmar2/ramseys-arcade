@@ -10,7 +10,7 @@ import { DeviceUnavailable } from '../components/DeviceUnavailable'
 import { getGame, gamePlayableOn } from '../data/games'
 import { useDeviceType } from '../lib/device'
 import { usePlayerName } from '../hooks/usePlayerName'
-import { ApiError, rememberPlayerName } from '../lib/leaderboard'
+import { ApiError, normalizePlayerName, PLAYER_NAME_MAX, rememberPlayerName } from '../lib/leaderboard'
 import { getTournament, joinTournament, type TournamentDetail } from '../lib/tournaments'
 import { TournamentPlayProvider } from '../tournaments/TournamentPlayContext'
 
@@ -74,7 +74,7 @@ export function TournamentPlayPage({
   }, [tournamentId, gameSlug, playerName])
 
   const joinWithName = async (rawName: string) => {
-    const name = rawName.trim().slice(0, 12).toUpperCase()
+    const name = normalizePlayerName(rawName)
     if (!name || joining) return
     setJoining(true)
     setJoinError(null)
@@ -85,7 +85,7 @@ export function TournamentPlayPage({
       setReady(true)
     } catch (err) {
       if (err instanceof ApiError && err.code === 'NAME_TAKEN') {
-        setJoinError('That name is taken — pick another')
+        setJoinError('That gamer tag is taken. Sign in or pick another.')
       } else {
         setJoinError(err instanceof Error ? err.message : 'Could not join')
       }
@@ -143,9 +143,9 @@ export function TournamentPlayPage({
               <input
                 className="score-save__input"
                 value={nameDraft}
-                maxLength={12}
+                maxLength={PLAYER_NAME_MAX}
                 placeholder="YOU"
-                onChange={(e) => setNameDraft(e.target.value.toUpperCase())}
+                onChange={(e) => setNameDraft(e.target.value.toUpperCase().slice(0, PLAYER_NAME_MAX))}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
                     e.preventDefault()

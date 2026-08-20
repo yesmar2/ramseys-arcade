@@ -1,4 +1,4 @@
-import { getLastPlayerName } from './leaderboard'
+import { getClaimToken, getLastPlayerName, normalizePlayerName } from './leaderboard'
 
 export type TournamentStatus = 'upcoming' | 'active' | 'ended'
 
@@ -45,10 +45,18 @@ function resolveApiBase() {
 const API_BASE = resolveApiBase()
 
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
+  let sessionHeader: Record<string, string> = {}
+  try {
+    const session = localStorage.getItem('arcade-session')
+    if (session) sessionHeader = { Authorization: `Bearer ${session}` }
+  } catch {
+    /* ignore */
+  }
   const res = await fetch(`${API_BASE}${path}`, {
     ...init,
     headers: {
       'Content-Type': 'application/json',
+      ...sessionHeader,
       ...(init?.headers ?? {}),
     },
   })
@@ -111,12 +119,18 @@ export async function joinTournament(
   id: string,
   name: string,
 ): Promise<{ tournament: TournamentDetail; player: { id: string; name: string } }> {
+  const cleaned = normalizePlayerName(name)
+  const token = getClaimToken(cleaned)
   const result = await api<{
     tournament: TournamentDetail
     player: { id: string; name: string }
+    token?: string
   }>(`/tournaments/${id}/join`, {
     method: 'POST',
-    body: JSON.stringify({ name }),
+    body: JSON.stringify({
+      name: cleaned,
+      ...(token ? { token } : {}),
+    }),
   })
   rememberJoinedTournament(id)
   return result
@@ -135,9 +149,16 @@ export async function submitTournamentScore(
   game: string,
   score: number,
 ): Promise<{ improved: boolean; best: number }> {
+  const cleaned = normalizePlayerName(name)
+  const token = getClaimToken(cleaned)
   const data = await api<{ improved: boolean; best: number }>(`/tournaments/${id}/scores`, {
     method: 'POST',
-    body: JSON.stringify({ name, game, score }),
+    body: JSON.stringify({
+      name: cleaned,
+      game,
+      score,
+      ...(token ? { token } : {}),
+    }),
   })
   rememberJoinedTournament(id)
   return data

@@ -71,6 +71,10 @@ export function inkColor() {
   return cachedInk
 }
 
+export function isDarkTheme() {
+  return currentTheme() === 'dark'
+}
+
 export function bootTheme() {
   applyTheme(storedTheme() ?? systemTheme())
 }

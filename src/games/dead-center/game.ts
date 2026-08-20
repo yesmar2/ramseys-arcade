@@ -64,13 +64,15 @@ export type GameState = {
   stageH: number
   accuracySum: number
   finishedRounds: number
+  /** Fixed mix of kinds for this run — same difficulty profile every game. */
+  kindPlan: ShapeKind[]
 }
 
 export const DESIGN_LONG = 720
 export const DESIGN_SHORT = 540
 export const DESIGN_W = DESIGN_LONG
 export const DESIGN_H = DESIGN_SHORT
-export const TOTAL_ROUNDS = 5
+export const TOTAL_ROUNDS = 10
 export const ROUND_SECS = 5
 
 /** Same 4×3 field, rotated so the long side matches the screen. */
@@ -228,9 +230,28 @@ function pickTriangleFamily(): TriangleFamily {
   return families[Math.floor(Math.random() * families.length)]
 }
 
-function pickShapeKind(): ShapeKind {
-  const kinds: ShapeKind[] = ['triangle', 'quad', 'pentagon']
-  return kinds[Math.floor(Math.random() * kinds.length)]
+/** Same mix every run (order shuffled) so each game feels about as hard. */
+function buildKindPlan(): ShapeKind[] {
+  return shuffle([
+    'triangle',
+    'triangle',
+    'triangle',
+    'triangle',
+    'quad',
+    'quad',
+    'quad',
+    'pentagon',
+    'pentagon',
+    'pentagon',
+  ])
+}
+
+function isLopsidedEnough(pts: Point[]) {
+  const c = polygonCentroid(pts)
+  const rs = pts.map((p) => dist(p, c))
+  const min = Math.min(...rs)
+  const max = Math.max(...rs)
+  return max / Math.max(min, 1) >= 1.35
 }
 
 /** Map s∈[0,1) around the inset rectangle perimeter (clockwise from top-left). */
@@ -268,17 +289,15 @@ function perimeterPolygon(n: number, w: number, h: number, pad: number): Point[]
 
 /**
  * Build a large on-screen shape by pinning vertices to the playfield.
- * Triangles, quads, and pentagons — picked at random each round.
+ * Kind comes from the run’s plan so every game has the same mix.
  */
-function makeShape(w: number, h: number, round: number): Shape {
+function makeShape(w: number, h: number, round: number, kind: ShapeKind): Shape {
   const pad = Math.min(w, h) * 0.1
   const minArea = w * h * 0.14
-  const kind = pickShapeKind()
 
   for (let i = 0; i < 40; i++) {
     let pts: Point[]
     if (kind === 'triangle') {
-      // Mix handcrafted families with random perimeter triangles
       pts =
         Math.random() < 0.45
           ? perimeterPolygon(3, w, h, pad)
@@ -289,7 +308,7 @@ function makeShape(w: number, h: number, round: number): Shape {
       pts = perimeterPolygon(5, w, h, pad)
     }
     const okArea = polygonArea(pts) >= minArea
-    const okTrick = kind === 'triangle' ? isTrickyEnough(pts) : true
+    const okTrick = kind === 'triangle' ? isTrickyEnough(pts) : isLopsidedEnough(pts)
     if (okArea && okTrick) return finishShape(kind, pts, round)
   }
 
@@ -461,7 +480,12 @@ export function createInitialState(w = DESIGN_W, h = DESIGN_H): GameState {
     stageH: h,
     accuracySum: 0,
     finishedRounds: 0,
+    kindPlan: buildKindPlan(),
   }
+}
+
+function kindForRound(state: GameState, round: number): ShapeKind {
+  return state.kindPlan[(round - 1) % state.kindPlan.length] ?? 'triangle'
 }
 
 export function resizeState(state: GameState, w: number, h: number): GameState {
@@ -472,7 +496,7 @@ export function resizeState(state: GameState, w: number, h: number): GameState {
       scale,
       stageW: w,
       stageH: h,
-      shape: makeShape(w, h, state.round),
+      shape: makeShape(w, h, state.round, kindForRound(state, state.round)),
       result: null,
     }
   }
@@ -485,7 +509,7 @@ function beginRound(state: GameState, round: number): GameState {
     phase: 'playing',
     round,
     timeLeft: ROUND_SECS,
-    shape: makeShape(state.stageW, state.stageH, round),
+    shape: makeShape(state.stageW, state.stageH, round, kindForRound(state, round)),
     result: null,
     floaters: [],
   }
@@ -497,6 +521,7 @@ export function startGame(prev: GameState): GameState {
     {
       ...base,
       best: Math.max(prev.best, loadBest()),
+      kindPlan: buildKindPlan(),
     },
     1,
   )

@@ -389,10 +389,10 @@ export function AsteroidsGame() {
                 <p>Spin, thrust, and clear the rocks. Chain hits for a multiplier.</p>
                 <PersonalBestHint slug="asteroids" />
                 <span className="asteroids__hint asteroids__hint--keys">
-                  ← → turn · ↑ thrust · ↓ reverse · auto-fire
+                  ← → turn · ↑ thrust · ↓ reverse · auto-fire · grab powerups
                 </span>
                 <span className="asteroids__hint asteroids__hint--touch">
-                  Hold to turn and thrust · auto-fire
+                  Hold to turn and thrust · grab powerups · auto-fire
                 </span>
               </div>
             )}

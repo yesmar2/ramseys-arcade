@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
-import { DeviceIcon } from '../components/DeviceIcon'
 import { Footer } from '../components/Footer'
-import { Header } from '../components/Header'
+import { HomeBar } from '../components/HomeBar'
+import { LeaderboardList } from '../components/LeaderboardList'
 import { getGame, gamePlayableOn } from '../data/games'
-import { leaderboardHref } from '../hooks/useHashRoute'
+import { gamePlayHref, leaderboardHref } from '../hooks/useHashRoute'
 import { useDeviceType } from '../lib/device'
 import { usePlayerName } from '../hooks/usePlayerName'
 import {
@@ -19,17 +19,6 @@ import {
 
 const INITIAL_ROWS = 10
 
-function formatDate(at: number) {
-  try {
-    return new Date(at).toLocaleDateString(undefined, {
-      month: 'short',
-      day: 'numeric',
-    })
-  } catch {
-    return ''
-  }
-}
-
 type LeaderboardsPageProps = {
   game?: LeaderboardGame
   period?: LeaderboardPeriod
@@ -39,20 +28,26 @@ export function LeaderboardsPage({
   game: gameFromRoute,
   period: periodFromRoute,
 }: LeaderboardsPageProps) {
+  const device = useDeviceType()
   const tabs = useMemo(
     () =>
-      LEADERBOARD_GAMES.map((slug) => ({
+      LEADERBOARD_GAMES.filter((slug) => {
+        const game = getGame(slug)
+        return game ? gamePlayableOn(game, device) : false
+      }).map((slug) => ({
         slug,
         name: getGame(slug)?.name ?? slug,
         accent: getGame(slug)?.accent ?? '#2eb8a0',
       })),
-    [],
+    [device],
   )
 
-  const active: LeaderboardGame = gameFromRoute ?? 'stacker'
   const period: LeaderboardPeriod = periodFromRoute ?? 'daily'
+  const active: LeaderboardGame =
+    (gameFromRoute && tabs.some((t) => t.slug === gameFromRoute)
+      ? gameFromRoute
+      : tabs[0]?.slug) ?? LEADERBOARD_GAMES[0]
   const playerName = usePlayerName().trim().toUpperCase()
-  const device = useDeviceType()
   const [entries, setEntries] = useState<LeaderboardEntry[]>([])
   const [you, setYou] = useState<YouEntry | null>(null)
   const [loading, setLoading] = useState(true)
@@ -63,11 +58,12 @@ export function LeaderboardsPage({
   const canPlay = activeGame ? gamePlayableOn(activeGame, device) : true
 
   useEffect(() => {
+    if (!tabs.length) return
     const canonical = leaderboardHref(active, period)
     if (window.location.hash !== canonical) {
       window.history.replaceState(null, '', canonical)
     }
-  }, [active, period])
+  }, [active, period, tabs.length])
 
   useEffect(() => {
     let cancelled = false
@@ -102,53 +98,14 @@ export function LeaderboardsPage({
     window.location.hash = leaderboardHref(active, next)
   }
 
-  const visible = entries.slice(0, shown)
-  const youOnVisible = Boolean(you && visible.some((entry) => entry.id === you.id))
-  const youOffVisible = Boolean(you && !youOnVisible)
-  const youStyle = {
-    '--lb-you-accent': activeMeta.accent,
-  } as CSSProperties
-
-  const renderRow = (entry: LeaderboardEntry, rank: number, isYou: boolean) => (
-    <li
-      key={entry.id}
-      className={`lb-row${isYou ? ' lb-row--you' : ''}`}
-      style={isYou ? youStyle : undefined}
-      aria-current={isYou ? 'true' : undefined}
-    >
-      <span className="lb-row__rank">#{rank}</span>
-      <span className="lb-row__name">
-        <DeviceIcon device={entry.device} />
-        {entry.name}
-        {isYou ? <span className="lb-row__you-tag">You</span> : null}
-      </span>
-      <span className="lb-row__score">{entry.score}</span>
-      <span className="lb-row__date">{formatDate(entry.at)}</span>
-    </li>
-  )
-
   return (
     <>
-      <Header />
       <main className="lb-page">
+        <HomeBar />
         <div className="lb-page__inner">
           <header className="lb-page__header">
             <h1 className="lb-page__title">Leaderboards</h1>
           </header>
-
-          <label className="lb-game-pick">
-            <span className="visually-hidden">Game</span>
-            <select
-              value={active}
-              onChange={(e) => selectGame(e.target.value as LeaderboardGame)}
-            >
-              {tabs.map((tab) => (
-                <option key={tab.slug} value={tab.slug}>
-                  {tab.name}
-                </option>
-              ))}
-            </select>
-          </label>
 
           <div className="lb-tabs" role="tablist" aria-label="Games">
             {tabs.map((tab) => (
@@ -191,17 +148,6 @@ export function LeaderboardsPage({
             className="lb-board"
             aria-label={`${activeMeta.name} ${PERIOD_LABELS[period]} leaderboard`}
           >
-            <div className="lb-board__head">
-              <div className="lb-stat">
-                <span className="lb-stat__label">Game</span>
-                <strong>{activeMeta.name}</strong>
-              </div>
-              <div className="lb-stat">
-                <span className="lb-stat__label">Period</span>
-                <strong>{PERIOD_LABELS[period]}</strong>
-              </div>
-            </div>
-
             {loading ? (
               <p className="lb-empty">Loading scores…</p>
             ) : error ? (
@@ -213,7 +159,7 @@ export function LeaderboardsPage({
                 No scores for {PERIOD_LABELS[period].toLowerCase()} yet.{' '}
                 {canPlay ? (
                   <>
-                    <a href={`#/games/${active}`}>Play {activeMeta.name}</a> to
+                    <a href={gamePlayHref(active)}>Play {activeMeta.name}</a> to
                     claim the top spot.
                   </>
                 ) : (
@@ -221,24 +167,13 @@ export function LeaderboardsPage({
                 )}
               </p>
             ) : (
-              <ol className="lb-list">
-                {youOffVisible && you ? (
-                  <>
-                    {renderRow(you, you.rank, true)}
-                    {visible.length > 0 ? (
-                      <li className="lb-you-split">Top {shown}</li>
-                    ) : null}
-                  </>
-                ) : null}
-                {visible.map((entry, index) =>
-                  renderRow(
-                    entry,
-                    index + 1,
-                    Boolean(playerName) &&
-                      (entry.name ?? '').toUpperCase() === playerName,
-                  ),
-                )}
-              </ol>
+              <LeaderboardList
+                entries={entries}
+                you={you}
+                playerName={playerName}
+                accent={activeMeta.accent}
+                shown={shown}
+              />
             )}
 
             {!loading && !error && entries.length > shown ? (
@@ -254,7 +189,7 @@ export function LeaderboardsPage({
             {canPlay ? (
               <a
                 className="lb-play"
-                href={`#/games/${active}`}
+                href={gamePlayHref(active)}
                 style={{ background: activeMeta.accent }}
               >
                 Play {activeMeta.name}

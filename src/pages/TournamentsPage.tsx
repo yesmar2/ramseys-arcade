@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { Footer } from '../components/Footer'
-import { Header } from '../components/Header'
+import { HomeBar } from '../components/HomeBar'
 import { InfoTip } from '../components/InfoTip'
 import { getGame } from '../data/games'
 import { usePlayerName } from '../hooks/usePlayerName'
-import { getLastPlayerName } from '../lib/leaderboard'
+import { getLastPlayerName, normalizePlayerName } from '../lib/leaderboard'
 import {
   getTournament,
   joinTournament,
@@ -66,8 +66,8 @@ export function TournamentsPage() {
 
   return (
     <>
-      <Header />
       <main className="lb-page">
+        <HomeBar />
         <div className="lb-page__inner">
           <header className="lb-page__header">
             <h1 className="lb-page__title lb-page__title--with-tip">
@@ -125,15 +125,15 @@ export function TournamentDetailPage({ id }: { id: string }) {
   const [joined, setJoined] = useState(false)
   const [joinNote, setJoinNote] = useState<string | null>(null)
 
-  const displayName = playerName.trim().toUpperCase()
+  const displayName = normalizePlayerName(playerName)
 
   const syncJoined = (data: TournamentDetail, who: string) => {
-    const mine = who.trim().toUpperCase()
+    const mine = normalizePlayerName(who)
     if (!mine) {
       setJoined(false)
       return
     }
-    setJoined(data.players.some((p) => p.name === mine))
+    setJoined(data.players.some((p) => normalizePlayerName(p.name) === mine))
   }
 
   useEffect(() => {
@@ -186,8 +186,8 @@ export function TournamentDetailPage({ id }: { id: string }) {
 
   return (
     <>
-      <Header />
       <main className="lb-page">
+        <HomeBar />
         <div className="lb-page__inner">
           <a className="game-page__back" href="#/tournaments">
             ← Tournaments
@@ -259,7 +259,7 @@ export function TournamentDetailPage({ id }: { id: string }) {
                       </button>
                     ) : (
                       <p className="tour-note tour-note--compact">
-                        Set your name in the header first.
+                        Set your gamer tag in the header first.
                       </p>
                     )}
                     {joinNote && (
@@ -324,7 +324,7 @@ export function TournamentDetailPage({ id }: { id: string }) {
                       </thead>
                       <tbody>
                         {detail.standings.map((row, index) => {
-                          const mine = row.name === displayName
+                          const mine = normalizePlayerName(row.name) === displayName
                           return (
                             <tr
                               key={row.playerId}
@@ -332,7 +332,9 @@ export function TournamentDetailPage({ id }: { id: string }) {
                             >
                               <td className="tour-table__rank">{index + 1}</td>
                               <td className="tour-table__name">
-                                {row.name}
+                                <span className="tour-table__name-text" title={normalizePlayerName(row.name)}>
+                                  {normalizePlayerName(row.name)}
+                                </span>
                                 {mine ? <span className="tour-you-tag">you</span> : null}
                               </td>
                               <td className="tour-table__total">{row.totalPoints}</td>

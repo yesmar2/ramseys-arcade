@@ -97,7 +97,7 @@ export function unlockSound() {
   const audio = getCtx()
   if (!audio) return
   const go = () => {
-    if (musicWanted) runMusic()
+    if (musicWanted && musicHolders > 0) runMusic()
   }
   if (audio.state === 'suspended') void audio.resume().then(go)
   else go()
@@ -147,12 +147,22 @@ export function acquireMusic() {
 export function releaseMusic() {
   musicHolders = Math.max(0, musicHolders - 1)
   if (musicHolders > 0) return
+  silenceMusic()
+}
+
+/** Stop background music immediately, even if a holder leaked. */
+export function silenceMusic() {
+  musicHolders = 0
   musicWanted = false
   if (musicTimer != null) {
     window.clearTimeout(musicTimer)
     musicTimer = null
   }
   stopPad()
+  if (ctx && musicGain) {
+    musicGain.gain.cancelScheduledValues(ctx.currentTime)
+    musicGain.gain.setValueAtTime(0, ctx.currentTime)
+  }
 }
 
 function runMusic() {
