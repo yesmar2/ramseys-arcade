@@ -454,7 +454,7 @@ export function fire(state: GameState): GameState {
   }
 }
 
-export function usePower(state: GameState, kind: PowerKind): GameState {
+export function activatePower(state: GameState, kind: PowerKind): GameState {
   if (state.phase !== 'playing') return state
   if (state.pack[kind] <= 0) return state
 

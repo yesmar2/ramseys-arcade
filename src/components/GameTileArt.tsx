@@ -1,4 +1,4 @@
-import type { JSX } from 'react'
+import type { JSX, ReactNode } from 'react'
 
 /** Same palette as in-game Asteroids / Centroid rocks. */
 const HUE = {
@@ -49,7 +49,7 @@ function TileBg({
   )
 }
 
-function SvgFrame({ children }: { children: JSX.Element | JSX.Element[] }) {
+function SvgFrame({ children }: { children: ReactNode }) {
   return (
     <svg
       className="game-tile__art-svg"

@@ -21,7 +21,7 @@ import {
   startGame,
   tick,
   toSnapshot,
-  usePower,
+  activatePower,
   type GameState,
   type PowerKind,
   type Snapshot,
@@ -181,7 +181,7 @@ export function PatriotGame() {
 
   const activate = (kind: PowerKind) => {
     if (pausedRef.current || saveOpen) return
-    stateRef.current = usePower(stateRef.current, kind)
+    stateRef.current = activatePower(stateRef.current, kind)
     setUi(toSnapshot(stateRef.current))
   }
 
