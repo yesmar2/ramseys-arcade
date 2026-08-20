@@ -59,13 +59,11 @@ export const PlayerBadge = forwardRef<PlayerBadgeHandle, PlayerBadgeProps>(
       setBusy(true)
       setError(null)
       try {
-        await rememberPlayerName(cleaned)
         if (signedIn) {
-          try {
-            await linkCurrentNameToAccount(cleaned)
-          } catch {
-            /* claim succeeded locally; link may need proof */
-          }
+          // Account path: set active tag, free previous, rename scores.
+          await linkCurrentNameToAccount(cleaned)
+        } else {
+          await rememberPlayerName(cleaned)
         }
         setEditing(false)
       } catch (err) {
