@@ -2857,7 +2857,7 @@ a.game-hud__board {
 .asteroids__btn {
   flex: 1 1 0;
   min-width: 0;
-  min-height: 6.25rem;
+  min-height: 5.2rem;
   margin: 0;
   padding: 0;
   display: grid;
@@ -2881,8 +2881,8 @@ a.game-hud__board {
 
 .asteroids__btn svg {
   display: block;
-  width: 2.85rem;
-  height: 2.85rem;
+  width: 2.35rem;
+  height: 2.35rem;
 }
 
 .asteroids__btn--thrust {
@@ -2896,8 +2896,8 @@ a.game-hud__board {
 }
 
 .asteroids__btn--reverse svg {
-  width: 2.25rem;
-  height: 2.25rem;
+  width: 1.85rem;
+  height: 1.85rem;
 }
 
 .asteroids--saving .asteroids__touch,
@@ -2922,56 +2922,16 @@ a.game-hud__board {
     display: block;
   }
 
-  @media (orientation: portrait) {
-    /* Playfield takes what it needs; controls claim leftover height. */
-    .asteroids__play {
-      flex: 1 1 52%;
-      min-height: 0;
-    }
-
-    .asteroids__touch {
-      flex: 1 1 48%;
-      min-height: 8.5rem;
-      max-height: none;
-      align-items: stretch;
-    }
-
-    .asteroids__turns,
-    .asteroids__drive {
-      align-self: stretch;
-      min-height: 0;
-      height: 100%;
-    }
-
-    .asteroids__btn {
-      min-height: 0;
-      height: 100%;
-      align-self: stretch;
-    }
-
-    .asteroids__btn--thrust,
-    .asteroids__btn--reverse {
-      min-height: 0;
-    }
-
-    .asteroids__btn svg {
-      width: clamp(2.4rem, 12vmin, 3.6rem);
-      height: clamp(2.4rem, 12vmin, 3.6rem);
-    }
-
-    .asteroids__btn--reverse svg {
-      width: clamp(1.9rem, 9.5vmin, 2.9rem);
-      height: clamp(1.9rem, 9.5vmin, 2.9rem);
-    }
-  }
-
-  @media (orientation: landscape) and (max-height: 540px) {
+  /* Landscape: side rails so the playfield keeps full height. */
+  @media (orientation: landscape) {
     .asteroids__body {
       flex-direction: row;
     }
 
     .asteroids__play {
       order: 2;
+      flex: 1 1 0;
+      min-width: 0;
     }
 
     /* Split thumbs: turns left, thrust right. */
@@ -2982,22 +2942,23 @@ a.game-hud__board {
     .asteroids__turns,
     .asteroids__drive {
       flex-direction: column;
-      flex: 0 0 4.7rem;
-      width: 4.7rem;
-      gap: 0.5rem;
-      padding: 0.4rem 0.4rem;
+      flex: 0 0 4.1rem;
+      width: 4.1rem;
+      gap: 0.4rem;
+      padding: 0.35rem 0.3rem;
       background: color-mix(in srgb, var(--blob-sky) 40%, transparent);
+      align-self: stretch;
     }
 
     .asteroids__turns {
       order: 1;
-      padding-left: max(0.4rem, env(safe-area-inset-left));
+      padding-left: max(0.3rem, env(safe-area-inset-left));
       border-right: 1px solid rgba(var(--ink-rgb), 0.06);
     }
 
     .asteroids__drive {
       order: 3;
-      padding-right: max(0.4rem, env(safe-area-inset-right));
+      padding-right: max(0.3rem, env(safe-area-inset-right));
       border-left: 1px solid rgba(var(--ink-rgb), 0.06);
     }
 
@@ -3013,8 +2974,8 @@ a.game-hud__board {
 
     .asteroids__btn svg,
     .asteroids__btn--reverse svg {
-      width: 1.85rem;
-      height: 1.85rem;
+      width: 1.7rem;
+      height: 1.7rem;
     }
   }
 }

@@ -361,6 +361,7 @@ export function AsteroidsGame() {
         <GameStage
           aspectWidth={aspect.w}
           aspectHeight={aspect.h}
+          fill
         >
           <canvas ref={canvasRef} className="asteroids__viewport" />
 
