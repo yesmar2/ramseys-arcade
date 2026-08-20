@@ -1,0 +1,14 @@
+---
+description: Commit and push frontend + API after each completed change set
+alwaysApply: true
+---
+
+# Auto commit and push
+
+When a change set for this arcade project is finished (frontend and/or `ramseys-arcade-api`):
+
+1. Commit the relevant repos with a clear message (only when there are real changes).
+2. Push to the tracked remote branch so Vercel (frontend) and Render (API) deploy.
+3. Do this without waiting to be asked, unless the user says not to push for that change.
+
+Do not force-push. Do not commit secrets (`.env`, credentials).
