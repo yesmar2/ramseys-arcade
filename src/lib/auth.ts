@@ -95,12 +95,9 @@ function applyOwnedNames(names: OwnedName[]) {
   for (const entry of names) {
     if (entry.name && entry.token) rememberClaimToken(entry.name, entry.token)
   }
-  if (names.length === 1) {
+  // Signed-in accounts have exactly one active tag — always sync local to it.
+  if (names.length >= 1) {
     setPlayerNameLocal(names[0].name)
-  } else if (names.length > 1) {
-    const current = getLastPlayerName()
-    const match = names.find((n) => n.name === current)
-    if (!match) setPlayerNameLocal(names[0].name)
   }
 }
 
@@ -183,15 +180,17 @@ export async function logoutAccount() {
   setSessionToken(null)
 }
 
-/** After verify: link local guest name if present, then refresh owned claims. */
+/** After verify: adopt account tag, or link local guest tag if account has none. */
 export async function completeSignIn(verifyToken: string) {
   const result = await verifyMagicToken(verifyToken)
-  const localName = getLastPlayerName()
-  if (localName) {
-    try {
-      await linkCurrentNameToAccount(localName)
-    } catch {
-      /* name may already be linked elsewhere — owned names from verify still apply */
+  if ((result.names?.length ?? 0) === 0) {
+    const localName = getLastPlayerName()
+    if (localName) {
+      try {
+        await linkCurrentNameToAccount(localName)
+      } catch {
+        /* ignore */
+      }
     }
   }
   const me = await fetchAuthMe()
@@ -227,12 +226,14 @@ export async function signInWithGoogleIdToken(idToken: string): Promise<{
   })
   setSessionToken(data.sessionToken)
   applyOwnedNames(data.names ?? [])
-  const localName = getLastPlayerName()
-  if (localName) {
-    try {
-      await linkCurrentNameToAccount(localName)
-    } catch {
-      /* ignore link failures */
+  if ((data.names?.length ?? 0) === 0) {
+    const localName = getLastPlayerName()
+    if (localName) {
+      try {
+        await linkCurrentNameToAccount(localName)
+      } catch {
+        /* ignore link failures */
+      }
     }
   }
   const me = await fetchAuthMe()

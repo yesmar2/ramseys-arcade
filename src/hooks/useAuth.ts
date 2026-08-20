@@ -32,12 +32,19 @@ export function useAuth() {
     }
     void sync()
     const onAuth = () => void sync()
+    const onFocus = () => {
+      if (getSessionToken()) void sync()
+    }
     window.addEventListener(AUTH_EVENT, onAuth)
     window.addEventListener('storage', onAuth)
+    window.addEventListener('focus', onFocus)
+    document.addEventListener('visibilitychange', onFocus)
     return () => {
       cancelled = true
       window.removeEventListener(AUTH_EVENT, onAuth)
       window.removeEventListener('storage', onAuth)
+      window.removeEventListener('focus', onFocus)
+      document.removeEventListener('visibilitychange', onFocus)
     }
   }, [])
 
