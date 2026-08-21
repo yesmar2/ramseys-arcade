@@ -8,7 +8,6 @@ import { Footer } from '../components/Footer'
 import { HomeBar } from '../components/HomeBar'
 import { LeaderboardList } from '../components/LeaderboardList'
 import { ShareBoardButton } from '../components/ShareBoardButton'
-import { YouBoardStrip } from '../components/YouBoardStrip'
 import { getGame } from '../data/games'
 import {
   gamePlayHref,
@@ -16,7 +15,7 @@ import {
   recordHref,
   recordsHref,
 } from '../hooks/useHashRoute'
-import { flashYouRow, gapToNextLabel } from '../lib/boardGap'
+import { flashYouRow } from '../lib/boardGap'
 import { usePlayerName } from '../hooks/usePlayerName'
 import {
   PERIOD_LABELS,
@@ -29,7 +28,6 @@ import {
 import {
   fetchGameRecords,
   fetchRecordBoard,
-  formatRecordValue,
   formatRecordScore,
   type RecordDef,
   type RecordSummary,
@@ -242,7 +240,6 @@ function RecordBoardPage({
 
   const accent = gameMeta?.accent ?? '#2eb8a0'
   const unit = record?.unit ?? 'ms'
-  const direction = record?.direction ?? 'lower'
 
   const waveIndex = useMemo(
     () => waveRecords.findIndex((row) => row.id === recordId),
@@ -253,16 +250,6 @@ function RecordBoardPage({
     waveIndex >= 0 && waveIndex < waveRecords.length - 1
       ? waveRecords[waveIndex + 1]
       : null
-
-  const gap = you
-    ? gapToNextLabel({
-        youRank: you.rank,
-        youScore: you.score,
-        entries: entries.map((e, i) => ({ rank: i + 1, score: e.score })),
-        direction,
-        formatDelta: (n) => formatRecordValue(n, unit),
-      })
-    : null
 
   const shareLabel = [
     record?.label ?? 'Record',
@@ -354,16 +341,6 @@ function RecordBoardPage({
             onSelect={selectPeriod}
           />
 
-          {!loading && !error && you ? (
-            <YouBoardStrip
-              rank={you.rank}
-              value={formatRecordScore(you.score, unit)}
-              valueLabel="Your best"
-              gap={gap}
-              accent={accent}
-            />
-          ) : null}
-
           <section
             key={`${recordId}-${period}`}
             className="lb-board lb-board--fade"
@@ -398,8 +375,6 @@ function RecordBoardPage({
                 accent={accent}
                 shown={shown}
                 formatScore={(score) => formatRecordScore(score, unit)}
-                formatDelta={(n) => formatRecordValue(n, unit)}
-                direction={direction}
               />
             )}
 

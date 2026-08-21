@@ -2,7 +2,6 @@ import type { CSSProperties } from 'react'
 import { DeviceIcon } from './DeviceIcon'
 import { PlayerAvatar } from './PlayerAvatar'
 import { PodiumMedal, medalKind } from './PodiumMedal'
-import { rowDeltaLabel } from '../lib/boardGap'
 import {
   normalizePlayerName,
   type LeaderboardEntry,
@@ -27,8 +26,6 @@ export function LeaderboardList({
   accent,
   shown,
   formatScore = (n: number) => String(n),
-  formatDelta = (n: number) => String(n),
-  direction = 'higher',
 }: {
   entries: LeaderboardEntry[]
   you: YouEntry | null
@@ -36,15 +33,12 @@ export function LeaderboardList({
   accent: string
   shown: number
   formatScore?: (score: number) => string
-  formatDelta?: (delta: number) => string
-  direction?: 'higher' | 'lower'
 }) {
   const visible = entries.slice(0, shown)
   const youOnVisible = Boolean(you && visible.some((entry) => entry.id === you.id))
   const youOffVisible = Boolean(you && !youOnVisible)
   const youStyle = { '--lb-you-accent': accent } as CSSProperties
   const youName = normalizePlayerName(playerName)
-  const gapEntries = entries.map((e, i) => ({ rank: i + 1, score: e.score }))
 
   const renderRow = (
     entry: LeaderboardEntry,
@@ -54,13 +48,6 @@ export function LeaderboardList({
   ) => {
     const medal = medalKind(rank)
     const name = normalizePlayerName(entry.name ?? '')
-    const delta = rowDeltaLabel({
-      rank,
-      score: entry.score,
-      entries: gapEntries,
-      direction,
-      formatDelta,
-    })
     return (
       <li
         key={`${entry.id}${opts?.markYouId ? '-you' : ''}`}
@@ -81,10 +68,7 @@ export function LeaderboardList({
           </span>
           {isYou ? <span className="lb-row__you-tag">You</span> : null}
         </span>
-        <span className="lb-row__score">
-          <span className="lb-row__score-val">{formatScore(entry.score)}</span>
-          {delta ? <span className="lb-row__delta">{delta}</span> : null}
-        </span>
+        <span className="lb-row__score">{formatScore(entry.score)}</span>
         <span className="lb-row__date">{formatDate(entry.at)}</span>
       </li>
     )

@@ -1,6 +1,5 @@
 import type { CSSProperties } from 'react'
 import { rankHref } from '../hooks/useHashRoute'
-import { rowDeltaLabel } from '../lib/boardGap'
 import {
   normalizePlayerName,
   type GlobalBoardEntry,
@@ -34,12 +33,6 @@ export function GlobalRankList({
   ) => {
     const medal = medalKind(entry.rank)
     const name = normalizePlayerName(entry.name)
-    const delta = rowDeltaLabel({
-      rank: entry.rank,
-      score: entry.score,
-      entries,
-      formatDelta: (n) => String(n),
-    })
     const nameInner = (
       <>
         <PlayerAvatar avatarId={entry.avatarId} name={name} size="sm" />
@@ -68,10 +61,7 @@ export function GlobalRankList({
             {nameInner}
           </a>
         )}
-        <span className="lb-row__score">
-          <span className="lb-row__score-val">{entry.score}</span>
-          {delta ? <span className="lb-row__delta">{delta}</span> : null}
-        </span>
+        <span className="lb-row__score">{entry.score}</span>
         <span className="lb-row__date lb-row__games">
           {entry.games} {entry.games === 1 ? 'game' : 'games'}
         </span>

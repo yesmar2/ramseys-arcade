@@ -36,34 +36,6 @@ export function gapToNextLabel(opts: {
   return `${formatDelta(gap)} behind #${youRank - 1}`
 }
 
-/** Compact row delta: `+12` lead over next, or `−84` behind the place ahead. */
-export function rowDeltaLabel(opts: {
-  rank: number
-  score: number
-  entries: GapEntry[]
-  direction?: 'higher' | 'lower'
-  formatDelta: (n: number) => string
-}): string | null {
-  const { rank, score, entries, direction = 'higher', formatDelta } = opts
-  if (rank < 1 || entries.length === 0) return null
-
-  if (rank === 1) {
-    const second = entries.find((e, i) => rankOf(e, i) === 2)
-    if (!second) return null
-    const lead =
-      direction === 'lower' ? second.score - score : score - second.score
-    if (lead <= 0) return null
-    return `+${formatDelta(lead)}`
-  }
-
-  const ahead = entries.find((e, i) => rankOf(e, i) === rank - 1)
-  if (!ahead) return null
-  const gap =
-    direction === 'lower' ? score - ahead.score : ahead.score - score
-  if (gap <= 0) return null
-  return `−${formatDelta(gap)}`
-}
-
 export function flashYouRow(el?: HTMLElement | null) {
   const row = el ?? document.getElementById('lb-you-row')
   if (!row) return

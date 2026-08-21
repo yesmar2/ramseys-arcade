@@ -10,11 +10,10 @@ import { GlobalRankList } from '../components/GlobalRankList'
 import { HomeBar } from '../components/HomeBar'
 import { LeaderboardList } from '../components/LeaderboardList'
 import { ShareBoardButton } from '../components/ShareBoardButton'
-import { YouBoardStrip } from '../components/YouBoardStrip'
 import { deviceRequirementLabel, getGame, gamePlayableOn } from '../data/games'
 import { gamePlayHref, leaderboardHref, recordsHref } from '../hooks/useHashRoute'
 import { useDeviceType } from '../lib/device'
-import { flashYouRow, gapToNextLabel } from '../lib/boardGap'
+import { flashYouRow } from '../lib/boardGap'
 import { usePlayerName } from '../hooks/usePlayerName'
 import {
   fetchGlobalBoard,
@@ -112,15 +111,6 @@ function GlobalLeaderboardsHub() {
     }
   }, [playerName])
 
-  const gap = you
-    ? gapToNextLabel({
-        youRank: you.rank,
-        youScore: you.score,
-        entries,
-        formatDelta: (n) => `${n} pt${n === 1 ? '' : 's'}`,
-      })
-    : null
-
   return (
     <>
       <main className="lb-page">
@@ -140,24 +130,6 @@ function GlobalLeaderboardsHub() {
               </div>
             ) : null}
           </header>
-
-          {!loading && !error && playerName ? (
-            <section className="lb-scorecard" aria-label="Your global standing">
-              <div className="lb-stat">
-                <span className="lb-stat__label">Rank</span>
-                <strong>{you ? `#${you.rank}` : '—'}</strong>
-              </div>
-              <div className="lb-stat">
-                <span className="lb-stat__label">Points</span>
-                <strong>{you && you.score > 0 ? you.score : '—'}</strong>
-              </div>
-              <div className="lb-stat">
-                <span className="lb-stat__label">Games</span>
-                <strong>{you ? you.games : '—'}</strong>
-              </div>
-              {gap ? <p className="lb-scorecard__gap">{gap}</p> : null}
-            </section>
-          ) : null}
 
           <section className="lb-board" aria-label="Global leaderboard">
             {loading ? (
@@ -301,15 +273,6 @@ function GameLeaderboard({
     window.location.hash = leaderboardHref(active, next)
   }
 
-  const gap = you
-    ? gapToNextLabel({
-        youRank: you.rank,
-        youScore: you.score,
-        entries: entries.map((e, i) => ({ rank: i + 1, score: e.score })),
-        formatDelta: (n) => String(n),
-      })
-    : null
-
   const shareLabel = you
     ? `#${you.rank} on ${activeGame?.name ?? active} · ${PERIOD_LABELS[period]} · ${you.score}`
     : `${activeGame?.name ?? active} · ${PERIOD_LABELS[period]} · Ramsey’s Arcade`
@@ -348,16 +311,6 @@ function GameLeaderboard({
             hrefFor={(p) => leaderboardHref(active, p)}
             onSelect={selectPeriod}
           />
-
-          {!loading && !error && you ? (
-            <YouBoardStrip
-              rank={you.rank}
-              value={you.score}
-              valueLabel="Score"
-              gap={gap}
-              accent={accent}
-            />
-          ) : null}
 
           <section
             key={`${active}-${period}`}
