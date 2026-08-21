@@ -4629,3 +4629,125 @@ a.game-hud__board {
   align-items: center;
   gap: 0.35rem;
 }
+/* —— Rare home attendant —— */
+.arcade-attendant {
+  position: fixed;
+  right: max(0.85rem, env(safe-area-inset-right));
+  bottom: max(0.85rem, env(safe-area-inset-bottom));
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.45rem;
+  max-width: min(17.5rem, calc(100vw - 1.7rem));
+  pointer-events: none;
+}
+
+.arcade-attendant--in {
+  animation: attendant-in 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.arcade-attendant--out {
+  animation: attendant-out 0.4s ease-in both;
+}
+
+.arcade-attendant__dismiss {
+  pointer-events: auto;
+  align-self: flex-end;
+  width: 1.6rem;
+  height: 1.6rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(var(--surface-rgb), 0.9);
+  color: var(--muted);
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: var(--shadow-soft);
+}
+
+.arcade-attendant__dismiss:hover {
+  color: var(--ink);
+}
+
+.arcade-attendant__bubble {
+  pointer-events: none;
+  position: relative;
+  padding: 0.7rem 0.85rem;
+  border-radius: 1rem 1rem 0.35rem 1rem;
+  background: rgba(var(--surface-rgb), 0.94);
+  border: 1px solid rgba(var(--ink-rgb), 0.08);
+  box-shadow: var(--shadow-lift);
+  backdrop-filter: blur(10px);
+}
+
+.arcade-attendant__bubble p {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 0.92rem;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--ink);
+}
+
+.arcade-attendant__figure {
+  width: 5.4rem;
+  height: 6.2rem;
+  filter: drop-shadow(0 10px 18px rgba(26, 43, 60, 0.18));
+}
+
+.arcade-attendant__svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.arcade-attendant__wave {
+  transform-origin: 72px 70px;
+  animation: attendant-wave 1.4s ease-in-out 0.4s 3;
+}
+
+@keyframes attendant-in {
+  from {
+    opacity: 0;
+    transform: translate(1.2rem, 2.4rem) scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: translate(0, 0) scale(1);
+  }
+}
+
+@keyframes attendant-out {
+  from {
+    opacity: 1;
+    transform: translate(0, 0);
+  }
+  to {
+    opacity: 0;
+    transform: translate(1rem, 2rem);
+  }
+}
+
+@keyframes attendant-wave {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  35% {
+    transform: rotate(18deg);
+  }
+  70% {
+    transform: rotate(-8deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .arcade-attendant--in,
+  .arcade-attendant--out,
+  .arcade-attendant__wave {
+    animation: none;
+  }
+}
