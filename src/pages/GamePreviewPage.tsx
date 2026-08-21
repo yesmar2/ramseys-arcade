@@ -1,4 +1,5 @@
 import { useEffect, useState, type CSSProperties } from 'react'
+import { PeriodSwitcher } from '../components/BoardChrome'
 import { Footer } from '../components/Footer'
 import { GameTileArt } from '../components/GameTileArt'
 import { HomeBar } from '../components/HomeBar'
@@ -17,7 +18,6 @@ import { useDeviceType } from '../lib/device'
 import {
   getLeaderboard,
   LEADERBOARD_GAMES,
-  LEADERBOARD_PERIODS,
   PERIOD_LABELS,
   type LeaderboardEntry,
   type LeaderboardGame,
@@ -140,62 +140,48 @@ export function GamePreviewPage({ slug }: { slug: string }) {
           )}
 
           {boardSlug ? (
-            <section
-              className="lb-board"
-              aria-label={`${game.name} leaderboard`}
-            >
-              <div className="lb-board__head">
-                <div className="lb-stat">
-                  <span className="lb-stat__label">Leaderboard</span>
-                  <strong>{PERIOD_LABELS[period]}</strong>
-                </div>
-              </div>
+            <>
+              <PeriodSwitcher
+                period={period}
+                accent={game.accent}
+                onSelect={setPeriod}
+              />
+              <section
+                key={period}
+                className="lb-board lb-board--fade"
+                aria-label={`${game.name} leaderboard`}
+              >
+                {loading ? (
+                  <p className="lb-empty">Loading scores…</p>
+                ) : error ? (
+                  <p className="lb-empty">
+                    Couldn’t load scores. Is the API running?
+                  </p>
+                ) : entries.length === 0 && !you ? (
+                  <p className="lb-empty">
+                    No scores for {PERIOD_LABELS[period].toLowerCase()} yet.
+                    {canPlay ? ' Play to claim the top spot.' : ''}
+                  </p>
+                ) : (
+                  <LeaderboardList
+                    entries={entries}
+                    you={you}
+                    playerName={playerName}
+                    accent={game.accent}
+                    shown={PREVIEW_ROWS}
+                  />
+                )}
 
-              <div className="lb-periods" role="tablist" aria-label="Time period">
-                {LEADERBOARD_PERIODS.map((p) => (
-                  <button
-                    key={p}
-                    type="button"
-                    role="tab"
-                    aria-selected={period === p}
-                    className={`lb-period${period === p ? ' lb-period--active' : ''}`}
-                    onClick={() => setPeriod(p)}
-                  >
-                    {PERIOD_LABELS[p]}
-                  </button>
-                ))}
-              </div>
-
-              {loading ? (
-                <p className="lb-empty">Loading scores…</p>
-              ) : error ? (
-                <p className="lb-empty">
-                  Couldn’t load scores. Is the API running?
-                </p>
-              ) : entries.length === 0 && !you ? (
-                <p className="lb-empty">
-                  No scores for {PERIOD_LABELS[period].toLowerCase()} yet.
-                  {canPlay ? ' Play to claim the top spot.' : ''}
-                </p>
-              ) : (
-                <LeaderboardList
-                  entries={entries}
-                  you={you}
-                  playerName={playerName}
-                  accent={game.accent}
-                  shown={PREVIEW_ROWS}
-                />
-              )}
-
-              <a className="game-lobby__all-boards" href={leaderboardHref(boardSlug)}>
-                Full leaderboards
-              </a>
-              {boardSlug === 'asteroids' ? (
-                <a className="game-lobby__all-boards" href={recordsHref('asteroids')}>
-                  Record books
+                <a className="game-lobby__all-boards" href={leaderboardHref(boardSlug)}>
+                  Full leaderboards
                 </a>
-              ) : null}
-            </section>
+                {boardSlug === 'asteroids' ? (
+                  <a className="game-lobby__all-boards" href={recordsHref('asteroids')}>
+                    Record books
+                  </a>
+                ) : null}
+              </section>
+            </>
           ) : null}
 
           <section className="game-lobby__section" aria-labelledby="game-how-heading">

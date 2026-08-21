@@ -392,7 +392,7 @@ function GameLeaderboard({
 
           <section
             key={`${active}-${period}`}
-            className="lb-board lb-board--accented lb-board--fade"
+            className="lb-board lb-board--fade"
             aria-label={`${activeGame?.name ?? active} ${PERIOD_LABELS[period]} leaderboard`}
           >
             {loading ? (

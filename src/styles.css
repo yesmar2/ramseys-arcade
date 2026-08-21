@@ -4335,6 +4335,8 @@ a.game-hud__board {
   box-shadow: none;
   font-size: 0.78rem;
   text-align: center;
+  appearance: none;
+  cursor: pointer;
 }
 
 @media (max-width: 420px) {
@@ -4497,10 +4499,6 @@ a.game-hud__board {
   backdrop-filter: blur(12px);
   border: 1px solid rgba(var(--ink-rgb), 0.06);
   box-shadow: var(--shadow-soft);
-}
-
-.lb-board--accented {
-  border-left: 3px solid var(--board-accent, var(--accent));
 }
 
 .lb-board--fade {
@@ -4928,7 +4926,7 @@ a.game-hud__board {
 }
 
 .game-lobby .lb-periods {
-  margin: 0 0 1rem;
+  margin: 0 0 0.85rem;
 }
 
 .game-lobby__all-boards {

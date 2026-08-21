@@ -103,17 +103,10 @@ function RecordsIndexPage({ game }: { game: string }) {
             <a className="rank-page__back" href={backHref}>
               ← {gameMeta?.name ?? game} scores
             </a>
-            <p className="lb-page__eyebrow lb-page__eyebrow--fast">Fastest</p>
             <h1 className="lb-page__title">Record books</h1>
-            <p className="lb-page__blurb lb-page__blurb--tight">
-              Lower is better · not global points
-            </p>
           </header>
 
-          <section
-            className="lb-board lb-board--accented"
-            aria-label="Game records"
-          >
+          <section className="lb-board" aria-label="Game records">
             {loading ? (
               <BoardSkeleton rows={5} />
             ) : error ? (
@@ -297,15 +290,7 @@ function RecordBoardPage({
             <a className="rank-page__back" href={recordsHref(game)}>
               ← Record books
             </a>
-            <p className="lb-page__eyebrow lb-page__eyebrow--fast">
-              {direction === 'lower'
-                ? 'Fastest · lower is better'
-                : 'Highest · higher is better'}
-            </p>
             <h1 className="lb-page__title">{record?.label ?? 'Record'}</h1>
-            <p className="lb-page__blurb lb-page__blurb--tight">
-              Not global points
-            </p>
             {!loading && !error ? (
               <div className="lb-page__actions">
                 <ShareBoardButton label={shareLabel} />
@@ -384,7 +369,7 @@ function RecordBoardPage({
 
           <section
             key={`${recordId}-${period}`}
-            className="lb-board lb-board--accented lb-board--fade"
+            className="lb-board lb-board--fade"
             aria-label={record?.label ?? 'Record board'}
           >
             {loading ? (

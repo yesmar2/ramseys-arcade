@@ -7,8 +7,9 @@ import {
 
 type PeriodSwitcherProps = {
   period: LeaderboardPeriod
-  hrefFor: (period: LeaderboardPeriod) => string
   onSelect: (period: LeaderboardPeriod) => void
+  /** When set, tabs are links (hash routes). Otherwise plain buttons. */
+  hrefFor?: (period: LeaderboardPeriod) => string
   accent?: string
   label?: string
 }
@@ -31,21 +32,38 @@ export function PeriodSwitcher({
       aria-label={label}
       style={style}
     >
-      {LEADERBOARD_PERIODS.map((p) => (
-        <a
-          key={p}
-          href={hrefFor(p)}
-          role="tab"
-          aria-selected={period === p}
-          className={`lb-period${period === p ? ' lb-period--active' : ''}`}
-          onClick={(e) => {
-            e.preventDefault()
-            onSelect(p)
-          }}
-        >
-          {PERIOD_LABELS[p]}
-        </a>
-      ))}
+      {LEADERBOARD_PERIODS.map((p) => {
+        const className = `lb-period${period === p ? ' lb-period--active' : ''}`
+        if (hrefFor) {
+          return (
+            <a
+              key={p}
+              href={hrefFor(p)}
+              role="tab"
+              aria-selected={period === p}
+              className={className}
+              onClick={(e) => {
+                e.preventDefault()
+                onSelect(p)
+              }}
+            >
+              {PERIOD_LABELS[p]}
+            </a>
+          )
+        }
+        return (
+          <button
+            key={p}
+            type="button"
+            role="tab"
+            aria-selected={period === p}
+            className={className}
+            onClick={() => onSelect(p)}
+          >
+            {PERIOD_LABELS[p]}
+          </button>
+        )
+      })}
     </div>
   )
 }
