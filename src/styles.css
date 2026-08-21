@@ -796,6 +796,10 @@ img {
   z-index: 1;
 }
 
+.home-stage > .home-bar {
+  z-index: 30;
+}
+
 .home-stage--bare .home-bar__brand {
   font-size: clamp(1.35rem, 3.5vw, 1.65rem);
   font-weight: 600;
