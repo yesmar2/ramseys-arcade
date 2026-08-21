@@ -3300,6 +3300,16 @@ a.game-hud__board {
   backdrop-filter: blur(14px);
 }
 
+.lb-scorecard--two {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.lb-scorecard--static {
+  position: static;
+  z-index: auto;
+  backdrop-filter: none;
+}
+
 .lb-scorecard .lb-stat {
   margin: 0;
   text-align: center;
@@ -3320,8 +3330,12 @@ a.game-hud__board {
   padding: 0.55rem 0.75rem;
   border: 0;
   border-radius: 0.75rem;
-  background: color-mix(in srgb, var(--accent) 14%, transparent);
-  color: var(--accent);
+  background: color-mix(
+    in srgb,
+    var(--lb-you-accent, var(--accent)) 14%,
+    transparent
+  );
+  color: var(--lb-you-accent, var(--accent));
   font-family: var(--font-body);
   font-weight: 800;
   font-size: 0.82rem;
@@ -3332,69 +3346,12 @@ a.game-hud__board {
 
 .lb-scorecard__find:hover,
 .lb-scorecard__find:focus-visible {
-  background: color-mix(in srgb, var(--accent) 22%, transparent);
+  background: color-mix(
+    in srgb,
+    var(--lb-you-accent, var(--accent)) 22%,
+    transparent
+  );
   outline: none;
-}
-
-.you-strip {
-  margin: 0 0 0.85rem;
-  grid-template-columns: repeat(2, 1fr);
-}
-
-.you-strip .rank-page__bar-stat:last-of-type {
-  border-right: 0;
-}
-
-.you-strip--find {
-  grid-template-columns: repeat(3, 1fr);
-}
-
-.you-strip--sticky {
-  position: sticky;
-  top: 0.55rem;
-  z-index: 12;
-  backdrop-filter: blur(14px);
-}
-
-.you-strip__find-stat {
-  justify-content: center;
-  border-right: 0;
-}
-
-.you-strip__find {
-  padding: 0.45rem 0.65rem;
-  border: 0;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--lb-you-accent, var(--accent)) 88%, #111);
-  color: #fff;
-  font-family: var(--font-body);
-  font-weight: 800;
-  font-size: 0.72rem;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  cursor: pointer;
-  touch-action: manipulation;
-}
-
-.you-strip__find:hover,
-.you-strip__find:focus-visible {
-  filter: brightness(1.08);
-  outline: none;
-}
-
-@media (max-width: 420px) {
-  .you-strip--find {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
-  .you-strip__find-stat {
-    grid-column: 1 / -1;
-    padding-top: 0.35rem;
-  }
-
-  .you-strip__find {
-    width: 100%;
-  }
 }
 
 .lb-row--flash {
@@ -3513,12 +3470,14 @@ a.game-hud__board {
   white-space: nowrap;
 }
 
-.records-leaders__holder em {
-  font-style: normal;
-  font-size: 0.66rem;
-  font-weight: 800;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
+.records-leaders__name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.records-leaders__row--you .lb-row__you-tag {
   color: var(--tab-accent, var(--accent));
 }
 
@@ -3589,66 +3548,11 @@ a.game-hud__board {
   border-color: transparent;
 }
 
-/* ?? Global rank ?? */
+/* Global rank */
 .rank-page {
   display: flex;
   flex-direction: column;
   gap: 1.15rem;
-}
-
-.rank-page__summary {
-  display: flex;
-  gap: 0.6rem;
-}
-
-.rank-page__summary--bar {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 0;
-  padding: 0.55rem 0.35rem;
-  border-radius: 0.85rem;
-  background: rgba(var(--surface-rgb), 0.72);
-  border: 1px solid rgba(var(--ink-rgb), 0.06);
-}
-
-.rank-page__bar-stat {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.12rem;
-  padding: 0.15rem 0.4rem;
-  border-right: 1px solid rgba(var(--ink-rgb), 0.08);
-}
-
-.rank-page__bar-stat:last-child {
-  border-right: 0;
-}
-
-.rank-page__bar-label {
-  font-size: 0.65rem;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--muted);
-}
-
-.rank-page__bar-stat strong {
-  font-family: var(--font-display);
-  font-size: 1.15rem;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  line-height: 1.1;
-}
-
-.rank-page__gap {
-  grid-column: 1 / -1;
-  margin: 0.35rem 0 0;
-  padding: 0.45rem 0.65rem 0.15rem;
-  border-top: 1px solid rgba(var(--ink-rgb), 0.08);
-  text-align: center;
-  font-size: 0.9rem;
-  font-weight: 700;
-  color: var(--muted);
 }
 
 .rank-page__near {
@@ -4527,7 +4431,7 @@ a.game-hud__board {
 
 .lb-row {
   display: grid;
-  grid-template-columns: 2.75rem 1fr auto auto;
+  grid-template-columns: 3.1rem 1fr auto auto;
   gap: 0.5rem 0.55rem;
   align-items: center;
   padding: 0.48rem 0.65rem;
@@ -4542,43 +4446,14 @@ a.game-hud__board {
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--lb-you-accent, var(--accent-sky)) 28%, transparent);
 }
 
-.lb-row--podium {
-  position: relative;
-  padding-block: 0.62rem;
-  border-left: 3px solid transparent;
-}
-
-.lb-row--podium .lb-row__name-text {
-  font-size: 1.02rem;
-}
-
-.lb-row--podium .lb-row__score-val {
-  font-size: 1.28rem;
-}
-
-.lb-row--gold {
-  border-left-color: #e4b43c;
-  background: color-mix(in srgb, #e4b43c 12%, var(--surface));
-}
-
-.lb-row--silver {
-  border-left-color: #9aadb8;
-  background: color-mix(in srgb, #9aadb8 12%, var(--surface));
-}
-
-.lb-row--bronze {
-  border-left-color: #c47a45;
-  background: color-mix(in srgb, #c47a45 12%, var(--surface));
-}
-
-.lb-row--you.lb-row--podium {
-  border-left-color: var(--lb-you-accent, var(--accent));
+.lb-row--medal .lb-row__rank {
+  color: var(--ink);
 }
 
 .lb-row__rank {
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
+  gap: 0.28rem;
   font-size: 0.75rem;
   font-weight: 700;
   letter-spacing: 0.04em;
@@ -4587,25 +4462,70 @@ a.game-hud__board {
 }
 
 .lb-medal {
-  width: 0.7rem;
-  height: 0.7rem;
-  border-radius: 50%;
+  display: inline-flex;
   flex: none;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.35),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.18);
+  line-height: 0;
 }
 
-.lb-medal--gold {
-  background: #e4b43c;
+.lb-medal svg {
+  display: block;
+  overflow: visible;
 }
 
-.lb-medal--silver {
-  background: #9aadb8;
+.lb-medal__ribbon {
+  stroke: rgba(0, 0, 0, 0.12);
+  stroke-width: 0.4;
 }
 
-.lb-medal--bronze {
-  background: #c47a45;
+.lb-medal__ribbon--left {
+  fill: #c45a5a;
+}
+
+.lb-medal__ribbon--right {
+  fill: #9e3f3f;
+}
+
+.lb-medal__disk {
+  stroke: rgba(0, 0, 0, 0.18);
+  stroke-width: 0.55;
+}
+
+.lb-medal__ring {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.45);
+  stroke-width: 0.7;
+}
+
+.lb-medal__num {
+  fill: rgba(0, 0, 0, 0.55);
+  font-family: var(--font-display);
+  font-size: 7.2px;
+  font-weight: 700;
+  dominant-baseline: middle;
+}
+
+.lb-medal--gold .lb-medal__disk {
+  fill: #e8c04a;
+}
+
+.lb-medal--silver .lb-medal__disk {
+  fill: #c2ced6;
+}
+
+.lb-medal--bronze .lb-medal__disk {
+  fill: #d08952;
+}
+
+.lb-medal--gold .lb-medal__ring {
+  stroke: #f6e29a;
+}
+
+.lb-medal--silver .lb-medal__ring {
+  stroke: #e8eef2;
+}
+
+.lb-medal--bronze .lb-medal__ring {
+  stroke: #f0c19a;
 }
 
 .lb-row--you .lb-row__rank,

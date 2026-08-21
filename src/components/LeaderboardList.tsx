@@ -1,6 +1,7 @@
 import type { CSSProperties } from 'react'
 import { DeviceIcon } from './DeviceIcon'
 import { PlayerAvatar } from './PlayerAvatar'
+import { PodiumMedal, medalKind } from './PodiumMedal'
 import { rowDeltaLabel } from '../lib/boardGap'
 import {
   normalizePlayerName,
@@ -17,13 +18,6 @@ function formatDate(at: number) {
   } catch {
     return ''
   }
-}
-
-function medalKind(rank: number): 'gold' | 'silver' | 'bronze' | null {
-  if (rank === 1) return 'gold'
-  if (rank === 2) return 'silver'
-  if (rank === 3) return 'bronze'
-  return null
 }
 
 export function LeaderboardList({
@@ -67,23 +61,16 @@ export function LeaderboardList({
       direction,
       formatDelta,
     })
-    const podium = medal ? ` lb-row--podium lb-row--${medal}` : ''
     return (
       <li
         key={`${entry.id}${opts?.markYouId ? '-you' : ''}`}
         id={opts?.markYouId ? 'lb-you-row' : undefined}
-        className={`lb-row${isYou ? ' lb-row--you' : ''}${podium}`}
+        className={`lb-row${isYou ? ' lb-row--you' : ''}${medal ? ' lb-row--medal' : ''}`}
         style={isYou ? youStyle : undefined}
         aria-current={isYou ? 'true' : undefined}
       >
         <span className="lb-row__rank">
-          {medal ? (
-            <span
-              className={`lb-medal lb-medal--${medal}`}
-              title={medal}
-              aria-hidden="true"
-            />
-          ) : null}
+          {medal ? <PodiumMedal kind={medal} /> : null}
           #{rank}
         </span>
         <span className="lb-row__name">

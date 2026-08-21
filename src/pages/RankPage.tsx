@@ -104,22 +104,22 @@ export function RankPage({ player }: { player?: string }) {
           ) : (
             <>
               <section
-                className="rank-page__summary rank-page__summary--bar"
+                className="lb-scorecard lb-scorecard--static"
                 aria-label={isSelf ? 'Your rank' : `${viewedName} rank`}
               >
-                <div className="rank-page__bar-stat">
-                  <span className="rank-page__bar-label">Rank</span>
+                <div className="lb-stat">
+                  <span className="lb-stat__label">Rank</span>
                   <strong>{rank != null ? `#${rank}` : '—'}</strong>
                 </div>
-                <div className="rank-page__bar-stat">
-                  <span className="rank-page__bar-label">Points</span>
+                <div className="lb-stat">
+                  <span className="lb-stat__label">Points</span>
                   <strong>{score > 0 ? score : '—'}</strong>
                 </div>
-                <div className="rank-page__bar-stat">
-                  <span className="rank-page__bar-label">Field</span>
+                <div className="lb-stat">
+                  <span className="lb-stat__label">Field</span>
                   <strong>{totalPlayers > 0 ? totalPlayers : '—'}</strong>
                 </div>
-                {gap ? <p className="rank-page__gap">{gap}</p> : null}
+                {gap ? <p className="lb-scorecard__gap">{gap}</p> : null}
               </section>
 
               <section

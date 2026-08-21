@@ -6,13 +6,7 @@ import {
   type GlobalBoardEntry,
 } from '../lib/leaderboard'
 import { PlayerAvatar } from './PlayerAvatar'
-
-function medalKind(rank: number): 'gold' | 'silver' | 'bronze' | null {
-  if (rank === 1) return 'gold'
-  if (rank === 2) return 'silver'
-  if (rank === 3) return 'bronze'
-  return null
-}
+import { PodiumMedal, medalKind } from './PodiumMedal'
 
 export function GlobalRankList({
   entries,
@@ -46,7 +40,6 @@ export function GlobalRankList({
       entries,
       formatDelta: (n) => String(n),
     })
-    const podium = medal ? ` lb-row--podium lb-row--${medal}` : ''
     const nameInner = (
       <>
         <PlayerAvatar avatarId={entry.avatarId} name={name} size="sm" />
@@ -60,18 +53,12 @@ export function GlobalRankList({
       <li
         key={`${entry.rank}-${name}${opts?.markYouId ? '-you' : ''}`}
         id={opts?.markYouId ? 'lb-you-row' : undefined}
-        className={`lb-row${isYou ? ' lb-row--you' : ''}${podium}`}
+        className={`lb-row${isYou ? ' lb-row--you' : ''}${medal ? ' lb-row--medal' : ''}`}
         style={isYou ? youStyle : undefined}
         aria-current={isYou ? 'true' : undefined}
       >
         <span className="lb-row__rank">
-          {medal ? (
-            <span
-              className={`lb-medal lb-medal--${medal}`}
-              title={medal}
-              aria-hidden="true"
-            />
-          ) : null}
+          {medal ? <PodiumMedal kind={medal} /> : null}
           #{entry.rank}
         </span>
         {isYou ? (

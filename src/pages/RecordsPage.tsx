@@ -144,8 +144,12 @@ function RecordsIndexPage({ game }: { game: string }) {
                       >
                         <span className="records-leaders__label">{row.label}</span>
                         <span className="records-leaders__holder" title={holder}>
-                          {isYou ? 'You' : holder || '—'}
-                          {isYou ? <em>hold</em> : null}
+                          <span className="records-leaders__name">
+                            {holder || '—'}
+                          </span>
+                          {isYou ? (
+                            <span className="lb-row__you-tag">You</span>
+                          ) : null}
                         </span>
                         <span className="records-leaders__time">
                           {row.top

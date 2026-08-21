@@ -26,28 +26,25 @@ export function YouBoardStrip({
     : undefined
 
   return (
-    <div
-      className={`rank-page__summary rank-page__summary--bar you-strip${sticky ? ' you-strip--sticky' : ''}${findMe ? ' you-strip--find' : ''}`}
+    <section
+      className={`lb-scorecard lb-scorecard--two${sticky ? '' : ' lb-scorecard--static'}`}
       style={style}
-      role="status"
       aria-label={`Your standing: rank ${rank}, ${valueLabel} ${String(value)}`}
     >
-      <div className="rank-page__bar-stat">
-        <span className="rank-page__bar-label">Rank</span>
+      <div className="lb-stat">
+        <span className="lb-stat__label">Rank</span>
         <strong>#{rank}</strong>
       </div>
-      <div className="rank-page__bar-stat">
-        <span className="rank-page__bar-label">{valueLabel}</span>
+      <div className="lb-stat">
+        <span className="lb-stat__label">{valueLabel}</span>
         <strong>{value}</strong>
       </div>
+      {gap ? <p className="lb-scorecard__gap">{gap}</p> : null}
       {findMe && onFindMe ? (
-        <div className="rank-page__bar-stat you-strip__find-stat">
-          <button type="button" className="you-strip__find" onClick={onFindMe}>
-            Find me
-          </button>
-        </div>
+        <button type="button" className="lb-scorecard__find" onClick={onFindMe}>
+          Find me on the board
+        </button>
       ) : null}
-      {gap ? <p className="rank-page__gap">{gap}</p> : null}
-    </div>
+    </section>
   )
 }
