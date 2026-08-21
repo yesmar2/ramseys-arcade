@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { Footer } from '../components/Footer'
 import { HomeBar } from '../components/HomeBar'
 import { LeaderboardList } from '../components/LeaderboardList'
-import { getGame, gamePlayableOn } from '../data/games'
+import { devicePlayOnHint, deviceRequirementLabel, getGame, gamePlayableOn } from '../data/games'
 import { gamePlayHref, leaderboardHref } from '../hooks/useHashRoute'
 import { useDeviceType } from '../lib/device'
 import { usePlayerName } from '../hooks/usePlayerName'
@@ -31,14 +31,17 @@ export function LeaderboardsPage({
   const device = useDeviceType()
   const tabs = useMemo(
     () =>
-      LEADERBOARD_GAMES.filter((slug) => {
+      LEADERBOARD_GAMES.map((slug) => {
         const game = getGame(slug)
-        return game ? gamePlayableOn(game, device) : false
-      }).map((slug) => ({
-        slug,
-        name: getGame(slug)?.name ?? slug,
-        accent: getGame(slug)?.accent ?? '#2eb8a0',
-      })),
+        const playable = game ? gamePlayableOn(game, device) : false
+        return {
+          slug,
+          name: game?.name ?? slug,
+          accent: game?.accent ?? '#2eb8a0',
+          playable,
+          deviceHint: game && !playable ? devicePlayOnHint(game) : null,
+        }
+      }),
     [device],
   )
 
@@ -56,6 +59,7 @@ export function LeaderboardsPage({
   const activeMeta = tabs.find((t) => t.slug === active) ?? tabs[0]
   const activeGame = getGame(active)
   const canPlay = activeGame ? gamePlayableOn(activeGame, device) : true
+  const deviceHint = activeMeta?.deviceHint
 
   useEffect(() => {
     if (!tabs.length) return
@@ -114,7 +118,7 @@ export function LeaderboardsPage({
                 href={leaderboardHref(tab.slug, period)}
                 role="tab"
                 aria-selected={tab.slug === active}
-                className={`lb-tab${tab.slug === active ? ' lb-tab--active' : ''}`}
+                className={`lb-tab${tab.slug === active ? ' lb-tab--active' : ''}${tab.playable ? '' : ' lb-tab--other-device'}`}
                 style={{ '--tab-accent': tab.accent } as CSSProperties}
                 onClick={(e) => {
                   e.preventDefault()
@@ -125,6 +129,14 @@ export function LeaderboardsPage({
               </a>
             ))}
           </div>
+
+          {deviceHint ? (
+            <p className="lb-device-note" role="note">
+              {activeGame
+                ? deviceRequirementLabel(activeGame)
+                : `${activeMeta.name} isn’t available on this device.`}
+            </p>
+          ) : null}
 
           <div className="lb-periods" role="tablist" aria-label="Time period">
             {LEADERBOARD_PERIODS.map((p) => (
@@ -163,7 +175,7 @@ export function LeaderboardsPage({
                     claim the top spot.
                   </>
                 ) : (
-                  'Play it on a supported device to claim the top spot.'
+                  <>Open it on a supported device to post a score.</>
                 )}
               </p>
             ) : (
@@ -194,6 +206,11 @@ export function LeaderboardsPage({
               >
                 Play {activeMeta.name}
               </a>
+            ) : deviceHint && activeGame ? (
+              <p className="lb-device-note lb-device-note--footer" role="note">
+                {deviceRequirementLabel(activeGame)} Scores still count toward
+                global rank.
+              </p>
             ) : null}
           </section>
         </div>

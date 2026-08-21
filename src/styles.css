@@ -120,7 +120,7 @@ img {
   display: block;
 }
 
-/* —— Header —— */
+/* ?? Header ?? */
 .site-header {
   position: sticky;
   top: 0;
@@ -282,7 +282,7 @@ img {
   }
 }
 
-/* —— Player identity —— */
+/* ?? Player identity ?? */
 .player-badge-wrap {
   position: relative;
   display: flex;
@@ -501,7 +501,7 @@ img {
   gap: 0.65rem;
 }
 
-/* —— Tournament play mode —— */
+/* ?? Tournament play mode ?? */
 .tour-play .game-hud {
   padding-top: max(0.4rem, env(safe-area-inset-top));
 }
@@ -637,7 +637,7 @@ img {
   z-index: 20;
 }
 
-/* —— Home: brand + games in one screen —— */
+/* ?? Home: brand + games in one screen ?? */
 .home-stage {
   position: relative;
   overflow: hidden;
@@ -669,7 +669,7 @@ img {
   border: 0;
 }
 
-/* —— Hero —— */
+/* ?? Hero ?? */
 .hero {
   display: flex;
   align-items: center;
@@ -743,7 +743,7 @@ img {
   animation-delay: -5s;
 }
 
-/* —— Games section —— */
+/* ?? Games section ?? */
 .games {
   width: min(100% - 2rem, var(--max-width));
   margin: 0 auto 4rem;
@@ -1183,7 +1183,7 @@ img {
   }
 }
 
-/* —— Game page —— */
+/* ?? Game page ?? */
 .game-page {
   flex: 1;
   padding: 1.5rem 1rem 3rem;
@@ -1376,7 +1376,7 @@ a.game-hud__board {
   box-shadow: var(--shadow-soft);
 }
 
-/* —— Shared game stage (fixed aspect, letterboxed) —— */
+/* ?? Shared game stage (fixed aspect, letterboxed) ?? */
 .game-shell {
   position: absolute;
   inset: 0;
@@ -1552,7 +1552,7 @@ a.game-hud__board {
   user-select: none;
 }
 
-/* —— Stacker —— */
+/* ?? Stacker ?? */
 .stacker {
   position: relative;
 }
@@ -1710,7 +1710,7 @@ a.game-hud__board {
   background: #f3f9fd;
 }
 
-/* —— Patriot —— */
+/* ?? Patriot ?? */
 .patriot {
   position: relative;
 }
@@ -2104,7 +2104,7 @@ a.game-hud__board {
   }
 }
 
-/* —— Snake —— */
+/* ?? Snake ?? */
 .snake {
   position: relative;
 }
@@ -3077,7 +3077,7 @@ a.game-hud__board {
   }
 }
 
-/* —— Leaderboards —— */
+/* ?? Leaderboards ?? */
 .lb-page {
   flex: 1;
   display: flex;
@@ -3119,7 +3119,7 @@ a.game-hud__board {
   color: var(--muted);
 }
 
-/* —— Global rank —— */
+/* ?? Global rank ?? */
 .rank-page {
   display: flex;
   flex-direction: column;
@@ -3258,19 +3258,44 @@ a.game-hud__board {
   border: 1px solid rgba(var(--ink-rgb), 0.06);
 }
 
+.rank-page__row--other-device {
+  opacity: 0.92;
+}
+
 .rank-page__game {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.12rem;
+  min-width: 0;
   font-weight: 700;
   color: var(--ink);
   text-decoration: none;
+}
+
+.rank-page__game-name {
   min-width: 0;
+  max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+.rank-page__device {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+}
+
 .rank-page__game:hover,
 .rank-page__game:focus-visible {
   color: var(--accent);
+}
+
+.rank-page__game:hover .rank-page__device,
+.rank-page__game:focus-visible .rank-page__device {
+  color: color-mix(in srgb, var(--accent) 70%, var(--muted));
 }
 
 .rank-page__place {
@@ -3403,6 +3428,26 @@ a.game-hud__board {
   border-color: color-mix(in srgb, var(--tab-accent) 45%, transparent);
   background: rgba(var(--surface-rgb), 0.92);
   box-shadow: var(--shadow-soft);
+}
+
+.lb-tab--other-device {
+  opacity: 0.72;
+}
+
+.lb-device-note {
+  margin: -0.15rem 0 0.85rem;
+  text-align: center;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.lb-device-note--footer {
+  margin: 0.85rem 0 0;
+  padding: 0.75rem 0.9rem;
+  border-radius: calc(var(--tile-radius) - 0.25rem);
+  background: rgba(var(--surface-rgb), 0.72);
+  border: 1px solid rgba(var(--ink-rgb), 0.06);
 }
 
 .lb-periods {
@@ -3674,7 +3719,7 @@ a.game-hud__board {
   box-shadow: var(--shadow-soft);
 }
 
-/* —— Game lobby —— */
+/* ?? Game lobby ?? */
 .game-lobby {
   display: flex;
   flex-direction: column;
@@ -3801,7 +3846,7 @@ a.game-hud__board {
   color: var(--ink);
 }
 
-/* —— Score save (game over) —— */
+/* ?? Score save (game over) ?? */
 .score-save {
   display: flex;
   flex-direction: column;
@@ -4151,7 +4196,7 @@ a.game-hud__board {
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-sky) 25%, transparent);
 }
 
-/* —— Footer —— */
+/* ?? Footer ?? */
 .site-footer {
   margin-top: auto;
   padding: 1.5rem 1rem 2rem;
@@ -4165,7 +4210,7 @@ a.game-hud__board {
   color: var(--muted);
 }
 
-/* —— Motion —— */
+/* ?? Motion ?? */
 @keyframes hero-in {
   from {
     opacity: 0;
@@ -4212,7 +4257,7 @@ a.game-hud__board {
   }
 }
 
-/* —— Tournaments —— */
+/* ?? Tournaments ?? */
 .tour-list {
   list-style: none;
   margin: 0;
@@ -4526,7 +4571,7 @@ a.game-hud__board {
   border-bottom: 0;
 }
 
-/* —— Info tip (hover / tap details) —— */
+/* ?? Info tip (hover / tap details) ?? */
 .info-tip {
   position: relative;
   display: inline-flex;
@@ -4659,7 +4704,7 @@ a.game-hud__board {
   align-items: center;
   gap: 0.35rem;
 }
-/* �� Rare home attendant �� */
+/* ?? Rare home attendant ?? */
 .arcade-attendant {
   position: fixed;
   right: max(0.85rem, env(safe-area-inset-right));

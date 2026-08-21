@@ -1,8 +1,13 @@
 import { useEffect, useState } from 'react'
 import { Footer } from '../components/Footer'
 import { HomeBar } from '../components/HomeBar'
-import { getGame } from '../data/games'
+import {
+  devicePlayOnHint,
+  getGame,
+  gamePlayableOn,
+} from '../data/games'
 import { leaderboardHref, rankHref } from '../hooks/useHashRoute'
+import { useDeviceType } from '../lib/device'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { useGlobalRank } from '../lib/globalRank'
 import {
@@ -21,6 +26,7 @@ const empty: GlobalRankResult = {
 }
 
 export function RankPage({ player }: { player?: string }) {
+  const device = useDeviceType()
   const myName = normalizePlayerName(usePlayerName())
   const viewedName = normalizePlayerName(player ?? '') || myName
   const isSelf = !viewedName || viewedName === myName
@@ -154,10 +160,21 @@ export function RankPage({ player }: { player?: string }) {
                   {LEADERBOARD_GAMES.map((slug) => {
                     const game = getGame(slug)
                     const row = byGame[slug]
+                    const onDevice = game ? gamePlayableOn(game, device) : true
+                    const deviceHint =
+                      game && !onDevice ? devicePlayOnHint(game) : null
                     return (
-                      <li key={slug} className="rank-page__row">
+                      <li
+                        key={slug}
+                        className={`rank-page__row${deviceHint ? ' rank-page__row--other-device' : ''}`}
+                      >
                         <a className="rank-page__game" href={leaderboardHref(slug, 'all')}>
-                          {game?.name ?? slug}
+                          <span className="rank-page__game-name">
+                            {game?.name ?? slug}
+                          </span>
+                          {deviceHint ? (
+                            <span className="rank-page__device">{deviceHint}</span>
+                          ) : null}
                         </a>
                         {row ? (
                           <>

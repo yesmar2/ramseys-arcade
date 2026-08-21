@@ -92,3 +92,9 @@ export function deviceRequirementLabel(game: Game) {
   if (!game.devices?.length) return null
   return `${game.name} plays on ${formatDeviceList(game.devices)}.`
 }
+
+/** Short hint for dense UI, e.g. "On phone and tablet". */
+export function devicePlayOnHint(game: Game) {
+  if (!game.devices?.length) return null
+  return `On ${formatDeviceList(game.devices)}`
+}
