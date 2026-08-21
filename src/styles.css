@@ -1060,6 +1060,212 @@ img {
   height: 100%;
 }
 
+/* Hover-only: art plays like a tiny game beat */
+.tile-play {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.game-tile:hover .tile-play--spin,
+.game-tile:focus-visible .tile-play--spin {
+  animation: tile-play-spin 7s linear infinite;
+}
+
+.game-tile:hover .tile-play--spin-rev,
+.game-tile:focus-visible .tile-play--spin-rev {
+  animation: tile-play-spin 11s linear infinite reverse;
+}
+
+.game-tile:hover .tile-play--drift,
+.game-tile:focus-visible .tile-play--drift {
+  animation: tile-play-drift 2.8s ease-in-out infinite;
+}
+
+.game-tile:hover .tile-play--drift-alt,
+.game-tile:focus-visible .tile-play--drift-alt {
+  animation: tile-play-drift 3.4s ease-in-out infinite reverse;
+}
+
+.game-tile:hover .tile-play--thrust,
+.game-tile:focus-visible .tile-play--thrust {
+  animation: tile-play-thrust 1.6s ease-in-out infinite;
+}
+
+.game-tile:hover .tile-play--flame,
+.game-tile:focus-visible .tile-play--flame {
+  animation: tile-play-flame 0.35s ease-in-out infinite;
+}
+
+.game-tile:hover .tile-play--slide,
+.game-tile:focus-visible .tile-play--slide {
+  animation: tile-play-slide 1.8s ease-in-out infinite;
+}
+
+.game-tile:hover .tile-play--fall,
+.game-tile:focus-visible .tile-play--fall {
+  animation: tile-play-fall 1.5s linear infinite;
+}
+
+.game-tile:hover .tile-play--fall-alt,
+.game-tile:focus-visible .tile-play--fall-alt {
+  animation: tile-play-fall 1.9s linear infinite;
+  animation-delay: -0.6s;
+}
+
+.game-tile:hover .tile-play--crawl,
+.game-tile:focus-visible .tile-play--crawl {
+  animation: tile-play-crawl 1.4s steps(2, end) infinite;
+}
+
+.game-tile:hover .tile-play--nibble,
+.game-tile:focus-visible .tile-play--nibble {
+  animation: tile-play-nibble 0.9s ease-in-out infinite;
+}
+
+.game-tile:hover .tile-play--pop,
+.game-tile:focus-visible .tile-play--pop {
+  animation: tile-play-pop 0.85s ease-in-out infinite;
+}
+
+.game-tile:hover .tile-play--aim,
+.game-tile:focus-visible .tile-play--aim {
+  animation: tile-play-aim 1.5s ease-in-out infinite;
+}
+
+.game-tile:hover .tile-play--blink,
+.game-tile:focus-visible .tile-play--blink {
+  animation: tile-play-blink 0.7s ease-in-out infinite;
+}
+
+@keyframes tile-play-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes tile-play-drift {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  50% {
+    transform: translate(3px, -2px);
+  }
+}
+
+@keyframes tile-play-thrust {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-2px);
+  }
+}
+
+@keyframes tile-play-flame {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scaleY(0.85);
+  }
+  50% {
+    opacity: 1;
+    transform: scaleY(1.2);
+  }
+}
+
+@keyframes tile-play-slide {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  50% {
+    transform: translate(-10px, 0);
+  }
+}
+
+@keyframes tile-play-fall {
+  0% {
+    transform: translate(0, -6px);
+    opacity: 0.35;
+  }
+  70% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(5px, 10px);
+    opacity: 0.2;
+  }
+}
+
+@keyframes tile-play-crawl {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  50% {
+    transform: translate(4px, 0);
+  }
+}
+
+@keyframes tile-play-nibble {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.12);
+  }
+}
+
+@keyframes tile-play-pop {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  35% {
+    transform: scale(1.18);
+  }
+  55% {
+    transform: scale(0.94);
+  }
+}
+
+@keyframes tile-play-aim {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  50% {
+    transform: rotate(4deg);
+  }
+}
+
+@keyframes tile-play-blink {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 0.82;
+  }
+}
+
+@media (hover: none) {
+  .tile-play {
+    animation: none !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tile-play {
+    animation: none !important;
+  }
+}
+
 .game-tile__title {
   grid-row: 2;
   z-index: 1;
