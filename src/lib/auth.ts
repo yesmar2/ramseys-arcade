@@ -1,7 +1,9 @@
 import {
   ApiError,
+  forgetClaimToken,
   getClaimToken,
   getLastPlayerName,
+  migrateLocalScoresToName,
   rememberClaimToken,
   setPlayerNameLocal,
 } from './leaderboard'
@@ -151,7 +153,10 @@ export async function fetchAuthMe(): Promise<{
 export async function linkCurrentNameToAccount(name?: string): Promise<OwnedName | null> {
   const cleaned = (name || getLastPlayerName()).trim().toUpperCase()
   if (!cleaned || !getSessionToken()) return null
+  const previous = getLastPlayerName()
   const claimToken = getClaimToken(cleaned) ?? undefined
+  const previousToken =
+    previous && previous !== cleaned ? getClaimToken(previous) ?? undefined : undefined
   const data = await authApi<{
     name: string
     token: string
@@ -161,9 +166,15 @@ export async function linkCurrentNameToAccount(name?: string): Promise<OwnedName
     body: JSON.stringify({
       name: cleaned,
       ...(claimToken ? { claimToken } : {}),
+      ...(previous && previous !== cleaned ? { previousName: previous } : {}),
+      ...(previousToken ? { previousToken } : {}),
     }),
   })
   rememberClaimToken(data.name, data.token)
+  if (previous && previous !== data.name) {
+    forgetClaimToken(previous)
+  }
+  await migrateLocalScoresToName(data.name, data.token)
   applyOwnedNames(data.names ?? [])
   setPlayerNameLocal(data.name)
   return { name: data.name, token: data.token }

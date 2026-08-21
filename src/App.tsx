@@ -3,7 +3,12 @@ import { Footer } from './components/Footer'
 import { Header } from './components/Header'
 import { getGame } from './data/games'
 import { useHashRoute } from './hooks/useHashRoute'
-import { PLAYER_NAME_EVENT } from './lib/leaderboard'
+import {
+  getClaimToken,
+  getLastPlayerName,
+  migrateLocalScoresToName,
+  PLAYER_NAME_EVENT,
+} from './lib/leaderboard'
 import { refreshGlobalRank } from './lib/globalRank'
 import { refreshPersonalBests } from './lib/personalBest'
 import { silenceMusic, unlockSound } from './lib/sound'
@@ -21,6 +26,16 @@ import { StackerPage } from './pages/StackerPage'
 import { WhackPage } from './pages/WhackPage'
 import { TournamentDetailPage, TournamentsPage } from './pages/TournamentsPage'
 import { TournamentPlayPage } from './pages/TournamentPlayPage'
+
+async function syncPlayerIdentity() {
+  const name = getLastPlayerName()
+  const token = name ? getClaimToken(name) : null
+  if (name && token) {
+    await migrateLocalScoresToName(name, token)
+  }
+  await refreshPersonalBests()
+  await refreshGlobalRank()
+}
 
 function ComingSoonPage({ slug }: { slug: string }) {
   const game = getGame(slug)
@@ -54,11 +69,9 @@ function App() {
   const onGameScreen = isGameScreen(route)
 
   useEffect(() => {
-    void refreshPersonalBests()
-    void refreshGlobalRank()
+    void syncPlayerIdentity()
     const sync = () => {
-      void refreshPersonalBests()
-      void refreshGlobalRank()
+      void syncPlayerIdentity()
     }
     const unlock = () => unlockSound()
     window.addEventListener(PLAYER_NAME_EVENT, sync)

@@ -138,6 +138,43 @@ export function rememberClaimToken(name: string, token: string) {
   writeClaims(claims)
 }
 
+export function forgetClaimToken(name: string) {
+  const cleaned = normalizePlayerName(name)
+  if (!cleaned) return
+  const claims = readClaims()
+  if (!(cleaned in claims)) return
+  delete claims[cleaned]
+  writeClaims(claims)
+}
+
+/** Move scores from every locally proven old tag onto the active gamer tag. */
+export async function migrateLocalScoresToName(
+  activeName: string,
+  activeToken: string,
+): Promise<void> {
+  const cleaned = normalizePlayerName(activeName)
+  if (!cleaned || !activeToken) return
+
+  const claims = readClaims()
+  for (const [name, token] of Object.entries(claims)) {
+    if (name === cleaned || !token) continue
+    try {
+      await api<{ name: string }>('/names/rename', {
+        method: 'POST',
+        body: JSON.stringify({
+          from: name,
+          to: cleaned,
+          fromToken: token,
+          toToken: activeToken,
+        }),
+      })
+      forgetClaimToken(name)
+    } catch {
+      /* not owned anymore / already migrated */
+    }
+  }
+}
+
 export function getLastPlayerName(): string {
   try {
     return normalizePlayerName(localStorage.getItem(LAST_NAME_KEY) || '')
@@ -171,6 +208,7 @@ export function setPlayerNameLocal(cleaned: string) {
 export async function rememberPlayerName(name: string): Promise<string> {
   const cleaned = normalizePlayerName(name) || 'YOU'
   const previous = getLastPlayerName()
+  const previousToken = previous ? getClaimToken(previous) : null
   const existingToken = getClaimToken(cleaned)
 
   const claim = await api<{ name: string; token: string }>('/names/claim', {
@@ -184,19 +222,24 @@ export async function rememberPlayerName(name: string): Promise<string> {
   rememberClaimToken(claim.name, claim.token)
   setLocalPlayerName(claim.name)
 
-  if (previous && previous !== claim.name) {
-    void import('./tournaments')
-      .then((m) =>
-        m.renameTournamentPlayer(previous, claim.name, {
-          fromToken: getClaimToken(previous) ?? undefined,
+  if (previous && previous !== claim.name && previousToken) {
+    try {
+      await api('/names/rename', {
+        method: 'POST',
+        body: JSON.stringify({
+          from: previous,
+          to: claim.name,
+          fromToken: previousToken,
           toToken: claim.token,
         }),
-      )
-      .catch(() => {
-        /* offline / API down — local name still updates */
       })
+      forgetClaimToken(previous)
+    } catch {
+      /* claim/rename race — heal below may still recover */
+    }
   }
 
+  await migrateLocalScoresToName(claim.name, claim.token)
   return claim.name
 }
 
