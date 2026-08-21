@@ -10,7 +10,7 @@ import { usePersonalBest } from '../../hooks/usePersonalBest'
 import { usePlayerName } from '../../hooks/usePlayerName'
 import { useDeviceType } from '../../lib/device'
 import { getPersonalBest } from '../../lib/personalBest'
-import { submitAsteroidsWaveTime } from '../../lib/records'
+import { submitAsteroidsHighestCombo, submitAsteroidsWaveTime } from '../../lib/records'
 import { useTournamentPlay } from '../../tournaments/TournamentPlayContext'
 import {
   asteroidsLayout,
@@ -74,6 +74,7 @@ export function AsteroidsGame() {
   const [waveRecordNote, setWaveRecordNote] = useState<string | null>(null)
   const offeredScore = useRef<number | null>(null)
   const waveRecordKey = useRef<string | null>(null)
+  const comboRecordKey = useRef<string | null>(null)
   const previousBestRef = useRef(getPersonalBest('asteroids'))
   const startGrace = useRef(0)
   const ignorePauseKeys = useRef(false)
@@ -191,16 +192,54 @@ export function AsteroidsGame() {
     waveRecordKey.current = key
     setWaveRecordNote(null)
     let cancelled = false
-    void submitAsteroidsWaveTime(wave, time, playerName).then((result) => {
-      if (cancelled || !result?.improved) return
-      setWaveRecordNote(
-        result.rank != null ? `Wave record · #${result.rank}` : 'Wave record set',
-      )
-    })
+    const notes: string[] = []
+    void (async () => {
+      const waveResult = await submitAsteroidsWaveTime(wave, time, playerName)
+      if (cancelled) return
+      if (waveResult?.improved) {
+        notes.push(
+          waveResult.rank != null
+            ? `Wave record · #${waveResult.rank}`
+            : 'Wave record set',
+        )
+      }
+      const combo = ui.runComboBest
+      const comboKey = `combo:${combo}`
+      if (combo >= 2 && comboRecordKey.current !== comboKey) {
+        comboRecordKey.current = comboKey
+        const comboResult = await submitAsteroidsHighestCombo(combo, playerName)
+        if (cancelled) return
+        if (comboResult?.improved) {
+          notes.push(
+            comboResult.rank != null
+              ? `Combo record · #${comboResult.rank}`
+              : 'Combo record set',
+          )
+        }
+      }
+      if (!cancelled && notes.length) setWaveRecordNote(notes.join(' · '))
+    })()
     return () => {
       cancelled = true
     }
-  }, [ui.phase, ui.lastWave, ui.lastWaveTime, playerName, tournament])
+  }, [
+    ui.phase,
+    ui.lastWave,
+    ui.lastWaveTime,
+    ui.runComboBest,
+    playerName,
+    tournament,
+  ])
+
+  useEffect(() => {
+    if (ui.phase !== 'gameover' || tournament) return
+    const combo = ui.runComboBest
+    if (combo < 2) return
+    const key = `over:${combo}`
+    if (comboRecordKey.current === key) return
+    comboRecordKey.current = key
+    void submitAsteroidsHighestCombo(combo, playerName)
+  }, [ui.phase, ui.runComboBest, playerName, tournament])
 
   useEffect(() => {
     const sync = () => {
@@ -222,6 +261,8 @@ export function AsteroidsGame() {
   const restart = () => {
     setSaveOpen(false)
     offeredScore.current = null
+    waveRecordKey.current = null
+    comboRecordKey.current = null
     clearPressed()
     const next = currentLayout()
     setAspect({ w: next.aspectW, h: next.aspectH })

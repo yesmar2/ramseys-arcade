@@ -86,6 +86,8 @@ export type Snapshot = {
   timeBonus: number
   combo: number
   comboBest: number
+  /** Peak combo across the whole run (survives wave transitions). */
+  runComboBest: number
   buffRapid: boolean
   buffSpread: boolean
   buffShield: boolean
@@ -124,6 +126,8 @@ export type GameState = {
   comboTimer: number
   comboBest: number
   lastComboBest: number
+  /** Peak combo for the current run (not reset between waves). */
+  runComboBest: number
   floaters: Floater[]
   buffRapid: number
   buffSpread: number
@@ -445,6 +449,7 @@ export function createInitialState(w = DESIGN_W, h = DESIGN_H): GameState {
     comboTimer: 0,
     comboBest: 0,
     lastComboBest: 0,
+    runComboBest: 0,
     floaters: [],
     buffRapid: 0,
     buffSpread: 0,
@@ -775,6 +780,7 @@ export function tick(state: GameState, dt: number): GameState {
   let combo = s.combo
   let comboTimer = s.comboTimer
   let comboBest = s.comboBest
+  let runComboBest = s.runComboBest
   let floaters = [...s.floaters]
   const hitBullet = new Set<number>()
   const hitRock = new Set<number>()
@@ -790,6 +796,7 @@ export function tick(state: GameState, dt: number): GameState {
         combo += 1
         comboTimer = COMBO_WINDOW
         comboBest = Math.max(comboBest, combo)
+        runComboBest = Math.max(runComboBest, combo)
         const gained = Math.round(ROCK_SCORE[r.size] * comboMultiplier(combo))
         score += gained
         burst(particles, r.x, r.y, r.hue, r.size === 'large' ? 14 : 9, 120)
@@ -824,6 +831,7 @@ export function tick(state: GameState, dt: number): GameState {
     combo,
     comboTimer,
     comboBest,
+    runComboBest,
     floaters,
   }
 
@@ -865,6 +873,7 @@ export function tick(state: GameState, dt: number): GameState {
       combo: 0,
       comboTimer: 0,
       comboBest: 0,
+      runComboBest: Math.max(s.runComboBest, s.comboBest),
       rocks: [],
       bullets: [],
       powerups: [],
@@ -899,6 +908,7 @@ export function toSnapshot(s: GameState): Snapshot {
     timeBonus: s.timeBonus,
     combo: s.combo,
     comboBest: s.phase === 'waveClear' ? s.lastComboBest : s.comboBest,
+    runComboBest: s.runComboBest,
     buffRapid: (s.buffRapid ?? 0) > 0,
     buffSpread: (s.buffSpread ?? 0) > 0,
     buffShield: (s.buffShield ?? 0) > 0,

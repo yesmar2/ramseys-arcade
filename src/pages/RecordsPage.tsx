@@ -30,6 +30,7 @@ import {
   fetchGameRecords,
   fetchRecordBoard,
   formatRecordValue,
+  formatRecordScore,
   type RecordDef,
   type RecordSummary,
 } from '../lib/records'
@@ -155,7 +156,7 @@ function RecordsIndexPage({ game }: { game: string }) {
                         </span>
                         <span className="records-leaders__time">
                           {row.top
-                            ? formatRecordValue(row.top.score, row.unit)
+                            ? formatRecordScore(row.top.score, row.unit)
                             : '—'}
                         </span>
                       </a>
@@ -274,7 +275,7 @@ function RecordBoardPage({
   const shareLabel = [
     record?.label ?? 'Record',
     you
-      ? `#${you.rank} · ${formatRecordValue(you.score, unit)}`
+      ? `#${you.rank} · ${formatRecordScore(you.score, unit)}`
       : PERIOD_LABELS[period],
     gameMeta?.name ?? game,
   ].join(' · ')
@@ -297,7 +298,9 @@ function RecordBoardPage({
               ← All records
             </a>
             <p className="lb-page__eyebrow lb-page__eyebrow--fast">
-              {direction === 'lower' ? 'Fastest · lower is better' : 'Record'}
+              {direction === 'lower'
+                ? 'Fastest · lower is better'
+                : 'Highest · higher is better'}
             </p>
             <h1 className="lb-page__title">{record?.label ?? 'Record'}</h1>
             <p className="lb-page__blurb lb-page__blurb--tight">
@@ -327,7 +330,9 @@ function RecordBoardPage({
               <div className="records-wave-nav__strip" role="list">
                 {waveRecords.map((row) => {
                   const short =
-                    row.label.replace(/^wave\s+/i, 'W') || row.label
+                    row.id === 'highest-combo'
+                      ? 'Combo'
+                      : row.label.replace(/^wave\s+/i, 'W') || row.label
                   const active = row.id === recordId
                   return (
                     <a
@@ -368,7 +373,7 @@ function RecordBoardPage({
           {!loading && !error && you ? (
             <YouBoardStrip
               rank={you.rank}
-              value={formatRecordValue(you.score, unit)}
+              value={formatRecordScore(you.score, unit)}
               valueLabel="Your best"
               gap={gap}
               accent={accent}
@@ -410,7 +415,7 @@ function RecordBoardPage({
                 playerName={playerName}
                 accent={accent}
                 shown={shown}
-                formatScore={(score) => formatRecordValue(score, unit)}
+                formatScore={(score) => formatRecordScore(score, unit)}
                 formatDelta={(n) => formatRecordValue(n, unit)}
                 direction={direction}
               />
@@ -418,7 +423,7 @@ function RecordBoardPage({
 
             {!loading && !error && you && showFindMe ? (
               <p className="lb-personal-best">
-                Your best: {formatRecordValue(you.score, unit)} · #{you.rank}
+                Your best: {formatRecordScore(you.score, unit)} · #{you.rank}
               </p>
             ) : null}
 

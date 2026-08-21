@@ -109,6 +109,14 @@ export function formatRecordValue(entryScore: number, unit: RecordDef['unit']): 
   return String(entryScore)
 }
 
+/** Score column display (combo gets a × prefix). */
+export function formatRecordScore(entryScore: number, unit: RecordDef['unit']): string {
+  if (unit === 'ms') return formatRecordMs(entryScore)
+  return `×${entryScore}`
+}
+
+export const ASTEROIDS_HIGHEST_COMBO_ID = 'highest-combo'
+
 export async function fetchGameRecords(
   game: string,
 ): Promise<{ game: string; records: RecordSummary[] }> {
@@ -195,6 +203,27 @@ export async function submitAsteroidsWaveTime(
   const ms = Math.max(1, Math.round(seconds * 1000))
   try {
     const result = await submitRecord('asteroids', recordId, cleaned, ms)
+    return { improved: result.improved, rank: result.rank }
+  } catch {
+    return null
+  }
+}
+
+/** Best-effort highest combo submit (run peak). */
+export async function submitAsteroidsHighestCombo(
+  combo: number,
+  name: string,
+): Promise<{ improved: boolean; rank: number | null } | null> {
+  const cleaned = normalizePlayerName(name)
+  const value = Math.floor(combo)
+  if (!cleaned || !(value >= 2)) return null
+  try {
+    const result = await submitRecord(
+      'asteroids',
+      ASTEROIDS_HIGHEST_COMBO_ID,
+      cleaned,
+      value,
+    )
     return { improved: result.improved, rank: result.rank }
   } catch {
     return null
