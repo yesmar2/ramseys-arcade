@@ -9,6 +9,8 @@ export type Game = {
   /** One-line how to play, shown on the game page. */
   how: string
   playable?: boolean
+  /** Home tile only — not a real game yet. */
+  comingSoon?: boolean
   /** If set, the game is only offered on these devices. */
   devices?: DeviceType[]
 }
@@ -72,6 +74,30 @@ export const games: Game[] = [
     accent: '#8a6ad4',
     playable: true,
   },
+  {
+    name: 'Crosswalk',
+    slug: 'crosswalk',
+    description: 'Hop the lanes. Don’t get flattened.',
+    how: 'Coming soon.',
+    accent: '#3ecf8e',
+    comingSoon: true,
+  },
+  {
+    name: 'Pellets',
+    slug: 'pellets',
+    description: 'Clear the maze. Watch the ghosts.',
+    how: 'Coming soon.',
+    accent: '#f5b942',
+    comingSoon: true,
+  },
+  {
+    name: 'Barrage',
+    slug: 'barrage',
+    description: 'Rows of ships. One cannon. Hold the line.',
+    how: 'Coming soon.',
+    accent: '#e85d75',
+    comingSoon: true,
+  },
 ]
 
 export function getGame(slug: string) {
@@ -86,6 +112,11 @@ export function gamePlayableOn(game: Game, device: DeviceType) {
 
 export function playableGames(device?: DeviceType) {
   return games.filter((g) => (device ? gamePlayableOn(g, device) : g.playable))
+}
+
+/** Games shown on the home grid (playable on this device + coming-soon tiles). */
+export function homeGames(device: DeviceType) {
+  return games.filter((g) => g.comingSoon || gamePlayableOn(g, device))
 }
 
 export function deviceRequirementLabel(game: Game) {

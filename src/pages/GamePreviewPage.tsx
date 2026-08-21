@@ -44,6 +44,7 @@ export function GamePreviewPage({ slug }: { slug: string }) {
   const [error, setError] = useState<string | null>(null)
 
   const canPlay = game ? gamePlayableOn(game, device) : false
+  const comingSoon = Boolean(game?.comingSoon)
   const scoring = scoringFor(slug)
   const boardSlug: LeaderboardGame | null = isBoardGame(slug) ? slug : null
 
@@ -125,7 +126,9 @@ export function GamePreviewPage({ slug }: { slug: string }) {
             </div>
           </div>
 
-          {canPlay ? (
+          {comingSoon ? (
+            <p className="game-lobby__unavailable">Coming soon — tile preview only.</p>
+          ) : canPlay ? (
             <a
               className="lb-play game-lobby__play"
               href={playHref}

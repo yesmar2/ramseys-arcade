@@ -431,6 +431,125 @@ export function SimonArt() {
   )
 }
 
+/** Frogger / Crossy Road vibe — lanes, cars, a hopper. */
+export function CrosswalkArt() {
+  const road = pastel(HUE.sky, 40, 18)
+  const carA = pastel(HUE.rose, 58, 52)
+  const carB = pastel(HUE.gold, 58, 50)
+  const frog = pastel(HUE.green, 58, 55)
+
+  return (
+    <SvgFrame>
+      <TileBg />
+      <rect x="8" y="22" width="144" height="18" rx="2" fill={road.fill} stroke={road.stroke} strokeWidth="1.2" />
+      <rect x="8" y="48" width="144" height="18" rx="2" fill={road.fill} stroke={road.stroke} strokeWidth="1.2" />
+      {[28, 52, 76, 100, 124].map((x) => (
+        <rect key={x} x={x} y="29" width="10" height="2.2" rx="1" fill="rgba(var(--ink-rgb), 0.18)" />
+      ))}
+      {[28, 52, 76, 100, 124].map((x) => (
+        <rect key={`b-${x}`} x={x} y="55" width="10" height="2.2" rx="1" fill="rgba(var(--ink-rgb), 0.18)" />
+      ))}
+      <rect x="24" y="25" width="22" height="12" rx="3" fill={carA.fill} stroke={carA.stroke} strokeWidth="1.4" />
+      <rect x="98" y="51" width="26" height="12" rx="3" fill={carB.fill} stroke={carB.stroke} strokeWidth="1.4" />
+      <ellipse cx="80" cy="78" rx="9" ry="7" fill={frog.fill} stroke={frog.stroke} strokeWidth="1.5" />
+      <circle cx="76.5" cy="76" r="1.4" fill="#1a2b3c" />
+      <circle cx="83.5" cy="76" r="1.4" fill="#1a2b3c" />
+      <path
+        d="M72 82 Q80 88 88 82"
+        fill="none"
+        stroke={frog.stroke}
+        strokeWidth="1.4"
+        strokeLinecap="round"
+      />
+    </SvgFrame>
+  )
+}
+
+/** Pac-Man vibe — open mouth, dots, a ghost. */
+export function PelletsArt() {
+  const muncher = pastel(HUE.gold, 62, 58)
+  const ghost = pastel(HUE.rose, 58, 52)
+  const pellet = pastel(HUE.sky, 50, 40)
+
+  return (
+    <SvgFrame>
+      <TileBg />
+      <path
+        d="M70 50 L92 28 A24 24 0 1 0 92 72 Z"
+        fill={muncher.fill}
+        stroke={muncher.stroke}
+        strokeWidth="1.8"
+        strokeLinejoin="round"
+      />
+      <circle cx="66" cy="40" r="2.2" fill="#1a2b3c" />
+      {[108, 122, 136].map((x) => (
+        <circle key={x} cx={x} cy="50" r="3.2" fill={pellet.fill} stroke={pellet.stroke} strokeWidth="1.2" />
+      ))}
+      <path
+        d="M118 78 L118 60 Q118 50 128 50 Q138 50 138 60 L138 78 L133 72 L128 78 L123 72 Z"
+        fill={ghost.fill}
+        stroke={ghost.stroke}
+        strokeWidth="1.5"
+        strokeLinejoin="round"
+      />
+      <circle cx="124" cy="58" r="2" fill="#fff" />
+      <circle cx="132" cy="58" r="2" fill="#fff" />
+      <circle cx="124.6" cy="58.4" r="0.9" fill="#1a2b3c" />
+      <circle cx="132.6" cy="58.4" r="0.9" fill="#1a2b3c" />
+    </SvgFrame>
+  )
+}
+
+/** Space Invaders vibe — rows of aliens + a ground cannon. */
+export function BarrageArt() {
+  const alien = pastel(HUE.violet, 56, 48)
+  const alienB = pastel(HUE.sky, 54, 46)
+  const cannon = pastel(HUE.rose, 56, 50)
+
+  const row = (y: number, hueFill: ReturnType<typeof pastel>, cols: number[]) =>
+    cols.map((x) => (
+      <g key={`${y}-${x}`}>
+        <rect
+          x={x - 7}
+          y={y - 5}
+          width="14"
+          height="10"
+          rx="2"
+          fill={hueFill.fill}
+          stroke={hueFill.stroke}
+          strokeWidth="1.3"
+        />
+        <circle cx={x - 3} cy={y - 1} r="1.2" fill="#1a2b3c" />
+        <circle cx={x + 3} cy={y - 1} r="1.2" fill="#1a2b3c" />
+      </g>
+    ))
+
+  return (
+    <SvgFrame>
+      <TileBg />
+      {row(24, alien, [40, 64, 88, 112])}
+      {row(42, alienB, [52, 76, 100])}
+      <path
+        d="M72 78 L80 68 L88 78 L88 84 L72 84 Z"
+        fill={cannon.fill}
+        stroke={cannon.stroke}
+        strokeWidth="1.6"
+        strokeLinejoin="round"
+      />
+      <rect x="28" y="88" width="104" height="3" rx="1.5" fill="rgba(var(--ink-rgb), 0.12)" />
+      <line
+        x1="80"
+        y1="62"
+        x2="80"
+        y2="54"
+        stroke={cannon.stroke}
+        strokeWidth="1.6"
+        strokeLinecap="round"
+      />
+    </SvgFrame>
+  )
+}
+
 const artBySlug: Record<string, () => JSX.Element> = {
   stacker: StackerArt,
   patriot: PatriotArt,
@@ -439,6 +558,9 @@ const artBySlug: Record<string, () => JSX.Element> = {
   'dead-center': DeadCenterArt,
   asteroids: AsteroidsArt,
   simon: SimonArt,
+  crosswalk: CrosswalkArt,
+  pellets: PelletsArt,
+  barrage: BarrageArt,
 }
 
 export function GameTileArt({ slug }: { slug: string }) {

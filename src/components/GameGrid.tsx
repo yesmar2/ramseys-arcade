@@ -1,10 +1,10 @@
-import { playableGames } from '../data/games'
+import { homeGames } from '../data/games'
 import { useDeviceType } from '../lib/device'
 import { GameTile } from './GameTile'
 
 export function GameGrid() {
   const device = useDeviceType()
-  const playable = playableGames(device)
+  const tiles = homeGames(device)
 
   return (
     <section className="games games--playable" id="games" aria-labelledby="games-heading">
@@ -12,8 +12,8 @@ export function GameGrid() {
         Games
       </h2>
       <ul className="game-grid game-grid--playable">
-        {playable.map((game, index) => (
-          <GameTile key={game.slug} game={game} index={index} />
+        {tiles.map((game, index) => (
+          <GameTile key={game.slug} game={game} index={index} showOnAllDevices />
         ))}
       </ul>
     </section>
