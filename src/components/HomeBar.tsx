@@ -45,20 +45,20 @@ export function HomeBar() {
 
   return (
     <nav className="home-bar" aria-label="Site">
-      {rankLabel ? (
-        <a
-          className="home-bar__rank"
-          href={rankHref()}
-          aria-label={rank != null ? `Global rank ${rank}` : 'Global rank'}
-          title={rank != null ? `Global rank #${rank}` : 'Your global rank'}
-        >
-          {rankLabel}
-        </a>
-      ) : null}
       <a className="home-bar__brand" href="#/">
         Archiv<span>ade</span>
       </a>
       <div className="home-bar__icons">
+        {rankLabel ? (
+          <a
+            className="home-bar__rank"
+            href={rankHref()}
+            aria-label={rank != null ? `Global rank ${rank}` : 'Global rank'}
+            title={rank != null ? `Global rank #${rank}` : 'Your global rank'}
+          >
+            {rankLabel}
+          </a>
+        ) : null}
         <a
           className="home-bar__nav-icon"
           href={leaderboardHref()}
@@ -128,15 +128,6 @@ export function HomeBar() {
           </button>
           {menuOpen ? (
             <div className="home-bar__menu" role="menu">
-              {rankLabel ? (
-                <a
-                  role="menuitem"
-                  href={rankHref()}
-                  onClick={() => setMenuOpen(false)}
-                >
-                  Rank {rankLabel}
-                </a>
-              ) : null}
               <a
                 role="menuitem"
                 href={leaderboardHref()}

@@ -976,9 +976,9 @@ img {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.5rem;
+  gap: 0.65rem;
   width: min(100% - 1.25rem, var(--max-width));
-  padding: 0.4rem 0.45rem 0.4rem 0.55rem;
+  padding: 0.4rem 0.45rem 0.4rem 1rem;
   border-radius: 999px;
   background: rgba(var(--surface-rgb), 0.82);
   backdrop-filter: blur(12px);
@@ -993,10 +993,6 @@ img {
   letter-spacing: -0.02em;
   color: var(--ink);
   min-width: 0;
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .home-bar__brand span {
@@ -1192,7 +1188,7 @@ img {
 
 @media (max-width: 420px) {
   .home-bar {
-    padding: 0.32rem 0.35rem 0.32rem 0.4rem;
+    padding: 0.32rem 0.35rem 0.32rem 0.85rem;
   }
 
   .home-bar__brand {
