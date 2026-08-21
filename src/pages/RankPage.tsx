@@ -1,11 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Footer } from '../components/Footer'
+import { GameDeviceBadge } from '../components/GameDeviceBadge'
 import { HomeBar } from '../components/HomeBar'
-import {
-  devicePlayOnHint,
-  getGame,
-  gamePlayableOn,
-} from '../data/games'
+import { getGame, gamePlayableOn } from '../data/games'
 import { leaderboardHref, rankHref } from '../hooks/useHashRoute'
 import { useDeviceType } from '../lib/device'
 import { usePlayerName } from '../hooks/usePlayerName'
@@ -161,20 +158,16 @@ export function RankPage({ player }: { player?: string }) {
                     const game = getGame(slug)
                     const row = byGame[slug]
                     const onDevice = game ? gamePlayableOn(game, device) : true
-                    const deviceHint =
-                      game && !onDevice ? devicePlayOnHint(game) : null
                     return (
                       <li
                         key={slug}
-                        className={`rank-page__row${deviceHint ? ' rank-page__row--other-device' : ''}`}
+                        className={`rank-page__row${onDevice ? '' : ' rank-page__row--other-device'}`}
                       >
                         <a className="rank-page__game" href={leaderboardHref(slug, 'all')}>
                           <span className="rank-page__game-name">
                             {game?.name ?? slug}
                           </span>
-                          {deviceHint ? (
-                            <span className="rank-page__device">{deviceHint}</span>
-                          ) : null}
+                          {game ? <GameDeviceBadge game={game} /> : null}
                         </a>
                         {row ? (
                           <>

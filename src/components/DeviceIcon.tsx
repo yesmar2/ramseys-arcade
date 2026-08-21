@@ -3,13 +3,20 @@ import { DEVICE_LABELS, isDeviceType, type DeviceType } from '../lib/leaderboard
 type DeviceIconProps = {
   device?: DeviceType | string
   className?: string
+  /** When false, skip per-icon label (parent provides one). */
+  labeled?: boolean
 }
 
-export function DeviceIcon({ device, className }: DeviceIconProps) {
+export function DeviceIcon({ device, className, labeled = true }: DeviceIconProps) {
   const kind: DeviceType = isDeviceType(device) ? device : 'desktop'
   const label = DEVICE_LABELS[kind]
   return (
-    <span className={className ?? 'lb-row__device'} title={label} aria-label={label}>
+    <span
+      className={className ?? 'lb-row__device'}
+      title={labeled ? label : undefined}
+      aria-label={labeled ? label : undefined}
+      aria-hidden={labeled ? undefined : true}
+    >
       {kind === 'phone' ? (
         <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
           <rect x="7" y="2.5" width="10" height="19" rx="2.2" stroke="currentColor" strokeWidth="1.8" />

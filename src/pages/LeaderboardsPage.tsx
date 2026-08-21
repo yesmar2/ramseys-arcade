@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { Footer } from '../components/Footer'
+import { GameDeviceBadge } from '../components/GameDeviceBadge'
 import { HomeBar } from '../components/HomeBar'
 import { LeaderboardList } from '../components/LeaderboardList'
-import { devicePlayOnHint, deviceRequirementLabel, getGame, gamePlayableOn } from '../data/games'
+import { deviceRequirementLabel, getGame, gamePlayableOn } from '../data/games'
 import { gamePlayHref, leaderboardHref } from '../hooks/useHashRoute'
 import { useDeviceType } from '../lib/device'
 import { usePlayerName } from '../hooks/usePlayerName'
@@ -39,7 +40,7 @@ export function LeaderboardsPage({
           name: game?.name ?? slug,
           accent: game?.accent ?? '#2eb8a0',
           playable,
-          deviceHint: game && !playable ? devicePlayOnHint(game) : null,
+          game: game ?? null,
         }
       }),
     [device],
@@ -59,7 +60,6 @@ export function LeaderboardsPage({
   const activeMeta = tabs.find((t) => t.slug === active) ?? tabs[0]
   const activeGame = getGame(active)
   const canPlay = activeGame ? gamePlayableOn(activeGame, device) : true
-  const deviceHint = activeMeta?.deviceHint
 
   useEffect(() => {
     if (!tabs.length) return
@@ -125,18 +125,11 @@ export function LeaderboardsPage({
                   selectGame(tab.slug)
                 }}
               >
-                {tab.name}
+                <span className="lb-tab__name">{tab.name}</span>
+                {tab.game ? <GameDeviceBadge game={tab.game} /> : null}
               </a>
             ))}
           </div>
-
-          {deviceHint ? (
-            <p className="lb-device-note" role="note">
-              {activeGame
-                ? deviceRequirementLabel(activeGame)
-                : `${activeMeta.name} isn’t available on this device.`}
-            </p>
-          ) : null}
 
           <div className="lb-periods" role="tablist" aria-label="Time period">
             {LEADERBOARD_PERIODS.map((p) => (
@@ -206,7 +199,7 @@ export function LeaderboardsPage({
               >
                 Play {activeMeta.name}
               </a>
-            ) : deviceHint && activeGame ? (
+            ) : activeGame ? (
               <p className="lb-device-note lb-device-note--footer" role="note">
                 {deviceRequirementLabel(activeGame)} Scores still count toward
                 global rank.
