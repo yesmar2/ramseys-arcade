@@ -465,22 +465,13 @@ function GameLeaderboard({
           </section>
 
           {active === 'asteroids' ? (
-            <section className="lb-games" aria-labelledby="lb-records-heading">
-              <h2 id="lb-records-heading" className="lb-games__title">
-                Records
-              </h2>
-              <p className="lb-page__blurb lb-page__blurb--inline">
-                Wave clears and highest combo — separate from high scores and
-                global points.
-              </p>
-              <a
-                className="lb-games__link"
-                href={recordsHref('asteroids')}
-                style={{ '--tab-accent': accent } as CSSProperties}
-              >
-                <span className="lb-games__name">Asteroids records</span>
-              </a>
-            </section>
+            <a
+              className="lb-records-cta"
+              href={recordsHref('asteroids')}
+              style={{ '--board-accent': accent } as CSSProperties}
+            >
+              Wave &amp; combo
+            </a>
           ) : null}
 
           {otherGames.length > 0 ? (

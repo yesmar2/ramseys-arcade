@@ -4792,6 +4792,32 @@ a.game-hud__board {
   box-shadow: var(--shadow-soft);
 }
 
+.lb-records-cta {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  margin-top: 1.15rem;
+  padding: 0.8rem 1rem;
+  border-radius: 999px;
+  border: 2px solid var(--board-accent, var(--accent));
+  background: color-mix(in srgb, var(--board-accent, var(--accent)) 10%, transparent);
+  color: var(--board-accent, var(--accent));
+  font-family: var(--font-body);
+  font-weight: 800;
+  font-size: 0.95rem;
+  letter-spacing: 0.02em;
+  text-decoration: none;
+  box-shadow: var(--shadow-soft);
+}
+
+.lb-records-cta:hover,
+.lb-records-cta:focus-visible {
+  background: color-mix(in srgb, var(--board-accent, var(--accent)) 18%, transparent);
+  filter: brightness(1.03);
+  outline: none;
+}
+
 /* ?? Game lobby ?? */
 .game-lobby {
   display: flex;
