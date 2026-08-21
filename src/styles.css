@@ -1282,7 +1282,7 @@ img {
 }
 
 .home-bar__menu-mobile {
-  display: none;
+  display: none !important;
 }
 
 .home-bar__player {
@@ -1313,7 +1313,7 @@ img {
   }
 
   .home-bar__menu-mobile {
-    display: block;
+    display: block !important;
   }
 
   .home-bar__you {
