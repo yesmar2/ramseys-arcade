@@ -92,7 +92,7 @@ function App() {
 
   if (route.name === 'home') return <HomePage />
   if (route.name === 'authVerify') return <AuthVerifyPage token={route.token} />
-  if (route.name === 'rank') return <RankPage />
+  if (route.name === 'rank') return <RankPage player={route.player} />
   if (route.name === 'leaderboards') {
     return <LeaderboardsPage game={route.game} period={route.period} />
   }

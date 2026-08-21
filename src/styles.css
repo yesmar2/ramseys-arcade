@@ -3150,7 +3150,7 @@ a.game-hud__board {
   grid-template-columns: 3.2rem minmax(0, 1fr) auto;
   gap: 0.65rem;
   align-items: center;
-  padding: 0.7rem 0.9rem;
+  padding: 0;
   border-top: 1px solid rgba(var(--ink-rgb), 0.06);
 }
 
@@ -3160,6 +3160,36 @@ a.game-hud__board {
 
 .rank-page__near-row--you {
   background: color-mix(in srgb, var(--accent) 14%, transparent);
+  padding: 0.7rem 0.9rem;
+}
+
+.rank-page__near-link {
+  display: grid;
+  grid-template-columns: 3.2rem minmax(0, 1fr) auto;
+  gap: 0.65rem;
+  align-items: center;
+  padding: 0.7rem 0.9rem;
+  color: inherit;
+  text-decoration: none;
+}
+
+.rank-page__near-link:hover .rank-page__near-name,
+.rank-page__near-link:focus-visible .rank-page__near-name {
+  color: var(--accent);
+}
+
+.rank-page__back {
+  display: inline-block;
+  margin: 0 0 0.55rem;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.rank-page__back:hover,
+.rank-page__back:focus-visible {
+  color: var(--accent);
 }
 
 .rank-page__near-rank {

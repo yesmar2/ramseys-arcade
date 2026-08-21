@@ -9,7 +9,7 @@ import {
 export type Route =
   | { name: 'home' }
   | { name: 'leaderboards'; game?: LeaderboardGame; period?: LeaderboardPeriod }
-  | { name: 'rank' }
+  | { name: 'rank'; player?: string }
   | { name: 'tournaments' }
   | { name: 'tournament'; id: string }
   | { name: 'tournamentPlay'; id: string; game: string }
@@ -32,7 +32,9 @@ export function leaderboardHref(
   return `#/leaderboards/${game}/${period}`
 }
 
-export function rankHref() {
+export function rankHref(player?: string) {
+  const cleaned = player?.trim().toUpperCase().slice(0, 12)
+  if (cleaned) return `#/rank/${encodeURIComponent(cleaned)}`
   return '#/rank'
 }
 
@@ -49,6 +51,12 @@ function parseHash(hash: string): Route {
   if (!path) return { name: 'home' }
   if (path === 'leaderboards') return { name: 'leaderboards' }
   if (path === 'rank') return { name: 'rank' }
+
+  const rankMatch = /^rank\/([^/]+)$/.exec(path)
+  if (rankMatch) {
+    const player = decodeURIComponent(rankMatch[1]).trim().toUpperCase().slice(0, 12)
+    return player ? { name: 'rank', player } : { name: 'rank' }
+  }
 
   const boardsMatch = /^leaderboards\/([^/]+)(?:\/([^/]+))?$/.exec(path)
   if (boardsMatch) {
