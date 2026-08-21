@@ -1,4 +1,4 @@
-import { useEffect, useState, type CSSProperties } from 'react'
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import {
   BoardEmpty,
   BoardSkeleton,
@@ -7,6 +7,7 @@ import {
 import { Footer } from '../components/Footer'
 import { HomeBar } from '../components/HomeBar'
 import { LeaderboardList } from '../components/LeaderboardList'
+import { ShareBoardButton } from '../components/ShareBoardButton'
 import { YouBoardStrip } from '../components/YouBoardStrip'
 import { getGame } from '../data/games'
 import {
@@ -15,9 +16,10 @@ import {
   recordHref,
   recordsHref,
 } from '../hooks/useHashRoute'
-import { findMeOnBoard, gapToNextLabel } from '../lib/boardGap'
+import { findMeOnBoard, flashYouRow, gapToNextLabel } from '../lib/boardGap'
 import { usePlayerName } from '../hooks/usePlayerName'
 import {
+  PERIOD_LABELS,
   normalizePlayerName,
   type LeaderboardEntry,
   type LeaderboardGame,
@@ -92,18 +94,25 @@ function RecordsIndexPage({ game }: { game: string }) {
     <>
       <main className="lb-page">
         <HomeBar />
-        <div className="lb-page__inner">
+        <div
+          className="lb-page__inner"
+          style={{ '--board-accent': accent } as CSSProperties}
+        >
           <header className="lb-page__header lb-page__header--compact">
             <a className="rank-page__back" href={backHref}>
               ← {gameMeta?.name ?? game} scores
             </a>
+            <p className="lb-page__eyebrow lb-page__eyebrow--fast">Fastest</p>
             <h1 className="lb-page__title">Records</h1>
             <p className="lb-page__blurb lb-page__blurb--tight">
-              Fastest clears · not global points
+              Lower is better · not global points
             </p>
           </header>
 
-          <section className="lb-board" aria-label="Game records">
+          <section
+            className="lb-board lb-board--accented"
+            aria-label="Game records"
+          >
             {loading ? (
               <BoardSkeleton rows={5} />
             ) : error ? (
@@ -126,7 +135,7 @@ function RecordsIndexPage({ game }: { game: string }) {
                 }
               />
             ) : (
-              <ul className="lb-games__list records-index">
+              <ol className="records-leaders">
                 {records.map((row) => {
                   const holder = row.top
                     ? normalizePlayerName(row.top.name)
@@ -135,26 +144,16 @@ function RecordsIndexPage({ game }: { game: string }) {
                   return (
                     <li key={row.id}>
                       <a
-                        className={`lb-games__link records-index__link${isYou ? ' records-index__link--you' : ''}`}
+                        className={`records-leaders__row${isYou ? ' records-leaders__row--you' : ''}`}
                         href={recordHref(game, row.id)}
-                        style={
-                          {
-                            '--tab-accent': accent,
-                          } as CSSProperties
-                        }
+                        style={{ '--tab-accent': accent } as CSSProperties}
                       >
-                        <span className="records-index__main">
-                          <span className="lb-games__name">{row.label}</span>
-                          {holder ? (
-                            <span className="records-index__holder">
-                              {isYou ? 'You' : holder}
-                              {isYou ? (
-                                <em className="records-index__you-tag">hold</em>
-                              ) : null}
-                            </span>
-                          ) : null}
+                        <span className="records-leaders__label">{row.label}</span>
+                        <span className="records-leaders__holder" title={holder}>
+                          {isYou ? 'You' : holder || '—'}
+                          {isYou ? <em>hold</em> : null}
                         </span>
-                        <span className="records-top">
+                        <span className="records-leaders__time">
                           {row.top
                             ? formatRecordValue(row.top.score, row.unit)
                             : '—'}
@@ -163,7 +162,7 @@ function RecordsIndexPage({ game }: { game: string }) {
                     </li>
                   )
                 })}
-              </ul>
+              </ol>
             )}
           </section>
         </div>
@@ -187,10 +186,11 @@ function RecordBoardPage({
   const [record, setRecord] = useState<RecordDef | null>(null)
   const [entries, setEntries] = useState<LeaderboardEntry[]>([])
   const [you, setYou] = useState<YouEntry | null>(null)
-  const [siblingRecords, setSiblingRecords] = useState<RecordSummary[]>([])
+  const [waveRecords, setWaveRecords] = useState<RecordSummary[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [shown, setShown] = useState(INITIAL_ROWS)
+  const pulsed = useRef(false)
 
   useEffect(() => {
     const canonical = recordHref(game, recordId, period)
@@ -204,6 +204,7 @@ function RecordBoardPage({
     setLoading(true)
     setError(null)
     setShown(INITIAL_ROWS)
+    pulsed.current = false
     Promise.all([
       fetchRecordBoard(game, recordId, period, playerName || undefined),
       fetchGameRecords(game),
@@ -213,16 +214,14 @@ function RecordBoardPage({
         setRecord(board.record)
         setEntries(board.entries)
         setYou(board.you)
-        setSiblingRecords(
-          list.records.filter((row) => row.top != null && row.id !== recordId),
-        )
+        setWaveRecords(list.records.filter((row) => row.top != null))
       })
       .catch((err) => {
         if (cancelled) return
         setRecord(null)
         setEntries([])
         setYou(null)
-        setSiblingRecords([])
+        setWaveRecords([])
         setError(err instanceof Error ? err.message : 'Failed to load')
       })
       .finally(() => {
@@ -233,6 +232,12 @@ function RecordBoardPage({
     }
   }, [game, recordId, period, playerName])
 
+  useEffect(() => {
+    if (loading || !you || pulsed.current) return
+    pulsed.current = true
+    window.requestAnimationFrame(() => flashYouRow())
+  }, [loading, you, recordId, period])
+
   const selectPeriod = (next: LeaderboardPeriod) => {
     window.location.hash = recordHref(game, recordId, next)
   }
@@ -240,6 +245,16 @@ function RecordBoardPage({
   const accent = gameMeta?.accent ?? '#2eb8a0'
   const unit = record?.unit ?? 'ms'
   const direction = record?.direction ?? 'lower'
+
+  const waveIndex = useMemo(
+    () => waveRecords.findIndex((row) => row.id === recordId),
+    [waveRecords, recordId],
+  )
+  const prevWave = waveIndex > 0 ? waveRecords[waveIndex - 1] : null
+  const nextWave =
+    waveIndex >= 0 && waveIndex < waveRecords.length - 1
+      ? waveRecords[waveIndex + 1]
+      : null
 
   const youOnVisible = Boolean(
     you && entries.slice(0, shown).some((entry) => entry.id === you.id),
@@ -256,22 +271,92 @@ function RecordBoardPage({
       })
     : null
 
+  const shareLabel = [
+    record?.label ?? 'Record',
+    you
+      ? `#${you.rank} · ${formatRecordValue(you.score, unit)}`
+      : PERIOD_LABELS[period],
+    gameMeta?.name ?? game,
+  ].join(' · ')
+
   return (
     <>
       <main className="lb-page">
         <HomeBar />
-        <div className="lb-page__inner">
+        <div
+          className="lb-page__inner"
+          style={
+            {
+              '--period-accent': accent,
+              '--board-accent': accent,
+            } as CSSProperties
+          }
+        >
           <header className="lb-page__header lb-page__header--compact">
             <a className="rank-page__back" href={recordsHref(game)}>
               ← All records
             </a>
+            <p className="lb-page__eyebrow lb-page__eyebrow--fast">
+              {direction === 'lower' ? 'Fastest · lower is better' : 'Record'}
+            </p>
             <h1 className="lb-page__title">{record?.label ?? 'Record'}</h1>
             <p className="lb-page__blurb lb-page__blurb--tight">
-              {direction === 'lower'
-                ? 'Lower is better · not global points'
-                : 'Not global points'}
+              Not global points
             </p>
+            {!loading && !error ? (
+              <div className="lb-page__actions">
+                <ShareBoardButton label={shareLabel} />
+              </div>
+            ) : null}
           </header>
+
+          {waveRecords.length > 1 ? (
+            <nav className="records-wave-nav" aria-label="Record boards">
+              {prevWave ? (
+                <a
+                  className="records-wave-nav__btn"
+                  href={recordHref(game, prevWave.id, period)}
+                >
+                  ← Prev
+                </a>
+              ) : (
+                <span className="records-wave-nav__btn records-wave-nav__btn--disabled">
+                  ← Prev
+                </span>
+              )}
+              <div className="records-wave-nav__strip" role="list">
+                {waveRecords.map((row) => {
+                  const short =
+                    row.label.replace(/^wave\s+/i, 'W') || row.label
+                  const active = row.id === recordId
+                  return (
+                    <a
+                      key={row.id}
+                      role="listitem"
+                      className={`records-wave-nav__chip${active ? ' records-wave-nav__chip--active' : ''}`}
+                      href={recordHref(game, row.id, period)}
+                      aria-current={active ? 'page' : undefined}
+                      title={row.label}
+                    >
+                      {short}
+                    </a>
+                  )
+                })}
+              </div>
+              {nextWave ? (
+                <a
+                  className="records-wave-nav__btn"
+                  href={recordHref(game, nextWave.id, period)}
+                >
+                  Next →
+                </a>
+              ) : (
+                <span className="records-wave-nav__btn records-wave-nav__btn--disabled">
+                  Next →
+                </span>
+              )}
+            </nav>
+          ) : null}
 
           <PeriodSwitcher
             period={period}
@@ -284,7 +369,7 @@ function RecordBoardPage({
             <YouBoardStrip
               rank={you.rank}
               value={formatRecordValue(you.score, unit)}
-              valueLabel="Best"
+              valueLabel="Your best"
               gap={gap}
               accent={accent}
               findMe={showFindMe}
@@ -292,7 +377,11 @@ function RecordBoardPage({
             />
           ) : null}
 
-          <section className="lb-board" aria-label={record?.label ?? 'Record board'}>
+          <section
+            key={`${recordId}-${period}`}
+            className="lb-board lb-board--accented lb-board--fade"
+            aria-label={record?.label ?? 'Record board'}
+          >
             {loading ? (
               <BoardSkeleton />
             ) : error ? (
@@ -327,6 +416,12 @@ function RecordBoardPage({
               />
             )}
 
+            {!loading && !error && you && showFindMe ? (
+              <p className="lb-personal-best">
+                Your best: {formatRecordValue(you.score, unit)} · #{you.rank}
+              </p>
+            ) : null}
+
             {!loading && !error && entries.length > shown ? (
               <button
                 type="button"
@@ -347,26 +442,6 @@ function RecordBoardPage({
               </a>
             ) : null}
           </section>
-
-          {siblingRecords.length > 0 ? (
-            <section className="lb-games" aria-labelledby="records-waves-heading">
-              <h2 id="records-waves-heading" className="lb-games__title">
-                Other records
-              </h2>
-              <ul className="lb-games__list lb-games__list--compact">
-                {siblingRecords.map((row) => (
-                  <li key={row.id}>
-                    <a
-                      className="lb-games__link"
-                      href={recordHref(game, row.id, period)}
-                    >
-                      <span className="lb-games__name">{row.label}</span>
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          ) : null}
         </div>
       </main>
       <Footer />

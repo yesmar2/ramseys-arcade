@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import {
   BoardEmpty,
   BoardSkeleton,
@@ -10,11 +10,12 @@ import { GameTile } from '../components/GameTile'
 import { GlobalRankList } from '../components/GlobalRankList'
 import { HomeBar } from '../components/HomeBar'
 import { LeaderboardList } from '../components/LeaderboardList'
+import { ShareBoardButton } from '../components/ShareBoardButton'
 import { YouBoardStrip } from '../components/YouBoardStrip'
 import { deviceRequirementLabel, getGame, gamePlayableOn } from '../data/games'
 import { gamePlayHref, leaderboardHref, recordsHref } from '../hooks/useHashRoute'
 import { useDeviceType } from '../lib/device'
-import { findMeOnBoard, gapToNextLabel } from '../lib/boardGap'
+import { findMeOnBoard, flashYouRow, gapToNextLabel } from '../lib/boardGap'
 import { usePlayerName } from '../hooks/usePlayerName'
 import {
   fetchGlobalBoard,
@@ -140,6 +141,13 @@ function GlobalLeaderboardsHub() {
             <p className="lb-page__blurb lb-page__blurb--tight">
               Points from every game board.
             </p>
+            {!loading && !error && you ? (
+              <div className="lb-page__actions">
+                <ShareBoardButton
+                  label={`#${you.rank} global · ${you.score} pts · Ramsey’s Arcade`}
+                />
+              </div>
+            ) : null}
           </header>
 
           {!loading && !error && playerName ? (
@@ -263,6 +271,7 @@ function GameLeaderboard({
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [shown, setShown] = useState(INITIAL_ROWS)
+  const pulsed = useRef(false)
 
   const activeGame = getGame(active)
   const canPlay = activeGame ? gamePlayableOn(activeGame, device) : true
@@ -285,6 +294,7 @@ function GameLeaderboard({
     setLoading(true)
     setError(null)
     setShown(INITIAL_ROWS)
+    pulsed.current = false
     getLeaderboard(active, period, playerName || undefined)
       .then((board) => {
         if (cancelled) return
@@ -305,6 +315,12 @@ function GameLeaderboard({
     }
   }, [active, period, playerName])
 
+  useEffect(() => {
+    if (loading || !you || pulsed.current) return
+    pulsed.current = true
+    window.requestAnimationFrame(() => flashYouRow())
+  }, [loading, you, active, period])
+
   const selectPeriod = (next: LeaderboardPeriod) => {
     window.location.hash = leaderboardHref(active, next)
   }
@@ -323,13 +339,22 @@ function GameLeaderboard({
       })
     : null
 
+  const shareLabel = you
+    ? `#${you.rank} on ${activeGame?.name ?? active} · ${PERIOD_LABELS[period]} · ${you.score}`
+    : `${activeGame?.name ?? active} · ${PERIOD_LABELS[period]} · Ramsey’s Arcade`
+
   return (
     <>
       <main className="lb-page">
         <HomeBar />
         <div
           className="lb-page__inner"
-          style={{ '--period-accent': accent } as CSSProperties}
+          style={
+            {
+              '--period-accent': accent,
+              '--board-accent': accent,
+            } as CSSProperties
+          }
         >
           <header className="lb-page__header lb-page__header--compact">
             <a className="rank-page__back" href={leaderboardHref()}>
@@ -339,6 +364,11 @@ function GameLeaderboard({
             <p className="lb-page__blurb lb-page__blurb--tight">
               High scores · all-time places earn global points
             </p>
+            {!loading && !error ? (
+              <div className="lb-page__actions">
+                <ShareBoardButton label={shareLabel} />
+              </div>
+            ) : null}
           </header>
 
           <PeriodSwitcher
@@ -361,7 +391,8 @@ function GameLeaderboard({
           ) : null}
 
           <section
-            className="lb-board"
+            key={`${active}-${period}`}
+            className="lb-board lb-board--accented lb-board--fade"
             aria-label={`${activeGame?.name ?? active} ${PERIOD_LABELS[period]} leaderboard`}
           >
             {loading ? (
@@ -400,6 +431,12 @@ function GameLeaderboard({
                 shown={shown}
               />
             )}
+
+            {!loading && !error && you && showFindMe ? (
+              <p className="lb-personal-best">
+                Your best: {you.score} · #{you.rank}
+              </p>
+            ) : null}
 
             {!loading && !error && entries.length > shown ? (
               <button

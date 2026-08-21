@@ -68,10 +68,16 @@ export function scrollToYouRow() {
   const el = document.getElementById('lb-you-row')
   if (!el) return
   el.scrollIntoView({ behavior: 'smooth', block: 'center' })
-  el.classList.remove('lb-row--flash')
+  flashYouRow(el)
+}
+
+export function flashYouRow(el?: HTMLElement | null) {
+  const row = el ?? document.getElementById('lb-you-row')
+  if (!row) return
+  row.classList.remove('lb-row--flash')
   window.requestAnimationFrame(() => {
-    el.classList.add('lb-row--flash')
-    window.setTimeout(() => el.classList.remove('lb-row--flash'), 1200)
+    row.classList.add('lb-row--flash')
+    window.setTimeout(() => row.classList.remove('lb-row--flash'), 1200)
   })
 }
 
