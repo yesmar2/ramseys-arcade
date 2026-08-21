@@ -104,7 +104,7 @@ function RecordsIndexPage({ game }: { game: string }) {
               ← {gameMeta?.name ?? game} scores
             </a>
             <p className="lb-page__eyebrow lb-page__eyebrow--fast">Fastest</p>
-            <h1 className="lb-page__title">Records</h1>
+            <h1 className="lb-page__title">Record books</h1>
             <p className="lb-page__blurb lb-page__blurb--tight">
               Lower is better · not global points
             </p>
@@ -295,7 +295,7 @@ function RecordBoardPage({
         >
           <header className="lb-page__header lb-page__header--compact">
             <a className="rank-page__back" href={recordsHref(game)}>
-              ← All records
+              ← Record books
             </a>
             <p className="lb-page__eyebrow lb-page__eyebrow--fast">
               {direction === 'lower'

@@ -470,7 +470,7 @@ function GameLeaderboard({
               href={recordsHref('asteroids')}
               style={{ '--board-accent': accent } as CSSProperties}
             >
-              Challenge boards
+              Asteroid record books
             </a>
           ) : null}
 

@@ -192,7 +192,7 @@ export function GamePreviewPage({ slug }: { slug: string }) {
               </a>
               {boardSlug === 'asteroids' ? (
                 <a className="game-lobby__all-boards" href={recordsHref('asteroids')}>
-                  Records
+                  Record books
                 </a>
               ) : null}
             </section>
