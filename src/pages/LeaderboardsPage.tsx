@@ -1,4 +1,9 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
+import {
+  BoardEmpty,
+  BoardSkeleton,
+  PeriodSwitcher,
+} from '../components/BoardChrome'
 import { Footer } from '../components/Footer'
 import { GameDeviceBadge } from '../components/GameDeviceBadge'
 import { GlobalRankList } from '../components/GlobalRankList'
@@ -15,7 +20,6 @@ import {
   fetchGlobalRank,
   getLeaderboard,
   LEADERBOARD_GAMES,
-  LEADERBOARD_PERIODS,
   normalizePlayerName,
   PERIOD_LABELS,
   type GlobalBoardEntry,
@@ -44,7 +48,7 @@ export function LeaderboardsPage({
   return (
     <GameLeaderboard
       game={gameFromRoute}
-      period={periodFromRoute ?? 'daily'}
+      period={periodFromRoute ?? 'all'}
     />
   )
 }
@@ -129,11 +133,11 @@ function GlobalLeaderboardsHub() {
       <main className="lb-page">
         <HomeBar />
         <div className="lb-page__inner">
-          <header className="lb-page__header">
-            <h1 className="lb-page__title">Leaderboards</h1>
-            <p className="lb-page__blurb">
-              All-time global points across every game board. Open a game below
-              for its own daily and all-time scores.
+          <header className="lb-page__header lb-page__header--compact">
+            <p className="lb-page__eyebrow">All-time</p>
+            <h1 className="lb-page__title">Global</h1>
+            <p className="lb-page__blurb lb-page__blurb--tight">
+              Points from every game board.
             </p>
           </header>
 
@@ -166,15 +170,22 @@ function GlobalLeaderboardsHub() {
 
           <section className="lb-board" aria-label="Global leaderboard">
             {loading ? (
-              <p className="lb-empty">Loading ranks…</p>
+              <BoardSkeleton />
             ) : error ? (
-              <p className="lb-empty">
-                Couldn’t load leaderboards. Is the API running?
-              </p>
+              <BoardEmpty
+                title="Couldn’t load ranks"
+                detail="Check your connection and try again."
+              />
             ) : entries.length === 0 ? (
-              <p className="lb-empty">
-                No global ranks yet. Place on any game board to earn points.
-              </p>
+              <BoardEmpty
+                title="No ranks yet"
+                detail="Place on any game board to earn global points."
+                action={
+                  <a className="lb-empty-state__btn" href={leaderboardHref('asteroids', 'all')}>
+                    Browse game boards
+                  </a>
+                }
+              />
             ) : (
               <GlobalRankList
                 entries={entries}
@@ -315,35 +326,26 @@ function GameLeaderboard({
     <>
       <main className="lb-page">
         <HomeBar />
-        <div className="lb-page__inner">
-          <header className="lb-page__header">
+        <div
+          className="lb-page__inner"
+          style={{ '--period-accent': accent } as CSSProperties}
+        >
+          <header className="lb-page__header lb-page__header--compact">
             <a className="rank-page__back" href={leaderboardHref()}>
               ← Global ranks
             </a>
             <h1 className="lb-page__title">{activeGame?.name ?? active}</h1>
-            <p className="lb-page__blurb">
-              High scores for this game. Global points still come from all-time
-              placements across every board.
+            <p className="lb-page__blurb lb-page__blurb--tight">
+              High scores · all-time places earn global points
             </p>
           </header>
 
-          <div className="lb-periods" role="tablist" aria-label="Time period">
-            {LEADERBOARD_PERIODS.map((p) => (
-              <a
-                key={p}
-                href={leaderboardHref(active, p)}
-                role="tab"
-                aria-selected={period === p}
-                className={`lb-period${period === p ? ' lb-period--active' : ''}`}
-                onClick={(e) => {
-                  e.preventDefault()
-                  selectPeriod(p)
-                }}
-              >
-                {PERIOD_LABELS[p]}
-              </a>
-            ))}
-          </div>
+          <PeriodSwitcher
+            period={period}
+            accent={accent}
+            hrefFor={(p) => leaderboardHref(active, p)}
+            onSelect={selectPeriod}
+          />
 
           {!loading && !error && you ? (
             <YouBoardStrip
@@ -362,23 +364,32 @@ function GameLeaderboard({
             aria-label={`${activeGame?.name ?? active} ${PERIOD_LABELS[period]} leaderboard`}
           >
             {loading ? (
-              <p className="lb-empty">Loading scores…</p>
+              <BoardSkeleton />
             ) : error ? (
-              <p className="lb-empty">
-                Couldn’t load leaderboards. Is the API running?
-              </p>
+              <BoardEmpty
+                title="Couldn’t load scores"
+                detail="Check your connection and try again."
+              />
             ) : entries.length === 0 && !you ? (
-              <p className="lb-empty">
-                No scores for {PERIOD_LABELS[period].toLowerCase()} yet.{' '}
-                {canPlay ? (
-                  <>
-                    <a href={gamePlayHref(active)}>Play {activeGame?.name}</a> to
-                    claim the top spot.
-                  </>
-                ) : (
-                  <>Open it on a supported device to post a score.</>
-                )}
-              </p>
+              <BoardEmpty
+                title={`No ${PERIOD_LABELS[period].toLowerCase()} scores yet`}
+                detail={
+                  canPlay
+                    ? `Be the first on the ${activeGame?.name ?? active} board.`
+                    : 'Open it on a supported device to post a score.'
+                }
+                action={
+                  canPlay ? (
+                    <a
+                      className="lb-empty-state__btn"
+                      href={gamePlayHref(active)}
+                      style={{ background: accent }}
+                    >
+                      Play {activeGame?.name ?? active}
+                    </a>
+                  ) : null
+                }
+              />
             ) : (
               <LeaderboardList
                 entries={entries}
@@ -399,7 +410,7 @@ function GameLeaderboard({
               </button>
             ) : null}
 
-            {canPlay ? (
+            {canPlay && !(entries.length === 0 && !you) ? (
               <a
                 className="lb-play"
                 href={gamePlayHref(active)}
@@ -407,7 +418,7 @@ function GameLeaderboard({
               >
                 Play {activeGame?.name ?? active}
               </a>
-            ) : activeGame ? (
+            ) : activeGame && !canPlay ? (
               <p className="lb-device-note lb-device-note--footer" role="note">
                 {deviceRequirementLabel(activeGame)} Scores still count toward
                 global rank.

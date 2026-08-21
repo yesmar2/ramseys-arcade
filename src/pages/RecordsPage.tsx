@@ -1,4 +1,9 @@
 import { useEffect, useState, type CSSProperties } from 'react'
+import {
+  BoardEmpty,
+  BoardSkeleton,
+  PeriodSwitcher,
+} from '../components/BoardChrome'
 import { Footer } from '../components/Footer'
 import { HomeBar } from '../components/HomeBar'
 import { LeaderboardList } from '../components/LeaderboardList'
@@ -13,8 +18,6 @@ import {
 import { findMeOnBoard, gapToNextLabel } from '../lib/boardGap'
 import { usePlayerName } from '../hooks/usePlayerName'
 import {
-  LEADERBOARD_PERIODS,
-  PERIOD_LABELS,
   normalizePlayerName,
   type LeaderboardEntry,
   type LeaderboardGame,
@@ -83,32 +86,45 @@ function RecordsIndexPage({ game }: { game: string }) {
     gameMeta && (game as LeaderboardGame)
       ? leaderboardHref(game as LeaderboardGame, 'all')
       : leaderboardHref()
+  const accent = gameMeta?.accent ?? 'var(--accent)'
 
   return (
     <>
       <main className="lb-page">
         <HomeBar />
         <div className="lb-page__inner">
-          <header className="lb-page__header">
+          <header className="lb-page__header lb-page__header--compact">
             <a className="rank-page__back" href={backHref}>
               ← {gameMeta?.name ?? game} scores
             </a>
             <h1 className="lb-page__title">Records</h1>
-            <p className="lb-page__blurb">
-              Fastest clears — separate from high scores and global points.
-              Boards appear once someone sets a time.
+            <p className="lb-page__blurb lb-page__blurb--tight">
+              Fastest clears · not global points
             </p>
           </header>
 
           <section className="lb-board" aria-label="Game records">
             {loading ? (
-              <p className="lb-empty">Loading records…</p>
+              <BoardSkeleton rows={5} />
             ) : error ? (
-              <p className="lb-empty">
-                Couldn’t load records. Is the API running?
-              </p>
+              <BoardEmpty
+                title="Couldn’t load records"
+                detail="Check your connection and try again."
+              />
             ) : records.length === 0 ? (
-              <p className="lb-empty">No records for this game yet.</p>
+              <BoardEmpty
+                title="No records yet"
+                detail="Clear a wave in-game and the board will show up here."
+                action={
+                  <a
+                    className="lb-empty-state__btn"
+                    href={gamePlayHref(game)}
+                    style={{ background: accent }}
+                  >
+                    Play {gameMeta?.name ?? game}
+                  </a>
+                }
+              />
             ) : (
               <ul className="lb-games__list records-index">
                 {records.map((row) => {
@@ -123,7 +139,7 @@ function RecordsIndexPage({ game }: { game: string }) {
                         href={recordHref(game, row.id)}
                         style={
                           {
-                            '--tab-accent': gameMeta?.accent ?? 'var(--accent)',
+                            '--tab-accent': accent,
                           } as CSSProperties
                         }
                       >
@@ -245,35 +261,24 @@ function RecordBoardPage({
       <main className="lb-page">
         <HomeBar />
         <div className="lb-page__inner">
-          <header className="lb-page__header">
+          <header className="lb-page__header lb-page__header--compact">
             <a className="rank-page__back" href={recordsHref(game)}>
               ← All records
             </a>
             <h1 className="lb-page__title">{record?.label ?? 'Record'}</h1>
-            <p className="lb-page__blurb">
+            <p className="lb-page__blurb lb-page__blurb--tight">
               {direction === 'lower'
-                ? 'Lower is better · fastest clear wins. Does not count toward global points.'
-                : 'Does not count toward global points.'}
+                ? 'Lower is better · not global points'
+                : 'Not global points'}
             </p>
           </header>
 
-          <div className="lb-periods" role="tablist" aria-label="Time period">
-            {LEADERBOARD_PERIODS.map((p) => (
-              <a
-                key={p}
-                href={recordHref(game, recordId, p)}
-                role="tab"
-                aria-selected={period === p}
-                className={`lb-period${period === p ? ' lb-period--active' : ''}`}
-                onClick={(e) => {
-                  e.preventDefault()
-                  selectPeriod(p)
-                }}
-              >
-                {PERIOD_LABELS[p]}
-              </a>
-            ))}
-          </div>
+          <PeriodSwitcher
+            period={period}
+            accent={accent}
+            hrefFor={(p) => recordHref(game, recordId, p)}
+            onSelect={selectPeriod}
+          />
 
           {!loading && !error && you ? (
             <YouBoardStrip
@@ -289,17 +294,26 @@ function RecordBoardPage({
 
           <section className="lb-board" aria-label={record?.label ?? 'Record board'}>
             {loading ? (
-              <p className="lb-empty">Loading…</p>
+              <BoardSkeleton />
             ) : error ? (
-              <p className="lb-empty">
-                Couldn’t load this record board. Is the API running?
-              </p>
+              <BoardEmpty
+                title="Couldn’t load this board"
+                detail="Check your connection and try again."
+              />
             ) : entries.length === 0 && !you ? (
-              <p className="lb-empty">
-                No times yet.{' '}
-                <a href={gamePlayHref(game)}>Play {gameMeta?.name ?? game}</a> and
-                clear the wave.
-              </p>
+              <BoardEmpty
+                title="No times yet"
+                detail={`Clear this wave in ${gameMeta?.name ?? game} to set the first record.`}
+                action={
+                  <a
+                    className="lb-empty-state__btn"
+                    href={gamePlayHref(game)}
+                    style={{ background: accent }}
+                  >
+                    Play {gameMeta?.name ?? game}
+                  </a>
+                }
+              />
             ) : (
               <LeaderboardList
                 entries={entries}
@@ -308,6 +322,8 @@ function RecordBoardPage({
                 accent={accent}
                 shown={shown}
                 formatScore={(score) => formatRecordValue(score, unit)}
+                formatDelta={(n) => formatRecordValue(n, unit)}
+                direction={direction}
               />
             )}
 
@@ -321,13 +337,15 @@ function RecordBoardPage({
               </button>
             ) : null}
 
-            <a
-              className="lb-play"
-              href={gamePlayHref(game)}
-              style={{ background: accent }}
-            >
-              Play {gameMeta?.name ?? game}
-            </a>
+            {!(loading || error) && (entries.length > 0 || you) ? (
+              <a
+                className="lb-play"
+                href={gamePlayHref(game)}
+                style={{ background: accent }}
+              >
+                Play {gameMeta?.name ?? game}
+              </a>
+            ) : null}
           </section>
 
           {siblingRecords.length > 0 ? (
