@@ -4,7 +4,7 @@ const COOLDOWN_MS = 1000 * 60 * 60 * 6 // 6 hours
 /** Chance to appear when cooldown has elapsed. */
 const APPEAR_CHANCE = 0.22
 /** Delay before popping in so the home page settles first. */
-export const ATTENDANT_DELAY_MS = 4500
+export const ATTENDANT_DELAY_MS = import.meta.env.DEV ? 800 : 4500
 
 export const ATTENDANT_LINES = [
   'Don’t tell the machines I said this… you’ve got a shot today.',
@@ -44,6 +44,9 @@ export function pickAttendantLine(): string {
 }
 
 export function shouldSummonAttendant(now = Date.now()): boolean {
+  // Always show while developing so you can preview without fighting RNG.
+  if (import.meta.env.DEV) return true
+
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
     const last = raw ? Number(raw) : 0
