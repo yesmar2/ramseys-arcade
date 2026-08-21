@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type CSSProperties } from 'react'
+import { BoardSkeleton } from '../components/BoardChrome'
 import { Footer } from '../components/Footer'
 import { GameDeviceBadge } from '../components/GameDeviceBadge'
 import { HomeBar } from '../components/HomeBar'
@@ -61,12 +62,17 @@ export function RankPage({ player }: { player?: string }) {
   const data = isSelf ? myRank : (other ?? empty)
   const { rank, score, totalPlayers, byGame, nearby = [] } = data
 
+  const rankedGames = LEADERBOARD_GAMES.filter((slug) => Boolean(byGame[slug]))
+  const rankedCount = rankedGames.length
+  const totalGames = LEADERBOARD_GAMES.length
+  const unrankedCount = totalGames - rankedCount
+
   return (
     <>
       <main className="lb-page">
         <HomeBar />
         <div className="lb-page__inner rank-page">
-          <header className="lb-page__header">
+          <header className="lb-page__header lb-page__header--compact">
             {!isSelf ? (
               <a className="rank-page__back" href={rankHref()}>
                 ← Your rank
@@ -75,40 +81,43 @@ export function RankPage({ player }: { player?: string }) {
             <h1 className="lb-page__title">
               {isSelf ? 'Global rank' : viewedName}
             </h1>
-            <p className="lb-page__blurb">
+            <p className="lb-page__blurb lb-page__blurb--tight">
               {isSelf
                 ? myName
-                  ? 'Your all-time standing across every game board.'
-                  : 'Set a gamer tag to earn a global rank.'
-                : `All-time standing for ${viewedName}.`}
+                  ? 'All-time standing across every board'
+                  : 'Set a gamer tag to earn a global rank'
+                : `All-time standing for ${viewedName}`}
             </p>
           </header>
 
           {loading ? (
-            <p className="lb-empty">Loading…</p>
+            <BoardSkeleton rows={5} />
           ) : (
             <>
               <section
-                className="rank-page__summary"
+                className="rank-page__summary rank-page__summary--bar"
                 aria-label={isSelf ? 'Your rank' : `${viewedName} rank`}
               >
-                <div className="lb-stat">
-                  <span className="lb-stat__label">Rank</span>
+                <div className="rank-page__bar-stat">
+                  <span className="rank-page__bar-label">Rank</span>
                   <strong>{rank != null ? `#${rank}` : '—'}</strong>
                 </div>
-                <div className="lb-stat">
-                  <span className="lb-stat__label">Points</span>
+                <div className="rank-page__bar-stat">
+                  <span className="rank-page__bar-label">Points</span>
                   <strong>{score > 0 ? score : '—'}</strong>
                 </div>
-                <div className="lb-stat">
-                  <span className="lb-stat__label">Players</span>
+                <div className="rank-page__bar-stat">
+                  <span className="rank-page__bar-label">Field</span>
                   <strong>{totalPlayers > 0 ? totalPlayers : '—'}</strong>
                 </div>
               </section>
 
               {nearby.length > 0 ? (
-                <section className="rank-page__near" aria-labelledby="rank-near-heading">
-                  <h2 id="rank-near-heading" className="rank-page__h">
+                <section
+                  className="rank-page__near rank-page__near--hero"
+                  aria-labelledby="rank-near-heading"
+                >
+                  <h2 id="rank-near-heading" className="rank-page__hero-title">
                     {isSelf ? 'Near you' : `Near ${viewedName}`}
                   </h2>
                   <ul className="rank-page__near-list">
@@ -119,8 +128,14 @@ export function RankPage({ player }: { player?: string }) {
                         <>
                           <span className="rank-page__near-rank">#{row.rank}</span>
                           <span className="rank-page__near-name" title={row.name}>
-                            <PlayerAvatar avatarId={row.avatarId} name={row.name} size="sm" />
-                            <span className="rank-page__near-name-text">{row.name}</span>
+                            <PlayerAvatar
+                              avatarId={row.avatarId}
+                              name={row.name}
+                              size="sm"
+                            />
+                            <span className="rank-page__near-name-text">
+                              {row.name}
+                            </span>
                             {isYou ? <em>you</em> : null}
                           </span>
                           <span className="rank-page__near-pts">{row.score}</span>
@@ -137,7 +152,10 @@ export function RankPage({ player }: { player?: string }) {
                         )
                       }
                       return (
-                        <li key={`${row.rank}-${row.name}`} className="rank-page__near-row">
+                        <li
+                          key={`${row.rank}-${row.name}`}
+                          className="rank-page__near-row"
+                        >
                           <a
                             className="rank-page__near-link"
                             href={isYou ? rankHref() : rankHref(row.name)}
@@ -151,37 +169,77 @@ export function RankPage({ player }: { player?: string }) {
                 </section>
               ) : null}
 
-              <section className="rank-page__board" aria-labelledby="rank-games-heading">
-                <h2 id="rank-games-heading" className="rank-page__h">
-                  By game
-                </h2>
+              <section
+                className="rank-page__board"
+                aria-labelledby="rank-games-heading"
+              >
+                <div className="rank-page__board-head">
+                  <h2 id="rank-games-heading" className="rank-page__h">
+                    By game
+                  </h2>
+                  {totalGames > 0 ? (
+                    <p className="rank-page__progress" aria-live="polite">
+                      <span className="rank-page__dots" aria-hidden="true">
+                        {LEADERBOARD_GAMES.map((slug) => (
+                          <span
+                            key={slug}
+                            className={`rank-page__dot${byGame[slug] ? ' rank-page__dot--on' : ''}`}
+                            title={getGame(slug)?.name ?? slug}
+                          />
+                        ))}
+                      </span>
+                      <span className="rank-page__progress-text">
+                        {rankedCount === totalGames
+                          ? `Ranked on all ${totalGames} games`
+                          : unrankedCount === totalGames
+                            ? `Unranked on all ${totalGames} games`
+                            : unrankedCount === 1
+                              ? 'Unranked on 1 game'
+                              : `Unranked on ${unrankedCount} games`}
+                      </span>
+                    </p>
+                  ) : null}
+                </div>
                 <ul className="rank-page__list">
                   {LEADERBOARD_GAMES.map((slug) => {
                     const game = getGame(slug)
                     const row = byGame[slug]
                     const onDevice = game ? gamePlayableOn(game, device) : true
+                    const accent = game?.accent ?? 'var(--accent)'
                     return (
-                      <li
-                        key={slug}
-                        className={`rank-page__row${onDevice ? '' : ' rank-page__row--other-device'}`}
-                      >
-                        <a className="rank-page__game" href={leaderboardHref(slug, 'all')}>
-                          <span className="rank-page__game-name">
-                            {game?.name ?? slug}
+                      <li key={slug}>
+                        <a
+                          className={`rank-page__row-link${onDevice ? '' : ' rank-page__row-link--other-device'}${row ? '' : ' rank-page__row-link--empty'}`}
+                          href={leaderboardHref(slug, 'all')}
+                          style={{ '--rank-game-accent': accent } as CSSProperties}
+                          aria-label={
+                            row
+                              ? `${game?.name ?? slug}: place ${row.place}, ${row.points} points. Open all-time board.`
+                              : `${game?.name ?? slug}: unranked. Open all-time board.`
+                          }
+                        >
+                          <span className="rank-page__game">
+                            <span className="rank-page__game-name">
+                              {game?.name ?? slug}
+                            </span>
+                            {game ? <GameDeviceBadge game={game} /> : null}
                           </span>
-                          {game ? <GameDeviceBadge game={game} /> : null}
+                          {row ? (
+                            <>
+                              <span className="rank-page__place">#{row.place}</span>
+                              <span className="rank-page__pts">+{row.points}</span>
+                            </>
+                          ) : (
+                            <>
+                              <span className="rank-page__place rank-page__place--empty">
+                                —
+                              </span>
+                              <span className="rank-page__pts rank-page__pts--empty">
+                                Play
+                              </span>
+                            </>
+                          )}
                         </a>
-                        {row ? (
-                          <>
-                            <span className="rank-page__place">#{row.place}</span>
-                            <span className="rank-page__pts">+{row.points}</span>
-                          </>
-                        ) : (
-                          <>
-                            <span className="rank-page__place rank-page__place--empty">—</span>
-                            <span className="rank-page__pts rank-page__pts--empty">0</span>
-                          </>
-                        )}
                       </li>
                     )
                   })}
@@ -191,37 +249,42 @@ export function RankPage({ player }: { player?: string }) {
           )}
 
           {isSelf ? (
-            <section className="rank-page__how" aria-labelledby="rank-how-heading">
-              <h2 id="rank-how-heading" className="rank-page__h">
-                How it works
-              </h2>
-              <p>
-                Your global rank uses <strong>all-time</strong> placements on each
-                game’s leaderboard. Place higher on a board to earn more points:
-              </p>
-              <ul className="rank-page__rules">
-                <li>
-                  <span>1st place</span>
-                  <strong>100 pts</strong>
-                </li>
-                <li>
-                  <span>2nd place</span>
-                  <strong>99 pts</strong>
-                </li>
-                <li>
-                  <span>3rd place</span>
-                  <strong>98 pts</strong>
-                </li>
-                <li>
-                  <span>100th place</span>
-                  <strong>1 pt</strong>
-                </li>
-              </ul>
-              <p>
-                Points from every game are added together. Climb any board to move
-                up — playing more games helps too.
-              </p>
-            </section>
+            <details className="rank-page__how">
+              <summary className="rank-page__how-summary">
+                <span className="rank-page__h" id="rank-how-heading">
+                  How it works
+                </span>
+              </summary>
+              <div className="rank-page__how-body">
+                <p>
+                  Your global rank uses <strong>all-time</strong> placements on
+                  each game’s leaderboard. Place higher on a board to earn more
+                  points:
+                </p>
+                <ul className="rank-page__rules">
+                  <li>
+                    <span>1st place</span>
+                    <strong>100 pts</strong>
+                  </li>
+                  <li>
+                    <span>2nd place</span>
+                    <strong>99 pts</strong>
+                  </li>
+                  <li>
+                    <span>3rd place</span>
+                    <strong>98 pts</strong>
+                  </li>
+                  <li>
+                    <span>100th place</span>
+                    <strong>1 pt</strong>
+                  </li>
+                </ul>
+                <p>
+                  Points from every game are added together. Climb any board to
+                  move up — playing more games helps too.
+                </p>
+              </div>
+            </details>
           ) : null}
 
           <a className="rank-page__boards" href={leaderboardHref()}>
