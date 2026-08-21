@@ -3146,10 +3146,6 @@ a.game-hud__board {
 }
 
 .rank-page__near-row {
-  display: grid;
-  grid-template-columns: 3.2rem minmax(0, 1fr) auto;
-  gap: 0.65rem;
-  align-items: center;
   padding: 0;
   border-top: 1px solid rgba(var(--ink-rgb), 0.06);
 }
@@ -3159,8 +3155,12 @@ a.game-hud__board {
 }
 
 .rank-page__near-row--you {
-  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  display: grid;
+  grid-template-columns: 3.2rem minmax(0, 1fr) auto;
+  gap: 0.65rem;
+  align-items: center;
   padding: 0.7rem 0.9rem;
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
 }
 
 .rank-page__near-link {
