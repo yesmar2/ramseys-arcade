@@ -333,6 +333,32 @@ export async function fetchGlobalRank(name: string): Promise<GlobalRankResult> {
   )
 }
 
+export type GlobalBoardEntry = {
+  name: string
+  rank: number
+  score: number
+  games: number
+}
+
+export type GlobalBoardResult = {
+  totalPlayers: number
+  entries: GlobalBoardEntry[]
+}
+
+/** All-time global points board (top 100). */
+export async function fetchGlobalBoard(
+  limit = 100,
+): Promise<GlobalBoardResult> {
+  const capped = Math.min(100, Math.max(1, Math.floor(limit)))
+  const data = await api<GlobalBoardResult>(
+    `/leaderboards/rank?limit=${encodeURIComponent(String(capped))}`,
+  )
+  return {
+    totalPlayers: data.totalPlayers ?? 0,
+    entries: data.entries ?? [],
+  }
+}
+
 export type QualifiesResult = {
   qualifies: boolean
   rank: number | null

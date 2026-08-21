@@ -25,10 +25,12 @@ function isLeaderboardPeriod(value: string): value is LeaderboardPeriod {
   return (LEADERBOARD_PERIODS as readonly string[]).includes(value)
 }
 
+/** Global hub when called with no game; otherwise a per-game board. */
 export function leaderboardHref(
-  game: LeaderboardGame = LEADERBOARD_GAMES[0],
+  game?: LeaderboardGame,
   period: LeaderboardPeriod = 'daily',
 ) {
+  if (!game) return '#/leaderboards'
   return `#/leaderboards/${game}/${period}`
 }
 
