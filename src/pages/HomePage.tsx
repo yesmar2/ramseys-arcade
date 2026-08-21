@@ -1,3 +1,4 @@
+import { ArcadeAttendant } from '../components/ArcadeAttendant'
 import { Footer } from '../components/Footer'
 import { GameGrid } from '../components/GameGrid'
 import { HomeBar } from '../components/HomeBar'
@@ -12,6 +13,7 @@ export function HomePage() {
         </div>
       </main>
       <Footer />
+      <ArcadeAttendant />
     </>
   )
 }
