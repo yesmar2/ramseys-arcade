@@ -11,15 +11,39 @@ const HUE = {
   green: 128,
 }
 
-function pastel(hue: number, sat = 52, mix = 40) {
+function pastel(hue: number, sat = 56, mix = 48) {
   return {
-    fill: `color-mix(in srgb, hsla(${hue}, ${sat}%, 58%, 1) ${mix}%, var(--playfield))`,
-    stroke: `hsla(${hue}, ${sat}%, 42%, 0.95)`,
+    fill: `color-mix(in srgb, hsla(${hue}, ${sat}%, 56%, 1) ${mix}%, var(--playfield))`,
+    stroke: `hsla(${hue}, ${sat}%, 38%, 0.95)`,
   }
 }
 
 function TileBg() {
-  return <rect width="160" height="100" fill="var(--playfield)" />
+  return (
+    <g className="tile-art__bg">
+      <rect width="160" height="100" fill="var(--playfield)" />
+      <ellipse
+        className="tile-art__wash"
+        cx="80"
+        cy="40"
+        rx="72"
+        ry="50"
+        fill="var(--tile-accent, var(--accent))"
+        opacity="0.2"
+      />
+      <ellipse
+        cx="80"
+        cy="108"
+        rx="90"
+        ry="28"
+        fill="rgba(var(--ink-rgb), 0.06)"
+      />
+      <circle cx="28" cy="18" r="1.4" fill="var(--tile-accent, var(--accent))" opacity="0.45" />
+      <circle cx="132" cy="26" r="1.1" fill="var(--tile-accent, var(--accent))" opacity="0.35" />
+      <circle cx="118" cy="14" r="0.9" fill="var(--ink)" opacity="0.2" />
+      <circle cx="46" cy="12" r="0.8" fill="var(--ink)" opacity="0.16" />
+    </g>
+  )
 }
 
 function SvgFrame({ children }: { children: ReactNode }) {
@@ -87,11 +111,11 @@ function IsoSlab({
     p(x + hw, 0, z + hd, cx, cy),
     p(x - hw, 0, z + hd, cx, cy),
   ]
-  const sat = 52
-  const fill = `color-mix(in srgb, hsla(${hue}, ${sat}%, 58%, 1) 40%, var(--playfield))`
-  const side = `color-mix(in srgb, hsla(${hue}, ${sat}%, 52%, 1) 40%, var(--playfield))`
-  const sideDark = `color-mix(in srgb, hsla(${hue}, ${sat}%, 46%, 1) 40%, var(--playfield))`
-  const stroke = `hsla(${hue}, ${sat}%, 42%, 0.95)`
+  const sat = 56
+  const fill = `color-mix(in srgb, hsla(${hue}, ${sat}%, 56%, 1) 52%, var(--playfield))`
+  const side = `color-mix(in srgb, hsla(${hue}, ${sat}%, 50%, 1) 48%, var(--playfield))`
+  const sideDark = `color-mix(in srgb, hsla(${hue}, ${sat}%, 42%, 1) 48%, var(--playfield))`
+  const stroke = `hsla(${hue}, ${sat}%, 36%, 0.95)`
 
   return (
     <g>
@@ -109,16 +133,20 @@ export function StackerArt() {
   return (
     <SvgFrame>
       <TileBg />
-      <ellipse cx="80" cy="72" rx="44" ry="7" fill="rgba(26,43,60,0.08)" />
-      <IsoSlab cx={cx} cy={baseCy} w={52} d={52} h={11} hue={HUE.teal} />
-      <g transform="translate(0, -11)">
-        <IsoSlab cx={cx} cy={baseCy} w={44} d={44} h={11} hue={HUE.sky} />
-      </g>
-      <g transform="translate(0, -22)">
-        <IsoSlab cx={cx} cy={baseCy} w={36} d={36} h={11} hue={HUE.violet} />
-      </g>
-      <g transform="translate(0, -33)">
-        <IsoSlab cx={cx} cy={baseCy} x={16} w={36} d={36} h={11} hue={HUE.gold} />
+      <ellipse cx="80" cy="74" rx="48" ry="8" fill="rgba(var(--ink-rgb), 0.1)" />
+      <g className="tile-art__bob">
+        <IsoSlab cx={cx} cy={baseCy} w={52} d={52} h={11} hue={HUE.teal} />
+        <g transform="translate(0, -11)">
+          <IsoSlab cx={cx} cy={baseCy} w={44} d={44} h={11} hue={HUE.sky} />
+        </g>
+        <g transform="translate(0, -22)">
+          <IsoSlab cx={cx} cy={baseCy} w={36} d={36} h={11} hue={HUE.violet} />
+        </g>
+        <g transform="translate(0, -33)">
+          <g className="tile-art__sway">
+            <IsoSlab cx={cx} cy={baseCy} x={16} w={36} d={36} h={11} hue={HUE.gold} />
+          </g>
+        </g>
       </g>
     </SvgFrame>
   )
@@ -143,7 +171,7 @@ function CitySkyline({
   return (
     <g>
       {blocks.map((b) => {
-        const { fill, stroke } = pastel(hue, 52, 36)
+        const { fill, stroke } = pastel(hue, 54, 42)
         return (
           <rect
             key={b.dx}
@@ -163,14 +191,13 @@ function CitySkyline({
 }
 
 export function PatriotArt() {
-  const turret = pastel(HUE.sky, 52, 36)
-  const incoming = pastel(HUE.rose, 56, 40)
+  const turret = pastel(HUE.sky, 54, 44)
+  const incoming = pastel(HUE.rose, 60, 52)
   const ground = 78
 
   return (
     <SvgFrame>
       <TileBg />
-
       <CitySkyline x={28} ground={ground} hue={HUE.sky} heights={[18, 28, 16]} />
       <CitySkyline x={132} ground={ground} hue={HUE.teal} heights={[16, 26, 20]} />
 
@@ -182,42 +209,43 @@ export function PatriotArt() {
         strokeLinejoin="round"
       />
 
-      {/* Incoming — higher, aimed at the right city */}
-      <line
-        x1="118"
-        y1="4"
-        x2="128"
-        y2="20"
-        stroke={incoming.stroke}
-        strokeWidth="1.7"
-        strokeLinecap="butt"
-        opacity="0.85"
-      />
-      <circle cx="130" cy="24" r="3.8" fill={incoming.fill} stroke={incoming.stroke} strokeWidth="1.5" />
+      <g className="tile-art__drift">
+        <line
+          x1="118"
+          y1="4"
+          x2="128"
+          y2="20"
+          stroke={incoming.stroke}
+          strokeWidth="1.7"
+          strokeLinecap="butt"
+          opacity="0.9"
+        />
+        <circle cx="130" cy="24" r="3.8" fill={incoming.fill} stroke={incoming.stroke} strokeWidth="1.5" />
+      </g>
 
-      {/* Incoming — lower, from the left */}
-      <line
-        x1="42"
-        y1="22"
-        x2="54"
-        y2="40"
-        stroke={incoming.stroke}
-        strokeWidth="1.7"
-        strokeLinecap="butt"
-        opacity="0.85"
-      />
-      <circle cx="56" cy="44" r="3.8" fill={incoming.fill} stroke={incoming.stroke} strokeWidth="1.5" />
+      <g className="tile-art__drift tile-art__drift--alt">
+        <line
+          x1="42"
+          y1="22"
+          x2="54"
+          y2="40"
+          stroke={incoming.stroke}
+          strokeWidth="1.7"
+          strokeLinecap="butt"
+          opacity="0.9"
+        />
+        <circle cx="56" cy="44" r="3.8" fill={incoming.fill} stroke={incoming.stroke} strokeWidth="1.5" />
+      </g>
     </SvgFrame>
   )
 }
 
 export function SnakeArt() {
-  const food = pastel(HUE.gold, 58, 48)
+  const food = pastel(HUE.gold, 62, 58)
   const size = 14
   const step = 14
   const x0 = 42
   const y0 = 22
-  // Head green → teal → blue → violet along the body (matches in-game rainbow step)
   const cells = [
     { c: 0, r: 0, hue: 208 },
     { c: 1, r: 0, hue: 198 },
@@ -232,31 +260,35 @@ export function SnakeArt() {
   return (
     <SvgFrame>
       <TileBg />
-      {cells.map((b) => {
-        const { fill, stroke } = pastel(b.hue, 58, 42)
-        return (
-          <circle
-            key={`${b.c}-${b.r}`}
-            cx={x0 + b.c * step + size / 2}
-            cy={y0 + b.r * step + size / 2}
-            r={size / 2}
-            fill={fill}
-            stroke={stroke}
-            strokeWidth="1.5"
-          />
-        )
-      })}
-      <circle cx={headCx + 3.2} cy={headCy - 2.6} r="1.5" fill="#fff" />
-      <circle cx={headCx + 3.2} cy={headCy + 2.6} r="1.5" fill="#fff" />
-      <circle cx={headCx + 3.5} cy={headCy - 2.6} r="0.65" fill="#1a2b3c" />
-      <circle cx={headCx + 3.5} cy={headCy + 2.6} r="0.65" fill="#1a2b3c" />
-      <circle cx={x0 + 4 * step + size / 2} cy={headCy} r="5.2" {...food} strokeWidth="1.5" />
-      <circle
-        cx={x0 + 4 * step + size / 2 - 1.4}
-        cy={headCy - 1.5}
-        r="1.1"
-        fill="rgba(255,255,255,0.55)"
-      />
+      <g className="tile-art__slither">
+        {cells.map((b) => {
+          const { fill, stroke } = pastel(b.hue, 60, 50)
+          return (
+            <circle
+              key={`${b.c}-${b.r}`}
+              cx={x0 + b.c * step + size / 2}
+              cy={y0 + b.r * step + size / 2}
+              r={size / 2}
+              fill={fill}
+              stroke={stroke}
+              strokeWidth="1.5"
+            />
+          )
+        })}
+        <circle cx={headCx + 3.2} cy={headCy - 2.6} r="1.5" fill="#fff" />
+        <circle cx={headCx + 3.2} cy={headCy + 2.6} r="1.5" fill="#fff" />
+        <circle cx={headCx + 3.5} cy={headCy - 2.6} r="0.65" fill="#1a2b3c" />
+        <circle cx={headCx + 3.5} cy={headCy + 2.6} r="0.65" fill="#1a2b3c" />
+      </g>
+      <g className="tile-art__pulse">
+        <circle cx={x0 + 4 * step + size / 2} cy={headCy} r="5.2" {...food} strokeWidth="1.5" />
+        <circle
+          cx={x0 + 4 * step + size / 2 - 1.4}
+          cy={headCy - 1.5}
+          r="1.1"
+          fill="rgba(255,255,255,0.55)"
+        />
+      </g>
     </SvgFrame>
   )
 }
@@ -278,11 +310,11 @@ export function WhackArt() {
         const row = Math.floor(i / 3)
         const cx = originX + col * gap
         const cy = originY + row * gap
-        const sat = i === gold ? 58 : 52
+        const sat = i === gold ? 62 : 54
         const on = live.has(i)
-        const { fill, stroke } = pastel(hue, sat, on ? 72 : 16)
+        const { fill, stroke } = pastel(hue, sat, on ? 78 : 22)
         return (
-          <g key={i}>
+          <g key={i} className={on ? 'tile-art__pop' : undefined}>
             <circle
               cx={cx}
               cy={cy}
@@ -310,68 +342,86 @@ export function WhackArt() {
 }
 
 export function DeadCenterArt() {
-  const tri = pastel(HUE.sky, 54, 38)
+  const tri = pastel(HUE.sky, 56, 46)
 
   return (
     <SvgFrame>
       <TileBg />
-      <path d="M44 70 L84 24 L126 66 Z" {...tri} strokeWidth="2" strokeLinejoin="round" />
-      <circle cx={(44 + 84 + 126) / 3} cy={(70 + 24 + 66) / 3} r="3.4" fill="#2eb8a0" />
+      <g className="tile-art__bob">
+        <path d="M44 70 L84 24 L126 66 Z" {...tri} strokeWidth="2" strokeLinejoin="round" />
+        <circle
+          className="tile-art__pulse"
+          cx={(44 + 84 + 126) / 3}
+          cy={(70 + 24 + 66) / 3}
+          r="3.4"
+          fill="#2eb8a0"
+        />
+      </g>
     </SvgFrame>
   )
 }
 
 export function AsteroidsArt() {
-  const large = pastel(HUE.sky, 52, 34)
-  const med = pastel(HUE.violet, 52, 34)
-  const small = pastel(HUE.gold, 54, 36)
-  const shipFill = 'rgba(46, 184, 160, 0.2)'
+  const large = pastel(HUE.sky, 54, 42)
+  const med = pastel(HUE.violet, 54, 42)
+  const small = pastel(HUE.gold, 58, 46)
+  const shipFill = 'color-mix(in srgb, #2eb8a0 28%, var(--playfield))'
   const shipStroke = '#2eb8a0'
 
   return (
     <SvgFrame>
       <TileBg />
-      {/* Spread rocks to the corners; ship alone in the middle */}
-      <path
-        d="M14 28 L26 14 L48 16 L54 34 L40 46 L18 42 Z"
-        {...large}
-        strokeWidth="1.8"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M118 14 L134 12 L148 24 L142 40 L124 38 L114 24 Z"
-        {...med}
-        strokeWidth="1.7"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M118 68 L130 60 L146 66 L140 82 L122 84 L112 74 Z"
-        {...small}
-        strokeWidth="1.6"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M18 72 L28 64 L42 70 L36 82 L22 82 Z"
-        {...small}
-        strokeWidth="1.5"
-        strokeLinejoin="round"
-      />
+      <g className="tile-art__spin-slow">
+        <path
+          d="M14 28 L26 14 L48 16 L54 34 L40 46 L18 42 Z"
+          {...large}
+          strokeWidth="1.8"
+          strokeLinejoin="round"
+        />
+      </g>
+      <g className="tile-art__spin-slow tile-art__spin-slow--rev">
+        <path
+          d="M118 14 L134 12 L148 24 L142 40 L124 38 L114 24 Z"
+          {...med}
+          strokeWidth="1.7"
+          strokeLinejoin="round"
+        />
+      </g>
+      <g className="tile-art__drift">
+        <path
+          d="M118 68 L130 60 L146 66 L140 82 L122 84 L112 74 Z"
+          {...small}
+          strokeWidth="1.6"
+          strokeLinejoin="round"
+        />
+      </g>
+      <g className="tile-art__drift tile-art__drift--alt">
+        <path
+          d="M18 72 L28 64 L42 70 L36 82 L22 82 Z"
+          {...small}
+          strokeWidth="1.5"
+          strokeLinejoin="round"
+        />
+      </g>
       <g transform="translate(80 50)">
-        <path
-          d="M0 -13 L-9.5 10 L0 5 L9.5 10 Z"
-          fill={shipFill}
-          stroke={shipStroke}
-          strokeWidth="2.3"
-          strokeLinejoin="round"
-        />
-        <path
-          d="M-4.5 8.5 L0 16.5 L4.5 8.5"
-          fill="none"
-          stroke="#f5b942"
-          strokeWidth="1.9"
-          strokeLinejoin="round"
-          strokeLinecap="round"
-        />
+        <g className="tile-art__thrust">
+          <path
+            d="M0 -13 L-9.5 10 L0 5 L9.5 10 Z"
+            fill={shipFill}
+            stroke={shipStroke}
+            strokeWidth="2.3"
+            strokeLinejoin="round"
+          />
+          <path
+            className="tile-art__flame"
+            d="M-4.5 8.5 L0 16.5 L4.5 8.5"
+            fill="none"
+            stroke="#f5b942"
+            strokeWidth="1.9"
+            strokeLinejoin="round"
+            strokeLinecap="round"
+          />
+        </g>
       </g>
       <circle cx="80" cy="22" r="1.8" fill="#4aa8e8" />
     </SvgFrame>
@@ -394,14 +444,15 @@ export function SimonArt() {
   return (
     <SvgFrame>
       <TileBg />
-      {pads.map((p) => {
-        const { fill, stroke } = pastel(p.hue, 52, p.lit ? 52 : 38)
+      {pads.map((pad) => {
+        const { fill, stroke } = pastel(pad.hue, 56, pad.lit ? 62 : 40)
         return (
           <circle
-            key={`${p.x}-${p.y}`}
-            cx={p.x}
-            cy={p.y}
-            r={p.lit ? r * 1.04 : r}
+            key={`${pad.x}-${pad.y}`}
+            className={pad.lit ? 'tile-art__pulse' : undefined}
+            cx={pad.x}
+            cy={pad.y}
+            r={pad.lit ? r * 1.04 : r}
             fill={fill}
             stroke={stroke}
             strokeWidth="2"
