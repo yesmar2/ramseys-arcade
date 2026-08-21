@@ -31,12 +31,14 @@ export function LeaderboardList({
   playerName,
   accent,
   shown,
+  formatScore = (n: number) => String(n),
 }: {
   entries: LeaderboardEntry[]
   you: YouEntry | null
   playerName: string
   accent: string
   shown: number
+  formatScore?: (score: number) => string
 }) {
   const visible = entries.slice(0, shown)
   const youOnVisible = Boolean(you && visible.some((entry) => entry.id === you.id))
@@ -44,12 +46,18 @@ export function LeaderboardList({
   const youStyle = { '--lb-you-accent': accent } as CSSProperties
   const youName = normalizePlayerName(playerName)
 
-  const renderRow = (entry: LeaderboardEntry, rank: number, isYou: boolean) => {
+  const renderRow = (
+    entry: LeaderboardEntry,
+    rank: number,
+    isYou: boolean,
+    opts?: { markYouId?: boolean },
+  ) => {
     const medal = medalKind(rank)
     const name = normalizePlayerName(entry.name ?? '')
     return (
       <li
-        key={entry.id}
+        key={`${entry.id}${opts?.markYouId ? '-you' : ''}`}
+        id={opts?.markYouId ? 'lb-you-row' : undefined}
         className={`lb-row${isYou ? ' lb-row--you' : ''}`}
         style={isYou ? youStyle : undefined}
         aria-current={isYou ? 'true' : undefined}
@@ -72,7 +80,7 @@ export function LeaderboardList({
           </span>
           {isYou ? <span className="lb-row__you-tag">You</span> : null}
         </span>
-        <span className="lb-row__score">{entry.score}</span>
+        <span className="lb-row__score">{formatScore(entry.score)}</span>
         <span className="lb-row__date">{formatDate(entry.at)}</span>
       </li>
     )
@@ -82,17 +90,17 @@ export function LeaderboardList({
     <ol className="lb-list">
       {youOffVisible && you ? (
         <>
-          {renderRow(you, you.rank, true)}
+          {renderRow(you, you.rank, true, { markYouId: true })}
           {visible.length > 0 ? <li className="lb-you-split">Top {shown}</li> : null}
         </>
       ) : null}
-      {visible.map((entry, index) =>
-        renderRow(
-          entry,
-          index + 1,
-          Boolean(youName) && normalizePlayerName(entry.name ?? '') === youName,
-        ),
-      )}
+      {visible.map((entry, index) => {
+        const isYou =
+          Boolean(youName) && normalizePlayerName(entry.name ?? '') === youName
+        return renderRow(entry, index + 1, isYou, {
+          markYouId: isYou && !youOffVisible,
+        })
+      })}
     </ol>
   )
 }

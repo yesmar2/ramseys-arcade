@@ -32,7 +32,11 @@ export function GlobalRankList({
   const youOffVisible = Boolean(you && !youOnVisible)
   const youStyle = { '--lb-you-accent': 'var(--accent)' } as CSSProperties
 
-  const renderRow = (entry: GlobalBoardEntry, isYou: boolean) => {
+  const renderRow = (
+    entry: GlobalBoardEntry,
+    isYou: boolean,
+    opts?: { markYouId?: boolean },
+  ) => {
     const medal = medalKind(entry.rank)
     const name = normalizePlayerName(entry.name)
     const nameInner = (
@@ -46,7 +50,8 @@ export function GlobalRankList({
     )
     return (
       <li
-        key={`${entry.rank}-${name}`}
+        key={`${entry.rank}-${name}${opts?.markYouId ? '-you' : ''}`}
+        id={opts?.markYouId ? 'lb-you-row' : undefined}
         className={`lb-row${isYou ? ' lb-row--you' : ''}`}
         style={isYou ? youStyle : undefined}
         aria-current={isYou ? 'true' : undefined}
@@ -80,16 +85,15 @@ export function GlobalRankList({
     <ol className="lb-list">
       {youOffVisible && you ? (
         <>
-          {renderRow(you, true)}
+          {renderRow(you, true, { markYouId: true })}
           {visible.length > 0 ? <li className="lb-you-split">Top {shown}</li> : null}
         </>
       ) : null}
-      {visible.map((entry) =>
-        renderRow(
-          entry,
-          Boolean(youName) && normalizePlayerName(entry.name) === youName,
-        ),
-      )}
+      {visible.map((entry) => {
+        const isYou =
+          Boolean(youName) && normalizePlayerName(entry.name) === youName
+        return renderRow(entry, isYou, { markYouId: isYou && !youOffVisible })
+      })}
     </ol>
   )
 }
