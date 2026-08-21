@@ -4693,9 +4693,9 @@ a.game-hud__board {
 }
 
 .arcade-attendant__figure {
-  width: 5.4rem;
-  height: 6.2rem;
-  filter: drop-shadow(0 10px 18px rgba(26, 43, 60, 0.18));
+  width: 3.6rem;
+  height: 4rem;
+  filter: drop-shadow(0 6px 12px rgba(var(--ink-rgb), 0.12));
 }
 
 .arcade-attendant__svg {
@@ -4704,19 +4704,14 @@ a.game-hud__board {
   height: 100%;
 }
 
-.arcade-attendant__wave {
-  transform-origin: 72px 70px;
-  animation: attendant-wave 1.4s ease-in-out 0.4s 3;
-}
-
 @keyframes attendant-in {
   from {
     opacity: 0;
-    transform: translate(1.2rem, 2.4rem) scale(0.92);
+    transform: translate(0.8rem, 1.4rem);
   }
   to {
     opacity: 1;
-    transform: translate(0, 0) scale(1);
+    transform: translate(0, 0);
   }
 }
 
@@ -4727,27 +4722,13 @@ a.game-hud__board {
   }
   to {
     opacity: 0;
-    transform: translate(1rem, 2rem);
-  }
-}
-
-@keyframes attendant-wave {
-  0%,
-  100% {
-    transform: rotate(0deg);
-  }
-  35% {
-    transform: rotate(18deg);
-  }
-  70% {
-    transform: rotate(-8deg);
+    transform: translate(0.6rem, 1.2rem);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .arcade-attendant--in,
-  .arcade-attendant--out,
-  .arcade-attendant__wave {
+  .arcade-attendant--out {
     animation: none;
   }
 }

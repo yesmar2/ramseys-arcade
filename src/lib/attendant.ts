@@ -34,13 +34,9 @@ function daySeed() {
   return d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate()
 }
 
+/** One line per calendar day — same for everyone that day. */
 export function pickAttendantLine(): string {
-  const seed = daySeed()
-  const idx = seed % ATTENDANT_LINES.length
-  // Nudge by hour so two visits the same day can differ if they get lucky twice
-  // across the cooldown window on different days mostly — still stable-ish.
-  const hourBump = new Date().getHours()
-  return ATTENDANT_LINES[(idx + hourBump) % ATTENDANT_LINES.length]
+  return ATTENDANT_LINES[daySeed() % ATTENDANT_LINES.length]
 }
 
 export function shouldSummonAttendant(now = Date.now()): boolean {

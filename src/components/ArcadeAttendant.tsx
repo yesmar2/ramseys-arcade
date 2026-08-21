@@ -58,69 +58,19 @@ export function ArcadeAttendant() {
       </div>
 
       <div className="arcade-attendant__figure" aria-hidden="true">
-        <svg viewBox="0 0 96 112" className="arcade-attendant__svg">
-          {/* Cap */}
-          <ellipse cx="48" cy="22" rx="28" ry="10" fill="#2a3a4a" />
-          <rect x="20" y="14" width="56" height="14" rx="4" fill="#3d5166" />
-          <rect x="36" y="8" width="24" height="10" rx="3" fill="#4aa8e8" />
-          {/* Head */}
-          <circle cx="48" cy="40" r="22" fill="#f0d2b0" />
-          {/* Eyes */}
-          <circle cx="40" cy="38" r="3.2" fill="#1a2b3c" />
-          <circle cx="56" cy="38" r="3.2" fill="#1a2b3c" />
-          <circle cx="41" cy="37" r="1" fill="#fff" />
-          <circle cx="57" cy="37" r="1" fill="#fff" />
-          {/* Brow raise */}
+        <svg viewBox="0 0 64 72" className="arcade-attendant__svg">
+          <circle cx="32" cy="22" r="16" fill="var(--accent-sky)" />
+          <circle cx="26" cy="20" r="2.4" fill="var(--ink)" />
+          <circle cx="38" cy="20" r="2.4" fill="var(--ink)" />
           <path
-            d="M34 32c3-2 7-2 10 0"
+            d="M26 28c2.5 3 9.5 3 12 0"
             fill="none"
-            stroke="#1a2b3c"
-            strokeWidth="1.6"
-            strokeLinecap="round"
-          />
-          <path
-            d="M52 32c3-2 7-2 10 0"
-            fill="none"
-            stroke="#1a2b3c"
-            strokeWidth="1.6"
-            strokeLinecap="round"
-          />
-          {/* Smile */}
-          <path
-            d="M40 48c3 4 13 4 16 0"
-            fill="none"
-            stroke="#1a2b3c"
+            stroke="var(--ink)"
             strokeWidth="2"
             strokeLinecap="round"
           />
-          {/* Body / jacket */}
-          <path
-            d="M24 66c4-10 16-14 24-14s20 4 24 14v36H24V66z"
-            fill="#2eb8a0"
-          />
-          <path d="M48 52v50" stroke="#1a8f7a" strokeWidth="3" />
-          {/* Badge */}
-          <circle cx="62" cy="72" r="6" fill="#ffe9b8" />
-          <text
-            x="62"
-            y="75"
-            textAnchor="middle"
-            fontSize="7"
-            fontWeight="700"
-            fill="#1a2b3c"
-          >
-            A
-          </text>
-          {/* Arm wave */}
-          <g className="arcade-attendant__wave">
-            <path
-              d="M72 70c10 2 14 12 10 18"
-              fill="none"
-              stroke="#f0d2b0"
-              strokeWidth="7"
-              strokeLinecap="round"
-            />
-          </g>
+          <rect x="14" y="38" width="36" height="30" rx="12" fill="var(--accent)" />
+          <circle cx="32" cy="52" r="4" fill="var(--accent-2)" />
         </svg>
       </div>
     </div>
