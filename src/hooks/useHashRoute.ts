@@ -9,6 +9,7 @@ import {
 export type Route =
   | { name: 'home' }
   | { name: 'leaderboards'; game?: LeaderboardGame; period?: LeaderboardPeriod }
+  | { name: 'records'; game: string; recordId?: string; period?: LeaderboardPeriod }
   | { name: 'rank'; player?: string }
   | { name: 'tournaments' }
   | { name: 'tournament'; id: string }
@@ -48,6 +49,18 @@ export function gamePlayHref(slug: string) {
   return `#/games/${slug}/play`
 }
 
+export function recordsHref(game: string) {
+  return `#/records/${encodeURIComponent(game)}`
+}
+
+export function recordHref(
+  game: string,
+  recordId: string,
+  period: LeaderboardPeriod = 'all',
+) {
+  return `#/records/${encodeURIComponent(game)}/${encodeURIComponent(recordId)}/${period}`
+}
+
 function parseHash(hash: string): Route {
   const path = hash.replace(/^#\/?/, '').replace(/\/$/, '')
   if (!path) return { name: 'home' }
@@ -58,6 +71,26 @@ function parseHash(hash: string): Route {
   if (rankMatch) {
     const player = decodeURIComponent(rankMatch[1]).trim().toUpperCase().slice(0, 12)
     return player ? { name: 'rank', player } : { name: 'rank' }
+  }
+
+  const recordBoardMatch = /^records\/([^/]+)\/([^/]+)(?:\/([^/]+))?$/.exec(path)
+  if (recordBoardMatch) {
+    const game = decodeURIComponent(recordBoardMatch[1])
+    const recordId = decodeURIComponent(recordBoardMatch[2])
+    const periodRaw = recordBoardMatch[3]
+      ? decodeURIComponent(recordBoardMatch[3])
+      : undefined
+    return {
+      name: 'records',
+      game,
+      recordId,
+      period: periodRaw && isLeaderboardPeriod(periodRaw) ? periodRaw : 'all',
+    }
+  }
+
+  const recordsMatch = /^records\/([^/]+)$/.exec(path)
+  if (recordsMatch) {
+    return { name: 'records', game: decodeURIComponent(recordsMatch[1]) }
   }
 
   const boardsMatch = /^leaderboards\/([^/]+)(?:\/([^/]+))?$/.exec(path)

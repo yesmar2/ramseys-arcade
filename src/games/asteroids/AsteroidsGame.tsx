@@ -7,8 +7,10 @@ import { ScoreSaveCard } from '../../components/ScoreSaveCard'
 import { TournamentScoreCard } from '../../components/TournamentScoreCard'
 import { useGamePause } from '../../hooks/useGamePause'
 import { usePersonalBest } from '../../hooks/usePersonalBest'
+import { usePlayerName } from '../../hooks/usePlayerName'
 import { useDeviceType } from '../../lib/device'
 import { getPersonalBest } from '../../lib/personalBest'
+import { submitAsteroidsWaveTime } from '../../lib/records'
 import { useTournamentPlay } from '../../tournaments/TournamentPlayContext'
 import {
   asteroidsLayout,
@@ -56,6 +58,7 @@ function currentLayout() {
 export function AsteroidsGame() {
   const tournament = useTournamentPlay()
   const device = useDeviceType()
+  const playerName = usePlayerName()
   const apiBest = usePersonalBest('asteroids')
   const layout0 = currentLayout()
   const stateRef = useRef<GameState>(createInitialState())
@@ -68,7 +71,9 @@ export function AsteroidsGame() {
   const saveOpenRef = useRef(false)
   const [ui, setUi] = useState<Snapshot>(() => toSnapshot(stateRef.current))
   const [saveOpen, setSaveOpen] = useState(false)
+  const [waveRecordNote, setWaveRecordNote] = useState<string | null>(null)
   const offeredScore = useRef<number | null>(null)
+  const waveRecordKey = useRef<string | null>(null)
   const previousBestRef = useRef(getPersonalBest('asteroids'))
   const startGrace = useRef(0)
   const ignorePauseKeys = useRef(false)
@@ -170,6 +175,32 @@ export function AsteroidsGame() {
   useEffect(() => {
     if (ui.phase === 'menu') previousBestRef.current = apiBest
   }, [apiBest, ui.phase])
+
+  useEffect(() => {
+    if (ui.phase !== 'waveClear' || tournament) {
+      if (ui.phase !== 'waveClear') {
+        setWaveRecordNote(null)
+        waveRecordKey.current = null
+      }
+      return
+    }
+    const wave = ui.lastWave
+    const time = ui.lastWaveTime
+    const key = `${wave}:${time.toFixed(3)}`
+    if (waveRecordKey.current === key) return
+    waveRecordKey.current = key
+    setWaveRecordNote(null)
+    let cancelled = false
+    void submitAsteroidsWaveTime(wave, time, playerName).then((result) => {
+      if (cancelled || !result?.improved) return
+      setWaveRecordNote(
+        result.rank != null ? `Wave record · #${result.rank}` : 'Wave record set',
+      )
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [ui.phase, ui.lastWave, ui.lastWaveTime, playerName, tournament])
 
   useEffect(() => {
     const sync = () => {
@@ -376,6 +407,9 @@ export function AsteroidsGame() {
                 </span>
                 {ui.comboBest > 1 ? (
                   <span>Best combo {ui.comboBest}</span>
+                ) : null}
+                {waveRecordNote ? (
+                  <span className="asteroids__record-note">{waveRecordNote}</span>
                 ) : null}
                 <button
                   type="button"

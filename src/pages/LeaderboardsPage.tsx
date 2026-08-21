@@ -5,7 +5,7 @@ import { GlobalRankList } from '../components/GlobalRankList'
 import { HomeBar } from '../components/HomeBar'
 import { LeaderboardList } from '../components/LeaderboardList'
 import { deviceRequirementLabel, getGame, gamePlayableOn } from '../data/games'
-import { gamePlayHref, leaderboardHref } from '../hooks/useHashRoute'
+import { gamePlayHref, leaderboardHref, recordsHref } from '../hooks/useHashRoute'
 import { useDeviceType } from '../lib/device'
 import { usePlayerName } from '../hooks/usePlayerName'
 import {
@@ -342,6 +342,25 @@ function GameLeaderboard({
               </p>
             ) : null}
           </section>
+
+          {active === 'asteroids' ? (
+            <section className="lb-games" aria-labelledby="lb-records-heading">
+              <h2 id="lb-records-heading" className="lb-games__title">
+                Records
+              </h2>
+              <p className="lb-page__blurb lb-page__blurb--inline">
+                Fastest clear per wave — separate from high scores and global
+                points.
+              </p>
+              <a
+                className="lb-games__link"
+                href={recordsHref('asteroids')}
+                style={{ '--tab-accent': accent } as CSSProperties}
+              >
+                <span className="lb-games__name">Asteroids wave times</span>
+              </a>
+            </section>
+          ) : null}
 
           {otherGames.length > 0 ? (
             <section className="lb-games" aria-labelledby="lb-other-games-heading">

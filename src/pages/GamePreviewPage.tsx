@@ -10,7 +10,7 @@ import {
 } from '../data/games'
 import { scoringFor } from '../data/scoring'
 import { useBoardRecord } from '../hooks/useBoardRecord'
-import { gamePlayHref, leaderboardHref } from '../hooks/useHashRoute'
+import { gamePlayHref, leaderboardHref, recordsHref } from '../hooks/useHashRoute'
 import { usePersonalBest } from '../hooks/usePersonalBest'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { useDeviceType } from '../lib/device'
@@ -190,6 +190,11 @@ export function GamePreviewPage({ slug }: { slug: string }) {
               <a className="game-lobby__all-boards" href={leaderboardHref(boardSlug)}>
                 Full leaderboards
               </a>
+              {boardSlug === 'asteroids' ? (
+                <a className="game-lobby__all-boards" href={recordsHref('asteroids')}>
+                  Wave time records
+                </a>
+              ) : null}
             </section>
           ) : null}
 

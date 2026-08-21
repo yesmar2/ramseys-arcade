@@ -19,6 +19,7 @@ import { GamePreviewPage } from './pages/GamePreviewPage'
 import { HomePage } from './pages/HomePage'
 import { RankPage } from './pages/RankPage'
 import { LeaderboardsPage } from './pages/LeaderboardsPage'
+import { RecordsPage } from './pages/RecordsPage'
 import { PatriotPage } from './pages/PatriotPage'
 import { SimonPage } from './pages/SimonPage'
 import { SnakePage } from './pages/SnakePage'
@@ -95,6 +96,15 @@ function App() {
   if (route.name === 'rank') return <RankPage player={route.player} />
   if (route.name === 'leaderboards') {
     return <LeaderboardsPage game={route.game} period={route.period} />
+  }
+  if (route.name === 'records') {
+    return (
+      <RecordsPage
+        game={route.game}
+        recordId={route.recordId}
+        period={route.period}
+      />
+    )
   }
   if (route.name === 'tournaments') return <TournamentsPage />
   if (route.name === 'tournamentPlay') {

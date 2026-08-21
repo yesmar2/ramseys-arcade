@@ -2841,6 +2841,13 @@ a.game-hud__board {
   line-height: 1.1;
 }
 
+.asteroids__record-note {
+  margin-top: 0.15rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--accent);
+}
+
 .asteroids__next {
   margin-top: 0.55rem;
   pointer-events: auto;
@@ -3554,6 +3561,30 @@ a.game-hud__board {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.lb-page__blurb--inline {
+  margin: 0 0 0.65rem;
+  text-align: left;
+}
+
+.records-top {
+  flex: none;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.lb-games__list--compact {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(5.5rem, 1fr));
+  gap: 0.4rem;
+}
+
+.lb-games__list--compact .lb-games__link {
+  justify-content: center;
+  padding: 0.55rem 0.5rem;
+  font-size: 0.85rem;
 }
 
 .lb-row__name--link {
