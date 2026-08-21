@@ -27,25 +27,27 @@ export function YouBoardStrip({
 
   return (
     <div
-      className={`you-strip${sticky ? ' you-strip--sticky' : ''}${findMe ? ' you-strip--find' : ''}`}
+      className={`rank-page__summary rank-page__summary--bar you-strip${sticky ? ' you-strip--sticky' : ''}${findMe ? ' you-strip--find' : ''}`}
       style={style}
       role="status"
       aria-label={`Your standing: rank ${rank}, ${valueLabel} ${String(value)}`}
     >
-      <div className="you-strip__stat you-strip__stat--place">
-        <span className="you-strip__label">Place</span>
-        <strong className="you-strip__place">#{rank}</strong>
+      <div className="rank-page__bar-stat">
+        <span className="rank-page__bar-label">Rank</span>
+        <strong>#{rank}</strong>
       </div>
-      <div className="you-strip__stat you-strip__stat--score">
-        <span className="you-strip__label">{valueLabel}</span>
-        <strong className="you-strip__value">{value}</strong>
+      <div className="rank-page__bar-stat">
+        <span className="rank-page__bar-label">{valueLabel}</span>
+        <strong>{value}</strong>
       </div>
       {findMe && onFindMe ? (
-        <button type="button" className="you-strip__find" onClick={onFindMe}>
-          Find me
-        </button>
+        <div className="rank-page__bar-stat you-strip__find-stat">
+          <button type="button" className="you-strip__find" onClick={onFindMe}>
+            Find me
+          </button>
+        </div>
       ) : null}
-      {gap ? <p className="you-strip__gap">{gap}</p> : null}
+      {gap ? <p className="rank-page__gap">{gap}</p> : null}
     </div>
   )
 }

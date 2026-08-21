@@ -3337,78 +3337,32 @@ a.game-hud__board {
 }
 
 .you-strip {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  align-items: end;
-  gap: 0.35rem 1rem;
   margin: 0 0 0.85rem;
-  padding: 0.75rem 0.9rem;
-  border-radius: 0.95rem;
-  background: rgba(var(--surface-rgb), 0.88);
-  border: 1px solid color-mix(in srgb, var(--lb-you-accent, var(--accent)) 28%, transparent);
-  box-shadow: var(--shadow-soft);
-  backdrop-filter: blur(14px);
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.you-strip .rank-page__bar-stat:last-of-type {
+  border-right: 0;
+}
+
+.you-strip--find {
+  grid-template-columns: repeat(3, 1fr);
 }
 
 .you-strip--sticky {
   position: sticky;
   top: 0.55rem;
   z-index: 12;
+  backdrop-filter: blur(14px);
 }
 
-.you-strip--find {
-  grid-template-columns: 1fr 1fr auto;
-}
-
-.you-strip__stat {
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-  min-width: 0;
-}
-
-.you-strip__label {
-  font-size: 0.65rem;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--muted);
-}
-
-.you-strip__place {
-  font-family: var(--font-display);
-  font-size: clamp(1.7rem, 6vw, 2rem);
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: -0.03em;
-  line-height: 1;
-  color: var(--lb-you-accent, var(--accent));
-}
-
-.you-strip__value {
-  font-family: var(--font-display);
-  font-size: clamp(1.7rem, 6vw, 2rem);
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: -0.03em;
-  line-height: 1;
-  color: var(--ink);
-}
-
-.you-strip__gap {
-  grid-column: 1 / -1;
-  margin: 0.15rem 0 0;
-  padding-top: 0.45rem;
-  border-top: 1px solid rgba(var(--ink-rgb), 0.08);
-  font-size: 0.86rem;
-  font-weight: 700;
-  color: var(--muted);
-  text-align: center;
+.you-strip__find-stat {
+  justify-content: center;
+  border-right: 0;
 }
 
 .you-strip__find {
-  align-self: center;
-  padding: 0.5rem 0.7rem;
+  padding: 0.45rem 0.65rem;
   border: 0;
   border-radius: 999px;
   background: color-mix(in srgb, var(--lb-you-accent, var(--accent)) 88%, #111);
@@ -3430,17 +3384,16 @@ a.game-hud__board {
 
 @media (max-width: 420px) {
   .you-strip--find {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .you-strip__find-stat {
+    grid-column: 1 / -1;
+    padding-top: 0.35rem;
   }
 
   .you-strip__find {
-    grid-column: 1 / -1;
     width: 100%;
-    order: 3;
-  }
-
-  .you-strip__gap {
-    order: 4;
   }
 }
 
