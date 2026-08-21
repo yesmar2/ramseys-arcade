@@ -29,6 +29,7 @@ export type TournamentDetail = TournamentSummary & {
 }
 
 const JOINED_KEY = 'arcade-tournaments-joined'
+const PLAYER_IDS_KEY = 'arcade-tournaments-player-ids'
 
 function resolveApiBase() {
   const fromEnv = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, '')
@@ -73,6 +74,41 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
   return res.json() as Promise<T>
 }
 
+function readPlayerIds(): Record<string, string> {
+  try {
+    const raw = localStorage.getItem(PLAYER_IDS_KEY)
+    const parsed = raw ? (JSON.parse(raw) as unknown) : {}
+    if (!parsed || typeof parsed !== 'object') return {}
+    const out: Record<string, string> = {}
+    for (const [k, v] of Object.entries(parsed as Record<string, unknown>)) {
+      if (typeof v === 'string' && v) out[k] = v
+    }
+    return out
+  } catch {
+    return {}
+  }
+}
+
+function writePlayerIds(map: Record<string, string>) {
+  try {
+    localStorage.setItem(PLAYER_IDS_KEY, JSON.stringify(map))
+  } catch {
+    /* ignore */
+  }
+}
+
+export function getTournamentPlayerId(tournamentId: string): string | null {
+  return readPlayerIds()[tournamentId] ?? null
+}
+
+export function rememberTournamentPlayer(tournamentId: string, playerId: string) {
+  if (!tournamentId || !playerId) return
+  const map = readPlayerIds()
+  map[tournamentId] = playerId
+  writePlayerIds(map)
+  rememberJoinedTournament(tournamentId)
+}
+
 export function getJoinedTournamentIds(): string[] {
   try {
     const raw = localStorage.getItem(JOINED_KEY)
@@ -90,6 +126,20 @@ export function rememberJoinedTournament(id: string) {
   } catch {
     /* ignore */
   }
+}
+
+export function isPlayerInTournament(
+  detail: Pick<TournamentDetail, 'players'>,
+  name: string,
+  tournamentId?: string,
+): boolean {
+  const cleaned = normalizePlayerName(name)
+  if (cleaned && detail.players.some((p) => normalizePlayerName(p.name) === cleaned)) {
+    return true
+  }
+  if (!tournamentId) return false
+  const playerId = getTournamentPlayerId(tournamentId)
+  return Boolean(playerId && detail.players.some((p) => p.id === playerId))
 }
 
 export async function listTournaments(): Promise<TournamentSummary[]> {
@@ -121,6 +171,7 @@ export async function joinTournament(
 ): Promise<{ tournament: TournamentDetail; player: { id: string; name: string } }> {
   const cleaned = normalizePlayerName(name)
   const token = getClaimToken(cleaned)
+  const playerId = getTournamentPlayerId(id) ?? undefined
   const result = await api<{
     tournament: TournamentDetail
     player: { id: string; name: string }
@@ -130,10 +181,40 @@ export async function joinTournament(
     body: JSON.stringify({
       name: cleaned,
       ...(token ? { token } : {}),
+      ...(playerId ? { playerId } : {}),
     }),
   })
-  rememberJoinedTournament(id)
+  rememberTournamentPlayer(id, result.player.id)
   return result
+}
+
+/**
+ * After a gamer-tag change, rebind every locally joined tournament seat to the
+ * current name so you don't have to join again.
+ */
+export async function syncJoinedTournamentRosters(): Promise<void> {
+  const name = getLastPlayerName()
+  if (!name) return
+  const ids = new Set([
+    ...getJoinedTournamentIds(),
+    ...Object.keys(readPlayerIds()),
+  ])
+  for (const id of ids) {
+    try {
+      const detail = await getTournament(id)
+      const byName = detail.players.find((p) => normalizePlayerName(p.name) === name)
+      if (byName) {
+        rememberTournamentPlayer(id, byName.id)
+        continue
+      }
+      const playerId = getTournamentPlayerId(id)
+      if (!playerId && !getJoinedTournamentIds().includes(id)) continue
+      // Rebind existing seat (or no-op join if somehow missing).
+      await joinTournament(id, name)
+    } catch {
+      /* offline / ended / not found */
+    }
+  }
 }
 
 export async function getActiveTournamentsForGame(game: string): Promise<TournamentSummary[]> {

@@ -173,6 +173,13 @@ export async function migrateLocalScoresToName(
       /* not owned anymore / already migrated */
     }
   }
+
+  try {
+    const { syncJoinedTournamentRosters } = await import('./tournaments')
+    await syncJoinedTournamentRosters()
+  } catch {
+    /* tournaments optional */
+  }
 }
 
 export function getLastPlayerName(): string {

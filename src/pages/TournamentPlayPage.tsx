@@ -11,7 +11,13 @@ import { getGame, gamePlayableOn } from '../data/games'
 import { useDeviceType } from '../lib/device'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { ApiError, normalizePlayerName, PLAYER_NAME_MAX, rememberPlayerName } from '../lib/leaderboard'
-import { getTournament, joinTournament, type TournamentDetail } from '../lib/tournaments'
+import {
+  getTournament,
+  isPlayerInTournament,
+  joinTournament,
+  syncJoinedTournamentRosters,
+  type TournamentDetail,
+} from '../lib/tournaments'
 import { TournamentPlayProvider } from '../tournaments/TournamentPlayContext'
 
 const PLAYABLE = new Set(['stacker', 'patriot', 'snake', 'dead-center', 'asteroids', 'pop', 'simon'])
@@ -41,8 +47,11 @@ export function TournamentPlayPage({
     setLoading(true)
     setLoadError(null)
     setReady(false)
-    getTournament(tournamentId)
-      .then((data) => {
+
+    const boot = async () => {
+      try {
+        await syncJoinedTournamentRosters()
+        let data = await getTournament(tournamentId)
         if (cancelled) return
         setDetail(data)
         if (!data.games.includes(gameSlug) || !PLAYABLE.has(gameSlug)) {
@@ -58,16 +67,24 @@ export function TournamentPlayPage({
           return
         }
         const name = playerName.trim().toUpperCase()
-        if (name && data.players.some((p) => p.name === name)) {
+        if (name && isPlayerInTournament(data, name, tournamentId)) {
+          // Seat may still be under an old tag — rebind without a join gate.
+          if (!data.players.some((p) => p.name === name)) {
+            const result = await joinTournament(tournamentId, name)
+            if (cancelled) return
+            data = result.tournament
+            setDetail(data)
+          }
           setReady(true)
         }
-      })
-      .catch((err) => {
+      } catch (err) {
         if (!cancelled) setLoadError(err instanceof Error ? err.message : 'Failed to load')
-      })
-      .finally(() => {
+      } finally {
         if (!cancelled) setLoading(false)
-      })
+      }
+    }
+
+    void boot()
     return () => {
       cancelled = true
     }

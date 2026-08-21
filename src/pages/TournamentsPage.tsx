@@ -7,8 +7,10 @@ import { usePlayerName } from '../hooks/usePlayerName'
 import { getLastPlayerName, normalizePlayerName } from '../lib/leaderboard'
 import {
   getTournament,
+  isPlayerInTournament,
   joinTournament,
   listTournaments,
+  syncJoinedTournamentRosters,
   type TournamentDetail,
   type TournamentStatus,
   type TournamentSummary,
@@ -128,38 +130,49 @@ export function TournamentDetailPage({ id }: { id: string }) {
   const displayName = normalizePlayerName(playerName)
 
   const syncJoined = (data: TournamentDetail, who: string) => {
-    const mine = normalizePlayerName(who)
-    if (!mine) {
-      setJoined(false)
-      return
-    }
-    setJoined(data.players.some((p) => normalizePlayerName(p.name) === mine))
+    setJoined(isPlayerInTournament(data, who, id))
   }
 
   useEffect(() => {
     let cancelled = false
     setLoading(true)
     setError(null)
-    getTournament(id)
-      .then((data) => {
+    ;(async () => {
+      try {
+        await syncJoinedTournamentRosters()
+        const data = await getTournament(id)
         if (cancelled) return
         setDetail(data)
         syncJoined(data, getLastPlayerName())
-      })
-      .catch((err) => {
+      } catch (err) {
         if (!cancelled) setError(err instanceof Error ? err.message : 'Failed to load')
-      })
-      .finally(() => {
+      } finally {
         if (!cancelled) setLoading(false)
-      })
+      }
+    })()
     return () => {
       cancelled = true
     }
   }, [id])
 
   useEffect(() => {
-    if (detail) syncJoined(detail, playerName)
-  }, [playerName, detail])
+    if (!detail) return
+    const mine = normalizePlayerName(playerName)
+    if (mine && isPlayerInTournament(detail, mine, id)) {
+      if (!detail.players.some((p) => normalizePlayerName(p.name) === mine)) {
+        void joinTournament(id, mine)
+          .then((result) => {
+            setDetail(result.tournament)
+            setJoined(true)
+          })
+          .catch(() => setJoined(true))
+        return
+      }
+      setJoined(true)
+      return
+    }
+    syncJoined(detail, playerName)
+  }, [playerName, detail, id])
 
   const placeTable = useMemo(() => {
     if (!detail?.placePoints) return []
