@@ -20,8 +20,6 @@ import {
   type YouEntry,
 } from '../lib/leaderboard'
 import {
-  ASTEROIDS_WAVE_RECORD_MAX,
-  asteroidsWaveTimeRecordId,
   fetchGameRecords,
   fetchRecordBoard,
   formatRecordValue,
@@ -63,7 +61,7 @@ function RecordsIndexPage({ game }: { game: string }) {
     fetchGameRecords(game)
       .then((data) => {
         if (cancelled) return
-        setRecords(data.records)
+        setRecords(data.records.filter((row) => row.top != null))
       })
       .catch((err) => {
         if (cancelled) return
@@ -94,8 +92,8 @@ function RecordsIndexPage({ game }: { game: string }) {
             </a>
             <h1 className="lb-page__title">Records</h1>
             <p className="lb-page__blurb">
-              Separate from high scores and global points. Asteroids tracks
-              fastest clear per wave (waves 1–{ASTEROIDS_WAVE_RECORD_MAX}).
+              Separate from high scores and global points. Boards appear once
+              someone sets a time.
             </p>
           </header>
 
@@ -154,6 +152,7 @@ function RecordBoardPage({
   const [record, setRecord] = useState<RecordDef | null>(null)
   const [entries, setEntries] = useState<LeaderboardEntry[]>([])
   const [you, setYou] = useState<YouEntry | null>(null)
+  const [siblingRecords, setSiblingRecords] = useState<RecordSummary[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [shown, setShown] = useState(INITIAL_ROWS)
@@ -170,18 +169,25 @@ function RecordBoardPage({
     setLoading(true)
     setError(null)
     setShown(INITIAL_ROWS)
-    fetchRecordBoard(game, recordId, period, playerName || undefined)
-      .then((board) => {
+    Promise.all([
+      fetchRecordBoard(game, recordId, period, playerName || undefined),
+      fetchGameRecords(game),
+    ])
+      .then(([board, list]) => {
         if (cancelled) return
         setRecord(board.record)
         setEntries(board.entries)
         setYou(board.you)
+        setSiblingRecords(
+          list.records.filter((row) => row.top != null && row.id !== recordId),
+        )
       })
       .catch((err) => {
         if (cancelled) return
         setRecord(null)
         setEntries([])
         setYou(null)
+        setSiblingRecords([])
         setError(err instanceof Error ? err.message : 'Failed to load')
       })
       .finally(() => {
@@ -277,24 +283,22 @@ function RecordBoardPage({
             </a>
           </section>
 
-          {game === 'asteroids' ? (
+          {siblingRecords.length > 0 ? (
             <section className="lb-games" aria-labelledby="records-waves-heading">
               <h2 id="records-waves-heading" className="lb-games__title">
-                Other waves
+                Other records
               </h2>
               <ul className="lb-games__list lb-games__list--compact">
-                {Array.from({ length: ASTEROIDS_WAVE_RECORD_MAX }, (_, i) => {
-                  const wave = i + 1
-                  const id = asteroidsWaveTimeRecordId(wave)
-                  if (!id || id === recordId) return null
-                  return (
-                    <li key={id}>
-                      <a className="lb-games__link" href={recordHref(game, id, period)}>
-                        <span className="lb-games__name">Wave {wave}</span>
-                      </a>
-                    </li>
-                  )
-                })}
+                {siblingRecords.map((row) => (
+                  <li key={row.id}>
+                    <a
+                      className="lb-games__link"
+                      href={recordHref(game, row.id, period)}
+                    >
+                      <span className="lb-games__name">{row.label}</span>
+                    </a>
+                  </li>
+                ))}
               </ul>
             </section>
           ) : null}
