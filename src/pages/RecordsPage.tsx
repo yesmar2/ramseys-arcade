@@ -7,7 +7,6 @@ import {
 import { Footer } from '../components/Footer'
 import { HomeBar } from '../components/HomeBar'
 import { LeaderboardList } from '../components/LeaderboardList'
-import { ShareBoardButton } from '../components/ShareBoardButton'
 import { getGame } from '../data/games'
 import {
   gamePlayHref,
@@ -251,14 +250,6 @@ function RecordBoardPage({
       ? waveRecords[waveIndex + 1]
       : null
 
-  const shareLabel = [
-    record?.label ?? 'Record',
-    you
-      ? `#${you.rank} · ${formatRecordScore(you.score, unit)}`
-      : PERIOD_LABELS[period],
-    gameMeta?.name ?? game,
-  ].join(' · ')
-
   return (
     <>
       <main className="lb-page">
@@ -277,11 +268,6 @@ function RecordBoardPage({
               ← Record books
             </a>
             <h1 className="lb-page__title">{record?.label ?? 'Record'}</h1>
-            {!loading && !error ? (
-              <div className="lb-page__actions">
-                <ShareBoardButton label={shareLabel} />
-              </div>
-            ) : null}
           </header>
 
           {waveRecords.length > 1 ? (

@@ -9,7 +9,6 @@ import { GameTile } from '../components/GameTile'
 import { GlobalRankList } from '../components/GlobalRankList'
 import { HomeBar } from '../components/HomeBar'
 import { LeaderboardList } from '../components/LeaderboardList'
-import { ShareBoardButton } from '../components/ShareBoardButton'
 import { deviceRequirementLabel, getGame, gamePlayableOn } from '../data/games'
 import { gamePlayHref, leaderboardHref, recordsHref } from '../hooks/useHashRoute'
 import { useDeviceType } from '../lib/device'
@@ -122,13 +121,6 @@ function GlobalLeaderboardsHub() {
             <p className="lb-page__blurb lb-page__blurb--tight">
               Points from every game board.
             </p>
-            {!loading && !error && you ? (
-              <div className="lb-page__actions">
-                <ShareBoardButton
-                  label={`#${you.rank} global · ${you.score} pts · Ramsey’s Arcade`}
-                />
-              </div>
-            ) : null}
           </header>
 
           <section className="lb-board" aria-label="Global leaderboard">
@@ -273,10 +265,6 @@ function GameLeaderboard({
     window.location.hash = leaderboardHref(active, next)
   }
 
-  const shareLabel = you
-    ? `#${you.rank} on ${activeGame?.name ?? active} · ${PERIOD_LABELS[period]} · ${you.score}`
-    : `${activeGame?.name ?? active} · ${PERIOD_LABELS[period]} · Ramsey’s Arcade`
-
   return (
     <>
       <main className="lb-page">
@@ -298,11 +286,6 @@ function GameLeaderboard({
             <p className="lb-page__blurb lb-page__blurb--tight">
               High scores · all-time places earn global points
             </p>
-            {!loading && !error ? (
-              <div className="lb-page__actions">
-                <ShareBoardButton label={shareLabel} />
-              </div>
-            ) : null}
           </header>
 
           <PeriodSwitcher
