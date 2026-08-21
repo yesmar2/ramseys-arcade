@@ -3848,6 +3848,18 @@ a.game-hud__board {
   margin-top: 1.5rem;
 }
 
+.lb-other-grid {
+  margin: 0;
+  /* Stay 2-up inside the narrow leaderboard column */
+  grid-template-columns: repeat(2, 1fr);
+}
+
+@media (min-width: 640px) {
+  .lb-other-grid.game-grid--playable {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
 .lb-games__title {
   margin: 0 0 0.65rem;
   font-size: 0.7rem;

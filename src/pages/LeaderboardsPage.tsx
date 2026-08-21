@@ -6,6 +6,7 @@ import {
 } from '../components/BoardChrome'
 import { Footer } from '../components/Footer'
 import { GameDeviceBadge } from '../components/GameDeviceBadge'
+import { GameTile } from '../components/GameTile'
 import { GlobalRankList } from '../components/GlobalRankList'
 import { HomeBar } from '../components/HomeBar'
 import { LeaderboardList } from '../components/LeaderboardList'
@@ -450,24 +451,18 @@ function GameLeaderboard({
               <h2 id="lb-other-games-heading" className="lb-games__title">
                 Other games
               </h2>
-              <ul className="lb-games__list">
-                {otherGames.map((slug) => {
+              <ul className="game-grid game-grid--playable lb-other-grid">
+                {otherGames.map((slug, index) => {
                   const game = getGame(slug)
+                  if (!game) return null
                   return (
-                    <li key={slug}>
-                      <a
-                        className="lb-games__link"
-                        href={leaderboardHref(slug, period)}
-                        style={
-                          {
-                            '--tab-accent': game?.accent ?? 'var(--accent)',
-                          } as CSSProperties
-                        }
-                      >
-                        <span className="lb-games__name">{game?.name ?? slug}</span>
-                        {game ? <GameDeviceBadge game={game} /> : null}
-                      </a>
-                    </li>
+                    <GameTile
+                      key={slug}
+                      game={game}
+                      index={index}
+                      href={leaderboardHref(slug, period)}
+                      showOnAllDevices
+                    />
                   )
                 })}
               </ul>
