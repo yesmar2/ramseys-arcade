@@ -4416,6 +4416,13 @@ a.game-hud__board {
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--lb-you-accent, var(--accent-sky)) 28%, transparent);
 }
 
+.lb-row--pinned {
+  position: sticky;
+  top: 0.55rem;
+  z-index: 8;
+  backdrop-filter: blur(12px);
+}
+
 .lb-row--medal .lb-row__rank {
   color: var(--ink);
 }
