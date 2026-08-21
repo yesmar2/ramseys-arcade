@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
+import { usePlayerName } from '../hooks/usePlayerName'
 import { rankHref } from '../hooks/useHashRoute'
 import { useGlobalRank } from '../lib/globalRank'
+import { normalizePlayerName } from '../lib/leaderboard'
 import { currentTheme, THEME_EVENT, toggleTheme, type Theme } from '../lib/theme'
 import { PlayerBadge } from './PlayerBadge'
 import { ThemeToggle } from './ThemeToggle'
@@ -15,6 +17,7 @@ const MOBILE_MQ = '(max-width: 720px)'
 
 export function Header() {
   const { rank } = useGlobalRank()
+  const playerName = normalizePlayerName(usePlayerName())
   const [open, setOpen] = useState(false)
   const [narrow, setNarrow] = useState(() =>
     typeof window !== 'undefined' ? window.matchMedia(MOBILE_MQ).matches : false,
@@ -23,6 +26,8 @@ export function Header() {
     typeof document === 'undefined' ? 'light' : currentTheme(),
   )
   const headerRef = useRef<HTMLElement>(null)
+  const rankLabel = rank != null ? `#${rank}` : playerName ? '—' : null
+
 
   useEffect(() => {
     const mq = window.matchMedia(MOBILE_MQ)
@@ -115,14 +120,14 @@ export function Header() {
           ) : null}
         </nav>
         <div className="site-header__player">
-          {rank != null ? (
+          {rankLabel ? (
             <a
               className="home-bar__rank site-header__rank"
               href={rankHref()}
-              aria-label={`Global rank ${rank}`}
-              title={`Global rank #${rank}`}
+              aria-label={rank != null ? `Global rank ${rank}` : 'Global rank'}
+              title={rank != null ? `Global rank #${rank}` : 'Your global rank'}
             >
-              #{rank}
+              {rankLabel}
             </a>
           ) : null}
           {!narrow ? <ThemeToggle /> : null}
