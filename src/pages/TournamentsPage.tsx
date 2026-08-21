@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { Footer } from '../components/Footer'
 import { HomeBar } from '../components/HomeBar'
 import { InfoTip } from '../components/InfoTip'
+import { PlayerAvatar } from '../components/PlayerAvatar'
 import { getGame } from '../data/games'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { getLastPlayerName, normalizePlayerName } from '../lib/leaderboard'
@@ -345,6 +346,11 @@ export function TournamentDetailPage({ id }: { id: string }) {
                             >
                               <td className="tour-table__rank">{index + 1}</td>
                               <td className="tour-table__name">
+                                <PlayerAvatar
+                                  avatarId={row.avatarId}
+                                  name={normalizePlayerName(row.name)}
+                                  size="sm"
+                                />
                                 <span className="tour-table__name-text" title={normalizePlayerName(row.name)}>
                                   {normalizePlayerName(row.name)}
                                 </span>

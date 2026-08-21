@@ -1,5 +1,6 @@
 import type { CSSProperties } from 'react'
 import { DeviceIcon } from './DeviceIcon'
+import { PlayerAvatar } from './PlayerAvatar'
 import {
   normalizePlayerName,
   type LeaderboardEntry,
@@ -64,6 +65,7 @@ export function LeaderboardList({
           #{rank}
         </span>
         <span className="lb-row__name">
+          <PlayerAvatar avatarId={entry.avatarId} name={name} size="sm" />
           <DeviceIcon device={entry.device} />
           <span className="lb-row__name-text" title={name}>
             {name}

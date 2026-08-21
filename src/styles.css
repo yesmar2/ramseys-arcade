@@ -324,6 +324,65 @@ img {
   justify-content: flex-end;
 }
 
+.player-avatar {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: var(--avatar-size, 1.45rem);
+  height: var(--avatar-size, 1.45rem);
+  border-radius: 999px;
+  border: 1px solid rgba(var(--ink-rgb), 0.1);
+  background: color-mix(in srgb, var(--accent) 14%, var(--surface));
+  color: var(--ink);
+}
+
+.player-avatar svg {
+  width: 68%;
+  height: 68%;
+  display: block;
+}
+
+.player-badge__avatars {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin: 0.85rem 0 0.25rem;
+}
+
+.player-badge__avatar-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.35rem;
+}
+
+.player-badge__avatar-opt {
+  display: grid;
+  place-items: center;
+  padding: 0.35rem;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(var(--ink-rgb), 0.08);
+  background: rgba(var(--surface-rgb), 0.7);
+  cursor: pointer;
+  appearance: none;
+  color: var(--ink);
+}
+
+.player-badge__avatar-opt:hover,
+.player-badge__avatar-opt:focus-visible {
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+  outline: none;
+}
+
+.player-badge__avatar-opt--on {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 16%, var(--surface));
+}
+
+.player-badge__avatar-opt:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
 .player-badge {
   display: inline-flex;
   align-items: center;
@@ -3248,22 +3307,31 @@ a.game-hud__board {
 }
 
 .rank-page__near-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
   min-width: 0;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
   font-weight: 700;
   color: var(--ink);
 }
 
+.rank-page__near-name-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
 .rank-page__near-name em {
-  margin-left: 0.4rem;
+  margin-left: 0;
   font-style: normal;
   font-size: 0.72rem;
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--accent);
+  flex: none;
 }
 
 .rank-page__near-pts {
@@ -4652,16 +4720,18 @@ a.game-hud__board {
 .tour-table__name {
   font-weight: 700;
   color: var(--ink);
-  max-width: 9rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  max-width: 11rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
 }
 
 .tour-table__name-text {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  min-width: 0;
 }
 
 .tour-you-tag {

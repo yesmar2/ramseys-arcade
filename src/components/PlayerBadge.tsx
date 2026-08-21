@@ -2,6 +2,13 @@ import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 're
 import { useAuth } from '../hooks/useAuth'
 import { usePlayerName } from '../hooks/usePlayerName'
 import {
+  AVATAR_IDS,
+  getLocalAvatarId,
+  resolveAvatarId,
+  setLocalAvatarId,
+  type AvatarId,
+} from '../lib/avatars'
+import {
   linkCurrentNameToAccount,
   logoutAccount,
   requestMagicLink,
@@ -9,10 +16,13 @@ import {
 import {
   ApiError,
   PLAYER_NAME_MAX,
+  fetchNameAvatar,
   normalizePlayerName,
   rememberPlayerName,
+  setPlayerAvatar,
 } from '../lib/leaderboard'
 import { GoogleSignInButton } from './GoogleSignInButton'
+import { PlayerAvatar } from './PlayerAvatar'
 
 type PlayerBadgeProps = {
   /** Compact chip for tight headers / game overlays */
@@ -36,11 +46,35 @@ export const PlayerBadge = forwardRef<PlayerBadgeHandle, PlayerBadgeProps>(
     const [showEmailSignIn, setShowEmailSignIn] = useState(false)
     const [busy, setBusy] = useState(false)
     const [authBusy, setAuthBusy] = useState(false)
+    const [avatarBusy, setAvatarBusy] = useState(false)
+    const [avatarId, setAvatarId] = useState<AvatarId>(() =>
+      resolveAvatarId(getLocalAvatarId(name), name),
+    )
     const [error, setError] = useState<string | null>(null)
     const [authNote, setAuthNote] = useState<string | null>(null)
     const [devVerifyUrl, setDevVerifyUrl] = useState<string | null>(null)
     const rootRef = useRef<HTMLDivElement>(null)
     const inputRef = useRef<HTMLInputElement>(null)
+
+    useEffect(() => {
+      const cleaned = normalizePlayerName(name)
+      if (!cleaned) {
+        setAvatarId(resolveAvatarId(null, ''))
+        return
+      }
+      const local = getLocalAvatarId(cleaned)
+      setAvatarId(resolveAvatarId(local, cleaned))
+      let cancelled = false
+      void fetchNameAvatar(cleaned).then((id) => {
+        if (cancelled || !id) return
+        const resolved = resolveAvatarId(id, cleaned)
+        setAvatarId(resolved)
+        setLocalAvatarId(cleaned, resolved)
+      })
+      return () => {
+        cancelled = true
+      }
+    }, [name])
 
     const startEdit = () => {
       setDraft(name || '')
@@ -137,6 +171,26 @@ export const PlayerBadge = forwardRef<PlayerBadgeHandle, PlayerBadgeProps>(
       }
     }, [editing, busy, authBusy])
 
+    const pickAvatar = async (next: AvatarId) => {
+      const cleaned = normalizePlayerName(name || draft)
+      if (!cleaned || avatarBusy) return
+      setAvatarBusy(true)
+      setError(null)
+      try {
+        if (!normalizePlayerName(name)) {
+          await rememberPlayerName(cleaned)
+        }
+        const saved = await setPlayerAvatar(cleaned, next)
+        const resolved = resolveAvatarId(saved, cleaned)
+        setAvatarId(resolved)
+        setLocalAvatarId(cleaned, resolved)
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Could not save avatar')
+      } finally {
+        setAvatarBusy(false)
+      }
+    }
+
     const displayName = normalizePlayerName(name)
     const triggerClass = icon
       ? `player-badge player-badge--icon${displayName ? ' player-badge--named' : ''}`
@@ -155,25 +209,32 @@ export const PlayerBadge = forwardRef<PlayerBadgeHandle, PlayerBadgeProps>(
           title={triggerLabel}
         >
           {icon ? (
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <circle
-                cx="12"
-                cy="8.2"
-                r="3.1"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.8"
-              />
-              <path
-                d="M6.2 18.6c.7-3.2 3-4.8 5.8-4.8s5.1 1.6 5.8 4.8"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.8"
-                strokeLinecap="round"
-              />
-            </svg>
+            displayName ? (
+              <PlayerAvatar avatarId={avatarId} name={displayName} size="md" />
+            ) : (
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <circle
+                  cx="12"
+                  cy="8.2"
+                  r="3.1"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                />
+                <path
+                  d="M6.2 18.6c.7-3.2 3-4.8 5.8-4.8s5.1 1.6 5.8 4.8"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                />
+              </svg>
+            )
           ) : displayName ? (
-            <strong className="player-badge__name">{displayName}</strong>
+            <>
+              <PlayerAvatar avatarId={avatarId} name={displayName} size="sm" />
+              <strong className="player-badge__name">{displayName}</strong>
+            </>
           ) : (
             'Set gamer tag'
           )}
@@ -202,6 +263,29 @@ export const PlayerBadge = forwardRef<PlayerBadgeHandle, PlayerBadgeProps>(
                 }}
               />
             </label>
+
+            <div className="player-badge__avatars">
+              <span className="player-badge__label">Avatar</span>
+              <div className="player-badge__avatar-grid" role="listbox" aria-label="Choose avatar">
+                {AVATAR_IDS.map((id) => {
+                  const selected = id === avatarId
+                  return (
+                    <button
+                      key={id}
+                      type="button"
+                      role="option"
+                      aria-selected={selected}
+                      className={`player-badge__avatar-opt${selected ? ' player-badge__avatar-opt--on' : ''}`}
+                      disabled={avatarBusy || busy}
+                      onClick={() => void pickAvatar(id)}
+                    >
+                      <PlayerAvatar avatarId={id} name={displayName || draft} size="md" />
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
             {error && <p className="player-badge__error">{error}</p>}
             <div className="player-badge__panel-actions">
               <button

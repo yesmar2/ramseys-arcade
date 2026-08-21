@@ -19,6 +19,7 @@ export type StandingRow = {
   name: string
   totalPoints: number
   gamesPlayed: number
+  avatarId?: string
   byGame: Record<string, { score: number | null; place: number | null; points: number }>
 }
 

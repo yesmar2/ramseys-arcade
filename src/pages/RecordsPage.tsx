@@ -2,6 +2,7 @@ import { useEffect, useState, type CSSProperties } from 'react'
 import { DeviceIcon } from '../components/DeviceIcon'
 import { Footer } from '../components/Footer'
 import { HomeBar } from '../components/HomeBar'
+import { PlayerAvatar } from '../components/PlayerAvatar'
 import { getGame } from '../data/games'
 import {
   gamePlayHref,
@@ -369,6 +370,7 @@ function RecordList({
           #{rank}
         </span>
         <span className="lb-row__name">
+          <PlayerAvatar avatarId={entry.avatarId} name={name} size="sm" />
           <DeviceIcon device={entry.device} />
           <span className="lb-row__name-text" title={name}>
             {name}

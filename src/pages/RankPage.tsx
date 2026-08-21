@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Footer } from '../components/Footer'
 import { GameDeviceBadge } from '../components/GameDeviceBadge'
 import { HomeBar } from '../components/HomeBar'
+import { PlayerAvatar } from '../components/PlayerAvatar'
 import { getGame, gamePlayableOn } from '../data/games'
 import { leaderboardHref, rankHref } from '../hooks/useHashRoute'
 import { useDeviceType } from '../lib/device'
@@ -118,7 +119,8 @@ export function RankPage({ player }: { player?: string }) {
                         <>
                           <span className="rank-page__near-rank">#{row.rank}</span>
                           <span className="rank-page__near-name" title={row.name}>
-                            {row.name}
+                            <PlayerAvatar avatarId={row.avatarId} name={row.name} size="sm" />
+                            <span className="rank-page__near-name-text">{row.name}</span>
                             {isYou ? <em>you</em> : null}
                           </span>
                           <span className="rank-page__near-pts">{row.score}</span>

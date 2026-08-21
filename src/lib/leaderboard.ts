@@ -10,6 +10,7 @@ export type LeaderboardEntry = {
   score: number
   at: number
   device?: DeviceType
+  avatarId?: string
 }
 
 export const LEADERBOARD_GAMES = [
@@ -272,6 +273,40 @@ export async function checkNameAvailable(name: string): Promise<boolean> {
   return data.available
 }
 
+export async function fetchNameAvatar(name: string): Promise<string | null> {
+  const cleaned = normalizePlayerName(name)
+  if (!cleaned) return null
+  try {
+    const data = await api<{ avatarId?: string }>(
+      `/names/${encodeURIComponent(cleaned)}`,
+    )
+    return data.avatarId ?? null
+  } catch {
+    return null
+  }
+}
+
+export async function setPlayerAvatar(
+  name: string,
+  avatarId: string,
+): Promise<string> {
+  const cleaned = normalizePlayerName(name)
+  if (!cleaned) throw new Error('Name required')
+  const token = getClaimToken(cleaned)
+  const data = await api<{ avatarId: string; token?: string }>(
+    `/names/${encodeURIComponent(cleaned)}/avatar`,
+    {
+      method: 'PUT',
+      body: JSON.stringify({
+        avatarId,
+        ...(token ? { token } : {}),
+      }),
+    },
+  )
+  if (data.token) rememberClaimToken(cleaned, data.token)
+  return data.avatarId
+}
+
 export type YouEntry = LeaderboardEntry & { rank: number }
 
 export async function getLeaderboard(
@@ -313,6 +348,7 @@ export type GlobalRankNearby = {
   name: string
   rank: number
   score: number
+  avatarId?: string
 }
 
 export type GlobalRankResult = {
@@ -321,6 +357,7 @@ export type GlobalRankResult = {
   totalPlayers: number
   byGame: Partial<Record<string, GlobalGamePlace>>
   nearby?: GlobalRankNearby[]
+  avatarId?: string
 }
 
 export async function fetchGlobalRank(name: string): Promise<GlobalRankResult> {
@@ -338,6 +375,7 @@ export type GlobalBoardEntry = {
   rank: number
   score: number
   games: number
+  avatarId?: string
 }
 
 export type GlobalBoardResult = {

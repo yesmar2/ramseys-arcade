@@ -4,6 +4,7 @@ import {
   normalizePlayerName,
   type GlobalBoardEntry,
 } from '../lib/leaderboard'
+import { PlayerAvatar } from './PlayerAvatar'
 
 function medalKind(rank: number): 'gold' | 'silver' | 'bronze' | null {
   if (rank === 1) return 'gold'
@@ -36,6 +37,7 @@ export function GlobalRankList({
     const name = normalizePlayerName(entry.name)
     const nameInner = (
       <>
+        <PlayerAvatar avatarId={entry.avatarId} name={name} size="sm" />
         <span className="lb-row__name-text" title={name}>
           {name}
         </span>
