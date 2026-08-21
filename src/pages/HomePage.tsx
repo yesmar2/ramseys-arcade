@@ -2,6 +2,7 @@ import { ArcadeAttendant } from '../components/ArcadeAttendant'
 import { Footer } from '../components/Footer'
 import { GameGrid } from '../components/GameGrid'
 import { HomeBar } from '../components/HomeBar'
+import { ATTENDANT_ENABLED } from '../lib/attendant'
 
 export function HomePage() {
   return (
@@ -13,7 +14,7 @@ export function HomePage() {
         </div>
       </main>
       <Footer />
-      <ArcadeAttendant />
+      {ATTENDANT_ENABLED ? <ArcadeAttendant /> : null}
     </>
   )
 }

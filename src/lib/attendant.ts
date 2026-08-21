@@ -1,4 +1,6 @@
 const STORAGE_KEY = 'arcade-attendant-last'
+/** Flip on when ready to ship the rare home attendant. */
+export const ATTENDANT_ENABLED = false
 /** Minimum time between appearances. */
 const COOLDOWN_MS = 1000 * 60 * 60 * 6 // 6 hours
 /** Chance to appear when cooldown has elapsed. */
