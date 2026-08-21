@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { rankHref } from '../hooks/useHashRoute'
 import { useGlobalRank } from '../lib/globalRank'
+import { currentTheme, THEME_EVENT, toggleTheme, type Theme } from '../lib/theme'
 import { PlayerBadge } from './PlayerBadge'
 import { ThemeToggle } from './ThemeToggle'
 
@@ -10,10 +11,32 @@ const NAV = [
   { href: '#/leaderboards', label: 'Leaderboards' },
 ]
 
+const MOBILE_MQ = '(max-width: 720px)'
+
 export function Header() {
   const { rank } = useGlobalRank()
   const [open, setOpen] = useState(false)
+  const [narrow, setNarrow] = useState(() =>
+    typeof window !== 'undefined' ? window.matchMedia(MOBILE_MQ).matches : false,
+  )
+  const [theme, setTheme] = useState<Theme>(() =>
+    typeof document === 'undefined' ? 'light' : currentTheme(),
+  )
   const headerRef = useRef<HTMLElement>(null)
+
+  useEffect(() => {
+    const mq = window.matchMedia(MOBILE_MQ)
+    const sync = () => setNarrow(mq.matches)
+    sync()
+    mq.addEventListener('change', sync)
+    return () => mq.removeEventListener('change', sync)
+  }, [])
+
+  useEffect(() => {
+    const sync = () => setTheme(currentTheme())
+    window.addEventListener(THEME_EVENT, sync)
+    return () => window.removeEventListener(THEME_EVENT, sync)
+  }, [])
 
   useEffect(() => {
     const close = () => setOpen(false)
@@ -78,11 +101,23 @@ export function Header() {
               {item.label}
             </a>
           ))}
+          {narrow ? (
+            <button
+              type="button"
+              className="site-header__nav-theme"
+              onClick={() => {
+                toggleTheme()
+                setOpen(false)
+              }}
+            >
+              {theme === 'dark' ? 'Light mode' : 'Dark mode'}
+            </button>
+          ) : null}
         </nav>
         <div className="site-header__player">
           {rank != null ? (
             <a
-              className="home-bar__rank"
+              className="home-bar__rank site-header__rank"
               href={rankHref()}
               aria-label={`Global rank ${rank}`}
               title={`Global rank #${rank}`}
@@ -90,8 +125,8 @@ export function Header() {
               #{rank}
             </a>
           ) : null}
-          <ThemeToggle />
-          <PlayerBadge compact />
+          {!narrow ? <ThemeToggle /> : null}
+          <PlayerBadge compact={!narrow} icon={narrow} />
         </div>
       </div>
     </header>

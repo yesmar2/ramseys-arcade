@@ -239,6 +239,34 @@ img {
   .site-header__player {
     flex: 0 0 auto;
     margin-left: auto;
+    gap: 0.3rem;
+    min-width: 0;
+  }
+
+  .site-header__rank {
+    flex: none;
+    width: 2.5rem;
+    height: 2.5rem;
+    font-size: 0.78rem;
+  }
+
+  .site-header__player .player-badge--icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    min-height: 2.5rem;
+    padding: 0;
+    border-radius: 999px;
+    border: 1px solid rgba(var(--ink-rgb), 0.08);
+    background: rgba(var(--surface-rgb), 0.92);
+    box-shadow: var(--shadow-soft);
+  }
+
+  .site-header__player .player-badge--icon svg {
+    width: 1.15rem;
+    height: 1.15rem;
   }
 
   .site-header__nav {
@@ -262,7 +290,8 @@ img {
     box-shadow: 0 14px 28px rgba(var(--ink-rgb), 0.1);
   }
 
-  .site-header--open .site-header__nav a {
+  .site-header--open .site-header__nav a,
+  .site-header--open .site-header__nav-theme {
     min-height: 2.75rem;
     display: flex;
     align-items: center;
@@ -270,7 +299,12 @@ img {
     padding: 0 0.75rem;
     border-radius: 0.75rem;
     font-size: 1rem;
+    font-weight: 600;
     color: var(--ink);
+    background: transparent;
+    border: 0;
+    cursor: pointer;
+    font-family: inherit;
   }
 
   .player-badge,
