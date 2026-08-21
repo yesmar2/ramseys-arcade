@@ -3,6 +3,7 @@ import { useAuth } from '../hooks/useAuth'
 import { usePlayerName } from '../hooks/usePlayerName'
 import {
   AVATAR_IDS,
+  AVATARS_ENABLED,
   getLocalAvatarId,
   resolveAvatarId,
   setLocalAvatarId,
@@ -57,6 +58,7 @@ export const PlayerBadge = forwardRef<PlayerBadgeHandle, PlayerBadgeProps>(
     const inputRef = useRef<HTMLInputElement>(null)
 
     useEffect(() => {
+      if (!AVATARS_ENABLED) return
       const cleaned = normalizePlayerName(name)
       if (!cleaned) {
         setAvatarId(resolveAvatarId(null, ''))
@@ -209,7 +211,7 @@ export const PlayerBadge = forwardRef<PlayerBadgeHandle, PlayerBadgeProps>(
           title={triggerLabel}
         >
           {icon ? (
-            displayName ? (
+            AVATARS_ENABLED && displayName ? (
               <PlayerAvatar avatarId={avatarId} name={displayName} size="md" />
             ) : (
               <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -232,7 +234,9 @@ export const PlayerBadge = forwardRef<PlayerBadgeHandle, PlayerBadgeProps>(
             )
           ) : displayName ? (
             <>
-              <PlayerAvatar avatarId={avatarId} name={displayName} size="sm" />
+              {AVATARS_ENABLED ? (
+                <PlayerAvatar avatarId={avatarId} name={displayName} size="sm" />
+              ) : null}
               <strong className="player-badge__name">{displayName}</strong>
             </>
           ) : (
@@ -264,27 +268,29 @@ export const PlayerBadge = forwardRef<PlayerBadgeHandle, PlayerBadgeProps>(
               />
             </label>
 
-            <div className="player-badge__avatars">
-              <span className="player-badge__label">Avatar</span>
-              <div className="player-badge__avatar-grid" role="listbox" aria-label="Choose avatar">
-                {AVATAR_IDS.map((id) => {
-                  const selected = id === avatarId
-                  return (
-                    <button
-                      key={id}
-                      type="button"
-                      role="option"
-                      aria-selected={selected}
-                      className={`player-badge__avatar-opt${selected ? ' player-badge__avatar-opt--on' : ''}`}
-                      disabled={avatarBusy || busy}
-                      onClick={() => void pickAvatar(id)}
-                    >
-                      <PlayerAvatar avatarId={id} name={displayName || draft} size="md" />
-                    </button>
-                  )
-                })}
+            {AVATARS_ENABLED ? (
+              <div className="player-badge__avatars">
+                <span className="player-badge__label">Avatar</span>
+                <div className="player-badge__avatar-grid" role="listbox" aria-label="Choose avatar">
+                  {AVATAR_IDS.map((id) => {
+                    const selected = id === avatarId
+                    return (
+                      <button
+                        key={id}
+                        type="button"
+                        role="option"
+                        aria-selected={selected}
+                        className={`player-badge__avatar-opt${selected ? ' player-badge__avatar-opt--on' : ''}`}
+                        disabled={avatarBusy || busy}
+                        onClick={() => void pickAvatar(id)}
+                      >
+                        <PlayerAvatar avatarId={id} name={displayName || draft} size="md" />
+                      </button>
+                    )
+                  })}
+                </div>
               </div>
-            </div>
+            ) : null}
 
             {error && <p className="player-badge__error">{error}</p>}
             <div className="player-badge__panel-actions">

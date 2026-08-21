@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react'
-import { resolveAvatarId, type AvatarId } from '../lib/avatars'
+import { resolveAvatarId, AVATARS_ENABLED, type AvatarId } from '../lib/avatars'
 
 type PlayerAvatarProps = {
   avatarId?: string | null
@@ -201,6 +201,7 @@ export function PlayerAvatar({
   size = 'md',
   className = '',
 }: PlayerAvatarProps) {
+  if (!AVATARS_ENABLED) return null
   const id = resolveAvatarId(avatarId, name)
   const dim = size === 'sm' ? '1.2rem' : size === 'lg' ? '2.1rem' : '1.45rem'
   const style = { '--avatar-size': dim } as CSSProperties

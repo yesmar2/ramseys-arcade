@@ -1,4 +1,7 @@
 /** Curated avatar ids — keep in sync with API `src/avatars.ts`. */
+/** Flip on when ready to ship avatars on the site. */
+export const AVATARS_ENABLED = false
+
 export const AVATAR_IDS = [
   'orb',
   'bolt',
