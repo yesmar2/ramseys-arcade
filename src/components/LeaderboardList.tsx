@@ -81,22 +81,20 @@ export function LeaderboardList({
 
   return (
     <ol className="lb-list">
-      {you ? (
+      {youOffVisible && you ? (
         <>
           {renderRow(you, you.rank, true, { markYouId: true, pinned: true })}
           {visible.length > 0 ? (
-            <li className="lb-you-split">
-              {youOffVisible ? `Top ${shown}` : 'Board'}
-            </li>
+            <li className="lb-you-split">Top {shown}</li>
           ) : null}
         </>
       ) : null}
       {visible.map((entry, index) => {
         const isYou =
           Boolean(youName) && normalizePlayerName(entry.name ?? '') === youName
-        // Already shown in the pinned row above — skip the in-list duplicate.
-        if (isYou) return null
-        return renderRow(entry, index + 1, false)
+        return renderRow(entry, index + 1, isYou, {
+          markYouId: isYou && !youOffVisible,
+        })
       })}
     </ol>
   )
