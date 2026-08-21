@@ -470,15 +470,15 @@ function GameLeaderboard({
                 Records
               </h2>
               <p className="lb-page__blurb lb-page__blurb--inline">
-                Fastest clear per wave — separate from high scores and global
-                points.
+                Wave clears and highest combo — separate from high scores and
+                global points.
               </p>
               <a
                 className="lb-games__link"
                 href={recordsHref('asteroids')}
                 style={{ '--tab-accent': accent } as CSSProperties}
               >
-                <span className="lb-games__name">Asteroids wave times</span>
+                <span className="lb-games__name">Asteroids records</span>
               </a>
             </section>
           ) : null}

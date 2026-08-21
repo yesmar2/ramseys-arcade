@@ -192,7 +192,7 @@ export function GamePreviewPage({ slug }: { slug: string }) {
               </a>
               {boardSlug === 'asteroids' ? (
                 <a className="game-lobby__all-boards" href={recordsHref('asteroids')}>
-                  Wave time records
+                  Records
                 </a>
               ) : null}
             </section>

@@ -93,21 +93,23 @@ export function startGame(prev: GameState): GameState {
 }
 
 export function padLayout(w: number, h: number) {
-  const padX = w * 0.1
-  const padY = h * 0.1
-  const gap = Math.min(w, h) * 0.07
-  const innerW = w - padX * 2
-  const innerH = h - padY * 2
-  const cellW = (innerW - gap) / 2
-  const cellH = (innerH - gap) / 2
-  const r = Math.min(cellW, cellH) * 0.42
+  // Keep equal gaps on both axes by laying out in a centered square,
+  // even when the stage is taller (portrait phones).
+  const size = Math.min(w, h)
+  const originX = (w - size) / 2
+  const originY = (h - size) / 2
+  const inset = size * 0.1
+  const gap = size * 0.07
+  const inner = size - inset * 2
+  const cell = (inner - gap) / 2
+  const r = cell * 0.42
   return [0, 1, 2, 3].map((id) => {
     const col = id % 2
     const row = Math.floor(id / 2)
     return {
       id,
-      x: padX + col * (cellW + gap) + cellW / 2,
-      y: padY + row * (cellH + gap) + cellH / 2,
+      x: originX + inset + col * (cell + gap) + cell / 2,
+      y: originY + inset + row * (cell + gap) + cell / 2,
       r,
     }
   })
