@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
+import { rankHref } from '../hooks/useHashRoute'
+import { useGlobalRank } from '../lib/globalRank'
 import { PlayerBadge } from './PlayerBadge'
 import { ThemeToggle } from './ThemeToggle'
 
@@ -9,6 +11,7 @@ const NAV = [
 ]
 
 export function Header() {
+  const { rank } = useGlobalRank()
   const [open, setOpen] = useState(false)
   const headerRef = useRef<HTMLElement>(null)
 
@@ -77,6 +80,16 @@ export function Header() {
           ))}
         </nav>
         <div className="site-header__player">
+          {rank != null ? (
+            <a
+              className="home-bar__rank"
+              href={rankHref()}
+              aria-label={`Global rank ${rank}`}
+              title={`Global rank #${rank}`}
+            >
+              #{rank}
+            </a>
+          ) : null}
           <ThemeToggle />
           <PlayerBadge compact />
         </div>
