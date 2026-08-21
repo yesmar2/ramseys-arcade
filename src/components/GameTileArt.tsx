@@ -29,19 +29,19 @@ function TileBg() {
         rx="72"
         ry="50"
         fill="var(--tile-accent, var(--accent))"
-        opacity="0.2"
+        opacity="0.1"
       />
       <ellipse
         cx="80"
         cy="108"
         rx="90"
         ry="28"
-        fill="rgba(var(--ink-rgb), 0.06)"
+        fill="rgba(var(--ink-rgb), 0.04)"
       />
-      <circle cx="28" cy="18" r="1.4" fill="var(--tile-accent, var(--accent))" opacity="0.45" />
-      <circle cx="132" cy="26" r="1.1" fill="var(--tile-accent, var(--accent))" opacity="0.35" />
-      <circle cx="118" cy="14" r="0.9" fill="var(--ink)" opacity="0.2" />
-      <circle cx="46" cy="12" r="0.8" fill="var(--ink)" opacity="0.16" />
+      <circle cx="28" cy="18" r="1.4" fill="var(--tile-accent, var(--accent))" opacity="0.22" />
+      <circle cx="132" cy="26" r="1.1" fill="var(--tile-accent, var(--accent))" opacity="0.18" />
+      <circle cx="118" cy="14" r="0.9" fill="var(--ink)" opacity="0.12" />
+      <circle cx="46" cy="12" r="0.8" fill="var(--ink)" opacity="0.1" />
     </g>
   )
 }
@@ -142,9 +142,7 @@ export function StackerArt() {
         <IsoSlab cx={cx} cy={baseCy} w={36} d={36} h={11} hue={HUE.violet} />
       </g>
       <g transform="translate(0, -33)">
-        <g className="tile-play tile-play--slide">
-          <IsoSlab cx={cx} cy={baseCy} x={16} w={36} d={36} h={11} hue={HUE.gold} />
-        </g>
+        <IsoSlab cx={cx} cy={baseCy} x={16} w={36} d={36} h={11} hue={HUE.gold} />
       </g>
     </SvgFrame>
   )
@@ -207,33 +205,29 @@ export function PatriotArt() {
         strokeLinejoin="round"
       />
 
-      <g className="tile-play tile-play--fall">
-        <line
-          x1="118"
-          y1="4"
-          x2="128"
-          y2="20"
-          stroke={incoming.stroke}
-          strokeWidth="1.7"
-          strokeLinecap="butt"
-          opacity="0.9"
-        />
-        <circle cx="130" cy="24" r="3.8" fill={incoming.fill} stroke={incoming.stroke} strokeWidth="1.5" />
-      </g>
+      <line
+        x1="118"
+        y1="4"
+        x2="128"
+        y2="20"
+        stroke={incoming.stroke}
+        strokeWidth="1.7"
+        strokeLinecap="butt"
+        opacity="0.9"
+      />
+      <circle cx="130" cy="24" r="3.8" fill={incoming.fill} stroke={incoming.stroke} strokeWidth="1.5" />
 
-      <g className="tile-play tile-play--fall tile-play--fall-alt">
-        <line
-          x1="42"
-          y1="22"
-          x2="54"
-          y2="40"
-          stroke={incoming.stroke}
-          strokeWidth="1.7"
-          strokeLinecap="butt"
-          opacity="0.9"
-        />
-        <circle cx="56" cy="44" r="3.8" fill={incoming.fill} stroke={incoming.stroke} strokeWidth="1.5" />
-      </g>
+      <line
+        x1="42"
+        y1="22"
+        x2="54"
+        y2="40"
+        stroke={incoming.stroke}
+        strokeWidth="1.7"
+        strokeLinecap="butt"
+        opacity="0.9"
+      />
+      <circle cx="56" cy="44" r="3.8" fill={incoming.fill} stroke={incoming.stroke} strokeWidth="1.5" />
     </SvgFrame>
   )
 }
@@ -258,35 +252,31 @@ export function SnakeArt() {
   return (
     <SvgFrame>
       <TileBg />
-      <g className="tile-play tile-play--crawl">
-        {cells.map((b) => {
-          const { fill, stroke } = pastel(b.hue, 60, 50)
-          return (
-            <circle
-              key={`${b.c}-${b.r}`}
-              cx={x0 + b.c * step + size / 2}
-              cy={y0 + b.r * step + size / 2}
-              r={size / 2}
-              fill={fill}
-              stroke={stroke}
-              strokeWidth="1.5"
-            />
-          )
-        })}
-        <circle cx={headCx + 3.2} cy={headCy - 2.6} r="1.5" fill="#fff" />
-        <circle cx={headCx + 3.2} cy={headCy + 2.6} r="1.5" fill="#fff" />
-        <circle cx={headCx + 3.5} cy={headCy - 2.6} r="0.65" fill="#1a2b3c" />
-        <circle cx={headCx + 3.5} cy={headCy + 2.6} r="0.65" fill="#1a2b3c" />
-      </g>
-      <g className="tile-play tile-play--nibble">
-        <circle cx={x0 + 4 * step + size / 2} cy={headCy} r="5.2" {...food} strokeWidth="1.5" />
-        <circle
-          cx={x0 + 4 * step + size / 2 - 1.4}
-          cy={headCy - 1.5}
-          r="1.1"
-          fill="rgba(255,255,255,0.55)"
-        />
-      </g>
+      {cells.map((b) => {
+        const { fill, stroke } = pastel(b.hue, 60, 50)
+        return (
+          <circle
+            key={`${b.c}-${b.r}`}
+            cx={x0 + b.c * step + size / 2}
+            cy={y0 + b.r * step + size / 2}
+            r={size / 2}
+            fill={fill}
+            stroke={stroke}
+            strokeWidth="1.5"
+          />
+        )
+      })}
+      <circle cx={headCx + 3.2} cy={headCy - 2.6} r="1.5" fill="#fff" />
+      <circle cx={headCx + 3.2} cy={headCy + 2.6} r="1.5" fill="#fff" />
+      <circle cx={headCx + 3.5} cy={headCy - 2.6} r="0.65" fill="#1a2b3c" />
+      <circle cx={headCx + 3.5} cy={headCy + 2.6} r="0.65" fill="#1a2b3c" />
+      <circle cx={x0 + 4 * step + size / 2} cy={headCy} r="5.2" {...food} strokeWidth="1.5" />
+      <circle
+        cx={x0 + 4 * step + size / 2 - 1.4}
+        cy={headCy - 1.5}
+        r="1.1"
+        fill="rgba(255,255,255,0.55)"
+      />
     </SvgFrame>
   )
 }
@@ -312,7 +302,7 @@ export function WhackArt() {
         const on = live.has(i)
         const { fill, stroke } = pastel(hue, sat, on ? 78 : 22)
         return (
-          <g key={i} className={on ? 'tile-play tile-play--pop' : undefined}>
+          <g key={i}>
             <circle
               cx={cx}
               cy={cy}
@@ -345,10 +335,8 @@ export function DeadCenterArt() {
   return (
     <SvgFrame>
       <TileBg />
-      <g className="tile-play tile-play--aim">
-        <path d="M44 70 L84 24 L126 66 Z" {...tri} strokeWidth="2" strokeLinejoin="round" />
-        <circle cx={(44 + 84 + 126) / 3} cy={(70 + 24 + 66) / 3} r="3.4" fill="#2eb8a0" />
-      </g>
+      <path d="M44 70 L84 24 L126 66 Z" {...tri} strokeWidth="2" strokeLinejoin="round" />
+      <circle cx={(44 + 84 + 126) / 3} cy={(70 + 24 + 66) / 3} r="3.4" fill="#2eb8a0" />
     </SvgFrame>
   )
 }
@@ -363,57 +351,46 @@ export function AsteroidsArt() {
   return (
     <SvgFrame>
       <TileBg />
-      <g className="tile-play tile-play--spin">
-        <path
-          d="M14 28 L26 14 L48 16 L54 34 L40 46 L18 42 Z"
-          {...large}
-          strokeWidth="1.8"
-          strokeLinejoin="round"
-        />
-      </g>
-      <g className="tile-play tile-play--spin tile-play--spin-rev">
-        <path
-          d="M118 14 L134 12 L148 24 L142 40 L124 38 L114 24 Z"
-          {...med}
-          strokeWidth="1.7"
-          strokeLinejoin="round"
-        />
-      </g>
-      <g className="tile-play tile-play--drift">
-        <path
-          d="M118 68 L130 60 L146 66 L140 82 L122 84 L112 74 Z"
-          {...small}
-          strokeWidth="1.6"
-          strokeLinejoin="round"
-        />
-      </g>
-      <g className="tile-play tile-play--drift tile-play--drift-alt">
-        <path
-          d="M18 72 L28 64 L42 70 L36 82 L22 82 Z"
-          {...small}
-          strokeWidth="1.5"
-          strokeLinejoin="round"
-        />
-      </g>
+      <path
+        d="M14 28 L26 14 L48 16 L54 34 L40 46 L18 42 Z"
+        {...large}
+        strokeWidth="1.8"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M118 14 L134 12 L148 24 L142 40 L124 38 L114 24 Z"
+        {...med}
+        strokeWidth="1.7"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M118 68 L130 60 L146 66 L140 82 L122 84 L112 74 Z"
+        {...small}
+        strokeWidth="1.6"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M18 72 L28 64 L42 70 L36 82 L22 82 Z"
+        {...small}
+        strokeWidth="1.5"
+        strokeLinejoin="round"
+      />
       <g transform="translate(80 50)">
-        <g className="tile-play tile-play--thrust">
-          <path
-            d="M0 -13 L-9.5 10 L0 5 L9.5 10 Z"
-            fill={shipFill}
-            stroke={shipStroke}
-            strokeWidth="2.3"
-            strokeLinejoin="round"
-          />
-          <path
-            className="tile-play tile-play--flame"
-            d="M-4.5 8.5 L0 16.5 L4.5 8.5"
-            fill="none"
-            stroke="#f5b942"
-            strokeWidth="1.9"
-            strokeLinejoin="round"
-            strokeLinecap="round"
-          />
-        </g>
+        <path
+          d="M0 -13 L-9.5 10 L0 5 L9.5 10 Z"
+          fill={shipFill}
+          stroke={shipStroke}
+          strokeWidth="2.3"
+          strokeLinejoin="round"
+        />
+        <path
+          d="M-4.5 8.5 L0 16.5 L4.5 8.5"
+          fill="none"
+          stroke="#f5b942"
+          strokeWidth="1.9"
+          strokeLinejoin="round"
+          strokeLinecap="round"
+        />
       </g>
       <circle cx="80" cy="22" r="1.8" fill="#4aa8e8" />
     </SvgFrame>
@@ -441,7 +418,6 @@ export function SimonArt() {
         return (
           <circle
             key={`${pad.x}-${pad.y}`}
-            className={pad.lit ? 'tile-play tile-play--blink' : undefined}
             cx={pad.x}
             cy={pad.y}
             r={pad.lit ? r * 1.04 : r}
