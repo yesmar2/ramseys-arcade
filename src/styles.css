@@ -3535,6 +3535,17 @@ a.game-hud__board {
   line-height: 1.1;
 }
 
+.rank-page__gap {
+  grid-column: 1 / -1;
+  margin: 0.35rem 0 0;
+  padding: 0.45rem 0.65rem 0.15rem;
+  border-top: 1px solid rgba(var(--ink-rgb), 0.08);
+  text-align: center;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+
 .rank-page__near {
   margin: 0;
 }

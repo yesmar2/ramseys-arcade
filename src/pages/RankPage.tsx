@@ -3,9 +3,9 @@ import { BoardSkeleton } from '../components/BoardChrome'
 import { Footer } from '../components/Footer'
 import { GameDeviceBadge } from '../components/GameDeviceBadge'
 import { HomeBar } from '../components/HomeBar'
-import { PlayerAvatar } from '../components/PlayerAvatar'
 import { getGame, gamePlayableOn } from '../data/games'
-import { leaderboardHref, rankHref } from '../hooks/useHashRoute'
+import { gameHref, leaderboardHref, rankHref } from '../hooks/useHashRoute'
+import { gapToNextLabel } from '../lib/boardGap'
 import { useDeviceType } from '../lib/device'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { useGlobalRank } from '../lib/globalRank'
@@ -62,10 +62,19 @@ export function RankPage({ player }: { player?: string }) {
   const data = isSelf ? myRank : (other ?? empty)
   const { rank, score, totalPlayers, byGame, nearby = [] } = data
 
-  const rankedGames = LEADERBOARD_GAMES.filter((slug) => Boolean(byGame[slug]))
-  const rankedCount = rankedGames.length
+  const rankedCount = LEADERBOARD_GAMES.filter((slug) => Boolean(byGame[slug])).length
   const totalGames = LEADERBOARD_GAMES.length
   const unrankedCount = totalGames - rankedCount
+
+  const gap =
+    rank != null && rank > 0
+      ? gapToNextLabel({
+          youRank: rank,
+          youScore: score,
+          entries: nearby,
+          formatDelta: (n) => `${n} pt${n === 1 ? '' : 's'}`,
+        })
+      : null
 
   return (
     <>
@@ -110,64 +119,8 @@ export function RankPage({ player }: { player?: string }) {
                   <span className="rank-page__bar-label">Field</span>
                   <strong>{totalPlayers > 0 ? totalPlayers : '—'}</strong>
                 </div>
+                {gap ? <p className="rank-page__gap">{gap}</p> : null}
               </section>
-
-              {nearby.length > 0 ? (
-                <section
-                  className="rank-page__near rank-page__near--hero"
-                  aria-labelledby="rank-near-heading"
-                >
-                  <h2 id="rank-near-heading" className="rank-page__hero-title">
-                    {isSelf ? 'Near you' : `Near ${viewedName}`}
-                  </h2>
-                  <ul className="rank-page__near-list">
-                    {nearby.map((row) => {
-                      const isYou = row.name === myName
-                      const isViewed = row.name === viewedName
-                      const body = (
-                        <>
-                          <span className="rank-page__near-rank">#{row.rank}</span>
-                          <span className="rank-page__near-name" title={row.name}>
-                            <PlayerAvatar
-                              avatarId={row.avatarId}
-                              name={row.name}
-                              size="sm"
-                            />
-                            <span className="rank-page__near-name-text">
-                              {row.name}
-                            </span>
-                            {isYou ? <em>you</em> : null}
-                          </span>
-                          <span className="rank-page__near-pts">{row.score}</span>
-                        </>
-                      )
-                      if (isViewed) {
-                        return (
-                          <li
-                            key={`${row.rank}-${row.name}`}
-                            className="rank-page__near-row rank-page__near-row--you"
-                          >
-                            {body}
-                          </li>
-                        )
-                      }
-                      return (
-                        <li
-                          key={`${row.rank}-${row.name}`}
-                          className="rank-page__near-row"
-                        >
-                          <a
-                            className="rank-page__near-link"
-                            href={isYou ? rankHref() : rankHref(row.name)}
-                          >
-                            {body}
-                          </a>
-                        </li>
-                      )
-                    })}
-                  </ul>
-                </section>
-              ) : null}
 
               <section
                 className="rank-page__board"
@@ -206,16 +159,19 @@ export function RankPage({ player }: { player?: string }) {
                     const row = byGame[slug]
                     const onDevice = game ? gamePlayableOn(game, device) : true
                     const accent = game?.accent ?? 'var(--accent)'
+                    const href = row
+                      ? leaderboardHref(slug, 'all')
+                      : gameHref(slug)
                     return (
                       <li key={slug}>
                         <a
                           className={`rank-page__row-link${onDevice ? '' : ' rank-page__row-link--other-device'}${row ? '' : ' rank-page__row-link--empty'}`}
-                          href={leaderboardHref(slug, 'all')}
+                          href={href}
                           style={{ '--rank-game-accent': accent } as CSSProperties}
                           aria-label={
                             row
                               ? `${game?.name ?? slug}: place ${row.place}, ${row.points} points. Open all-time board.`
-                              : `${game?.name ?? slug}: unranked. Open all-time board.`
+                              : `${game?.name ?? slug}: unranked. Open game.`
                           }
                         >
                           <span className="rank-page__game">
