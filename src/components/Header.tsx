@@ -10,7 +10,7 @@ import { ThemeToggle } from './ThemeToggle'
 const NAV = [
   { href: '#/', label: 'Games' },
   { href: '#/tournaments', label: 'Tournaments' },
-  { href: '#/leaderboards', label: 'Leaderboards' },
+  { href: '#/leaderboards', label: 'Global Rankings' },
 ]
 
 const MOBILE_MQ = '(max-width: 720px)'
@@ -124,8 +124,8 @@ export function Header() {
             <a
               className="home-bar__rank site-header__rank"
               href={rankHref()}
-              aria-label={rank != null ? `Global rank ${rank}` : 'Global rank'}
-              title={rank != null ? `Global rank #${rank}` : 'Your global rank'}
+              aria-label={rank != null ? `Your profile, rank ${rank}` : 'Your profile'}
+              title={rank != null ? `Your profile · #${rank}` : 'Your profile'}
             >
               {rankLabel}
             </a>

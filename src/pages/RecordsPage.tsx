@@ -16,7 +16,7 @@ import {
   recordHref,
   recordsHref,
 } from '../hooks/useHashRoute'
-import { findMeOnBoard, flashYouRow, gapToNextLabel } from '../lib/boardGap'
+import { flashYouRow, gapToNextLabel } from '../lib/boardGap'
 import { usePlayerName } from '../hooks/usePlayerName'
 import {
   PERIOD_LABELS,
@@ -254,11 +254,6 @@ function RecordBoardPage({
       ? waveRecords[waveIndex + 1]
       : null
 
-  const youOnVisible = Boolean(
-    you && entries.slice(0, shown).some((entry) => entry.id === you.id),
-  )
-  const showFindMe = Boolean(you && !youOnVisible)
-
   const gap = you
     ? gapToNextLabel({
         youRank: you.rank,
@@ -366,8 +361,6 @@ function RecordBoardPage({
               valueLabel="Your best"
               gap={gap}
               accent={accent}
-              findMe={showFindMe}
-              onFindMe={() => findMeOnBoard(you.rank, entries.length, setShown)}
             />
           ) : null}
 
@@ -409,12 +402,6 @@ function RecordBoardPage({
                 direction={direction}
               />
             )}
-
-            {!loading && !error && you && showFindMe ? (
-              <p className="lb-personal-best">
-                Your best: {formatRecordScore(you.score, unit)} · #{you.rank}
-              </p>
-            ) : null}
 
             {!loading && !error && entries.length > shown ? (
               <button

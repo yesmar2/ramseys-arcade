@@ -53,8 +53,8 @@ export function HomeBar() {
           <a
             className="home-bar__rank"
             href={rankHref()}
-            aria-label={rank != null ? `Global rank ${rank}` : 'Global rank'}
-            title={rank != null ? `Global rank #${rank}` : 'Your global rank'}
+            aria-label={rank != null ? `Your profile, rank ${rank}` : 'Your profile'}
+            title={rank != null ? `Your profile · #${rank}` : 'Your profile'}
           >
             {rankLabel}
           </a>
@@ -62,8 +62,8 @@ export function HomeBar() {
         <a
           className="home-bar__nav-icon"
           href={leaderboardHref()}
-          aria-label="Leaderboards"
-          title="Leaderboards"
+          aria-label="Global Rankings"
+          title="Global Rankings"
         >
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path
@@ -133,7 +133,7 @@ export function HomeBar() {
                 href={leaderboardHref()}
                 onClick={() => setMenuOpen(false)}
               >
-                Leaderboards
+                Global Rankings
               </a>
               <a
                 role="menuitem"

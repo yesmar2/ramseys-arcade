@@ -15,7 +15,7 @@ import { YouBoardStrip } from '../components/YouBoardStrip'
 import { deviceRequirementLabel, getGame, gamePlayableOn } from '../data/games'
 import { gamePlayHref, leaderboardHref, recordsHref } from '../hooks/useHashRoute'
 import { useDeviceType } from '../lib/device'
-import { findMeOnBoard, flashYouRow, gapToNextLabel } from '../lib/boardGap'
+import { flashYouRow, gapToNextLabel } from '../lib/boardGap'
 import { usePlayerName } from '../hooks/usePlayerName'
 import {
   fetchGlobalBoard,
@@ -113,14 +113,6 @@ function GlobalLeaderboardsHub() {
     }
   }, [playerName])
 
-  const youOnVisible = Boolean(
-    you &&
-      entries
-        .slice(0, shown)
-        .some((e) => normalizePlayerName(e.name) === playerName),
-  )
-  const showFindMe = Boolean(you && !youOnVisible)
-
   const gap = you
     ? gapToNextLabel({
         youRank: you.rank,
@@ -137,7 +129,7 @@ function GlobalLeaderboardsHub() {
         <div className="lb-page__inner">
           <header className="lb-page__header lb-page__header--compact">
             <p className="lb-page__eyebrow">All-time</p>
-            <h1 className="lb-page__title">Global</h1>
+            <h1 className="lb-page__title">Global Rankings</h1>
             <p className="lb-page__blurb lb-page__blurb--tight">
               Points from every game board.
             </p>
@@ -165,15 +157,6 @@ function GlobalLeaderboardsHub() {
                 <strong>{you ? you.games : '—'}</strong>
               </div>
               {gap ? <p className="lb-scorecard__gap">{gap}</p> : null}
-              {showFindMe && you ? (
-                <button
-                  type="button"
-                  className="lb-scorecard__find"
-                  onClick={() => findMeOnBoard(you.rank, entries.length, setShown)}
-                >
-                  Find me on the board
-                </button>
-              ) : null}
             </section>
           ) : null}
 
@@ -325,11 +308,6 @@ function GameLeaderboard({
     window.location.hash = leaderboardHref(active, next)
   }
 
-  const youOnVisible = Boolean(
-    you && entries.slice(0, shown).some((entry) => entry.id === you.id),
-  )
-  const showFindMe = Boolean(you && !youOnVisible)
-
   const gap = you
     ? gapToNextLabel({
         youRank: you.rank,
@@ -358,7 +336,7 @@ function GameLeaderboard({
         >
           <header className="lb-page__header lb-page__header--compact">
             <a className="rank-page__back" href={leaderboardHref()}>
-              ← Global ranks
+              ← Global Rankings
             </a>
             <h1 className="lb-page__title">{activeGame?.name ?? active}</h1>
             <p className="lb-page__blurb lb-page__blurb--tight">
@@ -385,8 +363,6 @@ function GameLeaderboard({
               valueLabel="Score"
               gap={gap}
               accent={accent}
-              findMe={showFindMe}
-              onFindMe={() => findMeOnBoard(you.rank, entries.length, setShown)}
             />
           ) : null}
 
@@ -431,12 +407,6 @@ function GameLeaderboard({
                 shown={shown}
               />
             )}
-
-            {!loading && !error && you && showFindMe ? (
-              <p className="lb-personal-best">
-                Your best: {you.score} · #{you.rank}
-              </p>
-            ) : null}
 
             {!loading && !error && entries.length > shown ? (
               <button

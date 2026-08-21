@@ -64,13 +64,6 @@ export function rowDeltaLabel(opts: {
   return `−${formatDelta(gap)}`
 }
 
-export function scrollToYouRow() {
-  const el = document.getElementById('lb-you-row')
-  if (!el) return
-  el.scrollIntoView({ behavior: 'smooth', block: 'center' })
-  flashYouRow(el)
-}
-
 export function flashYouRow(el?: HTMLElement | null) {
   const row = el ?? document.getElementById('lb-you-row')
   if (!row) return
@@ -78,19 +71,5 @@ export function flashYouRow(el?: HTMLElement | null) {
   window.requestAnimationFrame(() => {
     row.classList.add('lb-row--flash')
     window.setTimeout(() => row.classList.remove('lb-row--flash'), 1200)
-  })
-}
-
-/** Expand the board far enough to include `youRank`, then scroll/flash that row. */
-export function findMeOnBoard(
-  youRank: number,
-  total: number,
-  setShown: (n: number) => void,
-  initialRows = 10,
-) {
-  const need = Math.min(Math.max(youRank, initialRows), Math.max(total, youRank))
-  setShown(need)
-  window.requestAnimationFrame(() => {
-    window.requestAnimationFrame(() => scrollToYouRow())
   })
 }

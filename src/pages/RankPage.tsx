@@ -84,11 +84,11 @@ export function RankPage({ player }: { player?: string }) {
           <header className="lb-page__header lb-page__header--compact">
             {!isSelf ? (
               <a className="rank-page__back" href={rankHref()}>
-                ← Your rank
+                ← Your profile
               </a>
             ) : null}
             <h1 className="lb-page__title">
-              {isSelf ? 'Global rank' : viewedName}
+              {isSelf ? 'Your profile' : viewedName}
             </h1>
             <p className="lb-page__blurb lb-page__blurb--tight">
               {isSelf
@@ -240,7 +240,7 @@ export function RankPage({ player }: { player?: string }) {
           ) : null}
 
           <a className="rank-page__boards" href={leaderboardHref()}>
-            Open leaderboards
+            Open Global Rankings
           </a>
         </div>
       </main>

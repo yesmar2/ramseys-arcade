@@ -7,8 +7,6 @@ type YouBoardStripProps = {
   gap: string | null
   accent?: string
   sticky?: boolean
-  findMe?: boolean
-  onFindMe?: () => void
 }
 
 export function YouBoardStrip({
@@ -18,8 +16,6 @@ export function YouBoardStrip({
   gap,
   accent,
   sticky = true,
-  findMe = false,
-  onFindMe,
 }: YouBoardStripProps) {
   const style = accent
     ? ({ '--lb-you-accent': accent } as CSSProperties)
@@ -40,11 +36,6 @@ export function YouBoardStrip({
         <strong>{value}</strong>
       </div>
       {gap ? <p className="lb-scorecard__gap">{gap}</p> : null}
-      {findMe && onFindMe ? (
-        <button type="button" className="lb-scorecard__find" onClick={onFindMe}>
-          Find me on the board
-        </button>
-      ) : null}
     </section>
   )
 }
