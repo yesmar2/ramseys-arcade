@@ -3921,55 +3921,50 @@ a.game-hud__board {
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
+  gap: 0.32rem;
 }
 
-.rank-page__row-link {
+.rank-page__game-row {
   display: grid;
-  grid-template-columns: 1fr auto auto;
-  gap: 0.75rem;
+  grid-template-columns: 2.75rem minmax(0, 1fr) auto;
+  gap: 0.5rem 0.55rem;
   align-items: center;
-  padding: 0.7rem 0.85rem;
-  border-radius: calc(var(--tile-radius) - 0.25rem);
-  background: rgba(var(--surface-rgb), 0.72);
-  border: 1px solid rgba(var(--ink-rgb), 0.06);
+  padding: 0.55rem 0.7rem;
+  border-radius: 0.7rem;
+  background: rgba(var(--surface-rgb), 0.62);
+  border: 1px solid rgba(var(--ink-rgb), 0.04);
   color: inherit;
   text-decoration: none;
-  transition:
-    border-color 0.15s ease,
-    background 0.15s ease;
 }
 
-.rank-page__row-link:hover,
-.rank-page__row-link:focus-visible {
-  border-color: color-mix(in srgb, var(--rank-game-accent, var(--accent)) 45%, transparent);
-  background: color-mix(in srgb, var(--rank-game-accent, var(--accent)) 8%, var(--surface));
+.rank-page__game-row:hover,
+.rank-page__game-row:focus-visible {
+  background: color-mix(in srgb, var(--rank-game-accent, var(--accent)) 10%, var(--surface));
+  border-color: color-mix(in srgb, var(--rank-game-accent, var(--accent)) 32%, transparent);
   outline: none;
 }
 
-.rank-page__row-link--other-device {
-  opacity: 0.92;
+.rank-page__game-row--dim {
+  opacity: 0.9;
 }
 
-.rank-page__row-link--empty .rank-page__pts--empty {
-  font-family: var(--font-body);
-  font-size: 0.78rem;
-  font-weight: 800;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--rank-game-accent, var(--accent));
-  opacity: 1;
-}
-
-.rank-page__game {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 0.45rem;
-  min-width: 0;
+.rank-page__game-rank {
+  font-family: var(--font-display);
+  font-size: 0.95rem;
   font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+
+.rank-page__game-row:not(.rank-page__game-row--empty) .rank-page__game-rank {
   color: var(--ink);
-  text-decoration: none;
+}
+
+.rank-page__game-main {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
 }
 
 .rank-page__game-name {
@@ -3977,10 +3972,45 @@ a.game-hud__board {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-family: var(--font-display);
+  font-size: 1.02rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--ink);
 }
 
-.rank-page__row-link:hover .rank-page__game-name,
-.rank-page__row-link:focus-visible .rank-page__game-name {
+.rank-page__game-row:hover .rank-page__game-name,
+.rank-page__game-row:focus-visible .rank-page__game-name {
+  color: var(--rank-game-accent, var(--accent));
+}
+
+.rank-page__game-score {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.28rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.rank-page__game-score strong {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.rank-page__game-score span {
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.rank-page__game-cta {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
   color: var(--rank-game-accent, var(--accent));
 }
 
@@ -4004,35 +4034,12 @@ a.game-hud__board {
   height: 100%;
 }
 
-.rank-page__row-link:hover .game-device-badge,
-.rank-page__row-link:focus-visible .game-device-badge,
+.rank-page__game-row:hover .game-device-badge,
+.rank-page__game-row:focus-visible .game-device-badge,
 .lb-tab:hover .game-device-badge,
 .lb-tab:focus-visible .game-device-badge,
 .lb-tab--active .game-device-badge {
   color: color-mix(in srgb, var(--ink) 55%, var(--muted));
-}
-
-.rank-page__place {
-  font-weight: 700;
-  font-size: 0.9rem;
-  color: var(--muted);
-  min-width: 2.4rem;
-  text-align: right;
-}
-
-.rank-page__pts {
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: 1.05rem;
-  min-width: 3rem;
-  text-align: right;
-  color: var(--accent);
-}
-
-.rank-page__place--empty,
-.rank-page__pts--empty {
-  color: var(--muted);
-  opacity: 0.7;
 }
 
 .rank-page__how {

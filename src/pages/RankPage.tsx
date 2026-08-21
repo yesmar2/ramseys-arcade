@@ -165,7 +165,7 @@ export function RankPage({ player }: { player?: string }) {
                     return (
                       <li key={slug}>
                         <a
-                          className={`rank-page__row-link${onDevice ? '' : ' rank-page__row-link--other-device'}${row ? '' : ' rank-page__row-link--empty'}`}
+                          className={`rank-page__game-row${onDevice ? '' : ' rank-page__game-row--dim'}${row ? '' : ' rank-page__game-row--empty'}`}
                           href={href}
                           style={{ '--rank-game-accent': accent } as CSSProperties}
                           aria-label={
@@ -174,26 +174,22 @@ export function RankPage({ player }: { player?: string }) {
                               : `${game?.name ?? slug}: unranked. Open game.`
                           }
                         >
-                          <span className="rank-page__game">
+                          <span className="rank-page__game-rank">
+                            {row ? `#${row.place}` : '—'}
+                          </span>
+                          <span className="rank-page__game-main">
                             <span className="rank-page__game-name">
                               {game?.name ?? slug}
                             </span>
                             {game ? <GameDeviceBadge game={game} /> : null}
                           </span>
                           {row ? (
-                            <>
-                              <span className="rank-page__place">#{row.place}</span>
-                              <span className="rank-page__pts">+{row.points}</span>
-                            </>
+                            <span className="rank-page__game-score">
+                              <strong>{row.points}</strong>
+                              <span>pts</span>
+                            </span>
                           ) : (
-                            <>
-                              <span className="rank-page__place rank-page__place--empty">
-                                —
-                              </span>
-                              <span className="rank-page__pts rank-page__pts--empty">
-                                Play
-                              </span>
-                            </>
+                            <span className="rank-page__game-cta">Play</span>
                           )}
                         </a>
                       </li>
