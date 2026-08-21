@@ -764,7 +764,6 @@ img {
   border-radius: 50%;
   filter: blur(52px);
   opacity: 0.42;
-  animation: home-orb-drift 14s ease-in-out infinite;
 }
 
 .home-ambient__orb--a {
@@ -781,7 +780,6 @@ img {
   background: var(--accent);
   top: 28%;
   right: -6%;
-  animation-delay: -5s;
 }
 
 .home-ambient__orb--c {
@@ -790,7 +788,6 @@ img {
   background: var(--accent-2);
   bottom: 12%;
   left: 38%;
-  animation-delay: -9s;
   opacity: 0.32;
 }
 
@@ -803,16 +800,6 @@ img {
   font-size: clamp(1.35rem, 3.5vw, 1.65rem);
   font-weight: 600;
   letter-spacing: -0.03em;
-}
-
-@keyframes home-orb-drift {
-  0%,
-  100% {
-    transform: translate(0, 0) scale(1);
-  }
-  50% {
-    transform: translate(2.5%, -3%) scale(1.06);
-  }
 }
 
 .visually-hidden {
@@ -1071,184 +1058,6 @@ img {
   display: block;
   width: 100%;
   height: 100%;
-}
-
-.game-tile__art-svg {
-  transition: transform 0.35s ease;
-}
-
-.game-tile:hover .game-tile__art-svg,
-.game-tile:focus-visible .game-tile__art-svg {
-  transform: scale(1.045);
-}
-
-/* Idle / hover beats inside tile art */
-.tile-art__float,
-.tile-art__drift,
-.tile-art__bob,
-.tile-art__sway,
-.tile-art__slither,
-.tile-art__pulse,
-.tile-art__pop,
-.tile-art__spin-slow,
-.tile-art__thrust,
-.tile-art__flame {
-  transform-box: fill-box;
-  transform-origin: center;
-}
-
-.tile-art__drift {
-  animation: tile-art-drift 6s ease-in-out infinite;
-}
-
-.tile-art__drift--alt {
-  animation-delay: -2.4s;
-  animation-duration: 7.2s;
-}
-
-.tile-art__bob {
-  animation: tile-art-bob 4.8s ease-in-out infinite;
-}
-
-.tile-art__sway {
-  animation: tile-art-sway 3.6s ease-in-out infinite;
-}
-
-.tile-art__slither {
-  animation: tile-art-slither 5.2s ease-in-out infinite;
-}
-
-.tile-art__pulse {
-  animation: tile-art-pulse 2.4s ease-in-out infinite;
-}
-
-.tile-art__pop {
-  animation: tile-art-pop 2.8s ease-in-out infinite;
-}
-
-.tile-art__spin-slow {
-  animation: tile-art-spin 18s linear infinite;
-}
-
-.tile-art__spin-slow--rev {
-  animation-direction: reverse;
-  animation-duration: 24s;
-}
-
-.tile-art__thrust {
-  animation: tile-art-thrust 3.8s ease-in-out infinite;
-}
-
-.tile-art__flame {
-  animation: tile-art-flame 0.55s ease-in-out infinite;
-}
-
-.game-tile:hover .tile-art__drift,
-.game-tile:focus-visible .tile-art__drift {
-  animation-duration: 3.2s;
-}
-
-.game-tile:hover .tile-art__bob,
-.game-tile:focus-visible .tile-art__bob {
-  animation-duration: 2.6s;
-}
-
-.game-tile:hover .tile-art__thrust,
-.game-tile:focus-visible .tile-art__thrust {
-  animation-duration: 2.1s;
-}
-
-@keyframes tile-art-drift {
-  0%,
-  100% {
-    transform: translate(0, 0);
-  }
-  50% {
-    transform: translate(2px, -3px);
-  }
-}
-
-@keyframes tile-art-bob {
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-2.5px);
-  }
-}
-
-@keyframes tile-art-sway {
-  0%,
-  100% {
-    transform: translate(0, 0);
-  }
-  50% {
-    transform: translate(3px, -2px);
-  }
-}
-
-@keyframes tile-art-slither {
-  0%,
-  100% {
-    transform: translate(0, 0);
-  }
-  50% {
-    transform: translate(2px, 1.5px);
-  }
-}
-
-@keyframes tile-art-pulse {
-  0%,
-  100% {
-    transform: scale(1);
-    opacity: 1;
-  }
-  50% {
-    transform: scale(1.08);
-    opacity: 0.92;
-  }
-}
-
-@keyframes tile-art-pop {
-  0%,
-  100% {
-    transform: scale(1);
-  }
-  40% {
-    transform: scale(1.12);
-  }
-  55% {
-    transform: scale(0.96);
-  }
-}
-
-@keyframes tile-art-spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-@keyframes tile-art-thrust {
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-2px);
-  }
-}
-
-@keyframes tile-art-flame {
-  0%,
-  100% {
-    opacity: 0.75;
-    transform: scaleY(1);
-  }
-  50% {
-    opacity: 1;
-    transform: scaleY(1.18);
-  }
 }
 
 .game-tile__title {
@@ -5416,27 +5225,12 @@ a.game-hud__board {
   .hero__content,
   .games__intro,
   .game-tile,
-  .hero__orb,
-  .home-ambient__orb,
-  .tile-art__drift,
-  .tile-art__bob,
-  .tile-art__sway,
-  .tile-art__slither,
-  .tile-art__pulse,
-  .tile-art__pop,
-  .tile-art__spin-slow,
-  .tile-art__thrust,
-  .tile-art__flame {
+  .hero__orb {
     animation: none;
   }
 
   .game-tile:hover,
   .game-tile:focus-visible {
-    transform: none;
-  }
-
-  .game-tile:hover .game-tile__art-svg,
-  .game-tile:focus-visible .game-tile__art-svg {
     transform: none;
   }
 }
