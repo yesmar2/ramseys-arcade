@@ -1095,7 +1095,7 @@ img {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.65rem;
+  gap: 0.75rem;
   width: min(100% - 1.25rem, var(--max-width));
   padding: 0.4rem 0.45rem 0.4rem 1rem;
   border-radius: 999px;
@@ -1105,64 +1105,134 @@ img {
   box-shadow: var(--shadow-soft);
 }
 
+.home-bar__start {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  min-width: 0;
+}
+
 .home-bar__brand {
   font-family: var(--font-display);
   font-weight: 500;
   font-size: 1.15rem;
   letter-spacing: -0.02em;
   color: var(--ink);
-  min-width: 0;
+  flex: none;
 }
 
 .home-bar__brand span {
   color: var(--accent);
 }
 
-.home-bar .player-badge-wrap {
-  justify-content: flex-end;
+.home-bar__links {
+  display: flex;
+  align-items: center;
+  gap: 0.15rem;
   min-width: 0;
 }
 
-.home-bar__icons {
+.home-bar__link {
+  padding: 0.45rem 0.7rem;
+  border-radius: 999px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--muted);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.home-bar__link:hover,
+.home-bar__link:focus-visible {
+  color: var(--ink);
+  background: rgba(var(--ink-rgb), 0.05);
+  outline: none;
+}
+
+.home-bar__end {
   position: relative;
   display: flex;
   align-items: center;
-  gap: 0.3rem;
+  gap: 0.35rem;
   flex: none;
 }
 
-.home-bar__rank {
+.home-bar__you {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  box-sizing: border-box;
-  flex: none;
-  z-index: 2;
-  min-width: 2.65rem;
-  height: 2.65rem;
-  padding: 0 0.45rem;
+  gap: 0.4rem;
+  max-width: 11rem;
+  min-height: 2.55rem;
+  padding: 0.35rem 0.85rem 0.35rem 0.7rem;
   border-radius: 999px;
-  border: 1px solid rgba(var(--ink-rgb), 0.1);
-  background: color-mix(in srgb, var(--accent) 16%, var(--surface));
-  font-family: var(--font-display);
-  font-size: 0.85rem;
-  font-weight: 700;
-  letter-spacing: -0.03em;
+  border: 1px solid rgba(var(--ink-rgb), 0.08);
+  background: color-mix(in srgb, var(--accent) 14%, var(--surface));
   color: var(--ink);
   text-decoration: none;
-  white-space: nowrap;
-  line-height: 1;
+  cursor: pointer;
+  font: inherit;
 }
 
-.home-bar__rank:hover,
-.home-bar__rank:focus-visible {
-  background: color-mix(in srgb, var(--accent) 18%, var(--surface));
+.home-bar__you:hover,
+.home-bar__you:focus-visible {
+  background: color-mix(in srgb, var(--accent) 22%, var(--surface));
   outline: none;
+}
+
+.home-bar__you--empty {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--muted);
+  background: rgba(var(--surface-rgb), 0.92);
+}
+
+.home-bar__you-rank {
+  flex: none;
+  font-family: var(--font-display);
+  font-size: 0.92rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--accent);
+}
+
+.home-bar__you-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.84rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
 }
 
 .home-bar__more {
   position: relative;
-  display: none;
+  flex: none;
+}
+
+.home-bar__menu-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.55rem;
+  height: 2.55rem;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid rgba(var(--ink-rgb), 0.08);
+  background: rgba(var(--surface-rgb), 0.92);
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.home-bar__menu-btn svg {
+  width: 1.15rem;
+  height: 1.15rem;
+}
+
+.home-bar__menu-btn:hover,
+.home-bar__menu-btn:focus-visible {
+  background: color-mix(in srgb, var(--accent) 18%, var(--surface));
+  outline: none;
 }
 
 .home-bar__menu {
@@ -1206,67 +1276,49 @@ img {
   outline: none;
 }
 
-.home-bar__icon,
-.home-bar__nav-icon,
-.home-bar .player-badge--icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 2.65rem;
-  height: 2.65rem;
-  padding: 0;
-  border-radius: 999px;
-  border: 1px solid rgba(var(--ink-rgb), 0.08);
-  background: rgba(var(--surface-rgb), 0.92);
-  color: var(--ink);
-  cursor: pointer;
-  appearance: none;
-  text-decoration: none;
+.home-bar__menu-mobile {
+  display: none;
 }
 
-.home-bar__icon svg,
-.home-bar__nav-icon svg,
-.home-bar .player-badge--icon svg {
-  width: 1.2rem;
-  height: 1.2rem;
+.home-bar__player {
+  position: absolute;
+  right: 0;
+  top: 0;
+  width: 2.55rem;
+  height: 2.55rem;
+  pointer-events: none;
 }
 
-.home-bar__icon:hover,
-.home-bar__icon:focus-visible,
-.home-bar__nav-icon:hover,
-.home-bar__nav-icon:focus-visible,
-.home-bar .player-badge--icon:hover,
-.home-bar .player-badge--icon:focus-visible {
-  background: color-mix(in srgb, var(--accent) 18%, var(--surface));
-  outline: none;
+.home-bar__player .player-badge {
+  display: none !important;
+}
+
+.home-bar__player .player-badge__panel {
+  pointer-events: auto;
+}
+
+.home-bar .player-badge-wrap {
+  justify-content: flex-end;
+  min-width: 0;
 }
 
 @media (max-width: 640px) {
-  .home-bar__nav-icon,
-  .home-bar__theme {
-    display: none !important;
+  .home-bar__links {
+    display: none;
   }
 
-  .home-bar__more {
+  .home-bar__menu-mobile {
     display: block;
   }
 
-  .home-bar__player {
-    display: block;
-    position: absolute;
-    right: 0;
-    top: 0;
-    width: 2.65rem;
-    height: 2.65rem;
-    pointer-events: none;
+  .home-bar__you {
+    max-width: 8.5rem;
+    padding: 0.32rem 0.7rem;
+    min-height: 2.4rem;
   }
 
-  .home-bar__player .player-badge {
-    display: none !important;
-  }
-
-  .home-bar__player .player-badge__panel {
-    pointer-events: auto;
+  .home-bar__you-name {
+    font-size: 0.78rem;
   }
 }
 
@@ -1296,15 +1348,6 @@ img {
   outline: none;
 }
 
-.home-bar .theme-toggle {
-  width: 2.65rem;
-  height: 2.65rem;
-}
-
-.home-bar .player-badge--named {
-  background: color-mix(in srgb, var(--accent) 18%, var(--surface));
-}
-
 @media (max-width: 420px) {
   .home-bar {
     padding: 0.32rem 0.35rem 0.32rem 0.85rem;
@@ -1314,16 +1357,9 @@ img {
     font-size: 1.05rem;
   }
 
-  .home-bar__rank {
-    min-width: 2.5rem;
-    height: 2.5rem;
-    font-size: 0.78rem;
-  }
-
-  .home-bar__icon,
-  .home-bar .player-badge--icon {
-    width: 2.5rem;
-    height: 2.5rem;
+  .home-bar__menu-btn {
+    width: 2.4rem;
+    height: 2.4rem;
   }
 }
 

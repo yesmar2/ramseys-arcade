@@ -6,7 +6,6 @@ import { useGlobalRank } from '../lib/globalRank'
 import { normalizePlayerName } from '../lib/leaderboard'
 import { currentTheme, THEME_EVENT, toggleTheme, type Theme } from '../lib/theme'
 import { PlayerBadge, type PlayerBadgeHandle } from './PlayerBadge'
-import { ThemeToggle } from './ThemeToggle'
 
 export function HomeBar() {
   const { rank } = useGlobalRank()
@@ -41,79 +40,56 @@ export function HomeBar() {
     }
   }, [menuOpen])
 
-  const rankLabel = rank != null ? `#${rank}` : playerName ? '—' : null
+  const accountLabel = playerName
+    ? signedIn
+      ? `${playerName} · Account`
+      : 'Edit gamer tag'
+    : signedIn
+      ? account?.email ?? 'Account'
+      : 'Set gamer tag'
 
   return (
     <nav className="home-bar" aria-label="Site">
-      <a className="home-bar__brand" href="#/">
-        Archiv<span>ade</span>
-      </a>
-      <div className="home-bar__icons">
-        {rankLabel ? (
+      <div className="home-bar__start">
+        <a className="home-bar__brand" href="#/">
+          Archiv<span>ade</span>
+        </a>
+        <div className="home-bar__links" aria-label="Primary">
+          <a className="home-bar__link" href={leaderboardHref()}>
+            Rankings
+          </a>
+          <a className="home-bar__link" href="#/tournaments">
+            Tournaments
+          </a>
+        </div>
+      </div>
+
+      <div className="home-bar__end">
+        {playerName ? (
           <a
-            className="home-bar__rank"
+            className="home-bar__you"
             href={rankHref()}
-            aria-label={rank != null ? `Your profile, rank ${rank}` : 'Your profile'}
             title={rank != null ? `Your profile · #${rank}` : 'Your profile'}
           >
-            {rankLabel}
+            {rank != null ? (
+              <span className="home-bar__you-rank">#{rank}</span>
+            ) : null}
+            <span className="home-bar__you-name">{playerName}</span>
           </a>
-        ) : null}
-        <a
-          className="home-bar__nav-icon"
-          href={leaderboardHref()}
-          aria-label="Global Rankings"
-          title="Global Rankings"
-        >
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path
-              d="M8 21h8M12 17v4M7 4h10v3a5 5 0 0 1-5 5h0a5 5 0 0 1-5-5V4z"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.8"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-            <path
-              d="M17 6h2.2a1.8 1.8 0 0 1 0 3.6H17M7 6H4.8a1.8 1.8 0 0 0 0 3.6H7"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.8"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-        </a>
-        <a
-          className="home-bar__nav-icon"
-          href="#/tournaments"
-          aria-label="Tournaments"
-          title="Tournaments"
-        >
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path
-              d="M5 5v16"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.8"
-              strokeLinecap="round"
-            />
-            <path
-              d="M5 5h12l-2.4 3.4L17 12H5"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.8"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-        </a>
-        <ThemeToggle className="home-bar__icon home-bar__theme" />
+        ) : (
+          <button
+            type="button"
+            className="home-bar__you home-bar__you--empty"
+            onClick={() => playerRef.current?.openEdit()}
+          >
+            Set gamer tag
+          </button>
+        )}
 
         <div className="home-bar__more" ref={menuRef}>
           <button
             type="button"
-            className="home-bar__icon"
+            className="home-bar__menu-btn"
             aria-label="More"
             aria-expanded={menuOpen}
             aria-haspopup="menu"
@@ -129,13 +105,15 @@ export function HomeBar() {
           {menuOpen ? (
             <div className="home-bar__menu" role="menu">
               <a
+                className="home-bar__menu-mobile"
                 role="menuitem"
                 href={leaderboardHref()}
                 onClick={() => setMenuOpen(false)}
               >
-                Global Rankings
+                Rankings
               </a>
               <a
+                className="home-bar__menu-mobile"
                 role="menuitem"
                 href="#/tournaments"
                 onClick={() => setMenuOpen(false)}
@@ -160,19 +138,15 @@ export function HomeBar() {
                   playerRef.current?.openEdit()
                 }}
               >
-                {playerName
-                  ? signedIn
-                    ? `${playerName} · Account`
-                    : playerName
-                  : signedIn
-                    ? account?.email ?? 'Account'
-                    : 'Set gamer tag'}
+                {accountLabel}
               </button>
             </div>
           ) : null}
         </div>
 
-        <PlayerBadge ref={playerRef} icon className="home-bar__player" />
+        <div className="home-bar__player">
+          <PlayerBadge ref={playerRef} icon className="home-bar__player-badge" />
+        </div>
       </div>
     </nav>
   )
