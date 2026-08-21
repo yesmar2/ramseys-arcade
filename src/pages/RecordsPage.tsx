@@ -17,7 +17,6 @@ import {
 import { flashYouRow } from '../lib/boardGap'
 import { usePlayerName } from '../hooks/usePlayerName'
 import {
-  PERIOD_LABELS,
   normalizePlayerName,
   type LeaderboardEntry,
   type LeaderboardGame,
