@@ -5,7 +5,6 @@ import {
   PeriodSwitcher,
 } from '../components/BoardChrome'
 import { Footer } from '../components/Footer'
-import { GameDeviceBadge } from '../components/GameDeviceBadge'
 import { GameTile } from '../components/GameTile'
 import { GlobalRankList } from '../components/GlobalRankList'
 import { HomeBar } from '../components/HomeBar'
@@ -211,24 +210,18 @@ function GlobalLeaderboardsHub() {
             <h2 id="lb-games-heading" className="lb-games__title">
               Game boards
             </h2>
-            <ul className="lb-games__list">
-              {LEADERBOARD_GAMES.map((slug) => {
+            <ul className="game-grid game-grid--playable lb-other-grid">
+              {LEADERBOARD_GAMES.map((slug, index) => {
                 const game = getGame(slug)
+                if (!game) return null
                 return (
-                  <li key={slug}>
-                    <a
-                      className="lb-games__link"
-                      href={leaderboardHref(slug, 'all')}
-                      style={
-                        {
-                          '--tab-accent': game?.accent ?? 'var(--accent)',
-                        } as CSSProperties
-                      }
-                    >
-                      <span className="lb-games__name">{game?.name ?? slug}</span>
-                      {game ? <GameDeviceBadge game={game} /> : null}
-                    </a>
-                  </li>
+                  <GameTile
+                    key={slug}
+                    game={game}
+                    index={index}
+                    href={leaderboardHref(slug, 'all')}
+                    showOnAllDevices
+                  />
                 )
               })}
             </ul>
