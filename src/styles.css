@@ -5416,12 +5416,27 @@ a.game-hud__board {
   .hero__content,
   .games__intro,
   .game-tile,
-  .hero__orb {
+  .hero__orb,
+  .home-ambient__orb,
+  .tile-art__drift,
+  .tile-art__bob,
+  .tile-art__sway,
+  .tile-art__slither,
+  .tile-art__pulse,
+  .tile-art__pop,
+  .tile-art__spin-slow,
+  .tile-art__thrust,
+  .tile-art__flame {
     animation: none;
   }
 
   .game-tile:hover,
   .game-tile:focus-visible {
+    transform: none;
+  }
+
+  .game-tile:hover .game-tile__art-svg,
+  .game-tile:focus-visible .game-tile__art-svg {
     transform: none;
   }
 }
