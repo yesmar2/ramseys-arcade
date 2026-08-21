@@ -70,6 +70,10 @@ function App() {
   const onGameScreen = isGameScreen(route)
 
   useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
+  }, [route])
+
+  useEffect(() => {
     void syncPlayerIdentity()
     const sync = () => {
       void syncPlayerIdentity()

@@ -30,16 +30,16 @@ export function YouBoardStrip({
       className={`you-strip${sticky ? ' you-strip--sticky' : ''}`}
       style={style}
       role="status"
-      aria-label={`Your standing: rank ${rank}`}
+      aria-label={`Your standing: rank ${rank}, ${valueLabel} ${String(value)}`}
     >
-      <div className="you-strip__main">
-        <div className="you-strip__stat">
-          <span className="you-strip__label">Rank</span>
-          <strong>#{rank}</strong>
-        </div>
-        <div className="you-strip__stat">
+      <div className="you-strip__rank" aria-hidden="true">
+        <span className="you-strip__hash">#</span>
+        <span className="you-strip__num">{rank}</span>
+      </div>
+      <div className="you-strip__meta">
+        <div className="you-strip__score-line">
           <span className="you-strip__label">{valueLabel}</span>
-          <strong>{value}</strong>
+          <strong className="you-strip__value">{value}</strong>
         </div>
         {gap ? <p className="you-strip__gap">{gap}</p> : null}
       </div>
