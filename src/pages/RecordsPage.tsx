@@ -41,7 +41,7 @@ function recordsIndexTitle(gameName: string) {
 
 function recordsEmptyDetail(game: string, gameName: string) {
   if (game === 'snake') {
-    return 'Reach score milestones in-game and times will show up here.'
+    return 'Reach length milestones in-game and times will show up here.'
   }
   if (game === 'asteroids') {
     return 'Clear a wave in-game and the board will show up here.'
@@ -51,7 +51,8 @@ function recordsEmptyDetail(game: string, gameName: string) {
 
 function recordBoardEmptyDetail(game: string, gameName: string, label: string) {
   if (game === 'snake') {
-    return `Reach ${label.replace(/^Fastest to /i, '')} points in ${gameName} to set the first record.`
+    const length = label.replace(/^Fastest to length /i, '')
+    return `Grow to length ${length} in ${gameName} to set the first record.`
   }
   if (game === 'asteroids') {
     return `Clear this wave in ${gameName} to set the first record.`

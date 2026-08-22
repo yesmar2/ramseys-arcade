@@ -11,9 +11,9 @@ import { usePlayerName } from '../../hooks/usePlayerName'
 import { getPersonalBest } from '../../lib/personalBest'
 import { normalizePlayerName } from '../../lib/leaderboard'
 import {
-  SNAKE_MILESTONE_MAX,
-  SNAKE_MILESTONE_STEP,
-  submitSnakeFastestTo,
+  SNAKE_LENGTH_MILESTONE_MAX,
+  SNAKE_LENGTH_MILESTONE_STEP,
+  submitSnakeFastestLength,
 } from '../../lib/records'
 import { useTournamentPlay } from '../../tournaments/TournamentPlayContext'
 import {
@@ -108,15 +108,15 @@ export function SnakeGame() {
     if (!(elapsedMs > 0)) return
 
     for (
-      let milestone = SNAKE_MILESTONE_STEP;
-      milestone <= SNAKE_MILESTONE_MAX;
-      milestone += SNAKE_MILESTONE_STEP
+      let milestone = SNAKE_LENGTH_MILESTONE_STEP;
+      milestone <= SNAKE_LENGTH_MILESTONE_MAX;
+      milestone += SNAKE_LENGTH_MILESTONE_STEP
     ) {
-      if (ui.score < milestone || milestonesRef.current.has(milestone)) continue
+      if (ui.length < milestone || milestonesRef.current.has(milestone)) continue
       milestonesRef.current.add(milestone)
-      void submitSnakeFastestTo(milestone, elapsedMs, playerName)
+      void submitSnakeFastestLength(milestone, elapsedMs, playerName)
     }
-  }, [ui.phase, ui.score, playerName, tournament])
+  }, [ui.phase, ui.length, playerName, tournament])
 
   useEffect(() => {
     const sync = () => {

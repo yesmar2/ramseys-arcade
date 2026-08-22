@@ -13,8 +13,8 @@ import {
 } from './leaderboard'
 
 export const ASTEROIDS_WAVE_RECORD_MAX = 20
-export const SNAKE_MILESTONE_MAX = 200
-export const SNAKE_MILESTONE_STEP = 10
+export const SNAKE_LENGTH_MILESTONE_MAX = 100
+export const SNAKE_LENGTH_MILESTONE_STEP = 10
 
 export type RecordDirection = 'lower' | 'higher'
 
@@ -100,39 +100,39 @@ export function parseAsteroidsWaveFromRecordId(recordId: string): number | null 
   return wave
 }
 
-export function snakeFastestRecordId(score: number): string | null {
+export function snakeFastestLengthRecordId(length: number): string | null {
   if (
-    !Number.isInteger(score) ||
-    score < SNAKE_MILESTONE_STEP ||
-    score > SNAKE_MILESTONE_MAX ||
-    score % SNAKE_MILESTONE_STEP !== 0
+    !Number.isInteger(length) ||
+    length < SNAKE_LENGTH_MILESTONE_STEP ||
+    length > SNAKE_LENGTH_MILESTONE_MAX ||
+    length % SNAKE_LENGTH_MILESTONE_STEP !== 0
   ) {
     return null
   }
-  return `fastest-to-${score}`
+  return `fastest-length-${length}`
 }
 
-export function parseSnakeMilestoneFromRecordId(recordId: string): number | null {
-  const match = /^fastest-to-(\d+)$/.exec(recordId)
+export function parseSnakeLengthFromRecordId(recordId: string): number | null {
+  const match = /^fastest-length-(\d+)$/.exec(recordId)
   if (!match) return null
-  const score = Number(match[1])
+  const length = Number(match[1])
   if (
-    !Number.isInteger(score) ||
-    score < SNAKE_MILESTONE_STEP ||
-    score > SNAKE_MILESTONE_MAX ||
-    score % SNAKE_MILESTONE_STEP !== 0
+    !Number.isInteger(length) ||
+    length < SNAKE_LENGTH_MILESTONE_STEP ||
+    length > SNAKE_LENGTH_MILESTONE_MAX ||
+    length % SNAKE_LENGTH_MILESTONE_STEP !== 0
   ) {
     return null
   }
-  return score
+  return length
 }
 
 export function recordNavShortLabel(row: { id: string; label: string }): string {
   if (row.id === ASTEROIDS_HIGHEST_COMBO_ID) return 'Combo'
   const wave = parseAsteroidsWaveFromRecordId(row.id)
   if (wave != null) return `W${wave}`
-  const milestone = parseSnakeMilestoneFromRecordId(row.id)
-  if (milestone != null) return String(milestone)
+  const length = parseSnakeLengthFromRecordId(row.id)
+  if (length != null) return `L${length}`
   return row.label
 }
 
@@ -268,13 +268,13 @@ export async function submitAsteroidsHighestCombo(
   }
 }
 
-/** Best-effort fastest-to milestone submit (elapsed ms from run start). */
-export async function submitSnakeFastestTo(
-  score: number,
+/** Best-effort fastest-to-length submit (elapsed ms from run start). */
+export async function submitSnakeFastestLength(
+  length: number,
   elapsedMs: number,
   name: string,
 ): Promise<{ improved: boolean; rank: number | null } | null> {
-  const recordId = snakeFastestRecordId(score)
+  const recordId = snakeFastestLengthRecordId(length)
   const cleaned = normalizePlayerName(name)
   if (!recordId || !cleaned || !(elapsedMs > 0)) return null
   const ms = Math.max(1, Math.round(elapsedMs))
