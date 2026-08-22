@@ -8,9 +8,8 @@ import {
   GameBoardPicker,
   type GameBoardSummary,
 } from '../components/GameBoardPicker'
-import { GameBoardSwitcher } from '../components/GameBoardSwitcher'
 import { Footer } from '../components/Footer'
-import { GameThumbArt } from '../components/GameThumbArt'
+import { GameLobbyArt } from '../components/GameLobbyArt'
 import { GlobalRankList } from '../components/GlobalRankList'
 import { HomeBar } from '../components/HomeBar'
 import { LeaderboardList } from '../components/LeaderboardList'
@@ -322,7 +321,7 @@ function GameBoardView({
       <main className="lb-page">
         <HomeBar />
         <div
-          className="lb-page__inner lb-page__inner--board-detail"
+          className="lb-page__inner game-lobby"
           style={
             {
               '--period-accent': accent,
@@ -330,26 +329,20 @@ function GameBoardView({
             } as CSSProperties
           }
         >
-          <header className="lb-page__header lb-page__header--compact">
-            <a className="rank-page__back" href={leaderboardHref()}>
-              ← All boards
-            </a>
-            <div className="lb-board-detail__hero">
-              <GameThumbArt
-                slug={active}
-                accent={accent}
-                className="lb-board-detail__thumb"
-              />
-              <div className="lb-board-detail__intro">
-                <h1 className="lb-page__title">{activeGame?.name ?? active}</h1>
-                <a className="lb-board-detail__hub" href={gameHref(active)}>
-                  Game hub →
-                </a>
-              </div>
-            </div>
-          </header>
+          <a className="rank-page__back" href={leaderboardHref()}>
+            ← All boards
+          </a>
 
-          <GameBoardSwitcher activeSlug={active} period={period} />
+          {activeGame ? (
+            <GameLobbyArt slug={active} accent={accent} />
+          ) : null}
+
+          <header className="game-lobby__header">
+            <h1 className="game-lobby__title">{activeGame?.name ?? active}</h1>
+            <a className="game-lobby__hub-link" href={gameHref(active)}>
+              Game hub →
+            </a>
+          </header>
 
           <PeriodSwitcher
             period={period}
