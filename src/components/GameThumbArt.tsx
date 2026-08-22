@@ -8,10 +8,6 @@ type GameThumbArtProps = {
   className?: string
 }
 
-type ThumbProps = {
-  accent?: string
-}
-
 function ThumbSvg({ children }: { children: ReactNode }) {
   return (
     <svg
@@ -35,11 +31,8 @@ function shape(props: ReturnType<typeof pastel>, strokeWidth = 1.5) {
   }
 }
 
-function gameShape(accent: string | undefined, fallbackHue: number, mix = 48) {
-  return shape(accent ? accentPastel(accent, mix) : pastel(fallbackHue, 56, mix), 1.5)
-}
-
-function AsteroidsThumb({ accent }: ThumbProps) {
+/** Single-accent thumbs (Patriot, Asteroids, Centroid). */
+function AsteroidsThumb({ accent }: { accent?: string }) {
   const a = accent ?? '#5a8fd4'
   const shipFill = `color-mix(in srgb, ${a} 28%, var(--playfield))`
 
@@ -55,7 +48,7 @@ function AsteroidsThumb({ accent }: ThumbProps) {
       <path
         d="M-3.5 7.5 L0 13 L3.5 7.5"
         fill="none"
-        stroke={`color-mix(in srgb, ${a} 55%, #f5b942)`}
+        stroke="#f5b942"
         strokeWidth="1.6"
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -64,7 +57,7 @@ function AsteroidsThumb({ accent }: ThumbProps) {
   )
 }
 
-function PatriotThumb({ accent }: ThumbProps) {
+function PatriotThumb({ accent }: { accent?: string }) {
   const ground = 34
   const x = 32
   const blocks = [
@@ -72,34 +65,34 @@ function PatriotThumb({ accent }: ThumbProps) {
     { dx: -2, w: 5, h: 17 },
     { dx: 4, w: 5, h: 13 },
   ]
-  const blockShape = gameShape(accent, HUE.rose, 44)
+  const block = accent
+    ? accentPastel(accent, 44)
+    : pastel(HUE.rose, 54, 42)
 
   return (
     <>
-      {blocks.map((block) => (
+      {blocks.map((b) => (
         <rect
-          key={block.dx}
-          x={x + block.dx}
-          y={ground - block.h}
-          width={block.w}
-          height={block.h}
+          key={b.dx}
+          x={x + b.dx}
+          y={ground - b.h}
+          width={b.w}
+          height={b.h}
           rx="1"
-          {...blockShape}
-          strokeWidth={1.4}
+          {...shape(block, 1.4)}
         />
       ))}
     </>
   )
 }
 
-function SnakeThumb({ accent }: ThumbProps) {
-  const a = accent ?? '#3ecf8e'
+function SnakeThumb() {
   const cells = [
-    { cx: 18, cy: 24, mix: 42 },
-    { cx: 28, cy: 24, mix: 48 },
-    { cx: 38, cy: 24, mix: 54 },
-    { cx: 38, cy: 14, mix: 60 },
-    { cx: 48, cy: 14, mix: 66 },
+    { cx: 18, cy: 24, hue: 208 },
+    { cx: 28, cy: 24, hue: 198 },
+    { cx: 38, cy: 24, hue: 188 },
+    { cx: 38, cy: 14, hue: 178 },
+    { cx: 48, cy: 14, hue: 168 },
   ]
 
   return (
@@ -110,7 +103,7 @@ function SnakeThumb({ accent }: ThumbProps) {
           cx={cell.cx}
           cy={cell.cy}
           r="4.2"
-          {...shape(accentPastel(a, cell.mix), 1.4)}
+          {...shape(pastel(cell.hue, 60, 50), 1.4)}
         />
       ))}
       <circle cx="49.2" cy="12.6" r="0.9" fill="#fff" />
@@ -121,24 +114,24 @@ function SnakeThumb({ accent }: ThumbProps) {
   )
 }
 
-function PopThumb({ accent }: ThumbProps) {
-  const a = accent ?? '#4aa8e8'
+function PopThumb() {
+  const hues = [198, 172, 348, 272, 128, 38, 198, 172, 348]
+  const live = new Set([5])
   const gap = 8
   const r = 3.4
   const originX = 32 - gap
   const originY = 12
-  const slots = Array.from({ length: 9 }, (_, i) => i)
 
   return (
     <>
-      {slots.map((i) => {
+      {hues.map((hue, i) => {
         const col = i % 3
         const row = Math.floor(i / 3)
         const cx = originX + col * gap
         const cy = originY + row * gap
-        const on = i === 5
-        const mix = on ? 72 : 24
-        const p = accentPastel(a, mix)
+        const sat = i === 5 ? 62 : 54
+        const on = live.has(i)
+        const p = pastel(hue, sat, on ? 78 : 22)
         return (
           <circle
             key={i}
@@ -147,7 +140,7 @@ function PopThumb({ accent }: ThumbProps) {
             r={r}
             fill={p.fill}
             stroke={p.stroke}
-            strokeOpacity={on ? 1 : 0.65}
+            strokeOpacity={on ? 1 : 0.7}
             strokeWidth={on ? 1.5 : 1.2}
           />
         )
@@ -156,60 +149,49 @@ function PopThumb({ accent }: ThumbProps) {
   )
 }
 
-function StackerThumb({ accent }: ThumbProps) {
-  const a = accent ?? '#4aa8e8'
+function StackerThumb() {
   const baseCy = 28
   const cx = 32
-  const layers = [
-    { w: 24, d: 24, y: 0 },
-    { w: 20, d: 20, y: -5 },
-    { w: 16, d: 16, y: -10 },
-    { w: 16, d: 16, y: -15, x: 6 },
-  ]
 
   return (
     <>
-      {layers.map((layer, i) => (
-        <g key={i} transform={`translate(0, ${layer.y})`}>
-          <IsoSlab
-            cx={cx + (layer.x ?? 0)}
-            cy={baseCy}
-            w={layer.w}
-            d={layer.d}
-            h={5}
-            hue={HUE.teal}
-            accent={a}
-          />
-        </g>
-      ))}
+      <IsoSlab cx={cx} cy={baseCy} w={24} d={24} h={5} hue={HUE.teal} />
+      <g transform="translate(0, -5)">
+        <IsoSlab cx={cx} cy={baseCy} w={20} d={20} h={5} hue={HUE.sky} />
+      </g>
+      <g transform="translate(0, -10)">
+        <IsoSlab cx={cx} cy={baseCy} w={16} d={16} h={5} hue={HUE.violet} />
+      </g>
+      <g transform="translate(0, -15)">
+        <IsoSlab cx={cx} cy={baseCy} x={6} w={16} d={16} h={5} hue={HUE.gold} />
+      </g>
     </>
   )
 }
 
-function DeadCenterThumb({ accent }: ThumbProps) {
-  const a = accent ?? '#4aa8e8'
-  const tri = accentPastel(a, 46)
+function DeadCenterThumb({ accent }: { accent?: string }) {
+  const tri = accent ? accentPastel(accent, 46) : pastel(HUE.sky, 56, 46)
+  const dot = accent ?? '#2eb8a0'
 
   return (
     <>
       <path d="M20 30 L32 10 L44 30 Z" {...shape(tri, 1.8)} />
-      <circle cx="32" cy="22" r="2.2" fill={a} />
+      <circle cx="32" cy="22" r="2.2" fill={dot} />
     </>
   )
 }
 
-function SimonThumb({ accent }: ThumbProps) {
-  const a = accent ?? '#8a6ad4'
+function SimonThumb() {
   const r = 5.5
   const gap = 3
   const cx = 32
   const cy = 20
   const d = r + gap / 2
   const pads = [
-    { cx: cx - d, cy: cy - d, lit: false, mix: 34 },
-    { cx: cx + d, cy: cy - d, lit: true, mix: 62 },
-    { cx: cx - d, cy: cy + d, lit: false, mix: 40 },
-    { cx: cx + d, cy: cy + d, lit: false, mix: 36 },
+    { cx: cx - d, cy: cy - d, hue: HUE.sky, lit: false },
+    { cx: cx + d, cy: cy - d, hue: HUE.violet, lit: true },
+    { cx: cx - d, cy: cy + d, hue: HUE.gold, lit: false },
+    { cx: cx + d, cy: cy + d, hue: HUE.rose, lit: false },
   ]
 
   return (
@@ -220,38 +202,35 @@ function SimonThumb({ accent }: ThumbProps) {
           cx={pad.cx}
           cy={pad.cy}
           r={pad.lit ? r * 1.04 : r}
-          {...shape(accentPastel(a, pad.mix), 1.6)}
+          {...shape(pastel(pad.hue, 56, pad.lit ? 62 : 40), 1.6)}
         />
       ))}
     </>
   )
 }
 
-const thumbBySlug: Record<string, (props: ThumbProps) => ReactNode> = {
+const thumbBySlug: Record<
+  string,
+  (props: { accent?: string }) => ReactNode
+> = {
   asteroids: AsteroidsThumb,
   patriot: PatriotThumb,
-  snake: SnakeThumb,
-  pop: PopThumb,
-  stacker: StackerThumb,
+  snake: () => <SnakeThumb />,
+  pop: () => <PopThumb />,
+  stacker: () => <StackerThumb />,
   'dead-center': DeadCenterThumb,
-  simon: SimonThumb,
+  simon: () => <SimonThumb />,
 }
 
 export function GameThumbArt({ slug, accent, className }: GameThumbArtProps) {
   const Thumb = thumbBySlug[slug]
   const style = accent
-    ? ({
-        '--thumb-accent': accent,
-        '--tile-accent': accent,
-      } as CSSProperties)
+    ? ({ '--thumb-accent': accent } as CSSProperties)
     : undefined
 
   return (
     <div className={`game-thumb${className ? ` ${className}` : ''}`} style={style}>
-      <ThumbSvg>
-        <rect className="game-thumb__bg" width="64" height="40" />
-        {Thumb ? <Thumb accent={accent} /> : null}
-      </ThumbSvg>
+      <ThumbSvg>{Thumb ? <Thumb accent={accent} /> : null}</ThumbSvg>
     </div>
   )
 }
