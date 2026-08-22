@@ -1,12 +1,10 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { useEffect, useState, type CSSProperties } from 'react'
 import {
   BoardEmpty,
   BoardSkeleton,
-  PeriodSwitcher,
 } from '../components/BoardChrome'
 import { Footer } from '../components/Footer'
 import { GameLobbyArt } from '../components/GameLobbyArt'
-import { GameTile } from '../components/GameTile'
 import { HomeBar } from '../components/HomeBar'
 import { LeaderboardList } from '../components/LeaderboardList'
 import {
@@ -16,24 +14,26 @@ import {
 } from '../data/games'
 import { scoringFor } from '../data/scoring'
 import { useBoardRecord } from '../hooks/useBoardRecord'
-import { gameHref, gamePlayHref, leaderboardHref, recordsHref } from '../hooks/useHashRoute'
+import {
+  gamePlayHref,
+  globalRankingsHref,
+  leaderboardHref,
+  recordsHref,
+} from '../hooks/useHashRoute'
 import { usePersonalBest } from '../hooks/usePersonalBest'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { useDeviceType } from '../lib/device'
-import { flashYouRow } from '../lib/boardGap'
 import { gameHasRecords } from '../lib/records'
 import {
   getLeaderboard,
   LEADERBOARD_GAMES,
   normalizePlayerName,
-  PERIOD_LABELS,
   type LeaderboardEntry,
   type LeaderboardGame,
-  type LeaderboardPeriod,
   type YouEntry,
 } from '../lib/leaderboard'
 
-const INITIAL_ROWS = 10
+const PREVIEW_ROWS = 5
 
 function isBoardGame(slug: string): slug is LeaderboardGame {
   return (LEADERBOARD_GAMES as readonly string[]).includes(slug)
@@ -41,47 +41,24 @@ function isBoardGame(slug: string): slug is LeaderboardGame {
 
 type GameHubPageProps = {
   slug: string
-  period?: LeaderboardPeriod
 }
 
-export function GameHubPage({ slug, period: periodFromRoute }: GameHubPageProps) {
+export function GameHubPage({ slug }: GameHubPageProps) {
   const game = getGame(slug)
   const device = useDeviceType()
   const playerName = normalizePlayerName(usePlayerName())
   const personalBest = usePersonalBest(slug)
   const allTime = useBoardRecord(slug)
-  const [period, setPeriod] = useState<LeaderboardPeriod>(
-    periodFromRoute ?? 'daily',
-  )
   const [entries, setEntries] = useState<LeaderboardEntry[]>([])
   const [you, setYou] = useState<YouEntry | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [shown, setShown] = useState(INITIAL_ROWS)
-  const pulsed = useRef(false)
 
   const canPlay = game ? gamePlayableOn(game, device) : false
   const comingSoon = Boolean(game?.comingSoon)
   const scoring = scoringFor(slug)
   const boardSlug: LeaderboardGame | null = isBoardGame(slug) ? slug : null
   const accent = game?.accent ?? '#2eb8a0'
-
-  const otherGames = useMemo(
-    () => (boardSlug ? LEADERBOARD_GAMES.filter((s) => s !== boardSlug) : []),
-    [boardSlug],
-  )
-
-  useEffect(() => {
-    setPeriod(periodFromRoute ?? 'daily')
-  }, [periodFromRoute, slug])
-
-  useEffect(() => {
-    if (!boardSlug) return
-    const canonical = gameHref(slug, period)
-    if (window.location.hash !== canonical) {
-      window.history.replaceState(null, '', canonical)
-    }
-  }, [slug, period, boardSlug])
 
   useEffect(() => {
     if (!boardSlug) {
@@ -94,9 +71,7 @@ export function GameHubPage({ slug, period: periodFromRoute }: GameHubPageProps)
     let cancelled = false
     setLoading(true)
     setError(null)
-    setShown(INITIAL_ROWS)
-    pulsed.current = false
-    getLeaderboard(boardSlug, period, playerName || undefined)
+    getLeaderboard(boardSlug, 'daily', playerName || undefined)
       .then((board) => {
         if (cancelled) return
         setEntries(board.entries)
@@ -114,17 +89,7 @@ export function GameHubPage({ slug, period: periodFromRoute }: GameHubPageProps)
     return () => {
       cancelled = true
     }
-  }, [boardSlug, period, playerName])
-
-  useEffect(() => {
-    if (loading || !you || pulsed.current) return
-    pulsed.current = true
-    window.requestAnimationFrame(() => flashYouRow())
-  }, [loading, you, boardSlug, period])
-
-  const selectPeriod = (next: LeaderboardPeriod) => {
-    window.location.hash = gameHref(slug, next)
-  }
+  }, [boardSlug, playerName])
 
   if (!game) {
     return (
@@ -149,12 +114,7 @@ export function GameHubPage({ slug, period: periodFromRoute }: GameHubPageProps)
         <HomeBar />
         <div
           className="lb-page__inner game-lobby"
-          style={
-            {
-              '--period-accent': accent,
-              '--board-accent': accent,
-            } as CSSProperties
-          }
+          style={{ '--board-accent': accent } as CSSProperties}
         >
           <a className="rank-page__back" href="#/">
             ← Games
@@ -196,20 +156,13 @@ export function GameHubPage({ slug, period: periodFromRoute }: GameHubPageProps)
 
           {boardSlug ? (
             <>
-              <PeriodSwitcher
-                period={period}
-                accent={game.accent}
-                hrefFor={(p) => gameHref(slug, p)}
-                onSelect={selectPeriod}
-              />
-
               <section
-                key={`${boardSlug}-${period}`}
                 className="lb-board lb-board--fade"
-                aria-label={`${game.name} ${PERIOD_LABELS[period]} leaderboard`}
+                aria-label={`${game.name} daily scores preview`}
               >
+                <h2 className="game-lobby__h">Today&apos;s board</h2>
                 {loading ? (
-                  <BoardSkeleton />
+                  <BoardSkeleton rows={PREVIEW_ROWS} />
                 ) : error ? (
                   <BoardEmpty
                     title="Couldn’t load scores"
@@ -217,10 +170,10 @@ export function GameHubPage({ slug, period: periodFromRoute }: GameHubPageProps)
                   />
                 ) : entries.length === 0 && !you ? (
                   <BoardEmpty
-                    title={`No ${PERIOD_LABELS[period].toLowerCase()} scores yet`}
+                    title="No daily scores yet"
                     detail={
                       canPlay
-                        ? `Be the first on the ${game.name} board.`
+                        ? `Be the first on today’s ${game.name} board.`
                         : 'Open it on a supported device to post a score.'
                     }
                     action={
@@ -241,33 +194,16 @@ export function GameHubPage({ slug, period: periodFromRoute }: GameHubPageProps)
                     you={you}
                     playerName={playerName}
                     accent={accent}
-                    shown={shown}
+                    shown={PREVIEW_ROWS}
                   />
                 )}
 
-                {!loading && !error && entries.length > shown ? (
-                  <button
-                    type="button"
-                    className="lb-more"
-                    onClick={() => setShown(entries.length)}
-                  >
-                    Show top {entries.length}
-                  </button>
-                ) : null}
-
-                {canPlay && !(loading || error) && (entries.length > 0 || you) ? (
-                  <a
-                    className="lb-play"
-                    href={playHref}
-                    style={{ background: accent }}
-                  >
-                    Play {game.name}
-                  </a>
-                ) : !canPlay && !comingSoon ? (
-                  <p className="lb-device-note lb-device-note--footer" role="note">
-                    {deviceNote} Scores still count toward global rank.
-                  </p>
-                ) : null}
+                <a
+                  className="game-lobby__all-boards"
+                  href={leaderboardHref(boardSlug, 'daily')}
+                >
+                  Full leaderboards
+                </a>
               </section>
 
               {gameHasRecords(boardSlug) ? (
@@ -280,30 +216,7 @@ export function GameHubPage({ slug, period: periodFromRoute }: GameHubPageProps)
                 </a>
               ) : null}
 
-              {otherGames.length > 0 ? (
-                <section className="lb-games" aria-labelledby="game-hub-other-heading">
-                  <h2 id="game-hub-other-heading" className="lb-games__title">
-                    Other games
-                  </h2>
-                  <ul className="game-grid game-grid--playable lb-other-grid">
-                    {otherGames.map((otherSlug, index) => {
-                      const other = getGame(otherSlug)
-                      if (!other) return null
-                      return (
-                        <GameTile
-                          key={otherSlug}
-                          game={other}
-                          index={index}
-                          href={gameHref(otherSlug, period)}
-                          showOnAllDevices
-                        />
-                      )
-                    })}
-                  </ul>
-                </section>
-              ) : null}
-
-              <a className="game-lobby__all-boards" href={leaderboardHref()}>
+              <a className="game-lobby__all-boards" href={globalRankingsHref()}>
                 Global rankings
               </a>
             </>

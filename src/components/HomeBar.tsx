@@ -56,7 +56,7 @@ export function HomeBar() {
         </a>
         <div className="home-bar__links" aria-label="Primary">
           <a className="home-bar__link" href={leaderboardHref()}>
-            Rankings
+            Leaderboards
           </a>
           <a className="home-bar__link" href="#/tournaments">
             Tournaments
@@ -110,7 +110,7 @@ export function HomeBar() {
                 href={leaderboardHref()}
                 onClick={() => setMenuOpen(false)}
               >
-                Rankings
+                Leaderboards
               </a>
               <a
                 className="home-bar__menu-mobile"

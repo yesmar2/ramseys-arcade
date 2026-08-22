@@ -9,7 +9,7 @@ import { Footer } from '../components/Footer'
 import { HomeBar } from '../components/HomeBar'
 import { LeaderboardList } from '../components/LeaderboardList'
 import { getGame } from '../data/games'
-import { gameHref, gamePlayHref, recordHref, recordsHref } from '../hooks/useHashRoute'
+import { gameHref, gamePlayHref, recordHref, recordsHref, leaderboardHref } from '../hooks/useHashRoute'
 import { flashYouRow } from '../lib/boardGap'
 import { usePlayerName } from '../hooks/usePlayerName'
 import {
@@ -105,8 +105,8 @@ function RecordsIndexPage({ game }: { game: string }) {
 
   const backHref =
     gameMeta && (game as LeaderboardGame)
-      ? gameHref(game as LeaderboardGame, 'all')
-      : '#/leaderboards'
+      ? gameHref(game as LeaderboardGame)
+      : leaderboardHref()
   const accent = gameMeta?.accent ?? 'var(--accent)'
 
   const gameTitle = gameMeta?.name ?? game

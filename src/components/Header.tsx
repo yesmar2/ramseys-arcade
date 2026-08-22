@@ -10,7 +10,7 @@ import { ThemeToggle } from './ThemeToggle'
 const NAV = [
   { href: '#/', label: 'Games' },
   { href: '#/tournaments', label: 'Tournaments' },
-  { href: '#/leaderboards', label: 'Global Rankings' },
+  { href: '#/leaderboards', label: 'Leaderboards' },
 ]
 
 const MOBILE_MQ = '(max-width: 720px)'
