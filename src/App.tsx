@@ -107,13 +107,7 @@ function App() {
   if (route.name === 'authVerify') return <AuthVerifyPage token={route.token} />
   if (route.name === 'rank') return <RankPage player={route.player} />
   if (route.name === 'leaderboards') {
-    return (
-      <LeaderboardsPage
-        game={route.game}
-        period={route.period}
-        global={route.global}
-      />
-    )
+    return <LeaderboardsPage global={route.global} />
   }
   if (route.name === 'records') {
     return (
@@ -130,7 +124,7 @@ function App() {
   }
   if (route.name === 'tournament') return <TournamentDetailPage id={route.id} />
   if (route.name === 'game') {
-    return <GameHubPage slug={route.slug} />
+    return <GameHubPage slug={route.slug} period={route.period} />
   }
   if (route.name === 'gamePlay' && route.slug === 'stacker') return <StackerPage />
   if (route.name === 'gamePlay' && route.slug === 'patriot') return <PatriotPage />

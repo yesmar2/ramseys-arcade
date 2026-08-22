@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { leaderboardHref } from '../hooks/useHashRoute'
+import { gameHref } from '../hooks/useHashRoute'
 import {
   addLeaderboardScore,
   ApiError,
@@ -291,7 +291,7 @@ function boardsHref(gameSlug: string) {
   const game = (LEADERBOARD_GAMES as readonly string[]).includes(gameSlug)
     ? (gameSlug as LeaderboardGame)
     : 'stacker'
-  return leaderboardHref(game, 'daily')
+  return gameHref(game, 'daily')
 }
 
 type Phase = 'checking' | 'needName' | 'saving' | 'saved' | 'error'

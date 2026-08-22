@@ -1,7 +1,8 @@
-import { useEffect, useState, type CSSProperties } from 'react'
+import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import {
   BoardEmpty,
   BoardSkeleton,
+  PeriodSwitcher,
 } from '../components/BoardChrome'
 import { Footer } from '../components/Footer'
 import { GameLobbyArt } from '../components/GameLobbyArt'
@@ -15,25 +16,27 @@ import {
 import { scoringFor } from '../data/scoring'
 import { useBoardRecord } from '../hooks/useBoardRecord'
 import {
+  gameHref,
   gamePlayHref,
   globalRankingsHref,
-  leaderboardHref,
   recordsHref,
 } from '../hooks/useHashRoute'
 import { usePersonalBest } from '../hooks/usePersonalBest'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { useDeviceType } from '../lib/device'
+import { flashYouRow } from '../lib/boardGap'
 import { gameHasRecords } from '../lib/records'
 import {
   getLeaderboard,
   LEADERBOARD_GAMES,
   normalizePlayerName,
-  type LeaderboardEntry,
   type LeaderboardGame,
+  type LeaderboardPeriod,
+  type LeaderboardEntry,
   type YouEntry,
 } from '../lib/leaderboard'
 
-const PREVIEW_ROWS = 5
+const BOARD_ROWS = 10
 
 function isBoardGame(slug: string): slug is LeaderboardGame {
   return (LEADERBOARD_GAMES as readonly string[]).includes(slug)
@@ -41,9 +44,11 @@ function isBoardGame(slug: string): slug is LeaderboardGame {
 
 type GameHubPageProps = {
   slug: string
+  period?: LeaderboardPeriod
 }
 
-export function GameHubPage({ slug }: GameHubPageProps) {
+export function GameHubPage({ slug, period: periodFromRoute }: GameHubPageProps) {
+  const period = periodFromRoute ?? 'daily'
   const game = getGame(slug)
   const device = useDeviceType()
   const playerName = normalizePlayerName(usePlayerName())
@@ -53,12 +58,22 @@ export function GameHubPage({ slug }: GameHubPageProps) {
   const [you, setYou] = useState<YouEntry | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [shown, setShown] = useState(BOARD_ROWS)
+  const pulsed = useRef(false)
 
   const canPlay = game ? gamePlayableOn(game, device) : false
   const comingSoon = Boolean(game?.comingSoon)
   const scoring = scoringFor(slug)
   const boardSlug: LeaderboardGame | null = isBoardGame(slug) ? slug : null
   const accent = game?.accent ?? '#2eb8a0'
+
+  useEffect(() => {
+    if (!boardSlug) return
+    const canonical = gameHref(boardSlug, period)
+    if (window.location.hash !== canonical) {
+      window.history.replaceState(null, '', canonical)
+    }
+  }, [boardSlug, period])
 
   useEffect(() => {
     if (!boardSlug) {
@@ -71,7 +86,9 @@ export function GameHubPage({ slug }: GameHubPageProps) {
     let cancelled = false
     setLoading(true)
     setError(null)
-    getLeaderboard(boardSlug, 'daily', playerName || undefined)
+    setShown(BOARD_ROWS)
+    pulsed.current = false
+    getLeaderboard(boardSlug, period, playerName || undefined)
       .then((board) => {
         if (cancelled) return
         setEntries(board.entries)
@@ -89,7 +106,18 @@ export function GameHubPage({ slug }: GameHubPageProps) {
     return () => {
       cancelled = true
     }
-  }, [boardSlug, playerName])
+  }, [boardSlug, period, playerName])
+
+  useEffect(() => {
+    if (loading || !you || pulsed.current) return
+    pulsed.current = true
+    window.requestAnimationFrame(() => flashYouRow())
+  }, [loading, you, period])
+
+  const selectPeriod = (next: LeaderboardPeriod) => {
+    if (!boardSlug) return
+    window.location.hash = gameHref(boardSlug, next)
+  }
 
   if (!game) {
     return (
@@ -114,7 +142,12 @@ export function GameHubPage({ slug }: GameHubPageProps) {
         <HomeBar />
         <div
           className="lb-page__inner game-lobby"
-          style={{ '--board-accent': accent } as CSSProperties}
+          style={
+            {
+              '--board-accent': accent,
+              '--period-accent': accent,
+            } as CSSProperties
+          }
         >
           <a className="rank-page__back" href="#/">
             ← Games
@@ -156,13 +189,20 @@ export function GameHubPage({ slug }: GameHubPageProps) {
 
           {boardSlug ? (
             <>
+              <PeriodSwitcher
+                period={period}
+                accent={accent}
+                hrefFor={(p) => gameHref(boardSlug, p)}
+                onSelect={selectPeriod}
+              />
+
               <section
+                key={`${boardSlug}-${period}`}
                 className="lb-board lb-board--fade"
-                aria-label={`${game.name} daily scores preview`}
+                aria-label={`${game.name} leaderboard`}
               >
-                <h2 className="game-lobby__h">Today&apos;s board</h2>
                 {loading ? (
-                  <BoardSkeleton rows={PREVIEW_ROWS} />
+                  <BoardSkeleton rows={BOARD_ROWS} />
                 ) : error ? (
                   <BoardEmpty
                     title="Couldn’t load scores"
@@ -170,10 +210,10 @@ export function GameHubPage({ slug }: GameHubPageProps) {
                   />
                 ) : entries.length === 0 && !you ? (
                   <BoardEmpty
-                    title="No daily scores yet"
+                    title="No scores yet"
                     detail={
                       canPlay
-                        ? `Be the first on today’s ${game.name} board.`
+                        ? `Be the first on the ${game.name} board.`
                         : 'Open it on a supported device to post a score.'
                     }
                     action={
@@ -194,16 +234,33 @@ export function GameHubPage({ slug }: GameHubPageProps) {
                     you={you}
                     playerName={playerName}
                     accent={accent}
-                    shown={PREVIEW_ROWS}
+                    shown={shown}
                   />
                 )}
 
-                <a
-                  className="game-lobby__all-boards"
-                  href={leaderboardHref(boardSlug, 'daily')}
-                >
-                  Full leaderboards
-                </a>
+                {!loading && !error && entries.length > shown ? (
+                  <button
+                    type="button"
+                    className="lb-more"
+                    onClick={() => setShown(entries.length)}
+                  >
+                    Show top {entries.length}
+                  </button>
+                ) : null}
+
+                {canPlay && !(loading || error) && (entries.length > 0 || you) ? (
+                  <a
+                    className="lb-play"
+                    href={playHref}
+                    style={{ background: accent }}
+                  >
+                    Play {game.name}
+                  </a>
+                ) : !canPlay && !(loading || error) ? (
+                  <p className="lb-device-note lb-device-note--footer" role="note">
+                    {deviceNote} Scores still count toward global rank.
+                  </p>
+                ) : null}
               </section>
 
               {gameHasRecords(boardSlug) ? (

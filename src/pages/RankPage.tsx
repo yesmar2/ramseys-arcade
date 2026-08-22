@@ -4,7 +4,7 @@ import { Footer } from '../components/Footer'
 import { GameDeviceBadge } from '../components/GameDeviceBadge'
 import { HomeBar } from '../components/HomeBar'
 import { getGame, gamePlayableOn } from '../data/games'
-import { gameHref, globalRankingsHref, leaderboardHref, rankHref } from '../hooks/useHashRoute'
+import { gameHref, globalRankingsHref, rankHref } from '../hooks/useHashRoute'
 import { gapToNextLabel } from '../lib/boardGap'
 import { useDeviceType } from '../lib/device'
 import { usePlayerName } from '../hooks/usePlayerName'
@@ -160,7 +160,7 @@ export function RankPage({ player }: { player?: string }) {
                     const onDevice = game ? gamePlayableOn(game, device) : true
                     const accent = game?.accent ?? 'var(--accent)'
                     const href = row
-                      ? leaderboardHref(slug, 'all')
+                      ? gameHref(slug, 'all')
                       : gameHref(slug)
                     return (
                       <li key={slug}>

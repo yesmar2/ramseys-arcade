@@ -1,101 +1,72 @@
-import { useEffect, useRef, useState, type CSSProperties } from 'react'
-import {
-  BoardEmpty,
-  BoardSkeleton,
-  PeriodSwitcher,
-} from '../components/BoardChrome'
-import {
-  GameBoardPicker,
-  type GameBoardSummary,
-} from '../components/GameBoardPicker'
+import { useEffect, useState } from 'react'
+import { BoardEmpty, BoardSkeleton } from '../components/BoardChrome'
 import { Footer } from '../components/Footer'
-import { GameLobbyArt } from '../components/GameLobbyArt'
+import {
+  LeaderboardSummary,
+  type GamePeriodSummary,
+} from '../components/LeaderboardSummary'
 import { GlobalRankList } from '../components/GlobalRankList'
 import { HomeBar } from '../components/HomeBar'
-import { LeaderboardList } from '../components/LeaderboardList'
-import { deviceRequirementLabel, getGame, gamePlayableOn } from '../data/games'
-import {
-  gameHref,
-  gamePlayHref,
-  leaderboardHref,
-  recordsHref,
-} from '../hooks/useHashRoute'
-import { useDeviceType } from '../lib/device'
-import { flashYouRow } from '../lib/boardGap'
-import { gameHasRecords } from '../lib/records'
+import { leaderboardHref } from '../hooks/useHashRoute'
 import { usePlayerName } from '../hooks/usePlayerName'
 import {
   fetchGlobalBoard,
   fetchGlobalRank,
   getLeaderboard,
   LEADERBOARD_GAMES,
+  LEADERBOARD_PERIODS,
   normalizePlayerName,
-  PERIOD_LABELS,
   type GlobalBoardEntry,
-  type LeaderboardEntry,
-  type LeaderboardGame,
-  type LeaderboardPeriod,
-  type YouEntry,
 } from '../lib/leaderboard'
 
 const INITIAL_ROWS = 10
 const GLOBAL_ROWS = 100
+const SUMMARY_ROWS = 3
 
 type LeaderboardsPageProps = {
-  game?: LeaderboardGame
-  period?: LeaderboardPeriod
   global?: boolean
 }
 
-export function LeaderboardsPage({
-  game: activeGame,
-  period: periodFromRoute,
-  global: showGlobal,
-}: LeaderboardsPageProps) {
+export function LeaderboardsPage({ global: showGlobal }: LeaderboardsPageProps) {
   if (showGlobal) {
     return <GlobalRankingsView />
   }
-  if (activeGame) {
-    return (
-      <GameBoardView game={activeGame} period={periodFromRoute ?? 'daily'} />
-    )
-  }
-  return <LeaderboardsHub />
+  return <LeaderboardsOverview />
 }
 
-function LeaderboardsHub() {
+function LeaderboardsOverview() {
   const playerName = normalizePlayerName(usePlayerName())
-  const [summaries, setSummaries] = useState<GameBoardSummary[]>([])
+  const [summaries, setSummaries] = useState<GamePeriodSummary[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
     setLoading(true)
+    setError(null)
     void (async () => {
       try {
         const rows = await Promise.all(
           LEADERBOARD_GAMES.map(async (slug) => {
-            const board = await getLeaderboard(slug, 'daily', playerName || undefined)
-            const top = board.entries[0]
-            return {
-              slug,
-              top: top ? { name: top.name, score: top.score } : null,
-              you: board.you
-                ? { rank: board.you.rank, score: board.you.score }
-                : null,
-            }
+            const boards = await Promise.all(
+              LEADERBOARD_PERIODS.map((period) =>
+                getLeaderboard(slug, period, playerName || undefined),
+              ),
+            )
+            const byPeriod = {} as GamePeriodSummary['byPeriod']
+            LEADERBOARD_PERIODS.forEach((period, i) => {
+              byPeriod[period] = {
+                entries: boards[i].entries.slice(0, SUMMARY_ROWS),
+              }
+            })
+            return { slug, byPeriod }
           }),
         )
         if (!cancelled) setSummaries(rows)
-      } catch {
+      } catch (err) {
         if (!cancelled) {
-          setSummaries(
-            LEADERBOARD_GAMES.map((slug) => ({
-              slug,
-              top: null,
-              you: null,
-            })),
-          )
+          setSummaries([])
+          setError(err instanceof Error ? err.message : 'Failed to load')
         }
       } finally {
         if (!cancelled) setLoading(false)
@@ -114,11 +85,21 @@ function LeaderboardsHub() {
           <header className="lb-page__header lb-page__header--compact">
             <h1 className="lb-page__title">Leaderboards</h1>
             <p className="lb-page__blurb lb-page__blurb--tight">
-              Pick a game to browse scores.
+              Top {SUMMARY_ROWS} for every game and time frame. Open a game for
+              the full board.
             </p>
           </header>
 
-          <GameBoardPicker summaries={summaries} loading={loading} />
+          {error ? (
+            <BoardEmpty
+              title="Couldn’t load scores"
+              detail="Check your connection and try again."
+            />
+          ) : loading ? (
+            <LeaderboardSummary games={[]} loading />
+          ) : (
+            <LeaderboardSummary games={summaries} />
+          )}
         </div>
       </main>
       <Footer />
@@ -214,7 +195,7 @@ function GlobalRankingsView() {
                 detail="Place on any game board to earn global points."
                 action={
                   <a className="lb-empty-state__btn" href={leaderboardHref()}>
-                    Browse game boards
+                    Browse leaderboards
                   </a>
                 }
               />
@@ -246,188 +227,6 @@ function GlobalRankingsView() {
               </p>
             ) : null}
           </section>
-        </div>
-      </main>
-      <Footer />
-    </>
-  )
-}
-
-function GameBoardView({
-  game: active,
-  period,
-}: {
-  game: LeaderboardGame
-  period: LeaderboardPeriod
-}) {
-  const device = useDeviceType()
-  const playerName = normalizePlayerName(usePlayerName())
-  const [entries, setEntries] = useState<LeaderboardEntry[]>([])
-  const [you, setYou] = useState<YouEntry | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [shown, setShown] = useState(INITIAL_ROWS)
-  const pulsed = useRef(false)
-
-  const activeGame = getGame(active)
-  const canPlay = activeGame ? gamePlayableOn(activeGame, device) : true
-  const accent = activeGame?.accent ?? '#2eb8a0'
-
-  useEffect(() => {
-    const canonical = leaderboardHref(active, period)
-    if (window.location.hash !== canonical) {
-      window.history.replaceState(null, '', canonical)
-    }
-  }, [active, period])
-
-  useEffect(() => {
-    let cancelled = false
-    setLoading(true)
-    setError(null)
-    setShown(INITIAL_ROWS)
-    pulsed.current = false
-    getLeaderboard(active, period, playerName || undefined)
-      .then((board) => {
-        if (cancelled) return
-        setEntries(board.entries)
-        setYou(board.you)
-      })
-      .catch((err) => {
-        if (cancelled) return
-        setEntries([])
-        setYou(null)
-        setError(err instanceof Error ? err.message : 'Failed to load')
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false)
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [active, period, playerName])
-
-  useEffect(() => {
-    if (loading || !you || pulsed.current) return
-    pulsed.current = true
-    window.requestAnimationFrame(() => flashYouRow())
-  }, [loading, you, active, period])
-
-  const selectPeriod = (next: LeaderboardPeriod) => {
-    window.location.hash = leaderboardHref(active, next)
-  }
-
-  return (
-    <>
-      <main className="lb-page">
-        <HomeBar />
-        <div
-          className="lb-page__inner game-lobby"
-          style={
-            {
-              '--period-accent': accent,
-              '--board-accent': accent,
-            } as CSSProperties
-          }
-        >
-          <a className="rank-page__back" href={leaderboardHref()}>
-            ← All boards
-          </a>
-
-          {activeGame ? (
-            <GameLobbyArt slug={active} accent={accent} />
-          ) : null}
-
-          <header className="game-lobby__header">
-            <h1 className="game-lobby__title">{activeGame?.name ?? active}</h1>
-            <a className="game-lobby__hub-link" href={gameHref(active)}>
-              Game hub →
-            </a>
-          </header>
-
-          <PeriodSwitcher
-            period={period}
-            accent={accent}
-            hrefFor={(p) => leaderboardHref(active, p)}
-            onSelect={selectPeriod}
-          />
-
-          <section
-            key={`${active}-${period}`}
-            className="lb-board lb-board--fade"
-            aria-label={`${activeGame?.name ?? active} ${PERIOD_LABELS[period]} leaderboard`}
-          >
-            {loading ? (
-              <BoardSkeleton />
-            ) : error ? (
-              <BoardEmpty
-                title="Couldn’t load scores"
-                detail="Check your connection and try again."
-              />
-            ) : entries.length === 0 && !you ? (
-              <BoardEmpty
-                title={`No ${PERIOD_LABELS[period].toLowerCase()} scores yet`}
-                detail={
-                  canPlay
-                    ? `Be the first on the ${activeGame?.name ?? active} board.`
-                    : 'Open it on a supported device to post a score.'
-                }
-                action={
-                  canPlay ? (
-                    <a
-                      className="lb-empty-state__btn"
-                      href={gamePlayHref(active)}
-                      style={{ background: accent }}
-                    >
-                      Play {activeGame?.name ?? active}
-                    </a>
-                  ) : null
-                }
-              />
-            ) : (
-              <LeaderboardList
-                entries={entries}
-                you={you}
-                playerName={playerName}
-                accent={accent}
-                shown={shown}
-              />
-            )}
-
-            {!loading && !error && entries.length > shown ? (
-              <button
-                type="button"
-                className="lb-more"
-                onClick={() => setShown(entries.length)}
-              >
-                Show top {entries.length}
-              </button>
-            ) : null}
-
-            {canPlay && !(loading || error) && (entries.length > 0 || you) ? (
-              <a
-                className="lb-play"
-                href={gamePlayHref(active)}
-                style={{ background: accent }}
-              >
-                Play {activeGame?.name ?? active}
-              </a>
-            ) : activeGame && !canPlay ? (
-              <p className="lb-device-note lb-device-note--footer" role="note">
-                {deviceRequirementLabel(activeGame)} Scores still count toward
-                global rank.
-              </p>
-            ) : null}
-          </section>
-
-          {gameHasRecords(active) ? (
-            <a
-              className="lb-records-cta"
-              href={recordsHref(active)}
-              style={{ '--board-accent': accent } as CSSProperties}
-            >
-              {activeGame?.name ?? active} record books
-            </a>
-          ) : null}
         </div>
       </main>
       <Footer />
