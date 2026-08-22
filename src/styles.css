@@ -4379,59 +4379,57 @@ a.game-hud__board {
   animation: lb-skeleton 1.1s ease-in-out infinite alternate;
 }
 
-.lb-summary__banner {
-  display: block;
-  color: inherit;
-  text-decoration: none;
-  border-bottom: 1px solid rgba(var(--ink-rgb), 0.06);
-  background:
-    linear-gradient(
-      135deg,
-      color-mix(in srgb, var(--tab-accent, var(--accent)) 16%, var(--surface)),
-      rgba(var(--surface-rgb), 0.92) 55%
-    );
-}
-
-.lb-summary__banner:hover .lb-summary__game-name,
-.lb-summary__banner:focus-visible .lb-summary__game-name {
-  color: color-mix(in srgb, var(--tab-accent, var(--accent)) 70%, var(--ink));
-}
-
-.lb-summary__banner-art {
-  display: block;
-  width: 100%;
-  aspect-ratio: 16 / 6;
-  max-height: 5.5rem;
-  overflow: hidden;
-}
-
-.lb-summary__banner-art .game-thumb {
-  width: 100%;
-  height: 100%;
-  border-radius: 0;
-  box-shadow: none;
-}
-
-.lb-summary__banner-body {
+.lb-summary__head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
-  padding: 0.65rem 0.85rem 0.75rem;
+  padding: 0.7rem 0.85rem;
+  border-bottom: 1px solid rgba(var(--ink-rgb), 0.06);
+  background: color-mix(in srgb, var(--tab-accent, var(--accent)) 10%, var(--surface));
+}
+
+.lb-summary__game-link {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-width: 0;
+  color: inherit;
+  text-decoration: none;
+}
+
+.lb-summary__game-link:hover .lb-summary__game-name,
+.lb-summary__game-link:focus-visible .lb-summary__game-name {
+  color: color-mix(in srgb, var(--tab-accent, var(--accent)) 70%, var(--ink));
+}
+
+.lb-summary__swatch {
+  flex: none;
+  width: 0.55rem;
+  height: 2rem;
+  border-radius: 999px;
+  background: var(--tab-accent, var(--accent));
+  box-shadow: 0 0 0 1px rgba(var(--ink-rgb), 0.08);
 }
 
 .lb-summary__game-name {
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: clamp(1.15rem, 3.5vw, 1.45rem);
+  font-size: clamp(1.1rem, 3.2vw, 1.35rem);
   letter-spacing: -0.02em;
 }
 
-.lb-summary__banner-cta {
+.lb-summary__board-link {
   flex: none;
   font-size: 0.82rem;
   font-weight: 700;
   color: var(--muted);
+  text-decoration: none;
+}
+
+.lb-summary__board-link:hover,
+.lb-summary__board-link:focus-visible {
+  color: color-mix(in srgb, var(--tab-accent, var(--accent)) 65%, var(--ink));
 }
 
 .lb-summary__periods {

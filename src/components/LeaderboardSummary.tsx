@@ -10,7 +10,6 @@ import {
   type LeaderboardGame,
   type LeaderboardPeriod,
 } from '../lib/leaderboard'
-import { GameThumbArt } from './GameThumbArt'
 import { PlayerAvatar } from './PlayerAvatar'
 import { PodiumMedal, medalKind } from './PodiumMedal'
 
@@ -136,19 +135,18 @@ export function LeaderboardSummary({
             className="lb-summary__card"
             style={{ '--tab-accent': game.accent } as CSSProperties}
           >
-            <a
-              className="lb-summary__banner"
-              href={gameHref(slug, 'daily')}
-              aria-label={`${game.name} game hub`}
-            >
-              <span className="lb-summary__banner-art" aria-hidden="true">
-                <GameThumbArt slug={slug} accent={game.accent} />
-              </span>
-              <span className="lb-summary__banner-body">
+            <header className="lb-summary__head">
+              <a
+                className="lb-summary__game-link"
+                href={gameHref(slug, 'daily')}
+              >
+                <span className="lb-summary__swatch" aria-hidden="true" />
                 <span className="lb-summary__game-name">{game.name}</span>
-                <span className="lb-summary__banner-cta">Full board →</span>
-              </span>
-            </a>
+              </a>
+              <a className="lb-summary__board-link" href={gameHref(slug, 'daily')}>
+                Full board →
+              </a>
+            </header>
             <div className="lb-summary__periods">
               {LEADERBOARD_PERIODS.map((period) => (
                 <MiniBoard
