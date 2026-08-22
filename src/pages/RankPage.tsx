@@ -4,7 +4,7 @@ import { Footer } from '../components/Footer'
 import { GameDeviceBadge } from '../components/GameDeviceBadge'
 import { HomeBar } from '../components/HomeBar'
 import { getGame, gamePlayableOn } from '../data/games'
-import { gameHref, leaderboardHref, rankHref } from '../hooks/useHashRoute'
+import { gameHref, globalRankingsHref, leaderboardHref, rankHref } from '../hooks/useHashRoute'
 import { gapToNextLabel } from '../lib/boardGap'
 import { useDeviceType } from '../lib/device'
 import { usePlayerName } from '../hooks/usePlayerName'
@@ -239,7 +239,7 @@ export function RankPage({ player }: { player?: string }) {
             </details>
           ) : null}
 
-          <a className="rank-page__boards" href={leaderboardHref()}>
+          <a className="rank-page__boards" href={globalRankingsHref()}>
             Open Global Rankings
           </a>
         </div>

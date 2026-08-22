@@ -65,13 +65,21 @@ function isGameScreen(route: ReturnType<typeof useHashRoute>) {
   return route.name === 'gamePlay' || route.name === 'tournamentPlay'
 }
 
+/** Scroll on real navigation — not period-only changes on the same board/record. */
+function routeScrollKey(route: ReturnType<typeof useHashRoute>): string {
+  const key = { ...route } as Record<string, unknown>
+  delete key.period
+  return JSON.stringify(key)
+}
+
 function App() {
   const route = useHashRoute()
   const onGameScreen = isGameScreen(route)
+  const scrollKey = routeScrollKey(route)
 
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
-  }, [route])
+  }, [scrollKey])
 
   useEffect(() => {
     void syncPlayerIdentity()

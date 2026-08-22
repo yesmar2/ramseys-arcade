@@ -4004,6 +4004,10 @@ a.game-hud__board {
   margin-bottom: 0;
 }
 
+.rank-page__how-body .game-lobby__scoring {
+  margin-top: 0.75rem;
+}
+
 .rank-page__rules {
   list-style: none;
   margin: 0 0 0.85rem;

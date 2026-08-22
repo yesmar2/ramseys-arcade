@@ -222,22 +222,26 @@ export function GameHubPage({ slug }: GameHubPageProps) {
             </>
           ) : null}
 
-          <section className="game-lobby__section" aria-labelledby="game-how-heading">
-            <h2 id="game-how-heading" className="game-lobby__h">
-              How to play
-            </h2>
-            <p className="game-lobby__how">{game.how}</p>
-            {scoring && scoring.length > 0 ? (
-              <ul className="game-lobby__scoring">
-                {scoring.map((row) => (
-                  <li key={row.label}>
-                    <span>{row.label}</span>
-                    <strong>{row.value}</strong>
-                  </li>
-                ))}
-              </ul>
-            ) : null}
-          </section>
+          <details className="rank-page__how game-lobby__how-panel">
+            <summary className="rank-page__how-summary">
+              <span className="rank-page__h" id="game-how-heading">
+                How to play
+              </span>
+            </summary>
+            <div className="rank-page__how-body">
+              <p>{game.how}</p>
+              {scoring && scoring.length > 0 ? (
+                <ul className="game-lobby__scoring">
+                  {scoring.map((row) => (
+                    <li key={row.label}>
+                      <span>{row.label}</span>
+                      <strong>{row.value}</strong>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+            </div>
+          </details>
         </div>
       </main>
       <Footer />

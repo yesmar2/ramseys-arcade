@@ -17,7 +17,6 @@ import { deviceRequirementLabel, getGame, gamePlayableOn } from '../data/games'
 import {
   gameHref,
   gamePlayHref,
-  globalRankingsHref,
   leaderboardHref,
   recordsHref,
 } from '../hooks/useHashRoute'
@@ -115,17 +114,9 @@ function LeaderboardsHub() {
           <header className="lb-page__header lb-page__header--compact">
             <h1 className="lb-page__title">Leaderboards</h1>
             <p className="lb-page__blurb lb-page__blurb--tight">
-              Pick a game to browse scores, or view combined global standings.
+              Pick a game to browse scores.
             </p>
           </header>
-
-          <a className="lb-hub-card" href={globalRankingsHref()}>
-            <span className="lb-hub-card__eyebrow">All games</span>
-            <span className="lb-hub-card__title">Global rankings</span>
-            <span className="lb-hub-card__detail">
-              Points earned across every board
-            </span>
-          </a>
 
           <GameBoardPicker summaries={summaries} loading={loading} />
         </div>
