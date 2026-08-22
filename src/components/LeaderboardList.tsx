@@ -64,8 +64,8 @@ export function LeaderboardList({
         aria-current={isYou ? 'true' : undefined}
       >
         <span className="lb-row__rank">
+          <span className="lb-row__rank-num">#{rank}</span>
           {medal ? <PodiumMedal kind={medal} /> : null}
-          #{rank}
         </span>
         <span className="lb-row__name">
           <PlayerAvatar avatarId={entry.avatarId} name={name} size="sm" />
@@ -87,7 +87,9 @@ export function LeaderboardList({
       className="lb-row lb-row--empty"
       aria-hidden="true"
     >
-      <span className="lb-row__rank">#{rank}</span>
+      <span className="lb-row__rank">
+        <span className="lb-row__rank-num">#{rank}</span>
+      </span>
       <span className="lb-row__name">
         <span className="lb-row__name-text lb-row__placeholder">Open</span>
       </span>

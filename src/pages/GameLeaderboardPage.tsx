@@ -4,7 +4,7 @@ import {
   BoardSkeleton,
   PeriodSwitcher,
 } from '../components/BoardChrome'
-import { GameThumbArt } from '../components/GameThumbArt'
+import { GamePageHeader } from '../components/GamePageHeader'
 import { LeaderboardList } from '../components/LeaderboardList'
 import { PageShell } from '../components/PageShell'
 import { getGame, gamePlayableOn, deviceRequirementLabel } from '../data/games'
@@ -119,16 +119,11 @@ export function GameLeaderboardPage({
         ← Leaderboards
       </a>
 
-      <header className="lb-page__header lb-page__header--compact lb-game-board__head">
-        <div className="lb-game-board__title-row">
-          <span className="lb-game-board__thumb" aria-hidden="true">
-            <GameThumbArt slug={gameSlug} accent={accent} />
-          </span>
-          <h1 className="lb-game-board__title">
-            {game.name} leaderboards
-          </h1>
-        </div>
-      </header>
+      <GamePageHeader
+        slug={gameSlug}
+        accent={accent}
+        title={`${game.name} leaderboards`}
+      />
 
       <PeriodSwitcher
         period={period}

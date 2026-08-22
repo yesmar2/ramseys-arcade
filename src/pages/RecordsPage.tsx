@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
-import { GameLobbyArt } from '../components/GameLobbyArt'
 import {
   BoardEmpty,
   BoardSkeleton,
   PeriodSwitcher,
 } from '../components/BoardChrome'
 import { Footer } from '../components/Footer'
+import { GamePageHeader } from '../components/GamePageHeader'
 import { SiteHeader } from '../components/SiteHeader'
 import { LeaderboardList } from '../components/LeaderboardList'
 import { getGame } from '../data/games'
@@ -117,18 +117,23 @@ function RecordsIndexPage({ game }: { game: string }) {
       <main className="lb-page">
         <SiteHeader />
         <div
-          className="lb-page__inner game-lobby"
+          className="lb-page__inner lb-page__inner--game-board"
           style={{ '--board-accent': accent } as CSSProperties}
         >
             <a className="rank-page__back" href={backHref}>
               ← {gameTitle} hub
             </a>
           {gameMeta ? (
-            <GameLobbyArt slug={game} accent={accent} />
-          ) : null}
-          <header className="game-lobby__header">
-            <h1 className="game-lobby__title">{pageTitle}</h1>
-          </header>
+            <GamePageHeader
+              slug={game}
+              accent={accent}
+              title={pageTitle}
+            />
+          ) : (
+            <header className="lb-page__header lb-page__header--compact">
+              <h1 className="lb-page__title">{pageTitle}</h1>
+            </header>
+          )}
 
           <section className="lb-board" aria-label="Game records">
             {loading ? (
@@ -284,7 +289,7 @@ function RecordBoardPage({
       <main className="lb-page">
         <SiteHeader />
         <div
-          className="lb-page__inner game-lobby"
+          className="lb-page__inner lb-page__inner--game-board"
           style={
             {
               '--period-accent': accent,
@@ -296,11 +301,16 @@ function RecordBoardPage({
             ← {indexTitle}
           </a>
           {gameMeta ? (
-            <GameLobbyArt slug={game} accent={accent} />
-          ) : null}
-          <header className="game-lobby__header">
-            <h1 className="game-lobby__title">{record?.label ?? 'Record'}</h1>
-          </header>
+            <GamePageHeader
+              slug={game}
+              accent={accent}
+              title={record?.label ?? 'Record'}
+            />
+          ) : (
+            <header className="lb-page__header lb-page__header--compact">
+              <h1 className="lb-page__title">{record?.label ?? 'Record'}</h1>
+            </header>
+          )}
 
           {waveRecords.length > 1 ? (
             <nav className="records-wave-nav" aria-label="Record boards">
