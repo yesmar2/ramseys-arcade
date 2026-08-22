@@ -10,6 +10,7 @@ import {
   type LeaderboardGame,
   type LeaderboardPeriod,
 } from '../lib/leaderboard'
+import { GameThumbArt } from './GameThumbArt'
 import { PlayerAvatar } from './PlayerAvatar'
 import { PodiumMedal, medalKind } from './PodiumMedal'
 
@@ -140,7 +141,9 @@ export function LeaderboardSummary({
                 className="lb-summary__game-link"
                 href={gameHref(slug, 'daily')}
               >
-                <span className="lb-summary__swatch" aria-hidden="true" />
+                <span className="lb-summary__thumb" aria-hidden="true">
+                  <GameThumbArt slug={slug} accent={game.accent} />
+                </span>
                 <span className="lb-summary__game-name">{game.name}</span>
               </a>
               <a className="lb-summary__board-link" href={gameHref(slug, 'daily')}>
