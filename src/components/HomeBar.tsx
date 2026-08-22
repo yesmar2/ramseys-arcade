@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '../hooks/useAuth'
 import { usePlayerName } from '../hooks/usePlayerName'
-import { leaderboardHref, rankHref } from '../hooks/useHashRoute'
+import { globalRankingsHref, leaderboardHref, rankHref } from '../hooks/useHashRoute'
 import { useGlobalRank } from '../lib/globalRank'
 import { normalizePlayerName } from '../lib/leaderboard'
 import { currentTheme, THEME_EVENT, toggleTheme, type Theme } from '../lib/theme'
@@ -58,6 +58,9 @@ export function HomeBar() {
           <a className="home-bar__link" href={leaderboardHref()}>
             Leaderboards
           </a>
+          <a className="home-bar__link" href={globalRankingsHref()}>
+            Global rankings
+          </a>
           <a className="home-bar__link" href="#/tournaments">
             Tournaments
           </a>
@@ -111,6 +114,14 @@ export function HomeBar() {
                 onClick={() => setMenuOpen(false)}
               >
                 Leaderboards
+              </a>
+              <a
+                className="home-bar__menu-mobile"
+                role="menuitem"
+                href={globalRankingsHref()}
+                onClick={() => setMenuOpen(false)}
+              >
+                Global rankings
               </a>
               <a
                 className="home-bar__menu-mobile"
