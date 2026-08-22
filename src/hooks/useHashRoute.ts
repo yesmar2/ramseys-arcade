@@ -173,5 +173,21 @@ export function useHashRoute(): Route {
     return () => window.removeEventListener('hashchange', onHashChange)
   }, [])
 
+  useEffect(() => {
+    const path = window.location.hash.replace(/^#\/?/, '').replace(/\/$/, '')
+    const legacy = /^leaderboards\/([^/]+)(?:\/([^/]+))?$/.exec(path)
+    if (!legacy || legacy[1] === 'global') return
+    const slug = decodeURIComponent(legacy[1])
+    if (!isLeaderboardGame(slug)) return
+    const periodRaw = legacy[2] ? decodeURIComponent(legacy[2]) : undefined
+    const period =
+      periodRaw && isLeaderboardPeriod(periodRaw) ? periodRaw : 'daily'
+    const canonical = gameHref(slug, period)
+    if (window.location.hash !== canonical) {
+      window.history.replaceState(null, '', canonical)
+      setRoute(parseHash(canonical))
+    }
+  }, [])
+
   return route
 }

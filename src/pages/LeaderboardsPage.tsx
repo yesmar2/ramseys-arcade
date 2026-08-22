@@ -81,7 +81,7 @@ function LeaderboardsOverview() {
     <>
       <main className="lb-page">
         <HomeBar />
-        <div className="lb-page__inner">
+        <div className="lb-page__inner lb-page__inner--summary">
           <header className="lb-page__header lb-page__header--compact">
             <h1 className="lb-page__title">Leaderboards</h1>
             <p className="lb-page__blurb lb-page__blurb--tight">
@@ -98,7 +98,7 @@ function LeaderboardsOverview() {
           ) : loading ? (
             <LeaderboardSummary games={[]} loading />
           ) : (
-            <LeaderboardSummary games={summaries} />
+            <LeaderboardSummary games={summaries} playerName={playerName} />
           )}
         </div>
       </main>

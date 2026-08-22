@@ -4356,83 +4356,89 @@ a.game-hud__board {
 }
 
 /* Leaderboards overview ? top 3 per game per period */
+.lb-page__inner--summary {
+  width: min(100% - 2rem, 40rem);
+}
+
 .lb-summary {
   display: flex;
   flex-direction: column;
-  gap: 0.85rem;
+  gap: 1rem;
 }
 
 .lb-summary__card {
-  padding: 0.85rem;
+  overflow: hidden;
   border-radius: var(--tile-radius);
-  background: rgba(var(--surface-rgb), 0.72);
-  border: 1px solid rgba(var(--ink-rgb), 0.06);
+  background: rgba(var(--surface-rgb), 0.82);
+  border: 1px solid rgba(var(--ink-rgb), 0.07);
+  box-shadow: var(--shadow-soft);
 }
 
 .lb-summary__card--skeleton {
-  min-height: 11rem;
+  min-height: 14rem;
   animation: lb-skeleton 1.1s ease-in-out infinite alternate;
 }
 
-.lb-summary__head {
+.lb-summary__banner {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+  border-bottom: 1px solid rgba(var(--ink-rgb), 0.06);
+  background:
+    linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--tab-accent, var(--accent)) 16%, var(--surface)),
+      rgba(var(--surface-rgb), 0.92) 55%
+    );
+}
+
+.lb-summary__banner:hover .lb-summary__game-name,
+.lb-summary__banner:focus-visible .lb-summary__game-name {
+  color: color-mix(in srgb, var(--tab-accent, var(--accent)) 70%, var(--ink));
+}
+
+.lb-summary__banner-art {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 6;
+  max-height: 5.5rem;
+  overflow: hidden;
+}
+
+.lb-summary__banner-art .game-thumb {
+  width: 100%;
+  height: 100%;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.lb-summary__banner-body {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
-  margin-bottom: 0.7rem;
-}
-
-.lb-summary__game {
-  display: flex;
-  align-items: center;
-  gap: 0.65rem;
-  min-width: 0;
-  color: inherit;
-  text-decoration: none;
-}
-
-.lb-summary__game:hover .lb-summary__game-name,
-.lb-summary__game:focus-visible .lb-summary__game-name {
-  color: var(--accent);
-}
-
-.lb-summary__art {
-  flex: none;
-  width: 3.5rem;
-  overflow: hidden;
-  border-radius: 0.45rem;
-  aspect-ratio: 16 / 10;
-}
-
-.lb-summary__art .game-thumb {
-  width: 100%;
-  height: 100%;
-  border-radius: inherit;
+  padding: 0.65rem 0.85rem 0.75rem;
 }
 
 .lb-summary__game-name {
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: 1.05rem;
+  font-size: clamp(1.15rem, 3.5vw, 1.45rem);
+  letter-spacing: -0.02em;
 }
 
-.lb-summary__open {
+.lb-summary__banner-cta {
   flex: none;
   font-size: 0.82rem;
   font-weight: 700;
   color: var(--muted);
-  text-decoration: none;
-}
-
-.lb-summary__open:hover,
-.lb-summary__open:focus-visible {
-  color: var(--accent);
 }
 
 .lb-summary__periods {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.45rem;
+  gap: 0.55rem;
+  padding: 0.75rem;
 }
 
 @media (min-width: 640px) {
@@ -4442,60 +4448,103 @@ a.game-hud__board {
 }
 
 .lb-summary__period {
-  display: block;
-  padding: 0.55rem 0.6rem;
-  border-radius: calc(var(--tile-radius) - 0.2rem);
-  background: rgba(var(--playfield-rgb, var(--surface-rgb)), 0.5);
-  border: 1px solid rgba(var(--ink-rgb), 0.05);
-  color: inherit;
-  text-decoration: none;
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  border-radius: calc(var(--tile-radius) - 0.25rem);
+  background: var(--playfield);
+  border: 1px solid rgba(var(--ink-rgb), 0.06);
+  overflow: hidden;
 }
 
-.lb-summary__period:hover,
-.lb-summary__period:focus-visible {
-  border-color: color-mix(in srgb, var(--tab-accent, var(--accent)) 40%, transparent);
+.lb-summary__period-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.35rem;
+  padding: 0.45rem 0.55rem;
+  background: color-mix(in srgb, var(--tab-accent, var(--accent)) 12%, var(--playfield));
+  border-bottom: 1px solid rgba(var(--ink-rgb), 0.05);
+  color: inherit;
+  text-decoration: none;
+  font-weight: 700;
+}
+
+.lb-summary__period-head:hover,
+.lb-summary__period-head:focus-visible {
+  background: color-mix(in srgb, var(--tab-accent, var(--accent)) 18%, var(--playfield));
   outline: none;
 }
 
 .lb-summary__period-label {
-  display: block;
-  margin-bottom: 0.35rem;
   font-size: 0.62rem;
   font-weight: 800;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--muted);
+  color: color-mix(in srgb, var(--tab-accent, var(--accent)) 55%, var(--ink));
 }
 
-.lb-summary__empty {
-  margin: 0;
+.lb-summary__period-go {
   font-size: 0.78rem;
-  font-weight: 600;
   color: var(--muted);
-  opacity: 0.85;
 }
 
 .lb-summary__rows {
   list-style: none;
   margin: 0;
-  padding: 0;
+  padding: 0.4rem 0.45rem 0.5rem;
   display: grid;
-  gap: 0.22rem;
+  gap: 0.28rem;
+  flex: 1;
 }
 
 .lb-summary__row {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  gap: 0.35rem;
-  align-items: baseline;
-  font-size: 0.78rem;
-  font-weight: 600;
+  grid-template-columns: 1.35rem minmax(0, 1fr) auto;
+  gap: 0.3rem;
+  align-items: center;
+  min-height: 1.55rem;
+}
+
+.lb-summary__row--medal .lb-summary__rank {
+  transform: translateY(-0.05rem);
+}
+
+.lb-summary__row--you {
+  padding: 0.12rem 0.2rem;
+  margin: 0 -0.2rem;
+  border-radius: 0.45rem;
+  background: color-mix(in srgb, var(--tab-accent, var(--accent)) 12%, transparent);
+}
+
+.lb-summary__row--empty {
+  opacity: 0.72;
 }
 
 .lb-summary__rank {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.68rem;
+  font-weight: 800;
   font-variant-numeric: tabular-nums;
   color: var(--muted);
-  font-size: 0.72rem;
+}
+
+.lb-summary__player {
+  display: flex;
+  align-items: center;
+  gap: 0.28rem;
+  min-width: 0;
+  color: inherit;
+  text-decoration: none;
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.lb-summary__player:hover .lb-summary__name,
+.lb-summary__player:focus-visible .lb-summary__name {
+  color: var(--accent);
 }
 
 .lb-summary__name {
@@ -4504,9 +4553,24 @@ a.game-hud__board {
   white-space: nowrap;
 }
 
+.lb-summary__you {
+  flex: none;
+  font-size: 0.58rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--tab-accent, var(--accent)) 70%, var(--ink));
+}
+
 .lb-summary__score {
+  font-size: 0.76rem;
+  font-weight: 800;
   font-variant-numeric: tabular-nums;
-  font-weight: 700;
+}
+
+.lb-summary__placeholder {
+  color: var(--muted);
+  font-weight: 600;
 }
 
 .lb-board-section {
