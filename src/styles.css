@@ -3133,7 +3133,7 @@ a.game-hud__board {
 }
 
 .lb-game-board__side-link::after {
-  content: ' ?';
+  content: ' \2192';
 }
 
 .lb-game-board__thumb {
@@ -5208,7 +5208,7 @@ a.game-hud__board {
 }
 
 .lb-board-links a::after {
-  content: ' ?';
+  content: ' \2192';
 }
 
 .game-lobby .lb-board-switcher {
