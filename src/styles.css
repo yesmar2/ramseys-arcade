@@ -3105,10 +3105,6 @@ a.game-hud__board {
   align-items: center;
   gap: 0.85rem;
   margin-top: 0.15rem;
-  padding: 0.85rem 1rem;
-  border-radius: calc(var(--tile-radius) - 0.15rem);
-  border: 1px solid color-mix(in srgb, var(--tab-accent, var(--accent)) 22%, var(--line));
-  background: color-mix(in srgb, var(--tab-accent, var(--accent)) 10%, var(--surface));
 }
 
 .lb-game-board__thumb {
@@ -3117,7 +3113,6 @@ a.game-hud__board {
   overflow: hidden;
   border-radius: 0.5rem;
   aspect-ratio: 16 / 10;
-  box-shadow: 0 1px 0 rgba(var(--ink-rgb), 0.06);
 }
 
 .lb-game-board__thumb .game-thumb {
@@ -3126,22 +3121,14 @@ a.game-hud__board {
   border-radius: inherit;
 }
 
-.lb-game-board__meta {
-  min-width: 0;
-}
-
-.lb-game-board__eyebrow {
-  margin: 0 0 0.2rem;
-  color: color-mix(in srgb, var(--tab-accent, var(--accent)) 55%, var(--muted));
-}
-
-.lb-game-board__name {
+.lb-game-board__title {
   margin: 0;
+  min-width: 0;
   font-family: var(--font-display);
   font-weight: 700;
   font-size: clamp(1.35rem, 4.5vw, 1.75rem);
   letter-spacing: -0.03em;
-  line-height: 1.05;
+  line-height: 1.1;
 }
 
 .lb-page__inner--game-board .lb-periods {

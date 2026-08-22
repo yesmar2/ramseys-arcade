@@ -119,17 +119,11 @@ export function GameLeaderboardPage({
         ← Leaderboards
       </a>
 
-      <header
-        className="lb-game-board__head"
-        style={{ '--tab-accent': accent } as CSSProperties}
-      >
+      <header className="lb-game-board__head">
         <span className="lb-game-board__thumb" aria-hidden="true">
           <GameThumbArt slug={gameSlug} accent={accent} />
         </span>
-        <div className="lb-game-board__meta">
-          <p className="lb-page__eyebrow lb-game-board__eyebrow">Leaderboard</p>
-          <h1 className="lb-game-board__name">{game.name}</h1>
-        </div>
+        <h1 className="lb-game-board__title">{game.name} leaderboards</h1>
       </header>
 
       <PeriodSwitcher
