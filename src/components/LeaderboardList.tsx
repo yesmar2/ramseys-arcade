@@ -8,6 +8,8 @@ import {
   type YouEntry,
 } from '../lib/leaderboard'
 
+const TOP_SLOT_COUNT = 10
+
 function formatDate(at: number) {
   try {
     return new Date(at).toLocaleDateString(undefined, {
@@ -79,22 +81,45 @@ export function LeaderboardList({
     )
   }
 
+  const renderEmptyRow = (rank: number) => (
+    <li
+      key={`empty-${rank}`}
+      className="lb-row lb-row--empty"
+      aria-hidden="true"
+    >
+      <span className="lb-row__rank">#{rank}</span>
+      <span className="lb-row__name">
+        <span className="lb-row__name-text lb-row__placeholder">Open</span>
+      </span>
+      <span className="lb-row__score lb-row__placeholder">—</span>
+      <span className="lb-row__date lb-row__placeholder">—</span>
+    </li>
+  )
+
+  const padSlots = entries.length >= 1 && visible.length < TOP_SLOT_COUNT
+  const slotCount = padSlots ? TOP_SLOT_COUNT : visible.length
+
   return (
     <ol className="lb-list">
       {youOffVisible && you ? (
         <>
           {renderRow(you, you.rank, true, { markYouId: true, pinned: true })}
-          {visible.length > 0 ? (
-            <li className="lb-you-split">Top {shown}</li>
+          {slotCount > 0 ? (
+            <li className="lb-you-split">Top {TOP_SLOT_COUNT}</li>
           ) : null}
         </>
       ) : null}
-      {visible.map((entry, index) => {
-        const isYou =
-          Boolean(youName) && normalizePlayerName(entry.name ?? '') === youName
-        return renderRow(entry, index + 1, isYou, {
-          markYouId: isYou && !youOffVisible,
-        })
+      {Array.from({ length: slotCount }, (_, index) => {
+        const entry = visible[index]
+        const rank = index + 1
+        if (entry) {
+          const isYou =
+            Boolean(youName) && normalizePlayerName(entry.name ?? '') === youName
+          return renderRow(entry, rank, isYou, {
+            markYouId: isYou && !youOffVisible,
+          })
+        }
+        return renderEmptyRow(rank)
       })}
     </ol>
   )

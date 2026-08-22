@@ -7,6 +7,8 @@ import {
 import { PlayerAvatar } from './PlayerAvatar'
 import { PodiumMedal, medalKind } from './PodiumMedal'
 
+const TOP_SLOT_COUNT = 10
+
 export function GlobalRankList({
   entries,
   you,
@@ -69,18 +71,43 @@ export function GlobalRankList({
     )
   }
 
+  const renderEmptyRow = (rank: number) => (
+    <li
+      key={`empty-${rank}`}
+      className="lb-row lb-row--empty"
+      aria-hidden="true"
+    >
+      <span className="lb-row__rank">#{rank}</span>
+      <span className="lb-row__name">
+        <span className="lb-row__name-text lb-row__placeholder">Open</span>
+      </span>
+      <span className="lb-row__score lb-row__placeholder">—</span>
+      <span className="lb-row__date lb-row__placeholder">—</span>
+    </li>
+  )
+
+  const padSlots = entries.length >= 1 && visible.length < TOP_SLOT_COUNT
+  const slotCount = padSlots ? TOP_SLOT_COUNT : visible.length
+
   return (
     <ol className="lb-list">
       {youOffVisible && you ? (
         <>
           {renderRow(you, true, { markYouId: true })}
-          {visible.length > 0 ? <li className="lb-you-split">Top {shown}</li> : null}
+          {slotCount > 0 ? (
+            <li className="lb-you-split">Top {TOP_SLOT_COUNT}</li>
+          ) : null}
         </>
       ) : null}
-      {visible.map((entry) => {
-        const isYou =
-          Boolean(youName) && normalizePlayerName(entry.name) === youName
-        return renderRow(entry, isYou, { markYouId: isYou && !youOffVisible })
+      {Array.from({ length: slotCount }, (_, index) => {
+        const entry = visible[index]
+        const rank = index + 1
+        if (entry) {
+          const isYou =
+            Boolean(youName) && normalizePlayerName(entry.name) === youName
+          return renderRow(entry, isYou, { markYouId: isYou && !youOffVisible })
+        }
+        return renderEmptyRow(rank)
       })}
     </ol>
   )
