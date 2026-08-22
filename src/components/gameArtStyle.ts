@@ -15,3 +15,11 @@ export function pastel(hue: number, sat = 56, mix = 48) {
     stroke: `hsla(${hue}, ${sat}%, 38%, 0.95)`,
   }
 }
+
+/** Pastel fill/stroke derived from a game's accent hex (buttons, tiles, etc.). */
+export function accentPastel(accent: string, mix = 48) {
+  return {
+    fill: `color-mix(in srgb, ${accent} ${mix}%, var(--playfield))`,
+    stroke: `color-mix(in srgb, ${accent} 78%, #1a1a1a)`,
+  }
+}

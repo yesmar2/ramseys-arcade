@@ -1,5 +1,5 @@
 import type { JSX, ReactNode } from 'react'
-import { HUE, pastel } from './gameArtStyle'
+import { accentPastel, HUE, pastel } from './gameArtStyle'
 
 function TileBg() {
   return (
@@ -64,6 +64,7 @@ export function IsoSlab({
   d,
   h,
   hue,
+  accent,
 }: {
   cx: number
   cy: number
@@ -73,6 +74,7 @@ export function IsoSlab({
   d: number
   h: number
   hue: number
+  accent?: string
 }) {
   const hw = w / 2
   const hd = d / 2
@@ -95,10 +97,18 @@ export function IsoSlab({
     p(x - hw, 0, z + hd, cx, cy),
   ]
   const sat = 56
-  const fill = `color-mix(in srgb, hsla(${hue}, ${sat}%, 56%, 1) 52%, var(--playfield))`
-  const side = `color-mix(in srgb, hsla(${hue}, ${sat}%, 50%, 1) 48%, var(--playfield))`
-  const sideDark = `color-mix(in srgb, hsla(${hue}, ${sat}%, 42%, 1) 48%, var(--playfield))`
-  const stroke = `hsla(${hue}, ${sat}%, 36%, 0.95)`
+  const fill = accent
+    ? accentPastel(accent, 52).fill
+    : `color-mix(in srgb, hsla(${hue}, ${sat}%, 56%, 1) 52%, var(--playfield))`
+  const side = accent
+    ? accentPastel(accent, 44).fill
+    : `color-mix(in srgb, hsla(${hue}, ${sat}%, 50%, 1) 48%, var(--playfield))`
+  const sideDark = accent
+    ? accentPastel(accent, 36).fill
+    : `color-mix(in srgb, hsla(${hue}, ${sat}%, 42%, 1) 48%, var(--playfield))`
+  const stroke = accent
+    ? accentPastel(accent, 48).stroke
+    : `hsla(${hue}, ${sat}%, 36%, 0.95)`
 
   return (
     <g>

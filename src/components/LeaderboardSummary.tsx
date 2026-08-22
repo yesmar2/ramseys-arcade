@@ -139,9 +139,6 @@ export function LeaderboardSummary({
                 </span>
                 <span className="lb-summary__game-name">{game.name}</span>
               </a>
-              <a className="lb-summary__board-link" href={gameBoardHref(slug, 'daily')}>
-                Full board →
-              </a>
             </header>
             <div className="lb-summary__periods">
               {LEADERBOARD_PERIODS.map((period) => (

@@ -119,11 +119,15 @@ export function GameLeaderboardPage({
         ← Leaderboards
       </a>
 
-      <header className="lb-game-board__head">
-        <span className="lb-game-board__thumb" aria-hidden="true">
-          <GameThumbArt slug={gameSlug} accent={accent} />
-        </span>
-        <h1 className="lb-game-board__title">{game.name} leaderboards</h1>
+      <header className="lb-page__header lb-page__header--compact lb-game-board__head">
+        <div className="lb-game-board__title-row">
+          <span className="lb-game-board__thumb" aria-hidden="true">
+            <GameThumbArt slug={gameSlug} accent={accent} />
+          </span>
+          <h1 className="lb-game-board__title">
+            {game.name} leaderboards
+          </h1>
+        </div>
       </header>
 
       <PeriodSwitcher
