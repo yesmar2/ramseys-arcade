@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
-import { BoardGameHero } from '../components/BoardGameHero'
+import { GameLobbyArt } from '../components/GameLobbyArt'
 import {
   BoardEmpty,
   BoardSkeleton,
@@ -272,7 +272,7 @@ function GameLeaderboard({
       <main className="lb-page">
         <HomeBar />
         <div
-          className="lb-page__inner"
+          className="lb-page__inner game-lobby"
           style={
             {
               '--period-accent': accent,
@@ -280,15 +280,15 @@ function GameLeaderboard({
             } as CSSProperties
           }
         >
-          <header className="lb-page__header lb-page__header--compact">
-            <a className="rank-page__back" href={leaderboardHref()}>
-              ← Global Rankings
-            </a>
-            {activeGame ? (
-              <BoardGameHero slug={active} accent={accent} />
-            ) : null}
-            <h1 className="lb-page__title">{activeGame?.name ?? active}</h1>
-            <p className="lb-page__blurb lb-page__blurb--tight">
+          <a className="rank-page__back" href={leaderboardHref()}>
+            ← Global Rankings
+          </a>
+          {activeGame ? (
+            <GameLobbyArt slug={active} accent={accent} />
+          ) : null}
+          <header className="game-lobby__header">
+            <h1 className="game-lobby__title">{activeGame?.name ?? active}</h1>
+            <p className="game-lobby__blurb">
               High scores · all-time places earn global points
             </p>
           </header>

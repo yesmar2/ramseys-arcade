@@ -1,7 +1,7 @@
-import { useEffect, useState, type CSSProperties } from 'react'
+import { useEffect, useState } from 'react'
 import { PeriodSwitcher } from '../components/BoardChrome'
 import { Footer } from '../components/Footer'
-import { GameTileArt } from '../components/GameTileArt'
+import { GameLobbyArt } from '../components/GameLobbyArt'
 import { HomeBar } from '../components/HomeBar'
 import { LeaderboardList } from '../components/LeaderboardList'
 import {
@@ -102,14 +102,7 @@ export function GamePreviewPage({ slug }: { slug: string }) {
       <main className="lb-page">
         <HomeBar />
         <div className="lb-page__inner game-lobby">
-          <div
-            className="game-lobby__art"
-            style={{ '--tile-accent': game.accent } as CSSProperties}
-          >
-            <div className="game-lobby__stage">
-              <GameTileArt slug={game.slug} />
-            </div>
-          </div>
+          <GameLobbyArt slug={game.slug} accent={game.accent} />
 
           <header className="game-lobby__header">
             <h1 className="game-lobby__title">{game.name}</h1>

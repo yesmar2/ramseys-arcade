@@ -1,27 +1,25 @@
 import type { CSSProperties } from 'react'
 import { GameTileArt } from './GameTileArt'
 
-type BoardGameHeroProps = {
+type GameLobbyArtProps = {
   slug: string
   accent?: string
 }
 
-/** Wide, low banner — game art as a soft backdrop on board / record pages. */
-export function BoardGameHero({ slug, accent }: BoardGameHeroProps) {
+/** Same art block as the individual game preview / lobby page. */
+export function GameLobbyArt({ slug, accent }: GameLobbyArtProps) {
   return (
     <div
-      className="board-hero"
+      className="game-lobby__art"
       style={
         accent
           ? ({ '--tile-accent': accent } as CSSProperties)
           : undefined
       }
-      aria-hidden="true"
     >
-      <div className="board-hero__art">
+      <div className="game-lobby__stage">
         <GameTileArt slug={slug} />
       </div>
-      <div className="board-hero__veil" />
     </div>
   )
 }

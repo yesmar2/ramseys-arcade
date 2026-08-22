@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
-import { BoardGameHero } from '../components/BoardGameHero'
+import { GameLobbyArt } from '../components/GameLobbyArt'
 import {
   BoardEmpty,
   BoardSkeleton,
@@ -122,17 +122,17 @@ function RecordsIndexPage({ game }: { game: string }) {
       <main className="lb-page">
         <HomeBar />
         <div
-          className="lb-page__inner"
+          className="lb-page__inner game-lobby"
           style={{ '--board-accent': accent } as CSSProperties}
         >
-          <header className="lb-page__header lb-page__header--compact">
-            <a className="rank-page__back" href={backHref}>
-              ← {gameTitle} scores
-            </a>
-            {gameMeta ? (
-              <BoardGameHero slug={game} accent={accent} />
-            ) : null}
-            <h1 className="lb-page__title">{pageTitle}</h1>
+          <a className="rank-page__back" href={backHref}>
+            ← {gameTitle} scores
+          </a>
+          {gameMeta ? (
+            <GameLobbyArt slug={game} accent={accent} />
+          ) : null}
+          <header className="game-lobby__header">
+            <h1 className="game-lobby__title">{pageTitle}</h1>
           </header>
 
           <section className="lb-board" aria-label="Game records">
@@ -289,7 +289,7 @@ function RecordBoardPage({
       <main className="lb-page">
         <HomeBar />
         <div
-          className="lb-page__inner"
+          className="lb-page__inner game-lobby"
           style={
             {
               '--period-accent': accent,
@@ -297,14 +297,14 @@ function RecordBoardPage({
             } as CSSProperties
           }
         >
-          <header className="lb-page__header lb-page__header--compact">
-            <a className="rank-page__back" href={recordsHref(game)}>
-              ← {indexTitle}
-            </a>
-            {gameMeta ? (
-              <BoardGameHero slug={game} accent={accent} />
-            ) : null}
-            <h1 className="lb-page__title">{record?.label ?? 'Record'}</h1>
+          <a className="rank-page__back" href={recordsHref(game)}>
+            ← {indexTitle}
+          </a>
+          {gameMeta ? (
+            <GameLobbyArt slug={game} accent={accent} />
+          ) : null}
+          <header className="game-lobby__header">
+            <h1 className="game-lobby__title">{record?.label ?? 'Record'}</h1>
           </header>
 
           {waveRecords.length > 1 ? (
