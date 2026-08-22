@@ -58,7 +58,7 @@ export function gameHref(slug: string, board: 'scores' | 'records' = 'scores') {
 }
 
 export function gamePlayHref(slug: string) {
-  return `#/games/${slug}/play`
+  return `#/games/${encodeURIComponent(slug)}/play`
 }
 
 /** Record books tab on the game hub (index). Individual boards use `recordHref`. */

@@ -3,7 +3,7 @@ import { BoardSkeleton } from '../components/BoardChrome'
 import { GameDeviceBadge } from '../components/GameDeviceBadge'
 import { PageShell } from '../components/PageShell'
 import { getGame, gamePlayableOn } from '../data/games'
-import { gameBoardHref, gameHref, globalRankingsHref, rankHref } from '../hooks/useHashRoute'
+import { gameBoardHref, gamePlayHref, globalRankingsHref, rankHref } from '../hooks/useHashRoute'
 import { gapToNextLabel } from '../lib/boardGap'
 import { useDeviceType } from '../lib/device'
 import { usePlayerName } from '../hooks/usePlayerName'
@@ -157,7 +157,7 @@ export function RankPage({ player }: { player?: string }) {
                     const accent = game?.accent ?? 'var(--accent)'
                     const href = row
                       ? gameBoardHref(slug, 'all')
-                      : gameHref(slug)
+                      : gamePlayHref(slug)
                     return (
                       <li key={slug}>
                         <a
@@ -167,7 +167,7 @@ export function RankPage({ player }: { player?: string }) {
                           aria-label={
                             row
                               ? `${game?.name ?? slug}: place ${row.place}, ${row.points} points. Open all-time board.`
-                              : `${game?.name ?? slug}: unranked. Open game.`
+                              : `${game?.name ?? slug}: unranked. Play now.`
                           }
                         >
                           <span className="rank-page__game-rank">

@@ -4,24 +4,21 @@ import {
   BoardSkeleton,
   PeriodSwitcher,
 } from '../components/BoardChrome'
-import {
-  GameBoardSwitcher,
-  type BoardTab,
-} from '../components/GameBoardSwitcher'
+import { GameBoardSwitcher } from '../components/GameBoardSwitcher'
 import { GamePageHeader } from '../components/GamePageHeader'
-import { GameRecordsPanel } from '../components/GameRecordsPanel'
 import { LeaderboardList } from '../components/LeaderboardList'
 import { PageShell } from '../components/PageShell'
 import { getGame, gamePlayableOn, deviceRequirementLabel } from '../data/games'
 import {
   gameBoardHref,
+  gameHref,
   gamePlayHref,
   leaderboardHref,
+  recordsHref,
 } from '../hooks/useHashRoute'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { useDeviceType } from '../lib/device'
 import { flashYouRow } from '../lib/boardGap'
-import { gameHasRecords } from '../lib/records'
 import {
   getLeaderboard,
   normalizePlayerName,
@@ -46,7 +43,6 @@ export function GameLeaderboardPage({
   const game = getGame(gameSlug)
   const device = useDeviceType()
   const playerName = normalizePlayerName(usePlayerName())
-  const [boardTab, setBoardTab] = useState<BoardTab>('scores')
   const [entries, setEntries] = useState<LeaderboardEntry[]>([])
   const [you, setYou] = useState<YouEntry | null>(null)
   const [loading, setLoading] = useState(true)
@@ -58,20 +54,15 @@ export function GameLeaderboardPage({
   const canPlay = game ? gamePlayableOn(game, device) : false
   const playHref = gamePlayHref(gameSlug)
   const deviceNote = game ? deviceRequirementLabel(game) : null
-  const showRecords = gameHasRecords(gameSlug)
-  const activeTab: BoardTab =
-    showRecords && boardTab === 'records' ? 'records' : 'scores'
 
   useEffect(() => {
-    if (activeTab !== 'scores') return
     const canonical = gameBoardHref(gameSlug, period)
     if (window.location.hash !== canonical) {
       window.history.replaceState(null, '', canonical)
     }
-  }, [gameSlug, period, activeTab])
+  }, [gameSlug, period])
 
   useEffect(() => {
-    if (activeTab !== 'scores') return
     let cancelled = false
     setLoading(true)
     setError(null)
@@ -95,13 +86,13 @@ export function GameLeaderboardPage({
     return () => {
       cancelled = true
     }
-  }, [gameSlug, period, playerName, activeTab])
+  }, [gameSlug, period, playerName])
 
   useEffect(() => {
-    if (activeTab !== 'scores' || loading || !you || pulsed.current) return
+    if (loading || !you || pulsed.current) return
     pulsed.current = true
     window.requestAnimationFrame(() => flashYouRow())
-  }, [loading, you, period, activeTab])
+  }, [loading, you, period])
 
   const selectPeriod = (next: LeaderboardPeriod) => {
     window.location.hash = gameBoardHref(gameSlug, next)
@@ -138,89 +129,87 @@ export function GameLeaderboardPage({
         <GameBoardSwitcher
           slug={gameSlug}
           accent={accent}
-          active={activeTab}
-          onSelect={setBoardTab}
+          active="scores"
+          onSelect={(tab) => {
+            if (tab === 'records') {
+              window.location.hash = recordsHref(gameSlug)
+            }
+          }}
         />
 
-        {activeTab === 'records' ? (
-          <GameRecordsPanel game={gameSlug} accent={accent} />
-        ) : (
-          <>
-            <PeriodSwitcher
-              period={period}
-              accent={accent}
-              hrefFor={(p) => gameBoardHref(gameSlug, p)}
-              onSelect={selectPeriod}
+        <PeriodSwitcher
+          period={period}
+          accent={accent}
+          hrefFor={(p) => gameBoardHref(gameSlug, p)}
+          onSelect={selectPeriod}
+        />
+
+        <section
+          key={`${gameSlug}-${period}`}
+          className="lb-board lb-board--fade"
+          aria-label={`${game.name} leaderboard`}
+        >
+          {loading ? (
+            <BoardSkeleton rows={BOARD_ROWS} />
+          ) : error ? (
+            <BoardEmpty
+              title="Couldn’t load scores"
+              detail="Check your connection and try again."
             />
+          ) : entries.length === 0 && !you ? (
+            <BoardEmpty
+              title="No scores yet"
+              detail={
+                canPlay
+                  ? `Be the first on the ${game.name} board.`
+                  : 'Open it on a supported device to post a score.'
+              }
+              action={
+                canPlay ? (
+                  <a
+                    className="lb-empty-state__btn"
+                    href={playHref}
+                    style={{ background: accent }}
+                  >
+                    Play {game.name}
+                  </a>
+                ) : null
+              }
+            />
+          ) : (
+            <LeaderboardList
+              entries={entries}
+              you={you}
+              playerName={playerName}
+              accent={accent}
+              shown={shown}
+            />
+          )}
 
-            <section
-              key={`${gameSlug}-${period}`}
-              className="lb-board lb-board--fade"
-              aria-label={`${game.name} leaderboard`}
+          {!loading && !error && entries.length > shown ? (
+            <button
+              type="button"
+              className="lb-more"
+              onClick={() => setShown(entries.length)}
             >
-              {loading ? (
-                <BoardSkeleton rows={BOARD_ROWS} />
-              ) : error ? (
-                <BoardEmpty
-                  title="Couldn’t load scores"
-                  detail="Check your connection and try again."
-                />
-              ) : entries.length === 0 && !you ? (
-                <BoardEmpty
-                  title="No scores yet"
-                  detail={
-                    canPlay
-                      ? `Be the first on the ${game.name} board.`
-                      : 'Open it on a supported device to post a score.'
-                  }
-                  action={
-                    canPlay ? (
-                      <a
-                        className="lb-empty-state__btn"
-                        href={playHref}
-                        style={{ background: accent }}
-                      >
-                        Play {game.name}
-                      </a>
-                    ) : null
-                  }
-                />
-              ) : (
-                <LeaderboardList
-                  entries={entries}
-                  you={you}
-                  playerName={playerName}
-                  accent={accent}
-                  shown={shown}
-                />
-              )}
+              Show top {entries.length}
+            </button>
+          ) : null}
 
-              {!loading && !error && entries.length > shown ? (
-                <button
-                  type="button"
-                  className="lb-more"
-                  onClick={() => setShown(entries.length)}
-                >
-                  Show top {entries.length}
-                </button>
-              ) : null}
+          {canPlay && !(loading || error) && (entries.length > 0 || you) ? (
+            <a className="lb-play" href={playHref} style={{ background: accent }}>
+              Play {game.name}
+            </a>
+          ) : !canPlay && !(loading || error) ? (
+            <p className="lb-device-note lb-device-note--footer" role="note">
+              {deviceNote} Scores still count toward global rank.
+            </p>
+          ) : null}
+        </section>
 
-              {canPlay && !(loading || error) && (entries.length > 0 || you) ? (
-                <a
-                  className="lb-play"
-                  href={playHref}
-                  style={{ background: accent }}
-                >
-                  Play {game.name}
-                </a>
-              ) : !canPlay && !(loading || error) ? (
-                <p className="lb-device-note lb-device-note--footer" role="note">
-                  {deviceNote} Scores still count toward global rank.
-                </p>
-              ) : null}
-            </section>
-          </>
-        )}
+        <nav className="lb-board-links" aria-label="More">
+          <a href={gameHref(gameSlug)}>Game hub</a>
+        </nav>
       </div>
     </PageShell>
   )

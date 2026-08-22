@@ -1,6 +1,6 @@
 import { useMemo, type CSSProperties } from 'react'
 import { getGame } from '../data/games'
-import { gameBoardHref, rankHref } from '../hooks/useHashRoute'
+import { gameBoardHref, gameHref, rankHref } from '../hooks/useHashRoute'
 import {
   LEADERBOARD_GAMES,
   LEADERBOARD_PERIODS,
@@ -134,7 +134,7 @@ export function LeaderboardSummary({
             <header className="lb-summary__head">
               <a
                 className="lb-summary__game-link"
-                href={gameBoardHref(slug, 'daily')}
+                href={gameHref(slug)}
               >
                 <span className="lb-summary__thumb" aria-hidden="true">
                   <GameThumbArt slug={slug} accent={game.accent} />

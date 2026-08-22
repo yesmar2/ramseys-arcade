@@ -1,16 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { gameBoardHref } from '../hooks/useHashRoute'
+import { gameHref } from '../hooks/useHashRoute'
 import {
   addLeaderboardScore,
   ApiError,
   fetchPlayerBests,
   getLastPlayerName,
-  LEADERBOARD_GAMES,
   normalizePlayerName,
   PERIOD_LABELS,
   PLAYER_NAME_MAX,
-  type LeaderboardGame,
   type LeaderboardPeriod,
 } from '../lib/leaderboard'
 import { describePersonalBest, rememberPersonalBest } from '../lib/personalBest'
@@ -288,10 +286,7 @@ function cleanName(raw: string) {
 }
 
 function boardsHref(gameSlug: string) {
-  const game = (LEADERBOARD_GAMES as readonly string[]).includes(gameSlug)
-    ? (gameSlug as LeaderboardGame)
-    : 'stacker'
-  return gameBoardHref(game, 'daily')
+  return gameHref(gameSlug)
 }
 
 type Phase = 'checking' | 'needName' | 'saving' | 'saved' | 'error'
@@ -513,7 +508,7 @@ export function ScoreSaveCard({
             Play again
           </button>
           <div className="score-save__links">
-            <a href={boardsHref(gameSlug)}>Boards</a>
+            <a href={boardsHref(gameSlug)}>Leaderboard</a>
             <a href="#/tournaments">Events</a>
           </div>
         </>

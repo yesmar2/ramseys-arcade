@@ -30,10 +30,6 @@ import {
 
 const INITIAL_ROWS = 10
 
-function recordsIndexTitle(gameName: string) {
-  return `${gameName} Record Books`
-}
-
 function recordBoardEmptyDetail(game: string, gameName: string, label: string) {
   if (game === 'snake') {
     const length = label.replace(/^Fastest to length /i, '')
@@ -147,7 +143,6 @@ function RecordBoardPage({
   const accent = gameMeta?.accent ?? '#2eb8a0'
   const unit = record?.unit ?? 'ms'
   const gameTitle = gameMeta?.name ?? game
-  const indexTitle = recordsIndexTitle(gameTitle)
 
   const waveIndex = useMemo(
     () => waveRecords.findIndex((row) => row.id === recordId),
@@ -173,7 +168,7 @@ function RecordBoardPage({
           }
         >
           <a className="rank-page__back" href={recordsHref(game)}>
-            ← {indexTitle}
+            ← Record books
           </a>
           {gameMeta ? (
             <GamePageHeader
