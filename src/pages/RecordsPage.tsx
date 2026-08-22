@@ -6,7 +6,7 @@ import {
   PeriodSwitcher,
 } from '../components/BoardChrome'
 import { Footer } from '../components/Footer'
-import { HomeBar } from '../components/HomeBar'
+import { SiteHeader } from '../components/SiteHeader'
 import { LeaderboardList } from '../components/LeaderboardList'
 import { getGame } from '../data/games'
 import { gameHref, gamePlayHref, recordHref, recordsHref, leaderboardHref } from '../hooks/useHashRoute'
@@ -115,7 +115,7 @@ function RecordsIndexPage({ game }: { game: string }) {
   return (
     <>
       <main className="lb-page">
-        <HomeBar />
+        <SiteHeader />
         <div
           className="lb-page__inner game-lobby"
           style={{ '--board-accent': accent } as CSSProperties}
@@ -282,7 +282,7 @@ function RecordBoardPage({
   return (
     <>
       <main className="lb-page">
-        <HomeBar />
+        <SiteHeader />
         <div
           className="lb-page__inner game-lobby"
           style={

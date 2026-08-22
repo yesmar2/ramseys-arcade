@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { Footer } from './components/Footer'
-import { Header } from './components/Header'
+import { SiteHeader } from './components/SiteHeader'
 import { getGame } from './data/games'
 import { useHashRoute } from './hooks/useHashRoute'
 import {
@@ -43,7 +43,7 @@ function ComingSoonPage({ slug }: { slug: string }) {
 
   return (
     <>
-      <Header />
+      <SiteHeader />
       <main className="game-page">
         <div className="game-page__inner game-page__inner--narrow">
           <a className="game-page__back" href="#/">

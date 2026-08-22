@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { Footer } from '../components/Footer'
-import { HomeBar } from '../components/HomeBar'
+import { SiteHeader } from '../components/SiteHeader'
 import { InfoTip } from '../components/InfoTip'
 import { PlayerAvatar } from '../components/PlayerAvatar'
 import { getGame } from '../data/games'
@@ -70,7 +70,7 @@ export function TournamentsPage() {
   return (
     <>
       <main className="lb-page">
-        <HomeBar />
+        <SiteHeader />
         <div className="lb-page__inner">
           <header className="lb-page__header">
             <h1 className="lb-page__title lb-page__title--with-tip">
@@ -201,7 +201,7 @@ export function TournamentDetailPage({ id }: { id: string }) {
   return (
     <>
       <main className="lb-page">
-        <HomeBar />
+        <SiteHeader />
         <div className="lb-page__inner">
           <a className="game-page__back" href="#/tournaments">
             ← Tournaments

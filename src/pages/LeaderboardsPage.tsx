@@ -1,12 +1,11 @@
 import { useEffect, useState } from 'react'
 import { BoardEmpty, BoardSkeleton } from '../components/BoardChrome'
-import { Footer } from '../components/Footer'
 import {
   LeaderboardSummary,
   type GamePeriodSummary,
 } from '../components/LeaderboardSummary'
 import { GlobalRankList } from '../components/GlobalRankList'
-import { HomeBar } from '../components/HomeBar'
+import { PageShell } from '../components/PageShell'
 import { leaderboardHref } from '../hooks/useHashRoute'
 import { usePlayerName } from '../hooks/usePlayerName'
 import {
@@ -78,32 +77,26 @@ function LeaderboardsOverview() {
   }, [playerName])
 
   return (
-    <>
-      <main className="lb-page">
-        <HomeBar />
-        <div className="lb-page__inner lb-page__inner--summary">
-          <header className="lb-page__header lb-page__header--compact">
-            <h1 className="lb-page__title">Leaderboards</h1>
-            <p className="lb-page__blurb lb-page__blurb--tight">
-              Top {SUMMARY_ROWS} for every game and time frame. Open a game for
-              the full board.
-            </p>
-          </header>
+    <PageShell innerClassName="lb-page__inner lb-page__inner--summary">
+      <header className="lb-page__header lb-page__header--compact">
+        <h1 className="lb-page__title">Leaderboards</h1>
+        <p className="lb-page__blurb lb-page__blurb--tight">
+          Top {SUMMARY_ROWS} for every game and time frame. Open a game for
+          the full board.
+        </p>
+      </header>
 
-          {error ? (
-            <BoardEmpty
-              title="Couldn’t load scores"
-              detail="Check your connection and try again."
-            />
-          ) : loading ? (
-            <LeaderboardSummary games={[]} loading />
-          ) : (
-            <LeaderboardSummary games={summaries} playerName={playerName} />
-          )}
-        </div>
-      </main>
-      <Footer />
-    </>
+      {error ? (
+        <BoardEmpty
+          title="Couldn’t load scores"
+          detail="Check your connection and try again."
+        />
+      ) : loading ? (
+        <LeaderboardSummary games={[]} loading />
+      ) : (
+        <LeaderboardSummary games={summaries} playerName={playerName} />
+      )}
+    </PageShell>
   )
 }
 
@@ -166,70 +159,64 @@ function GlobalRankingsView() {
   }, [playerName])
 
   return (
-    <>
-      <main className="lb-page">
-        <HomeBar />
-        <div className="lb-page__inner">
-          <header className="lb-page__header lb-page__header--compact">
-            <a className="rank-page__back" href={leaderboardHref()}>
-              ← Leaderboards
-            </a>
-            <p className="lb-page__eyebrow">All-time</p>
-            <h1 className="lb-page__title">Global Rankings</h1>
-            <p className="lb-page__blurb lb-page__blurb--tight">
-              Points from every game board.
-            </p>
-          </header>
+    <PageShell innerClassName="lb-page__inner">
+      <header className="lb-page__header lb-page__header--compact">
+        <a className="rank-page__back" href={leaderboardHref()}>
+          ← Leaderboards
+        </a>
+        <p className="lb-page__eyebrow">All-time</p>
+        <h1 className="lb-page__title">Global Rankings</h1>
+        <p className="lb-page__blurb lb-page__blurb--tight">
+          Points from every game board.
+        </p>
+      </header>
 
-          <section className="lb-board" aria-label="Global leaderboard">
-            {loading ? (
-              <BoardSkeleton />
-            ) : error ? (
-              <BoardEmpty
-                title="Couldn’t load ranks"
-                detail="Check your connection and try again."
-              />
-            ) : entries.length === 0 ? (
-              <BoardEmpty
-                title="No ranks yet"
-                detail="Place on any game board to earn global points."
-                action={
-                  <a className="lb-empty-state__btn" href={leaderboardHref()}>
-                    Browse leaderboards
-                  </a>
-                }
-              />
-            ) : (
-              <GlobalRankList
-                entries={entries}
-                you={you}
-                playerName={playerName}
-                shown={shown}
-              />
-            )}
+      <section className="lb-board" aria-label="Global leaderboard">
+        {loading ? (
+          <BoardSkeleton />
+        ) : error ? (
+          <BoardEmpty
+            title="Couldn’t load ranks"
+            detail="Check your connection and try again."
+          />
+        ) : entries.length === 0 ? (
+          <BoardEmpty
+            title="No ranks yet"
+            detail="Place on any game board to earn global points."
+            action={
+              <a className="lb-empty-state__btn" href={leaderboardHref()}>
+                Browse leaderboards
+              </a>
+            }
+          />
+        ) : (
+          <GlobalRankList
+            entries={entries}
+            you={you}
+            playerName={playerName}
+            shown={shown}
+          />
+        )}
 
-            {!loading && !error && entries.length > shown ? (
-              <button
-                type="button"
-                className="lb-more"
-                onClick={() => setShown(entries.length)}
-              >
-                Show top {entries.length}
-              </button>
-            ) : null}
+        {!loading && !error && entries.length > shown ? (
+          <button
+            type="button"
+            className="lb-more"
+            onClick={() => setShown(entries.length)}
+          >
+            Show top {entries.length}
+          </button>
+        ) : null}
 
-            {!loading && !error && totalPlayers > 0 ? (
-              <p className="lb-device-note lb-device-note--footer">
-                {totalPlayers} ranked {totalPlayers === 1 ? 'player' : 'players'}
-                {entries.length < totalPlayers
-                  ? ` · showing top ${entries.length}`
-                  : ''}
-              </p>
-            ) : null}
-          </section>
-        </div>
-      </main>
-      <Footer />
-    </>
+        {!loading && !error && totalPlayers > 0 ? (
+          <p className="lb-device-note lb-device-note--footer">
+            {totalPlayers} ranked {totalPlayers === 1 ? 'player' : 'players'}
+            {entries.length < totalPlayers
+              ? ` · showing top ${entries.length}`
+              : ''}
+          </p>
+        ) : null}
+      </section>
+    </PageShell>
   )
 }

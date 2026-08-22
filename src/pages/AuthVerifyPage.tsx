@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Header } from '../components/Header'
+import { SiteHeader } from '../components/SiteHeader'
 import { Footer } from '../components/Footer'
 import { completeSignIn } from '../lib/auth'
 
@@ -35,7 +35,7 @@ export function AuthVerifyPage({ token }: { token: string }) {
 
   return (
     <>
-      <Header />
+      <SiteHeader />
       <main className="game-page">
         <div className="game-page__inner game-page__inner--narrow">
           <h1 className="game-page__title">

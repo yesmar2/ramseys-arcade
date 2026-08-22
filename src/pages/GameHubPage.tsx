@@ -4,9 +4,9 @@ import {
   BoardSkeleton,
   PeriodSwitcher,
 } from '../components/BoardChrome'
+import { SiteHeader } from '../components/SiteHeader'
 import { Footer } from '../components/Footer'
 import { GameLobbyArt } from '../components/GameLobbyArt'
-import { HomeBar } from '../components/HomeBar'
 import { LeaderboardList } from '../components/LeaderboardList'
 import {
   deviceRequirementLabel,
@@ -123,7 +123,7 @@ export function GameHubPage({ slug, period: periodFromRoute }: GameHubPageProps)
     return (
       <>
         <main className="lb-page">
-          <HomeBar />
+          <SiteHeader />
           <div className="lb-page__inner">
             <p className="lb-empty">That game isn’t on the board.</p>
           </div>
@@ -139,7 +139,7 @@ export function GameHubPage({ slug, period: periodFromRoute }: GameHubPageProps)
   return (
     <>
       <main className="lb-page">
-        <HomeBar />
+        <SiteHeader />
         <div
           className="lb-page__inner game-lobby"
           style={

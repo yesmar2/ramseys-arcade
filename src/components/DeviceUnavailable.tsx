@@ -1,5 +1,5 @@
 import { Footer } from './Footer'
-import { Header } from './Header'
+import { SiteHeader } from './SiteHeader'
 import type { Game } from '../data/games'
 import { deviceRequirementLabel } from '../data/games'
 
@@ -8,7 +8,7 @@ export function DeviceUnavailable({ game }: { game: Game }) {
 
   return (
     <>
-      <Header />
+      <SiteHeader />
       <main className="game-page">
         <div className="game-page__inner game-page__inner--narrow">
           <a className="game-page__back" href="#/">

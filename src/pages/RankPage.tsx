@@ -1,8 +1,7 @@
 import { useEffect, useState, type CSSProperties } from 'react'
 import { BoardSkeleton } from '../components/BoardChrome'
-import { Footer } from '../components/Footer'
 import { GameDeviceBadge } from '../components/GameDeviceBadge'
-import { HomeBar } from '../components/HomeBar'
+import { PageShell } from '../components/PageShell'
 import { getGame, gamePlayableOn } from '../data/games'
 import { gameHref, globalRankingsHref, rankHref } from '../hooks/useHashRoute'
 import { gapToNextLabel } from '../lib/boardGap'
@@ -77,11 +76,8 @@ export function RankPage({ player }: { player?: string }) {
       : null
 
   return (
-    <>
-      <main className="lb-page">
-        <HomeBar />
-        <div className="lb-page__inner rank-page">
-          <header className="lb-page__header lb-page__header--compact">
+    <PageShell innerClassName="lb-page__inner rank-page">
+      <header className="lb-page__header lb-page__header--compact">
             {!isSelf ? (
               <a className="rank-page__back" href={rankHref()}>
                 ← Your profile
@@ -239,12 +235,9 @@ export function RankPage({ player }: { player?: string }) {
             </details>
           ) : null}
 
-          <a className="rank-page__boards" href={globalRankingsHref()}>
-            Open Global Rankings
-          </a>
-        </div>
-      </main>
-      <Footer />
-    </>
+      <a className="rank-page__boards" href={globalRankingsHref()}>
+        Open Global Rankings
+      </a>
+    </PageShell>
   )
 }

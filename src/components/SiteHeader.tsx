@@ -1,13 +1,15 @@
 import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '../hooks/useAuth'
 import { usePlayerName } from '../hooks/usePlayerName'
-import { globalRankingsHref, leaderboardHref, rankHref } from '../hooks/useHashRoute'
+import { rankHref } from '../hooks/useHashRoute'
 import { useGlobalRank } from '../lib/globalRank'
 import { normalizePlayerName } from '../lib/leaderboard'
 import { currentTheme, THEME_EVENT, toggleTheme, type Theme } from '../lib/theme'
 import { PlayerBadge, type PlayerBadgeHandle } from './PlayerBadge'
+import { SITE_NAV_LINKS } from './siteNav'
 
-export function HomeBar() {
+/** Site-wide navigation — use this on every page (home, leaderboards, game hub, etc.). */
+export function SiteHeader() {
   const { rank } = useGlobalRank()
   const { account, signedIn } = useAuth()
   const playerName = normalizePlayerName(usePlayerName())
@@ -22,6 +24,12 @@ export function HomeBar() {
     const sync = () => setTheme(currentTheme())
     window.addEventListener(THEME_EVENT, sync)
     return () => window.removeEventListener(THEME_EVENT, sync)
+  }, [])
+
+  useEffect(() => {
+    const close = () => setMenuOpen(false)
+    window.addEventListener('hashchange', close)
+    return () => window.removeEventListener('hashchange', close)
   }, [])
 
   useEffect(() => {
@@ -49,50 +57,46 @@ export function HomeBar() {
       : 'Set gamer tag'
 
   return (
-    <nav className="home-bar" aria-label="Site">
-      <div className="home-bar__start">
-        <a className="home-bar__brand" href="#/">
+    <nav className="site-header" aria-label="Site">
+      <div className="site-header__start">
+        <a className="site-header__brand" href="#/">
           Archiv<span>ade</span>
         </a>
-        <div className="home-bar__links" aria-label="Primary">
-          <a className="home-bar__link" href={leaderboardHref()}>
-            Leaderboards
-          </a>
-          <a className="home-bar__link" href={globalRankingsHref()}>
-            Global rankings
-          </a>
-          <a className="home-bar__link" href="#/tournaments">
-            Tournaments
-          </a>
+        <div className="site-header__links" aria-label="Primary">
+          {SITE_NAV_LINKS.map((item) => (
+            <a key={item.href} className="site-header__link" href={item.href}>
+              {item.label}
+            </a>
+          ))}
         </div>
       </div>
 
-      <div className="home-bar__end">
+      <div className="site-header__end">
         {playerName ? (
           <a
-            className="home-bar__you"
+            className="site-header__you"
             href={rankHref()}
             title={rank != null ? `Your profile · #${rank}` : 'Your profile'}
           >
             {rank != null ? (
-              <span className="home-bar__you-rank">#{rank}</span>
+              <span className="site-header__you-rank">#{rank}</span>
             ) : null}
-            <span className="home-bar__you-name">{playerName}</span>
+            <span className="site-header__you-name">{playerName}</span>
           </a>
         ) : (
           <button
             type="button"
-            className="home-bar__you home-bar__you--empty"
+            className="site-header__you site-header__you--empty"
             onClick={() => playerRef.current?.openEdit()}
           >
             Set gamer tag
           </button>
         )}
 
-        <div className="home-bar__more" ref={menuRef}>
+        <div className="site-header__more" ref={menuRef}>
           <button
             type="button"
-            className="home-bar__menu-btn"
+            className="site-header__menu-btn"
             aria-label="More"
             aria-expanded={menuOpen}
             aria-haspopup="menu"
@@ -106,31 +110,18 @@ export function HomeBar() {
             </svg>
           </button>
           {menuOpen ? (
-            <div className="home-bar__menu" role="menu">
-              <a
-                className="home-bar__menu-mobile"
-                role="menuitem"
-                href={leaderboardHref()}
-                onClick={() => setMenuOpen(false)}
-              >
-                Leaderboards
-              </a>
-              <a
-                className="home-bar__menu-mobile"
-                role="menuitem"
-                href={globalRankingsHref()}
-                onClick={() => setMenuOpen(false)}
-              >
-                Global rankings
-              </a>
-              <a
-                className="home-bar__menu-mobile"
-                role="menuitem"
-                href="#/tournaments"
-                onClick={() => setMenuOpen(false)}
-              >
-                Tournaments
-              </a>
+            <div className="site-header__menu" role="menu">
+              {SITE_NAV_LINKS.map((item) => (
+                <a
+                  key={item.href}
+                  className="site-header__menu-mobile"
+                  role="menuitem"
+                  href={item.href}
+                  onClick={() => setMenuOpen(false)}
+                >
+                  {item.label}
+                </a>
+              ))}
               <button
                 type="button"
                 role="menuitem"
@@ -155,10 +146,16 @@ export function HomeBar() {
           ) : null}
         </div>
 
-        <div className="home-bar__player">
-          <PlayerBadge ref={playerRef} icon className="home-bar__player-badge" />
+        <div className="site-header__player">
+          <PlayerBadge ref={playerRef} icon className="site-header__player-badge" />
         </div>
       </div>
     </nav>
   )
 }
+
+/** @deprecated Use SiteHeader */
+export const HomeBar = SiteHeader
+
+/** @deprecated Use SiteHeader */
+export const Header = SiteHeader
