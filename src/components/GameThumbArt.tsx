@@ -37,7 +37,7 @@ function AsteroidsThumb({ accent }: { accent?: string }) {
   const shipFill = `color-mix(in srgb, ${a} 28%, var(--playfield))`
 
   return (
-    <g transform="translate(32 21)">
+    <g transform="translate(32 20)">
       <path
         d="M0 -11 L-8 9 L0 4 L8 9 Z"
         fill={shipFill}
@@ -58,7 +58,7 @@ function AsteroidsThumb({ accent }: { accent?: string }) {
 }
 
 function PatriotThumb({ accent }: { accent?: string }) {
-  const ground = 34
+  const ground = 29
   const x = 32
   const blocks = [
     { dx: -8, w: 5, h: 11 },
@@ -88,15 +88,15 @@ function PatriotThumb({ accent }: { accent?: string }) {
 
 function SnakeThumb() {
   const cells = [
-    { cx: 18, cy: 24, hue: 208 },
-    { cx: 28, cy: 24, hue: 198 },
-    { cx: 38, cy: 24, hue: 188 },
-    { cx: 38, cy: 14, hue: 178 },
-    { cx: 48, cy: 14, hue: 168 },
+    { cx: 18, cy: 22, hue: 208 },
+    { cx: 28, cy: 22, hue: 198 },
+    { cx: 38, cy: 22, hue: 188 },
+    { cx: 38, cy: 12, hue: 178 },
+    { cx: 48, cy: 12, hue: 168 },
   ]
 
   return (
-    <>
+    <g transform="translate(0 3)">
       {cells.map((cell, i) => (
         <circle
           key={i}
@@ -106,11 +106,11 @@ function SnakeThumb() {
           {...shape(pastel(cell.hue, 60, 50), 1.4)}
         />
       ))}
-      <circle cx="49.2" cy="12.6" r="0.9" fill="#fff" />
-      <circle cx="49.2" cy="15.4" r="0.9" fill="#fff" />
-      <circle cx="49.5" cy="12.6" r="0.45" fill="#1a2b3c" />
-      <circle cx="49.5" cy="15.4" r="0.45" fill="#1a2b3c" />
-    </>
+      <circle cx="49.2" cy="10.6" r="0.9" fill="#fff" />
+      <circle cx="49.2" cy="13.4" r="0.9" fill="#fff" />
+      <circle cx="49.5" cy="10.6" r="0.45" fill="#1a2b3c" />
+      <circle cx="49.5" cy="13.4" r="0.45" fill="#1a2b3c" />
+    </g>
   )
 }
 
@@ -120,7 +120,7 @@ function PopThumb() {
   const gap = 8
   const r = 3.4
   const originX = 32 - gap
-  const originY = 12
+  const originY = 10
 
   return (
     <>
@@ -150,7 +150,7 @@ function PopThumb() {
 }
 
 function StackerThumb() {
-  const baseCy = 28
+  const baseCy = 24
   const cx = 32
 
   return (
@@ -174,10 +174,10 @@ function DeadCenterThumb({ accent }: { accent?: string }) {
   const dot = accent ?? '#2eb8a0'
 
   return (
-    <>
-      <path d="M20 30 L32 10 L44 30 Z" {...shape(tri, 1.8)} />
-      <circle cx="32" cy="22" r="2.2" fill={dot} />
-    </>
+    <g transform="translate(0 1)">
+      <path d="M20 28 L32 8 L44 28 Z" {...shape(tri, 1.8)} />
+      <circle cx="32" cy="20" r="2.2" fill={dot} />
+    </g>
   )
 }
 
