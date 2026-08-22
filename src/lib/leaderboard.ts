@@ -309,6 +309,21 @@ export async function setPlayerAvatar(
 
 export type YouEntry = LeaderboardEntry & { rank: number }
 
+export type GamePeriodSummary = {
+  slug: LeaderboardGame
+  byPeriod: Record<LeaderboardPeriod, { entries: LeaderboardEntry[] }>
+}
+
+export async function fetchLeaderboardsSummary(
+  limit = 3,
+): Promise<GamePeriodSummary[]> {
+  const capped = Math.min(10, Math.max(1, Math.floor(limit)))
+  const data = await api<{ games: GamePeriodSummary[] }>(
+    `/leaderboards/summary?limit=${encodeURIComponent(String(capped))}`,
+  )
+  return data.games ?? []
+}
+
 export async function getLeaderboard(
   slug: string,
   period: LeaderboardPeriod = 'all',

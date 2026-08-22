@@ -6,6 +6,7 @@ import {
   LEADERBOARD_PERIODS,
   PERIOD_LABELS,
   normalizePlayerName,
+  type GamePeriodSummary,
   type LeaderboardEntry,
   type LeaderboardGame,
   type LeaderboardPeriod,
@@ -13,14 +14,6 @@ import {
 import { GameThumbArt } from './GameThumbArt'
 import { PlayerAvatar } from './PlayerAvatar'
 import { PodiumMedal, medalKind } from './PodiumMedal'
-
-export type GamePeriodSummary = {
-  slug: LeaderboardGame
-  byPeriod: Record<
-    LeaderboardPeriod,
-    { entries: LeaderboardEntry[] }
-  >
-}
 
 type LeaderboardSummaryProps = {
   games: GamePeriodSummary[]

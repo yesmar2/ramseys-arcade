@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react'
 import { BoardEmpty, BoardSkeleton } from '../components/BoardChrome'
 import {
   LeaderboardSummary,
-  type GamePeriodSummary,
 } from '../components/LeaderboardSummary'
 import { GlobalRankList } from '../components/GlobalRankList'
 import { PageShell } from '../components/PageShell'
@@ -11,10 +10,9 @@ import { usePlayerName } from '../hooks/usePlayerName'
 import {
   fetchGlobalBoard,
   fetchGlobalRank,
-  getLeaderboard,
-  LEADERBOARD_GAMES,
-  LEADERBOARD_PERIODS,
+  fetchLeaderboardsSummary,
   normalizePlayerName,
+  type GamePeriodSummary,
   type GlobalBoardEntry,
 } from '../lib/leaderboard'
 
@@ -45,22 +43,7 @@ function LeaderboardsOverview() {
     setError(null)
     void (async () => {
       try {
-        const rows = await Promise.all(
-          LEADERBOARD_GAMES.map(async (slug) => {
-            const boards = await Promise.all(
-              LEADERBOARD_PERIODS.map((period) =>
-                getLeaderboard(slug, period, playerName || undefined),
-              ),
-            )
-            const byPeriod = {} as GamePeriodSummary['byPeriod']
-            LEADERBOARD_PERIODS.forEach((period, i) => {
-              byPeriod[period] = {
-                entries: boards[i].entries.slice(0, SUMMARY_ROWS),
-              }
-            })
-            return { slug, byPeriod }
-          }),
-        )
+        const rows = await fetchLeaderboardsSummary(SUMMARY_ROWS)
         if (!cancelled) setSummaries(rows)
       } catch (err) {
         if (!cancelled) {
@@ -74,7 +57,7 @@ function LeaderboardsOverview() {
     return () => {
       cancelled = true
     }
-  }, [playerName])
+  }, [])
 
   return (
     <PageShell innerClassName="lb-page__inner lb-page__inner--summary">
