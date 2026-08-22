@@ -3,7 +3,7 @@ import { BoardSkeleton } from '../components/BoardChrome'
 import { GameDeviceBadge } from '../components/GameDeviceBadge'
 import { PageShell } from '../components/PageShell'
 import { getGame, gamePlayableOn } from '../data/games'
-import { gameHref, globalRankingsHref, rankHref } from '../hooks/useHashRoute'
+import { gameBoardHref, gameHref, globalRankingsHref, rankHref } from '../hooks/useHashRoute'
 import { gapToNextLabel } from '../lib/boardGap'
 import { useDeviceType } from '../lib/device'
 import { usePlayerName } from '../hooks/usePlayerName'
@@ -156,7 +156,7 @@ export function RankPage({ player }: { player?: string }) {
                     const onDevice = game ? gamePlayableOn(game, device) : true
                     const accent = game?.accent ?? 'var(--accent)'
                     const href = row
-                      ? gameHref(slug, 'all')
+                      ? gameBoardHref(slug, 'all')
                       : gameHref(slug)
                     return (
                       <li key={slug}>

@@ -16,6 +16,7 @@ import { AsteroidsPage } from './pages/AsteroidsPage'
 import { AuthVerifyPage } from './pages/AuthVerifyPage'
 import { DeadCenterPage } from './pages/DeadCenterPage'
 import { GameHubPage } from './pages/GameHubPage'
+import { GameLeaderboardPage } from './pages/GameLeaderboardPage'
 import { HomePage } from './pages/HomePage'
 import { RankPage } from './pages/RankPage'
 import { LeaderboardsPage } from './pages/LeaderboardsPage'
@@ -109,6 +110,11 @@ function App() {
   if (route.name === 'leaderboards') {
     return <LeaderboardsPage global={route.global} />
   }
+  if (route.name === 'gameLeaderboard') {
+    return (
+      <GameLeaderboardPage game={route.game} period={route.period} />
+    )
+  }
   if (route.name === 'records') {
     return (
       <RecordsPage
@@ -124,7 +130,7 @@ function App() {
   }
   if (route.name === 'tournament') return <TournamentDetailPage id={route.id} />
   if (route.name === 'game') {
-    return <GameHubPage slug={route.slug} period={route.period} />
+    return <GameHubPage slug={route.slug} />
   }
   if (route.name === 'gamePlay' && route.slug === 'stacker') return <StackerPage />
   if (route.name === 'gamePlay' && route.slug === 'patriot') return <PatriotPage />

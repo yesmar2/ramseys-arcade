@@ -1,6 +1,6 @@
 import { useMemo, type CSSProperties } from 'react'
 import { getGame } from '../data/games'
-import { gameHref, rankHref } from '../hooks/useHashRoute'
+import { gameBoardHref, rankHref } from '../hooks/useHashRoute'
 import {
   LEADERBOARD_GAMES,
   LEADERBOARD_PERIODS,
@@ -46,7 +46,7 @@ function MiniBoard({
     >
       <a
         className="lb-summary__period-head"
-        href={gameHref(slug, period)}
+        href={gameBoardHref(slug, period)}
         aria-label={`${getGame(slug)?.name ?? slug} — ${label} board`}
       >
         <span className="lb-summary__period-label">{label}</span>
@@ -132,14 +132,14 @@ export function LeaderboardSummary({
             <header className="lb-summary__head">
               <a
                 className="lb-summary__game-link"
-                href={gameHref(slug, 'daily')}
+                href={gameBoardHref(slug, 'daily')}
               >
                 <span className="lb-summary__thumb" aria-hidden="true">
                   <GameThumbArt slug={slug} accent={game.accent} />
                 </span>
                 <span className="lb-summary__game-name">{game.name}</span>
               </a>
-              <a className="lb-summary__board-link" href={gameHref(slug, 'daily')}>
+              <a className="lb-summary__board-link" href={gameBoardHref(slug, 'daily')}>
                 Full board →
               </a>
             </header>

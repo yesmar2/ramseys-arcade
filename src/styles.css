@@ -604,12 +604,6 @@ img {
   z-index: 30;
 }
 
-.home-stage--bare .site-header__brand {
-  font-size: clamp(1.35rem, 3.5vw, 1.65rem);
-  font-weight: 600;
-  letter-spacing: -0.03em;
-}
-
 .visually-hidden {
   position: absolute;
   width: 1px;
@@ -1163,7 +1157,7 @@ img {
   }
 
   .site-header__brand {
-    font-size: 1.05rem;
+    font-size: clamp(1.15rem, 3.2vw, 1.35rem);
   }
 
   .site-header__menu-btn {
@@ -3098,6 +3092,75 @@ a.game-hud__board {
 .lb-page__inner {
   width: min(100% - 2rem, 36rem);
   margin-inline: auto;
+}
+
+.lb-page__inner--game-board {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.lb-game-board__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.lb-game-board__title {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-width: 0;
+  color: inherit;
+  text-decoration: none;
+}
+
+.lb-game-board__title:hover .lb-game-board__name,
+.lb-game-board__title:focus-visible .lb-game-board__name {
+  color: color-mix(in srgb, var(--board-accent, var(--accent)) 70%, var(--ink));
+}
+
+.lb-game-board__name {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(1.25rem, 4vw, 1.65rem);
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+
+.lb-game-board__hub-link {
+  flex: none;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.lb-game-board__hub-link:hover,
+.lb-game-board__hub-link:focus-visible {
+  color: color-mix(in srgb, var(--board-accent, var(--accent)) 65%, var(--ink));
+}
+
+.game-lobby__board-link {
+  display: block;
+  margin-top: 0.25rem;
+  padding: 0.85rem 1rem;
+  border-radius: 0.65rem;
+  border: 1px solid color-mix(in srgb, var(--board-accent, var(--accent)) 35%, var(--line));
+  background: color-mix(in srgb, var(--board-accent, var(--accent)) 8%, var(--surface));
+  font-weight: 700;
+  text-align: center;
+  text-decoration: none;
+  color: var(--ink);
+}
+
+.game-lobby__board-link:hover,
+.game-lobby__board-link:focus-visible {
+  border-color: color-mix(in srgb, var(--board-accent, var(--accent)) 55%, var(--line));
+  background: color-mix(in srgb, var(--board-accent, var(--accent)) 14%, var(--surface));
 }
 
 .lb-page__header {
