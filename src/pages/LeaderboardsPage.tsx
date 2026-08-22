@@ -9,7 +9,7 @@ import {
   type GameBoardSummary,
 } from '../components/GameBoardPicker'
 import { Footer } from '../components/Footer'
-import { GameLobbyArt } from '../components/GameLobbyArt'
+import { GameThumbArt } from '../components/GameThumbArt'
 import { GlobalRankList } from '../components/GlobalRankList'
 import { HomeBar } from '../components/HomeBar'
 import { LeaderboardList } from '../components/LeaderboardList'
@@ -393,7 +393,11 @@ function GameBoardView({
 
           <section className="lb-board-section" aria-labelledby="lb-active-game-heading">
             <div className="lb-board-section__head">
-              <GameLobbyArt slug={active} accent={accent} />
+              <GameThumbArt
+                slug={active}
+                accent={accent}
+                className="lb-board-section__thumb"
+              />
               <div className="lb-board-section__intro">
                 <h2 id="lb-active-game-heading" className="lb-board-section__title">
                   {activeGame?.name ?? active}

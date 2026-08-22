@@ -1,7 +1,7 @@
 import { useMemo, useState, type CSSProperties } from 'react'
 import { getGame } from '../data/games'
 import { leaderboardHref } from '../hooks/useHashRoute'
-import { GameLobbyArt } from './GameLobbyArt'
+import { GameThumbArt } from './GameThumbArt'
 import { LEADERBOARD_GAMES, type LeaderboardGame } from '../lib/leaderboard'
 
 export type GameBoardSummary = {
@@ -82,7 +82,7 @@ export function GameBoardPicker({
                   aria-current={active ? 'page' : undefined}
                 >
                   <span className="lb-picker__art" aria-hidden="true">
-                    <GameLobbyArt slug={row.slug} accent={game.accent} />
+                    <GameThumbArt slug={row.slug} accent={game.accent} />
                   </span>
                   <span className="lb-picker__main">
                     <span className="lb-picker__name">{game.name}</span>
