@@ -4,6 +4,7 @@ import {
   BoardSkeleton,
   PeriodSwitcher,
 } from '../components/BoardChrome'
+import { GameBoardSwitcher } from '../components/GameBoardSwitcher'
 import { GamePageHeader } from '../components/GamePageHeader'
 import { LeaderboardList } from '../components/LeaderboardList'
 import { PageShell } from '../components/PageShell'
@@ -12,12 +13,10 @@ import {
   gameBoardHref,
   gamePlayHref,
   leaderboardHref,
-  recordsHref,
 } from '../hooks/useHashRoute'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { useDeviceType } from '../lib/device'
 import { flashYouRow } from '../lib/boardGap'
-import { gameHasRecords } from '../lib/records'
 import {
   getLeaderboard,
   normalizePlayerName,
@@ -125,6 +124,13 @@ export function GameLeaderboardPage({
         title={`${game.name} leaderboards`}
       />
 
+      <GameBoardSwitcher
+        slug={gameSlug}
+        accent={accent}
+        active="scores"
+        scoresPeriod={period}
+      />
+
       <PeriodSwitcher
         period={period}
         accent={accent}
@@ -194,12 +200,6 @@ export function GameLeaderboardPage({
           </p>
         ) : null}
       </section>
-
-      {gameHasRecords(gameSlug) ? (
-        <nav className="lb-board-links" aria-label="More boards">
-          <a href={recordsHref(gameSlug)}>Record books</a>
-        </nav>
-      ) : null}
       </div>
     </PageShell>
   )

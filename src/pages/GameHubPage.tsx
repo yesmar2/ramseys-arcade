@@ -7,6 +7,7 @@ import {
 import { SiteHeader } from '../components/SiteHeader'
 import { Footer } from '../components/Footer'
 import { GameLobbyArt } from '../components/GameLobbyArt'
+import { GameBoardSwitcher } from '../components/GameBoardSwitcher'
 import { LeaderboardList } from '../components/LeaderboardList'
 import {
   deviceRequirementLabel,
@@ -16,15 +17,14 @@ import {
 import { scoringFor } from '../data/scoring'
 import { useBoardRecord } from '../hooks/useBoardRecord'
 import {
+  gameHref,
   gamePlayHref,
   globalRankingsHref,
-  recordsHref,
 } from '../hooks/useHashRoute'
 import { usePersonalBest } from '../hooks/usePersonalBest'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { useDeviceType } from '../lib/device'
 import { flashYouRow } from '../lib/boardGap'
-import { gameHasRecords } from '../lib/records'
 import {
   getLeaderboard,
   LEADERBOARD_GAMES,
@@ -173,6 +173,14 @@ export function GameHubPage({ slug }: GameHubPageProps) {
 
           {boardSlug ? (
             <>
+              <GameBoardSwitcher
+                slug={boardSlug}
+                accent={accent}
+                active="scores"
+                scoresHref={gameHref(boardSlug)}
+                scoresPeriod={period}
+              />
+
               <PeriodSwitcher
                 period={period}
                 accent={accent}
@@ -247,9 +255,6 @@ export function GameHubPage({ slug }: GameHubPageProps) {
               </section>
 
               <nav className="lb-board-links" aria-label="More boards">
-                {gameHasRecords(boardSlug) ? (
-                  <a href={recordsHref(boardSlug)}>Record books</a>
-                ) : null}
                 <a href={globalRankingsHref()}>Global rankings</a>
               </nav>
             </>

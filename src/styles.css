@@ -5122,6 +5122,41 @@ a.game-hud__board {
   box-shadow: var(--shadow-soft);
 }
 
+.lb-board-switcher {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  margin: 0.15rem 0 0.35rem;
+}
+
+.lb-board-switcher__item {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--muted);
+  text-decoration: none;
+  border-bottom: 2px solid transparent;
+  padding: 0.1rem 0.05rem;
+  line-height: 1.2;
+}
+
+a.lb-board-switcher__item:hover,
+a.lb-board-switcher__item:focus-visible {
+  color: var(--ink);
+  outline: none;
+}
+
+.lb-board-switcher__item--active {
+  color: color-mix(in srgb, var(--board-accent, var(--accent)) 72%, var(--ink));
+  border-bottom-color: color-mix(in srgb, var(--board-accent, var(--accent)) 70%, transparent);
+}
+
+.lb-board-switcher__sep {
+  color: rgba(var(--ink-rgb), 0.22);
+  font-weight: 600;
+  user-select: none;
+}
+
 .lb-board-links {
   display: flex;
   flex-wrap: wrap;
@@ -5146,7 +5181,12 @@ a.game-hud__board {
   content: ' ?';
 }
 
-/* ?? Game lobby ?? */
+.game-lobby .lb-board-switcher {
+  margin-top: 0.25rem;
+  margin-bottom: 0.15rem;
+}
+
+/* Game lobby */
 .game-lobby {
   display: flex;
   flex-direction: column;
@@ -5273,21 +5313,7 @@ a.game-hud__board {
   margin: 0 0 0.85rem;
 }
 
-.game-lobby__all-boards {
-  display: block;
-  margin-top: 1rem;
-  text-align: center;
-  font-weight: 700;
-  font-size: 0.9rem;
-  color: var(--muted);
-}
-
-.game-lobby__all-boards:hover,
-.game-lobby__all-boards:focus-visible {
-  color: var(--ink);
-}
-
-/* ?? Score save (game over) ?? */
+/* Score save (game over) */
 .score-save {
   display: flex;
   flex-direction: column;

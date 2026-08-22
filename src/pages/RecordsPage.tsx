@@ -5,6 +5,7 @@ import {
   PeriodSwitcher,
 } from '../components/BoardChrome'
 import { Footer } from '../components/Footer'
+import { GameBoardSwitcher } from '../components/GameBoardSwitcher'
 import { GamePageHeader } from '../components/GamePageHeader'
 import { SiteHeader } from '../components/SiteHeader'
 import { LeaderboardList } from '../components/LeaderboardList'
@@ -134,6 +135,13 @@ function RecordsIndexPage({ game }: { game: string }) {
               <h1 className="lb-page__title">{pageTitle}</h1>
             </header>
           )}
+
+          <GameBoardSwitcher
+            slug={game}
+            accent={accent}
+            active="records"
+            scoresHref={gameHref(game)}
+          />
 
           <section className="lb-board" aria-label="Game records">
             {loading ? (
@@ -311,6 +319,13 @@ function RecordBoardPage({
               <h1 className="lb-page__title">{record?.label ?? 'Record'}</h1>
             </header>
           )}
+
+          <GameBoardSwitcher
+            slug={game}
+            accent={accent}
+            active="records"
+            scoresHref={gameHref(game)}
+          />
 
           {waveRecords.length > 1 ? (
             <nav className="records-wave-nav" aria-label="Record boards">
