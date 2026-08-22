@@ -923,9 +923,9 @@ img {
 
 .site-header__brand {
   font-family: var(--font-display);
-  font-weight: 500;
-  font-size: 1.15rem;
-  letter-spacing: -0.02em;
+  font-weight: 600;
+  font-size: clamp(1.35rem, 3.5vw, 1.65rem);
+  letter-spacing: -0.03em;
   color: var(--ink);
   flex: none;
 }
