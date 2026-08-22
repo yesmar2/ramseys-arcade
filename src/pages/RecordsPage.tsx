@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
-import { BoardGameThumb } from '../components/BoardGameThumb'
+import { BoardGameHero } from '../components/BoardGameHero'
 import {
   BoardEmpty,
   BoardSkeleton,
@@ -125,16 +125,14 @@ function RecordsIndexPage({ game }: { game: string }) {
           className="lb-page__inner"
           style={{ '--board-accent': accent } as CSSProperties}
         >
-          <header className="lb-page__header lb-page__header--compact lb-page__header--with-art">
+          <header className="lb-page__header lb-page__header--compact">
             <a className="rank-page__back" href={backHref}>
               ← {gameTitle} scores
             </a>
-            <div className="lb-page__title-row">
-              {gameMeta ? (
-                <BoardGameThumb slug={game} accent={accent} />
-              ) : null}
-              <h1 className="lb-page__title">{pageTitle}</h1>
-            </div>
+            {gameMeta ? (
+              <BoardGameHero slug={game} accent={accent} />
+            ) : null}
+            <h1 className="lb-page__title">{pageTitle}</h1>
           </header>
 
           <section className="lb-board" aria-label="Game records">
@@ -299,16 +297,14 @@ function RecordBoardPage({
             } as CSSProperties
           }
         >
-          <header className="lb-page__header lb-page__header--compact lb-page__header--with-art">
+          <header className="lb-page__header lb-page__header--compact">
             <a className="rank-page__back" href={recordsHref(game)}>
               ← {indexTitle}
             </a>
-            <div className="lb-page__title-row">
-              {gameMeta ? (
-                <BoardGameThumb slug={game} accent={accent} />
-              ) : null}
-              <h1 className="lb-page__title">{record?.label ?? 'Record'}</h1>
-            </div>
+            {gameMeta ? (
+              <BoardGameHero slug={game} accent={accent} />
+            ) : null}
+            <h1 className="lb-page__title">{record?.label ?? 'Record'}</h1>
           </header>
 
           {waveRecords.length > 1 ? (

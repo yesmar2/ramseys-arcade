@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
-import { BoardGameThumb } from '../components/BoardGameThumb'
+import { BoardGameHero } from '../components/BoardGameHero'
 import {
   BoardEmpty,
   BoardSkeleton,
@@ -280,16 +280,14 @@ function GameLeaderboard({
             } as CSSProperties
           }
         >
-          <header className="lb-page__header lb-page__header--compact lb-page__header--with-art">
+          <header className="lb-page__header lb-page__header--compact">
             <a className="rank-page__back" href={leaderboardHref()}>
               ← Global Rankings
             </a>
-            <div className="lb-page__title-row">
-              {activeGame ? (
-                <BoardGameThumb slug={active} accent={accent} />
-              ) : null}
-              <h1 className="lb-page__title">{activeGame?.name ?? active}</h1>
-            </div>
+            {activeGame ? (
+              <BoardGameHero slug={active} accent={accent} />
+            ) : null}
+            <h1 className="lb-page__title">{activeGame?.name ?? active}</h1>
             <p className="lb-page__blurb lb-page__blurb--tight">
               High scores · all-time places earn global points
             </p>

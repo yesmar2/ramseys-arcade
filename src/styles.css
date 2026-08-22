@@ -3326,42 +3326,51 @@ a.game-hud__board {
   margin-bottom: 0.25rem;
 }
 
-.lb-page__header--with-art .lb-page__title-row {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.7rem;
-  flex-wrap: wrap;
-}
-
-.lb-page__header--with-art .lb-page__title {
-  margin-bottom: 0;
-}
-
-.board-thumb {
-  flex: none;
-  width: 3.35rem;
-  aspect-ratio: 16 / 10;
+.board-hero {
+  position: relative;
+  width: 100%;
+  height: 4.25rem;
+  margin: 0 0 0.9rem;
   overflow: hidden;
-  border-radius: 0.65rem;
+  border-radius: calc(var(--tile-radius) - 0.15rem);
   background: var(--playfield);
   box-shadow:
-    inset 0 0 0 1px rgba(var(--ink-rgb), 0.08),
+    inset 0 0 0 1px rgba(var(--ink-rgb), 0.07),
     var(--shadow-soft);
 }
 
-.board-thumb__stage {
-  position: relative;
-  width: 100%;
-  height: 100%;
+.board-hero__art {
+  position: absolute;
+  inset: -8% -4%;
+  opacity: 0.92;
 }
 
-.board-thumb__stage .game-tile__art-svg,
-.board-thumb__stage .game-tile__swatch {
+.board-hero__art .game-tile__art-svg,
+.board-hero__art .game-tile__swatch {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
+}
+
+.board-hero__veil {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--tile-accent, var(--accent)) 22%, transparent) 0%,
+      color-mix(in srgb, var(--tile-accent, var(--accent)) 8%, var(--surface)) 55%,
+      color-mix(in srgb, var(--surface) 94%, transparent) 100%
+    ),
+    linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--surface) 88%, transparent) 0%,
+      transparent 18%,
+      transparent 82%,
+      color-mix(in srgb, var(--surface) 88%, transparent) 100%
+    );
+  backdrop-filter: blur(0.5px);
 }
 
 .lb-page__title--with-tip {
