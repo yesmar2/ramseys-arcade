@@ -13,6 +13,8 @@ import {
 } from './leaderboard'
 
 export const ASTEROIDS_WAVE_RECORD_MAX = 20
+export const SNAKE_MILESTONE_MAX = 200
+export const SNAKE_MILESTONE_STEP = 10
 
 export type RecordDirection = 'lower' | 'higher'
 
@@ -96,6 +98,42 @@ export function parseAsteroidsWaveFromRecordId(recordId: string): number | null 
     return null
   }
   return wave
+}
+
+export function snakeFastestRecordId(score: number): string | null {
+  if (
+    !Number.isInteger(score) ||
+    score < SNAKE_MILESTONE_STEP ||
+    score > SNAKE_MILESTONE_MAX ||
+    score % SNAKE_MILESTONE_STEP !== 0
+  ) {
+    return null
+  }
+  return `fastest-to-${score}`
+}
+
+export function parseSnakeMilestoneFromRecordId(recordId: string): number | null {
+  const match = /^fastest-to-(\d+)$/.exec(recordId)
+  if (!match) return null
+  const score = Number(match[1])
+  if (
+    !Number.isInteger(score) ||
+    score < SNAKE_MILESTONE_STEP ||
+    score > SNAKE_MILESTONE_MAX ||
+    score % SNAKE_MILESTONE_STEP !== 0
+  ) {
+    return null
+  }
+  return score
+}
+
+export function recordNavShortLabel(row: { id: string; label: string }): string {
+  if (row.id === ASTEROIDS_HIGHEST_COMBO_ID) return 'Combo'
+  const wave = parseAsteroidsWaveFromRecordId(row.id)
+  if (wave != null) return `W${wave}`
+  const milestone = parseSnakeMilestoneFromRecordId(row.id)
+  if (milestone != null) return String(milestone)
+  return row.label
 }
 
 /** Format stored ms as seconds with one decimal. */
@@ -228,4 +266,29 @@ export async function submitAsteroidsHighestCombo(
   } catch {
     return null
   }
+}
+
+/** Best-effort fastest-to milestone submit (elapsed ms from run start). */
+export async function submitSnakeFastestTo(
+  score: number,
+  elapsedMs: number,
+  name: string,
+): Promise<{ improved: boolean; rank: number | null } | null> {
+  const recordId = snakeFastestRecordId(score)
+  const cleaned = normalizePlayerName(name)
+  if (!recordId || !cleaned || !(elapsedMs > 0)) return null
+  const ms = Math.max(1, Math.round(elapsedMs))
+  try {
+    const result = await submitRecord('snake', recordId, cleaned, ms)
+    return { improved: result.improved, rank: result.rank }
+  } catch {
+    return null
+  }
+}
+
+export const GAMES_WITH_RECORDS = ['asteroids', 'snake'] as const
+export type RecordGame = (typeof GAMES_WITH_RECORDS)[number]
+
+export function gameHasRecords(game: string): game is RecordGame {
+  return (GAMES_WITH_RECORDS as readonly string[]).includes(game)
 }

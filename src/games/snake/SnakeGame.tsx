@@ -7,7 +7,14 @@ import { ScoreSaveCard } from '../../components/ScoreSaveCard'
 import { TournamentScoreCard } from '../../components/TournamentScoreCard'
 import { useGamePause } from '../../hooks/useGamePause'
 import { usePersonalBest } from '../../hooks/usePersonalBest'
+import { usePlayerName } from '../../hooks/usePlayerName'
 import { getPersonalBest } from '../../lib/personalBest'
+import { normalizePlayerName } from '../../lib/leaderboard'
+import {
+  SNAKE_MILESTONE_MAX,
+  SNAKE_MILESTONE_STEP,
+  submitSnakeFastestTo,
+} from '../../lib/records'
 import { useTournamentPlay } from '../../tournaments/TournamentPlayContext'
 import {
   createInitialState,
@@ -30,6 +37,7 @@ function currentLayout() {
 export function SnakeGame() {
   const tournament = useTournamentPlay()
   const apiBest = usePersonalBest('snake')
+  const playerName = normalizePlayerName(usePlayerName())
   const layout0 = currentLayout()
   const stateRef = useRef<GameState>(createInitialState(layout0.cols, layout0.rows, layout0.dir))
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -41,6 +49,8 @@ export function SnakeGame() {
   const swipeRef = useRef<{ x: number; y: number } | null>(null)
   const startGrace = useRef(0)
   const holdTimer = useRef<number | null>(null)
+  const runStartRef = useRef<number | null>(null)
+  const milestonesRef = useRef<Set<number>>(new Set())
   const pausable = ui.phase === 'playing' && !saveOpen
   const { paused, toggle: togglePause, resume } = useGamePause(pausable)
   const pausedRef = useRef(false)
@@ -92,6 +102,23 @@ export function SnakeGame() {
   }, [apiBest, ui.phase])
 
   useEffect(() => {
+    if (ui.phase !== 'playing' || tournament || !playerName) return
+    if (runStartRef.current == null) return
+    const elapsedMs = performance.now() - runStartRef.current
+    if (!(elapsedMs > 0)) return
+
+    for (
+      let milestone = SNAKE_MILESTONE_STEP;
+      milestone <= SNAKE_MILESTONE_MAX;
+      milestone += SNAKE_MILESTONE_STEP
+    ) {
+      if (ui.score < milestone || milestonesRef.current.has(milestone)) continue
+      milestonesRef.current.add(milestone)
+      void submitSnakeFastestTo(milestone, elapsedMs, playerName)
+    }
+  }, [ui.phase, ui.score, playerName, tournament])
+
+  useEffect(() => {
     const sync = () => {
       const s = stateRef.current
       if (s.phase !== 'menu') return
@@ -122,6 +149,8 @@ export function SnakeGame() {
     setAspect({ w: next.aspectW, h: next.aspectH })
     previousBestRef.current = getPersonalBest('snake')
     startGrace.current = performance.now() + 220
+    runStartRef.current = performance.now()
+    milestonesRef.current = new Set()
     setUi(toSnapshot(stateRef.current))
   }
 

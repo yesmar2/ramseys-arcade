@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { BoardGameThumb } from '../components/BoardGameThumb'
 import {
   BoardEmpty,
   BoardSkeleton,
@@ -13,6 +14,7 @@ import { deviceRequirementLabel, getGame, gamePlayableOn } from '../data/games'
 import { gamePlayHref, leaderboardHref, recordsHref } from '../hooks/useHashRoute'
 import { useDeviceType } from '../lib/device'
 import { flashYouRow } from '../lib/boardGap'
+import { gameHasRecords } from '../lib/records'
 import { usePlayerName } from '../hooks/usePlayerName'
 import {
   fetchGlobalBoard,
@@ -278,11 +280,16 @@ function GameLeaderboard({
             } as CSSProperties
           }
         >
-          <header className="lb-page__header lb-page__header--compact">
+          <header className="lb-page__header lb-page__header--compact lb-page__header--with-art">
             <a className="rank-page__back" href={leaderboardHref()}>
               ← Global Rankings
             </a>
-            <h1 className="lb-page__title">{activeGame?.name ?? active}</h1>
+            <div className="lb-page__title-row">
+              {activeGame ? (
+                <BoardGameThumb slug={active} accent={accent} />
+              ) : null}
+              <h1 className="lb-page__title">{activeGame?.name ?? active}</h1>
+            </div>
             <p className="lb-page__blurb lb-page__blurb--tight">
               High scores · all-time places earn global points
             </p>
@@ -363,13 +370,13 @@ function GameLeaderboard({
             ) : null}
           </section>
 
-          {active === 'asteroids' ? (
+          {gameHasRecords(active) ? (
             <a
               className="lb-records-cta"
-              href={recordsHref('asteroids')}
+              href={recordsHref(active)}
               style={{ '--board-accent': accent } as CSSProperties}
             >
-              Asteroid record books
+              {activeGame?.name ?? active} record books
             </a>
           ) : null}
 

@@ -3326,6 +3326,44 @@ a.game-hud__board {
   margin-bottom: 0.25rem;
 }
 
+.lb-page__header--with-art .lb-page__title-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.7rem;
+  flex-wrap: wrap;
+}
+
+.lb-page__header--with-art .lb-page__title {
+  margin-bottom: 0;
+}
+
+.board-thumb {
+  flex: none;
+  width: 3.35rem;
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  border-radius: 0.65rem;
+  background: var(--playfield);
+  box-shadow:
+    inset 0 0 0 1px rgba(var(--ink-rgb), 0.08),
+    var(--shadow-soft);
+}
+
+.board-thumb__stage {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.board-thumb__stage .game-tile__art-svg,
+.board-thumb__stage .game-tile__swatch {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
 .lb-page__title--with-tip {
   display: inline-flex;
   align-items: center;
@@ -3497,7 +3535,7 @@ a.game-hud__board {
 
 .records-leaders__row {
   display: grid;
-  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) 6.75rem 4.25rem;
   gap: 0.55rem;
   align-items: center;
   padding: 0.55rem 0.7rem;
@@ -3531,14 +3569,14 @@ a.game-hud__board {
 .records-leaders__holder {
   display: inline-flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 0.3rem;
   min-width: 0;
   font-size: 0.84rem;
   font-weight: 700;
   color: var(--muted);
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  text-align: right;
 }
 
 .records-leaders__name {
@@ -3549,6 +3587,7 @@ a.game-hud__board {
 }
 
 .records-leaders__row--you .lb-row__you-tag {
+  flex: none;
   color: var(--tab-accent, var(--accent));
 }
 
@@ -3558,6 +3597,7 @@ a.game-hud__board {
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   color: var(--ink);
+  text-align: right;
 }
 
 .records-wave-nav {

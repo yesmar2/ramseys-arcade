@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { BoardGameThumb } from '../components/BoardGameThumb'
 import {
   BoardEmpty,
   BoardSkeleton,
@@ -27,11 +28,36 @@ import {
   fetchGameRecords,
   fetchRecordBoard,
   formatRecordScore,
+  recordNavShortLabel,
   type RecordDef,
   type RecordSummary,
 } from '../lib/records'
 
 const INITIAL_ROWS = 10
+
+function recordsIndexTitle(gameName: string) {
+  return `${gameName} Record Books`
+}
+
+function recordsEmptyDetail(game: string, gameName: string) {
+  if (game === 'snake') {
+    return 'Reach score milestones in-game and times will show up here.'
+  }
+  if (game === 'asteroids') {
+    return 'Clear a wave in-game and the board will show up here.'
+  }
+  return `Set a record in ${gameName} to populate this page.`
+}
+
+function recordBoardEmptyDetail(game: string, gameName: string, label: string) {
+  if (game === 'snake') {
+    return `Reach ${label.replace(/^Fastest to /i, '')} points in ${gameName} to set the first record.`
+  }
+  if (game === 'asteroids') {
+    return `Clear this wave in ${gameName} to set the first record.`
+  }
+  return `Be the first to set this record in ${gameName}.`
+}
 
 type RecordsPageProps = {
   game: string
@@ -66,7 +92,7 @@ function RecordsIndexPage({ game }: { game: string }) {
     fetchGameRecords(game)
       .then((data) => {
         if (cancelled) return
-        setRecords(data.records.filter((row) => row.top != null))
+        setRecords(data.records)
       })
       .catch((err) => {
         if (cancelled) return
@@ -87,6 +113,9 @@ function RecordsIndexPage({ game }: { game: string }) {
       : leaderboardHref()
   const accent = gameMeta?.accent ?? 'var(--accent)'
 
+  const gameTitle = gameMeta?.name ?? game
+  const pageTitle = recordsIndexTitle(gameTitle)
+
   return (
     <>
       <main className="lb-page">
@@ -95,11 +124,16 @@ function RecordsIndexPage({ game }: { game: string }) {
           className="lb-page__inner"
           style={{ '--board-accent': accent } as CSSProperties}
         >
-          <header className="lb-page__header lb-page__header--compact">
+          <header className="lb-page__header lb-page__header--compact lb-page__header--with-art">
             <a className="rank-page__back" href={backHref}>
-              ← {gameMeta?.name ?? game} scores
+              ← {gameTitle} scores
             </a>
-            <h1 className="lb-page__title">Record books</h1>
+            <div className="lb-page__title-row">
+              {gameMeta ? (
+                <BoardGameThumb slug={game} accent={accent} />
+              ) : null}
+              <h1 className="lb-page__title">{pageTitle}</h1>
+            </div>
           </header>
 
           <section className="lb-board" aria-label="Game records">
@@ -113,14 +147,14 @@ function RecordsIndexPage({ game }: { game: string }) {
             ) : records.length === 0 ? (
               <BoardEmpty
                 title="No records yet"
-                detail="Clear a wave in-game and the board will show up here."
+                detail={recordsEmptyDetail(game, gameTitle)}
                 action={
                   <a
                     className="lb-empty-state__btn"
                     href={gamePlayHref(game)}
                     style={{ background: accent }}
                   >
-                    Play {gameMeta?.name ?? game}
+                    Play {gameTitle}
                   </a>
                 }
               />
@@ -208,7 +242,7 @@ function RecordBoardPage({
         setRecord(board.record)
         setEntries(board.entries)
         setYou(board.you)
-        setWaveRecords(list.records.filter((row) => row.top != null))
+        setWaveRecords(list.records)
       })
       .catch((err) => {
         if (cancelled) return
@@ -238,6 +272,8 @@ function RecordBoardPage({
 
   const accent = gameMeta?.accent ?? '#2eb8a0'
   const unit = record?.unit ?? 'ms'
+  const gameTitle = gameMeta?.name ?? game
+  const indexTitle = recordsIndexTitle(gameTitle)
 
   const waveIndex = useMemo(
     () => waveRecords.findIndex((row) => row.id === recordId),
@@ -262,11 +298,16 @@ function RecordBoardPage({
             } as CSSProperties
           }
         >
-          <header className="lb-page__header lb-page__header--compact">
+          <header className="lb-page__header lb-page__header--compact lb-page__header--with-art">
             <a className="rank-page__back" href={recordsHref(game)}>
-              ← Record books
+              ← {indexTitle}
             </a>
-            <h1 className="lb-page__title">{record?.label ?? 'Record'}</h1>
+            <div className="lb-page__title-row">
+              {gameMeta ? (
+                <BoardGameThumb slug={game} accent={accent} />
+              ) : null}
+              <h1 className="lb-page__title">{record?.label ?? 'Record'}</h1>
+            </div>
           </header>
 
           {waveRecords.length > 1 ? (
@@ -285,10 +326,7 @@ function RecordBoardPage({
               )}
               <div className="records-wave-nav__strip" role="list">
                 {waveRecords.map((row) => {
-                  const short =
-                    row.id === 'highest-combo'
-                      ? 'Combo'
-                      : row.label.replace(/^wave\s+/i, 'W') || row.label
+                  const short = recordNavShortLabel(row)
                   const active = row.id === recordId
                   return (
                     <a
@@ -341,14 +379,18 @@ function RecordBoardPage({
             ) : entries.length === 0 && !you ? (
               <BoardEmpty
                 title="No times yet"
-                detail={`Clear this wave in ${gameMeta?.name ?? game} to set the first record.`}
+                detail={recordBoardEmptyDetail(
+                  game,
+                  gameTitle,
+                  record?.label ?? 'this milestone',
+                )}
                 action={
                   <a
                     className="lb-empty-state__btn"
                     href={gamePlayHref(game)}
                     style={{ background: accent }}
                   >
-                    Play {gameMeta?.name ?? game}
+                    Play {gameTitle}
                   </a>
                 }
               />
@@ -379,7 +421,7 @@ function RecordBoardPage({
                 href={gamePlayHref(game)}
                 style={{ background: accent }}
               >
-                Play {gameMeta?.name ?? game}
+                Play {gameTitle}
               </a>
             ) : null}
           </section>

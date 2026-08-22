@@ -12,6 +12,7 @@ import {
 import { scoringFor } from '../data/scoring'
 import { useBoardRecord } from '../hooks/useBoardRecord'
 import { gamePlayHref, leaderboardHref, recordsHref } from '../hooks/useHashRoute'
+import { gameHasRecords } from '../lib/records'
 import { usePersonalBest } from '../hooks/usePersonalBest'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { useDeviceType } from '../lib/device'
@@ -178,8 +179,8 @@ export function GamePreviewPage({ slug }: { slug: string }) {
                 <a className="game-lobby__all-boards" href={leaderboardHref(boardSlug)}>
                   Full leaderboards
                 </a>
-                {boardSlug === 'asteroids' ? (
-                  <a className="game-lobby__all-boards" href={recordsHref('asteroids')}>
+                {gameHasRecords(boardSlug) ? (
+                  <a className="game-lobby__all-boards" href={recordsHref(boardSlug)}>
                     Record books
                   </a>
                 ) : null}
