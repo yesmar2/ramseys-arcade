@@ -4,8 +4,12 @@ import {
   BoardSkeleton,
   PeriodSwitcher,
 } from '../components/BoardChrome'
-import { GameBoardSwitcher } from '../components/GameBoardSwitcher'
+import {
+  GameBoardSwitcher,
+  type BoardTab,
+} from '../components/GameBoardSwitcher'
 import { GamePageHeader } from '../components/GamePageHeader'
+import { GameRecordsPanel } from '../components/GameRecordsPanel'
 import { LeaderboardList } from '../components/LeaderboardList'
 import { PageShell } from '../components/PageShell'
 import { getGame, gamePlayableOn, deviceRequirementLabel } from '../data/games'
@@ -17,6 +21,7 @@ import {
 import { usePlayerName } from '../hooks/usePlayerName'
 import { useDeviceType } from '../lib/device'
 import { flashYouRow } from '../lib/boardGap'
+import { gameHasRecords } from '../lib/records'
 import {
   getLeaderboard,
   normalizePlayerName,
@@ -41,6 +46,7 @@ export function GameLeaderboardPage({
   const game = getGame(gameSlug)
   const device = useDeviceType()
   const playerName = normalizePlayerName(usePlayerName())
+  const [boardTab, setBoardTab] = useState<BoardTab>('scores')
   const [entries, setEntries] = useState<LeaderboardEntry[]>([])
   const [you, setYou] = useState<YouEntry | null>(null)
   const [loading, setLoading] = useState(true)
@@ -52,15 +58,20 @@ export function GameLeaderboardPage({
   const canPlay = game ? gamePlayableOn(game, device) : false
   const playHref = gamePlayHref(gameSlug)
   const deviceNote = game ? deviceRequirementLabel(game) : null
+  const showRecords = gameHasRecords(gameSlug)
+  const activeTab: BoardTab =
+    showRecords && boardTab === 'records' ? 'records' : 'scores'
 
   useEffect(() => {
+    if (activeTab !== 'scores') return
     const canonical = gameBoardHref(gameSlug, period)
     if (window.location.hash !== canonical) {
       window.history.replaceState(null, '', canonical)
     }
-  }, [gameSlug, period])
+  }, [gameSlug, period, activeTab])
 
   useEffect(() => {
+    if (activeTab !== 'scores') return
     let cancelled = false
     setLoading(true)
     setError(null)
@@ -84,13 +95,13 @@ export function GameLeaderboardPage({
     return () => {
       cancelled = true
     }
-  }, [gameSlug, period, playerName])
+  }, [gameSlug, period, playerName, activeTab])
 
   useEffect(() => {
-    if (loading || !you || pulsed.current) return
+    if (activeTab !== 'scores' || loading || !you || pulsed.current) return
     pulsed.current = true
     window.requestAnimationFrame(() => flashYouRow())
-  }, [loading, you, period])
+  }, [loading, you, period, activeTab])
 
   const selectPeriod = (next: LeaderboardPeriod) => {
     window.location.hash = gameBoardHref(gameSlug, next)
@@ -114,92 +125,102 @@ export function GameLeaderboardPage({
           } as CSSProperties
         }
       >
-      <a className="rank-page__back" href={leaderboardHref()}>
-        ← Leaderboards
-      </a>
+        <a className="rank-page__back" href={leaderboardHref()}>
+          ← Leaderboards
+        </a>
 
-      <GamePageHeader
-        slug={gameSlug}
-        accent={accent}
-        title={`${game.name} leaderboards`}
-      />
+        <GamePageHeader
+          slug={gameSlug}
+          accent={accent}
+          title={`${game.name} leaderboards`}
+        />
 
-      <GameBoardSwitcher
-        slug={gameSlug}
-        accent={accent}
-        active="scores"
-        scoresPeriod={period}
-      />
+        <GameBoardSwitcher
+          slug={gameSlug}
+          accent={accent}
+          active={activeTab}
+          onSelect={setBoardTab}
+        />
 
-      <PeriodSwitcher
-        period={period}
-        accent={accent}
-        hrefFor={(p) => gameBoardHref(gameSlug, p)}
-        onSelect={selectPeriod}
-      />
+        {activeTab === 'records' ? (
+          <GameRecordsPanel game={gameSlug} accent={accent} />
+        ) : (
+          <>
+            <PeriodSwitcher
+              period={period}
+              accent={accent}
+              hrefFor={(p) => gameBoardHref(gameSlug, p)}
+              onSelect={selectPeriod}
+            />
 
-      <section
-        key={`${gameSlug}-${period}`}
-        className="lb-board lb-board--fade"
-        aria-label={`${game.name} leaderboard`}
-      >
-        {loading ? (
-          <BoardSkeleton rows={BOARD_ROWS} />
-        ) : error ? (
-          <BoardEmpty
-            title="Couldn’t load scores"
-            detail="Check your connection and try again."
-          />
-        ) : entries.length === 0 && !you ? (
-          <BoardEmpty
-            title="No scores yet"
-            detail={
-              canPlay
-                ? `Be the first on the ${game.name} board.`
-                : 'Open it on a supported device to post a score.'
-            }
-            action={
-              canPlay ? (
+            <section
+              key={`${gameSlug}-${period}`}
+              className="lb-board lb-board--fade"
+              aria-label={`${game.name} leaderboard`}
+            >
+              {loading ? (
+                <BoardSkeleton rows={BOARD_ROWS} />
+              ) : error ? (
+                <BoardEmpty
+                  title="Couldn’t load scores"
+                  detail="Check your connection and try again."
+                />
+              ) : entries.length === 0 && !you ? (
+                <BoardEmpty
+                  title="No scores yet"
+                  detail={
+                    canPlay
+                      ? `Be the first on the ${game.name} board.`
+                      : 'Open it on a supported device to post a score.'
+                  }
+                  action={
+                    canPlay ? (
+                      <a
+                        className="lb-empty-state__btn"
+                        href={playHref}
+                        style={{ background: accent }}
+                      >
+                        Play {game.name}
+                      </a>
+                    ) : null
+                  }
+                />
+              ) : (
+                <LeaderboardList
+                  entries={entries}
+                  you={you}
+                  playerName={playerName}
+                  accent={accent}
+                  shown={shown}
+                />
+              )}
+
+              {!loading && !error && entries.length > shown ? (
+                <button
+                  type="button"
+                  className="lb-more"
+                  onClick={() => setShown(entries.length)}
+                >
+                  Show top {entries.length}
+                </button>
+              ) : null}
+
+              {canPlay && !(loading || error) && (entries.length > 0 || you) ? (
                 <a
-                  className="lb-empty-state__btn"
+                  className="lb-play"
                   href={playHref}
                   style={{ background: accent }}
                 >
                   Play {game.name}
                 </a>
-              ) : null
-            }
-          />
-        ) : (
-          <LeaderboardList
-            entries={entries}
-            you={you}
-            playerName={playerName}
-            accent={accent}
-            shown={shown}
-          />
+              ) : !canPlay && !(loading || error) ? (
+                <p className="lb-device-note lb-device-note--footer" role="note">
+                  {deviceNote} Scores still count toward global rank.
+                </p>
+              ) : null}
+            </section>
+          </>
         )}
-
-        {!loading && !error && entries.length > shown ? (
-          <button
-            type="button"
-            className="lb-more"
-            onClick={() => setShown(entries.length)}
-          >
-            Show top {entries.length}
-          </button>
-        ) : null}
-
-        {canPlay && !(loading || error) && (entries.length > 0 || you) ? (
-          <a className="lb-play" href={playHref} style={{ background: accent }}>
-            Play {game.name}
-          </a>
-        ) : !canPlay && !(loading || error) ? (
-          <p className="lb-device-note lb-device-note--footer" role="note">
-            {deviceNote} Scores still count toward global rank.
-          </p>
-        ) : null}
-      </section>
       </div>
     </PageShell>
   )

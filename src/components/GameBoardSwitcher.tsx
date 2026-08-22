@@ -1,58 +1,52 @@
 import type { CSSProperties } from 'react'
-import { gameBoardHref, recordsHref } from '../hooks/useHashRoute'
 import { gameHasRecords } from '../lib/records'
-import type { LeaderboardGame, LeaderboardPeriod } from '../lib/leaderboard'
+
+export type BoardTab = 'scores' | 'records'
 
 type GameBoardSwitcherProps = {
   slug: string
   accent: string
-  active: 'scores' | 'records'
-  /** Override Scores destination (defaults to the game leaderboard page). */
-  scoresHref?: string
-  scoresPeriod?: LeaderboardPeriod
+  active: BoardTab
+  onSelect: (tab: BoardTab) => void
 }
 
-/** Peer destinations: Scores board vs Record books (only when the game has records). */
+/** In-page tabs: Scores vs Record books (only when the game has records). */
 export function GameBoardSwitcher({
   slug,
   accent,
   active,
-  scoresHref,
-  scoresPeriod = 'daily',
+  onSelect,
 }: GameBoardSwitcherProps) {
   if (!gameHasRecords(slug)) return null
 
-  const scoresLink =
-    scoresHref ?? gameBoardHref(slug as LeaderboardGame, scoresPeriod)
-  const recordsLink = recordsHref(slug)
-
   return (
-    <nav
+    <div
       className="lb-board-switcher"
+      role="tablist"
       aria-label="Board type"
       style={{ '--board-accent': accent } as CSSProperties}
     >
-      {active === 'scores' ? (
-        <span className="lb-board-switcher__item lb-board-switcher__item--active" aria-current="page">
-          Scores
-        </span>
-      ) : (
-        <a className="lb-board-switcher__item" href={scoresLink}>
-          Scores
-        </a>
-      )}
+      <button
+        type="button"
+        role="tab"
+        aria-selected={active === 'scores'}
+        className={`lb-board-switcher__item${active === 'scores' ? ' lb-board-switcher__item--active' : ''}`}
+        onClick={() => onSelect('scores')}
+      >
+        Scores
+      </button>
       <span className="lb-board-switcher__sep" aria-hidden="true">
         |
       </span>
-      {active === 'records' ? (
-        <span className="lb-board-switcher__item lb-board-switcher__item--active" aria-current="page">
-          Record books
-        </span>
-      ) : (
-        <a className="lb-board-switcher__item" href={recordsLink}>
-          Record books
-        </a>
-      )}
-    </nav>
+      <button
+        type="button"
+        role="tab"
+        aria-selected={active === 'records'}
+        className={`lb-board-switcher__item${active === 'records' ? ' lb-board-switcher__item--active' : ''}`}
+        onClick={() => onSelect('records')}
+      >
+        Record books
+      </button>
+    </div>
   )
 }

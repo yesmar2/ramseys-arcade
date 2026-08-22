@@ -15,7 +15,7 @@ export type Route =
   | { name: 'tournaments' }
   | { name: 'tournament'; id: string }
   | { name: 'tournamentPlay'; id: string; game: string }
-  | { name: 'game'; slug: string }
+  | { name: 'game'; slug: string; board?: 'scores' | 'records' }
   | { name: 'gamePlay'; slug: string }
   | { name: 'authVerify'; token: string }
 
@@ -50,17 +50,20 @@ export function rankHref(player?: string) {
   return '#/rank'
 }
 
-/** Game hub / lobby — no period segment. */
-export function gameHref(slug: string) {
-  return `#/games/${encodeURIComponent(slug)}`
+/** Game hub / lobby. Optional records tab: `#/games/{slug}/records`. */
+export function gameHref(slug: string, board: 'scores' | 'records' = 'scores') {
+  const base = `#/games/${encodeURIComponent(slug)}`
+  if (board === 'records') return `${base}/records`
+  return base
 }
 
 export function gamePlayHref(slug: string) {
   return `#/games/${slug}/play`
 }
 
+/** Record books tab on the game hub (index). Individual boards use `recordHref`. */
 export function recordsHref(game: string) {
-  return `#/records/${encodeURIComponent(game)}`
+  return gameHref(game, 'records')
 }
 
 export function recordHref(
@@ -111,7 +114,11 @@ function parseHash(hash: string): Route {
 
   const recordsMatch = /^records\/([^/]+)$/.exec(path)
   if (recordsMatch) {
-    return { name: 'records', game: decodeURIComponent(recordsMatch[1]) }
+    return {
+      name: 'game',
+      slug: decodeURIComponent(recordsMatch[1]),
+      board: 'records',
+    }
   }
 
   const boardsMatch = /^leaderboards\/([^/]+)(?:\/([^/]+))?$/.exec(path)
@@ -157,11 +164,14 @@ function parseHash(hash: string): Route {
   const gameMatch = /^games\/([^/]+)(?:\/([^/]+))?$/.exec(path)
   if (gameMatch) {
     const slug = decodeURIComponent(gameMatch[1])
-    const periodRaw = gameMatch[2] ? decodeURIComponent(gameMatch[2]) : undefined
-    if (periodRaw && isLeaderboardPeriod(periodRaw) && isLeaderboardGame(slug)) {
-      return gameLeaderboardRoute(slug, periodRaw)
+    const segment = gameMatch[2] ? decodeURIComponent(gameMatch[2]) : undefined
+    if (segment === 'records') {
+      return { name: 'game', slug, board: 'records' }
     }
-    return { name: 'game', slug }
+    if (segment && isLeaderboardPeriod(segment) && isLeaderboardGame(slug)) {
+      return gameLeaderboardRoute(slug, segment)
+    }
+    return { name: 'game', slug, board: 'scores' }
   }
 
   return { name: 'home' }
@@ -178,10 +188,21 @@ export function useHashRoute(): Route {
 
   useEffect(() => {
     const path = window.location.hash.replace(/^#\/?/, '').replace(/\/$/, '')
+    // Legacy records index → hub records tab
+    const legacyRecords = /^records\/([^/]+)$/.exec(path)
+    if (legacyRecords) {
+      const canonical = gameHref(decodeURIComponent(legacyRecords[1]), 'records')
+      if (window.location.hash !== canonical) {
+        window.history.replaceState(null, '', canonical)
+        setRoute(parseHash(canonical))
+      }
+      return
+    }
     const gamePeriodMatch = /^games\/([^/]+)\/([^/]+)$/.exec(path)
     if (!gamePeriodMatch) return
     const slug = decodeURIComponent(gamePeriodMatch[1])
     const periodRaw = decodeURIComponent(gamePeriodMatch[2])
+    if (periodRaw === 'records') return
     if (!isLeaderboardGame(slug) || !isLeaderboardPeriod(periodRaw)) return
     const canonical = gameBoardHref(slug, periodRaw)
     if (window.location.hash !== canonical) {

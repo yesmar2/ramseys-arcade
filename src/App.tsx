@@ -70,6 +70,7 @@ function isGameScreen(route: ReturnType<typeof useHashRoute>) {
 function routeScrollKey(route: ReturnType<typeof useHashRoute>): string {
   const key = { ...route } as Record<string, unknown>
   delete key.period
+  delete key.board
   return JSON.stringify(key)
 }
 
@@ -130,7 +131,7 @@ function App() {
   }
   if (route.name === 'tournament') return <TournamentDetailPage id={route.id} />
   if (route.name === 'game') {
-    return <GameHubPage slug={route.slug} />
+    return <GameHubPage slug={route.slug} board={route.board} />
   }
   if (route.name === 'gamePlay' && route.slug === 'stacker') return <StackerPage />
   if (route.name === 'gamePlay' && route.slug === 'patriot') return <PatriotPage />

@@ -5131,17 +5131,22 @@ a.game-hud__board {
 }
 
 .lb-board-switcher__item {
+  appearance: none;
+  margin: 0;
+  padding: 0.1rem 0.05rem;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  font: inherit;
   font-size: 0.92rem;
   font-weight: 700;
   color: var(--muted);
-  text-decoration: none;
-  border-bottom: 2px solid transparent;
-  padding: 0.1rem 0.05rem;
   line-height: 1.2;
+  cursor: pointer;
 }
 
-a.lb-board-switcher__item:hover,
-a.lb-board-switcher__item:focus-visible {
+.lb-board-switcher__item:hover,
+.lb-board-switcher__item:focus-visible {
   color: var(--ink);
   outline: none;
 }
@@ -5149,6 +5154,7 @@ a.lb-board-switcher__item:focus-visible {
 .lb-board-switcher__item--active {
   color: color-mix(in srgb, var(--board-accent, var(--accent)) 72%, var(--ink));
   border-bottom-color: color-mix(in srgb, var(--board-accent, var(--accent)) 70%, transparent);
+  cursor: default;
 }
 
 .lb-board-switcher__sep {

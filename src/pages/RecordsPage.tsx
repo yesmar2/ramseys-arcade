@@ -10,13 +10,12 @@ import { GamePageHeader } from '../components/GamePageHeader'
 import { SiteHeader } from '../components/SiteHeader'
 import { LeaderboardList } from '../components/LeaderboardList'
 import { getGame } from '../data/games'
-import { gameHref, gamePlayHref, recordHref, recordsHref, leaderboardHref } from '../hooks/useHashRoute'
+import { gameHref, gamePlayHref, recordHref, recordsHref } from '../hooks/useHashRoute'
 import { flashYouRow } from '../lib/boardGap'
 import { usePlayerName } from '../hooks/usePlayerName'
 import {
   normalizePlayerName,
   type LeaderboardEntry,
-  type LeaderboardGame,
   type LeaderboardPeriod,
   type YouEntry,
 } from '../lib/leaderboard'
@@ -33,16 +32,6 @@ const INITIAL_ROWS = 10
 
 function recordsIndexTitle(gameName: string) {
   return `${gameName} Record Books`
-}
-
-function recordsEmptyDetail(game: string, gameName: string) {
-  if (game === 'snake') {
-    return 'Reach length milestones in-game and times will show up here.'
-  }
-  if (game === 'asteroids') {
-    return 'Clear a wave in-game and the board will show up here.'
-  }
-  return `Set a record in ${gameName} to populate this page.`
 }
 
 function recordBoardEmptyDetail(game: string, gameName: string, label: string) {
@@ -62,148 +51,26 @@ type RecordsPageProps = {
   period?: LeaderboardPeriod
 }
 
-export function RecordsPage({ game, recordId, period: periodFromRoute }: RecordsPageProps) {
-  if (recordId) {
-    return (
-      <RecordBoardPage
-        game={game}
-        recordId={recordId}
-        period={periodFromRoute ?? 'all'}
-      />
-    )
-  }
-  return <RecordsIndexPage game={game} />
-}
-
-function RecordsIndexPage({ game }: { game: string }) {
-  const gameMeta = getGame(game)
-  const playerName = normalizePlayerName(usePlayerName())
-  const [records, setRecords] = useState<RecordSummary[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
+/** Individual record board. The records index is the hub Records tab. */
+export function RecordsPage({
+  game,
+  recordId,
+  period: periodFromRoute,
+}: RecordsPageProps) {
   useEffect(() => {
-    let cancelled = false
-    setLoading(true)
-    setError(null)
-    fetchGameRecords(game)
-      .then((data) => {
-        if (cancelled) return
-        setRecords(data.records)
-      })
-      .catch((err) => {
-        if (cancelled) return
-        setRecords([])
-        setError(err instanceof Error ? err.message : 'Failed to load')
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false)
-      })
-    return () => {
-      cancelled = true
+    if (!recordId) {
+      window.location.hash = recordsHref(game)
     }
-  }, [game])
+  }, [game, recordId])
 
-  const backHref =
-    gameMeta && (game as LeaderboardGame)
-      ? gameHref(game as LeaderboardGame)
-      : leaderboardHref()
-  const accent = gameMeta?.accent ?? 'var(--accent)'
-
-  const gameTitle = gameMeta?.name ?? game
-  const pageTitle = recordsIndexTitle(gameTitle)
+  if (!recordId) return null
 
   return (
-    <>
-      <main className="lb-page">
-        <SiteHeader />
-        <div
-          className="lb-page__inner lb-page__inner--game-board"
-          style={{ '--board-accent': accent } as CSSProperties}
-        >
-            <a className="rank-page__back" href={backHref}>
-              ← {gameTitle} hub
-            </a>
-          {gameMeta ? (
-            <GamePageHeader
-              slug={game}
-              accent={accent}
-              title={pageTitle}
-            />
-          ) : (
-            <header className="lb-page__header lb-page__header--compact">
-              <h1 className="lb-page__title">{pageTitle}</h1>
-            </header>
-          )}
-
-          <GameBoardSwitcher
-            slug={game}
-            accent={accent}
-            active="records"
-            scoresHref={gameHref(game)}
-          />
-
-          <section className="lb-board" aria-label="Game records">
-            {loading ? (
-              <BoardSkeleton rows={5} />
-            ) : error ? (
-              <BoardEmpty
-                title="Couldn’t load records"
-                detail="Check your connection and try again."
-              />
-            ) : records.length === 0 ? (
-              <BoardEmpty
-                title="No records yet"
-                detail={recordsEmptyDetail(game, gameTitle)}
-                action={
-                  <a
-                    className="lb-empty-state__btn"
-                    href={gamePlayHref(game)}
-                    style={{ background: accent }}
-                  >
-                    Play {gameTitle}
-                  </a>
-                }
-              />
-            ) : (
-              <ol className="records-leaders">
-                {records.map((row) => {
-                  const holder = row.top
-                    ? normalizePlayerName(row.top.name)
-                    : ''
-                  const isYou = Boolean(playerName && holder === playerName)
-                  return (
-                    <li key={row.id}>
-                      <a
-                        className={`records-leaders__row${isYou ? ' records-leaders__row--you' : ''}`}
-                        href={recordHref(game, row.id)}
-                        style={{ '--tab-accent': accent } as CSSProperties}
-                      >
-                        <span className="records-leaders__label">{row.label}</span>
-                        <span className="records-leaders__holder" title={holder}>
-                          <span className="records-leaders__name">
-                            {holder || '—'}
-                          </span>
-                          {isYou ? (
-                            <span className="lb-row__you-tag">You</span>
-                          ) : null}
-                        </span>
-                        <span className="records-leaders__time">
-                          {row.top
-                            ? formatRecordScore(row.top.score, row.unit)
-                            : '—'}
-                        </span>
-                      </a>
-                    </li>
-                  )
-                })}
-              </ol>
-            )}
-          </section>
-        </div>
-      </main>
-      <Footer />
-    </>
+    <RecordBoardPage
+      game={game}
+      recordId={recordId}
+      period={periodFromRoute ?? 'all'}
+    />
   )
 }
 
@@ -324,7 +191,9 @@ function RecordBoardPage({
             slug={game}
             accent={accent}
             active="records"
-            scoresHref={gameHref(game)}
+            onSelect={(tab) => {
+              window.location.hash = gameHref(game, tab)
+            }}
           />
 
           {waveRecords.length > 1 ? (
