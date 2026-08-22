@@ -604,6 +604,12 @@ img {
   z-index: 30;
 }
 
+.home-stage--bare .site-header__brand {
+  font-size: clamp(1.35rem, 3.5vw, 1.65rem);
+  font-weight: 600;
+  letter-spacing: -0.03em;
+}
+
 .visually-hidden {
   position: absolute;
   width: 1px;
