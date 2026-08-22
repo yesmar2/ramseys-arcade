@@ -1,5 +1,6 @@
 import type { CSSProperties, ReactNode } from 'react'
 import { HUE, pastel } from './gameArtStyle'
+import { IsoSlab } from './GameTileArt'
 
 type GameThumbArtProps = {
   slug: string
@@ -31,58 +32,50 @@ function shape(props: ReturnType<typeof pastel>, strokeWidth = 1.5) {
 }
 
 function AsteroidsThumb() {
-  const rock = pastel(HUE.sky, 54, 42)
   const shipFill = 'color-mix(in srgb, #2eb8a0 28%, var(--playfield))'
   const shipStroke = '#2eb8a0'
 
   return (
-    <>
+    <g transform="translate(32 21)">
       <path
-        d="M8 26 L14 18 L22 20 L24 28 L18 32 L10 30 Z"
-        {...shape(rock, 1.4)}
+        d="M0 -11 L-8 9 L0 4 L8 9 Z"
+        fill={shipFill}
+        stroke={shipStroke}
+        strokeWidth="2"
+        strokeLinejoin="round"
       />
-      <g transform="translate(32 21)">
-        <path
-          d="M0 -11 L-8 9 L0 4 L8 9 Z"
-          fill={shipFill}
-          stroke={shipStroke}
-          strokeWidth="2"
-          strokeLinejoin="round"
-        />
-        <path
-          d="M-3.5 7.5 L0 13 L3.5 7.5"
-          fill="none"
-          stroke="#f5b942"
-          strokeWidth="1.6"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      </g>
-    </>
+      <path
+        d="M-3.5 7.5 L0 13 L3.5 7.5"
+        fill="none"
+        stroke="#f5b942"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </g>
   )
 }
 
 function PatriotThumb() {
   const ground = 34
+  const x = 32
   const blocks = [
-    { x: 8, w: 7, h: 12, hue: HUE.sky },
-    { x: 17, w: 8, h: 18, hue: HUE.sky },
-    { x: 27, w: 7, h: 10, hue: HUE.teal },
-    { x: 38, w: 8, h: 16, hue: HUE.teal },
-    { x: 48, w: 7, h: 11, hue: HUE.sky },
+    { dx: -8, w: 5, h: 11 },
+    { dx: -2, w: 5, h: 17 },
+    { dx: 4, w: 5, h: 13 },
   ]
 
   return (
     <>
       {blocks.map((block) => (
         <rect
-          key={block.x}
-          x={block.x}
+          key={block.dx}
+          x={x + block.dx}
           y={ground - block.h}
           width={block.w}
           height={block.h}
           rx="1"
-          {...shape(pastel(block.hue, 54, 42), 1.4)}
+          {...shape(pastel(HUE.sky, 54, 42), 1.4)}
         />
       ))}
     </>
@@ -152,45 +145,24 @@ function PopThumb() {
   )
 }
 
-/** Mini iso slab — same language as StackerArt. */
+/** Stacked iso slabs — same composition as StackerArt. */
 function StackerThumb() {
+  const baseCy = 28
   const cx = 32
-  const cy = 26
-  const hw = 14
-  const hd = 10
-  const h = 9
-  const sat = 56
-  const fill = `color-mix(in srgb, hsla(${HUE.teal}, ${sat}%, 56%, 1) 52%, var(--playfield))`
-  const side = `color-mix(in srgb, hsla(${HUE.teal}, ${sat}%, 50%, 1) 48%, var(--playfield))`
-  const sideDark = `color-mix(in srgb, hsla(${HUE.teal}, ${sat}%, 42%, 1) 48%, var(--playfield))`
-  const stroke = `hsla(${HUE.teal}, ${sat}%, 36%, 0.95)`
-
-  const top = `${cx - hw},${cy - h} ${cx + hw},${cy - h} ${cx + hw},${cy} ${cx - hw},${cy}`
 
   return (
-    <g>
-      <polygon
-        points={`${cx + hw},${cy - h} ${cx + hw},${cy} ${cx + hw},${cy + hd} ${cx + hw - hw * 0.15},${cy + hd}`}
-        fill={side}
-        stroke={stroke}
-        strokeWidth="1.1"
-        strokeLinejoin="round"
-      />
-      <polygon
-        points={`${cx - hw},${cy} ${cx + hw},${cy} ${cx + hw},${cy + hd} ${cx - hw},${cy + hd}`}
-        fill={sideDark}
-        stroke={stroke}
-        strokeWidth="1.1"
-        strokeLinejoin="round"
-      />
-      <polygon
-        points={top}
-        fill={fill}
-        stroke={stroke}
-        strokeWidth="1.3"
-        strokeLinejoin="round"
-      />
-    </g>
+    <>
+      <IsoSlab cx={cx} cy={baseCy} w={24} d={24} h={5} hue={HUE.teal} />
+      <g transform="translate(0, -5)">
+        <IsoSlab cx={cx} cy={baseCy} w={20} d={20} h={5} hue={HUE.sky} />
+      </g>
+      <g transform="translate(0, -10)">
+        <IsoSlab cx={cx} cy={baseCy} w={16} d={16} h={5} hue={HUE.violet} />
+      </g>
+      <g transform="translate(0, -15)">
+        <IsoSlab cx={cx} cy={baseCy} x={6} w={16} d={16} h={5} hue={HUE.gold} />
+      </g>
+    </>
   )
 }
 
@@ -206,11 +178,16 @@ function DeadCenterThumb() {
 }
 
 function SimonThumb() {
+  const r = 5.5
+  const gap = 3
+  const cx = 32
+  const cy = 20
+  const d = r + gap / 2
   const pads = [
-    { cx: 24, cy: 16, hue: HUE.sky, lit: false },
-    { cx: 40, cy: 16, hue: HUE.teal, lit: true },
-    { cx: 24, cy: 26, hue: HUE.gold, lit: false },
-    { cx: 40, cy: 26, hue: HUE.rose, lit: false },
+    { cx: cx - d, cy: cy - d, hue: HUE.sky, lit: false },
+    { cx: cx + d, cy: cy - d, hue: HUE.teal, lit: true },
+    { cx: cx - d, cy: cy + d, hue: HUE.gold, lit: false },
+    { cx: cx + d, cy: cy + d, hue: HUE.rose, lit: false },
   ]
 
   return (
@@ -220,7 +197,7 @@ function SimonThumb() {
           key={`${pad.cx}-${pad.cy}`}
           cx={pad.cx}
           cy={pad.cy}
-          r={pad.lit ? 6.8 : 6.5}
+          r={pad.lit ? r * 1.04 : r}
           {...shape(pastel(pad.hue, 56, pad.lit ? 62 : 40), 1.6)}
         />
       ))}

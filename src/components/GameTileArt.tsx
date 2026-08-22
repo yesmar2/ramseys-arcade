@@ -55,7 +55,7 @@ function pts(...points: { x: number; y: number }[]) {
   return points.map((pt) => `${pt.x.toFixed(1)},${pt.y.toFixed(1)}`).join(' ')
 }
 
-function IsoSlab({
+export function IsoSlab({
   cx,
   cy,
   x = 0,
