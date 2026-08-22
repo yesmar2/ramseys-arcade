@@ -8,13 +8,13 @@ import {
 
 export type Route =
   | { name: 'home' }
-  | { name: 'leaderboards'; game?: LeaderboardGame; period?: LeaderboardPeriod }
+  | { name: 'leaderboards' }
   | { name: 'records'; game: string; recordId?: string; period?: LeaderboardPeriod }
   | { name: 'rank'; player?: string }
   | { name: 'tournaments' }
   | { name: 'tournament'; id: string }
   | { name: 'tournamentPlay'; id: string; game: string }
-  | { name: 'game'; slug: string }
+  | { name: 'game'; slug: string; period?: LeaderboardPeriod }
   | { name: 'gamePlay'; slug: string }
   | { name: 'authVerify'; token: string }
 
@@ -26,13 +26,13 @@ function isLeaderboardPeriod(value: string): value is LeaderboardPeriod {
   return (LEADERBOARD_PERIODS as readonly string[]).includes(value)
 }
 
-/** Global hub when called with no game; otherwise a per-game board. */
+/** Global hub when called with no game; per-game boards live on the game hub. */
 export function leaderboardHref(
   game?: LeaderboardGame,
   period: LeaderboardPeriod = 'daily',
 ) {
   if (!game) return '#/leaderboards'
-  return `#/leaderboards/${game}/${period}`
+  return gameHref(game, period)
 }
 
 export function rankHref(player?: string) {
@@ -41,8 +41,9 @@ export function rankHref(player?: string) {
   return '#/rank'
 }
 
-export function gameHref(slug: string) {
-  return `#/games/${slug}`
+export function gameHref(slug: string, period?: LeaderboardPeriod) {
+  if (period) return `#/games/${encodeURIComponent(slug)}/${period}`
+  return `#/games/${encodeURIComponent(slug)}`
 }
 
 export function gamePlayHref(slug: string) {
@@ -97,10 +98,12 @@ function parseHash(hash: string): Route {
   if (boardsMatch) {
     const gameRaw = decodeURIComponent(boardsMatch[1])
     const periodRaw = boardsMatch[2] ? decodeURIComponent(boardsMatch[2]) : undefined
-    return {
-      name: 'leaderboards',
-      game: isLeaderboardGame(gameRaw) ? gameRaw : undefined,
-      period: periodRaw && isLeaderboardPeriod(periodRaw) ? periodRaw : undefined,
+    if (isLeaderboardGame(gameRaw)) {
+      return {
+        name: 'game',
+        slug: gameRaw,
+        period: periodRaw && isLeaderboardPeriod(periodRaw) ? periodRaw : undefined,
+      }
     }
   }
 
@@ -130,9 +133,15 @@ function parseHash(hash: string): Route {
     return { name: 'gamePlay', slug: decodeURIComponent(gamePlayMatch[1]) }
   }
 
-  const gameMatch = /^games\/([^/]+)$/.exec(path)
+  const gameMatch = /^games\/([^/]+)(?:\/([^/]+))?$/.exec(path)
   if (gameMatch) {
-    return { name: 'game', slug: decodeURIComponent(gameMatch[1]) }
+    const slug = decodeURIComponent(gameMatch[1])
+    const periodRaw = gameMatch[2] ? decodeURIComponent(gameMatch[2]) : undefined
+    return {
+      name: 'game',
+      slug,
+      period: periodRaw && isLeaderboardPeriod(periodRaw) ? periodRaw : undefined,
+    }
   }
 
   return { name: 'home' }

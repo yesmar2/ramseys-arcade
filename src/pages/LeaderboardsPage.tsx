@@ -1,60 +1,27 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
-import { GameLobbyArt } from '../components/GameLobbyArt'
+import { useEffect, useState } from 'react'
 import {
   BoardEmpty,
   BoardSkeleton,
-  PeriodSwitcher,
 } from '../components/BoardChrome'
 import { Footer } from '../components/Footer'
 import { GameTile } from '../components/GameTile'
 import { GlobalRankList } from '../components/GlobalRankList'
 import { HomeBar } from '../components/HomeBar'
-import { LeaderboardList } from '../components/LeaderboardList'
-import { deviceRequirementLabel, getGame, gamePlayableOn } from '../data/games'
-import { gamePlayHref, leaderboardHref, recordsHref } from '../hooks/useHashRoute'
-import { useDeviceType } from '../lib/device'
-import { flashYouRow } from '../lib/boardGap'
-import { gameHasRecords } from '../lib/records'
+import { getGame } from '../data/games'
+import { gameHref } from '../hooks/useHashRoute'
 import { usePlayerName } from '../hooks/usePlayerName'
 import {
   fetchGlobalBoard,
   fetchGlobalRank,
-  getLeaderboard,
   LEADERBOARD_GAMES,
   normalizePlayerName,
-  PERIOD_LABELS,
   type GlobalBoardEntry,
-  type LeaderboardEntry,
-  type LeaderboardGame,
-  type LeaderboardPeriod,
-  type YouEntry,
 } from '../lib/leaderboard'
 
 const INITIAL_ROWS = 10
 const GLOBAL_ROWS = 100
 
-type LeaderboardsPageProps = {
-  game?: LeaderboardGame
-  period?: LeaderboardPeriod
-}
-
-export function LeaderboardsPage({
-  game: gameFromRoute,
-  period: periodFromRoute,
-}: LeaderboardsPageProps) {
-  const isHub = !gameFromRoute
-
-  if (isHub) return <GlobalLeaderboardsHub />
-
-  return (
-    <GameLeaderboard
-      game={gameFromRoute}
-      period={periodFromRoute ?? 'all'}
-    />
-  )
-}
-
-function GlobalLeaderboardsHub() {
+export function LeaderboardsPage() {
   const playerName = normalizePlayerName(usePlayerName())
   const [entries, setEntries] = useState<GlobalBoardEntry[]>([])
   const [totalPlayers, setTotalPlayers] = useState(0)
@@ -138,8 +105,8 @@ function GlobalLeaderboardsHub() {
                 title="No ranks yet"
                 detail="Place on any game board to earn global points."
                 action={
-                  <a className="lb-empty-state__btn" href={leaderboardHref('asteroids', 'all')}>
-                    Browse game boards
+                  <a className="lb-empty-state__btn" href={gameHref('asteroids', 'all')}>
+                    Browse games
                   </a>
                 }
               />
@@ -185,221 +152,13 @@ function GlobalLeaderboardsHub() {
                     key={slug}
                     game={game}
                     index={index}
-                    href={leaderboardHref(slug, 'all')}
+                    href={gameHref(slug, 'all')}
                     showOnAllDevices
                   />
                 )
               })}
             </ul>
           </section>
-        </div>
-      </main>
-      <Footer />
-    </>
-  )
-}
-
-function GameLeaderboard({
-  game: active,
-  period,
-}: {
-  game: LeaderboardGame
-  period: LeaderboardPeriod
-}) {
-  const device = useDeviceType()
-  const playerName = usePlayerName().trim().toUpperCase()
-  const [entries, setEntries] = useState<LeaderboardEntry[]>([])
-  const [you, setYou] = useState<YouEntry | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [shown, setShown] = useState(INITIAL_ROWS)
-  const pulsed = useRef(false)
-
-  const activeGame = getGame(active)
-  const canPlay = activeGame ? gamePlayableOn(activeGame, device) : true
-  const accent = activeGame?.accent ?? '#2eb8a0'
-
-  const otherGames = useMemo(
-    () => LEADERBOARD_GAMES.filter((slug) => slug !== active),
-    [active],
-  )
-
-  useEffect(() => {
-    const canonical = leaderboardHref(active, period)
-    if (window.location.hash !== canonical) {
-      window.history.replaceState(null, '', canonical)
-    }
-  }, [active, period])
-
-  useEffect(() => {
-    let cancelled = false
-    setLoading(true)
-    setError(null)
-    setShown(INITIAL_ROWS)
-    pulsed.current = false
-    getLeaderboard(active, period, playerName || undefined)
-      .then((board) => {
-        if (cancelled) return
-        setEntries(board.entries)
-        setYou(board.you)
-      })
-      .catch((err) => {
-        if (cancelled) return
-        setEntries([])
-        setYou(null)
-        setError(err instanceof Error ? err.message : 'Failed to load')
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false)
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [active, period, playerName])
-
-  useEffect(() => {
-    if (loading || !you || pulsed.current) return
-    pulsed.current = true
-    window.requestAnimationFrame(() => flashYouRow())
-  }, [loading, you, active, period])
-
-  const selectPeriod = (next: LeaderboardPeriod) => {
-    window.location.hash = leaderboardHref(active, next)
-  }
-
-  return (
-    <>
-      <main className="lb-page">
-        <HomeBar />
-        <div
-          className="lb-page__inner game-lobby"
-          style={
-            {
-              '--period-accent': accent,
-              '--board-accent': accent,
-            } as CSSProperties
-          }
-        >
-          <a className="rank-page__back" href={leaderboardHref()}>
-            ← Global Rankings
-          </a>
-          {activeGame ? (
-            <GameLobbyArt slug={active} accent={accent} />
-          ) : null}
-          <header className="game-lobby__header">
-            <h1 className="game-lobby__title">{activeGame?.name ?? active}</h1>
-            <p className="game-lobby__blurb">
-              High scores · all-time places earn global points
-            </p>
-          </header>
-
-          <PeriodSwitcher
-            period={period}
-            accent={accent}
-            hrefFor={(p) => leaderboardHref(active, p)}
-            onSelect={selectPeriod}
-          />
-
-          <section
-            key={`${active}-${period}`}
-            className="lb-board lb-board--fade"
-            aria-label={`${activeGame?.name ?? active} ${PERIOD_LABELS[period]} leaderboard`}
-          >
-            {loading ? (
-              <BoardSkeleton />
-            ) : error ? (
-              <BoardEmpty
-                title="Couldn’t load scores"
-                detail="Check your connection and try again."
-              />
-            ) : entries.length === 0 && !you ? (
-              <BoardEmpty
-                title={`No ${PERIOD_LABELS[period].toLowerCase()} scores yet`}
-                detail={
-                  canPlay
-                    ? `Be the first on the ${activeGame?.name ?? active} board.`
-                    : 'Open it on a supported device to post a score.'
-                }
-                action={
-                  canPlay ? (
-                    <a
-                      className="lb-empty-state__btn"
-                      href={gamePlayHref(active)}
-                      style={{ background: accent }}
-                    >
-                      Play {activeGame?.name ?? active}
-                    </a>
-                  ) : null
-                }
-              />
-            ) : (
-              <LeaderboardList
-                entries={entries}
-                you={you}
-                playerName={playerName}
-                accent={accent}
-                shown={shown}
-              />
-            )}
-
-            {!loading && !error && entries.length > shown ? (
-              <button
-                type="button"
-                className="lb-more"
-                onClick={() => setShown(entries.length)}
-              >
-                Show top {entries.length}
-              </button>
-            ) : null}
-
-            {canPlay && !(entries.length === 0 && !you) ? (
-              <a
-                className="lb-play"
-                href={gamePlayHref(active)}
-                style={{ background: accent }}
-              >
-                Play {activeGame?.name ?? active}
-              </a>
-            ) : activeGame && !canPlay ? (
-              <p className="lb-device-note lb-device-note--footer" role="note">
-                {deviceRequirementLabel(activeGame)} Scores still count toward
-                global rank.
-              </p>
-            ) : null}
-          </section>
-
-          {gameHasRecords(active) ? (
-            <a
-              className="lb-records-cta"
-              href={recordsHref(active)}
-              style={{ '--board-accent': accent } as CSSProperties}
-            >
-              {activeGame?.name ?? active} record books
-            </a>
-          ) : null}
-
-          {otherGames.length > 0 ? (
-            <section className="lb-games" aria-labelledby="lb-other-games-heading">
-              <h2 id="lb-other-games-heading" className="lb-games__title">
-                Other games
-              </h2>
-              <ul className="game-grid game-grid--playable lb-other-grid">
-                {otherGames.map((slug, index) => {
-                  const game = getGame(slug)
-                  if (!game) return null
-                  return (
-                    <GameTile
-                      key={slug}
-                      game={game}
-                      index={index}
-                      href={leaderboardHref(slug, period)}
-                      showOnAllDevices
-                    />
-                  )
-                })}
-              </ul>
-            </section>
-          ) : null}
         </div>
       </main>
       <Footer />

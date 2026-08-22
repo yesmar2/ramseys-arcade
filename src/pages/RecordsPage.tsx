@@ -9,12 +9,7 @@ import { Footer } from '../components/Footer'
 import { HomeBar } from '../components/HomeBar'
 import { LeaderboardList } from '../components/LeaderboardList'
 import { getGame } from '../data/games'
-import {
-  gamePlayHref,
-  leaderboardHref,
-  recordHref,
-  recordsHref,
-} from '../hooks/useHashRoute'
+import { gameHref, gamePlayHref, recordHref, recordsHref } from '../hooks/useHashRoute'
 import { flashYouRow } from '../lib/boardGap'
 import { usePlayerName } from '../hooks/usePlayerName'
 import {
@@ -110,8 +105,8 @@ function RecordsIndexPage({ game }: { game: string }) {
 
   const backHref =
     gameMeta && (game as LeaderboardGame)
-      ? leaderboardHref(game as LeaderboardGame, 'all')
-      : leaderboardHref()
+      ? gameHref(game as LeaderboardGame, 'all')
+      : '#/leaderboards'
   const accent = gameMeta?.accent ?? 'var(--accent)'
 
   const gameTitle = gameMeta?.name ?? game
@@ -125,9 +120,9 @@ function RecordsIndexPage({ game }: { game: string }) {
           className="lb-page__inner game-lobby"
           style={{ '--board-accent': accent } as CSSProperties}
         >
-          <a className="rank-page__back" href={backHref}>
-            ← {gameTitle} scores
-          </a>
+            <a className="rank-page__back" href={backHref}>
+              ← {gameTitle} hub
+            </a>
           {gameMeta ? (
             <GameLobbyArt slug={game} accent={accent} />
           ) : null}

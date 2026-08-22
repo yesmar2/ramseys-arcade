@@ -15,7 +15,7 @@ import { silenceMusic, unlockSound } from './lib/sound'
 import { AsteroidsPage } from './pages/AsteroidsPage'
 import { AuthVerifyPage } from './pages/AuthVerifyPage'
 import { DeadCenterPage } from './pages/DeadCenterPage'
-import { GamePreviewPage } from './pages/GamePreviewPage'
+import { GameHubPage } from './pages/GameHubPage'
 import { HomePage } from './pages/HomePage'
 import { RankPage } from './pages/RankPage'
 import { LeaderboardsPage } from './pages/LeaderboardsPage'
@@ -99,7 +99,7 @@ function App() {
   if (route.name === 'authVerify') return <AuthVerifyPage token={route.token} />
   if (route.name === 'rank') return <RankPage player={route.player} />
   if (route.name === 'leaderboards') {
-    return <LeaderboardsPage game={route.game} period={route.period} />
+    return <LeaderboardsPage />
   }
   if (route.name === 'records') {
     return (
@@ -115,7 +115,9 @@ function App() {
     return <TournamentPlayPage tournamentId={route.id} gameSlug={route.game} />
   }
   if (route.name === 'tournament') return <TournamentDetailPage id={route.id} />
-  if (route.name === 'game') return <GamePreviewPage slug={route.slug} />
+  if (route.name === 'game') {
+    return <GameHubPage slug={route.slug} period={route.period} />
+  }
   if (route.name === 'gamePlay' && route.slug === 'stacker') return <StackerPage />
   if (route.name === 'gamePlay' && route.slug === 'patriot') return <PatriotPage />
   if (route.name === 'gamePlay' && route.slug === 'snake') return <SnakePage />

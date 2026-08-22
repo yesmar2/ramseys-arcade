@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { scoringFor } from '../data/scoring'
 import { getGame } from '../data/games'
-import { gameHref, leaderboardHref } from '../hooks/useHashRoute'
+import { gameHref } from '../hooks/useHashRoute'
 import { useBoardRecord } from '../hooks/useBoardRecord'
 import { LEADERBOARD_GAMES, type LeaderboardGame } from '../lib/leaderboard'
 import { useTournamentPlay } from '../tournaments/TournamentPlayContext'
@@ -88,7 +88,7 @@ export function GameHud({
         {isBoardGame(slug) && (
           <a
             className="game-pause-btn game-hud__board"
-            href={leaderboardHref(slug)}
+            href={gameHref(slug)}
             aria-label="Leaderboard"
             title="Leaderboard"
             onPointerDown={(e) => e.stopPropagation()}
