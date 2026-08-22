@@ -196,13 +196,9 @@ export function GameLeaderboardPage({
       </section>
 
       {gameHasRecords(gameSlug) ? (
-        <a
-          className="lb-records-cta"
-          href={recordsHref(gameSlug)}
-          style={{ '--board-accent': accent } as CSSProperties}
-        >
-          {game.name} record books
-        </a>
+        <nav className="lb-board-links" aria-label="More boards">
+          <a href={recordsHref(gameSlug)}>Record books</a>
+        </nav>
       ) : null}
       </div>
     </PageShell>

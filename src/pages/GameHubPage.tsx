@@ -246,19 +246,12 @@ export function GameHubPage({ slug }: GameHubPageProps) {
                 ) : null}
               </section>
 
-              {gameHasRecords(boardSlug) ? (
-                <a
-                  className="lb-records-cta"
-                  href={recordsHref(boardSlug)}
-                  style={{ '--board-accent': accent } as CSSProperties}
-                >
-                  {game.name} record books
-                </a>
-              ) : null}
-
-              <a className="game-lobby__all-boards" href={globalRankingsHref()}>
-                Global rankings
-              </a>
+              <nav className="lb-board-links" aria-label="More boards">
+                {gameHasRecords(boardSlug) ? (
+                  <a href={recordsHref(boardSlug)}>Record books</a>
+                ) : null}
+                <a href={globalRankingsHref()}>Global rankings</a>
+              </nav>
             </>
           ) : null}
 
