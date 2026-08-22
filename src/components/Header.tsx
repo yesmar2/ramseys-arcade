@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { usePlayerName } from '../hooks/usePlayerName'
-import { rankHref } from '../hooks/useHashRoute'
+import { globalRankingsHref, leaderboardHref, rankHref } from '../hooks/useHashRoute'
 import { useGlobalRank } from '../lib/globalRank'
 import { normalizePlayerName } from '../lib/leaderboard'
 import { currentTheme, THEME_EVENT, toggleTheme, type Theme } from '../lib/theme'
@@ -9,8 +9,9 @@ import { ThemeToggle } from './ThemeToggle'
 
 const NAV = [
   { href: '#/', label: 'Games' },
+  { href: leaderboardHref(), label: 'Leaderboards' },
+  { href: globalRankingsHref(), label: 'Global rankings' },
   { href: '#/tournaments', label: 'Tournaments' },
-  { href: '#/leaderboards', label: 'Leaderboards' },
 ]
 
 const MOBILE_MQ = '(max-width: 720px)'

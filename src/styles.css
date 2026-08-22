@@ -1281,10 +1281,6 @@ img {
   outline: none;
 }
 
-.home-bar__menu-mobile {
-  display: none !important;
-}
-
 .home-bar__player {
   position: absolute;
   right: 0;
@@ -1308,14 +1304,6 @@ img {
 }
 
 @media (max-width: 640px) {
-  .home-bar__links {
-    display: none;
-  }
-
-  .home-bar__menu-mobile {
-    display: block !important;
-  }
-
   .home-bar__you {
     max-width: 8.5rem;
     padding: 0.32rem 0.7rem;

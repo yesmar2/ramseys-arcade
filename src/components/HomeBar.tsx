@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '../hooks/useAuth'
 import { usePlayerName } from '../hooks/usePlayerName'
-import { leaderboardHref, rankHref } from '../hooks/useHashRoute'
+import { globalRankingsHref, leaderboardHref, rankHref } from '../hooks/useHashRoute'
 import { useGlobalRank } from '../lib/globalRank'
 import { normalizePlayerName } from '../lib/leaderboard'
 import { currentTheme, THEME_EVENT, toggleTheme, type Theme } from '../lib/theme'
@@ -54,14 +54,6 @@ export function HomeBar() {
         <a className="home-bar__brand" href="#/">
           Archiv<span>ade</span>
         </a>
-        <div className="home-bar__links" aria-label="Primary">
-          <a className="home-bar__link" href={leaderboardHref()}>
-            Leaderboards
-          </a>
-          <a className="home-bar__link" href="#/tournaments">
-            Tournaments
-          </a>
-        </div>
       </div>
 
       <div className="home-bar__end">
@@ -105,7 +97,7 @@ export function HomeBar() {
           {menuOpen ? (
             <div className="home-bar__menu" role="menu">
               <a
-                className="home-bar__menu-mobile"
+                className="home-bar__menu-link"
                 role="menuitem"
                 href={leaderboardHref()}
                 onClick={() => setMenuOpen(false)}
@@ -113,7 +105,15 @@ export function HomeBar() {
                 Leaderboards
               </a>
               <a
-                className="home-bar__menu-mobile"
+                className="home-bar__menu-link"
+                role="menuitem"
+                href={globalRankingsHref()}
+                onClick={() => setMenuOpen(false)}
+              >
+                Global rankings
+              </a>
+              <a
+                className="home-bar__menu-link"
                 role="menuitem"
                 href="#/tournaments"
                 onClick={() => setMenuOpen(false)}
