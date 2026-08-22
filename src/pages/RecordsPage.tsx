@@ -5,7 +5,6 @@ import {
   PeriodSwitcher,
 } from '../components/BoardChrome'
 import { Footer } from '../components/Footer'
-import { GameBoardSwitcher } from '../components/GameBoardSwitcher'
 import { GamePageHeader } from '../components/GamePageHeader'
 import { SiteHeader } from '../components/SiteHeader'
 import { LeaderboardList } from '../components/LeaderboardList'
@@ -175,21 +174,17 @@ function RecordBoardPage({
               slug={game}
               accent={accent}
               title={record?.label ?? 'Record'}
+              action={
+                <a className="lb-game-board__side-link" href={gameHref(game)}>
+                  Scores
+                </a>
+              }
             />
           ) : (
             <header className="lb-page__header lb-page__header--compact">
               <h1 className="lb-page__title">{record?.label ?? 'Record'}</h1>
             </header>
           )}
-
-          <GameBoardSwitcher
-            slug={game}
-            accent={accent}
-            active="records"
-            onSelect={(tab) => {
-              window.location.hash = gameHref(game, tab)
-            }}
-          />
 
           {waveRecords.length > 1 ? (
             <nav className="records-wave-nav" aria-label="Record boards">

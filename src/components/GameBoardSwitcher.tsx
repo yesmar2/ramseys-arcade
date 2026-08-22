@@ -10,7 +10,7 @@ type GameBoardSwitcherProps = {
   onSelect: (tab: BoardTab) => void
 }
 
-/** In-page tabs: Scores vs Record books (only when the game has records). */
+/** Segment tabs: Scores vs Record books (hub only; games with records). */
 export function GameBoardSwitcher({
   slug,
   accent,
@@ -24,7 +24,12 @@ export function GameBoardSwitcher({
       className="lb-board-switcher"
       role="tablist"
       aria-label="Board type"
-      style={{ '--board-accent': accent } as CSSProperties}
+      style={
+        {
+          '--board-accent': accent,
+          '--period-accent': accent,
+        } as CSSProperties
+      }
     >
       <button
         type="button"
@@ -35,9 +40,6 @@ export function GameBoardSwitcher({
       >
         Scores
       </button>
-      <span className="lb-board-switcher__sep" aria-hidden="true">
-        |
-      </span>
       <button
         type="button"
         role="tab"

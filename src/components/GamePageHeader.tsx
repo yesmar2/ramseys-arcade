@@ -1,14 +1,21 @@
-import type { CSSProperties } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 import { GameThumbArt } from './GameThumbArt'
 
 type GamePageHeaderProps = {
   slug: string
   accent: string
   title: string
+  /** Optional trailing control (e.g. Record books link). */
+  action?: ReactNode
 }
 
-/** Compact game title: thumb + name (leaderboards, records). */
-export function GamePageHeader({ slug, accent, title }: GamePageHeaderProps) {
+/** Compact game title: thumb + name, optional side action. */
+export function GamePageHeader({
+  slug,
+  accent,
+  title,
+  action,
+}: GamePageHeaderProps) {
   return (
     <header
       className="lb-page__header lb-page__header--compact lb-game-board__head"
@@ -19,6 +26,9 @@ export function GamePageHeader({ slug, accent, title }: GamePageHeaderProps) {
           <GameThumbArt slug={slug} accent={accent} />
         </span>
         <h1 className="lb-game-board__title">{title}</h1>
+        {action ? (
+          <div className="lb-game-board__action">{action}</div>
+        ) : null}
       </div>
     </header>
   )

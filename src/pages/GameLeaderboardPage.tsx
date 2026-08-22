@@ -4,7 +4,6 @@ import {
   BoardSkeleton,
   PeriodSwitcher,
 } from '../components/BoardChrome'
-import { GameBoardSwitcher } from '../components/GameBoardSwitcher'
 import { GamePageHeader } from '../components/GamePageHeader'
 import { LeaderboardList } from '../components/LeaderboardList'
 import { PageShell } from '../components/PageShell'
@@ -19,6 +18,7 @@ import {
 import { usePlayerName } from '../hooks/usePlayerName'
 import { useDeviceType } from '../lib/device'
 import { flashYouRow } from '../lib/boardGap'
+import { gameHasRecords } from '../lib/records'
 import {
   getLeaderboard,
   normalizePlayerName,
@@ -123,18 +123,18 @@ export function GameLeaderboardPage({
         <GamePageHeader
           slug={gameSlug}
           accent={accent}
-          title={`${game.name} leaderboards`}
-        />
-
-        <GameBoardSwitcher
-          slug={gameSlug}
-          accent={accent}
-          active="scores"
-          onSelect={(tab) => {
-            if (tab === 'records') {
-              window.location.hash = recordsHref(gameSlug)
-            }
-          }}
+          title={game.name}
+          action={
+            gameHasRecords(gameSlug) ? (
+              <a className="lb-game-board__side-link" href={recordsHref(gameSlug)}>
+                Record books
+              </a>
+            ) : (
+              <a className="lb-game-board__side-link" href={gameHref(gameSlug)}>
+                Game hub
+              </a>
+            )
+          }
         />
 
         <PeriodSwitcher
@@ -207,9 +207,11 @@ export function GameLeaderboardPage({
           ) : null}
         </section>
 
-        <nav className="lb-board-links" aria-label="More">
-          <a href={gameHref(gameSlug)}>Game hub</a>
-        </nav>
+        {gameHasRecords(gameSlug) ? (
+          <nav className="lb-board-links" aria-label="More">
+            <a href={gameHref(gameSlug)}>Game hub</a>
+          </nav>
+        ) : null}
       </div>
     </PageShell>
   )
