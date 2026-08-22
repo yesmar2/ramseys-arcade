@@ -10,7 +10,6 @@ import { PageShell } from '../components/PageShell'
 import { getGame, gamePlayableOn, deviceRequirementLabel } from '../data/games'
 import {
   gameBoardHref,
-  gameHref,
   gamePlayHref,
   leaderboardHref,
   recordsHref,
@@ -120,16 +119,17 @@ export function GameLeaderboardPage({
         ← Leaderboards
       </a>
 
-      <header className="lb-game-board__head">
-        <a className="lb-game-board__title" href={gameHref(gameSlug)}>
-          <span className="lb-summary__thumb" aria-hidden="true">
-            <GameThumbArt slug={gameSlug} accent={accent} />
-          </span>
+      <header
+        className="lb-game-board__head"
+        style={{ '--tab-accent': accent } as CSSProperties}
+      >
+        <span className="lb-game-board__thumb" aria-hidden="true">
+          <GameThumbArt slug={gameSlug} accent={accent} />
+        </span>
+        <div className="lb-game-board__meta">
+          <p className="lb-page__eyebrow lb-game-board__eyebrow">Leaderboard</p>
           <h1 className="lb-game-board__name">{game.name}</h1>
-        </a>
-        <a className="lb-game-board__hub-link" href={gameHref(gameSlug)}>
-          Game hub →
-        </a>
+        </div>
       </header>
 
       <PeriodSwitcher
