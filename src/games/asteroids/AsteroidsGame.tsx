@@ -468,9 +468,13 @@ export function AsteroidsGame() {
                 <PersonalBestHint slug="asteroids" />
                 <span className="asteroids__hint asteroids__hint--keys">
                   ← → turn · ↑ thrust · ↓ reverse · auto-fire · grab powerups
+                  <br />
+                  Wave 3+ · flying saucers hunt you
                 </span>
                 <span className="asteroids__hint asteroids__hint--touch">
                   Hold to turn and thrust · grab powerups · auto-fire
+                  <br />
+                  Wave 3+ · flying saucers hunt you
                 </span>
               </div>
             )}

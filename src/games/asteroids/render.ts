@@ -5,12 +5,14 @@ import {
   type Point,
   type Powerup,
   type Rock,
+  type Saucer,
 } from './game'
 import { inkColor, playfieldColor } from '../../lib/theme'
 
 const ACCENT = '#2eb8a0'
 const ACCENT_SKY = '#4aa8e8'
 const ACCENT_GOLD = '#f5b942'
+const SAUCER = '#c45c5c'
 
 function drawBackground(ctx: CanvasRenderingContext2D, w: number, h: number) {
   ctx.fillStyle = playfieldColor()
@@ -228,6 +230,42 @@ function drawShip(ctx: CanvasRenderingContext2D, state: GameState, scale: number
   ctx.restore()
 }
 
+function drawSaucer(ctx: CanvasRenderingContext2D, saucer: Saucer, scale: number) {
+  const r = saucer.radius
+  ctx.save()
+  ctx.translate(saucer.x, saucer.y)
+  ctx.lineJoin = 'round'
+  ctx.lineCap = 'round'
+  ctx.strokeStyle = SAUCER
+  ctx.fillStyle = 'rgba(196, 92, 92, 0.2)'
+  ctx.lineWidth = Math.max(1.8, 2.2 * scale)
+
+  // Dome
+  ctx.beginPath()
+  ctx.ellipse(0, -r * 0.15, r * 0.55, r * 0.38, 0, Math.PI, 0)
+  ctx.fill()
+  ctx.stroke()
+
+  // Hull
+  ctx.beginPath()
+  ctx.moveTo(-r, 0)
+  ctx.quadraticCurveTo(-r * 0.2, r * 0.55, r, 0)
+  ctx.quadraticCurveTo(r * 0.2, -r * 0.2, -r, 0)
+  ctx.closePath()
+  ctx.fill()
+  ctx.stroke()
+
+  // Cabin lights
+  ctx.fillStyle = SAUCER
+  const lights = saucer.size === 'large' ? [-0.45, 0, 0.45] : [-0.28, 0.28]
+  for (const lx of lights) {
+    ctx.beginPath()
+    ctx.arc(r * lx, r * 0.12, Math.max(1.4, 1.8 * scale), 0, Math.PI * 2)
+    ctx.fill()
+  }
+  ctx.restore()
+}
+
 export function renderGame(
   ctx: CanvasRenderingContext2D,
   state: GameState,
@@ -248,10 +286,19 @@ export function renderGame(
 
   for (const p of state.powerups ?? []) drawPowerup(ctx, p, scale)
 
+  if (state.saucer) drawSaucer(ctx, state.saucer, scale)
+
   for (const b of state.bullets) {
     ctx.beginPath()
     ctx.arc(b.x, b.y, Math.max(2, 2.4 * scale), 0, Math.PI * 2)
     ctx.fillStyle = ACCENT_SKY
+    ctx.fill()
+  }
+
+  for (const b of state.enemyBullets ?? []) {
+    ctx.beginPath()
+    ctx.arc(b.x, b.y, Math.max(2.2, 2.6 * scale), 0, Math.PI * 2)
+    ctx.fillStyle = SAUCER
     ctx.fill()
   }
 

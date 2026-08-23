@@ -9,6 +9,28 @@ export type RockSize = 'large' | 'medium' | 'small'
 
 export type PowerKind = 'rapid' | 'spread' | 'shield' | 'slow' | 'life'
 
+export type SaucerSize = 'large' | 'small'
+
+export type Saucer = {
+  id: number
+  x: number
+  y: number
+  vx: number
+  vy: number
+  size: SaucerSize
+  radius: number
+  fireCooldown: number
+}
+
+export type EnemyBullet = {
+  id: number
+  x: number
+  y: number
+  vx: number
+  vy: number
+  life: number
+}
+
 export type Powerup = {
   id: number
   x: number
@@ -104,6 +126,10 @@ export type GameState = {
   ship: Ship
   rocks: Rock[]
   bullets: Bullet[]
+  enemyBullets: EnemyBullet[]
+  saucer: Saucer | null
+  /** Seconds until the next saucer may spawn (wave 3+). */
+  saucerCooldown: number
   particles: Particle[]
   powerups: Powerup[]
   turnLeft: boolean
@@ -168,13 +194,13 @@ const COMBO_WINDOW = 0.75
 const POWER_LIFE = 6
 const BUFF_DURATION = 8
 
-/** Weighted drop table — life is ~10% of powerups; others share the rest. */
+/** Weighted drop table — life is ~3% of powerups; others share the rest. */
 const POWER_WEIGHTS: { kind: PowerKind; weight: number }[] = [
-  { kind: 'rapid', weight: 0.225 },
-  { kind: 'spread', weight: 0.225 },
-  { kind: 'shield', weight: 0.225 },
-  { kind: 'slow', weight: 0.225 },
-  { kind: 'life', weight: 0.1 },
+  { kind: 'rapid', weight: 0.2425 },
+  { kind: 'spread', weight: 0.2425 },
+  { kind: 'shield', weight: 0.2425 },
+  { kind: 'slow', weight: 0.2425 },
+  { kind: 'life', weight: 0.03 },
 ]
 
 export const POWER_LABEL: Record<PowerKind, string> = {
@@ -211,6 +237,19 @@ function comboMultiplier(combo: number) {
 function waveParFor(wave: number) {
   return Math.max(28, 48 - (wave - 1) * 2)
 }
+
+/** Rock speed: +8%/wave early, steeper after wave 5. */
+function waveSpeedScale(wave: number) {
+  if (wave <= 5) return 1 + (wave - 1) * 0.08
+  return 1 + 4 * 0.08 + (wave - 5) * 0.14
+}
+
+const SAUCER_START_WAVE = 3
+const SAUCER_SCORE: Record<SaucerSize, number> = {
+  large: 200,
+  small: 1000,
+}
+const ENEMY_BULLET_LIFE = 1.15
 
 const ROCK_RADIUS: Record<RockSize, number> = {
   large: 42,
@@ -326,8 +365,8 @@ function makeShip(w: number, h: number): Ship {
 }
 
 function spawnWave(state: GameState, wave: number): Rock[] {
-  const count = Math.min(4 + wave, 10)
-  const speedScale = 1 + (wave - 1) * 0.08
+  const count = Math.min(4 + wave, 12)
+  const speedScale = waveSpeedScale(wave)
   const rocks: Rock[] = []
   for (let i = 0; i < count; i++) {
     rocks.push(
@@ -342,6 +381,67 @@ function spawnWave(state: GameState, wave: number): Rock[] {
     )
   }
   return rocks
+}
+
+function firstSaucerCooldown(wave: number) {
+  if (wave < SAUCER_START_WAVE) return 999
+  return Math.max(5, 9 - (wave - SAUCER_START_WAVE) * 0.6)
+}
+
+function nextSaucerCooldown(wave: number) {
+  return Math.max(5.5, 14 - wave * 0.7)
+}
+
+function pickSaucerSize(wave: number): SaucerSize {
+  if (wave < 4) return 'large'
+  const smallChance = Math.min(0.2 + (wave - 4) * 0.12, 0.8)
+  return Math.random() < smallChance ? 'small' : 'large'
+}
+
+function spawnSaucer(state: GameState): Saucer {
+  const size = pickSaucerSize(state.wave)
+  const fromLeft = Math.random() < 0.5
+  const radius = (size === 'large' ? 22 : 12) * state.scale
+  const speed =
+    (size === 'large' ? 58 : 92) *
+    state.scale *
+    (0.95 + Math.max(0, state.wave - 3) * 0.035)
+  const y = state.stageH * (0.18 + Math.random() * 0.64)
+  return {
+    id: uid(),
+    x: fromLeft ? -radius : state.stageW + radius,
+    y,
+    vx: fromLeft ? speed : -speed,
+    vy: (Math.random() - 0.5) * 36 * state.scale,
+    size,
+    radius,
+    fireCooldown: 0.45 + Math.random() * 0.35,
+  }
+}
+
+function saucerFireBullet(
+  saucer: Saucer,
+  ship: Ship,
+  wave: number,
+  scale: number,
+): EnemyBullet {
+  let angle: number
+  if (saucer.size === 'large') {
+    angle = Math.random() * Math.PI * 2
+  } else {
+    const aim = Math.atan2(ship.y - saucer.y, ship.x - saucer.x)
+    const spread = Math.max(0.06, 0.5 - (wave - 3) * 0.045)
+    angle = aim + (Math.random() - 0.5) * 2 * spread
+  }
+  const speed = (saucer.size === 'large' ? 210 : 300) * scale
+  return {
+    id: uid(),
+    x: saucer.x,
+    y: saucer.y,
+    vx: Math.cos(angle) * speed,
+    vy: Math.sin(angle) * speed,
+    life: ENEMY_BULLET_LIFE,
+  }
 }
 
 function burst(
@@ -451,6 +551,9 @@ export function createInitialState(w = DESIGN_W, h = DESIGN_H): GameState {
     ship: makeShip(w, h),
     rocks: [],
     bullets: [],
+    enemyBullets: [],
+    saucer: null,
+    saucerCooldown: 999,
     particles: [],
     powerups: [],
     turnLeft: false,
@@ -515,6 +618,23 @@ export function resizeState(state: GameState, w: number, h: number): GameState {
       vx: b.vx * k,
       vy: b.vy * k,
     })),
+    enemyBullets: (state.enemyBullets ?? []).map((b) => ({
+      ...b,
+      x: b.x * sx,
+      y: b.y * sy,
+      vx: b.vx * k,
+      vy: b.vy * k,
+    })),
+    saucer: state.saucer
+      ? {
+          ...state.saucer,
+          x: state.saucer.x * sx,
+          y: state.saucer.y * sy,
+          vx: state.saucer.vx * k,
+          vy: state.saucer.vy * k,
+          radius: state.saucer.radius * k,
+        }
+      : null,
     particles: state.particles.map((p) => ({
       ...p,
       x: p.x * sx,
@@ -549,6 +669,9 @@ export function startGame(prev: GameState): GameState {
     wave: 1,
     waveElapsed: 0,
     wavePause: 0,
+    saucer: null,
+    enemyBullets: [],
+    saucerCooldown: firstSaucerCooldown(1),
   }
   return { ...started, rocks: spawnWave(started, 1) }
 }
@@ -567,6 +690,9 @@ export function beginNextWave(state: GameState): GameState {
     phase: 'playing',
     ship,
     bullets: [],
+    enemyBullets: [],
+    saucer: null,
+    saucerCooldown: firstSaucerCooldown(state.wave),
     powerups: [],
     waveElapsed: 0,
     wavePause: 0,
@@ -642,6 +768,8 @@ function killShip(state: GameState): GameState {
       best,
       particles,
       bullets: [],
+      enemyBullets: [],
+      saucer: null,
       powerups: [],
       flash: 0.35,
       thrust: false,
@@ -661,6 +789,7 @@ function killShip(state: GameState): GameState {
     lives,
     ship: makeShip(state.stageW, state.stageH),
     bullets: [],
+    enemyBullets: [],
     particles,
     flash: 0.28,
     fireCooldown: 0.4,
@@ -798,7 +927,57 @@ export function tick(state: GameState, dt: number): GameState {
     }))
     .filter((p) => p.life > 0)
 
-  const speedScale = 1 + (s.wave - 1) * 0.08
+  let saucer = s.saucer
+  let saucerCooldown = s.saucerCooldown ?? firstSaucerCooldown(s.wave)
+  let enemyBullets = [...(s.enemyBullets ?? [])]
+
+  if (!saucer && s.wave >= SAUCER_START_WAVE && rocks.length > 0) {
+    saucerCooldown -= dt
+    if (saucerCooldown <= 0) {
+      saucer = spawnSaucer(s)
+      saucerCooldown = nextSaucerCooldown(s.wave)
+      sfx('tap')
+    }
+  }
+
+  if (saucer) {
+    const nextX = saucer.x + saucer.vx * rockDt
+    const nextY = wrap(saucer.y + saucer.vy * rockDt, s.stageH)
+    // Fly off the far edge instead of wrapping horizontally
+    if (
+      (saucer.vx > 0 && nextX - saucer.radius > s.stageW) ||
+      (saucer.vx < 0 && nextX + saucer.radius < 0)
+    ) {
+      saucer = null
+    } else {
+      let fireCooldown = saucer.fireCooldown - dt
+      const fired: EnemyBullet[] = []
+      if (fireCooldown <= 0) {
+        fired.push(saucerFireBullet(saucer, ship, s.wave, sc))
+        fireCooldown =
+          saucer.size === 'large' ? 1.15 + Math.random() * 0.35 : 0.65 + Math.random() * 0.25
+        sfx('fire')
+      }
+      saucer = {
+        ...saucer,
+        x: nextX,
+        y: nextY,
+        fireCooldown,
+      }
+      enemyBullets = [...enemyBullets, ...fired]
+    }
+  }
+
+  enemyBullets = enemyBullets
+    .map((b) => ({
+      ...b,
+      x: wrap(b.x + b.vx * dt, s.stageW),
+      y: wrap(b.y + b.vy * dt, s.stageH),
+      life: b.life - dt,
+    }))
+    .filter((b) => b.life > 0)
+
+  const speedScale = waveSpeedScale(s.wave)
   let score = s.score
   let combo = s.combo
   let comboTimer = s.comboTimer
@@ -807,6 +986,7 @@ export function tick(state: GameState, dt: number): GameState {
   let floaters = [...s.floaters]
   const hitBullet = new Set<number>()
   const hitRock = new Set<number>()
+  const hitEnemyBullet = new Set<number>()
   const spawned: Rock[] = []
   const dropped: Powerup[] = []
 
@@ -838,16 +1018,78 @@ export function tick(state: GameState, dt: number): GameState {
     }
   }
 
+  // Player bullets vs saucer
+  if (saucer) {
+    for (const b of bullets) {
+      if (hitBullet.has(b.id)) continue
+      if (dist(b.x, b.y, saucer.x, saucer.y) < saucer.radius + 3 * sc) {
+        hitBullet.add(b.id)
+        const gained = SAUCER_SCORE[saucer.size]
+        score += gained
+        combo += 1
+        comboTimer = COMBO_WINDOW
+        comboBest = Math.max(comboBest, combo)
+        runComboBest = Math.max(runComboBest, combo)
+        burst(particles, saucer.x, saucer.y, 38, saucer.size === 'large' ? 16 : 10, 140)
+        sfx('boom')
+        floaters.push({
+          x: saucer.x,
+          y: saucer.y,
+          text: `+${gained}`,
+          life: 0.85,
+          maxLife: 0.85,
+        })
+        saucer = null
+        break
+      }
+    }
+  }
+
+  // Enemy bullets vs rocks
+  for (const b of enemyBullets) {
+    for (const r of rocks) {
+      if (hitRock.has(r.id) || hitEnemyBullet.has(b.id)) continue
+      if (dist(b.x, b.y, r.x, r.y) < r.radius + 3 * sc) {
+        hitEnemyBullet.add(b.id)
+        hitRock.add(r.id)
+        burst(particles, r.x, r.y, r.hue, r.size === 'large' ? 10 : 6, 100)
+        spawned.push(...splitRock(r, speedScale, sc))
+      }
+    }
+  }
+
+  // Saucer vs rocks
+  if (saucer) {
+    for (const r of rocks) {
+      if (hitRock.has(r.id)) continue
+      if (dist(saucer.x, saucer.y, r.x, r.y) < saucer.radius + r.radius * 0.85) {
+        hitRock.add(r.id)
+        burst(particles, r.x, r.y, r.hue, 8, 90)
+        burst(particles, saucer.x, saucer.y, 38, 10, 110)
+        spawned.push(...splitRock(r, speedScale, sc))
+        saucer = null
+        sfx('boom')
+        break
+      }
+    }
+  }
+
   if (hitBullet.size || hitRock.size) {
     bullets = bullets.filter((b) => !hitBullet.has(b.id))
     rocks = [...rocks.filter((r) => !hitRock.has(r.id)), ...spawned]
     powerups = [...powerups, ...dropped]
+  }
+  if (hitEnemyBullet.size) {
+    enemyBullets = enemyBullets.filter((b) => !hitEnemyBullet.has(b.id))
   }
 
   s = {
     ...s,
     score,
     bullets,
+    enemyBullets,
+    saucer,
+    saucerCooldown,
     rocks,
     particles,
     powerups,
@@ -875,9 +1117,18 @@ export function tick(state: GameState, dt: number): GameState {
         return killShip(s)
       }
     }
+    if (s.saucer && dist(ship.x, ship.y, s.saucer.x, s.saucer.y) < s.saucer.radius + hull * 0.7) {
+      return killShip(s)
+    }
+    for (const b of s.enemyBullets) {
+      if (dist(ship.x, ship.y, b.x, b.y) < hull * 0.75 + 3 * sc) {
+        return killShip(s)
+      }
+    }
   }
 
-  if (rocks.length === 0 && s.wavePause <= 0) {
+  // Clear only when rocks and saucer are gone (enemy shots can linger briefly)
+  if (rocks.length === 0 && !s.saucer && s.wavePause <= 0) {
     const nextWave = s.wave + 1
     const timeBonus = Math.max(0, Math.round(waveParFor(s.wave) - s.waveElapsed) * 20)
     const bonus = nextWave * 50 + timeBonus
@@ -899,6 +1150,9 @@ export function tick(state: GameState, dt: number): GameState {
       runComboBest: Math.max(s.runComboBest, s.comboBest),
       rocks: [],
       bullets: [],
+      enemyBullets: [],
+      saucer: null,
+      saucerCooldown: firstSaucerCooldown(nextWave),
       powerups: [],
       turnLeft: false,
       turnRight: false,
