@@ -7,7 +7,7 @@ export type Point = { x: number; y: number }
 
 export type RockSize = 'large' | 'medium' | 'small'
 
-export type PowerKind = 'rapid' | 'spread' | 'shield' | 'slow'
+export type PowerKind = 'rapid' | 'spread' | 'shield' | 'slow' | 'life'
 
 export type Powerup = {
   id: number
@@ -167,13 +167,22 @@ const START_LIVES = 3
 const COMBO_WINDOW = 0.75
 const POWER_LIFE = 6
 const BUFF_DURATION = 8
-const POWER_KINDS: PowerKind[] = ['rapid', 'spread', 'shield', 'slow']
+
+/** Weighted drop table — life is ~10% of powerups; others share the rest. */
+const POWER_WEIGHTS: { kind: PowerKind; weight: number }[] = [
+  { kind: 'rapid', weight: 0.225 },
+  { kind: 'spread', weight: 0.225 },
+  { kind: 'shield', weight: 0.225 },
+  { kind: 'slow', weight: 0.225 },
+  { kind: 'life', weight: 0.1 },
+]
 
 export const POWER_LABEL: Record<PowerKind, string> = {
   rapid: 'Rapid',
   spread: 'Spread',
   shield: 'Shield',
   slow: 'Slow',
+  life: 'Life',
 }
 
 export const POWER_HUE: Record<PowerKind, number> = {
@@ -181,6 +190,17 @@ export const POWER_HUE: Record<PowerKind, number> = {
   spread: 272,
   shield: 172,
   slow: 198,
+  life: 42,
+}
+
+function pickPowerKind(): PowerKind {
+  const roll = Math.random()
+  let acc = 0
+  for (const entry of POWER_WEIGHTS) {
+    acc += entry.weight
+    if (roll < acc) return entry.kind
+  }
+  return 'rapid'
 }
 
 function comboMultiplier(combo: number) {
@@ -373,7 +393,7 @@ function dropChance(size: RockSize) {
 
 function maybeSpawnPowerup(rock: Rock, scale: number): Powerup | null {
   if (Math.random() > dropChance(rock.size)) return null
-  const kind = POWER_KINDS[Math.floor(Math.random() * POWER_KINDS.length)]
+  const kind = pickPowerKind()
   const drift = 28 * scale
   return {
     id: uid(),
@@ -389,7 +409,7 @@ function maybeSpawnPowerup(rock: Rock, scale: number): Powerup | null {
 
 function applyPowerup(state: GameState, kind: PowerKind): GameState {
   sfx('good')
-  const label = POWER_LABEL[kind].toUpperCase()
+  const label = kind === 'life' ? '+1 LIFE' : POWER_LABEL[kind].toUpperCase()
   const floaters = [
     ...state.floaters,
     {
@@ -400,6 +420,9 @@ function applyPowerup(state: GameState, kind: PowerKind): GameState {
       maxLife: 0.9,
     },
   ]
+  if (kind === 'life') {
+    return { ...state, lives: state.lives + 1, floaters }
+  }
   if (kind === 'rapid') {
     return { ...state, buffRapid: BUFF_DURATION, floaters }
   }

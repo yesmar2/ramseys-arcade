@@ -115,6 +115,18 @@ function drawPowerupGlyph(
     return
   }
 
+  if (kind === 'life') {
+    // Extra ship — small triangle pointing up
+    const s = r * 0.52
+    ctx.beginPath()
+    ctx.moveTo(0, -s)
+    ctx.lineTo(s * 0.72, s * 0.78)
+    ctx.lineTo(-s * 0.72, s * 0.78)
+    ctx.closePath()
+    ctx.stroke()
+    return
+  }
+
   // Slow — clock
   const s = r * 0.48
   ctx.beginPath()
