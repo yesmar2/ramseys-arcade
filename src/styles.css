@@ -3303,6 +3303,37 @@ html[data-theme='dark'] .patriot__power-mark {
   color: #c47a3a;
 }
 
+.asteroids__buffs {
+  position: absolute;
+  top: calc(max(0.55rem, env(safe-area-inset-top, 0px)) + 3.15rem);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.3rem;
+  max-width: min(16rem, calc(100% - 5.5rem));
+  pointer-events: none;
+}
+
+.asteroids__buff {
+  --hue: 198;
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.35rem;
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  border: 1px solid hsla(var(--hue), 52%, 42%, 0.55);
+  background: hsla(var(--hue), 55%, 52%, 0.28);
+  color: var(--ink);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  text-shadow: 0 1px 0 rgba(var(--surface-rgb), 0.7);
+}
+
 .asteroids__overlay {
   position: absolute;
   inset: 0;

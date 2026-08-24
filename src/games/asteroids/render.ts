@@ -136,11 +136,11 @@ function drawPowerup(ctx: CanvasRenderingContext2D, p: Powerup, scale: number) {
   ctx.translate(p.x, p.y)
   ctx.beginPath()
   ctx.arc(0, 0, r, 0, Math.PI * 2)
-  ctx.fillStyle = `hsla(${hue}, 62%, 58%, 0.32)`
+  ctx.fillStyle = `hsla(${hue}, 62%, 58%, 0.48)`
   ctx.fill()
-  const ring = `hsla(${hue}, 58%, 42%, 0.95)`
+  const ring = `hsla(${hue}, 58%, 42%, 0.98)`
   ctx.strokeStyle = ring
-  ctx.lineWidth = Math.max(2, 2.4 * scale)
+  ctx.lineWidth = Math.max(2.4, 2.8 * scale)
   ctx.stroke()
   drawPowerupGlyph(ctx, p.kind, r, scale, ring)
   ctx.restore()

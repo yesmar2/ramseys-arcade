@@ -1203,29 +1203,37 @@ export function tick(state: GameState, dt: number): GameState {
 
   // Clear only when rocks and saucer are gone (enemy shots can linger briefly)
   if (rocks.length === 0 && !s.saucer && s.wavePause <= 0) {
-    const nextWave = s.wave + 1
-    const timeBonus = Math.max(0, Math.round(waveParFor(s.wave) - s.waveElapsed) * 20)
+    // Don't discard field pickups when the wave ends (incl. drops from the last rock).
+    let cleared = s
+    for (const p of cleared.powerups ?? []) {
+      cleared = applyPowerup(cleared, p.kind)
+    }
+    const nextWave = cleared.wave + 1
+    const timeBonus = Math.max(
+      0,
+      Math.round(waveParFor(cleared.wave) - cleared.waveElapsed) * 20,
+    )
     const bonus = nextWave * 50 + timeBonus
-    const lifeBonus = s.wave % 3 === 0
+    const lifeBonus = cleared.wave % 3 === 0
     sfx('wave')
     if (lifeBonus) sfx('good')
     const withBonus = {
-      ...s,
+      ...cleared,
       phase: 'waveClear' as const,
-      score: s.score + bonus,
-      lives: lifeBonus ? s.lives + 1 : s.lives,
-      lastWave: s.wave,
-      lastWaveTime: s.waveElapsed,
+      score: cleared.score + bonus,
+      lives: lifeBonus ? cleared.lives + 1 : cleared.lives,
+      lastWave: cleared.wave,
+      lastWaveTime: cleared.waveElapsed,
       wave: nextWave,
       waveElapsed: 0,
       wavePause: 0,
       timeBonus,
       lifeBonus,
-      lastComboBest: s.comboBest,
+      lastComboBest: cleared.comboBest,
       combo: 0,
       comboTimer: 0,
       comboBest: 0,
-      runComboBest: Math.max(s.runComboBest, s.comboBest),
+      runComboBest: Math.max(cleared.runComboBest, cleared.comboBest),
       rocks: [],
       bullets: [],
       enemyBullets: [],
@@ -1240,7 +1248,7 @@ export function tick(state: GameState, dt: number): GameState {
       hyperspaceCooldown: 0,
       hyperspaceLatch: false,
       fireHeld: false,
-      ship: { ...s.ship, vx: 0, vy: 0, thrusting: false },
+      ship: { ...cleared.ship, vx: 0, vy: 0, thrusting: false },
     }
     return {
       ...withBonus,

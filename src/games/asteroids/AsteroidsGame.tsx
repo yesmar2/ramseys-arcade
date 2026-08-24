@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import { useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react'
 import { GamePlayChrome, PlayReadout, PlayReadoutCenter, PlayReadoutScore } from '../../components/GameHud'
 import { GameStage } from '../../components/GameStage'
 import { GameStartCard } from '../../components/GameStartCard'
@@ -29,11 +29,14 @@ import {
   beginNextWave,
   createInitialState,
   formatWaveTime,
+  POWER_HUE,
+  POWER_LABEL,
   resizeState,
   startGame,
   tick,
   toSnapshot,
   type GameState,
+  type PowerKind,
   type Snapshot,
 } from './game'
 import { renderGame } from './render'
@@ -469,6 +472,33 @@ export function AsteroidsGame() {
                   </svg>
                 ))}
               </PlayReadoutCenter>
+            ) : null}
+            {ui.phase === 'playing' &&
+            (ui.buffRapid || ui.buffSpread || ui.buffShield || ui.buffSlow) ? (
+              <div className="asteroids__buffs" aria-label="Active powerups">
+                {(
+                  [
+                    ['rapid', ui.buffRapid],
+                    ['spread', ui.buffSpread],
+                    ['shield', ui.buffShield],
+                    ['slow', ui.buffSlow],
+                  ] as const
+                )
+                  .filter(([, on]) => on)
+                  .map(([kind]) => (
+                    <span
+                      key={kind}
+                      className="asteroids__buff"
+                      style={
+                        {
+                          '--hue': String(POWER_HUE[kind as PowerKind]),
+                        } as CSSProperties
+                      }
+                    >
+                      {POWER_LABEL[kind as PowerKind]}
+                    </span>
+                  ))}
+              </div>
             ) : null}
           </PlayReadout>
 
