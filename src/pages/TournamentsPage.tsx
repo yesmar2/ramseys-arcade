@@ -74,8 +74,8 @@ export function TournamentsPage() {
         <div className="lb-page__inner">
           <header className="lb-page__header">
             <h1 className="lb-page__title lb-page__title--with-tip">
-              Tournaments
-              <InfoTip label="About tournaments">
+              Events
+              <InfoTip label="About events">
                 Multi-game events. Finish higher in each game for place points —
                 highest total wins.
               </InfoTip>
@@ -204,7 +204,7 @@ export function TournamentDetailPage({ id }: { id: string }) {
         <SiteHeader />
         <div className="lb-page__inner">
           <a className="game-page__back" href="#/tournaments">
-            ← Tournaments
+            ← Events
           </a>
 
           {loading ? (

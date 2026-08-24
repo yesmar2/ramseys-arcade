@@ -3,7 +3,7 @@ import { BoardSkeleton } from '../components/BoardChrome'
 import { GameDeviceBadge } from '../components/GameDeviceBadge'
 import { PageShell } from '../components/PageShell'
 import { getGame, gamePlayableOn } from '../data/games'
-import { gameBoardHref, gamePlayHref, globalRankingsHref, rankHref } from '../hooks/useHashRoute'
+import { gameBoardHref, gamePlayHref, rankHref } from '../hooks/useHashRoute'
 import { gapToNextLabel } from '../lib/boardGap'
 import { useDeviceType } from '../lib/device'
 import { usePlayerName } from '../hooks/usePlayerName'
@@ -234,10 +234,6 @@ export function RankPage({ player }: { player?: string }) {
               </div>
             </details>
           ) : null}
-
-      <a className="rank-page__boards" href={globalRankingsHref()}>
-        Open Global Rankings
-      </a>
     </PageShell>
   )
 }

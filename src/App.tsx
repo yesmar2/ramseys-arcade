@@ -20,6 +20,7 @@ import { GameLeaderboardPage } from './pages/GameLeaderboardPage'
 import { HomePage } from './pages/HomePage'
 import { RankPage } from './pages/RankPage'
 import { LeaderboardsPage } from './pages/LeaderboardsPage'
+import { RecordsIndexPage } from './pages/RecordsIndexPage'
 import { RecordsPage } from './pages/RecordsPage'
 import { PatriotPage } from './pages/PatriotPage'
 import { SimonPage } from './pages/SimonPage'
@@ -116,6 +117,7 @@ function App() {
       <GameLeaderboardPage game={route.game} period={route.period} />
     )
   }
+  if (route.name === 'recordsIndex') return <RecordsIndexPage />
   if (route.name === 'records') {
     return (
       <RecordsPage

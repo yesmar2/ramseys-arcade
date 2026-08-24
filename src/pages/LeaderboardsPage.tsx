@@ -5,7 +5,7 @@ import {
 } from '../components/LeaderboardSummary'
 import { GlobalRankList } from '../components/GlobalRankList'
 import { PageShell } from '../components/PageShell'
-import { leaderboardHref } from '../hooks/useHashRoute'
+import { globalRankingsHref, leaderboardHref } from '../hooks/useHashRoute'
 import { usePlayerName } from '../hooks/usePlayerName'
 import {
   fetchGlobalBoard,
@@ -22,6 +22,29 @@ const SUMMARY_ROWS = 3
 
 type LeaderboardsPageProps = {
   global?: boolean
+}
+
+function BoardsHubSwitcher({ global }: { global: boolean }) {
+  return (
+    <div className="lb-board-switcher" role="tablist" aria-label="Boards">
+      <a
+        role="tab"
+        aria-selected={!global}
+        className={`lb-board-switcher__item${!global ? ' lb-board-switcher__item--active' : ''}`}
+        href={leaderboardHref()}
+      >
+        By game
+      </a>
+      <a
+        role="tab"
+        aria-selected={global}
+        className={`lb-board-switcher__item${global ? ' lb-board-switcher__item--active' : ''}`}
+        href={globalRankingsHref()}
+      >
+        Global
+      </a>
+    </div>
+  )
 }
 
 export function LeaderboardsPage({ global: showGlobal }: LeaderboardsPageProps) {
@@ -62,11 +85,12 @@ function LeaderboardsOverview() {
   return (
     <PageShell innerClassName="lb-page__inner lb-page__inner--summary">
       <header className="lb-page__header lb-page__header--compact">
-        <h1 className="lb-page__title">Leaderboards</h1>
+        <h1 className="lb-page__title">Boards</h1>
         <p className="lb-page__blurb lb-page__blurb--tight">
           Top {SUMMARY_ROWS} for every game and time frame. Open a game for
           the full board.
         </p>
+        <BoardsHubSwitcher global={false} />
       </header>
 
       {error ? (
@@ -144,14 +168,11 @@ function GlobalRankingsView() {
   return (
     <PageShell innerClassName="lb-page__inner">
       <header className="lb-page__header lb-page__header--compact">
-        <a className="rank-page__back" href={leaderboardHref()}>
-          ← Leaderboards
-        </a>
-        <p className="lb-page__eyebrow">All-time</p>
-        <h1 className="lb-page__title">Global Rankings</h1>
+        <h1 className="lb-page__title">Boards</h1>
         <p className="lb-page__blurb lb-page__blurb--tight">
-          Points from every game board.
+          All-time points from every game board.
         </p>
+        <BoardsHubSwitcher global />
       </header>
 
       <section className="lb-board" aria-label="Global leaderboard">
@@ -168,7 +189,7 @@ function GlobalRankingsView() {
             detail="Place on any game board to earn global points."
             action={
               <a className="lb-empty-state__btn" href={leaderboardHref()}>
-                Browse leaderboards
+                Browse boards
               </a>
             }
           />

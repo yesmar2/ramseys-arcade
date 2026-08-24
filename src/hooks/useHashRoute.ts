@@ -10,6 +10,7 @@ export type Route =
   | { name: 'home' }
   | { name: 'leaderboards'; global?: boolean }
   | { name: 'gameLeaderboard'; game: LeaderboardGame; period?: LeaderboardPeriod }
+  | { name: 'recordsIndex' }
   | { name: 'records'; game: string; recordId?: string; period?: LeaderboardPeriod }
   | { name: 'rank'; player?: string }
   | { name: 'tournaments' }
@@ -61,7 +62,12 @@ export function gamePlayHref(slug: string) {
   return `#/games/${encodeURIComponent(slug)}/play`
 }
 
-/** Record books tab on the game hub (index). Individual boards use `recordHref`. */
+/** Site-wide record books catalog. */
+export function recordsIndexHref() {
+  return '#/records'
+}
+
+/** Record books tab on the game hub. Individual boards use `recordHref`. */
 export function recordsHref(game: string) {
   return gameHref(game, 'records')
 }
@@ -90,6 +96,7 @@ function parseHash(hash: string): Route {
   if (!path) return { name: 'home' }
   if (path === 'leaderboards') return { name: 'leaderboards' }
   if (path === 'rank') return { name: 'rank' }
+  if (path === 'records') return { name: 'recordsIndex' }
 
   const rankMatch = /^rank\/([^/]+)$/.exec(path)
   if (rankMatch) {

@@ -23,7 +23,6 @@ import { useBoardRecord } from '../hooks/useBoardRecord'
 import {
   gameHref,
   gamePlayHref,
-  globalRankingsHref,
 } from '../hooks/useHashRoute'
 import { usePersonalBest } from '../hooks/usePersonalBest'
 import { usePlayerName } from '../hooks/usePlayerName'
@@ -293,10 +292,6 @@ export function GameHubPage({ slug, board: boardFromRoute }: GameHubPageProps) {
                   </section>
                 </>
               )}
-
-              <nav className="lb-board-links" aria-label="More boards">
-                <a href={globalRankingsHref()}>Global rankings</a>
-              </nav>
             </>
           ) : null}
 

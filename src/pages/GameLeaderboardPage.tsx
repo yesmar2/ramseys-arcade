@@ -117,7 +117,7 @@ export function GameLeaderboardPage({
         }
       >
         <a className="rank-page__back" href={leaderboardHref()}>
-          ← Leaderboards
+          ← Boards
         </a>
 
         <GamePageHeader
@@ -206,12 +206,6 @@ export function GameLeaderboardPage({
             </p>
           ) : null}
         </section>
-
-        {gameHasRecords(gameSlug) ? (
-          <nav className="lb-board-links" aria-label="More">
-            <a href={gameHref(gameSlug)}>Game hub</a>
-          </nav>
-        ) : null}
       </div>
     </PageShell>
   )
