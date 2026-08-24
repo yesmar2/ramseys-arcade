@@ -1,11 +1,9 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { GamePlayChrome, PlayReadout, PlayReadoutScore } from '../../components/GameHud'
 import { GameStage } from '../../components/GameStage'
-import { PauseButton, GamePauseOverlay } from '../../components/PauseControls'
 import { PersonalBestHint } from '../../components/PersonalBestHint'
 import { ScoreSaveCard } from '../../components/ScoreSaveCard'
 import { TournamentScoreCard } from '../../components/TournamentScoreCard'
-import { useGamePause } from '../../hooks/useGamePause'
 import { usePersonalBest } from '../../hooks/usePersonalBest'
 import { getPersonalBest } from '../../lib/personalBest'
 import { useTournamentPlay } from '../../tournaments/TournamentPlayContext'
@@ -40,10 +38,6 @@ export function SimonGame() {
   const offeredScore = useRef<number | null>(null)
   const previousBestRef = useRef(getPersonalBest('simon'))
   const startGrace = useRef(0)
-  const pausable = (ui.phase === 'watch' || ui.phase === 'input') && !saveOpen
-  const { paused, toggle: togglePause, resume } = useGamePause(pausable)
-  const pausedRef = useRef(false)
-  pausedRef.current = paused
 
   useEffect(() => {
     const sync = () => {
@@ -76,9 +70,7 @@ export function SimonGame() {
         stateRef.current = resizeState(stateRef.current, w, h)
       }
 
-      if (!pausedRef.current) {
-        stateRef.current = tick(stateRef.current, dt)
-      }
+      stateRef.current = tick(stateRef.current, dt)
 
       uiAcc += dt
       if (uiAcc > 0.08) {
@@ -119,7 +111,7 @@ export function SimonGame() {
 
   const onPointerDown = (e: ReactPointerEvent<HTMLElement>) => {
     e.preventDefault()
-    if (saveOpen || pausedRef.current) return
+    if (saveOpen) return
 
     const s = stateRef.current
     if (s.phase === 'menu' || s.phase === 'gameover') {
@@ -136,7 +128,7 @@ export function SimonGame() {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (saveOpen || pausedRef.current) return
+      if (saveOpen) return
       if (e.code === 'Space' || e.code === 'Enter') {
         e.preventDefault()
         const s = stateRef.current
@@ -173,11 +165,7 @@ export function SimonGame() {
         >
           <div className="simon__play" onPointerDown={onPointerDown}>
             <canvas ref={canvasRef} className="simon__viewport" />
-            <GamePlayChrome>
-              {(pausable || paused) ? (
-                <PauseButton paused={paused} onToggle={togglePause} />
-              ) : null}
-            </GamePlayChrome>
+            <GamePlayChrome />
             <PlayReadout>
               <PlayReadoutScore
                 hot={
@@ -191,17 +179,7 @@ export function SimonGame() {
           </div>
         </GameStage>
         <div className="simon__overlay">
-          <GamePauseOverlay
-            slug="simon"
-            personalBest={
-              ui.phase === 'watch' || ui.phase === 'input'
-                ? previousBestRef.current
-                : apiBest
-            }
-            paused={paused}
-            onResume={resume}
-          />
-          {ui.phase === 'menu' && !saveOpen && !paused && (
+          {ui.phase === 'menu' && !saveOpen && (
             <div className="simon__card" aria-hidden="true">
               <h2>Simon</h2>
               <p>Watch the pattern. Repeat it. Don’t miss.</p>

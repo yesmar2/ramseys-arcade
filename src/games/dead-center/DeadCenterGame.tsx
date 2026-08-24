@@ -1,11 +1,9 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { GamePlayChrome, PlayReadout, PlayReadoutCenter, PlayReadoutScore } from '../../components/GameHud'
 import { GameStage } from '../../components/GameStage'
-import { PauseButton, GamePauseOverlay } from '../../components/PauseControls'
 import { PersonalBestHint } from '../../components/PersonalBestHint'
 import { ScoreSaveCard } from '../../components/ScoreSaveCard'
 import { TournamentScoreCard } from '../../components/TournamentScoreCard'
-import { useGamePause } from '../../hooks/useGamePause'
 import { usePersonalBest } from '../../hooks/usePersonalBest'
 import { getPersonalBest } from '../../lib/personalBest'
 import { useTournamentPlay } from '../../tournaments/TournamentPlayContext'
@@ -41,10 +39,6 @@ export function DeadCenterGame() {
   const previousBestRef = useRef(getPersonalBest('dead-center'))
   const clickLock = useRef(false)
   const startGrace = useRef(0)
-  const pausable = ui.phase === 'playing' && !saveOpen
-  const { paused, toggle: togglePause, resume } = useGamePause(pausable)
-  const pausedRef = useRef(false)
-  pausedRef.current = paused
 
   useEffect(() => {
     let raf = 0
@@ -63,9 +57,7 @@ export function DeadCenterGame() {
         stateRef.current = resizeState(stateRef.current, w, h)
       }
 
-      if (!pausedRef.current) {
-        stateRef.current = tick(stateRef.current, dt)
-      }
+      stateRef.current = tick(stateRef.current, dt)
 
       uiAcc += dt
       if (uiAcc > 0.08) {
@@ -133,7 +125,7 @@ export function DeadCenterGame() {
 
   const onPointerDown = (e: ReactPointerEvent<HTMLElement>) => {
     e.preventDefault()
-    if (saveOpen || paused) return
+    if (saveOpen) return
     if (clickLock.current) return
     clickLock.current = true
     setTimeout(() => {
@@ -190,11 +182,7 @@ export function DeadCenterGame() {
         <div className="deadcenter__play" onPointerDown={onPointerDown}>
           <canvas ref={canvasRef} className="deadcenter__viewport" />
 
-          <GamePlayChrome>
-            {(pausable || paused) ? (
-              <PauseButton paused={paused} onToggle={togglePause} />
-            ) : null}
-          </GamePlayChrome>
+          <GamePlayChrome />
 
           <PlayReadout>
             <PlayReadoutScore
@@ -214,13 +202,7 @@ export function DeadCenterGame() {
           </PlayReadout>
 
           <div className="deadcenter__overlay">
-            <GamePauseOverlay
-              slug="dead-center"
-              personalBest={ui.phase === 'playing' ? previousBestRef.current : apiBest}
-              paused={paused}
-              onResume={resume}
-            />
-            {ui.phase === 'menu' && !saveOpen && !paused && (
+            {ui.phase === 'menu' && !saveOpen && (
               <div className="deadcenter__card" aria-hidden="true">
                 <h2>Centroid</h2>
                 <p>Tap the shape’s true center. Closer scores more.</p>
@@ -228,7 +210,7 @@ export function DeadCenterGame() {
                 <span>10 shapes · 5 seconds each</span>
               </div>
             )}
-            {ui.phase === 'reveal' && gradeLabel && !paused && (
+            {ui.phase === 'reveal' && gradeLabel && (
               <div className="deadcenter__toast" aria-hidden="true">
                 <strong>{gradeLabel}</strong>
                 {ui.lastDist != null ? (

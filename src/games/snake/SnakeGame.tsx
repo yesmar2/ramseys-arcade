@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
-import { GamePlayChrome, PlayReadout, PlayReadoutCenter, PlayReadoutScore } from '../../components/GameHud'
+import { GamePlayChrome, PlayReadout, PlayReadoutScore } from '../../components/GameHud'
 import { GameStage } from '../../components/GameStage'
 import { PauseButton, GamePauseOverlay } from '../../components/PauseControls'
 import { PersonalBestHint } from '../../components/PersonalBestHint'
@@ -293,9 +293,6 @@ export function SnakeGame() {
             >
               {ui.score}
             </PlayReadoutScore>
-            <PlayReadoutCenter label={`Length ${ui.length}`}>
-              {ui.length}
-            </PlayReadoutCenter>
           </PlayReadout>
 
           <div className="snake__overlay">

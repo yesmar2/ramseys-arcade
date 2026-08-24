@@ -1780,10 +1780,10 @@ a.game-hud__board {
 
 .play-readout__ship {
   display: block;
-  width: 1.05rem;
-  height: 1.25rem;
-  color: var(--ink);
-  opacity: 0.88;
+  width: 1.35rem;
+  height: 1.6rem;
+  color: var(--accent);
+  opacity: 0.95;
   filter: drop-shadow(0 1px 0 rgba(var(--surface-rgb), 0.7));
 }
 
@@ -1797,8 +1797,8 @@ a.game-hud__board {
   }
 
   .play-readout__ship {
-    width: 0.95rem;
-    height: 1.1rem;
+    width: 1.2rem;
+    height: 1.4rem;
   }
 }
 
