@@ -3322,24 +3322,58 @@ a.game-hud__board {
 
 .lb-game-board__head {
   margin-bottom: 0.35rem;
-  text-align: left;
+  text-align: center;
 }
 
-.lb-game-board__title-row {
-  display: flex;
+.lb-page__heading-row {
+  display: grid;
+  grid-template-columns: 2.35rem minmax(0, 1fr) 2.35rem;
   align-items: center;
-  gap: 0.25rem;
-  min-width: 0;
+  gap: 0.35rem;
+  width: 100%;
+}
+
+.lb-page__heading-slot {
+  width: 2.35rem;
+  height: 2.35rem;
+}
+
+.page-back {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.35rem;
+  height: 2.35rem;
+  border-radius: 999px;
+  color: var(--muted);
+  text-decoration: none;
+  justify-self: start;
+}
+
+.page-back:hover,
+.page-back:focus-visible {
+  color: var(--ink);
+  background: rgba(var(--ink-rgb), 0.06);
+  outline: none;
 }
 
 .lb-game-board__identity {
   display: flex;
+  flex-direction: row;
   align-items: center;
-  gap: 0.25rem;
+  justify-content: center;
+  justify-self: stretch;
+  gap: 0.35rem;
+  width: 100%;
   min-width: 0;
+  max-width: 100%;
   color: inherit;
   text-decoration: none;
   border-radius: 0.55rem;
+}
+
+.lb-game-board__identity--static {
+  cursor: default;
 }
 
 .lb-game-board__identity:hover .lb-game-board__title,
@@ -3353,9 +3387,10 @@ a.game-hud__board {
 }
 
 .lb-game-board__action {
-  flex: none;
-  margin-left: auto;
-  padding-left: 0.75rem;
+  justify-self: end;
+  display: flex;
+  align-items: center;
+  min-height: 2.35rem;
 }
 
 .lb-game-board__side-link {
@@ -3377,7 +3412,6 @@ a.game-hud__board {
 
 .lb-game-board__thumb {
   flex: none;
-  align-self: center;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -3395,13 +3429,12 @@ a.game-hud__board {
 .lb-game-board__title {
   margin: 0;
   min-width: 0;
-  display: flex;
-  align-items: center;
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: clamp(1.45rem, 4.2vw, 2rem);
-  letter-spacing: -0.03em;
-  line-height: 1;
+}
+
+.lb-page__heading-row > .lb-page__title {
+  margin: 0;
+  justify-self: center;
+  text-align: center;
 }
 
 .lb-page__inner--game-board .lb-periods {

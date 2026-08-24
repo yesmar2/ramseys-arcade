@@ -6,6 +6,7 @@ import {
 } from '../components/BoardChrome'
 import { Footer } from '../components/Footer'
 import { GamePageHeader } from '../components/GamePageHeader'
+import { PageBackLink } from '../components/PageBackLink'
 import { SiteHeader } from '../components/SiteHeader'
 import { LeaderboardList } from '../components/LeaderboardList'
 import { getGame } from '../data/games'
@@ -166,14 +167,13 @@ function RecordBoardPage({
             } as CSSProperties
           }
         >
-          <a className="rank-page__back" href={recordsHref(game)}>
-            ← Record books
-          </a>
           {gameMeta ? (
             <GamePageHeader
               slug={game}
               accent={accent}
               title={record?.label ?? 'Record'}
+              backHref={recordsHref(game)}
+              backLabel="Back to Record books"
               action={
                 <a className="lb-game-board__side-link" href={gameHref(game)}>
                   Scores
@@ -182,7 +182,11 @@ function RecordBoardPage({
             />
           ) : (
             <header className="lb-page__header lb-page__header--compact">
-              <h1 className="lb-page__title">{record?.label ?? 'Record'}</h1>
+              <div className="lb-page__heading-row">
+                <PageBackLink href={recordsHref(game)} label="Back to Record books" />
+                <h1 className="lb-page__title">{record?.label ?? 'Record'}</h1>
+                <span className="lb-page__heading-slot" aria-hidden="true" />
+              </div>
             </header>
           )}
 

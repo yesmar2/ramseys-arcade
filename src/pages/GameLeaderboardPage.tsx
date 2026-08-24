@@ -110,15 +110,13 @@ export function GameLeaderboardPage({
           } as CSSProperties
         }
       >
-        <a className="rank-page__back" href={leaderboardHref()}>
-          ← Boards
-        </a>
-
         <GamePageHeader
           slug={gameSlug}
           accent={accent}
           title={game.name}
           href={gameHref(gameSlug)}
+          backHref={leaderboardHref()}
+          backLabel="Back to Boards"
         />
 
         <PeriodSwitcher

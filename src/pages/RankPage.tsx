@@ -1,6 +1,7 @@
 import { useEffect, useState, type CSSProperties } from 'react'
 import { BoardSkeleton } from '../components/BoardChrome'
 import { GameDeviceBadge } from '../components/GameDeviceBadge'
+import { PageBackLink } from '../components/PageBackLink'
 import { PageShell } from '../components/PageShell'
 import { getGame, gamePlayableOn } from '../data/games'
 import { gameBoardHref, gamePlayHref, globalRankingsHref } from '../hooks/useHashRoute'
@@ -78,14 +79,17 @@ export function RankPage({ player }: { player?: string }) {
   return (
     <PageShell innerClassName="lb-page__inner rank-page">
       <header className="lb-page__header lb-page__header--compact">
-            {!isSelf ? (
-              <a className="rank-page__back" href={globalRankingsHref()}>
-                ← Rankings
-              </a>
-            ) : null}
-            <h1 className="lb-page__title">
-              {isSelf ? 'Your profile' : viewedName}
-            </h1>
+            <div className="lb-page__heading-row">
+              {!isSelf ? (
+                <PageBackLink href={globalRankingsHref()} label="Back to Rankings" />
+              ) : (
+                <span className="lb-page__heading-slot" aria-hidden="true" />
+              )}
+              <h1 className="lb-page__title">
+                {isSelf ? 'Your profile' : viewedName}
+              </h1>
+              <span className="lb-page__heading-slot" aria-hidden="true" />
+            </div>
             <p className="lb-page__blurb lb-page__blurb--tight">
               {isSelf
                 ? myName
