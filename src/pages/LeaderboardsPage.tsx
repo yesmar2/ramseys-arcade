@@ -172,7 +172,7 @@ function GlobalRankingsView({ period }: { period: LeaderboardPeriod }) {
   }, [playerName, period])
 
   return (
-    <PageShell innerClassName="lb-page__inner">
+    <PageShell innerClassName="lb-page__inner lb-page__inner--summary">
       <header className="lb-page__header lb-page__header--compact">
         <h1 className="lb-page__title">Boards</h1>
         <BoardsHubSwitcher global />
