@@ -10,6 +10,7 @@ import { PageShell } from '../components/PageShell'
 import { getGame, gamePlayableOn, deviceRequirementLabel } from '../data/games'
 import {
   gameBoardHref,
+  gameHref,
   gamePlayHref,
 } from '../hooks/useHashRoute'
 import { usePlayerName } from '../hooks/usePlayerName'
