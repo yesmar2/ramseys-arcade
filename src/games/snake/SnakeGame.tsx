@@ -11,6 +11,10 @@ import { usePlayerName } from '../../hooks/usePlayerName'
 import { getPersonalBest } from '../../lib/personalBest'
 import { normalizePlayerName } from '../../lib/leaderboard'
 import {
+  clearRunAchievements,
+  pushRunAchievement,
+} from '../../lib/runAchievements'
+import {
   SNAKE_LENGTH_MILESTONE_MAX,
   SNAKE_LENGTH_MILESTONE_STEP,
   submitSnakeFastestLength,
@@ -114,7 +118,19 @@ export function SnakeGame() {
     ) {
       if (ui.length < milestone || milestonesRef.current.has(milestone)) continue
       milestonesRef.current.add(milestone)
-      void submitSnakeFastestLength(milestone, elapsedMs, playerName)
+      void (async () => {
+        const result = await submitSnakeFastestLength(
+          milestone,
+          elapsedMs,
+          playerName,
+        )
+        if (result?.improved) {
+          pushRunAchievement({
+            label: `Length ${milestone} record`,
+            rank: result.rank,
+          })
+        }
+      })()
     }
   }, [ui.phase, ui.length, playerName, tournament])
 
@@ -140,6 +156,7 @@ export function SnakeGame() {
   const restart = () => {
     setSaveOpen(false)
     offeredScore.current = null
+    clearRunAchievements()
     const next = currentLayout()
     stateRef.current = startGame({
       ...stateRef.current,

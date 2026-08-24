@@ -13,6 +13,11 @@ import {
 } from '../lib/leaderboard'
 import { describePersonalBest, rememberPersonalBest } from '../lib/personalBest'
 import { refreshGlobalRank } from '../lib/globalRank'
+import {
+  peekRunAchievements,
+  takeRunAchievements,
+  type RunAchievement,
+} from '../lib/runAchievements'
 
 type ScoreSaveProps = {
   gameSlug: string
@@ -24,16 +29,21 @@ type ScoreSaveProps = {
   onDone: () => void
 }
 
-type RankHit = { kind: 'rank'; period: LeaderboardPeriod; rank: number }
-type RecordHit = { kind: 'record'; score: number; gain: number | null }
-type CelebHit = RankHit | RecordHit
+type BoardHit = { period: LeaderboardPeriod; rank: number }
+type PersonalBestHit = { score: number; gain: number | null }
+
+type CelebPayload = {
+  boards: BoardHit[]
+  personalBest: PersonalBestHit | null
+  books: RunAchievement[]
+}
 
 const PERIOD_ORDER: LeaderboardPeriod[] = ['all', 'monthly', 'weekly', 'daily']
 const TOP_TEN = 10
 
 function rankedPeriods(
   ranks?: Partial<Record<LeaderboardPeriod, number>>,
-): { period: LeaderboardPeriod; rank: number }[] {
+): BoardHit[] {
   if (!ranks) return []
   return PERIOD_ORDER.flatMap((period) => {
     const rank = ranks[period]
@@ -41,23 +51,114 @@ function rankedPeriods(
   })
 }
 
-function celebrationHits(
+function buildCelebration(
+  score: number,
+  priorAllTime: number,
   ranks?: Partial<Record<LeaderboardPeriod, number>>,
-): RankHit[] {
-  return rankedPeriods(ranks).map(({ period, rank }) => ({
-    kind: 'rank' as const,
-    period,
-    rank,
-  }))
+): CelebPayload | null {
+  const boards = rankedPeriods(ranks)
+  const personalBest =
+    score > priorAllTime
+      ? {
+          score,
+          gain: priorAllTime > 0 ? score - priorAllTime : null,
+        }
+      : null
+  const pendingBooks = peekRunAchievements()
+  if (!boards.length && !personalBest && !pendingBooks.length) return null
+  return { boards, personalBest, books: takeRunAchievements() }
 }
 
-function recordHit(score: number, allTime: number): RecordHit | null {
-  if (score <= allTime) return null
-  return {
-    kind: 'record',
-    score,
-    gain: allTime > 0 ? score - allTime : null,
+function primaryWin(payload: CelebPayload): {
+  eyebrow: string
+  headline: string
+  detail: string | null
+} {
+  const allTimeFirst = payload.boards.find((b) => b.period === 'all' && b.rank === 1)
+  if (allTimeFirst) {
+    return {
+      eyebrow: 'All time',
+      headline: '#1',
+      detail: payload.personalBest?.gain != null ? `+${payload.personalBest.gain}` : null,
+    }
   }
+
+  const anyFirst = payload.boards.find((b) => b.rank === 1)
+  if (anyFirst) {
+    return {
+      eyebrow: PERIOD_LABELS[anyFirst.period],
+      headline: '#1',
+      detail: null,
+    }
+  }
+
+  if (payload.personalBest) {
+    return {
+      eyebrow:
+        payload.personalBest.gain != null ? 'New personal best' : 'Personal best',
+      headline: String(payload.personalBest.score),
+      detail:
+        payload.personalBest.gain != null ? `+${payload.personalBest.gain}` : null,
+    }
+  }
+
+  const bestBoard = payload.boards.reduce<BoardHit | null>((best, row) => {
+    if (!best || row.rank < best.rank) return row
+    return best
+  }, null)
+  if (bestBoard) {
+    return {
+      eyebrow: PERIOD_LABELS[bestBoard.period],
+      headline: `#${bestBoard.rank}`,
+      detail: null,
+    }
+  }
+
+  const book = payload.books[0]
+  return {
+    eyebrow: 'Record book',
+    headline: book?.rank != null ? `#${book.rank}` : 'Set',
+    detail: book?.label ?? null,
+  }
+}
+
+function secondaryLines(payload: CelebPayload): string[] {
+  const primary = primaryWin(payload)
+  const lines: string[] = []
+
+  for (const board of payload.boards) {
+    const label = `${PERIOD_LABELS[board.period]} #${board.rank}`
+    const isPrimary =
+      (primary.eyebrow === PERIOD_LABELS[board.period] ||
+        (board.period === 'all' && primary.eyebrow === 'All time')) &&
+      primary.headline === `#${board.rank}`
+    if (!isPrimary) lines.push(label)
+  }
+
+  if (payload.personalBest) {
+    const pbIsPrimary =
+      primary.eyebrow === 'New personal best' || primary.eyebrow === 'Personal best'
+    if (!pbIsPrimary) {
+      lines.push(
+        payload.personalBest.gain != null
+          ? `Personal best +${payload.personalBest.gain}`
+          : 'Personal best',
+      )
+    }
+  }
+
+  for (const book of payload.books) {
+    const bookIsPrimary =
+      primary.eyebrow === 'Record book' &&
+      (book.label === primary.detail ||
+        (primary.detail == null && book === payload.books[0]))
+    if (bookIsPrimary) continue
+    lines.push(
+      book.rank != null ? `${book.label} · #${book.rank}` : book.label,
+    )
+  }
+
+  return lines
 }
 
 function RankChips({ ranks }: { ranks?: Partial<Record<LeaderboardPeriod, number>> }) {
@@ -142,7 +243,6 @@ function FireworksCanvas() {
           size: 2 + Math.random() * 2.8,
         })
       }
-      // secondary sparkle ring
       for (let i = 0; i < 16; i++) {
         const angle = Math.random() * Math.PI * 2
         const speed = 1 + Math.random() * 2.2
@@ -211,69 +311,45 @@ function FireworksCanvas() {
 }
 
 function ScoreCelebration({
-  hits,
+  payload,
   onDone,
 }: {
-  hits: CelebHit[]
+  payload: CelebPayload
   onDone: () => void
 }) {
-  const [index, setIndex] = useState(0)
   const [leaving, setLeaving] = useState(false)
-  const hit = hits[index]
-  const isLast = index >= hits.length - 1
+  const primary = primaryWin(payload)
+  const extras = secondaryLines(payload)
 
-  useEffect(() => {
-    if (!hits.length) onDone()
-  }, [hits, onDone])
-
-  if (!hit) return null
-
-  const advance = () => {
+  const close = () => {
     if (leaving) return
-    if (!isLast) {
-      setLeaving(true)
-      window.setTimeout(() => {
-        setIndex((i) => i + 1)
-        setLeaving(false)
-      }, 280)
-      return
-    }
     setLeaving(true)
     window.setTimeout(onDone, 320)
   }
 
-  const isRecord = hit.kind === 'record'
-  const fireworkKey = isRecord ? 'record' : hit.period
-  const eyebrow = isRecord
-    ? hit.gain != null
-      ? 'New personal best'
-      : 'Personal best'
-    : PERIOD_LABELS[hit.period]
-  const headline = isRecord ? String(hit.score) : `#${hit.rank}`
-  const detail = isRecord
-    ? hit.gain != null
-      ? `+${hit.gain}`
-      : hits.length > 1
-        ? `${index + 1} of ${hits.length}`
-        : 'Nice run'
-    : hits.length > 1
-      ? `${index + 1} of ${hits.length}`
-      : 'Nice run'
-
   return createPortal(
     <div
-      className={`score-celeb${leaving ? ' score-celeb--out' : ''}${isRecord ? ' score-celeb--record' : ''}`}
+      className={`score-celeb${leaving ? ' score-celeb--out' : ''}`}
       role="dialog"
-      aria-label={isRecord ? 'Personal best celebration' : `${PERIOD_LABELS[hit.period]} top 10 celebration`}
+      aria-label="Run celebration"
       onPointerDown={(e) => e.stopPropagation()}
     >
-      <FireworksCanvas key={fireworkKey} />
+      <FireworksCanvas />
       <div className="score-celeb__card">
-        <span className="score-celeb__eyebrow">{eyebrow}</span>
-        <strong className="score-celeb__headline">{headline}</strong>
-        <p className="score-celeb__detail">{detail}</p>
-        <button type="button" className="score-celeb__btn" onClick={advance}>
-          {isLast ? 'Continue' : 'Next'}
+        <span className="score-celeb__eyebrow">{primary.eyebrow}</span>
+        <strong className="score-celeb__headline">{primary.headline}</strong>
+        {primary.detail ? (
+          <p className="score-celeb__detail">{primary.detail}</p>
+        ) : null}
+        {extras.length > 0 ? (
+          <ul className="score-celeb__list" aria-label="More highlights">
+            {extras.map((line) => (
+              <li key={line}>{line}</li>
+            ))}
+          </ul>
+        ) : null}
+        <button type="button" className="score-celeb__btn" onClick={close}>
+          Continue
         </button>
       </div>
     </div>,
@@ -303,10 +379,12 @@ export function ScoreSaveCard({
   const [ranks, setRanks] = useState<Partial<Record<LeaderboardPeriod, number>>>()
   const [error, setError] = useState<string | null>(null)
   const [nameDraft, setNameDraft] = useState('')
-  const [celebHits, setCelebHits] = useState<CelebHit[] | null>(null)
+  const [celeb, setCeleb] = useState<CelebPayload | null>(null)
+  const [celebPending, setCelebPending] = useState(false)
   const nameInputRef = useRef<HTMLInputElement>(null)
   const savedRef = useRef(false)
   const celebShown = useRef(false)
+  const celebTimer = useRef(0)
   const recordRef = useRef(previousBest ?? 0)
   const [record, setRecord] = useState(previousBest ?? 0)
 
@@ -325,24 +403,28 @@ export function ScoreSaveCard({
     nextRanks?: Partial<Record<LeaderboardPeriod, number>>,
   ) => {
     if (celebShown.current) return
-    const hits: CelebHit[] = [...celebrationHits(nextRanks)]
-    const allTimeFirst = hits.some(
-      (hit) => hit.kind === 'rank' && hit.period === 'all' && hit.rank === 1,
-    )
-    if (!allTimeFirst) {
-      const rec = recordHit(score, allTime)
-      if (rec) hits.push(rec)
-    }
-    if (!hits.length) return
     celebShown.current = true
-    setCelebHits(hits)
+    setCelebPending(true)
+    window.clearTimeout(celebTimer.current)
+    /* Brief settle so late record-book posts from this run can land. */
+    celebTimer.current = window.setTimeout(() => {
+      const payload = buildCelebration(score, allTime, nextRanks)
+      setCelebPending(false)
+      if (!payload) {
+        celebShown.current = false
+        return
+      }
+      setCeleb(payload)
+    }, 400)
   }
 
   useEffect(() => {
     let cancelled = false
     savedRef.current = false
     celebShown.current = false
-    setCelebHits(null)
+    window.clearTimeout(celebTimer.current)
+    setCeleb(null)
+    setCelebPending(false)
     setPhase('checking')
     setError(null)
 
@@ -363,6 +445,12 @@ export function ScoreSaveCard({
         if (cancelled) return
 
         if (score <= 0) {
+          const books = peekRunAchievements()
+          if (books.length) {
+            openCelebration(recordRef.current, undefined)
+          } else {
+            takeRunAchievements()
+          }
           setPhase('saved')
           return
         }
@@ -398,6 +486,7 @@ export function ScoreSaveCard({
     void run()
     return () => {
       cancelled = true
+      window.clearTimeout(celebTimer.current)
     }
   }, [gameSlug, score])
 
@@ -427,19 +516,23 @@ export function ScoreSaveCard({
     }
   }
 
-  const celebrating = Boolean(celebHits && celebHits.length)
-  const pending = phase === 'checking' || phase === 'saving'
+  const celebrating = Boolean(celeb) || celebPending
+  const pending = phase === 'checking' || phase === 'saving' || celebPending
   const showResults = !celebrating && !pending
 
   return (
     <>
-      {celebHits && (
-        <ScoreCelebration hits={celebHits} onDone={() => setCelebHits(null)} />
+      {celeb && (
+        <ScoreCelebration payload={celeb} onDone={() => setCeleb(null)} />
       )}
-      {pending && !celebrating && (
+      {pending && !celeb && (
         <div className="score-save" onPointerDown={(e) => e.stopPropagation()}>
           <p className="score-save__note">
-            {phase === 'checking' ? 'Checking boards…' : 'Saving…'}
+            {phase === 'checking'
+              ? 'Checking boards…'
+              : phase === 'saving'
+                ? 'Saving…'
+                : 'Nice run…'}
           </p>
         </div>
       )}

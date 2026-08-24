@@ -10,7 +10,14 @@ import { usePersonalBest } from '../../hooks/usePersonalBest'
 import { usePlayerName } from '../../hooks/usePlayerName'
 import { useDeviceType } from '../../lib/device'
 import { getPersonalBest } from '../../lib/personalBest'
-import { submitAsteroidsHighestCombo, submitAsteroidsWaveTime } from '../../lib/records'
+import {
+  clearRunAchievements,
+  pushRunAchievement,
+} from '../../lib/runAchievements'
+import {
+  submitAsteroidsHighestCombo,
+  submitAsteroidsWaveTime,
+} from '../../lib/records'
 import { useTournamentPlay } from '../../tournaments/TournamentPlayContext'
 import {
   asteroidsLayout,
@@ -202,6 +209,10 @@ export function AsteroidsGame() {
             ? `Wave record · #${waveResult.rank}`
             : 'Wave record set',
         )
+        pushRunAchievement({
+          label: `Wave ${wave} record`,
+          rank: waveResult.rank,
+        })
       }
       const combo = ui.runComboBest
       const comboKey = `combo:${combo}`
@@ -215,6 +226,10 @@ export function AsteroidsGame() {
               ? `Combo record · #${comboResult.rank}`
               : 'Combo record set',
           )
+          pushRunAchievement({
+            label: `Combo record · ${combo}`,
+            rank: comboResult.rank,
+          })
         }
       }
       if (!cancelled && notes.length) setWaveRecordNote(notes.join(' · '))
@@ -235,10 +250,18 @@ export function AsteroidsGame() {
     if (ui.phase !== 'gameover' || tournament) return
     const combo = ui.runComboBest
     if (combo < 2) return
-    const key = `over:${combo}`
+    const key = `combo:${combo}`
     if (comboRecordKey.current === key) return
     comboRecordKey.current = key
-    void submitAsteroidsHighestCombo(combo, playerName)
+    void (async () => {
+      const comboResult = await submitAsteroidsHighestCombo(combo, playerName)
+      if (comboResult?.improved) {
+        pushRunAchievement({
+          label: `Combo record · ${combo}`,
+          rank: comboResult.rank,
+        })
+      }
+    })()
   }, [ui.phase, ui.runComboBest, playerName, tournament])
 
   useEffect(() => {
@@ -263,6 +286,7 @@ export function AsteroidsGame() {
     offeredScore.current = null
     waveRecordKey.current = null
     comboRecordKey.current = null
+    clearRunAchievements()
     clearPressed()
     const next = currentLayout()
     setAspect({ w: next.aspectW, h: next.aspectH })

@@ -5894,7 +5894,7 @@ a.game-hud__board {
   color: var(--ink);
 }
 
-/* Full-screen top-10 celebration */
+/* Full-screen run celebration */
 .score-celeb {
   position: fixed;
   inset: 0;
@@ -5902,7 +5902,7 @@ a.game-hud__board {
   display: grid;
   place-items: center;
   padding: 1.5rem;
-  background: rgba(var(--ink-rgb), 0.5);
+  background: color-mix(in srgb, var(--shell, #edf7f4) 55%, transparent);
   backdrop-filter: blur(10px);
   animation: score-celeb-fade 0.35s ease both;
 }
@@ -5926,64 +5926,78 @@ a.game-hud__board {
   flex-direction: column;
   align-items: center;
   gap: 0.55rem;
-  width: min(100%, 28rem);
-  padding: 2.4rem 2rem 2rem;
-  border-radius: 1.5rem;
-  background: rgba(var(--surface-rgb), 0.97);
-  border: 1px solid rgba(201, 138, 18, 0.35);
-  box-shadow: 0 32px 70px rgba(var(--ink-rgb), 0.32);
+  width: min(100%, 22rem);
+  padding: 1.35rem 1.5rem 1.4rem;
+  border-radius: var(--tile-radius);
+  background: rgba(var(--surface-rgb), 0.96);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(var(--ink-rgb), 0.08);
+  box-shadow: var(--shadow-soft);
   animation: score-celeb-pop 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
   text-align: center;
 }
 
 .score-celeb__eyebrow {
   font-family: var(--font-body);
-  font-size: clamp(1.15rem, 3.5vw, 1.45rem);
+  font-size: 0.78rem;
   font-weight: 700;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: #c98a12;
-}
-
-.score-celeb--record .score-celeb__eyebrow {
   color: var(--accent);
-  letter-spacing: 0.08em;
-}
-
-.score-celeb--record .score-celeb__headline {
-  font-size: clamp(3.6rem, 16vw, 6.5rem);
-}
-
-.score-celeb--record .score-celeb__card {
-  border-color: color-mix(in srgb, var(--accent) 40%, transparent);
 }
 
 .score-celeb__headline {
-  margin: 0.15rem 0 0.2rem;
+  margin: 0.05rem 0 0.1rem;
   font-family: var(--font-display);
-  font-size: clamp(5.5rem, 22vw, 8rem);
-  font-weight: 700;
-  line-height: 0.88;
-  letter-spacing: -0.04em;
+  font-size: clamp(3.2rem, 14vw, 5.2rem);
+  font-weight: 600;
+  line-height: 0.92;
+  letter-spacing: -0.03em;
   color: var(--ink);
 }
 
 .score-celeb__detail {
-  margin: 0 0 0.85rem;
-  font-size: 1.05rem;
+  margin: 0 0 0.35rem;
+  font-size: 1rem;
   font-weight: 700;
   color: var(--muted);
 }
 
+.score-celeb__list {
+  list-style: none;
+  margin: 0.15rem 0 0.55rem;
+  padding: 0.35rem 0.75rem;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  border-radius: calc(var(--tile-radius) - 0.25rem);
+  background: rgba(var(--surface-rgb), 0.7);
+  border: 1px solid rgba(var(--ink-rgb), 0.05);
+  text-align: left;
+}
+
+.score-celeb__list li {
+  padding: 0.5rem 0.1rem;
+  font-size: 0.92rem;
+  font-weight: 650;
+  color: var(--muted);
+  border-bottom: 1px solid rgba(var(--ink-rgb), 0.06);
+}
+
+.score-celeb__list li:last-child {
+  border-bottom: 0;
+}
+
 .score-celeb__btn {
-  min-width: 11rem;
-  padding: 0.95rem 1.5rem;
+  min-width: 10rem;
+  margin-top: 0.15rem;
+  padding: 0.7rem 1.35rem;
   border: 0;
-  border-radius: 0.95rem;
-  background: var(--accent-sky);
+  border-radius: 999px;
+  background: var(--accent);
   color: #fff;
   font-family: var(--font-body);
-  font-size: 1.15rem;
+  font-size: 0.95rem;
   font-weight: 700;
   cursor: pointer;
   touch-action: manipulation;
