@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
-import { GameHudStat, GamePlayChrome, GameStageHud } from '../../components/GameHud'
+import { GamePlayChrome, PlayReadout, PlayReadoutCenter, PlayReadoutScore } from '../../components/GameHud'
 import { GameStage } from '../../components/GameStage'
 import { PauseButton, GamePauseOverlay } from '../../components/PauseControls'
 import { PersonalBestHint } from '../../components/PersonalBestHint'
@@ -196,20 +196,22 @@ export function DeadCenterGame() {
             ) : null}
           </GamePlayChrome>
 
-          <GameStageHud>
-            <GameHudStat
-              label="Score"
+          <PlayReadout>
+            <PlayReadoutScore
               hot={ui.phase === 'playing' && ui.score > previousBestRef.current}
             >
               {ui.score}
-            </GameHudStat>
-            <GameHudStat label="Round">
+            </PlayReadoutScore>
+            <PlayReadoutCenter
+              label={`Round ${Math.min(ui.round, ui.totalRounds)} of ${ui.totalRounds}${ui.phase === 'playing' ? `, ${ui.timeLeft} seconds` : ''}`}
+            >
               {Math.min(ui.round, ui.totalRounds)}/{ui.totalRounds}
-            </GameHudStat>
-            <GameHudStat label="Time" className="game-hud__stat--time">
-              {ui.phase === 'playing' ? ui.timeLeft : '—'}
-            </GameHudStat>
-          </GameStageHud>
+              {ui.phase === 'playing' ? (
+                <span className="play-readout__sep">·</span>
+              ) : null}
+              {ui.phase === 'playing' ? ui.timeLeft : null}
+            </PlayReadoutCenter>
+          </PlayReadout>
 
           <div className="deadcenter__overlay">
             <GamePauseOverlay

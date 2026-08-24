@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
-import { GameHudStat, GamePlayChrome, GameStageHud } from '../../components/GameHud'
+import { GamePlayChrome, PlayReadout, PlayReadoutScore } from '../../components/GameHud'
 import { GameStage } from '../../components/GameStage'
 import { PauseButton, GamePauseOverlay } from '../../components/PauseControls'
 import { PersonalBestHint } from '../../components/PersonalBestHint'
@@ -178,17 +178,16 @@ export function SimonGame() {
                 <PauseButton paused={paused} onToggle={togglePause} />
               ) : null}
             </GamePlayChrome>
-            <GameStageHud>
-              <GameHudStat
-                label="Round"
+            <PlayReadout>
+              <PlayReadoutScore
                 hot={
                   (ui.phase === 'watch' || ui.phase === 'input') &&
                   ui.score > previousBestRef.current
                 }
               >
                 {ui.round || 1}
-              </GameHudStat>
-            </GameStageHud>
+              </PlayReadoutScore>
+            </PlayReadout>
           </div>
         </GameStage>
         <div className="simon__overlay">

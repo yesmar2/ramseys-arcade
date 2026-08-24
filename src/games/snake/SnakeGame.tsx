@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
-import { GameHudStat, GamePlayChrome, GameStageHud } from '../../components/GameHud'
+import { GamePlayChrome, PlayReadout, PlayReadoutCenter, PlayReadoutScore } from '../../components/GameHud'
 import { GameStage } from '../../components/GameStage'
 import { PauseButton, GamePauseOverlay } from '../../components/PauseControls'
 import { PersonalBestHint } from '../../components/PersonalBestHint'
@@ -287,15 +287,16 @@ export function SnakeGame() {
             ) : null}
           </GamePlayChrome>
 
-          <GameStageHud>
-            <GameHudStat
-              label="Score"
+          <PlayReadout>
+            <PlayReadoutScore
               hot={ui.phase === 'playing' && ui.score > previousBestRef.current}
             >
               {ui.score}
-            </GameHudStat>
-            <GameHudStat label="Length">{ui.length}</GameHudStat>
-          </GameStageHud>
+            </PlayReadoutScore>
+            <PlayReadoutCenter label={`Length ${ui.length}`}>
+              {ui.length}
+            </PlayReadoutCenter>
+          </PlayReadout>
 
           <div className="snake__overlay">
             <GamePauseOverlay

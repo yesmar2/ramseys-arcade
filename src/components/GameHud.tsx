@@ -7,41 +7,49 @@ import {
   toggleFullscreen,
 } from '../lib/fullscreen'
 
-export function GameHudStat({
-  label,
+/** Plain playfield readouts (Asteroids-style): score left, secondary center. */
+export function PlayReadout({ children }: { children: ReactNode }) {
+  return (
+    <div className="play-readout" aria-live="polite">
+      {children}
+    </div>
+  )
+}
+
+export function PlayReadoutScore({
   children,
   hot,
+  className,
+}: {
+  children: ReactNode
+  hot?: boolean
+  className?: string
+}) {
+  return (
+    <p
+      className={`play-readout__score${hot ? ' play-readout__score--hot' : ''}${className ? ` ${className}` : ''}`}
+    >
+      {children}
+    </p>
+  )
+}
+
+export function PlayReadoutCenter({
+  children,
+  label,
   urgent,
   className,
 }: {
-  label: string
   children: ReactNode
-  hot?: boolean
+  /** Accessible name when children aren’t self-describing. */
+  label?: string
   urgent?: boolean
   className?: string
 }) {
   return (
     <div
-      className={`game-hud__stat${hot ? ' game-stat--beat' : ''}${urgent ? ' game-hud__stat--urgent' : ''}${className ? ` ${className}` : ''}`}
-    >
-      <span className="game-hud__label">{label}</span>
-      <strong>{children}</strong>
-    </div>
-  )
-}
-
-/** Floating live stats on the playfield (score chips, etc.). */
-export function GameStageHud({
-  children,
-  className,
-}: {
-  children: ReactNode
-  className?: string
-}) {
-  return (
-    <div
-      className={`game-stage-hud${className ? ` ${className}` : ''}`}
-      aria-live="polite"
+      className={`play-readout__center${urgent ? ' play-readout__center--urgent' : ''}${className ? ` ${className}` : ''}`}
+      aria-label={label}
     >
       {children}
     </div>
@@ -116,17 +124,4 @@ export function GamePlayChrome({ children }: { children?: ReactNode }) {
       {children}
     </div>
   )
-}
-
-/** @deprecated Use GamePlayChrome inside the stage. */
-export function GameHud({
-  extra,
-}: {
-  slug?: string
-  personalBest?: number
-  children?: ReactNode
-  extra?: ReactNode
-  hideBest?: boolean
-}) {
-  return <GamePlayChrome>{extra}</GamePlayChrome>
 }

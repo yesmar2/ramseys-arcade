@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react'
-import { GameHudStat, GamePlayChrome, GameStageHud } from '../../components/GameHud'
+import { GamePlayChrome, PlayReadout, PlayReadoutCenter, PlayReadoutScore } from '../../components/GameHud'
 import { GameStage } from '../../components/GameStage'
 import { PauseButton, GamePauseOverlay } from '../../components/PauseControls'
 import { PersonalBestHint } from '../../components/PersonalBestHint'
@@ -233,18 +233,19 @@ export function PatriotGame() {
             ) : null}
           </GamePlayChrome>
 
-          <GameStageHud>
-            <GameHudStat
-              label="Score"
+          <PlayReadout>
+            <PlayReadoutScore
               hot={
                 (ui.phase === 'playing' || ui.phase === 'waveClear') &&
                 ui.score > previousBestRef.current
               }
             >
               {ui.score}
-            </GameHudStat>
-            <GameHudStat label="Wave">{ui.wave}</GameHudStat>
-          </GameStageHud>
+            </PlayReadoutScore>
+            <PlayReadoutCenter label={`Wave ${ui.wave}`}>
+              {ui.wave}
+            </PlayReadoutCenter>
+          </PlayReadout>
 
           {(ui.phase === 'playing' || ui.phase === 'waveClear') &&
             !needsRotate &&

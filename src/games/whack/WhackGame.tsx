@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
-import { GameHudStat, GamePlayChrome, GameStageHud } from '../../components/GameHud'
+import { GamePlayChrome, PlayReadout, PlayReadoutCenter, PlayReadoutScore } from '../../components/GameHud'
 import { GameStage } from '../../components/GameStage'
 import { PauseButton, GamePauseOverlay } from '../../components/PauseControls'
 import { PersonalBestHint } from '../../components/PersonalBestHint'
@@ -201,21 +201,19 @@ export function WhackGame() {
               ) : null}
             </GamePlayChrome>
 
-            <GameStageHud>
-              <GameHudStat
-                label="Score"
+            <PlayReadout>
+              <PlayReadoutScore
                 hot={ui.phase === 'playing' && ui.score > previousBestRef.current}
               >
                 {ui.score}
-              </GameHudStat>
-              <GameHudStat
+              </PlayReadoutScore>
+              <PlayReadoutCenter
                 label="Time"
-                className="game-hud__stat--time"
                 urgent={ui.phase === 'playing' && ui.timeLeft <= 10}
               >
                 {ui.phase === 'menu' ? 45 : ui.timeLeft}
-              </GameHudStat>
-            </GameStageHud>
+              </PlayReadoutCenter>
+            </PlayReadout>
 
             <div className="whack__overlay">
             <GamePauseOverlay

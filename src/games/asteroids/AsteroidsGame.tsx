@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
-import { GamePlayChrome } from '../../components/GameHud'
+import { GamePlayChrome, PlayReadout, PlayReadoutCenter, PlayReadoutScore } from '../../components/GameHud'
 import { GameStage } from '../../components/GameStage'
 import { PauseButton, GamePauseOverlay } from '../../components/PauseControls'
 import { PersonalBestHint } from '../../components/PersonalBestHint'
@@ -415,25 +415,20 @@ export function AsteroidsGame() {
             ) : null}
           </GamePlayChrome>
 
-          <div className="asteroids-stage-hud" aria-live="polite">
-            <p
-              className={`asteroids-stage-hud__score${
-                ui.phase === 'playing' && ui.score > previousBestRef.current
-                  ? ' asteroids-stage-hud__score--hot'
-                  : ''
-              }`}
+          <PlayReadout>
+            <PlayReadoutScore
+              hot={ui.phase === 'playing' && ui.score > previousBestRef.current}
             >
               {ui.score}
-            </p>
+            </PlayReadoutScore>
             {ui.lives > 0 ? (
-              <div
-                className="asteroids-stage-hud__lives"
-                aria-label={`${ui.lives} ${ui.lives === 1 ? 'life' : 'lives'}`}
+              <PlayReadoutCenter
+                label={`${ui.lives} ${ui.lives === 1 ? 'life' : 'lives'}`}
               >
                 {Array.from({ length: ui.lives }, (_, i) => (
                   <svg
                     key={i}
-                    className="asteroids-stage-hud__ship"
+                    className="play-readout__ship"
                     viewBox="0 0 16 20"
                     aria-hidden="true"
                   >
@@ -443,9 +438,9 @@ export function AsteroidsGame() {
                     />
                   </svg>
                 ))}
-              </div>
+              </PlayReadoutCenter>
             ) : null}
-          </div>
+          </PlayReadout>
 
           <div className="asteroids__overlay">
             <GamePauseOverlay

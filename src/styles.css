@@ -1719,15 +1719,15 @@ a.game-hud__board {
   outline: none;
 }
 
-/* Asteroids: plain score left, ship lives center */
-.asteroids-stage-hud {
+/* Plain playfield readouts ? score left, secondary center (no chips). */
+.play-readout {
   position: absolute;
   inset: 0;
   z-index: 8;
   pointer-events: none;
 }
 
-.asteroids-stage-hud__score {
+.play-readout__score {
   position: absolute;
   top: max(0.5rem, env(safe-area-inset-top, 0px));
   left: max(0.7rem, env(safe-area-inset-left, 0px));
@@ -1743,21 +1743,42 @@ a.game-hud__board {
     0 0 12px rgba(var(--surface-rgb), 0.55);
 }
 
-.asteroids-stage-hud__score--hot {
+.play-readout__score--hot {
   color: color-mix(in srgb, var(--accent) 55%, var(--ink));
 }
 
-.asteroids-stage-hud__lives {
+.play-readout__center {
   position: absolute;
   top: max(0.55rem, env(safe-area-inset-top, 0px));
   left: 50%;
   transform: translateX(-50%);
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 0.4rem;
+  font-family: var(--font-display);
+  font-size: clamp(1.05rem, 3.6vw, 1.35rem);
+  font-weight: 600;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  text-shadow:
+    0 1px 0 rgba(var(--surface-rgb), 0.85),
+    0 0 12px rgba(var(--surface-rgb), 0.55);
+  white-space: nowrap;
 }
 
-.asteroids-stage-hud__ship {
+.play-readout__center--urgent {
+  color: #c47a3a;
+}
+
+.play-readout__sep {
+  opacity: 0.45;
+  font-weight: 500;
+  margin-inline: 0.05rem;
+}
+
+.play-readout__ship {
   display: block;
   width: 1.05rem;
   height: 1.25rem;
@@ -1767,11 +1788,15 @@ a.game-hud__board {
 }
 
 @media (max-width: 420px) {
-  .asteroids-stage-hud__score {
+  .play-readout__score {
     font-size: 1.25rem;
   }
 
-  .asteroids-stage-hud__ship {
+  .play-readout__center {
+    font-size: 1rem;
+  }
+
+  .play-readout__ship {
     width: 0.95rem;
     height: 1.1rem;
   }
@@ -1825,86 +1850,6 @@ a.game-hud__board {
   gap: 0.35rem;
   flex: none;
   margin-left: auto;
-}
-
-/* Floating live stats on the playfield */
-.game-stage-hud {
-  position: absolute;
-  top: 0.55rem;
-  left: 0.5rem;
-  right: 4.35rem;
-  z-index: 8;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: stretch;
-  justify-content: center;
-  gap: 0.35rem;
-  pointer-events: none;
-}
-
-.game-stage-hud .game-hud__stat {
-  flex: none;
-  min-width: 3.2rem;
-  padding: 0.28rem 0.55rem;
-  border-radius: calc(var(--tile-radius) - 0.2rem);
-  background: rgba(var(--surface-rgb), 0.72);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(var(--ink-rgb), 0.08);
-  box-shadow: var(--shadow-soft);
-  text-align: center;
-  white-space: nowrap;
-}
-
-.game-stage-hud .game-hud__label {
-  display: block;
-  font-size: 0.58rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--muted);
-}
-
-.game-stage-hud .game-hud__stat strong {
-  font-family: var(--font-display);
-  font-size: clamp(1.05rem, 3.2vw, 1.35rem);
-  font-weight: 600;
-  line-height: 1.1;
-  font-variant-numeric: tabular-nums;
-}
-
-.game-stage-hud .game-hud__stat--urgent strong {
-  color: #c47a3a;
-}
-
-.game-stage-hud .game-hud__stat--time strong {
-  display: inline-block;
-  min-width: 4.5ch;
-  font-variant-numeric: tabular-nums;
-  font-feature-settings: "tnum";
-}
-
-@media (max-width: 900px), (pointer: coarse) {
-  .game-stage-hud {
-    top: 0.4rem;
-    gap: 0.28rem;
-  }
-
-  .game-stage-hud .game-hud__stat {
-    display: flex;
-    flex-direction: row;
-    align-items: baseline;
-    gap: 0.28rem;
-    min-width: 0;
-    padding: 0.2rem 0.45rem;
-  }
-
-  .game-stage-hud .game-hud__label {
-    font-size: 0.52rem;
-  }
-
-  .game-stage-hud .game-hud__stat strong {
-    font-size: 0.95rem;
-  }
 }
 
 @media (max-width: 420px), ((pointer: coarse) and (max-height: 480px)) {
@@ -2610,18 +2555,6 @@ a.game-hud__board {
     padding: 0.12rem 0.4rem;
     font-size: 0.72rem;
     background: rgba(var(--surface-rgb), 0.42);
-  }
-
-  .game-stage-hud {
-    top: 0.28rem;
-  }
-
-  .game-stage-hud .game-hud__stat {
-    padding: 0.12rem 0.35rem;
-  }
-
-  .game-stage-hud .game-hud__stat strong {
-    font-size: 0.88rem;
   }
 
   .game-pause-btn,

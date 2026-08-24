@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { GameHudStat, GamePlayChrome, GameStageHud } from '../../components/GameHud'
+import { GamePlayChrome, PlayReadout, PlayReadoutScore } from '../../components/GameHud'
 import { GameStage } from '../../components/GameStage'
 import { PauseButton, GamePauseOverlay } from '../../components/PauseControls'
 import { PersonalBestHint } from '../../components/PersonalBestHint'
@@ -141,14 +141,13 @@ export function StackerGame() {
           ) : null}
         </GamePlayChrome>
 
-        <GameStageHud>
-          <GameHudStat
-            label="Score"
+        <PlayReadout>
+          <PlayReadoutScore
             hot={ui.status === 'playing' && ui.score > previousBestRef.current}
           >
             {ui.score}
-          </GameHudStat>
-        </GameStageHud>
+          </PlayReadoutScore>
+        </PlayReadout>
 
         <div className="stacker__overlay">
           <GamePauseOverlay
