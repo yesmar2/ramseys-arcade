@@ -467,12 +467,12 @@ export function AsteroidsGame() {
                 <p>Spin, thrust, and clear the rocks. Chain hits for a multiplier.</p>
                 <PersonalBestHint slug="asteroids" />
                 <span className="asteroids__hint asteroids__hint--keys">
-                  ← → turn · ↑ thrust · ↓ reverse · auto-fire · grab powerups
+                  ← → turn · ↑ thrust · ↓ hyperspace · auto-fire · grab powerups
                   <br />
                   Wave 3+ · flying saucers hunt you
                 </span>
                 <span className="asteroids__hint asteroids__hint--touch">
-                  Hold to turn and thrust · grab powerups · auto-fire
+                  Hold to turn and thrust · tap hyperspace · grab powerups · auto-fire
                   <br />
                   Wave 3+ · flying saucers hunt you
                 </span>
@@ -575,23 +575,23 @@ export function AsteroidsGame() {
             </button>
             <button
               type="button"
-              className="asteroids__btn asteroids__btn--reverse"
-              aria-label="Reverse"
+              className="asteroids__btn asteroids__btn--hyperspace"
+              aria-label="Hyperspace"
               {...holdPad('reverse')}
             >
               <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
                 <path
-                  d="M12 5.5 L12 18.5"
+                  d="M12 2.5 L13.6 9.2 L20.5 12 L13.6 14.8 L12 21.5 L10.4 14.8 L3.5 12 L10.4 9.2 Z"
                   stroke="currentColor"
-                  strokeWidth="1.9"
-                  strokeLinecap="round"
-                />
-                <path
-                  d="M7.5 13.5 L12 18.5 L16.5 13.5"
-                  stroke="currentColor"
-                  strokeWidth="1.9"
-                  strokeLinecap="round"
+                  strokeWidth="1.7"
                   strokeLinejoin="round"
+                />
+                <circle
+                  cx="12"
+                  cy="12"
+                  r="2.15"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
                 />
               </svg>
             </button>

@@ -137,7 +137,10 @@ export type GameState = {
   /** -1 left … 1 right. Used when analog stick is active. */
   turn: number
   thrust: boolean
+  /** Held down / S — triggers hyperspace on press edge. */
   reverse: boolean
+  hyperspaceCooldown: number
+  hyperspaceLatch: boolean
   fireHeld: boolean
   fireCooldown: number
   stageW: number
@@ -182,7 +185,7 @@ function designScale(w: number, h: number) {
 
 const MAX_BULLETS = 6
 const FIRE_COOLDOWN = 0.22
-const TURN_SPEED = 4.6
+const TURN_SPEED = 5.9
 const THRUST = 420
 const DRAG = 0.988
 const MAX_SPEED = 560
@@ -191,8 +194,9 @@ const BULLET_LIFE = 0.55
 const SHIP_RADIUS = 22
 const START_LIVES = 3
 const COMBO_WINDOW = 0.75
-const POWER_LIFE = 6
+const POWER_LIFE = 8
 const BUFF_DURATION = 8
+const HYPERSPACE_COOLDOWN = 2.6
 
 /** Weighted drop table — life is ~3% of powerups; others share the rest. */
 const POWER_WEIGHTS: { kind: PowerKind; weight: number }[] = [
@@ -238,10 +242,10 @@ function waveParFor(wave: number) {
   return Math.max(28, 48 - (wave - 1) * 2)
 }
 
-/** Rock speed: +8%/wave early, steeper after wave 5. */
+/** Rock speed: +10%/wave early, steeper after wave 5. */
 function waveSpeedScale(wave: number) {
-  if (wave <= 5) return 1 + (wave - 1) * 0.08
-  return 1 + 4 * 0.08 + (wave - 5) * 0.14
+  if (wave <= 5) return 1 + (wave - 1) * 0.1
+  return 1 + 4 * 0.1 + (wave - 5) * 0.2
 }
 
 const SAUCER_START_WAVE = 3
@@ -487,8 +491,8 @@ function splitRock(rock: Rock, speedScale: number, worldScale: number): Rock[] {
 
 function dropChance(size: RockSize) {
   if (size === 'large') return 0.34
-  if (size === 'medium') return 0.2
-  return 0.08
+  if (size === 'medium') return 0.22
+  return 0.11
 }
 
 function maybeSpawnPowerup(rock: Rock, scale: number): Powerup | null {
@@ -539,6 +543,65 @@ function applyPowerup(state: GameState, kind: PowerKind): GameState {
   return { ...state, buffSlow: BUFF_DURATION, floaters }
 }
 
+/** Classic hyperspace: blink to a new spot (prefer clear of rocks). */
+function tryHyperspace(state: GameState): GameState {
+  if (state.phase !== 'playing') return state
+  if ((state.hyperspaceCooldown ?? 0) > 0) return state
+
+  const sc = state.scale
+  const hull = shipRadius(sc)
+  const margin = hull * 2.4
+  let x = state.ship.x
+  let y = state.ship.y
+  let found = false
+
+  for (let i = 0; i < 18; i++) {
+    const cx = Math.random() * state.stageW
+    const cy = Math.random() * state.stageH
+    const clearRocks = state.rocks.every(
+      (r) => dist(cx, cy, r.x, r.y) > r.radius + margin,
+    )
+    const clearSaucer =
+      !state.saucer ||
+      dist(cx, cy, state.saucer.x, state.saucer.y) > state.saucer.radius + margin
+    const clearShots = (state.enemyBullets ?? []).every(
+      (b) => dist(cx, cy, b.x, b.y) > hull * 2.2,
+    )
+    if (clearRocks && clearSaucer && clearShots) {
+      x = cx
+      y = cy
+      found = true
+      break
+    }
+  }
+
+  if (!found) {
+    x = Math.random() * state.stageW
+    y = Math.random() * state.stageH
+  }
+
+  const particles = [...state.particles]
+  burst(particles, state.ship.x, state.ship.y, 210, 14, 130)
+  burst(particles, x, y, 172, 12, 110)
+  sfx('tap')
+
+  return {
+    ...state,
+    ship: {
+      ...state.ship,
+      x,
+      y,
+      vx: 0,
+      vy: 0,
+      thrusting: false,
+      invuln: Math.max(state.ship.invuln, found ? 0.5 : 0.95),
+    },
+    particles,
+    flash: 0.22,
+    hyperspaceCooldown: HYPERSPACE_COOLDOWN,
+  }
+}
+
 export function createInitialState(w = DESIGN_W, h = DESIGN_H): GameState {
   const scale = designScale(w, h)
   return {
@@ -561,6 +624,8 @@ export function createInitialState(w = DESIGN_W, h = DESIGN_H): GameState {
     turn: 0,
     thrust: false,
     reverse: false,
+    hyperspaceCooldown: 0,
+    hyperspaceLatch: false,
     fireHeld: false,
     fireCooldown: 0,
     stageW: w,
@@ -701,6 +766,8 @@ export function beginNextWave(state: GameState): GameState {
     turn: 0,
     thrust: false,
     reverse: false,
+    hyperspaceCooldown: 0,
+    hyperspaceLatch: false,
     fireHeld: false,
     fireCooldown: 0.2,
     combo: 0,
@@ -774,6 +841,8 @@ function killShip(state: GameState): GameState {
       flash: 0.35,
       thrust: false,
       reverse: false,
+      hyperspaceCooldown: 0,
+      hyperspaceLatch: false,
       fireHeld: false,
       combo: 0,
       comboTimer: 0,
@@ -793,6 +862,8 @@ function killShip(state: GameState): GameState {
     particles,
     flash: 0.28,
     fireCooldown: 0.4,
+    hyperspaceCooldown: 0,
+    hyperspaceLatch: false,
     combo: 0,
     comboTimer: 0,
   }
@@ -842,6 +913,16 @@ export function tick(state: GameState, dt: number): GameState {
     s = { ...s, combo: 0 }
   }
 
+  let hyperspaceCooldown = Math.max(0, (s.hyperspaceCooldown ?? 0) - dt)
+  let hyperspaceLatch = s.hyperspaceLatch ?? false
+  if (s.reverse && !hyperspaceLatch && hyperspaceCooldown <= 0) {
+    s = tryHyperspace({ ...s, hyperspaceCooldown: 0 })
+    hyperspaceCooldown = s.hyperspaceCooldown
+    hyperspaceLatch = true
+  }
+  if (!s.reverse) hyperspaceLatch = false
+  s = { ...s, hyperspaceCooldown, hyperspaceLatch }
+
   let ship = { ...s.ship }
   const sc = s.scale
   const hull = shipRadius(sc)
@@ -851,15 +932,11 @@ export function tick(state: GameState, dt: number): GameState {
   if (!s.turnLeft && !s.turnRight && s.turn) {
     ship.angle += TURN_SPEED * dt * Math.max(-1, Math.min(1, s.turn))
   }
-  const thrusting = s.thrust && !s.reverse
-  const reversing = s.reverse && !s.thrust
+  const thrusting = s.thrust
   ship.thrusting = thrusting
   if (thrusting) {
     ship.vx += Math.cos(ship.angle) * THRUST * sc * dt
     ship.vy += Math.sin(ship.angle) * THRUST * sc * dt
-  } else if (reversing) {
-    ship.vx -= Math.cos(ship.angle) * THRUST * sc * 0.7 * dt
-    ship.vy -= Math.sin(ship.angle) * THRUST * sc * 0.7 * dt
   }
   ship.vx *= DRAG
   ship.vy *= DRAG
@@ -1159,6 +1236,8 @@ export function tick(state: GameState, dt: number): GameState {
       turn: 0,
       thrust: false,
       reverse: false,
+      hyperspaceCooldown: 0,
+      hyperspaceLatch: false,
       fireHeld: false,
       ship: { ...s.ship, vx: 0, vy: 0, thrusting: false },
     }

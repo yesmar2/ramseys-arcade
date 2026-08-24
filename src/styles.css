@@ -3118,12 +3118,12 @@ a.game-hud__board {
   min-height: 0;
 }
 
-.asteroids__btn--reverse {
+.asteroids__btn--hyperspace {
   flex: 0.9;
   min-height: 0;
 }
 
-.asteroids__btn--reverse svg {
+.asteroids__btn--hyperspace svg {
   width: 1.85rem;
   height: 1.85rem;
 }
@@ -3196,12 +3196,12 @@ a.game-hud__board {
     }
 
     .asteroids__btn--thrust,
-    .asteroids__btn--reverse {
+    .asteroids__btn--hyperspace {
       flex: 1 1 0;
     }
 
     .asteroids__btn svg,
-    .asteroids__btn--reverse svg {
+    .asteroids__btn--hyperspace svg {
       width: 1.7rem;
       height: 1.7rem;
     }

@@ -216,16 +216,6 @@ function drawShip(ctx: CanvasRenderingContext2D, state: GameState, scale: number
     ctx.strokeStyle = ACCENT_GOLD
     ctx.lineWidth = Math.max(2, 2.4 * scale)
     ctx.stroke()
-  } else if (state.reverse) {
-    const flicker = 0.55 + Math.random() * 0.35
-    const nose = r * 1.05 * flicker
-    ctx.beginPath()
-    ctx.moveTo(Math.cos(ship.angle + 0.45) * r * 0.35, Math.sin(ship.angle + 0.45) * r * 0.35)
-    ctx.lineTo(Math.cos(ship.angle) * nose, Math.sin(ship.angle) * nose)
-    ctx.lineTo(Math.cos(ship.angle - 0.45) * r * 0.35, Math.sin(ship.angle - 0.45) * r * 0.35)
-    ctx.strokeStyle = ACCENT_SKY
-    ctx.lineWidth = Math.max(2, 2.2 * scale)
-    ctx.stroke()
   }
   ctx.restore()
 }
