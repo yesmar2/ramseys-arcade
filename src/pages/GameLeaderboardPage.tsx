@@ -116,25 +116,10 @@ export function GameLeaderboardPage({
           } as CSSProperties
         }
       >
-        <a className="rank-page__back" href={leaderboardHref()}>
-          ← Boards
-        </a>
-
         <GamePageHeader
           slug={gameSlug}
           accent={accent}
           title={game.name}
-          action={
-            gameHasRecords(gameSlug) ? (
-              <a className="lb-game-board__side-link" href={recordsHref(gameSlug)}>
-                Record books
-              </a>
-            ) : (
-              <a className="lb-game-board__side-link" href={gameHref(gameSlug)}>
-                Game hub
-              </a>
-            )
-          }
         />
 
         <PeriodSwitcher
