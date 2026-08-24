@@ -404,6 +404,10 @@ function boardsHref(gameSlug: string) {
   return gameHref(gameSlug)
 }
 
+function recordBooksHref(gameSlug: string) {
+  return gameHasRecords(gameSlug) ? recordsHref(gameSlug) : recordsIndexHref()
+}
+
 type Phase = 'checking' | 'needName' | 'saving' | 'saved' | 'error'
 
 export function ScoreSaveCard({
@@ -640,8 +644,8 @@ export function ScoreSaveCard({
             Play again
           </button>
           <div className="score-save__links">
-            <a href={boardsHref(gameSlug)}>Leaderboard</a>
-            <a href="#/tournaments">Events</a>
+            <a href={boardsHref(gameSlug)}>Boards</a>
+            <a href={recordBooksHref(gameSlug)}>Record Books</a>
           </div>
         </>
       )}
