@@ -3328,8 +3328,9 @@ html[data-theme='dark'] .patriot__power-mark {
   --hue: 198;
   display: inline-flex;
   align-items: center;
+  gap: 0.35rem;
   min-height: 1.35rem;
-  padding: 0.15rem 0.45rem;
+  padding: 0.15rem 0.4rem 0.15rem 0.5rem;
   border-radius: 999px;
   border: 1px solid hsla(var(--hue), 52%, 42%, 0.55);
   background: hsla(var(--hue), 55%, 52%, 0.28);
@@ -3339,6 +3340,19 @@ html[data-theme='dark'] .patriot__power-mark {
   letter-spacing: 0.04em;
   text-transform: uppercase;
   text-shadow: 0 1px 0 rgba(var(--surface-rgb), 0.7);
+}
+
+.asteroids__buff__time {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.15rem;
+  padding: 0.05rem 0.28rem;
+  border-radius: 999px;
+  background: rgba(var(--surface-rgb), 0.72);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+  text-transform: none;
 }
 
 .asteroids__overlay {
