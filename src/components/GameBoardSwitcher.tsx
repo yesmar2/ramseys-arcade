@@ -10,7 +10,7 @@ type GameBoardSwitcherProps = {
   onSelect: (tab: BoardTab) => void
 }
 
-/** Segment tabs: Scores vs Record books (hub only; games with records). */
+/** Underline tabs: Scores vs Record books (hub only; games with records). */
 export function GameBoardSwitcher({
   slug,
   accent,
