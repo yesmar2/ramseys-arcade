@@ -3404,6 +3404,99 @@ a.game-hud__board {
   line-height: 1;
 }
 
+.board-trail {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.45rem;
+  margin: 0 0 0.15rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.board-trail__parent {
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.board-trail__parent:hover,
+.board-trail__parent:focus-visible {
+  color: var(--ink);
+  outline: none;
+}
+
+.board-trail__sep {
+  color: color-mix(in srgb, var(--muted) 70%, transparent);
+  font-weight: 650;
+}
+
+.board-trail__game {
+  position: relative;
+}
+
+.board-trail__trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+  margin: 0;
+  padding: 0.2rem 0.45rem 0.2rem 0.5rem;
+  border: 1px solid rgba(var(--ink-rgb), 0.1);
+  border-radius: 999px;
+  background: rgba(var(--surface-rgb), 0.9);
+  color: var(--ink);
+  font: inherit;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.board-trail__trigger:hover,
+.board-trail__trigger:focus-visible {
+  border-color: color-mix(in srgb, var(--board-accent, var(--accent)) 40%, rgba(var(--ink-rgb), 0.12));
+  outline: none;
+}
+
+.board-trail__caret {
+  font-size: 0.72rem;
+  color: var(--muted);
+  line-height: 1;
+}
+
+.board-trail__menu {
+  position: absolute;
+  top: calc(100% + 0.35rem);
+  left: 0;
+  z-index: 40;
+  min-width: 11rem;
+  margin: 0;
+  padding: 0.35rem;
+  list-style: none;
+  border-radius: 0.85rem;
+  background: var(--surface);
+  border: 1px solid rgba(var(--ink-rgb), 0.08);
+  box-shadow: var(--shadow-lift);
+}
+
+.board-trail__option {
+  display: block;
+  padding: 0.55rem 0.75rem;
+  border-radius: 0.65rem;
+  color: var(--ink);
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.board-trail__option:hover,
+.board-trail__option:focus-visible {
+  background: color-mix(in srgb, var(--accent) 14%, var(--surface));
+  outline: none;
+}
+
+.board-trail__option--active {
+  background: color-mix(in srgb, var(--board-accent, var(--accent)) 18%, var(--surface));
+  cursor: default;
+}
+
 .lb-page__inner--game-board .lb-periods {
   margin-top: 0.1rem;
 }
@@ -5453,10 +5546,6 @@ a.game-hud__board {
 .game-lobby .lb-board-switcher {
   margin-top: 0.1rem;
   margin-bottom: 0.65rem;
-}
-
-.lb-page__inner--game-board .lb-periods {
-  margin-top: 0;
 }
 
 /* Game lobby */

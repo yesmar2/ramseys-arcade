@@ -3,7 +3,7 @@ import { BoardSkeleton } from '../components/BoardChrome'
 import { GameDeviceBadge } from '../components/GameDeviceBadge'
 import { PageShell } from '../components/PageShell'
 import { getGame, gamePlayableOn } from '../data/games'
-import { gameBoardHref, gamePlayHref, rankHref } from '../hooks/useHashRoute'
+import { gameBoardHref, gamePlayHref, globalRankingsHref } from '../hooks/useHashRoute'
 import { gapToNextLabel } from '../lib/boardGap'
 import { useDeviceType } from '../lib/device'
 import { usePlayerName } from '../hooks/usePlayerName'
@@ -79,8 +79,8 @@ export function RankPage({ player }: { player?: string }) {
     <PageShell innerClassName="lb-page__inner rank-page">
       <header className="lb-page__header lb-page__header--compact">
             {!isSelf ? (
-              <a className="rank-page__back" href={rankHref()}>
-                ← Your profile
+              <a className="rank-page__back" href={globalRankingsHref()}>
+                ← Rankings
               </a>
             ) : null}
             <h1 className="lb-page__title">

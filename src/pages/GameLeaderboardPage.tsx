@@ -4,6 +4,7 @@ import {
   BoardSkeleton,
   PeriodSwitcher,
 } from '../components/BoardChrome'
+import { BoardTrail } from '../components/BoardTrail'
 import { GamePageHeader } from '../components/GamePageHeader'
 import { LeaderboardList } from '../components/LeaderboardList'
 import { PageShell } from '../components/PageShell'
@@ -113,6 +114,8 @@ export function GameLeaderboardPage({
           } as CSSProperties
         }
       >
+        <BoardTrail game={gameSlug} period={period} />
+
         <GamePageHeader
           slug={gameSlug}
           accent={accent}
