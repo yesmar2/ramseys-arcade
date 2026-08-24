@@ -12,13 +12,12 @@ function ThumbSvg({ children }: { children: ReactNode }) {
   return (
     <svg
       className="game-thumb__svg"
-      viewBox="0 0 64 64"
+      viewBox="0 0 64 40"
       preserveAspectRatio="xMidYMid meet"
       fill="none"
       aria-hidden="true"
     >
-      {/* Artwork was authored in a 64×40 frame; nudge into a square. */}
-      <g transform="translate(0 10)">{children}</g>
+      {children}
     </svg>
   )
 }
@@ -59,7 +58,7 @@ function AsteroidsThumb({ accent }: { accent?: string }) {
 }
 
 function PatriotThumb({ accent }: { accent?: string }) {
-  const ground = 29
+  const ground = 27
   const x = 32
   const blocks = [
     { dx: -8, w: 5, h: 11 },
