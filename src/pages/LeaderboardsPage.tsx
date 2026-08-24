@@ -33,7 +33,7 @@ function BoardsHubSwitcher({ global }: { global: boolean }) {
         className={`lb-board-switcher__item${!global ? ' lb-board-switcher__item--active' : ''}`}
         href={leaderboardHref()}
       >
-        By game
+        Top Scores
       </a>
       <a
         role="tab"
@@ -41,7 +41,7 @@ function BoardsHubSwitcher({ global }: { global: boolean }) {
         className={`lb-board-switcher__item${global ? ' lb-board-switcher__item--active' : ''}`}
         href={globalRankingsHref()}
       >
-        Global
+        Rankings
       </a>
     </div>
   )
