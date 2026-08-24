@@ -67,9 +67,9 @@ export function recordsIndexHref() {
   return '#/records'
 }
 
-/** Record books tab on the game hub. Individual boards use `recordHref`. */
+/** Record books for one game (`#/records/{game}`). Individual boards use `recordHref`. */
 export function recordsHref(game: string) {
-  return gameHref(game, 'records')
+  return `#/records/${encodeURIComponent(game)}`
 }
 
 export function recordHref(
@@ -122,9 +122,8 @@ function parseHash(hash: string): Route {
   const recordsMatch = /^records\/([^/]+)$/.exec(path)
   if (recordsMatch) {
     return {
-      name: 'game',
-      slug: decodeURIComponent(recordsMatch[1]),
-      board: 'records',
+      name: 'records',
+      game: decodeURIComponent(recordsMatch[1]),
     }
   }
 
@@ -195,16 +194,6 @@ export function useHashRoute(): Route {
 
   useEffect(() => {
     const path = window.location.hash.replace(/^#\/?/, '').replace(/\/$/, '')
-    // Legacy records index → hub records tab
-    const legacyRecords = /^records\/([^/]+)$/.exec(path)
-    if (legacyRecords) {
-      const canonical = gameHref(decodeURIComponent(legacyRecords[1]), 'records')
-      if (window.location.hash !== canonical) {
-        window.history.replaceState(null, '', canonical)
-        setRoute(parseHash(canonical))
-      }
-      return
-    }
     const gamePeriodMatch = /^games\/([^/]+)\/([^/]+)$/.exec(path)
     if (!gamePeriodMatch) return
     const slug = decodeURIComponent(gamePeriodMatch[1])

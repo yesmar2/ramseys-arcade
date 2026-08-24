@@ -28,7 +28,7 @@ type GameRecordsPanelProps = {
   accent: string
 }
 
-/** Record books index list — shared by hub / leaderboard tabs. */
+/** Record books list for one game (`#/records/{game}` and hub tab). */
 export function GameRecordsPanel({ game, accent }: GameRecordsPanelProps) {
   const gameMeta = getGame(game)
   const playerName = normalizePlayerName(usePlayerName())

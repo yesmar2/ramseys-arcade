@@ -6,11 +6,19 @@ import {
 } from '../components/BoardChrome'
 import { Footer } from '../components/Footer'
 import { GamePageHeader } from '../components/GamePageHeader'
+import { GameRecordsPanel } from '../components/GameRecordsPanel'
 import { PageBackLink } from '../components/PageBackLink'
+import { PageShell } from '../components/PageShell'
 import { SiteHeader } from '../components/SiteHeader'
 import { LeaderboardList } from '../components/LeaderboardList'
 import { getGame } from '../data/games'
-import { gameHref, gamePlayHref, recordHref, recordsHref } from '../hooks/useHashRoute'
+import {
+  gameHref,
+  gamePlayHref,
+  recordHref,
+  recordsHref,
+  recordsIndexHref,
+} from '../hooks/useHashRoute'
 import { flashYouRow } from '../lib/boardGap'
 import { usePlayerName } from '../hooks/usePlayerName'
 import {
@@ -47,19 +55,15 @@ type RecordsPageProps = {
   period?: LeaderboardPeriod
 }
 
-/** Individual record board. The records index is the hub Records tab. */
+/** Game record book (`#/records/{game}`) or one record board (`…/{id}/{period}`). */
 export function RecordsPage({
   game,
   recordId,
   period: periodFromRoute,
 }: RecordsPageProps) {
-  useEffect(() => {
-    if (!recordId) {
-      window.location.hash = recordsHref(game)
-    }
-  }, [game, recordId])
-
-  if (!recordId) return null
+  if (!recordId) {
+    return <GameRecordBookPage game={game} />
+  }
 
   return (
     <RecordBoardPage
@@ -67,6 +71,38 @@ export function RecordsPage({
       recordId={recordId}
       period={periodFromRoute ?? 'all'}
     />
+  )
+}
+
+function GameRecordBookPage({ game }: { game: string }) {
+  const gameMeta = getGame(game)
+  const accent = gameMeta?.accent ?? '#2eb8a0'
+  const title = gameMeta?.name ?? game
+
+  if (!gameMeta) {
+    return (
+      <PageShell>
+        <p className="lb-empty">That game isn’t on the board.</p>
+      </PageShell>
+    )
+  }
+
+  return (
+    <PageShell
+      innerClassName="lb-page__inner lb-page__inner--game-board"
+    >
+      <div style={{ '--board-accent': accent } as CSSProperties}>
+        <GamePageHeader
+          slug={game}
+          accent={accent}
+          title={`${title} record books`}
+          href={gameHref(game)}
+          backHref={recordsIndexHref()}
+          backLabel="Back to Record books"
+        />
+        <GameRecordsPanel game={game} accent={accent} />
+      </div>
+    </PageShell>
   )
 }
 
@@ -173,7 +209,7 @@ function RecordBoardPage({
               accent={accent}
               title={record?.label ?? 'Record'}
               backHref={recordsHref(game)}
-              backLabel="Back to Record books"
+              backLabel={`Back to ${gameTitle} records`}
               action={
                 <a className="lb-game-board__side-link" href={gameHref(game)}>
                   Scores
@@ -183,7 +219,10 @@ function RecordBoardPage({
           ) : (
             <header className="lb-page__header lb-page__header--compact">
               <div className="lb-page__heading-row">
-                <PageBackLink href={recordsHref(game)} label="Back to Record books" />
+                <PageBackLink
+                  href={recordsHref(game)}
+                  label={`Back to ${gameTitle} records`}
+                />
                 <h1 className="lb-page__title">{record?.label ?? 'Record'}</h1>
                 <span className="lb-page__heading-slot" aria-hidden="true" />
               </div>
