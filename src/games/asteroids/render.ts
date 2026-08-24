@@ -77,21 +77,18 @@ function drawPowerupGlyph(
   }
 
   if (kind === 'spread') {
-    // Triple fan shots
-    const s = r * 0.5
+    // Triple fan shots — offset so the fan sits on the ring center
+    const s = r * 0.48
+    const oy = s * 0.42
     for (const ang of [-0.55, 0, 0.55]) {
+      const tx = Math.cos(ang - Math.PI / 2) * s
+      const ty = Math.sin(ang - Math.PI / 2) * s + oy
       ctx.beginPath()
-      ctx.moveTo(0, 0)
-      ctx.lineTo(Math.cos(ang - Math.PI / 2) * s, Math.sin(ang - Math.PI / 2) * s)
+      ctx.moveTo(0, oy)
+      ctx.lineTo(tx, ty)
       ctx.stroke()
       ctx.beginPath()
-      ctx.arc(
-        Math.cos(ang - Math.PI / 2) * s * 0.92,
-        Math.sin(ang - Math.PI / 2) * s * 0.92,
-        Math.max(1.6, 2.1 * scale),
-        0,
-        Math.PI * 2,
-      )
+      ctx.arc(tx * 0.92, oy + (ty - oy) * 0.92, Math.max(1.6, 2.1 * scale), 0, Math.PI * 2)
       ctx.fill()
     }
     return
@@ -113,18 +110,6 @@ function drawPowerupGlyph(
     ctx.beginPath()
     ctx.arc(0, 0, s * 0.28, 0, Math.PI * 2)
     ctx.fill()
-    return
-  }
-
-  if (kind === 'life') {
-    // Extra ship — small triangle pointing up
-    const s = r * 0.52
-    ctx.beginPath()
-    ctx.moveTo(0, -s)
-    ctx.lineTo(s * 0.72, s * 0.78)
-    ctx.lineTo(-s * 0.72, s * 0.78)
-    ctx.closePath()
-    ctx.stroke()
     return
   }
 

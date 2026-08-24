@@ -7,7 +7,7 @@ export type Point = { x: number; y: number }
 
 export type RockSize = 'large' | 'medium' | 'small'
 
-export type PowerKind = 'rapid' | 'spread' | 'shield' | 'slow' | 'life'
+export type PowerKind = 'rapid' | 'spread' | 'shield' | 'slow'
 
 export type SaucerSize = 'large' | 'small'
 
@@ -106,6 +106,7 @@ export type Snapshot = {
   lastWave: number
   lastWaveTime: number
   timeBonus: number
+  lifeBonus: boolean
   combo: number
   comboBest: number
   /** Peak combo across the whole run (survives wave transitions). */
@@ -149,6 +150,8 @@ export type GameState = {
   flash: number
   wavePause: number
   timeBonus: number
+  /** True when the cleared wave granted +1 life (every 3rd wave). */
+  lifeBonus: boolean
   lastWave: number
   lastWaveTime: number
   combo: number
@@ -198,13 +201,12 @@ const POWER_LIFE = 8
 const BUFF_DURATION = 8
 const HYPERSPACE_COOLDOWN = 2.6
 
-/** Weighted drop table — life is ~3% of powerups; others share the rest. */
+/** Equal-weight drop table (extra lives come from clearing every 3rd wave). */
 const POWER_WEIGHTS: { kind: PowerKind; weight: number }[] = [
-  { kind: 'rapid', weight: 0.2425 },
-  { kind: 'spread', weight: 0.2425 },
-  { kind: 'shield', weight: 0.2425 },
-  { kind: 'slow', weight: 0.2425 },
-  { kind: 'life', weight: 0.03 },
+  { kind: 'rapid', weight: 0.25 },
+  { kind: 'spread', weight: 0.25 },
+  { kind: 'shield', weight: 0.25 },
+  { kind: 'slow', weight: 0.25 },
 ]
 
 export const POWER_LABEL: Record<PowerKind, string> = {
@@ -212,15 +214,13 @@ export const POWER_LABEL: Record<PowerKind, string> = {
   spread: 'Spread',
   shield: 'Shield',
   slow: 'Slow',
-  life: 'Life',
 }
 
 export const POWER_HUE: Record<PowerKind, number> = {
   rapid: 38,
-  spread: 272,
+  spread: 18,
   shield: 172,
   slow: 198,
-  life: 42,
 }
 
 function pickPowerKind(): PowerKind {
@@ -513,20 +513,16 @@ function maybeSpawnPowerup(rock: Rock, scale: number): Powerup | null {
 
 function applyPowerup(state: GameState, kind: PowerKind): GameState {
   sfx('good')
-  const label = kind === 'life' ? '+1 LIFE' : POWER_LABEL[kind].toUpperCase()
   const floaters = [
     ...state.floaters,
     {
       x: state.ship.x,
       y: state.ship.y - 28 * state.scale,
-      text: label,
+      text: POWER_LABEL[kind].toUpperCase(),
       life: 0.9,
       maxLife: 0.9,
     },
   ]
-  if (kind === 'life') {
-    return { ...state, lives: state.lives + 1, floaters }
-  }
   if (kind === 'rapid') {
     return { ...state, buffRapid: BUFF_DURATION, floaters }
   }
@@ -634,6 +630,7 @@ export function createInitialState(w = DESIGN_W, h = DESIGN_H): GameState {
     flash: 0,
     wavePause: 0,
     timeBonus: 0,
+    lifeBonus: false,
     lastWave: 0,
     lastWaveTime: 0,
     combo: 0,
@@ -1209,17 +1206,20 @@ export function tick(state: GameState, dt: number): GameState {
     const nextWave = s.wave + 1
     const timeBonus = Math.max(0, Math.round(waveParFor(s.wave) - s.waveElapsed) * 20)
     const bonus = nextWave * 50 + timeBonus
+    const lifeBonus = s.wave % 3 === 0
     sfx('wave')
     const withBonus = {
       ...s,
       phase: 'waveClear' as const,
       score: s.score + bonus,
+      lives: lifeBonus ? s.lives + 1 : s.lives,
       lastWave: s.wave,
       lastWaveTime: s.waveElapsed,
       wave: nextWave,
       waveElapsed: 0,
       wavePause: 0,
       timeBonus,
+      lifeBonus,
       lastComboBest: s.comboBest,
       combo: 0,
       comboTimer: 0,
@@ -1262,6 +1262,7 @@ export function toSnapshot(s: GameState): Snapshot {
     lastWave: s.lastWave,
     lastWaveTime: s.lastWaveTime,
     timeBonus: s.timeBonus,
+    lifeBonus: s.lifeBonus,
     combo: s.combo,
     comboBest: s.phase === 'waveClear' ? s.lastComboBest : s.comboBest,
     runComboBest: s.runComboBest,

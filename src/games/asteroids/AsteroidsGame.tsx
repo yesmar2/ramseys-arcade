@@ -496,6 +496,7 @@ export function AsteroidsGame() {
                 <span>
                   {ui.timeBonus > 0 ? `Time bonus +${ui.timeBonus}` : 'No time bonus'}
                 </span>
+                {ui.lifeBonus ? <span>+1 life</span> : null}
                 {ui.comboBest > 1 ? (
                   <span>Best combo {ui.comboBest}</span>
                 ) : null}
@@ -523,12 +524,12 @@ export function AsteroidsGame() {
                 <span className="asteroids__hint asteroids__hint--keys">
                   ← → turn · ↑ thrust · ↓ hyperspace · auto-fire · grab powerups
                   <br />
-                  Wave 3+ · flying saucers hunt you
+                  Extra life every 3 waves · Wave 3+ saucers hunt you
                 </span>
                 <span className="asteroids__hint asteroids__hint--touch">
                   Hold to turn and thrust · tap hyperspace · grab powerups · auto-fire
                   <br />
-                  Wave 3+ · flying saucers hunt you
+                  Extra life every 3 waves · Wave 3+ saucers hunt you
                 </span>
               </div>
             )}

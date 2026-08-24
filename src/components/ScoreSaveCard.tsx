@@ -134,57 +134,6 @@ function awardCards(payload: CelebPayload): {
   return cards
 }
 
-function AwardBadge({ kind }: { kind: 'board' | 'best' | 'book' }) {
-  if (kind === 'best') {
-    return (
-      <svg className="score-celeb__badge-icon" viewBox="0 0 24 24" aria-hidden="true">
-        <path
-          d="M12 3.2 14.4 9l6.1.5-4.6 4 1.5 5.9L12 16.4 6.6 19.4l1.5-5.9-4.6-4L9.6 9 12 3.2z"
-          fill="currentColor"
-        />
-      </svg>
-    )
-  }
-  if (kind === 'book') {
-    return (
-      <svg className="score-celeb__badge-icon" viewBox="0 0 24 24" aria-hidden="true">
-        <path
-          d="M6 4.5h9.5A2.5 2.5 0 0 1 18 7v12.2l-5.2-2.4L7.5 19.2V7A2.5 2.5 0 0 1 10 4.5"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.8"
-          strokeLinejoin="round"
-        />
-        <path
-          d="M10 4.5H6.8A1.8 1.8 0 0 0 5 6.3V18"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.8"
-          strokeLinecap="round"
-        />
-      </svg>
-    )
-  }
-  return (
-    <svg className="score-celeb__badge-icon" viewBox="0 0 24 24" aria-hidden="true">
-      <path
-        d="M7 20h10M8.5 20v-3.2A5.2 5.2 0 0 1 12 12.2a5.2 5.2 0 0 1 3.5 4.6V20"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M8.2 8.2a3.8 3.8 0 1 1 7.6 0c0 2.2-1.8 3.6-3.8 3.6S8.2 10.4 8.2 8.2z"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.8"
-      />
-    </svg>
-  )
-}
-
 function RankChips({ ranks }: { ranks?: Partial<Record<LeaderboardPeriod, number>> }) {
   const items = rankedPeriods(ranks)
   if (!items.length) return null
@@ -376,9 +325,6 @@ export function ScoreCelebration({
               className={`score-celeb__award score-celeb__award--${card.kind}${card.featured ? ' score-celeb__award--featured' : ''}`}
               style={{ animationDelay: `${0.08 + i * 0.07}s` }}
             >
-              <span className="score-celeb__badge" aria-hidden="true">
-                <AwardBadge kind={card.kind} />
-              </span>
               <span className="score-celeb__award-label">{card.label}</span>
               <strong className="score-celeb__award-value">{card.value}</strong>
               {card.detail ? (
