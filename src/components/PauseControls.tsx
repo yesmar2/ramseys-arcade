@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { getGame } from '../data/games'
 import { scoringFor } from '../data/scoring'
-import { gameHref } from '../hooks/useHashRoute'
+import { gameBoardHref, gameHref } from '../hooks/useHashRoute'
 import { useBoardRecord } from '../hooks/useBoardRecord'
 import { exitFullscreen } from '../lib/fullscreen'
 import { LEADERBOARD_GAMES, type LeaderboardGame } from '../lib/leaderboard'
