@@ -69,6 +69,7 @@ export function GameHubPage({ slug, board: boardFromRoute }: GameHubPageProps) {
 
   const canPlay = game ? gamePlayableOn(game, device) : false
   const comingSoon = Boolean(game?.comingSoon)
+  const inDevelopment = Boolean(game?.inDevelopment)
   const scoring = scoringFor(slug)
   const boardSlug: LeaderboardGame | null = isBoardGame(slug) ? slug : null
   const accent = game?.accent ?? '#2eb8a0'
@@ -180,7 +181,9 @@ export function GameHubPage({ slug, board: boardFromRoute }: GameHubPageProps) {
             </div>
           </div>
 
-          {comingSoon ? (
+          {inDevelopment ? (
+            <p className="game-lobby__unavailable">In development — not ready to play yet.</p>
+          ) : comingSoon ? (
             <p className="game-lobby__unavailable">Coming soon — tile preview only.</p>
           ) : canPlay ? (
             <a
@@ -299,7 +302,7 @@ export function GameHubPage({ slug, board: boardFromRoute }: GameHubPageProps) {
             </summary>
             <div className="rank-page__how-body">
               <p>{game.how}</p>
-              {scoring && scoring.length > 0 ? (
+              {canPlay && scoring && scoring.length > 0 ? (
                 <ul className="game-lobby__scoring">
                   {scoring.map((row) => (
                     <li key={row.label}>

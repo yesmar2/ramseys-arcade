@@ -32,13 +32,24 @@ export function GameTile({
         className="game-tile"
         href={href ?? gameHref(game.slug)}
         style={style}
-        aria-label={game.name}
+        aria-label={
+          game.inDevelopment
+            ? `${game.name}, in development`
+            : game.comingSoon
+              ? `${game.name}, coming soon`
+              : game.name
+        }
       >
         <div className="game-tile__art">
           <div className="game-tile__stage">
             <GameTileArt slug={game.slug} />
           </div>
           <h3 className="game-tile__title">{game.name}</h3>
+          {game.inDevelopment ? (
+            <span className="game-tile__status">In development</span>
+          ) : game.comingSoon ? (
+            <span className="game-tile__status">Coming soon</span>
+          ) : null}
         </div>
       </a>
     </li>

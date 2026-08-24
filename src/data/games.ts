@@ -11,6 +11,8 @@ export type Game = {
   playable?: boolean
   /** Home tile only — not a real game yet. */
   comingSoon?: boolean
+  /** On the grid, but not ready to play. */
+  inDevelopment?: boolean
   /** If set, the game is only offered on these devices. */
   devices?: DeviceType[]
 }
@@ -78,9 +80,9 @@ export const games: Game[] = [
     name: 'Crosswalk',
     slug: 'crosswalk',
     description: 'Hop the lanes. Don’t get flattened.',
-    how: 'Hop with arrows, WASD, or a swipe. Forward hops score. Reach Home to cross. Three lives.',
+    how: 'In development.',
     accent: '#3ecf8e',
-    playable: true,
+    inDevelopment: true,
   },
   {
     name: 'Pellets',
@@ -114,9 +116,11 @@ export function playableGames(device?: DeviceType) {
   return games.filter((g) => (device ? gamePlayableOn(g, device) : g.playable))
 }
 
-/** Games shown on the home grid (playable on this device + coming-soon tiles). */
+/** Games shown on the home grid (playable on this device + preview tiles). */
 export function homeGames(device: DeviceType) {
-  return games.filter((g) => g.comingSoon || gamePlayableOn(g, device))
+  return games.filter(
+    (g) => g.comingSoon || g.inDevelopment || gamePlayableOn(g, device),
+  )
 }
 
 export function deviceRequirementLabel(game: Game) {

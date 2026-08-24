@@ -831,7 +831,7 @@ img {
 .game-tile__art {
   position: relative;
   display: grid;
-  grid-template-rows: minmax(0, 1fr) auto;
+  grid-template-rows: minmax(0, 1fr) auto auto;
   width: 100%;
   aspect-ratio: 4 / 3;
   margin: 0;
@@ -887,10 +887,36 @@ img {
   text-overflow: ellipsis;
 }
 
+.game-tile__art:has(.game-tile__status) .game-tile__title {
+  margin-bottom: 0.08rem;
+}
+
+.game-tile__status {
+  grid-row: 3;
+  z-index: 1;
+  margin: 0 0.55rem 0.45rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+  text-align: center;
+}
+
 @media (min-width: 640px) {
   .game-tile__title {
     margin: 0.25rem 0.65rem 0.55rem;
     font-size: 1.05rem;
+  }
+
+  .game-tile__art:has(.game-tile__status) .game-tile__title {
+    margin-bottom: 0.1rem;
+  }
+
+  .game-tile__status {
+    margin-left: 0.65rem;
+    margin-right: 0.65rem;
+    margin-bottom: 0.5rem;
   }
 }
 
