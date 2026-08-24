@@ -528,18 +528,28 @@ export function AsteroidsGame() {
             {ui.phase === 'menu' && !saveOpen && !paused && (
               <div className="asteroids__card" aria-hidden="true">
                 <h2>Asteroids</h2>
-                <p>Spin, thrust, and clear the rocks. Chain hits for a multiplier.</p>
+                <p>Clear the rocks. Chain hits for a multiplier.</p>
                 <PersonalBestHint slug="asteroids" />
-                <span className="asteroids__hint asteroids__hint--keys">
-                  ← → turn · ↑ thrust · ↓ hyperspace · auto-fire · grab powerups
-                  <br />
-                  Extra life every 3 waves · Wave 3+ saucers hunt you
-                </span>
-                <span className="asteroids__hint asteroids__hint--touch">
-                  Hold to turn and thrust · tap hyperspace · grab powerups · auto-fire
-                  <br />
-                  Extra life every 3 waves · Wave 3+ saucers hunt you
-                </span>
+                <ul className="asteroids__controls asteroids__hint--keys">
+                  <li>
+                    <kbd>←→</kbd>
+                    <span>Turn</span>
+                  </li>
+                  <li>
+                    <kbd>↑</kbd>
+                    <span>Thrust</span>
+                  </li>
+                  <li>
+                    <kbd>↓</kbd>
+                    <span>Warp</span>
+                  </li>
+                </ul>
+                <p className="asteroids__start asteroids__hint--keys">
+                  Auto-fire · tap or press to start
+                </p>
+                <p className="asteroids__start asteroids__hint--touch">
+                  Hold the pads · auto-fire · tap to start
+                </p>
               </div>
             )}
             {ui.phase === 'gameover' && saveOpen && (

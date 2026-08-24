@@ -61,6 +61,8 @@ const SCORING: Record<string, ScoreRow[]> = {
     { label: 'Wave 1 / 2 / 3 clear', value: '+100 / +150 / +200' },
     { label: 'Time under par', value: '+20 / sec' },
     { label: 'Par', value: '48s, −2s each wave' },
+    { label: 'Extra life', value: 'every 3 waves' },
+    { label: 'Saucers', value: 'from wave 3' },
     { label: 'Rapid (pickup)', value: 'faster fire' },
     { label: 'Spread (pickup)', value: 'triple shot' },
     { label: 'Shield (pickup)', value: 'brief invulnerability' },

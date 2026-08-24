@@ -3223,39 +3223,95 @@ html[data-theme='dark'] .patriot__power-mark {
 }
 
 .asteroids__card {
-  padding: 1.15rem 1.35rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 1.25rem 1.4rem 1.3rem;
   border-radius: var(--tile-radius);
-  background: rgba(var(--surface-rgb), 0.86);
+  background: rgba(var(--surface-rgb), 0.9);
   backdrop-filter: blur(12px);
   border: 1px solid rgba(var(--ink-rgb), 0.08);
   box-shadow: var(--shadow-soft);
   text-align: center;
-  max-width: min(20rem, calc(100% - 2.5rem));
+  max-width: min(18.5rem, calc(100% - 2.5rem));
 }
 
 .asteroids__card h2 {
-  margin: 0 0 0.35rem;
+  margin: 0;
   font-family: var(--font-display);
-  font-size: clamp(1.4rem, 3vw, 1.85rem);
+  font-size: clamp(1.55rem, 3.4vw, 2rem);
   font-weight: 700;
   color: var(--ink);
+  line-height: 1.1;
 }
 
-.asteroids__card p {
-  margin: 0 0 0.55rem;
+.asteroids__card > p {
+  margin: 0;
+  max-width: 15rem;
   font-size: 0.95rem;
+  line-height: 1.35;
   color: var(--muted);
 }
 
-.asteroids__card span {
-  font-size: 0.8rem;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  color: #5a8fd4;
+.asteroids__card .pb-hint {
+  margin: 0.1rem 0 0;
 }
 
-.asteroids__hint {
-  display: block;
+.asteroids__controls {
+  display: flex;
+  justify-content: center;
+  gap: 0.45rem;
+  width: 100%;
+  margin: 0.2rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.asteroids__controls li {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.28rem;
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 0.4rem 0.3rem 0.45rem;
+  border-radius: 0.7rem;
+  background: rgba(var(--ink-rgb), 0.04);
+}
+
+.asteroids__controls kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2rem;
+  min-height: 1.45rem;
+  padding: 0.1rem 0.35rem;
+  border-radius: 0.4rem;
+  border: 1px solid rgba(var(--ink-rgb), 0.1);
+  background: rgba(var(--surface-rgb), 0.95);
+  box-shadow: 0 1px 0 rgba(var(--ink-rgb), 0.06);
+  font-family: var(--font-body);
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--ink);
+}
+
+.asteroids__controls span {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.asteroids__start {
+  margin: 0.05rem 0 0 !important;
+  font-size: 0.82rem !important;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: #5a8fd4 !important;
 }
 
 .asteroids__hint--touch {
@@ -3269,6 +3325,13 @@ html[data-theme='dark'] .patriot__power-mark {
   align-items: center;
   gap: 0.35rem;
   padding: 1.25rem 1.4rem 1.2rem;
+}
+
+.asteroids__card--clear > span {
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: #5a8fd4;
 }
 
 .asteroids__wave-time {
