@@ -8,7 +8,7 @@ import {
 
 export type Route =
   | { name: 'home' }
-  | { name: 'leaderboards'; global?: boolean }
+  | { name: 'leaderboards'; global?: boolean; period?: LeaderboardPeriod }
   | { name: 'gameLeaderboard'; game: LeaderboardGame; period?: LeaderboardPeriod }
   | { name: 'recordsIndex' }
   | { name: 'records'; game: string; recordId?: string; period?: LeaderboardPeriod }
@@ -41,8 +41,9 @@ export function gameBoardHref(
   return `#/leaderboards/${encodeURIComponent(game)}/${period}`
 }
 
-export function globalRankingsHref() {
-  return '#/leaderboards/global'
+export function globalRankingsHref(period: LeaderboardPeriod = 'all') {
+  if (period === 'all') return '#/leaderboards/global'
+  return `#/leaderboards/global/${period}`
 }
 
 export function rankHref(player?: string) {
@@ -132,7 +133,9 @@ function parseHash(hash: string): Route {
     const segment = decodeURIComponent(boardsMatch[1])
     const periodRaw = boardsMatch[2] ? decodeURIComponent(boardsMatch[2]) : undefined
     if (segment === 'global') {
-      return { name: 'leaderboards', global: true }
+      const period =
+        periodRaw && isLeaderboardPeriod(periodRaw) ? periodRaw : 'all'
+      return { name: 'leaderboards', global: true, period }
     }
     if (isLeaderboardGame(segment)) {
       const period =

@@ -1,5 +1,9 @@
 import { useEffect, useState } from 'react'
-import { BoardEmpty, BoardSkeleton } from '../components/BoardChrome'
+import {
+  BoardEmpty,
+  BoardSkeleton,
+  PeriodSwitcher,
+} from '../components/BoardChrome'
 import {
   LeaderboardSummary,
 } from '../components/LeaderboardSummary'
@@ -12,16 +16,26 @@ import {
   fetchGlobalRank,
   fetchLeaderboardsSummary,
   normalizePlayerName,
+  PERIOD_LABELS,
   type GamePeriodSummary,
   type GlobalBoardEntry,
+  type LeaderboardPeriod,
 } from '../lib/leaderboard'
 
 const INITIAL_ROWS = 10
 const GLOBAL_ROWS = 100
 const SUMMARY_ROWS = 3
 
+const PERIOD_BLURBS: Record<LeaderboardPeriod, string> = {
+  daily: 'Points from today’s game boards.',
+  weekly: 'Points from this week’s game boards.',
+  monthly: 'Points from this month’s game boards.',
+  all: 'All-time points from every game board.',
+}
+
 type LeaderboardsPageProps = {
   global?: boolean
+  period?: LeaderboardPeriod
 }
 
 function BoardsHubSwitcher({ global }: { global: boolean }) {
@@ -47,9 +61,12 @@ function BoardsHubSwitcher({ global }: { global: boolean }) {
   )
 }
 
-export function LeaderboardsPage({ global: showGlobal }: LeaderboardsPageProps) {
+export function LeaderboardsPage({
+  global: showGlobal,
+  period = 'all',
+}: LeaderboardsPageProps) {
   if (showGlobal) {
-    return <GlobalRankingsView />
+    return <GlobalRankingsView period={period} />
   }
   return <LeaderboardsOverview />
 }
@@ -107,7 +124,7 @@ function LeaderboardsOverview() {
   )
 }
 
-function GlobalRankingsView() {
+function GlobalRankingsView({ period }: { period: LeaderboardPeriod }) {
   const playerName = normalizePlayerName(usePlayerName())
   const [entries, setEntries] = useState<GlobalBoardEntry[]>([])
   const [totalPlayers, setTotalPlayers] = useState(0)
@@ -123,7 +140,7 @@ function GlobalRankingsView() {
     setShown(INITIAL_ROWS)
     void (async () => {
       try {
-        const board = await fetchGlobalBoard(GLOBAL_ROWS)
+        const board = await fetchGlobalBoard(GLOBAL_ROWS, period)
         if (cancelled) return
         setEntries(board.entries)
         setTotalPlayers(board.totalPlayers)
@@ -138,7 +155,7 @@ function GlobalRankingsView() {
           setYou(onBoard)
           return
         }
-        const mine = await fetchGlobalRank(playerName)
+        const mine = await fetchGlobalRank(playerName, period)
         if (cancelled) return
         if (mine.rank != null) {
           setYou({
@@ -163,19 +180,31 @@ function GlobalRankingsView() {
     return () => {
       cancelled = true
     }
-  }, [playerName])
+  }, [playerName, period])
 
   return (
     <PageShell innerClassName="lb-page__inner">
       <header className="lb-page__header lb-page__header--compact">
         <h1 className="lb-page__title">Boards</h1>
         <p className="lb-page__blurb lb-page__blurb--tight">
-          All-time points from every game board.
+          {PERIOD_BLURBS[period]}
         </p>
         <BoardsHubSwitcher global />
       </header>
 
-      <section className="lb-board" aria-label="Global leaderboard">
+      <PeriodSwitcher
+        period={period}
+        hrefFor={globalRankingsHref}
+        onSelect={(p) => {
+          window.location.hash = globalRankingsHref(p)
+        }}
+      />
+
+      <section
+        key={period}
+        className="lb-board lb-board--fade"
+        aria-label={`${PERIOD_LABELS[period]} global rankings`}
+      >
         {loading ? (
           <BoardSkeleton />
         ) : error ? (

@@ -375,14 +375,17 @@ export type GlobalRankResult = {
   avatarId?: string
 }
 
-export async function fetchGlobalRank(name: string): Promise<GlobalRankResult> {
+export async function fetchGlobalRank(
+  name: string,
+  period: LeaderboardPeriod = 'all',
+): Promise<GlobalRankResult> {
   const cleaned = normalizePlayerName(name)
   if (!cleaned) {
     return { rank: null, score: 0, totalPlayers: 0, byGame: {}, nearby: [] }
   }
-  return api<GlobalRankResult>(
-    `/leaderboards/rank?name=${encodeURIComponent(cleaned)}`,
-  )
+  const qs = new URLSearchParams({ name: cleaned })
+  if (period !== 'all') qs.set('period', period)
+  return api<GlobalRankResult>(`/leaderboards/rank?${qs}`)
 }
 
 export type GlobalBoardEntry = {
@@ -398,14 +401,15 @@ export type GlobalBoardResult = {
   entries: GlobalBoardEntry[]
 }
 
-/** All-time global points board (top 100). */
+/** Global points board for a period (top 100). */
 export async function fetchGlobalBoard(
   limit = 100,
+  period: LeaderboardPeriod = 'all',
 ): Promise<GlobalBoardResult> {
   const capped = Math.min(100, Math.max(1, Math.floor(limit)))
-  const data = await api<GlobalBoardResult>(
-    `/leaderboards/rank?limit=${encodeURIComponent(String(capped))}`,
-  )
+  const qs = new URLSearchParams({ limit: String(capped) })
+  if (period !== 'all') qs.set('period', period)
+  const data = await api<GlobalBoardResult>(`/leaderboards/rank?${qs}`)
   return {
     totalPlayers: data.totalPlayers ?? 0,
     entries: data.entries ?? [],

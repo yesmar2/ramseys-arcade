@@ -110,7 +110,9 @@ function App() {
   if (route.name === 'authVerify') return <AuthVerifyPage token={route.token} />
   if (route.name === 'rank') return <RankPage player={route.player} />
   if (route.name === 'leaderboards') {
-    return <LeaderboardsPage global={route.global} />
+    return (
+      <LeaderboardsPage global={route.global} period={route.period} />
+    )
   }
   if (route.name === 'gameLeaderboard') {
     return (
