@@ -6,7 +6,6 @@ import { PageShell } from '../components/PageShell'
 import { getGame, gamePlayableOn, deviceRequirementLabel } from '../data/games'
 import {
   gameBoardHref,
-  gameHref,
   gamePlayHref,
   leaderboardHref,
 } from '../hooks/useHashRoute'
@@ -113,8 +112,7 @@ export function GameLeaderboardPage({
         <GamePageHeader
           slug={gameSlug}
           accent={accent}
-          title={game.name}
-          href={gameHref(gameSlug)}
+          title={`${game.name} Top Scores`}
           backHref={leaderboardHref()}
           backLabel="Back to Boards"
         />

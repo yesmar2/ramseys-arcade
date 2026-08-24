@@ -12,12 +12,13 @@ function ThumbSvg({ children }: { children: ReactNode }) {
   return (
     <svg
       className="game-thumb__svg"
-      viewBox="0 0 64 40"
+      viewBox="0 0 64 64"
       preserveAspectRatio="xMidYMid meet"
       fill="none"
       aria-hidden="true"
     >
-      {children}
+      {/* Artwork was authored in a 64×40 frame; nudge into a square. */}
+      <g transform="translate(0 12)">{children}</g>
     </svg>
   )
 }

@@ -11,7 +11,7 @@ import { PageBackLink } from '../components/PageBackLink'
 import { PageShell } from '../components/PageShell'
 import { SiteHeader } from '../components/SiteHeader'
 import { LeaderboardList } from '../components/LeaderboardList'
-import { getGame } from '../data/games'
+import { getGame, gamePlayableOn, deviceRequirementLabel } from '../data/games'
 import {
   gameHref,
   gamePlayHref,
@@ -20,6 +20,7 @@ import {
   recordsIndexHref,
 } from '../hooks/useHashRoute'
 import { flashYouRow } from '../lib/boardGap'
+import { useDeviceType } from '../lib/device'
 import { usePlayerName } from '../hooks/usePlayerName'
 import {
   normalizePlayerName,
@@ -76,8 +77,11 @@ export function RecordsPage({
 
 function GameRecordBookPage({ game }: { game: string }) {
   const gameMeta = getGame(game)
+  const device = useDeviceType()
   const accent = gameMeta?.accent ?? '#2eb8a0'
   const title = gameMeta?.name ?? game
+  const canPlay = gameMeta ? gamePlayableOn(gameMeta, device) : false
+  const deviceNote = gameMeta ? deviceRequirementLabel(gameMeta) : null
 
   if (!gameMeta) {
     return (
@@ -96,11 +100,23 @@ function GameRecordBookPage({ game }: { game: string }) {
           slug={game}
           accent={accent}
           title={`${title} record books`}
-          href={gameHref(game)}
           backHref={recordsIndexHref()}
           backLabel="Back to Record books"
         />
         <GameRecordsPanel game={game} accent={accent} />
+        {canPlay ? (
+          <a
+            className="lb-play"
+            href={gamePlayHref(game)}
+            style={{ background: accent }}
+          >
+            Play {title}
+          </a>
+        ) : (
+          <p className="lb-device-note lb-device-note--footer" role="note">
+            {deviceNote}
+          </p>
+        )}
       </div>
     </PageShell>
   )

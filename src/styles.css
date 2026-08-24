@@ -1134,11 +1134,18 @@ img {
 
 .records-index__thumb {
   flex: none;
-  width: 3.4rem;
-  height: 2.15rem;
+  width: 2.5rem;
+  height: 2.5rem;
   display: flex;
   align-items: center;
   justify-content: center;
+  line-height: 0;
+}
+
+.records-index__thumb .game-thumb {
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 
 .records-index__copy {
@@ -3415,8 +3422,8 @@ a.game-hud__board {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 3.4rem;
-  height: 2.15rem;
+  width: 2.5rem;
+  height: 2.5rem;
   line-height: 0;
 }
 
@@ -4420,10 +4427,10 @@ a.game-hud__board {
 }
 
 .lb-picker__art {
-  width: 4.6rem;
+  width: 2.75rem;
+  height: 2.75rem;
   overflow: hidden;
   border-radius: 0.55rem;
-  aspect-ratio: 16 / 10;
 }
 
 .lb-picker__art .game-thumb {
@@ -4434,7 +4441,7 @@ a.game-hud__board {
 
 .game-thumb {
   display: block;
-  overflow: visible;
+  overflow: hidden;
   background: transparent;
   line-height: 0;
 }
@@ -4580,8 +4587,8 @@ a.game-hud__board {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 3.1rem;
-  height: 1.95rem;
+  width: 2.5rem;
+  height: 2.5rem;
   line-height: 0;
 }
 
@@ -4772,8 +4779,8 @@ a.game-hud__board {
 
 .lb-board-section__thumb {
   flex: none;
-  width: 5.5rem;
-  aspect-ratio: 16 / 10;
+  width: 2.75rem;
+  height: 2.75rem;
 }
 
 .lb-board-section__intro {

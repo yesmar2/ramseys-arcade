@@ -162,10 +162,6 @@ export function GameHubPage({ slug, board: boardFromRoute }: GameHubPageProps) {
             } as CSSProperties
           }
         >
-          <a className="rank-page__back" href="#/">
-            ← Games
-          </a>
-
           <GameLobbyArt slug={game.slug} accent={game.accent} />
 
           <header className="game-lobby__header">

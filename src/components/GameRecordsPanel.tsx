@@ -4,7 +4,7 @@ import {
   BoardSkeleton,
 } from './BoardChrome'
 import { getGame } from '../data/games'
-import { gamePlayHref, recordHref } from '../hooks/useHashRoute'
+import { recordHref } from '../hooks/useHashRoute'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { normalizePlayerName } from '../lib/leaderboard'
 import {
@@ -72,15 +72,6 @@ export function GameRecordsPanel({ game, accent }: GameRecordsPanelProps) {
         <BoardEmpty
           title="No records yet"
           detail={recordsEmptyDetail(game, gameTitle)}
-          action={
-            <a
-              className="lb-empty-state__btn"
-              href={gamePlayHref(game)}
-              style={{ background: accent }}
-            >
-              Play {gameTitle}
-            </a>
-          }
         />
       ) : (
         <ol className="records-leaders">

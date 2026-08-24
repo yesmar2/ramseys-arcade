@@ -6,7 +6,7 @@ type GamePageHeaderProps = {
   slug: string
   accent: string
   title: string
-  /** When set, title (and thumb) link here (e.g. game hub). */
+  /** Optional: when set, title (and thumb) link here. Prefer a Play CTA instead. */
   href?: string
   /** Icon back control on the left of the centered heading. */
   backHref?: string
