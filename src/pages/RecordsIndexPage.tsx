@@ -26,9 +26,7 @@ export function RecordsIndexPage() {
           {games.map((game) => (
             <li key={game.slug}>
               <a className="records-index__card" href={recordsHref(game.slug)}>
-                <span className="records-index__thumb" aria-hidden="true">
-                  <GameThumbArt slug={game.slug} accent={game.accent} />
-                </span>
+                <GameThumbArt slug={game.slug} accent={game.accent} />
                 <span className="records-index__copy">
                   <span className="records-index__name">{game.name}</span>
                   <span className="records-index__hint">Open record books</span>

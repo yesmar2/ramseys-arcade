@@ -30,9 +30,7 @@ export function GamePageHeader({
 }: GamePageHeaderProps) {
   const identity = (
     <>
-      <span className="lb-game-board__thumb" aria-hidden="true">
-        <GameThumbArt slug={slug} accent={accent} />
-      </span>
+      <GameThumbArt slug={slug} accent={accent} />
       <h1 className="lb-page__title lb-game-board__title">{title}</h1>
     </>
   )

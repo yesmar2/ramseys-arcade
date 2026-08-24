@@ -230,8 +230,14 @@ export function GameThumbArt({ slug, accent, className }: GameThumbArtProps) {
     : undefined
 
   return (
-    <div className={`game-thumb${className ? ` ${className}` : ''}`} style={style}>
-      <ThumbSvg>{Thumb ? <Thumb accent={accent} /> : null}</ThumbSvg>
-    </div>
+    <span
+      className={`inline-thumb${className ? ` ${className}` : ''}`}
+      aria-hidden="true"
+      style={style}
+    >
+      <span className="game-thumb">
+        <ThumbSvg>{Thumb ? <Thumb accent={accent} /> : null}</ThumbSvg>
+      </span>
+    </span>
   )
 }

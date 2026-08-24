@@ -136,9 +136,7 @@ export function LeaderboardSummary({
                 className="lb-summary__game-link"
                 href={gameHref(slug)}
               >
-                <span className="lb-summary__thumb" aria-hidden="true">
-                  <GameThumbArt slug={slug} accent={game.accent} />
-                </span>
+                <GameThumbArt slug={slug} accent={game.accent} />
                 <span className="lb-summary__game-name">{game.name}</span>
               </a>
             </header>
