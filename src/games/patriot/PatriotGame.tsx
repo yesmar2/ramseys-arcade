@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react'
 import { GamePlayChrome, PlayReadout, PlayReadoutScore } from '../../components/GameHud'
 import { GameStage } from '../../components/GameStage'
+import { GameStartCard } from '../../components/GameStartCard'
 import { PauseButton, GamePauseOverlay } from '../../components/PauseControls'
-import { PersonalBestHint } from '../../components/PersonalBestHint'
 import { ScoreSaveCard } from '../../components/ScoreSaveCard'
 import { TournamentScoreCard } from '../../components/TournamentScoreCard'
 import { useGamePause } from '../../hooks/useGamePause'
@@ -302,12 +302,11 @@ export function PatriotGame() {
               onResume={resume}
             />
             {ui.phase === 'menu' && !saveOpen && !needsRotate && !paused && (
-              <div className="patriot__card" aria-hidden="true">
-                <h2>Patriot</h2>
-                <p>Defend the cities. Aim and tap to fire.</p>
-                <PersonalBestHint slug="patriot" />
-                <span>Shoot drones. Tap a circle to use it</span>
-              </div>
+              <GameStartCard
+                title="Patriot"
+                tagline="Defend the cities."
+                slug="patriot"
+              />
             )}
             {ui.phase === 'waveClear' && !needsRotate && !paused && (
               <div

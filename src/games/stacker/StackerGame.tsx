@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { GamePlayChrome, PlayReadout, PlayReadoutScore } from '../../components/GameHud'
 import { GameStage } from '../../components/GameStage'
+import { GameStartCard } from '../../components/GameStartCard'
 import { PauseButton, GamePauseOverlay } from '../../components/PauseControls'
-import { PersonalBestHint } from '../../components/PersonalBestHint'
 import { ScoreSaveCard } from '../../components/ScoreSaveCard'
 import { TournamentScoreCard } from '../../components/TournamentScoreCard'
 import { useGamePause } from '../../hooks/useGamePause'
@@ -162,12 +162,11 @@ export function StackerGame() {
             onResume={resume}
           />
           {ui.status === 'menu' && !saveOpen && !paused && (
-            <div className="stacker__card" aria-hidden="true">
-              <h2>Stacker</h2>
-              <p>Time the drop. Stack higher. Don’t miss.</p>
-              <PersonalBestHint slug="stacker" />
-              <span>Tap or Space to start</span>
-            </div>
+            <GameStartCard
+              title="Stacker"
+              tagline="Time the drop. Don’t miss."
+              slug="stacker"
+            />
           )}
           {ui.status === 'gameover' && saveOpen && (
             tournament ? (

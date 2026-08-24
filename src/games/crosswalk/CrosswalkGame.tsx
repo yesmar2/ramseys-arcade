@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { GamePlayChrome, PlayReadout, PlayReadoutCenter, PlayReadoutScore } from '../../components/GameHud'
 import { GameStage } from '../../components/GameStage'
+import { GameStartCard } from '../../components/GameStartCard'
 import { PauseButton, GamePauseOverlay } from '../../components/PauseControls'
-import { PersonalBestHint } from '../../components/PersonalBestHint'
 import { ScoreSaveCard } from '../../components/ScoreSaveCard'
 import { TournamentScoreCard } from '../../components/TournamentScoreCard'
 import { useGamePause } from '../../hooks/useGamePause'
@@ -251,17 +251,11 @@ export function CrosswalkGame() {
                 }
               />
               {ui.phase === 'menu' && !saveOpen && !paused && (
-                <div className="crosswalk__card" aria-hidden="true">
-                  <h2>Crosswalk</h2>
-                  <p>Hop the lanes. Don’t get flattened.</p>
-                  <PersonalBestHint slug="crosswalk" />
-                  <span className="crosswalk__hint crosswalk__hint--keys">
-                    Arrows or WASD to hop · reach Home
-                  </span>
-                  <span className="crosswalk__hint crosswalk__hint--touch">
-                    Swipe or tap to hop · reach Home
-                  </span>
-                </div>
+                <GameStartCard
+                  title="Crosswalk"
+                  tagline="Hop the lanes. Don’t get hit."
+                  slug="crosswalk"
+                />
               )}
               {ui.phase === 'gameover' && saveOpen && (
                 tournament ? (

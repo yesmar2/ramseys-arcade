@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { GamePlayChrome, PlayReadout, PlayReadoutScore } from '../../components/GameHud'
 import { GameStage } from '../../components/GameStage'
+import { GameStartCard } from '../../components/GameStartCard'
 import { PauseButton, GamePauseOverlay } from '../../components/PauseControls'
-import { PersonalBestHint } from '../../components/PersonalBestHint'
 import { ScoreSaveCard } from '../../components/ScoreSaveCard'
 import { TournamentScoreCard } from '../../components/TournamentScoreCard'
 import { useGamePause } from '../../hooks/useGamePause'
@@ -325,13 +325,11 @@ export function SnakeGame() {
               onResume={resume}
             />
             {ui.phase === 'menu' && !saveOpen && !paused && (
-              <div className="snake__card" aria-hidden="true">
-                <h2>Snake</h2>
-                <p>Eat. Grow. Don’t crash.</p>
-                <PersonalBestHint slug="snake" />
-                <span className="snake__hint snake__hint--keys">Arrows or WASD to steer</span>
-                <span className="snake__hint snake__hint--touch">Swipe the board, or tap to turn</span>
-              </div>
+              <GameStartCard
+                title="Snake"
+                tagline="Eat. Grow. Don’t crash."
+                slug="snake"
+              />
             )}
             {ui.phase === 'gameover' && saveOpen && (
               tournament ? (

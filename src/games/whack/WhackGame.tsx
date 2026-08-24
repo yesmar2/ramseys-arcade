@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { GamePlayChrome, PlayReadout, PlayReadoutCenter, PlayReadoutScore } from '../../components/GameHud'
 import { GameStage } from '../../components/GameStage'
+import { GameStartCard } from '../../components/GameStartCard'
 import { PauseButton, GamePauseOverlay } from '../../components/PauseControls'
-import { PersonalBestHint } from '../../components/PersonalBestHint'
 import { ScoreSaveCard } from '../../components/ScoreSaveCard'
 import { TournamentScoreCard } from '../../components/TournamentScoreCard'
 import { useGamePause } from '../../hooks/useGamePause'
@@ -228,12 +228,11 @@ export function WhackGame() {
               onResume={resume}
             />
             {ui.phase === 'menu' && !saveOpen && !paused && (
-              <div className="whack__card" aria-hidden="true">
-                <h2>Pop</h2>
-                <p>Tap the circles before they fade. The center scores more.</p>
-                <PersonalBestHint slug="pop" />
-                <span>Tap to start · 45 seconds</span>
-              </div>
+              <GameStartCard
+                title="Pop"
+                tagline="Tap before they fade."
+                slug="pop"
+              />
             )}
             {ui.phase === 'gameover' && saveOpen && (
               tournament ? (

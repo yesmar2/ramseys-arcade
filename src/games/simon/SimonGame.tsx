@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { GamePlayChrome, PlayReadout, PlayReadoutScore } from '../../components/GameHud'
 import { GameStage } from '../../components/GameStage'
-import { PersonalBestHint } from '../../components/PersonalBestHint'
+import { GameStartCard } from '../../components/GameStartCard'
 import { ScoreSaveCard } from '../../components/ScoreSaveCard'
 import { TournamentScoreCard } from '../../components/TournamentScoreCard'
 import { usePersonalBest } from '../../hooks/usePersonalBest'
@@ -186,12 +186,11 @@ export function SimonGame() {
         </GameStage>
         <div className="simon__overlay">
           {ui.phase === 'menu' && !saveOpen && (
-            <div className="simon__card" aria-hidden="true">
-              <h2>Simon</h2>
-              <p>Watch the pattern. Repeat it. Don’t miss.</p>
-              <PersonalBestHint slug="simon" />
-              <span>Tap to start</span>
-            </div>
+            <GameStartCard
+              title="Simon"
+              tagline="Watch. Repeat. Don’t miss."
+              slug="simon"
+            />
           )}
           {ui.phase === 'gameover' && saveOpen && (
             tournament ? (
