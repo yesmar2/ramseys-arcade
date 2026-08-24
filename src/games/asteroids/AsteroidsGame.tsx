@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
-import { GameHud, GameHudStat, GameStageHud } from '../../components/GameHud'
+import { GamePlayChrome } from '../../components/GameHud'
 import { GameStage } from '../../components/GameStage'
 import { PauseButton, GamePauseOverlay } from '../../components/PauseControls'
 import { PersonalBestHint } from '../../components/PersonalBestHint'
@@ -400,14 +400,6 @@ export function AsteroidsGame() {
 
   return (
     <section className={`asteroids asteroids--fullscreen${device === 'tablet' ? ' asteroids--tablet' : ''}${saveOpen || ui.phase === 'waveClear' ? ' asteroids--saving' : ''}`}>
-      <GameHud
-        slug="asteroids"
-        extra={
-          (pausable || paused) ? (
-            <PauseButton paused={paused} onToggle={togglePause} />
-          ) : undefined
-        }
-      />
       <div className="asteroids__body">
       <div className="asteroids__play" onPointerDown={onPlayTap}>
         <GameStage
@@ -417,25 +409,43 @@ export function AsteroidsGame() {
         >
           <canvas ref={canvasRef} className="asteroids__viewport" />
 
-          <GameStageHud>
-            <GameHudStat
-              label="Score"
-              hot={ui.phase === 'playing' && ui.score > previousBestRef.current}
+          <GamePlayChrome>
+            {(pausable || paused) ? (
+              <PauseButton paused={paused} onToggle={togglePause} />
+            ) : null}
+          </GamePlayChrome>
+
+          <div className="asteroids-stage-hud" aria-live="polite">
+            <p
+              className={`asteroids-stage-hud__score${
+                ui.phase === 'playing' && ui.score > previousBestRef.current
+                  ? ' asteroids-stage-hud__score--hot'
+                  : ''
+              }`}
             >
               {ui.score}
-            </GameHudStat>
-            <GameHudStat label="Wave">
-              {ui.phase === 'waveClear' ? ui.lastWave : ui.wave}
-            </GameHudStat>
-            <GameHudStat label="Time" className="game-hud__stat--time">
-              {ui.phase === 'playing' || ui.phase === 'waveClear'
-                ? `${formatWaveTime(ui.time)}s`
-                : '—'}
-            </GameHudStat>
-            <GameHudStat label="Lives" className="game-hud__stat--lives">
-              {ui.lives}
-            </GameHudStat>
-          </GameStageHud>
+            </p>
+            {ui.lives > 0 ? (
+              <div
+                className="asteroids-stage-hud__lives"
+                aria-label={`${ui.lives} ${ui.lives === 1 ? 'life' : 'lives'}`}
+              >
+                {Array.from({ length: ui.lives }, (_, i) => (
+                  <svg
+                    key={i}
+                    className="asteroids-stage-hud__ship"
+                    viewBox="0 0 16 20"
+                    aria-hidden="true"
+                  >
+                    <path
+                      d="M8 1.5 L14.5 17.5 L8 13.5 L1.5 17.5 Z"
+                      fill="currentColor"
+                    />
+                  </svg>
+                ))}
+              </div>
+            ) : null}
+          </div>
 
           <div className="asteroids__overlay">
             <GamePauseOverlay
@@ -444,6 +454,24 @@ export function AsteroidsGame() {
               hideBest
               paused={paused}
               onResume={resume}
+              extraMeta={
+                <>
+                  <div className="game-pause-meta__row">
+                    <span>Wave</span>
+                    <strong>
+                      {ui.phase === 'waveClear' ? ui.lastWave : ui.wave}
+                    </strong>
+                  </div>
+                  <div className="game-pause-meta__row">
+                    <span>Time</span>
+                    <strong>
+                      {ui.phase === 'playing' || ui.phase === 'waveClear'
+                        ? `${formatWaveTime(ui.time)}s`
+                        : '—'}
+                    </strong>
+                  </div>
+                </>
+              }
             />
             {ui.phase === 'waveClear' && !saveOpen && !paused && (
               <div className="asteroids__card asteroids__card--clear">

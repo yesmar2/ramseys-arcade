@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { GameHud, GameHudStat, GameStageHud } from '../../components/GameHud'
+import { GameHudStat, GamePlayChrome, GameStageHud } from '../../components/GameHud'
 import { GameStage } from '../../components/GameStage'
 import { PauseButton, GamePauseOverlay } from '../../components/PauseControls'
 import { PersonalBestHint } from '../../components/PersonalBestHint'
@@ -128,20 +128,18 @@ export function StackerGame() {
 
   return (
     <section className="stacker stacker--fullscreen">
-      <GameHud
-        slug="stacker"
-        extra={
-          (pausable || paused) ? (
-            <PauseButton paused={paused} onToggle={togglePause} />
-          ) : undefined
-        }
-      />
       <div className="game-play" onPointerDown={act}>
       <GameStage
         aspectWidth={STAGE_ASPECT.stacker.w}
         aspectHeight={STAGE_ASPECT.stacker.h}
       >
         <canvas ref={canvasRef} className="stacker__viewport" />
+
+        <GamePlayChrome>
+          {(pausable || paused) ? (
+            <PauseButton paused={paused} onToggle={togglePause} />
+          ) : null}
+        </GamePlayChrome>
 
         <GameStageHud>
           <GameHudStat

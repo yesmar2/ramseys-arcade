@@ -1685,6 +1685,98 @@ a.game-hud__board {
     var(--shadow-lift);
 }
 
+.game-play-chrome {
+  position: absolute;
+  top: max(0.45rem, env(safe-area-inset-top, 0px));
+  right: max(0.45rem, env(safe-area-inset-right, 0px));
+  z-index: 11;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  pointer-events: auto;
+}
+
+.game-play-chrome .game-pause-btn {
+  background: rgba(var(--surface-rgb), 0.72);
+  backdrop-filter: blur(10px);
+  box-shadow: var(--shadow-soft);
+}
+
+.game-pause-leave {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 0.15rem;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.game-pause-leave:hover,
+.game-pause-leave:focus-visible {
+  color: var(--ink);
+  outline: none;
+}
+
+/* Asteroids: plain score left, ship lives center */
+.asteroids-stage-hud {
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+  pointer-events: none;
+}
+
+.asteroids-stage-hud__score {
+  position: absolute;
+  top: max(0.5rem, env(safe-area-inset-top, 0px));
+  left: max(0.7rem, env(safe-area-inset-left, 0px));
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(1.35rem, 4.5vw, 1.85rem);
+  font-weight: 600;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  text-shadow:
+    0 1px 0 rgba(var(--surface-rgb), 0.85),
+    0 0 12px rgba(var(--surface-rgb), 0.55);
+}
+
+.asteroids-stage-hud__score--hot {
+  color: color-mix(in srgb, var(--accent) 55%, var(--ink));
+}
+
+.asteroids-stage-hud__lives {
+  position: absolute;
+  top: max(0.55rem, env(safe-area-inset-top, 0px));
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.asteroids-stage-hud__ship {
+  display: block;
+  width: 1.05rem;
+  height: 1.25rem;
+  color: var(--ink);
+  opacity: 0.88;
+  filter: drop-shadow(0 1px 0 rgba(var(--surface-rgb), 0.7));
+}
+
+@media (max-width: 420px) {
+  .asteroids-stage-hud__score {
+    font-size: 1.25rem;
+  }
+
+  .asteroids-stage-hud__ship {
+    width: 0.95rem;
+    height: 1.1rem;
+  }
+}
+
 .game-hud {
   flex: 0 0 auto;
   display: flex;
@@ -1739,15 +1831,14 @@ a.game-hud__board {
 .game-stage-hud {
   position: absolute;
   top: 0.55rem;
-  left: 50%;
-  transform: translateX(-50%);
+  left: 0.5rem;
+  right: 4.35rem;
   z-index: 8;
   display: flex;
   flex-wrap: wrap;
   align-items: stretch;
   justify-content: center;
   gap: 0.35rem;
-  max-width: calc(100% - 1.25rem);
   pointer-events: none;
 }
 

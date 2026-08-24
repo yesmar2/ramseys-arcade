@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
-import { GameHud, GameHudStat, GameStageHud } from '../../components/GameHud'
+import { GameHudStat, GamePlayChrome, GameStageHud } from '../../components/GameHud'
 import { GameStage } from '../../components/GameStage'
 import { PauseButton, GamePauseOverlay } from '../../components/PauseControls'
 import { PersonalBestHint } from '../../components/PersonalBestHint'
@@ -187,14 +187,6 @@ export function WhackGame() {
 
   return (
     <section className="whack whack--fullscreen">
-      <GameHud
-        slug="pop"
-        extra={
-          (pausable || paused) ? (
-            <PauseButton paused={paused} onToggle={togglePause} />
-          ) : undefined
-        }
-      />
       <div className="game-play">
         <GameStage
           aspectWidth={STAGE_ASPECT.whack.w}
@@ -202,6 +194,12 @@ export function WhackGame() {
         >
           <div className="whack__play" onPointerDown={onPointerDown}>
             <canvas ref={canvasRef} className="whack__viewport" />
+
+            <GamePlayChrome>
+              {(pausable || paused) ? (
+                <PauseButton paused={paused} onToggle={togglePause} />
+              ) : null}
+            </GamePlayChrome>
 
             <GameStageHud>
               <GameHudStat

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
-import { GameHud, GameHudStat, GameStageHud } from '../../components/GameHud'
+import { GameHudStat, GamePlayChrome, GameStageHud } from '../../components/GameHud'
 import { GameStage } from '../../components/GameStage'
 import { PauseButton, GamePauseOverlay } from '../../components/PauseControls'
 import { PersonalBestHint } from '../../components/PersonalBestHint'
@@ -182,14 +182,6 @@ export function DeadCenterGame() {
 
   return (
     <section className="deadcenter deadcenter--fullscreen">
-      <GameHud
-        slug="dead-center"
-        extra={
-          (pausable || paused) ? (
-            <PauseButton paused={paused} onToggle={togglePause} />
-          ) : undefined
-        }
-      />
       <div className="game-play">
       <GameStage
         aspectWidth={aspect.w}
@@ -197,6 +189,12 @@ export function DeadCenterGame() {
       >
         <div className="deadcenter__play" onPointerDown={onPointerDown}>
           <canvas ref={canvasRef} className="deadcenter__viewport" />
+
+          <GamePlayChrome>
+            {(pausable || paused) ? (
+              <PauseButton paused={paused} onToggle={togglePause} />
+            ) : null}
+          </GamePlayChrome>
 
           <GameStageHud>
             <GameHudStat

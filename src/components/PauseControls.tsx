@@ -1,8 +1,11 @@
 import type { ReactNode } from 'react'
+import { getGame } from '../data/games'
 import { scoringFor } from '../data/scoring'
 import { gameHref } from '../hooks/useHashRoute'
 import { useBoardRecord } from '../hooks/useBoardRecord'
+import { exitFullscreen } from '../lib/fullscreen'
 import { LEADERBOARD_GAMES, type LeaderboardGame } from '../lib/leaderboard'
+import { useTournamentPlay } from '../tournaments/TournamentPlayContext'
 import { ScoreGuide } from './ScoreGuide'
 import { SoundToggle } from './SoundToggle'
 
@@ -45,7 +48,6 @@ export function PauseButton({ paused, onToggle }: PauseButtonProps) {
 type PauseOverlayProps = {
   paused: boolean
   onResume: () => void
-  /** Optional rich pause panel (bests, sound, board, etc.). */
   children?: ReactNode
 }
 
@@ -87,23 +89,31 @@ export function PauseOverlay({ paused, onResume, children }: PauseOverlayProps) 
   )
 }
 
-/** Pause panel with Your best, All time, sound, guide, and board link. */
+/** Pause panel with leave link, bests, optional extra rows, sound, guide, board. */
 export function GamePauseOverlay({
   slug,
   personalBest,
   hideBest = false,
   paused,
   onResume,
+  extraMeta,
 }: {
   slug: string
   personalBest: number
   hideBest?: boolean
   paused: boolean
   onResume: () => void
+  extraMeta?: ReactNode
 }) {
+  const tournament = useTournamentPlay()
   const allTime = useBoardRecord(slug)
   const scoring = scoringFor(slug)
   const board = isBoardGame(slug)
+  const gameName = getGame(slug)?.name ?? 'game'
+  const leaveHref = tournament
+    ? `#/tournaments/${tournament.tournamentId}`
+    : gameHref(slug)
+  const leaveLabel = tournament ? 'Back to event' : `Leave ${gameName}`
 
   return (
     <PauseOverlay paused={paused} onResume={onResume}>
@@ -119,6 +129,7 @@ export function GamePauseOverlay({
           <span>All time</span>
           <strong>{allTime > 0 ? allTime : '—'}</strong>
         </div>
+        {extraMeta}
       </div>
       <div className="game-pause-actions">
         <SoundToggle />
@@ -152,6 +163,15 @@ export function GamePauseOverlay({
           </a>
         ) : null}
       </div>
+      <a
+        className="game-pause-leave"
+        href={leaveHref}
+        onClick={() => {
+          void exitFullscreen()
+        }}
+      >
+        {leaveLabel}
+      </a>
       <p className="game-pause-card__hint">Esc / P to resume</p>
     </PauseOverlay>
   )

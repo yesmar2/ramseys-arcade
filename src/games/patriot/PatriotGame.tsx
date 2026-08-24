@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react'
-import { GameHud, GameHudStat, GameStageHud } from '../../components/GameHud'
+import { GameHudStat, GamePlayChrome, GameStageHud } from '../../components/GameHud'
 import { GameStage } from '../../components/GameStage'
 import { PauseButton, GamePauseOverlay } from '../../components/PauseControls'
 import { PersonalBestHint } from '../../components/PersonalBestHint'
@@ -215,14 +215,6 @@ export function PatriotGame() {
 
   return (
     <section className="patriot patriot--fullscreen">
-      <GameHud
-        slug="patriot"
-        extra={
-          (pausable || paused) && !needsRotate ? (
-            <PauseButton paused={paused} onToggle={togglePause} />
-          ) : undefined
-        }
-      />
       <div className="game-play">
       <GameStage
         aspectWidth={STAGE_ASPECT.patriot.w}
@@ -234,6 +226,12 @@ export function PatriotGame() {
           onPointerDown={onPointerDown}
         >
           <canvas ref={canvasRef} className="patriot__viewport" />
+
+          <GamePlayChrome>
+            {(pausable || paused) && !needsRotate ? (
+              <PauseButton paused={paused} onToggle={togglePause} />
+            ) : null}
+          </GamePlayChrome>
 
           <GameStageHud>
             <GameHudStat

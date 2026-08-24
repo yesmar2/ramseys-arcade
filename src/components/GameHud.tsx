@@ -1,6 +1,4 @@
 import { useEffect, useState, type ReactNode } from 'react'
-import { getGame } from '../data/games'
-import { gameHref } from '../hooks/useHashRoute'
 import {
   exitFullscreen,
   fullscreenSupported,
@@ -8,7 +6,6 @@ import {
   subscribeFullscreen,
   toggleFullscreen,
 } from '../lib/fullscreen'
-import { useTournamentPlay } from '../tournaments/TournamentPlayContext'
 
 export function GameHudStat({
   label,
@@ -33,16 +30,25 @@ export function GameHudStat({
   )
 }
 
-/** Floating live stats on the playfield (score, time, etc.). */
-export function GameStageHud({ children }: { children: ReactNode }) {
+/** Floating live stats on the playfield (score chips, etc.). */
+export function GameStageHud({
+  children,
+  className,
+}: {
+  children: ReactNode
+  className?: string
+}) {
   return (
-    <div className="game-stage-hud" aria-live="polite">
+    <div
+      className={`game-stage-hud${className ? ` ${className}` : ''}`}
+      aria-live="polite"
+    >
       {children}
     </div>
   )
 }
 
-function FullscreenToggle() {
+export function FullscreenToggle() {
   const [supported] = useState(() => fullscreenSupported())
   const [active, setActive] = useState(() => isFullscreen())
 
@@ -51,12 +57,18 @@ function FullscreenToggle() {
     return subscribeFullscreen(() => setActive(isFullscreen()))
   }, [supported])
 
+  useEffect(() => {
+    return () => {
+      void exitFullscreen()
+    }
+  }, [])
+
   if (!supported) return null
 
   return (
     <button
       type="button"
-      className="game-pause-btn game-hud__fullscreen"
+      className="game-pause-btn game-play-chrome__btn"
       aria-label={active ? 'Exit fullscreen' : 'Enter fullscreen'}
       aria-pressed={active}
       title={active ? 'Exit fullscreen' : 'Fullscreen'}
@@ -93,55 +105,28 @@ function FullscreenToggle() {
   )
 }
 
-/** Slim play chrome: back + fullscreen (when supported) + pause. */
-export function GameHud({
-  slug,
-  extra,
-}: {
-  slug: string
-  /** @deprecated Ignored — use GamePauseOverlay for bests. */
-  personalBest?: number
-  /** @deprecated Ignored — live stats go in GameStageHud. */
-  children?: ReactNode
-  extra?: ReactNode
-  /** @deprecated Ignored. */
-  hideBest?: boolean
-}) {
-  const tournament = useTournamentPlay()
-  const gameName = getGame(slug)?.name ?? 'game'
-  const backHref = tournament
-    ? `#/tournaments/${tournament.tournamentId}`
-    : gameHref(slug)
-  const backLabel = tournament ? 'Event' : 'Back'
-
-  useEffect(() => {
-    return () => {
-      void exitFullscreen()
-    }
-  }, [])
-
+/** Top-right play controls on the stage (fullscreen + pause). No header bar. */
+export function GamePlayChrome({ children }: { children?: ReactNode }) {
   return (
     <div
-      className="game-hud game-hud--chrome"
+      className="game-play-chrome"
       onPointerDown={(e) => e.stopPropagation()}
     >
-      <a
-        className="game-hud__back"
-        href={backHref}
-        aria-label={
-          tournament ? 'Back to event' : `Back to ${gameName}`
-        }
-        onClick={() => {
-          void exitFullscreen()
-        }}
-      >
-        <span aria-hidden="true">←</span>
-        <span className="game-hud__back-text">{backLabel}</span>
-      </a>
-      <div className="game-hud__extra">
-        <FullscreenToggle />
-        {extra}
-      </div>
+      <FullscreenToggle />
+      {children}
     </div>
   )
+}
+
+/** @deprecated Use GamePlayChrome inside the stage. */
+export function GameHud({
+  extra,
+}: {
+  slug?: string
+  personalBest?: number
+  children?: ReactNode
+  extra?: ReactNode
+  hideBest?: boolean
+}) {
+  return <GamePlayChrome>{extra}</GamePlayChrome>
 }
