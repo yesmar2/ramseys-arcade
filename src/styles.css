@@ -3303,9 +3303,13 @@ html[data-theme='dark'] .patriot__power-mark {
   color: #c47a3a;
 }
 
+.asteroids__lives {
+  gap: 0.22rem;
+}
+
 .asteroids__buffs {
   position: absolute;
-  top: calc(max(0.55rem, env(safe-area-inset-top, 0px)) + 3.15rem);
+  top: calc(max(0.55rem, env(safe-area-inset-top, 0px)) + 1.75rem);
   left: 50%;
   transform: translateX(-50%);
   z-index: 9;

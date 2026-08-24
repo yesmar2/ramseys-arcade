@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react'
-import { GamePlayChrome, PlayReadout, PlayReadoutCenter, PlayReadoutScore } from '../../components/GameHud'
+import { GamePlayChrome, PlayReadout, PlayReadoutScore } from '../../components/GameHud'
 import { GameStage } from '../../components/GameStage'
 import { GameStartCard } from '../../components/GameStartCard'
 import { PauseButton, GamePauseOverlay } from '../../components/PauseControls'
@@ -455,8 +455,9 @@ export function AsteroidsGame() {
               {ui.score}
             </PlayReadoutScore>
             {ui.lives > 0 ? (
-              <PlayReadoutCenter
-                label={`${ui.lives} ${ui.lives === 1 ? 'life' : 'lives'}`}
+              <div
+                className="play-readout__left asteroids__lives"
+                aria-label={`${ui.lives} ${ui.lives === 1 ? 'life' : 'lives'}`}
               >
                 {Array.from({ length: ui.lives }, (_, i) => (
                   <svg
@@ -471,7 +472,7 @@ export function AsteroidsGame() {
                     />
                   </svg>
                 ))}
-              </PlayReadoutCenter>
+              </div>
             ) : null}
             {ui.phase === 'playing' &&
             (ui.buffRapid || ui.buffSpread || ui.buffShield || ui.buffSlow) ? (
