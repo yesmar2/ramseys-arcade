@@ -181,6 +181,28 @@ function DeadCenterThumb({ accent }: { accent?: string }) {
   )
 }
 
+function CrosswalkThumb({ accent }: { accent?: string }) {
+  const hopper = accent ?? '#3ecf8e'
+  const road = 'hsla(210, 12%, 38%, 0.85)'
+  const carA = pastel(HUE.rose, 58, 52)
+  const carB = pastel(HUE.gold, 58, 50)
+
+  return (
+    <>
+      <rect x="3" y="7" width="26" height="7" rx="1.2" fill={road} />
+      <rect x="3" y="16" width="26" height="7" rx="1.2" fill={road} />
+      <rect x="7" y="9.4" width="4.5" height="1.1" rx="0.5" fill="rgba(255,255,255,0.35)" />
+      <rect x="14.5" y="9.4" width="4.5" height="1.1" rx="0.5" fill="rgba(255,255,255,0.35)" />
+      <rect x="22" y="9.4" width="4.5" height="1.1" rx="0.5" fill="rgba(255,255,255,0.35)" />
+      <rect x="6" y="8.2" width="8" height="4.6" rx="1.2" fill={carA.fill} stroke={carA.stroke} strokeWidth="1.1" />
+      <rect x="18" y="17.2" width="9" height="4.6" rx="1.2" fill={carB.fill} stroke={carB.stroke} strokeWidth="1.1" />
+      <ellipse cx="16" cy="26.2" rx="4.4" ry="3.6" fill={hopper} stroke="hsla(128, 55%, 28%, 0.95)" strokeWidth="1.3" />
+      <circle cx="14.4" cy="25.4" r="0.7" fill="#1a2b3c" />
+      <circle cx="17.6" cy="25.4" r="0.7" fill="#1a2b3c" />
+    </>
+  )
+}
+
 function SimonThumb() {
   const r = 5
   const gap = 2.4
@@ -220,6 +242,7 @@ const thumbBySlug: Record<
   stacker: () => <StackerThumb />,
   'dead-center': DeadCenterThumb,
   simon: () => <SimonThumb />,
+  crosswalk: CrosswalkThumb,
 }
 
 export function GameThumbArt({ slug, accent, className }: GameThumbArtProps) {

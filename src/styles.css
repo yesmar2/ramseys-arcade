@@ -1801,13 +1801,20 @@ a.game-hud__board {
   margin-inline: 0.05rem;
 }
 
-.play-readout__ship {
+.play-readout__ship,
+.play-readout__hopper {
   display: block;
   width: 1.35rem;
   height: 1.6rem;
   color: var(--accent);
   opacity: 0.95;
   filter: drop-shadow(0 1px 0 rgba(var(--surface-rgb), 0.7));
+}
+
+.play-readout__hopper {
+  width: 1.3rem;
+  height: 1.15rem;
+  color: #3ecf8e;
 }
 
 @media (max-width: 420px) {
@@ -1819,9 +1826,14 @@ a.game-hud__board {
     font-size: 1rem;
   }
 
-  .play-readout__ship {
+  .play-readout__ship,
+  .play-readout__hopper {
     width: 1.2rem;
     height: 1.4rem;
+  }
+
+  .play-readout__hopper {
+    height: 1.05rem;
   }
 }
 
@@ -3266,12 +3278,14 @@ html[data-theme='dark'] .patriot__power-mark {
   }
 
   .asteroids__hint--keys,
-  .snake__hint--keys {
+  .snake__hint--keys,
+  .crosswalk__hint--keys {
     display: none;
   }
 
   .asteroids__hint--touch,
-  .snake__hint--touch {
+  .snake__hint--touch,
+  .crosswalk__hint--touch {
     display: block;
   }
 
@@ -3430,7 +3444,180 @@ html[data-theme='dark'] .patriot__power-mark {
   }
 }
 
-/* ?? Leaderboards ?? */
+/* Crosswalk */
+.crosswalk--fullscreen {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  user-select: none;
+  overscroll-behavior: none;
+}
+
+.crosswalk__body {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.crosswalk__play {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  touch-action: none;
+}
+
+.crosswalk__viewport {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.crosswalk__overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 9;
+}
+
+.crosswalk__card {
+  padding: 1.15rem 1.35rem;
+  border-radius: var(--tile-radius);
+  background: rgba(var(--surface-rgb), 0.86);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(var(--ink-rgb), 0.08);
+  box-shadow: var(--shadow-soft);
+  text-align: center;
+  max-width: min(18rem, calc(100% - 2.5rem));
+}
+
+.crosswalk__card h2 {
+  margin: 0 0 0.35rem;
+  font-family: var(--font-display);
+  font-size: clamp(1.4rem, 3vw, 1.85rem);
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.crosswalk__card p {
+  margin: 0 0 0.55rem;
+  font-size: 0.95rem;
+  color: var(--muted);
+}
+
+.crosswalk__card span {
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: #2eb8a0;
+}
+
+.crosswalk__hint {
+  display: block;
+}
+
+.crosswalk__hint--touch {
+  display: none;
+}
+
+.crosswalk__lives {
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+}
+
+.crosswalk__touch {
+  display: none;
+  flex: 0 0 auto;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-areas:
+    ". up ."
+    "left down right";
+  gap: 0.45rem;
+  padding: 0.45rem 0.7rem max(0.65rem, env(safe-area-inset-bottom));
+  background: color-mix(in srgb, var(--blob-mint) 45%, var(--surface));
+  border-top: 1px solid rgba(var(--ink-rgb), 0.06);
+}
+
+.crosswalk__btn {
+  min-height: 3.6rem;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 1rem;
+  border: 1px solid rgba(var(--ink-rgb), 0.08);
+  background: rgba(var(--surface-rgb), 0.82);
+  box-shadow: var(--shadow-soft);
+  color: var(--ink);
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+.crosswalk__btn--up { grid-area: up; }
+.crosswalk__btn--left { grid-area: left; }
+.crosswalk__btn--down { grid-area: down; }
+.crosswalk__btn--right { grid-area: right; }
+
+.crosswalk__btn:active {
+  transform: scale(0.97);
+  background: rgba(var(--surface-rgb), 0.95);
+}
+
+.crosswalk__btn svg {
+  display: block;
+  width: 1.85rem;
+  height: 1.85rem;
+}
+
+.crosswalk--saving .crosswalk__touch {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+@media (max-width: 900px), (pointer: coarse) {
+  .crosswalk__touch {
+    display: grid;
+  }
+}
+
+@media (orientation: landscape) and (max-height: 540px) {
+  .crosswalk__body {
+    flex-direction: row;
+  }
+
+  .crosswalk__touch {
+    width: 8.2rem;
+    grid-template-columns: 1fr 1fr;
+    grid-template-areas:
+      "up up"
+      "left right"
+      "down down";
+    padding: 0.4rem max(0.55rem, env(safe-area-inset-right)) 0.4rem 0.4rem;
+    border-top: 0;
+    border-left: 1px solid rgba(var(--ink-rgb), 0.06);
+    background: color-mix(in srgb, var(--blob-mint) 35%, transparent);
+    align-self: stretch;
+  }
+
+  .crosswalk__btn {
+    min-height: 0;
+  }
+}
+
+/* Leaderboards */
 .lb-page {
   flex: 1;
   display: flex;

@@ -78,9 +78,9 @@ export const games: Game[] = [
     name: 'Crosswalk',
     slug: 'crosswalk',
     description: 'Hop the lanes. Don’t get flattened.',
-    how: 'Coming soon.',
+    how: 'Hop with arrows, WASD, or a swipe. Forward hops score. Reach Home to cross. Three lives.',
     accent: '#3ecf8e',
-    comingSoon: true,
+    playable: true,
   },
   {
     name: 'Pellets',

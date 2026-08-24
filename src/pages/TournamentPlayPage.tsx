@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { AsteroidsGame } from '../games/asteroids/AsteroidsGame'
+import { CrosswalkGame } from '../games/crosswalk/CrosswalkGame'
 import { DeadCenterGame } from '../games/dead-center/DeadCenterGame'
 import { PatriotGame } from '../games/patriot/PatriotGame'
 import { SimonGame } from '../games/simon/SimonGame'
@@ -20,7 +21,7 @@ import {
 } from '../lib/tournaments'
 import { TournamentPlayProvider } from '../tournaments/TournamentPlayContext'
 
-const PLAYABLE = new Set(['stacker', 'patriot', 'snake', 'dead-center', 'asteroids', 'pop', 'simon'])
+const PLAYABLE = new Set(['stacker', 'patriot', 'snake', 'dead-center', 'asteroids', 'pop', 'simon', 'crosswalk'])
 
 export function TournamentPlayPage({
   tournamentId,
@@ -214,6 +215,7 @@ export function TournamentPlayPage({
         {gameSlug === 'simon' && <SimonGame />}
         {gameSlug === 'dead-center' && <DeadCenterGame />}
         {gameSlug === 'asteroids' && <AsteroidsGame />}
+        {gameSlug === 'crosswalk' && <CrosswalkGame />}
       </main>
     </TournamentPlayProvider>
   )

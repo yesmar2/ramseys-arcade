@@ -25,6 +25,12 @@ const SCORING: Record<string, ScoreRow[]> = {
     { label: 'Seeker (4)', value: 'locks nearest missile, chains on hit' },
     { label: 'Violet missile', value: 'splits halfway' },
   ],
+  crosswalk: [
+    { label: 'New row (toward Home)', value: '+10' },
+    { label: 'Reach Home', value: '+50, then +15 each crossing' },
+    { label: 'Hit by a car', value: 'lose a life' },
+    { label: 'Lives', value: '3' },
+  ],
   snake: [
     { label: 'Food', value: '+10' },
     { label: 'Crash', value: 'game over' },

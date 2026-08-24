@@ -14,6 +14,7 @@ import { refreshPersonalBests } from './lib/personalBest'
 import { silenceMusic, unlockSound } from './lib/sound'
 import { AsteroidsPage } from './pages/AsteroidsPage'
 import { AuthVerifyPage } from './pages/AuthVerifyPage'
+import { CrosswalkPage } from './pages/CrosswalkPage'
 import { DeadCenterPage } from './pages/DeadCenterPage'
 import { GameHubPage } from './pages/GameHubPage'
 import { GameLeaderboardPage } from './pages/GameLeaderboardPage'
@@ -144,6 +145,7 @@ function App() {
   if (route.name === 'gamePlay' && route.slug === 'simon') return <SimonPage />
   if (route.name === 'gamePlay' && route.slug === 'dead-center') return <DeadCenterPage />
   if (route.name === 'gamePlay' && route.slug === 'asteroids') return <AsteroidsPage />
+  if (route.name === 'gamePlay' && route.slug === 'crosswalk') return <CrosswalkPage />
   if (route.name === 'gamePlay') return <ComingSoonPage slug={route.slug} />
   return <HomePage />
 }

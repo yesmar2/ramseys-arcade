@@ -30,4 +30,5 @@ export const STAGE_ASPECT = {
   /** Asteroids 16×9 landscape; portrait uses 9×16 (same field, rotated). */
   asteroids: { w: 16, h: 9 },
   simon: { w: 1, h: 1 },
+  crosswalk: { w: 11, h: 13 },
 } as const
