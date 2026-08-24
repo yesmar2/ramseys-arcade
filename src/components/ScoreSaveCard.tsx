@@ -32,10 +32,14 @@ type ScoreSaveProps = {
 type BoardHit = { period: LeaderboardPeriod; rank: number }
 type PersonalBestHit = { score: number; gain: number | null }
 
-type CelebPayload = {
+export type CelebPayload = {
   boards: BoardHit[]
   personalBest: PersonalBestHit | null
   books: RunAchievement[]
+}
+
+export function booksCelebrationPayload(books: RunAchievement[]): CelebPayload {
+  return { boards: [], personalBest: null, books }
 }
 
 const PERIOD_ORDER: LeaderboardPeriod[] = ['all', 'monthly', 'weekly', 'daily']
@@ -329,12 +333,14 @@ function FireworksCanvas() {
   return <canvas ref={canvasRef} className="score-celeb__fireworks" aria-hidden="true" />
 }
 
-function ScoreCelebration({
+export function ScoreCelebration({
   payload,
   onDone,
+  kicker = 'Nice run',
 }: {
   payload: CelebPayload
   onDone: () => void
+  kicker?: string
 }) {
   const [leaving, setLeaving] = useState(false)
   const cards = awardCards(payload)
@@ -355,7 +361,7 @@ function ScoreCelebration({
     >
       <FireworksCanvas />
       <div className="score-celeb__shell">
-        <p className="score-celeb__kicker">Nice run</p>
+        <p className="score-celeb__kicker">{kicker}</p>
         <h2 className="score-celeb__title">
           {count === 1 ? 'You earned this' : `${count} awards`}
         </h2>

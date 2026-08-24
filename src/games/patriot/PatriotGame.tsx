@@ -42,8 +42,9 @@ function PowerMark({ kind }: { kind: PowerKind }) {
         </>
       ) : (
         <>
-          <circle cx="12" cy="12" r="3.2" />
-          <path d="M12 2.5v4M12 17.5v4M2.5 12h4M17.5 12h4" />
+          <circle cx="12" cy="12" r="6.5" />
+          <circle cx="12" cy="12" r="2.4" />
+          <path d="M12 3.25v2.75M12 18v2.75M3.25 12H6M18 12h2.75" />
         </>
       )}
     </svg>
