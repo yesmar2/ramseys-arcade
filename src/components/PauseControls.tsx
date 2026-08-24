@@ -137,7 +137,7 @@ export function GamePauseOverlay({
         {board ? (
           <a
             className="game-pause-btn game-pause-board"
-            href={gameHref(slug)}
+            href={gameBoardHref(slug)}
             target="_blank"
             rel="noopener noreferrer"
             aria-label="Leaderboard"
