@@ -93,8 +93,9 @@ export function AsteroidsGame() {
   const startGrace = useRef(0)
   const ignorePauseKeys = useRef(false)
   ignorePauseKeys.current = saveOpen
-  const pausable = ui.phase === 'playing' && !saveOpen
-  const { paused, toggle: togglePause, resume } = useGamePause(pausable, ignorePauseKeys)
+  const pausable =
+    (ui.phase === 'playing' || ui.phase === 'waveClear') && !saveOpen
+  const { paused, toggle: togglePause, pause, resume } = useGamePause(pausable, ignorePauseKeys)
   const pausedRef = useRef(false)
   pausedRef.current = paused
   saveOpenRef.current = saveOpen
@@ -430,7 +431,15 @@ export function AsteroidsGame() {
         >
           <canvas ref={canvasRef} className="asteroids__viewport" />
 
-          <GamePlayChrome>
+          <GamePlayChrome
+            slug="asteroids"
+            inRun={() => {
+              const phase = stateRef.current.phase
+              return phase === 'playing' || phase === 'waveClear'
+            }}
+            paused={paused}
+            onPause={pause}
+          >
             {(pausable || paused) ? (
               <PauseButton paused={paused} onToggle={togglePause} />
             ) : null}

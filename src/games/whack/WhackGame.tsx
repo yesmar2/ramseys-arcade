@@ -38,7 +38,7 @@ export function WhackGame() {
   const hitLock = useRef(false)
   const startGrace = useRef(0)
   const pausable = ui.phase === 'playing' && !saveOpen
-  const { paused, toggle: togglePause, resume } = useGamePause(pausable)
+  const { paused, toggle: togglePause, pause, resume } = useGamePause(pausable)
   const pausedRef = useRef(false)
   pausedRef.current = paused
 
@@ -195,7 +195,12 @@ export function WhackGame() {
           <div className="whack__play" onPointerDown={onPointerDown}>
             <canvas ref={canvasRef} className="whack__viewport" />
 
-            <GamePlayChrome>
+            <GamePlayChrome
+              slug="pop"
+              inRun={() => stateRef.current.phase === 'playing'}
+              paused={paused}
+              onPause={pause}
+            >
               {(pausable || paused) ? (
                 <PauseButton paused={paused} onToggle={togglePause} />
               ) : null}

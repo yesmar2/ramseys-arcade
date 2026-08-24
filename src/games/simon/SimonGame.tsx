@@ -165,7 +165,13 @@ export function SimonGame() {
         >
           <div className="simon__play" onPointerDown={onPointerDown}>
             <canvas ref={canvasRef} className="simon__viewport" />
-            <GamePlayChrome />
+            <GamePlayChrome
+              slug="simon"
+              inRun={() => {
+                const phase = stateRef.current.phase
+                return phase === 'watch' || phase === 'input'
+              }}
+            />
             <PlayReadout>
               <PlayReadoutScore
                 hot={

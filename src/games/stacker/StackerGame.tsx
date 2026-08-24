@@ -36,7 +36,7 @@ export function StackerGame() {
   const offeredScore = useRef<number | null>(null)
   const previousBestRef = useRef(getPersonalBest('stacker'))
   const pausable = ui.status === 'playing' && !saveOpen
-  const { paused, toggle: togglePause, resume } = useGamePause(pausable)
+  const { paused, toggle: togglePause, pause, resume } = useGamePause(pausable)
   const pausedRef = useRef(false)
   pausedRef.current = paused
 
@@ -135,7 +135,12 @@ export function StackerGame() {
       >
         <canvas ref={canvasRef} className="stacker__viewport" />
 
-        <GamePlayChrome>
+        <GamePlayChrome
+          slug="stacker"
+          inRun={() => stateRef.current.phase === 'playing'}
+          paused={paused}
+          onPause={pause}
+        >
           {(pausable || paused) ? (
             <PauseButton paused={paused} onToggle={togglePause} />
           ) : null}

@@ -182,7 +182,13 @@ export function DeadCenterGame() {
         <div className="deadcenter__play" onPointerDown={onPointerDown}>
           <canvas ref={canvasRef} className="deadcenter__viewport" />
 
-          <GamePlayChrome />
+          <GamePlayChrome
+            slug="dead-center"
+            inRun={() => {
+              const phase = stateRef.current.phase
+              return phase === 'playing' || phase === 'reveal'
+            }}
+          />
 
           <PlayReadout>
             <PlayReadoutScore

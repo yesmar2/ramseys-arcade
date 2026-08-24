@@ -1,4 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
+import { gameHref } from '../hooks/useHashRoute'
 import { useDeviceType } from '../lib/device'
 import {
   enterFullscreen,
@@ -8,6 +10,7 @@ import {
   subscribeFullscreen,
   toggleFullscreen,
 } from '../lib/fullscreen'
+import { useTournamentPlay } from '../tournaments/TournamentPlayContext'
 
 /** Plain playfield readouts (Asteroids-style): score left, secondary center. */
 export function PlayReadout({ children }: { children: ReactNode }) {
@@ -135,15 +138,162 @@ export function FullscreenToggle() {
   )
 }
 
-/** Top-right play controls on the stage (fullscreen + pause). No header bar. */
-export function GamePlayChrome({ children }: { children?: ReactNode }) {
+type InRun = boolean | (() => boolean)
+
+function resolveInRun(inRun: InRun) {
+  return typeof inRun === 'function' ? inRun() : inRun
+}
+
+/** Top-right play controls on the stage (leave + fullscreen + pause). No header bar. */
+export function GamePlayChrome({
+  slug,
+  inRun = false,
+  paused = false,
+  onPause,
+  children,
+}: {
+  slug: string
+  /** True when leaving would abandon an in-progress run. Prefer a getter over lagged UI. */
+  inRun?: InRun
+  paused?: boolean
+  /** Return true if the run was paused. False/void falls through to the leave confirm. */
+  onPause?: () => boolean | void
+  children?: ReactNode
+}) {
   return (
     <div
       className="game-play-chrome"
       onPointerDown={(e) => e.stopPropagation()}
     >
+      <PlayLeaveButton
+        slug={slug}
+        inRun={inRun}
+        paused={paused}
+        onPause={onPause}
+      />
       <FullscreenToggle />
       {children}
     </div>
+  )
+}
+
+function playLeaveHref(slug: string, tournamentId?: string) {
+  if (tournamentId) return `#/tournaments/${tournamentId}`
+  return gameHref(slug)
+}
+
+function PlayLeaveButton({
+  slug,
+  inRun,
+  paused,
+  onPause,
+}: {
+  slug: string
+  inRun: InRun
+  paused: boolean
+  onPause?: () => boolean | void
+}) {
+  const tournament = useTournamentPlay()
+  const href = playLeaveHref(slug, tournament?.tournamentId)
+  const [confirming, setConfirming] = useState(false)
+  const label = tournament ? 'Back to event' : 'Leave game'
+
+  useEffect(() => {
+    const onAsk = () => setConfirming(true)
+    window.addEventListener('arcade:leave-confirm', onAsk)
+    return () => window.removeEventListener('arcade:leave-confirm', onAsk)
+  }, [])
+
+  useEffect(() => {
+    if (!confirming) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.code !== 'Escape') return
+      e.preventDefault()
+      e.stopPropagation()
+      setConfirming(false)
+    }
+    window.addEventListener('keydown', onKey, true)
+    return () => window.removeEventListener('keydown', onKey, true)
+  }, [confirming])
+
+  const goNow = () => {
+    void exitFullscreen()
+    window.location.assign(href)
+  }
+
+  const onClick = () => {
+    const running = resolveInRun(inRun) || paused
+    if (!running) {
+      goNow()
+      return
+    }
+    if (onPause && !paused) {
+      if (onPause()) return
+    }
+    setConfirming(true)
+  }
+
+  return (
+    <>
+      <button
+        type="button"
+        className="game-pause-btn game-play-chrome__btn"
+        aria-label={label}
+        title={label}
+        onPointerDown={(e) => e.stopPropagation()}
+        onClick={(e) => {
+          e.stopPropagation()
+          onClick()
+        }}
+      >
+        <svg className="game-pause-btn__icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path
+            d="M14.5 5.5L8 12l6.5 6.5"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      </button>
+      {confirming
+        ? createPortal(
+            <div
+              className="game-leave-overlay"
+              role="alertdialog"
+              aria-labelledby="game-leave-title"
+              aria-describedby="game-leave-copy"
+              onPointerDown={(e) => e.stopPropagation()}
+            >
+              <div className="game-leave-card">
+                <p id="game-leave-title">Leave this run?</p>
+                <p id="game-leave-copy" className="game-leave-card__copy">
+                  Your score won’t be saved.
+                </p>
+                <div className="game-leave-card__actions">
+                  <button
+                    type="button"
+                    className="game-leave-card__stay"
+                    onClick={() => setConfirming(false)}
+                  >
+                    Stay
+                  </button>
+                  <a
+                    className="game-leave-card__go"
+                    href={href}
+                    onClick={() => {
+                      void exitFullscreen()
+                    }}
+                  >
+                    Leave
+                  </a>
+                </div>
+              </div>
+            </div>,
+            document.body,
+          )
+        : null}
+    </>
   )
 }

@@ -1,9 +1,8 @@
 import type { ReactNode } from 'react'
 import { getGame } from '../data/games'
 import { scoringFor } from '../data/scoring'
-import { gameBoardHref, gameHref } from '../hooks/useHashRoute'
+import { gameBoardHref } from '../hooks/useHashRoute'
 import { useBoardRecord } from '../hooks/useBoardRecord'
-import { exitFullscreen } from '../lib/fullscreen'
 import { LEADERBOARD_GAMES, type LeaderboardGame } from '../lib/leaderboard'
 import { useTournamentPlay } from '../tournaments/TournamentPlayContext'
 import { ScoreGuide } from './ScoreGuide'
@@ -51,7 +50,12 @@ type PauseOverlayProps = {
   children?: ReactNode
 }
 
-export function PauseOverlay({ paused, onResume, children }: PauseOverlayProps) {
+export function PauseOverlay({
+  paused,
+  onResume,
+  children,
+  showResume = true,
+}: PauseOverlayProps & { showResume?: boolean }) {
   if (!paused) return null
   return (
     <div
@@ -75,7 +79,7 @@ export function PauseOverlay({ paused, onResume, children }: PauseOverlayProps) 
             <p>Tap to resume</p>
           </>
         )}
-        {children ? (
+        {children && showResume ? (
           <button
             type="button"
             className="game-pause-card__resume"
@@ -110,13 +114,10 @@ export function GamePauseOverlay({
   const scoring = scoringFor(slug)
   const board = isBoardGame(slug)
   const gameName = getGame(slug)?.name ?? 'game'
-  const leaveHref = tournament
-    ? `#/tournaments/${tournament.tournamentId}`
-    : gameHref(slug)
   const leaveLabel = tournament ? 'Back to event' : `Leave ${gameName}`
 
   return (
-    <PauseOverlay paused={paused} onResume={onResume}>
+    <PauseOverlay paused={paused} onResume={onResume} showResume={false}>
       <h2>Paused</h2>
       <div className="game-pause-meta">
         {!hideBest ? (
@@ -165,15 +166,22 @@ export function GamePauseOverlay({
           </a>
         ) : null}
       </div>
-      <a
-        className="game-pause-leave"
-        href={leaveHref}
-        onClick={() => {
-          void exitFullscreen()
-        }}
-      >
-        {leaveLabel}
-      </a>
+      <div className="game-pause-card__nav">
+        <button
+          type="button"
+          className="game-pause-card__resume"
+          onClick={onResume}
+        >
+          Resume
+        </button>
+        <button
+          type="button"
+          className="game-pause-card__leave"
+          onClick={() => window.dispatchEvent(new Event('arcade:leave-confirm'))}
+        >
+          {leaveLabel}
+        </button>
+      </div>
       <p className="game-pause-card__hint">Esc / P to resume</p>
     </PauseOverlay>
   )

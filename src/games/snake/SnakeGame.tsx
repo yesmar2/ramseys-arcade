@@ -56,7 +56,7 @@ export function SnakeGame() {
   const runStartRef = useRef<number | null>(null)
   const milestonesRef = useRef<Set<number>>(new Set())
   const pausable = ui.phase === 'playing' && !saveOpen
-  const { paused, toggle: togglePause, resume } = useGamePause(pausable)
+  const { paused, toggle: togglePause, pause, resume } = useGamePause(pausable)
   const pausedRef = useRef(false)
   pausedRef.current = paused
 
@@ -298,7 +298,12 @@ export function SnakeGame() {
         >
           <canvas ref={canvasRef} className="snake__viewport" />
 
-          <GamePlayChrome>
+          <GamePlayChrome
+            slug="snake"
+            inRun={() => stateRef.current.phase === 'playing'}
+            paused={paused}
+            onPause={pause}
+          >
             {(pausable || paused) ? (
               <PauseButton paused={paused} onToggle={togglePause} />
             ) : null}

@@ -39,6 +39,11 @@ export function useGamePause(
       if (!enabledRef.current) return
       setPaused((open) => !open)
     },
+    pause: () => {
+      if (!enabledRef.current) return false
+      setPaused(true)
+      return true
+    },
     resume: () => setPaused(false),
   }
 }

@@ -34,7 +34,7 @@ export function CrosswalkGame() {
   const hoppedThisSwipe = useRef(false)
   const startGrace = useRef(0)
   const pausable = ui.phase === 'playing' && !saveOpen
-  const { paused, toggle: togglePause, resume } = useGamePause(pausable)
+  const { paused, toggle: togglePause, pause, resume } = useGamePause(pausable)
   const pausedRef = useRef(false)
   pausedRef.current = paused
 
@@ -200,7 +200,12 @@ export function CrosswalkGame() {
           <GameStage aspectWidth={11} aspectHeight={13}>
             <canvas ref={canvasRef} className="crosswalk__viewport" />
 
-            <GamePlayChrome>
+            <GamePlayChrome
+              slug="crosswalk"
+              inRun={() => stateRef.current.phase === 'playing'}
+              paused={paused}
+              onPause={pause}
+            >
               {(pausable || paused) ? (
                 <PauseButton paused={paused} onToggle={togglePause} />
               ) : null}
