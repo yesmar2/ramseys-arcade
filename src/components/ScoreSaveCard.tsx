@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { gameHref } from '../hooks/useHashRoute'
+import { gameHref, recordsHref, recordsIndexHref } from '../hooks/useHashRoute'
 import {
   addLeaderboardScore,
   ApiError,
@@ -13,6 +13,7 @@ import {
 } from '../lib/leaderboard'
 import { describePersonalBest, rememberPersonalBest } from '../lib/personalBest'
 import { refreshGlobalRank } from '../lib/globalRank'
+import { gameHasRecords } from '../lib/records'
 import {
   peekRunAchievements,
   takeRunAchievements,
