@@ -2288,11 +2288,6 @@ a.game-hud__board {
   color: var(--ink);
 }
 
-html[data-theme='dark'] .patriot__power {
-  border-color: hsla(var(--hue), 48%, 62%, 0.55);
-  background: hsla(var(--hue), 45%, 42%, 0.38);
-}
-
 .patriot__power--hot {
   border-color: hsla(var(--hue), 52%, 42%, 0.95);
   background: hsla(var(--hue), 52%, 58%, 0.46);
