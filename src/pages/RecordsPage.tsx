@@ -13,7 +13,6 @@ import { SiteHeader } from '../components/SiteHeader'
 import { LeaderboardList } from '../components/LeaderboardList'
 import { getGame, gamePlayableOn, deviceRequirementLabel } from '../data/games'
 import {
-  gameHref,
   gamePlayHref,
   recordHref,
   recordsHref,
@@ -102,21 +101,14 @@ function GameRecordBookPage({ game }: { game: string }) {
           title={`${title} record books`}
           backHref={recordsIndexHref()}
           backLabel="Back to Record books"
+          playHref={canPlay ? gamePlayHref(game) : undefined}
         />
         <GameRecordsPanel game={game} accent={accent} />
-        {canPlay ? (
-          <a
-            className="lb-play"
-            href={gamePlayHref(game)}
-            style={{ background: accent }}
-          >
-            Play {title}
-          </a>
-        ) : (
+        {!canPlay ? (
           <p className="lb-device-note lb-device-note--footer" role="note">
             {deviceNote}
           </p>
-        )}
+        ) : null}
       </div>
     </PageShell>
   )
@@ -195,6 +187,9 @@ function RecordBoardPage({
   const accent = gameMeta?.accent ?? '#2eb8a0'
   const unit = record?.unit ?? 'ms'
   const gameTitle = gameMeta?.name ?? game
+  const device = useDeviceType()
+  const canPlay = gameMeta ? gamePlayableOn(gameMeta, device) : false
+  const deviceNote = gameMeta ? deviceRequirementLabel(gameMeta) : null
 
   const waveIndex = useMemo(
     () => waveRecords.findIndex((row) => row.id === recordId),
@@ -226,11 +221,7 @@ function RecordBoardPage({
               title={record?.label ?? 'Record'}
               backHref={recordsHref(game)}
               backLabel={`Back to ${gameTitle} records`}
-              action={
-                <a className="lb-game-board__side-link" href={gameHref(game)}>
-                  Scores
-                </a>
-              }
+              playHref={canPlay ? gamePlayHref(game) : undefined}
             />
           ) : (
             <header className="lb-page__header lb-page__header--compact">
@@ -319,15 +310,6 @@ function RecordBoardPage({
                   gameTitle,
                   record?.label ?? 'this milestone',
                 )}
-                action={
-                  <a
-                    className="lb-empty-state__btn"
-                    href={gamePlayHref(game)}
-                    style={{ background: accent }}
-                  >
-                    Play {gameTitle}
-                  </a>
-                }
               />
             ) : (
               <LeaderboardList
@@ -350,14 +332,10 @@ function RecordBoardPage({
               </button>
             ) : null}
 
-            {!(loading || error) && (entries.length > 0 || you) ? (
-              <a
-                className="lb-play"
-                href={gamePlayHref(game)}
-                style={{ background: accent }}
-              >
-                Play {gameTitle}
-              </a>
+            {!canPlay && !(loading || error) ? (
+              <p className="lb-device-note lb-device-note--footer" role="note">
+                {deviceNote}
+              </p>
             ) : null}
           </section>
         </div>

@@ -115,6 +115,7 @@ export function GameLeaderboardPage({
           title={`${game.name} Top Scores`}
           backHref={leaderboardHref()}
           backLabel="Back to Boards"
+          playHref={canPlay ? playHref : undefined}
         />
 
         <PeriodSwitcher
@@ -144,17 +145,6 @@ export function GameLeaderboardPage({
                   ? `Be the first on the ${game.name} board.`
                   : 'Open it on a supported device to post a score.'
               }
-              action={
-                canPlay ? (
-                  <a
-                    className="lb-empty-state__btn"
-                    href={playHref}
-                    style={{ background: accent }}
-                  >
-                    Play {game.name}
-                  </a>
-                ) : null
-              }
             />
           ) : (
             <LeaderboardList
@@ -176,11 +166,7 @@ export function GameLeaderboardPage({
             </button>
           ) : null}
 
-          {canPlay && !(loading || error) && (entries.length > 0 || you) ? (
-            <a className="lb-play" href={playHref} style={{ background: accent }}>
-              Play {game.name}
-            </a>
-          ) : !canPlay && !(loading || error) ? (
+          {!canPlay && !(loading || error) ? (
             <p className="lb-device-note lb-device-note--footer" role="note">
               {deviceNote} Scores still count toward global rank.
             </p>

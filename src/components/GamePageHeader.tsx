@@ -6,21 +6,24 @@ type GamePageHeaderProps = {
   slug: string
   accent: string
   title: string
-  /** Optional: when set, title (and thumb) link here. Prefer a Play CTA instead. */
+  /** Optional: when set, title (and thumb) link here. Prefer playHref instead. */
   href?: string
+  /** Compact right-aligned Play control. */
+  playHref?: string
   /** Icon back control on the left of the centered heading. */
   backHref?: string
   backLabel?: string
-  /** Optional trailing control (e.g. Record books link). */
+  /** Optional trailing control when playHref is not set. */
   action?: ReactNode
 }
 
-/** Centered game title: thumb + name, optional back + side action. */
+/** Centered game title: thumb + name, optional back + Play. */
 export function GamePageHeader({
   slug,
   accent,
   title,
   href,
+  playHref,
   backHref,
   backLabel = 'Back',
   action,
@@ -32,6 +35,16 @@ export function GamePageHeader({
       </span>
       <h1 className="lb-page__title lb-game-board__title">{title}</h1>
     </>
+  )
+
+  const trailing = playHref ? (
+    <a className="lb-game-board__play" href={playHref}>
+      Play
+    </a>
+  ) : action ? (
+    <div className="lb-game-board__action">{action}</div>
+  ) : (
+    <span className="lb-page__heading-slot" aria-hidden="true" />
   )
 
   return (
@@ -54,11 +67,7 @@ export function GamePageHeader({
             {identity}
           </div>
         )}
-        {action ? (
-          <div className="lb-game-board__action">{action}</div>
-        ) : (
-          <span className="lb-page__heading-slot" aria-hidden="true" />
-        )}
+        {trailing}
       </div>
     </header>
   )

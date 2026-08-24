@@ -3334,7 +3334,7 @@ a.game-hud__board {
 
 .lb-page__heading-row {
   display: grid;
-  grid-template-columns: 2.35rem minmax(0, 1fr) 2.35rem;
+  grid-template-columns: minmax(2.35rem, auto) minmax(0, 1fr) minmax(2.35rem, auto);
   align-items: center;
   gap: 0.35rem;
   width: 100%;
@@ -3400,6 +3400,35 @@ a.game-hud__board {
   min-height: 2.35rem;
 }
 
+.lb-game-board__play {
+  justify-self: end;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.35rem;
+  padding: 0.3rem 0.85rem;
+  border-radius: 999px;
+  background: var(--board-accent, var(--accent));
+  color: #fff;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  text-decoration: none;
+  white-space: nowrap;
+  box-shadow: var(--shadow-soft);
+}
+
+.lb-game-board__play:hover,
+.lb-game-board__play:focus-visible {
+  filter: brightness(1.06);
+  outline: none;
+}
+
+.lb-game-board__play:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--board-accent, var(--accent)) 55%, transparent);
+  outline-offset: 3px;
+}
+
 .lb-game-board__side-link {
   font-size: 0.82rem;
   font-weight: 700;
@@ -3436,6 +3465,20 @@ a.game-hud__board {
 .lb-game-board__title {
   margin: 0;
   min-width: 0;
+  font-size: clamp(1.15rem, 4.2vw, 1.85rem);
+  line-height: 1.15;
+  text-wrap: balance;
+}
+
+@media (max-width: 420px) {
+  .lb-game-board__title {
+    font-size: clamp(1.05rem, 3.8vw, 1.35rem);
+  }
+
+  .lb-game-board__thumb {
+    width: 2.15rem;
+    height: 2.15rem;
+  }
 }
 
 .lb-page__heading-row > .lb-page__title {
