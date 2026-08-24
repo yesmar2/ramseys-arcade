@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react'
-import { GamePlayChrome, PlayReadout, PlayReadoutCenter, PlayReadoutScore } from '../../components/GameHud'
+import { GamePlayChrome, PlayReadout, PlayReadoutScore } from '../../components/GameHud'
 import { GameStage } from '../../components/GameStage'
 import { PauseButton, GamePauseOverlay } from '../../components/PauseControls'
 import { PersonalBestHint } from '../../components/PersonalBestHint'
@@ -234,52 +234,50 @@ export function PatriotGame() {
           </GamePlayChrome>
 
           <PlayReadout>
-            <PlayReadoutScore
-              hot={
-                (ui.phase === 'playing' || ui.phase === 'waveClear') &&
-                ui.score > previousBestRef.current
-              }
-            >
-              {ui.score}
-            </PlayReadoutScore>
-            <PlayReadoutCenter label={`Wave ${ui.wave}`}>
-              {ui.wave}
-            </PlayReadoutCenter>
-          </PlayReadout>
-
-          {(ui.phase === 'playing' || ui.phase === 'waveClear') &&
-            !needsRotate &&
-            POWER_ORDER.some((kind) => (ui.pack?.[kind] ?? 0) > 0) && (
-            <div
-              className="patriot__powers"
-              onPointerDown={(e) => e.stopPropagation()}
-            >
-              {POWER_ORDER.flatMap((kind) => {
-                const count = ui.pack?.[kind] ?? 0
-                const hot =
-                  (kind === 'shield' && ui.shieldT > 0) ||
-                  (kind === 'slow' && ui.slowT > 0) ||
-                  (kind === 'burst' && ui.burstArmed)
-                return Array.from({ length: count }, (_, n) => (
-                  <button
-                    key={`${kind}-${n}`}
-                    type="button"
-                    className={`patriot__power${hot ? ' patriot__power--hot' : ''}`}
-                    style={{ '--hue': String(POWER_HUE[kind]) } as CSSProperties}
-                    disabled={ui.phase !== 'playing' || paused}
-                    aria-label={POWER_LABEL[kind]}
-                    onPointerDown={(e) => {
-                      e.stopPropagation()
-                      e.preventDefault()
-                      activate(kind)
-                    }}
-                  >
-                    <PowerMark kind={kind} />
-                  </button>
-                ))
-              })}
+            <div className="play-readout__left">
+              <PlayReadoutScore
+                hot={
+                  (ui.phase === 'playing' || ui.phase === 'waveClear') &&
+                  ui.score > previousBestRef.current
+                }
+              >
+                {ui.score}
+              </PlayReadoutScore>
+              {(ui.phase === 'playing' || ui.phase === 'waveClear') &&
+                !needsRotate &&
+                POWER_ORDER.some((kind) => (ui.pack?.[kind] ?? 0) > 0) && (
+                <div
+                  className="patriot__powers"
+                  onPointerDown={(e) => e.stopPropagation()}
+                >
+                  {POWER_ORDER.flatMap((kind) => {
+                    const count = ui.pack?.[kind] ?? 0
+                    const hot =
+                      (kind === 'shield' && ui.shieldT > 0) ||
+                      (kind === 'slow' && ui.slowT > 0) ||
+                      (kind === 'burst' && ui.burstArmed)
+                    return Array.from({ length: count }, (_, n) => (
+                      <button
+                        key={`${kind}-${n}`}
+                        type="button"
+                        className={`patriot__power${hot ? ' patriot__power--hot' : ''}`}
+                        style={{ '--hue': String(POWER_HUE[kind]) } as CSSProperties}
+                        disabled={ui.phase !== 'playing' || paused}
+                        aria-label={POWER_LABEL[kind]}
+                        onPointerDown={(e) => {
+                          e.stopPropagation()
+                          e.preventDefault()
+                          activate(kind)
+                        }}
+                      >
+                        <PowerMark kind={kind} />
+                      </button>
+                    ))
+                  })}
+                </div>
+              )}
             </div>
-          )}
+          </PlayReadout>
 
           <div className="patriot__overlay">
             <GamePauseOverlay

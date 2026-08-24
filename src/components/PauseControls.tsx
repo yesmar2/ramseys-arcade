@@ -138,6 +138,8 @@ export function GamePauseOverlay({
           <a
             className="game-pause-btn game-pause-board"
             href={gameHref(slug)}
+            target="_blank"
+            rel="noopener noreferrer"
             aria-label="Leaderboard"
             title="Leaderboard"
             onPointerDown={(e) => e.stopPropagation()}

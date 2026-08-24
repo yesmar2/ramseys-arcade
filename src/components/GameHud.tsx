@@ -1,5 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react'
+import { useDeviceType } from '../lib/device'
 import {
+  enterFullscreen,
   exitFullscreen,
   fullscreenSupported,
   isFullscreen,
@@ -57,8 +59,10 @@ export function PlayReadoutCenter({
 }
 
 export function FullscreenToggle() {
+  const device = useDeviceType()
   const [supported] = useState(() => fullscreenSupported())
   const [active, setActive] = useState(() => isFullscreen())
+  const mobile = device === 'phone' || device === 'tablet'
 
   useEffect(() => {
     if (!supported) return
@@ -70,6 +74,24 @@ export function FullscreenToggle() {
       void exitFullscreen()
     }
   }, [])
+
+  /* Browsers require a user gesture; enter on first tap when playing on mobile. */
+  useEffect(() => {
+    if (!supported || !mobile || isFullscreen()) return
+
+    const onFirstGesture = () => {
+      void enterFullscreen()
+      window.removeEventListener('pointerdown', onFirstGesture, true)
+      window.removeEventListener('touchstart', onFirstGesture, true)
+    }
+
+    window.addEventListener('pointerdown', onFirstGesture, true)
+    window.addEventListener('touchstart', onFirstGesture, true)
+    return () => {
+      window.removeEventListener('pointerdown', onFirstGesture, true)
+      window.removeEventListener('touchstart', onFirstGesture, true)
+    }
+  }, [supported, mobile])
 
   if (!supported) return null
 
