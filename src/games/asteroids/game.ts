@@ -111,10 +111,10 @@ export type Snapshot = {
   comboBest: number
   /** Peak combo across the whole run (survives wave transitions). */
   runComboBest: number
-  buffRapid: boolean
-  buffSpread: boolean
-  buffShield: boolean
-  buffSlow: boolean
+  buffRapid: number
+  buffSpread: number
+  buffShield: number
+  buffSlow: number
 }
 
 export type GameState = {
@@ -1275,10 +1275,10 @@ export function toSnapshot(s: GameState): Snapshot {
     combo: s.combo,
     comboBest: s.phase === 'waveClear' ? s.lastComboBest : s.comboBest,
     runComboBest: s.runComboBest,
-    buffRapid: (s.buffRapid ?? 0) > 0,
-    buffSpread: (s.buffSpread ?? 0) > 0,
-    buffShield: (s.buffShield ?? 0) > 0,
-    buffSlow: (s.buffSlow ?? 0) > 0,
+    buffRapid: s.buffRapid ?? 0,
+    buffSpread: s.buffSpread ?? 0,
+    buffShield: s.buffShield ?? 0,
+    buffSlow: s.buffSlow ?? 0,
   }
 }
 

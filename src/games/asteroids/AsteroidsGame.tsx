@@ -475,7 +475,10 @@ export function AsteroidsGame() {
               </div>
             ) : null}
             {ui.phase === 'playing' &&
-            (ui.buffRapid || ui.buffSpread || ui.buffShield || ui.buffSlow) ? (
+            (ui.buffRapid > 0 ||
+              ui.buffSpread > 0 ||
+              ui.buffShield > 0 ||
+              ui.buffSlow > 0) ? (
               <div className="asteroids__buffs" aria-label="Active powerups">
                 {(
                   [
@@ -485,8 +488,8 @@ export function AsteroidsGame() {
                     ['slow', ui.buffSlow],
                   ] as const
                 )
-                  .filter(([, on]) => on)
-                  .map(([kind]) => (
+                  .filter(([, left]) => left > 0)
+                  .map(([kind, left]) => (
                     <span
                       key={kind}
                       className="asteroids__buff"
@@ -496,7 +499,12 @@ export function AsteroidsGame() {
                         } as CSSProperties
                       }
                     >
-                      {POWER_LABEL[kind as PowerKind]}
+                      <span className="asteroids__buff__name">
+                        {POWER_LABEL[kind as PowerKind]}
+                      </span>
+                      <span className="asteroids__buff__time">
+                        {Math.ceil(left)}
+                      </span>
                     </span>
                   ))}
               </div>
