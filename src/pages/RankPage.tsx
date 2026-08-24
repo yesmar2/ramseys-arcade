@@ -4,7 +4,7 @@ import { GameDeviceBadge } from '../components/GameDeviceBadge'
 import { PageBackLink } from '../components/PageBackLink'
 import { PageShell } from '../components/PageShell'
 import { getGame, gamePlayableOn } from '../data/games'
-import { gameBoardHref, gamePlayHref, globalRankingsHref } from '../hooks/useHashRoute'
+import { gameBoardHref, gamePlayHref, globalRankingsHref, rankHref } from '../hooks/useHashRoute'
 import { gapToNextLabel } from '../lib/boardGap'
 import { useDeviceType } from '../lib/device'
 import { usePlayerName } from '../hooks/usePlayerName'
@@ -86,7 +86,7 @@ export function RankPage({ player }: { player?: string }) {
                 <span className="lb-page__heading-slot" aria-hidden="true" />
               )}
               <h1 className="lb-page__title">
-                {isSelf ? 'Your ranking' : viewedName}
+                {isSelf ? 'Your ranking' : `${viewedName}'s Ranking`}
               </h1>
               <span className="lb-page__heading-slot" aria-hidden="true" />
             </div>
@@ -103,7 +103,7 @@ export function RankPage({ player }: { player?: string }) {
             <>
               <section
                 className="lb-scorecard lb-scorecard--static"
-                aria-label={isSelf ? 'Your rank' : `${viewedName} rank`}
+                aria-label={isSelf ? 'Your rank' : `${viewedName}'s rank`}
               >
                 <div className="lb-stat">
                   <span className="lb-stat__label">Rank</span>
@@ -117,7 +117,16 @@ export function RankPage({ player }: { player?: string }) {
                   <span className="lb-stat__label">Field</span>
                   <strong>{totalPlayers > 0 ? totalPlayers : '—'}</strong>
                 </div>
-                {gap ? <p className="lb-scorecard__gap">{gap}</p> : null}
+                {gap ? (
+                  <p className="lb-scorecard__gap">
+                    {gap.before}
+                    {gap.name ? (
+                      <a className="lb-scorecard__gap-link" href={rankHref(gap.name)}>
+                        {gap.name}
+                      </a>
+                    ) : null}
+                  </p>
+                ) : null}
               </section>
 
               <section

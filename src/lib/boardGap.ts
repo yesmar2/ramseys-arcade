@@ -6,13 +6,14 @@ export type GapEntry = {
   name?: string
 }
 
-function rankOf(entry: GapEntry, index: number) {
-  return entry.rank ?? index + 1
+export type GapLine = {
+  before: string
+  /** When set, render as a link to that player's ranking. */
+  name?: string
 }
 
-function labelFor(entry: GapEntry, fallbackRank: number) {
-  const name = entry.name?.trim()
-  return name || `#${fallbackRank}`
+function rankOf(entry: GapEntry, index: number) {
+  return entry.rank ?? index + 1
 }
 
 export function gapToNextLabel(opts: {
@@ -21,26 +22,33 @@ export function gapToNextLabel(opts: {
   entries: GapEntry[]
   direction?: 'higher' | 'lower'
   formatDelta: (n: number) => string
-}): string | null {
+}): GapLine | null {
   const { youRank, youScore, entries, direction = 'higher', formatDelta } = opts
   if (youRank < 1 || entries.length === 0) return null
 
   if (youRank === 1) {
     const second = entries.find((e, i) => rankOf(e, i) === 2)
-    if (!second) return 'Holding #1'
+    if (!second) return { before: 'Holding #1' }
     const lead =
       direction === 'lower' ? second.score - youScore : youScore - second.score
-    if (lead <= 0) return 'Holding #1'
-    return `Lead by ${formatDelta(lead)}`
+    if (lead <= 0) return { before: 'Holding #1' }
+    return { before: `Lead by ${formatDelta(lead)}` }
   }
 
   const ahead = entries.find((e, i) => rankOf(e, i) === youRank - 1)
   if (!ahead) return null
   const gap =
     direction === 'lower' ? youScore - ahead.score : ahead.score - youScore
-  const who = labelFor(ahead, youRank - 1)
-  if (gap <= 0) return `Tied with ${who}`
-  return `${formatDelta(gap)} behind ${who}`
+  const name = ahead.name?.trim() || undefined
+  const fallback = `#${youRank - 1}`
+  if (gap <= 0) {
+    return name
+      ? { before: 'Tied with ', name }
+      : { before: `Tied with ${fallback}` }
+  }
+  return name
+    ? { before: `${formatDelta(gap)} behind `, name }
+    : { before: `${formatDelta(gap)} behind ${fallback}` }
 }
 
 export function flashYouRow(el?: HTMLElement | null) {
