@@ -69,96 +69,115 @@ function buildCelebration(
   return { boards, personalBest, books: takeRunAchievements() }
 }
 
-function primaryWin(payload: CelebPayload): {
-  eyebrow: string
-  headline: string
+function awardCards(payload: CelebPayload): {
+  id: string
+  kind: 'board' | 'best' | 'book'
+  label: string
+  value: string
   detail: string | null
-} {
-  const allTimeFirst = payload.boards.find((b) => b.period === 'all' && b.rank === 1)
-  if (allTimeFirst) {
-    return {
-      eyebrow: 'All time',
-      headline: '#1',
-      detail: payload.personalBest?.gain != null ? `+${payload.personalBest.gain}` : null,
-    }
-  }
+  featured: boolean
+}[] {
+  const featuredId = (() => {
+    const allTimeFirst = payload.boards.find((b) => b.period === 'all' && b.rank === 1)
+    if (allTimeFirst) return `board-${allTimeFirst.period}`
+    const anyFirst = payload.boards.find((b) => b.rank === 1)
+    if (anyFirst) return `board-${anyFirst.period}`
+    if (payload.personalBest) return 'best'
+    const bestBoard = payload.boards.reduce<BoardHit | null>((best, row) => {
+      if (!best || row.rank < best.rank) return row
+      return best
+    }, null)
+    if (bestBoard) return `board-${bestBoard.period}`
+    if (payload.books[0]) return `book-0`
+    return null
+  })()
 
-  const anyFirst = payload.boards.find((b) => b.rank === 1)
-  if (anyFirst) {
-    return {
-      eyebrow: PERIOD_LABELS[anyFirst.period],
-      headline: '#1',
-      detail: null,
-    }
-  }
+  const cards = [
+    ...payload.boards.map((board) => ({
+      id: `board-${board.period}`,
+      kind: 'board' as const,
+      label: PERIOD_LABELS[board.period],
+      value: `#${board.rank}`,
+      detail: board.rank === 1 ? 'Top of the board' : 'Top 10',
+      featured: featuredId === `board-${board.period}`,
+    })),
+    ...(payload.personalBest
+      ? [
+          {
+            id: 'best',
+            kind: 'best' as const,
+            label: 'Personal best',
+            value: String(payload.personalBest.score),
+            detail:
+              payload.personalBest.gain != null
+                ? `+${payload.personalBest.gain}`
+                : 'New mark',
+            featured: featuredId === 'best',
+          },
+        ]
+      : []),
+    ...payload.books.map((book, i) => ({
+      id: `book-${i}`,
+      kind: 'book' as const,
+      label: 'Record book',
+      value: book.rank != null ? `#${book.rank}` : 'Set',
+      detail: book.label,
+      featured: featuredId === `book-${i}`,
+    })),
+  ]
 
-  if (payload.personalBest) {
-    return {
-      eyebrow:
-        payload.personalBest.gain != null ? 'New personal best' : 'Personal best',
-      headline: String(payload.personalBest.score),
-      detail:
-        payload.personalBest.gain != null ? `+${payload.personalBest.gain}` : null,
-    }
-  }
-
-  const bestBoard = payload.boards.reduce<BoardHit | null>((best, row) => {
-    if (!best || row.rank < best.rank) return row
-    return best
-  }, null)
-  if (bestBoard) {
-    return {
-      eyebrow: PERIOD_LABELS[bestBoard.period],
-      headline: `#${bestBoard.rank}`,
-      detail: null,
-    }
-  }
-
-  const book = payload.books[0]
-  return {
-    eyebrow: 'Record book',
-    headline: book?.rank != null ? `#${book.rank}` : 'Set',
-    detail: book?.label ?? null,
-  }
+  return cards
 }
 
-function secondaryLines(payload: CelebPayload): string[] {
-  const primary = primaryWin(payload)
-  const lines: string[] = []
-
-  for (const board of payload.boards) {
-    const label = `${PERIOD_LABELS[board.period]} #${board.rank}`
-    const isPrimary =
-      (primary.eyebrow === PERIOD_LABELS[board.period] ||
-        (board.period === 'all' && primary.eyebrow === 'All time')) &&
-      primary.headline === `#${board.rank}`
-    if (!isPrimary) lines.push(label)
-  }
-
-  if (payload.personalBest) {
-    const pbIsPrimary =
-      primary.eyebrow === 'New personal best' || primary.eyebrow === 'Personal best'
-    if (!pbIsPrimary) {
-      lines.push(
-        payload.personalBest.gain != null
-          ? `Personal best +${payload.personalBest.gain}`
-          : 'Personal best',
-      )
-    }
-  }
-
-  for (const book of payload.books) {
-    const bookIsPrimary =
-      primary.eyebrow === 'Record book' &&
-      (book.label === primary.detail ||
-        (primary.detail == null && book === payload.books[0]))
-    if (bookIsPrimary) continue
-    lines.push(
-      book.rank != null ? `${book.label} · #${book.rank}` : book.label,
+function AwardBadge({ kind }: { kind: 'board' | 'best' | 'book' }) {
+  if (kind === 'best') {
+    return (
+      <svg className="score-celeb__badge-icon" viewBox="0 0 24 24" aria-hidden="true">
+        <path
+          d="M12 3.2 14.4 9l6.1.5-4.6 4 1.5 5.9L12 16.4 6.6 19.4l1.5-5.9-4.6-4L9.6 9 12 3.2z"
+          fill="currentColor"
+        />
+      </svg>
     )
   }
-
-  return lines
+  if (kind === 'book') {
+    return (
+      <svg className="score-celeb__badge-icon" viewBox="0 0 24 24" aria-hidden="true">
+        <path
+          d="M6 4.5h9.5A2.5 2.5 0 0 1 18 7v12.2l-5.2-2.4L7.5 19.2V7A2.5 2.5 0 0 1 10 4.5"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          strokeLinejoin="round"
+        />
+        <path
+          d="M10 4.5H6.8A1.8 1.8 0 0 0 5 6.3V18"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          strokeLinecap="round"
+        />
+      </svg>
+    )
+  }
+  return (
+    <svg className="score-celeb__badge-icon" viewBox="0 0 24 24" aria-hidden="true">
+      <path
+        d="M7 20h10M8.5 20v-3.2A5.2 5.2 0 0 1 12 12.2a5.2 5.2 0 0 1 3.5 4.6V20"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M8.2 8.2a3.8 3.8 0 1 1 7.6 0c0 2.2-1.8 3.6-3.8 3.6S8.2 10.4 8.2 8.2z"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+      />
+    </svg>
+  )
 }
 
 function RankChips({ ranks }: { ranks?: Partial<Record<LeaderboardPeriod, number>> }) {
@@ -318,8 +337,8 @@ function ScoreCelebration({
   onDone: () => void
 }) {
   const [leaving, setLeaving] = useState(false)
-  const primary = primaryWin(payload)
-  const extras = secondaryLines(payload)
+  const cards = awardCards(payload)
+  const count = cards.length
 
   const close = () => {
     if (leaving) return
@@ -335,19 +354,32 @@ function ScoreCelebration({
       onPointerDown={(e) => e.stopPropagation()}
     >
       <FireworksCanvas />
-      <div className="score-celeb__card">
-        <span className="score-celeb__eyebrow">{primary.eyebrow}</span>
-        <strong className="score-celeb__headline">{primary.headline}</strong>
-        {primary.detail ? (
-          <p className="score-celeb__detail">{primary.detail}</p>
-        ) : null}
-        {extras.length > 0 ? (
-          <ul className="score-celeb__list" aria-label="More highlights">
-            {extras.map((line) => (
-              <li key={line}>{line}</li>
-            ))}
-          </ul>
-        ) : null}
+      <div className="score-celeb__shell">
+        <p className="score-celeb__kicker">Nice run</p>
+        <h2 className="score-celeb__title">
+          {count === 1 ? 'You earned this' : `${count} awards`}
+        </h2>
+        <div
+          className={`score-celeb__awards score-celeb__awards--${Math.min(count, 4)}`}
+          aria-label="Awards"
+        >
+          {cards.map((card, i) => (
+            <article
+              key={card.id}
+              className={`score-celeb__award score-celeb__award--${card.kind}${card.featured ? ' score-celeb__award--featured' : ''}`}
+              style={{ animationDelay: `${0.08 + i * 0.07}s` }}
+            >
+              <span className="score-celeb__badge" aria-hidden="true">
+                <AwardBadge kind={card.kind} />
+              </span>
+              <span className="score-celeb__award-label">{card.label}</span>
+              <strong className="score-celeb__award-value">{card.value}</strong>
+              {card.detail ? (
+                <span className="score-celeb__award-detail">{card.detail}</span>
+              ) : null}
+            </article>
+          ))}
+        </div>
         <button type="button" className="score-celeb__btn" onClick={close}>
           Continue
         </button>
