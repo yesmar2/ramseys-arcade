@@ -246,18 +246,18 @@ export function PatriotGame() {
           </GamePlayChrome>
 
           <PlayReadout>
-            <div className="play-readout__left">
-              <PlayReadoutScore
-                hot={
-                  (ui.phase === 'playing' || ui.phase === 'waveClear') &&
-                  ui.score > previousBestRef.current
-                }
-              >
-                {ui.score}
-              </PlayReadoutScore>
-              {(ui.phase === 'playing' || ui.phase === 'waveClear') &&
-                !needsRotate &&
-                POWER_ORDER.some((kind) => (ui.pack?.[kind] ?? 0) > 0) && (
+            <PlayReadoutScore
+              hot={
+                (ui.phase === 'playing' || ui.phase === 'waveClear') &&
+                ui.score > previousBestRef.current
+              }
+            >
+              {ui.score}
+            </PlayReadoutScore>
+            {(ui.phase === 'playing' || ui.phase === 'waveClear') &&
+              !needsRotate &&
+              POWER_ORDER.some((kind) => (ui.pack?.[kind] ?? 0) > 0) && (
+              <div className="play-readout__left">
                 <div
                   className="patriot__powers"
                   onPointerDown={(e) => e.stopPropagation()}
@@ -286,8 +286,8 @@ export function PatriotGame() {
                     ))
                   })}
                 </div>
-              )}
-            </div>
+              </div>
+            )}
           </PlayReadout>
 
           <div className="patriot__overlay">

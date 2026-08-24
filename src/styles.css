@@ -1709,8 +1709,7 @@ a.game-hud__board {
 
 .game-play-chrome {
   position: absolute;
-  top: max(0.45rem, env(safe-area-inset-top, 0px));
-  right: max(0.45rem, env(safe-area-inset-right, 0px));
+  top: max(0.35rem, env(safe-area-inset-top, 0px));
   z-index: 13;
   display: flex;
   align-items: center;
@@ -1718,10 +1717,49 @@ a.game-hud__board {
   pointer-events: auto;
 }
 
-.game-play-chrome .game-pause-btn {
+.game-play-chrome--leave {
+  left: max(0.25rem, env(safe-area-inset-left, 0px));
+}
+
+.game-play-chrome--actions {
+  right: max(0.45rem, env(safe-area-inset-right, 0px));
+}
+
+.game-play-chrome--actions .game-pause-btn {
   background: rgba(var(--surface-rgb), 0.72);
   backdrop-filter: blur(10px);
   box-shadow: var(--shadow-soft);
+}
+
+.game-play-back {
+  appearance: none;
+  display: grid;
+  place-items: center;
+  width: 2.35rem;
+  height: 2.35rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--ink);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.game-play-back__icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  display: block;
+  filter: drop-shadow(0 1px 0 rgba(var(--surface-rgb), 0.85))
+    drop-shadow(0 0 8px rgba(var(--surface-rgb), 0.45));
+}
+
+.game-play-back:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent) 65%, transparent);
+  outline-offset: 2px;
+  border-radius: 0.35rem;
 }
 
 .game-pause-card__nav {
@@ -1833,7 +1871,7 @@ a.game-hud__board {
   color: #fff;
 }
 
-/* Plain playfield readouts ? score left, secondary center (no chips). */
+/* Plain playfield readouts: score center, secondary under it (no chips). */
 .play-readout {
   position: absolute;
   inset: 0;
@@ -1843,8 +1881,9 @@ a.game-hud__board {
 
 .play-readout__score {
   position: absolute;
-  top: max(0.5rem, env(safe-area-inset-top, 0px));
-  left: max(0.7rem, env(safe-area-inset-left, 0px));
+  top: max(0.55rem, env(safe-area-inset-top, 0px));
+  left: 50%;
+  transform: translateX(-50%);
   margin: 0;
   font-family: var(--font-display);
   font-size: clamp(1.35rem, 4.5vw, 1.85rem);
@@ -1859,18 +1898,19 @@ a.game-hud__board {
 
 .play-readout__left {
   position: absolute;
-  top: max(0.4rem, env(safe-area-inset-top, 0px));
-  left: max(0.7rem, env(safe-area-inset-left, 0px));
+  top: max(0.45rem, env(safe-area-inset-top, 0px));
+  left: max(2.6rem, calc(env(safe-area-inset-left, 0px) + 2.45rem));
   z-index: 12;
   display: flex;
   align-items: center;
-  gap: 0.55rem;
-  max-width: calc(100% - 5.5rem);
+  gap: 0.45rem;
+  max-width: calc(50% - 4.5rem);
   pointer-events: none;
 }
 
 .play-readout__left .play-readout__score {
   position: static;
+  transform: none;
   flex: none;
 }
 
@@ -1890,7 +1930,7 @@ a.game-hud__board {
 
 .play-readout__center {
   position: absolute;
-  top: max(0.55rem, env(safe-area-inset-top, 0px));
+  top: calc(max(0.55rem, env(safe-area-inset-top, 0px)) + 1.65rem);
   left: 50%;
   transform: translateX(-50%);
   display: flex;
@@ -2741,6 +2781,16 @@ html[data-theme='dark'] .patriot__power-mark {
     margin-top: 0;
     background: rgba(var(--surface-rgb), 0.42);
     box-shadow: none;
+  }
+
+  .game-play-back {
+    width: 1.85rem;
+    height: 1.85rem;
+  }
+
+  .game-play-back__icon {
+    width: 1rem;
+    height: 1rem;
   }
 
   .game-pause-btn__icon {

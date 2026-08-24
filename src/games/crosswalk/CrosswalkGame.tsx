@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
-import { GamePlayChrome, PlayReadout, PlayReadoutScore } from '../../components/GameHud'
+import { GamePlayChrome, PlayReadout, PlayReadoutCenter, PlayReadoutScore } from '../../components/GameHud'
 import { GameStage } from '../../components/GameStage'
 import { PauseButton, GamePauseOverlay } from '../../components/PauseControls'
 import { PersonalBestHint } from '../../components/PersonalBestHint'
@@ -212,30 +212,27 @@ export function CrosswalkGame() {
             </GamePlayChrome>
 
             <PlayReadout>
-              <div className="play-readout__left">
-                <PlayReadoutScore
-                  hot={ui.phase === 'playing' && ui.score > previousBestRef.current}
+              <PlayReadoutScore
+                hot={ui.phase === 'playing' && ui.score > previousBestRef.current}
+              >
+                {ui.score}
+              </PlayReadoutScore>
+              {ui.phase === 'playing' ? (
+                <PlayReadoutCenter
+                  label={`${ui.lives} ${ui.lives === 1 ? 'life' : 'lives'}`}
                 >
-                  {ui.score}
-                </PlayReadoutScore>
-                {ui.phase === 'playing' ? (
-                  <span
-                    className="crosswalk__lives"
-                    aria-label={`${ui.lives} ${ui.lives === 1 ? 'life' : 'lives'}`}
-                  >
-                    {Array.from({ length: ui.lives }, (_, i) => (
-                      <svg
-                        key={i}
-                        className="play-readout__hopper"
-                        viewBox="0 0 16 14"
-                        aria-hidden="true"
-                      >
-                        <ellipse cx="8" cy="7.2" rx="6.2" ry="5.2" fill="currentColor" />
-                      </svg>
-                    ))}
-                  </span>
-                ) : null}
-              </div>
+                  {Array.from({ length: ui.lives }, (_, i) => (
+                    <svg
+                      key={i}
+                      className="play-readout__hopper"
+                      viewBox="0 0 16 14"
+                      aria-hidden="true"
+                    >
+                      <ellipse cx="8" cy="7.2" rx="6.2" ry="5.2" fill="currentColor" />
+                    </svg>
+                  ))}
+                </PlayReadoutCenter>
+              ) : null}
             </PlayReadout>
 
             <div className="crosswalk__overlay">

@@ -144,7 +144,7 @@ function resolveInRun(inRun: InRun) {
   return typeof inRun === 'function' ? inRun() : inRun
 }
 
-/** Top-right play controls on the stage (leave + fullscreen + pause). No header bar. */
+/** Stage chrome: leave (left icon) + fullscreen/pause (right). No header bar. */
 export function GamePlayChrome({
   slug,
   inRun = false,
@@ -161,19 +161,26 @@ export function GamePlayChrome({
   children?: ReactNode
 }) {
   return (
-    <div
-      className="game-play-chrome"
-      onPointerDown={(e) => e.stopPropagation()}
-    >
-      <PlayLeaveButton
-        slug={slug}
-        inRun={inRun}
-        paused={paused}
-        onPause={onPause}
-      />
-      <FullscreenToggle />
-      {children}
-    </div>
+    <>
+      <div
+        className="game-play-chrome game-play-chrome--leave"
+        onPointerDown={(e) => e.stopPropagation()}
+      >
+        <PlayLeaveButton
+          slug={slug}
+          inRun={inRun}
+          paused={paused}
+          onPause={onPause}
+        />
+      </div>
+      <div
+        className="game-play-chrome game-play-chrome--actions"
+        onPointerDown={(e) => e.stopPropagation()}
+      >
+        <FullscreenToggle />
+        {children}
+      </div>
+    </>
   )
 }
 
@@ -237,7 +244,7 @@ function PlayLeaveButton({
     <>
       <button
         type="button"
-        className="game-pause-btn game-play-chrome__btn"
+        className="game-play-back"
         aria-label={label}
         title={label}
         onPointerDown={(e) => e.stopPropagation()}
@@ -246,7 +253,7 @@ function PlayLeaveButton({
           onClick()
         }}
       >
-        <svg className="game-pause-btn__icon" viewBox="0 0 24 24" aria-hidden="true">
+        <svg className="game-play-back__icon" viewBox="0 0 24 24" aria-hidden="true">
           <path
             d="M14.5 5.5L8 12l6.5 6.5"
             fill="none"
