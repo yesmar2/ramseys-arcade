@@ -3463,22 +3463,32 @@ a.game-hud__board {
   height: 100%;
 }
 
-.lb-game-board__title {
+/* Beat .lb-page__title (same element) so board headers stay compact. */
+.lb-page__title.lb-game-board__title {
   margin: 0;
   min-width: 0;
-  font-size: clamp(1.15rem, 4.2vw, 1.85rem);
-  line-height: 1.15;
-  text-wrap: balance;
+  font-size: clamp(1rem, 3.2vw, 1.55rem);
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 @media (max-width: 420px) {
-  .lb-game-board__title {
-    font-size: clamp(1.05rem, 3.8vw, 1.35rem);
+  .lb-page__title.lb-game-board__title {
+    font-size: clamp(0.92rem, 3.4vw, 1.15rem);
   }
 
   .lb-game-board__thumb {
-    width: 2.15rem;
-    height: 2.15rem;
+    width: 2rem;
+    height: 2rem;
+  }
+
+  .lb-game-board__play {
+    min-height: 2.1rem;
+    padding: 0.25rem 0.7rem;
+    font-size: 0.78rem;
   }
 }
 
