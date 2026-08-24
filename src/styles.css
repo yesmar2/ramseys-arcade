@@ -3367,6 +3367,7 @@ a.game-hud__board {
 .lb-game-board__identity {
   display: flex;
   flex-direction: row;
+  flex-wrap: nowrap;
   align-items: center;
   justify-content: center;
   justify-self: stretch;
