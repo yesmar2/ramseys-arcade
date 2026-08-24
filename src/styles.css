@@ -2262,14 +2262,15 @@ a.game-hud__board {
   z-index: 12;
   display: flex;
   flex-direction: row;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 0.38rem;
-  max-width: 11rem;
+  max-width: none;
   pointer-events: auto;
 }
 
 .play-readout__left .patriot__powers {
-  max-width: min(14rem, 100%);
+  max-width: none;
+  flex-wrap: nowrap;
 }
 
 .patriot__power {

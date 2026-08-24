@@ -22,7 +22,7 @@ const SCORING: Record<string, ScoreRow[]> = {
     { label: 'Ammo (1)', value: '+10 per turret' },
     { label: 'Shield (2)', value: 'cities safe 5s' },
     { label: 'Slow (3)', value: 'sky crawls 5s' },
-    { label: 'Burst (4)', value: 'blast chains on hits' },
+    { label: 'Seeker (4)', value: 'locks nearest missile, chains on hit' },
     { label: 'Violet missile', value: 'splits halfway' },
   ],
   snake: [

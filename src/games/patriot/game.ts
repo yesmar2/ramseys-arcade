@@ -197,7 +197,7 @@ export const POWER_LABEL: Record<PowerKind, string> = {
   ammo: 'Ammo',
   shield: 'Shield',
   slow: 'Slow',
-  burst: 'Burst',
+  burst: 'Seeker',
 }
 export const POWER_HUE: Record<PowerKind, number> = {
   ammo: 42,
@@ -410,13 +410,16 @@ export function setCursor(state: GameState, x: number, y: number): GameState {
   }
 }
 
-export function fire(state: GameState): GameState {
+export function fire(
+  state: GameState,
+  aim?: { x: number; y: number },
+): GameState {
   if (state.phase !== 'playing') return state
 
   const alive = state.batteries.filter((b) => b.alive && b.ammo > 0)
   if (alive.length === 0) return state
 
-  const target = state.cursor
+  const target = aim ?? state.cursor
   let best = alive[0]
   let bestDist = Math.abs(best.x - target.x)
   for (const b of alive) {
@@ -454,11 +457,55 @@ export function fire(state: GameState): GameState {
   }
 }
 
+function closestMissile(state: GameState): Incoming | null {
+  const list = state.incoming
+  if (!list.length) return null
+
+  const marks = [
+    ...state.cities.filter((c) => c.alive).map((c) => ({ x: c.x, y: state.groundY })),
+    ...state.batteries.filter((b) => b.alive).map((b) => ({ x: b.x, y: state.groundY })),
+  ]
+  if (!marks.length) {
+    marks.push({ x: state.cursor.x, y: state.groundY })
+  }
+
+  let best = list[0]
+  let bestDist = Infinity
+  for (const m of list) {
+    let d = Infinity
+    for (const mark of marks) {
+      d = Math.min(d, dist(m.x, m.y, mark.x, mark.y))
+    }
+    if (d < bestDist) {
+      best = m
+      bestDist = d
+    }
+  }
+  return best
+}
+
+/** Aim slightly ahead of a falling missile so the Seeker meets it. */
+function leadMissile(
+  m: Incoming,
+  fromX: number,
+  fromY: number,
+  shotSpeed: number,
+): { x: number; y: number } {
+  let x = m.x
+  let y = m.y
+  for (let i = 0; i < 3; i++) {
+    const travel = dist(fromX, fromY, x, y) / Math.max(1, shotSpeed)
+    const step = advanceAlong(m.x0, m.y0, m.x1, m.y1, m.x, m.y, m.speed, travel)
+    x = step.x
+    y = step.y
+  }
+  return { x, y }
+}
+
 export function activatePower(state: GameState, kind: PowerKind): GameState {
   if (state.phase !== 'playing') return state
   if (state.pack[kind] <= 0) return state
 
-  const pack = { ...state.pack, [kind]: state.pack[kind] - 1 }
   const midX =
     state.cities.reduce((n, c) => n + c.x, 0) / Math.max(1, state.cities.length)
   const floater = (text: string): Floater => ({
@@ -469,6 +516,52 @@ export function activatePower(state: GameState, kind: PowerKind): GameState {
     life: 1.2,
   })
 
+  if (kind === 'burst') {
+    const missile = closestMissile(state)
+    if (!missile) {
+      return {
+        ...state,
+        floaters: [...state.floaters, floater('NO TARGET')],
+      }
+    }
+
+    const alive = state.batteries.filter((b) => b.alive && b.ammo > 0)
+    if (alive.length === 0) {
+      return {
+        ...state,
+        floaters: [...state.floaters, floater('NO AMMO')],
+      }
+    }
+
+    let best = alive[0]
+    let bestDist = Math.abs(best.x - missile.x)
+    for (const b of alive) {
+      const d = Math.abs(b.x - missile.x)
+      if (d < bestDist) {
+        best = b
+        bestDist = d
+      }
+    }
+    const muzzleY = state.groundY - 18 * state.scale
+    const shotSpeed = 400 * (state.scale / VIEW_ZOOM)
+    const aim = leadMissile(missile, best.x, muzzleY, shotSpeed)
+    const fired = fire({ ...state, burstArmed: true }, aim)
+    if (fired.shots.length === state.shots.length) {
+      return {
+        ...state,
+        floaters: [...state.floaters, floater('NO AMMO')],
+      }
+    }
+
+    sfx('good')
+    return {
+      ...fired,
+      pack: { ...state.pack, burst: state.pack.burst - 1 },
+      floaters: [...fired.floaters, floater('SEEKER')],
+    }
+  }
+
+  const pack = { ...state.pack, [kind]: state.pack[kind] - 1 }
   sfx('good')
   if (kind === 'ammo') {
     return {
@@ -486,19 +579,11 @@ export function activatePower(state: GameState, kind: PowerKind): GameState {
       floaters: [...state.floaters, floater('SHIELD')],
     }
   }
-  if (kind === 'slow') {
-    return {
-      ...state,
-      pack,
-      slowT: SLOW_TIME,
-      floaters: [...state.floaters, floater('SLOW')],
-    }
-  }
   return {
     ...state,
     pack,
-    burstArmed: true,
-    floaters: [...state.floaters, floater('BURST READY')],
+    slowT: SLOW_TIME,
+    floaters: [...state.floaters, floater('SLOW')],
   }
 }
 

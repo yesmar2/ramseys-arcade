@@ -41,7 +41,10 @@ function PowerMark({ kind }: { kind: PowerKind }) {
           <path d="M9 8 5 12l4 4M15 8l4 4-4 4" />
         </>
       ) : (
-        <circle cx="12" cy="12" r="4.2" />
+        <>
+          <circle cx="12" cy="12" r="3.2" />
+          <path d="M12 2.5v4M12 17.5v4M2.5 12h4M17.5 12h4" />
+        </>
       )}
     </svg>
   )
@@ -254,8 +257,7 @@ export function PatriotGame() {
                     const count = ui.pack?.[kind] ?? 0
                     const hot =
                       (kind === 'shield' && ui.shieldT > 0) ||
-                      (kind === 'slow' && ui.slowT > 0) ||
-                      (kind === 'burst' && ui.burstArmed)
+                      (kind === 'slow' && ui.slowT > 0)
                     return Array.from({ length: count }, (_, n) => (
                       <button
                         key={`${kind}-${n}`}
@@ -305,12 +307,12 @@ export function PatriotGame() {
               >
                 {ui.clearBonus?.perfect ? (
                   <>
-                    <h2>Perfect wave</h2>
+                    <h2>Wave {ui.wave} · Perfect</h2>
                     <p className="patriot__bonus">+{ui.clearBonus.cityBonus}</p>
                   </>
                 ) : ui.clearBonus?.rebuilt ? (
                   <>
-                    <h2>City rebuilt</h2>
+                    <h2>Wave {ui.wave} · City rebuilt</h2>
                     <p className="patriot__bonus">
                       {ui.clearBonus.cities} {ui.clearBonus.cities === 1 ? 'city' : 'cities'} +{ui.clearBonus.cityBonus}
                     </p>
