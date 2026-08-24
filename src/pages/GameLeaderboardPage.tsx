@@ -1,16 +1,14 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
-import {
-  BoardEmpty,
-  BoardSkeleton,
-  PeriodSwitcher,
-} from '../components/BoardChrome'
-import { BoardTrail } from '../components/BoardTrail'
+import { BoardEmpty, BoardSkeleton, PeriodSwitcher } from '../components/BoardChrome'
+import { GamePageHeader } from '../components/GamePageHeader'
 import { LeaderboardList } from '../components/LeaderboardList'
 import { PageShell } from '../components/PageShell'
 import { getGame, gamePlayableOn, deviceRequirementLabel } from '../data/games'
 import {
   gameBoardHref,
+  gameHref,
   gamePlayHref,
+  leaderboardHref,
 } from '../hooks/useHashRoute'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { useDeviceType } from '../lib/device'
@@ -112,7 +110,16 @@ export function GameLeaderboardPage({
           } as CSSProperties
         }
       >
-        <BoardTrail game={gameSlug} period={period} />
+        <a className="rank-page__back" href={leaderboardHref()}>
+          ← Boards
+        </a>
+
+        <GamePageHeader
+          slug={gameSlug}
+          accent={accent}
+          title={game.name}
+          href={gameHref(gameSlug)}
+        />
 
         <PeriodSwitcher
           period={period}
