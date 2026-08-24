@@ -26,13 +26,6 @@ const INITIAL_ROWS = 10
 const GLOBAL_ROWS = 100
 const SUMMARY_ROWS = 3
 
-const PERIOD_BLURBS: Record<LeaderboardPeriod, string> = {
-  daily: 'Points from today’s game boards.',
-  weekly: 'Points from this week’s game boards.',
-  monthly: 'Points from this month’s game boards.',
-  all: 'All-time points from every game board.',
-}
-
 type LeaderboardsPageProps = {
   global?: boolean
   period?: LeaderboardPeriod
@@ -103,10 +96,6 @@ function LeaderboardsOverview() {
     <PageShell innerClassName="lb-page__inner lb-page__inner--summary">
       <header className="lb-page__header lb-page__header--compact">
         <h1 className="lb-page__title">Boards</h1>
-        <p className="lb-page__blurb lb-page__blurb--tight">
-          Top {SUMMARY_ROWS} for every game and time frame. Open a game for
-          the full board.
-        </p>
         <BoardsHubSwitcher global={false} />
       </header>
 
@@ -186,9 +175,6 @@ function GlobalRankingsView({ period }: { period: LeaderboardPeriod }) {
     <PageShell innerClassName="lb-page__inner">
       <header className="lb-page__header lb-page__header--compact">
         <h1 className="lb-page__title">Boards</h1>
-        <p className="lb-page__blurb lb-page__blurb--tight">
-          {PERIOD_BLURBS[period]}
-        </p>
         <BoardsHubSwitcher global />
       </header>
 
