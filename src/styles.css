@@ -3404,66 +3404,91 @@ a.game-hud__board {
   line-height: 1;
 }
 
-.board-trail {
+.page-trail {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   flex-wrap: wrap;
-  gap: 0.35rem 0.45rem;
-  margin: 0 0 0.15rem;
-  font-size: 0.82rem;
+  gap: 0.4rem 0.55rem;
+  margin: 0 0 0.35rem;
+  font-family: var(--font-display);
   font-weight: 700;
+  font-size: clamp(1.35rem, 4vw, 1.85rem);
+  letter-spacing: -0.03em;
+  line-height: 1.15;
 }
 
-.board-trail__parent {
+.page-trail__parent {
   color: var(--muted);
   text-decoration: none;
 }
 
-.board-trail__parent:hover,
-.board-trail__parent:focus-visible {
+.page-trail__parent:hover,
+.page-trail__parent:focus-visible {
   color: var(--ink);
   outline: none;
 }
 
-.board-trail__sep {
-  color: color-mix(in srgb, var(--muted) 70%, transparent);
+.page-trail__sep {
+  color: color-mix(in srgb, var(--muted) 65%, transparent);
   font-weight: 650;
 }
 
-.board-trail__game {
-  position: relative;
+.page-trail__current {
+  margin: 0;
+  min-width: 0;
+  font: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  letter-spacing: inherit;
+  line-height: inherit;
+  color: var(--ink);
 }
 
-.board-trail__trigger {
+.page-trail__current-text {
+  display: inline;
+}
+
+.page-trail__switch {
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
+}
+
+.page-trail__trigger {
   display: inline-flex;
-  align-items: center;
+  align-items: baseline;
   gap: 0.28rem;
+  max-width: 100%;
   margin: 0;
-  padding: 0.2rem 0.45rem 0.2rem 0.5rem;
-  border: 1px solid rgba(var(--ink-rgb), 0.1);
-  border-radius: 999px;
-  background: rgba(var(--surface-rgb), 0.9);
-  color: var(--ink);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
   font: inherit;
-  font-weight: 750;
+  font-size: inherit;
+  font-weight: inherit;
+  letter-spacing: inherit;
+  line-height: inherit;
+  text-align: left;
   cursor: pointer;
 }
 
-.board-trail__trigger:hover,
-.board-trail__trigger:focus-visible {
-  border-color: color-mix(in srgb, var(--board-accent, var(--accent)) 40%, rgba(var(--ink-rgb), 0.12));
+.page-trail__trigger:hover,
+.page-trail__trigger:focus-visible {
+  color: color-mix(in srgb, var(--board-accent, var(--accent)) 45%, var(--ink));
   outline: none;
 }
 
-.board-trail__caret {
-  font-size: 0.72rem;
+.page-trail__caret {
+  font-size: 0.55em;
+  font-weight: 700;
   color: var(--muted);
   line-height: 1;
 }
 
-.board-trail__menu {
+.page-trail__menu {
   position: absolute;
-  top: calc(100% + 0.35rem);
+  top: calc(100% + 0.4rem);
   left: 0;
   z-index: 40;
   min-width: 11rem;
@@ -3474,9 +3499,13 @@ a.game-hud__board {
   background: var(--surface);
   border: 1px solid rgba(var(--ink-rgb), 0.08);
   box-shadow: var(--shadow-lift);
+  font-family: var(--font-body);
+  font-size: 0.92rem;
+  font-weight: 700;
+  letter-spacing: 0;
 }
 
-.board-trail__option {
+.page-trail__option {
   display: block;
   padding: 0.55rem 0.75rem;
   border-radius: 0.65rem;
@@ -3486,19 +3515,19 @@ a.game-hud__board {
   white-space: nowrap;
 }
 
-.board-trail__option:hover,
-.board-trail__option:focus-visible {
+.page-trail__option:hover,
+.page-trail__option:focus-visible {
   background: color-mix(in srgb, var(--accent) 14%, var(--surface));
   outline: none;
 }
 
-.board-trail__option--active {
+.page-trail__option--active {
   background: color-mix(in srgb, var(--board-accent, var(--accent)) 18%, var(--surface));
   cursor: default;
 }
 
 .lb-page__inner--game-board .lb-periods {
-  margin-top: 0.1rem;
+  margin-top: 0.45rem;
 }
 
 .lb-page__inner--game-board .lb-board {
