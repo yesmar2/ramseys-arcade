@@ -117,6 +117,7 @@ export function GameLeaderboardPage({
           slug={gameSlug}
           accent={accent}
           title={game.name}
+          href={gameHref(gameSlug)}
         />
 
         <PeriodSwitcher
