@@ -18,7 +18,7 @@ function ThumbSvg({ children }: { children: ReactNode }) {
       aria-hidden="true"
     >
       {/* Artwork was authored in a 64×40 frame; nudge into a square. */}
-      <g transform="translate(0 12)">{children}</g>
+      <g transform="translate(0 10)">{children}</g>
     </svg>
   )
 }
