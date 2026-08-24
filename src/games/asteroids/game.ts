@@ -1208,6 +1208,7 @@ export function tick(state: GameState, dt: number): GameState {
     const bonus = nextWave * 50 + timeBonus
     const lifeBonus = s.wave % 3 === 0
     sfx('wave')
+    if (lifeBonus) sfx('good')
     const withBonus = {
       ...s,
       phase: 'waveClear' as const,

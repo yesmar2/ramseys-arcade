@@ -505,9 +505,26 @@ export function AsteroidsGame() {
                 <span>
                   {ui.timeBonus > 0 ? `Time bonus +${ui.timeBonus}` : 'No time bonus'}
                 </span>
-                {ui.lifeBonus ? <span>+1 life</span> : null}
                 {ui.comboBest > 1 ? (
                   <span>Best combo {ui.comboBest}</span>
+                ) : null}
+                {ui.lifeBonus ? (
+                  <div className="asteroids__life-bonus" aria-live="polite">
+                    <svg
+                      className="asteroids__life-bonus__ship"
+                      viewBox="0 0 16 20"
+                      aria-hidden="true"
+                    >
+                      <path
+                        d="M8 1.5 L14.5 17.5 L8 13.5 L1.5 17.5 Z"
+                        fill="currentColor"
+                      />
+                    </svg>
+                    <div className="asteroids__life-bonus__copy">
+                      <strong>Extra life</strong>
+                      <span>Awarded every 3 waves</span>
+                    </div>
+                  </div>
                 ) : null}
                 <button
                   type="button"

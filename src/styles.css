@@ -3354,6 +3354,60 @@ html[data-theme='dark'] .patriot__power-mark {
   color: #5a8fd4;
 }
 
+.asteroids__life-bonus {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  width: 100%;
+  margin-top: 0.25rem;
+  padding: 0.65rem 0.75rem;
+  border-radius: 0.85rem;
+  background: color-mix(in srgb, var(--accent) 14%, rgba(var(--surface-rgb), 0.95));
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+  animation: asteroids-life-pop 0.55s ease-out;
+}
+
+.asteroids__life-bonus__ship {
+  flex: none;
+  width: 1.35rem;
+  height: 1.6rem;
+  color: var(--accent);
+}
+
+.asteroids__life-bonus__copy {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.1rem;
+  text-align: left;
+}
+
+.asteroids__life-bonus__copy strong {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--ink);
+}
+
+.asteroids__life-bonus__copy span {
+  font-size: 0.75rem !important;
+  font-weight: 650 !important;
+  letter-spacing: 0.01em !important;
+  color: var(--muted) !important;
+}
+
+@keyframes asteroids-life-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.92) translateY(0.35rem);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
 .asteroids__wave-time {
   margin: 0 !important;
   font-family: var(--font-display);
