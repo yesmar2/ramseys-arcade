@@ -86,17 +86,15 @@ export function RankPage({ player }: { player?: string }) {
                 <span className="lb-page__heading-slot" aria-hidden="true" />
               )}
               <h1 className="lb-page__title">
-                {isSelf ? 'Your profile' : viewedName}
+                {isSelf ? 'Your ranking' : viewedName}
               </h1>
               <span className="lb-page__heading-slot" aria-hidden="true" />
             </div>
-            <p className="lb-page__blurb lb-page__blurb--tight">
-              {isSelf
-                ? myName
-                  ? 'All-time standing across every board'
-                  : 'Set a gamer tag to earn a global rank'
-                : `All-time standing for ${viewedName}`}
-            </p>
+            {isSelf && !myName ? (
+              <p className="lb-page__blurb lb-page__blurb--tight">
+                Set a gamer tag to earn a global rank
+              </p>
+            ) : null}
           </header>
 
           {loading ? (

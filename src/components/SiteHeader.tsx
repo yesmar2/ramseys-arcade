@@ -143,7 +143,7 @@ export function SiteHeader() {
           <a
             className={`site-header__you${navActive('you', hash) ? ' site-header__you--active' : ''}`}
             href={rankHref()}
-            title={rank != null ? `Your profile · #${rank}` : 'Your profile'}
+            title={rank != null ? `Your ranking · #${rank}` : 'Your ranking'}
             aria-current={navActive('you', hash) ? 'page' : undefined}
           >
             {rank != null ? (

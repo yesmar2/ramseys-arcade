@@ -3,10 +3,16 @@
 export type GapEntry = {
   rank?: number
   score: number
+  name?: string
 }
 
 function rankOf(entry: GapEntry, index: number) {
   return entry.rank ?? index + 1
+}
+
+function labelFor(entry: GapEntry, fallbackRank: number) {
+  const name = entry.name?.trim()
+  return name || `#${fallbackRank}`
 }
 
 export function gapToNextLabel(opts: {
@@ -32,8 +38,9 @@ export function gapToNextLabel(opts: {
   if (!ahead) return null
   const gap =
     direction === 'lower' ? youScore - ahead.score : ahead.score - youScore
-  if (gap <= 0) return `Tied with #${youRank - 1}`
-  return `${formatDelta(gap)} behind #${youRank - 1}`
+  const who = labelFor(ahead, youRank - 1)
+  if (gap <= 0) return `Tied with ${who}`
+  return `${formatDelta(gap)} behind ${who}`
 }
 
 export function flashYouRow(el?: HTMLElement | null) {

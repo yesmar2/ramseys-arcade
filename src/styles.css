@@ -5899,8 +5899,14 @@ a.game-hud__board {
   position: fixed;
   inset: 0;
   z-index: 80;
-  display: grid;
-  place-items: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: safe center;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
   padding: max(1rem, env(safe-area-inset-top)) max(1rem, env(safe-area-inset-right))
     max(1rem, env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left));
   background:
@@ -5909,6 +5915,7 @@ a.game-hud__board {
     color-mix(in srgb, var(--shell, #edf7f4) 72%, transparent);
   backdrop-filter: blur(12px);
   animation: score-celeb-fade 0.35s ease both;
+  box-sizing: border-box;
 }
 
 .score-celeb--out {
@@ -5916,7 +5923,7 @@ a.game-hud__board {
 }
 
 .score-celeb__fireworks {
-  position: absolute;
+  position: fixed;
   inset: 0;
   width: 100%;
   height: 100%;
@@ -5931,6 +5938,7 @@ a.game-hud__board {
   align-items: center;
   gap: 1rem;
   width: min(100%, 42rem);
+  margin: auto 0;
   padding: 1.5rem 1.15rem 1.45rem;
   border-radius: calc(var(--tile-radius) + 0.25rem);
   background: rgba(var(--surface-rgb), 0.94);
@@ -5939,6 +5947,7 @@ a.game-hud__board {
   box-shadow: var(--shadow-soft);
   animation: score-celeb-pop 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
   text-align: center;
+  box-sizing: border-box;
 }
 
 .score-celeb__kicker {
