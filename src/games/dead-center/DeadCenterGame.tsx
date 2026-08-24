@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
-import { GameHud, GameHudStat } from '../../components/GameHud'
+import { GameHud, GameHudStat, GameStageHud } from '../../components/GameHud'
 import { GameStage } from '../../components/GameStage'
+import { PauseButton, GamePauseOverlay } from '../../components/PauseControls'
 import { PersonalBestHint } from '../../components/PersonalBestHint'
 import { ScoreSaveCard } from '../../components/ScoreSaveCard'
 import { TournamentScoreCard } from '../../components/TournamentScoreCard'
+import { useGamePause } from '../../hooks/useGamePause'
 import { usePersonalBest } from '../../hooks/usePersonalBest'
 import { getPersonalBest } from '../../lib/personalBest'
 import { useTournamentPlay } from '../../tournaments/TournamentPlayContext'
@@ -39,6 +41,10 @@ export function DeadCenterGame() {
   const previousBestRef = useRef(getPersonalBest('dead-center'))
   const clickLock = useRef(false)
   const startGrace = useRef(0)
+  const pausable = ui.phase === 'playing' && !saveOpen
+  const { paused, toggle: togglePause, resume } = useGamePause(pausable)
+  const pausedRef = useRef(false)
+  pausedRef.current = paused
 
   useEffect(() => {
     let raf = 0
@@ -57,7 +63,9 @@ export function DeadCenterGame() {
         stateRef.current = resizeState(stateRef.current, w, h)
       }
 
-      stateRef.current = tick(stateRef.current, dt)
+      if (!pausedRef.current) {
+        stateRef.current = tick(stateRef.current, dt)
+      }
 
       uiAcc += dt
       if (uiAcc > 0.08) {
@@ -125,7 +133,7 @@ export function DeadCenterGame() {
 
   const onPointerDown = (e: ReactPointerEvent<HTMLElement>) => {
     e.preventDefault()
-    if (saveOpen) return
+    if (saveOpen || paused) return
     if (clickLock.current) return
     clickLock.current = true
     setTimeout(() => {
@@ -176,21 +184,12 @@ export function DeadCenterGame() {
     <section className="deadcenter deadcenter--fullscreen">
       <GameHud
         slug="dead-center"
-        personalBest={ui.phase === 'playing' ? previousBestRef.current : apiBest}
-      >
-        <GameHudStat
-          label="Score"
-          hot={ui.phase === 'playing' && ui.score > previousBestRef.current}
-        >
-          {ui.score}
-        </GameHudStat>
-        <GameHudStat label="Round">
-          {Math.min(ui.round, ui.totalRounds)}/{ui.totalRounds}
-        </GameHudStat>
-        <GameHudStat label="Time" className="game-hud__stat--time">
-          {ui.phase === 'playing' ? ui.timeLeft : '—'}
-        </GameHudStat>
-      </GameHud>
+        extra={
+          (pausable || paused) ? (
+            <PauseButton paused={paused} onToggle={togglePause} />
+          ) : undefined
+        }
+      />
       <div className="game-play">
       <GameStage
         aspectWidth={aspect.w}
@@ -199,8 +198,29 @@ export function DeadCenterGame() {
         <div className="deadcenter__play" onPointerDown={onPointerDown}>
           <canvas ref={canvasRef} className="deadcenter__viewport" />
 
+          <GameStageHud>
+            <GameHudStat
+              label="Score"
+              hot={ui.phase === 'playing' && ui.score > previousBestRef.current}
+            >
+              {ui.score}
+            </GameHudStat>
+            <GameHudStat label="Round">
+              {Math.min(ui.round, ui.totalRounds)}/{ui.totalRounds}
+            </GameHudStat>
+            <GameHudStat label="Time" className="game-hud__stat--time">
+              {ui.phase === 'playing' ? ui.timeLeft : '—'}
+            </GameHudStat>
+          </GameStageHud>
+
           <div className="deadcenter__overlay">
-            {ui.phase === 'menu' && !saveOpen && (
+            <GamePauseOverlay
+              slug="dead-center"
+              personalBest={ui.phase === 'playing' ? previousBestRef.current : apiBest}
+              paused={paused}
+              onResume={resume}
+            />
+            {ui.phase === 'menu' && !saveOpen && !paused && (
               <div className="deadcenter__card" aria-hidden="true">
                 <h2>Centroid</h2>
                 <p>Tap the shape’s true center. Closer scores more.</p>
@@ -208,7 +228,7 @@ export function DeadCenterGame() {
                 <span>10 shapes · 5 seconds each</span>
               </div>
             )}
-            {ui.phase === 'reveal' && gradeLabel && (
+            {ui.phase === 'reveal' && gradeLabel && !paused && (
               <div className="deadcenter__toast" aria-hidden="true">
                 <strong>{gradeLabel}</strong>
                 {ui.lastDist != null ? (

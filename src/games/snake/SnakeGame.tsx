@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
-import { GameHud, GameHudStat } from '../../components/GameHud'
+import { GameHud, GameHudStat, GameStageHud } from '../../components/GameHud'
 import { GameStage } from '../../components/GameStage'
-import { PauseButton, PauseOverlay } from '../../components/PauseControls'
+import { PauseButton, GamePauseOverlay } from '../../components/PauseControls'
 import { PersonalBestHint } from '../../components/PersonalBestHint'
 import { ScoreSaveCard } from '../../components/ScoreSaveCard'
 import { TournamentScoreCard } from '../../components/TournamentScoreCard'
@@ -269,21 +269,12 @@ export function SnakeGame() {
     <section className={`snake snake--fullscreen${saveOpen ? ' snake--saving' : ''}`}>
       <GameHud
         slug="snake"
-        personalBest={ui.phase === 'playing' ? previousBestRef.current : apiBest}
         extra={
           (pausable || paused) ? (
             <PauseButton paused={paused} onToggle={togglePause} />
           ) : undefined
         }
-      >
-        <GameHudStat
-          label="Score"
-          hot={ui.phase === 'playing' && ui.score > previousBestRef.current}
-        >
-          {ui.score}
-        </GameHudStat>
-        <GameHudStat label="Length">{ui.length}</GameHudStat>
-      </GameHud>
+      />
       <div className="snake__body">
       <div
         className="snake__play"
@@ -298,8 +289,23 @@ export function SnakeGame() {
         >
           <canvas ref={canvasRef} className="snake__viewport" />
 
+          <GameStageHud>
+            <GameHudStat
+              label="Score"
+              hot={ui.phase === 'playing' && ui.score > previousBestRef.current}
+            >
+              {ui.score}
+            </GameHudStat>
+            <GameHudStat label="Length">{ui.length}</GameHudStat>
+          </GameStageHud>
+
           <div className="snake__overlay">
-            <PauseOverlay paused={paused} onResume={resume} />
+            <GamePauseOverlay
+              slug="snake"
+              personalBest={ui.phase === 'playing' ? previousBestRef.current : apiBest}
+              paused={paused}
+              onResume={resume}
+            />
             {ui.phase === 'menu' && !saveOpen && !paused && (
               <div className="snake__card" aria-hidden="true">
                 <h2>Snake</h2>

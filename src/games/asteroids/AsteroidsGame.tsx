@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
-import { GameHud, GameHudStat } from '../../components/GameHud'
+import { GameHud, GameHudStat, GameStageHud } from '../../components/GameHud'
 import { GameStage } from '../../components/GameStage'
-import { PauseButton, PauseOverlay } from '../../components/PauseControls'
+import { PauseButton, GamePauseOverlay } from '../../components/PauseControls'
 import { PersonalBestHint } from '../../components/PersonalBestHint'
 import { ScoreSaveCard } from '../../components/ScoreSaveCard'
 import { TournamentScoreCard } from '../../components/TournamentScoreCard'
@@ -402,32 +402,12 @@ export function AsteroidsGame() {
     <section className={`asteroids asteroids--fullscreen${device === 'tablet' ? ' asteroids--tablet' : ''}${saveOpen || ui.phase === 'waveClear' ? ' asteroids--saving' : ''}`}>
       <GameHud
         slug="asteroids"
-        personalBest={ui.phase === 'playing' ? previousBestRef.current : apiBest}
-        hideBest
         extra={
           (pausable || paused) ? (
             <PauseButton paused={paused} onToggle={togglePause} />
           ) : undefined
         }
-      >
-        <GameHudStat
-          label="Score"
-          hot={ui.phase === 'playing' && ui.score > previousBestRef.current}
-        >
-          {ui.score}
-        </GameHudStat>
-        <GameHudStat label="Wave">
-          {ui.phase === 'waveClear' ? ui.lastWave : ui.wave}
-        </GameHudStat>
-        <GameHudStat label="Time" className="game-hud__stat--time">
-          {ui.phase === 'playing' || ui.phase === 'waveClear'
-            ? `${formatWaveTime(ui.time)}s`
-            : '—'}
-        </GameHudStat>
-        <GameHudStat label="Lives" className="game-hud__stat--lives">
-          {ui.lives}
-        </GameHudStat>
-      </GameHud>
+      />
       <div className="asteroids__body">
       <div className="asteroids__play" onPointerDown={onPlayTap}>
         <GameStage
@@ -437,8 +417,34 @@ export function AsteroidsGame() {
         >
           <canvas ref={canvasRef} className="asteroids__viewport" />
 
+          <GameStageHud>
+            <GameHudStat
+              label="Score"
+              hot={ui.phase === 'playing' && ui.score > previousBestRef.current}
+            >
+              {ui.score}
+            </GameHudStat>
+            <GameHudStat label="Wave">
+              {ui.phase === 'waveClear' ? ui.lastWave : ui.wave}
+            </GameHudStat>
+            <GameHudStat label="Time" className="game-hud__stat--time">
+              {ui.phase === 'playing' || ui.phase === 'waveClear'
+                ? `${formatWaveTime(ui.time)}s`
+                : '—'}
+            </GameHudStat>
+            <GameHudStat label="Lives" className="game-hud__stat--lives">
+              {ui.lives}
+            </GameHudStat>
+          </GameStageHud>
+
           <div className="asteroids__overlay">
-            <PauseOverlay paused={paused} onResume={resume} />
+            <GamePauseOverlay
+              slug="asteroids"
+              personalBest={ui.phase === 'playing' ? previousBestRef.current : apiBest}
+              hideBest
+              paused={paused}
+              onResume={resume}
+            />
             {ui.phase === 'waveClear' && !saveOpen && !paused && (
               <div className="asteroids__card asteroids__card--clear">
                 <h2>Wave {ui.lastWave} clear</h2>

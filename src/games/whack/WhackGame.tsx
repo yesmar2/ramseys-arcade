@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
-import { GameHud, GameHudStat } from '../../components/GameHud'
+import { GameHud, GameHudStat, GameStageHud } from '../../components/GameHud'
 import { GameStage } from '../../components/GameStage'
-import { PauseButton, PauseOverlay } from '../../components/PauseControls'
+import { PauseButton, GamePauseOverlay } from '../../components/PauseControls'
 import { PersonalBestHint } from '../../components/PersonalBestHint'
 import { ScoreSaveCard } from '../../components/ScoreSaveCard'
 import { TournamentScoreCard } from '../../components/TournamentScoreCard'
@@ -189,27 +189,12 @@ export function WhackGame() {
     <section className="whack whack--fullscreen">
       <GameHud
         slug="pop"
-        personalBest={ui.phase === 'playing' ? previousBestRef.current : apiBest}
         extra={
           (pausable || paused) ? (
             <PauseButton paused={paused} onToggle={togglePause} />
           ) : undefined
         }
-      >
-        <GameHudStat
-          label="Score"
-          hot={ui.phase === 'playing' && ui.score > previousBestRef.current}
-        >
-          {ui.score}
-        </GameHudStat>
-        <GameHudStat
-          label="Time"
-          className="game-hud__stat--time"
-          urgent={ui.phase === 'playing' && ui.timeLeft <= 10}
-        >
-          {ui.phase === 'menu' ? 45 : ui.timeLeft}
-        </GameHudStat>
-      </GameHud>
+      />
       <div className="game-play">
         <GameStage
           aspectWidth={STAGE_ASPECT.whack.w}
@@ -218,8 +203,29 @@ export function WhackGame() {
           <div className="whack__play" onPointerDown={onPointerDown}>
             <canvas ref={canvasRef} className="whack__viewport" />
 
+            <GameStageHud>
+              <GameHudStat
+                label="Score"
+                hot={ui.phase === 'playing' && ui.score > previousBestRef.current}
+              >
+                {ui.score}
+              </GameHudStat>
+              <GameHudStat
+                label="Time"
+                className="game-hud__stat--time"
+                urgent={ui.phase === 'playing' && ui.timeLeft <= 10}
+              >
+                {ui.phase === 'menu' ? 45 : ui.timeLeft}
+              </GameHudStat>
+            </GameStageHud>
+
             <div className="whack__overlay">
-            <PauseOverlay paused={paused} onResume={resume} />
+            <GamePauseOverlay
+              slug="pop"
+              personalBest={ui.phase === 'playing' ? previousBestRef.current : apiBest}
+              paused={paused}
+              onResume={resume}
+            />
             {ui.phase === 'menu' && !saveOpen && !paused && (
               <div className="whack__card" aria-hidden="true">
                 <h2>Pop</h2>

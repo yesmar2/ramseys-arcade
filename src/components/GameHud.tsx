@@ -1,16 +1,14 @@
-import type { ReactNode } from 'react'
-import { scoringFor } from '../data/scoring'
+import { useEffect, useState, type ReactNode } from 'react'
 import { getGame } from '../data/games'
 import { gameHref } from '../hooks/useHashRoute'
-import { useBoardRecord } from '../hooks/useBoardRecord'
-import { LEADERBOARD_GAMES, type LeaderboardGame } from '../lib/leaderboard'
+import {
+  exitFullscreen,
+  fullscreenSupported,
+  isFullscreen,
+  subscribeFullscreen,
+  toggleFullscreen,
+} from '../lib/fullscreen'
 import { useTournamentPlay } from '../tournaments/TournamentPlayContext'
-import { ScoreGuide } from './ScoreGuide'
-import { SoundToggle } from './SoundToggle'
-
-function isBoardGame(slug: string): slug is LeaderboardGame {
-  return (LEADERBOARD_GAMES as readonly string[]).includes(slug)
-}
 
 export function GameHudStat({
   label,
@@ -35,21 +33,80 @@ export function GameHudStat({
   )
 }
 
+/** Floating live stats on the playfield (score, time, etc.). */
+export function GameStageHud({ children }: { children: ReactNode }) {
+  return (
+    <div className="game-stage-hud" aria-live="polite">
+      {children}
+    </div>
+  )
+}
+
+function FullscreenToggle() {
+  const [supported] = useState(() => fullscreenSupported())
+  const [active, setActive] = useState(() => isFullscreen())
+
+  useEffect(() => {
+    if (!supported) return
+    return subscribeFullscreen(() => setActive(isFullscreen()))
+  }, [supported])
+
+  if (!supported) return null
+
+  return (
+    <button
+      type="button"
+      className="game-pause-btn game-hud__fullscreen"
+      aria-label={active ? 'Exit fullscreen' : 'Enter fullscreen'}
+      aria-pressed={active}
+      title={active ? 'Exit fullscreen' : 'Fullscreen'}
+      onPointerDown={(e) => e.stopPropagation()}
+      onClick={(e) => {
+        e.stopPropagation()
+        void toggleFullscreen()
+      }}
+    >
+      {active ? (
+        <svg className="game-pause-btn__icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path
+            d="M8 3v5H3M16 3v5h5M8 21v-5H3M16 21v-5h5"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      ) : (
+        <svg className="game-pause-btn__icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path
+            d="M3 8V3h5M21 8V3h-5M3 16v5h5M21 16v5h-5"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      )}
+    </button>
+  )
+}
+
+/** Slim play chrome: back + fullscreen (when supported) + pause. */
 export function GameHud({
   slug,
-  personalBest,
-  children,
   extra,
-  hideBest = false,
 }: {
   slug: string
-  personalBest: number
+  /** @deprecated Ignored — use GamePauseOverlay for bests. */
+  personalBest?: number
+  /** @deprecated Ignored — live stats go in GameStageHud. */
   children?: ReactNode
   extra?: ReactNode
+  /** @deprecated Ignored. */
   hideBest?: boolean
 }) {
-  const allTime = useBoardRecord(slug)
-  const scoring = scoringFor(slug)
   const tournament = useTournamentPlay()
   const gameName = getGame(slug)?.name ?? 'game'
   const backHref = tournament
@@ -57,10 +114,15 @@ export function GameHud({
     : gameHref(slug)
   const backLabel = tournament ? 'Event' : 'Back'
 
+  useEffect(() => {
+    return () => {
+      void exitFullscreen()
+    }
+  }, [])
+
   return (
     <div
-      className="game-hud"
-      aria-live="polite"
+      className="game-hud game-hud--chrome"
       onPointerDown={(e) => e.stopPropagation()}
     >
       <a
@@ -69,52 +131,15 @@ export function GameHud({
         aria-label={
           tournament ? 'Back to event' : `Back to ${gameName}`
         }
+        onClick={() => {
+          void exitFullscreen()
+        }}
       >
         <span aria-hidden="true">←</span>
         <span className="game-hud__back-text">{backLabel}</span>
       </a>
-      <div className="game-hud__stats">
-        {children}
-        {!hideBest && (
-          <GameHudStat className="game-hud__stat--best" label="Your best">
-            {personalBest > 0 ? personalBest : '—'}
-          </GameHudStat>
-        )}
-        <GameHudStat className="game-hud__stat--alltime" label="All time">
-          {allTime > 0 ? allTime : '—'}
-        </GameHudStat>
-      </div>
       <div className="game-hud__extra">
-        {isBoardGame(slug) && (
-          <a
-            className="game-pause-btn game-hud__board"
-            href={gameHref(slug)}
-            aria-label="Leaderboard"
-            title="Leaderboard"
-            onPointerDown={(e) => e.stopPropagation()}
-          >
-            <svg className="game-pause-btn__icon" viewBox="0 0 24 24" aria-hidden="true">
-              <path
-                d="M8 21h8M12 17v4M7 4h10v3a5 5 0 0 1-5 5h0a5 5 0 0 1-5-5V4z"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.8"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-              <path
-                d="M17 6h2.2a1.8 1.8 0 0 1 0 3.6H17M7 6H4.8a1.8 1.8 0 0 0 0 3.6H7"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.8"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </a>
-        )}
-        {scoring && <ScoreGuide rows={scoring} />}
-        <SoundToggle />
+        <FullscreenToggle />
         {extra}
       </div>
     </div>

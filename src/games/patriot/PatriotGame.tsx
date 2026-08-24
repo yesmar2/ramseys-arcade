@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react'
-import { GameHud, GameHudStat } from '../../components/GameHud'
+import { GameHud, GameHudStat, GameStageHud } from '../../components/GameHud'
 import { GameStage } from '../../components/GameStage'
-import { PauseButton, PauseOverlay } from '../../components/PauseControls'
+import { PauseButton, GamePauseOverlay } from '../../components/PauseControls'
 import { PersonalBestHint } from '../../components/PersonalBestHint'
 import { ScoreSaveCard } from '../../components/ScoreSaveCard'
 import { TournamentScoreCard } from '../../components/TournamentScoreCard'
@@ -217,28 +217,12 @@ export function PatriotGame() {
     <section className="patriot patriot--fullscreen">
       <GameHud
         slug="patriot"
-        personalBest={
-          ui.phase === 'playing' || ui.phase === 'waveClear'
-            ? previousBestRef.current
-            : apiBest
-        }
         extra={
           (pausable || paused) && !needsRotate ? (
             <PauseButton paused={paused} onToggle={togglePause} />
           ) : undefined
         }
-      >
-        <GameHudStat
-          label="Score"
-          hot={
-            (ui.phase === 'playing' || ui.phase === 'waveClear') &&
-            ui.score > previousBestRef.current
-          }
-        >
-          {ui.score}
-        </GameHudStat>
-        <GameHudStat label="Wave">{ui.wave}</GameHudStat>
-      </GameHud>
+      />
       <div className="game-play">
       <GameStage
         aspectWidth={STAGE_ASPECT.patriot.w}
@@ -250,6 +234,19 @@ export function PatriotGame() {
           onPointerDown={onPointerDown}
         >
           <canvas ref={canvasRef} className="patriot__viewport" />
+
+          <GameStageHud>
+            <GameHudStat
+              label="Score"
+              hot={
+                (ui.phase === 'playing' || ui.phase === 'waveClear') &&
+                ui.score > previousBestRef.current
+              }
+            >
+              {ui.score}
+            </GameHudStat>
+            <GameHudStat label="Wave">{ui.wave}</GameHudStat>
+          </GameStageHud>
 
           {(ui.phase === 'playing' || ui.phase === 'waveClear') &&
             !needsRotate &&
@@ -286,7 +283,16 @@ export function PatriotGame() {
           )}
 
           <div className="patriot__overlay">
-            <PauseOverlay paused={paused && !needsRotate} onResume={resume} />
+            <GamePauseOverlay
+              slug="patriot"
+              personalBest={
+                ui.phase === 'playing' || ui.phase === 'waveClear'
+                  ? previousBestRef.current
+                  : apiBest
+              }
+              paused={paused && !needsRotate}
+              onResume={resume}
+            />
             {ui.phase === 'menu' && !saveOpen && !needsRotate && !paused && (
               <div className="patriot__card" aria-hidden="true">
                 <h2>Patriot</h2>

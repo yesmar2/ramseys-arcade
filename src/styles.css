@@ -1540,13 +1540,19 @@ a.game-hud__board {
   align-items: center;
   justify-content: center;
   pointer-events: auto;
-  background: rgba(237, 247, 244, 0.42);
+  background: color-mix(in srgb, var(--shell, #edf7f4) 55%, transparent);
 }
 
 .game-pause-card {
-  padding: 1.15rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: min(16rem, calc(100% - 2rem));
+  max-width: 20rem;
+  padding: 1.15rem 1.35rem 1.25rem;
   border-radius: var(--tile-radius);
-  background: rgba(var(--surface-rgb), 0.9);
+  background: rgba(var(--surface-rgb), 0.94);
   backdrop-filter: blur(12px);
   border: 1px solid rgba(var(--ink-rgb), 0.08);
   box-shadow: var(--shadow-soft);
@@ -1561,10 +1567,72 @@ a.game-hud__board {
 }
 
 .game-pause-card p {
-  margin: 0.2rem 0 0;
+  margin: 0;
   font-size: 0.92rem;
   font-weight: 600;
   color: var(--muted);
+}
+
+.game-pause-card__hint {
+  font-size: 0.78rem !important;
+  font-weight: 650 !important;
+}
+
+.game-pause-card__resume {
+  appearance: none;
+  border: 0;
+  margin: 0.15rem 0 0;
+  padding: 0.55rem 1.35rem;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  font: inherit;
+  font-weight: 700;
+  font-size: 0.92rem;
+  cursor: pointer;
+}
+
+.game-pause-card__resume:hover,
+.game-pause-card__resume:focus-visible {
+  filter: brightness(1.05);
+  outline: none;
+}
+
+.game-pause-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  width: 100%;
+  padding: 0.55rem 0.7rem;
+  border-radius: calc(var(--tile-radius) - 0.15rem);
+  background: rgba(var(--ink-rgb), 0.04);
+  border: 1px solid rgba(var(--ink-rgb), 0.06);
+}
+
+.game-pause-meta__row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.game-pause-meta__row strong {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.game-pause-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  flex-wrap: wrap;
 }
 
 .game-page__header {
@@ -1621,15 +1689,20 @@ a.game-hud__board {
   flex: 0 0 auto;
   display: flex;
   align-items: center;
+  justify-content: space-between;
   touch-action: manipulation;
   gap: 0.45rem;
-  padding: 0.4rem 0.6rem 0.45rem;
-  padding-top: max(0.4rem, env(safe-area-inset-top));
-  padding-left: max(0.6rem, env(safe-area-inset-left));
-  padding-right: max(0.6rem, env(safe-area-inset-right));
+  padding: 0.35rem 0.55rem 0.4rem;
+  padding-top: max(0.35rem, env(safe-area-inset-top));
+  padding-left: max(0.55rem, env(safe-area-inset-left));
+  padding-right: max(0.55rem, env(safe-area-inset-right));
   background: rgba(var(--surface-rgb), 0.82);
   border-bottom: 1px solid rgba(var(--ink-rgb), 0.06);
   z-index: 20;
+}
+
+.game-hud--chrome {
+  min-height: 0;
 }
 
 .game-hud__back {
@@ -1647,70 +1720,11 @@ a.game-hud__board {
   color: var(--ink);
   white-space: nowrap;
   touch-action: manipulation;
+  text-decoration: none;
 }
 
 .game-hud__back:hover {
   color: var(--ink);
-}
-
-.game-hud__stats {
-  display: flex;
-  flex-wrap: nowrap;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 0.35rem;
-  min-width: 0;
-  flex: 1;
-  overflow-x: auto;
-  scrollbar-width: none;
-}
-
-.game-hud__stats::-webkit-scrollbar {
-  display: none;
-}
-
-.game-hud__stat {
-  flex: none;
-  min-width: 3.4rem;
-  padding: 0.22rem 0.5rem;
-  border-radius: calc(var(--tile-radius) - 0.2rem);
-  background: rgba(var(--surface-rgb), 0.78);
-  border: 1px solid rgba(var(--ink-rgb), 0.06);
-  text-align: right;
-  white-space: nowrap;
-}
-
-.game-hud__label {
-  display: block;
-  font-size: 0.62rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--muted);
-}
-
-.game-hud__stat strong {
-  font-family: var(--font-display);
-  font-size: 1.15rem;
-  font-weight: 600;
-  line-height: 1.1;
-  font-variant-numeric: tabular-nums;
-}
-
-.game-hud__stat--urgent strong {
-  color: #c47a3a;
-}
-
-.game-hud__stat--time {
-  min-width: 4.85rem;
-}
-
-.game-hud__stat--time strong {
-  display: inline-block;
-  min-width: 4.8ch;
-  font-variant-numeric: tabular-nums;
-  font-feature-settings: "tnum";
-  text-align: right;
 }
 
 .game-hud__extra {
@@ -1718,47 +1732,105 @@ a.game-hud__board {
   align-items: center;
   gap: 0.35rem;
   flex: none;
+  margin-left: auto;
+}
+
+/* Floating live stats on the playfield */
+.game-stage-hud {
+  position: absolute;
+  top: 0.55rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 8;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  justify-content: center;
+  gap: 0.35rem;
+  max-width: calc(100% - 1.25rem);
+  pointer-events: none;
+}
+
+.game-stage-hud .game-hud__stat {
+  flex: none;
+  min-width: 3.2rem;
+  padding: 0.28rem 0.55rem;
+  border-radius: calc(var(--tile-radius) - 0.2rem);
+  background: rgba(var(--surface-rgb), 0.72);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(var(--ink-rgb), 0.08);
+  box-shadow: var(--shadow-soft);
+  text-align: center;
+  white-space: nowrap;
+}
+
+.game-stage-hud .game-hud__label {
+  display: block;
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.game-stage-hud .game-hud__stat strong {
+  font-family: var(--font-display);
+  font-size: clamp(1.05rem, 3.2vw, 1.35rem);
+  font-weight: 600;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.game-stage-hud .game-hud__stat--urgent strong {
+  color: #c47a3a;
+}
+
+.game-stage-hud .game-hud__stat--time strong {
+  display: inline-block;
+  min-width: 4.5ch;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
 }
 
 @media (max-width: 900px), (pointer: coarse) {
-  .game-hud__stat {
+  .game-stage-hud {
+    top: 0.4rem;
+    gap: 0.28rem;
+  }
+
+  .game-stage-hud .game-hud__stat {
     display: flex;
     flex-direction: row;
     align-items: baseline;
     gap: 0.28rem;
     min-width: 0;
-    padding: 0.16rem 0.4rem;
+    padding: 0.2rem 0.45rem;
   }
 
-  .game-hud__label {
+  .game-stage-hud .game-hud__label {
     font-size: 0.52rem;
   }
 
-  .game-hud__stat strong {
-    font-size: 0.92rem;
-  }
-
-  .game-hud__stat--alltime {
-    display: none;
-  }
-
-  .asteroids .game-hud__stat--time,
-  .asteroids .game-hud__stat--lives {
-    display: none;
-  }
-
-  .game-hud__stat--time {
-    min-width: 0;
-  }
-
-  .game-hud__stat--time strong {
-    min-width: 4.2ch;
+  .game-stage-hud .game-hud__stat strong {
+    font-size: 0.95rem;
   }
 }
 
 @media (max-width: 420px), ((pointer: coarse) and (max-height: 480px)) {
-  .game-hud__stat--best {
-    display: none;
+  .game-hud__back-text {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .game-hud__back {
+    padding-inline: 0.55rem;
   }
 }
 
@@ -2416,15 +2488,6 @@ a.game-hud__board {
     font-size: 0.75rem;
   }
 
-  .game-hud__stat {
-    min-width: 0;
-    padding: 0.16rem 0.38rem;
-  }
-
-  .game-hud__stat strong {
-    font-size: 0.95rem;
-  }
-
   .game-pause-btn,
   .patriot__info {
     width: 2rem;
@@ -2433,7 +2496,7 @@ a.game-hud__board {
   }
 }
 
-/* Phones in landscape: slim HUD so the playfield stays tall */
+/* Phones in landscape: slim chrome so the playfield stays tall */
 @media (max-height: 520px), ((max-width: 960px) and (orientation: landscape)) {
   .game-page--fullscreen .game-page__back--overlay {
     top: max(0.35rem, env(safe-area-inset-top));
@@ -2458,25 +2521,16 @@ a.game-hud__board {
     background: rgba(var(--surface-rgb), 0.42);
   }
 
-  .game-hud__stat {
-    display: flex;
-    flex-direction: row;
-    align-items: baseline;
-    gap: 0.22rem;
-    padding: 0.1rem 0.32rem;
+  .game-stage-hud {
+    top: 0.28rem;
   }
 
-  .game-hud__label {
-    font-size: 0.5rem;
+  .game-stage-hud .game-hud__stat {
+    padding: 0.12rem 0.35rem;
   }
 
-  .game-hud__stat strong {
-    font-size: 0.85rem;
-  }
-
-  .game-hud__stat--best,
-  .game-hud__stat--alltime {
-    display: none;
+  .game-stage-hud .game-hud__stat strong {
+    font-size: 0.88rem;
   }
 
   .game-pause-btn,

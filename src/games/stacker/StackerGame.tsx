@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
-import { GameHud, GameHudStat } from '../../components/GameHud'
+import { GameHud, GameHudStat, GameStageHud } from '../../components/GameHud'
 import { GameStage } from '../../components/GameStage'
-import { PauseButton, PauseOverlay } from '../../components/PauseControls'
+import { PauseButton, GamePauseOverlay } from '../../components/PauseControls'
 import { PersonalBestHint } from '../../components/PersonalBestHint'
 import { ScoreSaveCard } from '../../components/ScoreSaveCard'
 import { TournamentScoreCard } from '../../components/TournamentScoreCard'
@@ -130,20 +130,12 @@ export function StackerGame() {
     <section className="stacker stacker--fullscreen">
       <GameHud
         slug="stacker"
-        personalBest={ui.status === 'playing' ? previousBestRef.current : apiBest}
         extra={
           (pausable || paused) ? (
             <PauseButton paused={paused} onToggle={togglePause} />
           ) : undefined
         }
-      >
-        <GameHudStat
-          label="Score"
-          hot={ui.status === 'playing' && ui.score > previousBestRef.current}
-        >
-          {ui.score}
-        </GameHudStat>
-      </GameHud>
+      />
       <div className="game-play" onPointerDown={act}>
       <GameStage
         aspectWidth={STAGE_ASPECT.stacker.w}
@@ -151,8 +143,22 @@ export function StackerGame() {
       >
         <canvas ref={canvasRef} className="stacker__viewport" />
 
+        <GameStageHud>
+          <GameHudStat
+            label="Score"
+            hot={ui.status === 'playing' && ui.score > previousBestRef.current}
+          >
+            {ui.score}
+          </GameHudStat>
+        </GameStageHud>
+
         <div className="stacker__overlay">
-          <PauseOverlay paused={paused} onResume={resume} />
+          <GamePauseOverlay
+            slug="stacker"
+            personalBest={ui.status === 'playing' ? previousBestRef.current : apiBest}
+            paused={paused}
+            onResume={resume}
+          />
           {ui.status === 'menu' && !saveOpen && !paused && (
             <div className="stacker__card" aria-hidden="true">
               <h2>Stacker</h2>

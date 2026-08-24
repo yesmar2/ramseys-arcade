@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
-import { GameHud, GameHudStat } from '../../components/GameHud'
+import { GameHud, GameHudStat, GameStageHud } from '../../components/GameHud'
 import { GameStage } from '../../components/GameStage'
-import { PauseButton, PauseOverlay } from '../../components/PauseControls'
+import { PauseButton, GamePauseOverlay } from '../../components/PauseControls'
 import { PersonalBestHint } from '../../components/PersonalBestHint'
 import { ScoreSaveCard } from '../../components/ScoreSaveCard'
 import { TournamentScoreCard } from '../../components/TournamentScoreCard'
@@ -168,27 +168,12 @@ export function SimonGame() {
     <section className="simon simon--fullscreen">
       <GameHud
         slug="simon"
-        personalBest={
-          ui.phase === 'watch' || ui.phase === 'input'
-            ? previousBestRef.current
-            : apiBest
-        }
         extra={
           (pausable || paused) ? (
             <PauseButton paused={paused} onToggle={togglePause} />
           ) : undefined
         }
-      >
-        <GameHudStat
-          label="Round"
-          hot={
-            (ui.phase === 'watch' || ui.phase === 'input') &&
-            ui.score > previousBestRef.current
-          }
-        >
-          {ui.round || 1}
-        </GameHudStat>
-      </GameHud>
+      />
       <div className="game-play">
         <GameStage
           aspectWidth={aspect.w}
@@ -196,10 +181,30 @@ export function SimonGame() {
         >
           <div className="simon__play" onPointerDown={onPointerDown}>
             <canvas ref={canvasRef} className="simon__viewport" />
+            <GameStageHud>
+              <GameHudStat
+                label="Round"
+                hot={
+                  (ui.phase === 'watch' || ui.phase === 'input') &&
+                  ui.score > previousBestRef.current
+                }
+              >
+                {ui.round || 1}
+              </GameHudStat>
+            </GameStageHud>
           </div>
         </GameStage>
         <div className="simon__overlay">
-          <PauseOverlay paused={paused} onResume={resume} />
+          <GamePauseOverlay
+            slug="simon"
+            personalBest={
+              ui.phase === 'watch' || ui.phase === 'input'
+                ? previousBestRef.current
+                : apiBest
+            }
+            paused={paused}
+            onResume={resume}
+          />
           {ui.phase === 'menu' && !saveOpen && !paused && (
             <div className="simon__card" aria-hidden="true">
               <h2>Simon</h2>
