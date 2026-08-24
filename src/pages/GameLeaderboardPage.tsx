@@ -10,15 +10,11 @@ import { PageShell } from '../components/PageShell'
 import { getGame, gamePlayableOn, deviceRequirementLabel } from '../data/games'
 import {
   gameBoardHref,
-  gameHref,
   gamePlayHref,
-  leaderboardHref,
-  recordsHref,
 } from '../hooks/useHashRoute'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { useDeviceType } from '../lib/device'
 import { flashYouRow } from '../lib/boardGap'
-import { gameHasRecords } from '../lib/records'
 import {
   getLeaderboard,
   normalizePlayerName,
