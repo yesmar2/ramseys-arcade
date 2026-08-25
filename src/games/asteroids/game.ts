@@ -832,6 +832,47 @@ export function beginNextWave(state: GameState): GameState {
   return { ...started, rocks: spawnWave(started, started.wave) }
 }
 
+/** Admin/testing: jump straight into a wave without clear bonuses. */
+export function jumpToWave(state: GameState, wave: number): GameState {
+  if (state.phase !== 'playing' && state.phase !== 'waveClear') return state
+  const next = Math.max(1, Math.floor(wave) || 1)
+  const ship = {
+    ...state.ship,
+    vx: 0,
+    vy: 0,
+    thrusting: false,
+    invuln: 1.4,
+  }
+  const started: GameState = {
+    ...state,
+    phase: 'playing',
+    wave: next,
+    ship,
+    bullets: [],
+    enemyBullets: [],
+    saucer: null,
+    saucerCooldown: firstSaucerCooldown(next),
+    powerups: [],
+    rocks: [],
+    floaters: state.floaters ?? [],
+    waveElapsed: 0,
+    wavePause: 0,
+    turnLeft: false,
+    turnRight: false,
+    turn: 0,
+    thrust: false,
+    reverse: false,
+    hyperspaceCooldown: 0,
+    hyperspaceLatch: false,
+    fireHeld: false,
+    fireCooldown: 0.2,
+    combo: 0,
+    comboTimer: 0,
+    comboBest: 0,
+  }
+  return { ...started, rocks: spawnWave(started, next) }
+}
+
 export function setControl(
   state: GameState,
   key: 'turnLeft' | 'turnRight' | 'thrust' | 'reverse' | 'fireHeld',

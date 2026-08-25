@@ -102,6 +102,7 @@ export function GamePauseOverlay({
   paused,
   onResume,
   extraMeta,
+  tools,
 }: {
   slug: string
   personalBest: number
@@ -109,6 +110,8 @@ export function GamePauseOverlay({
   paused: boolean
   onResume: () => void
   extraMeta?: ReactNode
+  /** Optional admin/debug controls under the meta block. */
+  tools?: ReactNode
 }) {
   const tournament = useTournamentPlay()
   const allTime = useBoardRecord(slug)
@@ -134,6 +137,7 @@ export function GamePauseOverlay({
         </div>
         {extraMeta}
       </div>
+      {tools}
       <div className="game-pause-actions">
         <SoundToggle />
         {scoring ? <ScoreGuide rows={scoring} /> : null}

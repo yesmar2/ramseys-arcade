@@ -3,6 +3,7 @@ import { GamePlayChrome, PlayReadout, PlayReadoutScore } from '../../components/
 import { GameStage } from '../../components/GameStage'
 import { GameStartCard } from '../../components/GameStartCard'
 import { PauseButton, GamePauseOverlay } from '../../components/PauseControls'
+import { AdminWaveSkip } from '../../components/AdminWaveSkip'
 import {
   ScoreCelebration,
   ScoreSaveCard,
@@ -30,6 +31,7 @@ import {
   beginNextWave,
   createInitialState,
   formatWaveTime,
+  jumpToWave,
   POWER_HUE,
   POWER_LABEL,
   resizeState,
@@ -531,6 +533,25 @@ export function AsteroidsGame() {
                     </strong>
                   </div>
                 </>
+              }
+              tools={
+                ui.phase === 'playing' || ui.phase === 'waveClear' ? (
+                  <AdminWaveSkip
+                    wave={ui.phase === 'waveClear' ? ui.lastWave : ui.wave}
+                    onSkipNext={() => {
+                      const current =
+                        ui.phase === 'waveClear' ? ui.lastWave : stateRef.current.wave
+                      stateRef.current = jumpToWave(stateRef.current, current + 1)
+                      setUi(toSnapshot(stateRef.current))
+                      resume()
+                    }}
+                    onJump={(wave) => {
+                      stateRef.current = jumpToWave(stateRef.current, wave)
+                      setUi(toSnapshot(stateRef.current))
+                      resume()
+                    }}
+                  />
+                ) : null
               }
             />
             {ui.phase === 'waveClear' && !saveOpen && !paused && !waveCeleb && (

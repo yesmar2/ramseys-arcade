@@ -1649,6 +1649,69 @@ a.game-hud__board {
   font-variant-numeric: tabular-nums;
 }
 
+.admin-wave-skip {
+  margin: 0.65rem 0 0.15rem;
+  padding: 0.65rem 0.7rem;
+  border-radius: 10px;
+  background: rgba(var(--ink-rgb), 0.05);
+  border: 1px solid rgba(var(--ink-rgb), 0.1);
+}
+
+.admin-wave-skip__label {
+  margin: 0 0 0.45rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(var(--ink-rgb), 0.55);
+}
+
+.admin-wave-skip__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.admin-wave-skip__btn {
+  appearance: none;
+  margin: 0;
+  padding: 0.35rem 0.65rem;
+  border: 1px solid rgba(var(--ink-rgb), 0.18);
+  border-radius: 8px;
+  background: rgba(var(--surface-rgb), 0.9);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.admin-wave-skip__btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.admin-wave-skip__jump {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-left: auto;
+}
+
+.admin-wave-skip__jump input {
+  width: 3.6rem;
+  margin: 0;
+  padding: 0.3rem 0.4rem;
+  border: 1px solid rgba(var(--ink-rgb), 0.18);
+  border-radius: 8px;
+  background: rgba(var(--surface-rgb), 0.95);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.82rem;
+  font-variant-numeric: tabular-nums;
+}
+
 .game-pause-actions {
   display: flex;
   align-items: center;

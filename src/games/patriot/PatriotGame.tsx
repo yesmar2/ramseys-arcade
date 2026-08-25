@@ -3,6 +3,7 @@ import { GamePlayChrome, PlayReadout, PlayReadoutScore } from '../../components/
 import { GameStage } from '../../components/GameStage'
 import { GameStartCard } from '../../components/GameStartCard'
 import { PauseButton, GamePauseOverlay } from '../../components/PauseControls'
+import { AdminWaveSkip } from '../../components/AdminWaveSkip'
 import { ScoreSaveCard } from '../../components/ScoreSaveCard'
 import { TournamentScoreCard } from '../../components/TournamentScoreCard'
 import { useGamePause } from '../../hooks/useGamePause'
@@ -32,6 +33,7 @@ import {
   type GameState,
   type PowerKind,
   type Snapshot,
+  jumpToWave,
 } from './game'
 import { renderGame } from './render'
 
@@ -332,6 +334,29 @@ export function PatriotGame() {
               }
               paused={paused && !needsRotate}
               onResume={resume}
+              tools={
+                ui.phase === 'playing' || ui.phase === 'waveClear' ? (
+                  <AdminWaveSkip
+                    wave={ui.wave}
+                    onSkipNext={() => {
+                      const { w } = sizeRef.current
+                      stateRef.current = jumpToWave(
+                        stateRef.current,
+                        stateRef.current.wave + 1,
+                        w,
+                      )
+                      setUi(toSnapshot(stateRef.current))
+                      resume()
+                    }}
+                    onJump={(wave) => {
+                      const { w } = sizeRef.current
+                      stateRef.current = jumpToWave(stateRef.current, wave, w)
+                      setUi(toSnapshot(stateRef.current))
+                      resume()
+                    }}
+                  />
+                ) : null
+              }
             />
             {ui.phase === 'menu' && !saveOpen && !needsRotate && !paused && (
               <GameStartCard

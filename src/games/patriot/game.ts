@@ -468,6 +468,13 @@ function beginWave(state: GameState, wave: number, w: number): GameState {
   }
 }
 
+/** Admin/testing: jump straight into a wave without clear bonuses. */
+export function jumpToWave(state: GameState, wave: number, w: number): GameState {
+  if (state.phase !== 'playing' && state.phase !== 'waveClear') return state
+  const next = Math.max(1, Math.floor(wave) || 1)
+  return beginWave(state, next, w)
+}
+
 export function setCursor(state: GameState, x: number, y: number): GameState {
   const pad = 24 * state.scale
   return {
