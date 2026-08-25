@@ -13,6 +13,7 @@ import {
   deadCenterLayout,
   nextRound,
   resizeState,
+  ROUND_SECS,
   startGame,
   tick,
   toSnapshot,
@@ -39,6 +40,7 @@ export function DeadCenterGame() {
   const previousBestRef = useRef(getPersonalBest('dead-center'))
   const clickLock = useRef(false)
   const startGrace = useRef(0)
+  const timerFillRef = useRef<HTMLSpanElement>(null)
 
   useEffect(() => {
     let raf = 0
@@ -58,6 +60,16 @@ export function DeadCenterGame() {
       }
 
       stateRef.current = tick(stateRef.current, dt)
+
+      const fill = timerFillRef.current
+      if (fill) {
+        const s = stateRef.current
+        if (s.phase === 'playing') {
+          const t = Math.max(0, Math.min(1, s.timeLeft / ROUND_SECS))
+          fill.style.transform = `scaleX(${t})`
+          fill.classList.toggle('deadcenter__timer-fill--urgent', t < 0.35)
+        }
+      }
 
       uiAcc += dt
       if (uiAcc > 0.08) {
@@ -204,6 +216,18 @@ export function DeadCenterGame() {
                 {Math.min(ui.round, ui.totalRounds)}/{ui.totalRounds}
               </div>
             )}
+            {ui.phase === 'playing' ? (
+              <div
+                className="deadcenter__timer"
+                role="progressbar"
+                aria-label="Time left"
+                aria-valuemin={0}
+                aria-valuemax={ROUND_SECS}
+                aria-valuenow={ui.timeLeft}
+              >
+                <span ref={timerFillRef} className="deadcenter__timer-fill" />
+              </div>
+            ) : null}
           </PlayReadout>
 
           <div className="deadcenter__overlay">

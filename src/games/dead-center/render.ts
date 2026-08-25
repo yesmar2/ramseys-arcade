@@ -1,5 +1,4 @@
 import {
-  ROUND_SECS,
   type GameState,
   type Point,
   type Shape,
@@ -9,7 +8,6 @@ import { inkColor, playfieldColor } from '../../lib/theme'
 
 const ACCENT = '#2eb8a0'
 const ACCENT_SKY = '#4aa8e8'
-const ACCENT_GOLD = '#f5b942'
 
 function drawBackground(ctx: CanvasRenderingContext2D, w: number, h: number) {
   ctx.fillStyle = playfieldColor()
@@ -73,26 +71,6 @@ function mark(
   ctx.fill()
 }
 
-function drawTimer(
-  ctx: CanvasRenderingContext2D,
-  timeLeft: number,
-  w: number,
-  scale: number,
-) {
-  const x = w / 2
-  const y = 28 * scale
-  const barW = Math.min(220, w * 0.42) * scale
-  const barH = 8 * scale
-  const t = Math.max(0, Math.min(1, timeLeft / ROUND_SECS))
-
-  ctx.fillStyle = 'rgba(26, 43, 60, 0.1)'
-  ctx.fillRect(x - barW / 2, y - barH / 2, barW, barH)
-
-  const urgent = t < 0.35
-  ctx.fillStyle = urgent ? ACCENT_GOLD : ACCENT
-  ctx.fillRect(x - barW / 2, y - barH / 2, Math.max(0, barW * t), barH)
-}
-
 export function renderGame(
   ctx: CanvasRenderingContext2D,
   state: GameState,
@@ -111,10 +89,6 @@ export function renderGame(
 
   if (state.shape && (state.phase === 'playing' || state.phase === 'reveal')) {
     drawShape(ctx, state.shape, scale)
-  }
-
-  if (state.phase === 'playing') {
-    drawTimer(ctx, state.timeLeft, w, scale)
   }
 
   if (state.phase === 'reveal' && state.result) {
