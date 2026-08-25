@@ -1,4 +1,5 @@
-export const THEME_KEY = 'archivade-theme'
+export const THEME_KEY = 'acralia-theme'
+const LEGACY_THEME_KEY = 'archivade-theme'
 export const THEME_EVENT = 'arcade-theme'
 
 export type Theme = 'light' | 'dark'
@@ -9,7 +10,13 @@ export function systemTheme(): Theme {
 
 export function storedTheme(): Theme | null {
   try {
-    const value = localStorage.getItem(THEME_KEY)
+    let value = localStorage.getItem(THEME_KEY)
+    if (value !== 'light' && value !== 'dark') {
+      value = localStorage.getItem(LEGACY_THEME_KEY)
+      if (value === 'light' || value === 'dark') {
+        localStorage.setItem(THEME_KEY, value)
+      }
+    }
     return value === 'light' || value === 'dark' ? value : null
   } catch {
     return null

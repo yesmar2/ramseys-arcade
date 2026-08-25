@@ -1,5 +1,7 @@
-const MUTE_KEY = 'archivade-mute'
-const MUSIC_KEY = 'archivade-music'
+const MUTE_KEY = 'acralia-mute'
+const MUSIC_KEY = 'acralia-music'
+const LEGACY_MUTE_KEY = 'archivade-mute'
+const LEGACY_MUSIC_KEY = 'archivade-music'
 const MASTER_GAIN = 0.22
 const MUSIC_GAIN = 0.07
 const MUSIC_STEP = 1.28
@@ -42,7 +44,12 @@ let padNodes: AudioNode[] = []
 
 function readMuted() {
   try {
-    return localStorage.getItem(MUTE_KEY) === '1'
+    let raw = localStorage.getItem(MUTE_KEY)
+    if (raw == null) {
+      raw = localStorage.getItem(LEGACY_MUTE_KEY)
+      if (raw != null) localStorage.setItem(MUTE_KEY, raw)
+    }
+    return raw === '1'
   } catch {
     return false
   }
@@ -50,7 +57,11 @@ function readMuted() {
 
 function readMusicVol() {
   try {
-    const raw = localStorage.getItem(MUSIC_KEY)
+    let raw = localStorage.getItem(MUSIC_KEY)
+    if (raw == null) {
+      raw = localStorage.getItem(LEGACY_MUSIC_KEY)
+      if (raw != null) localStorage.setItem(MUSIC_KEY, raw)
+    }
     if (raw == null) return 0.55
     const n = Number(raw)
     if (!Number.isFinite(n)) return 0.55

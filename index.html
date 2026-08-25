@@ -8,7 +8,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta
       name="description"
-      content="Archivade — simple games, no ads, just play."
+      content="Acralia — simple games, no ads, just play."
     />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -16,11 +16,14 @@
       href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600&display=swap"
       rel="stylesheet"
     />
-    <title>Archivade</title>
+    <title>Acralia</title>
     <script>
       (function () {
         try {
-          var t = localStorage.getItem('archivade-theme')
+          var t = localStorage.getItem('acralia-theme')
+          if (t !== 'light' && t !== 'dark') {
+            t = localStorage.getItem('archivade-theme')
+          }
           if (t !== 'light' && t !== 'dark') {
             t = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
           }
