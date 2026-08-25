@@ -3082,46 +3082,19 @@ html[data-theme='dark'] .patriot__power-mark {
   display: block;
 }
 
-.deadcenter__hud {
-  position: absolute;
-  top: max(3.15rem, calc(env(safe-area-inset-top, 0px) + 2.9rem));
-  right: max(0.55rem, env(safe-area-inset-right, 0px));
-  display: flex;
-  gap: 0.45rem;
-  align-items: flex-start;
-  z-index: 10;
-  pointer-events: none;
-}
-
-.deadcenter__stat {
-  min-width: 3.6rem;
-  padding: 0.4rem 0.55rem;
-  border-radius: calc(var(--tile-radius) - 0.15rem);
-  background: rgba(var(--surface-rgb), 0.72);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(var(--ink-rgb), 0.06);
-  box-shadow: var(--shadow-soft);
-}
-
-.deadcenter__label {
-  display: block;
-  font-size: 0.65rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--muted);
-}
-
-.deadcenter__stat strong {
+.deadcenter__rounds {
+  top: max(0.35rem, env(safe-area-inset-top, 0px));
+  left: max(3.35rem, calc(env(safe-area-inset-left, 0px) + 3.15rem));
+  height: 2.35rem;
   font-family: var(--font-display);
-  font-size: 1.15rem;
+  font-size: clamp(1.05rem, 3.6vw, 1.35rem);
   font-weight: 600;
-  line-height: 1.1;
+  line-height: 1;
   font-variant-numeric: tabular-nums;
-}
-
-.deadcenter__stat--urgent strong {
-  color: #c47a3a;
+  color: var(--ink);
+  text-shadow:
+    0 1px 0 rgba(var(--surface-rgb), 0.85),
+    0 0 12px rgba(var(--surface-rgb), 0.55);
 }
 
 .deadcenter__overlay {

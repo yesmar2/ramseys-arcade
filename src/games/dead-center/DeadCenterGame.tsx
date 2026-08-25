@@ -196,26 +196,15 @@ export function DeadCenterGame() {
             >
               {ui.score}
             </PlayReadoutScore>
-          </PlayReadout>
-
-          {(ui.phase === 'playing' || ui.phase === 'reveal') && (
-            <div className="deadcenter__hud" aria-live="polite">
-              <div className="deadcenter__stat">
-                <span className="deadcenter__label">Round</span>
-                <strong>
-                  {Math.min(ui.round, ui.totalRounds)}/{ui.totalRounds}
-                </strong>
+            {(ui.phase === 'playing' || ui.phase === 'reveal') && (
+              <div
+                className="play-readout__left deadcenter__rounds"
+                aria-label={`Round ${Math.min(ui.round, ui.totalRounds)} of ${ui.totalRounds}`}
+              >
+                {Math.min(ui.round, ui.totalRounds)}/{ui.totalRounds}
               </div>
-              {ui.phase === 'playing' ? (
-                <div
-                  className={`deadcenter__stat${ui.timeLeft <= 2 ? ' deadcenter__stat--urgent' : ''}`}
-                >
-                  <span className="deadcenter__label">Time</span>
-                  <strong>{ui.timeLeft}</strong>
-                </div>
-              ) : null}
-            </div>
-          )}
+            )}
+          </PlayReadout>
 
           <div className="deadcenter__overlay">
             {ui.phase === 'menu' && !saveOpen && (
