@@ -6619,7 +6619,7 @@ html[data-theme='dark'] .patriot__power-mark {
   background: color-mix(in srgb, var(--accent) 16%, var(--surface));
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent);
   pointer-events: none;
-  z-index: 1;
+  z-index: 0;
 }
 
 .rank-up--settled .rank-up__focus {
@@ -6631,6 +6631,7 @@ html[data-theme='dark'] .patriot__power-mark {
   left: 0;
   right: 0;
   top: 0;
+  z-index: 1;
   will-change: transform;
   transform: translate3d(0, 0, 0);
 }
@@ -6645,6 +6646,23 @@ html[data-theme='dark'] .patriot__power-mark {
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   color: color-mix(in srgb, var(--ink) 38%, transparent);
+}
+
+/* Center row sits over the focus plate ? keep it fully readable. */
+.rank-up__viewport::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(var(--rank-up-row) * 2);
+  height: var(--rank-up-row);
+  pointer-events: none;
+  z-index: 2;
+  /* Soft vignette only ? no fill covering the number */
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 28%, transparent);
+  border-radius: 0.55rem;
+  mix-blend-mode: multiply;
+  opacity: 0;
 }
 
 .rank-up__number {
