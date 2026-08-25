@@ -207,11 +207,9 @@ export function AsteroidsGame() {
     const key = `${wave}:${time.toFixed(3)}`
     if (waveRecordKey.current === key) return
     waveRecordKey.current = key
-    let cancelled = false
     void (async () => {
       const hits: RunAchievement[] = []
       const waveResult = await submitAsteroidsWaveTime(wave, time, playerName)
-      if (cancelled) return
       if (waveResult?.improved) {
         hits.push({
           label: `Wave ${wave} record`,
@@ -223,7 +221,6 @@ export function AsteroidsGame() {
       if (combo >= 2 && comboRecordKey.current !== comboKey) {
         comboRecordKey.current = comboKey
         const comboResult = await submitAsteroidsHighestCombo(combo, playerName)
-        if (cancelled) return
         if (comboResult?.improved) {
           hits.push({
             label: `Combo record · ${combo}`,
@@ -231,11 +228,13 @@ export function AsteroidsGame() {
           })
         }
       }
-      if (!cancelled && hits.length) setWaveCeleb(hits)
+      if (!hits.length) return
+      // Keep celebration even if Strict Mode remounted this effect mid-request.
+      if (waveRecordKey.current !== key) return
+      if (stateRef.current.phase !== 'waveClear') return
+      if (stateRef.current.lastWave !== wave) return
+      setWaveCeleb(hits)
     })()
-    return () => {
-      cancelled = true
-    }
   }, [
     ui.phase,
     ui.lastWave,

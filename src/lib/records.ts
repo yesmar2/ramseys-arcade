@@ -236,11 +236,10 @@ export async function submitAsteroidsWaveTime(
   name: string,
 ): Promise<{ improved: boolean; rank: number | null } | null> {
   const recordId = asteroidsWaveTimeRecordId(wave)
-  const cleaned = normalizePlayerName(name)
-  if (!recordId || !cleaned || !(seconds > 0)) return null
+  if (!recordId || !(seconds > 0) || !Number.isFinite(seconds)) return null
   const ms = Math.max(1, Math.round(seconds * 1000))
   try {
-    const result = await submitRecord('asteroids', recordId, cleaned, ms)
+    const result = await submitRecord('asteroids', recordId, name, ms)
     return { improved: result.improved, rank: result.rank }
   } catch {
     return null
@@ -252,14 +251,13 @@ export async function submitAsteroidsHighestCombo(
   combo: number,
   name: string,
 ): Promise<{ improved: boolean; rank: number | null } | null> {
-  const cleaned = normalizePlayerName(name)
   const value = Math.floor(combo)
-  if (!cleaned || !(value >= 2)) return null
+  if (!(value >= 2)) return null
   try {
     const result = await submitRecord(
       'asteroids',
       ASTEROIDS_HIGHEST_COMBO_ID,
-      cleaned,
+      name,
       value,
     )
     return { improved: result.improved, rank: result.rank }
