@@ -1,8 +1,4 @@
 import { useEffect, useRef, useState, type RefObject } from 'react'
-import {
-  isFullscreenCoverActive,
-  subscribeFullscreenCover,
-} from '../lib/fullscreen'
 
 /** Pause while a round is active. Esc / P toggle; hiding the tab pauses. */
 export function useGamePause(
@@ -10,7 +6,6 @@ export function useGamePause(
   ignoreKeysRef?: RefObject<boolean>,
 ) {
   const [paused, setPaused] = useState(false)
-  const [fsCover, setFsCover] = useState(() => isFullscreenCoverActive())
   const enabledRef = useRef(enabled)
   enabledRef.current = enabled
 
@@ -19,17 +14,11 @@ export function useGamePause(
   }, [enabled])
 
   useEffect(() => {
-    return subscribeFullscreenCover(() => setFsCover(isFullscreenCoverActive()))
-  }, [])
-
-  useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.repeat) return
       if (e.code !== 'Escape' && e.code !== 'KeyP') return
       if (ignoreKeysRef?.current) return
       if (!enabledRef.current) return
-      // Don't open the pause menu while the fullscreen toast cover is up.
-      if (isFullscreenCoverActive()) return
       e.preventDefault()
       setPaused((open) => !open)
     }
@@ -45,12 +34,9 @@ export function useGamePause(
   }, [ignoreKeysRef])
 
   return {
-    /** User-toggled pause (pause overlay). */
     paused,
-    /** Freeze sim + input: user pause or mobile fullscreen toast cover. */
-    held: paused || fsCover,
     toggle: () => {
-      if (!enabledRef.current || isFullscreenCoverActive()) return
+      if (!enabledRef.current) return
       setPaused((open) => !open)
     },
     pause: () => {

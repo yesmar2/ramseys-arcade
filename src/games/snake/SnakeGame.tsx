@@ -57,9 +57,9 @@ export function SnakeGame() {
   const runStartRef = useRef<number | null>(null)
   const milestonesRef = useRef<Set<number>>(new Set())
   const pausable = ui.phase === 'playing' && !saveOpen
-  const { paused, held, toggle: togglePause, pause, resume } = useGamePause(pausable)
+  const { paused, toggle: togglePause, pause, resume } = useGamePause(pausable)
   const pausedRef = useRef(false)
-  pausedRef.current = held
+  pausedRef.current = paused
 
   useEffect(() => {
     let raf = 0

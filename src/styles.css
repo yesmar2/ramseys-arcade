@@ -1731,57 +1731,6 @@ a.game-hud__board {
   box-shadow: var(--shadow-soft);
 }
 
-/* Covers controls while Android's fullscreen toast is on screen. */
-.game-fs-cover {
-  position: fixed;
-  inset: 0;
-  z-index: 10000;
-  display: grid;
-  place-items: center;
-  padding: max(1rem, env(safe-area-inset-top)) max(1rem, env(safe-area-inset-right))
-    max(1rem, env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left));
-  background: color-mix(in srgb, var(--playfield) 92%, #000 8%);
-  pointer-events: all;
-}
-
-.game-fs-cover__card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.55rem;
-  text-align: center;
-}
-
-.game-fs-cover__spinner {
-  width: 2.1rem;
-  height: 2.1rem;
-  border-radius: 999px;
-  border: 2.5px solid rgba(var(--ink-rgb), 0.16);
-  border-top-color: var(--accent);
-  animation: game-fs-spin 0.85s linear infinite;
-}
-
-.game-fs-cover__title {
-  margin: 0.35rem 0 0;
-  font-family: var(--font-display);
-  font-weight: 600;
-  font-size: 1.35rem;
-  letter-spacing: -0.03em;
-  color: var(--ink);
-}
-
-.game-fs-cover__sub {
-  margin: 0;
-  font-size: 0.92rem;
-  color: rgba(var(--ink-rgb), 0.62);
-}
-
-@keyframes game-fs-spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
 .game-play-back {
   appearance: none;
   display: grid;

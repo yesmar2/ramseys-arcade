@@ -1,17 +1,11 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { gameHref } from '../hooks/useHashRoute'
-import { useDeviceType } from '../lib/device'
 import {
-  beginFullscreenCover,
-  clearFullscreenCover,
-  enterFullscreen,
   exitFullscreen,
   fullscreenSupported,
   isFullscreen,
-  isFullscreenCoverActive,
   subscribeFullscreen,
-  subscribeFullscreenCover,
   toggleFullscreen,
 } from '../lib/fullscreen'
 import { useTournamentPlay } from '../tournaments/TournamentPlayContext'
@@ -66,47 +60,19 @@ export function PlayReadoutCenter({
 }
 
 export function FullscreenToggle() {
-  const device = useDeviceType()
   const [supported] = useState(() => fullscreenSupported())
   const [active, setActive] = useState(() => isFullscreen())
-  const mobile = device === 'phone' || device === 'tablet'
 
   useEffect(() => {
     if (!supported) return
-    return subscribeFullscreen(() => {
-      const on = isFullscreen()
-      setActive(on)
-      if (!mobile) return
-      if (on) beginFullscreenCover()
-      else clearFullscreenCover()
-    })
-  }, [supported, mobile])
+    return subscribeFullscreen(() => setActive(isFullscreen()))
+  }, [supported])
 
   useEffect(() => {
     return () => {
-      clearFullscreenCover()
       void exitFullscreen()
     }
   }, [])
-
-  /* Enter fullscreen on first tap (mobile). A loading cover hides the OS toast. */
-  useEffect(() => {
-    if (!supported || !mobile || isFullscreen()) return
-
-    const onFirstGesture = () => {
-      beginFullscreenCover()
-      void enterFullscreen()
-      window.removeEventListener('pointerdown', onFirstGesture, true)
-      window.removeEventListener('touchstart', onFirstGesture, true)
-    }
-
-    window.addEventListener('pointerdown', onFirstGesture, true)
-    window.addEventListener('touchstart', onFirstGesture, true)
-    return () => {
-      window.removeEventListener('pointerdown', onFirstGesture, true)
-      window.removeEventListener('touchstart', onFirstGesture, true)
-    }
-  }, [supported, mobile])
 
   if (!supported) return null
 
@@ -150,33 +116,6 @@ export function FullscreenToggle() {
   )
 }
 
-function MobileFullscreenCover() {
-  const device = useDeviceType()
-  const mobile = device === 'phone' || device === 'tablet'
-  const [show, setShow] = useState(() => mobile && isFullscreenCoverActive())
-
-  useEffect(() => {
-    if (!mobile) {
-      setShow(false)
-      return
-    }
-    return subscribeFullscreenCover(() => setShow(isFullscreenCoverActive()))
-  }, [mobile])
-
-  if (!show) return null
-
-  return createPortal(
-    <div className="game-fs-cover" role="status" aria-live="polite">
-      <div className="game-fs-cover__card">
-        <div className="game-fs-cover__spinner" aria-hidden="true" />
-        <p className="game-fs-cover__title">Get ready</p>
-        <p className="game-fs-cover__sub">Loading playfield…</p>
-      </div>
-    </div>,
-    document.body,
-  )
-}
-
 type InRun = boolean | (() => boolean)
 
 function resolveInRun(inRun: InRun) {
@@ -198,7 +137,6 @@ export function GamePlayChrome({
 }) {
   return (
     <>
-      <MobileFullscreenCover />
       <div
         className="game-play-chrome game-play-chrome--leave"
         onPointerDown={(e) => e.stopPropagation()}

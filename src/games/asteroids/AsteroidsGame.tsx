@@ -100,9 +100,9 @@ export function AsteroidsGame() {
   ignorePauseKeys.current = saveOpen
   const pausable =
     (ui.phase === 'playing' || ui.phase === 'waveClear') && !saveOpen
-  const { paused, held, toggle: togglePause, pause, resume } = useGamePause(pausable, ignorePauseKeys)
+  const { paused, toggle: togglePause, pause, resume } = useGamePause(pausable, ignorePauseKeys)
   const pausedRef = useRef(false)
-  pausedRef.current = held
+  pausedRef.current = paused
   saveOpenRef.current = saveOpen
 
   const syncControls = () => {
