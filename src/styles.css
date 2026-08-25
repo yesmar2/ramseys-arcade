@@ -6606,9 +6606,8 @@ html[data-theme='dark'] .patriot__power-mark {
   min-height: 7.5rem;
   padding: 1.15rem 0.7rem 1rem;
   border-radius: calc(var(--tile-radius) - 0.1rem);
-  background: color-mix(in srgb, var(--award-accent) 14%, rgba(var(--surface-rgb), 0.86));
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  /* Opaque surface like in-game panels ? transparent + blur on the dark overlay washes accents out */
+  background: color-mix(in srgb, var(--award-accent) 14%, var(--surface));
   border: 1px solid color-mix(in srgb, var(--award-accent) 35%, transparent);
   box-shadow: var(--shadow-soft);
   animation: score-celeb-card-in 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
@@ -6627,7 +6626,7 @@ html[data-theme='dark'] .patriot__power-mark {
 }
 
 .score-celeb__award--featured {
-  background: color-mix(in srgb, var(--award-accent) 18%, rgba(var(--surface-rgb), 0.92));
+  background: color-mix(in srgb, var(--award-accent) 18%, var(--surface));
   border-color: color-mix(in srgb, var(--award-accent) 48%, transparent);
   box-shadow:
     0 0 0 1px color-mix(in srgb, var(--award-accent) 28%, transparent),
@@ -6662,7 +6661,7 @@ html[data-theme='dark'] .patriot__power-mark {
 }
 
 .score-celeb.rank-up .rank-up__focus {
-  background: color-mix(in srgb, var(--accent) 16%, rgba(var(--surface-rgb), 0.86));
+  background: color-mix(in srgb, var(--accent) 16%, var(--surface));
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent);
 }
 
