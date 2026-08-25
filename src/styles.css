@@ -6608,11 +6608,13 @@ html[data-theme='dark'] .patriot__power-mark {
   border-radius: calc(var(--tile-radius) - 0.1rem);
   background: linear-gradient(
     155deg,
-    color-mix(in srgb, var(--award-accent) 36%, rgba(22, 36, 46, 0.94)),
-    color-mix(in srgb, var(--award-accent) 12%, rgba(12, 20, 28, 0.96))
+    color-mix(in srgb, var(--award-accent) 20%, rgba(255, 255, 255, 0.06)),
+    color-mix(in srgb, var(--award-accent) 6%, rgba(255, 255, 255, 0.02))
   );
-  border: 1.5px solid color-mix(in srgb, var(--award-accent) 52%, transparent);
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.34);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1.5px solid color-mix(in srgb, var(--award-accent) 58%, transparent);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.24);
   animation: score-celeb-card-in 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
@@ -6631,13 +6633,13 @@ html[data-theme='dark'] .patriot__power-mark {
 .score-celeb__award--featured {
   background: linear-gradient(
     155deg,
-    color-mix(in srgb, var(--award-accent) 46%, rgba(26, 40, 50, 0.96)),
-    color-mix(in srgb, var(--award-accent) 20%, rgba(14, 24, 32, 0.98))
+    color-mix(in srgb, var(--award-accent) 26%, rgba(255, 255, 255, 0.08)),
+    color-mix(in srgb, var(--award-accent) 10%, rgba(255, 255, 255, 0.03))
   );
-  border-color: color-mix(in srgb, var(--award-accent) 78%, transparent);
+  border-color: color-mix(in srgb, var(--award-accent) 82%, transparent);
   box-shadow:
-    0 0 0 3px color-mix(in srgb, var(--award-accent) 26%, transparent),
-    0 18px 40px rgba(0, 0, 0, 0.38);
+    0 0 0 2px color-mix(in srgb, var(--award-accent) 22%, transparent),
+    0 12px 32px rgba(0, 0, 0, 0.28);
   transform: scale(1.03);
   z-index: 1;
 }
