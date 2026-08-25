@@ -21,7 +21,7 @@ import {
 } from '../../lib/runAchievements'
 import {
   submitAsteroidsHighestCombo,
-  submitAsteroidsWaveTime,
+  submitAsteroidsWaveClearBooks,
 } from '../../lib/records'
 import { useTournamentPlay } from '../../tournaments/TournamentPlayContext'
 import {
@@ -205,35 +205,27 @@ export function AsteroidsGame() {
     const wave = ui.lastWave
     const time = ui.lastWaveTime
     const key = `${wave}:${time.toFixed(3)}`
-    if (waveRecordKey.current === key) return
     waveRecordKey.current = key
     void (async () => {
-      const hits: RunAchievement[] = []
-      const waveResult = await submitAsteroidsWaveTime(wave, time, playerName)
-      if (waveResult?.improved) {
-        hits.push({
-          label: `Wave ${wave} record`,
-          rank: waveResult.rank,
-        })
-      }
-      const combo = ui.runComboBest
-      const comboKey = `combo:${combo}`
-      if (combo >= 2 && comboRecordKey.current !== comboKey) {
-        comboRecordKey.current = comboKey
-        const comboResult = await submitAsteroidsHighestCombo(combo, playerName)
-        if (comboResult?.improved) {
-          hits.push({
-            label: `Combo record · ${combo}`,
-            rank: comboResult.rank,
-          })
-        }
-      }
+      const hits = await submitAsteroidsWaveClearBooks({
+        wave,
+        seconds: time,
+        combo: ui.runComboBest,
+        name: playerName,
+      })
       if (!hits.length) return
-      // Keep celebration even if Strict Mode remounted this effect mid-request.
-      if (waveRecordKey.current !== key) return
-      if (stateRef.current.phase !== 'waveClear') return
-      if (stateRef.current.lastWave !== wave) return
-      setWaveCeleb(hits)
+      if (ui.runComboBest >= 2) {
+        comboRecordKey.current = `combo:${ui.runComboBest}`
+      }
+      // Prefer live wave-clear celebration; if they already advanced, queue for game over.
+      if (
+        stateRef.current.phase === 'waveClear' &&
+        stateRef.current.lastWave === wave
+      ) {
+        setWaveCeleb(hits)
+        return
+      }
+      for (const hit of hits) pushRunAchievement(hit)
     })()
   }, [
     ui.phase,

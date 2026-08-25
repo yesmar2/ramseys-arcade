@@ -266,6 +266,61 @@ export async function submitAsteroidsHighestCombo(
   }
 }
 
+export type RecordBookHit = { label: string; rank: number | null }
+
+/**
+ * Submit wave + combo book entries once per clear.
+ * Dedupes across React Strict Mode remounts so the first `improved: true`
+ * is not lost when a second identical POST returns `improved: false`.
+ */
+const waveClearBookInflight = new Map<string, Promise<RecordBookHit[]>>()
+const waveClearBookDone = new Map<string, RecordBookHit[]>()
+
+export function submitAsteroidsWaveClearBooks(input: {
+  wave: number
+  seconds: number
+  combo: number
+  name: string
+}): Promise<RecordBookHit[]> {
+  const name = normalizePlayerName(input.name) || 'PLAYER'
+  const key = `${name}:w${input.wave}:t${input.seconds.toFixed(3)}:c${Math.floor(input.combo)}`
+  const done = waveClearBookDone.get(key)
+  if (done) return Promise.resolve(done)
+  const inflight = waveClearBookInflight.get(key)
+  if (inflight) return inflight
+
+  const promise = (async (): Promise<RecordBookHit[]> => {
+    const hits: RecordBookHit[] = []
+    const waveResult = await submitAsteroidsWaveTime(
+      input.wave,
+      input.seconds,
+      name,
+    )
+    if (waveResult?.improved) {
+      hits.push({
+        label: `Wave ${input.wave} record`,
+        rank: waveResult.rank,
+      })
+    }
+    const combo = Math.floor(input.combo)
+    if (combo >= 2) {
+      const comboResult = await submitAsteroidsHighestCombo(combo, name)
+      if (comboResult?.improved) {
+        hits.push({
+          label: `Combo record · ${combo}`,
+          rank: comboResult.rank,
+        })
+      }
+    }
+    waveClearBookDone.set(key, hits)
+    waveClearBookInflight.delete(key)
+    return hits
+  })()
+
+  waveClearBookInflight.set(key, promise)
+  return promise
+}
+
 /** Best-effort fastest-to-length submit (elapsed ms from run start). */
 export async function submitSnakeFastestLength(
   length: number,
