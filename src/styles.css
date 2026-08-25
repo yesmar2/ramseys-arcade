@@ -6520,7 +6520,7 @@ html[data-theme='dark'] .patriot__power-mark {
   color: var(--ink);
 }
 
-/* Full-screen run celebration ? grey overlay, cards only */
+/* Full-screen run celebration ? white modal shell */
 .score-celeb {
   position: fixed;
   inset: 0;
@@ -6535,8 +6535,11 @@ html[data-theme='dark'] .patriot__power-mark {
   overscroll-behavior: contain;
   padding: max(1rem, env(safe-area-inset-top)) max(1rem, env(safe-area-inset-right))
     max(1rem, env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left));
-  background: rgba(0, 0, 0, 0.52);
-  backdrop-filter: blur(8px);
+  background:
+    radial-gradient(ellipse 80% 55% at 50% 18%, color-mix(in srgb, var(--blob-mint) 55%, transparent), transparent 70%),
+    radial-gradient(ellipse 70% 50% at 12% 88%, color-mix(in srgb, var(--blob-sky) 45%, transparent), transparent 65%),
+    color-mix(in srgb, var(--shell, #edf7f4) 72%, transparent);
+  backdrop-filter: blur(12px);
   animation: score-celeb-fade 0.35s ease both;
   box-sizing: border-box;
 }
@@ -6562,10 +6565,12 @@ html[data-theme='dark'] .patriot__power-mark {
   gap: 1rem;
   width: min(100%, 42rem);
   margin: auto 0;
-  padding: 0.5rem 0.75rem;
-  background: transparent;
-  border: none;
-  box-shadow: none;
+  padding: 1.5rem 1.15rem 1.45rem;
+  border-radius: calc(var(--tile-radius) + 0.25rem);
+  background: rgba(var(--surface-rgb), 0.94);
+  backdrop-filter: blur(14px);
+  border: 1px solid rgba(var(--ink-rgb), 0.08);
+  box-shadow: var(--shadow-soft);
   animation: score-celeb-pop 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
   text-align: center;
   box-sizing: border-box;
@@ -6606,10 +6611,9 @@ html[data-theme='dark'] .patriot__power-mark {
   min-height: 7.5rem;
   padding: 1.15rem 0.7rem 1rem;
   border-radius: calc(var(--tile-radius) - 0.1rem);
-  /* Opaque surface like in-game panels ? transparent + blur on the dark overlay washes accents out */
-  background: color-mix(in srgb, var(--award-accent) 14%, var(--surface));
-  border: 1px solid color-mix(in srgb, var(--award-accent) 35%, transparent);
-  box-shadow: var(--shadow-soft);
+  background: color-mix(in srgb, var(--award-accent) 10%, var(--surface));
+  border: 2px solid color-mix(in srgb, var(--award-accent) 42%, transparent);
+  box-shadow: 0 10px 24px rgba(var(--ink-rgb), 0.06);
   animation: score-celeb-card-in 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
@@ -6627,49 +6631,12 @@ html[data-theme='dark'] .patriot__power-mark {
 
 .score-celeb__award--featured {
   background: color-mix(in srgb, var(--award-accent) 18%, var(--surface));
-  border-color: color-mix(in srgb, var(--award-accent) 48%, transparent);
+  border-color: color-mix(in srgb, var(--award-accent) 72%, transparent);
   box-shadow:
-    0 0 0 1px color-mix(in srgb, var(--award-accent) 28%, transparent),
-    var(--shadow-soft);
+    0 0 0 4px color-mix(in srgb, var(--award-accent) 18%, transparent),
+    0 16px 36px rgba(var(--ink-rgb), 0.1);
   transform: scale(1.03);
   z-index: 1;
-}
-
-.score-celeb.rank-up .score-celeb__kicker,
-.score-celeb.rank-up .score-celeb__title,
-.score-celeb.rank-up .rank-up__detail,
-.score-celeb.rank-up .rank-up__from {
-  color: #f4f8fb;
-}
-
-.score-celeb.rank-up .score-celeb__kicker {
-  color: rgba(244, 248, 251, 0.82);
-}
-
-.score-celeb.rank-up .rank-up__from span {
-  color: rgba(244, 248, 251, 0.88);
-}
-
-.score-celeb.rank-up .rank-up__rung {
-  color: rgba(244, 248, 251, 0.82);
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.42);
-}
-
-.score-celeb.rank-up .rank-up__number {
-  color: #f4f8fb;
-  text-shadow: 0 2px 14px rgba(0, 0, 0, 0.42);
-}
-
-.score-celeb.rank-up.rank-up--settled .rank-up__number {
-  color: var(--accent);
-  text-shadow: 0 2px 20px color-mix(in srgb, var(--accent) 48%, transparent);
-}
-
-.score-celeb.rank-up .rank-up__focus {
-  background: color-mix(in srgb, var(--accent) 30%, rgba(12, 22, 30, 0.88));
-  box-shadow:
-    0 0 0 1px color-mix(in srgb, var(--accent) 58%, transparent),
-    0 4px 16px rgba(0, 0, 0, 0.28);
 }
 
 .score-celeb__kicker {
@@ -6678,7 +6645,7 @@ html[data-theme='dark'] .patriot__power-mark {
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: rgba(244, 248, 251, 0.72);
+  color: var(--accent);
 }
 
 .score-celeb__title {
@@ -6688,7 +6655,7 @@ html[data-theme='dark'] .patriot__power-mark {
   font-weight: 600;
   line-height: 1.05;
   letter-spacing: -0.03em;
-  color: #f4f8fb;
+  color: var(--ink);
 }
 
 .score-celeb__award-label {
@@ -6696,7 +6663,7 @@ html[data-theme='dark'] .patriot__power-mark {
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--award-accent);
+  color: color-mix(in srgb, var(--award-accent) 55%, var(--muted));
 }
 
 .score-celeb__award-value {
