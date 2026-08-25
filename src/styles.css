@@ -1975,6 +1975,11 @@ a.game-hud__board {
   color: color-mix(in srgb, var(--accent) 55%, var(--ink));
 }
 
+.snake .play-readout__score {
+  top: max(0.35rem, env(safe-area-inset-top, 0px));
+  padding-bottom: 0.7rem;
+}
+
 .play-readout__center {
   position: absolute;
   top: calc(max(0.55rem, env(safe-area-inset-top, 0px)) + 1.65rem);
@@ -6356,10 +6361,6 @@ html[data-theme='dark'] .patriot__power-mark {
   color: var(--muted);
 }
 
-.score-save__eyebrow--best {
-  color: var(--accent);
-}
-
 .score-save__score {
   font-family: var(--font-display);
   font-size: clamp(3rem, 10vw, 3.75rem);
@@ -6367,6 +6368,18 @@ html[data-theme='dark'] .patriot__power-mark {
   line-height: 0.95;
   letter-spacing: -0.02em;
   color: var(--ink);
+}
+
+.score-save__pb {
+  margin: 0.1rem 0 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: var(--muted);
+}
+
+.score-save__pb--best {
+  color: var(--accent);
 }
 
 .score-save__gain {

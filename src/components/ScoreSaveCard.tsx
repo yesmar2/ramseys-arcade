@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { gameHref, recordsHref, recordsIndexHref } from '../hooks/useHashRoute'
+import { gameHref, recordsHref } from '../hooks/useHashRoute'
 import {
   addLeaderboardScore,
   ApiError,
@@ -523,10 +523,6 @@ function boardsHref(gameSlug: string) {
   return gameHref(gameSlug)
 }
 
-function recordBooksHref(gameSlug: string) {
-  return gameHasRecords(gameSlug) ? recordsHref(gameSlug) : recordsIndexHref()
-}
-
 type Phase = 'checking' | 'needName' | 'saving' | 'saved' | 'error'
 
 export function ScoreSaveCard({
@@ -554,9 +550,9 @@ export function ScoreSaveCard({
 
   const pb = describePersonalBest(score, record)
   const isBestRun = pb?.kind === 'new' || (pb?.kind === 'first' && score > 0)
-  const eyebrow =
-    pb?.headline ?? (phase === 'needName' ? 'Board score' : title)
-  const subParts = [pb?.detail, subtitle].filter(Boolean) as string[]
+  const eyebrow = phase === 'needName' ? 'Board score' : title
+  const subParts = [subtitle].filter(Boolean) as string[]
+  const pbLine = pb?.headline ?? pb?.detail
 
   useEffect(() => {
     if (phase === 'needName') nameInputRef.current?.focus()
@@ -737,12 +733,15 @@ export function ScoreSaveCard({
       {showResults && (
     <div className="score-save" onPointerDown={(e) => e.stopPropagation()}>
       <div className="score-save__hero">
-        <span
-          className={`score-save__eyebrow${isBestRun ? ' score-save__eyebrow--best' : ''}`}
-        >
-          {eyebrow}
-        </span>
+        <span className="score-save__eyebrow">{eyebrow}</span>
         <strong className="score-save__score">{score}</strong>
+        {pbLine ? (
+          <p
+            className={`score-save__pb${isBestRun ? ' score-save__pb--best' : ''}`}
+          >
+            {pbLine}
+          </p>
+        ) : null}
         {pb?.gain != null && (
           <span className="score-save__gain">+{pb.gain}</span>
         )}
@@ -800,7 +799,9 @@ export function ScoreSaveCard({
           </button>
           <div className="score-save__links">
             <a href={boardsHref(gameSlug)}>Boards</a>
-            <a href={recordBooksHref(gameSlug)}>Record Books</a>
+            {gameHasRecords(gameSlug) ? (
+              <a href={recordsHref(gameSlug)}>Record Books</a>
+            ) : null}
           </div>
         </>
       )}

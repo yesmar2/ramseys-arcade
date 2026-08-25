@@ -14,9 +14,6 @@ export function RecordsIndexPage() {
     <PageShell innerClassName="lb-page__inner lb-page__inner--summary">
       <header className="lb-page__header lb-page__header--compact">
         <h1 className="lb-page__title">Record books</h1>
-        <p className="lb-page__blurb lb-page__blurb--tight">
-          Best times and milestones — separate from high scores.
-        </p>
       </header>
 
       {games.length === 0 ? (
