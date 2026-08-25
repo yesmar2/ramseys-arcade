@@ -6606,15 +6606,11 @@ html[data-theme='dark'] .patriot__power-mark {
   min-height: 7.5rem;
   padding: 1.15rem 0.7rem 1rem;
   border-radius: calc(var(--tile-radius) - 0.1rem);
-  background: linear-gradient(
-    155deg,
-    color-mix(in srgb, var(--award-accent) 20%, rgba(255, 255, 255, 0.06)),
-    color-mix(in srgb, var(--award-accent) 6%, rgba(255, 255, 255, 0.02))
-  );
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border: 1.5px solid color-mix(in srgb, var(--award-accent) 58%, transparent);
-  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.24);
+  background: color-mix(in srgb, var(--award-accent) 14%, rgba(var(--surface-rgb), 0.86));
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid color-mix(in srgb, var(--award-accent) 35%, transparent);
+  box-shadow: var(--shadow-soft);
   animation: score-celeb-card-in 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
@@ -6631,15 +6627,11 @@ html[data-theme='dark'] .patriot__power-mark {
 }
 
 .score-celeb__award--featured {
-  background: linear-gradient(
-    155deg,
-    color-mix(in srgb, var(--award-accent) 26%, rgba(255, 255, 255, 0.08)),
-    color-mix(in srgb, var(--award-accent) 10%, rgba(255, 255, 255, 0.03))
-  );
-  border-color: color-mix(in srgb, var(--award-accent) 82%, transparent);
+  background: color-mix(in srgb, var(--award-accent) 18%, rgba(var(--surface-rgb), 0.92));
+  border-color: color-mix(in srgb, var(--award-accent) 48%, transparent);
   box-shadow:
-    0 0 0 2px color-mix(in srgb, var(--award-accent) 22%, transparent),
-    0 12px 32px rgba(0, 0, 0, 0.28);
+    0 0 0 1px color-mix(in srgb, var(--award-accent) 28%, transparent),
+    var(--shadow-soft);
   transform: scale(1.03);
   z-index: 1;
 }
@@ -6670,8 +6662,8 @@ html[data-theme='dark'] .patriot__power-mark {
 }
 
 .score-celeb.rank-up .rank-up__focus {
-  background: color-mix(in srgb, var(--accent) 34%, rgba(255, 255, 255, 0.06));
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 58%, transparent);
+  background: color-mix(in srgb, var(--accent) 16%, rgba(var(--surface-rgb), 0.86));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent);
 }
 
 .score-celeb__kicker {
@@ -6698,7 +6690,7 @@ html[data-theme='dark'] .patriot__power-mark {
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: color-mix(in srgb, var(--award-accent) 42%, #e8f4fc);
+  color: var(--award-accent);
 }
 
 .score-celeb__award-value {
@@ -6707,7 +6699,7 @@ html[data-theme='dark'] .patriot__power-mark {
   font-weight: 600;
   line-height: 1;
   letter-spacing: -0.03em;
-  color: #f4f8fb;
+  color: var(--ink);
 }
 
 .score-celeb__award-detail {
@@ -6715,7 +6707,7 @@ html[data-theme='dark'] .patriot__power-mark {
   font-size: 0.82rem;
   font-weight: 650;
   line-height: 1.25;
-  color: color-mix(in srgb, var(--award-accent) 28%, rgba(244, 248, 251, 0.78));
+  color: var(--muted);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
