@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { gameHref, recordsHref } from '../hooks/useHashRoute'
+import { gameBoardHref, recordsHref } from '../hooks/useHashRoute'
 import {
   addLeaderboardScore,
   ApiError,
@@ -10,6 +10,7 @@ import {
   normalizePlayerName,
   PERIOD_LABELS,
   PLAYER_NAME_MAX,
+  type LeaderboardGame,
   type LeaderboardPeriod,
 } from '../lib/leaderboard'
 import { describePersonalBest, rememberPersonalBest } from '../lib/personalBest'
@@ -520,7 +521,7 @@ function cleanName(raw: string) {
 }
 
 function boardsHref(gameSlug: string) {
-  return gameHref(gameSlug)
+  return gameBoardHref(gameSlug as LeaderboardGame)
 }
 
 type Phase = 'checking' | 'needName' | 'saving' | 'saved' | 'error'
