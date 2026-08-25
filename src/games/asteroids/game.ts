@@ -29,6 +29,9 @@ export type EnemyBullet = {
   vx: number
   vy: number
   life: number
+  /** Dumb shot or slow seeking missile (small saucer). */
+  kind: 'shot' | 'missile'
+  radius: number
 }
 
 export type Powerup = {
@@ -254,6 +257,12 @@ const SAUCER_SCORE: Record<SaucerSize, number> = {
   small: 1000,
 }
 const ENEMY_BULLET_LIFE = 1.15
+const MISSILE_LIFE = 4.4
+const MISSILE_SPEED = 138
+const MISSILE_TURN = 2.85
+const MISSILE_SCORE = 150
+const MISSILE_RADIUS = 7.5
+const ENEMY_SHOT_RADIUS = 2.6
 
 const ROCK_RADIUS: Record<RockSize, number> = {
   large: 42,
@@ -398,7 +407,7 @@ function nextSaucerCooldown(wave: number) {
 
 function pickSaucerSize(wave: number): SaucerSize {
   if (wave < 4) return 'large'
-  const smallChance = Math.min(0.2 + (wave - 4) * 0.12, 0.8)
+  const smallChance = Math.min(0.28 + (wave - 4) * 0.14, 0.85)
   return Math.random() < smallChance ? 'small' : 'large'
 }
 
@@ -429,15 +438,23 @@ function saucerFireBullet(
   wave: number,
   scale: number,
 ): EnemyBullet {
-  let angle: number
-  if (saucer.size === 'large') {
-    angle = Math.random() * Math.PI * 2
-  } else {
+  if (saucer.size === 'small') {
     const aim = Math.atan2(ship.y - saucer.y, ship.x - saucer.x)
-    const spread = Math.max(0.06, 0.5 - (wave - 3) * 0.045)
-    angle = aim + (Math.random() - 0.5) * 2 * spread
+    const speed = MISSILE_SPEED * scale
+    return {
+      id: uid(),
+      x: saucer.x,
+      y: saucer.y,
+      vx: Math.cos(aim) * speed,
+      vy: Math.sin(aim) * speed,
+      life: MISSILE_LIFE,
+      kind: 'missile',
+      radius: MISSILE_RADIUS * scale,
+    }
   }
-  const speed = (saucer.size === 'large' ? 210 : 300) * scale
+
+  const angle = Math.random() * Math.PI * 2
+  const speed = (210 + Math.min(40, (wave - 3) * 6)) * scale
   return {
     id: uid(),
     x: saucer.x,
@@ -445,6 +462,45 @@ function saucerFireBullet(
     vx: Math.cos(angle) * speed,
     vy: Math.sin(angle) * speed,
     life: ENEMY_BULLET_LIFE,
+    kind: 'shot',
+    radius: ENEMY_SHOT_RADIUS * scale,
+  }
+}
+
+function steerEnemyBullet(
+  b: EnemyBullet,
+  ship: Ship,
+  dt: number,
+  stageW: number,
+  stageH: number,
+  scale: number,
+): EnemyBullet {
+  if (b.kind !== 'missile') {
+    return {
+      ...b,
+      x: wrap(b.x + b.vx * dt, stageW),
+      y: wrap(b.y + b.vy * dt, stageH),
+      life: b.life - dt,
+    }
+  }
+
+  const desired = Math.atan2(ship.y - b.y, ship.x - b.x)
+  let ang = Math.atan2(b.vy, b.vx)
+  let diff = desired - ang
+  while (diff > Math.PI) diff -= Math.PI * 2
+  while (diff < -Math.PI) diff += Math.PI * 2
+  const maxTurn = MISSILE_TURN * dt
+  ang += Math.max(-maxTurn, Math.min(maxTurn, diff))
+  const speed = MISSILE_SPEED * scale
+  const vx = Math.cos(ang) * speed
+  const vy = Math.sin(ang) * speed
+  return {
+    ...b,
+    vx,
+    vy,
+    x: wrap(b.x + vx * dt, stageW),
+    y: wrap(b.y + vy * dt, stageH),
+    life: b.life - dt,
   }
 }
 
@@ -686,6 +742,8 @@ export function resizeState(state: GameState, w: number, h: number): GameState {
       y: b.y * sy,
       vx: b.vx * k,
       vy: b.vy * k,
+      radius: (b.radius ?? ENEMY_SHOT_RADIUS * state.scale) * k,
+      kind: b.kind ?? 'shot',
     })),
     saucer: state.saucer
       ? {
@@ -1029,7 +1087,9 @@ export function tick(state: GameState, dt: number): GameState {
       if (fireCooldown <= 0) {
         fired.push(saucerFireBullet(saucer, ship, s.wave, sc))
         fireCooldown =
-          saucer.size === 'large' ? 1.15 + Math.random() * 0.35 : 0.65 + Math.random() * 0.25
+          saucer.size === 'large'
+            ? 1.05 + Math.random() * 0.3
+            : 1.55 + Math.random() * 0.45
         sfx('fire')
       }
       saucer = {
@@ -1043,12 +1103,7 @@ export function tick(state: GameState, dt: number): GameState {
   }
 
   enemyBullets = enemyBullets
-    .map((b) => ({
-      ...b,
-      x: wrap(b.x + b.vx * dt, s.stageW),
-      y: wrap(b.y + b.vy * dt, s.stageH),
-      life: b.life - dt,
-    }))
+    .map((b) => steerEnemyBullet(b, ship, dt, s.stageW, s.stageH, sc))
     .filter((b) => b.life > 0)
 
   const speedScale = waveSpeedScale(s.wave)
@@ -1119,15 +1174,55 @@ export function tick(state: GameState, dt: number): GameState {
     }
   }
 
+  // Player bullets vs enemy shots / seeking missiles
+  for (const b of bullets) {
+    if (hitBullet.has(b.id)) continue
+    for (const e of enemyBullets) {
+      if (hitEnemyBullet.has(e.id)) continue
+      const pad = e.kind === 'missile' ? e.radius : e.radius + 2 * sc
+      if (dist(b.x, b.y, e.x, e.y) < pad + 3 * sc) {
+        hitBullet.add(b.id)
+        hitEnemyBullet.add(e.id)
+        if (e.kind === 'missile') {
+          score += MISSILE_SCORE
+          combo += 1
+          comboTimer = COMBO_WINDOW
+          comboBest = Math.max(comboBest, combo)
+          runComboBest = Math.max(runComboBest, combo)
+          burst(particles, e.x, e.y, 18, 10, 110)
+          sfx('hit', combo)
+          floaters.push({
+            x: e.x,
+            y: e.y,
+            text: `+${MISSILE_SCORE}`,
+            life: 0.75,
+            maxLife: 0.75,
+          })
+        } else {
+          burst(particles, e.x, e.y, 38, 5, 80)
+          sfx('tap')
+        }
+        break
+      }
+    }
+  }
+
   // Enemy bullets vs rocks
   for (const b of enemyBullets) {
     for (const r of rocks) {
       if (hitRock.has(r.id) || hitEnemyBullet.has(b.id)) continue
-      if (dist(b.x, b.y, r.x, r.y) < r.radius + 3 * sc) {
+      if (dist(b.x, b.y, r.x, r.y) < r.radius + b.radius) {
         hitEnemyBullet.add(b.id)
-        hitRock.add(r.id)
-        burst(particles, r.x, r.y, r.hue, r.size === 'large' ? 10 : 6, 100)
-        spawned.push(...splitRock(r, speedScale, sc))
+        if (b.kind === 'missile') {
+          hitRock.add(r.id)
+          burst(particles, r.x, r.y, r.hue, r.size === 'large' ? 10 : 6, 100)
+          burst(particles, b.x, b.y, 18, 8, 90)
+          spawned.push(...splitRock(r, speedScale, sc))
+        } else {
+          hitRock.add(r.id)
+          burst(particles, r.x, r.y, r.hue, r.size === 'large' ? 10 : 6, 100)
+          spawned.push(...splitRock(r, speedScale, sc))
+        }
       }
     }
   }
@@ -1195,7 +1290,7 @@ export function tick(state: GameState, dt: number): GameState {
       return killShip(s)
     }
     for (const b of s.enemyBullets) {
-      if (dist(ship.x, ship.y, b.x, b.y) < hull * 0.75 + 3 * sc) {
+      if (dist(ship.x, ship.y, b.x, b.y) < hull * 0.75 + b.radius) {
         return killShip(s)
       }
     }

@@ -63,6 +63,7 @@ const SCORING: Record<string, ScoreRow[]> = {
     { label: 'Par', value: '48s, −2s each wave' },
     { label: 'Extra life', value: 'every 3 waves' },
     { label: 'Saucers', value: 'from wave 3' },
+    { label: 'Small saucer missile', value: 'seek · shoot down +150' },
     { label: 'Rapid (pickup)', value: 'faster fire' },
     { label: 'Spread (pickup)', value: 'triple shot' },
     { label: 'Shield (pickup)', value: 'brief invulnerability' },

@@ -1,6 +1,7 @@
 import {
   POWER_HUE,
   shipRadius,
+  type EnemyBullet,
   type GameState,
   type Point,
   type Powerup,
@@ -241,6 +242,36 @@ function drawSaucer(ctx: CanvasRenderingContext2D, saucer: Saucer, scale: number
   ctx.restore()
 }
 
+function drawMissile(ctx: CanvasRenderingContext2D, b: EnemyBullet, scale: number) {
+  const ang = Math.atan2(b.vy, b.vx)
+  const len = Math.max(11, 14 * scale)
+  const half = Math.max(3.2, 4.2 * scale)
+  ctx.save()
+  ctx.translate(b.x, b.y)
+  ctx.rotate(ang)
+  // Exhaust
+  ctx.beginPath()
+  ctx.moveTo(-len * 0.55, 0)
+  ctx.lineTo(-len * 0.95, half * 0.55)
+  ctx.lineTo(-len * 0.95, -half * 0.55)
+  ctx.closePath()
+  ctx.fillStyle = 'hsla(28, 90%, 58%, 0.75)'
+  ctx.fill()
+  // Body
+  ctx.beginPath()
+  ctx.moveTo(len * 0.55, 0)
+  ctx.lineTo(-len * 0.4, half)
+  ctx.lineTo(-len * 0.4, -half)
+  ctx.closePath()
+  ctx.fillStyle = '#e07050'
+  ctx.fill()
+  ctx.strokeStyle = '#8f2f22'
+  ctx.lineWidth = Math.max(1.2, 1.5 * scale)
+  ctx.lineJoin = 'round'
+  ctx.stroke()
+  ctx.restore()
+}
+
 export function renderGame(
   ctx: CanvasRenderingContext2D,
   state: GameState,
@@ -271,10 +302,13 @@ export function renderGame(
   }
 
   for (const b of state.enemyBullets ?? []) {
-    ctx.beginPath()
-    ctx.arc(b.x, b.y, Math.max(2.2, 2.6 * scale), 0, Math.PI * 2)
-    ctx.fillStyle = SAUCER
-    ctx.fill()
+    if (b.kind === 'missile') drawMissile(ctx, b, scale)
+    else {
+      ctx.beginPath()
+      ctx.arc(b.x, b.y, Math.max(2.2, b.radius || 2.6 * scale), 0, Math.PI * 2)
+      ctx.fillStyle = SAUCER
+      ctx.fill()
+    }
   }
 
   for (const p of state.particles) {
