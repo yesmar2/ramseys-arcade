@@ -104,6 +104,8 @@ export type Snapshot = {
   shieldT: number
   slowT: number
   burstArmed: boolean
+  /** Peak consecutive direct hits this run. */
+  directStreakBest: number
 }
 
 export type WaveClearBonus = {
@@ -148,6 +150,10 @@ export type GameState = {
   citiesAtWaveStart: number
   /** Consecutive waves cleared without losing a city. */
   cleanStreak: number
+  /** Current consecutive direct (perfect) hits. */
+  directStreak: number
+  /** Best consecutive direct hits this run. */
+  directStreakBest: number
 }
 
 /** Design reference for the fixed 16:9 playfield. */
@@ -170,6 +176,8 @@ const BATTERY_AMMO = 10
 const AMMO_PACK = 10
 const BLAST_MAX = 82
 const BLAST_BURST = 152
+/** Extra radius a perfect hit adds when the blast regrows. */
+const BLAST_REGROW = 52
 const DIRECT_HIT_RADIUS = 16
 const SCORE_SPLASH = 25
 const SCORE_DIRECT = 100
@@ -276,6 +284,8 @@ export function createInitialState(w = DESIGN_W, h = DESIGN_H): GameState {
     clearBonus: null,
     citiesAtWaveStart: cities.length,
     cleanStreak: 0,
+    directStreak: 0,
+    directStreakBest: 0,
   }
 }
 
@@ -990,6 +1000,8 @@ export function tick(state: GameState, dt: number, w: number): GameState {
   let batteries = s.batteries.map((b) => ({ ...b }))
   let scoreAdd = 0
   let flash = s.flash
+  let directStreak = s.directStreak ?? 0
+  let directStreakBest = s.directStreakBest ?? 0
   const hitPad = 4 * scale
   const directR = DIRECT_HIT_RADIUS * scale
 
@@ -1007,16 +1019,28 @@ export function tick(state: GameState, dt: number, w: number): GameState {
       const direct = dist(m.x, m.y, hitBlast.x, hitBlast.y) <= directR
       sfx('hit', direct ? 2 : 0)
       if (direct) {
+        directStreak += 1
+        directStreakBest = Math.max(directStreakBest, directStreak)
         scoreAdd += SCORE_DIRECT
         newFloaters.push({
           id: uid(),
           x: m.x,
           y: m.y - 10 * scale,
-          text: 'DIRECT HIT +100',
+          text:
+            directStreak > 1
+              ? `DIRECT ×${directStreak} +100`
+              : 'DIRECT HIT +100',
           life: 1.15,
         })
         flash = Math.max(flash, 0.35)
+        // Perfect hit pumps the blast back into growth.
+        hitBlast.growing = true
+        hitBlast.wait = 0
+        hitBlast.maxR =
+          Math.max(hitBlast.maxR, hitBlast.r) + BLAST_REGROW * scale
+        hitBlast.growRate = Math.max(hitBlast.growRate ?? 120, 130)
       } else {
+        directStreak = 0
         scoreAdd += SCORE_SPLASH
       }
 
@@ -1102,6 +1126,7 @@ export function tick(state: GameState, dt: number, w: number): GameState {
     }
 
     if (step.done) {
+      directStreak = 0
       const impact = applyImpact(
         m.x1,
         cities,
@@ -1220,6 +1245,8 @@ export function tick(state: GameState, dt: number, w: number): GameState {
   s.score += scoreAdd
   s.flash = Math.max(s.flash, flash)
   s.shieldT = cities.some((c) => c.alive && c.shielded) ? 1 : 0
+  s.directStreak = directStreak
+  s.directStreakBest = directStreakBest
 
   const citiesLeft = s.cities.filter((c) => c.alive).length
   if (citiesLeft === 0) {
@@ -1310,5 +1337,6 @@ export function toSnapshot(s: GameState): Snapshot {
     shieldT: s.cities.some((c) => c.alive && c.shielded) ? 1 : 0,
     slowT: s.slowT ?? 0,
     burstArmed: s.burstArmed ?? false,
+    directStreakBest: s.directStreakBest ?? 0,
   }
 }

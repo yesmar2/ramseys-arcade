@@ -20,6 +20,9 @@ function recordsEmptyDetail(game: string, gameName: string) {
   if (game === 'asteroids') {
     return 'Clear a wave in-game and the board will show up here.'
   }
+  if (game === 'patriot') {
+    return 'Land consecutive perfect hits in-game and the board will show up here.'
+  }
   return `Set a record in ${gameName} to populate this page.`
 }
 

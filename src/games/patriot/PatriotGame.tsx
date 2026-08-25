@@ -7,7 +7,14 @@ import { ScoreSaveCard } from '../../components/ScoreSaveCard'
 import { TournamentScoreCard } from '../../components/TournamentScoreCard'
 import { useGamePause } from '../../hooks/useGamePause'
 import { usePersonalBest } from '../../hooks/usePersonalBest'
+import { usePlayerName } from '../../hooks/usePlayerName'
 import { getPersonalBest } from '../../lib/personalBest'
+import { normalizePlayerName } from '../../lib/leaderboard'
+import {
+  clearRunAchievements,
+  pushRunAchievement,
+} from '../../lib/runAchievements'
+import { submitPatriotDirectStreak } from '../../lib/records'
 import { STAGE_ASPECT } from '../../lib/stage'
 import { useTournamentPlay } from '../../tournaments/TournamentPlayContext'
 import {
@@ -75,6 +82,7 @@ function useNeedsLandscape() {
 export function PatriotGame() {
   const tournament = useTournamentPlay()
   const apiBest = usePersonalBest('patriot')
+  const playerName = normalizePlayerName(usePlayerName())
   const stateRef = useRef<GameState>(createInitialState())
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const sizeRef = useRef({ w: 800, h: 450 })
@@ -82,6 +90,7 @@ export function PatriotGame() {
   const [saveOpen, setSaveOpen] = useState(false)
   const fireLock = useRef(false)
   const offeredScore = useRef<number | null>(null)
+  const streakRecordKey = useRef<string | null>(null)
   const previousBestRef = useRef(getPersonalBest('patriot'))
   const needsRotate = useNeedsLandscape()
   const ignorePauseKeys = useRef(false)
@@ -142,6 +151,27 @@ export function PatriotGame() {
     if (ui.phase === 'menu') previousBestRef.current = apiBest
   }, [apiBest, ui.phase])
 
+  useEffect(() => {
+    if (tournament || !playerName) return
+    if (ui.phase !== 'playing' && ui.phase !== 'waveClear' && ui.phase !== 'gameover') {
+      return
+    }
+    const streak = ui.directStreakBest
+    if (streak < 2) return
+    const key = `direct:${streak}`
+    if (streakRecordKey.current === key) return
+    streakRecordKey.current = key
+    void (async () => {
+      const result = await submitPatriotDirectStreak(streak, playerName)
+      if (result?.improved) {
+        pushRunAchievement({
+          label: `Direct streak · ${streak}`,
+          rank: result.rank,
+        })
+      }
+    })()
+  }, [ui.phase, ui.directStreakBest, playerName, tournament])
+
   const aimFromEvent = (e: ReactPointerEvent<HTMLElement>) => {
     const rect = e.currentTarget.getBoundingClientRect()
     stateRef.current = setCursor(
@@ -159,6 +189,8 @@ export function PatriotGame() {
   const restart = () => {
     setSaveOpen(false)
     offeredScore.current = null
+    streakRecordKey.current = null
+    clearRunAchievements()
     const { w, h } = sizeRef.current
     stateRef.current = startGame(stateRef.current, w, h)
     previousBestRef.current = getPersonalBest('patriot')

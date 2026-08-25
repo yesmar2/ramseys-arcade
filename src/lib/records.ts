@@ -130,6 +130,7 @@ export function parseSnakeLengthFromRecordId(recordId: string): number | null {
 
 export function recordNavShortLabel(row: { id: string; label: string }): string {
   if (row.id === ASTEROIDS_HIGHEST_COMBO_ID) return 'Combo'
+  if (row.id === PATRIOT_DIRECT_STREAK_ID) return 'Direct'
   const wave = parseAsteroidsWaveFromRecordId(row.id)
   if (wave != null) return `W${wave}`
   const length = parseSnakeLengthFromRecordId(row.id)
@@ -155,6 +156,27 @@ export function formatRecordScore(entryScore: number, unit: RecordDef['unit']): 
 }
 
 export const ASTEROIDS_HIGHEST_COMBO_ID = 'highest-combo'
+export const PATRIOT_DIRECT_STREAK_ID = 'direct-streak'
+
+/** Best-effort Patriot perfect-hit streak submit (run peak). */
+export async function submitPatriotDirectStreak(
+  streak: number,
+  name: string,
+): Promise<{ improved: boolean; rank: number | null } | null> {
+  const value = Math.floor(streak)
+  if (!(value >= 2)) return null
+  try {
+    const result = await submitRecord(
+      'patriot',
+      PATRIOT_DIRECT_STREAK_ID,
+      name,
+      value,
+    )
+    return { improved: result.improved, rank: result.rank }
+  } catch {
+    return null
+  }
+}
 
 export async function fetchGameRecords(
   game: string,
@@ -340,7 +362,7 @@ export async function submitSnakeFastestLength(
   }
 }
 
-export const GAMES_WITH_RECORDS = ['asteroids', 'snake'] as const
+export const GAMES_WITH_RECORDS = ['asteroids', 'snake', 'patriot'] as const
 export type RecordGame = (typeof GAMES_WITH_RECORDS)[number]
 
 export function gameHasRecords(game: string): game is RecordGame {
