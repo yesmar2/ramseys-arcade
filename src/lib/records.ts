@@ -13,6 +13,7 @@ import {
 } from './leaderboard'
 
 export const ASTEROIDS_WAVE_RECORD_MAX = 20
+export const SNAKE_LENGTH_MILESTONE_MIN = 20
 export const SNAKE_LENGTH_MILESTONE_MAX = 100
 export const SNAKE_LENGTH_MILESTONE_STEP = 10
 
@@ -103,7 +104,7 @@ export function parseAsteroidsWaveFromRecordId(recordId: string): number | null 
 export function snakeFastestLengthRecordId(length: number): string | null {
   if (
     !Number.isInteger(length) ||
-    length < SNAKE_LENGTH_MILESTONE_STEP ||
+    length < SNAKE_LENGTH_MILESTONE_MIN ||
     length > SNAKE_LENGTH_MILESTONE_MAX ||
     length % SNAKE_LENGTH_MILESTONE_STEP !== 0
   ) {
@@ -118,7 +119,7 @@ export function parseSnakeLengthFromRecordId(recordId: string): number | null {
   const length = Number(match[1])
   if (
     !Number.isInteger(length) ||
-    length < SNAKE_LENGTH_MILESTONE_STEP ||
+    length < SNAKE_LENGTH_MILESTONE_MIN ||
     length > SNAKE_LENGTH_MILESTONE_MAX ||
     length % SNAKE_LENGTH_MILESTONE_STEP !== 0
   ) {

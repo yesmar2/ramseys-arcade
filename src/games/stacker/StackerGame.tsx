@@ -139,7 +139,6 @@ export function StackerGame() {
           slug="stacker"
           inRun={() => stateRef.current.phase === 'playing'}
           paused={paused}
-          onPause={pause}
         >
           {(pausable || paused) ? (
             <PauseButton paused={paused} onToggle={togglePause} />

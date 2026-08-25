@@ -16,6 +16,7 @@ import {
 } from '../../lib/runAchievements'
 import {
   SNAKE_LENGTH_MILESTONE_MAX,
+  SNAKE_LENGTH_MILESTONE_MIN,
   SNAKE_LENGTH_MILESTONE_STEP,
   submitSnakeFastestLength,
 } from '../../lib/records'
@@ -112,7 +113,7 @@ export function SnakeGame() {
     if (!(elapsedMs > 0)) return
 
     for (
-      let milestone = SNAKE_LENGTH_MILESTONE_STEP;
+      let milestone = SNAKE_LENGTH_MILESTONE_MIN;
       milestone <= SNAKE_LENGTH_MILESTONE_MAX;
       milestone += SNAKE_LENGTH_MILESTONE_STEP
     ) {
@@ -302,7 +303,6 @@ export function SnakeGame() {
             slug="snake"
             inRun={() => stateRef.current.phase === 'playing'}
             paused={paused}
-            onPause={pause}
           >
             {(pausable || paused) ? (
               <PauseButton paused={paused} onToggle={togglePause} />

@@ -149,15 +149,12 @@ export function GamePlayChrome({
   slug,
   inRun = false,
   paused = false,
-  onPause,
   children,
 }: {
   slug: string
   /** True when leaving would abandon an in-progress run. Prefer a getter over lagged UI. */
   inRun?: InRun
   paused?: boolean
-  /** Return true if the run was paused. False/void falls through to the leave confirm. */
-  onPause?: () => boolean | void
   children?: ReactNode
 }) {
   return (
@@ -166,12 +163,7 @@ export function GamePlayChrome({
         className="game-play-chrome game-play-chrome--leave"
         onPointerDown={(e) => e.stopPropagation()}
       >
-        <PlayLeaveButton
-          slug={slug}
-          inRun={inRun}
-          paused={paused}
-          onPause={onPause}
-        />
+        <PlayLeaveButton slug={slug} inRun={inRun} paused={paused} />
       </div>
       <div
         className="game-play-chrome game-play-chrome--actions"
@@ -193,12 +185,10 @@ function PlayLeaveButton({
   slug,
   inRun,
   paused,
-  onPause,
 }: {
   slug: string
   inRun: InRun
   paused: boolean
-  onPause?: () => boolean | void
 }) {
   const tournament = useTournamentPlay()
   const href = playLeaveHref(slug, tournament?.tournamentId)
@@ -233,9 +223,6 @@ function PlayLeaveButton({
     if (!running) {
       goNow()
       return
-    }
-    if (onPause && !paused) {
-      if (onPause()) return
     }
     setConfirming(true)
   }

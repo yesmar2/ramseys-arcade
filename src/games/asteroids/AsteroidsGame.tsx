@@ -437,7 +437,6 @@ export function AsteroidsGame() {
               return phase === 'playing' || phase === 'waveClear'
             }}
             paused={paused}
-            onPause={pause}
           >
             {(pausable || paused) ? (
               <PauseButton paused={paused} onToggle={togglePause} />

@@ -238,7 +238,6 @@ export function PatriotGame() {
               return phase === 'playing' || phase === 'waveClear'
             }}
             paused={paused}
-            onPause={pause}
           >
             {(pausable || paused) && !needsRotate ? (
               <PauseButton paused={paused} onToggle={togglePause} />

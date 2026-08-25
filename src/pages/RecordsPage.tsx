@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import {
   BoardEmpty,
   BoardSkeleton,
@@ -28,12 +28,9 @@ import {
   type YouEntry,
 } from '../lib/leaderboard'
 import {
-  fetchGameRecords,
   fetchRecordBoard,
   formatRecordScore,
-  recordNavShortLabel,
   type RecordDef,
-  type RecordSummary,
 } from '../lib/records'
 
 const INITIAL_ROWS = 10
@@ -128,7 +125,6 @@ function RecordBoardPage({
   const [record, setRecord] = useState<RecordDef | null>(null)
   const [entries, setEntries] = useState<LeaderboardEntry[]>([])
   const [you, setYou] = useState<YouEntry | null>(null)
-  const [waveRecords, setWaveRecords] = useState<RecordSummary[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [shown, setShown] = useState(INITIAL_ROWS)
@@ -147,23 +143,18 @@ function RecordBoardPage({
     setError(null)
     setShown(INITIAL_ROWS)
     pulsed.current = false
-    Promise.all([
-      fetchRecordBoard(game, recordId, period, playerName || undefined),
-      fetchGameRecords(game),
-    ])
-      .then(([board, list]) => {
+    void fetchRecordBoard(game, recordId, period, playerName || undefined)
+      .then((board) => {
         if (cancelled) return
         setRecord(board.record)
         setEntries(board.entries)
         setYou(board.you)
-        setWaveRecords(list.records)
       })
       .catch((err) => {
         if (cancelled) return
         setRecord(null)
         setEntries([])
         setYou(null)
-        setWaveRecords([])
         setError(err instanceof Error ? err.message : 'Failed to load')
       })
       .finally(() => {
@@ -190,16 +181,6 @@ function RecordBoardPage({
   const device = useDeviceType()
   const canPlay = gameMeta ? gamePlayableOn(gameMeta, device) : false
   const deviceNote = gameMeta ? deviceRequirementLabel(gameMeta) : null
-
-  const waveIndex = useMemo(
-    () => waveRecords.findIndex((row) => row.id === recordId),
-    [waveRecords, recordId],
-  )
-  const prevWave = waveIndex > 0 ? waveRecords[waveIndex - 1] : null
-  const nextWave =
-    waveIndex >= 0 && waveIndex < waveRecords.length - 1
-      ? waveRecords[waveIndex + 1]
-      : null
 
   return (
     <>
@@ -235,53 +216,6 @@ function RecordBoardPage({
               </div>
             </header>
           )}
-
-          {waveRecords.length > 1 ? (
-            <nav className="records-wave-nav" aria-label="Record boards">
-              {prevWave ? (
-                <a
-                  className="records-wave-nav__btn"
-                  href={recordHref(game, prevWave.id, period)}
-                >
-                  ← Prev
-                </a>
-              ) : (
-                <span className="records-wave-nav__btn records-wave-nav__btn--disabled">
-                  ← Prev
-                </span>
-              )}
-              <div className="records-wave-nav__strip" role="list">
-                {waveRecords.map((row) => {
-                  const short = recordNavShortLabel(row)
-                  const active = row.id === recordId
-                  return (
-                    <a
-                      key={row.id}
-                      role="listitem"
-                      className={`records-wave-nav__chip${active ? ' records-wave-nav__chip--active' : ''}`}
-                      href={recordHref(game, row.id, period)}
-                      aria-current={active ? 'page' : undefined}
-                      title={row.label}
-                    >
-                      {short}
-                    </a>
-                  )
-                })}
-              </div>
-              {nextWave ? (
-                <a
-                  className="records-wave-nav__btn"
-                  href={recordHref(game, nextWave.id, period)}
-                >
-                  Next →
-                </a>
-              ) : (
-                <span className="records-wave-nav__btn records-wave-nav__btn--disabled">
-                  Next →
-                </span>
-              )}
-            </nav>
-          ) : null}
 
           <PeriodSwitcher
             period={period}

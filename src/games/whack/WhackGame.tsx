@@ -199,7 +199,6 @@ export function WhackGame() {
               slug="pop"
               inRun={() => stateRef.current.phase === 'playing'}
               paused={paused}
-              onPause={pause}
             >
               {(pausable || paused) ? (
                 <PauseButton paused={paused} onToggle={togglePause} />

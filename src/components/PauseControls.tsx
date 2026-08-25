@@ -1,9 +1,10 @@
 import type { ReactNode } from 'react'
 import { getGame } from '../data/games'
 import { scoringFor } from '../data/scoring'
-import { gameBoardHref } from '../hooks/useHashRoute'
+import { gameBoardHref, recordsHref } from '../hooks/useHashRoute'
 import { useBoardRecord } from '../hooks/useBoardRecord'
 import { LEADERBOARD_GAMES, type LeaderboardGame } from '../lib/leaderboard'
+import { gameHasRecords } from '../lib/records'
 import { useTournamentPlay } from '../tournaments/TournamentPlayContext'
 import { ScoreGuide } from './ScoreGuide'
 import { SoundToggle } from './SoundToggle'
@@ -113,6 +114,7 @@ export function GamePauseOverlay({
   const allTime = useBoardRecord(slug)
   const scoring = scoringFor(slug)
   const board = isBoardGame(slug)
+  const hasRecords = gameHasRecords(slug)
   const gameName = getGame(slug)?.name ?? 'game'
   const leaveLabel = tournament ? 'Back to event' : `Leave ${gameName}`
 
@@ -156,6 +158,36 @@ export function GamePauseOverlay({
               />
               <path
                 d="M17 6h2.2a1.8 1.8 0 0 1 0 3.6H17M7 6H4.8a1.8 1.8 0 0 0 0 3.6H7"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </a>
+        ) : null}
+        {hasRecords ? (
+          <a
+            className="game-pause-btn game-pause-board"
+            href={recordsHref(slug)}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Record books"
+            title="Record books"
+            onPointerDown={(e) => e.stopPropagation()}
+          >
+            <svg className="game-pause-btn__icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                d="M5 4.5h5.2a2.3 2.3 0 0 1 2.3 2.3V20a1.7 1.7 0 0 0-1.7-1.7H5V4.5z"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+              <path
+                d="M19 4.5h-5.2a2.3 2.3 0 0 0-2.3 2.3V20a1.7 1.7 0 0 1 1.7-1.7H19V4.5z"
                 fill="none"
                 stroke="currentColor"
                 strokeWidth="1.8"

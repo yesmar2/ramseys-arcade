@@ -204,7 +204,6 @@ export function CrosswalkGame() {
               slug="crosswalk"
               inRun={() => stateRef.current.phase === 'playing'}
               paused={paused}
-              onPause={pause}
             >
               {(pausable || paused) ? (
                 <PauseButton paused={paused} onToggle={togglePause} />
