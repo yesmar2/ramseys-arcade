@@ -289,7 +289,11 @@ export async function submitAsteroidsHighestCombo(
   }
 }
 
-export type RecordBookHit = { label: string; rank: number | null }
+export type RecordBookHit = {
+  id?: string
+  label: string
+  rank: number | null
+}
 
 /**
  * Submit wave + combo book entries once per clear.
@@ -321,6 +325,7 @@ export function submitAsteroidsWaveClearBooks(input: {
     )
     if (waveResult?.improved) {
       hits.push({
+        id: `asteroids:wave-time-${input.wave}`,
         label: `Wave ${input.wave} record`,
         rank: waveResult.rank,
       })
@@ -330,6 +335,7 @@ export function submitAsteroidsWaveClearBooks(input: {
       const comboResult = await submitAsteroidsHighestCombo(combo, name)
       if (comboResult?.improved) {
         hits.push({
+          id: 'asteroids:highest-combo',
           label: `Combo record · ${combo}`,
           rank: comboResult.rank,
         })

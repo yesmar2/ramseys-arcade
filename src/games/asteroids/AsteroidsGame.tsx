@@ -249,6 +249,7 @@ export function AsteroidsGame() {
       const comboResult = await submitAsteroidsHighestCombo(combo, playerName)
       if (comboResult?.improved) {
         pushRunAchievement({
+          id: 'asteroids:highest-combo',
           label: `Combo record · ${combo}`,
           rank: comboResult.rank,
         })

@@ -95,6 +95,11 @@ export type Blast = {
   wait: number
   /** Radius growth per second, before scale. */
   growRate: number
+  /**
+   * True after a direct/perfect hit (or chain from one).
+   * Splash kills on these blasts do not break the direct streak.
+   */
+  fromPerfect?: boolean
 }
 
 export type Floater = {
@@ -1125,15 +1130,19 @@ export function tick(state: GameState, dt: number, w: number): GameState {
         })
         flash = Math.max(flash, 0.35)
         // Perfect hit pumps the blast back into growth.
+        hitBlast.fromPerfect = true
         hitBlast.growing = true
         hitBlast.wait = 0
         hitBlast.maxR =
           Math.max(hitBlast.maxR, hitBlast.r) + BLAST_REGROW * scale
         hitBlast.growRate = Math.max(hitBlast.growRate ?? 120, 130)
       } else {
-        // Splash kills (incl. from a perfect-hit blast) keep the streak.
+        // Only splash from a perfect-linked blast keeps the streak.
+        if (!hitBlast.fromPerfect) directStreak = 0
         scoreAdd += SCORE_SPLASH
       }
+
+      const chainPerfect = Boolean(direct || hitBlast.fromPerfect)
 
       // Missile body always detonates on kill.
       extraBlasts.push({
@@ -1146,6 +1155,7 @@ export function tick(state: GameState, dt: number, w: number): GameState {
         burst: hitBlast.burst,
         wait: 0.05,
         growRate: 110,
+        fromPerfect: chainPerfect,
       })
 
       if (hitBlast.burst) {
@@ -1169,6 +1179,7 @@ export function tick(state: GameState, dt: number, w: number): GameState {
             burst: true,
             wait: 0.14 + i * 0.08,
             growRate: 78,
+            fromPerfect: chainPerfect,
           })
         }
       }

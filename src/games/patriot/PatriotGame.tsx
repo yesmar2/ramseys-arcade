@@ -165,6 +165,7 @@ export function PatriotGame() {
       const result = await submitPatriotDirectStreak(streak, playerName)
       if (result?.improved) {
         pushRunAchievement({
+          id: 'patriot:direct-streak',
           label: `Direct streak · ${streak}`,
           rank: result.rank,
         })

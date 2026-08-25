@@ -1,20 +1,32 @@
 /** Run-scoped record-book wins queued for the end-of-run celebration. */
 
 export type RunAchievement = {
+  /** Stable book key so beating the same record again replaces the prior award. */
+  id?: string
   label: string
   rank: number | null
 }
 
 let queue: RunAchievement[] = []
 
+function achievementKey(hit: Pick<RunAchievement, 'id' | 'label'>) {
+  const id = hit.id?.trim()
+  if (id) return id
+  return hit.label.trim()
+}
+
 export function pushRunAchievement(hit: RunAchievement) {
   const label = hit.label.trim()
   if (!label) return
-  const exists = queue.some(
-    (row) => row.label === label && row.rank === hit.rank,
-  )
-  if (exists) return
-  queue = [...queue, { label, rank: hit.rank }]
+  const key = achievementKey(hit)
+  if (!key) return
+  const next: RunAchievement = {
+    id: hit.id?.trim() || undefined,
+    label,
+    rank: hit.rank,
+  }
+  // Same book mid-run: keep only the latest award (e.g. streak 5 then 8).
+  queue = [...queue.filter((row) => achievementKey(row) !== key), next]
 }
 
 export function takeRunAchievements(): RunAchievement[] {
