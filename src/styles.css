@@ -6594,52 +6594,57 @@ html[data-theme='dark'] .patriot__power-mark {
   margin: 0.15rem 0 0.35rem;
 }
 
-.rank-up__ladder {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 0.28rem;
+.rank-up__viewport {
+  --rank-up-row: 2.15rem;
+  position: relative;
   width: min(100%, 12.5rem);
-  max-height: 9.5rem;
+  height: calc(var(--rank-up-row) * 5);
   overflow: hidden;
   mask-image: linear-gradient(
     to bottom,
-    transparent,
-    #000 18%,
-    #000 82%,
-    transparent
+    transparent 0%,
+    #000 22%,
+    #000 78%,
+    transparent 100%
   );
+}
+
+.rank-up__focus {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(var(--rank-up-row) * 2);
+  height: var(--rank-up-row);
+  border-radius: 0.55rem;
+  background: color-mix(in srgb, var(--accent) 16%, var(--surface));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.rank-up--settled .rank-up__focus {
+  animation: rank-up-land 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.rank-up__reel {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  will-change: transform;
+  transform: translate3d(0, 0, 0);
 }
 
 .rank-up__rung {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 1.7rem;
-  border-radius: 0.55rem;
+  height: var(--rank-up-row);
   font-family: var(--font-display);
-  font-size: 1rem;
+  font-size: 1.05rem;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
-  color: color-mix(in srgb, var(--ink) 42%, transparent);
-  transform: translateY(0);
-  transition:
-    transform 0.35s cubic-bezier(0.22, 1, 0.36, 1),
-    color 0.25s ease,
-    background 0.25s ease,
-    box-shadow 0.25s ease;
-}
-
-.rank-up__rung--you {
-  min-height: 2.15rem;
-  color: var(--ink);
-  background: color-mix(in srgb, var(--accent) 16%, var(--surface));
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent);
-  transform: scale(1.06);
-}
-
-.rank-up--settled .rank-up__rung--you {
-  animation: rank-up-land 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+  color: color-mix(in srgb, var(--ink) 38%, transparent);
 }
 
 .rank-up__number {
@@ -6683,20 +6688,24 @@ html[data-theme='dark'] .patriot__power-mark {
 
 @keyframes rank-up-land {
   0% {
-    transform: scale(1.06) translateY(0.45rem);
+    transform: scale(1) translateY(0.35rem);
   }
   60% {
-    transform: scale(1.1) translateY(-0.12rem);
+    transform: scale(1.04) translateY(-0.1rem);
   }
   100% {
-    transform: scale(1.06) translateY(0);
+    transform: scale(1) translateY(0);
   }
 }
 
 @media (max-width: 420px) {
-  .rank-up__ladder {
+  .rank-up__viewport {
+    --rank-up-row: 1.95rem;
     width: min(100%, 10.5rem);
-    max-height: 8.4rem;
+  }
+
+  .rank-up__rung {
+    font-size: 0.98rem;
   }
 
   .rank-up__number {
@@ -6705,9 +6714,12 @@ html[data-theme='dark'] .patriot__power-mark {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .rank-up__rung,
+  .rank-up__reel {
+    transition: none;
+  }
+
   .rank-up__number,
-  .rank-up--settled .rank-up__rung--you {
+  .rank-up--settled .rank-up__focus {
     transition: none;
     animation: none;
   }

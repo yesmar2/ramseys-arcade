@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { gameHref, recordsHref, recordsIndexHref } from '../hooks/useHashRoute'
 import {
@@ -368,6 +368,13 @@ function easeOutCubic(t: number) {
   return 1 - (1 - t) ** 3
 }
 
+function prefersReducedMotion() {
+  return (
+    typeof window !== 'undefined' &&
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  )
+}
+
 export function RankUpCelebration({
   climb,
   onDone,
@@ -376,46 +383,80 @@ export function RankUpCelebration({
   onDone: () => void
 }) {
   const [leaving, setLeaving] = useState(false)
-  const [shown, setShown] = useState(
-    () => climb.from ?? Math.min(99, climb.to + Math.max(4, Math.min(18, climb.gained ?? 8))),
-  )
   const [settled, setSettled] = useState(false)
+  const reelRef = useRef<HTMLDivElement>(null)
+  const numberRef = useRef<HTMLElement>(null)
   const startRank =
     climb.from ?? Math.min(99, climb.to + Math.max(4, Math.min(18, climb.gained ?? 8)))
+  /** Keep the reel short so long climbs stay smooth. */
+  const scrollFrom = Math.min(startRank, climb.to + 24)
+  const steps = Math.max(1, scrollFrom - climb.to)
+  /** Pad so the first/last ranks can sit centered in the viewport. */
+  const pad = 2
+  const ranks = useMemo(() => {
+    const list: number[] = []
+    for (let r = scrollFrom + pad; r >= Math.max(1, climb.to - pad); r--) {
+      list.push(r)
+    }
+    return list
+  }, [climb.to, pad, scrollFrom])
 
   useEffect(() => {
+    const reel = reelRef.current
+    const numberEl = numberRef.current
+    const viewport = reel?.parentElement
+    if (!reel || !numberEl || !viewport) return
+
+    const rowH = viewport.clientHeight / 5
+    const startIndex = ranks.indexOf(scrollFrom)
+    const endIndex = ranks.indexOf(climb.to)
+    if (startIndex < 0 || endIndex < 0 || !(rowH > 0)) {
+      numberEl.textContent = `#${climb.to}`
+      setSettled(true)
+      return
+    }
+
+    const offsetFor = (index: number) => (2 - index) * rowH
+
+    const apply = (index: number, rank: number) => {
+      reel.style.transform = `translate3d(0, ${offsetFor(index)}px, 0)`
+      numberEl.textContent = `#${rank}`
+    }
+
+    if (prefersReducedMotion() || steps <= 1) {
+      apply(endIndex, climb.to)
+      setSettled(true)
+      return
+    }
+
+    apply(startIndex, scrollFrom)
     let raf = 0
-    const duration = 1300
+    const duration = Math.min(2200, Math.max(1100, 700 + steps * 90))
     const t0 = performance.now()
+
     const tick = (now: number) => {
       const t = Math.min(1, (now - t0) / duration)
-      const value = Math.round(startRank + (climb.to - startRank) * easeOutCubic(t))
-      setShown(value)
+      const eased = easeOutCubic(t)
+      const index = startIndex + (endIndex - startIndex) * eased
+      const rank = Math.round(scrollFrom + (climb.to - scrollFrom) * eased)
+      apply(index, Math.max(climb.to, Math.min(scrollFrom, rank)))
       if (t < 1) {
         raf = requestAnimationFrame(tick)
         return
       }
-      setShown(climb.to)
+      apply(endIndex, climb.to)
       setSettled(true)
     }
+
     raf = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(raf)
-  }, [climb.to, startRank])
+  }, [climb.to, ranks, scrollFrom, steps])
 
   const close = () => {
     if (leaving) return
     setLeaving(true)
     window.setTimeout(onDone, 320)
   }
-
-  const ladder = (() => {
-    const center = settled ? climb.to : shown
-    const rows: number[] = []
-    for (let r = center + 2; r >= Math.max(1, center - 2); r--) {
-      if (r >= 1) rows.push(r)
-    }
-    return rows
-  })()
 
   const detail =
     climb.from == null
@@ -435,18 +476,24 @@ export function RankUpCelebration({
       <div className="score-celeb__shell rank-up__shell">
         <p className="score-celeb__kicker">Global ranking</p>
         <h2 className="score-celeb__title">Rank up</h2>
-        <div className="rank-up__stage" aria-live="polite">
-          <div className="rank-up__ladder" aria-hidden="true">
-            {ladder.map((rank) => (
-              <div
-                key={rank}
-                className={`rank-up__rung${rank === shown ? ' rank-up__rung--you' : ''}`}
-              >
-                <span>#{rank}</span>
-              </div>
-            ))}
+        <div className="rank-up__stage">
+          <div className="rank-up__viewport" aria-hidden="true">
+            <div className="rank-up__focus" />
+            <div ref={reelRef} className="rank-up__reel">
+              {ranks.map((rank) => (
+                <div key={rank} className="rank-up__rung">
+                  <span>#{rank}</span>
+                </div>
+              ))}
+            </div>
           </div>
-          <strong className="rank-up__number">#{shown}</strong>
+          <strong
+            ref={numberRef}
+            className="rank-up__number"
+            aria-live="polite"
+          >
+            #{scrollFrom}
+          </strong>
           <p className="rank-up__detail">{detail}</p>
           {climb.from != null ? (
             <p className="rank-up__from">
