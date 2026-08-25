@@ -344,8 +344,11 @@ export function submitAsteroidsWaveClearBooks(input: {
         })
       }
     }
-    waveClearBookDone.set(key, hits)
     waveClearBookInflight.delete(key)
+    // Only cache wins — empty results may be a failed request and should retry.
+    if (hits.length > 0) {
+      waveClearBookDone.set(key, hits)
+    }
     return hits
   })()
 

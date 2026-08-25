@@ -19,6 +19,7 @@ import { gameHasRecords } from '../lib/records'
 import {
   peekRunAchievements,
   takeRunAchievements,
+  whenRunAchievementsSettled,
   type RunAchievement,
 } from '../lib/runAchievements'
 
@@ -116,6 +117,8 @@ function awardCards(payload: CelebPayload): {
       return best
     }, null)
     if (bestBoard) return `board-${bestBoard.period}`
+    const bookFirst = payload.books.find((b) => b.rank === 1)
+    if (bookFirst) return `book-${payload.books.indexOf(bookFirst)}`
     if (payload.books[0]) return `book-0`
     return null
   })()
@@ -148,9 +151,13 @@ function awardCards(payload: CelebPayload): {
       id: `book-${i}`,
       kind: 'book' as const,
       label: book.label,
-      value: book.value ?? (book.rank != null ? `#${book.rank}` : 'New'),
+      value: book.rank != null ? `#${book.rank}` : (book.value ?? 'New'),
       detail:
-        book.value && book.rank != null ? `#${book.rank}` : null,
+        book.rank != null && book.value
+          ? book.value
+          : book.rank === 1
+            ? 'New record'
+            : null,
       featured: featuredId === `book-${i}`,
     })),
   ]
@@ -574,14 +581,17 @@ export function ScoreSaveCard({
     window.clearTimeout(celebTimer.current)
     /* Brief settle so late record-book posts from this run can land. */
     celebTimer.current = window.setTimeout(() => {
-      const payload = buildCelebration(score, allTime, nextRanks)
-      setCelebPending(false)
-      if (climb) {
-        pendingAwards.current = payload
-        setRankClimb(climb)
-        return
-      }
-      openAwardCelebration(payload)
+      void (async () => {
+        await whenRunAchievementsSettled()
+        const payload = buildCelebration(score, allTime, nextRanks)
+        setCelebPending(false)
+        if (climb) {
+          pendingAwards.current = payload
+          setRankClimb(climb)
+          return
+        }
+        openAwardCelebration(payload)
+      })()
     }, 400)
   }
 

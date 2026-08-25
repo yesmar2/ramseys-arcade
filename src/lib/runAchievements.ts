@@ -5,12 +5,39 @@ export type RunAchievement = {
   id?: string
   /** Record name shown on the celebration card (e.g. "Wave 3 clear"). */
   label: string
-  /** Big number on the card — combo size, streak, or board rank. */
+  /** Secondary stat on the card — time, combo size, or streak. */
   value?: string
   rank: number | null
 }
 
 let queue: RunAchievement[] = []
+let settleTimer = 0
+let settlePromise: Promise<void> | null = null
+let settleResolve: (() => void) | null = null
+
+function bumpSettle() {
+  if (!settlePromise) {
+    settlePromise = new Promise((resolve) => {
+      settleResolve = resolve
+    })
+  }
+  window.clearTimeout(settleTimer)
+  settleTimer = window.setTimeout(() => {
+    settleResolve?.()
+    settleResolve = null
+    settlePromise = null
+  }, 120)
+}
+
+/** Wait for late async record-book posts (e.g. game-over combo) before celebrating. */
+export async function whenRunAchievementsSettled(timeoutMs = 1500) {
+  bumpSettle()
+  if (!settlePromise) return
+  await Promise.race([
+    settlePromise,
+    new Promise<void>((resolve) => window.setTimeout(resolve, timeoutMs)),
+  ])
+}
 
 function achievementKey(hit: Pick<RunAchievement, 'id' | 'label'>) {
   const id = hit.id?.trim()
@@ -31,6 +58,7 @@ export function pushRunAchievement(hit: RunAchievement) {
   }
   // Same book mid-run: keep only the latest award (e.g. streak 5 then 8).
   queue = [...queue.filter((row) => achievementKey(row) !== key), next]
+  bumpSettle()
 }
 
 export function takeRunAchievements(): RunAchievement[] {

@@ -6633,6 +6633,13 @@ html[data-theme='dark'] .patriot__power-mark {
   font-size: clamp(2.35rem, 10vw, 3.1rem);
 }
 
+.score-celeb__award--book .score-celeb__award-detail {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
 .score-celeb__award--featured {
   background: color-mix(in srgb, var(--award-accent) 18%, var(--surface));
   border-color: color-mix(in srgb, var(--award-accent) 72%, transparent);

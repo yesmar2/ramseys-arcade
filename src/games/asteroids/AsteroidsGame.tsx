@@ -210,8 +210,6 @@ export function AsteroidsGame() {
     const wave = ui.lastWave
     const time = ui.lastWaveTime
     const submitKey = `${wave}:${time.toFixed(3)}`
-    if (waveRecordKey.current === submitKey) return
-    waveRecordKey.current = submitKey
 
     void (async () => {
       const hits = await submitAsteroidsWaveClearBooks({
@@ -223,6 +221,7 @@ export function AsteroidsGame() {
       if (!hits.length) return
       if (waveCelebShownRef.current === submitKey) return
       waveCelebShownRef.current = submitKey
+      waveRecordKey.current = submitKey
       if (ui.runComboBest >= 2) {
         comboRecordKey.current = `combo:${ui.runComboBest}`
       }
