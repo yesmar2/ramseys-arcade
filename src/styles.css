@@ -6642,12 +6642,17 @@ html[data-theme='dark'] .patriot__power-mark {
   color: #f4f8fb;
 }
 
-.score-celeb.rank-up .rank-up__from span {
+.score-celeb.rank-up .score-celeb__kicker {
   color: rgba(244, 248, 251, 0.82);
 }
 
+.score-celeb.rank-up .rank-up__from span {
+  color: rgba(244, 248, 251, 0.88);
+}
+
 .score-celeb.rank-up .rank-up__rung {
-  color: rgba(244, 248, 251, 0.58);
+  color: rgba(244, 248, 251, 0.82);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.42);
 }
 
 .score-celeb.rank-up .rank-up__number {
@@ -6656,13 +6661,15 @@ html[data-theme='dark'] .patriot__power-mark {
 }
 
 .score-celeb.rank-up.rank-up--settled .rank-up__number {
-  color: color-mix(in srgb, var(--accent) 18%, #ffffff);
-  text-shadow: 0 2px 18px color-mix(in srgb, var(--accent) 42%, transparent);
+  color: var(--accent);
+  text-shadow: 0 2px 20px color-mix(in srgb, var(--accent) 48%, transparent);
 }
 
 .score-celeb.rank-up .rank-up__focus {
-  background: color-mix(in srgb, var(--accent) 16%, var(--surface));
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent);
+  background: color-mix(in srgb, var(--accent) 30%, rgba(12, 22, 30, 0.88));
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--accent) 58%, transparent),
+    0 4px 16px rgba(0, 0, 0, 0.28);
 }
 
 .score-celeb__kicker {
