@@ -69,6 +69,20 @@ function emptyPressed(): Record<HoldKey, Set<string>> {
   }
 }
 
+function mergeWaveCelebrationHits(
+  pending: RunAchievement[] | null,
+  hits: RunAchievement[],
+): RunAchievement[] {
+  const byKey = new Map<string, RunAchievement>()
+  for (const hit of pending ?? []) {
+    byKey.set(hit.id ?? hit.label, hit)
+  }
+  for (const hit of hits) {
+    byKey.set(hit.id ?? hit.label, hit)
+  }
+  return [...byKey.values()]
+}
+
 function currentLayout() {
   return asteroidsLayout(typeof window !== 'undefined' && window.innerHeight > window.innerWidth)
 }
@@ -94,6 +108,7 @@ export function AsteroidsGame() {
   const waveCelebRef = useRef(false)
   waveCelebRef.current = Boolean(waveCeleb)
   const waveCelebShownRef = useRef<string | null>(null)
+  const pendingWaveCelebRef = useRef<RunAchievement[] | null>(null)
   const offeredScore = useRef<number | null>(null)
   const waveRecordKey = useRef<string | null>(null)
   const comboRecordKey = useRef<string | null>(null)
@@ -107,6 +122,25 @@ export function AsteroidsGame() {
   const pausedRef = useRef(false)
   pausedRef.current = paused
   saveOpenRef.current = saveOpen
+
+  const tryShowWaveCelebration = (hits: RunAchievement[], submitKey: string) => {
+    if (waveCelebShownRef.current === submitKey) return
+    waveCelebShownRef.current = submitKey
+    waveRecordKey.current = submitKey
+
+    const phase = stateRef.current.phase
+    if (phase === 'waveClear' && !waveCelebRef.current) {
+      setWaveCeleb(hits)
+      return
+    }
+
+    if (phase === 'playing' || phase === 'waveClear' || phase === 'gameover') {
+      pendingWaveCelebRef.current = mergeWaveCelebrationHits(
+        pendingWaveCelebRef.current,
+        hits,
+      )
+    }
+  }
 
   const syncControls = () => {
     const p = pressedRef.current
@@ -219,20 +253,17 @@ export function AsteroidsGame() {
         name: playerName,
       })
       if (!hits.length) return
-      if (waveCelebShownRef.current === submitKey) return
-      waveCelebShownRef.current = submitKey
-      waveRecordKey.current = submitKey
       if (ui.runComboBest >= 2) {
         comboRecordKey.current = `combo:${ui.runComboBest}`
       }
-      // Show as soon as the API responds — even if the player already tapped Next wave.
-      setWaveCeleb(
+      tryShowWaveCelebration(
         hits.map((hit) => ({
           id: hit.id,
           label: hit.label,
           value: hit.value,
           rank: hit.rank,
         })),
+        submitKey,
       )
     })()
   }, [
@@ -243,6 +274,24 @@ export function AsteroidsGame() {
     playerName,
     tournament,
   ])
+
+  useEffect(() => {
+    if (ui.phase !== 'waveClear' || tournament || waveCeleb) return
+    const pending = pendingWaveCelebRef.current
+    if (!pending?.length) return
+    pendingWaveCelebRef.current = null
+    setWaveCeleb(pending)
+  }, [ui.phase, tournament, waveCeleb])
+
+  useEffect(() => {
+    if (ui.phase !== 'gameover' || tournament) return
+    const pending = pendingWaveCelebRef.current
+    if (!pending?.length) return
+    pendingWaveCelebRef.current = null
+    for (const hit of pending) {
+      pushRunAchievement(hit)
+    }
+  }, [ui.phase, tournament])
 
   useEffect(() => {
     if (ui.phase !== 'gameover' || tournament) return
@@ -286,6 +335,7 @@ export function AsteroidsGame() {
     offeredScore.current = null
     waveRecordKey.current = null
     waveCelebShownRef.current = null
+    pendingWaveCelebRef.current = null
     comboRecordKey.current = null
     clearRunAchievements()
     setWaveCeleb(null)
