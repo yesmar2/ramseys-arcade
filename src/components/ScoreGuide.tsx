@@ -2,8 +2,21 @@ import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import type { ScoreRow } from '../data/scoring'
 
-export function ScoreGuide({ rows }: { rows: ScoreRow[] }) {
+type ScoreGuideProps = {
+  how: string
+  rows?: ScoreRow[] | null
+  /** Icon for pause / chrome; summary matches the lobby How to play control. */
+  trigger?: 'icon' | 'summary'
+}
+
+/** Shared How to play panel — lobby summary and in-game info button. */
+export function ScoreGuide({
+  how,
+  rows,
+  trigger = 'icon',
+}: ScoreGuideProps) {
   const [open, setOpen] = useState(false)
+  const scoring = rows?.length ? rows : null
 
   useEffect(() => {
     if (!open) return
@@ -29,40 +42,52 @@ export function ScoreGuide({ rows }: { rows: ScoreRow[] }) {
             <div
               className="patriot__info-panel"
               role="dialog"
-              aria-label="How scoring works"
+              aria-label="How to play"
               onPointerDown={(e) => e.stopPropagation()}
             >
               <div className="patriot__info-head">
-                <span className="patriot__label">Scoring</span>
+                <span className="patriot__label">How to play</span>
                 <button
                   type="button"
                   className="patriot__info-close"
-                  aria-label="Close scoring info"
+                  aria-label="Close how to play"
                   onClick={() => setOpen(false)}
                 >
                   ×
                 </button>
               </div>
-              <ul className="patriot__info-list">
-                {rows.map((row) => (
-                  <li key={row.label}>
-                    <span>{row.label}</span>
-                    <strong>{row.value}</strong>
-                  </li>
-                ))}
-              </ul>
+              <p className="how-to-play__copy">{how}</p>
+              {scoring ? (
+                <ul className="patriot__info-list">
+                  {scoring.map((row) => (
+                    <li key={row.label}>
+                      <span>{row.label}</span>
+                      <strong>{row.value}</strong>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
             </div>
           </div>,
           document.body,
         )
       : null
 
-  return (
-    <>
+  const openBtn =
+    trigger === 'summary' ? (
+      <button
+        type="button"
+        className="how-to-play__summary"
+        aria-expanded={open}
+        onClick={() => setOpen(true)}
+      >
+        <span className="how-to-play__summary-label">How to play</span>
+      </button>
+    ) : (
       <button
         type="button"
         className="patriot__info"
-        aria-label="Scoring info"
+        aria-label="How to play"
         aria-expanded={open}
         onPointerDown={(e) => {
           e.stopPropagation()
@@ -71,6 +96,11 @@ export function ScoreGuide({ rows }: { rows: ScoreRow[] }) {
       >
         i
       </button>
+    )
+
+  return (
+    <>
+      {openBtn}
       {panel}
     </>
   )

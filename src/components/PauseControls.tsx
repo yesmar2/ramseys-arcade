@@ -118,7 +118,8 @@ export function GamePauseOverlay({
   const scoring = scoringFor(slug)
   const board = isBoardGame(slug)
   const hasRecords = gameHasRecords(slug)
-  const gameName = getGame(slug)?.name ?? 'game'
+  const game = getGame(slug)
+  const gameName = game?.name ?? 'game'
   const leaveLabel = tournament ? 'Back to event' : `Leave ${gameName}`
 
   return (
@@ -140,7 +141,7 @@ export function GamePauseOverlay({
       {tools}
       <div className="game-pause-actions">
         <SoundToggle />
-        {scoring ? <ScoreGuide rows={scoring} /> : null}
+        {game?.how ? <ScoreGuide how={game.how} rows={scoring} /> : null}
         {board ? (
           <a
             className="game-pause-btn game-pause-board"

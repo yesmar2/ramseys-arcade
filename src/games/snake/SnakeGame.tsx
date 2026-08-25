@@ -128,7 +128,7 @@ export function SnakeGame() {
         if (result?.improved) {
           pushRunAchievement({
             id: `snake:fastest-length-${milestone}`,
-            label: `Length ${milestone} record`,
+            label: `Fastest to length ${milestone}`,
             rank: result.rank,
           })
         }

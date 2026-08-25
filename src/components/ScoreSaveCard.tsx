@@ -147,9 +147,10 @@ function awardCards(payload: CelebPayload): {
     ...payload.books.map((book, i) => ({
       id: `book-${i}`,
       kind: 'book' as const,
-      label: 'Record book',
-      value: book.rank != null ? `#${book.rank}` : 'Set',
-      detail: book.label,
+      label: book.label,
+      value: book.value ?? (book.rank != null ? `#${book.rank}` : 'New'),
+      detail:
+        book.value && book.rank != null ? `#${book.rank}` : null,
       featured: featuredId === `book-${i}`,
     })),
   ]
@@ -309,11 +310,9 @@ function FireworksCanvas() {
 export function ScoreCelebration({
   payload,
   onDone,
-  kicker = 'Nice run',
 }: {
   payload: CelebPayload
   onDone: () => void
-  kicker?: string
 }) {
   const [leaving, setLeaving] = useState(false)
   const cards = awardCards(payload)
@@ -334,10 +333,6 @@ export function ScoreCelebration({
     >
       <FireworksCanvas />
       <div className="score-celeb__shell">
-        <p className="score-celeb__kicker">{kicker}</p>
-        <h2 className="score-celeb__title">
-          {count === 1 ? 'You earned this' : `${count} awards`}
-        </h2>
         <div
           className={`score-celeb__awards score-celeb__awards--${Math.min(count, 4)}`}
           aria-label="Awards"

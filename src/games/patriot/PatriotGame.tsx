@@ -168,7 +168,8 @@ export function PatriotGame() {
       if (result?.improved) {
         pushRunAchievement({
           id: 'patriot:direct-streak',
-          label: `Direct streak · ${streak}`,
+          label: 'Perfect hits in a row',
+          value: String(streak),
           rank: result.rank,
         })
       }

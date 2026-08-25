@@ -3,7 +3,10 @@
 export type RunAchievement = {
   /** Stable book key so beating the same record again replaces the prior award. */
   id?: string
+  /** Record name shown on the celebration card (e.g. "Wave 3 clear"). */
   label: string
+  /** Big number on the card — combo size, streak, or board rank. */
+  value?: string
   rank: number | null
 }
 
@@ -23,6 +26,7 @@ export function pushRunAchievement(hit: RunAchievement) {
   const next: RunAchievement = {
     id: hit.id?.trim() || undefined,
     label,
+    value: hit.value?.trim() || undefined,
     rank: hit.rank,
   }
   // Same book mid-run: keep only the latest award (e.g. streak 5 then 8).

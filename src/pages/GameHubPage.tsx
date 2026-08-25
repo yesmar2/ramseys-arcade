@@ -29,6 +29,7 @@ import { usePlayerName } from '../hooks/usePlayerName'
 import { useDeviceType } from '../lib/device'
 import { flashYouRow } from '../lib/boardGap'
 import { gameHasRecords } from '../lib/records'
+import { ScoreGuide } from '../components/ScoreGuide'
 import {
   getLeaderboard,
   LEADERBOARD_GAMES,
@@ -294,26 +295,11 @@ export function GameHubPage({ slug, board: boardFromRoute }: GameHubPageProps) {
             </>
           ) : null}
 
-          <details className="rank-page__how game-lobby__how-panel">
-            <summary className="rank-page__how-summary">
-              <span className="rank-page__h" id="game-how-heading">
-                How to play
-              </span>
-            </summary>
-            <div className="rank-page__how-body">
-              <p>{game.how}</p>
-              {canPlay && scoring && scoring.length > 0 ? (
-                <ul className="game-lobby__scoring">
-                  {scoring.map((row) => (
-                    <li key={row.label}>
-                      <span>{row.label}</span>
-                      <strong>{row.value}</strong>
-                    </li>
-                  ))}
-                </ul>
-              ) : null}
-            </div>
-          </details>
+          <ScoreGuide
+            how={game.how}
+            rows={canPlay ? scoring : null}
+            trigger="summary"
+          />
         </div>
       </main>
       <Footer />

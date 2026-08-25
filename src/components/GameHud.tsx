@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { gameHref } from '../hooks/useHashRoute'
 import {
@@ -172,6 +172,12 @@ function PlayLeaveButton({
   const href = playLeaveHref(slug, tournament?.tournamentId)
   const [confirming, setConfirming] = useState(false)
   const label = tournament ? 'Back to event' : 'Leave game'
+  const inRunRef = useRef(inRun)
+  const pausedRef = useRef(paused)
+  const hrefRef = useRef(href)
+  inRunRef.current = inRun
+  pausedRef.current = paused
+  hrefRef.current = href
 
   useEffect(() => {
     const onAsk = () => setConfirming(true)
@@ -190,6 +196,32 @@ function PlayLeaveButton({
     window.addEventListener('keydown', onKey, true)
     return () => window.removeEventListener('keydown', onKey, true)
   }, [confirming])
+
+  // Mobile / browser back → same leave confirm as the in-game back button.
+  useEffect(() => {
+    const playHash = window.location.hash
+    const guard = { arcadeLeaveGuard: true as const }
+    history.pushState(guard, '', playHash)
+
+    let armed = true
+    const onPopState = () => {
+      if (!armed) return
+      const running = resolveInRun(inRunRef.current) || pausedRef.current
+      history.pushState(guard, '', playHash)
+      if (running) {
+        setConfirming(true)
+        return
+      }
+      armed = false
+      void exitFullscreen()
+      window.location.replace(hrefRef.current)
+    }
+    window.addEventListener('popstate', onPopState)
+    return () => {
+      armed = false
+      window.removeEventListener('popstate', onPopState)
+    }
+  }, [slug])
 
   const goNow = () => {
     void exitFullscreen()

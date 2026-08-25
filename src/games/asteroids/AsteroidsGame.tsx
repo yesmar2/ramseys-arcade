@@ -252,7 +252,8 @@ export function AsteroidsGame() {
       if (comboResult?.improved) {
         pushRunAchievement({
           id: 'asteroids:highest-combo',
-          label: `Combo record · ${combo}`,
+          label: 'Highest combo',
+          value: `×${combo}`,
           rank: comboResult.rank,
         })
       }
@@ -594,7 +595,6 @@ export function AsteroidsGame() {
             {waveCeleb ? (
               <ScoreCelebration
                 payload={booksCelebrationPayload(waveCeleb)}
-                kicker="Record book"
                 onDone={() => setWaveCeleb(null)}
               />
             ) : null}
