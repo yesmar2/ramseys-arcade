@@ -96,9 +96,9 @@ export function PatriotGame() {
   const ignorePauseKeys = useRef(false)
   ignorePauseKeys.current = saveOpen
   const pausable = (ui.phase === 'playing' || ui.phase === 'waveClear') && !saveOpen
-  const { paused, toggle: togglePause, pause, resume } = useGamePause(pausable, ignorePauseKeys)
+  const { paused, held, toggle: togglePause, pause, resume } = useGamePause(pausable, ignorePauseKeys)
   const pausedRef = useRef(false)
-  pausedRef.current = needsRotate || paused
+  pausedRef.current = needsRotate || held
 
   useEffect(() => {
     let raf = 0

@@ -36,9 +36,9 @@ export function StackerGame() {
   const offeredScore = useRef<number | null>(null)
   const previousBestRef = useRef(getPersonalBest('stacker'))
   const pausable = ui.status === 'playing' && !saveOpen
-  const { paused, toggle: togglePause, pause, resume } = useGamePause(pausable)
+  const { paused, held, toggle: togglePause, pause, resume } = useGamePause(pausable)
   const pausedRef = useRef(false)
-  pausedRef.current = paused
+  pausedRef.current = held
 
   useEffect(() => {
     let raf = 0

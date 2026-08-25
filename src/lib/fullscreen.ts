@@ -10,6 +10,49 @@ type FullscreenElement = HTMLElement & {
   webkitRequestFullscreen?: () => Promise<void> | void
 }
 
+/** Android Chrome shows a bottom fullscreen toast for about this long. */
+export const FULLSCREEN_TOAST_COVER_MS = 3800
+
+let coverActive = false
+let coverTimer: number | null = null
+const coverListeners = new Set<() => void>()
+
+export function isFullscreenCoverActive() {
+  return coverActive
+}
+
+export function subscribeFullscreenCover(onChange: () => void) {
+  coverListeners.add(onChange)
+  return () => {
+    coverListeners.delete(onChange)
+  }
+}
+
+function setCoverActive(next: boolean) {
+  if (coverActive === next) return
+  coverActive = next
+  for (const listener of coverListeners) listener()
+}
+
+/** Hold a loading cover while the OS fullscreen toast is likely visible. */
+export function beginFullscreenCover(ms = FULLSCREEN_TOAST_COVER_MS) {
+  if (typeof window === 'undefined') return
+  setCoverActive(true)
+  if (coverTimer != null) window.clearTimeout(coverTimer)
+  coverTimer = window.setTimeout(() => {
+    coverTimer = null
+    setCoverActive(false)
+  }, ms)
+}
+
+export function clearFullscreenCover() {
+  if (typeof window !== 'undefined' && coverTimer != null) {
+    window.clearTimeout(coverTimer)
+    coverTimer = null
+  }
+  setCoverActive(false)
+}
+
 export function fullscreenSupported() {
   if (typeof document === 'undefined') return false
   const doc = document as FullscreenDocument
