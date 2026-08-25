@@ -320,19 +320,17 @@ export function renderGame(
   for (const city of state.cities) drawCity(ctx, city, state.groundY, scale)
   for (const bat of state.batteries) drawBattery(ctx, bat, state.groundY, scale)
 
-  if (state.shieldT > 0) {
+  for (const city of state.cities) {
+    if (!city.alive || !city.shielded) continue
     const r = shieldRadius(scale)
-    const pulse = 0.14 + Math.min(1, state.shieldT / 5) * 0.16
-    for (const city of state.cities) {
-      if (!city.alive) continue
-      ctx.beginPath()
-      ctx.arc(city.x, state.groundY, r, Math.PI, 0)
-      ctx.fillStyle = `hsla(172, 52%, 48%, ${pulse})`
-      ctx.fill()
-      ctx.strokeStyle = 'hsla(172, 52%, 42%, 0.9)'
-      ctx.lineWidth = 2.4 * scale
-      ctx.stroke()
-    }
+    const pulse = 0.28
+    ctx.beginPath()
+    ctx.arc(city.x, state.groundY, r, Math.PI, 0)
+    ctx.fillStyle = `hsla(172, 52%, 48%, ${pulse})`
+    ctx.fill()
+    ctx.strokeStyle = 'hsla(172, 52%, 42%, 0.9)'
+    ctx.lineWidth = 2.4 * scale
+    ctx.stroke()
   }
 
   for (const m of state.incoming) {

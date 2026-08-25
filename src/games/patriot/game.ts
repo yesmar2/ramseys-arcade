@@ -7,6 +7,8 @@ export type City = {
   id: number
   x: number
   alive: boolean
+  /** One-hit dome; cleared when a missile hits this city. */
+  shielded: boolean
 }
 
 export type Battery = {
@@ -183,7 +185,6 @@ const CLEAN_WAVES_TO_REBUILD = 1
 const PLANE_FROM_WAVE = 3
 const DRONE_FROM_WAVE = 2
 const POWER_MAX = 3
-const SHIELD_TIME = 5
 const SLOW_TIME = 5
 const SLOW_RATE = 0.32
 const CITY_DRAW = 1.85
@@ -237,6 +238,7 @@ function layoutWorld(w: number, h: number) {
     id: i,
     x: xAt(slot),
     alive: true,
+    shielded: false,
   }))
 
   return { groundY, cities, batteries, scale }
@@ -286,6 +288,7 @@ export function resizeState(state: GameState, w: number, h: number): GameState {
     cities: cities.map((c, i) => ({
       ...c,
       alive: state.cities[i]?.alive ?? true,
+      shielded: state.cities[i]?.shielded ?? false,
     })),
     batteries: batteries.map((b, i) => ({
       ...b,
@@ -378,6 +381,7 @@ function beginWave(state: GameState, wave: number, w: number): GameState {
     ...state,
     phase: 'playing',
     wave,
+    cities: state.cities.map((c) => ({ ...c, shielded: false })),
     batteries: state.batteries.map((b) => ({
       ...b,
       alive: true,
@@ -390,7 +394,7 @@ function beginWave(state: GameState, wave: number, w: number): GameState {
     blasts: [],
     floaters: [],
     toSpawn: waveIncomingCount(wave),
-    spawnTimer: 0.4,
+    spawnTimer: 0.55,
     droneTimer: droneQueue.length > 0 ? 2.2 : 0,
     droneQueue,
     dronePass: 0,
@@ -575,7 +579,10 @@ export function activatePower(state: GameState, kind: PowerKind): GameState {
     return {
       ...state,
       pack,
-      shieldT: SHIELD_TIME,
+      cities: state.cities.map((c) =>
+        c.alive ? { ...c, shielded: true } : c,
+      ),
+      shieldT: 1,
       floaters: [...state.floaters, floater('SHIELD')],
     }
   }
@@ -663,7 +670,7 @@ function restockBatteries(batteries: Battery[], add: number): Battery[] {
   })
 }
 
-function spawnIncoming(state: GameState, w: number): GameState {
+function spawnOneIncoming(state: GameState, w: number): GameState {
   if (state.toSpawn <= 0) return state
 
   const aim = pickAim(state.cities, state.batteries, w)
@@ -690,8 +697,31 @@ function spawnIncoming(state: GameState, w: number): GameState {
       ),
     ],
     toSpawn: state.toSpawn - 1,
-    spawnTimer: Math.max(0.55, 1.28 - state.wave * 0.04),
   }
+}
+
+/** Drop a small group at once, then pause before the next group. */
+function spawnBurst(state: GameState, w: number): GameState {
+  if (state.toSpawn <= 0) return state
+
+  let size =
+    state.wave <= 2
+      ? Math.random() < 0.55
+        ? 2
+        : 3
+      : Math.random() < 0.42
+        ? 4
+        : 3
+  size = Math.min(size, state.toSpawn)
+
+  let s = state
+  for (let i = 0; i < size; i++) {
+    s = spawnOneIncoming(s, w)
+  }
+
+  const gap =
+    Math.max(1.25, 2.05 - state.wave * 0.055) + Math.random() * 0.5
+  return { ...s, spawnTimer: gap }
 }
 
 function applyImpact(
@@ -700,13 +730,13 @@ function applyImpact(
   batteries: Battery[],
   cityRange: number,
   batRange: number,
-  shield: boolean,
 ) {
   let hit = false
   let shielded = false
   for (const c of cities) {
     if (c.alive && Math.abs(c.x - x) < cityRange) {
-      if (shield) {
+      if (c.shielded) {
+        c.shielded = false
         shielded = true
       } else {
         c.alive = false
@@ -776,15 +806,15 @@ function firstShieldHit(
   groundY: number,
   r: number,
 ) {
-  let best: { x: number; y: number } | null = null
+  let best: { x: number; y: number; cityId: number } | null = null
   let bestD = Infinity
   for (const city of cities) {
-    if (!city.alive) continue
+    if (!city.alive || !city.shielded) continue
     const hit = segmentHitsDome(ax, ay, bx, by, city.x, groundY, r)
     if (!hit) continue
     const d = dist(ax, ay, hit.x, hit.y)
     if (d < bestD) {
-      best = hit
+      best = { ...hit, cityId: city.id }
       bestD = d
     }
   }
@@ -844,14 +874,13 @@ export function tick(state: GameState, dt: number, w: number): GameState {
   s.shieldT ??= 0
   s.slowT ??= 0
 
-  s.shieldT = Math.max(0, s.shieldT - dt)
   s.slowT = Math.max(0, s.slowT - dt)
   const worldDt = dt * (s.slowT > 0 ? SLOW_RATE : 1)
 
   if (s.toSpawn > 0) {
     s.spawnTimer -= dt
     if (s.spawnTimer <= 0) {
-      s = spawnIncoming(s, w)
+      s = spawnBurst(s, w)
     }
   }
 
@@ -989,13 +1018,29 @@ export function tick(state: GameState, dt: number, w: number): GameState {
       } else {
         scoreAdd += SCORE_SPLASH
       }
+
+      // Missile body always detonates on kill.
+      extraBlasts.push({
+        id: uid(),
+        x: m.x,
+        y: m.y,
+        r: 0,
+        maxR: (hitBlast.burst ? BLAST_MAX * 0.95 : BLAST_MAX * 0.72) * scale,
+        growing: true,
+        burst: hitBlast.burst,
+        wait: 0.05,
+        growRate: 110,
+      })
+
       if (hitBlast.burst) {
-        const ring = 34 * scale
+        const ring = 72 * scale
         const spots = [
-          { x: m.x, y: m.y },
           { x: m.x + ring, y: m.y },
-          { x: m.x - ring * 0.5, y: m.y - ring * 0.87 },
-          { x: m.x - ring * 0.5, y: m.y + ring * 0.87 },
+          { x: m.x - ring, y: m.y },
+          { x: m.x + ring * 0.5, y: m.y - ring * 0.866 },
+          { x: m.x - ring * 0.5, y: m.y - ring * 0.866 },
+          { x: m.x + ring * 0.5, y: m.y + ring * 0.866 },
+          { x: m.x - ring * 0.5, y: m.y + ring * 0.866 },
         ]
         for (const [i, p] of spots.entries()) {
           extraBlasts.push({
@@ -1006,8 +1051,8 @@ export function tick(state: GameState, dt: number, w: number): GameState {
             maxR: BLAST_MAX * scale,
             growing: true,
             burst: true,
-            wait: 0.16 + i * 0.12,
-            growRate: 64,
+            wait: 0.16 + i * 0.09,
+            growRate: 70,
           })
         }
       }
@@ -1018,7 +1063,7 @@ export function tick(state: GameState, dt: number, w: number): GameState {
       m.x0, m.y0, m.x1, m.y1, m.x, m.y, m.speed, worldDt,
     )
 
-    if (s.shieldT > 0) {
+    if (cities.some((c) => c.alive && c.shielded)) {
       const hit = firstShieldHit(
         m.x,
         m.y,
@@ -1029,6 +1074,8 @@ export function tick(state: GameState, dt: number, w: number): GameState {
         shieldRadius(scale),
       )
       if (hit) {
+        const city = cities.find((c) => c.id === hit.cityId)
+        if (city) city.shielded = false
         sfx('hit')
         scoreAdd += SCORE_SPLASH
         newFloaters.push({
@@ -1060,7 +1107,6 @@ export function tick(state: GameState, dt: number, w: number): GameState {
         batteries,
         CITY_HIT_RANGE * scale,
         BATTERY_HIT_RANGE * scale,
-        s.shieldT > 0,
       )
       if (impact === 'shield') {
         scoreAdd += SCORE_SPLASH
@@ -1172,6 +1218,7 @@ export function tick(state: GameState, dt: number, w: number): GameState {
   s.floaters = newFloaters
   s.score += scoreAdd
   s.flash = Math.max(s.flash, flash)
+  s.shieldT = cities.some((c) => c.alive && c.shielded) ? 1 : 0
 
   const citiesLeft = s.cities.filter((c) => c.alive).length
   if (citiesLeft === 0) {
@@ -1200,7 +1247,10 @@ export function tick(state: GameState, dt: number, w: number): GameState {
         ? (s.cities.find((c) => !c.alive) ?? null)
         : null
     const rebuilt = wreck != null
-    if (wreck) wreck.alive = true
+    if (wreck) {
+      wreck.alive = true
+      wreck.shielded = false
+    }
     const nextStreak = rebuilt ? 0 : cleanStreak
 
     const cityBonus = survived * SCORE_CITY
@@ -1256,7 +1306,7 @@ export function toSnapshot(s: GameState): Snapshot {
     citiesLeft: s.cities.filter((c) => c.alive).length,
     clearBonus: s.phase === 'waveClear' ? s.clearBonus : null,
     pack: s.pack ?? emptyPack(),
-    shieldT: s.shieldT ?? 0,
+    shieldT: s.cities.some((c) => c.alive && c.shielded) ? 1 : 0,
     slowT: s.slowT ?? 0,
     burstArmed: s.burstArmed ?? false,
   }
