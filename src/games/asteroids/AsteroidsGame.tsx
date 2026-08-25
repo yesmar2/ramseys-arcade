@@ -102,7 +102,7 @@ export function AsteroidsGame() {
   ignorePauseKeys.current = saveOpen
   const pausable =
     (ui.phase === 'playing' || ui.phase === 'waveClear') && !saveOpen
-  const { paused, toggle: togglePause, pause, resume } = useGamePause(pausable, ignorePauseKeys)
+  const { paused, toggle: togglePause, resume } = useGamePause(pausable, ignorePauseKeys)
   const pausedRef = useRef(false)
   pausedRef.current = paused
   saveOpenRef.current = saveOpen

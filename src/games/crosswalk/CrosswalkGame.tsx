@@ -34,7 +34,7 @@ export function CrosswalkGame() {
   const hoppedThisSwipe = useRef(false)
   const startGrace = useRef(0)
   const pausable = ui.phase === 'playing' && !saveOpen
-  const { paused, toggle: togglePause, pause, resume } = useGamePause(pausable)
+  const { paused, toggle: togglePause, resume } = useGamePause(pausable)
   const pausedRef = useRef(false)
   pausedRef.current = paused
 
