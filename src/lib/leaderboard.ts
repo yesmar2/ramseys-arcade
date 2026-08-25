@@ -438,6 +438,8 @@ export async function addLeaderboardScore(
   entries: LeaderboardEntry[]
   rank: number | null
   ranks?: Partial<Record<LeaderboardPeriod, number>>
+  previousBestRanks?: Partial<Record<LeaderboardPeriod, number>>
+  bestRanks?: Partial<Record<LeaderboardPeriod, number>>
 }> {
   const cleaned = normalizePlayerName(name) || 'PLAYER'
   const token = getClaimToken(cleaned)
@@ -445,6 +447,8 @@ export async function addLeaderboardScore(
     entries: LeaderboardEntry[]
     rank: number | null
     ranks?: Partial<Record<LeaderboardPeriod, number>>
+    previousBestRanks?: Partial<Record<LeaderboardPeriod, number>>
+    bestRanks?: Partial<Record<LeaderboardPeriod, number>>
     name?: string
     token?: string
   }>(`/leaderboards/${slug}`, {
@@ -461,5 +465,11 @@ export async function addLeaderboardScore(
   if (data.token) rememberClaimToken(finalName, data.token)
   setLocalPlayerName(finalName)
 
-  return { entries: data.entries, rank: data.rank, ranks: data.ranks }
+  return {
+    entries: data.entries,
+    rank: data.rank,
+    ranks: data.ranks,
+    previousBestRanks: data.previousBestRanks,
+    bestRanks: data.bestRanks,
+  }
 }

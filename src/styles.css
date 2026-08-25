@@ -6575,6 +6575,144 @@ html[data-theme='dark'] .patriot__power-mark {
   filter: brightness(1.05);
 }
 
+.score-celeb__btn:disabled {
+  opacity: 0.55;
+  cursor: default;
+  filter: none;
+}
+
+.rank-up__shell {
+  gap: 0.85rem;
+}
+
+.rank-up__stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.55rem;
+  width: 100%;
+  margin: 0.15rem 0 0.35rem;
+}
+
+.rank-up__ladder {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.28rem;
+  width: min(100%, 12.5rem);
+  max-height: 9.5rem;
+  overflow: hidden;
+  mask-image: linear-gradient(
+    to bottom,
+    transparent,
+    #000 18%,
+    #000 82%,
+    transparent
+  );
+}
+
+.rank-up__rung {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 1.7rem;
+  border-radius: 0.55rem;
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: color-mix(in srgb, var(--ink) 42%, transparent);
+  transform: translateY(0);
+  transition:
+    transform 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+    color 0.25s ease,
+    background 0.25s ease,
+    box-shadow 0.25s ease;
+}
+
+.rank-up__rung--you {
+  min-height: 2.15rem;
+  color: var(--ink);
+  background: color-mix(in srgb, var(--accent) 16%, var(--surface));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent);
+  transform: scale(1.06);
+}
+
+.rank-up--settled .rank-up__rung--you {
+  animation: rank-up-land 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.rank-up__number {
+  margin: 0.15rem 0 0;
+  font-family: var(--font-display);
+  font-size: clamp(3rem, 14vw, 4.4rem);
+  font-weight: 700;
+  line-height: 0.95;
+  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  text-shadow: 0 1px 0 rgba(var(--surface-rgb), 0.8);
+  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), color 0.3s ease;
+}
+
+.rank-up--settled .rank-up__number {
+  color: color-mix(in srgb, var(--accent) 55%, var(--ink));
+  transform: translateY(-0.1rem) scale(1.04);
+}
+
+.rank-up__detail {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.rank-up__from {
+  margin: 0;
+  font-size: 0.88rem;
+  font-weight: 650;
+  color: var(--muted);
+}
+
+.rank-up__from span {
+  font-variant-numeric: tabular-nums;
+  color: color-mix(in srgb, var(--ink) 70%, var(--muted));
+  text-decoration: line-through;
+  text-decoration-thickness: 1.5px;
+}
+
+@keyframes rank-up-land {
+  0% {
+    transform: scale(1.06) translateY(0.45rem);
+  }
+  60% {
+    transform: scale(1.1) translateY(-0.12rem);
+  }
+  100% {
+    transform: scale(1.06) translateY(0);
+  }
+}
+
+@media (max-width: 420px) {
+  .rank-up__ladder {
+    width: min(100%, 10.5rem);
+    max-height: 8.4rem;
+  }
+
+  .rank-up__number {
+    font-size: clamp(2.6rem, 18vw, 3.4rem);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rank-up__rung,
+  .rank-up__number,
+  .rank-up--settled .rank-up__rung--you {
+    transition: none;
+    animation: none;
+  }
+}
+
 @media (max-width: 520px) {
   .score-celeb__shell {
     padding: 1.2rem 0.85rem 1.25rem;

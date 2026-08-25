@@ -39,6 +39,13 @@ export type CelebPayload = {
   books: RunAchievement[]
 }
 
+export type RankClimb = {
+  period: LeaderboardPeriod
+  from: number | null
+  to: number
+  gained: number | null
+}
+
 export function booksCelebrationPayload(books: RunAchievement[]): CelebPayload {
   return { boards: [], personalBest: null, books }
 }
@@ -56,12 +63,44 @@ function rankedPeriods(
   })
 }
 
+/** Best personal-best rank climb across boards (prefer all-time, then biggest jump). */
+export function pickRankClimb(
+  previous?: Partial<Record<LeaderboardPeriod, number>>,
+  next?: Partial<Record<LeaderboardPeriod, number>>,
+): RankClimb | null {
+  if (!next) return null
+  const prior = previous ?? {}
+  const climbs: RankClimb[] = []
+  for (const period of PERIOD_ORDER) {
+    const to = next[period]
+    if (to == null || !(to >= 1)) continue
+    const from = prior[period] ?? null
+    if (from != null && to >= from) continue
+    climbs.push({
+      period,
+      from,
+      to,
+      gained: from != null ? from - to : null,
+    })
+  }
+  if (!climbs.length) return null
+  return climbs.sort((a, b) => {
+    if (a.period === 'all' && b.period !== 'all') return -1
+    if (b.period === 'all' && a.period !== 'all') return 1
+    const ag = a.gained ?? 40
+    const bg = b.gained ?? 40
+    if (bg !== ag) return bg - ag
+    return a.to - b.to
+  })[0]
+}
+
 function buildCelebration(
   score: number,
   priorAllTime: number,
   ranks?: Partial<Record<LeaderboardPeriod, number>>,
+  opts?: { omitBoards?: boolean },
 ): CelebPayload | null {
-  const boards = rankedPeriods(ranks)
+  const boards = opts?.omitBoards ? [] : rankedPeriods(ranks)
   const personalBest =
     score > priorAllTime
       ? {
@@ -342,6 +381,110 @@ export function ScoreCelebration({
   )
 }
 
+function easeOutCubic(t: number) {
+  return 1 - (1 - t) ** 3
+}
+
+export function RankUpCelebration({
+  climb,
+  onDone,
+}: {
+  climb: RankClimb
+  onDone: () => void
+}) {
+  const [leaving, setLeaving] = useState(false)
+  const [shown, setShown] = useState(
+    () => climb.from ?? Math.min(99, climb.to + Math.max(4, Math.min(18, climb.gained ?? 8))),
+  )
+  const [settled, setSettled] = useState(false)
+  const startRank =
+    climb.from ?? Math.min(99, climb.to + Math.max(4, Math.min(18, climb.gained ?? 8)))
+
+  useEffect(() => {
+    let raf = 0
+    const duration = 1300
+    const t0 = performance.now()
+    const tick = (now: number) => {
+      const t = Math.min(1, (now - t0) / duration)
+      const value = Math.round(startRank + (climb.to - startRank) * easeOutCubic(t))
+      setShown(value)
+      if (t < 1) {
+        raf = requestAnimationFrame(tick)
+        return
+      }
+      setShown(climb.to)
+      setSettled(true)
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [climb.to, startRank])
+
+  const close = () => {
+    if (leaving) return
+    setLeaving(true)
+    window.setTimeout(onDone, 320)
+  }
+
+  const ladder = (() => {
+    const center = settled ? climb.to : shown
+    const rows: number[] = []
+    for (let r = center + 2; r >= Math.max(1, center - 2); r--) {
+      if (r >= 1) rows.push(r)
+    }
+    return rows
+  })()
+
+  const detail =
+    climb.from == null
+      ? 'New on the board'
+      : climb.gained != null && climb.gained > 0
+        ? `Up ${climb.gained} place${climb.gained === 1 ? '' : 's'}`
+        : 'New personal ranking'
+
+  return createPortal(
+    <div
+      className={`score-celeb rank-up${leaving ? ' score-celeb--out' : ''}${settled ? ' rank-up--settled' : ''}`}
+      role="dialog"
+      aria-label="Rank up celebration"
+      onPointerDown={(e) => e.stopPropagation()}
+    >
+      <FireworksCanvas />
+      <div className="score-celeb__shell rank-up__shell">
+        <p className="score-celeb__kicker">{PERIOD_LABELS[climb.period]}</p>
+        <h2 className="score-celeb__title">Rank up</h2>
+        <div className="rank-up__stage" aria-live="polite">
+          <div className="rank-up__ladder" aria-hidden="true">
+            {ladder.map((rank) => (
+              <div
+                key={rank}
+                className={`rank-up__rung${rank === shown ? ' rank-up__rung--you' : ''}`}
+              >
+                <span>#{rank}</span>
+              </div>
+            ))}
+          </div>
+          <strong className="rank-up__number">#{shown}</strong>
+          <p className="rank-up__detail">{detail}</p>
+          {climb.from != null ? (
+            <p className="rank-up__from">
+              From <span>#{climb.from}</span>
+            </p>
+          ) : null}
+        </div>
+        <button
+          type="button"
+          className="score-celeb__btn"
+          onClick={close}
+          disabled={!settled}
+        >
+          Continue
+        </button>
+      </div>
+    </div>,
+    document.body,
+  )
+}
+
 function cleanName(raw: string) {
   return normalizePlayerName(raw)
 }
@@ -368,12 +511,14 @@ export function ScoreSaveCard({
   const [ranks, setRanks] = useState<Partial<Record<LeaderboardPeriod, number>>>()
   const [error, setError] = useState<string | null>(null)
   const [nameDraft, setNameDraft] = useState('')
+  const [rankClimb, setRankClimb] = useState<RankClimb | null>(null)
   const [celeb, setCeleb] = useState<CelebPayload | null>(null)
   const [celebPending, setCelebPending] = useState(false)
   const nameInputRef = useRef<HTMLInputElement>(null)
   const savedRef = useRef(false)
   const celebShown = useRef(false)
   const celebTimer = useRef(0)
+  const pendingAwards = useRef<CelebPayload | null>(null)
   const recordRef = useRef(previousBest ?? 0)
   const [record, setRecord] = useState(previousBest ?? 0)
 
@@ -387,9 +532,19 @@ export function ScoreSaveCard({
     if (phase === 'needName') nameInputRef.current?.focus()
   }, [phase])
 
+  const openAwardCelebration = (payload: CelebPayload | null) => {
+    pendingAwards.current = null
+    if (!payload) {
+      celebShown.current = false
+      return
+    }
+    setCeleb(payload)
+  }
+
   const openCelebration = (
     allTime: number,
     nextRanks?: Partial<Record<LeaderboardPeriod, number>>,
+    climb?: RankClimb | null,
   ) => {
     if (celebShown.current) return
     celebShown.current = true
@@ -397,21 +552,31 @@ export function ScoreSaveCard({
     window.clearTimeout(celebTimer.current)
     /* Brief settle so late record-book posts from this run can land. */
     celebTimer.current = window.setTimeout(() => {
-      const payload = buildCelebration(score, allTime, nextRanks)
+      const payload = buildCelebration(score, allTime, nextRanks, {
+        omitBoards: Boolean(climb),
+      })
       setCelebPending(false)
-      if (!payload) {
-        celebShown.current = false
+      if (climb) {
+        pendingAwards.current = payload
+        setRankClimb(climb)
         return
       }
-      setCeleb(payload)
+      openAwardCelebration(payload)
     }, 400)
+  }
+
+  const finishRankClimb = () => {
+    setRankClimb(null)
+    openAwardCelebration(pendingAwards.current)
   }
 
   useEffect(() => {
     let cancelled = false
     savedRef.current = false
     celebShown.current = false
+    pendingAwards.current = null
     window.clearTimeout(celebTimer.current)
+    setRankClimb(null)
     setCeleb(null)
     setCelebPending(false)
     setPhase('checking')
@@ -436,7 +601,7 @@ export function ScoreSaveCard({
         if (score <= 0) {
           const books = peekRunAchievements()
           if (books.length) {
-            openCelebration(recordRef.current, undefined)
+            openCelebration(recordRef.current, undefined, null)
           } else {
             takeRunAchievements()
           }
@@ -454,10 +619,11 @@ export function ScoreSaveCard({
         if (cancelled) return
         rememberPersonalBest(gameSlug, Math.max(recordRef.current, score))
         void refreshGlobalRank()
-        setRanks(saved.ranks)
+        setRanks(saved.bestRanks ?? saved.ranks)
         savedRef.current = true
         setPhase('saved')
-        openCelebration(recordRef.current, saved.ranks)
+        const climb = pickRankClimb(saved.previousBestRanks, saved.bestRanks)
+        openCelebration(recordRef.current, saved.bestRanks ?? saved.ranks, climb)
       } catch (err) {
         if (cancelled) return
         if (err instanceof ApiError && err.code === 'NAME_TAKEN') {
@@ -488,10 +654,11 @@ export function ScoreSaveCard({
       const saved = await addLeaderboardScore(gameSlug, name, score)
       rememberPersonalBest(gameSlug, Math.max(recordRef.current, score))
       void refreshGlobalRank()
-      setRanks(saved.ranks)
+      setRanks(saved.bestRanks ?? saved.ranks)
       savedRef.current = true
       setPhase('saved')
-      openCelebration(recordRef.current, saved.ranks)
+      const climb = pickRankClimb(saved.previousBestRanks, saved.bestRanks)
+      openCelebration(recordRef.current, saved.bestRanks ?? saved.ranks, climb)
     } catch (err) {
       if (err instanceof ApiError && err.code === 'NAME_TAKEN') {
         setError(
@@ -505,16 +672,19 @@ export function ScoreSaveCard({
     }
   }
 
-  const celebrating = Boolean(celeb) || celebPending
+  const celebrating = Boolean(rankClimb) || Boolean(celeb) || celebPending
   const pending = phase === 'checking' || phase === 'saving' || celebPending
   const showResults = !celebrating && !pending
 
   return (
     <>
-      {celeb && (
+      {rankClimb ? (
+        <RankUpCelebration climb={rankClimb} onDone={finishRankClimb} />
+      ) : null}
+      {celeb && !rankClimb ? (
         <ScoreCelebration payload={celeb} onDone={() => setCeleb(null)} />
-      )}
-      {pending && !celeb && (
+      ) : null}
+      {pending && !celeb && !rankClimb && (
         <div className="score-save" onPointerDown={(e) => e.stopPropagation()}>
           <p className="score-save__note">
             {phase === 'checking'
