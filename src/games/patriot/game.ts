@@ -58,6 +58,19 @@ export type Plane = {
   dropTimer: number
 }
 
+/** Heavy bomber that patrols on-screen until shot down. */
+export type Bomber = {
+  id: number
+  x: number
+  y: number
+  vx: number
+  hp: number
+  maxHp: number
+  dropTimer: number
+  /** Blast ids that already dealt damage (one hit per blast). */
+  hitBy: number[]
+}
+
 export type Shot = {
   id: number
   x0: number
@@ -126,6 +139,7 @@ export type GameState = {
   batteries: Battery[]
   incoming: Incoming[]
   planes: Plane[]
+  bombers: Bomber[]
   drones: Drone[]
   shots: Shot[]
   blasts: Blast[]
@@ -184,6 +198,7 @@ const SCORE_DIRECT = 100
 const SCORE_CITY = 100
 const SCORE_AMMO = 5
 const SCORE_PLANE = 200
+const SCORE_BOMBER = 400
 /** Horizontal distance at which a ground hit kills a city / turret. */
 const CITY_HIT_RANGE = 38
 const BATTERY_HIT_RANGE = 52
@@ -191,6 +206,7 @@ const SPLIT_FROM_WAVE = 3
 const SPLIT_AT = 0.5
 const CLEAN_WAVES_TO_REBUILD = 1
 const PLANE_FROM_WAVE = 4
+const BOMBER_FROM_WAVE = 6
 const DRONE_FROM_WAVE = 2
 const POWER_MAX = 3
 const SLOW_TIME = 5
@@ -263,6 +279,7 @@ export function createInitialState(w = DESIGN_W, h = DESIGN_H): GameState {
     batteries,
     incoming: [],
     planes: [],
+    bombers: [],
     drones: [],
     shots: [],
     blasts: [],
@@ -313,14 +330,25 @@ function splitterChance(wave: number) {
   return Math.min(0.22, 0.1 + (wave - SPLIT_FROM_WAVE) * 0.022)
 }
 
+function waveHasBomber(wave: number) {
+  return wave >= BOMBER_FROM_WAVE && wave % 3 === 0
+}
+
 function waveHasPlane(wave: number) {
+  if (waveHasBomber(wave)) return false
   return wave >= PLANE_FROM_WAVE && wave % 3 !== 1
 }
 
 function waveIncomingCount(wave: number) {
-  if (wave <= 3) return 5 + wave
-  if (wave <= 7) return 7 + wave
-  return 14 + (wave - 7)
+  let n =
+    wave <= 3 ? 5 + wave : wave <= 7 ? 7 + wave : 14 + (wave - 7)
+  // Bomber drops replace some sky traffic so overall pressure stays similar.
+  if (waveHasBomber(wave)) n = Math.max(5, n - 3)
+  return n
+}
+
+function bomberMaxHp(wave: number) {
+  return Math.min(7, 4 + Math.floor((wave - BOMBER_FROM_WAVE) / 3))
 }
 
 function waveSpeed(wave: number, scale: number) {
@@ -352,6 +380,23 @@ function makePlane(state: GameState, w: number, wave: number): Plane {
     vx: fromLeft ? speed : -speed,
     dropsLeft: 2,
     dropTimer: 0.45,
+  }
+}
+
+function makeBomber(state: GameState, w: number, wave: number): Bomber {
+  const fromLeft = Math.random() < 0.5
+  const speed = (38 + wave * 1.6) * (state.scale / VIEW_ZOOM)
+  const hp = bomberMaxHp(wave)
+  const margin = Math.max(48, w * 0.1)
+  return {
+    id: uid(),
+    x: fromLeft ? margin : w - margin,
+    y: state.groundY * (0.16 + Math.random() * 0.06),
+    vx: fromLeft ? speed : -speed,
+    hp,
+    maxHp: hp,
+    dropTimer: 1.1,
+    hitBy: [],
   }
 }
 
@@ -400,6 +445,7 @@ function beginWave(state: GameState, wave: number, w: number): GameState {
     })),
     incoming: [],
     planes: waveHasPlane(wave) ? [makePlane(state, w, wave)] : [],
+    bombers: waveHasBomber(wave) ? [makeBomber(state, w, wave)] : [],
     drones: [],
     shots: [],
     blasts: [],
@@ -878,6 +924,7 @@ export function tick(state: GameState, dt: number, w: number): GameState {
   if (s.phase === 'gameover') return s
 
   if (!s.drones) s.drones = []
+  if (!s.bombers) s.bombers = []
   if (!s.pack) s.pack = emptyPack()
   s.droneQueue ??= []
   s.droneTimer ??= 0
@@ -937,7 +984,51 @@ export function tick(state: GameState, dt: number, w: number): GameState {
     livePlanes.push({ ...plane, x, dropsLeft, dropTimer })
   }
   s.planes = livePlanes
-  if (planeDrops.length) s.incoming = [...s.incoming, ...planeDrops]
+
+  const bomberDrops: Incoming[] = []
+  const liveBombers: Bomber[] = []
+  const margin = Math.max(48 * scale, w * 0.08)
+  for (const bomber of s.bombers) {
+    let x = bomber.x + bomber.vx * worldDt
+    let vx = bomber.vx
+    if (x < margin) {
+      x = margin
+      vx = Math.abs(vx)
+    } else if (x > w - margin) {
+      x = w - margin
+      vx = -Math.abs(vx)
+    }
+
+    let dropTimer = bomber.dropTimer - worldDt
+    if (dropTimer <= 0) {
+      bomberDrops.push(
+        makeMissile(
+          x,
+          bomber.y + 10 * scale,
+          pickAim(s.cities, s.batteries, w),
+          waveSpeed(s.wave, scale) * (0.88 + Math.random() * 0.22),
+          Math.random() < splitterChance(s.wave) * 0.55 ? 'split' : 'normal',
+          s.cities,
+          s.batteries,
+          w,
+          s.groundY,
+          scale,
+        ),
+      )
+      dropTimer = 1.85 + Math.random() * 0.55
+    }
+    liveBombers.push({
+      ...bomber,
+      x,
+      vx,
+      dropTimer,
+      hitBy: [...bomber.hitBy],
+    })
+  }
+  s.bombers = liveBombers
+  if (planeDrops.length || bomberDrops.length) {
+    s.incoming = [...s.incoming, ...planeDrops, ...bomberDrops]
+  }
 
   const liveDrones: Drone[] = []
   for (const drone of s.drones) {
@@ -1214,6 +1305,62 @@ export function tick(state: GameState, dt: number, w: number): GameState {
   }
   s.planes = survivingPlanes
 
+  const survivingBombers: Bomber[] = []
+  const bomberHitR = 22 * scale
+  for (const bomber of s.bombers) {
+    let hp = bomber.hp
+    const hitBy = [...bomber.hitBy]
+    let struck = false
+    for (const b of s.blasts) {
+      if ((b.wait ?? 0) > 0) continue
+      if (hitBy.includes(b.id)) continue
+      if (dist(bomber.x, bomber.y, b.x, b.y) <= b.r + bomberHitR) {
+        hitBy.push(b.id)
+        hp -= 1
+        struck = true
+        // One blast, one chip — keep scanning other blasts.
+      }
+    }
+    if (hp <= 0) {
+      sfx('boom')
+      scoreAdd += SCORE_BOMBER
+      newFloaters.push({
+        id: uid(),
+        x: bomber.x,
+        y: bomber.y - 14 * scale,
+        text: `BOMBER +${SCORE_BOMBER}`,
+        life: 1.3,
+      })
+      s.blasts = [
+        ...s.blasts,
+        {
+          id: uid(),
+          x: bomber.x,
+          y: bomber.y,
+          r: 8 * scale,
+          maxR: BLAST_MAX * 1.1 * scale,
+          growing: true,
+          burst: false,
+          wait: 0,
+          growRate: 140,
+        },
+      ]
+      flash = Math.max(flash, 0.5)
+      continue
+    }
+    if (struck) {
+      sfx('hit')
+      flash = Math.max(flash, 0.22)
+    }
+    const liveIds = new Set(s.blasts.map((b) => b.id))
+    survivingBombers.push({
+      ...bomber,
+      hp,
+      hitBy: hitBy.filter((id) => liveIds.has(id)),
+    })
+  }
+  s.bombers = survivingBombers
+
   const droneHitR = 14 * scale
   const liveDronesHit: Drone[] = []
   for (const drone of s.drones) {
@@ -1261,6 +1408,7 @@ export function tick(state: GameState, dt: number, w: number): GameState {
     (s.droneQueue?.length ?? 0) === 0 &&
     s.incoming.length === 0 &&
     s.planes.length === 0 &&
+    (s.bombers?.length ?? 0) === 0 &&
     s.drones.length === 0 &&
     s.shots.length === 0 &&
     s.blasts.length === 0

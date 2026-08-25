@@ -1,4 +1,4 @@
-import type { Battery, City, Drone, GameState, Plane } from './game'
+import type { Battery, Bomber, City, Drone, GameState, Plane } from './game'
 import { POWER_HUE, shieldRadius } from './game'
 import { playfieldColor } from '../../lib/theme'
 
@@ -249,6 +249,69 @@ function drawPlane(ctx: CanvasRenderingContext2D, plane: Plane, scale: number) {
   )
 }
 
+function drawBomber(ctx: CanvasRenderingContext2D, bomber: Bomber, scale: number) {
+  const s = scale
+  const dir = bomber.vx >= 0 ? 1 : -1
+  const x = bomber.x
+  const y = bomber.y
+  const rear = x - 22 * s * dir
+  const trailFrom = x - 40 * s * dir
+  const stop = Math.max(1.2, 1.5 * s) * 0.5
+  if (Math.abs(rear - trailFrom) > stop + 0.5) {
+    ctx.strokeStyle = 'hsla(18, 35%, 40%, 0.4)'
+    ctx.lineWidth = 2 * s
+    ctx.lineCap = 'butt'
+    ctx.beginPath()
+    ctx.moveTo(trailFrom, y)
+    ctx.lineTo(rear - stop * dir, y)
+    ctx.stroke()
+  }
+
+  const body: { x: number; y: number }[] = [
+    { x: -22, y: -4 },
+    { x: -22, y: -12 },
+    { x: -12, y: -12 },
+    { x: -12, y: -4 },
+    { x: -6, y: -4 },
+    { x: -6, y: -15 },
+    { x: 8, y: -15 },
+    { x: 8, y: -4 },
+    { x: 22, y: -4 },
+    { x: 26, y: 0 },
+    { x: 22, y: 4 },
+    { x: 8, y: 4 },
+    { x: 8, y: 15 },
+    { x: -6, y: 15 },
+    { x: -6, y: 4 },
+    { x: -22, y: 4 },
+  ]
+  washPoly(
+    ctx,
+    body.map((p) => ({ x: x + p.x * s * dir, y: y + p.y * s })),
+    18,
+    s,
+    48,
+  )
+
+  const barW = 40 * s
+  const barH = 4.2 * s
+  const pct = Math.max(0, bomber.hp / Math.max(1, bomber.maxHp))
+  const barX = x - barW / 2
+  const barY = y + 18 * s
+  ctx.fillStyle = 'hsla(0, 0%, 20%, 0.45)'
+  ctx.fillRect(barX, barY, barW, barH)
+  ctx.fillStyle =
+    pct > 0.55
+      ? 'hsla(128, 48%, 48%, 0.95)'
+      : pct > 0.3
+        ? 'hsla(38, 70%, 50%, 0.95)'
+        : 'hsla(8, 72%, 52%, 0.95)'
+  ctx.fillRect(barX, barY, barW * pct, barH)
+  ctx.strokeStyle = 'hsla(18, 40%, 32%, 0.85)'
+  ctx.lineWidth = Math.max(1, 1.2 * s)
+  ctx.strokeRect(barX + 0.5, barY + 0.5, barW - 1, barH - 1)
+}
+
 function drawDrone(ctx: CanvasRenderingContext2D, drone: Drone, scale: number) {
   const s = scale
   const dir = drone.vx >= 0 ? 1 : -1
@@ -340,6 +403,7 @@ export function renderGame(
   }
 
   for (const plane of state.planes) drawPlane(ctx, plane, scale)
+  for (const bomber of state.bombers ?? []) drawBomber(ctx, bomber, scale)
   for (const drone of state.drones ?? []) drawDrone(ctx, drone, scale)
 
   for (const s of state.shots) {
