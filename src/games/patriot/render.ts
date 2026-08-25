@@ -204,49 +204,105 @@ function drawBattery(ctx: CanvasRenderingContext2D, bat: Battery, groundY: numbe
   }
 }
 
+function craftLocal(
+  x: number,
+  y: number,
+  dir: number,
+  s: number,
+  pts: { x: number; y: number }[],
+) {
+  return pts.map((p) => ({ x: x + p.x * s * dir, y: y + p.y * s }))
+}
+
+function craftTrail(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  dir: number,
+  s: number,
+  rear: number,
+  length: number,
+  hue: number,
+  width: number,
+) {
+  const rearX = x - rear * s * dir
+  const fromX = x - (rear + length) * s * dir
+  const stop = Math.max(1.2, 1.5 * s) * 0.5
+  if (Math.abs(rearX - fromX) <= stop + 0.5) return
+  ctx.strokeStyle = `hsla(${hue}, 35%, 40%, 0.38)`
+  ctx.lineWidth = width * s
+  ctx.lineCap = 'butt'
+  ctx.beginPath()
+  ctx.moveTo(fromX, y)
+  ctx.lineTo(rearX - stop * dir, y)
+  ctx.stroke()
+}
+
 function drawPlane(ctx: CanvasRenderingContext2D, plane: Plane, scale: number) {
   const s = scale
   const dir = plane.vx >= 0 ? 1 : -1
   const x = plane.x
   const y = plane.y
-  const rear = x - 16 * s * dir
+  const hue = 198
 
-  const trailFrom = x - 28 * s * dir
-  const stop = Math.max(1.2, 1.5 * s) * 0.5
-  if (Math.abs(rear - trailFrom) > stop + 0.5) {
-    ctx.strokeStyle = 'hsla(198, 30%, 42%, 0.35)'
-    ctx.lineWidth = 1.5 * s
-    ctx.lineCap = 'butt'
-    ctx.beginPath()
-    ctx.moveTo(trailFrom, y)
-    ctx.lineTo(rear - stop * dir, y)
-    ctx.stroke()
-  }
+  craftTrail(ctx, x, y, dir, s, 18, 16, hue, 1.6)
 
-  const body: { x: number; y: number }[] = [
-    { x: -16, y: -3 },
-    { x: -16, y: -10 },
-    { x: -10, y: -10 },
-    { x: -10, y: -3 },
-    { x: -5, y: -3 },
-    { x: -5, y: -11 },
-    { x: 5, y: -11 },
-    { x: 5, y: -3 },
-    { x: 16, y: -3 },
-    { x: 16, y: 3 },
-    { x: 5, y: 3 },
-    { x: 5, y: 11 },
-    { x: -5, y: 11 },
-    { x: -5, y: 3 },
-    { x: -16, y: 3 },
-  ]
+  // Main wings
   washPoly(
     ctx,
-    body.map((p) => ({ x: x + p.x * s * dir, y: y + p.y * s })),
-    198,
+    craftLocal(x, y, dir, s, [
+      { x: -4, y: -2 },
+      { x: 2, y: -2 },
+      { x: 6, y: -14 },
+      { x: 11, y: -14 },
+      { x: 8, y: -2 },
+      { x: 8, y: 2 },
+      { x: 11, y: 14 },
+      { x: 6, y: 14 },
+      { x: 2, y: 2 },
+      { x: -4, y: 2 },
+    ]),
+    hue,
+    s,
+    42,
+  )
+
+  // Fuselage + nose
+  washPoly(
+    ctx,
+    craftLocal(x, y, dir, s, [
+      { x: -18, y: -3.5 },
+      { x: 14, y: -3.5 },
+      { x: 20, y: 0 },
+      { x: 14, y: 3.5 },
+      { x: -18, y: 3.5 },
+      { x: -20, y: 0 },
+    ]),
+    hue,
+    s,
+    46,
+  )
+
+  // Tailplane
+  washPoly(
+    ctx,
+    craftLocal(x, y, dir, s, [
+      { x: -18, y: -2 },
+      { x: -12, y: -2 },
+      { x: -14, y: -9 },
+      { x: -19, y: -9 },
+      { x: -19, y: 9 },
+      { x: -14, y: 9 },
+      { x: -12, y: 2 },
+      { x: -18, y: 2 },
+    ]),
+    hue,
     s,
     40,
   )
+
+  // Cockpit
+  washCircle(ctx, x + 8 * s * dir, y, 2.6 * s, hue, s, 58)
 }
 
 function drawBomber(ctx: CanvasRenderingContext2D, bomber: Bomber, scale: number) {
@@ -254,62 +310,139 @@ function drawBomber(ctx: CanvasRenderingContext2D, bomber: Bomber, scale: number
   const dir = bomber.vx >= 0 ? 1 : -1
   const x = bomber.x
   const y = bomber.y
-  const rear = x - 22 * s * dir
-  const trailFrom = x - 40 * s * dir
-  const stop = Math.max(1.2, 1.5 * s) * 0.5
-  if (Math.abs(rear - trailFrom) > stop + 0.5) {
-    ctx.strokeStyle = 'hsla(18, 35%, 40%, 0.4)'
-    ctx.lineWidth = 2 * s
-    ctx.lineCap = 'butt'
-    ctx.beginPath()
-    ctx.moveTo(trailFrom, y)
-    ctx.lineTo(rear - stop * dir, y)
-    ctx.stroke()
-  }
+  const hue = 18
 
-  const body: { x: number; y: number }[] = [
-    { x: -22, y: -4 },
-    { x: -22, y: -12 },
-    { x: -12, y: -12 },
-    { x: -12, y: -4 },
-    { x: -6, y: -4 },
-    { x: -6, y: -15 },
-    { x: 8, y: -15 },
-    { x: 8, y: -4 },
-    { x: 22, y: -4 },
-    { x: 26, y: 0 },
-    { x: 22, y: 4 },
-    { x: 8, y: 4 },
-    { x: 8, y: 15 },
-    { x: -6, y: 15 },
-    { x: -6, y: 4 },
-    { x: -22, y: 4 },
-  ]
+  craftTrail(ctx, x, y - 3 * s, dir, s, 30, 22, hue, 2.2)
+  craftTrail(ctx, x, y + 3 * s, dir, s, 30, 22, hue, 2.2)
+
+  // Broad wings
   washPoly(
     ctx,
-    body.map((p) => ({ x: x + p.x * s * dir, y: y + p.y * s })),
-    18,
+    craftLocal(x, y, dir, s, [
+      { x: -6, y: -4 },
+      { x: 10, y: -4 },
+      { x: 16, y: -24 },
+      { x: 24, y: -24 },
+      { x: 18, y: -4 },
+      { x: 18, y: 4 },
+      { x: 24, y: 24 },
+      { x: 16, y: 24 },
+      { x: 10, y: 4 },
+      { x: -6, y: 4 },
+    ]),
+    hue,
     s,
-    48,
+    46,
   )
 
-  const barW = 40 * s
-  const barH = 4.2 * s
-  const pct = Math.max(0, bomber.hp / Math.max(1, bomber.maxHp))
+  // Twin engine pods
+  washPoly(
+    ctx,
+    craftLocal(x, y, dir, s, [
+      { x: -2, y: -18 },
+      { x: 12, y: -18 },
+      { x: 14, y: -14 },
+      { x: 12, y: -10 },
+      { x: -2, y: -10 },
+      { x: -4, y: -14 },
+    ]),
+    hue,
+    s,
+    40,
+  )
+  washPoly(
+    ctx,
+    craftLocal(x, y, dir, s, [
+      { x: -2, y: 10 },
+      { x: 12, y: 10 },
+      { x: 14, y: 14 },
+      { x: 12, y: 18 },
+      { x: -2, y: 18 },
+      { x: -4, y: 14 },
+    ]),
+    hue,
+    s,
+    40,
+  )
+
+  // Thick fuselage
+  washPoly(
+    ctx,
+    craftLocal(x, y, dir, s, [
+      { x: -28, y: -6 },
+      { x: 22, y: -6 },
+      { x: 30, y: 0 },
+      { x: 22, y: 6 },
+      { x: -28, y: 6 },
+      { x: -32, y: 0 },
+    ]),
+    hue,
+    s,
+    50,
+  )
+
+  // Tail fin
+  washPoly(
+    ctx,
+    craftLocal(x, y, dir, s, [
+      { x: -30, y: -5 },
+      { x: -20, y: -5 },
+      { x: -24, y: -16 },
+      { x: -32, y: -16 },
+      { x: -32, y: 16 },
+      { x: -24, y: 16 },
+      { x: -20, y: 5 },
+      { x: -30, y: 5 },
+    ]),
+    hue,
+    s,
+    42,
+  )
+
+  // Nose / cockpit
+  washCircle(ctx, x + 16 * s * dir, y, 3.4 * s, hue, s, 56)
+  washBox(ctx, x - 8 * s * dir, y - 2.2 * s, 14 * s, 4.4 * s, hue, s, 38)
+
+  // Health bar — segmented so each hit reads clearly
+  const maxHp = Math.max(1, bomber.maxHp)
+  const hp = Math.max(0, bomber.hp)
+  const segGap = 2.2 * s
+  const segW = 10 * s
+  const segH = 6.5 * s
+  const barW = maxHp * segW + (maxHp - 1) * segGap
   const barX = x - barW / 2
-  const barY = y + 18 * s
-  ctx.fillStyle = 'hsla(0, 0%, 20%, 0.45)'
-  ctx.fillRect(barX, barY, barW, barH)
-  ctx.fillStyle =
-    pct > 0.55
-      ? 'hsla(128, 48%, 48%, 0.95)'
-      : pct > 0.3
-        ? 'hsla(38, 70%, 50%, 0.95)'
-        : 'hsla(8, 72%, 52%, 0.95)'
-  ctx.fillRect(barX, barY, barW * pct, barH)
-  ctx.strokeStyle = 'hsla(18, 40%, 32%, 0.85)'
-  ctx.lineWidth = Math.max(1, 1.2 * s)
-  ctx.strokeRect(barX + 0.5, barY + 0.5, barW - 1, barH - 1)
+  const barY = y + 30 * s
+  const pad = 3.2 * s
+
+  ctx.fillStyle = 'hsla(18, 20%, 18%, 0.55)'
+  ctx.fillRect(barX - pad, barY - pad * 0.55, barW + pad * 2, segH + pad * 1.1)
+  ctx.strokeStyle = 'hsla(18, 45%, 36%, 0.9)'
+  ctx.lineWidth = Math.max(1.2, 1.4 * s)
+  ctx.strokeRect(
+    barX - pad + 0.5,
+    barY - pad * 0.55 + 0.5,
+    barW + pad * 2 - 1,
+    segH + pad * 1.1 - 1,
+  )
+
+  for (let i = 0; i < maxHp; i++) {
+    const sx = barX + i * (segW + segGap)
+    const filled = i < hp
+    const t = hp / maxHp
+    ctx.fillStyle = filled
+      ? t > 0.55
+        ? 'hsla(128, 52%, 48%, 0.95)'
+        : t > 0.3
+          ? 'hsla(38, 72%, 52%, 0.95)'
+          : 'hsla(8, 74%, 54%, 0.95)'
+      : 'hsla(0, 0%, 100%, 0.12)'
+    ctx.fillRect(sx, barY, segW, segH)
+    ctx.strokeStyle = filled
+      ? 'hsla(18, 40%, 28%, 0.75)'
+      : 'hsla(18, 25%, 40%, 0.45)'
+    ctx.lineWidth = Math.max(1, 1.1 * s)
+    ctx.strokeRect(sx + 0.5, barY + 0.5, segW - 1, segH - 1)
+  }
 }
 
 function drawDrone(ctx: CanvasRenderingContext2D, drone: Drone, scale: number) {
@@ -318,42 +451,44 @@ function drawDrone(ctx: CanvasRenderingContext2D, drone: Drone, scale: number) {
   const x = drone.x
   const y = drone.y
   const hue = POWER_HUE[drone.kind]
-  const rear = x - 10 * s * dir
-  const trailFrom = x - 22 * s * dir
-  const stop = Math.max(1.2, 1.5 * s) * 0.5
-  if (Math.abs(rear - trailFrom) > stop + 0.5) {
-    ctx.strokeStyle = `hsla(${hue}, 52%, 42%, 0.35)`
-    ctx.lineWidth = 1.5 * s
-    ctx.lineCap = 'butt'
-    ctx.beginPath()
-    ctx.moveTo(trailFrom, y)
-    ctx.lineTo(rear - stop * dir, y)
-    ctx.stroke()
-  }
 
+  craftTrail(ctx, x, y, dir, s, 12, 14, hue, 1.4)
+
+  // Rotor bars
+  washBox(ctx, x - 14 * s, y - 1.1 * s, 28 * s, 2.2 * s, hue, s, 48)
+  washBox(ctx, x - 1.1 * s, y - 10 * s, 2.2 * s, 20 * s, hue, s, 48)
+
+  // Body hull
   washPoly(
     ctx,
-    [
-      { x: x - 11 * s * dir, y: y },
-      { x: x, y: y - 8 * s },
-      { x: x + 13 * s * dir, y: y },
-      { x: x, y: y + 8 * s },
-    ],
+    craftLocal(x, y, dir, s, [
+      { x: -9, y: -5 },
+      { x: 7, y: -5 },
+      { x: 11, y: 0 },
+      { x: 7, y: 5 },
+      { x: -9, y: 5 },
+      { x: -11, y: 0 },
+    ]),
     hue,
     s,
-    62,
+    58,
   )
 
+  // Side skids
+  washBox(ctx, x - 8 * s * dir, y + 5.5 * s, 12 * s, 1.8 * s, hue, s, 44)
+  washBox(ctx, x - 8 * s * dir, y - 7.3 * s, 12 * s, 1.8 * s, hue, s, 44)
+
   if (drone.kind === 'ammo') {
-    const plus = 2.1 * s
-    washBox(ctx, x - plus * 2, y - plus * 0.45, plus * 4, plus * 0.9, hue, s, 68)
-    washBox(ctx, x - plus * 0.45, y - plus * 2, plus * 0.9, plus * 4, hue, s, 68)
+    const plus = 2.4 * s
+    washBox(ctx, x - plus * 2, y - plus * 0.45, plus * 4, plus * 0.9, hue, s, 70)
+    washBox(ctx, x - plus * 0.45, y - plus * 2, plus * 0.9, plus * 4, hue, s, 70)
   } else if (drone.kind === 'shield') {
-    washCircle(ctx, x, y, 3.6 * s, hue, s, 68)
+    washCircle(ctx, x + 1 * s * dir, y, 3.8 * s, hue, s, 70)
   } else if (drone.kind === 'slow') {
-    washBox(ctx, x - 3.2 * s, y - 1.1 * s, 6.4 * s, 2.2 * s, hue, s, 68)
+    washBox(ctx, x - 3.6 * s, y - 1.2 * s, 7.2 * s, 2.4 * s, hue, s, 70)
   } else {
-    washCircle(ctx, x, y, 4.4 * s, hue, s, 72)
+    washCircle(ctx, x + 1 * s * dir, y, 4.6 * s, hue, s, 72)
+    washCircle(ctx, x + 1 * s * dir, y, 2 * s, hue, s, 78)
   }
 }
 

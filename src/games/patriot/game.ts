@@ -1306,7 +1306,7 @@ export function tick(state: GameState, dt: number, w: number): GameState {
   s.planes = survivingPlanes
 
   const survivingBombers: Bomber[] = []
-  const bomberHitR = 22 * scale
+  const bomberHitR = 32 * scale
   for (const bomber of s.bombers) {
     let hp = bomber.hp
     const hitBy = [...bomber.hitBy]
