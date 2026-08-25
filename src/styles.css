@@ -6606,9 +6606,13 @@ html[data-theme='dark'] .patriot__power-mark {
   min-height: 7.5rem;
   padding: 1.15rem 0.7rem 1rem;
   border-radius: calc(var(--tile-radius) - 0.1rem);
-  background: rgba(var(--surface-rgb), 0.94);
-  border: 2px solid color-mix(in srgb, var(--award-accent) 42%, transparent);
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.28);
+  background: linear-gradient(
+    155deg,
+    color-mix(in srgb, var(--award-accent) 36%, rgba(22, 36, 46, 0.94)),
+    color-mix(in srgb, var(--award-accent) 12%, rgba(12, 20, 28, 0.96))
+  );
+  border: 1.5px solid color-mix(in srgb, var(--award-accent) 52%, transparent);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.34);
   animation: score-celeb-card-in 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
@@ -6625,11 +6629,15 @@ html[data-theme='dark'] .patriot__power-mark {
 }
 
 .score-celeb__award--featured {
-  background: rgba(var(--surface-rgb), 0.98);
-  border-color: color-mix(in srgb, var(--award-accent) 72%, transparent);
+  background: linear-gradient(
+    155deg,
+    color-mix(in srgb, var(--award-accent) 46%, rgba(26, 40, 50, 0.96)),
+    color-mix(in srgb, var(--award-accent) 20%, rgba(14, 24, 32, 0.98))
+  );
+  border-color: color-mix(in srgb, var(--award-accent) 78%, transparent);
   box-shadow:
-    0 0 0 4px color-mix(in srgb, var(--award-accent) 22%, transparent),
-    0 18px 40px rgba(0, 0, 0, 0.32);
+    0 0 0 3px color-mix(in srgb, var(--award-accent) 26%, transparent),
+    0 18px 40px rgba(0, 0, 0, 0.38);
   transform: scale(1.03);
   z-index: 1;
 }
@@ -6637,30 +6645,31 @@ html[data-theme='dark'] .patriot__power-mark {
 .score-celeb.rank-up .score-celeb__kicker,
 .score-celeb.rank-up .score-celeb__title,
 .score-celeb.rank-up .rank-up__detail,
-.score-celeb.rank-up .rank-up__from,
-.score-celeb.rank-up .rank-up__number {
+.score-celeb.rank-up .rank-up__from {
   color: #f4f8fb;
 }
 
 .score-celeb.rank-up .rank-up__from span {
-  color: rgba(244, 248, 251, 0.72);
+  color: rgba(244, 248, 251, 0.82);
 }
 
 .score-celeb.rank-up .rank-up__rung {
-  color: rgba(244, 248, 251, 0.45);
+  color: rgba(244, 248, 251, 0.58);
 }
 
 .score-celeb.rank-up .rank-up__number {
-  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.35);
+  color: #f4f8fb;
+  text-shadow: 0 2px 14px rgba(0, 0, 0, 0.42);
 }
 
 .score-celeb.rank-up.rank-up--settled .rank-up__number {
-  color: color-mix(in srgb, var(--accent) 45%, #f4f8fb);
+  color: color-mix(in srgb, var(--accent) 18%, #ffffff);
+  text-shadow: 0 2px 18px color-mix(in srgb, var(--accent) 42%, transparent);
 }
 
 .score-celeb.rank-up .rank-up__focus {
-  background: rgba(255, 255, 255, 0.12);
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.2);
+  background: color-mix(in srgb, var(--accent) 34%, rgba(255, 255, 255, 0.06));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 58%, transparent);
 }
 
 .score-celeb__kicker {
@@ -6687,7 +6696,7 @@ html[data-theme='dark'] .patriot__power-mark {
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: color-mix(in srgb, var(--award-accent) 55%, var(--muted));
+  color: color-mix(in srgb, var(--award-accent) 42%, #e8f4fc);
 }
 
 .score-celeb__award-value {
@@ -6696,7 +6705,7 @@ html[data-theme='dark'] .patriot__power-mark {
   font-weight: 600;
   line-height: 1;
   letter-spacing: -0.03em;
-  color: var(--ink);
+  color: #f4f8fb;
 }
 
 .score-celeb__award-detail {
@@ -6704,7 +6713,7 @@ html[data-theme='dark'] .patriot__power-mark {
   font-size: 0.82rem;
   font-weight: 650;
   line-height: 1.25;
-  color: var(--muted);
+  color: color-mix(in srgb, var(--award-accent) 28%, rgba(244, 248, 251, 0.78));
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
