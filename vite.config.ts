@@ -4,6 +4,14 @@ import { VitePWA } from 'vite-plugin-pwa'
 
 // https://vite.dev/config/
 export default defineConfig({
+  // Keep a single React instance after dep installs / optimizeDeps rebundles
+  // (avoids "Invalid hook call" / useState on null in dev).
+  resolve: {
+    dedupe: ['react', 'react-dom'],
+  },
+  optimizeDeps: {
+    include: ['react', 'react-dom', 'react/jsx-runtime'],
+  },
   plugins: [
     react(),
     VitePWA({
@@ -50,6 +58,8 @@ export default defineConfig({
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2,webmanifest}'],
         navigateFallback: '/index.html',
+        cleanupOutdatedCaches: true,
+        clientsClaim: true,
         // API + auth stay network-only (different origin / dynamic).
         runtimeCaching: [],
       },
