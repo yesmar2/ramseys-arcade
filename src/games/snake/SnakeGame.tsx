@@ -15,6 +15,7 @@ import {
   pushRunAchievement,
 } from '../../lib/runAchievements'
 import {
+  formatRecordMs,
   SNAKE_LENGTH_MILESTONE_MAX,
   SNAKE_LENGTH_MILESTONE_MIN,
   SNAKE_LENGTH_MILESTONE_STEP,
@@ -129,6 +130,7 @@ export function SnakeGame() {
           pushRunAchievement({
             id: `snake:fastest-length-${milestone}`,
             label: `Fastest to length ${milestone}`,
+            value: formatRecordMs(Math.max(1, Math.round(elapsedMs))),
             rank: result.rank,
           })
         }

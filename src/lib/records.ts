@@ -327,7 +327,8 @@ export function submitAsteroidsWaveClearBooks(input: {
     if (waveResult?.improved) {
       hits.push({
         id: `asteroids:wave-time-${input.wave}`,
-        label: `Wave ${input.wave} clear`,
+        label: `Fastest wave ${input.wave}`,
+        value: formatRecordMs(Math.max(1, Math.round(input.seconds * 1000))),
         rank: waveResult.rank,
       })
     }
