@@ -6629,6 +6629,10 @@ html[data-theme='dark'] .patriot__power-mark {
   --award-accent: var(--accent-2);
 }
 
+.score-celeb__award--book .score-celeb__award-value {
+  font-size: clamp(2.35rem, 10vw, 3.1rem);
+}
+
 .score-celeb__award--featured {
   background: color-mix(in srgb, var(--award-accent) 18%, var(--surface));
   border-color: color-mix(in srgb, var(--award-accent) 72%, transparent);
@@ -6906,6 +6910,10 @@ html[data-theme='dark'] .patriot__power-mark {
     width: auto;
     order: unset;
     font-size: clamp(1.55rem, 8vw, 2.05rem);
+  }
+
+  .score-celeb__award--book .score-celeb__award-value {
+    font-size: clamp(2rem, 11vw, 2.65rem);
   }
 
   .score-celeb__award-detail {
