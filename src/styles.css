@@ -7685,3 +7685,81 @@ html[data-theme='dark'] .patriot__power-mark {
     animation: none;
   }
 }
+
+.install-prompt {
+  position: fixed;
+  left: max(0.75rem, env(safe-area-inset-left));
+  right: max(0.75rem, env(safe-area-inset-right));
+  bottom: max(0.75rem, env(safe-area-inset-bottom));
+  z-index: 40;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 1rem;
+  padding: 0.85rem 1rem;
+  border-radius: 14px;
+  background: rgba(var(--surface-rgb), 0.96);
+  border: 1px solid rgba(var(--ink-rgb), 0.1);
+  box-shadow: 0 12px 32px rgba(var(--ink-rgb), 0.16);
+  backdrop-filter: blur(12px);
+}
+
+.install-prompt__copy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+  flex: 1 1 10rem;
+  color: var(--ink);
+  font-size: 0.9rem;
+}
+
+.install-prompt__copy strong {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.install-prompt__copy span {
+  color: rgba(var(--ink-rgb), 0.62);
+}
+
+.install-prompt__copy em {
+  font-style: normal;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.install-prompt__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-left: auto;
+}
+
+.install-prompt__btn,
+.install-prompt__dismiss {
+  appearance: none;
+  margin: 0;
+  border-radius: 999px;
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.install-prompt__btn {
+  padding: 0.45rem 0.95rem;
+  border: 0;
+  background: var(--accent);
+  color: #fff;
+}
+
+.install-prompt__dismiss {
+  padding: 0.45rem 0.75rem;
+  border: 1px solid rgba(var(--ink-rgb), 0.14);
+  background: transparent;
+  color: rgba(var(--ink-rgb), 0.7);
+}
