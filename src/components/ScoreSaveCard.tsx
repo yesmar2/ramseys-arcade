@@ -4,6 +4,7 @@ import { gameHref, recordsHref, recordsIndexHref } from '../hooks/useHashRoute'
 import {
   addLeaderboardScore,
   ApiError,
+  fetchGlobalRank,
   fetchPlayerBests,
   getLastPlayerName,
   normalizePlayerName,
@@ -40,7 +41,6 @@ export type CelebPayload = {
 }
 
 export type RankClimb = {
-  period: LeaderboardPeriod
   from: number | null
   to: number
   gained: number | null
@@ -63,44 +63,27 @@ function rankedPeriods(
   })
 }
 
-/** Best personal-best rank climb across boards (prefer all-time, then biggest jump). */
-export function pickRankClimb(
-  previous?: Partial<Record<LeaderboardPeriod, number>>,
-  next?: Partial<Record<LeaderboardPeriod, number>>,
+/** Global ranking climb (lower place number is better). */
+export function pickGlobalRankClimb(
+  previous: number | null | undefined,
+  next: number | null | undefined,
 ): RankClimb | null {
-  if (!next) return null
-  const prior = previous ?? {}
-  const climbs: RankClimb[] = []
-  for (const period of PERIOD_ORDER) {
-    const to = next[period]
-    if (to == null || !(to >= 1)) continue
-    const from = prior[period] ?? null
-    if (from != null && to >= from) continue
-    climbs.push({
-      period,
-      from,
-      to,
-      gained: from != null ? from - to : null,
-    })
+  if (next == null || !(next >= 1)) return null
+  const from = previous != null && previous >= 1 ? previous : null
+  if (from != null && next >= from) return null
+  return {
+    from,
+    to: next,
+    gained: from != null ? from - next : null,
   }
-  if (!climbs.length) return null
-  return climbs.sort((a, b) => {
-    if (a.period === 'all' && b.period !== 'all') return -1
-    if (b.period === 'all' && a.period !== 'all') return 1
-    const ag = a.gained ?? 40
-    const bg = b.gained ?? 40
-    if (bg !== ag) return bg - ag
-    return a.to - b.to
-  })[0]
 }
 
 function buildCelebration(
   score: number,
   priorAllTime: number,
   ranks?: Partial<Record<LeaderboardPeriod, number>>,
-  opts?: { omitBoards?: boolean },
 ): CelebPayload | null {
-  const boards = opts?.omitBoards ? [] : rankedPeriods(ranks)
+  const boards = rankedPeriods(ranks)
   const personalBest =
     score > priorAllTime
       ? {
@@ -436,21 +419,21 @@ export function RankUpCelebration({
 
   const detail =
     climb.from == null
-      ? 'New on the board'
+      ? 'New global ranking'
       : climb.gained != null && climb.gained > 0
         ? `Up ${climb.gained} place${climb.gained === 1 ? '' : 's'}`
-        : 'New personal ranking'
+        : 'New global ranking'
 
   return createPortal(
     <div
       className={`score-celeb rank-up${leaving ? ' score-celeb--out' : ''}${settled ? ' rank-up--settled' : ''}`}
       role="dialog"
-      aria-label="Rank up celebration"
+      aria-label="Global rank up celebration"
       onPointerDown={(e) => e.stopPropagation()}
     >
       <FireworksCanvas />
       <div className="score-celeb__shell rank-up__shell">
-        <p className="score-celeb__kicker">{PERIOD_LABELS[climb.period]}</p>
+        <p className="score-celeb__kicker">Global ranking</p>
         <h2 className="score-celeb__title">Rank up</h2>
         <div className="rank-up__stage" aria-live="polite">
           <div className="rank-up__ladder" aria-hidden="true">
@@ -552,9 +535,7 @@ export function ScoreSaveCard({
     window.clearTimeout(celebTimer.current)
     /* Brief settle so late record-book posts from this run can land. */
     celebTimer.current = window.setTimeout(() => {
-      const payload = buildCelebration(score, allTime, nextRanks, {
-        omitBoards: Boolean(climb),
-      })
+      const payload = buildCelebration(score, allTime, nextRanks)
       setCelebPending(false)
       if (climb) {
         pendingAwards.current = payload
@@ -568,6 +549,32 @@ export function ScoreSaveCard({
   const finishRankClimb = () => {
     setRankClimb(null)
     openAwardCelebration(pendingAwards.current)
+  }
+
+  const saveAndCelebrate = async (name: string, isCancelled?: () => boolean) => {
+    let priorGlobalRank: number | null = null
+    try {
+      priorGlobalRank = (await fetchGlobalRank(name)).rank
+    } catch {
+      /* climb detection best-effort */
+    }
+    if (isCancelled?.()) return
+    const saved = await addLeaderboardScore(gameSlug, name, score)
+    if (isCancelled?.()) return
+    rememberPersonalBest(gameSlug, Math.max(recordRef.current, score))
+    let nextGlobalRank: number | null = null
+    try {
+      nextGlobalRank = (await fetchGlobalRank(name)).rank
+    } catch {
+      /* ignore */
+    }
+    if (isCancelled?.()) return
+    void refreshGlobalRank()
+    setRanks(saved.ranks)
+    savedRef.current = true
+    setPhase('saved')
+    const climb = pickGlobalRankClimb(priorGlobalRank, nextGlobalRank)
+    openCelebration(recordRef.current, saved.ranks, climb)
   }
 
   useEffect(() => {
@@ -615,15 +622,7 @@ export function ScoreSaveCard({
         }
 
         setPhase('saving')
-        const saved = await addLeaderboardScore(gameSlug, name, score)
-        if (cancelled) return
-        rememberPersonalBest(gameSlug, Math.max(recordRef.current, score))
-        void refreshGlobalRank()
-        setRanks(saved.bestRanks ?? saved.ranks)
-        savedRef.current = true
-        setPhase('saved')
-        const climb = pickRankClimb(saved.previousBestRanks, saved.bestRanks)
-        openCelebration(recordRef.current, saved.bestRanks ?? saved.ranks, climb)
+        await saveAndCelebrate(name, () => cancelled)
       } catch (err) {
         if (cancelled) return
         if (err instanceof ApiError && err.code === 'NAME_TAKEN') {
@@ -651,14 +650,7 @@ export function ScoreSaveCard({
     setPhase('saving')
     setError(null)
     try {
-      const saved = await addLeaderboardScore(gameSlug, name, score)
-      rememberPersonalBest(gameSlug, Math.max(recordRef.current, score))
-      void refreshGlobalRank()
-      setRanks(saved.bestRanks ?? saved.ranks)
-      savedRef.current = true
-      setPhase('saved')
-      const climb = pickRankClimb(saved.previousBestRanks, saved.bestRanks)
-      openCelebration(recordRef.current, saved.bestRanks ?? saved.ranks, climb)
+      await saveAndCelebrate(name)
     } catch (err) {
       if (err instanceof ApiError && err.code === 'NAME_TAKEN') {
         setError(
