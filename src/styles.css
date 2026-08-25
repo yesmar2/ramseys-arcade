@@ -6645,24 +6645,7 @@ html[data-theme='dark'] .patriot__power-mark {
   font-size: 1.05rem;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
-  color: color-mix(in srgb, var(--ink) 38%, transparent);
-}
-
-/* Center row sits over the focus plate ? keep it fully readable. */
-.rank-up__viewport::after {
-  content: '';
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: calc(var(--rank-up-row) * 2);
-  height: var(--rank-up-row);
-  pointer-events: none;
-  z-index: 2;
-  /* Soft vignette only ? no fill covering the number */
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 28%, transparent);
-  border-radius: 0.55rem;
-  mix-blend-mode: multiply;
-  opacity: 0;
+  color: color-mix(in srgb, var(--ink) 55%, transparent);
 }
 
 .rank-up__number {
