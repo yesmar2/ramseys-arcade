@@ -23,7 +23,7 @@ export const games: Game[] = [
     slug: 'asteroids',
     description: 'Spin, thrust, clear the rocks. Chain hits for more.',
     how: 'Arrow keys or WASD to turn and thrust. Space fires. Break rocks into smaller ones without getting hit.',
-    accent: '#5a8fd4',
+    accent: '#2eb87a',
     playable: true,
   },
   {

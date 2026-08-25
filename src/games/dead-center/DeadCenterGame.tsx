@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
-import { GamePlayChrome, PlayReadout, PlayReadoutCenter, PlayReadoutScore } from '../../components/GameHud'
+import { GamePlayChrome, PlayReadout, PlayReadoutScore } from '../../components/GameHud'
 import { GameStage } from '../../components/GameStage'
 import { GameStartCard } from '../../components/GameStartCard'
 import { ScoreSaveCard } from '../../components/ScoreSaveCard'
@@ -196,16 +196,26 @@ export function DeadCenterGame() {
             >
               {ui.score}
             </PlayReadoutScore>
-            <PlayReadoutCenter
-              label={`Round ${Math.min(ui.round, ui.totalRounds)} of ${ui.totalRounds}${ui.phase === 'playing' ? `, ${ui.timeLeft} seconds` : ''}`}
-            >
-              {Math.min(ui.round, ui.totalRounds)}/{ui.totalRounds}
-              {ui.phase === 'playing' ? (
-                <span className="play-readout__sep">·</span>
-              ) : null}
-              {ui.phase === 'playing' ? ui.timeLeft : null}
-            </PlayReadoutCenter>
           </PlayReadout>
+
+          {(ui.phase === 'playing' || ui.phase === 'reveal') && (
+            <div className="deadcenter__hud" aria-live="polite">
+              <div className="deadcenter__stat">
+                <span className="deadcenter__label">Round</span>
+                <strong>
+                  {Math.min(ui.round, ui.totalRounds)}/{ui.totalRounds}
+                </strong>
+              </div>
+              {ui.phase === 'playing' ? (
+                <div
+                  className={`deadcenter__stat${ui.timeLeft <= 2 ? ' deadcenter__stat--urgent' : ''}`}
+                >
+                  <span className="deadcenter__label">Time</span>
+                  <strong>{ui.timeLeft}</strong>
+                </div>
+              ) : null}
+            </div>
+          )}
 
           <div className="deadcenter__overlay">
             {ui.phase === 'menu' && !saveOpen && (

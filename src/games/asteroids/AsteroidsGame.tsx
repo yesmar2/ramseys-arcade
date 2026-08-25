@@ -13,6 +13,7 @@ import { useGamePause } from '../../hooks/useGamePause'
 import { usePersonalBest } from '../../hooks/usePersonalBest'
 import { usePlayerName } from '../../hooks/usePlayerName'
 import { useDeviceType } from '../../lib/device'
+import { getGame } from '../../data/games'
 import { getPersonalBest } from '../../lib/personalBest'
 import {
   clearRunAchievements,
@@ -75,6 +76,7 @@ export function AsteroidsGame() {
   const device = useDeviceType()
   const playerName = usePlayerName()
   const apiBest = usePersonalBest('asteroids')
+  const accent = getGame('asteroids')?.accent ?? '#2eb87a'
   const layout0 = currentLayout()
   const stateRef = useRef<GameState>(createInitialState())
   const canvasRef = useRef<HTMLCanvasElement>(null)

@@ -29,7 +29,6 @@ export function RecordsIndexPage() {
                 <GameThumbArt slug={game.slug} accent={game.accent} />
                 <span className="records-index__copy">
                   <span className="records-index__name">{game.name}</span>
-                  <span className="records-index__hint">Open record books</span>
                 </span>
               </a>
             </li>

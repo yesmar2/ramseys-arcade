@@ -10,7 +10,7 @@ import {
 } from './game'
 import { inkColor, playfieldColor } from '../../lib/theme'
 
-const ACCENT = '#2eb8a0'
+const ACCENT = '#2eb87a'
 const ACCENT_SKY = '#4aa8e8'
 const ACCENT_GOLD = '#f5b942'
 const SAUCER = '#c45c5c'

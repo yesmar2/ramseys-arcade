@@ -335,11 +335,11 @@ export function DeadCenterArt() {
 }
 
 export function AsteroidsArt() {
-  const large = pastel(HUE.sky, 54, 42)
-  const med = pastel(HUE.violet, 54, 42)
-  const small = pastel(HUE.gold, 58, 46)
-  const shipFill = 'color-mix(in srgb, #2eb8a0 28%, var(--playfield))'
-  const shipStroke = '#2eb8a0'
+  const large = pastel(HUE.green, 52, 40)
+  const med = pastel(HUE.teal, 54, 42)
+  const small = pastel(148, 56, 44)
+  const shipFill = 'color-mix(in srgb, #2eb87a 28%, var(--playfield))'
+  const shipStroke = '#2eb87a'
 
   return (
     <SvgFrame>

@@ -3084,18 +3084,18 @@ html[data-theme='dark'] .patriot__power-mark {
 
 .deadcenter__hud {
   position: absolute;
-  top: 1.25rem;
-  right: 1.25rem;
+  top: max(3.15rem, calc(env(safe-area-inset-top, 0px) + 2.9rem));
+  right: max(0.55rem, env(safe-area-inset-right, 0px));
   display: flex;
-  gap: 0.5rem;
+  gap: 0.45rem;
   align-items: flex-start;
   z-index: 10;
   pointer-events: none;
 }
 
 .deadcenter__stat {
-  min-width: 4.25rem;
-  padding: 0.55rem 0.75rem;
+  min-width: 3.6rem;
+  padding: 0.4rem 0.55rem;
   border-radius: calc(var(--tile-radius) - 0.15rem);
   background: rgba(var(--surface-rgb), 0.72);
   backdrop-filter: blur(12px);
@@ -3105,7 +3105,7 @@ html[data-theme='dark'] .patriot__power-mark {
 
 .deadcenter__label {
   display: block;
-  font-size: 0.7rem;
+  font-size: 0.65rem;
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -3114,9 +3114,14 @@ html[data-theme='dark'] .patriot__power-mark {
 
 .deadcenter__stat strong {
   font-family: var(--font-display);
-  font-size: 1.35rem;
+  font-size: 1.15rem;
   font-weight: 600;
   line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.deadcenter__stat--urgent strong {
+  color: #c47a3a;
 }
 
 .deadcenter__overlay {
@@ -3403,7 +3408,7 @@ html[data-theme='dark'] .patriot__power-mark {
   font-size: 0.8rem;
   font-weight: 700;
   letter-spacing: 0.02em;
-  color: #5a8fd4;
+  color: #2eb87a;
 }
 
 .asteroids__life-bonus {
@@ -6080,7 +6085,7 @@ html[data-theme='dark'] .patriot__power-mark {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0;
   width: 100%;
-  margin: 0.1rem 0 0.95rem;
+  margin: 0.1rem 0 1.85rem;
   padding: 0;
   border: 0;
   border-bottom: 1px solid rgba(var(--ink-rgb), 0.1);

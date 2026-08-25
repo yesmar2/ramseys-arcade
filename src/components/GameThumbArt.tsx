@@ -33,7 +33,7 @@ function shape(props: ReturnType<typeof pastel>, strokeWidth = 1.5) {
 
 /** Single-accent thumbs (Patriot, Asteroids, Centroid). */
 function AsteroidsThumb({ accent }: { accent?: string }) {
-  const a = accent ?? '#5a8fd4'
+  const a = accent ?? '#2eb87a'
   const shipFill = `color-mix(in srgb, ${a} 28%, var(--playfield))`
 
   return (
