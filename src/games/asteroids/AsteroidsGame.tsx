@@ -417,7 +417,10 @@ export function AsteroidsGame() {
   }
 
   return (
-    <section className={`asteroids asteroids--fullscreen${device === 'tablet' ? ' asteroids--tablet' : ''}${saveOpen || ui.phase === 'waveClear' ? ' asteroids--saving' : ''}`}>
+    <section
+      className={`asteroids asteroids--fullscreen${device === 'tablet' ? ' asteroids--tablet' : ''}${saveOpen || ui.phase === 'waveClear' ? ' asteroids--saving' : ''}`}
+      style={{ '--accent': accent } as CSSProperties}
+    >
       <div className="asteroids__body">
       <div className="asteroids__play" onPointerDown={onPlayTap}>
         <GameStage
