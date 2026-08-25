@@ -93,6 +93,7 @@ export function AsteroidsGame() {
   const [waveCeleb, setWaveCeleb] = useState<RunAchievement[] | null>(null)
   const waveCelebRef = useRef(false)
   waveCelebRef.current = Boolean(waveCeleb)
+  const waveCelebShownRef = useRef<string | null>(null)
   const offeredScore = useRef<number | null>(null)
   const waveRecordKey = useRef<string | null>(null)
   const comboRecordKey = useRef<string | null>(null)
@@ -208,8 +209,10 @@ export function AsteroidsGame() {
     }
     const wave = ui.lastWave
     const time = ui.lastWaveTime
-    const key = `${wave}:${time.toFixed(3)}`
-    waveRecordKey.current = key
+    const submitKey = `${wave}:${time.toFixed(3)}`
+    if (waveRecordKey.current === submitKey) return
+    waveRecordKey.current = submitKey
+
     void (async () => {
       const hits = await submitAsteroidsWaveClearBooks({
         wave,
@@ -218,18 +221,20 @@ export function AsteroidsGame() {
         name: playerName,
       })
       if (!hits.length) return
+      if (waveCelebShownRef.current === submitKey) return
+      waveCelebShownRef.current = submitKey
       if (ui.runComboBest >= 2) {
         comboRecordKey.current = `combo:${ui.runComboBest}`
       }
-      // Prefer live wave-clear celebration; if they already advanced, queue for game over.
-      if (
-        stateRef.current.phase === 'waveClear' &&
-        stateRef.current.lastWave === wave
-      ) {
-        setWaveCeleb(hits)
-        return
-      }
-      for (const hit of hits) pushRunAchievement(hit)
+      // Show as soon as the API responds — even if the player already tapped Next wave.
+      setWaveCeleb(
+        hits.map((hit) => ({
+          id: hit.id,
+          label: hit.label,
+          value: hit.value,
+          rank: hit.rank,
+        })),
+      )
     })()
   }, [
     ui.phase,
@@ -281,6 +286,7 @@ export function AsteroidsGame() {
     setSaveOpen(false)
     offeredScore.current = null
     waveRecordKey.current = null
+    waveCelebShownRef.current = null
     comboRecordKey.current = null
     clearRunAchievements()
     setWaveCeleb(null)
