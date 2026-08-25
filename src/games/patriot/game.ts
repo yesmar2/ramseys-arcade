@@ -179,10 +179,10 @@ const SCORE_PLANE = 200
 /** Horizontal distance at which a ground hit kills a city / turret. */
 const CITY_HIT_RANGE = 38
 const BATTERY_HIT_RANGE = 52
-const SPLIT_FROM_WAVE = 2
+const SPLIT_FROM_WAVE = 3
 const SPLIT_AT = 0.5
 const CLEAN_WAVES_TO_REBUILD = 1
-const PLANE_FROM_WAVE = 3
+const PLANE_FROM_WAVE = 4
 const DRONE_FROM_WAVE = 2
 const POWER_MAX = 3
 const SLOW_TIME = 5
@@ -300,7 +300,7 @@ export function resizeState(state: GameState, w: number, h: number): GameState {
 
 function splitterChance(wave: number) {
   if (wave < SPLIT_FROM_WAVE) return 0
-  return Math.min(0.26, 0.14 + (wave - SPLIT_FROM_WAVE) * 0.025)
+  return Math.min(0.22, 0.1 + (wave - SPLIT_FROM_WAVE) * 0.022)
 }
 
 function waveHasPlane(wave: number) {
@@ -308,12 +308,13 @@ function waveHasPlane(wave: number) {
 }
 
 function waveIncomingCount(wave: number) {
-  if (wave <= 5) return 6 + wave * 2
-  return 16 + (wave - 5)
+  if (wave <= 3) return 5 + wave
+  if (wave <= 7) return 7 + wave
+  return 14 + (wave - 7)
 }
 
 function waveSpeed(wave: number, scale: number) {
-  const n = wave <= 6 ? 55 + wave * 7 : 97 + (wave - 6) * 4
+  const n = wave <= 6 ? 46 + wave * 5 : 76 + (wave - 6) * 3.5
   return n * scale
 }
 
@@ -348,12 +349,12 @@ function scheduledDrones(wave: number): PowerKind[] {
   if (wave < DRONE_FROM_WAVE) return []
   const pattern: PowerKind[][] = [
     ['ammo'],
-    [],
     ['shield'],
+    ['burst'],
     [],
     ['ammo', 'slow'],
     [],
-    ['burst'],
+    ['ammo', 'burst'],
     [],
     ['ammo', 'shield'],
     [],
@@ -704,14 +705,14 @@ function spawnOneIncoming(state: GameState, w: number): GameState {
 function spawnBurst(state: GameState, w: number): GameState {
   if (state.toSpawn <= 0) return state
 
-  let size =
-    state.wave <= 2
-      ? Math.random() < 0.55
-        ? 2
-        : 3
-      : Math.random() < 0.42
-        ? 4
-        : 3
+  let size: number
+  if (state.wave <= 2) {
+    size = Math.random() < 0.65 ? 1 : 2
+  } else if (state.wave <= 4) {
+    size = Math.random() < 0.55 ? 2 : 3
+  } else {
+    size = Math.random() < 0.4 ? 4 : 3
+  }
   size = Math.min(size, state.toSpawn)
 
   let s = state
@@ -720,7 +721,7 @@ function spawnBurst(state: GameState, w: number): GameState {
   }
 
   const gap =
-    Math.max(1.25, 2.05 - state.wave * 0.055) + Math.random() * 0.5
+    Math.max(1.55, 2.55 - state.wave * 0.08) + Math.random() * 0.55
   return { ...s, spawnTimer: gap }
 }
 
@@ -1033,7 +1034,7 @@ export function tick(state: GameState, dt: number, w: number): GameState {
       })
 
       if (hitBlast.burst) {
-        const ring = 72 * scale
+        const ring = 118 * scale
         const spots = [
           { x: m.x + ring, y: m.y },
           { x: m.x - ring, y: m.y },
@@ -1048,11 +1049,11 @@ export function tick(state: GameState, dt: number, w: number): GameState {
             x: p.x,
             y: p.y,
             r: 0,
-            maxR: BLAST_MAX * scale,
+            maxR: BLAST_MAX * 1.05 * scale,
             growing: true,
             burst: true,
-            wait: 0.16 + i * 0.09,
-            growRate: 70,
+            wait: 0.14 + i * 0.08,
+            growRate: 78,
           })
         }
       }
