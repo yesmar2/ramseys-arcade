@@ -1040,7 +1040,7 @@ export function tick(state: GameState, dt: number, w: number): GameState {
           Math.max(hitBlast.maxR, hitBlast.r) + BLAST_REGROW * scale
         hitBlast.growRate = Math.max(hitBlast.growRate ?? 120, 130)
       } else {
-        directStreak = 0
+        // Splash kills (incl. from a perfect-hit blast) keep the streak.
         scoreAdd += SCORE_SPLASH
       }
 
