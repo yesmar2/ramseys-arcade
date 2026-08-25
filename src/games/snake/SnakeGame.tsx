@@ -20,6 +20,7 @@ import {
   SNAKE_LENGTH_MILESTONE_MIN,
   SNAKE_LENGTH_MILESTONE_STEP,
   submitSnakeFastestLength,
+  shouldCelebrateRecordSubmit,
 } from '../../lib/records'
 import { useTournamentPlay } from '../../tournaments/TournamentPlayContext'
 import {
@@ -126,7 +127,7 @@ export function SnakeGame() {
           elapsedMs,
           playerName,
         )
-        if (result?.improved) {
+        if (shouldCelebrateRecordSubmit(result)) {
           pushRunAchievement({
             id: `snake:fastest-length-${milestone}`,
             label: `Fastest to length ${milestone}`,

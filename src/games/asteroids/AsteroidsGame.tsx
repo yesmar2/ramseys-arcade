@@ -24,6 +24,7 @@ import {
 import {
   submitAsteroidsHighestCombo,
   submitAsteroidsWaveClearBooks,
+  shouldCelebrateRecordSubmit,
 } from '../../lib/records'
 import { useTournamentPlay } from '../../tournaments/TournamentPlayContext'
 import {
@@ -302,7 +303,7 @@ export function AsteroidsGame() {
     comboRecordKey.current = key
     void (async () => {
       const comboResult = await submitAsteroidsHighestCombo(combo, playerName)
-      if (comboResult?.improved) {
+      if (shouldCelebrateRecordSubmit(comboResult)) {
         pushRunAchievement({
           id: 'asteroids:highest-combo',
           label: 'Highest combo',

@@ -158,11 +158,51 @@ export function formatRecordScore(entryScore: number, unit: RecordDef['unit']): 
 export const ASTEROIDS_HIGHEST_COMBO_ID = 'highest-combo'
 export const PATRIOT_DIRECT_STREAK_ID = 'direct-streak'
 
+export type RecordSubmitOutcome = {
+  improved: boolean
+  rank: number | null
+  totalEntries: number | null
+}
+
+/** Whether a record-book win deserves an in-game celebration card. */
+export function shouldCelebrateRecordBook(
+  rank: number | null | undefined,
+  totalEntries: number | null | undefined,
+): boolean {
+  if (rank == null || !(rank >= 1)) return false
+  if (rank <= 10) return true
+  const total = totalEntries ?? 0
+  if (rank <= 20) return total >= 50
+  if (rank <= 50) return total >= 100
+  if (rank <= 100) return total >= 200
+  return false
+}
+
+export function shouldCelebrateRecordSubmit(
+  result: RecordSubmitOutcome | null | undefined,
+): result is RecordSubmitOutcome {
+  if (!result?.improved) return false
+  return shouldCelebrateRecordBook(result.rank, result.totalEntries)
+}
+
+function toRecordSubmitOutcome(result: {
+  improved: boolean
+  rank: number | null
+  totalEntries?: number | null
+}): RecordSubmitOutcome {
+  return {
+    improved: result.improved,
+    rank: result.rank,
+    totalEntries:
+      typeof result.totalEntries === 'number' ? result.totalEntries : null,
+  }
+}
+
 /** Best-effort Patriot perfect-hit streak submit (run peak). */
 export async function submitPatriotDirectStreak(
   streak: number,
   name: string,
-): Promise<{ improved: boolean; rank: number | null } | null> {
+): Promise<RecordSubmitOutcome | null> {
   const value = Math.floor(streak)
   if (!(value >= 2)) return null
   try {
@@ -172,7 +212,7 @@ export async function submitPatriotDirectStreak(
       name,
       value,
     )
-    return { improved: result.improved, rank: result.rank }
+    return toRecordSubmitOutcome(result)
   } catch {
     return null
   }
@@ -220,6 +260,7 @@ export async function submitRecord(
   rank: number | null
   ranks?: Partial<Record<LeaderboardPeriod, number>>
   entry: LeaderboardEntry | null
+  totalEntries: number | null
 }> {
   const cleaned = normalizePlayerName(name) || 'PLAYER'
   const token = getClaimToken(cleaned)
@@ -228,6 +269,7 @@ export async function submitRecord(
     rank: number | null
     ranks?: Partial<Record<LeaderboardPeriod, number>>
     entry?: LeaderboardEntry | null
+    totalEntries?: number
     name?: string
     token?: string
   }>(`/records/${encodeURIComponent(game)}/${encodeURIComponent(recordId)}`, {
@@ -249,6 +291,8 @@ export async function submitRecord(
     rank: data.rank,
     ranks: data.ranks,
     entry: data.entry ?? null,
+    totalEntries:
+      typeof data.totalEntries === 'number' ? data.totalEntries : null,
   }
 }
 
@@ -257,13 +301,13 @@ export async function submitAsteroidsWaveTime(
   wave: number,
   seconds: number,
   name: string,
-): Promise<{ improved: boolean; rank: number | null } | null> {
+): Promise<RecordSubmitOutcome | null> {
   const recordId = asteroidsWaveTimeRecordId(wave)
   if (!recordId || !(seconds > 0) || !Number.isFinite(seconds)) return null
   const ms = Math.max(1, Math.round(seconds * 1000))
   try {
     const result = await submitRecord('asteroids', recordId, name, ms)
-    return { improved: result.improved, rank: result.rank }
+    return toRecordSubmitOutcome(result)
   } catch {
     return null
   }
@@ -273,7 +317,7 @@ export async function submitAsteroidsWaveTime(
 export async function submitAsteroidsHighestCombo(
   combo: number,
   name: string,
-): Promise<{ improved: boolean; rank: number | null } | null> {
+): Promise<RecordSubmitOutcome | null> {
   const value = Math.floor(combo)
   if (!(value >= 2)) return null
   try {
@@ -283,7 +327,7 @@ export async function submitAsteroidsHighestCombo(
       name,
       value,
     )
-    return { improved: result.improved, rank: result.rank }
+    return toRecordSubmitOutcome(result)
   } catch {
     return null
   }
@@ -324,7 +368,7 @@ export function submitAsteroidsWaveClearBooks(input: {
       input.seconds,
       name,
     )
-    if (waveResult?.improved) {
+    if (shouldCelebrateRecordSubmit(waveResult)) {
       hits.push({
         id: `asteroids:wave-time-${input.wave}`,
         label: `Fastest wave ${input.wave}`,
@@ -335,7 +379,7 @@ export function submitAsteroidsWaveClearBooks(input: {
     const combo = Math.floor(input.combo)
     if (combo >= 2) {
       const comboResult = await submitAsteroidsHighestCombo(combo, name)
-      if (comboResult?.improved) {
+      if (shouldCelebrateRecordSubmit(comboResult)) {
         hits.push({
           id: 'asteroids:highest-combo',
           label: 'Highest combo',
@@ -361,14 +405,14 @@ export async function submitSnakeFastestLength(
   length: number,
   elapsedMs: number,
   name: string,
-): Promise<{ improved: boolean; rank: number | null } | null> {
+): Promise<RecordSubmitOutcome | null> {
   const recordId = snakeFastestLengthRecordId(length)
   const cleaned = normalizePlayerName(name)
   if (!recordId || !cleaned || !(elapsedMs > 0)) return null
   const ms = Math.max(1, Math.round(elapsedMs))
   try {
     const result = await submitRecord('snake', recordId, cleaned, ms)
-    return { improved: result.improved, rank: result.rank }
+    return toRecordSubmitOutcome(result)
   } catch {
     return null
   }

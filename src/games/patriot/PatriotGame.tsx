@@ -15,7 +15,7 @@ import {
   clearRunAchievements,
   pushRunAchievement,
 } from '../../lib/runAchievements'
-import { submitPatriotDirectStreak } from '../../lib/records'
+import { submitPatriotDirectStreak, shouldCelebrateRecordSubmit } from '../../lib/records'
 import { STAGE_ASPECT } from '../../lib/stage'
 import { useTournamentPlay } from '../../tournaments/TournamentPlayContext'
 import {
@@ -165,7 +165,7 @@ export function PatriotGame() {
     streakRecordKey.current = key
     void (async () => {
       const result = await submitPatriotDirectStreak(streak, playerName)
-      if (result?.improved) {
+      if (shouldCelebrateRecordSubmit(result)) {
         pushRunAchievement({
           id: 'patriot:direct-streak',
           label: 'Perfect hits in a row',
