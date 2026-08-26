@@ -370,7 +370,7 @@ export function TournamentsPage() {
   const ended = items.filter((t) => t.status === 'ended')
 
   return (
-    <PageShell>
+    <PageShell innerClassName="lb-page__inner lb-page__inner--events">
       <header className="lb-page__header lb-page__header--compact">
         <h1 className="lb-page__title">Events</h1>
       </header>
@@ -491,7 +491,7 @@ export function TournamentDetailPage({ id }: { id: string }) {
       : (detail?.standings.length ?? 0)
 
   return (
-    <PageShell>
+    <PageShell innerClassName="lb-page__inner lb-page__inner--events">
       {loading ? (
         <p className="lb-empty">Loading…</p>
       ) : error || !detail ? (

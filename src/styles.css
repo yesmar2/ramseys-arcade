@@ -5516,10 +5516,21 @@ html[data-theme='dark'] .patriot__power-mark {
   width: min(100% - 2rem, 40rem);
 }
 
+.lb-page__inner--events {
+  display: flex;
+  flex-direction: column;
+  gap: 1.15rem;
+  width: min(100% - 2rem, 44rem);
+}
+
 @media (min-width: 768px) {
   .lb-page__inner--summary,
   .lb-page__inner--game-board {
     width: min(100% - 2rem, 48rem);
+  }
+
+  .lb-page__inner--events {
+    width: min(100% - 2rem, 52rem);
   }
 }
 
@@ -5527,6 +5538,10 @@ html[data-theme='dark'] .patriot__power-mark {
   .lb-page__inner--summary,
   .lb-page__inner--game-board {
     width: min(100% - 2rem, 56rem);
+  }
+
+  .lb-page__inner--events {
+    width: min(100% - 2rem, 60rem);
   }
 }
 
@@ -6511,6 +6526,10 @@ html[data-theme='dark'] .patriot__power-mark {
     var(--shadow-soft);
 }
 
+.lb-page__inner--events .game-lobby__art {
+  max-height: 16rem;
+}
+
 .game-lobby__share {
   position: absolute;
   top: 0.55rem;
@@ -7412,9 +7431,15 @@ html[data-theme='dark'] .patriot__power-mark {
   list-style: none;
   margin: 0;
   padding: 0;
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: 1fr;
   gap: 0.85rem;
+}
+
+@media (min-width: 720px) {
+  .event-list__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 .event-list__ended {
