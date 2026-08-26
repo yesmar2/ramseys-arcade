@@ -4421,11 +4421,19 @@ html[data-theme='dark'] .patriot__power-mark {
 }
 
 .share-sheet__url {
-  margin: 0 0 0.85rem;
+  margin: 0 0 0.45rem;
   font-size: 0.78rem;
   font-weight: 600;
   color: var(--muted);
   word-break: break-all;
+}
+
+.share-sheet__hint {
+  margin: 0 0 0.85rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--muted);
 }
 
 .share-sheet__actions {

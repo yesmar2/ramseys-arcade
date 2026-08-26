@@ -21,10 +21,6 @@ export function absoluteShareUrl(url?: string): string {
   return `${window.location.origin}${window.location.pathname}${hash}`
 }
 
-function canUseNativeShare() {
-  return typeof navigator !== 'undefined' && typeof navigator.share === 'function'
-}
-
 function ShareIcon({ copied }: { copied: boolean }) {
   if (copied) {
     return (
@@ -66,23 +62,30 @@ function copyText(text: string): boolean {
   }
 }
 
-async function tryNativeShare(label: string, href: string): Promise<'shared' | 'abort' | 'fail'> {
-  if (!canUseNativeShare()) return 'fail'
-  // Try a few payloads — browsers differ on what they accept.
-  const payloads: ShareData[] = [
-    { title: label, text: label, url: href },
-    { title: label, url: href },
-    { text: `${label}\n${href}` },
-  ]
-  for (const data of payloads) {
-    try {
-      await navigator.share(data)
-      return 'shared'
-    } catch (err) {
-      if (err instanceof DOMException && err.name === 'AbortError') return 'abort'
-    }
-  }
-  return 'fail'
+/**
+ * Native OS share sheet (Android "Sharing link", iOS share panel) — same
+ * Web Share API CrazyGames and other mobile game sites use.
+ */
+function openNativeShare(label: string, href: string): Promise<'shared' | 'abort' | 'unavailable'> {
+  if (typeof navigator.share !== 'function') return Promise.resolve('unavailable')
+  return navigator
+    .share({
+      title: label,
+      text: label,
+      url: href,
+    })
+    .then(() => 'shared' as const)
+    .catch((err: unknown) => {
+      if (err instanceof DOMException && err.name === 'AbortError') return 'abort' as const
+      // Some Android builds reject text+url; retry url-only like a link share.
+      return navigator
+        .share({ title: label, url: href })
+        .then(() => 'shared' as const)
+        .catch((err2: unknown) => {
+          if (err2 instanceof DOMException && err2.name === 'AbortError') return 'abort' as const
+          return 'unavailable' as const
+        })
+    })
 }
 
 export function ShareBoardButton({ label, url, className = '' }: ShareBoardButtonProps) {
@@ -124,27 +127,19 @@ export function ShareBoardButton({ label, url, className = '' }: ShareBoardButto
     }
   }
 
-  const openSheet = (link: string) => {
-    setHref(link)
-    setOpen(true)
-  }
-
   const onShareClick = (e: MouseEvent | PointerEvent) => {
     e.preventDefault()
     e.stopPropagation()
     const link = absoluteShareUrl(url)
     setHref(link)
 
-    // Prefer the OS share sheet (Messages, WhatsApp, etc.) when the browser
-    // supports it — same pattern game sites use on phones.
-    if (canUseNativeShare()) {
-      void tryNativeShare(label, link).then((result) => {
-        if (result === 'fail') openSheet(link)
-      })
-      return
-    }
-
-    openSheet(link)
+    // Must start share from this tap — that opens the built-in device sheet.
+    void openNativeShare(label, link).then((result) => {
+      if (result === 'unavailable') {
+        // Desktop / browsers without Web Share: show a simple chooser instead.
+        setOpen(true)
+      }
+    })
   }
 
   const encoded = encodeURIComponent(href)
@@ -193,26 +188,13 @@ export function ShareBoardButton({ label, url, className = '' }: ShareBoardButto
                 </div>
                 <p className="share-sheet__label">{label}</p>
                 <p className="share-sheet__url">{href}</p>
+                <p className="share-sheet__hint">
+                  Your browser doesn’t support the system share menu. Pick an app
+                  below, or copy the link.
+                </p>
 
                 <div className="share-sheet__actions">
-                  {canUseNativeShare() ? (
-                    <button
-                      type="button"
-                      className="share-sheet__btn share-sheet__btn--primary"
-                      onClick={() => {
-                        void tryNativeShare(label, href).then((result) => {
-                          if (result === 'shared' || result === 'abort') setOpen(false)
-                        })
-                      }}
-                    >
-                      Share via apps…
-                    </button>
-                  ) : null}
-
-                  <a
-                    className="share-sheet__btn"
-                    href={`sms:?&body=${encodedBody}`}
-                  >
+                  <a className="share-sheet__btn" href={`sms:?&body=${encodedBody}`}>
                     Messages
                   </a>
                   <a
@@ -247,10 +229,8 @@ export function ShareBoardButton({ label, url, className = '' }: ShareBoardButto
                   </a>
                   <button
                     type="button"
-                    className="share-sheet__btn"
-                    onClick={() => {
-                      doCopy(href)
-                    }}
+                    className="share-sheet__btn share-sheet__btn--primary"
+                    onClick={() => doCopy(href)}
                   >
                     {copied ? 'Copied!' : 'Copy link'}
                   </button>
