@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { EventCountdown } from '../components/EventCountdown'
-import { Footer } from '../components/Footer'
-import { SiteHeader } from '../components/SiteHeader'
+import { GameLobbyArt } from '../components/GameLobbyArt'
+import { GameThumbArt } from '../components/GameThumbArt'
+import { PageBackLink } from '../components/PageBackLink'
+import { PageShell } from '../components/PageShell'
 import { PlayerAvatar } from '../components/PlayerAvatar'
 import { PodiumMedal, medalKind } from '../components/PodiumMedal'
 import { ShareBoardButton } from '../components/ShareBoardButton'
@@ -49,15 +51,57 @@ function formatWindow(startsAt: number, endsAt: number) {
   }
 }
 
-function EventPills({ t }: { t: Pick<TournamentSummary, 'status' | 'official' | 'cadence'> }) {
+function eventAccent(games: string[]) {
+  return getGame(games[0] ?? '')?.accent ?? '#2eb8a0'
+}
+
+function EventStatusChips({
+  t,
+}: {
+  t: Pick<TournamentSummary, 'status' | 'official' | 'cadence'>
+}) {
   const cadence = cadenceLabel(t.cadence)
   return (
-    <div className="tour-card__top">
+    <div className="event-chips">
       <span className={`tour-pill tour-pill--${t.status}`}>{statusLabel(t.status)}</span>
-      {cadence && <span className="tour-pill tour-pill--cadence">{cadence}</span>}
-      {t.official && !cadence && (
+      {cadence ? <span className="tour-pill tour-pill--cadence">{cadence}</span> : null}
+      {t.official && !cadence ? (
         <span className="tour-pill tour-pill--official">Official</span>
-      )}
+      ) : null}
+    </div>
+  )
+}
+
+function EventThumbs({
+  games,
+  size = 'md',
+}: {
+  games: string[]
+  size?: 'sm' | 'md' | 'lg'
+}) {
+  const shown = games.slice(0, 3)
+  return (
+    <div
+      className={`event-thumbs event-thumbs--${size}${shown.length > 1 ? ' event-thumbs--stack' : ''}`}
+      aria-hidden="true"
+    >
+      {shown.map((slug, i) => {
+        const g = getGame(slug)
+        return (
+          <span
+            key={slug}
+            className="event-thumbs__item"
+            style={
+              {
+                '--thumb-accent': g?.accent ?? '#2eb8a0',
+                zIndex: shown.length - i,
+              } as CSSProperties
+            }
+          >
+            <GameThumbArt slug={slug} accent={g?.accent} />
+          </span>
+        )
+      })}
     </div>
   )
 }
@@ -160,7 +204,6 @@ function StandingsList({
   )
 }
 
-/** One-game events use the high-score board look (rank · name · score). */
 function SingleGameStandings({
   detail,
   displayName,
@@ -270,6 +313,36 @@ function StandingCard({
   )
 }
 
+function EventListCard({ t }: { t: TournamentSummary }) {
+  const accent = eventAccent(t.games)
+  const gameNames = t.games.map((g) => getGame(g)?.name ?? g).join(' · ')
+
+  return (
+    <a
+      className="event-card"
+      href={`#/tournaments/${t.id}`}
+      style={{ '--event-accent': accent } as CSSProperties}
+    >
+      <EventThumbs games={t.games} size="lg" />
+      <div className="event-card__body">
+        <EventStatusChips t={t} />
+        <h2 className="event-card__title">{t.title}</h2>
+        <p className="event-card__games">{gameNames}</p>
+        <div className="event-card__foot">
+          {t.status === 'active' ? (
+            <span className="event-card__countdown">
+              <EventCountdown endsAt={t.endsAt} />
+            </span>
+          ) : (
+            <span className="event-card__window">{formatWindow(t.startsAt, t.endsAt)}</span>
+          )}
+          <span className="event-card__joined">{t.playerCount} joined</span>
+        </div>
+      </div>
+    </a>
+  )
+}
+
 export function TournamentsPage() {
   const [items, setItems] = useState<TournamentSummary[]>([])
   const [loading, setLoading] = useState(true)
@@ -293,48 +366,48 @@ export function TournamentsPage() {
     }
   }, [])
 
-  return (
-    <>
-      <main className="lb-page">
-        <SiteHeader />
-        <div className="lb-page__inner">
-          <header className="lb-page__header">
-            <h1 className="lb-page__title">Events</h1>
-          </header>
+  const live = items.filter((t) => t.status !== 'ended')
+  const ended = items.filter((t) => t.status === 'ended')
 
-          {loading ? (
-            <p className="lb-empty">Loading…</p>
-          ) : error ? (
-            <p className="lb-empty">Couldn’t load events.</p>
-          ) : items.length === 0 ? (
-            <p className="lb-empty">No events yet.</p>
-          ) : (
-            <ul className="tour-list">
-              {items.map((t) => (
+  return (
+    <PageShell>
+      <header className="lb-page__header lb-page__header--compact">
+        <h1 className="lb-page__title">Events</h1>
+      </header>
+
+      {loading ? (
+        <p className="lb-empty">Loading…</p>
+      ) : error ? (
+        <p className="lb-empty">Couldn’t load events.</p>
+      ) : items.length === 0 ? (
+        <p className="lb-empty">No events yet.</p>
+      ) : (
+        <div className="event-list">
+          {live.length > 0 ? (
+            <ul className="event-list__grid">
+              {live.map((t) => (
                 <li key={t.id}>
-                  <a className="tour-card" href={`#/tournaments/${t.id}`}>
-                    <EventPills t={t} />
-                    <h2 className="tour-card__title">{t.title}</h2>
-                    <div className="tour-card__meta">
-                      <span>{t.games.map((g) => getGame(g)?.name ?? g).join(' · ')}</span>
-                      <span>{t.playerCount} joined</span>
-                    </div>
-                    {t.status === 'active' ? (
-                      <p className="tour-card__window">
-                        <EventCountdown endsAt={t.endsAt} />
-                      </p>
-                    ) : (
-                      <p className="tour-card__window">{formatWindow(t.startsAt, t.endsAt)}</p>
-                    )}
-                  </a>
+                  <EventListCard t={t} />
                 </li>
               ))}
             </ul>
-          )}
+          ) : null}
+
+          {ended.length > 0 ? (
+            <section className="event-list__ended" aria-label="Ended events">
+              <h2 className="event-list__section-title">Ended</h2>
+              <ul className="event-list__grid">
+                {ended.map((t) => (
+                  <li key={t.id}>
+                    <EventListCard t={t} />
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ) : null}
         </div>
-      </main>
-      <Footer />
-    </>
+      )}
+    </PageShell>
   )
 }
 
@@ -410,130 +483,158 @@ export function TournamentDetailPage({ id }: { id: string }) {
     }
   }
 
+  const accent = detail ? eventAccent(detail.games) : '#2eb8a0'
+  const featured = detail?.games[0] ? getGame(detail.games[0]) : null
+  const scoredCount =
+    detail && detail.games.length === 1
+      ? detail.standings.filter((row) => row.byGame[detail.games[0]!]?.score != null).length
+      : (detail?.standings.length ?? 0)
+
   return (
-    <>
-      <main className="lb-page">
-        <SiteHeader />
-        <div className="lb-page__inner">
-          <a className="game-page__back" href="#/tournaments">
-            ← Events
-          </a>
+    <PageShell>
+      {loading ? (
+        <p className="lb-empty">Loading…</p>
+      ) : error || !detail ? (
+        <>
+          <header className="lb-page__header lb-page__header--compact lb-game-board__head">
+            <div className="lb-page__heading-row">
+              <PageBackLink href="#/tournaments" label="Back to Events" />
+              <h1 className="lb-page__title">Event</h1>
+              <span className="lb-page__heading-slot" aria-hidden="true" />
+            </div>
+          </header>
+          <p className="lb-empty">{error ?? 'Event not found'}</p>
+        </>
+      ) : (
+        <div
+          className="event-detail"
+          style={{ '--event-accent': accent, '--board-accent': accent } as CSSProperties}
+        >
+          <header className="lb-page__header lb-page__header--compact lb-game-board__head">
+            <div className="lb-page__heading-row">
+              <PageBackLink href="#/tournaments" label="Back to Events" />
+              <h1 className="lb-page__title">{detail.title}</h1>
+              <div className="lb-game-board__trailing">
+                <ShareBoardButton
+                  label={`${detail.title} on ${APP_NAME}`}
+                  url={`#/tournaments/${detail.id}`}
+                />
+              </div>
+            </div>
+          </header>
 
-          {loading ? (
-            <p className="lb-empty">Loading…</p>
-          ) : error || !detail ? (
-            <p className="lb-empty">{error ?? 'Event not found'}</p>
+          {detail.games.length === 1 && featured ? (
+            <GameLobbyArt slug={featured.slug} accent={featured.accent} />
           ) : (
-            <>
-              <header className="lb-page__header" style={{ marginTop: '1rem' }}>
-                <div
-                  className="tour-card__top"
-                  style={{ justifyContent: 'center', marginBottom: '0.5rem' }}
-                >
-                  <span className={`tour-pill tour-pill--${detail.status}`}>
-                    {statusLabel(detail.status)}
+            <div className="event-detail__thumbs" aria-hidden="true">
+              {detail.games.map((slug) => {
+                const g = getGame(slug)
+                return (
+                  <span
+                    key={slug}
+                    className="event-detail__thumb"
+                    style={{ '--thumb-accent': g?.accent ?? accent } as CSSProperties}
+                  >
+                    <GameThumbArt slug={slug} accent={g?.accent} />
                   </span>
-                  {cadenceLabel(detail.cadence) && (
-                    <span className="tour-pill tour-pill--cadence">
-                      {cadenceLabel(detail.cadence)}
-                    </span>
-                  )}
-                  {detail.official && !detail.cadence && (
-                    <span className="tour-pill tour-pill--official">Official</span>
-                  )}
-                </div>
-                <div className="lb-page__heading-row lb-page__heading-row--event">
-                  <h1 className="lb-page__title">{detail.title}</h1>
-                  <ShareBoardButton
-                    label={`${detail.title} on ${APP_NAME}`}
-                    url={`#/tournaments/${detail.id}`}
-                  />
-                </div>
-                {detail.blurb ? <p className="tour-detail-blurb">{detail.blurb}</p> : null}
-                {detail.status === 'active' ? (
-                  <p className="tour-card__window tour-card__window--live">
-                    <EventCountdown endsAt={detail.endsAt} />
-                    <span className="tour-card__window-sep">·</span>
-                    {formatWindow(detail.startsAt, detail.endsAt)}
-                  </p>
-                ) : (
-                  <p className="tour-card__window">{formatWindow(detail.startsAt, detail.endsAt)}</p>
-                )}
-              </header>
-
-              <section className="lb-board tour-panel">
-                {detail.status !== 'ended' && (
-                  <div className="tour-join">
-                    <h2 className="tour-section-title">Join</h2>
-                    {joined ? (
-                      <p className="tour-joined">
-                        In as <strong>{displayName}</strong>
-                      </p>
-                    ) : displayName ? (
-                      <button
-                        type="button"
-                        className="score-save__btn"
-                        disabled={busy}
-                        onClick={() => void onJoin()}
-                      >
-                        {busy ? 'Joining…' : `Join as ${displayName}`}
-                      </button>
-                    ) : (
-                      <p className="tour-note tour-note--compact">
-                        Set your gamer tag in the header first.
-                      </p>
-                    )}
-                    {joinNote && (
-                      <p className="tour-note tour-note--error">{joinNote}</p>
-                    )}
-                  </div>
-                )}
-
-                <h2 className="tour-section-title tour-section-title--spaced">Play</h2>
-                <ul className="tour-games">
-                  {detail.games.map((slug) => {
-                    const g = getGame(slug)
-                    return (
-                      <li key={slug}>
-                        <a
-                          href={`#/tournaments/${detail.id}/play/${slug}`}
-                          style={{ '--tab-accent': g?.accent ?? '#2eb8a0' } as CSSProperties}
-                        >
-                          {g?.name ?? slug}
-                        </a>
-                      </li>
-                    )
-                  })}
-                </ul>
-              </section>
-
-              <section className="lb-board" style={{ marginTop: '1rem' }}>
-                <div className="lb-board__head">
-                  <div className="lb-stat">
-                    <span className="lb-stat__label">
-                      {detail.games.length === 1 ? 'Top scores' : 'Standings'}
-                    </span>
-                    <strong>
-                      {detail.games.length === 1
-                        ? detail.standings.filter(
-                            (row) => row.byGame[detail.games[0]!]?.score != null,
-                          ).length
-                        : detail.standings.length}
-                    </strong>
-                  </div>
-                </div>
-
-                {detail.standings.length === 0 ? (
-                  <p className="lb-empty">No players yet.</p>
-                ) : (
-                  <StandingsList detail={detail} displayName={displayName} />
-                )}
-              </section>
-            </>
+                )
+              })}
+            </div>
           )}
+
+          <div className="event-detail__meta">
+            <EventStatusChips t={detail} />
+            <div className="event-detail__stats">
+              {detail.status === 'active' ? (
+                <div className="lb-stat">
+                  <span className="lb-stat__label">Time left</span>
+                  <strong>
+                    <EventCountdown endsAt={detail.endsAt} />
+                  </strong>
+                </div>
+              ) : (
+                <div className="lb-stat">
+                  <span className="lb-stat__label">Window</span>
+                  <strong className="event-detail__window-stat">
+                    {formatWindow(detail.startsAt, detail.endsAt)}
+                  </strong>
+                </div>
+              )}
+              <div className="lb-stat">
+                <span className="lb-stat__label">Joined</span>
+                <strong>{detail.playerCount}</strong>
+              </div>
+            </div>
+          </div>
+
+          {detail.status !== 'ended' ? (
+            <div className="event-detail__join">
+              {joined ? (
+                <p className="event-detail__joined">
+                  In as <strong>{displayName}</strong>
+                </p>
+              ) : displayName ? (
+                <button
+                  type="button"
+                  className="lb-play event-detail__join-btn"
+                  style={{ background: accent }}
+                  disabled={busy}
+                  onClick={() => void onJoin()}
+                >
+                  {busy ? 'Joining…' : `Join as ${displayName}`}
+                </button>
+              ) : (
+                <p className="tour-note tour-note--compact">
+                  Set your gamer tag in the header first.
+                </p>
+              )}
+              {joinNote ? <p className="tour-note tour-note--error">{joinNote}</p> : null}
+            </div>
+          ) : null}
+
+          <section className="event-detail__play" aria-label="Play">
+            <h2 className="event-detail__section-title">Play</h2>
+            <ul className="event-play-grid">
+              {detail.games.map((slug) => {
+                const g = getGame(slug)
+                const gameAccent = g?.accent ?? accent
+                return (
+                  <li key={slug}>
+                    <a
+                      className="event-play-tile"
+                      href={`#/tournaments/${detail.id}/play/${slug}`}
+                      style={{ '--event-accent': gameAccent } as CSSProperties}
+                    >
+                      <span className="event-play-tile__art">
+                        <GameThumbArt slug={slug} accent={gameAccent} />
+                      </span>
+                      <span className="event-play-tile__name">{g?.name ?? slug}</span>
+                      <span className="event-play-tile__go">Play</span>
+                    </a>
+                  </li>
+                )
+              })}
+            </ul>
+          </section>
+
+          <section className="lb-board event-detail__board" aria-label="Standings">
+            <div className="lb-board__head">
+              <div className="lb-stat">
+                <span className="lb-stat__label">
+                  {detail.games.length === 1 ? 'Top scores' : 'Standings'}
+                </span>
+                <strong>{scoredCount}</strong>
+              </div>
+            </div>
+
+            {detail.standings.length === 0 ? (
+              <p className="lb-empty">No players yet.</p>
+            ) : (
+              <StandingsList detail={detail} displayName={displayName} />
+            )}
+          </section>
         </div>
-      </main>
-      <Footer />
-    </>
+      )}
+    </PageShell>
   )
 }
