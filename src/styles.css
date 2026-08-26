@@ -556,7 +556,7 @@ img {
   z-index: 30;
 }
 
-/* Home: live daily / weekly event strip */
+/* Home: live daily / weekly event cards */
 .home-events {
   width: min(100% - 1.25rem, var(--max-width));
   margin: 0 auto;
@@ -566,82 +566,25 @@ img {
   list-style: none;
   margin: 0;
   padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.45rem;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.65rem;
 }
 
 @media (min-width: 640px) {
   .home-events__list {
-    flex-direction: row;
-    gap: 0.55rem;
-  }
-
-  .home-events__list > li {
-    flex: 1;
-    min-width: 0;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
   }
 }
 
-.home-events__link {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  align-items: center;
-  gap: 0.55rem 0.75rem;
-  padding: 0.55rem 0.75rem;
-  border-radius: var(--tile-radius);
-  background: rgba(var(--surface-rgb), 0.72);
-  border: 1px solid rgba(var(--ink-rgb), 0.08);
-  box-shadow: var(--shadow-soft);
-  color: inherit;
-  text-decoration: none;
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
+.home-events .event-card--compact {
+  padding: 0.7rem 0.8rem;
+  gap: 0.75rem 0.85rem;
 }
 
-.home-events__link:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 10px 22px rgba(var(--ink-rgb), 0.08);
-}
-
-.home-events__kind {
-  font-size: 0.68rem;
-  font-weight: 800;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: color-mix(in srgb, var(--accent) 75%, var(--ink));
-}
-
-.home-events__body {
-  display: flex;
-  flex-direction: column;
-  gap: 0.1rem;
-  min-width: 0;
-}
-
-.home-events__title {
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: 0.95rem;
-  color: var(--ink);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.home-events__games {
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.home-events__time {
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: var(--muted);
-  white-space: nowrap;
+.home-events .event-card--compact .event-card__title {
+  font-size: clamp(1.05rem, 3vw, 1.25rem);
 }
 
 .visually-hidden {

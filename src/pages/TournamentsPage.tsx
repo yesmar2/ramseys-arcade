@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { EventCard, EventStatusChips, EventThumbs, eventAccent } from '../components/EventCard'
 import { EventCountdown } from '../components/EventCountdown'
 import { GameLobbyArt } from '../components/GameLobbyArt'
 import { GameThumbArt } from '../components/GameThumbArt'
@@ -12,7 +13,6 @@ import { usePlayerName } from '../hooks/usePlayerName'
 import { APP_NAME } from '../lib/brand'
 import { getLastPlayerName, normalizePlayerName } from '../lib/leaderboard'
 import {
-  cadenceLabel,
   getTournament,
   isPlayerInTournament,
   joinTournament,
@@ -49,61 +49,6 @@ function formatWindow(startsAt: number, endsAt: number) {
   } catch {
     return ''
   }
-}
-
-function eventAccent(games: string[]) {
-  return getGame(games[0] ?? '')?.accent ?? '#2eb8a0'
-}
-
-function EventStatusChips({
-  t,
-}: {
-  t: Pick<TournamentSummary, 'status' | 'official' | 'cadence'>
-}) {
-  const cadence = cadenceLabel(t.cadence)
-  return (
-    <div className="event-chips">
-      <span className={`tour-pill tour-pill--${t.status}`}>{statusLabel(t.status)}</span>
-      {cadence ? <span className="tour-pill tour-pill--cadence">{cadence}</span> : null}
-      {t.official && !cadence ? (
-        <span className="tour-pill tour-pill--official">Official</span>
-      ) : null}
-    </div>
-  )
-}
-
-function EventThumbs({
-  games,
-  size = 'md',
-}: {
-  games: string[]
-  size?: 'sm' | 'md' | 'lg'
-}) {
-  const shown = games.slice(0, 3)
-  return (
-    <div
-      className={`event-thumbs event-thumbs--${size}${shown.length > 1 ? ' event-thumbs--stack' : ''}`}
-      aria-hidden="true"
-    >
-      {shown.map((slug, i) => {
-        const g = getGame(slug)
-        return (
-          <span
-            key={slug}
-            className="event-thumbs__item"
-            style={
-              {
-                '--thumb-accent': g?.accent ?? '#2eb8a0',
-                zIndex: shown.length - i,
-              } as CSSProperties
-            }
-          >
-            <GameThumbArt slug={slug} accent={g?.accent} />
-          </span>
-        )
-      })}
-    </div>
-  )
 }
 
 function GameResultCell({
@@ -313,36 +258,6 @@ function StandingCard({
   )
 }
 
-function EventListCard({ t }: { t: TournamentSummary }) {
-  const accent = eventAccent(t.games)
-  const gameNames = t.games.map((g) => getGame(g)?.name ?? g).join(' · ')
-
-  return (
-    <a
-      className="event-card"
-      href={`#/tournaments/${t.id}`}
-      style={{ '--event-accent': accent } as CSSProperties}
-    >
-      <EventThumbs games={t.games} size="lg" />
-      <div className="event-card__body">
-        <EventStatusChips t={t} />
-        <h2 className="event-card__title">{t.title}</h2>
-        <p className="event-card__games">{gameNames}</p>
-        <div className="event-card__foot">
-          {t.status === 'active' ? (
-            <span className="event-card__countdown">
-              <EventCountdown endsAt={t.endsAt} />
-            </span>
-          ) : (
-            <span className="event-card__window">{formatWindow(t.startsAt, t.endsAt)}</span>
-          )}
-          <span className="event-card__joined">{t.playerCount} joined</span>
-        </div>
-      </div>
-    </a>
-  )
-}
-
 export function TournamentsPage() {
   const [items, setItems] = useState<TournamentSummary[]>([])
   const [loading, setLoading] = useState(true)
@@ -387,7 +302,7 @@ export function TournamentsPage() {
             <ul className="event-list__grid">
               {live.map((t) => (
                 <li key={t.id}>
-                  <EventListCard t={t} />
+                  <EventCard t={t} />
                 </li>
               ))}
             </ul>
@@ -399,7 +314,7 @@ export function TournamentsPage() {
               <ul className="event-list__grid">
                 {ended.map((t) => (
                   <li key={t.id}>
-                    <EventListCard t={t} />
+                    <EventCard t={t} />
                   </li>
                 ))}
               </ul>

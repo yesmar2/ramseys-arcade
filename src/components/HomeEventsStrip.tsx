@@ -1,22 +1,8 @@
 import { useEffect, useState } from 'react'
-import { getGame } from '../data/games'
-import {
-  listTournaments,
-  type TournamentSummary,
-} from '../lib/tournaments'
-import { EventCountdown } from './EventCountdown'
+import { listTournaments, type TournamentSummary } from '../lib/tournaments'
+import { EventCard } from './EventCard'
 
-function kindLabel(t: TournamentSummary) {
-  if (t.cadence === 'daily') return 'Today'
-  if (t.cadence === 'weekly') return 'This week'
-  return 'Event'
-}
-
-function gameLine(t: TournamentSummary) {
-  return t.games.map((g) => getGame(g)?.name ?? g).join(' · ')
-}
-
-/** Compact live daily/weekly event links above the home game grid. */
+/** Live daily/weekly event cards above the home game grid. */
 export function HomeEventsStrip() {
   const [events, setEvents] = useState<TournamentSummary[]>([])
 
@@ -49,14 +35,7 @@ export function HomeEventsStrip() {
       <ul className="home-events__list">
         {events.map((t) => (
           <li key={t.id}>
-            <a className="home-events__link" href={`#/tournaments/${t.id}`}>
-              <span className="home-events__kind">{kindLabel(t)}</span>
-              <span className="home-events__body">
-                <span className="home-events__title">{t.title}</span>
-                <span className="home-events__games">{gameLine(t)}</span>
-              </span>
-              <EventCountdown endsAt={t.endsAt} className="home-events__time" />
-            </a>
+            <EventCard t={t} compact />
           </li>
         ))}
       </ul>
