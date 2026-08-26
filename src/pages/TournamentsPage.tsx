@@ -1,8 +1,9 @@
-import { useEffect, useState, type CSSProperties } from 'react'
+import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { EventCountdown } from '../components/EventCountdown'
 import { Footer } from '../components/Footer'
 import { SiteHeader } from '../components/SiteHeader'
 import { PlayerAvatar } from '../components/PlayerAvatar'
+import { PodiumMedal, medalKind } from '../components/PodiumMedal'
 import { ShareBoardButton } from '../components/ShareBoardButton'
 import { getGame } from '../data/games'
 import { usePlayerName } from '../hooks/usePlayerName'
@@ -89,6 +90,10 @@ function StandingsList({
   detail: TournamentDetail
   displayName: string
 }) {
+  if (detail.games.length === 1) {
+    return <SingleGameStandings detail={detail} displayName={displayName} />
+  }
+
   return (
     <>
       <ul className="tour-standings">
@@ -152,6 +157,72 @@ function StandingsList({
         </table>
       </div>
     </>
+  )
+}
+
+/** One-game events use the high-score board look (rank · name · score). */
+function SingleGameStandings({
+  detail,
+  displayName,
+}: {
+  detail: TournamentDetail
+  displayName: string
+}) {
+  const gameSlug = detail.games[0]!
+  const game = getGame(gameSlug)
+  const accent = game?.accent ?? '#2eb8a0'
+  const youName = normalizePlayerName(displayName)
+
+  const rows = useMemo(() => {
+    return detail.standings
+      .map((row) => ({
+        row,
+        score: row.byGame[gameSlug]?.score ?? null,
+      }))
+      .filter((entry): entry is { row: StandingRow; score: number } => entry.score != null)
+      .sort(
+        (a, b) =>
+          b.score - a.score ||
+          normalizePlayerName(a.row.name).localeCompare(normalizePlayerName(b.row.name)),
+      )
+  }, [detail.standings, gameSlug])
+
+  if (rows.length === 0) {
+    return <p className="lb-empty">No scores yet. Join and play to post one.</p>
+  }
+
+  return (
+    <ol
+      className="lb-list tour-score-list"
+      style={{ '--board-accent': accent, '--lb-you-accent': accent } as CSSProperties}
+    >
+      {rows.map(({ row, score }, index) => {
+        const rank = index + 1
+        const medal = medalKind(rank)
+        const name = normalizePlayerName(row.name)
+        const isYou = Boolean(youName) && name === youName
+        return (
+          <li
+            key={row.playerId}
+            className={`lb-row lb-row--score-only${isYou ? ' lb-row--you' : ''}${medal ? ' lb-row--medal' : ''}`}
+            aria-current={isYou ? 'true' : undefined}
+          >
+            <span className="lb-row__rank">
+              <span className="lb-row__rank-num">#{rank}</span>
+              {medal ? <PodiumMedal kind={medal} /> : null}
+            </span>
+            <span className="lb-row__name">
+              <PlayerAvatar avatarId={row.avatarId} name={name} size="sm" />
+              <span className="lb-row__name-text" title={name}>
+                {name}
+              </span>
+              {isYou ? <span className="lb-row__you-tag">You</span> : null}
+            </span>
+            <span className="lb-row__score">{score.toLocaleString()}</span>
+          </li>
+        )
+      })}
+    </ol>
   )
 }
 
@@ -439,8 +510,16 @@ export function TournamentDetailPage({ id }: { id: string }) {
               <section className="lb-board" style={{ marginTop: '1rem' }}>
                 <div className="lb-board__head">
                   <div className="lb-stat">
-                    <span className="lb-stat__label">Standings</span>
-                    <strong>{detail.standings.length}</strong>
+                    <span className="lb-stat__label">
+                      {detail.games.length === 1 ? 'Top scores' : 'Standings'}
+                    </span>
+                    <strong>
+                      {detail.games.length === 1
+                        ? detail.standings.filter(
+                            (row) => row.byGame[detail.games[0]!]?.score != null,
+                          ).length
+                        : detail.standings.length}
+                    </strong>
                   </div>
                 </div>
 

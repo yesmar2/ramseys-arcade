@@ -6166,6 +6166,14 @@ html[data-theme='dark'] .patriot__power-mark {
   border: 1px solid rgba(var(--ink-rgb), 0.04);
 }
 
+.lb-row--score-only {
+  grid-template-columns: 4.25rem 1fr auto;
+}
+
+.tour-score-list {
+  margin-top: 0.35rem;
+}
+
 .lb-row--you {
   background: color-mix(in srgb, var(--lb-you-accent, var(--accent-sky)) 18%, var(--surface));
   border-color: color-mix(in srgb, var(--lb-you-accent, var(--accent-sky)) 48%, transparent);
