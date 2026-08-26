@@ -2,21 +2,66 @@ import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import type { ScoreRow } from '../data/scoring'
 
+type HowToPlayContentProps = {
+  how: string
+  rows?: ScoreRow[] | null
+  /** Scoring list style — lobby accordion vs in-game modal. */
+  listClassName?: string
+}
+
+/** Shared how-to + scoring rows for lobby accordion and in-game modal. */
+export function HowToPlayContent({
+  how,
+  rows,
+  listClassName = 'game-lobby__scoring',
+}: HowToPlayContentProps) {
+  const scoring = rows?.length ? rows : null
+  return (
+    <>
+      <p className="how-to-play__copy">{how}</p>
+      {scoring ? (
+        <ul className={listClassName}>
+          {scoring.map((row) => (
+            <li key={row.label}>
+              <span>{row.label}</span>
+              <strong>{row.value}</strong>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </>
+  )
+}
+
+type HowToPlayAccordionProps = {
+  how: string
+  rows?: ScoreRow[] | null
+}
+
+/** Collapsible How to play on the game hub. */
+export function HowToPlayAccordion({ how, rows }: HowToPlayAccordionProps) {
+  return (
+    <details className="rank-page__how game-lobby__how-panel">
+      <summary className="rank-page__how-summary">
+        <span className="rank-page__h" id="game-how-heading">
+          How to play
+        </span>
+      </summary>
+      <div className="rank-page__how-body">
+        <HowToPlayContent how={how} rows={rows} />
+      </div>
+    </details>
+  )
+}
+
 type ScoreGuideProps = {
   how: string
   rows?: ScoreRow[] | null
-  /** Icon for pause / chrome; summary matches the lobby How to play control. */
-  trigger?: 'icon' | 'summary'
 }
 
-/** Shared How to play panel — lobby summary and in-game info button. */
-export function ScoreGuide({
-  how,
-  rows,
-  trigger = 'icon',
-}: ScoreGuideProps) {
+/** In-game How to play modal (pause / HUD info). */
+export function ScoreGuide({ how, rows }: ScoreGuideProps) {
   const [open, setOpen] = useState(false)
-  const scoring = rows?.length ? rows : null
 
   useEffect(() => {
     if (!open) return
@@ -56,34 +101,15 @@ export function ScoreGuide({
                   ×
                 </button>
               </div>
-              <p className="how-to-play__copy">{how}</p>
-              {scoring ? (
-                <ul className="patriot__info-list">
-                  {scoring.map((row) => (
-                    <li key={row.label}>
-                      <span>{row.label}</span>
-                      <strong>{row.value}</strong>
-                    </li>
-                  ))}
-                </ul>
-              ) : null}
+              <HowToPlayContent how={how} rows={rows} listClassName="patriot__info-list" />
             </div>
           </div>,
           document.body,
         )
       : null
 
-  const openBtn =
-    trigger === 'summary' ? (
-      <button
-        type="button"
-        className="how-to-play__summary"
-        aria-expanded={open}
-        onClick={() => setOpen(true)}
-      >
-        <span className="how-to-play__summary-label">How to play</span>
-      </button>
-    ) : (
+  return (
+    <>
       <button
         type="button"
         className="patriot__info"
@@ -96,11 +122,6 @@ export function ScoreGuide({
       >
         i
       </button>
-    )
-
-  return (
-    <>
-      {openBtn}
       {panel}
     </>
   )

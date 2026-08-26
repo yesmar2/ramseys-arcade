@@ -7,6 +7,7 @@ import {
   fetchGlobalRank,
   fetchPlayerBests,
   getLastPlayerName,
+  LEADERBOARD_GAMES,
   normalizePlayerName,
   PERIOD_LABELS,
   PLAYER_NAME_MAX,
@@ -523,7 +524,10 @@ function cleanName(raw: string) {
 }
 
 function boardsHref(gameSlug: string) {
-  return gameBoardHref(gameSlug as LeaderboardGame)
+  if ((LEADERBOARD_GAMES as readonly string[]).includes(gameSlug)) {
+    return gameBoardHref(gameSlug as LeaderboardGame, 'daily')
+  }
+  return `#/games/${encodeURIComponent(gameSlug)}`
 }
 
 type Phase = 'checking' | 'needName' | 'saving' | 'saved' | 'error'

@@ -29,7 +29,7 @@ import { usePlayerName } from '../hooks/usePlayerName'
 import { useDeviceType } from '../lib/device'
 import { flashYouRow } from '../lib/boardGap'
 import { gameHasRecords } from '../lib/records'
-import { ScoreGuide } from '../components/ScoreGuide'
+import { HowToPlayAccordion } from '../components/ScoreGuide'
 import { ShareBoardButton } from '../components/ShareBoardButton'
 import { APP_NAME } from '../lib/brand'
 import {
@@ -307,10 +307,9 @@ export function GameHubPage({ slug, board: boardFromRoute }: GameHubPageProps) {
             </>
           ) : null}
 
-          <ScoreGuide
+          <HowToPlayAccordion
             how={game.how}
             rows={canPlay ? scoring : null}
-            trigger="summary"
           />
         </div>
       </main>
