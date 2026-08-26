@@ -4335,8 +4335,8 @@ html[data-theme='dark'] .patriot__power-mark {
   display: grid;
   place-items: center;
   flex: none;
-  width: 2.35rem;
-  height: 2.35rem;
+  width: 2.75rem;
+  height: 2.75rem;
   padding: 0;
   border: 1px solid rgba(var(--ink-rgb), 0.1);
   border-radius: 999px;
@@ -4344,6 +4344,8 @@ html[data-theme='dark'] .patriot__power-mark {
   color: var(--ink);
   cursor: pointer;
   touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  pointer-events: auto;
 }
 
 .lb-share__icon {
@@ -6347,7 +6349,8 @@ html[data-theme='dark'] .patriot__power-mark {
   position: absolute;
   top: 0.55rem;
   right: 0.55rem;
-  z-index: 2;
+  z-index: 3;
+  pointer-events: auto;
   background: rgba(var(--surface-rgb), 0.92);
   backdrop-filter: blur(10px);
   box-shadow: var(--shadow-soft);
@@ -6356,6 +6359,8 @@ html[data-theme='dark'] .patriot__power-mark {
 .game-lobby__stage {
   position: absolute;
   inset: 0;
+  z-index: 0;
+  pointer-events: none;
 }
 
 .game-lobby__stage .game-tile__art-svg,

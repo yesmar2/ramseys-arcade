@@ -41,6 +41,26 @@ function ShareIcon({ copied }: { copied: boolean }) {
   )
 }
 
+/** Clipboard fallback that still works when the async Clipboard API is blocked. */
+function copyText(text: string): boolean {
+  try {
+    const ta = document.createElement('textarea')
+    ta.value = text
+    ta.setAttribute('readonly', '')
+    ta.setAttribute('aria-hidden', 'true')
+    ta.style.cssText = 'position:fixed;top:0;left:0;width:1px;height:1px;opacity:0;border:0;padding:0;margin:0;'
+    document.body.appendChild(ta)
+    ta.focus()
+    ta.select()
+    ta.setSelectionRange(0, text.length)
+    const ok = document.execCommand('copy')
+    document.body.removeChild(ta)
+    return ok
+  } catch {
+    return false
+  }
+}
+
 export function ShareBoardButton({ label, url, className = '' }: ShareBoardButtonProps) {
   const [copied, setCopied] = useState(false)
   const timer = useRef<number | null>(null)
@@ -51,24 +71,49 @@ export function ShareBoardButton({ label, url, className = '' }: ShareBoardButto
     }
   }, [])
 
+  const markCopied = () => {
+    setCopied(true)
+    if (timer.current != null) window.clearTimeout(timer.current)
+    timer.current = window.setTimeout(() => setCopied(false), 1600)
+  }
+
+  const fallbackCopy = (href: string) => {
+    const text = `${label}\n${href}`
+    // Prefer sync copy first so we still have the user-gesture on iOS after a
+    // failed navigator.share() await.
+    if (copyText(text)) {
+      markCopied()
+      return
+    }
+    if (navigator.clipboard?.writeText) {
+      void navigator.clipboard
+        .writeText(text)
+        .then(markCopied)
+        .catch(() => {
+          /* ignore */
+        })
+    }
+  }
+
   const share = async () => {
     const href = absoluteShareUrl(url)
-    try {
-      if (typeof navigator.share === 'function') {
-        await navigator.share({ title: label, text: label, url: href })
-        return
+    // iOS/Android: title + url only. Including the same string as `text` can
+    // make canShare fail or share throw on some browsers.
+    const data: ShareData = { title: label, url: href }
+
+    if (typeof navigator.share === 'function') {
+      try {
+        if (typeof navigator.canShare !== 'function' || navigator.canShare(data)) {
+          await navigator.share(data)
+          return
+        }
+      } catch (err) {
+        if (err instanceof DOMException && err.name === 'AbortError') return
+        // Fall through to copy if share is unavailable/denied.
       }
-    } catch (err) {
-      if (err instanceof DOMException && err.name === 'AbortError') return
     }
-    try {
-      await navigator.clipboard.writeText(`${label}\n${href}`)
-      setCopied(true)
-      if (timer.current != null) window.clearTimeout(timer.current)
-      timer.current = window.setTimeout(() => setCopied(false), 1600)
-    } catch {
-      /* ignore */
-    }
+
+    fallbackCopy(href)
   }
 
   return (
@@ -77,7 +122,15 @@ export function ShareBoardButton({ label, url, className = '' }: ShareBoardButto
       className={`lb-share${className ? ` ${className}` : ''}`}
       aria-label={copied ? 'Link copied' : `Share: ${label}`}
       title={copied ? 'Copied' : 'Share'}
-      onClick={() => void share()}
+      onClick={(e) => {
+        e.preventDefault()
+        e.stopPropagation()
+        void share()
+      }}
+      onPointerUp={(e) => {
+        // Keep the control from being swallowed by parent gesture handlers.
+        e.stopPropagation()
+      }}
     >
       <ShareIcon copied={copied} />
     </button>

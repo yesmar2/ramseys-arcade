@@ -19,10 +19,10 @@ export function GameLobbyArt({ slug, accent, action }: GameLobbyArtProps) {
           : undefined
       }
     >
-      {action}
       <div className="game-lobby__stage">
         <GameTileArt slug={slug} />
       </div>
+      {action}
     </div>
   )
 }
