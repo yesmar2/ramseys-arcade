@@ -218,18 +218,22 @@ export function CrosswalkGame() {
               </PlayReadoutScore>
               {ui.phase === 'playing' ? (
                 <PlayReadoutCenter
-                  label={`${ui.lives} ${ui.lives === 1 ? 'life' : 'lives'}`}
+                  label={`Level ${ui.level + 1}, ${ui.lives} ${ui.lives === 1 ? 'life' : 'lives'}`}
+                  urgent={ui.timeLow}
                 >
-                  {Array.from({ length: ui.lives }, (_, i) => (
-                    <svg
-                      key={i}
-                      className="play-readout__hopper"
-                      viewBox="0 0 16 14"
-                      aria-hidden="true"
-                    >
-                      <ellipse cx="8" cy="7.2" rx="6.2" ry="5.2" fill="currentColor" />
-                    </svg>
-                  ))}
+                  <span className="crosswalk__level">L{ui.level + 1}</span>
+                  <span className="crosswalk__lives">
+                    {Array.from({ length: ui.lives }, (_, i) => (
+                      <svg
+                        key={i}
+                        className="play-readout__hopper"
+                        viewBox="0 0 16 14"
+                        aria-hidden="true"
+                      >
+                        <ellipse cx="8" cy="7.2" rx="6.2" ry="5.2" fill="currentColor" />
+                      </svg>
+                    ))}
+                  </span>
                 </PlayReadoutCenter>
               ) : null}
             </PlayReadout>
@@ -242,17 +246,23 @@ export function CrosswalkGame() {
                 onResume={resume}
                 extraMeta={
                   ui.phase === 'playing' ? (
-                    <div className="game-pause-meta__row">
-                      <span>Crossings</span>
-                      <strong>{ui.crossings}</strong>
-                    </div>
+                    <>
+                      <div className="game-pause-meta__row">
+                        <span>Level</span>
+                        <strong>{ui.level + 1}</strong>
+                      </div>
+                      <div className="game-pause-meta__row">
+                        <span>Bays filled</span>
+                        <strong>{ui.homes} / {ui.bays.length}</strong>
+                      </div>
+                    </>
                   ) : null
                 }
               />
               {ui.phase === 'menu' && !saveOpen && !paused && (
                 <GameStartCard
                   title="Crosswalk"
-                  tagline="Hop the lanes. Don’t get hit."
+                  tagline="Cross the traffic, ride the river, fill all five bays."
                   slug="crosswalk"
                 />
               )}
@@ -269,11 +279,9 @@ export function CrosswalkGame() {
                     gameSlug="crosswalk"
                     score={ui.score}
                     title="Splat"
-                    subtitle={
-                      ui.crossings === 1
-                        ? '1 crossing'
-                        : `${ui.crossings} crossings`
-                    }
+                    subtitle={`Level ${ui.level + 1} · ${
+                      ui.homesTotal === 1 ? '1 bay' : `${ui.homesTotal} bays`
+                    } filled`}
                     previousBest={Math.max(previousBestRef.current, apiBest)}
                     onDone={restart}
                   />

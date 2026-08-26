@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
-import { EventCard, EventStatusChips, EventThumbs, eventAccent } from '../components/EventCard'
+import { EventCard, EventStatusChips, eventAccent } from '../components/EventCard'
 import { EventCountdown } from '../components/EventCountdown'
 import { GameLobbyArt } from '../components/GameLobbyArt'
 import { GameThumbArt } from '../components/GameThumbArt'
@@ -20,15 +20,8 @@ import {
   syncJoinedTournamentRosters,
   type StandingRow,
   type TournamentDetail,
-  type TournamentStatus,
   type TournamentSummary,
 } from '../lib/tournaments'
-
-function statusLabel(status: TournamentStatus) {
-  if (status === 'active') return 'Live'
-  if (status === 'upcoming') return 'Soon'
-  return 'Ended'
-}
 
 function placeLabel(place: number) {
   if (place === 1) return '1st'

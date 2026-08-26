@@ -79,8 +79,8 @@ export const games: Game[] = [
   {
     name: 'Crosswalk',
     slug: 'crosswalk',
-    description: 'Hop the lanes. Don’t get flattened.',
-    how: 'In development.',
+    description: 'Dodge traffic, ride the river, fill every bay.',
+    how: 'Hop up through the traffic, then ride logs and turtles across the river. Land in one of the five bays at the top; fill all five to clear the level. Water, cars, and the timer all cost a life.',
     accent: '#3ecf8e',
     inDevelopment: true,
   },

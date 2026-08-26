@@ -3882,50 +3882,21 @@ html[data-theme='dark'] .patriot__power-mark {
   z-index: 9;
 }
 
-.crosswalk__card {
-  padding: 1.15rem 1.35rem;
-  border-radius: var(--tile-radius);
-  background: rgba(var(--surface-rgb), 0.86);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(var(--ink-rgb), 0.08);
-  box-shadow: var(--shadow-soft);
-  text-align: center;
-  max-width: min(18rem, calc(100% - 2.5rem));
-}
-
-.crosswalk__card h2 {
-  margin: 0 0 0.35rem;
-  font-family: var(--font-display);
-  font-size: clamp(1.4rem, 3vw, 1.85rem);
-  font-weight: 700;
-  color: var(--ink);
-}
-
-.crosswalk__card p {
-  margin: 0 0 0.55rem;
-  font-size: 0.95rem;
-  color: var(--muted);
-}
-
-.crosswalk__card span {
-  font-size: 0.8rem;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  color: #2eb8a0;
-}
-
-.crosswalk__hint {
-  display: block;
-}
-
-.crosswalk__hint--touch {
-  display: none;
-}
-
 .crosswalk__lives {
   display: flex;
   align-items: center;
   gap: 0.2rem;
+}
+
+.crosswalk__level {
+  padding: 0.12rem 0.45rem;
+  border-radius: 999px;
+  border: 1px solid rgba(var(--ink-rgb), 0.08);
+  background: rgba(var(--surface-rgb), 0.72);
+  font-size: 0.7em;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: var(--muted);
 }
 
 .crosswalk__touch {
