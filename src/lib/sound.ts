@@ -1,7 +1,7 @@
-const MUTE_KEY = 'acralia-mute'
-const MUSIC_KEY = 'acralia-music'
-const LEGACY_MUTE_KEY = 'archivade-mute'
-const LEGACY_MUSIC_KEY = 'archivade-music'
+const MUTE_KEY = 'fordriva-mute'
+const MUSIC_KEY = 'fordriva-music'
+const LEGACY_MUTE_KEYS = ['acralia-mute', 'archivade-mute'] as const
+const LEGACY_MUSIC_KEYS = ['acralia-music', 'archivade-music'] as const
 const MASTER_GAIN = 0.22
 const MUSIC_GAIN = 0.07
 const MUSIC_STEP = 1.28
@@ -46,8 +46,13 @@ function readMuted() {
   try {
     let raw = localStorage.getItem(MUTE_KEY)
     if (raw == null) {
-      raw = localStorage.getItem(LEGACY_MUTE_KEY)
-      if (raw != null) localStorage.setItem(MUTE_KEY, raw)
+      for (const key of LEGACY_MUTE_KEYS) {
+        raw = localStorage.getItem(key)
+        if (raw != null) {
+          localStorage.setItem(MUTE_KEY, raw)
+          break
+        }
+      }
     }
     return raw === '1'
   } catch {
@@ -59,8 +64,13 @@ function readMusicVol() {
   try {
     let raw = localStorage.getItem(MUSIC_KEY)
     if (raw == null) {
-      raw = localStorage.getItem(LEGACY_MUSIC_KEY)
-      if (raw != null) localStorage.setItem(MUSIC_KEY, raw)
+      for (const key of LEGACY_MUSIC_KEYS) {
+        raw = localStorage.getItem(key)
+        if (raw != null) {
+          localStorage.setItem(MUSIC_KEY, raw)
+          break
+        }
+      }
     }
     if (raw == null) return 0.55
     const n = Number(raw)

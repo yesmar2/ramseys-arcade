@@ -12,6 +12,7 @@ import { PageShell } from '../components/PageShell'
 import { ShareBoardButton } from '../components/ShareBoardButton'
 import { globalRankingsHref, leaderboardHref } from '../hooks/useHashRoute'
 import { usePlayerName } from '../hooks/usePlayerName'
+import { APP_NAME } from '../lib/brand'
 import {
   fetchGlobalBoard,
   fetchGlobalRank,
@@ -180,7 +181,7 @@ function GlobalRankingsView({ period }: { period: LeaderboardPeriod }) {
           <h1 className="lb-page__title">Boards</h1>
           <div className="lb-game-board__trailing">
             <ShareBoardButton
-              label={`Global rankings · ${PERIOD_LABELS[period]} · Acralia`}
+              label={`Global rankings · ${PERIOD_LABELS[period]} · ${APP_NAME}`}
               url={globalRankingsHref(period)}
             />
           </div>

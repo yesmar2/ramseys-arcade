@@ -13,6 +13,7 @@ import {
 import { usePlayerName } from '../hooks/usePlayerName'
 import { useDeviceType } from '../lib/device'
 import { flashYouRow } from '../lib/boardGap'
+import { APP_NAME } from '../lib/brand'
 import {
   getLeaderboard,
   PERIOD_LABELS,
@@ -120,7 +121,7 @@ export function GameLeaderboardPage({
           playHref={canPlay ? playHref : undefined}
           action={
             <ShareBoardButton
-              label={`${game.name} · ${PERIOD_LABELS[period]} · Acralia`}
+              label={`${game.name} · ${PERIOD_LABELS[period]} · ${APP_NAME}`}
               url={gameBoardHref(gameSlug, period)}
             />
           }

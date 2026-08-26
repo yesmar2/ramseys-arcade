@@ -1,4 +1,5 @@
-const DISMISS_KEY = 'acralia-pwa-install-dismissed'
+const DISMISS_KEY = 'fordriva-pwa-install-dismissed'
+const LEGACY_DISMISS_KEYS = ['acralia-pwa-install-dismissed'] as const
 
 export type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>
@@ -61,7 +62,14 @@ export function isIosSafari() {
 
 export function wasInstallDismissed() {
   try {
-    return localStorage.getItem(DISMISS_KEY) === '1'
+    if (localStorage.getItem(DISMISS_KEY) === '1') return true
+    for (const key of LEGACY_DISMISS_KEYS) {
+      if (localStorage.getItem(key) === '1') {
+        localStorage.setItem(DISMISS_KEY, '1')
+        return true
+      }
+    }
+    return false
   } catch {
     return false
   }

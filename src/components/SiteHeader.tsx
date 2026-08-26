@@ -122,7 +122,7 @@ export function SiteHeader() {
           </svg>
         </button>
         <a className="site-header__brand" href="#/">
-          Acra<span>lia</span>
+          Ford<span>riva</span>
         </a>
         <div className="site-header__links" aria-label="Primary">
           {SITE_NAV_LINKS.map((item) => (

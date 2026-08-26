@@ -31,6 +31,7 @@ import { flashYouRow } from '../lib/boardGap'
 import { gameHasRecords } from '../lib/records'
 import { ScoreGuide } from '../components/ScoreGuide'
 import { ShareBoardButton } from '../components/ShareBoardButton'
+import { APP_NAME } from '../lib/brand'
 import {
   getLeaderboard,
   LEADERBOARD_GAMES,
@@ -171,7 +172,7 @@ export function GameHubPage({ slug, board: boardFromRoute }: GameHubPageProps) {
             action={
               <ShareBoardButton
                 className="game-lobby__share"
-                label={`Play ${game.name} on Acralia`}
+                label={`Play ${game.name} on ${APP_NAME}`}
                 url={gameHref(slug)}
               />
             }

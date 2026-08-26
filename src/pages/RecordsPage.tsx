@@ -22,6 +22,7 @@ import {
 import { flashYouRow } from '../lib/boardGap'
 import { useDeviceType } from '../lib/device'
 import { usePlayerName } from '../hooks/usePlayerName'
+import { APP_NAME } from '../lib/brand'
 import {
   normalizePlayerName,
   PERIOD_LABELS,
@@ -103,7 +104,7 @@ function GameRecordBookPage({ game }: { game: string }) {
           playHref={canPlay ? gamePlayHref(game) : undefined}
           action={
             <ShareBoardButton
-              label={`${title} record books · Acralia`}
+              label={`${title} record books · ${APP_NAME}`}
               url={recordsHref(game)}
             />
           }
@@ -213,7 +214,7 @@ function RecordBoardPage({
               playHref={canPlay ? gamePlayHref(game) : undefined}
               action={
                 <ShareBoardButton
-                  label={`${record?.label ?? 'Record'} · ${PERIOD_LABELS[period]} · Acralia`}
+                  label={`${record?.label ?? 'Record'} · ${PERIOD_LABELS[period]} · ${APP_NAME}`}
                   url={recordHref(game, recordId, period)}
                 />
               }
@@ -228,7 +229,7 @@ function RecordBoardPage({
                 <h1 className="lb-page__title">{record?.label ?? 'Record'}</h1>
                 <div className="lb-game-board__trailing">
                   <ShareBoardButton
-                    label={`${record?.label ?? 'Record'} · ${PERIOD_LABELS[period]} · Acralia`}
+                    label={`${record?.label ?? 'Record'} · ${PERIOD_LABELS[period]} · ${APP_NAME}`}
                     url={recordHref(game, recordId, period)}
                   />
                 </div>

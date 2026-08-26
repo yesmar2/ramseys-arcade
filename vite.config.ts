@@ -25,8 +25,8 @@ export default defineConfig({
         'pwa-maskable-512.png',
       ],
       manifest: {
-        name: 'Acralia',
-        short_name: 'Acralia',
+        name: 'Fordriva',
+        short_name: 'Fordriva',
         description: 'Simple games, no ads, just play.',
         theme_color: '#2eb8a0',
         background_color: '#edf7f4',

@@ -8,11 +8,11 @@
     <meta name="theme-color" content="#2eb8a0" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-title" content="Acralia" />
+    <meta name="apple-mobile-web-app-title" content="Fordriva" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta
       name="description"
-      content="Acralia — simple games, no ads, just play."
+      content="Fordriva — simple games, no ads, just play."
     />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -20,11 +20,14 @@
       href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600&display=swap"
       rel="stylesheet"
     />
-    <title>Acralia</title>
+    <title>Fordriva</title>
     <script>
       (function () {
         try {
-          var t = localStorage.getItem('acralia-theme')
+          var t = localStorage.getItem('fordriva-theme')
+          if (t !== 'light' && t !== 'dark') {
+            t = localStorage.getItem('acralia-theme')
+          }
           if (t !== 'light' && t !== 'dark') {
             t = localStorage.getItem('archivade-theme')
           }

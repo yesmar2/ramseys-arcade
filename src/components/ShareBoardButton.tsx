@@ -2,7 +2,7 @@ import { useEffect, useId, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 
 type ShareBoardButtonProps = {
-  /** Short line for share sheet / clipboard, e.g. "Play Asteroids on Acralia" */
+  /** Short line for share sheet / clipboard, e.g. "Play Asteroids on Fordriva" */
   label: string
   /**
    * Hash path (`#/games/asteroids`), absolute URL, or omit for the current page.

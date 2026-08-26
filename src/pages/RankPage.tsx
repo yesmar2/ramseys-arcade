@@ -10,6 +10,7 @@ import { gapToNextLabel } from '../lib/boardGap'
 import { useDeviceType } from '../lib/device'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { useGlobalRank } from '../lib/globalRank'
+import { APP_NAME } from '../lib/brand'
 import {
   fetchGlobalRank,
   LEADERBOARD_GAMES,
@@ -94,8 +95,8 @@ export function RankPage({ player }: { player?: string }) {
                   <ShareBoardButton
                     label={
                       rank != null
-                        ? `${viewedName} · #${rank} global · Acralia`
-                        : `${viewedName}'s ranking · Acralia`
+                        ? `${viewedName} · #${rank} global · ${APP_NAME}`
+                        : `${viewedName}'s ranking · ${APP_NAME}`
                     }
                     url={rankHref(viewedName)}
                   />

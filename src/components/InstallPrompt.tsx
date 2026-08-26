@@ -8,6 +8,7 @@ import {
   subscribePwaInstall,
   wasInstallDismissed,
 } from '../lib/pwaInstall'
+import { APP_NAME } from '../lib/brand'
 
 type Mode = 'hidden' | 'android' | 'ios'
 
@@ -43,9 +44,9 @@ export function InstallPrompt() {
   }
 
   return (
-    <div className="install-prompt" role="dialog" aria-label="Install Acralia">
+    <div className="install-prompt" role="dialog" aria-label={`Install ${APP_NAME}`}>
       <div className="install-prompt__copy">
-        <strong>Install Acralia</strong>
+        <strong>Install {APP_NAME}</strong>
         {mode === 'android' ? (
           <span>Add it to your home screen for quick play.</span>
         ) : (

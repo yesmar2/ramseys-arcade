@@ -1,5 +1,5 @@
-export const THEME_KEY = 'acralia-theme'
-const LEGACY_THEME_KEY = 'archivade-theme'
+export const THEME_KEY = 'fordriva-theme'
+const LEGACY_THEME_KEYS = ['acralia-theme', 'archivade-theme'] as const
 export const THEME_EVENT = 'arcade-theme'
 
 export type Theme = 'light' | 'dark'
@@ -12,9 +12,12 @@ export function storedTheme(): Theme | null {
   try {
     let value = localStorage.getItem(THEME_KEY)
     if (value !== 'light' && value !== 'dark') {
-      value = localStorage.getItem(LEGACY_THEME_KEY)
-      if (value === 'light' || value === 'dark') {
-        localStorage.setItem(THEME_KEY, value)
+      for (const key of LEGACY_THEME_KEYS) {
+        value = localStorage.getItem(key)
+        if (value === 'light' || value === 'dark') {
+          localStorage.setItem(THEME_KEY, value)
+          break
+        }
       }
     }
     return value === 'light' || value === 'dark' ? value : null
