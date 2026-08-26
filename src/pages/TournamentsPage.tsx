@@ -1,12 +1,16 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { EventCountdown } from '../components/EventCountdown'
 import { Footer } from '../components/Footer'
 import { SiteHeader } from '../components/SiteHeader'
 import { InfoTip } from '../components/InfoTip'
 import { PlayerAvatar } from '../components/PlayerAvatar'
+import { ShareBoardButton } from '../components/ShareBoardButton'
 import { getGame } from '../data/games'
 import { usePlayerName } from '../hooks/usePlayerName'
+import { APP_NAME } from '../lib/brand'
 import { getLastPlayerName, normalizePlayerName } from '../lib/leaderboard'
 import {
+  cadenceLabel,
   getTournament,
   isPlayerInTournament,
   joinTournament,
@@ -44,6 +48,19 @@ function formatWindow(startsAt: number, endsAt: number) {
   }
 }
 
+function EventPills({ t }: { t: Pick<TournamentSummary, 'status' | 'official' | 'cadence'> }) {
+  const cadence = cadenceLabel(t.cadence)
+  return (
+    <div className="tour-card__top">
+      <span className={`tour-pill tour-pill--${t.status}`}>{statusLabel(t.status)}</span>
+      {cadence && <span className="tour-pill tour-pill--cadence">{cadence}</span>}
+      {t.official && !cadence && (
+        <span className="tour-pill tour-pill--official">Official</span>
+      )}
+    </div>
+  )
+}
+
 export function TournamentsPage() {
   const [items, setItems] = useState<TournamentSummary[]>([])
   const [loading, setLoading] = useState(true)
@@ -76,8 +93,8 @@ export function TournamentsPage() {
             <h1 className="lb-page__title lb-page__title--with-tip">
               Events
               <InfoTip label="About events">
-                Multi-game events. Finish higher in each game for place points —
-                highest total wins.
+                Daily and weekly official events roll automatically. Join, play from the
+                event page, and climb the standings before the clock runs out.
               </InfoTip>
             </h1>
           </header>
@@ -85,7 +102,7 @@ export function TournamentsPage() {
           {loading ? (
             <p className="lb-empty">Loading…</p>
           ) : error ? (
-            <p className="lb-empty">Couldn’t load tournaments.</p>
+            <p className="lb-empty">Couldn’t load events.</p>
           ) : items.length === 0 ? (
             <p className="lb-empty">No events yet.</p>
           ) : (
@@ -93,20 +110,19 @@ export function TournamentsPage() {
               {items.map((t) => (
                 <li key={t.id}>
                   <a className="tour-card" href={`#/tournaments/${t.id}`}>
-                    <div className="tour-card__top">
-                      <span className={`tour-pill tour-pill--${t.status}`}>
-                        {statusLabel(t.status)}
-                      </span>
-                      {t.official && (
-                        <span className="tour-pill tour-pill--official">Official</span>
-                      )}
-                    </div>
+                    <EventPills t={t} />
                     <h2 className="tour-card__title">{t.title}</h2>
                     <div className="tour-card__meta">
                       <span>{t.games.map((g) => getGame(g)?.name ?? g).join(' · ')}</span>
                       <span>{t.playerCount} joined</span>
                     </div>
-                    <p className="tour-card__window">{formatWindow(t.startsAt, t.endsAt)}</p>
+                    {t.status === 'active' ? (
+                      <p className="tour-card__window">
+                        <EventCountdown endsAt={t.endsAt} />
+                      </p>
+                    ) : (
+                      <p className="tour-card__window">{formatWindow(t.startsAt, t.endsAt)}</p>
+                    )}
                   </a>
                 </li>
               ))}
@@ -210,7 +226,7 @@ export function TournamentDetailPage({ id }: { id: string }) {
           {loading ? (
             <p className="lb-empty">Loading…</p>
           ) : error || !detail ? (
-            <p className="lb-empty">{error ?? 'Tournament not found'}</p>
+            <p className="lb-empty">{error ?? 'Event not found'}</p>
           ) : (
             <>
               <header className="lb-page__header" style={{ marginTop: '1rem' }}>
@@ -221,31 +237,53 @@ export function TournamentDetailPage({ id }: { id: string }) {
                   <span className={`tour-pill tour-pill--${detail.status}`}>
                     {statusLabel(detail.status)}
                   </span>
-                  {detail.official && (
+                  {cadenceLabel(detail.cadence) && (
+                    <span className="tour-pill tour-pill--cadence">
+                      {cadenceLabel(detail.cadence)}
+                    </span>
+                  )}
+                  {detail.official && !detail.cadence && (
                     <span className="tour-pill tour-pill--official">Official</span>
                   )}
                 </div>
-                <h1 className="lb-page__title lb-page__title--with-tip">
-                  {detail.title}
-                  {(detail.blurb || placeTable.length > 0) && (
-                    <InfoTip label="Event details">
-                      {detail.blurb && <p>{detail.blurb}</p>}
-                      {placeTable.length > 0 && (
-                        <>
-                          <p>Place points per game — totals decide the winner.</p>
-                          <div className="info-tip__points">
-                            {placeTable.map((row) => (
-                              <span key={row.place}>
-                                {placeLabel(row.place)} · {row.pts}
-                              </span>
-                            ))}
-                          </div>
-                        </>
-                      )}
-                    </InfoTip>
-                  )}
-                </h1>
-                <p className="tour-card__window">{formatWindow(detail.startsAt, detail.endsAt)}</p>
+                <div className="lb-page__heading-row lb-page__heading-row--event">
+                  <h1 className="lb-page__title lb-page__title--with-tip">
+                    {detail.title}
+                    {(detail.blurb || placeTable.length > 0) && (
+                      <InfoTip label="Event details">
+                        {detail.blurb && <p>{detail.blurb}</p>}
+                        {placeTable.length > 0 && detail.games.length > 1 && (
+                          <>
+                            <p>Place points per game — totals decide the winner.</p>
+                            <div className="info-tip__points">
+                              {placeTable.map((row) => (
+                                <span key={row.place}>
+                                  {placeLabel(row.place)} · {row.pts}
+                                </span>
+                              ))}
+                            </div>
+                          </>
+                        )}
+                        {detail.games.length === 1 && (
+                          <p>Best score on the featured game wins.</p>
+                        )}
+                      </InfoTip>
+                    )}
+                  </h1>
+                  <ShareBoardButton
+                    label={`${detail.title} on ${APP_NAME}`}
+                    url={`#/tournaments/${detail.id}`}
+                  />
+                </div>
+                {detail.status === 'active' ? (
+                  <p className="tour-card__window tour-card__window--live">
+                    <EventCountdown endsAt={detail.endsAt} />
+                    <span className="tour-card__window-sep">·</span>
+                    {formatWindow(detail.startsAt, detail.endsAt)}
+                  </p>
+                ) : (
+                  <p className="tour-card__window">{formatWindow(detail.startsAt, detail.endsAt)}</p>
+                )}
               </header>
 
               <section className="lb-board tour-panel">
@@ -284,7 +322,7 @@ export function TournamentDetailPage({ id }: { id: string }) {
 
                 <div className="tour-section-head">
                   <h2 className="tour-section-title">Play</h2>
-                  <InfoTip label="Tournament play">
+                  <InfoTip label="Event play">
                     These links count for the event. Home-page free play does not.
                   </InfoTip>
                 </div>
@@ -311,8 +349,9 @@ export function TournamentDetailPage({ id }: { id: string }) {
                     <span className="lb-stat__label lb-stat__label--with-tip">
                       Standings
                       <InfoTip label="How standings work">
-                        Ranked by total place points across games. Missing a game scores 0
-                        for that game.
+                        {detail.games.length > 1
+                          ? 'Ranked by total place points across games. Missing a game scores 0 for that game.'
+                          : 'Ranked by best score on the featured game.'}
                       </InfoTip>
                     </span>
                     <strong>{detail.standings.length}</strong>

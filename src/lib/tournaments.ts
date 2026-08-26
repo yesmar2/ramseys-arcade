@@ -1,6 +1,7 @@
 import { getClaimToken, getLastPlayerName, normalizePlayerName } from './leaderboard'
 
 export type TournamentStatus = 'upcoming' | 'active' | 'ended'
+export type TournamentCadence = 'daily' | 'weekly'
 
 export type TournamentSummary = {
   id: string
@@ -10,8 +11,29 @@ export type TournamentSummary = {
   startsAt: number
   endsAt: number
   official: boolean
+  cadence?: TournamentCadence | null
   status: TournamentStatus
   playerCount: number
+}
+
+/** Human countdown until endsAt (or "Ended"). */
+export function formatEventCountdown(endsAt: number, now = Date.now()): string {
+  const ms = endsAt - now
+  if (ms <= 0) return 'Ended'
+  const totalSec = Math.floor(ms / 1000)
+  const days = Math.floor(totalSec / 86_400)
+  const hours = Math.floor((totalSec % 86_400) / 3600)
+  const mins = Math.floor((totalSec % 3600) / 60)
+  if (days > 0) return `${days}d ${hours}h left`
+  if (hours > 0) return `${hours}h ${mins}m left`
+  if (mins > 0) return `${mins}m left`
+  return 'Moments left'
+}
+
+export function cadenceLabel(cadence: TournamentCadence | null | undefined): string | null {
+  if (cadence === 'daily') return 'Daily'
+  if (cadence === 'weekly') return 'Weekly'
+  return null
 }
 
 export type StandingRow = {

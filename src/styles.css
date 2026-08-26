@@ -606,6 +606,94 @@ img {
   z-index: 30;
 }
 
+/* Home: live daily / weekly event strip */
+.home-events {
+  width: min(100% - 1.25rem, var(--max-width));
+  margin: 0 auto;
+}
+
+.home-events__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+@media (min-width: 640px) {
+  .home-events__list {
+    flex-direction: row;
+    gap: 0.55rem;
+  }
+
+  .home-events__list > li {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+.home-events__link {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 0.55rem 0.75rem;
+  padding: 0.55rem 0.75rem;
+  border-radius: var(--tile-radius);
+  background: rgba(var(--surface-rgb), 0.72);
+  border: 1px solid rgba(var(--ink-rgb), 0.08);
+  box-shadow: var(--shadow-soft);
+  color: inherit;
+  text-decoration: none;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.home-events__link:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 22px rgba(var(--ink-rgb), 0.08);
+}
+
+.home-events__kind {
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--accent) 75%, var(--ink));
+}
+
+.home-events__body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.home-events__title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.home-events__games {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.home-events__time {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
 .visually-hidden {
   position: absolute;
   width: 1px;
@@ -7424,6 +7512,35 @@ html[data-theme='dark'] .patriot__power-mark {
   color: color-mix(in srgb, var(--accent-sky) 70%, var(--ink));
   border-color: color-mix(in srgb, var(--accent-sky) 35%, transparent);
   background: color-mix(in srgb, var(--blob-sky) 55%, var(--surface));
+}
+
+.tour-pill--cadence {
+  color: color-mix(in srgb, var(--accent) 70%, var(--ink));
+  border-color: color-mix(in srgb, var(--accent) 35%, transparent);
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface));
+}
+
+.tour-card__window--live {
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.tour-card__window-sep {
+  margin: 0 0.35rem;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.lb-page__heading-row--event {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+}
+
+.lb-page__heading-row--event .lb-page__title {
+  margin: 0;
 }
 
 .tour-card__title {
