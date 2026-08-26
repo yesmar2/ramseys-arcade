@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState, type MouseEvent, type PointerEvent } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 
 type ShareBoardButtonProps = {
@@ -62,38 +62,18 @@ function copyText(text: string): boolean {
   }
 }
 
-/**
- * Native OS share sheet (Android "Sharing link", iOS share panel) — same
- * Web Share API CrazyGames and other mobile game sites use.
- */
-function openNativeShare(label: string, href: string): Promise<'shared' | 'abort' | 'unavailable'> {
-  if (typeof navigator.share !== 'function') return Promise.resolve('unavailable')
-  return navigator
-    .share({
-      title: label,
-      text: label,
-      url: href,
-    })
-    .then(() => 'shared' as const)
-    .catch((err: unknown) => {
-      if (err instanceof DOMException && err.name === 'AbortError') return 'abort' as const
-      // Some Android builds reject text+url; retry url-only like a link share.
-      return navigator
-        .share({ title: label, url: href })
-        .then(() => 'shared' as const)
-        .catch((err2: unknown) => {
-          if (err2 instanceof DOMException && err2.name === 'AbortError') return 'abort' as const
-          return 'unavailable' as const
-        })
-    })
-}
-
 export function ShareBoardButton({ label, url, className = '' }: ShareBoardButtonProps) {
   const titleId = useId()
+  const buttonRef = useRef<HTMLButtonElement>(null)
+  const labelRef = useRef(label)
+  const urlRef = useRef(url)
   const [open, setOpen] = useState(false)
   const [copied, setCopied] = useState(false)
   const [href, setHref] = useState('')
   const timer = useRef<number | null>(null)
+
+  labelRef.current = label
+  urlRef.current = url
 
   useEffect(() => {
     return () => {
@@ -109,6 +89,40 @@ export function ShareBoardButton({ label, url, className = '' }: ShareBoardButto
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [open])
+
+  // Native listener so Android Chrome keeps the user-gesture for navigator.share.
+  // (A second share() in a .catch() after a failed payload loses that gesture.)
+  useEffect(() => {
+    const btn = buttonRef.current
+    if (!btn) return
+
+    const onClick = (e: MouseEvent) => {
+      e.preventDefault()
+      e.stopPropagation()
+      const link = absoluteShareUrl(urlRef.current)
+      const shareLabel = labelRef.current
+      setHref(link)
+
+      if (typeof navigator.share !== 'function') {
+        setOpen(true)
+        return
+      }
+
+      // One call only — matches CrazyGames-style "Sharing link" on Android.
+      void navigator
+        .share({
+          title: shareLabel,
+          url: link,
+        })
+        .catch((err: unknown) => {
+          if (err instanceof DOMException && err.name === 'AbortError') return
+          setOpen(true)
+        })
+    }
+
+    btn.addEventListener('click', onClick)
+    return () => btn.removeEventListener('click', onClick)
+  }, [])
 
   const markCopied = () => {
     setCopied(true)
@@ -127,21 +141,6 @@ export function ShareBoardButton({ label, url, className = '' }: ShareBoardButto
     }
   }
 
-  const onShareClick = (e: MouseEvent | PointerEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    const link = absoluteShareUrl(url)
-    setHref(link)
-
-    // Must start share from this tap — that opens the built-in device sheet.
-    void openNativeShare(label, link).then((result) => {
-      if (result === 'unavailable') {
-        // Desktop / browsers without Web Share: show a simple chooser instead.
-        setOpen(true)
-      }
-    })
-  }
-
   const encoded = encodeURIComponent(href)
   const encodedLabel = encodeURIComponent(label)
   const encodedBody = encodeURIComponent(`${label}\n${href}`)
@@ -149,12 +148,11 @@ export function ShareBoardButton({ label, url, className = '' }: ShareBoardButto
   return (
     <>
       <button
+        ref={buttonRef}
         type="button"
         className={`lb-share${className ? ` ${className}` : ''}`}
         aria-label={copied ? 'Link copied' : `Share: ${label}`}
         title={copied ? 'Copied' : 'Share'}
-        onClick={onShareClick}
-        onPointerUp={(e) => e.stopPropagation()}
       >
         <ShareIcon copied={copied} />
       </button>
@@ -189,8 +187,8 @@ export function ShareBoardButton({ label, url, className = '' }: ShareBoardButto
                 <p className="share-sheet__label">{label}</p>
                 <p className="share-sheet__url">{href}</p>
                 <p className="share-sheet__hint">
-                  Your browser doesn’t support the system share menu. Pick an app
-                  below, or copy the link.
+                  System share wasn’t available. Pick an app below, or copy the
+                  link.
                 </p>
 
                 <div className="share-sheet__actions">
