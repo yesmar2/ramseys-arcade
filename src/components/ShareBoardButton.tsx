@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState, type MouseEvent, type PointerEvent } from 'react'
+import { createPortal } from 'react-dom'
 
 type ShareBoardButtonProps = {
   /** Short line for share sheet / clipboard, e.g. "Play Asteroids on Acralia" */
@@ -18,6 +19,10 @@ export function absoluteShareUrl(url?: string): string {
   if (/^https?:\/\//i.test(url)) return url
   const hash = url.startsWith('#') ? url : `#/${url.replace(/^\//, '')}`
   return `${window.location.origin}${window.location.pathname}${hash}`
+}
+
+function canUseNativeShare() {
+  return typeof navigator !== 'undefined' && typeof navigator.share === 'function'
 }
 
 function ShareIcon({ copied }: { copied: boolean }) {
@@ -41,14 +46,14 @@ function ShareIcon({ copied }: { copied: boolean }) {
   )
 }
 
-/** Clipboard fallback that still works when the async Clipboard API is blocked. */
 function copyText(text: string): boolean {
   try {
     const ta = document.createElement('textarea')
     ta.value = text
     ta.setAttribute('readonly', '')
     ta.setAttribute('aria-hidden', 'true')
-    ta.style.cssText = 'position:fixed;top:0;left:0;width:1px;height:1px;opacity:0;border:0;padding:0;margin:0;'
+    ta.style.cssText =
+      'position:fixed;top:0;left:0;width:1px;height:1px;opacity:0;border:0;padding:0;margin:0;'
     document.body.appendChild(ta)
     ta.focus()
     ta.select()
@@ -61,8 +66,30 @@ function copyText(text: string): boolean {
   }
 }
 
+async function tryNativeShare(label: string, href: string): Promise<'shared' | 'abort' | 'fail'> {
+  if (!canUseNativeShare()) return 'fail'
+  // Try a few payloads — browsers differ on what they accept.
+  const payloads: ShareData[] = [
+    { title: label, text: label, url: href },
+    { title: label, url: href },
+    { text: `${label}\n${href}` },
+  ]
+  for (const data of payloads) {
+    try {
+      await navigator.share(data)
+      return 'shared'
+    } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') return 'abort'
+    }
+  }
+  return 'fail'
+}
+
 export function ShareBoardButton({ label, url, className = '' }: ShareBoardButtonProps) {
+  const titleId = useId()
+  const [open, setOpen] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [href, setHref] = useState('')
   const timer = useRef<number | null>(null)
 
   useEffect(() => {
@@ -71,68 +98,168 @@ export function ShareBoardButton({ label, url, className = '' }: ShareBoardButto
     }
   }, [])
 
+  useEffect(() => {
+    if (!open) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [open])
+
   const markCopied = () => {
     setCopied(true)
     if (timer.current != null) window.clearTimeout(timer.current)
     timer.current = window.setTimeout(() => setCopied(false), 1600)
   }
 
-  const fallbackCopy = (href: string) => {
-    const text = `${label}\n${href}`
-    // Prefer sync copy first so we still have the user-gesture on iOS after a
-    // failed navigator.share() await.
+  const doCopy = (link: string) => {
+    const text = `${label}\n${link}`
     if (copyText(text)) {
       markCopied()
       return
     }
     if (navigator.clipboard?.writeText) {
-      void navigator.clipboard
-        .writeText(text)
-        .then(markCopied)
-        .catch(() => {
-          /* ignore */
-        })
+      void navigator.clipboard.writeText(text).then(markCopied).catch(() => {})
     }
   }
 
-  const share = async () => {
-    const href = absoluteShareUrl(url)
-    // iOS/Android: title + url only. Including the same string as `text` can
-    // make canShare fail or share throw on some browsers.
-    const data: ShareData = { title: label, url: href }
+  const openSheet = (link: string) => {
+    setHref(link)
+    setOpen(true)
+  }
 
-    if (typeof navigator.share === 'function') {
-      try {
-        if (typeof navigator.canShare !== 'function' || navigator.canShare(data)) {
-          await navigator.share(data)
-          return
-        }
-      } catch (err) {
-        if (err instanceof DOMException && err.name === 'AbortError') return
-        // Fall through to copy if share is unavailable/denied.
-      }
+  const onShareClick = (e: MouseEvent | PointerEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    const link = absoluteShareUrl(url)
+    setHref(link)
+
+    // Prefer the OS share sheet (Messages, WhatsApp, etc.) when the browser
+    // supports it — same pattern game sites use on phones.
+    if (canUseNativeShare()) {
+      void tryNativeShare(label, link).then((result) => {
+        if (result === 'fail') openSheet(link)
+      })
+      return
     }
 
-    fallbackCopy(href)
+    openSheet(link)
   }
+
+  const encoded = encodeURIComponent(href)
+  const encodedLabel = encodeURIComponent(label)
+  const encodedBody = encodeURIComponent(`${label}\n${href}`)
 
   return (
-    <button
-      type="button"
-      className={`lb-share${className ? ` ${className}` : ''}`}
-      aria-label={copied ? 'Link copied' : `Share: ${label}`}
-      title={copied ? 'Copied' : 'Share'}
-      onClick={(e) => {
-        e.preventDefault()
-        e.stopPropagation()
-        void share()
-      }}
-      onPointerUp={(e) => {
-        // Keep the control from being swallowed by parent gesture handlers.
-        e.stopPropagation()
-      }}
-    >
-      <ShareIcon copied={copied} />
-    </button>
+    <>
+      <button
+        type="button"
+        className={`lb-share${className ? ` ${className}` : ''}`}
+        aria-label={copied ? 'Link copied' : `Share: ${label}`}
+        title={copied ? 'Copied' : 'Share'}
+        onClick={onShareClick}
+        onPointerUp={(e) => e.stopPropagation()}
+      >
+        <ShareIcon copied={copied} />
+      </button>
+
+      {open && typeof document !== 'undefined'
+        ? createPortal(
+            <div
+              className="share-sheet__backdrop"
+              role="presentation"
+              onClick={() => setOpen(false)}
+            >
+              <div
+                className="share-sheet"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby={titleId}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="share-sheet__head">
+                  <h2 id={titleId} className="share-sheet__title">
+                    Share
+                  </h2>
+                  <button
+                    type="button"
+                    className="share-sheet__close"
+                    aria-label="Close"
+                    onClick={() => setOpen(false)}
+                  >
+                    ×
+                  </button>
+                </div>
+                <p className="share-sheet__label">{label}</p>
+                <p className="share-sheet__url">{href}</p>
+
+                <div className="share-sheet__actions">
+                  {canUseNativeShare() ? (
+                    <button
+                      type="button"
+                      className="share-sheet__btn share-sheet__btn--primary"
+                      onClick={() => {
+                        void tryNativeShare(label, href).then((result) => {
+                          if (result === 'shared' || result === 'abort') setOpen(false)
+                        })
+                      }}
+                    >
+                      Share via apps…
+                    </button>
+                  ) : null}
+
+                  <a
+                    className="share-sheet__btn"
+                    href={`sms:?&body=${encodedBody}`}
+                  >
+                    Messages
+                  </a>
+                  <a
+                    className="share-sheet__btn"
+                    href={`mailto:?subject=${encodedLabel}&body=${encodedBody}`}
+                  >
+                    Email
+                  </a>
+                  <a
+                    className="share-sheet__btn"
+                    href={`https://twitter.com/intent/tweet?text=${encodedLabel}&url=${encoded}`}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    X / Twitter
+                  </a>
+                  <a
+                    className="share-sheet__btn"
+                    href={`https://www.facebook.com/sharer/sharer.php?u=${encoded}`}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Facebook
+                  </a>
+                  <a
+                    className="share-sheet__btn"
+                    href={`https://www.reddit.com/submit?url=${encoded}&title=${encodedLabel}`}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Reddit
+                  </a>
+                  <button
+                    type="button"
+                    className="share-sheet__btn"
+                    onClick={() => {
+                      doCopy(href)
+                    }}
+                  >
+                    {copied ? 'Copied!' : 'Copy link'}
+                  </button>
+                </div>
+              </div>
+            </div>,
+            document.body,
+          )
+        : null}
+    </>
   )
 }
