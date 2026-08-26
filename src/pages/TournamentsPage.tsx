@@ -1,8 +1,7 @@
-import { useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useEffect, useState, type CSSProperties } from 'react'
 import { EventCountdown } from '../components/EventCountdown'
 import { Footer } from '../components/Footer'
 import { SiteHeader } from '../components/SiteHeader'
-import { InfoTip } from '../components/InfoTip'
 import { PlayerAvatar } from '../components/PlayerAvatar'
 import { ShareBoardButton } from '../components/ShareBoardButton'
 import { getGame } from '../data/games'
@@ -16,6 +15,7 @@ import {
   joinTournament,
   listTournaments,
   syncJoinedTournamentRosters,
+  type StandingRow,
   type TournamentDetail,
   type TournamentStatus,
   type TournamentSummary,
@@ -61,6 +61,144 @@ function EventPills({ t }: { t: Pick<TournamentSummary, 'status' | 'official' | 
   )
 }
 
+function GameResultCell({
+  cell,
+}: {
+  cell: { score: number | null; place: number | null; points: number } | undefined
+}) {
+  if (cell?.place == null) {
+    return <span className="tour-game-result tour-game-result--empty">—</span>
+  }
+  return (
+    <span className="tour-game-result">
+      <span className="tour-game-result__place">{placeLabel(cell.place)}</span>
+      <span className="tour-game-result__meta">
+        <span className="tour-game-result__pts">+{cell.points}</span>
+        {cell.score != null && (
+          <span className="tour-game-result__score">{cell.score.toLocaleString()}</span>
+        )}
+      </span>
+    </span>
+  )
+}
+
+function StandingsList({
+  detail,
+  displayName,
+}: {
+  detail: TournamentDetail
+  displayName: string
+}) {
+  return (
+    <>
+      <ul className="tour-standings">
+        {detail.standings.map((row, index) => (
+          <StandingCard
+            key={row.playerId}
+            row={row}
+            rank={index + 1}
+            games={detail.games}
+            mine={normalizePlayerName(row.name) === displayName}
+          />
+        ))}
+      </ul>
+
+      <div className="tour-table-wrap">
+        <table className="tour-table">
+          <thead>
+            <tr>
+              <th scope="col">#</th>
+              <th scope="col">Player</th>
+              <th scope="col">Total</th>
+              {detail.games.map((game) => (
+                <th key={game} scope="col">
+                  {getGame(game)?.name ?? game}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {detail.standings.map((row, index) => {
+              const mine = normalizePlayerName(row.name) === displayName
+              return (
+                <tr key={row.playerId} className={mine ? 'tour-table__row--you' : undefined}>
+                  <td className="tour-table__rank">{index + 1}</td>
+                  <td>
+                    <div className="tour-table__name">
+                      <PlayerAvatar
+                        avatarId={row.avatarId}
+                        name={normalizePlayerName(row.name)}
+                        size="sm"
+                      />
+                      <span
+                        className="tour-table__name-text"
+                        title={normalizePlayerName(row.name)}
+                      >
+                        {normalizePlayerName(row.name)}
+                      </span>
+                      {mine ? <span className="tour-you-tag">you</span> : null}
+                    </div>
+                  </td>
+                  <td className="tour-table__total">{row.totalPoints}</td>
+                  {detail.games.map((game) => (
+                    <td key={game} className="tour-table__game">
+                      <GameResultCell cell={row.byGame[game]} />
+                    </td>
+                  ))}
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+    </>
+  )
+}
+
+function StandingCard({
+  row,
+  rank,
+  games,
+  mine,
+}: {
+  row: StandingRow
+  rank: number
+  games: string[]
+  mine: boolean
+}) {
+  const name = normalizePlayerName(row.name)
+  return (
+    <li className={`tour-standing${mine ? ' tour-standing--you' : ''}`}>
+      <div className="tour-standing__top">
+        <span className="tour-standing__rank">{rank}</span>
+        <div className="tour-standing__who">
+          <PlayerAvatar avatarId={row.avatarId} name={name} size="sm" />
+          <span className="tour-standing__name" title={name}>
+            {name}
+          </span>
+          {mine ? <span className="tour-you-tag">you</span> : null}
+        </div>
+        <span className="tour-standing__total">
+          {row.totalPoints}
+          <span className="tour-standing__total-label">pts</span>
+        </span>
+      </div>
+      <ul className="tour-standing__games">
+        {games.map((game) => {
+          const cell = row.byGame[game]
+          const label = getGame(game)?.name ?? game
+          return (
+            <li key={game} className="tour-standing__game">
+              <span className="tour-standing__game-name">{label}</span>
+              <GameResultCell cell={cell} />
+            </li>
+          )
+        })}
+      </ul>
+    </li>
+  )
+}
+
 export function TournamentsPage() {
   const [items, setItems] = useState<TournamentSummary[]>([])
   const [loading, setLoading] = useState(true)
@@ -90,13 +228,7 @@ export function TournamentsPage() {
         <SiteHeader />
         <div className="lb-page__inner">
           <header className="lb-page__header">
-            <h1 className="lb-page__title lb-page__title--with-tip">
-              Events
-              <InfoTip label="About events">
-                Daily and weekly official events roll automatically. Join, play from the
-                event page, and climb the standings before the clock runs out.
-              </InfoTip>
-            </h1>
+            <h1 className="lb-page__title">Events</h1>
           </header>
 
           {loading ? (
@@ -191,13 +323,6 @@ export function TournamentDetailPage({ id }: { id: string }) {
     syncJoined(detail, playerName)
   }, [playerName, detail, id])
 
-  const placeTable = useMemo(() => {
-    if (!detail?.placePoints) return []
-    return Object.entries(detail.placePoints)
-      .map(([place, pts]) => ({ place: Number(place), pts: Number(pts) }))
-      .sort((a, b) => a.place - b.place)
-  }, [detail])
-
   const onJoin = async () => {
     if (busy || !displayName) return
     setBusy(true)
@@ -247,34 +372,13 @@ export function TournamentDetailPage({ id }: { id: string }) {
                   )}
                 </div>
                 <div className="lb-page__heading-row lb-page__heading-row--event">
-                  <h1 className="lb-page__title lb-page__title--with-tip">
-                    {detail.title}
-                    {(detail.blurb || placeTable.length > 0) && (
-                      <InfoTip label="Event details">
-                        {detail.blurb && <p>{detail.blurb}</p>}
-                        {placeTable.length > 0 && detail.games.length > 1 && (
-                          <>
-                            <p>Place points per game — totals decide the winner.</p>
-                            <div className="info-tip__points">
-                              {placeTable.map((row) => (
-                                <span key={row.place}>
-                                  {placeLabel(row.place)} · {row.pts}
-                                </span>
-                              ))}
-                            </div>
-                          </>
-                        )}
-                        {detail.games.length === 1 && (
-                          <p>Best score on the featured game wins.</p>
-                        )}
-                      </InfoTip>
-                    )}
-                  </h1>
+                  <h1 className="lb-page__title">{detail.title}</h1>
                   <ShareBoardButton
                     label={`${detail.title} on ${APP_NAME}`}
                     url={`#/tournaments/${detail.id}`}
                   />
                 </div>
+                {detail.blurb ? <p className="tour-detail-blurb">{detail.blurb}</p> : null}
                 {detail.status === 'active' ? (
                   <p className="tour-card__window tour-card__window--live">
                     <EventCountdown endsAt={detail.endsAt} />
@@ -289,13 +393,7 @@ export function TournamentDetailPage({ id }: { id: string }) {
               <section className="lb-board tour-panel">
                 {detail.status !== 'ended' && (
                   <div className="tour-join">
-                    <div className="tour-section-head">
-                      <h2 className="tour-section-title">Join</h2>
-                      <InfoTip label="How joining works">
-                        Join once, then play each game from this page. Only your best score
-                        per game counts. Free play from home does not.
-                      </InfoTip>
-                    </div>
+                    <h2 className="tour-section-title">Join</h2>
                     {joined ? (
                       <p className="tour-joined">
                         In as <strong>{displayName}</strong>
@@ -320,12 +418,7 @@ export function TournamentDetailPage({ id }: { id: string }) {
                   </div>
                 )}
 
-                <div className="tour-section-head">
-                  <h2 className="tour-section-title">Play</h2>
-                  <InfoTip label="Event play">
-                    These links count for the event. Home-page free play does not.
-                  </InfoTip>
-                </div>
+                <h2 className="tour-section-title tour-section-title--spaced">Play</h2>
                 <ul className="tour-games">
                   {detail.games.map((slug) => {
                     const g = getGame(slug)
@@ -346,14 +439,7 @@ export function TournamentDetailPage({ id }: { id: string }) {
               <section className="lb-board" style={{ marginTop: '1rem' }}>
                 <div className="lb-board__head">
                   <div className="lb-stat">
-                    <span className="lb-stat__label lb-stat__label--with-tip">
-                      Standings
-                      <InfoTip label="How standings work">
-                        {detail.games.length > 1
-                          ? 'Ranked by total place points across games. Missing a game scores 0 for that game.'
-                          : 'Ranked by best score on the featured game.'}
-                      </InfoTip>
-                    </span>
+                    <span className="lb-stat__label">Standings</span>
                     <strong>{detail.standings.length}</strong>
                   </div>
                 </div>
@@ -361,68 +447,7 @@ export function TournamentDetailPage({ id }: { id: string }) {
                 {detail.standings.length === 0 ? (
                   <p className="lb-empty">No players yet.</p>
                 ) : (
-                  <div className="tour-table-wrap">
-                    <table className="tour-table">
-                      <thead>
-                        <tr>
-                          <th scope="col">#</th>
-                          <th scope="col">Player</th>
-                          <th scope="col">Total</th>
-                          {detail.games.map((game) => (
-                            <th key={game} scope="col">
-                              {getGame(game)?.name ?? game}
-                            </th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {detail.standings.map((row, index) => {
-                          const mine = normalizePlayerName(row.name) === displayName
-                          return (
-                            <tr
-                              key={row.playerId}
-                              className={mine ? 'tour-table__row--you' : undefined}
-                            >
-                              <td className="tour-table__rank">{index + 1}</td>
-                              <td className="tour-table__name">
-                                <PlayerAvatar
-                                  avatarId={row.avatarId}
-                                  name={normalizePlayerName(row.name)}
-                                  size="sm"
-                                />
-                                <span className="tour-table__name-text" title={normalizePlayerName(row.name)}>
-                                  {normalizePlayerName(row.name)}
-                                </span>
-                                {mine ? <span className="tour-you-tag">you</span> : null}
-                              </td>
-                              <td className="tour-table__total">{row.totalPoints}</td>
-                              {detail.games.map((game) => {
-                                const cell = row.byGame[game]
-                                if (cell?.place == null) {
-                                  return (
-                                    <td key={game} className="tour-table__game tour-table__game--empty">
-                                      —
-                                    </td>
-                                  )
-                                }
-                                return (
-                                  <td key={game} className="tour-table__game">
-                                    <span className="tour-table__place">
-                                      {placeLabel(cell.place)}
-                                    </span>
-                                    <span className="tour-table__pts">+{cell.points}</span>
-                                    {cell.score != null && (
-                                      <span className="tour-table__score">{cell.score}</span>
-                                    )}
-                                  </td>
-                                )
-                              })}
-                            </tr>
-                          )
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
+                  <StandingsList detail={detail} displayName={displayName} />
                 )}
               </section>
             </>

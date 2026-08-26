@@ -204,10 +204,6 @@ export function TournamentPlayPage({
       }}
     >
       <main className="game-page game-page--fullscreen tour-play">
-        <div className="tour-play__banner" aria-hidden="true">
-          <span>{detail.title}</span>
-          <strong>{game?.name ?? gameSlug}</strong>
-        </div>
         {gameSlug === 'stacker' && <StackerGame />}
         {gameSlug === 'patriot' && <PatriotGame />}
         {gameSlug === 'snake' && <SnakeGame />}
