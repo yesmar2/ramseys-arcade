@@ -20,6 +20,27 @@ export function absoluteShareUrl(url?: string): string {
   return `${window.location.origin}${window.location.pathname}${hash}`
 }
 
+function ShareIcon({ copied }: { copied: boolean }) {
+  if (copied) {
+    return (
+      <svg className="lb-share__icon" viewBox="0 0 24 24" aria-hidden="true">
+        <path
+          fill="currentColor"
+          d="M9.55 17.65 4.9 13l1.4-1.4 3.25 3.25L17.7 6.7l1.4 1.4z"
+        />
+      </svg>
+    )
+  }
+  return (
+    <svg className="lb-share__icon" viewBox="0 0 24 24" aria-hidden="true">
+      <path
+        fill="currentColor"
+        d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11A2.99 2.99 0 0 0 18 7.91c1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81A2.99 2.99 0 0 0 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92s2.92-1.31 2.92-2.92-1.31-2.92-2.92-2.92z"
+      />
+    </svg>
+  )
+}
+
 export function ShareBoardButton({ label, url, className = '' }: ShareBoardButtonProps) {
   const [copied, setCopied] = useState(false)
   const timer = useRef<number | null>(null)
@@ -54,9 +75,11 @@ export function ShareBoardButton({ label, url, className = '' }: ShareBoardButto
     <button
       type="button"
       className={`lb-share${className ? ` ${className}` : ''}`}
+      aria-label={copied ? 'Link copied' : `Share: ${label}`}
+      title={copied ? 'Copied' : 'Share'}
       onClick={() => void share()}
     >
-      {copied ? 'Copied' : 'Share'}
+      <ShareIcon copied={copied} />
     </button>
   )
 }

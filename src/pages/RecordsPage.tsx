@@ -101,6 +101,12 @@ function GameRecordBookPage({ game }: { game: string }) {
           backHref={recordsIndexHref()}
           backLabel="Back to Record books"
           playHref={canPlay ? gamePlayHref(game) : undefined}
+          action={
+            <ShareBoardButton
+              label={`${title} record books · Acralia`}
+              url={recordsHref(game)}
+            />
+          }
         />
         <GameRecordsPanel game={game} accent={accent} />
         {!canPlay ? (
@@ -205,6 +211,12 @@ function RecordBoardPage({
               backHref={recordsHref(game)}
               backLabel={`Back to ${gameTitle} records`}
               playHref={canPlay ? gamePlayHref(game) : undefined}
+              action={
+                <ShareBoardButton
+                  label={`${record?.label ?? 'Record'} · ${PERIOD_LABELS[period]} · Acralia`}
+                  url={recordHref(game, recordId, period)}
+                />
+              }
             />
           ) : (
             <header className="lb-page__header lb-page__header--compact">
@@ -214,7 +226,12 @@ function RecordBoardPage({
                   label={`Back to ${gameTitle} records`}
                 />
                 <h1 className="lb-page__title">{record?.label ?? 'Record'}</h1>
-                <span className="lb-page__heading-slot" aria-hidden="true" />
+                <div className="lb-game-board__trailing">
+                  <ShareBoardButton
+                    label={`${record?.label ?? 'Record'} · ${PERIOD_LABELS[period]} · Acralia`}
+                    url={recordHref(game, recordId, period)}
+                  />
+                </div>
               </div>
             </header>
           )}
@@ -225,13 +242,6 @@ function RecordBoardPage({
             hrefFor={(p) => recordHref(game, recordId, p)}
             onSelect={selectPeriod}
           />
-
-          <div className="lb-page__actions">
-            <ShareBoardButton
-              label={`${record?.label ?? 'Record'} · ${PERIOD_LABELS[period]} · Acralia`}
-              url={recordHref(game, recordId, period)}
-            />
-          </div>
 
           <section
             key={`${recordId}-${period}`}

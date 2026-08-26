@@ -89,7 +89,20 @@ export function RankPage({ player }: { player?: string }) {
               <h1 className="lb-page__title">
                 {isSelf ? 'Your ranking' : `${viewedName}'s Ranking`}
               </h1>
-              <span className="lb-page__heading-slot" aria-hidden="true" />
+              {viewedName ? (
+                <div className="lb-game-board__trailing">
+                  <ShareBoardButton
+                    label={
+                      rank != null
+                        ? `${viewedName} · #${rank} global · Acralia`
+                        : `${viewedName}'s ranking · Acralia`
+                    }
+                    url={rankHref(viewedName)}
+                  />
+                </div>
+              ) : (
+                <span className="lb-page__heading-slot" aria-hidden="true" />
+              )}
             </div>
             {isSelf && !myName ? (
               <p className="lb-page__blurb lb-page__blurb--tight">
@@ -97,19 +110,6 @@ export function RankPage({ player }: { player?: string }) {
               </p>
             ) : null}
           </header>
-
-          {viewedName ? (
-            <div className="lb-page__actions">
-              <ShareBoardButton
-                label={
-                  rank != null
-                    ? `${viewedName} · #${rank} global · Acralia`
-                    : `${viewedName}'s ranking · Acralia`
-                }
-                url={rankHref(viewedName)}
-              />
-            </div>
-          ) : null}
 
           {loading ? (
             <BoardSkeleton rows={5} />

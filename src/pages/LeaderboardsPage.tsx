@@ -175,7 +175,16 @@ function GlobalRankingsView({ period }: { period: LeaderboardPeriod }) {
   return (
     <PageShell innerClassName="lb-page__inner lb-page__inner--summary">
       <header className="lb-page__header lb-page__header--compact">
-        <h1 className="lb-page__title">Boards</h1>
+        <div className="lb-page__heading-row">
+          <span className="lb-page__heading-slot" aria-hidden="true" />
+          <h1 className="lb-page__title">Boards</h1>
+          <div className="lb-game-board__trailing">
+            <ShareBoardButton
+              label={`Global rankings · ${PERIOD_LABELS[period]} · Acralia`}
+              url={globalRankingsHref(period)}
+            />
+          </div>
+        </div>
         <BoardsHubSwitcher global />
       </header>
 
@@ -186,13 +195,6 @@ function GlobalRankingsView({ period }: { period: LeaderboardPeriod }) {
           window.location.hash = globalRankingsHref(p)
         }}
       />
-
-      <div className="lb-page__actions">
-        <ShareBoardButton
-          label={`Global rankings · ${PERIOD_LABELS[period]} · Acralia`}
-          url={globalRankingsHref(period)}
-        />
-      </div>
 
       <section
         key={period}

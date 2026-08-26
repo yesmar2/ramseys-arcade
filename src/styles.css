@@ -4332,19 +4332,24 @@ html[data-theme='dark'] .patriot__power-mark {
 }
 
 .lb-share {
-  padding: 0.4rem 0.85rem;
-  min-height: 2.4rem;
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 2.35rem;
+  height: 2.35rem;
+  padding: 0;
   border: 1px solid rgba(var(--ink-rgb), 0.1);
   border-radius: 999px;
   background: rgba(var(--surface-rgb), 0.85);
   color: var(--ink);
-  font-family: var(--font-body);
-  font-weight: 800;
-  font-size: 0.75rem;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
   cursor: pointer;
   touch-action: manipulation;
+}
+
+.lb-share__icon {
+  width: 1.1rem;
+  height: 1.1rem;
+  display: block;
 }
 
 .lb-share:hover,
@@ -4352,6 +4357,19 @@ html[data-theme='dark'] .patriot__power-mark {
   border-color: color-mix(in srgb, var(--board-accent, var(--accent)) 45%, transparent);
   color: var(--board-accent, var(--accent));
   outline: none;
+}
+
+.lb-game-board__trailing {
+  justify-self: end;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.35rem;
+  min-height: 2.35rem;
+}
+
+.lb-game-board__trailing .lb-game-board__play {
+  justify-self: auto;
 }
 
 .lb-personal-best {
@@ -6325,6 +6343,16 @@ html[data-theme='dark'] .patriot__power-mark {
     var(--shadow-soft);
 }
 
+.game-lobby__share {
+  position: absolute;
+  top: 0.55rem;
+  right: 0.55rem;
+  z-index: 2;
+  background: rgba(var(--surface-rgb), 0.92);
+  backdrop-filter: blur(10px);
+  box-shadow: var(--shadow-soft);
+}
+
 .game-lobby__stage {
   position: absolute;
   inset: 0;
@@ -6373,18 +6401,6 @@ html[data-theme='dark'] .patriot__power-mark {
 .game-lobby__stats {
   display: flex;
   gap: 0.6rem;
-}
-
-.game-lobby__cta {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 0.65rem;
-  width: min(100%, 22rem);
-}
-
-.game-lobby__cta .lb-share {
-  align-self: center;
 }
 
 .game-lobby__play {

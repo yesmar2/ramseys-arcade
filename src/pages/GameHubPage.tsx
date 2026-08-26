@@ -165,7 +165,17 @@ export function GameHubPage({ slug, board: boardFromRoute }: GameHubPageProps) {
             } as CSSProperties
           }
         >
-          <GameLobbyArt slug={game.slug} accent={game.accent} />
+          <GameLobbyArt
+            slug={game.slug}
+            accent={game.accent}
+            action={
+              <ShareBoardButton
+                className="game-lobby__share"
+                label={`Play ${game.name} on Acralia`}
+                url={gameHref(slug)}
+              />
+            }
+          />
 
           <header className="game-lobby__header">
             <h1 className="game-lobby__title">{game.name}</h1>
@@ -183,29 +193,23 @@ export function GameHubPage({ slug, board: boardFromRoute }: GameHubPageProps) {
             </div>
           </div>
 
-          <div className="game-lobby__cta">
-            {inDevelopment ? (
-              <p className="game-lobby__unavailable">In development — not ready to play yet.</p>
-            ) : comingSoon ? (
-              <p className="game-lobby__unavailable">Coming soon — tile preview only.</p>
-            ) : canPlay ? (
-              <a
-                className="lb-play game-lobby__play"
-                href={playHref}
-                style={{ background: game.accent }}
-              >
-                Play {game.name}
-              </a>
-            ) : (
-              <p className="game-lobby__unavailable">
-                {deviceNote ?? `${game.name} isn’t available on this device.`}
-              </p>
-            )}
-            <ShareBoardButton
-              label={`Play ${game.name} on Acralia`}
-              url={gameHref(slug)}
-            />
-          </div>
+          {inDevelopment ? (
+            <p className="game-lobby__unavailable">In development — not ready to play yet.</p>
+          ) : comingSoon ? (
+            <p className="game-lobby__unavailable">Coming soon — tile preview only.</p>
+          ) : canPlay ? (
+            <a
+              className="lb-play game-lobby__play"
+              href={playHref}
+              style={{ background: game.accent }}
+            >
+              Play {game.name}
+            </a>
+          ) : (
+            <p className="game-lobby__unavailable">
+              {deviceNote ?? `${game.name} isn’t available on this device.`}
+            </p>
+          )}
 
           {boardSlug ? (
             <>

@@ -118,6 +118,12 @@ export function GameLeaderboardPage({
           backHref={leaderboardHref()}
           backLabel="Back to Boards"
           playHref={canPlay ? playHref : undefined}
+          action={
+            <ShareBoardButton
+              label={`${game.name} · ${PERIOD_LABELS[period]} · Acralia`}
+              url={gameBoardHref(gameSlug, period)}
+            />
+          }
         />
 
         <PeriodSwitcher
@@ -126,13 +132,6 @@ export function GameLeaderboardPage({
           hrefFor={(p) => gameBoardHref(gameSlug, p)}
           onSelect={selectPeriod}
         />
-
-        <div className="lb-page__actions">
-          <ShareBoardButton
-            label={`${game.name} · ${PERIOD_LABELS[period]} · Acralia`}
-            url={gameBoardHref(gameSlug, period)}
-          />
-        </div>
 
         <section
           key={`${gameSlug}-${period}`}

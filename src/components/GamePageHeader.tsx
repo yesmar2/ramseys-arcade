@@ -13,7 +13,7 @@ type GamePageHeaderProps = {
   /** Icon back control on the left of the centered heading. */
   backHref?: string
   backLabel?: string
-  /** Optional trailing control when playHref is not set. */
+  /** Trailing control(s), shown before Play when both are set. */
   action?: ReactNode
 }
 
@@ -35,15 +35,19 @@ export function GamePageHeader({
     </>
   )
 
-  const trailing = playHref ? (
-    <a className="lb-game-board__play" href={playHref}>
-      Play
-    </a>
-  ) : action ? (
-    <div className="lb-game-board__action">{action}</div>
-  ) : (
-    <span className="lb-page__heading-slot" aria-hidden="true" />
-  )
+  const trailing =
+    playHref || action ? (
+      <div className="lb-game-board__trailing">
+        {action}
+        {playHref ? (
+          <a className="lb-game-board__play" href={playHref}>
+            Play
+          </a>
+        ) : null}
+      </div>
+    ) : (
+      <span className="lb-page__heading-slot" aria-hidden="true" />
+    )
 
   return (
     <header
