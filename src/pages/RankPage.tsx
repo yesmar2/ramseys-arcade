@@ -3,6 +3,7 @@ import { BoardSkeleton } from '../components/BoardChrome'
 import { GameDeviceBadge } from '../components/GameDeviceBadge'
 import { PageBackLink } from '../components/PageBackLink'
 import { PageShell } from '../components/PageShell'
+import { ShareBoardButton } from '../components/ShareBoardButton'
 import { getGame, gamePlayableOn } from '../data/games'
 import { gameBoardHref, gamePlayHref, globalRankingsHref, rankHref } from '../hooks/useHashRoute'
 import { gapToNextLabel } from '../lib/boardGap'
@@ -96,6 +97,19 @@ export function RankPage({ player }: { player?: string }) {
               </p>
             ) : null}
           </header>
+
+          {viewedName ? (
+            <div className="lb-page__actions">
+              <ShareBoardButton
+                label={
+                  rank != null
+                    ? `${viewedName} · #${rank} global · Acralia`
+                    : `${viewedName}'s ranking · Acralia`
+                }
+                url={rankHref(viewedName)}
+              />
+            </div>
+          ) : null}
 
           {loading ? (
             <BoardSkeleton rows={5} />

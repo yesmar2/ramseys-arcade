@@ -9,6 +9,7 @@ import {
 } from '../components/LeaderboardSummary'
 import { GlobalRankList } from '../components/GlobalRankList'
 import { PageShell } from '../components/PageShell'
+import { ShareBoardButton } from '../components/ShareBoardButton'
 import { globalRankingsHref, leaderboardHref } from '../hooks/useHashRoute'
 import { usePlayerName } from '../hooks/usePlayerName'
 import {
@@ -185,6 +186,13 @@ function GlobalRankingsView({ period }: { period: LeaderboardPeriod }) {
           window.location.hash = globalRankingsHref(p)
         }}
       />
+
+      <div className="lb-page__actions">
+        <ShareBoardButton
+          label={`Global rankings · ${PERIOD_LABELS[period]} · Acralia`}
+          url={globalRankingsHref(period)}
+        />
+      </div>
 
       <section
         key={period}

@@ -3,6 +3,7 @@ import { BoardEmpty, BoardSkeleton, PeriodSwitcher } from '../components/BoardCh
 import { GamePageHeader } from '../components/GamePageHeader'
 import { LeaderboardList } from '../components/LeaderboardList'
 import { PageShell } from '../components/PageShell'
+import { ShareBoardButton } from '../components/ShareBoardButton'
 import { getGame, gamePlayableOn, deviceRequirementLabel } from '../data/games'
 import {
   gameBoardHref,
@@ -14,6 +15,7 @@ import { useDeviceType } from '../lib/device'
 import { flashYouRow } from '../lib/boardGap'
 import {
   getLeaderboard,
+  PERIOD_LABELS,
   normalizePlayerName,
   type LeaderboardGame,
   type LeaderboardPeriod,
@@ -124,6 +126,13 @@ export function GameLeaderboardPage({
           hrefFor={(p) => gameBoardHref(gameSlug, p)}
           onSelect={selectPeriod}
         />
+
+        <div className="lb-page__actions">
+          <ShareBoardButton
+            label={`${game.name} · ${PERIOD_LABELS[period]} · Acralia`}
+            url={gameBoardHref(gameSlug, period)}
+          />
+        </div>
 
         <section
           key={`${gameSlug}-${period}`}

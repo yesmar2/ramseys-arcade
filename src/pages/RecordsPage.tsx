@@ -11,6 +11,7 @@ import { PageBackLink } from '../components/PageBackLink'
 import { PageShell } from '../components/PageShell'
 import { SiteHeader } from '../components/SiteHeader'
 import { LeaderboardList } from '../components/LeaderboardList'
+import { ShareBoardButton } from '../components/ShareBoardButton'
 import { getGame, gamePlayableOn, deviceRequirementLabel } from '../data/games'
 import {
   gamePlayHref,
@@ -23,6 +24,7 @@ import { useDeviceType } from '../lib/device'
 import { usePlayerName } from '../hooks/usePlayerName'
 import {
   normalizePlayerName,
+  PERIOD_LABELS,
   type LeaderboardEntry,
   type LeaderboardPeriod,
   type YouEntry,
@@ -223,6 +225,13 @@ function RecordBoardPage({
             hrefFor={(p) => recordHref(game, recordId, p)}
             onSelect={selectPeriod}
           />
+
+          <div className="lb-page__actions">
+            <ShareBoardButton
+              label={`${record?.label ?? 'Record'} · ${PERIOD_LABELS[period]} · Acralia`}
+              url={recordHref(game, recordId, period)}
+            />
+          </div>
 
           <section
             key={`${recordId}-${period}`}
