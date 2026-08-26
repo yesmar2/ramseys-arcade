@@ -425,35 +425,39 @@ export function SimonArt() {
 }
 
 /** Frogger / Crossy Road vibe — lanes, cars, a hopper. */
+/** Frogger vibe — bays up top, river in the middle, traffic below. */
 export function CrosswalkArt() {
-  const road = pastel(HUE.sky, 40, 18)
+  const hedge = pastel(HUE.green, 42, 42)
+  const bay = pastel(HUE.sky, 48, 30)
+  const water = pastel(HUE.sky, 54, 26)
+  const log = pastel(HUE.gold, 38, 46)
+  const road = pastel(HUE.sky, 18, 14)
   const carA = pastel(HUE.rose, 58, 52)
-  const carB = pastel(HUE.gold, 58, 50)
+  const carB = pastel(HUE.violet, 58, 50)
   const frog = pastel(HUE.green, 58, 55)
 
   return (
     <SvgFrame>
       <TileBg />
-      <rect x="8" y="22" width="144" height="18" rx="2" fill={road.fill} stroke={road.stroke} strokeWidth="1.2" />
-      <rect x="8" y="48" width="144" height="18" rx="2" fill={road.fill} stroke={road.stroke} strokeWidth="1.2" />
-      {[28, 52, 76, 100, 124].map((x) => (
-        <rect key={x} x={x} y="29" width="10" height="2.2" rx="1" fill="rgba(var(--ink-rgb), 0.18)" />
+      <rect x="18" y="14" width="124" height="12" rx="3" fill={hedge.fill} stroke={hedge.stroke} strokeWidth="1.2" />
+      {[25, 49, 72, 95, 119].map((x) => (
+        <rect key={x} x={x} y="16" width="16" height="8" rx="2.5" fill={bay.fill} stroke={bay.stroke} strokeWidth="1" />
       ))}
-      {[28, 52, 76, 100, 124].map((x) => (
-        <rect key={`b-${x}`} x={x} y="55" width="10" height="2.2" rx="1" fill="rgba(var(--ink-rgb), 0.18)" />
+
+      <rect x="18" y="29" width="124" height="21" rx="3" fill={water.fill} stroke={water.stroke} strokeWidth="1.2" />
+      <rect x="26" y="31.5" width="44" height="7.5" rx="3.7" fill={log.fill} stroke={log.stroke} strokeWidth="1.2" />
+      <rect x="88" y="40" width="36" height="7.5" rx="3.7" fill={log.fill} stroke={log.stroke} strokeWidth="1.2" />
+
+      <rect x="18" y="53" width="124" height="21" rx="3" fill={road.fill} stroke={road.stroke} strokeWidth="1.2" />
+      {[28, 50, 72, 94, 116].map((x) => (
+        <rect key={`d-${x}`} x={x} y="62.5" width="9" height="2" rx="1" fill="rgba(var(--ink-rgb), 0.18)" />
       ))}
-      <rect x="24" y="25" width="22" height="12" rx="3" fill={carA.fill} stroke={carA.stroke} strokeWidth="1.4" />
-      <rect x="98" y="51" width="26" height="12" rx="3" fill={carB.fill} stroke={carB.stroke} strokeWidth="1.4" />
-      <ellipse cx="80" cy="78" rx="9" ry="7" fill={frog.fill} stroke={frog.stroke} strokeWidth="1.5" />
-      <circle cx="76.5" cy="76" r="1.4" fill="#1a2b3c" />
-      <circle cx="83.5" cy="76" r="1.4" fill="#1a2b3c" />
-      <path
-        d="M72 82 Q80 88 88 82"
-        fill="none"
-        stroke={frog.stroke}
-        strokeWidth="1.4"
-        strokeLinecap="round"
-      />
+      <rect x="28" y="55.5" width="22" height="8" rx="2.5" fill={carA.fill} stroke={carA.stroke} strokeWidth="1.2" />
+      <rect x="92" y="64" width="24" height="8" rx="2.5" fill={carB.fill} stroke={carB.stroke} strokeWidth="1.2" />
+
+      <ellipse cx="80" cy="84" rx="8" ry="6.2" fill={frog.fill} stroke={frog.stroke} strokeWidth="1.5" />
+      <circle cx="77" cy="82.4" r="1.3" fill="#1a2b3c" />
+      <circle cx="83" cy="82.4" r="1.3" fill="#1a2b3c" />
     </SvgFrame>
   )
 }

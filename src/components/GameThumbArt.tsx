@@ -183,22 +183,35 @@ function DeadCenterThumb({ accent }: { accent?: string }) {
 
 function CrosswalkThumb({ accent }: { accent?: string }) {
   const hopper = accent ?? '#3ecf8e'
-  const road = 'hsla(210, 12%, 38%, 0.85)'
+  const hedge = pastel(HUE.green, 42, 42)
+  const bay = pastel(HUE.sky, 48, 30)
+  const water = pastel(HUE.sky, 54, 26)
+  const log = pastel(HUE.gold, 38, 46)
+  const road = pastel(HUE.sky, 18, 14)
   const carA = pastel(HUE.rose, 58, 52)
-  const carB = pastel(HUE.gold, 58, 50)
+  const carB = pastel(HUE.violet, 58, 50)
 
   return (
     <>
-      <rect x="3" y="7" width="26" height="7" rx="1.2" fill={road} />
-      <rect x="3" y="16" width="26" height="7" rx="1.2" fill={road} />
-      <rect x="7" y="9.4" width="4.5" height="1.1" rx="0.5" fill="rgba(255,255,255,0.35)" />
-      <rect x="14.5" y="9.4" width="4.5" height="1.1" rx="0.5" fill="rgba(255,255,255,0.35)" />
-      <rect x="22" y="9.4" width="4.5" height="1.1" rx="0.5" fill="rgba(255,255,255,0.35)" />
-      <rect x="6" y="8.2" width="8" height="4.6" rx="1.2" fill={carA.fill} stroke={carA.stroke} strokeWidth="1.1" />
-      <rect x="18" y="17.2" width="9" height="4.6" rx="1.2" fill={carB.fill} stroke={carB.stroke} strokeWidth="1.1" />
-      <ellipse cx="16" cy="26.2" rx="4.4" ry="3.6" fill={hopper} stroke="hsla(128, 55%, 28%, 0.95)" strokeWidth="1.3" />
-      <circle cx="14.4" cy="25.4" r="0.7" fill="#1a2b3c" />
-      <circle cx="17.6" cy="25.4" r="0.7" fill="#1a2b3c" />
+      <rect x="4" y="3" width="24" height="4.2" rx="1" fill={hedge.fill} stroke={hedge.stroke} strokeWidth="0.7" />
+      {[5.3, 9.9, 14.4, 18.9, 23.5].map((x) => (
+        <rect key={x} x={x} y="3.8" width="3.2" height="2.6" rx="0.8" fill={bay.fill} stroke={bay.stroke} strokeWidth="0.6" />
+      ))}
+
+      <rect x="4" y="8.4" width="24" height="7.6" rx="1" fill={water.fill} stroke={water.stroke} strokeWidth="0.7" />
+      <rect x="6" y="9.3" width="10" height="2.6" rx="1.3" fill={log.fill} stroke={log.stroke} strokeWidth="0.8" />
+      <rect x="17" y="12.5" width="8" height="2.6" rx="1.3" fill={log.fill} stroke={log.stroke} strokeWidth="0.8" />
+
+      <rect x="4" y="17" width="24" height="7.6" rx="1" fill={road.fill} stroke={road.stroke} strokeWidth="0.7" />
+      {[6, 12, 18, 24].map((x) => (
+        <rect key={`d-${x}`} x={x} y="20.5" width="3" height="0.8" rx="0.4" fill="rgba(var(--ink-rgb), 0.18)" />
+      ))}
+      <rect x="6" y="17.8" width="6.8" height="2.8" rx="0.9" fill={carA.fill} stroke={carA.stroke} strokeWidth="0.8" />
+      <rect x="18" y="21.1" width="6.8" height="2.8" rx="0.9" fill={carB.fill} stroke={carB.stroke} strokeWidth="0.8" />
+
+      <ellipse cx="16" cy="27.6" rx="3.6" ry="2.4" fill={hopper} stroke="hsla(128, 55%, 28%, 0.95)" strokeWidth="1" />
+      <circle cx="14.7" cy="27" r="0.6" fill="#1a2b3c" />
+      <circle cx="17.3" cy="27" r="0.6" fill="#1a2b3c" />
     </>
   )
 }
