@@ -57,32 +57,18 @@ function AsteroidsThumb({ accent }: { accent?: string }) {
   )
 }
 
-function PatriotThumb({ accent }: { accent?: string }) {
-  const body = accent ? accentPastel(accent, 46) : pastel(HUE.rose, 54, 44)
-  const dish = accent ? accentPastel(accent, 34) : pastel(HUE.sky, 52, 48)
-  const tip = accent ?? '#e85d5d'
+function PatriotThumb(_props: { accent?: string }) {
+  const turret = pastel(HUE.sky, 54, 44)
 
-  // Compact SAM look — pad, cabin, twin tubes, radar dish.
+  // Same silhouette as drawBattery() / PatriotArt — stepped missile battery.
   return (
-    <>
-      <path d="M8 26.2 L8 23.4 L24 23.4 L24 26.2 Z" {...shape(body, 1.35)} />
-      <path d="M10.5 23.4 L10.5 17.2 L21.5 17.2 L21.5 23.4 Z" {...shape(body, 1.35)} />
-      <path d="M12.2 17.2 L12.2 8.2 L14.4 8.2 L14.4 17.2 Z" {...shape(body, 1.25)} />
-      <path d="M17.6 17.2 L17.6 8.2 L19.8 8.2 L19.8 17.2 Z" {...shape(body, 1.25)} />
-      <circle cx="13.3" cy="7" r="1.35" fill={tip} opacity="0.9" />
-      <circle cx="18.7" cy="7" r="1.35" fill={tip} opacity="0.9" />
-      <circle cx="23.2" cy="14.2" r="3.35" {...shape(dish, 1.2)} />
-      <circle cx="23.2" cy="14.2" r="1.25" fill={dish.stroke} opacity="0.45" />
-      <line
-        x1="23.2"
-        y1="14.2"
-        x2="25.6"
-        y2="11.4"
-        stroke={dish.stroke}
-        strokeWidth="1.15"
-        strokeLinecap="round"
-      />
-    </>
+    <path
+      d="M8.6 27 L8.6 20.8 L11.3 20.8 L11.3 10.9 L13.1 10.9 L13.1 4.7 L16.9 4.7 L16.9 10.9 L18.7 10.9 L18.7 20.8 L21.4 20.8 L21.4 27 Z"
+      fill={turret.fill}
+      stroke={turret.stroke}
+      strokeWidth="1.5"
+      strokeLinejoin="round"
+    />
   )
 }
 
