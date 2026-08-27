@@ -25,8 +25,8 @@
   --font-body: "Outfit", system-ui, sans-serif;
   --max-width: 68rem;
   --shell: #d5e8f2;
-  --inline-thumb-size: 1.85rem;
-  --inline-thumb-gap: 0.22rem;
+  --inline-thumb-size: 2.35rem;
+  --inline-thumb-gap: 0.4rem;
   color-scheme: light;
 }
 
@@ -5309,16 +5309,22 @@ html[data-theme='dark'] .patriot__power-mark {
 
 .inline-thumb {
   flex: none;
-  display: block;
+  display: grid;
+  place-items: center;
   width: var(--inline-thumb-size);
   height: var(--inline-thumb-size);
   line-height: 0;
+  border-radius: calc(var(--inline-thumb-size) * 0.28);
+  overflow: hidden;
+  background: color-mix(in srgb, var(--thumb-accent, var(--accent)) 16%, var(--playfield));
+  border: 1px solid color-mix(in srgb, var(--thumb-accent, var(--accent)) 40%, transparent);
+  box-shadow: 0 3px 10px rgba(var(--ink-rgb), 0.07);
 }
 
 .inline-thumb .game-thumb__svg {
   display: block;
-  width: 100%;
-  height: 100%;
+  width: 78%;
+  height: 78%;
 }
 
 .lb-picker__main {
@@ -7440,15 +7446,9 @@ html[data-theme='dark'] .patriot__power-mark {
 .event-thumbs__item {
   position: absolute;
   inset: 0;
-  display: grid;
-  place-items: center;
+  display: block;
   width: var(--event-thumb-size);
   height: var(--event-thumb-size);
-  border-radius: 0.9rem;
-  overflow: hidden;
-  background: color-mix(in srgb, var(--thumb-accent, var(--accent)) 16%, var(--playfield));
-  border: 1px solid color-mix(in srgb, var(--thumb-accent, var(--accent)) 40%, transparent);
-  box-shadow: 0 4px 12px rgba(var(--ink-rgb), 0.08);
 }
 
 .event-thumbs--stack .event-thumbs__item:nth-child(1) {
@@ -7464,7 +7464,11 @@ html[data-theme='dark'] .patriot__power-mark {
 }
 
 .event-thumbs__item .inline-thumb {
-  --inline-thumb-size: 78%;
+  --inline-thumb-size: 100%;
+  width: 100%;
+  height: 100%;
+  border-radius: 0.9rem;
+  box-shadow: 0 4px 12px rgba(var(--ink-rgb), 0.08);
 }
 
 .event-detail {
@@ -7481,41 +7485,49 @@ html[data-theme='dark'] .patriot__power-mark {
 }
 
 .event-detail__thumb {
-  display: grid;
-  place-items: center;
+  display: block;
   width: 4.75rem;
   height: 4.75rem;
-  border-radius: 1rem;
-  overflow: hidden;
-  background: color-mix(in srgb, var(--thumb-accent, var(--event-accent)) 16%, var(--playfield));
-  border: 1px solid color-mix(in srgb, var(--thumb-accent, var(--event-accent)) 38%, transparent);
-  box-shadow: var(--shadow-soft);
 }
 
 .event-detail__thumb .inline-thumb {
-  --inline-thumb-size: 78%;
+  --inline-thumb-size: 100%;
+  width: 100%;
+  height: 100%;
+  border-radius: 1rem;
+  box-shadow: var(--shadow-soft);
 }
 
 .event-detail__meta {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.75rem;
+  gap: 0.55rem;
   text-align: center;
 }
 
-.event-detail__stats {
+.event-detail__facts {
+  margin: 0;
   display: flex;
   flex-wrap: wrap;
+  align-items: baseline;
   justify-content: center;
-  gap: 0.85rem 1.4rem;
+  gap: 0.35rem 0.55rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--muted);
+  line-height: 1.35;
 }
 
-.event-detail__window-stat {
-  font-size: 0.85rem !important;
-  font-weight: 700 !important;
-  max-width: 14rem;
-  line-height: 1.25;
+.event-detail__facts strong {
+  font-family: var(--font-display);
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.event-detail__facts-sep {
+  opacity: 0.4;
+  font-weight: 500;
 }
 
 .event-detail__join {
@@ -7536,21 +7548,6 @@ html[data-theme='dark'] .patriot__power-mark {
 .event-detail__join-btn:disabled {
   opacity: 0.7;
   cursor: wait;
-}
-
-.event-detail__joined {
-  margin: 0;
-  padding: 0.65rem 1.1rem;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--event-accent) 14%, var(--surface));
-  border: 1px solid color-mix(in srgb, var(--event-accent) 32%, transparent);
-  font-size: 0.95rem;
-  font-weight: 600;
-  color: var(--ink);
-}
-
-.event-detail__joined strong {
-  font-weight: 800;
 }
 
 .event-detail__section-title {
@@ -7596,18 +7593,17 @@ html[data-theme='dark'] .patriot__power-mark {
 }
 
 .event-play-tile__art {
-  display: grid;
-  place-items: center;
+  display: block;
   width: 2.75rem;
   height: 2.75rem;
-  border-radius: 0.7rem;
-  overflow: hidden;
-  background: color-mix(in srgb, var(--event-accent) 16%, var(--playfield));
-  border: 1px solid color-mix(in srgb, var(--event-accent) 35%, transparent);
 }
 
 .event-play-tile__art .inline-thumb {
-  --inline-thumb-size: 80%;
+  --inline-thumb-size: 100%;
+  width: 100%;
+  height: 100%;
+  border-radius: 0.7rem;
+  box-shadow: none;
 }
 
 .event-play-tile__name {
@@ -7672,6 +7668,12 @@ html[data-theme='dark'] .patriot__power-mark {
   color: color-mix(in srgb, var(--accent-sky) 70%, var(--ink));
   border-color: color-mix(in srgb, var(--accent-sky) 35%, transparent);
   background: color-mix(in srgb, var(--blob-sky) 55%, var(--surface));
+}
+
+.tour-pill--joined {
+  color: #1a7a5c;
+  border-color: rgba(46, 184, 160, 0.4);
+  background: rgba(197, 240, 228, 0.72);
 }
 
 .tour-pill--cadence {

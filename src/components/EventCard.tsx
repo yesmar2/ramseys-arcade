@@ -34,8 +34,11 @@ export function eventAccent(games: string[]) {
 
 export function EventStatusChips({
   t,
+  joined = false,
 }: {
   t: Pick<TournamentSummary, 'status' | 'official' | 'cadence'>
+  /** Show a Joined chip when the current player is in this event. */
+  joined?: boolean
 }) {
   const cadence = cadenceLabel(t.cadence)
   return (
@@ -45,6 +48,7 @@ export function EventStatusChips({
       {t.official && !cadence ? (
         <span className="tour-pill tour-pill--official">Official</span>
       ) : null}
+      {joined ? <span className="tour-pill tour-pill--joined">Joined</span> : null}
     </div>
   )
 }

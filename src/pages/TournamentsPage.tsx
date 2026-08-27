@@ -451,37 +451,31 @@ export function TournamentDetailPage({ id }: { id: string }) {
           )}
 
           <div className="event-detail__meta">
-            <EventStatusChips t={detail} />
-            <div className="event-detail__stats">
+            <EventStatusChips
+              t={detail}
+              joined={joined && detail.status !== 'ended'}
+            />
+            <p className="event-detail__facts">
               {detail.status === 'active' ? (
-                <div className="lb-stat">
-                  <span className="lb-stat__label">Time left</span>
-                  <strong>
-                    <EventCountdown endsAt={detail.endsAt} />
-                  </strong>
-                </div>
+                <strong>
+                  <EventCountdown endsAt={detail.endsAt} />
+                </strong>
               ) : (
-                <div className="lb-stat">
-                  <span className="lb-stat__label">Window</span>
-                  <strong className="event-detail__window-stat">
-                    {formatWindow(detail.startsAt, detail.endsAt)}
-                  </strong>
-                </div>
+                <span>{formatWindow(detail.startsAt, detail.endsAt)}</span>
               )}
-              <div className="lb-stat">
-                <span className="lb-stat__label">Joined</span>
-                <strong>{detail.playerCount}</strong>
-              </div>
-            </div>
+              <span className="event-detail__facts-sep" aria-hidden="true">
+                ·
+              </span>
+              <span>
+                {detail.playerCount}{' '}
+                {detail.playerCount === 1 ? 'player' : 'players'}
+              </span>
+            </p>
           </div>
 
-          {detail.status !== 'ended' ? (
+          {detail.status !== 'ended' && !joined ? (
             <div className="event-detail__join">
-              {joined ? (
-                <p className="event-detail__joined">
-                  In as <strong>{displayName}</strong>
-                </p>
-              ) : displayName ? (
+              {displayName ? (
                 <button
                   type="button"
                   className="lb-play event-detail__join-btn"
@@ -498,6 +492,8 @@ export function TournamentDetailPage({ id }: { id: string }) {
               )}
               {joinNote ? <p className="tour-note tour-note--error">{joinNote}</p> : null}
             </div>
+          ) : joinNote ? (
+            <p className="tour-note tour-note--error">{joinNote}</p>
           ) : null}
 
           <section className="event-detail__play" aria-label="Play">
