@@ -57,8 +57,8 @@ function AsteroidsThumb({ accent }: { accent?: string }) {
   )
 }
 
-function PatriotThumb(_props: { accent?: string }) {
-  const turret = pastel(HUE.sky, 54, 44)
+function PatriotThumb({ accent }: { accent?: string }) {
+  const turret = accent ? accentPastel(accent, 46) : pastel(HUE.rose, 54, 44)
 
   // Same silhouette as drawBattery() / PatriotArt — stepped missile battery.
   return (
