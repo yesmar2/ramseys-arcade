@@ -215,7 +215,6 @@ export function GameHubPage({ slug, board: boardFromRoute }: GameHubPageProps) {
               topEntries={topEntries}
               playerName={playerName}
               accent={accent}
-              canPlay={canPlay}
             />
           ) : null}
 
