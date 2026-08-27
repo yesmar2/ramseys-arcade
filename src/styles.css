@@ -761,8 +761,8 @@ img {
   width: 100%;
 }
 
-.home-rail .games--playable {
-  margin: 0;
+.home-rail .game-grid--playable {
+  padding-top: 0.2rem;
 }
 
 .games__intro {
@@ -798,6 +798,10 @@ img {
 .game-grid > li {
   display: flex;
   min-width: 0;
+}
+
+.game-grid--playable > li {
+  overflow: visible;
 }
 
 @media (max-width: 767px) {
@@ -890,6 +894,7 @@ img {
   border-color: transparent;
   box-shadow: none;
   border-radius: 0;
+  overflow: visible;
 }
 
 .game-tile--thumb:hover,
