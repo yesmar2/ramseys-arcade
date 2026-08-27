@@ -9,6 +9,7 @@ import { GameThumbArt } from '../components/GameThumbArt'
 import { HowToPlayAccordion } from '../components/ScoreGuide'
 import { ShareBoardButton } from '../components/ShareBoardButton'
 import { PodiumMedal, medalKind } from '../components/PodiumMedal'
+import { PeriodMiniBoard } from '../components/PeriodMiniBoard'
 import { PlayerAvatar } from '../components/PlayerAvatar'
 import {
   deviceRequirementLabel,
@@ -33,12 +34,21 @@ import { gameHasRecords } from '../lib/records'
 import {
   getLeaderboard,
   LEADERBOARD_GAMES,
+  LEADERBOARD_PERIODS,
   normalizePlayerName,
   type LeaderboardGame,
   type LeaderboardEntry,
+  type LeaderboardPeriod,
 } from '../lib/leaderboard'
 
 const TOP_ROWS = 3
+
+const EMPTY_BY_PERIOD: Record<LeaderboardPeriod, LeaderboardEntry[]> = {
+  daily: [],
+  weekly: [],
+  monthly: [],
+  all: [],
+}
 
 function isBoardGame(slug: string): slug is LeaderboardGame {
   return (LEADERBOARD_GAMES as readonly string[]).includes(slug)
@@ -55,7 +65,8 @@ export function GameHubPage({ slug, board: boardFromRoute }: GameHubPageProps) {
   const playerName = normalizePlayerName(usePlayerName())
   const personalBest = usePersonalBest(slug)
   const allTime = useBoardRecord(slug)
-  const [entries, setEntries] = useState<LeaderboardEntry[]>([])
+  const [byPeriod, setByPeriod] =
+    useState<Record<LeaderboardPeriod, LeaderboardEntry[]>>(EMPTY_BY_PERIOD)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -82,7 +93,7 @@ export function GameHubPage({ slug, board: boardFromRoute }: GameHubPageProps) {
 
   useEffect(() => {
     if (!boardSlug) {
-      setEntries([])
+      setByPeriod(EMPTY_BY_PERIOD)
       setLoading(false)
       setError(null)
       return
@@ -90,14 +101,22 @@ export function GameHubPage({ slug, board: boardFromRoute }: GameHubPageProps) {
     let cancelled = false
     setLoading(true)
     setError(null)
-    getLeaderboard(boardSlug, 'daily', playerName || undefined)
-      .then((board) => {
+    Promise.all(
+      LEADERBOARD_PERIODS.map((period) =>
+        getLeaderboard(boardSlug, period, playerName || undefined),
+      ),
+    )
+      .then((boards) => {
         if (cancelled) return
-        setEntries(board.entries)
+        const next = { ...EMPTY_BY_PERIOD }
+        LEADERBOARD_PERIODS.forEach((period, index) => {
+          next[period] = boards[index]?.entries ?? []
+        })
+        setByPeriod(next)
       })
       .catch((err) => {
         if (cancelled) return
-        setEntries([])
+        setByPeriod(EMPTY_BY_PERIOD)
         setError(err instanceof Error ? err.message : 'Failed to load')
       })
       .finally(() => {
@@ -122,7 +141,7 @@ export function GameHubPage({ slug, board: boardFromRoute }: GameHubPageProps) {
     )
   }
 
-  const topEntries = entries.slice(0, TOP_ROWS)
+  const topEntries = byPeriod.daily.slice(0, TOP_ROWS)
   const boardHref = boardSlug ? gameBoardHref(boardSlug, 'daily') : null
 
   return (
@@ -140,7 +159,9 @@ export function GameHubPage({ slug, board: boardFromRoute }: GameHubPageProps) {
             } as CSSProperties
           }
         >
-          <div className="game-lobby__hero">
+          <div
+            className={`game-lobby__hero${boardSlug ? '' : ' game-lobby__hero--solo'}`}
+          >
             <div className="game-lobby__identity">
               <div className="game-lobby__art">
                 <GameThumbArt
@@ -156,50 +177,52 @@ export function GameHubPage({ slug, board: boardFromRoute }: GameHubPageProps) {
                 <h1 className="game-lobby__title">{game.name}</h1>
               </div>
 
-              <PlayCta
-                className="game-lobby__play--desktop"
-                compact
-                game={game}
-                canPlay={canPlay}
-                comingSoon={comingSoon}
-                inDevelopment={inDevelopment}
-                playHref={playHref}
-                deviceNote={deviceNote}
-              />
-            </div>
+              {boardSlug ? (
+                <PlayCta
+                  className="game-lobby__play--desktop"
+                  compact
+                  game={game}
+                  canPlay={canPlay}
+                  comingSoon={comingSoon}
+                  inDevelopment={inDevelopment}
+                  playHref={playHref}
+                  deviceNote={deviceNote}
+                />
+              ) : null}
 
-            <div className="game-lobby__aside">
               <div className="game-lobby__stats">
                 <div className="lb-stat">
                   <span className="lb-stat__label">Your best</span>
-                  <strong>{personalBest > 0 ? personalBest : '—'}</strong>
+                  <strong>
+                    {personalBest > 0 ? personalBest.toLocaleString() : '—'}
+                  </strong>
                 </div>
                 <div className="lb-stat">
                   <span className="lb-stat__label">All time</span>
-                  <strong>{allTime > 0 ? allTime : '—'}</strong>
+                  <strong>{allTime > 0 ? allTime.toLocaleString() : '—'}</strong>
                 </div>
               </div>
-
-              {boardSlug ? (
-                <TodayTopSection
-                  className="game-lobby__tops--desktop"
-                  gameName={game.name}
-                  boardSlug={boardSlug}
-                  boardHref={boardHref}
-                  hasRecords={hasRecords}
-                  recordsHref={recordsHref(game.slug)}
-                  loading={loading}
-                  error={error}
-                  topEntries={topEntries}
-                  playerName={playerName}
-                  accent={accent}
-                />
-              ) : null}
             </div>
+
+            {boardSlug ? (
+              <HubBoards
+                boardSlug={boardSlug}
+                boardHref={boardHref}
+                hasRecords={hasRecords}
+                recordsHref={recordsHref(game.slug)}
+                loading={loading}
+                error={error}
+                byPeriod={byPeriod}
+                playerName={playerName}
+                accent={accent}
+              />
+            ) : null}
           </div>
 
           <PlayCta
-            className="game-lobby__play--mobile"
+            className={
+              boardSlug ? 'game-lobby__play--mobile' : 'game-lobby__play--wide'
+            }
             game={game}
             canPlay={canPlay}
             comingSoon={comingSoon}
@@ -210,7 +233,6 @@ export function GameHubPage({ slug, board: boardFromRoute }: GameHubPageProps) {
 
           {boardSlug ? (
             <TodayTopSection
-              className="game-lobby__tops--mobile"
               gameName={game.name}
               boardSlug={boardSlug}
               boardHref={boardHref}
@@ -314,9 +336,80 @@ function PlayCta({
   )
 }
 
-/** Today’s top scores block — rendered in hero on desktop, below play on mobile. */
+/** Desktop hero: same four period squares as the boards overview. */
+function HubBoards({
+  boardSlug,
+  boardHref,
+  hasRecords,
+  recordsHref: recordsLink,
+  loading,
+  error,
+  byPeriod,
+  playerName,
+  accent,
+}: {
+  boardSlug: LeaderboardGame
+  boardHref: string | null
+  hasRecords: boolean
+  recordsHref: string
+  loading: boolean
+  error: string | null
+  byPeriod: Record<LeaderboardPeriod, LeaderboardEntry[]>
+  playerName: string
+  accent: string
+}) {
+  return (
+    <section className="game-lobby__aside" aria-label="Leaderboards">
+      {loading ? (
+        <div className="game-lobby__aside-state lb-summary__periods">
+          {LEADERBOARD_PERIODS.map((period) => (
+            <div
+              key={period}
+              className="lb-summary__period lb-summary__period--skeleton"
+              aria-hidden="true"
+            />
+          ))}
+        </div>
+      ) : error ? (
+        <div className="game-lobby__aside-state">
+          <BoardEmpty
+            title="Couldn’t load scores"
+            detail="Check your connection and try again."
+          />
+        </div>
+      ) : (
+        <div className="lb-summary__periods game-lobby__periods">
+          {LEADERBOARD_PERIODS.map((period) => (
+            <PeriodMiniBoard
+              key={period}
+              slug={boardSlug}
+              period={period}
+              entries={byPeriod[period]}
+              accent={accent}
+              playerName={playerName}
+            />
+          ))}
+        </div>
+      )}
+
+      <div className="game-lobby__aside-foot">
+        {boardHref ? (
+          <a className="game-lobby__board-link" href={boardHref}>
+            Full board
+          </a>
+        ) : null}
+        {hasRecords ? (
+          <a className="game-lobby__board-link" href={recordsLink}>
+            Records
+          </a>
+        ) : null}
+      </div>
+    </section>
+  )
+}
+
+/** Today’s top podium — mobile only; desktop uses the period squares. */
 function TodayTopSection({
-  className,
   gameName,
   boardSlug,
   boardHref,
@@ -328,7 +421,6 @@ function TodayTopSection({
   playerName,
   accent,
 }: {
-  className: string
   gameName: string
   boardSlug: LeaderboardGame
   boardHref: string | null
@@ -342,7 +434,7 @@ function TodayTopSection({
 }) {
   return (
     <section
-      className={`game-lobby__tops ${className}`}
+      className="game-lobby__tops game-lobby__tops--mobile"
       aria-label={`${gameName} today’s top scores`}
     >
       <div className="game-lobby__tops-head">
