@@ -106,8 +106,10 @@ export function EventCard({ t, compact = false }: EventCardProps) {
     >
       <EventThumbs games={t.games} size={compact ? 'md' : 'lg'} />
       <div className="event-card__body">
-        <EventStatusChips t={t} />
-        <h2 className="event-card__title">{t.title}</h2>
+        <div className="event-card__top">
+          <h2 className="event-card__title">{t.title}</h2>
+          <EventStatusChips t={t} />
+        </div>
         <p className="event-card__games">{gameNames}</p>
         <div className="event-card__foot">
           {t.status === 'active' ? (

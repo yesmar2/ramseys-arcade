@@ -77,68 +77,17 @@ function StandingsList({
   }
 
   return (
-    <>
-      <ul className="tour-standings">
-        {detail.standings.map((row, index) => (
-          <StandingCard
-            key={row.playerId}
-            row={row}
-            rank={index + 1}
-            games={detail.games}
-            mine={normalizePlayerName(row.name) === displayName}
-          />
-        ))}
-      </ul>
-
-      <div className="tour-table-wrap">
-        <table className="tour-table">
-          <thead>
-            <tr>
-              <th scope="col">#</th>
-              <th scope="col">Player</th>
-              <th scope="col">Total</th>
-              {detail.games.map((game) => (
-                <th key={game} scope="col">
-                  {getGame(game)?.name ?? game}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {detail.standings.map((row, index) => {
-              const mine = normalizePlayerName(row.name) === displayName
-              return (
-                <tr key={row.playerId} className={mine ? 'tour-table__row--you' : undefined}>
-                  <td className="tour-table__rank">{index + 1}</td>
-                  <td>
-                    <div className="tour-table__name">
-                      <PlayerAvatar
-                        avatarId={row.avatarId}
-                        name={normalizePlayerName(row.name)}
-                        size="sm"
-                      />
-                      <span
-                        className="tour-table__name-text"
-                        title={normalizePlayerName(row.name)}
-                      >
-                        {normalizePlayerName(row.name)}
-                      </span>
-                      {mine ? <span className="tour-you-tag">you</span> : null}
-                    </div>
-                  </td>
-                  <td className="tour-table__total">{row.totalPoints}</td>
-                  {detail.games.map((game) => (
-                    <td key={game} className="tour-table__game">
-                      <GameResultCell cell={row.byGame[game]} />
-                    </td>
-                  ))}
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
-      </div>
-    </>
+    <ul className="tour-standings">
+      {detail.standings.map((row, index) => (
+        <StandingCard
+          key={row.playerId}
+          row={row}
+          rank={index + 1}
+          games={detail.games}
+          mine={normalizePlayerName(row.name) === displayName}
+        />
+      ))}
+    </ul>
   )
 }
 
@@ -221,32 +170,38 @@ function StandingCard({
   const name = normalizePlayerName(row.name)
   return (
     <li className={`tour-standing${mine ? ' tour-standing--you' : ''}`}>
-      <div className="tour-standing__top">
-        <span className="tour-standing__rank">{rank}</span>
-        <div className="tour-standing__who">
-          <PlayerAvatar avatarId={row.avatarId} name={name} size="sm" />
-          <span className="tour-standing__name" title={name}>
-            {name}
+      <details className="tour-standing__details">
+        <summary className="tour-standing__summary">
+          <span className="tour-standing__rank">{rank}</span>
+          <div className="tour-standing__who">
+            <PlayerAvatar avatarId={row.avatarId} name={name} size="sm" />
+            <span className="tour-standing__name" title={name}>
+              {name}
+            </span>
+            {mine ? <span className="tour-you-tag">you</span> : null}
+          </div>
+          <span className="tour-standing__total">
+            {row.totalPoints}
+            <span className="tour-standing__total-label">pts</span>
           </span>
-          {mine ? <span className="tour-you-tag">you</span> : null}
-        </div>
-        <span className="tour-standing__total">
-          {row.totalPoints}
-          <span className="tour-standing__total-label">pts</span>
-        </span>
-      </div>
-      <ul className="tour-standing__games">
-        {games.map((game) => {
-          const cell = row.byGame[game]
-          const label = getGame(game)?.name ?? game
-          return (
-            <li key={game} className="tour-standing__game">
-              <span className="tour-standing__game-name">{label}</span>
-              <GameResultCell cell={cell} />
-            </li>
-          )
-        })}
-      </ul>
+        </summary>
+        <ul className="tour-standing__games">
+          {games.map((game) => {
+            const cell = row.byGame[game]
+            const label = getGame(game)?.name ?? game
+            const accent = getGame(game)?.accent
+            return (
+              <li key={game} className="tour-standing__game">
+                <span className="tour-standing__game-label">
+                  <GameThumbArt slug={game} accent={accent} />
+                  <span className="tour-standing__game-name">{label}</span>
+                </span>
+                <GameResultCell cell={cell} />
+              </li>
+            )
+          })}
+        </ul>
+      </details>
     </li>
   )
 }

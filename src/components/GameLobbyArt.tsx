@@ -1,5 +1,5 @@
 import type { CSSProperties, ReactNode } from 'react'
-import { GameTileArt } from './GameTileArt'
+import { GameThumbArt } from './GameThumbArt'
 
 type GameLobbyArtProps = {
   slug: string
@@ -8,20 +8,18 @@ type GameLobbyArtProps = {
   action?: ReactNode
 }
 
-/** Same art block as the individual game preview / lobby page. */
+/** Large framed thumb — same language as home / Events cards. */
 export function GameLobbyArt({ slug, accent, action }: GameLobbyArtProps) {
   return (
     <div
       className="game-lobby__art"
       style={
         accent
-          ? ({ '--tile-accent': accent } as CSSProperties)
+          ? ({ '--tile-accent': accent, '--thumb-accent': accent } as CSSProperties)
           : undefined
       }
     >
-      <div className="game-lobby__stage">
-        <GameTileArt slug={slug} />
-      </div>
+      <GameThumbArt slug={slug} accent={accent} className="game-lobby__thumb" />
       {action}
     </div>
   )
