@@ -23,9 +23,8 @@
   --shadow-lift: 0 14px 32px rgba(var(--shade-rgb), 0.14);
   --font-display: "Outfit", system-ui, sans-serif;
   --font-body: "Outfit", system-ui, sans-serif;
-  --content-width: 44rem;
-  --content-width-wide: 52rem;
-  --max-width: 52rem;
+  --content-width: 60rem;
+  --max-width: var(--content-width);
   --shell: #d5e8f2;
   --inline-thumb-size: 2.35rem;
   --inline-thumb-gap: 0.4rem;
@@ -5530,14 +5529,14 @@ html[data-theme='dark'] .patriot__power-mark {
 
 /* Leaderboards overview — top 3 per game per period */
 .lb-page__inner--summary {
-  width: min(100% - 2rem, var(--content-width-wide));
+  width: min(100% - 2rem, var(--content-width));
 }
 
 .lb-page__inner--events {
   display: flex;
   flex-direction: column;
   gap: 1.15rem;
-  width: min(100% - 2rem, var(--content-width-wide));
+  width: min(100% - 2rem, var(--content-width));
 }
 
 .lb-summary {
