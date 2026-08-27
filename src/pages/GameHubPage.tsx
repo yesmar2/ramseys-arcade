@@ -2,11 +2,9 @@ import { useEffect, useState, type CSSProperties } from 'react'
 import {
   BoardEmpty,
   BoardSkeleton,
-  PeriodSwitcher,
 } from '../components/BoardChrome'
 import { SiteHeader } from '../components/SiteHeader'
 import { Footer } from '../components/Footer'
-import { GameLobbyArt } from '../components/GameLobbyArt'
 import { GameThumbArt } from '../components/GameThumbArt'
 import { HowToPlayAccordion } from '../components/ScoreGuide'
 import { ShareBoardButton } from '../components/ShareBoardButton'
@@ -30,16 +28,16 @@ import { usePersonalBest } from '../hooks/usePersonalBest'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { useDeviceType } from '../lib/device'
 import { APP_NAME } from '../lib/brand'
+import { gameHasRecords } from '../lib/records'
 import {
   getLeaderboard,
   LEADERBOARD_GAMES,
   normalizePlayerName,
   type LeaderboardGame,
-  type LeaderboardPeriod,
   type LeaderboardEntry,
 } from '../lib/leaderboard'
 
-const TOP_ROWS = 5
+const TOP_ROWS = 3
 
 function isBoardGame(slug: string): slug is LeaderboardGame {
   return (LEADERBOARD_GAMES as readonly string[]).includes(slug)
@@ -56,7 +54,6 @@ export function GameHubPage({ slug, board: boardFromRoute }: GameHubPageProps) {
   const playerName = normalizePlayerName(usePlayerName())
   const personalBest = usePersonalBest(slug)
   const allTime = useBoardRecord(slug)
-  const [period, setPeriod] = useState<LeaderboardPeriod>('daily')
   const [entries, setEntries] = useState<LeaderboardEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -70,6 +67,7 @@ export function GameHubPage({ slug, board: boardFromRoute }: GameHubPageProps) {
   const playHref = gamePlayHref(slug)
   const deviceNote = game ? deviceRequirementLabel(game) : null
   const others = homeGames(device).filter((g) => g.slug !== slug)
+  const hasRecords = game ? gameHasRecords(game.slug) : false
 
   // Old hub records tab → dedicated record books page.
   useEffect(() => {
@@ -91,7 +89,7 @@ export function GameHubPage({ slug, board: boardFromRoute }: GameHubPageProps) {
     let cancelled = false
     setLoading(true)
     setError(null)
-    getLeaderboard(boardSlug, period, playerName || undefined)
+    getLeaderboard(boardSlug, 'daily', playerName || undefined)
       .then((board) => {
         if (cancelled) return
         setEntries(board.entries)
@@ -107,7 +105,7 @@ export function GameHubPage({ slug, board: boardFromRoute }: GameHubPageProps) {
     return () => {
       cancelled = true
     }
-  }, [boardSlug, period, playerName])
+  }, [boardSlug, playerName])
 
   if (!game) {
     return (
@@ -124,7 +122,7 @@ export function GameHubPage({ slug, board: boardFromRoute }: GameHubPageProps) {
   }
 
   const topEntries = entries.slice(0, TOP_ROWS)
-  const boardHref = boardSlug ? gameBoardHref(boardSlug, period) : null
+  const boardHref = boardSlug ? gameBoardHref(boardSlug, 'daily') : null
 
   return (
     <>
@@ -136,28 +134,35 @@ export function GameHubPage({ slug, board: boardFromRoute }: GameHubPageProps) {
             {
               '--board-accent': accent,
               '--period-accent': accent,
+              '--tile-accent': accent,
+              '--thumb-accent': accent,
             } as CSSProperties
           }
         >
-          <GameLobbyArt slug={game.slug} accent={game.accent} />
-
-          <header className="game-lobby__header">
-            <h1 className="game-lobby__title">{game.name}</h1>
-            <ShareBoardButton
-              className="game-lobby__share"
-              label={`Play ${game.name} on ${APP_NAME}`}
-              url={gameHref(slug)}
-            />
-          </header>
-
-          <div className="game-lobby__stats">
-            <div className="lb-stat">
-              <span className="lb-stat__label">Your best</span>
-              <strong>{personalBest > 0 ? personalBest : '—'}</strong>
+          <div className="game-lobby__hero">
+            <div className="game-lobby__art">
+              <GameThumbArt
+                slug={game.slug}
+                accent={game.accent}
+                className="game-lobby__thumb"
+              />
+              <ShareBoardButton
+                className="game-lobby__share"
+                label={`Play ${game.name} on ${APP_NAME}`}
+                url={gameHref(slug)}
+              />
+              <h1 className="game-lobby__title">{game.name}</h1>
             </div>
-            <div className="lb-stat">
-              <span className="lb-stat__label">All time</span>
-              <strong>{allTime > 0 ? allTime : '—'}</strong>
+
+            <div className="game-lobby__stats">
+              <div className="lb-stat">
+                <span className="lb-stat__label">Your best</span>
+                <strong>{personalBest > 0 ? personalBest : '—'}</strong>
+              </div>
+              <div className="lb-stat">
+                <span className="lb-stat__label">All time</span>
+                <strong>{allTime > 0 ? allTime : '—'}</strong>
+              </div>
             </div>
           </div>
 
@@ -180,24 +185,25 @@ export function GameHubPage({ slug, board: boardFromRoute }: GameHubPageProps) {
           )}
 
           {boardSlug ? (
-            <section className="game-lobby__tops" aria-label={`${game.name} top scores`}>
+            <section className="game-lobby__tops" aria-label={`${game.name} today’s top scores`}>
               <div className="game-lobby__tops-head">
-                <h2 className="game-lobby__section-title">Top scores</h2>
-                {boardHref ? (
-                  <a className="game-lobby__board-link" href={boardHref}>
-                    Full board
-                  </a>
-                ) : null}
+                <h2 className="game-lobby__section-title">Today’s top</h2>
+                <div className="game-lobby__tops-links">
+                  {boardHref ? (
+                    <a className="game-lobby__board-link" href={boardHref}>
+                      Full board
+                    </a>
+                  ) : null}
+                  {hasRecords ? (
+                    <a className="game-lobby__board-link" href={recordsHref(game.slug)}>
+                      Records
+                    </a>
+                  ) : null}
+                </div>
               </div>
 
-              <PeriodSwitcher
-                period={period}
-                accent={accent}
-                onSelect={setPeriod}
-              />
-
               <div
-                key={`${boardSlug}-${period}`}
+                key={boardSlug}
                 className="lb-board lb-board--fade game-lobby__tops-board"
               >
                 {loading ? (
@@ -207,17 +213,8 @@ export function GameHubPage({ slug, board: boardFromRoute }: GameHubPageProps) {
                     title="Couldn’t load scores"
                     detail="Check your connection and try again."
                   />
-                ) : topEntries.length === 0 ? (
-                  <BoardEmpty
-                    title="No scores yet"
-                    detail={
-                      canPlay
-                        ? `Be the first on the ${game.name} board.`
-                        : 'Open it on a supported device to post a score.'
-                    }
-                  />
                 ) : (
-                  <TopScoresList
+                  <TopScoreCards
                     entries={topEntries}
                     playerName={playerName}
                     accent={accent}
@@ -265,8 +262,8 @@ export function GameHubPage({ slug, board: boardFromRoute }: GameHubPageProps) {
   )
 }
 
-/** Compact top scores for the lobby summary. */
-function TopScoresList({
+/** Today’s top 3 as medal cards (empty slots stay open). */
+function TopScoreCards({
   entries,
   playerName,
   accent,
@@ -275,34 +272,49 @@ function TopScoresList({
   playerName: string
   accent: string
 }) {
+  const slots = Array.from({ length: TOP_ROWS }, (_, index) => entries[index] ?? null)
+
   return (
     <ol
-      className="lb-list game-lobby__tops-list"
+      className="game-lobby__podium"
       style={{ '--board-accent': accent, '--lb-you-accent': accent } as CSSProperties}
     >
-      {entries.map((entry, index) => {
+      {slots.map((entry, index) => {
         const rank = index + 1
         const medal = medalKind(rank)
+        if (!entry) {
+          return (
+            <li
+              key={`open-${rank}`}
+              className={`game-lobby__podium-card game-lobby__podium-card--open${medal ? ` game-lobby__podium-card--${medal}` : ''}`}
+            >
+              {medal ? <PodiumMedal kind={medal} /> : (
+                <span className="game-lobby__podium-rank">#{rank}</span>
+              )}
+              <span className="game-lobby__podium-name game-lobby__podium-name--muted">Open</span>
+              <strong className="game-lobby__podium-score game-lobby__podium-score--muted">—</strong>
+            </li>
+          )
+        }
         const name = normalizePlayerName(entry.name ?? '')
         const isYou = Boolean(playerName) && name === playerName
         return (
           <li
             key={entry.id ?? `${rank}-${name}`}
-            className={`lb-row lb-row--score-only${isYou ? ' lb-row--you' : ''}${medal ? ' lb-row--medal' : ''}`}
+            className={`game-lobby__podium-card${isYou ? ' game-lobby__podium-card--you' : ''}${medal ? ` game-lobby__podium-card--${medal}` : ''}`}
             aria-current={isYou ? 'true' : undefined}
           >
-            <span className="lb-row__rank">
-              <span className="lb-row__rank-num">#{rank}</span>
-              {medal ? <PodiumMedal kind={medal} /> : null}
-            </span>
-            <span className="lb-row__name">
-              <PlayerAvatar avatarId={entry.avatarId} name={name} size="sm" />
-              <span className="lb-row__name-text" title={name}>
-                {name}
-              </span>
+            {medal ? <PodiumMedal kind={medal} /> : (
+              <span className="game-lobby__podium-rank">#{rank}</span>
+            )}
+            <PlayerAvatar avatarId={entry.avatarId} name={name} size="sm" />
+            <span className="game-lobby__podium-name" title={name}>
+              {name}
               {isYou ? <span className="lb-row__you-tag">You</span> : null}
             </span>
-            <span className="lb-row__score">{entry.score.toLocaleString()}</span>
+            <strong className="game-lobby__podium-score">
+              {entry.score.toLocaleString()}
+            </strong>
           </li>
         )
       })}

@@ -59,13 +59,30 @@ function AsteroidsThumb({ accent }: { accent?: string }) {
 
 function PatriotThumb({ accent }: { accent?: string }) {
   const body = accent ? accentPastel(accent, 46) : pastel(HUE.rose, 54, 44)
+  const dish = accent ? accentPastel(accent, 34) : pastel(HUE.sky, 52, 48)
+  const tip = accent ?? '#e85d5d'
 
-  // Simplified missile turret — base, stem, barrel.
+  // Compact SAM look — pad, cabin, twin tubes, radar dish.
   return (
-    <path
-      d="M9.5 25.5 L9.5 19.5 L12.5 19.5 L12.5 13.5 L14 13.5 L14 7 L18 7 L18 13.5 L19.5 13.5 L19.5 19.5 L22.5 19.5 L22.5 25.5 Z"
-      {...shape(body, 1.5)}
-    />
+    <>
+      <path d="M8 26.2 L8 23.4 L24 23.4 L24 26.2 Z" {...shape(body, 1.35)} />
+      <path d="M10.5 23.4 L10.5 17.2 L21.5 17.2 L21.5 23.4 Z" {...shape(body, 1.35)} />
+      <path d="M12.2 17.2 L12.2 8.2 L14.4 8.2 L14.4 17.2 Z" {...shape(body, 1.25)} />
+      <path d="M17.6 17.2 L17.6 8.2 L19.8 8.2 L19.8 17.2 Z" {...shape(body, 1.25)} />
+      <circle cx="13.3" cy="7" r="1.35" fill={tip} opacity="0.9" />
+      <circle cx="18.7" cy="7" r="1.35" fill={tip} opacity="0.9" />
+      <circle cx="23.2" cy="14.2" r="3.35" {...shape(dish, 1.2)} />
+      <circle cx="23.2" cy="14.2" r="1.25" fill={dish.stroke} opacity="0.45" />
+      <line
+        x1="23.2"
+        y1="14.2"
+        x2="25.6"
+        y2="11.4"
+        stroke={dish.stroke}
+        strokeWidth="1.15"
+        strokeLinecap="round"
+      />
+    </>
   )
 }
 
@@ -133,11 +150,12 @@ function PopThumb() {
 }
 
 function StackerThumb() {
-  const baseCy = 23
+  const baseCy = 21
   const cx = 16
 
+  // Shifted up so the iso stack sits nearer the frame’s vertical center.
   return (
-    <>
+    <g transform="translate(0, -1.5)">
       <IsoSlab cx={cx} cy={baseCy} w={14} d={14} h={3.2} hue={HUE.teal} strokeWidth={0.75} />
       <g transform="translate(0, -3.4)">
         <IsoSlab cx={cx} cy={baseCy} w={11} d={11} h={3.2} hue={HUE.sky} strokeWidth={0.75} />
@@ -145,7 +163,7 @@ function StackerThumb() {
       <g transform="translate(0, -6.8)">
         <IsoSlab cx={cx} cy={baseCy} w={8} d={8} h={3.2} hue={HUE.violet} strokeWidth={0.75} />
       </g>
-    </>
+    </g>
   )
 }
 
