@@ -4297,22 +4297,19 @@ html[data-theme='dark'] .patriot__power-mark {
 }
 
 .game-lobby__board-link {
-  display: block;
-  margin-top: 0.25rem;
-  padding: 0.85rem 1rem;
-  border-radius: 0.65rem;
-  border: 1px solid color-mix(in srgb, var(--board-accent, var(--accent)) 35%, var(--line));
-  background: color-mix(in srgb, var(--board-accent, var(--accent)) 8%, var(--surface));
+  flex: none;
+  font-size: 0.88rem;
   font-weight: 700;
-  text-align: center;
   text-decoration: none;
-  color: var(--ink);
+  color: color-mix(in srgb, var(--board-accent, var(--accent)) 70%, var(--ink));
+  white-space: nowrap;
 }
 
 .game-lobby__board-link:hover,
 .game-lobby__board-link:focus-visible {
-  border-color: color-mix(in srgb, var(--board-accent, var(--accent)) 55%, var(--line));
-  background: color-mix(in srgb, var(--board-accent, var(--accent)) 14%, var(--surface));
+  color: var(--board-accent, var(--accent));
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
 }
 
 .lb-page__header {
@@ -6524,26 +6521,14 @@ html[data-theme='dark'] .patriot__power-mark {
 }
 
 .game-lobby__art {
-  position: relative;
   display: grid;
   place-items: center;
   width: 100%;
-  padding: 0.85rem 0 0.35rem;
+  padding: 0.85rem 0 0.15rem;
 }
 
 .lb-page__inner--events .game-lobby__art {
   padding-top: 0.35rem;
-}
-
-.game-lobby__share {
-  position: absolute;
-  top: 0.55rem;
-  right: 0.55rem;
-  z-index: 3;
-  pointer-events: auto;
-  background: rgba(var(--surface-rgb), 0.92);
-  backdrop-filter: blur(10px);
-  box-shadow: var(--shadow-soft);
 }
 
 .game-lobby__art .inline-thumb,
@@ -6561,6 +6546,10 @@ html[data-theme='dark'] .patriot__power-mark {
 }
 
 .game-lobby__header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
   text-align: center;
 }
 
@@ -6570,6 +6559,12 @@ html[data-theme='dark'] .patriot__power-mark {
   font-size: clamp(2rem, 6vw, 2.75rem);
   font-weight: 700;
   letter-spacing: -0.03em;
+  line-height: 1.05;
+}
+
+.game-lobby__share {
+  flex: none;
+  align-self: center;
 }
 
 .game-lobby__blurb {
@@ -6607,6 +6602,36 @@ html[data-theme='dark'] .patriot__power-mark {
   text-align: center;
   font-weight: 600;
   color: var(--muted);
+}
+
+.game-lobby__section-title {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.game-lobby__tops {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.game-lobby__tops-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.game-lobby__tops-board {
+  margin: 0;
+}
+
+.game-lobby__tops-list {
+  margin: 0;
 }
 
 .game-lobby__h {
@@ -6651,7 +6676,75 @@ html[data-theme='dark'] .patriot__power-mark {
 }
 
 .game-lobby .lb-periods {
-  margin: 0 0 0.85rem;
+  margin: 0;
+}
+
+.game-lobby__others {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  padding-top: 0.25rem;
+  border-top: 1px solid rgba(var(--ink-rgb), 0.07);
+}
+
+.game-lobby__others-list {
+  list-style: none;
+  margin: 0;
+  padding: 0.1rem 0 0.25rem;
+  display: flex;
+  gap: 0.75rem;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+
+.game-lobby__other {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  width: 4.85rem;
+  flex: none;
+  text-decoration: none;
+  color: inherit;
+  border-radius: 0.85rem;
+}
+
+.game-lobby__other .inline-thumb {
+  --inline-thumb-size: 4.85rem;
+  width: var(--inline-thumb-size);
+  height: var(--inline-thumb-size);
+  border-radius: 1rem;
+  box-shadow: var(--shadow-soft);
+  transition: transform 0.18s ease;
+}
+
+.game-lobby__other:hover .inline-thumb,
+.game-lobby__other:focus-visible .inline-thumb {
+  transform: translateY(-2px);
+}
+
+.game-lobby__other:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--tile-accent, var(--accent)) 55%, transparent);
+  outline-offset: 3px;
+}
+
+.game-lobby__other-name {
+  display: block;
+  width: 100%;
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: center;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.game-lobby__other:hover .game-lobby__other-name,
+.game-lobby__other:focus-visible .game-lobby__other-name {
+  color: var(--ink);
 }
 
 /* Score save (game over) */
