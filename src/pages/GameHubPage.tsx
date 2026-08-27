@@ -154,15 +154,33 @@ export function GameHubPage({ slug, board: boardFromRoute }: GameHubPageProps) {
               <h1 className="game-lobby__title">{game.name}</h1>
             </div>
 
-            <div className="game-lobby__stats">
-              <div className="lb-stat">
-                <span className="lb-stat__label">Your best</span>
-                <strong>{personalBest > 0 ? personalBest : '—'}</strong>
+            <div className="game-lobby__aside">
+              <div className="game-lobby__stats">
+                <div className="lb-stat">
+                  <span className="lb-stat__label">Your best</span>
+                  <strong>{personalBest > 0 ? personalBest : '—'}</strong>
+                </div>
+                <div className="lb-stat">
+                  <span className="lb-stat__label">All time</span>
+                  <strong>{allTime > 0 ? allTime : '—'}</strong>
+                </div>
               </div>
-              <div className="lb-stat">
-                <span className="lb-stat__label">All time</span>
-                <strong>{allTime > 0 ? allTime : '—'}</strong>
-              </div>
+
+              {boardSlug ? (
+                <TodayTopSection
+                  className="game-lobby__tops--desktop"
+                  gameName={game.name}
+                  boardSlug={boardSlug}
+                  boardHref={boardHref}
+                  hasRecords={hasRecords}
+                  recordsHref={recordsHref(game.slug)}
+                  loading={loading}
+                  error={error}
+                  topEntries={topEntries}
+                  playerName={playerName}
+                  accent={accent}
+                />
+              ) : null}
             </div>
           </div>
 
@@ -185,43 +203,20 @@ export function GameHubPage({ slug, board: boardFromRoute }: GameHubPageProps) {
           )}
 
           {boardSlug ? (
-            <section className="game-lobby__tops" aria-label={`${game.name} today’s top scores`}>
-              <div className="game-lobby__tops-head">
-                <h2 className="game-lobby__section-title">Today’s top</h2>
-                <div className="game-lobby__tops-links">
-                  {boardHref ? (
-                    <a className="game-lobby__board-link" href={boardHref}>
-                      Full board
-                    </a>
-                  ) : null}
-                  {hasRecords ? (
-                    <a className="game-lobby__board-link" href={recordsHref(game.slug)}>
-                      Records
-                    </a>
-                  ) : null}
-                </div>
-              </div>
-
-              <div
-                key={boardSlug}
-                className="lb-board lb-board--fade game-lobby__tops-board"
-              >
-                {loading ? (
-                  <BoardSkeleton rows={TOP_ROWS} />
-                ) : error ? (
-                  <BoardEmpty
-                    title="Couldn’t load scores"
-                    detail="Check your connection and try again."
-                  />
-                ) : (
-                  <TopScoreCards
-                    entries={topEntries}
-                    playerName={playerName}
-                    accent={accent}
-                  />
-                )}
-              </div>
-            </section>
+            <TodayTopSection
+              className="game-lobby__tops--mobile"
+              gameName={game.name}
+              boardSlug={boardSlug}
+              boardHref={boardHref}
+              hasRecords={hasRecords}
+              recordsHref={recordsHref(game.slug)}
+              loading={loading}
+              error={error}
+              topEntries={topEntries}
+              playerName={playerName}
+              accent={accent}
+              canPlay={canPlay}
+            />
           ) : null}
 
           <HowToPlayAccordion
@@ -259,6 +254,76 @@ export function GameHubPage({ slug, board: boardFromRoute }: GameHubPageProps) {
       </main>
       <Footer />
     </>
+  )
+}
+
+/** Today’s top scores block — rendered in hero on desktop, below play on mobile. */
+function TodayTopSection({
+  className,
+  gameName,
+  boardSlug,
+  boardHref,
+  hasRecords,
+  recordsHref: recordsLink,
+  loading,
+  error,
+  topEntries,
+  playerName,
+  accent,
+}: {
+  className: string
+  gameName: string
+  boardSlug: LeaderboardGame
+  boardHref: string | null
+  hasRecords: boolean
+  recordsHref: string
+  loading: boolean
+  error: string | null
+  topEntries: LeaderboardEntry[]
+  playerName: string
+  accent: string
+}) {
+  return (
+    <section
+      className={`game-lobby__tops ${className}`}
+      aria-label={`${gameName} today’s top scores`}
+    >
+      <div className="game-lobby__tops-head">
+        <h2 className="game-lobby__section-title">Today’s top</h2>
+        <div className="game-lobby__tops-links">
+          {boardHref ? (
+            <a className="game-lobby__board-link" href={boardHref}>
+              Full board
+            </a>
+          ) : null}
+          {hasRecords ? (
+            <a className="game-lobby__board-link" href={recordsLink}>
+              Records
+            </a>
+          ) : null}
+        </div>
+      </div>
+
+      <div
+        key={boardSlug}
+        className="lb-board lb-board--fade game-lobby__tops-board"
+      >
+        {loading ? (
+          <BoardSkeleton rows={TOP_ROWS} />
+        ) : error ? (
+          <BoardEmpty
+            title="Couldn’t load scores"
+            detail="Check your connection and try again."
+          />
+        ) : (
+          <TopScoreCards
+            entries={topEntries}
+            playerName={playerName}
+            accent={accent}
+          />
+        )}
+      </div>
+    </section>
   )
 }
 

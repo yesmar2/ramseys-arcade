@@ -6523,7 +6523,18 @@ html[data-theme='dark'] .patriot__power-mark {
   align-items: stretch;
 }
 
-@media (min-width: 520px) {
+.game-lobby__aside {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  min-width: 0;
+}
+
+.game-lobby__tops--desktop {
+  display: none;
+}
+
+@media (min-width: 520px) and (max-width: 767px) {
   .game-lobby__hero {
     grid-template-columns: 12rem minmax(0, 1fr);
     gap: 1rem;
@@ -6552,6 +6563,54 @@ html[data-theme='dark'] .patriot__power-mark {
   .game-lobby__stats .lb-stat strong {
     font-size: clamp(1.55rem, 3vw, 2.1rem);
     letter-spacing: -0.02em;
+  }
+}
+
+@media (min-width: 768px) {
+  .game-lobby__hero {
+    grid-template-columns: 13rem minmax(0, 1fr);
+    gap: 1.15rem;
+    align-items: start;
+  }
+
+  .game-lobby__hero .game-lobby__art {
+    width: 13rem;
+    max-width: 13rem;
+    justify-self: start;
+  }
+
+  .game-lobby__aside {
+    gap: 0.85rem;
+  }
+
+  .game-lobby__stats {
+    flex-direction: row;
+    gap: 0.65rem;
+  }
+
+  .game-lobby__stats .lb-stat {
+    flex: 1;
+    padding: 0.7rem 0.85rem;
+    border-radius: 0.95rem;
+    text-align: center;
+  }
+
+  .game-lobby__stats .lb-stat__label {
+    font-size: 0.7rem;
+    margin-bottom: 0.15rem;
+  }
+
+  .game-lobby__stats .lb-stat strong {
+    font-size: 1.4rem;
+    letter-spacing: -0.02em;
+  }
+
+  .game-lobby__tops--desktop {
+    display: flex;
+  }
+
+  .game-lobby__tops--mobile {
+    display: none;
   }
 }
 
