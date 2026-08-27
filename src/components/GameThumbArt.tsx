@@ -58,31 +58,14 @@ function AsteroidsThumb({ accent }: { accent?: string }) {
 }
 
 function PatriotThumb({ accent }: { accent?: string }) {
-  const ground = 25
-  const x = 16
-  const blocks = [
-    { dx: -8, w: 5, h: 11 },
-    { dx: -2, w: 5, h: 17 },
-    { dx: 4, w: 5, h: 13 },
-  ]
-  const block = accent
-    ? accentPastel(accent, 44)
-    : pastel(HUE.rose, 54, 42)
+  const body = accent ? accentPastel(accent, 46) : pastel(HUE.rose, 54, 44)
 
+  // Simplified missile turret — base, stem, barrel.
   return (
-    <>
-      {blocks.map((b) => (
-        <rect
-          key={b.dx}
-          x={x + b.dx}
-          y={ground - b.h}
-          width={b.w}
-          height={b.h}
-          rx="1"
-          {...shape(block, 1.4)}
-        />
-      ))}
-    </>
+    <path
+      d="M9.5 25.5 L9.5 19.5 L12.5 19.5 L12.5 13.5 L14 13.5 L14 7 L18 7 L18 13.5 L19.5 13.5 L19.5 19.5 L22.5 19.5 L22.5 25.5 Z"
+      {...shape(body, 1.5)}
+    />
   )
 }
 
@@ -150,20 +133,17 @@ function PopThumb() {
 }
 
 function StackerThumb() {
-  const baseCy = 22
+  const baseCy = 23
   const cx = 16
 
   return (
     <>
-      <IsoSlab cx={cx} cy={baseCy} w={16} d={16} h={4} hue={HUE.teal} />
-      <g transform="translate(0, -4)">
-        <IsoSlab cx={cx} cy={baseCy} w={13} d={13} h={4} hue={HUE.sky} />
+      <IsoSlab cx={cx} cy={baseCy} w={14} d={14} h={3.2} hue={HUE.teal} strokeWidth={0.75} />
+      <g transform="translate(0, -3.4)">
+        <IsoSlab cx={cx} cy={baseCy} w={11} d={11} h={3.2} hue={HUE.sky} strokeWidth={0.75} />
       </g>
-      <g transform="translate(0, -8)">
-        <IsoSlab cx={cx} cy={baseCy} w={11} d={11} h={4} hue={HUE.violet} />
-      </g>
-      <g transform="translate(0, -12)">
-        <IsoSlab cx={cx} cy={baseCy} x={4} w={11} d={11} h={4} hue={HUE.gold} />
+      <g transform="translate(0, -6.8)">
+        <IsoSlab cx={cx} cy={baseCy} w={8} d={8} h={3.2} hue={HUE.violet} strokeWidth={0.75} />
       </g>
     </>
   )
@@ -182,36 +162,15 @@ function DeadCenterThumb({ accent }: { accent?: string }) {
 }
 
 function CrosswalkThumb({ accent }: { accent?: string }) {
-  const hopper = accent ?? '#3ecf8e'
-  const hedge = pastel(HUE.green, 42, 42)
-  const bay = pastel(HUE.sky, 48, 30)
-  const water = pastel(HUE.sky, 54, 26)
-  const log = pastel(HUE.gold, 38, 46)
-  const road = pastel(HUE.sky, 18, 14)
-  const carA = pastel(HUE.rose, 58, 52)
-  const carB = pastel(HUE.violet, 58, 50)
+  const body = accent ? accentPastel(accent, 52) : pastel(HUE.green, 58, 52)
 
   return (
     <>
-      <rect x="4" y="3" width="24" height="4.2" rx="1" fill={hedge.fill} stroke={hedge.stroke} strokeWidth="0.7" />
-      {[5.3, 9.9, 14.4, 18.9, 23.5].map((x) => (
-        <rect key={x} x={x} y="3.8" width="3.2" height="2.6" rx="0.8" fill={bay.fill} stroke={bay.stroke} strokeWidth="0.6" />
-      ))}
-
-      <rect x="4" y="8.4" width="24" height="7.6" rx="1" fill={water.fill} stroke={water.stroke} strokeWidth="0.7" />
-      <rect x="6" y="9.3" width="10" height="2.6" rx="1.3" fill={log.fill} stroke={log.stroke} strokeWidth="0.8" />
-      <rect x="17" y="12.5" width="8" height="2.6" rx="1.3" fill={log.fill} stroke={log.stroke} strokeWidth="0.8" />
-
-      <rect x="4" y="17" width="24" height="7.6" rx="1" fill={road.fill} stroke={road.stroke} strokeWidth="0.7" />
-      {[6, 12, 18, 24].map((x) => (
-        <rect key={`d-${x}`} x={x} y="20.5" width="3" height="0.8" rx="0.4" fill="rgba(var(--ink-rgb), 0.18)" />
-      ))}
-      <rect x="6" y="17.8" width="6.8" height="2.8" rx="0.9" fill={carA.fill} stroke={carA.stroke} strokeWidth="0.8" />
-      <rect x="18" y="21.1" width="6.8" height="2.8" rx="0.9" fill={carB.fill} stroke={carB.stroke} strokeWidth="0.8" />
-
-      <ellipse cx="16" cy="27.6" rx="3.6" ry="2.4" fill={hopper} stroke="hsla(128, 55%, 28%, 0.95)" strokeWidth="1" />
-      <circle cx="14.7" cy="27" r="0.6" fill="#1a2b3c" />
-      <circle cx="17.3" cy="27" r="0.6" fill="#1a2b3c" />
+      <ellipse cx="16" cy="17.2" rx="8.2" ry="6.6" {...shape(body, 1.5)} />
+      <circle cx="13.2" cy="15.6" r="1.15" fill="#1a2b3c" />
+      <circle cx="18.8" cy="15.6" r="1.15" fill="#1a2b3c" />
+      <circle cx="13.5" cy="15.3" r="0.35" fill="#fff" />
+      <circle cx="19.1" cy="15.3" r="0.35" fill="#fff" />
     </>
   )
 }

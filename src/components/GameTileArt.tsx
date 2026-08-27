@@ -65,6 +65,7 @@ export function IsoSlab({
   h,
   hue,
   accent,
+  strokeWidth = 1.2,
 }: {
   cx: number
   cy: number
@@ -75,6 +76,7 @@ export function IsoSlab({
   h: number
   hue: number
   accent?: string
+  strokeWidth?: number
 }) {
   const hw = w / 2
   const hd = d / 2
@@ -112,9 +114,9 @@ export function IsoSlab({
 
   return (
     <g>
-      <polygon points={pts(...midR)} fill={side} stroke={stroke} strokeWidth="1.2" strokeLinejoin="round" />
-      <polygon points={pts(...midL)} fill={sideDark} stroke={stroke} strokeWidth="1.2" strokeLinejoin="round" />
-      <polygon points={pts(...top)} fill={fill} stroke={stroke} strokeWidth="1.4" strokeLinejoin="round" />
+      <polygon points={pts(...midR)} fill={side} stroke={stroke} strokeWidth={strokeWidth} strokeLinejoin="round" />
+      <polygon points={pts(...midL)} fill={sideDark} stroke={stroke} strokeWidth={strokeWidth} strokeLinejoin="round" />
+      <polygon points={pts(...top)} fill={fill} stroke={stroke} strokeWidth={strokeWidth + 0.15} strokeLinejoin="round" />
     </g>
   )
 }
