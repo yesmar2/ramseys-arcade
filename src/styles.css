@@ -906,27 +906,18 @@ img {
   height: auto;
   aspect-ratio: 4 / 3;
   border-radius: 1rem;
-  box-shadow: 0 4px 14px rgba(var(--ink-rgb), 0.08);
-  transition:
-    transform 0.22s ease,
-    box-shadow 0.22s ease;
+  box-shadow: var(--shadow-soft);
+  transition: transform 0.18s ease;
 }
 
 .game-tile--thumb:hover .inline-thumb,
 .game-tile--thumb:focus-visible .inline-thumb {
-  transform: translateY(-4px);
-  box-shadow:
-    0 10px 24px rgba(var(--ink-rgb), 0.14),
-    0 0 0 1px color-mix(in srgb, var(--tile-accent) 22%, transparent);
+  transform: translateY(-2px);
 }
 
 .game-tile--thumb:focus-visible {
-  outline: none;
-}
-
-.game-tile--thumb:focus-visible .inline-thumb {
-  outline: 2px solid color-mix(in srgb, var(--tile-accent) 65%, transparent);
-  outline-offset: 2px;
+  outline: 2px solid color-mix(in srgb, var(--tile-accent) 55%, transparent);
+  outline-offset: 3px;
 }
 
 .game-tile--thumb .inline-thumb .game-thumb__svg {
@@ -939,6 +930,12 @@ img {
   max-width: 100%;
   font-size: 0.95rem;
   text-align: center;
+  color: var(--muted);
+}
+
+.game-tile--thumb:hover .game-tile__title,
+.game-tile--thumb:focus-visible .game-tile__title {
+  color: var(--ink);
 }
 
 .game-tile--thumb .game-tile__status {
@@ -976,7 +973,7 @@ img {
   }
 
   .game-tile--thumb:active .inline-thumb {
-    transform: scale(0.98);
+    transform: none;
   }
 }
 
