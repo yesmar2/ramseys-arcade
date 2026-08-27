@@ -1,5 +1,10 @@
 import type { Battery, Bomber, City, Drone, GameState, Plane } from './game'
 import { POWER_HUE, shieldRadius } from './game'
+import {
+  PATRIOT_TURRET_HALF_WIDTH,
+  PATRIOT_TURRET_HUE,
+  patriotTurretPoints,
+} from './turretArt'
 import { playfieldColor } from '../../lib/theme'
 
 /** Plain rectangles only — scales cleanly on any stage size. */
@@ -165,29 +170,20 @@ function drawBattery(ctx: CanvasRenderingContext2D, bat: Battery, groundY: numbe
   const y = groundY
 
   if (!bat.alive) {
-    washBox(ctx, x - 16 * s, y - 6 * s, 32 * s, 6 * s, 198, s, 40)
+    washBox(
+      ctx,
+      x - PATRIOT_TURRET_HALF_WIDTH * s,
+      y - 5 * s,
+      PATRIOT_TURRET_HALF_WIDTH * 2 * s,
+      5 * s,
+      PATRIOT_TURRET_HUE,
+      s,
+      40,
+    )
     return
   }
 
-  washPoly(
-    ctx,
-    [
-      { x: x - 16 * s, y },
-      { x: x - 16 * s, y: y - 10 * s },
-      { x: x - 6 * s, y: y - 10 * s },
-      { x: x - 6 * s, y: y - 26 * s },
-      { x: x - 2.5 * s, y: y - 26 * s },
-      { x: x - 2.5 * s, y: y - 36 * s },
-      { x: x + 2.5 * s, y: y - 36 * s },
-      { x: x + 2.5 * s, y: y - 26 * s },
-      { x: x + 6 * s, y: y - 26 * s },
-      { x: x + 6 * s, y: y - 10 * s },
-      { x: x + 16 * s, y: y - 10 * s },
-      { x: x + 16 * s, y },
-    ],
-    198,
-    s,
-  )
+  washPoly(ctx, patriotTurretPoints(x, y, s), PATRIOT_TURRET_HUE, s)
 
   for (let i = 0; i < bat.ammo; i++) {
     const col = i % 5

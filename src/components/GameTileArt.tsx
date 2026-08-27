@@ -1,4 +1,5 @@
 import type { JSX, ReactNode } from 'react'
+import { patriotTurretSvgPath } from '../games/patriot/turretArt'
 import { accentPastel, HUE, pastel } from './gameArtStyle'
 
 function TileBg() {
@@ -182,7 +183,7 @@ function CitySkyline({
 }
 
 export function PatriotArt() {
-  const turret = pastel(HUE.sky, 54, 44)
+  const turret = pastel(HUE.rose, 54, 44)
   const incoming = pastel(HUE.rose, 60, 52)
   const ground = 78
 
@@ -193,7 +194,7 @@ export function PatriotArt() {
       <CitySkyline x={132} ground={ground} hue={HUE.teal} heights={[16, 26, 20]} />
 
       <path
-        d="M68 78 L68 68 L74 68 L74 52 L77 52 L77 42 L83 42 L83 52 L86 52 L86 68 L92 68 L92 78 Z"
+        d={patriotTurretSvgPath(80, ground, 1.2)}
         fill={turret.fill}
         stroke={turret.stroke}
         strokeWidth="1.7"
