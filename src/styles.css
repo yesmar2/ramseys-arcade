@@ -557,10 +557,24 @@ img {
   z-index: 30;
 }
 
-/* Home: live daily / weekly event cards */
-.home-events {
+.home-stage > .home-rail {
+  align-self: stretch;
+}
+
+/* Shared content rail: events + games match header width. */
+.home-rail {
+  display: flex;
+  flex-direction: column;
+  gap: 1.35rem;
   width: min(100% - 1.25rem, var(--max-width));
   margin: 0 auto;
+  align-self: stretch;
+}
+
+/* Home: live daily / weekly event cards */
+.home-events {
+  width: 100%;
+  margin: 0;
 }
 
 .home-events__list {
@@ -742,9 +756,13 @@ img {
 }
 
 .games--playable {
-  margin: 0 auto;
+  margin: 0;
   padding-top: 0;
-  width: min(100% - 1.25rem, var(--max-width));
+  width: 100%;
+}
+
+.home-rail .games--playable {
+  margin: 0;
 }
 
 .games__intro {
@@ -805,6 +823,13 @@ img {
   }
 }
 
+@media (min-width: 768px) {
+  .home-rail .game-grid--playable {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 0.85rem 0.7rem;
+  }
+}
+
 @media (min-width: 960px) {
   .game-grid {
     grid-template-columns: repeat(4, 1fr);
@@ -812,6 +837,10 @@ img {
 
   .game-grid--playable {
     grid-template-columns: repeat(4, 1fr);
+  }
+
+  .home-rail .game-grid--playable {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
   }
 }
 

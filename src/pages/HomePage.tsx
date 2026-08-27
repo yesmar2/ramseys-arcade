@@ -9,8 +9,10 @@ export function HomePage() {
   return (
     <>
       <PageShell variant="home">
-        <HomeEventsStrip />
-        <GameGrid />
+        <div className="home-rail">
+          <HomeEventsStrip />
+          <GameGrid />
+        </div>
       </PageShell>
       <InstallPrompt />
       {ATTENDANT_ENABLED ? <ArcadeAttendant /> : null}
