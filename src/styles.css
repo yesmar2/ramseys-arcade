@@ -6846,6 +6846,25 @@ html[data-theme='dark'] .patriot__power-mark {
   width: 100%;
 }
 
+@media (min-width: 768px) {
+  .game-lobby__others-list {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 0.6rem 0.5rem;
+  }
+
+  .game-lobby__other {
+    gap: 0.35rem;
+  }
+
+  .game-lobby__other .inline-thumb {
+    border-radius: 0.95rem;
+  }
+
+  .game-lobby__other-name {
+    font-size: 0.72rem;
+  }
+}
+
 .game-lobby__other {
   display: flex;
   flex-direction: column;
