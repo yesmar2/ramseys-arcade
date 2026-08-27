@@ -23,7 +23,9 @@
   --shadow-lift: 0 14px 32px rgba(var(--shade-rgb), 0.14);
   --font-display: "Outfit", system-ui, sans-serif;
   --font-body: "Outfit", system-ui, sans-serif;
-  --max-width: 68rem;
+  --content-width: 44rem;
+  --content-width-wide: 52rem;
+  --max-width: 52rem;
   --shell: #d5e8f2;
   --inline-thumb-size: 2.35rem;
   --inline-thumb-gap: 0.4rem;
@@ -1246,6 +1248,14 @@ img {
   display: flex;
   flex-direction: column;
   gap: 0.65rem;
+}
+
+@media (min-width: 768px) {
+  .records-index {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+  }
 }
 
 .records-index__card {
@@ -4118,7 +4128,7 @@ html[data-theme='dark'] .patriot__power-mark {
 }
 
 .lb-page__inner {
-  width: min(100% - 2rem, 36rem);
+  width: min(100% - 2rem, var(--content-width));
   margin-inline: auto;
 }
 
@@ -4126,7 +4136,7 @@ html[data-theme='dark'] .patriot__power-mark {
   display: flex;
   flex-direction: column;
   gap: 0.85rem;
-  width: min(100% - 2rem, 40rem);
+  width: min(100% - 2rem, var(--content-width));
 }
 
 .lb-game-board__head {
@@ -5518,44 +5528,30 @@ html[data-theme='dark'] .patriot__power-mark {
   color: var(--muted);
 }
 
-/* Leaderboards overview ? top 3 per game per period */
+/* Leaderboards overview — top 3 per game per period */
 .lb-page__inner--summary {
-  width: min(100% - 2rem, 40rem);
+  width: min(100% - 2rem, var(--content-width-wide));
 }
 
 .lb-page__inner--events {
   display: flex;
   flex-direction: column;
   gap: 1.15rem;
-  width: min(100% - 2rem, 44rem);
-}
-
-@media (min-width: 768px) {
-  .lb-page__inner--summary,
-  .lb-page__inner--game-board {
-    width: min(100% - 2rem, 48rem);
-  }
-
-  .lb-page__inner--events {
-    width: min(100% - 2rem, 52rem);
-  }
-}
-
-@media (min-width: 1024px) {
-  .lb-page__inner--summary,
-  .lb-page__inner--game-board {
-    width: min(100% - 2rem, 56rem);
-  }
-
-  .lb-page__inner--events {
-    width: min(100% - 2rem, 60rem);
-  }
+  width: min(100% - 2rem, var(--content-width-wide));
 }
 
 .lb-summary {
   display: flex;
   flex-direction: column;
   gap: 1rem;
+}
+
+@media (min-width: 768px) {
+  .lb-summary {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+  }
 }
 
 .lb-summary__card {
@@ -5624,7 +5620,8 @@ html[data-theme='dark'] .patriot__power-mark {
   padding: 0.75rem;
 }
 
-@media (min-width: 640px) {
+/* Full-width summary cards can show 4 period columns; 2-col desktop cards stay 2×2. */
+@media (min-width: 640px) and (max-width: 767px) {
   .lb-summary__periods {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
@@ -7717,7 +7714,7 @@ html[data-theme='dark'] .patriot__power-mark {
   gap: 0.85rem;
 }
 
-@media (min-width: 720px) {
+@media (min-width: 768px) {
   .event-list__grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
