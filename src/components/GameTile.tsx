@@ -1,7 +1,7 @@
 import type { CSSProperties } from 'react'
 import type { Game } from '../data/games'
 import { gameHref } from '../hooks/useHashRoute'
-import { GameTileArt } from './GameTileArt'
+import { GameThumbArt } from './GameThumbArt'
 
 type GameTileProps = {
   game: Game
@@ -20,6 +20,7 @@ export function GameTile({
 }: GameTileProps) {
   const style = {
     '--tile-accent': game.accent,
+    '--thumb-accent': game.accent,
     animationDelay: `${0.05 + index * 0.05}s`,
   } as CSSProperties
 
@@ -29,7 +30,7 @@ export function GameTile({
   return (
     <li className={hideOnPhone ? 'game-grid__item--no-phone' : undefined}>
       <a
-        className="game-tile"
+        className="game-tile game-tile--thumb"
         href={href ?? gameHref(game.slug)}
         style={style}
         aria-label={
@@ -40,17 +41,13 @@ export function GameTile({
               : game.name
         }
       >
-        <div className="game-tile__art">
-          <div className="game-tile__stage">
-            <GameTileArt slug={game.slug} />
-          </div>
-          <h3 className="game-tile__title">{game.name}</h3>
-          {game.inDevelopment ? (
-            <span className="game-tile__status">In development</span>
-          ) : game.comingSoon ? (
-            <span className="game-tile__status">Coming soon</span>
-          ) : null}
-        </div>
+        <GameThumbArt slug={game.slug} accent={game.accent} />
+        <h3 className="game-tile__title">{game.name}</h3>
+        {game.inDevelopment ? (
+          <span className="game-tile__status">In development</span>
+        ) : game.comingSoon ? (
+          <span className="game-tile__status">Coming soon</span>
+        ) : null}
       </a>
     </li>
   )

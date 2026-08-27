@@ -791,6 +791,61 @@ img {
   outline-offset: 2px;
 }
 
+/* Trial: home grid uses framed thumbs instead of illustration cards. */
+.game-tile--thumb {
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.7rem 0.7rem 0.55rem;
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  border-radius: 1.05rem;
+}
+
+.game-tile--thumb:hover,
+.game-tile--thumb:focus-visible {
+  transform: translateY(-3px);
+  border-color: transparent;
+  box-shadow: none;
+  background: color-mix(in srgb, var(--tile-accent) 8%, transparent);
+}
+
+.game-tile--thumb .inline-thumb {
+  --inline-thumb-size: 100%;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 4 / 3;
+  border-radius: 1rem;
+  box-shadow: 0 4px 14px rgba(var(--ink-rgb), 0.08);
+}
+
+.game-tile--thumb .inline-thumb .game-thumb__svg {
+  width: 88%;
+  height: 88%;
+}
+
+.game-tile--thumb .game-tile__title {
+  margin: 0;
+  max-width: 100%;
+  font-size: 0.95rem;
+}
+
+.game-tile--thumb .game-tile__status {
+  margin: 0;
+  font-size: 0.68rem;
+}
+
+@media (min-width: 640px) {
+  .game-tile--thumb {
+    padding: 0.8rem 0.8rem 0.6rem;
+    gap: 0.5rem;
+  }
+
+  .game-tile--thumb .game-tile__title {
+    font-size: 1.05rem;
+  }
+}
+
 @media (hover: none) {
   .game-tile:hover {
     transform: none;
@@ -800,6 +855,18 @@ img {
 
   .game-tile:active {
     transform: scale(0.98);
+  }
+
+  .game-tile--thumb:hover {
+    transform: none;
+    background: transparent;
+    box-shadow: none;
+    border-color: transparent;
+  }
+
+  .game-tile--thumb:active {
+    transform: scale(0.97);
+    background: color-mix(in srgb, var(--tile-accent) 8%, transparent);
   }
 }
 
