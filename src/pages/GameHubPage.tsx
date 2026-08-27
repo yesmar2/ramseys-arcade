@@ -15,6 +15,7 @@ import {
   getGame,
   gamePlayableOn,
   homeGames,
+  type Game,
 } from '../data/games'
 import { scoringFor } from '../data/scoring'
 import { useBoardRecord } from '../hooks/useBoardRecord'
@@ -140,18 +141,31 @@ export function GameHubPage({ slug, board: boardFromRoute }: GameHubPageProps) {
           }
         >
           <div className="game-lobby__hero">
-            <div className="game-lobby__art">
-              <GameThumbArt
-                slug={game.slug}
-                accent={game.accent}
-                className="game-lobby__thumb"
+            <div className="game-lobby__identity">
+              <div className="game-lobby__art">
+                <GameThumbArt
+                  slug={game.slug}
+                  accent={game.accent}
+                  className="game-lobby__thumb"
+                />
+                <ShareBoardButton
+                  className="game-lobby__share"
+                  label={`Play ${game.name} on ${APP_NAME}`}
+                  url={gameHref(slug)}
+                />
+                <h1 className="game-lobby__title">{game.name}</h1>
+              </div>
+
+              <PlayCta
+                className="game-lobby__play--desktop"
+                compact
+                game={game}
+                canPlay={canPlay}
+                comingSoon={comingSoon}
+                inDevelopment={inDevelopment}
+                playHref={playHref}
+                deviceNote={deviceNote}
               />
-              <ShareBoardButton
-                className="game-lobby__share"
-                label={`Play ${game.name} on ${APP_NAME}`}
-                url={gameHref(slug)}
-              />
-              <h1 className="game-lobby__title">{game.name}</h1>
             </div>
 
             <div className="game-lobby__aside">
@@ -184,23 +198,15 @@ export function GameHubPage({ slug, board: boardFromRoute }: GameHubPageProps) {
             </div>
           </div>
 
-          {inDevelopment ? (
-            <p className="game-lobby__unavailable">In development — not ready to play yet.</p>
-          ) : comingSoon ? (
-            <p className="game-lobby__unavailable">Coming soon — tile preview only.</p>
-          ) : canPlay ? (
-            <a
-              className="lb-play game-lobby__play"
-              href={playHref}
-              style={{ background: game.accent }}
-            >
-              Play {game.name}
-            </a>
-          ) : (
-            <p className="game-lobby__unavailable">
-              {deviceNote ?? `${game.name} isn’t available on this device.`}
-            </p>
-          )}
+          <PlayCta
+            className="game-lobby__play--mobile"
+            game={game}
+            canPlay={canPlay}
+            comingSoon={comingSoon}
+            inDevelopment={inDevelopment}
+            playHref={playHref}
+            deviceNote={deviceNote}
+          />
 
           {boardSlug ? (
             <TodayTopSection
@@ -253,6 +259,58 @@ export function GameHubPage({ slug, board: boardFromRoute }: GameHubPageProps) {
       </main>
       <Footer />
     </>
+  )
+}
+
+/** Play / unavailable CTA — full-width on mobile, under thumb on desktop. */
+function PlayCta({
+  className,
+  compact = false,
+  game,
+  canPlay,
+  comingSoon,
+  inDevelopment,
+  playHref,
+  deviceNote,
+}: {
+  className: string
+  compact?: boolean
+  game: Game
+  canPlay: boolean
+  comingSoon: boolean
+  inDevelopment: boolean
+  playHref: string
+  deviceNote: string | null
+}) {
+  if (inDevelopment) {
+    return (
+      <p className={`game-lobby__unavailable ${className}`}>
+        In development — not ready to play yet.
+      </p>
+    )
+  }
+  if (comingSoon) {
+    return (
+      <p className={`game-lobby__unavailable ${className}`}>
+        Coming soon — tile preview only.
+      </p>
+    )
+  }
+  if (canPlay) {
+    return (
+      <a
+        className={`lb-play game-lobby__play ${className}`}
+        href={playHref}
+        style={{ background: game.accent }}
+      >
+        {compact ? 'Play' : `Play ${game.name}`}
+      </a>
+    )
+  }
+  return (
+    <p className={`game-lobby__unavailable ${className}`}>
+      {deviceNote ?? `${game.name} isn’t available on this device.`}
+    </p>
   )
 }
 
