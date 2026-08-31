@@ -84,7 +84,8 @@ export const games: Game[] = [
     description: 'Dodge traffic, ride the river, fill every bay.',
     how: 'Hop up through the traffic, then ride logs and turtles across the river. Land in one of the five bays at the top; fill all five to clear the level. Water, cars, and the timer all cost a life.',
     accent: '#3ecf8e',
-    playable: true,
+    playable: false,
+    inDevelopment: true,
   },
   {
     name: 'Stride',
@@ -92,8 +93,8 @@ export const games: Game[] = [
     description: 'Hop forever. Beat your distance.',
     how: 'Swipe or tap to hop. Dodge traffic, avoid trees, and keep moving forward. Score is how far you get — one point per row.',
     accent: '#f5b942',
-    playable: true,
-    devices: ['tablet', 'phone', 'desktop'],
+    playable: false,
+    inDevelopment: true,
   },
   {
     name: 'Spotter',
@@ -128,6 +129,10 @@ export function getGame(slug: string) {
 
 export function isGameHidden(slug: string) {
   return getGame(slug)?.hidden === true
+}
+
+export function isGameInDevelopment(slug: string) {
+  return getGame(slug)?.inDevelopment === true
 }
 
 export function gamePlayableOn(game: Game, device: DeviceType) {
