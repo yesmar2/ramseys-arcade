@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { Footer } from './components/Footer'
 import { SiteHeader } from './components/SiteHeader'
-import { getGame, isGameHidden, isGameInDevelopment } from './data/games'
+import { getGame, isGameHidden } from './data/games'
 import { useHashRoute } from './hooks/useHashRoute'
 import {
   getClaimToken,
@@ -143,7 +143,7 @@ function App() {
     if (isGameHidden(route.slug)) return <ComingSoonPage slug={route.slug} />
     return <GameHubPage slug={route.slug} board={route.board} />
   }
-  if (route.name === 'gamePlay' && (isGameHidden(route.slug) || isGameInDevelopment(route.slug))) {
+  if (route.name === 'gamePlay' && isGameHidden(route.slug)) {
     return <ComingSoonPage slug={route.slug} />
   }
   if (route.name === 'gamePlay' && route.slug === 'stacker') return <StackerPage />

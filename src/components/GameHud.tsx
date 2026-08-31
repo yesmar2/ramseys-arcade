@@ -159,6 +159,16 @@ function playLeaveHref(slug: string, tournamentId?: string) {
   return gameHref(slug)
 }
 
+function navigateHash(target: string) {
+  const hash = target.startsWith('#') ? target : `#${target}`
+  void exitFullscreen()
+  if (window.location.hash === hash) {
+    window.dispatchEvent(new HashChangeEvent('hashchange'))
+    return
+  }
+  window.location.hash = hash
+}
+
 function PlayLeaveButton({
   slug,
   inRun,
@@ -175,9 +185,16 @@ function PlayLeaveButton({
   const inRunRef = useRef(inRun)
   const pausedRef = useRef(paused)
   const hrefRef = useRef(href)
+  const armedRef = useRef(true)
   inRunRef.current = inRun
   pausedRef.current = paused
   hrefRef.current = href
+
+  const goNow = () => {
+    armedRef.current = false
+    setConfirming(false)
+    navigateHash(hrefRef.current)
+  }
 
   useEffect(() => {
     const onAsk = () => setConfirming(true)
@@ -203,30 +220,24 @@ function PlayLeaveButton({
     const guard = { arcadeLeaveGuard: true as const }
     history.pushState(guard, '', playHash)
 
-    let armed = true
+    armedRef.current = true
     const onPopState = () => {
-      if (!armed) return
+      if (!armedRef.current) return
       const running = resolveInRun(inRunRef.current) || pausedRef.current
       history.pushState(guard, '', playHash)
       if (running) {
         setConfirming(true)
         return
       }
-      armed = false
-      void exitFullscreen()
-      window.location.replace(hrefRef.current)
+      armedRef.current = false
+      navigateHash(hrefRef.current)
     }
     window.addEventListener('popstate', onPopState)
     return () => {
-      armed = false
+      armedRef.current = false
       window.removeEventListener('popstate', onPopState)
     }
   }, [slug])
-
-  const goNow = () => {
-    void exitFullscreen()
-    window.location.assign(href)
-  }
 
   const onClick = () => {
     const running = resolveInRun(inRun) || paused
@@ -283,15 +294,13 @@ function PlayLeaveButton({
                   >
                     Stay
                   </button>
-                  <a
+                  <button
+                    type="button"
                     className="game-leave-card__go"
-                    href={href}
-                    onClick={() => {
-                      void exitFullscreen()
-                    }}
+                    onClick={goNow}
                   >
                     Leave
-                  </a>
+                  </button>
                 </div>
               </div>
             </div>,

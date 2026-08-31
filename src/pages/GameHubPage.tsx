@@ -309,13 +309,6 @@ function PlayCta({
   playHref: string
   deviceNote: string | null
 }) {
-  if (inDevelopment) {
-    return (
-      <p className={`game-lobby__unavailable ${className}`}>
-        In development — not ready to play yet.
-      </p>
-    )
-  }
   if (comingSoon) {
     return (
       <p className={`game-lobby__unavailable ${className}`}>
@@ -325,13 +318,20 @@ function PlayCta({
   }
   if (canPlay) {
     return (
-      <a
-        className={`lb-play game-lobby__play ${className}`}
-        href={playHref}
-        style={{ background: game.accent }}
-      >
-        {compact ? 'Play' : `Play ${game.name}`}
-      </a>
+      <>
+        {inDevelopment ? (
+          <p className={`game-lobby__dev-note ${className}`}>
+            In development — expect rough edges.
+          </p>
+        ) : null}
+        <a
+          className={`lb-play game-lobby__play ${className}`}
+          href={playHref}
+          style={{ background: game.accent }}
+        >
+          {compact ? 'Play' : `Play ${game.name}`}
+        </a>
+      </>
     )
   }
   return (

@@ -6934,6 +6934,14 @@ html[data-theme='dark'] .patriot__power-mark {
   color: var(--muted);
 }
 
+.game-lobby__dev-note {
+  margin: 0 0 0.45rem;
+  text-align: center;
+  font-size: 0.82rem;
+  font-weight: 650;
+  color: var(--muted);
+}
+
 .game-lobby__tops {
   display: flex;
   flex-direction: column;
