@@ -1,11 +1,30 @@
 import type { GameState } from './game'
-import { BACK_LIMIT, COLS, VISIBLE_ROWS, getRow } from './game'
+import { BACK_LIMIT, COLS, easeHop, getRow } from './game'
 import { isDarkTheme, playfieldColor } from '../../lib/theme'
 
 const GRASS_A = 142
 const GRASS_B = 152
 const TREE = 158
 const HOPPER = 42
+
+export type StrideLayout = {
+  cell: number
+  visibleRows: number
+  ox: number
+  oy: number
+  hudTop: number
+}
+
+export function computeLayout(w: number, h: number): StrideLayout {
+  const hudTop = Math.max(52, Math.min(76, h * 0.11))
+  const cell = w / COLS
+  const padBottom = Math.max(cell * 0.42, 10)
+  const availH = h - hudTop - padBottom
+  const visibleRows = Math.max(9, Math.ceil(availH / cell))
+  const gridH = visibleRows * cell
+  const oy = hudTop + Math.max(0, (availH - gridH) * 0.5)
+  return { cell, visibleRows, ox: 0, oy, hudTop }
+}
 
 function fill(hue: number, sat: number, light: number, alpha: number) {
   return `hsla(${hue}, ${sat}%, ${light}%, ${alpha})`
@@ -66,8 +85,8 @@ function drawTree(
   const trunk = fill(TREE, 38, dark ? 38 : 34, 0.9)
   const leaf = fill(TREE, 48, dark ? 52 : 48, dark ? 0.34 : 0.28)
   const stroke = fill(TREE, 48, dark ? 58 : 36, 0.9)
-  const w = size * 0.22
-  roundRect(ctx, cx - w / 2, cy + size * 0.08, w, size * 0.34, w * 0.3)
+  const tw = size * 0.22
+  roundRect(ctx, cx - tw / 2, cy + size * 0.08, tw, size * 0.34, tw * 0.3)
   ctx.fillStyle = trunk
   ctx.fill()
   ctx.beginPath()
@@ -111,6 +130,80 @@ function drawHopper(
   ctx.fill()
 }
 
+function wrapSpan(cols: number) {
+  return cols + 5
+}
+
+function playerPos(state: GameState) {
+  if (!state.hop) return { c: state.col, r: state.row }
+  const t = easeHop(state.hop.t)
+  return {
+    c: state.hop.fromC + (state.hop.toC - state.hop.fromC) * t,
+    r: state.hop.fromR + (state.hop.toR - state.hop.fromR) * t,
+  }
+}
+
+function rowScreenY(
+  worldRow: number,
+  cameraY: number,
+  visibleRows: number,
+  oy: number,
+  cell: number,
+) {
+  return oy + (visibleRows - 1 - (worldRow - cameraY)) * cell
+}
+
+function drawRow(
+  ctx: CanvasRenderingContext2D,
+  state: GameState,
+  worldRow: number,
+  y: number,
+  w: number,
+  cell: number,
+  dark: boolean,
+) {
+  const row = getRow(state, worldRow)
+  const grassHue = worldRow % 2 === 0 ? GRASS_A : GRASS_B
+
+  if (row.kind === 'grass') {
+    ctx.fillStyle = fill(grassHue, 42, dark ? 48 : 72, dark ? 0.28 : 0.22)
+    ctx.fillRect(0, y, w, cell + 0.5)
+    ctx.strokeStyle = fill(grassHue, 30, dark ? 58 : 58, 0.12)
+    ctx.lineWidth = 1
+    ctx.strokeRect(0.5, y + 0.5, w - 1, cell - 1)
+  } else {
+    ctx.fillStyle = fill(220, 14, dark ? 34 : 78, dark ? 0.35 : 0.2)
+    ctx.fillRect(0, y, w, cell + 0.5)
+    ctx.strokeStyle = fill(45, 70, 62, 0.22)
+    ctx.setLineDash([cell * 0.12, cell * 0.18])
+    ctx.lineWidth = 2
+    const midY = y + cell * 0.5
+    ctx.beginPath()
+    ctx.moveTo(0, midY)
+    ctx.lineTo(w, midY)
+    ctx.stroke()
+    ctx.setLineDash([])
+
+    for (const v of row.vehicles) {
+      const vx = v.x * cell
+      const vw = v.w * cell
+      const vy = y + cell * 0.22
+      const vh = cell * 0.56
+      drawVehicle(ctx, vx, vy, vw, vh, v.hue, row.dir, dark)
+      if (vx + vw > w) {
+        drawVehicle(ctx, vx - wrapSpan(state.cols) * cell, vy, vw, vh, v.hue, row.dir, dark)
+      }
+      if (vx < 0) {
+        drawVehicle(ctx, vx + wrapSpan(state.cols) * cell, vy, vw, vh, v.hue, row.dir, dark)
+      }
+    }
+  }
+
+  for (const treeCol of row.trees) {
+    drawTree(ctx, (treeCol + 0.5) * cell, y + cell * 0.52, cell * 0.88, dark)
+  }
+}
+
 export function renderGame(
   ctx: CanvasRenderingContext2D,
   state: GameState,
@@ -118,85 +211,25 @@ export function renderGame(
   h: number,
 ) {
   const dark = isDarkTheme()
+  const layout = computeLayout(w, h)
+  const { cell, visibleRows, oy } = layout
+  const cameraY = state.cameraY
+  const pos = playerPos(state)
+
   ctx.fillStyle = playfieldColor()
   ctx.fillRect(0, 0, w, h)
 
-  // Keep the board below the floating HUD (back, pause, score).
-  const hudTop = Math.max(52, Math.min(76, h * 0.11))
-  const padBottom = Math.max(8, h * 0.015)
-  const availH = h - hudTop - padBottom
-  const cell = Math.min(w / COLS, availH / VISIBLE_ROWS)
-  const gridW = cell * COLS
-  const gridH = cell * VISIBLE_ROWS
-  const ox = (w - gridW) / 2
-  const oy = hudTop + (availH - gridH) / 2
-
-  const pos = state.hop
-    ? {
-        c:
-          state.hop.fromC +
-          (state.hop.toC - state.hop.fromC) *
-            (state.hop.t < 0.5
-              ? 2 * state.hop.t * state.hop.t
-              : 1 - Math.pow(-2 * state.hop.t + 2, 2) / 2),
-        r:
-          state.hop.fromR +
-          (state.hop.toR - state.hop.fromR) *
-            (state.hop.t < 0.5
-              ? 2 * state.hop.t * state.hop.t
-              : 1 - Math.pow(-2 * state.hop.t + 2, 2) / 2),
-      }
-    : { c: state.col, r: state.row }
-
-  for (let screenRow = 0; screenRow < VISIBLE_ROWS; screenRow++) {
-    const worldRow = state.cameraRow + (VISIBLE_ROWS - 1 - screenRow)
-    const y = oy + screenRow * cell
-    const row = getRow(state, worldRow)
-    const grassHue = worldRow % 2 === 0 ? GRASS_A : GRASS_B
-
-    if (row.kind === 'grass') {
-      ctx.fillStyle = fill(grassHue, 42, dark ? 48 : 72, dark ? 0.28 : 0.22)
-      ctx.fillRect(ox, y, w, cell)
-      ctx.strokeStyle = fill(grassHue, 30, dark ? 58 : 58, 0.12)
-      ctx.lineWidth = 1
-      ctx.strokeRect(ox + 0.5, y + 0.5, w - 1, cell - 1)
-    } else {
-      ctx.fillStyle = fill(220, 14, dark ? 34 : 78, dark ? 0.35 : 0.2)
-      ctx.fillRect(ox, y, w, cell)
-      ctx.strokeStyle = fill(45, 70, 62, 0.22)
-      ctx.setLineDash([cell * 0.12, cell * 0.18])
-      ctx.lineWidth = 2
-      const midY = y + cell * 0.5
-      ctx.beginPath()
-      ctx.moveTo(ox, midY)
-      ctx.lineTo(ox + w, midY)
-      ctx.stroke()
-      ctx.setLineDash([])
-
-      for (const v of row.vehicles) {
-        const vx = ox + v.x * cell
-        const vw = v.w * cell
-        const vy = y + cell * 0.22
-        const vh = cell * 0.56
-        drawVehicle(ctx, vx, vy, vw, vh, v.hue, row.dir, dark)
-        if (vx + vw > ox + w) {
-          drawVehicle(ctx, vx - wrapSpan(state.cols) * cell, vy, vw, vh, v.hue, row.dir, dark)
-        }
-        if (vx < ox) {
-          drawVehicle(ctx, vx + wrapSpan(state.cols) * cell, vy, vw, vh, v.hue, row.dir, dark)
-        }
-      }
-    }
-
-    for (const treeCol of row.trees) {
-      drawTree(ctx, ox + (treeCol + 0.5) * cell, y + cell * 0.52, cell * 0.88, dark)
-    }
+  const topRow = Math.ceil(cameraY + visibleRows + 1)
+  const bottomRow = Math.floor(cameraY) - 3
+  for (let worldRow = topRow; worldRow >= bottomRow; worldRow--) {
+    const y = rowScreenY(worldRow, cameraY, visibleRows, oy, cell)
+    if (y > h + cell || y + cell < 0) continue
+    drawRow(ctx, state, worldRow, y, w, cell, dark)
   }
 
-  const playerScreenRow = VISIBLE_ROWS - 1 - (pos.r - state.cameraRow)
-  const px = ox + (pos.c + 0.5) * cell
-  const py = oy + (playerScreenRow + 0.52) * cell
-  if (playerScreenRow >= 0 && playerScreenRow < VISIBLE_ROWS) {
+  const px = (pos.c + 0.5) * cell
+  const py = rowScreenY(pos.r, cameraY, visibleRows, oy, cell) + cell * 0.52
+  if (py > -cell && py < h + cell) {
     drawHopper(ctx, px, py, cell, state.hopPulse, dark)
   }
 
@@ -205,16 +238,13 @@ export function renderGame(
     ctx.fillRect(0, 0, w, h)
   }
 
-  if (state.phase === 'playing' && state.row < state.cameraRow + BACK_LIMIT) {
-    const dangerY = oy + (VISIBLE_ROWS - 1 - BACK_LIMIT) * cell
-    const grad = ctx.createLinearGradient(0, dangerY, 0, oy + gridH)
+  if (state.phase === 'playing' && state.row < Math.floor(cameraY) + BACK_LIMIT) {
+    const dangerY = rowScreenY(Math.floor(cameraY) + BACK_LIMIT, cameraY, visibleRows, oy, cell)
+    const bottomY = oy + visibleRows * cell
+    const grad = ctx.createLinearGradient(0, dangerY, 0, bottomY)
     grad.addColorStop(0, 'rgba(232, 93, 117, 0)')
     grad.addColorStop(1, 'rgba(232, 93, 117, 0.22)')
     ctx.fillStyle = grad
-    ctx.fillRect(0, dangerY, w, oy + gridH - dangerY)
+    ctx.fillRect(0, dangerY, w, bottomY - dangerY)
   }
-}
-
-function wrapSpan(cols: number) {
-  return cols + 5
 }

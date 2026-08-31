@@ -39,7 +39,8 @@ export type GameState = {
   cols: number
   col: number
   row: number
-  cameraRow: number
+  /** Smooth camera position (only moves up with the player). */
+  cameraY: number
   hop: HopAnim | null
   hopCooldown: number
   invuln: number
@@ -51,11 +52,12 @@ export type GameState = {
 }
 
 export const COLS = 7
-export const VISIBLE_ROWS = 10
-/** Player sits this many rows from the bottom of the view. */
+/** Player sits this many rows from the bottom of the view once the camera is rolling. */
 export const PLAYER_VIEW_ROW = 3
 /** Die if you fall this many rows behind the camera. */
 export const BACK_LIMIT = 2
+/** Rows to keep generated ahead of the camera. */
+export const ROW_BUFFER = 18
 
 const HOP_COOLDOWN = 0.11
 const HOP_DURATION = 0.14
@@ -160,6 +162,8 @@ function easeHop(t: number) {
   return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2
 }
 
+export { easeHop }
+
 function vehicleHit(
   col: number,
   vehicle: Vehicle,
@@ -199,7 +203,7 @@ export function createInitialState(cols = COLS): GameState {
     cols,
     col: Math.floor(cols / 2),
     row: 0,
-    cameraRow: 0,
+    cameraY: 0,
     hop: null,
     hopCooldown: 0,
     invuln: 0,
@@ -209,7 +213,7 @@ export function createInitialState(cols = COLS): GameState {
     rows: new Map(),
     runSeed,
   }
-  ensureRows(state, 0, VISIBLE_ROWS + 4)
+  ensureRows(state, 0, ROW_BUFFER)
   return state
 }
 
@@ -247,23 +251,21 @@ export function hop(state: GameState, dir: Dir): GameState {
 
   sfx('tap')
   const score = Math.max(state.score, nr)
-  let cameraRow = state.cameraRow
-  const targetCamera = Math.max(0, nr - PLAYER_VIEW_ROW)
-  if (targetCamera > cameraRow) cameraRow = targetCamera
 
   const next: GameState = {
     ...state,
     col: nc,
     row: nr,
     score,
-    cameraRow,
     hop: { fromC: state.col, fromR: state.row, toC: nc, toR: nr, t: 0 },
     hopCooldown: HOP_COOLDOWN,
     hopPulse: 0.2,
     rows: new Map(state.rows),
   }
   if (!next.rows.has(nr)) next.rows.set(nr, rowData)
-  ensureRows(next, cameraRow - BACK_LIMIT - 2, cameraRow + VISIBLE_ROWS + 6)
+  const pos = playerCenter(next)
+  next.cameraY = Math.max(next.cameraY, pos.r - PLAYER_VIEW_ROW)
+  ensureRows(next, Math.floor(next.cameraY) - BACK_LIMIT - 2, Math.floor(next.cameraY) + ROW_BUFFER)
   return next
 }
 
@@ -291,7 +293,10 @@ export function tick(state: GameState, dt: number): GameState {
     next = { ...next, hop: t >= 1 ? null : { ...next.hop, t } }
   }
 
-  ensureRows(next, next.cameraRow - BACK_LIMIT - 2, next.cameraRow + VISIBLE_ROWS + 6)
+  const pos = playerCenter(next)
+  next.cameraY = Math.max(next.cameraY, pos.r - PLAYER_VIEW_ROW)
+
+  ensureRows(next, Math.floor(next.cameraY) - BACK_LIMIT - 2, Math.floor(next.cameraY) + ROW_BUFFER)
 
   for (const [rowIndex, row] of next.rows) {
     if (row.kind !== 'road') continue
@@ -306,19 +311,19 @@ export function tick(state: GameState, dt: number): GameState {
   }
 
   if (next.invuln <= 0 && !next.hop) {
-    const pos = playerCenter(next)
-    const rowIndex = Math.round(pos.r)
+    const hitPos = playerCenter(next)
+    const rowIndex = Math.round(hitPos.r)
     const row = next.rows.get(rowIndex)
     if (row?.kind === 'road') {
       for (const v of row.vehicles) {
-        if (vehicleHit(pos.c, v, next.cols)) {
+        if (vehicleHit(hitPos.c, v, next.cols)) {
           return die(next, 'car')
         }
       }
     }
   }
 
-  if (next.row < next.cameraRow - BACK_LIMIT) {
+  if (next.row < Math.floor(next.cameraY) - BACK_LIMIT) {
     return die(next, 'fall')
   }
 
