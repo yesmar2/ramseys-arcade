@@ -55,7 +55,7 @@ export type GameState = {
   bump: number
   deathFlash: number
   deathAnim: number
-  /** Seconds since last hop forward (row increased). */
+  /** Seconds since last hop up or down. */
   idleTimer: number
   rows: Map<number, Row>
   runSeed: number
@@ -79,8 +79,8 @@ const RESPAWN_INVULN = 0.55
 const CAR_HUES = [18, 348, 272, 198, 38, 128, 168]
 const LOG_HUE = 32
 const PLAYER_HALF = 0.15
-/** Die if you don't move forward for this long (seconds). */
-export const STALL_LIMIT = 13
+/** Die if you don't hop up or down for this long (seconds). */
+export const STALL_LIMIT = 8
 
 export const TRAIN_WARN = 1.55
 export const TRAIN_PASS = 0.38
@@ -139,34 +139,36 @@ function spawnVehicles(
   w: number,
   rand: () => number,
 ): Vehicle[] {
+  const minGap = 0.42
+  const spacing = w + minGap
   const span = wrapSpan(cols)
-  const gap = span / count
-  const seed = rand() * span
+  const pack = count * spacing
+  const start = rand() * Math.max(1, span - pack)
+  const baseMul = 0.82 + rand() * 0.38
   const vehicles: Vehicle[] = []
   for (let i = 0; i < count; i++) {
-    const x = (seed + i * gap + (rand() - 0.5) * gap * 0.25) % span
     vehicles.push({
-      x: x - 2.5,
+      x: start + i * spacing - 1.5,
       w,
       hue: CAR_HUES[Math.floor(rand() * CAR_HUES.length)],
-      speedMul: 0.5 + rand() * 1.2,
+      speedMul: baseMul * (0.94 + rand() * 0.12),
     })
   }
   return vehicles
 }
 
 function spawnLogs(cols: number, rand: () => number, phaseOffset = 0): Vehicle[] {
-  const count = cols < 8 ? 2 : cols < 11 ? 3 : 4
-  const gap = 0.65
-  const margin = 0.4
-  const maxW = (cols - margin * 2 - (count - 1) * gap) / count
-  const logW = Math.min(2.4 + rand() * 0.85, maxW)
-  const packW = count * logW + (count - 1) * gap
-  const start = margin + rand() * Math.max(0.2, cols - packW - margin)
+  const span = wrapSpan(cols)
+  const logTiles = cols < 9 ? 2 : rand() < 0.5 ? 2 : 3
+  const logW = logTiles * 0.94
+  const gap = 0.2 + rand() * 0.14
+  const period = logW + gap
+  const count = Math.max(3, Math.ceil((span + 2) / period))
+  const seed = (rand() * span + phaseOffset) % span
   const logs: Vehicle[] = []
   for (let i = 0; i < count; i++) {
     logs.push({
-      x: start + i * (logW + gap) + phaseOffset,
+      x: (seed + i * period) % span - 1.5,
       w: logW,
       hue: LOG_HUE,
     })
@@ -186,9 +188,9 @@ function makeWaterRow(
 
   // Alternate directions so you can hop across rows.
   const dir: -1 | 1 = rowInChunk % 2 === 0 ? 1 : -1
-  const baseSpeed = 0.45 + chunkRand() * 0.75
-  const speed = baseSpeed * (0.78 + rand() * 0.44)
-  const phaseOffset = rowInChunk * (0.4 + chunkRand() * 0.55)
+  const baseSpeed = 0.58 + chunkRand() * 0.88
+  const speed = baseSpeed * (0.85 + rand() * 0.38)
+  const phaseOffset = rowInChunk * (0.55 + chunkRand() * 0.45)
 
   return {
     kind: 'water',
@@ -205,7 +207,7 @@ function makeRailRow(row: number, cols: number, runSeed: number): Row {
   const trainW = 4.8 + rand() * 1.4
   const railWarn = 1.1 + rand() * 1.4
   const railPass = 0.26 + rand() * 0.22
-  const railCool = 1.8 + rand() * 4.2
+  const railCool = 1.1 + rand() * 2.8
   const cycle = railWarn + railPass + railCool
   return {
     kind: 'rail',
@@ -265,30 +267,30 @@ export function generateRow(
     }
   }
 
-  if (row > 8 && rand() < 0.16) {
+  if (row > 6 && rand() < 0.2) {
     return makeWaterRow(row, cols, runSeed, row)
   }
 
-  if (row > 10 && rand() < 0.14) {
+  if (row > 8 && rand() < 0.17) {
     return makeRailRow(row, cols, runSeed)
   }
 
-  if (rand() < 0.34) {
+  if (rand() < 0.26) {
     const trees: number[] = []
     for (let c = 0; c < cols; c++) {
-      if (rand() < 0.28) trees.push(c)
+      if (rand() < 0.34) trees.push(c)
     }
     return { kind: 'grass', dir: 0, speed: 0, trees, vehicles: [] }
   }
 
   const dir: -1 | 1 = rand() < 0.5 ? -1 : 1
-  const tier = Math.min(1.8, 0.75 + row * 0.018)
-  const count = row < 8 ? 2 : rand() < 0.45 ? 2 : 3
-  const w = rand() < 0.28 ? 2.2 : 1.55
+  const tier = Math.min(2.2, 0.85 + row * 0.022)
+  const count = row < 10 ? (rand() < 0.35 ? 2 : 3) : rand() < 0.25 ? 3 : 4
+  const w = rand() < 0.32 ? 2.0 : 1.45
   return {
     kind: 'road',
     dir,
-    speed: tier * (0.4 + rand() * 1.15),
+    speed: tier * (0.6 + rand() * 1.05),
     trees: [],
     vehicles: spawnVehicles(cols, count, w, rand),
   }
@@ -369,13 +371,27 @@ function trainHit(col: number, train: Vehicle): boolean {
 
 /** Log hitbox aligned to visible platform. */
 function logHit(col: number, vehicle: Vehicle, cols: number): boolean {
-  return entityOverlaps(col, vehicle, cols, PLAYER_HALF, 0.06, true)
+  return entityOverlaps(col, vehicle, cols, PLAYER_HALF, 0.04, true)
 }
 
-function clampOnLog(col: number, log: Vehicle): number {
-  const minC = log.x + PLAYER_HALF - 0.5
-  const maxC = log.x + log.w - PLAYER_HALF - 0.5
-  return Math.max(minC, Math.min(maxC, col))
+function colOnLog(c: number, log: Vehicle): boolean {
+  const center = c + 0.5
+  return center - PLAYER_HALF >= log.x + 0.03 && center + PLAYER_HALF <= log.x + log.w - 0.03
+}
+
+/** Snap landing to the nearest grid column that sits on the log. */
+function snapToLogGrid(col: number, log: Vehicle, cols: number): number {
+  let best = Math.round(col)
+  if (colOnLog(best, log)) return best
+  for (let d = 1; d < cols; d++) {
+    if (best - d >= 0 && colOnLog(best - d, log)) return best - d
+    if (best + d < cols && colOnLog(best + d, log)) return best + d
+  }
+  return Math.max(0, Math.min(cols - 1, Math.round(col)))
+}
+
+function clampOnLog(col: number, log: Vehicle, cols: number): number {
+  return snapToLogGrid(col, log, cols)
 }
 
 function treeAt(rows: Map<number, Row>, row: number, col: number): boolean {
@@ -389,6 +405,59 @@ function blockedByTree(rows: Map<number, Row>, col: number, row: number): boolea
 function onLog(col: number, row: Row, cols: number): boolean {
   if (row.kind !== 'water') return false
   return row.vehicles.some((v) => logHit(col, v, cols))
+}
+
+function resolveRoadSpacing(vehicles: Vehicle[], cols: number, dir: -1 | 1): Vehicle[] {
+  if (vehicles.length <= 1) return vehicles
+  const minGap = 0.38
+  const span = wrapSpan(cols)
+  const sorted = [...vehicles].sort((a, b) => (dir > 0 ? a.x - b.x : b.x - a.x))
+  const out = sorted.map((v) => ({ ...v }))
+
+  for (let i = 1; i < out.length; i++) {
+    const lead = out[i - 1]
+    const follow = out[i]
+    const leadTail = lead.x + lead.w
+    if (follow.x - leadTail < minGap) {
+      follow.x = leadTail + minGap
+      follow.speedMul = Math.min(follow.speedMul ?? 1, lead.speedMul ?? 1)
+    }
+  }
+
+  const first = out[0]
+  const last = out[out.length - 1]
+  const wrapGap = dir > 0 ? first.x + span - (last.x + last.w) : last.x - (first.x + first.w)
+  if (wrapGap < minGap) {
+    if (dir > 0) first.x = last.x + last.w + minGap - span
+    else first.x = last.x + last.w + minGap
+    first.speedMul = Math.min(first.speedMul ?? 1, last.speedMul ?? 1)
+  }
+
+  return out
+}
+
+function moveRoadVehicles(row: Row, cols: number, dt: number): Row {
+  const span = wrapSpan(cols)
+  let vehicles = row.vehicles.map((v) => {
+    const mul = v.speedMul ?? 1
+    let x = v.x + row.dir * row.speed * mul * dt
+    if (x > span - 2) x -= span
+    if (x < -4) x += span
+    return { ...v, x }
+  })
+  vehicles = resolveRoadSpacing(vehicles, cols, row.dir as -1 | 1)
+  return { ...row, vehicles }
+}
+
+function moveWaterVehicles(row: Row, cols: number, dt: number): Row {
+  const span = wrapSpan(cols)
+  const vehicles = row.vehicles.map((v) => {
+    let x = v.x + row.dir * row.speed * dt
+    if (x > span - 2) x -= span
+    if (x < -4) x += span
+    return { ...v, x }
+  })
+  return { ...row, vehicles }
 }
 
 function activeTrafficRow(state: GameState): number {
@@ -424,16 +493,9 @@ function moveRowVehicles(row: Row, cols: number, dt: number): Row {
     }
   }
 
-  if (row.kind !== 'road' && row.kind !== 'water') return row
-  const span = wrapSpan(cols)
-  const vehicles = row.vehicles.map((v) => {
-    const mul = v.speedMul ?? 1
-    let x = v.x + row.dir * row.speed * mul * dt
-    if (x > span - 2) x -= span
-    if (x < -4) x += span
-    return { ...v, x }
-  })
-  return { ...row, vehicles }
+  if (row.kind === 'road') return moveRoadVehicles(row, cols, dt)
+  if (row.kind === 'water') return moveWaterVehicles(row, cols, dt)
+  return row
 }
 
 function hitsRoad(
@@ -525,13 +587,13 @@ export function hop(state: GameState, dir: Dir): GameState {
   sfx('tap')
   const score = Math.max(state.score, nr)
 
-  const wentForward = nr > state.row
+  const movedVertically = nr !== state.row
   const next: GameState = {
     ...state,
     col: nc,
     row: nr,
     score,
-    idleTimer: wentForward ? 0 : state.idleTimer,
+    idleTimer: movedVertically ? 0 : state.idleTimer,
     hop: { fromC: state.col, fromR: state.row, toC: nc, toR: nr, t: 0 },
     hopCooldown: HOP_COOLDOWN,
     hopPulse: 0.2,
@@ -605,7 +667,7 @@ export function tick(state: GameState, dt: number): GameState {
       if (landRow?.kind === 'water') {
         for (const log of landRow.vehicles) {
           if (!logHit(next.col, log, next.cols)) continue
-          next = { ...next, col: clampOnLog(next.col, log) }
+          next = { ...next, col: clampOnLog(next.col, log, next.cols) }
           break
         }
       }
@@ -630,7 +692,7 @@ export function tick(state: GameState, dt: number): GameState {
       for (const log of movedRow.vehicles) {
         if (!logHit(next.col, log, next.cols)) continue
         next.col += movedRow.dir * movedRow.speed * dt
-        next.col = clampOnLog(next.col, log)
+        next.col = clampOnLog(next.col, log, next.cols)
         if (next.col < -0.55 || next.col >= next.cols - 0.45) {
           return die(next, 'fall')
         }
@@ -663,7 +725,7 @@ export function tick(state: GameState, dt: number): GameState {
     return die(next, 'fall')
   }
 
-  if (next.row > 3 && next.idleTimer >= STALL_LIMIT) {
+  if (next.row > 2 && next.idleTimer >= STALL_LIMIT) {
     return die(next, 'fall')
   }
 

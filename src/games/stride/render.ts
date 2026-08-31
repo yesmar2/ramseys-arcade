@@ -435,15 +435,22 @@ export function renderGame(
     ctx.fillRect(0, dangerY, w, bottomY - dangerY)
   }
 
-  if (state.phase === 'playing' && state.idleTimer > STALL_LIMIT - 4) {
-    const urgency = (state.idleTimer - (STALL_LIMIT - 4)) / 4
-    const alpha = Math.min(0.35, urgency * 0.35)
-    ctx.fillStyle = `rgba(255, 160, 40, ${alpha})`
-    ctx.fillRect(0, 0, w, h * 0.08)
-    ctx.fillStyle = `rgba(255, 160, 40, ${Math.min(0.9, 0.5 + urgency * 0.5)})`
-    ctx.font = `bold ${Math.max(12, cell * 0.28)}px system-ui, sans-serif`
-    ctx.textAlign = 'center'
-    ctx.fillText('Keep hopping forward!', w / 2, h * 0.06)
-    ctx.textAlign = 'left'
+  if (state.phase === 'playing' && state.idleTimer > STALL_LIMIT - 3) {
+    const urgency = (state.idleTimer - (STALL_LIMIT - 3)) / 3
+    const eagleY = oy + urgency * cell * 2.2
+    const eagleX = ox + (pos.c + 0.5) * cell
+    ctx.fillStyle = `rgba(40, 30, 50, ${0.25 + urgency * 0.45})`
+    ctx.beginPath()
+    ctx.ellipse(eagleX, eagleY, cell * 0.55, cell * 0.28, 0, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.fillStyle = `rgba(255, 80, 60, ${0.35 + urgency * 0.5})`
+    ctx.beginPath()
+    ctx.moveTo(eagleX - cell * 0.5, eagleY)
+    ctx.lineTo(eagleX - cell * 0.15, eagleY - cell * 0.12)
+    ctx.lineTo(eagleX, eagleY - cell * 0.22)
+    ctx.lineTo(eagleX + cell * 0.15, eagleY - cell * 0.12)
+    ctx.lineTo(eagleX + cell * 0.5, eagleY)
+    ctx.closePath()
+    ctx.fill()
   }
 }
