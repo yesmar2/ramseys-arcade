@@ -1,5 +1,5 @@
 import type { GameState } from './game'
-import { BACK_LIMIT, DESKTOP_ZOOM, TARGET_VISIBLE_ROWS, easeHop, getRailCycle, getRow } from './game'
+import { BACK_LIMIT, DESKTOP_ZOOM, STALL_LIMIT, TARGET_VISIBLE_ROWS, easeHop, getRailCycle, getRow } from './game'
 import { isDarkTheme, playfieldColor } from '../../lib/theme'
 
 const GRASS_A = 142
@@ -433,5 +433,17 @@ export function renderGame(
     grad.addColorStop(1, 'rgba(232, 93, 117, 0.22)')
     ctx.fillStyle = grad
     ctx.fillRect(0, dangerY, w, bottomY - dangerY)
+  }
+
+  if (state.phase === 'playing' && state.idleTimer > STALL_LIMIT - 4) {
+    const urgency = (state.idleTimer - (STALL_LIMIT - 4)) / 4
+    const alpha = Math.min(0.35, urgency * 0.35)
+    ctx.fillStyle = `rgba(255, 160, 40, ${alpha})`
+    ctx.fillRect(0, 0, w, h * 0.08)
+    ctx.fillStyle = `rgba(255, 160, 40, ${Math.min(0.9, 0.5 + urgency * 0.5)})`
+    ctx.font = `bold ${Math.max(12, cell * 0.28)}px system-ui, sans-serif`
+    ctx.textAlign = 'center'
+    ctx.fillText('Keep hopping forward!', w / 2, h * 0.06)
+    ctx.textAlign = 'left'
   }
 }

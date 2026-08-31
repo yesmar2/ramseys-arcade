@@ -8,6 +8,8 @@ export type Vehicle = {
   x: number
   w: number
   hue: number
+  /** Per-vehicle speed multiplier (cars). */
+  speedMul?: number
 }
 
 export type Row = {
@@ -18,6 +20,9 @@ export type Row = {
   vehicles: Vehicle[]
   /** Rail crossing cycle timer (seconds). */
   railTimer?: number
+  railWarn?: number
+  railPass?: number
+  railCool?: number
 }
 
 export type HopAnim = {
@@ -50,6 +55,8 @@ export type GameState = {
   bump: number
   deathFlash: number
   deathAnim: number
+  /** Seconds since last hop forward (row increased). */
+  idleTimer: number
   rows: Map<number, Row>
   runSeed: number
 }
@@ -72,6 +79,8 @@ const RESPAWN_INVULN = 0.55
 const CAR_HUES = [18, 348, 272, 198, 38, 128, 168]
 const LOG_HUE = 32
 const PLAYER_HALF = 0.15
+/** Die if you don't move forward for this long (seconds). */
+export const STALL_LIMIT = 13
 
 export const TRAIN_WARN = 1.55
 export const TRAIN_PASS = 0.38
@@ -81,12 +90,16 @@ export const TRAIN_CYCLE = TRAIN_WARN + TRAIN_PASS + TRAIN_COOL
 export type RailPhase = 'warn' | 'pass' | 'cool'
 
 export function getRailCycle(row: Row): { phase: RailPhase; flash: boolean; passT: number } {
-  const timer = (row.railTimer ?? 0) % TRAIN_CYCLE
-  if (timer < TRAIN_WARN) {
+  const warn = row.railWarn ?? TRAIN_WARN
+  const pass = row.railPass ?? TRAIN_PASS
+  const cool = row.railCool ?? TRAIN_COOL
+  const total = warn + pass + cool
+  const timer = (row.railTimer ?? 0) % total
+  if (timer < warn) {
     return { phase: 'warn', flash: Math.floor(timer * 7) % 2 === 0, passT: 0 }
   }
-  if (timer < TRAIN_WARN + TRAIN_PASS) {
-    return { phase: 'pass', flash: false, passT: (timer - TRAIN_WARN) / TRAIN_PASS }
+  if (timer < warn + pass) {
+    return { phase: 'pass', flash: false, passT: (timer - warn) / pass }
   }
   return { phase: 'cool', flash: false, passT: 0 }
 }
@@ -136,27 +149,25 @@ function spawnVehicles(
       x: x - 2.5,
       w,
       hue: CAR_HUES[Math.floor(rand() * CAR_HUES.length)],
+      speedMul: 0.5 + rand() * 1.2,
     })
   }
   return vehicles
 }
 
-function spawnLogs(
-  cols: number,
-  count: number,
-  w: number,
-  rand: () => number,
-  phaseOffset = 0,
-): Vehicle[] {
-  const span = wrapSpan(cols)
-  const gap = span / count
-  const seed = (rand() * span + phaseOffset) % span
+function spawnLogs(cols: number, rand: () => number, phaseOffset = 0): Vehicle[] {
+  const count = cols < 8 ? 2 : cols < 11 ? 3 : 4
+  const gap = 0.65
+  const margin = 0.4
+  const maxW = (cols - margin * 2 - (count - 1) * gap) / count
+  const logW = Math.min(2.4 + rand() * 0.85, maxW)
+  const packW = count * logW + (count - 1) * gap
+  const start = margin + rand() * Math.max(0.2, cols - packW - margin)
   const logs: Vehicle[] = []
   for (let i = 0; i < count; i++) {
-    const x = (seed + i * gap + (rand() - 0.5) * gap * 0.15) % span
     logs.push({
-      x: x - 2.5,
-      w,
+      x: start + i * (logW + gap) + phaseOffset,
+      w: logW,
       hue: LOG_HUE,
     })
   }
@@ -177,8 +188,6 @@ function makeWaterRow(
   const dir: -1 | 1 = rowInChunk % 2 === 0 ? 1 : -1
   const baseSpeed = 0.45 + chunkRand() * 0.75
   const speed = baseSpeed * (0.78 + rand() * 0.44)
-  const count = rand() < 0.3 ? 3 : 4
-  const logW = 2.6 + rand() * 1.1
   const phaseOffset = rowInChunk * (0.4 + chunkRand() * 0.55)
 
   return {
@@ -186,7 +195,7 @@ function makeWaterRow(
     dir,
     speed,
     trees: [],
-    vehicles: spawnLogs(cols, count, logW, rand, phaseOffset),
+    vehicles: spawnLogs(cols, rand, phaseOffset),
   }
 }
 
@@ -194,11 +203,18 @@ function makeRailRow(row: number, cols: number, runSeed: number): Row {
   const rand = mulberry32(row * 1_048_583 ^ runSeed)
   const dir: -1 | 1 = rand() < 0.5 ? -1 : 1
   const trainW = 4.8 + rand() * 1.4
+  const railWarn = 1.1 + rand() * 1.4
+  const railPass = 0.26 + rand() * 0.22
+  const railCool = 1.8 + rand() * 4.2
+  const cycle = railWarn + railPass + railCool
   return {
     kind: 'rail',
     dir,
     speed: 0,
-    railTimer: rand() * TRAIN_CYCLE,
+    railTimer: rand() * cycle,
+    railWarn,
+    railPass,
+    railCool,
     trees: [],
     vehicles: [{ x: dir > 0 ? -trainW - 6 : cols + 6, w: trainW, hue: 350 }],
   }
@@ -272,7 +288,7 @@ export function generateRow(
   return {
     kind: 'road',
     dir,
-    speed: tier * (0.55 + rand() * 0.85),
+    speed: tier * (0.4 + rand() * 1.15),
     trees: [],
     vehicles: spawnVehicles(cols, count, w, rand),
   }
@@ -362,6 +378,14 @@ function clampOnLog(col: number, log: Vehicle): number {
   return Math.max(minC, Math.min(maxC, col))
 }
 
+function treeAt(rows: Map<number, Row>, row: number, col: number): boolean {
+  return rows.get(row)?.trees.includes(col) ?? false
+}
+
+function blockedByTree(rows: Map<number, Row>, col: number, row: number): boolean {
+  return treeAt(rows, row, Math.round(col))
+}
+
 function onLog(col: number, row: Row, cols: number): boolean {
   if (row.kind !== 'water') return false
   return row.vehicles.some((v) => logHit(col, v, cols))
@@ -374,15 +398,19 @@ function activeTrafficRow(state: GameState): number {
 
 function moveRowVehicles(row: Row, cols: number, dt: number): Row {
   if (row.kind === 'rail') {
-    const railTimer = ((row.railTimer ?? 0) + dt) % TRAIN_CYCLE
+    const warn = row.railWarn ?? TRAIN_WARN
+    const pass = row.railPass ?? TRAIN_PASS
+    const cool = row.railCool ?? TRAIN_COOL
+    const cycle = warn + pass + cool
+    const railTimer = ((row.railTimer ?? 0) + dt) % cycle
     const v = row.vehicles[0]
     if (!v) return { ...row, railTimer }
 
     let x = v.x
-    if (railTimer < TRAIN_WARN) {
+    if (railTimer < warn) {
       x = row.dir > 0 ? -v.w - 6 : cols + 6
-    } else if (railTimer < TRAIN_WARN + TRAIN_PASS) {
-      const t = (railTimer - TRAIN_WARN) / TRAIN_PASS
+    } else if (railTimer < warn + pass) {
+      const t = (railTimer - warn) / pass
       const travel = cols + v.w + 10
       x = row.dir > 0 ? -v.w - 5 + travel * t : cols + 5 - travel * t
     } else {
@@ -399,7 +427,8 @@ function moveRowVehicles(row: Row, cols: number, dt: number): Row {
   if (row.kind !== 'road' && row.kind !== 'water') return row
   const span = wrapSpan(cols)
   const vehicles = row.vehicles.map((v) => {
-    let x = v.x + row.dir * row.speed * dt
+    const mul = v.speedMul ?? 1
+    let x = v.x + row.dir * row.speed * mul * dt
     if (x > span - 2) x -= span
     if (x < -4) x += span
     return { ...v, x }
@@ -453,6 +482,7 @@ export function createInitialState(cols = COLS): GameState {
     bump: 0,
     deathFlash: 0,
     deathAnim: 0,
+    idleTimer: 0,
     rows: new Map(),
     runSeed,
   }
@@ -495,11 +525,13 @@ export function hop(state: GameState, dir: Dir): GameState {
   sfx('tap')
   const score = Math.max(state.score, nr)
 
+  const wentForward = nr > state.row
   const next: GameState = {
     ...state,
     col: nc,
     row: nr,
     score,
+    idleTimer: wentForward ? 0 : state.idleTimer,
     hop: { fromC: state.col, fromR: state.row, toC: nc, toR: nr, t: 0 },
     hopCooldown: HOP_COOLDOWN,
     hopPulse: 0.2,
@@ -547,6 +579,7 @@ export function tick(state: GameState, dt: number): GameState {
     hopPulse: Math.max(0, state.hopPulse - dt),
     bump: Math.max(0, state.bump - dt),
     deathFlash: Math.max(0, state.deathFlash - dt),
+    idleTimer: state.idleTimer + dt,
     rows: new Map(state.rows),
   }
 
@@ -554,6 +587,19 @@ export function tick(state: GameState, dt: number): GameState {
     const t = Math.min(1, next.hop.t + dt / HOP_DURATION)
     const landing = t >= 1
     next = { ...next, hop: landing ? null : { ...next.hop, t } }
+    if (!landing) {
+      const hopPos = playerCenter(next)
+      if (blockedByTree(next.rows, hopPos.c, hopPos.r)) {
+        const { fromC, fromR } = next.hop!
+        return {
+          ...next,
+          hop: null,
+          col: fromC,
+          row: fromR,
+          bump: 0.12,
+        }
+      }
+    }
     if (landing) {
       const landRow = next.rows.get(next.row)
       if (landRow?.kind === 'water') {
@@ -614,6 +660,10 @@ export function tick(state: GameState, dt: number): GameState {
   }
 
   if (next.row < Math.floor(next.cameraY) - BACK_LIMIT) {
+    return die(next, 'fall')
+  }
+
+  if (next.row > 3 && next.idleTimer >= STALL_LIMIT) {
     return die(next, 'fall')
   }
 
