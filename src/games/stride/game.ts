@@ -141,8 +141,52 @@ function spawnLogs(
   return logs
 }
 
-export function generateRow(row: number, cols: number, runSeed: number): Row {
+function makeWaterRow(row: number, cols: number, runSeed: number): Row {
+  const rand = mulberry32(row * 1_048_583 ^ runSeed)
+  const dir: -1 | 1 = rand() < 0.5 ? -1 : 1
+  const count = rand() < 0.4 ? 2 : 3
+  const logW = rand() < 0.5 ? 2.5 : 3.2
+  return {
+    kind: 'water',
+    dir,
+    speed: 0.72 + rand() * 0.38,
+    trees: [],
+    vehicles: spawnLogs(cols, count, logW, rand),
+  }
+}
+
+function makeRailRow(row: number, cols: number, runSeed: number): Row {
+  const rand = mulberry32(row * 1_048_583 ^ runSeed)
+  const dir: -1 | 1 = rand() < 0.5 ? -1 : 1
+  const trainW = 4.2 + rand() * 1.2
+  return {
+    kind: 'rail',
+    dir,
+    speed: 2.6 + rand() * 0.8,
+    trees: [],
+    vehicles: [{ x: dir > 0 ? -trainW - 2 : cols + 2, w: trainW, hue: 350 }],
+  }
+}
+
+function chunkLength(startRow: number, runSeed: number, min: number, max: number): number {
+  const rand = mulberry32(startRow * 1_048_583 ^ runSeed)
+  return min + Math.floor(rand() * (max - min + 1))
+}
+
+function chunkStart(row: number, kind: Row['kind'], rows?: Map<number, Row>): number {
+  let start = row
+  while (rows?.get(start - 1)?.kind === kind) start -= 1
+  return start
+}
+
+export function generateRow(
+  row: number,
+  cols: number,
+  runSeed: number,
+  rows?: Map<number, Row>,
+): Row {
   const rand = mulberry32((row + 1) * 1_048_583 ^ runSeed)
+  const prev = rows?.get(row - 1)
 
   if (row < 4) {
     const trees: number[] = []
@@ -155,32 +199,29 @@ export function generateRow(row: number, cols: number, runSeed: number): Row {
     return { kind: 'grass', dir: 0, speed: 0, trees, vehicles: [] }
   }
 
-  if (row > 10 && rand() < 0.07) {
-    const dir: -1 | 1 = rand() < 0.5 ? -1 : 1
-    const trainW = 4.8 + rand() * 1.4
-    return {
-      kind: 'rail',
-      dir,
-      speed: 2.8 + rand() * 0.9,
-      trees: [],
-      vehicles: [{ x: dir > 0 ? -trainW - 1.5 : cols + 1.5, w: trainW, hue: 350 }],
+  if (prev?.kind === 'water') {
+    const start = chunkStart(row, 'water', rows)
+    if (row < start + chunkLength(start, runSeed, 3, 5)) {
+      return makeWaterRow(row, cols, runSeed)
     }
   }
 
-  if (row > 8 && rand() < 0.09) {
-    const dir: -1 | 1 = rand() < 0.5 ? -1 : 1
-    const count = rand() < 0.45 ? 2 : 3
-    const logW = rand() < 0.5 ? 2.5 : 3.2
-    return {
-      kind: 'water',
-      dir,
-      speed: 0.72 + rand() * 0.38,
-      trees: [],
-      vehicles: spawnLogs(cols, count, logW, rand),
+  if (prev?.kind === 'rail') {
+    const start = chunkStart(row, 'rail', rows)
+    if (row < start + chunkLength(start, runSeed, 2, 4)) {
+      return makeRailRow(row, cols, runSeed)
     }
   }
 
-  if (rand() < 0.38) {
+  if (row > 8 && rand() < 0.16) {
+    return makeWaterRow(row, cols, runSeed)
+  }
+
+  if (row > 10 && rand() < 0.14) {
+    return makeRailRow(row, cols, runSeed)
+  }
+
+  if (rand() < 0.34) {
     const trees: number[] = []
     for (let c = 0; c < cols; c++) {
       if (rand() < 0.28) trees.push(c)
@@ -204,7 +245,7 @@ export function generateRow(row: number, cols: number, runSeed: number): Row {
 function ensureRows(state: GameState, minRow: number, maxRow: number) {
   for (let r = minRow; r <= maxRow; r++) {
     if (!state.rows.has(r)) {
-      state.rows.set(r, generateRow(r, state.cols, state.runSeed))
+      state.rows.set(r, generateRow(r, state.cols, state.runSeed, state.rows))
     }
   }
   for (const key of state.rows.keys()) {
@@ -243,28 +284,40 @@ function entityOverlaps(
   cols: number,
   playerHalf: number,
   entityInset: number,
+  allowWrap: boolean,
 ): boolean {
   const playerLeft = col + 0.5 - playerHalf
   const playerRight = col + 0.5 + playerHalf
-  const span = wrapSpan(cols)
 
   const check = (left: number) =>
     overlap1D(playerLeft, playerRight, left, left + vehicle.w, entityInset)
 
   if (check(vehicle.x)) return true
+  if (!allowWrap) return false
+
+  const span = wrapSpan(cols)
   if (vehicle.x < cols * 0.5 && check(vehicle.x + span)) return true
   if (vehicle.x + vehicle.w > cols * 0.5 && check(vehicle.x - span)) return true
   return false
 }
 
-/** Tight hitbox for cars and trains — matches visible sprites. */
+/** Tight hitbox for cars — matches visible sprites. */
 function vehicleHit(col: number, vehicle: Vehicle, cols: number): boolean {
-  return entityOverlaps(col, vehicle, cols, 0.15, 0.03)
+  return entityOverlaps(col, vehicle, cols, 0.14, 0.04, true)
+}
+
+/** Train uses body-only bounds; no wrap (single train per row). */
+function trainHit(col: number, train: Vehicle): boolean {
+  const playerLeft = col + 0.5 - 0.11
+  const playerRight = col + 0.5 + 0.11
+  const bodyLeft = train.x + train.w * 0.1
+  const bodyRight = train.x + train.w * 0.9
+  return playerRight > bodyLeft && playerLeft < bodyRight
 }
 
 /** Slightly forgiving so logs are easier to land on. */
 function logHit(col: number, vehicle: Vehicle, cols: number): boolean {
-  return entityOverlaps(col, vehicle, cols, 0.2, 0.02)
+  return entityOverlaps(col, vehicle, cols, 0.2, 0.02, true)
 }
 
 function onLog(col: number, row: Row, cols: number): boolean {
@@ -294,15 +347,19 @@ function moveRowVehicles(row: Row, cols: number, dt: number): Row {
   return { ...row, vehicles }
 }
 
-function hitsTraffic(
+function hitsRoad(
   col: number,
   rowIndex: number,
   rows: Map<number, Row>,
   cols: number,
 ): boolean {
   const row = rows.get(rowIndex)
-  if (row?.kind !== 'road' && row?.kind !== 'rail') return false
+  if (row?.kind !== 'road') return false
   return row.vehicles.some((v) => vehicleHit(col, v, cols))
+}
+
+function hitsRail(col: number, row: Row): boolean {
+  return row.vehicles.some((v) => trainHit(col, v))
 }
 
 function die(state: GameState, kind: 'car' | 'fall'): GameState {
@@ -367,7 +424,7 @@ export function hop(state: GameState, dir: Dir): GameState {
     return { ...state, bump: 0.12 }
   }
 
-  const rowData = state.rows.get(nr) ?? generateRow(nr, state.cols, state.runSeed)
+  const rowData = state.rows.get(nr) ?? generateRow(nr, state.cols, state.runSeed, state.rows)
   if (rowData.trees.includes(nc)) {
     return { ...state, bump: 0.12 }
   }
@@ -446,9 +503,19 @@ export function tick(state: GameState, dt: number): GameState {
 
   if (next.invuln <= 0) {
     const hitPos = playerCenter(next)
-    const rowIndex = activeTrafficRow(next)
-    if (hitsTraffic(hitPos.c, rowIndex, next.rows, next.cols)) {
-      return die(next, 'car')
+    if (!next.hop) {
+      const row = next.rows.get(next.row)
+      if (row?.kind === 'rail' && hitsRail(next.col, row)) {
+        return die(next, 'car')
+      }
+      if (row?.kind === 'road' && hitsRoad(next.col, next.row, next.rows, next.cols)) {
+        return die(next, 'car')
+      }
+    } else {
+      const rowIndex = activeTrafficRow(next)
+      if (hitsRoad(hitPos.c, rowIndex, next.rows, next.cols)) {
+        return die(next, 'car')
+      }
     }
   }
 
@@ -468,5 +535,5 @@ export function toSnapshot(state: GameState): Snapshot {
 }
 
 export function getRow(state: GameState, row: number): Row {
-  return state.rows.get(row) ?? generateRow(row, state.cols, state.runSeed)
+  return state.rows.get(row) ?? generateRow(row, state.cols, state.runSeed, state.rows)
 }
