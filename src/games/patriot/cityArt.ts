@@ -1,7 +1,9 @@
 /** Patriot city skyline — matches the three-building blocks drawn in-game. */
 export const PATRIOT_CITY_DRAW = 1.85
 
-/** Rose red — Patriot accent for all cities. */
+export const PATRIOT_CITY_HUES = [198, 172, 38, 272, 18, 128] as const
+
+/** Rose red — thumb/tile illustration accent only. */
 export const PATRIOT_CITY_HUE = 348
 
 export const PATRIOT_CITY_HEIGHTS = [
@@ -32,9 +34,12 @@ export function patriotCityRects(
   groundY: number,
   scale: number,
   cityId = 0,
+  illustration = false,
 ): PatriotCityRect[] {
   const s = scale * PATRIOT_CITY_DRAW
-  const hue = PATRIOT_CITY_HUE
+  const hue = illustration
+    ? PATRIOT_CITY_HUE
+    : PATRIOT_CITY_HUES[cityId % PATRIOT_CITY_HUES.length]
   const heights = PATRIOT_CITY_HEIGHTS[cityId % PATRIOT_CITY_HEIGHTS.length]
 
   return PATRIOT_CITY_BLOCKS.map((block, i) => {

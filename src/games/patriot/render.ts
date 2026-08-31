@@ -1,6 +1,6 @@
 import type { Battery, Bomber, City, Drone, GameState, Plane } from './game'
 import { POWER_HUE, shieldRadius } from './game'
-import { PATRIOT_CITY_DRAW, PATRIOT_CITY_HUE, patriotCityRects } from './cityArt'
+import { PATRIOT_CITY_DRAW, PATRIOT_CITY_HUES, patriotCityRects } from './cityArt'
 import {
   PATRIOT_TURRET_HALF_WIDTH,
   PATRIOT_TURRET_HUE,
@@ -104,7 +104,7 @@ function drawGround(
 
 /** Same 3-building skyline for every city — no overlapping blocks. */
 function drawCity(ctx: CanvasRenderingContext2D, city: City, groundY: number, scale: number) {
-  const hue = PATRIOT_CITY_HUE
+  const hue = PATRIOT_CITY_HUES[city.id % PATRIOT_CITY_HUES.length]
   const s = scale * PATRIOT_CITY_DRAW
 
   if (!city.alive) {

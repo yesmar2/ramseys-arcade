@@ -149,15 +149,17 @@ function CitySkyline({
   ground,
   cityId,
   scale,
+  illustration = false,
 }: {
   x: number
   ground: number
   cityId: number
   scale: number
+  illustration?: boolean
 }) {
   return (
     <g>
-      {patriotCityRects(x, ground, scale, cityId).map((block, i) => {
+      {patriotCityRects(x, ground, scale, cityId, illustration).map((block, i) => {
         const { fill, stroke } = pastel(block.hue, 54, 42)
         return (
           <rect
@@ -185,9 +187,9 @@ export function PatriotArt() {
   return (
     <SvgFrame>
       <TileBg />
-      <CitySkyline x={28} ground={ground} cityId={0} scale={cityScale} />
-      <CitySkyline x={80} ground={ground} cityId={2} scale={cityScale} />
-      <CitySkyline x={132} ground={ground} cityId={1} scale={cityScale} />
+      <CitySkyline x={28} ground={ground} cityId={0} scale={cityScale} illustration />
+      <CitySkyline x={80} ground={ground} cityId={2} scale={cityScale} illustration />
+      <CitySkyline x={132} ground={ground} cityId={1} scale={cityScale} illustration />
 
       <line
         x1="118"

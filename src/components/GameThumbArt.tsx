@@ -59,7 +59,7 @@ function AsteroidsThumb({ accent }: { accent?: string }) {
 }
 
 function PatriotThumb() {
-  const blocks = patriotCityRects(16, 27, 0.35, 0)
+  const blocks = patriotCityRects(16, 27, 0.35, 0, true)
 
   return (
     <>
