@@ -13,6 +13,8 @@ export type Game = {
   comingSoon?: boolean
   /** On the grid, but not ready to play. */
   inDevelopment?: boolean
+  /** Hidden from home, boards, and nav — code kept for later. */
+  hidden?: boolean
   /** If set, the game is only offered on these devices. */
   devices?: DeviceType[]
 }
@@ -85,12 +87,22 @@ export const games: Game[] = [
     playable: true,
   },
   {
+    name: 'Stride',
+    slug: 'stride',
+    description: 'Hop forever. Beat your distance.',
+    how: 'Swipe or tap to hop. Dodge traffic, avoid trees, and keep moving forward. Score is how far you get — one point per row.',
+    accent: '#f5b942',
+    playable: true,
+    devices: ['tablet', 'phone', 'desktop'],
+  },
+  {
     name: 'Spotter',
     slug: 'spotter',
     description: 'Find the wrong tile. A new hunt every day.',
     how: 'Every day, one game on the wall isn’t right. Tap the glitch. Fewer wrong taps and faster finds rank higher.',
     accent: '#7a6cf0',
-    playable: true,
+    playable: false,
+    hidden: true,
   },
   {
     name: 'Pellets',
@@ -114,20 +126,29 @@ export function getGame(slug: string) {
   return games.find((game) => game.slug === slug)
 }
 
+export function isGameHidden(slug: string) {
+  return getGame(slug)?.hidden === true
+}
+
 export function gamePlayableOn(game: Game, device: DeviceType) {
+  if (game.hidden) return false
   if (!game.playable) return false
   if (!game.devices || game.devices.length === 0) return true
   return game.devices.includes(device)
 }
 
 export function playableGames(device?: DeviceType) {
-  return games.filter((g) => (device ? gamePlayableOn(g, device) : g.playable))
+  return games.filter(
+    (g) => !g.hidden && (device ? gamePlayableOn(g, device) : g.playable),
+  )
 }
 
 /** Games shown on the home grid (playable on this device + preview tiles). */
 export function homeGames(device: DeviceType) {
   return games.filter(
-    (g) => g.comingSoon || g.inDevelopment || gamePlayableOn(g, device),
+    (g) =>
+      !g.hidden &&
+      (g.comingSoon || g.inDevelopment || gamePlayableOn(g, device)),
   )
 }
 

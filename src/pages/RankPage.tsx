@@ -13,7 +13,7 @@ import { useGlobalRank } from '../lib/globalRank'
 import { APP_NAME } from '../lib/brand'
 import {
   fetchGlobalRank,
-  LEADERBOARD_GAMES,
+  VISIBLE_LEADERBOARD_GAMES,
   normalizePlayerName,
   type GlobalRankResult,
 } from '../lib/leaderboard'
@@ -64,8 +64,8 @@ export function RankPage({ player }: { player?: string }) {
   const data = isSelf ? myRank : (other ?? empty)
   const { rank, score, totalPlayers, byGame, nearby = [] } = data
 
-  const rankedCount = LEADERBOARD_GAMES.filter((slug) => Boolean(byGame[slug])).length
-  const totalGames = LEADERBOARD_GAMES.length
+  const rankedCount = VISIBLE_LEADERBOARD_GAMES.filter((slug) => Boolean(byGame[slug])).length
+  const totalGames = VISIBLE_LEADERBOARD_GAMES.length
   const unrankedCount = totalGames - rankedCount
 
   const gap =
@@ -155,7 +155,7 @@ export function RankPage({ player }: { player?: string }) {
                   {totalGames > 0 ? (
                     <p className="rank-page__progress" aria-live="polite">
                       <span className="rank-page__dots" aria-hidden="true">
-                        {LEADERBOARD_GAMES.map((slug) => (
+                        {VISIBLE_LEADERBOARD_GAMES.map((slug) => (
                           <span
                             key={slug}
                             className={`rank-page__dot${byGame[slug] ? ' rank-page__dot--on' : ''}`}
@@ -176,7 +176,7 @@ export function RankPage({ player }: { player?: string }) {
                   ) : null}
                 </div>
                 <ul className="rank-page__list">
-                  {LEADERBOARD_GAMES.map((slug) => {
+                  {VISIBLE_LEADERBOARD_GAMES.map((slug) => {
                     const game = getGame(slug)
                     const row = byGame[slug]
                     const onDevice = game ? gamePlayableOn(game, device) : true

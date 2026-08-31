@@ -576,6 +576,25 @@ export function SpotterArt() {
   )
 }
 
+export function StrideArt() {
+  const grass = pastel(HUE.green, 54, 44)
+  const road = pastel(220, 20, 72)
+  const hopper = pastel(HUE.gold, 58, 52)
+  const car = pastel(HUE.rose, 56, 50)
+  const ground = 82
+
+  return (
+    <SvgFrame>
+      <TileBg />
+      <rect x="20" y="28" width="120" height="22" rx="4" fill={grass.fill} stroke={grass.stroke} strokeWidth="1.4" />
+      <rect x="20" y="52" width="120" height="22" rx="4" fill={road.fill} stroke={road.stroke} strokeWidth="1.4" />
+      <rect x="34" y="58" width="28" height="12" rx="3" fill={car.fill} stroke={car.stroke} strokeWidth="1.3" />
+      <rect x="88" y="58" width="34" height="12" rx="3" fill={car.fill} stroke={car.stroke} strokeWidth="1.3" />
+      <ellipse cx="80" cy={ground} rx="9" ry="7.5" fill={hopper.fill} stroke={hopper.stroke} strokeWidth="1.6" />
+    </SvgFrame>
+  )
+}
+
 const artBySlug: Record<string, () => JSX.Element> = {
   stacker: StackerArt,
   patriot: PatriotArt,
@@ -585,6 +604,7 @@ const artBySlug: Record<string, () => JSX.Element> = {
   asteroids: AsteroidsArt,
   simon: SimonArt,
   crosswalk: CrosswalkArt,
+  stride: StrideArt,
   spotter: SpotterArt,
   pellets: PelletsArt,
   barrage: BarrageArt,

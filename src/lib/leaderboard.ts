@@ -1,4 +1,5 @@
 import type { DeviceType } from './device'
+import { getGame } from '../data/games'
 import { detectDeviceType, DEVICE_LABELS, isDeviceType } from './device'
 
 export type { DeviceType }
@@ -22,9 +23,15 @@ export const LEADERBOARD_GAMES = [
   'dead-center',
   'simon',
   'crosswalk',
+  'stride',
   'spotter',
 ] as const
 export type LeaderboardGame = (typeof LEADERBOARD_GAMES)[number]
+
+/** Leaderboard games shown in boards UI (excludes hidden titles). */
+export const VISIBLE_LEADERBOARD_GAMES = LEADERBOARD_GAMES.filter(
+  (slug) => !getGame(slug)?.hidden,
+)
 
 export const LEADERBOARD_PERIODS = ['daily', 'weekly', 'monthly', 'all'] as const
 export type LeaderboardPeriod = (typeof LEADERBOARD_PERIODS)[number]

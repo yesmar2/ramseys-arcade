@@ -2,8 +2,8 @@ import { useMemo, type CSSProperties } from 'react'
 import { getGame } from '../data/games'
 import { gameHref } from '../hooks/useHashRoute'
 import {
-  LEADERBOARD_GAMES,
   LEADERBOARD_PERIODS,
+  VISIBLE_LEADERBOARD_GAMES,
   type GamePeriodSummary,
 } from '../lib/leaderboard'
 import { GameThumbArt } from './GameThumbArt'
@@ -33,7 +33,7 @@ export function LeaderboardSummary({
   if (loading) {
     return (
       <div className="lb-summary" aria-busy="true">
-        {LEADERBOARD_GAMES.map((slug) => (
+        {VISIBLE_LEADERBOARD_GAMES.map((slug) => (
           <article key={slug} className="lb-summary__card lb-summary__card--skeleton" />
         ))}
       </div>
@@ -44,7 +44,7 @@ export function LeaderboardSummary({
     <div className="lb-summary">
       {sorted.map(({ slug, byPeriod }) => {
         const game = getGame(slug)
-        if (!game) return null
+        if (!game || game.hidden) return null
         return (
           <article
             key={slug}

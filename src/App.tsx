@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { Footer } from './components/Footer'
 import { SiteHeader } from './components/SiteHeader'
-import { getGame } from './data/games'
+import { getGame, isGameHidden } from './data/games'
 import { useHashRoute } from './hooks/useHashRoute'
 import {
   getClaimToken,
@@ -15,6 +15,7 @@ import { silenceMusic, unlockSound } from './lib/sound'
 import { AsteroidsPage } from './pages/AsteroidsPage'
 import { AuthVerifyPage } from './pages/AuthVerifyPage'
 import { CrosswalkPage } from './pages/CrosswalkPage'
+import { StridePage } from './pages/StridePage'
 import { DeadCenterPage } from './pages/DeadCenterPage'
 import { GameHubPage } from './pages/GameHubPage'
 import { GameLeaderboardPage } from './pages/GameLeaderboardPage'
@@ -26,7 +27,6 @@ import { RecordsPage } from './pages/RecordsPage'
 import { PatriotPage } from './pages/PatriotPage'
 import { SimonPage } from './pages/SimonPage'
 import { SnakePage } from './pages/SnakePage'
-import { SpotterPage } from './pages/SpotterPage'
 import { StackerPage } from './pages/StackerPage'
 import { WhackPage } from './pages/WhackPage'
 import { TournamentDetailPage, TournamentsPage } from './pages/TournamentsPage'
@@ -117,6 +117,9 @@ function App() {
     )
   }
   if (route.name === 'gameLeaderboard') {
+    if (isGameHidden(route.game)) {
+      return <ComingSoonPage slug={route.game} />
+    }
     return (
       <GameLeaderboardPage game={route.game} period={route.period} />
     )
@@ -137,7 +140,11 @@ function App() {
   }
   if (route.name === 'tournament') return <TournamentDetailPage id={route.id} />
   if (route.name === 'game') {
+    if (isGameHidden(route.slug)) return <ComingSoonPage slug={route.slug} />
     return <GameHubPage slug={route.slug} board={route.board} />
+  }
+  if (route.name === 'gamePlay' && isGameHidden(route.slug)) {
+    return <ComingSoonPage slug={route.slug} />
   }
   if (route.name === 'gamePlay' && route.slug === 'stacker') return <StackerPage />
   if (route.name === 'gamePlay' && route.slug === 'patriot') return <PatriotPage />
@@ -147,7 +154,7 @@ function App() {
   if (route.name === 'gamePlay' && route.slug === 'dead-center') return <DeadCenterPage />
   if (route.name === 'gamePlay' && route.slug === 'asteroids') return <AsteroidsPage />
   if (route.name === 'gamePlay' && route.slug === 'crosswalk') return <CrosswalkPage />
-  if (route.name === 'gamePlay' && route.slug === 'spotter') return <SpotterPage />
+  if (route.name === 'gamePlay' && route.slug === 'stride') return <StridePage />
   if (route.name === 'gamePlay') return <ComingSoonPage slug={route.slug} />
   return <HomePage />
 }

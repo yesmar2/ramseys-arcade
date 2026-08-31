@@ -9,7 +9,7 @@ import { GameThumbArt } from './GameThumbArt'
 /** Daily Spotter teaser above the home game grid. */
 export function HomeSpotterStrip() {
   const game = getGame('spotter')
-  if (!game) return null
+  if (!game || game.hidden) return null
 
   const puzzle = buildDailyPuzzle(spotterDayKey())
   const solved = isSpotterSolvedToday()

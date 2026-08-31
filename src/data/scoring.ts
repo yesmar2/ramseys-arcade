@@ -58,6 +58,12 @@ const SCORING: Record<string, ScoreRow[]> = {
     { label: 'Time left (if close)', value: 'small bonus' },
     { label: 'Round', value: '10 shapes · 5s each' },
   ],
+  stride: [
+    { label: 'Score', value: 'rows forward' },
+    { label: 'Traffic', value: 'one hit ends the run' },
+    { label: 'Fall behind', value: 'screen catches you' },
+    { label: 'Trees', value: 'block your hop' },
+  ],
   spotter: [
     { label: 'Daily hunt', value: 'same puzzle for everyone' },
     { label: 'Wrong tap', value: '+3 seconds' },

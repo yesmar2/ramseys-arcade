@@ -190,6 +190,19 @@ function CrosswalkThumb({ accent }: { accent?: string }) {
   )
 }
 
+function StrideThumb({ accent }: { accent?: string }) {
+  const a = accent ?? '#f5b942'
+  const body = accentPastel(a, 52)
+  return (
+    <>
+      <ellipse cx="16" cy="18" rx="7.2" ry="6.2" {...shape(body, 1.6)} />
+      <circle cx="13.4" cy="16.6" r="1.1" fill="#1a2b3c" />
+      <circle cx="18.6" cy="16.6" r="1.1" fill="#1a2b3c" />
+      <path d="M8 10 L16 6 L24 10" fill="none" stroke={a} strokeWidth="1.8" strokeLinecap="round" />
+    </>
+  )
+}
+
 function SimonThumb() {
   const r = 5
   const gap = 2.4
@@ -272,6 +285,7 @@ const thumbBySlug: Record<
   'dead-center': DeadCenterThumb,
   simon: () => <SimonThumb />,
   crosswalk: CrosswalkThumb,
+  stride: StrideThumb,
   spotter: SpotterThumb,
 }
 
