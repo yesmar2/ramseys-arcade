@@ -52,6 +52,10 @@ export type GameState = {
 }
 
 export const COLS = 7
+/** Target rows visible on screen — keeps desktop from over-zooming. */
+export const TARGET_VISIBLE_ROWS = 12
+/** Hard cap on tile size (px) for wide screens. */
+export const MAX_CELL_PX = 84
 /** Player sits this many rows from the bottom of the view once the camera is rolling. */
 export const PLAYER_VIEW_ROW = 3
 /** Die if you fall this many rows behind the camera. */
@@ -164,20 +168,14 @@ function easeHop(t: number) {
 
 export { easeHop }
 
-function vehicleHit(
-  col: number,
-  vehicle: Vehicle,
-  cols: number,
-): boolean {
-  const left = vehicle.x
-  const right = vehicle.x + vehicle.w
-  const wrap = wrapSpan(cols)
-  const samples = [col - 0.28, col, col + 0.28]
-  for (const sample of samples) {
-    for (const offset of [0, wrap, -wrap]) {
-      const x = sample + offset
-      if (x + 0.32 > left && x - 0.32 < right) return true
-    }
+function vehicleHit(col: number, vehicle: Vehicle, cols: number): boolean {
+  const playerLeft = col + 0.26
+  const playerRight = col + 0.74
+  const span = wrapSpan(cols)
+  for (const offset of [0, -span, span]) {
+    const vLeft = vehicle.x + offset
+    const vRight = vLeft + vehicle.w
+    if (playerRight > vLeft + 0.06 && playerLeft < vRight - 0.06) return true
   }
   return false
 }
@@ -311,12 +309,10 @@ export function tick(state: GameState, dt: number): GameState {
   }
 
   if (next.invuln <= 0 && !next.hop) {
-    const hitPos = playerCenter(next)
-    const rowIndex = Math.round(hitPos.r)
-    const row = next.rows.get(rowIndex)
+    const row = next.rows.get(next.row)
     if (row?.kind === 'road') {
       for (const v of row.vehicles) {
-        if (vehicleHit(hitPos.c, v, next.cols)) {
+        if (vehicleHit(next.col, v, next.cols)) {
           return die(next, 'car')
         }
       }

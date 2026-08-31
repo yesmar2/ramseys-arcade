@@ -1,5 +1,5 @@
 import type { GameState } from './game'
-import { BACK_LIMIT, COLS, easeHop, getRow } from './game'
+import { BACK_LIMIT, COLS, MAX_CELL_PX, TARGET_VISIBLE_ROWS, easeHop, getRow } from './game'
 import { isDarkTheme, playfieldColor } from '../../lib/theme'
 
 const GRASS_A = 142
@@ -17,13 +17,15 @@ export type StrideLayout = {
 
 export function computeLayout(w: number, h: number): StrideLayout {
   const hudTop = Math.max(52, Math.min(76, h * 0.11))
-  const cell = w / COLS
-  const padBottom = Math.max(cell * 0.42, 10)
+  const padBottom = Math.max(14, h * 0.02)
   const availH = h - hudTop - padBottom
-  const visibleRows = Math.max(9, Math.ceil(availH / cell))
+  const cell = Math.min(w / COLS, availH / TARGET_VISIBLE_ROWS, MAX_CELL_PX)
+  const visibleRows = Math.max(9, Math.floor(availH / cell))
+  const gridW = cell * COLS
   const gridH = visibleRows * cell
+  const ox = (w - gridW) / 2
   const oy = hudTop + Math.max(0, (availH - gridH) * 0.5)
-  return { cell, visibleRows, ox: 0, oy, hudTop }
+  return { cell, visibleRows, ox, oy, hudTop }
 }
 
 function fill(hue: number, sat: number, light: number, alpha: number) {
@@ -158,7 +160,8 @@ function drawRow(
   state: GameState,
   worldRow: number,
   y: number,
-  w: number,
+  ox: number,
+  gridW: number,
   cell: number,
   dark: boolean,
 ) {
@@ -167,40 +170,40 @@ function drawRow(
 
   if (row.kind === 'grass') {
     ctx.fillStyle = fill(grassHue, 42, dark ? 48 : 72, dark ? 0.28 : 0.22)
-    ctx.fillRect(0, y, w, cell + 0.5)
+    ctx.fillRect(ox, y, gridW, cell + 0.5)
     ctx.strokeStyle = fill(grassHue, 30, dark ? 58 : 58, 0.12)
     ctx.lineWidth = 1
-    ctx.strokeRect(0.5, y + 0.5, w - 1, cell - 1)
+    ctx.strokeRect(ox + 0.5, y + 0.5, gridW - 1, cell - 1)
   } else {
     ctx.fillStyle = fill(220, 14, dark ? 34 : 78, dark ? 0.35 : 0.2)
-    ctx.fillRect(0, y, w, cell + 0.5)
+    ctx.fillRect(ox, y, gridW, cell + 0.5)
     ctx.strokeStyle = fill(45, 70, 62, 0.22)
     ctx.setLineDash([cell * 0.12, cell * 0.18])
     ctx.lineWidth = 2
     const midY = y + cell * 0.5
     ctx.beginPath()
-    ctx.moveTo(0, midY)
-    ctx.lineTo(w, midY)
+    ctx.moveTo(ox, midY)
+    ctx.lineTo(ox + gridW, midY)
     ctx.stroke()
     ctx.setLineDash([])
 
     for (const v of row.vehicles) {
-      const vx = v.x * cell
+      const vx = ox + v.x * cell
       const vw = v.w * cell
       const vy = y + cell * 0.22
       const vh = cell * 0.56
       drawVehicle(ctx, vx, vy, vw, vh, v.hue, row.dir, dark)
-      if (vx + vw > w) {
+      if (vx + vw > ox + gridW) {
         drawVehicle(ctx, vx - wrapSpan(state.cols) * cell, vy, vw, vh, v.hue, row.dir, dark)
       }
-      if (vx < 0) {
+      if (vx < ox) {
         drawVehicle(ctx, vx + wrapSpan(state.cols) * cell, vy, vw, vh, v.hue, row.dir, dark)
       }
     }
   }
 
   for (const treeCol of row.trees) {
-    drawTree(ctx, (treeCol + 0.5) * cell, y + cell * 0.52, cell * 0.88, dark)
+    drawTree(ctx, ox + (treeCol + 0.5) * cell, y + cell * 0.52, cell * 0.88, dark)
   }
 }
 
@@ -212,9 +215,10 @@ export function renderGame(
 ) {
   const dark = isDarkTheme()
   const layout = computeLayout(w, h)
-  const { cell, visibleRows, oy } = layout
+  const { cell, visibleRows, ox, oy } = layout
   const cameraY = state.cameraY
   const pos = playerPos(state)
+  const gridW = cell * COLS
 
   ctx.fillStyle = playfieldColor()
   ctx.fillRect(0, 0, w, h)
@@ -224,10 +228,10 @@ export function renderGame(
   for (let worldRow = topRow; worldRow >= bottomRow; worldRow--) {
     const y = rowScreenY(worldRow, cameraY, visibleRows, oy, cell)
     if (y > h + cell || y + cell < 0) continue
-    drawRow(ctx, state, worldRow, y, w, cell, dark)
+    drawRow(ctx, state, worldRow, y, ox, gridW, cell, dark)
   }
 
-  const px = (pos.c + 0.5) * cell
+  const px = ox + (pos.c + 0.5) * cell
   const py = rowScreenY(pos.r, cameraY, visibleRows, oy, cell) + cell * 0.52
   if (py > -cell && py < h + cell) {
     drawHopper(ctx, px, py, cell, state.hopPulse, dark)
@@ -245,6 +249,6 @@ export function renderGame(
     grad.addColorStop(0, 'rgba(232, 93, 117, 0)')
     grad.addColorStop(1, 'rgba(232, 93, 117, 0.22)')
     ctx.fillStyle = grad
-    ctx.fillRect(0, dangerY, w, bottomY - dangerY)
+    ctx.fillRect(ox, dangerY, gridW, bottomY - dangerY)
   }
 }
