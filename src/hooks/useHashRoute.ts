@@ -19,6 +19,8 @@ export type Route =
   | { name: 'game'; slug: string; board?: 'scores' | 'records' }
   | { name: 'gamePlay'; slug: string }
   | { name: 'authVerify'; token: string }
+  | { name: 'privacy' }
+  | { name: 'terms' }
 
 function isLeaderboardGame(value: string): value is LeaderboardGame {
   return (LEADERBOARD_GAMES as readonly string[]).includes(value)
@@ -68,6 +70,14 @@ export function recordsIndexHref() {
   return '#/records'
 }
 
+export function privacyHref() {
+  return '#/privacy'
+}
+
+export function termsHref() {
+  return '#/terms'
+}
+
 /** Record books for one game (`#/records/{game}`). Individual boards use `recordHref`. */
 export function recordsHref(game: string) {
   return `#/records/${encodeURIComponent(game)}`
@@ -95,6 +105,8 @@ function gameLeaderboardRoute(
 function parseHash(hash: string): Route {
   const path = hash.replace(/^#\/?/, '').replace(/\/$/, '')
   if (!path) return { name: 'home' }
+  if (path === 'privacy') return { name: 'privacy' }
+  if (path === 'terms') return { name: 'terms' }
   if (path === 'leaderboards') return { name: 'leaderboards' }
   if (path === 'rank') return { name: 'rank' }
   if (path === 'records') return { name: 'recordsIndex' }

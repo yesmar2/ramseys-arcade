@@ -30,6 +30,8 @@ import { SnakePage } from './pages/SnakePage'
 import { StackerPage } from './pages/StackerPage'
 import { WhackPage } from './pages/WhackPage'
 import { TournamentDetailPage, TournamentsPage } from './pages/TournamentsPage'
+import { PrivacyPage } from './pages/PrivacyPage'
+import { TermsPage } from './pages/TermsPage'
 import { TournamentPlayPage } from './pages/TournamentPlayPage'
 
 async function syncPlayerIdentity() {
@@ -109,6 +111,8 @@ function App() {
   }, [onGameScreen])
 
   if (route.name === 'home') return <HomePage />
+  if (route.name === 'privacy') return <PrivacyPage />
+  if (route.name === 'terms') return <TermsPage />
   if (route.name === 'authVerify') return <AuthVerifyPage token={route.token} />
   if (route.name === 'rank') return <RankPage player={route.player} />
   if (route.name === 'leaderboards') {
