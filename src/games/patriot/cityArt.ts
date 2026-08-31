@@ -1,7 +1,8 @@
 /** Patriot city skyline — matches the three-building blocks drawn in-game. */
 export const PATRIOT_CITY_DRAW = 1.85
 
-export const PATRIOT_CITY_HUES = [198, 172, 38, 272, 18, 128] as const
+/** Rose red — Patriot accent for all cities. */
+export const PATRIOT_CITY_HUE = 348
 
 export const PATRIOT_CITY_HEIGHTS = [
   [20, 30, 18],
