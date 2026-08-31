@@ -121,10 +121,15 @@ export function renderGame(
   ctx.fillStyle = playfieldColor()
   ctx.fillRect(0, 0, w, h)
 
-  const cell = w / COLS
+  // Keep the board below the floating HUD (back, pause, score).
+  const hudTop = Math.max(52, Math.min(76, h * 0.11))
+  const padBottom = Math.max(8, h * 0.015)
+  const availH = h - hudTop - padBottom
+  const cell = Math.min(w / COLS, availH / VISIBLE_ROWS)
+  const gridW = cell * COLS
   const gridH = cell * VISIBLE_ROWS
-  const ox = 0
-  const oy = h - gridH - Math.max(12, h * 0.04)
+  const ox = (w - gridW) / 2
+  const oy = hudTop + (availH - gridH) / 2
 
   const pos = state.hop
     ? {
