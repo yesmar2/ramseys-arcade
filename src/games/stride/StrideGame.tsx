@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { GamePlayChrome, PlayReadout, PlayReadoutScore } from '../../components/GameHud'
 import { GameStartCard } from '../../components/GameStartCard'
 import { PauseButton, GamePauseOverlay } from '../../components/PauseControls'
@@ -11,6 +11,7 @@ import { useTournamentPlay } from '../../tournaments/TournamentPlayContext'
 import {
   createInitialState,
   hop,
+  pickCols,
   startGame,
   tick,
   toSnapshot,
@@ -23,9 +24,13 @@ import { renderGame } from './render'
 export function StrideGame() {
   const tournament = useTournamentPlay()
   const apiBest = usePersonalBest('stride')
-  const stateRef = useRef<GameState>(createInitialState())
+  const stageRef = useRef<HTMLDivElement>(null)
+  const stateRef = useRef<GameState | null>(null)
+  if (!stateRef.current) {
+    stateRef.current = createInitialState()
+  }
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const [ui, setUi] = useState<Snapshot>(() => toSnapshot(stateRef.current))
+  const [ui, setUi] = useState<Snapshot>(() => toSnapshot(stateRef.current!))
   const [saveOpen, setSaveOpen] = useState(false)
   const offeredScore = useRef<number | null>(null)
   const previousBestRef = useRef(getPersonalBest('stride'))
@@ -37,6 +42,17 @@ export function StrideGame() {
   const pausedRef = useRef(false)
   pausedRef.current = paused
 
+  useLayoutEffect(() => {
+    const stage = stageRef.current
+    const w = stage?.clientWidth ?? window.innerWidth
+    const h = stage?.clientHeight ?? window.innerHeight
+    const cols = pickCols(w, h)
+    if (stateRef.current && stateRef.current.cols !== cols && stateRef.current.phase === 'menu') {
+      stateRef.current = createInitialState(cols)
+      setUi(toSnapshot(stateRef.current))
+    }
+  }, [])
+
   useEffect(() => {
     let raf = 0
     let last = performance.now()
@@ -47,12 +63,12 @@ export function StrideGame() {
       last = now
 
       if (!pausedRef.current) {
-        stateRef.current = tick(stateRef.current, dt)
+        stateRef.current = tick(stateRef.current!, dt)
       }
       uiAcc += dt
       if (uiAcc > 0.08) {
         uiAcc = 0
-        const snap = toSnapshot(stateRef.current)
+        const snap = toSnapshot(stateRef.current!)
         setUi(snap)
         if (snap.phase === 'gameover' && offeredScore.current !== snap.score) {
           offeredScore.current = snap.score
@@ -74,7 +90,7 @@ export function StrideGame() {
           const ctx = canvas.getContext('2d')
           if (ctx) {
             ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-            renderGame(ctx, stateRef.current, w, h)
+            renderGame(ctx, stateRef.current!, w, h)
           }
         }
       }
@@ -93,7 +109,7 @@ export function StrideGame() {
   const restart = () => {
     setSaveOpen(false)
     offeredScore.current = null
-    stateRef.current = startGame(stateRef.current)
+    stateRef.current = startGame(stateRef.current!)
     previousBestRef.current = getPersonalBest('stride')
     startGrace.current = performance.now() + 220
     setUi(toSnapshot(stateRef.current))
@@ -101,10 +117,10 @@ export function StrideGame() {
 
   const tryHop = (dir: Dir) => {
     if (saveOpen || pausedRef.current) return
-    const s = stateRef.current
+    const s = stateRef.current!
     if (s.phase === 'menu') {
       restart()
-      stateRef.current = hop(stateRef.current, dir)
+      stateRef.current = hop(stateRef.current!, dir)
       setUi(toSnapshot(stateRef.current))
       return
     }
@@ -134,7 +150,7 @@ export function StrideGame() {
       }
       if (e.code === 'Space' || e.code === 'Enter') {
         e.preventDefault()
-        const s = stateRef.current
+        const s = stateRef.current!
         if (s.phase === 'menu' || s.phase === 'gameover') restart()
       }
     }
@@ -160,7 +176,7 @@ export function StrideGame() {
     } catch {
       /* ignore */
     }
-    if (stateRef.current.phase === 'menu') {
+    if (stateRef.current?.phase === 'menu') {
       if (performance.now() < startGrace.current) return
       restart()
     }
@@ -202,12 +218,12 @@ export function StrideGame() {
             swipeRef.current = null
           }}
         >
-          <div className="stride__stage">
+          <div className="stride__stage" ref={stageRef}>
             <canvas ref={canvasRef} className="stride__viewport" />
 
             <GamePlayChrome
               slug="stride"
-              inRun={() => stateRef.current.phase === 'playing'}
+              inRun={() => stateRef.current?.phase === 'playing'}
               paused={paused}
             >
               {(pausable || paused) ? (

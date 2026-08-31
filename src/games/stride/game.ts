@@ -11,7 +11,7 @@ export type Vehicle = {
 }
 
 export type Row = {
-  kind: 'grass' | 'road'
+  kind: 'grass' | 'road' | 'water' | 'rail'
   dir: -1 | 1 | 0
   speed: number
   trees: number[]
@@ -52,10 +52,8 @@ export type GameState = {
 }
 
 export const COLS = 7
-/** Target rows visible on screen — keeps desktop from over-zooming. */
+/** Target rows visible on screen. */
 export const TARGET_VISIBLE_ROWS = 12
-/** Hard cap on tile size (px) for wide screens. */
-export const MAX_CELL_PX = 84
 /** Player sits this many rows from the bottom of the view once the camera is rolling. */
 export const PLAYER_VIEW_ROW = 3
 /** Die if you fall this many rows behind the camera. */
@@ -67,6 +65,19 @@ const HOP_COOLDOWN = 0.11
 const HOP_DURATION = 0.14
 const RESPAWN_INVULN = 0.55
 const CAR_HUES = [18, 348, 272, 198, 38, 128, 168]
+
+/** Wider boards on desktop while keeping enough vertical rows visible. */
+export function pickCols(viewWidth: number, viewHeight: number): number {
+  const hudTop = Math.max(52, Math.min(76, viewHeight * 0.11))
+  const padBottom = Math.max(14, viewHeight * 0.02)
+  const availH = viewHeight - hudTop - padBottom
+  const cellH = availH / TARGET_VISIBLE_ROWS
+  const targetW = viewWidth * 0.9
+  let cols = Math.max(COLS, Math.round(targetW / cellH))
+  cols = Math.min(15, cols)
+  if (cols % 2 === 0) cols += 1
+  return cols
+}
 
 function loadBest() {
   return getPersonalBest('stride')
@@ -121,6 +132,21 @@ export function generateRow(row: number, cols: number, runSeed: number): Row {
     return { kind: 'grass', dir: 0, speed: 0, trees, vehicles: [] }
   }
 
+  if (row > 10 && rand() < 0.07) {
+    const dir: -1 | 1 = rand() < 0.5 ? -1 : 1
+    return {
+      kind: 'rail',
+      dir,
+      speed: 5.2 + rand() * 1.4,
+      trees: [],
+      vehicles: [{ x: dir > 0 ? -cols - 1.5 : cols + 0.5, w: cols + 2.5, hue: 350 }],
+    }
+  }
+
+  if (row > 8 && rand() < 0.09) {
+    return { kind: 'water', dir: 0, speed: 0, trees: [], vehicles: [] }
+  }
+
   if (rand() < 0.38) {
     const trees: number[] = []
     for (let c = 0; c < cols; c++) {
@@ -169,15 +195,26 @@ function easeHop(t: number) {
 export { easeHop }
 
 function vehicleHit(col: number, vehicle: Vehicle, cols: number): boolean {
-  const playerLeft = col + 0.26
-  const playerRight = col + 0.74
+  const playerLeft = col + 0.22
+  const playerRight = col + 0.78
   const span = wrapSpan(cols)
   for (const offset of [0, -span, span]) {
     const vLeft = vehicle.x + offset
     const vRight = vLeft + vehicle.w
-    if (playerRight > vLeft + 0.06 && playerLeft < vRight - 0.06) return true
+    if (playerRight > vLeft && playerLeft < vRight) return true
   }
   return false
+}
+
+function hitsTraffic(
+  col: number,
+  rowIndex: number,
+  rows: Map<number, Row>,
+  cols: number,
+): boolean {
+  const row = rows.get(rowIndex)
+  if (row?.kind !== 'road' && row?.kind !== 'rail') return false
+  return row.vehicles.some((v) => vehicleHit(col, v, cols))
 }
 
 function die(state: GameState, kind: 'car' | 'fall'): GameState {
@@ -297,24 +334,30 @@ export function tick(state: GameState, dt: number): GameState {
   ensureRows(next, Math.floor(next.cameraY) - BACK_LIMIT - 2, Math.floor(next.cameraY) + ROW_BUFFER)
 
   for (const [rowIndex, row] of next.rows) {
-    if (row.kind !== 'road') continue
+    if (row.kind !== 'road' && row.kind !== 'rail') continue
     const span = wrapSpan(next.cols)
     const vehicles = row.vehicles.map((v) => {
       let x = v.x + row.dir * row.speed * dt
-      if (x > span - 2) x -= span
-      if (x < -4) x += span
+      if (row.kind === 'rail') {
+        if (row.dir > 0 && x > span) x = -next.cols - 2
+        if (row.dir < 0 && x + v.w < -2) x = span
+      } else {
+        if (x > span - 2) x -= span
+        if (x < -4) x += span
+      }
       return { ...v, x }
     })
     next.rows.set(rowIndex, { ...row, vehicles })
   }
 
-  if (next.invuln <= 0 && !next.hop) {
-    const row = next.rows.get(next.row)
-    if (row?.kind === 'road') {
-      for (const v of row.vehicles) {
-        if (vehicleHit(next.col, v, next.cols)) {
-          return die(next, 'car')
-        }
+  if (next.invuln <= 0) {
+    const hitPos = playerCenter(next)
+    const rowIndexes = new Set([Math.floor(hitPos.r), Math.ceil(hitPos.r)])
+    for (const rowIndex of rowIndexes) {
+      const row = next.rows.get(rowIndex)
+      if (row?.kind === 'water') return die(next, 'fall')
+      if (hitsTraffic(hitPos.c, rowIndex, next.rows, next.cols)) {
+        return die(next, 'car')
       }
     }
   }
