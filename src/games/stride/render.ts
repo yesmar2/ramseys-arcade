@@ -1,5 +1,5 @@
 import type { GameState } from './game'
-import { BACK_LIMIT, DESKTOP_ZOOM, TARGET_VISIBLE_ROWS, easeHop, getRow } from './game'
+import { BACK_LIMIT, DESKTOP_ZOOM, TARGET_VISIBLE_ROWS, easeHop, getRailCycle, getRow } from './game'
 import { isDarkTheme, playfieldColor } from '../../lib/theme'
 
 const GRASS_A = 142
@@ -110,18 +110,35 @@ function drawHopper(
   size: number,
   pulse: number,
   dark: boolean,
+  dying = false,
+  deathT = 0,
 ) {
-  const scale = 1 + pulse * 0.08
+  const deathScale = dying ? 1 - deathT * 0.45 : 1
+  const scale = (1 + pulse * 0.08) * deathScale
   const r = size * 0.38 * scale
-  const body = fill(HOPPER, 62, dark ? 58 : 54, dark ? 0.34 : 0.28)
-  const stroke = fill(HOPPER, 62, dark ? 62 : 40, 0.95)
+  const squashY = dying ? 1 - deathT * 0.35 : 1
+  const bodyHue = dying ? 4 : HOPPER
+  const body = fill(bodyHue, dying ? 72 : 62, dark ? 58 : 54, 1)
+  const stroke = fill(bodyHue, dying ? 72 : 62, dark ? 48 : 36, 1)
   ctx.beginPath()
-  ctx.ellipse(cx, cy + r * 0.12, r * 1.05, r * 0.92, 0, 0, Math.PI * 2)
+  ctx.ellipse(cx, cy + r * 0.12, r * 1.05, r * 0.92 * squashY, 0, 0, Math.PI * 2)
   ctx.fillStyle = body
   ctx.fill()
   ctx.strokeStyle = stroke
   ctx.lineWidth = Math.max(2, size * 0.06)
   ctx.stroke()
+
+  if (dying) {
+    ctx.strokeStyle = 'rgba(180, 20, 20, 0.85)'
+    ctx.lineWidth = Math.max(2.5, size * 0.07)
+    ctx.beginPath()
+    ctx.moveTo(cx - r * 0.55, cy - r * 0.35)
+    ctx.lineTo(cx + r * 0.55, cy + r * 0.15)
+    ctx.moveTo(cx + r * 0.55, cy - r * 0.35)
+    ctx.lineTo(cx - r * 0.55, cy + r * 0.15)
+    ctx.stroke()
+    return
+  }
 
   ctx.fillStyle = '#1a2b3c'
   ctx.beginPath()
@@ -135,6 +152,47 @@ function drawHopper(
   ctx.fill()
 }
 
+function drawCrossingLights(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  cell: number,
+  flash: boolean,
+  dark: boolean,
+) {
+  const postW = cell * 0.14
+  const postH = cell * 0.62
+  const postY = y + cell * 0.2
+  ctx.fillStyle = fill(45, 10, dark ? 42 : 32, 1)
+  roundRect(ctx, x - postW / 2, postY, postW, postH, postW * 0.2)
+  ctx.fill()
+
+  const lampR = cell * 0.09
+  const lampY = postY + cell * 0.14
+  const on = flash
+  ctx.beginPath()
+  ctx.arc(x, lampY, lampR, 0, Math.PI * 2)
+  ctx.fillStyle = on ? 'rgba(255, 220, 60, 1)' : 'rgba(80, 60, 20, 0.7)'
+  ctx.fill()
+  ctx.strokeStyle = on ? 'rgba(255, 180, 0, 0.9)' : 'rgba(60, 50, 30, 0.6)'
+  ctx.lineWidth = Math.max(1.5, cell * 0.03)
+  ctx.stroke()
+
+  ctx.beginPath()
+  ctx.arc(x, lampY + lampR * 2.1, lampR * 0.85, 0, Math.PI * 2)
+  ctx.fillStyle = on ? 'rgba(255, 50, 40, 1)' : 'rgba(60, 20, 20, 0.7)'
+  ctx.fill()
+  ctx.strokeStyle = on ? 'rgba(220, 30, 20, 0.95)' : 'rgba(50, 20, 20, 0.6)'
+  ctx.stroke()
+
+  if (on) {
+    ctx.fillStyle = 'rgba(255, 200, 80, 0.18)'
+    ctx.beginPath()
+    ctx.arc(x, lampY, lampR * 2.2, 0, Math.PI * 2)
+    ctx.fill()
+  }
+}
+
 function drawTrain(
   ctx: CanvasRenderingContext2D,
   x: number,
@@ -143,8 +201,8 @@ function drawTrain(
   h: number,
   dark: boolean,
 ) {
-  const body = fill(350, 52, dark ? 52 : 48, dark ? 0.38 : 0.3)
-  const stroke = fill(350, 52, dark ? 58 : 40, 0.95)
+  const body = fill(350, 52, dark ? 52 : 48, 1)
+  const stroke = fill(350, 52, dark ? 58 : 40, 1)
   roundRect(ctx, x, y, w, h, h * 0.18)
   ctx.fillStyle = body
   ctx.fill()
@@ -257,17 +315,39 @@ function drawRow(
       }
     }
   } else if (row.kind === 'rail') {
-    drawLaneBand(ctx, y, w, cell, fill(45, 12, dark ? 36 : 70, dark ? 0.35 : 0.22))
+    const cycle = getRailCycle(row)
+    const warnGlow = cycle.phase === 'warn' && cycle.flash
+    drawLaneBand(
+      ctx,
+      y,
+      w,
+      cell,
+      fill(45, 12, dark ? 36 : 70, warnGlow ? (dark ? 0.42 : 0.28) : dark ? 0.35 : 0.22),
+    )
     ctx.fillStyle = fill(38, 20, dark ? 52 : 38, 0.55)
     const railY = y + cell * 0.34
     ctx.fillRect(0, railY, w, cell * 0.08)
     ctx.fillRect(0, railY + cell * 0.26, w, cell * 0.08)
+
+    if (cycle.phase === 'warn') {
+      drawCrossingLights(ctx, ox + cell * 0.35, y, cell, cycle.flash, dark)
+      drawCrossingLights(ctx, ox + gridW - cell * 0.35, y, cell, cycle.flash, dark)
+    }
+
     for (const v of row.vehicles) {
       const vx = ox + v.x * cell
       const vw = v.w * cell
       const vy = y + cell * 0.18
       const vh = cell * 0.64
       if (vx + vw < ox - cell || vx > ox + gridW + cell) continue
+      if (cycle.phase === 'pass') {
+        const streak = row.dir * cell * 0.55
+        ctx.globalAlpha = 0.35
+        drawTrain(ctx, vx - streak, vy, vw, vh, dark)
+        ctx.globalAlpha = 0.6
+        drawTrain(ctx, vx - streak * 0.5, vy, vw, vh, dark)
+        ctx.globalAlpha = 1
+      }
       drawTrain(ctx, vx, vy, vw, vh, dark)
     }
   } else {
@@ -334,12 +414,14 @@ export function renderGame(
 
   const px = ox + (pos.c + 0.5) * cell
   const py = rowScreenY(pos.r, cameraY, visibleRows, oy, cell) + cell * 0.52
+  const dying = state.phase === 'dying'
+  const deathT = dying ? 1 - state.deathAnim / 0.55 : 0
   if (py > -cell && py < h + cell) {
-    drawHopper(ctx, px, py, cell, state.hopPulse, dark)
+    drawHopper(ctx, px, py, cell, state.hopPulse, dark, dying, deathT)
   }
 
   if (state.deathFlash > 0) {
-    ctx.fillStyle = `rgba(255, 80, 80, ${state.deathFlash * 0.35})`
+    ctx.fillStyle = `rgba(255, 80, 80, ${state.deathFlash * 0.15})`
     ctx.fillRect(0, 0, w, h)
   }
 

@@ -2,7 +2,7 @@ import { getPersonalBest } from '../../lib/personalBest'
 import { sfx } from '../../lib/sound'
 
 export type Dir = 'up' | 'down' | 'left' | 'right'
-export type Phase = 'menu' | 'playing' | 'gameover'
+export type Phase = 'menu' | 'playing' | 'dying' | 'gameover'
 
 export type Vehicle = {
   x: number
@@ -16,6 +16,8 @@ export type Row = {
   speed: number
   trees: number[]
   vehicles: Vehicle[]
+  /** Rail crossing cycle timer (seconds). */
+  railTimer?: number
 }
 
 export type HopAnim = {
@@ -47,6 +49,7 @@ export type GameState = {
   hopPulse: number
   bump: number
   deathFlash: number
+  deathAnim: number
   rows: Map<number, Row>
   runSeed: number
 }
@@ -68,6 +71,25 @@ const HOP_DURATION = 0.14
 const RESPAWN_INVULN = 0.55
 const CAR_HUES = [18, 348, 272, 198, 38, 128, 168]
 const LOG_HUE = 32
+const PLAYER_HALF = 0.15
+
+export const TRAIN_WARN = 1.55
+export const TRAIN_PASS = 0.38
+export const TRAIN_COOL = 2.75
+export const TRAIN_CYCLE = TRAIN_WARN + TRAIN_PASS + TRAIN_COOL
+
+export type RailPhase = 'warn' | 'pass' | 'cool'
+
+export function getRailCycle(row: Row): { phase: RailPhase; flash: boolean; passT: number } {
+  const timer = (row.railTimer ?? 0) % TRAIN_CYCLE
+  if (timer < TRAIN_WARN) {
+    return { phase: 'warn', flash: Math.floor(timer * 7) % 2 === 0, passT: 0 }
+  }
+  if (timer < TRAIN_WARN + TRAIN_PASS) {
+    return { phase: 'pass', flash: false, passT: (timer - TRAIN_WARN) / TRAIN_PASS }
+  }
+  return { phase: 'cool', flash: false, passT: 0 }
+}
 
 /** Column count from viewport — fill screen width, sized from row height. */
 export function pickCols(viewWidth: number, viewHeight: number): number {
@@ -171,13 +193,14 @@ function makeWaterRow(
 function makeRailRow(row: number, cols: number, runSeed: number): Row {
   const rand = mulberry32(row * 1_048_583 ^ runSeed)
   const dir: -1 | 1 = rand() < 0.5 ? -1 : 1
-  const trainW = 4.2 + rand() * 1.2
+  const trainW = 4.8 + rand() * 1.4
   return {
     kind: 'rail',
     dir,
-    speed: 1.8 + rand() * 2.2,
+    speed: 0,
+    railTimer: rand() * TRAIN_CYCLE,
     trees: [],
-    vehicles: [{ x: dir > 0 ? -trainW - 2 : cols + 2, w: trainW, hue: 350 }],
+    vehicles: [{ x: dir > 0 ? -trainW - 6 : cols + 6, w: trainW, hue: 350 }],
   }
 }
 
@@ -316,21 +339,27 @@ function entityOverlaps(
 
 /** Tight hitbox for cars — matches visible sprites. */
 function vehicleHit(col: number, vehicle: Vehicle, cols: number): boolean {
-  return entityOverlaps(col, vehicle, cols, 0.14, 0.04, true)
+  return entityOverlaps(col, vehicle, cols, PLAYER_HALF, 0.05, true)
 }
 
-/** Train uses body-only bounds; no wrap (single train per row). */
+/** Train uses body-only bounds; only during pass phase. */
 function trainHit(col: number, train: Vehicle): boolean {
-  const playerLeft = col + 0.5 - 0.11
-  const playerRight = col + 0.5 + 0.11
-  const bodyLeft = train.x + train.w * 0.1
-  const bodyRight = train.x + train.w * 0.9
+  const playerLeft = col + 0.5 - PLAYER_HALF
+  const playerRight = col + 0.5 + PLAYER_HALF
+  const bodyLeft = train.x + train.w * 0.08
+  const bodyRight = train.x + train.w * 0.92
   return playerRight > bodyLeft && playerLeft < bodyRight
 }
 
-/** Slightly forgiving so logs are easier to land on. */
+/** Log hitbox aligned to visible platform. */
 function logHit(col: number, vehicle: Vehicle, cols: number): boolean {
-  return entityOverlaps(col, vehicle, cols, 0.2, 0.02, true)
+  return entityOverlaps(col, vehicle, cols, PLAYER_HALF, 0.06, true)
+}
+
+function clampOnLog(col: number, log: Vehicle): number {
+  const minC = log.x + PLAYER_HALF - 0.5
+  const maxC = log.x + log.w - PLAYER_HALF - 0.5
+  return Math.max(minC, Math.min(maxC, col))
 }
 
 function onLog(col: number, row: Row, cols: number): boolean {
@@ -344,17 +373,35 @@ function activeTrafficRow(state: GameState): number {
 }
 
 function moveRowVehicles(row: Row, cols: number, dt: number): Row {
-  if (row.kind !== 'road' && row.kind !== 'rail' && row.kind !== 'water') return row
+  if (row.kind === 'rail') {
+    const railTimer = ((row.railTimer ?? 0) + dt) % TRAIN_CYCLE
+    const v = row.vehicles[0]
+    if (!v) return { ...row, railTimer }
+
+    let x = v.x
+    if (railTimer < TRAIN_WARN) {
+      x = row.dir > 0 ? -v.w - 6 : cols + 6
+    } else if (railTimer < TRAIN_WARN + TRAIN_PASS) {
+      const t = (railTimer - TRAIN_WARN) / TRAIN_PASS
+      const travel = cols + v.w + 10
+      x = row.dir > 0 ? -v.w - 5 + travel * t : cols + 5 - travel * t
+    } else {
+      x = row.dir > 0 ? -v.w - 6 : cols + 6
+    }
+
+    return {
+      ...row,
+      railTimer,
+      vehicles: [{ ...v, x }],
+    }
+  }
+
+  if (row.kind !== 'road' && row.kind !== 'water') return row
   const span = wrapSpan(cols)
   const vehicles = row.vehicles.map((v) => {
     let x = v.x + row.dir * row.speed * dt
-    if (row.kind === 'rail') {
-      if (row.dir > 0 && x > cols + 1) x = -v.w - 2
-      if (row.dir < 0 && x + v.w < -1) x = cols + 2
-    } else {
-      if (x > span - 2) x -= span
-      if (x < -4) x += span
-    }
+    if (x > span - 2) x -= span
+    if (x < -4) x += span
     return { ...v, x }
   })
   return { ...row, vehicles }
@@ -372,6 +419,7 @@ function hitsRoad(
 }
 
 function hitsRail(col: number, row: Row): boolean {
+  if (getRailCycle(row).phase !== 'pass') return false
   return row.vehicles.some((v) => trainHit(col, v))
 }
 
@@ -380,10 +428,11 @@ function die(state: GameState, kind: 'car' | 'fall'): GameState {
   const best = Math.max(state.best, state.score, loadBest())
   return {
     ...state,
-    phase: 'gameover',
+    phase: 'dying',
     best,
     hop: null,
-    deathFlash: 0.35,
+    deathAnim: 0.55,
+    deathFlash: 0,
   }
 }
 
@@ -403,6 +452,7 @@ export function createInitialState(cols = COLS): GameState {
     hopPulse: 0,
     bump: 0,
     deathFlash: 0,
+    deathAnim: 0,
     rows: new Map(),
     runSeed,
   }
@@ -463,12 +513,31 @@ export function hop(state: GameState, dir: Dir): GameState {
 }
 
 export function tick(state: GameState, dt: number): GameState {
-  if (state.phase !== 'playing') {
+  if (state.phase === 'menu' || state.phase === 'gameover') {
     return {
       ...state,
       deathFlash: Math.max(0, state.deathFlash - dt),
       hopPulse: Math.max(0, state.hopPulse - dt),
     }
+  }
+
+  if (state.phase === 'dying') {
+    let next: GameState = {
+      ...state,
+      deathAnim: state.deathAnim - dt,
+      hopPulse: Math.max(0, state.hopPulse - dt),
+      rows: new Map(state.rows),
+    }
+    ensureRows(next, Math.floor(next.cameraY) - BACK_LIMIT - 2, Math.floor(next.cameraY) + ROW_BUFFER)
+    for (const [rowIndex, row] of next.rows) {
+      if (row.kind === 'road' || row.kind === 'rail' || row.kind === 'water') {
+        next.rows.set(rowIndex, moveRowVehicles(row, next.cols, dt))
+      }
+    }
+    if (next.deathAnim <= 0) {
+      return { ...next, phase: 'gameover', deathAnim: 0 }
+    }
+    return next
   }
 
   let next: GameState = {
@@ -483,7 +552,18 @@ export function tick(state: GameState, dt: number): GameState {
 
   if (next.hop) {
     const t = Math.min(1, next.hop.t + dt / HOP_DURATION)
-    next = { ...next, hop: t >= 1 ? null : { ...next.hop, t } }
+    const landing = t >= 1
+    next = { ...next, hop: landing ? null : { ...next.hop, t } }
+    if (landing) {
+      const landRow = next.rows.get(next.row)
+      if (landRow?.kind === 'water') {
+        for (const log of landRow.vehicles) {
+          if (!logHit(next.col, log, next.cols)) continue
+          next = { ...next, col: clampOnLog(next.col, log) }
+          break
+        }
+      }
+    }
   }
 
   const pos = playerCenter(next)
@@ -504,6 +584,7 @@ export function tick(state: GameState, dt: number): GameState {
       for (const log of movedRow.vehicles) {
         if (!logHit(next.col, log, next.cols)) continue
         next.col += movedRow.dir * movedRow.speed * dt
+        next.col = clampOnLog(next.col, log)
         if (next.col < -0.55 || next.col >= next.cols - 0.45) {
           return die(next, 'fall')
         }
