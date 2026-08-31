@@ -538,6 +538,44 @@ export function BarrageArt() {
   )
 }
 
+export function SpotterArt() {
+  const accent = pastel(HUE.violet, 54, 44)
+  const cells = [
+    { x: 36, y: 28, w: 28, h: 28 },
+    { x: 68, y: 28, w: 28, h: 28 },
+    { x: 100, y: 28, w: 28, h: 28 },
+    { x: 36, y: 60, w: 28, h: 28 },
+    { x: 68, y: 60, w: 28, h: 28, glitch: true },
+    { x: 100, y: 60, w: 28, h: 28 },
+    { x: 36, y: 92, w: 28, h: 28 },
+    { x: 68, y: 92, w: 28, h: 28 },
+    { x: 100, y: 92, w: 28, h: 28 },
+  ]
+  return (
+    <SvgFrame>
+      <TileBg />
+      {cells.map((c) => {
+        const tone = c.glitch ? pastel(HUE.rose, 56, 50) : accent
+        return (
+          <rect
+            key={`${c.x}-${c.y}`}
+            x={c.x}
+            y={c.y}
+            width={c.w}
+            height={c.h}
+            rx="6"
+            fill={tone.fill}
+            stroke={tone.stroke}
+            strokeWidth="1.5"
+          />
+        )
+      })}
+      <circle cx="118" cy="38" r="12" fill="none" stroke={accent.stroke} strokeWidth="2" />
+      <line x1="126" y1="46" x2="136" y2="56" stroke={accent.stroke} strokeWidth="2.5" strokeLinecap="round" />
+    </SvgFrame>
+  )
+}
+
 const artBySlug: Record<string, () => JSX.Element> = {
   stacker: StackerArt,
   patriot: PatriotArt,
@@ -547,6 +585,7 @@ const artBySlug: Record<string, () => JSX.Element> = {
   asteroids: AsteroidsArt,
   simon: SimonArt,
   crosswalk: CrosswalkArt,
+  spotter: SpotterArt,
   pellets: PelletsArt,
   barrage: BarrageArt,
 }

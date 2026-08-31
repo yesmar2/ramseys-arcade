@@ -218,6 +218,48 @@ function SimonThumb() {
   )
 }
 
+function SpotterThumb({ accent }: { accent?: string }) {
+  const a = accent ?? '#7a6cf0'
+  const cells = [
+    { x: 8, y: 8, bad: false },
+    { x: 16, y: 8, bad: false },
+    { x: 24, y: 8, bad: true },
+    { x: 8, y: 16, bad: false },
+    { x: 16, y: 16, bad: false },
+    { x: 24, y: 16, bad: false },
+    { x: 8, y: 24, bad: false },
+    { x: 16, y: 24, bad: false },
+    { x: 24, y: 24, bad: false },
+  ]
+  return (
+    <>
+      {cells.map((c, i) => (
+        <rect
+          key={i}
+          x={c.x - 3}
+          y={c.y - 3}
+          width="6"
+          height="6"
+          rx="1.2"
+          fill={c.bad ? `color-mix(in srgb, ${a} 42%, var(--playfield))` : `color-mix(in srgb, ${a} 18%, var(--playfield))`}
+          stroke={a}
+          strokeWidth={c.bad ? '1.6' : '1.2'}
+          opacity={c.bad ? 1 : 0.85}
+        />
+      ))}
+      <circle
+        cx="22"
+        cy="22"
+        r="6.5"
+        fill="none"
+        stroke={a}
+        strokeWidth="1.8"
+      />
+      <line x1="26.5" y1="26.5" x2="30" y2="30" stroke={a} strokeWidth="2" strokeLinecap="round" />
+    </>
+  )
+}
+
 const thumbBySlug: Record<
   string,
   (props: { accent?: string }) => ReactNode
@@ -230,6 +272,7 @@ const thumbBySlug: Record<
   'dead-center': DeadCenterThumb,
   simon: () => <SimonThumb />,
   crosswalk: CrosswalkThumb,
+  spotter: SpotterThumb,
 }
 
 export function GameThumbArt({ slug, accent, className }: GameThumbArtProps) {

@@ -12,6 +12,7 @@ import {
 } from '../hooks/useHashRoute'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { useDeviceType } from '../lib/device'
+import { formatLeaderboardScore } from '../games/spotter/score'
 import { flashYouRow } from '../lib/boardGap'
 import { APP_NAME } from '../lib/brand'
 import {
@@ -162,6 +163,7 @@ export function GameLeaderboardPage({
               playerName={playerName}
               accent={accent}
               shown={shown}
+              formatScore={(score) => formatLeaderboardScore(gameSlug, score)}
             />
           )}
 

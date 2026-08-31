@@ -58,6 +58,12 @@ const SCORING: Record<string, ScoreRow[]> = {
     { label: 'Time left (if close)', value: 'small bonus' },
     { label: 'Round', value: '10 shapes · 5s each' },
   ],
+  spotter: [
+    { label: 'Daily hunt', value: 'same puzzle for everyone' },
+    { label: 'Wrong tap', value: '+3 seconds' },
+    { label: 'Hint (poster wall)', value: '+15 seconds' },
+    { label: 'Board ranks', value: 'fastest adjusted time' },
+  ],
   asteroids: [
     { label: 'Large rock', value: '+20' },
     { label: 'Medium rock', value: '+50' },

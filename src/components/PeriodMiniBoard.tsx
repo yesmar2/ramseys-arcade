@@ -1,5 +1,6 @@
 import type { CSSProperties } from 'react'
 import { gameBoardHref, rankHref } from '../hooks/useHashRoute'
+import { formatLeaderboardScore } from '../games/spotter/score'
 import {
   PERIOD_LABELS,
   normalizePlayerName,
@@ -75,7 +76,9 @@ export function PeriodMiniBoard({
                 <span className="lb-summary__name">{name}</span>
                 {isYou ? <span className="lb-summary__you">You</span> : null}
               </a>
-              <span className="lb-summary__score">{entry.score.toLocaleString()}</span>
+              <span className="lb-summary__score">
+                {formatLeaderboardScore(slug, entry.score)}
+              </span>
             </li>
           )
         })}

@@ -85,6 +85,14 @@ export const games: Game[] = [
     playable: true,
   },
   {
+    name: 'Spotter',
+    slug: 'spotter',
+    description: 'Find the wrong tile. A new hunt every day.',
+    how: 'Every day, one game on the wall isn’t right. Tap the glitch. Fewer wrong taps and faster finds rank higher.',
+    accent: '#7a6cf0',
+    playable: true,
+  },
+  {
     name: 'Pellets',
     slug: 'pellets',
     description: 'Clear the maze. Watch the ghosts.',

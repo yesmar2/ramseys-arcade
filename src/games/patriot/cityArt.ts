@@ -34,7 +34,7 @@ export function patriotCityRects(
   cityId = 0,
 ): PatriotCityRect[] {
   const s = scale * PATRIOT_CITY_DRAW
-  const hue = PATRIOT_CITY_HUES[cityId % PATRIOT_CITY_HUES.length]
+  const hue = PATRIOT_CITY_HUE
   const heights = PATRIOT_CITY_HEIGHTS[cityId % PATRIOT_CITY_HEIGHTS.length]
 
   return PATRIOT_CITY_BLOCKS.map((block, i) => {

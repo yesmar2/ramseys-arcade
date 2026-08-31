@@ -30,6 +30,7 @@ import { usePersonalBest } from '../hooks/usePersonalBest'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { useDeviceType } from '../lib/device'
 import { APP_NAME } from '../lib/brand'
+import { formatLeaderboardScore } from '../games/spotter/score'
 import { gameHasRecords } from '../lib/records'
 import {
   getLeaderboard,
@@ -194,12 +195,16 @@ export function GameHubPage({ slug, board: boardFromRoute }: GameHubPageProps) {
                 <div className="lb-stat">
                   <span className="lb-stat__label">Your best</span>
                   <strong>
-                    {personalBest > 0 ? personalBest.toLocaleString() : '—'}
+                    {personalBest > 0
+                      ? formatLeaderboardScore(slug, personalBest)
+                      : '—'}
                   </strong>
                 </div>
                 <div className="lb-stat">
                   <span className="lb-stat__label">All time</span>
-                  <strong>{allTime > 0 ? allTime.toLocaleString() : '—'}</strong>
+                  <strong>
+                    {allTime > 0 ? formatLeaderboardScore(slug, allTime) : '—'}
+                  </strong>
                 </div>
               </div>
             </div>
@@ -469,6 +474,7 @@ function TodayTopSection({
             entries={topEntries}
             playerName={playerName}
             accent={accent}
+            slug={boardSlug}
           />
         )}
       </div>
@@ -481,10 +487,12 @@ function TopScoreCards({
   entries,
   playerName,
   accent,
+  slug,
 }: {
   entries: LeaderboardEntry[]
   playerName: string
   accent: string
+  slug: string
 }) {
   const slots = Array.from({ length: TOP_ROWS }, (_, index) => entries[index] ?? null)
 
@@ -527,7 +535,7 @@ function TopScoreCards({
               {isYou ? <span className="lb-row__you-tag">You</span> : null}
             </span>
             <strong className="game-lobby__podium-score">
-              {entry.score.toLocaleString()}
+              {formatLeaderboardScore(slug, entry.score)}
             </strong>
           </li>
         )
