@@ -69,15 +69,14 @@ const RESPAWN_INVULN = 0.55
 const CAR_HUES = [18, 348, 272, 198, 38, 128, 168]
 const LOG_HUE = 32
 
-/** Column count from viewport — fewer, larger tiles on tall desktop screens. */
+/** Column count from viewport — fill screen width, sized from row height. */
 export function pickCols(viewWidth: number, viewHeight: number): number {
   const hudTop = Math.max(52, Math.min(76, viewHeight * 0.11))
   const padBottom = Math.max(14, viewHeight * 0.02)
   const availH = viewHeight - hudTop - padBottom
   const zoom = viewWidth >= 900 ? DESKTOP_ZOOM : 1
   const cell = (availH / TARGET_VISIBLE_ROWS) * zoom
-  let cols = Math.max(COLS, Math.min(11, Math.round(viewWidth / cell)))
-  if (cols % 2 === 0) cols += 1
+  let cols = Math.max(COLS, Math.floor(viewWidth / cell))
   return cols
 }
 
@@ -125,13 +124,14 @@ function spawnLogs(
   count: number,
   w: number,
   rand: () => number,
+  phaseOffset = 0,
 ): Vehicle[] {
   const span = wrapSpan(cols)
   const gap = span / count
-  const seed = rand() * span
+  const seed = (rand() * span + phaseOffset) % span
   const logs: Vehicle[] = []
   for (let i = 0; i < count; i++) {
-    const x = (seed + i * gap + (rand() - 0.5) * gap * 0.2) % span
+    const x = (seed + i * gap + (rand() - 0.5) * gap * 0.15) % span
     logs.push({
       x: x - 2.5,
       w,
@@ -141,17 +141,30 @@ function spawnLogs(
   return logs
 }
 
-function makeWaterRow(row: number, cols: number, runSeed: number): Row {
+function makeWaterRow(
+  row: number,
+  cols: number,
+  runSeed: number,
+  waterChunkStart: number,
+): Row {
   const rand = mulberry32(row * 1_048_583 ^ runSeed)
-  const dir: -1 | 1 = rand() < 0.5 ? -1 : 1
-  const count = rand() < 0.4 ? 2 : 3
-  const logW = rand() < 0.5 ? 2.5 : 3.2
+  const chunkRand = mulberry32(waterChunkStart * 1_048_583 ^ runSeed)
+  const rowInChunk = row - waterChunkStart
+
+  // Alternate directions so you can hop across rows.
+  const dir: -1 | 1 = rowInChunk % 2 === 0 ? 1 : -1
+  const baseSpeed = 0.45 + chunkRand() * 0.75
+  const speed = baseSpeed * (0.78 + rand() * 0.44)
+  const count = rand() < 0.3 ? 3 : 4
+  const logW = 2.6 + rand() * 1.1
+  const phaseOffset = rowInChunk * (0.4 + chunkRand() * 0.55)
+
   return {
     kind: 'water',
     dir,
-    speed: 0.72 + rand() * 0.38,
+    speed,
     trees: [],
-    vehicles: spawnLogs(cols, count, logW, rand),
+    vehicles: spawnLogs(cols, count, logW, rand, phaseOffset),
   }
 }
 
@@ -162,7 +175,7 @@ function makeRailRow(row: number, cols: number, runSeed: number): Row {
   return {
     kind: 'rail',
     dir,
-    speed: 2.6 + rand() * 0.8,
+    speed: 1.8 + rand() * 2.2,
     trees: [],
     vehicles: [{ x: dir > 0 ? -trainW - 2 : cols + 2, w: trainW, hue: 350 }],
   }
@@ -202,7 +215,7 @@ export function generateRow(
   if (prev?.kind === 'water') {
     const start = chunkStart(row, 'water', rows)
     if (row < start + chunkLength(start, runSeed, 3, 5)) {
-      return makeWaterRow(row, cols, runSeed)
+      return makeWaterRow(row, cols, runSeed, start)
     }
   }
 
@@ -214,7 +227,7 @@ export function generateRow(
   }
 
   if (row > 8 && rand() < 0.16) {
-    return makeWaterRow(row, cols, runSeed)
+    return makeWaterRow(row, cols, runSeed, row)
   }
 
   if (row > 10 && rand() < 0.14) {
@@ -236,7 +249,7 @@ export function generateRow(
   return {
     kind: 'road',
     dir,
-    speed: tier * (0.85 + rand() * 0.35),
+    speed: tier * (0.55 + rand() * 0.85),
     trees: [],
     vehicles: spawnVehicles(cols, count, w, rand),
   }
@@ -491,7 +504,7 @@ export function tick(state: GameState, dt: number): GameState {
       for (const log of movedRow.vehicles) {
         if (!logHit(next.col, log, next.cols)) continue
         next.col += movedRow.dir * movedRow.speed * dt
-        if (next.col < -0.4 || next.col > next.cols - 0.6) {
+        if (next.col < -0.55 || next.col >= next.cols - 0.45) {
           return die(next, 'fall')
         }
         break

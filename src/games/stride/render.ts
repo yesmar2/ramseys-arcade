@@ -26,7 +26,7 @@ export function computeLayout(w: number, h: number, cols: number): StrideLayout 
   const visibleRows = Math.max(9, Math.floor(availH / cell))
   const gridW = cell * cols
   const gridH = visibleRows * cell
-  const ox = (w - gridW) / 2
+  const ox = Math.max(0, (w - gridW) / 2)
   const oy = hudTop + Math.max(0, (availH - gridH) * 0.5)
   return { cell, visibleRows, cols, ox, oy, hudTop, gridW }
 }
