@@ -157,12 +157,13 @@ export function generateRow(row: number, cols: number, runSeed: number): Row {
 
   if (row > 10 && rand() < 0.07) {
     const dir: -1 | 1 = rand() < 0.5 ? -1 : 1
+    const trainW = 4.8 + rand() * 1.4
     return {
       kind: 'rail',
       dir,
-      speed: 5.2 + rand() * 1.4,
+      speed: 2.8 + rand() * 0.9,
       trees: [],
-      vehicles: [{ x: dir > 0 ? -cols - 1.5 : cols + 0.5, w: cols + 2.5, hue: 350 }],
+      vehicles: [{ x: dir > 0 ? -trainW - 1.5 : cols + 1.5, w: trainW, hue: 350 }],
     }
   }
 
@@ -226,21 +227,54 @@ function easeHop(t: number) {
 
 export { easeHop }
 
-function vehicleHit(col: number, vehicle: Vehicle, cols: number): boolean {
-  const playerLeft = col + 0.22
-  const playerRight = col + 0.78
+function overlap1D(
+  playerLeft: number,
+  playerRight: number,
+  vLeft: number,
+  vRight: number,
+  inset: number,
+): boolean {
+  return playerRight > vLeft + inset && playerLeft < vRight - inset
+}
+
+function entityOverlaps(
+  col: number,
+  vehicle: Vehicle,
+  cols: number,
+  playerHalf: number,
+  entityInset: number,
+): boolean {
+  const playerLeft = col + 0.5 - playerHalf
+  const playerRight = col + 0.5 + playerHalf
   const span = wrapSpan(cols)
-  for (const offset of [0, -span, span]) {
-    const vLeft = vehicle.x + offset
-    const vRight = vLeft + vehicle.w
-    if (playerRight > vLeft && playerLeft < vRight) return true
-  }
+
+  const check = (left: number) =>
+    overlap1D(playerLeft, playerRight, left, left + vehicle.w, entityInset)
+
+  if (check(vehicle.x)) return true
+  if (vehicle.x < cols * 0.5 && check(vehicle.x + span)) return true
+  if (vehicle.x + vehicle.w > cols * 0.5 && check(vehicle.x - span)) return true
   return false
+}
+
+/** Tight hitbox for cars and trains — matches visible sprites. */
+function vehicleHit(col: number, vehicle: Vehicle, cols: number): boolean {
+  return entityOverlaps(col, vehicle, cols, 0.15, 0.03)
+}
+
+/** Slightly forgiving so logs are easier to land on. */
+function logHit(col: number, vehicle: Vehicle, cols: number): boolean {
+  return entityOverlaps(col, vehicle, cols, 0.2, 0.02)
 }
 
 function onLog(col: number, row: Row, cols: number): boolean {
   if (row.kind !== 'water') return false
-  return row.vehicles.some((v) => vehicleHit(col, v, cols))
+  return row.vehicles.some((v) => logHit(col, v, cols))
+}
+
+function activeTrafficRow(state: GameState): number {
+  if (!state.hop) return state.row
+  return state.hop.t < 0.5 ? state.hop.fromR : state.hop.toR
 }
 
 function moveRowVehicles(row: Row, cols: number, dt: number): Row {
@@ -249,8 +283,8 @@ function moveRowVehicles(row: Row, cols: number, dt: number): Row {
   const vehicles = row.vehicles.map((v) => {
     let x = v.x + row.dir * row.speed * dt
     if (row.kind === 'rail') {
-      if (row.dir > 0 && x > span) x = -cols - 2
-      if (row.dir < 0 && x + v.w < -2) x = span
+      if (row.dir > 0 && x > cols + 1) x = -v.w - 2
+      if (row.dir < 0 && x + v.w < -1) x = cols + 2
     } else {
       if (x > span - 2) x -= span
       if (x < -4) x += span
@@ -398,7 +432,7 @@ export function tick(state: GameState, dt: number): GameState {
     const movedRow = next.rows.get(next.row)!
     if (onLog(next.col, movedRow, next.cols)) {
       for (const log of movedRow.vehicles) {
-        if (!vehicleHit(next.col, log, next.cols)) continue
+        if (!logHit(next.col, log, next.cols)) continue
         next.col += movedRow.dir * movedRow.speed * dt
         if (next.col < -0.4 || next.col > next.cols - 0.6) {
           return die(next, 'fall')
@@ -412,11 +446,9 @@ export function tick(state: GameState, dt: number): GameState {
 
   if (next.invuln <= 0) {
     const hitPos = playerCenter(next)
-    const rowIndexes = new Set([Math.floor(hitPos.r), Math.ceil(hitPos.r)])
-    for (const rowIndex of rowIndexes) {
-      if (hitsTraffic(hitPos.c, rowIndex, next.rows, next.cols)) {
-        return die(next, 'car')
-      }
+    const rowIndex = activeTrafficRow(next)
+    if (hitsTraffic(hitPos.c, rowIndex, next.rows, next.cols)) {
+      return die(next, 'car')
     }
   }
 
