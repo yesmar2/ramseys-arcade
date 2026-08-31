@@ -1,5 +1,5 @@
 import type { GameState } from './game'
-import { BACK_LIMIT, TARGET_VISIBLE_ROWS, easeHop, getRow } from './game'
+import { BACK_LIMIT, DESKTOP_ZOOM, TARGET_VISIBLE_ROWS, easeHop, getRow } from './game'
 import { isDarkTheme, playfieldColor } from '../../lib/theme'
 
 const GRASS_A = 142
@@ -21,8 +21,9 @@ export function computeLayout(w: number, h: number, cols: number): StrideLayout 
   const hudTop = Math.max(52, Math.min(76, h * 0.11))
   const padBottom = Math.max(14, h * 0.02)
   const availH = h - hudTop - padBottom
-  const cell = Math.min(w / cols, availH / TARGET_VISIBLE_ROWS)
-  const visibleRows = Math.max(10, Math.floor(availH / cell))
+  const zoom = w >= 900 ? DESKTOP_ZOOM : 1
+  const cell = (availH / TARGET_VISIBLE_ROWS) * zoom
+  const visibleRows = Math.max(9, Math.floor(availH / cell))
   const gridW = cell * cols
   const gridH = visibleRows * cell
   const ox = (w - gridW) / 2
@@ -158,19 +159,38 @@ function drawTrain(
   }
 }
 
-function drawSideGutter(
+function drawLog(
   ctx: CanvasRenderingContext2D,
-  w: number,
+  x: number,
   y: number,
-  cell: number,
-  ox: number,
-  gridW: number,
+  w: number,
+  h: number,
   dark: boolean,
 ) {
-  const gutter = fill(142, 20, dark ? 42 : 74, dark ? 0.22 : 0.16)
-  ctx.fillStyle = gutter
-  if (ox > 0) ctx.fillRect(0, y, ox, cell + 0.5)
-  if (ox + gridW < w) ctx.fillRect(ox + gridW, y, w - ox - gridW, cell + 0.5)
+  const body = fill(32, 42, dark ? 40 : 36, dark ? 0.42 : 0.34)
+  const stroke = fill(32, 42, dark ? 48 : 30, 0.9)
+  roundRect(ctx, x, y, w, h, h * 0.22)
+  ctx.fillStyle = body
+  ctx.fill()
+  ctx.strokeStyle = stroke
+  ctx.lineWidth = Math.max(1.8, h * 0.07)
+  ctx.stroke()
+  ctx.strokeStyle = fill(32, 30, dark ? 52 : 28, 0.35)
+  ctx.beginPath()
+  ctx.moveTo(x + w * 0.2, y + h * 0.5)
+  ctx.lineTo(x + w * 0.8, y + h * 0.5)
+  ctx.stroke()
+}
+
+function drawLaneBand(
+  ctx: CanvasRenderingContext2D,
+  y: number,
+  w: number,
+  cell: number,
+  color: string,
+) {
+  ctx.fillStyle = color
+  ctx.fillRect(0, y, w, cell + 0.5)
 }
 
 function playerPos(state: GameState) {
@@ -206,31 +226,42 @@ function drawRow(
   const row = getRow(state, worldRow)
   const grassHue = worldRow % 2 === 0 ? GRASS_A : GRASS_B
 
-  drawSideGutter(ctx, w, y, cell, ox, gridW, dark)
-
   if (row.kind === 'grass') {
-    ctx.fillStyle = fill(grassHue, 42, dark ? 48 : 72, dark ? 0.28 : 0.22)
-    ctx.fillRect(ox, y, gridW, cell + 0.5)
+    drawLaneBand(ctx, y, w, cell, fill(grassHue, 42, dark ? 48 : 72, dark ? 0.28 : 0.22))
     ctx.strokeStyle = fill(grassHue, 30, dark ? 58 : 58, 0.12)
     ctx.lineWidth = 1
     ctx.strokeRect(ox + 0.5, y + 0.5, gridW - 1, cell - 1)
   } else if (row.kind === 'water') {
-    ctx.fillStyle = fill(205, 58, dark ? 46 : 62, dark ? 0.42 : 0.28)
-    ctx.fillRect(ox, y, gridW, cell + 0.5)
+    drawLaneBand(ctx, y, w, cell, fill(205, 58, dark ? 46 : 62, dark ? 0.42 : 0.28))
     ctx.strokeStyle = fill(205, 50, dark ? 58 : 48, 0.2)
     ctx.lineWidth = 1
-    for (let wave = ox + cell * 0.2; wave < ox + gridW; wave += cell * 0.55) {
+    for (let wave = cell * 0.2; wave < w; wave += cell * 0.55) {
       ctx.beginPath()
       ctx.arc(wave, y + cell * 0.55, cell * 0.08, 0, Math.PI * 2)
       ctx.stroke()
     }
+    for (const log of row.vehicles) {
+      const vx = ox + log.x * cell
+      const vw = log.w * cell
+      const vy = y + cell * 0.28
+      const vh = cell * 0.44
+      if (vx + vw < -cell || vx > w + cell) continue
+      drawLog(ctx, vx, vy, vw, vh, dark)
+      const wrappedLeft = vx - wrapSpan(state.cols) * cell
+      const wrappedRight = vx + wrapSpan(state.cols) * cell
+      if (wrappedLeft + vw > 0 && wrappedLeft < w) {
+        drawLog(ctx, wrappedLeft, vy, vw, vh, dark)
+      }
+      if (wrappedRight + vw > 0 && wrappedRight < w) {
+        drawLog(ctx, wrappedRight, vy, vw, vh, dark)
+      }
+    }
   } else if (row.kind === 'rail') {
-    ctx.fillStyle = fill(45, 12, dark ? 36 : 70, dark ? 0.35 : 0.22)
-    ctx.fillRect(ox, y, gridW, cell + 0.5)
+    drawLaneBand(ctx, y, w, cell, fill(45, 12, dark ? 36 : 70, dark ? 0.35 : 0.22))
     ctx.fillStyle = fill(38, 20, dark ? 52 : 38, 0.55)
     const railY = y + cell * 0.34
-    ctx.fillRect(ox, railY, gridW, cell * 0.08)
-    ctx.fillRect(ox, railY + cell * 0.26, gridW, cell * 0.08)
+    ctx.fillRect(0, railY, w, cell * 0.08)
+    ctx.fillRect(0, railY + cell * 0.26, w, cell * 0.08)
     for (const v of row.vehicles) {
       const vx = ox + v.x * cell
       const vw = v.w * cell
@@ -240,15 +271,14 @@ function drawRow(
       drawTrain(ctx, vx, vy, vw, vh, dark)
     }
   } else {
-    ctx.fillStyle = fill(220, 14, dark ? 34 : 78, dark ? 0.35 : 0.2)
-    ctx.fillRect(ox, y, gridW, cell + 0.5)
+    drawLaneBand(ctx, y, w, cell, fill(220, 14, dark ? 34 : 78, dark ? 0.35 : 0.2))
     ctx.strokeStyle = fill(45, 70, 62, 0.22)
     ctx.setLineDash([cell * 0.12, cell * 0.18])
     ctx.lineWidth = 2
     const midY = y + cell * 0.5
     ctx.beginPath()
-    ctx.moveTo(ox, midY)
-    ctx.lineTo(ox + gridW, midY)
+    ctx.moveTo(0, midY)
+    ctx.lineTo(w, midY)
     ctx.stroke()
     ctx.setLineDash([])
 
@@ -294,8 +324,8 @@ export function renderGame(
   ctx.fillStyle = playfieldColor()
   ctx.fillRect(0, 0, w, h)
 
-  const topRow = Math.ceil(cameraY + visibleRows + 1)
-  const bottomRow = Math.floor(cameraY) - 3
+  const topRow = Math.ceil(cameraY + visibleRows + 2)
+  const bottomRow = Math.floor(cameraY) - 4
   for (let worldRow = topRow; worldRow >= bottomRow; worldRow--) {
     const y = rowScreenY(worldRow, cameraY, visibleRows, oy, cell)
     if (y > h + cell || y + cell < 0) continue
@@ -320,6 +350,6 @@ export function renderGame(
     grad.addColorStop(0, 'rgba(232, 93, 117, 0)')
     grad.addColorStop(1, 'rgba(232, 93, 117, 0.22)')
     ctx.fillStyle = grad
-    ctx.fillRect(ox, dangerY, gridW, bottomY - dangerY)
+    ctx.fillRect(0, dangerY, w, bottomY - dangerY)
   }
 }

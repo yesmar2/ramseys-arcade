@@ -52,8 +52,10 @@ export type GameState = {
 }
 
 export const COLS = 7
-/** Target rows visible on screen. */
-export const TARGET_VISIBLE_ROWS = 12
+/** Target rows visible on screen — lower = more zoom. */
+export const TARGET_VISIBLE_ROWS = 10
+/** Desktop tile scale bump. */
+export const DESKTOP_ZOOM = 1.1
 /** Player sits this many rows from the bottom of the view once the camera is rolling. */
 export const PLAYER_VIEW_ROW = 3
 /** Die if you fall this many rows behind the camera. */
@@ -65,16 +67,16 @@ const HOP_COOLDOWN = 0.11
 const HOP_DURATION = 0.14
 const RESPAWN_INVULN = 0.55
 const CAR_HUES = [18, 348, 272, 198, 38, 128, 168]
+const LOG_HUE = 32
 
-/** Wider boards on desktop while keeping enough vertical rows visible. */
+/** Column count from viewport — fewer, larger tiles on tall desktop screens. */
 export function pickCols(viewWidth: number, viewHeight: number): number {
   const hudTop = Math.max(52, Math.min(76, viewHeight * 0.11))
   const padBottom = Math.max(14, viewHeight * 0.02)
   const availH = viewHeight - hudTop - padBottom
-  const cellH = availH / TARGET_VISIBLE_ROWS
-  const targetW = viewWidth * 0.9
-  let cols = Math.max(COLS, Math.round(targetW / cellH))
-  cols = Math.min(15, cols)
+  const zoom = viewWidth >= 900 ? DESKTOP_ZOOM : 1
+  const cell = (availH / TARGET_VISIBLE_ROWS) * zoom
+  let cols = Math.max(COLS, Math.min(11, Math.round(viewWidth / cell)))
   if (cols % 2 === 0) cols += 1
   return cols
 }
@@ -118,6 +120,27 @@ function spawnVehicles(
   return vehicles
 }
 
+function spawnLogs(
+  cols: number,
+  count: number,
+  w: number,
+  rand: () => number,
+): Vehicle[] {
+  const span = wrapSpan(cols)
+  const gap = span / count
+  const seed = rand() * span
+  const logs: Vehicle[] = []
+  for (let i = 0; i < count; i++) {
+    const x = (seed + i * gap + (rand() - 0.5) * gap * 0.2) % span
+    logs.push({
+      x: x - 2.5,
+      w,
+      hue: LOG_HUE,
+    })
+  }
+  return logs
+}
+
 export function generateRow(row: number, cols: number, runSeed: number): Row {
   const rand = mulberry32((row + 1) * 1_048_583 ^ runSeed)
 
@@ -144,7 +167,16 @@ export function generateRow(row: number, cols: number, runSeed: number): Row {
   }
 
   if (row > 8 && rand() < 0.09) {
-    return { kind: 'water', dir: 0, speed: 0, trees: [], vehicles: [] }
+    const dir: -1 | 1 = rand() < 0.5 ? -1 : 1
+    const count = rand() < 0.45 ? 2 : 3
+    const logW = rand() < 0.5 ? 2.5 : 3.2
+    return {
+      kind: 'water',
+      dir,
+      speed: 0.72 + rand() * 0.38,
+      trees: [],
+      vehicles: spawnLogs(cols, count, logW, rand),
+    }
   }
 
   if (rand() < 0.38) {
@@ -204,6 +236,28 @@ function vehicleHit(col: number, vehicle: Vehicle, cols: number): boolean {
     if (playerRight > vLeft && playerLeft < vRight) return true
   }
   return false
+}
+
+function onLog(col: number, row: Row, cols: number): boolean {
+  if (row.kind !== 'water') return false
+  return row.vehicles.some((v) => vehicleHit(col, v, cols))
+}
+
+function moveRowVehicles(row: Row, cols: number, dt: number): Row {
+  if (row.kind !== 'road' && row.kind !== 'rail' && row.kind !== 'water') return row
+  const span = wrapSpan(cols)
+  const vehicles = row.vehicles.map((v) => {
+    let x = v.x + row.dir * row.speed * dt
+    if (row.kind === 'rail') {
+      if (row.dir > 0 && x > span) x = -cols - 2
+      if (row.dir < 0 && x + v.w < -2) x = span
+    } else {
+      if (x > span - 2) x -= span
+      if (x < -4) x += span
+    }
+    return { ...v, x }
+  })
+  return { ...row, vehicles }
 }
 
 function hitsTraffic(
@@ -334,28 +388,32 @@ export function tick(state: GameState, dt: number): GameState {
   ensureRows(next, Math.floor(next.cameraY) - BACK_LIMIT - 2, Math.floor(next.cameraY) + ROW_BUFFER)
 
   for (const [rowIndex, row] of next.rows) {
-    if (row.kind !== 'road' && row.kind !== 'rail') continue
-    const span = wrapSpan(next.cols)
-    const vehicles = row.vehicles.map((v) => {
-      let x = v.x + row.dir * row.speed * dt
-      if (row.kind === 'rail') {
-        if (row.dir > 0 && x > span) x = -next.cols - 2
-        if (row.dir < 0 && x + v.w < -2) x = span
-      } else {
-        if (x > span - 2) x -= span
-        if (x < -4) x += span
+    if (row.kind === 'road' || row.kind === 'rail' || row.kind === 'water') {
+      next.rows.set(rowIndex, moveRowVehicles(row, next.cols, dt))
+    }
+  }
+
+  const standingRow = next.rows.get(next.row)
+  if (standingRow?.kind === 'water') {
+    const movedRow = next.rows.get(next.row)!
+    if (onLog(next.col, movedRow, next.cols)) {
+      for (const log of movedRow.vehicles) {
+        if (!vehicleHit(next.col, log, next.cols)) continue
+        next.col += movedRow.dir * movedRow.speed * dt
+        if (next.col < -0.4 || next.col > next.cols - 0.6) {
+          return die(next, 'fall')
+        }
+        break
       }
-      return { ...v, x }
-    })
-    next.rows.set(rowIndex, { ...row, vehicles })
+    } else if (next.invuln <= 0 && !next.hop) {
+      return die(next, 'fall')
+    }
   }
 
   if (next.invuln <= 0) {
     const hitPos = playerCenter(next)
     const rowIndexes = new Set([Math.floor(hitPos.r), Math.ceil(hitPos.r)])
     for (const rowIndex of rowIndexes) {
-      const row = next.rows.get(rowIndex)
-      if (row?.kind === 'water') return die(next, 'fall')
       if (hitsTraffic(hitPos.c, rowIndex, next.rows, next.cols)) {
         return die(next, 'car')
       }
