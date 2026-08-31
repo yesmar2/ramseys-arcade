@@ -607,6 +607,118 @@ img {
   margin: 0 0 0.65rem;
 }
 
+/* Home: about blurb (Poki-style footer content) */
+.home-about {
+  width: 100%;
+  margin-top: 0.5rem;
+  padding: 1.75rem 0 0.5rem;
+  border-top: 1px solid color-mix(in srgb, var(--muted) 22%, transparent);
+}
+
+.home-about__title {
+  margin: 0 0 0.75rem;
+  font-size: clamp(1.35rem, 3.5vw, 1.65rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+
+.home-about__lead {
+  margin: 0 0 1.35rem;
+  max-width: 52rem;
+  font-size: 0.98rem;
+  line-height: 1.65;
+  color: color-mix(in srgb, var(--text) 82%, var(--muted));
+}
+
+.home-about__highlights {
+  list-style: none;
+  margin: 0 0 1.75rem;
+  padding: 0;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.65rem;
+}
+
+@media (min-width: 540px) {
+  .home-about__highlights {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+  }
+}
+
+@media (min-width: 900px) {
+  .home-about__highlights {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.home-about__highlight {
+  margin: 0;
+  padding: 0.85rem 0.95rem;
+  border-radius: var(--radius-md, 12px);
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  border: 1px solid color-mix(in srgb, var(--muted) 18%, transparent);
+}
+
+.home-about__highlight-title {
+  margin: 0 0 0.35rem;
+  font-size: 0.92rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: var(--text);
+}
+
+.home-about__highlight-body {
+  margin: 0;
+  font-size: 0.84rem;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.home-about__prose {
+  max-width: 52rem;
+  font-size: 0.92rem;
+  line-height: 1.65;
+  color: color-mix(in srgb, var(--text) 78%, var(--muted));
+}
+
+.home-about__subtitle {
+  margin: 1.35rem 0 0.45rem;
+  font-size: 1rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: var(--text);
+}
+
+.home-about__prose p {
+  margin: 0 0 0.75rem;
+}
+
+.home-about__prose a {
+  color: var(--accent-sky);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.home-about__fine {
+  margin: 1.5rem 0 0;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.home-about__fine a {
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.home-about__fine a:hover {
+  color: var(--text);
+  text-decoration: underline;
+}
+
 .home-spotter__card {
   display: flex;
   align-items: center;

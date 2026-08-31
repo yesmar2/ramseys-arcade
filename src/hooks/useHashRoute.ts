@@ -78,6 +78,10 @@ export function termsHref() {
   return '#/terms'
 }
 
+export function tournamentsHref() {
+  return '#/tournaments'
+}
+
 /** Record books for one game (`#/records/{game}`). Individual boards use `recordHref`. */
 export function recordsHref(game: string) {
   return `#/records/${encodeURIComponent(game)}`

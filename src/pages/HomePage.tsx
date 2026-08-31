@@ -1,5 +1,6 @@
 import { ArcadeAttendant } from '../components/ArcadeAttendant'
 import { GameGrid } from '../components/GameGrid'
+import { HomeAbout } from '../components/HomeAbout'
 import { HomeEventsStrip } from '../components/HomeEventsStrip'
 import { HomeSpotterStrip } from '../components/HomeSpotterStrip'
 import { InstallPrompt } from '../components/InstallPrompt'
@@ -14,6 +15,7 @@ export function HomePage() {
           <HomeEventsStrip />
           <HomeSpotterStrip />
           <GameGrid />
+          <HomeAbout />
         </div>
       </PageShell>
       <InstallPrompt />
