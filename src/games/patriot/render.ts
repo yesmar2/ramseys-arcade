@@ -1,5 +1,6 @@
 import type { Battery, Bomber, City, Drone, GameState, Plane } from './game'
 import { POWER_HUE, shieldRadius } from './game'
+import { PATRIOT_CITY_DRAW, PATRIOT_CITY_HUES, patriotCityRects } from './cityArt'
 import {
   PATRIOT_TURRET_HALF_WIDTH,
   PATRIOT_TURRET_HUE,
@@ -101,38 +102,18 @@ function drawGround(
   ctx.stroke()
 }
 
-const CITY_HUES = [198, 172, 38, 272, 18, 128]
-const CITY_HEIGHTS = [
-  [20, 30, 18],
-  [18, 28, 22],
-  [22, 26, 16],
-  [16, 32, 20],
-  [20, 24, 18],
-  [18, 30, 16],
-]
-
 /** Same 3-building skyline for every city — no overlapping blocks. */
 function drawCity(ctx: CanvasRenderingContext2D, city: City, groundY: number, scale: number) {
-  const hue = CITY_HUES[city.id % CITY_HUES.length]
-  const s = scale * 1.85
-  const heights = CITY_HEIGHTS[city.id % CITY_HEIGHTS.length]
-  const blocks = [
-    { x: -18, w: 10, h: heights[0] },
-    { x: -5, w: 10, h: heights[1] },
-    { x: 8, w: 10, h: heights[2] },
-  ]
+  const hue = PATRIOT_CITY_HUES[city.id % PATRIOT_CITY_HUES.length]
+  const s = scale * PATRIOT_CITY_DRAW
 
   if (!city.alive) {
     washBox(ctx, city.x - 16 * s, groundY - 5 * s, 32 * s, 5 * s, hue, scale, 40)
     return
   }
 
-  for (const b of blocks) {
-    const bw = b.w * s
-    const bh = b.h * s
-    const bx = city.x + b.x * s
-    const by = groundY - bh
-    washBox(ctx, bx, by, bw, bh, hue, scale)
+  for (const block of patriotCityRects(city.x, groundY, scale, city.id)) {
+    washBox(ctx, block.x, block.y, block.width, block.height, block.hue, scale)
   }
 }
 

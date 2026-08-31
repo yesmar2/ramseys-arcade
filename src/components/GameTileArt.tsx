@@ -1,5 +1,5 @@
 import type { JSX, ReactNode } from 'react'
-import { patriotTurretSvgPath } from '../games/patriot/turretArt'
+import { patriotCityRects } from '../games/patriot/cityArt'
 import { accentPastel, HUE, pastel } from './gameArtStyle'
 
 function TileBg() {
@@ -147,30 +147,25 @@ export function StackerArt() {
 function CitySkyline({
   x,
   ground,
-  hue,
-  heights,
+  cityId,
+  scale,
 }: {
   x: number
   ground: number
-  hue: number
-  heights: [number, number, number]
+  cityId: number
+  scale: number
 }) {
-  const blocks = [
-    { dx: -14, w: 8, h: heights[0] },
-    { dx: -4, w: 8, h: heights[1] },
-    { dx: 6, w: 8, h: heights[2] },
-  ]
   return (
     <g>
-      {blocks.map((b) => {
-        const { fill, stroke } = pastel(hue, 54, 42)
+      {patriotCityRects(x, ground, scale, cityId).map((block, i) => {
+        const { fill, stroke } = pastel(block.hue, 54, 42)
         return (
           <rect
-            key={b.dx}
-            x={x + b.dx}
-            y={ground - b.h}
-            width={b.w}
-            height={b.h}
+            key={i}
+            x={block.x}
+            y={block.y}
+            width={block.width}
+            height={block.height}
             fill={fill}
             stroke={stroke}
             strokeWidth="1.5"
@@ -183,23 +178,16 @@ function CitySkyline({
 }
 
 export function PatriotArt() {
-  const turret = pastel(HUE.rose, 54, 44)
   const incoming = pastel(HUE.rose, 60, 52)
   const ground = 78
+  const cityScale = 0.62
 
   return (
     <SvgFrame>
       <TileBg />
-      <CitySkyline x={28} ground={ground} hue={HUE.sky} heights={[18, 28, 16]} />
-      <CitySkyline x={132} ground={ground} hue={HUE.teal} heights={[16, 26, 20]} />
-
-      <path
-        d={patriotTurretSvgPath(80, ground, 1.2)}
-        fill={turret.fill}
-        stroke={turret.stroke}
-        strokeWidth="1.7"
-        strokeLinejoin="round"
-      />
+      <CitySkyline x={28} ground={ground} cityId={0} scale={cityScale} />
+      <CitySkyline x={80} ground={ground} cityId={2} scale={cityScale} />
+      <CitySkyline x={132} ground={ground} cityId={1} scale={cityScale} />
 
       <line
         x1="118"

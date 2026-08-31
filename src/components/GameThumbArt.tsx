@@ -1,5 +1,5 @@
 import type { CSSProperties, ReactNode } from 'react'
-import { patriotTurretSvgPath } from '../games/patriot/turretArt'
+import { patriotCityRects } from '../games/patriot/cityArt'
 import { accentPastel, HUE, pastel } from './gameArtStyle'
 import { IsoSlab } from './GameTileArt'
 
@@ -58,18 +58,28 @@ function AsteroidsThumb({ accent }: { accent?: string }) {
   )
 }
 
-function PatriotThumb({ accent }: { accent?: string }) {
-  const turret = accent ? accentPastel(accent, 46) : pastel(HUE.rose, 54, 44)
-  const d = patriotTurretSvgPath(16, 27, 0.58)
+function PatriotThumb() {
+  const blocks = patriotCityRects(16, 27, 0.35, 0)
 
   return (
-    <path
-      d={d}
-      fill={turret.fill}
-      stroke={turret.stroke}
-      strokeWidth="1.5"
-      strokeLinejoin="round"
-    />
+    <>
+      {blocks.map((block, i) => {
+        const { fill, stroke } = pastel(block.hue, 54, 42)
+        return (
+          <rect
+            key={i}
+            x={block.x}
+            y={block.y}
+            width={block.width}
+            height={block.height}
+            fill={fill}
+            stroke={stroke}
+            strokeWidth="1.5"
+            strokeLinejoin="round"
+          />
+        )
+      })}
+    </>
   )
 }
 
