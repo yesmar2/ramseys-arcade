@@ -5,10 +5,8 @@ import { usePlayerName } from '../hooks/usePlayerName'
 import { rankHref, useHashRoute } from '../hooks/useHashRoute'
 import { useGlobalRank } from '../lib/globalRank'
 import { currentTheme, THEME_EVENT, toggleTheme, type Theme } from '../lib/theme'
-import { PERIOD_LABELS } from '../lib/leaderboard'
+import { normalizePlayerName, PERIOD_LABELS } from '../lib/leaderboard'
 import {
-  DEFAULT_PERIOD_EVENT,
-  defaultPeriod,
   setDefaultPeriod,
   useDefaultPeriod,
 } from '../lib/defaultPeriod'
