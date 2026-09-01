@@ -16,7 +16,7 @@ import {
 } from '../lib/leaderboard'
 import { describePersonalBest, rememberPersonalBest } from '../lib/personalBest'
 import { refreshGlobalRank } from '../lib/globalRank'
-import { defaultPeriod } from '../lib/defaultPeriod'
+import { defaultPeriod, useDefaultPeriod } from '../lib/defaultPeriod'
 import { gameHasRecords } from '../lib/records'
 import {
   peekRunAchievements,
@@ -387,6 +387,7 @@ export function RankUpCelebration({
   climb: RankClimb
   onDone: () => void
 }) {
+  const period = useDefaultPeriod()
   const [leaving, setLeaving] = useState(false)
   const [settled, setSettled] = useState(false)
   const reelRef = useRef<HTMLDivElement>(null)
@@ -479,7 +480,9 @@ export function RankUpCelebration({
     >
       <FireworksCanvas />
       <div className="score-celeb__shell rank-up__shell">
-        <p className="score-celeb__kicker">Global ranking</p>
+        <p className="score-celeb__kicker">
+          Global ranking · {PERIOD_LABELS[period]}
+        </p>
         <h2 className="score-celeb__title">Rank up</h2>
         <div className="rank-up__stage">
           <div className="rank-up__viewport" aria-hidden="true">

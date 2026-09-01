@@ -135,9 +135,7 @@ function App() {
       <GameLeaderboardPage game={route.game} period={route.period ?? defaultPeriod()} />
     )
   }
-  if (route.name === 'recordsIndex') {
-    return <RecordsIndexPage period={route.period ?? defaultPeriod()} />
-  }
+  if (route.name === 'recordsIndex') return <RecordsIndexPage />
   if (route.name === 'records') {
     return (
       <RecordsPage

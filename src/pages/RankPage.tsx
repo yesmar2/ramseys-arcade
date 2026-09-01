@@ -126,6 +126,9 @@ export function RankPage({
                 <span className="lb-page__heading-slot" aria-hidden="true" />
               )}
             </div>
+            <p className="lb-page__blurb lb-page__blurb--tight rank-page__period">
+              {PERIOD_LABELS[period]}
+            </p>
             {isSelf && !myName ? (
               <p className="lb-page__blurb lb-page__blurb--tight">
                 Set a gamer tag to earn a global rank

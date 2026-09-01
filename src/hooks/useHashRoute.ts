@@ -15,7 +15,7 @@ export type Route =
   | { name: 'home' }
   | { name: 'leaderboards'; global?: boolean; period?: LeaderboardPeriod }
   | { name: 'gameLeaderboard'; game: LeaderboardGame; period?: LeaderboardPeriod }
-  | { name: 'recordsIndex'; period?: LeaderboardPeriod }
+  | { name: 'recordsIndex' }
   | { name: 'records'; game: string; recordId?: string; period?: LeaderboardPeriod }
   | { name: 'rank'; player?: string; period?: LeaderboardPeriod }
   | { name: 'tournaments' }
@@ -73,8 +73,8 @@ export function gamePlayHref(slug: string) {
 }
 
 /** Site-wide record books catalog. */
-export function recordsIndexHref(period: LeaderboardPeriod = defaultPeriod()) {
-  return `#/records?period=${encodeURIComponent(period)}`
+export function recordsIndexHref() {
+  return '#/records'
 }
 
 export function privacyHref() {
@@ -152,8 +152,6 @@ export function hrefForRoute(
     case 'records':
       if (route.recordId) return recordHref(route.game, route.recordId, period)
       return recordsHref(route.game, period)
-    case 'recordsIndex':
-      return recordsIndexHref(period)
     default:
       return null
   }
@@ -182,14 +180,7 @@ function parseHash(hash: string): Route {
   if (path === 'terms') return { name: 'terms' }
   if (path === 'leaderboards') return { name: 'leaderboards' }
   if (path === 'rank') return { name: 'rank', period: defaultPeriod() }
-  if (path === 'records') {
-    const periodRaw = new URLSearchParams(queryString ?? '').get('period')
-    return {
-      name: 'recordsIndex',
-      period:
-        periodRaw && isLeaderboardPeriod(periodRaw) ? periodRaw : defaultPeriod(),
-    }
-  }
+  if (path === 'records') return { name: 'recordsIndex' }
 
   const rankMatch = /^rank\/([^/]+)(?:\/([^/]+))?$/.exec(path)
   if (rankMatch) {
@@ -341,7 +332,6 @@ export function useHashRoute(): Route {
       }
     }
 
-    syncPeriodUrl()
     window.addEventListener(DEFAULT_PERIOD_EVENT, syncPeriodUrl)
     return () => {
       window.removeEventListener(DEFAULT_PERIOD_EVENT, syncPeriodUrl)
