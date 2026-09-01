@@ -14,11 +14,14 @@ import { usePlayerName } from '../hooks/usePlayerName'
 import { ApiError, normalizePlayerName, PLAYER_NAME_MAX, rememberPlayerName } from '../lib/leaderboard'
 import {
   getTournament,
+  getTournamentInvite,
   isPlayerInTournament,
   joinTournament,
+  rememberTournamentInvite,
   syncJoinedTournamentRosters,
   type TournamentDetail,
 } from '../lib/tournaments'
+import { tournamentHref } from '../hooks/useHashRoute'
 import { TournamentPlayProvider } from '../tournaments/TournamentPlayContext'
 
 const PLAYABLE = new Set(['stacker', 'patriot', 'snake', 'dead-center', 'asteroids', 'pop', 'simon'])
@@ -26,9 +29,11 @@ const PLAYABLE = new Set(['stacker', 'patriot', 'snake', 'dead-center', 'asteroi
 export function TournamentPlayPage({
   tournamentId,
   gameSlug,
+  invite,
 }: {
   tournamentId: string
   gameSlug: string
+  invite?: string
 }) {
   const playerName = usePlayerName()
   const device = useDeviceType()
@@ -41,9 +46,10 @@ export function TournamentPlayPage({
   const [nameDraft, setNameDraft] = useState('')
 
   const game = getGame(gameSlug)
-  const backHref = `#/tournaments/${tournamentId}`
+  const backHref = tournamentHref(tournamentId, invite ?? getTournamentInvite(tournamentId) ?? undefined)
 
   useEffect(() => {
+    if (invite) rememberTournamentInvite(tournamentId, invite)
     let cancelled = false
     setLoading(true)
     setLoadError(null)
@@ -55,6 +61,7 @@ export function TournamentPlayPage({
         let data = await getTournament(tournamentId, {
           playerName: playerName.trim().toUpperCase() || undefined,
           game: gameSlug,
+          invite: invite ?? getTournamentInvite(tournamentId) ?? undefined,
         })
         if (cancelled) return
         setDetail(data)
@@ -102,7 +109,7 @@ export function TournamentPlayPage({
     return () => {
       cancelled = true
     }
-  }, [tournamentId, gameSlug, playerName])
+  }, [tournamentId, gameSlug, playerName, invite])
 
   const joinWithName = async (rawName: string) => {
     const name = normalizePlayerName(rawName)

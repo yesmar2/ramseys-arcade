@@ -8,9 +8,11 @@ import { useAuth } from '../hooks/useAuth'
 import {
   createTournament,
   EVENT_GAMES,
+  rememberTournamentInvite,
   type CreateTournamentInput,
   type EventGame,
 } from '../lib/tournaments'
+import { tournamentHref } from '../hooks/useHashRoute'
 
 const DURATIONS = [
   { hours: 1, label: '1 hour' },
@@ -70,7 +72,8 @@ export function CreateTournamentPage() {
         durationHours,
       }
       const created = await createTournament(input)
-      window.location.hash = `#/tournaments/${created.id}`
+      if (created.inviteCode) rememberTournamentInvite(created.id, created.inviteCode)
+      window.location.hash = tournamentHref(created.id, created.inviteCode ?? undefined)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not create event')
       setBusy(false)
@@ -91,7 +94,7 @@ export function CreateTournamentPage() {
         <p className="lb-empty">Loading…</p>
       ) : !account ? (
         <div className="event-create-gate">
-          <p className="tour-note">Sign in to host a community event.</p>
+          <p className="tour-note">Sign in to host a private invite-only event.</p>
           <a className="score-save__btn" href="#/tournaments">
             Back to events
           </a>
@@ -104,6 +107,9 @@ export function CreateTournamentPage() {
           <form className="event-create" onSubmit={(e) => void onSubmit(e)}>
             <section className="event-create__card">
               <h2 className="event-create__section-title">Details</h2>
+              <p className="event-create__hint">
+                Private events are invite-only and won&apos;t appear on the public events list.
+              </p>
               <label className="event-create__field">
                 <span className="event-create__label">Title</span>
                 <input
@@ -233,7 +239,7 @@ export function CreateTournamentPage() {
                 <ul className="event-create-preview__facts">
                   <li>{attemptsSummary(maxAttempts, unlimited, games.length)}</li>
                   <li>{durationLabel}</li>
-                  <li>Starts immediately</li>
+                  <li>Private · invite only</li>
                 </ul>
               </div>
             </div>

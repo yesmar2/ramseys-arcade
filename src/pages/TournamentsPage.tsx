@@ -11,15 +11,17 @@ import { ShareBoardButton } from '../components/ShareBoardButton'
 import { getGame } from '../data/games'
 import { useAuth } from '../hooks/useAuth'
 import { usePlayerName } from '../hooks/usePlayerName'
-import { tournamentCreateHref } from '../hooks/useHashRoute'
+import { tournamentCreateHref, tournamentHref, tournamentPlayHref } from '../hooks/useHashRoute'
 import { APP_NAME } from '../lib/brand'
-import { getLastPlayerName, normalizePlayerName } from '../lib/leaderboard'
+import { ApiError, getLastPlayerName, normalizePlayerName } from '../lib/leaderboard'
 import {
   formatRulesSummary,
   getTournament,
+  getTournamentInvite,
   isPlayerInTournament,
   joinTournament,
   listTournaments,
+  rememberTournamentInvite,
   syncJoinedTournamentRosters,
   type StandingRow,
   type TournamentDetail,
@@ -229,7 +231,7 @@ function StandingCard({
 export function TournamentsPage() {
   const { account } = useAuth()
   const [items, setItems] = useState<TournamentSummary[]>([])
-  const [filter, setFilter] = useState<'all' | 'official' | 'community'>('all')
+  const [filter, setFilter] = useState<'all' | 'official' | 'mine'>('all')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -266,7 +268,7 @@ export function TournamentsPage() {
           ) : null}
         </div>
         <div className="event-list__filters" role="tablist" aria-label="Event filters">
-          {(['all', 'official', 'community'] as const).map((key) => (
+          {(['all', 'official', ...(account ? (['mine'] as const) : [])] as const).map((key) => (
             <button
               key={key}
               type="button"
@@ -275,7 +277,7 @@ export function TournamentsPage() {
               className={`event-list__filter${filter === key ? ' event-list__filter--active' : ''}`}
               onClick={() => setFilter(key)}
             >
-              {key === 'all' ? 'All' : key === 'official' ? 'Official' : 'Community'}
+              {key === 'all' ? 'All' : key === 'official' ? 'Official' : 'My events'}
             </button>
           ))}
         </div>
@@ -286,7 +288,9 @@ export function TournamentsPage() {
       ) : error ? (
         <p className="lb-empty">Couldn’t load events.</p>
       ) : items.length === 0 ? (
-        <p className="lb-empty">No events yet.</p>
+        <p className="lb-empty">
+          {filter === 'mine' ? 'You have no hosted events yet.' : 'No events yet.'}
+        </p>
       ) : (
         <div className="event-list">
           {live.length > 0 ? (
@@ -317,35 +321,57 @@ export function TournamentsPage() {
   )
 }
 
-export function TournamentDetailPage({ id }: { id: string }) {
+export function TournamentDetailPage({ id, invite }: { id: string; invite?: string }) {
   const playerName = usePlayerName()
   const [detail, setDetail] = useState<TournamentDetail | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [needsInvite, setNeedsInvite] = useState(false)
+  const [inviteDraft, setInviteDraft] = useState(invite ?? '')
   const [busy, setBusy] = useState(false)
   const [joined, setJoined] = useState(false)
   const [joinNote, setJoinNote] = useState<string | null>(null)
+  const [copiedInvite, setCopiedInvite] = useState(false)
 
   const displayName = normalizePlayerName(playerName)
+  const storedInvite = invite ?? getTournamentInvite(id) ?? undefined
+  const playInvite = detail?.inviteCode ?? storedInvite
 
   const syncJoined = (data: TournamentDetail, who: string) => {
     setJoined(isPlayerInTournament(data, who, id))
   }
 
+  const loadDetail = async (inviteCode?: string) => {
+    await syncJoinedTournamentRosters()
+    const name = getLastPlayerName()
+    const data = await getTournament(id, {
+      playerName: name || undefined,
+      invite: inviteCode ?? storedInvite,
+    })
+    setDetail(data)
+    syncJoined(data, name)
+    setNeedsInvite(false)
+    setError(null)
+    if (data.inviteCode) rememberTournamentInvite(id, data.inviteCode)
+  }
+
   useEffect(() => {
+    if (invite) rememberTournamentInvite(id, invite)
     let cancelled = false
     setLoading(true)
     setError(null)
+    setNeedsInvite(false)
     ;(async () => {
       try {
-        await syncJoinedTournamentRosters()
-        const name = getLastPlayerName()
-        const data = await getTournament(id, { playerName: name || undefined })
-        if (cancelled) return
-        setDetail(data)
-        syncJoined(data, name)
+        await loadDetail(invite ?? storedInvite)
       } catch (err) {
-        if (!cancelled) setError(err instanceof Error ? err.message : 'Failed to load')
+        if (cancelled) return
+        if (err instanceof ApiError && err.code === 'INVITE_REQUIRED') {
+          setNeedsInvite(true)
+          setError(null)
+        } else {
+          setError(err instanceof Error ? err.message : 'Failed to load')
+        }
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -353,12 +379,16 @@ export function TournamentDetailPage({ id }: { id: string }) {
     return () => {
       cancelled = true
     }
-  }, [id])
+  }, [id, invite])
 
   useEffect(() => {
     if (!detail || !displayName || detail.games.length !== 1) return
     let cancelled = false
-    void getTournament(id, { playerName: displayName, game: detail.games[0] })
+    void getTournament(id, {
+      playerName: displayName,
+      game: detail.games[0],
+      invite: playInvite,
+    })
       .then((data) => {
         if (!cancelled) setDetail(data)
       })
@@ -366,7 +396,7 @@ export function TournamentDetailPage({ id }: { id: string }) {
     return () => {
       cancelled = true
     }
-  }, [id, displayName, detail?.games[0]])
+  }, [id, displayName, detail?.games[0], playInvite])
 
   useEffect(() => {
     if (!detail) return
@@ -410,10 +440,90 @@ export function TournamentDetailPage({ id }: { id: string }) {
       ? detail.standings.filter((row) => row.byGame[detail.games[0]!]?.score != null).length
       : (detail?.standings.length ?? 0)
 
+  const inviteLink =
+    detail?.inviteCode != null
+      ? `${window.location.origin}${window.location.pathname}${tournamentHref(id, detail.inviteCode)}`
+      : playInvite
+        ? `${window.location.origin}${window.location.pathname}${tournamentHref(id, playInvite)}`
+        : null
+
+  const copyInviteLink = async () => {
+    if (!inviteLink) return
+    try {
+      await navigator.clipboard.writeText(inviteLink)
+      setCopiedInvite(true)
+      window.setTimeout(() => setCopiedInvite(false), 2000)
+    } catch {
+      /* ignore */
+    }
+  }
+
+  const submitInvite = async () => {
+    const code = inviteDraft.trim().toUpperCase()
+    if (!code) return
+    rememberTournamentInvite(id, code)
+    setBusy(true)
+    setJoinNote(null)
+    try {
+      await loadDetail(code)
+      window.history.replaceState(null, '', tournamentHref(id, code))
+    } catch (err) {
+      if (err instanceof ApiError && err.code === 'INVITE_REQUIRED') {
+        setJoinNote('That invite code is not valid.')
+      } else {
+        setJoinNote(err instanceof Error ? err.message : 'Could not open event')
+      }
+    } finally {
+      setBusy(false)
+    }
+  }
+
   return (
     <PageShell innerClassName="lb-page__inner lb-page__inner--events">
       {loading ? (
         <p className="lb-empty">Loading…</p>
+      ) : needsInvite ? (
+        <>
+          <header className="lb-page__header lb-page__header--compact lb-game-board__head">
+            <div className="lb-page__heading-row">
+              <PageBackLink href="#/tournaments" label="Back to Events" />
+              <h1 className="lb-page__title">Private event</h1>
+              <span className="lb-page__heading-slot" aria-hidden="true" />
+            </div>
+          </header>
+          <div className="event-invite-gate">
+            <p className="event-invite-gate__lead">
+              This event is invite-only. Enter the code from your host to join.
+            </p>
+            <label className="event-create__field">
+              <span className="event-create__label">Invite code</span>
+              <input
+                className="event-create__input"
+                value={inviteDraft}
+                maxLength={16}
+                placeholder="ABCD1234"
+                autoComplete="off"
+                spellCheck={false}
+                onChange={(e) => setInviteDraft(e.target.value.toUpperCase())}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault()
+                    void submitInvite()
+                  }
+                }}
+              />
+            </label>
+            {joinNote ? <p className="event-create__error">{joinNote}</p> : null}
+            <button
+              type="button"
+              className="lb-play event-create__submit"
+              disabled={busy || !inviteDraft.trim()}
+              onClick={() => void submitInvite()}
+            >
+              {busy ? 'Checking…' : 'Open event'}
+            </button>
+          </div>
+        </>
       ) : error || !detail ? (
         <>
           <header className="lb-page__header lb-page__header--compact lb-game-board__head">
@@ -437,7 +547,7 @@ export function TournamentDetailPage({ id }: { id: string }) {
               <div className="lb-game-board__trailing">
                 <ShareBoardButton
                   label={`${detail.title} on ${APP_NAME}`}
-                  url={`#/tournaments/${detail.id}`}
+                  url={inviteLink ?? tournamentHref(detail.id)}
                 />
               </div>
             </div>
@@ -469,6 +579,21 @@ export function TournamentDetailPage({ id }: { id: string }) {
             />
             <p className="event-detail__blurb">{detail.blurb}</p>
             <p className="event-detail__rules">{formatRulesSummary(detail)}</p>
+            {detail.private ? (
+              <p className="event-detail__rules">Private · invite only</p>
+            ) : null}
+            {detail.isHost && detail.inviteCode ? (
+              <div className="event-invite-panel">
+                <div className="event-invite-panel__copy">
+                  <span className="event-create__label">Invite link</span>
+                  <p className="event-invite-panel__code">Code: {detail.inviteCode}</p>
+                  <p className="event-invite-panel__url">{inviteLink}</p>
+                </div>
+                <button type="button" className="score-save__btn" onClick={() => void copyInviteLink()}>
+                  {copiedInvite ? 'Copied!' : 'Copy invite link'}
+                </button>
+              </div>
+            ) : null}
             <p className="event-detail__facts">
               {detail.status === 'active' ? (
                 <strong>
@@ -534,7 +659,7 @@ export function TournamentDetailPage({ id }: { id: string }) {
                     ) : (
                       <a
                         className="event-play-tile"
-                        href={`#/tournaments/${detail.id}/play/${slug}`}
+                        href={tournamentPlayHref(detail.id, slug, playInvite)}
                         style={{ '--event-accent': gameAccent } as CSSProperties}
                       >
                         <span className="event-play-tile__art">

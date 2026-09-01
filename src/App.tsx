@@ -142,9 +142,17 @@ function App() {
   if (route.name === 'tournaments') return <TournamentsPage />
   if (route.name === 'tournamentCreate') return <CreateTournamentPage />
   if (route.name === 'tournamentPlay') {
-    return <TournamentPlayPage tournamentId={route.id} gameSlug={route.game} />
+    return (
+      <TournamentPlayPage
+        tournamentId={route.id}
+        gameSlug={route.game}
+        invite={route.invite}
+      />
+    )
   }
-  if (route.name === 'tournament') return <TournamentDetailPage id={route.id} />
+  if (route.name === 'tournament') {
+    return <TournamentDetailPage id={route.id} invite={route.invite} />
+  }
   if (route.name === 'game') {
     if (isGameHidden(route.slug)) return <ComingSoonPage slug={route.slug} />
     return <GameHubPage slug={route.slug} board={route.board} />

@@ -26,13 +26,14 @@ export type TournamentSummary = {
   format: TournamentFormat
   formatLabel: string
   rules: TournamentRules
-  community: boolean
+  private: boolean
   createdBy?: { accountId: string } | null
+  visibility?: 'public' | 'private'
   status: TournamentStatus
   playerCount: number
 }
 
-/** Games eligible for community events (matches API). */
+/** Games eligible for private hosted events (matches API). */
 export const EVENT_GAMES = [
   'asteroids',
   'patriot',
@@ -117,6 +118,8 @@ export type TournamentDetail = TournamentSummary & {
   standings: StandingRow[]
   placePoints: Record<string, number>
   playerStatus?: TournamentPlayerStatus | null
+  inviteCode?: string | null
+  isHost?: boolean
 }
 
 export type CreateTournamentInput = {
@@ -130,6 +133,46 @@ export type CreateTournamentInput = {
 
 const JOINED_KEY = 'arcade-tournaments-joined'
 const PLAYER_IDS_KEY = 'arcade-tournaments-player-ids'
+const INVITES_KEY = 'arcade-tournament-invites'
+
+function readInvites(): Record<string, string> {
+  try {
+    const raw = localStorage.getItem(INVITES_KEY)
+    const parsed = raw ? (JSON.parse(raw) as unknown) : {}
+    if (!parsed || typeof parsed !== 'object') return {}
+    const out: Record<string, string> = {}
+    for (const [k, v] of Object.entries(parsed as Record<string, unknown>)) {
+      if (typeof v === 'string' && v) out[k] = v
+    }
+    return out
+  } catch {
+    return {}
+  }
+}
+
+function writeInvites(map: Record<string, string>) {
+  try {
+    localStorage.setItem(INVITES_KEY, JSON.stringify(map))
+  } catch {
+    /* ignore */
+  }
+}
+
+export function getTournamentInvite(tournamentId: string): string | null {
+  return readInvites()[tournamentId] ?? null
+}
+
+export function rememberTournamentInvite(tournamentId: string, inviteCode: string) {
+  if (!tournamentId || !inviteCode) return
+  const map = readInvites()
+  map[tournamentId] = inviteCode.trim().toUpperCase()
+  writeInvites(map)
+}
+
+function tournamentAccessQuery(tournamentId: string, invite?: string) {
+  const code = (invite ?? getTournamentInvite(tournamentId) ?? '').trim()
+  return code ? { invite: code } : {}
+}
 
 function resolveApiBase() {
   const fromEnv = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, '')
@@ -245,7 +288,7 @@ export function isPlayerInTournament(
 }
 
 export async function listTournaments(
-  source: 'all' | 'official' | 'community' = 'all',
+  source: 'all' | 'official' | 'mine' = 'all',
 ): Promise<TournamentSummary[]> {
   const qs = source === 'all' ? '' : `?source=${source}`
   const data = await api<{ tournaments: TournamentSummary[] }>(`/tournaments${qs}`)
@@ -254,11 +297,13 @@ export async function listTournaments(
 
 export async function getTournament(
   id: string,
-  opts?: { playerName?: string; game?: string },
+  opts?: { playerName?: string; game?: string; invite?: string },
 ): Promise<TournamentDetail> {
   const params = new URLSearchParams()
   if (opts?.playerName) params.set('playerName', opts.playerName)
   if (opts?.game) params.set('game', opts.game)
+  const invite = opts?.invite ?? getTournamentInvite(id)
+  if (invite) params.set('invite', invite)
   const qs = params.toString()
   return api(`/tournaments/${encodeURIComponent(id)}${qs ? `?${qs}` : ''}`)
 }
@@ -294,6 +339,7 @@ export async function joinTournament(
   const cleaned = normalizePlayerName(name)
   const token = getClaimToken(cleaned)
   const playerId = getTournamentPlayerId(id) ?? undefined
+  const access = tournamentAccessQuery(id)
   const result = await api<{
     tournament: TournamentDetail
     player: { id: string; name: string }
@@ -304,6 +350,7 @@ export async function joinTournament(
       name: cleaned,
       ...(token ? { token } : {}),
       ...(playerId ? { playerId } : {}),
+      ...access,
     }),
   })
   rememberTournamentPlayer(id, result.player.id)
@@ -373,6 +420,7 @@ export async function submitTournamentScore(
       game,
       score,
       ...(token ? { token } : {}),
+      ...tournamentAccessQuery(id),
     }),
   })
   rememberJoinedTournament(id)

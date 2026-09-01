@@ -15,8 +15,8 @@ export type Route =
   | { name: 'rank'; player?: string }
   | { name: 'tournaments' }
   | { name: 'tournamentCreate' }
-  | { name: 'tournament'; id: string }
-  | { name: 'tournamentPlay'; id: string; game: string }
+  | { name: 'tournament'; id: string; invite?: string }
+  | { name: 'tournamentPlay'; id: string; game: string; invite?: string }
   | { name: 'game'; slug: string; board?: 'scores' | 'records' }
   | { name: 'gamePlay'; slug: string }
   | { name: 'authVerify'; token: string }
@@ -87,6 +87,18 @@ export function tournamentCreateHref() {
   return '#/tournaments/create'
 }
 
+export function tournamentHref(id: string, invite?: string) {
+  const base = `#/tournaments/${encodeURIComponent(id)}`
+  if (!invite?.trim()) return base
+  return `${base}?invite=${encodeURIComponent(invite.trim().toUpperCase())}`
+}
+
+export function tournamentPlayHref(id: string, game: string, invite?: string) {
+  const base = `#/tournaments/${encodeURIComponent(id)}/play/${encodeURIComponent(game)}`
+  if (!invite?.trim()) return base
+  return `${base}?invite=${encodeURIComponent(invite.trim().toUpperCase())}`
+}
+
 /** Record books for one game (`#/records/{game}`). Individual boards use `recordHref`. */
 export function recordsHref(game: string) {
   return `#/records/${encodeURIComponent(game)}`
@@ -112,7 +124,12 @@ function gameLeaderboardRoute(
 }
 
 function parseHash(hash: string): Route {
-  const path = hash.replace(/^#\/?/, '').replace(/\/$/, '')
+  const raw = hash.replace(/^#\/?/, '').replace(/\/$/, '')
+  const [path, queryString] = raw.split('?')
+  const invite =
+    queryString && queryString.length > 0
+      ? new URLSearchParams(queryString).get('invite')?.trim().toUpperCase() || undefined
+      : undefined
   if (!path) return { name: 'home' }
   if (path === 'privacy') return { name: 'privacy' }
   if (path === 'terms') return { name: 'terms' }
@@ -179,12 +196,13 @@ function parseHash(hash: string): Route {
       name: 'tournamentPlay',
       id: decodeURIComponent(tournamentPlayMatch[1]),
       game: decodeURIComponent(tournamentPlayMatch[2]),
+      invite,
     }
   }
 
   const tournamentMatch = /^tournaments\/([^/]+)$/.exec(path)
   if (tournamentMatch) {
-    return { name: 'tournament', id: decodeURIComponent(tournamentMatch[1]) }
+    return { name: 'tournament', id: decodeURIComponent(tournamentMatch[1]), invite }
   }
 
   const gamePlayMatch = /^games\/([^/]+)\/play$/.exec(path)

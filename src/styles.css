@@ -8812,7 +8812,7 @@ html[data-theme='dark'] .patriot__power-mark {
   background: color-mix(in srgb, var(--accent) 12%, var(--surface));
 }
 
-.tour-pill--community {
+.tour-pill--private {
   color: color-mix(in srgb, var(--accent-sky) 75%, var(--ink));
   border-color: color-mix(in srgb, var(--accent-sky) 35%, transparent);
   background: color-mix(in srgb, var(--blob-sky) 50%, var(--surface));
@@ -9154,6 +9154,53 @@ html[data-theme='dark'] .patriot__power-mark {
 
 .event-create-gate {
   max-width: 28rem;
+}
+
+.event-invite-gate {
+  max-width: 28rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1.25rem;
+  border-radius: 1rem;
+  border: 1px solid rgba(var(--ink-rgb), 0.08);
+  background: rgba(var(--surface-rgb), 0.92);
+}
+
+.event-invite-gate__lead {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.event-invite-panel {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 0.75rem 1rem;
+  padding: 0.9rem 1rem;
+  border-radius: 0.85rem;
+  border: 1px dashed color-mix(in srgb, var(--event-accent) 35%, transparent);
+  background: color-mix(in srgb, var(--event-accent) 8%, var(--surface));
+}
+
+.event-invite-panel__copy {
+  min-width: 0;
+  flex: 1 1 14rem;
+}
+
+.event-invite-panel__code {
+  margin: 0.25rem 0 0;
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+
+.event-invite-panel__url {
+  margin: 0.35rem 0 0;
+  font-size: 0.78rem;
+  color: var(--muted);
+  word-break: break-all;
 }
 
 .tour-note {

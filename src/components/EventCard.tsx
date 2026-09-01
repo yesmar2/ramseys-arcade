@@ -36,7 +36,7 @@ export function EventStatusChips({
   t,
   joined = false,
 }: {
-  t: Pick<TournamentSummary, 'status' | 'official' | 'cadence' | 'format' | 'formatLabel' | 'community'>
+  t: Pick<TournamentSummary, 'status' | 'official' | 'cadence' | 'format' | 'formatLabel' | 'private'>
   /** Show a Joined chip when the current player is in this event. */
   joined?: boolean
 }) {
@@ -45,11 +45,11 @@ export function EventStatusChips({
     <div className="event-chips">
       <span className={`tour-pill tour-pill--${t.status}`}>{statusLabel(t.status)}</span>
       {cadence ? <span className="tour-pill tour-pill--cadence">{cadence}</span> : null}
-      {t.community ? <span className="tour-pill tour-pill--community">Community</span> : null}
-      {!cadence && t.official && !t.community ? (
+      {t.private ? <span className="tour-pill tour-pill--private">Invite only</span> : null}
+      {!cadence && t.official && !t.private ? (
         <span className="tour-pill tour-pill--official">Official</span>
       ) : null}
-      {!cadence && !t.official ? (
+      {!cadence && !t.official && !t.private ? (
         <span className="tour-pill tour-pill--format">{t.formatLabel}</span>
       ) : null}
       {joined ? <span className="tour-pill tour-pill--joined">Joined</span> : null}
@@ -95,17 +95,19 @@ type EventCardProps = {
   t: TournamentSummary
   /** Slightly smaller thumbs on tight surfaces like home. */
   compact?: boolean
+  href?: string
 }
 
 /** Shared live/ended event card — Events list and home strip. */
-export function EventCard({ t, compact = false }: EventCardProps) {
+export function EventCard({ t, compact = false, href }: EventCardProps) {
   const accent = eventAccent(t.games)
   const gameNames = t.games.map((g) => getGame(g)?.name ?? g).join(' · ')
+  const link = href ?? `#/tournaments/${t.id}`
 
   return (
     <a
       className={`event-card${compact ? ' event-card--compact' : ''}`}
-      href={`#/tournaments/${t.id}`}
+      href={link}
       style={{ '--event-accent': accent } as CSSProperties}
     >
       <EventThumbs games={t.games} size={compact ? 'md' : 'lg'} />
