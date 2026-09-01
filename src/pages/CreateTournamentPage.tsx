@@ -35,8 +35,9 @@ export function CreateTournamentPage() {
   const [blurb, setBlurb] = useState('')
   const [games, setGames] = useState<EventGame[]>(['stacker'])
   const [maxAttempts, setMaxAttempts] = useState(3)
-  const [unlimited, setUnlimited] = useState(false)
+  const [unlimitedAttempts, setUnlimitedAttempts] = useState(false)
   const [durationHours, setDurationHours] = useState(24)
+  const [unlimitedDuration, setUnlimitedDuration] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -45,7 +46,9 @@ export function CreateTournamentPage() {
     return first?.accent ?? '#2eb8a0'
   }, [games])
 
-  const durationLabel = DURATIONS.find((d) => d.hours === durationHours)?.label ?? '24 hours'
+  const durationLabel = unlimitedDuration
+    ? 'No end'
+    : DURATIONS.find((d) => d.hours === durationHours)?.label ?? '24 hours'
 
   const toggleGame = (slug: EventGame) => {
     setGames((prev) => {
@@ -68,8 +71,8 @@ export function CreateTournamentPage() {
         title: title.trim(),
         blurb: blurb.trim() || undefined,
         games,
-        maxAttempts: unlimited ? 0 : maxAttempts,
-        durationHours,
+        maxAttempts: unlimitedAttempts ? 0 : maxAttempts,
+        durationHours: unlimitedDuration ? 0 : durationHours,
       }
       const created = await createTournament(input)
       if (created.inviteCode) rememberTournamentInvite(created.id, created.inviteCode)
@@ -178,7 +181,7 @@ export function CreateTournamentPage() {
                     min={1}
                     max={99}
                     value={maxAttempts}
-                    disabled={unlimited}
+                    disabled={unlimitedAttempts}
                     onChange={(e) =>
                       setMaxAttempts(Math.max(1, Math.min(99, Number(e.target.value) || 1)))
                     }
@@ -187,30 +190,41 @@ export function CreateTournamentPage() {
                 <label className="event-create__unlimited">
                   <input
                     type="checkbox"
-                    checked={unlimited}
-                    onChange={(e) => setUnlimited(e.target.checked)}
+                    checked={unlimitedAttempts}
+                    onChange={(e) => setUnlimitedAttempts(e.target.checked)}
                   />
                   <span>Unlimited</span>
                 </label>
               </div>
               <p className="event-create__hint">
-                {attemptsSummary(maxAttempts, unlimited, games.length)}. Best score counts.
+                {attemptsSummary(maxAttempts, unlimitedAttempts, games.length)}. Best score counts.
               </p>
 
-              <label className="event-create__field">
-                <span className="event-create__label">Duration</span>
-                <select
-                  className="event-create__input"
-                  value={durationHours}
-                  onChange={(e) => setDurationHours(Number(e.target.value))}
-                >
-                  {DURATIONS.map((d) => (
-                    <option key={d.hours} value={d.hours}>
-                      {d.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              <div className="event-create__rules-row">
+                <label className="event-create__field event-create__field--attempts">
+                  <span className="event-create__label">Duration</span>
+                  <select
+                    className="event-create__input"
+                    value={durationHours}
+                    disabled={unlimitedDuration}
+                    onChange={(e) => setDurationHours(Number(e.target.value))}
+                  >
+                    {DURATIONS.map((d) => (
+                      <option key={d.hours} value={d.hours}>
+                        {d.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="event-create__unlimited">
+                  <input
+                    type="checkbox"
+                    checked={unlimitedDuration}
+                    onChange={(e) => setUnlimitedDuration(e.target.checked)}
+                  />
+                  <span>No end</span>
+                </label>
+              </div>
             </section>
 
             {error ? <p className="event-create__error">{error}</p> : null}
@@ -237,7 +251,7 @@ export function CreateTournamentPage() {
                   {games.map((slug) => getGame(slug)?.name ?? slug).join(' · ')}
                 </p>
                 <ul className="event-create-preview__facts">
-                  <li>{attemptsSummary(maxAttempts, unlimited, games.length)}</li>
+                  <li>{attemptsSummary(maxAttempts, unlimitedAttempts, games.length)}</li>
                   <li>{durationLabel}</li>
                   <li>Private · invite only</li>
                 </ul>

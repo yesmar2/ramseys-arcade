@@ -2,6 +2,8 @@ import type { CSSProperties } from 'react'
 import { getGame } from '../data/games'
 import {
   cadenceLabel,
+  eventDurationLabel,
+  isUnlimitedDuration,
   type TournamentStatus,
   type TournamentSummary,
 } from '../lib/tournaments'
@@ -14,19 +16,6 @@ function statusLabel(status: TournamentStatus) {
   return 'Ended'
 }
 
-function formatWindow(startsAt: number, endsAt: number) {
-  const opts: Intl.DateTimeFormatOptions = {
-    month: 'short',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-  }
-  try {
-    return `${new Date(startsAt).toLocaleString(undefined, opts)} → ${new Date(endsAt).toLocaleString(undefined, opts)}`
-  } catch {
-    return ''
-  }
-}
 
 export function eventAccent(games: string[]) {
   return getGame(games[0] ?? '')?.accent ?? '#2eb8a0'
@@ -120,10 +109,13 @@ export function EventCard({ t, compact = false, href }: EventCardProps) {
         <div className="event-card__foot">
           {t.status === 'active' ? (
             <span className="event-card__countdown">
-              <EventCountdown endsAt={t.endsAt} />
+              <EventCountdown
+                endsAt={t.endsAt}
+                unlimitedDuration={isUnlimitedDuration(t.rules)}
+              />
             </span>
           ) : (
-            <span className="event-card__window">{formatWindow(t.startsAt, t.endsAt)}</span>
+            <span className="event-card__window">{eventDurationLabel(t)}</span>
           )}
           <span className="event-card__joined">{t.playerCount} joined</span>
         </div>

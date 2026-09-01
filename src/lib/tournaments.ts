@@ -12,6 +12,7 @@ export type TournamentFormat =
 export type TournamentRules = {
   maxAttempts?: number
   scoring?: 'best' | 'sum'
+  unlimitedDuration?: boolean
 }
 
 export type TournamentSummary = {
@@ -74,7 +75,12 @@ export function formatRulesSummary(
 }
 
 /** Human countdown until endsAt (or "Ended"). */
-export function formatEventCountdown(endsAt: number, now = Date.now()): string {
+export function formatEventCountdown(
+  endsAt: number,
+  now = Date.now(),
+  unlimitedDuration = false,
+): string {
+  if (unlimitedDuration) return 'No end'
   const ms = endsAt - now
   if (ms <= 0) return 'Ended'
   const totalSec = Math.floor(ms / 1000)
@@ -85,6 +91,28 @@ export function formatEventCountdown(endsAt: number, now = Date.now()): string {
   if (hours > 0) return `${hours}h ${mins}m left`
   if (mins > 0) return `${mins}m left`
   return 'Moments left'
+}
+
+export function eventDurationLabel(
+  t: Pick<TournamentSummary, 'rules' | 'startsAt' | 'endsAt' | 'status'>,
+): string {
+  if (t.rules.unlimitedDuration) return 'No end'
+  if (t.status === 'active') return formatEventCountdown(t.endsAt)
+  const opts: Intl.DateTimeFormatOptions = {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  }
+  try {
+    return `${new Date(t.startsAt).toLocaleString(undefined, opts)} → ${new Date(t.endsAt).toLocaleString(undefined, opts)}`
+  } catch {
+    return ''
+  }
+}
+
+export function isUnlimitedDuration(rules: TournamentRules | undefined): boolean {
+  return Boolean(rules?.unlimitedDuration)
 }
 
 export function cadenceLabel(cadence: TournamentCadence | null | undefined): string | null {
@@ -128,6 +156,7 @@ export type CreateTournamentInput = {
   games: EventGame[]
   /** 0 = unlimited attempts per game */
   maxAttempts: number
+  /** 0 = unlimited duration */
   durationHours: number
 }
 

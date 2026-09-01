@@ -16,9 +16,11 @@ import { APP_NAME } from '../lib/brand'
 import { ApiError, getLastPlayerName, normalizePlayerName } from '../lib/leaderboard'
 import {
   formatRulesSummary,
+  eventDurationLabel,
   getTournament,
   getTournamentInvite,
   isPlayerInTournament,
+  isUnlimitedDuration,
   joinTournament,
   listTournaments,
   rememberTournamentInvite,
@@ -35,19 +37,6 @@ function placeLabel(place: number) {
   return `${place}th`
 }
 
-function formatWindow(startsAt: number, endsAt: number) {
-  const opts: Intl.DateTimeFormatOptions = {
-    month: 'short',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-  }
-  try {
-    return `${new Date(startsAt).toLocaleString(undefined, opts)} → ${new Date(endsAt).toLocaleString(undefined, opts)}`
-  } catch {
-    return ''
-  }
-}
 
 function GameResultCell({
   cell,
@@ -597,10 +586,13 @@ export function TournamentDetailPage({ id, invite }: { id: string; invite?: stri
             <p className="event-detail__facts">
               {detail.status === 'active' ? (
                 <strong>
-                  <EventCountdown endsAt={detail.endsAt} />
+                  <EventCountdown
+                    endsAt={detail.endsAt}
+                    unlimitedDuration={isUnlimitedDuration(detail.rules)}
+                  />
                 </strong>
               ) : (
-                <span>{formatWindow(detail.startsAt, detail.endsAt)}</span>
+                <span>{eventDurationLabel(detail)}</span>
               )}
               <span className="event-detail__facts-sep" aria-hidden="true">
                 ·
