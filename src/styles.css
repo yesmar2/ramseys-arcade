@@ -1463,6 +1463,45 @@ img {
   border-top: 1px solid rgba(var(--ink-rgb), 0.08);
 }
 
+.site-drawer__period {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  padding: 0.15rem 0.85rem 0.55rem;
+}
+
+.site-drawer__period-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.site-drawer__period-tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.35rem;
+}
+
+.site-drawer__period-tab {
+  padding: 0.5rem 0.55rem;
+  border-radius: 0.65rem;
+  border: 1px solid rgba(var(--ink-rgb), 0.1);
+  background: rgba(var(--surface-rgb), 0.9);
+  color: var(--muted);
+  font-family: var(--font-body);
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.site-drawer__period-tab--active {
+  color: var(--ink);
+  border-color: color-mix(in srgb, var(--accent) 35%, transparent);
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface));
+}
+
 .site-drawer__util {
   width: 100%;
   padding: 0.72rem 0.85rem;

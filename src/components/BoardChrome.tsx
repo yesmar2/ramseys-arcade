@@ -1,4 +1,5 @@
 import type { CSSProperties, ReactNode } from 'react'
+import { setDefaultPeriod } from '../lib/defaultPeriod'
 import {
   LEADERBOARD_PERIODS,
   PERIOD_LABELS,
@@ -44,6 +45,7 @@ export function PeriodSwitcher({
               className={className}
               onClick={(e) => {
                 e.preventDefault()
+                setDefaultPeriod(p)
                 onSelect(p)
               }}
             >
@@ -58,7 +60,10 @@ export function PeriodSwitcher({
             role="tab"
             aria-selected={period === p}
             className={className}
-            onClick={() => onSelect(p)}
+            onClick={() => {
+              setDefaultPeriod(p)
+              onSelect(p)
+            }}
           >
             {PERIOD_LABELS[p]}
           </button>

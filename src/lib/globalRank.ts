@@ -1,5 +1,9 @@
 import { useSyncExternalStore } from 'react'
 import {
+  DEFAULT_PERIOD_EVENT,
+  defaultPeriod,
+} from './defaultPeriod'
+import {
   fetchGlobalRank,
   getLastPlayerName,
   PLAYER_NAME_EVENT,
@@ -23,8 +27,13 @@ function emit() {
   for (const listener of listeners) listener()
 }
 
+function onPreferenceChange() {
+  cached = empty
+  emit()
+  void refreshGlobalRank()
+}
+
 function onPlayerNameEvent() {
-  // Re-render subscribers immediately when the local tag changes; refresh fills data.
   emit()
   void refreshGlobalRank()
 }
@@ -35,6 +44,7 @@ function ensureNameListener() {
   if (listeningForName || typeof window === 'undefined') return
   listeningForName = true
   window.addEventListener(PLAYER_NAME_EVENT, onPlayerNameEvent)
+  window.addEventListener(DEFAULT_PERIOD_EVENT, onPreferenceChange)
 }
 
 export function subscribeGlobalRank(onStoreChange: () => void) {
@@ -63,7 +73,7 @@ export async function refreshGlobalRank() {
   }
   const id = ++requestId
   try {
-    const next = await fetchGlobalRank(name)
+    const next = await fetchGlobalRank(name, defaultPeriod())
     if (id !== requestId) return
     cachedName = name
     cached = next

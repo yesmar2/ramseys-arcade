@@ -23,6 +23,7 @@ import { flashYouRow } from '../lib/boardGap'
 import { useDeviceType } from '../lib/device'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { APP_NAME } from '../lib/brand'
+import { defaultPeriod } from '../lib/defaultPeriod'
 import {
   normalizePlayerName,
   PERIOD_LABELS,
@@ -69,7 +70,7 @@ export function RecordsPage({
     <RecordBoardPage
       game={game}
       recordId={recordId}
-      period={periodFromRoute ?? 'all'}
+      period={periodFromRoute ?? defaultPeriod()}
     />
   )
 }

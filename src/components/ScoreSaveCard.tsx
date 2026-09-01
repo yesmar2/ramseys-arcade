@@ -16,6 +16,7 @@ import {
 } from '../lib/leaderboard'
 import { describePersonalBest, rememberPersonalBest } from '../lib/personalBest'
 import { refreshGlobalRank } from '../lib/globalRank'
+import { defaultPeriod } from '../lib/defaultPeriod'
 import { gameHasRecords } from '../lib/records'
 import {
   peekRunAchievements,
@@ -525,7 +526,7 @@ function cleanName(raw: string) {
 
 function boardsHref(gameSlug: string) {
   if ((LEADERBOARD_GAMES as readonly string[]).includes(gameSlug)) {
-    return gameBoardHref(gameSlug as LeaderboardGame, 'daily')
+    return gameBoardHref(gameSlug as LeaderboardGame, defaultPeriod())
   }
   return `#/games/${encodeURIComponent(gameSlug)}`
 }
@@ -607,7 +608,7 @@ export function ScoreSaveCard({
   const saveAndCelebrate = async (name: string, isCancelled?: () => boolean) => {
     let priorGlobalRank: number | null = null
     try {
-      priorGlobalRank = (await fetchGlobalRank(name)).rank
+      priorGlobalRank = (await fetchGlobalRank(name, defaultPeriod())).rank
     } catch {
       /* climb detection best-effort */
     }
@@ -617,7 +618,7 @@ export function ScoreSaveCard({
     rememberPersonalBest(gameSlug, Math.max(recordRef.current, score))
     let nextGlobalRank: number | null = null
     try {
-      nextGlobalRank = (await fetchGlobalRank(name)).rank
+      nextGlobalRank = (await fetchGlobalRank(name, defaultPeriod())).rank
     } catch {
       /* ignore */
     }

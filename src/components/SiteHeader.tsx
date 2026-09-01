@@ -4,8 +4,14 @@ import { useAuth } from '../hooks/useAuth'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { rankHref, useHashRoute } from '../hooks/useHashRoute'
 import { useGlobalRank } from '../lib/globalRank'
-import { normalizePlayerName } from '../lib/leaderboard'
 import { currentTheme, THEME_EVENT, toggleTheme, type Theme } from '../lib/theme'
+import { PERIOD_LABELS } from '../lib/leaderboard'
+import {
+  DEFAULT_PERIOD_EVENT,
+  defaultPeriod,
+  setDefaultPeriod,
+  useDefaultPeriod,
+} from '../lib/defaultPeriod'
 import { PlayerBadge, type PlayerBadgeHandle } from './PlayerBadge'
 import {
   navActive,
@@ -18,6 +24,7 @@ export function SiteHeader() {
   const route = useHashRoute()
   const hashKey = JSON.stringify(route)
   const { rank } = useGlobalRank()
+  const defaultBoardPeriod = useDefaultPeriod()
   const { account, signedIn } = useAuth()
   const playerName = normalizePlayerName(usePlayerName())
   const [drawerOpen, setDrawerOpen] = useState(false)
@@ -275,6 +282,22 @@ export function SiteHeader() {
                   </a>
                 </div>
                 <div className="site-drawer__utils">
+                  <div className="site-drawer__period" aria-label="Default board period">
+                    <span className="site-drawer__period-label">Default period</span>
+                    <div className="site-drawer__period-tabs" role="group">
+                      {(['daily', 'weekly', 'monthly', 'all'] as const).map((p) => (
+                        <button
+                          key={p}
+                          type="button"
+                          className={`site-drawer__period-tab${defaultBoardPeriod === p ? ' site-drawer__period-tab--active' : ''}`}
+                          aria-pressed={defaultBoardPeriod === p}
+                          onClick={() => setDefaultPeriod(p)}
+                        >
+                          {PERIOD_LABELS[p]}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                   <button
                     type="button"
                     className="site-drawer__util"

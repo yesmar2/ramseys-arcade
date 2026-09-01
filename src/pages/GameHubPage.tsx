@@ -29,6 +29,7 @@ import {
 import { usePersonalBest } from '../hooks/usePersonalBest'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { useDeviceType } from '../lib/device'
+import { defaultPeriod } from '../lib/defaultPeriod'
 import { APP_NAME } from '../lib/brand'
 import { formatLeaderboardScore } from '../games/spotter/score'
 import { gameHasRecords } from '../lib/records'
@@ -142,8 +143,9 @@ export function GameHubPage({ slug, board: boardFromRoute }: GameHubPageProps) {
     )
   }
 
-  const topEntries = byPeriod.daily.slice(0, TOP_ROWS)
-  const boardHref = boardSlug ? gameBoardHref(boardSlug, 'daily') : null
+  const preferredPeriod = defaultPeriod()
+  const topEntries = byPeriod[preferredPeriod].slice(0, TOP_ROWS)
+  const boardHref = boardSlug ? gameBoardHref(boardSlug, preferredPeriod) : null
 
   return (
     <>

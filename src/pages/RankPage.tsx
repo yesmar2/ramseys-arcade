@@ -6,6 +6,7 @@ import { PageShell } from '../components/PageShell'
 import { ShareBoardButton } from '../components/ShareBoardButton'
 import { getGame, gamePlayableOn } from '../data/games'
 import { gameBoardHref, gamePlayHref, globalRankingsHref, rankHref } from '../hooks/useHashRoute'
+import { defaultPeriod, useDefaultPeriod } from '../lib/defaultPeriod'
 import { gapToNextLabel } from '../lib/boardGap'
 import { useDeviceType } from '../lib/device'
 import { usePlayerName } from '../hooks/usePlayerName'
@@ -30,21 +31,24 @@ const empty: GlobalRankResult = {
 
 export function RankPage({
   player,
-  period = 'all',
+  period: periodFromRoute = defaultPeriod(),
 }: {
   player?: string
   period?: LeaderboardPeriod
 }) {
+  const period = periodFromRoute
   const device = useDeviceType()
   const myName = normalizePlayerName(usePlayerName())
   const viewedName = normalizePlayerName(player ?? '') || myName
   const isSelf = !normalizePlayerName(player ?? '') || viewedName === myName
+  const preferredPeriod = useDefaultPeriod()
   const myRank = useGlobalRank()
   const [periodRank, setPeriodRank] = useState<GlobalRankResult | null>(null)
-  const [loading, setLoading] = useState(!isSelf || period !== 'all')
+  const useCachedSelfRank = isSelf && period === preferredPeriod
+  const [loading, setLoading] = useState(!useCachedSelfRank)
 
   useEffect(() => {
-    if (isSelf && period === 'all') {
+    if (useCachedSelfRank) {
       setPeriodRank(null)
       setLoading(false)
       return
@@ -72,10 +76,10 @@ export function RankPage({
     return () => {
       cancelled = true
     }
-  }, [viewedName, isSelf, period])
+  }, [viewedName, useCachedSelfRank, period])
 
   const data =
-    isSelf && period === 'all' ? myRank : (periodRank ?? (isSelf ? myRank : empty))
+    useCachedSelfRank ? myRank : (periodRank ?? (isSelf ? myRank : empty))
   const { rank, score, totalPlayers, byGame, nearby = [] } = data
 
   const rankedCount = VISIBLE_LEADERBOARD_GAMES.filter((slug) => Boolean(byGame[slug])).length

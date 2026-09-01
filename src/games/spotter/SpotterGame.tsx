@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties }
 import { GameThumbArt } from '../../components/GameThumbArt'
 import { ScoreSaveCard } from '../../components/ScoreSaveCard'
 import { gameBoardHref, gameHref } from '../../hooks/useHashRoute'
+import { defaultPeriod } from '../../lib/defaultPeriod'
 import { getGame } from '../../data/games'
 import { buildDailyPuzzle, spotterShareLine, type SpotterPuzzle } from './puzzle'
 import {
@@ -317,7 +318,7 @@ export function SpotterGame() {
             <button type="button" className="spotter__cta" onClick={share}>
               {copied ? 'Copied' : 'Share result'}
             </button>
-            <a className="spotter__link" href={gameBoardHref('spotter', 'daily')}>
+            <a className="spotter__link" href={gameBoardHref('spotter', defaultPeriod())}>
               Today&apos;s board
             </a>
           </div>

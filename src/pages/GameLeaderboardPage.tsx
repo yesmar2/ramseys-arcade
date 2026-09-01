@@ -14,6 +14,7 @@ import { usePlayerName } from '../hooks/usePlayerName'
 import { useDeviceType } from '../lib/device'
 import { formatLeaderboardScore } from '../games/spotter/score'
 import { flashYouRow } from '../lib/boardGap'
+import { defaultPeriod } from '../lib/defaultPeriod'
 import { APP_NAME } from '../lib/brand'
 import {
   getLeaderboard,
@@ -36,7 +37,7 @@ export function GameLeaderboardPage({
   game: gameSlug,
   period: periodFromRoute,
 }: GameLeaderboardPageProps) {
-  const period = periodFromRoute ?? 'daily'
+  const period = periodFromRoute ?? defaultPeriod()
   const game = getGame(gameSlug)
   const device = useDeviceType()
   const playerName = normalizePlayerName(usePlayerName())

@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { defaultPeriod } from '../lib/defaultPeriod'
 import { Footer } from './components/Footer'
 import { SiteHeader } from './components/SiteHeader'
 import { getGame, isGameHidden } from './data/games'
@@ -116,11 +117,14 @@ function App() {
   if (route.name === 'terms') return <TermsPage />
   if (route.name === 'authVerify') return <AuthVerifyPage token={route.token} />
   if (route.name === 'rank') {
-    return <RankPage player={route.player} period={route.period ?? 'all'} />
+    return <RankPage player={route.player} period={route.period ?? defaultPeriod()} />
   }
   if (route.name === 'leaderboards') {
     return (
-      <LeaderboardsPage global={route.global} period={route.period} />
+      <LeaderboardsPage
+        global={route.global}
+        period={route.period ?? defaultPeriod()}
+      />
     )
   }
   if (route.name === 'gameLeaderboard') {
@@ -128,7 +132,7 @@ function App() {
       return <ComingSoonPage slug={route.game} />
     }
     return (
-      <GameLeaderboardPage game={route.game} period={route.period} />
+      <GameLeaderboardPage game={route.game} period={route.period ?? defaultPeriod()} />
     )
   }
   if (route.name === 'recordsIndex') return <RecordsIndexPage />
@@ -137,7 +141,7 @@ function App() {
       <RecordsPage
         game={route.game}
         recordId={route.recordId}
-        period={route.period}
+        period={route.period ?? defaultPeriod()}
       />
     )
   }

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { defaultPeriod } from '../lib/defaultPeriod'
 import {
   LEADERBOARD_GAMES,
   LEADERBOARD_PERIODS,
@@ -39,17 +40,16 @@ export function leaderboardHref() {
 /** Full board for one game. */
 export function gameBoardHref(
   game: LeaderboardGame,
-  period: LeaderboardPeriod = 'daily',
+  period: LeaderboardPeriod = defaultPeriod(),
 ) {
   return `#/leaderboards/${encodeURIComponent(game)}/${period}`
 }
 
-export function globalRankingsHref(period: LeaderboardPeriod = 'all') {
-  if (period === 'all') return '#/leaderboards/global'
+export function globalRankingsHref(period: LeaderboardPeriod = defaultPeriod()) {
   return `#/leaderboards/global/${period}`
 }
 
-export function rankHref(player?: string, period: LeaderboardPeriod = 'all') {
+export function rankHref(player?: string, period: LeaderboardPeriod = defaultPeriod()) {
   const cleaned = player?.trim().toUpperCase().slice(0, 12)
   if (cleaned && period !== 'all') {
     return `#/rank/${encodeURIComponent(cleaned)}/${period}`
@@ -111,7 +111,7 @@ export function recordsHref(game: string) {
 export function recordHref(
   game: string,
   recordId: string,
-  period: LeaderboardPeriod = 'all',
+  period: LeaderboardPeriod = defaultPeriod(),
 ) {
   return `#/records/${encodeURIComponent(game)}/${encodeURIComponent(recordId)}/${period}`
 }
@@ -138,7 +138,7 @@ function parseHash(hash: string): Route {
   if (path === 'privacy') return { name: 'privacy' }
   if (path === 'terms') return { name: 'terms' }
   if (path === 'leaderboards') return { name: 'leaderboards' }
-  if (path === 'rank') return { name: 'rank', period: 'all' }
+  if (path === 'rank') return { name: 'rank', period: defaultPeriod() }
   if (path === 'records') return { name: 'recordsIndex' }
 
   const rankMatch = /^rank\/([^/]+)(?:\/([^/]+))?$/.exec(path)
@@ -155,7 +155,9 @@ function parseHash(hash: string): Route {
       return { name: 'rank', period: part1 }
     }
     const player = part1.toUpperCase().slice(0, 12)
-    return player ? { name: 'rank', player, period: 'all' } : { name: 'rank', period: 'all' }
+    return player
+      ? { name: 'rank', player, period: defaultPeriod() }
+      : { name: 'rank', period: defaultPeriod() }
   }
 
   const recordBoardMatch = /^records\/([^/]+)\/([^/]+)(?:\/([^/]+))?$/.exec(path)
@@ -169,7 +171,7 @@ function parseHash(hash: string): Route {
       name: 'records',
       game,
       recordId,
-      period: periodRaw && isLeaderboardPeriod(periodRaw) ? periodRaw : 'all',
+      period: periodRaw && isLeaderboardPeriod(periodRaw) ? periodRaw : defaultPeriod(),
     }
   }
 
@@ -187,12 +189,12 @@ function parseHash(hash: string): Route {
     const periodRaw = boardsMatch[2] ? decodeURIComponent(boardsMatch[2]) : undefined
     if (segment === 'global') {
       const period =
-        periodRaw && isLeaderboardPeriod(periodRaw) ? periodRaw : 'all'
+        periodRaw && isLeaderboardPeriod(periodRaw) ? periodRaw : defaultPeriod()
       return { name: 'leaderboards', global: true, period }
     }
     if (isLeaderboardGame(segment)) {
       const period =
-        periodRaw && isLeaderboardPeriod(periodRaw) ? periodRaw : 'daily'
+        periodRaw && isLeaderboardPeriod(periodRaw) ? periodRaw : defaultPeriod()
       return gameLeaderboardRoute(segment, period)
     }
   }

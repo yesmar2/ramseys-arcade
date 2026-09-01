@@ -11,6 +11,7 @@ import { GlobalRankList } from '../components/GlobalRankList'
 import { PageShell } from '../components/PageShell'
 import { ShareBoardButton } from '../components/ShareBoardButton'
 import { globalRankingsHref, leaderboardHref } from '../hooks/useHashRoute'
+import { defaultPeriod } from '../lib/defaultPeriod'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { APP_NAME } from '../lib/brand'
 import {
@@ -58,8 +59,9 @@ function BoardsHubSwitcher({ global }: { global: boolean }) {
 
 export function LeaderboardsPage({
   global: showGlobal,
-  period = 'all',
+  period: periodFromRoute,
 }: LeaderboardsPageProps) {
+  const period = periodFromRoute ?? defaultPeriod()
   if (showGlobal) {
     return <GlobalRankingsView period={period} />
   }
