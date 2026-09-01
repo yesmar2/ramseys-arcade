@@ -4,6 +4,7 @@ import { GameThumbArt } from '../components/GameThumbArt'
 import { PageBackLink } from '../components/PageBackLink'
 import { PageShell } from '../components/PageShell'
 import { getGame } from '../data/games'
+import { tournamentHref } from '../hooks/useHashRoute'
 import { useAuth } from '../hooks/useAuth'
 import {
   createTournament,
@@ -12,7 +13,6 @@ import {
   type CreateTournamentInput,
   type EventGame,
 } from '../lib/tournaments'
-import { tournamentHref } from '../hooks/useHashRoute'
 
 const DURATIONS = [
   { hours: 1, label: '1 hour' },
@@ -32,7 +32,6 @@ function attemptsSummary(maxAttempts: number, unlimited: boolean, gameCount: num
 export function CreateTournamentPage() {
   const { account, loading: authLoading } = useAuth()
   const [title, setTitle] = useState('')
-  const [blurb, setBlurb] = useState('')
   const [games, setGames] = useState<EventGame[]>(['stacker'])
   const [maxAttempts, setMaxAttempts] = useState(3)
   const [unlimitedAttempts, setUnlimitedAttempts] = useState(false)
@@ -69,7 +68,6 @@ export function CreateTournamentPage() {
     try {
       const input: CreateTournamentInput = {
         title: title.trim(),
-        blurb: blurb.trim() || undefined,
         games,
         maxAttempts: unlimitedAttempts ? 0 : maxAttempts,
         durationHours: unlimitedDuration ? 0 : durationHours,
@@ -124,18 +122,6 @@ export function CreateTournamentPage() {
                   onChange={(e) => setTitle(e.target.value)}
                 />
               </label>
-
-              <label className="event-create__field">
-                <span className="event-create__label">Description (optional)</span>
-                <textarea
-                  className="event-create__input event-create__textarea"
-                  value={blurb}
-                  maxLength={280}
-                  rows={3}
-                  placeholder="Friends-only sprint — best scores win."
-                  onChange={(e) => setBlurb(e.target.value)}
-                />
-              </label>
             </section>
 
             <section className="event-create__card">
@@ -143,7 +129,11 @@ export function CreateTournamentPage() {
                 <h2 className="event-create__section-title">Games</h2>
                 <span className="event-create__count">{games.length} / 5 selected</span>
               </div>
-              <p className="event-create__hint">Pick one or more games for this event.</p>
+              <p className="event-create__hint">
+                {games.length > 1
+                  ? 'Multiple games use place points — highest total wins.'
+                  : 'Pick one or more games for this event.'}
+              </p>
               <div className="event-create__game-grid">
                 {EVENT_GAMES.map((slug) => {
                   const g = getGame(slug)
@@ -163,50 +153,77 @@ export function CreateTournamentPage() {
                         <GameThumbArt slug={slug} accent={g?.accent} />
                       </span>
                       <span className="event-create__game-name">{g?.name ?? slug}</span>
-                      {picked ? <span className="event-create__game-check" aria-hidden="true">✓</span> : null}
+                      {picked ? (
+                        <span className="event-create__game-check" aria-hidden="true">
+                          ✓
+                        </span>
+                      ) : null}
                     </button>
                   )
                 })}
               </div>
             </section>
 
-            <section className="event-create__card">
+            <section className="event-create__card event-create__card--rules">
               <h2 className="event-create__section-title">Rules</h2>
-              <div className="event-create__rules-row">
-                <label className="event-create__field event-create__field--attempts">
-                  <span className="event-create__label">Attempts per game</span>
-                  <input
-                    className="event-create__input event-create__input--number"
-                    type="number"
-                    min={1}
-                    max={99}
-                    value={maxAttempts}
-                    disabled={unlimitedAttempts}
-                    onChange={(e) =>
-                      setMaxAttempts(Math.max(1, Math.min(99, Number(e.target.value) || 1)))
-                    }
-                  />
-                </label>
-                <label className="event-create__unlimited">
-                  <input
-                    type="checkbox"
-                    checked={unlimitedAttempts}
-                    onChange={(e) => setUnlimitedAttempts(e.target.checked)}
-                  />
-                  <span>Unlimited</span>
-                </label>
-              </div>
-              <p className="event-create__hint">
-                {attemptsSummary(maxAttempts, unlimitedAttempts, games.length)}. Best score counts.
-              </p>
 
-              <div className="event-create__rules-row">
-                <label className="event-create__field event-create__field--attempts">
-                  <span className="event-create__label">Duration</span>
+              <div className="event-create__rule">
+                <div className="event-create__rule-head">
+                  <span className="event-create__rule-title">Attempts per game</span>
+                  <label className="event-create__toggle">
+                    <input
+                      type="checkbox"
+                      checked={unlimitedAttempts}
+                      onChange={(e) => setUnlimitedAttempts(e.target.checked)}
+                    />
+                    <span>Unlimited</span>
+                  </label>
+                </div>
+                {!unlimitedAttempts ? (
+                  <div className="event-create__stepper" aria-label="Attempts per game">
+                    <button
+                      type="button"
+                      className="event-create__stepper-btn"
+                      aria-label="Fewer attempts"
+                      disabled={maxAttempts <= 1}
+                      onClick={() => setMaxAttempts((n) => Math.max(1, n - 1))}
+                    >
+                      −
+                    </button>
+                    <span className="event-create__stepper-value">{maxAttempts}</span>
+                    <button
+                      type="button"
+                      className="event-create__stepper-btn"
+                      aria-label="More attempts"
+                      disabled={maxAttempts >= 99}
+                      onClick={() => setMaxAttempts((n) => Math.min(99, n + 1))}
+                    >
+                      +
+                    </button>
+                  </div>
+                ) : null}
+                <p className="event-create__hint">
+                  {attemptsSummary(maxAttempts, unlimitedAttempts, games.length)}. Best score
+                  counts per game.
+                </p>
+              </div>
+
+              <div className="event-create__rule">
+                <div className="event-create__rule-head">
+                  <span className="event-create__rule-title">Duration</span>
+                  <label className="event-create__toggle">
+                    <input
+                      type="checkbox"
+                      checked={unlimitedDuration}
+                      onChange={(e) => setUnlimitedDuration(e.target.checked)}
+                    />
+                    <span>No end</span>
+                  </label>
+                </div>
+                {!unlimitedDuration ? (
                   <select
-                    className="event-create__input"
+                    className="event-create__input event-create__input--duration"
                     value={durationHours}
-                    disabled={unlimitedDuration}
                     onChange={(e) => setDurationHours(Number(e.target.value))}
                   >
                     {DURATIONS.map((d) => (
@@ -215,15 +232,9 @@ export function CreateTournamentPage() {
                       </option>
                     ))}
                   </select>
-                </label>
-                <label className="event-create__unlimited">
-                  <input
-                    type="checkbox"
-                    checked={unlimitedDuration}
-                    onChange={(e) => setUnlimitedDuration(e.target.checked)}
-                  />
-                  <span>No end</span>
-                </label>
+                ) : (
+                  <p className="event-create__hint">This event stays open until you end it.</p>
+                )}
               </div>
             </section>
 
@@ -253,6 +264,7 @@ export function CreateTournamentPage() {
                 <ul className="event-create-preview__facts">
                   <li>{attemptsSummary(maxAttempts, unlimitedAttempts, games.length)}</li>
                   <li>{durationLabel}</li>
+                  {games.length > 1 ? <li>Place points scoring</li> : null}
                   <li>Private · invite only</li>
                 </ul>
               </div>

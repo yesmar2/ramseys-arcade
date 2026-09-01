@@ -58,7 +58,9 @@ export function formatRulesSummary(
   t: Pick<TournamentSummary, 'format' | 'rules' | 'games'>,
 ): string {
   if (t.format === 'place-points') {
-    return 'Place points across games — highest total wins.'
+    return t.games.length > 1
+      ? 'Place points across games — highest total wins.'
+      : 'Place points — highest total wins.'
   }
   const n = t.rules.maxAttempts
   const gameWord = t.games.length === 1 ? 'game' : 'games'
@@ -317,10 +319,16 @@ export function isPlayerInTournament(
 }
 
 export async function listTournaments(
-  source: 'all' | 'official' | 'mine' = 'all',
+  source: 'all' | 'official' | 'mine' | 'joined' = 'all',
+  playerName?: string,
 ): Promise<TournamentSummary[]> {
-  const qs = source === 'all' ? '' : `?source=${source}`
-  const data = await api<{ tournaments: TournamentSummary[] }>(`/tournaments${qs}`)
+  const params = new URLSearchParams()
+  if (source !== 'all') params.set('source', source)
+  if (source === 'joined' && playerName) params.set('playerName', playerName)
+  const qs = params.toString()
+  const data = await api<{ tournaments: TournamentSummary[] }>(
+    `/tournaments${qs ? `?${qs}` : ''}`,
+  )
   return data.tournaments ?? []
 }
 

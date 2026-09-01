@@ -219,15 +219,17 @@ function StandingCard({
 
 export function TournamentsPage() {
   const { account } = useAuth()
+  const playerName = usePlayerName()
   const [items, setItems] = useState<TournamentSummary[]>([])
-  const [filter, setFilter] = useState<'all' | 'official' | 'mine'>('all')
+  const [filter, setFilter] = useState<'all' | 'official' | 'joined' | 'mine'>('all')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
     setLoading(true)
-    listTournaments(filter)
+    const name = normalizePlayerName(playerName || getLastPlayerName())
+    listTournaments(filter, filter === 'joined' ? name || undefined : undefined)
       .then((list) => {
         if (!cancelled) setItems(list)
       })
@@ -240,7 +242,7 @@ export function TournamentsPage() {
     return () => {
       cancelled = true
     }
-  }, [filter])
+  }, [filter, playerName])
 
   const live = items.filter((t) => t.status !== 'ended')
   const ended = items.filter((t) => t.status === 'ended')
@@ -257,7 +259,8 @@ export function TournamentsPage() {
           ) : null}
         </div>
         <div className="event-list__filters" role="tablist" aria-label="Event filters">
-          {(['all', 'official', ...(account ? (['mine'] as const) : [])] as const).map((key) => (
+          {(['all', 'official', 'joined', ...(account ? (['mine'] as const) : [])] as const).map(
+            (key) => (
             <button
               key={key}
               type="button"
@@ -266,9 +269,16 @@ export function TournamentsPage() {
               className={`event-list__filter${filter === key ? ' event-list__filter--active' : ''}`}
               onClick={() => setFilter(key)}
             >
-              {key === 'all' ? 'All' : key === 'official' ? 'Official' : 'My events'}
+              {key === 'all'
+                ? 'All'
+                : key === 'official'
+                  ? 'Official'
+                  : key === 'joined'
+                    ? 'Joined'
+                    : 'Hosted'}
             </button>
-          ))}
+          ),
+          )}
         </div>
       </header>
 
@@ -278,7 +288,11 @@ export function TournamentsPage() {
         <p className="lb-empty">Couldn’t load events.</p>
       ) : items.length === 0 ? (
         <p className="lb-empty">
-          {filter === 'mine' ? 'You have no hosted events yet.' : 'No events yet.'}
+          {filter === 'mine'
+            ? 'You have no hosted events yet.'
+            : filter === 'joined'
+              ? 'You have not joined any private events yet.'
+              : 'No events yet.'}
         </p>
       ) : (
         <div className="event-list">
@@ -286,7 +300,14 @@ export function TournamentsPage() {
             <ul className="event-list__grid">
               {live.map((t) => (
                 <li key={t.id}>
-                  <EventCard t={t} />
+                  <EventCard
+                    t={t}
+                    href={
+                      t.private
+                        ? tournamentHref(t.id, getTournamentInvite(t.id) ?? undefined)
+                        : undefined
+                    }
+                  />
                 </li>
               ))}
             </ul>
@@ -298,7 +319,14 @@ export function TournamentsPage() {
               <ul className="event-list__grid">
                 {ended.map((t) => (
                   <li key={t.id}>
-                    <EventCard t={t} />
+                    <EventCard
+                      t={t}
+                      href={
+                        t.private
+                          ? tournamentHref(t.id, getTournamentInvite(t.id) ?? undefined)
+                          : undefined
+                      }
+                    />
                   </li>
                 ))}
               </ul>
@@ -566,8 +594,10 @@ export function TournamentDetailPage({ id, invite }: { id: string; invite?: stri
               t={detail}
               joined={joined && detail.status !== 'ended'}
             />
-            <p className="event-detail__blurb">{detail.blurb}</p>
             <p className="event-detail__rules">{formatRulesSummary(detail)}</p>
+            {!detail.private && detail.blurb ? (
+              <p className="event-detail__blurb">{detail.blurb}</p>
+            ) : null}
             {detail.private ? (
               <p className="event-detail__rules">Private · invite only</p>
             ) : null}

@@ -3,10 +3,22 @@ import { usePlayerName } from '../hooks/usePlayerName'
 import { ApiError, getLastPlayerName, normalizePlayerName, PLAYER_NAME_MAX, rememberPlayerName } from '../lib/leaderboard'
 import {
   getTournament,
+  getTournamentInvite,
   joinTournament,
   submitTournamentScore,
   type TournamentDetail,
 } from '../lib/tournaments'
+
+function attemptsLeftLabel(
+  remaining: number | null,
+  max: number | null,
+  exhausted: boolean,
+): string | null {
+  if (max == null) return 'Unlimited attempts remaining'
+  if (exhausted || remaining === 0) return 'No attempts remaining'
+  const left = remaining ?? max
+  return `${left} of ${max} attempt${max === 1 ? '' : 's'} left`
+}
 
 type TournamentScoreCardProps = {
   tournamentId: string
@@ -64,8 +76,20 @@ export function TournamentScoreCard({
         setImproved(false)
         setBest(0)
         try {
-          const d = await getTournament(tournamentId)
-          if (!cancelled) setDetail(d)
+          const d = await getTournament(tournamentId, {
+            playerName: name,
+            game: gameSlug,
+            invite: getTournamentInvite(tournamentId) ?? undefined,
+          })
+          if (!cancelled) {
+            setDetail(d)
+            const status = d.playerStatus
+            if (status) {
+              setAttemptsRemaining(status.attemptsRemaining)
+              setMaxAttempts(status.maxAttempts)
+              setExhausted(!status.canPlay)
+            }
+          }
         } catch {
           /* ignore */
         }
@@ -82,9 +106,15 @@ export function TournamentScoreCard({
         setAttemptsRemaining(result.attemptsRemaining)
         setMaxAttempts(result.maxAttempts)
         setExhausted(result.attemptsRemaining === 0)
-        const d = await getTournament(tournamentId, { playerName: name, game: gameSlug })
-        if (cancelled) return
-        setDetail(d)
+        const d =
+          result.attemptsRemaining != null || result.maxAttempts != null
+            ? await getTournament(tournamentId, {
+                playerName: name,
+                game: gameSlug,
+                invite: getTournamentInvite(tournamentId) ?? undefined,
+              }).catch(() => null)
+            : null
+        if (!cancelled) setDetail(d)
         setStatus('done')
       } catch (err) {
         if (cancelled) return
@@ -97,6 +127,11 @@ export function TournamentScoreCard({
           setNameDraft('')
           setStatus('needName')
           setError('That gamer tag is taken. Sign in or pick another.')
+          return
+        }
+        if (code === 'INVITE_REQUIRED') {
+          setStatus('error')
+          setError('Could not submit — reopen the event from your invite link.')
           return
         }
         if (code === 'ATTEMPTS_EXHAUSTED') {
@@ -133,7 +168,9 @@ export function TournamentScoreCard({
     }
   }
 
-  const standing = detail?.standings.find((s) => s.name === name)
+  const standing = detail?.standings.find(
+    (s) => normalizePlayerName(s.name) === normalizePlayerName(name),
+  )
   const gameCell = standing?.byGame[gameSlug]
   const overallPlace =
     detail && standing
@@ -212,13 +249,10 @@ export function TournamentScoreCard({
                 ? `New best · ${best}`
                 : `Best still ${best}`}
           </p>
-          {maxAttempts != null && (
-            <p className="score-save__note">
-              {exhausted
-                ? 'No attempts remaining.'
-                : `${attemptsRemaining ?? maxAttempts} of ${maxAttempts} attempts left.`}
-            </p>
-          )}
+          {(() => {
+            const label = attemptsLeftLabel(attemptsRemaining, maxAttempts, exhausted)
+            return label ? <p className="score-save__note">{label}</p> : null
+          })()}
           {(gameCell?.place != null || overallPlace != null) && (
             <ul className="score-save__ranks" aria-label="Tournament standing">
               {gameCell?.place != null && (
