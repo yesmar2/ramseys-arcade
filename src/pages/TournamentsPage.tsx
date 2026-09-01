@@ -602,9 +602,6 @@ export function TournamentDetailPage({ id, invite }: { id: string; invite?: stri
             {!detail.private && detail.blurb ? (
               <p className="event-detail__blurb">{detail.blurb}</p>
             ) : null}
-            {detail.private ? (
-              <p className="event-detail__rules">Private · invite only</p>
-            ) : null}
             {detail.isHost && detail.inviteCode ? (
               <div className="event-invite-panel">
                 <button

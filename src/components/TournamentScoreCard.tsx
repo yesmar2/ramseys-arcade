@@ -14,8 +14,8 @@ function attemptsLeftLabel(
   max: number | null,
   exhausted: boolean,
 ): string | null {
-  if (max == null) return 'Unlimited attempts remaining'
   if (exhausted || remaining === 0) return 'No attempts remaining'
+  if (max == null) return 'Unlimited attempts remaining'
   const left = remaining ?? max
   return `${left} of ${max} attempt${max === 1 ? '' : 's'} left`
 }
@@ -106,16 +106,21 @@ export function TournamentScoreCard({
         setAttemptsRemaining(result.attemptsRemaining)
         setMaxAttempts(result.maxAttempts)
         setExhausted(result.attemptsRemaining === 0)
-        const d =
-          result.attemptsRemaining != null || result.maxAttempts != null
-            ? await getTournament(tournamentId, {
-                playerName: name,
-                game: gameSlug,
-                invite: getTournamentInvite(tournamentId) ?? undefined,
-              }).catch(() => null)
-            : null
-        if (!cancelled) setDetail(d)
-        setStatus('done')
+        const d = await getTournament(tournamentId, {
+          playerName: name,
+          game: gameSlug,
+          invite: getTournamentInvite(tournamentId) ?? undefined,
+        }).catch(() => null)
+        if (!cancelled && d) {
+          setDetail(d)
+          const playerStatus = d.playerStatus
+          if (playerStatus) {
+            setAttemptsRemaining(playerStatus.attemptsRemaining)
+            setMaxAttempts(playerStatus.maxAttempts)
+            setExhausted(!playerStatus.canPlay)
+          }
+        }
+        if (!cancelled) setStatus('done')
       } catch (err) {
         if (cancelled) return
         const code =
@@ -137,6 +142,7 @@ export function TournamentScoreCard({
         if (code === 'ATTEMPTS_EXHAUSTED') {
           setExhausted(true)
           setAttemptsRemaining(0)
+          setMaxAttempts((prev) => prev ?? 1)
           setStatus('done')
           setError(null)
           return
