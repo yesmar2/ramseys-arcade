@@ -8687,6 +8687,10 @@ html[data-theme='dark'] .patriot__power-mark {
   font-weight: 700;
 }
 
+.event-detail__board .event-detail__section-title {
+  margin-bottom: 0.85rem;
+}
+
 .event-play-grid {
   list-style: none;
   margin: 0;

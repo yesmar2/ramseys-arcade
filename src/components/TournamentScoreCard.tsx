@@ -32,6 +32,77 @@ function cleanName(raw: string) {
   return normalizePlayerName(raw)
 }
 
+type SubmitSnapshot = {
+  improved: boolean
+  best: number
+  attemptsRemaining: number | null
+  maxAttempts: number | null
+  exhausted: boolean
+  detail: TournamentDetail | null
+}
+
+const recentScoreSubmits = new Map<string, { at: number; promise: Promise<SubmitSnapshot> }>()
+
+function submitCacheKey(tournamentId: string, gameSlug: string, name: string, score: number) {
+  return `${tournamentId}|${gameSlug}|${name}|${score}`
+}
+
+async function submitTournamentRun(
+  tournamentId: string,
+  gameSlug: string,
+  name: string,
+  score: number,
+): Promise<SubmitSnapshot> {
+  if (score <= 0) {
+    const d = await getTournament(tournamentId, {
+      playerName: name,
+      game: gameSlug,
+      invite: getTournamentInvite(tournamentId) ?? undefined,
+    })
+    const status = d.playerStatus
+    return {
+      improved: false,
+      best: 0,
+      attemptsRemaining: status?.attemptsRemaining ?? null,
+      maxAttempts: status?.maxAttempts ?? null,
+      exhausted: status ? !status.canPlay : false,
+      detail: d,
+    }
+  }
+
+  const key = submitCacheKey(tournamentId, gameSlug, name, score)
+  const cached = recentScoreSubmits.get(key)
+  if (cached && Date.now() - cached.at < 8000) {
+    return cached.promise
+  }
+
+  const promise = (async (): Promise<SubmitSnapshot> => {
+    await joinTournament(tournamentId, name)
+    const result = await submitTournamentScore(tournamentId, name, gameSlug, score)
+    const d = await getTournament(tournamentId, {
+      playerName: name,
+      game: gameSlug,
+      invite: getTournamentInvite(tournamentId) ?? undefined,
+    }).catch(() => null)
+    const playerStatus = d?.playerStatus
+    const attemptsRemaining = playerStatus?.attemptsRemaining ?? result.attemptsRemaining
+    const maxAttempts = playerStatus?.maxAttempts ?? result.maxAttempts
+    const exhausted =
+      playerStatus != null ? !playerStatus.canPlay : result.attemptsRemaining === 0
+    return {
+      improved: result.improved,
+      best: result.best,
+      attemptsRemaining,
+      maxAttempts,
+      exhausted,
+      detail: d,
+    }
+  })()
+
+  recentScoreSubmits.set(key, { at: Date.now(), promise })
+  return promise
+}
+
 export function TournamentScoreCard({
   tournamentId,
   gameSlug,
@@ -72,55 +143,16 @@ export function TournamentScoreCard({
       setStatus('saving')
       setError(null)
 
-      if (score <= 0) {
-        setImproved(false)
-        setBest(0)
-        try {
-          const d = await getTournament(tournamentId, {
-            playerName: name,
-            game: gameSlug,
-            invite: getTournamentInvite(tournamentId) ?? undefined,
-          })
-          if (!cancelled) {
-            setDetail(d)
-            const status = d.playerStatus
-            if (status) {
-              setAttemptsRemaining(status.attemptsRemaining)
-              setMaxAttempts(status.maxAttempts)
-              setExhausted(!status.canPlay)
-            }
-          }
-        } catch {
-          /* ignore */
-        }
-        if (!cancelled) setStatus('done')
-        return
-      }
-
       try {
-        await joinTournament(tournamentId, name)
-        const result = await submitTournamentScore(tournamentId, name, gameSlug, score)
+        const snapshot = await submitTournamentRun(tournamentId, gameSlug, name, score)
         if (cancelled) return
-        setImproved(result.improved)
-        setBest(result.best)
-        setAttemptsRemaining(result.attemptsRemaining)
-        setMaxAttempts(result.maxAttempts)
-        setExhausted(result.attemptsRemaining === 0)
-        const d = await getTournament(tournamentId, {
-          playerName: name,
-          game: gameSlug,
-          invite: getTournamentInvite(tournamentId) ?? undefined,
-        }).catch(() => null)
-        if (!cancelled && d) {
-          setDetail(d)
-          const playerStatus = d.playerStatus
-          if (playerStatus) {
-            setAttemptsRemaining(playerStatus.attemptsRemaining)
-            setMaxAttempts(playerStatus.maxAttempts)
-            setExhausted(!playerStatus.canPlay)
-          }
-        }
-        if (!cancelled) setStatus('done')
+        setImproved(snapshot.improved)
+        setBest(snapshot.best)
+        setAttemptsRemaining(snapshot.attemptsRemaining)
+        setMaxAttempts(snapshot.maxAttempts)
+        setExhausted(snapshot.exhausted)
+        setDetail(snapshot.detail)
+        setStatus('done')
       } catch (err) {
         if (cancelled) return
         const code =
@@ -295,9 +327,11 @@ export function TournamentScoreCard({
         </>
       )}
 
-      <div className="score-save__links">
-        <a href={`#/tournaments/${tournamentId}`}>Standings</a>
-      </div>
+      {!exhausted ? (
+        <div className="score-save__links">
+          <a href={`#/tournaments/${tournamentId}`}>Standings</a>
+        </div>
+      ) : null}
     </div>
   )
 }

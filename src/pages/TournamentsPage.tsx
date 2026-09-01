@@ -456,10 +456,6 @@ export function TournamentDetailPage({ id, invite }: { id: string; invite?: stri
 
   const accent = detail ? eventAccent(detail.games) : '#2eb8a0'
   const featured = detail?.games[0] ? getGame(detail.games[0]) : null
-  const scoredCount =
-    detail && detail.games.length === 1
-      ? detail.standings.filter((row) => row.byGame[detail.games[0]!]?.score != null).length
-      : (detail?.standings.length ?? 0)
 
   const inviteLink =
     detail?.inviteCode != null
@@ -602,7 +598,7 @@ export function TournamentDetailPage({ id, invite }: { id: string; invite?: stri
             {!detail.private && detail.blurb ? (
               <p className="event-detail__blurb">{detail.blurb}</p>
             ) : null}
-            {detail.isHost && detail.inviteCode ? (
+            {detail.isHost && detail.inviteCode && detail.status !== 'ended' ? (
               <div className="event-invite-panel">
                 <button
                   type="button"
@@ -706,14 +702,9 @@ export function TournamentDetailPage({ id, invite }: { id: string; invite?: stri
           </section>
 
           <section className="lb-board event-detail__board" aria-label="Standings">
-            <div className="lb-board__head">
-              <div className="lb-stat">
-                <span className="lb-stat__label">
-                  {detail.games.length === 1 ? 'Top scores' : 'Standings'}
-                </span>
-                <strong>{scoredCount}</strong>
-              </div>
-            </div>
+            <h2 className="event-detail__section-title">
+              {detail.games.length === 1 ? 'Top scores' : 'Standings'}
+            </h2>
 
             {detail.standings.length === 0 ? (
               <p className="lb-empty">No players yet.</p>
