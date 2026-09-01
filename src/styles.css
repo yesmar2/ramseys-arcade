@@ -10088,3 +10088,117 @@ html[data-theme='dark'] .patriot__power-mark {
   font-weight: 600;
   color: rgba(var(--ink-rgb), 0.72);
 }
+
+/* Arcade venue restyle: intentionally scoped to existing class names so behavior stays unchanged. */
+:root {
+  --bg: #07111f;
+  --bg-mid: #0b1b2d;
+  --bg-gold: #10243a;
+  --blob-sky: #123b57;
+  --blob-mint: #103d46;
+  --blob-gold: #463518;
+  --surface: #10243a;
+  --surface-rgb: 16, 36, 58;
+  --playfield: #081522;
+  --ink: #f4f7fb;
+  --ink-rgb: 244, 247, 251;
+  --shade-rgb: 0, 0, 0;
+  --muted: #9bb0c3;
+  --accent: #20e0d0;
+  --accent-2: #ffd166;
+  --accent-sky: #4db8ff;
+  --dot: rgba(77, 184, 255, 0.2);
+  --tile-radius: 0.6rem;
+  --gap: 0.9rem;
+  --shadow-soft: 0 8px 0 rgba(0, 0, 0, 0.22), 0 12px 28px rgba(0, 0, 0, 0.25);
+  --shadow-lift: 0 10px 0 rgba(0, 0, 0, 0.28), 0 20px 38px rgba(0, 0, 0, 0.3);
+  --shell: #091827;
+  color-scheme: dark;
+}
+
+html[data-theme="dark"] {
+  --bg: #07111f;
+  --bg-mid: #0b1b2d;
+  --bg-gold: #10243a;
+  --blob-sky: #123b57;
+  --blob-mint: #103d46;
+  --blob-gold: #463518;
+  --surface: #10243a;
+  --surface-rgb: 16, 36, 58;
+  --playfield: #081522;
+  --ink: #f4f7fb;
+  --ink-rgb: 244, 247, 251;
+  --muted: #9bb0c3;
+  --dot: rgba(77, 184, 255, 0.2);
+  --shell: #091827;
+}
+
+body {
+  background: linear-gradient(135deg, var(--bg) 0%, var(--bg-mid) 55%, var(--bg-gold) 100%);
+  font-family: var(--font-body);
+}
+
+body::before { opacity: 0.5; background-size: 22px 22px; }
+
+.site-header {
+  width: min(100% - 1.25rem, var(--max-width));
+  min-height: 4.5rem;
+  margin: 0 auto;
+  padding: 0.7rem 0.9rem;
+  border: 1px solid rgba(var(--ink-rgb), 0.12);
+  border-bottom: 3px solid var(--accent);
+  border-radius: 0 0 0.6rem 0.6rem;
+  background: rgba(7, 17, 31, 0.92);
+  box-shadow: 0 8px 0 rgba(0, 0, 0, 0.2);
+}
+
+.site-header__brand { font-family: var(--font-display); font-weight: 900; letter-spacing: -0.08em; text-transform: uppercase; color: var(--ink); }
+.site-header__brand span { color: var(--accent); }
+.site-header__link, .site-header__you { font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; }
+.site-header__link--active, .site-header__you--active { color: var(--accent); }
+
+.home-stage { gap: 1.25rem; padding-top: 0.75rem; }
+.home-rail { gap: 1rem; }
+.home-events, .home-spotter, .games, .home-about { position: relative; }
+.home-events::before, .home-spotter::before, .games::before, .home-about::before {
+  display: block;
+  margin-bottom: 0.55rem;
+  color: var(--accent-2);
+  font-family: var(--font-display);
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+.home-events::before { content: "Live challenges"; }
+.home-spotter::before { content: "Daily mission"; }
+.games::before { content: "Select your game"; }
+.home-about::before { content: "Player briefing"; }
+
+.event-card, .home-spotter__card, .home-about__highlight {
+  border: 1px solid rgba(var(--ink-rgb), 0.16);
+  border-radius: var(--tile-radius);
+  background: rgba(var(--surface-rgb), 0.9);
+  box-shadow: var(--shadow-soft);
+}
+.event-card:hover, .home-spotter__card:hover { border-color: var(--accent); box-shadow: var(--shadow-lift); }
+.home-spotter__card { border-left: 4px solid var(--accent-2); }
+.home-about { border-top: 2px solid rgba(var(--accent), 0.5); }
+.home-about__highlight { border-top: 3px solid var(--accent-sky); }
+
+.game-grid { gap: 0.85rem; }
+.game-tile {
+  border: 2px solid rgba(var(--ink-rgb), 0.15);
+  border-radius: var(--tile-radius);
+  background: var(--surface);
+  box-shadow: var(--shadow-soft);
+}
+.game-tile::after { content: "PLAY"; position: absolute; right: 0.55rem; top: 0.55rem; padding: 0.18rem 0.35rem; border-radius: 0.2rem; background: var(--accent); color: var(--playfield); font-size: 0.58rem; font-weight: 900; letter-spacing: 0.12em; opacity: 0; transform: translateY(-0.25rem); transition: opacity 0.2s ease, transform 0.2s ease; }
+.game-tile:hover, .game-tile:focus-visible { transform: translateY(-0.3rem) rotate(-0.6deg); border-color: var(--accent); box-shadow: var(--shadow-lift); }
+.game-tile:hover::after, .game-tile:focus-visible::after { opacity: 1; transform: translateY(0); }
+.game-tile__title { font-family: var(--font-display); font-weight: 900; letter-spacing: -0.02em; }
+
+@media (max-width: 639px) {
+  .site-header { width: calc(100% - 1rem); }
+  .home-rail { width: min(100% - 1rem, var(--max-width)); }
+}
