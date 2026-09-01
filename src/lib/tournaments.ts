@@ -52,15 +52,24 @@ export const FORMAT_LABELS: Record<TournamentFormat, string> = {
   cumulative: 'Total score',
 }
 
-export function formatRulesSummary(t: Pick<TournamentSummary, 'format' | 'rules'>): string {
-  if (t.format === 'single-run') return 'One run only — your first score counts.'
-  if (t.format === 'attempt-limited') {
-    const n = t.rules.maxAttempts ?? 3
-    return `${n} attempts — best score wins.`
+export function formatRulesSummary(
+  t: Pick<TournamentSummary, 'format' | 'rules' | 'games'>,
+): string {
+  if (t.format === 'place-points') {
+    return 'Place points across games — highest total wins.'
   }
-  if (t.format === 'cumulative') return 'Every run adds up — highest total wins.'
-  if (t.format === 'place-points') return 'Place points across games — highest total wins.'
-  return 'Unlimited runs — best score wins.'
+  const n = t.rules.maxAttempts
+  const gameWord = t.games.length === 1 ? 'game' : 'games'
+  if (t.format === 'open' || n === 0) {
+    return `Unlimited attempts per ${gameWord} — best score wins.`
+  }
+  if (t.format === 'single-run' || n === 1) {
+    return `1 attempt per ${gameWord} — best score wins.`
+  }
+  if (n) {
+    return `${n} attempts per ${gameWord} — best score wins.`
+  }
+  return 'Best score wins.'
 }
 
 /** Human countdown until endsAt (or "Ended"). */
@@ -113,9 +122,9 @@ export type TournamentDetail = TournamentSummary & {
 export type CreateTournamentInput = {
   title: string
   blurb?: string
-  game: EventGame
-  format: Exclude<TournamentFormat, 'place-points'>
-  maxAttempts?: number
+  games: EventGame[]
+  /** 0 = unlimited attempts per game */
+  maxAttempts: number
   durationHours: number
 }
 

@@ -1,4 +1,5 @@
-import { useState, type CSSProperties, type FormEvent } from 'react'
+import { useMemo, useState, type CSSProperties, type FormEvent } from 'react'
+import { EventThumbs } from '../components/EventCard'
 import { GameThumbArt } from '../components/GameThumbArt'
 import { PageBackLink } from '../components/PageBackLink'
 import { PageShell } from '../components/PageShell'
@@ -7,10 +8,8 @@ import { useAuth } from '../hooks/useAuth'
 import {
   createTournament,
   EVENT_GAMES,
-  FORMAT_LABELS,
   type CreateTournamentInput,
   type EventGame,
-  type TournamentFormat,
 } from '../lib/tournaments'
 
 const DURATIONS = [
@@ -21,36 +20,54 @@ const DURATIONS = [
   { hours: 168, label: '7 days' },
 ] as const
 
-const COMMUNITY_FORMATS = ['open', 'attempt-limited', 'single-run', 'cumulative'] as const
-type CommunityFormat = (typeof COMMUNITY_FORMATS)[number]
+function attemptsSummary(maxAttempts: number, unlimited: boolean, gameCount: number) {
+  const gameWord = gameCount === 1 ? 'game' : 'games'
+  if (unlimited) return `Unlimited attempts per ${gameWord}`
+  if (maxAttempts === 1) return `1 attempt per ${gameWord}`
+  return `${maxAttempts} attempts per ${gameWord}`
+}
 
 export function CreateTournamentPage() {
   const { account, loading: authLoading } = useAuth()
   const [title, setTitle] = useState('')
   const [blurb, setBlurb] = useState('')
-  const [game, setGame] = useState<EventGame>('stacker')
-  const [format, setFormat] = useState<CommunityFormat>('open')
+  const [games, setGames] = useState<EventGame[]>(['stacker'])
   const [maxAttempts, setMaxAttempts] = useState(3)
+  const [unlimited, setUnlimited] = useState(false)
   const [durationHours, setDurationHours] = useState(24)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const selectedGame = getGame(game)
-  const accent = selectedGame?.accent ?? '#2eb8a0'
+  const accent = useMemo(() => {
+    const first = getGame(games[0] ?? '')
+    return first?.accent ?? '#2eb8a0'
+  }, [games])
+
+  const durationLabel = DURATIONS.find((d) => d.hours === durationHours)?.label ?? '24 hours'
+
+  const toggleGame = (slug: EventGame) => {
+    setGames((prev) => {
+      if (prev.includes(slug)) {
+        if (prev.length === 1) return prev
+        return prev.filter((g) => g !== slug)
+      }
+      if (prev.length >= 5) return prev
+      return [...prev, slug]
+    })
+  }
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault()
-    if (busy || !account) return
+    if (busy || !account || games.length === 0) return
     setBusy(true)
     setError(null)
     try {
       const input: CreateTournamentInput = {
         title: title.trim(),
         blurb: blurb.trim() || undefined,
-        game,
-        format: format as Exclude<TournamentFormat, 'place-points'>,
+        games,
+        maxAttempts: unlimited ? 0 : maxAttempts,
         durationHours,
-        ...(format === 'attempt-limited' ? { maxAttempts } : {}),
       }
       const created = await createTournament(input)
       window.location.hash = `#/tournaments/${created.id}`
@@ -80,120 +97,148 @@ export function CreateTournamentPage() {
           </a>
         </div>
       ) : (
-        <form
-          className="event-create"
+        <div
+          className="event-create-layout"
           style={{ '--event-accent': accent } as CSSProperties}
-          onSubmit={(e) => void onSubmit(e)}
         >
-          <p className="event-create__intro">
-            Pick a game, format, and duration. Your event goes live immediately.
-          </p>
+          <form className="event-create" onSubmit={(e) => void onSubmit(e)}>
+            <section className="event-create__card">
+              <h2 className="event-create__section-title">Details</h2>
+              <label className="event-create__field">
+                <span className="event-create__label">Title</span>
+                <input
+                  className="event-create__input"
+                  value={title}
+                  maxLength={60}
+                  placeholder="Friday Night Arcade"
+                  required
+                  onChange={(e) => setTitle(e.target.value)}
+                />
+              </label>
 
-          <label className="score-save__field">
-            <span className="score-save__label">Title</span>
-            <input
-              className="score-save__input"
-              value={title}
-              maxLength={60}
-              placeholder="Friday Night Stacker"
-              required
-              onChange={(e) => setTitle(e.target.value)}
-            />
-          </label>
+              <label className="event-create__field">
+                <span className="event-create__label">Description (optional)</span>
+                <textarea
+                  className="event-create__input event-create__textarea"
+                  value={blurb}
+                  maxLength={280}
+                  rows={3}
+                  placeholder="Friends-only sprint — best scores win."
+                  onChange={(e) => setBlurb(e.target.value)}
+                />
+              </label>
+            </section>
 
-          <label className="score-save__field">
-            <span className="score-save__label">Description (optional)</span>
-            <textarea
-              className="score-save__input event-create__textarea"
-              value={blurb}
-              maxLength={280}
-              rows={3}
-              placeholder="Friends-only sprint — best of three attempts."
-              onChange={(e) => setBlurb(e.target.value)}
-            />
-          </label>
+            <section className="event-create__card">
+              <div className="event-create__section-head">
+                <h2 className="event-create__section-title">Games</h2>
+                <span className="event-create__count">{games.length} / 5 selected</span>
+              </div>
+              <p className="event-create__hint">Pick one or more games for this event.</p>
+              <div className="event-create__game-grid">
+                {EVENT_GAMES.map((slug) => {
+                  const g = getGame(slug)
+                  const picked = games.includes(slug)
+                  const atCap = games.length >= 5 && !picked
+                  return (
+                    <button
+                      key={slug}
+                      type="button"
+                      className={`event-create__game${picked ? ' event-create__game--picked' : ''}${atCap ? ' event-create__game--disabled' : ''}`}
+                      style={{ '--game-accent': g?.accent ?? accent } as CSSProperties}
+                      aria-pressed={picked}
+                      disabled={atCap}
+                      onClick={() => toggleGame(slug)}
+                    >
+                      <span className="event-create__game-art">
+                        <GameThumbArt slug={slug} accent={g?.accent} />
+                      </span>
+                      <span className="event-create__game-name">{g?.name ?? slug}</span>
+                      {picked ? <span className="event-create__game-check" aria-hidden="true">✓</span> : null}
+                    </button>
+                  )
+                })}
+              </div>
+            </section>
 
-          <fieldset className="event-create__fieldset">
-            <legend className="score-save__label">Game</legend>
-            <div className="event-create__game-grid">
-              {EVENT_GAMES.map((slug) => {
-                const g = getGame(slug)
-                const picked = slug === game
-                return (
-                  <button
-                    key={slug}
-                    type="button"
-                    className={`event-create__game${picked ? ' event-create__game--picked' : ''}`}
-                    style={{ '--event-accent': g?.accent ?? accent } as CSSProperties}
-                    aria-pressed={picked}
-                    onClick={() => setGame(slug)}
-                  >
-                    <GameThumbArt slug={slug} accent={g?.accent} />
-                    <span>{g?.name ?? slug}</span>
-                  </button>
-                )
-              })}
-            </div>
-          </fieldset>
-
-          <fieldset className="event-create__fieldset">
-            <legend className="score-save__label">Format</legend>
-            <div className="event-create__format-list">
-              {COMMUNITY_FORMATS.map((f) => (
-                <label key={f} className="event-create__format">
+            <section className="event-create__card">
+              <h2 className="event-create__section-title">Rules</h2>
+              <div className="event-create__rules-row">
+                <label className="event-create__field event-create__field--attempts">
+                  <span className="event-create__label">Attempts per game</span>
                   <input
-                    type="radio"
-                    name="format"
-                    value={f}
-                    checked={format === f}
-                    onChange={() => setFormat(f)}
+                    className="event-create__input event-create__input--number"
+                    type="number"
+                    min={1}
+                    max={99}
+                    value={maxAttempts}
+                    disabled={unlimited}
+                    onChange={(e) =>
+                      setMaxAttempts(Math.max(1, Math.min(99, Number(e.target.value) || 1)))
+                    }
                   />
-                  <span className="event-create__format-label">{FORMAT_LABELS[f]}</span>
                 </label>
-              ))}
-            </div>
-          </fieldset>
+                <label className="event-create__unlimited">
+                  <input
+                    type="checkbox"
+                    checked={unlimited}
+                    onChange={(e) => setUnlimited(e.target.checked)}
+                  />
+                  <span>Unlimited</span>
+                </label>
+              </div>
+              <p className="event-create__hint">
+                {attemptsSummary(maxAttempts, unlimited, games.length)}. Best score counts.
+              </p>
 
-          {format === 'attempt-limited' && (
-            <label className="score-save__field">
-              <span className="score-save__label">Max attempts</span>
-              <input
-                className="score-save__input event-create__attempts"
-                type="number"
-                min={2}
-                max={20}
-                value={maxAttempts}
-                onChange={(e) => setMaxAttempts(Number(e.target.value) || 3)}
-              />
-            </label>
-          )}
+              <label className="event-create__field">
+                <span className="event-create__label">Duration</span>
+                <select
+                  className="event-create__input"
+                  value={durationHours}
+                  onChange={(e) => setDurationHours(Number(e.target.value))}
+                >
+                  {DURATIONS.map((d) => (
+                    <option key={d.hours} value={d.hours}>
+                      {d.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </section>
 
-          <label className="score-save__field">
-            <span className="score-save__label">Duration</span>
-            <select
-              className="score-save__input"
-              value={durationHours}
-              onChange={(e) => setDurationHours(Number(e.target.value))}
+            {error ? <p className="event-create__error">{error}</p> : null}
+
+            <button
+              type="submit"
+              className="lb-play event-create__submit"
+              style={{ background: accent }}
+              disabled={busy || title.trim().length < 3 || games.length === 0}
             >
-              {DURATIONS.map((d) => (
-                <option key={d.hours} value={d.hours}>
-                  {d.label}
-                </option>
-              ))}
-            </select>
-          </label>
+              {busy ? 'Creating…' : 'Create event'}
+            </button>
+          </form>
 
-          {error ? <p className="score-save__note score-save__note--error">{error}</p> : null}
-
-          <button
-            type="submit"
-            className="lb-play event-create__submit"
-            style={{ background: accent }}
-            disabled={busy || title.trim().length < 3}
-          >
-            {busy ? 'Creating…' : 'Create event'}
-          </button>
-        </form>
+          <aside className="event-create-preview" aria-label="Preview">
+            <p className="event-create-preview__eyebrow">Preview</p>
+            <div className="event-create-preview__card">
+              <EventThumbs games={games} size="lg" />
+              <div className="event-create-preview__body">
+                <h3 className="event-create-preview__title">
+                  {title.trim() || 'Your event title'}
+                </h3>
+                <p className="event-create-preview__meta">
+                  {games.map((slug) => getGame(slug)?.name ?? slug).join(' · ')}
+                </p>
+                <ul className="event-create-preview__facts">
+                  <li>{attemptsSummary(maxAttempts, unlimited, games.length)}</li>
+                  <li>{durationLabel}</li>
+                  <li>Starts immediately</li>
+                </ul>
+              </div>
+            </div>
+          </aside>
+        </div>
       )}
     </PageShell>
   )

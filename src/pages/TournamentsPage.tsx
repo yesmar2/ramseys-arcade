@@ -49,10 +49,22 @@ function formatWindow(startsAt: number, endsAt: number) {
 
 function GameResultCell({
   cell,
+  usePoints,
 }: {
   cell: { score: number | null; place: number | null; points: number } | undefined
+  usePoints: boolean
 }) {
-  if (cell?.place == null) {
+  if (cell?.score == null) {
+    return <span className="tour-game-result tour-game-result--empty">—</span>
+  }
+  if (!usePoints) {
+    return (
+      <span className="tour-game-result">
+        <span className="tour-game-result__score">{cell.score.toLocaleString()}</span>
+      </span>
+    )
+  }
+  if (cell.place == null) {
     return <span className="tour-game-result tour-game-result--empty">—</span>
   }
   return (
@@ -75,6 +87,7 @@ function StandingsList({
   detail: TournamentDetail
   displayName: string
 }) {
+  const usePoints = detail.format === 'place-points'
   if (detail.games.length === 1) {
     return <SingleGameStandings detail={detail} displayName={displayName} />
   }
@@ -88,6 +101,7 @@ function StandingsList({
           rank={index + 1}
           games={detail.games}
           mine={normalizePlayerName(row.name) === displayName}
+          usePoints={usePoints}
         />
       ))}
     </ul>
@@ -164,13 +178,16 @@ function StandingCard({
   rank,
   games,
   mine,
+  usePoints,
 }: {
   row: StandingRow
   rank: number
   games: string[]
   mine: boolean
+  usePoints: boolean
 }) {
   const name = normalizePlayerName(row.name)
+  const totalScore = games.reduce((sum, game) => sum + (row.byGame[game]?.score ?? 0), 0)
   return (
     <li className={`tour-standing${mine ? ' tour-standing--you' : ''}`}>
       <details className="tour-standing__details">
@@ -184,8 +201,8 @@ function StandingCard({
             {mine ? <span className="tour-you-tag">you</span> : null}
           </div>
           <span className="tour-standing__total">
-            {row.totalPoints}
-            <span className="tour-standing__total-label">pts</span>
+            {usePoints ? row.totalPoints : totalScore.toLocaleString()}
+            <span className="tour-standing__total-label">{usePoints ? 'pts' : 'total'}</span>
           </span>
         </summary>
         <ul className="tour-standing__games">
@@ -199,7 +216,7 @@ function StandingCard({
                   <GameThumbArt slug={game} accent={accent} />
                   <span className="tour-standing__game-name">{label}</span>
                 </span>
-                <GameResultCell cell={cell} />
+                <GameResultCell cell={cell} usePoints={usePoints} />
               </li>
             )
           })}
