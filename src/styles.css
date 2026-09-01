@@ -9181,7 +9181,8 @@ html[data-theme='dark'] .patriot__power-mark {
 }
 
 .event-create__submit {
-  align-self: flex-start;
+  align-self: stretch;
+  width: 100%;
   margin-top: 0.15rem;
 }
 
@@ -9267,32 +9268,15 @@ html[data-theme='dark'] .patriot__power-mark {
 
 .event-invite-panel {
   display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 0.75rem 1rem;
-  padding: 0.9rem 1rem;
-  border-radius: 0.85rem;
-  border: 1px dashed color-mix(in srgb, var(--event-accent) 35%, transparent);
-  background: color-mix(in srgb, var(--event-accent) 8%, var(--surface));
+  justify-content: flex-start;
+  padding: 0;
+  border: 0;
+  background: transparent;
 }
 
-.event-invite-panel__copy {
-  min-width: 0;
-  flex: 1 1 14rem;
-}
-
-.event-invite-panel__code {
-  margin: 0.25rem 0 0;
-  font-size: 0.92rem;
-  font-weight: 700;
-}
-
-.event-invite-panel__url {
-  margin: 0.35rem 0 0;
-  font-size: 0.78rem;
-  color: var(--muted);
-  word-break: break-all;
+.event-invite-panel__btn {
+  flex: 0 1 auto;
+  min-width: 12rem;
 }
 
 .tour-note {

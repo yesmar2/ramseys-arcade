@@ -6,25 +6,33 @@ import {
   type Account,
 } from '../lib/auth'
 
+let cachedAccount: Account | null = null
+
 export function useAuth() {
-  const [account, setAccount] = useState<Account | null>(null)
-  const [loading, setLoading] = useState(() => Boolean(getSessionToken()))
+  const [account, setAccount] = useState<Account | null>(() => cachedAccount)
+  const [loading, setLoading] = useState(
+    () => Boolean(getSessionToken()) && !cachedAccount,
+  )
 
   useEffect(() => {
     let cancelled = false
     const sync = async () => {
       if (!getSessionToken()) {
+        cachedAccount = null
         if (!cancelled) {
           setAccount(null)
           setLoading(false)
         }
         return
       }
-      setLoading(true)
+      if (!cachedAccount) setLoading(true)
       try {
         const me = await fetchAuthMe()
-        if (!cancelled) setAccount(me?.account ?? null)
+        const next = me?.account ?? null
+        cachedAccount = next
+        if (!cancelled) setAccount(next)
       } catch {
+        cachedAccount = null
         if (!cancelled) setAccount(null)
       } finally {
         if (!cancelled) setLoading(false)

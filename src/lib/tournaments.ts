@@ -11,6 +11,7 @@ export type TournamentFormat =
 
 export type TournamentRules = {
   maxAttempts?: number
+  maxPlayers?: number
   scoring?: 'best' | 'sum'
   unlimitedDuration?: boolean
 }
@@ -82,7 +83,7 @@ export function formatEventCountdown(
   now = Date.now(),
   unlimitedDuration = false,
 ): string {
-  if (unlimitedDuration) return 'No end'
+  if (unlimitedDuration) return 'Until everyone finishes'
   const ms = endsAt - now
   if (ms <= 0) return 'Ended'
   const totalSec = Math.floor(ms / 1000)
@@ -98,7 +99,9 @@ export function formatEventCountdown(
 export function eventDurationLabel(
   t: Pick<TournamentSummary, 'rules' | 'startsAt' | 'endsAt' | 'status'>,
 ): string {
-  if (t.rules.unlimitedDuration) return 'No end'
+  if (t.rules.unlimitedDuration) {
+    return t.status === 'ended' ? 'Ended' : 'Until everyone finishes'
+  }
   if (t.status === 'active') return formatEventCountdown(t.endsAt)
   const opts: Intl.DateTimeFormatOptions = {
     month: 'short',
@@ -115,6 +118,18 @@ export function eventDurationLabel(
 
 export function isUnlimitedDuration(rules: TournamentRules | undefined): boolean {
   return Boolean(rules?.unlimitedDuration)
+}
+
+export function maxPlayersLabel(rules: TournamentRules | undefined): string | null {
+  const n = rules?.maxPlayers
+  if (n == null || n <= 0) return null
+  return `${n} player${n === 1 ? '' : 's'} max`
+}
+
+export function playerCountLabel(count: number, rules: TournamentRules | undefined): string {
+  const cap = rules?.maxPlayers
+  if (cap != null && cap > 0) return `${count} / ${cap} players`
+  return `${count} ${count === 1 ? 'player' : 'players'}`
 }
 
 export function cadenceLabel(cadence: TournamentCadence | null | undefined): string | null {
@@ -158,7 +173,9 @@ export type CreateTournamentInput = {
   games: EventGame[]
   /** 0 = unlimited attempts per game */
   maxAttempts: number
-  /** 0 = unlimited duration */
+  /** 0 = unlimited roster size */
+  maxPlayers: number
+  /** 0 = until everyone finishes */
   durationHours: number
 }
 

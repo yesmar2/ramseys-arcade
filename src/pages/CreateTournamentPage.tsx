@@ -20,6 +20,7 @@ const DURATIONS = [
   { hours: 24, label: '24 hours' },
   { hours: 72, label: '3 days' },
   { hours: 168, label: '7 days' },
+  { hours: 0, label: 'Until everyone finishes' },
 ] as const
 
 function attemptsSummary(maxAttempts: number, unlimited: boolean, gameCount: number) {
@@ -29,25 +30,32 @@ function attemptsSummary(maxAttempts: number, unlimited: boolean, gameCount: num
   return `${maxAttempts} attempts per ${gameWord}`
 }
 
+function playersSummary(maxPlayers: number, unlimited: boolean) {
+  if (unlimited) return 'Unlimited players'
+  return `${maxPlayers} player${maxPlayers === 1 ? '' : 's'} max`
+}
+
 export function CreateTournamentPage() {
   const { account, loading: authLoading } = useAuth()
   const [title, setTitle] = useState('')
   const [games, setGames] = useState<EventGame[]>(['stacker'])
   const [maxAttempts, setMaxAttempts] = useState(3)
   const [unlimitedAttempts, setUnlimitedAttempts] = useState(false)
+  const [maxPlayers, setMaxPlayers] = useState(4)
+  const [unlimitedPlayers, setUnlimitedPlayers] = useState(false)
   const [durationHours, setDurationHours] = useState(24)
-  const [unlimitedDuration, setUnlimitedDuration] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  const waitingForAuth = authLoading && !account
 
   const accent = useMemo(() => {
     const first = getGame(games[0] ?? '')
     return first?.accent ?? '#2eb8a0'
   }, [games])
 
-  const durationLabel = unlimitedDuration
-    ? 'No end'
-    : DURATIONS.find((d) => d.hours === durationHours)?.label ?? '24 hours'
+  const durationLabel =
+    DURATIONS.find((d) => d.hours === durationHours)?.label ?? '24 hours'
 
   const toggleGame = (slug: EventGame) => {
     setGames((prev) => {
@@ -70,7 +78,8 @@ export function CreateTournamentPage() {
         title: title.trim(),
         games,
         maxAttempts: unlimitedAttempts ? 0 : maxAttempts,
-        durationHours: unlimitedDuration ? 0 : durationHours,
+        maxPlayers: unlimitedPlayers ? 0 : maxPlayers,
+        durationHours,
       }
       const created = await createTournament(input)
       if (created.inviteCode) rememberTournamentInvite(created.id, created.inviteCode)
@@ -91,7 +100,7 @@ export function CreateTournamentPage() {
         </div>
       </header>
 
-      {authLoading ? (
+      {waitingForAuth ? (
         <p className="lb-empty">Loading…</p>
       ) : !account ? (
         <div className="event-create-gate">
@@ -122,6 +131,44 @@ export function CreateTournamentPage() {
                   onChange={(e) => setTitle(e.target.value)}
                 />
               </label>
+
+              <div className="event-create__rule">
+                <div className="event-create__rule-head">
+                  <span className="event-create__rule-title">Players</span>
+                  <label className="event-create__toggle">
+                    <input
+                      type="checkbox"
+                      checked={unlimitedPlayers}
+                      onChange={(e) => setUnlimitedPlayers(e.target.checked)}
+                    />
+                    <span>Unlimited</span>
+                  </label>
+                </div>
+                {!unlimitedPlayers ? (
+                  <div className="event-create__stepper" aria-label="Maximum players">
+                    <button
+                      type="button"
+                      className="event-create__stepper-btn"
+                      aria-label="Fewer players"
+                      disabled={maxPlayers <= 2}
+                      onClick={() => setMaxPlayers((n) => Math.max(2, n - 1))}
+                    >
+                      −
+                    </button>
+                    <span className="event-create__stepper-value">{maxPlayers}</span>
+                    <button
+                      type="button"
+                      className="event-create__stepper-btn"
+                      aria-label="More players"
+                      disabled={maxPlayers >= 99}
+                      onClick={() => setMaxPlayers((n) => Math.min(99, n + 1))}
+                    >
+                      +
+                    </button>
+                  </div>
+                ) : null}
+                <p className="event-create__hint">{playersSummary(maxPlayers, unlimitedPlayers)}.</p>
+              </div>
             </section>
 
             <section className="event-create__card">
@@ -209,32 +256,26 @@ export function CreateTournamentPage() {
               </div>
 
               <div className="event-create__rule">
-                <div className="event-create__rule-head">
-                  <span className="event-create__rule-title">Duration</span>
-                  <label className="event-create__toggle">
-                    <input
-                      type="checkbox"
-                      checked={unlimitedDuration}
-                      onChange={(e) => setUnlimitedDuration(e.target.checked)}
-                    />
-                    <span>No end</span>
-                  </label>
-                </div>
-                {!unlimitedDuration ? (
-                  <select
-                    className="event-create__input event-create__input--duration"
-                    value={durationHours}
-                    onChange={(e) => setDurationHours(Number(e.target.value))}
-                  >
-                    {DURATIONS.map((d) => (
-                      <option key={d.hours} value={d.hours}>
-                        {d.label}
-                      </option>
-                    ))}
-                  </select>
-                ) : (
-                  <p className="event-create__hint">This event stays open until you end it.</p>
-                )}
+                <span className="event-create__rule-title">Duration</span>
+                <select
+                  className="event-create__input event-create__input--duration"
+                  value={durationHours}
+                  onChange={(e) => setDurationHours(Number(e.target.value))}
+                >
+                  {DURATIONS.map((d) => (
+                    <option key={d.hours} value={d.hours}>
+                      {d.label}
+                    </option>
+                  ))}
+                </select>
+                {durationHours === 0 ? (
+                  <p className="event-create__hint">
+                    Ends when every player has used all their attempts.
+                    {unlimitedAttempts
+                      ? ' Pick a finite attempt limit for this mode.'
+                      : null}
+                  </p>
+                ) : null}
               </div>
             </section>
 
@@ -242,8 +283,7 @@ export function CreateTournamentPage() {
 
             <button
               type="submit"
-              className="lb-play event-create__submit"
-              style={{ background: accent }}
+              className="score-save__btn event-create__submit"
               disabled={busy || title.trim().length < 3 || games.length === 0}
             >
               {busy ? 'Creating…' : 'Create event'}
@@ -262,6 +302,7 @@ export function CreateTournamentPage() {
                   {games.map((slug) => getGame(slug)?.name ?? slug).join(' · ')}
                 </p>
                 <ul className="event-create-preview__facts">
+                  <li>{playersSummary(maxPlayers, unlimitedPlayers)}</li>
                   <li>{attemptsSummary(maxAttempts, unlimitedAttempts, games.length)}</li>
                   <li>{durationLabel}</li>
                   {games.length > 1 ? <li>Place points scoring</li> : null}

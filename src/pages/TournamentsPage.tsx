@@ -23,6 +23,7 @@ import {
   isUnlimitedDuration,
   joinTournament,
   listTournaments,
+  playerCountLabel,
   rememberTournamentInvite,
   syncJoinedTournamentRosters,
   type StandingRow,
@@ -353,6 +354,9 @@ export function TournamentDetailPage({ id, invite }: { id: string; invite?: stri
   const displayName = normalizePlayerName(playerName)
   const storedInvite = invite ?? getTournamentInvite(id) ?? undefined
   const playInvite = detail?.inviteCode ?? storedInvite
+  const rosterCap = detail?.rules.maxPlayers ?? 0
+  const eventFull =
+    detail != null && rosterCap > 0 && detail.playerCount >= rosterCap && !joined
 
   const syncJoined = (data: TournamentDetail, who: string) => {
     setJoined(isPlayerInTournament(data, who, id))
@@ -603,12 +607,11 @@ export function TournamentDetailPage({ id, invite }: { id: string; invite?: stri
             ) : null}
             {detail.isHost && detail.inviteCode ? (
               <div className="event-invite-panel">
-                <div className="event-invite-panel__copy">
-                  <span className="event-create__label">Invite link</span>
-                  <p className="event-invite-panel__code">Code: {detail.inviteCode}</p>
-                  <p className="event-invite-panel__url">{inviteLink}</p>
-                </div>
-                <button type="button" className="score-save__btn" onClick={() => void copyInviteLink()}>
+                <button
+                  type="button"
+                  className="score-save__btn event-invite-panel__btn"
+                  onClick={() => void copyInviteLink()}
+                >
                   {copiedInvite ? 'Copied!' : 'Copy invite link'}
                 </button>
               </div>
@@ -628,15 +631,16 @@ export function TournamentDetailPage({ id, invite }: { id: string; invite?: stri
                 ·
               </span>
               <span>
-                {detail.playerCount}{' '}
-                {detail.playerCount === 1 ? 'player' : 'players'}
+                {playerCountLabel(detail.playerCount, detail.rules)}
               </span>
             </p>
           </div>
 
           {detail.status !== 'ended' && !joined ? (
             <div className="event-detail__join">
-              {displayName ? (
+              {eventFull ? (
+                <p className="tour-note tour-note--compact">This event is full.</p>
+              ) : displayName ? (
                 <button
                   type="button"
                   className="lb-play event-detail__join-btn"
