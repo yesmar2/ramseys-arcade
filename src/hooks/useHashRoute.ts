@@ -1,5 +1,9 @@
 import { useEffect, useState } from 'react'
-import { defaultPeriod } from '../lib/defaultPeriod'
+import {
+  DEFAULT_PERIOD_EVENT,
+  defaultPeriod,
+  setDefaultPeriod,
+} from '../lib/defaultPeriod'
 import {
   LEADERBOARD_GAMES,
   LEADERBOARD_PERIODS,
@@ -124,6 +128,42 @@ function gameLeaderboardRoute(
     name: 'gameLeaderboard',
     game,
     period: period && isLeaderboardPeriod(period) ? period : undefined,
+  }
+}
+
+function normalizeHash(hash: string): string {
+  return hash.replace(/\/$/, '')
+}
+
+/** Canonical hash for period-aware routes; null when route has no period segment. */
+export function hrefForRoute(
+  route: Route,
+  period: LeaderboardPeriod = defaultPeriod(),
+): string | null {
+  switch (route.name) {
+    case 'gameLeaderboard':
+      return gameBoardHref(route.game, period)
+    case 'leaderboards':
+      if (route.global) return globalRankingsHref(period)
+      return null
+    case 'rank':
+      return rankHref(route.player, period)
+    case 'records':
+      if (route.recordId) return recordHref(route.game, route.recordId, period)
+      return null
+    default:
+      return null
+  }
+}
+
+export function applySitePeriod(
+  period: LeaderboardPeriod,
+  route: Route = parseHash(window.location.hash),
+) {
+  setDefaultPeriod(period)
+  const next = hrefForRoute(route, period)
+  if (next && normalizeHash(window.location.hash) !== normalizeHash(next)) {
+    window.location.hash = next
   }
 }
 
@@ -253,17 +293,36 @@ export function useHashRoute(): Route {
   }, [])
 
   useEffect(() => {
+    const syncPeriodUrl = () => {
+      const currentRoute = parseHash(window.location.hash)
+      const period = defaultPeriod()
+      const next = hrefForRoute(currentRoute, period)
+      if (next && normalizeHash(window.location.hash) !== normalizeHash(next)) {
+        window.history.replaceState(null, '', next)
+        setRoute(parseHash(next))
+      }
+    }
+
     const path = window.location.hash.replace(/^#\/?/, '').replace(/\/$/, '')
     const gamePeriodMatch = /^games\/([^/]+)\/([^/]+)$/.exec(path)
-    if (!gamePeriodMatch) return
-    const slug = decodeURIComponent(gamePeriodMatch[1])
-    const periodRaw = decodeURIComponent(gamePeriodMatch[2])
-    if (periodRaw === 'records') return
-    if (!isLeaderboardGame(slug) || !isLeaderboardPeriod(periodRaw)) return
-    const canonical = gameBoardHref(slug, periodRaw)
-    if (window.location.hash !== canonical) {
-      window.history.replaceState(null, '', canonical)
-      setRoute(parseHash(canonical))
+    if (gamePeriodMatch) {
+      const slug = decodeURIComponent(gamePeriodMatch[1])
+      const periodRaw = decodeURIComponent(gamePeriodMatch[2])
+      if (periodRaw !== 'records' && isLeaderboardGame(slug) && isLeaderboardPeriod(periodRaw)) {
+        const canonical = gameBoardHref(slug, periodRaw)
+        if (window.location.hash !== canonical) {
+          window.history.replaceState(null, '', canonical)
+          setRoute(parseHash(canonical))
+        }
+      }
+    }
+
+    syncPeriodUrl()
+    window.addEventListener(DEFAULT_PERIOD_EVENT, syncPeriodUrl)
+    window.addEventListener('hashchange', syncPeriodUrl)
+    return () => {
+      window.removeEventListener(DEFAULT_PERIOD_EVENT, syncPeriodUrl)
+      window.removeEventListener('hashchange', syncPeriodUrl)
     }
   }, [])
 

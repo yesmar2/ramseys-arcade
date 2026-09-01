@@ -2,7 +2,6 @@ import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import {
   BoardEmpty,
   BoardSkeleton,
-  PeriodSwitcher,
 } from '../components/BoardChrome'
 import { Footer } from '../components/Footer'
 import { GamePageHeader } from '../components/GamePageHeader'
@@ -23,12 +22,11 @@ import { flashYouRow } from '../lib/boardGap'
 import { useDeviceType } from '../lib/device'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { APP_NAME } from '../lib/brand'
-import { defaultPeriod } from '../lib/defaultPeriod'
+import { useDefaultPeriod } from '../lib/defaultPeriod'
 import {
   normalizePlayerName,
   PERIOD_LABELS,
   type LeaderboardEntry,
-  type LeaderboardPeriod,
   type YouEntry,
 } from '../lib/leaderboard'
 import {
@@ -53,26 +51,15 @@ function recordBoardEmptyDetail(game: string, gameName: string, label: string) {
 type RecordsPageProps = {
   game: string
   recordId?: string
-  period?: LeaderboardPeriod
 }
 
 /** Game record book (`#/records/{game}`) or one record board (`…/{id}/{period}`). */
-export function RecordsPage({
-  game,
-  recordId,
-  period: periodFromRoute,
-}: RecordsPageProps) {
+export function RecordsPage({ game, recordId }: RecordsPageProps) {
   if (!recordId) {
     return <GameRecordBookPage game={game} />
   }
 
-  return (
-    <RecordBoardPage
-      game={game}
-      recordId={recordId}
-      period={periodFromRoute ?? defaultPeriod()}
-    />
-  )
+  return <RecordBoardPage game={game} recordId={recordId} />
 }
 
 function GameRecordBookPage({ game }: { game: string }) {
@@ -124,12 +111,11 @@ function GameRecordBookPage({ game }: { game: string }) {
 function RecordBoardPage({
   game,
   recordId,
-  period,
 }: {
   game: string
   recordId: string
-  period: LeaderboardPeriod
 }) {
+  const period = useDefaultPeriod()
   const gameMeta = getGame(game)
   const playerName = normalizePlayerName(usePlayerName())
   const [record, setRecord] = useState<RecordDef | null>(null)
@@ -139,13 +125,6 @@ function RecordBoardPage({
   const [error, setError] = useState<string | null>(null)
   const [shown, setShown] = useState(INITIAL_ROWS)
   const pulsed = useRef(false)
-
-  useEffect(() => {
-    const canonical = recordHref(game, recordId, period)
-    if (window.location.hash !== canonical) {
-      window.history.replaceState(null, '', canonical)
-    }
-  }, [game, recordId, period])
 
   useEffect(() => {
     let cancelled = false
@@ -180,10 +159,6 @@ function RecordBoardPage({
     pulsed.current = true
     window.requestAnimationFrame(() => flashYouRow())
   }, [loading, you, recordId, period])
-
-  const selectPeriod = (next: LeaderboardPeriod) => {
-    window.location.hash = recordHref(game, recordId, next)
-  }
 
   const accent = gameMeta?.accent ?? '#2eb8a0'
   const unit = record?.unit ?? 'ms'
@@ -237,13 +212,6 @@ function RecordBoardPage({
               </div>
             </header>
           )}
-
-          <PeriodSwitcher
-            period={period}
-            accent={accent}
-            hrefFor={(p) => recordHref(game, recordId, p)}
-            onSelect={selectPeriod}
-          />
 
           <section
             key={`${recordId}-${period}`}

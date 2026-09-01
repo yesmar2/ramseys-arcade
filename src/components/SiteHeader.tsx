@@ -5,12 +5,9 @@ import { usePlayerName } from '../hooks/usePlayerName'
 import { rankHref, useHashRoute } from '../hooks/useHashRoute'
 import { useGlobalRank } from '../lib/globalRank'
 import { currentTheme, THEME_EVENT, toggleTheme, type Theme } from '../lib/theme'
-import { normalizePlayerName, PERIOD_LABELS } from '../lib/leaderboard'
-import {
-  setDefaultPeriod,
-  useDefaultPeriod,
-} from '../lib/defaultPeriod'
+import { normalizePlayerName } from '../lib/leaderboard'
 import { PlayerBadge, type PlayerBadgeHandle } from './PlayerBadge'
+import { SitePeriodControl } from './SitePeriodControl'
 import {
   navActive,
   SITE_DRAWER_YOU,
@@ -22,7 +19,6 @@ export function SiteHeader() {
   const route = useHashRoute()
   const hashKey = JSON.stringify(route)
   const { rank } = useGlobalRank()
-  const defaultBoardPeriod = useDefaultPeriod()
   const { account, signedIn } = useAuth()
   const playerName = normalizePlayerName(usePlayerName())
   const [drawerOpen, setDrawerOpen] = useState(false)
@@ -144,6 +140,8 @@ export function SiteHeader() {
       </div>
 
       <div className="site-header__end">
+        <SitePeriodControl variant="header" />
+
         {playerName ? (
           <a
             className={`site-header__you${navActive('you', hash) ? ' site-header__you--active' : ''}`}
@@ -184,6 +182,10 @@ export function SiteHeader() {
           </button>
           {utilOpen ? (
             <div className="site-header__menu" role="menu">
+              <SitePeriodControl
+                variant="menu"
+                onSelect={() => setUtilOpen(false)}
+              />
               <button
                 type="button"
                 role="menuitem"
@@ -280,22 +282,10 @@ export function SiteHeader() {
                   </a>
                 </div>
                 <div className="site-drawer__utils">
-                  <div className="site-drawer__period" aria-label="Default board period">
-                    <span className="site-drawer__period-label">Default period</span>
-                    <div className="site-drawer__period-tabs" role="group">
-                      {(['daily', 'weekly', 'monthly', 'all'] as const).map((p) => (
-                        <button
-                          key={p}
-                          type="button"
-                          className={`site-drawer__period-tab${defaultBoardPeriod === p ? ' site-drawer__period-tab--active' : ''}`}
-                          aria-pressed={defaultBoardPeriod === p}
-                          onClick={() => setDefaultPeriod(p)}
-                        >
-                          {PERIOD_LABELS[p]}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
+                  <SitePeriodControl
+                    variant="drawer"
+                    onSelect={() => setDrawerOpen(false)}
+                  />
                   <button
                     type="button"
                     className="site-drawer__util"

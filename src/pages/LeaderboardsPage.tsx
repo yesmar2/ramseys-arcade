@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react'
 import {
   BoardEmpty,
   BoardSkeleton,
-  PeriodSwitcher,
 } from '../components/BoardChrome'
 import {
   LeaderboardSummary,
@@ -11,7 +10,7 @@ import { GlobalRankList } from '../components/GlobalRankList'
 import { PageShell } from '../components/PageShell'
 import { ShareBoardButton } from '../components/ShareBoardButton'
 import { globalRankingsHref, leaderboardHref } from '../hooks/useHashRoute'
-import { defaultPeriod } from '../lib/defaultPeriod'
+import { useDefaultPeriod } from '../lib/defaultPeriod'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { APP_NAME } from '../lib/brand'
 import {
@@ -22,7 +21,6 @@ import {
   PERIOD_LABELS,
   type GamePeriodSummary,
   type GlobalBoardEntry,
-  type LeaderboardPeriod,
 } from '../lib/leaderboard'
 
 const INITIAL_ROWS = 10
@@ -31,7 +29,6 @@ const SUMMARY_ROWS = 3
 
 type LeaderboardsPageProps = {
   global?: boolean
-  period?: LeaderboardPeriod
 }
 
 function BoardsHubSwitcher({ global }: { global: boolean }) {
@@ -57,13 +54,9 @@ function BoardsHubSwitcher({ global }: { global: boolean }) {
   )
 }
 
-export function LeaderboardsPage({
-  global: showGlobal,
-  period: periodFromRoute,
-}: LeaderboardsPageProps) {
-  const period = periodFromRoute ?? defaultPeriod()
+export function LeaderboardsPage({ global: showGlobal }: LeaderboardsPageProps) {
   if (showGlobal) {
-    return <GlobalRankingsView period={period} />
+    return <GlobalRankingsView />
   }
   return <LeaderboardsOverview />
 }
@@ -117,7 +110,8 @@ function LeaderboardsOverview() {
   )
 }
 
-function GlobalRankingsView({ period }: { period: LeaderboardPeriod }) {
+function GlobalRankingsView() {
+  const period = useDefaultPeriod()
   const playerName = normalizePlayerName(usePlayerName())
   const [entries, setEntries] = useState<GlobalBoardEntry[]>([])
   const [totalPlayers, setTotalPlayers] = useState(0)
@@ -190,14 +184,6 @@ function GlobalRankingsView({ period }: { period: LeaderboardPeriod }) {
         </div>
         <BoardsHubSwitcher global />
       </header>
-
-      <PeriodSwitcher
-        period={period}
-        hrefFor={globalRankingsHref}
-        onSelect={(p) => {
-          window.location.hash = globalRankingsHref(p)
-        }}
-      />
 
       <section
         key={period}

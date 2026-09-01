@@ -1,12 +1,12 @@
 import { useEffect, useState, type CSSProperties } from 'react'
-import { BoardSkeleton, PeriodSwitcher } from '../components/BoardChrome'
+import { BoardSkeleton } from '../components/BoardChrome'
 import { GameDeviceBadge } from '../components/GameDeviceBadge'
 import { PageBackLink } from '../components/PageBackLink'
 import { PageShell } from '../components/PageShell'
 import { ShareBoardButton } from '../components/ShareBoardButton'
 import { getGame, gamePlayableOn } from '../data/games'
 import { gameBoardHref, gamePlayHref, globalRankingsHref, rankHref } from '../hooks/useHashRoute'
-import { defaultPeriod, useDefaultPeriod } from '../lib/defaultPeriod'
+import { useDefaultPeriod } from '../lib/defaultPeriod'
 import { gapToNextLabel } from '../lib/boardGap'
 import { useDeviceType } from '../lib/device'
 import { usePlayerName } from '../hooks/usePlayerName'
@@ -18,7 +18,6 @@ import {
   VISIBLE_LEADERBOARD_GAMES,
   normalizePlayerName,
   type GlobalRankResult,
-  type LeaderboardPeriod,
 } from '../lib/leaderboard'
 
 const empty: GlobalRankResult = {
@@ -29,22 +28,15 @@ const empty: GlobalRankResult = {
   nearby: [],
 }
 
-export function RankPage({
-  player,
-  period: periodFromRoute = defaultPeriod(),
-}: {
-  player?: string
-  period?: LeaderboardPeriod
-}) {
-  const period = periodFromRoute
+export function RankPage({ player }: { player?: string }) {
+  const period = useDefaultPeriod()
   const device = useDeviceType()
   const myName = normalizePlayerName(usePlayerName())
   const viewedName = normalizePlayerName(player ?? '') || myName
   const isSelf = !normalizePlayerName(player ?? '') || viewedName === myName
-  const preferredPeriod = useDefaultPeriod()
   const myRank = useGlobalRank()
   const [periodRank, setPeriodRank] = useState<GlobalRankResult | null>(null)
-  const useCachedSelfRank = isSelf && period === preferredPeriod
+  const useCachedSelfRank = isSelf
   const [loading, setLoading] = useState(!useCachedSelfRank)
 
   useEffect(() => {
@@ -132,15 +124,6 @@ export function RankPage({
               </p>
             ) : null}
           </header>
-
-          <PeriodSwitcher
-            period={period}
-            hrefFor={(p) => rankHref(isSelf ? undefined : viewedName, p)}
-            onSelect={(p) => {
-              window.location.hash = rankHref(isSelf ? undefined : viewedName, p)
-            }}
-            label="Ranking period"
-          />
 
           {loading ? (
             <BoardSkeleton rows={5} />
