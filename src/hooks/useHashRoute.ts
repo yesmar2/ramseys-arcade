@@ -15,7 +15,7 @@ export type Route =
   | { name: 'home' }
   | { name: 'leaderboards'; global?: boolean; period?: LeaderboardPeriod }
   | { name: 'gameLeaderboard'; game: LeaderboardGame; period?: LeaderboardPeriod }
-  | { name: 'recordsIndex' }
+  | { name: 'recordsIndex'; period?: LeaderboardPeriod }
   | { name: 'records'; game: string; recordId?: string; period?: LeaderboardPeriod }
   | { name: 'rank'; player?: string; period?: LeaderboardPeriod }
   | { name: 'tournaments' }
@@ -55,12 +55,10 @@ export function globalRankingsHref(period: LeaderboardPeriod = defaultPeriod()) 
 
 export function rankHref(player?: string, period: LeaderboardPeriod = defaultPeriod()) {
   const cleaned = player?.trim().toUpperCase().slice(0, 12)
-  if (cleaned && period !== 'all') {
+  if (cleaned) {
     return `#/rank/${encodeURIComponent(cleaned)}/${period}`
   }
-  if (cleaned) return `#/rank/${encodeURIComponent(cleaned)}`
-  if (period !== 'all') return `#/rank/${period}`
-  return '#/rank'
+  return `#/rank/${period}`
 }
 
 /** Game hub / lobby. Optional records tab: `#/games/{slug}/records`. */
@@ -75,8 +73,8 @@ export function gamePlayHref(slug: string) {
 }
 
 /** Site-wide record books catalog. */
-export function recordsIndexHref() {
-  return '#/records'
+export function recordsIndexHref(period: LeaderboardPeriod = defaultPeriod()) {
+  return `#/records?period=${encodeURIComponent(period)}`
 }
 
 export function privacyHref() {
@@ -107,9 +105,12 @@ export function tournamentPlayHref(id: string, game: string, invite?: string) {
   return `${base}?invite=${encodeURIComponent(invite.trim().toUpperCase())}`
 }
 
-/** Record books for one game (`#/records/{game}`). Individual boards use `recordHref`. */
-export function recordsHref(game: string) {
-  return `#/records/${encodeURIComponent(game)}`
+/** Record books for one game (`#/records/{game}/{period}`). Individual boards use `recordHref`. */
+export function recordsHref(
+  game: string,
+  period: LeaderboardPeriod = defaultPeriod(),
+) {
+  return `#/records/${encodeURIComponent(game)}/${period}`
 }
 
 export function recordHref(
@@ -150,7 +151,9 @@ export function hrefForRoute(
       return rankHref(route.player, period)
     case 'records':
       if (route.recordId) return recordHref(route.game, route.recordId, period)
-      return null
+      return recordsHref(route.game, period)
+    case 'recordsIndex':
+      return recordsIndexHref(period)
     default:
       return null
   }
@@ -179,7 +182,14 @@ function parseHash(hash: string): Route {
   if (path === 'terms') return { name: 'terms' }
   if (path === 'leaderboards') return { name: 'leaderboards' }
   if (path === 'rank') return { name: 'rank', period: defaultPeriod() }
-  if (path === 'records') return { name: 'recordsIndex' }
+  if (path === 'records') {
+    const periodRaw = new URLSearchParams(queryString ?? '').get('period')
+    return {
+      name: 'recordsIndex',
+      period:
+        periodRaw && isLeaderboardPeriod(periodRaw) ? periodRaw : defaultPeriod(),
+    }
+  }
 
   const rankMatch = /^rank\/([^/]+)(?:\/([^/]+))?$/.exec(path)
   if (rankMatch) {
@@ -196,22 +206,35 @@ function parseHash(hash: string): Route {
     }
     const player = part1.toUpperCase().slice(0, 12)
     return player
-      ? { name: 'rank', player, period: defaultPeriod() }
+      ? { name: 'rank', player, period: 'all' }
       : { name: 'rank', period: defaultPeriod() }
   }
 
-  const recordBoardMatch = /^records\/([^/]+)\/([^/]+)(?:\/([^/]+))?$/.exec(path)
+  const recordBoardMatch = /^records\/([^/]+)\/([^/]+)\/([^/]+)$/.exec(path)
   if (recordBoardMatch) {
     const game = decodeURIComponent(recordBoardMatch[1])
     const recordId = decodeURIComponent(recordBoardMatch[2])
-    const periodRaw = recordBoardMatch[3]
-      ? decodeURIComponent(recordBoardMatch[3])
-      : undefined
+    const periodRaw = decodeURIComponent(recordBoardMatch[3])
     return {
       name: 'records',
       game,
       recordId,
-      period: periodRaw && isLeaderboardPeriod(periodRaw) ? periodRaw : defaultPeriod(),
+      period: isLeaderboardPeriod(periodRaw) ? periodRaw : defaultPeriod(),
+    }
+  }
+
+  const recordsGameMatch = /^records\/([^/]+)\/([^/]+)$/.exec(path)
+  if (recordsGameMatch) {
+    const game = decodeURIComponent(recordsGameMatch[1])
+    const second = decodeURIComponent(recordsGameMatch[2])
+    if (isLeaderboardPeriod(second)) {
+      return { name: 'records', game, period: second }
+    }
+    return {
+      name: 'records',
+      game,
+      recordId: second,
+      period: defaultPeriod(),
     }
   }
 
@@ -220,6 +243,7 @@ function parseHash(hash: string): Route {
     return {
       name: 'records',
       game: decodeURIComponent(recordsMatch[1]),
+      period: defaultPeriod(),
     }
   }
 

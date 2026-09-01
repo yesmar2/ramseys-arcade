@@ -220,9 +220,11 @@ export async function submitPatriotDirectStreak(
 
 export async function fetchGameRecords(
   game: string,
+  period: LeaderboardPeriod = 'all',
 ): Promise<{ game: string; records: RecordSummary[] }> {
+  const params = new URLSearchParams({ period })
   const data = await api<{ game: string; records?: RecordSummary[] }>(
-    `/records/${encodeURIComponent(game)}`,
+    `/records/${encodeURIComponent(game)}?${params.toString()}`,
   )
   return { game: data.game, records: data.records ?? [] }
 }

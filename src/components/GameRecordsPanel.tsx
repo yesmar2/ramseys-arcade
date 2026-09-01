@@ -6,7 +6,7 @@ import {
 import { getGame } from '../data/games'
 import { recordHref } from '../hooks/useHashRoute'
 import { usePlayerName } from '../hooks/usePlayerName'
-import { normalizePlayerName } from '../lib/leaderboard'
+import { normalizePlayerName, type LeaderboardPeriod } from '../lib/leaderboard'
 import {
   fetchGameRecords,
   formatRecordScore,
@@ -29,10 +29,11 @@ function recordsEmptyDetail(game: string, gameName: string) {
 type GameRecordsPanelProps = {
   game: string
   accent: string
+  period: LeaderboardPeriod
 }
 
 /** Record books list for one game (`#/records/{game}` and hub tab). */
-export function GameRecordsPanel({ game, accent }: GameRecordsPanelProps) {
+export function GameRecordsPanel({ game, accent, period }: GameRecordsPanelProps) {
   const gameMeta = getGame(game)
   const playerName = normalizePlayerName(usePlayerName())
   const [records, setRecords] = useState<RecordSummary[]>([])
@@ -44,7 +45,7 @@ export function GameRecordsPanel({ game, accent }: GameRecordsPanelProps) {
     let cancelled = false
     setLoading(true)
     setError(null)
-    fetchGameRecords(game)
+    fetchGameRecords(game, period)
       .then((data) => {
         if (cancelled) return
         setRecords(data.records)
@@ -60,7 +61,7 @@ export function GameRecordsPanel({ game, accent }: GameRecordsPanelProps) {
     return () => {
       cancelled = true
     }
-  }, [game])
+  }, [game, period])
 
   return (
     <section className="lb-board" aria-label="Game records">
@@ -85,7 +86,7 @@ export function GameRecordsPanel({ game, accent }: GameRecordsPanelProps) {
               <li key={row.id}>
                 <a
                   className={`records-leaders__row${isYou ? ' records-leaders__row--you' : ''}`}
-                  href={recordHref(game, row.id)}
+                  href={recordHref(game, row.id, period)}
                   style={{ '--tab-accent': accent } as CSSProperties}
                 >
                   <span className="records-leaders__label">{row.label}</span>

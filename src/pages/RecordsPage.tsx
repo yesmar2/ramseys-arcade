@@ -63,7 +63,12 @@ export function RecordsPage({
   period: periodFromRoute,
 }: RecordsPageProps) {
   if (!recordId) {
-    return <GameRecordBookPage game={game} />
+    return (
+      <GameRecordBookPage
+        game={game}
+        period={periodFromRoute ?? defaultPeriod()}
+      />
+    )
   }
 
   return (
@@ -75,7 +80,13 @@ export function RecordsPage({
   )
 }
 
-function GameRecordBookPage({ game }: { game: string }) {
+function GameRecordBookPage({
+  game,
+  period,
+}: {
+  game: string
+  period: LeaderboardPeriod
+}) {
   const gameMeta = getGame(game)
   const device = useDeviceType()
   const accent = gameMeta?.accent ?? '#2eb8a0'
@@ -105,12 +116,20 @@ function GameRecordBookPage({ game }: { game: string }) {
           playHref={canPlay ? gamePlayHref(game) : undefined}
           action={
             <ShareBoardButton
-              label={`${title} record books · ${APP_NAME}`}
-              url={recordsHref(game)}
+              label={`${title} record books · ${PERIOD_LABELS[period]} · ${APP_NAME}`}
+              url={recordsHref(game, period)}
             />
           }
         />
-        <GameRecordsPanel game={game} accent={accent} />
+        <PeriodSwitcher
+          period={period}
+          accent={accent}
+          hrefFor={(p) => recordsHref(game, p)}
+          onSelect={(p) => {
+            window.location.hash = recordsHref(game, p)
+          }}
+        />
+        <GameRecordsPanel game={game} accent={accent} period={period} />
         {!canPlay ? (
           <p className="lb-device-note lb-device-note--footer" role="note">
             {deviceNote}
