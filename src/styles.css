@@ -1623,6 +1623,10 @@ a.lb-board-switcher__item {
   background: rgba(var(--surface-rgb), 0.92);
 }
 
+.site-header__you:has(.site-header__you-rank) {
+  max-width: 13rem;
+}
+
 .site-header__you-rank {
   flex: none;
   font-family: var(--font-display);
@@ -1869,9 +1873,13 @@ a.lb-board-switcher__item {
   }
 
   .site-header__you {
-    max-width: 8.5rem;
+    max-width: 10.5rem;
     padding: 0.32rem 0.7rem;
     min-height: 2.4rem;
+  }
+
+  .site-header__you:has(.site-header__you-rank) {
+    max-width: 11.5rem;
   }
 
   .site-header__you-name {

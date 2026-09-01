@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { defaultPeriod } from './lib/defaultPeriod'
 import { Footer } from './components/Footer'
 import { SiteHeader } from './components/SiteHeader'
 import { getGame, isGameHidden } from './data/games'
@@ -116,20 +117,33 @@ function App() {
   if (route.name === 'terms') return <TermsPage />
   if (route.name === 'authVerify') return <AuthVerifyPage token={route.token} />
   if (route.name === 'rank') {
-    return <RankPage player={route.player} />
+    return <RankPage player={route.player} period={route.period ?? defaultPeriod()} />
   }
   if (route.name === 'leaderboards') {
-    return <LeaderboardsPage global={route.global} />
+    return (
+      <LeaderboardsPage
+        global={route.global}
+        period={route.period ?? defaultPeriod()}
+      />
+    )
   }
   if (route.name === 'gameLeaderboard') {
     if (isGameHidden(route.game)) {
       return <ComingSoonPage slug={route.game} />
     }
-    return <GameLeaderboardPage game={route.game} />
+    return (
+      <GameLeaderboardPage game={route.game} period={route.period ?? defaultPeriod()} />
+    )
   }
   if (route.name === 'recordsIndex') return <RecordsIndexPage />
   if (route.name === 'records') {
-    return <RecordsPage game={route.game} recordId={route.recordId} />
+    return (
+      <RecordsPage
+        game={route.game}
+        recordId={route.recordId}
+        period={route.period ?? defaultPeriod()}
+      />
+    )
   }
   if (route.name === 'tournaments') return <TournamentsPage />
   if (route.name === 'tournamentCreate') return <CreateTournamentPage />

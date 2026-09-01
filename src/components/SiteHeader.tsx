@@ -140,8 +140,6 @@ export function SiteHeader() {
       </div>
 
       <div className="site-header__end">
-        <SitePeriodControl variant="header" />
-
         {playerName ? (
           <a
             className={`site-header__you${navActive('you', hash) ? ' site-header__you--active' : ''}`}
@@ -163,6 +161,8 @@ export function SiteHeader() {
             Set gamer tag
           </button>
         )}
+
+        <SitePeriodControl variant="header" />
 
         <div className="site-header__more site-header__more--desktop" ref={utilRef}>
           <button

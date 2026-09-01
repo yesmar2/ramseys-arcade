@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import {
   BoardEmpty,
   BoardSkeleton,
+  PeriodSwitcher,
 } from '../components/BoardChrome'
 import { Footer } from '../components/Footer'
 import { GamePageHeader } from '../components/GamePageHeader'
@@ -22,11 +23,12 @@ import { flashYouRow } from '../lib/boardGap'
 import { useDeviceType } from '../lib/device'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { APP_NAME } from '../lib/brand'
-import { useDefaultPeriod } from '../lib/defaultPeriod'
+import { defaultPeriod } from '../lib/defaultPeriod'
 import {
   normalizePlayerName,
   PERIOD_LABELS,
   type LeaderboardEntry,
+  type LeaderboardPeriod,
   type YouEntry,
 } from '../lib/leaderboard'
 import {
@@ -51,15 +53,26 @@ function recordBoardEmptyDetail(game: string, gameName: string, label: string) {
 type RecordsPageProps = {
   game: string
   recordId?: string
+  period?: LeaderboardPeriod
 }
 
 /** Game record book (`#/records/{game}`) or one record board (`…/{id}/{period}`). */
-export function RecordsPage({ game, recordId }: RecordsPageProps) {
+export function RecordsPage({
+  game,
+  recordId,
+  period: periodFromRoute,
+}: RecordsPageProps) {
   if (!recordId) {
     return <GameRecordBookPage game={game} />
   }
 
-  return <RecordBoardPage game={game} recordId={recordId} />
+  return (
+    <RecordBoardPage
+      game={game}
+      recordId={recordId}
+      period={periodFromRoute ?? defaultPeriod()}
+    />
+  )
 }
 
 function GameRecordBookPage({ game }: { game: string }) {
@@ -111,11 +124,12 @@ function GameRecordBookPage({ game }: { game: string }) {
 function RecordBoardPage({
   game,
   recordId,
+  period,
 }: {
   game: string
   recordId: string
+  period: LeaderboardPeriod
 }) {
-  const period = useDefaultPeriod()
   const gameMeta = getGame(game)
   const playerName = normalizePlayerName(usePlayerName())
   const [record, setRecord] = useState<RecordDef | null>(null)
@@ -167,6 +181,10 @@ function RecordBoardPage({
   const canPlay = gameMeta ? gamePlayableOn(gameMeta, device) : false
   const deviceNote = gameMeta ? deviceRequirementLabel(gameMeta) : null
 
+  const selectPeriod = (next: LeaderboardPeriod) => {
+    window.location.hash = recordHref(game, recordId, next)
+  }
+
   return (
     <>
       <main className="lb-page">
@@ -212,6 +230,13 @@ function RecordBoardPage({
               </div>
             </header>
           )}
+
+          <PeriodSwitcher
+            period={period}
+            accent={accent}
+            hrefFor={(p) => recordHref(game, recordId, p)}
+            onSelect={selectPeriod}
+          />
 
           <section
             key={`${recordId}-${period}`}

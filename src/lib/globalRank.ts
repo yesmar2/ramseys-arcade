@@ -45,6 +45,7 @@ function ensureNameListener() {
   listeningForName = true
   window.addEventListener(PLAYER_NAME_EVENT, onPlayerNameEvent)
   window.addEventListener(DEFAULT_PERIOD_EVENT, onPreferenceChange)
+  void refreshGlobalRank()
 }
 
 export function subscribeGlobalRank(onStoreChange: () => void) {

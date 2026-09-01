@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
-import { BoardEmpty, BoardSkeleton } from '../components/BoardChrome'
+import { BoardEmpty, BoardSkeleton, PeriodSwitcher } from '../components/BoardChrome'
 import { GamePageHeader } from '../components/GamePageHeader'
 import { LeaderboardList } from '../components/LeaderboardList'
 import { PageShell } from '../components/PageShell'
@@ -14,13 +14,14 @@ import { usePlayerName } from '../hooks/usePlayerName'
 import { useDeviceType } from '../lib/device'
 import { formatLeaderboardScore } from '../games/spotter/score'
 import { flashYouRow } from '../lib/boardGap'
-import { useDefaultPeriod } from '../lib/defaultPeriod'
+import { defaultPeriod } from '../lib/defaultPeriod'
 import { APP_NAME } from '../lib/brand'
 import {
   getLeaderboard,
   PERIOD_LABELS,
   normalizePlayerName,
   type LeaderboardGame,
+  type LeaderboardPeriod,
   type LeaderboardEntry,
   type YouEntry,
 } from '../lib/leaderboard'
@@ -29,10 +30,14 @@ const BOARD_ROWS = 10
 
 type GameLeaderboardPageProps = {
   game: LeaderboardGame
+  period?: LeaderboardPeriod
 }
 
-export function GameLeaderboardPage({ game: gameSlug }: GameLeaderboardPageProps) {
-  const period = useDefaultPeriod()
+export function GameLeaderboardPage({
+  game: gameSlug,
+  period: periodFromRoute,
+}: GameLeaderboardPageProps) {
+  const period = periodFromRoute ?? defaultPeriod()
   const game = getGame(gameSlug)
   const device = useDeviceType()
   const playerName = normalizePlayerName(usePlayerName())
@@ -80,6 +85,10 @@ export function GameLeaderboardPage({ game: gameSlug }: GameLeaderboardPageProps
     window.requestAnimationFrame(() => flashYouRow())
   }, [loading, you, period])
 
+  const selectPeriod = (next: LeaderboardPeriod) => {
+    window.location.hash = gameBoardHref(gameSlug, next)
+  }
+
   if (!game) {
     return (
       <PageShell>
@@ -111,6 +120,13 @@ export function GameLeaderboardPage({ game: gameSlug }: GameLeaderboardPageProps
               url={gameBoardHref(gameSlug, period)}
             />
           }
+        />
+
+        <PeriodSwitcher
+          period={period}
+          accent={accent}
+          hrefFor={(p) => gameBoardHref(gameSlug, p)}
+          onSelect={selectPeriod}
         />
 
         <section

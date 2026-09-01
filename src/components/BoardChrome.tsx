@@ -1,4 +1,73 @@
-import type { ReactNode } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
+import {
+  LEADERBOARD_PERIODS,
+  PERIOD_LABELS,
+  type LeaderboardPeriod,
+} from '../lib/leaderboard'
+
+type PeriodSwitcherProps = {
+  period: LeaderboardPeriod
+  onSelect: (period: LeaderboardPeriod) => void
+  /** When set, tabs are links (hash routes). Otherwise plain buttons. */
+  hrefFor?: (period: LeaderboardPeriod) => string
+  accent?: string
+  label?: string
+}
+
+export function PeriodSwitcher({
+  period,
+  hrefFor,
+  onSelect,
+  accent,
+  label = 'Time period',
+}: PeriodSwitcherProps) {
+  const style = accent
+    ? ({ '--period-accent': accent } as CSSProperties)
+    : undefined
+
+  return (
+    <div
+      className="lb-periods lb-periods--segment"
+      role="tablist"
+      aria-label={label}
+      style={style}
+    >
+      {LEADERBOARD_PERIODS.map((p) => {
+        const className = `lb-period${period === p ? ' lb-period--active' : ''}`
+        if (hrefFor) {
+          return (
+            <a
+              key={p}
+              href={hrefFor(p)}
+              role="tab"
+              aria-selected={period === p}
+              className={className}
+              onClick={(e) => {
+                e.preventDefault()
+                onSelect(p)
+              }}
+            >
+              {PERIOD_LABELS[p]}
+            </a>
+          )
+        }
+        return (
+          <button
+            key={p}
+            type="button"
+            role="tab"
+            aria-selected={period === p}
+            className={className}
+            onClick={() => onSelect(p)}
+          >
+            {PERIOD_LABELS[p]}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
 export function BoardSkeleton({ rows = 6 }: { rows?: number }) {
   return (
     <ol className="lb-list lb-list--skeleton" aria-hidden="true">

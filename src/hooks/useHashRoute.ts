@@ -319,10 +319,8 @@ export function useHashRoute(): Route {
 
     syncPeriodUrl()
     window.addEventListener(DEFAULT_PERIOD_EVENT, syncPeriodUrl)
-    window.addEventListener('hashchange', syncPeriodUrl)
     return () => {
       window.removeEventListener(DEFAULT_PERIOD_EVENT, syncPeriodUrl)
-      window.removeEventListener('hashchange', syncPeriodUrl)
     }
   }, [])
 
