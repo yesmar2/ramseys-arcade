@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { defaultPeriod } from '../lib/defaultPeriod'
+import { defaultPeriod } from './lib/defaultPeriod'
 import { Footer } from './components/Footer'
 import { SiteHeader } from './components/SiteHeader'
 import { getGame, isGameHidden } from './data/games'
