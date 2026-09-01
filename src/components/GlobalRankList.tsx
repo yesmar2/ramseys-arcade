@@ -3,6 +3,7 @@ import { rankHref } from '../hooks/useHashRoute'
 import {
   normalizePlayerName,
   type GlobalBoardEntry,
+  type LeaderboardPeriod,
 } from '../lib/leaderboard'
 import { PlayerAvatar } from './PlayerAvatar'
 import { PodiumMedal, medalKind } from './PodiumMedal'
@@ -14,11 +15,13 @@ export function GlobalRankList({
   you,
   playerName,
   shown,
+  period = 'all',
 }: {
   entries: GlobalBoardEntry[]
   you: GlobalBoardEntry | null
   playerName: string
   shown: number
+  period?: LeaderboardPeriod
 }) {
   const visible = entries.slice(0, shown)
   const youName = normalizePlayerName(playerName)
@@ -59,7 +62,7 @@ export function GlobalRankList({
         {isYou ? (
           <span className="lb-row__name">{nameInner}</span>
         ) : (
-          <a className="lb-row__name lb-row__name--link" href={rankHref(name)}>
+          <a className="lb-row__name lb-row__name--link" href={rankHref(name, period)}>
             {nameInner}
           </a>
         )}

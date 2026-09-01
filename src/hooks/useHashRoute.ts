@@ -12,7 +12,7 @@ export type Route =
   | { name: 'gameLeaderboard'; game: LeaderboardGame; period?: LeaderboardPeriod }
   | { name: 'recordsIndex' }
   | { name: 'records'; game: string; recordId?: string; period?: LeaderboardPeriod }
-  | { name: 'rank'; player?: string }
+  | { name: 'rank'; player?: string; period?: LeaderboardPeriod }
   | { name: 'tournaments' }
   | { name: 'tournamentCreate' }
   | { name: 'tournament'; id: string; invite?: string }
@@ -49,9 +49,13 @@ export function globalRankingsHref(period: LeaderboardPeriod = 'all') {
   return `#/leaderboards/global/${period}`
 }
 
-export function rankHref(player?: string) {
+export function rankHref(player?: string, period: LeaderboardPeriod = 'all') {
   const cleaned = player?.trim().toUpperCase().slice(0, 12)
+  if (cleaned && period !== 'all') {
+    return `#/rank/${encodeURIComponent(cleaned)}/${period}`
+  }
   if (cleaned) return `#/rank/${encodeURIComponent(cleaned)}`
+  if (period !== 'all') return `#/rank/${period}`
   return '#/rank'
 }
 
@@ -134,13 +138,24 @@ function parseHash(hash: string): Route {
   if (path === 'privacy') return { name: 'privacy' }
   if (path === 'terms') return { name: 'terms' }
   if (path === 'leaderboards') return { name: 'leaderboards' }
-  if (path === 'rank') return { name: 'rank' }
+  if (path === 'rank') return { name: 'rank', period: 'all' }
   if (path === 'records') return { name: 'recordsIndex' }
 
-  const rankMatch = /^rank\/([^/]+)$/.exec(path)
+  const rankMatch = /^rank\/([^/]+)(?:\/([^/]+))?$/.exec(path)
   if (rankMatch) {
-    const player = decodeURIComponent(rankMatch[1]).trim().toUpperCase().slice(0, 12)
-    return player ? { name: 'rank', player } : { name: 'rank' }
+    const part1 = decodeURIComponent(rankMatch[1]).trim()
+    const part2 = rankMatch[2] ? decodeURIComponent(rankMatch[2]).trim() : undefined
+    if (part2 && isLeaderboardPeriod(part2)) {
+      const player = part1.toUpperCase().slice(0, 12)
+      return player
+        ? { name: 'rank', player, period: part2 }
+        : { name: 'rank', period: part2 }
+    }
+    if (isLeaderboardPeriod(part1)) {
+      return { name: 'rank', period: part1 }
+    }
+    const player = part1.toUpperCase().slice(0, 12)
+    return player ? { name: 'rank', player, period: 'all' } : { name: 'rank', period: 'all' }
   }
 
   const recordBoardMatch = /^records\/([^/]+)\/([^/]+)(?:\/([^/]+))?$/.exec(path)

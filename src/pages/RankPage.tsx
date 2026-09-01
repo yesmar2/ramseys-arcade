@@ -1,5 +1,5 @@
 import { useEffect, useState, type CSSProperties } from 'react'
-import { BoardSkeleton } from '../components/BoardChrome'
+import { BoardSkeleton, PeriodSwitcher } from '../components/BoardChrome'
 import { GameDeviceBadge } from '../components/GameDeviceBadge'
 import { PageBackLink } from '../components/PageBackLink'
 import { PageShell } from '../components/PageShell'
@@ -13,9 +13,11 @@ import { useGlobalRank } from '../lib/globalRank'
 import { APP_NAME } from '../lib/brand'
 import {
   fetchGlobalRank,
+  PERIOD_LABELS,
   VISIBLE_LEADERBOARD_GAMES,
   normalizePlayerName,
   type GlobalRankResult,
+  type LeaderboardPeriod,
 } from '../lib/leaderboard'
 
 const empty: GlobalRankResult = {
@@ -26,42 +28,54 @@ const empty: GlobalRankResult = {
   nearby: [],
 }
 
-export function RankPage({ player }: { player?: string }) {
+export function RankPage({
+  player,
+  period = 'all',
+}: {
+  player?: string
+  period?: LeaderboardPeriod
+}) {
   const device = useDeviceType()
   const myName = normalizePlayerName(usePlayerName())
   const viewedName = normalizePlayerName(player ?? '') || myName
-  const isSelf = !viewedName || viewedName === myName
+  const isSelf = !normalizePlayerName(player ?? '') || viewedName === myName
   const myRank = useGlobalRank()
-  const [other, setOther] = useState<GlobalRankResult | null>(null)
-  const [loading, setLoading] = useState(!isSelf)
+  const [periodRank, setPeriodRank] = useState<GlobalRankResult | null>(null)
+  const [loading, setLoading] = useState(!isSelf || period !== 'all')
 
   useEffect(() => {
-    if (isSelf || !viewedName) {
-      setOther(null)
+    if (isSelf && period === 'all') {
+      setPeriodRank(null)
+      setLoading(false)
+      return
+    }
+    if (!viewedName) {
+      setPeriodRank(null)
       setLoading(false)
       return
     }
     let cancelled = false
     setLoading(true)
-    void fetchGlobalRank(viewedName)
+    void fetchGlobalRank(viewedName, period)
       .then((data) => {
         if (!cancelled) {
-          setOther(data)
+          setPeriodRank(data)
           setLoading(false)
         }
       })
       .catch(() => {
         if (!cancelled) {
-          setOther(empty)
+          setPeriodRank(empty)
           setLoading(false)
         }
       })
     return () => {
       cancelled = true
     }
-  }, [viewedName, isSelf])
+  }, [viewedName, isSelf, period])
 
-  const data = isSelf ? myRank : (other ?? empty)
+  const data =
+    isSelf && period === 'all' ? myRank : (periodRank ?? (isSelf ? myRank : empty))
   const { rank, score, totalPlayers, byGame, nearby = [] } = data
 
   const rankedCount = VISIBLE_LEADERBOARD_GAMES.filter((slug) => Boolean(byGame[slug])).length
@@ -83,7 +97,10 @@ export function RankPage({ player }: { player?: string }) {
       <header className="lb-page__header lb-page__header--compact">
             <div className="lb-page__heading-row">
               {!isSelf ? (
-                <PageBackLink href={globalRankingsHref()} label="Back to Rankings" />
+                <PageBackLink
+                  href={globalRankingsHref(period)}
+                  label="Back to Rankings"
+                />
               ) : (
                 <span className="lb-page__heading-slot" aria-hidden="true" />
               )}
@@ -98,7 +115,7 @@ export function RankPage({ player }: { player?: string }) {
                         ? `${viewedName} · #${rank} global · ${APP_NAME}`
                         : `${viewedName}'s ranking · ${APP_NAME}`
                     }
-                    url={rankHref(viewedName)}
+                    url={rankHref(viewedName || undefined, period)}
                   />
                 </div>
               ) : (
@@ -111,6 +128,15 @@ export function RankPage({ player }: { player?: string }) {
               </p>
             ) : null}
           </header>
+
+          <PeriodSwitcher
+            period={period}
+            hrefFor={(p) => rankHref(isSelf ? undefined : viewedName, p)}
+            onSelect={(p) => {
+              window.location.hash = rankHref(isSelf ? undefined : viewedName, p)
+            }}
+            label="Ranking period"
+          />
 
           {loading ? (
             <BoardSkeleton rows={5} />
@@ -136,7 +162,7 @@ export function RankPage({ player }: { player?: string }) {
                   <p className="lb-scorecard__gap">
                     {gap.before}
                     {gap.name ? (
-                      <a className="lb-scorecard__gap-link" href={rankHref(gap.name)}>
+                      <a className="lb-scorecard__gap-link" href={rankHref(gap.name, period)}>
                         {gap.name}
                       </a>
                     ) : null}
@@ -182,7 +208,7 @@ export function RankPage({ player }: { player?: string }) {
                     const onDevice = game ? gamePlayableOn(game, device) : true
                     const accent = game?.accent ?? 'var(--accent)'
                     const href = row
-                      ? gameBoardHref(slug, 'all')
+                      ? gameBoardHref(slug, period)
                       : gamePlayHref(slug)
                     return (
                       <li key={slug}>
@@ -192,7 +218,7 @@ export function RankPage({ player }: { player?: string }) {
                           style={{ '--rank-game-accent': accent } as CSSProperties}
                           aria-label={
                             row
-                              ? `${game?.name ?? slug}: place ${row.place}, ${row.points} points. Open all-time board.`
+                              ? `${game?.name ?? slug}: place ${row.place}, ${row.points} points. Open ${PERIOD_LABELS[period].toLowerCase()} board.`
                               : `${game?.name ?? slug}: unranked. Play now.`
                           }
                         >
@@ -231,8 +257,8 @@ export function RankPage({ player }: { player?: string }) {
               </summary>
               <div className="rank-page__how-body">
                 <p>
-                  Your global rank uses <strong>all-time</strong> placements on
-                  each game’s leaderboard. Place higher on a board to earn more
+                  Your global rank uses <strong>{PERIOD_LABELS[period].toLowerCase()}</strong>{' '}
+                  placements on each game’s leaderboard. Place higher on a board to earn more
                   points:
                 </p>
                 <ul className="rank-page__rules">

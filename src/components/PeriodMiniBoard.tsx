@@ -71,7 +71,7 @@ export function PeriodMiniBoard({
                 <span className="lb-summary__rank-num">#{rank}</span>
                 {medal ? <PodiumMedal kind={medal} /> : null}
               </span>
-              <a className="lb-summary__player" href={rankHref(name)} title={name}>
+              <a className="lb-summary__player" href={rankHref(name, period)} title={name}>
                 <PlayerAvatar avatarId={entry.avatarId} name={name} size="sm" />
                 <span className="lb-summary__name">{name}</span>
                 {isYou ? <span className="lb-summary__you">You</span> : null}

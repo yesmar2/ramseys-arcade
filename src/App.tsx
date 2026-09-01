@@ -115,7 +115,9 @@ function App() {
   if (route.name === 'privacy') return <PrivacyPage />
   if (route.name === 'terms') return <TermsPage />
   if (route.name === 'authVerify') return <AuthVerifyPage token={route.token} />
-  if (route.name === 'rank') return <RankPage player={route.player} />
+  if (route.name === 'rank') {
+    return <RankPage player={route.player} period={route.period ?? 'all'} />
+  }
   if (route.name === 'leaderboards') {
     return (
       <LeaderboardsPage global={route.global} period={route.period} />

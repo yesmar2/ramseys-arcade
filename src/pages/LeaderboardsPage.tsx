@@ -225,6 +225,7 @@ function GlobalRankingsView({ period }: { period: LeaderboardPeriod }) {
             you={you}
             playerName={playerName}
             shown={shown}
+            period={period}
           />
         )}
 
