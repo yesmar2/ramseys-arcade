@@ -29,6 +29,7 @@ import { SimonPage } from './pages/SimonPage'
 import { SnakePage } from './pages/SnakePage'
 import { StackerPage } from './pages/StackerPage'
 import { WhackPage } from './pages/WhackPage'
+import { CreateTournamentPage } from './pages/CreateTournamentPage'
 import { TournamentDetailPage, TournamentsPage } from './pages/TournamentsPage'
 import { PrivacyPage } from './pages/PrivacyPage'
 import { TermsPage } from './pages/TermsPage'
@@ -139,6 +140,7 @@ function App() {
     )
   }
   if (route.name === 'tournaments') return <TournamentsPage />
+  if (route.name === 'tournamentCreate') return <CreateTournamentPage />
   if (route.name === 'tournamentPlay') {
     return <TournamentPlayPage tournamentId={route.id} gameSlug={route.game} />
   }

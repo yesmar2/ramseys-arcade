@@ -52,7 +52,10 @@ export function TournamentPlayPage({
     const boot = async () => {
       try {
         await syncJoinedTournamentRosters()
-        let data = await getTournament(tournamentId)
+        let data = await getTournament(tournamentId, {
+          playerName: playerName.trim().toUpperCase() || undefined,
+          game: gameSlug,
+        })
         if (cancelled) return
         setDetail(data)
         if (!data.games.includes(gameSlug) || !PLAYABLE.has(gameSlug)) {
@@ -65,6 +68,16 @@ export function TournamentPlayPage({
         }
         if (data.status === 'upcoming') {
           setLoadError('This tournament hasn’t started yet.')
+          return
+        }
+        const playerStatus = data.playerStatus
+        if (
+          playerStatus &&
+          playerStatus.maxAttempts != null &&
+          !playerStatus.canPlay &&
+          isPlayerInTournament(data, playerName.trim().toUpperCase(), tournamentId)
+        ) {
+          setLoadError('You have no attempts remaining in this event.')
           return
         }
         const name = playerName.trim().toUpperCase()
@@ -201,6 +214,10 @@ export function TournamentPlayPage({
         title: detail.title,
         gameSlug,
         status: detail.status,
+        format: detail.formatLabel,
+        maxAttempts: detail.playerStatus?.maxAttempts ?? null,
+        attemptsRemaining: detail.playerStatus?.attemptsRemaining ?? null,
+        canPlay: detail.playerStatus?.canPlay ?? true,
       }}
     >
       <main className="game-page game-page--fullscreen tour-play">

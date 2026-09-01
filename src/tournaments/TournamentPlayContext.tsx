@@ -5,6 +5,10 @@ export type TournamentPlayInfo = {
   title: string
   gameSlug: string
   status: 'upcoming' | 'active' | 'ended'
+  format: string
+  maxAttempts: number | null
+  attemptsRemaining: number | null
+  canPlay: boolean
 }
 
 const TournamentPlayContext = createContext<TournamentPlayInfo | null>(null)

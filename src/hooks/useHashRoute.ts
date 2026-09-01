@@ -14,6 +14,7 @@ export type Route =
   | { name: 'records'; game: string; recordId?: string; period?: LeaderboardPeriod }
   | { name: 'rank'; player?: string }
   | { name: 'tournaments' }
+  | { name: 'tournamentCreate' }
   | { name: 'tournament'; id: string }
   | { name: 'tournamentPlay'; id: string; game: string }
   | { name: 'game'; slug: string; board?: 'scores' | 'records' }
@@ -80,6 +81,10 @@ export function termsHref() {
 
 export function tournamentsHref() {
   return '#/tournaments'
+}
+
+export function tournamentCreateHref() {
+  return '#/tournaments/create'
 }
 
 /** Record books for one game (`#/records/{game}`). Individual boards use `recordHref`. */
@@ -161,6 +166,7 @@ function parseHash(hash: string): Route {
   }
 
   if (path === 'tournaments') return { name: 'tournaments' }
+  if (path === 'tournaments/create') return { name: 'tournamentCreate' }
 
   const authVerifyMatch = /^auth\/verify\/([^/]+)$/.exec(path)
   if (authVerifyMatch) {

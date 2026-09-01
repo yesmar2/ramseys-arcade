@@ -37,6 +37,9 @@ export function TournamentScoreCard({
   const [error, setError] = useState<string | null>(null)
   const [improved, setImproved] = useState(false)
   const [best, setBest] = useState(score)
+  const [attemptsRemaining, setAttemptsRemaining] = useState<number | null>(null)
+  const [maxAttempts, setMaxAttempts] = useState<number | null>(null)
+  const [exhausted, setExhausted] = useState(false)
   const [detail, setDetail] = useState<TournamentDetail | null>(null)
   const nameInputRef = useRef<HTMLInputElement>(null)
 
@@ -76,7 +79,10 @@ export function TournamentScoreCard({
         if (cancelled) return
         setImproved(result.improved)
         setBest(result.best)
-        const d = await getTournament(tournamentId)
+        setAttemptsRemaining(result.attemptsRemaining)
+        setMaxAttempts(result.maxAttempts)
+        setExhausted(result.attemptsRemaining === 0)
+        const d = await getTournament(tournamentId, { playerName: name, game: gameSlug })
         if (cancelled) return
         setDetail(d)
         setStatus('done')
@@ -91,6 +97,13 @@ export function TournamentScoreCard({
           setNameDraft('')
           setStatus('needName')
           setError('That gamer tag is taken. Sign in or pick another.')
+          return
+        }
+        if (code === 'ATTEMPTS_EXHAUSTED') {
+          setExhausted(true)
+          setAttemptsRemaining(0)
+          setStatus('done')
+          setError(null)
           return
         }
         setStatus('error')
@@ -199,6 +212,13 @@ export function TournamentScoreCard({
                 ? `New best · ${best}`
                 : `Best still ${best}`}
           </p>
+          {maxAttempts != null && (
+            <p className="score-save__note">
+              {exhausted
+                ? 'No attempts remaining.'
+                : `${attemptsRemaining ?? maxAttempts} of ${maxAttempts} attempts left.`}
+            </p>
+          )}
           {(gameCell?.place != null || overallPlace != null) && (
             <ul className="score-save__ranks" aria-label="Tournament standing">
               {gameCell?.place != null && (
@@ -222,9 +242,15 @@ export function TournamentScoreCard({
             </ul>
           )}
           <div className="score-save__actions">
-            <button type="button" className="score-save__btn" onClick={onDone}>
-              Play again
-            </button>
+            {exhausted ? (
+              <a className="score-save__btn" href={`#/tournaments/${tournamentId}`}>
+                View standings
+              </a>
+            ) : (
+              <button type="button" className="score-save__btn" onClick={onDone}>
+                Play again
+              </button>
+            )}
           </div>
         </>
       )}

@@ -36,7 +36,7 @@ export function EventStatusChips({
   t,
   joined = false,
 }: {
-  t: Pick<TournamentSummary, 'status' | 'official' | 'cadence'>
+  t: Pick<TournamentSummary, 'status' | 'official' | 'cadence' | 'format' | 'formatLabel' | 'community'>
   /** Show a Joined chip when the current player is in this event. */
   joined?: boolean
 }) {
@@ -45,8 +45,12 @@ export function EventStatusChips({
     <div className="event-chips">
       <span className={`tour-pill tour-pill--${t.status}`}>{statusLabel(t.status)}</span>
       {cadence ? <span className="tour-pill tour-pill--cadence">{cadence}</span> : null}
-      {t.official && !cadence ? (
+      {t.community ? <span className="tour-pill tour-pill--community">Community</span> : null}
+      {!cadence && t.official && !t.community ? (
         <span className="tour-pill tour-pill--official">Official</span>
+      ) : null}
+      {!cadence && !t.official ? (
+        <span className="tour-pill tour-pill--format">{t.formatLabel}</span>
       ) : null}
       {joined ? <span className="tour-pill tour-pill--joined">Joined</span> : null}
     </div>

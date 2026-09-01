@@ -9,10 +9,13 @@ import { PlayerAvatar } from '../components/PlayerAvatar'
 import { PodiumMedal, medalKind } from '../components/PodiumMedal'
 import { ShareBoardButton } from '../components/ShareBoardButton'
 import { getGame } from '../data/games'
+import { useAuth } from '../hooks/useAuth'
 import { usePlayerName } from '../hooks/usePlayerName'
+import { tournamentCreateHref } from '../hooks/useHashRoute'
 import { APP_NAME } from '../lib/brand'
 import { getLastPlayerName, normalizePlayerName } from '../lib/leaderboard'
 import {
+  formatRulesSummary,
   getTournament,
   isPlayerInTournament,
   joinTournament,
@@ -207,14 +210,16 @@ function StandingCard({
 }
 
 export function TournamentsPage() {
+  const { account } = useAuth()
   const [items, setItems] = useState<TournamentSummary[]>([])
+  const [filter, setFilter] = useState<'all' | 'official' | 'community'>('all')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
     setLoading(true)
-    listTournaments()
+    listTournaments(filter)
       .then((list) => {
         if (!cancelled) setItems(list)
       })
@@ -227,7 +232,7 @@ export function TournamentsPage() {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [filter])
 
   const live = items.filter((t) => t.status !== 'ended')
   const ended = items.filter((t) => t.status === 'ended')
@@ -235,7 +240,28 @@ export function TournamentsPage() {
   return (
     <PageShell innerClassName="lb-page__inner lb-page__inner--events">
       <header className="lb-page__header lb-page__header--compact">
-        <h1 className="lb-page__title">Events</h1>
+        <div className="lb-page__heading-row">
+          <h1 className="lb-page__title">Events</h1>
+          {account ? (
+            <a className="event-list__create" href={tournamentCreateHref()}>
+              Create event
+            </a>
+          ) : null}
+        </div>
+        <div className="event-list__filters" role="tablist" aria-label="Event filters">
+          {(['all', 'official', 'community'] as const).map((key) => (
+            <button
+              key={key}
+              type="button"
+              role="tab"
+              aria-selected={filter === key}
+              className={`event-list__filter${filter === key ? ' event-list__filter--active' : ''}`}
+              onClick={() => setFilter(key)}
+            >
+              {key === 'all' ? 'All' : key === 'official' ? 'Official' : 'Community'}
+            </button>
+          ))}
+        </div>
       </header>
 
       {loading ? (
@@ -296,10 +322,11 @@ export function TournamentDetailPage({ id }: { id: string }) {
     ;(async () => {
       try {
         await syncJoinedTournamentRosters()
-        const data = await getTournament(id)
+        const name = getLastPlayerName()
+        const data = await getTournament(id, { playerName: name || undefined })
         if (cancelled) return
         setDetail(data)
-        syncJoined(data, getLastPlayerName())
+        syncJoined(data, name)
       } catch (err) {
         if (!cancelled) setError(err instanceof Error ? err.message : 'Failed to load')
       } finally {
@@ -310,6 +337,19 @@ export function TournamentDetailPage({ id }: { id: string }) {
       cancelled = true
     }
   }, [id])
+
+  useEffect(() => {
+    if (!detail || !displayName || detail.games.length !== 1) return
+    let cancelled = false
+    void getTournament(id, { playerName: displayName, game: detail.games[0] })
+      .then((data) => {
+        if (!cancelled) setDetail(data)
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [id, displayName, detail?.games[0]])
 
   useEffect(() => {
     if (!detail) return
@@ -410,6 +450,8 @@ export function TournamentDetailPage({ id }: { id: string }) {
               t={detail}
               joined={joined && detail.status !== 'ended'}
             />
+            <p className="event-detail__blurb">{detail.blurb}</p>
+            <p className="event-detail__rules">{formatRulesSummary(detail)}</p>
             <p className="event-detail__facts">
               {detail.status === 'active' ? (
                 <strong>
@@ -457,23 +499,45 @@ export function TournamentDetailPage({ id }: { id: string }) {
               {detail.games.map((slug) => {
                 const g = getGame(slug)
                 const gameAccent = g?.accent ?? accent
+                const status = detail.playerStatus && detail.games.length === 1 ? detail.playerStatus : null
+                const exhausted = status && !status.canPlay && joined
                 return (
                   <li key={slug}>
-                    <a
-                      className="event-play-tile"
-                      href={`#/tournaments/${detail.id}/play/${slug}`}
-                      style={{ '--event-accent': gameAccent } as CSSProperties}
-                    >
-                      <span className="event-play-tile__art">
-                        <GameThumbArt slug={slug} accent={gameAccent} />
-                      </span>
-                      <span className="event-play-tile__name">{g?.name ?? slug}</span>
-                      <span className="event-play-tile__go">Play</span>
-                    </a>
+                    {exhausted ? (
+                      <div
+                        className="event-play-tile event-play-tile--disabled"
+                        style={{ '--event-accent': gameAccent } as CSSProperties}
+                      >
+                        <span className="event-play-tile__art">
+                          <GameThumbArt slug={slug} accent={gameAccent} />
+                        </span>
+                        <span className="event-play-tile__name">{g?.name ?? slug}</span>
+                        <span className="event-play-tile__go">No attempts left</span>
+                      </div>
+                    ) : (
+                      <a
+                        className="event-play-tile"
+                        href={`#/tournaments/${detail.id}/play/${slug}`}
+                        style={{ '--event-accent': gameAccent } as CSSProperties}
+                      >
+                        <span className="event-play-tile__art">
+                          <GameThumbArt slug={slug} accent={gameAccent} />
+                        </span>
+                        <span className="event-play-tile__name">{g?.name ?? slug}</span>
+                        <span className="event-play-tile__go">Play</span>
+                      </a>
+                    )}
                   </li>
                 )
               })}
             </ul>
+            {detail.playerStatus?.maxAttempts != null && joined ? (
+              <p className="tour-note tour-note--compact">
+                {detail.playerStatus.attemptsRemaining === 0
+                  ? 'You have used all your attempts.'
+                  : `${detail.playerStatus.attemptsRemaining} of ${detail.playerStatus.maxAttempts} attempts remaining.`}
+              </p>
+            ) : null}
           </section>
 
           <section className="lb-board event-detail__board" aria-label="Standings">

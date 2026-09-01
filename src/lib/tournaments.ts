@@ -1,7 +1,18 @@
-import { getClaimToken, getLastPlayerName, normalizePlayerName } from './leaderboard'
+import { getClaimToken, getLastPlayerName, normalizePlayerName, ApiError } from './leaderboard'
 
 export type TournamentStatus = 'upcoming' | 'active' | 'ended'
 export type TournamentCadence = 'daily' | 'weekly'
+export type TournamentFormat =
+  | 'open'
+  | 'place-points'
+  | 'attempt-limited'
+  | 'single-run'
+  | 'cumulative'
+
+export type TournamentRules = {
+  maxAttempts?: number
+  scoring?: 'best' | 'sum'
+}
 
 export type TournamentSummary = {
   id: string
@@ -12,8 +23,44 @@ export type TournamentSummary = {
   endsAt: number
   official: boolean
   cadence?: TournamentCadence | null
+  format: TournamentFormat
+  formatLabel: string
+  rules: TournamentRules
+  community: boolean
+  createdBy?: { accountId: string } | null
   status: TournamentStatus
   playerCount: number
+}
+
+/** Games eligible for community events (matches API). */
+export const EVENT_GAMES = [
+  'asteroids',
+  'patriot',
+  'snake',
+  'pop',
+  'stacker',
+  'dead-center',
+  'simon',
+] as const
+export type EventGame = (typeof EVENT_GAMES)[number]
+
+export const FORMAT_LABELS: Record<TournamentFormat, string> = {
+  open: 'Open · Best score',
+  'place-points': 'Place points',
+  'attempt-limited': 'Limited attempts',
+  'single-run': 'One run only',
+  cumulative: 'Total score',
+}
+
+export function formatRulesSummary(t: Pick<TournamentSummary, 'format' | 'rules'>): string {
+  if (t.format === 'single-run') return 'One run only — your first score counts.'
+  if (t.format === 'attempt-limited') {
+    const n = t.rules.maxAttempts ?? 3
+    return `${n} attempts — best score wins.`
+  }
+  if (t.format === 'cumulative') return 'Every run adds up — highest total wins.'
+  if (t.format === 'place-points') return 'Place points across games — highest total wins.'
+  return 'Unlimited runs — best score wins.'
 }
 
 /** Human countdown until endsAt (or "Ended"). */
@@ -42,13 +89,34 @@ export type StandingRow = {
   totalPoints: number
   gamesPlayed: number
   avatarId?: string
-  byGame: Record<string, { score: number | null; place: number | null; points: number }>
+  byGame: Record<
+    string,
+    { score: number | null; place: number | null; points: number; attemptsUsed?: number }
+  >
+}
+
+export type TournamentPlayerStatus = {
+  attemptsUsed: number
+  maxAttempts: number | null
+  attemptsRemaining: number | null
+  canPlay: boolean
+  best: number | null
 }
 
 export type TournamentDetail = TournamentSummary & {
   players: { id: string; name: string; joinedAt: number }[]
   standings: StandingRow[]
   placePoints: Record<string, number>
+  playerStatus?: TournamentPlayerStatus | null
+}
+
+export type CreateTournamentInput = {
+  title: string
+  blurb?: string
+  game: EventGame
+  format: Exclude<TournamentFormat, 'place-points'>
+  maxAttempts?: number
+  durationHours: number
 }
 
 const JOINED_KEY = 'arcade-tournaments-joined'
@@ -86,13 +154,15 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
   })
   if (!res.ok) {
     let message = `API error ${res.status}`
+    let code: string | undefined
     try {
-      const body = (await res.json()) as { error?: string }
+      const body = (await res.json()) as { error?: string; code?: string }
       if (body.error) message = body.error
+      code = body.code
     } catch {
       /* ignore */
     }
-    throw new Error(message)
+    throw new ApiError(message, res.status, code)
   }
   return res.json() as Promise<T>
 }
@@ -165,13 +235,33 @@ export function isPlayerInTournament(
   return Boolean(playerId && detail.players.some((p) => p.id === playerId))
 }
 
-export async function listTournaments(): Promise<TournamentSummary[]> {
-  const data = await api<{ tournaments: TournamentSummary[] }>('/tournaments')
+export async function listTournaments(
+  source: 'all' | 'official' | 'community' = 'all',
+): Promise<TournamentSummary[]> {
+  const qs = source === 'all' ? '' : `?source=${source}`
+  const data = await api<{ tournaments: TournamentSummary[] }>(`/tournaments${qs}`)
   return data.tournaments ?? []
 }
 
-export async function getTournament(id: string): Promise<TournamentDetail> {
-  return api(`/tournaments/${id}`)
+export async function getTournament(
+  id: string,
+  opts?: { playerName?: string; game?: string },
+): Promise<TournamentDetail> {
+  const params = new URLSearchParams()
+  if (opts?.playerName) params.set('playerName', opts.playerName)
+  if (opts?.game) params.set('game', opts.game)
+  const qs = params.toString()
+  return api(`/tournaments/${encodeURIComponent(id)}${qs ? `?${qs}` : ''}`)
+}
+
+export async function createTournament(
+  input: CreateTournamentInput,
+): Promise<TournamentDetail> {
+  const data = await api<{ tournament: TournamentDetail }>('/tournaments', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  })
+  return data.tournament
 }
 
 export async function renameTournamentPlayer(
@@ -252,10 +342,22 @@ export async function submitTournamentScore(
   name: string,
   game: string,
   score: number,
-): Promise<{ improved: boolean; best: number }> {
+): Promise<{
+  improved: boolean
+  best: number
+  attemptsUsed: number
+  attemptsRemaining: number | null
+  maxAttempts: number | null
+}> {
   const cleaned = normalizePlayerName(name)
   const token = getClaimToken(cleaned)
-  const data = await api<{ improved: boolean; best: number }>(`/tournaments/${id}/scores`, {
+  const data = await api<{
+    improved: boolean
+    best: number
+    attemptsUsed: number
+    attemptsRemaining: number | null
+    maxAttempts: number | null
+  }>(`/tournaments/${id}/scores`, {
     method: 'POST',
     body: JSON.stringify({
       name: cleaned,
