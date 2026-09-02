@@ -154,6 +154,8 @@ export function GameHubPage({ slug, board: boardFromRoute, period }: GameHubPage
         you,
         playerName,
         accent,
+        gameName: game.name,
+        gameUrl: gameHref(slug),
       }
     : null
 
@@ -175,22 +177,29 @@ export function GameHubPage({ slug, board: boardFromRoute, period }: GameHubPage
         >
           <div className="game-lobby__layout">
             <div className="game-lobby__main">
-              <div className="game-lobby__intro">
+              <div className="game-lobby__identity game-lobby__intro">
                 <div className="game-lobby__art">
                   <GameThumbArt
                     slug={game.slug}
                     accent={game.accent}
                     className="game-lobby__thumb"
                   />
-                  <ShareBoardButton
-                    className="game-lobby__share"
-                    label={`Play ${game.name} on ${APP_NAME}`}
-                    url={gameHref(slug)}
-                  />
+                  <h1 className="game-lobby__title game-lobby__title--on-art">
+                    {game.name}
+                  </h1>
                 </div>
 
                 <div className="game-lobby__intro-body">
-                  <h1 className="game-lobby__title">{game.name}</h1>
+                  <div className="game-lobby__intro-head">
+                    <h1 className="game-lobby__title game-lobby__title--beside">
+                      {game.name}
+                    </h1>
+                    <ShareBoardButton
+                      className="game-lobby__share game-lobby__share--head"
+                      label={`Play ${game.name} on ${APP_NAME}`}
+                      url={gameHref(slug)}
+                    />
+                  </div>
 
                   {boardSlug ? (
                     <PlayCta
@@ -360,6 +369,8 @@ function HubScoresSection({
   you,
   playerName,
   accent,
+  gameName,
+  gameUrl,
 }: {
   className: string
   variant: 'desktop' | 'mobile'
@@ -376,6 +387,8 @@ function HubScoresSection({
   you: YouEntry | null
   playerName: string
   accent: string
+  gameName: string
+  gameUrl: string
 }) {
   const periodLabel = PERIOD_LABELS[period]
   const isDesktop = variant === 'desktop'
@@ -390,6 +403,13 @@ function HubScoresSection({
       <div className="game-lobby__scores-head">
         <h2 className="game-lobby__section-title">{periodLabel} top</h2>
         <div className="game-lobby__scores-links">
+          {!isDesktop ? (
+            <ShareBoardButton
+              className="game-lobby__share game-lobby__share--scores"
+              label={`Play ${gameName} on ${APP_NAME}`}
+              url={gameUrl}
+            />
+          ) : null}
           {boardHref ? (
             <a className="game-lobby__board-link" href={boardHref}>
               Full board
@@ -422,21 +442,15 @@ function HubScoresSection({
             detail="Check your connection and try again."
           />
         ) : isDesktop ? (
-          entries.length === 0 && !you ? (
-            <BoardEmpty
-              title="No scores yet"
-              detail="Be the first on the board."
-            />
-          ) : (
-            <LeaderboardList
-              entries={entries}
-              you={you}
-              playerName={playerName}
-              accent={accent}
-              shown={DESKTOP_ROWS}
-              formatScore={(score) => formatLeaderboardScore(boardSlug, score)}
-            />
-          )
+          <LeaderboardList
+            entries={entries}
+            you={you}
+            playerName={playerName}
+            accent={accent}
+            shown={DESKTOP_ROWS}
+            fillEmptySlots
+            formatScore={(score) => formatLeaderboardScore(boardSlug, score)}
+          />
         ) : (
           <TopScorePodium
             entries={podiumEntries}

@@ -28,6 +28,7 @@ export function LeaderboardList({
   accent,
   shown,
   formatScore = (n: number) => String(n),
+  fillEmptySlots = false,
 }: {
   entries: LeaderboardEntry[]
   you: YouEntry | null
@@ -35,6 +36,8 @@ export function LeaderboardList({
   accent: string
   shown: number
   formatScore?: (score: number) => string
+  /** Pad with open rows up to `shown` (e.g. hub aside). */
+  fillEmptySlots?: boolean
 }) {
   const visible = entries.slice(0, shown)
   const youName = normalizePlayerName(playerName)
@@ -99,7 +102,11 @@ export function LeaderboardList({
   )
 
   const padSlots = entries.length >= 1 && visible.length < TOP_SLOT_COUNT
-  const slotCount = padSlots ? TOP_SLOT_COUNT : visible.length
+  const slotCount = fillEmptySlots
+    ? shown
+    : padSlots
+      ? TOP_SLOT_COUNT
+      : visible.length
 
   return (
     <ol className="lb-list">

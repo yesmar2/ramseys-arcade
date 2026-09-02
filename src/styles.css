@@ -7107,13 +7107,42 @@ html[data-theme='dark'] .patriot__power-mark {
   min-width: 0;
 }
 
-/* Mobile: thumb and meta sit side by side; play and boards stack below. */
+/* Mobile: thumb (title on art) and stats side by side; play and boards stack below. */
+.game-lobby__identity.game-lobby__intro,
 .game-lobby__intro {
   display: grid;
   grid-template-columns: minmax(0, 1.05fr) minmax(7rem, 0.95fr);
   gap: 0.7rem;
   align-items: stretch;
   min-width: 0;
+}
+
+.game-lobby__intro-head {
+  display: none;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.game-lobby__title--beside {
+  display: none;
+}
+
+.game-lobby__title--on-art {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 2;
+  padding: 1.6rem 0.75rem 0.7rem;
+  text-align: center;
+  background: linear-gradient(
+    to top,
+    color-mix(in srgb, var(--playfield) 88%, transparent) 0%,
+    color-mix(in srgb, var(--playfield) 55%, transparent) 55%,
+    transparent 100%
+  );
+  pointer-events: none;
 }
 
 .game-lobby__intro-body {
@@ -7181,14 +7210,11 @@ html[data-theme='dark'] .patriot__power-mark {
   height: 86%;
 }
 
-.game-lobby__share {
-  position: absolute;
-  top: 0.55rem;
-  right: 0.55rem;
-  z-index: 3;
-  pointer-events: auto;
+.game-lobby__share--head,
+.game-lobby__share--scores {
+  position: static;
+  flex: none;
   background: rgba(var(--surface-rgb), 0.92);
-  backdrop-filter: blur(10px);
   box-shadow: var(--shadow-soft);
 }
 
@@ -7551,9 +7577,21 @@ html[data-theme='dark'] .patriot__power-mark {
 @media (min-width: 768px) {
   .game-lobby--split .game-lobby__layout {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr) minmax(12rem, 16.5rem);
     gap: 1.35rem;
     align-items: start;
+  }
+
+  .game-lobby__title--on-art {
+    display: none;
+  }
+
+  .game-lobby__intro-head {
+    display: flex;
+  }
+
+  .game-lobby__title--beside {
+    display: block;
   }
 
   .game-lobby__intro {
@@ -7668,6 +7706,7 @@ html[data-theme='dark'] .patriot__power-mark {
 
 
 @media (max-width: 360px) {
+  .game-lobby__identity.game-lobby__intro,
   .game-lobby__intro {
     grid-template-columns: minmax(0, 1.05fr) minmax(5.5rem, 0.95fr);
     gap: 0.55rem;
@@ -7708,11 +7747,20 @@ html[data-theme='dark'] .patriot__power-mark {
   display: none;
 }
 
+.game-lobby__aside .lb-row--empty {
+  min-height: 2.05rem;
+}
+
+.game-lobby__aside .lb-row__placeholder {
+  color: var(--muted);
+  font-weight: 600;
+}
+
 @media (min-width: 768px) {
   .game-lobby__aside .lb-board {
     display: flex;
     flex-direction: column;
-    min-height: 12rem;
+    min-height: 22rem;
   }
 }
 
