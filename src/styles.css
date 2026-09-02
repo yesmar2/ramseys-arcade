@@ -7117,17 +7117,6 @@ html[data-theme='dark'] .patriot__power-mark {
   min-width: 0;
 }
 
-.game-lobby__intro-head {
-  display: none;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 0.5rem;
-}
-
-.game-lobby__title--beside {
-  display: none;
-}
-
 .game-lobby__title--on-art {
   position: absolute;
   left: 0;
@@ -7151,10 +7140,6 @@ html[data-theme='dark'] .patriot__power-mark {
   gap: 0.55rem;
   justify-content: center;
   min-width: 0;
-}
-
-.game-lobby__play--desktop {
-  display: none;
 }
 
 .game-lobby__aside {
@@ -7551,8 +7536,8 @@ html[data-theme='dark'] .patriot__power-mark {
   color: var(--ink);
 }
 
-/* Tablet: larger thumb beside intro meta. */
-@media (min-width: 520px) and (max-width: 767px) {
+/* Tablet+: larger thumb beside intro meta (same layout as mobile). */
+@media (min-width: 520px) {
   .game-lobby__intro {
     grid-template-columns: 12rem minmax(0, 1fr);
     gap: 1rem;
@@ -7593,75 +7578,6 @@ html[data-theme='dark'] .patriot__power-mark {
     align-items: start;
   }
 
-  .game-lobby__title--on-art {
-    display: none;
-  }
-
-  .game-lobby__intro-head {
-    display: block;
-  }
-
-  .game-lobby__title--beside {
-    display: block;
-  }
-
-  .game-lobby__intro {
-    grid-template-columns: 11rem minmax(0, 1fr);
-    gap: 1rem;
-  }
-
-  .game-lobby__intro .game-lobby__art {
-    width: 11rem;
-    max-width: 11rem;
-    justify-self: start;
-  }
-
-  .game-lobby__title {
-    font-size: clamp(1.65rem, 2.4vw, 2.15rem);
-  }
-
-  .game-lobby__play--desktop {
-    display: flex;
-    width: 100%;
-    min-height: 2.55rem;
-    padding: 0.6rem 0.8rem;
-    font-size: 0.98rem;
-    letter-spacing: 0.01em;
-    flex: none;
-  }
-
-  .game-lobby__intro-body .game-lobby__unavailable {
-    font-size: 0.82rem;
-    text-align: center;
-    padding: 0.5rem 0.35rem;
-  }
-
-  .game-lobby__stats {
-    flex-direction: row;
-    gap: 0.45rem;
-    flex: none;
-  }
-
-  .game-lobby__stats .lb-stat {
-    padding: 0.42rem 0.55rem;
-    border-radius: 0.75rem;
-    text-align: left;
-  }
-
-  .game-lobby__stats .lb-stat__label {
-    font-size: 0.58rem;
-    margin-bottom: 0.1rem;
-    letter-spacing: 0.05em;
-  }
-
-  .game-lobby__stats .lb-stat strong {
-    font-family: var(--font-display);
-    font-size: 0.95rem;
-    font-weight: 600;
-    letter-spacing: -0.02em;
-    line-height: 1.1;
-  }
-
   .game-lobby__aside {
     display: flex;
     flex-direction: column;
@@ -7679,8 +7595,7 @@ html[data-theme='dark'] .patriot__power-mark {
     align-self: start;
   }
 
-  .game-lobby__tops--mobile,
-  .game-lobby__play--mobile {
+  .game-lobby__tops--mobile {
     display: none;
   }
 

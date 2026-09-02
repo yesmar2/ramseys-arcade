@@ -185,25 +185,6 @@ export function GameHubPage({ slug, board: boardFromRoute, period }: GameHubPage
                 </div>
 
                 <div className="game-lobby__intro-body">
-                  <div className="game-lobby__intro-head">
-                    <h1 className="game-lobby__title game-lobby__title--beside">
-                      {game.name}
-                    </h1>
-                  </div>
-
-                  {boardSlug ? (
-                    <PlayCta
-                      className="game-lobby__play--desktop"
-                      compact
-                      game={game}
-                      canPlay={canPlay}
-                      comingSoon={comingSoon}
-                      inDevelopment={inDevelopment}
-                      playHref={playHref}
-                      deviceNote={deviceNote}
-                    />
-                  ) : null}
-
                   <div className="game-lobby__intro-links">
                     <ShareBoardButton
                       className="game-lobby__share"
@@ -312,7 +293,6 @@ export function GameHubPage({ slug, board: boardFromRoute, period }: GameHubPage
 
 function PlayCta({
   className,
-  compact = false,
   game,
   canPlay,
   comingSoon,
@@ -321,7 +301,6 @@ function PlayCta({
   deviceNote,
 }: {
   className: string
-  compact?: boolean
   game: Game
   canPlay: boolean
   comingSoon: boolean
