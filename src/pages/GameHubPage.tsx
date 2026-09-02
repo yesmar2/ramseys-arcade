@@ -173,6 +173,10 @@ export function GameHubPage({ slug, board: boardFromRoute, period }: GameHubPage
           <div className="game-lobby__layout">
             <div className="game-lobby__main">
               <div className="game-lobby__identity game-lobby__intro">
+                <h1 className="game-lobby__title game-lobby__title--beside">
+                  {game.name}
+                </h1>
+
                 <div className="game-lobby__art">
                   <GameThumbArt
                     slug={game.slug}
@@ -328,7 +332,7 @@ function PlayCta({
           href={playHref}
           style={{ background: game.accent }}
         >
-          {compact ? 'Play' : `Play ${game.name}`}
+          {`Play ${game.name}`}
         </a>
       </>
     )
