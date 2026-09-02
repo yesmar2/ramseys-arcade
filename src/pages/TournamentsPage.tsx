@@ -11,7 +11,7 @@ import { ShareBoardButton } from '../components/ShareBoardButton'
 import { getGame } from '../data/games'
 import { useAuth } from '../hooks/useAuth'
 import { usePlayerName } from '../hooks/usePlayerName'
-import { tournamentCreateHref, tournamentHref, tournamentPlayHref } from '../hooks/useHashRoute'
+import { tournamentCreateHref, tournamentHref, tournamentPlayHref, useHashRoute } from '../hooks/useHashRoute'
 import { APP_NAME } from '../lib/brand'
 import { ApiError, getLastPlayerName, normalizePlayerName } from '../lib/leaderboard'
 import {
@@ -30,6 +30,23 @@ import {
   type TournamentDetail,
   type TournamentSummary,
 } from '../lib/tournaments'
+
+async function fetchTournamentDetail(
+  id: string,
+  opts: { playerName?: string; invite?: string } = {},
+): Promise<TournamentDetail> {
+  const base = await getTournament(id, {
+    playerName: opts.playerName,
+    invite: opts.invite,
+  })
+  const game = base.games[0]
+  if (!opts.playerName || !game) return base
+  return getTournament(id, {
+    playerName: opts.playerName,
+    game,
+    invite: opts.invite,
+  })
+}
 
 function placeLabel(place: number) {
   if (place === 1) return '1st'
@@ -252,12 +269,15 @@ export function TournamentsPage() {
     <PageShell innerClassName="lb-page__inner lb-page__inner--events">
       <header className="lb-page__header lb-page__header--compact">
         <div className="lb-page__heading-row">
+          <span className="lb-page__heading-slot" aria-hidden="true" />
           <h1 className="lb-page__title">Events</h1>
-          {account ? (
-            <a className="event-list__create" href={tournamentCreateHref()}>
-              Create event
-            </a>
-          ) : null}
+          <div className="lb-game-board__trailing">
+            {account ? (
+              <a className="event-list__create" href={tournamentCreateHref()}>
+                Create event
+              </a>
+            ) : null}
+          </div>
         </div>
         <div className="event-list__filters" role="tablist" aria-label="Event filters">
           {(['all', 'official', 'joined', ...(account ? (['mine'] as const) : [])] as const).map(
@@ -340,6 +360,7 @@ export function TournamentsPage() {
 }
 
 export function TournamentDetailPage({ id, invite }: { id: string; invite?: string }) {
+  const route = useHashRoute()
   const playerName = usePlayerName()
   const [detail, setDetail] = useState<TournamentDetail | null>(null)
   const [loading, setLoading] = useState(true)
@@ -365,7 +386,7 @@ export function TournamentDetailPage({ id, invite }: { id: string; invite?: stri
   const loadDetail = async (inviteCode?: string) => {
     await syncJoinedTournamentRosters()
     const name = getLastPlayerName()
-    const data = await getTournament(id, {
+    const data = await fetchTournamentDetail(id, {
       playerName: name || undefined,
       invite: inviteCode ?? storedInvite,
     })
@@ -377,6 +398,8 @@ export function TournamentDetailPage({ id, invite }: { id: string; invite?: stri
   }
 
   useEffect(() => {
+    if (route.name !== 'tournament') return
+    if (route.id !== id) return
     if (invite) rememberTournamentInvite(id, invite)
     let cancelled = false
     setLoading(true)
@@ -400,24 +423,7 @@ export function TournamentDetailPage({ id, invite }: { id: string; invite?: stri
     return () => {
       cancelled = true
     }
-  }, [id, invite])
-
-  useEffect(() => {
-    if (!detail || !displayName || detail.games.length !== 1) return
-    let cancelled = false
-    void getTournament(id, {
-      playerName: displayName,
-      game: detail.games[0],
-      invite: playInvite,
-    })
-      .then((data) => {
-        if (!cancelled) setDetail(data)
-      })
-      .catch(() => {})
-    return () => {
-      cancelled = true
-    }
-  }, [id, displayName, detail?.games[0], playInvite])
+  }, [id, invite, route])
 
   useEffect(() => {
     if (!detail) return
@@ -425,8 +431,12 @@ export function TournamentDetailPage({ id, invite }: { id: string; invite?: stri
     if (mine && isPlayerInTournament(detail, mine, id)) {
       if (!detail.players.some((p) => normalizePlayerName(p.name) === mine)) {
         void joinTournament(id, mine)
-          .then((result) => {
-            setDetail(result.tournament)
+          .then(async () => {
+            const data = await fetchTournamentDetail(id, {
+              playerName: mine,
+              invite: playInvite,
+            })
+            setDetail(data)
             setJoined(true)
           })
           .catch(() => setJoined(true))
@@ -443,8 +453,12 @@ export function TournamentDetailPage({ id, invite }: { id: string; invite?: stri
     setBusy(true)
     setJoinNote(null)
     try {
-      const result = await joinTournament(id, displayName)
-      setDetail(result.tournament)
+      await joinTournament(id, displayName)
+      const data = await fetchTournamentDetail(id, {
+        playerName: displayName,
+        invite: playInvite,
+      })
+      setDetail(data)
       setJoined(true)
       setJoinNote(null)
     } catch (err) {

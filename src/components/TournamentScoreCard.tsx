@@ -85,10 +85,9 @@ async function submitTournamentRun(
       invite: getTournamentInvite(tournamentId) ?? undefined,
     }).catch(() => null)
     const playerStatus = d?.playerStatus
-    const attemptsRemaining = playerStatus?.attemptsRemaining ?? result.attemptsRemaining
-    const maxAttempts = playerStatus?.maxAttempts ?? result.maxAttempts
-    const exhausted =
-      playerStatus != null ? !playerStatus.canPlay : result.attemptsRemaining === 0
+    const attemptsRemaining = result.attemptsRemaining ?? playerStatus?.attemptsRemaining ?? null
+    const maxAttempts = result.maxAttempts ?? playerStatus?.maxAttempts ?? null
+    const exhausted = attemptsRemaining === 0
     return {
       improved: result.improved,
       best: result.best,
