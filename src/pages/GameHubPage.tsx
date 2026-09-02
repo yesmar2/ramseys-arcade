@@ -151,53 +151,47 @@ export function GameHubPage({ slug, board: boardFromRoute, period }: GameHubPage
             } as CSSProperties
           }
         >
-          <header className="game-lobby__header lb-page__header lb-page__header--compact lb-game-board__head">
-            <div className="lb-page__heading-row">
-              <div className="lb-game-board__identity lb-game-board__identity--static game-lobby__identity">
-                <GameThumbArt slug={game.slug} accent={game.accent} />
-                <h1 className="lb-page__title lb-game-board__title game-lobby__title">
-                  {game.name}
-                </h1>
-              </div>
-              <div className="lb-game-board__trailing game-lobby__actions">
+          <header className="game-lobby__hero">
+            <div className="game-lobby__hero-art">
+              <GameThumbArt slug={game.slug} accent={game.accent} />
+            </div>
+            <div className="game-lobby__hero-main">
+              <div className="game-lobby__hero-head">
+                <h1 className="lb-page__title game-lobby__title">{game.name}</h1>
                 <ShareBoardButton
                   className="game-lobby__share"
                   label={`Play ${game.name} on ${APP_NAME}`}
                   url={gameHref(slug)}
                 />
-                <PlayCta
-                  className="game-lobby__play--header"
-                  compact
-                  {...playProps}
-                />
+              </div>
+
+              {inDevelopment && canPlay ? (
+                <p className="game-lobby__dev-note">In development — expect rough edges.</p>
+              ) : null}
+
+              <div className="game-lobby__hero-row">
+                <PlayCta className="game-lobby__play--hero" {...playProps} />
+                {boardSlug ? (
+                  <div className="game-lobby__stats">
+                    <div className="lb-stat">
+                      <span className="lb-stat__label">Your best</span>
+                      <strong>
+                        {personalBest > 0
+                          ? formatLeaderboardScore(slug, personalBest)
+                          : '—'}
+                      </strong>
+                    </div>
+                    <div className="lb-stat">
+                      <span className="lb-stat__label">All time</span>
+                      <strong>
+                        {allTime > 0 ? formatLeaderboardScore(slug, allTime) : '—'}
+                      </strong>
+                    </div>
+                  </div>
+                ) : null}
               </div>
             </div>
           </header>
-
-          {inDevelopment && canPlay ? (
-            <p className="game-lobby__dev-note">In development — expect rough edges.</p>
-          ) : null}
-
-          <PlayCta className="game-lobby__play--mobile" {...playProps} />
-
-          {boardSlug ? (
-            <div className="game-lobby__stats">
-              <div className="lb-stat">
-                <span className="lb-stat__label">Your best</span>
-                <strong>
-                  {personalBest > 0
-                    ? formatLeaderboardScore(slug, personalBest)
-                    : '—'}
-                </strong>
-              </div>
-              <div className="lb-stat">
-                <span className="lb-stat__label">All time</span>
-                <strong>
-                  {allTime > 0 ? formatLeaderboardScore(slug, allTime) : '—'}
-                </strong>
-              </div>
-            </div>
-          ) : null}
 
           {boardSlug ? (
             <HubScoresSection
@@ -255,7 +249,6 @@ export function GameHubPage({ slug, board: boardFromRoute, period }: GameHubPage
 
 function PlayCta({
   className,
-  compact = false,
   game,
   canPlay,
   comingSoon,
@@ -263,7 +256,6 @@ function PlayCta({
   deviceNote,
 }: {
   className: string
-  compact?: boolean
   game: Game
   canPlay: boolean
   comingSoon: boolean
@@ -284,7 +276,7 @@ function PlayCta({
         href={playHref}
         style={{ background: game.accent }}
       >
-        {compact ? 'Play' : `Play ${game.name}`}
+        {`Play ${game.name}`}
       </a>
     )
   }
