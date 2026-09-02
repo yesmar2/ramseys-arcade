@@ -46,6 +46,22 @@ export function trophyRankLabel(rank: number) {
   return `Top 10 · #${rank}`
 }
 
+export function summarizeTrophies(trophies: TrophyAward[]) {
+  let podium = 0
+  let topTen = 0
+  for (const trophy of trophies) {
+    if (trophy.rank <= 3) podium++
+    else topTen++
+  }
+  return { total: trophies.length, podium, topTen }
+}
+
+export function sortTrophies(trophies: TrophyAward[]) {
+  return [...trophies].sort(
+    (a, b) => b.periodKey - a.periodKey || a.rank - b.rank,
+  )
+}
+
 export async function fetchTrophies(name: string): Promise<TrophyAward[]> {
   const params = new URLSearchParams({ name })
   const res = await fetch(`${API_BASE}/trophies?${params}`)
