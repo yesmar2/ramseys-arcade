@@ -134,23 +134,30 @@ export function RankPage({
             ) : null}
           </header>
 
-          <PeriodSwitcher
-            period={period}
-            hrefFor={(p) => rankHref(isSelf ? undefined : viewedName, p)}
-            onSelect={(p) => {
-              window.location.hash = rankHref(isSelf ? undefined : viewedName, p)
-            }}
-            label="Period"
-          />
+          {viewedName ? <TrophyCase name={viewedName} /> : null}
 
-          {loading ? (
-            <BoardSkeleton rows={5} />
-          ) : (
-            <>
-              <section
-                className="lb-scorecard lb-scorecard--static"
-                aria-label={isSelf ? 'Your rank' : `${viewedName}'s rank`}
-              >
+          <section className="rank-page__rank" aria-labelledby="rank-section-heading">
+            <h2 id="rank-section-heading" className="rank-page__h rank-page__rank-title">
+              Global rank
+            </h2>
+
+            <PeriodSwitcher
+              period={period}
+              hrefFor={(p) => rankHref(isSelf ? undefined : viewedName, p)}
+              onSelect={(p) => {
+                window.location.hash = rankHref(isSelf ? undefined : viewedName, p)
+              }}
+              label="Period"
+            />
+
+            {loading ? (
+              <BoardSkeleton rows={5} />
+            ) : (
+              <>
+                <section
+                  className="lb-scorecard lb-scorecard--static"
+                  aria-label={isSelf ? 'Your rank' : `${viewedName}'s rank`}
+                >
                 <div className="lb-stat">
                   <span className="lb-stat__label">Rank</span>
                   <strong>{rank != null ? `#${rank}` : '—'}</strong>
@@ -170,8 +177,6 @@ export function RankPage({
                   </p>
                 ) : null}
               </section>
-
-              {viewedName ? <TrophyCase name={viewedName} /> : null}
 
               <section
                 className="rank-page__board"
@@ -250,6 +255,7 @@ export function RankPage({
               </section>
             </>
           )}
+          </section>
 
           {isSelf ? (
             <details className="rank-page__how game-lobby__how-panel">

@@ -5312,6 +5312,16 @@ html[data-theme='dark'] .patriot__power-mark {
   gap: 1.15rem;
 }
 
+.rank-page__rank {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.rank-page__rank-title {
+  margin: 0;
+}
+
 .rank-page__period {
   margin: -0.35rem 0 0;
   text-align: left;
@@ -5723,7 +5733,9 @@ html[data-theme='dark'] .patriot__power-mark {
 }
 
 .trophy-case__grid > li {
-  flex: 0 0 auto;
+  flex: 0 0 9rem;
+  width: 9rem;
+  display: flex;
   scroll-snap-align: start;
 }
 
@@ -5731,10 +5743,11 @@ html[data-theme='dark'] .patriot__power-mark {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.3rem;
-  width: 8.25rem;
-  min-height: 7rem;
-  padding: 0.9rem 0.65rem 0.8rem;
+  justify-content: flex-start;
+  gap: 0.25rem;
+  width: 100%;
+  height: 8.75rem;
+  padding: 0.6rem 0.6rem 0.7rem;
   border: 1px solid rgba(var(--ink-rgb), 0.1);
   border-radius: 1rem;
   background: rgba(var(--surface-rgb), 0.88);
@@ -5742,6 +5755,7 @@ html[data-theme='dark'] .patriot__power-mark {
   text-decoration: none;
   color: inherit;
   text-align: center;
+  box-sizing: border-box;
   transition:
     transform 0.15s ease,
     box-shadow 0.15s ease,
@@ -5756,9 +5770,6 @@ html[data-theme='dark'] .patriot__power-mark {
 }
 
 .trophy-case__card--monthly {
-  width: 9.25rem;
-  min-height: 7.85rem;
-  padding-top: 0.65rem;
   border-width: 1.5px;
   border-color: rgba(212, 160, 23, 0.28);
   background: linear-gradient(
@@ -5836,6 +5847,11 @@ html[data-theme='dark'] .patriot__power-mark {
 }
 
 .trophy-case__badge {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 1.15rem;
   font-size: 0.58rem;
   font-weight: 800;
   letter-spacing: 0.05em;
@@ -5851,15 +5867,19 @@ html[data-theme='dark'] .patriot__power-mark {
   border: 1px solid rgba(255, 196, 64, 0.34);
 }
 
-.trophy-case__icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 2.35rem;
+.trophy-case__badge--weekly {
+  color: #3d5fbf;
+  background: rgba(107, 140, 255, 0.14);
+  border: 1px solid rgba(107, 140, 255, 0.28);
 }
 
-.trophy-case__card--monthly .trophy-case__icon {
-  min-height: 2.65rem;
+.trophy-case__icon {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 2.5rem;
 }
 
 .trophy-case__icon .lb-medal svg {
@@ -5914,6 +5934,7 @@ html[data-theme='dark'] .patriot__power-mark {
 }
 
 .trophy-case__rank {
+  flex: none;
   font-family: var(--font-display);
   font-size: 1.45rem;
   font-weight: 700;
@@ -5923,10 +5944,15 @@ html[data-theme='dark'] .patriot__power-mark {
 }
 
 .trophy-case__period {
-  font-size: 0.78rem;
+  flex: none;
+  font-size: 0.74rem;
   font-weight: 700;
-  line-height: 1.25;
+  line-height: 1.2;
   color: var(--ink);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .trophy-case__ribbon-band {
@@ -5942,8 +5968,8 @@ html[data-theme='dark'] .patriot__power-mark {
   flex-direction: column;
   align-items: center;
   gap: 0.45rem;
-  width: 8.25rem;
-  min-height: 7rem;
+  width: 100%;
+  height: 8.75rem;
   padding: 0.9rem 0.65rem 0.8rem;
   border: 1px solid rgba(var(--ink-rgb), 0.08);
   border-radius: 1rem;

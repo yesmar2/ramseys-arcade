@@ -78,9 +78,11 @@ function TrophyCard({ trophy }: { trophy: TrophyAward }) {
         href={globalRankingsHref(trophy.period)}
         aria-label={`#${trophy.rank} global, ${periodLabel}, ${trophy.score} points`}
       >
-        {trophy.period === 'monthly' ? (
-          <span className="trophy-case__badge trophy-case__badge--monthly">Monthly</span>
-        ) : null}
+        <span
+          className={`trophy-case__badge trophy-case__badge--${trophy.period}`}
+        >
+          {trophy.period === 'monthly' ? 'Monthly' : 'Weekly'}
+        </span>
         <span className="trophy-case__icon">
           <TrophyIcon rank={trophy.rank} period={trophy.period} />
         </span>
