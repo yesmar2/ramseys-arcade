@@ -7107,26 +7107,19 @@ html[data-theme='dark'] .patriot__power-mark {
   min-width: 0;
 }
 
-/* Thumb + title beside links/stats; play and boards stack below. */
+/* Thumb beside links/stats; play and boards stack below. */
 .game-lobby__identity.game-lobby__intro,
 .game-lobby__intro {
   display: grid;
-  grid-template-columns: minmax(0, 1.05fr) minmax(7rem, 0.95fr);
-  gap: 0.55rem 0.5rem;
+  grid-template-columns: auto minmax(0, 1fr);
+  column-gap: 0.4rem;
+  row-gap: 0.55rem;
   align-items: start;
   min-width: 0;
 }
 
-.game-lobby__intro-media {
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-  min-width: 0;
-}
-
-.game-lobby__intro-media .game-lobby__title {
-  text-align: center;
-  font-size: clamp(1.2rem, 4.2vw, 1.65rem);
+.game-lobby__intro .game-lobby__art {
+  width: min(11.5rem, 52vw);
 }
 
 .game-lobby__intro-body {
@@ -7535,23 +7528,12 @@ html[data-theme='dark'] .patriot__power-mark {
 /* Tablet+: fixed thumb column width. */
 @media (min-width: 520px) {
   .game-lobby__intro {
-    grid-template-columns: 12rem minmax(0, 1fr);
-    gap: 0.55rem 0.5rem;
-  }
-
-  .game-lobby__intro-media {
-    width: 12rem;
-    max-width: 12rem;
+    column-gap: 0.45rem;
   }
 
   .game-lobby__intro .game-lobby__art {
     width: 12rem;
     max-width: 12rem;
-    justify-self: start;
-  }
-
-  .game-lobby__intro-media .game-lobby__title {
-    font-size: clamp(1.35rem, 2.4vw, 1.75rem);
   }
 
   .game-lobby__stats {
@@ -7604,11 +7586,6 @@ html[data-theme='dark'] .patriot__power-mark {
     display: none;
   }
 
-  .game-lobby:not(.game-lobby--split) .game-lobby__intro {
-    grid-template-columns: 16rem minmax(0, 1fr);
-  }
-
-  .game-lobby:not(.game-lobby--split) .game-lobby__intro-media,
   .game-lobby:not(.game-lobby--split) .game-lobby__intro .game-lobby__art {
     width: 16rem;
     max-width: 16rem;
@@ -7636,10 +7613,8 @@ html[data-theme='dark'] .patriot__power-mark {
 
 
 @media (max-width: 360px) {
-  .game-lobby__identity.game-lobby__intro,
-  .game-lobby__intro {
-    grid-template-columns: minmax(0, 1.05fr) minmax(5.5rem, 0.95fr);
-    gap: 0.55rem;
+  .game-lobby__intro .game-lobby__art {
+    width: min(10.5rem, 48vw);
   }
 
   .game-lobby__podium {

@@ -173,15 +173,14 @@ export function GameHubPage({ slug, board: boardFromRoute, period }: GameHubPage
           <div className="game-lobby__layout">
             <div className="game-lobby__main">
               <div className="game-lobby__identity game-lobby__intro">
-                <div className="game-lobby__intro-media">
-                  <div className="game-lobby__art">
-                    <GameThumbArt
-                      slug={game.slug}
-                      accent={game.accent}
-                      className="game-lobby__thumb"
-                    />
-                  </div>
-                  <h1 className="game-lobby__title">{game.name}</h1>
+                <h1 className="visually-hidden">{game.name}</h1>
+
+                <div className="game-lobby__art">
+                  <GameThumbArt
+                    slug={game.slug}
+                    accent={game.accent}
+                    className="game-lobby__thumb"
+                  />
                 </div>
 
                 <div className="game-lobby__intro-body">
