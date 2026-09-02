@@ -7110,36 +7110,36 @@ html[data-theme='dark'] .patriot__power-mark {
 /* Thumb beside links/stats; play and boards stack below. */
 .game-lobby__identity.game-lobby__intro,
 .game-lobby__intro {
-  display: flex;
-  align-items: stretch;
-  gap: 0.75rem;
+  --intro-thumb: min(10.75rem, 48vw);
+  display: grid;
+  grid-template-columns: var(--intro-thumb) minmax(0, 1fr);
+  column-gap: 0.75rem;
+  align-items: start;
   min-width: 0;
 }
 
 .game-lobby__intro-art {
-  flex: none;
-  align-self: stretch;
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  container-type: size;
-  container-name: intro-art;
+  grid-column: 1;
+  grid-row: 1;
+  width: var(--intro-thumb);
 }
 
 .game-lobby__intro .game-lobby__art {
-  width: min(100cqh, 11.5rem, 52vw);
-  height: min(100cqh, 11.5rem, 52vw);
-  min-height: 0;
+  width: var(--intro-thumb);
+  height: var(--intro-thumb);
+  max-width: var(--intro-thumb);
+  max-height: var(--intro-thumb);
   aspect-ratio: 1;
-  flex: none;
 }
 
 .game-lobby__intro-body {
-  flex: 1 1 auto;
+  grid-column: 2;
+  grid-row: 1;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
-  justify-content: flex-start;
+  justify-content: space-between;
+  gap: 0;
+  height: var(--intro-thumb);
   min-width: 0;
 }
 
@@ -7557,11 +7557,10 @@ html[data-theme='dark'] .patriot__power-mark {
   line-height: 1.1;
 }
 
-/* Tablet+: square thumb tracks intro column height up to 12rem. */
+/* Tablet+: square thumb sized to intro stats column. */
 @media (min-width: 520px) {
-  .game-lobby__intro .game-lobby__art {
-    width: min(100cqh, 12rem);
-    height: min(100cqh, 12rem);
+  .game-lobby__intro {
+    --intro-thumb: 11.75rem;
   }
 
   .game-lobby__intro .game-lobby__stats .lb-stat {
@@ -7608,9 +7607,8 @@ html[data-theme='dark'] .patriot__power-mark {
     display: none;
   }
 
-  .game-lobby:not(.game-lobby--split) .game-lobby__intro .game-lobby__art {
-    width: min(100cqh, 16rem);
-    height: min(100cqh, 16rem);
+  .game-lobby:not(.game-lobby--split) .game-lobby__intro {
+    --intro-thumb: 16rem;
   }
 
   .game-lobby:not(.game-lobby--split) .game-lobby__intro .game-lobby__stats .lb-stat {
@@ -7624,9 +7622,8 @@ html[data-theme='dark'] .patriot__power-mark {
 
 
 @media (max-width: 360px) {
-  .game-lobby__intro .game-lobby__art {
-    width: min(100cqh, 10.5rem, 48vw);
-    height: min(100cqh, 10.5rem, 48vw);
+  .game-lobby__intro {
+    --intro-thumb: min(9.75rem, 46vw);
   }
 
   .game-lobby__podium {

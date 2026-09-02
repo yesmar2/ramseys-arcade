@@ -172,9 +172,9 @@ export function GameHubPage({ slug, board: boardFromRoute, period }: GameHubPage
         >
           <div className="game-lobby__layout">
             <div className="game-lobby__main">
-              <div className="game-lobby__identity game-lobby__intro">
-                <h1 className="visually-hidden">{game.name}</h1>
+              <h1 className="visually-hidden">{game.name}</h1>
 
+              <div className="game-lobby__identity game-lobby__intro">
                 <div className="game-lobby__intro-art">
                   <div className="game-lobby__art">
                     <GameThumbArt
