@@ -256,19 +256,19 @@ export function RankPage({
           )}
 
           {isSelf ? (
-            <details className="rank-page__how">
+            <details className="rank-page__how game-lobby__how-panel">
               <summary className="rank-page__how-summary">
                 <span className="rank-page__h" id="rank-how-heading">
                   How it works
                 </span>
               </summary>
               <div className="rank-page__how-body">
-                <p>
+                <p className="how-to-play__copy">
                   Your global rank uses <strong>{PERIOD_LABELS[period].toLowerCase()}</strong>{' '}
                   placements on each game’s leaderboard. Place higher on a board to earn more
                   points:
                 </p>
-                <ul className="rank-page__rules">
+                <ul className="game-lobby__scoring">
                   <li>
                     <span>1st place</span>
                     <strong>100 pts</strong>
@@ -286,7 +286,7 @@ export function RankPage({
                     <strong>1 pt</strong>
                   </li>
                 </ul>
-                <p>
+                <p className="how-to-play__copy">
                   Points from every game are added together. Climb any board to
                   move up — playing more games helps too.
                 </p>

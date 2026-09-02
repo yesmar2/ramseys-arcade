@@ -29,7 +29,7 @@ export function storedTheme(): Theme | null {
 export function currentTheme(): Theme {
   const attr = document.documentElement.getAttribute('data-theme')
   if (attr === 'light' || attr === 'dark') return attr
-  return storedTheme() ?? systemTheme()
+  return storedTheme() ?? 'dark'
 }
 
 export function applyTheme(theme: Theme) {
@@ -86,7 +86,7 @@ export function isDarkTheme() {
 }
 
 export function bootTheme() {
-  applyTheme(storedTheme() ?? systemTheme())
+  applyTheme(storedTheme() ?? 'dark')
 }
 
 if (typeof window !== 'undefined') {

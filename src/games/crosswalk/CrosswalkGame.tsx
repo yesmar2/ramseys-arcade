@@ -144,8 +144,8 @@ export function CrosswalkGame() {
   }
 
   const onPointerDown = (e: ReactPointerEvent) => {
-    e.preventDefault()
     if (saveOpen || pausedRef.current) return
+    e.preventDefault()
     swipeRef.current = { x: e.clientX, y: e.clientY }
     hoppedThisSwipe.current = false
     try {

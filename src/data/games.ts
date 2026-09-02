@@ -35,7 +35,6 @@ export const games: Game[] = [
     how: 'Move to aim. Click or tap to shoot. Protect the cities through each wave. Keys 1–4 use powers.',
     accent: '#e85d75',
     playable: true,
-    devices: ['desktop', 'tablet', 'phone'],
   },
   {
     name: 'Snake',
@@ -52,7 +51,6 @@ export const games: Game[] = [
     how: 'Tap circles before they fade. Hits closer to the center score more.',
     accent: '#4aa8e8',
     playable: true,
-    devices: ['tablet', 'phone'],
   },
   {
     name: 'Stacker',

@@ -109,8 +109,8 @@ export function WhackGame() {
   }
 
   const onPointerDown = (e: ReactPointerEvent<HTMLElement>) => {
-    e.preventDefault()
     if (saveOpenRef.current || pausedRef.current) return
+    e.preventDefault()
     if (hitLock.current) return
     hitLock.current = true
     setTimeout(() => {

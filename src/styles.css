@@ -4635,12 +4635,12 @@ html[data-theme='dark'] .patriot__power-mark {
 
 .lb-game-board__head {
   margin-bottom: 0.35rem;
-  text-align: center;
+  text-align: left;
 }
 
 .lb-page__heading-row {
   display: grid;
-  grid-template-columns: 1fr auto 1fr;
+  grid-template-columns: auto 1fr auto;
   align-items: center;
   gap: 0.35rem;
   width: 100%;
@@ -4679,8 +4679,8 @@ html[data-theme='dark'] .patriot__power-mark {
   flex-direction: row;
   flex-wrap: nowrap;
   align-items: center;
-  justify-content: center;
-  justify-self: center;
+  justify-content: flex-start;
+  justify-self: start;
   gap: var(--inline-thumb-gap);
   width: auto;
   min-width: 0;
@@ -4788,8 +4788,8 @@ html[data-theme='dark'] .patriot__power-mark {
 
 .lb-page__heading-row > .lb-page__title {
   margin: 0;
-  justify-self: center;
-  text-align: center;
+  justify-self: start;
+  text-align: left;
 }
 
 .lb-page__inner--game-board .lb-periods {
@@ -7342,6 +7342,7 @@ html[data-theme='dark'] .patriot__power-mark {
   display: flex;
   flex-direction: column;
   gap: 0.7rem;
+  margin-top: 1.25rem;
   padding-top: 0.25rem;
   border-top: 1px solid rgba(var(--ink-rgb), 0.07);
 }

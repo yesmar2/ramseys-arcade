@@ -226,8 +226,8 @@ export function PatriotGame() {
   }
 
   const onPointerDown = (e: ReactPointerEvent<HTMLElement>) => {
-    e.preventDefault()
     if (pausedRef.current || saveOpen) return
+    e.preventDefault()
     // Touch often skips pointermove — aim at the tap first.
     aimFromEvent(e)
     act()

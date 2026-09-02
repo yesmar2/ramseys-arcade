@@ -136,8 +136,8 @@ export function DeadCenterGame() {
   }
 
   const onPointerDown = (e: ReactPointerEvent<HTMLElement>) => {
-    e.preventDefault()
     if (saveOpen) return
+    e.preventDefault()
     if (clickLock.current) return
     clickLock.current = true
     setTimeout(() => {

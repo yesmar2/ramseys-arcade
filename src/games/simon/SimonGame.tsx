@@ -110,8 +110,8 @@ export function SimonGame() {
   }
 
   const onPointerDown = (e: ReactPointerEvent<HTMLElement>) => {
-    e.preventDefault()
     if (saveOpen) return
+    e.preventDefault()
 
     const s = stateRef.current
     if (s.phase === 'menu' || s.phase === 'gameover') {

@@ -264,8 +264,8 @@ export function SnakeGame() {
   }
 
   const onPointerDown = (e: ReactPointerEvent) => {
-    e.preventDefault()
     if (saveOpen || pausedRef.current) return
+    e.preventDefault()
     swipeRef.current = { x: e.clientX, y: e.clientY }
     try {
       e.currentTarget.setPointerCapture(e.pointerId)

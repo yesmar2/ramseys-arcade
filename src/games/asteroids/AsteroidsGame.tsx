@@ -467,8 +467,8 @@ export function AsteroidsGame() {
   }
 
   const onPlayTap = (e: ReactPointerEvent) => {
-    e.preventDefault()
     if (saveOpenRef.current || pausedRef.current) return
+    e.preventDefault()
     const s = stateRef.current
     if (s.phase === 'menu' || s.phase === 'gameover') {
       if (performance.now() < startGrace.current) return
