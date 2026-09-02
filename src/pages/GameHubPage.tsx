@@ -161,8 +161,9 @@ export function GameHubPage({ slug, board: boardFromRoute, period }: GameHubPage
     <>
       <main className="lb-page">
         <SiteHeader />
-        <div
-          className="lb-page__inner game-lobby"
+        <div className="lb-page__inner">
+          <div
+            className={`game-lobby${boardSlug ? ' game-lobby--split' : ''}`}
           style={
             {
               '--board-accent': accent,
@@ -172,53 +173,108 @@ export function GameHubPage({ slug, board: boardFromRoute, period }: GameHubPage
             } as CSSProperties
           }
         >
-          <div
-            className={`game-lobby__hero${boardSlug ? '' : ' game-lobby__hero--solo'}`}
-          >
-            <div className="game-lobby__identity">
-              <div className="game-lobby__art">
-                <GameThumbArt
-                  slug={game.slug}
-                  accent={game.accent}
-                  className="game-lobby__thumb"
-                />
-                <ShareBoardButton
-                  className="game-lobby__share"
-                  label={`Play ${game.name} on ${APP_NAME}`}
-                  url={gameHref(slug)}
-                />
-                <h1 className="game-lobby__title">{game.name}</h1>
+          <div className="game-lobby__layout">
+            <div className="game-lobby__main">
+              <div className="game-lobby__intro">
+                <div className="game-lobby__art">
+                  <GameThumbArt
+                    slug={game.slug}
+                    accent={game.accent}
+                    className="game-lobby__thumb"
+                  />
+                  <ShareBoardButton
+                    className="game-lobby__share"
+                    label={`Play ${game.name} on ${APP_NAME}`}
+                    url={gameHref(slug)}
+                  />
+                </div>
+
+                <div className="game-lobby__intro-body">
+                  <h1 className="game-lobby__title">{game.name}</h1>
+
+                  {boardSlug ? (
+                    <PlayCta
+                      className="game-lobby__play--desktop"
+                      compact
+                      game={game}
+                      canPlay={canPlay}
+                      comingSoon={comingSoon}
+                      inDevelopment={inDevelopment}
+                      playHref={playHref}
+                      deviceNote={deviceNote}
+                    />
+                  ) : null}
+
+                  <div className="game-lobby__stats">
+                    <div className="lb-stat">
+                      <span className="lb-stat__label">Your best</span>
+                      <strong>
+                        {personalBest > 0
+                          ? formatLeaderboardScore(slug, personalBest)
+                          : '—'}
+                      </strong>
+                    </div>
+                    <div className="lb-stat">
+                      <span className="lb-stat__label">All time</span>
+                      <strong>
+                        {allTime > 0 ? formatLeaderboardScore(slug, allTime) : '—'}
+                      </strong>
+                    </div>
+                  </div>
+                </div>
               </div>
 
-              {boardSlug ? (
-                <PlayCta
-                  className="game-lobby__play--desktop"
-                  compact
-                  game={game}
-                  canPlay={canPlay}
-                  comingSoon={comingSoon}
-                  inDevelopment={inDevelopment}
-                  playHref={playHref}
-                  deviceNote={deviceNote}
+              <PlayCta
+                className={
+                  boardSlug ? 'game-lobby__play--mobile' : 'game-lobby__play--wide'
+                }
+                game={game}
+                canPlay={canPlay}
+                comingSoon={comingSoon}
+                inDevelopment={inDevelopment}
+                playHref={playHref}
+                deviceNote={deviceNote}
+              />
+
+              {scoresProps ? (
+                <HubScoresSection
+                  {...scoresProps}
+                  className="game-lobby__tops game-lobby__tops--mobile"
+                  variant="mobile"
                 />
               ) : null}
 
-              <div className="game-lobby__stats">
-                <div className="lb-stat">
-                  <span className="lb-stat__label">Your best</span>
-                  <strong>
-                    {personalBest > 0
-                      ? formatLeaderboardScore(slug, personalBest)
-                      : '—'}
-                  </strong>
-                </div>
-                <div className="lb-stat">
-                  <span className="lb-stat__label">All time</span>
-                  <strong>
-                    {allTime > 0 ? formatLeaderboardScore(slug, allTime) : '—'}
-                  </strong>
-                </div>
-              </div>
+              <HowToPlayAccordion
+                how={game.how}
+                rows={canPlay ? scoring : null}
+              />
+
+              {others.length > 0 ? (
+                <section className="game-lobby__others" aria-label="More games">
+                  <h2 className="game-lobby__section-title">More games</h2>
+                  <ul className="game-lobby__others-list">
+                    {others.map((g) => (
+                      <li key={g.slug}>
+                        <a
+                          className="game-lobby__other"
+                          href={gameHref(g.slug)}
+                          style={{ '--tile-accent': g.accent } as CSSProperties}
+                          aria-label={
+                            g.comingSoon
+                              ? `${g.name}, coming soon`
+                              : g.inDevelopment
+                                ? `${g.name}, in development`
+                                : g.name
+                          }
+                        >
+                          <GameThumbArt slug={g.slug} accent={g.accent} />
+                          <span className="game-lobby__other-name">{g.name}</span>
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              ) : null}
             </div>
 
             {scoresProps ? (
@@ -229,58 +285,7 @@ export function GameHubPage({ slug, board: boardFromRoute, period }: GameHubPage
               />
             ) : null}
           </div>
-
-          <PlayCta
-            className={
-              boardSlug ? 'game-lobby__play--mobile' : 'game-lobby__play--wide'
-            }
-            game={game}
-            canPlay={canPlay}
-            comingSoon={comingSoon}
-            inDevelopment={inDevelopment}
-            playHref={playHref}
-            deviceNote={deviceNote}
-          />
-
-          {scoresProps ? (
-            <HubScoresSection
-              {...scoresProps}
-              className="game-lobby__tops game-lobby__tops--mobile"
-              variant="mobile"
-            />
-          ) : null}
-
-          <HowToPlayAccordion
-            how={game.how}
-            rows={canPlay ? scoring : null}
-          />
-
-          {others.length > 0 ? (
-            <section className="game-lobby__others" aria-label="More games">
-              <h2 className="game-lobby__section-title">More games</h2>
-              <ul className="game-lobby__others-list">
-                {others.map((g) => (
-                  <li key={g.slug}>
-                    <a
-                      className="game-lobby__other"
-                      href={gameHref(g.slug)}
-                      style={{ '--tile-accent': g.accent } as CSSProperties}
-                      aria-label={
-                        g.comingSoon
-                          ? `${g.name}, coming soon`
-                          : g.inDevelopment
-                            ? `${g.name}, in development`
-                            : g.name
-                      }
-                    >
-                      <GameThumbArt slug={g.slug} accent={g.accent} />
-                      <span className="game-lobby__other-name">{g.name}</span>
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          ) : null}
+        </div>
         </div>
       </main>
       <Footer />

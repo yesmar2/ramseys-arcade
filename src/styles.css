@@ -7094,18 +7094,33 @@ html[data-theme='dark'] .patriot__power-mark {
   gap: 1.1rem;
 }
 
-.game-lobby__hero {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 0.7rem;
+.game-lobby__layout {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
 }
 
-/* Mobile: thumb and stats sit side by side; play and boards stack below. */
-.game-lobby__identity {
+.game-lobby__main {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+  min-width: 0;
+}
+
+/* Mobile: thumb and meta sit side by side; play and boards stack below. */
+.game-lobby__intro {
   display: grid;
   grid-template-columns: minmax(0, 1.05fr) minmax(7rem, 0.95fr);
   gap: 0.7rem;
   align-items: stretch;
+  min-width: 0;
+}
+
+.game-lobby__intro-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  justify-content: center;
   min-width: 0;
 }
 
@@ -7117,7 +7132,8 @@ html[data-theme='dark'] .patriot__power-mark {
   display: none;
 }
 
-.game-lobby__hero .game-lobby__art {
+.game-lobby__hero .game-lobby__art,
+.game-lobby__intro .game-lobby__art {
   position: relative;
   display: grid;
   place-items: center;
@@ -7135,7 +7151,9 @@ html[data-theme='dark'] .patriot__power-mark {
 }
 
 .game-lobby__hero .game-lobby__art .inline-thumb,
-.game-lobby__hero .game-lobby__thumb.inline-thumb {
+.game-lobby__intro .game-lobby__art .inline-thumb,
+.game-lobby__hero .game-lobby__thumb.inline-thumb,
+.game-lobby__intro .game-lobby__thumb.inline-thumb {
   --inline-thumb-size: 100%;
   width: 100%;
   height: 100%;
@@ -7152,7 +7170,8 @@ html[data-theme='dark'] .patriot__power-mark {
   box-shadow: var(--shadow-soft);
 }
 
-.game-lobby__hero .game-lobby__art .inline-thumb .game-thumb__svg {
+.game-lobby__hero .game-lobby__art .inline-thumb .game-thumb__svg,
+.game-lobby__intro .game-lobby__art .inline-thumb .game-thumb__svg {
   width: 72%;
   height: 72%;
 }
@@ -7174,27 +7193,13 @@ html[data-theme='dark'] .patriot__power-mark {
 }
 
 .game-lobby__title {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 2;
   margin: 0;
-  padding: 1.6rem 0.75rem 0.7rem;
   font-family: var(--font-display);
   font-size: clamp(1.35rem, 4.6vw, 1.85rem);
   font-weight: 700;
   letter-spacing: -0.03em;
   line-height: 1.05;
-  text-align: center;
   color: var(--ink);
-  background: linear-gradient(
-    to top,
-    color-mix(in srgb, var(--playfield) 88%, transparent) 0%,
-    color-mix(in srgb, var(--playfield) 55%, transparent) 55%,
-    transparent 100%
-  );
-  pointer-events: none;
 }
 
 .game-lobby__blurb {
@@ -7509,14 +7514,14 @@ html[data-theme='dark'] .patriot__power-mark {
   color: var(--ink);
 }
 
-/* Tablet: thumb and stats share a row, boards stay stacked below. */
+/* Tablet: larger thumb beside intro meta. */
 @media (min-width: 520px) and (max-width: 767px) {
-  .game-lobby__identity {
+  .game-lobby__intro {
     grid-template-columns: 12rem minmax(0, 1fr);
     gap: 1rem;
   }
 
-  .game-lobby__hero .game-lobby__art {
+  .game-lobby__intro .game-lobby__art {
     width: 12rem;
     max-width: 12rem;
     justify-self: start;
@@ -7542,25 +7547,28 @@ html[data-theme='dark'] .patriot__power-mark {
   }
 }
 
-/* Desktop: identity rail (thumb, play, stats) beside the boards card. */
+/* Desktop: scrollable left column + sticky half-width leaderboard. */
 @media (min-width: 768px) {
-  .game-lobby__hero {
-    grid-template-columns: 20rem minmax(0, 1fr);
+  .game-lobby--split .game-lobby__layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     gap: 1.35rem;
-    align-items: stretch;
+    align-items: start;
   }
 
-  .game-lobby__hero .game-lobby__art {
-    width: 20rem;
-    max-width: 20rem;
+  .game-lobby__intro {
+    grid-template-columns: 11rem minmax(0, 1fr);
+    gap: 1rem;
+  }
+
+  .game-lobby__intro .game-lobby__art {
+    width: 11rem;
+    max-width: 11rem;
     justify-self: start;
   }
 
-  .game-lobby__identity {
-    display: flex;
-    flex-direction: column;
-    gap: 0.6rem;
-    min-height: 0;
+  .game-lobby__title {
+    font-size: clamp(1.65rem, 2.4vw, 2.15rem);
   }
 
   .game-lobby__play--desktop {
@@ -7573,7 +7581,7 @@ html[data-theme='dark'] .patriot__power-mark {
     flex: none;
   }
 
-  .game-lobby__identity .game-lobby__unavailable {
+  .game-lobby__intro-body .game-lobby__unavailable {
     font-size: 0.82rem;
     text-align: center;
     padding: 0.5rem 0.35rem;
@@ -7582,7 +7590,6 @@ html[data-theme='dark'] .patriot__power-mark {
   .game-lobby__stats {
     flex-direction: row;
     gap: 0.45rem;
-    margin-top: auto;
     flex: none;
   }
 
@@ -7616,82 +7623,11 @@ html[data-theme='dark'] .patriot__power-mark {
     border: 1px solid rgba(var(--ink-rgb), 0.07);
     box-shadow: var(--shadow-soft);
     min-width: 0;
-    min-height: 0;
-  }
-
-  .game-lobby__periods {
-    flex: 1;
-    min-height: 0;
-    padding: 0;
-    gap: 0.5rem;
-    align-content: stretch;
-  }
-
-  /* Hub boards: neutral chrome so four periods don’t flood the page in game accent. */
-  .game-lobby__periods .lb-summary__period {
-    background: rgba(var(--surface-rgb), 0.95);
-    border-color: rgba(var(--ink-rgb), 0.07);
-  }
-
-  .game-lobby__periods .lb-summary__period-head {
-    background: rgba(var(--ink-rgb), 0.04);
-    border-bottom-color: rgba(var(--ink-rgb), 0.06);
-  }
-
-  .game-lobby__periods .lb-summary__period-head:hover,
-  .game-lobby__periods .lb-summary__period-head:focus-visible {
-    background: rgba(var(--ink-rgb), 0.06);
-  }
-
-  .game-lobby__periods .lb-summary__period-label {
-    color: var(--muted);
-  }
-
-  .game-lobby__periods .lb-summary__row--you {
-    background: rgba(var(--ink-rgb), 0.05);
-  }
-
-  .game-lobby__periods .lb-summary__rows {
-    padding: 0.32rem 0.4rem 0.42rem;
-    gap: 0.22rem;
-  }
-
-  .game-lobby__periods .lb-summary__row {
-    min-height: 1.42rem;
-  }
-
-  .game-lobby__aside-state {
-    width: 100%;
-    flex: 1;
-  }
-
-  .game-lobby__aside-state.lb-summary__periods {
-    padding: 0;
-  }
-
-  .lb-summary__period--skeleton {
-    min-height: 8.75rem;
-    background: rgba(var(--ink-rgb), 0.04);
-    animation: lb-skel-shine 1.15s ease-in-out infinite;
-  }
-
-  .game-lobby__aside-foot {
-    display: flex;
-    justify-content: flex-end;
-    gap: 1rem;
-    margin-top: auto;
-    padding-top: 0.45rem;
-    border-top: 1px solid rgba(var(--ink-rgb), 0.07);
-    flex: none;
-  }
-
-  .game-lobby__aside-foot .game-lobby__board-link {
-    color: var(--muted);
-  }
-
-  .game-lobby__aside-foot .game-lobby__board-link:hover,
-  .game-lobby__aside-foot .game-lobby__board-link:focus-visible {
-    color: var(--ink);
+    position: sticky;
+    top: 4.75rem;
+    max-height: calc(100dvh - 5.5rem);
+    overflow: auto;
+    align-self: start;
   }
 
   .game-lobby__tops--mobile,
@@ -7699,46 +7635,40 @@ html[data-theme='dark'] .patriot__power-mark {
     display: none;
   }
 
-  /* Games without a board keep the wide thumb + stats hero. */
-  .game-lobby__hero--solo {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .game-lobby__hero--solo .game-lobby__identity {
-    display: grid;
-    grid-template-columns: 20rem minmax(0, 1fr);
+  .game-lobby:not(.game-lobby--split) .game-lobby__intro {
+    grid-template-columns: 16rem minmax(0, 1fr);
     gap: 1.35rem;
     align-items: stretch;
   }
 
-  .game-lobby__hero--solo .game-lobby__art {
-    width: 20rem;
-    max-width: 20rem;
+  .game-lobby:not(.game-lobby--split) .game-lobby__intro .game-lobby__art {
+    width: 16rem;
+    max-width: 16rem;
   }
 
-  .game-lobby__hero--solo .game-lobby__stats {
+  .game-lobby:not(.game-lobby--split) .game-lobby__stats {
     flex-direction: column;
     gap: 0.6rem;
-    margin-top: 0;
   }
 
-  .game-lobby__hero--solo .game-lobby__stats .lb-stat {
+  .game-lobby:not(.game-lobby--split) .game-lobby__stats .lb-stat {
     padding: 0.9rem 1.1rem;
     border-radius: 1rem;
   }
 
-  .game-lobby__hero--solo .game-lobby__stats .lb-stat__label {
+  .game-lobby:not(.game-lobby--split) .game-lobby__stats .lb-stat__label {
     font-size: 0.72rem;
     margin-bottom: 0.2rem;
   }
 
-  .game-lobby__hero--solo .game-lobby__stats .lb-stat strong {
+  .game-lobby:not(.game-lobby--split) .game-lobby__stats .lb-stat strong {
     font-size: clamp(1.55rem, 2.6vw, 2rem);
   }
 }
 
+
 @media (max-width: 360px) {
-  .game-lobby__identity {
+  .game-lobby__intro {
     grid-template-columns: minmax(0, 1.05fr) minmax(5.5rem, 0.95fr);
     gap: 0.55rem;
   }
@@ -7761,6 +7691,7 @@ html[data-theme='dark'] .patriot__power-mark {
   flex: 1;
   min-height: 0;
   padding: 0.75rem 0.65rem;
+  overflow: auto;
 }
 
 .game-lobby__aside .lb-list {
@@ -7781,7 +7712,7 @@ html[data-theme='dark'] .patriot__power-mark {
   .game-lobby__aside .lb-board {
     display: flex;
     flex-direction: column;
-    min-height: 18rem;
+    min-height: 12rem;
   }
 }
 
