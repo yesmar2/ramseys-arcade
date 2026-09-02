@@ -2,13 +2,13 @@ import { useEffect, useState, type CSSProperties } from 'react'
 import {
   BoardEmpty,
   BoardSkeleton,
+  PeriodSwitcher,
 } from '../components/BoardChrome'
 import { SiteHeader } from '../components/SiteHeader'
 import { Footer } from '../components/Footer'
 import { GameThumbArt } from '../components/GameThumbArt'
 import { HowToPlayAccordion } from '../components/ScoreGuide'
 import { ShareBoardButton } from '../components/ShareBoardButton'
-import { PeriodMiniBoard } from '../components/PeriodMiniBoard'
 import { TopScorePodium } from '../components/TopScorePodium'
 import {
   deviceRequirementLabel,
@@ -22,34 +22,27 @@ import { useBoardRecord } from '../hooks/useBoardRecord'
 import {
   gameBoardHref,
   gameHref,
+  gameHubHref,
   gamePlayHref,
   recordsHref,
 } from '../hooks/useHashRoute'
 import { usePersonalBest } from '../hooks/usePersonalBest'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { useDeviceType } from '../lib/device'
-import { defaultPeriod } from '../lib/defaultPeriod'
 import { APP_NAME } from '../lib/brand'
 import { formatLeaderboardScore } from '../games/spotter/score'
 import { gameHasRecords } from '../lib/records'
 import {
   getLeaderboard,
   LEADERBOARD_GAMES,
-  LEADERBOARD_PERIODS,
   normalizePlayerName,
+  PERIOD_LABELS,
   type LeaderboardGame,
   type LeaderboardEntry,
   type LeaderboardPeriod,
 } from '../lib/leaderboard'
 
 const TOP_ROWS = 3
-
-const EMPTY_BY_PERIOD: Record<LeaderboardPeriod, LeaderboardEntry[]> = {
-  daily: [],
-  weekly: [],
-  monthly: [],
-  all: [],
-}
 
 function isBoardGame(slug: string): slug is LeaderboardGame {
   return (LEADERBOARD_GAMES as readonly string[]).includes(slug)
@@ -58,16 +51,16 @@ function isBoardGame(slug: string): slug is LeaderboardGame {
 type GameHubPageProps = {
   slug: string
   board?: 'scores' | 'records'
+  period: LeaderboardPeriod
 }
 
-export function GameHubPage({ slug, board: boardFromRoute }: GameHubPageProps) {
+export function GameHubPage({ slug, board: boardFromRoute, period }: GameHubPageProps) {
   const game = getGame(slug)
   const device = useDeviceType()
   const playerName = normalizePlayerName(usePlayerName())
   const personalBest = usePersonalBest(slug)
   const allTime = useBoardRecord(slug)
-  const [byPeriod, setByPeriod] =
-    useState<Record<LeaderboardPeriod, LeaderboardEntry[]>>(EMPTY_BY_PERIOD)
+  const [topEntries, setTopEntries] = useState<LeaderboardEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -81,20 +74,22 @@ export function GameHubPage({ slug, board: boardFromRoute }: GameHubPageProps) {
   const deviceNote = game ? deviceRequirementLabel(game) : null
   const others = homeGames(device).filter((g) => g.slug !== slug)
   const hasRecords = game ? gameHasRecords(game.slug) : false
+  const boardHref = boardSlug ? gameBoardHref(boardSlug, period) : null
+  const recordsLink = game ? recordsHref(game.slug, period) : null
 
   // Old hub records tab → dedicated record books page.
   useEffect(() => {
     if (boardFromRoute !== 'records' || !game) return
-    const next = recordsHref(game.slug)
+    const next = recordsHref(game.slug, period)
     if (window.location.hash !== next) {
       window.history.replaceState(null, '', next)
       window.dispatchEvent(new HashChangeEvent('hashchange'))
     }
-  }, [boardFromRoute, game])
+  }, [boardFromRoute, game, period])
 
   useEffect(() => {
     if (!boardSlug) {
-      setByPeriod(EMPTY_BY_PERIOD)
+      setTopEntries([])
       setLoading(false)
       setError(null)
       return
@@ -102,22 +97,14 @@ export function GameHubPage({ slug, board: boardFromRoute }: GameHubPageProps) {
     let cancelled = false
     setLoading(true)
     setError(null)
-    Promise.all(
-      LEADERBOARD_PERIODS.map((period) =>
-        getLeaderboard(boardSlug, period, playerName || undefined),
-      ),
-    )
-      .then((boards) => {
+    void getLeaderboard(boardSlug, period, playerName || undefined)
+      .then((board) => {
         if (cancelled) return
-        const next = { ...EMPTY_BY_PERIOD }
-        LEADERBOARD_PERIODS.forEach((period, index) => {
-          next[period] = boards[index]?.entries ?? []
-        })
-        setByPeriod(next)
+        setTopEntries(board.entries.slice(0, TOP_ROWS))
       })
       .catch((err) => {
         if (cancelled) return
-        setByPeriod(EMPTY_BY_PERIOD)
+        setTopEntries([])
         setError(err instanceof Error ? err.message : 'Failed to load')
       })
       .finally(() => {
@@ -126,7 +113,7 @@ export function GameHubPage({ slug, board: boardFromRoute }: GameHubPageProps) {
     return () => {
       cancelled = true
     }
-  }, [boardSlug, playerName])
+  }, [boardSlug, playerName, period])
 
   if (!game) {
     return (
@@ -142,9 +129,20 @@ export function GameHubPage({ slug, board: boardFromRoute }: GameHubPageProps) {
     )
   }
 
-  const preferredPeriod = defaultPeriod()
-  const topEntries = byPeriod[preferredPeriod].slice(0, TOP_ROWS)
-  const boardHref = boardSlug ? gameBoardHref(boardSlug, preferredPeriod) : null
+  const scoresProps = boardSlug
+    ? {
+        boardSlug,
+        period,
+        boardHref,
+        recordsLink,
+        hasRecords,
+        loading,
+        error,
+        topEntries,
+        playerName,
+        accent,
+      }
+    : null
 
   return (
     <>
@@ -210,17 +208,11 @@ export function GameHubPage({ slug, board: boardFromRoute }: GameHubPageProps) {
               </div>
             </div>
 
-            {boardSlug ? (
-              <HubBoards
-                boardSlug={boardSlug}
-                boardHref={boardHref}
-                hasRecords={hasRecords}
-                recordsHref={recordsHref(game.slug)}
-                loading={loading}
-                error={error}
-                byPeriod={byPeriod}
-                playerName={playerName}
-                accent={accent}
+            {scoresProps ? (
+              <HubScoresSection
+                {...scoresProps}
+                className="game-lobby__aside"
+                slug={slug}
               />
             ) : null}
           </div>
@@ -237,18 +229,11 @@ export function GameHubPage({ slug, board: boardFromRoute }: GameHubPageProps) {
             deviceNote={deviceNote}
           />
 
-          {boardSlug ? (
-            <TodayTopSection
-              gameName={game.name}
-              boardSlug={boardSlug}
-              boardHref={boardHref}
-              hasRecords={hasRecords}
-              recordsHref={recordsHref(game.slug)}
-              loading={loading}
-              error={error}
-              topEntries={topEntries}
-              playerName={playerName}
-              accent={accent}
+          {scoresProps ? (
+            <HubScoresSection
+              {...scoresProps}
+              className="game-lobby__tops game-lobby__tops--mobile"
+              slug={slug}
             />
           ) : null}
 
@@ -342,116 +327,46 @@ function PlayCta({
   )
 }
 
-/** Desktop hero: same four period squares as the boards overview. */
-function HubBoards({
+function HubScoresSection({
+  className,
+  slug,
   boardSlug,
+  period,
   boardHref,
+  recordsLink,
   hasRecords,
-  recordsHref: recordsLink,
-  loading,
-  error,
-  byPeriod,
-  playerName,
-  accent,
-}: {
-  boardSlug: LeaderboardGame
-  boardHref: string | null
-  hasRecords: boolean
-  recordsHref: string
-  loading: boolean
-  error: string | null
-  byPeriod: Record<LeaderboardPeriod, LeaderboardEntry[]>
-  playerName: string
-  accent: string
-}) {
-  return (
-    <section className="game-lobby__aside" aria-label="Leaderboards">
-      {loading ? (
-        <div className="game-lobby__aside-state lb-summary__periods">
-          {LEADERBOARD_PERIODS.map((period) => (
-            <div
-              key={period}
-              className="lb-summary__period lb-summary__period--skeleton"
-              aria-hidden="true"
-            />
-          ))}
-        </div>
-      ) : error ? (
-        <div className="game-lobby__aside-state">
-          <BoardEmpty
-            title="Couldn’t load scores"
-            detail="Check your connection and try again."
-          />
-        </div>
-      ) : (
-        <div className="lb-summary__periods game-lobby__periods">
-          {LEADERBOARD_PERIODS.map((period) => (
-            <PeriodMiniBoard
-              key={period}
-              slug={boardSlug}
-              period={period}
-              entries={byPeriod[period]}
-              accent={accent}
-              playerName={playerName}
-            />
-          ))}
-        </div>
-      )}
-
-      <div className="game-lobby__aside-foot">
-        {boardHref ? (
-          <a className="game-lobby__board-link" href={boardHref}>
-            Full board
-          </a>
-        ) : null}
-        {hasRecords ? (
-          <a className="game-lobby__board-link" href={recordsLink}>
-            Records
-          </a>
-        ) : null}
-      </div>
-    </section>
-  )
-}
-
-/** Today’s top podium — mobile only; desktop uses the period squares. */
-function TodayTopSection({
-  gameName,
-  boardSlug,
-  boardHref,
-  hasRecords,
-  recordsHref: recordsLink,
   loading,
   error,
   topEntries,
   playerName,
   accent,
 }: {
-  gameName: string
+  className: string
+  slug: string
   boardSlug: LeaderboardGame
+  period: LeaderboardPeriod
   boardHref: string | null
+  recordsLink: string | null
   hasRecords: boolean
-  recordsHref: string
   loading: boolean
   error: string | null
   topEntries: LeaderboardEntry[]
   playerName: string
   accent: string
 }) {
+  const periodLabel = PERIOD_LABELS[period]
+
   return (
-    <section
-      className="game-lobby__tops game-lobby__tops--mobile"
-      aria-label={`${gameName} today’s top scores`}
-    >
-      <div className="game-lobby__tops-head">
-        <h2 className="game-lobby__section-title">Today’s top</h2>
-        <div className="game-lobby__tops-links">
+    <section className={className} aria-label={`${periodLabel} top scores`}>
+      <div className="game-lobby__scores-head">
+        <h2 className="game-lobby__section-title">{periodLabel} top</h2>
+        <div className="game-lobby__scores-links">
           {boardHref ? (
             <a className="game-lobby__board-link" href={boardHref}>
               Full board
             </a>
           ) : null}
-          {hasRecords ? (
+          {hasRecords && recordsLink ? (
             <a className="game-lobby__board-link" href={recordsLink}>
               Records
             </a>
@@ -459,9 +374,18 @@ function TodayTopSection({
         </div>
       </div>
 
+      <PeriodSwitcher
+        period={period}
+        accent={accent}
+        hrefFor={(p) => gameHubHref(slug, p)}
+        onSelect={(p) => {
+          window.location.hash = gameHubHref(slug, p)
+        }}
+      />
+
       <div
-        key={boardSlug}
-        className="lb-board lb-board--fade game-lobby__tops-board"
+        key={`${boardSlug}-${period}`}
+        className="lb-board lb-board--fade game-lobby__scores-board"
       >
         {loading ? (
           <BoardSkeleton rows={TOP_ROWS} />

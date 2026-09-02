@@ -7271,21 +7271,29 @@ html[data-theme='dark'] .patriot__power-mark {
   color: var(--muted);
 }
 
-.game-lobby__tops-head {
+.game-lobby__tops-head,
+.game-lobby__scores-head {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   gap: 0.75rem;
 }
 
-.game-lobby__tops-links {
+.game-lobby__tops-links,
+.game-lobby__scores-links {
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: 0.75rem;
 }
 
-.game-lobby__tops-board {
+.game-lobby__tops-board,
+.game-lobby__scores-board {
+  margin: 0;
+}
+
+.game-lobby__aside .lb-periods,
+.game-lobby__tops .lb-periods {
   margin: 0;
 }
 

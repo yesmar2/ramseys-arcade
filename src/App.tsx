@@ -161,7 +161,7 @@ function App() {
   }
   if (route.name === 'game') {
     if (isGameHidden(route.slug)) return <ComingSoonPage slug={route.slug} />
-    return <GameHubPage slug={route.slug} board={route.board} />
+    return <GameHubPage slug={route.slug} board={route.board} period={route.period ?? defaultPeriod()} />
   }
   if (route.name === 'gamePlay' && isGameHidden(route.slug)) {
     return <ComingSoonPage slug={route.slug} />

@@ -22,7 +22,7 @@ export type Route =
   | { name: 'tournamentCreate' }
   | { name: 'tournament'; id: string; invite?: string }
   | { name: 'tournamentPlay'; id: string; game: string; invite?: string }
-  | { name: 'game'; slug: string; board?: 'scores' | 'records' }
+  | { name: 'game'; slug: string; board?: 'scores' | 'records'; period?: LeaderboardPeriod }
   | { name: 'gamePlay'; slug: string }
   | { name: 'authVerify'; token: string }
   | { name: 'privacy' }
@@ -66,6 +66,14 @@ export function gameHref(slug: string, board: 'scores' | 'records' = 'scores') {
   const base = `#/games/${encodeURIComponent(slug)}`
   if (board === 'records') return `${base}/records`
   return base
+}
+
+/** Game hub with a selected leaderboard period. */
+export function gameHubHref(
+  slug: string,
+  period: LeaderboardPeriod = defaultPeriod(),
+) {
+  return `#/games/${encodeURIComponent(slug)}/${period}`
 }
 
 export function gamePlayHref(slug: string) {
@@ -152,6 +160,9 @@ export function hrefForRoute(
     case 'records':
       if (route.recordId) return recordHref(route.game, route.recordId, period)
       return recordsHref(route.game, period)
+    case 'game':
+      if (route.board === 'records') return null
+      return gameHubHref(route.slug, period)
     default:
       return null
   }
@@ -292,10 +303,10 @@ function parseHash(hash: string): Route {
     if (segment === 'records') {
       return { name: 'game', slug, board: 'records' }
     }
-    if (segment && isLeaderboardPeriod(segment) && isLeaderboardGame(slug)) {
-      return gameLeaderboardRoute(slug, segment)
+    if (segment && isLeaderboardPeriod(segment)) {
+      return { name: 'game', slug, period: segment }
     }
-    return { name: 'game', slug, board: 'scores' }
+    return { name: 'game', slug, period: defaultPeriod() }
   }
 
   return { name: 'home' }
@@ -318,20 +329,6 @@ export function useHashRoute(): Route {
       if (next && normalizeHash(window.location.hash) !== normalizeHash(next)) {
         window.history.replaceState(null, '', next)
         setRoute(parseHash(next))
-      }
-    }
-
-    const path = window.location.hash.replace(/^#\/?/, '').replace(/\/$/, '')
-    const gamePeriodMatch = /^games\/([^/]+)\/([^/]+)$/.exec(path)
-    if (gamePeriodMatch) {
-      const slug = decodeURIComponent(gamePeriodMatch[1])
-      const periodRaw = decodeURIComponent(gamePeriodMatch[2])
-      if (periodRaw !== 'records' && isLeaderboardGame(slug) && isLeaderboardPeriod(periodRaw)) {
-        const canonical = gameBoardHref(slug, periodRaw)
-        if (window.location.hash !== canonical) {
-          window.history.replaceState(null, '', canonical)
-          setRoute(parseHash(canonical))
-        }
       }
     }
 
