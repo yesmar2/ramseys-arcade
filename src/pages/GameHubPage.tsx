@@ -145,17 +145,12 @@ export function GameHubPage({ slug, board: boardFromRoute, period }: GameHubPage
         boardSlug,
         period,
         route,
-        boardHref,
-        recordsLink,
-        hasRecords,
         loading,
         error,
         entries,
         you,
         playerName,
         accent,
-        gameName: game.name,
-        gameUrl: gameHref(slug),
       }
     : null
 
@@ -194,11 +189,6 @@ export function GameHubPage({ slug, board: boardFromRoute, period }: GameHubPage
                     <h1 className="game-lobby__title game-lobby__title--beside">
                       {game.name}
                     </h1>
-                    <ShareBoardButton
-                      className="game-lobby__share game-lobby__share--head"
-                      label={`Play ${game.name} on ${APP_NAME}`}
-                      url={gameHref(slug)}
-                    />
                   </div>
 
                   {boardSlug ? (
@@ -213,6 +203,24 @@ export function GameHubPage({ slug, board: boardFromRoute, period }: GameHubPage
                       deviceNote={deviceNote}
                     />
                   ) : null}
+
+                  <div className="game-lobby__intro-links">
+                    <ShareBoardButton
+                      className="game-lobby__share"
+                      label={`Play ${game.name} on ${APP_NAME}`}
+                      url={gameHref(slug)}
+                    />
+                    {boardHref ? (
+                      <a className="game-lobby__board-link" href={boardHref}>
+                        Full board
+                      </a>
+                    ) : null}
+                    {hasRecords && recordsLink ? (
+                      <a className="game-lobby__board-link" href={recordsLink}>
+                        Records
+                      </a>
+                    ) : null}
+                  </div>
 
                   <div className="game-lobby__stats">
                     <div className="lb-stat">
@@ -360,17 +368,12 @@ function HubScoresSection({
   boardSlug,
   period,
   route,
-  boardHref,
-  recordsLink,
-  hasRecords,
   loading,
   error,
   entries,
   you,
   playerName,
   accent,
-  gameName,
-  gameUrl,
 }: {
   className: string
   variant: 'desktop' | 'mobile'
@@ -378,17 +381,12 @@ function HubScoresSection({
   boardSlug: LeaderboardGame
   period: LeaderboardPeriod
   route: Route
-  boardHref: string | null
-  recordsLink: string | null
-  hasRecords: boolean
   loading: boolean
   error: string | null
   entries: LeaderboardEntry[]
   you: YouEntry | null
   playerName: string
   accent: string
-  gameName: string
-  gameUrl: string
 }) {
   const periodLabel = PERIOD_LABELS[period]
   const isDesktop = variant === 'desktop'
@@ -400,28 +398,7 @@ function HubScoresSection({
 
   return (
     <section className={className} aria-label={`${periodLabel} top scores`}>
-      <div className="game-lobby__scores-head">
-        <h2 className="game-lobby__section-title">{periodLabel} top</h2>
-        <div className="game-lobby__scores-links">
-          {!isDesktop ? (
-            <ShareBoardButton
-              className="game-lobby__share game-lobby__share--scores"
-              label={`Play ${gameName} on ${APP_NAME}`}
-              url={gameUrl}
-            />
-          ) : null}
-          {boardHref ? (
-            <a className="game-lobby__board-link" href={boardHref}>
-              Full board
-            </a>
-          ) : null}
-          {hasRecords && recordsLink ? (
-            <a className="game-lobby__board-link" href={recordsLink}>
-              Records
-            </a>
-          ) : null}
-        </div>
-      </div>
+      <h2 className="game-lobby__section-title">{periodLabel} top</h2>
 
       <PeriodSwitcher
         period={period}

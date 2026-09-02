@@ -7210,12 +7210,23 @@ html[data-theme='dark'] .patriot__power-mark {
   height: 86%;
 }
 
-.game-lobby__share--head,
-.game-lobby__share--scores {
+.game-lobby__share {
   position: static;
   flex: none;
   background: rgba(var(--surface-rgb), 0.92);
   box-shadow: var(--shadow-soft);
+}
+
+.game-lobby__intro-links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.55rem 0.75rem;
+  min-width: 0;
+}
+
+.game-lobby__intro-links .game-lobby__board-link {
+  font-size: 0.82rem;
 }
 
 .game-lobby__title {
@@ -7587,7 +7598,7 @@ html[data-theme='dark'] .patriot__power-mark {
   }
 
   .game-lobby__intro-head {
-    display: flex;
+    display: block;
   }
 
   .game-lobby__title--beside {
