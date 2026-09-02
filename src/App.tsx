@@ -37,18 +37,17 @@ import { PrivacyPage } from './pages/PrivacyPage'
 import { TermsPage } from './pages/TermsPage'
 import { TournamentPlayPage } from './pages/TournamentPlayPage'
 
-async function syncPlayerIdentity() {
+async function bootstrapApp() {
   pruneOrphanTournamentIds()
+  await refreshPersonalBests()
+}
+
+async function onPlayerNameChanged() {
   const name = getLastPlayerName()
   const token = name ? getClaimToken(name) : null
   if (name && token) {
     await migrateLocalScoresToName(name, token)
   }
-  await refreshPersonalBests()
-  await refreshGlobalRank()
-}
-
-async function refreshOnFocus() {
   await refreshPersonalBests()
   await refreshGlobalRank()
 }
@@ -98,21 +97,16 @@ function App() {
   }, [scrollKey])
 
   useEffect(() => {
-    void syncPlayerIdentity()
+    void bootstrapApp()
     const onName = () => {
-      void syncPlayerIdentity()
-    }
-    const onFocus = () => {
-      void refreshOnFocus()
+      void onPlayerNameChanged()
     }
     const unlock = () => unlockSound()
     window.addEventListener(PLAYER_NAME_EVENT, onName)
-    window.addEventListener('focus', onFocus)
     window.addEventListener('pointerdown', unlock, true)
     window.addEventListener('keydown', unlock, true)
     return () => {
       window.removeEventListener(PLAYER_NAME_EVENT, onName)
-      window.removeEventListener('focus', onFocus)
       window.removeEventListener('pointerdown', unlock, true)
       window.removeEventListener('keydown', unlock, true)
     }

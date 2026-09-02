@@ -7,6 +7,37 @@ import {
 } from '../lib/auth'
 
 let cachedAccount: Account | null = null
+let inflightMe: Promise<Account | null> | null = null
+let lastMeFetchAt = 0
+const ME_CACHE_MS = 60_000
+
+async function loadAuthMe(force = false): Promise<Account | null> {
+  if (!getSessionToken()) {
+    cachedAccount = null
+    return null
+  }
+  const now = Date.now()
+  if (!force && cachedAccount && now - lastMeFetchAt < ME_CACHE_MS) {
+    return cachedAccount
+  }
+  if (inflightMe) return inflightMe
+
+  inflightMe = (async () => {
+    try {
+      const me = await fetchAuthMe()
+      const next = me?.account ?? null
+      cachedAccount = next
+      lastMeFetchAt = Date.now()
+      return next
+    } catch {
+      return cachedAccount
+    } finally {
+      inflightMe = null
+    }
+  })()
+
+  return inflightMe
+}
 
 export function useAuth() {
   const [account, setAccount] = useState<Account | null>(() => cachedAccount)
@@ -16,7 +47,7 @@ export function useAuth() {
 
   useEffect(() => {
     let cancelled = false
-    const sync = async () => {
+    const sync = async (force = false) => {
       if (!getSessionToken()) {
         cachedAccount = null
         if (!cancelled) {
@@ -25,23 +56,17 @@ export function useAuth() {
         }
         return
       }
-      if (!cachedAccount) setLoading(true)
-      try {
-        const me = await fetchAuthMe()
-        const next = me?.account ?? null
-        cachedAccount = next
-        if (!cancelled) setAccount(next)
-      } catch {
-        cachedAccount = null
-        if (!cancelled) setAccount(null)
-      } finally {
-        if (!cancelled) setLoading(false)
+      if (!cachedAccount || force) setLoading(true)
+      const next = await loadAuthMe(force)
+      if (!cancelled) {
+        setAccount(next)
+        setLoading(false)
       }
     }
     void sync()
-    const onAuth = () => void sync()
+    const onAuth = () => void sync(true)
     const onFocus = () => {
-      if (getSessionToken()) void sync()
+      if (getSessionToken()) void sync(false)
     }
     window.addEventListener(AUTH_EVENT, onAuth)
     window.addEventListener('storage', onAuth)

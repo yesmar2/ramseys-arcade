@@ -11,6 +11,7 @@ export type PersonalBestResult = {
 
 let cachedName = ''
 let cachedBests: Record<string, number> = {}
+let inflightRefresh: Promise<void> | null = null
 const listeners = new Set<() => void>()
 
 function emit() {
@@ -42,25 +43,33 @@ export function rememberPersonalBest(slug: string, score: number) {
 }
 
 export async function refreshPersonalBests() {
-  const name = getLastPlayerName().trim().toUpperCase()
-  if (!name) {
-    cachedName = ''
-    cachedBests = {}
-    emit()
-    return
-  }
-  try {
-    const bests = await fetchPlayerBests(name)
-    cachedName = name
-    cachedBests = bests
-    emit()
-  } catch {
-    if (cachedName !== name) {
-      cachedName = name
+  if (inflightRefresh) return inflightRefresh
+
+  inflightRefresh = (async () => {
+    const name = getLastPlayerName().trim().toUpperCase()
+    if (!name) {
+      cachedName = ''
       cachedBests = {}
       emit()
+      return
     }
-  }
+    try {
+      const bests = await fetchPlayerBests(name)
+      cachedName = name
+      cachedBests = bests
+      emit()
+    } catch {
+      if (cachedName !== name) {
+        cachedName = name
+        cachedBests = {}
+        emit()
+      }
+    }
+  })().finally(() => {
+    inflightRefresh = null
+  })
+
+  return inflightRefresh
 }
 
 export function describePersonalBest(

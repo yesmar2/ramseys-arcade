@@ -68,6 +68,18 @@ function resolveApiBase() {
 
 const API_BASE = resolveApiBase()
 
+const inflightGets = new Map<string, Promise<unknown>>()
+
+function dedupeGet<T>(key: string, run: () => Promise<T>): Promise<T> {
+  const pending = inflightGets.get(key)
+  if (pending) return pending as Promise<T>
+  const promise = run().finally(() => {
+    if (inflightGets.get(key) === promise) inflightGets.delete(key)
+  })
+  inflightGets.set(key, promise)
+  return promise
+}
+
 export class ApiError extends Error {
   status: number
   code?: string
@@ -165,9 +177,12 @@ export async function migrateLocalScoresToName(
   const cleaned = normalizePlayerName(activeName)
   if (!cleaned || !activeToken) return
 
-  const claims = readClaims()
-  for (const [name, token] of Object.entries(claims)) {
-    if (name === cleaned || !token) continue
+  const stale = Object.entries(readClaims()).filter(
+    ([name, token]) => name !== cleaned && Boolean(token),
+  )
+  if (stale.length === 0) return
+
+  for (const [name, token] of stale) {
     try {
       await api<{ name: string }>('/names/rename', {
         method: 'POST',
@@ -179,8 +194,13 @@ export async function migrateLocalScoresToName(
         }),
       })
       forgetClaimToken(name)
-    } catch {
-      /* not owned anymore / already migrated */
+    } catch (err) {
+      if (
+        err instanceof ApiError &&
+        (err.status === 400 || err.status === 403 || err.status === 404 || err.status === 409)
+      ) {
+        forgetClaimToken(name)
+      }
     }
   }
 }
@@ -337,10 +357,12 @@ export async function fetchLeaderboardsSummary(
     limit: String(capped),
     period,
   })
-  const data = await api<{ games: GameBoardPreview[] }>(
-    `/leaderboards/summary?${params.toString()}`,
-  )
-  return data.games ?? []
+  return dedupeGet(`summary:${params.toString()}`, async () => {
+    const data = await api<{ games: GameBoardPreview[] }>(
+      `/leaderboards/summary?${params.toString()}`,
+    )
+    return data.games ?? []
+  })
 }
 
 export async function getLeaderboard(
@@ -367,10 +389,12 @@ export async function fetchPlayerBests(
 ): Promise<Record<string, number>> {
   const cleaned = normalizePlayerName(name)
   if (!cleaned) return {}
-  const data = await api<{ bests?: Record<string, number> }>(
-    `/leaderboards/bests?name=${encodeURIComponent(cleaned)}`,
-  )
-  return data.bests ?? {}
+  return dedupeGet(`bests:${cleaned}`, async () => {
+    const data = await api<{ bests?: Record<string, number> }>(
+      `/leaderboards/bests?name=${encodeURIComponent(cleaned)}`,
+    )
+    return data.bests ?? {}
+  })
 }
 
 export type GlobalGamePlace = {
@@ -404,7 +428,9 @@ export async function fetchGlobalRank(
   }
   const qs = new URLSearchParams({ name: cleaned })
   if (period !== 'all') qs.set('period', period)
-  return api<GlobalRankResult>(`/leaderboards/rank?${qs}`)
+  return dedupeGet(`rank:${qs.toString()}`, () =>
+    api<GlobalRankResult>(`/leaderboards/rank?${qs}`),
+  )
 }
 
 export type GlobalBoardEntry = {
@@ -428,11 +454,13 @@ export async function fetchGlobalBoard(
   const capped = Math.min(100, Math.max(1, Math.floor(limit)))
   const qs = new URLSearchParams({ limit: String(capped) })
   if (period !== 'all') qs.set('period', period)
-  const data = await api<GlobalBoardResult>(`/leaderboards/rank?${qs}`)
-  return {
-    totalPlayers: data.totalPlayers ?? 0,
-    entries: data.entries ?? [],
-  }
+  return dedupeGet(`rank-board:${qs.toString()}`, async () => {
+    const data = await api<GlobalBoardResult>(`/leaderboards/rank?${qs}`)
+    return {
+      totalPlayers: data.totalPlayers ?? 0,
+      entries: data.entries ?? [],
+    }
+  })
 }
 
 export type QualifiesResult = {

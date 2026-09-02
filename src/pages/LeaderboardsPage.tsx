@@ -10,12 +10,14 @@ import { PageShell } from '../components/PageShell'
 import { ShareBoardButton } from '../components/ShareBoardButton'
 import { globalRankingsHref, leaderboardHref } from '../hooks/useHashRoute'
 import { defaultPeriod } from '../lib/defaultPeriod'
+import { getGlobalRankSnapshot } from '../lib/globalRank'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { APP_NAME } from '../lib/brand'
 import {
   fetchGlobalBoard,
   fetchGlobalRank,
   fetchLeaderboardsSummary,
+  getLastPlayerName,
   normalizePlayerName,
   PERIOD_LABELS,
   type GameBoardPreview,
@@ -169,6 +171,32 @@ function GlobalRankingsView({ period }: { period: LeaderboardPeriod }) {
           )
           if (onBoard) {
             setYou(onBoard)
+          } else if (period === defaultPeriod()) {
+            const cached = getGlobalRankSnapshot()
+            if (
+              normalizePlayerName(getLastPlayerName()) === playerName &&
+              cached.rank != null
+            ) {
+              setYou({
+                name: playerName,
+                rank: cached.rank,
+                score: cached.score,
+                games: Object.keys(cached.byGame).length,
+              })
+            } else {
+              const mine = await fetchGlobalRank(playerName, period)
+              if (cancelled) return
+              if (mine.rank != null) {
+                setYou({
+                  name: playerName,
+                  rank: mine.rank,
+                  score: mine.score,
+                  games: Object.keys(mine.byGame).length,
+                })
+              } else {
+                setYou(null)
+              }
+            }
           } else {
             const mine = await fetchGlobalRank(playerName, period)
             if (cancelled) return

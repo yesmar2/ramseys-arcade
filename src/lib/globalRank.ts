@@ -21,6 +21,7 @@ const empty: GlobalRankResult = {
 let cachedName = ''
 let cached: GlobalRankResult = empty
 let requestId = 0
+let inflightRefresh: Promise<void> | null = null
 const listeners = new Set<() => void>()
 
 function emit() {
@@ -34,6 +35,7 @@ function onPreferenceChange() {
 }
 
 function onPlayerNameEvent() {
+  cached = empty
   emit()
   void refreshGlobalRank()
 }
@@ -65,28 +67,36 @@ export function getGlobalRankSnapshot(): GlobalRankResult {
 }
 
 export async function refreshGlobalRank() {
-  const name = getLastPlayerName()
-  if (!name) {
-    cachedName = ''
-    cached = empty
-    emit()
-    return
-  }
-  const id = ++requestId
-  try {
-    const next = await fetchGlobalRank(name, defaultPeriod())
-    if (id !== requestId) return
-    cachedName = name
-    cached = next
-    emit()
-  } catch {
-    if (id !== requestId) return
-    if (cachedName !== name) {
-      cachedName = name
+  if (inflightRefresh) return inflightRefresh
+
+  inflightRefresh = (async () => {
+    const name = getLastPlayerName()
+    if (!name) {
+      cachedName = ''
       cached = empty
       emit()
+      return
     }
-  }
+    const id = ++requestId
+    try {
+      const next = await fetchGlobalRank(name, defaultPeriod())
+      if (id !== requestId) return
+      cachedName = name
+      cached = next
+      emit()
+    } catch {
+      if (id !== requestId) return
+      if (cachedName !== name) {
+        cachedName = name
+        cached = empty
+        emit()
+      }
+    }
+  })().finally(() => {
+    inflightRefresh = null
+  })
+
+  return inflightRefresh
 }
 
 export function useGlobalRank(): GlobalRankResult {

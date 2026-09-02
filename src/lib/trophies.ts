@@ -35,6 +35,8 @@ function resolveApiBase() {
 const API_BASE = resolveApiBase()
 
 let summaryCache: { name: string; at: number; summary: TrophySummary } | null = null
+let inflightSummary: Promise<TrophySummary> | null = null
+let inflightSummaryName = ''
 const SUMMARY_CACHE_MS = 60_000
 
 export function invalidateTrophySummaryCache(name?: string) {
@@ -98,13 +100,23 @@ export async function fetchTrophySummary(name: string): Promise<TrophySummary> {
   ) {
     return summaryCache.summary
   }
-  const params = new URLSearchParams({ name: cleaned })
-  const res = await fetch(`${API_BASE}/trophies/summary?${params}`)
-  if (!res.ok) return { total: 0, podium: 0, topTen: 0 }
-  const body = (await res.json()) as { summary?: TrophySummary }
-  const summary = body.summary ?? { total: 0, podium: 0, topTen: 0 }
-  summaryCache = { name: cleaned, at: now, summary }
-  return summary
+  if (inflightSummary && inflightSummaryName === cleaned) {
+    return inflightSummary
+  }
+  inflightSummaryName = cleaned
+  inflightSummary = (async () => {
+    const params = new URLSearchParams({ name: cleaned })
+    const res = await fetch(`${API_BASE}/trophies/summary?${params}`)
+    if (!res.ok) return { total: 0, podium: 0, topTen: 0 }
+    const body = (await res.json()) as { summary?: TrophySummary }
+    const summary = body.summary ?? { total: 0, podium: 0, topTen: 0 }
+    summaryCache = { name: cleaned, at: Date.now(), summary }
+    return summary
+  })().finally(() => {
+    inflightSummary = null
+    inflightSummaryName = ''
+  })
+  return inflightSummary
 }
 
 export async function fetchTrophyCounts(
