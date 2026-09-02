@@ -8,7 +8,7 @@ import {
 } from '../lib/leaderboard'
 
 type SitePeriodControlProps = {
-  variant: 'header' | 'drawer' | 'menu'
+  variant: 'header' | 'drawer'
   onSelect?: () => void
 }
 
@@ -57,26 +57,6 @@ export function SitePeriodControl({ variant, onSelect }: SitePeriodControlProps)
             </button>
           ))}
         </div>
-      </div>
-    )
-  }
-
-  if (variant === 'menu') {
-    return (
-      <div className="site-header__menu-period" role="group" aria-label="Time frame">
-        <span className="site-header__menu-period-label">Time frame</span>
-        {LEADERBOARD_PERIODS.map((p) => (
-          <button
-            key={p}
-            type="button"
-            role="menuitemradio"
-            aria-checked={period === p}
-            className={`site-header__menu-period-btn${period === p ? ' site-header__menu-period-btn--active' : ''}`}
-            onClick={() => select(p)}
-          >
-            {PERIOD_LABELS[p]}
-          </button>
-        ))}
       </div>
     )
   }

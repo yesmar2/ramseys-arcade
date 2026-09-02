@@ -182,10 +182,6 @@ export function SiteHeader() {
           </button>
           {utilOpen ? (
             <div className="site-header__menu" role="menu">
-              <SitePeriodControl
-                variant="menu"
-                onSelect={() => setUtilOpen(false)}
-              />
               <button
                 type="button"
                 role="menuitem"
