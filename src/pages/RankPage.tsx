@@ -81,7 +81,7 @@ export function RankPage({
 
   const data =
     useCachedSelfRank ? myRank : (periodRank ?? (isSelf ? myRank : empty))
-  const { rank, score, totalPlayers, byGame, nearby = [] } = data
+  const { rank, score, byGame, nearby = [] } = data
 
   const rankedCount = VISIBLE_LEADERBOARD_GAMES.filter((slug) => Boolean(byGame[slug])).length
   const totalGames = VISIBLE_LEADERBOARD_GAMES.length
@@ -110,7 +110,7 @@ export function RankPage({
                 <span className="lb-page__heading-slot" aria-hidden="true" />
               )}
               <h1 className="lb-page__title">
-                {isSelf ? 'Your ranking' : `${viewedName}'s Ranking`}
+                {isSelf ? 'Your profile' : `${viewedName}'s Profile`}
               </h1>
               {viewedName ? (
                 <div className="lb-game-board__trailing">
@@ -118,7 +118,7 @@ export function RankPage({
                     label={
                       rank != null
                         ? `${viewedName} · #${rank} global · ${APP_NAME}`
-                        : `${viewedName}'s ranking · ${APP_NAME}`
+                        : `${viewedName}'s profile · ${APP_NAME}`
                     }
                     url={rankHref(viewedName || undefined, period)}
                   />
@@ -127,9 +127,6 @@ export function RankPage({
                 <span className="lb-page__heading-slot" aria-hidden="true" />
               )}
             </div>
-            <p className="lb-page__blurb lb-page__blurb--tight rank-page__period">
-              {PERIOD_LABELS[period]}
-            </p>
             {isSelf && !myName ? (
               <p className="lb-page__blurb lb-page__blurb--tight">
                 Set a gamer tag to earn a global rank
@@ -143,7 +140,7 @@ export function RankPage({
             onSelect={(p) => {
               window.location.hash = rankHref(isSelf ? undefined : viewedName, p)
             }}
-            label="Ranking period"
+            label="Period"
           />
 
           {loading ? (
@@ -161,10 +158,6 @@ export function RankPage({
                 <div className="lb-stat">
                   <span className="lb-stat__label">Points</span>
                   <strong>{score > 0 ? score : '—'}</strong>
-                </div>
-                <div className="lb-stat">
-                  <span className="lb-stat__label">Field</span>
-                  <strong>{totalPlayers > 0 ? totalPlayers : '—'}</strong>
                 </div>
                 {gap ? (
                   <p className="lb-scorecard__gap">

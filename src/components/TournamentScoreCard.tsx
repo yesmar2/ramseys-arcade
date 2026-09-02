@@ -14,10 +14,10 @@ function attemptsLeftLabel(
   max: number | null,
   exhausted: boolean,
 ): string | null {
-  if (exhausted || remaining === 0) return 'No attempts remaining'
-  if (max == null) return 'Unlimited attempts remaining'
+  if (exhausted || remaining === 0) return 'No attempts left'
+  if (max == null) return 'Unlimited attempts'
   const left = remaining ?? max
-  return `${left} of ${max} attempt${max === 1 ? '' : 's'} left`
+  return `${left} attempt${left === 1 ? '' : 's'} left`
 }
 
 type TournamentScoreCardProps = {

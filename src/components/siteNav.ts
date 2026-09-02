@@ -21,7 +21,7 @@ export const SITE_NAV_LINKS: readonly SiteNavItem[] = [
 /** Drawer-only: You is also the header chip. */
 export const SITE_DRAWER_YOU: SiteNavItem = {
   href: rankHref(),
-  label: 'You',
+  label: 'Profile',
   match: 'you',
 }
 

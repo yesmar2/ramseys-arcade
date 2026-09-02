@@ -709,8 +709,8 @@ export function TournamentDetailPage({ id, invite }: { id: string; invite?: stri
             {detail.playerStatus?.maxAttempts != null && joined ? (
               <p className="tour-note tour-note--compact">
                 {detail.playerStatus.attemptsRemaining === 0
-                  ? 'You have used all your attempts.'
-                  : `${detail.playerStatus.attemptsRemaining} of ${detail.playerStatus.maxAttempts} attempts remaining.`}
+                  ? 'No attempts left.'
+                  : `${detail.playerStatus.attemptsRemaining} attempt${detail.playerStatus.attemptsRemaining === 1 ? '' : 's'} left.`}
               </p>
             ) : null}
           </section>

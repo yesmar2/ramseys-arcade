@@ -150,11 +150,11 @@ export function SiteHeader() {
             title={
               rank != null
                 ? trophySummary.total > 0
-                  ? `Your ranking · #${rank} · ${trophySummary.total} trophies`
-                  : `Your ranking · #${rank}`
+                  ? `Your profile · #${rank} · ${trophySummary.total} trophies`
+                  : `Your profile · #${rank}`
                 : trophySummary.total > 0
-                  ? `Your ranking · ${trophySummary.total} trophies`
-                  : 'Your ranking'
+                  ? `Your profile · ${trophySummary.total} trophies`
+                  : 'Your profile'
             }
             aria-current={navActive('you', hash) ? 'page' : undefined}
           >
