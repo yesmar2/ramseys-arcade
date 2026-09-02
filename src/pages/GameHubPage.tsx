@@ -77,7 +77,6 @@ export function GameHubPage({ slug, board: boardFromRoute, period }: GameHubPage
   const boardHref = boardSlug ? gameBoardHref(boardSlug, period) : null
   const recordsLink = game ? recordsHref(game.slug, period) : null
 
-  // Old hub records tab → dedicated record books page.
   useEffect(() => {
     if (boardFromRoute !== 'records' || !game) return
     const next = recordsHref(game.slug, period)
@@ -129,20 +128,13 @@ export function GameHubPage({ slug, board: boardFromRoute, period }: GameHubPage
     )
   }
 
-  const scoresProps = boardSlug
-    ? {
-        boardSlug,
-        period,
-        boardHref,
-        recordsLink,
-        hasRecords,
-        loading,
-        error,
-        topEntries,
-        playerName,
-        accent,
-      }
-    : null
+  const playProps = {
+    game,
+    canPlay,
+    comingSoon,
+    playHref,
+    deviceNote,
+  }
 
   return (
     <>
@@ -159,81 +151,67 @@ export function GameHubPage({ slug, board: boardFromRoute, period }: GameHubPage
             } as CSSProperties
           }
         >
-          <div
-            className={`game-lobby__hero${boardSlug ? '' : ' game-lobby__hero--solo'}`}
-          >
-            <div className="game-lobby__identity">
-              <div className="game-lobby__art">
-                <GameThumbArt
-                  slug={game.slug}
-                  accent={game.accent}
-                  className="game-lobby__thumb"
-                />
+          <header className="game-lobby__header lb-page__header lb-page__header--compact lb-game-board__head">
+            <div className="lb-page__heading-row">
+              <div className="lb-game-board__identity lb-game-board__identity--static game-lobby__identity">
+                <GameThumbArt slug={game.slug} accent={game.accent} />
+                <h1 className="lb-page__title lb-game-board__title game-lobby__title">
+                  {game.name}
+                </h1>
+              </div>
+              <div className="lb-game-board__trailing game-lobby__actions">
                 <ShareBoardButton
                   className="game-lobby__share"
                   label={`Play ${game.name} on ${APP_NAME}`}
                   url={gameHref(slug)}
                 />
-                <h1 className="game-lobby__title">{game.name}</h1>
-              </div>
-
-              {boardSlug ? (
                 <PlayCta
-                  className="game-lobby__play--desktop"
+                  className="game-lobby__play--header"
                   compact
-                  game={game}
-                  canPlay={canPlay}
-                  comingSoon={comingSoon}
-                  inDevelopment={inDevelopment}
-                  playHref={playHref}
-                  deviceNote={deviceNote}
+                  {...playProps}
                 />
-              ) : null}
-
-              <div className="game-lobby__stats">
-                <div className="lb-stat">
-                  <span className="lb-stat__label">Your best</span>
-                  <strong>
-                    {personalBest > 0
-                      ? formatLeaderboardScore(slug, personalBest)
-                      : '—'}
-                  </strong>
-                </div>
-                <div className="lb-stat">
-                  <span className="lb-stat__label">All time</span>
-                  <strong>
-                    {allTime > 0 ? formatLeaderboardScore(slug, allTime) : '—'}
-                  </strong>
-                </div>
               </div>
             </div>
+          </header>
 
-            {scoresProps ? (
-              <HubScoresSection
-                {...scoresProps}
-                className="game-lobby__aside"
-                slug={slug}
-              />
-            ) : null}
-          </div>
+          {inDevelopment && canPlay ? (
+            <p className="game-lobby__dev-note">In development — expect rough edges.</p>
+          ) : null}
 
-          <PlayCta
-            className={
-              boardSlug ? 'game-lobby__play--mobile' : 'game-lobby__play--wide'
-            }
-            game={game}
-            canPlay={canPlay}
-            comingSoon={comingSoon}
-            inDevelopment={inDevelopment}
-            playHref={playHref}
-            deviceNote={deviceNote}
-          />
+          <PlayCta className="game-lobby__play--mobile" {...playProps} />
 
-          {scoresProps ? (
+          {boardSlug ? (
+            <div className="game-lobby__stats">
+              <div className="lb-stat">
+                <span className="lb-stat__label">Your best</span>
+                <strong>
+                  {personalBest > 0
+                    ? formatLeaderboardScore(slug, personalBest)
+                    : '—'}
+                </strong>
+              </div>
+              <div className="lb-stat">
+                <span className="lb-stat__label">All time</span>
+                <strong>
+                  {allTime > 0 ? formatLeaderboardScore(slug, allTime) : '—'}
+                </strong>
+              </div>
+            </div>
+          ) : null}
+
+          {boardSlug ? (
             <HubScoresSection
-              {...scoresProps}
-              className="game-lobby__tops game-lobby__tops--mobile"
               slug={slug}
+              boardSlug={boardSlug}
+              period={period}
+              boardHref={boardHref}
+              recordsLink={recordsLink}
+              hasRecords={hasRecords}
+              loading={loading}
+              error={error}
+              topEntries={topEntries}
+              playerName={playerName}
+              accent={accent}
             />
           ) : null}
 
@@ -275,14 +253,12 @@ export function GameHubPage({ slug, board: boardFromRoute, period }: GameHubPage
   )
 }
 
-/** Play / unavailable CTA — full-width on mobile, under thumb on desktop. */
 function PlayCta({
   className,
   compact = false,
   game,
   canPlay,
   comingSoon,
-  inDevelopment,
   playHref,
   deviceNote,
 }: {
@@ -291,7 +267,6 @@ function PlayCta({
   game: Game
   canPlay: boolean
   comingSoon: boolean
-  inDevelopment: boolean
   playHref: string
   deviceNote: string | null
 }) {
@@ -304,20 +279,13 @@ function PlayCta({
   }
   if (canPlay) {
     return (
-      <>
-        {inDevelopment ? (
-          <p className={`game-lobby__dev-note ${className}`}>
-            In development — expect rough edges.
-          </p>
-        ) : null}
-        <a
-          className={`lb-play game-lobby__play ${className}`}
-          href={playHref}
-          style={{ background: game.accent }}
-        >
-          {compact ? 'Play' : `Play ${game.name}`}
-        </a>
-      </>
+      <a
+        className={`lb-play game-lobby__play ${className}`}
+        href={playHref}
+        style={{ background: game.accent }}
+      >
+        {compact ? 'Play' : `Play ${game.name}`}
+      </a>
     )
   }
   return (
@@ -328,7 +296,6 @@ function PlayCta({
 }
 
 function HubScoresSection({
-  className,
   slug,
   boardSlug,
   period,
@@ -341,7 +308,6 @@ function HubScoresSection({
   playerName,
   accent,
 }: {
-  className: string
   slug: string
   boardSlug: LeaderboardGame
   period: LeaderboardPeriod
@@ -357,7 +323,7 @@ function HubScoresSection({
   const periodLabel = PERIOD_LABELS[period]
 
   return (
-    <section className={className} aria-label={`${periodLabel} top scores`}>
+    <section className="game-lobby__scores" aria-label={`${periodLabel} top scores`}>
       <div className="game-lobby__scores-head">
         <h2 className="game-lobby__section-title">{periodLabel} top</h2>
         <div className="game-lobby__scores-links">
