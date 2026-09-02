@@ -318,17 +318,28 @@ export async function setPlayerAvatar(
 
 export type YouEntry = LeaderboardEntry & { rank: number }
 
+export type GameBoardPreview = {
+  slug: LeaderboardGame
+  entries: LeaderboardEntry[]
+}
+
+/** @deprecated Use GameBoardPreview — summary is single-period now. */
 export type GamePeriodSummary = {
   slug: LeaderboardGame
   byPeriod: Record<LeaderboardPeriod, { entries: LeaderboardEntry[] }>
 }
 
 export async function fetchLeaderboardsSummary(
+  period: LeaderboardPeriod = 'all',
   limit = 3,
-): Promise<GamePeriodSummary[]> {
+): Promise<GameBoardPreview[]> {
   const capped = Math.min(10, Math.max(1, Math.floor(limit)))
-  const data = await api<{ games: GamePeriodSummary[] }>(
-    `/leaderboards/summary?limit=${encodeURIComponent(String(capped))}`,
+  const params = new URLSearchParams({
+    limit: String(capped),
+    period,
+  })
+  const data = await api<{ games: GameBoardPreview[] }>(
+    `/leaderboards/summary?${params.toString()}`,
   )
   return data.games ?? []
 }

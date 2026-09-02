@@ -36,9 +36,9 @@ function isLeaderboardPeriod(value: string): value is LeaderboardPeriod {
   return (LEADERBOARD_PERIODS as readonly string[]).includes(value)
 }
 
-/** Leaderboards overview hub. */
-export function leaderboardHref() {
-  return '#/leaderboards'
+/** Leaderboards overview hub (top scores). */
+export function leaderboardHref(period: LeaderboardPeriod = defaultPeriod()) {
+  return `#/leaderboards/${period}`
 }
 
 /** Full board for one game. */
@@ -146,7 +146,7 @@ export function hrefForRoute(
       return gameBoardHref(route.game, period)
     case 'leaderboards':
       if (route.global) return globalRankingsHref(period)
-      return null
+      return leaderboardHref(period)
     case 'rank':
       return rankHref(route.player, period)
     case 'records':
@@ -178,7 +178,7 @@ function parseHash(hash: string): Route {
   if (!path) return { name: 'home' }
   if (path === 'privacy') return { name: 'privacy' }
   if (path === 'terms') return { name: 'terms' }
-  if (path === 'leaderboards') return { name: 'leaderboards' }
+  if (path === 'leaderboards') return { name: 'leaderboards', period: defaultPeriod() }
   if (path === 'rank') return { name: 'rank', period: defaultPeriod() }
   if (path === 'records') return { name: 'recordsIndex' }
 
@@ -246,6 +246,9 @@ function parseHash(hash: string): Route {
       const period =
         periodRaw && isLeaderboardPeriod(periodRaw) ? periodRaw : defaultPeriod()
       return { name: 'leaderboards', global: true, period }
+    }
+    if (isLeaderboardPeriod(segment) && !periodRaw) {
+      return { name: 'leaderboards', period: segment }
     }
     if (isLeaderboardGame(segment)) {
       const period =

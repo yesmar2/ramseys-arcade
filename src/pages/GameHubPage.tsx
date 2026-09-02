@@ -8,9 +8,8 @@ import { Footer } from '../components/Footer'
 import { GameThumbArt } from '../components/GameThumbArt'
 import { HowToPlayAccordion } from '../components/ScoreGuide'
 import { ShareBoardButton } from '../components/ShareBoardButton'
-import { PodiumMedal, medalKind } from '../components/PodiumMedal'
 import { PeriodMiniBoard } from '../components/PeriodMiniBoard'
-import { PlayerAvatar } from '../components/PlayerAvatar'
+import { TopScorePodium } from '../components/TopScorePodium'
 import {
   deviceRequirementLabel,
   getGame,
@@ -472,7 +471,7 @@ function TodayTopSection({
             detail="Check your connection and try again."
           />
         ) : (
-          <TopScoreCards
+          <TopScorePodium
             entries={topEntries}
             playerName={playerName}
             accent={accent}
@@ -481,67 +480,5 @@ function TodayTopSection({
         )}
       </div>
     </section>
-  )
-}
-
-/** Today’s top 3 as medal cards (empty slots stay open). */
-function TopScoreCards({
-  entries,
-  playerName,
-  accent,
-  slug,
-}: {
-  entries: LeaderboardEntry[]
-  playerName: string
-  accent: string
-  slug: string
-}) {
-  const slots = Array.from({ length: TOP_ROWS }, (_, index) => entries[index] ?? null)
-
-  return (
-    <ol
-      className="game-lobby__podium"
-      style={{ '--board-accent': accent, '--lb-you-accent': accent } as CSSProperties}
-    >
-      {slots.map((entry, index) => {
-        const rank = index + 1
-        const medal = medalKind(rank)
-        if (!entry) {
-          return (
-            <li
-              key={`open-${rank}`}
-              className={`game-lobby__podium-card game-lobby__podium-card--open${medal ? ` game-lobby__podium-card--${medal}` : ''}`}
-            >
-              {medal ? <PodiumMedal kind={medal} /> : (
-                <span className="game-lobby__podium-rank">#{rank}</span>
-              )}
-              <span className="game-lobby__podium-name game-lobby__podium-name--muted">Open</span>
-              <strong className="game-lobby__podium-score game-lobby__podium-score--muted">—</strong>
-            </li>
-          )
-        }
-        const name = normalizePlayerName(entry.name ?? '')
-        const isYou = Boolean(playerName) && name === playerName
-        return (
-          <li
-            key={entry.id ?? `${rank}-${name}`}
-            className={`game-lobby__podium-card${isYou ? ' game-lobby__podium-card--you' : ''}${medal ? ` game-lobby__podium-card--${medal}` : ''}`}
-            aria-current={isYou ? 'true' : undefined}
-          >
-            {medal ? <PodiumMedal kind={medal} /> : (
-              <span className="game-lobby__podium-rank">#{rank}</span>
-            )}
-            <PlayerAvatar avatarId={entry.avatarId} name={name} size="sm" />
-            <span className="game-lobby__podium-name" title={name}>
-              {name}
-              {isYou ? <span className="lb-row__you-tag">You</span> : null}
-            </span>
-            <strong className="game-lobby__podium-score">
-              {formatLeaderboardScore(slug, entry.score)}
-            </strong>
-          </li>
-        )
-      })}
-    </ol>
   )
 }

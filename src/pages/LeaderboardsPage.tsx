@@ -4,9 +4,7 @@ import {
   BoardSkeleton,
   PeriodSwitcher,
 } from '../components/BoardChrome'
-import {
-  LeaderboardSummary,
-} from '../components/LeaderboardSummary'
+import { BoardsGameIndex } from '../components/BoardsGameIndex'
 import { GlobalRankList } from '../components/GlobalRankList'
 import { PageShell } from '../components/PageShell'
 import { ShareBoardButton } from '../components/ShareBoardButton'
@@ -20,7 +18,7 @@ import {
   fetchLeaderboardsSummary,
   normalizePlayerName,
   PERIOD_LABELS,
-  type GamePeriodSummary,
+  type GameBoardPreview,
   type GlobalBoardEntry,
   type LeaderboardPeriod,
 } from '../lib/leaderboard'
@@ -34,14 +32,20 @@ type LeaderboardsPageProps = {
   period?: LeaderboardPeriod
 }
 
-function BoardsHubSwitcher({ global }: { global: boolean }) {
+function BoardsHubSwitcher({
+  global,
+  period,
+}: {
+  global: boolean
+  period: LeaderboardPeriod
+}) {
   return (
     <div className="lb-board-switcher" role="tablist" aria-label="Boards">
       <a
         role="tab"
         aria-selected={!global}
         className={`lb-board-switcher__item${!global ? ' lb-board-switcher__item--active' : ''}`}
-        href={leaderboardHref()}
+        href={leaderboardHref(period)}
       >
         Top Scores
       </a>
@@ -49,7 +53,7 @@ function BoardsHubSwitcher({ global }: { global: boolean }) {
         role="tab"
         aria-selected={global}
         className={`lb-board-switcher__item${global ? ' lb-board-switcher__item--active' : ''}`}
-        href={globalRankingsHref()}
+        href={globalRankingsHref(period)}
       >
         Rankings
       </a>
@@ -65,12 +69,12 @@ export function LeaderboardsPage({
   if (showGlobal) {
     return <GlobalRankingsView period={period} />
   }
-  return <LeaderboardsOverview />
+  return <LeaderboardsOverview period={period} />
 }
 
-function LeaderboardsOverview() {
+function LeaderboardsOverview({ period }: { period: LeaderboardPeriod }) {
   const playerName = normalizePlayerName(usePlayerName())
-  const [summaries, setSummaries] = useState<GamePeriodSummary[]>([])
+  const [summaries, setSummaries] = useState<GameBoardPreview[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -80,7 +84,7 @@ function LeaderboardsOverview() {
     setError(null)
     void (async () => {
       try {
-        const rows = await fetchLeaderboardsSummary(SUMMARY_ROWS)
+        const rows = await fetchLeaderboardsSummary(period, SUMMARY_ROWS)
         if (!cancelled) setSummaries(rows)
       } catch (err) {
         if (!cancelled) {
@@ -94,24 +98,41 @@ function LeaderboardsOverview() {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [period])
 
   return (
     <PageShell innerClassName="lb-page__inner lb-page__inner--summary">
       <header className="lb-page__header lb-page__header--compact">
         <h1 className="lb-page__title">Boards</h1>
-        <BoardsHubSwitcher global={false} />
+        <BoardsHubSwitcher global={false} period={period} />
       </header>
+
+      <PeriodSwitcher
+        period={period}
+        hrefFor={leaderboardHref}
+        onSelect={(p) => {
+          window.location.hash = leaderboardHref(p)
+        }}
+      />
 
       {error ? (
         <BoardEmpty
           title="Couldn’t load scores"
           detail="Check your connection and try again."
         />
-      ) : loading ? (
-        <LeaderboardSummary games={[]} loading />
       ) : (
-        <LeaderboardSummary games={summaries} playerName={playerName} />
+        <section
+          key={period}
+          className="lb-board lb-board--fade"
+          aria-label={`${PERIOD_LABELS[period]} top scores`}
+        >
+          <BoardsGameIndex
+            games={summaries}
+            loading={loading}
+            playerName={playerName}
+            period={period}
+          />
+        </section>
       )}
     </PageShell>
   )
@@ -188,7 +209,7 @@ function GlobalRankingsView({ period }: { period: LeaderboardPeriod }) {
             />
           </div>
         </div>
-        <BoardsHubSwitcher global />
+        <BoardsHubSwitcher global period={period} />
       </header>
 
       <PeriodSwitcher
@@ -216,7 +237,7 @@ function GlobalRankingsView({ period }: { period: LeaderboardPeriod }) {
             title="No ranks yet"
             detail="Place on any game board to earn global points."
             action={
-              <a className="lb-empty-state__btn" href={leaderboardHref()}>
+              <a className="lb-empty-state__btn" href={leaderboardHref(period)}>
                 Browse boards
               </a>
             }
