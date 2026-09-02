@@ -173,13 +173,6 @@ function TrophyGroup({
                 </span>
                 <span className="trophy-case__rank">#{trophy.rank}</span>
                 <span className="trophy-case__period">{periodLabel}</span>
-                <span className="trophy-case__meta">
-                  {trophy.score.toLocaleString()} pts
-                  <span className="trophy-case__meta-sep" aria-hidden="true">
-                    ·
-                  </span>
-                  {trophy.games} {trophy.games === 1 ? 'game' : 'games'}
-                </span>
               </a>
             </li>
           )
