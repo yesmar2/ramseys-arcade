@@ -7,6 +7,8 @@ import {
 } from '../lib/leaderboard'
 import { PlayerAvatar } from './PlayerAvatar'
 import { PodiumMedal, medalKind } from './PodiumMedal'
+import { TrophyMark } from './TrophyMark'
+import type { TrophyCount } from '../lib/trophies'
 
 const TOP_SLOT_COUNT = 10
 
@@ -16,12 +18,14 @@ export function GlobalRankList({
   playerName,
   shown,
   period = 'all',
+  trophyCounts = {},
 }: {
   entries: GlobalBoardEntry[]
   you: GlobalBoardEntry | null
   playerName: string
   shown: number
   period?: LeaderboardPeriod
+  trophyCounts?: Record<string, TrophyCount>
 }) {
   const visible = entries.slice(0, shown)
   const youName = normalizePlayerName(playerName)
@@ -38,12 +42,16 @@ export function GlobalRankList({
   ) => {
     const medal = medalKind(entry.rank)
     const name = normalizePlayerName(entry.name)
+    const trophies = trophyCounts[name]
     const nameInner = (
       <>
         <PlayerAvatar avatarId={entry.avatarId} name={name} size="sm" />
         <span className="lb-row__name-text" title={name}>
           {name}
         </span>
+        {trophies?.total ? (
+          <TrophyMark count={trophies.total} podium={trophies.podium} size="sm" />
+        ) : null}
         {isYou ? <span className="lb-row__you-tag">You</span> : null}
       </>
     )

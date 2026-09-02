@@ -1,5 +1,13 @@
 export type TrophyPeriod = 'weekly' | 'monthly'
 
+export type TrophySummary = {
+  total: number
+  podium: number
+  topTen: number
+}
+
+export type TrophyCount = Pick<TrophySummary, 'total' | 'podium'>
+
 export type TrophyAward = {
   id: string
   period: TrophyPeriod
@@ -68,4 +76,24 @@ export async function fetchTrophies(name: string): Promise<TrophyAward[]> {
   if (!res.ok) return []
   const body = (await res.json()) as { trophies?: TrophyAward[] }
   return Array.isArray(body.trophies) ? body.trophies : []
+}
+
+export async function fetchTrophySummary(name: string): Promise<TrophySummary> {
+  const params = new URLSearchParams({ name })
+  const res = await fetch(`${API_BASE}/trophies/summary?${params}`)
+  if (!res.ok) return { total: 0, podium: 0, topTen: 0 }
+  const body = (await res.json()) as { summary?: TrophySummary }
+  return body.summary ?? { total: 0, podium: 0, topTen: 0 }
+}
+
+export async function fetchTrophyCounts(
+  names: string[],
+): Promise<Record<string, TrophyCount>> {
+  const cleaned = [...new Set(names.map((n) => n.trim().toUpperCase()).filter(Boolean))]
+  if (!cleaned.length) return {}
+  const params = new URLSearchParams({ names: cleaned.join(',') })
+  const res = await fetch(`${API_BASE}/trophies/counts?${params}`)
+  if (!res.ok) return {}
+  const body = (await res.json()) as { counts?: Record<string, TrophyCount> }
+  return body.counts ?? {}
 }

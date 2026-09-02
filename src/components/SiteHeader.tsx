@@ -6,8 +6,10 @@ import { rankHref, useHashRoute } from '../hooks/useHashRoute'
 import { useGlobalRank } from '../lib/globalRank'
 import { currentTheme, THEME_EVENT, toggleTheme, type Theme } from '../lib/theme'
 import { normalizePlayerName } from '../lib/leaderboard'
+import { useTrophySummary } from '../hooks/useTrophySummary'
 import { PlayerBadge, type PlayerBadgeHandle } from './PlayerBadge'
 import { SitePeriodControl } from './SitePeriodControl'
+import { TrophyMark } from './TrophyMark'
 import {
   navActive,
   SITE_DRAWER_YOU,
@@ -21,6 +23,7 @@ export function SiteHeader() {
   const { rank } = useGlobalRank()
   const { account, signedIn } = useAuth()
   const playerName = normalizePlayerName(usePlayerName())
+  const trophySummary = useTrophySummary(playerName)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [utilOpen, setUtilOpen] = useState(false)
   const [theme, setTheme] = useState<Theme>(() =>
@@ -144,11 +147,27 @@ export function SiteHeader() {
           <a
             className={`site-header__you${navActive('you', hash) ? ' site-header__you--active' : ''}`}
             href={rankHref()}
-            title={rank != null ? `Your ranking · #${rank}` : 'Your ranking'}
+            title={
+              rank != null
+                ? trophySummary.total > 0
+                  ? `Your ranking · #${rank} · ${trophySummary.total} trophies`
+                  : `Your ranking · #${rank}`
+                : trophySummary.total > 0
+                  ? `Your ranking · ${trophySummary.total} trophies`
+                  : 'Your ranking'
+            }
             aria-current={navActive('you', hash) ? 'page' : undefined}
           >
             {rank != null ? (
               <span className="site-header__you-rank">#{rank}</span>
+            ) : null}
+            {trophySummary.total > 0 ? (
+              <TrophyMark
+                count={trophySummary.total}
+                podium={trophySummary.podium}
+                size="sm"
+                className="site-header__you-trophy"
+              />
             ) : null}
             <span className="site-header__you-name">{playerName}</span>
           </a>
@@ -272,7 +291,15 @@ export function SiteHeader() {
                     {SITE_DRAWER_YOU.label}
                     {playerName ? (
                       <span className="site-drawer__meta">
-                        {rank != null ? `#${rank} · ${playerName}` : playerName}
+                        {[
+                          rank != null ? `#${rank}` : null,
+                          trophySummary.total > 0
+                            ? `${trophySummary.total} trophy${trophySummary.total === 1 ? '' : 'ies'}`
+                            : null,
+                          playerName,
+                        ]
+                          .filter(Boolean)
+                          .join(' · ')}
                       </span>
                     ) : null}
                   </a>

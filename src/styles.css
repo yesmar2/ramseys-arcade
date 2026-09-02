@@ -1627,6 +1627,14 @@ a.lb-board-switcher__item {
   max-width: 13rem;
 }
 
+.site-header__you:has(.site-header__you-trophy) {
+  max-width: 15rem;
+}
+
+.site-header__you-trophy {
+  flex: none;
+}
+
 .site-header__you-rank {
   flex: none;
   font-family: var(--font-display);
@@ -5912,6 +5920,47 @@ html[data-theme='dark'] .patriot__power-mark {
   100% {
     background-position: -100% 0;
   }
+}
+
+.trophy-mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.18rem;
+  flex: none;
+  color: #9a7200;
+}
+
+.trophy-mark--sm {
+  gap: 0.12rem;
+}
+
+.trophy-mark__cup {
+  fill: #f0c14b;
+  stroke: #c9921a;
+  stroke-width: 0.7;
+}
+
+.trophy-mark__handle,
+.trophy-mark__stem {
+  fill: none;
+  stroke: #c9921a;
+  stroke-width: 0.9;
+  stroke-linecap: round;
+}
+
+.trophy-mark__count {
+  font-size: 0.68rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+
+.trophy-mark--sm .trophy-mark__count {
+  font-size: 0.62rem;
+}
+
+.lb-row__name .trophy-mark {
+  margin-left: 0.1rem;
 }
 
 .game-device-badge {

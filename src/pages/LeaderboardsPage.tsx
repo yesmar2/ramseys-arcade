@@ -22,6 +22,7 @@ import {
   type GlobalBoardEntry,
   type LeaderboardPeriod,
 } from '../lib/leaderboard'
+import { fetchTrophyCounts, type TrophyCount } from '../lib/trophies'
 
 const INITIAL_ROWS = 10
 const GLOBAL_ROWS = 100
@@ -146,12 +147,14 @@ function GlobalRankingsView({ period }: { period: LeaderboardPeriod }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [shown, setShown] = useState(INITIAL_ROWS)
+  const [trophyCounts, setTrophyCounts] = useState<Record<string, TrophyCount>>({})
 
   useEffect(() => {
     let cancelled = false
     setLoading(true)
     setError(null)
     setShown(INITIAL_ROWS)
+    setTrophyCounts({})
     void (async () => {
       try {
         const board = await fetchGlobalBoard(GLOBAL_ROWS, period)
@@ -160,27 +163,35 @@ function GlobalRankingsView({ period }: { period: LeaderboardPeriod }) {
         setTotalPlayers(board.totalPlayers)
         if (!playerName) {
           setYou(null)
-          return
-        }
-        const onBoard = board.entries.find(
-          (e) => normalizePlayerName(e.name) === playerName,
-        )
-        if (onBoard) {
-          setYou(onBoard)
-          return
-        }
-        const mine = await fetchGlobalRank(playerName, period)
-        if (cancelled) return
-        if (mine.rank != null) {
-          setYou({
-            name: playerName,
-            rank: mine.rank,
-            score: mine.score,
-            games: Object.keys(mine.byGame).length,
-          })
         } else {
-          setYou(null)
+          const onBoard = board.entries.find(
+            (e) => normalizePlayerName(e.name) === playerName,
+          )
+          if (onBoard) {
+            setYou(onBoard)
+          } else {
+            const mine = await fetchGlobalRank(playerName, period)
+            if (cancelled) return
+            if (mine.rank != null) {
+              setYou({
+                name: playerName,
+                rank: mine.rank,
+                score: mine.score,
+                games: Object.keys(mine.byGame).length,
+              })
+            } else {
+              setYou(null)
+            }
+          }
         }
+        const names = [
+          ...new Set([
+            ...board.entries.map((e) => e.name),
+            ...(playerName ? [playerName] : []),
+          ]),
+        ]
+        const counts = await fetchTrophyCounts(names)
+        if (!cancelled) setTrophyCounts(counts)
       } catch (err) {
         if (cancelled) return
         setEntries([])
@@ -249,6 +260,7 @@ function GlobalRankingsView({ period }: { period: LeaderboardPeriod }) {
             playerName={playerName}
             shown={shown}
             period={period}
+            trophyCounts={trophyCounts}
           />
         )}
 
