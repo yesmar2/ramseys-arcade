@@ -8,6 +8,7 @@ import { SiteHeader } from '../components/SiteHeader'
 import { Footer } from '../components/Footer'
 import { GameThumbArt } from '../components/GameThumbArt'
 import { HowToPlayAccordion } from '../components/ScoreGuide'
+import { LeaderboardList } from '../components/LeaderboardList'
 import { ShareBoardButton } from '../components/ShareBoardButton'
 import { TopScorePodium } from '../components/TopScorePodium'
 import {
@@ -43,9 +44,11 @@ import {
   type LeaderboardGame,
   type LeaderboardEntry,
   type LeaderboardPeriod,
+  type YouEntry,
 } from '../lib/leaderboard'
 
-const TOP_ROWS = 3
+const DESKTOP_ROWS = 10
+const MOBILE_PODIUM_ROWS = 3
 
 function isBoardGame(slug: string): slug is LeaderboardGame {
   return (LEADERBOARD_GAMES as readonly string[]).includes(slug)
@@ -64,7 +67,8 @@ export function GameHubPage({ slug, board: boardFromRoute, period }: GameHubPage
   const playerName = normalizePlayerName(usePlayerName())
   const personalBest = usePersonalBest(slug)
   const allTime = useBoardRecord(slug)
-  const [topEntries, setTopEntries] = useState<LeaderboardEntry[]>([])
+  const [entries, setEntries] = useState<LeaderboardEntry[]>([])
+  const [you, setYou] = useState<YouEntry | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -92,7 +96,8 @@ export function GameHubPage({ slug, board: boardFromRoute, period }: GameHubPage
 
   useEffect(() => {
     if (!boardSlug) {
-      setTopEntries([])
+      setEntries([])
+      setYou(null)
       setLoading(false)
       setError(null)
       return
@@ -103,11 +108,13 @@ export function GameHubPage({ slug, board: boardFromRoute, period }: GameHubPage
     void getLeaderboard(boardSlug, period, playerName || undefined)
       .then((board) => {
         if (cancelled) return
-        setTopEntries(board.entries.slice(0, TOP_ROWS))
+        setEntries(board.entries)
+        setYou(board.you)
       })
       .catch((err) => {
         if (cancelled) return
-        setTopEntries([])
+        setEntries([])
+        setYou(null)
         setError(err instanceof Error ? err.message : 'Failed to load')
       })
       .finally(() => {
@@ -132,13 +139,23 @@ export function GameHubPage({ slug, board: boardFromRoute, period }: GameHubPage
     )
   }
 
-  const playProps = {
-    game,
-    canPlay,
-    comingSoon,
-    playHref,
-    deviceNote,
-  }
+  const scoresProps = boardSlug
+    ? {
+        slug,
+        boardSlug,
+        period,
+        route,
+        boardHref,
+        recordsLink,
+        hasRecords,
+        loading,
+        error,
+        entries,
+        you,
+        playerName,
+        accent,
+      }
+    : null
 
   return (
     <>
@@ -155,71 +172,81 @@ export function GameHubPage({ slug, board: boardFromRoute, period }: GameHubPage
             } as CSSProperties
           }
         >
-          <header className="game-lobby__hero">
-            <div className="game-lobby__hero-art">
-              <GameThumbArt slug={game.slug} accent={game.accent} />
-            </div>
-            <div className="game-lobby__hero-main">
-              <div className="game-lobby__hero-head">
-                <h1 className="lb-page__title game-lobby__title">{game.name}</h1>
-                <div className="game-lobby__hero-tools">
-                  {boardHref ? (
-                    <a className="game-lobby__tool-link" href={boardHref}>
-                      Board
-                    </a>
-                  ) : null}
-                  {hasRecords && recordsLink ? (
-                    <a className="game-lobby__tool-link" href={recordsLink}>
-                      Records
-                    </a>
-                  ) : null}
-                  <ShareBoardButton
-                    className="game-lobby__share"
-                    label={`Play ${game.name} on ${APP_NAME}`}
-                    url={gameHref(slug)}
-                  />
-                </div>
+          <div
+            className={`game-lobby__hero${boardSlug ? '' : ' game-lobby__hero--solo'}`}
+          >
+            <div className="game-lobby__identity">
+              <div className="game-lobby__art">
+                <GameThumbArt
+                  slug={game.slug}
+                  accent={game.accent}
+                  className="game-lobby__thumb"
+                />
+                <ShareBoardButton
+                  className="game-lobby__share"
+                  label={`Play ${game.name} on ${APP_NAME}`}
+                  url={gameHref(slug)}
+                />
+                <h1 className="game-lobby__title">{game.name}</h1>
               </div>
 
-              {inDevelopment && canPlay ? (
-                <p className="game-lobby__dev-note">In development — expect rough edges.</p>
+              {boardSlug ? (
+                <PlayCta
+                  className="game-lobby__play--desktop"
+                  compact
+                  game={game}
+                  canPlay={canPlay}
+                  comingSoon={comingSoon}
+                  inDevelopment={inDevelopment}
+                  playHref={playHref}
+                  deviceNote={deviceNote}
+                />
               ) : null}
 
-              <div className="game-lobby__hero-row">
-                <PlayCta className="game-lobby__play--hero" {...playProps} />
-                {boardSlug ? (
-                  <div className="game-lobby__stats">
-                    <div className="lb-stat">
-                      <span className="lb-stat__label">Your best</span>
-                      <strong>
-                        {personalBest > 0
-                          ? formatLeaderboardScore(slug, personalBest)
-                          : '—'}
-                      </strong>
-                    </div>
-                    <div className="lb-stat">
-                      <span className="lb-stat__label">All time</span>
-                      <strong>
-                        {allTime > 0 ? formatLeaderboardScore(slug, allTime) : '—'}
-                      </strong>
-                    </div>
-                  </div>
-                ) : null}
+              <div className="game-lobby__stats">
+                <div className="lb-stat">
+                  <span className="lb-stat__label">Your best</span>
+                  <strong>
+                    {personalBest > 0
+                      ? formatLeaderboardScore(slug, personalBest)
+                      : '—'}
+                  </strong>
+                </div>
+                <div className="lb-stat">
+                  <span className="lb-stat__label">All time</span>
+                  <strong>
+                    {allTime > 0 ? formatLeaderboardScore(slug, allTime) : '—'}
+                  </strong>
+                </div>
               </div>
             </div>
-          </header>
 
-          {boardSlug ? (
+            {scoresProps ? (
+              <HubScoresSection
+                {...scoresProps}
+                className="game-lobby__aside"
+                variant="desktop"
+              />
+            ) : null}
+          </div>
+
+          <PlayCta
+            className={
+              boardSlug ? 'game-lobby__play--mobile' : 'game-lobby__play--wide'
+            }
+            game={game}
+            canPlay={canPlay}
+            comingSoon={comingSoon}
+            inDevelopment={inDevelopment}
+            playHref={playHref}
+            deviceNote={deviceNote}
+          />
+
+          {scoresProps ? (
             <HubScoresSection
-              slug={slug}
-              boardSlug={boardSlug}
-              period={period}
-              route={route}
-              loading={loading}
-              error={error}
-              topEntries={topEntries}
-              playerName={playerName}
-              accent={accent}
+              {...scoresProps}
+              className="game-lobby__tops game-lobby__tops--mobile"
+              variant="mobile"
             />
           ) : null}
 
@@ -263,16 +290,20 @@ export function GameHubPage({ slug, board: boardFromRoute, period }: GameHubPage
 
 function PlayCta({
   className,
+  compact = false,
   game,
   canPlay,
   comingSoon,
+  inDevelopment,
   playHref,
   deviceNote,
 }: {
   className: string
+  compact?: boolean
   game: Game
   canPlay: boolean
   comingSoon: boolean
+  inDevelopment: boolean
   playHref: string
   deviceNote: string | null
 }) {
@@ -285,13 +316,20 @@ function PlayCta({
   }
   if (canPlay) {
     return (
-      <a
-        className={`lb-play game-lobby__play ${className}`}
-        href={playHref}
-        style={{ background: game.accent }}
-      >
-        {`Play ${game.name}`}
-      </a>
+      <>
+        {inDevelopment ? (
+          <p className={`game-lobby__dev-note ${className}`}>
+            In development — expect rough edges.
+          </p>
+        ) : null}
+        <a
+          className={`lb-play game-lobby__play ${className}`}
+          href={playHref}
+          style={{ background: game.accent }}
+        >
+          {compact ? 'Play' : `Play ${game.name}`}
+        </a>
+      </>
     )
   }
   return (
@@ -302,55 +340,101 @@ function PlayCta({
 }
 
 function HubScoresSection({
+  className,
+  variant,
   slug,
   boardSlug,
   period,
   route,
+  boardHref,
+  recordsLink,
+  hasRecords,
   loading,
   error,
-  topEntries,
+  entries,
+  you,
   playerName,
   accent,
 }: {
+  className: string
+  variant: 'desktop' | 'mobile'
   slug: string
   boardSlug: LeaderboardGame
   period: LeaderboardPeriod
   route: Route
+  boardHref: string | null
+  recordsLink: string | null
+  hasRecords: boolean
   loading: boolean
   error: string | null
-  topEntries: LeaderboardEntry[]
+  entries: LeaderboardEntry[]
+  you: YouEntry | null
   playerName: string
   accent: string
 }) {
   const periodLabel = PERIOD_LABELS[period]
+  const isDesktop = variant === 'desktop'
+  const podiumEntries = entries.slice(0, MOBILE_PODIUM_ROWS)
+
+  const onSelectPeriod = (p: LeaderboardPeriod) => {
+    applySitePeriod(p, route.name === 'game' ? route : { name: 'game', slug, period })
+  }
 
   return (
-    <section className="game-lobby__scores" aria-label={`${periodLabel} top scores`}>
-      <h2 className="game-lobby__section-title">{periodLabel} top</h2>
+    <section className={className} aria-label={`${periodLabel} top scores`}>
+      <div className="game-lobby__scores-head">
+        <h2 className="game-lobby__section-title">{periodLabel} top</h2>
+        <div className="game-lobby__scores-links">
+          {boardHref ? (
+            <a className="game-lobby__board-link" href={boardHref}>
+              Full board
+            </a>
+          ) : null}
+          {hasRecords && recordsLink ? (
+            <a className="game-lobby__board-link" href={recordsLink}>
+              Records
+            </a>
+          ) : null}
+        </div>
+      </div>
 
       <PeriodSwitcher
         period={period}
         accent={accent}
         hrefFor={(p) => gameHubHref(slug, p)}
-        onSelect={(p) => {
-          applySitePeriod(p, route.name === 'game' ? route : { name: 'game', slug, period })
-        }}
+        onSelect={onSelectPeriod}
       />
 
       <div
-        key={`${boardSlug}-${period}`}
+        key={`${boardSlug}-${period}-${variant}`}
         className="lb-board lb-board--fade game-lobby__scores-board"
       >
         {loading ? (
-          <BoardSkeleton rows={TOP_ROWS} />
+          <BoardSkeleton rows={isDesktop ? DESKTOP_ROWS : MOBILE_PODIUM_ROWS} />
         ) : error ? (
           <BoardEmpty
             title="Couldn’t load scores"
             detail="Check your connection and try again."
           />
+        ) : isDesktop ? (
+          entries.length === 0 && !you ? (
+            <BoardEmpty
+              title="No scores yet"
+              detail="Be the first on the board."
+            />
+          ) : (
+            <LeaderboardList
+              entries={entries}
+              you={you}
+              playerName={playerName}
+              accent={accent}
+              shown={DESKTOP_ROWS}
+              formatScore={(score) => formatLeaderboardScore(boardSlug, score)}
+            />
+          )
         ) : (
           <TopScorePodium
-            entries={topEntries}
+            entries={podiumEntries}
             playerName={playerName}
             accent={accent}
             slug={boardSlug}
