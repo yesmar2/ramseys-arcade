@@ -5678,11 +5678,7 @@ html[data-theme='dark'] .patriot__power-mark {
 }
 
 .trophy-case__item--monthly {
-  background: linear-gradient(
-    90deg,
-    rgba(255, 196, 64, 0.08) 0%,
-    rgba(var(--surface-rgb), 0) 55%
-  );
+  border-left: 3px solid rgba(255, 196, 64, 0.45);
 }
 
 .trophy-case__icon {
@@ -5709,33 +5705,41 @@ html[data-theme='dark'] .patriot__power-mark {
 }
 
 .trophy-case__score {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.28rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.trophy-case__score strong {
   font-family: var(--font-display);
   font-size: 1.05rem;
   font-weight: 700;
-  font-variant-numeric: tabular-nums;
   color: var(--ink);
 }
 
-.trophy-case__cup-body {
-  fill: #f0c14b;
-  stroke: #c9921a;
-  stroke-width: 0.8;
+.trophy-case__score span {
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
 }
 
-.trophy-case__cup-handle,
-.trophy-case__cup-stem {
-  fill: none;
-  stroke: #c9921a;
-  stroke-width: 1.1;
-  stroke-linecap: round;
+.trophy-case__item--podium {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 196, 64, 0.08) 0%,
+    rgba(var(--surface-rgb), 0) 55%
+  );
 }
 
-.trophy-case__cup-base {
-  fill: #c9921a;
+.trophy-case__ribbon-band {
+  fill: #6b8cff;
 }
 
-.trophy-case__item--monthly .trophy-case__cup-body {
-  fill: #ffd86b;
+.trophy-case__ribbon-tail {
+  fill: #4a6fe0;
 }
 
 .game-device-badge {

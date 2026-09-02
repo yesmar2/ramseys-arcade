@@ -1,16 +1,14 @@
-import type { LeaderboardGame } from './leaderboard'
-
 export type TrophyPeriod = 'weekly' | 'monthly'
 
 export type TrophyAward = {
   id: string
-  game: LeaderboardGame
   period: TrophyPeriod
   periodKey: number
   name: string
-  accountId?: string
+  rank: number
   score: number
-  entryId: string
+  games: number
+  accountId?: string
   awardedAt: number
 }
 
@@ -40,6 +38,12 @@ export function formatTrophyPeriod(period: TrophyPeriod, periodKey: number) {
   const m = periodKey % 100
   const dt = new Date(y, m - 1, 1)
   return dt.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+}
+
+export function trophyRankLabel(rank: number) {
+  if (rank === 1) return '#1 global'
+  if (rank <= 3) return `#${rank} global`
+  return `Top 10 · #${rank}`
 }
 
 export async function fetchTrophies(name: string): Promise<TrophyAward[]> {

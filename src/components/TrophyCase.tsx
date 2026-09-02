@@ -1,42 +1,33 @@
 import { useEffect, useState } from 'react'
-import { getGame } from '../data/games'
-import { gameBoardHref } from '../hooks/useHashRoute'
+import { globalRankingsHref } from '../hooks/useHashRoute'
 import {
   fetchTrophies,
   formatTrophyPeriod,
+  trophyRankLabel,
   type TrophyAward,
   type TrophyPeriod,
 } from '../lib/trophies'
-import { PodiumMedal } from './PodiumMedal'
+import { medalKind, PodiumMedal } from './PodiumMedal'
 
-function TrophyCup({ large }: { large?: boolean }) {
-  const size = large ? 28 : 20
+function TopTenRibbon() {
   return (
-    <span
-      className={`trophy-case__cup${large ? ' trophy-case__cup--large' : ''}`}
-      aria-hidden="true"
-    >
-      <svg viewBox="0 0 24 28" width={size} height={size + 4} focusable="false">
-        <path
-          className="trophy-case__cup-body"
-          d="M5 3.5h14v6.5c0 3.6-2.4 6.7-6 7.8-3.6-1.1-6-4.2-6-7.8V3.5Z"
-        />
-        <path className="trophy-case__cup-handle" d="M5 5.5H2.8a2.2 2.2 0 0 0 0 4.4H5" />
-        <path className="trophy-case__cup-handle" d="M19 5.5h2.2a2.2 2.2 0 0 1 0 4.4H19" />
-        <path className="trophy-case__cup-stem" d="M10.5 17.8h3v3.2H8.8l-.8 3.5h7.8l-.8-3.5h-4.5z" />
-        <rect className="trophy-case__cup-base" x="6.5" y="24.2" width="11" height="2.3" rx="1" />
+    <span className="trophy-case__ribbon" aria-hidden="true">
+      <svg viewBox="0 0 20 24" width="16" height="19" focusable="false">
+        <path className="trophy-case__ribbon-band" d="M4 1.5h12v5.5H4Z" />
+        <path className="trophy-case__ribbon-tail" d="m5.5 7 2.2 14.5L10 16l2.3 5.5L14.5 7Z" />
       </svg>
     </span>
   )
 }
 
-function TrophyIcon({ period }: { period: TrophyPeriod }) {
-  if (period === 'monthly') return <TrophyCup large />
-  return <PodiumMedal kind="gold" />
+function TrophyIcon({ rank }: { rank: number }) {
+  const kind = medalKind(rank)
+  if (kind) return <PodiumMedal kind={kind} />
+  return <TopTenRibbon />
 }
 
 function groupLabel(period: TrophyPeriod) {
-  return period === 'monthly' ? 'Monthly champions' : 'Weekly champions'
+  return period === 'monthly' ? 'Monthly global rank' : 'Weekly global rank'
 }
 
 export function TrophyCase({ name }: { name: string }) {
@@ -58,8 +49,8 @@ export function TrophyCase({ name }: { name: string }) {
 
   if (trophies === null) {
     return (
-      <section className="trophy-case trophy-case--loading" aria-label="Trophy case">
-        <h2 className="rank-page__h">Trophy case</h2>
+      <section className="trophy-case trophy-case--loading" aria-label="Global rank trophies">
+        <h2 className="rank-page__h">Global rank trophies</h2>
         <p className="trophy-case__empty">Loading trophies…</p>
       </section>
     )
@@ -67,10 +58,10 @@ export function TrophyCase({ name }: { name: string }) {
 
   if (trophies.length === 0) {
     return (
-      <section className="trophy-case" aria-label="Trophy case">
-        <h2 className="rank-page__h">Trophy case</h2>
+      <section className="trophy-case" aria-label="Global rank trophies">
+        <h2 className="rank-page__h">Global rank trophies</h2>
         <p className="trophy-case__empty">
-          No trophies yet. Finish #1 on a weekly or monthly board to earn one.
+          No trophies yet. Finish in the global top 10 for a week or month to earn one.
         </p>
       </section>
     )
@@ -80,11 +71,11 @@ export function TrophyCase({ name }: { name: string }) {
   const weekly = trophies.filter((t) => t.period === 'weekly')
 
   return (
-    <section className="trophy-case" aria-label="Trophy case">
-      <h2 className="rank-page__h">Trophy case</h2>
+    <section className="trophy-case" aria-label="Global rank trophies">
+      <h2 className="rank-page__h">Global rank trophies</h2>
       <p className="trophy-case__blurb">
-        {monthly.length + weekly.length} trophy{monthly.length + weekly.length === 1 ? '' : 'ies'}{' '}
-        — weekly #1 and monthly #1 per game.
+        {trophies.length} trophy{trophies.length === 1 ? '' : 'ies'} — podium for top 3, ribbon for
+        top 10.
       </p>
       {monthly.length > 0 ? (
         <TrophyGroup label={groupLabel('monthly')} trophies={monthly} />
@@ -102,23 +93,26 @@ function TrophyGroup({ label, trophies }: { label: string; trophies: TrophyAward
       <h3 className="trophy-case__group-title">{label}</h3>
       <ul className="trophy-case__list">
         {trophies.map((trophy) => {
-          const game = getGame(trophy.game)
           const periodLabel = formatTrophyPeriod(trophy.period, trophy.periodKey)
+          const rankLabel = trophyRankLabel(trophy.rank)
           return (
             <li key={trophy.id}>
               <a
-                className={`trophy-case__item trophy-case__item--${trophy.period}`}
-                href={gameBoardHref(trophy.game, trophy.period)}
-                aria-label={`${game?.name ?? trophy.game} ${trophy.period} champion, ${periodLabel}, score ${trophy.score}`}
+                className={`trophy-case__item trophy-case__item--${trophy.period}${trophy.rank <= 3 ? ' trophy-case__item--podium' : ''}`}
+                href={globalRankingsHref(trophy.period)}
+                aria-label={`${rankLabel}, ${periodLabel}, ${trophy.score} points`}
               >
                 <span className="trophy-case__icon">
-                  <TrophyIcon period={trophy.period} />
+                  <TrophyIcon rank={trophy.rank} />
                 </span>
                 <span className="trophy-case__main">
-                  <span className="trophy-case__game">{game?.name ?? trophy.game}</span>
+                  <span className="trophy-case__game">{rankLabel}</span>
                   <span className="trophy-case__period">{periodLabel}</span>
                 </span>
-                <span className="trophy-case__score">{trophy.score.toLocaleString()}</span>
+                <span className="trophy-case__score">
+                  <strong>{trophy.score.toLocaleString()}</strong>
+                  <span>pts</span>
+                </span>
               </a>
             </li>
           )

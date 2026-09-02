@@ -178,6 +178,8 @@ export function RankPage({
                 ) : null}
               </section>
 
+              {viewedName ? <TrophyCase name={viewedName} /> : null}
+
               <section
                 className="rank-page__board"
                 aria-labelledby="rank-games-heading"
@@ -253,8 +255,6 @@ export function RankPage({
                   })}
                 </ul>
               </section>
-
-              {viewedName ? <TrophyCase name={viewedName} /> : null}
             </>
           )}
 
