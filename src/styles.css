@@ -7168,11 +7168,6 @@ html[data-theme='dark'] .patriot__power-mark {
   display: flex;
   flex-direction: column;
   gap: 0.65rem;
-  padding: 0.85rem;
-  border-radius: var(--tile-radius);
-  background: rgba(var(--surface-rgb), 0.82);
-  border: 1px solid rgba(var(--ink-rgb), 0.07);
-  box-shadow: var(--shadow-soft);
 }
 
 .game-lobby__scores .lb-periods {
@@ -7220,6 +7215,14 @@ html[data-theme='dark'] .patriot__power-mark {
 
 .game-lobby__scores-board {
   margin: 0;
+}
+
+.game-lobby__scores-board.lb-board {
+  padding: 0;
+  background: none;
+  border: none;
+  box-shadow: none;
+  backdrop-filter: none;
 }
 
 .game-lobby__podium {
