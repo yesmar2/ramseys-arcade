@@ -5673,12 +5673,6 @@ html[data-theme='dark'] .patriot__power-mark {
   overflow: hidden;
 }
 
-.trophy-case__groups {
-  display: flex;
-  flex-direction: column;
-  gap: 0.85rem;
-}
-
 .trophy-case__empty {
   padding: 1rem 1.05rem 1.1rem;
 }
@@ -5712,25 +5706,6 @@ html[data-theme='dark'] .patriot__power-mark {
   gap: 0.45rem;
   font-size: 0.8rem;
   color: var(--muted);
-}
-
-.trophy-case__group {
-  display: flex;
-  flex-direction: column;
-  gap: 0.55rem;
-}
-
-.trophy-case__group-title {
-  margin: 0;
-  font-size: 0.72rem;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--muted);
-}
-
-.trophy-case__group--monthly .trophy-case__group-title {
-  color: #9a7200;
 }
 
 .trophy-case__grid {

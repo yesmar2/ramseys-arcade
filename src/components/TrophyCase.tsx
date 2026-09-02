@@ -47,23 +47,47 @@ function TrophyIcon({ rank, period }: { rank: number; period: TrophyPeriod }) {
   return <TopTenRibbon />
 }
 
-function groupLabel(period: TrophyPeriod) {
-  return period === 'monthly' ? 'Monthly' : 'Weekly'
-}
-
 function TrophySkeleton() {
   return (
-    <div className="trophy-case__groups" aria-hidden="true">
-      <ul className="trophy-case__grid">
-        {Array.from({ length: 3 }, (_, i) => (
-          <li key={i} className="trophy-case__skel">
-            <span className="trophy-case__skel-medal" />
-            <span className="trophy-case__skel-line trophy-case__skel-line--short" />
-            <span className="trophy-case__skel-line" />
-          </li>
-        ))}
-      </ul>
-    </div>
+    <ul className="trophy-case__grid" aria-hidden="true">
+      {Array.from({ length: 3 }, (_, i) => (
+        <li key={i} className="trophy-case__skel">
+          <span className="trophy-case__skel-medal" />
+          <span className="trophy-case__skel-line trophy-case__skel-line--short" />
+          <span className="trophy-case__skel-line" />
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+function TrophyCard({ trophy }: { trophy: TrophyAward }) {
+  const periodLabel = formatTrophyPeriod(trophy.period, trophy.periodKey)
+  const podium = trophy.rank <= 3
+  return (
+    <li>
+      <a
+        className={[
+          'trophy-case__card',
+          `trophy-case__card--${trophy.period}`,
+          podium ? 'trophy-case__card--podium' : 'trophy-case__card--top10',
+          podium ? `trophy-case__card--place-${trophy.rank}` : '',
+        ]
+          .filter(Boolean)
+          .join(' ')}
+        href={globalRankingsHref(trophy.period)}
+        aria-label={`#${trophy.rank} global, ${periodLabel}, ${trophy.score} points`}
+      >
+        {trophy.period === 'monthly' ? (
+          <span className="trophy-case__badge trophy-case__badge--monthly">Monthly</span>
+        ) : null}
+        <span className="trophy-case__icon">
+          <TrophyIcon rank={trophy.rank} period={trophy.period} />
+        </span>
+        <span className="trophy-case__rank">#{trophy.rank}</span>
+        <span className="trophy-case__period">{periodLabel}</span>
+      </a>
+    </li>
   )
 }
 
@@ -94,8 +118,10 @@ export function TrophyCase({ name }: { name: string }) {
   }
 
   const summary = summarizeTrophies(trophies)
-  const monthly = sortTrophies(trophies.filter((t) => t.period === 'monthly'))
-  const weekly = sortTrophies(trophies.filter((t) => t.period === 'weekly'))
+  const sorted = [
+    ...sortTrophies(trophies.filter((t) => t.period === 'monthly')),
+    ...sortTrophies(trophies.filter((t) => t.period === 'weekly')),
+  ]
 
   return (
     <section className="trophy-case" aria-label="Trophies">
@@ -123,14 +149,11 @@ export function TrophyCase({ name }: { name: string }) {
           </ul>
         </div>
       ) : (
-        <div className="trophy-case__groups">
-          {monthly.length > 0 ? (
-            <TrophyGroup period="monthly" label={groupLabel('monthly')} trophies={monthly} />
-          ) : null}
-          {weekly.length > 0 ? (
-            <TrophyGroup period="weekly" label={groupLabel('weekly')} trophies={weekly} />
-          ) : null}
-        </div>
+        <ul className="trophy-case__grid">
+          {sorted.map((trophy) => (
+            <TrophyCard key={trophy.id} trophy={trophy} />
+          ))}
+        </ul>
       )}
     </section>
   )
@@ -159,52 +182,5 @@ function TrophyHeader({
         </div>
       ) : null}
     </header>
-  )
-}
-
-function TrophyGroup({
-  period,
-  label,
-  trophies,
-}: {
-  period: TrophyPeriod
-  label: string
-  trophies: TrophyAward[]
-}) {
-  return (
-    <div className={`trophy-case__group trophy-case__group--${period}`}>
-      <h3 className="trophy-case__group-title">{label}</h3>
-      <ul className="trophy-case__grid">
-        {trophies.map((trophy) => {
-          const periodLabel = formatTrophyPeriod(trophy.period, trophy.periodKey)
-          const podium = trophy.rank <= 3
-          return (
-            <li key={trophy.id}>
-              <a
-                className={[
-                  'trophy-case__card',
-                  `trophy-case__card--${period}`,
-                  podium ? 'trophy-case__card--podium' : 'trophy-case__card--top10',
-                  podium ? `trophy-case__card--place-${trophy.rank}` : '',
-                ]
-                  .filter(Boolean)
-                  .join(' ')}
-                href={globalRankingsHref(trophy.period)}
-                aria-label={`#${trophy.rank} global, ${periodLabel}, ${trophy.score} points`}
-              >
-                {period === 'monthly' ? (
-                  <span className="trophy-case__badge trophy-case__badge--monthly">Monthly</span>
-                ) : null}
-                <span className="trophy-case__icon">
-                  <TrophyIcon rank={trophy.rank} period={period} />
-                </span>
-                <span className="trophy-case__rank">#{trophy.rank}</span>
-                <span className="trophy-case__period">{periodLabel}</span>
-              </a>
-            </li>
-          )
-        })}
-      </ul>
-    </div>
   )
 }
