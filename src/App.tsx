@@ -9,6 +9,7 @@ import {
   getLastPlayerName,
   migrateLocalScoresToName,
   PLAYER_NAME_EVENT,
+  pruneOrphanClaims,
 } from './lib/leaderboard'
 import { refreshGlobalRank } from './lib/globalRank'
 import { refreshPersonalBests } from './lib/personalBest'
@@ -39,12 +40,14 @@ import { TournamentPlayPage } from './pages/TournamentPlayPage'
 
 async function bootstrapApp() {
   pruneOrphanTournamentIds()
+  pruneOrphanClaims()
   await refreshPersonalBests()
 }
 
 async function onPlayerNameChanged() {
   const name = getLastPlayerName()
   const token = name ? getClaimToken(name) : null
+  pruneOrphanClaims()
   if (name && token) {
     await migrateLocalScoresToName(name, token)
   }

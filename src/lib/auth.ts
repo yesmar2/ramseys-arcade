@@ -4,6 +4,7 @@ import {
   getClaimToken,
   getLastPlayerName,
   migrateLocalScoresToName,
+  pruneOrphanClaims,
   rememberClaimToken,
   setPlayerNameLocal,
 } from './leaderboard'
@@ -97,6 +98,7 @@ function applyOwnedNames(names: OwnedName[]) {
   for (const entry of names) {
     if (entry.name && entry.token) rememberClaimToken(entry.name, entry.token)
   }
+  pruneOrphanClaims(names.map((entry) => entry.name))
   // Signed-in accounts have exactly one active tag — always sync local to it.
   if (names.length >= 1) {
     setPlayerNameLocal(names[0].name)

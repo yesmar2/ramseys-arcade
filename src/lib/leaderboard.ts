@@ -169,6 +169,24 @@ export function forgetClaimToken(name: string) {
   writeClaims(claims)
 }
 
+/** Drop guest claim tokens that are not the active tag or an account-owned name. */
+export function pruneOrphanClaims(ownedNames: string[] = []) {
+  const active = normalizePlayerName(getLastPlayerName())
+  const keep = new Set(ownedNames.map((n) => normalizePlayerName(n)).filter(Boolean))
+  if (active) keep.add(active)
+  if (keep.size === 0) return
+
+  const claims = readClaims()
+  let dirty = false
+  for (const key of Object.keys(claims)) {
+    if (!keep.has(key)) {
+      delete claims[key]
+      dirty = true
+    }
+  }
+  if (dirty) writeClaims(claims)
+}
+
 /** Move scores from every locally proven old tag onto the active gamer tag. */
 export async function migrateLocalScoresToName(
   activeName: string,
@@ -217,12 +235,16 @@ const PLAYER_NAME_EVENT = 'arcade-player-name'
 export { PLAYER_NAME_EVENT }
 
 function setLocalPlayerName(cleaned: string) {
+  let changed = false
   try {
+    const prev = normalizePlayerName(localStorage.getItem(LAST_NAME_KEY) || '')
+    if (prev === cleaned) return
     localStorage.setItem(LAST_NAME_KEY, cleaned)
+    changed = true
   } catch {
     /* ignore */
   }
-  if (typeof window !== 'undefined') {
+  if (changed && typeof window !== 'undefined') {
     window.dispatchEvent(new Event(PLAYER_NAME_EVENT))
   }
 }
@@ -270,6 +292,7 @@ export async function rememberPlayerName(name: string): Promise<string> {
   }
 
   await migrateLocalScoresToName(claim.name, claim.token)
+  pruneOrphanClaims([claim.name])
   try {
     const { syncJoinedTournamentRosters } = await import('./tournaments')
     await syncJoinedTournamentRosters(true)
