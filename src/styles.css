@@ -7110,34 +7110,36 @@ html[data-theme='dark'] .patriot__power-mark {
 /* Thumb beside links/stats; play and boards stack below. */
 .game-lobby__identity.game-lobby__intro,
 .game-lobby__intro {
+  --intro-thumb: min(10.75rem, 48vw);
   display: flex;
-  align-items: stretch;
+  align-items: flex-start;
   gap: 0.75rem;
   min-width: 0;
 }
 
 .game-lobby__intro-art {
   flex: none;
-  display: flex;
-  align-items: stretch;
-  min-width: 0;
+  width: var(--intro-thumb);
+  min-width: var(--intro-thumb);
 }
 
 .game-lobby__intro .game-lobby__art {
-  width: auto;
-  height: 100%;
-  max-width: min(11.5rem, 52vw);
-  max-height: min(11.5rem, 52vw);
+  width: var(--intro-thumb);
+  height: var(--intro-thumb);
+  max-width: var(--intro-thumb);
+  max-height: var(--intro-thumb);
   aspect-ratio: 1;
+  flex: none;
 }
 
 .game-lobby__intro-body {
   flex: 1 1 auto;
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
-  justify-content: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
   min-width: 0;
+  min-height: var(--intro-thumb);
 }
 
 .game-lobby__aside {
@@ -7206,6 +7208,7 @@ html[data-theme='dark'] .patriot__power-mark {
   align-items: center;
   gap: 0.55rem 0.75rem;
   min-width: 0;
+  flex: none;
 }
 
 .game-lobby__intro-links .game-lobby__board-link {
@@ -7247,6 +7250,7 @@ html[data-theme='dark'] .patriot__power-mark {
   flex-direction: column;
   gap: 0.55rem;
   min-width: 0;
+  flex: none;
 }
 
 .game-lobby__stats .lb-stat {
@@ -7534,30 +7538,41 @@ html[data-theme='dark'] .patriot__power-mark {
   color: var(--ink);
 }
 
-/* Tablet+: fixed thumb cap. */
+.game-lobby__intro .game-lobby__stats {
+  gap: 0.5rem;
+}
+
+.game-lobby__intro .game-lobby__stats .lb-stat {
+  padding: 0.72rem 0.85rem;
+}
+
+.game-lobby__intro .game-lobby__stats .lb-stat__label {
+  font-size: 0.68rem;
+  margin-bottom: 0.15rem;
+}
+
+.game-lobby__intro .game-lobby__stats .lb-stat strong {
+  font-size: 1.2rem;
+  line-height: 1.1;
+}
+
+/* Tablet+: fixed square thumb sized to intro column. */
 @media (min-width: 520px) {
-  .game-lobby__intro .game-lobby__art {
-    max-width: 12rem;
-    max-height: 12rem;
+  .game-lobby__intro {
+    --intro-thumb: 12rem;
   }
 
-  .game-lobby__stats {
-    gap: 0.7rem;
+  .game-lobby__intro .game-lobby__stats .lb-stat {
+    padding: 0.82rem 1rem;
   }
 
-  .game-lobby__stats .lb-stat {
-    padding: 0.95rem 1.1rem;
-    border-radius: 1rem;
+  .game-lobby__intro .game-lobby__stats .lb-stat__label {
+    font-size: 0.72rem;
+    margin-bottom: 0.18rem;
   }
 
-  .game-lobby__stats .lb-stat__label {
-    font-size: 0.74rem;
-    margin-bottom: 0.2rem;
-  }
-
-  .game-lobby__stats .lb-stat strong {
-    font-size: clamp(1.55rem, 3vw, 2.1rem);
-    letter-spacing: -0.02em;
+  .game-lobby__intro .game-lobby__stats .lb-stat strong {
+    font-size: clamp(1.45rem, 2.6vw, 1.85rem);
   }
 }
 
@@ -7591,36 +7606,23 @@ html[data-theme='dark'] .patriot__power-mark {
     display: none;
   }
 
-  .game-lobby:not(.game-lobby--split) .game-lobby__intro .game-lobby__art {
-    max-width: 16rem;
-    max-height: 16rem;
+  .game-lobby:not(.game-lobby--split) .game-lobby__intro {
+    --intro-thumb: 16rem;
   }
 
-  .game-lobby:not(.game-lobby--split) .game-lobby__stats {
-    flex-direction: column;
-    gap: 0.6rem;
-  }
-
-  .game-lobby:not(.game-lobby--split) .game-lobby__stats .lb-stat {
+  .game-lobby:not(.game-lobby--split) .game-lobby__intro .game-lobby__stats .lb-stat {
     padding: 0.9rem 1.1rem;
-    border-radius: 1rem;
   }
 
-  .game-lobby:not(.game-lobby--split) .game-lobby__stats .lb-stat__label {
-    font-size: 0.72rem;
-    margin-bottom: 0.2rem;
-  }
-
-  .game-lobby:not(.game-lobby--split) .game-lobby__stats .lb-stat strong {
+  .game-lobby:not(.game-lobby--split) .game-lobby__intro .game-lobby__stats .lb-stat strong {
     font-size: clamp(1.55rem, 2.6vw, 2rem);
   }
 }
 
 
 @media (max-width: 360px) {
-  .game-lobby__intro .game-lobby__art {
-    max-width: min(10.5rem, 48vw);
-    max-height: min(10.5rem, 48vw);
+  .game-lobby__intro {
+    --intro-thumb: min(9.75rem, 46vw);
   }
 
   .game-lobby__podium {
