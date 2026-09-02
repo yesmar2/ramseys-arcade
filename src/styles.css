@@ -4639,8 +4639,7 @@ html[data-theme='dark'] .patriot__power-mark {
 }
 
 .lb-page__heading-row {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
+  display: flex;
   align-items: center;
   gap: 0.35rem;
   width: 100%;
@@ -4651,19 +4650,26 @@ html[data-theme='dark'] .patriot__power-mark {
   height: 2.35rem;
 }
 
+.lb-page__heading-slot[aria-hidden='true'] {
+  display: none;
+}
+
+.lb-page__heading-row > .lb-page__title,
+.lb-page__heading-row > .lb-game-board__identity {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
 .page-back {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  flex: none;
   width: 2.35rem;
   height: 2.35rem;
   border-radius: 999px;
   color: var(--muted);
   text-decoration: none;
-  justify-self: start;
-}
-
-.lb-page__heading-row > .lb-page__heading-slot:first-child {
   justify-self: start;
 }
 
@@ -4680,7 +4686,6 @@ html[data-theme='dark'] .patriot__power-mark {
   flex-wrap: nowrap;
   align-items: center;
   justify-content: flex-start;
-  justify-self: start;
   gap: var(--inline-thumb-gap);
   width: auto;
   min-width: 0;
@@ -4705,18 +4710,13 @@ html[data-theme='dark'] .patriot__power-mark {
 }
 
 .lb-game-board__action {
-  justify-self: end;
   display: flex;
   align-items: center;
   min-height: 2.35rem;
 }
 
-.lb-page__heading-row > .lb-page__heading-slot:last-child {
-  justify-self: end;
-}
 
 .lb-game-board__play {
-  justify-self: end;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -4788,7 +4788,6 @@ html[data-theme='dark'] .patriot__power-mark {
 
 .lb-page__heading-row > .lb-page__title {
   margin: 0;
-  justify-self: start;
   text-align: left;
 }
 
@@ -4818,7 +4817,8 @@ html[data-theme='dark'] .patriot__power-mark {
 
 .lb-page__header {
   margin-bottom: 1.5rem;
-  text-align: center;
+  text-align: left;
+  width: 100%;
 }
 
 .lb-page__header--compact {
@@ -4840,6 +4840,7 @@ html[data-theme='dark'] .patriot__power-mark {
   font-size: clamp(2rem, 6vw, 2.75rem);
   font-weight: 700;
   letter-spacing: -0.03em;
+  text-align: left;
 }
 
 .lb-page__header--compact .lb-page__title {
@@ -4849,7 +4850,7 @@ html[data-theme='dark'] .patriot__power-mark {
 .lb-page__title--with-tip {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 0.45rem;
   flex-wrap: wrap;
 }
@@ -5025,7 +5026,8 @@ html[data-theme='dark'] .patriot__power-mark {
 }
 
 .lb-game-board__trailing {
-  justify-self: end;
+  flex: none;
+  margin-left: auto;
   display: inline-flex;
   align-items: center;
   justify-content: flex-end;
@@ -5304,7 +5306,7 @@ html[data-theme='dark'] .patriot__power-mark {
 
 .rank-page__period {
   margin: -0.35rem 0 0;
-  text-align: center;
+  text-align: left;
   font-weight: 700;
   color: var(--muted);
 }
