@@ -21,7 +21,27 @@ function TopTenRibbon() {
   )
 }
 
-function TrophyIcon({ rank }: { rank: number }) {
+function MonthlyTrophyCup({ rank }: { rank: number }) {
+  const tone =
+    rank === 1 ? 'gold' : rank === 2 ? 'silver' : rank === 3 ? 'bronze' : 'honor'
+  return (
+    <span className={`trophy-case__cup trophy-case__cup--${tone}`} aria-hidden="true">
+      <svg viewBox="0 0 24 28" width="34" height="40" focusable="false">
+        <path
+          className="trophy-case__cup-bowl"
+          d="M5 2.5h14v6.8c0 3.6-2.4 6.8-6 7.8-3.6-1-6-4.2-6-7.8V2.5Z"
+        />
+        <path className="trophy-case__cup-handle" d="M5 4.8H3.2a2 2 0 0 0 0 4H5" />
+        <path className="trophy-case__cup-handle" d="M19 4.8h1.8a2 2 0 0 1 0 4H19" />
+        <path className="trophy-case__cup-stem" d="M10.5 16.8h3v2.8H9.8l-.7 3.2h5.8l-.7-3.2h-3.7z" />
+        <path className="trophy-case__cup-base" d="M7.5 24.5h9v2H7.5z" />
+      </svg>
+    </span>
+  )
+}
+
+function TrophyIcon({ rank, period }: { rank: number; period: TrophyPeriod }) {
+  if (period === 'monthly') return <MonthlyTrophyCup rank={rank} />
   const kind = medalKind(rank)
   if (kind) return <PodiumMedal kind={kind} />
   return <TopTenRibbon />
@@ -90,11 +110,15 @@ export function TrophyCase({ name }: { name: string }) {
           <ul className="trophy-case__legend" aria-label="Trophy tiers">
             <li>
               <PodiumMedal kind="gold" />
-              <span>Top 3 — podium</span>
+              <span>Weekly top 3 — medal</span>
             </li>
             <li>
               <TopTenRibbon />
-              <span>#4–10 — top 10</span>
+              <span>Weekly #4–10 — ribbon</span>
+            </li>
+            <li>
+              <MonthlyTrophyCup rank={1} />
+              <span>Monthly — trophy cup</span>
             </li>
           </ul>
         </div>
@@ -168,8 +192,11 @@ function TrophyGroup({
                 href={globalRankingsHref(trophy.period)}
                 aria-label={`#${trophy.rank} global, ${periodLabel}, ${trophy.score} points`}
               >
+                {period === 'monthly' ? (
+                  <span className="trophy-case__badge trophy-case__badge--monthly">Monthly</span>
+                ) : null}
                 <span className="trophy-case__icon">
-                  <TrophyIcon rank={trophy.rank} />
+                  <TrophyIcon rank={trophy.rank} period={period} />
                 </span>
                 <span className="trophy-case__rank">#{trophy.rank}</span>
                 <span className="trophy-case__period">{periodLabel}</span>
