@@ -7110,19 +7110,17 @@ html[data-theme='dark'] .patriot__power-mark {
 /* Thumb beside links/stats; play and boards stack below. */
 .game-lobby__identity.game-lobby__intro,
 .game-lobby__intro {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  column-gap: 0.75rem;
-  row-gap: 0.75rem;
+  display: flex;
   align-items: stretch;
+  gap: 0.75rem;
   min-width: 0;
 }
 
 .game-lobby__intro-art {
+  flex: none;
   display: flex;
-  align-items: flex-end;
+  align-items: stretch;
   min-width: 0;
-  height: 100%;
 }
 
 .game-lobby__intro .game-lobby__art {
@@ -7134,12 +7132,12 @@ html[data-theme='dark'] .patriot__power-mark {
 }
 
 .game-lobby__intro-body {
+  flex: 1 1 auto;
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
   justify-content: flex-start;
   min-width: 0;
-  min-height: 100%;
 }
 
 .game-lobby__aside {
@@ -7249,7 +7247,6 @@ html[data-theme='dark'] .patriot__power-mark {
   flex-direction: column;
   gap: 0.55rem;
   min-width: 0;
-  margin-top: auto;
 }
 
 .game-lobby__stats .lb-stat {
