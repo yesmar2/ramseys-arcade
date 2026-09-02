@@ -7100,14 +7100,16 @@ html[data-theme='dark'] .patriot__power-mark {
 
 .game-lobby__identity {
   align-items: center;
+  gap: 0.65rem;
 }
 
 .game-lobby__identity .inline-thumb {
-  --inline-thumb-size: clamp(3.15rem, 14vw, 4rem);
+  --inline-thumb-size: clamp(4.5rem, 22vw, 6.25rem);
   flex: none;
 }
 
-.game-lobby__title {
+.game-lobby__title.lb-game-board__title {
+  font-size: clamp(1.35rem, 5vw, 1.85rem);
   white-space: normal;
   line-height: 1.08;
 }
@@ -7433,6 +7435,14 @@ html[data-theme='dark'] .patriot__power-mark {
 }
 
 @media (min-width: 768px) {
+  .game-lobby__identity .inline-thumb {
+    --inline-thumb-size: clamp(6.5rem, 16vw, 9rem);
+  }
+
+  .game-lobby__title.lb-game-board__title {
+    font-size: clamp(1.85rem, 3.2vw, 2.5rem);
+  }
+
   .game-lobby__play--header {
     display: inline-flex;
     min-height: 2.35rem;
