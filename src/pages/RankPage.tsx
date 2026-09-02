@@ -4,6 +4,7 @@ import { GameDeviceBadge } from '../components/GameDeviceBadge'
 import { PageBackLink } from '../components/PageBackLink'
 import { PageShell } from '../components/PageShell'
 import { ShareBoardButton } from '../components/ShareBoardButton'
+import { TrophyCase } from '../components/TrophyCase'
 import { getGame, gamePlayableOn } from '../data/games'
 import { gameBoardHref, gamePlayHref, globalRankingsHref, rankHref } from '../hooks/useHashRoute'
 import { useDefaultPeriod } from '../lib/defaultPeriod'
@@ -252,6 +253,8 @@ export function RankPage({
                   })}
                 </ul>
               </section>
+
+              {viewedName ? <TrophyCase name={viewedName} /> : null}
             </>
           )}
 

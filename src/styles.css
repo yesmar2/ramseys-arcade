@@ -5607,6 +5607,137 @@ html[data-theme='dark'] .patriot__power-mark {
   color: var(--rank-game-accent, var(--accent));
 }
 
+/* Trophy case (rank page) */
+.trophy-case {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.trophy-case__blurb {
+  margin: -0.35rem 0 0;
+  font-size: 0.88rem;
+  color: var(--muted);
+}
+
+.trophy-case__empty {
+  margin: 0;
+  padding: 0.85rem 1rem;
+  border: 1px dashed rgba(var(--ink-rgb), 0.14);
+  border-radius: 0.9rem;
+  font-size: 0.9rem;
+  color: var(--muted);
+  background: rgba(var(--surface-rgb), 0.5);
+}
+
+.trophy-case__group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.trophy-case__group-title {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.trophy-case__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid rgba(var(--ink-rgb), 0.1);
+  border-radius: 1.05rem;
+  background: rgba(var(--surface-rgb), 0.82);
+  box-shadow: var(--shadow-soft);
+  overflow: hidden;
+}
+
+.trophy-case__item {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.72rem 0.85rem;
+  border-top: 1px solid rgba(var(--ink-rgb), 0.06);
+  text-decoration: none;
+  color: inherit;
+  transition: background 0.15s ease;
+}
+
+.trophy-case__item:first-child {
+  border-top: 0;
+}
+
+.trophy-case__item:hover,
+.trophy-case__item:focus-visible {
+  background: rgba(var(--ink-rgb), 0.04);
+}
+
+.trophy-case__item--monthly {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 196, 64, 0.08) 0%,
+    rgba(var(--surface-rgb), 0) 55%
+  );
+}
+
+.trophy-case__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.trophy-case__main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.12rem;
+  min-width: 0;
+}
+
+.trophy-case__game {
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.trophy-case__period {
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.trophy-case__score {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+.trophy-case__cup-body {
+  fill: #f0c14b;
+  stroke: #c9921a;
+  stroke-width: 0.8;
+}
+
+.trophy-case__cup-handle,
+.trophy-case__cup-stem {
+  fill: none;
+  stroke: #c9921a;
+  stroke-width: 1.1;
+  stroke-linecap: round;
+}
+
+.trophy-case__cup-base {
+  fill: #c9921a;
+}
+
+.trophy-case__item--monthly .trophy-case__cup-body {
+  fill: #ffd86b;
+}
+
 .game-device-badge {
   display: inline-flex;
   flex: none;
