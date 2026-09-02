@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { applySitePeriod, useHashRoute } from '../hooks/useHashRoute'
+import { applySitePeriod, periodFromRoute, useHashRoute } from '../hooks/useHashRoute'
 import { useDefaultPeriod } from '../lib/defaultPeriod'
 import {
   LEADERBOARD_PERIODS,
@@ -13,8 +13,9 @@ type SitePeriodControlProps = {
 }
 
 export function SitePeriodControl({ variant, onSelect }: SitePeriodControlProps) {
-  const period = useDefaultPeriod()
   const route = useHashRoute()
+  const storedPeriod = useDefaultPeriod()
+  const period = periodFromRoute(route) ?? storedPeriod
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 

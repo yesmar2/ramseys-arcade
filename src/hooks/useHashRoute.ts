@@ -168,6 +168,20 @@ export function hrefForRoute(
   }
 }
 
+/** Period encoded in the current route, if any. */
+export function periodFromRoute(route: Route): LeaderboardPeriod | undefined {
+  switch (route.name) {
+    case 'game':
+    case 'gameLeaderboard':
+    case 'leaderboards':
+    case 'rank':
+    case 'records':
+      return route.period
+    default:
+      return undefined
+  }
+}
+
 export function applySitePeriod(
   period: LeaderboardPeriod,
   route: Route = parseHash(window.location.hash),
@@ -316,9 +330,19 @@ export function useHashRoute(): Route {
   const [route, setRoute] = useState(() => parseHash(window.location.hash))
 
   useEffect(() => {
-    const onHashChange = () => setRoute(parseHash(window.location.hash))
-    window.addEventListener('hashchange', onHashChange)
-    return () => window.removeEventListener('hashchange', onHashChange)
+    const p = periodFromRoute(parseHash(window.location.hash))
+    if (p) setDefaultPeriod(p)
+  }, [])
+
+  useEffect(() => {
+    const syncRoute = () => {
+      const next = parseHash(window.location.hash)
+      const p = periodFromRoute(next)
+      if (p) setDefaultPeriod(p)
+      setRoute(next)
+    }
+    window.addEventListener('hashchange', syncRoute)
+    return () => window.removeEventListener('hashchange', syncRoute)
   }, [])
 
   useEffect(() => {

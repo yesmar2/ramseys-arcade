@@ -20,11 +20,14 @@ import {
 import { scoringFor } from '../data/scoring'
 import { useBoardRecord } from '../hooks/useBoardRecord'
 import {
+  applySitePeriod,
   gameBoardHref,
   gameHref,
   gameHubHref,
   gamePlayHref,
   recordsHref,
+  useHashRoute,
+  type Route,
 } from '../hooks/useHashRoute'
 import { usePersonalBest } from '../hooks/usePersonalBest'
 import { usePlayerName } from '../hooks/usePlayerName'
@@ -55,6 +58,7 @@ type GameHubPageProps = {
 }
 
 export function GameHubPage({ slug, board: boardFromRoute, period }: GameHubPageProps) {
+  const route = useHashRoute()
   const game = getGame(slug)
   const device = useDeviceType()
   const playerName = normalizePlayerName(usePlayerName())
@@ -210,6 +214,7 @@ export function GameHubPage({ slug, board: boardFromRoute, period }: GameHubPage
               slug={slug}
               boardSlug={boardSlug}
               period={period}
+              route={route}
               loading={loading}
               error={error}
               topEntries={topEntries}
@@ -300,6 +305,7 @@ function HubScoresSection({
   slug,
   boardSlug,
   period,
+  route,
   loading,
   error,
   topEntries,
@@ -309,6 +315,7 @@ function HubScoresSection({
   slug: string
   boardSlug: LeaderboardGame
   period: LeaderboardPeriod
+  route: Route
   loading: boolean
   error: string | null
   topEntries: LeaderboardEntry[]
@@ -326,7 +333,7 @@ function HubScoresSection({
         accent={accent}
         hrefFor={(p) => gameHubHref(slug, p)}
         onSelect={(p) => {
-          window.location.hash = gameHubHref(slug, p)
+          applySitePeriod(p, route.name === 'game' ? route : { name: 'game', slug, period })
         }}
       />
 
