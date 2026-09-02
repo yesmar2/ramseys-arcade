@@ -158,11 +158,23 @@ export function GameHubPage({ slug, board: boardFromRoute, period }: GameHubPage
             <div className="game-lobby__hero-main">
               <div className="game-lobby__hero-head">
                 <h1 className="lb-page__title game-lobby__title">{game.name}</h1>
-                <ShareBoardButton
-                  className="game-lobby__share"
-                  label={`Play ${game.name} on ${APP_NAME}`}
-                  url={gameHref(slug)}
-                />
+                <div className="game-lobby__hero-tools">
+                  {boardHref ? (
+                    <a className="game-lobby__tool-link" href={boardHref}>
+                      Board
+                    </a>
+                  ) : null}
+                  {hasRecords && recordsLink ? (
+                    <a className="game-lobby__tool-link" href={recordsLink}>
+                      Records
+                    </a>
+                  ) : null}
+                  <ShareBoardButton
+                    className="game-lobby__share"
+                    label={`Play ${game.name} on ${APP_NAME}`}
+                    url={gameHref(slug)}
+                  />
+                </div>
               </div>
 
               {inDevelopment && canPlay ? (
@@ -198,9 +210,6 @@ export function GameHubPage({ slug, board: boardFromRoute, period }: GameHubPage
               slug={slug}
               boardSlug={boardSlug}
               period={period}
-              boardHref={boardHref}
-              recordsLink={recordsLink}
-              hasRecords={hasRecords}
               loading={loading}
               error={error}
               topEntries={topEntries}
@@ -291,9 +300,6 @@ function HubScoresSection({
   slug,
   boardSlug,
   period,
-  boardHref,
-  recordsLink,
-  hasRecords,
   loading,
   error,
   topEntries,
@@ -303,9 +309,6 @@ function HubScoresSection({
   slug: string
   boardSlug: LeaderboardGame
   period: LeaderboardPeriod
-  boardHref: string | null
-  recordsLink: string | null
-  hasRecords: boolean
   loading: boolean
   error: string | null
   topEntries: LeaderboardEntry[]
@@ -316,21 +319,7 @@ function HubScoresSection({
 
   return (
     <section className="game-lobby__scores" aria-label={`${periodLabel} top scores`}>
-      <div className="game-lobby__scores-head">
-        <h2 className="game-lobby__section-title">{periodLabel} top</h2>
-        <div className="game-lobby__scores-links">
-          {boardHref ? (
-            <a className="game-lobby__board-link" href={boardHref}>
-              Full board
-            </a>
-          ) : null}
-          {hasRecords && recordsLink ? (
-            <a className="game-lobby__board-link" href={recordsLink}>
-              Records
-            </a>
-          ) : null}
-        </div>
-      </div>
+      <h2 className="game-lobby__section-title">{periodLabel} top</h2>
 
       <PeriodSwitcher
         period={period}

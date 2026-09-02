@@ -7125,6 +7125,39 @@ html[data-theme='dark'] .patriot__power-mark {
   gap: 0.5rem;
 }
 
+.game-lobby__hero-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.35rem;
+  flex: none;
+}
+
+.game-lobby__tool-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.35rem;
+  padding: 0.35rem 0.8rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-decoration: none;
+  color: var(--ink);
+  background: rgba(var(--surface-rgb), 0.92);
+  border: 1px solid rgba(var(--ink-rgb), 0.08);
+  box-shadow: var(--shadow-soft);
+  white-space: nowrap;
+}
+
+.game-lobby__tool-link:hover,
+.game-lobby__tool-link:focus-visible {
+  border-color: color-mix(in srgb, var(--board-accent, var(--accent)) 45%, transparent);
+  color: var(--board-accent, var(--accent));
+  outline: none;
+}
+
 .game-lobby__title {
   margin: 0;
   min-width: 0;
