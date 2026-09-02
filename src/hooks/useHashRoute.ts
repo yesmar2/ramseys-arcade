@@ -320,7 +320,7 @@ function parseHash(hash: string): Route {
     if (segment && isLeaderboardPeriod(segment)) {
       return { name: 'game', slug, period: segment }
     }
-    return { name: 'game', slug, period: defaultPeriod() }
+    return { name: 'game', slug }
   }
 
   return { name: 'home' }
@@ -351,8 +351,7 @@ export function useHashRoute(): Route {
       const period = defaultPeriod()
       const next = hrefForRoute(currentRoute, period)
       if (next && normalizeHash(window.location.hash) !== normalizeHash(next)) {
-        window.history.replaceState(null, '', next)
-        setRoute(parseHash(next))
+        window.location.hash = next
       }
     }
 

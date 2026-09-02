@@ -21,15 +21,15 @@ import {
 import { scoringFor } from '../data/scoring'
 import { useBoardRecord } from '../hooks/useBoardRecord'
 import {
-  applySitePeriod,
   gameBoardHref,
   gameHref,
   gameHubHref,
   gamePlayHref,
+  periodFromRoute,
   recordsHref,
   useHashRoute,
-  type Route,
 } from '../hooks/useHashRoute'
+import { useDefaultPeriod } from '../lib/defaultPeriod'
 import { usePersonalBest } from '../hooks/usePersonalBest'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { useDeviceType } from '../lib/device'
@@ -57,11 +57,12 @@ function isBoardGame(slug: string): slug is LeaderboardGame {
 type GameHubPageProps = {
   slug: string
   board?: 'scores' | 'records'
-  period: LeaderboardPeriod
 }
 
-export function GameHubPage({ slug, board: boardFromRoute, period }: GameHubPageProps) {
+export function GameHubPage({ slug, board: boardFromRoute }: GameHubPageProps) {
   const route = useHashRoute()
+  const storedPeriod = useDefaultPeriod()
+  const period = periodFromRoute(route) ?? storedPeriod
   const game = getGame(slug)
   const device = useDeviceType()
   const playerName = normalizePlayerName(usePlayerName())
@@ -144,7 +145,6 @@ export function GameHubPage({ slug, board: boardFromRoute, period }: GameHubPage
         slug,
         boardSlug,
         period,
-        route,
         loading,
         error,
         entries,
@@ -347,7 +347,6 @@ function HubScoresSection({
   slug,
   boardSlug,
   period,
-  route,
   loading,
   error,
   entries,
@@ -360,7 +359,6 @@ function HubScoresSection({
   slug: string
   boardSlug: LeaderboardGame
   period: LeaderboardPeriod
-  route: Route
   loading: boolean
   error: string | null
   entries: LeaderboardEntry[]
@@ -373,7 +371,7 @@ function HubScoresSection({
   const podiumEntries = entries.slice(0, MOBILE_PODIUM_ROWS)
 
   const onSelectPeriod = (p: LeaderboardPeriod) => {
-    applySitePeriod(p, route.name === 'game' ? route : { name: 'game', slug, period })
+    window.location.hash = gameHubHref(slug, p)
   }
 
   return (
