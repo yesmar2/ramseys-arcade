@@ -321,6 +321,41 @@ export function rememberJoinedTournament(id: string) {
   }
 }
 
+/** Drop local join state for an ended, inaccessible, or unknown event. */
+export function forgetTournamentMembership(tournamentId: string) {
+  if (!tournamentId) return
+  try {
+    const joined = getJoinedTournamentIds().filter((id) => id !== tournamentId)
+    localStorage.setItem(JOINED_KEY, JSON.stringify(joined))
+  } catch {
+    /* ignore */
+  }
+  const playerIds = readPlayerIds()
+  if (playerIds[tournamentId]) {
+    delete playerIds[tournamentId]
+    writePlayerIds(playerIds)
+  }
+  const invites = readInvites()
+  if (invites[tournamentId]) {
+    delete invites[tournamentId]
+    writeInvites(invites)
+  }
+}
+
+/** Remove player-id keys that are not in the joined list (no network). */
+export function pruneOrphanTournamentIds() {
+  const joined = new Set(getJoinedTournamentIds())
+  const map = readPlayerIds()
+  let dirty = false
+  for (const id of Object.keys(map)) {
+    if (!joined.has(id)) {
+      delete map[id]
+      dirty = true
+    }
+  }
+  if (dirty) writePlayerIds(map)
+}
+
 export function isPlayerInTournament(
   detail: Pick<TournamentDetail, 'players'>,
   name: string,
@@ -415,27 +450,60 @@ export async function joinTournament(
  * After a gamer-tag change, rebind every locally joined tournament seat to the
  * current name so you don't have to join again.
  */
-export async function syncJoinedTournamentRosters(): Promise<void> {
+let lastRosterSyncAt = 0
+let lastRosterSyncName = ''
+
+export async function syncJoinedTournamentRosters(force = false): Promise<void> {
   const name = getLastPlayerName()
   if (!name) return
-  const ids = new Set([
-    ...getJoinedTournamentIds(),
-    ...Object.keys(readPlayerIds()),
-  ])
-  for (const id of ids) {
+
+  pruneOrphanTournamentIds()
+
+  const now = Date.now()
+  if (!force && name === lastRosterSyncName && now - lastRosterSyncAt < 60_000) {
+    return
+  }
+  lastRosterSyncAt = now
+  lastRosterSyncName = name
+
+  const cleaned = normalizePlayerName(name)
+  for (const id of getJoinedTournamentIds()) {
+    const invite = getTournamentInvite(id) ?? undefined
     try {
-      const detail = await getTournament(id)
-      const byName = detail.players.find((p) => normalizePlayerName(p.name) === name)
+      const detail = await getTournament(id, { playerName: cleaned, invite })
+      const byName = detail.players.find(
+        (p) => normalizePlayerName(p.name) === cleaned,
+      )
       if (byName) {
         rememberTournamentPlayer(id, byName.id)
         continue
       }
+
       const playerId = getTournamentPlayerId(id)
-      if (!playerId && !getJoinedTournamentIds().includes(id)) continue
-      // Rebind existing seat (or no-op join if somehow missing).
-      await joinTournament(id, name)
-    } catch {
-      /* offline / ended / not found */
+      const seat = playerId
+        ? detail.players.find((p) => p.id === playerId)
+        : undefined
+      if (seat) {
+        await joinTournament(id, cleaned)
+        continue
+      }
+
+      if (detail.private && !invite) {
+        forgetTournamentMembership(id)
+        continue
+      }
+
+      if (detail.status === 'ended') {
+        forgetTournamentMembership(id)
+        continue
+      }
+
+      await joinTournament(id, cleaned)
+    } catch (err) {
+      const status = err instanceof ApiError ? err.status : 0
+      if (status === 404 || status === 403 || status === 410) {
+        forgetTournamentMembership(id)
+      }
     }
   }
 }

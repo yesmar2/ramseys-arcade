@@ -31,17 +31,24 @@ import { SnakePage } from './pages/SnakePage'
 import { StackerPage } from './pages/StackerPage'
 import { WhackPage } from './pages/WhackPage'
 import { CreateTournamentPage } from './pages/CreateTournamentPage'
+import { pruneOrphanTournamentIds } from './lib/tournaments'
 import { TournamentDetailPage, TournamentsPage } from './pages/TournamentsPage'
 import { PrivacyPage } from './pages/PrivacyPage'
 import { TermsPage } from './pages/TermsPage'
 import { TournamentPlayPage } from './pages/TournamentPlayPage'
 
 async function syncPlayerIdentity() {
+  pruneOrphanTournamentIds()
   const name = getLastPlayerName()
   const token = name ? getClaimToken(name) : null
   if (name && token) {
     await migrateLocalScoresToName(name, token)
   }
+  await refreshPersonalBests()
+  await refreshGlobalRank()
+}
+
+async function refreshOnFocus() {
   await refreshPersonalBests()
   await refreshGlobalRank()
 }
@@ -92,17 +99,20 @@ function App() {
 
   useEffect(() => {
     void syncPlayerIdentity()
-    const sync = () => {
+    const onName = () => {
       void syncPlayerIdentity()
     }
+    const onFocus = () => {
+      void refreshOnFocus()
+    }
     const unlock = () => unlockSound()
-    window.addEventListener(PLAYER_NAME_EVENT, sync)
-    window.addEventListener('focus', sync)
+    window.addEventListener(PLAYER_NAME_EVENT, onName)
+    window.addEventListener('focus', onFocus)
     window.addEventListener('pointerdown', unlock, true)
     window.addEventListener('keydown', unlock, true)
     return () => {
-      window.removeEventListener(PLAYER_NAME_EVENT, sync)
-      window.removeEventListener('focus', sync)
+      window.removeEventListener(PLAYER_NAME_EVENT, onName)
+      window.removeEventListener('focus', onFocus)
       window.removeEventListener('pointerdown', unlock, true)
       window.removeEventListener('keydown', unlock, true)
     }

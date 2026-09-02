@@ -186,7 +186,7 @@ function GlobalRankingsView({ period }: { period: LeaderboardPeriod }) {
         }
         const names = [
           ...new Set([
-            ...board.entries.map((e) => e.name),
+            ...board.entries.slice(0, INITIAL_ROWS).map((e) => e.name),
             ...(playerName ? [playerName] : []),
           ]),
         ]
@@ -206,6 +206,20 @@ function GlobalRankingsView({ period }: { period: LeaderboardPeriod }) {
       cancelled = true
     }
   }, [playerName, period])
+
+  useEffect(() => {
+    if (entries.length === 0 || shown <= INITIAL_ROWS) return
+    let cancelled = false
+    const names = entries.slice(0, shown).map((e) => e.name)
+    void fetchTrophyCounts(names).then((counts) => {
+      if (!cancelled) {
+        setTrophyCounts((prev) => ({ ...prev, ...counts }))
+      }
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [entries, shown])
 
   return (
     <PageShell innerClassName="lb-page__inner lb-page__inner--summary">

@@ -175,6 +175,12 @@ export async function linkCurrentNameToAccount(name?: string): Promise<OwnedName
     forgetClaimToken(previous)
   }
   await migrateLocalScoresToName(data.name, data.token)
+  try {
+    const { syncJoinedTournamentRosters } = await import('./tournaments')
+    await syncJoinedTournamentRosters(true)
+  } catch {
+    /* tournaments optional */
+  }
   applyOwnedNames(data.names ?? [])
   setPlayerNameLocal(data.name)
   return { name: data.name, token: data.token }

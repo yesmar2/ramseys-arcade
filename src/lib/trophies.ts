@@ -34,6 +34,15 @@ function resolveApiBase() {
 
 const API_BASE = resolveApiBase()
 
+let summaryCache: { name: string; at: number; summary: TrophySummary } | null = null
+const SUMMARY_CACHE_MS = 60_000
+
+export function invalidateTrophySummaryCache(name?: string) {
+  if (!name || summaryCache?.name === name.trim().toUpperCase()) {
+    summaryCache = null
+  }
+}
+
 export function formatTrophyPeriod(period: TrophyPeriod, periodKey: number) {
   if (period === 'weekly') {
     const y = Math.floor(periodKey / 10_000)
@@ -79,11 +88,23 @@ export async function fetchTrophies(name: string): Promise<TrophyAward[]> {
 }
 
 export async function fetchTrophySummary(name: string): Promise<TrophySummary> {
-  const params = new URLSearchParams({ name })
+  const cleaned = name.trim().toUpperCase()
+  if (!cleaned) return { total: 0, podium: 0, topTen: 0 }
+  const now = Date.now()
+  if (
+    summaryCache &&
+    summaryCache.name === cleaned &&
+    now - summaryCache.at < SUMMARY_CACHE_MS
+  ) {
+    return summaryCache.summary
+  }
+  const params = new URLSearchParams({ name: cleaned })
   const res = await fetch(`${API_BASE}/trophies/summary?${params}`)
   if (!res.ok) return { total: 0, podium: 0, topTen: 0 }
   const body = (await res.json()) as { summary?: TrophySummary }
-  return body.summary ?? { total: 0, podium: 0, topTen: 0 }
+  const summary = body.summary ?? { total: 0, podium: 0, topTen: 0 }
+  summaryCache = { name: cleaned, at: now, summary }
+  return summary
 }
 
 export async function fetchTrophyCounts(

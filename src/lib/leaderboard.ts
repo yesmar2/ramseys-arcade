@@ -183,13 +183,6 @@ export async function migrateLocalScoresToName(
       /* not owned anymore / already migrated */
     }
   }
-
-  try {
-    const { syncJoinedTournamentRosters } = await import('./tournaments')
-    await syncJoinedTournamentRosters()
-  } catch {
-    /* tournaments optional */
-  }
 }
 
 export function getLastPlayerName(): string {
@@ -257,6 +250,12 @@ export async function rememberPlayerName(name: string): Promise<string> {
   }
 
   await migrateLocalScoresToName(claim.name, claim.token)
+  try {
+    const { syncJoinedTournamentRosters } = await import('./tournaments')
+    await syncJoinedTournamentRosters(true)
+  } catch {
+    /* tournaments optional */
+  }
   return claim.name
 }
 
