@@ -13,7 +13,7 @@ import { medalKind, PodiumMedal } from './PodiumMedal'
 function TopTenRibbon() {
   return (
     <span className="trophy-case__ribbon" aria-hidden="true">
-      <svg viewBox="0 0 20 24" width="18" height="21" focusable="false">
+      <svg viewBox="0 0 20 24" width="28" height="33" focusable="false">
         <path className="trophy-case__ribbon-band" d="M4 1.5h12v5.5H4Z" />
         <path className="trophy-case__ribbon-tail" d="m5.5 7 2.2 14.5L10 16l2.3 5.5L14.5 7Z" />
       </svg>
@@ -33,16 +33,13 @@ function groupLabel(period: TrophyPeriod) {
 
 function TrophySkeleton() {
   return (
-    <div className="trophy-case__panel" aria-hidden="true">
-      <ul className="trophy-case__list">
-        {Array.from({ length: 2 }, (_, i) => (
+    <div className="trophy-case__groups" aria-hidden="true">
+      <ul className="trophy-case__grid">
+        {Array.from({ length: 3 }, (_, i) => (
           <li key={i} className="trophy-case__skel">
             <span className="trophy-case__skel-medal" />
-            <span className="trophy-case__skel-main">
-              <span className="trophy-case__skel-line trophy-case__skel-line--short" />
-              <span className="trophy-case__skel-line" />
-            </span>
-            <span className="trophy-case__skel-score" />
+            <span className="trophy-case__skel-line trophy-case__skel-line--short" />
+            <span className="trophy-case__skel-line" />
           </li>
         ))}
       </ul>
@@ -102,7 +99,7 @@ export function TrophyCase({ name }: { name: string }) {
           </ul>
         </div>
       ) : (
-        <div className="trophy-case__panel">
+        <div className="trophy-case__groups">
           {monthly.length > 0 ? (
             <TrophyGroup period="monthly" label={groupLabel('monthly')} trophies={monthly} />
           ) : null}
@@ -122,10 +119,7 @@ function TrophyHeader({
 }) {
   return (
     <header className="trophy-case__head">
-      <div className="trophy-case__head-main">
-        <h2 className="rank-page__h">Trophies</h2>
-        <p className="trophy-case__blurb">Global top 10 each week and month</p>
-      </div>
+      <h2 className="rank-page__h">Trophies</h2>
       {summary && summary.total > 0 ? (
         <div className="trophy-case__chips" aria-label="Trophy summary">
           {summary.podium > 0 ? (
@@ -156,7 +150,7 @@ function TrophyGroup({
   return (
     <div className={`trophy-case__group trophy-case__group--${period}`}>
       <h3 className="trophy-case__group-title">{label}</h3>
-      <ul className="trophy-case__list">
+      <ul className="trophy-case__grid">
         {trophies.map((trophy) => {
           const periodLabel = formatTrophyPeriod(trophy.period, trophy.periodKey)
           const podium = trophy.rank <= 3
@@ -164,10 +158,10 @@ function TrophyGroup({
             <li key={trophy.id}>
               <a
                 className={[
-                  'trophy-case__item',
-                  `trophy-case__item--${period}`,
-                  podium ? 'trophy-case__item--podium' : 'trophy-case__item--top10',
-                  podium ? `trophy-case__item--place-${trophy.rank}` : '',
+                  'trophy-case__card',
+                  `trophy-case__card--${period}`,
+                  podium ? 'trophy-case__card--podium' : 'trophy-case__card--top10',
+                  podium ? `trophy-case__card--place-${trophy.rank}` : '',
                 ]
                   .filter(Boolean)
                   .join(' ')}
@@ -178,15 +172,13 @@ function TrophyGroup({
                   <TrophyIcon rank={trophy.rank} />
                 </span>
                 <span className="trophy-case__rank">#{trophy.rank}</span>
-                <span className="trophy-case__main">
-                  <span className="trophy-case__period">{periodLabel}</span>
-                  <span className="trophy-case__meta">
-                    {trophy.score.toLocaleString()} pts · {trophy.games}{' '}
-                    {trophy.games === 1 ? 'game' : 'games'}
+                <span className="trophy-case__period">{periodLabel}</span>
+                <span className="trophy-case__meta">
+                  {trophy.score.toLocaleString()} pts
+                  <span className="trophy-case__meta-sep" aria-hidden="true">
+                    ·
                   </span>
-                </span>
-                <span className="trophy-case__chevron" aria-hidden="true">
-                  ›
+                  {trophy.games} {trophy.games === 1 ? 'game' : 'games'}
                 </span>
               </a>
             </li>
