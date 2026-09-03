@@ -135,7 +135,6 @@ function drawHopper(
   size: number,
   pulse: number,
   dark: boolean,
-  streak: number,
   dying = false,
   deathT = 0,
 ) {
@@ -143,16 +142,6 @@ function drawHopper(
   const scale = (1 + pulse * 0.08) * deathScale
   const r = size * 0.38 * scale
   const squashY = dying ? 1 - deathT * 0.35 : 1
-
-  // Flow glow builds as forward hops chain together.
-  if (!dying && streak > 2) {
-    const heat = Math.min(1, (streak - 2) / 8)
-    ctx.fillStyle = `hsla(48, 95%, 62%, ${0.1 + heat * 0.22})`
-    ctx.beginPath()
-    ctx.arc(cx, cy + r * 0.12, r * (1.5 + heat * 0.5), 0, Math.PI * 2)
-    ctx.fill()
-  }
-
   const bodyHue = dying ? 4 : HOPPER
   const body = fill(bodyHue, dying ? 72 : 62, dark ? 58 : 54, 1)
   const stroke = fill(bodyHue, dying ? 72 : 62, dark ? 48 : 36, 1)
@@ -276,6 +265,41 @@ function drawLog(
   ctx.stroke()
 }
 
+/** Static stepping stone — reads as solid ground, unlike the drifting logs. */
+function drawRock(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  size: number,
+  dark: boolean,
+) {
+  const body = fill(210, 10, dark ? 46 : 62, 1)
+  const stroke = fill(210, 12, dark ? 30 : 38, 0.95)
+  ctx.beginPath()
+  ctx.moveTo(cx - size * 0.42, cy + size * 0.24)
+  ctx.lineTo(cx - size * 0.3, cy - size * 0.16)
+  ctx.lineTo(cx - size * 0.06, cy - size * 0.3)
+  ctx.lineTo(cx + size * 0.24, cy - size * 0.22)
+  ctx.lineTo(cx + size * 0.42, cy + size * 0.1)
+  ctx.lineTo(cx + size * 0.28, cy + size * 0.28)
+  ctx.closePath()
+  ctx.fillStyle = body
+  ctx.fill()
+  ctx.strokeStyle = stroke
+  ctx.lineWidth = Math.max(1.6, size * 0.06)
+  ctx.stroke()
+
+  // Top highlight sells it as a raised surface you can land on.
+  ctx.beginPath()
+  ctx.moveTo(cx - size * 0.22, cy - size * 0.12)
+  ctx.lineTo(cx - size * 0.04, cy - size * 0.22)
+  ctx.lineTo(cx + size * 0.16, cy - size * 0.14)
+  ctx.lineTo(cx - size * 0.02, cy - size * 0.02)
+  ctx.closePath()
+  ctx.fillStyle = dark ? 'rgba(255, 255, 255, 0.16)' : 'rgba(255, 255, 255, 0.42)'
+  ctx.fill()
+}
+
 function drawLaneBand(
   ctx: CanvasRenderingContext2D,
   y: number,
@@ -341,6 +365,9 @@ function drawRow(
       eachLaneCopy(log, span, ox, cell, w, (sx) => {
         drawLog(ctx, sx, vy, log.w * cell, vh, dark)
       })
+    }
+    for (const rockCol of row.rocks) {
+      drawRock(ctx, ox + (rockCol + 0.5) * cell, y + cell * 0.52, cell * 0.86, dark)
     }
   } else if (row.kind === 'rail') {
     const cycle = getRailCycle(row)
@@ -510,7 +537,7 @@ export function renderGame(
   const dying = state.phase === 'dying'
   const deathT = dying ? 1 - state.deathAnim / 0.55 : 0
   if (py > -cell && py < h + cell) {
-    drawHopper(ctx, px, py, cell, state.hopPulse, dark, state.streak, dying, deathT)
+    drawHopper(ctx, px, py, cell, state.hopPulse, dark, dying, deathT)
   }
 
   if (state.nearMiss > 0) {

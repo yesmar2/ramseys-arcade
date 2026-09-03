@@ -17,6 +17,8 @@ export type Row = {
   dir: -1 | 1 | 0
   speed: number
   trees: number[]
+  /** Static stepping stones on a water row. A row has stones or logs, never both. */
+  rocks: number[]
   vehicles: Vehicle[]
   /** Rail crossing cycle timer (seconds). */
   railTimer?: number
@@ -105,11 +107,32 @@ const INPUT_BUFFER = 0.18
 const RESPAWN_INVULN = 0.5
 const CAR_HUES = [18, 348, 272, 198, 38, 128, 168]
 const LOG_HUE = 32
-const PLAYER_HALF = 0.15
+/**
+ * Matched to the drawn hopper (its visual half-width is ~0.4 tiles) so a car
+ * can't visibly bury itself in you before the hit registers. The small gap that
+ * remains is deliberate forgiveness, not slop.
+ */
+const PLAYER_HALF = 0.32
+/** Cars collide on their drawn bounds; just a sliver of mercy. */
+const CAR_INSET = 0.02
 const BUMP = 0.12
 /** Forward hops closer together than this keep the streak alive. */
 const STREAK_WINDOW = 0.9
-const NEAR_MISS_GAP = 0.3
+const NEAR_MISS_GAP = 0.22
+
+/**
+ * Every car in a lane shares one speed (that's what keeps them from bunching),
+ * so variety has to come from lane to lane. Discrete tiers read better than a
+ * narrow random spread: a crawler can sit right next to a sprinter.
+ */
+const ROAD_TIERS = [0.58, 0.8, 1.0, 1.24] as const
+const LOG_TIERS = [0.55, 0.78, 1.0, 1.22] as const
+
+/** Weighted tier pick — the roll skews toward the faster tiers as difficulty climbs. */
+function pickTier(tiers: readonly number[], d: number, rand: () => number): number {
+  const biased = Math.pow(rand(), 1 - d * 0.55)
+  return tiers[Math.min(tiers.length - 1, Math.floor(biased * tiers.length))]
+}
 
 export const TRAIN_WARN = 1.9
 export const TRAIN_PASS = 0.5
@@ -220,19 +243,19 @@ function makeGrassRow(cols: number, rand: () => number, d: number): Row {
   for (let i = 0; i < want && pool.length; i++) {
     trees.push(pool.splice(Math.floor(rand() * pool.length), 1)[0])
   }
-  return { kind: 'grass', dir: 0, speed: 0, trees, vehicles: [] }
+  return { kind: 'grass', dir: 0, speed: 0, trees, rocks: [], vehicles: [] }
 }
 
 function makeRoadRow(row: number, cols: number, rand: () => number): Row {
   const d = difficultyAt(row)
   const dir: -1 | 1 = rand() < 0.5 ? -1 : 1
   // Capped near 2.2 tiles/sec: roughly half a second to clear a tile, which is
-  // still about four times a hop, so every lane stays readable.
-  const speed = (0.82 + d * 0.95) * (0.8 + rand() * 0.42)
+  // still about four times a hop, so even the quickest lane stays readable.
+  const speed = (1.05 + d * 0.57) * pickTier(ROAD_TIERS, d, rand) * (0.92 + rand() * 0.16)
   const w = rand() < 0.28 ? 2.0 : 1.4
   const span = laneSpan(cols)
   // Faster lanes need wider gaps to keep the crossing window fair.
-  const minGap = (1.2 + speed * 0.55) * (1 - d * 0.18)
+  const minGap = (1.25 + speed * 0.6) * (1 - d * 0.16)
   const want = 1 + Math.round(d * 2.4 + rand() * 2.2)
   const count = laneCount(span, w, minGap, want)
   return {
@@ -240,6 +263,7 @@ function makeRoadRow(row: number, cols: number, rand: () => number): Row {
     dir,
     speed,
     trees: [],
+    rocks: [],
     vehicles: spawnLane(
       span,
       count,
@@ -251,15 +275,50 @@ function makeRoadRow(row: number, cols: number, rand: () => number): Row {
   }
 }
 
-function makeWaterRow(row: number, cols: number, runSeed: number, chunkStart: number): Row {
+/**
+ * Static stepping stones. Placed in short clusters rather than scattered singly
+ * so you can shuffle sideways instead of being pinned to one tile.
+ */
+function makeStoneRow(cols: number, rand: () => number, d: number): Row {
+  const target = Math.max(2, Math.round(cols * (0.72 - d * 0.2)))
+  const rocks = new Set<number>()
+  for (let guard = 0; rocks.size < target && guard < 40; guard++) {
+    const start = Math.floor(rand() * cols)
+    const len = 2 + Math.floor(rand() * 2)
+    for (let i = 0; i < len && rocks.size < target; i++) {
+      if (start + i < cols) rocks.add(start + i)
+    }
+  }
+  for (let c = 0; c < cols && rocks.size < target; c++) rocks.add(c)
+  return {
+    kind: 'water',
+    dir: 0,
+    speed: 0,
+    trees: [],
+    rocks: [...rocks].sort((a, b) => a - b),
+    vehicles: [],
+  }
+}
+
+function makeWaterRow(
+  row: number,
+  cols: number,
+  runSeed: number,
+  chunkStart: number,
+  prevIsStone: boolean,
+): Row {
   const rand = mulberry32(row * 1_048_583 ^ runSeed)
   const chunkRand = mulberry32(chunkStart * 1_048_583 ^ runSeed)
   const rowInChunk = row - chunkStart
   const d = difficultyAt(row)
 
+  // Never stack two stone rows: from a stone you can only hop straight on, so a
+  // second static row could strand you with nowhere legal to land.
+  if (!prevIsStone && rand() < 0.32) return makeStoneRow(cols, rand, d)
+
   // Alternate directions so there's always a way to work across a chunk.
   const dir: -1 | 1 = rowInChunk % 2 === 0 ? 1 : -1
-  const speed = (0.5 + d * 0.55) * (0.82 + chunkRand() * 0.4) * (0.9 + rand() * 0.24)
+  const speed = (0.62 + d * 0.42) * pickTier(LOG_TIERS, d, rand) * (0.92 + rand() * 0.16)
   const span = laneSpan(cols)
   const tiles = cols < 9 ? 2 : rand() < 0.58 ? 2 : 3
   const logW = tiles - 0.1
@@ -273,6 +332,7 @@ function makeWaterRow(row: number, cols: number, runSeed: number, chunkStart: nu
     dir,
     speed,
     trees: [],
+    rocks: [],
     vehicles: spawnLane(span, count, logW, gap, () => LOG_HUE, rand, phase),
   }
 }
@@ -296,6 +356,7 @@ function makeRailRow(row: number, cols: number, runSeed: number): Row {
     railPass,
     railCool,
     trees: [],
+    rocks: [],
     vehicles: [{ x: dir > 0 ? -trainW - 6 : cols + 6, w: trainW, hue: 350 }],
   }
 }
@@ -340,7 +401,7 @@ export function generateRow(
         if (rand() < 0.2) trees.push(c)
       }
     }
-    return { kind: 'grass', dir: 0, speed: 0, trees, vehicles: [] }
+    return { kind: 'grass', dir: 0, speed: 0, trees, rocks: [], vehicles: [] }
   }
 
   // Guarantee a breather after a stretch of hazards; the stretch grows with
@@ -350,10 +411,12 @@ export function generateRow(
     return makeGrassRow(cols, rand, d)
   }
 
+  const prevIsStone = prev?.kind === 'water' && prev.rocks.length > 0
+
   if (prev?.kind === 'water') {
     const start = chunkStart(row, 'water', rows)
     if (row < start + chunkLength(start, runSeed, 2, d > 0.5 ? 4 : 3)) {
-      return makeWaterRow(row, cols, runSeed, start)
+      return makeWaterRow(row, cols, runSeed, start, prevIsStone)
     }
   }
 
@@ -372,7 +435,9 @@ export function generateRow(
   const roll = rand()
 
   if (roll < grassChance) return makeGrassRow(cols, rand, d)
-  if (roll < grassChance + waterChance) return makeWaterRow(row, cols, runSeed, row)
+  if (roll < grassChance + waterChance) {
+    return makeWaterRow(row, cols, runSeed, row, prevIsStone)
+  }
   if (roll < grassChance + waterChance + railChance) return makeRailRow(row, cols, runSeed)
   return makeRoadRow(row, cols, rand)
 }
@@ -436,6 +501,11 @@ function onLog(col: number, v: Vehicle, span: number): boolean {
   return inside(v.x) || inside(v.x - span)
 }
 
+/** Stones are static and snap you to their tile, so a whole-column test is exact. */
+function onRock(col: number, row: Row): boolean {
+  return row.rocks.includes(Math.round(col))
+}
+
 /** Train uses body-only bounds and never wraps. */
 function trainHit(col: number, train: Vehicle): boolean {
   const { left, right } = playerBox(col)
@@ -485,7 +555,7 @@ function hitsRoad(col: number, rowIndex: number, rows: Map<number, Row>, cols: n
   const row = rows.get(rowIndex)
   if (row?.kind !== 'road') return false
   const span = laneSpan(cols)
-  return row.vehicles.some((v) => laneHit(col, v, span, 0.05))
+  return row.vehicles.some((v) => laneHit(col, v, span, CAR_INSET))
 }
 
 function hitsRail(col: number, row: Row): boolean {
@@ -579,8 +649,10 @@ export function hop(state: GameState, dir: Dir): GameState {
   if (nr < 0) return blocked()
 
   const rowData = state.rows.get(nr) ?? generateRow(nr, state.cols, state.runSeed, state.rows)
-  // Keep the sub-tile offset only when staying on water; land always re-grids.
-  const target = rowData.kind === 'water' ? nc : Math.round(nc)
+  // Only drifting logs preserve a sub-tile offset. Land and stones re-grid, so
+  // stepping onto a stone always plants you squarely on it.
+  const driftingWater = rowData.kind === 'water' && rowData.rocks.length === 0
+  const target = driftingWater ? nc : Math.round(nc)
   if (target < -0.001 || target > state.cols - 1 + 0.001) return blocked()
   if (rowData.kind !== 'water' && rowData.trees.includes(target)) return blocked()
 
@@ -689,11 +761,13 @@ export function tick(state: GameState, dt: number): GameState {
   const standing = next.rows.get(next.row)
 
   if (standing?.kind === 'water' && !next.hop) {
-    const raft = standing.vehicles.find((v) => onLog(next.col, v, span))
-    if (raft) {
-      // Drift with the log; the column stays fractional until you hop back onto land.
+    if (standing.rocks.length) {
+      // Stones don't move, so there's nothing to carry you — just stand or sink.
+      if (!onRock(next.col, standing) && next.invuln <= 0) return die(next, 'water')
+    } else if (standing.vehicles.some((v) => onLog(next.col, v, span))) {
+      // Drift with the log; the column stays fractional until you reach solid ground.
       next.col += standing.dir * standing.speed * dt
-      if (next.col < -0.35 || next.col > next.cols - 0.65) return die(next, 'edge')
+      if (next.col < -0.4 || next.col > next.cols - 0.6) return die(next, 'edge')
     } else if (next.invuln <= 0) {
       return die(next, 'water')
     }
