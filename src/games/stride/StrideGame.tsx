@@ -32,7 +32,7 @@ const DEATH_COPY: Record<DeathCause, string> = {
   train: 'The train got you',
   water: 'Fell in the water',
   edge: 'Swept off the edge',
-  hawk: 'The hawk swooped in',
+  hawk: 'Snatched by the hawk',
 }
 
 export function StrideGame() {

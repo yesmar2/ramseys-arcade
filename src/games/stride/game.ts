@@ -85,9 +85,11 @@ export type GameState = {
 
 export const COLS = 7
 /** Target rows visible on screen — lower = more zoom. */
-export const TARGET_VISIBLE_ROWS = 11
+export const TARGET_VISIBLE_ROWS = 8
+/** Cap so a wide monitor can't open a runway of incoming cars. */
+export const MAX_COLS = 9
 /** Desktop tile scale bump. */
-export const DESKTOP_ZOOM = 1.1
+export const DESKTOP_ZOOM = 1.28
 /** Player sits this many rows from the bottom of the view once the camera is rolling. */
 export const PLAYER_VIEW_ROW = 3
 /** Die if you fall this many rows behind the camera. */
@@ -99,25 +101,23 @@ export const LANE_PAD = 5
 /** Distance markers every this many rows. */
 export const MILESTONE_STEP = 25
 /** Die if you don't hop up or down for this long (seconds). */
-export const STALL_LIMIT = 9
+export const STALL_LIMIT = 5
+/** Hawk warning starts this many seconds before the stall kill. */
+export const STALL_WARN = 2.5
 
 const HOP_COOLDOWN = 0.05
 const HOP_DURATION = 0.12
 const INPUT_BUFFER = 0.18
 const RESPAWN_INVULN = 0.5
+/** Lateral hops are half a tile so you can thread between cars. */
+const SIDE_STEP = 0.5
 const CAR_HUES = [18, 348, 272, 198, 38, 128, 168]
 const LOG_HUE = 32
-/**
- * Matched to the drawn hopper (its visual half-width is ~0.4 tiles) so a car
- * can't visibly bury itself in you before the hit registers. The small gap that
- * remains is deliberate forgiveness, not slop.
- */
-const PLAYER_HALF = 0.32
+/** Matches the circular hopper sprite. */
+const PLAYER_HALF = 0.26
 /** Cars collide on their drawn bounds; just a sliver of mercy. */
 const CAR_INSET = 0.02
 const BUMP = 0.12
-/** Forward hops closer together than this keep the streak alive. */
-const STREAK_WINDOW = 0.9
 const NEAR_MISS_GAP = 0.22
 
 /**
@@ -172,10 +172,10 @@ export function cellMetrics(viewWidth: number, viewHeight: number) {
   return { cell: Math.max(1, Math.min(byHeight, byWidth)), availH, hudTop }
 }
 
-/** Column count from viewport — fill screen width, sized from row height. */
+/** Column count from viewport — fill width, but never so wide you see traffic coming. */
 export function pickCols(viewWidth: number, viewHeight: number): number {
   const { cell } = cellMetrics(viewWidth, viewHeight)
-  return Math.max(COLS, Math.floor(viewWidth / cell))
+  return Math.max(COLS, Math.min(MAX_COLS, Math.floor(viewWidth / cell)))
 }
 
 /** Traffic wraps around this many tiles, so lanes tile seamlessly. */
@@ -251,7 +251,7 @@ function makeRoadRow(row: number, cols: number, rand: () => number): Row {
   const dir: -1 | 1 = rand() < 0.5 ? -1 : 1
   // Capped near 2.2 tiles/sec: roughly half a second to clear a tile, which is
   // still about four times a hop, so even the quickest lane stays readable.
-  const speed = (1.05 + d * 0.57) * pickTier(ROAD_TIERS, d, rand) * (0.92 + rand() * 0.16)
+  const speed = (1.42 + d * 0.78) * pickTier(ROAD_TIERS, d, rand) * (0.94 + rand() * 0.14)
   const w = rand() < 0.28 ? 2.0 : 1.4
   const span = laneSpan(cols)
   // Faster lanes need wider gaps to keep the crossing window fair.
@@ -314,11 +314,11 @@ function makeWaterRow(
 
   // Never stack two stone rows: from a stone you can only hop straight on, so a
   // second static row could strand you with nowhere legal to land.
-  if (!prevIsStone && rand() < 0.32) return makeStoneRow(cols, rand, d)
+  if (!prevIsStone && rand() < 0.12) return makeStoneRow(cols, rand, d)
 
   // Alternate directions so there's always a way to work across a chunk.
   const dir: -1 | 1 = rowInChunk % 2 === 0 ? 1 : -1
-  const speed = (0.62 + d * 0.42) * pickTier(LOG_TIERS, d, rand) * (0.92 + rand() * 0.16)
+  const speed = (0.9 + d * 0.62) * pickTier(LOG_TIERS, d, rand) * (0.94 + rand() * 0.14)
   const span = laneSpan(cols)
   const tiles = cols < 9 ? 2 : rand() < 0.58 ? 2 : 3
   const logW = tiles - 0.1
@@ -466,6 +466,24 @@ function playerCenter(state: GameState) {
     c: state.hop.fromC + (state.hop.toC - state.hop.fromC) * t,
     r: state.hop.fromR + (state.hop.toR - state.hop.fromR) * t,
   }
+}
+
+function treesBlock(col: number, trees: number[]): boolean {
+  const { left, right } = playerBox(col)
+  return trees.some((t) => right > t && left < t + 1)
+}
+
+/** Snap landing column — roads allow half-tile positioning between cars. */
+function landingCol(nc: number, row: Row): number {
+  if (row.kind === 'water' && row.rocks.length === 0) return nc
+  if (row.kind === 'water') return Math.round(nc)
+  if (row.kind === 'road') return Math.round(nc * 2) / 2
+  return Math.round(nc * 2) / 2
+}
+
+function colInBounds(col: number, cols: number): boolean {
+  const { left, right } = playerBox(col)
+  return left >= -0.02 && right <= cols + 0.02
 }
 
 function playerBox(col: number) {
@@ -642,23 +660,18 @@ export function hop(state: GameState, dir: Dir): GameState {
   let nc = fromC
   if (dir === 'up') nr += 1
   else if (dir === 'down') nr -= 1
-  else if (dir === 'left') nc -= 1
-  else nc += 1
+  else if (dir === 'left') nc -= SIDE_STEP
+  else nc += SIDE_STEP
 
   const blocked = (): GameState => ({ ...state, queued: null, bump: BUMP })
   if (nr < 0) return blocked()
 
   const rowData = state.rows.get(nr) ?? generateRow(nr, state.cols, state.runSeed, state.rows)
-  // Only drifting logs preserve a sub-tile offset. Land and stones re-grid, so
-  // stepping onto a stone always plants you squarely on it.
-  const driftingWater = rowData.kind === 'water' && rowData.rocks.length === 0
-  const target = driftingWater ? nc : Math.round(nc)
-  if (target < -0.001 || target > state.cols - 1 + 0.001) return blocked()
-  if (rowData.kind !== 'water' && rowData.trees.includes(target)) return blocked()
+  const target = landingCol(nc, rowData)
+  if (!colInBounds(target, state.cols)) return blocked()
+  if (rowData.kind !== 'water' && treesBlock(target, rowData.trees)) return blocked()
 
-  const forward = nr > fromR
-  const streak = forward && state.streakTimer <= STREAK_WINDOW ? state.streak + 1 : 0
-  sfx('hop', forward ? Math.min(streak, 14) : 0)
+  sfx('hop')
 
   const next: GameState = {
     ...state,
@@ -666,8 +679,8 @@ export function hop(state: GameState, dir: Dir): GameState {
     row: nr,
     score: Math.max(state.score, nr),
     idleTimer: nr !== fromR ? 0 : state.idleTimer,
-    streak: forward ? streak : 0,
-    streakTimer: forward ? 0 : state.streakTimer,
+    streak: 0,
+    streakTimer: 99,
     hop: { fromC, fromR, toC: target, toR: nr, t: 0 },
     hopCooldown: HOP_COOLDOWN,
     hopPulse: 0.2,
@@ -681,10 +694,6 @@ export function hop(state: GameState, dir: Dir): GameState {
     next.beatBest = true
     next.celebrate = 1.35
     sfx('wave')
-  } else if (nr > 0 && nr % MILESTONE_STEP === 0 && nr > state.milestoneRow) {
-    next.milestoneRow = nr
-    next.milestone = 0.9
-    sfx('good')
   }
 
   const pos = playerCenter(next)
