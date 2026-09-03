@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type MouseEvent } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { gameBoardHref, recordsHref } from '../hooks/useHashRoute'
 import {
@@ -534,13 +534,6 @@ function boardsHref(gameSlug: string) {
   return `#/games/${encodeURIComponent(gameSlug)}`
 }
 
-function followHashLink(e: MouseEvent<HTMLAnchorElement>, href: string) {
-  e.stopPropagation()
-  if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return
-  e.preventDefault()
-  window.location.hash = href.startsWith('#') ? href.slice(1) : href
-}
-
 type Phase = 'checking' | 'needName' | 'saving' | 'saved' | 'error'
 
 export function ScoreSaveCard({
@@ -819,17 +812,11 @@ export function ScoreSaveCard({
             Play again
           </button>
           <div className="score-save__links">
-            <a
-              href={boardsHref(gameSlug)}
-              onClick={(e) => followHashLink(e, boardsHref(gameSlug))}
-            >
+            <a href={boardsHref(gameSlug)}>
               Boards
             </a>
             {gameHasRecords(gameSlug) ? (
-              <a
-                href={recordsHref(gameSlug)}
-                onClick={(e) => followHashLink(e, recordsHref(gameSlug))}
-              >
+              <a href={recordsHref(gameSlug)}>
                 Record Books
               </a>
             ) : null}
