@@ -141,18 +141,44 @@ function drawHopper(
   deathT = 0,
   /** Forward-hop squeeze: 0 = round, 1 = max skinny. */
   squeeze = 0,
+  cause: GameState['cause'] = null,
 ) {
-  const deathScale = dying ? 1 - deathT * 0.45 : 1
+  let drawX = cx
+  let drawY = cy
+  let deathScale = 1
+  let squashX = 1
+  let squashY = 1
+
+  if (dying) {
+    if (cause === 'hawk') {
+      drawY -= deathT * size * 3.2
+      deathScale = 1 - deathT * 0.25
+      squashX = 1 - deathT * 0.15
+      squashY = 1 + deathT * 0.35
+    } else if (cause === 'water' || cause === 'edge') {
+      drawY += deathT * size * 0.85
+      deathScale = 1 - deathT * 0.55
+      squashX = 1 + deathT * 0.35
+      squashY = 1 - deathT * 0.55
+    } else {
+      // Car / train — flatten hard.
+      deathScale = 1 - deathT * 0.2
+      squashX = 1 + deathT * 1.1
+      squashY = Math.max(0.12, 1 - deathT * 0.92)
+      drawY += deathT * size * 0.2
+    }
+  }
+
   const scale = (1 + pulse * 0.08) * deathScale
   const r = size * 0.3 * scale
-  const rx = r * (1 - squeeze * 0.32)
-  const ry = r * (1 + squeeze * 0.18)
+  const rx = r * (1 - squeeze * 0.32) * squashX
+  const ry = r * (1 + squeeze * 0.18) * squashY
   const bodyHue = dying ? 4 : HOPPER
-  const body = fill(bodyHue, dying ? 72 : 62, dark ? 58 : 54, 1)
-  const stroke = fill(bodyHue, dying ? 72 : 62, dark ? 48 : 36, 1)
+  const body = fill(bodyHue, dying ? 72 : 62, dark ? 58 : 54, dying ? 1 - deathT * 0.35 : 1)
+  const stroke = fill(bodyHue, dying ? 72 : 62, dark ? 48 : 36, dying ? 1 - deathT * 0.35 : 1)
 
   ctx.beginPath()
-  ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2)
+  ctx.ellipse(drawX, drawY, rx, ry, 0, 0, Math.PI * 2)
   ctx.fillStyle = body
   ctx.fill()
   ctx.strokeStyle = stroke
@@ -160,26 +186,51 @@ function drawHopper(
   ctx.stroke()
 
   if (dying) {
-    ctx.strokeStyle = 'rgba(180, 20, 20, 0.85)'
-    ctx.lineWidth = Math.max(2.5, size * 0.07)
-    ctx.beginPath()
-    ctx.moveTo(cx - rx * 0.55, cy - ry * 0.35)
-    ctx.lineTo(cx + rx * 0.55, cy + ry * 0.15)
-    ctx.moveTo(cx + rx * 0.55, cy - ry * 0.35)
-    ctx.lineTo(cx - rx * 0.55, cy + ry * 0.15)
-    ctx.stroke()
+    if (cause === 'car' || cause === 'train') {
+      ctx.strokeStyle = `rgba(180, 20, 20, ${0.9 - deathT * 0.4})`
+      ctx.lineWidth = Math.max(2.5, size * 0.07)
+      ctx.beginPath()
+      ctx.moveTo(drawX - rx * 0.7, drawY - ry * 0.2)
+      ctx.lineTo(drawX + rx * 0.7, drawY + ry * 0.15)
+      ctx.moveTo(drawX + rx * 0.7, drawY - ry * 0.2)
+      ctx.lineTo(drawX - rx * 0.7, drawY + ry * 0.15)
+      ctx.stroke()
+    }
     return
   }
 
   ctx.fillStyle = '#1a2b3c'
   ctx.beginPath()
-  ctx.arc(cx - rx * 0.28, cy - ry * 0.1, r * 0.14, 0, Math.PI * 2)
-  ctx.arc(cx + rx * 0.28, cy - ry * 0.1, r * 0.14, 0, Math.PI * 2)
+  ctx.arc(drawX - rx * 0.28, drawY - ry * 0.1, r * 0.14, 0, Math.PI * 2)
+  ctx.arc(drawX + rx * 0.28, drawY - ry * 0.1, r * 0.14, 0, Math.PI * 2)
   ctx.fill()
   ctx.fillStyle = '#fff'
   ctx.beginPath()
-  ctx.arc(cx - rx * 0.24, cy - ry * 0.14, r * 0.05, 0, Math.PI * 2)
-  ctx.arc(cx + rx * 0.32, cy - ry * 0.14, r * 0.05, 0, Math.PI * 2)
+  ctx.arc(drawX - rx * 0.24, drawY - ry * 0.14, r * 0.05, 0, Math.PI * 2)
+  ctx.arc(drawX + rx * 0.32, drawY - ry * 0.14, r * 0.05, 0, Math.PI * 2)
+  ctx.fill()
+}
+
+function drawCoin(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  size: number,
+  dark: boolean,
+  bob = 0,
+) {
+  const r = size * 0.22
+  const y = cy - bob
+  ctx.beginPath()
+  ctx.arc(cx, y, r, 0, Math.PI * 2)
+  ctx.fillStyle = fill(48, 92, dark ? 58 : 54, 1)
+  ctx.fill()
+  ctx.strokeStyle = fill(42, 90, dark ? 42 : 38, 1)
+  ctx.lineWidth = Math.max(1.6, size * 0.05)
+  ctx.stroke()
+  ctx.beginPath()
+  ctx.arc(cx - r * 0.25, y - r * 0.28, r * 0.28, 0, Math.PI * 2)
+  ctx.fillStyle = dark ? 'rgba(255, 255, 255, 0.28)' : 'rgba(255, 255, 255, 0.55)'
   ctx.fill()
 }
 
@@ -530,6 +581,11 @@ function drawRow(
   for (const treeCol of row.trees) {
     drawTree(ctx, ox + (treeCol + 0.5) * cell, y + cell * 0.52, cell * 0.88, dark)
   }
+
+  const bob = Math.sin(performance.now() / 220 + worldRow) * cell * 0.04
+  for (const coinCol of row.coins) {
+    drawCoin(ctx, ox + (coinCol + 0.5) * cell, y + cell * 0.52, cell, dark, bob)
+  }
 }
 
 /** Faint distance ticks so progress feels measurable mid-run. */
@@ -606,9 +662,19 @@ export function renderGame(
   const { cell, visibleRows, ox, oy, gridW } = layout
   const cameraY = state.cameraY
   const pos = playerPos(state)
+  const shake =
+    state.shake > 0
+      ? {
+          x: (Math.random() - 0.5) * cell * 0.22 * state.shake,
+          y: (Math.random() - 0.5) * cell * 0.18 * state.shake,
+        }
+      : { x: 0, y: 0 }
 
   ctx.fillStyle = playfieldColor()
   ctx.fillRect(0, 0, w, h)
+
+  ctx.save()
+  ctx.translate(shake.x, shake.y)
 
   const topRow = Math.ceil(cameraY + visibleRows + 2)
   const bottomRow = Math.floor(cameraY) - 4
@@ -636,13 +702,36 @@ export function renderGame(
   const px = ox + (pos.c + 0.5) * cell
   const py = rowScreenY(pos.r, cameraY, visibleRows, oy, cell) + cell * 0.52
   const dying = state.phase === 'dying'
-  const deathT = dying ? 1 - state.deathAnim / 0.55 : 0
-  // Peak mid-hop: circle goes a tad skinny like it's squeezing through.
+  const deathT = dying ? 1 - state.deathAnim / 0.95 : 0
   const hop = state.hop
   const squeeze =
     hop && hop.toR > hop.fromR ? Math.sin(Math.min(1, hop.t) * Math.PI) : 0
-  if (py > -cell && py < h + cell) {
-    drawHopper(ctx, px, py, cell, state.hopPulse, dark, dying, deathT, squeeze)
+  if (py > -cell * 4 && py < h + cell) {
+    drawHopper(ctx, px, py, cell, state.hopPulse, dark, dying, deathT, squeeze, state.cause)
+  }
+
+  for (const pop of state.coinPops) {
+    const t = Math.max(0, pop.t / 0.42)
+    const cx = ox + (pop.c + 0.5) * cell
+    const cy = rowScreenY(pop.r, cameraY, visibleRows, oy, cell) + cell * 0.2 - (1 - t) * cell * 0.8
+    ctx.save()
+    ctx.globalAlpha = t
+    ctx.font = `800 ${Math.max(12, Math.round(cell * 0.32))}px system-ui, sans-serif`
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.fillStyle = fill(48, 90, dark ? 62 : 48, 1)
+    ctx.fillText('+1', cx, cy)
+    ctx.restore()
+  }
+
+  for (const bit of state.deathBits) {
+    const a = Math.max(0, bit.life / bit.max)
+    const bx = ox + bit.x * cell
+    const by = rowScreenY(bit.y, cameraY, visibleRows, oy, cell) + cell * 0.5
+    ctx.beginPath()
+    ctx.arc(bx, by, bit.size * cell, 0, Math.PI * 2)
+    ctx.fillStyle = fill(bit.hue, 70, dark ? 58 : 52, a)
+    ctx.fill()
   }
 
   if (state.nearMiss > 0) {
@@ -668,8 +757,34 @@ export function renderGame(
     ctx.restore()
   }
 
+  if (dying && state.cause) {
+    const labels: Record<NonNullable<GameState['cause']>, string> = {
+      car: 'SPLAT!',
+      train: 'SMOOSHED!',
+      water: 'SPLASH!',
+      edge: 'YEETED!',
+      hawk: 'SNATCHED!',
+    }
+    const t = Math.min(1, deathT * 1.4)
+    ctx.save()
+    ctx.font = `900 ${Math.max(22, Math.round(cell * 0.58))}px system-ui, sans-serif`
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.fillStyle = `rgba(255, 255, 255, ${0.95 * Math.min(1, 2 - deathT * 1.2)})`
+    ctx.fillText(labels[state.cause], w / 2, oy + visibleRows * cell * 0.28 - t * cell * 0.4)
+    if (state.runCoins > 0) {
+      ctx.font = `800 ${Math.max(14, Math.round(cell * 0.32))}px system-ui, sans-serif`
+      ctx.fillStyle = `rgba(245, 185, 66, ${0.95 * Math.min(1, 2 - deathT * 1.2)})`
+      ctx.fillText(`+${state.runCoins} coins`, w / 2, oy + visibleRows * cell * 0.28 + cell * 0.45)
+    }
+    ctx.restore()
+  }
+
+  ctx.restore()
+
   if (state.deathFlash > 0) {
-    ctx.fillStyle = `rgba(255, 80, 80, ${state.deathFlash * 0.3})`
+    const heat = state.deathFlash / 0.7
+    ctx.fillStyle = `rgba(255, 60, 60, ${heat * 0.42})`
     ctx.fillRect(0, 0, w, h)
   }
 

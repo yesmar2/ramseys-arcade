@@ -19,6 +19,8 @@ export type Row = {
   trees: number[]
   /** Static stepping stones on a water row. A row has stones or logs, never both. */
   rocks: number[]
+  /** Coin columns on grass (and sometimes stones). */
+  coins: number[]
   vehicles: Vehicle[]
   /** Rail crossing cycle timer (seconds). */
   railTimer?: number
@@ -35,6 +37,23 @@ export type HopAnim = {
   t: number
 }
 
+export type DeathBit = {
+  x: number
+  y: number
+  vx: number
+  vy: number
+  life: number
+  max: number
+  hue: number
+  size: number
+}
+
+export type CoinPop = {
+  c: number
+  r: number
+  t: number
+}
+
 export type Snapshot = {
   score: number
   best: number
@@ -43,6 +62,10 @@ export type Snapshot = {
   target: number
   beatBest: boolean
   cause: DeathCause | null
+  /** Coins grabbed this run. */
+  runCoins: number
+  /** Lifetime banked coins. */
+  wallet: number
 }
 
 export type GameState = {
@@ -79,6 +102,11 @@ export type GameState = {
   milestoneRow: number
   nearMiss: number
   nearMissCooldown: number
+  runCoins: number
+  wallet: number
+  coinPops: CoinPop[]
+  deathBits: DeathBit[]
+  shake: number
   rows: Map<number, Row>
   runSeed: number
 }
@@ -190,6 +218,25 @@ function wrapX(x: number, span: number): number {
   return m < 0 ? m + span : m
 }
 
+const WALLET_KEY = 'stride-wallet'
+
+export function loadWallet(): number {
+  try {
+    const n = Number(localStorage.getItem(WALLET_KEY) || '0')
+    return Number.isFinite(n) && n > 0 ? Math.floor(n) : 0
+  } catch {
+    return 0
+  }
+}
+
+function saveWallet(n: number) {
+  try {
+    localStorage.setItem(WALLET_KEY, String(Math.max(0, Math.floor(n))))
+  } catch {
+    /* ignore */
+  }
+}
+
 function loadBest() {
   return getPersonalBest('stride')
 }
@@ -245,7 +292,15 @@ function makeGrassRow(cols: number, rand: () => number, d: number): Row {
   for (let i = 0; i < want && pool.length; i++) {
     trees.push(pool.splice(Math.floor(rand() * pool.length), 1)[0])
   }
-  return { kind: 'grass', dir: 0, speed: 0, trees, rocks: [], vehicles: [] }
+  const coins: number[] = []
+  // Coins on open grass — frequent enough to chase, sparse enough to stay special.
+  if (pool.length && rand() < 0.62) {
+    const n = rand() < 0.22 && pool.length > 2 ? 2 : 1
+    for (let i = 0; i < n && pool.length; i++) {
+      coins.push(pool.splice(Math.floor(rand() * pool.length), 1)[0])
+    }
+  }
+  return { kind: 'grass', dir: 0, speed: 0, trees, rocks: [], coins, vehicles: [] }
 }
 
 function makeRoadRow(row: number, cols: number, rand: () => number): Row {
@@ -266,6 +321,7 @@ function makeRoadRow(row: number, cols: number, rand: () => number): Row {
     speed,
     trees: [],
     rocks: [],
+    coins: [],
     vehicles: spawnLane(
       span,
       count,
@@ -291,12 +347,18 @@ function makeStoneRow(cols: number, rand: () => number, d: number): Row {
     if ([...rocks].every((r) => Math.abs(r - c) > 1)) rocks.add(c)
   }
   if (rocks.size === 0) rocks.add(Math.floor(cols / 2))
+  const rockList = [...rocks].sort((a, b) => a - b)
+  const coins: number[] = []
+  if (rockList.length && rand() < 0.35) {
+    coins.push(rockList[Math.floor(rand() * rockList.length)])
+  }
   return {
     kind: 'water',
     dir: 0,
     speed: 0,
     trees: [],
-    rocks: [...rocks].sort((a, b) => a - b),
+    rocks: rockList,
+    coins,
     vehicles: [],
   }
 }
@@ -335,6 +397,7 @@ function makeWaterRow(
     speed,
     trees: [],
     rocks: [],
+    coins: [],
     vehicles: spawnLane(span, count, logW, gap, () => LOG_HUE, rand, phase),
   }
 }
@@ -359,6 +422,7 @@ function makeRailRow(row: number, cols: number, runSeed: number): Row {
     railCool,
     trees: [],
     rocks: [],
+    coins: [],
     vehicles: [{ x: dir > 0 ? -trainW - 6 : cols + 6, w: trainW, hue: 350 }],
   }
 }
@@ -403,7 +467,7 @@ export function generateRow(
         if (rand() < 0.2) trees.push(c)
       }
     }
-    return { kind: 'grass', dir: 0, speed: 0, trees, rocks: [], vehicles: [] }
+    return { kind: 'grass', dir: 0, speed: 0, trees, rocks: [], coins: [], vehicles: [] }
   }
 
   // Guarantee a breather after a stretch of hazards; the stretch grows with
@@ -617,19 +681,68 @@ function hitsRail(col: number, row: Row): boolean {
   return row.vehicles.some((v) => trainHit(col, v))
 }
 
+function spawnDeathBits(col: number, row: number, cause: DeathCause): DeathBit[] {
+  const bits: DeathBit[] = []
+  const n = cause === 'car' || cause === 'train' ? 14 : 10
+  for (let i = 0; i < n; i++) {
+    const ang = (Math.PI * 2 * i) / n + Math.random() * 0.4
+    const speed = 1.2 + Math.random() * 3.2
+    bits.push({
+      x: col + 0.5,
+      y: row,
+      vx: Math.cos(ang) * speed * (cause === 'hawk' ? 0.55 : 1),
+      vy: Math.sin(ang) * speed * 0.35 - (cause === 'hawk' ? 2.8 : 0.8) - Math.random(),
+      life: 0.45 + Math.random() * 0.5,
+      max: 0,
+      hue: cause === 'water' ? 200 : cause === 'hawk' ? 30 : 18,
+      size: 0.08 + Math.random() * 0.12,
+    })
+    bits[bits.length - 1].max = bits[bits.length - 1].life
+  }
+  return bits
+}
+
 function die(state: GameState, cause: DeathCause): GameState {
-  sfx(cause === 'car' || cause === 'train' ? 'hurt' : 'miss')
+  if (cause === 'car' || cause === 'train') sfx('boom')
+  else if (cause === 'hawk') {
+    sfx('whoosh')
+    sfx('hurt')
+  } else sfx('die')
+
   const best = Math.max(state.best, state.score, loadBest())
+  const wallet = state.wallet + state.runCoins
+  if (state.runCoins > 0) saveWallet(wallet)
+
   return {
     ...state,
     phase: 'dying',
     best,
+    wallet,
     cause,
     hop: null,
     queued: null,
     streak: 0,
-    deathAnim: 0.55,
-    deathFlash: 0.45,
+    deathAnim: 0.95,
+    deathFlash: 0.7,
+    shake: 0.55,
+    deathBits: spawnDeathBits(state.col, state.row, cause),
+  }
+}
+
+function collectCoin(state: GameState): GameState {
+  const row = state.rows.get(state.row)
+  if (!row?.coins.length) return state
+  const c = Math.round(state.col)
+  if (!row.coins.includes(c)) return state
+  const coins = row.coins.filter((x) => x !== c)
+  const rows = new Map(state.rows)
+  rows.set(state.row, { ...row, coins })
+  sfx('good')
+  return {
+    ...state,
+    rows,
+    runCoins: state.runCoins + 1,
+    coinPops: [...state.coinPops, { c, r: state.row, t: 0.42 }],
   }
 }
 
@@ -664,6 +777,11 @@ export function createInitialState(cols = COLS): GameState {
     milestoneRow: 0,
     nearMiss: 0,
     nearMissCooldown: 0,
+    runCoins: 0,
+    wallet: loadWallet(),
+    coinPops: [],
+    deathBits: [],
+    shake: 0,
     rows: new Map(),
     runSeed,
   }
@@ -740,7 +858,7 @@ export function hop(state: GameState, dir: Dir): GameState {
   const pos = playerCenter(next)
   next.cameraY = Math.max(next.cameraY, pos.r - PLAYER_VIEW_ROW)
   ensureRows(next, Math.floor(next.cameraY) - BACK_LIMIT - 2, Math.floor(next.cameraY) + ROW_BUFFER)
-  return next
+  return collectCoin(next)
 }
 
 export function tick(state: GameState, dt: number): GameState {
@@ -758,6 +876,16 @@ export function tick(state: GameState, dt: number): GameState {
       deathAnim: state.deathAnim - dt,
       deathFlash: Math.max(0, state.deathFlash - dt),
       hopPulse: Math.max(0, state.hopPulse - dt),
+      shake: Math.max(0, state.shake - dt * 1.4),
+      deathBits: state.deathBits
+        .map((b) => ({
+          ...b,
+          x: b.x + b.vx * dt,
+          y: b.y + b.vy * dt,
+          vy: b.vy + 6 * dt,
+          life: b.life - dt,
+        }))
+        .filter((b) => b.life > 0),
       rows: new Map(state.rows),
     }
     ensureRows(next, Math.floor(next.cameraY) - BACK_LIMIT - 2, Math.floor(next.cameraY) + ROW_BUFFER)
@@ -779,9 +907,13 @@ export function tick(state: GameState, dt: number): GameState {
     milestone: Math.max(0, state.milestone - dt),
     nearMiss: Math.max(0, state.nearMiss - dt),
     nearMissCooldown: Math.max(0, state.nearMissCooldown - dt),
+    shake: Math.max(0, state.shake - dt),
     idleTimer: state.idleTimer + dt,
     streakTimer: state.streakTimer + dt,
     queuedAge: state.queued ? state.queuedAge + dt : 0,
+    coinPops: state.coinPops
+      .map((p) => ({ ...p, t: p.t - dt }))
+      .filter((p) => p.t > 0),
     rows: new Map(state.rows),
   }
 
@@ -869,6 +1001,8 @@ export function toSnapshot(state: GameState): Snapshot {
     target: state.target,
     beatBest: state.beatBest,
     cause: state.cause,
+    runCoins: state.runCoins,
+    wallet: state.wallet,
   }
 }
 

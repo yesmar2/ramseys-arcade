@@ -257,9 +257,16 @@ export function StrideGame() {
               >
                 {ui.score}
               </PlayReadoutScore>
-              {ui.phase === 'playing' && ui.target > 0 ? (
-                <PlayReadoutCenter urgent={ui.beatBest} label="Record to beat">
-                  {ui.beatBest ? 'NEW BEST' : `BEST ${ui.target}`}
+              {ui.phase === 'playing' ? (
+                <PlayReadoutCenter
+                  urgent={ui.beatBest}
+                  label={ui.target > 0 ? 'Record and coins' : 'Coins this run'}
+                >
+                  {ui.beatBest
+                    ? `NEW BEST · ● ${ui.runCoins}`
+                    : ui.target > 0
+                      ? `BEST ${ui.target} · ● ${ui.runCoins}`
+                      : `● ${ui.runCoins}`}
                 </PlayReadoutCenter>
               ) : null}
             </PlayReadout>
@@ -293,7 +300,9 @@ export function StrideGame() {
                     title="Run over"
                     subtitle={
                       ui.cause
-                        ? `${DEATH_COPY[ui.cause]} · ${ui.score} ${ui.score === 1 ? 'row' : 'rows'}`
+                        ? `${DEATH_COPY[ui.cause]} · ${ui.score} ${ui.score === 1 ? 'row' : 'rows'}${
+                            ui.runCoins > 0 ? ` · +${ui.runCoins} coins` : ''
+                          }`
                         : `${ui.score} ${ui.score === 1 ? 'row' : 'rows'} forward`
                     }
                     previousBest={Math.max(previousBestRef.current, apiBest)}
