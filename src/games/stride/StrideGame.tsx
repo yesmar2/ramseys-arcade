@@ -1,5 +1,10 @@
 import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
-import { GamePlayChrome, PlayReadout, PlayReadoutScore } from '../../components/GameHud'
+import {
+  GamePlayChrome,
+  PlayReadout,
+  PlayReadoutCenter,
+  PlayReadoutScore,
+} from '../../components/GameHud'
 import { GameStartCard } from '../../components/GameStartCard'
 import { PauseButton, GamePauseOverlay } from '../../components/PauseControls'
 import { ScoreSaveCard } from '../../components/ScoreSaveCard'
@@ -15,11 +20,20 @@ import {
   startGame,
   tick,
   toSnapshot,
+  type DeathCause,
   type Dir,
   type GameState,
   type Snapshot,
 } from './game'
 import { renderGame } from './render'
+
+const DEATH_COPY: Record<DeathCause, string> = {
+  car: 'Flattened by traffic',
+  train: 'The train got you',
+  water: 'Fell in the water',
+  edge: 'Swept off the edge',
+  hawk: 'The hawk swooped in',
+}
 
 export function StrideGame() {
   const tournament = useTournamentPlay()
@@ -43,13 +57,25 @@ export function StrideGame() {
   pausedRef.current = paused
 
   useLayoutEffect(() => {
-    const stage = stageRef.current
-    const w = stage?.clientWidth ?? window.innerWidth
-    const h = stage?.clientHeight ?? window.innerHeight
-    const cols = pickCols(w, h)
-    if (stateRef.current && stateRef.current.cols !== cols && stateRef.current.phase === 'menu') {
-      stateRef.current = createInitialState(cols)
-      setUi(toSnapshot(stateRef.current))
+    // Column count is baked into lane wrap maths, so only re-fit between runs.
+    const fit = () => {
+      const stage = stageRef.current
+      const w = stage?.clientWidth ?? window.innerWidth
+      const h = stage?.clientHeight ?? window.innerHeight
+      if (w <= 0 || h <= 0) return
+      const cols = pickCols(w, h)
+      const state = stateRef.current
+      if (state && state.cols !== cols && state.phase === 'menu') {
+        stateRef.current = createInitialState(cols)
+        setUi(toSnapshot(stateRef.current))
+      }
+    }
+    fit()
+    window.addEventListener('resize', fit)
+    window.addEventListener('orientationchange', fit)
+    return () => {
+      window.removeEventListener('resize', fit)
+      window.removeEventListener('orientationchange', fit)
     }
   }, [])
 
@@ -237,6 +263,11 @@ export function StrideGame() {
               >
                 {ui.score}
               </PlayReadoutScore>
+              {ui.phase === 'playing' && ui.target > 0 ? (
+                <PlayReadoutCenter urgent={ui.beatBest} label="Record to beat">
+                  {ui.beatBest ? 'NEW BEST' : `BEST ${ui.target}`}
+                </PlayReadoutCenter>
+              ) : null}
             </PlayReadout>
 
             <div className="stride__overlay">
@@ -266,7 +297,11 @@ export function StrideGame() {
                     gameSlug="stride"
                     score={ui.score}
                     title="Run over"
-                    subtitle={`${ui.score} ${ui.score === 1 ? 'row' : 'rows'} forward`}
+                    subtitle={
+                      ui.cause
+                        ? `${DEATH_COPY[ui.cause]} · ${ui.score} ${ui.score === 1 ? 'row' : 'rows'}`
+                        : `${ui.score} ${ui.score === 1 ? 'row' : 'rows'} forward`
+                    }
                     previousBest={Math.max(previousBestRef.current, apiBest)}
                     onDone={restart}
                   />

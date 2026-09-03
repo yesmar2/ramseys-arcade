@@ -1,5 +1,14 @@
-import type { GameState } from './game'
-import { BACK_LIMIT, DESKTOP_ZOOM, STALL_LIMIT, TARGET_VISIBLE_ROWS, easeHop, getRailCycle, getRow } from './game'
+import type { GameState, Vehicle } from './game'
+import {
+  BACK_LIMIT,
+  MILESTONE_STEP,
+  STALL_LIMIT,
+  cellMetrics,
+  easeHop,
+  getRailCycle,
+  getRow,
+  laneSpan,
+} from './game'
 import { isDarkTheme, playfieldColor } from '../../lib/theme'
 
 const GRASS_A = 142
@@ -18,11 +27,7 @@ export type StrideLayout = {
 }
 
 export function computeLayout(w: number, h: number, cols: number): StrideLayout {
-  const hudTop = Math.max(52, Math.min(76, h * 0.11))
-  const padBottom = Math.max(14, h * 0.02)
-  const availH = h - hudTop - padBottom
-  const zoom = w >= 900 ? DESKTOP_ZOOM : 1
-  const cell = (availH / TARGET_VISIBLE_ROWS) * zoom
+  const { cell, availH, hudTop } = cellMetrics(w, h)
   const visibleRows = Math.max(9, Math.floor(availH / cell))
   const gridW = cell * cols
   const gridH = visibleRows * cell
@@ -51,6 +56,26 @@ function roundRect(
   ctx.arcTo(x, y + h, x, y, radius)
   ctx.arcTo(x, y, x + w, y, radius)
   ctx.closePath()
+}
+
+/**
+ * Lane entities live at `x` and `x - span`; drawing both keeps the wrap seam
+ * seamless without any pop-in at the screen edges.
+ */
+function eachLaneCopy(
+  v: Vehicle,
+  span: number,
+  ox: number,
+  cell: number,
+  w: number,
+  draw: (screenX: number) => void,
+) {
+  const vw = v.w * cell
+  for (const laneX of [v.x, v.x - span]) {
+    const sx = ox + laneX * cell
+    if (sx + vw < -cell || sx > w + cell) continue
+    draw(sx)
+  }
 }
 
 function drawVehicle(
@@ -110,6 +135,7 @@ function drawHopper(
   size: number,
   pulse: number,
   dark: boolean,
+  streak: number,
   dying = false,
   deathT = 0,
 ) {
@@ -117,6 +143,16 @@ function drawHopper(
   const scale = (1 + pulse * 0.08) * deathScale
   const r = size * 0.38 * scale
   const squashY = dying ? 1 - deathT * 0.35 : 1
+
+  // Flow glow builds as forward hops chain together.
+  if (!dying && streak > 2) {
+    const heat = Math.min(1, (streak - 2) / 8)
+    ctx.fillStyle = `hsla(48, 95%, 62%, ${0.1 + heat * 0.22})`
+    ctx.beginPath()
+    ctx.arc(cx, cy + r * 0.12, r * (1.5 + heat * 0.5), 0, Math.PI * 2)
+    ctx.fill()
+  }
+
   const bodyHue = dying ? 4 : HOPPER
   const body = fill(bodyHue, dying ? 72 : 62, dark ? 58 : 54, 1)
   const stroke = fill(bodyHue, dying ? 72 : 62, dark ? 48 : 36, 1)
@@ -282,6 +318,7 @@ function drawRow(
   dark: boolean,
 ) {
   const row = getRow(state, worldRow)
+  const span = laneSpan(state.cols)
   const grassHue = worldRow % 2 === 0 ? GRASS_A : GRASS_B
 
   if (row.kind === 'grass') {
@@ -298,21 +335,12 @@ function drawRow(
       ctx.arc(wave, y + cell * 0.55, cell * 0.08, 0, Math.PI * 2)
       ctx.stroke()
     }
+    const vy = y + cell * 0.28
+    const vh = cell * 0.44
     for (const log of row.vehicles) {
-      const vx = ox + log.x * cell
-      const vw = log.w * cell
-      const vy = y + cell * 0.28
-      const vh = cell * 0.44
-      if (vx + vw < -cell || vx > w + cell) continue
-      drawLog(ctx, vx, vy, vw, vh, dark)
-      const wrappedLeft = vx - wrapSpan(state.cols) * cell
-      const wrappedRight = vx + wrapSpan(state.cols) * cell
-      if (wrappedLeft + vw > 0 && wrappedLeft < w) {
-        drawLog(ctx, wrappedLeft, vy, vw, vh, dark)
-      }
-      if (wrappedRight + vw > 0 && wrappedRight < w) {
-        drawLog(ctx, wrappedRight, vy, vw, vh, dark)
-      }
+      eachLaneCopy(log, span, ox, cell, w, (sx) => {
+        drawLog(ctx, sx, vy, log.w * cell, vh, dark)
+      })
     }
   } else if (row.kind === 'rail') {
     const cycle = getRailCycle(row)
@@ -339,7 +367,7 @@ function drawRow(
       const vw = v.w * cell
       const vy = y + cell * 0.18
       const vh = cell * 0.64
-      if (vx + vw < ox - cell || vx > ox + gridW + cell) continue
+      if (vx + vw < -cell || vx > w + cell) continue
       if (cycle.phase === 'pass') {
         const streak = row.dir * cell * 0.55
         ctx.globalAlpha = 0.35
@@ -362,21 +390,12 @@ function drawRow(
     ctx.stroke()
     ctx.setLineDash([])
 
+    const vy = y + cell * 0.22
+    const vh = cell * 0.56
     for (const v of row.vehicles) {
-      const vx = ox + v.x * cell
-      const vw = v.w * cell
-      const vy = y + cell * 0.22
-      const vh = cell * 0.56
-      if (vx + vw < ox - cell || vx > ox + gridW + cell) continue
-      drawVehicle(ctx, vx, vy, vw, vh, v.hue, row.dir, dark)
-      const wrappedLeft = vx - wrapSpan(state.cols) * cell
-      const wrappedRight = vx + wrapSpan(state.cols) * cell
-      if (wrappedLeft + vw > ox && wrappedLeft < ox + gridW) {
-        drawVehicle(ctx, wrappedLeft, vy, vw, vh, v.hue, row.dir, dark)
-      }
-      if (wrappedRight + vw > ox && wrappedRight < ox + gridW) {
-        drawVehicle(ctx, wrappedRight, vy, vw, vh, v.hue, row.dir, dark)
-      }
+      eachLaneCopy(v, span, ox, cell, w, (sx) => {
+        drawVehicle(ctx, sx, vy, v.w * cell, vh, v.hue, row.dir, dark)
+      })
     }
   }
 
@@ -385,8 +404,67 @@ function drawRow(
   }
 }
 
-function wrapSpan(cols: number) {
-  return cols + 5
+/** Faint distance ticks so progress feels measurable mid-run. */
+function drawMilestone(
+  ctx: CanvasRenderingContext2D,
+  y: number,
+  w: number,
+  cell: number,
+  label: number,
+  dark: boolean,
+) {
+  ctx.save()
+  ctx.strokeStyle = dark ? 'rgba(255, 255, 255, 0.16)' : 'rgba(30, 40, 60, 0.14)'
+  ctx.lineWidth = 1.5
+  ctx.setLineDash([cell * 0.16, cell * 0.16])
+  ctx.beginPath()
+  ctx.moveTo(0, y)
+  ctx.lineTo(w, y)
+  ctx.stroke()
+  ctx.setLineDash([])
+  ctx.font = `700 ${Math.max(9, Math.round(cell * 0.24))}px system-ui, sans-serif`
+  ctx.textAlign = 'left'
+  ctx.textBaseline = 'bottom'
+  ctx.fillStyle = dark ? 'rgba(255, 255, 255, 0.34)' : 'rgba(30, 40, 60, 0.32)'
+  ctx.fillText(String(label), cell * 0.18, y - cell * 0.06)
+  ctx.restore()
+}
+
+/** The record line — the whole point of the next run. */
+function drawBestLine(
+  ctx: CanvasRenderingContext2D,
+  y: number,
+  w: number,
+  cell: number,
+  best: number,
+  passed: boolean,
+) {
+  ctx.save()
+  const alpha = passed ? 0.35 : 0.95
+  ctx.strokeStyle = `rgba(245, 185, 66, ${alpha})`
+  ctx.lineWidth = Math.max(2, cell * 0.05)
+  ctx.setLineDash([cell * 0.3, cell * 0.2])
+  ctx.beginPath()
+  ctx.moveTo(0, y)
+  ctx.lineTo(w, y)
+  ctx.stroke()
+  ctx.setLineDash([])
+
+  const text = passed ? `BEAT ${best}` : `BEST ${best}`
+  ctx.font = `800 ${Math.max(10, Math.round(cell * 0.26))}px system-ui, sans-serif`
+  const padX = cell * 0.22
+  const tw = ctx.measureText(text).width + padX * 2
+  const th = Math.max(16, cell * 0.42)
+  const bx = w - tw - cell * 0.18
+  const by = y - th - cell * 0.08
+  roundRect(ctx, bx, by, tw, th, th * 0.35)
+  ctx.fillStyle = `rgba(245, 185, 66, ${passed ? 0.28 : 0.92})`
+  ctx.fill()
+  ctx.fillStyle = passed ? 'rgba(255, 255, 255, 0.85)' : '#2a1c00'
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  ctx.fillText(text, bx + tw / 2, by + th / 2 + 0.5)
+  ctx.restore()
 }
 
 export function renderGame(
@@ -412,16 +490,67 @@ export function renderGame(
     drawRow(ctx, state, worldRow, y, w, ox, gridW, cell, dark)
   }
 
+  for (let worldRow = bottomRow; worldRow <= topRow; worldRow++) {
+    if (worldRow <= 0 || worldRow % MILESTONE_STEP !== 0) continue
+    if (state.target > 0 && worldRow === state.target) continue
+    const y = rowScreenY(worldRow, cameraY, visibleRows, oy, cell)
+    if (y < -cell || y > h + cell) continue
+    drawMilestone(ctx, y, w, cell, worldRow, dark)
+  }
+
+  if (state.target > 0 && state.phase !== 'menu') {
+    const y = rowScreenY(state.target, cameraY, visibleRows, oy, cell)
+    if (y > -cell * 2 && y < h + cell) {
+      drawBestLine(ctx, y, w, cell, state.target, state.beatBest)
+    }
+  }
+
   const px = ox + (pos.c + 0.5) * cell
   const py = rowScreenY(pos.r, cameraY, visibleRows, oy, cell) + cell * 0.52
   const dying = state.phase === 'dying'
   const deathT = dying ? 1 - state.deathAnim / 0.55 : 0
   if (py > -cell && py < h + cell) {
-    drawHopper(ctx, px, py, cell, state.hopPulse, dark, dying, deathT)
+    drawHopper(ctx, px, py, cell, state.hopPulse, dark, state.streak, dying, deathT)
+  }
+
+  if (state.nearMiss > 0) {
+    const heat = state.nearMiss / 0.28
+    ctx.strokeStyle = `rgba(255, 255, 255, ${heat * 0.35})`
+    ctx.lineWidth = Math.max(2, cell * 0.06)
+    ctx.beginPath()
+    ctx.arc(px, py, cell * (0.5 + (1 - heat) * 0.5), 0, Math.PI * 2)
+    ctx.stroke()
+  }
+
+  if (state.celebrate > 0) {
+    const t = state.celebrate / 1.35
+    ctx.fillStyle = `rgba(245, 185, 66, ${t * 0.16})`
+    ctx.fillRect(0, 0, w, h)
+    ctx.save()
+    ctx.font = `900 ${Math.max(18, Math.round(cell * 0.52))}px system-ui, sans-serif`
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    const ty = oy + visibleRows * cell * 0.32 - (1 - t) * cell * 0.8
+    ctx.fillStyle = `rgba(245, 185, 66, ${Math.min(1, t * 1.6)})`
+    ctx.fillText('NEW BEST', w / 2, ty)
+    ctx.restore()
+  }
+
+  if (state.milestone > 0) {
+    const t = state.milestone / 0.9
+    ctx.save()
+    ctx.font = `800 ${Math.max(14, Math.round(cell * 0.36))}px system-ui, sans-serif`
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.fillStyle = dark
+      ? `rgba(255, 255, 255, ${t * 0.55})`
+      : `rgba(30, 40, 60, ${t * 0.5})`
+    ctx.fillText(`${state.milestoneRow}`, px, py - cell * (1 + (1 - t) * 0.9))
+    ctx.restore()
   }
 
   if (state.deathFlash > 0) {
-    ctx.fillStyle = `rgba(255, 80, 80, ${state.deathFlash * 0.15})`
+    ctx.fillStyle = `rgba(255, 80, 80, ${state.deathFlash * 0.3})`
     ctx.fillRect(0, 0, w, h)
   }
 

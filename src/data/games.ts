@@ -89,7 +89,7 @@ export const games: Game[] = [
     name: 'Stride',
     slug: 'stride',
     description: 'Hop forever. Beat your distance.',
-    how: 'Swipe or tap to hop. Dodge traffic, avoid trees, and keep moving forward. Score is how far you get — one point per row.',
+    how: 'Swipe or tap to hop. Dodge traffic, ride the logs, and beat the train. Don’t linger — the hawk is watching. Score is how far you get, one point per row, and your record is marked on the road ahead.',
     accent: '#f5b942',
     playable: true,
     inDevelopment: true,

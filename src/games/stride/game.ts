@@ -3,13 +3,13 @@ import { sfx } from '../../lib/sound'
 
 export type Dir = 'up' | 'down' | 'left' | 'right'
 export type Phase = 'menu' | 'playing' | 'dying' | 'gameover'
+export type DeathCause = 'car' | 'train' | 'water' | 'edge' | 'hawk'
 
 export type Vehicle = {
+  /** Lane position of the left edge, always normalised to [0, laneSpan). */
   x: number
   w: number
   hue: number
-  /** Per-vehicle speed multiplier (cars). */
-  speedMul?: number
 }
 
 export type Row = {
@@ -37,6 +37,10 @@ export type Snapshot = {
   score: number
   best: number
   phase: Phase
+  /** Best to beat, captured when the run started. */
+  target: number
+  beatBest: boolean
+  cause: DeathCause | null
 }
 
 export type GameState = {
@@ -44,26 +48,42 @@ export type GameState = {
   score: number
   best: number
   cols: number
+  /** Fractional while riding a log, otherwise a whole column. */
   col: number
   row: number
   /** Smooth camera position (only moves up with the player). */
   cameraY: number
   hop: HopAnim | null
   hopCooldown: number
+  /** Buffered input so fast swipes during a hop aren't dropped. */
+  queued: Dir | null
+  queuedAge: number
   invuln: number
   hopPulse: number
   bump: number
   deathFlash: number
   deathAnim: number
+  cause: DeathCause | null
   /** Seconds since last hop up or down. */
   idleTimer: number
+  /** Consecutive quick forward hops — drives the rising hop pitch. */
+  streak: number
+  streakTimer: number
+  /** Row of the record this run is chasing (0 when there isn't one). */
+  target: number
+  beatBest: boolean
+  celebrate: number
+  milestone: number
+  milestoneRow: number
+  nearMiss: number
+  nearMissCooldown: number
   rows: Map<number, Row>
   runSeed: number
 }
 
 export const COLS = 7
 /** Target rows visible on screen — lower = more zoom. */
-export const TARGET_VISIBLE_ROWS = 10
+export const TARGET_VISIBLE_ROWS = 11
 /** Desktop tile scale bump. */
 export const DESKTOP_ZOOM = 1.1
 /** Player sits this many rows from the bottom of the view once the camera is rolling. */
@@ -71,20 +91,29 @@ export const PLAYER_VIEW_ROW = 3
 /** Die if you fall this many rows behind the camera. */
 export const BACK_LIMIT = 2
 /** Rows to keep generated ahead of the camera. */
-export const ROW_BUFFER = 18
+export const ROW_BUFFER = 22
+/** Lane width beyond the visible columns — traffic wraps across this span. */
+export const LANE_PAD = 5
+/** Distance markers every this many rows. */
+export const MILESTONE_STEP = 25
+/** Die if you don't hop up or down for this long (seconds). */
+export const STALL_LIMIT = 9
 
-const HOP_COOLDOWN = 0.11
-const HOP_DURATION = 0.14
-const RESPAWN_INVULN = 0.55
+const HOP_COOLDOWN = 0.05
+const HOP_DURATION = 0.12
+const INPUT_BUFFER = 0.18
+const RESPAWN_INVULN = 0.5
 const CAR_HUES = [18, 348, 272, 198, 38, 128, 168]
 const LOG_HUE = 32
 const PLAYER_HALF = 0.15
-/** Die if you don't hop up or down for this long (seconds). */
-export const STALL_LIMIT = 8
+const BUMP = 0.12
+/** Forward hops closer together than this keep the streak alive. */
+const STREAK_WINDOW = 0.9
+const NEAR_MISS_GAP = 0.3
 
-export const TRAIN_WARN = 1.55
-export const TRAIN_PASS = 0.38
-export const TRAIN_COOL = 2.75
+export const TRAIN_WARN = 1.9
+export const TRAIN_PASS = 0.5
+export const TRAIN_COOL = 2.6
 export const TRAIN_CYCLE = TRAIN_WARN + TRAIN_PASS + TRAIN_COOL
 
 export type RailPhase = 'warn' | 'pass' | 'cool'
@@ -104,15 +133,36 @@ export function getRailCycle(row: Row): { phase: RailPhase; flash: boolean; pass
   return { phase: 'cool', flash: false, passT: 0 }
 }
 
-/** Column count from viewport — fill screen width, sized from row height. */
-export function pickCols(viewWidth: number, viewHeight: number): number {
+/** 0 at the start of a run, 1 once the difficulty ramp has topped out. */
+export function difficultyAt(row: number): number {
+  return Math.max(0, Math.min(1, (row - 6) / 110))
+}
+
+/** Tile size that fits both the row budget and the minimum column count. */
+export function cellMetrics(viewWidth: number, viewHeight: number) {
   const hudTop = Math.max(52, Math.min(76, viewHeight * 0.11))
   const padBottom = Math.max(14, viewHeight * 0.02)
   const availH = viewHeight - hudTop - padBottom
   const zoom = viewWidth >= 900 ? DESKTOP_ZOOM : 1
-  const cell = (availH / TARGET_VISIBLE_ROWS) * zoom
-  let cols = Math.max(COLS, Math.floor(viewWidth / cell))
-  return cols
+  const byHeight = (availH / TARGET_VISIBLE_ROWS) * zoom
+  const byWidth = viewWidth / COLS
+  return { cell: Math.max(1, Math.min(byHeight, byWidth)), availH, hudTop }
+}
+
+/** Column count from viewport — fill screen width, sized from row height. */
+export function pickCols(viewWidth: number, viewHeight: number): number {
+  const { cell } = cellMetrics(viewWidth, viewHeight)
+  return Math.max(COLS, Math.floor(viewWidth / cell))
+}
+
+/** Traffic wraps around this many tiles, so lanes tile seamlessly. */
+export function laneSpan(cols: number): number {
+  return cols + LANE_PAD
+}
+
+function wrapX(x: number, span: number): number {
+  const m = x % span
+  return m < 0 ? m + span : m
 }
 
 function loadBest() {
@@ -129,85 +179,113 @@ function mulberry32(seed: number) {
   }
 }
 
-function wrapSpan(cols: number) {
-  return cols + 5
-}
-
-function spawnVehicles(
-  cols: number,
+/**
+ * Lay `count` entities around the lane at an exact `span / count` pitch so the
+ * pattern tiles perfectly across the wrap seam. Jitter is capped at the spare
+ * room in each slot, which keeps every gap at or above `minGap` forever.
+ */
+function spawnLane(
+  span: number,
   count: number,
   w: number,
+  minGap: number,
+  hue: (rand: () => number) => number,
   rand: () => number,
+  phase = 0,
 ): Vehicle[] {
-  const minGap = 0.42
-  const spacing = w + minGap
-  const span = wrapSpan(cols)
-  const pack = count * spacing
-  const start = rand() * Math.max(1, span - pack)
-  const baseMul = 0.82 + rand() * 0.38
-  const vehicles: Vehicle[] = []
+  const step = span / count
+  const slack = Math.max(0, step - w - minGap)
+  const start = rand() * span + phase
+  const out: Vehicle[] = []
   for (let i = 0; i < count; i++) {
-    vehicles.push({
-      x: start + i * spacing - 1.5,
+    const jitter = (rand() - 0.5) * slack
+    out.push({ x: wrapX(start + i * step + jitter, span), w, hue: hue(rand) })
+  }
+  return out
+}
+
+/** Most entities that fit while still leaving `minGap` between them. */
+function laneCount(span: number, w: number, minGap: number, want: number): number {
+  const max = Math.max(1, Math.floor(span / (w + minGap)))
+  return Math.max(1, Math.min(max, want))
+}
+
+function makeGrassRow(cols: number, rand: () => number, d: number): Row {
+  // Always leave a healthy number of open columns so a row can never wall you in.
+  const openMin = Math.max(2, Math.round(cols * 0.4))
+  const maxTrees = Math.max(0, cols - openMin)
+  const want = Math.min(maxTrees, Math.round(cols * (0.14 + d * 0.18) * (0.5 + rand())))
+  const pool = Array.from({ length: cols }, (_, i) => i)
+  const trees: number[] = []
+  for (let i = 0; i < want && pool.length; i++) {
+    trees.push(pool.splice(Math.floor(rand() * pool.length), 1)[0])
+  }
+  return { kind: 'grass', dir: 0, speed: 0, trees, vehicles: [] }
+}
+
+function makeRoadRow(row: number, cols: number, rand: () => number): Row {
+  const d = difficultyAt(row)
+  const dir: -1 | 1 = rand() < 0.5 ? -1 : 1
+  // Capped near 2.2 tiles/sec: roughly half a second to clear a tile, which is
+  // still about four times a hop, so every lane stays readable.
+  const speed = (0.82 + d * 0.95) * (0.8 + rand() * 0.42)
+  const w = rand() < 0.28 ? 2.0 : 1.4
+  const span = laneSpan(cols)
+  // Faster lanes need wider gaps to keep the crossing window fair.
+  const minGap = (1.2 + speed * 0.55) * (1 - d * 0.18)
+  const want = 1 + Math.round(d * 2.4 + rand() * 2.2)
+  const count = laneCount(span, w, minGap, want)
+  return {
+    kind: 'road',
+    dir,
+    speed,
+    trees: [],
+    vehicles: spawnLane(
+      span,
+      count,
       w,
-      hue: CAR_HUES[Math.floor(rand() * CAR_HUES.length)],
-      speedMul: baseMul * (0.94 + rand() * 0.12),
-    })
+      minGap,
+      (r) => CAR_HUES[Math.floor(r() * CAR_HUES.length)],
+      rand,
+    ),
   }
-  return vehicles
 }
 
-function spawnLogs(cols: number, rand: () => number, phaseOffset = 0): Vehicle[] {
-  const span = wrapSpan(cols)
-  const logTiles = cols < 9 ? 2 : rand() < 0.5 ? 2 : 3
-  const logW = logTiles * 0.94
-  const gap = 0.2 + rand() * 0.14
-  const period = logW + gap
-  const count = Math.max(3, Math.ceil((span + 2) / period))
-  const seed = (rand() * span + phaseOffset) % span
-  const logs: Vehicle[] = []
-  for (let i = 0; i < count; i++) {
-    logs.push({
-      x: (seed + i * period) % span - 1.5,
-      w: logW,
-      hue: LOG_HUE,
-    })
-  }
-  return logs
-}
-
-function makeWaterRow(
-  row: number,
-  cols: number,
-  runSeed: number,
-  waterChunkStart: number,
-): Row {
+function makeWaterRow(row: number, cols: number, runSeed: number, chunkStart: number): Row {
   const rand = mulberry32(row * 1_048_583 ^ runSeed)
-  const chunkRand = mulberry32(waterChunkStart * 1_048_583 ^ runSeed)
-  const rowInChunk = row - waterChunkStart
+  const chunkRand = mulberry32(chunkStart * 1_048_583 ^ runSeed)
+  const rowInChunk = row - chunkStart
+  const d = difficultyAt(row)
 
-  // Alternate directions so you can hop across rows.
+  // Alternate directions so there's always a way to work across a chunk.
   const dir: -1 | 1 = rowInChunk % 2 === 0 ? 1 : -1
-  const baseSpeed = 0.58 + chunkRand() * 0.88
-  const speed = baseSpeed * (0.85 + rand() * 0.38)
-  const phaseOffset = rowInChunk * (0.55 + chunkRand() * 0.45)
+  const speed = (0.5 + d * 0.55) * (0.82 + chunkRand() * 0.4) * (0.9 + rand() * 0.24)
+  const span = laneSpan(cols)
+  const tiles = cols < 9 ? 2 : rand() < 0.58 ? 2 : 3
+  const logW = tiles - 0.1
+  const gap = (0.95 + rand() * 0.55) * (1 - d * 0.15)
+  const count = laneCount(span, logW, gap, 99)
+  // Stagger neighbouring rows so log gaps don't line up into a dead end.
+  const phase = rowInChunk * (0.8 + chunkRand() * 0.9)
 
   return {
     kind: 'water',
     dir,
     speed,
     trees: [],
-    vehicles: spawnLogs(cols, rand, phaseOffset),
+    vehicles: spawnLane(span, count, logW, gap, () => LOG_HUE, rand, phase),
   }
 }
 
 function makeRailRow(row: number, cols: number, runSeed: number): Row {
   const rand = mulberry32(row * 1_048_583 ^ runSeed)
+  const d = difficultyAt(row)
   const dir: -1 | 1 = rand() < 0.5 ? -1 : 1
-  const trainW = 4.8 + rand() * 1.4
-  const railWarn = 1.1 + rand() * 1.4
-  const railPass = 0.26 + rand() * 0.22
-  const railCool = 1.1 + rand() * 2.8
+  const trainW = 5 + rand() * 1.6
+  // Warning never drops below ~1.5s so the crossing is always telegraphed.
+  const railWarn = 1.9 - d * 0.35 + rand() * 0.9
+  const railPass = 0.44 + rand() * 0.16
+  const railCool = 2.4 - d * 0.7 + rand() * 2.4
   const cycle = railWarn + railPass + railCool
   return {
     kind: 'rail',
@@ -233,6 +311,17 @@ function chunkStart(row: number, kind: Row['kind'], rows?: Map<number, Row>): nu
   return start
 }
 
+/** How many hazard rows sit directly behind this one. */
+function hazardRun(row: number, rows?: Map<number, Row>): number {
+  let n = 0
+  for (let r = row - 1; n < 10; r--) {
+    const kind = rows?.get(r)?.kind
+    if (!kind || kind === 'grass') break
+    n += 1
+  }
+  return n
+}
+
 export function generateRow(
   row: number,
   cols: number,
@@ -241,59 +330,51 @@ export function generateRow(
 ): Row {
   const rand = mulberry32((row + 1) * 1_048_583 ^ runSeed)
   const prev = rows?.get(row - 1)
+  const d = difficultyAt(row)
 
   if (row < 4) {
     const trees: number[] = []
     if (row > 0) {
       for (let c = 0; c < cols; c++) {
         if (c === Math.floor(cols / 2) && row < 2) continue
-        if (rand() < 0.22) trees.push(c)
+        if (rand() < 0.2) trees.push(c)
       }
     }
     return { kind: 'grass', dir: 0, speed: 0, trees, vehicles: [] }
   }
 
+  // Guarantee a breather after a stretch of hazards; the stretch grows with
+  // difficulty. This runs before chunk continuation so a long water or rail
+  // chunk can't stack on top of an already-long run.
+  if (hazardRun(row, rows) >= 3 + Math.round(d * 3)) {
+    return makeGrassRow(cols, rand, d)
+  }
+
   if (prev?.kind === 'water') {
     const start = chunkStart(row, 'water', rows)
-    if (row < start + chunkLength(start, runSeed, 3, 5)) {
+    if (row < start + chunkLength(start, runSeed, 2, d > 0.5 ? 4 : 3)) {
       return makeWaterRow(row, cols, runSeed, start)
     }
   }
 
   if (prev?.kind === 'rail') {
     const start = chunkStart(row, 'rail', rows)
-    if (row < start + chunkLength(start, runSeed, 2, 4)) {
+    if (row < start + chunkLength(start, runSeed, 1, 2)) {
       return makeRailRow(row, cols, runSeed)
     }
   }
 
-  if (row > 6 && rand() < 0.2) {
-    return makeWaterRow(row, cols, runSeed, row)
-  }
+  // Each water/rail pick spawns a multi-row chunk, so their odds stay low to
+  // keep roads the headline hazard.
+  const grassChance = Math.max(0.16, 0.3 - d * 0.12)
+  const waterChance = row > 8 ? 0.06 + d * 0.03 : 0
+  const railChance = row > 12 ? 0.05 + d * 0.03 : 0
+  const roll = rand()
 
-  if (row > 8 && rand() < 0.17) {
-    return makeRailRow(row, cols, runSeed)
-  }
-
-  if (rand() < 0.26) {
-    const trees: number[] = []
-    for (let c = 0; c < cols; c++) {
-      if (rand() < 0.34) trees.push(c)
-    }
-    return { kind: 'grass', dir: 0, speed: 0, trees, vehicles: [] }
-  }
-
-  const dir: -1 | 1 = rand() < 0.5 ? -1 : 1
-  const tier = Math.min(2.2, 0.85 + row * 0.022)
-  const count = row < 10 ? (rand() < 0.35 ? 2 : 3) : rand() < 0.25 ? 3 : 4
-  const w = rand() < 0.32 ? 2.0 : 1.45
-  return {
-    kind: 'road',
-    dir,
-    speed: tier * (0.6 + rand() * 1.05),
-    trees: [],
-    vehicles: spawnVehicles(cols, count, w, rand),
-  }
+  if (roll < grassChance) return makeGrassRow(cols, rand, d)
+  if (roll < grassChance + waterChance) return makeWaterRow(row, cols, runSeed, row)
+  if (roll < grassChance + waterChance + railChance) return makeRailRow(row, cols, runSeed)
+  return makeRoadRow(row, cols, rand)
 }
 
 function ensureRows(state: GameState, minRow: number, maxRow: number) {
@@ -307,6 +388,12 @@ function ensureRows(state: GameState, minRow: number, maxRow: number) {
   }
 }
 
+function easeHop(t: number) {
+  return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2
+}
+
+export { easeHop }
+
 function playerCenter(state: GameState) {
   if (!state.hop) return { c: state.col, r: state.row }
   const t = easeHop(state.hop.t)
@@ -316,153 +403,52 @@ function playerCenter(state: GameState) {
   }
 }
 
-function easeHop(t: number) {
-  return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2
+function playerBox(col: number) {
+  const c = col + 0.5
+  return { left: c - PLAYER_HALF, right: c + PLAYER_HALF }
 }
 
-export { easeHop }
-
-function overlap1D(
-  playerLeft: number,
-  playerRight: number,
-  vLeft: number,
-  vRight: number,
-  inset: number,
-): boolean {
-  return playerRight > vLeft + inset && playerLeft < vRight - inset
+/**
+ * Lane entities exist at `x` and `x - span`; checking both covers the wrap seam
+ * without any of the old "is it near an edge" guesswork.
+ */
+function laneHit(col: number, v: Vehicle, span: number, inset: number): boolean {
+  const { left, right } = playerBox(col)
+  const hit = (l: number) => right > l + inset && left < l + v.w - inset
+  return hit(v.x) || hit(v.x - span)
 }
 
-function entityOverlaps(
-  col: number,
-  vehicle: Vehicle,
-  cols: number,
-  playerHalf: number,
-  entityInset: number,
-  allowWrap: boolean,
-): boolean {
-  const playerLeft = col + 0.5 - playerHalf
-  const playerRight = col + 0.5 + playerHalf
-
-  const check = (left: number) =>
-    overlap1D(playerLeft, playerRight, left, left + vehicle.w, entityInset)
-
-  if (check(vehicle.x)) return true
-  if (!allowWrap) return false
-
-  const span = wrapSpan(cols)
-  if (vehicle.x < cols * 0.5 && check(vehicle.x + span)) return true
-  if (vehicle.x + vehicle.w > cols * 0.5 && check(vehicle.x - span)) return true
-  return false
+/** Horizontal clearance between the player and an entity, across the seam. */
+function laneClearance(col: number, v: Vehicle, span: number): number {
+  const { left, right } = playerBox(col)
+  const gap = (l: number) => {
+    if (right < l) return l - right
+    if (left > l + v.w) return left - (l + v.w)
+    return 0
+  }
+  return Math.min(gap(v.x), gap(v.x - span))
 }
 
-/** Tight hitbox for cars — matches visible sprites. */
-function vehicleHit(col: number, vehicle: Vehicle, cols: number): boolean {
-  return entityOverlaps(col, vehicle, cols, PLAYER_HALF, 0.05, true)
+/** You ride a log when your centre is over its body. */
+function onLog(col: number, v: Vehicle, span: number): boolean {
+  const c = col + 0.5
+  const inside = (l: number) => c > l + 0.1 && c < l + v.w - 0.1
+  return inside(v.x) || inside(v.x - span)
 }
 
-/** Train uses body-only bounds; only during pass phase. */
+/** Train uses body-only bounds and never wraps. */
 function trainHit(col: number, train: Vehicle): boolean {
-  const playerLeft = col + 0.5 - PLAYER_HALF
-  const playerRight = col + 0.5 + PLAYER_HALF
-  const bodyLeft = train.x + train.w * 0.08
-  const bodyRight = train.x + train.w * 0.92
-  return playerRight > bodyLeft && playerLeft < bodyRight
+  const { left, right } = playerBox(col)
+  return right > train.x + train.w * 0.08 && left < train.x + train.w * 0.92
 }
 
-/** Log hitbox aligned to visible platform. */
-function logHit(col: number, vehicle: Vehicle, cols: number): boolean {
-  return entityOverlaps(col, vehicle, cols, PLAYER_HALF, 0.04, true)
-}
-
-function colOnLog(c: number, log: Vehicle): boolean {
-  const center = c + 0.5
-  return center - PLAYER_HALF >= log.x + 0.03 && center + PLAYER_HALF <= log.x + log.w - 0.03
-}
-
-/** Snap landing to the nearest grid column that sits on the log. */
-function snapToLogGrid(col: number, log: Vehicle, cols: number): number {
-  let best = Math.round(col)
-  if (colOnLog(best, log)) return best
-  for (let d = 1; d < cols; d++) {
-    if (best - d >= 0 && colOnLog(best - d, log)) return best - d
-    if (best + d < cols && colOnLog(best + d, log)) return best + d
+function moveLaneVehicles(row: Row, cols: number, dt: number): Row {
+  const span = laneSpan(cols)
+  const delta = row.dir * row.speed * dt
+  return {
+    ...row,
+    vehicles: row.vehicles.map((v) => ({ ...v, x: wrapX(v.x + delta, span) })),
   }
-  return Math.max(0, Math.min(cols - 1, Math.round(col)))
-}
-
-function clampOnLog(col: number, log: Vehicle, cols: number): number {
-  return snapToLogGrid(col, log, cols)
-}
-
-function treeAt(rows: Map<number, Row>, row: number, col: number): boolean {
-  return rows.get(row)?.trees.includes(col) ?? false
-}
-
-function blockedByTree(rows: Map<number, Row>, col: number, row: number): boolean {
-  return treeAt(rows, row, Math.round(col))
-}
-
-function onLog(col: number, row: Row, cols: number): boolean {
-  if (row.kind !== 'water') return false
-  return row.vehicles.some((v) => logHit(col, v, cols))
-}
-
-function resolveRoadSpacing(vehicles: Vehicle[], cols: number, dir: -1 | 1): Vehicle[] {
-  if (vehicles.length <= 1) return vehicles
-  const minGap = 0.38
-  const span = wrapSpan(cols)
-  const sorted = [...vehicles].sort((a, b) => (dir > 0 ? a.x - b.x : b.x - a.x))
-  const out = sorted.map((v) => ({ ...v }))
-
-  for (let i = 1; i < out.length; i++) {
-    const lead = out[i - 1]
-    const follow = out[i]
-    const leadTail = lead.x + lead.w
-    if (follow.x - leadTail < minGap) {
-      follow.x = leadTail + minGap
-      follow.speedMul = Math.min(follow.speedMul ?? 1, lead.speedMul ?? 1)
-    }
-  }
-
-  const first = out[0]
-  const last = out[out.length - 1]
-  const wrapGap = dir > 0 ? first.x + span - (last.x + last.w) : last.x - (first.x + first.w)
-  if (wrapGap < minGap) {
-    if (dir > 0) first.x = last.x + last.w + minGap - span
-    else first.x = last.x + last.w + minGap
-    first.speedMul = Math.min(first.speedMul ?? 1, last.speedMul ?? 1)
-  }
-
-  return out
-}
-
-function moveRoadVehicles(row: Row, cols: number, dt: number): Row {
-  const span = wrapSpan(cols)
-  let vehicles = row.vehicles.map((v) => {
-    const mul = v.speedMul ?? 1
-    let x = v.x + row.dir * row.speed * mul * dt
-    if (x > span - 2) x -= span
-    if (x < -4) x += span
-    return { ...v, x }
-  })
-  vehicles = resolveRoadSpacing(vehicles, cols, row.dir as -1 | 1)
-  return { ...row, vehicles }
-}
-
-function moveWaterVehicles(row: Row, cols: number, dt: number): Row {
-  const span = wrapSpan(cols)
-  const vehicles = row.vehicles.map((v) => {
-    let x = v.x + row.dir * row.speed * dt
-    if (x > span - 2) x -= span
-    if (x < -4) x += span
-    return { ...v, x }
-  })
-  return { ...row, vehicles }
-}
-
-function activeTrafficRow(state: GameState): number {
-  if (!state.hop) return state.row
-  return state.hop.t < 0.5 ? state.hop.fromR : state.hop.toR
 }
 
 function moveRowVehicles(row: Row, cols: number, dt: number): Row {
@@ -475,38 +461,31 @@ function moveRowVehicles(row: Row, cols: number, dt: number): Row {
     const v = row.vehicles[0]
     if (!v) return { ...row, railTimer }
 
-    let x = v.x
-    if (railTimer < warn) {
-      x = row.dir > 0 ? -v.w - 6 : cols + 6
-    } else if (railTimer < warn + pass) {
+    const parked = row.dir > 0 ? -v.w - 6 : cols + 6
+    let x = parked
+    if (railTimer >= warn && railTimer < warn + pass) {
       const t = (railTimer - warn) / pass
       const travel = cols + v.w + 10
       x = row.dir > 0 ? -v.w - 5 + travel * t : cols + 5 - travel * t
-    } else {
-      x = row.dir > 0 ? -v.w - 6 : cols + 6
     }
 
-    return {
-      ...row,
-      railTimer,
-      vehicles: [{ ...v, x }],
-    }
+    return { ...row, railTimer, vehicles: [{ ...v, x }] }
   }
 
-  if (row.kind === 'road') return moveRoadVehicles(row, cols, dt)
-  if (row.kind === 'water') return moveWaterVehicles(row, cols, dt)
+  if (row.kind === 'road' || row.kind === 'water') return moveLaneVehicles(row, cols, dt)
   return row
 }
 
-function hitsRoad(
-  col: number,
-  rowIndex: number,
-  rows: Map<number, Row>,
-  cols: number,
-): boolean {
+function activeTrafficRow(state: GameState): number {
+  if (!state.hop) return state.row
+  return state.hop.t < 0.5 ? state.hop.fromR : state.hop.toR
+}
+
+function hitsRoad(col: number, rowIndex: number, rows: Map<number, Row>, cols: number): boolean {
   const row = rows.get(rowIndex)
   if (row?.kind !== 'road') return false
-  return row.vehicles.some((v) => vehicleHit(col, v, cols))
+  const span = laneSpan(cols)
+  return row.vehicles.some((v) => laneHit(col, v, span, 0.05))
 }
 
 function hitsRail(col: number, row: Row): boolean {
@@ -514,37 +493,53 @@ function hitsRail(col: number, row: Row): boolean {
   return row.vehicles.some((v) => trainHit(col, v))
 }
 
-function die(state: GameState, kind: 'car' | 'fall'): GameState {
-  sfx(kind === 'car' ? 'hurt' : 'miss')
+function die(state: GameState, cause: DeathCause): GameState {
+  sfx(cause === 'car' || cause === 'train' ? 'hurt' : 'miss')
   const best = Math.max(state.best, state.score, loadBest())
   return {
     ...state,
     phase: 'dying',
     best,
+    cause,
     hop: null,
+    queued: null,
+    streak: 0,
     deathAnim: 0.55,
-    deathFlash: 0,
+    deathFlash: 0.45,
   }
 }
 
 export function createInitialState(cols = COLS): GameState {
   const runSeed = (Math.random() * 0xffffffff) >>> 0
+  const best = loadBest()
   const state: GameState = {
     phase: 'menu',
     score: 0,
-    best: loadBest(),
+    best,
     cols,
     col: Math.floor(cols / 2),
     row: 0,
     cameraY: 0,
     hop: null,
     hopCooldown: 0,
+    queued: null,
+    queuedAge: 0,
     invuln: 0,
     hopPulse: 0,
     bump: 0,
     deathFlash: 0,
     deathAnim: 0,
+    cause: null,
     idleTimer: 0,
+    streak: 0,
+    streakTimer: 99,
+    target: best,
+    beatBest: false,
+    celebrate: 0,
+    milestone: 0,
+    milestoneRow: 0,
+    nearMiss: 0,
+    nearMissCooldown: 0,
     rows: new Map(),
     runSeed,
   }
@@ -554,52 +549,72 @@ export function createInitialState(cols = COLS): GameState {
 
 export function startGame(prev: GameState): GameState {
   const next = createInitialState(prev.cols)
+  const best = Math.max(prev.best, loadBest())
   return {
     ...next,
-    best: Math.max(prev.best, loadBest()),
+    best,
+    target: best,
     phase: 'playing',
     invuln: RESPAWN_INVULN,
   }
 }
 
 export function hop(state: GameState, dir: Dir): GameState {
-  if (state.phase !== 'playing' || state.hop || state.hopCooldown > 0) return state
+  if (state.phase !== 'playing') return state
+  if (state.hop || state.hopCooldown > 0) {
+    // Buffer the input instead of dropping it — fast swipes should always land.
+    return { ...state, queued: dir, queuedAge: 0 }
+  }
 
-  let nc = state.col
-  let nr = state.row
+  const fromC = state.col
+  const fromR = state.row
+  let nr = fromR
+  let nc = fromC
   if (dir === 'up') nr += 1
-  if (dir === 'down') nr -= 1
-  if (dir === 'left') nc -= 1
-  if (dir === 'right') nc += 1
+  else if (dir === 'down') nr -= 1
+  else if (dir === 'left') nc -= 1
+  else nc += 1
 
-  if (nc < 0 || nc >= state.cols) {
-    return { ...state, bump: 0.12 }
-  }
-  if (nr < 0) {
-    return { ...state, bump: 0.12 }
-  }
+  const blocked = (): GameState => ({ ...state, queued: null, bump: BUMP })
+  if (nr < 0) return blocked()
 
   const rowData = state.rows.get(nr) ?? generateRow(nr, state.cols, state.runSeed, state.rows)
-  if (rowData.trees.includes(nc)) {
-    return { ...state, bump: 0.12 }
-  }
+  // Keep the sub-tile offset only when staying on water; land always re-grids.
+  const target = rowData.kind === 'water' ? nc : Math.round(nc)
+  if (target < -0.001 || target > state.cols - 1 + 0.001) return blocked()
+  if (rowData.kind !== 'water' && rowData.trees.includes(target)) return blocked()
 
-  sfx('tap')
-  const score = Math.max(state.score, nr)
+  const forward = nr > fromR
+  const streak = forward && state.streakTimer <= STREAK_WINDOW ? state.streak + 1 : 0
+  sfx('hop', forward ? Math.min(streak, 14) : 0)
 
-  const movedVertically = nr !== state.row
   const next: GameState = {
     ...state,
-    col: nc,
+    col: target,
     row: nr,
-    score,
-    idleTimer: movedVertically ? 0 : state.idleTimer,
-    hop: { fromC: state.col, fromR: state.row, toC: nc, toR: nr, t: 0 },
+    score: Math.max(state.score, nr),
+    idleTimer: nr !== fromR ? 0 : state.idleTimer,
+    streak: forward ? streak : 0,
+    streakTimer: forward ? 0 : state.streakTimer,
+    hop: { fromC, fromR, toC: target, toR: nr, t: 0 },
     hopCooldown: HOP_COOLDOWN,
     hopPulse: 0.2,
+    queued: null,
+    queuedAge: 0,
     rows: new Map(state.rows),
   }
   if (!next.rows.has(nr)) next.rows.set(nr, rowData)
+
+  if (state.target > 0 && !state.beatBest && nr > state.target) {
+    next.beatBest = true
+    next.celebrate = 1.35
+    sfx('wave')
+  } else if (nr > 0 && nr % MILESTONE_STEP === 0 && nr > state.milestoneRow) {
+    next.milestoneRow = nr
+    next.milestone = 0.9
+    sfx('good')
+  }
+
   const pos = playerCenter(next)
   next.cameraY = Math.max(next.cameraY, pos.r - PLAYER_VIEW_ROW)
   ensureRows(next, Math.floor(next.cameraY) - BACK_LIMIT - 2, Math.floor(next.cameraY) + ROW_BUFFER)
@@ -616,21 +631,18 @@ export function tick(state: GameState, dt: number): GameState {
   }
 
   if (state.phase === 'dying') {
-    let next: GameState = {
+    const next: GameState = {
       ...state,
       deathAnim: state.deathAnim - dt,
+      deathFlash: Math.max(0, state.deathFlash - dt),
       hopPulse: Math.max(0, state.hopPulse - dt),
       rows: new Map(state.rows),
     }
     ensureRows(next, Math.floor(next.cameraY) - BACK_LIMIT - 2, Math.floor(next.cameraY) + ROW_BUFFER)
     for (const [rowIndex, row] of next.rows) {
-      if (row.kind === 'road' || row.kind === 'rail' || row.kind === 'water') {
-        next.rows.set(rowIndex, moveRowVehicles(row, next.cols, dt))
-      }
+      next.rows.set(rowIndex, moveRowVehicles(row, next.cols, dt))
     }
-    if (next.deathAnim <= 0) {
-      return { ...next, phase: 'gameover', deathAnim: 0 }
-    }
+    if (next.deathAnim <= 0) return { ...next, phase: 'gameover', deathAnim: 0 }
     return next
   }
 
@@ -641,93 +653,80 @@ export function tick(state: GameState, dt: number): GameState {
     hopPulse: Math.max(0, state.hopPulse - dt),
     bump: Math.max(0, state.bump - dt),
     deathFlash: Math.max(0, state.deathFlash - dt),
+    celebrate: Math.max(0, state.celebrate - dt),
+    milestone: Math.max(0, state.milestone - dt),
+    nearMiss: Math.max(0, state.nearMiss - dt),
+    nearMissCooldown: Math.max(0, state.nearMissCooldown - dt),
     idleTimer: state.idleTimer + dt,
+    streakTimer: state.streakTimer + dt,
+    queuedAge: state.queued ? state.queuedAge + dt : 0,
     rows: new Map(state.rows),
   }
 
   if (next.hop) {
     const t = Math.min(1, next.hop.t + dt / HOP_DURATION)
-    const landing = t >= 1
-    next = { ...next, hop: landing ? null : { ...next.hop, t } }
-    if (!landing) {
-      const hopPos = playerCenter(next)
-      if (blockedByTree(next.rows, hopPos.c, hopPos.r)) {
-        const { fromC, fromR } = next.hop!
-        return {
-          ...next,
-          hop: null,
-          col: fromC,
-          row: fromR,
-          bump: 0.12,
-        }
-      }
-    }
-    if (landing) {
-      const landRow = next.rows.get(next.row)
-      if (landRow?.kind === 'water') {
-        for (const log of landRow.vehicles) {
-          if (!logHit(next.col, log, next.cols)) continue
-          next = { ...next, col: clampOnLog(next.col, log, next.cols) }
-          break
-        }
-      }
-    }
+    next.hop = t >= 1 ? null : { ...next.hop, t }
+  }
+
+  if (next.queued && next.queuedAge > INPUT_BUFFER) {
+    next = { ...next, queued: null, queuedAge: 0 }
+  }
+  if (next.queued && !next.hop && next.hopCooldown <= 0) {
+    const dir = next.queued
+    next = hop({ ...next, queued: null, queuedAge: 0 }, dir)
+    if (next.phase !== 'playing') return next
   }
 
   const pos = playerCenter(next)
   next.cameraY = Math.max(next.cameraY, pos.r - PLAYER_VIEW_ROW)
-
   ensureRows(next, Math.floor(next.cameraY) - BACK_LIMIT - 2, Math.floor(next.cameraY) + ROW_BUFFER)
 
   for (const [rowIndex, row] of next.rows) {
-    if (row.kind === 'road' || row.kind === 'rail' || row.kind === 'water') {
-      next.rows.set(rowIndex, moveRowVehicles(row, next.cols, dt))
-    }
+    next.rows.set(rowIndex, moveRowVehicles(row, next.cols, dt))
   }
 
-  const standingRow = next.rows.get(next.row)
-  if (standingRow?.kind === 'water') {
-    const movedRow = next.rows.get(next.row)!
-    if (onLog(next.col, movedRow, next.cols)) {
-      for (const log of movedRow.vehicles) {
-        if (!logHit(next.col, log, next.cols)) continue
-        next.col += movedRow.dir * movedRow.speed * dt
-        next.col = clampOnLog(next.col, log, next.cols)
-        if (next.col < -0.55 || next.col >= next.cols - 0.45) {
-          return die(next, 'fall')
-        }
-        break
-      }
-    } else if (next.invuln <= 0 && !next.hop) {
-      return die(next, 'fall')
+  const span = laneSpan(next.cols)
+  const standing = next.rows.get(next.row)
+
+  if (standing?.kind === 'water' && !next.hop) {
+    const raft = standing.vehicles.find((v) => onLog(next.col, v, span))
+    if (raft) {
+      // Drift with the log; the column stays fractional until you hop back onto land.
+      next.col += standing.dir * standing.speed * dt
+      if (next.col < -0.35 || next.col > next.cols - 0.65) return die(next, 'edge')
+    } else if (next.invuln <= 0) {
+      return die(next, 'water')
     }
   }
 
   if (next.invuln <= 0) {
     const hitPos = playerCenter(next)
     if (!next.hop) {
-      const row = next.rows.get(next.row)
-      if (row?.kind === 'rail' && hitsRail(next.col, row)) {
+      if (standing?.kind === 'rail' && hitsRail(next.col, standing)) return die(next, 'train')
+      if (standing?.kind === 'road' && hitsRoad(next.col, next.row, next.rows, next.cols)) {
         return die(next, 'car')
       }
-      if (row?.kind === 'road' && hitsRoad(next.col, next.row, next.rows, next.cols)) {
-        return die(next, 'car')
-      }
-    } else {
-      const rowIndex = activeTrafficRow(next)
-      if (hitsRoad(hitPos.c, rowIndex, next.rows, next.cols)) {
-        return die(next, 'car')
+    } else if (hitsRoad(hitPos.c, activeTrafficRow(next), next.rows, next.cols)) {
+      return die(next, 'car')
+    }
+
+    if (next.nearMissCooldown <= 0) {
+      const trafficRow = next.rows.get(activeTrafficRow(next))
+      if (trafficRow?.kind === 'road') {
+        const close = trafficRow.vehicles.some(
+          (v) => laneClearance(hitPos.c, v, span) < NEAR_MISS_GAP,
+        )
+        if (close) {
+          next.nearMiss = 0.28
+          next.nearMissCooldown = 0.7
+          sfx('whoosh')
+        }
       }
     }
   }
 
-  if (next.row < Math.floor(next.cameraY) - BACK_LIMIT) {
-    return die(next, 'fall')
-  }
-
-  if (next.row > 2 && next.idleTimer >= STALL_LIMIT) {
-    return die(next, 'fall')
-  }
+  if (next.row < Math.floor(next.cameraY) - BACK_LIMIT) return die(next, 'edge')
+  if (next.row > 2 && next.idleTimer >= STALL_LIMIT) return die(next, 'hawk')
 
   return next
 }
@@ -737,6 +736,9 @@ export function toSnapshot(state: GameState): Snapshot {
     score: state.score,
     best: Math.max(state.best, loadBest()),
     phase: state.phase,
+    target: state.target,
+    beatBest: state.beatBest,
+    cause: state.cause,
   }
 }
 

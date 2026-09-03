@@ -27,6 +27,8 @@ export type SoundName =
   | 'pad'
   | 'good'
   | 'miss'
+  | 'hop'
+  | 'whoosh'
 
 const PENT = [261.6, 293.7, 329.6, 392.0, 440.0, 523.3]
 
@@ -348,6 +350,16 @@ export function sfx(name: SoundName, pitch = 0) {
       break
     case 'miss':
       tone(audio, 196.0, 0.38, 0.08, -28)
+      break
+    // `pitch` is a semitone offset so callers can build a rising streak ladder.
+    case 'hop': {
+      const semis = Math.max(0, Math.min(16, Math.round(pitch)))
+      const freq = 349.2 * Math.pow(2, semis / 12)
+      tone(audio, freq, 0.13, 0.075, freq * 0.16)
+      break
+    }
+    case 'whoosh':
+      tone(audio, 640.0, 0.16, 0.05, -420)
       break
   }
 }
