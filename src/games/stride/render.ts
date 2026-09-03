@@ -678,10 +678,6 @@ export function renderGame(
   ctx.save()
   ctx.translate(shake.x, shake.y)
   const dying = state.phase === 'dying'
-  // Soft camera settle after a land — tiny downward nudge that eases out with hopPulse.
-  if (!dying && state.hopPulse > 0) {
-    ctx.translate(0, state.hopPulse * cell * 0.35)
-  }
 
   const topRow = Math.ceil(cameraY + visibleRows + 2)
   const bottomRow = Math.floor(cameraY) - 4
