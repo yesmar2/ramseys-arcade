@@ -280,16 +280,15 @@ function makeRoadRow(row: number, cols: number, rand: () => number): Row {
  * so you can shuffle sideways instead of being pinned to one tile.
  */
 function makeStoneRow(cols: number, rand: () => number, d: number): Row {
-  const target = Math.max(2, Math.round(cols * (0.72 - d * 0.2)))
+  // A couple of isolated stones, not a pavement. Later rows get stingier.
+  const target = d > 0.55 ? 1 : 2
   const rocks = new Set<number>()
-  for (let guard = 0; rocks.size < target && guard < 40; guard++) {
-    const start = Math.floor(rand() * cols)
-    const len = 2 + Math.floor(rand() * 2)
-    for (let i = 0; i < len && rocks.size < target; i++) {
-      if (start + i < cols) rocks.add(start + i)
-    }
+  const margin = 1
+  for (let guard = 0; rocks.size < target && guard < 24; guard++) {
+    const c = margin + Math.floor(rand() * Math.max(1, cols - margin * 2))
+    if ([...rocks].every((r) => Math.abs(r - c) > 1)) rocks.add(c)
   }
-  for (let c = 0; c < cols && rocks.size < target; c++) rocks.add(c)
+  if (rocks.size === 0) rocks.add(Math.floor(cols / 2))
   return {
     kind: 'water',
     dir: 0,
@@ -314,7 +313,7 @@ function makeWaterRow(
 
   // Never stack two stone rows: from a stone you can only hop straight on, so a
   // second static row could strand you with nowhere legal to land.
-  if (!prevIsStone && rand() < 0.12) return makeStoneRow(cols, rand, d)
+  if (!prevIsStone && rand() < 0.28) return makeStoneRow(cols, rand, d)
 
   // Alternate directions so there's always a way to work across a chunk.
   const dir: -1 | 1 = rowInChunk % 2 === 0 ? 1 : -1
