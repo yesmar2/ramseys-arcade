@@ -111,6 +111,8 @@ const INPUT_BUFFER = 0.18
 const RESPAWN_INVULN = 0.5
 /** Lateral hops are half a tile so you can thread between cars. */
 const SIDE_STEP = 0.5
+/** How far past a log edge still counts as landing on it. */
+const LOG_EDGE_SNAP = 0.42
 const CAR_HUES = [18, 348, 272, 198, 38, 128, 168]
 const LOG_HUE = 32
 /** Matches the circular hopper sprite. */
@@ -320,7 +322,8 @@ function makeWaterRow(
   const speed = (0.9 + d * 0.62) * pickTier(LOG_TIERS, d, rand) * (0.94 + rand() * 0.14)
   const span = laneSpan(cols)
   const tiles = cols < 9 ? 2 : rand() < 0.58 ? 2 : 3
-  const logW = tiles - 0.1
+  // Whole tiles only — each tile is one hop slot on the log.
+  const logW = tiles
   const gap = (0.95 + rand() * 0.55) * (1 - d * 0.15)
   const count = laneCount(span, logW, gap, 99)
   // Stagger neighbouring rows so log gaps don't line up into a dead end.
@@ -472,11 +475,12 @@ function treesBlock(col: number, trees: number[]): boolean {
   return trees.some((t) => right > t && left < t + 1)
 }
 
-/** Snap landing column — roads allow half-tile positioning between cars. */
-function landingCol(nc: number, row: Row): number {
-  if (row.kind === 'water' && row.rocks.length === 0) return nc
+/** Snap landing column — roads allow half-tiles; logs snap to hop slots. */
+function landingCol(nc: number, row: Row, span: number): number {
+  if (row.kind === 'water' && row.rocks.length === 0) {
+    return snapToLog(nc, row, span) ?? nc
+  }
   if (row.kind === 'water') return Math.round(nc)
-  if (row.kind === 'road') return Math.round(nc * 2) / 2
   return Math.round(nc * 2) / 2
 }
 
@@ -511,11 +515,44 @@ function laneClearance(col: number, v: Vehicle, span: number): number {
   return Math.min(gap(v.x), gap(v.x - span))
 }
 
-/** You ride a log when your centre is over its body. */
-function onLog(col: number, v: Vehicle, span: number): boolean {
-  const c = col + 0.5
-  const inside = (l: number) => c > l + 0.1 && c < l + v.w - 0.1
-  return inside(v.x) || inside(v.x - span)
+/** Whole-tile hop slots on a log whose left edge is at `l`. */
+function logSlots(l: number, w: number): number[] {
+  const n = Math.max(1, Math.round(w))
+  const slots: number[] = []
+  for (let i = 0; i < n; i++) slots.push(l + i)
+  return slots
+}
+
+/**
+ * Snap onto the nearest log tile. A near miss past the edge still counts —
+ * you get pulled onto the closest slot instead of falling in.
+ */
+function snapToLog(col: number, row: Row, span: number): number | null {
+  let best: number | null = null
+  let bestDist = Infinity
+  const center = col + 0.5
+
+  for (const v of row.vehicles) {
+    const n = Math.max(1, Math.round(v.w))
+    for (const l of [v.x, v.x - span]) {
+      if (center < l - LOG_EDGE_SNAP || center > l + n + LOG_EDGE_SNAP) continue
+      for (const slot of logSlots(l, n)) {
+        const dist = Math.abs(col - slot)
+        if (dist < bestDist) {
+          bestDist = dist
+          best = slot
+        }
+      }
+    }
+  }
+
+  // Must be near a real slot — forgiveness is for edges, not jumping the gap.
+  if (best == null || bestDist > 0.55 + LOG_EDGE_SNAP) return null
+  return best
+}
+
+function onLog(col: number, row: Row, span: number): boolean {
+  return snapToLog(col, row, span) != null
 }
 
 /** Stones are static and snap you to their tile, so a whole-column test is exact. */
@@ -655,18 +692,23 @@ export function hop(state: GameState, dir: Dir): GameState {
 
   const fromC = state.col
   const fromR = state.row
+  const fromRow = state.rows.get(fromR)
+  // On a log, left/right steps a full tile so you hop slot-to-slot.
+  const onLogRow = fromRow?.kind === 'water' && fromRow.rocks.length === 0
+  const side = onLogRow ? 1 : SIDE_STEP
   let nr = fromR
   let nc = fromC
   if (dir === 'up') nr += 1
   else if (dir === 'down') nr -= 1
-  else if (dir === 'left') nc -= SIDE_STEP
-  else nc += SIDE_STEP
+  else if (dir === 'left') nc -= side
+  else nc += side
 
   const blocked = (): GameState => ({ ...state, queued: null, bump: BUMP })
   if (nr < 0) return blocked()
 
+  const span = laneSpan(state.cols)
   const rowData = state.rows.get(nr) ?? generateRow(nr, state.cols, state.runSeed, state.rows)
-  const target = landingCol(nc, rowData)
+  const target = landingCol(nc, rowData, span)
   if (!colInBounds(target, state.cols)) return blocked()
   if (rowData.kind !== 'water' && treesBlock(target, rowData.trees)) return blocked()
 
@@ -772,10 +814,16 @@ export function tick(state: GameState, dt: number): GameState {
     if (standing.rocks.length) {
       // Stones don't move, so there's nothing to carry you — just stand or sink.
       if (!onRock(next.col, standing) && next.invuln <= 0) return die(next, 'water')
-    } else if (standing.vehicles.some((v) => onLog(next.col, v, span))) {
-      // Drift with the log; the column stays fractional until you reach solid ground.
+    } else if (onLog(next.col, standing, span)) {
+      // Drift with the log, then re-seat on the nearest hop slot.
       next.col += standing.dir * standing.speed * dt
-      if (next.col < -0.4 || next.col > next.cols - 0.6) return die(next, 'edge')
+      const seat = snapToLog(next.col, standing, span)
+      if (seat == null) {
+        if (next.invuln <= 0) return die(next, 'water')
+      } else {
+        next.col = seat
+        if (next.col < -0.4 || next.col > next.cols - 0.6) return die(next, 'edge')
+      }
     } else if (next.invuln <= 0) {
       return die(next, 'water')
     }
