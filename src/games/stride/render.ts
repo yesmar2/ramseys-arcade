@@ -139,16 +139,20 @@ function drawHopper(
   dark: boolean,
   dying = false,
   deathT = 0,
+  /** Forward-hop squeeze: 0 = round, 1 = max skinny. */
+  squeeze = 0,
 ) {
   const deathScale = dying ? 1 - deathT * 0.45 : 1
   const scale = (1 + pulse * 0.08) * deathScale
   const r = size * 0.3 * scale
+  const rx = r * (1 - squeeze * 0.32)
+  const ry = r * (1 + squeeze * 0.18)
   const bodyHue = dying ? 4 : HOPPER
   const body = fill(bodyHue, dying ? 72 : 62, dark ? 58 : 54, 1)
   const stroke = fill(bodyHue, dying ? 72 : 62, dark ? 48 : 36, 1)
 
   ctx.beginPath()
-  ctx.arc(cx, cy, r, 0, Math.PI * 2)
+  ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2)
   ctx.fillStyle = body
   ctx.fill()
   ctx.strokeStyle = stroke
@@ -159,27 +163,27 @@ function drawHopper(
     ctx.strokeStyle = 'rgba(180, 20, 20, 0.85)'
     ctx.lineWidth = Math.max(2.5, size * 0.07)
     ctx.beginPath()
-    ctx.moveTo(cx - r * 0.55, cy - r * 0.35)
-    ctx.lineTo(cx + r * 0.55, cy + r * 0.15)
-    ctx.moveTo(cx + r * 0.55, cy - r * 0.35)
-    ctx.lineTo(cx - r * 0.55, cy + r * 0.15)
+    ctx.moveTo(cx - rx * 0.55, cy - ry * 0.35)
+    ctx.lineTo(cx + rx * 0.55, cy + ry * 0.15)
+    ctx.moveTo(cx + rx * 0.55, cy - ry * 0.35)
+    ctx.lineTo(cx - rx * 0.55, cy + ry * 0.15)
     ctx.stroke()
     return
   }
 
   ctx.fillStyle = '#1a2b3c'
   ctx.beginPath()
-  ctx.arc(cx - r * 0.28, cy - r * 0.1, r * 0.14, 0, Math.PI * 2)
-  ctx.arc(cx + r * 0.28, cy - r * 0.1, r * 0.14, 0, Math.PI * 2)
+  ctx.arc(cx - rx * 0.28, cy - ry * 0.1, r * 0.14, 0, Math.PI * 2)
+  ctx.arc(cx + rx * 0.28, cy - ry * 0.1, r * 0.14, 0, Math.PI * 2)
   ctx.fill()
   ctx.fillStyle = '#fff'
   ctx.beginPath()
-  ctx.arc(cx - r * 0.24, cy - r * 0.14, r * 0.05, 0, Math.PI * 2)
-  ctx.arc(cx + r * 0.32, cy - r * 0.14, r * 0.05, 0, Math.PI * 2)
+  ctx.arc(cx - rx * 0.24, cy - ry * 0.14, r * 0.05, 0, Math.PI * 2)
+  ctx.arc(cx + rx * 0.32, cy - ry * 0.14, r * 0.05, 0, Math.PI * 2)
   ctx.fill()
 }
 
-/** Shadow, then a swooping hawk when the player lingers too long on one row. */
+/** Brief shadow, then a fast Crossy-style snatch. */
 function drawHawkThreat(
   ctx: CanvasRenderingContext2D,
   px: number,
@@ -194,86 +198,81 @@ function drawHawkThreat(
   if (idleTimer <= warnStart) return
 
   const urgency = Math.min(1, (idleTimer - warnStart) / STALL_WARN)
+  // Ease in hard so most of the dive happens in the last blink.
+  const dive = Math.pow(urgency, 0.55)
 
-  // Ground shadow — grows and pulses before the bird arrives.
-  const shadowW = cell * (0.45 + urgency * 0.55)
-  const shadowH = cell * (0.14 + urgency * 0.1)
-  ctx.fillStyle = `rgba(20, 12, 28, ${0.18 + urgency * 0.42})`
+  const shadowW = cell * (0.35 + dive * 0.7)
+  const shadowH = cell * (0.12 + dive * 0.14)
+  ctx.fillStyle = `rgba(20, 12, 28, ${0.2 + dive * 0.5})`
   ctx.beginPath()
   ctx.ellipse(px, py + cell * 0.34, shadowW, shadowH, 0, 0, Math.PI * 2)
   ctx.fill()
 
-  // Hawk arcs in from the top-right and dives on the player.
-  const startX = px + cell * 2.4
-  const startY = oy - cell * 1.2
-  const dive = Math.pow(urgency, 1.35)
+  const startX = px + cell * 3.2
+  const startY = oy - cell * 1.8
   const hx = startX + (px - startX) * dive
-  const hy = startY + (py - cell * 0.55 - startY) * dive
-  const wing = cell * (0.72 + urgency * 0.28)
-  const flap = Math.sin(time * 22 + urgency * 8) * cell * 0.08 * (1 - urgency * 0.35)
-  const tilt = -0.35 + urgency * 0.55
+  const hy = startY + (py - cell * 0.4 - startY) * dive
+  const wing = cell * (0.85 + dive * 0.35)
+  const flap = Math.sin(time * 40) * cell * 0.1 * (1 - dive * 0.5)
+  const tilt = -0.55 + dive * 0.85
 
   ctx.save()
   ctx.translate(hx, hy)
   ctx.rotate(tilt)
+  ctx.scale(1 + dive * 0.25, 1 + dive * 0.25)
 
-  // Body
-  ctx.fillStyle = `rgba(34, 28, 42, ${0.72 + urgency * 0.28})`
+  ctx.fillStyle = `rgba(28, 22, 36, ${0.85 + dive * 0.15})`
   ctx.beginPath()
-  ctx.ellipse(0, 0, cell * 0.22, cell * 0.14, 0, 0, Math.PI * 2)
+  ctx.ellipse(0, 0, cell * 0.24, cell * 0.15, 0, 0, Math.PI * 2)
   ctx.fill()
 
-  // Head + beak
   ctx.beginPath()
-  ctx.arc(cell * 0.18, -cell * 0.08, cell * 0.1, 0, Math.PI * 2)
+  ctx.arc(cell * 0.2, -cell * 0.08, cell * 0.11, 0, Math.PI * 2)
   ctx.fill()
-  ctx.fillStyle = `rgba(255, 120, 48, ${0.85 + urgency * 0.15})`
+  ctx.fillStyle = `rgba(255, 120, 48, ${0.9})`
   ctx.beginPath()
-  ctx.moveTo(cell * 0.26, -cell * 0.08)
-  ctx.lineTo(cell * 0.42, -cell * 0.04)
-  ctx.lineTo(cell * 0.26, 0)
+  ctx.moveTo(cell * 0.28, -cell * 0.08)
+  ctx.lineTo(cell * 0.48, -cell * 0.02)
+  ctx.lineTo(cell * 0.28, cell * 0.04)
   ctx.closePath()
   ctx.fill()
 
-  // Wings
-  ctx.fillStyle = `rgba(48, 38, 58, ${0.78 + urgency * 0.22})`
+  ctx.fillStyle = `rgba(42, 34, 52, ${0.9})`
   ctx.beginPath()
   ctx.moveTo(-cell * 0.05, -cell * 0.02 + flap)
-  ctx.quadraticCurveTo(-wing * 0.55, -cell * 0.42 + flap, -wing, -cell * 0.06 + flap)
-  ctx.quadraticCurveTo(-wing * 0.45, cell * 0.08 + flap, -cell * 0.05, cell * 0.06 + flap)
+  ctx.quadraticCurveTo(-wing * 0.55, -cell * 0.5 + flap, -wing, -cell * 0.04 + flap)
+  ctx.quadraticCurveTo(-wing * 0.45, cell * 0.1 + flap, -cell * 0.05, cell * 0.08 + flap)
   ctx.closePath()
   ctx.fill()
   ctx.beginPath()
   ctx.moveTo(cell * 0.05, -cell * 0.02 - flap)
-  ctx.quadraticCurveTo(wing * 0.55, -cell * 0.42 - flap, wing, -cell * 0.06 - flap)
-  ctx.quadraticCurveTo(wing * 0.45, cell * 0.08 - flap, cell * 0.05, cell * 0.06 - flap)
+  ctx.quadraticCurveTo(wing * 0.55, -cell * 0.5 - flap, wing, -cell * 0.04 - flap)
+  ctx.quadraticCurveTo(wing * 0.45, cell * 0.1 - flap, cell * 0.05, cell * 0.08 - flap)
   ctx.closePath()
   ctx.fill()
 
-  // Talons reach down on the final dive.
-  if (urgency > 0.55) {
-    const reach = (urgency - 0.55) / 0.45
-    ctx.strokeStyle = `rgba(255, 210, 72, ${0.45 + reach * 0.55})`
-    ctx.lineWidth = Math.max(2, cell * 0.05)
+  if (dive > 0.4) {
+    const reach = (dive - 0.4) / 0.6
+    ctx.strokeStyle = `rgba(255, 210, 72, ${0.55 + reach * 0.45})`
+    ctx.lineWidth = Math.max(2, cell * 0.055)
     ctx.lineCap = 'round'
     for (const ox of [-cell * 0.1, 0, cell * 0.1]) {
       ctx.beginPath()
       ctx.moveTo(ox, cell * 0.1)
-      ctx.lineTo(ox - cell * 0.06 * reach, cell * (0.28 + reach * 0.22))
+      ctx.lineTo(ox - cell * 0.08 * reach, cell * (0.3 + reach * 0.28))
       ctx.moveTo(ox, cell * 0.1)
-      ctx.lineTo(ox + cell * 0.06 * reach, cell * (0.28 + reach * 0.22))
+      ctx.lineTo(ox + cell * 0.08 * reach, cell * (0.3 + reach * 0.28))
       ctx.stroke()
     }
   }
 
   ctx.restore()
 
-  // Red vignette tightens as the hawk closes in.
-  if (urgency > 0.35) {
-    const heat = (urgency - 0.35) / 0.65
-    const grad = ctx.createRadialGradient(px, py, cell * 0.2, px, py, cell * 4.5)
-    grad.addColorStop(0, `rgba(255, 72, 72, ${heat * 0.22})`)
-    grad.addColorStop(1, 'rgba(255, 72, 72, 0)')
+  if (dive > 0.25) {
+    const heat = (dive - 0.25) / 0.75
+    const grad = ctx.createRadialGradient(px, py, cell * 0.15, px, py, cell * 3.5)
+    grad.addColorStop(0, `rgba(255, 60, 60, ${heat * 0.28})`)
+    grad.addColorStop(1, 'rgba(255, 60, 60, 0)')
     ctx.fillStyle = grad
     ctx.fillRect(0, 0, w, oy + cell * 20)
   }
@@ -638,8 +637,12 @@ export function renderGame(
   const py = rowScreenY(pos.r, cameraY, visibleRows, oy, cell) + cell * 0.52
   const dying = state.phase === 'dying'
   const deathT = dying ? 1 - state.deathAnim / 0.55 : 0
+  // Peak mid-hop: circle goes a tad skinny like it's squeezing through.
+  const hop = state.hop
+  const squeeze =
+    hop && hop.toR > hop.fromR ? Math.sin(Math.min(1, hop.t) * Math.PI) : 0
   if (py > -cell && py < h + cell) {
-    drawHopper(ctx, px, py, cell, state.hopPulse, dark, dying, deathT)
+    drawHopper(ctx, px, py, cell, state.hopPulse, dark, dying, deathT, squeeze)
   }
 
   if (state.nearMiss > 0) {

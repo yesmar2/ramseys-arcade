@@ -226,12 +226,6 @@ export function StrideGame() {
     tryHop(dir ?? 'up')
   }
 
-  const padHop = (dir: Dir) => (e: ReactPointerEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    tryHop(dir)
-  }
-
   return (
     <section className={`stride stride--fullscreen${saveOpen ? ' stride--saving' : ''}`}>
       <div className="stride__body">
@@ -309,49 +303,6 @@ export function StrideGame() {
               )}
             </div>
           </div>
-        </div>
-
-        <div className="stride__touch" aria-label="Hop">
-          <button
-            type="button"
-            className="stride__btn stride__btn--up"
-            aria-label="Hop up"
-            onPointerDown={padHop('up')}
-          >
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M12 5l7 9H5z" fill="currentColor" />
-            </svg>
-          </button>
-          <button
-            type="button"
-            className="stride__btn stride__btn--left"
-            aria-label="Hop left"
-            onPointerDown={padHop('left')}
-          >
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M5 12l9-7v14z" fill="currentColor" />
-            </svg>
-          </button>
-          <button
-            type="button"
-            className="stride__btn stride__btn--down"
-            aria-label="Hop down"
-            onPointerDown={padHop('down')}
-          >
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M12 19l7-9H5z" fill="currentColor" />
-            </svg>
-          </button>
-          <button
-            type="button"
-            className="stride__btn stride__btn--right"
-            aria-label="Hop right"
-            onPointerDown={padHop('right')}
-          >
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M19 12l-9-7v14z" fill="currentColor" />
-            </svg>
-          </button>
         </div>
       </div>
     </section>

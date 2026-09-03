@@ -101,9 +101,9 @@ export const LANE_PAD = 5
 /** Distance markers every this many rows. */
 export const MILESTONE_STEP = 25
 /** Die if you don't hop up or down for this long (seconds). */
-export const STALL_LIMIT = 5
-/** Hawk warning starts this many seconds before the stall kill. */
-export const STALL_WARN = 2.5
+export const STALL_LIMIT = 7
+/** Hawk warning is brief — Crossy-style snatch, not a long approach. */
+export const STALL_WARN = 0.4
 
 const HOP_COOLDOWN = 0.05
 const HOP_DURATION = 0.12
