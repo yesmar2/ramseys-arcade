@@ -169,10 +169,12 @@ function drawHopper(
     }
   }
 
-  const scale = (1 + pulse * 0.08) * deathScale
+  const scale = (1 + pulse * 0.06) * deathScale
+  // Land thud: briefly fat and short when hopPulse is high and we're not mid-squeeze.
+  const land = !dying && pulse > 0.08 ? Math.min(1, pulse / 0.32) : 0
   const r = size * 0.3 * scale
-  const rx = r * (1 - squeeze * 0.32) * squashX
-  const ry = r * (1 + squeeze * 0.18) * squashY
+  const rx = r * (1 - squeeze * 0.32) * squashX * (1 + land * 0.22)
+  const ry = r * (1 + squeeze * 0.18) * squashY * (1 - land * 0.28)
   const bodyHue = dying ? 4 : HOPPER
   const body = fill(bodyHue, dying ? 72 : 62, dark ? 58 : 54, dying ? 1 - deathT * 0.35 : 1)
   const stroke = fill(bodyHue, dying ? 72 : 62, dark ? 48 : 36, dying ? 1 - deathT * 0.35 : 1)
@@ -675,6 +677,11 @@ export function renderGame(
 
   ctx.save()
   ctx.translate(shake.x, shake.y)
+  const dying = state.phase === 'dying'
+  // Soft camera settle after a land — tiny downward nudge that eases out with hopPulse.
+  if (!dying && state.hopPulse > 0) {
+    ctx.translate(0, state.hopPulse * cell * 0.35)
+  }
 
   const topRow = Math.ceil(cameraY + visibleRows + 2)
   const bottomRow = Math.floor(cameraY) - 4
@@ -701,13 +708,43 @@ export function renderGame(
 
   const px = ox + (pos.c + 0.5) * cell
   const py = rowScreenY(pos.r, cameraY, visibleRows, oy, cell) + cell * 0.52
-  const dying = state.phase === 'dying'
   const deathT = dying ? 1 - state.deathAnim / 0.95 : 0
   const hop = state.hop
+  const hopT = hop ? easeHop(Math.min(1, hop.t)) : 0
+  const air = hop ? Math.sin(hopT * Math.PI) : 0
   const squeeze =
     hop && hop.toR > hop.fromR ? Math.sin(Math.min(1, hop.t) * Math.PI) : 0
+
+  // Ground shadow shrinks while airborne so the hop reads as a real lift.
+  if (!dying && py > -cell && py < h + cell) {
+    const shadowScale = 1 - air * 0.45
+    ctx.fillStyle = dark ? 'rgba(0, 0, 0, 0.22)' : 'rgba(30, 40, 60, 0.16)'
+    ctx.beginPath()
+    ctx.ellipse(
+      px,
+      py + cell * 0.28,
+      cell * 0.22 * shadowScale,
+      cell * 0.08 * shadowScale,
+      0,
+      0,
+      Math.PI * 2,
+    )
+    ctx.fill()
+  }
+
   if (py > -cell * 4 && py < h + cell) {
-    drawHopper(ctx, px, py, cell, state.hopPulse, dark, dying, deathT, squeeze, state.cause)
+    drawHopper(
+      ctx,
+      px,
+      py - air * cell * 0.28,
+      cell,
+      state.hopPulse,
+      dark,
+      dying,
+      deathT,
+      squeeze,
+      state.cause,
+    )
   }
 
   for (const pop of state.coinPops) {

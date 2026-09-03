@@ -293,12 +293,9 @@ function makeGrassRow(cols: number, rand: () => number, d: number): Row {
     trees.push(pool.splice(Math.floor(rand() * pool.length), 1)[0])
   }
   const coins: number[] = []
-  // Coins on open grass — frequent enough to chase, sparse enough to stay special.
-  if (pool.length && rand() < 0.62) {
-    const n = rand() < 0.22 && pool.length > 2 ? 2 : 1
-    for (let i = 0; i < n && pool.length; i++) {
-      coins.push(pool.splice(Math.floor(rand() * pool.length), 1)[0])
-    }
+  // Sparse pickups — chase-worthy, not carpeted.
+  if (pool.length && rand() < 0.2) {
+    coins.push(pool[Math.floor(rand() * pool.length)])
   }
   return { kind: 'grass', dir: 0, speed: 0, trees, rocks: [], coins, vehicles: [] }
 }
@@ -349,7 +346,7 @@ function makeStoneRow(cols: number, rand: () => number, d: number): Row {
   if (rocks.size === 0) rocks.add(Math.floor(cols / 2))
   const rockList = [...rocks].sort((a, b) => a - b)
   const coins: number[] = []
-  if (rockList.length && rand() < 0.35) {
+  if (rockList.length && rand() < 0.12) {
     coins.push(rockList[Math.floor(rand() * rockList.length)])
   }
   return {
@@ -842,7 +839,7 @@ export function hop(state: GameState, dir: Dir): GameState {
     streakTimer: 99,
     hop: { fromC, fromR, toC: target, toR: nr, t: 0 },
     hopCooldown: HOP_COOLDOWN,
-    hopPulse: 0.2,
+    hopPulse: 0.12,
     queued: null,
     queuedAge: 0,
     rows: new Map(state.rows),
@@ -919,7 +916,13 @@ export function tick(state: GameState, dt: number): GameState {
 
   if (next.hop) {
     const t = Math.min(1, next.hop.t + dt / HOP_DURATION)
-    next.hop = t >= 1 ? null : { ...next.hop, t }
+    if (t >= 1) {
+      next.hop = null
+      next.hopPulse = 0.32
+      sfx('tap')
+    } else {
+      next.hop = { ...next.hop, t }
+    }
   }
 
   if (next.queued && next.queuedAge > INPUT_BUFFER) {
