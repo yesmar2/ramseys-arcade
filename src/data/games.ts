@@ -84,6 +84,7 @@ export const games: Game[] = [
     accent: '#3ecf8e',
     playable: true,
     inDevelopment: true,
+    hidden: true,
   },
   {
     name: 'Stride',
@@ -92,7 +93,6 @@ export const games: Game[] = [
     how: 'Swipe or tap to hop. Dodge traffic, ride the logs, hop the stones, and beat the train. Don’t linger — the hawk is watching. Score is how far you get, one point per row, and your record is marked on the road ahead.',
     accent: '#f5b942',
     playable: true,
-    inDevelopment: true,
   },
   {
     name: 'Spotter',
