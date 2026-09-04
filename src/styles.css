@@ -5303,6 +5303,24 @@ html[data-theme='dark'] .patriot__power-mark {
   gap: 1.15rem;
 }
 
+.rank-page__standings {
+  display: flex;
+  flex-direction: column;
+  gap: 1.15rem;
+  padding: 1rem 0.85rem 1.1rem;
+  border-radius: var(--tile-radius);
+  background: rgba(var(--surface-rgb), 0.55);
+  border: 1px solid rgba(var(--ink-rgb), 0.06);
+}
+
+.rank-page__standings .rank-page__rank {
+  margin: 0;
+}
+
+.rank-page__standings .rank-page__total-points {
+  margin-top: 0.85rem;
+}
+
 .rank-page__hero {
   display: flex;
   flex-direction: column;
@@ -5736,8 +5754,23 @@ html[data-theme='dark'] .patriot__power-mark {
   gap: 0.75rem;
 }
 
+.trophy-case__titles {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
 .trophy-case__head .rank-page__h {
   margin: 0;
+}
+
+.trophy-case__sub {
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--muted);
+  line-height: 1.3;
 }
 
 .trophy-case__chips {

@@ -144,7 +144,10 @@ function TrophyHeader({
 }) {
   return (
     <header className="trophy-case__head">
-      <h2 className="rank-page__h">Trophies</h2>
+      <div className="trophy-case__titles">
+        <h2 className="rank-page__h">Trophies</h2>
+        <p className="trophy-case__sub">Career awards from past weeks and months</p>
+      </div>
       {summary && summary.total > 0 ? (
         <div className="trophy-case__chips" aria-label="Trophy summary">
           {summary.podium > 0 ? (

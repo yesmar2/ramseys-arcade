@@ -137,132 +137,137 @@ export function RankPage({
       </header>
 
       {viewedName ? (
-        <section className="rank-page__hero" aria-label={isSelf ? 'Your rank' : `${viewedName}'s rank`}>
-          <PeriodSwitcher
-            period={period}
-            hrefFor={(p) => rankHref(isSelf ? undefined : viewedName, p)}
-            onSelect={(p) => {
-              window.location.hash = rankHref(isSelf ? undefined : viewedName, p)
-            }}
-            label="Period"
-          />
+        <section
+          className="rank-page__standings"
+          aria-label={isSelf ? 'Your standings' : `${viewedName}'s standings`}
+        >
+          <section className="rank-page__hero" aria-label={isSelf ? 'Your rank' : `${viewedName}'s rank`}>
+            <PeriodSwitcher
+              period={period}
+              hrefFor={(p) => rankHref(isSelf ? undefined : viewedName, p)}
+              onSelect={(p) => {
+                window.location.hash = rankHref(isSelf ? undefined : viewedName, p)
+              }}
+              label="Period"
+            />
 
-          {rankLoading ? (
-            <div className="rank-page__circle rank-page__circle--loading" aria-busy="true">
-              <span className="rank-page__circle-spinner" aria-hidden="true" />
-              <span className="visually-hidden">Loading rank</span>
-            </div>
-          ) : (
-            <div
-              className={`rank-page__circle${rank == null ? ' rank-page__circle--empty' : ''}`}
-              aria-label={rank != null ? `Global rank ${rank}` : 'No rank yet'}
-            >
-              <span className="rank-page__circle-label">Rank</span>
-              <strong
-                className={`rank-page__circle-value${rank == null ? ' rank-page__circle-value--text' : ''}`}
+            {rankLoading ? (
+              <div className="rank-page__circle rank-page__circle--loading" aria-busy="true">
+                <span className="rank-page__circle-spinner" aria-hidden="true" />
+                <span className="visually-hidden">Loading rank</span>
+              </div>
+            ) : (
+              <div
+                className={`rank-page__circle${rank == null ? ' rank-page__circle--empty' : ''}`}
+                aria-label={rank != null ? `Global rank ${rank}` : 'No rank yet'}
               >
-                {rank != null ? `#${rank}` : 'No rank'}
-              </strong>
-            </div>
-          )}
+                <span className="rank-page__circle-label">Rank</span>
+                <strong
+                  className={`rank-page__circle-value${rank == null ? ' rank-page__circle-value--text' : ''}`}
+                >
+                  {rank != null ? `#${rank}` : 'No rank'}
+                </strong>
+              </div>
+            )}
 
-          {!rankLoading && gap ? (
-            <p className="rank-page__gap">
-              {gap.before}
-              {gap.name ? (
-                <a className="lb-scorecard__gap-link" href={rankHref(gap.name, period)}>
-                  {gap.name}
-                </a>
-              ) : null}
-            </p>
-          ) : null}
+            {!rankLoading && gap ? (
+              <p className="rank-page__gap">
+                {gap.before}
+                {gap.name ? (
+                  <a className="lb-scorecard__gap-link" href={rankHref(gap.name, period)}>
+                    {gap.name}
+                  </a>
+                ) : null}
+              </p>
+            ) : null}
+          </section>
+
+          <section className="rank-page__rank" aria-labelledby="rank-games-heading">
+            {rankLoading ? (
+              <BoardSkeleton rows={5} />
+            ) : (
+              <section className="rank-page__board" aria-labelledby="rank-games-heading">
+                <div className="rank-page__board-head">
+                  <h2 id="rank-games-heading" className="rank-page__h">
+                    By game
+                  </h2>
+                  {totalGames > 0 ? (
+                    <p className="rank-page__progress" aria-live="polite">
+                      <span className="rank-page__dots" aria-hidden="true">
+                        {VISIBLE_LEADERBOARD_GAMES.map((slug) => (
+                          <span
+                            key={slug}
+                            className={`rank-page__dot${byGame[slug] ? ' rank-page__dot--on' : ''}`}
+                            title={getGame(slug)?.name ?? slug}
+                          />
+                        ))}
+                      </span>
+                      <span className="rank-page__progress-text">
+                        {rankedCount === totalGames
+                          ? `Ranked on all ${totalGames} games`
+                          : unrankedCount === totalGames
+                            ? `Unranked on all ${totalGames} games`
+                            : unrankedCount === 1
+                              ? 'Unranked on 1 game'
+                              : `Unranked on ${unrankedCount} games`}
+                      </span>
+                    </p>
+                  ) : null}
+                </div>
+                <ul className="rank-page__list">
+                  {VISIBLE_LEADERBOARD_GAMES.map((slug) => {
+                    const game = getGame(slug)
+                    const row = byGame[slug]
+                    const onDevice = game ? gamePlayableOn(game, device) : true
+                    const accent = game?.accent ?? 'var(--accent)'
+                    const href = row
+                      ? gameBoardHref(slug, period)
+                      : gamePlayHref(slug)
+                    return (
+                      <li key={slug}>
+                        <a
+                          className={`rank-page__game-row${onDevice ? '' : ' rank-page__game-row--dim'}${row ? '' : ' rank-page__game-row--empty'}`}
+                          href={href}
+                          style={{ '--rank-game-accent': accent } as CSSProperties}
+                          aria-label={
+                            row
+                              ? `${game?.name ?? slug}: place ${row.place}, ${row.points} points. Open ${PERIOD_LABELS[period].toLowerCase()} board.`
+                              : `${game?.name ?? slug}: unranked. Play now.`
+                          }
+                        >
+                          <span className="rank-page__game-rank">
+                            {row ? `#${row.place}` : '—'}
+                          </span>
+                          <span className="rank-page__game-main">
+                            <span className="rank-page__game-name">
+                              {game?.name ?? slug}
+                            </span>
+                            {game ? <GameDeviceBadge game={game} /> : null}
+                          </span>
+                          {row ? (
+                            <span className="rank-page__game-score">
+                              <strong>{row.points}</strong>
+                              <span>pts</span>
+                            </span>
+                          ) : (
+                            <span className="rank-page__game-cta">Play</span>
+                          )}
+                        </a>
+                      </li>
+                    )
+                  })}
+                </ul>
+                <p className="rank-page__total-points">
+                  <span>Total points</span>
+                  <strong>{score > 0 ? score : '–'}</strong>
+                </p>
+              </section>
+            )}
+          </section>
         </section>
       ) : null}
 
       {viewedName ? <TrophyCase name={viewedName} /> : null}
-
-      <section className="rank-page__rank" aria-labelledby="rank-games-heading">
-        {rankLoading ? (
-          <BoardSkeleton rows={5} />
-        ) : (
-          <section className="rank-page__board" aria-labelledby="rank-games-heading">
-            <div className="rank-page__board-head">
-              <h2 id="rank-games-heading" className="rank-page__h">
-                By game
-              </h2>
-              {totalGames > 0 ? (
-                <p className="rank-page__progress" aria-live="polite">
-                  <span className="rank-page__dots" aria-hidden="true">
-                    {VISIBLE_LEADERBOARD_GAMES.map((slug) => (
-                      <span
-                        key={slug}
-                        className={`rank-page__dot${byGame[slug] ? ' rank-page__dot--on' : ''}`}
-                        title={getGame(slug)?.name ?? slug}
-                      />
-                    ))}
-                  </span>
-                  <span className="rank-page__progress-text">
-                    {rankedCount === totalGames
-                      ? `Ranked on all ${totalGames} games`
-                      : unrankedCount === totalGames
-                        ? `Unranked on all ${totalGames} games`
-                        : unrankedCount === 1
-                          ? 'Unranked on 1 game'
-                          : `Unranked on ${unrankedCount} games`}
-                  </span>
-                </p>
-              ) : null}
-            </div>
-            <ul className="rank-page__list">
-              {VISIBLE_LEADERBOARD_GAMES.map((slug) => {
-                const game = getGame(slug)
-                const row = byGame[slug]
-                const onDevice = game ? gamePlayableOn(game, device) : true
-                const accent = game?.accent ?? 'var(--accent)'
-                const href = row
-                  ? gameBoardHref(slug, period)
-                  : gamePlayHref(slug)
-                return (
-                  <li key={slug}>
-                    <a
-                      className={`rank-page__game-row${onDevice ? '' : ' rank-page__game-row--dim'}${row ? '' : ' rank-page__game-row--empty'}`}
-                      href={href}
-                      style={{ '--rank-game-accent': accent } as CSSProperties}
-                      aria-label={
-                        row
-                          ? `${game?.name ?? slug}: place ${row.place}, ${row.points} points. Open ${PERIOD_LABELS[period].toLowerCase()} board.`
-                          : `${game?.name ?? slug}: unranked. Play now.`
-                      }
-                    >
-                      <span className="rank-page__game-rank">
-                        {row ? `#${row.place}` : '—'}
-                      </span>
-                      <span className="rank-page__game-main">
-                        <span className="rank-page__game-name">
-                          {game?.name ?? slug}
-                        </span>
-                        {game ? <GameDeviceBadge game={game} /> : null}
-                      </span>
-                      {row ? (
-                        <span className="rank-page__game-score">
-                          <strong>{row.points}</strong>
-                          <span>pts</span>
-                        </span>
-                      ) : (
-                        <span className="rank-page__game-cta">Play</span>
-                      )}
-                    </a>
-                  </li>
-                )
-              })}
-            </ul>
-            <p className="rank-page__total-points">
-              <span>Total points</span>
-              <strong>{score > 0 ? score : '–'}</strong>
-            </p>
-          </section>
-        )}
-      </section>
 
       {isSelf ? (
         <details className="rank-page__how game-lobby__how-panel">
