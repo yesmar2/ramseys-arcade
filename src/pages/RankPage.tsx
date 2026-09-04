@@ -115,11 +115,10 @@ export function RankPage({
           {viewedName ? (
             <div className="lb-game-board__trailing">
               <ShareBoardButton
-                cta="Flex this tag"
                 label={
                   rank != null
-                    ? `${viewedName} · #${rank} global · ${APP_NAME}`
-                    : `${viewedName}'s profile · ${APP_NAME}`
+                    ? `${viewedName} is #${rank} on ${APP_NAME}. Respect… or revenge?`
+                    : `Stalk—er, scout—${viewedName} on ${APP_NAME}.`
                 }
                 url={rankHref(viewedName || undefined, period)}
               />

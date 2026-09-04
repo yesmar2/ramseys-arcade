@@ -2,12 +2,8 @@ import { useEffect, useId, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 
 type ShareBoardButtonProps = {
-  /** Short line for share sheet / clipboard, e.g. "Play Asteroids on Fordriva" */
+  /** Clever line for share sheet / clipboard / Messages / email — not link-only. */
   label: string
-  /**
-   * Visible button copy. Defaults to a short, clever CTA — never link-only.
-   */
-  cta?: string
   /**
    * Hash path (`#/games/asteroids`), absolute URL, or omit for the current page.
    * Hash paths become full links so they work when pasted outside the app.
@@ -66,12 +62,7 @@ function copyText(text: string): boolean {
   }
 }
 
-export function ShareBoardButton({
-  label,
-  cta = 'Pass it on',
-  url,
-  className = '',
-}: ShareBoardButtonProps) {
+export function ShareBoardButton({ label, url, className = '' }: ShareBoardButtonProps) {
   const titleId = useId()
   const buttonRef = useRef<HTMLButtonElement>(null)
   const labelRef = useRef(label)
@@ -117,10 +108,11 @@ export function ShareBoardButton({
         return
       }
 
-      // One call only — matches CrazyGames-style "Sharing link" on Android.
+      // Include `text` so Messages/email/etc get a line, not just the bare URL.
       void navigator
         .share({
           title: shareLabel,
+          text: shareLabel,
           url: link,
         })
         .catch((err: unknown) => {
@@ -153,7 +145,6 @@ export function ShareBoardButton({
   const encoded = encodeURIComponent(href)
   const encodedLabel = encodeURIComponent(label)
   const encodedBody = encodeURIComponent(`${label}\n${href}`)
-  const buttonText = copied ? 'Copied!' : cta
 
   return (
     <>
@@ -161,11 +152,10 @@ export function ShareBoardButton({
         ref={buttonRef}
         type="button"
         className={`lb-share${className ? ` ${className}` : ''}`}
-        aria-label={copied ? 'Link copied' : `${cta}: ${label}`}
-        title={copied ? 'Copied' : cta}
+        aria-label={copied ? 'Link copied' : `Share: ${label}`}
+        title={copied ? 'Copied' : 'Share'}
       >
         <ShareIcon copied={copied} />
-        <span className="lb-share__text">{buttonText}</span>
       </button>
 
       {open && typeof document !== 'undefined'
@@ -252,4 +242,3 @@ export function ShareBoardButton({
     </>
   )
 }
-

@@ -189,8 +189,7 @@ export function GameHubPage({ slug, board: boardFromRoute }: GameHubPageProps) {
                   <div className="game-lobby__intro-links">
                     <ShareBoardButton
                       className="game-lobby__share"
-                      cta="Challenge a rival"
-                      label={`Play ${game.name} on ${APP_NAME}`}
+                      label={`Think you can beat me at ${game.name}? Prove it on ${APP_NAME}.`}
                       url={gameHref(slug)}
                     />
                     {boardHref ? (

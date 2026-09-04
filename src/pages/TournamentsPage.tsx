@@ -577,8 +577,7 @@ export function TournamentDetailPage({ id, invite }: { id: string; invite?: stri
               <h1 className="lb-page__title">{detail.title}</h1>
               <div className="lb-game-board__trailing">
                 <ShareBoardButton
-                  cta="Rally the crew"
-                  label={`${detail.title} on ${APP_NAME}`}
+                  label={`You're invited: ${detail.title} on ${APP_NAME}. Don't ghost the lobby.`}
                   url={inviteLink ?? tournamentHref(detail.id)}
                 />
               </div>

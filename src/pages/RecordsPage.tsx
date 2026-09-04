@@ -116,8 +116,7 @@ function GameRecordBookPage({
           playHref={canPlay ? gamePlayHref(game) : undefined}
           action={
             <ShareBoardButton
-              cta="Brag responsibly"
-              label={`${title} record books · ${PERIOD_LABELS[period]} · ${APP_NAME}`}
+              label={`${title} record books on ${APP_NAME} (${PERIOD_LABELS[period]}). Somebody's name is in ink.`}
               url={recordsHref(game, period)}
             />
           }
@@ -228,8 +227,7 @@ function RecordBoardPage({
               playHref={canPlay ? gamePlayHref(game) : undefined}
               action={
                 <ShareBoardButton
-                  cta="Brag responsibly"
-                  label={`${record?.label ?? 'Record'} · ${PERIOD_LABELS[period]} · ${APP_NAME}`}
+                  label={`${record?.label ?? 'Record'} on ${APP_NAME} (${PERIOD_LABELS[period]}). History doesn't forget.`}
                   url={recordHref(game, recordId, period)}
                 />
               }
@@ -244,8 +242,7 @@ function RecordBoardPage({
                 <h1 className="lb-page__title">{record?.label ?? 'Record'}</h1>
                 <div className="lb-game-board__trailing">
                   <ShareBoardButton
-                    cta="Brag responsibly"
-                    label={`${record?.label ?? 'Record'} · ${PERIOD_LABELS[period]} · ${APP_NAME}`}
+                    label={`${record?.label ?? 'Record'} on ${APP_NAME} (${PERIOD_LABELS[period]}). History doesn't forget.`}
                     url={recordHref(game, recordId, period)}
                   />
                 </div>
