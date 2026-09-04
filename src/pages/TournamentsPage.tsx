@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
-import { EventCard, EventStatusChips, EventThumbs, eventAccent } from '../components/EventCard'
+import { EventCard, EventStatusChips, eventAccent } from '../components/EventCard'
 import { EventCountdown } from '../components/EventCountdown'
-import { GameLobbyArt } from '../components/GameLobbyArt'
+import { GamePageHeader } from '../components/GamePageHeader'
 import { GameThumbArt } from '../components/GameThumbArt'
 import { PageBackLink } from '../components/PageBackLink'
 import { PageShell } from '../components/PageShell'
@@ -479,15 +479,23 @@ export function TournamentDetailPage({ id, invite }: { id: string; invite?: stri
   const featured = detail?.games[0] ? getGame(detail.games[0]) : null
   const singleGame = detail?.games.length === 1
   const playerStatus = detail?.playerStatus
-  const canPlay =
+  const canHeaderPlay =
     Boolean(detail) &&
     joined &&
     detail!.status !== 'ended' &&
+    singleGame &&
     (!playerStatus || playerStatus.canPlay)
-  const primaryPlayHref =
-    canPlay && singleGame
-      ? tournamentPlayHref(detail!.id, featuredSlug, playInvite)
-      : null
+  const headerPlayHref = canHeaderPlay
+    ? tournamentPlayHref(detail!.id, featuredSlug, playInvite)
+    : undefined
+  const showPlaySection =
+    Boolean(detail) &&
+    detail!.status !== 'ended' &&
+    (!singleGame ||
+      (joined &&
+        (playerStatus?.maxAttempts != null ||
+          (playerStatus != null && !playerStatus.canPlay) ||
+          !canHeaderPlay)))
 
   const inviteLink =
     detail?.inviteCode != null
@@ -527,21 +535,13 @@ export function TournamentDetailPage({ id, invite }: { id: string; invite?: stri
     }
   }
 
-  const standingsTitle = singleGame ? 'Top scores' : 'Standings'
-  const standingsBlock =
-    detail && detail.standings.length === 0 ? (
-      <p className="lb-empty">No players yet.</p>
-    ) : detail ? (
-      <StandingsList detail={detail} displayName={displayName} />
-    ) : null
-
   return (
-    <PageShell innerClassName="lb-page__inner">
+    <PageShell innerClassName="lb-page__inner lb-page__inner--game-board">
       {loading ? (
         <p className="lb-empty">Loading…</p>
       ) : needsInvite ? (
         <>
-          <header className="lb-page__header lb-page__header--compact">
+          <header className="lb-page__header lb-page__header--compact lb-game-board__head">
             <div className="lb-page__heading-row">
               <PageBackLink href="#/tournaments" label="Back to Events" />
               <h1 className="lb-page__title">Private event</h1>
@@ -583,7 +583,7 @@ export function TournamentDetailPage({ id, invite }: { id: string; invite?: stri
         </>
       ) : error || !detail ? (
         <>
-          <header className="lb-page__header lb-page__header--compact">
+          <header className="lb-page__header lb-page__header--compact lb-game-board__head">
             <div className="lb-page__heading-row">
               <PageBackLink href="#/tournaments" label="Back to Events" />
               <h1 className="lb-page__title">Event</h1>
@@ -593,202 +593,158 @@ export function TournamentDetailPage({ id, invite }: { id: string; invite?: stri
           <p className="lb-empty">{error ?? 'Event not found'}</p>
         </>
       ) : (
-        <>
-          <header className="lb-page__header lb-page__header--compact">
-            <div className="lb-page__heading-row">
-              <PageBackLink href="#/tournaments" label="Back to Events" />
-              <h1 className="lb-page__title">{detail.title}</h1>
-              <span className="lb-page__heading-slot" aria-hidden="true" />
-            </div>
-          </header>
-
-          <div
-            className="game-lobby game-lobby--split event-lobby"
-            style={
-              {
-                '--event-accent': accent,
-                '--board-accent': accent,
-                '--period-accent': accent,
-                '--tile-accent': accent,
-                '--thumb-accent': accent,
-                '--lb-you-accent': accent,
-              } as CSSProperties
+        <div
+          className="event-detail"
+          style={
+            {
+              '--event-accent': accent,
+              '--board-accent': accent,
+              '--lb-you-accent': accent,
+            } as CSSProperties
+          }
+        >
+          <GamePageHeader
+            slug={featuredSlug}
+            accent={featured?.accent ?? accent}
+            title={detail.title}
+            backHref="#/tournaments"
+            backLabel="Back to Events"
+            playHref={headerPlayHref}
+            action={
+              <ShareBoardButton
+                label={`You're invited: ${detail.title} on ${APP_NAME}. Don't ghost the lobby.`}
+                url={inviteLink ?? tournamentHref(detail.id)}
+              />
             }
-          >
-            <div className="game-lobby__layout">
-              <div className="game-lobby__main">
-                <div className="game-lobby__identity game-lobby__intro">
-                  <div className="game-lobby__intro-art">
-                    <GameLobbyArt
-                      slug={featuredSlug}
-                      accent={featured?.accent ?? accent}
-                    />
-                  </div>
-                  <div className="game-lobby__intro-body">
-                    <div className="game-lobby__intro-links">
-                      <ShareBoardButton
-                        className="game-lobby__share"
-                        label={`You're invited: ${detail.title} on ${APP_NAME}. Don't ghost the lobby.`}
-                        url={inviteLink ?? tournamentHref(detail.id)}
-                      />
-                      {detail.isHost && detail.inviteCode && detail.status !== 'ended' ? (
-                        <button
-                          type="button"
-                          className="game-lobby__board-link event-lobby__invite-link"
-                          onClick={() => void copyInviteLink()}
-                        >
-                          {copiedInvite ? 'Copied!' : 'Copy invite'}
-                        </button>
-                      ) : null}
-                    </div>
+          />
 
-                    <EventStatusChips
-                      t={detail}
-                      joined={joined && detail.status !== 'ended'}
-                    />
-
-                    {!singleGame ? (
-                      <EventThumbs games={detail.games} size="sm" />
-                    ) : null}
-
-                    <div className="game-lobby__stats">
-                      <div className="lb-stat">
-                        <span className="lb-stat__label">
-                          {detail.status === 'active' ? 'Time left' : 'Window'}
-                        </span>
-                        <strong>
-                          {detail.status === 'active' ? (
-                            <EventCountdown
-                              endsAt={detail.endsAt}
-                              unlimitedDuration={isUnlimitedDuration(detail.rules)}
-                            />
-                          ) : (
-                            eventDurationLabel(detail)
-                          )}
-                        </strong>
-                      </div>
-                      <div className="lb-stat">
-                        <span className="lb-stat__label">Players</span>
-                        <strong>{playerCountLabel(detail.playerCount, detail.rules)}</strong>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <p className="event-detail__rules">{formatRulesSummary(detail)}</p>
-                {!detail.private && detail.blurb ? (
-                  <p className="event-detail__blurb">{detail.blurb}</p>
-                ) : null}
-
-                {detail.status !== 'ended' && !joined ? (
-                  <div className="event-detail__join">
-                    {eventFull ? (
-                      <p className="tour-note tour-note--compact">This event is full.</p>
-                    ) : displayName ? (
-                      <button
-                        type="button"
-                        className="lb-play game-lobby__play game-lobby__play--wide event-detail__join-btn"
-                        style={{ background: accent }}
-                        disabled={busy}
-                        onClick={() => void onJoin()}
-                      >
-                        {busy ? 'Joining…' : `Join as ${displayName}`}
-                      </button>
-                    ) : (
-                      <p className="game-lobby__unavailable">
-                        Set your gamer tag in the header first.
-                      </p>
-                    )}
-                    {joinNote ? <p className="tour-note tour-note--error">{joinNote}</p> : null}
-                  </div>
-                ) : null}
-
-                {joinNote && joined ? (
-                  <p className="tour-note tour-note--error">{joinNote}</p>
-                ) : null}
-
-                {primaryPlayHref ? (
-                  <a
-                    className="lb-play game-lobby__play game-lobby__play--mobile"
-                    href={primaryPlayHref}
-                    style={{ background: accent }}
-                  >
-                    Play {featured?.name ?? 'now'}
-                  </a>
-                ) : null}
-
-                {joined &&
-                singleGame &&
-                playerStatus &&
-                !playerStatus.canPlay &&
-                detail.status !== 'ended' ? (
-                  <p className="game-lobby__unavailable">No attempts left.</p>
-                ) : null}
-
-                {!singleGame && detail.status !== 'ended' ? (
-                  <section className="event-detail__play" aria-label="Play">
-                    <h2 className="game-lobby__section-title">Play</h2>
-                    <ul className="event-play-grid">
-                      {detail.games.map((slug) => {
-                        const g = getGame(slug)
-                        const gameAccent = g?.accent ?? accent
-                        return (
-                          <li key={slug}>
-                            {joined ? (
-                              <a
-                                className="event-play-tile"
-                                href={tournamentPlayHref(detail.id, slug, playInvite)}
-                                style={{ '--event-accent': gameAccent } as CSSProperties}
-                              >
-                                <span className="event-play-tile__art">
-                                  <GameThumbArt slug={slug} accent={gameAccent} />
-                                </span>
-                                <span className="event-play-tile__name">{g?.name ?? slug}</span>
-                                <span className="event-play-tile__go">Play</span>
-                              </a>
-                            ) : (
-                              <div
-                                className="event-play-tile event-play-tile--disabled"
-                                style={{ '--event-accent': gameAccent } as CSSProperties}
-                              >
-                                <span className="event-play-tile__art">
-                                  <GameThumbArt slug={slug} accent={gameAccent} />
-                                </span>
-                                <span className="event-play-tile__name">{g?.name ?? slug}</span>
-                                <span className="event-play-tile__go">Join to play</span>
-                              </div>
-                            )}
-                          </li>
-                        )
-                      })}
-                    </ul>
-                  </section>
-                ) : null}
-
-                {detail.playerStatus?.maxAttempts != null && joined ? (
-                  <p className="tour-note tour-note--compact">
-                    {detail.playerStatus.attemptsRemaining === 0
-                      ? 'No attempts left.'
-                      : `${detail.playerStatus.attemptsRemaining} attempt${detail.playerStatus.attemptsRemaining === 1 ? '' : 's'} left.`}
-                  </p>
-                ) : null}
-
-                <section
-                  className="game-lobby__tops game-lobby__tops--mobile"
-                  aria-label={standingsTitle}
+          <div className="event-detail__meta">
+            <EventStatusChips
+              t={detail}
+              joined={joined && detail.status !== 'ended'}
+            />
+            <p className="event-detail__facts">
+              {detail.status === 'active' ? (
+                <strong>
+                  <EventCountdown
+                    endsAt={detail.endsAt}
+                    unlimitedDuration={isUnlimitedDuration(detail.rules)}
+                  />
+                </strong>
+              ) : (
+                <span>{eventDurationLabel(detail)}</span>
+              )}
+              <span className="event-detail__facts-sep" aria-hidden="true">
+                ·
+              </span>
+              <span>{playerCountLabel(detail.playerCount, detail.rules)}</span>
+            </p>
+            <p className="event-detail__rules">{formatRulesSummary(detail)}</p>
+            {!detail.private && detail.blurb ? (
+              <p className="event-detail__blurb">{detail.blurb}</p>
+            ) : null}
+            {detail.isHost && detail.inviteCode && detail.status !== 'ended' ? (
+              <div className="event-invite-panel">
+                <button
+                  type="button"
+                  className="event-invite-panel__btn"
+                  onClick={() => void copyInviteLink()}
                 >
-                  <h2 className="game-lobby__section-title">{standingsTitle}</h2>
-                  {standingsBlock}
-                </section>
+                  {copiedInvite ? 'Copied!' : 'Copy invite link'}
+                </button>
               </div>
-
-              <aside className="game-lobby__aside" aria-label={standingsTitle}>
-                <h2 className="game-lobby__section-title">{standingsTitle}</h2>
-                <div className="lb-board event-detail__board">{standingsBlock}</div>
-              </aside>
-            </div>
+            ) : null}
           </div>
-        </>
+
+          {detail.status !== 'ended' && !joined ? (
+            <div className="event-detail__join">
+              {eventFull ? (
+                <p className="tour-note tour-note--compact">This event is full.</p>
+              ) : displayName ? (
+                <button
+                  type="button"
+                  className="lb-play event-detail__join-btn"
+                  style={{ background: accent }}
+                  disabled={busy}
+                  onClick={() => void onJoin()}
+                >
+                  {busy ? 'Joining…' : `Join as ${displayName}`}
+                </button>
+              ) : (
+                <p className="tour-note tour-note--compact">
+                  Set your gamer tag in the header first.
+                </p>
+              )}
+              {joinNote ? <p className="tour-note tour-note--error">{joinNote}</p> : null}
+            </div>
+          ) : joinNote ? (
+            <p className="tour-note tour-note--error">{joinNote}</p>
+          ) : null}
+
+          {showPlaySection ? (
+            <section className="event-detail__play" aria-label="Play">
+              {!singleGame ? (
+                <h2 className="event-detail__section-title">Play</h2>
+              ) : null}
+              <ul className={`event-play-grid${singleGame ? ' event-play-grid--single' : ''}`}>
+                {detail.games.map((slug) => {
+                  const g = getGame(slug)
+                  const gameAccent = g?.accent ?? accent
+                  const status =
+                    detail.playerStatus && singleGame ? detail.playerStatus : null
+                  const exhausted = Boolean(status && !status.canPlay && joined)
+                  return (
+                    <li key={slug}>
+                      {exhausted ? (
+                        <div
+                          className="event-play-tile event-play-tile--disabled"
+                          style={{ '--event-accent': gameAccent } as CSSProperties}
+                        >
+                          <span className="event-play-tile__art">
+                            <GameThumbArt slug={slug} accent={gameAccent} />
+                          </span>
+                          <span className="event-play-tile__name">{g?.name ?? slug}</span>
+                          <span className="event-play-tile__go">No attempts left</span>
+                        </div>
+                      ) : (
+                        <a
+                          className="event-play-tile"
+                          href={tournamentPlayHref(detail.id, slug, playInvite)}
+                          style={{ '--event-accent': gameAccent } as CSSProperties}
+                        >
+                          <span className="event-play-tile__art">
+                            <GameThumbArt slug={slug} accent={gameAccent} />
+                          </span>
+                          <span className="event-play-tile__name">{g?.name ?? slug}</span>
+                          <span className="event-play-tile__go">Play</span>
+                        </a>
+                      )}
+                    </li>
+                  )
+                })}
+              </ul>
+              {detail.playerStatus?.maxAttempts != null && joined ? (
+                <p className="tour-note tour-note--compact">
+                  {detail.playerStatus.attemptsRemaining === 0
+                    ? 'No attempts left.'
+                    : `${detail.playerStatus.attemptsRemaining} attempt${detail.playerStatus.attemptsRemaining === 1 ? '' : 's'} left.`}
+                </p>
+              ) : null}
+            </section>
+          ) : null}
+
+          <section className="lb-board event-detail__board" aria-label="Standings">
+            <h2 className="event-detail__section-title">
+              {singleGame ? 'Top scores' : 'Standings'}
+            </h2>
+
+            {detail.standings.length === 0 ? (
+              <p className="lb-empty">No players yet.</p>
+            ) : (
+              <StandingsList detail={detail} displayName={displayName} />
+            )}
+          </section>
+        </div>
       )}
     </PageShell>
   )
