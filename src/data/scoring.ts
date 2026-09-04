@@ -52,7 +52,7 @@ const SCORING: Record<string, ScoreRow[]> = {
     { label: 'Score', value: 'rounds completed' },
     { label: 'Wrong pad', value: 'game over' },
   ],
-  'dead-center': [
+  'centroid': [
     { label: 'Closer to center', value: 'more points' },
     { label: 'Dead-on', value: 'up to 1100' },
     { label: 'Time left (if close)', value: 'small bonus' },

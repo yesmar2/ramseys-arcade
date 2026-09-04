@@ -62,7 +62,7 @@ export const games: Game[] = [
   },
   {
     name: 'Centroid',
-    slug: 'dead-center',
+    slug: 'centroid',
     description: 'Find the shape’s true center. Closer scores more.',
     how: 'Tap where you think the center is. Closer scores more. Ten shapes, five seconds each.',
     accent: '#4aa8e8',

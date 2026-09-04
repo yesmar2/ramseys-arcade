@@ -42,7 +42,7 @@ export const EVENT_GAMES = [
   'snake',
   'pop',
   'stacker',
-  'dead-center',
+  'centroid',
   'simon',
 ] as const
 export type EventGame = (typeof EVENT_GAMES)[number]

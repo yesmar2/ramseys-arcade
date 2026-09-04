@@ -20,6 +20,8 @@ const empty: GlobalRankResult = {
 
 let cachedName = ''
 let cached: GlobalRankResult = empty
+/** Name for which `cached` is a finished fetch (success or failure). */
+let readyName = ''
 let requestId = 0
 let inflightRefresh: Promise<void> | null = null
 const listeners = new Set<() => void>()
@@ -30,12 +32,14 @@ function emit() {
 
 function onPreferenceChange() {
   cached = empty
+  readyName = ''
   emit()
   void refreshGlobalRank()
 }
 
 function onPlayerNameEvent() {
   cached = empty
+  readyName = ''
   emit()
   void refreshGlobalRank()
 }
@@ -66,6 +70,12 @@ export function getGlobalRankSnapshot(): GlobalRankResult {
   return empty
 }
 
+export function getGlobalRankLoading(): boolean {
+  const name = getLastPlayerName()
+  if (!name) return false
+  return readyName !== name
+}
+
 export async function refreshGlobalRank() {
   if (inflightRefresh) return inflightRefresh
 
@@ -73,24 +83,28 @@ export async function refreshGlobalRank() {
     const name = getLastPlayerName()
     if (!name) {
       cachedName = ''
+      readyName = ''
       cached = empty
       emit()
       return
     }
     const id = ++requestId
+    emit()
     try {
       const next = await fetchGlobalRank(name, defaultPeriod())
       if (id !== requestId) return
       cachedName = name
+      readyName = name
       cached = next
       emit()
     } catch {
       if (id !== requestId) return
+      readyName = name
       if (cachedName !== name) {
         cachedName = name
         cached = empty
-        emit()
       }
+      emit()
     }
   })().finally(() => {
     inflightRefresh = null
@@ -101,4 +115,8 @@ export async function refreshGlobalRank() {
 
 export function useGlobalRank(): GlobalRankResult {
   return useSyncExternalStore(subscribeGlobalRank, getGlobalRankSnapshot, () => empty)
+}
+
+export function useGlobalRankLoading(): boolean {
+  return useSyncExternalStore(subscribeGlobalRank, getGlobalRankLoading, () => false)
 }

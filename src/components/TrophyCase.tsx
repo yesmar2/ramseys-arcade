@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import { globalRankingsHref } from '../hooks/useHashRoute'
 import {
   fetchTrophies,
   formatTrophyPeriod,
@@ -66,7 +65,7 @@ function TrophyCard({ trophy }: { trophy: TrophyAward }) {
   const podium = trophy.rank <= 3
   return (
     <li>
-      <a
+      <div
         className={[
           'trophy-case__card',
           `trophy-case__card--${trophy.period}`,
@@ -75,7 +74,6 @@ function TrophyCard({ trophy }: { trophy: TrophyAward }) {
         ]
           .filter(Boolean)
           .join(' ')}
-        href={globalRankingsHref(trophy.period)}
         aria-label={`#${trophy.rank} global, ${periodLabel}, ${trophy.score} points`}
       >
         <span
@@ -88,7 +86,7 @@ function TrophyCard({ trophy }: { trophy: TrophyAward }) {
         </span>
         <span className="trophy-case__rank">#{trophy.rank}</span>
         <span className="trophy-case__period">{periodLabel}</span>
-      </a>
+      </div>
     </li>
   )
 }

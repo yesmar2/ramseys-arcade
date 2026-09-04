@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { gameBoardHref, recordsHref } from '../hooks/useHashRoute'
+import { gameBoardHref, recordsHref, recordsIndexHref } from '../hooks/useHashRoute'
 import {
   addLeaderboardScore,
   ApiError,
@@ -815,11 +815,9 @@ export function ScoreSaveCard({
             <a href={boardsHref(gameSlug)}>
               Boards
             </a>
-            {gameHasRecords(gameSlug) ? (
-              <a href={recordsHref(gameSlug)}>
-                Record Books
-              </a>
-            ) : null}
+            <a href={gameHasRecords(gameSlug) ? recordsHref(gameSlug) : recordsIndexHref()}>
+              Record Books
+            </a>
           </div>
         </>
       )}

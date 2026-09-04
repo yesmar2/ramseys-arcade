@@ -24,7 +24,7 @@ import {
 import { tournamentHref } from '../hooks/useHashRoute'
 import { TournamentPlayProvider } from '../tournaments/TournamentPlayContext'
 
-const PLAYABLE = new Set(['stacker', 'patriot', 'snake', 'dead-center', 'asteroids', 'pop', 'simon'])
+const PLAYABLE = new Set(['stacker', 'patriot', 'snake', 'centroid', 'asteroids', 'pop', 'simon'])
 
 export function TournamentPlayPage({
   tournamentId,
@@ -233,7 +233,7 @@ export function TournamentPlayPage({
         {gameSlug === 'snake' && <SnakeGame />}
         {gameSlug === 'pop' && <WhackGame />}
         {gameSlug === 'simon' && <SimonGame />}
-        {gameSlug === 'dead-center' && <DeadCenterGame />}
+        {gameSlug === 'centroid' && <DeadCenterGame />}
         {gameSlug === 'asteroids' && <AsteroidsGame />}
         {gameSlug === 'crosswalk' && <CrosswalkGame />}
       </main>

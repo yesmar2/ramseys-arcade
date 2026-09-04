@@ -282,7 +282,7 @@ const thumbBySlug: Record<
   snake: () => <SnakeThumb />,
   pop: () => <PopThumb />,
   stacker: () => <StackerThumb />,
-  'dead-center': DeadCenterThumb,
+  'centroid': DeadCenterThumb,
   simon: () => <SimonThumb />,
   crosswalk: CrosswalkThumb,
   stride: StrideThumb,

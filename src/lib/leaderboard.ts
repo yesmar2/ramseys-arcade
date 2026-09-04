@@ -20,7 +20,7 @@ export const LEADERBOARD_GAMES = [
   'snake',
   'pop',
   'stacker',
-  'dead-center',
+  'centroid',
   'simon',
   'crosswalk',
   'stride',

@@ -602,7 +602,7 @@ const artBySlug: Record<string, () => JSX.Element> = {
   patriot: PatriotArt,
   snake: SnakeArt,
   pop: WhackArt,
-  'dead-center': DeadCenterArt,
+  'centroid': DeadCenterArt,
   asteroids: AsteroidsArt,
   simon: SimonArt,
   crosswalk: CrosswalkArt,

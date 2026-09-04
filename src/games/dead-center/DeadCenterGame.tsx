@@ -28,7 +28,7 @@ function currentLayout() {
 
 export function DeadCenterGame() {
   const tournament = useTournamentPlay()
-  const apiBest = usePersonalBest('dead-center')
+  const apiBest = usePersonalBest('centroid')
   const layout0 = currentLayout()
   const stateRef = useRef<GameState>(createInitialState())
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -37,7 +37,7 @@ export function DeadCenterGame() {
   const [ui, setUi] = useState<Snapshot>(() => toSnapshot(stateRef.current))
   const [saveOpen, setSaveOpen] = useState(false)
   const offeredScore = useRef<number | null>(null)
-  const previousBestRef = useRef(getPersonalBest('dead-center'))
+  const previousBestRef = useRef(getPersonalBest('centroid'))
   const clickLock = useRef(false)
   const startGrace = useRef(0)
   const timerFillRef = useRef<HTMLSpanElement>(null)
@@ -122,7 +122,7 @@ export function DeadCenterGame() {
     setAspect({ w: next.aspectW, h: next.aspectH })
     const { w, h } = sizeRef.current
     stateRef.current = startGame(resizeState(createInitialState(w, h), w, h))
-    previousBestRef.current = getPersonalBest('dead-center')
+    previousBestRef.current = getPersonalBest('centroid')
     startGrace.current = performance.now() + 180
     setUi(toSnapshot(stateRef.current))
   }
@@ -195,7 +195,7 @@ export function DeadCenterGame() {
           <canvas ref={canvasRef} className="deadcenter__viewport" />
 
           <GamePlayChrome
-            slug="dead-center"
+            slug="centroid"
             inRun={() => {
               const phase = stateRef.current.phase
               return phase === 'playing' || phase === 'reveal'
@@ -235,7 +235,7 @@ export function DeadCenterGame() {
               <GameStartCard
                 title="Centroid"
                 tagline="Tap the true center."
-                slug="dead-center"
+                slug="centroid"
               />
             )}
             {ui.phase === 'reveal' && gradeLabel && (
@@ -268,14 +268,14 @@ export function DeadCenterGame() {
               tournament ? (
                 <TournamentScoreCard
                   tournamentId={tournament.tournamentId}
-                  gameSlug="dead-center"
+                  gameSlug="centroid"
                   score={ui.score}
                   subtitle={`${ui.avgAccuracy}% accuracy`}
                   onDone={restart}
                 />
               ) : (
                 <ScoreSaveCard
-                  gameSlug="dead-center"
+                  gameSlug="centroid"
                   score={ui.score}
                   title="Round complete"
                   subtitle={`${ui.avgAccuracy}% accuracy`}

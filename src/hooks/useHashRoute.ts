@@ -28,6 +28,17 @@ export type Route =
   | { name: 'privacy' }
   | { name: 'terms' }
 
+/** Old URL slugs → current game slugs (name-matching). */
+const GAME_SLUG_ALIASES: Record<string, string> = {
+  'dead-center': 'centroid',
+  whack: 'pop',
+  'whack-a-mole': 'pop',
+}
+
+export function canonicalGameSlug(slug: string): string {
+  return GAME_SLUG_ALIASES[slug] ?? slug
+}
+
 function isLeaderboardGame(value: string): value is LeaderboardGame {
   return (LEADERBOARD_GAMES as readonly string[]).includes(value)
 }
@@ -161,8 +172,12 @@ export function hrefForRoute(
       if (route.recordId) return recordHref(route.game, route.recordId, period)
       return recordsHref(route.game, period)
     case 'game':
-      if (route.board === 'records') return null
+      if (route.board === 'records') return gameHref(route.slug, 'records')
       return gameHubHref(route.slug, period)
+    case 'gamePlay':
+      return gamePlayHref(route.slug)
+    case 'tournamentPlay':
+      return tournamentPlayHref(route.id, route.game, route.invite)
     default:
       return null
   }
@@ -228,7 +243,7 @@ function parseHash(hash: string): Route {
 
   const recordBoardMatch = /^records\/([^/]+)\/([^/]+)\/([^/]+)$/.exec(path)
   if (recordBoardMatch) {
-    const game = decodeURIComponent(recordBoardMatch[1])
+    const game = canonicalGameSlug(decodeURIComponent(recordBoardMatch[1]))
     const recordId = decodeURIComponent(recordBoardMatch[2])
     const periodRaw = decodeURIComponent(recordBoardMatch[3])
     return {
@@ -241,7 +256,7 @@ function parseHash(hash: string): Route {
 
   const recordsGameMatch = /^records\/([^/]+)\/([^/]+)$/.exec(path)
   if (recordsGameMatch) {
-    const game = decodeURIComponent(recordsGameMatch[1])
+    const game = canonicalGameSlug(decodeURIComponent(recordsGameMatch[1]))
     const second = decodeURIComponent(recordsGameMatch[2])
     if (isLeaderboardPeriod(second)) {
       return { name: 'records', game, period: second }
@@ -258,14 +273,14 @@ function parseHash(hash: string): Route {
   if (recordsMatch) {
     return {
       name: 'records',
-      game: decodeURIComponent(recordsMatch[1]),
+      game: canonicalGameSlug(decodeURIComponent(recordsMatch[1])),
       period: defaultPeriod(),
     }
   }
 
   const boardsMatch = /^leaderboards\/([^/]+)(?:\/([^/]+))?$/.exec(path)
   if (boardsMatch) {
-    const segment = decodeURIComponent(boardsMatch[1])
+    const segment = canonicalGameSlug(decodeURIComponent(boardsMatch[1]))
     const periodRaw = boardsMatch[2] ? decodeURIComponent(boardsMatch[2]) : undefined
     if (segment === 'global') {
       const period =
@@ -295,7 +310,7 @@ function parseHash(hash: string): Route {
     return {
       name: 'tournamentPlay',
       id: decodeURIComponent(tournamentPlayMatch[1]),
-      game: decodeURIComponent(tournamentPlayMatch[2]),
+      game: canonicalGameSlug(decodeURIComponent(tournamentPlayMatch[2])),
       invite,
     }
   }
@@ -307,12 +322,15 @@ function parseHash(hash: string): Route {
 
   const gamePlayMatch = /^games\/([^/]+)\/play$/.exec(path)
   if (gamePlayMatch) {
-    return { name: 'gamePlay', slug: decodeURIComponent(gamePlayMatch[1]) }
+    return {
+      name: 'gamePlay',
+      slug: canonicalGameSlug(decodeURIComponent(gamePlayMatch[1])),
+    }
   }
 
   const gameMatch = /^games\/([^/]+)(?:\/([^/]+))?$/.exec(path)
   if (gameMatch) {
-    const slug = decodeURIComponent(gameMatch[1])
+    const slug = canonicalGameSlug(decodeURIComponent(gameMatch[1]))
     const segment = gameMatch[2] ? decodeURIComponent(gameMatch[2]) : undefined
     if (segment === 'records') {
       return { name: 'game', slug, board: 'records' }
@@ -339,9 +357,15 @@ export function useHashRoute(): Route {
       const next = parseHash(window.location.hash)
       const p = periodFromRoute(next)
       if (p) setDefaultPeriod(p)
+      const canonical = hrefForRoute(next, p ?? defaultPeriod())
+      if (canonical && normalizeHash(window.location.hash) !== normalizeHash(canonical)) {
+        window.location.replace(canonical)
+        return
+      }
       setRoute(next)
     }
     window.addEventListener('hashchange', syncRoute)
+    syncRoute()
     return () => window.removeEventListener('hashchange', syncRoute)
   }, [])
 

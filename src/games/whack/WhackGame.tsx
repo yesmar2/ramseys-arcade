@@ -224,8 +224,8 @@ export function WhackGame() {
     <section className="whack whack--fullscreen">
       <div className="game-play">
         <GameStage
-          aspectWidth={STAGE_ASPECT.whack.w}
-          aspectHeight={STAGE_ASPECT.whack.h}
+          aspectWidth={STAGE_ASPECT.pop.w}
+          aspectHeight={STAGE_ASPECT.pop.h}
         >
           <div className="whack__play" onPointerDown={onPointerDown}>
             <canvas ref={canvasRef} className="whack__viewport" />

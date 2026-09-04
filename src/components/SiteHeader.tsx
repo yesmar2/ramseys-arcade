@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import { useAuth } from '../hooks/useAuth'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { rankHref, useHashRoute } from '../hooks/useHashRoute'
-import { useGlobalRank } from '../lib/globalRank'
+import { useGlobalRank, useGlobalRankLoading } from '../lib/globalRank'
 import { currentTheme, THEME_EVENT, toggleTheme, type Theme } from '../lib/theme'
 import { normalizePlayerName } from '../lib/leaderboard'
 import { useTrophySummary } from '../hooks/useTrophySummary'
@@ -21,6 +21,7 @@ export function SiteHeader() {
   const route = useHashRoute()
   const hashKey = JSON.stringify(route)
   const { rank } = useGlobalRank()
+  const rankLoading = useGlobalRankLoading()
   const { account, signedIn } = useAuth()
   const playerName = normalizePlayerName(usePlayerName())
   const trophySummary = useTrophySummary(playerName)
@@ -148,19 +149,32 @@ export function SiteHeader() {
             className={`site-header__you${navActive('you', hash) ? ' site-header__you--active' : ''}`}
             href={rankHref()}
             title={
-              rank != null
+              rankLoading
                 ? trophySummary.total > 0
-                  ? `Your profile · #${rank} · ${trophySummary.total} trophies`
-                  : `Your profile · #${rank}`
-                : trophySummary.total > 0
-                  ? `Your profile · ${trophySummary.total} trophies`
-                  : 'Your profile'
+                  ? `Your profile · Loading rank · ${trophySummary.total} trophies`
+                  : 'Your profile · Loading rank'
+                : rank != null
+                  ? trophySummary.total > 0
+                    ? `Your profile · #${rank} · ${trophySummary.total} trophies`
+                    : `Your profile · #${rank}`
+                  : trophySummary.total > 0
+                    ? `Your profile · ${trophySummary.total} trophies`
+                    : 'Your profile'
             }
             aria-current={navActive('you', hash) ? 'page' : undefined}
           >
-            {rank != null ? (
-              <span className="site-header__you-rank">#{rank}</span>
-            ) : null}
+            {rankLoading ? (
+              <span
+                className="site-header__you-rank site-header__you-rank--loading"
+                aria-label="Loading rank"
+              >
+                <span className="site-header__rank-spinner" aria-hidden="true" />
+              </span>
+            ) : (
+              <span className="site-header__you-rank">
+                {rank != null ? `#${rank}` : '–'}
+              </span>
+            )}
             {trophySummary.total > 0 ? (
               <TrophyMark
                 count={trophySummary.total}
@@ -292,7 +306,7 @@ export function SiteHeader() {
                     {playerName ? (
                       <span className="site-drawer__meta">
                         {[
-                          rank != null ? `#${rank}` : null,
+                          rankLoading ? '…' : rank != null ? `#${rank}` : '–',
                           trophySummary.total > 0
                             ? `${trophySummary.total} trophy${trophySummary.total === 1 ? '' : 'ies'}`
                             : null,

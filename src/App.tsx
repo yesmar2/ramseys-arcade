@@ -178,7 +178,7 @@ function App() {
   if (route.name === 'gamePlay' && route.slug === 'snake') return <SnakePage />
   if (route.name === 'gamePlay' && route.slug === 'pop') return <WhackPage />
   if (route.name === 'gamePlay' && route.slug === 'simon') return <SimonPage />
-  if (route.name === 'gamePlay' && route.slug === 'dead-center') return <DeadCenterPage />
+  if (route.name === 'gamePlay' && route.slug === 'centroid') return <DeadCenterPage />
   if (route.name === 'gamePlay' && route.slug === 'asteroids') return <AsteroidsPage />
   if (route.name === 'gamePlay' && route.slug === 'crosswalk') return <CrosswalkPage />
   if (route.name === 'gamePlay' && route.slug === 'stride') return <StridePage />

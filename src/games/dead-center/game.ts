@@ -92,7 +92,7 @@ function designScale(w: number, h: number) {
 const MAX_ROUND_SCORE = 1000
 
 function loadBest() {
-  return getPersonalBest('dead-center')
+  return getPersonalBest('centroid')
 }
 
 function saveBest(_score: number) {}
