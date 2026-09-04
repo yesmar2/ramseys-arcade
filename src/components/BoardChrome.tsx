@@ -21,9 +21,10 @@ export function PeriodSwitcher({
   accent,
   label = 'Time period',
 }: PeriodSwitcherProps) {
-  const style = accent
-    ? ({ '--period-accent': accent } as CSSProperties)
-    : undefined
+  const style = {
+    '--period-count': VISIBLE_LEADERBOARD_PERIODS.length,
+    ...(accent ? { '--period-accent': accent } : null),
+  } as CSSProperties
 
   return (
     <div

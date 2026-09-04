@@ -6970,7 +6970,7 @@ html[data-theme='dark'] .patriot__power-mark {
 
 .lb-periods--segment {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(var(--period-count, 3), minmax(0, 1fr));
   gap: 0.2rem;
   width: 100%;
   margin-inline: auto;
@@ -8841,14 +8841,21 @@ html[data-theme='dark'] .patriot__power-mark {
   justify-content: center;
 }
 
-.score-save__links a {
+.score-save__links a,
+.score-save__text-link {
   font-size: 0.95rem;
   font-weight: 700;
   color: var(--muted);
   text-decoration: none;
+  background: none;
+  border: 0;
+  padding: 0;
+  font-family: inherit;
+  cursor: pointer;
 }
 
-.score-save__links a:hover {
+.score-save__links a:hover,
+.score-save__text-link:hover {
   color: var(--ink);
   text-decoration: underline;
   text-underline-offset: 3px;

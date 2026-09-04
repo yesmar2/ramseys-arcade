@@ -58,7 +58,7 @@ export function booksCelebrationPayload(books: RunAchievement[]): CelebPayload {
 const PERIOD_ORDER: LeaderboardPeriod[] = ['all', 'monthly', 'weekly', 'daily']
 const TOP_TEN = 10
 
-function rankedPeriods(
+function celebrationBoardHits(
   ranks?: Partial<Record<LeaderboardPeriod, number>>,
 ): BoardHit[] {
   if (!ranks) return []
@@ -66,6 +66,20 @@ function rankedPeriods(
     if (!VISIBLE_LEADERBOARD_PERIODS.includes(period)) return []
     const rank = ranks[period]
     return rank != null && rank >= 1 && rank <= TOP_TEN ? [{ period, rank }] : []
+  })
+}
+
+/** Places that did not earn a celebration — still useful on the game-over card. */
+function gameOverBoardHits(
+  ranks?: Partial<Record<LeaderboardPeriod, number>>,
+): BoardHit[] {
+  if (!ranks) return []
+  return PERIOD_ORDER.flatMap((period) => {
+    if (!VISIBLE_LEADERBOARD_PERIODS.includes(period)) return []
+    const rank = ranks[period]
+    if (rank == null || !(rank >= 1)) return []
+    if (rank <= TOP_TEN) return []
+    return [{ period, rank }]
   })
 }
 
@@ -89,7 +103,7 @@ function buildCelebration(
   priorAllTime: number,
   ranks?: Partial<Record<LeaderboardPeriod, number>>,
 ): CelebPayload | null {
-  const boards = rankedPeriods(ranks)
+  const boards = celebrationBoardHits(ranks)
   const personalBest =
     score > priorAllTime
       ? {
@@ -170,7 +184,7 @@ function awardCards(payload: CelebPayload): {
 }
 
 function RankChips({ ranks }: { ranks?: Partial<Record<LeaderboardPeriod, number>> }) {
-  const items = rankedPeriods(ranks)
+  const items = gameOverBoardHits(ranks)
   if (!items.length) return null
   return (
     <ul className="score-save__ranks" aria-label="Leaderboard ranks">
@@ -182,6 +196,21 @@ function RankChips({ ranks }: { ranks?: Partial<Record<LeaderboardPeriod, number
       ))}
     </ul>
   )
+}
+
+/** Leave the play overlay and open an in-app hash route. */
+function leavePlayTo(href: string) {
+  const hash = href.startsWith('#') ? href : `#${href}`
+  const next = `${window.location.pathname}${window.location.search}${hash}`
+  window.history.pushState(null, '', next)
+  window.dispatchEvent(new Event('hashchange'))
+}
+
+function boardsHref(gameSlug: string) {
+  if ((LEADERBOARD_GAMES as readonly string[]).includes(gameSlug)) {
+    return gameBoardHref(gameSlug as LeaderboardGame, defaultPeriod())
+  }
+  return `#/games/${encodeURIComponent(gameSlug)}`
 }
 
 type Particle = {
@@ -529,14 +558,6 @@ function cleanName(raw: string) {
   return normalizePlayerName(raw)
 }
 
-function boardsHref(gameSlug: string) {
-  if ((LEADERBOARD_GAMES as readonly string[]).includes(gameSlug)) {
-    // Same destination as Game hub → “Full board”
-    return gameBoardHref(gameSlug as LeaderboardGame, defaultPeriod())
-  }
-  return `#/games/${encodeURIComponent(gameSlug)}`
-}
-
 type Phase = 'checking' | 'needName' | 'saving' | 'saved' | 'error'
 
 export function ScoreSaveCard({
@@ -815,26 +836,27 @@ export function ScoreSaveCard({
             Play again
           </button>
           <div className="score-save__links">
-            <a
-              href={boardsHref(gameSlug)}
+            <button
+              type="button"
+              className="score-save__text-link"
               onClick={(e) => {
-                // Force leave play route — some overlays swallow plain hash clicks.
-                e.preventDefault()
-                window.location.assign(boardsHref(gameSlug))
+                e.stopPropagation()
+                leavePlayTo(boardsHref(gameSlug))
               }}
             >
               Boards
-            </a>
+            </button>
             {gameHasRecords(gameSlug) ? (
-              <a
-                href={recordsHref(gameSlug)}
+              <button
+                type="button"
+                className="score-save__text-link"
                 onClick={(e) => {
-                  e.preventDefault()
-                  window.location.assign(recordsHref(gameSlug))
+                  e.stopPropagation()
+                  leavePlayTo(recordsHref(gameSlug))
                 }}
               >
                 Record Books
-              </a>
+              </button>
             ) : null}
           </div>
         </>
