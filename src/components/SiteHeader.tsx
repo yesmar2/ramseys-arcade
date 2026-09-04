@@ -161,8 +161,8 @@ export function SiteHeader() {
                     ? `Your profile · #${rank} · ${trophySummary.total} trophies`
                     : `Your profile · #${rank}`
                   : trophySummary.total > 0
-                    ? `Your profile · ${trophySummary.total} trophies`
-                    : 'Your profile'
+                    ? `Your profile · No rank yet · ${trophySummary.total} trophies`
+                    : 'Your profile · No rank yet'
             }
             aria-current={navActive('you', hash) ? 'page' : undefined}
           >
@@ -173,11 +173,9 @@ export function SiteHeader() {
               >
                 <span className="site-header__rank-spinner" aria-hidden="true" />
               </span>
-            ) : (
-              <span className="site-header__you-rank">
-                {rank != null ? `#${rank}` : '–'}
-              </span>
-            )}
+            ) : rank != null ? (
+              <span className="site-header__you-rank">#{rank}</span>
+            ) : null}
             <span className="site-header__you-name">{playerName}</span>
             {trophySummary.total > 0 ? (
               <TrophyMark
