@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { detectDeviceType } from '../lib/device'
 
 type ShareBoardButtonProps = {
   /** Clever line for share sheet / clipboard / Messages / email — not link-only. */
@@ -62,6 +63,15 @@ function copyText(text: string): boolean {
   }
 }
 
+/**
+ * Desktop Chromium/Edge often route through OS share, which keeps the URL and
+ * drops `text`. Mobile share sheets honor both — keep native there.
+ */
+function preferNativeShare() {
+  if (typeof navigator.share !== 'function') return false
+  return detectDeviceType() !== 'desktop'
+}
+
 export function ShareBoardButton({ label, url, className = '' }: ShareBoardButtonProps) {
   const titleId = useId()
   const buttonRef = useRef<HTMLButtonElement>(null)
@@ -103,12 +113,11 @@ export function ShareBoardButton({ label, url, className = '' }: ShareBoardButto
       const shareLabel = labelRef.current
       setHref(link)
 
-      if (typeof navigator.share !== 'function') {
+      if (!preferNativeShare()) {
         setOpen(true)
         return
       }
 
-      // Include `text` so Messages/email/etc get a line, not just the bare URL.
       void navigator
         .share({
           title: shareLabel,
@@ -188,8 +197,7 @@ export function ShareBoardButton({ label, url, className = '' }: ShareBoardButto
                 <p className="share-sheet__label">{label}</p>
                 <p className="share-sheet__url">{href}</p>
                 <p className="share-sheet__hint">
-                  System share wasn’t available. Pick an app below, or copy the
-                  link.
+                  Pick an app below, or copy the message and link.
                 </p>
 
                 <div className="share-sheet__actions">
@@ -231,7 +239,7 @@ export function ShareBoardButton({ label, url, className = '' }: ShareBoardButto
                     className="share-sheet__btn share-sheet__btn--primary"
                     onClick={() => doCopy(href)}
                   >
-                    {copied ? 'Copied!' : 'Copy link'}
+                    {copied ? 'Copied!' : 'Copy message'}
                   </button>
                 </div>
               </div>
