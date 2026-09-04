@@ -5998,10 +5998,27 @@ html[data-theme='dark'] .patriot__power-mark {
   min-height: 4.25rem;
 }
 
-.trophy-case__medal {
+.trophy-art {
   display: flex;
   align-items: center;
   justify-content: center;
+  line-height: 0;
+}
+
+.trophy-art svg {
+  display: block;
+  overflow: visible;
+}
+
+.trophy-art--sm {
+  filter: none;
+}
+
+.trophy-art--md {
+  filter: drop-shadow(0 3px 6px rgba(var(--ink-rgb), 0.14));
+}
+
+.trophy-art--lg {
   filter: drop-shadow(0 5px 10px rgba(var(--ink-rgb), 0.16));
 }
 
@@ -6021,6 +6038,14 @@ html[data-theme='dark'] .patriot__power-mark {
   font-family: var(--font-display);
   font-size: 17px;
   font-weight: 700;
+}
+
+.trophy-art--sm .trophy-case__medal-num {
+  font-size: 14px;
+}
+
+.trophy-art--md .trophy-case__medal-num {
+  font-size: 15px;
 }
 
 .trophy-case__medal--gold .trophy-case__medal-disk {
@@ -6069,13 +6094,6 @@ html[data-theme='dark'] .patriot__power-mark {
   fill: none;
   stroke-width: 3.4;
   stroke-linecap: round;
-}
-
-.trophy-case__cup {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  filter: drop-shadow(0 5px 10px rgba(var(--ink-rgb), 0.16));
 }
 
 .trophy-case__cup--gold .trophy-case__cup-bowl,
@@ -6161,13 +6179,6 @@ html[data-theme='dark'] .patriot__power-mark {
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
-}
-
-.trophy-case__ribbon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  filter: drop-shadow(0 4px 8px rgba(var(--ink-rgb), 0.12));
 }
 
 .trophy-case__ribbon--weekly .trophy-case__ribbon-band {
@@ -7523,67 +7534,13 @@ html[data-theme='dark'] .patriot__power-mark {
   display: inline-flex;
   flex: none;
   line-height: 0;
+  align-items: center;
+  justify-content: center;
 }
 
 .lb-medal svg {
   display: block;
   overflow: visible;
-}
-
-.lb-medal__ribbon {
-  stroke: rgba(0, 0, 0, 0.12);
-  stroke-width: 0.4;
-}
-
-.lb-medal__ribbon--left {
-  fill: #c45a5a;
-}
-
-.lb-medal__ribbon--right {
-  fill: #9e3f3f;
-}
-
-.lb-medal__disk {
-  stroke: rgba(0, 0, 0, 0.18);
-  stroke-width: 0.55;
-}
-
-.lb-medal__ring {
-  fill: none;
-  stroke: rgba(255, 255, 255, 0.45);
-  stroke-width: 0.7;
-}
-
-.lb-medal__num {
-  fill: rgba(0, 0, 0, 0.55);
-  font-family: var(--font-display);
-  font-size: 7.2px;
-  font-weight: 700;
-  dominant-baseline: middle;
-}
-
-.lb-medal--gold .lb-medal__disk {
-  fill: #e8c04a;
-}
-
-.lb-medal--silver .lb-medal__disk {
-  fill: #c2ced6;
-}
-
-.lb-medal--bronze .lb-medal__disk {
-  fill: #d08952;
-}
-
-.lb-medal--gold .lb-medal__ring {
-  stroke: #f6e29a;
-}
-
-.lb-medal--silver .lb-medal__ring {
-  stroke: #e8eef2;
-}
-
-.lb-medal--bronze .lb-medal__ring {
-  stroke: #f0c19a;
 }
 
 .lb-row--you .lb-row__rank,
@@ -7674,6 +7631,19 @@ html[data-theme='dark'] .patriot__power-mark {
     grid-template-columns: 2.5rem 1fr auto;
     gap: 0.4rem;
     padding: 0.55rem 0.6rem;
+  }
+
+  .lb-row--medal {
+    grid-template-columns: 4.1rem 1fr auto;
+  }
+
+  .lb-row--medal .lb-row__rank {
+    gap: 0.2rem;
+  }
+
+  .lb-row--medal .lb-medal {
+    transform: scale(1.05);
+    transform-origin: center;
   }
 
   .lb-row__date {
@@ -8070,9 +8040,8 @@ html[data-theme='dark'] .patriot__power-mark {
 }
 
 .game-lobby__podium-card .lb-medal {
-  transform: scale(1.2);
-  transform-origin: center top;
-  margin-bottom: 0.1rem;
+  transform: none;
+  margin-bottom: 0.2rem;
 }
 
 .game-lobby__podium-rank {

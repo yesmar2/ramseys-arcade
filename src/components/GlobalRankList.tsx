@@ -65,7 +65,7 @@ export function GlobalRankList({
       >
         <span className="lb-row__rank">
           <span className="lb-row__rank-num">#{entry.rank}</span>
-          {medal ? <PodiumMedal kind={medal} /> : null}
+          {medal ? <PodiumMedal kind={medal} period={period} /> : null}
         </span>
         <a className="lb-row__name lb-row__name--link" href={rankHref(name, period)}>
           {nameInner}

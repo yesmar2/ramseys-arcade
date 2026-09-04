@@ -53,7 +53,7 @@ export function PeriodMiniBoard({
               <li key={`empty-${rank}`} className="lb-summary__row lb-summary__row--empty">
                 <span className="lb-summary__rank">
                   <span className="lb-summary__rank-num">#{rank}</span>
-                  {medal ? <PodiumMedal kind={medal} /> : null}
+                  {medal ? <PodiumMedal kind={medal} period={period} /> : null}
                 </span>
                 <span className="lb-summary__name lb-summary__placeholder">Open</span>
                 <span className="lb-summary__score lb-summary__placeholder">—</span>
@@ -69,7 +69,7 @@ export function PeriodMiniBoard({
             >
               <span className="lb-summary__rank">
                 <span className="lb-summary__rank-num">#{rank}</span>
-                {medal ? <PodiumMedal kind={medal} /> : null}
+                {medal ? <PodiumMedal kind={medal} period={period} /> : null}
               </span>
               <a className="lb-summary__player" href={rankHref(name, period)} title={name}>
                 <PlayerAvatar avatarId={entry.avatarId} name={name} size="sm" />

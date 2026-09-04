@@ -46,7 +46,7 @@ export function TopScorePodium({
               key={`open-${rank}`}
               className={`game-lobby__podium-card game-lobby__podium-card--open${medal ? ` game-lobby__podium-card--${medal}` : ''}`}
             >
-              {medal ? <PodiumMedal kind={medal} /> : (
+              {medal ? <PodiumMedal kind={medal} period={period} size="md" /> : (
                 <span className="game-lobby__podium-rank">#{rank}</span>
               )}
               <span className="game-lobby__podium-name game-lobby__podium-name--muted">Open</span>
@@ -62,7 +62,7 @@ export function TopScorePodium({
             className={`game-lobby__podium-card${isYou ? ' game-lobby__podium-card--you' : ''}${medal ? ` game-lobby__podium-card--${medal}` : ''}`}
             aria-current={isYou ? 'true' : undefined}
           >
-            {medal ? <PodiumMedal kind={medal} /> : (
+            {medal ? <PodiumMedal kind={medal} period={period} size="md" /> : (
               <span className="game-lobby__podium-rank">#{rank}</span>
             )}
             <PlayerAvatar avatarId={entry.avatarId} name={name} size="sm" />
