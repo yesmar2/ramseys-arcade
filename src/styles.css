@@ -5965,26 +5965,28 @@ html[data-theme='dark'] .patriot__power-mark {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 1.15rem;
-  font-size: 0.58rem;
+  min-height: 1.2rem;
+  font-size: 0.62rem;
   font-weight: 800;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   line-height: 1;
-  padding: 0.2rem 0.45rem;
+  padding: 0.22rem 0.5rem;
   border-radius: 999px;
 }
 
 .trophy-case__badge--monthly {
-  color: #9a7200;
-  background: rgba(255, 196, 64, 0.2);
-  border: 1px solid rgba(255, 196, 64, 0.34);
+  color: #fff8e6;
+  background: rgba(18, 14, 8, 0.78);
+  border: 1px solid rgba(255, 214, 90, 0.55);
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.35);
 }
 
 .trophy-case__badge--weekly {
-  color: #3d5fbf;
-  background: rgba(107, 140, 255, 0.14);
-  border: 1px solid rgba(107, 140, 255, 0.28);
+  color: #eef3ff;
+  background: rgba(12, 18, 36, 0.78);
+  border: 1px solid rgba(130, 160, 255, 0.5);
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.35);
 }
 
 .trophy-case__icon {
@@ -6005,55 +6007,70 @@ html[data-theme='dark'] .patriot__power-mark {
   display: flex;
   align-items: center;
   justify-content: center;
-  filter: drop-shadow(0 4px 8px rgba(var(--ink-rgb), 0.12));
+  filter: drop-shadow(0 5px 10px rgba(var(--ink-rgb), 0.16));
 }
 
-.trophy-case__cup--gold .trophy-case__cup-bowl {
-  fill: #f0c030;
+.trophy-case__cup--gold .trophy-case__cup-bowl,
+.trophy-case__cup--gold .trophy-case__cup-rim,
+.trophy-case__cup--gold .trophy-case__cup-knob,
+.trophy-case__cup--gold .trophy-case__cup-base {
+  fill: #f2c43a;
 }
 
 .trophy-case__cup--gold .trophy-case__cup-shine {
-  fill: rgba(255, 248, 220, 0.55);
+  fill: rgba(255, 250, 230, 0.62);
 }
 
-.trophy-case__cup--gold .trophy-case__cup-handle,
+.trophy-case__cup--gold .trophy-case__cup-handle {
+  stroke: #c99214;
+}
+
 .trophy-case__cup--gold .trophy-case__cup-stem,
-.trophy-case__cup--gold .trophy-case__cup-knob,
-.trophy-case__cup--gold .trophy-case__cup-base,
-.trophy-case__cup--gold .trophy-case__cup-plinth {
-  fill: #d4a017;
+.trophy-case__cup--gold .trophy-case__cup-plinth,
+.trophy-case__cup--gold .trophy-case__cup-foot {
+  fill: #c99214;
 }
 
-.trophy-case__cup--silver .trophy-case__cup-bowl {
-  fill: #d8dde3;
+.trophy-case__cup--silver .trophy-case__cup-bowl,
+.trophy-case__cup--silver .trophy-case__cup-rim,
+.trophy-case__cup--silver .trophy-case__cup-knob,
+.trophy-case__cup--silver .trophy-case__cup-base {
+  fill: #e2e7ed;
 }
 
 .trophy-case__cup--silver .trophy-case__cup-shine {
-  fill: rgba(255, 255, 255, 0.55);
+  fill: rgba(255, 255, 255, 0.7);
 }
 
-.trophy-case__cup--silver .trophy-case__cup-handle,
+.trophy-case__cup--silver .trophy-case__cup-handle {
+  stroke: #8f99a6;
+}
+
 .trophy-case__cup--silver .trophy-case__cup-stem,
-.trophy-case__cup--silver .trophy-case__cup-knob,
-.trophy-case__cup--silver .trophy-case__cup-base,
-.trophy-case__cup--silver .trophy-case__cup-plinth {
-  fill: #9aa3ad;
+.trophy-case__cup--silver .trophy-case__cup-plinth,
+.trophy-case__cup--silver .trophy-case__cup-foot {
+  fill: #8f99a6;
 }
 
-.trophy-case__cup--bronze .trophy-case__cup-bowl {
-  fill: #d4955c;
+.trophy-case__cup--bronze .trophy-case__cup-bowl,
+.trophy-case__cup--bronze .trophy-case__cup-rim,
+.trophy-case__cup--bronze .trophy-case__cup-knob,
+.trophy-case__cup--bronze .trophy-case__cup-base {
+  fill: #db9a5a;
 }
 
 .trophy-case__cup--bronze .trophy-case__cup-shine {
-  fill: rgba(255, 236, 214, 0.45);
+  fill: rgba(255, 236, 214, 0.5);
 }
 
-.trophy-case__cup--bronze .trophy-case__cup-handle,
+.trophy-case__cup--bronze .trophy-case__cup-handle {
+  stroke: #a8642c;
+}
+
 .trophy-case__cup--bronze .trophy-case__cup-stem,
-.trophy-case__cup--bronze .trophy-case__cup-knob,
-.trophy-case__cup--bronze .trophy-case__cup-base,
-.trophy-case__cup--bronze .trophy-case__cup-plinth {
-  fill: #b87333;
+.trophy-case__cup--bronze .trophy-case__cup-plinth,
+.trophy-case__cup--bronze .trophy-case__cup-foot {
+  fill: #a8642c;
 }
 
 .trophy-case__rank {
@@ -6123,7 +6140,7 @@ html[data-theme='dark'] .patriot__power-mark {
 }
 
 .trophy-case__legend .trophy-case__cup svg {
-  width: 1.7rem;
+  width: 1.85rem;
   height: auto;
 }
 

@@ -45,27 +45,38 @@ type CupTone = 'gold' | 'silver' | 'bronze'
 function MonthlyTrophyCup({ tone }: { tone: CupTone }) {
   return (
     <span className={`trophy-case__cup trophy-case__cup--${tone}`} aria-hidden="true">
-      <svg viewBox="0 0 40 48" width="58" height="70" focusable="false">
+      <svg viewBox="0 0 64 72" width="64" height="72" focusable="false">
+        <path
+          className="trophy-case__cup-handle"
+          fill="none"
+          strokeWidth="3.2"
+          strokeLinecap="round"
+          d="M18 15c-6.8.4-10.8 4.6-10.8 9.8 0 5.2 3.6 9 9.4 9.6"
+        />
+        <path
+          className="trophy-case__cup-handle"
+          fill="none"
+          strokeWidth="3.2"
+          strokeLinecap="round"
+          d="M46 15c6.8.4 10.8 4.6 10.8 9.8 0 5.2-3.6 9-9.4 9.6"
+        />
         <path
           className="trophy-case__cup-bowl"
-          d="M9 5h22v10.5c0 5.6-3.9 10.6-9.4 12.2C15.9 26.1 12 21.1 12 15.5V5H9Z"
+          d="M17 11.2c0-.9.7-1.6 1.6-1.6h26.8c.9 0 1.6.7 1.6 1.6v1.8c0 9.6-5.4 17.4-13.8 20.4v6.4h-2.8v-6.4C22.4 30.4 17 22.6 17 13V11.2Z"
+        />
+        <path
+          className="trophy-case__cup-rim"
+          d="M15.5 9h33c.8 0 1.4.6 1.4 1.4v1.3H14.1V10.4c0-.8.6-1.4 1.4-1.4Z"
         />
         <path
           className="trophy-case__cup-shine"
-          d="M13.2 7.2h7.2c.45 0 .75.45.55.85l-2.1 5.4H12.5c-.4 0-.65-.45-.4-.8l1.1-5.45Z"
+          d="M22 13.4h9.2c.5 0 .9.5.7 1L29.4 23h-8.2c-.5 0-.75-.55-.5-.95L22 13.4Z"
         />
-        <path
-          className="trophy-case__cup-handle"
-          d="M9 8.2H5.8A3.4 3.4 0 0 0 5.8 15H9"
-        />
-        <path
-          className="trophy-case__cup-handle"
-          d="M31 8.2h3.2A3.4 3.4 0 0 1 34.2 15H31"
-        />
-        <path className="trophy-case__cup-stem" d="M17.4 27.5h5.2v4.2h-5.2z" />
-        <path className="trophy-case__cup-knob" d="M16.2 31.5h7.6v2.2h-7.6z" />
-        <path className="trophy-case__cup-base" d="M12.5 40.2h15v3.2h-15z" />
-        <path className="trophy-case__cup-plinth" d="M10.2 43.2h19.6v2.6H10.2z" />
+        <path className="trophy-case__cup-stem" d="M29.4 41h5.2v7.4h-5.2z" />
+        <path className="trophy-case__cup-knob" d="M26.8 47.8h10.4v3h-10.4z" />
+        <path className="trophy-case__cup-base" d="M22.5 55.5h19v3.4h-19z" />
+        <path className="trophy-case__cup-plinth" d="M18 58.9h28v4.8H18z" />
+        <path className="trophy-case__cup-foot" d="M15.2 63.7h33.6v3.6H15.2z" />
       </svg>
     </span>
   )
