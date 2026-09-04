@@ -1,7 +1,7 @@
 import { APP_NAME } from '../lib/brand'
 import { LegalContact, LegalDocument } from '../components/LegalDocument'
 
-const UPDATED = 'August 31, 2026'
+const UPDATED = 'September 4, 2026'
 
 export function TermsPage() {
   return (

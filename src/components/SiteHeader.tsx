@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { useAuth } from '../hooks/useAuth'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { rankHref, useHashRoute } from '../hooks/useHashRoute'
+import { APP_NAME_ACCENT, APP_NAME_LEAD } from '../lib/brand'
 import { useGlobalRank, useGlobalRankLoading } from '../lib/globalRank'
 import { currentTheme, THEME_EVENT, toggleTheme, type Theme } from '../lib/theme'
 import { normalizePlayerName } from '../lib/leaderboard'
@@ -128,7 +129,8 @@ export function SiteHeader() {
           </svg>
         </button>
         <a className="site-header__brand" href="#/">
-          Ford<span>riva</span>
+          {APP_NAME_LEAD}
+          <span>{APP_NAME_ACCENT}</span>
         </a>
         <div className="site-header__links" aria-label="Primary">
           {SITE_NAV_LINKS.map((item) => (

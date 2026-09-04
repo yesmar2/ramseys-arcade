@@ -1,14 +1,14 @@
-import { APP_NAME } from '../lib/brand'
+import { APP_NAME, SITE_HOST } from '../lib/brand'
 import { LegalContact, LegalDocument } from '../components/LegalDocument'
 
-const UPDATED = 'August 31, 2026'
+const UPDATED = 'September 4, 2026'
 
 export function PrivacyPage() {
   return (
     <LegalDocument title="Privacy Policy" updated={UPDATED}>
       <p>
         This Privacy Policy describes how {APP_NAME} (“we”, “us”) handles information when you
-        use our free browser arcade at fordriva.com and related pages (the “Service”).
+        use our free browser arcade at {SITE_HOST} and related pages (the “Service”).
       </p>
 
       <h2>Information we collect</h2>

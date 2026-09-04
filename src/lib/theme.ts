@@ -1,5 +1,5 @@
-export const THEME_KEY = 'fordriva-theme'
-const LEGACY_THEME_KEYS = ['acralia-theme', 'archivade-theme'] as const
+export const THEME_KEY = 'skermix-theme'
+const LEGACY_THEME_KEYS = ['fordriva-theme', 'acralia-theme', 'archivade-theme'] as const
 export const THEME_EVENT = 'arcade-theme'
 
 export type Theme = 'light' | 'dark'

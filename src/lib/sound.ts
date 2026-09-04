@@ -11,12 +11,13 @@ import {
 export type { SoundName, SoundPackId }
 export { SOUND_PACK_IDS, SOUND_PACK_LABELS }
 
-const MUTE_KEY = 'fordriva-mute'
-const MUSIC_KEY = 'fordriva-music'
-const PACK_KEY = 'fordriva-sfx-pack'
+const MUTE_KEY = 'skermix-mute'
+const MUSIC_KEY = 'skermix-music'
+const PACK_KEY = 'skermix-sfx-pack'
 export const SOUND_PACK_EVENT = 'arcade-sfx-pack'
-const LEGACY_MUTE_KEYS = ['acralia-mute', 'archivade-mute'] as const
-const LEGACY_MUSIC_KEYS = ['acralia-music', 'archivade-music'] as const
+const LEGACY_MUTE_KEYS = ['fordriva-mute', 'acralia-mute', 'archivade-mute'] as const
+const LEGACY_MUSIC_KEYS = ['fordriva-music', 'acralia-music', 'archivade-music'] as const
+const LEGACY_PACK_KEYS = ['fordriva-sfx-pack'] as const
 const MASTER_GAIN = 0.22
 const MUSIC_GAIN = 0.07
 const MUSIC_STEP = 1.28
@@ -81,7 +82,16 @@ function readMusicVol() {
 
 function readSoundPack(): SoundPackId {
   try {
-    const raw = localStorage.getItem(PACK_KEY)
+    let raw = localStorage.getItem(PACK_KEY)
+    if (!raw || !isSoundPackId(raw)) {
+      for (const key of LEGACY_PACK_KEYS) {
+        raw = localStorage.getItem(key)
+        if (raw && isSoundPackId(raw)) {
+          localStorage.setItem(PACK_KEY, raw)
+          break
+        }
+      }
+    }
     if (raw && isSoundPackId(raw)) return raw
   } catch {
     /* ignore */

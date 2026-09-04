@@ -1,5 +1,8 @@
-const DISMISS_KEY = 'fordriva-pwa-install-dismissed'
-const LEGACY_DISMISS_KEYS = ['acralia-pwa-install-dismissed'] as const
+const DISMISS_KEY = 'skermix-pwa-install-dismissed'
+const LEGACY_DISMISS_KEYS = [
+  'fordriva-pwa-install-dismissed',
+  'acralia-pwa-install-dismissed',
+] as const
 
 export type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>
