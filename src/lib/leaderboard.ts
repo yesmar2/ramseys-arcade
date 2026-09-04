@@ -18,12 +18,12 @@ export const LEADERBOARD_GAMES = [
   'asteroids',
   'patriot',
   'snake',
-  'pop',
+  'stride',
   'stacker',
   'centroid',
+  'pop',
   'simon',
   'crosswalk',
-  'stride',
   'spotter',
 ] as const
 export type LeaderboardGame = (typeof LEADERBOARD_GAMES)[number]

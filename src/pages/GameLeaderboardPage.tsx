@@ -116,6 +116,7 @@ export function GameLeaderboardPage({
           playHref={canPlay ? playHref : undefined}
           action={
             <ShareBoardButton
+              cta="Ship the board"
               label={`${game.name} · ${PERIOD_LABELS[period]} · ${APP_NAME}`}
               url={gameBoardHref(gameSlug, period)}
             />

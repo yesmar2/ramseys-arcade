@@ -115,6 +115,7 @@ export function RankPage({
           {viewedName ? (
             <div className="lb-game-board__trailing">
               <ShareBoardButton
+                cta="Flex this tag"
                 label={
                   rank != null
                     ? `${viewedName} · #${rank} global · ${APP_NAME}`

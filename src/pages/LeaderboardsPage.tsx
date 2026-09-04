@@ -257,6 +257,7 @@ function GlobalRankingsView({ period }: { period: LeaderboardPeriod }) {
           <h1 className="lb-page__title">Boards</h1>
           <div className="lb-game-board__trailing">
             <ShareBoardButton
+              cta="Boast a little"
               label={`Global rankings · ${PERIOD_LABELS[period]} · ${APP_NAME}`}
               url={globalRankingsHref(period)}
             />

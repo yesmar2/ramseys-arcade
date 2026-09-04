@@ -24,11 +24,13 @@ export function renderGame(
   ctx.fillStyle = playfieldColor()
   ctx.fillRect(0, 0, w, h)
 
-  ctx.fillStyle = dark ? 'rgba(74, 168, 232, 0.08)' : 'rgba(74, 168, 232, 0.1)'
-  for (let py = 14; py < h; py += 28) {
-    for (let px = 14; px < w; px += 28) {
+  // Same starfield treatment as Asteroids
+  const step = 28 * Math.max(0.7, Math.min(w, h) / 540)
+  ctx.fillStyle = 'rgba(74, 168, 232, 0.14)'
+  for (let py = step * 0.4; py < h; py += step) {
+    for (let px = step * 0.4; px < w; px += step) {
       ctx.beginPath()
-      ctx.arc(px, py, 1.1, 0, Math.PI * 2)
+      ctx.arc(px, py, 1.15, 0, Math.PI * 2)
       ctx.fill()
     }
   }

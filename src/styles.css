@@ -4854,12 +4854,14 @@ html[data-theme='dark'] .patriot__power-mark {
 }
 
 .lb-share {
-  display: grid;
-  place-items: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
   flex: none;
-  width: 2.35rem;
-  height: 2.35rem;
-  padding: 0;
+  width: auto;
+  min-height: 2.35rem;
+  padding: 0.35rem 0.75rem 0.35rem 0.65rem;
   border: 1px solid rgba(var(--ink-rgb), 0.1);
   border-radius: 999px;
   background: rgba(var(--surface-rgb), 0.85);
@@ -4868,12 +4870,22 @@ html[data-theme='dark'] .patriot__power-mark {
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
   pointer-events: auto;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
 }
 
 .lb-share__icon {
-  width: 1.1rem;
-  height: 1.1rem;
+  width: 1.05rem;
+  height: 1.05rem;
   display: block;
+  flex: none;
+}
+
+.lb-share__text {
+  line-height: 1;
 }
 
 .lb-share:hover,

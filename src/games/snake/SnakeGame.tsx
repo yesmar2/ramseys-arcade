@@ -300,6 +300,7 @@ export function SnakeGame() {
         <GameStage
           aspectWidth={aspect.w}
           aspectHeight={aspect.h}
+          fill
         >
           <canvas ref={canvasRef} className="snake__viewport" />
 

@@ -5,6 +5,10 @@ type ShareBoardButtonProps = {
   /** Short line for share sheet / clipboard, e.g. "Play Asteroids on Fordriva" */
   label: string
   /**
+   * Visible button copy. Defaults to a short, clever CTA — never link-only.
+   */
+  cta?: string
+  /**
    * Hash path (`#/games/asteroids`), absolute URL, or omit for the current page.
    * Hash paths become full links so they work when pasted outside the app.
    */
@@ -62,7 +66,12 @@ function copyText(text: string): boolean {
   }
 }
 
-export function ShareBoardButton({ label, url, className = '' }: ShareBoardButtonProps) {
+export function ShareBoardButton({
+  label,
+  cta = 'Pass it on',
+  url,
+  className = '',
+}: ShareBoardButtonProps) {
   const titleId = useId()
   const buttonRef = useRef<HTMLButtonElement>(null)
   const labelRef = useRef(label)
@@ -144,6 +153,7 @@ export function ShareBoardButton({ label, url, className = '' }: ShareBoardButto
   const encoded = encodeURIComponent(href)
   const encodedLabel = encodeURIComponent(label)
   const encodedBody = encodeURIComponent(`${label}\n${href}`)
+  const buttonText = copied ? 'Copied!' : cta
 
   return (
     <>
@@ -151,10 +161,11 @@ export function ShareBoardButton({ label, url, className = '' }: ShareBoardButto
         ref={buttonRef}
         type="button"
         className={`lb-share${className ? ` ${className}` : ''}`}
-        aria-label={copied ? 'Link copied' : `Share: ${label}`}
-        title={copied ? 'Copied' : 'Share'}
+        aria-label={copied ? 'Link copied' : `${cta}: ${label}`}
+        title={copied ? 'Copied' : cta}
       >
         <ShareIcon copied={copied} />
+        <span className="lb-share__text">{buttonText}</span>
       </button>
 
       {open && typeof document !== 'undefined'
@@ -241,3 +252,4 @@ export function ShareBoardButton({ label, url, className = '' }: ShareBoardButto
     </>
   )
 }
+
