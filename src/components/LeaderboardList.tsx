@@ -71,9 +71,12 @@ export function LeaderboardList({
         style={isYou ? youStyle : undefined}
         aria-current={isYou ? 'true' : undefined}
       >
-        <span className="lb-row__rank">
-          <span className="lb-row__rank-num">#{rank}</span>
-          {medal ? <PodiumMedal kind={medal} period={period} /> : null}
+        <span className="lb-row__rank" aria-label={`#${rank}`}>
+          {medal ? (
+            <PodiumMedal kind={medal} period={period} />
+          ) : (
+            <span className="lb-row__rank-num">#{rank}</span>
+          )}
         </span>
         <a className="lb-row__name lb-row__name--link" href={rankHref(name, period)}>
           <PlayerAvatar avatarId={entry.avatarId} name={name} size="sm" />

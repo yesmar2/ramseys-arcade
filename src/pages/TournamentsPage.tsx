@@ -163,9 +163,12 @@ function SingleGameStandings({
             className={`lb-row lb-row--score-only${isYou ? ' lb-row--you' : ''}${medal ? ' lb-row--medal' : ''}`}
             aria-current={isYou ? 'true' : undefined}
           >
-            <span className="lb-row__rank">
-              <span className="lb-row__rank-num">#{rank}</span>
-              {medal ? <PodiumMedal kind={medal} /> : null}
+            <span className="lb-row__rank" aria-label={`#${rank}`}>
+              {medal ? (
+                <PodiumMedal kind={medal} />
+              ) : (
+                <span className="lb-row__rank-num">#{rank}</span>
+              )}
             </span>
             <a className="lb-row__name lb-row__name--link" href={rankHref(name)}>
               <PlayerAvatar avatarId={row.avatarId} name={name} size="sm" />

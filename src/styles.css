@@ -6159,6 +6159,58 @@ html[data-theme='dark'] .patriot__power-mark {
   fill: #a8642c;
 }
 
+.trophy-case__star-shape {
+  stroke: rgba(0, 0, 0, 0.12);
+  stroke-width: 0.8;
+  stroke-linejoin: round;
+}
+
+.trophy-case__star--gold .trophy-case__star-shape {
+  fill: #f2c43a;
+}
+
+.trophy-case__star--gold .trophy-case__star-core {
+  fill: #c99214;
+}
+
+.trophy-case__star--gold .trophy-case__star-num {
+  fill: #fff8e6;
+}
+
+.trophy-case__star--silver .trophy-case__star-shape {
+  fill: #e2e7ed;
+}
+
+.trophy-case__star--silver .trophy-case__star-core {
+  fill: #8f99a6;
+}
+
+.trophy-case__star--silver .trophy-case__star-num {
+  fill: #f7f9fb;
+}
+
+.trophy-case__star--bronze .trophy-case__star-shape {
+  fill: #db9a5a;
+}
+
+.trophy-case__star--bronze .trophy-case__star-core {
+  fill: #a8642c;
+}
+
+.trophy-case__star--bronze .trophy-case__star-num {
+  fill: #fff4ea;
+}
+
+.trophy-case__star-num {
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.trophy-art--md .trophy-case__star-num {
+  font-size: 12px;
+}
+
 .trophy-case__rank {
   flex: none;
   font-family: var(--font-display);
@@ -7631,19 +7683,6 @@ html[data-theme='dark'] .patriot__power-mark {
     grid-template-columns: 2.5rem 1fr auto;
     gap: 0.4rem;
     padding: 0.55rem 0.6rem;
-  }
-
-  .lb-row--medal {
-    grid-template-columns: 4.1rem 1fr auto;
-  }
-
-  .lb-row--medal .lb-row__rank {
-    gap: 0.2rem;
-  }
-
-  .lb-row--medal .lb-medal {
-    transform: scale(1.05);
-    transform-origin: center;
   }
 
   .lb-row__date {

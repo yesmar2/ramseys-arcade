@@ -158,3 +158,33 @@ export function WeeklyMedal({
     </span>
   )
 }
+
+/** All-time podium mark — a metal star (no ribbon), distinct from weekly medals. */
+export function AllTimeStar({
+  rank,
+  size = 'sm',
+}: {
+  rank: number
+  size?: Extract<TrophyArtSize, 'sm' | 'md'>
+}) {
+  const tone: MetalTone =
+    rank === 1 ? 'gold' : rank === 2 ? 'silver' : rank === 3 ? 'bronze' : 'gold'
+  const dim = COMPACT_MEDAL_SIZE[size]
+  return (
+    <span
+      className={`trophy-art trophy-art--${size} trophy-case__star trophy-case__star--${tone}`}
+      aria-hidden="true"
+    >
+      <svg viewBox="0 0 40 40" width={dim.width} height={dim.height} focusable="false">
+        <path
+          className="trophy-case__star-shape"
+          d="M20 3.2 24.6 14.4 36.5 15.2 27.4 23.4 30.2 35.2 20 28.8 9.8 35.2 12.6 23.4 3.5 15.2 15.4 14.4Z"
+        />
+        <circle className="trophy-case__star-core" cx="20" cy="21" r="7.2" />
+        <text className="trophy-case__star-num" x="20" y="24.6" textAnchor="middle">
+          {rank}
+        </text>
+      </svg>
+    </span>
+  )
+}

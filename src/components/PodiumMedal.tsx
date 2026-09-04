@@ -1,5 +1,10 @@
 import type { LeaderboardPeriod } from '../lib/leaderboard'
-import { MonthlyTrophyCup, WeeklyMedal, type TrophyArtSize } from './TrophyArt'
+import {
+  AllTimeStar,
+  MonthlyTrophyCup,
+  WeeklyMedal,
+  type TrophyArtSize,
+} from './TrophyArt'
 
 export type MedalKind = 'gold' | 'silver' | 'bronze'
 
@@ -24,7 +29,7 @@ export function medalKind(rank: number): MedalKind | null {
 
 /**
  * Compact podium badge for boards / lists.
- * Weekly & all-time → medal; monthly → cup (matches trophy case awards).
+ * Weekly → medal, monthly → cup, all-time → star.
  */
 export function PodiumMedal({
   kind,
@@ -35,6 +40,7 @@ export function PodiumMedal({
   period?: LeaderboardPeriod
   size?: Extract<TrophyArtSize, 'sm' | 'md'>
 }) {
+  const rank = RANK[kind]
   return (
     <span
       className={`lb-medal lb-medal--${kind}`}
@@ -43,8 +49,10 @@ export function PodiumMedal({
     >
       {period === 'monthly' ? (
         <MonthlyTrophyCup tone={kind} size={size} />
+      ) : period === 'weekly' ? (
+        <WeeklyMedal rank={rank} size={size} />
       ) : (
-        <WeeklyMedal rank={RANK[kind]} size={size} />
+        <AllTimeStar rank={rank} size={size} />
       )}
     </span>
   )

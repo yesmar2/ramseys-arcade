@@ -51,9 +51,12 @@ export function PeriodMiniBoard({
           if (!entry) {
             return (
               <li key={`empty-${rank}`} className="lb-summary__row lb-summary__row--empty">
-                <span className="lb-summary__rank">
-                  <span className="lb-summary__rank-num">#{rank}</span>
-                  {medal ? <PodiumMedal kind={medal} period={period} /> : null}
+                <span className="lb-summary__rank" aria-label={`#${rank}`}>
+                  {medal ? (
+                    <PodiumMedal kind={medal} period={period} />
+                  ) : (
+                    <span className="lb-summary__rank-num">#{rank}</span>
+                  )}
                 </span>
                 <span className="lb-summary__name lb-summary__placeholder">Open</span>
                 <span className="lb-summary__score lb-summary__placeholder">—</span>
@@ -67,9 +70,12 @@ export function PeriodMiniBoard({
               key={entry.id ?? `${period}-${rank}`}
               className={`lb-summary__row${isYou ? ' lb-summary__row--you' : ''}${medal ? ' lb-summary__row--medal' : ''}`}
             >
-              <span className="lb-summary__rank">
-                <span className="lb-summary__rank-num">#{rank}</span>
-                {medal ? <PodiumMedal kind={medal} period={period} /> : null}
+              <span className="lb-summary__rank" aria-label={`#${rank}`}>
+                {medal ? (
+                  <PodiumMedal kind={medal} period={period} />
+                ) : (
+                  <span className="lb-summary__rank-num">#{rank}</span>
+                )}
               </span>
               <a className="lb-summary__player" href={rankHref(name, period)} title={name}>
                 <PlayerAvatar avatarId={entry.avatarId} name={name} size="sm" />
