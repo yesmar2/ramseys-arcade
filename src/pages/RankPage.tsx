@@ -155,11 +155,13 @@ export function RankPage({
           ) : (
             <div
               className={`rank-page__circle${rank == null ? ' rank-page__circle--empty' : ''}`}
-              aria-label={rank != null ? `Global rank ${rank}` : 'Unranked'}
+              aria-label={rank != null ? `Global rank ${rank}` : 'No rank yet'}
             >
               <span className="rank-page__circle-label">Rank</span>
-              <strong className="rank-page__circle-value">
-                {rank != null ? `#${rank}` : '–'}
+              <strong
+                className={`rank-page__circle-value${rank == null ? ' rank-page__circle-value--text' : ''}`}
+              >
+                {rank != null ? `#${rank}` : 'No rank'}
               </strong>
             </div>
           )}

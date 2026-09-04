@@ -5376,10 +5376,10 @@ html[data-theme='dark'] .patriot__power-mark {
 
 .rank-page__total-points {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  margin: 0.15rem 0 0;
+  margin: 1.35rem 0 0;
   padding: 0.85rem 1rem;
   border-radius: 0.95rem;
   background: rgba(var(--surface-rgb), 0.82);
@@ -5396,8 +5396,17 @@ html[data-theme='dark'] .patriot__power-mark {
   font-size: 1.35rem;
   font-weight: 700;
   letter-spacing: -0.03em;
+  line-height: 1;
   text-transform: none;
   color: var(--ink);
+}
+
+.rank-page__circle-value--text {
+  font-size: clamp(1.05rem, 4.2vw, 1.25rem);
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  text-align: center;
+  padding-inline: 0.45rem;
 }
 
 .rank-page__rank {
