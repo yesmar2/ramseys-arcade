@@ -15,7 +15,6 @@ import { tournamentCreateHref, tournamentHref, tournamentPlayHref, rankHref, use
 import { APP_NAME } from '../lib/brand'
 import { ApiError, getLastPlayerName, normalizePlayerName } from '../lib/leaderboard'
 import {
-  formatRulesSummary,
   eventDurationLabel,
   getTournament,
   getTournamentInvite,
