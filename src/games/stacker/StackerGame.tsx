@@ -7,7 +7,17 @@ import { ScoreSaveCard } from '../../components/ScoreSaveCard'
 import { TournamentScoreCard } from '../../components/TournamentScoreCard'
 import { useGamePause } from '../../hooks/useGamePause'
 import { usePersonalBest } from '../../hooks/usePersonalBest'
+import { usePlayerName } from '../../hooks/usePlayerName'
+import { normalizePlayerName } from '../../lib/leaderboard'
 import { getPersonalBest } from '../../lib/personalBest'
+import {
+  clearRunAchievements,
+  pushRunAchievement,
+} from '../../lib/runAchievements'
+import {
+  shouldCelebrateRecordSubmit,
+  submitStackerPerfectStreak,
+} from '../../lib/records'
 import { STAGE_ASPECT } from '../../lib/stage'
 import { useTournamentPlay } from '../../tournaments/TournamentPlayContext'
 import {
@@ -21,12 +31,19 @@ import {
 import { renderGame } from './render'
 
 function toSnapshot(s: GameState): StackerSnapshot {
-  return { score: s.score, best: s.best, status: s.phase, perfectStreak: s.perfectStreak }
+  return {
+    score: s.score,
+    best: s.best,
+    status: s.phase,
+    perfectStreak: s.perfectStreak,
+    perfectStreakBest: s.perfectStreakBest,
+  }
 }
 
 export function StackerGame() {
   const tournament = useTournamentPlay()
   const apiBest = usePersonalBest('stacker')
+  const playerName = normalizePlayerName(usePlayerName())
   const stateRef = useRef<GameState>(createInitialState())
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [ui, setUi] = useState<StackerSnapshot>(() => toSnapshot(stateRef.current))
@@ -35,6 +52,7 @@ export function StackerGame() {
   const startGrace = useRef(0)
   const offeredScore = useRef<number | null>(null)
   const previousBestRef = useRef(getPersonalBest('stacker'))
+  const streakRecordKey = useRef('')
   const pausable = ui.status === 'playing' && !saveOpen
   const { paused, toggle: togglePause, resume } = useGamePause(pausable)
   const pausedRef = useRef(false)
@@ -88,9 +106,32 @@ export function StackerGame() {
     if (ui.status === 'menu') previousBestRef.current = apiBest
   }, [apiBest, ui.status])
 
+  useEffect(() => {
+    if (tournament || !playerName) return
+    if (ui.status !== 'playing' && ui.status !== 'gameover') return
+    const streak = ui.perfectStreakBest
+    if (streak < 2) return
+    const key = `perfect:${streak}`
+    if (streakRecordKey.current === key) return
+    streakRecordKey.current = key
+    void (async () => {
+      const result = await submitStackerPerfectStreak(streak, playerName)
+      if (shouldCelebrateRecordSubmit(result)) {
+        pushRunAchievement({
+          id: 'stacker:perfect-streak',
+          label: 'Perfects in a row',
+          value: String(streak),
+          rank: result.rank,
+        })
+      }
+    })()
+  }, [ui.status, ui.perfectStreakBest, playerName, tournament])
+
   const restart = () => {
     setSaveOpen(false)
     offeredScore.current = null
+    streakRecordKey.current = ''
+    clearRunAchievements()
     stateRef.current = startGame(stateRef.current)
     previousBestRef.current = getPersonalBest('stacker')
     startGrace.current = performance.now() + 280

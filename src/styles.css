@@ -5159,11 +5159,10 @@ html[data-theme='dark'] .patriot__power-mark {
   background: rgba(var(--surface-rgb), 0.55);
   border: 1px solid rgba(var(--ink-rgb), 0.05);
   color: inherit;
-  text-decoration: none;
 }
 
 .records-leaders__row:hover,
-.records-leaders__row:focus-visible {
+.records-leaders__row:focus-within {
   border-color: color-mix(in srgb, var(--tab-accent, var(--accent)) 40%, transparent);
   outline: none;
 }
@@ -5180,6 +5179,14 @@ html[data-theme='dark'] .patriot__power-mark {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  color: inherit;
+  text-decoration: none;
+}
+
+.records-leaders__label:hover,
+.records-leaders__label:focus-visible {
+  color: var(--tab-accent, var(--accent));
+  outline: none;
 }
 
 .records-leaders__holder {
@@ -5193,6 +5200,13 @@ html[data-theme='dark'] .patriot__power-mark {
   color: var(--muted);
   overflow: hidden;
   text-align: right;
+  text-decoration: none;
+}
+
+.records-leaders__holder--link:hover,
+.records-leaders__holder--link:focus-visible {
+  color: var(--tab-accent, var(--accent));
+  outline: none;
 }
 
 .records-leaders__name {
@@ -5202,11 +5216,6 @@ html[data-theme='dark'] .patriot__power-mark {
   white-space: nowrap;
 }
 
-.records-leaders__row--you .lb-row__you-tag {
-  flex: none;
-  color: var(--tab-accent, var(--accent));
-}
-
 .records-leaders__time {
   font-family: var(--font-display);
   font-size: 1.05rem;
@@ -5214,6 +5223,18 @@ html[data-theme='dark'] .patriot__power-mark {
   font-variant-numeric: tabular-nums;
   color: var(--ink);
   text-align: right;
+  text-decoration: none;
+}
+
+.records-leaders__time:hover,
+.records-leaders__time:focus-visible {
+  color: var(--tab-accent, var(--accent));
+  outline: none;
+}
+
+.records-leaders__row--you .lb-row__you-tag {
+  flex: none;
+  color: var(--tab-accent, var(--accent));
 }
 
 .records-wave-nav {
@@ -7913,6 +7934,14 @@ html[data-theme='dark'] .patriot__power-mark {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  color: inherit;
+  text-decoration: none;
+}
+
+.game-lobby__podium-name--link:hover,
+.game-lobby__podium-name--link:focus-visible {
+  color: var(--board-accent, var(--accent));
+  outline: none;
 }
 
 .game-lobby__podium-score {
@@ -10086,6 +10115,13 @@ html[data-theme='dark'] .patriot__power-mark {
   text-overflow: ellipsis;
   white-space: nowrap;
   min-width: 0;
+  text-decoration: none;
+}
+
+.tour-standing__name--link:hover,
+.tour-standing__name--link:focus-visible {
+  color: var(--board-accent, var(--accent));
+  outline: none;
 }
 
 .tour-standing__total {

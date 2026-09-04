@@ -376,8 +376,6 @@ function HubScoresSection({
 
   return (
     <section className={className} aria-label={`${periodLabel} top scores`}>
-      <h2 className="game-lobby__section-title">{periodLabel} top</h2>
-
       <PeriodSwitcher
         period={period}
         accent={accent}
@@ -404,6 +402,7 @@ function HubScoresSection({
             accent={accent}
             shown={DESKTOP_ROWS}
             fillEmptySlots
+            period={period}
             formatScore={(score) => formatLeaderboardScore(boardSlug, score)}
           />
         ) : (
@@ -412,6 +411,7 @@ function HubScoresSection({
             playerName={playerName}
             accent={accent}
             slug={boardSlug}
+            period={period}
           />
         )}
       </div>

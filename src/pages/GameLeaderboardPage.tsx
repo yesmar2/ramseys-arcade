@@ -157,6 +157,7 @@ export function GameLeaderboardPage({
               playerName={playerName}
               accent={accent}
               shown={shown}
+              period={period}
               formatScore={(score) => formatLeaderboardScore(gameSlug, score)}
             />
           )}

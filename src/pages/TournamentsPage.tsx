@@ -11,7 +11,7 @@ import { ShareBoardButton } from '../components/ShareBoardButton'
 import { getGame } from '../data/games'
 import { useAuth } from '../hooks/useAuth'
 import { usePlayerName } from '../hooks/usePlayerName'
-import { tournamentCreateHref, tournamentHref, tournamentPlayHref, useHashRoute } from '../hooks/useHashRoute'
+import { tournamentCreateHref, tournamentHref, tournamentPlayHref, rankHref, useHashRoute } from '../hooks/useHashRoute'
 import { APP_NAME } from '../lib/brand'
 import { ApiError, getLastPlayerName, normalizePlayerName } from '../lib/leaderboard'
 import {
@@ -167,13 +167,13 @@ function SingleGameStandings({
               <span className="lb-row__rank-num">#{rank}</span>
               {medal ? <PodiumMedal kind={medal} /> : null}
             </span>
-            <span className="lb-row__name">
+            <a className="lb-row__name lb-row__name--link" href={rankHref(name)}>
               <PlayerAvatar avatarId={row.avatarId} name={name} size="sm" />
               <span className="lb-row__name-text" title={name}>
                 {name}
               </span>
               {isYou ? <span className="lb-row__you-tag">You</span> : null}
-            </span>
+            </a>
             <span className="lb-row__score">{score.toLocaleString()}</span>
           </li>
         )
@@ -204,9 +204,9 @@ function StandingCard({
           <span className="tour-standing__rank">{rank}</span>
           <div className="tour-standing__who">
             <PlayerAvatar avatarId={row.avatarId} name={name} size="sm" />
-            <span className="tour-standing__name" title={name}>
+            <a className="tour-standing__name tour-standing__name--link" href={rankHref(name)} title={name}>
               {name}
-            </span>
+            </a>
             {mine ? <span className="tour-you-tag">you</span> : null}
           </div>
           <span className="tour-standing__total">

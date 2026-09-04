@@ -2,9 +2,12 @@ import type { CSSProperties } from 'react'
 import { DeviceIcon } from './DeviceIcon'
 import { PlayerAvatar } from './PlayerAvatar'
 import { PodiumMedal, medalKind } from './PodiumMedal'
+import { rankHref } from '../hooks/useHashRoute'
+import { defaultPeriod } from '../lib/defaultPeriod'
 import {
   normalizePlayerName,
   type LeaderboardEntry,
+  type LeaderboardPeriod,
   type YouEntry,
 } from '../lib/leaderboard'
 
@@ -29,6 +32,7 @@ export function LeaderboardList({
   shown,
   formatScore = (n: number) => String(n),
   fillEmptySlots = false,
+  period = defaultPeriod(),
 }: {
   entries: LeaderboardEntry[]
   you: YouEntry | null
@@ -38,6 +42,7 @@ export function LeaderboardList({
   formatScore?: (score: number) => string
   /** Pad with open rows up to `shown` (e.g. hub aside). */
   fillEmptySlots?: boolean
+  period?: LeaderboardPeriod
 }) {
   const visible = entries.slice(0, shown)
   const youName = normalizePlayerName(playerName)
@@ -70,14 +75,14 @@ export function LeaderboardList({
           <span className="lb-row__rank-num">#{rank}</span>
           {medal ? <PodiumMedal kind={medal} /> : null}
         </span>
-        <span className="lb-row__name">
+        <a className="lb-row__name lb-row__name--link" href={rankHref(name, period)}>
           <PlayerAvatar avatarId={entry.avatarId} name={name} size="sm" />
           <DeviceIcon device={entry.device} />
           <span className="lb-row__name-text" title={name}>
             {name}
           </span>
           {isYou ? <span className="lb-row__you-tag">You</span> : null}
-        </span>
+        </a>
         <span className="lb-row__score">{formatScore(entry.score)}</span>
         <span className="lb-row__date">{formatDate(entry.at)}</span>
       </li>

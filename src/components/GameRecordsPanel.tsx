@@ -4,7 +4,7 @@ import {
   BoardSkeleton,
 } from './BoardChrome'
 import { getGame } from '../data/games'
-import { recordHref } from '../hooks/useHashRoute'
+import { rankHref, recordHref } from '../hooks/useHashRoute'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { normalizePlayerName, type LeaderboardPeriod } from '../lib/leaderboard'
 import {
@@ -22,6 +22,9 @@ function recordsEmptyDetail(game: string, gameName: string) {
   }
   if (game === 'patriot') {
     return 'Land consecutive perfect hits in-game and the board will show up here.'
+  }
+  if (game === 'stacker') {
+    return 'Stack perfect drops in a row in-game and the board will show up here.'
   }
   return `Set a record in ${gameName} to populate this page.`
 }
@@ -83,26 +86,30 @@ export function GameRecordsPanel({ game, accent, period }: GameRecordsPanelProps
             const holder = row.top ? normalizePlayerName(row.top.name) : ''
             const isYou = Boolean(playerName && holder === playerName)
             return (
-              <li key={row.id}>
-                <a
-                  className={`records-leaders__row${isYou ? ' records-leaders__row--you' : ''}`}
-                  href={recordHref(game, row.id, period)}
-                  style={{ '--tab-accent': accent } as CSSProperties}
-                >
-                  <span className="records-leaders__label">{row.label}</span>
-                  <span className="records-leaders__holder" title={holder}>
-                    <span className="records-leaders__name">
-                      {holder || '—'}
-                    </span>
-                    {isYou ? (
-                      <span className="lb-row__you-tag">You</span>
-                    ) : null}
+              <li
+                key={row.id}
+                className={`records-leaders__row${isYou ? ' records-leaders__row--you' : ''}`}
+                style={{ '--tab-accent': accent } as CSSProperties}
+              >
+                <a className="records-leaders__label" href={recordHref(game, row.id, period)}>
+                  {row.label}
+                </a>
+                {holder ? (
+                  <a
+                    className="records-leaders__holder records-leaders__holder--link"
+                    href={rankHref(holder, period)}
+                    title={holder}
+                  >
+                    <span className="records-leaders__name">{holder}</span>
+                    {isYou ? <span className="lb-row__you-tag">You</span> : null}
+                  </a>
+                ) : (
+                  <span className="records-leaders__holder">
+                    <span className="records-leaders__name">—</span>
                   </span>
-                  <span className="records-leaders__time">
-                    {row.top
-                      ? formatRecordScore(row.top.score, row.unit)
-                      : '—'}
-                  </span>
+                )}
+                <a className="records-leaders__time" href={recordHref(game, row.id, period)}>
+                  {row.top ? formatRecordScore(row.top.score, row.unit) : '—'}
                 </a>
               </li>
             )

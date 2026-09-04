@@ -72,6 +72,7 @@ export function BoardsGameIndex({
                 playerName={playerName}
                 accent={game.accent}
                 slug={slug}
+                period={period}
               />
             </div>
           </article>

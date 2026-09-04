@@ -11,7 +11,7 @@ import { useDefaultPeriod } from '../lib/defaultPeriod'
 import { gapToNextLabel } from '../lib/boardGap'
 import { useDeviceType } from '../lib/device'
 import { usePlayerName } from '../hooks/usePlayerName'
-import { useGlobalRank } from '../lib/globalRank'
+import { useGlobalRank, useGlobalRankLoading } from '../lib/globalRank'
 import { APP_NAME } from '../lib/brand'
 import {
   fetchGlobalRank,
@@ -44,6 +44,7 @@ export function RankPage({
   const viewedName = normalizePlayerName(player ?? '') || myName
   const isSelf = !normalizePlayerName(player ?? '') || viewedName === myName
   const myRank = useGlobalRank()
+  const myRankLoading = useGlobalRankLoading()
   const [periodRank, setPeriodRank] = useState<GlobalRankResult | null>(null)
   const useCachedSelfRank = isSelf && period === globalPeriod
   const [loading, setLoading] = useState(!useCachedSelfRank)
@@ -82,6 +83,7 @@ export function RankPage({
   const data =
     useCachedSelfRank ? myRank : (periodRank ?? (isSelf ? myRank : empty))
   const { rank, score, byGame, nearby = [] } = data
+  const rankLoading = loading || (useCachedSelfRank && myRankLoading)
 
   const rankedCount = VISIBLE_LEADERBOARD_GAMES.filter((slug) => Boolean(byGame[slug])).length
   const totalGames = VISIBLE_LEADERBOARD_GAMES.length
@@ -145,7 +147,7 @@ export function RankPage({
             label="Period"
           />
 
-          {loading ? (
+          {rankLoading ? (
             <div className="rank-page__circle rank-page__circle--loading" aria-busy="true">
               <span className="rank-page__circle-spinner" aria-hidden="true" />
               <span className="visually-hidden">Loading rank</span>
@@ -162,7 +164,7 @@ export function RankPage({
             </div>
           )}
 
-          {!loading && gap ? (
+          {!rankLoading && gap ? (
             <p className="rank-page__gap">
               {gap.before}
               {gap.name ? (
@@ -178,7 +180,7 @@ export function RankPage({
       {viewedName ? <TrophyCase name={viewedName} /> : null}
 
       <section className="rank-page__rank" aria-labelledby="rank-games-heading">
-        {loading ? (
+        {rankLoading ? (
           <BoardSkeleton rows={5} />
         ) : (
           <section className="rank-page__board" aria-labelledby="rank-games-heading">

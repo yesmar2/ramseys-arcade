@@ -40,6 +40,7 @@ export type StackerSnapshot = {
   best: number
   status: GamePhase
   perfectStreak: number
+  perfectStreakBest: number
 }
 
 export type GameState = {
@@ -47,6 +48,8 @@ export type GameState = {
   score: number
   best: number
   perfectStreak: number
+  /** Peak perfect streak this run. */
+  perfectStreakBest: number
   speed: number
   axis: Axis
   stack: Slab[]
@@ -92,6 +95,7 @@ export function createInitialState(): GameState {
     score: 0,
     best: loadBest(),
     perfectStreak: 0,
+    perfectStreakBest: 0,
     speed: 1.58,
     axis: 'x',
     stack: [base],
@@ -280,6 +284,7 @@ export function placeBlock(state: GameState): GameState {
 
   if (positionalPerfect) {
     next.perfectStreak += 1
+    next.perfectStreakBest = Math.max(next.perfectStreakBest, next.perfectStreak)
     next.floaters = [
       ...next.floaters,
       {

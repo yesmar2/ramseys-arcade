@@ -285,6 +285,7 @@ function RecordBoardPage({
                 playerName={playerName}
                 accent={accent}
                 shown={shown}
+                period={period}
                 formatScore={(score) => formatRecordScore(score, unit)}
               />
             )}

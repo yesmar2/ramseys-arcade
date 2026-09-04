@@ -1,6 +1,12 @@
 import type { CSSProperties } from 'react'
 import { formatLeaderboardScore } from '../games/spotter/score'
-import { normalizePlayerName, type LeaderboardEntry } from '../lib/leaderboard'
+import { rankHref } from '../hooks/useHashRoute'
+import { defaultPeriod } from '../lib/defaultPeriod'
+import {
+  normalizePlayerName,
+  type LeaderboardEntry,
+  type LeaderboardPeriod,
+} from '../lib/leaderboard'
 import { PlayerAvatar } from './PlayerAvatar'
 import { PodiumMedal, medalKind } from './PodiumMedal'
 
@@ -11,6 +17,7 @@ type TopScorePodiumProps = {
   slug: string
   rows?: number
   className?: string
+  period?: LeaderboardPeriod
 }
 
 /** Top N scores as medal podium cards (empty slots stay open). */
@@ -21,6 +28,7 @@ export function TopScorePodium({
   slug,
   rows = 3,
   className = 'game-lobby__podium',
+  period = defaultPeriod(),
 }: TopScorePodiumProps) {
   const slots = Array.from({ length: rows }, (_, index) => entries[index] ?? null)
 
@@ -58,10 +66,14 @@ export function TopScorePodium({
               <span className="game-lobby__podium-rank">#{rank}</span>
             )}
             <PlayerAvatar avatarId={entry.avatarId} name={name} size="sm" />
-            <span className="game-lobby__podium-name" title={name}>
+            <a
+              className="game-lobby__podium-name game-lobby__podium-name--link"
+              href={rankHref(name, period)}
+              title={name}
+            >
               {name}
               {isYou ? <span className="lb-row__you-tag">You</span> : null}
-            </span>
+            </a>
             <strong className="game-lobby__podium-score">
               {formatLeaderboardScore(slug, entry.score)}
             </strong>

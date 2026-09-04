@@ -163,6 +163,7 @@ export function recordNavShortLabel(row: { id: string; label: string }): string 
   if (row.id === PATRIOT_DIRECT_STREAK_ID) return 'Direct'
   if (row.id === STRIDE_MOST_COINS_ID) return 'Coins'
   if (row.id === POP_CENTER_STREAK_ID) return 'Center'
+  if (row.id === STACKER_PERFECT_STREAK_ID) return 'Perfect'
   const wave = parseAsteroidsWaveFromRecordId(row.id)
   if (wave != null) return `W${wave}`
   const length = parseSnakeLengthFromRecordId(row.id)
@@ -193,6 +194,7 @@ export const ASTEROIDS_HIGHEST_COMBO_ID = 'highest-combo'
 export const PATRIOT_DIRECT_STREAK_ID = 'direct-streak'
 export const STRIDE_MOST_COINS_ID = 'most-coins'
 export const POP_CENTER_STREAK_ID = 'center-streak'
+export const STACKER_PERFECT_STREAK_ID = 'perfect-streak'
 
 export type RecordSubmitOutcome = {
   improved: boolean
@@ -505,7 +507,34 @@ export async function submitPopCenterStreak(
   }
 }
 
-export const GAMES_WITH_RECORDS = ['asteroids', 'snake', 'patriot', 'stride', 'pop'] as const
+/** Best-effort Stacker perfect-drop streak submit (run peak). */
+export async function submitStackerPerfectStreak(
+  streak: number,
+  name: string,
+): Promise<RecordSubmitOutcome | null> {
+  const value = Math.floor(streak)
+  if (!(value >= 2)) return null
+  try {
+    const result = await submitRecord(
+      'stacker',
+      STACKER_PERFECT_STREAK_ID,
+      name,
+      value,
+    )
+    return toRecordSubmitOutcome(result)
+  } catch {
+    return null
+  }
+}
+
+export const GAMES_WITH_RECORDS = [
+  'asteroids',
+  'snake',
+  'patriot',
+  'stride',
+  'pop',
+  'stacker',
+] as const
 export type RecordGame = (typeof GAMES_WITH_RECORDS)[number]
 
 export function gameHasRecords(game: string): game is RecordGame {
