@@ -9502,36 +9502,19 @@ html[data-theme='dark'] .patriot__power-mark {
 .event-detail {
   display: flex;
   flex-direction: column;
-  gap: 1.1rem;
-}
-
-.event-detail__thumbs {
-  display: flex;
-  justify-content: center;
-  gap: 0.55rem;
-  flex-wrap: wrap;
-}
-
-.event-detail__thumb {
-  display: block;
-  width: 4.75rem;
-  height: 4.75rem;
-}
-
-.event-detail__thumb .inline-thumb {
-  --inline-thumb-size: 100%;
-  width: 100%;
-  height: 100%;
-  border-radius: 1rem;
-  box-shadow: var(--shadow-soft);
+  gap: 0.85rem;
 }
 
 .event-detail__meta {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 0.55rem;
-  text-align: center;
+  align-items: flex-start;
+  gap: 0.45rem;
+  text-align: left;
+}
+
+.event-detail__meta .event-chips {
+  justify-content: flex-start;
 }
 
 .event-detail__facts {
@@ -9539,9 +9522,9 @@ html[data-theme='dark'] .patriot__power-mark {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 0.35rem 0.55rem;
-  font-size: 0.95rem;
+  font-size: 0.92rem;
   font-weight: 600;
   color: var(--muted);
   line-height: 1.35;
@@ -9550,7 +9533,7 @@ html[data-theme='dark'] .patriot__power-mark {
 .event-detail__facts strong {
   font-family: var(--font-display);
   font-weight: 700;
-  color: var(--ink);
+  color: color-mix(in srgb, var(--event-accent, var(--accent)) 55%, var(--ink));
 }
 
 .event-detail__facts-sep {
@@ -9561,12 +9544,13 @@ html[data-theme='dark'] .patriot__power-mark {
 .event-detail__join {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: stretch;
   gap: 0.45rem;
 }
 
 .event-detail__join-btn {
-  max-width: 22rem;
+  width: 100%;
+  max-width: none;
   border: 0;
   cursor: pointer;
   font: inherit;
@@ -9579,14 +9563,17 @@ html[data-theme='dark'] .patriot__power-mark {
 }
 
 .event-detail__section-title {
-  margin: 0 0 0.65rem;
+  margin: 0 0 0.55rem;
   font-family: var(--font-display);
-  font-size: 1.05rem;
+  font-size: 0.72rem;
   font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
 }
 
 .event-detail__board .event-detail__section-title {
-  margin-bottom: 0.85rem;
+  margin-bottom: 0.75rem;
 }
 
 .event-play-grid {
@@ -9595,7 +9582,11 @@ html[data-theme='dark'] .patriot__power-mark {
   padding: 0;
   display: grid;
   grid-template-columns: 1fr;
-  gap: 0.65rem;
+  gap: 0.45rem;
+}
+
+.event-play-grid--single {
+  margin-top: 0;
 }
 
 @media (min-width: 520px) {
@@ -9608,20 +9599,27 @@ html[data-theme='dark'] .patriot__power-mark {
   display: grid;
   grid-template-columns: auto 1fr auto;
   align-items: center;
-  gap: 0.7rem;
-  padding: 0.65rem 0.75rem;
-  border-radius: 0.95rem;
-  background: rgba(var(--surface-rgb), 0.78);
-  border: 1px solid color-mix(in srgb, var(--event-accent) 30%, rgba(var(--ink-rgb), 0.06));
+  gap: 0.55rem;
+  padding: 0.5rem 0.65rem;
+  border-radius: 0.75rem;
+  background: rgba(var(--surface-rgb), 0.62);
+  border: 1px solid color-mix(in srgb, var(--event-accent) 22%, rgba(var(--ink-rgb), 0.06));
   color: inherit;
   text-decoration: none;
-  box-shadow: var(--shadow-soft);
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  box-shadow: none;
+  transition: background 0.15s ease, border-color 0.15s ease;
 }
 
 .event-play-tile:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 10px 22px rgba(var(--ink-rgb), 0.09);
+  transform: none;
+  background: rgba(var(--surface-rgb), 0.82);
+  border-color: color-mix(in srgb, var(--event-accent) 40%, rgba(var(--ink-rgb), 0.08));
+  box-shadow: none;
+}
+
+.event-play-tile--disabled {
+  opacity: 0.72;
+  pointer-events: none;
 }
 
 .event-play-tile__art {
@@ -9765,22 +9763,16 @@ html[data-theme='dark'] .patriot__power-mark {
 }
 
 .event-detail__blurb {
-  margin: 0.5rem 0 0;
-  font-size: 0.95rem;
+  margin: 0;
+  font-size: 0.92rem;
   color: var(--ink);
   line-height: 1.45;
 }
 
 .event-detail__rules {
-  margin: 0.35rem 0 0;
+  margin: 0;
   font-size: 0.85rem;
   color: var(--muted);
-}
-
-.event-play-tile--disabled {
-  opacity: 0.72;
-  cursor: not-allowed;
-  pointer-events: none;
 }
 
 .event-create,
@@ -10178,7 +10170,24 @@ html[data-theme='dark'] .patriot__power-mark {
 
 .event-invite-panel__btn {
   flex: 0 1 auto;
-  min-width: 12rem;
+  padding: 0.4rem 0.75rem;
+  border-radius: 999px;
+  border: 1px solid rgba(var(--ink-rgb), 0.1);
+  background: rgba(var(--surface-rgb), 0.72);
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.event-invite-panel__btn:hover,
+.event-invite-panel__btn:focus-visible {
+  color: var(--ink);
+  border-color: color-mix(in srgb, var(--event-accent, var(--accent)) 35%, transparent);
+  outline: none;
 }
 
 .tour-note {
@@ -10244,15 +10253,16 @@ html[data-theme='dark'] .patriot__power-mark {
 }
 
 .tour-standing {
-  border-radius: 0.85rem;
+  border-radius: 0.75rem;
   background: rgba(var(--surface-rgb), 0.55);
   border: 1px solid rgba(var(--ink-rgb), 0.06);
   overflow: hidden;
 }
 
 .tour-standing--you {
-  background: rgba(197, 240, 228, 0.35);
-  border-color: rgba(46, 184, 160, 0.22);
+  background: color-mix(in srgb, var(--lb-you-accent, var(--event-accent, var(--accent))) 16%, var(--surface));
+  border-color: color-mix(in srgb, var(--lb-you-accent, var(--event-accent, var(--accent))) 42%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--lb-you-accent, var(--event-accent, var(--accent))) 22%, transparent);
 }
 
 .tour-standing__details {
@@ -10262,8 +10272,8 @@ html[data-theme='dark'] .patriot__power-mark {
 .tour-standing__summary {
   display: flex;
   align-items: center;
-  gap: 0.55rem;
-  padding: 0.75rem 0.8rem;
+  gap: 0.4rem;
+  padding: 0.55rem 0.7rem;
   cursor: pointer;
   list-style: none;
   user-select: none;
@@ -10296,12 +10306,19 @@ html[data-theme='dark'] .patriot__power-mark {
 }
 
 .tour-standing__rank {
-  flex: 0 0 auto;
-  min-width: 1.5rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 2.35rem;
+  min-width: 0;
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: 1.05rem;
+  font-size: 0.85rem;
   color: var(--muted);
+}
+
+.tour-standing__rank-num {
+  font-variant-numeric: tabular-nums;
 }
 
 .tour-standing__who {
