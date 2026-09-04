@@ -175,6 +175,7 @@ export function SiteHeader() {
                 {rank != null ? `#${rank}` : '–'}
               </span>
             )}
+            <span className="site-header__you-name">{playerName}</span>
             {trophySummary.total > 0 ? (
               <TrophyMark
                 count={trophySummary.total}
@@ -183,7 +184,6 @@ export function SiteHeader() {
                 className="site-header__you-trophy"
               />
             ) : null}
-            <span className="site-header__you-name">{playerName}</span>
           </a>
         ) : (
           <button
@@ -307,10 +307,10 @@ export function SiteHeader() {
                       <span className="site-drawer__meta">
                         {[
                           rankLoading ? '…' : rank != null ? `#${rank}` : '–',
+                          playerName,
                           trophySummary.total > 0
                             ? `${trophySummary.total} trophy${trophySummary.total === 1 ? '' : 'ies'}`
                             : null,
-                          playerName,
                         ]
                           .filter(Boolean)
                           .join(' · ')}

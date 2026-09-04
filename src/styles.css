@@ -1628,11 +1628,12 @@ a.lb-board-switcher__item {
 }
 
 .site-header__you:has(.site-header__you-trophy) {
-  max-width: 15rem;
+  max-width: 15.5rem;
 }
 
 .site-header__you-trophy {
   flex: none;
+  margin-left: 0.05rem;
 }
 
 .site-header__you-rank {

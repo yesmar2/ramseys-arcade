@@ -1,7 +1,7 @@
 import type { CSSProperties, ReactNode } from 'react'
 import {
-  LEADERBOARD_PERIODS,
   PERIOD_LABELS,
+  VISIBLE_LEADERBOARD_PERIODS,
   type LeaderboardPeriod,
 } from '../lib/leaderboard'
 
@@ -32,7 +32,7 @@ export function PeriodSwitcher({
       aria-label={label}
       style={style}
     >
-      {LEADERBOARD_PERIODS.map((p) => {
+      {VISIBLE_LEADERBOARD_PERIODS.map((p) => {
         const className = `lb-period${period === p ? ' lb-period--active' : ''}`
         if (hrefFor) {
           return (

@@ -2,8 +2,9 @@ import { useEffect, useRef, useState } from 'react'
 import { applySitePeriod, periodFromRoute, useHashRoute } from '../hooks/useHashRoute'
 import { useDefaultPeriod } from '../lib/defaultPeriod'
 import {
-  LEADERBOARD_PERIODS,
+  coerceVisiblePeriod,
   PERIOD_LABELS,
+  VISIBLE_LEADERBOARD_PERIODS,
   type LeaderboardPeriod,
 } from '../lib/leaderboard'
 
@@ -15,7 +16,7 @@ type SitePeriodControlProps = {
 export function SitePeriodControl({ variant, onSelect }: SitePeriodControlProps) {
   const route = useHashRoute()
   const storedPeriod = useDefaultPeriod()
-  const period = periodFromRoute(route) ?? storedPeriod
+  const period = coerceVisiblePeriod(periodFromRoute(route) ?? storedPeriod)
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
@@ -46,7 +47,7 @@ export function SitePeriodControl({ variant, onSelect }: SitePeriodControlProps)
       <div className="site-drawer__period" aria-label="Time frame">
         <span className="site-drawer__period-label">Time frame</span>
         <div className="site-drawer__period-tabs" role="group">
-          {LEADERBOARD_PERIODS.map((p) => (
+          {VISIBLE_LEADERBOARD_PERIODS.map((p) => (
             <button
               key={p}
               type="button"
@@ -85,7 +86,7 @@ export function SitePeriodControl({ variant, onSelect }: SitePeriodControlProps)
       </button>
       {open ? (
         <div className="site-header__period-popover" role="listbox" aria-label="Time frame">
-          {LEADERBOARD_PERIODS.map((p) => (
+          {VISIBLE_LEADERBOARD_PERIODS.map((p) => (
             <button
               key={p}
               type="button"

@@ -5,6 +5,7 @@ import {
   setDefaultPeriod,
 } from '../lib/defaultPeriod'
 import {
+  coerceVisiblePeriod,
   LEADERBOARD_GAMES,
   LEADERBOARD_PERIODS,
   type LeaderboardGame,
@@ -191,7 +192,7 @@ export function periodFromRoute(route: Route): LeaderboardPeriod | undefined {
     case 'leaderboards':
     case 'rank':
     case 'records':
-      return route.period
+      return route.period ? coerceVisiblePeriod(route.period) : undefined
     default:
       return undefined
   }
@@ -201,8 +202,9 @@ export function applySitePeriod(
   period: LeaderboardPeriod,
   route: Route = parseHash(window.location.hash),
 ) {
-  setDefaultPeriod(period)
-  const next = hrefForRoute(route, period)
+  const nextPeriod = coerceVisiblePeriod(period)
+  setDefaultPeriod(nextPeriod)
+  const next = hrefForRoute(route, nextPeriod)
   if (next && normalizeHash(window.location.hash) !== normalizeHash(next)) {
     window.location.hash = next
   }

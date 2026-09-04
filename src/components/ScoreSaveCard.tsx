@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { gameBoardHref, recordsHref, recordsIndexHref } from '../hooks/useHashRoute'
+import { gameBoardHref, recordsHref } from '../hooks/useHashRoute'
 import {
   addLeaderboardScore,
   ApiError,
@@ -11,6 +11,7 @@ import {
   normalizePlayerName,
   PERIOD_LABELS,
   PLAYER_NAME_MAX,
+  VISIBLE_LEADERBOARD_PERIODS,
   type LeaderboardGame,
   type LeaderboardPeriod,
 } from '../lib/leaderboard'
@@ -62,6 +63,7 @@ function rankedPeriods(
 ): BoardHit[] {
   if (!ranks) return []
   return PERIOD_ORDER.flatMap((period) => {
+    if (!VISIBLE_LEADERBOARD_PERIODS.includes(period)) return []
     const rank = ranks[period]
     return rank != null && rank >= 1 && rank <= TOP_TEN ? [{ period, rank }] : []
   })
@@ -529,6 +531,7 @@ function cleanName(raw: string) {
 
 function boardsHref(gameSlug: string) {
   if ((LEADERBOARD_GAMES as readonly string[]).includes(gameSlug)) {
+    // Same destination as Game hub → “Full board”
     return gameBoardHref(gameSlug as LeaderboardGame, defaultPeriod())
   }
   return `#/games/${encodeURIComponent(gameSlug)}`
@@ -812,12 +815,27 @@ export function ScoreSaveCard({
             Play again
           </button>
           <div className="score-save__links">
-            <a href={boardsHref(gameSlug)}>
+            <a
+              href={boardsHref(gameSlug)}
+              onClick={(e) => {
+                // Force leave play route — some overlays swallow plain hash clicks.
+                e.preventDefault()
+                window.location.assign(boardsHref(gameSlug))
+              }}
+            >
               Boards
             </a>
-            <a href={gameHasRecords(gameSlug) ? recordsHref(gameSlug) : recordsIndexHref()}>
-              Record Books
-            </a>
+            {gameHasRecords(gameSlug) ? (
+              <a
+                href={recordsHref(gameSlug)}
+                onClick={(e) => {
+                  e.preventDefault()
+                  window.location.assign(recordsHref(gameSlug))
+                }}
+              >
+                Record Books
+              </a>
+            ) : null}
           </div>
         </>
       )}

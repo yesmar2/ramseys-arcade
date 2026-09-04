@@ -1,9 +1,13 @@
 import { useSyncExternalStore } from 'react'
-import { LEADERBOARD_PERIODS, type LeaderboardPeriod } from './leaderboard'
+import {
+  coerceVisiblePeriod,
+  LEADERBOARD_PERIODS,
+  type LeaderboardPeriod,
+} from './leaderboard'
 
 export const DEFAULT_PERIOD_KEY = 'fordriva-default-period'
 export const DEFAULT_PERIOD_EVENT = 'arcade-default-period'
-export const DEFAULT_PERIOD_FALLBACK: LeaderboardPeriod = 'daily'
+export const DEFAULT_PERIOD_FALLBACK: LeaderboardPeriod = 'weekly'
 
 function isPeriod(value: string): value is LeaderboardPeriod {
   return (LEADERBOARD_PERIODS as readonly string[]).includes(value)
@@ -12,7 +16,7 @@ function isPeriod(value: string): value is LeaderboardPeriod {
 export function storedDefaultPeriod(): LeaderboardPeriod {
   try {
     const value = localStorage.getItem(DEFAULT_PERIOD_KEY)
-    if (value && isPeriod(value)) return value
+    if (value && isPeriod(value)) return coerceVisiblePeriod(value)
   } catch {
     /* ignore quota / private mode */
   }
@@ -25,8 +29,9 @@ export function defaultPeriod(): LeaderboardPeriod {
 }
 
 export function setDefaultPeriod(period: LeaderboardPeriod) {
+  const next = coerceVisiblePeriod(period)
   try {
-    localStorage.setItem(DEFAULT_PERIOD_KEY, period)
+    localStorage.setItem(DEFAULT_PERIOD_KEY, next)
   } catch {
     /* ignore */
   }

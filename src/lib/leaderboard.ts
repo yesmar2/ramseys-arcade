@@ -43,6 +43,24 @@ export const PERIOD_LABELS: Record<LeaderboardPeriod, string> = {
   all: 'All time',
 }
 
+/**
+ * Flip on when daily boards have enough traffic.
+ * Keep `daily` in {@link LEADERBOARD_PERIODS} / API; just hide it from UI.
+ */
+export const DAILY_PERIOD_ENABLED = false
+
+/** Periods shown in switchers, dropdowns, and celebrations. */
+export const VISIBLE_LEADERBOARD_PERIODS: readonly LeaderboardPeriod[] =
+  DAILY_PERIOD_ENABLED
+    ? LEADERBOARD_PERIODS
+    : LEADERBOARD_PERIODS.filter((p) => p !== 'daily')
+
+/** Map a stored/routed period onto one that is currently offered in the UI. */
+export function coerceVisiblePeriod(period: LeaderboardPeriod): LeaderboardPeriod {
+  if (!DAILY_PERIOD_ENABLED && period === 'daily') return 'weekly'
+  return period
+}
+
 /** Hard cap for player names (API + UI). */
 export const PLAYER_NAME_MAX = 12
 
