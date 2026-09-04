@@ -63,13 +63,13 @@ function copyText(text: string): boolean {
   }
 }
 
-/**
- * Desktop Chromium/Edge often route through OS share, which keeps the URL and
- * drops `text`. Mobile share sheets honor both — keep native there.
- */
-function preferNativeShare() {
-  if (typeof navigator.share !== 'function') return false
-  return detectDeviceType() !== 'desktop'
+function sharePayload(label: string, link: string): ShareData {
+  // Windows/desktop OS share often drops `text` when a separate `url` is set.
+  // Fold both into `text` there; mobile sheets handle title/text/url cleanly.
+  if (detectDeviceType() === 'desktop') {
+    return { title: label, text: `${label}\n${link}` }
+  }
+  return { title: label, text: label, url: link }
 }
 
 export function ShareBoardButton({ label, url, className = '' }: ShareBoardButtonProps) {
@@ -113,17 +113,13 @@ export function ShareBoardButton({ label, url, className = '' }: ShareBoardButto
       const shareLabel = labelRef.current
       setHref(link)
 
-      if (!preferNativeShare()) {
+      if (typeof navigator.share !== 'function') {
         setOpen(true)
         return
       }
 
       void navigator
-        .share({
-          title: shareLabel,
-          text: shareLabel,
-          url: link,
-        })
+        .share(sharePayload(shareLabel, link))
         .catch((err: unknown) => {
           if (err instanceof DOMException && err.name === 'AbortError') return
           setOpen(true)
@@ -197,7 +193,8 @@ export function ShareBoardButton({ label, url, className = '' }: ShareBoardButto
                 <p className="share-sheet__label">{label}</p>
                 <p className="share-sheet__url">{href}</p>
                 <p className="share-sheet__hint">
-                  Pick an app below, or copy the message and link.
+                  System share wasn’t available. Pick an app below, or copy the
+                  message and link.
                 </p>
 
                 <div className="share-sheet__actions">
@@ -239,7 +236,7 @@ export function ShareBoardButton({ label, url, className = '' }: ShareBoardButto
                     className="share-sheet__btn share-sheet__btn--primary"
                     onClick={() => doCopy(href)}
                   >
-                    {copied ? 'Copied!' : 'Copy message'}
+                    {copied ? 'Copied!' : 'Copy link'}
                   </button>
                 </div>
               </div>
