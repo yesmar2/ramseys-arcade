@@ -9499,46 +9499,31 @@ html[data-theme='dark'] .patriot__power-mark {
   box-shadow: 0 4px 12px rgba(var(--ink-rgb), 0.08);
 }
 
-.event-detail {
-  display: flex;
-  flex-direction: column;
-  gap: 0.85rem;
-}
-
-.event-detail__meta {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.45rem;
-  text-align: left;
-}
-
-.event-detail__meta .event-chips {
-  justify-content: flex-start;
-}
-
-.event-detail__facts {
+.event-lobby .event-detail__rules,
+.event-lobby .event-detail__blurb {
   margin: 0;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  justify-content: flex-start;
-  gap: 0.35rem 0.55rem;
-  font-size: 0.92rem;
-  font-weight: 600;
-  color: var(--muted);
-  line-height: 1.35;
 }
 
-.event-detail__facts strong {
-  font-family: var(--font-display);
-  font-weight: 700;
-  color: color-mix(in srgb, var(--event-accent, var(--accent)) 55%, var(--ink));
+.event-lobby__invite-link {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  font: inherit;
 }
 
-.event-detail__facts-sep {
-  opacity: 0.4;
-  font-weight: 500;
+.event-lobby .game-lobby__aside .event-detail__board {
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+
+.event-lobby .game-lobby__tops--mobile .lb-empty,
+.event-lobby .game-lobby__aside .lb-empty {
+  margin: 0.35rem 0 0;
 }
 
 .event-detail__join {
@@ -9550,7 +9535,6 @@ html[data-theme='dark'] .patriot__power-mark {
 
 .event-detail__join-btn {
   width: 100%;
-  max-width: none;
   border: 0;
   cursor: pointer;
   font: inherit;
@@ -9562,20 +9546,6 @@ html[data-theme='dark'] .patriot__power-mark {
   cursor: wait;
 }
 
-.event-detail__section-title {
-  margin: 0 0 0.55rem;
-  font-family: var(--font-display);
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--muted);
-}
-
-.event-detail__board .event-detail__section-title {
-  margin-bottom: 0.75rem;
-}
-
 .event-play-grid {
   list-style: none;
   margin: 0;
@@ -9583,10 +9553,6 @@ html[data-theme='dark'] .patriot__power-mark {
   display: grid;
   grid-template-columns: 1fr;
   gap: 0.45rem;
-}
-
-.event-play-grid--single {
-  margin-top: 0;
 }
 
 @media (min-width: 520px) {
