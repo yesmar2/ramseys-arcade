@@ -117,7 +117,7 @@ export const TARGET_VISIBLE_ROWS = 8
 /** Cap so a wide monitor can't open a runway of incoming cars. */
 export const MAX_COLS = 9
 /** Desktop tile scale bump. */
-export const DESKTOP_ZOOM = 1.28
+export const DESKTOP_ZOOM = 1.48
 /** Player sits this many rows from the bottom of the view once the camera is rolling. */
 export const PLAYER_VIEW_ROW = 3
 /** Die if you fall this many rows behind the camera. */
