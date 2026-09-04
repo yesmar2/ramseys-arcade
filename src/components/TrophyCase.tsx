@@ -9,41 +9,76 @@ import {
 } from '../lib/trophies'
 import { medalKind, PodiumMedal } from './PodiumMedal'
 
-function TopTenRibbon() {
+type RibbonTone = 'weekly' | 'monthly'
+
+/** Honor ribbon for global #4–10 — weekly blue, monthly violet. */
+function TopTenRibbon({ tone = 'weekly' }: { tone?: RibbonTone }) {
   return (
-    <span className="trophy-case__ribbon" aria-hidden="true">
-      <svg viewBox="0 0 20 24" width="28" height="33" focusable="false">
-        <path className="trophy-case__ribbon-band" d="M4 1.5h12v5.5H4Z" />
-        <path className="trophy-case__ribbon-tail" d="m5.5 7 2.2 14.5L10 16l2.3 5.5L14.5 7Z" />
+    <span
+      className={`trophy-case__ribbon trophy-case__ribbon--${tone}`}
+      aria-hidden="true"
+    >
+      <svg viewBox="0 0 28 36" width="52" height="66" focusable="false">
+        <path
+          className="trophy-case__ribbon-band"
+          d="M5 2h18c1.1 0 2 .9 2 2v7.5H3V4c0-1.1.9-2 2-2Z"
+        />
+        <path
+          className="trophy-case__ribbon-shine"
+          d="M7 3.2h6.5c.4 0 .7.4.55.75L12.2 9.2H6.4c-.35 0-.55-.4-.35-.7L7 3.2Z"
+        />
+        <path
+          className="trophy-case__ribbon-tail"
+          d="M5.2 11.5 9.6 33.2 14 22.8l4.4 10.4 4.4-21.7Z"
+        />
+        <path
+          className="trophy-case__ribbon-notch"
+          d="M14 22.8 9.6 33.2l4.4-4.2 4.4 4.2Z"
+        />
       </svg>
     </span>
   )
 }
 
-function MonthlyTrophyCup({ rank }: { rank: number }) {
-  const tone =
-    rank === 1 ? 'gold' : rank === 2 ? 'silver' : rank === 3 ? 'bronze' : 'honor'
+type CupTone = 'gold' | 'silver' | 'bronze'
+
+function MonthlyTrophyCup({ tone }: { tone: CupTone }) {
   return (
     <span className={`trophy-case__cup trophy-case__cup--${tone}`} aria-hidden="true">
-      <svg viewBox="0 0 24 28" width="34" height="40" focusable="false">
+      <svg viewBox="0 0 40 48" width="58" height="70" focusable="false">
         <path
           className="trophy-case__cup-bowl"
-          d="M5 2.5h14v6.8c0 3.6-2.4 6.8-6 7.8-3.6-1-6-4.2-6-7.8V2.5Z"
+          d="M9 5h22v10.5c0 5.6-3.9 10.6-9.4 12.2C15.9 26.1 12 21.1 12 15.5V5H9Z"
         />
-        <path className="trophy-case__cup-handle" d="M5 4.8H3.2a2 2 0 0 0 0 4H5" />
-        <path className="trophy-case__cup-handle" d="M19 4.8h1.8a2 2 0 0 1 0 4H19" />
-        <path className="trophy-case__cup-stem" d="M10.5 16.8h3v2.8H9.8l-.7 3.2h5.8l-.7-3.2h-3.7z" />
-        <path className="trophy-case__cup-base" d="M7.5 24.5h9v2H7.5z" />
+        <path
+          className="trophy-case__cup-shine"
+          d="M13.2 7.2h7.2c.45 0 .75.45.55.85l-2.1 5.4H12.5c-.4 0-.65-.45-.4-.8l1.1-5.45Z"
+        />
+        <path
+          className="trophy-case__cup-handle"
+          d="M9 8.2H5.8A3.4 3.4 0 0 0 5.8 15H9"
+        />
+        <path
+          className="trophy-case__cup-handle"
+          d="M31 8.2h3.2A3.4 3.4 0 0 1 34.2 15H31"
+        />
+        <path className="trophy-case__cup-stem" d="M17.4 27.5h5.2v4.2h-5.2z" />
+        <path className="trophy-case__cup-knob" d="M16.2 31.5h7.6v2.2h-7.6z" />
+        <path className="trophy-case__cup-base" d="M12.5 40.2h15v3.2h-15z" />
+        <path className="trophy-case__cup-plinth" d="M10.2 43.2h19.6v2.6H10.2z" />
       </svg>
     </span>
   )
 }
 
 function TrophyIcon({ rank, period }: { rank: number; period: TrophyPeriod }) {
-  if (period === 'monthly') return <MonthlyTrophyCup rank={rank} />
   const kind = medalKind(rank)
+  if (period === 'monthly') {
+    if (kind) return <MonthlyTrophyCup tone={kind} />
+    return <TopTenRibbon tone="monthly" />
+  }
   if (kind) return <PodiumMedal kind={kind} />
-  return <TopTenRibbon />
+  return <TopTenRibbon tone="weekly" />
 }
 
 function TrophySkeleton() {
@@ -139,12 +174,16 @@ export function TrophyCase({ name }: { name: string }) {
               <span>Weekly top 3 — medal</span>
             </li>
             <li>
-              <TopTenRibbon />
-              <span>Weekly #4–10 — ribbon</span>
+              <TopTenRibbon tone="weekly" />
+              <span>Weekly #4–10 — blue ribbon</span>
             </li>
             <li>
-              <MonthlyTrophyCup rank={1} />
-              <span>Monthly — trophy cup</span>
+              <MonthlyTrophyCup tone="gold" />
+              <span>Monthly top 3 — cup</span>
+            </li>
+            <li>
+              <TopTenRibbon tone="monthly" />
+              <span>Monthly #4–10 — violet ribbon</span>
             </li>
           </ul>
         </div>
