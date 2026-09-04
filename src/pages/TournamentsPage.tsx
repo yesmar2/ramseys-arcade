@@ -610,10 +610,6 @@ export function TournamentDetailPage({ id, invite }: { id: string; invite?: stri
               t={detail}
               joined={joined && detail.status !== 'ended'}
             />
-            <p className="event-detail__rules">{formatRulesSummary(detail)}</p>
-            {!detail.private && detail.blurb ? (
-              <p className="event-detail__blurb">{detail.blurb}</p>
-            ) : null}
             {detail.isHost && detail.inviteCode && detail.status !== 'ended' ? (
               <div className="event-invite-panel">
                 <button
