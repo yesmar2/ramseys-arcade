@@ -6096,17 +6096,19 @@ html[data-theme='dark'] .patriot__power-mark {
 }
 
 .trophy-case__medal--silver .trophy-case__medal-disk {
-  fill: #e2e7ed;
+  fill: #c2cbd6;
+  stroke: rgba(255, 255, 255, 0.35);
+  stroke-width: 1.2;
 }
 
 .trophy-case__medal--silver .trophy-case__medal-ring {
   fill: none;
-  stroke: rgba(255, 255, 255, 0.75);
+  stroke: rgba(70, 82, 96, 0.45);
   stroke-width: 1.6;
 }
 
 .trophy-case__medal--silver .trophy-case__medal-num {
-  fill: #626d7a;
+  fill: #3d4a58;
 }
 
 .trophy-case__medal--bronze .trophy-case__medal-disk {
@@ -6154,21 +6156,21 @@ html[data-theme='dark'] .patriot__power-mark {
 .trophy-case__cup--silver .trophy-case__cup-rim,
 .trophy-case__cup--silver .trophy-case__cup-knob,
 .trophy-case__cup--silver .trophy-case__cup-base {
-  fill: #e2e7ed;
+  fill: #c2cbd6;
 }
 
 .trophy-case__cup--silver .trophy-case__cup-shine {
-  fill: rgba(255, 255, 255, 0.7);
+  fill: rgba(255, 255, 255, 0.55);
 }
 
 .trophy-case__cup--silver .trophy-case__cup-handle {
-  stroke: #8f99a6;
+  stroke: #6e7b8a;
 }
 
 .trophy-case__cup--silver .trophy-case__cup-stem,
 .trophy-case__cup--silver .trophy-case__cup-cone,
 .trophy-case__cup--silver .trophy-case__cup-foot {
-  fill: #8f99a6;
+  fill: #6e7b8a;
 }
 
 .trophy-case__cup--bronze .trophy-case__cup-bowl,
@@ -6193,13 +6195,13 @@ html[data-theme='dark'] .patriot__power-mark {
 }
 
 .trophy-case__star-shape {
-  stroke: rgba(0, 0, 0, 0.12);
-  stroke-width: 0.8;
+  stroke-width: 1;
   stroke-linejoin: round;
 }
 
 .trophy-case__star--gold .trophy-case__star-shape {
   fill: #f2c43a;
+  stroke: rgba(138, 95, 4, 0.35);
 }
 
 .trophy-case__star--gold .trophy-case__star-core {
@@ -6211,19 +6213,21 @@ html[data-theme='dark'] .patriot__power-mark {
 }
 
 .trophy-case__star--silver .trophy-case__star-shape {
-  fill: #e2e7ed;
+  fill: #c2cbd6;
+  stroke: rgba(61, 74, 88, 0.55);
 }
 
 .trophy-case__star--silver .trophy-case__star-core {
-  fill: #8f99a6;
+  fill: #5c6b7a;
 }
 
 .trophy-case__star--silver .trophy-case__star-num {
-  fill: #f7f9fb;
+  fill: #f4f7fa;
 }
 
 .trophy-case__star--bronze .trophy-case__star-shape {
   fill: #db9a5a;
+  stroke: rgba(124, 69, 26, 0.4);
 }
 
 .trophy-case__star--bronze .trophy-case__star-core {
@@ -6236,12 +6240,12 @@ html[data-theme='dark'] .patriot__power-mark {
 
 .trophy-case__star-num {
   font-family: var(--font-display);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
 }
 
 .trophy-art--md .trophy-case__star-num {
-  font-size: 12px;
+  font-size: 13px;
 }
 
 .trophy-case__rank {
@@ -7049,7 +7053,7 @@ html[data-theme='dark'] .patriot__power-mark {
 
 .lb-summary__row {
   display: grid;
-  grid-template-columns: 2.85rem minmax(0, 1fr) auto;
+  grid-template-columns: 2.35rem minmax(0, 1fr) auto;
   gap: 0.3rem;
   align-items: center;
   min-height: 1.55rem;
@@ -7073,7 +7077,7 @@ html[data-theme='dark'] .patriot__power-mark {
 .lb-summary__rank {
   display: inline-flex;
   align-items: center;
-  gap: 0.2rem;
+  gap: 0.15rem;
   font-size: 0.68rem;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
@@ -7082,7 +7086,7 @@ html[data-theme='dark'] .patriot__power-mark {
 
 .lb-summary__rank-num {
   flex: none;
-  min-width: 1.35rem;
+  min-width: 0;
 }
 
 .lb-summary__player {
@@ -7545,8 +7549,8 @@ html[data-theme='dark'] .patriot__power-mark {
 
 .lb-row {
   display: grid;
-  grid-template-columns: 4.25rem 1fr auto auto;
-  gap: 0.5rem 0.55rem;
+  grid-template-columns: 2.55rem 1fr auto auto;
+  gap: 0.5rem 0.4rem;
   align-items: center;
   padding: 0.48rem 0.65rem;
   border-radius: 0.7rem;
@@ -7555,7 +7559,7 @@ html[data-theme='dark'] .patriot__power-mark {
 }
 
 .lb-row--score-only {
-  grid-template-columns: 4.25rem 1fr auto;
+  grid-template-columns: 2.55rem 1fr auto;
 }
 
 .tour-score-list {
@@ -7611,7 +7615,7 @@ html[data-theme='dark'] .patriot__power-mark {
 
 .lb-row__rank-num {
   flex: none;
-  min-width: 1.7rem;
+  min-width: 0;
   font-variant-numeric: tabular-nums;
 }
 
@@ -7713,8 +7717,8 @@ html[data-theme='dark'] .patriot__power-mark {
 
 @media (max-width: 520px) {
   .lb-row {
-    grid-template-columns: 2.5rem 1fr auto;
-    gap: 0.4rem;
+    grid-template-columns: 2.35rem 1fr auto;
+    gap: 0.4rem 0.35rem;
     padding: 0.55rem 0.6rem;
   }
 
@@ -8402,8 +8406,8 @@ html[data-theme='dark'] .patriot__power-mark {
   min-height: 2.05rem;
   padding: 0.35rem 0.5rem;
   font-size: 0.88rem;
-  grid-template-columns: 3.5rem minmax(0, 1fr) auto;
-  gap: 0.35rem 0.5rem;
+  grid-template-columns: 2.35rem minmax(0, 1fr) auto;
+  gap: 0.3rem 0.4rem;
 }
 
 .game-lobby__aside .lb-row__name-text {

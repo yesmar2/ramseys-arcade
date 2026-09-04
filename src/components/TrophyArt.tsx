@@ -3,14 +3,19 @@ export type RibbonTone = 'weekly' | 'monthly'
 export type TrophyArtSize = 'sm' | 'md' | 'lg'
 
 const ART_SIZE: Record<TrophyArtSize, { width: number; height: number }> = {
-  sm: { width: 20, height: 22 },
+  sm: { width: 22, height: 25 },
   md: { width: 36, height: 40 },
   lg: { width: 64, height: 72 },
 }
 
 const COMPACT_MEDAL_SIZE: Record<'sm' | 'md', { width: number; height: number }> = {
-  sm: { width: 20, height: 22 },
-  md: { width: 34, height: 38 },
+  sm: { width: 24, height: 26 },
+  md: { width: 36, height: 40 },
+}
+
+const ALL_TIME_STAR_SIZE: Record<'sm' | 'md', { width: number; height: number }> = {
+  sm: { width: 26, height: 26 },
+  md: { width: 38, height: 38 },
 }
 
 const RIBBON_SIZE: Record<TrophyArtSize, { width: number; height: number }> = {
@@ -169,7 +174,7 @@ export function AllTimeStar({
 }) {
   const tone: MetalTone =
     rank === 1 ? 'gold' : rank === 2 ? 'silver' : rank === 3 ? 'bronze' : 'gold'
-  const dim = COMPACT_MEDAL_SIZE[size]
+  const dim = ALL_TIME_STAR_SIZE[size]
   return (
     <span
       className={`trophy-art trophy-art--${size} trophy-case__star trophy-case__star--${tone}`}
