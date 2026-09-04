@@ -2073,8 +2073,33 @@ a.game-hud__board {
   align-self: flex-start;
 }
 
+.game-sound-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex: none;
+  align-self: flex-start;
+  pointer-events: auto;
+}
+
+.game-sound--bare {
+  align-self: center;
+}
+
 .game-sound .game-pause-btn {
   margin-top: 0;
+}
+
+.sound-pack-btn {
+  min-width: 4.6rem;
+  padding-inline: 0.55rem;
+}
+
+.sound-pack-btn__label {
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 .game-pause-overlay {

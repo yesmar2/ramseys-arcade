@@ -1,5 +1,20 @@
+import {
+  createSynth,
+  isSoundPackId,
+  SOUND_PACK_IDS,
+  SOUND_PACK_LABELS,
+  SOUND_PACKS,
+  type SoundName,
+  type SoundPackId,
+} from './soundPacks'
+
+export type { SoundName, SoundPackId }
+export { SOUND_PACK_IDS, SOUND_PACK_LABELS }
+
 const MUTE_KEY = 'fordriva-mute'
 const MUSIC_KEY = 'fordriva-music'
+const PACK_KEY = 'fordriva-sfx-pack'
+export const SOUND_PACK_EVENT = 'arcade-sfx-pack'
 const LEGACY_MUTE_KEYS = ['acralia-mute', 'archivade-mute'] as const
 const LEGACY_MUSIC_KEYS = ['acralia-music', 'archivade-music'] as const
 const MASTER_GAIN = 0.22
@@ -12,31 +27,12 @@ const MUSIC_LOOP = [
   261.6, 0, 196.0, 0,
 ]
 
-export type SoundName =
-  | 'place'
-  | 'perfect'
-  | 'chop'
-  | 'eat'
-  | 'fire'
-  | 'hit'
-  | 'boom'
-  | 'hurt'
-  | 'die'
-  | 'wave'
-  | 'tap'
-  | 'pad'
-  | 'good'
-  | 'miss'
-  | 'hop'
-  | 'whoosh'
-
-const PENT = [261.6, 293.7, 329.6, 392.0, 440.0, 523.3]
-
 let ctx: AudioContext | null = null
 let master: GainNode | null = null
 let musicGain: GainNode | null = null
 let muted = readMuted()
 let musicVol = readMusicVol()
+let soundPack: SoundPackId = readSoundPack()
 let musicHolders = 0
 let musicWanted = false
 let musicTimer: number | null = null
@@ -83,6 +79,16 @@ function readMusicVol() {
   }
 }
 
+function readSoundPack(): SoundPackId {
+  try {
+    const raw = localStorage.getItem(PACK_KEY)
+    if (raw && isSoundPackId(raw)) return raw
+  } catch {
+    /* ignore */
+  }
+  return 'classic'
+}
+
 function getCtx() {
   if (typeof window === 'undefined') return null
   if (!ctx) {
@@ -107,7 +113,7 @@ function getCtx() {
 }
 
 function musicLevel() {
-  if (muted || typeof document !== 'undefined' && document.hidden) return 0
+  if (muted || (typeof document !== 'undefined' && document.hidden)) return 0
   return MUSIC_GAIN * musicVol
 }
 
@@ -132,6 +138,30 @@ export function isMuted() {
 
 export function getMusicVolume() {
   return musicVol
+}
+
+export function getSoundPack(): SoundPackId {
+  return soundPack
+}
+
+export function setSoundPack(next: SoundPackId) {
+  if (!isSoundPackId(next)) return
+  soundPack = next
+  try {
+    localStorage.setItem(PACK_KEY, next)
+  } catch {
+    /* ignore */
+  }
+  window.dispatchEvent(new Event(SOUND_PACK_EVENT))
+  unlockSound()
+}
+
+/** Cycle Classic → Arcade → Soft → Classic. Returns the new pack. */
+export function cycleSoundPack(): SoundPackId {
+  const i = SOUND_PACK_IDS.indexOf(soundPack)
+  const next = SOUND_PACK_IDS[(i + 1) % SOUND_PACK_IDS.length]!
+  setSoundPack(next)
+  return next
 }
 
 export function setMuted(next: boolean) {
@@ -261,105 +291,11 @@ if (typeof document !== 'undefined') {
   document.addEventListener('visibilitychange', applyMusicGain)
 }
 
-function tone(
-  audio: AudioContext,
-  freq: number,
-  dur: number,
-  gain = 0.14,
-  slide = 0,
-  delay = 0,
-) {
-  if (!master) return
-  const t = audio.currentTime + delay
-  const attack = Math.min(0.04, dur * 0.22)
-  const osc = audio.createOscillator()
-  const g = audio.createGain()
-  osc.type = 'sine'
-  osc.frequency.setValueAtTime(freq, t)
-  if (slide) {
-    osc.frequency.exponentialRampToValueAtTime(Math.max(60, freq + slide), t + dur)
-  }
-  g.gain.setValueAtTime(0.0001, t)
-  g.gain.exponentialRampToValueAtTime(gain, t + attack)
-  g.gain.exponentialRampToValueAtTime(0.0001, t + dur)
-  osc.connect(g)
-  g.connect(master)
-  osc.start(t)
-  osc.stop(t + dur + 0.04)
-}
-
-function chime(audio: AudioContext, freq: number, dur: number, gain = 0.12, delay = 0) {
-  tone(audio, freq, dur, gain, 0, delay)
-  tone(audio, freq * 2, dur * 0.85, gain * 0.18, 0, delay)
-}
-
 export function sfx(name: SoundName, pitch = 0) {
   if (muted) return
   const audio = getCtx()
-  if (!audio) return
+  if (!audio || !master) return
   if (audio.state === 'suspended') void audio.resume()
-  const note = PENT[Math.max(0, Math.min(PENT.length - 1, Math.round(pitch)))]
-
-  switch (name) {
-    case 'place':
-      chime(audio, 329.6, 0.28, 0.11)
-      break
-    case 'perfect':
-      chime(audio, 392.0, 0.32, 0.11)
-      chime(audio, 523.3, 0.42, 0.1, 0.09)
-      break
-    case 'chop':
-      tone(audio, 246.9, 0.42, 0.1, -70)
-      break
-    case 'eat':
-      chime(audio, 329.6, 0.22, 0.1)
-      chime(audio, 392.0, 0.3, 0.08, 0.05)
-      break
-    case 'fire':
-      tone(audio, 523.3, 0.16, 0.06, -80)
-      break
-    case 'hit':
-      chime(audio, note, 0.24, 0.09)
-      break
-    case 'boom':
-      tone(audio, 130.8, 0.55, 0.12, -30)
-      tone(audio, 196.0, 0.4, 0.06)
-      break
-    case 'hurt':
-      tone(audio, 220.0, 0.4, 0.09, -50)
-      break
-    case 'die':
-      tone(audio, 246.9, 0.35, 0.09)
-      tone(audio, 196.0, 0.5, 0.08, 0, 0.12)
-      tone(audio, 146.8, 0.7, 0.07, 0, 0.28)
-      break
-    case 'wave':
-      chime(audio, 261.6, 0.28, 0.08)
-      chime(audio, 329.6, 0.32, 0.09, 0.12)
-      chime(audio, 392.0, 0.45, 0.1, 0.24)
-      break
-    case 'tap':
-      tone(audio, 440.0, 0.18, 0.07)
-      break
-    case 'pad':
-      chime(audio, PENT[Math.max(0, Math.min(PENT.length - 1, Math.round(pitch)))], 0.36, 0.12)
-      break
-    case 'good':
-      chime(audio, 329.6, 0.28, 0.1)
-      chime(audio, 493.9, 0.4, 0.09, 0.08)
-      break
-    case 'miss':
-      tone(audio, 196.0, 0.38, 0.08, -28)
-      break
-    // `pitch` is a semitone offset so callers can build a rising streak ladder.
-    case 'hop': {
-      const semis = Math.max(0, Math.min(16, Math.round(pitch)))
-      const freq = 349.2 * Math.pow(2, semis / 12)
-      tone(audio, freq, 0.13, 0.075, freq * 0.16)
-      break
-    }
-    case 'whoosh':
-      tone(audio, 640.0, 0.16, 0.05, -420)
-      break
-  }
+  const play = SOUND_PACKS[soundPack] ?? SOUND_PACKS.classic
+  play(createSynth(audio, master), name, pitch)
 }

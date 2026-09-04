@@ -9,6 +9,7 @@ import { normalizePlayerName } from '../lib/leaderboard'
 import { useTrophySummary } from '../hooks/useTrophySummary'
 import { PlayerBadge, type PlayerBadgeHandle } from './PlayerBadge'
 import { SitePeriodControl } from './SitePeriodControl'
+import { SoundPackSelect } from './SoundPackSelect'
 import { TrophyMark } from './TrophyMark'
 import {
   navActive,
@@ -225,6 +226,12 @@ export function SiteHeader() {
               >
                 {theme === 'dark' ? 'Light mode' : 'Dark mode'}
               </button>
+              <SoundPackSelect
+                variant="menu"
+                onPicked={() => {
+                  /* keep menu open so packs can be compared */
+                }}
+              />
               <button
                 type="button"
                 role="menuitem"
@@ -332,6 +339,7 @@ export function SiteHeader() {
                   >
                     {theme === 'dark' ? 'Light mode' : 'Dark mode'}
                   </button>
+                  <SoundPackSelect variant="menu" className="site-drawer__util" />
                   <button
                     type="button"
                     className="site-drawer__util"

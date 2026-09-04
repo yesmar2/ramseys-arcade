@@ -7,7 +7,7 @@ import {
   unlockSound,
 } from '../lib/sound'
 
-export function SoundToggle() {
+export function SoundToggle({ className = '' }: { className?: string } = {}) {
   const [mute, setMute] = useState(isMuted)
 
   useEffect(() => {
@@ -17,7 +17,7 @@ export function SoundToggle() {
 
   return (
     <div
-      className="game-sound"
+      className={`game-sound${className ? ` ${className}` : ''}`}
       onPointerDown={(e) => e.stopPropagation()}
     >
       <button
