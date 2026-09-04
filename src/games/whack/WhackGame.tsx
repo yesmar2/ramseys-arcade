@@ -7,7 +7,17 @@ import { ScoreSaveCard } from '../../components/ScoreSaveCard'
 import { TournamentScoreCard } from '../../components/TournamentScoreCard'
 import { useGamePause } from '../../hooks/useGamePause'
 import { usePersonalBest } from '../../hooks/usePersonalBest'
+import { usePlayerName } from '../../hooks/usePlayerName'
 import { getPersonalBest } from '../../lib/personalBest'
+import { normalizePlayerName } from '../../lib/leaderboard'
+import {
+  clearRunAchievements,
+  pushRunAchievement,
+} from '../../lib/runAchievements'
+import {
+  submitPopCenterStreak,
+  shouldCelebrateRecordSubmit,
+} from '../../lib/records'
 import { STAGE_ASPECT } from '../../lib/stage'
 import { useTournamentPlay } from '../../tournaments/TournamentPlayContext'
 import {
@@ -27,6 +37,7 @@ import { renderGame } from './render'
 export function WhackGame() {
   const tournament = useTournamentPlay()
   const apiBest = usePersonalBest('pop')
+  const playerName = normalizePlayerName(usePlayerName())
   const stateRef = useRef<GameState>(createInitialState())
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const sizeRef = useRef({ w: 540, h: 720 })
@@ -37,6 +48,7 @@ export function WhackGame() {
   const previousBestRef = useRef(getPersonalBest('pop'))
   const hitLock = useRef(false)
   const startGrace = useRef(0)
+  const streakRecordKey = useRef<string | null>(null)
   const pausable = ui.phase === 'playing' && !saveOpen
   const { paused, toggle: togglePause, resume } = useGamePause(pausable)
   const pausedRef = useRef(false)
@@ -97,10 +109,33 @@ export function WhackGame() {
     if (ui.phase === 'menu') previousBestRef.current = apiBest
   }, [apiBest, ui.phase])
 
+  useEffect(() => {
+    if (tournament || !playerName) return
+    if (ui.phase !== 'playing' && ui.phase !== 'gameover') return
+    const streak = ui.centerStreakBest
+    if (streak < 2) return
+    const key = `center:${streak}`
+    if (streakRecordKey.current === key) return
+    streakRecordKey.current = key
+    void (async () => {
+      const result = await submitPopCenterStreak(streak, playerName)
+      if (shouldCelebrateRecordSubmit(result)) {
+        pushRunAchievement({
+          id: 'pop:center-streak',
+          label: 'Perfect centers in a row',
+          value: String(streak),
+          rank: result.rank,
+        })
+      }
+    })()
+  }, [ui.phase, ui.centerStreakBest, playerName, tournament])
+
   const restart = () => {
     saveOpenRef.current = false
     setSaveOpen(false)
     offeredScore.current = null
+    clearRunAchievements()
+    streakRecordKey.current = null
     const { w, h } = sizeRef.current
     stateRef.current = setScale(startGame(stateRef.current), w, h)
     previousBestRef.current = getPersonalBest('pop')

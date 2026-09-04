@@ -16,6 +16,9 @@ export const ASTEROIDS_WAVE_RECORD_MAX = 20
 export const SNAKE_LENGTH_MILESTONE_MIN = 20
 export const SNAKE_LENGTH_MILESTONE_MAX = 100
 export const SNAKE_LENGTH_MILESTONE_STEP = 10
+export const STRIDE_ROW_MILESTONE_MIN = 25
+export const STRIDE_ROW_MILESTONE_MAX = 200
+export const STRIDE_ROW_MILESTONE_STEP = 25
 
 export type RecordDirection = 'lower' | 'higher'
 
@@ -128,13 +131,44 @@ export function parseSnakeLengthFromRecordId(recordId: string): number | null {
   return length
 }
 
+export function strideFastestRowRecordId(rows: number): string | null {
+  if (
+    !Number.isInteger(rows) ||
+    rows < STRIDE_ROW_MILESTONE_MIN ||
+    rows > STRIDE_ROW_MILESTONE_MAX ||
+    rows % STRIDE_ROW_MILESTONE_STEP !== 0
+  ) {
+    return null
+  }
+  return `fastest-row-${rows}`
+}
+
+export function parseStrideRowFromRecordId(recordId: string): number | null {
+  const match = /^fastest-row-(\d+)$/.exec(recordId)
+  if (!match) return null
+  const rows = Number(match[1])
+  if (
+    !Number.isInteger(rows) ||
+    rows < STRIDE_ROW_MILESTONE_MIN ||
+    rows > STRIDE_ROW_MILESTONE_MAX ||
+    rows % STRIDE_ROW_MILESTONE_STEP !== 0
+  ) {
+    return null
+  }
+  return rows
+}
+
 export function recordNavShortLabel(row: { id: string; label: string }): string {
   if (row.id === ASTEROIDS_HIGHEST_COMBO_ID) return 'Combo'
   if (row.id === PATRIOT_DIRECT_STREAK_ID) return 'Direct'
+  if (row.id === STRIDE_MOST_COINS_ID) return 'Coins'
+  if (row.id === POP_CENTER_STREAK_ID) return 'Center'
   const wave = parseAsteroidsWaveFromRecordId(row.id)
   if (wave != null) return `W${wave}`
   const length = parseSnakeLengthFromRecordId(row.id)
   if (length != null) return `L${length}`
+  const strideRow = parseStrideRowFromRecordId(row.id)
+  if (strideRow != null) return `${strideRow}`
   return row.label
 }
 
@@ -157,6 +191,8 @@ export function formatRecordScore(entryScore: number, unit: RecordDef['unit']): 
 
 export const ASTEROIDS_HIGHEST_COMBO_ID = 'highest-combo'
 export const PATRIOT_DIRECT_STREAK_ID = 'direct-streak'
+export const STRIDE_MOST_COINS_ID = 'most-coins'
+export const POP_CENTER_STREAK_ID = 'center-streak'
 
 export type RecordSubmitOutcome = {
   improved: boolean
@@ -420,7 +456,56 @@ export async function submitSnakeFastestLength(
   }
 }
 
-export const GAMES_WITH_RECORDS = ['asteroids', 'snake', 'patriot'] as const
+/** Best-effort fastest-to-row submit (elapsed ms from run start). */
+export async function submitStrideFastestRow(
+  rows: number,
+  elapsedMs: number,
+  name: string,
+): Promise<RecordSubmitOutcome | null> {
+  const recordId = strideFastestRowRecordId(rows)
+  const cleaned = normalizePlayerName(name)
+  if (!recordId || !cleaned || !(elapsedMs > 0)) return null
+  const ms = Math.max(1, Math.round(elapsedMs))
+  try {
+    const result = await submitRecord('stride', recordId, cleaned, ms)
+    return toRecordSubmitOutcome(result)
+  } catch {
+    return null
+  }
+}
+
+/** Best-effort most-coins submit (run total). */
+export async function submitStrideMostCoins(
+  coins: number,
+  name: string,
+): Promise<RecordSubmitOutcome | null> {
+  const value = Math.floor(coins)
+  const cleaned = normalizePlayerName(name)
+  if (!cleaned || !(value >= 1)) return null
+  try {
+    const result = await submitRecord('stride', STRIDE_MOST_COINS_ID, cleaned, value)
+    return toRecordSubmitOutcome(result)
+  } catch {
+    return null
+  }
+}
+
+/** Best-effort Pop perfect-center streak submit (run peak). */
+export async function submitPopCenterStreak(
+  streak: number,
+  name: string,
+): Promise<RecordSubmitOutcome | null> {
+  const value = Math.floor(streak)
+  if (!(value >= 2)) return null
+  try {
+    const result = await submitRecord('pop', POP_CENTER_STREAK_ID, name, value)
+    return toRecordSubmitOutcome(result)
+  } catch {
+    return null
+  }
+}
+
+export const GAMES_WITH_RECORDS = ['asteroids', 'snake', 'patriot', 'stride', 'pop'] as const
 export type RecordGame = (typeof GAMES_WITH_RECORDS)[number]
 
 export function gameHasRecords(game: string): game is RecordGame {

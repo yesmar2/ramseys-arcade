@@ -11,7 +11,22 @@ import { ScoreSaveCard } from '../../components/ScoreSaveCard'
 import { TournamentScoreCard } from '../../components/TournamentScoreCard'
 import { useGamePause } from '../../hooks/useGamePause'
 import { usePersonalBest } from '../../hooks/usePersonalBest'
+import { usePlayerName } from '../../hooks/usePlayerName'
 import { getPersonalBest } from '../../lib/personalBest'
+import { normalizePlayerName } from '../../lib/leaderboard'
+import {
+  clearRunAchievements,
+  pushRunAchievement,
+} from '../../lib/runAchievements'
+import {
+  formatRecordMs,
+  STRIDE_ROW_MILESTONE_MAX,
+  STRIDE_ROW_MILESTONE_MIN,
+  STRIDE_ROW_MILESTONE_STEP,
+  submitStrideFastestRow,
+  submitStrideMostCoins,
+  shouldCelebrateRecordSubmit,
+} from '../../lib/records'
 import { useTournamentPlay } from '../../tournaments/TournamentPlayContext'
 import {
   createInitialState,
@@ -38,6 +53,7 @@ const DEATH_COPY: Record<DeathCause, string> = {
 export function StrideGame() {
   const tournament = useTournamentPlay()
   const apiBest = usePersonalBest('stride')
+  const playerName = normalizePlayerName(usePlayerName())
   const stageRef = useRef<HTMLDivElement>(null)
   const stateRef = useRef<GameState | null>(null)
   if (!stateRef.current) {
@@ -51,6 +67,9 @@ export function StrideGame() {
   const swipeRef = useRef<{ x: number; y: number } | null>(null)
   const hoppedThisSwipe = useRef(false)
   const startGrace = useRef(0)
+  const runStartRef = useRef<number | null>(null)
+  const milestonesRef = useRef<Set<number>>(new Set())
+  const coinsRecordedRef = useRef(false)
   const pausable = ui.phase === 'playing' && !saveOpen
   const { paused, toggle: togglePause, resume } = useGamePause(pausable)
   const pausedRef = useRef(false)
@@ -132,12 +151,62 @@ export function StrideGame() {
     if (ui.phase === 'menu') previousBestRef.current = apiBest
   }, [apiBest, ui.phase])
 
+  useEffect(() => {
+    if (ui.phase !== 'playing' || tournament || !playerName) return
+    if (runStartRef.current == null) return
+    const elapsedMs = performance.now() - runStartRef.current
+    if (!(elapsedMs > 0)) return
+
+    for (
+      let milestone = STRIDE_ROW_MILESTONE_MIN;
+      milestone <= STRIDE_ROW_MILESTONE_MAX;
+      milestone += STRIDE_ROW_MILESTONE_STEP
+    ) {
+      if (ui.score < milestone || milestonesRef.current.has(milestone)) continue
+      milestonesRef.current.add(milestone)
+      void (async () => {
+        const result = await submitStrideFastestRow(milestone, elapsedMs, playerName)
+        if (shouldCelebrateRecordSubmit(result)) {
+          pushRunAchievement({
+            id: `stride:fastest-row-${milestone}`,
+            label: `Fastest to ${milestone}`,
+            value: formatRecordMs(Math.max(1, Math.round(elapsedMs))),
+            rank: result.rank,
+          })
+        }
+      })()
+    }
+  }, [ui.phase, ui.score, playerName, tournament])
+
+  useEffect(() => {
+    if (tournament || !playerName) return
+    if (ui.phase !== 'dying' && ui.phase !== 'gameover') return
+    if (coinsRecordedRef.current || ui.runCoins < 1) return
+    coinsRecordedRef.current = true
+    const coins = ui.runCoins
+    void (async () => {
+      const result = await submitStrideMostCoins(coins, playerName)
+      if (shouldCelebrateRecordSubmit(result)) {
+        pushRunAchievement({
+          id: 'stride:most-coins',
+          label: 'Most coins in a run',
+          value: String(coins),
+          rank: result.rank,
+        })
+      }
+    })()
+  }, [ui.phase, ui.runCoins, playerName, tournament])
+
   const restart = () => {
     setSaveOpen(false)
     offeredScore.current = null
+    clearRunAchievements()
     stateRef.current = startGame(stateRef.current!)
     previousBestRef.current = getPersonalBest('stride')
     startGrace.current = performance.now() + 220
+    runStartRef.current = performance.now()
+    milestonesRef.current = new Set()
+    coinsRecordedRef.current = false
     setUi(toSnapshot(stateRef.current))
   }
 

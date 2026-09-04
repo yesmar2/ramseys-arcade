@@ -34,6 +34,7 @@ export type Snapshot = {
   phase: Phase
   timeLeft: number
   streak: number
+  centerStreakBest: number
   hits: number
 }
 
@@ -43,6 +44,10 @@ export type GameState = {
   best: number
   timeLeft: number
   streak: number
+  /** Consecutive perfect-center hits (resets on miss or off-center). */
+  centerStreak: number
+  /** Peak center streak this run. */
+  centerStreakBest: number
   hits: number
   pads: Pad[]
   spawnTimer: number
@@ -93,6 +98,8 @@ export function createInitialState(): GameState {
     best: loadBest(),
     timeLeft: ROUND_SECS,
     streak: 0,
+    centerStreak: 0,
+    centerStreakBest: 0,
     hits: 0,
     pads: emptyPads(),
     spawnTimer: 0.4,
@@ -249,6 +256,8 @@ export function hitPad(
       : SCORE_HIT
   sfx(center ? 'perfect' : target.kind === 'gold' ? 'good' : 'hit')
   const streak = state.streak + 1
+  const centerStreak = center ? state.centerStreak + 1 : 0
+  const centerStreakBest = Math.max(state.centerStreakBest, centerStreak)
   const bonus = Math.min(STREAK_BONUS_CAP, Math.max(0, (streak - 1) * STREAK_BONUS))
   const points = base + bonus
 
@@ -271,6 +280,8 @@ export function hitPad(
     ],
     score: state.score + points,
     streak,
+    centerStreak,
+    centerStreakBest,
     hits: state.hits + 1,
     flash: center ? 0.28 : target.kind === 'gold' ? 0.2 : 0.12,
   }
@@ -318,6 +329,7 @@ export function tick(state: GameState, dt: number): GameState {
       if (target.rise <= 0.08) {
         pads.push({ ...pad, target: null })
         s.streak = 0
+        s.centerStreak = 0
         continue
       }
     }
@@ -353,6 +365,7 @@ export function toSnapshot(s: GameState): Snapshot {
     phase: s.phase,
     timeLeft: Math.ceil(s.timeLeft),
     streak: s.streak,
+    centerStreakBest: s.centerStreakBest,
     hits: s.hits,
   }
 }
