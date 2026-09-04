@@ -5998,9 +5998,77 @@ html[data-theme='dark'] .patriot__power-mark {
   min-height: 4.25rem;
 }
 
-.trophy-case__icon .lb-medal svg {
-  width: 3.15rem;
-  height: auto;
+.trophy-case__medal {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  filter: drop-shadow(0 5px 10px rgba(var(--ink-rgb), 0.16));
+}
+
+.trophy-case__medal-strap {
+  fill: #6b8cff;
+}
+
+.trophy-case__medal-strap--fold {
+  fill: #4a6fe0;
+}
+
+.trophy-case__medal-clasp {
+  fill: #3d5fbf;
+}
+
+.trophy-case__medal-num {
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.trophy-case__medal--gold .trophy-case__medal-disk {
+  fill: #f2c43a;
+}
+
+.trophy-case__medal--gold .trophy-case__medal-ring {
+  fill: none;
+  stroke: rgba(255, 250, 230, 0.6);
+  stroke-width: 1.6;
+}
+
+.trophy-case__medal--gold .trophy-case__medal-num {
+  fill: #8a5f04;
+}
+
+.trophy-case__medal--silver .trophy-case__medal-disk {
+  fill: #e2e7ed;
+}
+
+.trophy-case__medal--silver .trophy-case__medal-ring {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.75);
+  stroke-width: 1.6;
+}
+
+.trophy-case__medal--silver .trophy-case__medal-num {
+  fill: #626d7a;
+}
+
+.trophy-case__medal--bronze .trophy-case__medal-disk {
+  fill: #db9a5a;
+}
+
+.trophy-case__medal--bronze .trophy-case__medal-ring {
+  fill: none;
+  stroke: rgba(255, 236, 214, 0.6);
+  stroke-width: 1.6;
+}
+
+.trophy-case__medal--bronze .trophy-case__medal-num {
+  fill: #7c451a;
+}
+
+.trophy-case__cup-handle {
+  fill: none;
+  stroke-width: 3.4;
+  stroke-linecap: round;
 }
 
 .trophy-case__cup {
@@ -6026,7 +6094,7 @@ html[data-theme='dark'] .patriot__power-mark {
 }
 
 .trophy-case__cup--gold .trophy-case__cup-stem,
-.trophy-case__cup--gold .trophy-case__cup-plinth,
+.trophy-case__cup--gold .trophy-case__cup-cone,
 .trophy-case__cup--gold .trophy-case__cup-foot {
   fill: #c99214;
 }
@@ -6047,7 +6115,7 @@ html[data-theme='dark'] .patriot__power-mark {
 }
 
 .trophy-case__cup--silver .trophy-case__cup-stem,
-.trophy-case__cup--silver .trophy-case__cup-plinth,
+.trophy-case__cup--silver .trophy-case__cup-cone,
 .trophy-case__cup--silver .trophy-case__cup-foot {
   fill: #8f99a6;
 }
@@ -6068,7 +6136,7 @@ html[data-theme='dark'] .patriot__power-mark {
 }
 
 .trophy-case__cup--bronze .trophy-case__cup-stem,
-.trophy-case__cup--bronze .trophy-case__cup-plinth,
+.trophy-case__cup--bronze .trophy-case__cup-cone,
 .trophy-case__cup--bronze .trophy-case__cup-foot {
   fill: #a8642c;
 }
@@ -6139,7 +6207,8 @@ html[data-theme='dark'] .patriot__power-mark {
   height: auto;
 }
 
-.trophy-case__legend .trophy-case__cup svg {
+.trophy-case__legend .trophy-case__cup svg,
+.trophy-case__legend .trophy-case__medal svg {
   width: 1.85rem;
   height: auto;
 }

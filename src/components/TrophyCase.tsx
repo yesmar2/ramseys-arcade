@@ -7,7 +7,7 @@ import {
   type TrophyAward,
   type TrophyPeriod,
 } from '../lib/trophies'
-import { medalKind, PodiumMedal } from './PodiumMedal'
+import { medalKind } from './PodiumMedal'
 
 type RibbonTone = 'weekly' | 'monthly'
 
@@ -40,55 +40,81 @@ function TopTenRibbon({ tone = 'weekly' }: { tone?: RibbonTone }) {
   )
 }
 
-type CupTone = 'gold' | 'silver' | 'bronze'
+type MetalTone = 'gold' | 'silver' | 'bronze'
 
-function MonthlyTrophyCup({ tone }: { tone: CupTone }) {
+/** Monthly podium award — a cup. Shapes overlap so the silhouette reads as one piece. */
+function MonthlyTrophyCup({ tone }: { tone: MetalTone }) {
   return (
     <span className={`trophy-case__cup trophy-case__cup--${tone}`} aria-hidden="true">
       <svg viewBox="0 0 64 72" width="64" height="72" focusable="false">
         <path
           className="trophy-case__cup-handle"
-          fill="none"
-          strokeWidth="3.2"
-          strokeLinecap="round"
-          d="M18 15c-6.8.4-10.8 4.6-10.8 9.8 0 5.2 3.6 9 9.4 9.6"
+          d="M16.8 16.5c-9 0-11.8 4.6-10 9.2 1.4 3.6 5.4 5.6 10.2 5.8"
         />
         <path
           className="trophy-case__cup-handle"
-          fill="none"
-          strokeWidth="3.2"
-          strokeLinecap="round"
-          d="M46 15c6.8.4 10.8 4.6 10.8 9.8 0 5.2-3.6 9-9.4 9.6"
+          d="M47.2 16.5c9 0 11.8 4.6 10 9.2-1.4 3.6-5.4 5.6-10.2 5.8"
         />
         <path
           className="trophy-case__cup-bowl"
-          d="M17 11.2c0-.9.7-1.6 1.6-1.6h26.8c.9 0 1.6.7 1.6 1.6v1.8c0 9.6-5.4 17.4-13.8 20.4v6.4h-2.8v-6.4C22.4 30.4 17 22.6 17 13V11.2Z"
+          d="M16.8 12h30.4v3.8c0 10.2-6.1 18.4-13.7 20.6V42h-3v-5.6C22.9 34.2 16.8 26 16.8 15.8V12Z"
         />
         <path
           className="trophy-case__cup-rim"
-          d="M15.5 9h33c.8 0 1.4.6 1.4 1.4v1.3H14.1V10.4c0-.8.6-1.4 1.4-1.4Z"
+          d="M14.5 8h35a1.6 1.6 0 0 1 1.6 1.6v3.2H12.9V9.6A1.6 1.6 0 0 1 14.5 8Z"
         />
         <path
           className="trophy-case__cup-shine"
-          d="M22 13.4h9.2c.5 0 .9.5.7 1L29.4 23h-8.2c-.5 0-.75-.55-.5-.95L22 13.4Z"
+          d="M21.5 14.6h9c.5 0 .85.5.66.96L28 24.4h-8.1c-.5 0-.84-.5-.66-.96L21.5 14.6Z"
         />
-        <path className="trophy-case__cup-stem" d="M29.4 41h5.2v7.4h-5.2z" />
-        <path className="trophy-case__cup-knob" d="M26.8 47.8h10.4v3h-10.4z" />
-        <path className="trophy-case__cup-base" d="M22.5 55.5h19v3.4h-19z" />
-        <path className="trophy-case__cup-plinth" d="M18 58.9h28v4.8H18z" />
-        <path className="trophy-case__cup-foot" d="M15.2 63.7h33.6v3.6H15.2z" />
+        <path className="trophy-case__cup-stem" d="M28.6 40h6.8v8h-6.8z" />
+        <path className="trophy-case__cup-knob" d="M25 46.4h14v3.6H25z" />
+        <path className="trophy-case__cup-cone" d="M26 49.2h12l4.5 8.4h-21z" />
+        <path className="trophy-case__cup-base" d="M20 56.4h24v4.4H20z" />
+        <path
+          className="trophy-case__cup-foot"
+          d="M16.4 59.8h31.2a1.6 1.6 0 0 1 1.6 1.6v3.8H14.8v-3.8a1.6 1.6 0 0 1 1.6-1.6Z"
+        />
+      </svg>
+    </span>
+  )
+}
+
+/** Weekly podium award — a medal hanging from a blue neck ribbon. */
+function WeeklyMedal({ rank }: { rank: number }) {
+  const tone = medalKind(rank) ?? 'gold'
+  return (
+    <span
+      className={`trophy-case__medal trophy-case__medal--${tone}`}
+      aria-hidden="true"
+    >
+      <svg viewBox="0 0 64 72" width="64" height="72" focusable="false">
+        <path className="trophy-case__medal-strap" d="M23.5 5h17l-3.5 32h-10z" />
+        <path
+          className="trophy-case__medal-strap trophy-case__medal-strap--fold"
+          d="M32 5h8.5L37 37h-5z"
+        />
+        <path
+          className="trophy-case__medal-clasp"
+          d="M22 3h20a1.8 1.8 0 0 1 1.8 1.8v3.4H20.2V4.8A1.8 1.8 0 0 1 22 3Z"
+        />
+        <circle className="trophy-case__medal-disk" cx="32" cy="47.5" r="15.5" />
+        <circle className="trophy-case__medal-ring" cx="32" cy="47.5" r="11.8" />
+        <text className="trophy-case__medal-num" x="32" y="54.2" textAnchor="middle">
+          {rank}
+        </text>
       </svg>
     </span>
   )
 }
 
 function TrophyIcon({ rank, period }: { rank: number; period: TrophyPeriod }) {
-  const kind = medalKind(rank)
+  const podium = medalKind(rank) != null
   if (period === 'monthly') {
-    if (kind) return <MonthlyTrophyCup tone={kind} />
+    if (podium) return <MonthlyTrophyCup tone={medalKind(rank) ?? 'gold'} />
     return <TopTenRibbon tone="monthly" />
   }
-  if (kind) return <PodiumMedal kind={kind} />
+  if (podium) return <WeeklyMedal rank={rank} />
   return <TopTenRibbon tone="weekly" />
 }
 
@@ -181,7 +207,7 @@ export function TrophyCase({ name }: { name: string }) {
           </p>
           <ul className="trophy-case__legend" aria-label="Trophy tiers">
             <li>
-              <PodiumMedal kind="gold" />
+              <WeeklyMedal rank={1} />
               <span>Weekly top 3 — medal</span>
             </li>
             <li>
