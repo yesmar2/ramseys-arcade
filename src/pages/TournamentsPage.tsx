@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
-import { EventCard, EventStatusChips, eventAccent } from '../components/EventCard'
-import { EventCountdown } from '../components/EventCountdown'
+import { EventCard, EventTicket, eventAccent } from '../components/EventCard'
 import { GameLobbyArt } from '../components/GameLobbyArt'
 import { GameThumbArt } from '../components/GameThumbArt'
 import { PageBackLink } from '../components/PageBackLink'
@@ -15,14 +14,11 @@ import { tournamentCreateHref, tournamentHref, tournamentPlayHref, rankHref, use
 import { APP_NAME } from '../lib/brand'
 import { ApiError, getLastPlayerName, normalizePlayerName } from '../lib/leaderboard'
 import {
-  eventDurationLabel,
   getTournament,
   getTournamentInvite,
   isPlayerInTournament,
-  isUnlimitedDuration,
   joinTournament,
   listTournaments,
-  playerCountLabel,
   rememberTournamentInvite,
   syncJoinedTournamentRosters,
   type StandingRow,
@@ -606,7 +602,7 @@ export function TournamentDetailPage({ id, invite }: { id: string; invite?: stri
           )}
 
           <div className="event-detail__meta">
-            <EventStatusChips
+            <EventTicket
               t={detail}
               joined={joined && detail.status !== 'ended'}
             />
@@ -621,24 +617,6 @@ export function TournamentDetailPage({ id, invite }: { id: string; invite?: stri
                 </button>
               </div>
             ) : null}
-            <p className="event-detail__facts">
-              {detail.status === 'active' ? (
-                <strong>
-                  <EventCountdown
-                    endsAt={detail.endsAt}
-                    unlimitedDuration={isUnlimitedDuration(detail.rules)}
-                  />
-                </strong>
-              ) : (
-                <span>{eventDurationLabel(detail)}</span>
-              )}
-              <span className="event-detail__facts-sep" aria-hidden="true">
-                ·
-              </span>
-              <span>
-                {playerCountLabel(detail.playerCount, detail.rules)}
-              </span>
-            </p>
           </div>
 
           {detail.status !== 'ended' && !joined ? (

@@ -4,6 +4,7 @@ import {
   cadenceLabel,
   eventDurationLabel,
   isUnlimitedDuration,
+  playerCountLabel,
   type TournamentStatus,
   type TournamentSummary,
 } from '../lib/tournaments'
@@ -21,18 +22,21 @@ export function eventAccent(games: string[]) {
   return getGame(games[0] ?? '')?.accent ?? '#2eb8a0'
 }
 
-export function EventStatusChips({
+function EventMetaChips({
   t,
   joined = false,
+  omitStatus = false,
 }: {
   t: Pick<TournamentSummary, 'status' | 'official' | 'cadence' | 'format' | 'formatLabel' | 'private'>
-  /** Show a Joined chip when the current player is in this event. */
   joined?: boolean
+  omitStatus?: boolean
 }) {
   const cadence = cadenceLabel(t.cadence)
   return (
-    <div className="event-chips">
-      <span className={`tour-pill tour-pill--${t.status}`}>{statusLabel(t.status)}</span>
+    <>
+      {!omitStatus ? (
+        <span className={`tour-pill tour-pill--${t.status}`}>{statusLabel(t.status)}</span>
+      ) : null}
       {cadence ? <span className="tour-pill tour-pill--cadence">{cadence}</span> : null}
       {t.private ? <span className="tour-pill tour-pill--private">Invite only</span> : null}
       {!cadence && t.official && !t.private ? (
@@ -42,6 +46,75 @@ export function EventStatusChips({
         <span className="tour-pill tour-pill--format">{t.formatLabel}</span>
       ) : null}
       {joined ? <span className="tour-pill tour-pill--joined">Joined</span> : null}
+    </>
+  )
+}
+
+export function EventStatusChips({
+  t,
+  joined = false,
+}: {
+  t: Pick<TournamentSummary, 'status' | 'official' | 'cadence' | 'format' | 'formatLabel' | 'private'>
+  /** Show a Joined chip when the current player is in this event. */
+  joined?: boolean
+}) {
+  return (
+    <div className="event-chips">
+      <EventMetaChips t={t} joined={joined} />
+    </div>
+  )
+}
+
+/** Prominent admission-ticket status for the event detail page. */
+export function EventTicket({
+  t,
+  joined = false,
+}: {
+  t: Pick<
+    TournamentSummary,
+    | 'status'
+    | 'official'
+    | 'cadence'
+    | 'format'
+    | 'formatLabel'
+    | 'private'
+    | 'endsAt'
+    | 'startsAt'
+    | 'playerCount'
+    | 'rules'
+  >
+  joined?: boolean
+}) {
+  const live = t.status === 'active'
+  return (
+    <div
+      className={`event-ticket event-ticket--${t.status}`}
+      role="status"
+      aria-label={`${statusLabel(t.status)} event`}
+    >
+      <div className="event-ticket__main">
+        <div className="event-ticket__status">
+          {live ? <span className="event-ticket__pulse" aria-hidden="true" /> : null}
+          <span className="event-ticket__label">{statusLabel(t.status)}</span>
+        </div>
+        <p className="event-ticket__timing">
+          {live ? (
+            <EventCountdown
+              endsAt={t.endsAt}
+              unlimitedDuration={isUnlimitedDuration(t.rules)}
+            />
+          ) : (
+            eventDurationLabel(t)
+          )}
+        </p>
+        <p className="event-ticket__players">{playerCountLabel(t.playerCount, t.rules)}</p>
+        <div className="event-ticket__chips">
+          <EventMetaChips t={t} joined={joined} omitStatus />
+        </div>
+      </div>
+      <div className="event-ticket__stub" aria-hidden="true">
+        <span className="event-ticket__stub-mark">Admit</span>
+      </div>
     </div>
   )
 }
