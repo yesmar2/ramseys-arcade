@@ -1,4 +1,4 @@
-import { getClaimToken, getLastPlayerName, normalizePlayerName, ApiError } from './leaderboard'
+import { getClaimToken, getLastPlayerName, normalizePlayerName, rememberClaimToken, ApiError } from './leaderboard'
 
 export type TournamentStatus = 'upcoming' | 'active' | 'ended'
 export type TournamentCadence = 'daily' | 'weekly'
@@ -466,6 +466,7 @@ export async function joinTournament(
     }),
   })
   rememberTournamentPlayer(id, result.player.id)
+  if (result.token) rememberClaimToken(cleaned, result.token)
   return result
 }
 
@@ -558,6 +559,7 @@ export async function submitTournamentScore(
     attemptsUsed: number
     attemptsRemaining: number | null
     maxAttempts: number | null
+    token?: string
   }>(`/tournaments/${id}/scores`, {
     method: 'POST',
     body: JSON.stringify({
@@ -569,6 +571,7 @@ export async function submitTournamentScore(
     }),
   })
   rememberJoinedTournament(id)
+  if (data.token) rememberClaimToken(cleaned, data.token)
   return data
 }
 

@@ -16,6 +16,7 @@ import {
   type LeaderboardPeriod,
 } from '../lib/leaderboard'
 import { describePersonalBest, rememberPersonalBest } from '../lib/personalBest'
+import { submitScoreToJoinedTournaments } from '../lib/tournaments'
 import { refreshGlobalRank } from '../lib/globalRank'
 import { defaultPeriod, useDefaultPeriod } from '../lib/defaultPeriod'
 import { gameHasRecords } from '../lib/records'
@@ -641,6 +642,7 @@ export function ScoreSaveCard({
     }
     if (isCancelled?.()) return
     const saved = await addLeaderboardScore(gameSlug, name, score)
+    void submitScoreToJoinedTournaments(gameSlug, score).catch(() => {})
     if (isCancelled?.()) return
     rememberPersonalBest(gameSlug, Math.max(recordRef.current, score))
     let nextGlobalRank: number | null = null
