@@ -99,9 +99,9 @@ export function EventTicker({
         : 'Window'
 
   return (
-    <div className="game-lobby__stats event-ticker" role="timer">
-      <div className={`lb-stat event-ticker__clock event-ticker__clock--${t.status}`}>
-        <span className="lb-stat__label">
+    <div className="event-ticker" role="timer">
+      <p className={`event-ticker__fact event-ticker__fact--${t.status}`}>
+        <span className="event-ticker__label">
           {live ? <span className="event-ticker__dot" aria-hidden="true" /> : null}
           {clockLabel}
         </span>
@@ -114,11 +114,11 @@ export function EventTicker({
             eventDurationLabel(t)
           )}
         </strong>
-      </div>
-      <div className="lb-stat">
-        <span className="lb-stat__label">Joined</span>
+      </p>
+      <p className="event-ticker__fact">
+        <span className="event-ticker__label">Joined</span>
         <strong>{playerCountLabel(t.playerCount, t.rules)}</strong>
-      </div>
+      </p>
       <div className="event-ticker__chips">
         <EventMetaChips t={t} joined={joined} omitStatus />
       </div>
