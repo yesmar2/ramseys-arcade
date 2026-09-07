@@ -65,8 +65,8 @@ export function EventStatusChips({
   )
 }
 
-/** Prominent admission-ticket status for the event detail page. */
-export function EventTicket({
+/** Hub-style live ticker for the event detail page. */
+export function EventTicker({
   t,
   joined = false,
 }: {
@@ -86,34 +86,41 @@ export function EventTicket({
   joined?: boolean
 }) {
   const live = t.status === 'active'
+  const upcoming = t.status === 'upcoming'
+  const unlimited = isUnlimitedDuration(t.rules)
+  const ticking = (live || upcoming) && !unlimited
+  const target = upcoming ? t.startsAt : t.endsAt
+  const clockLabel = unlimited && live
+    ? 'Duration'
+    : upcoming
+      ? 'Starts in'
+      : live
+        ? 'Time left'
+        : 'Window'
+
   return (
-    <div
-      className={`event-ticket event-ticket--${t.status}`}
-      role="status"
-      aria-label={`${statusLabel(t.status)} event`}
-    >
-      <div className="event-ticket__main">
-        <div className="event-ticket__status">
-          {live ? <span className="event-ticket__pulse" aria-hidden="true" /> : null}
-          <span className="event-ticket__label">{statusLabel(t.status)}</span>
-        </div>
-        <p className="event-ticket__timing">
-          {live ? (
-            <EventCountdown
-              endsAt={t.endsAt}
-              unlimitedDuration={isUnlimitedDuration(t.rules)}
-            />
+    <div className="game-lobby__stats event-ticker" role="timer">
+      <div className={`lb-stat event-ticker__clock event-ticker__clock--${t.status}`}>
+        <span className="lb-stat__label">
+          {live ? <span className="event-ticker__dot" aria-hidden="true" /> : null}
+          {clockLabel}
+        </span>
+        <strong>
+          {ticking ? (
+            <EventCountdown endsAt={target} precise />
+          ) : unlimited && live ? (
+            'Open'
           ) : (
             eventDurationLabel(t)
           )}
-        </p>
-        <p className="event-ticket__players">{playerCountLabel(t.playerCount, t.rules)}</p>
-        <div className="event-ticket__chips">
-          <EventMetaChips t={t} joined={joined} omitStatus />
-        </div>
+        </strong>
       </div>
-      <div className="event-ticket__stub" aria-hidden="true">
-        <span className="event-ticket__stub-mark">Admit</span>
+      <div className="lb-stat">
+        <span className="lb-stat__label">Joined</span>
+        <strong>{playerCountLabel(t.playerCount, t.rules)}</strong>
+      </div>
+      <div className="event-ticker__chips">
+        <EventMetaChips t={t} joined={joined} omitStatus />
       </div>
     </div>
   )

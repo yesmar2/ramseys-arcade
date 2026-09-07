@@ -4779,6 +4779,12 @@ html[data-theme='dark'] .patriot__power-mark {
 
 .game-lobby__board-link {
   flex: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  font: inherit;
   font-size: 0.88rem;
   font-weight: 700;
   text-decoration: none;
@@ -9526,129 +9532,38 @@ html[data-theme='dark'] .patriot__power-mark {
   box-shadow: var(--shadow-soft);
 }
 
-.event-detail__meta {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.7rem;
-  text-align: center;
+.event-ticker__clock--active {
+  border-color: color-mix(in srgb, var(--event-accent, var(--accent)) 28%, rgba(var(--ink-rgb), 0.05));
+  background: color-mix(in srgb, var(--event-accent, var(--accent)) 10%, rgba(var(--surface-rgb), 0.9));
 }
 
-.event-ticket {
-  --ticket-ink: var(--ink);
-  --ticket-muted: var(--muted);
-  --ticket-fill: color-mix(in srgb, var(--event-accent, var(--accent)) 10%, var(--surface));
-  --ticket-edge: color-mix(in srgb, var(--event-accent, var(--accent)) 42%, transparent);
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 4.6rem;
-  width: min(100%, 22rem);
-  border: 2px solid var(--ticket-edge);
-  border-radius: 0.85rem;
-  background:
-    radial-gradient(circle at 0 50%, transparent 0.55rem, var(--ticket-fill) 0.58rem),
-    radial-gradient(circle at 100% 50%, transparent 0.55rem, var(--ticket-fill) 0.58rem);
-  background-color: var(--ticket-fill);
-  box-shadow: var(--shadow-soft);
-  overflow: hidden;
-  text-align: left;
-}
-
-.event-ticket--active {
-  --ticket-fill: color-mix(in srgb, var(--event-accent, var(--accent)) 16%, var(--surface));
-  --ticket-edge: color-mix(in srgb, var(--event-accent, var(--accent)) 55%, #1a7a5c);
-  animation: event-ticket-glow 2.4s ease-in-out infinite;
-}
-
-.event-ticket--upcoming {
-  --ticket-fill: color-mix(in srgb, var(--accent-2) 14%, var(--surface));
-  --ticket-edge: color-mix(in srgb, var(--accent-2) 50%, transparent);
-}
-
-.event-ticket--ended {
-  --ticket-fill: color-mix(in srgb, var(--muted) 8%, var(--surface));
-  --ticket-edge: rgba(var(--ink-rgb), 0.12);
-  opacity: 0.92;
-}
-
-.event-ticket__main {
-  display: flex;
-  flex-direction: column;
-  gap: 0.28rem;
-  padding: 0.95rem 1rem 1rem;
-  min-width: 0;
-}
-
-.event-ticket__status {
+.event-ticker__clock .lb-stat__label {
   display: inline-flex;
   align-items: center;
-  gap: 0.45rem;
+  gap: 0.35rem;
 }
 
-.event-ticket__pulse {
-  width: 0.55rem;
-  height: 0.55rem;
+.event-ticker__clock strong {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+
+.event-ticker__dot {
+  width: 0.5rem;
+  height: 0.5rem;
   border-radius: 50%;
   background: #1a7a5c;
   box-shadow: 0 0 0 0 rgba(26, 122, 92, 0.45);
-  animation: event-ticket-pulse 1.6s ease-out infinite;
+  animation: event-ticker-pulse 1.6s ease-out infinite;
 }
 
-.event-ticket__label {
-  font-family: var(--font-display);
-  font-size: clamp(1.35rem, 4.5vw, 1.65rem);
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  line-height: 1;
-  color: var(--ticket-ink);
-}
-
-.event-ticket--active .event-ticket__label {
-  color: #14634a;
-}
-
-.event-ticket__timing {
-  margin: 0.15rem 0 0;
-  font-family: var(--font-display);
-  font-size: 1.05rem;
-  font-weight: 700;
-  color: var(--ticket-ink);
-  line-height: 1.25;
-}
-
-.event-ticket__players {
-  margin: 0;
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: var(--ticket-muted);
-}
-
-.event-ticket__chips {
+.event-ticker__chips {
   display: flex;
   flex-wrap: wrap;
   gap: 0.3rem;
-  margin-top: 0.45rem;
 }
 
-.event-ticket__stub {
-  position: relative;
-  display: grid;
-  place-items: center;
-  border-left: 2px dashed color-mix(in srgb, var(--ticket-edge) 70%, transparent);
-  background: color-mix(in srgb, var(--ticket-fill) 70%, var(--surface));
-  writing-mode: vertical-rl;
-  transform: rotate(180deg);
-}
-
-.event-ticket__stub-mark {
-  font-size: 0.72rem;
-  font-weight: 800;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: color-mix(in srgb, var(--ticket-ink) 55%, var(--ticket-muted));
-}
-
-@keyframes event-ticket-pulse {
+@keyframes event-ticker-pulse {
   0% {
     box-shadow: 0 0 0 0 rgba(26, 122, 92, 0.45);
   }
@@ -9660,51 +9575,14 @@ html[data-theme='dark'] .patriot__power-mark {
   }
 }
 
-@keyframes event-ticket-glow {
-  0%,
-  100% {
-    box-shadow: var(--shadow-soft);
-  }
-  50% {
-    box-shadow:
-      0 8px 24px rgba(var(--shade-rgb), 0.1),
-      0 0 0 3px color-mix(in srgb, var(--event-accent, var(--accent)) 22%, transparent);
-  }
-}
-
-.event-detail__facts {
-  margin: 0;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  justify-content: center;
-  gap: 0.35rem 0.55rem;
-  font-size: 0.95rem;
-  font-weight: 600;
-  color: var(--muted);
-  line-height: 1.35;
-}
-
-.event-detail__facts strong {
-  font-family: var(--font-display);
-  font-weight: 700;
-  color: var(--ink);
-}
-
-.event-detail__facts-sep {
-  opacity: 0.4;
-  font-weight: 500;
-}
-
 .event-detail__join {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: stretch;
   gap: 0.45rem;
 }
 
 .event-detail__join-btn {
-  max-width: 22rem;
   border: 0;
   cursor: pointer;
   font: inherit;
@@ -10319,6 +10197,9 @@ html[data-theme='dark'] .patriot__power-mark {
 
 .event-invite-panel__btn {
   flex: 0 1 auto;
+}
+
+.event-invite-panel .event-invite-panel__btn {
   min-width: 12rem;
 }
 

@@ -77,6 +77,18 @@ export function formatRulesSummary(
   return 'Best score wins.'
 }
 
+function remainingParts(endsAt: number, now: number) {
+  const ms = endsAt - now
+  if (ms <= 0) return null
+  const totalSec = Math.floor(ms / 1000)
+  return {
+    days: Math.floor(totalSec / 86_400),
+    hours: Math.floor((totalSec % 86_400) / 3600),
+    mins: Math.floor((totalSec % 3600) / 60),
+    secs: totalSec % 60,
+  }
+}
+
 /** Human countdown until endsAt (or "Ended"). */
 export function formatEventCountdown(
   endsAt: number,
@@ -84,16 +96,27 @@ export function formatEventCountdown(
   unlimitedDuration = false,
 ): string {
   if (unlimitedDuration) return 'Until everyone finishes'
-  const ms = endsAt - now
-  if (ms <= 0) return 'Ended'
-  const totalSec = Math.floor(ms / 1000)
-  const days = Math.floor(totalSec / 86_400)
-  const hours = Math.floor((totalSec % 86_400) / 3600)
-  const mins = Math.floor((totalSec % 3600) / 60)
+  const parts = remainingParts(endsAt, now)
+  if (!parts) return 'Ended'
+  const { days, hours, mins } = parts
   if (days > 0) return `${days}d ${hours}h left`
   if (hours > 0) return `${hours}h ${mins}m left`
   if (mins > 0) return `${mins}m left`
   return 'Moments left'
+}
+
+/** Live ticker with seconds, e.g. `2d 04:12:33`. */
+export function formatEventTicker(
+  endsAt: number,
+  now = Date.now(),
+  unlimitedDuration = false,
+): string {
+  if (unlimitedDuration) return 'Open'
+  const parts = remainingParts(endsAt, now)
+  if (!parts) return 'Ended'
+  const pad = (n: number) => String(n).padStart(2, '0')
+  const clock = `${pad(parts.hours)}:${pad(parts.mins)}:${pad(parts.secs)}`
+  return parts.days > 0 ? `${parts.days}d ${clock}` : clock
 }
 
 export function eventDurationLabel(

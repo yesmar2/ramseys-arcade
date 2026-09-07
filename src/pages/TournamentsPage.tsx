@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
-import { EventCard, EventTicket, eventAccent } from '../components/EventCard'
+import { EventCard, EventTicker, eventAccent } from '../components/EventCard'
 import { GameLobbyArt } from '../components/GameLobbyArt'
 import { GameThumbArt } from '../components/GameThumbArt'
 import { PageBackLink } from '../components/PageBackLink'
@@ -566,57 +566,67 @@ export function TournamentDetailPage({ id, invite }: { id: string; invite?: stri
         </>
       ) : (
         <div
-          className="event-detail"
-          style={{ '--event-accent': accent, '--board-accent': accent } as CSSProperties}
+          className="event-detail game-lobby"
+          style={
+            {
+              '--event-accent': accent,
+              '--board-accent': accent,
+              '--tile-accent': accent,
+              '--thumb-accent': accent,
+            } as CSSProperties
+          }
         >
           <header className="lb-page__header lb-page__header--compact lb-game-board__head">
             <div className="lb-page__heading-row">
               <PageBackLink href="#/tournaments" label="Back to Events" />
               <h1 className="lb-page__title">{detail.title}</h1>
-              <div className="lb-game-board__trailing">
-                <ShareBoardButton
-                  label={`You're invited: ${detail.title} on ${APP_NAME}. Don't ghost the lobby.`}
-                  url={inviteLink ?? tournamentHref(detail.id)}
-                />
-              </div>
+              <span className="lb-page__heading-slot" aria-hidden="true" />
             </div>
           </header>
 
-          {detail.games.length === 1 && featured ? (
-            <GameLobbyArt slug={featured.slug} accent={featured.accent} />
-          ) : (
-            <div className="event-detail__thumbs" aria-hidden="true">
-              {detail.games.map((slug) => {
-                const g = getGame(slug)
-                return (
-                  <span
-                    key={slug}
-                    className="event-detail__thumb"
-                    style={{ '--thumb-accent': g?.accent ?? accent } as CSSProperties}
-                  >
-                    <GameThumbArt slug={slug} accent={g?.accent} />
-                  </span>
-                )
-              })}
+          <div className="game-lobby__intro">
+            <div className="game-lobby__intro-art">
+              {featured ? (
+                <GameLobbyArt slug={featured.slug} accent={featured.accent} />
+              ) : (
+                <div className="event-detail__thumbs" aria-hidden="true">
+                  {detail.games.map((slug) => {
+                    const g = getGame(slug)
+                    return (
+                      <span
+                        key={slug}
+                        className="event-detail__thumb"
+                        style={{ '--thumb-accent': g?.accent ?? accent } as CSSProperties}
+                      >
+                        <GameThumbArt slug={slug} accent={g?.accent} />
+                      </span>
+                    )
+                  })}
+                </div>
+              )}
             </div>
-          )}
-
-          <div className="event-detail__meta">
-            <EventTicket
-              t={detail}
-              joined={joined && detail.status !== 'ended'}
-            />
-            {detail.isHost && detail.inviteCode && detail.status !== 'ended' ? (
-              <div className="event-invite-panel">
-                <button
-                  type="button"
-                  className="score-save__btn event-invite-panel__btn"
-                  onClick={() => void copyInviteLink()}
-                >
-                  {copiedInvite ? 'Copied!' : 'Copy invite link'}
-                </button>
+            <div className="game-lobby__intro-body">
+              <div className="game-lobby__intro-links">
+                <ShareBoardButton
+                  className="game-lobby__share"
+                  label={`You're invited: ${detail.title} on ${APP_NAME}. Don't ghost the lobby.`}
+                  url={inviteLink ?? tournamentHref(detail.id)}
+                />
+                {detail.isHost && detail.inviteCode && detail.status !== 'ended' ? (
+                  <button
+                    type="button"
+                    className="game-lobby__board-link event-invite-panel__btn"
+                    onClick={() => void copyInviteLink()}
+                  >
+                    {copiedInvite ? 'Copied!' : 'Copy invite'}
+                  </button>
+                ) : null}
               </div>
-            ) : null}
+              <EventTicker
+                t={detail}
+                joined={joined && detail.status !== 'ended'}
+              />
+            </div>
           </div>
 
           {detail.status !== 'ended' && !joined ? (
@@ -626,7 +636,7 @@ export function TournamentDetailPage({ id, invite }: { id: string; invite?: stri
               ) : displayName ? (
                 <button
                   type="button"
-                  className="lb-play event-detail__join-btn"
+                  className="lb-play game-lobby__play game-lobby__play--wide event-detail__join-btn"
                   style={{ background: accent }}
                   disabled={busy}
                   onClick={() => void onJoin()}
