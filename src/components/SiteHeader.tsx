@@ -98,6 +98,7 @@ export function SiteHeader() {
     `${base}${navActive(match, hash) ? ` ${base}--active` : ''}`
 
   return (
+    <div className="site-chrome">
     <nav className="site-header" aria-label="Site">
       <div className="site-header__start">
         <button
@@ -197,63 +198,70 @@ export function SiteHeader() {
           </button>
         )}
 
-        <div className="site-header__scopes" aria-label="Board filters">
-          <SitePeriodControl variant="header" />
-          <SiteGroupControl variant="header" />
-        </div>
-
-        <div className="site-header__more site-header__more--desktop" ref={utilRef}>
-          <button
-            type="button"
-            className="site-header__menu-btn"
-            aria-label="Settings"
-            aria-expanded={utilOpen}
-            aria-haspopup="menu"
-            title="Settings"
-            onClick={() => setUtilOpen((open) => !open)}
-          >
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <circle cx="5" cy="12" r="1.7" fill="currentColor" />
-              <circle cx="12" cy="12" r="1.7" fill="currentColor" />
-              <circle cx="19" cy="12" r="1.7" fill="currentColor" />
-            </svg>
-          </button>
-          {utilOpen ? (
-            <div className="site-header__menu" role="menu">
-              <button
-                type="button"
-                role="menuitem"
-                onClick={() => {
-                  toggleTheme()
-                  setUtilOpen(false)
-                }}
-              >
-                {theme === 'dark' ? 'Light mode' : 'Dark mode'}
-              </button>
-              <SoundPackSelect
-                variant="menu"
-                onPicked={() => {
-                  /* keep menu open so packs can be compared */
-                }}
-              />
-              <button
-                type="button"
-                role="menuitem"
-                onClick={() => {
-                  setUtilOpen(false)
-                  playerRef.current?.openEdit()
-                }}
-              >
-                {accountLabel}
-              </button>
-            </div>
-          ) : null}
-        </div>
-
         <div className="site-header__player">
           <PlayerBadge ref={playerRef} icon className="site-header__player-badge" />
         </div>
       </div>
+    </nav>
+
+    <div className="site-scopes" aria-label="Board filters">
+      <div className="site-scopes__item">
+        <span className="site-scopes__label">Time</span>
+        <SitePeriodControl variant="header" />
+      </div>
+      <div className="site-scopes__item">
+        <span className="site-scopes__label">Group</span>
+        <SiteGroupControl variant="header" />
+      </div>
+    </div>
+
+    <div className="site-header__more site-header__more--desktop" ref={utilRef}>
+      <button
+        type="button"
+        className="site-header__menu-btn"
+        aria-label="Settings"
+        aria-expanded={utilOpen}
+        aria-haspopup="menu"
+        title="Settings"
+        onClick={() => setUtilOpen((open) => !open)}
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="5" cy="12" r="1.7" fill="currentColor" />
+          <circle cx="12" cy="12" r="1.7" fill="currentColor" />
+          <circle cx="19" cy="12" r="1.7" fill="currentColor" />
+        </svg>
+      </button>
+      {utilOpen ? (
+        <div className="site-header__menu" role="menu">
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              toggleTheme()
+              setUtilOpen(false)
+            }}
+          >
+            {theme === 'dark' ? 'Light mode' : 'Dark mode'}
+          </button>
+          <SoundPackSelect
+            variant="menu"
+            onPicked={() => {
+              /* keep menu open so packs can be compared */
+            }}
+          />
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              setUtilOpen(false)
+              playerRef.current?.openEdit()
+            }}
+          >
+            {accountLabel}
+          </button>
+        </div>
+      ) : null}
+    </div>
 
       {drawerOpen && typeof document !== 'undefined'
         ? createPortal(
@@ -364,7 +372,7 @@ export function SiteHeader() {
             document.body,
           )
         : null}
-    </nav>
+    </div>
   )
 }
 
