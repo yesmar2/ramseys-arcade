@@ -69,6 +69,7 @@ export function EventStatusChips({
 export function EventTicker({
   t,
   joined = false,
+  yourPlace = null,
 }: {
   t: Pick<
     TournamentSummary,
@@ -84,6 +85,8 @@ export function EventTicker({
     | 'rules'
   >
   joined?: boolean
+  /** Current player's rank in the event standings, if they have one. */
+  yourPlace?: number | null
 }) {
   const live = t.status === 'active'
   const upcoming = t.status === 'upcoming'
@@ -100,7 +103,7 @@ export function EventTicker({
 
   return (
     <div className="event-ticker" role="timer">
-      <p className={`event-ticker__fact event-ticker__fact--${t.status}`}>
+      <p className={`event-ticker__clock event-ticker__clock--${t.status}`}>
         <span className="event-ticker__label">
           {live ? <span className="event-ticker__dot" aria-hidden="true" /> : null}
           {clockLabel}
@@ -115,12 +118,20 @@ export function EventTicker({
           )}
         </strong>
       </p>
-      <p className="event-ticker__fact">
-        <span className="event-ticker__label">Joined</span>
-        <strong>{playerCountLabel(t.playerCount, t.rules)}</strong>
-      </p>
-      <div className="event-ticker__chips">
-        <EventMetaChips t={t} joined={joined} omitStatus />
+      <div className="event-ticker__meta">
+        {yourPlace != null ? (
+          <p className="event-ticker__fact event-ticker__fact--place">
+            <span className="event-ticker__label">Your place</span>
+            <strong>#{yourPlace}</strong>
+          </p>
+        ) : null}
+        <p className="event-ticker__fact">
+          <span className="event-ticker__label">Joined</span>
+          <strong>{playerCountLabel(t.playerCount, t.rules)}</strong>
+        </p>
+        <div className="event-ticker__chips">
+          <EventMetaChips t={t} joined={joined} omitStatus />
+        </div>
       </div>
     </div>
   )

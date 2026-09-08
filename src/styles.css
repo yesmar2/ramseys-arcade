@@ -7578,6 +7578,12 @@ html[data-theme='dark'] .patriot__power-mark {
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--lb-you-accent, var(--accent-sky)) 28%, transparent);
 }
 
+.tour-score-list .lb-row--you {
+  background: color-mix(in srgb, var(--lb-you-accent, var(--accent-sky)) 28%, var(--surface));
+  border-color: color-mix(in srgb, var(--lb-you-accent, var(--accent-sky)) 70%, transparent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--lb-you-accent, var(--accent-sky)) 32%, transparent);
+}
+
 .lb-row--empty {
   background: rgba(var(--surface-rgb), 0.38);
   border-style: dashed;
@@ -7700,6 +7706,14 @@ html[data-theme='dark'] .patriot__power-mark {
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--lb-you-accent, var(--accent-sky));
+}
+
+.tour-score-list .lb-row__you-tag {
+  padding: 0.12rem 0.4rem;
+  border-radius: 999px;
+  font-size: 0.65rem;
+  color: #fff;
+  background: var(--lb-you-accent, var(--accent-sky));
 }
 
 .lb-row__score {
@@ -9513,10 +9527,38 @@ html[data-theme='dark'] .patriot__power-mark {
 
 .event-ticker {
   display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.55rem;
+  min-width: 0;
+}
+
+.event-ticker__clock {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.2rem;
+}
+
+.event-ticker__clock strong {
+  font-family: var(--font-display);
+  font-size: clamp(2.55rem, 8.5vw, 3.45rem);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.045em;
+  line-height: 0.92;
+}
+
+.event-ticker__clock--active strong {
+  color: #14634a;
+}
+
+.event-ticker__meta {
+  display: flex;
   flex-wrap: wrap;
   align-items: baseline;
-  gap: 0.25rem 0.85rem;
-  min-width: 0;
+  gap: 0.3rem 0.95rem;
 }
 
 .event-ticker__fact {
@@ -9547,13 +9589,15 @@ html[data-theme='dark'] .patriot__power-mark {
   line-height: 1.15;
 }
 
-.event-ticker__fact--active strong {
+.event-ticker__fact--place strong {
   color: #14634a;
+  font-size: 1.2rem;
+  font-weight: 800;
 }
 
 .event-ticker__dot {
-  width: 0.45rem;
-  height: 0.45rem;
+  width: 0.5rem;
+  height: 0.5rem;
   border-radius: 50%;
   background: #1a7a5c;
   box-shadow: 0 0 0 0 rgba(26, 122, 92, 0.45);
@@ -10241,8 +10285,13 @@ html[data-theme='dark'] .patriot__power-mark {
 }
 
 .tour-standing--you {
-  background: rgba(197, 240, 228, 0.35);
-  border-color: rgba(46, 184, 160, 0.22);
+  background: color-mix(in srgb, var(--lb-you-accent, #2eb8a0) 28%, var(--surface));
+  border-color: color-mix(in srgb, var(--lb-you-accent, #2eb8a0) 62%, transparent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--lb-you-accent, #2eb8a0) 28%, transparent);
+}
+
+.tour-standing--you .tour-standing__rank {
+  color: #14634a;
 }
 
 .tour-standing__details {
@@ -10474,15 +10523,14 @@ html[data-theme='dark'] .patriot__power-mark {
 
 .tour-you-tag {
   flex: 0 0 auto;
-  padding: 0.1rem 0.4rem;
+  padding: 0.12rem 0.4rem;
   border-radius: 999px;
   font-size: 0.65rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
+  font-weight: 800;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: #1a7a5c;
-  background: rgba(197, 240, 228, 0.8);
-  border: 1px solid rgba(46, 184, 160, 0.3);
+  color: #fff;
+  background: var(--lb-you-accent, #2eb8a0);
 }
 
 .tour-table__total {

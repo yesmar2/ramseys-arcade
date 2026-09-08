@@ -83,6 +83,40 @@ function GameResultCell({
   )
 }
 
+function scoredStandings(
+  detail: TournamentDetail,
+): { row: StandingRow; score: number }[] {
+  const gameSlug = detail.games[0]
+  if (!gameSlug) return []
+  return detail.standings
+    .map((row) => ({
+      row,
+      score: row.byGame[gameSlug]?.score ?? null,
+    }))
+    .filter((entry): entry is { row: StandingRow; score: number } => entry.score != null)
+    .sort(
+      (a, b) =>
+        b.score - a.score ||
+        normalizePlayerName(a.row.name).localeCompare(normalizePlayerName(b.row.name)),
+    )
+}
+
+/** Rank of the current player in the same order the event standings show. */
+function yourStandingPlace(detail: TournamentDetail, displayName: string): number | null {
+  const youName = normalizePlayerName(displayName)
+  if (!youName) return null
+
+  if (detail.games.length === 1) {
+    const idx = scoredStandings(detail).findIndex(
+      ({ row }) => normalizePlayerName(row.name) === youName,
+    )
+    return idx >= 0 ? idx + 1 : null
+  }
+
+  const idx = detail.standings.findIndex((row) => normalizePlayerName(row.name) === youName)
+  return idx >= 0 ? idx + 1 : null
+}
+
 function EventStandings({
   detail,
   displayName,
@@ -187,7 +221,10 @@ function StandingsList({
   }
 
   return (
-    <ul className="tour-standings">
+    <ul
+      className="tour-standings"
+      style={{ '--lb-you-accent': eventAccent(detail.games) } as CSSProperties}
+    >
       {detail.standings.map((row, index) => (
         <StandingCard
           key={row.playerId}
@@ -214,19 +251,7 @@ function SingleGameStandings({
   const accent = game?.accent ?? '#2eb8a0'
   const youName = normalizePlayerName(displayName)
 
-  const rows = useMemo(() => {
-    return detail.standings
-      .map((row) => ({
-        row,
-        score: row.byGame[gameSlug]?.score ?? null,
-      }))
-      .filter((entry): entry is { row: StandingRow; score: number } => entry.score != null)
-      .sort(
-        (a, b) =>
-          b.score - a.score ||
-          normalizePlayerName(a.row.name).localeCompare(normalizePlayerName(b.row.name)),
-      )
-  }, [detail.standings, gameSlug])
+  const rows = useMemo(() => scoredStandings(detail), [detail])
 
   if (rows.length === 0) {
     return <p className="lb-empty">No scores yet. Join and play to post one.</p>
@@ -295,7 +320,7 @@ function StandingCard({
             <a className="tour-standing__name tour-standing__name--link" href={rankHref(name)} title={name}>
               {name}
             </a>
-            {mine ? <span className="tour-you-tag">you</span> : null}
+            {mine ? <span className="tour-you-tag">You</span> : null}
           </div>
           <span className="tour-standing__total">
             {usePoints ? row.totalPoints : totalScore.toLocaleString()}
@@ -723,6 +748,7 @@ export function TournamentDetailPage({ id, invite }: { id: string; invite?: stri
               <EventTicker
                 t={detail}
                 joined={joined && detail.status !== 'ended'}
+                yourPlace={yourStandingPlace(detail, displayName)}
               />
 
               <EventStandings
