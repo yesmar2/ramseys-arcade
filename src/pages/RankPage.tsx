@@ -11,6 +11,7 @@ import { useDefaultPeriod } from '../lib/defaultPeriod'
 import { gapToNextLabel } from '../lib/boardGap'
 import { useDeviceType } from '../lib/device'
 import { usePlayerName } from '../hooks/usePlayerName'
+import { useActiveGroup } from '../lib/groups'
 import { useGlobalRank, useGlobalRankLoading } from '../lib/globalRank'
 import { APP_NAME } from '../lib/brand'
 import {
@@ -46,6 +47,7 @@ export function RankPage({
   const myRank = useGlobalRank()
   const myRankLoading = useGlobalRankLoading()
   const [periodRank, setPeriodRank] = useState<GlobalRankResult | null>(null)
+  const groupId = useActiveGroup()
   const useCachedSelfRank = isSelf && period === globalPeriod
   const [loading, setLoading] = useState(!useCachedSelfRank)
 
@@ -78,7 +80,7 @@ export function RankPage({
     return () => {
       cancelled = true
     }
-  }, [viewedName, useCachedSelfRank, period, globalPeriod])
+  }, [viewedName, useCachedSelfRank, period, globalPeriod, groupId])
 
   const data =
     useCachedSelfRank ? myRank : (periodRank ?? (isSelf ? myRank : empty))

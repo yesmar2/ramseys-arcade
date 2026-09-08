@@ -9,6 +9,7 @@ import { currentTheme, THEME_EVENT, toggleTheme, type Theme } from '../lib/theme
 import { normalizePlayerName } from '../lib/leaderboard'
 import { useTrophySummary } from '../hooks/useTrophySummary'
 import { PlayerBadge, type PlayerBadgeHandle } from './PlayerBadge'
+import { SiteGroupControl } from './SiteGroupControl'
 import { SitePeriodControl } from './SitePeriodControl'
 import { SoundPackSelect } from './SoundPackSelect'
 import { TrophyMark } from './TrophyMark'
@@ -197,6 +198,7 @@ export function SiteHeader() {
         )}
 
         <SitePeriodControl variant="header" />
+        <SiteGroupControl variant="header" />
 
         <div className="site-header__more site-header__more--desktop" ref={utilRef}>
           <button
@@ -327,6 +329,10 @@ export function SiteHeader() {
                 </div>
                 <div className="site-drawer__utils">
                   <SitePeriodControl
+                    variant="drawer"
+                    onSelect={() => setDrawerOpen(false)}
+                  />
+                  <SiteGroupControl
                     variant="drawer"
                     onSelect={() => setDrawerOpen(false)}
                   />

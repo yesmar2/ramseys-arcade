@@ -1,3 +1,4 @@
+import { applyBoardScope, withGroupFallback } from './groups'
 import {
   ApiError,
   detectDeviceType,
@@ -260,11 +261,13 @@ export async function fetchGameRecords(
   game: string,
   period: LeaderboardPeriod = 'all',
 ): Promise<{ game: string; records: RecordSummary[] }> {
-  const params = new URLSearchParams({ period })
-  const data = await api<{ game: string; records?: RecordSummary[] }>(
-    `/records/${encodeURIComponent(game)}?${params.toString()}`,
-  )
-  return { game: data.game, records: data.records ?? [] }
+  return withGroupFallback(async () => {
+    const params = applyBoardScope(new URLSearchParams({ period }))
+    const data = await api<{ game: string; records?: RecordSummary[] }>(
+      `/records/${encodeURIComponent(game)}?${params.toString()}`,
+    )
+    return { game: data.game, records: data.records ?? [] }
+  })
 }
 
 export async function fetchRecordBoard(
@@ -273,12 +276,14 @@ export async function fetchRecordBoard(
   period: LeaderboardPeriod = 'all',
   name?: string,
 ): Promise<RecordBoardResult> {
-  const params = new URLSearchParams({ period })
-  const cleaned = normalizePlayerName(name ?? '')
-  if (cleaned) params.set('name', cleaned)
-  const data = await api<RecordBoardResult>(
-    `/records/${encodeURIComponent(game)}/${encodeURIComponent(recordId)}?${params.toString()}`,
-  )
+  const data = await withGroupFallback(async () => {
+    const params = applyBoardScope(new URLSearchParams({ period }))
+    const cleaned = normalizePlayerName(name ?? '')
+    if (cleaned) params.set('name', cleaned)
+    return api<RecordBoardResult>(
+      `/records/${encodeURIComponent(game)}/${encodeURIComponent(recordId)}?${params.toString()}`,
+    )
+  })
   return {
     game: data.game,
     record: data.record,

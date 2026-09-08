@@ -6,6 +6,7 @@ import {
 import { getGame } from '../data/games'
 import { rankHref, recordHref } from '../hooks/useHashRoute'
 import { usePlayerName } from '../hooks/usePlayerName'
+import { groupBoardEmptyTitle, useActiveGroup } from '../lib/groups'
 import { normalizePlayerName, type LeaderboardPeriod } from '../lib/leaderboard'
 import {
   fetchGameRecords,
@@ -39,6 +40,7 @@ type GameRecordsPanelProps = {
 export function GameRecordsPanel({ game, accent, period }: GameRecordsPanelProps) {
   const gameMeta = getGame(game)
   const playerName = normalizePlayerName(usePlayerName())
+  const groupId = useActiveGroup()
   const [records, setRecords] = useState<RecordSummary[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -64,7 +66,7 @@ export function GameRecordsPanel({ game, accent, period }: GameRecordsPanelProps
     return () => {
       cancelled = true
     }
-  }, [game, period])
+  }, [game, period, groupId])
 
   return (
     <section className="lb-board" aria-label="Game records">
@@ -77,8 +79,8 @@ export function GameRecordsPanel({ game, accent, period }: GameRecordsPanelProps
         />
       ) : records.length === 0 ? (
         <BoardEmpty
-          title="No records yet"
-          detail={recordsEmptyDetail(game, gameTitle)}
+          title={groupBoardEmptyTitle('No records yet')}
+          detail={groupId ? undefined : recordsEmptyDetail(game, gameTitle)}
         />
       ) : (
         <ol className="records-leaders">

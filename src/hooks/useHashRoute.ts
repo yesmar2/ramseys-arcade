@@ -5,6 +5,13 @@ import {
   setDefaultPeriod,
 } from '../lib/defaultPeriod'
 import {
+  ACTIVE_GROUP_EVENT,
+  appendGroupQuery,
+  groupHref,
+  parseGroupQuery,
+  setActiveGroup,
+} from '../lib/groups'
+import {
   coerceVisiblePeriod,
   LEADERBOARD_GAMES,
   LEADERBOARD_PERIODS,
@@ -19,6 +26,8 @@ export type Route =
   | { name: 'recordsIndex' }
   | { name: 'records'; game: string; recordId?: string; period?: LeaderboardPeriod }
   | { name: 'rank'; player?: string; period?: LeaderboardPeriod }
+  | { name: 'groups' }
+  | { name: 'group'; id: string; invite?: string }
   | { name: 'tournaments' }
   | { name: 'tournamentCreate' }
   | { name: 'tournament'; id: string; invite?: string }
@@ -163,22 +172,30 @@ export function hrefForRoute(
 ): string | null {
   switch (route.name) {
     case 'gameLeaderboard':
-      return gameBoardHref(route.game, period)
+      return appendGroupQuery(gameBoardHref(route.game, period))
     case 'leaderboards':
-      if (route.global) return globalRankingsHref(period)
-      return leaderboardHref(period)
+      if (route.global) return appendGroupQuery(globalRankingsHref(period))
+      return appendGroupQuery(leaderboardHref(period))
     case 'rank':
-      return rankHref(route.player, period)
+      return appendGroupQuery(rankHref(route.player, period))
     case 'records':
-      if (route.recordId) return recordHref(route.game, route.recordId, period)
-      return recordsHref(route.game, period)
+      if (route.recordId) {
+        return appendGroupQuery(recordHref(route.game, route.recordId, period))
+      }
+      return appendGroupQuery(recordsHref(route.game, period))
     case 'game':
-      if (route.board === 'records') return gameHref(route.slug, 'records')
-      return gameHubHref(route.slug, period)
+      if (route.board === 'records') {
+        return appendGroupQuery(gameHref(route.slug, 'records'))
+      }
+      return appendGroupQuery(gameHubHref(route.slug, period))
     case 'gamePlay':
       return gamePlayHref(route.slug)
     case 'tournamentPlay':
       return tournamentPlayHref(route.id, route.game, route.invite)
+    case 'groups':
+      return '#/groups'
+    case 'group':
+      return groupHref(route.id, route.invite)
     default:
       return null
   }
@@ -205,6 +222,17 @@ export function applySitePeriod(
   const nextPeriod = coerceVisiblePeriod(period)
   setDefaultPeriod(nextPeriod)
   const next = hrefForRoute(route, nextPeriod)
+  if (next && normalizeHash(window.location.hash) !== normalizeHash(next)) {
+    window.location.hash = next
+  }
+}
+
+export function applySiteGroup(
+  groupId: string | null,
+  route: Route = parseHash(window.location.hash),
+) {
+  setActiveGroup(groupId)
+  const next = hrefForRoute(route, periodFromRoute(route) ?? defaultPeriod())
   if (next && normalizeHash(window.location.hash) !== normalizeHash(next)) {
     window.location.hash = next
   }
@@ -299,6 +327,16 @@ function parseHash(hash: string): Route {
     }
   }
 
+  if (path === 'groups') return { name: 'groups' }
+  const groupMatch = /^groups\/([^/]+)$/.exec(path)
+  if (groupMatch) {
+    return {
+      name: 'group',
+      id: decodeURIComponent(groupMatch[1]),
+      invite,
+    }
+  }
+
   if (path === 'tournaments') return { name: 'tournaments' }
   if (path === 'tournaments/create') return { name: 'tournamentCreate' }
 
@@ -359,6 +397,11 @@ export function useHashRoute(): Route {
       const next = parseHash(window.location.hash)
       const p = periodFromRoute(next)
       if (p) setDefaultPeriod(p)
+      const query = window.location.hash.split('?')[1]
+      const groupParams = new URLSearchParams(query || '')
+      if (groupParams.has('group')) {
+        setActiveGroup(parseGroupQuery(query))
+      }
       const canonical = hrefForRoute(next, p ?? defaultPeriod())
       if (canonical && normalizeHash(window.location.hash) !== normalizeHash(canonical)) {
         window.location.replace(canonical)
@@ -382,8 +425,10 @@ export function useHashRoute(): Route {
     }
 
     window.addEventListener(DEFAULT_PERIOD_EVENT, syncPeriodUrl)
+    window.addEventListener(ACTIVE_GROUP_EVENT, syncPeriodUrl)
     return () => {
       window.removeEventListener(DEFAULT_PERIOD_EVENT, syncPeriodUrl)
+      window.removeEventListener(ACTIVE_GROUP_EVENT, syncPeriodUrl)
     }
   }, [])
 

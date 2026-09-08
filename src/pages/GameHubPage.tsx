@@ -34,6 +34,7 @@ import { usePersonalBest } from '../hooks/usePersonalBest'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { useDeviceType } from '../lib/device'
 import { APP_NAME } from '../lib/brand'
+import { groupBoardEmptyTitle, useActiveGroup } from '../lib/groups'
 import { formatLeaderboardScore } from '../games/spotter/score'
 import { gameHasRecords } from '../lib/records'
 import {
@@ -66,6 +67,7 @@ export function GameHubPage({ slug, board: boardFromRoute }: GameHubPageProps) {
   const game = getGame(slug)
   const device = useDeviceType()
   const playerName = normalizePlayerName(usePlayerName())
+  const groupId = useActiveGroup()
   const personalBest = usePersonalBest(slug)
   const allTime = useBoardRecord(slug)
   const [entries, setEntries] = useState<LeaderboardEntry[]>([])
@@ -124,7 +126,7 @@ export function GameHubPage({ slug, board: boardFromRoute }: GameHubPageProps) {
     return () => {
       cancelled = true
     }
-  }, [boardSlug, playerName, period])
+  }, [boardSlug, playerName, period, groupId])
 
   if (!game) {
     return (
@@ -394,6 +396,8 @@ function HubScoresSection({
             title="Couldn’t load scores"
             detail="Check your connection and try again."
           />
+        ) : entries.length === 0 && !you && groupBoardEmptyTitle('') ? (
+          <BoardEmpty title={groupBoardEmptyTitle('No scores yet')} />
         ) : isDesktop ? (
           <LeaderboardList
             entries={entries}

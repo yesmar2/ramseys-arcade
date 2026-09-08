@@ -1,3 +1,4 @@
+import { applyBoardScope, storedActiveGroup, withGroupFallback } from './groups'
 import type { DeviceType } from './device'
 import { getGame } from '../data/games'
 import { detectDeviceType, DEVICE_LABELS, isDeviceType } from './device'
@@ -109,7 +110,7 @@ export class ApiError extends Error {
   }
 }
 
-async function api<T>(path: string, init?: RequestInit): Promise<T> {
+export async function api<T>(path: string, init?: RequestInit): Promise<T> {
   let sessionHeader: Record<string, string> = {}
   try {
     const session = localStorage.getItem('arcade-session')
@@ -394,16 +395,26 @@ export async function fetchLeaderboardsSummary(
   limit = 3,
 ): Promise<GameBoardPreview[]> {
   const capped = Math.min(10, Math.max(1, Math.floor(limit)))
-  const params = new URLSearchParams({
-    limit: String(capped),
-    period,
-  })
-  return dedupeGet(`summary:${params.toString()}`, async () => {
-    const data = await api<{ games: GameBoardPreview[] }>(
-      `/leaderboards/summary?${params.toString()}`,
-    )
-    return data.games ?? []
-  })
+  const params = applyBoardScope(
+    new URLSearchParams({
+      limit: String(capped),
+      period,
+    }),
+  )
+  return dedupeGet(`summary:${params.toString()}`, () =>
+    withGroupFallback(async () => {
+      const scoped = applyBoardScope(
+        new URLSearchParams({
+          limit: String(capped),
+          period,
+        }),
+      )
+      const data = await api<{ games: GameBoardPreview[] }>(
+        `/leaderboards/summary?${scoped.toString()}`,
+      )
+      return data.games ?? []
+    }),
+  )
 }
 
 export async function getLeaderboard(
@@ -411,13 +422,15 @@ export async function getLeaderboard(
   period: LeaderboardPeriod = 'all',
   name?: string,
 ): Promise<{ entries: LeaderboardEntry[]; you: YouEntry | null }> {
-  const params = new URLSearchParams({ period })
-  const cleaned = normalizePlayerName(name ?? '')
-  if (cleaned) params.set('name', cleaned)
-  const data = await api<{ entries: LeaderboardEntry[]; you?: YouEntry | null }>(
-    `/leaderboards/${slug}?${params.toString()}`,
-  )
-  return { entries: data.entries ?? [], you: data.you ?? null }
+  return withGroupFallback(async () => {
+    const params = applyBoardScope(new URLSearchParams({ period }))
+    const cleaned = normalizePlayerName(name ?? '')
+    if (cleaned) params.set('name', cleaned)
+    const data = await api<{ entries: LeaderboardEntry[]; you?: YouEntry | null }>(
+      `/leaderboards/${slug}?${params.toString()}`,
+    )
+    return { entries: data.entries ?? [], you: data.you ?? null }
+  })
 }
 
 export async function fetchTopScore(slug: string): Promise<number> {
@@ -467,10 +480,12 @@ export async function fetchGlobalRank(
   if (!cleaned) {
     return { rank: null, score: 0, totalPlayers: 0, byGame: {}, nearby: [] }
   }
-  const qs = new URLSearchParams({ name: cleaned })
-  if (period !== 'all') qs.set('period', period)
-  return dedupeGet(`rank:${qs.toString()}`, () =>
-    api<GlobalRankResult>(`/leaderboards/rank?${qs}`),
+  return dedupeGet(`rank:${cleaned}:${period}:${storedActiveGroup() ?? 'everyone'}`, () =>
+    withGroupFallback(async () => {
+      const qs = applyBoardScope(new URLSearchParams({ name: cleaned }))
+      if (period !== 'all') qs.set('period', period)
+      return api<GlobalRankResult>(`/leaderboards/rank?${qs}`)
+    }),
   )
 }
 
@@ -493,15 +508,19 @@ export async function fetchGlobalBoard(
   period: LeaderboardPeriod = 'all',
 ): Promise<GlobalBoardResult> {
   const capped = Math.min(100, Math.max(1, Math.floor(limit)))
-  const qs = new URLSearchParams({ limit: String(capped) })
-  if (period !== 'all') qs.set('period', period)
-  return dedupeGet(`rank-board:${qs.toString()}`, async () => {
-    const data = await api<GlobalBoardResult>(`/leaderboards/rank?${qs}`)
-    return {
-      totalPlayers: data.totalPlayers ?? 0,
-      entries: data.entries ?? [],
-    }
-  })
+  return dedupeGet(
+    `rank-board:${capped}:${period}:${storedActiveGroup() ?? 'everyone'}`,
+    () =>
+      withGroupFallback(async () => {
+        const qs = applyBoardScope(new URLSearchParams({ limit: String(capped) }))
+        if (period !== 'all') qs.set('period', period)
+        const data = await api<GlobalBoardResult>(`/leaderboards/rank?${qs}`)
+        return {
+          totalPlayers: data.totalPlayers ?? 0,
+          entries: data.entries ?? [],
+        }
+      }),
+  )
 }
 
 export type QualifiesResult = {

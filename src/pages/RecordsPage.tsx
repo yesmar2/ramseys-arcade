@@ -24,6 +24,7 @@ import { useDeviceType } from '../lib/device'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { APP_NAME } from '../lib/brand'
 import { defaultPeriod } from '../lib/defaultPeriod'
+import { groupBoardEmptyTitle, useActiveGroup } from '../lib/groups'
 import {
   normalizePlayerName,
   PERIOD_LABELS,
@@ -151,6 +152,7 @@ function RecordBoardPage({
 }) {
   const gameMeta = getGame(game)
   const playerName = normalizePlayerName(usePlayerName())
+  const groupId = useActiveGroup()
   const [record, setRecord] = useState<RecordDef | null>(null)
   const [entries, setEntries] = useState<LeaderboardEntry[]>([])
   const [you, setYou] = useState<YouEntry | null>(null)
@@ -185,7 +187,7 @@ function RecordBoardPage({
     return () => {
       cancelled = true
     }
-  }, [game, recordId, period, playerName])
+  }, [game, recordId, period, playerName, groupId])
 
   useEffect(() => {
     if (loading || !you || pulsed.current) return
@@ -271,12 +273,16 @@ function RecordBoardPage({
               />
             ) : entries.length === 0 && !you ? (
               <BoardEmpty
-                title="No times yet"
-                detail={recordBoardEmptyDetail(
-                  game,
-                  gameTitle,
-                  record?.label ?? 'this milestone',
-                )}
+                title={groupBoardEmptyTitle('No times yet')}
+                detail={
+                  groupId
+                    ? undefined
+                    : recordBoardEmptyDetail(
+                        game,
+                        gameTitle,
+                        record?.label ?? 'this milestone',
+                      )
+                }
               />
             ) : (
               <LeaderboardList

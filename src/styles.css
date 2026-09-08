@@ -1753,6 +1753,29 @@ a.lb-board-switcher__item {
   background: color-mix(in srgb, var(--accent) 12%, var(--surface));
 }
 
+.site-header__period-btn-label {
+  max-width: 8.5rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+a.site-header__period-option,
+a.site-drawer__period-tab {
+  text-decoration: none;
+  box-sizing: border-box;
+}
+
+.site-header__period-option--link {
+  margin-top: 0.2rem;
+  border-top: 1px solid rgba(var(--ink-rgb), 0.08);
+  border-radius: 0 0 0.6rem 0.6rem;
+}
+
+.site-drawer__period-tabs--stack {
+  grid-template-columns: 1fr;
+}
+
 .site-header__menu-btn {
   display: inline-flex;
   align-items: center;
@@ -11179,4 +11202,76 @@ html[data-theme='dark'] .patriot__power-mark {
   align-items: center;
   font-weight: 600;
   color: rgba(var(--ink-rgb), 0.72);
+}
+
+.group-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  margin: 0 0 1.4rem;
+  padding: 0;
+  list-style: none;
+}
+
+.group-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+  padding: 0.85rem 1rem;
+  border-radius: 0.95rem;
+  border: 1px solid rgba(var(--ink-rgb), 0.08);
+  background: var(--surface);
+}
+
+.group-card__link {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+  color: inherit;
+  text-decoration: none;
+}
+
+.group-card__name {
+  font-weight: 800;
+}
+
+.group-card__meta {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.group-create,
+.group-manage {
+  margin-top: 0.4rem;
+}
+
+.group-manage__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin: 0.4rem 0 1rem;
+}
+
+.group-roster {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.group-roster__row {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.45rem 0.15rem;
+}
+
+.group-roster__name {
+  flex: 1;
+  min-width: 0;
+  font-weight: 700;
 }

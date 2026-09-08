@@ -32,6 +32,7 @@ import { SnakePage } from './pages/SnakePage'
 import { StackerPage } from './pages/StackerPage'
 import { WhackPage } from './pages/WhackPage'
 import { CreateTournamentPage } from './pages/CreateTournamentPage'
+import { GroupDetailPage, GroupsPage } from './pages/GroupsPage'
 import { pruneOrphanTournamentIds } from './lib/tournaments'
 import { TournamentDetailPage, TournamentsPage } from './pages/TournamentsPage'
 import { PrivacyPage } from './pages/PrivacyPage'
@@ -151,6 +152,10 @@ function App() {
         period={route.period ?? defaultPeriod()}
       />
     )
+  }
+  if (route.name === 'groups') return <GroupsPage />
+  if (route.name === 'group') {
+    return <GroupDetailPage id={route.id} invite={route.invite} />
   }
   if (route.name === 'tournaments') return <TournamentsPage />
   if (route.name === 'tournamentCreate') return <CreateTournamentPage />

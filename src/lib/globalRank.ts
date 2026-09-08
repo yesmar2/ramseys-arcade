@@ -3,6 +3,7 @@ import {
   DEFAULT_PERIOD_EVENT,
   defaultPeriod,
 } from './defaultPeriod'
+import { ACTIVE_GROUP_EVENT } from './groups'
 import {
   fetchGlobalRank,
   getLastPlayerName,
@@ -51,6 +52,7 @@ function ensureNameListener() {
   listeningForName = true
   window.addEventListener(PLAYER_NAME_EVENT, onPlayerNameEvent)
   window.addEventListener(DEFAULT_PERIOD_EVENT, onPreferenceChange)
+  window.addEventListener(ACTIVE_GROUP_EVENT, onPreferenceChange)
   void refreshGlobalRank()
 }
 

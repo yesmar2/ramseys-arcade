@@ -16,6 +16,7 @@ import { formatLeaderboardScore } from '../games/spotter/score'
 import { flashYouRow } from '../lib/boardGap'
 import { defaultPeriod } from '../lib/defaultPeriod'
 import { APP_NAME } from '../lib/brand'
+import { groupBoardEmptyTitle, useActiveGroup } from '../lib/groups'
 import {
   getLeaderboard,
   PERIOD_LABELS,
@@ -41,6 +42,7 @@ export function GameLeaderboardPage({
   const game = getGame(gameSlug)
   const device = useDeviceType()
   const playerName = normalizePlayerName(usePlayerName())
+  const groupId = useActiveGroup()
   const [entries, setEntries] = useState<LeaderboardEntry[]>([])
   const [you, setYou] = useState<YouEntry | null>(null)
   const [loading, setLoading] = useState(true)
@@ -77,7 +79,7 @@ export function GameLeaderboardPage({
     return () => {
       cancelled = true
     }
-  }, [gameSlug, period, playerName])
+  }, [gameSlug, period, playerName, groupId])
 
   useEffect(() => {
     if (loading || !you || pulsed.current) return
@@ -143,11 +145,13 @@ export function GameLeaderboardPage({
             />
           ) : entries.length === 0 && !you ? (
             <BoardEmpty
-              title="No scores yet"
+              title={groupBoardEmptyTitle('No scores yet')}
               detail={
-                canPlay
-                  ? `Be the first on the ${game.name} board.`
-                  : 'Open it on a supported device to post a score.'
+                groupId
+                  ? undefined
+                  : canPlay
+                    ? `Be the first on the ${game.name} board.`
+                    : 'Open it on a supported device to post a score.'
               }
             />
           ) : (

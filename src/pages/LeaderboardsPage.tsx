@@ -10,6 +10,7 @@ import { PageShell } from '../components/PageShell'
 import { ShareBoardButton } from '../components/ShareBoardButton'
 import { globalRankingsHref, leaderboardHref } from '../hooks/useHashRoute'
 import { defaultPeriod } from '../lib/defaultPeriod'
+import { groupBoardEmptyTitle, useActiveGroup } from '../lib/groups'
 import { getGlobalRankSnapshot } from '../lib/globalRank'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { APP_NAME } from '../lib/brand'
@@ -77,6 +78,7 @@ export function LeaderboardsPage({
 
 function LeaderboardsOverview({ period }: { period: LeaderboardPeriod }) {
   const playerName = normalizePlayerName(usePlayerName())
+  const groupId = useActiveGroup()
   const [summaries, setSummaries] = useState<GameBoardPreview[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -101,7 +103,7 @@ function LeaderboardsOverview({ period }: { period: LeaderboardPeriod }) {
     return () => {
       cancelled = true
     }
-  }, [period])
+  }, [period, groupId])
 
   return (
     <PageShell innerClassName="lb-page__inner lb-page__inner--summary">
@@ -143,6 +145,7 @@ function LeaderboardsOverview({ period }: { period: LeaderboardPeriod }) {
 
 function GlobalRankingsView({ period }: { period: LeaderboardPeriod }) {
   const playerName = normalizePlayerName(usePlayerName())
+  const groupId = useActiveGroup()
   const [entries, setEntries] = useState<GlobalBoardEntry[]>([])
   const [totalPlayers, setTotalPlayers] = useState(0)
   const [you, setYou] = useState<GlobalBoardEntry | null>(null)
@@ -233,7 +236,7 @@ function GlobalRankingsView({ period }: { period: LeaderboardPeriod }) {
     return () => {
       cancelled = true
     }
-  }, [playerName, period])
+  }, [playerName, period, groupId])
 
   useEffect(() => {
     if (entries.length === 0 || shown <= INITIAL_ROWS) return
@@ -287,8 +290,12 @@ function GlobalRankingsView({ period }: { period: LeaderboardPeriod }) {
           />
         ) : entries.length === 0 ? (
           <BoardEmpty
-            title="No ranks yet"
-            detail="Place on any game board to earn global points."
+            title={groupBoardEmptyTitle('No ranks yet')}
+            detail={
+              groupId
+                ? undefined
+                : 'Place on any game board to earn global points.'
+            }
             action={
               <a className="lb-empty-state__btn" href={leaderboardHref(period)}>
                 Browse boards
