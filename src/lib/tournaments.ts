@@ -8,6 +8,10 @@ export type TournamentFormat =
   | 'attempt-limited'
   | 'single-run'
   | 'cumulative'
+export type TournamentKind = 'scores' | 'bracket'
+
+export const BRACKET_SIZES = [4, 8, 16] as const
+export type BracketSize = (typeof BRACKET_SIZES)[number]
 
 export type TournamentRules = {
   maxAttempts?: number
@@ -27,6 +31,7 @@ export type TournamentSummary = {
   cadence?: TournamentCadence | null
   format: TournamentFormat
   formatLabel: string
+  kind?: TournamentKind
   rules: TournamentRules
   private: boolean
   createdBy?: { accountId: string } | null
@@ -55,9 +60,19 @@ export const FORMAT_LABELS: Record<TournamentFormat, string> = {
   cumulative: 'Total score',
 }
 
+export function eventKind(t: Pick<TournamentSummary, 'kind'>): TournamentKind {
+  return t.kind === 'bracket' ? 'bracket' : 'scores'
+}
+
 export function formatRulesSummary(
-  t: Pick<TournamentSummary, 'format' | 'rules' | 'games'>,
+  t: Pick<TournamentSummary, 'format' | 'rules' | 'games' | 'kind'>,
 ): string {
+  if (eventKind(t) === 'bracket') {
+    const n = t.rules.maxAttempts ?? 1
+    const cap = t.rules.maxPlayers ?? 0
+    const tries = n === 1 ? '1 attempt' : `${n} attempts`
+    return `Single-elim bracket · ${cap || 'set'} players · ${tries} per match.`
+  }
   if (t.format === 'place-points') {
     return t.games.length > 1
       ? 'Place points across games — highest total wins.'
@@ -161,20 +176,33 @@ export function rosterLimitLabel(rules: TournamentRules | undefined): string {
 
 /** Finite attempts per game, or null when the event is unlimited. */
 export function attemptsPerGameMax(
-  t: Pick<TournamentSummary, 'format' | 'rules'>,
+  t: Pick<TournamentSummary, 'format' | 'rules' | 'kind'>,
 ): number | null {
   const n = t.rules.maxAttempts
+  if (eventKind(t) === 'bracket') {
+    if (n == null || n <= 0) return 1
+    return n
+  }
   if (t.format === 'open' || n == null || n <= 0) return null
   if (t.format === 'single-run' || n === 1) return 1
   return n
 }
 
 export function attemptsPerGameLabel(
-  t: Pick<TournamentSummary, 'format' | 'rules'>,
+  t: Pick<TournamentSummary, 'format' | 'rules' | 'kind'>,
 ): string {
   const n = attemptsPerGameMax(t)
   if (n == null) return 'Unlimited'
+  if (eventKind(t) === 'bracket') return n === 1 ? '1 / match' : `${n} / match`
   return n === 1 ? '1 / game' : `${n} / game`
+}
+
+export function joinedRosterLabel(
+  t: Pick<TournamentSummary, 'playerCount' | 'rules'>,
+): string {
+  const cap = t.rules.maxPlayers
+  if (cap != null && cap > 0) return `${t.playerCount} of ${cap}`
+  return playerCountLabel(t.playerCount)
 }
 
 export function cadenceLabel(cadence: TournamentCadence | null | undefined): string | null {
@@ -203,10 +231,31 @@ export type TournamentPlayerStatus = {
   best: number | null
 }
 
+export type PublicBracketSide = {
+  id: string
+  name: string
+  score: number | null
+  attemptsUsed: number
+}
+
+export type PublicBracketMatch = {
+  id: string
+  round: number
+  slot: number
+  winnerId: string | null
+  players: [PublicBracketSide | null, PublicBracketSide | null]
+}
+
+export type PublicBracket = {
+  lockedAt: number
+  matches: PublicBracketMatch[]
+}
+
 export type TournamentDetail = TournamentSummary & {
   players: { id: string; name: string; joinedAt: number }[]
   standings: StandingRow[]
   placePoints: Record<string, number>
+  bracket?: PublicBracket | null
   playerStatus?: TournamentPlayerStatus | null
   inviteCode?: string | null
   isHost?: boolean
@@ -222,6 +271,43 @@ export type CreateTournamentInput = {
   maxPlayers: number
   /** 0 = until everyone finishes */
   durationHours: number
+  kind?: TournamentKind
+}
+
+export function seatsLeft(t: Pick<TournamentSummary, 'playerCount' | 'rules'>): number | null {
+  const cap = t.rules.maxPlayers
+  if (cap == null || cap <= 0) return null
+  return Math.max(0, cap - t.playerCount)
+}
+
+export function yourOpenMatch(
+  detail: TournamentDetail,
+  displayName: string,
+): PublicBracketMatch | null {
+  const you = normalizePlayerName(displayName)
+  if (!you || !detail.bracket) return null
+  return (
+    detail.bracket.matches.find((m) => {
+      if (m.winnerId) return false
+      return m.players.some((p) => p && normalizePlayerName(p.name) === you)
+    }) ?? null
+  )
+}
+
+export function matchOpponent(
+  match: PublicBracketMatch,
+  displayName: string,
+): PublicBracketSide | null {
+  const you = normalizePlayerName(displayName)
+  const other = match.players.find((p) => p && normalizePlayerName(p.name) !== you)
+  return other ?? null
+}
+
+export function bracketRoundLabel(round: number, maxRound: number): string {
+  if (round === maxRound) return 'Final'
+  if (round === maxRound - 1) return 'Semifinals'
+  if (round === 1) return 'Round 1'
+  return `Round ${round}`
 }
 
 const JOINED_KEY = 'arcade-tournaments-joined'

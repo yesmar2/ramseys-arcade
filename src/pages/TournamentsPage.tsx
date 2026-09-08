@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { EventBracket } from '../components/EventBracket'
 import { EventCard, EventTicker, eventAccent } from '../components/EventCard'
 import { GameThumbArt } from '../components/GameThumbArt'
 import { PageBackLink } from '../components/PageBackLink'
@@ -14,13 +15,17 @@ import { APP_NAME } from '../lib/brand'
 import { ApiError, getLastPlayerName, normalizePlayerName } from '../lib/leaderboard'
 import {
   attemptsPerGameMax,
+  eventKind,
   getTournament,
   getTournamentInvite,
   isPlayerInTournament,
   joinTournament,
   listTournaments,
+  matchOpponent,
   rememberTournamentInvite,
+  seatsLeft,
   syncJoinedTournamentRosters,
+  yourOpenMatch,
   type StandingRow,
   type TournamentDetail,
   type TournamentSummary,
@@ -118,6 +123,25 @@ function yourStandingPlace(detail: TournamentDetail, displayName: string): numbe
   return idx >= 0 ? idx + 1 : null
 }
 
+function EventBoard({
+  detail,
+  displayName,
+  className,
+}: {
+  detail: TournamentDetail
+  displayName: string
+  className?: string
+}) {
+  if (eventKind(detail) === 'bracket') {
+    return (
+      <EventBracket detail={detail} displayName={displayName} className={className} />
+    )
+  }
+  return (
+    <EventStandings detail={detail} displayName={displayName} className={className} />
+  )
+}
+
 function EventStandings({
   detail,
   displayName,
@@ -140,12 +164,56 @@ function EventStandings({
   )
 }
 
+function bracketPlayLabel(detail: TournamentDetail, joined: boolean, displayName: string) {
+  const left = seatsLeft(detail)
+  if (!detail.bracket) {
+    if (left != null && left > 0) {
+      return `Waiting for ${left} more`
+    }
+    return 'Drawing bracket'
+  }
+  if (!joined) return 'Join to play'
+  const match = yourOpenMatch(detail, displayName)
+  if (match) {
+    const opp = matchOpponent(match, displayName)
+    const max = attemptsPerGameMax(detail) ?? 1
+    const you = normalizePlayerName(displayName)
+    const me = match.players.find((p) => p && normalizePlayerName(p.name) === you)
+    const used = me?.attemptsUsed ?? 0
+    const remaining = Math.max(0, max - used)
+    if (!opp) return 'Waiting on your match'
+    if (remaining === 0) return `Waiting on ${opp.name}`
+    return remaining === 1 ? `vs ${opp.name} · 1 try` : `vs ${opp.name} · ${remaining} left`
+  }
+  const you = normalizePlayerName(displayName)
+  const final = detail.bracket.matches.reduce(
+    (best, m) => (m.round > best.round ? m : best),
+    detail.bracket.matches[0]!,
+  )
+  if (final?.winnerId && final.players.some((p) => p && normalizePlayerName(p.name) === you && p.id === final.winnerId)) {
+    return 'Champion'
+  }
+  if (
+    detail.bracket.matches.some(
+      (m) =>
+        m.winnerId &&
+        m.players.some((p) => p && normalizePlayerName(p.name) === you && p.id !== m.winnerId),
+    )
+  ) {
+    return 'Eliminated'
+  }
+  return 'Waiting on your match'
+}
+
 function playAttemptsLabel(
   detail: TournamentDetail,
   slug: string,
   joined: boolean,
   displayName: string,
 ): string {
+  if (eventKind(detail) === 'bracket') {
+    return bracketPlayLabel(detail, joined, displayName)
+  }
   const max = attemptsPerGameMax(detail)
   if (max == null) return 'Unlimited tries'
   if (!joined) return max === 1 ? '1 try' : `${max} tries`
@@ -157,6 +225,20 @@ function playAttemptsLabel(
   const left = Math.max(0, max - used)
   if (left === 0) return 'No tries left'
   return `${left} of ${max} left`
+}
+
+function bracketMatchLine(detail: TournamentDetail, displayName: string): string | null {
+  if (eventKind(detail) !== 'bracket') return null
+  const left = seatsLeft(detail)
+  if (!detail.bracket) {
+    return left != null && left > 0 ? `Waiting for ${left} more` : 'Drawing'
+  }
+  const match = yourOpenMatch(detail, displayName)
+  if (match) {
+    const opp = matchOpponent(match, displayName)
+    return opp ? `You vs ${opp.name}` : 'Waiting on your match'
+  }
+  return bracketPlayLabel(detail, true, displayName)
 }
 
 function EventPlayCards({
@@ -181,9 +263,11 @@ function EventPlayCards({
           const status =
             detail.playerStatus && detail.games.length === 1 ? detail.playerStatus : null
           const attemptLabel = playAttemptsLabel(detail, slug, joined, displayName)
-          const exhausted =
-            Boolean(status && !status.canPlay && joined) ||
-            (joined && attemptLabel === 'No tries left')
+          const bracket = eventKind(detail) === 'bracket'
+          const exhausted = bracket
+            ? !(status?.canPlay || /^vs /i.test(attemptLabel))
+            : Boolean(status && !status.canPlay && joined) ||
+              (joined && attemptLabel === 'No tries left')
           const name = g?.name ?? slug
           const style = {
             '--tile-accent': gameAccent,
@@ -773,17 +857,22 @@ export function TournamentDetailPage({ id, invite }: { id: string; invite?: stri
               <EventTicker
                 t={detail}
                 joined={joined && detail.status !== 'ended'}
-                yourPlace={yourStandingPlace(detail, displayName)}
+                yourPlace={
+                  eventKind(detail) === 'bracket'
+                    ? null
+                    : yourStandingPlace(detail, displayName)
+                }
+                matchLine={bracketMatchLine(detail, displayName)}
               />
 
-              <EventStandings
+              <EventBoard
                 detail={detail}
                 displayName={displayName}
                 className="lb-board event-detail__board game-lobby__tops game-lobby__tops--mobile"
               />
             </div>
 
-            <EventStandings
+            <EventBoard
               detail={detail}
               displayName={displayName}
               className="game-lobby__aside event-detail__aside"

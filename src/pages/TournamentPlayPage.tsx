@@ -80,11 +80,25 @@ export function TournamentPlayPage({
         const playerStatus = data.playerStatus
         if (
           playerStatus &&
-          playerStatus.maxAttempts != null &&
           !playerStatus.canPlay &&
           isPlayerInTournament(data, playerName.trim().toUpperCase(), tournamentId)
         ) {
-          setLoadError('You have no attempts remaining in this event.')
+          if (data.kind === 'bracket') {
+            if (!data.bracket) {
+              setLoadError('The bracket draws when the roster fills.')
+            } else if (
+              playerStatus.maxAttempts != null &&
+              playerStatus.attemptsRemaining === 0
+            ) {
+              setLoadError('No tries left in this match.')
+            } else {
+              setLoadError('It is not your match yet.')
+            }
+          } else if (playerStatus.maxAttempts != null) {
+            setLoadError('You have no attempts remaining in this event.')
+          } else {
+            setLoadError('You cannot play this event right now.')
+          }
           return
         }
         const name = playerName.trim().toUpperCase()
@@ -224,7 +238,7 @@ export function TournamentPlayPage({
         format: detail.formatLabel,
         maxAttempts: detail.playerStatus?.maxAttempts ?? null,
         attemptsRemaining: detail.playerStatus?.attemptsRemaining ?? null,
-        canPlay: detail.playerStatus?.canPlay ?? true,
+        canPlay: detail.playerStatus?.canPlay ?? detail.kind !== 'bracket',
       }}
     >
       <main className="game-page game-page--fullscreen tour-play">

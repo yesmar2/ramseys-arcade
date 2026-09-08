@@ -4,7 +4,9 @@ import {
   attemptsPerGameLabel,
   cadenceLabel,
   eventDurationLabel,
+  eventKind,
   isUnlimitedDuration,
+  joinedRosterLabel,
   playerCountLabel,
   rosterLimitLabel,
   type TournamentStatus,
@@ -29,7 +31,10 @@ function EventMetaChips({
   joined = false,
   omitStatus = false,
 }: {
-  t: Pick<TournamentSummary, 'status' | 'official' | 'cadence' | 'format' | 'formatLabel' | 'private'>
+  t: Pick<
+    TournamentSummary,
+    'status' | 'official' | 'cadence' | 'format' | 'formatLabel' | 'private' | 'kind'
+  >
   joined?: boolean
   omitStatus?: boolean
 }) {
@@ -41,10 +46,13 @@ function EventMetaChips({
       ) : null}
       {cadence ? <span className="tour-pill tour-pill--cadence">{cadence}</span> : null}
       {t.private ? <span className="tour-pill tour-pill--private">Invite only</span> : null}
+      {eventKind(t) === 'bracket' ? (
+        <span className="tour-pill tour-pill--format">Bracket</span>
+      ) : null}
       {!cadence && t.official && !t.private ? (
         <span className="tour-pill tour-pill--official">Official</span>
       ) : null}
-      {!cadence && !t.official && !t.private ? (
+      {!cadence && !t.official && !t.private && eventKind(t) !== 'bracket' ? (
         <span className="tour-pill tour-pill--format">{t.formatLabel}</span>
       ) : null}
       {joined ? <span className="tour-pill tour-pill--joined">Joined</span> : null}
@@ -56,7 +64,10 @@ export function EventStatusChips({
   t,
   joined = false,
 }: {
-  t: Pick<TournamentSummary, 'status' | 'official' | 'cadence' | 'format' | 'formatLabel' | 'private'>
+  t: Pick<
+    TournamentSummary,
+    'status' | 'official' | 'cadence' | 'format' | 'formatLabel' | 'private' | 'kind'
+  >
   /** Show a Joined chip when the current player is in this event. */
   joined?: boolean
 }) {
@@ -72,6 +83,7 @@ export function EventTicker({
   t,
   joined = false,
   yourPlace = null,
+  matchLine = null,
 }: {
   t: Pick<
     TournamentSummary,
@@ -81,6 +93,7 @@ export function EventTicker({
     | 'format'
     | 'formatLabel'
     | 'private'
+    | 'kind'
     | 'endsAt'
     | 'startsAt'
     | 'playerCount'
@@ -89,6 +102,8 @@ export function EventTicker({
   joined?: boolean
   /** Current player's rank in the event standings, if they have one. */
   yourPlace?: number | null
+  /** Bracket match line, e.g. "You vs BOB" or "Waiting for 2 more". */
+  matchLine?: string | null
 }) {
   const live = t.status === 'active'
   const upcoming = t.status === 'upcoming'
@@ -127,7 +142,12 @@ export function EventTicker({
           </strong>
         </div>
         <div className="event-ticker__facts">
-          {yourPlace != null ? (
+          {matchLine ? (
+            <div className="lb-stat event-ticker__stat event-ticker__stat--place">
+              <span className="lb-stat__label">Match</span>
+              <strong>{matchLine}</strong>
+            </div>
+          ) : yourPlace != null ? (
             <div className="lb-stat event-ticker__stat event-ticker__stat--place">
               <span className="lb-stat__label">Your place</span>
               <strong>#{yourPlace}</strong>
@@ -135,7 +155,9 @@ export function EventTicker({
           ) : null}
           <div className="lb-stat event-ticker__stat">
             <span className="lb-stat__label">Joined</span>
-            <strong>{playerCountLabel(t.playerCount)}</strong>
+            <strong>
+              {eventKind(t) === 'bracket' ? joinedRosterLabel(t) : playerCountLabel(t.playerCount)}
+            </strong>
           </div>
           <div className="lb-stat event-ticker__stat">
             <span className="lb-stat__label">Roster</span>

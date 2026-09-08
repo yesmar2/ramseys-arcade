@@ -7,11 +7,13 @@ import { getGame } from '../data/games'
 import { tournamentHref } from '../hooks/useHashRoute'
 import { useAuth } from '../hooks/useAuth'
 import {
+  BRACKET_SIZES,
   createTournament,
   EVENT_GAMES,
   rememberTournamentInvite,
   type CreateTournamentInput,
   type EventGame,
+  type TournamentKind,
 } from '../lib/tournaments'
 
 const DURATIONS = [
@@ -35,8 +37,16 @@ function playersSummary(maxPlayers: number, unlimited: boolean) {
   return `${maxPlayers} player${maxPlayers === 1 ? '' : 's'} max`
 }
 
+function nextBracketSize(current: number, delta: number): number {
+  const idx = BRACKET_SIZES.indexOf(current as (typeof BRACKET_SIZES)[number])
+  const start = idx >= 0 ? idx : 0
+  const next = Math.min(BRACKET_SIZES.length - 1, Math.max(0, start + delta))
+  return BRACKET_SIZES[next]!
+}
+
 export function CreateTournamentPage() {
   const { account, loading: authLoading } = useAuth()
+  const [kind, setKind] = useState<TournamentKind>('scores')
   const [title, setTitle] = useState('')
   const [games, setGames] = useState<EventGame[]>(['stacker'])
   const [maxAttempts, setMaxAttempts] = useState(3)
@@ -46,6 +56,7 @@ export function CreateTournamentPage() {
   const [durationHours, setDurationHours] = useState(24)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const isBracket = kind === 'bracket'
 
   const waitingForAuth = authLoading && !account
 
@@ -57,8 +68,20 @@ export function CreateTournamentPage() {
   const durationLabel =
     DURATIONS.find((d) => d.hours === durationHours)?.label ?? '24 hours'
 
+  const selectKind = (next: TournamentKind) => {
+    setKind(next)
+    if (next === 'bracket') {
+      setUnlimitedPlayers(false)
+      setUnlimitedAttempts(false)
+      setMaxPlayers((n) => (BRACKET_SIZES.includes(n as (typeof BRACKET_SIZES)[number]) ? n : 4))
+      setMaxAttempts((n) => Math.max(1, n))
+      setGames((prev) => prev.slice(0, 1))
+    }
+  }
+
   const toggleGame = (slug: EventGame) => {
     setGames((prev) => {
+      if (isBracket) return [slug]
       if (prev.includes(slug)) {
         if (prev.length === 1) return prev
         return prev.filter((g) => g !== slug)
@@ -77,9 +100,10 @@ export function CreateTournamentPage() {
       const input: CreateTournamentInput = {
         title: title.trim(),
         games,
-        maxAttempts: unlimitedAttempts ? 0 : maxAttempts,
-        maxPlayers: unlimitedPlayers ? 0 : maxPlayers,
+        maxAttempts: isBracket || !unlimitedAttempts ? Math.max(1, maxAttempts) : 0,
+        maxPlayers: isBracket || !unlimitedPlayers ? maxPlayers : 0,
         durationHours,
+        kind,
       }
       const created = await createTournament(input)
       if (created.inviteCode) rememberTournamentInvite(created.id, created.inviteCode)
@@ -120,6 +144,29 @@ export function CreateTournamentPage() {
               <p className="event-create__hint">
                 Private events are invite-only and won&apos;t appear on the public events list.
               </p>
+              <div className="event-create__kind" role="group" aria-label="Event type">
+                <button
+                  type="button"
+                  className={`event-create__kind-btn${kind === 'scores' ? ' event-create__kind-btn--active' : ''}`}
+                  aria-pressed={kind === 'scores'}
+                  onClick={() => selectKind('scores')}
+                >
+                  Top scores
+                </button>
+                <button
+                  type="button"
+                  className={`event-create__kind-btn${kind === 'bracket' ? ' event-create__kind-btn--active' : ''}`}
+                  aria-pressed={kind === 'bracket'}
+                  onClick={() => selectKind('bracket')}
+                >
+                  Bracket
+                </button>
+              </div>
+              <p className="event-create__hint">
+                {isBracket
+                  ? 'Single elimination. Both players play the game — higher score wins the match.'
+                  : 'Everyone posts scores. Best score (or place points) wins.'}
+              </p>
               <label className="event-create__field">
                 <span className="event-create__label">Title</span>
                 <input
@@ -135,23 +182,29 @@ export function CreateTournamentPage() {
               <div className="event-create__rule">
                 <div className="event-create__rule-head">
                   <span className="event-create__rule-title">Players</span>
-                  <label className="event-create__toggle">
-                    <input
-                      type="checkbox"
-                      checked={unlimitedPlayers}
-                      onChange={(e) => setUnlimitedPlayers(e.target.checked)}
-                    />
-                    <span>Unlimited</span>
-                  </label>
+                  {isBracket ? null : (
+                    <label className="event-create__toggle">
+                      <input
+                        type="checkbox"
+                        checked={unlimitedPlayers}
+                        onChange={(e) => setUnlimitedPlayers(e.target.checked)}
+                      />
+                      <span>Unlimited</span>
+                    </label>
+                  )}
                 </div>
-                {!unlimitedPlayers ? (
+                {isBracket || !unlimitedPlayers ? (
                   <div className="event-create__stepper" aria-label="Maximum players">
                     <button
                       type="button"
                       className="event-create__stepper-btn"
                       aria-label="Fewer players"
-                      disabled={maxPlayers <= 2}
-                      onClick={() => setMaxPlayers((n) => Math.max(2, n - 1))}
+                      disabled={isBracket ? maxPlayers <= 4 : maxPlayers <= 2}
+                      onClick={() =>
+                        setMaxPlayers((n) =>
+                          isBracket ? nextBracketSize(n, -1) : Math.max(2, n - 1),
+                        )
+                      }
                     >
                       −
                     </button>
@@ -160,32 +213,44 @@ export function CreateTournamentPage() {
                       type="button"
                       className="event-create__stepper-btn"
                       aria-label="More players"
-                      disabled={maxPlayers >= 99}
-                      onClick={() => setMaxPlayers((n) => Math.min(99, n + 1))}
+                      disabled={isBracket ? maxPlayers >= 16 : maxPlayers >= 99}
+                      onClick={() =>
+                        setMaxPlayers((n) =>
+                          isBracket ? nextBracketSize(n, 1) : Math.min(99, n + 1),
+                        )
+                      }
                     >
                       +
                     </button>
                   </div>
                 ) : null}
-                <p className="event-create__hint">{playersSummary(maxPlayers, unlimitedPlayers)}.</p>
+                <p className="event-create__hint">
+                  {isBracket
+                    ? `${maxPlayers} players. The bracket draws when the last seat fills.`
+                    : `${playersSummary(maxPlayers, unlimitedPlayers)}.`}
+                </p>
               </div>
             </section>
 
             <section className="event-create__card">
               <div className="event-create__section-head">
                 <h2 className="event-create__section-title">Games</h2>
-                <span className="event-create__count">{games.length} / 5 selected</span>
+                <span className="event-create__count">
+                  {isBracket ? '1 game' : `${games.length} / 5 selected`}
+                </span>
               </div>
               <p className="event-create__hint">
-                {games.length > 1
-                  ? 'Multiple games use place points — highest total wins.'
-                  : 'Pick one or more games for this event.'}
+                {isBracket
+                  ? 'Pick the game every match uses.'
+                  : games.length > 1
+                    ? 'Multiple games use place points — highest total wins.'
+                    : 'Pick one or more games for this event.'}
               </p>
               <div className="event-create__game-grid">
                 {EVENT_GAMES.map((slug) => {
                   const g = getGame(slug)
                   const picked = games.includes(slug)
-                  const atCap = games.length >= 5 && !picked
+                  const atCap = !isBracket && games.length >= 5 && !picked
                   return (
                     <button
                       key={slug}
@@ -216,17 +281,21 @@ export function CreateTournamentPage() {
 
               <div className="event-create__rule">
                 <div className="event-create__rule-head">
-                  <span className="event-create__rule-title">Attempts per game</span>
-                  <label className="event-create__toggle">
-                    <input
-                      type="checkbox"
-                      checked={unlimitedAttempts}
-                      onChange={(e) => setUnlimitedAttempts(e.target.checked)}
-                    />
-                    <span>Unlimited</span>
-                  </label>
+                  <span className="event-create__rule-title">
+                    {isBracket ? 'Attempts per match' : 'Attempts per game'}
+                  </span>
+                  {isBracket ? null : (
+                    <label className="event-create__toggle">
+                      <input
+                        type="checkbox"
+                        checked={unlimitedAttempts}
+                        onChange={(e) => setUnlimitedAttempts(e.target.checked)}
+                      />
+                      <span>Unlimited</span>
+                    </label>
+                  )}
                 </div>
-                {!unlimitedAttempts ? (
+                {isBracket || !unlimitedAttempts ? (
                   <div className="event-create__stepper" aria-label="Attempts per game">
                     <button
                       type="button"
@@ -250,8 +319,9 @@ export function CreateTournamentPage() {
                   </div>
                 ) : null}
                 <p className="event-create__hint">
-                  {attemptsSummary(maxAttempts, unlimitedAttempts, games.length)}. Best score
-                  counts per game.
+                  {isBracket
+                    ? `${attemptsSummary(maxAttempts, false, 1).replace('per game', 'per match')}. Fresh tries each round.`
+                    : `${attemptsSummary(maxAttempts, unlimitedAttempts, games.length)}. Best score counts per game.`}
                 </p>
               </div>
 
@@ -270,8 +340,10 @@ export function CreateTournamentPage() {
                 </select>
                 {durationHours === 0 ? (
                   <p className="event-create__hint">
-                    Ends when every player has used all their attempts.
-                    {unlimitedAttempts
+                    {isBracket
+                      ? 'Ends when the final has a winner.'
+                      : 'Ends when every player has used all their attempts.'}
+                    {!isBracket && unlimitedAttempts
                       ? ' Pick a finite attempt limit for this mode.'
                       : null}
                   </p>
@@ -305,7 +377,11 @@ export function CreateTournamentPage() {
                   <li>{playersSummary(maxPlayers, unlimitedPlayers)}</li>
                   <li>{attemptsSummary(maxAttempts, unlimitedAttempts, games.length)}</li>
                   <li>{durationLabel}</li>
-                  {games.length > 1 ? <li>Place points scoring</li> : null}
+                  {isBracket ? (
+                    <li>Single-elim bracket</li>
+                  ) : games.length > 1 ? (
+                    <li>Place points scoring</li>
+                  ) : null}
                   <li>Private · invite only</li>
                 </ul>
               </div>
