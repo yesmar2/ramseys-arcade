@@ -40,7 +40,10 @@ export function EventBracket({
             : 'Waiting for the roster to fill.'}
         </p>
       ) : (
-        <div className="event-bracket" style={{ '--round-count': rounds.length } as CSSProperties}>
+        <div
+          className={`event-bracket${rounds.length >= 4 ? ' event-bracket--deep' : ''}`}
+          style={{ '--round-count': rounds.length } as CSSProperties}
+        >
           {rounds.map((round) => {
             const rows = matches
               .filter((m) => m.round === round)
@@ -59,20 +62,27 @@ export function EventBracket({
                         }${match.winnerId ? ' event-bracket__match--done' : ''}`}
                       >
                         {match.players.map((side, idx) => {
-                          const won = Boolean(side && match.winnerId === side.id)
-                          const lost = Boolean(side && match.winnerId && match.winnerId !== side.id)
+                          const isBye = side?.name === 'BYE'
+                          const won = Boolean(side && !isBye && match.winnerId === side.id)
+                          const lost = Boolean(
+                            side && !isBye && match.winnerId && match.winnerId !== side.id,
+                          )
                           return (
                             <div
-                              key={side?.id ?? `empty-${idx}`}
+                              key={side?.id || `empty-${idx}`}
                               className={`event-bracket__side${won ? ' event-bracket__side--won' : ''}${
                                 lost ? ' event-bracket__side--lost' : ''
-                              }`}
+                              }${isBye ? ' event-bracket__side--bye' : ''}`}
                             >
                               <span className="event-bracket__name">
                                 {side?.name ?? 'TBD'}
                               </span>
                               <span className="event-bracket__score">
-                                {side?.score != null ? side.score.toLocaleString() : '—'}
+                                {isBye
+                                  ? ''
+                                  : side?.score != null
+                                    ? side.score.toLocaleString()
+                                    : '—'}
                               </span>
                             </div>
                           )

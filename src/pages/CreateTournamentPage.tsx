@@ -7,7 +7,9 @@ import { getGame } from '../data/games'
 import { tournamentHref } from '../hooks/useHashRoute'
 import { useAuth } from '../hooks/useAuth'
 import {
-  BRACKET_SIZES,
+  BRACKET_PLAYERS_MAX,
+  BRACKET_PLAYERS_MIN,
+  bracketDrawSize,
   createTournament,
   EVENT_GAMES,
   rememberTournamentInvite,
@@ -37,11 +39,9 @@ function playersSummary(maxPlayers: number, unlimited: boolean) {
   return `${maxPlayers} player${maxPlayers === 1 ? '' : 's'} max`
 }
 
-function nextBracketSize(current: number, delta: number): number {
-  const idx = BRACKET_SIZES.indexOf(current as (typeof BRACKET_SIZES)[number])
-  const start = idx >= 0 ? idx : 0
-  const next = Math.min(BRACKET_SIZES.length - 1, Math.max(0, start + delta))
-  return BRACKET_SIZES[next]!
+function clampBracketPlayers(n: number): number {
+  if (!Number.isFinite(n)) return BRACKET_PLAYERS_MIN
+  return Math.min(BRACKET_PLAYERS_MAX, Math.max(BRACKET_PLAYERS_MIN, Math.floor(n)))
 }
 
 export function CreateTournamentPage() {
@@ -57,6 +57,7 @@ export function CreateTournamentPage() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const isBracket = kind === 'bracket'
+  const bracketByes = isBracket ? bracketDrawSize(maxPlayers) - maxPlayers : 0
 
   const waitingForAuth = authLoading && !account
 
@@ -73,7 +74,7 @@ export function CreateTournamentPage() {
     if (next === 'bracket') {
       setUnlimitedPlayers(false)
       setUnlimitedAttempts(false)
-      setMaxPlayers((n) => (BRACKET_SIZES.includes(n as (typeof BRACKET_SIZES)[number]) ? n : 4))
+      setMaxPlayers((n) => clampBracketPlayers(n))
       setMaxAttempts((n) => Math.max(1, n))
       setGames((prev) => prev.slice(0, 1))
     }
@@ -199,24 +200,38 @@ export function CreateTournamentPage() {
                       type="button"
                       className="event-create__stepper-btn"
                       aria-label="Fewer players"
-                      disabled={isBracket ? maxPlayers <= 4 : maxPlayers <= 2}
+                      disabled={isBracket ? maxPlayers <= BRACKET_PLAYERS_MIN : maxPlayers <= 2}
                       onClick={() =>
                         setMaxPlayers((n) =>
-                          isBracket ? nextBracketSize(n, -1) : Math.max(2, n - 1),
+                          isBracket ? clampBracketPlayers(n - 1) : Math.max(2, n - 1),
                         )
                       }
                     >
                       −
                     </button>
-                    <span className="event-create__stepper-value">{maxPlayers}</span>
+                    {isBracket ? (
+                      <input
+                        className="event-create__stepper-value event-create__stepper-input"
+                        type="number"
+                        min={BRACKET_PLAYERS_MIN}
+                        max={BRACKET_PLAYERS_MAX}
+                        value={maxPlayers}
+                        aria-label="Maximum players"
+                        onChange={(e) =>
+                          setMaxPlayers(clampBracketPlayers(Number(e.target.value)))
+                        }
+                      />
+                    ) : (
+                      <span className="event-create__stepper-value">{maxPlayers}</span>
+                    )}
                     <button
                       type="button"
                       className="event-create__stepper-btn"
                       aria-label="More players"
-                      disabled={isBracket ? maxPlayers >= 16 : maxPlayers >= 99}
+                      disabled={isBracket ? maxPlayers >= BRACKET_PLAYERS_MAX : maxPlayers >= 99}
                       onClick={() =>
                         setMaxPlayers((n) =>
-                          isBracket ? nextBracketSize(n, 1) : Math.min(99, n + 1),
+                          isBracket ? clampBracketPlayers(n + 1) : Math.min(99, n + 1),
                         )
                       }
                     >
@@ -226,7 +241,11 @@ export function CreateTournamentPage() {
                 ) : null}
                 <p className="event-create__hint">
                   {isBracket
-                    ? `${maxPlayers} players. The bracket draws when the last seat fills.`
+                    ? `${maxPlayers} players. The bracket draws when the last seat fills.${
+                        bracketByes > 0
+                          ? ` ${bracketByes} player${bracketByes === 1 ? '' : 's'} get a bye.`
+                          : ''
+                      }`
                     : `${playersSummary(maxPlayers, unlimitedPlayers)}.`}
                 </p>
               </div>

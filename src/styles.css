@@ -9957,6 +9957,12 @@ html[data-theme='dark'] .patriot__power-mark {
   overflow: hidden;
 }
 
+@media (max-width: 720px) {
+  .event-bracket--deep {
+    grid-template-columns: 1fr;
+  }
+}
+
 .event-bracket__round {
   min-width: 0;
   display: flex;
@@ -10019,6 +10025,12 @@ html[data-theme='dark'] .patriot__power-mark {
 
 .event-bracket__side--lost {
   color: var(--muted);
+}
+
+.event-bracket__side--bye {
+  color: var(--muted);
+  font-style: italic;
+  font-weight: 600;
 }
 
 .event-bracket__name {
@@ -10429,6 +10441,25 @@ html[data-theme='dark'] .patriot__power-mark {
   font-size: 1.15rem;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
+}
+
+.event-create__stepper-input {
+  width: 3.1rem;
+  min-width: 3.1rem;
+  padding: 0.15rem 0;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 1.15rem;
+  font-weight: 800;
+  -moz-appearance: textfield;
+}
+
+.event-create__stepper-input::-webkit-outer-spin-button,
+.event-create__stepper-input::-webkit-inner-spin-button {
+  appearance: none;
+  margin: 0;
 }
 
 .event-create__input--duration {

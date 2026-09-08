@@ -11,8 +11,16 @@ export type TournamentFormat =
   | 'cumulative'
 export type TournamentKind = 'scores' | 'bracket'
 
-export const BRACKET_SIZES = [4, 8, 16] as const
-export type BracketSize = (typeof BRACKET_SIZES)[number]
+export const BRACKET_PLAYERS_MIN = 2
+export const BRACKET_PLAYERS_MAX = 64
+
+export function bracketDrawSize(n: number): number {
+  const capped = Math.max(
+    BRACKET_PLAYERS_MIN,
+    Math.min(BRACKET_PLAYERS_MAX, Math.floor(n)),
+  )
+  return 2 ** Math.ceil(Math.log2(capped))
+}
 
 export type TournamentRules = {
   maxAttempts?: number
@@ -307,8 +315,9 @@ export function matchOpponent(
 export function bracketRoundLabel(round: number, maxRound: number): string {
   if (round === maxRound) return 'Final'
   if (round === maxRound - 1) return 'Semifinals'
-  if (round === 1) return 'Round 1'
-  return `Round ${round}`
+  if (round === maxRound - 2 && maxRound >= 3) return 'Quarterfinals'
+  const remaining = 2 ** (maxRound - round + 1)
+  return `Round of ${remaining}`
 }
 
 const JOINED_KEY = 'arcade-tournaments-joined'
