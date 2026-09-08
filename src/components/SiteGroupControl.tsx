@@ -59,7 +59,7 @@ export function SiteGroupControl({ variant, onSelect }: SiteGroupControlProps) {
   }, [open, variant])
 
   const active = groups.find((g) => g.id === activeId) ?? null
-  const label = active?.name ?? 'Everyone'
+  const label = activeId ? (active?.name ?? 'Group') : 'Everyone'
 
   const select = (id: string | null) => {
     applySiteGroup(id, route)
