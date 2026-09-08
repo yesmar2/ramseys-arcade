@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { applySiteGroup, useHashRoute } from '../hooks/useHashRoute'
 import { useAuth } from '../hooks/useAuth'
 import {
+  groupsIndexHref,
   listMyGroups,
   setActiveGroup,
   storedActiveGroup,
@@ -92,7 +93,7 @@ export function SiteGroupControl({ variant, onSelect }: SiteGroupControlProps) {
           ))}
           <a
             className="site-drawer__period-tab"
-            href="#/groups"
+            href={groupsIndexHref()}
             onClick={() => onSelect?.()}
           >
             {account ? 'Create or manage…' : 'Groups…'}
@@ -148,7 +149,7 @@ export function SiteGroupControl({ variant, onSelect }: SiteGroupControlProps) {
           ))}
           <a
             className="site-header__period-option site-header__period-option--link"
-            href="#/groups"
+            href={groupsIndexHref()}
             onClick={() => {
               setOpen(false)
               onSelect?.()

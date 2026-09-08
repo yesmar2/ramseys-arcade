@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { defaultPeriod } from './lib/defaultPeriod'
 import { Footer } from './components/Footer'
 import { SiteHeader } from './components/SiteHeader'
@@ -79,6 +79,37 @@ function ComingSoonPage({ slug }: { slug: string }) {
   )
 }
 
+function groupsRouteFromUrl():
+  | { name: 'groups' }
+  | { name: 'group'; id: string; invite?: string }
+  | null {
+  const hashRaw = window.location.hash.replace(/^#\/?/, '')
+  const pathRaw = window.location.pathname.replace(/^\//, '')
+  const raw = (hashRaw || pathRaw).replace(/\/$/, '')
+  const [path, queryString] = raw.split('?')
+  const invite =
+    new URLSearchParams(queryString || window.location.search).get('invite')?.trim().toUpperCase() ||
+    undefined
+  if (path === 'groups') return { name: 'groups' }
+  const match = /^groups\/([^/]+)$/.exec(path)
+  if (!match) return null
+  return { name: 'group', id: decodeURIComponent(match[1]), invite }
+}
+
+function useGroupsRouteFromUrl() {
+  const [, setTick] = useState(0)
+  useEffect(() => {
+    const sync = () => setTick((n) => n + 1)
+    window.addEventListener('hashchange', sync)
+    window.addEventListener('popstate', sync)
+    return () => {
+      window.removeEventListener('hashchange', sync)
+      window.removeEventListener('popstate', sync)
+    }
+  }, [])
+  return groupsRouteFromUrl()
+}
+
 function isGameScreen(route: ReturnType<typeof useHashRoute>) {
   return route.name === 'gamePlay' || route.name === 'tournamentPlay'
 }
@@ -120,6 +151,15 @@ function App() {
     if (!onGameScreen) silenceMusic()
   }, [onGameScreen])
 
+  const groupsFromUrl = useGroupsRouteFromUrl()
+  if (route.name === 'groups' || groupsFromUrl?.name === 'groups') return <GroupsPage />
+  if (route.name === 'group') {
+    return <GroupDetailPage id={route.id} invite={route.invite} />
+  }
+  if (groupsFromUrl?.name === 'group') {
+    return <GroupDetailPage id={groupsFromUrl.id} invite={groupsFromUrl.invite} />
+  }
+
   if (route.name === 'home') return <HomePage />
   if (route.name === 'privacy') return <PrivacyPage />
   if (route.name === 'terms') return <TermsPage />
@@ -152,10 +192,6 @@ function App() {
         period={route.period ?? defaultPeriod()}
       />
     )
-  }
-  if (route.name === 'groups') return <GroupsPage />
-  if (route.name === 'group') {
-    return <GroupDetailPage id={route.id} invite={route.invite} />
   }
   if (route.name === 'tournaments') return <TournamentsPage />
   if (route.name === 'tournamentCreate') return <CreateTournamentPage />

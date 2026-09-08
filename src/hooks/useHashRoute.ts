@@ -238,6 +238,15 @@ export function applySiteGroup(
   }
 }
 
+/** Turn `/groups` path URLs into `#/groups` so the hash router can see them. */
+function syncGroupsPathname() {
+  const path = window.location.pathname.replace(/\/$/, '')
+  if (path !== '/groups' && !path.startsWith('/groups/')) return
+  const next = `#${path}${window.location.search}`
+  if (window.location.hash === next) return
+  window.history.replaceState(null, '', `/${next}`)
+}
+
 function parseHash(hash: string): Route {
   const raw = hash.replace(/^#\/?/, '').replace(/\/$/, '')
   const [path, queryString] = raw.split('?')
@@ -248,6 +257,15 @@ function parseHash(hash: string): Route {
   if (!path) return { name: 'home' }
   if (path === 'privacy') return { name: 'privacy' }
   if (path === 'terms') return { name: 'terms' }
+  if (path === 'groups') return { name: 'groups' }
+  const groupMatch = /^groups\/([^/]+)$/.exec(path)
+  if (groupMatch) {
+    return {
+      name: 'group',
+      id: decodeURIComponent(groupMatch[1]),
+      invite,
+    }
+  }
   if (path === 'leaderboards') return { name: 'leaderboards', period: defaultPeriod() }
   if (path === 'rank') return { name: 'rank', period: defaultPeriod() }
   if (path === 'records') return { name: 'recordsIndex' }
@@ -327,16 +345,6 @@ function parseHash(hash: string): Route {
     }
   }
 
-  if (path === 'groups') return { name: 'groups' }
-  const groupMatch = /^groups\/([^/]+)$/.exec(path)
-  if (groupMatch) {
-    return {
-      name: 'group',
-      id: decodeURIComponent(groupMatch[1]),
-      invite,
-    }
-  }
-
   if (path === 'tournaments') return { name: 'tournaments' }
   if (path === 'tournaments/create') return { name: 'tournamentCreate' }
 
@@ -394,6 +402,7 @@ export function useHashRoute(): Route {
 
   useEffect(() => {
     const syncRoute = () => {
+      syncGroupsPathname()
       const next = parseHash(window.location.hash)
       const p = periodFromRoute(next)
       if (p) setDefaultPeriod(p)
