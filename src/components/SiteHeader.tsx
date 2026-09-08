@@ -8,6 +8,8 @@ import { useGlobalRank, useGlobalRankLoading } from '../lib/globalRank'
 import { currentTheme, THEME_EVENT, toggleTheme, type Theme } from '../lib/theme'
 import { normalizePlayerName } from '../lib/leaderboard'
 import { useTrophySummary } from '../hooks/useTrophySummary'
+import { useImpersonation } from '../hooks/useImpersonation'
+import { DevImpersonateControl } from './DevImpersonateControl'
 import { PlayerBadge, type PlayerBadgeHandle } from './PlayerBadge'
 import { SiteGroupControl } from './SiteGroupControl'
 import { SitePeriodControl } from './SitePeriodControl'
@@ -27,6 +29,7 @@ export function SiteHeader() {
   const rankLoading = useGlobalRankLoading()
   const { account, signedIn } = useAuth()
   const playerName = normalizePlayerName(usePlayerName())
+  const impersonation = useImpersonation()
   const trophySummary = useTrophySummary(playerName)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [utilOpen, setUtilOpen] = useState(false)
@@ -151,10 +154,12 @@ export function SiteHeader() {
       <div className="site-header__end">
         {playerName ? (
           <a
-            className={`site-header__you${navActive('you', hash) ? ' site-header__you--active' : ''}`}
+            className={`site-header__you${navActive('you', hash) ? ' site-header__you--active' : ''}${impersonation ? ' site-header__you--impersonating' : ''}`}
             href={rankHref()}
             title={
-              rankLoading
+              impersonation
+                ? `Acting as ${playerName} (dev)`
+                : rankLoading
                 ? trophySummary.total > 0
                   ? `Your profile · Loading rank · ${trophySummary.total} trophies`
                   : 'Your profile · Loading rank'
@@ -177,6 +182,11 @@ export function SiteHeader() {
               </span>
             ) : rank != null ? (
               <span className="site-header__you-rank">#{rank}</span>
+            ) : null}
+            {impersonation ? (
+              <span className="site-header__you-act" aria-hidden="true">
+                AS
+              </span>
             ) : null}
             <span className="site-header__you-name">{playerName}</span>
             {trophySummary.total > 0 ? (
@@ -243,6 +253,7 @@ export function SiteHeader() {
               /* keep menu open so packs can be compared */
             }}
           />
+          <DevImpersonateControl variant="menu" />
           <button
             type="button"
             role="menuitem"
@@ -350,6 +361,7 @@ export function SiteHeader() {
                     {theme === 'dark' ? 'Light mode' : 'Dark mode'}
                   </button>
                   <SoundPackSelect variant="menu" className="site-drawer__util" />
+                  <DevImpersonateControl variant="drawer" />
                   <button
                     type="button"
                     className="site-drawer__util"

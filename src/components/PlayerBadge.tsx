@@ -1,6 +1,8 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react'
 import { useAuth } from '../hooks/useAuth'
+import { useImpersonation } from '../hooks/useImpersonation'
 import { usePlayerName } from '../hooks/usePlayerName'
+import { stopImpersonation } from '../lib/impersonate'
 import {
   AVATAR_IDS,
   AVATARS_ENABLED,
@@ -40,6 +42,7 @@ export type PlayerBadgeHandle = {
 export const PlayerBadge = forwardRef<PlayerBadgeHandle, PlayerBadgeProps>(
   function PlayerBadge({ compact = false, icon = false, className = '' }, ref) {
     const name = usePlayerName()
+    const impersonation = useImpersonation()
     const { account, signedIn } = useAuth()
     const [editing, setEditing] = useState(false)
     const [draft, setDraft] = useState(name || '')
@@ -90,6 +93,10 @@ export const PlayerBadge = forwardRef<PlayerBadgeHandle, PlayerBadgeProps>(
     useImperativeHandle(ref, () => ({ openEdit: startEdit }))
 
     const save = async () => {
+      if (impersonation) {
+        setError('Stop impersonating before changing your gamer tag')
+        return
+      }
       const cleaned = normalizePlayerName(draft)
       if (!cleaned || busy) return
       setBusy(true)
@@ -174,6 +181,10 @@ export const PlayerBadge = forwardRef<PlayerBadgeHandle, PlayerBadgeProps>(
     }, [editing, busy, authBusy])
 
     const pickAvatar = async (next: AvatarId) => {
+      if (impersonation) {
+        setError('Stop impersonating before changing an avatar')
+        return
+      }
       const cleaned = normalizePlayerName(name || draft)
       if (!cleaned || avatarBusy) return
       setAvatarBusy(true)
@@ -247,6 +258,12 @@ export const PlayerBadge = forwardRef<PlayerBadgeHandle, PlayerBadgeProps>(
         {editing && (
           <div className="player-badge__panel" role="dialog" aria-label="Account">
             <p className="player-badge__panel-title">Gamer tag</p>
+            {impersonation ? (
+              <p className="player-badge__impersonate">
+                Acting as {impersonation.name} for testing. Your tag stays{' '}
+                {impersonation.previousName || 'unset'}.
+              </p>
+            ) : null}
             <label className="player-badge__field">
               <span className="player-badge__label">Tag</span>
               <input
@@ -254,7 +271,7 @@ export const PlayerBadge = forwardRef<PlayerBadgeHandle, PlayerBadgeProps>(
                 className="player-badge__input"
                 value={draft}
                 maxLength={PLAYER_NAME_MAX}
-                disabled={busy}
+                disabled={busy || Boolean(impersonation)}
                 onChange={(e) => {
                   setDraft(e.target.value.toUpperCase().slice(0, PLAYER_NAME_MAX))
                   setError(null)
@@ -281,7 +298,7 @@ export const PlayerBadge = forwardRef<PlayerBadgeHandle, PlayerBadgeProps>(
                         role="option"
                         aria-selected={selected}
                         className={`player-badge__avatar-opt${selected ? ' player-badge__avatar-opt--on' : ''}`}
-                        disabled={avatarBusy || busy}
+                        disabled={avatarBusy || busy || Boolean(impersonation)}
                         onClick={() => void pickAvatar(id)}
                       >
                         <PlayerAvatar avatarId={id} name={displayName || draft} size="md" />
@@ -294,14 +311,28 @@ export const PlayerBadge = forwardRef<PlayerBadgeHandle, PlayerBadgeProps>(
 
             {error && <p className="player-badge__error">{error}</p>}
             <div className="player-badge__panel-actions">
-              <button
-                type="button"
-                className="player-badge__btn"
-                disabled={busy}
-                onClick={() => void save()}
-              >
-                {busy ? 'Saving…' : 'Save'}
-              </button>
+              {impersonation ? (
+                <button
+                  type="button"
+                  className="player-badge__btn"
+                  onClick={() => {
+                    stopImpersonation()
+                    setError(null)
+                    setEditing(false)
+                  }}
+                >
+                  Stop acting as {impersonation.name}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="player-badge__btn"
+                  disabled={busy}
+                  onClick={() => void save()}
+                >
+                  {busy ? 'Saving…' : 'Save'}
+                </button>
+              )}
               <button
                 type="button"
                 className="player-badge__btn player-badge__btn--ghost"

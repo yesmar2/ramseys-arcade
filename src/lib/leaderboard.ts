@@ -110,11 +110,25 @@ export class ApiError extends Error {
   }
 }
 
+function isImpersonatingNow() {
+  try {
+    const raw = localStorage.getItem('arcade-impersonate')
+    if (!raw) return false
+    const parsed = JSON.parse(raw) as { name?: unknown }
+    return typeof parsed?.name === 'string' && Boolean(parsed.name.trim())
+  } catch {
+    return false
+  }
+}
+
 export async function api<T>(path: string, init?: RequestInit): Promise<T> {
   let sessionHeader: Record<string, string> = {}
   try {
     const session = localStorage.getItem('arcade-session')
-    if (session) sessionHeader = { Authorization: `Bearer ${session}` }
+    // Skip the signed-in session while acting as another tag so the guest claim is used.
+    if (session && !isImpersonatingNow()) {
+      sessionHeader = { Authorization: `Bearer ${session}` }
+    }
   } catch {
     /* ignore */
   }
@@ -277,6 +291,10 @@ export function setPlayerNameLocal(cleaned: string) {
 
 /** Persist name locally and claim it on the server (unique across players). */
 export async function rememberPlayerName(name: string): Promise<string> {
+  if (isImpersonatingNow()) {
+    const current = normalizePlayerName(name) || getLastPlayerName()
+    return current || 'YOU'
+  }
   const cleaned = normalizePlayerName(name) || 'YOU'
   const previous = getLastPlayerName()
   const previousToken = previous ? getClaimToken(previous) : null

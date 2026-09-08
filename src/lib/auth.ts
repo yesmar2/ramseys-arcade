@@ -153,6 +153,21 @@ export async function fetchAuthMe(): Promise<{
 }
 
 export async function linkCurrentNameToAccount(name?: string): Promise<OwnedName | null> {
+  try {
+    const raw = localStorage.getItem('arcade-impersonate')
+    if (raw) {
+      const parsed = JSON.parse(raw) as { name?: unknown }
+      if (typeof parsed?.name === 'string' && parsed.name.trim()) {
+        throw new ApiError(
+          'Stop impersonating before linking a gamer tag to your account',
+          400,
+          'IMPERSONATING',
+        )
+      }
+    }
+  } catch (err) {
+    if (err instanceof ApiError) throw err
+  }
   const cleaned = (name || getLastPlayerName()).trim().toUpperCase()
   if (!cleaned || !getSessionToken()) return null
   const previous = getLastPlayerName()

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { usePlayerName } from '../hooks/usePlayerName'
+import { isImpersonating } from '../lib/impersonate'
 import { ApiError, getLastPlayerName, normalizePlayerName, PLAYER_NAME_MAX, rememberPlayerName } from '../lib/leaderboard'
 import {
   getTournament,
@@ -194,6 +195,10 @@ export function TournamentScoreCard({
     if (!cleaned) return
     setError(null)
     try {
+      if (isImpersonating()) {
+        setName(cleaned)
+        return
+      }
       const claimed = await rememberPlayerName(cleaned)
       setName(claimed)
     } catch (err) {

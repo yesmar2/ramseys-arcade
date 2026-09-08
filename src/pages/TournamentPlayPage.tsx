@@ -11,6 +11,7 @@ import { DeviceUnavailable } from '../components/DeviceUnavailable'
 import { getGame, gamePlayableOn } from '../data/games'
 import { useDeviceType } from '../lib/device'
 import { usePlayerName } from '../hooks/usePlayerName'
+import { isImpersonating } from '../lib/impersonate'
 import { ApiError, normalizePlayerName, PLAYER_NAME_MAX, rememberPlayerName } from '../lib/leaderboard'
 import {
   getTournament,
@@ -102,15 +103,22 @@ export function TournamentPlayPage({
           return
         }
         const name = playerName.trim().toUpperCase()
+        const onRoster = Boolean(
+          name && data.players.some((p) => normalizePlayerName(p.name) === name),
+        )
         if (name && isPlayerInTournament(data, name, tournamentId)) {
           // Seat may still be under an old tag — rebind without a join gate.
-          if (!data.players.some((p) => p.name === name)) {
-            const result = await joinTournament(tournamentId, name)
-            if (cancelled) return
-            data = result.tournament
-            setDetail(data)
+          if (!onRoster && isImpersonating()) {
+            // Stored seat belongs to the real tag; do not steal it.
+          } else {
+            if (!onRoster) {
+              const result = await joinTournament(tournamentId, name)
+              if (cancelled) return
+              data = result.tournament
+              setDetail(data)
+            }
+            setReady(true)
           }
-          setReady(true)
         }
       } catch (err) {
         if (!cancelled) setLoadError(err instanceof Error ? err.message : 'Failed to load')
@@ -131,7 +139,9 @@ export function TournamentPlayPage({
     setJoining(true)
     setJoinError(null)
     try {
-      await rememberPlayerName(name)
+      if (!isImpersonating()) {
+        await rememberPlayerName(name)
+      }
       const result = await joinTournament(tournamentId, name)
       setDetail(result.tournament)
       setReady(true)

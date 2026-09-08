@@ -330,6 +330,14 @@ img {
   text-align: left;
 }
 
+.player-badge__impersonate {
+  margin: 0 0 0.65rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--muted);
+  text-align: left;
+}
+
 .player-badge__field {
   display: flex;
   flex-direction: column;
@@ -1696,6 +1704,28 @@ a.lb-board-switcher__item {
   letter-spacing: 0.02em;
 }
 
+.site-header__you--impersonating {
+  max-width: 14rem;
+  border-color: color-mix(in srgb, #d97706 42%, rgba(var(--ink-rgb), 0.08));
+  background: color-mix(in srgb, #d97706 20%, var(--surface));
+}
+
+.site-header__you--impersonating:hover,
+.site-header__you--impersonating:focus-visible {
+  background: color-mix(in srgb, #d97706 28%, var(--surface));
+}
+
+.site-header__you-act {
+  flex: none;
+  padding: 0.08rem 0.32rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, #d97706 28%, var(--surface));
+  color: var(--ink);
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+}
+
 .site-header__more {
   position: relative;
   flex: none;
@@ -1827,7 +1857,7 @@ a.site-drawer__period-tab {
   top: calc(100% + 0.45rem);
   right: 0;
   z-index: 40;
-  min-width: 10.5rem;
+  min-width: 14.5rem;
   padding: 0.35rem;
   border-radius: 0.85rem;
   background: var(--surface);
@@ -1969,6 +1999,10 @@ a.site-drawer__period-tab {
 
   .site-header__you-name {
     font-size: 0.78rem;
+  }
+
+  .site-header__you--impersonating {
+    max-width: 12.5rem;
   }
 }
 
@@ -2359,6 +2393,131 @@ a.game-hud__board {
   font: inherit;
   font-size: 0.82rem;
   font-variant-numeric: tabular-nums;
+}
+
+.dev-impersonate {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.5rem 0.45rem 0.55rem;
+  margin: 0.2rem 0;
+  border-radius: 0.75rem;
+  background: color-mix(in srgb, #d97706 10%, var(--surface));
+  border: 1px solid color-mix(in srgb, #d97706 28%, rgba(var(--ink-rgb), 0.08));
+}
+
+.dev-impersonate--drawer {
+  margin: 0.35rem 0;
+  padding: 0.7rem 0.75rem;
+}
+
+.dev-impersonate__label {
+  margin: 0;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(var(--ink-rgb), 0.58);
+}
+
+.dev-impersonate__status,
+.dev-impersonate__hint,
+.dev-impersonate__error {
+  margin: 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+.dev-impersonate__error {
+  color: #b42318;
+}
+
+.dev-impersonate__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.dev-impersonate__field {
+  flex: 1 1 5.5rem;
+  min-width: 0;
+}
+
+.dev-impersonate__field input {
+  width: 100%;
+  margin: 0;
+  padding: 0.4rem 0.5rem;
+  border: 1px solid rgba(var(--ink-rgb), 0.16);
+  border-radius: 0.55rem;
+  background: rgba(var(--surface-rgb), 0.96);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.site-header__menu .dev-impersonate button,
+.dev-impersonate__btn {
+  display: inline-flex;
+  width: auto;
+  align-items: center;
+  justify-content: center;
+  padding: 0.38rem 0.6rem;
+  border: 1px solid rgba(var(--ink-rgb), 0.16);
+  border-radius: 0.55rem;
+  background: rgba(var(--surface-rgb), 0.95);
+  font-family: var(--font-body);
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.site-header__menu .dev-impersonate button:hover,
+.site-header__menu .dev-impersonate button:focus-visible,
+.dev-impersonate__btn:hover,
+.dev-impersonate__btn:focus-visible {
+  background: color-mix(in srgb, #d97706 16%, var(--surface));
+  outline: none;
+}
+
+.dev-impersonate__btn:disabled,
+.dev-impersonate__chip:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.dev-impersonate__btn--ghost {
+  background: transparent;
+}
+
+.dev-impersonate__recents {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.28rem;
+}
+
+.site-header__menu .dev-impersonate .dev-impersonate__chip,
+.dev-impersonate__chip {
+  display: inline-flex;
+  width: auto;
+  padding: 0.22rem 0.45rem;
+  border-radius: 999px;
+  border: 1px solid rgba(var(--ink-rgb), 0.12);
+  background: rgba(var(--surface-rgb), 0.9);
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+}
+
+.dev-impersonate__chip--on {
+  border-color: color-mix(in srgb, #d97706 40%, transparent);
+  background: color-mix(in srgb, #d97706 18%, var(--surface));
 }
 
 .game-pause-actions {

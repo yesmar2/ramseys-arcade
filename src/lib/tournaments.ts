@@ -1,3 +1,4 @@
+import { isImpersonating } from './impersonate'
 import { getClaimToken, getLastPlayerName, normalizePlayerName, rememberClaimToken, ApiError } from './leaderboard'
 
 export type TournamentStatus = 'upcoming' | 'active' | 'ended'
@@ -558,7 +559,7 @@ export async function joinTournament(
 ): Promise<{ tournament: TournamentDetail; player: { id: string; name: string } }> {
   const cleaned = normalizePlayerName(name)
   const token = getClaimToken(cleaned)
-  const playerId = getTournamentPlayerId(id) ?? undefined
+  const playerId = isImpersonating() ? undefined : getTournamentPlayerId(id) ?? undefined
   const access = tournamentAccessQuery(id)
   const result = await api<{
     tournament: TournamentDetail
@@ -609,6 +610,17 @@ export async function syncJoinedTournamentRosters(force = false): Promise<void> 
       if (byName) {
         rememberTournamentPlayer(id, byName.id)
         continue
+      }
+
+      // Acting as another tag must not rebind this device's stored seat.
+      try {
+        const raw = localStorage.getItem('arcade-impersonate')
+        if (raw) {
+          const parsed = JSON.parse(raw) as { name?: unknown }
+          if (typeof parsed?.name === 'string' && parsed.name.trim()) continue
+        }
+      } catch {
+        /* ignore */
       }
 
       const playerId = getTournamentPlayerId(id)
