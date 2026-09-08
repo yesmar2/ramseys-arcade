@@ -13,6 +13,7 @@ import { tournamentCreateHref, tournamentHref, tournamentPlayHref, rankHref, use
 import { APP_NAME } from '../lib/brand'
 import { ApiError, getLastPlayerName, normalizePlayerName } from '../lib/leaderboard'
 import {
+  attemptsPerGameMax,
   getTournament,
   getTournamentInvite,
   isPlayerInTournament,
@@ -139,14 +140,35 @@ function EventStandings({
   )
 }
 
+function playAttemptsLabel(
+  detail: TournamentDetail,
+  slug: string,
+  joined: boolean,
+  displayName: string,
+): string {
+  const max = attemptsPerGameMax(detail)
+  if (max == null) return 'Unlimited tries'
+  if (!joined) return max === 1 ? '1 try' : `${max} tries`
+  const youName = normalizePlayerName(displayName)
+  const you = youName
+    ? detail.standings.find((row) => normalizePlayerName(row.name) === youName)
+    : undefined
+  const used = you?.byGame[slug]?.attemptsUsed ?? 0
+  const left = Math.max(0, max - used)
+  if (left === 0) return 'No tries left'
+  return `${left} of ${max} left`
+}
+
 function EventPlayCards({
   detail,
   joined,
   playInvite,
+  displayName,
 }: {
   detail: TournamentDetail
   joined: boolean
   playInvite?: string
+  displayName: string
 }) {
   return (
     <section className="event-detail__play" aria-label="Play">
@@ -158,7 +180,10 @@ function EventPlayCards({
           const gameAccent = g?.accent ?? eventAccent(detail.games)
           const status =
             detail.playerStatus && detail.games.length === 1 ? detail.playerStatus : null
-          const exhausted = Boolean(status && !status.canPlay && joined)
+          const attemptLabel = playAttemptsLabel(detail, slug, joined, displayName)
+          const exhausted =
+            Boolean(status && !status.canPlay && joined) ||
+            (joined && attemptLabel === 'No tries left')
           const name = g?.name ?? slug
           const style = {
             '--tile-accent': gameAccent,
@@ -167,16 +192,23 @@ function EventPlayCards({
             animationDelay: `${0.05 + index * 0.05}s`,
           } as CSSProperties
 
+          const inner = (
+            <>
+              <GameThumbArt slug={slug} accent={gameAccent} />
+              <span className="game-tile__title">{name}</span>
+              <span className="game-tile__status">{attemptLabel}</span>
+            </>
+          )
+
           if (exhausted) {
             return (
               <li key={slug}>
                 <div
                   className="game-tile game-tile--thumb event-play-card event-play-card--disabled"
                   style={style}
-                  aria-label={`${name}, no attempts left`}
+                  aria-label={`${name}, ${attemptLabel}`}
                 >
-                  <GameThumbArt slug={slug} accent={gameAccent} />
-                  <span className="game-tile__title">{name}</span>
+                  {inner}
                 </div>
               </li>
             )
@@ -188,22 +220,14 @@ function EventPlayCards({
                 className="game-tile game-tile--thumb event-play-card"
                 href={tournamentPlayHref(detail.id, slug, playInvite)}
                 style={style}
-                aria-label={`Play ${name}`}
+                aria-label={`Play ${name}, ${attemptLabel}`}
               >
-                <GameThumbArt slug={slug} accent={gameAccent} />
-                <span className="game-tile__title">{name}</span>
+                {inner}
               </a>
             </li>
           )
         })}
       </ul>
-      {detail.playerStatus?.maxAttempts != null && joined ? (
-        <p className="tour-note tour-note--compact">
-          {detail.playerStatus.attemptsRemaining === 0
-            ? 'No attempts left.'
-            : `${detail.playerStatus.attemptsRemaining} attempt${detail.playerStatus.attemptsRemaining === 1 ? '' : 's'} left.`}
-        </p>
-      ) : null}
     </section>
   )
 }
@@ -718,6 +742,7 @@ export function TournamentDetailPage({ id, invite }: { id: string; invite?: stri
                 detail={detail}
                 joined={joined}
                 playInvite={playInvite}
+                displayName={displayName}
               />
 
               {detail.status !== 'ended' && !joined ? (
@@ -761,7 +786,7 @@ export function TournamentDetailPage({ id, invite }: { id: string; invite?: stri
             <EventStandings
               detail={detail}
               displayName={displayName}
-              className="game-lobby__aside"
+              className="game-lobby__aside event-detail__aside"
             />
           </div>
         </div>

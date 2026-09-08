@@ -149,10 +149,32 @@ export function maxPlayersLabel(rules: TournamentRules | undefined): string | nu
   return `${n} player${n === 1 ? '' : 's'} max`
 }
 
-export function playerCountLabel(count: number, rules: TournamentRules | undefined): string {
-  const cap = rules?.maxPlayers
-  if (cap != null && cap > 0) return `${count} / ${cap} players`
-  return `${count} ${count === 1 ? 'player' : 'players'}`
+export function playerCountLabel(count: number): string {
+  return String(count)
+}
+
+export function rosterLimitLabel(rules: TournamentRules | undefined): string {
+  const n = rules?.maxPlayers
+  if (n == null || n <= 0) return 'Open'
+  return `${n} max`
+}
+
+/** Finite attempts per game, or null when the event is unlimited. */
+export function attemptsPerGameMax(
+  t: Pick<TournamentSummary, 'format' | 'rules'>,
+): number | null {
+  const n = t.rules.maxAttempts
+  if (t.format === 'open' || n == null || n <= 0) return null
+  if (t.format === 'single-run' || n === 1) return 1
+  return n
+}
+
+export function attemptsPerGameLabel(
+  t: Pick<TournamentSummary, 'format' | 'rules'>,
+): string {
+  const n = attemptsPerGameMax(t)
+  if (n == null) return 'Unlimited'
+  return n === 1 ? '1 / game' : `${n} / game`
 }
 
 export function cadenceLabel(cadence: TournamentCadence | null | undefined): string | null {

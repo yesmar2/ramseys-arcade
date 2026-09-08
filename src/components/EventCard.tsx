@@ -1,10 +1,12 @@
 import type { CSSProperties } from 'react'
 import { getGame } from '../data/games'
 import {
+  attemptsPerGameLabel,
   cadenceLabel,
   eventDurationLabel,
   isUnlimitedDuration,
   playerCountLabel,
+  rosterLimitLabel,
   type TournamentStatus,
   type TournamentSummary,
 } from '../lib/tournaments'
@@ -133,7 +135,15 @@ export function EventTicker({
           ) : null}
           <div className="lb-stat event-ticker__stat">
             <span className="lb-stat__label">Joined</span>
-            <strong>{playerCountLabel(t.playerCount, t.rules)}</strong>
+            <strong>{playerCountLabel(t.playerCount)}</strong>
+          </div>
+          <div className="lb-stat event-ticker__stat">
+            <span className="lb-stat__label">Roster</span>
+            <strong>{rosterLimitLabel(t.rules)}</strong>
+          </div>
+          <div className="lb-stat event-ticker__stat">
+            <span className="lb-stat__label">Attempts</span>
+            <strong>{attemptsPerGameLabel(t)}</strong>
           </div>
         </div>
       </div>

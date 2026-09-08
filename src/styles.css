@@ -8374,6 +8374,13 @@ html[data-theme='dark'] .patriot__power-mark {
     align-self: start;
   }
 
+  /* Event standings grow with the roster instead of scrolling in a sticky pane. */
+  .game-lobby--split .event-detail__aside {
+    position: static;
+    max-height: none;
+    overflow: visible;
+  }
+
   .game-lobby__tops--mobile {
     display: none;
   }
@@ -9553,7 +9560,13 @@ html[data-theme='dark'] .patriot__power-mark {
 }
 
 .event-ticker__facts > .event-ticker__stat {
-  flex: 1 1 7rem;
+  flex: 1 1 calc(50% - 0.3rem);
+}
+
+@container event-ticker (min-width: 28rem) {
+  .event-ticker__facts > .event-ticker__stat {
+    flex: 1 1 6.4rem;
+  }
 }
 
 .event-ticker__stat {
@@ -9571,7 +9584,7 @@ html[data-theme='dark'] .patriot__power-mark {
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   line-height: 1.15;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 
 .event-ticker__stat--countdown strong {
@@ -9685,6 +9698,10 @@ html[data-theme='dark'] .patriot__power-mark {
 .event-play-card {
   text-decoration: none;
   color: inherit;
+}
+
+.event-play-card .game-tile__status {
+  margin-top: -0.1rem;
 }
 
 .event-play-card--disabled {
