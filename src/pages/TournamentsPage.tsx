@@ -788,7 +788,7 @@ export function TournamentDetailPage({ id, invite }: { id: string; invite?: stri
         </>
       ) : (
         <div
-          className="event-detail game-lobby game-lobby--split"
+          className={`event-detail game-lobby${eventKind(detail) === 'bracket' ? '' : ' game-lobby--split'}`}
           style={
             {
               '--event-accent': accent,
@@ -868,15 +868,21 @@ export function TournamentDetailPage({ id, invite }: { id: string; invite?: stri
               <EventBoard
                 detail={detail}
                 displayName={displayName}
-                className="lb-board event-detail__board game-lobby__tops game-lobby__tops--mobile"
+                className={
+                  eventKind(detail) === 'bracket'
+                    ? 'event-detail__board event-detail__board--bracket'
+                    : 'lb-board event-detail__board game-lobby__tops game-lobby__tops--mobile'
+                }
               />
             </div>
 
-            <EventBoard
-              detail={detail}
-              displayName={displayName}
-              className="game-lobby__aside event-detail__aside"
-            />
+            {eventKind(detail) === 'bracket' ? null : (
+              <EventBoard
+                detail={detail}
+                displayName={displayName}
+                className="game-lobby__aside event-detail__aside"
+              />
+            )}
           </div>
         </div>
       )}
