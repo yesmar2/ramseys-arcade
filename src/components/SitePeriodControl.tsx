@@ -64,7 +64,7 @@ export function SitePeriodControl({ variant, onSelect }: SitePeriodControlProps)
   }
 
   return (
-    <div className="site-header__period site-header__period--desktop" ref={ref}>
+    <div className="site-header__period" ref={ref}>
       <button
         type="button"
         className="site-header__period-btn"
@@ -73,7 +73,7 @@ export function SitePeriodControl({ variant, onSelect }: SitePeriodControlProps)
         aria-haspopup="listbox"
         onClick={() => setOpen((value) => !value)}
       >
-        <span>{PERIOD_LABELS[period]}</span>
+        <span className="site-header__period-btn-label">{PERIOD_LABELS[period]}</span>
         <svg viewBox="0 0 12 12" aria-hidden="true" width="10" height="10">
           <path
             fill="none"

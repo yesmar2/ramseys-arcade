@@ -104,10 +104,10 @@ export function SiteGroupControl({ variant, onSelect }: SiteGroupControlProps) {
   }
 
   return (
-    <div className="site-header__period site-header__period--desktop" ref={ref}>
+    <div className="site-header__period" ref={ref}>
       <button
         type="button"
-        className="site-header__period-btn"
+        className={`site-header__period-btn${activeId ? ' site-header__period-btn--filtered' : ''}`}
         aria-label={`Group: ${label}`}
         aria-expanded={open}
         aria-haspopup="listbox"

@@ -197,8 +197,10 @@ export function SiteHeader() {
           </button>
         )}
 
-        <SitePeriodControl variant="header" />
-        <SiteGroupControl variant="header" />
+        <div className="site-header__scopes" aria-label="Board filters">
+          <SitePeriodControl variant="header" />
+          <SiteGroupControl variant="header" />
+        </div>
 
         <div className="site-header__more site-header__more--desktop" ref={utilRef}>
           <button
