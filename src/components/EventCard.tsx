@@ -102,36 +102,43 @@ export function EventTicker({
         : 'Window'
 
   return (
-    <div className="event-ticker" role="timer">
-      <p className={`event-ticker__clock event-ticker__clock--${t.status}`}>
-        <span className="event-ticker__label">
-          {live ? <span className="event-ticker__dot" aria-hidden="true" /> : null}
-          {clockLabel}
-        </span>
-        <strong>
-          {ticking ? (
-            <EventCountdown endsAt={target} precise />
-          ) : unlimited && live ? (
-            'Open'
-          ) : (
-            eventDurationLabel(t)
-          )}
-        </strong>
-      </p>
-      <div className="event-ticker__meta">
-        {yourPlace != null ? (
-          <p className="event-ticker__fact event-ticker__fact--place">
-            <span className="event-ticker__label">Your place</span>
-            <strong>#{yourPlace}</strong>
-          </p>
-        ) : null}
-        <p className="event-ticker__fact">
-          <span className="event-ticker__label">Joined</span>
-          <strong>{playerCountLabel(t.playerCount, t.rules)}</strong>
-        </p>
-        <div className="event-ticker__chips">
-          <EventMetaChips t={t} joined={joined} omitStatus />
+    <div className="event-ticker">
+      <div className="event-ticker__stats">
+        <div
+          className={`lb-stat event-ticker__stat event-ticker__stat--clock${
+            ticking ? ' event-ticker__stat--countdown' : ''
+          }${live ? ' event-ticker__stat--live' : ''}`}
+          role={ticking ? 'timer' : undefined}
+        >
+          <span className="lb-stat__label event-ticker__label">
+            {live ? <span className="event-ticker__dot" aria-hidden="true" /> : null}
+            {clockLabel}
+          </span>
+          <strong>
+            {ticking ? (
+              <EventCountdown endsAt={target} precise />
+            ) : unlimited && live ? (
+              'Open'
+            ) : (
+              eventDurationLabel(t)
+            )}
+          </strong>
         </div>
+        <div className="event-ticker__facts">
+          {yourPlace != null ? (
+            <div className="lb-stat event-ticker__stat event-ticker__stat--place">
+              <span className="lb-stat__label">Your place</span>
+              <strong>#{yourPlace}</strong>
+            </div>
+          ) : null}
+          <div className="lb-stat event-ticker__stat">
+            <span className="lb-stat__label">Joined</span>
+            <strong>{playerCountLabel(t.playerCount, t.rules)}</strong>
+          </div>
+        </div>
+      </div>
+      <div className="event-ticker__chips">
+        <EventMetaChips t={t} joined={joined} omitStatus />
       </div>
     </div>
   )

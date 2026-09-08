@@ -9525,83 +9525,88 @@ html[data-theme='dark'] .patriot__power-mark {
   gap: 1.1rem;
 }
 
+/* Live ticker built from the game hub's .lb-stat tiles. Type scales off the
+   ticker's own width so it reads the same stacked or in the split layout. */
 .event-ticker {
+  container-type: inline-size;
+  container-name: event-ticker;
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  gap: 0.6rem;
+  min-width: 0;
+}
+
+/* Clock gets its own full-width row; the facts share the row below it and
+   always split it evenly, however many of them there are. */
+.event-ticker__stats {
+  display: flex;
+  flex-direction: column;
   gap: 0.55rem;
   min-width: 0;
 }
 
-.event-ticker__clock {
-  margin: 0;
+.event-ticker__facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  min-width: 0;
+}
+
+.event-ticker__facts > .event-ticker__stat {
+  flex: 1 1 7rem;
+}
+
+.event-ticker__stat {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  gap: 0.2rem;
+  justify-content: center;
+  gap: 0.15rem;
+  padding: 0.72rem 0.85rem;
+  min-width: 0;
 }
 
-.event-ticker__clock strong {
+.event-ticker__stat strong {
   font-family: var(--font-display);
-  font-size: clamp(2.55rem, 8.5vw, 3.45rem);
-  font-weight: 800;
+  font-size: clamp(1.15rem, 5.5cqi, 1.5rem);
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
-  letter-spacing: -0.045em;
-  line-height: 0.92;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
 }
 
-.event-ticker__clock--active strong {
+.event-ticker__stat--countdown strong {
+  font-size: clamp(1.9rem, 14cqi, 3.2rem);
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 0.95;
+  overflow-wrap: normal;
+}
+
+.event-ticker__stat--live strong,
+.event-ticker__stat--place strong {
   color: #14634a;
-}
-
-.event-ticker__meta {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 0.3rem 0.95rem;
-}
-
-.event-ticker__fact {
-  margin: 0;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 0.35rem 0.45rem;
 }
 
 .event-ticker__label {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--muted);
-}
-
-.event-ticker__fact strong {
-  font-family: var(--font-display);
-  font-size: 1.05rem;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: 0.02em;
-  line-height: 1.15;
-}
-
-.event-ticker__fact--place strong {
-  color: #14634a;
-  font-size: 1.2rem;
-  font-weight: 800;
 }
 
 .event-ticker__dot {
+  flex: none;
   width: 0.5rem;
   height: 0.5rem;
   border-radius: 50%;
   background: #1a7a5c;
   box-shadow: 0 0 0 0 rgba(26, 122, 92, 0.45);
   animation: event-ticker-pulse 1.6s ease-out infinite;
+}
+
+@container event-ticker (min-width: 26rem) {
+  .event-ticker__stat {
+    padding: 0.85rem 1rem;
+  }
 }
 
 .event-ticker__chips {
