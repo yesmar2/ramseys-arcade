@@ -1610,14 +1610,6 @@ a.lb-board-switcher__item {
   flex: none;
 }
 
-.site-scopes__item {
-  display: contents;
-}
-
-.site-scopes__label {
-  display: none;
-}
-
 .site-header__you {
   display: inline-flex;
   align-items: center;
@@ -1938,27 +1930,8 @@ a.site-drawer__period-tab {
     min-width: 0;
   }
 
-  .site-scopes__item {
-    display: flex;
-    flex: 1;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 0.18rem;
-    min-width: 0;
-  }
-
-  .site-scopes__label {
-    display: block;
-    padding-left: 0.7rem;
-    font-size: 0.62rem;
-    font-weight: 800;
-    letter-spacing: 0.07em;
-    text-transform: uppercase;
-    color: var(--muted);
-  }
-
   .site-scopes .site-header__period {
-    flex: none;
+    flex: 1;
     min-width: 0;
   }
 
@@ -1975,7 +1948,7 @@ a.site-drawer__period-tab {
     flex: 1;
   }
 
-  .site-scopes__item:first-child .site-header__period-popover {
+  .site-scopes .site-header__period:first-child .site-header__period-popover {
     left: 0;
     right: auto;
   }

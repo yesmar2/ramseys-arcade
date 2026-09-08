@@ -205,14 +205,8 @@ export function SiteHeader() {
     </nav>
 
     <div className="site-scopes" aria-label="Board filters">
-      <div className="site-scopes__item">
-        <span className="site-scopes__label">Time</span>
-        <SitePeriodControl variant="header" />
-      </div>
-      <div className="site-scopes__item">
-        <span className="site-scopes__label">Group</span>
-        <SiteGroupControl variant="header" />
-      </div>
+      <SitePeriodControl variant="header" />
+      <SiteGroupControl variant="header" />
     </div>
 
     <div className="site-header__more site-header__more--desktop" ref={utilRef}>
