@@ -32,7 +32,6 @@ const empty: Store = {
 
 /** Cached snapshot — must be referentially stable between emits. */
 let snapshot: Store = empty
-let pollTimer: number | null = null
 let focusBound = false
 let inFlight: Promise<void> | null = null
 
@@ -107,7 +106,7 @@ function ensureListeners() {
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') onFocus()
   })
-  pollTimer = window.setInterval(() => {
+  window.setInterval(() => {
     if (document.visibilityState !== 'visible') return
     const name = normalizePlayerName(getLastPlayerName())
     if (name) void refresh(name)
