@@ -163,8 +163,10 @@ export const PlayerBadge = forwardRef<PlayerBadgeHandle, PlayerBadgeProps>(
 
     useEffect(() => {
       if (!editing) return
-      inputRef.current?.focus()
-      inputRef.current?.select()
+      if (signedIn) {
+        inputRef.current?.focus()
+        inputRef.current?.select()
+      }
 
       const onPointer = (e: PointerEvent) => {
         if (!rootRef.current?.contains(e.target as Node)) cancel()
@@ -178,7 +180,7 @@ export const PlayerBadge = forwardRef<PlayerBadgeHandle, PlayerBadgeProps>(
         window.removeEventListener('pointerdown', onPointer)
         window.removeEventListener('keydown', onKey)
       }
-    }, [editing, busy, authBusy])
+    }, [editing, busy, authBusy, signedIn])
 
     const pickAvatar = async (next: AvatarId) => {
       if (impersonation) {
@@ -206,9 +208,207 @@ export const PlayerBadge = forwardRef<PlayerBadgeHandle, PlayerBadgeProps>(
 
     const displayName = normalizePlayerName(name)
     const triggerClass = icon
-      ? `player-badge player-badge--icon${displayName ? ' player-badge--named' : ''}`
+      ? `player-badge player-badge--icon${signedIn ? ' player-badge--account' : ' player-badge--signin'}${displayName ? ' player-badge--named' : ''}`
       : `player-badge${compact ? ' player-badge--compact' : ''}${displayName ? '' : ' player-badge--empty'}`
-    const triggerLabel = displayName ? `Gamer tag ${displayName}` : 'Set gamer tag'
+    const triggerLabel = icon
+      ? signedIn
+        ? displayName
+          ? `Account · ${displayName}`
+          : 'Account'
+        : 'Sign in'
+      : displayName
+        ? `Gamer tag ${displayName}`
+        : 'Set gamer tag'
+
+    const gamerTagSection = (
+      <>
+        <p className="player-badge__panel-title">
+          {signedIn ? 'Gamer tag' : 'Play as'}
+        </p>
+        {impersonation ? (
+          <p className="player-badge__impersonate">
+            Acting as {impersonation.name} for testing. Your tag stays{' '}
+            {impersonation.previousName || 'unset'}.
+          </p>
+        ) : null}
+        {!signedIn && !impersonation ? (
+          <p className="player-badge__panel-blurb">
+            Pick a tag to play. Sign in below to keep it across devices.
+          </p>
+        ) : null}
+        <label className="player-badge__field">
+          <span className="player-badge__label">Tag</span>
+          <input
+            ref={inputRef}
+            className="player-badge__input"
+            value={draft}
+            maxLength={PLAYER_NAME_MAX}
+            disabled={busy || Boolean(impersonation)}
+            onChange={(e) => {
+              setDraft(e.target.value.toUpperCase().slice(0, PLAYER_NAME_MAX))
+              setError(null)
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault()
+                void save()
+              }
+            }}
+          />
+        </label>
+
+        {AVATARS_ENABLED ? (
+          <div className="player-badge__avatars">
+            <span className="player-badge__label">Avatar</span>
+            <div className="player-badge__avatar-grid" role="listbox" aria-label="Choose avatar">
+              {AVATAR_IDS.map((id) => {
+                const selected = id === avatarId
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    role="option"
+                    aria-selected={selected}
+                    className={`player-badge__avatar-opt${selected ? ' player-badge__avatar-opt--on' : ''}`}
+                    disabled={avatarBusy || busy || Boolean(impersonation)}
+                    onClick={() => void pickAvatar(id)}
+                  >
+                    <PlayerAvatar avatarId={id} name={displayName || draft} size="md" />
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        ) : null}
+
+        {error && <p className="player-badge__error">{error}</p>}
+        <div className="player-badge__panel-actions">
+          {impersonation ? (
+            <button
+              type="button"
+              className="player-badge__btn"
+              onClick={() => {
+                stopImpersonation()
+                setError(null)
+                setEditing(false)
+              }}
+            >
+              Stop acting as {impersonation.name}
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="player-badge__btn"
+              disabled={busy}
+              onClick={() => void save()}
+            >
+              {busy ? 'Saving…' : 'Save'}
+            </button>
+          )}
+          <button
+            type="button"
+            className="player-badge__btn player-badge__btn--ghost"
+            disabled={busy || authBusy}
+            onClick={cancel}
+          >
+            Cancel
+          </button>
+        </div>
+      </>
+    )
+
+    const authSection = (
+      <div className={`player-badge__auth${signedIn ? '' : ' player-badge__auth--lead'}`}>
+        <p className="player-badge__panel-title player-badge__panel-title--sub">
+          {signedIn ? 'Account' : 'Sign in'}
+        </p>
+        {!signedIn ? (
+          <p className="player-badge__panel-blurb">
+            Keep your gamer tag and scores across phones and browsers.
+          </p>
+        ) : null}
+        {signedIn && account ? (
+          <>
+            <p className="player-badge__auth-email">{account.email}</p>
+            <button
+              type="button"
+              className="player-badge__btn player-badge__btn--ghost"
+              disabled={authBusy}
+              onClick={() => void signOut()}
+            >
+              {authBusy ? 'Working…' : 'Sign out'}
+            </button>
+          </>
+        ) : (
+          <>
+            <GoogleSignInButton
+              disabled={authBusy}
+              onBusy={setAuthBusy}
+              onError={(message) => setError(message)}
+              onSignedIn={() => {
+                setAuthNote('Signed in.')
+                setError(null)
+                setEditing(false)
+              }}
+            />
+            {!showEmailSignIn ? (
+              <button
+                type="button"
+                className="player-badge__btn player-badge__btn--ghost"
+                disabled={authBusy}
+                onClick={() => setShowEmailSignIn(true)}
+              >
+                Sign in with email
+              </button>
+            ) : (
+              <>
+                <label className="player-badge__field">
+                  <span className="player-badge__label">Email</span>
+                  <input
+                    className="player-badge__input player-badge__input--email"
+                    type="email"
+                    autoComplete="email"
+                    value={emailDraft}
+                    disabled={authBusy}
+                    placeholder="you@example.com"
+                    onChange={(e) => setEmailDraft(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault()
+                        void sendMagicLink()
+                      }
+                    }}
+                  />
+                </label>
+                <button
+                  type="button"
+                  className="player-badge__btn"
+                  disabled={authBusy || !emailDraft.trim()}
+                  onClick={() => void sendMagicLink()}
+                >
+                  {authBusy ? 'Sending…' : 'Email me a link'}
+                </button>
+              </>
+            )}
+          </>
+        )}
+        {authNote && <p className="player-badge__auth-note">{authNote}</p>}
+        {devVerifyUrl && (
+          <p className="player-badge__auth-note">
+            Dev link:{' '}
+            <a
+              href={
+                devVerifyUrl.includes('#')
+                  ? devVerifyUrl.slice(devVerifyUrl.indexOf('#'))
+                  : devVerifyUrl
+              }
+            >
+              Open sign-in link
+            </a>
+          </p>
+        )}
+      </div>
+    )
 
     return (
       <div className={`player-badge-wrap${className ? ` ${className}` : ''}`} ref={rootRef}>
@@ -222,26 +422,30 @@ export const PlayerBadge = forwardRef<PlayerBadgeHandle, PlayerBadgeProps>(
           title={triggerLabel}
         >
           {icon ? (
-            AVATARS_ENABLED && displayName ? (
-              <PlayerAvatar avatarId={avatarId} name={displayName} size="md" />
+            signedIn ? (
+              AVATARS_ENABLED && displayName ? (
+                <PlayerAvatar avatarId={avatarId} name={displayName} size="md" />
+              ) : (
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <circle
+                    cx="12"
+                    cy="8.2"
+                    r="3.1"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                  />
+                  <path
+                    d="M6.2 18.6c.7-3.2 3-4.8 5.8-4.8s5.1 1.6 5.8 4.8"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                  />
+                </svg>
+              )
             ) : (
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <circle
-                  cx="12"
-                  cy="8.2"
-                  r="3.1"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.8"
-                />
-                <path
-                  d="M6.2 18.6c.7-3.2 3-4.8 5.8-4.8s5.1 1.6 5.8 4.8"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.8"
-                  strokeLinecap="round"
-                />
-              </svg>
+              <span className="player-badge__signin-label">Sign in</span>
             )
           ) : displayName ? (
             <>
@@ -256,183 +460,22 @@ export const PlayerBadge = forwardRef<PlayerBadgeHandle, PlayerBadgeProps>(
         </button>
 
         {editing && (
-          <div className="player-badge__panel" role="dialog" aria-label="Account">
-            <p className="player-badge__panel-title">Gamer tag</p>
-            {impersonation ? (
-              <p className="player-badge__impersonate">
-                Acting as {impersonation.name} for testing. Your tag stays{' '}
-                {impersonation.previousName || 'unset'}.
-              </p>
-            ) : null}
-            <label className="player-badge__field">
-              <span className="player-badge__label">Tag</span>
-              <input
-                ref={inputRef}
-                className="player-badge__input"
-                value={draft}
-                maxLength={PLAYER_NAME_MAX}
-                disabled={busy || Boolean(impersonation)}
-                onChange={(e) => {
-                  setDraft(e.target.value.toUpperCase().slice(0, PLAYER_NAME_MAX))
-                  setError(null)
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault()
-                    void save()
-                  }
-                }}
-              />
-            </label>
-
-            {AVATARS_ENABLED ? (
-              <div className="player-badge__avatars">
-                <span className="player-badge__label">Avatar</span>
-                <div className="player-badge__avatar-grid" role="listbox" aria-label="Choose avatar">
-                  {AVATAR_IDS.map((id) => {
-                    const selected = id === avatarId
-                    return (
-                      <button
-                        key={id}
-                        type="button"
-                        role="option"
-                        aria-selected={selected}
-                        className={`player-badge__avatar-opt${selected ? ' player-badge__avatar-opt--on' : ''}`}
-                        disabled={avatarBusy || busy || Boolean(impersonation)}
-                        onClick={() => void pickAvatar(id)}
-                      >
-                        <PlayerAvatar avatarId={id} name={displayName || draft} size="md" />
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
-            ) : null}
-
-            {error && <p className="player-badge__error">{error}</p>}
-            <div className="player-badge__panel-actions">
-              {impersonation ? (
-                <button
-                  type="button"
-                  className="player-badge__btn"
-                  onClick={() => {
-                    stopImpersonation()
-                    setError(null)
-                    setEditing(false)
-                  }}
-                >
-                  Stop acting as {impersonation.name}
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  className="player-badge__btn"
-                  disabled={busy}
-                  onClick={() => void save()}
-                >
-                  {busy ? 'Saving…' : 'Save'}
-                </button>
-              )}
-              <button
-                type="button"
-                className="player-badge__btn player-badge__btn--ghost"
-                disabled={busy || authBusy}
-                onClick={cancel}
-              >
-                Cancel
-              </button>
-            </div>
-
-            <div className="player-badge__auth">
-              <p className="player-badge__panel-title player-badge__panel-title--sub">
-                {signedIn ? 'Account' : 'Sign in'}
-              </p>
-              {!signedIn ? (
-                <p className="player-badge__panel-blurb">
-                  Sign in to keep your gamer tag across devices.
-                </p>
-              ) : null}
-              {signedIn && account ? (
-                <>
-                  <p className="player-badge__auth-email">{account.email}</p>
-                  <button
-                    type="button"
-                    className="player-badge__btn player-badge__btn--ghost"
-                    disabled={authBusy}
-                    onClick={() => void signOut()}
-                  >
-                    {authBusy ? 'Working…' : 'Sign out'}
-                  </button>
-                </>
-              ) : (
-                <>
-                  <GoogleSignInButton
-                    disabled={authBusy}
-                    onBusy={setAuthBusy}
-                    onError={(message) => setError(message)}
-                    onSignedIn={() => {
-                      setAuthNote('Signed in.')
-                      setError(null)
-                      setEditing(false)
-                    }}
-                  />
-                  {!showEmailSignIn ? (
-                    <button
-                      type="button"
-                      className="player-badge__btn player-badge__btn--ghost"
-                      disabled={authBusy}
-                      onClick={() => setShowEmailSignIn(true)}
-                    >
-                      Sign in with email
-                    </button>
-                  ) : (
-                    <>
-                      <label className="player-badge__field">
-                        <span className="player-badge__label">Email</span>
-                        <input
-                          className="player-badge__input player-badge__input--email"
-                          type="email"
-                          autoComplete="email"
-                          value={emailDraft}
-                          disabled={authBusy}
-                          placeholder="you@example.com"
-                          onChange={(e) => setEmailDraft(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
-                              e.preventDefault()
-                              void sendMagicLink()
-                            }
-                          }}
-                        />
-                      </label>
-                      <button
-                        type="button"
-                        className="player-badge__btn"
-                        disabled={authBusy || !emailDraft.trim()}
-                        onClick={() => void sendMagicLink()}
-                      >
-                        {authBusy ? 'Sending…' : 'Email me a link'}
-                      </button>
-                    </>
-                  )}
-                </>
-              )}
-              {authNote && <p className="player-badge__auth-note">{authNote}</p>}
-              {devVerifyUrl && (
-                <p className="player-badge__auth-note">
-                  Dev link:{' '}
-                  <a
-                    href={
-                      devVerifyUrl.includes('#')
-                        ? devVerifyUrl.slice(devVerifyUrl.indexOf('#'))
-                        : devVerifyUrl
-                    }
-                  >
-                    Open sign-in link
-                  </a>
-                </p>
-              )}
-            </div>
+          <div
+            className="player-badge__panel"
+            role="dialog"
+            aria-label={signedIn ? 'Account' : 'Sign in'}
+          >
+            {signedIn ? (
+              <>
+                {gamerTagSection}
+                {authSection}
+              </>
+            ) : (
+              <>
+                {authSection}
+                <div className="player-badge__guest-tag">{gamerTagSection}</div>
+              </>
+            )}
           </div>
         )}
       </div>

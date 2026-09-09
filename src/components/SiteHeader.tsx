@@ -109,13 +109,15 @@ export function SiteHeader() {
     }
   }, [drawerOpen])
 
-  const accountLabel = playerName
-    ? signedIn
-      ? `${playerName} · Account`
-      : 'Edit gamer tag'
-    : signedIn
-      ? account?.email ?? 'Account'
-      : 'Set gamer tag'
+  const accountLabel = signedIn
+    ? playerName
+      ? 'Account'
+      : account?.email ?? 'Account'
+    : 'Sign in'
+
+  const drawerAccountValue = signedIn
+    ? playerName || account?.email?.split('@')[0] || 'Signed in'
+    : 'Google / email'
 
   const hash = typeof window !== 'undefined' ? window.location.hash : '#/'
   const showBoardFilters =
@@ -225,15 +227,7 @@ export function SiteHeader() {
               />
             ) : null}
           </a>
-        ) : (
-          <button
-            type="button"
-            className="site-header__you site-header__you--empty"
-            onClick={() => playerRef.current?.openEdit()}
-          >
-            Set gamer tag
-          </button>
-        )}
+        ) : null}
 
         {inviteCount > 0 ? (
           <div className="site-header__invites" ref={invitesRef}>
@@ -419,14 +413,10 @@ export function SiteHeader() {
                           playerRef.current?.openEdit()
                         }}
                       >
-                        <span className="site-drawer__pref-label">Account</span>
-                        <span className="site-drawer__pref-value">
-                          {playerName
-                            ? playerName
-                            : signedIn
-                              ? 'Signed in'
-                              : 'Set up'}
+                        <span className="site-drawer__pref-label">
+                          {signedIn ? 'Account' : 'Sign in'}
                         </span>
+                        <span className="site-drawer__pref-value">{drawerAccountValue}</span>
                       </button>
                     </div>
                     <DevImpersonateControl variant="drawer" />
