@@ -10149,10 +10149,38 @@ html[data-theme='dark'] .patriot__power-mark {
   color: var(--muted);
 }
 
+.event-bracket__side--bye,
+.event-bracket__side--tbd {
+  justify-content: center;
+  border-style: dashed;
+  background-image: repeating-linear-gradient(
+    -45deg,
+    transparent,
+    transparent 0.26rem,
+    rgba(var(--ink-rgb), 0.055) 0.26rem,
+    rgba(var(--ink-rgb), 0.055) 0.52rem
+  );
+}
+
 .event-bracket__side--bye {
-  color: var(--muted);
+  color: #7a5c0b;
+  border: 1px dashed color-mix(in srgb, #c9a227 70%, transparent);
+  background-color: color-mix(in srgb, #f3d56a 38%, var(--surface));
+}
+
+.event-bracket__side--tbd {
+  color: color-mix(in srgb, var(--muted) 55%, transparent);
+  border: 1px dashed rgba(var(--ink-rgb), 0.2);
+  background-color: color-mix(in srgb, var(--muted) 16%, var(--surface));
+}
+
+.event-bracket__name--vacant {
+  font-size: 0.68em;
+  font-weight: 800;
   font-style: italic;
-  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  opacity: 0.92;
 }
 
 .event-bracket__name {

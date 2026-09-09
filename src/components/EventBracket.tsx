@@ -67,6 +67,8 @@ function MatchCard({
       {isYours ? <span className="event-bracket__you-tag">You</span> : null}
       {match.players.map((side, idx) => {
         const isBye = side?.name === 'BYE'
+        const isTbd = !side
+        const vacant = isBye || isTbd
         const isYouSide = Boolean(side && you && normalizePlayerName(side.name) === you)
         const won = Boolean(side && !isBye && match.winnerId === side.id)
         const lost = Boolean(side && !isBye && match.winnerId && match.winnerId !== side.id)
@@ -76,13 +78,17 @@ function MatchCard({
             className={`event-bracket__side${won ? ' event-bracket__side--won' : ''}${
               lost ? ' event-bracket__side--lost' : ''
             }${isBye ? ' event-bracket__side--bye' : ''}${
-              isYouSide ? ' event-bracket__side--you' : ''
-            }`}
+              isTbd ? ' event-bracket__side--tbd' : ''
+            }${isYouSide ? ' event-bracket__side--you' : ''}`}
           >
-            <span className="event-bracket__name">{side?.name ?? 'TBD'}</span>
-            <span className="event-bracket__score">
-              {isBye ? '' : side?.score != null ? side.score.toLocaleString() : '—'}
+            <span className={`event-bracket__name${vacant ? ' event-bracket__name--vacant' : ''}`}>
+              {isBye ? 'Bye' : side?.name ?? 'TBD'}
             </span>
+            {vacant ? null : (
+              <span className="event-bracket__score">
+                {side?.score != null ? side.score.toLocaleString() : '—'}
+              </span>
+            )}
           </div>
         )
       })}
