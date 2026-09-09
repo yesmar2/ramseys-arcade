@@ -125,7 +125,7 @@ export const MIN_COLS = 8
 /** Cap so a wide monitor can't open a runway of incoming cars. */
 export const MAX_COLS = 14
 /** Player sits this many rows from the bottom of the view once the camera is rolling. */
-export const PLAYER_VIEW_ROW = 3
+export const PLAYER_VIEW_ROW = 2
 /** Die if you fall this many rows behind the camera. */
 export const BACK_LIMIT = 2
 /** Rows to keep generated ahead of the camera. */
