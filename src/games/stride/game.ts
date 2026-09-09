@@ -140,8 +140,8 @@ const HOP_COOLDOWN = 0.05
 const HOP_DURATION = 0.12
 const INPUT_BUFFER = 0.18
 const RESPAWN_INVULN = 0.5
-/** How far your tile may overhang the end of a log and still be pulled back on. */
-const LOG_EDGE_SNAP = 0.3
+/** Land this close to a seat on a log and you get pulled onto it. */
+const LOG_SNAP = 0.7
 /** Target water between logs, in tiles. */
 const LOG_GAP = 1.05
 const CAR_HUES = [18, 348, 272, 198, 38, 128, 168]
@@ -405,9 +405,9 @@ function makeWaterRow(
   const dir: -1 | 1 = rowInChunk % 2 === 0 ? 1 : -1
   const speed = (0.9 + d * 0.62) * pickTier(LOG_TIERS, d, rand) * (0.94 + rand() * 0.14)
   const span = laneSpan(cols)
-  // Whole tiles only, and each one is a place to stand. Mostly threes so there's
-  // somewhere to shuffle now that a sideways hop covers a full tile.
-  const logW = rand() < 0.65 ? 3 : 2
+  // Whole tiles only, and every tile is a seat, so any length reads honestly:
+  // a short log is one hop end to end, a long one is three.
+  const logW = rand() < 0.22 ? 2 : rand() < 0.72 ? 3 : 4
   // Space them to leave about a tile of water, so a column is under timber most
   // of the time. You drift toward the edge while you ride, so hunting for a log
   // can't be a long wait.
@@ -581,14 +581,10 @@ function treesBlock(col: number, trees: number[]): boolean {
   return trees.some((t) => right > t && left < t + 1)
 }
 
-/**
- * Where a hop actually lands. Every hop is one whole tile, so this only ever
- * tidies up: land rows sit on the grid, and a log seats you on its timber.
- */
+/** Where a hop lands: land rows sit on the grid, logs seat you on a tile of plank. */
 function landingCol(nc: number, row: Row, span: number): number {
   if (row.kind === 'water' && row.rocks.length === 0) {
-    const log = logUnder(nc, row, span)
-    return log ? seatOnLog(nc, log) : nc
+    return snapToLog(nc, row, span) ?? nc
   }
   return Math.round(nc)
 }
@@ -624,37 +620,36 @@ function laneClearance(col: number, v: Vehicle, span: number): number {
   return Math.min(gap(v.x), gap(v.x - span))
 }
 
-type LogSurface = { left: number; width: number }
-
 /**
- * The log holding up `col`, if there is one. Logs exist at `x` and `x - span`,
- * so checking both copies covers the wrap seam.
+ * Snap onto a log. Seats sit one per tile of plank, so they cover it exactly and
+ * the outer two end flush with the ends — a log is always as many hops long as
+ * it looks, whatever its length. Landing short of a log still counts: you get
+ * pulled on rather than dropped. Logs exist at `x` and `x - span`, so checking
+ * both copies covers the wrap seam.
  */
-function logUnder(col: number, row: Row, span: number): LogSurface | null {
-  const center = col + 0.5
-  let best: LogSurface | null = null
-  let bestGrip = -Infinity
+function snapToLog(col: number, row: Row, span: number): number | null {
+  let best: number | null = null
+  let bestDist = Infinity
 
   for (const v of row.vehicles) {
+    const tiles = Math.max(1, Math.round(v.w))
     for (const left of [v.x, v.x - span]) {
-      // Your whole tile has to be on the timber, give or take a toe over the end.
-      const lo = left + 0.5 - LOG_EDGE_SNAP
-      const hi = left + v.w - 0.5 + LOG_EDGE_SNAP
-      if (center < lo || center > hi) continue
-      const grip = Math.min(center - lo, hi - center)
-      if (grip > bestGrip) {
-        bestGrip = grip
-        best = { left, width: v.w }
+      for (let i = 0; i < tiles; i++) {
+        const seat = left + i
+        const dist = Math.abs(col - seat)
+        if (dist < bestDist) {
+          bestDist = dist
+          best = seat
+        }
       }
     }
   }
 
-  return best
+  return bestDist <= LOG_SNAP ? best : null
 }
 
-/** Pull a landing that overhangs the end of a log back onto it. */
-function seatOnLog(col: number, log: LogSurface): number {
-  return Math.min(log.left + log.width - 1, Math.max(log.left, col))
+function onLog(col: number, row: Row, span: number): boolean {
+  return snapToLog(col, row, span) != null
 }
 
 /** Stones are static and snap you to their tile, so a whole-column test is exact. */
@@ -863,8 +858,6 @@ export function hop(state: GameState, dir: Dir): GameState {
   const target = landingCol(nc, rowData, span)
   if (!colInBounds(target, state.cols)) return blocked()
   if (rowData.kind !== 'water' && treesBlock(target, rowData.trees)) return blocked()
-  // Seating can eat a sideways hop at the end of a log; bump instead of faking it.
-  if (nr === fromR && target === fromC) return blocked()
 
   sfx('hop')
 
@@ -984,14 +977,27 @@ export function tick(state: GameState, dt: number): GameState {
   const span = laneSpan(next.cols)
   const standing = next.rows.get(next.row)
 
-  if (standing?.kind === 'water' && !next.hop) {
+  if (standing?.kind === 'water') {
+    const drift = standing.dir * standing.speed * dt
     if (standing.rocks.length) {
       // Stones don't move, so there's nothing to carry you — just stand or sink.
-      if (!onRock(next.col, standing) && next.invuln <= 0) return die(next, 'water')
-    } else if (logUnder(next.col, standing, span)) {
-      // The log carries you by the exact step the lane just took, so your footing
-      // on the timber never shifts and hops off it stay whole tiles.
-      next.col += standing.dir * standing.speed * dt
+      if (!next.hop && !onRock(next.col, standing) && next.invuln <= 0) {
+        return die(next, 'water')
+      }
+    } else if (next.hop) {
+      // The seat you aimed at keeps moving while you're in the air, so carry the
+      // whole hop along with it. Land on the fixed spot instead and every hop
+      // slips you a fraction of a tile toward the trailing end, until one walks
+      // you off a plank you could still see under your feet.
+      next.col += drift
+      next.hop = {
+        ...next.hop,
+        fromC: next.hop.fromR === next.row ? next.hop.fromC + drift : next.hop.fromC,
+        toC: next.hop.toC + drift,
+      }
+    } else if (onLog(next.col, standing, span)) {
+      // Ride along, settling on a seat so rounding can never nudge you loose.
+      next.col = snapToLog(next.col + drift, standing, span) ?? next.col + drift
       if (next.col < -0.4 || next.col > next.cols - 0.6) return die(next, 'edge')
     } else if (next.invuln <= 0) {
       return die(next, 'water')
