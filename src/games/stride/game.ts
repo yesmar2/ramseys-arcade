@@ -468,7 +468,6 @@ function makeWaterRow(
 function makeRailRow(row: number, cols: number, runSeed: number): Row {
   const rand = mulberry32(row * 1_048_583 ^ runSeed)
   const d = difficultyAt(row)
-  const g = gridScale(cols)
   const dir: -1 | 1 = rand() < 0.5 ? -1 : 1
   const trainW = (5 + rand() * 1.6) * sizeScale(cols)
   // Warning never drops below ~1.5s so the crossing is always telegraphed.
