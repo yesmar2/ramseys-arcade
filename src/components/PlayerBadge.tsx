@@ -24,8 +24,11 @@ import {
   rememberPlayerName,
   setPlayerAvatar,
 } from '../lib/leaderboard'
+import { currentTheme, THEME_EVENT, toggleTheme, type Theme } from '../lib/theme'
+import { DevImpersonateControl } from './DevImpersonateControl'
 import { GoogleSignInButton } from './GoogleSignInButton'
 import { PlayerAvatar } from './PlayerAvatar'
+import { SoundPackSelect } from './SoundPackSelect'
 
 type PlayerBadgeProps = {
   /** Compact chip for tight headers / game overlays */
@@ -57,8 +60,17 @@ export const PlayerBadge = forwardRef<PlayerBadgeHandle, PlayerBadgeProps>(
     const [error, setError] = useState<string | null>(null)
     const [authNote, setAuthNote] = useState<string | null>(null)
     const [devVerifyUrl, setDevVerifyUrl] = useState<string | null>(null)
+    const [theme, setTheme] = useState<Theme>(() =>
+      typeof document === 'undefined' ? 'light' : currentTheme(),
+    )
     const rootRef = useRef<HTMLDivElement>(null)
     const inputRef = useRef<HTMLInputElement>(null)
+
+    useEffect(() => {
+      const sync = () => setTheme(currentTheme())
+      window.addEventListener(THEME_EVENT, sync)
+      return () => window.removeEventListener(THEME_EVENT, sync)
+    }, [])
 
     useEffect(() => {
       if (!AVATARS_ENABLED) return
@@ -410,6 +422,28 @@ export const PlayerBadge = forwardRef<PlayerBadgeHandle, PlayerBadgeProps>(
       </div>
     )
 
+    const settingsSection = (
+      <div className="player-badge__settings">
+        <p className="player-badge__panel-title player-badge__panel-title--sub">Settings</p>
+        <div className="site-drawer__prefs">
+          <button
+            type="button"
+            className="site-drawer__pref"
+            onClick={() => {
+              toggleTheme()
+            }}
+          >
+            <span className="site-drawer__pref-label">Theme</span>
+            <span className="site-drawer__pref-value">
+              {theme === 'dark' ? 'Dark' : 'Light'}
+            </span>
+          </button>
+          <SoundPackSelect variant="drawer" />
+        </div>
+        <DevImpersonateControl variant="drawer" />
+      </div>
+    )
+
     return (
       <div className={`player-badge-wrap${className ? ` ${className}` : ''}`} ref={rootRef}>
         <button
@@ -469,11 +503,13 @@ export const PlayerBadge = forwardRef<PlayerBadgeHandle, PlayerBadgeProps>(
               <>
                 {gamerTagSection}
                 {authSection}
+                {settingsSection}
               </>
             ) : (
               <>
                 {authSection}
                 <div className="player-badge__guest-tag">{gamerTagSection}</div>
+                {settingsSection}
               </>
             )}
           </div>

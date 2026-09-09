@@ -33,12 +33,10 @@ export function SiteHeader() {
   const trophySummary = useTrophySummary(playerName)
   const { count: inviteCount } = usePendingInvites()
   const [drawerOpen, setDrawerOpen] = useState(false)
-  const [utilOpen, setUtilOpen] = useState(false)
   const [invitesOpen, setInvitesOpen] = useState(false)
   const [theme, setTheme] = useState<Theme>(() =>
     typeof document === 'undefined' ? 'light' : currentTheme(),
   )
-  const utilRef = useRef<HTMLDivElement>(null)
   const invitesRef = useRef<HTMLDivElement>(null)
   const drawerRef = useRef<HTMLDivElement>(null)
   const menuBtnRef = useRef<HTMLButtonElement>(null)
@@ -53,25 +51,8 @@ export function SiteHeader() {
 
   useEffect(() => {
     setDrawerOpen(false)
-    setUtilOpen(false)
     setInvitesOpen(false)
   }, [hashKey])
-
-  useEffect(() => {
-    if (!utilOpen) return
-    const onPointer = (e: PointerEvent) => {
-      if (!utilRef.current?.contains(e.target as Node)) setUtilOpen(false)
-    }
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setUtilOpen(false)
-    }
-    window.addEventListener('pointerdown', onPointer)
-    window.addEventListener('keydown', onKey)
-    return () => {
-      window.removeEventListener('pointerdown', onPointer)
-      window.removeEventListener('keydown', onKey)
-    }
-  }, [utilOpen])
 
   useEffect(() => {
     if (!invitesOpen) return
@@ -249,51 +230,6 @@ export function SiteHeader() {
         <SiteGroupControl variant="header" />
       </div>
     ) : null}
-
-    <div className="site-header__more site-header__more--desktop" ref={utilRef}>
-      <button
-        type="button"
-        className="site-header__menu-btn"
-        aria-label="Settings"
-        aria-expanded={utilOpen}
-        aria-haspopup="menu"
-        title="Settings"
-        onClick={() => setUtilOpen((open) => !open)}
-      >
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <circle cx="5" cy="12" r="1.7" fill="currentColor" />
-          <circle cx="12" cy="12" r="1.7" fill="currentColor" />
-          <circle cx="19" cy="12" r="1.7" fill="currentColor" />
-        </svg>
-      </button>
-      {utilOpen ? (
-        <div className="site-header__menu" role="menu" aria-label="Settings">
-          <p className="site-header__menu-title">Settings</p>
-          <div className="site-drawer__prefs">
-            <button
-              type="button"
-              role="menuitem"
-              className="site-drawer__pref"
-              onClick={() => {
-                toggleTheme()
-              }}
-            >
-              <span className="site-drawer__pref-label">Theme</span>
-              <span className="site-drawer__pref-value">
-                {theme === 'dark' ? 'Dark' : 'Light'}
-              </span>
-            </button>
-            <SoundPackSelect
-              variant="drawer"
-              onPicked={() => {
-                /* keep menu open so packs can be compared */
-              }}
-            />
-          </div>
-          <DevImpersonateControl variant="menu" />
-        </div>
-      ) : null}
-    </div>
 
       {drawerOpen && typeof document !== 'undefined'
         ? createPortal(
