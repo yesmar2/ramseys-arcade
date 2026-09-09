@@ -273,6 +273,35 @@ function SpotterThumb({ accent }: { accent?: string }) {
   )
 }
 
+function PelletsThumb() {
+  const muncher = pastel(HUE.gold, 62, 58)
+  const ghost = pastel(HUE.rose, 58, 52)
+  const pellet = pastel(HUE.sky, 50, 40)
+  return (
+    <>
+      <path
+        d="M6 16 L14 8.5 A9 9 0 1 0 14 23.5 Z"
+        fill={muncher.fill}
+        stroke={muncher.stroke}
+        strokeWidth="1.5"
+        strokeLinejoin="round"
+      />
+      <circle cx="10.8" cy="12.2" r="1.15" fill="#1a2b3c" />
+      <circle cx="20" cy="15" r="1.45" fill={pellet.fill} stroke={pellet.stroke} strokeWidth="1" />
+      <circle cx="24.8" cy="15" r="1.45" fill={pellet.fill} stroke={pellet.stroke} strokeWidth="1" />
+      <path
+        d="M21 27 L21 20.2 Q21 16.8 24.5 16.8 Q28 16.8 28 20.2 L28 27 L26.4 25 L24.5 27 L22.6 25 Z"
+        fill={ghost.fill}
+        stroke={ghost.stroke}
+        strokeWidth="1.3"
+        strokeLinejoin="round"
+      />
+      <circle cx="23.2" cy="19.4" r="0.95" fill="#fff" />
+      <circle cx="25.8" cy="19.4" r="0.95" fill="#fff" />
+    </>
+  )
+}
+
 const thumbBySlug: Record<
   string,
   (props: { accent?: string }) => ReactNode
@@ -287,6 +316,7 @@ const thumbBySlug: Record<
   crosswalk: CrosswalkThumb,
   stride: StrideThumb,
   spotter: SpotterThumb,
+  pellets: () => <PelletsThumb />,
 }
 
 export function GameThumbArt({ slug, accent, className }: GameThumbArtProps) {

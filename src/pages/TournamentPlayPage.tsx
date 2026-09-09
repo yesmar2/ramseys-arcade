@@ -5,6 +5,7 @@ import { DeadCenterGame } from '../games/dead-center/DeadCenterGame'
 import { PatriotGame } from '../games/patriot/PatriotGame'
 import { SimonGame } from '../games/simon/SimonGame'
 import { SnakeGame } from '../games/snake/SnakeGame'
+import { PelletsGame } from '../games/pellets/PelletsGame'
 import { StackerGame } from '../games/stacker/StackerGame'
 import { WhackGame } from '../games/whack/WhackGame'
 import { DeviceUnavailable } from '../components/DeviceUnavailable'
@@ -25,7 +26,7 @@ import {
 import { tournamentHref } from '../hooks/useHashRoute'
 import { TournamentPlayProvider } from '../tournaments/TournamentPlayContext'
 
-const PLAYABLE = new Set(['stacker', 'patriot', 'snake', 'centroid', 'asteroids', 'pop', 'simon'])
+const PLAYABLE = new Set(['stacker', 'patriot', 'snake', 'centroid', 'asteroids', 'pop', 'simon', 'pellets'])
 
 export function TournamentPlayPage({
   tournamentId,
@@ -255,6 +256,7 @@ export function TournamentPlayPage({
         {gameSlug === 'stacker' && <StackerGame />}
         {gameSlug === 'patriot' && <PatriotGame />}
         {gameSlug === 'snake' && <SnakeGame />}
+        {gameSlug === 'pellets' && <PelletsGame />}
         {gameSlug === 'pop' && <WhackGame />}
         {gameSlug === 'simon' && <SimonGame />}
         {gameSlug === 'centroid' && <DeadCenterGame />}

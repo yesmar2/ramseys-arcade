@@ -29,6 +29,7 @@ import { RecordsPage } from './pages/RecordsPage'
 import { PatriotPage } from './pages/PatriotPage'
 import { SimonPage } from './pages/SimonPage'
 import { SnakePage } from './pages/SnakePage'
+import { PelletsPage } from './pages/PelletsPage'
 import { StackerPage } from './pages/StackerPage'
 import { WhackPage } from './pages/WhackPage'
 import { CreateTournamentPage } from './pages/CreateTournamentPage'
@@ -223,6 +224,7 @@ function App() {
   if (route.name === 'gamePlay' && route.slug === 'asteroids') return <AsteroidsPage />
   if (route.name === 'gamePlay' && route.slug === 'crosswalk') return <CrosswalkPage />
   if (route.name === 'gamePlay' && route.slug === 'stride') return <StridePage />
+  if (route.name === 'gamePlay' && route.slug === 'pellets') return <PelletsPage />
   if (route.name === 'gamePlay') return <ComingSoonPage slug={route.slug} />
   return <HomePage />
 }
