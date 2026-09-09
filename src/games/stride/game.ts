@@ -148,7 +148,7 @@ function sizeScale(cols: number) {
 }
 
 /** Distance markers every this many rows. */
-export const MILESTONE_STEP = 25
+export const MILESTONE_STEP = 50
 /**
  * Die if you don't hop up or down for this long (seconds). Sitting out a bad
  * patch of traffic is the game, so this only has to punish real camping.
@@ -323,12 +323,19 @@ function laneCount(span: number, w: number, minGap: number, want: number): numbe
   return Math.max(1, Math.min(max, want))
 }
 
-function makeGrassRow(cols: number, rand: () => number, d: number): Row {
+function makeGrassRow(
+  cols: number,
+  rand: () => number,
+  d: number,
+  /** Columns that must stay open — e.g. rocks on the row behind you. */
+  keepClear: number[] = [],
+): Row {
   // Always leave a healthy number of open columns so a row can never wall you in.
-  const openMin = Math.max(2, Math.round(cols * 0.4))
+  const blocked = new Set(keepClear.filter((c) => c >= 0 && c < cols))
+  const openMin = Math.max(2, Math.round(cols * 0.4), blocked.size)
   const maxTrees = Math.max(0, cols - openMin)
   const want = Math.min(maxTrees, Math.round(cols * (0.14 + d * 0.18) * (0.5 + rand())))
-  const pool = Array.from({ length: cols }, (_, i) => i)
+  const pool = Array.from({ length: cols }, (_, i) => i).filter((c) => !blocked.has(c))
   const trees: number[] = []
   for (let i = 0; i < want && pool.length; i++) {
     trees.push(pool.splice(Math.floor(rand() * pool.length), 1)[0])
@@ -390,16 +397,17 @@ function makeRoadRow(row: number, cols: number, rand: () => number, prev?: Row):
 }
 
 /**
- * Static stepping stones. Placed in short clusters rather than scattered singly
- * so you can shuffle sideways instead of being pinned to one tile.
+ * Static stepping stones. A few isolated pads — enough choices without turning
+ * the river into a sidewalk.
  */
 function makeStoneRow(cols: number, rand: () => number, d: number): Row {
-  // A couple of isolated stones, not a pavement. Later rows get stingier.
-  const target = d > 0.55 ? 1 : 2
+  // A few more early on; later rows stay stingier.
+  const target = d > 0.6 ? 2 : 3
   const rocks = new Set<number>()
   const margin = 1
-  for (let guard = 0; rocks.size < target && guard < 24; guard++) {
+  for (let guard = 0; rocks.size < target && guard < 32; guard++) {
     const c = margin + Math.floor(rand() * Math.max(1, cols - margin * 2))
+    // Keep at least one empty tile between pads so each hop is a real choice.
     if ([...rocks].every((r) => Math.abs(r - c) > 1)) rocks.add(c)
   }
   if (rocks.size === 0) rocks.add(Math.floor(cols / 2))
@@ -433,23 +441,23 @@ function makeWaterRow(
 
   // Never stack two stone rows: from a stone you can only hop straight on, so a
   // second static row could strand you with nowhere legal to land.
-  if (!prevIsStone && rand() < 0.28) return makeStoneRow(cols, rand, d)
+  if (!prevIsStone && rand() < 0.34) return makeStoneRow(cols, rand, d)
 
   // Alternate directions so there's always a way to work across a chunk.
   const dir: -1 | 1 = rowInChunk % 2 === 0 ? 1 : -1
   const g = gridScale(cols)
   const speed = (0.9 + d * 0.62) * pickTier(LOG_TIERS, d, rand) * (0.94 + rand() * 0.14) * g
   const span = laneSpan(cols)
-  // Whole tiles only, and every tile is a seat. Milder than full gridScale so
-  // logs stay hoppable without looking like barges.
-  const baseW = rand() < 0.22 ? 2 : rand() < 0.72 ? 3 : 4
-  const logW = Math.max(2, Math.round(baseW * sizeScale(cols)))
+  // Prefer shorter logs; only mild growth on denser grids so they don't read as barges.
+  const logScale = 1 + (gridScale(cols) - 1) * 0.12
+  const baseW = rand() < 0.48 ? 2 : rand() < 0.88 ? 3 : 4
+  const logW = Math.max(2, Math.round(baseW * logScale))
   // Space them to leave about a hop of water, so a column is under timber most
   // of the time. You drift toward the edge while you ride, so hunting for a log
   // can't be a long wait.
-  const logGap = LOG_GAP * sizeScale(cols)
+  const logGap = LOG_GAP * logScale
   let count = Math.max(1, Math.round(span / (logW + logGap)))
-  while (count > 1 && span / count - logW < 0.8 * sizeScale(cols)) count -= 1
+  while (count > 1 && span / count - logW < 0.8 * logScale) count -= 1
   const gap = span / count - logW
   // Stagger neighbouring rows so log gaps don't line up into a dead end.
   const phase = rowInChunk * (0.8 + chunkRand() * 0.9)
@@ -531,6 +539,8 @@ export function generateRow(
   const rand = mulberry32((row + 1) * 1_048_583 ^ runSeed)
   const prev = rows?.get(row - 1)
   const d = difficultyAt(row)
+  const prevRocks =
+    prev?.kind === 'water' && prev.rocks.length > 0 ? prev.rocks : []
 
   if (row < 4) {
     const trees: number[] = []
@@ -547,16 +557,16 @@ export function generateRow(
   // difficulty. This runs before chunk continuation so a long water or rail
   // chunk can't stack on top of an already-long run.
   if (hazardRun(row, rows) >= 3 + Math.round(d * 3)) {
-    return makeGrassRow(cols, rand, d)
+    return makeGrassRow(cols, rand, d, prevRocks)
   }
 
   // Roads come in small groups with a strip to wait on after them. Deeper stacks
   // turn into a wall you have to solve rather than a crossing you can time.
   if (kindRun(row, 'road', rows) >= 3 + Math.round(d)) {
-    return makeGrassRow(cols, rand, d)
+    return makeGrassRow(cols, rand, d, prevRocks)
   }
 
-  const prevIsStone = prev?.kind === 'water' && prev.rocks.length > 0
+  const prevIsStone = prevRocks.length > 0
 
   if (prev?.kind === 'water') {
     const start = chunkStart(row, 'water', rows)
@@ -579,7 +589,7 @@ export function generateRow(
   const railChance = row > 12 ? 0.05 + d * 0.03 : 0
   const roll = rand()
 
-  if (roll < grassChance) return makeGrassRow(cols, rand, d)
+  if (roll < grassChance) return makeGrassRow(cols, rand, d, prevRocks)
   if (roll < grassChance + waterChance) {
     return makeWaterRow(row, cols, runSeed, row, prevIsStone)
   }

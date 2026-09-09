@@ -4,7 +4,6 @@ import {
   MILESTONE_STEP,
   STALL_LIMIT,
   STALL_WARN,
-  TARGET_VISIBLE_ROWS,
   cellMetrics,
   easeHop,
   getRailCycle,
@@ -30,12 +29,10 @@ export type StrideLayout = {
 
 export function computeLayout(w: number, h: number, cols: number): StrideLayout {
   const { cell, availH, hudTop } = cellMetrics(w, h, cols)
-  // Width-based cells shrink hops; fill the tall phone letterbox by showing a
-  // few more rows (capped) instead of growing the cell and undoing the denser grid.
-  const visibleRows = Math.max(
-    TARGET_VISIBLE_ROWS,
-    Math.min(14, Math.floor(availH / cell)),
-  )
+  // Never ask for more rows than the cell size can fit — forcing 8 when the
+  // width-based cell is tall clipped the starting hopper off the bottom on desktop.
+  const fitRows = Math.max(5, Math.floor(availH / cell))
+  const visibleRows = Math.min(14, fitRows)
   const gridW = cell * cols
   const gridH = visibleRows * cell
   const ox = Math.max(0, (w - gridW) / 2)

@@ -17,9 +17,9 @@ export const ASTEROIDS_WAVE_RECORD_MAX = 20
 export const SNAKE_LENGTH_MILESTONE_MIN = 20
 export const SNAKE_LENGTH_MILESTONE_MAX = 100
 export const SNAKE_LENGTH_MILESTONE_STEP = 10
-export const STRIDE_ROW_MILESTONE_MIN = 25
+export const STRIDE_ROW_MILESTONE_MIN = 50
 export const STRIDE_ROW_MILESTONE_MAX = 200
-export const STRIDE_ROW_MILESTONE_STEP = 25
+export const STRIDE_ROW_MILESTONE_STEP = 50
 
 export type RecordDirection = 'lower' | 'higher'
 
