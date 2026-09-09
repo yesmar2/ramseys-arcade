@@ -336,7 +336,8 @@ export function SiteHeader() {
               >
                 <div className="site-drawer__head">
                   <h2 id={drawerTitleId} className="site-drawer__title">
-                    Menu
+                    {APP_NAME_LEAD}
+                    <span>{APP_NAME_ACCENT}</span>
                   </h2>
                   <button
                     type="button"
@@ -378,40 +379,58 @@ export function SiteHeader() {
                     {SITE_DRAWER_YOU.label}
                   </a>
                 </div>
-                <div className="site-drawer__utils">
+                <div className="site-drawer__footer">
                   {showBoardFilters ? (
-                    <>
-                      <SitePeriodControl
-                        variant="drawer"
-                        onSelect={() => setDrawerOpen(false)}
-                      />
-                      <SiteGroupControl
-                        variant="drawer"
-                        onSelect={() => setDrawerOpen(false)}
-                      />
-                    </>
+                    <section className="site-drawer__section" aria-label="Board filters">
+                      <h3 className="site-drawer__section-title">Filters</h3>
+                      <div className="site-drawer__section-body">
+                        <SitePeriodControl
+                          variant="drawer"
+                          onSelect={() => setDrawerOpen(false)}
+                        />
+                        <SiteGroupControl
+                          variant="drawer"
+                          onSelect={() => setDrawerOpen(false)}
+                        />
+                      </div>
+                    </section>
                   ) : null}
-                  <button
-                    type="button"
-                    className="site-drawer__util"
-                    onClick={() => {
-                      toggleTheme()
-                    }}
-                  >
-                    {theme === 'dark' ? 'Light mode' : 'Dark mode'}
-                  </button>
-                  <SoundPackSelect variant="menu" className="site-drawer__util" />
-                  <DevImpersonateControl variant="drawer" />
-                  <button
-                    type="button"
-                    className="site-drawer__util"
-                    onClick={() => {
-                      setDrawerOpen(false)
-                      playerRef.current?.openEdit()
-                    }}
-                  >
-                    {accountLabel}
-                  </button>
+                  <section className="site-drawer__section" aria-label="Settings">
+                    <h3 className="site-drawer__section-title">Settings</h3>
+                    <div className="site-drawer__prefs">
+                      <button
+                        type="button"
+                        className="site-drawer__pref"
+                        onClick={() => {
+                          toggleTheme()
+                        }}
+                      >
+                        <span className="site-drawer__pref-label">Theme</span>
+                        <span className="site-drawer__pref-value">
+                          {theme === 'dark' ? 'Dark' : 'Light'}
+                        </span>
+                      </button>
+                      <SoundPackSelect variant="drawer" />
+                      <button
+                        type="button"
+                        className="site-drawer__pref"
+                        onClick={() => {
+                          setDrawerOpen(false)
+                          playerRef.current?.openEdit()
+                        }}
+                      >
+                        <span className="site-drawer__pref-label">Account</span>
+                        <span className="site-drawer__pref-value">
+                          {playerName
+                            ? playerName
+                            : signedIn
+                              ? 'Signed in'
+                              : 'Set up'}
+                        </span>
+                      </button>
+                    </div>
+                    <DevImpersonateControl variant="drawer" />
+                  </section>
                 </div>
               </div>
             </div>,

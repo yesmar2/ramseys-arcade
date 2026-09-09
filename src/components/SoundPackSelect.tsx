@@ -11,7 +11,7 @@ import {
 
 type SoundPackSelectProps = {
   /** Compact cycle button for pause toolbar. */
-  variant?: 'cycle' | 'menu'
+  variant?: 'cycle' | 'menu' | 'drawer'
   className?: string
   onPicked?: (pack: SoundPackId) => void
 }
@@ -38,6 +38,21 @@ export function SoundPackSelect({
   }
 
   const label = SOUND_PACK_LABELS[pack]
+
+  if (variant === 'drawer') {
+    return (
+      <button
+        type="button"
+        className={`site-drawer__pref${className ? ` ${className}` : ''}`}
+        onClick={() => {
+          pick()
+        }}
+      >
+        <span className="site-drawer__pref-label">Sounds</span>
+        <span className="site-drawer__pref-value">{label}</span>
+      </button>
+    )
+  }
 
   if (variant === 'menu') {
     return (
