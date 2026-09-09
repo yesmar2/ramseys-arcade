@@ -77,36 +77,28 @@ const VEC: Record<Dir, Cell> = {
 
 const DIRS: Dir[] = ['up', 'left', 'down', 'right']
 
-/** Odd-sized maze so tunnels and the house sit on a center column. */
-export const COLS = 19
-export const ROWS = 21
+/** Landscape maze so the board fills desktop width with readable cells. */
+export const COLS = 27
+export const ROWS = 13
 
 /**
- * Original maze. `#` wall, `.` pellet, `o` power, ` ` empty path,
- * `=` house door, `P` player, `G` ghost spawn.
+ * Maze legend: `#` wall, `.` crumb, `o` power, ` ` empty path,
+ * `=` house door, `P` player, `G` chaser spawn.
  */
 const MAZE_ROWS = [
-  '###################',
-  '#........#........#',
-  '#o##.###.#.###.##o#',
-  '#.................#',
-  '#.##.#.#####.#.##.#',
-  '#....#...#...#....#',
-  '####.### # ###.####',
-  '####.#       #.####',
-  '####.# ##=## #.####',
-  '      # GGG #      ',
-  '####.# ##### #.####',
-  '####.#       #.####',
-  '####.#.#####.#.####',
-  '#........#........#',
-  '#.##.###.#.###.##.#',
-  '#o.#.....P.....#.o#',
-  '##.#.#.#####.#.#.##',
-  '#....#...#...#....#',
-  '#.######.#.######.#',
-  '#.................#',
-  '###################',
+  '###########################',
+  '#o.......................o#',
+  '#..###.###.##.##.###.###..#',
+  '#..........##.##..........#',
+  '#..###.###.......###.###..#',
+  '#..###....##===##....###..#',
+  '          # GGG #          ',
+  '#..###....#######....###..#',
+  '#..###.###.......###.###..#',
+  '#..........##.##..........#',
+  '#..###.###.##.##.###.###..#',
+  '#o...........P...........o#',
+  '###########################',
 ]
 
 const SCORE_PELLET = 10
@@ -143,9 +135,9 @@ function parseMaze() {
   const pellets: boolean[][] = []
   const power: boolean[][] = []
   let pelletsLeft = 0
-  let startPos: Cell = { x: 9, y: 15 }
+  let startPos: Cell = { x: Math.floor(cols / 2), y: rows - 2 }
   const ghostSpawns: Cell[] = []
-  let ghostHome: Cell = { x: 9, y: 9 }
+  let ghostHome: Cell = { x: Math.floor(cols / 2), y: Math.floor(rows / 2) }
 
   for (let y = 0; y < rows; y++) {
     open[y] = []
@@ -166,11 +158,13 @@ function parseMaze() {
         }
       }
       if (ch === 'P') startPos = { x, y }
-      if (ch === 'G') {
-        ghostSpawns.push({ x, y })
-        ghostHome = { x: 9, y }
-      }
+      if (ch === 'G') ghostSpawns.push({ x, y })
     }
+  }
+
+  if (ghostSpawns.length) {
+    const sx = Math.round(ghostSpawns.reduce((s, c) => s + c.x, 0) / ghostSpawns.length)
+    ghostHome = { x: sx, y: ghostSpawns[0].y }
   }
 
   // Fill pellets on open tiles that aren't house / marked empty.
@@ -224,7 +218,7 @@ function makeGhosts(spawns: Cell[], cols: number, rows: number): Ghost[] {
   const corners = ghostCorners(cols, rows)
   const dirs: Dir[] = ['left', 'up', 'down', 'right']
   return kinds.map((kind, i) => {
-    const spawn = spawns[i] ?? spawns[0] ?? { x: 9, y: 9 }
+      const spawn = spawns[i] ?? spawns[0] ?? { x: Math.floor(cols / 2), y: Math.floor(rows / 2) }
     return {
       kind,
       x: spawn.x + 0.5,
@@ -371,12 +365,13 @@ function ghostChoices(state: GameState, ghost: Ghost): Dir[] {
     if (!state.open[ny][wx]) continue
     const ch = MAZE_ROWS[ny][wx]
     if (ch === '=') {
-      // Door: living ghosts may leave (from below), eaten ghosts may enter.
+      // Door: living chasers may leave (from below), eaten chasers may enter.
+      const hy = state.ghostHome.y
       if (ghost.mode === 'eaten' || ghost.eaten) {
         /* allow */
-      } else if (cy >= 9 && cy <= 10 && dir === 'up') {
+      } else if (cy >= hy - 1 && cy <= hy && dir === 'up') {
         /* allow leave */
-      } else if (cy >= 8 && cy <= 10) {
+      } else if (cy >= hy - 1 && cy <= hy + 1) {
         /* allow shuffle in house */
       } else continue
     }
@@ -399,8 +394,11 @@ function pickGhostDir(state: GameState, ghost: Ghost): Dir {
   if (opts.length === 0) return ghost.dir
 
   // Leave the house: bias upward through the door until out.
+  const gx = Math.floor(ghost.x)
   const gy = Math.floor(ghost.y)
-  const inHouse = gy >= 8 && gy <= 10 && Math.floor(ghost.x) >= 7 && Math.floor(ghost.x) <= 11
+  const hx = state.ghostHome.x
+  const hy = state.ghostHome.y
+  const inHouse = gy >= hy - 1 && gy <= hy + 1 && gx >= hx - 3 && gx <= hx + 3
   if (inHouse && !ghost.eaten && ghost.mode !== 'eaten') {
     if (opts.includes('up')) return 'up'
     if (opts.includes('left') && ghost.x > state.cols / 2) return 'left'

@@ -34,10 +34,11 @@ function roundRect(
 }
 
 export function computeLayout(w: number, h: number) {
-  const pad = Math.min(w, h) * 0.05
+  const padX = Math.min(24, w * 0.016)
+  const padY = Math.min(28, h * 0.03)
   const hud = Math.max(48, Math.min(72, h * 0.1))
-  const availW = w - pad * 2
-  const availH = h - hud - pad * 0.6
+  const availW = w - padX * 2
+  const availH = h - hud - padY
   const cell = Math.max(1, Math.min(availW / COLS, availH / ROWS))
   const gridW = cell * COLS
   const gridH = cell * ROWS
@@ -61,9 +62,9 @@ function drawWalls(
   cell: number,
   dark: boolean,
 ) {
-  const lineW = Math.max(1.4, cell * 0.11)
-  const inset = cell * 0.18
-  const rad = cell * 0.28
+  const lineW = Math.max(1.6, cell * 0.12)
+  const inset = cell * 0.12
+  const rad = cell * 0.32
 
   for (let y = 0; y < state.rows; y++) {
     for (let x = 0; x < state.cols; x++) {
@@ -112,7 +113,7 @@ function drawCrumbs(
       const cx = ox + (x + 0.5) * cell
       const cy = oy + (y + 0.5) * cell
       if (state.pellets[y][x]) {
-        const r = Math.max(1.4, cell * 0.11)
+        const r = Math.max(1.6, cell * 0.13)
         ctx.fillStyle = dark ? hsla(ACCENT, 55, 62, 0.22) : hsla(ACCENT, 58, 58, 0.2)
         ctx.beginPath()
         ctx.arc(cx, cy, r, 0, Math.PI * 2)
@@ -153,7 +154,7 @@ function drawPlayer(
   const cx = ox + state.player.x * cell
   const cy = oy + state.player.y * cell
   const lineW = Math.max(1.3, cell * 0.08)
-  const size = cell * 0.72
+  const size = cell * 0.82
   const x = cx - size / 2
   const y = cy - size / 2
   const rad = size * 0.42
@@ -243,7 +244,7 @@ function drawChaser(
   const cx = ox + ghost.x * cell
   const cy = oy + ghost.y * cell
   const lineW = Math.max(1.3, cell * 0.08)
-  const size = cell * 0.68
+  const size = cell * 0.78
   const x = cx - size / 2
   const y = cy - size / 2
   const rad = size * 0.4
