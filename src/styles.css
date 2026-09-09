@@ -1605,6 +1605,7 @@ a.lb-board-switcher__item {
 
 .site-header__end {
   position: relative;
+  z-index: 50;
   display: flex;
   align-items: center;
   gap: 0.35rem;
@@ -1612,6 +1613,8 @@ a.lb-board-switcher__item {
 }
 
 .site-scopes {
+  position: relative;
+  z-index: 20;
   display: flex;
   align-items: center;
   gap: 0.35rem;
