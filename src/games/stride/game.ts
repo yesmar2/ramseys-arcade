@@ -140,8 +140,10 @@ const HOP_COOLDOWN = 0.05
 const HOP_DURATION = 0.12
 const INPUT_BUFFER = 0.18
 const RESPAWN_INVULN = 0.5
-/** How far past a log edge still counts as landing on it. */
-const LOG_EDGE_SNAP = 0.42
+/** How far your tile may overhang the end of a log and still be pulled back on. */
+const LOG_EDGE_SNAP = 0.3
+/** Target water between logs, in tiles. */
+const LOG_GAP = 1.05
 const CAR_HUES = [18, 348, 272, 198, 38, 128, 168]
 const LOG_HUE = 32
 /** Matches the circular hopper sprite. */
@@ -403,11 +405,15 @@ function makeWaterRow(
   const dir: -1 | 1 = rowInChunk % 2 === 0 ? 1 : -1
   const speed = (0.9 + d * 0.62) * pickTier(LOG_TIERS, d, rand) * (0.94 + rand() * 0.14)
   const span = laneSpan(cols)
-  const tiles = cols < 9 ? 2 : rand() < 0.58 ? 2 : 3
-  // Whole tiles only — each tile is one hop slot on the log.
-  const logW = tiles
-  const gap = (0.95 + rand() * 0.55) * (1 - d * 0.15)
-  const count = laneCount(span, logW, gap, 99)
+  // Whole tiles only, and each one is a place to stand. Mostly threes so there's
+  // somewhere to shuffle now that a sideways hop covers a full tile.
+  const logW = rand() < 0.65 ? 3 : 2
+  // Space them to leave about a tile of water, so a column is under timber most
+  // of the time. You drift toward the edge while you ride, so hunting for a log
+  // can't be a long wait.
+  let count = Math.max(1, Math.round(span / (logW + LOG_GAP)))
+  while (count > 1 && span / count - logW < 0.8) count -= 1
+  const gap = span / count - logW
   // Stagger neighbouring rows so log gaps don't line up into a dead end.
   const phase = rowInChunk * (0.8 + chunkRand() * 0.9)
 
@@ -575,10 +581,14 @@ function treesBlock(col: number, trees: number[]): boolean {
   return trees.some((t) => right > t && left < t + 1)
 }
 
-/** Snap landing column — logs use their own hop slots, everything else whole tiles. */
+/**
+ * Where a hop actually lands. Every hop is one whole tile, so this only ever
+ * tidies up: land rows sit on the grid, and a log seats you on its timber.
+ */
 function landingCol(nc: number, row: Row, span: number): number {
   if (row.kind === 'water' && row.rocks.length === 0) {
-    return snapToLog(nc, row, span) ?? nc
+    const log = logUnder(nc, row, span)
+    return log ? seatOnLog(nc, log) : nc
   }
   return Math.round(nc)
 }
@@ -614,44 +624,37 @@ function laneClearance(col: number, v: Vehicle, span: number): number {
   return Math.min(gap(v.x), gap(v.x - span))
 }
 
-/** Whole-tile hop slots on a log whose left edge is at `l`. */
-function logSlots(l: number, w: number): number[] {
-  const n = Math.max(1, Math.round(w))
-  const slots: number[] = []
-  for (let i = 0; i < n; i++) slots.push(l + i)
-  return slots
-}
+type LogSurface = { left: number; width: number }
 
 /**
- * Snap onto the nearest log tile. A near miss past the edge still counts —
- * you get pulled onto the closest slot instead of falling in.
+ * The log holding up `col`, if there is one. Logs exist at `x` and `x - span`,
+ * so checking both copies covers the wrap seam.
  */
-function snapToLog(col: number, row: Row, span: number): number | null {
-  let best: number | null = null
-  let bestDist = Infinity
+function logUnder(col: number, row: Row, span: number): LogSurface | null {
   const center = col + 0.5
+  let best: LogSurface | null = null
+  let bestGrip = -Infinity
 
   for (const v of row.vehicles) {
-    const n = Math.max(1, Math.round(v.w))
-    for (const l of [v.x, v.x - span]) {
-      if (center < l - LOG_EDGE_SNAP || center > l + n + LOG_EDGE_SNAP) continue
-      for (const slot of logSlots(l, n)) {
-        const dist = Math.abs(col - slot)
-        if (dist < bestDist) {
-          bestDist = dist
-          best = slot
-        }
+    for (const left of [v.x, v.x - span]) {
+      // Your whole tile has to be on the timber, give or take a toe over the end.
+      const lo = left + 0.5 - LOG_EDGE_SNAP
+      const hi = left + v.w - 0.5 + LOG_EDGE_SNAP
+      if (center < lo || center > hi) continue
+      const grip = Math.min(center - lo, hi - center)
+      if (grip > bestGrip) {
+        bestGrip = grip
+        best = { left, width: v.w }
       }
     }
   }
 
-  // Must be near a real slot — forgiveness is for edges, not jumping the gap.
-  if (best == null || bestDist > 0.55 + LOG_EDGE_SNAP) return null
   return best
 }
 
-function onLog(col: number, row: Row, span: number): boolean {
-  return snapToLog(col, row, span) != null
+/** Pull a landing that overhangs the end of a log back onto it. */
+function seatOnLog(col: number, log: LogSurface): number {
+  return Math.min(log.left + log.width - 1, Math.max(log.left, col))
 }
 
 /** Stones are static and snap you to their tile, so a whole-column test is exact. */
@@ -860,6 +863,8 @@ export function hop(state: GameState, dir: Dir): GameState {
   const target = landingCol(nc, rowData, span)
   if (!colInBounds(target, state.cols)) return blocked()
   if (rowData.kind !== 'water' && treesBlock(target, rowData.trees)) return blocked()
+  // Seating can eat a sideways hop at the end of a log; bump instead of faking it.
+  if (nr === fromR && target === fromC) return blocked()
 
   sfx('hop')
 
@@ -983,16 +988,11 @@ export function tick(state: GameState, dt: number): GameState {
     if (standing.rocks.length) {
       // Stones don't move, so there's nothing to carry you — just stand or sink.
       if (!onRock(next.col, standing) && next.invuln <= 0) return die(next, 'water')
-    } else if (onLog(next.col, standing, span)) {
-      // Drift with the log, then re-seat on the nearest hop slot.
+    } else if (logUnder(next.col, standing, span)) {
+      // The log carries you by the exact step the lane just took, so your footing
+      // on the timber never shifts and hops off it stay whole tiles.
       next.col += standing.dir * standing.speed * dt
-      const seat = snapToLog(next.col, standing, span)
-      if (seat == null) {
-        if (next.invuln <= 0) return die(next, 'water')
-      } else {
-        next.col = seat
-        if (next.col < -0.4 || next.col > next.cols - 0.6) return die(next, 'edge')
-      }
+      if (next.col < -0.4 || next.col > next.cols - 0.6) return die(next, 'edge')
     } else if (next.invuln <= 0) {
       return die(next, 'water')
     }
