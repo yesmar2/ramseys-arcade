@@ -1,12 +1,5 @@
 import { isDarkTheme, playfieldColor } from '../../lib/theme'
-import {
-  COLS,
-  ROWS,
-  mazeChar,
-  type GameState,
-  type Ghost,
-  type GhostKind,
-} from './game'
+import { mazeChar, type GameState, type Ghost, type GhostKind } from './game'
 
 const ACCENT = 38
 const WALL_HUE = 198
@@ -33,15 +26,15 @@ function roundRect(
   ctx.closePath()
 }
 
-export function computeLayout(w: number, h: number) {
+export function computeLayout(w: number, h: number, cols: number, rows: number) {
   const padX = Math.min(24, w * 0.016)
   const padY = Math.min(28, h * 0.03)
   const hud = Math.max(48, Math.min(72, h * 0.1))
   const availW = w - padX * 2
   const availH = h - hud - padY
-  const cell = Math.max(1, Math.min(availW / COLS, availH / ROWS))
-  const gridW = cell * COLS
-  const gridH = cell * ROWS
+  const cell = Math.max(1, Math.min(availW / cols, availH / rows))
+  const gridW = cell * cols
+  const gridH = cell * rows
   const ox = (w - gridW) / 2
   const oy = hud + Math.max(0, (availH - gridH) / 2)
   return { cell, ox, oy, hud, gridW, gridH }
@@ -62,37 +55,43 @@ function drawWalls(
   cell: number,
   dark: boolean,
 ) {
-  const lineW = Math.max(1.6, cell * 0.12)
-  const inset = cell * 0.12
-  const rad = cell * 0.32
+  // Snake-style stroked circles — thin outline, soft fill.
+  const lineW = Math.max(1.1, cell * 0.06)
+  const r = cell * 0.32
 
   for (let y = 0; y < state.rows; y++) {
     for (let x = 0; x < state.cols; x++) {
       if (state.open[y][x]) continue
-      const px = ox + x * cell + inset
-      const py = oy + y * cell + inset
-      const s = cell - inset * 2
-      roundRect(ctx, px, py, s, s, rad)
-      ctx.fillStyle = dark ? hsla(WALL_HUE, 42, 58, 0.16) : hsla(WALL_HUE, 48, 52, 0.14)
+      const cx = ox + (x + 0.5) * cell
+      const cy = oy + (y + 0.5) * cell
+      ctx.beginPath()
+      ctx.arc(cx, cy, r, 0, Math.PI * 2)
+      ctx.fillStyle = dark ? hsla(WALL_HUE, 42, 58, 0.14) : hsla(WALL_HUE, 48, 52, 0.12)
       ctx.fill()
-      ctx.strokeStyle = dark ? hsla(WALL_HUE, 55, 62, 0.9) : hsla(WALL_HUE, 52, 42, 0.92)
+      ctx.strokeStyle = dark ? hsla(WALL_HUE, 55, 62, 0.88) : hsla(WALL_HUE, 52, 42, 0.9)
       ctx.lineWidth = lineW
-      ctx.lineJoin = 'round'
       ctx.stroke()
     }
   }
 
   for (let y = 0; y < state.rows; y++) {
     for (let x = 0; x < state.cols; x++) {
-      if (mazeChar(x, y) !== '=') continue
-      const px = ox + x * cell
-      const py = oy + y * cell
+      if (mazeChar(state, x, y) !== '=') continue
+      const cx = ox + (x + 0.5) * cell
+      const cy = oy + (y + 0.5) * cell
+      const vertical =
+        mazeChar(state, x, y - 1) === '=' || mazeChar(state, x, y + 1) === '='
       ctx.strokeStyle = dark ? hsla(ACCENT, 60, 62, 0.85) : hsla(ACCENT, 58, 48, 0.9)
-      ctx.lineWidth = Math.max(2, cell * 0.12)
+      ctx.lineWidth = Math.max(1.4, cell * 0.07)
       ctx.lineCap = 'round'
       ctx.beginPath()
-      ctx.moveTo(px + cell * 0.18, py + cell * 0.5)
-      ctx.lineTo(px + cell * 0.82, py + cell * 0.5)
+      if (vertical) {
+        ctx.moveTo(cx, cy - cell * 0.28)
+        ctx.lineTo(cx, cy + cell * 0.28)
+      } else {
+        ctx.moveTo(cx - cell * 0.28, cy)
+        ctx.lineTo(cx + cell * 0.28, cy)
+      }
       ctx.stroke()
     }
   }
@@ -119,7 +118,7 @@ function drawCrumbs(
         ctx.arc(cx, cy, r, 0, Math.PI * 2)
         ctx.fill()
         ctx.strokeStyle = dark ? hsla(ACCENT, 58, 58, 0.95) : hsla(ACCENT, 58, 42, 0.95)
-        ctx.lineWidth = Math.max(1.1, cell * 0.06)
+        ctx.lineWidth = Math.max(1, cell * 0.045)
         ctx.stroke()
       }
       if (state.power[y][x]) {
@@ -131,11 +130,12 @@ function drawCrumbs(
         ctx.beginPath()
         ctx.arc(cx, cy, r * 2.1, 0, Math.PI * 2)
         ctx.fill()
-        roundRect(ctx, cx - r, cy - r, r * 2, r * 2, r * 0.55)
+        ctx.beginPath()
+        ctx.arc(cx, cy, r, 0, Math.PI * 2)
         ctx.fillStyle = dark ? hsla(ACCENT, 58, 58, 0.28) : hsla(ACCENT, 58, 58, 0.24)
         ctx.fill()
         ctx.strokeStyle = dark ? hsla(ACCENT, 60, 62, 0.95) : hsla(ACCENT, 58, 42, 0.95)
-        ctx.lineWidth = Math.max(1.4, cell * 0.08)
+        ctx.lineWidth = Math.max(1.1, cell * 0.055)
         ctx.stroke()
       }
     }
@@ -153,16 +153,14 @@ function drawPlayer(
 ) {
   const cx = ox + state.player.x * cell
   const cy = oy + state.player.y * cell
-  const lineW = Math.max(1.3, cell * 0.08)
-  const size = cell * 0.82
-  const x = cx - size / 2
-  const y = cy - size / 2
-  const rad = size * 0.42
+  const lineW = Math.max(1.1, cell * 0.055)
+  const r = cell * 0.36
 
   if (state.phase === 'dying') {
     const t = 1 - Math.max(0, state.deathAnim) / 0.85
     ctx.globalAlpha = Math.max(0, 1 - t)
-    roundRect(ctx, x, y, size * (1 - t * 0.35), size * (1 - t * 0.35), rad)
+    ctx.beginPath()
+    ctx.arc(cx, cy, r * (1 - t * 0.35), 0, Math.PI * 2)
     ctx.fillStyle = hsla(ACCENT, 58, 58, 0.22)
     ctx.fill()
     ctx.strokeStyle = hsla(ACCENT, 58, 42, 0.95)
@@ -176,12 +174,12 @@ function drawPlayer(
     ctx.globalAlpha = 0.4
   }
 
-  roundRect(ctx, x, y, size, size, rad)
+  ctx.beginPath()
+  ctx.arc(cx, cy, r, 0, Math.PI * 2)
   ctx.fillStyle = dark ? hsla(ACCENT, 58, 58, 0.26) : hsla(ACCENT, 58, 58, 0.22)
   ctx.fill()
   ctx.strokeStyle = dark ? hsla(ACCENT, 60, 62, 0.95) : hsla(ACCENT, 58, 42, 0.95)
   ctx.lineWidth = lineW
-  ctx.lineJoin = 'round'
   ctx.stroke()
 
   // Eyes look along travel direction.
@@ -208,22 +206,22 @@ function drawPlayer(
 
   // Tiny bite notch — reads as hungry without going full wedge.
   ctx.strokeStyle = dark ? hsla(ACCENT, 50, 45, 0.7) : hsla(ACCENT, 50, 38, 0.65)
-  ctx.lineWidth = Math.max(1.2, cell * 0.06)
+  ctx.lineWidth = Math.max(1, cell * 0.045)
   ctx.lineCap = 'round'
   const mouthOpen = 0.5 + 0.5 * Math.sin(state.mouth)
   ctx.beginPath()
   if (state.player.dir === 'right') {
-    ctx.moveTo(cx + size * 0.18, cy + cell * 0.06)
-    ctx.quadraticCurveTo(cx + size * 0.32, cy + cell * 0.1 * mouthOpen, cx + size * 0.22, cy + cell * 0.18)
+    ctx.moveTo(cx + r * 0.35, cy + cell * 0.06)
+    ctx.quadraticCurveTo(cx + r * 0.7, cy + cell * 0.1 * mouthOpen, cx + r * 0.45, cy + cell * 0.18)
   } else if (state.player.dir === 'left') {
-    ctx.moveTo(cx - size * 0.18, cy + cell * 0.06)
-    ctx.quadraticCurveTo(cx - size * 0.32, cy + cell * 0.1 * mouthOpen, cx - size * 0.22, cy + cell * 0.18)
+    ctx.moveTo(cx - r * 0.35, cy + cell * 0.06)
+    ctx.quadraticCurveTo(cx - r * 0.7, cy + cell * 0.1 * mouthOpen, cx - r * 0.45, cy + cell * 0.18)
   } else if (state.player.dir === 'up') {
-    ctx.moveTo(cx - cell * 0.08, cy - size * 0.12)
-    ctx.quadraticCurveTo(cx, cy - size * 0.22 - cell * 0.04 * mouthOpen, cx + cell * 0.08, cy - size * 0.12)
+    ctx.moveTo(cx - cell * 0.08, cy - r * 0.35)
+    ctx.quadraticCurveTo(cx, cy - r * 0.65 - cell * 0.04 * mouthOpen, cx + cell * 0.08, cy - r * 0.35)
   } else {
-    ctx.moveTo(cx - cell * 0.08, cy + size * 0.18)
-    ctx.quadraticCurveTo(cx, cy + size * 0.28 + cell * 0.04 * mouthOpen, cx + cell * 0.08, cy + size * 0.18)
+    ctx.moveTo(cx - cell * 0.08, cy + r * 0.35)
+    ctx.quadraticCurveTo(cx, cy + r * 0.65 + cell * 0.04 * mouthOpen, cx + cell * 0.08, cy + r * 0.35)
   }
   ctx.stroke()
 
@@ -243,11 +241,8 @@ function drawChaser(
 ) {
   const cx = ox + ghost.x * cell
   const cy = oy + ghost.y * cell
-  const lineW = Math.max(1.3, cell * 0.08)
-  const size = cell * 0.78
-  const x = cx - size / 2
-  const y = cy - size / 2
-  const rad = size * 0.4
+  const lineW = Math.max(1.1, cell * 0.055)
+  const r = cell * 0.34
 
   if (ghost.eaten) {
     // Eyes only — hustling back to the den.
@@ -268,12 +263,12 @@ function drawChaser(
   const flash = scared && fright < 2 && Math.floor(time * 8) % 2 === 0
   const hue = scared ? (flash ? 210 : 230) : chaserHue(ghost.kind)
 
-  roundRect(ctx, x, y, size, size, rad)
+  ctx.beginPath()
+  ctx.arc(cx, cy, r, 0, Math.PI * 2)
   ctx.fillStyle = dark ? hsla(hue, 56, 58, 0.24) : hsla(hue, 56, 58, 0.2)
   ctx.fill()
   ctx.strokeStyle = dark ? hsla(hue, 55, 62, 0.95) : hsla(hue, 55, 40, 0.95)
   ctx.lineWidth = lineW
-  ctx.lineJoin = 'round'
   ctx.stroke()
 
   const eye = cell * 0.085
@@ -303,7 +298,7 @@ function drawChaser(
     ctx.fill()
   } else {
     ctx.strokeStyle = flash ? hsla(210, 40, 40, 0.9) : hsla(210, 30, 70, 0.9)
-    ctx.lineWidth = Math.max(1.2, cell * 0.05)
+    ctx.lineWidth = Math.max(1, cell * 0.045)
     ctx.beginPath()
     ctx.moveTo(cx - cell * 0.16, cy + cell * 0.14)
     ctx.quadraticCurveTo(cx, cy + cell * 0.22, cx + cell * 0.16, cy + cell * 0.14)
@@ -313,7 +308,7 @@ function drawChaser(
 
 export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, w: number, h: number) {
   const dark = isDarkTheme()
-  const { cell, ox, oy, gridW, gridH } = computeLayout(w, h)
+  const { cell, ox, oy, gridW, gridH } = computeLayout(w, h, state.cols, state.rows)
   const time = performance.now() / 1000
 
   ctx.clearRect(0, 0, w, h)

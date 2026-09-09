@@ -59,6 +59,11 @@ export type GameState = {
   mouth: number
   startPos: Cell
   ghostHome: Cell
+  /** Tile just outside the den door — chasers path here to leave. */
+  ghostExit: Cell
+  house: { minX: number; maxX: number; minY: number; maxY: number }
+  /** Active maze strings for this orientation. */
+  maze: string[]
 }
 
 const OPPOSITE: Record<Dir, Dir> = {
@@ -77,15 +82,12 @@ const VEC: Record<Dir, Cell> = {
 
 const DIRS: Dir[] = ['up', 'left', 'down', 'right']
 
-/** Landscape maze so the board fills desktop width with readable cells. */
-export const COLS = 27
-export const ROWS = 13
-
 /**
  * Maze legend: `#` wall, `.` crumb, `o` power, ` ` empty path,
  * `=` house door, `P` player, `G` chaser spawn.
+ * Landscape base — portrait is this rotated 90° CW (taller on phones).
  */
-const MAZE_ROWS = [
+const MAZE_LANDSCAPE = [
   '###########################',
   '#o.......................o#',
   '#..###.###.##.##.###.###..#',
@@ -100,6 +102,32 @@ const MAZE_ROWS = [
   '#o...........P...........o#',
   '###########################',
 ]
+
+/** Rotate maze 90° clockwise so the long side matches a tall phone. */
+function rotateMazeCW(rows: string[]): string[] {
+  const R = rows.length
+  const C = rows[0]?.length ?? 0
+  const out: string[] = []
+  for (let c = 0; c < C; c++) {
+    let line = ''
+    for (let r = R - 1; r >= 0; r--) line += rows[r][c] ?? '#'
+    out.push(line)
+  }
+  return out
+}
+
+const MAZE_PORTRAIT = rotateMazeCW(MAZE_LANDSCAPE)
+
+export const COLS = MAZE_LANDSCAPE[0].length
+export const ROWS = MAZE_LANDSCAPE.length
+
+export function pelletsPortrait(): boolean {
+  return typeof window !== 'undefined' && window.innerHeight > window.innerWidth
+}
+
+export function pelletsMaze(portrait = pelletsPortrait()): string[] {
+  return portrait ? MAZE_PORTRAIT : MAZE_LANDSCAPE
+}
 
 const SCORE_PELLET = 10
 const SCORE_POWER = 50
@@ -118,90 +146,151 @@ function loadBest() {
   return getPersonalBest('pellets')
 }
 
-function wrapX(x: number, cols: number) {
-  if (x < -0.5) return cols - 0.5
-  if (x >= cols - 0.5) return -0.5
-  return x
+function wrapAxis(v: number, span: number) {
+  if (v < -0.5) return span - 0.5
+  if (v >= span - 0.5) return -0.5
+  return v
 }
 
 function cellOf(x: number, y: number): Cell {
   return { x: Math.floor(x), y: Math.floor(y) }
 }
 
-function parseMaze() {
-  const cols = COLS
-  const rows = ROWS
+function dist2(ax: number, ay: number, bx: number, by: number) {
+  return (ax - bx) ** 2 + (ay - by) ** 2
+}
+
+function mazeAt(maze: string[], x: number, y: number) {
+  return maze[y]?.[x] ?? '#'
+}
+
+function parseMaze(maze: string[]) {
+  const rows = maze.length
+  const cols = maze[0]?.length ?? 0
   const open: boolean[][] = []
   const pellets: boolean[][] = []
   const power: boolean[][] = []
   let pelletsLeft = 0
   let startPos: Cell = { x: Math.floor(cols / 2), y: rows - 2 }
   const ghostSpawns: Cell[] = []
+  const doorCells: Cell[] = []
   let ghostHome: Cell = { x: Math.floor(cols / 2), y: Math.floor(rows / 2) }
+  let house = { minX: 0, maxX: cols - 1, minY: 0, maxY: rows - 1 }
 
   for (let y = 0; y < rows; y++) {
     open[y] = []
     pellets[y] = []
     power[y] = []
-    const line = MAZE_ROWS[y] ?? '#'.repeat(cols)
+    const line = maze[y] ?? '#'.repeat(cols)
     for (let x = 0; x < cols; x++) {
       const ch = line[x] ?? '#'
-      const isWall = ch === '#'
-      open[y][x] = !isWall
+      open[y][x] = ch !== '#'
       pellets[y][x] = false
       power[y][x] = false
-      if (ch === '.' || ch === 'o') {
-        if (ch === 'o') power[y][x] = true
-        else {
-          pellets[y][x] = true
-          pelletsLeft += 1
-        }
+      if (ch === '.') {
+        pellets[y][x] = true
+        pelletsLeft += 1
+      } else if (ch === 'o') {
+        power[y][x] = true
       }
       if (ch === 'P') startPos = { x, y }
       if (ch === 'G') ghostSpawns.push({ x, y })
+      if (ch === '=') doorCells.push({ x, y })
     }
   }
 
   if (ghostSpawns.length) {
     const sx = Math.round(ghostSpawns.reduce((s, c) => s + c.x, 0) / ghostSpawns.length)
-    ghostHome = { x: sx, y: ghostSpawns[0].y }
+    const sy = Math.round(ghostSpawns.reduce((s, c) => s + c.y, 0) / ghostSpawns.length)
+    ghostHome = { x: sx, y: sy }
   }
 
-  // Fill pellets on open tiles that aren't house / marked empty.
-  for (let y = 0; y < rows; y++) {
-    for (let x = 0; x < cols; x++) {
-      if (!open[y][x]) continue
-      const ch = MAZE_ROWS[y][x]
-      if (ch === ' ' || ch === '=' || ch === 'G' || ch === 'P') continue
-      if (ch === 'o' || pellets[y][x]) continue
-      if (ch === '.') continue
+  const houseCells = [...ghostSpawns, ...doorCells]
+  if (houseCells.length) {
+    house = {
+      minX: Math.min(...houseCells.map((c) => c.x)),
+      maxX: Math.max(...houseCells.map((c) => c.x)),
+      minY: Math.min(...houseCells.map((c) => c.y)),
+      maxY: Math.max(...houseCells.map((c) => c.y)),
     }
   }
 
-  return { cols, rows, open, pellets, power, pelletsLeft, startPos, ghostSpawns, ghostHome }
+  // Exit = open tile adjacent to a door that sits outside the den interior.
+  let ghostExit: Cell = { x: ghostHome.x, y: Math.max(1, ghostHome.y - 2) }
+  let exitDist = -1
+  for (const door of doorCells) {
+    for (const [dx, dy] of [
+      [0, -1],
+      [0, 1],
+      [-1, 0],
+      [1, 0],
+    ] as const) {
+      const ex = door.x + dx
+      const ey = door.y + dy
+      if (ey < 0 || ey >= rows || ex < 0 || ex >= cols) continue
+      if (!open[ey][ex]) continue
+      const ch = mazeAt(maze, ex, ey)
+      if (ch === 'G' || ch === '=') continue
+      const d = dist2(ex, ey, ghostHome.x, ghostHome.y)
+      if (d > exitDist) {
+        exitDist = d
+        ghostExit = { x: ex, y: ey }
+      }
+    }
+  }
+
+  return {
+    maze,
+    cols,
+    rows,
+    open,
+    pellets,
+    power,
+    pelletsLeft,
+    startPos,
+    ghostSpawns,
+    ghostHome,
+    ghostExit,
+    house,
+  }
 }
 
 function canEnter(state: GameState, x: number, y: number, asGhost: boolean) {
   const c = ((Math.floor(x) % state.cols) + state.cols) % state.cols
-  const r = Math.floor(y)
-  if (r < 0 || r >= state.rows) return false
+  const r = ((Math.floor(y) % state.rows) + state.rows) % state.rows
+  // Only wrap through open tunnel edges — otherwise out of bounds is blocked.
+  const wrappedX = Math.floor(x) !== c
+  const wrappedY = Math.floor(y) !== r
+  if (!wrappedX && (Math.floor(x) < 0 || Math.floor(x) >= state.cols)) return false
+  if (!wrappedY && (Math.floor(y) < 0 || Math.floor(y) >= state.rows)) return false
+  if (wrappedY && Math.floor(y) < 0 && !state.open[0]?.[c]) return false
+  if (wrappedY && Math.floor(y) >= state.rows && !state.open[state.rows - 1]?.[c]) return false
   if (!state.open[r][c]) return false
-  // Door is one-way for living ghosts leaving / eaten ghosts entering.
-  const ch = MAZE_ROWS[r][c]
+  const ch = mazeAt(state.maze, c, r)
   if (ch === '=' && !asGhost) return false
   return true
 }
 
 function atCenter(v: number) {
-  return Math.abs(v - Math.floor(v) - 0.5) < 0.08
+  // Must be tighter than one frame of travel, or actors snap back and never leave.
+  return Math.abs(v - Math.floor(v) - 0.5) < 0.05
 }
 
 function snapCenter(v: number) {
   return Math.floor(v) + 0.5
 }
 
-function dist2(ax: number, ay: number, bx: number, by: number) {
-  return (ax - bx) ** 2 + (ay - by) ** 2
+/** Distance along `dir` from position `p` to the next tile center. */
+function distToNextCenter(p: number, delta: number) {
+  if (delta > 0) {
+    const target = Math.floor(p + 0.5) + 0.5
+    return Math.max(0.0001, target - p)
+  }
+  if (delta < 0) {
+    const target = Math.ceil(p - 0.5) - 0.5
+    return Math.max(0.0001, p - target)
+  }
+  return 1
 }
 
 function ghostCorners(cols: number, rows: number): Record<GhostKind, Cell> {
@@ -235,7 +324,7 @@ function refillPellets(state: GameState) {
   let left = 0
   for (let y = 0; y < state.rows; y++) {
     for (let x = 0; x < state.cols; x++) {
-      const ch = MAZE_ROWS[y][x]
+      const ch = mazeAt(state.maze, x, y)
       state.pellets[y][x] = false
       state.power[y][x] = false
       if (ch === '.') {
@@ -255,7 +344,7 @@ function resetActors(state: GameState) {
   state.player.dir = 'left'
   state.player.pending = null
   const kinds: GhostKind[] = ['blink', 'pink', 'inky', 'clyde']
-  const parsed = parseMaze()
+  const parsed = parseMaze(state.maze)
   state.ghosts = makeGhosts(parsed.ghostSpawns, state.cols, state.rows).map((g, i) => ({
     ...g,
     kind: kinds[i],
@@ -267,8 +356,8 @@ function resetActors(state: GameState) {
   state.invuln = RESPAWN_INVULN
 }
 
-export function createInitialState(): GameState {
-  const parsed = parseMaze()
+export function createInitialState(portrait = pelletsPortrait()): GameState {
+  const parsed = parseMaze(pelletsMaze(portrait))
   const state: GameState = {
     phase: 'menu',
     score: 0,
@@ -277,6 +366,7 @@ export function createInitialState(): GameState {
     level: 1,
     cols: parsed.cols,
     rows: parsed.rows,
+    maze: parsed.maze,
     open: parsed.open,
     pellets: parsed.pellets,
     power: parsed.power,
@@ -298,12 +388,14 @@ export function createInitialState(): GameState {
     mouth: 0,
     startPos: parsed.startPos,
     ghostHome: parsed.ghostHome,
+    ghostExit: parsed.ghostExit,
+    house: parsed.house,
   }
   return state
 }
 
-export function startGame(prev: GameState): GameState {
-  const next = createInitialState()
+export function startGame(prev: GameState, portrait = pelletsPortrait()): GameState {
+  const next = createInitialState(portrait)
   next.best = Math.max(prev.best, loadBest())
   next.phase = 'playing'
   next.invuln = RESPAWN_INVULN
@@ -355,54 +447,75 @@ function ghostChoices(state: GameState, ghost: Ghost): Dir[] {
   const cy = Math.floor(ghost.y)
   const opts: Dir[] = []
   for (const dir of DIRS) {
-    if (dir === OPPOSITE[ghost.dir] && ghost.mode !== 'frightened') continue
+    if (dir === OPPOSITE[ghost.dir] && ghost.mode !== 'frightened' && !ghost.eaten) continue
     const n = VEC[dir]
     const nx = cx + n.x
     const ny = cy + n.y
-    // Tunnel wrap
     const wx = ((nx % state.cols) + state.cols) % state.cols
-    if (ny < 0 || ny >= state.rows) continue
-    if (!state.open[ny][wx]) continue
-    const ch = MAZE_ROWS[ny][wx]
+    const wy = ((ny % state.rows) + state.rows) % state.rows
+    if (ny < 0 || ny >= state.rows) {
+      // Vertical tunnel wrap
+      if (!state.open[wy]?.[wx]) continue
+    } else if (nx < 0 || nx >= state.cols) {
+      if (!state.open[wy]?.[wx]) continue
+    } else if (!state.open[ny][wx]) {
+      continue
+    }
+    const ch = mazeAt(state.maze, wx, wy)
     if (ch === '=') {
-      // Door: living chasers may leave (from below), eaten chasers may enter.
-      const hy = state.ghostHome.y
+      const { house } = state
+      const inBox =
+        cx >= house.minX && cx <= house.maxX && cy >= house.minY && cy <= house.maxY
       if (ghost.mode === 'eaten' || ghost.eaten) {
-        /* allow */
-      } else if (cy >= hy - 1 && cy <= hy && dir === 'up') {
-        /* allow leave */
-      } else if (cy >= hy - 1 && cy <= hy + 1) {
-        /* allow shuffle in house */
+        /* allow enter */
+      } else if (inBox) {
+        /* allow leave / shuffle */
       } else continue
     }
     opts.push(dir)
   }
   if (opts.length === 0) {
-    // Dead end — allow reverse.
     for (const dir of DIRS) {
       const n = VEC[dir]
       const wx = ((((cx + n.x) % state.cols) + state.cols) % state.cols)
+      const wy = ((((cy + n.y) % state.rows) + state.rows) % state.rows)
       const ny = cy + n.y
-      if (ny >= 0 && ny < state.rows && state.open[ny][wx]) opts.push(dir)
+      const nx = cx + n.x
+      if (ny >= 0 && ny < state.rows && nx >= 0 && nx < state.cols) {
+        if (state.open[ny][wx]) opts.push(dir)
+      } else if (state.open[wy]?.[wx]) {
+        opts.push(dir)
+      }
     }
   }
   return opts
+}
+
+function inHouse(state: GameState, gx: number, gy: number) {
+  const { house } = state
+  return gx >= house.minX && gx <= house.maxX && gy >= house.minY && gy <= house.maxY
 }
 
 function pickGhostDir(state: GameState, ghost: Ghost): Dir {
   const opts = ghostChoices(state, ghost)
   if (opts.length === 0) return ghost.dir
 
-  // Leave the house: bias upward through the door until out.
   const gx = Math.floor(ghost.x)
   const gy = Math.floor(ghost.y)
-  const hx = state.ghostHome.x
-  const hy = state.ghostHome.y
-  const inHouse = gy >= hy - 1 && gy <= hy + 1 && gx >= hx - 3 && gx <= hx + 3
-  if (inHouse && !ghost.eaten && ghost.mode !== 'eaten') {
-    if (opts.includes('up')) return 'up'
-    if (opts.includes('left') && ghost.x > state.cols / 2) return 'left'
-    if (opts.includes('right') && ghost.x <= state.cols / 2) return 'right'
+
+  // Leave the den toward the exit tile.
+  if (inHouse(state, gx, gy) && !ghost.eaten && ghost.mode !== 'eaten') {
+    let best: Dir = opts[0]
+    let bestD = Infinity
+    for (const dir of opts) {
+      const n = VEC[dir]
+      const d = dist2(gx + n.x + 0.5, gy + n.y + 0.5, state.ghostExit.x + 0.5, state.ghostExit.y + 0.5)
+      if (d < bestD) {
+        bestD = d
+        best = dir
+      }
+    }
+    return best
   }
 
   if (ghost.mode === 'frightened' && !ghost.eaten) {
@@ -440,46 +553,60 @@ function moveActor(
   let pend = pending
   let left = speed * dt
 
+  // Player may reverse immediately — classic feel, avoids feeling stuck.
+  if (!asGhost && pend === OPPOSITE[d]) {
+    d = pend
+    pend = null
+  }
+
   while (left > 0.0001) {
     if (atCenter(px) && atCenter(py)) {
       px = snapCenter(px)
       py = snapCenter(py)
-      if (pend && pend !== OPPOSITE[d]) {
+      if (pend) {
         const n = VEC[pend]
         const tx = Math.floor(px) + n.x
         const ty = Math.floor(py) + n.y
-        const wx = ((tx % state.cols) + state.cols) % state.cols
-        if (canEnter(state, wx + 0.5, ty + 0.5, asGhost)) {
+        if (canEnter(state, tx + 0.5, ty + 0.5, asGhost)) {
           d = pend
           pend = null
         }
       }
-      // If current dir blocked, stop (player) or will re-pick (ghost).
       {
         const n = VEC[d]
         const tx = Math.floor(px) + n.x
         const ty = Math.floor(py) + n.y
-        const wx = ((tx % state.cols) + state.cols) % state.cols
-        if (!canEnter(state, wx + 0.5, ty + 0.5, asGhost)) {
+        if (!canEnter(state, tx + 0.5, ty + 0.5, asGhost)) {
           return { x: px, y: py, dir: d, pending: pend }
         }
       }
     }
 
     const n = VEC[d]
-    // Distance to next tile center along current dir.
-    let distToNext = 1
-    if (n.x > 0) distToNext = Math.floor(px) + 1.5 - px
-    else if (n.x < 0) distToNext = px - (Math.floor(px) - 0.5)
-    else if (n.y > 0) distToNext = Math.floor(py) + 1.5 - py
-    else distToNext = py - (Math.floor(py) - 0.5)
-
-    // If already past a center wrongly, just step a bit.
-    if (!(distToNext > 0) || !Number.isFinite(distToNext)) distToNext = 0.05
-    const step = Math.min(left, distToNext, 0.2)
+    const distToNext =
+      n.x !== 0 ? distToNextCenter(px, n.x) : distToNextCenter(py, n.y)
+    const step = Math.min(left, distToNext)
     px += n.x * step
     py += n.y * step
-    px = wrapX(px, state.cols)
+    // Tunnel wrap only when both edges of that lane are open.
+    {
+      const row = ((Math.floor(py) % state.rows) + state.rows) % state.rows
+      if (
+        (px < -0.5 || px >= state.cols - 0.5) &&
+        state.open[row]?.[0] &&
+        state.open[row]?.[state.cols - 1]
+      ) {
+        px = wrapAxis(px, state.cols)
+      }
+      const col = ((Math.floor(px) % state.cols) + state.cols) % state.cols
+      if (
+        (py < -0.5 || py >= state.rows - 0.5) &&
+        state.open[0]?.[col] &&
+        state.open[state.rows - 1]?.[col]
+      ) {
+        py = wrapAxis(py, state.rows)
+      }
+    }
     left -= step
 
     if (atCenter(px) && atCenter(py)) {
@@ -588,13 +715,14 @@ export function tick(state: GameState, dt: number): GameState {
   }
 
   const spd = levelSpeed(next.level)
+  const turnBoost = next.player.pending ? 1.4 : 1
   const moved = moveActor(
     next,
     next.player.x,
     next.player.y,
     next.player.dir,
     next.player.pending,
-    PLAYER_SPEED * spd,
+    PLAYER_SPEED * spd * turnBoost,
     dt,
     false,
   )
@@ -622,7 +750,16 @@ export function tick(state: GameState, dt: number): GameState {
       : ghost.mode === 'frightened'
         ? FRIGHT_SPEED
         : GHOST_SPEED * spd
-    const gm = moveActor(next, ghost.x, ghost.y, ghost.dir, null, gSpeed, dt, true)
+    let gm = moveActor(next, ghost.x, ghost.y, ghost.dir, null, gSpeed, dt, true)
+    // If blocked at a center (bad reverse after mode flip), re-pick and nudge.
+    if (
+      atCenter(gm.x) &&
+      atCenter(gm.y) &&
+      Math.hypot(gm.x - ghost.x, gm.y - ghost.y) < 0.0001
+    ) {
+      ghost.dir = pickGhostDir(next, { ...ghost, x: gm.x, y: gm.y, dir: gm.dir })
+      gm = moveActor(next, gm.x, gm.y, ghost.dir, null, gSpeed, dt, true)
+    }
     ghost.x = gm.x
     ghost.y = gm.y
     ghost.dir = gm.dir
@@ -669,6 +806,6 @@ export function toSnapshot(state: GameState): Snapshot {
   }
 }
 
-export function mazeChar(x: number, y: number) {
-  return MAZE_ROWS[y]?.[x] ?? '#'
+export function mazeChar(state: GameState, x: number, y: number) {
+  return mazeAt(state.maze, x, y)
 }

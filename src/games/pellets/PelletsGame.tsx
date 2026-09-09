@@ -15,6 +15,7 @@ import { getPersonalBest } from '../../lib/personalBest'
 import { useTournamentPlay } from '../../tournaments/TournamentPlayContext'
 import {
   createInitialState,
+  pelletsPortrait,
   queueDir,
   startGame,
   tick,
@@ -95,10 +96,29 @@ export function PelletsGame() {
     if (ui.phase === 'menu') previousBestRef.current = apiBest
   }, [apiBest, ui.phase])
 
+  useEffect(() => {
+    const sync = () => {
+      const s = stateRef.current
+      if (s.phase !== 'menu') return
+      const portrait = pelletsPortrait()
+      const next = createInitialState(portrait)
+      if (s.cols === next.cols && s.rows === next.rows) return
+      stateRef.current = next
+      setUi(toSnapshot(next))
+    }
+    sync()
+    window.addEventListener('resize', sync)
+    window.addEventListener('orientationchange', sync)
+    return () => {
+      window.removeEventListener('resize', sync)
+      window.removeEventListener('orientationchange', sync)
+    }
+  }, [])
+
   const restart = () => {
     setSaveOpen(false)
     offeredScore.current = null
-    stateRef.current = startGame(stateRef.current)
+    stateRef.current = startGame(stateRef.current, pelletsPortrait())
     previousBestRef.current = getPersonalBest('pellets')
     startGrace.current = performance.now() + 220
     setUi(toSnapshot(stateRef.current))
