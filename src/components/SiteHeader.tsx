@@ -376,19 +376,6 @@ export function SiteHeader() {
                     onClick={() => setDrawerOpen(false)}
                   >
                     {SITE_DRAWER_YOU.label}
-                    {playerName ? (
-                      <span className="site-drawer__meta">
-                        {[
-                          rankLoading ? '…' : rank != null ? `#${rank}` : '–',
-                          playerName,
-                          trophySummary.total > 0
-                            ? `${trophySummary.total} trophy${trophySummary.total === 1 ? '' : 'ies'}`
-                            : null,
-                        ]
-                          .filter(Boolean)
-                          .join(' · ')}
-                      </span>
-                    ) : null}
                   </a>
                 </div>
                 <div className="site-drawer__utils">
