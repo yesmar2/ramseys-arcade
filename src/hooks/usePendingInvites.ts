@@ -21,7 +21,7 @@ type Store = {
   lastFetchedAt: number
 }
 
-const store: Store = {
+const empty: Store = {
   playerName: '',
   invites: [],
   loading: false,
@@ -30,16 +30,19 @@ const store: Store = {
   lastFetchedAt: 0,
 }
 
+/** Cached snapshot — must be referentially stable between emits. */
+let snapshot: Store = empty
 let pollTimer: number | null = null
 let focusBound = false
 let inFlight: Promise<void> | null = null
 
-function emit() {
+function emit(next: Store) {
+  snapshot = next
   if (typeof window !== 'undefined') window.dispatchEvent(new Event(EVENT))
 }
 
-function snapshot(): Store {
-  return { ...store }
+function getSnapshot(): Store {
+  return snapshot
 }
 
 function subscribe(onChange: () => void) {
@@ -47,44 +50,46 @@ function subscribe(onChange: () => void) {
   return () => window.removeEventListener(EVENT, onChange)
 }
 
+function patch(partial: Partial<Store>) {
+  emit({ ...snapshot, ...partial })
+}
+
 async function refresh(playerName: string, force = false) {
   const name = normalizePlayerName(playerName)
   if (!name) {
-    store.playerName = ''
-    store.invites = []
-    store.error = null
-    store.loading = false
-    emit()
+    emit({ ...empty })
     return
   }
 
   if (
     !force &&
-    store.playerName === name &&
-    Date.now() - store.lastFetchedAt < 8_000 &&
+    snapshot.playerName === name &&
+    Date.now() - snapshot.lastFetchedAt < 8_000 &&
     inFlight
   ) {
     return inFlight
   }
 
-  store.playerName = name
-  store.loading = true
-  emit()
+  patch({ playerName: name, loading: true })
 
   const run = (async () => {
     try {
       const next = await listPendingInvites(name)
-      if (store.playerName !== name) return
-      store.invites = next
-      store.error = null
-      store.lastFetchedAt = Date.now()
+      if (snapshot.playerName !== name) return
+      patch({
+        invites: next,
+        error: null,
+        lastFetchedAt: Date.now(),
+        loading: false,
+      })
     } catch (err) {
-      if (store.playerName !== name) return
-      store.error = err instanceof Error ? err.message : 'Could not load invites'
+      if (snapshot.playerName !== name) return
+      patch({
+        error: err instanceof Error ? err.message : 'Could not load invites',
+        loading: false,
+      })
     } finally {
-      if (store.playerName === name) store.loading = false
       inFlight = null
-      emit()
     }
   })()
   inFlight = run
@@ -112,51 +117,50 @@ function ensureListeners() {
 export function usePendingInvites() {
   const rawName = usePlayerName()
   const playerName = normalizePlayerName(rawName)
-  const snap = useSyncExternalStore(subscribe, snapshot, snapshot)
+  const snap = useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
 
   useEffect(() => {
     ensureListeners()
     if (!playerName) {
-      store.playerName = ''
-      store.invites = []
-      store.error = null
-      emit()
+      emit({ ...empty })
       return
     }
     void refresh(playerName)
   }, [playerName])
 
   const accept = useCallback(async (id: string): Promise<AcceptInviteResult | null> => {
-    store.busyId = id
-    store.error = null
-    emit()
+    patch({ busyId: id, error: null })
     try {
       const result = await acceptInvite(id)
-      store.invites = store.invites.filter((i) => i.id !== id)
+      patch({
+        invites: snapshot.invites.filter((i) => i.id !== id),
+        busyId: null,
+      })
       return result
     } catch (err) {
-      store.error = err instanceof Error ? err.message : 'Could not accept invite'
+      patch({
+        error: err instanceof Error ? err.message : 'Could not accept invite',
+        busyId: null,
+      })
       return null
-    } finally {
-      store.busyId = null
-      emit()
     }
   }, [])
 
   const decline = useCallback(async (id: string) => {
-    store.busyId = id
-    store.error = null
-    emit()
+    patch({ busyId: id, error: null })
     try {
       await declineInvite(id)
-      store.invites = store.invites.filter((i) => i.id !== id)
+      patch({
+        invites: snapshot.invites.filter((i) => i.id !== id),
+        busyId: null,
+      })
       return true
     } catch (err) {
-      store.error = err instanceof Error ? err.message : 'Could not decline invite'
+      patch({
+        error: err instanceof Error ? err.message : 'Could not decline invite',
+        busyId: null,
+      })
       return false
-    } finally {
-      store.busyId = null
-      emit()
     }
   }, [])
 
