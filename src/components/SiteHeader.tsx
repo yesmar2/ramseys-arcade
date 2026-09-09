@@ -109,12 +109,6 @@ export function SiteHeader() {
     }
   }, [drawerOpen])
 
-  const accountLabel = signedIn
-    ? playerName
-      ? 'Account'
-      : account?.email ?? 'Account'
-    : 'Sign in'
-
   const drawerAccountValue = signedIn
     ? playerName || account?.email?.split('@')[0] || 'Signed in'
     : 'Google / email'
@@ -279,34 +273,44 @@ export function SiteHeader() {
         </svg>
       </button>
       {utilOpen ? (
-        <div className="site-header__menu" role="menu">
-          <button
-            type="button"
-            role="menuitem"
-            onClick={() => {
-              toggleTheme()
-              setUtilOpen(false)
-            }}
-          >
-            {theme === 'dark' ? 'Light mode' : 'Dark mode'}
-          </button>
-          <SoundPackSelect
-            variant="menu"
-            onPicked={() => {
-              /* keep menu open so packs can be compared */
-            }}
-          />
+        <div className="site-header__menu" role="menu" aria-label="Settings">
+          <p className="site-header__menu-title">Settings</p>
+          <div className="site-drawer__prefs">
+            <button
+              type="button"
+              role="menuitem"
+              className="site-drawer__pref"
+              onClick={() => {
+                toggleTheme()
+              }}
+            >
+              <span className="site-drawer__pref-label">Theme</span>
+              <span className="site-drawer__pref-value">
+                {theme === 'dark' ? 'Dark' : 'Light'}
+              </span>
+            </button>
+            <SoundPackSelect
+              variant="drawer"
+              onPicked={() => {
+                /* keep menu open so packs can be compared */
+              }}
+            />
+            <button
+              type="button"
+              role="menuitem"
+              className="site-drawer__pref"
+              onClick={() => {
+                setUtilOpen(false)
+                playerRef.current?.openEdit()
+              }}
+            >
+              <span className="site-drawer__pref-label">
+                {signedIn ? 'Account' : 'Sign in'}
+              </span>
+              <span className="site-drawer__pref-value">{drawerAccountValue}</span>
+            </button>
+          </div>
           <DevImpersonateControl variant="menu" />
-          <button
-            type="button"
-            role="menuitem"
-            onClick={() => {
-              setUtilOpen(false)
-              playerRef.current?.openEdit()
-            }}
-          >
-            {accountLabel}
-          </button>
         </div>
       ) : null}
     </div>
