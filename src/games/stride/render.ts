@@ -27,15 +27,28 @@ export type StrideLayout = {
   gridW: number
 }
 
-export function computeLayout(w: number, h: number, cols: number): StrideLayout {
-  const { cell, availH, hudTop } = cellMetrics(w, h, cols)
-  // Never ask for more rows than the cell size can fit — forcing 8 when the
-  // width-based cell is tall clipped the starting hopper off the bottom on desktop.
-  const fitRows = Math.max(5, Math.floor(availH / cell))
-  const visibleRows = Math.min(14, fitRows)
+export function computeLayout(
+  w: number,
+  h: number,
+  cols: number,
+  focusCol = (cols - 1) / 2,
+): StrideLayout {
+  const { cell: widthCell, availH, hudTop } = cellMetrics(w, h, cols)
+  // Tall phones would otherwise show a dozen+ tiny rows. Cap the row budget so
+  // tiles grow (sides crop) and pan horizontally to keep the hopper in frame.
+  const maxRows = w < 560 ? 8 : w < 900 ? 9 : 10
+  const cell = availH / widthCell > maxRows ? availH / maxRows : widthCell
+  const visibleRows = Math.max(5, Math.min(maxRows, Math.floor(availH / cell)))
   const gridW = cell * cols
   const gridH = visibleRows * cell
-  const ox = Math.max(0, (w - gridW) / 2)
+  let ox = (w - gridW) / 2
+  if (gridW > w + 0.5) {
+    const focusX = (focusCol + 0.5) * cell
+    ox = w * 0.5 - focusX
+    ox = Math.max(w - gridW, Math.min(0, ox))
+  } else {
+    ox = Math.max(0, ox)
+  }
   const oy = hudTop + Math.max(0, (availH - gridH) * 0.5)
   return { cell, visibleRows, cols, ox, oy, hudTop, gridW }
 }
@@ -662,10 +675,10 @@ export function renderGame(
   h: number,
 ) {
   const dark = isDarkTheme()
-  const layout = computeLayout(w, h, state.cols)
+  const pos = playerPos(state)
+  const layout = computeLayout(w, h, state.cols, pos.c)
   const { cell, visibleRows, ox, oy, gridW } = layout
   const cameraY = state.cameraY
-  const pos = playerPos(state)
   const shake =
     state.shake > 0
       ? {

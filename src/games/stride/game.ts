@@ -115,14 +115,15 @@ export type GameState = {
  * Playfield columns. Higher = finer grid: one hop is a smaller dodge between
  * cars, without half-steps. Entity sizes are scaled from GRID_BASE so cars and
  * logs keep roughly the same on-screen footprint once cells are width-based.
+ * Phones use this as the default (fewer cols = bigger tiles).
  */
-export const COLS = 12
-/** Rows drawn on screen — kept fixed so denser columns don't open a runway. */
-export const TARGET_VISIBLE_ROWS = 8
+export const COLS = 9
+/** Aim for about this many rows when picking column density. */
+export const TARGET_VISIBLE_ROWS = 7
+/** Soft floor so ultra-tall phones still get chunky tiles. */
+export const MIN_COLS = 8
 /** Cap so a wide monitor can't open a runway of incoming cars. */
-export const MAX_COLS = 16
-/** Desktop tile scale bump — unused for cell width; kept for callers. */
-export const DESKTOP_ZOOM = 1.48
+export const MAX_COLS = 14
 /** Player sits this many rows from the bottom of the view once the camera is rolling. */
 export const PLAYER_VIEW_ROW = 3
 /** Die if you fall this many rows behind the camera. */
@@ -239,15 +240,18 @@ export function cellMetrics(viewWidth: number, viewHeight: number, cols = COLS) 
 }
 
 /**
- * Column count from viewport. Wider screens get a finer grid; phones stay at
- * COLS. Uses an un-zoomed row budget so monitors actually gain columns.
+ * Column count from viewport. Phones stay near MIN/COLS for a zoomed-in board;
+ * wider screens pick up columns so hops stay short without opening a runway.
  */
 export function pickCols(viewWidth: number, viewHeight: number): number {
   const hudTop = Math.max(52, Math.min(76, viewHeight * 0.11))
   const padBottom = Math.max(14, viewHeight * 0.02)
   const availH = viewHeight - hudTop - padBottom
   const cellTarget = availH / TARGET_VISIBLE_ROWS
-  return Math.max(COLS, Math.min(MAX_COLS, Math.floor(viewWidth / cellTarget)))
+  const ideal = Math.floor(viewWidth / cellTarget)
+  const maxForWidth = viewWidth < 480 ? 9 : viewWidth < 720 ? 11 : MAX_COLS
+  const minForWidth = viewWidth < 480 ? MIN_COLS : viewWidth < 720 ? COLS : 11
+  return Math.max(minForWidth, Math.min(maxForWidth, ideal))
 }
 
 /** Traffic wraps around this many tiles, so lanes tile seamlessly. */
