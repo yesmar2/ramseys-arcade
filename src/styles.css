@@ -9963,6 +9963,12 @@ html[data-theme='dark'] .patriot__power-mark {
   gap: 0.75rem;
 }
 
+.event-bracket__heading-actions {
+  display: flex;
+  align-items: baseline;
+  gap: 0.85rem;
+}
+
 .event-bracket__heading .event-detail__section-title {
   margin-bottom: 0;
 }
@@ -9986,12 +9992,10 @@ html[data-theme='dark'] .patriot__power-mark {
   outline: none;
 }
 
-.event-bracket__hint {
+.event-bracket__view-toggle,
+.event-bracket-rounds,
+.event-bracket-list {
   display: none;
-  margin: 0.35rem 0 0.5rem;
-  font-size: 0.72rem;
-  font-weight: 700;
-  color: var(--muted);
 }
 
 .event-bracket-scroller {
@@ -10170,8 +10174,91 @@ html[data-theme='dark'] .patriot__power-mark {
 }
 
 @media (max-width: 720px) {
-  .event-bracket__hint {
-    display: block;
+  .event-bracket__view-toggle {
+    display: inline;
+  }
+
+  .event-bracket-rounds {
+    display: flex;
+    gap: 0.35rem;
+    margin: 0.55rem 0 0.7rem;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .event-bracket-rounds::-webkit-scrollbar {
+    display: none;
+  }
+
+  .event-bracket-rounds__tab {
+    flex: none;
+    margin: 0;
+    padding: 0.35rem 0.75rem;
+    border-radius: 999px;
+    border: 1px solid rgba(var(--ink-rgb), 0.1);
+    background: rgba(var(--surface-rgb), 0.85);
+    color: var(--muted);
+    font: inherit;
+    font-size: 0.78rem;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .event-bracket-rounds__tab--on {
+    color: var(--ink);
+    border-color: color-mix(in srgb, var(--event-accent, var(--accent)) 40%, transparent);
+    background: color-mix(in srgb, var(--event-accent, var(--accent)) 14%, var(--surface));
+  }
+
+  .event-bracket-wrap--rounds .event-bracket-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .event-bracket-wrap--rounds .event-bracket-scroller {
+    display: none;
+  }
+
+  .event-bracket-wrap--tree .event-bracket-rounds,
+  .event-bracket-wrap--tree .event-bracket-list {
+    display: none;
+  }
+
+  .event-bracket-list--byes {
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+    list-style: none;
+    margin: 0.45rem 0 0;
+    padding: 0;
+  }
+
+  .event-bracket-byes {
+    border-radius: 0.85rem;
+    background: rgba(var(--surface-rgb), 0.72);
+    border: 1px solid rgba(var(--ink-rgb), 0.06);
+    padding: 0.45rem 0.65rem;
+  }
+
+  .event-bracket-byes summary {
+    cursor: pointer;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--muted);
+  }
+
+  .event-bracket-wrap--rounds .event-bracket__match {
+    padding: 0.5rem;
+  }
+
+  .event-bracket-wrap--rounds .event-bracket__side {
+    min-height: 2rem;
+    font-size: 0.95rem;
   }
 
   .event-bracket-scroller {
