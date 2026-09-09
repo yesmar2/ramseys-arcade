@@ -9820,19 +9820,15 @@ html[data-theme='dark'] .patriot__power-mark {
 }
 
 .event-ticker__facts {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.55rem;
   min-width: 0;
 }
 
-.event-ticker__facts > .event-ticker__stat {
-  flex: 1 1 calc(50% - 0.3rem);
-}
-
-@container event-ticker (min-width: 28rem) {
-  .event-ticker__facts > .event-ticker__stat {
-    flex: 1 1 6.4rem;
+@container event-ticker (min-width: 36rem) {
+  .event-ticker__facts {
+    grid-template-columns: repeat(auto-fit, minmax(8.4rem, 1fr));
   }
 }
 
@@ -9840,22 +9836,33 @@ html[data-theme='dark'] .patriot__power-mark {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 0.15rem;
-  padding: 0.72rem 0.85rem;
+  gap: 0.2rem;
+  padding: 0.8rem 0.9rem;
   min-width: 0;
+  min-height: 4.6rem;
+  border-radius: 1.15rem;
+  background: rgba(var(--surface-rgb), 0.92);
+  border: 1px solid rgba(var(--ink-rgb), 0.07);
+  box-shadow: var(--shadow-soft);
 }
 
 .event-ticker__stat strong {
   font-family: var(--font-display);
-  font-size: clamp(1.15rem, 5.5cqi, 1.5rem);
+  font-size: clamp(1.02rem, 4.6cqi, 1.38rem);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   line-height: 1.15;
-  overflow-wrap: break-word;
+  overflow-wrap: anywhere;
+}
+
+.event-ticker__stat--clock {
+  align-items: center;
+  text-align: center;
+  min-height: 5.8rem;
 }
 
 .event-ticker__stat--countdown strong {
-  font-size: clamp(1.9rem, 14cqi, 3.2rem);
+  font-size: clamp(1.9rem, 12cqi, 3rem);
   font-weight: 800;
   letter-spacing: -0.04em;
   line-height: 0.95;
@@ -9893,6 +9900,7 @@ html[data-theme='dark'] .patriot__power-mark {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
+  justify-content: center;
   gap: 0.3rem;
 }
 
@@ -10072,8 +10080,48 @@ html[data-theme='dark'] .patriot__power-mark {
 }
 
 .event-bracket__match--you {
-  border-color: color-mix(in srgb, var(--event-accent, var(--accent)) 45%, transparent);
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--event-accent, var(--accent)) 22%, transparent);
+  position: relative;
+  border-color: color-mix(in srgb, var(--event-accent, var(--accent)) 70%, transparent);
+  background: color-mix(in srgb, var(--event-accent, var(--accent)) 12%, var(--surface));
+  box-shadow:
+    0 0 0 2px color-mix(in srgb, var(--event-accent, var(--accent)) 32%, transparent),
+    0 8px 18px color-mix(in srgb, var(--event-accent, var(--accent)) 16%, transparent);
+}
+
+.event-bracket__match--flash {
+  animation: event-bracket-flash 1.15s ease;
+}
+
+@keyframes event-bracket-flash {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.035);
+    box-shadow:
+      0 0 0 4px color-mix(in srgb, var(--event-accent, var(--accent)) 40%, transparent),
+      0 10px 22px color-mix(in srgb, var(--event-accent, var(--accent)) 22%, transparent);
+  }
+}
+
+.event-bracket__you-tag {
+  position: absolute;
+  top: -0.45rem;
+  right: 0.4rem;
+  z-index: 1;
+  padding: 0.08rem 0.42rem;
+  border-radius: 999px;
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: #fff;
+  background: var(--event-accent, var(--accent));
+}
+
+.event-bracket__side--you:not(.event-bracket__side--lost) {
+  background: color-mix(in srgb, var(--event-accent, var(--accent)) 18%, var(--surface));
 }
 
 .event-bracket__side {
@@ -10164,27 +10212,52 @@ html[data-theme='dark'] .patriot__power-mark {
   }
 }
 
+.event-detail__play {
+  display: flex;
+  justify-content: center;
+}
+
 .event-play-grid {
   list-style: none;
-  margin: 0;
+  margin: 0 auto;
   padding: 0;
   display: grid;
   grid-template-columns: 1fr;
   gap: 0.85rem;
+  width: min(100%, 42rem);
+  justify-items: stretch;
 }
 
 .event-play-grid--count-1 {
-  max-width: 14.5rem;
+  width: min(100%, 16.5rem);
 }
 
-.event-play-grid--count-2,
-.event-play-grid--count-3 {
+.event-play-grid--count-2 {
+  width: min(100%, 28rem);
   grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.event-play-grid--count-3 {
+  width: 100%;
+  max-width: 42rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.event-play-grid--count-3 > li:last-child {
+  grid-column: 1 / -1;
+  justify-self: center;
+  width: calc(50% - 0.425rem);
 }
 
 @media (min-width: 520px) {
   .event-play-grid--count-3 {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .event-play-grid--count-3 > li:last-child {
+    grid-column: auto;
+    justify-self: stretch;
+    width: auto;
   }
 }
 

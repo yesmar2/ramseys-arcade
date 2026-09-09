@@ -12,21 +12,37 @@ function youInMatch(match: PublicBracketMatch, displayName: string) {
   return Boolean(you && match.players.some((p) => p && normalizePlayerName(p.name) === you))
 }
 
+function yourCurrentMatch(matches: PublicBracketMatch[], displayName: string) {
+  const yours = matches.filter((match) => youInMatch(match, displayName))
+  return yours.find((match) => !match.winnerId) ?? yours.at(-1) ?? null
+}
+
+function flashMatch(el: HTMLElement) {
+  el.classList.remove('event-bracket__match--flash')
+  void el.offsetWidth
+  el.classList.add('event-bracket__match--flash')
+}
+
 function MatchCard({
   match,
   displayName,
+  isYours,
 }: {
   match: PublicBracketMatch
   displayName: string
+  isYours: boolean
 }) {
+  const you = normalizePlayerName(displayName)
   return (
     <article
-      className={`event-bracket__match${
-        youInMatch(match, displayName) ? ' event-bracket__match--you' : ''
-      }${match.winnerId ? ' event-bracket__match--done' : ''}`}
+      className={`event-bracket__match${isYours ? ' event-bracket__match--you' : ''}${
+        match.winnerId ? ' event-bracket__match--done' : ''
+      }`}
     >
+      {isYours ? <span className="event-bracket__you-tag">You</span> : null}
       {match.players.map((side, idx) => {
         const isBye = side?.name === 'BYE'
+        const isYouSide = Boolean(side && you && normalizePlayerName(side.name) === you)
         const won = Boolean(side && !isBye && match.winnerId === side.id)
         const lost = Boolean(side && !isBye && match.winnerId && match.winnerId !== side.id)
         return (
@@ -34,7 +50,9 @@ function MatchCard({
             key={side?.id || `empty-${idx}`}
             className={`event-bracket__side${won ? ' event-bracket__side--won' : ''}${
               lost ? ' event-bracket__side--lost' : ''
-            }${isBye ? ' event-bracket__side--bye' : ''}`}
+            }${isBye ? ' event-bracket__side--bye' : ''}${
+              isYouSide ? ' event-bracket__side--you' : ''
+            }`}
           >
             <span className="event-bracket__name">{side?.name ?? 'TBD'}</span>
             <span className="event-bracket__score">
@@ -56,27 +74,35 @@ export function EventBracket({
   displayName: string
   className?: string
 }) {
-  if (eventKind(detail) !== 'bracket') return null
-  const matches = detail.bracket?.matches ?? []
+  const scrollerRef = useRef<HTMLDivElement>(null)
+  const isBracket = eventKind(detail) === 'bracket'
+  const matches = isBracket ? (detail.bracket?.matches ?? []) : []
   const cap = detail.rules.maxPlayers ?? 0
-  const waiting = !detail.bracket
+  const waiting = isBracket && !detail.bracket
   const maxRound = matches.reduce((m, row) => Math.max(m, row.round), 1)
   const rounds = waiting ? [] : Array.from({ length: maxRound }, (_, i) => i + 1)
   const firstCount = matches.filter((m) => m.round === 1).length || 1
-  const scrollerRef = useRef<HTMLDivElement>(null)
-  const youPlaying = matches.some((match) => youInMatch(match, displayName))
+  const currentYou = yourCurrentMatch(matches, displayName)
+  const youPlaying = Boolean(currentYou)
 
   const scrollToYou = () => {
     const root = scrollerRef.current
     const you = root?.querySelector('.event-bracket__match--you')
-    if (!root || !(you instanceof HTMLElement)) return
-    const cr = you.getBoundingClientRect()
-    const sr = root.getBoundingClientRect()
-    root.scrollTo({
-      left: root.scrollLeft + cr.left - sr.left - (sr.width - cr.width) / 2,
-      top: root.scrollTop + cr.top - sr.top - (sr.height - cr.height) / 2,
-      behavior: 'smooth',
-    })
+    if (!(you instanceof HTMLElement)) return
+    if (
+      root &&
+      (root.scrollWidth > root.clientWidth + 1 || root.scrollHeight > root.clientHeight + 1)
+    ) {
+      const cr = you.getBoundingClientRect()
+      const sr = root.getBoundingClientRect()
+      root.scrollTo({
+        left: root.scrollLeft + cr.left - sr.left - (sr.width - cr.width) / 2,
+        top: root.scrollTop + cr.top - sr.top - (sr.height - cr.height) / 2,
+        behavior: 'smooth',
+      })
+    }
+    you.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' })
+    flashMatch(you)
   }
 
   useLayoutEffect(() => {
@@ -93,6 +119,8 @@ export function EventBracket({
       behavior: 'instant',
     })
   }, [detail.id, displayName, waiting, firstCount, maxRound])
+
+  if (!isBracket) return null
 
   return (
     <section className={className} aria-label="Bracket">
@@ -151,7 +179,11 @@ export function EventBracket({
                       gridRow: `${2 + match.slot * span} / span ${span}`,
                     }}
                   >
-                    <MatchCard match={match} displayName={displayName} />
+                    <MatchCard
+                  match={match}
+                  displayName={displayName}
+                  isYours={currentYou?.id === match.id}
+                />
                     {match.round !== maxRound ? (
                       <span className="event-bracket__wires" aria-hidden="true">
                         <span className="event-bracket__wire event-bracket__wire--h" />
