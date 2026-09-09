@@ -3629,7 +3629,7 @@ html[data-theme='dark'] .patriot__power-mark {
 }
 
 .pellets .play-readout__score {
-  color: #c98a12;
+  color: color-mix(in srgb, #f5b942 82%, var(--ink));
 }
 
 /* —— Snake —— */

@@ -457,35 +457,42 @@ export function CrosswalkArt() {
 
 /** Pac-Man vibe — open mouth, dots, a ghost. */
 export function PelletsArt() {
-  const muncher = pastel(HUE.gold, 62, 58)
-  const ghost = pastel(HUE.rose, 58, 52)
-  const pellet = pastel(HUE.sky, 50, 40)
+  const you = pastel(HUE.gold, 58, 48)
+  const chaser = pastel(HUE.rose, 56, 48)
+  const crumb = pastel(HUE.gold, 52, 40)
 
   return (
     <SvgFrame>
       <TileBg />
-      <path
-        d="M70 50 L92 28 A24 24 0 1 0 92 72 Z"
-        fill={muncher.fill}
-        stroke={muncher.stroke}
+      <rect
+        x="48"
+        y="38"
+        width="28"
+        height="28"
+        rx="10"
+        fill={you.fill}
+        stroke={you.stroke}
         strokeWidth="1.8"
-        strokeLinejoin="round"
       />
-      <circle cx="66" cy="40" r="2.2" fill="#1a2b3c" />
-      {[108, 122, 136].map((x) => (
-        <circle key={x} cx={x} cy="50" r="3.2" fill={pellet.fill} stroke={pellet.stroke} strokeWidth="1.2" />
+      <circle cx="56" cy="48" r="2.2" fill="#1a2b3c" />
+      <circle cx="66" cy="48" r="2.2" fill="#1a2b3c" />
+      {[102, 118, 134].map((x) => (
+        <circle key={x} cx={x} cy="52" r="3.4" fill={crumb.fill} stroke={crumb.stroke} strokeWidth="1.2" />
       ))}
-      <path
-        d="M118 78 L118 60 Q118 50 128 50 Q138 50 138 60 L138 78 L133 72 L128 78 L123 72 Z"
-        fill={ghost.fill}
-        stroke={ghost.stroke}
-        strokeWidth="1.5"
-        strokeLinejoin="round"
+      <rect
+        x="108"
+        y="68"
+        width="24"
+        height="24"
+        rx="9"
+        fill={chaser.fill}
+        stroke={chaser.stroke}
+        strokeWidth="1.6"
       />
-      <circle cx="124" cy="58" r="2" fill="#fff" />
-      <circle cx="132" cy="58" r="2" fill="#fff" />
-      <circle cx="124.6" cy="58.4" r="0.9" fill="#1a2b3c" />
-      <circle cx="132.6" cy="58.4" r="0.9" fill="#1a2b3c" />
+      <circle cx="115" cy="77" r="2" fill="#fff" />
+      <circle cx="125" cy="77" r="2" fill="#fff" />
+      <circle cx="115.6" cy="77.4" r="0.9" fill="#1a2b3c" />
+      <circle cx="125.6" cy="77.4" r="0.9" fill="#1a2b3c" />
     </SvgFrame>
   )
 }

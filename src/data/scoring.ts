@@ -88,10 +88,10 @@ const SCORING: Record<string, ScoreRow[]> = {
     { label: 'Powerup on field', value: 'vanishes after 6s' },
   ],
   pellets: [
-    { label: 'Pellet', value: '+10' },
-    { label: 'Power pellet', value: '+50' },
-    { label: 'Ghost (1st / 2nd / 3rd / 4th)', value: '+200 / +400 / +800 / +1600' },
-    { label: 'Clear the maze', value: 'next level · faster ghosts' },
+    { label: 'Crumb', value: '+10' },
+    { label: 'Power crumb', value: '+50' },
+    { label: 'Chaser (1st / 2nd / 3rd / 4th)', value: '+200 / +400 / +800 / +1600' },
+    { label: 'Clear the maze', value: 'next level · faster chasers' },
     { label: 'Lives', value: '3' },
   ],
 }

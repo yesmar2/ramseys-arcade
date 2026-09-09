@@ -106,8 +106,8 @@ export const games: Game[] = [
   {
     name: 'Pellets',
     slug: 'pellets',
-    description: 'Clear the maze. Watch the ghosts.',
-    how: 'Swipe or arrow keys to steer. Eat every pellet, grab the big ones to scare ghosts, and clear the maze to climb levels. Three lives.',
+    description: 'Clear the maze. Outrun the chasers.',
+    how: 'Swipe or arrow keys to steer. Eat every crumb, grab the big ones to stun the chasers, and clear the maze to climb levels. Three lives.',
     accent: '#f5b942',
     playable: true,
   },
