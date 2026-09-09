@@ -29,7 +29,7 @@ export type StrideLayout = {
 }
 
 export function computeLayout(w: number, h: number, cols: number): StrideLayout {
-  const { cell, availH, hudTop } = cellMetrics(w, h)
+  const { cell, availH, hudTop } = cellMetrics(w, h, cols)
   const visibleRows = Math.max(7, Math.min(TARGET_VISIBLE_ROWS + 1, Math.floor(availH / cell)))
   const gridW = cell * cols
   const gridH = visibleRows * cell

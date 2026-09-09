@@ -111,11 +111,16 @@ export type GameState = {
   runSeed: number
 }
 
-export const COLS = 7
+/**
+ * Playfield columns. Higher = finer grid: one hop is a smaller dodge between
+ * cars, without half-steps. Entity sizes are scaled from GRID_BASE so cars and
+ * logs keep roughly the same on-screen footprint.
+ */
+export const COLS = 10
 /** Target rows visible on screen — lower = more zoom. */
 export const TARGET_VISIBLE_ROWS = 8
 /** Cap so a wide monitor can't open a runway of incoming cars. */
-export const MAX_COLS = 9
+export const MAX_COLS = 13
 /** Desktop tile scale bump. */
 export const DESKTOP_ZOOM = 1.48
 /** Player sits this many rows from the bottom of the view once the camera is rolling. */
@@ -125,7 +130,14 @@ export const BACK_LIMIT = 2
 /** Rows to keep generated ahead of the camera. */
 export const ROW_BUFFER = 22
 /** Lane width beyond the visible columns — traffic wraps across this span. */
-export const LANE_PAD = 5
+export const LANE_PAD = 7
+/** Column count the road/log/speed numbers were authored against. */
+const GRID_BASE = 7
+
+/** Scale entity sizes/speeds so denser columns don't shrink cars and logs. */
+function gridScale(cols: number) {
+  return cols / GRID_BASE
+}
 /** Distance markers every this many rows. */
 export const MILESTONE_STEP = 25
 /**
@@ -203,21 +215,28 @@ export function difficultyAt(row: number): number {
   return Math.max(0, Math.min(1, (row - 6) / 110))
 }
 
-/** Tile size that fits both the row budget and the minimum column count. */
-export function cellMetrics(viewWidth: number, viewHeight: number) {
+/** Tile size that fits the row budget and the active column count. */
+export function cellMetrics(viewWidth: number, viewHeight: number, cols = COLS) {
   const hudTop = Math.max(52, Math.min(76, viewHeight * 0.11))
   const padBottom = Math.max(14, viewHeight * 0.02)
   const availH = viewHeight - hudTop - padBottom
   const zoom = viewWidth >= 900 ? DESKTOP_ZOOM : 1
   const byHeight = (availH / TARGET_VISIBLE_ROWS) * zoom
-  const byWidth = viewWidth / COLS
+  const byWidth = viewWidth / cols
   return { cell: Math.max(1, Math.min(byHeight, byWidth)), availH, hudTop }
 }
 
-/** Column count from viewport — fill width, but never so wide you see traffic coming. */
+/**
+ * Column count from viewport. Wider screens get a finer grid (more columns);
+ * phones stay at COLS. Height-based sizing — without the desktop zoom bump —
+ * so monitors actually gain columns instead of locking to COLS.
+ */
 export function pickCols(viewWidth: number, viewHeight: number): number {
-  const { cell } = cellMetrics(viewWidth, viewHeight)
-  return Math.max(COLS, Math.min(MAX_COLS, Math.floor(viewWidth / cell)))
+  const hudTop = Math.max(52, Math.min(76, viewHeight * 0.11))
+  const padBottom = Math.max(14, viewHeight * 0.02)
+  const availH = viewHeight - hudTop - padBottom
+  const cellTarget = availH / TARGET_VISIBLE_ROWS
+  return Math.max(COLS, Math.min(MAX_COLS, Math.floor(viewWidth / cellTarget)))
 }
 
 /** Traffic wraps around this many tiles, so lanes tile seamlessly. */
@@ -314,25 +333,30 @@ function makeGrassRow(cols: number, rand: () => number, d: number): Row {
 
 function makeRoadRow(row: number, cols: number, rand: () => number, prev?: Row): Row {
   const d = difficultyAt(row)
+  const g = gridScale(cols)
   const prevRoad = prev?.kind === 'road' ? prev : undefined
   let dir: -1 | 1 = rand() < 0.5 ? -1 : 1
   // Mostly alternate against the lane behind you — opposing traffic reads clearly
   // and its gaps sweep across yours instead of travelling with them.
   if (prevRoad && rand() < 0.72) dir = prevRoad.dir === 1 ? -1 : 1
-  const roll = (1.3 + d * 0.6) * pickTier(ROAD_TIERS, d, rand) * (0.94 + rand() * 0.14)
-  let speed = Math.min(MAX_ROAD_SPEED, Math.max(MIN_ROAD_SPEED, roll))
-  if (prevRoad && prevRoad.dir === dir && Math.abs(speed - prevRoad.speed) < LANE_SPEED_SPREAD) {
-    const push = speed >= prevRoad.speed ? LANE_SPEED_SPREAD : -LANE_SPEED_SPREAD
+  // Speeds/gaps authored in GRID_BASE units, then scaled so denser columns keep
+  // the same on-screen pace and hold times.
+  const speedBase =
+    (1.3 + d * 0.6) * pickTier(ROAD_TIERS, d, rand) * (0.94 + rand() * 0.14)
+  let speed = Math.min(MAX_ROAD_SPEED, Math.max(MIN_ROAD_SPEED, speedBase)) * g
+  const spread = LANE_SPEED_SPREAD * g
+  if (prevRoad && prevRoad.dir === dir && Math.abs(speed - prevRoad.speed) < spread) {
+    const push = speed >= prevRoad.speed ? spread : -spread
     speed = prevRoad.speed + push
-    if (speed > MAX_ROAD_SPEED || speed < MIN_ROAD_SPEED) speed = prevRoad.speed - push
-    speed = Math.min(MAX_ROAD_SPEED, Math.max(MIN_ROAD_SPEED, speed))
+    if (speed > MAX_ROAD_SPEED * g || speed < MIN_ROAD_SPEED * g) speed = prevRoad.speed - push
+    speed = Math.min(MAX_ROAD_SPEED * g, Math.max(MIN_ROAD_SPEED * g, speed))
   }
-  const w = rand() < 0.28 ? 2.0 : 1.4
+  const w = (rand() < 0.28 ? 2.0 : 1.4) * g
   const span = laneSpan(cols)
   // Gaps are the whole game. Sized in seconds rather than tiles: every hole has
   // to hold you for over a second so a lane is somewhere you can wait, not just
   // a frame you have to hit.
-  const minGap = 1.15 + speed * 1.35 * (1 - d * 0.12)
+  const minGap = (1.15 + (speed / g) * 1.35 * (1 - d * 0.12)) * g
   // Ask for a full lane and let the gap rule below thin it out — the guaranteed
   // hole is what keeps it fair, so a busy lane costs nothing.
   const want = 2 + Math.round(d * 2 + rand() * 1.6)
@@ -403,16 +427,19 @@ function makeWaterRow(
 
   // Alternate directions so there's always a way to work across a chunk.
   const dir: -1 | 1 = rowInChunk % 2 === 0 ? 1 : -1
-  const speed = (0.9 + d * 0.62) * pickTier(LOG_TIERS, d, rand) * (0.94 + rand() * 0.14)
+  const g = gridScale(cols)
+  const speed = (0.9 + d * 0.62) * pickTier(LOG_TIERS, d, rand) * (0.94 + rand() * 0.14) * g
   const span = laneSpan(cols)
-  // Whole tiles only, and every tile is a seat, so any length reads honestly:
-  // a short log is one hop end to end, a long one is three.
-  const logW = rand() < 0.22 ? 2 : rand() < 0.72 ? 3 : 4
-  // Space them to leave about a tile of water, so a column is under timber most
+  // Whole tiles only, and every tile is a seat. Lengths scaled with the denser
+  // grid so a log still covers about the same fraction of the road as before.
+  const baseW = rand() < 0.22 ? 2 : rand() < 0.72 ? 3 : 4
+  const logW = Math.max(2, Math.round(baseW * g))
+  // Space them to leave about a hop of water, so a column is under timber most
   // of the time. You drift toward the edge while you ride, so hunting for a log
   // can't be a long wait.
-  let count = Math.max(1, Math.round(span / (logW + LOG_GAP)))
-  while (count > 1 && span / count - logW < 0.8) count -= 1
+  const logGap = LOG_GAP * g
+  let count = Math.max(1, Math.round(span / (logW + logGap)))
+  while (count > 1 && span / count - logW < 0.8 * g) count -= 1
   const gap = span / count - logW
   // Stagger neighbouring rows so log gaps don't line up into a dead end.
   const phase = rowInChunk * (0.8 + chunkRand() * 0.9)
@@ -431,8 +458,9 @@ function makeWaterRow(
 function makeRailRow(row: number, cols: number, runSeed: number): Row {
   const rand = mulberry32(row * 1_048_583 ^ runSeed)
   const d = difficultyAt(row)
+  const g = gridScale(cols)
   const dir: -1 | 1 = rand() < 0.5 ? -1 : 1
-  const trainW = 5 + rand() * 1.6
+  const trainW = (5 + rand() * 1.6) * g
   // Warning never drops below ~1.5s so the crossing is always telegraphed.
   const railWarn = 1.9 - d * 0.35 + rand() * 0.9
   const railPass = 0.44 + rand() * 0.16
