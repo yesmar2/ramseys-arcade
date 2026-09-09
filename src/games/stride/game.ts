@@ -134,9 +134,17 @@ export const LANE_PAD = 8
 /** Column count the road/log/speed numbers were authored against. */
 const GRID_BASE = 7
 
-/** Scale entity sizes/speeds so denser columns don't shrink cars and logs. */
+/** Scale speeds/gaps with denser columns so hold times stay fair. */
 function gridScale(cols: number) {
   return cols / GRID_BASE
+}
+
+/**
+ * Cars/logs grow with the denser grid, but not 1:1 — full gridScale made them
+ * feel bloated next to a one-tile hop.
+ */
+function sizeScale(cols: number) {
+  return 1 + (gridScale(cols) - 1) * 0.35
 }
 
 /** Distance markers every this many rows. */
@@ -353,7 +361,7 @@ function makeRoadRow(row: number, cols: number, rand: () => number, prev?: Row):
     if (speed > MAX_ROAD_SPEED * g || speed < MIN_ROAD_SPEED * g) speed = prevRoad.speed - push
     speed = Math.min(MAX_ROAD_SPEED * g, Math.max(MIN_ROAD_SPEED * g, speed))
   }
-  const w = (rand() < 0.28 ? 2.0 : 1.4) * g
+  const w = (rand() < 0.28 ? 2.0 : 1.4) * sizeScale(cols)
   const span = laneSpan(cols)
   // Gaps are the whole game. Sized in seconds rather than tiles: every hole has
   // to hold you for over a second so a lane is somewhere you can wait, not just
@@ -432,16 +440,16 @@ function makeWaterRow(
   const g = gridScale(cols)
   const speed = (0.9 + d * 0.62) * pickTier(LOG_TIERS, d, rand) * (0.94 + rand() * 0.14) * g
   const span = laneSpan(cols)
-  // Whole tiles only, and every tile is a seat. Lengths scaled with the denser
-  // grid so a log still covers about the same fraction of the road as before.
+  // Whole tiles only, and every tile is a seat. Milder than full gridScale so
+  // logs stay hoppable without looking like barges.
   const baseW = rand() < 0.22 ? 2 : rand() < 0.72 ? 3 : 4
-  const logW = Math.max(2, Math.round(baseW * g))
+  const logW = Math.max(2, Math.round(baseW * sizeScale(cols)))
   // Space them to leave about a hop of water, so a column is under timber most
   // of the time. You drift toward the edge while you ride, so hunting for a log
   // can't be a long wait.
-  const logGap = LOG_GAP * g
+  const logGap = LOG_GAP * sizeScale(cols)
   let count = Math.max(1, Math.round(span / (logW + logGap)))
-  while (count > 1 && span / count - logW < 0.8 * g) count -= 1
+  while (count > 1 && span / count - logW < 0.8 * sizeScale(cols)) count -= 1
   const gap = span / count - logW
   // Stagger neighbouring rows so log gaps don't line up into a dead end.
   const phase = rowInChunk * (0.8 + chunkRand() * 0.9)
@@ -462,7 +470,7 @@ function makeRailRow(row: number, cols: number, runSeed: number): Row {
   const d = difficultyAt(row)
   const g = gridScale(cols)
   const dir: -1 | 1 = rand() < 0.5 ? -1 : 1
-  const trainW = (5 + rand() * 1.6) * g
+  const trainW = (5 + rand() * 1.6) * sizeScale(cols)
   // Warning never drops below ~1.5s so the crossing is always telegraphed.
   const railWarn = 1.9 - d * 0.35 + rand() * 0.9
   const railPass = 0.44 + rand() * 0.16
