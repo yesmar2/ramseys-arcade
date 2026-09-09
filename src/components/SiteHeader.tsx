@@ -1,6 +1,5 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { useAuth } from '../hooks/useAuth'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { rankHref, useHashRoute } from '../hooks/useHashRoute'
 import { APP_NAME_ACCENT, APP_NAME_LEAD } from '../lib/brand'
@@ -29,7 +28,6 @@ export function SiteHeader() {
   const hashKey = JSON.stringify(route)
   const { rank } = useGlobalRank()
   const rankLoading = useGlobalRankLoading()
-  const { account, signedIn } = useAuth()
   const playerName = normalizePlayerName(usePlayerName())
   const impersonation = useImpersonation()
   const trophySummary = useTrophySummary(playerName)
@@ -109,10 +107,6 @@ export function SiteHeader() {
     }
   }, [drawerOpen])
 
-  const drawerAccountValue = signedIn
-    ? playerName || account?.email?.split('@')[0] || 'Signed in'
-    : 'Google / email'
-
   const hash = typeof window !== 'undefined' ? window.location.hash : '#/'
   const showBoardFilters =
     route.name !== 'tournaments' &&
@@ -174,7 +168,27 @@ export function SiteHeader() {
         </div>
       </div>
 
-      <div className="site-header__end">
+      <div className="site-header__identity">
+        {inviteCount > 0 ? (
+          <div className="site-header__invites" ref={invitesRef}>
+            <button
+              type="button"
+              className="site-header__invite-btn"
+              aria-label={`${inviteCount} pending invite${inviteCount === 1 ? '' : 's'}`}
+              aria-expanded={invitesOpen}
+              aria-haspopup="dialog"
+              onClick={() => setInvitesOpen((open) => !open)}
+            >
+              <span className="site-header__invite-count">{inviteCount}</span>
+            </button>
+            {invitesOpen ? (
+              <div className="site-header__invite-panel" role="dialog" aria-label="Pending invites">
+                <PendingInvitesStrip compact />
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+
         {playerName ? (
           <a
             className={`site-header__you${navActive('you', hash) ? ' site-header__you--active' : ''}${impersonation ? ' site-header__you--impersonating' : ''}`}
@@ -221,26 +235,6 @@ export function SiteHeader() {
               />
             ) : null}
           </a>
-        ) : null}
-
-        {inviteCount > 0 ? (
-          <div className="site-header__invites" ref={invitesRef}>
-            <button
-              type="button"
-              className="site-header__invite-btn"
-              aria-label={`${inviteCount} pending invite${inviteCount === 1 ? '' : 's'}`}
-              aria-expanded={invitesOpen}
-              aria-haspopup="dialog"
-              onClick={() => setInvitesOpen((open) => !open)}
-            >
-              <span className="site-header__invite-count">{inviteCount}</span>
-            </button>
-            {invitesOpen ? (
-              <div className="site-header__invite-panel" role="dialog" aria-label="Pending invites">
-                <PendingInvitesStrip compact />
-              </div>
-            ) : null}
-          </div>
         ) : null}
 
         <div className="site-header__player">
@@ -295,20 +289,6 @@ export function SiteHeader() {
                 /* keep menu open so packs can be compared */
               }}
             />
-            <button
-              type="button"
-              role="menuitem"
-              className="site-drawer__pref"
-              onClick={() => {
-                setUtilOpen(false)
-                playerRef.current?.openEdit()
-              }}
-            >
-              <span className="site-drawer__pref-label">
-                {signedIn ? 'Account' : 'Sign in'}
-              </span>
-              <span className="site-drawer__pref-value">{drawerAccountValue}</span>
-            </button>
           </div>
           <DevImpersonateControl variant="menu" />
         </div>
@@ -409,19 +389,6 @@ export function SiteHeader() {
                         </span>
                       </button>
                       <SoundPackSelect variant="drawer" />
-                      <button
-                        type="button"
-                        className="site-drawer__pref"
-                        onClick={() => {
-                          setDrawerOpen(false)
-                          playerRef.current?.openEdit()
-                        }}
-                      >
-                        <span className="site-drawer__pref-label">
-                          {signedIn ? 'Account' : 'Sign in'}
-                        </span>
-                        <span className="site-drawer__pref-value">{drawerAccountValue}</span>
-                      </button>
                     </div>
                     <DevImpersonateControl variant="drawer" />
                   </section>

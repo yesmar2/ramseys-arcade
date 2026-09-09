@@ -1764,6 +1764,40 @@ a.lb-board-switcher__item {
   flex: none;
 }
 
+.site-header__identity {
+  position: relative;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex: none;
+}
+
+@media (min-width: 641px) {
+  /* Flatten header so identity can sit after scopes/settings at the far right. */
+  .site-header {
+    display: contents;
+  }
+
+  .site-header__start {
+    order: 1;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .site-scopes {
+    order: 2;
+  }
+
+  .site-header__more {
+    order: 3;
+  }
+
+  .site-header__identity {
+    order: 4;
+  }
+}
+
 .site-scopes {
   position: relative;
   z-index: 20;
