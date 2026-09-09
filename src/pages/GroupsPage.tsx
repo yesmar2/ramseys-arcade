@@ -3,6 +3,8 @@ import { BoardEmpty, BoardSkeleton } from '../components/BoardChrome'
 import { PageBackLink } from '../components/PageBackLink'
 import { PageShell } from '../components/PageShell'
 import { PlayerAvatar } from '../components/PlayerAvatar'
+import { InviteByTagForm } from '../components/InviteByTagForm'
+import { PendingInvitesStrip } from '../components/PendingInvitesStrip'
 import { ShareBoardButton } from '../components/ShareBoardButton'
 import { leaderboardHref, useHashRoute } from '../hooks/useHashRoute'
 import { useAuth } from '../hooks/useAuth'
@@ -205,6 +207,8 @@ export function GroupsPage() {
         <BoardSkeleton rows={3} />
       ) : (
         <>
+          <PendingInvitesStrip kind="group" />
+
           {creating && account ? (
             <CreateGroupForm
               name={name}
@@ -569,7 +573,7 @@ export function GroupDetailPage({ id, invite }: { id: string; invite?: string })
               <section className="group-panel" aria-label="Invite">
                 <h2 className="event-detail__section-title">Invite</h2>
                 <p className="group-panel__hint">
-                  Share this link. They join with their gamer tag and then show up on the boards.
+                  Share this link, or invite a gamer tag directly — they’ll see it in the app.
                 </p>
                 <p className="group-invite-code">{group.inviteCode}</p>
                 <div className="group-panel__actions">
@@ -593,6 +597,7 @@ export function GroupDetailPage({ id, invite }: { id: string; invite?: string })
                     New code
                   </button>
                 </div>
+                <InviteByTagForm kind="group" targetId={id} disabled={busy} />
               </section>
             ) : null}
 

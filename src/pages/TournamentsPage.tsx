@@ -6,6 +6,8 @@ import { PageBackLink } from '../components/PageBackLink'
 import { PageShell } from '../components/PageShell'
 import { PlayerAvatar } from '../components/PlayerAvatar'
 import { PodiumMedal, medalKind } from '../components/PodiumMedal'
+import { InviteByTagForm } from '../components/InviteByTagForm'
+import { PendingInvitesStrip } from '../components/PendingInvitesStrip'
 import { ShareBoardButton } from '../components/ShareBoardButton'
 import { getGame } from '../data/games'
 import { useAuth } from '../hooks/useAuth'
@@ -524,6 +526,8 @@ export function TournamentsPage() {
         </div>
       </header>
 
+      <PendingInvitesStrip kind="tournament" />
+
       {loading ? (
         <p className="lb-empty">Loading…</p>
       ) : error ? (
@@ -819,6 +823,12 @@ export function TournamentDetailPage({ id, invite }: { id: string; invite?: stri
               </div>
             </div>
           </header>
+
+          {detail.isHost && detail.inviteCode && detail.status !== 'ended' ? (
+            <section className="group-panel event-detail__invite-tag" aria-label="Invite by tag">
+              <InviteByTagForm kind="tournament" targetId={id} disabled={busy} />
+            </section>
+          ) : null}
 
           <div className="game-lobby__layout">
             <div className="game-lobby__main">

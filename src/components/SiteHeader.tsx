@@ -10,11 +10,13 @@ import { normalizePlayerName } from '../lib/leaderboard'
 import { useTrophySummary } from '../hooks/useTrophySummary'
 import { useImpersonation } from '../hooks/useImpersonation'
 import { DevImpersonateControl } from './DevImpersonateControl'
+import { PendingInvitesStrip } from './PendingInvitesStrip'
 import { PlayerBadge, type PlayerBadgeHandle } from './PlayerBadge'
 import { SiteGroupControl } from './SiteGroupControl'
 import { SitePeriodControl } from './SitePeriodControl'
 import { SoundPackSelect } from './SoundPackSelect'
 import { TrophyMark } from './TrophyMark'
+import { usePendingInvites } from '../hooks/usePendingInvites'
 import {
   navActive,
   SITE_DRAWER_YOU,
@@ -31,12 +33,15 @@ export function SiteHeader() {
   const playerName = normalizePlayerName(usePlayerName())
   const impersonation = useImpersonation()
   const trophySummary = useTrophySummary(playerName)
+  const { count: inviteCount } = usePendingInvites()
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [utilOpen, setUtilOpen] = useState(false)
+  const [invitesOpen, setInvitesOpen] = useState(false)
   const [theme, setTheme] = useState<Theme>(() =>
     typeof document === 'undefined' ? 'light' : currentTheme(),
   )
   const utilRef = useRef<HTMLDivElement>(null)
+  const invitesRef = useRef<HTMLDivElement>(null)
   const drawerRef = useRef<HTMLDivElement>(null)
   const menuBtnRef = useRef<HTMLButtonElement>(null)
   const playerRef = useRef<PlayerBadgeHandle>(null)
@@ -51,6 +56,7 @@ export function SiteHeader() {
   useEffect(() => {
     setDrawerOpen(false)
     setUtilOpen(false)
+    setInvitesOpen(false)
   }, [hashKey])
 
   useEffect(() => {
@@ -68,6 +74,22 @@ export function SiteHeader() {
       window.removeEventListener('keydown', onKey)
     }
   }, [utilOpen])
+
+  useEffect(() => {
+    if (!invitesOpen) return
+    const onPointer = (e: PointerEvent) => {
+      if (!invitesRef.current?.contains(e.target as Node)) setInvitesOpen(false)
+    }
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setInvitesOpen(false)
+    }
+    window.addEventListener('pointerdown', onPointer)
+    window.addEventListener('keydown', onKey)
+    return () => {
+      window.removeEventListener('pointerdown', onPointer)
+      window.removeEventListener('keydown', onKey)
+    }
+  }, [invitesOpen])
 
   useEffect(() => {
     if (!drawerOpen) return
@@ -212,6 +234,26 @@ export function SiteHeader() {
             Set gamer tag
           </button>
         )}
+
+        {inviteCount > 0 ? (
+          <div className="site-header__invites" ref={invitesRef}>
+            <button
+              type="button"
+              className="site-header__invite-btn"
+              aria-label={`${inviteCount} pending invite${inviteCount === 1 ? '' : 's'}`}
+              aria-expanded={invitesOpen}
+              aria-haspopup="dialog"
+              onClick={() => setInvitesOpen((open) => !open)}
+            >
+              <span className="site-header__invite-count">{inviteCount}</span>
+            </button>
+            {invitesOpen ? (
+              <div className="site-header__invite-panel" role="dialog" aria-label="Pending invites">
+                <PendingInvitesStrip compact />
+              </div>
+            ) : null}
+          </div>
+        ) : null}
 
         <div className="site-header__player">
           <PlayerBadge ref={playerRef} icon className="site-header__player-badge" />

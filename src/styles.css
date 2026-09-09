@@ -1906,6 +1906,54 @@ a.site-drawer__period-tab {
   pointer-events: none;
 }
 
+.site-header__invites {
+  position: relative;
+  flex: none;
+  z-index: 35;
+}
+
+.site-header__invite-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.2rem;
+  min-height: 2.2rem;
+  padding: 0 0.45rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+  background: color-mix(in srgb, var(--accent) 18%, var(--surface));
+  color: var(--ink);
+  cursor: pointer;
+  font: inherit;
+}
+
+.site-header__invite-btn:hover,
+.site-header__invite-btn:focus-visible {
+  background: color-mix(in srgb, var(--accent) 28%, var(--surface));
+  outline: none;
+}
+
+.site-header__invite-count {
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--accent);
+}
+
+.site-header__invite-panel {
+  position: absolute;
+  top: calc(100% + 0.45rem);
+  right: 0;
+  z-index: 50;
+  width: min(22rem, calc(100vw - 1.5rem));
+  padding: 0.75rem;
+  border-radius: 0.95rem;
+  border: 1px solid rgba(var(--ink-rgb), 0.1);
+  background: var(--surface);
+  box-shadow: 0 12px 32px rgba(var(--ink-rgb), 0.14);
+}
+
 .site-header__player .player-badge {
   display: none !important;
 }
@@ -12181,6 +12229,129 @@ html[data-theme='dark'] .patriot__power-mark {
   flex-wrap: wrap;
   align-items: center;
   gap: 0.5rem;
+}
+
+.invite-by-tag {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  margin-top: 0.85rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid rgba(var(--ink-rgb), 0.08);
+}
+
+.invite-by-tag__label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.invite-by-tag__title {
+  font-weight: 700;
+  font-size: 0.92rem;
+}
+
+.invite-by-tag__hint {
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+
+.invite-by-tag__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.invite-by-tag__input {
+  flex: 1 1 8rem;
+  min-width: 0;
+  min-height: 2.4rem;
+  padding: 0.45rem 0.7rem;
+  border-radius: 0.7rem;
+  border: 1px solid rgba(var(--ink-rgb), 0.12);
+  background: color-mix(in srgb, var(--surface) 88%, var(--playfield));
+  color: var(--ink);
+  font: inherit;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.invite-by-tag__input:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent) 55%, transparent);
+  outline-offset: 1px;
+}
+
+.pending-invites {
+  margin: 0 0 1.1rem;
+  padding: 0.85rem 0.95rem;
+  border-radius: 1rem;
+  border: 1px solid rgba(var(--ink-rgb), 0.08);
+  background: color-mix(in srgb, var(--accent) 8%, var(--surface));
+}
+
+.pending-invites--compact {
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+}
+
+.pending-invites__title {
+  margin: 0 0 0.55rem;
+  font-size: 0.95rem;
+  font-weight: 800;
+}
+
+.pending-invites__list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pending-invites__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.55rem;
+  padding: 0.45rem 0;
+  border-bottom: 1px solid rgba(var(--ink-rgb), 0.06);
+}
+
+.pending-invites__row:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.pending-invites__copy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.pending-invites__name {
+  font-size: 0.95rem;
+}
+
+.pending-invites__meta {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.pending-invites__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.event-detail__invite-tag {
+  margin: 0 0 1rem;
 }
 
 .group-invite-code {
