@@ -30,7 +30,12 @@ export type StrideLayout = {
 
 export function computeLayout(w: number, h: number, cols: number): StrideLayout {
   const { cell, availH, hudTop } = cellMetrics(w, h, cols)
-  const visibleRows = Math.max(7, Math.min(TARGET_VISIBLE_ROWS + 1, Math.floor(availH / cell)))
+  // Width-based cells shrink hops; fill the tall phone letterbox by showing a
+  // few more rows (capped) instead of growing the cell and undoing the denser grid.
+  const visibleRows = Math.max(
+    TARGET_VISIBLE_ROWS,
+    Math.min(14, Math.floor(availH / cell)),
+  )
   const gridW = cell * cols
   const gridH = visibleRows * cell
   const ox = Math.max(0, (w - gridW) / 2)

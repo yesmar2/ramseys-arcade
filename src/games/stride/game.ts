@@ -114,14 +114,14 @@ export type GameState = {
 /**
  * Playfield columns. Higher = finer grid: one hop is a smaller dodge between
  * cars, without half-steps. Entity sizes are scaled from GRID_BASE so cars and
- * logs keep roughly the same on-screen footprint.
+ * logs keep roughly the same on-screen footprint once cells are width-based.
  */
-export const COLS = 10
-/** Target rows visible on screen — lower = more zoom. */
+export const COLS = 12
+/** Rows drawn on screen — kept fixed so denser columns don't open a runway. */
 export const TARGET_VISIBLE_ROWS = 8
 /** Cap so a wide monitor can't open a runway of incoming cars. */
-export const MAX_COLS = 13
-/** Desktop tile scale bump. */
+export const MAX_COLS = 16
+/** Desktop tile scale bump — unused for cell width; kept for callers. */
 export const DESKTOP_ZOOM = 1.48
 /** Player sits this many rows from the bottom of the view once the camera is rolling. */
 export const PLAYER_VIEW_ROW = 3
@@ -130,7 +130,7 @@ export const BACK_LIMIT = 2
 /** Rows to keep generated ahead of the camera. */
 export const ROW_BUFFER = 22
 /** Lane width beyond the visible columns — traffic wraps across this span. */
-export const LANE_PAD = 7
+export const LANE_PAD = 8
 /** Column count the road/log/speed numbers were authored against. */
 const GRID_BASE = 7
 
@@ -138,6 +138,7 @@ const GRID_BASE = 7
 function gridScale(cols: number) {
   return cols / GRID_BASE
 }
+
 /** Distance markers every this many rows. */
 export const MILESTONE_STEP = 25
 /**
@@ -215,21 +216,22 @@ export function difficultyAt(row: number): number {
   return Math.max(0, Math.min(1, (row - 6) / 110))
 }
 
-/** Tile size that fits the row budget and the active column count. */
+/**
+ * Cell size is always width / cols so a denser grid actually shortens hops.
+ * (Height-capped cells were the bug: more columns only grew cars via gridScale
+ * while hop pixels stayed the same.)
+ */
 export function cellMetrics(viewWidth: number, viewHeight: number, cols = COLS) {
   const hudTop = Math.max(52, Math.min(76, viewHeight * 0.11))
   const padBottom = Math.max(14, viewHeight * 0.02)
   const availH = viewHeight - hudTop - padBottom
-  const zoom = viewWidth >= 900 ? DESKTOP_ZOOM : 1
-  const byHeight = (availH / TARGET_VISIBLE_ROWS) * zoom
-  const byWidth = viewWidth / cols
-  return { cell: Math.max(1, Math.min(byHeight, byWidth)), availH, hudTop }
+  const cell = Math.max(1, viewWidth / cols)
+  return { cell, availH, hudTop }
 }
 
 /**
- * Column count from viewport. Wider screens get a finer grid (more columns);
- * phones stay at COLS. Height-based sizing — without the desktop zoom bump —
- * so monitors actually gain columns instead of locking to COLS.
+ * Column count from viewport. Wider screens get a finer grid; phones stay at
+ * COLS. Uses an un-zoomed row budget so monitors actually gain columns.
  */
 export function pickCols(viewWidth: number, viewHeight: number): number {
   const hudTop = Math.max(52, Math.min(76, viewHeight * 0.11))
