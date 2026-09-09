@@ -96,6 +96,11 @@ export function SiteHeader() {
       : 'Set gamer tag'
 
   const hash = typeof window !== 'undefined' ? window.location.hash : '#/'
+  const showBoardFilters =
+    route.name !== 'tournaments' &&
+    route.name !== 'tournament' &&
+    route.name !== 'tournamentCreate' &&
+    route.name !== 'tournamentPlay'
 
   const linkClass = (match: (typeof SITE_NAV_LINKS)[number]['match'], base: string) =>
     `${base}${navActive(match, hash) ? ` ${base}--active` : ''}`
@@ -214,10 +219,12 @@ export function SiteHeader() {
       </div>
     </nav>
 
-    <div className="site-scopes" aria-label="Board filters">
-      <SitePeriodControl variant="header" />
-      <SiteGroupControl variant="header" />
-    </div>
+    {showBoardFilters ? (
+      <div className="site-scopes" aria-label="Board filters">
+        <SitePeriodControl variant="header" />
+        <SiteGroupControl variant="header" />
+      </div>
+    ) : null}
 
     <div className="site-header__more site-header__more--desktop" ref={utilRef}>
       <button
@@ -343,14 +350,18 @@ export function SiteHeader() {
                   </a>
                 </div>
                 <div className="site-drawer__utils">
-                  <SitePeriodControl
-                    variant="drawer"
-                    onSelect={() => setDrawerOpen(false)}
-                  />
-                  <SiteGroupControl
-                    variant="drawer"
-                    onSelect={() => setDrawerOpen(false)}
-                  />
+                  {showBoardFilters ? (
+                    <>
+                      <SitePeriodControl
+                        variant="drawer"
+                        onSelect={() => setDrawerOpen(false)}
+                      />
+                      <SiteGroupControl
+                        variant="drawer"
+                        onSelect={() => setDrawerOpen(false)}
+                      />
+                    </>
+                  ) : null}
                   <button
                     type="button"
                     className="site-drawer__util"
