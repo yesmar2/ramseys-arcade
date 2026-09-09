@@ -128,8 +128,11 @@ export const ROW_BUFFER = 22
 export const LANE_PAD = 5
 /** Distance markers every this many rows. */
 export const MILESTONE_STEP = 25
-/** Die if you don't hop up or down for this long (seconds). */
-export const STALL_LIMIT = 7
+/**
+ * Die if you don't hop up or down for this long (seconds). Sitting out a bad
+ * patch of traffic is the game, so this only has to punish real camping.
+ */
+export const STALL_LIMIT = 10
 /** Hawk warning is brief — Crossy-style snatch, not a long approach. */
 export const STALL_WARN = 0.4
 
@@ -137,8 +140,6 @@ const HOP_COOLDOWN = 0.05
 const HOP_DURATION = 0.12
 const INPUT_BUFFER = 0.18
 const RESPAWN_INVULN = 0.5
-/** Lateral hops are half a tile so you can thread between cars. */
-const SIDE_STEP = 0.5
 /** How far past a log edge still counts as landing on it. */
 const LOG_EDGE_SNAP = 0.42
 const CAR_HUES = [18, 348, 272, 198, 38, 128, 168]
@@ -157,6 +158,15 @@ const NEAR_MISS_GAP = 0.22
  */
 const ROAD_TIERS = [0.58, 0.8, 1.0, 1.24] as const
 const LOG_TIERS = [0.55, 0.78, 1.0, 1.22] as const
+
+const MIN_ROAD_SPEED = 0.75
+const MAX_ROAD_SPEED = 2.05
+/**
+ * Two lanes running the same way at the same speed hold their gaps in lockstep
+ * forever, so a crossing that isn't open now never opens. Neighbours have to
+ * differ by at least this much for the gaps to drift past each other.
+ */
+const LANE_SPEED_SPREAD = 0.36
 
 /** Weighted tier pick — the roll skews toward the faster tiers as difficulty climbs. */
 function pickTier(tiers: readonly number[], d: number, rand: () => number): number {
@@ -300,17 +310,30 @@ function makeGrassRow(cols: number, rand: () => number, d: number): Row {
   return { kind: 'grass', dir: 0, speed: 0, trees, rocks: [], coins, vehicles: [] }
 }
 
-function makeRoadRow(row: number, cols: number, rand: () => number): Row {
+function makeRoadRow(row: number, cols: number, rand: () => number, prev?: Row): Row {
   const d = difficultyAt(row)
-  const dir: -1 | 1 = rand() < 0.5 ? -1 : 1
-  // Capped near 2.2 tiles/sec: roughly half a second to clear a tile, which is
-  // still about four times a hop, so even the quickest lane stays readable.
-  const speed = (1.42 + d * 0.78) * pickTier(ROAD_TIERS, d, rand) * (0.94 + rand() * 0.14)
+  const prevRoad = prev?.kind === 'road' ? prev : undefined
+  let dir: -1 | 1 = rand() < 0.5 ? -1 : 1
+  // Mostly alternate against the lane behind you — opposing traffic reads clearly
+  // and its gaps sweep across yours instead of travelling with them.
+  if (prevRoad && rand() < 0.72) dir = prevRoad.dir === 1 ? -1 : 1
+  const roll = (1.3 + d * 0.6) * pickTier(ROAD_TIERS, d, rand) * (0.94 + rand() * 0.14)
+  let speed = Math.min(MAX_ROAD_SPEED, Math.max(MIN_ROAD_SPEED, roll))
+  if (prevRoad && prevRoad.dir === dir && Math.abs(speed - prevRoad.speed) < LANE_SPEED_SPREAD) {
+    const push = speed >= prevRoad.speed ? LANE_SPEED_SPREAD : -LANE_SPEED_SPREAD
+    speed = prevRoad.speed + push
+    if (speed > MAX_ROAD_SPEED || speed < MIN_ROAD_SPEED) speed = prevRoad.speed - push
+    speed = Math.min(MAX_ROAD_SPEED, Math.max(MIN_ROAD_SPEED, speed))
+  }
   const w = rand() < 0.28 ? 2.0 : 1.4
   const span = laneSpan(cols)
-  // Faster lanes need wider gaps to keep the crossing window fair.
-  const minGap = (1.25 + speed * 0.6) * (1 - d * 0.16)
-  const want = 1 + Math.round(d * 2.4 + rand() * 2.2)
+  // Gaps are the whole game. Sized in seconds rather than tiles: every hole has
+  // to hold you for over a second so a lane is somewhere you can wait, not just
+  // a frame you have to hit.
+  const minGap = 1.15 + speed * 1.35 * (1 - d * 0.12)
+  // Ask for a full lane and let the gap rule below thin it out — the guaranteed
+  // hole is what keeps it fair, so a busy lane costs nothing.
+  const want = 2 + Math.round(d * 2 + rand() * 1.6)
   const count = laneCount(span, w, minGap, want)
   return {
     kind: 'road',
@@ -435,6 +458,16 @@ function chunkStart(row: number, kind: Row['kind'], rows?: Map<number, Row>): nu
   return start
 }
 
+/** How many rows of one kind sit directly behind this one. */
+function kindRun(row: number, kind: Row['kind'], rows?: Map<number, Row>): number {
+  let n = 0
+  for (let r = row - 1; n < 10; r--) {
+    if (rows?.get(r)?.kind !== kind) break
+    n += 1
+  }
+  return n
+}
+
 /** How many hazard rows sit directly behind this one. */
 function hazardRun(row: number, rows?: Map<number, Row>): number {
   let n = 0
@@ -474,6 +507,12 @@ export function generateRow(
     return makeGrassRow(cols, rand, d)
   }
 
+  // Roads come in small groups with a strip to wait on after them. Deeper stacks
+  // turn into a wall you have to solve rather than a crossing you can time.
+  if (kindRun(row, 'road', rows) >= 3 + Math.round(d)) {
+    return makeGrassRow(cols, rand, d)
+  }
+
   const prevIsStone = prev?.kind === 'water' && prev.rocks.length > 0
 
   if (prev?.kind === 'water') {
@@ -502,7 +541,7 @@ export function generateRow(
     return makeWaterRow(row, cols, runSeed, row, prevIsStone)
   }
   if (roll < grassChance + waterChance + railChance) return makeRailRow(row, cols, runSeed)
-  return makeRoadRow(row, cols, rand)
+  return makeRoadRow(row, cols, rand, prev)
 }
 
 function ensureRows(state: GameState, minRow: number, maxRow: number) {
@@ -536,13 +575,12 @@ function treesBlock(col: number, trees: number[]): boolean {
   return trees.some((t) => right > t && left < t + 1)
 }
 
-/** Snap landing column — roads allow half-tiles; logs snap to hop slots. */
+/** Snap landing column — logs use their own hop slots, everything else whole tiles. */
 function landingCol(nc: number, row: Row, span: number): number {
   if (row.kind === 'water' && row.rocks.length === 0) {
     return snapToLog(nc, row, span) ?? nc
   }
-  if (row.kind === 'water') return Math.round(nc)
-  return Math.round(nc * 2) / 2
+  return Math.round(nc)
 }
 
 function colInBounds(col: number, cols: number): boolean {
@@ -807,16 +845,12 @@ export function hop(state: GameState, dir: Dir): GameState {
 
   const fromC = state.col
   const fromR = state.row
-  const fromRow = state.rows.get(fromR)
-  // On a log, left/right steps a full tile so you hop slot-to-slot.
-  const onLogRow = fromRow?.kind === 'water' && fromRow.rocks.length === 0
-  const side = onLogRow ? 1 : SIDE_STEP
   let nr = fromR
   let nc = fromC
   if (dir === 'up') nr += 1
   else if (dir === 'down') nr -= 1
-  else if (dir === 'left') nc -= side
-  else nc += side
+  else if (dir === 'left') nc -= 1
+  else nc += 1
 
   const blocked = (): GameState => ({ ...state, queued: null, bump: BUMP })
   if (nr < 0) return blocked()
