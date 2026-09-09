@@ -221,7 +221,8 @@ export function getRailCycle(row: Row): { phase: RailPhase; flash: boolean; pass
 
 /** 0 at the start of a run, 1 once the difficulty ramp has topped out. */
 export function difficultyAt(row: number): number {
-  return Math.max(0, Math.min(1, (row - 6) / 110))
+  // Slow ramp — early game stays readable longer; full heat arrives deeper in.
+  return Math.max(0, Math.min(1, (row - 10) / 170))
 }
 
 /**
@@ -313,6 +314,42 @@ function spawnLane(
   for (let i = 0; i < count; i++) {
     const jitter = (rand() - 0.5) * slack
     out.push({ x: wrapX(start + i * step + jitter, span), w, hue: hue(rand) })
+  }
+  return out
+}
+
+/** Logs with mixed lengths so a river row isn't a row of identical barges. */
+function spawnLogLane(
+  span: number,
+  logScale: number,
+  rand: () => number,
+  phase = 0,
+): Vehicle[] {
+  const minGap = LOG_GAP * logScale * 0.9
+  const pickW = () => {
+    const roll = rand()
+    const base = roll < 0.38 ? 2 : roll < 0.72 ? 3 : roll < 0.92 ? 4 : 5
+    return Math.max(2, Math.round(base * logScale))
+  }
+
+  const widths: number[] = []
+  let used = 0
+  for (let guard = 0; guard < 14 && used < span * 0.92; guard++) {
+    const w = pickW()
+    if (used + w + minGap > span && widths.length > 0) break
+    widths.push(w)
+    used += w + minGap
+  }
+  if (widths.length === 0) widths.push(Math.max(2, Math.round(3 * logScale)))
+
+  const totalW = widths.reduce((s, w) => s + w, 0)
+  const gap = Math.max(minGap, (span - totalW) / widths.length)
+  const start = rand() * span + phase
+  const out: Vehicle[] = []
+  let cursor = start
+  for (const w of widths) {
+    out.push({ x: wrapX(cursor, span), w, hue: LOG_HUE })
+    cursor += w + gap * (0.85 + rand() * 0.3)
   }
   return out
 }
@@ -433,6 +470,7 @@ function makeWaterRow(
   runSeed: number,
   chunkStart: number,
   prevIsStone: boolean,
+  prevDir: -1 | 1 | 0 = 0,
 ): Row {
   const rand = mulberry32(row * 1_048_583 ^ runSeed)
   const chunkRand = mulberry32(chunkStart * 1_048_583 ^ runSeed)
@@ -443,22 +481,18 @@ function makeWaterRow(
   // second static row could strand you with nowhere legal to land.
   if (!prevIsStone && rand() < 0.34) return makeStoneRow(cols, rand, d)
 
-  // Alternate directions so there's always a way to work across a chunk.
-  const dir: -1 | 1 = rowInChunk % 2 === 0 ? 1 : -1
+  // Usually oppose the lane behind you so crossings feel two-way; sometimes
+  // match it so the pattern isn't a strict left-right metronome.
+  let dir: -1 | 1
+  if (prevDir === 1 || prevDir === -1) {
+    dir = rand() < 0.82 ? ((prevDir === 1 ? -1 : 1) as -1 | 1) : prevDir
+  } else {
+    dir = rand() < 0.5 ? 1 : -1
+  }
   const g = gridScale(cols)
   const speed = (0.9 + d * 0.62) * pickTier(LOG_TIERS, d, rand) * (0.94 + rand() * 0.14) * g
   const span = laneSpan(cols)
-  // Prefer shorter logs; only mild growth on denser grids so they don't read as barges.
   const logScale = 1 + (gridScale(cols) - 1) * 0.12
-  const baseW = rand() < 0.48 ? 2 : rand() < 0.88 ? 3 : 4
-  const logW = Math.max(2, Math.round(baseW * logScale))
-  // Space them to leave about a hop of water, so a column is under timber most
-  // of the time. You drift toward the edge while you ride, so hunting for a log
-  // can't be a long wait.
-  const logGap = LOG_GAP * logScale
-  let count = Math.max(1, Math.round(span / (logW + logGap)))
-  while (count > 1 && span / count - logW < 0.8 * logScale) count -= 1
-  const gap = span / count - logW
   // Stagger neighbouring rows so log gaps don't line up into a dead end.
   const phase = rowInChunk * (0.8 + chunkRand() * 0.9)
 
@@ -469,7 +503,7 @@ function makeWaterRow(
     trees: [],
     rocks: [],
     coins: [],
-    vehicles: spawnLane(span, count, logW, gap, () => LOG_HUE, rand, phase),
+    vehicles: spawnLogLane(span, logScale, rand, phase),
   }
 }
 
@@ -567,11 +601,15 @@ export function generateRow(
   }
 
   const prevIsStone = prevRocks.length > 0
+  const prevLogDir =
+    prev?.kind === 'water' && prev.rocks.length === 0 && (prev.dir === 1 || prev.dir === -1)
+      ? prev.dir
+      : (0 as const)
 
   if (prev?.kind === 'water') {
     const start = chunkStart(row, 'water', rows)
     if (row < start + chunkLength(start, runSeed, 2, d > 0.5 ? 4 : 3)) {
-      return makeWaterRow(row, cols, runSeed, start, prevIsStone)
+      return makeWaterRow(row, cols, runSeed, start, prevIsStone, prevLogDir)
     }
   }
 
@@ -591,7 +629,7 @@ export function generateRow(
 
   if (roll < grassChance) return makeGrassRow(cols, rand, d, prevRocks)
   if (roll < grassChance + waterChance) {
-    return makeWaterRow(row, cols, runSeed, row, prevIsStone)
+    return makeWaterRow(row, cols, runSeed, row, prevIsStone, prevLogDir)
   }
   if (roll < grassChance + waterChance + railChance) return makeRailRow(row, cols, runSeed)
   return makeRoadRow(row, cols, rand, prev)
