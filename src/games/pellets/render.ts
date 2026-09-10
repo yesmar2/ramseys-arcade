@@ -91,15 +91,9 @@ function wallAt(state: GameState, x: number, y: number) {
   return !state.open[y][x]
 }
 
-/** Lane tile or off the board — both get an outline edge. */
-function openOrOutside(state: GameState, x: number, y: number) {
-  if (y < 0 || y >= state.rows || x < 0 || x >= state.cols) return true
-  return state.open[y][x]
-}
-
 /**
- * Continuous solid maze walls with an accent-sky outline on every corridor
- * edge and the outer perimeter.
+ * Continuous solid maze walls — inset from lanes so they read thinner, with
+ * an accent outline on every corridor edge and the outer perimeter.
  */
 function drawWalls(
   ctx: CanvasRenderingContext2D,
@@ -109,42 +103,58 @@ function drawWalls(
   cell: number,
   skin: Skin,
 ) {
-  // Solid fill — full cells, slight overlap so seams never show.
-  ctx.fillStyle = skin.wallFill
-  const seam = 0.6
-  for (let y = 0; y < state.rows; y++) {
-    for (let x = 0; x < state.cols; x++) {
-      if (!wallAt(state, x, y)) continue
-      ctx.fillRect(ox + x * cell - seam, oy + y * cell - seam, cell + seam * 2, cell + seam * 2)
+  const inset = cell * 0.22
+  const radius = Math.max(2, cell * 0.16)
+
+  const box = (x: number, y: number) => {
+    const left = wallAt(state, x - 1, y)
+    const right = wallAt(state, x + 1, y)
+    const up = wallAt(state, x, y - 1)
+    const down = wallAt(state, x, y + 1)
+    return {
+      x0: ox + x * cell + (left ? 0 : inset),
+      x1: ox + (x + 1) * cell - (right ? 0 : inset),
+      y0: oy + y * cell + (up ? 0 : inset),
+      y1: oy + (y + 1) * cell - (down ? 0 : inset),
+      left,
+      right,
+      up,
+      down,
     }
   }
 
-  // Outline lane edges and the outside of the board.
+  ctx.fillStyle = skin.wallFill
+  for (let y = 0; y < state.rows; y++) {
+    for (let x = 0; x < state.cols; x++) {
+      if (!wallAt(state, x, y)) continue
+      const { x0, x1, y0, y1 } = box(x, y)
+      roundRect(ctx, x0, y0, x1 - x0, y1 - y0, radius)
+      ctx.fill()
+    }
+  }
+
   ctx.strokeStyle = skin.wallStroke
-  ctx.lineWidth = Math.max(1.8, cell * 0.1)
+  ctx.lineWidth = Math.max(1.5, cell * 0.085)
   ctx.lineCap = 'round'
   ctx.lineJoin = 'round'
   ctx.beginPath()
   for (let y = 0; y < state.rows; y++) {
     for (let x = 0; x < state.cols; x++) {
       if (!wallAt(state, x, y)) continue
-      const x0 = ox + x * cell
-      const x1 = ox + (x + 1) * cell
-      const y0 = oy + y * cell
-      const y1 = oy + (y + 1) * cell
-      if (openOrOutside(state, x, y - 1)) {
+      const { x0, x1, y0, y1, left, right, up, down } = box(x, y)
+      if (!up) {
         ctx.moveTo(x0, y0)
         ctx.lineTo(x1, y0)
       }
-      if (openOrOutside(state, x, y + 1)) {
+      if (!down) {
         ctx.moveTo(x0, y1)
         ctx.lineTo(x1, y1)
       }
-      if (openOrOutside(state, x - 1, y)) {
+      if (!left) {
         ctx.moveTo(x0, y0)
         ctx.lineTo(x0, y1)
       }
-      if (openOrOutside(state, x + 1, y)) {
+      if (!right) {
         ctx.moveTo(x1, y0)
         ctx.lineTo(x1, y1)
       }
