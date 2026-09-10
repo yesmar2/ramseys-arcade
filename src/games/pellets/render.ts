@@ -91,9 +91,15 @@ function wallAt(state: GameState, x: number, y: number) {
   return !state.open[y][x]
 }
 
+/** Lane or off-board — both get an outline edge. */
+function openOrOutside(state: GameState, x: number, y: number) {
+  if (y < 0 || y >= state.rows || x < 0 || x >= state.cols) return true
+  return state.open[y][x]
+}
+
 /**
- * Continuous solid maze walls — inset from lanes so they read thinner, with
- * an accent outline on every corridor edge and the outer perimeter.
+ * Solid full-cell walls so corridors and walls are the same thickness.
+ * Accent outline only on lane edges and the outer perimeter.
  */
 function drawWalls(
   ctx: CanvasRenderingContext2D,
@@ -103,60 +109,44 @@ function drawWalls(
   cell: number,
   skin: Skin,
 ) {
-  const inset = cell * 0.22
-  const radius = Math.max(2, cell * 0.16)
-
-  const box = (x: number, y: number) => {
-    const left = wallAt(state, x - 1, y)
-    const right = wallAt(state, x + 1, y)
-    const up = wallAt(state, x, y - 1)
-    const down = wallAt(state, x, y + 1)
-    return {
-      x0: ox + x * cell + (left ? 0 : inset),
-      x1: ox + (x + 1) * cell - (right ? 0 : inset),
-      y0: oy + y * cell + (up ? 0 : inset),
-      y1: oy + (y + 1) * cell - (down ? 0 : inset),
-      left,
-      right,
-      up,
-      down,
-    }
-  }
-
+  // Exact cell fills — no overlap into lanes (overlap was causing corner blobs).
   ctx.fillStyle = skin.wallFill
   for (let y = 0; y < state.rows; y++) {
     for (let x = 0; x < state.cols; x++) {
       if (!wallAt(state, x, y)) continue
-      const { x0, x1, y0, y1 } = box(x, y)
-      roundRect(ctx, x0, y0, x1 - x0, y1 - y0, radius)
-      ctx.fill()
+      ctx.fillRect(ox + x * cell, oy + y * cell, cell, cell)
     }
   }
 
+  // Outline sits on the wall side of the lane edge so corridors stay full-width.
   ctx.strokeStyle = skin.wallStroke
-  ctx.lineWidth = Math.max(1.5, cell * 0.085)
-  ctx.lineCap = 'round'
-  ctx.lineJoin = 'round'
+  ctx.lineWidth = Math.max(1.4, cell * 0.08)
+  ctx.lineCap = 'butt'
+  ctx.lineJoin = 'miter'
+  const inset = ctx.lineWidth / 2
   ctx.beginPath()
   for (let y = 0; y < state.rows; y++) {
     for (let x = 0; x < state.cols; x++) {
       if (!wallAt(state, x, y)) continue
-      const { x0, x1, y0, y1, left, right, up, down } = box(x, y)
-      if (!up) {
-        ctx.moveTo(x0, y0)
-        ctx.lineTo(x1, y0)
+      const x0 = ox + x * cell + inset
+      const x1 = ox + (x + 1) * cell - inset
+      const y0 = oy + y * cell + inset
+      const y1 = oy + (y + 1) * cell - inset
+      if (openOrOutside(state, x, y - 1)) {
+        ctx.moveTo(x0 - inset, y0)
+        ctx.lineTo(x1 + inset, y0)
       }
-      if (!down) {
-        ctx.moveTo(x0, y1)
-        ctx.lineTo(x1, y1)
+      if (openOrOutside(state, x, y + 1)) {
+        ctx.moveTo(x0 - inset, y1)
+        ctx.lineTo(x1 + inset, y1)
       }
-      if (!left) {
-        ctx.moveTo(x0, y0)
-        ctx.lineTo(x0, y1)
+      if (openOrOutside(state, x - 1, y)) {
+        ctx.moveTo(x0, y0 - inset)
+        ctx.lineTo(x0, y1 + inset)
       }
-      if (!right) {
-        ctx.moveTo(x1, y0)
-        ctx.lineTo(x1, y1)
+      if (openOrOutside(state, x + 1, y)) {
+        ctx.moveTo(x1, y0 - inset)
+        ctx.lineTo(x1, y1 + inset)
       }
     }
   }
@@ -165,6 +155,7 @@ function drawWalls(
   // Den gate — gold stroke, same family as crumbs.
   ctx.strokeStyle = skin.crumbStroke
   ctx.lineWidth = Math.max(1.3, cell * 0.07)
+  ctx.lineCap = 'round'
   for (let y = 0; y < state.rows; y++) {
     for (let x = 0; x < state.cols; x++) {
       if (!state.door[y][x]) continue

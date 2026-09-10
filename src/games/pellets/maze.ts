@@ -16,366 +16,228 @@ export type Maze = {
   power: Cell[]
 }
 
-const STEP: Record<'up' | 'down' | 'left' | 'right', Cell> = {
-  up: { x: 0, y: -1 },
-  down: { x: 0, y: 1 },
-  left: { x: -1, y: 0 },
-  right: { x: 1, y: 0 },
-}
-
 /**
- * Canonical landscape size for every device. Portrait is this rotated 90° CW,
- * so desktop and mobile play the same maze — just flipped.
+ * Canonical landscape size. Portrait is this rotated 90° CW so phone and
+ * desktop share the same maze — just flipped.
+ *
+ * Legend: `#` wall, `.` crumb, `o` power, ` ` empty path,
+ * `=` house door, `P` player, `G` chaser spawn.
  */
 const LAND_COLS = 27
 const LAND_ROWS = 15
 
-/** Display size for the current orientation (landscape canon, or rotated). */
+/** Display size for the current orientation. */
 export function mazeDims(width: number, height: number) {
   if (height > width) return { cols: LAND_ROWS, rows: LAND_COLS }
   return { cols: LAND_COLS, rows: LAND_ROWS }
 }
 
-/** Landscape tile size used for seeding — same on every device. */
 export function landscapeMazeSize() {
   return { cols: LAND_COLS, rows: LAND_ROWS }
 }
+
+/**
+ * Shared den band (rows 5–9). The channel above the gate stays open so the
+ * side rings connect through the center — no stranded crumb pockets.
+ */
+const DEN = [
+  '#......#....#.#....#......#',
+  '######...............######',
+  '     #.#    #=#    #.#     ',
+  '######.# ###GGG### #.######',
+  '#......#....###....#......#',
+] as const
+
+/**
+ * Hand-picked landscape mazes. Each level adds a little more structure —
+ * longer routes, fewer bailouts — without a big difficulty jump.
+ *
+ * Rows 4 and 10 always punch into the den ring so the board stays one graph.
+ */
+const LEVEL_MAZES: string[][] = [
+  // 1 — open classic loops
+  [
+    '###########################',
+    '#o.......................o#',
+    '#.####.#####.#.#####.####.#',
+    '#.........................#',
+    '#.####.#.#########.#.####.#',
+    ...DEN,
+    '#.####.#.#########.#.####.#',
+    '#............P............#',
+    '#.####.#####.#.#####.####.#',
+    '#o.......................o#',
+    '###########################',
+  ],
+  // 2 — side pockets, still plenty of escapes
+  [
+    '###########################',
+    '#o....#.............#....o#',
+    '#.###.#.#####.#####.#.###.#',
+    '#.#.....................#.#',
+    '#.#.##.#.#######.#.##.#.#.#',
+    ...DEN,
+    '#.#.##.#.#######.#.##.#.#.#',
+    '#.#..........P..........#.#',
+    '#.###.#.#####.#####.#.###.#',
+    '#o....#.............#....o#',
+    '###########################',
+  ],
+  // 3 — longer side runs
+  [
+    '###########################',
+    '#o.#...................#.o#',
+    '#.###.#####.###.#####.###.#',
+    '#.....#.............#.....#',
+    '#####.#.###.#.#.###.#.#####',
+    ...DEN,
+    '#####.#.###.#.#.###.#.#####',
+    '#............P............#',
+    '#.###.#####.###.#####.###.#',
+    '#o.#...................#.o#',
+    '###########################',
+  ],
+  // 4 — tighter mid ring
+  [
+    '###########################',
+    '#o..#.................#..o#',
+    '#.##.#####.#####.#####.##.#',
+    '#.........................#',
+    '#.####.#####.#####.####.#.#',
+    ...DEN,
+    '#.#.####.#####.#####.####.#',
+    '#............P............#',
+    '#.##.#####.#####.#####.##.#',
+    '#o..#.................#..o#',
+    '###########################',
+  ],
+  // 5 — more interior walls
+  [
+    '###########################',
+    '#o#.....#.........#.....#o#',
+    '#.#.###.#.#######.#.###.#.#',
+    '#.#.#...............#.#.#.#',
+    '#.#.#.###.#.#.#.###.#.#.#.#',
+    ...DEN,
+    '#.#.#.###.#.#.#.###.#.#.#.#',
+    '#.#.#.......P.......#.#.#.#',
+    '#.#.###.#.#######.#.###.#.#',
+    '#o#.....#.........#.....#o#',
+    '###########################',
+  ],
+  // 6+ — densest curated board
+  [
+    '###########################',
+    '#o..##.............##....o#',
+    '#.#.##.##.#####.##.##.#.#.#',
+    '#.#....##.......##....#.#.#',
+    '#.######.#.#.#.#.######.#.#',
+    ...DEN,
+    '#.######.#.#.#.#.######.#.#',
+    '#.#....##...P...##....#.#.#',
+    '#.#.##.##.#####.##.##.#.#.#',
+    '#o..##.............##....o#',
+    '###########################',
+  ],
+]
 
 function grid(cols: number, rows: number, value: boolean) {
   return Array.from({ length: rows }, () => Array.from({ length: cols }, () => value))
 }
 
-type Rng = () => number
-
-/** Deterministic PRNG so the same level always rebuilds the same maze. */
-function makeRng(seed: number): Rng {
-  let s = seed >>> 0 || 1
-  return () => {
-    s |= 0
-    s = (s + 0x6d2b79f5) | 0
-    let t = Math.imul(s ^ (s >>> 15), 1 | s)
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
-  }
+function mazeAt(rows: string[], x: number, y: number) {
+  return rows[y]?.[x] ?? '#'
 }
 
-/** Stable seed for a given level on a given board size. */
-export function mazeSeed(level: number, cols: number, rows: number) {
-  return (
-    (Math.imul(level | 0, 2654435761) ^
-      Math.imul(cols | 0, 1597334677) ^
-      Math.imul(rows | 0, 3812015801)) >>>
-    0
-  )
-}
-
-function shuffle<T>(list: T[], rng: Rng) {
-  for (let i = list.length - 1; i > 0; i--) {
-    const j = Math.floor(rng() * (i + 1))
-    ;[list[i], list[j]] = [list[j], list[i]]
+function parseMaze(rows: string[]): Maze {
+  const R = rows.length
+  const C = rows[0]?.length ?? 0
+  if (C !== LAND_COLS || R !== LAND_ROWS) {
+    throw new Error(`Pellets maze must be ${LAND_COLS}x${LAND_ROWS}, got ${C}x${R}`)
   }
-  return list
-}
 
-/** Randomised DFS over odd tiles, knocking out the wall between visited pairs. */
-function carve(open: boolean[][], cols: number, rows: number, rng: Rng) {
-  const seen = grid(cols, rows, false)
-  const stack: Cell[] = [{ x: 1, y: 1 }]
-  seen[1][1] = true
-  open[1][1] = true
-
-  while (stack.length) {
-    const cur = stack[stack.length - 1]
-    const options = shuffle(
-      (['up', 'down', 'left', 'right'] as const)
-        .map((dir) => ({ x: cur.x + STEP[dir].x * 2, y: cur.y + STEP[dir].y * 2 }))
-        .filter((n) => n.x > 0 && n.y > 0 && n.x < cols - 1 && n.y < rows - 1 && !seen[n.y][n.x]),
-      rng,
-    )
-    const next = options[0]
-    if (!next) {
-      stack.pop()
-      continue
-    }
-    seen[next.y][next.x] = true
-    open[next.y][next.x] = true
-    open[(cur.y + next.y) / 2][(cur.x + next.x) / 2] = true
-    stack.push(next)
-  }
-}
-
-/** Mirror the left half onto the right so the board reads as a designed maze. */
-function mirror(open: boolean[][], cols: number, rows: number, rng: Rng) {
-  const mid = (cols - 1) / 2
-  for (let y = 0; y < rows; y++) {
-    for (let x = 0; x < mid; x++) {
-      open[y][cols - 1 - x] = open[y][x]
-    }
-  }
-  // Stitch the halves together on a few lanes so the seam isn't a wall.
-  const lanes: number[] = []
-  for (let y = 1; y < rows - 1; y += 2) lanes.push(y)
-  for (const y of shuffle(lanes, rng).slice(0, Math.max(2, Math.floor(lanes.length / 3)))) {
-    open[y][mid] = true
-  }
-}
-
-function openNeighbours(open: boolean[][], cols: number, rows: number, x: number, y: number) {
-  let count = 0
-  for (const dir of ['up', 'down', 'left', 'right'] as const) {
-    const nx = x + STEP[dir].x
-    const ny = y + STEP[dir].y
-    if (nx < 0 || ny < 0 || nx >= cols || ny >= rows) continue
-    if (open[ny][nx]) count += 1
-  }
-  return count
-}
-
-/**
- * Loop the maze by opening one wall at every dead end. Chasers and the player
- * both flow better with no cul-de-sacs, and it keeps runs from feeling grindy.
- */
-function braid(open: boolean[][], cols: number, rows: number, rng: Rng) {
-  for (let y = 1; y < rows - 1; y++) {
-    for (let x = 1; x < cols - 1; x++) {
-      if (!open[y][x]) continue
-      if (openNeighbours(open, cols, rows, x, y) > 1) continue
-      const options = shuffle(
-        (['up', 'down', 'left', 'right'] as const)
-          .map((dir) => ({ w: { x: x + STEP[dir].x, y: y + STEP[dir].y }, dir }))
-          .filter(({ w, dir }) => {
-            if (w.x < 1 || w.y < 1 || w.x > cols - 2 || w.y > rows - 2) return false
-            if (open[w.y][w.x]) return false
-            const beyond = { x: w.x + STEP[dir].x, y: w.y + STEP[dir].y }
-            if (beyond.x < 0 || beyond.y < 0 || beyond.x >= cols || beyond.y >= rows) return false
-            return open[beyond.y][beyond.x]
-          }),
-        rng,
-      )
-      if (options[0]) open[options[0].w.y][options[0].w.x] = true
-    }
-  }
-}
-
-/** Label every walkable tile with the index of the pocket it belongs to. */
-function regionsOf(
-  cols: number,
-  rows: number,
-  walkable: (x: number, y: number) => boolean,
-) {
-  const label: number[][] = Array.from({ length: rows }, () =>
-    Array.from({ length: cols }, () => -1),
-  )
-  const sizes: number[] = []
-  for (let sy = 0; sy < rows; sy++) {
-    for (let sx = 0; sx < cols; sx++) {
-      if (label[sy][sx] !== -1 || !walkable(sx, sy)) continue
-      const id = sizes.length
-      let size = 0
-      const queue: Cell[] = [{ x: sx, y: sy }]
-      label[sy][sx] = id
-      for (let head = 0; head < queue.length; head++) {
-        const cur = queue[head]
-        size += 1
-        for (const dir of ['up', 'down', 'left', 'right'] as const) {
-          const nx = cur.x + STEP[dir].x
-          const ny = cur.y + STEP[dir].y
-          if (nx < 0 || ny < 0 || nx >= cols || ny >= rows) continue
-          if (label[ny][nx] !== -1 || !walkable(nx, ny)) continue
-          label[ny][nx] = id
-          queue.push({ x: nx, y: ny })
-        }
-      }
-      sizes.push(size)
-    }
-  }
-  return { label, sizes }
-}
-
-/**
- * Fuse the maze into one walkable pocket *without* routing through the den, by
- * knocking out single walls that touch two pockets. Anything that still can't
- * be joined gets walled off so no crumb is ever stranded.
- */
-function connect(
-  open: boolean[][],
-  door: boolean[][],
-  house: Maze['house'],
-  cols: number,
-  rows: number,
-) {
-  const penned = (x: number, y: number) =>
-    door[y][x] ||
-    (x >= house.minX && x <= house.maxX && y >= house.minY && y <= house.maxY)
-  const walkable = (x: number, y: number) => open[y][x] && !penned(x, y)
-
-  for (let pass = 0; pass < 120; pass++) {
-    const { label, sizes } = regionsOf(cols, rows, walkable)
-    if (sizes.length <= 1) return
-
-    // Any interior wall touching two pockets is a one-tile fix.
-    let bridge: Cell | null = null
-    for (let y = 1; y < rows - 1 && !bridge; y++) {
-      for (let x = 1; x < cols - 1 && !bridge; x++) {
-        if (open[y][x] || penned(x, y)) continue
-        const touching = new Set<number>()
-        for (const dir of ['up', 'down', 'left', 'right'] as const) {
-          const nx = x + STEP[dir].x
-          const ny = y + STEP[dir].y
-          if (nx < 0 || ny < 0 || nx >= cols || ny >= rows) continue
-          if (label[ny][nx] >= 0) touching.add(label[ny][nx])
-        }
-        if (touching.size >= 2) bridge = { x, y }
-      }
-    }
-    if (bridge) {
-      open[bridge.y][bridge.x] = true
-      continue
-    }
-
-    // Nothing left to fuse — keep the biggest pocket, wall off the rest.
-    let main = 0
-    for (let i = 1; i < sizes.length; i++) if (sizes[i] > sizes[main]) main = i
-    for (let y = 0; y < rows; y++) {
-      for (let x = 0; x < cols; x++) {
-        if (label[y][x] >= 0 && label[y][x] !== main) open[y][x] = false
-      }
-    }
-    return
-  }
-}
-
-/** Carve the den, wall it in, and hang a gate on the top edge. */
-function buildHouse(open: boolean[][], door: boolean[][], cols: number, rows: number) {
-  const cx = (cols - 1) / 2
-  const cy = (rows - 1) / 2
-  const halfW = cols >= 21 ? 2 : 1
-  const house = { minX: cx - halfW, maxX: cx + halfW, minY: cy - 1, maxY: cy + 1 }
-
-  for (let y = house.minY - 1; y <= house.maxY + 1; y++) {
-    for (let x = house.minX - 1; x <= house.maxX + 1; x++) {
-      if (y < 0 || x < 0 || y >= rows || x >= cols) continue
-      const inside =
-        x >= house.minX && x <= house.maxX && y >= house.minY && y <= house.maxY
-      open[y][x] = inside
+  for (let y = 0; y < R; y++) {
+    if ((rows[y]?.length ?? 0) !== C) {
+      throw new Error(`Pellets maze row ${y} length ${(rows[y] ?? '').length}, expected ${C}`)
     }
   }
 
-  const gateY = house.minY - 1
-  for (let x = cx - Math.min(1, halfW); x <= cx + Math.min(1, halfW); x++) {
-    if (gateY < 0 || x < 0 || x >= cols) continue
-    open[gateY][x] = true
-    door[gateY][x] = true
-  }
-
-  // Run a lane up from the gate so the exit tile is never a one-tile island.
-  const exit = { x: cx, y: Math.max(1, gateY - 1) }
-  for (let y = exit.y; y >= 1; y--) {
-    const wasOpen = open[y][cx]
-    open[y][cx] = true
-    if (wasOpen) break
-  }
-
-  return { house, houseCenter: { x: cx, y: cy }, ghostExit: exit }
-}
-
-/** Wrap-around side tunnels on a lane clear of the den. */
-function cutTunnels(
-  open: boolean[][],
-  cols: number,
-  rows: number,
-  house: Maze['house'],
-  rng: Rng,
-) {
-  const lanes: number[] = []
-  for (let y = 1; y < rows - 1; y += 2) {
-    if (y >= house.minY - 2 && y <= house.maxY + 2) continue
-    lanes.push(y)
-  }
-  if (!lanes.length) return
-  const picks = shuffle(lanes, rng).slice(0, rows > 21 ? 2 : 1)
-  for (const y of picks) {
-    open[y][0] = true
-    open[y][1] = true
-    open[y][cols - 1] = true
-    open[y][cols - 2] = true
-  }
-}
-
-/** Closest usable tile to `toward`, skipping anything `blocked` rejects. */
-function nearestOpenTo(
-  open: boolean[][],
-  cols: number,
-  rows: number,
-  blocked: (x: number, y: number) => boolean,
-  toward: Cell,
-) {
-  let best: Cell | null = null
-  let bestD = Infinity
-  for (let y = 1; y < rows - 1; y++) {
-    for (let x = 1; x < cols - 1; x++) {
-      if (!open[y][x] || blocked(x, y)) continue
-      const d = (x - toward.x) ** 2 + (y - toward.y) ** 2
-      if (d < bestD) {
-        bestD = d
-        best = { x, y }
-      }
-    }
-  }
-  return best
-}
-
-/** Build a symmetric maze for this board. Same seed → same layout every time. */
-export function buildMaze(cols: number, rows: number, seed = 1): Maze {
-  const rng = makeRng(seed)
-  const open = grid(cols, rows, false)
-  const door = grid(cols, rows, false)
-
-  carve(open, cols, rows, rng)
-  mirror(open, cols, rows, rng)
-  braid(open, cols, rows, rng)
-
-  const { house, houseCenter, ghostExit } = buildHouse(open, door, cols, rows)
-  cutTunnels(open, cols, rows, house, rng)
-  connect(open, door, house, cols, rows)
-
-  const inHouse = (x: number, y: number) =>
-    (x >= house.minX && x <= house.maxX && y >= house.minY && y <= house.maxY) ||
-    door[y][x]
-
-  const start =
-    nearestOpenTo(open, cols, rows, inHouse, { x: houseCenter.x, y: rows - 2 }) ??
-    ghostExit
-
-  const corners: Cell[] = [
-    { x: 1, y: 1 },
-    { x: cols - 2, y: 1 },
-    { x: 1, y: rows - 2 },
-    { x: cols - 2, y: rows - 2 },
-  ]
-  const power: Cell[] = []
-  for (const corner of corners) {
-    const pick = nearestOpenTo(
-      open,
-      cols,
-      rows,
-      (x, y) => inHouse(x, y) || power.some((p) => p.x === x && p.y === y),
-      corner,
-    )
-    if (pick) power.push(pick)
-  }
-
+  const open = grid(C, R, false)
+  const door = grid(C, R, false)
   const crumbs: Cell[] = []
-  for (let y = 0; y < rows; y++) {
-    for (let x = 0; x < cols; x++) {
-      if (!open[y][x] || inHouse(x, y)) continue
-      if (x === start.x && y === start.y) continue
-      if (power.some((p) => p.x === x && p.y === y)) continue
-      crumbs.push({ x, y })
+  const power: Cell[] = []
+  const ghostSpawns: Cell[] = []
+  const doorCells: Cell[] = []
+  let start: Cell = { x: Math.floor(C / 2), y: R - 2 }
+
+  for (let y = 0; y < R; y++) {
+    for (let x = 0; x < C; x++) {
+      const ch = mazeAt(rows, x, y)
+      open[y][x] = ch !== '#'
+      if (ch === '.') crumbs.push({ x, y })
+      else if (ch === 'o') power.push({ x, y })
+      else if (ch === 'P') start = { x, y }
+      else if (ch === 'G') ghostSpawns.push({ x, y })
+      else if (ch === '=') {
+        door[y][x] = true
+        doorCells.push({ x, y })
+      }
     }
   }
 
-  return { cols, rows, open, door, house, houseCenter, ghostExit, start, crumbs, power }
+  const houseCells = [...ghostSpawns, ...doorCells]
+  const house = houseCells.length
+    ? {
+        minX: Math.min(...houseCells.map((c) => c.x)),
+        maxX: Math.max(...houseCells.map((c) => c.x)),
+        minY: Math.min(...houseCells.map((c) => c.y)),
+        maxY: Math.max(...houseCells.map((c) => c.y)),
+      }
+    : { minX: 0, maxX: C - 1, minY: 0, maxY: R - 1 }
+
+  const houseCenter = ghostSpawns.length
+    ? {
+        x: Math.round(ghostSpawns.reduce((s, c) => s + c.x, 0) / ghostSpawns.length),
+        y: Math.round(ghostSpawns.reduce((s, c) => s + c.y, 0) / ghostSpawns.length),
+      }
+    : { x: Math.floor(C / 2), y: Math.floor(R / 2) }
+
+  let ghostExit: Cell = { x: houseCenter.x, y: Math.max(1, house.minY - 1) }
+  let exitDist = -1
+  for (const d of doorCells) {
+    for (const [dx, dy] of [
+      [0, -1],
+      [0, 1],
+      [-1, 0],
+      [1, 0],
+    ] as const) {
+      const ex = d.x + dx
+      const ey = d.y + dy
+      if (ey < 0 || ey >= R || ex < 0 || ex >= C) continue
+      if (!open[ey][ex]) continue
+      const ch = mazeAt(rows, ex, ey)
+      if (ch === 'G' || ch === '=') continue
+      // Prefer the tile above the door that also opens into the maze ring.
+      const dist = (ex - houseCenter.x) ** 2 + (ey - houseCenter.y) ** 2
+      if (dist > exitDist) {
+        exitDist = dist
+        ghostExit = { x: ex, y: ey }
+      }
+    }
+  }
+
+  return {
+    cols: C,
+    rows: R,
+    open,
+    door,
+    house,
+    houseCenter,
+    ghostExit,
+    start,
+    crumbs,
+    power,
+  }
 }
 
 function rotCell(cell: Cell, rows: number): Cell {
@@ -422,16 +284,29 @@ export function rotateMazeCW(maze: Maze): Maze {
   }
 }
 
+function levelLayout(level: number) {
+  const idx = Math.min(LEVEL_MAZES.length - 1, Math.max(0, level - 1))
+  return LEVEL_MAZES[idx]
+}
+
 /**
- * Level maze for the current viewport. Always generated in landscape, then
- * rotated for portrait so phone and desktop share the same layout.
+ * Curated maze for this level. Always authored in landscape, then rotated for
+ * portrait so phone and desktop share the same board.
  */
 export function buildLevelMaze(
   level: number,
   width = typeof window === 'undefined' ? 1280 : window.innerWidth,
   height = typeof window === 'undefined' ? 720 : window.innerHeight,
 ): Maze {
-  const seed = mazeSeed(level, LAND_COLS, LAND_ROWS)
-  const maze = buildMaze(LAND_COLS, LAND_ROWS, seed)
+  const maze = parseMaze(levelLayout(level))
   return height > width ? rotateMazeCW(maze) : maze
+}
+
+/** @deprecated prefer buildLevelMaze. */
+export function buildMaze(_cols: number, _rows: number, _seed = 1): Maze {
+  return parseMaze(LEVEL_MAZES[0])
+}
+
+export function mazeSeed(level: number) {
+  return level | 0
 }
