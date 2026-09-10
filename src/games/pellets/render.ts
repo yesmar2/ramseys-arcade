@@ -71,11 +71,12 @@ export function computeLayout(w: number, h: number, cols: number, rows: number) 
   const padBottom = Math.max(8, Math.min(28, h * 0.02))
   const availW = w - padX * 2
   const availH = h - hud - padBottom
-  const cell = Math.max(1, Math.min(availW / cols, availH / rows))
+  // Integer cells so adjacent wall edges share a pixel and outlines meet.
+  const cell = Math.max(1, Math.floor(Math.min(availW / cols, availH / rows)))
   const gridW = cell * cols
   const gridH = cell * rows
-  const ox = (w - gridW) / 2
-  const oy = hud + Math.max(0, (availH - gridH) / 2)
+  const ox = Math.round((w - gridW) / 2)
+  const oy = Math.round(hud + Math.max(0, (availH - gridH) / 2))
   return { cell, ox, oy, hud, gridW, gridH }
 }
 
@@ -97,9 +98,54 @@ function openOrOutside(state: GameState, x: number, y: number) {
   return state.open[y][x]
 }
 
+/** Clockwise outline loops around wall regions, in grid-vertex units. */
+function wallOutlineLoops(state: GameState) {
+  const vertexKey = (x: number, y: number) => `${x},${y}`
+  const outgoing = new Map<string, { x: number; y: number }[]>()
+
+  const add = (x0: number, y0: number, x1: number, y1: number) => {
+    const key = vertexKey(x0, y0)
+    const list = outgoing.get(key) ?? []
+    list.push({ x: x1, y: y1 })
+    outgoing.set(key, list)
+  }
+
+  for (let y = 0; y < state.rows; y++) {
+    for (let x = 0; x < state.cols; x++) {
+      if (!wallAt(state, x, y)) continue
+      if (openOrOutside(state, x, y - 1)) add(x, y, x + 1, y)
+      if (openOrOutside(state, x + 1, y)) add(x + 1, y, x + 1, y + 1)
+      if (openOrOutside(state, x, y + 1)) add(x + 1, y + 1, x, y + 1)
+      if (openOrOutside(state, x - 1, y)) add(x, y + 1, x, y)
+    }
+  }
+
+  const loops: { x: number; y: number }[][] = []
+  while (outgoing.size) {
+    const startKey = outgoing.keys().next().value
+    if (!startKey) break
+    const [sx, sy] = startKey.split(',').map(Number)
+    const loop = [{ x: sx, y: sy }]
+    let cx = sx
+    let cy = sy
+    for (let guard = 0; guard < state.cols * state.rows * 4; guard++) {
+      const opts = outgoing.get(vertexKey(cx, cy))
+      if (!opts?.length) break
+      const next = opts.pop()!
+      if (!opts.length) outgoing.delete(vertexKey(cx, cy))
+      loop.push(next)
+      cx = next.x
+      cy = next.y
+      if (cx === sx && cy === sy) break
+    }
+    if (loop.length > 2) loops.push(loop)
+  }
+  return loops
+}
+
 /**
  * Solid full-cell walls so corridors and walls are the same thickness.
- * Accent outline only on lane edges and the outer perimeter.
+ * Outlines are one continuous loop per wall region so every corner meets.
  */
 function drawWalls(
   ctx: CanvasRenderingContext2D,
@@ -109,48 +155,38 @@ function drawWalls(
   cell: number,
   skin: Skin,
 ) {
-  // Exact cell fills — no overlap into lanes (overlap was causing corner blobs).
-  ctx.fillStyle = skin.wallFill
-  for (let y = 0; y < state.rows; y++) {
-    for (let x = 0; x < state.cols; x++) {
-      if (!wallAt(state, x, y)) continue
-      ctx.fillRect(ox + x * cell, oy + y * cell, cell, cell)
-    }
-  }
+  ctx.save()
 
-  // Outline sits on the wall side of the lane edge so corridors stay full-width.
-  ctx.strokeStyle = skin.wallStroke
-  ctx.lineWidth = Math.max(1.4, cell * 0.08)
-  ctx.lineCap = 'butt'
-  ctx.lineJoin = 'miter'
-  const inset = ctx.lineWidth / 2
   ctx.beginPath()
   for (let y = 0; y < state.rows; y++) {
     for (let x = 0; x < state.cols; x++) {
       if (!wallAt(state, x, y)) continue
-      const x0 = ox + x * cell + inset
-      const x1 = ox + (x + 1) * cell - inset
-      const y0 = oy + y * cell + inset
-      const y1 = oy + (y + 1) * cell - inset
-      if (openOrOutside(state, x, y - 1)) {
-        ctx.moveTo(x0 - inset, y0)
-        ctx.lineTo(x1 + inset, y0)
-      }
-      if (openOrOutside(state, x, y + 1)) {
-        ctx.moveTo(x0 - inset, y1)
-        ctx.lineTo(x1 + inset, y1)
-      }
-      if (openOrOutside(state, x - 1, y)) {
-        ctx.moveTo(x0, y0 - inset)
-        ctx.lineTo(x0, y1 + inset)
-      }
-      if (openOrOutside(state, x + 1, y)) {
-        ctx.moveTo(x1, y0 - inset)
-        ctx.lineTo(x1, y1 + inset)
-      }
+      ctx.rect(ox + x * cell, oy + y * cell, cell, cell)
+    }
+  }
+  ctx.clip()
+
+  ctx.fillStyle = skin.wallFill
+  ctx.fillRect(ox, oy, state.cols * cell, state.rows * cell)
+
+  ctx.strokeStyle = skin.wallStroke
+  ctx.lineWidth = Math.max(2, cell * 0.1) * 2
+  ctx.lineCap = 'butt'
+  ctx.lineJoin = 'miter'
+  ctx.miterLimit = 2
+  ctx.beginPath()
+  for (const loop of wallOutlineLoops(state)) {
+    const start = loop[0]
+    if (!start) continue
+    ctx.moveTo(ox + start.x * cell, oy + start.y * cell)
+    for (let i = 1; i < loop.length; i++) {
+      const p = loop[i]
+      if (!p) continue
+      ctx.lineTo(ox + p.x * cell, oy + p.y * cell)
     }
   }
   ctx.stroke()
+  ctx.restore()
 
   // Den gate — gold stroke, same family as crumbs.
   ctx.strokeStyle = skin.crumbStroke

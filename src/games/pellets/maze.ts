@@ -20,8 +20,8 @@ export type Maze = {
  * Canonical landscape size. Portrait is this rotated 90° CW so phone and
  * desktop share the same maze — just flipped.
  *
- * Legend: `#` wall, `.` crumb, `o` power, ` ` path (auto crumb),
- * `=` house door, `P` player, `G` chaser spawn.
+ * Legend: `#` wall, `.` crumb, `o` power, `=` house door, `P` player,
+ * `G` chaser spawn.
  */
 const LAND_COLS = 27
 const LAND_ROWS = 15
@@ -36,102 +36,73 @@ export function landscapeMazeSize() {
   return { cols: LAND_COLS, rows: LAND_ROWS }
 }
 
-/**
- * Shared mid band — den + the ring around it. Built as loops so chasers and
- * the player always have a way through (no one-dot stubs).
- */
-const MID = [
-  '#.####.#...........#.####.#',
-  '#.#....#...........#....#.#',
-  '#.#.##......#=#......##.#.#',
-  '#.#.##.#####GGG#####.##.#.#',
-  '#.#....#....###....#....#.#',
-  '#.####.#...........#.####.#',
-] as const
+/** Left half + center (14 chars). Mirrored to 27 so every board is LR + TB symmetric. */
+function mirrorLR(half: string) {
+  if (half.length !== 14) {
+    throw new Error(`Pellets half-row must be 14 chars, got ${half.length} (${half})`)
+  }
+  return half.slice(0, 13) + half[13] + [...half.slice(0, 13)].reverse().join('')
+}
+
+function placeCenter(row: string, ch: string) {
+  return row.slice(0, 13) + ch + row.slice(14)
+}
 
 /**
- * Hand-picked landscape mazes. Each level adds a little more structure while
- * keeping corridors on loops — dead-end stubs are sealed after parse.
+ * Shared den + the open ring around it. Later levels only add a few walls on
+ * the same skeleton so difficulty steps up gently and the board still loops.
+ */
+const RING = '#.............'
+const DEN = ['#.#.#.#######=', '......######GG', '#.#.#.########'] as const
+const DEN_TIGHT = ['#####.#######=', '......######GG', '#####.########'] as const
+
+function makeLevel(
+  row2: string,
+  row3: string,
+  row4: string,
+  den: readonly [string, string, string] = DEN,
+) {
+  const top = [row2, row3, row4, RING]
+  const halves = [
+    '##############',
+    '#o............',
+    ...top,
+    ...den,
+    ...[...top].reverse(),
+    '#o............',
+    '##############',
+  ]
+  const rows = halves.map(mirrorLR)
+  rows[11] = placeCenter(rows[11], 'P')
+  return rows
+}
+
+const R2 = '#.####.###.##.'
+const R3 = '#.#...........'
+const R4 = '#.#.####.###.#'
+
+/** Close a spoke / add a pillar on the left-center half. */
+function seal(half: string, x: number) {
+  return half.slice(0, x) + '#' + half.slice(x + 1)
+}
+
+/**
+ * Curated boards: one skeleton, mirrored on both axes, no one-tile stubs.
+ * Each level closes a couple more escapes — not a new maze language.
  */
 const LEVEL_MAZES: string[][] = [
-  // 1 — open ring, easy read
-  [
-    '###########################',
-    '#o.......................o#',
-    '#.##.######.#.#.######.##.#',
-    '#.##.#......#.#......#.##.#',
-    '#....#.######.######.#....#',
-    ...MID,
-    '#............P............#',
-    '#.##.######.#.#.######.##.#',
-    '#o.......................o#',
-    '###########################',
-  ],
-  // 2 — side pockets that still reconnect
-  [
-    '###########################',
-    '#o....#.............#....o#',
-    '#.###.#.#####.#####.#.###.#',
-    '#.#.....................#.#',
-    '#.#.##.######.######.##.#.#',
-    ...MID,
-    '#.#..........P..........#.#',
-    '#.###.#.#####.#####.#.###.#',
-    '#o....#.............#....o#',
-    '###########################',
-  ],
-  // 3 — longer side runs
-  [
-    '###########################',
-    '#o.......................o#',
-    '#.###.#####.###.#####.###.#',
-    '#.#.#...............#.#.#.#',
-    '#.#.#.######.######.#.#.#.#',
-    ...MID,
-    '#............P............#',
-    '#.###.#####.###.#####.###.#',
-    '#o.......................o#',
-    '###########################',
-  ],
-  // 4 — tighter top/bottom cages
-  [
-    '###########################',
-    '#o.......................o#',
-    '#.##.#####.#####.#####.##.#',
-    '#.##...................##.#',
-    '#.####.#####.#####.####.#.#',
-    ...MID,
-    '#............P............#',
-    '#.##.#####.#####.#####.##.#',
-    '#o.......................o#',
-    '###########################',
-  ],
-  // 5 — more interior walls
-  [
-    '###########################',
-    '#o......#.........#......o#',
-    '#.#####.#.#######.#.#####.#',
-    '#.#...................#.#.#',
-    '#.#.###.######.######.#.#.#',
-    ...MID,
-    '#.#..........P..........#.#',
-    '#.#####.#.#######.#.#####.#',
-    '#o......#.........#......o#',
-    '###########################',
-  ],
-  // 6+ — densest, still looped
-  [
-    '###########################',
-    '#o..##.............##....o#',
-    '#.#.##.##.#####.##.##.#.#.#',
-    '#.#....##.......##....#.#.#',
-    '#.#####.##.....##.#####.#.#',
-    ...MID,
-    '#.#....##...P...##....#.#.#',
-    '#.#.##.##.#####.##.##.#.#.#',
-    '#o..##.............##....o#',
-    '###########################',
-  ],
+  // 1 — roomiest loops
+  makeLevel(R2, R3, R4),
+  // 2 — seal the inner top/bottom gaps
+  makeLevel(seal(R2, 10), R3, R4),
+  // 3 — pillar on the long mid run
+  makeLevel(seal(R2, 10), seal(R3, 7), R4),
+  // 4 — close the center top/bottom spoke
+  makeLevel(seal(seal(R2, 10), 13), seal(R3, 7), R4),
+  // 5 — seal the mid-ring center gaps
+  makeLevel(seal(seal(R2, 10), 13), seal(R3, 7), seal(R4, 12)),
+  // 6+ — tighter den sides
+  makeLevel(seal(seal(R2, 10), 13), seal(R3, 7), seal(R4, 12), DEN_TIGHT),
 ]
 
 function grid(cols: number, rows: number, value: boolean) {
@@ -140,116 +111,6 @@ function grid(cols: number, rows: number, value: boolean) {
 
 function mazeAt(rows: string[], x: number, y: number) {
   return rows[y]?.[x] ?? '#'
-}
-
-function neighbors(open: boolean[][], cols: number, rows: number, x: number, y: number) {
-  const out: Cell[] = []
-  for (const [dx, dy] of [
-    [0, 1],
-    [0, -1],
-    [1, 0],
-    [-1, 0],
-  ] as const) {
-    let nx = x + dx
-    let ny = y + dy
-    if (nx < 0 || nx >= cols) {
-      if (!open[y]?.[0] || !open[y]?.[cols - 1]) continue
-      nx = (nx + cols) % cols
-    }
-    if (ny < 0 || ny >= rows) continue
-    if (!open[ny][nx]) continue
-    out.push({ x: nx, y: ny })
-  }
-  return out
-}
-
-/**
- * Fill one-tile dead ends so corridors stay on loops. Protected tiles (start,
- * power, den) are kept — a neighboring wall is opened instead when needed.
- */
-function sealDeadEnds(
-  open: boolean[][],
-  door: boolean[][],
-  cols: number,
-  rows: number,
-  keep: Set<string>,
-) {
-  const key = (x: number, y: number) => `${x},${y}`
-
-  // If a keep tile is a stub, punch toward the board center.
-  for (const token of keep) {
-    const [xs, ys] = token.split(',')
-    const x = Number(xs)
-    const y = Number(ys)
-    if (!open[y]?.[x] || door[y][x]) continue
-    if (neighbors(open, cols, rows, x, y).length > 1) continue
-    const ox = Math.floor(cols / 2)
-    const oy = Math.floor(rows / 2)
-    const dirs = [
-      [Math.sign(ox - x) || 1, 0],
-      [0, Math.sign(oy - y) || 1],
-      [-1, 0],
-      [1, 0],
-      [0, -1],
-      [0, 1],
-    ] as const
-    for (const [dx, dy] of dirs) {
-      const nx = x + dx
-      const ny = y + dy
-      if (ny < 0 || ny >= rows || nx < 0 || nx >= cols) continue
-      if (door[ny][nx]) continue
-      if (!open[ny][nx]) {
-        open[ny][nx] = true
-        break
-      }
-    }
-  }
-
-  let changed = true
-  while (changed) {
-    changed = false
-    for (let y = 0; y < rows; y++) {
-      for (let x = 0; x < cols; x++) {
-        if (!open[y][x] || door[y][x]) continue
-        if (keep.has(key(x, y))) continue
-        const next = neighbors(open, cols, rows, x, y)
-        if (next.length > 1) continue
-        // Don't carve away the only approach into a power / start / den tile.
-        if (next.some((n) => keep.has(key(n.x, n.y)))) continue
-        open[y][x] = false
-        changed = true
-      }
-    }
-  }
-
-  // Second pass: if a keep tile is still a stub, open toward center.
-  for (const token of keep) {
-    const [xs, ys] = token.split(',')
-    const x = Number(xs)
-    const y = Number(ys)
-    if (!open[y]?.[x] || door[y][x]) continue
-    if (neighbors(open, cols, rows, x, y).length > 1) continue
-    const ox = Math.floor(cols / 2)
-    const oy = Math.floor(rows / 2)
-    const dirs = [
-      [Math.sign(ox - x) || 1, 0],
-      [0, Math.sign(oy - y) || 1],
-      [-1, 0],
-      [1, 0],
-      [0, -1],
-      [0, 1],
-    ] as const
-    for (const [dx, dy] of dirs) {
-      const nx = x + dx
-      const ny = y + dy
-      if (ny < 0 || ny >= rows || nx < 0 || nx >= cols) continue
-      if (door[ny][nx]) continue
-      if (!open[ny][nx]) {
-        open[ny][nx] = true
-        break
-      }
-    }
-  }
 }
 
 function parseMaze(rows: string[]): Maze {
@@ -287,27 +148,15 @@ function parseMaze(rows: string[]): Maze {
     }
   }
 
-  const keep = new Set<string>([
-    `${start.x},${start.y}`,
-    ...power.map((c) => `${c.x},${c.y}`),
-    ...ghostSpawns.map((c) => `${c.x},${c.y}`),
-    ...doorCells.map((c) => `${c.x},${c.y}`),
-  ])
-  sealDeadEnds(open, door, C, R, keep)
-
-  // Every remaining open path tile gets a crumb.
+  // Every open lane tile carries a crumb except pads, spawns and the gate.
   for (let y = 0; y < R; y++) {
     for (let x = 0; x < C; x++) {
       if (!open[y][x] || door[y][x]) continue
       const ch = mazeAt(rows, x, y)
       if (ch === 'o' || ch === 'G' || ch === 'P') continue
-      // Skip tiles we sealed that were never walkable in the authored string? already open.
       crumbs.push({ x, y })
     }
   }
-
-  // Drop crumbs that were authored on cells we sealed into walls.
-  // (crumbs only added for open cells above — fine.)
 
   const houseCells = [...ghostSpawns, ...doorCells]
   const house = houseCells.length

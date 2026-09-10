@@ -106,10 +106,10 @@ const SCORE_SURGE = [150, 300, 600, 1200]
 const START_LIVES = 3
 const FRIGHT_TIME = 6.5
 
-const PLAYER_SPEED = 7.1
-const GHOST_SPEED = 5.3
-const FRIGHT_SPEED = 3.7
-const EATEN_SPEED = 12
+const PLAYER_SPEED = 5.2
+const GHOST_SPEED = 3.9
+const FRIGHT_SPEED = 2.7
+const EATEN_SPEED = 9
 const SURGE_SPEED = 1.85
 
 const DEATH_TIME = 0.85
@@ -420,7 +420,7 @@ export function triggerSurge(state: GameState): GameState {
 }
 
 function levelSpeed(level: number) {
-  return 1 + Math.min(0.5, (level - 1) * 0.06)
+  return 1 + Math.min(0.18, (level - 1) * 0.03)
 }
 
 function centerOf(v: number) {
