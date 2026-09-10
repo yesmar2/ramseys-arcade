@@ -1,11 +1,61 @@
 import { isDarkTheme, playfieldColor } from '../../lib/theme'
-import { mazeChar, type GameState, type Ghost, type GhostKind } from './game'
+import { comboMult, type GameState, type Ghost, type GhostKind } from './game'
 
+/** Gold crumbs — same family as Snake food. */
 const ACCENT = 38
-const WALL_HUE = 198
+/**
+ * Ink-slate walls — sits with --ink / sky, not the mint playfield, so lanes
+ * read clearly without harsh neon contrast.
+ */
+const WALL_HUE = 208
+
+type Skin = {
+  dark: boolean
+  wallFill: string
+  wallStroke: string
+  floorDot: string
+  crumbFill: string
+  crumbStroke: string
+  panel: string
+  panelEdge: string
+  ink: string
+  eyeWhite: string
+  star: string
+}
 
 function hsla(hue: number, sat: number, light: number, alpha = 1) {
   return `hsla(${hue}, ${sat}%, ${light}%, ${alpha})`
+}
+
+function skinFor(dark: boolean): Skin {
+  return dark
+    ? {
+        dark,
+        wallFill: hsla(WALL_HUE, 40, 38, 0.72),
+        wallStroke: hsla(WALL_HUE, 52, 72, 0.95),
+        floorDot: 'rgba(46, 184, 160, 0.1)',
+        crumbFill: hsla(ACCENT, 58, 58, 0.22),
+        crumbStroke: hsla(ACCENT, 58, 58, 0.9),
+        panel: 'rgba(8, 14, 20, 0.55)',
+        panelEdge: 'rgba(231, 238, 243, 0.08)',
+        ink: '#0d1720',
+        eyeWhite: 'rgba(231, 238, 243, 0.92)',
+        star: 'rgba(74, 168, 232, 0.12)',
+      }
+    : {
+        dark,
+        // Deeper slate so corridors stay pale mint and walls pop.
+        wallFill: hsla(WALL_HUE, 34, 48, 0.62),
+        wallStroke: hsla(WALL_HUE, 38, 32, 0.9),
+        floorDot: 'rgba(46, 184, 160, 0.1)',
+        crumbFill: hsla(ACCENT, 58, 58, 0.2),
+        crumbStroke: hsla(ACCENT, 58, 42, 0.9),
+        panel: 'rgba(255, 255, 255, 0.55)',
+        panelEdge: 'rgba(26, 43, 60, 0.06)',
+        ink: '#1a2b3c',
+        eyeWhite: 'rgba(255, 255, 255, 0.9)',
+        star: 'rgba(74, 168, 232, 0.14)',
+      }
 }
 
 function roundRect(
@@ -27,11 +77,11 @@ function roundRect(
 }
 
 export function computeLayout(w: number, h: number, cols: number, rows: number) {
-  const padX = Math.min(24, w * 0.016)
-  const padY = Math.min(28, h * 0.03)
-  const hud = Math.max(48, Math.min(72, h * 0.1))
+  const padX = Math.max(6, Math.min(20, w * 0.012))
+  const hud = Math.max(40, Math.min(64, h * 0.075))
+  const padBottom = Math.max(8, Math.min(28, h * 0.02))
   const availW = w - padX * 2
-  const availH = h - hud - padY
+  const availH = h - hud - padBottom
   const cell = Math.max(1, Math.min(availW / cols, availH / rows))
   const gridW = cell * cols
   const gridH = cell * rows
@@ -41,283 +91,102 @@ export function computeLayout(w: number, h: number, cols: number, rows: number) 
 }
 
 function chaserHue(kind: GhostKind) {
-  if (kind === 'blink') return 348
-  if (kind === 'pink') return 272
-  if (kind === 'inky') return 172
-  return 18
+  if (kind === 'blink') return 352
+  if (kind === 'pink') return 288
+  if (kind === 'inky') return 186
+  return 26
 }
 
-function drawWalls(
+/**
+ * Snake-family wall beads: soft fill + stroked outline. Adjacent wall cells
+ * share edges so runs read as one corridor instead of a dotted grid.
+ */
+function drawWallBeads(
   ctx: CanvasRenderingContext2D,
   state: GameState,
   ox: number,
   oy: number,
   cell: number,
-  dark: boolean,
+  skin: Skin,
 ) {
-  // Snake-style stroked circles — thin outline, soft fill.
-  const lineW = Math.max(1.1, cell * 0.06)
-  const r = cell * 0.32
+  const lineW = Math.max(1.15, cell * 0.07)
+  const r = cell * 0.34
+  const gap = (cell - r * 2) / 2
+
+  ctx.lineWidth = lineW
+  ctx.lineJoin = 'round'
+  ctx.lineCap = 'round'
 
   for (let y = 0; y < state.rows; y++) {
     for (let x = 0; x < state.cols; x++) {
       if (state.open[y][x]) continue
-      const cx = ox + (x + 0.5) * cell
-      const cy = oy + (y + 0.5) * cell
-      ctx.beginPath()
-      ctx.arc(cx, cy, r, 0, Math.PI * 2)
-      ctx.fillStyle = dark ? hsla(WALL_HUE, 42, 58, 0.14) : hsla(WALL_HUE, 48, 52, 0.12)
+      const sx = ox + x * cell + gap
+      const sy = oy + y * cell + gap
+      const sw = cell - gap * 2
+      const sh = cell - gap * 2
+      roundRect(ctx, sx, sy, sw, sh, r)
+      ctx.fillStyle = skin.wallFill
       ctx.fill()
-      ctx.strokeStyle = dark ? hsla(WALL_HUE, 55, 62, 0.88) : hsla(WALL_HUE, 52, 42, 0.9)
-      ctx.lineWidth = lineW
+      ctx.strokeStyle = skin.wallStroke
       ctx.stroke()
     }
   }
 
+  // Den gate — same gold stroke language as crumbs.
+  ctx.strokeStyle = skin.crumbStroke
+  ctx.lineWidth = Math.max(1.3, cell * 0.07)
   for (let y = 0; y < state.rows; y++) {
     for (let x = 0; x < state.cols; x++) {
-      if (mazeChar(state, x, y) !== '=') continue
+      if (!state.door[y][x]) continue
       const cx = ox + (x + 0.5) * cell
       const cy = oy + (y + 0.5) * cell
-      const vertical =
-        mazeChar(state, x, y - 1) === '=' || mazeChar(state, x, y + 1) === '='
-      ctx.strokeStyle = dark ? hsla(ACCENT, 60, 62, 0.85) : hsla(ACCENT, 58, 48, 0.9)
-      ctx.lineWidth = Math.max(1.4, cell * 0.07)
-      ctx.lineCap = 'round'
       ctx.beginPath()
-      if (vertical) {
-        ctx.moveTo(cx, cy - cell * 0.28)
-        ctx.lineTo(cx, cy + cell * 0.28)
-      } else {
-        ctx.moveTo(cx - cell * 0.28, cy)
-        ctx.lineTo(cx + cell * 0.28, cy)
-      }
+      ctx.moveTo(cx - cell * 0.32, cy)
+      ctx.lineTo(cx + cell * 0.32, cy)
       ctx.stroke()
     }
   }
 }
 
-function drawCrumbs(
-  ctx: CanvasRenderingContext2D,
+/** Offscreen cache for playfield + panel + walls + empty floor dots. */
+let staticLayer: {
+  open: boolean[][]
+  door: boolean[][]
+  cell: number
+  ox: number
+  oy: number
+  w: number
+  h: number
+  dark: boolean
+  playfield: string
+  canvas: HTMLCanvasElement
+  dpr: number
+} | null = null
+
+function paintStatic(
+  canvas: HTMLCanvasElement,
+  dpr: number,
   state: GameState,
+  w: number,
+  h: number,
+  cell: number,
   ox: number,
   oy: number,
-  cell: number,
-  dark: boolean,
-  time: number,
+  gridW: number,
+  gridH: number,
+  skin: Skin,
 ) {
-  const pulse = 0.88 + Math.sin(time * 7) * 0.12
-  for (let y = 0; y < state.rows; y++) {
-    for (let x = 0; x < state.cols; x++) {
-      const cx = ox + (x + 0.5) * cell
-      const cy = oy + (y + 0.5) * cell
-      if (state.pellets[y][x]) {
-        const r = Math.max(1.6, cell * 0.13)
-        ctx.fillStyle = dark ? hsla(ACCENT, 55, 62, 0.22) : hsla(ACCENT, 58, 58, 0.2)
-        ctx.beginPath()
-        ctx.arc(cx, cy, r, 0, Math.PI * 2)
-        ctx.fill()
-        ctx.strokeStyle = dark ? hsla(ACCENT, 58, 58, 0.95) : hsla(ACCENT, 58, 42, 0.95)
-        ctx.lineWidth = Math.max(1, cell * 0.045)
-        ctx.stroke()
-      }
-      if (state.power[y][x]) {
-        const r = cell * 0.28 * pulse
-        const glow = ctx.createRadialGradient(cx, cy, 1, cx, cy, r * 2.1)
-        glow.addColorStop(0, hsla(ACCENT, 70, 58, 0.4))
-        glow.addColorStop(1, hsla(ACCENT, 70, 58, 0))
-        ctx.fillStyle = glow
-        ctx.beginPath()
-        ctx.arc(cx, cy, r * 2.1, 0, Math.PI * 2)
-        ctx.fill()
-        ctx.beginPath()
-        ctx.arc(cx, cy, r, 0, Math.PI * 2)
-        ctx.fillStyle = dark ? hsla(ACCENT, 58, 58, 0.28) : hsla(ACCENT, 58, 58, 0.24)
-        ctx.fill()
-        ctx.strokeStyle = dark ? hsla(ACCENT, 60, 62, 0.95) : hsla(ACCENT, 58, 42, 0.95)
-        ctx.lineWidth = Math.max(1.1, cell * 0.055)
-        ctx.stroke()
-      }
-    }
-  }
-}
+  canvas.width = Math.floor(w * dpr)
+  canvas.height = Math.floor(h * dpr)
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
 
-/** You — a soft rounded bead with a face, in the Snake family. */
-function drawPlayer(
-  ctx: CanvasRenderingContext2D,
-  state: GameState,
-  ox: number,
-  oy: number,
-  cell: number,
-  dark: boolean,
-) {
-  const cx = ox + state.player.x * cell
-  const cy = oy + state.player.y * cell
-  const lineW = Math.max(1.1, cell * 0.055)
-  const r = cell * 0.36
-
-  if (state.phase === 'dying') {
-    const t = 1 - Math.max(0, state.deathAnim) / 0.85
-    ctx.globalAlpha = Math.max(0, 1 - t)
-    ctx.beginPath()
-    ctx.arc(cx, cy, r * (1 - t * 0.35), 0, Math.PI * 2)
-    ctx.fillStyle = hsla(ACCENT, 58, 58, 0.22)
-    ctx.fill()
-    ctx.strokeStyle = hsla(ACCENT, 58, 42, 0.95)
-    ctx.lineWidth = lineW
-    ctx.stroke()
-    ctx.globalAlpha = 1
-    return
-  }
-
-  if (state.invuln > 0 && Math.floor(state.invuln * 12) % 2 === 0) {
-    ctx.globalAlpha = 0.4
-  }
-
-  ctx.beginPath()
-  ctx.arc(cx, cy, r, 0, Math.PI * 2)
-  ctx.fillStyle = dark ? hsla(ACCENT, 58, 58, 0.26) : hsla(ACCENT, 58, 58, 0.22)
-  ctx.fill()
-  ctx.strokeStyle = dark ? hsla(ACCENT, 60, 62, 0.95) : hsla(ACCENT, 58, 42, 0.95)
-  ctx.lineWidth = lineW
-  ctx.stroke()
-
-  // Eyes look along travel direction.
-  const eye = cell * 0.09
-  const look =
-    state.player.dir === 'left'
-      ? { x: -0.12, y: 0 }
-      : state.player.dir === 'right'
-        ? { x: 0.12, y: 0 }
-        : state.player.dir === 'up'
-          ? { x: 0, y: -0.12 }
-          : { x: 0, y: 0.12 }
-  const ey = cy - cell * 0.08
-  ctx.fillStyle = dark ? 'rgba(231, 238, 243, 0.92)' : 'rgba(255, 255, 255, 0.9)'
-  ctx.beginPath()
-  ctx.arc(cx - cell * 0.14 + look.x * cell, ey + look.y * cell, eye, 0, Math.PI * 2)
-  ctx.arc(cx + cell * 0.14 + look.x * cell, ey + look.y * cell, eye, 0, Math.PI * 2)
-  ctx.fill()
-  ctx.fillStyle = dark ? '#0d1720' : '#1a2b3c'
-  ctx.beginPath()
-  ctx.arc(cx - cell * 0.14 + look.x * cell * 1.4, ey + look.y * cell * 1.4, eye * 0.45, 0, Math.PI * 2)
-  ctx.arc(cx + cell * 0.14 + look.x * cell * 1.4, ey + look.y * cell * 1.4, eye * 0.45, 0, Math.PI * 2)
-  ctx.fill()
-
-  // Tiny bite notch — reads as hungry without going full wedge.
-  ctx.strokeStyle = dark ? hsla(ACCENT, 50, 45, 0.7) : hsla(ACCENT, 50, 38, 0.65)
-  ctx.lineWidth = Math.max(1, cell * 0.045)
-  ctx.lineCap = 'round'
-  const mouthOpen = 0.5 + 0.5 * Math.sin(state.mouth)
-  ctx.beginPath()
-  if (state.player.dir === 'right') {
-    ctx.moveTo(cx + r * 0.35, cy + cell * 0.06)
-    ctx.quadraticCurveTo(cx + r * 0.7, cy + cell * 0.1 * mouthOpen, cx + r * 0.45, cy + cell * 0.18)
-  } else if (state.player.dir === 'left') {
-    ctx.moveTo(cx - r * 0.35, cy + cell * 0.06)
-    ctx.quadraticCurveTo(cx - r * 0.7, cy + cell * 0.1 * mouthOpen, cx - r * 0.45, cy + cell * 0.18)
-  } else if (state.player.dir === 'up') {
-    ctx.moveTo(cx - cell * 0.08, cy - r * 0.35)
-    ctx.quadraticCurveTo(cx, cy - r * 0.65 - cell * 0.04 * mouthOpen, cx + cell * 0.08, cy - r * 0.35)
-  } else {
-    ctx.moveTo(cx - cell * 0.08, cy + r * 0.35)
-    ctx.quadraticCurveTo(cx, cy + r * 0.65 + cell * 0.04 * mouthOpen, cx + cell * 0.08, cy + r * 0.35)
-  }
-  ctx.stroke()
-
-  ctx.globalAlpha = 1
-}
-
-/** Rival chasers — same bead language as Snake, different hues. */
-function drawChaser(
-  ctx: CanvasRenderingContext2D,
-  ghost: Ghost,
-  ox: number,
-  oy: number,
-  cell: number,
-  dark: boolean,
-  fright: number,
-  time: number,
-) {
-  const cx = ox + ghost.x * cell
-  const cy = oy + ghost.y * cell
-  const lineW = Math.max(1.1, cell * 0.055)
-  const r = cell * 0.34
-
-  if (ghost.eaten) {
-    // Eyes only — hustling back to the den.
-    ctx.fillStyle = dark ? 'rgba(231, 238, 243, 0.9)' : 'rgba(255, 255, 255, 0.95)'
-    ctx.beginPath()
-    ctx.arc(cx - cell * 0.14, cy, cell * 0.12, 0, Math.PI * 2)
-    ctx.arc(cx + cell * 0.14, cy, cell * 0.12, 0, Math.PI * 2)
-    ctx.fill()
-    ctx.fillStyle = dark ? '#0d1720' : '#1a2b3c'
-    ctx.beginPath()
-    ctx.arc(cx - cell * 0.14, cy, cell * 0.05, 0, Math.PI * 2)
-    ctx.arc(cx + cell * 0.14, cy, cell * 0.05, 0, Math.PI * 2)
-    ctx.fill()
-    return
-  }
-
-  const scared = ghost.mode === 'frightened'
-  const flash = scared && fright < 2 && Math.floor(time * 8) % 2 === 0
-  const hue = scared ? (flash ? 210 : 230) : chaserHue(ghost.kind)
-
-  ctx.beginPath()
-  ctx.arc(cx, cy, r, 0, Math.PI * 2)
-  ctx.fillStyle = dark ? hsla(hue, 56, 58, 0.24) : hsla(hue, 56, 58, 0.2)
-  ctx.fill()
-  ctx.strokeStyle = dark ? hsla(hue, 55, 62, 0.95) : hsla(hue, 55, 40, 0.95)
-  ctx.lineWidth = lineW
-  ctx.stroke()
-
-  const eye = cell * 0.085
-  const look =
-    ghost.dir === 'left'
-      ? -0.1
-      : ghost.dir === 'right'
-        ? 0.1
-        : 0
-  const lookY = ghost.dir === 'up' ? -0.08 : ghost.dir === 'down' ? 0.08 : 0
-  ctx.fillStyle = scared
-    ? dark
-      ? 'rgba(180, 210, 230, 0.95)'
-      : 'rgba(230, 245, 255, 0.95)'
-    : dark
-      ? 'rgba(231, 238, 243, 0.92)'
-      : 'rgba(255, 255, 255, 0.9)'
-  ctx.beginPath()
-  ctx.arc(cx - cell * 0.13 + look * cell, cy - cell * 0.06 + lookY * cell, eye, 0, Math.PI * 2)
-  ctx.arc(cx + cell * 0.13 + look * cell, cy - cell * 0.06 + lookY * cell, eye, 0, Math.PI * 2)
-  ctx.fill()
-  if (!scared) {
-    ctx.fillStyle = dark ? '#0d1720' : '#1a2b3c'
-    ctx.beginPath()
-    ctx.arc(cx - cell * 0.13 + look * cell * 1.5, cy - cell * 0.06 + lookY * cell * 1.5, eye * 0.45, 0, Math.PI * 2)
-    ctx.arc(cx + cell * 0.13 + look * cell * 1.5, cy - cell * 0.06 + lookY * cell * 1.5, eye * 0.45, 0, Math.PI * 2)
-    ctx.fill()
-  } else {
-    ctx.strokeStyle = flash ? hsla(210, 40, 40, 0.9) : hsla(210, 30, 70, 0.9)
-    ctx.lineWidth = Math.max(1, cell * 0.045)
-    ctx.beginPath()
-    ctx.moveTo(cx - cell * 0.16, cy + cell * 0.14)
-    ctx.quadraticCurveTo(cx, cy + cell * 0.22, cx + cell * 0.16, cy + cell * 0.14)
-    ctx.stroke()
-  }
-}
-
-export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, w: number, h: number) {
-  const dark = isDarkTheme()
-  const { cell, ox, oy, gridW, gridH } = computeLayout(w, h, state.cols, state.rows)
-  const time = performance.now() / 1000
-
-  ctx.clearRect(0, 0, w, h)
   ctx.fillStyle = playfieldColor()
   ctx.fillRect(0, 0, w, h)
 
-  // Soft starfield — same family as Snake / Asteroids.
   const step = 28 * Math.max(0.7, Math.min(w, h) / 540)
-  ctx.fillStyle = dark ? 'rgba(74, 168, 232, 0.12)' : 'rgba(74, 168, 232, 0.14)'
+  ctx.fillStyle = skin.star
   for (let py = step * 0.4; py < h; py += step) {
     for (let px = step * 0.4; px < w; px += step) {
       ctx.beginPath()
@@ -326,43 +195,414 @@ export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, w: n
     }
   }
 
-  const radius = Math.max(12, cell * 0.55)
-  roundRect(ctx, ox - 10, oy - 10, gridW + 20, gridH + 20, radius)
-  ctx.fillStyle = dark ? 'rgba(8, 14, 20, 0.55)' : 'rgba(255, 255, 255, 0.55)'
+  const pad = Math.max(6, cell * 0.3)
+  roundRect(ctx, ox - pad, oy - pad, gridW + pad * 2, gridH + pad * 2, Math.max(12, cell * 0.55))
+  ctx.fillStyle = skin.panel
   ctx.fill()
-  ctx.strokeStyle = dark ? 'rgba(231, 238, 243, 0.08)' : 'rgba(26, 43, 60, 0.06)'
+  ctx.strokeStyle = skin.panelEdge
   ctx.lineWidth = 1
   ctx.stroke()
 
-  // Soft corridor dots on open tiles.
-  ctx.fillStyle = dark ? 'rgba(46, 184, 160, 0.1)' : 'rgba(46, 184, 160, 0.1)'
+  // Soft corridor dots — same mint language as Snake.
+  ctx.fillStyle = skin.floorDot
   for (let y = 0; y < state.rows; y++) {
     for (let x = 0; x < state.cols; x++) {
       if (!state.open[y][x]) continue
-      const cx = ox + (x + 0.5) * cell
-      const cy = oy + (y + 0.5) * cell
       ctx.beginPath()
-      ctx.arc(cx, cy, Math.max(1, cell * 0.045), 0, Math.PI * 2)
+      ctx.arc(
+        ox + (x + 0.5) * cell,
+        oy + (y + 0.5) * cell,
+        Math.max(1, cell * 0.055),
+        0,
+        Math.PI * 2,
+      )
       ctx.fill()
     }
   }
 
-  drawWalls(ctx, state, ox, oy, cell, dark)
-  drawCrumbs(ctx, state, ox, oy, cell, dark, time)
+  drawWallBeads(ctx, state, ox, oy, cell, skin)
+}
+
+function drawStaticLayer(
+  ctx: CanvasRenderingContext2D,
+  state: GameState,
+  w: number,
+  h: number,
+  cell: number,
+  ox: number,
+  oy: number,
+  gridW: number,
+  gridH: number,
+  skin: Skin,
+  dpr: number,
+) {
+  const playfield = playfieldColor()
+  const hit =
+    staticLayer &&
+    staticLayer.open === state.open &&
+    staticLayer.door === state.door &&
+    staticLayer.cell === cell &&
+    staticLayer.ox === ox &&
+    staticLayer.oy === oy &&
+    staticLayer.w === w &&
+    staticLayer.h === h &&
+    staticLayer.dark === skin.dark &&
+    staticLayer.playfield === playfield &&
+    staticLayer.dpr === dpr
+
+  if (!hit) {
+    const canvas = staticLayer?.canvas ?? document.createElement('canvas')
+    paintStatic(canvas, dpr, state, w, h, cell, ox, oy, gridW, gridH, skin)
+    staticLayer = {
+      open: state.open,
+      door: state.door,
+      cell,
+      ox,
+      oy,
+      w,
+      h,
+      dark: skin.dark,
+      playfield,
+      canvas,
+      dpr,
+    }
+  }
+
+  ctx.drawImage(staticLayer!.canvas, 0, 0, w, h)
+}
+
+function drawCrumbs(
+  ctx: CanvasRenderingContext2D,
+  state: GameState,
+  ox: number,
+  oy: number,
+  cell: number,
+  skin: Skin,
+  time: number,
+) {
+  const crumbR = Math.max(1.5, cell * 0.12)
+  const crumbLine = Math.max(1, cell * 0.045)
+  for (let y = 0; y < state.rows; y++) {
+    for (let x = 0; x < state.cols; x++) {
+      if (!state.crumbs[y][x]) continue
+      const cx = ox + (x + 0.5) * cell
+      const cy = oy + (y + 0.5) * cell
+      ctx.beginPath()
+      ctx.arc(cx, cy, crumbR, 0, Math.PI * 2)
+      ctx.fillStyle = skin.crumbFill
+      ctx.fill()
+      ctx.strokeStyle = skin.crumbStroke
+      ctx.lineWidth = crumbLine
+      ctx.stroke()
+    }
+  }
+
+  const pulse = 0.88 + Math.sin(time * 6) * 0.12
+  for (let y = 0; y < state.rows; y++) {
+    for (let x = 0; x < state.cols; x++) {
+      if (!state.power[y][x]) continue
+      const cx = ox + (x + 0.5) * cell
+      const cy = oy + (y + 0.5) * cell
+      const r = cell * 0.28 * pulse
+      const glow = ctx.createRadialGradient(cx, cy, 1, cx, cy, r * 2.1)
+      glow.addColorStop(0, 'rgba(245, 185, 66, 0.4)')
+      glow.addColorStop(1, 'rgba(245, 185, 66, 0)')
+      ctx.fillStyle = glow
+      ctx.beginPath()
+      ctx.arc(cx, cy, r * 2.1, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.beginPath()
+      ctx.arc(cx, cy, r, 0, Math.PI * 2)
+      ctx.fillStyle = skin.crumbFill
+      ctx.fill()
+      ctx.strokeStyle = skin.crumbStroke
+      ctx.lineWidth = Math.max(1.1, cell * 0.055)
+      ctx.stroke()
+    }
+  }
+}
+
+/** You: Pac-Man wedge in Snake bead language — soft gold fill + stroke. */
+function drawPlayer(
+  ctx: CanvasRenderingContext2D,
+  state: GameState,
+  ox: number,
+  oy: number,
+  cell: number,
+  skin: Skin,
+) {
+  const cx = ox + state.player.x * cell
+  const cy = oy + state.player.y * cell
+  const surging = state.surgeTime > 0
+  const lineW = Math.max(1.2, cell * 0.07)
+  const r = cell * (surging ? 0.42 : 0.38)
+
+  const facing =
+    state.player.dir === 'right'
+      ? 0
+      : state.player.dir === 'down'
+        ? Math.PI / 2
+        : state.player.dir === 'left'
+          ? Math.PI
+          : -Math.PI / 2
+
+  if (state.phase === 'dying') {
+    const t = 1 - Math.max(0, state.deathAnim) / 0.85
+    const open = Math.min(Math.PI - 0.05, t * Math.PI)
+    ctx.save()
+    ctx.translate(cx, cy)
+    ctx.rotate(facing)
+    ctx.globalAlpha = Math.max(0, 1 - t * 0.85)
+    ctx.beginPath()
+    ctx.moveTo(0, 0)
+    ctx.arc(0, 0, r * (1 - t * 0.2), open, Math.PI * 2 - open)
+    ctx.closePath()
+    ctx.fillStyle = hsla(ACCENT, 72, 56, 0.82)
+    ctx.fill()
+    ctx.strokeStyle = hsla(ACCENT, 62, skin.dark ? 48 : 38, 0.95)
+    ctx.lineWidth = lineW
+    ctx.lineJoin = 'round'
+    ctx.stroke()
+    ctx.restore()
+    ctx.globalAlpha = 1
+    return
+  }
+
+  for (const dot of state.trail) {
+    const tx = ox + dot.x * cell
+    const ty = oy + dot.y * cell
+    ctx.beginPath()
+    ctx.arc(tx, ty, r * (0.4 + 0.45 * dot.life), 0, Math.PI * 2)
+    ctx.fillStyle = hsla(ACCENT, 58, 58, 0.18 * dot.life)
+    ctx.fill()
+    ctx.strokeStyle = hsla(ACCENT, 58, 48, 0.55 * dot.life)
+    ctx.lineWidth = Math.max(1, lineW * 0.7)
+    ctx.stroke()
+  }
+
+  if (state.invuln > 0 && Math.floor(state.invuln * 12) % 2 === 0) {
+    ctx.globalAlpha = 0.4
+  }
+
+  if (surging) {
+    const glow = ctx.createRadialGradient(cx, cy, r * 0.3, cx, cy, r * 2)
+    glow.addColorStop(0, 'rgba(245, 185, 66, 0.35)')
+    glow.addColorStop(1, 'rgba(245, 185, 66, 0)')
+    ctx.fillStyle = glow
+    ctx.beginPath()
+    ctx.arc(cx, cy, r * 2, 0, Math.PI * 2)
+    ctx.fill()
+  }
+
+  // Classic chomp: mouth opens and closes, always facing travel.
+  const chomp = 0.4 + 0.45 * (0.5 + 0.5 * Math.sin(state.mouth))
+
+  ctx.save()
+  ctx.translate(cx, cy)
+  ctx.rotate(facing)
+  ctx.beginPath()
+  ctx.moveTo(0, 0)
+  ctx.arc(0, 0, r, chomp, Math.PI * 2 - chomp)
+  ctx.closePath()
+  // More opaque than Snake beads so the wedge cutout actually reads.
+  ctx.fillStyle = hsla(ACCENT, 72, surging ? 62 : 56, surging ? 0.88 : 0.82)
+  ctx.fill()
+  ctx.strokeStyle = hsla(ACCENT, 62, skin.dark ? 48 : 38, 0.95)
+  ctx.lineWidth = lineW
+  ctx.lineJoin = 'round'
+  ctx.stroke()
+
+  // Single Pac-Man eye, above the bite.
+  ctx.fillStyle = skin.ink
+  ctx.beginPath()
+  ctx.arc(r * 0.05, -r * 0.45, Math.max(1.5, cell * 0.075), 0, Math.PI * 2)
+  ctx.fill()
+  ctx.restore()
+
+  ctx.globalAlpha = 1
+}
+
+/** Rival chasers — Snake bead body with a soft skirt so they still read as ghosts. */
+function drawChaser(
+  ctx: CanvasRenderingContext2D,
+  ghost: Ghost,
+  ox: number,
+  oy: number,
+  cell: number,
+  skin: Skin,
+  fright: number,
+  time: number,
+) {
+  const bob = ghost.mode === 'den' ? Math.sin(ghost.bob) * cell * 0.08 : 0
+  const cx = ox + ghost.x * cell
+  const cy = oy + ghost.y * cell + bob
+  const lineW = Math.max(1.15, cell * 0.065)
+  const r = cell * 0.34
+  const scared = ghost.mode === 'frightened'
+  const eaten = ghost.mode === 'eaten'
+  const flash = scared && fright < 2 && Math.floor(time * 8) % 2 === 0
+
+  const lookX = ghost.dir === 'left' ? -0.1 : ghost.dir === 'right' ? 0.1 : 0
+  const lookY = ghost.dir === 'up' ? -0.08 : ghost.dir === 'down' ? 0.08 : 0
+
+  if (eaten) {
+    ctx.fillStyle = skin.eyeWhite
+    ctx.beginPath()
+    ctx.arc(cx - cell * 0.14, cy, cell * 0.12, 0, Math.PI * 2)
+    ctx.arc(cx + cell * 0.14, cy, cell * 0.12, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.fillStyle = skin.ink
+    ctx.beginPath()
+    ctx.arc(cx - cell * 0.14, cy, cell * 0.05, 0, Math.PI * 2)
+    ctx.arc(cx + cell * 0.14, cy, cell * 0.05, 0, Math.PI * 2)
+    ctx.fill()
+    return
+  }
+
+  const hue = scared ? (flash ? 8 : 224) : chaserHue(ghost.kind)
+  const sat = scared ? (flash ? 70 : 55) : 56
+  const light = 58
+
+  if (ghost.hit > 0) {
+    ctx.fillStyle = `hsla(0, 0%, 100%, ${0.35 * ghost.hit})`
+    ctx.beginPath()
+    ctx.arc(cx, cy, r * (1.25 + ghost.hit * 0.4), 0, Math.PI * 2)
+    ctx.fill()
+  }
+
+  // Dome + soft wavy skirt, filled/stroked like a Snake bead.
+  const wave = Math.sin(time * 5.5 + ghost.bob) * cell * 0.04
+  const foot = cy + r * 0.92
+  ctx.beginPath()
+  ctx.arc(cx, cy - r * 0.06, r, Math.PI, 0)
+  ctx.lineTo(cx + r, foot - r * 0.1)
+  for (let i = 0; i < 3; i++) {
+    const x0 = cx + r - ((i * 2 + 1) * r) / 3
+    const x1 = cx + r - ((i * 2 + 2) * r) / 3
+    ctx.quadraticCurveTo(
+      x0,
+      foot + (i % 2 === 0 ? 0.22 : -0.08) * r + wave,
+      x1,
+      foot - r * 0.1,
+    )
+  }
+  ctx.closePath()
+  ctx.fillStyle = hsla(hue, sat, light, 0.22)
+  ctx.fill()
+  ctx.strokeStyle = hsla(hue, sat, skin.dark ? 62 : 40, 0.95)
+  ctx.lineWidth = lineW
+  ctx.lineJoin = 'round'
+  ctx.stroke()
+
+  if (scared) {
+    ctx.strokeStyle = flash ? hsla(8, 60, 30, 0.9) : hsla(210, 30, 70, 0.9)
+    ctx.lineWidth = Math.max(1, cell * 0.045)
+    ctx.beginPath()
+    ctx.moveTo(cx - cell * 0.16, cy + cell * 0.14)
+    ctx.quadraticCurveTo(cx, cy + cell * 0.22, cx + cell * 0.16, cy + cell * 0.14)
+    ctx.stroke()
+    ctx.fillStyle = flash ? hsla(8, 60, 30, 0.95) : skin.eyeWhite
+    ctx.beginPath()
+    ctx.arc(cx - cell * 0.13, cy - cell * 0.06, cell * 0.07, 0, Math.PI * 2)
+    ctx.arc(cx + cell * 0.13, cy - cell * 0.06, cell * 0.07, 0, Math.PI * 2)
+    ctx.fill()
+    return
+  }
+
+  const eye = cell * 0.085
+  ctx.fillStyle = skin.eyeWhite
+  ctx.beginPath()
+  ctx.arc(cx - cell * 0.13 + lookX * cell, cy - cell * 0.06 + lookY * cell, eye, 0, Math.PI * 2)
+  ctx.arc(cx + cell * 0.13 + lookX * cell, cy - cell * 0.06 + lookY * cell, eye, 0, Math.PI * 2)
+  ctx.fill()
+  ctx.fillStyle = skin.ink
+  ctx.beginPath()
+  ctx.arc(
+    cx - cell * 0.13 + lookX * cell * 1.5,
+    cy - cell * 0.06 + lookY * cell * 1.5,
+    eye * 0.45,
+    0,
+    Math.PI * 2,
+  )
+  ctx.arc(
+    cx + cell * 0.13 + lookX * cell * 1.5,
+    cy - cell * 0.06 + lookY * cell * 1.5,
+    eye * 0.45,
+    0,
+    Math.PI * 2,
+  )
+  ctx.fill()
+}
+
+function drawPops(
+  ctx: CanvasRenderingContext2D,
+  state: GameState,
+  ox: number,
+  oy: number,
+  cell: number,
+  skin: Skin,
+) {
+  if (!state.pops.length) return
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  ctx.font = `800 ${Math.max(11, Math.round(cell * 0.52))}px "Segoe UI", system-ui, sans-serif`
+  for (const pop of state.pops) {
+    const t = 1 - pop.life / 0.9
+    ctx.globalAlpha = Math.max(0, pop.life / 0.9)
+    ctx.fillStyle = skin.dark ? '#e7eef3' : '#1a2b3c'
+    ctx.fillText(pop.text, ox + pop.x * cell, oy + pop.y * cell - t * cell * 0.9)
+  }
+  ctx.globalAlpha = 1
+}
+
+export function renderGame(
+  ctx: CanvasRenderingContext2D,
+  state: GameState,
+  w: number,
+  h: number,
+) {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2)
+  // Only realloc when the board size changes — resetting width every frame
+  // is what made Pellets feel choppy next to Snake.
+  if (ctx.canvas.width !== Math.floor(w * dpr) || ctx.canvas.height !== Math.floor(h * dpr)) {
+    ctx.canvas.width = Math.floor(w * dpr)
+    ctx.canvas.height = Math.floor(h * dpr)
+    ctx.canvas.style.width = `${w}px`
+    ctx.canvas.style.height = `${h}px`
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+  }
+
+  const skin = skinFor(isDarkTheme())
+  const { cell, ox, oy, gridW, gridH } = computeLayout(w, h, state.cols, state.rows)
+  const pad = Math.max(6, cell * 0.3)
+
+  drawStaticLayer(ctx, state, w, h, cell, ox, oy, gridW, gridH, skin, dpr)
+  drawCrumbs(ctx, state, ox, oy, cell, skin, state.time)
 
   for (const ghost of state.ghosts) {
-    drawChaser(ctx, ghost, ox, oy, cell, dark, state.fright, time)
+    drawChaser(ctx, ghost, ox, oy, cell, skin, state.fright, state.time)
   }
-  drawPlayer(ctx, state, ox, oy, cell, dark)
+  drawPlayer(ctx, state, ox, oy, cell, skin)
+  drawPops(ctx, state, ox, oy, cell, skin)
 
   if (state.phase === 'clearing') {
-    ctx.fillStyle = dark ? 'rgba(8, 14, 20, 0.4)' : 'rgba(255, 255, 255, 0.45)'
+    ctx.fillStyle = skin.dark ? 'rgba(8, 14, 20, 0.45)' : 'rgba(255, 255, 255, 0.5)'
     roundRect(ctx, ox, oy, gridW, gridH, Math.max(8, cell * 0.3))
     ctx.fill()
-    ctx.fillStyle = dark ? '#e7eef3' : '#1a2b3c'
+    ctx.fillStyle = skin.dark ? '#e7eef3' : '#1a2b3c'
     ctx.font = `900 ${Math.max(18, Math.round(cell * 1.05))}px "Segoe UI", system-ui, sans-serif`
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
-    ctx.fillText(`Level ${state.level + 1}`, ox + gridW / 2, oy + gridH / 2)
+    ctx.fillText(`Level ${state.level + 1}`, ox + gridW / 2, oy + gridH / 2 - cell * 0.5)
+    ctx.font = `700 ${Math.max(11, Math.round(cell * 0.5))}px "Segoe UI", system-ui, sans-serif`
+    ctx.fillText('New maze', ox + gridW / 2, oy + gridH / 2 + cell * 0.6)
+  }
+
+  if (state.combo >= 10 && state.phase === 'playing') {
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'top'
+    ctx.font = `900 ${Math.max(12, Math.round(cell * 0.55))}px "Segoe UI", system-ui, sans-serif`
+    ctx.fillStyle = hsla(ACCENT, 70, skin.dark ? 64 : 42, 0.9)
+    ctx.fillText(`×${comboMult(state.combo)} streak`, ox + gridW / 2, oy + gridH + pad * 0.35)
   }
 }

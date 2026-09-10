@@ -88,10 +88,14 @@ const SCORING: Record<string, ScoreRow[]> = {
     { label: 'Powerup on field', value: 'vanishes after 6s' },
   ],
   pellets: [
-    { label: 'Crumb', value: '+10' },
-    { label: 'Power crumb', value: '+50' },
-    { label: 'Chaser (1st / 2nd / 3rd / 4th)', value: '+200 / +400 / +800 / +1600' },
-    { label: 'Clear the maze', value: 'next level · faster chasers' },
+    { label: 'Crumb', value: '+10 × streak' },
+    { label: 'Streak (fresh crumbs in a row)', value: '×2 at 10 · ×3 at 20 · ×4 at 30' },
+    { label: 'Doubling back over cleared ground', value: 'streak resets' },
+    { label: 'Power crumb', value: '+50 · chasers turn blue' },
+    { label: 'Blue chaser (1st / 2nd / 3rd / 4th)', value: '+200 / +400 / +800 / +1600' },
+    { label: 'Surge (tap or space when charged)', value: 'double crumbs · bounce chasers' },
+    { label: 'Surge bounce (1st / 2nd / 3rd / 4th)', value: '+150 / +300 / +600 / +1200' },
+    { label: 'Clear the maze', value: 'brand new maze · faster chasers' },
     { label: 'Lives', value: '3' },
   ],
 }

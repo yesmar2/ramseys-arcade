@@ -15,16 +15,21 @@ import { getPersonalBest } from '../../lib/personalBest'
 import { useTournamentPlay } from '../../tournaments/TournamentPlayContext'
 import {
   createInitialState,
-  pelletsPortrait,
+  pelletsViewport,
   queueDir,
   startGame,
+  surgeReady,
   tick,
   toSnapshot,
+  triggerSurge,
   type Dir,
   type GameState,
   type Snapshot,
 } from './game'
 import { renderGame } from './render'
+
+/** Pixels of drag before a swipe counts as a turn. */
+const SWIPE = 18
 
 export function PelletsGame() {
   const tournament = useTournamentPlay()
@@ -36,7 +41,7 @@ export function PelletsGame() {
   const offeredScore = useRef<number | null>(null)
   const previousBestRef = useRef(getPersonalBest('pellets'))
   const swipeRef = useRef<{ x: number; y: number } | null>(null)
-  const hoppedThisSwipe = useRef(false)
+  const draggedRef = useRef(false)
   const startGrace = useRef(0)
   const pausable = ui.phase === 'playing' && !saveOpen
   const { paused, toggle: togglePause, resume } = useGamePause(pausable)
@@ -72,16 +77,8 @@ export function PelletsGame() {
         const w = parent?.clientWidth || 0
         const h = parent?.clientHeight || 0
         if (w > 0 && h > 0) {
-          const dpr = Math.min(2, window.devicePixelRatio || 1)
-          canvas.width = Math.floor(w * dpr)
-          canvas.height = Math.floor(h * dpr)
-          canvas.style.width = `${w}px`
-          canvas.style.height = `${h}px`
           const ctx = canvas.getContext('2d')
-          if (ctx) {
-            ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-            renderGame(ctx, stateRef.current, w, h)
-          }
+          if (ctx) renderGame(ctx, stateRef.current, w, h)
         }
       }
 
@@ -96,15 +93,15 @@ export function PelletsGame() {
     if (ui.phase === 'menu') previousBestRef.current = apiBest
   }, [apiBest, ui.phase])
 
+  // Rebuild the maze for the new shape when the window changes between runs.
   useEffect(() => {
     const sync = () => {
       const s = stateRef.current
       if (s.phase !== 'menu') return
-      const portrait = pelletsPortrait()
-      const next = createInitialState(portrait)
-      if (s.cols === next.cols && s.rows === next.rows) return
-      stateRef.current = next
-      setUi(toSnapshot(next))
+      const dims = pelletsViewport()
+      if (s.cols === dims.cols && s.rows === dims.rows) return
+      stateRef.current = createInitialState(dims)
+      setUi(toSnapshot(stateRef.current))
     }
     sync()
     window.addEventListener('resize', sync)
@@ -118,7 +115,7 @@ export function PelletsGame() {
   const restart = () => {
     setSaveOpen(false)
     offeredScore.current = null
-    stateRef.current = startGame(stateRef.current, pelletsPortrait())
+    stateRef.current = startGame(stateRef.current, pelletsViewport())
     previousBestRef.current = getPersonalBest('pellets')
     startGrace.current = performance.now() + 220
     setUi(toSnapshot(stateRef.current))
@@ -135,6 +132,13 @@ export function PelletsGame() {
     }
     if (s.phase !== 'playing') return
     stateRef.current = queueDir(s, dir)
+  }
+
+  const fireSurge = () => {
+    if (saveOpen || pausedRef.current) return
+    if (!surgeReady(stateRef.current)) return
+    stateRef.current = triggerSurge(stateRef.current)
+    setUi(toSnapshot(stateRef.current))
   }
 
   useEffect(() => {
@@ -159,14 +163,16 @@ export function PelletsGame() {
       if (e.code === 'Space' || e.code === 'Enter') {
         e.preventDefault()
         const s = stateRef.current
-        if (s.phase === 'menu' || s.phase === 'gameover') restart()
+        if (s.phase === 'menu' || s.phase === 'gameover') {
+          restart()
+          return
+        }
+        fireSurge()
       }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [saveOpen])
-
-  const SWIPE = 24
 
   const dirFromDelta = (dx: number, dy: number): Dir | null => {
     if (Math.hypot(dx, dy) < SWIPE) return null
@@ -178,7 +184,7 @@ export function PelletsGame() {
     if (saveOpen || pausedRef.current) return
     e.preventDefault()
     swipeRef.current = { x: e.clientX, y: e.clientY }
-    hoppedThisSwipe.current = false
+    draggedRef.current = false
     try {
       e.currentTarget.setPointerCapture(e.pointerId)
     } catch {
@@ -190,23 +196,33 @@ export function PelletsGame() {
     }
   }
 
+  // Keep steering through one long drag — each swipe leg turns again.
   const onPointerMove = (e: ReactPointerEvent) => {
     const start = swipeRef.current
-    if (!start || hoppedThisSwipe.current || saveOpen || pausedRef.current) return
+    if (!start || saveOpen || pausedRef.current) return
     const dir = dirFromDelta(e.clientX - start.x, e.clientY - start.y)
     if (!dir) return
     steer(dir)
-    hoppedThisSwipe.current = true
+    draggedRef.current = true
     swipeRef.current = { x: e.clientX, y: e.clientY }
   }
 
   const onPointerUp = (e: ReactPointerEvent) => {
     const start = swipeRef.current
     swipeRef.current = null
-    if (!start || hoppedThisSwipe.current || saveOpen || pausedRef.current) return
+    if (!start || saveOpen || pausedRef.current) return
     const dir = dirFromDelta(e.clientX - start.x, e.clientY - start.y)
-    if (dir) steer(dir)
+    if (dir) {
+      steer(dir)
+      return
+    }
+    // A clean tap on the maze fires Surge.
+    if (!draggedRef.current) fireSurge()
   }
+
+  const surgeFull = ui.surge >= 1
+  const surging = ui.surgeTime > 0
+  const inRun = ui.phase === 'playing' || ui.phase === 'dying' || ui.phase === 'clearing'
 
   return (
     <section className={`pellets pellets--fullscreen${saveOpen ? ' pellets--saving' : ''}`}>
@@ -242,12 +258,33 @@ export function PelletsGame() {
               >
                 {ui.score}
               </PlayReadoutScore>
-              {ui.phase === 'playing' || ui.phase === 'dying' || ui.phase === 'clearing' ? (
+              {inRun ? (
                 <PlayReadoutCenter label="Lives and level">
                   {ui.lives} {ui.lives === 1 ? 'life' : 'lives'} · L{ui.level}
                 </PlayReadoutCenter>
               ) : null}
             </PlayReadout>
+
+            {inRun && !paused && !saveOpen ? (
+              <button
+                type="button"
+                className={`pellets__surge${surgeFull ? ' pellets__surge--ready' : ''}${surging ? ' pellets__surge--live' : ''}`}
+                onPointerDown={(e) => {
+                  e.stopPropagation()
+                  fireSurge()
+                }}
+                disabled={!surgeFull && !surging}
+                aria-label={surging ? 'Surge active' : 'Fire surge'}
+              >
+                <span
+                  className="pellets__surge-fill"
+                  style={{ width: `${Math.round((surging ? 1 : ui.surge) * 100)}%` }}
+                />
+                <span className="pellets__surge-label">
+                  {surging ? 'Surging' : surgeFull ? 'Surge ready' : 'Surge'}
+                </span>
+              </button>
+            ) : null}
 
             <div className="pellets__overlay">
               <GamePauseOverlay
@@ -259,7 +296,7 @@ export function PelletsGame() {
               {ui.phase === 'menu' && !saveOpen && !paused && (
                 <GameStartCard
                   title="Pellets"
-                  tagline="Clear the maze. Outrun the chasers."
+                  tagline="Clear the maze. Bank a streak. Surge through the chasers."
                   slug="pellets"
                 />
               )}

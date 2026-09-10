@@ -106,8 +106,8 @@ export const games: Game[] = [
   {
     name: 'Pellets',
     slug: 'pellets',
-    description: 'Clear the maze. Outrun the chasers.',
-    how: 'Swipe or arrow keys to steer. Eat every crumb, grab the big ones to stun the chasers, and clear the maze to climb levels. Three lives.',
+    description: 'Clear the maze. Bank a streak. Surge.',
+    how: 'Swipe or arrow keys to steer. Eating fresh crumbs builds a streak multiplier — doubling back over cleared ground resets it. Crumbs also charge Surge: tap the maze or hit space to burn it for a fast burst that bounces any chaser you touch straight back to the den. Power crumbs still turn them blue. Every level is a brand new maze. Three lives.',
     accent: '#f5b942',
     playable: true,
   },

@@ -3861,6 +3861,93 @@ html[data-theme='dark'] .patriot__power-mark {
   color: color-mix(in srgb, #f5b942 82%, var(--ink));
 }
 
+.pellets__surge {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: max(0.85rem, env(safe-area-inset-bottom));
+  z-index: 10;
+  display: grid;
+  place-items: center;
+  isolation: isolate;
+  min-width: 9.5rem;
+  min-height: 2.5rem;
+  padding: 0 1.1rem;
+  margin: 0;
+  overflow: hidden;
+  border: 1px solid rgba(var(--ink-rgb), 0.1);
+  border-radius: 999px;
+  background: rgba(var(--surface-rgb), 0.82);
+  box-shadow: var(--shadow-soft);
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+.pellets__surge:disabled {
+  cursor: default;
+}
+
+.pellets__surge-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  z-index: -1;
+  background: color-mix(in srgb, #f5b942 34%, transparent);
+  transition: width 0.12s linear;
+}
+
+.pellets__surge-label {
+  position: relative;
+}
+
+.pellets__surge--ready {
+  color: var(--ink);
+  border-color: color-mix(in srgb, #f5b942 55%, transparent);
+  animation: pellets-surge-pulse 1.1s ease-in-out infinite;
+}
+
+.pellets__surge--live {
+  color: var(--ink);
+  border-color: color-mix(in srgb, #f5b942 75%, transparent);
+  animation: none;
+}
+
+.pellets__surge--live .pellets__surge-fill {
+  background: color-mix(in srgb, #f5b942 58%, transparent);
+}
+
+.pellets__surge:active {
+  transform: translateX(-50%) scale(0.97);
+}
+
+.pellets--saving .pellets__surge {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+@keyframes pellets-surge-pulse {
+  0%,
+  100% {
+    box-shadow: var(--shadow-soft);
+  }
+  50% {
+    box-shadow: 0 0 0 4px color-mix(in srgb, #f5b942 22%, transparent);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pellets__surge--ready {
+    animation: none;
+  }
+}
+
 /* —— Snake —— */
 .snake {
   position: relative;
