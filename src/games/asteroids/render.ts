@@ -106,13 +106,15 @@ function drawPowerupGlyph(
       if (i === 0) ctx.moveTo(x, y)
       else ctx.lineTo(x, y)
     }
-  ctx.closePath()
-  ctx.fill()
-  strokeOutlined(ctx)
-  ctx.beginPath()
-  ctx.arc(0, 0, s * 0.28, 0, Math.PI * 2)
-  ctx.fill()
-  return
+    ctx.closePath()
+    if (isFlatTheme()) ctx.fill()
+    else {
+      ctx.stroke()
+      ctx.beginPath()
+      ctx.arc(0, 0, s * 0.28, 0, Math.PI * 2)
+      ctx.fill()
+    }
+    return
   }
 
   // Slow — clock
