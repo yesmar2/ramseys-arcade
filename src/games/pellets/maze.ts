@@ -53,16 +53,40 @@ function grid(cols: number, rows: number, value: boolean) {
   return Array.from({ length: rows }, () => Array.from({ length: cols }, () => value))
 }
 
-function shuffle<T>(list: T[]) {
+type Rng = () => number
+
+/** Deterministic PRNG so the same level always rebuilds the same maze. */
+function makeRng(seed: number): Rng {
+  let s = seed >>> 0 || 1
+  return () => {
+    s |= 0
+    s = (s + 0x6d2b79f5) | 0
+    let t = Math.imul(s ^ (s >>> 15), 1 | s)
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+  }
+}
+
+/** Stable seed for a given level on a given board size. */
+export function mazeSeed(level: number, cols: number, rows: number) {
+  return (
+    (Math.imul(level | 0, 2654435761) ^
+      Math.imul(cols | 0, 1597334677) ^
+      Math.imul(rows | 0, 3812015801)) >>>
+    0
+  )
+}
+
+function shuffle<T>(list: T[], rng: Rng) {
   for (let i = list.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1))
+    const j = Math.floor(rng() * (i + 1))
     ;[list[i], list[j]] = [list[j], list[i]]
   }
   return list
 }
 
 /** Randomised DFS over odd tiles, knocking out the wall between visited pairs. */
-function carve(open: boolean[][], cols: number, rows: number) {
+function carve(open: boolean[][], cols: number, rows: number, rng: Rng) {
   const seen = grid(cols, rows, false)
   const stack: Cell[] = [{ x: 1, y: 1 }]
   seen[1][1] = true
@@ -74,6 +98,7 @@ function carve(open: boolean[][], cols: number, rows: number) {
       (['up', 'down', 'left', 'right'] as const)
         .map((dir) => ({ x: cur.x + STEP[dir].x * 2, y: cur.y + STEP[dir].y * 2 }))
         .filter((n) => n.x > 0 && n.y > 0 && n.x < cols - 1 && n.y < rows - 1 && !seen[n.y][n.x]),
+      rng,
     )
     const next = options[0]
     if (!next) {
@@ -88,7 +113,7 @@ function carve(open: boolean[][], cols: number, rows: number) {
 }
 
 /** Mirror the left half onto the right so the board reads as a designed maze. */
-function mirror(open: boolean[][], cols: number, rows: number) {
+function mirror(open: boolean[][], cols: number, rows: number, rng: Rng) {
   const mid = (cols - 1) / 2
   for (let y = 0; y < rows; y++) {
     for (let x = 0; x < mid; x++) {
@@ -98,7 +123,7 @@ function mirror(open: boolean[][], cols: number, rows: number) {
   // Stitch the halves together on a few lanes so the seam isn't a wall.
   const lanes: number[] = []
   for (let y = 1; y < rows - 1; y += 2) lanes.push(y)
-  for (const y of shuffle(lanes).slice(0, Math.max(2, Math.floor(lanes.length / 3)))) {
+  for (const y of shuffle(lanes, rng).slice(0, Math.max(2, Math.floor(lanes.length / 3)))) {
     open[y][mid] = true
   }
 }
@@ -118,7 +143,7 @@ function openNeighbours(open: boolean[][], cols: number, rows: number, x: number
  * Loop the maze by opening one wall at every dead end. Chasers and the player
  * both flow better with no cul-de-sacs, and it keeps runs from feeling grindy.
  */
-function braid(open: boolean[][], cols: number, rows: number) {
+function braid(open: boolean[][], cols: number, rows: number, rng: Rng) {
   for (let y = 1; y < rows - 1; y++) {
     for (let x = 1; x < cols - 1; x++) {
       if (!open[y][x]) continue
@@ -133,6 +158,7 @@ function braid(open: boolean[][], cols: number, rows: number) {
             if (beyond.x < 0 || beyond.y < 0 || beyond.x >= cols || beyond.y >= rows) return false
             return open[beyond.y][beyond.x]
           }),
+        rng,
       )
       if (options[0]) open[options[0].w.y][options[0].w.x] = true
     }
@@ -267,6 +293,7 @@ function cutTunnels(
   cols: number,
   rows: number,
   house: Maze['house'],
+  rng: Rng,
 ) {
   const lanes: number[] = []
   for (let y = 1; y < rows - 1; y += 2) {
@@ -274,7 +301,7 @@ function cutTunnels(
     lanes.push(y)
   }
   if (!lanes.length) return
-  const picks = shuffle(lanes).slice(0, rows > 21 ? 2 : 1)
+  const picks = shuffle(lanes, rng).slice(0, rows > 21 ? 2 : 1)
   for (const y of picks) {
     open[y][0] = true
     open[y][1] = true
@@ -306,17 +333,18 @@ function nearestOpenTo(
   return best
 }
 
-/** Build a fresh symmetric maze sized for the current board. */
-export function buildMaze(cols: number, rows: number): Maze {
+/** Build a symmetric maze for this board. Same seed → same layout every time. */
+export function buildMaze(cols: number, rows: number, seed = 1): Maze {
+  const rng = makeRng(seed)
   const open = grid(cols, rows, false)
   const door = grid(cols, rows, false)
 
-  carve(open, cols, rows)
-  mirror(open, cols, rows)
-  braid(open, cols, rows)
+  carve(open, cols, rows, rng)
+  mirror(open, cols, rows, rng)
+  braid(open, cols, rows, rng)
 
   const { house, houseCenter, ghostExit } = buildHouse(open, door, cols, rows)
-  cutTunnels(open, cols, rows, house)
+  cutTunnels(open, cols, rows, house, rng)
   connect(open, door, house, cols, rows)
 
   const inHouse = (x: number, y: number) =>

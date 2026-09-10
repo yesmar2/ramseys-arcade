@@ -336,30 +336,33 @@ function drawPlayer(
   const surging = state.surgeTime > 0
   const lineW = Math.max(1.2, cell * 0.07)
   const r = cell * (surging ? 0.42 : 0.38)
+  const fill = hsla(ACCENT, 58, 58, surging ? 0.34 : 0.22)
+  const stroke = hsla(ACCENT, 58, skin.dark ? 58 : 42, 0.95)
 
-  const facing =
-    state.player.dir === 'right'
-      ? 0
-      : state.player.dir === 'down'
-        ? Math.PI / 2
-        : state.player.dir === 'left'
-          ? Math.PI
-          : -Math.PI / 2
+  /**
+   * Face right in local space, then flip/rotate. Using scale(-1) for left
+   * keeps the eye on top — rotate(π) was flipping him upside-down.
+   */
+  const faceLocal = (ctx: CanvasRenderingContext2D) => {
+    if (state.player.dir === 'left') ctx.scale(-1, 1)
+    else if (state.player.dir === 'up') ctx.rotate(-Math.PI / 2)
+    else if (state.player.dir === 'down') ctx.rotate(Math.PI / 2)
+  }
 
   if (state.phase === 'dying') {
     const t = 1 - Math.max(0, state.deathAnim) / 0.85
     const open = Math.min(Math.PI - 0.05, t * Math.PI)
     ctx.save()
     ctx.translate(cx, cy)
-    ctx.rotate(facing)
+    faceLocal(ctx)
     ctx.globalAlpha = Math.max(0, 1 - t * 0.85)
     ctx.beginPath()
     ctx.moveTo(0, 0)
     ctx.arc(0, 0, r * (1 - t * 0.2), open, Math.PI * 2 - open)
     ctx.closePath()
-    ctx.fillStyle = hsla(ACCENT, 72, 56, 0.82)
+    ctx.fillStyle = fill
     ctx.fill()
-    ctx.strokeStyle = hsla(ACCENT, 62, skin.dark ? 48 : 38, 0.95)
+    ctx.strokeStyle = stroke
     ctx.lineWidth = lineW
     ctx.lineJoin = 'round'
     ctx.stroke()
@@ -399,20 +402,19 @@ function drawPlayer(
 
   ctx.save()
   ctx.translate(cx, cy)
-  ctx.rotate(facing)
+  faceLocal(ctx)
   ctx.beginPath()
   ctx.moveTo(0, 0)
   ctx.arc(0, 0, r, chomp, Math.PI * 2 - chomp)
   ctx.closePath()
-  // More opaque than Snake beads so the wedge cutout actually reads.
-  ctx.fillStyle = hsla(ACCENT, 72, surging ? 62 : 56, surging ? 0.88 : 0.82)
+  ctx.fillStyle = fill
   ctx.fill()
-  ctx.strokeStyle = hsla(ACCENT, 62, skin.dark ? 48 : 38, 0.95)
+  ctx.strokeStyle = stroke
   ctx.lineWidth = lineW
   ctx.lineJoin = 'round'
   ctx.stroke()
 
-  // Single Pac-Man eye, above the bite.
+  // Single Pac-Man eye, above the bite (stays upright when facing left).
   ctx.fillStyle = skin.ink
   ctx.beginPath()
   ctx.arc(r * 0.05, -r * 0.45, Math.max(1.5, cell * 0.075), 0, Math.PI * 2)

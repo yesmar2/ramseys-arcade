@@ -1,6 +1,6 @@
 import { getPersonalBest } from '../../lib/personalBest'
 import { sfx } from '../../lib/sound'
-import { buildMaze, mazeDims, type Cell, type Maze } from './maze'
+import { buildMaze, mazeDims, mazeSeed, type Cell, type Maze } from './maze'
 
 export type Dir = 'up' | 'down' | 'left' | 'right'
 export type Phase = 'menu' | 'playing' | 'dying' | 'clearing' | 'gameover'
@@ -348,7 +348,7 @@ function emptyState(maze: Maze): GameState {
 }
 
 export function createInitialState(dims = pelletsViewport()): GameState {
-  return emptyState(buildMaze(dims.cols, dims.rows))
+  return emptyState(buildMaze(dims.cols, dims.rows, mazeSeed(1, dims.cols, dims.rows)))
 }
 
 export function startGame(prev: GameState, dims = pelletsViewport()): GameState {
@@ -700,8 +700,8 @@ export function tick(state: GameState, dt: number): GameState {
     next.clearAnim -= dt
     if (next.clearAnim <= 0) {
       next.level += 1
-      // A brand new maze every level — no two runs walk the same corridors.
-      const maze = buildMaze(next.cols, next.rows)
+      // Same level on the same board size always rebuilds the same maze.
+      const maze = buildMaze(next.cols, next.rows, mazeSeed(next.level, next.cols, next.rows))
       applyMaze(next, maze)
       resetActors(next, maze)
       next.phase = 'playing'
