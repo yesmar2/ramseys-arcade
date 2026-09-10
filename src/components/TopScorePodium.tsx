@@ -71,7 +71,7 @@ export function TopScorePodium({
               href={rankHref(name, period)}
               title={name}
             >
-              {name}
+              <span className="game-lobby__podium-name-text">{name}</span>
               {isYou ? <span className="lb-row__you-tag">You</span> : null}
             </a>
             <strong className="game-lobby__podium-score">

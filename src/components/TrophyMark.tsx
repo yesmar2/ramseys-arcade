@@ -15,8 +15,8 @@ export function TrophyMark({
 
   const label =
     podium > 0
-      ? `${count} trophy${count === 1 ? '' : 'ies'} · ${podium} podium`
-      : `${count} trophy${count === 1 ? '' : 'ies'}`
+      ? `${count} ${count === 1 ? 'trophy' : 'trophies'} · ${podium} podium`
+      : `${count} ${count === 1 ? 'trophy' : 'trophies'}`
 
   return (
     <span

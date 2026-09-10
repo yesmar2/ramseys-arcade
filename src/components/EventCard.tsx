@@ -108,15 +108,18 @@ export function EventTicker({
   const live = t.status === 'active'
   const upcoming = t.status === 'upcoming'
   const unlimited = isUnlimitedDuration(t.rules)
-  const ticking = (live || upcoming) && !unlimited
+  const fillingBracket = upcoming && eventKind(t) === 'bracket'
+  const ticking = (live || upcoming) && !unlimited && !fillingBracket
   const target = upcoming ? t.startsAt : t.endsAt
-  const clockLabel = unlimited && live
-    ? 'Duration'
-    : upcoming
-      ? 'Starts in'
-      : live
-        ? 'Time left'
-        : 'Window'
+  const clockLabel = fillingBracket
+    ? 'Starts'
+    : unlimited && live
+      ? 'Duration'
+      : upcoming
+        ? 'Starts in'
+        : live
+          ? 'Time left'
+          : 'Window'
 
   return (
     <div className="event-ticker">
@@ -132,7 +135,9 @@ export function EventTicker({
             {clockLabel}
           </span>
           <strong>
-            {ticking ? (
+            {fillingBracket ? (
+              'When full'
+            ) : ticking ? (
               <EventCountdown endsAt={target} precise />
             ) : unlimited && live ? (
               'Open'
@@ -244,6 +249,8 @@ export function EventCard({ t, compact = false, href }: EventCardProps) {
                 unlimitedDuration={isUnlimitedDuration(t.rules)}
               />
             </span>
+          ) : t.status === 'upcoming' && eventKind(t) === 'bracket' ? (
+            <span className="event-card__window">Starts when full</span>
           ) : (
             <span className="event-card__window">{eventDurationLabel(t)}</span>
           )}

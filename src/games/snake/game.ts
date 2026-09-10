@@ -86,9 +86,9 @@ const WALL_SOFT = 0.5
  */
 const WALL_HARD = 0.22
 
-const START_SPEED = 7
-const MAX_SPEED = 11.2
-const SPEED_PER_FOOD = 0.07
+const START_SPEED = 6.2
+const MAX_SPEED = 10
+const SPEED_PER_FOOD = 0.06
 
 const OPPOSITE: Record<Dir, Dir> = {
   up: 'down',
