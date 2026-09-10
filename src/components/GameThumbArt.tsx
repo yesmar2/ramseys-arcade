@@ -38,7 +38,7 @@ function shape(props: ReturnType<typeof pastel>, strokeWidth = 1.5) {
 function AsteroidsThumb({ accent }: { accent?: string }) {
   const a = accent ?? '#2eb87a'
   const flat = isFlatTheme()
-  const shipFill = `color-mix(in srgb, ${a} ${flat ? 55 : 28}%, var(--playfield))`
+  const shipFill = `color-mix(in srgb, ${a} ${flat ? 68 : 28}%, var(--playfield))`
 
   return (
     <g transform="translate(16 16.2)">
@@ -48,12 +48,11 @@ function AsteroidsThumb({ accent }: { accent?: string }) {
         strokeLinejoin="round"
         {...outlineStroke(a, 2)}
       />
-      {/* Thruster is stroke-only line art — keep it in flat. */}
       <path
-        d="M-3.4 6.8 L0 12 L3.4 6.8"
-        fill="none"
-        stroke="#f5b942"
-        strokeWidth="1.6"
+        d="M-3.4 6.8 L0 12 L3.4 6.8 Z"
+        fill="#f5b942"
+        stroke={flat ? 'none' : '#f5b942'}
+        strokeWidth={flat ? 0 : 1.6}
         strokeLinecap="round"
         strokeLinejoin="round"
       />
