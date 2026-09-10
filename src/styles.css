@@ -8429,14 +8429,14 @@ a.lb-share:visited:focus-visible {
 }
 
 /* Thumb beside links/stats; play and boards stack below.
-   On phones the art stays a larger width-based square while stats
-   cards compact; from tablet up the square height-matches the body. */
+   Square art always matches the stats column height. Compact mobile
+   stats keep that square from eating the body column on small phones. */
 .game-lobby__identity.game-lobby__intro,
 .game-lobby__intro {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   column-gap: 0.75rem;
-  align-items: start;
+  align-items: stretch;
   min-width: 0;
 }
 
@@ -8444,7 +8444,7 @@ a.lb-share:visited:focus-visible {
   grid-column: 1;
   grid-row: 1;
   display: flex;
-  align-items: flex-start;
+  align-items: stretch;
   min-height: 0;
   min-width: 0;
 }
@@ -8453,9 +8453,8 @@ a.lb-share:visited:focus-visible {
   position: relative;
   display: grid;
   place-items: center;
-  /* Prefer a larger square; stats cards compact first on narrow screens. */
-  width: clamp(7.5rem, 46vw, 11rem);
-  height: auto;
+  width: auto;
+  height: 100%;
   min-width: 0;
   min-height: 0;
   aspect-ratio: 1;
@@ -8468,29 +8467,13 @@ a.lb-share:visited:focus-visible {
   grid-row: 1;
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 0.75rem;
   min-width: 0;
+  height: 100%;
 }
 
 .game-lobby__aside {
   display: none;
-}
-
-/* Tablet+: height-match the square now that the body column is wider. */
-@media (min-width: 520px) {
-  .game-lobby__identity.game-lobby__intro,
-  .game-lobby__intro {
-    align-items: stretch;
-  }
-
-  .game-lobby__intro-art {
-    align-items: stretch;
-  }
-
-  .game-lobby__intro .game-lobby__art {
-    width: auto;
-    height: 100%;
-  }
 }
 
 .game-lobby__hero .game-lobby__art {
@@ -8906,12 +8889,14 @@ a.lb-share:visited:focus-visible {
 }
 
 .game-lobby__intro .game-lobby__stats {
+  flex: 1 1 auto;
   gap: 0.4rem;
+  min-height: 0;
 }
 
 .game-lobby__intro .game-lobby__stats .lb-stat {
   padding: 0.5rem 0.65rem;
-  flex: none;
+  flex: 1 1 auto;
 }
 
 .game-lobby__intro .game-lobby__stats .lb-stat__label {
@@ -8924,7 +8909,7 @@ a.lb-share:visited:focus-visible {
   line-height: 1.1;
 }
 
-/* Tablet+: larger stats beside the height-matched square. */
+/* Tablet+: roomier stats beside the matched square. */
 @media (min-width: 520px) {
   .game-lobby__intro .game-lobby__stats {
     gap: 0.5rem;
