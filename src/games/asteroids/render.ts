@@ -8,7 +8,7 @@ import {
   type Rock,
   type Saucer,
 } from './game'
-import { inkColor, playfieldColor } from '../../lib/theme'
+import { inkColor, isFlatTheme, playfieldColor, softFillAlpha, strokeOutlined } from '../../lib/theme'
 
 const ACCENT = '#2eb87a'
 const ACCENT_SKY = '#4aa8e8'
@@ -40,12 +40,12 @@ function drawRock(ctx: CanvasRenderingContext2D, rock: Rock, scale: number) {
   for (let i = 1; i < v.length; i++) ctx.lineTo(v[i].x, v[i].y)
   ctx.closePath()
   const sat = rock.sat ?? 50
-  ctx.fillStyle = `hsla(${rock.hue}, ${sat}%, 58%, 0.22)`
+  ctx.fillStyle = `hsla(${rock.hue}, ${sat}%, 58%, ${softFillAlpha(0.22)})`
   ctx.fill()
   ctx.strokeStyle = `hsla(${rock.hue}, ${sat}%, 42%, 0.95)`
   ctx.lineWidth = Math.max(1.4, 1.8 * scale)
   ctx.lineJoin = 'round'
-  ctx.stroke()
+  strokeOutlined(ctx)
   ctx.restore()
 }
 
@@ -106,19 +106,28 @@ function drawPowerupGlyph(
       if (i === 0) ctx.moveTo(x, y)
       else ctx.lineTo(x, y)
     }
-    ctx.closePath()
-    ctx.stroke()
-    ctx.beginPath()
-    ctx.arc(0, 0, s * 0.28, 0, Math.PI * 2)
-    ctx.fill()
-    return
+  ctx.closePath()
+  ctx.fill()
+  strokeOutlined(ctx)
+  ctx.beginPath()
+  ctx.arc(0, 0, s * 0.28, 0, Math.PI * 2)
+  ctx.fill()
+  return
   }
 
   // Slow — clock
   const s = r * 0.48
   ctx.beginPath()
   ctx.arc(0, 0, s, 0, Math.PI * 2)
-  ctx.stroke()
+  if (isFlatTheme()) {
+    ctx.fillStyle = color
+    ctx.globalAlpha = 0.35
+    ctx.fill()
+    ctx.globalAlpha = 1
+    ctx.fillStyle = color
+  } else {
+    ctx.stroke()
+  }
   ctx.beginPath()
   ctx.moveTo(0, 0)
   ctx.lineTo(0, -s * 0.55)
@@ -137,12 +146,12 @@ function drawPowerup(ctx: CanvasRenderingContext2D, p: Powerup, scale: number) {
   ctx.translate(p.x, p.y)
   ctx.beginPath()
   ctx.arc(0, 0, r, 0, Math.PI * 2)
-  ctx.fillStyle = `hsla(${hue}, 62%, 58%, 0.48)`
+  ctx.fillStyle = `hsla(${hue}, 62%, 58%, ${softFillAlpha(0.48)})`
   ctx.fill()
   const ring = `hsla(${hue}, 58%, 42%, 0.98)`
   ctx.strokeStyle = ring
   ctx.lineWidth = Math.max(2.4, 2.8 * scale)
-  ctx.stroke()
+  strokeOutlined(ctx)
   drawPowerupGlyph(ctx, p.kind, r, scale, ring)
   ctx.restore()
 }
@@ -175,19 +184,24 @@ function drawShip(ctx: CanvasRenderingContext2D, state: GameState, scale: number
   ctx.lineTo(pts[1].x, pts[1].y)
   ctx.lineTo(pts[2].x, pts[2].y)
   ctx.closePath()
-  ctx.fillStyle = 'rgba(46, 184, 160, 0.18)'
+  ctx.fillStyle = isFlatTheme() ? 'rgba(46, 184, 160, 0.72)' : 'rgba(46, 184, 160, 0.18)'
   ctx.fill()
   ctx.strokeStyle = ACCENT
   ctx.lineWidth = Math.max(2.5, 3.2 * scale)
   ctx.lineJoin = 'round'
-  ctx.stroke()
+  strokeOutlined(ctx)
 
   if (shielded) {
     ctx.beginPath()
     ctx.arc(0, 0, r * 1.45, 0, Math.PI * 2)
-    ctx.strokeStyle = `hsla(${POWER_HUE.shield}, 55%, 45%, 0.85)`
-    ctx.lineWidth = Math.max(1.6, 2 * scale)
-    ctx.stroke()
+    if (isFlatTheme()) {
+      ctx.fillStyle = `hsla(${POWER_HUE.shield}, 55%, 55%, 0.28)`
+      ctx.fill()
+    } else {
+      ctx.strokeStyle = `hsla(${POWER_HUE.shield}, 55%, 45%, 0.85)`
+      ctx.lineWidth = Math.max(1.6, 2 * scale)
+      ctx.stroke()
+    }
   }
 
   if (ship.thrusting) {
@@ -199,9 +213,14 @@ function drawShip(ctx: CanvasRenderingContext2D, state: GameState, scale: number
     ctx.moveTo(Math.cos(ship.angle + 2.3) * wing, Math.sin(ship.angle + 2.3) * wing)
     ctx.lineTo(Math.cos(back) * tail, Math.sin(back) * tail)
     ctx.lineTo(Math.cos(ship.angle - 2.3) * wing, Math.sin(ship.angle - 2.3) * wing)
-    ctx.strokeStyle = ACCENT_GOLD
-    ctx.lineWidth = Math.max(2, 2.4 * scale)
-    ctx.stroke()
+    ctx.closePath()
+    ctx.fillStyle = ACCENT_GOLD
+    ctx.fill()
+    if (!isFlatTheme()) {
+      ctx.strokeStyle = ACCENT_GOLD
+      ctx.lineWidth = Math.max(2, 2.4 * scale)
+      ctx.stroke()
+    }
   }
   ctx.restore()
 }
@@ -213,14 +232,14 @@ function drawSaucer(ctx: CanvasRenderingContext2D, saucer: Saucer, scale: number
   ctx.lineJoin = 'round'
   ctx.lineCap = 'round'
   ctx.strokeStyle = SAUCER
-  ctx.fillStyle = 'rgba(196, 92, 92, 0.2)'
+  ctx.fillStyle = isFlatTheme() ? 'rgba(196, 92, 92, 0.72)' : 'rgba(196, 92, 92, 0.2)'
   ctx.lineWidth = Math.max(1.8, 2.2 * scale)
 
   // Dome
   ctx.beginPath()
   ctx.ellipse(0, -r * 0.15, r * 0.55, r * 0.38, 0, Math.PI, 0)
   ctx.fill()
-  ctx.stroke()
+  strokeOutlined(ctx)
 
   // Hull
   ctx.beginPath()
@@ -229,7 +248,7 @@ function drawSaucer(ctx: CanvasRenderingContext2D, saucer: Saucer, scale: number
   ctx.quadraticCurveTo(r * 0.2, -r * 0.2, -r, 0)
   ctx.closePath()
   ctx.fill()
-  ctx.stroke()
+  strokeOutlined(ctx)
 
   // Cabin lights
   ctx.fillStyle = SAUCER
@@ -268,7 +287,7 @@ function drawMissile(ctx: CanvasRenderingContext2D, b: EnemyBullet, scale: numbe
   ctx.strokeStyle = '#8f2f22'
   ctx.lineWidth = Math.max(1.2, 1.5 * scale)
   ctx.lineJoin = 'round'
-  ctx.stroke()
+  strokeOutlined(ctx)
   ctx.restore()
 }
 

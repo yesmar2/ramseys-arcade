@@ -1,6 +1,6 @@
 import type { GameState, Lane, Rider, Vehicle } from './game'
 import { HOME_ROW, turtleSink } from './game'
-import { isDarkTheme, playfieldColor } from '../../lib/theme'
+import { isDarkTheme, isFlatTheme, playfieldColor, softFillAlpha, strokeOutlined } from '../../lib/theme'
 
 const GRASS = 148
 const WATER = 198
@@ -48,7 +48,7 @@ function paintRound(
   ctx.fill()
   ctx.strokeStyle = stroke
   ctx.lineWidth = lineWidth
-  ctx.stroke()
+  strokeOutlined(ctx)
 }
 
 function drawVehicle(
@@ -62,7 +62,7 @@ function drawVehicle(
   dark: boolean,
 ) {
   const sat = 58
-  const body = fill(v.hue, sat, dark ? 60 : 58, dark ? 0.3 : 0.24)
+  const body = fill(v.hue, sat, dark ? 60 : 58, softFillAlpha(dark ? 0.3 : 0.24))
   const stroke = fill(v.hue, sat, dark ? 62 : 42, 0.95)
   const line = Math.max(1.3, h * 0.09)
   paintRound(ctx, x, y, w, h, Math.min(h * 0.36, 9), body, stroke, line)
@@ -77,7 +77,7 @@ function drawVehicle(
       cabW,
       h * 0.68,
       h * 0.22,
-      fill(v.hue, sat, dark ? 66 : 66, 0.26),
+      fill(v.hue, sat, dark ? 66 : 66, softFillAlpha(0.26)),
       stroke,
       line * 0.8,
     )
@@ -87,7 +87,7 @@ function drawVehicle(
     ctx.beginPath()
     ctx.moveTo(seamX, y + h * 0.18)
     ctx.lineTo(seamX, y + h * 0.82)
-    ctx.stroke()
+    strokeOutlined(ctx)
     return
   }
 
@@ -100,7 +100,7 @@ function drawVehicle(
     glassW,
     h * 0.6,
     h * 0.2,
-    dark ? 'rgba(180, 222, 255, 0.22)' : 'rgba(255, 255, 255, 0.5)',
+    dark ? `rgba(180, 222, 255, ${softFillAlpha(0.22)})` : `rgba(255, 255, 255, ${softFillAlpha(0.5)})`,
     fill(v.hue, sat, dark ? 62 : 42, 0.55),
     line * 0.7,
   )
@@ -122,7 +122,7 @@ function drawLog(
   h: number,
   dark: boolean,
 ) {
-  const body = fill(LOG, 44, dark ? 52 : 54, dark ? 0.34 : 0.28)
+  const body = fill(LOG, 44, dark ? 52 : 54, softFillAlpha(dark ? 0.34 : 0.28))
   const stroke = fill(LOG, 44, dark ? 60 : 38, 0.95)
   const line = Math.max(1.4, h * 0.1)
   paintRound(ctx, x, y, w, h, h * 0.44, body, stroke, line)
@@ -134,17 +134,17 @@ function drawLog(
     ctx.beginPath()
     ctx.moveTo(x + h * 0.5, gy)
     ctx.lineTo(x + w - h * 0.5, gy)
-    ctx.stroke()
+    strokeOutlined(ctx)
   }
 
   const capR = h * 0.26
   ctx.beginPath()
   ctx.ellipse(x + h * 0.42, y + h / 2, capR * 0.55, capR, 0, 0, Math.PI * 2)
-  ctx.fillStyle = fill(LOG, 38, dark ? 60 : 62, 0.38)
+  ctx.fillStyle = fill(LOG, 38, dark ? 60 : 62, softFillAlpha(0.38))
   ctx.fill()
   ctx.strokeStyle = stroke
   ctx.lineWidth = line * 0.7
-  ctx.stroke()
+  strokeOutlined(ctx)
 }
 
 function drawTurtles(
@@ -171,26 +171,26 @@ function drawTurtles(
     ctx.globalAlpha = alpha
     ctx.beginPath()
     ctx.arc(cx, cy, r, 0, Math.PI * 2)
-    ctx.fillStyle = fill(TURTLE, 48, dark ? 56 : 52, dark ? 0.34 : 0.28)
+    ctx.fillStyle = fill(TURTLE, 48, dark ? 56 : 52, softFillAlpha(dark ? 0.34 : 0.28))
     ctx.fill()
     ctx.strokeStyle = fill(TURTLE, 46, dark ? 62 : 34, 0.95)
     ctx.lineWidth = Math.max(1.3, cell * 0.06)
-    ctx.stroke()
+    strokeOutlined(ctx)
 
     ctx.beginPath()
     ctx.arc(cx, cy, r * 0.48, 0, Math.PI * 2)
     ctx.strokeStyle = fill(TURTLE, 46, dark ? 62 : 34, 0.55)
     ctx.lineWidth = Math.max(1, cell * 0.04)
-    ctx.stroke()
+    strokeOutlined(ctx)
 
     const headX = cx + (lane.dir > 0 ? r * 1.05 : -r * 1.05)
     ctx.beginPath()
     ctx.arc(headX, cy, r * 0.3, 0, Math.PI * 2)
-    ctx.fillStyle = fill(TURTLE, 46, dark ? 60 : 46, 0.5)
+    ctx.fillStyle = fill(TURTLE, 46, dark ? 60 : 46, softFillAlpha(0.5))
     ctx.fill()
     ctx.strokeStyle = fill(TURTLE, 46, dark ? 62 : 34, 0.9)
     ctx.lineWidth = Math.max(1, cell * 0.04)
-    ctx.stroke()
+    strokeOutlined(ctx)
     ctx.restore()
   }
 }
@@ -232,11 +232,11 @@ function drawFrog(
 
   ctx.beginPath()
   ctx.ellipse(0, 0, rx, ry, 0, 0, Math.PI * 2)
-  ctx.fillStyle = fill(FROG, 56, dark ? 58 : 54, dark ? 0.42 : 0.32)
+  ctx.fillStyle = fill(FROG, 56, dark ? 58 : 54, softFillAlpha(dark ? 0.42 : 0.32))
   ctx.fill()
   ctx.strokeStyle = fill(FROG, 54, dark ? 64 : 32, 0.95)
   ctx.lineWidth = line
-  ctx.stroke()
+  strokeOutlined(ctx)
 
   const eyeY = -ry * 0.52 * facing
   for (const sx of [-1, 1]) {
@@ -247,7 +247,7 @@ function drawFrog(
     ctx.fill()
     ctx.strokeStyle = fill(FROG, 54, dark ? 64 : 32, 0.9)
     ctx.lineWidth = line * 0.7
-    ctx.stroke()
+    strokeOutlined(ctx)
     ctx.beginPath()
     ctx.arc(ex, eyeY, size * 0.045, 0, Math.PI * 2)
     ctx.fillStyle = dark ? '#0d1720' : '#1a2b3c'
@@ -268,11 +268,11 @@ function drawFly(ctx: CanvasRenderingContext2D, cx: number, cy: number, size: nu
 
   ctx.beginPath()
   ctx.ellipse(cx, cy, r * 0.8, r, 0, 0, Math.PI * 2)
-  ctx.fillStyle = 'hsla(38, 78%, 56%, 0.5)'
+  ctx.fillStyle = `hsla(38, 78%, 56%, ${softFillAlpha(0.5)})`
   ctx.fill()
   ctx.strokeStyle = 'hsla(38, 70%, 34%, 0.95)'
   ctx.lineWidth = Math.max(1.2, size * 0.05)
-  ctx.stroke()
+  strokeOutlined(ctx)
   ctx.restore()
 }
 
@@ -356,8 +356,8 @@ function drawHomeRow(
       cell - inset * 2,
       cell * 0.28,
       bay.filled
-        ? fill(FROG, 50, dark ? 44 : 62, dark ? 0.4 : 0.28)
-        : fill(WATER, 58, dark ? 40 : 70, dark ? 0.4 : 0.32),
+        ? fill(FROG, 50, dark ? 44 : 62, softFillAlpha(dark ? 0.4 : 0.28))
+        : fill(WATER, 58, dark ? 40 : 70, softFillAlpha(dark ? 0.4 : 0.32)),
       bay.filled
         ? fill(FROG, 52, dark ? 64 : 34, 0.9)
         : fill(WATER, 55, dark ? 66 : 42, 0.6),
@@ -513,9 +513,11 @@ export function renderGame(
   )
   ctx.fillStyle = dark ? 'rgba(8, 14, 20, 0.55)' : 'rgba(255, 255, 255, 0.55)'
   ctx.fill()
-  ctx.strokeStyle = dark ? 'rgba(231, 238, 243, 0.08)' : 'rgba(26, 43, 60, 0.06)'
-  ctx.lineWidth = 1
-  ctx.stroke()
+  if (!isFlatTheme()) {
+    ctx.strokeStyle = dark ? 'rgba(231, 238, 243, 0.08)' : 'rgba(26, 43, 60, 0.06)'
+    ctx.lineWidth = 1
+    ctx.stroke()
+  }
 
   ctx.save()
   roundRect(ctx, ox, oy, gridW, gridH, Math.max(8, cell * 0.3))

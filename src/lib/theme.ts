@@ -38,10 +38,9 @@ export function currentTheme(): Theme {
   return storedTheme() ?? 'dark'
 }
 
-/** Dark chrome colors (flat sits on the dark palette). */
+/** Dark chrome colors only — Flat sits on the light palette. */
 export function isDarkTheme() {
-  const theme = currentTheme()
-  return theme === 'dark' || theme === 'flat'
+  return currentTheme() === 'dark'
 }
 
 /** Fill-forward art: no outlines on beads / thumbs / soft shapes. */
@@ -57,12 +56,17 @@ export function themeLabel(theme: Theme = currentTheme()) {
 
 /** Soft bead / crumb fill alpha — stronger when outlines are off. */
 export function softFillAlpha(base = 0.22) {
-  return isFlatTheme() ? Math.min(0.78, base * 3.2) : base
+  return isFlatTheme() ? Math.min(0.82, base * 3.5) : base
+}
+
+/** Stroke only in outlined themes (Dark / Light). */
+export function strokeOutlined(ctx: CanvasRenderingContext2D) {
+  if (!isFlatTheme()) ctx.stroke()
 }
 
 export function applyTheme(theme: Theme) {
   document.documentElement.setAttribute('data-theme', theme)
-  document.documentElement.style.colorScheme = theme === 'light' ? 'light' : 'dark'
+  document.documentElement.style.colorScheme = theme === 'dark' ? 'dark' : 'light'
 }
 
 export function setTheme(theme: Theme) {

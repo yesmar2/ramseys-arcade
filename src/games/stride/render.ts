@@ -10,7 +10,7 @@ import {
   getRow,
   laneSpan,
 } from './game'
-import { isDarkTheme, playfieldColor } from '../../lib/theme'
+import { isDarkTheme, isFlatTheme, playfieldColor, softFillAlpha, strokeOutlined } from '../../lib/theme'
 
 const GRASS_A = 142
 const GRASS_B = 152
@@ -105,7 +105,7 @@ function drawVehicle(
   dir: number,
   dark: boolean,
 ) {
-  const body = fill(hue, 58, dark ? 60 : 58, dark ? 0.32 : 0.26)
+  const body = fill(hue, 58, dark ? 60 : 58, softFillAlpha(dark ? 0.32 : 0.26))
   const stroke = fill(hue, 58, dark ? 62 : 42, 0.95)
   const line = Math.max(1.8, h * 0.08)
   roundRect(ctx, x, y, w, h, h * 0.28)
@@ -113,12 +113,14 @@ function drawVehicle(
   ctx.fill()
   ctx.strokeStyle = stroke
   ctx.lineWidth = line
-  ctx.stroke()
+  strokeOutlined(ctx)
 
   const glassW = w * 0.34
   const glassX = dir > 0 ? x + w * 0.34 : x + w * 0.32
   roundRect(ctx, glassX, y + h * 0.18, glassW, h * 0.58, h * 0.18)
-  ctx.fillStyle = dark ? 'rgba(180, 222, 255, 0.22)' : 'rgba(255, 255, 255, 0.48)'
+  ctx.fillStyle = dark
+    ? `rgba(180, 222, 255, ${softFillAlpha(0.22)})`
+    : `rgba(255, 255, 255, ${softFillAlpha(0.48)})`
   ctx.fill()
 }
 
@@ -130,7 +132,7 @@ function drawTree(
   dark: boolean,
 ) {
   const trunk = fill(TREE, 38, dark ? 38 : 34, 0.9)
-  const leaf = fill(TREE, 48, dark ? 52 : 48, dark ? 0.34 : 0.28)
+  const leaf = fill(TREE, 48, dark ? 52 : 48, softFillAlpha(dark ? 0.34 : 0.28))
   const stroke = fill(TREE, 48, dark ? 58 : 36, 0.9)
   const tw = size * 0.22
   roundRect(ctx, cx - tw / 2, cy + size * 0.08, tw, size * 0.34, tw * 0.3)
@@ -142,7 +144,7 @@ function drawTree(
   ctx.fill()
   ctx.strokeStyle = stroke
   ctx.lineWidth = Math.max(1.5, size * 0.05)
-  ctx.stroke()
+  strokeOutlined(ctx)
 }
 
 function drawHopper(
@@ -200,7 +202,7 @@ function drawHopper(
   ctx.fill()
   ctx.strokeStyle = stroke
   ctx.lineWidth = Math.max(2, size * 0.06)
-  ctx.stroke()
+  strokeOutlined(ctx)
 
   if (dying) {
     if (cause === 'car' || cause === 'train') {
@@ -244,7 +246,7 @@ function drawCoin(
   ctx.fill()
   ctx.strokeStyle = fill(42, 90, dark ? 42 : 38, 1)
   ctx.lineWidth = Math.max(1.6, size * 0.05)
-  ctx.stroke()
+  strokeOutlined(ctx)
   ctx.beginPath()
   ctx.arc(cx - r * 0.25, y - r * 0.28, r * 0.28, 0, Math.PI * 2)
   ctx.fillStyle = dark ? 'rgba(255, 255, 255, 0.28)' : 'rgba(255, 255, 255, 0.55)'
@@ -370,14 +372,14 @@ function drawCrossingLights(
   ctx.fill()
   ctx.strokeStyle = on ? 'rgba(255, 180, 0, 0.9)' : 'rgba(60, 50, 30, 0.6)'
   ctx.lineWidth = Math.max(1.5, cell * 0.03)
-  ctx.stroke()
+  strokeOutlined(ctx)
 
   ctx.beginPath()
   ctx.arc(x, lampY + lampR * 2.1, lampR * 0.85, 0, Math.PI * 2)
   ctx.fillStyle = on ? 'rgba(255, 50, 40, 1)' : 'rgba(60, 20, 20, 0.7)'
   ctx.fill()
   ctx.strokeStyle = on ? 'rgba(220, 30, 20, 0.95)' : 'rgba(50, 20, 20, 0.6)'
-  ctx.stroke()
+  strokeOutlined(ctx)
 
   if (on) {
     ctx.fillStyle = 'rgba(255, 200, 80, 0.18)'
@@ -402,7 +404,7 @@ function drawTrain(
   ctx.fill()
   ctx.strokeStyle = stroke
   ctx.lineWidth = Math.max(2, h * 0.07)
-  ctx.stroke()
+  strokeOutlined(ctx)
   const carW = w / 4
   for (let i = 0; i < 4; i++) {
     roundRect(ctx, x + i * carW + carW * 0.12, y + h * 0.16, carW * 0.76, h * 0.68, h * 0.12)
@@ -419,19 +421,19 @@ function drawLog(
   h: number,
   dark: boolean,
 ) {
-  const body = fill(32, 42, dark ? 40 : 36, dark ? 0.42 : 0.34)
+  const body = fill(32, 42, dark ? 40 : 36, softFillAlpha(dark ? 0.42 : 0.34))
   const stroke = fill(32, 42, dark ? 48 : 30, 0.9)
   roundRect(ctx, x, y, w, h, h * 0.22)
   ctx.fillStyle = body
   ctx.fill()
   ctx.strokeStyle = stroke
   ctx.lineWidth = Math.max(1.8, h * 0.07)
-  ctx.stroke()
+  strokeOutlined(ctx)
   ctx.strokeStyle = fill(32, 30, dark ? 52 : 28, 0.35)
   ctx.beginPath()
   ctx.moveTo(x + w * 0.2, y + h * 0.5)
   ctx.lineTo(x + w * 0.8, y + h * 0.5)
-  ctx.stroke()
+  strokeOutlined(ctx)
 }
 
 /** Static stepping stone — reads as solid ground, unlike the drifting logs. */
@@ -456,7 +458,7 @@ function drawRock(
   ctx.fill()
   ctx.strokeStyle = stroke
   ctx.lineWidth = Math.max(1.6, size * 0.06)
-  ctx.stroke()
+  strokeOutlined(ctx)
 
   // Top highlight sells it as a raised surface you can land on.
   ctx.beginPath()
@@ -516,9 +518,11 @@ function drawRow(
 
   if (row.kind === 'grass') {
     drawLaneBand(ctx, y, w, cell, fill(grassHue, 42, dark ? 48 : 72, dark ? 0.28 : 0.22))
-    ctx.strokeStyle = fill(grassHue, 30, dark ? 58 : 58, 0.12)
-    ctx.lineWidth = 1
-    ctx.strokeRect(ox + 0.5, y + 0.5, gridW - 1, cell - 1)
+    if (!isFlatTheme()) {
+      ctx.strokeStyle = fill(grassHue, 30, dark ? 58 : 58, 0.12)
+      ctx.lineWidth = 1
+      ctx.strokeRect(ox + 0.5, y + 0.5, gridW - 1, cell - 1)
+    }
   } else if (row.kind === 'water') {
     drawLaneBand(ctx, y, w, cell, fill(205, 58, dark ? 46 : 62, dark ? 0.42 : 0.28))
     ctx.strokeStyle = fill(205, 50, dark ? 58 : 48, 0.2)

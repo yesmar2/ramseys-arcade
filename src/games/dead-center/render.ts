@@ -4,7 +4,7 @@ import {
   type Shape,
 } from './game'
 
-import { inkColor, playfieldColor } from '../../lib/theme'
+import { inkColor, playfieldColor, softFillAlpha, strokeOutlined } from '../../lib/theme'
 
 const ACCENT = '#2eb8a0'
 const ACCENT_SKY = '#4aa8e8'
@@ -33,13 +33,13 @@ function drawShape(ctx: CanvasRenderingContext2D, shape: Shape, scale: number) {
   for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y)
   ctx.closePath()
   const sat = shape.sat ?? 50
-  ctx.fillStyle = `hsla(${shape.hue}, ${sat}%, 58%, 0.22)`
+  ctx.fillStyle = `hsla(${shape.hue}, ${sat}%, 58%, ${softFillAlpha(0.22)})`
   ctx.fill()
   ctx.strokeStyle = `hsla(${shape.hue}, ${sat}%, 42%, 0.95)`
   ctx.lineWidth = Math.max(1.5, 2 * scale)
   ctx.lineJoin = 'round'
   ctx.lineCap = 'round'
-  ctx.stroke()
+  strokeOutlined(ctx)
 }
 
 function mark(
@@ -63,7 +63,7 @@ function mark(
   ctx.lineWidth = Math.max(1, 1.15 * scale)
   ctx.beginPath()
   ctx.arc(p.x, p.y, r * 0.62, 0, Math.PI * 2)
-  ctx.stroke()
+  strokeOutlined(ctx)
 
   ctx.fillStyle = color
   ctx.beginPath()

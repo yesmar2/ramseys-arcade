@@ -1,6 +1,6 @@
 import type { FallingPiece, GameState, Slab } from './StackerEngine'
 import { SLAB_H } from './StackerEngine'
-import { playfieldColor, playfieldRgb } from '../../lib/theme'
+import { playfieldColor, playfieldRgb, softFillAlpha, strokeOutlined } from '../../lib/theme'
 
 function hslToRgb(h: number, sPct: number, lPct: number) {
   const s = sPct / 100
@@ -49,7 +49,7 @@ function drawSlab(
   opts: { alpha?: number; fillAmount?: number } = {},
 ) {
   const alpha = opts.alpha ?? 1
-  const fillAmount = opts.fillAmount ?? 0.22
+  const fillAmount = softFillAlpha(opts.fillAmount ?? 0.22)
   const hw = slab.w / 2
   const hd = slab.d / 2
   const x = slab.x
@@ -86,17 +86,17 @@ function drawSlab(
   ctx.fillStyle = washFill(hue, sat, 52, fillAmount)
   pathPoly(ctx, midR)
   ctx.fill()
-  ctx.stroke()
+  strokeOutlined(ctx)
 
   ctx.fillStyle = washFill(hue, sat, 46, fillAmount)
   pathPoly(ctx, midL)
   ctx.fill()
-  ctx.stroke()
+  strokeOutlined(ctx)
 
   ctx.fillStyle = washFill(hue, sat, slab.perfect ? 62 : 58, fillAmount)
   pathPoly(ctx, top)
   ctx.fill()
-  ctx.stroke()
+  strokeOutlined(ctx)
   ctx.restore()
 }
 

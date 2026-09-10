@@ -6,7 +6,7 @@ import {
   PATRIOT_TURRET_HUE,
   patriotTurretPoints,
 } from './turretArt'
-import { playfieldColor } from '../../lib/theme'
+import { isFlatTheme, playfieldColor, softFillAlpha, strokeOutlined } from '../../lib/theme'
 
 /** Plain rectangles only — scales cleanly on any stage size. */
 function washBox(
@@ -20,12 +20,14 @@ function washBox(
   sat = 52,
 ) {
   if (w <= 0 || h <= 0) return
-  ctx.fillStyle = `hsla(${hue}, ${sat}%, 58%, 0.22)`
+  ctx.fillStyle = `hsla(${hue}, ${sat}%, 58%, ${softFillAlpha(0.22)})`
   ctx.fillRect(x, y, w, h)
-  ctx.strokeStyle = `hsla(${hue}, ${sat}%, 42%, 0.95)`
-  ctx.lineWidth = Math.max(1.2, 1.5 * scale)
-  ctx.lineJoin = 'round'
-  ctx.strokeRect(x + 0.5, y + 0.5, Math.max(0, w - 1), Math.max(0, h - 1))
+  if (!isFlatTheme()) {
+    ctx.strokeStyle = `hsla(${hue}, ${sat}%, 42%, 0.95)`
+    ctx.lineWidth = Math.max(1.2, 1.5 * scale)
+    ctx.lineJoin = 'round'
+    ctx.strokeRect(x + 0.5, y + 0.5, Math.max(0, w - 1), Math.max(0, h - 1))
+  }
 }
 
 function washCircle(
@@ -39,11 +41,11 @@ function washCircle(
 ) {
   ctx.beginPath()
   ctx.arc(x, y, r, 0, Math.PI * 2)
-  ctx.fillStyle = `hsla(${hue}, ${sat}%, 58%, 0.22)`
+  ctx.fillStyle = `hsla(${hue}, ${sat}%, 58%, ${softFillAlpha(0.22)})`
   ctx.fill()
   ctx.strokeStyle = `hsla(${hue}, ${sat}%, 42%, 0.95)`
   ctx.lineWidth = Math.max(1.2, 1.5 * scale)
-  ctx.stroke()
+  strokeOutlined(ctx)
 }
 
 function washPoly(
@@ -58,12 +60,12 @@ function washPoly(
   ctx.moveTo(pts[0].x, pts[0].y)
   for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y)
   ctx.closePath()
-  ctx.fillStyle = `hsla(${hue}, ${sat}%, 58%, 0.22)`
+  ctx.fillStyle = `hsla(${hue}, ${sat}%, 58%, ${softFillAlpha(0.22)})`
   ctx.fill()
   ctx.strokeStyle = `hsla(${hue}, ${sat}%, 42%, 0.95)`
   ctx.lineWidth = Math.max(1.2, 1.5 * scale)
   ctx.lineJoin = 'round'
-  ctx.stroke()
+  strokeOutlined(ctx)
 }
 
 function drawBackground(ctx: CanvasRenderingContext2D, w: number, h: number) {
@@ -393,14 +395,16 @@ function drawBomber(ctx: CanvasRenderingContext2D, bomber: Bomber, scale: number
 
   ctx.fillStyle = 'hsla(18, 20%, 18%, 0.55)'
   ctx.fillRect(barX - pad, barY - pad * 0.55, barW + pad * 2, segH + pad * 1.1)
-  ctx.strokeStyle = 'hsla(18, 45%, 36%, 0.9)'
-  ctx.lineWidth = Math.max(1.2, 1.4 * s)
-  ctx.strokeRect(
-    barX - pad + 0.5,
-    barY - pad * 0.55 + 0.5,
-    barW + pad * 2 - 1,
-    segH + pad * 1.1 - 1,
-  )
+  if (!isFlatTheme()) {
+    ctx.strokeStyle = 'hsla(18, 45%, 36%, 0.9)'
+    ctx.lineWidth = Math.max(1.2, 1.4 * s)
+    ctx.strokeRect(
+      barX - pad + 0.5,
+      barY - pad * 0.55 + 0.5,
+      barW + pad * 2 - 1,
+      segH + pad * 1.1 - 1,
+    )
+  }
 
   for (let i = 0; i < maxHp; i++) {
     const sx = barX + i * (segW + segGap)
@@ -414,11 +418,13 @@ function drawBomber(ctx: CanvasRenderingContext2D, bomber: Bomber, scale: number
           : 'hsla(8, 74%, 54%, 0.95)'
       : 'hsla(0, 0%, 100%, 0.12)'
     ctx.fillRect(sx, barY, segW, segH)
-    ctx.strokeStyle = filled
-      ? 'hsla(18, 40%, 28%, 0.75)'
-      : 'hsla(18, 25%, 40%, 0.45)'
-    ctx.lineWidth = Math.max(1, 1.1 * s)
-    ctx.strokeRect(sx + 0.5, barY + 0.5, segW - 1, segH - 1)
+    if (!isFlatTheme()) {
+      ctx.strokeStyle = filled
+        ? 'hsla(18, 40%, 28%, 0.75)'
+        : 'hsla(18, 25%, 40%, 0.45)'
+      ctx.lineWidth = Math.max(1, 1.1 * s)
+      ctx.strokeRect(sx + 0.5, barY + 0.5, segW - 1, segH - 1)
+    }
   }
 }
 
@@ -498,14 +504,14 @@ export function renderGame(
   for (const city of state.cities) {
     if (!city.alive || !city.shielded) continue
     const r = shieldRadius(scale)
-    const pulse = 0.28
+    const pulse = softFillAlpha(0.28)
     ctx.beginPath()
     ctx.arc(city.x, state.groundY, r, Math.PI, 0)
     ctx.fillStyle = `hsla(172, 52%, 48%, ${pulse})`
     ctx.fill()
     ctx.strokeStyle = 'hsla(172, 52%, 42%, 0.9)'
     ctx.lineWidth = 2.4 * scale
-    ctx.stroke()
+    strokeOutlined(ctx)
   }
 
   for (const m of state.incoming) {
@@ -525,14 +531,14 @@ export function renderGame(
   for (const b of state.blasts) {
     if ((b.wait ?? 0) > 0 || b.r < 2) continue
     const hue = b.burst ? 272 : 38
-    const alpha = b.growing ? 0.28 : 0.16
+    const alpha = softFillAlpha(b.growing ? 0.28 : 0.16)
     ctx.fillStyle = `hsla(${hue}, 58%, 58%, ${alpha})`
     ctx.beginPath()
     ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2)
     ctx.fill()
     ctx.strokeStyle = b.burst ? 'hsla(272, 52%, 42%, 0.75)' : 'hsla(172, 52%, 42%, 0.7)'
     ctx.lineWidth = (b.burst ? 3 : 2) * scale
-    ctx.stroke()
+    strokeOutlined(ctx)
   }
 
   for (const f of state.floaters) {

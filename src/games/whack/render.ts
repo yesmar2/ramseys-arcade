@@ -1,5 +1,5 @@
 import { PAD_COUNT, PAD_INNER, padDisc, padLayout, type GameState, type Pad } from './game'
-import { inkColor, playfieldColor } from '../../lib/theme'
+import { inkColor, playfieldColor, softFillAlpha, strokeOutlined } from '../../lib/theme'
 
 function drawBackground(ctx: CanvasRenderingContext2D, w: number, h: number) {
   ctx.fillStyle = playfieldColor()
@@ -17,7 +17,7 @@ function drawBackground(ctx: CanvasRenderingContext2D, w: number, h: number) {
 }
 
 function washFill(hue: number, sat: number, alpha = 0.22) {
-  return `hsla(${hue}, ${sat}%, 58%, ${alpha})`
+  return `hsla(${hue}, ${sat}%, 58%, ${softFillAlpha(alpha)})`
 }
 
 function washStroke(hue: number, sat: number) {
@@ -41,7 +41,7 @@ function drawPad(ctx: CanvasRenderingContext2D, pad: Pad, w: number, h: number) 
   ctx.beginPath()
   ctx.arc(x, y, size, 0, Math.PI * 2)
   ctx.fill()
-  ctx.stroke()
+  strokeOutlined(ctx)
 
   if (live) {
     ctx.fillStyle = washFill(hue, sat, 0.16 + rise * 0.28)
@@ -50,7 +50,7 @@ function drawPad(ctx: CanvasRenderingContext2D, pad: Pad, w: number, h: number) 
     ctx.fill()
     ctx.strokeStyle = washStroke(hue, sat)
     ctx.lineWidth = Math.max(1.2, r * 0.045)
-    ctx.stroke()
+    strokeOutlined(ctx)
   }
 
   if (hit) {

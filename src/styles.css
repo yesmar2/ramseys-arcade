@@ -31,8 +31,7 @@
   color-scheme: light;
 }
 
-html[data-theme="dark"],
-html[data-theme="flat"] {
+html[data-theme="dark"] {
   --bg: #0c1218;
   --bg-mid: #101820;
   --bg-gold: #141210;
@@ -53,9 +52,11 @@ html[data-theme="flat"] {
   color-scheme: dark;
 }
 
+/* Flat = light chrome, fill-forward art, no elevation shadows. */
 html[data-theme="flat"] {
   --shadow-soft: none;
   --shadow-lift: none;
+  color-scheme: light;
 }
 
 *,
@@ -3627,20 +3628,17 @@ a.game-hud__board {
   filter: drop-shadow(0 0 0.5px rgba(var(--surface-rgb), 0.95));
 }
 
-html[data-theme='dark'] .patriot__power,
-html[data-theme='flat'] .patriot__power {
+html[data-theme='dark'] .patriot__power {
   border-color: hsla(var(--hue), 50%, 68%, 0.65);
   background: hsla(var(--hue), 40%, 28%, 0.55);
 }
 
-html[data-theme='dark'] .patriot__power--hot,
-html[data-theme='flat'] .patriot__power--hot {
+html[data-theme='dark'] .patriot__power--hot {
   border-color: hsla(var(--hue), 55%, 72%, 0.9);
   background: hsla(var(--hue), 45%, 34%, 0.7);
 }
 
-html[data-theme='dark'] .patriot__power-mark,
-html[data-theme='flat'] .patriot__power-mark {
+html[data-theme='dark'] .patriot__power-mark {
   stroke: #f4f8fb;
   opacity: 1;
   filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.65));

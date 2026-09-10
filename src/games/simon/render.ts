@@ -1,5 +1,5 @@
 import { PAD_HUES, padLayout, type GameState } from './game'
-import { playfieldColor } from '../../lib/theme'
+import { playfieldColor, softFillAlpha, strokeOutlined } from '../../lib/theme'
 
 function drawBackground(ctx: CanvasRenderingContext2D, w: number, h: number) {
   ctx.fillStyle = playfieldColor()
@@ -38,14 +38,14 @@ export function renderGame(
     const pressed = state.pressId === pad.id && state.pressLife > 0
     const on = watching || pressed
     const punch = pressed ? Math.max(0.45, Math.min(1, state.pressLife / 0.18)) : 1
-    const alpha = on ? 0.22 + 0.28 * punch : 0.22
+    const alpha = softFillAlpha(on ? 0.22 + 0.28 * punch : 0.22)
     ctx.fillStyle = `hsla(${hue}, 52%, 58%, ${alpha})`
     ctx.strokeStyle = `hsla(${hue}, 52%, 42%, 0.95)`
     ctx.lineWidth = Math.max(2, pad.r * 0.08)
     ctx.beginPath()
     ctx.arc(pad.x, pad.y, pad.r * (on ? 1.03 + 0.05 * punch : 1), 0, Math.PI * 2)
     ctx.fill()
-    ctx.stroke()
+    strokeOutlined(ctx)
   }
 
   if (state.flash > 0) {
