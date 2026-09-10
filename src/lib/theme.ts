@@ -2,12 +2,12 @@ export const THEME_KEY = 'skermix-theme'
 const LEGACY_THEME_KEYS = ['fordriva-theme', 'acralia-theme', 'archivade-theme'] as const
 export const THEME_EVENT = 'arcade-theme'
 
-export type Theme = 'light' | 'dark' | 'flat'
+export type Theme = 'light' | 'dark' | 'flat' | 'google'
 
-const THEMES: Theme[] = ['dark', 'light', 'flat']
+const THEMES: Theme[] = ['dark', 'light', 'flat', 'google']
 
 function isTheme(value: string | null | undefined): value is Theme {
-  return value === 'light' || value === 'dark' || value === 'flat'
+  return value === 'light' || value === 'dark' || value === 'flat' || value === 'google'
 }
 
 export function systemTheme(): Theme {
@@ -50,6 +50,7 @@ export function isFlatTheme() {
 
 export function themeLabel(theme: Theme = currentTheme()) {
   if (theme === 'flat') return 'Flat'
+  if (theme === 'google') return 'Google'
   if (theme === 'light') return 'Light'
   return 'Dark'
 }
@@ -81,7 +82,7 @@ export function setTheme(theme: Theme) {
   window.dispatchEvent(new Event(THEME_EVENT))
 }
 
-/** Cycle Dark → Light → Flat → Dark. */
+/** Cycle Dark → Light → Flat → Google → Dark. */
 export function cycleTheme() {
   const i = THEMES.indexOf(currentTheme())
   setTheme(THEMES[(i + 1) % THEMES.length])
