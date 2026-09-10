@@ -8905,17 +8905,7 @@ html[data-theme='dark'] .patriot__power-mark {
 
 /* Tablet+: square thumb tracks stats column height. */
 @media (min-width: 520px) {
-  .game-lobby__intro {
-    align-items: stretch;
-  }
-
-  .game-lobby__intro-art {
-    align-items: stretch;
-  }
-
   .game-lobby__intro .game-lobby__art {
-    width: auto;
-    height: 100%;
     max-width: none;
   }
 
