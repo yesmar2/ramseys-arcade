@@ -13,6 +13,7 @@ import {
   type TournamentSummary,
 } from '../lib/tournaments'
 import { EventCountdown } from './EventCountdown'
+import { resolveGameAccent } from '../lib/theme'
 import { GameThumbArt } from './GameThumbArt'
 
 function statusLabel(status: TournamentStatus) {
@@ -23,7 +24,9 @@ function statusLabel(status: TournamentStatus) {
 
 
 export function eventAccent(games: string[]) {
-  return getGame(games[0] ?? '')?.accent ?? '#2eb8a0'
+  const slug = games[0] ?? ''
+  const fallback = getGame(slug)?.accent ?? '#2eb8a0'
+  return resolveGameAccent(slug, fallback)
 }
 
 function EventMetaChips({
@@ -196,18 +199,19 @@ export function EventThumbs({
     >
       {shown.map((slug, i) => {
         const g = getGame(slug)
+        const accent = resolveGameAccent(slug, g?.accent ?? '#2eb8a0')
         return (
           <span
             key={slug}
             className="event-thumbs__item"
             style={
               {
-                '--thumb-accent': g?.accent ?? '#2eb8a0',
+                '--thumb-accent': accent,
                 zIndex: shown.length - i,
               } as CSSProperties
             }
           >
-            <GameThumbArt slug={slug} accent={g?.accent} />
+            <GameThumbArt slug={slug} accent={accent} />
           </span>
         )
       })}

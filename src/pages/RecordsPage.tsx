@@ -25,6 +25,7 @@ import { usePlayerName } from '../hooks/usePlayerName'
 import { APP_NAME } from '../lib/brand'
 import { defaultPeriod } from '../lib/defaultPeriod'
 import { groupBoardEmptyTitle, useActiveGroup } from '../lib/groups'
+import { resolveGameAccent } from '../lib/theme'
 import {
   normalizePlayerName,
   PERIOD_LABELS,
@@ -90,7 +91,7 @@ function GameRecordBookPage({
 }) {
   const gameMeta = getGame(game)
   const device = useDeviceType()
-  const accent = gameMeta?.accent ?? '#2eb8a0'
+  const accent = resolveGameAccent(game, gameMeta?.accent ?? '#2eb8a0')
   const title = gameMeta?.name ?? game
   const canPlay = gameMeta ? gamePlayableOn(gameMeta, device) : false
   const deviceNote = gameMeta ? deviceRequirementLabel(gameMeta) : null
@@ -195,7 +196,7 @@ function RecordBoardPage({
     window.requestAnimationFrame(() => flashYouRow())
   }, [loading, you, recordId, period])
 
-  const accent = gameMeta?.accent ?? '#2eb8a0'
+  const accent = resolveGameAccent(game, gameMeta?.accent ?? '#2eb8a0')
   const unit = record?.unit ?? 'ms'
   const gameTitle = gameMeta?.name ?? game
   const device = useDeviceType()

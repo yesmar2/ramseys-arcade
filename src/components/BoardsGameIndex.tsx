@@ -6,6 +6,7 @@ import {
   type GameBoardPreview,
   type LeaderboardPeriod,
 } from '../lib/leaderboard'
+import { resolveGameAccent } from '../lib/theme'
 import { GameThumbArt } from './GameThumbArt'
 import { TopScorePodium } from './TopScorePodium'
 
@@ -51,15 +52,16 @@ export function BoardsGameIndex({
         const game = getGame(slug)
         if (!game || game.hidden) return null
         const boardHref = gameBoardHref(slug, period)
+        const accent = resolveGameAccent(slug, game.accent)
         return (
           <article
             key={slug}
             className="lb-boards-index__game"
-            style={{ '--tab-accent': game.accent } as CSSProperties}
+            style={{ '--tab-accent': accent } as CSSProperties}
           >
             <header className="lb-boards-index__head">
               <a className="lb-boards-index__game-link" href={boardHref}>
-                <GameThumbArt slug={slug} accent={game.accent} />
+                <GameThumbArt slug={slug} accent={accent} />
                 <span className="lb-boards-index__game-name">{game.name}</span>
               </a>
               <a className="lb-boards-index__board-link" href={boardHref}>
@@ -70,7 +72,7 @@ export function BoardsGameIndex({
               <TopScorePodium
                 entries={entries}
                 playerName={playerName}
-                accent={game.accent}
+                accent={accent}
                 slug={slug}
                 period={period}
               />

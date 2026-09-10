@@ -37,6 +37,7 @@ import { APP_NAME } from '../lib/brand'
 import { groupBoardEmptyTitle, useActiveGroup } from '../lib/groups'
 import { formatLeaderboardScore } from '../games/spotter/score'
 import { gameHasRecords } from '../lib/records'
+import { resolveGameAccent, THEME_EVENT } from '../lib/theme'
 import {
   getLeaderboard,
   LEADERBOARD_GAMES,
@@ -74,13 +75,20 @@ export function GameHubPage({ slug, board: boardFromRoute }: GameHubPageProps) {
   const [you, setYou] = useState<YouEntry | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [, setThemeTick] = useState(0)
+
+  useEffect(() => {
+    const sync = () => setThemeTick((n) => n + 1)
+    window.addEventListener(THEME_EVENT, sync)
+    return () => window.removeEventListener(THEME_EVENT, sync)
+  }, [])
 
   const canPlay = game ? gamePlayableOn(game, device) : false
   const comingSoon = Boolean(game?.comingSoon)
   const inDevelopment = Boolean(game?.inDevelopment)
   const scoring = scoringFor(slug)
   const boardSlug: LeaderboardGame | null = isBoardGame(slug) ? slug : null
-  const accent = game?.accent ?? '#2eb8a0'
+  const accent = resolveGameAccent(slug, game?.accent ?? '#2eb8a0')
   const playHref = gamePlayHref(slug)
   const deviceNote = game ? deviceRequirementLabel(game) : null
   const others = homeGames(device).filter((g) => g.slug !== slug)
@@ -181,7 +189,7 @@ export function GameHubPage({ slug, board: boardFromRoute }: GameHubPageProps) {
                   <div className="game-lobby__art">
                     <GameThumbArt
                       slug={game.slug}
-                      accent={game.accent}
+                      accent={accent}
                       className="game-lobby__thumb"
                     />
                   </div>
@@ -282,12 +290,14 @@ export function GameHubPage({ slug, board: boardFromRoute }: GameHubPageProps) {
                 <section className="game-lobby__others" aria-label="More games">
                   <h2 className="game-lobby__section-title">More games</h2>
                   <ul className="game-lobby__others-list">
-                    {others.map((g) => (
+                    {others.map((g) => {
+                      const otherAccent = resolveGameAccent(g.slug, g.accent)
+                      return (
                       <li key={g.slug}>
                         <a
                           className="game-lobby__other"
                           href={gameHref(g.slug)}
-                          style={{ '--tile-accent': g.accent } as CSSProperties}
+                          style={{ '--tile-accent': otherAccent } as CSSProperties}
                           aria-label={
                             g.comingSoon
                               ? `${g.name}, coming soon`
@@ -296,11 +306,12 @@ export function GameHubPage({ slug, board: boardFromRoute }: GameHubPageProps) {
                                 : g.name
                           }
                         >
-                          <GameThumbArt slug={g.slug} accent={g.accent} />
+                          <GameThumbArt slug={g.slug} accent={otherAccent} />
                           <span className="game-lobby__other-name">{g.name}</span>
                         </a>
                       </li>
-                    ))}
+                      )
+                    })}
                   </ul>
                 </section>
               ) : null}
@@ -357,7 +368,7 @@ function PlayCta({
         <a
           className={`lb-play game-lobby__play ${className}`}
           href={playHref}
-          style={{ background: game.accent }}
+          style={{ background: resolveGameAccent(game.slug, game.accent) }}
         >
           {`Play ${game.name}`}
         </a>

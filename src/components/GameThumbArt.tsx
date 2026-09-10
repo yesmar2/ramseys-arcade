@@ -1,6 +1,6 @@
 import { useEffect, useState, type CSSProperties, type ReactNode } from 'react'
 import { patriotCityRects } from '../games/patriot/cityArt'
-import { isFlatTheme, THEME_EVENT } from '../lib/theme'
+import { isFlatTheme, resolveGameAccent, THEME_EVENT } from '../lib/theme'
 import { accentPastel, HUE, outlineStroke, pastel } from './gameArtStyle'
 import { IsoSlab } from './GameTileArt'
 
@@ -207,11 +207,12 @@ function SimonThumb() {
   const cx = 16
   const cy = 16
   const d = r + gap / 2
+  // Clockwise from top-left: blue, red, yellow, green (Google / classic Simon).
   const pads = [
-    { cx: cx - d, cy: cy - d, hue: HUE.sky, lit: false },
-    { cx: cx + d, cy: cy - d, hue: HUE.violet, lit: true },
-    { cx: cx - d, cy: cy + d, hue: HUE.gold, lit: false },
-    { cx: cx + d, cy: cy + d, hue: HUE.rose, lit: false },
+    { cx: cx - d, cy: cy - d, hue: 217, lit: false },
+    { cx: cx + d, cy: cy - d, hue: 4, lit: true },
+    { cx: cx - d, cy: cy + d, hue: 45, lit: false },
+    { cx: cx + d, cy: cy + d, hue: 141, lit: false },
   ]
 
   return (
@@ -278,9 +279,9 @@ function pelletsPacPath(cx: number, cy: number, r: number, open = 0.55) {
   return `M ${cx} ${cy} L ${lx} ${ly} A ${r} ${r} 0 1 1 ${ux} ${uy} Z`
 }
 
-function PelletsThumb() {
+function PelletsThumb({ accent }: { accent?: string }) {
   if (isFlatTheme()) {
-    const you = pastel(HUE.gold, 58, 72)
+    const you = accent ? accentPastel(accent, 88) : pastel(HUE.gold, 58, 72)
     return <path d={pelletsPacPath(15.4, 16, 9.4)} fill={you.fill} />
   }
   // Outlined soft gold — matches in-game drawPlayer.
@@ -310,7 +311,7 @@ const thumbBySlug: Record<
   crosswalk: CrosswalkThumb,
   stride: StrideThumb,
   spotter: SpotterThumb,
-  pellets: () => <PelletsThumb />,
+  pellets: PelletsThumb,
 }
 
 export function GameThumbArt({ slug, accent, className }: GameThumbArtProps) {
@@ -321,10 +322,9 @@ export function GameThumbArt({ slug, accent, className }: GameThumbArtProps) {
     return () => window.removeEventListener(THEME_EVENT, sync)
   }, [])
 
+  const resolved = resolveGameAccent(slug, accent ?? '#4285F4')
   const Thumb = thumbBySlug[slug]
-  const style = accent
-    ? ({ '--thumb-accent': accent } as CSSProperties)
-    : undefined
+  const style = { '--thumb-accent': resolved } as CSSProperties
 
   return (
     <span
@@ -332,7 +332,7 @@ export function GameThumbArt({ slug, accent, className }: GameThumbArtProps) {
       aria-hidden="true"
       style={style}
     >
-      <ThumbSvg>{Thumb ? <Thumb accent={accent} /> : null}</ThumbSvg>
+      <ThumbSvg>{Thumb ? <Thumb accent={resolved} /> : null}</ThumbSvg>
     </span>
   )
 }

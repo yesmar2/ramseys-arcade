@@ -4,6 +4,7 @@ import { gamePlayHref } from '../hooks/useHashRoute'
 import { buildDailyPuzzle } from '../games/spotter/puzzle'
 import { spotterDayKey } from '../games/spotter/dayKey'
 import { isSpotterSolvedToday } from '../games/spotter/storage'
+import { resolveGameAccent } from '../lib/theme'
 import { GameThumbArt } from './GameThumbArt'
 
 /** Daily Spotter teaser above the home game grid. */
@@ -13,6 +14,7 @@ export function HomeSpotterStrip() {
 
   const puzzle = buildDailyPuzzle(spotterDayKey())
   const solved = isSpotterSolvedToday()
+  const accent = resolveGameAccent('spotter', game.accent)
   const variant =
     puzzle.variant === 'poster'
       ? 'Poster wall'
@@ -23,8 +25,8 @@ export function HomeSpotterStrip() {
   return (
     <section className="home-spotter" aria-label="Today's Spotter hunt">
       <a className="home-spotter__card" href={gamePlayHref('spotter')}>
-        <span className="home-spotter__thumb" style={{ '--thumb-accent': game.accent } as CSSProperties}>
-          <GameThumbArt slug="spotter" accent={game.accent} />
+        <span className="home-spotter__thumb" style={{ '--thumb-accent': accent } as CSSProperties}>
+          <GameThumbArt slug="spotter" accent={accent} />
         </span>
         <span className="home-spotter__body">
           <span className="home-spotter__chips">

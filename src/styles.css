@@ -54,12 +54,12 @@ html[data-theme="dark"] {
 
 /* Google = Material light + Google accents, with Flat art/chrome. */
 html[data-theme="google"] {
-  --bg: #f8f9fa;
-  --bg-mid: #ffffff;
+  --bg: #ffffff;
+  --bg-mid: #f8f9fa;
   --bg-gold: #fef7e0;
-  --blob-sky: #d2e3fc;
-  --blob-mint: #ceead6;
-  --blob-gold: #feefc3;
+  --blob-sky: color-mix(in srgb, #4285f4 45%, #ffffff);
+  --blob-mint: color-mix(in srgb, #34a853 42%, #ffffff);
+  --blob-gold: color-mix(in srgb, #fbbc04 50%, #ffffff);
   --surface: #ffffff;
   --surface-rgb: 255, 255, 255;
   --playfield: #f1f3f4;
@@ -67,12 +67,33 @@ html[data-theme="google"] {
   --ink-rgb: 32, 33, 36;
   --shade-rgb: 60, 64, 67;
   --muted: #5f6368;
-  --accent: #1a73e8;
-  --accent-2: #fbbc04;
+  --accent: #4285f4;
+  --accent-2: #ea4335;
   --accent-sky: #4285f4;
-  --dot: rgba(66, 133, 244, 0.18);
+  --dot: rgba(66, 133, 244, 0.28);
   --shell: #e8eaed;
   color-scheme: light;
+}
+
+html[data-theme="google"] .inline-thumb {
+  background: color-mix(in srgb, var(--thumb-accent, var(--accent)) 48%, #ffffff);
+}
+
+html[data-theme="google"] .site-header__brand {
+  background-image: linear-gradient(
+    90deg,
+    #4285f4 0%,
+    #ea4335 32%,
+    #fbbc04 66%,
+    #34a853 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+html[data-theme="google"] .site-header__brand span {
+  color: inherit;
 }
 
 /* Flat chrome tokens — shared by Flat + Google. */

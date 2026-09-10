@@ -17,6 +17,7 @@ import {
   type EventGame,
   type TournamentKind,
 } from '../lib/tournaments'
+import { resolveGameAccent } from '../lib/theme'
 
 const DURATIONS = [
   { hours: 1, label: '1 hour' },
@@ -62,8 +63,9 @@ export function CreateTournamentPage() {
   const waitingForAuth = authLoading && !account
 
   const accent = useMemo(() => {
-    const first = getGame(games[0] ?? '')
-    return first?.accent ?? '#2eb8a0'
+    const slug = games[0] ?? ''
+    const first = getGame(slug)
+    return resolveGameAccent(slug, first?.accent ?? '#2eb8a0')
   }, [games])
 
   const durationLabel =
@@ -268,6 +270,7 @@ export function CreateTournamentPage() {
               <div className="event-create__game-grid">
                 {EVENT_GAMES.map((slug) => {
                   const g = getGame(slug)
+                  const gameAccent = resolveGameAccent(slug, g?.accent ?? accent)
                   const picked = games.includes(slug)
                   const atCap = !isBracket && games.length >= 5 && !picked
                   return (
@@ -275,13 +278,13 @@ export function CreateTournamentPage() {
                       key={slug}
                       type="button"
                       className={`event-create__game${picked ? ' event-create__game--picked' : ''}${atCap ? ' event-create__game--disabled' : ''}`}
-                      style={{ '--game-accent': g?.accent ?? accent } as CSSProperties}
+                      style={{ '--game-accent': gameAccent } as CSSProperties}
                       aria-pressed={picked}
                       disabled={atCap}
                       onClick={() => toggleGame(slug)}
                     >
                       <span className="event-create__game-art">
-                        <GameThumbArt slug={slug} accent={g?.accent} />
+                        <GameThumbArt slug={slug} accent={gameAccent} />
                       </span>
                       <span className="event-create__game-name">{g?.name ?? slug}</span>
                       {picked ? (

@@ -14,6 +14,7 @@ import { usePlayerName } from '../hooks/usePlayerName'
 import { useActiveGroup } from '../lib/groups'
 import { useGlobalRank, useGlobalRankLoading } from '../lib/globalRank'
 import { APP_NAME } from '../lib/brand'
+import { resolveGameAccent } from '../lib/theme'
 import {
   fetchGlobalRank,
   PERIOD_LABELS,
@@ -221,7 +222,7 @@ export function RankPage({
                     const game = getGame(slug)
                     const row = byGame[slug]
                     const onDevice = game ? gamePlayableOn(game, device) : true
-                    const accent = game?.accent ?? 'var(--accent)'
+                    const accent = resolveGameAccent(slug, game?.accent ?? '#4285f4')
                     const href = row
                       ? gameBoardHref(slug, period)
                       : gamePlayHref(slug)

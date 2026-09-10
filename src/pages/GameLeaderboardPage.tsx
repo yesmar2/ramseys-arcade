@@ -17,6 +17,7 @@ import { flashYouRow } from '../lib/boardGap'
 import { defaultPeriod } from '../lib/defaultPeriod'
 import { APP_NAME } from '../lib/brand'
 import { groupBoardEmptyTitle, useActiveGroup } from '../lib/groups'
+import { resolveGameAccent } from '../lib/theme'
 import {
   getLeaderboard,
   PERIOD_LABELS,
@@ -50,7 +51,7 @@ export function GameLeaderboardPage({
   const [shown, setShown] = useState(BOARD_ROWS)
   const pulsed = useRef(false)
 
-  const accent = game?.accent ?? '#2eb8a0'
+  const accent = resolveGameAccent(gameSlug, game?.accent ?? '#2eb8a0')
   const canPlay = game ? gamePlayableOn(game, device) : false
   const playHref = gamePlayHref(gameSlug)
   const deviceNote = game ? deviceRequirementLabel(game) : null

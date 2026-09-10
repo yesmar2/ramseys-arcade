@@ -49,6 +49,37 @@ export function isFlatTheme() {
   return theme === 'flat' || theme === 'google'
 }
 
+export function isGoogleTheme() {
+  return currentTheme() === 'google'
+}
+
+/** Classic Google brand primaries. */
+export const GOOGLE_BLUE = '#4285F4'
+export const GOOGLE_RED = '#EA4335'
+export const GOOGLE_YELLOW = '#FBBC04'
+export const GOOGLE_GREEN = '#34A853'
+
+const GOOGLE_BY_SLUG: Record<string, string> = {
+  asteroids: GOOGLE_GREEN,
+  patriot: GOOGLE_RED,
+  snake: GOOGLE_GREEN,
+  stride: GOOGLE_YELLOW,
+  stacker: GOOGLE_BLUE,
+  centroid: GOOGLE_BLUE,
+  pop: GOOGLE_BLUE,
+  simon: GOOGLE_RED,
+  pellets: GOOGLE_YELLOW,
+  barrage: GOOGLE_RED,
+  crosswalk: GOOGLE_GREEN,
+  spotter: GOOGLE_BLUE,
+}
+
+/** Game / thumb accent — remapped onto Google primaries in Google theme. */
+export function resolveGameAccent(slug: string, fallback: string) {
+  if (!isGoogleTheme()) return fallback
+  return GOOGLE_BY_SLUG[slug] ?? GOOGLE_BLUE
+}
+
 export function themeLabel(theme: Theme = currentTheme()) {
   if (theme === 'flat') return 'Flat'
   if (theme === 'google') return 'Google'

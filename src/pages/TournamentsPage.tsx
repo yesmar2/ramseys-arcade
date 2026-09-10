@@ -15,6 +15,7 @@ import { usePlayerName } from '../hooks/usePlayerName'
 import { tournamentCreateHref, tournamentHref, tournamentPlayHref, rankHref, useHashRoute } from '../hooks/useHashRoute'
 import { APP_NAME } from '../lib/brand'
 import { ApiError, getLastPlayerName, normalizePlayerName } from '../lib/leaderboard'
+import { resolveGameAccent } from '../lib/theme'
 import {
   attemptsPerGameMax,
   eventKind,
@@ -261,7 +262,10 @@ function EventPlayCards({
       >
         {detail.games.map((slug, index) => {
           const g = getGame(slug)
-          const gameAccent = g?.accent ?? eventAccent(detail.games)
+          const gameAccent = resolveGameAccent(
+            slug,
+            g?.accent ?? eventAccent(detail.games),
+          )
           const status =
             detail.playerStatus && detail.games.length === 1 ? detail.playerStatus : null
           const attemptLabel = playAttemptsLabel(detail, slug, joined, displayName)
@@ -358,7 +362,7 @@ function SingleGameStandings({
 }) {
   const gameSlug = detail.games[0]!
   const game = getGame(gameSlug)
-  const accent = game?.accent ?? '#2eb8a0'
+  const accent = resolveGameAccent(gameSlug, game?.accent ?? '#2eb8a0')
   const youName = normalizePlayerName(displayName)
 
   const rows = useMemo(() => scoredStandings(detail), [detail])
@@ -441,7 +445,7 @@ function StandingCard({
           {games.map((game) => {
             const cell = row.byGame[game]
             const label = getGame(game)?.name ?? game
-            const accent = getGame(game)?.accent
+            const accent = resolveGameAccent(game, getGame(game)?.accent ?? '#2eb8a0')
             return (
               <li key={game} className="tour-standing__game">
                 <span className="tour-standing__game-label">

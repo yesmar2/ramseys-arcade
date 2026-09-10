@@ -1,6 +1,7 @@
-import type { CSSProperties } from 'react'
+import { useEffect, useState, type CSSProperties } from 'react'
 import type { Game } from '../data/games'
 import { gameHref } from '../hooks/useHashRoute'
+import { resolveGameAccent, THEME_EVENT } from '../lib/theme'
 import { GameThumbArt } from './GameThumbArt'
 
 type GameTileProps = {
@@ -18,9 +19,16 @@ export function GameTile({
   href,
   showOnAllDevices = false,
 }: GameTileProps) {
+  const [, setThemeTick] = useState(0)
+  useEffect(() => {
+    const sync = () => setThemeTick((n) => n + 1)
+    window.addEventListener(THEME_EVENT, sync)
+    return () => window.removeEventListener(THEME_EVENT, sync)
+  }, [])
+  const accent = resolveGameAccent(game.slug, game.accent)
   const style = {
-    '--tile-accent': game.accent,
-    '--thumb-accent': game.accent,
+    '--tile-accent': accent,
+    '--thumb-accent': accent,
     animationDelay: `${0.05 + index * 0.05}s`,
   } as CSSProperties
 
@@ -41,7 +49,7 @@ export function GameTile({
               : game.name
         }
       >
-        <GameThumbArt slug={game.slug} accent={game.accent} />
+        <GameThumbArt slug={game.slug} accent={accent} />
         <h3 className="game-tile__title">{game.name}</h3>
         {game.inDevelopment ? (
           <span className="game-tile__status">In development</span>
