@@ -273,18 +273,29 @@ function SpotterThumb({ accent }: { accent?: string }) {
   )
 }
 
-/** Classic chomp facing right — filled pie only, no ring stroke. */
+/** Same pie path as canvas drawPlayer (clockwise major arc). */
 function pelletsPacPath(cx: number, cy: number, r: number, open = 0.55) {
   const ux = cx + r * Math.cos(open)
   const uy = cy - r * Math.sin(open)
   const lx = cx + r * Math.cos(open)
   const ly = cy + r * Math.sin(open)
-  return `M ${cx} ${cy} L ${ux} ${uy} A ${r} ${r} 0 1 0 ${lx} ${ly} Z`
+  // Lower lip → clockwise large arc → upper lip → close (matches ctx.arc).
+  return `M ${cx} ${cy} L ${lx} ${ly} A ${r} ${r} 0 1 1 ${ux} ${uy} Z`
 }
 
 function PelletsThumb() {
-  const you = pastel(HUE.gold, 58, 72)
-  return <path d={pelletsPacPath(15.4, 16, 9.4)} fill={you.fill} />
+  // Dark-theme player: fill hsla(38,58%,58%,0.22), stroke …58%,0.95 — slightly
+  // stronger fill so the soft gold still reads on the lobby thumb.
+  return (
+    <path
+      d={pelletsPacPath(15.4, 16, 9.4)}
+      fill="hsla(38, 58%, 58%, 0.28)"
+      stroke="hsla(38, 58%, 58%, 0.95)"
+      strokeWidth="1.75"
+      strokeLinejoin="round"
+      strokeLinecap="round"
+    />
+  )
 }
 
 const thumbBySlug: Record<
