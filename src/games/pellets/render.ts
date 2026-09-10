@@ -13,8 +13,6 @@ type Skin = {
   crumbStroke: string
   panel: string
   panelEdge: string
-  ink: string
-  eyeWhite: string
   star: string
 }
 
@@ -26,29 +24,25 @@ function skinFor(dark: boolean): Skin {
   return dark
     ? {
         dark,
-        // Palette: blob-sky fill, accent-sky outline.
-        wallFill: '#152838',
-        wallStroke: '#4aa8e8',
-        floorDot: 'rgba(46, 184, 160, 0.1)',
+        // Palette mint — same family as Snake beads / --accent.
+        wallFill: '#122820',
+        wallStroke: '#2eb8a0',
+        floorDot: 'rgba(74, 168, 232, 0.12)',
         crumbFill: hsla(ACCENT, 58, 58, 0.22),
         crumbStroke: hsla(ACCENT, 58, 58, 0.9),
         panel: 'rgba(8, 14, 20, 0.55)',
         panelEdge: 'rgba(231, 238, 243, 0.08)',
-        ink: '#0d1720',
-        eyeWhite: 'rgba(231, 238, 243, 0.92)',
         star: 'rgba(74, 168, 232, 0.12)',
       }
     : {
         dark,
-        wallFill: '#c8e8f8',
-        wallStroke: '#4aa8e8',
-        floorDot: 'rgba(46, 184, 160, 0.1)',
+        wallFill: '#c5f0e4',
+        wallStroke: '#2eb8a0',
+        floorDot: 'rgba(74, 168, 232, 0.14)',
         crumbFill: hsla(ACCENT, 58, 58, 0.2),
         crumbStroke: hsla(ACCENT, 58, 42, 0.9),
         panel: 'rgba(255, 255, 255, 0.55)',
         panelEdge: 'rgba(26, 43, 60, 0.06)',
-        ink: '#1a2b3c',
-        eyeWhite: 'rgba(255, 255, 255, 0.9)',
         star: 'rgba(74, 168, 232, 0.14)',
       }
 }
@@ -366,8 +360,8 @@ function drawPlayer(
   const stroke = hsla(ACCENT, 58, skin.dark ? 58 : 42, 0.95)
 
   /**
-   * Face right in local space, then flip/rotate. Using scale(-1) for left
-   * keeps the eye on top — rotate(π) was flipping him upside-down.
+   * Face right in local space, then flip/rotate. scale(-1) for left keeps the
+   * chomp upright instead of rotate(π).
    */
   const faceLocal = (ctx: CanvasRenderingContext2D) => {
     if (state.player.dir === 'left') ctx.scale(-1, 1)
@@ -439,18 +433,12 @@ function drawPlayer(
   ctx.lineWidth = lineW
   ctx.lineJoin = 'round'
   ctx.stroke()
-
-  // Single Pac-Man eye, above the bite (stays upright when facing left).
-  ctx.fillStyle = skin.ink
-  ctx.beginPath()
-  ctx.arc(r * 0.05, -r * 0.45, Math.max(1.5, cell * 0.075), 0, Math.PI * 2)
-  ctx.fill()
   ctx.restore()
 
   ctx.globalAlpha = 1
 }
 
-/** Rival chasers — Snake bead body with a soft skirt so they still read as ghosts. */
+/** Rival chasers — Snake bead body with a soft skirt, no faces. */
 function drawChaser(
   ctx: CanvasRenderingContext2D,
   ghost: Ghost,
@@ -470,20 +458,13 @@ function drawChaser(
   const eaten = ghost.mode === 'eaten'
   const flash = scared && fright < 2 && Math.floor(time * 8) % 2 === 0
 
-  const lookX = ghost.dir === 'left' ? -0.1 : ghost.dir === 'right' ? 0.1 : 0
-  const lookY = ghost.dir === 'up' ? -0.08 : ghost.dir === 'down' ? 0.08 : 0
-
   if (eaten) {
-    ctx.fillStyle = skin.eyeWhite
+    // Hollow bead hustling home — readable without eyes.
     ctx.beginPath()
-    ctx.arc(cx - cell * 0.14, cy, cell * 0.12, 0, Math.PI * 2)
-    ctx.arc(cx + cell * 0.14, cy, cell * 0.12, 0, Math.PI * 2)
-    ctx.fill()
-    ctx.fillStyle = skin.ink
-    ctx.beginPath()
-    ctx.arc(cx - cell * 0.14, cy, cell * 0.05, 0, Math.PI * 2)
-    ctx.arc(cx + cell * 0.14, cy, cell * 0.05, 0, Math.PI * 2)
-    ctx.fill()
+    ctx.arc(cx, cy, cell * 0.2, 0, Math.PI * 2)
+    ctx.strokeStyle = hsla(chaserHue(ghost.kind), 50, skin.dark ? 62 : 42, 0.7)
+    ctx.lineWidth = Math.max(1.2, cell * 0.06)
+    ctx.stroke()
     return
   }
 
@@ -526,40 +507,10 @@ function drawChaser(
     ctx.strokeStyle = flash ? hsla(8, 60, 30, 0.9) : hsla(210, 30, 70, 0.9)
     ctx.lineWidth = Math.max(1, cell * 0.045)
     ctx.beginPath()
-    ctx.moveTo(cx - cell * 0.16, cy + cell * 0.14)
-    ctx.quadraticCurveTo(cx, cy + cell * 0.22, cx + cell * 0.16, cy + cell * 0.14)
+    ctx.moveTo(cx - cell * 0.16, cy + cell * 0.1)
+    ctx.quadraticCurveTo(cx, cy + cell * 0.2, cx + cell * 0.16, cy + cell * 0.1)
     ctx.stroke()
-    ctx.fillStyle = flash ? hsla(8, 60, 30, 0.95) : skin.eyeWhite
-    ctx.beginPath()
-    ctx.arc(cx - cell * 0.13, cy - cell * 0.06, cell * 0.07, 0, Math.PI * 2)
-    ctx.arc(cx + cell * 0.13, cy - cell * 0.06, cell * 0.07, 0, Math.PI * 2)
-    ctx.fill()
-    return
   }
-
-  const eye = cell * 0.085
-  ctx.fillStyle = skin.eyeWhite
-  ctx.beginPath()
-  ctx.arc(cx - cell * 0.13 + lookX * cell, cy - cell * 0.06 + lookY * cell, eye, 0, Math.PI * 2)
-  ctx.arc(cx + cell * 0.13 + lookX * cell, cy - cell * 0.06 + lookY * cell, eye, 0, Math.PI * 2)
-  ctx.fill()
-  ctx.fillStyle = skin.ink
-  ctx.beginPath()
-  ctx.arc(
-    cx - cell * 0.13 + lookX * cell * 1.5,
-    cy - cell * 0.06 + lookY * cell * 1.5,
-    eye * 0.45,
-    0,
-    Math.PI * 2,
-  )
-  ctx.arc(
-    cx + cell * 0.13 + lookX * cell * 1.5,
-    cy - cell * 0.06 + lookY * cell * 1.5,
-    eye * 0.45,
-    0,
-    Math.PI * 2,
-  )
-  ctx.fill()
 }
 
 function drawPops(
