@@ -107,7 +107,7 @@ export const games: Game[] = [
     name: 'Pellets',
     slug: 'pellets',
     description: 'Clear the maze. Bank a streak. Surge.',
-    how: 'Swipe or arrow keys to steer. Eating fresh crumbs builds a streak multiplier — doubling back over cleared ground resets it. Crumbs also charge Surge: tap the maze or hit space to burn it for a fast burst that bounces any chaser you touch straight back to the den. Power crumbs still turn them blue. Each level has its own maze. Three lives.',
+    how: 'Swipe or arrow keys to steer. Eating fresh crumbs builds a streak multiplier — doubling back over cleared ground resets it. Crumbs also charge Surge: tap the maze or hit space to burn it for a fast burst that bounces any chaser you touch straight back to the den. Power crumbs still turn them blue. Each level has its own maze (same on phone and desktop, just rotated). Three lives.',
     accent: '#f5b942',
     playable: true,
   },

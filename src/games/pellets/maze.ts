@@ -16,13 +16,6 @@ export type Maze = {
   power: Cell[]
 }
 
-const MIN_COLS = 13
-const MAX_COLS = 39
-const MIN_ROWS = 13
-const MAX_ROWS = 31
-/** Roughly how many tiles should fill the board at any aspect. */
-const TARGET_TILES = 540
-
 const STEP: Record<'up' | 'down' | 'left' | 'right', Cell> = {
   up: { x: 0, y: -1 },
   down: { x: 0, y: 1 },
@@ -30,23 +23,22 @@ const STEP: Record<'up' | 'down' | 'left' | 'right', Cell> = {
   right: { x: 1, y: 0 },
 }
 
-function toOdd(n: number) {
-  const r = Math.round(n)
-  return r % 2 === 0 ? r + 1 : r
-}
+/**
+ * Canonical landscape size for every device. Portrait is this rotated 90° CW,
+ * so desktop and mobile play the same maze — just flipped.
+ */
+const LAND_COLS = 27
+const LAND_ROWS = 15
 
-function clampOdd(n: number, min: number, max: number) {
-  return Math.max(min, Math.min(max, toOdd(n)))
-}
-
-/** Maze size that fills the given play area without stretching tiles. */
+/** Display size for the current orientation (landscape canon, or rotated). */
 export function mazeDims(width: number, height: number) {
-  const w = Math.max(1, width)
-  const h = Math.max(1, height)
-  const aspect = Math.max(0.3, Math.min(3.4, w / h))
-  const rows = clampOdd(Math.sqrt(TARGET_TILES / aspect), MIN_ROWS, MAX_ROWS)
-  const cols = clampOdd(rows * aspect, MIN_COLS, MAX_COLS)
-  return { cols, rows }
+  if (height > width) return { cols: LAND_ROWS, rows: LAND_COLS }
+  return { cols: LAND_COLS, rows: LAND_ROWS }
+}
+
+/** Landscape tile size used for seeding — same on every device. */
+export function landscapeMazeSize() {
+  return { cols: LAND_COLS, rows: LAND_ROWS }
 }
 
 function grid(cols: number, rows: number, value: boolean) {
@@ -384,4 +376,62 @@ export function buildMaze(cols: number, rows: number, seed = 1): Maze {
   }
 
   return { cols, rows, open, door, house, houseCenter, ghostExit, start, crumbs, power }
+}
+
+function rotCell(cell: Cell, rows: number): Cell {
+  return { x: rows - 1 - cell.y, y: cell.x }
+}
+
+/** Rotate a maze 90° clockwise so portrait matches landscape flipped. */
+export function rotateMazeCW(maze: Maze): Maze {
+  const { cols, rows } = maze
+  const open = grid(rows, cols, false)
+  const door = grid(rows, cols, false)
+  for (let y = 0; y < rows; y++) {
+    for (let x = 0; x < cols; x++) {
+      const nx = rows - 1 - y
+      const ny = x
+      open[ny][nx] = maze.open[y][x]
+      door[ny][nx] = maze.door[y][x]
+    }
+  }
+
+  const corners = [
+    { x: maze.house.minX, y: maze.house.minY },
+    { x: maze.house.maxX, y: maze.house.minY },
+    { x: maze.house.minX, y: maze.house.maxY },
+    { x: maze.house.maxX, y: maze.house.maxY },
+  ].map((c) => rotCell(c, rows))
+
+  return {
+    cols: rows,
+    rows: cols,
+    open,
+    door,
+    house: {
+      minX: Math.min(...corners.map((c) => c.x)),
+      maxX: Math.max(...corners.map((c) => c.x)),
+      minY: Math.min(...corners.map((c) => c.y)),
+      maxY: Math.max(...corners.map((c) => c.y)),
+    },
+    houseCenter: rotCell(maze.houseCenter, rows),
+    ghostExit: rotCell(maze.ghostExit, rows),
+    start: rotCell(maze.start, rows),
+    crumbs: maze.crumbs.map((c) => rotCell(c, rows)),
+    power: maze.power.map((c) => rotCell(c, rows)),
+  }
+}
+
+/**
+ * Level maze for the current viewport. Always generated in landscape, then
+ * rotated for portrait so phone and desktop share the same layout.
+ */
+export function buildLevelMaze(
+  level: number,
+  width = typeof window === 'undefined' ? 1280 : window.innerWidth,
+  height = typeof window === 'undefined' ? 720 : window.innerHeight,
+): Maze {
+  const seed = mazeSeed(level, LAND_COLS, LAND_ROWS)
+  const maze = buildMaze(LAND_COLS, LAND_ROWS, seed)
+  return height > width ? rotateMazeCW(maze) : maze
 }
