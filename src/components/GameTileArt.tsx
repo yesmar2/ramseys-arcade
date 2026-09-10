@@ -455,44 +455,80 @@ export function CrosswalkArt() {
   )
 }
 
-/** Pac-Man vibe — open mouth, dots, a ghost. */
+function pelletsPacPath(cx: number, cy: number, r: number, open = 0.58) {
+  const x = cx + r * Math.cos(open)
+  const y1 = cy - r * Math.sin(open)
+  const y2 = cy + r * Math.sin(open)
+  return `M ${cx} ${cy} L ${x} ${y1} A ${r} ${r} 0 1 1 ${x} ${y2} Z`
+}
+
+function pelletsGhostPath(cx: number, cy: number, r: number) {
+  const top = cy - r * 0.08
+  const foot = cy + r * 0.92
+  const dip = foot + r * 0.22
+  return [
+    `M ${cx - r} ${top}`,
+    `A ${r} ${r} 0 0 1 ${cx + r} ${top}`,
+    `L ${cx + r} ${foot}`,
+    `Q ${cx + r * 0.66} ${dip} ${cx + r * 0.33} ${foot}`,
+    `Q ${cx} ${dip} ${cx - r * 0.33} ${foot}`,
+    `Q ${cx - r * 0.66} ${dip} ${cx - r} ${foot}`,
+    'Z',
+  ].join(' ')
+}
+
+/** Current Pellets look — mint maze, gold wedge, skirt chasers, no eyes. */
 export function PelletsArt() {
+  const wall = pastel(HUE.teal, 52, 38)
   const you = pastel(HUE.gold, 58, 48)
-  const chaser = pastel(HUE.rose, 56, 48)
+  const blink = pastel(HUE.rose, 56, 48)
+  const inky = pastel(HUE.sky, 56, 46)
   const crumb = pastel(HUE.gold, 52, 40)
 
   return (
     <SvgFrame>
       <TileBg />
-      <rect
-        x="48"
-        y="38"
-        width="28"
-        height="28"
-        rx="10"
+      <rect x="14" y="12" width="132" height="10" rx="2" fill={wall.fill} stroke={wall.stroke} strokeWidth="1.4" />
+      <rect x="14" y="12" width="10" height="76" rx="2" fill={wall.fill} stroke={wall.stroke} strokeWidth="1.4" />
+      <rect x="136" y="12" width="10" height="76" rx="2" fill={wall.fill} stroke={wall.stroke} strokeWidth="1.4" />
+      <rect x="14" y="78" width="132" height="10" rx="2" fill={wall.fill} stroke={wall.stroke} strokeWidth="1.4" />
+      <rect x="36" y="34" width="28" height="10" rx="2" fill={wall.fill} stroke={wall.stroke} strokeWidth="1.3" />
+      <rect x="96" y="34" width="28" height="10" rx="2" fill={wall.fill} stroke={wall.stroke} strokeWidth="1.3" />
+      <rect x="58" y="52" width="44" height="16" rx="2" fill={wall.fill} stroke={wall.stroke} strokeWidth="1.3" />
+      <line
+        x1="74"
+        y1="52"
+        x2="86"
+        y2="52"
+        stroke={crumb.stroke}
+        strokeWidth="1.6"
+        strokeLinecap="round"
+      />
+      <path
+        d={pelletsPacPath(40, 64, 11)}
         fill={you.fill}
         stroke={you.stroke}
-        strokeWidth="1.8"
+        strokeWidth="1.7"
+        strokeLinejoin="round"
       />
-      <circle cx="56" cy="48" r="2.2" fill="#1a2b3c" />
-      <circle cx="66" cy="48" r="2.2" fill="#1a2b3c" />
-      {[102, 118, 134].map((x) => (
-        <circle key={x} cx={x} cy="52" r="3.4" fill={crumb.fill} stroke={crumb.stroke} strokeWidth="1.2" />
+      {[56, 70].map((x) => (
+        <circle key={x} cx={x} cy="64" r="2.6" fill={crumb.fill} stroke={crumb.stroke} strokeWidth="1.1" />
       ))}
-      <rect
-        x="108"
-        y="68"
-        width="24"
-        height="24"
-        rx="9"
-        fill={chaser.fill}
-        stroke={chaser.stroke}
-        strokeWidth="1.6"
+      <circle cx="28" cy="28" r="4.2" fill={crumb.fill} stroke={crumb.stroke} strokeWidth="1.2" />
+      <path
+        d={pelletsGhostPath(108, 62, 8.5)}
+        fill={blink.fill}
+        stroke={blink.stroke}
+        strokeWidth="1.5"
+        strokeLinejoin="round"
       />
-      <circle cx="115" cy="77" r="2" fill="#fff" />
-      <circle cx="125" cy="77" r="2" fill="#fff" />
-      <circle cx="115.6" cy="77.4" r="0.9" fill="#1a2b3c" />
-      <circle cx="125.6" cy="77.4" r="0.9" fill="#1a2b3c" />
+      <path
+        d={pelletsGhostPath(124, 28, 6.4)}
+        fill={inky.fill}
+        stroke={inky.stroke}
+        strokeWidth="1.4"
+        strokeLinejoin="round"
+      />
     </SvgFrame>
   )
 }
