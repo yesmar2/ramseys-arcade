@@ -222,12 +222,57 @@ function nearestOpen(state: GameState, cell: Cell, allowDoor: boolean): Cell | n
   return null
 }
 
-function ghostCorners(cols: number, rows: number): Record<GhostKind, Cell> {
-  return {
+function ghostCorners(cols: number, rows: number, open?: boolean[][]): Record<GhostKind, Cell> {
+  const picks: Record<GhostKind, Cell> = {
     blink: { x: cols - 2, y: 1 },
     pink: { x: 1, y: 1 },
     inky: { x: cols - 2, y: rows - 2 },
     clyde: { x: 1, y: rows - 2 },
+  }
+  if (!open) return picks
+
+  const degree = (x: number, y: number) => {
+    let n = 0
+    for (const [dx, dy] of [
+      [0, 1],
+      [0, -1],
+      [1, 0],
+      [-1, 0],
+    ] as const) {
+      let nx = x + dx
+      let ny = y + dy
+      if (nx < 0 || nx >= cols) {
+        if (!open[y]?.[0] || !open[y]?.[cols - 1]) continue
+        nx = (nx + cols) % cols
+      }
+      if (ny < 0 || ny >= rows || !open[ny]?.[nx]) continue
+      n++
+    }
+    return n
+  }
+
+  const snap = (ideal: Cell): Cell => {
+    let best = ideal
+    let bestScore = Infinity
+    for (let y = 0; y < rows; y++) {
+      for (let x = 0; x < cols; x++) {
+        if (!open[y][x]) continue
+        if (degree(x, y) < 2) continue
+        const score = (x - ideal.x) ** 2 + (y - ideal.y) ** 2
+        if (score < bestScore) {
+          bestScore = score
+          best = { x, y }
+        }
+      }
+    }
+    return best
+  }
+
+  return {
+    blink: snap(picks.blink),
+    pink: snap(picks.pink),
+    inky: snap(picks.inky),
+    clyde: snap(picks.clyde),
   }
 }
 
@@ -244,7 +289,7 @@ function denSlots(maze: Maze) {
 
 function makeGhosts(maze: Maze, level: number): Ghost[] {
   const kinds: GhostKind[] = ['blink', 'pink', 'inky', 'clyde']
-  const corners = ghostCorners(maze.cols, maze.rows)
+  const corners = ghostCorners(maze.cols, maze.rows, maze.open)
   const slots = denSlots(maze)
   const stagger = Math.max(0.6, 2.4 - (level - 1) * 0.25)
   return kinds.map((kind, i) => ({
@@ -457,18 +502,31 @@ function chooseGhostDir(state: GameState, ghost: Ghost, cache: FieldCache): Dir 
   const forward = canReverse
     ? options
     : options.filter((o) => o.dir !== OPPOSITE[ghost.dir])
-  const pool = forward.length ? forward : options
+  let pool = forward.length ? forward : options
 
   if (ghost.mode === 'frightened') {
     return pool[Math.floor(Math.random() * pool.length)].dir
   }
 
   const field = fieldFor(state, cache, cell, doorOk)
+  const scoreOf = (option: { dir: Dir; tile: Cell }) => {
+    const d = field[option.tile.y * state.cols + option.tile.x]
+    return d < 0 ? Infinity : d
+  }
+
+  // If the only downhill path is behind us (pocket / bad corner), reverse.
+  if (!canReverse) {
+    const reverse = options.find((o) => o.dir === OPPOSITE[ghost.dir])
+    if (reverse) {
+      const bestForward = Math.min(...pool.map(scoreOf))
+      if (scoreOf(reverse) < bestForward) pool = [reverse, ...pool]
+    }
+  }
+
   let best = pool[0]
   let bestD = Infinity
   for (const option of pool) {
-    const d = field[option.tile.y * state.cols + option.tile.x]
-    const score = d < 0 ? Infinity : d
+    const score = scoreOf(option)
     if (score < bestD) {
       bestD = score
       best = option
@@ -521,8 +579,18 @@ function moveGhost(state: GameState, ghost: Ghost, speed: number, dt: number, ca
       ghost.dir = chooseGhostDir(state, ghost, cache)
       const gx = Math.floor(ghost.x)
       const gy = Math.floor(ghost.y)
-      const ahead = stepTile(state, gx, gy, ghost.dir, ghostDoorOk(state, ghost, gx, gy))
-      if (!ahead) break
+      let ahead = stepTile(state, gx, gy, ghost.dir, ghostDoorOk(state, ghost, gx, gy))
+      if (!ahead) {
+        // Never idle on a bad heading — pick any open neighbor.
+        for (const dir of DIRS) {
+          const next = stepTile(state, gx, gy, dir, ghostDoorOk(state, ghost, gx, gy))
+          if (!next) continue
+          ghost.dir = dir
+          ahead = next
+          break
+        }
+        if (!ahead) break
+      }
       if (ahead.wrapped) {
         const v = VEC[ghost.dir]
         if (v.x > 0) ghost.x = -0.5
