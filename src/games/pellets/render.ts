@@ -3,11 +3,6 @@ import { comboMult, type GameState, type Ghost, type GhostKind } from './game'
 
 /** Gold crumbs — same family as Snake food. */
 const ACCENT = 38
-/**
- * Ink-slate walls — sits with --ink / sky, not the mint playfield, so lanes
- * read clearly without harsh neon contrast.
- */
-const WALL_HUE = 208
 
 type Skin = {
   dark: boolean
@@ -31,9 +26,9 @@ function skinFor(dark: boolean): Skin {
   return dark
     ? {
         dark,
-        // Solid slate beads with a lighter rim stroke.
-        wallFill: hsla(WALL_HUE, 28, 28, 1),
-        wallStroke: hsla(WALL_HUE, 42, 62, 0.95),
+        // Palette: blob-sky fill, accent-sky outline.
+        wallFill: '#152838',
+        wallStroke: '#4aa8e8',
         floorDot: 'rgba(46, 184, 160, 0.1)',
         crumbFill: hsla(ACCENT, 58, 58, 0.22),
         crumbStroke: hsla(ACCENT, 58, 58, 0.9),
@@ -45,9 +40,8 @@ function skinFor(dark: boolean): Skin {
       }
     : {
         dark,
-        // Solid soft slate so lanes stay pale mint and walls read as blocks.
-        wallFill: hsla(WALL_HUE, 26, 74, 1),
-        wallStroke: hsla(WALL_HUE, 32, 38, 0.9),
+        wallFill: '#c8e8f8',
+        wallStroke: '#4aa8e8',
         floorDot: 'rgba(46, 184, 160, 0.1)',
         crumbFill: hsla(ACCENT, 58, 58, 0.2),
         crumbStroke: hsla(ACCENT, 58, 42, 0.9),
@@ -98,11 +92,16 @@ function chaserHue(kind: GhostKind) {
   return 26
 }
 
+function isWall(state: GameState, x: number, y: number) {
+  if (y < 0 || y >= state.rows || x < 0 || x >= state.cols) return true
+  return !state.open[y][x]
+}
+
 /**
- * Solid wall beads with a stroked rim — same shape language as Snake, but
- * opaque so corridors read clearly against the playfield.
+ * Continuous maze walls: solid sky fill with an accent-sky outline along the
+ * corridor edges — not a grid of circles.
  */
-function drawWallBeads(
+function drawWalls(
   ctx: CanvasRenderingContext2D,
   state: GameState,
   ox: number,
@@ -110,30 +109,65 @@ function drawWallBeads(
   cell: number,
   skin: Skin,
 ) {
-  const lineW = Math.max(1.15, cell * 0.07)
-  const r = cell * 0.34
-  const gap = (cell - r * 2) / 2
+  const inset = cell * 0.18
+  const radius = cell * 0.28
 
-  ctx.lineWidth = lineW
-  ctx.lineJoin = 'round'
-  ctx.lineCap = 'round'
-
+  // Merged fill — shared edges cancel the inset so runs read as one wall.
+  ctx.fillStyle = skin.wallFill
   for (let y = 0; y < state.rows; y++) {
     for (let x = 0; x < state.cols; x++) {
       if (state.open[y][x]) continue
-      const sx = ox + x * cell + gap
-      const sy = oy + y * cell + gap
-      const sw = cell - gap * 2
-      const sh = cell - gap * 2
-      roundRect(ctx, sx, sy, sw, sh, r)
-      ctx.fillStyle = skin.wallFill
+      const left = isWall(state, x - 1, y)
+      const right = isWall(state, x + 1, y)
+      const up = isWall(state, x, y - 1)
+      const down = isWall(state, x, y + 1)
+      const x0 = ox + x * cell + (left ? 0 : inset)
+      const x1 = ox + (x + 1) * cell - (right ? 0 : inset)
+      const y0 = oy + y * cell + (up ? 0 : inset)
+      const y1 = oy + (y + 1) * cell - (down ? 0 : inset)
+      roundRect(ctx, x0, y0, x1 - x0, y1 - y0, radius)
       ctx.fill()
-      ctx.strokeStyle = skin.wallStroke
-      ctx.stroke()
     }
   }
 
-  // Den gate — same gold stroke language as crumbs.
+  // Outline only where a wall meets a lane (or the board edge).
+  ctx.strokeStyle = skin.wallStroke
+  ctx.lineWidth = Math.max(1.6, cell * 0.09)
+  ctx.lineCap = 'round'
+  ctx.lineJoin = 'round'
+  ctx.beginPath()
+  for (let y = 0; y < state.rows; y++) {
+    for (let x = 0; x < state.cols; x++) {
+      if (state.open[y][x]) continue
+      const left = isWall(state, x - 1, y)
+      const right = isWall(state, x + 1, y)
+      const up = isWall(state, x, y - 1)
+      const down = isWall(state, x, y + 1)
+      const x0 = ox + x * cell + (left ? 0 : inset)
+      const x1 = ox + (x + 1) * cell - (right ? 0 : inset)
+      const y0 = oy + y * cell + (up ? 0 : inset)
+      const y1 = oy + (y + 1) * cell - (down ? 0 : inset)
+      if (!up) {
+        ctx.moveTo(x0, y0)
+        ctx.lineTo(x1, y0)
+      }
+      if (!down) {
+        ctx.moveTo(x0, y1)
+        ctx.lineTo(x1, y1)
+      }
+      if (!left) {
+        ctx.moveTo(x0, y0)
+        ctx.lineTo(x0, y1)
+      }
+      if (!right) {
+        ctx.moveTo(x1, y0)
+        ctx.lineTo(x1, y1)
+      }
+    }
+  }
+  ctx.stroke()
+
+  // Den gate — gold stroke, same family as crumbs.
   ctx.strokeStyle = skin.crumbStroke
   ctx.lineWidth = Math.max(1.3, cell * 0.07)
   for (let y = 0; y < state.rows; y++) {
@@ -221,7 +255,7 @@ function paintStatic(
     }
   }
 
-  drawWallBeads(ctx, state, ox, oy, cell, skin)
+  drawWalls(ctx, state, ox, oy, cell, skin)
 }
 
 function drawStaticLayer(
