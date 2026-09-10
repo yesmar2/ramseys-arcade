@@ -455,78 +455,33 @@ export function CrosswalkArt() {
   )
 }
 
-function pelletsPacPath(cx: number, cy: number, r: number, open = 0.58) {
+function pelletsPacPath(cx: number, cy: number, r: number, open = 0.5) {
   const x = cx + r * Math.cos(open)
   const y1 = cy - r * Math.sin(open)
   const y2 = cy + r * Math.sin(open)
-  return `M ${cx} ${cy} L ${x} ${y1} A ${r} ${r} 0 1 1 ${x} ${y2} Z`
-}
-
-function pelletsGhostPath(cx: number, cy: number, r: number) {
-  const top = cy - r * 0.08
-  const foot = cy + r * 0.92
-  const dip = foot + r * 0.22
   return [
-    `M ${cx - r} ${top}`,
-    `A ${r} ${r} 0 0 1 ${cx + r} ${top}`,
-    `L ${cx + r} ${foot}`,
-    `Q ${cx + r * 0.66} ${dip} ${cx + r * 0.33} ${foot}`,
-    `Q ${cx} ${dip} ${cx - r * 0.33} ${foot}`,
-    `Q ${cx - r * 0.66} ${dip} ${cx - r} ${foot}`,
+    `M ${cx} ${cy - r}`,
+    `A ${r} ${r} 0 1 1 ${cx} ${cy + r}`,
+    `A ${r} ${r} 0 1 1 ${cx} ${cy - r}`,
+    `M ${cx} ${cy}`,
+    `L ${x} ${y1}`,
+    `L ${x} ${y2}`,
     'Z',
   ].join(' ')
 }
 
-/** Current Pellets look — mint maze, gold wedge, skirt chasers, no eyes. */
+/** Just the gold chomp — same figure as in-game. */
 export function PelletsArt() {
-  const wall = pastel(HUE.teal, 52, 38)
-  const you = pastel(HUE.gold, 58, 48)
-  const blink = pastel(HUE.rose, 56, 48)
-  const inky = pastel(HUE.sky, 56, 46)
-  const crumb = pastel(HUE.gold, 52, 40)
-
+  const you = pastel(HUE.gold, 58, 72)
   return (
     <SvgFrame>
       <TileBg />
-      <rect x="14" y="12" width="132" height="10" rx="2" fill={wall.fill} stroke={wall.stroke} strokeWidth="1.4" />
-      <rect x="14" y="12" width="10" height="76" rx="2" fill={wall.fill} stroke={wall.stroke} strokeWidth="1.4" />
-      <rect x="136" y="12" width="10" height="76" rx="2" fill={wall.fill} stroke={wall.stroke} strokeWidth="1.4" />
-      <rect x="14" y="78" width="132" height="10" rx="2" fill={wall.fill} stroke={wall.stroke} strokeWidth="1.4" />
-      <rect x="36" y="34" width="28" height="10" rx="2" fill={wall.fill} stroke={wall.stroke} strokeWidth="1.3" />
-      <rect x="96" y="34" width="28" height="10" rx="2" fill={wall.fill} stroke={wall.stroke} strokeWidth="1.3" />
-      <rect x="58" y="52" width="44" height="16" rx="2" fill={wall.fill} stroke={wall.stroke} strokeWidth="1.3" />
-      <line
-        x1="74"
-        y1="52"
-        x2="86"
-        y2="52"
-        stroke={crumb.stroke}
-        strokeWidth="1.6"
-        strokeLinecap="round"
-      />
       <path
-        d={pelletsPacPath(40, 64, 11)}
+        d={pelletsPacPath(78, 50, 28)}
         fill={you.fill}
+        fillRule="evenodd"
         stroke={you.stroke}
-        strokeWidth="1.7"
-        strokeLinejoin="round"
-      />
-      {[56, 70].map((x) => (
-        <circle key={x} cx={x} cy="64" r="2.6" fill={crumb.fill} stroke={crumb.stroke} strokeWidth="1.1" />
-      ))}
-      <circle cx="28" cy="28" r="4.2" fill={crumb.fill} stroke={crumb.stroke} strokeWidth="1.2" />
-      <path
-        d={pelletsGhostPath(108, 62, 8.5)}
-        fill={blink.fill}
-        stroke={blink.stroke}
-        strokeWidth="1.5"
-        strokeLinejoin="round"
-      />
-      <path
-        d={pelletsGhostPath(124, 28, 6.4)}
-        fill={inky.fill}
-        stroke={inky.stroke}
-        strokeWidth="1.4"
+        strokeWidth="2.2"
         strokeLinejoin="round"
       />
     </SvgFrame>

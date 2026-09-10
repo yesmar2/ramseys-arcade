@@ -273,56 +273,32 @@ function SpotterThumb({ accent }: { accent?: string }) {
   )
 }
 
-function pelletsPacPath(cx: number, cy: number, r: number, open = 0.58) {
+function pelletsPacPath(cx: number, cy: number, r: number, open = 0.5) {
   const x = cx + r * Math.cos(open)
   const y1 = cy - r * Math.sin(open)
   const y2 = cy + r * Math.sin(open)
-  return `M ${cx} ${cy} L ${x} ${y1} A ${r} ${r} 0 1 1 ${x} ${y2} Z`
-}
-
-function pelletsGhostPath(cx: number, cy: number, r: number) {
-  const top = cy - r * 0.08
-  const foot = cy + r * 0.92
-  const dip = foot + r * 0.22
   return [
-    `M ${cx - r} ${top}`,
-    `A ${r} ${r} 0 0 1 ${cx + r} ${top}`,
-    `L ${cx + r} ${foot}`,
-    `Q ${cx + r * 0.66} ${dip} ${cx + r * 0.33} ${foot}`,
-    `Q ${cx} ${dip} ${cx - r * 0.33} ${foot}`,
-    `Q ${cx - r * 0.66} ${dip} ${cx - r} ${foot}`,
+    `M ${cx} ${cy - r}`,
+    `A ${r} ${r} 0 1 1 ${cx} ${cy + r}`,
+    `A ${r} ${r} 0 1 1 ${cx} ${cy - r}`,
+    `M ${cx} ${cy}`,
+    `L ${x} ${y1}`,
+    `L ${x} ${y2}`,
     'Z',
   ].join(' ')
 }
 
 function PelletsThumb() {
-  const wall = pastel(HUE.teal, 52, 38)
-  const you = pastel(HUE.gold, 58, 48)
-  const chaser = pastel(HUE.rose, 56, 48)
-  const crumb = pastel(HUE.gold, 52, 40)
+  const you = pastel(HUE.gold, 58, 72)
   return (
-    <>
-      <rect x="2.2" y="2.2" width="27.6" height="4.2" rx="1" fill={wall.fill} stroke={wall.stroke} strokeWidth="1.2" />
-      <rect x="2.2" y="2.2" width="4.2" height="27.6" rx="1" fill={wall.fill} stroke={wall.stroke} strokeWidth="1.2" />
-      <rect x="25.6" y="2.2" width="4.2" height="27.6" rx="1" fill={wall.fill} stroke={wall.stroke} strokeWidth="1.2" />
-      <rect x="2.2" y="25.6" width="27.6" height="4.2" rx="1" fill={wall.fill} stroke={wall.stroke} strokeWidth="1.2" />
-      <rect x="12.2" y="13.4" width="7.6" height="4.4" rx="0.8" fill={wall.fill} stroke={wall.stroke} strokeWidth="1.1" />
-      <path
-        d={pelletsPacPath(10.2, 21.2, 4.6)}
-        fill={you.fill}
-        stroke={you.stroke}
-        strokeWidth="1.35"
-        strokeLinejoin="round"
-      />
-      <circle cx="16.4" cy="21.2" r="1.05" fill={crumb.fill} stroke={crumb.stroke} strokeWidth="0.7" />
-      <path
-        d={pelletsGhostPath(21.6, 20.6, 3.5)}
-        fill={chaser.fill}
-        stroke={chaser.stroke}
-        strokeWidth="1.2"
-        strokeLinejoin="round"
-      />
-    </>
+    <path
+      d={pelletsPacPath(15.4, 16, 9.4)}
+      fill={you.fill}
+      fillRule="evenodd"
+      stroke={you.stroke}
+      strokeWidth="1.8"
+      strokeLinejoin="round"
+    />
   )
 }
 
