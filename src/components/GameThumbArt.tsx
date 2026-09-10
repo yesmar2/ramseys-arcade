@@ -273,33 +273,18 @@ function SpotterThumb({ accent }: { accent?: string }) {
   )
 }
 
-function pelletsPacPath(cx: number, cy: number, r: number, open = 0.5) {
-  const x = cx + r * Math.cos(open)
-  const y1 = cy - r * Math.sin(open)
-  const y2 = cy + r * Math.sin(open)
-  return [
-    `M ${cx} ${cy - r}`,
-    `A ${r} ${r} 0 1 1 ${cx} ${cy + r}`,
-    `A ${r} ${r} 0 1 1 ${cx} ${cy - r}`,
-    `M ${cx} ${cy}`,
-    `L ${x} ${y1}`,
-    `L ${x} ${y2}`,
-    'Z',
-  ].join(' ')
+/** Classic chomp facing right — filled pie only, no ring stroke. */
+function pelletsPacPath(cx: number, cy: number, r: number, open = 0.55) {
+  const ux = cx + r * Math.cos(open)
+  const uy = cy - r * Math.sin(open)
+  const lx = cx + r * Math.cos(open)
+  const ly = cy + r * Math.sin(open)
+  return `M ${cx} ${cy} L ${ux} ${uy} A ${r} ${r} 0 1 0 ${lx} ${ly} Z`
 }
 
 function PelletsThumb() {
   const you = pastel(HUE.gold, 58, 72)
-  return (
-    <path
-      d={pelletsPacPath(15.4, 16, 9.4)}
-      fill={you.fill}
-      fillRule="evenodd"
-      stroke={you.stroke}
-      strokeWidth="1.8"
-      strokeLinejoin="round"
-    />
-  )
+  return <path d={pelletsPacPath(15.4, 16, 9.4)} fill={you.fill} />
 }
 
 const thumbBySlug: Record<

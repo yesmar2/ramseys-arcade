@@ -455,19 +455,13 @@ export function CrosswalkArt() {
   )
 }
 
-function pelletsPacPath(cx: number, cy: number, r: number, open = 0.5) {
-  const x = cx + r * Math.cos(open)
-  const y1 = cy - r * Math.sin(open)
-  const y2 = cy + r * Math.sin(open)
-  return [
-    `M ${cx} ${cy - r}`,
-    `A ${r} ${r} 0 1 1 ${cx} ${cy + r}`,
-    `A ${r} ${r} 0 1 1 ${cx} ${cy - r}`,
-    `M ${cx} ${cy}`,
-    `L ${x} ${y1}`,
-    `L ${x} ${y2}`,
-    'Z',
-  ].join(' ')
+/** Classic chomp facing right — filled pie only, no ring stroke. */
+function pelletsPacPath(cx: number, cy: number, r: number, open = 0.55) {
+  const ux = cx + r * Math.cos(open)
+  const uy = cy - r * Math.sin(open)
+  const lx = cx + r * Math.cos(open)
+  const ly = cy + r * Math.sin(open)
+  return `M ${cx} ${cy} L ${ux} ${uy} A ${r} ${r} 0 1 0 ${lx} ${ly} Z`
 }
 
 /** Just the gold chomp — same figure as in-game. */
@@ -476,14 +470,7 @@ export function PelletsArt() {
   return (
     <SvgFrame>
       <TileBg />
-      <path
-        d={pelletsPacPath(78, 50, 28)}
-        fill={you.fill}
-        fillRule="evenodd"
-        stroke={you.stroke}
-        strokeWidth="2.2"
-        strokeLinejoin="round"
-      />
+      <path d={pelletsPacPath(78, 50, 28)} fill={you.fill} />
     </SvgFrame>
   )
 }
