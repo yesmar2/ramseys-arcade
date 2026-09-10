@@ -8425,7 +8425,7 @@ html[data-theme='dark'] .patriot__power-mark {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   column-gap: 0.75rem;
-  align-items: start;
+  align-items: stretch;
   min-width: 0;
 }
 
@@ -8433,16 +8433,33 @@ html[data-theme='dark'] .patriot__power-mark {
   grid-column: 1;
   grid-row: 1;
   display: flex;
-  align-items: flex-start;
+  align-items: stretch;
   min-height: 0;
 }
 
 .game-lobby__intro .game-lobby__art {
-  width: min(6.75rem, 34vw);
-  height: auto;
+  width: auto;
+  height: 100%;
   min-height: 0;
-  max-width: 34vw;
+  max-width: 48vw;
   aspect-ratio: 1;
+}
+
+/* Tiny phones: keep a small fixed square so the art can't stretch over Play. */
+@media (max-width: 400px) {
+  .game-lobby__intro {
+    align-items: start;
+  }
+
+  .game-lobby__intro-art {
+    align-items: flex-start;
+  }
+
+  .game-lobby__intro .game-lobby__art {
+    width: min(6.5rem, 38vw);
+    height: auto;
+    max-width: 38vw;
+  }
 }
 
 .game-lobby__intro-body {
