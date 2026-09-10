@@ -5437,6 +5437,15 @@ html[data-theme='dark'] .patriot__power-mark {
   outline: none;
 }
 
+a.lb-share:visited {
+  color: var(--ink);
+}
+
+a.lb-share:visited:hover,
+a.lb-share:visited:focus-visible {
+  color: var(--board-accent, var(--accent));
+}
+
 .share-sheet__backdrop {
   position: fixed;
   inset: 0;
@@ -8420,22 +8429,22 @@ html[data-theme='dark'] .patriot__power-mark {
 }
 
 /* Thumb beside links/stats; play and boards stack below.
-   Art column is a fixed width that always stretches to the stats
-   column height. Never pair height:100% with aspect-ratio:1 and a
-   max-width — that conflict is what squished the thumb. */
+   Icon-only links free horizontal room. On narrow screens the art is
+   a width-based square; from ~420px up it height-matches the stats. */
 .game-lobby__identity.game-lobby__intro,
 .game-lobby__intro {
   display: grid;
-  grid-template-columns: clamp(5.25rem, 36vw, 10.5rem) minmax(0, 1fr);
+  grid-template-columns: auto minmax(0, 1fr);
   column-gap: 0.75rem;
-  align-items: stretch;
+  align-items: start;
   min-width: 0;
 }
 
 .game-lobby__intro-art {
   grid-column: 1;
   grid-row: 1;
-  display: grid;
+  display: flex;
+  align-items: flex-start;
   min-height: 0;
   min-width: 0;
 }
@@ -8444,12 +8453,11 @@ html[data-theme='dark'] .patriot__power-mark {
   position: relative;
   display: grid;
   place-items: center;
-  width: 100%;
-  height: 100%;
+  width: clamp(5.75rem, 38vw, 10.5rem);
+  height: auto;
   min-width: 0;
   min-height: 0;
-  max-width: none;
-  aspect-ratio: auto;
+  aspect-ratio: 1;
   border-radius: 1.25rem;
   overflow: hidden;
 }
@@ -8465,6 +8473,23 @@ html[data-theme='dark'] .patriot__power-mark {
 
 .game-lobby__aside {
   display: none;
+}
+
+/* Enough width that a height-matched square won't crush the stats. */
+@media (min-width: 420px) {
+  .game-lobby__identity.game-lobby__intro,
+  .game-lobby__intro {
+    align-items: stretch;
+  }
+
+  .game-lobby__intro-art {
+    align-items: stretch;
+  }
+
+  .game-lobby__intro .game-lobby__art {
+    width: auto;
+    height: 100%;
+  }
 }
 
 .game-lobby__hero .game-lobby__art {
@@ -8504,18 +8529,10 @@ html[data-theme='dark'] .patriot__power-mark {
   box-shadow: var(--shadow-soft);
 }
 
-.game-lobby__hero .game-lobby__art .inline-thumb .game-thumb__svg {
+.game-lobby__hero .game-lobby__art .inline-thumb .game-thumb__svg,
+.game-lobby__intro .game-lobby__art .inline-thumb .game-thumb__svg {
   width: 72%;
   height: 72%;
-}
-
-/* Keep the glyph square inside a possibly tall art panel. */
-.game-lobby__intro .game-lobby__art .inline-thumb .game-thumb__svg {
-  width: auto;
-  height: auto;
-  max-width: 72%;
-  max-height: 72%;
-  aspect-ratio: 1;
 }
 
 .game-lobby__art .inline-thumb .game-thumb__svg {
@@ -8528,25 +8545,22 @@ html[data-theme='dark'] .patriot__power-mark {
   flex: none;
   background: rgba(var(--surface-rgb), 0.92);
   box-shadow: var(--shadow-soft);
+  text-decoration: none;
+  color: var(--ink);
 }
 
 .game-lobby__intro-links {
   display: flex;
   flex-wrap: nowrap;
   align-items: center;
-  gap: 0.45rem 0.55rem;
+  gap: 0.45rem;
   min-width: 0;
   flex: none;
 }
 
 .game-lobby__intro-links .game-lobby__share {
-  width: 2.1rem;
-  height: 2.1rem;
-}
-
-.game-lobby__intro-links .game-lobby__board-link {
-  font-size: 0.78rem;
-  letter-spacing: -0.01em;
+  width: 2.2rem;
+  height: 2.2rem;
 }
 
 .game-lobby__title {
@@ -8908,14 +8922,8 @@ html[data-theme='dark'] .patriot__power-mark {
   line-height: 1.1;
 }
 
-/* Tablet+: keep art at least as wide as the mobile cap so the
-   column never shrinks at the breakpoint; still fills stats height. */
+/* Tablet+: larger stats beside the height-matched square. */
 @media (min-width: 520px) {
-  .game-lobby__identity.game-lobby__intro,
-  .game-lobby__intro {
-    grid-template-columns: clamp(10.5rem, 28vw, 14rem) minmax(0, 1fr);
-  }
-
   .game-lobby__intro .game-lobby__stats .lb-stat {
     padding: 0.82rem 1rem;
   }
@@ -8965,10 +8973,6 @@ html[data-theme='dark'] .patriot__power-mark {
 
   .game-lobby__tops--mobile {
     display: none;
-  }
-
-  .game-lobby:not(.game-lobby--split) .game-lobby__intro {
-    grid-template-columns: clamp(12rem, 22vw, 16rem) minmax(0, 1fr);
   }
 
   .game-lobby:not(.game-lobby--split) .game-lobby__intro .game-lobby__stats .lb-stat {

@@ -195,13 +195,41 @@ export function GameHubPage({ slug, board: boardFromRoute }: GameHubPageProps) {
                       url={gameHref(slug)}
                     />
                     {boardHref ? (
-                      <a className="game-lobby__board-link" href={boardHref}>
-                        Full board
+                      <a
+                        className="lb-share game-lobby__share"
+                        href={boardHref}
+                        aria-label="Full board"
+                        title="Full board"
+                      >
+                        <svg
+                          className="lb-share__icon"
+                          viewBox="0 0 24 24"
+                          aria-hidden="true"
+                        >
+                          <path
+                            fill="currentColor"
+                            d="M4 14.5h3.25V20H4zm6.375-5.5H13.6V20h-3.225zM16.75 4H20v16h-3.25z"
+                          />
+                        </svg>
                       </a>
                     ) : null}
                     {hasRecords && recordsLink ? (
-                      <a className="game-lobby__board-link" href={recordsLink}>
-                        Records
+                      <a
+                        className="lb-share game-lobby__share"
+                        href={recordsLink}
+                        aria-label="Records"
+                        title="Records"
+                      >
+                        <svg
+                          className="lb-share__icon"
+                          viewBox="0 0 24 24"
+                          aria-hidden="true"
+                        >
+                          <path
+                            fill="currentColor"
+                            d="M6.5 3.75A2.75 2.75 0 0 0 3.75 6.5v11A2.75 2.75 0 0 0 6.5 20.25h11.75V3.75Zm1.1 1.5h9.15v13.5H6.5a1.25 1.25 0 0 1-1.25-1.25v-11c0-.69.56-1.25 1.25-1.25Zm1.65 2.75v1.5h5.85v-1.5Zm0 3.5v1.5h5.85v-1.5Zm0 3.5v1.5h3.85v-1.5Z"
+                          />
+                        </svg>
                       </a>
                     ) : null}
                   </div>
