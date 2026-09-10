@@ -20,7 +20,7 @@ export type Maze = {
  * Canonical landscape size. Portrait is this rotated 90° CW so phone and
  * desktop share the same maze — just flipped.
  *
- * Legend: `#` wall, `.` crumb, `o` power, ` ` empty path,
+ * Legend: `#` wall, `.` crumb, `o` power, ` ` path (auto crumb),
  * `=` house door, `P` player, `G` chaser spawn.
  */
 const LAND_COLS = 27
@@ -43,7 +43,7 @@ export function landscapeMazeSize() {
 const DEN = [
   '#......#....#.#....#......#',
   '######...............######',
-  '     #.#    #=#    #.#     ',
+  '............#=#............',
   '######.# ###GGG### #.######',
   '#......#....###....#......#',
 ] as const
@@ -55,18 +55,22 @@ const DEN = [
  * Rows 4 and 10 always punch into the den ring so the board stays one graph.
  */
 const LEVEL_MAZES: string[][] = [
-  // 1 — open classic loops
+  // 1 — single-lane corridors only (no 2×2 open blocks)
   [
     '###########################',
-    '#o.......................o#',
-    '#.####.#####.#.#####.####.#',
-    '#.........................#',
-    '#.####.#.#########.#.####.#',
-    ...DEN,
-    '#.####.#.#########.#.####.#',
+    '#o.#.......#...#.......#.o#',
+    '#.###.###.#.#.#.#.###.###.#',
+    '#.....#...#.#.#.#...#.....#',
+    '###.#.#.#.#.#.#.#.#.#.#.###',
+    '#...#.#.#.......#.#.#...#.#',
+    '#.###.#.#######.#.#.###.#.#',
+    '............#=#............',
+    '#.###.#.###GGG###.#.###.#.#',
+    '#...#.#.#...###...#.#.#...#',
+    '#.###.#.#.#######.#.#.###.#',
     '#............P............#',
-    '#.####.#####.#.#####.####.#',
-    '#o.......................o#',
+    '#.###.###.#.#.#.#.###.###.#',
+    '#o.#.......#...#.......#.o#',
     '###########################',
   ],
   // 2 — side pockets, still plenty of escapes
@@ -174,14 +178,24 @@ function parseMaze(rows: string[]): Maze {
     for (let x = 0; x < C; x++) {
       const ch = mazeAt(rows, x, y)
       open[y][x] = ch !== '#'
-      if (ch === '.') crumbs.push({ x, y })
-      else if (ch === 'o') power.push({ x, y })
+      if (ch === 'o') power.push({ x, y })
       else if (ch === 'P') start = { x, y }
       else if (ch === 'G') ghostSpawns.push({ x, y })
       else if (ch === '=') {
         door[y][x] = true
         doorCells.push({ x, y })
       }
+    }
+  }
+
+  // Every open path tile gets a crumb — blanks, dots, and junctions alike.
+  // Skip power pads, the den door, ghost spawns, and the player start tile.
+  for (let y = 0; y < R; y++) {
+    for (let x = 0; x < C; x++) {
+      if (!open[y][x] || door[y][x]) continue
+      const ch = mazeAt(rows, x, y)
+      if (ch === 'o' || ch === 'G' || ch === 'P') continue
+      crumbs.push({ x, y })
     }
   }
 

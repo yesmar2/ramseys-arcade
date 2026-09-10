@@ -107,8 +107,8 @@ const START_LIVES = 3
 const FRIGHT_TIME = 6.5
 
 const PLAYER_SPEED = 7.1
-const GHOST_SPEED = 6.1
-const FRIGHT_SPEED = 4.2
+const GHOST_SPEED = 5.3
+const FRIGHT_SPEED = 3.7
 const EATEN_SPEED = 12
 const SURGE_SPEED = 1.85
 
