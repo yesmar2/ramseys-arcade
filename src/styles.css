@@ -206,8 +206,13 @@ html[data-theme="flat"] .game-pause-meta {
   background: color-mix(in srgb, var(--ink) 3%, var(--playfield));
 }
 
-html[data-theme="flat"] .game-tile--thumb .game-tile__title {
-  background: color-mix(in srgb, var(--ink) 3%, var(--surface));
+html[data-theme="flat"] .game-tile--thumb {
+  background: transparent !important;
+}
+
+html[data-theme="flat"] .game-tile--thumb .game-tile__title,
+html[data-theme="flat"] .game-tile--thumb .game-tile__status {
+  background: transparent;
   border: none;
   box-shadow: none;
 }
