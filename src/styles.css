@@ -52,16 +52,7 @@ html[data-theme="dark"] {
   color-scheme: dark;
 }
 
-/* Flat = light chrome, fill-forward art, no elevation / hairline frames. */
-html[data-theme="flat"] {
-  --shadow-soft: none;
-  --shadow-lift: none;
-  --flat-border: transparent;
-  --flat-border-faint: rgba(var(--ink-rgb), 0.04);
-  color-scheme: light;
-}
-
-/* Google = Material light chrome + blue / red / yellow / green accents. */
+/* Google = Material light + Google accents, with Flat art/chrome. */
 html[data-theme="google"] {
   --bg: #f8f9fa;
   --bg-mid: #ffffff;
@@ -80,197 +71,324 @@ html[data-theme="google"] {
   --accent-2: #fbbc04;
   --accent-sky: #4285f4;
   --dot: rgba(66, 133, 244, 0.18);
-  --shadow-soft: 0 1px 2px rgba(60, 64, 67, 0.18), 0 1px 3px 1px rgba(60, 64, 67, 0.1);
-  --shadow-lift: 0 4px 8px 3px rgba(60, 64, 67, 0.12), 0 1px 3px rgba(60, 64, 67, 0.2);
   --shell: #e8eaed;
   color-scheme: light;
 }
 
+/* Flat chrome tokens — shared by Flat + Google. */
+html[data-theme="flat"],
+html[data-theme="google"] {
+  --shadow-soft: none;
+  --shadow-lift: none;
+  --flat-border: transparent;
+  --flat-border-faint: rgba(var(--ink-rgb), 0.04);
+}
+
 html[data-theme="flat"] .site-chrome,
+html[data-theme="google"] .site-chrome,
 html[data-theme="flat"] .site-header__period-btn,
+html[data-theme="google"] .site-header__period-btn,
 html[data-theme="flat"] .site-header__you,
+html[data-theme="google"] .site-header__you,
 html[data-theme="flat"] .site-header__drawer-btn,
+html[data-theme="google"] .site-header__drawer-btn,
 html[data-theme="flat"] .site-drawer__panel,
+html[data-theme="google"] .site-drawer__panel,
 html[data-theme="flat"] .site-drawer__section-body,
+html[data-theme="google"] .site-drawer__section-body,
 html[data-theme="flat"] .site-drawer__prefs,
+html[data-theme="google"] .site-drawer__prefs,
 html[data-theme="flat"] .site-drawer__pref,
+html[data-theme="google"] .site-drawer__pref,
 html[data-theme="flat"] .site-drawer__period-tab,
+html[data-theme="google"] .site-drawer__period-tab,
 html[data-theme="flat"] .site-header__period-popover,
+html[data-theme="google"] .site-header__period-popover,
 html[data-theme="flat"] .site-header__invite-panel,
+html[data-theme="google"] .site-header__invite-panel,
 html[data-theme="flat"] .player-badge__panel,
+html[data-theme="google"] .player-badge__panel,
 html[data-theme="flat"] .player-badge,
+html[data-theme="google"] .player-badge,
 html[data-theme="flat"] .player-badge__btn,
+html[data-theme="google"] .player-badge__btn,
 html[data-theme="flat"] .home-spotter__card,
+html[data-theme="google"] .home-spotter__card,
 html[data-theme="flat"] .home-about__highlight,
+html[data-theme="google"] .home-about__highlight,
 html[data-theme="flat"] .game-tile,
+html[data-theme="google"] .game-tile,
 html[data-theme="flat"] .game-tile--thumb,
+html[data-theme="google"] .game-tile--thumb,
 html[data-theme="flat"] .inline-thumb,
+html[data-theme="google"] .inline-thumb,
 html[data-theme="flat"] .lb-board,
+html[data-theme="google"] .lb-board,
 html[data-theme="flat"] .lb-scorecard,
+html[data-theme="google"] .lb-scorecard,
 html[data-theme="flat"] .lb-stat,
+html[data-theme="google"] .lb-stat,
 html[data-theme="flat"] .lb-row,
+html[data-theme="google"] .lb-row,
 html[data-theme="flat"] .lb-boards-index__game,
+html[data-theme="google"] .lb-boards-index__game,
 html[data-theme="flat"] .lb-summary__card,
+html[data-theme="google"] .lb-summary__card,
 html[data-theme="flat"] .lb-summary__period,
+html[data-theme="google"] .lb-summary__period,
 html[data-theme="flat"] .lb-summary__row,
+html[data-theme="google"] .lb-summary__row,
 html[data-theme="flat"] .lb-picker,
+html[data-theme="google"] .lb-picker,
 html[data-theme="flat"] .lb-picker__row,
-html[data-theme="flat"] .lb-picker__search input,
+html[data-theme="google"] .lb-picker__row,
+html[data-theme="flat"] .lb-picker__search,
+html[data-theme="google"] .lb-picker__search input,
 html[data-theme="flat"] .lb-periods--segment,
+html[data-theme="google"] .lb-periods--segment,
 html[data-theme="flat"] .lb-tab,
+html[data-theme="google"] .lb-tab,
 html[data-theme="flat"] .records-index__card,
+html[data-theme="google"] .records-index__card,
 html[data-theme="flat"] .records-leaders__row,
+html[data-theme="google"] .records-leaders__row,
 html[data-theme="flat"] .event-card,
+html[data-theme="google"] .event-card,
 html[data-theme="flat"] .group-card,
+html[data-theme="google"] .group-card,
 html[data-theme="flat"] .trophy-case__card,
+html[data-theme="google"] .trophy-case__card,
 html[data-theme="flat"] .trophy-case__panel,
+html[data-theme="google"] .trophy-case__panel,
 html[data-theme="flat"] .lb-hub-card,
+html[data-theme="google"] .lb-hub-card,
 html[data-theme="flat"] .score-save,
+html[data-theme="google"] .score-save,
 html[data-theme="flat"] .game-pause-card,
+html[data-theme="google"] .game-pause-card,
 html[data-theme="flat"] .game-pause-meta,
+html[data-theme="google"] .game-pause-meta,
 html[data-theme="flat"] .game-pause-btn,
+html[data-theme="google"] .game-pause-btn,
 html[data-theme="flat"] .game-page__back--overlay,
+html[data-theme="google"] .game-page__back--overlay,
 html[data-theme="flat"] .game-lobby__howto,
+html[data-theme="google"] .game-lobby__howto,
 html[data-theme="flat"] .game-lobby__panel,
+html[data-theme="google"] .game-lobby__panel,
 html[data-theme="flat"] .game-lobby__how-panel,
+html[data-theme="google"] .game-lobby__how-panel,
 html[data-theme="flat"] .game-lobby__podium-card,
+html[data-theme="google"] .game-lobby__podium-card,
 html[data-theme="flat"] .rank-page__how,
+html[data-theme="google"] .rank-page__how,
 html[data-theme="flat"] .lb-board-switcher,
+html[data-theme="google"] .lb-board-switcher,
 html[data-theme="flat"] .sound-pack-select,
+html[data-theme="google"] .sound-pack-select,
 html[data-theme="flat"] .sound-pack-btn,
+html[data-theme="google"] .sound-pack-btn,
 html[data-theme="flat"] .site-period,
+html[data-theme="google"] .site-period,
 html[data-theme="flat"] .site-group,
+html[data-theme="google"] .site-group,
 html[data-theme="flat"] .tour-standing__details,
-html[data-theme="flat"] .group-manage {
+html[data-theme="google"] .tour-standing__details,
+html[data-theme="flat"] .group-manage,
+html[data-theme="google"] .group-manage {
   border-color: var(--flat-border) !important;
   box-shadow: none !important;
   filter: none;
 }
 
-html[data-theme="flat"] .home-about {
+html[data-theme="flat"] .home-about,
+html[data-theme="google"] .home-about {
   border-top-color: var(--flat-border-faint);
 }
 
-html[data-theme="flat"] .inline-thumb {
+html[data-theme="flat"] .inline-thumb,
+html[data-theme="google"] .inline-thumb {
   border: none;
   background: color-mix(in srgb, var(--thumb-accent, var(--accent)) 22%, var(--playfield));
 }
 
-html[data-theme="flat"] .game-tile {
+html[data-theme="flat"] .game-tile,
+html[data-theme="google"] .game-tile {
   border: none;
   background: var(--surface);
 }
 
 html[data-theme="flat"] .game-tile:hover,
+html[data-theme="google"] .game-tile:hover,
 html[data-theme="flat"] .game-tile:focus-visible,
+html[data-theme="google"] .game-tile:focus-visible,
 html[data-theme="flat"] .game-tile--thumb:hover,
+html[data-theme="google"] .game-tile--thumb:hover,
 html[data-theme="flat"] .game-tile--thumb:focus-visible,
+html[data-theme="google"] .game-tile--thumb:focus-visible,
 html[data-theme="flat"] .event-card:hover,
+html[data-theme="google"] .event-card:hover,
 html[data-theme="flat"] .group-card:hover,
+html[data-theme="google"] .group-card:hover,
 html[data-theme="flat"] .trophy-case__card:hover,
+html[data-theme="google"] .trophy-case__card:hover,
 html[data-theme="flat"] .trophy-case__card:focus-visible,
+html[data-theme="google"] .trophy-case__card:focus-visible,
 html[data-theme="flat"] .home-spotter__card:hover,
+html[data-theme="google"] .home-spotter__card:hover,
 html[data-theme="flat"] .home-spotter__card:focus-visible,
+html[data-theme="google"] .home-spotter__card:focus-visible,
 html[data-theme="flat"] .records-index__card:hover,
+html[data-theme="google"] .records-index__card:hover,
 html[data-theme="flat"] .records-index__card:focus-visible,
+html[data-theme="google"] .records-index__card:focus-visible,
 html[data-theme="flat"] .lb-boards-index__game:hover,
-html[data-theme="flat"] .lb-summary__card:hover {
+html[data-theme="google"] .lb-boards-index__game:hover,
+html[data-theme="flat"] .lb-summary__card:hover,
+html[data-theme="google"] .lb-summary__card:hover {
   transform: none;
   box-shadow: none !important;
 }
 
 /* Lists / stats: soft fill, no rings or hairlines. */
 html[data-theme="flat"] .lb-row,
+html[data-theme="google"] .lb-row,
 html[data-theme="flat"] .lb-summary__row,
-html[data-theme="flat"] .records-leaders__row {
+html[data-theme="google"] .lb-summary__row,
+html[data-theme="flat"] .records-leaders__row,
+html[data-theme="google"] .records-leaders__row {
   border: none;
   background: color-mix(in srgb, var(--ink) 2.5%, var(--surface));
 }
 
 html[data-theme="flat"] .lb-row--you,
-html[data-theme="flat"] .tour-score-list .lb-row--you,
+html[data-theme="google"] .lb-row--you,
+html[data-theme="flat"] .tour-score-list,
+html[data-theme="google"] .tour-score-list .lb-row--you,
 html[data-theme="flat"] .lb-summary__row--you,
-html[data-theme="flat"] .group-card--active {
+html[data-theme="google"] .lb-summary__row--you,
+html[data-theme="flat"] .group-card--active,
+html[data-theme="google"] .group-card--active {
   box-shadow: none !important;
   border: none;
   background: color-mix(in srgb, var(--lb-you-accent, var(--accent)) 14%, var(--surface));
 }
 
 html[data-theme="flat"] .home-spotter__card,
+html[data-theme="google"] .home-spotter__card,
 html[data-theme="flat"] .home-about__highlight,
+html[data-theme="google"] .home-about__highlight,
 html[data-theme="flat"] .event-card,
+html[data-theme="google"] .event-card,
 html[data-theme="flat"] .group-card,
+html[data-theme="google"] .group-card,
 html[data-theme="flat"] .trophy-case__card,
+html[data-theme="google"] .trophy-case__card,
 html[data-theme="flat"] .trophy-case__panel,
+html[data-theme="google"] .trophy-case__panel,
 html[data-theme="flat"] .score-save,
+html[data-theme="google"] .score-save,
 html[data-theme="flat"] .game-pause-card,
+html[data-theme="google"] .game-pause-card,
 html[data-theme="flat"] .player-badge__panel,
+html[data-theme="google"] .player-badge__panel,
 html[data-theme="flat"] .site-drawer__prefs,
+html[data-theme="google"] .site-drawer__prefs,
 html[data-theme="flat"] .game-lobby__podium-card,
+html[data-theme="google"] .game-lobby__podium-card,
 html[data-theme="flat"] .rank-page__how,
+html[data-theme="google"] .rank-page__how,
 html[data-theme="flat"] .lb-periods--segment,
+html[data-theme="google"] .lb-periods--segment,
 html[data-theme="flat"] .lb-picker__row,
+html[data-theme="google"] .lb-picker__row,
 html[data-theme="flat"] .lb-board,
+html[data-theme="google"] .lb-board,
 html[data-theme="flat"] .lb-boards-index__game,
+html[data-theme="google"] .lb-boards-index__game,
 html[data-theme="flat"] .lb-summary__card,
+html[data-theme="google"] .lb-summary__card,
 html[data-theme="flat"] .lb-summary__period,
+html[data-theme="google"] .lb-summary__period,
 html[data-theme="flat"] .records-index__card,
-html[data-theme="flat"] .lb-hub-card {
+html[data-theme="google"] .records-index__card,
+html[data-theme="flat"] .lb-hub-card,
+html[data-theme="google"] .lb-hub-card {
   border: none;
   background: var(--surface);
 }
 
-html[data-theme="flat"] .lb-hub-card {
+html[data-theme="flat"] .lb-hub-card,
+html[data-theme="google"] .lb-hub-card {
   background: color-mix(in srgb, var(--accent) 10%, var(--surface));
 }
 
 html[data-theme="flat"] .lb-stat,
+html[data-theme="google"] .lb-stat,
 html[data-theme="flat"] .lb-scorecard,
-html[data-theme="flat"] .game-pause-meta {
+html[data-theme="google"] .lb-scorecard,
+html[data-theme="flat"] .game-pause-meta,
+html[data-theme="google"] .game-pause-meta {
   border: none;
   background: color-mix(in srgb, var(--ink) 3%, var(--playfield));
 }
 
-html[data-theme="flat"] .game-tile--thumb {
+html[data-theme="flat"] .game-tile--thumb,
+html[data-theme="google"] .game-tile--thumb {
   background: transparent !important;
 }
 
-html[data-theme="flat"] .game-tile--thumb .game-tile__title,
-html[data-theme="flat"] .game-tile--thumb .game-tile__status {
+html[data-theme="flat"] .game-tile--thumb,
+html[data-theme="google"] .game-tile--thumb .game-tile__title,
+html[data-theme="flat"] .game-tile--thumb,
+html[data-theme="google"] .game-tile--thumb .game-tile__status {
   background: transparent;
   border: none;
   box-shadow: none;
 }
 
-html[data-theme="flat"] .game-lobby__podium-card--you {
+html[data-theme="flat"] .game-lobby__podium-card--you,
+html[data-theme="google"] .game-lobby__podium-card--you {
   background: color-mix(in srgb, var(--board-accent, var(--accent)) 12%, var(--surface));
 }
 
-html[data-theme="flat"] .lb-periods--segment .lb-period--active {
+html[data-theme="flat"] .lb-periods--segment,
+html[data-theme="google"] .lb-periods--segment .lb-period--active {
   box-shadow: none !important;
 }
 
-html[data-theme="flat"] .lb-tab--active {
+html[data-theme="flat"] .lb-tab--active,
+html[data-theme="google"] .lb-tab--active {
   box-shadow: none !important;
 }
 
-html[data-theme="flat"] .site-drawer__pref + .site-drawer__pref,
-html[data-theme="flat"] .lb-row + .lb-row,
-html[data-theme="flat"] .score-save__ranks li + li {
+html[data-theme="flat"] .site-drawer__pref,
+html[data-theme="google"] .site-drawer__pref + .site-drawer__pref,
+html[data-theme="flat"] .lb-row,
+html[data-theme="google"] .lb-row + .lb-row,
+html[data-theme="flat"] .score-save__ranks,
+html[data-theme="google"] .score-save__ranks li + li {
   border-top-color: var(--flat-border-faint);
 }
 
 html[data-theme="flat"] .lb-board-switcher__item--active,
+html[data-theme="google"] .lb-board-switcher__item--active,
 html[data-theme="flat"] .site-drawer__period-tab[aria-selected="true"],
-html[data-theme="flat"] .site-drawer__period-tab.is-active {
+html[data-theme="google"] .site-drawer__period-tab[aria-selected="true"],
+html[data-theme="flat"] .site-drawer__period-tab.is-active,
+html[data-theme="google"] .site-drawer__period-tab.is-active {
   box-shadow: none !important;
 }
 
 /* Keep keyboard focus visible without decorative elevation rings. */
 html[data-theme="flat"] .game-tile:focus-visible,
+html[data-theme="google"] .game-tile:focus-visible,
 html[data-theme="flat"] .inline-thumb:focus-visible,
+html[data-theme="google"] .inline-thumb:focus-visible,
 html[data-theme="flat"] .event-card:focus-visible,
-html[data-theme="flat"] .group-card:focus-visible {
+html[data-theme="google"] .event-card:focus-visible,
+html[data-theme="flat"] .group-card:focus-visible,
+html[data-theme="google"] .group-card:focus-visible {
   outline: 2px solid color-mix(in srgb, var(--accent) 55%, transparent);
   outline-offset: 2px;
 }

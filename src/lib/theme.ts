@@ -45,7 +45,8 @@ export function isDarkTheme() {
 
 /** Fill-forward art: no outlines on beads / thumbs / soft shapes. */
 export function isFlatTheme() {
-  return currentTheme() === 'flat'
+  const theme = currentTheme()
+  return theme === 'flat' || theme === 'google'
 }
 
 export function themeLabel(theme: Theme = currentTheme()) {
