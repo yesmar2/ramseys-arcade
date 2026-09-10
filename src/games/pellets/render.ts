@@ -92,14 +92,20 @@ function chaserHue(kind: GhostKind) {
   return 26
 }
 
-function isWall(state: GameState, x: number, y: number) {
-  if (y < 0 || y >= state.rows || x < 0 || x >= state.cols) return true
+function wallAt(state: GameState, x: number, y: number) {
+  if (y < 0 || y >= state.rows || x < 0 || x >= state.cols) return false
   return !state.open[y][x]
 }
 
+/** Lane tile or off the board — both get an outline edge. */
+function openOrOutside(state: GameState, x: number, y: number) {
+  if (y < 0 || y >= state.rows || x < 0 || x >= state.cols) return true
+  return state.open[y][x]
+}
+
 /**
- * Continuous maze walls: solid sky fill with an accent-sky outline along the
- * corridor edges — not a grid of circles.
+ * Continuous solid maze walls with an accent-sky outline on every corridor
+ * edge and the outer perimeter.
  */
 function drawWalls(
   ctx: CanvasRenderingContext2D,
@@ -109,57 +115,42 @@ function drawWalls(
   cell: number,
   skin: Skin,
 ) {
-  const inset = cell * 0.18
-  const radius = cell * 0.28
-
-  // Merged fill — shared edges cancel the inset so runs read as one wall.
+  // Solid fill — full cells, slight overlap so seams never show.
   ctx.fillStyle = skin.wallFill
+  const seam = 0.6
   for (let y = 0; y < state.rows; y++) {
     for (let x = 0; x < state.cols; x++) {
-      if (state.open[y][x]) continue
-      const left = isWall(state, x - 1, y)
-      const right = isWall(state, x + 1, y)
-      const up = isWall(state, x, y - 1)
-      const down = isWall(state, x, y + 1)
-      const x0 = ox + x * cell + (left ? 0 : inset)
-      const x1 = ox + (x + 1) * cell - (right ? 0 : inset)
-      const y0 = oy + y * cell + (up ? 0 : inset)
-      const y1 = oy + (y + 1) * cell - (down ? 0 : inset)
-      roundRect(ctx, x0, y0, x1 - x0, y1 - y0, radius)
-      ctx.fill()
+      if (!wallAt(state, x, y)) continue
+      ctx.fillRect(ox + x * cell - seam, oy + y * cell - seam, cell + seam * 2, cell + seam * 2)
     }
   }
 
-  // Outline only where a wall meets a lane (or the board edge).
+  // Outline lane edges and the outside of the board.
   ctx.strokeStyle = skin.wallStroke
-  ctx.lineWidth = Math.max(1.6, cell * 0.09)
+  ctx.lineWidth = Math.max(1.8, cell * 0.1)
   ctx.lineCap = 'round'
   ctx.lineJoin = 'round'
   ctx.beginPath()
   for (let y = 0; y < state.rows; y++) {
     for (let x = 0; x < state.cols; x++) {
-      if (state.open[y][x]) continue
-      const left = isWall(state, x - 1, y)
-      const right = isWall(state, x + 1, y)
-      const up = isWall(state, x, y - 1)
-      const down = isWall(state, x, y + 1)
-      const x0 = ox + x * cell + (left ? 0 : inset)
-      const x1 = ox + (x + 1) * cell - (right ? 0 : inset)
-      const y0 = oy + y * cell + (up ? 0 : inset)
-      const y1 = oy + (y + 1) * cell - (down ? 0 : inset)
-      if (!up) {
+      if (!wallAt(state, x, y)) continue
+      const x0 = ox + x * cell
+      const x1 = ox + (x + 1) * cell
+      const y0 = oy + y * cell
+      const y1 = oy + (y + 1) * cell
+      if (openOrOutside(state, x, y - 1)) {
         ctx.moveTo(x0, y0)
         ctx.lineTo(x1, y0)
       }
-      if (!down) {
+      if (openOrOutside(state, x, y + 1)) {
         ctx.moveTo(x0, y1)
         ctx.lineTo(x1, y1)
       }
-      if (!left) {
+      if (openOrOutside(state, x - 1, y)) {
         ctx.moveTo(x0, y0)
         ctx.lineTo(x0, y1)
       }
-      if (!right) {
+      if (openOrOutside(state, x + 1, y)) {
         ctx.moveTo(x1, y0)
         ctx.lineTo(x1, y1)
       }
