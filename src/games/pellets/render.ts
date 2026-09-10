@@ -31,8 +31,9 @@ function skinFor(dark: boolean): Skin {
   return dark
     ? {
         dark,
-        wallFill: hsla(WALL_HUE, 40, 38, 0.72),
-        wallStroke: hsla(WALL_HUE, 52, 72, 0.95),
+        // Solid slate beads with a lighter rim stroke.
+        wallFill: hsla(WALL_HUE, 28, 28, 1),
+        wallStroke: hsla(WALL_HUE, 42, 62, 0.95),
         floorDot: 'rgba(46, 184, 160, 0.1)',
         crumbFill: hsla(ACCENT, 58, 58, 0.22),
         crumbStroke: hsla(ACCENT, 58, 58, 0.9),
@@ -44,9 +45,9 @@ function skinFor(dark: boolean): Skin {
       }
     : {
         dark,
-        // Deeper slate so corridors stay pale mint and walls pop.
-        wallFill: hsla(WALL_HUE, 34, 48, 0.62),
-        wallStroke: hsla(WALL_HUE, 38, 32, 0.9),
+        // Solid soft slate so lanes stay pale mint and walls read as blocks.
+        wallFill: hsla(WALL_HUE, 26, 74, 1),
+        wallStroke: hsla(WALL_HUE, 32, 38, 0.9),
         floorDot: 'rgba(46, 184, 160, 0.1)',
         crumbFill: hsla(ACCENT, 58, 58, 0.2),
         crumbStroke: hsla(ACCENT, 58, 42, 0.9),
@@ -98,8 +99,8 @@ function chaserHue(kind: GhostKind) {
 }
 
 /**
- * Snake-family wall beads: soft fill + stroked outline. Adjacent wall cells
- * share edges so runs read as one corridor instead of a dotted grid.
+ * Solid wall beads with a stroked rim — same shape language as Snake, but
+ * opaque so corridors read clearly against the playfield.
  */
 function drawWallBeads(
   ctx: CanvasRenderingContext2D,
