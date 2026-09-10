@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { currentTheme, THEME_EVENT, toggleTheme, type Theme } from '../lib/theme'
+import { currentTheme, THEME_EVENT, toggleTheme, themeLabel, type Theme } from '../lib/theme'
 
 export function ThemeToggle({ className = '' }: { className?: string }) {
   const [theme, setThemeState] = useState<Theme>(() =>
@@ -12,19 +12,28 @@ export function ThemeToggle({ className = '' }: { className?: string }) {
     return () => window.removeEventListener(THEME_EVENT, sync)
   }, [])
 
-  const dark = theme === 'dark'
+  const label = themeLabel(theme)
 
   return (
     <button
       type="button"
       className={`theme-toggle${className ? ` ${className}` : ''}`}
-      aria-label={dark ? 'Switch to light mode' : 'Switch to dark mode'}
-      title={dark ? 'Light mode' : 'Dark mode'}
-      aria-pressed={dark}
+      aria-label={`Theme: ${label}. Switch theme`}
+      title={`Theme: ${label}`}
       onClick={() => toggleTheme()}
     >
       <svg viewBox="0 0 24 24" aria-hidden="true">
-        {dark ? (
+        {theme === 'flat' ? (
+          <rect
+            x="5"
+            y="5"
+            width="14"
+            height="14"
+            rx="2.5"
+            fill="currentColor"
+            opacity="0.9"
+          />
+        ) : theme === 'dark' ? (
           <>
             <circle cx="12" cy="12" r="3.6" fill="none" stroke="currentColor" strokeWidth="1.8" />
             <path

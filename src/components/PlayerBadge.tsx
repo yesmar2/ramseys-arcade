@@ -24,7 +24,7 @@ import {
   rememberPlayerName,
   setPlayerAvatar,
 } from '../lib/leaderboard'
-import { currentTheme, THEME_EVENT, toggleTheme, type Theme } from '../lib/theme'
+import { currentTheme, THEME_EVENT, toggleTheme, themeLabel, type Theme } from '../lib/theme'
 import { DevImpersonateControl } from './DevImpersonateControl'
 import { GoogleSignInButton } from './GoogleSignInButton'
 import { PlayerAvatar } from './PlayerAvatar'
@@ -435,7 +435,7 @@ export const PlayerBadge = forwardRef<PlayerBadgeHandle, PlayerBadgeProps>(
           >
             <span className="site-drawer__pref-label">Theme</span>
             <span className="site-drawer__pref-value">
-              {theme === 'dark' ? 'Dark' : 'Light'}
+              {themeLabel(theme)}
             </span>
           </button>
           <SoundPackSelect variant="drawer" />

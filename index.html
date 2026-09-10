@@ -25,20 +25,20 @@
       (function () {
         try {
           var t = localStorage.getItem('skermix-theme')
-          if (t !== 'light' && t !== 'dark') {
+          if (t !== 'light' && t !== 'dark' && t !== 'flat') {
             t = localStorage.getItem('fordriva-theme')
           }
-          if (t !== 'light' && t !== 'dark') {
+          if (t !== 'light' && t !== 'dark' && t !== 'flat') {
             t = localStorage.getItem('acralia-theme')
           }
-          if (t !== 'light' && t !== 'dark') {
+          if (t !== 'light' && t !== 'dark' && t !== 'flat') {
             t = localStorage.getItem('archivade-theme')
           }
-          if (t !== 'light' && t !== 'dark') {
+          if (t !== 'light' && t !== 'dark' && t !== 'flat') {
             t = 'dark'
           }
           document.documentElement.setAttribute('data-theme', t)
-          document.documentElement.style.colorScheme = t
+          document.documentElement.style.colorScheme = t === 'light' ? 'light' : 'dark'
         } catch (e) {
           document.documentElement.setAttribute('data-theme', 'dark')
         }

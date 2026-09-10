@@ -1,6 +1,6 @@
 import type { GameState } from './game'
 import { BEAD_SPACING, visualSegments } from './game'
-import { isDarkTheme, playfieldColor } from '../../lib/theme'
+import { isDarkTheme, isFlatTheme, playfieldColor, softFillAlpha } from '../../lib/theme'
 
 const HEAD_HUE = 158
 /** Degrees of hue each bead steps away from the head — wraps the rainbow as you grow. */
@@ -46,12 +46,15 @@ export function renderGame(
 
   // Board panel
   const radius = Math.max(12, cell * 0.55)
+  const flat = isFlatTheme()
   roundRect(ctx, ox - 10, oy - 10, gridW + 20, gridH + 20, radius)
   ctx.fillStyle = dark ? 'rgba(8, 14, 20, 0.55)' : 'rgba(255, 255, 255, 0.55)'
   ctx.fill()
-  ctx.strokeStyle = dark ? 'rgba(231, 238, 243, 0.08)' : 'rgba(26, 43, 60, 0.06)'
-  ctx.lineWidth = 1
-  ctx.stroke()
+  if (!flat) {
+    ctx.strokeStyle = dark ? 'rgba(231, 238, 243, 0.08)' : 'rgba(26, 43, 60, 0.06)'
+    ctx.lineWidth = 1
+    ctx.stroke()
+  }
 
   // Soft grid dots
   ctx.fillStyle = dark ? 'rgba(46, 184, 160, 0.14)' : 'rgba(46, 184, 160, 0.12)'
@@ -78,13 +81,15 @@ export function renderGame(
     ctx.arc(fx, fy, r * 2.2, 0, Math.PI * 2)
     ctx.fill()
 
-    ctx.fillStyle = 'hsla(38, 58%, 58%, 0.22)'
+    ctx.fillStyle = `hsla(38, 58%, 58%, ${softFillAlpha(0.22)})`
     ctx.beginPath()
     ctx.arc(fx, fy, r, 0, Math.PI * 2)
     ctx.fill()
-    ctx.strokeStyle = 'hsla(38, 58%, 42%, 0.95)'
-    ctx.lineWidth = Math.max(1.4, cell * 0.08)
-    ctx.stroke()
+    if (!flat) {
+      ctx.strokeStyle = 'hsla(38, 58%, 42%, 0.95)'
+      ctx.lineWidth = Math.max(1.4, cell * 0.08)
+      ctx.stroke()
+    }
     ctx.fillStyle = 'rgba(255, 255, 255, 0.45)'
     ctx.beginPath()
     ctx.arc(fx - r * 0.25, fy - r * 0.28, r * 0.28, 0, Math.PI * 2)
@@ -94,7 +99,7 @@ export function renderGame(
   // Snake — fixed bead size and spacing so they kiss at every length
   const segments = visualSegments(state)
   const lineW = Math.max(1.2, cell * 0.07)
-  const sw = cell * BEAD_SPACING - lineW
+  const sw = cell * BEAD_SPACING - (flat ? 0 : lineW)
   const sh = sw
   const gap = (cell - sw) / 2
   const segR = sw / 2
@@ -108,12 +113,14 @@ export function renderGame(
     const sat = 58 + Math.min(12, i * 0.15)
 
     roundRect(ctx, sx, sy, sw, sh, segR)
-    ctx.fillStyle = `hsla(${hue}, ${sat}%, 58%, 0.22)`
+    ctx.fillStyle = `hsla(${hue}, ${sat}%, 58%, ${softFillAlpha(0.22)})`
     ctx.fill()
-    ctx.strokeStyle = `hsla(${hue}, ${sat}%, 42%, 0.95)`
-    ctx.lineWidth = lineW
-    ctx.lineJoin = 'round'
-    ctx.stroke()
+    if (!flat) {
+      ctx.strokeStyle = `hsla(${hue}, ${sat}%, 42%, 0.95)`
+      ctx.lineWidth = lineW
+      ctx.lineJoin = 'round'
+      ctx.stroke()
+    }
 
     if (i === 0) {
       const face = state.pendingDir ?? state.dir

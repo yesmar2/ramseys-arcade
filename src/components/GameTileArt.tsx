@@ -1,5 +1,6 @@
 import type { JSX, ReactNode } from 'react'
 import { patriotCityRects } from '../games/patriot/cityArt'
+import { isFlatTheme } from '../lib/theme'
 import { accentPastel, HUE, pastel } from './gameArtStyle'
 
 function TileBg() {
@@ -109,15 +110,18 @@ export function IsoSlab({
   const sideDark = accent
     ? accentPastel(accent, 36).fill
     : `color-mix(in srgb, hsla(${hue}, ${sat}%, 42%, 1) 48%, var(--playfield))`
-  const stroke = accent
-    ? accentPastel(accent, 48).stroke
-    : `hsla(${hue}, ${sat}%, 36%, 0.95)`
+  const stroke = isFlatTheme()
+    ? 'none'
+    : accent
+      ? accentPastel(accent, 48).stroke
+      : `hsla(${hue}, ${sat}%, 36%, 0.95)`
+  const sw = isFlatTheme() ? 0 : strokeWidth
 
   return (
     <g>
-      <polygon points={pts(...midR)} fill={side} stroke={stroke} strokeWidth={strokeWidth} strokeLinejoin="round" />
-      <polygon points={pts(...midL)} fill={sideDark} stroke={stroke} strokeWidth={strokeWidth} strokeLinejoin="round" />
-      <polygon points={pts(...top)} fill={fill} stroke={stroke} strokeWidth={strokeWidth + 0.15} strokeLinejoin="round" />
+      <polygon points={pts(...midR)} fill={side} stroke={stroke} strokeWidth={sw} strokeLinejoin="round" />
+      <polygon points={pts(...midL)} fill={sideDark} stroke={stroke} strokeWidth={sw} strokeLinejoin="round" />
+      <polygon points={pts(...top)} fill={fill} stroke={stroke} strokeWidth={isFlatTheme() ? 0 : strokeWidth + 0.15} strokeLinejoin="round" />
     </g>
   )
 }
@@ -466,6 +470,15 @@ function pelletsPacPath(cx: number, cy: number, r: number, open = 0.55) {
 
 /** Just the gold chomp — same figure as in-game. */
 export function PelletsArt() {
+  if (isFlatTheme()) {
+    const you = pastel(HUE.gold, 58, 72)
+    return (
+      <SvgFrame>
+        <TileBg />
+        <path d={pelletsPacPath(78, 50, 28)} fill={you.fill} />
+      </SvgFrame>
+    )
+  }
   return (
     <SvgFrame>
       <TileBg />

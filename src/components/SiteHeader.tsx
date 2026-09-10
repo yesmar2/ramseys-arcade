@@ -4,7 +4,7 @@ import { usePlayerName } from '../hooks/usePlayerName'
 import { rankHref, useHashRoute } from '../hooks/useHashRoute'
 import { APP_NAME_ACCENT, APP_NAME_LEAD } from '../lib/brand'
 import { useGlobalRank, useGlobalRankLoading } from '../lib/globalRank'
-import { currentTheme, THEME_EVENT, toggleTheme, type Theme } from '../lib/theme'
+import { currentTheme, THEME_EVENT, toggleTheme, themeLabel, type Theme } from '../lib/theme'
 import { normalizePlayerName } from '../lib/leaderboard'
 import { useTrophySummary } from '../hooks/useTrophySummary'
 import { useImpersonation } from '../hooks/useImpersonation'
@@ -321,7 +321,7 @@ export function SiteHeader() {
                       >
                         <span className="site-drawer__pref-label">Theme</span>
                         <span className="site-drawer__pref-value">
-                          {theme === 'dark' ? 'Dark' : 'Light'}
+                          {themeLabel(theme)}
                         </span>
                       </button>
                       <SoundPackSelect variant="drawer" />

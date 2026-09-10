@@ -1,4 +1,4 @@
-import { isDarkTheme, playfieldColor } from '../../lib/theme'
+import { isDarkTheme, isFlatTheme, playfieldColor, softFillAlpha } from '../../lib/theme'
 import { comboMult, type GameState, type Ghost, type GhostKind } from './game'
 
 /** Gold crumbs — same family as Snake food. */
@@ -21,6 +21,8 @@ function hsla(hue: number, sat: number, light: number, alpha = 1) {
 }
 
 function skinFor(dark: boolean): Skin {
+  const flat = isFlatTheme()
+  const crumbA = softFillAlpha(dark ? 0.22 : 0.2)
   return dark
     ? {
         dark,
@@ -28,8 +30,8 @@ function skinFor(dark: boolean): Skin {
         wallFill: '#122820',
         wallStroke: '#2eb8a0',
         floorDot: 'rgba(74, 168, 232, 0.12)',
-        crumbFill: hsla(ACCENT, 58, 58, 0.22),
-        crumbStroke: hsla(ACCENT, 58, 58, 0.9),
+        crumbFill: hsla(ACCENT, 58, 58, crumbA),
+        crumbStroke: flat ? 'transparent' : hsla(ACCENT, 58, 58, 0.9),
         panel: 'rgba(8, 14, 20, 0.55)',
         panelEdge: 'rgba(231, 238, 243, 0.08)',
         star: 'rgba(74, 168, 232, 0.12)',
@@ -39,8 +41,8 @@ function skinFor(dark: boolean): Skin {
         wallFill: '#c5f0e4',
         wallStroke: '#2eb8a0',
         floorDot: 'rgba(74, 168, 232, 0.14)',
-        crumbFill: hsla(ACCENT, 58, 58, 0.2),
-        crumbStroke: hsla(ACCENT, 58, 42, 0.9),
+        crumbFill: hsla(ACCENT, 58, 58, crumbA),
+        crumbStroke: flat ? 'transparent' : hsla(ACCENT, 58, 42, 0.9),
         panel: 'rgba(255, 255, 255, 0.55)',
         panelEdge: 'rgba(26, 43, 60, 0.06)',
         star: 'rgba(74, 168, 232, 0.14)',
@@ -169,23 +171,25 @@ function drawWalls(
   ctx.fillStyle = skin.wallFill
   ctx.fillRect(ox, oy, state.cols * cell, state.rows * cell)
 
-  ctx.strokeStyle = skin.wallStroke
-  ctx.lineWidth = Math.max(2, cell * 0.1) * 2
-  ctx.lineCap = 'butt'
-  ctx.lineJoin = 'miter'
-  ctx.miterLimit = 2
-  ctx.beginPath()
-  for (const loop of wallOutlineLoops(state)) {
-    const start = loop[0]
-    if (!start) continue
-    ctx.moveTo(ox + start.x * cell, oy + start.y * cell)
-    for (let i = 1; i < loop.length; i++) {
-      const p = loop[i]
-      if (!p) continue
-      ctx.lineTo(ox + p.x * cell, oy + p.y * cell)
+  if (!isFlatTheme()) {
+    ctx.strokeStyle = skin.wallStroke
+    ctx.lineWidth = Math.max(2, cell * 0.1) * 2
+    ctx.lineCap = 'butt'
+    ctx.lineJoin = 'miter'
+    ctx.miterLimit = 2
+    ctx.beginPath()
+    for (const loop of wallOutlineLoops(state)) {
+      const start = loop[0]
+      if (!start) continue
+      ctx.moveTo(ox + start.x * cell, oy + start.y * cell)
+      for (let i = 1; i < loop.length; i++) {
+        const p = loop[i]
+        if (!p) continue
+        ctx.lineTo(ox + p.x * cell, oy + p.y * cell)
+      }
     }
+    ctx.stroke()
   }
-  ctx.stroke()
   ctx.restore()
 
   // Den gate — gold stroke, same family as crumbs.
@@ -215,6 +219,7 @@ let staticLayer: {
   w: number
   h: number
   dark: boolean
+  flat: boolean
   playfield: string
   canvas: HTMLCanvasElement
   dpr: number
@@ -294,6 +299,7 @@ function drawStaticLayer(
   dpr: number,
 ) {
   const playfield = playfieldColor()
+  const flat = isFlatTheme()
   const hit =
     staticLayer &&
     staticLayer.open === state.open &&
@@ -304,6 +310,7 @@ function drawStaticLayer(
     staticLayer.w === w &&
     staticLayer.h === h &&
     staticLayer.dark === skin.dark &&
+    staticLayer.flat === flat &&
     staticLayer.playfield === playfield &&
     staticLayer.dpr === dpr
 
@@ -319,6 +326,7 @@ function drawStaticLayer(
       w,
       h,
       dark: skin.dark,
+      flat,
       playfield,
       canvas,
       dpr,
@@ -348,9 +356,11 @@ function drawCrumbs(
       ctx.arc(cx, cy, crumbR, 0, Math.PI * 2)
       ctx.fillStyle = skin.crumbFill
       ctx.fill()
-      ctx.strokeStyle = skin.crumbStroke
-      ctx.lineWidth = crumbLine
-      ctx.stroke()
+      if (!isFlatTheme()) {
+        ctx.strokeStyle = skin.crumbStroke
+        ctx.lineWidth = crumbLine
+        ctx.stroke()
+      }
     }
   }
 
@@ -372,9 +382,11 @@ function drawCrumbs(
       ctx.arc(cx, cy, r, 0, Math.PI * 2)
       ctx.fillStyle = skin.crumbFill
       ctx.fill()
-      ctx.strokeStyle = skin.crumbStroke
-      ctx.lineWidth = Math.max(1.1, cell * 0.055)
-      ctx.stroke()
+      if (!isFlatTheme()) {
+        ctx.strokeStyle = skin.crumbStroke
+        ctx.lineWidth = Math.max(1.1, cell * 0.055)
+        ctx.stroke()
+      }
     }
   }
 }
@@ -393,8 +405,9 @@ function drawPlayer(
   const surging = state.surgeTime > 0
   const lineW = Math.max(1.2, cell * 0.07)
   const r = cell * (surging ? 0.42 : 0.38)
-  const fill = hsla(ACCENT, 58, 58, surging ? 0.34 : 0.22)
+  const fill = hsla(ACCENT, 58, 58, softFillAlpha(surging ? 0.34 : 0.22))
   const stroke = hsla(ACCENT, 58, skin.dark ? 58 : 42, 0.95)
+  const flat = isFlatTheme()
 
   /**
    * Face right in local space, then flip/rotate. scale(-1) for left keeps the
@@ -419,10 +432,12 @@ function drawPlayer(
     ctx.closePath()
     ctx.fillStyle = fill
     ctx.fill()
-    ctx.strokeStyle = stroke
-    ctx.lineWidth = lineW
-    ctx.lineJoin = 'round'
-    ctx.stroke()
+    if (!flat) {
+      ctx.strokeStyle = stroke
+      ctx.lineWidth = lineW
+      ctx.lineJoin = 'round'
+      ctx.stroke()
+    }
     ctx.restore()
     ctx.globalAlpha = 1
     return
@@ -433,11 +448,13 @@ function drawPlayer(
     const ty = oy + dot.y * cell
     ctx.beginPath()
     ctx.arc(tx, ty, r * (0.4 + 0.45 * dot.life), 0, Math.PI * 2)
-    ctx.fillStyle = hsla(ACCENT, 58, 58, 0.18 * dot.life)
+    ctx.fillStyle = hsla(ACCENT, 58, 58, softFillAlpha(0.18) * dot.life)
     ctx.fill()
-    ctx.strokeStyle = hsla(ACCENT, 58, 48, 0.55 * dot.life)
-    ctx.lineWidth = Math.max(1, lineW * 0.7)
-    ctx.stroke()
+    if (!flat) {
+      ctx.strokeStyle = hsla(ACCENT, 58, 48, 0.55 * dot.life)
+      ctx.lineWidth = Math.max(1, lineW * 0.7)
+      ctx.stroke()
+    }
   }
 
   if (state.invuln > 0 && Math.floor(state.invuln * 12) % 2 === 0) {
@@ -466,10 +483,12 @@ function drawPlayer(
   ctx.closePath()
   ctx.fillStyle = fill
   ctx.fill()
-  ctx.strokeStyle = stroke
-  ctx.lineWidth = lineW
-  ctx.lineJoin = 'round'
-  ctx.stroke()
+  if (!flat) {
+    ctx.strokeStyle = stroke
+    ctx.lineWidth = lineW
+    ctx.lineJoin = 'round'
+    ctx.stroke()
+  }
   ctx.restore()
 
   ctx.globalAlpha = 1
@@ -499,15 +518,21 @@ function drawChaser(
     // Hollow bead hustling home — readable without eyes.
     ctx.beginPath()
     ctx.arc(cx, cy, cell * 0.2, 0, Math.PI * 2)
-    ctx.strokeStyle = hsla(chaserHue(ghost.kind), 50, skin.dark ? 62 : 42, 0.7)
-    ctx.lineWidth = Math.max(1.2, cell * 0.06)
-    ctx.stroke()
+    if (isFlatTheme()) {
+      ctx.fillStyle = hsla(chaserHue(ghost.kind), 50, skin.dark ? 62 : 42, 0.45)
+      ctx.fill()
+    } else {
+      ctx.strokeStyle = hsla(chaserHue(ghost.kind), 50, skin.dark ? 62 : 42, 0.7)
+      ctx.lineWidth = Math.max(1.2, cell * 0.06)
+      ctx.stroke()
+    }
     return
   }
 
   const hue = scared ? (flash ? 8 : 224) : chaserHue(ghost.kind)
   const sat = scared ? (flash ? 70 : 55) : 56
   const light = 58
+  const flat = isFlatTheme()
 
   if (ghost.hit > 0) {
     ctx.fillStyle = `hsla(0, 0%, 100%, ${0.35 * ghost.hit})`
@@ -533,12 +558,14 @@ function drawChaser(
     )
   }
   ctx.closePath()
-  ctx.fillStyle = hsla(hue, sat, light, 0.22)
+  ctx.fillStyle = hsla(hue, sat, light, softFillAlpha(0.22))
   ctx.fill()
-  ctx.strokeStyle = hsla(hue, sat, skin.dark ? 62 : 40, 0.95)
-  ctx.lineWidth = lineW
-  ctx.lineJoin = 'round'
-  ctx.stroke()
+  if (!flat) {
+    ctx.strokeStyle = hsla(hue, sat, skin.dark ? 62 : 40, 0.95)
+    ctx.lineWidth = lineW
+    ctx.lineJoin = 'round'
+    ctx.stroke()
+  }
 
   if (scared) {
     ctx.strokeStyle = flash ? hsla(8, 60, 30, 0.9) : hsla(210, 30, 70, 0.9)

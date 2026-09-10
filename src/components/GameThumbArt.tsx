@@ -1,6 +1,7 @@
-import type { CSSProperties, ReactNode } from 'react'
+import { useEffect, useState, type CSSProperties, type ReactNode } from 'react'
 import { patriotCityRects } from '../games/patriot/cityArt'
-import { accentPastel, HUE, pastel } from './gameArtStyle'
+import { isFlatTheme, THEME_EVENT } from '../lib/theme'
+import { accentPastel, HUE, outlineStroke, pastel } from './gameArtStyle'
 import { IsoSlab } from './GameTileArt'
 
 type GameThumbArtProps = {
@@ -24,10 +25,11 @@ function ThumbSvg({ children }: { children: ReactNode }) {
 }
 
 function shape(props: ReturnType<typeof pastel>, strokeWidth = 1.5) {
+  const flat = isFlatTheme()
   return {
     fill: props.fill,
-    stroke: props.stroke,
-    strokeWidth,
+    stroke: flat ? 'none' : props.stroke,
+    strokeWidth: flat ? 0 : strokeWidth,
     strokeLinejoin: 'round' as const,
   }
 }
@@ -35,17 +37,18 @@ function shape(props: ReturnType<typeof pastel>, strokeWidth = 1.5) {
 /** Single-accent thumbs (Patriot, Asteroids, Centroid). */
 function AsteroidsThumb({ accent }: { accent?: string }) {
   const a = accent ?? '#2eb87a'
-  const shipFill = `color-mix(in srgb, ${a} 28%, var(--playfield))`
+  const flat = isFlatTheme()
+  const shipFill = `color-mix(in srgb, ${a} ${flat ? 55 : 28}%, var(--playfield))`
 
   return (
     <g transform="translate(16 16.2)">
       <path
         d="M0 -11 L-8 7.5 L0 3 L8 7.5 Z"
         fill={shipFill}
-        stroke={a}
-        strokeWidth="2"
         strokeLinejoin="round"
+        {...outlineStroke(a, 2)}
       />
+      {/* Thruster is stroke-only line art — keep it in flat. */}
       <path
         d="M-3.4 6.8 L0 12 L3.4 6.8"
         fill="none"
@@ -64,7 +67,7 @@ function PatriotThumb() {
   return (
     <>
       {blocks.map((block, i) => {
-        const { fill, stroke } = pastel(block.hue, 54, 42)
+        const p = pastel(block.hue, 54, 42)
         return (
           <rect
             key={i}
@@ -72,10 +75,7 @@ function PatriotThumb() {
             y={block.y}
             width={block.width}
             height={block.height}
-            fill={fill}
-            stroke={stroke}
-            strokeWidth="1.5"
-            strokeLinejoin="round"
+            {...shape(p, 1.5)}
           />
         )
       })}
@@ -135,10 +135,8 @@ function PopThumb() {
             cx={cx}
             cy={cy}
             r={r}
-            fill={p.fill}
-            stroke={p.stroke}
-            strokeOpacity={on ? 1 : 0.7}
-            strokeWidth={on ? 1.4 : 1.1}
+            {...shape(p, on ? 1.4 : 1.1)}
+            strokeOpacity={isFlatTheme() ? undefined : on ? 1 : 0.7}
           />
         )
       })}
@@ -198,6 +196,7 @@ function StrideThumb({ accent }: { accent?: string }) {
       <ellipse cx="16" cy="18" rx="7.2" ry="6.2" {...shape(body, 1.6)} />
       <circle cx="13.4" cy="16.6" r="1.1" fill="#1a2b3c" />
       <circle cx="18.6" cy="16.6" r="1.1" fill="#1a2b3c" />
+      {/* Brim is stroke-only — keep in flat. */}
       <path d="M8 10 L16 6 L24 10" fill="none" stroke={a} strokeWidth="1.8" strokeLinecap="round" />
     </>
   )
@@ -233,6 +232,7 @@ function SimonThumb() {
 
 function SpotterThumb({ accent }: { accent?: string }) {
   const a = accent ?? '#7a6cf0'
+  const flat = isFlatTheme()
   const cells = [
     { x: 8, y: 8, bad: false },
     { x: 16, y: 8, bad: false },
@@ -254,20 +254,16 @@ function SpotterThumb({ accent }: { accent?: string }) {
           width="6"
           height="6"
           rx="1.2"
-          fill={c.bad ? `color-mix(in srgb, ${a} 42%, var(--playfield))` : `color-mix(in srgb, ${a} 18%, var(--playfield))`}
-          stroke={a}
-          strokeWidth={c.bad ? '1.6' : '1.2'}
+          fill={
+            c.bad
+              ? `color-mix(in srgb, ${a} ${flat ? 62 : 42}%, var(--playfield))`
+              : `color-mix(in srgb, ${a} ${flat ? 36 : 18}%, var(--playfield))`
+          }
           opacity={c.bad ? 1 : 0.85}
+          {...outlineStroke(a, c.bad ? 1.6 : 1.2)}
         />
       ))}
-      <circle
-        cx="22"
-        cy="22"
-        r="6.5"
-        fill="none"
-        stroke={a}
-        strokeWidth="1.8"
-      />
+      <circle cx="22" cy="22" r="6.5" fill="none" stroke={a} strokeWidth="1.8" />
       <line x1="26.5" y1="26.5" x2="30" y2="30" stroke={a} strokeWidth="2" strokeLinecap="round" />
     </>
   )
@@ -284,8 +280,11 @@ function pelletsPacPath(cx: number, cy: number, r: number, open = 0.55) {
 }
 
 function PelletsThumb() {
-  // Dark-theme player: fill hsla(38,58%,58%,0.22), stroke …58%,0.95 — slightly
-  // stronger fill so the soft gold still reads on the lobby thumb.
+  if (isFlatTheme()) {
+    const you = pastel(HUE.gold, 58, 72)
+    return <path d={pelletsPacPath(15.4, 16, 9.4)} fill={you.fill} />
+  }
+  // Outlined soft gold — matches in-game drawPlayer.
   return (
     <path
       d={pelletsPacPath(15.4, 16, 9.4)}
@@ -316,6 +315,13 @@ const thumbBySlug: Record<
 }
 
 export function GameThumbArt({ slug, accent, className }: GameThumbArtProps) {
+  const [, setArtTick] = useState(0)
+  useEffect(() => {
+    const sync = () => setArtTick((n) => n + 1)
+    window.addEventListener(THEME_EVENT, sync)
+    return () => window.removeEventListener(THEME_EVENT, sync)
+  }, [])
+
   const Thumb = thumbBySlug[slug]
   const style = accent
     ? ({ '--thumb-accent': accent } as CSSProperties)
