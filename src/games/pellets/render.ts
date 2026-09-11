@@ -26,9 +26,9 @@ function skinFor(dark: boolean): Skin {
   return dark
     ? {
         dark,
-        // Palette mint — same family as Snake beads / --accent.
-        wallFill: '#122820',
-        wallStroke: '#2eb8a0',
+        // Cool slate-blue maze — distinct from the teal crumb/accent family.
+        wallFill: '#152033',
+        wallStroke: '#6b8cff',
         floorDot: 'rgba(74, 168, 232, 0.12)',
         crumbFill: hsla(ACCENT, 58, 58, crumbA),
         crumbStroke: flat ? 'transparent' : hsla(ACCENT, 58, 58, 0.9),
@@ -38,8 +38,8 @@ function skinFor(dark: boolean): Skin {
       }
     : {
         dark,
-        wallFill: '#c5f0e4',
-        wallStroke: '#2eb8a0',
+        wallFill: '#d9e4fb',
+        wallStroke: '#3d63e8',
         floorDot: 'rgba(74, 168, 232, 0.14)',
         crumbFill: hsla(ACCENT, 58, 58, crumbA),
         crumbStroke: flat ? 'transparent' : hsla(ACCENT, 58, 42, 0.9),

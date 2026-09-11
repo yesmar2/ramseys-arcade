@@ -222,57 +222,14 @@ function nearestOpen(state: GameState, cell: Cell, allowDoor: boolean): Cell | n
   return null
 }
 
-function ghostCorners(cols: number, rows: number, open?: boolean[][]): Record<GhostKind, Cell> {
-  const picks: Record<GhostKind, Cell> = {
-    blink: { x: cols - 2, y: 1 },
-    pink: { x: 1, y: 1 },
-    inky: { x: cols - 2, y: rows - 2 },
-    clyde: { x: 1, y: rows - 2 },
-  }
-  if (!open) return picks
-
-  const degree = (x: number, y: number) => {
-    let n = 0
-    for (const [dx, dy] of [
-      [0, 1],
-      [0, -1],
-      [1, 0],
-      [-1, 0],
-    ] as const) {
-      let nx = x + dx
-      let ny = y + dy
-      if (nx < 0 || nx >= cols) {
-        if (!open[y]?.[0] || !open[y]?.[cols - 1]) continue
-        nx = (nx + cols) % cols
-      }
-      if (ny < 0 || ny >= rows || !open[ny]?.[nx]) continue
-      n++
-    }
-    return n
-  }
-
-  const snap = (ideal: Cell): Cell => {
-    let best = ideal
-    let bestScore = Infinity
-    for (let y = 0; y < rows; y++) {
-      for (let x = 0; x < cols; x++) {
-        if (!open[y][x]) continue
-        if (degree(x, y) < 2) continue
-        const score = (x - ideal.x) ** 2 + (y - ideal.y) ** 2
-        if (score < bestScore) {
-          bestScore = score
-          best = { x, y }
-        }
-      }
-    }
-    return best
-  }
-
+function ghostCorners(cols: number, rows: number): Record<GhostKind, Cell> {
+  // Outside the maze so scatter chasers never "arrive" and ping-pong on a tile.
+  // They keep pathing toward the corner and lap the accessible ring instead.
   return {
-    blink: snap(picks.blink),
-    pink: snap(picks.pink),
-    inky: snap(picks.inky),
-    clyde: snap(picks.clyde),
+    blink: { x: cols + 1, y: -2 },
+    pink: { x: -2, y: -2 },
+    inky: { x: cols + 1, y: rows + 1 },
+    clyde: { x: -2, y: rows + 1 },
   }
 }
 
@@ -289,7 +246,7 @@ function denSlots(maze: Maze) {
 
 function makeGhosts(maze: Maze, level: number): Ghost[] {
   const kinds: GhostKind[] = ['blink', 'pink', 'inky', 'clyde']
-  const corners = ghostCorners(maze.cols, maze.rows, maze.open)
+  const corners = ghostCorners(maze.cols, maze.rows)
   const slots = denSlots(maze)
   const stagger = Math.max(0.6, 2.4 - (level - 1) * 0.25)
   return kinds.map((kind, i) => ({
@@ -508,6 +465,28 @@ function chooseGhostDir(state: GameState, ghost: Ghost, cache: FieldCache): Dir 
     return pool[Math.floor(Math.random() * pool.length)].dir
   }
 
+  // Scatter (and Clyde's corner retreat) aim off-board: Euclidean picks keep
+  // them lapping the ring instead of distance-field ping-pong on arrival.
+  const offBoard =
+    cell.x < 0 || cell.y < 0 || cell.x >= state.cols || cell.y >= state.rows
+  if (ghost.mode === 'scatter' || offBoard) {
+    const PRIORITY: Dir[] = ['up', 'left', 'down', 'right']
+    let best = pool[0]
+    let bestD = Infinity
+    let bestPri = 99
+    for (const option of pool) {
+      const d =
+        (option.tile.x + 0.5 - cell.x) ** 2 + (option.tile.y + 0.5 - cell.y) ** 2
+      const pri = PRIORITY.indexOf(option.dir)
+      if (d < bestD - 1e-9 || (Math.abs(d - bestD) < 1e-9 && pri >= 0 && pri < bestPri)) {
+        bestD = d
+        bestPri = pri
+        best = option
+      }
+    }
+    return best.dir
+  }
+
   const field = fieldFor(state, cache, cell, doorOk)
   const scoreOf = (option: { dir: Dir; tile: Cell }) => {
     const d = field[option.tile.y * state.cols + option.tile.x]
@@ -523,12 +502,16 @@ function chooseGhostDir(state: GameState, ghost: Ghost, cache: FieldCache): Dir 
     }
   }
 
+  const PRIORITY: Dir[] = ['up', 'left', 'down', 'right']
   let best = pool[0]
   let bestD = Infinity
+  let bestPri = 99
   for (const option of pool) {
     const score = scoreOf(option)
-    if (score < bestD) {
+    const pri = PRIORITY.indexOf(option.dir)
+    if (score < bestD || (score === bestD && pri >= 0 && pri < bestPri)) {
       bestD = score
+      bestPri = pri
       best = option
     }
   }
