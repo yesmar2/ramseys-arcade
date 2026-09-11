@@ -309,21 +309,6 @@ export function SiteHeader() {
                 </div>
 
                 <div className="site-drawer__footer">
-                  {showBoardFilters ? (
-                    <section className="site-drawer__section" aria-label="Board filters">
-                      <h3 className="site-drawer__section-title">Filters</h3>
-                      <div className="site-drawer__section-body">
-                        <SitePeriodControl
-                          variant="drawer"
-                          onSelect={() => setDrawerOpen(false)}
-                        />
-                        <SiteGroupControl
-                          variant="drawer"
-                          onSelect={() => setDrawerOpen(false)}
-                        />
-                      </div>
-                    </section>
-                  ) : null}
                   <section className="site-drawer__section" aria-label="Settings">
                     <h3 className="site-drawer__section-title">Settings</h3>
                     <div className="site-drawer__prefs">

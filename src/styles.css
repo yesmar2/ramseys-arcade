@@ -1937,6 +1937,13 @@ img {
   padding: 0.15rem 0 0.35rem;
 }
 
+/* Header already shows primary links on desktop. */
+@media (min-width: 641px) {
+  .site-drawer__nav {
+    display: none;
+  }
+}
+
 .site-drawer__link {
   display: flex;
   align-items: center;
