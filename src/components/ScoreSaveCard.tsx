@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { useAuth } from '../hooks/useAuth'
 import { useImpersonation } from '../hooks/useImpersonation'
@@ -22,13 +22,15 @@ import { describePersonalBest, rememberPersonalBest } from '../lib/personalBest'
 import { submitScoreToJoinedTournaments } from '../lib/tournaments'
 import { refreshGlobalRank } from '../lib/globalRank'
 import { defaultPeriod, useDefaultPeriod } from '../lib/defaultPeriod'
-import { gameHasRecords } from '../lib/records'
+import { gameHasRecords, shouldCelebrateRecordSubmit } from '../lib/records'
 import {
   peekRunAchievements,
+  pushRunAchievement,
   takeRunAchievements,
   whenRunAchievementsSettled,
   type RunAchievement,
 } from '../lib/runAchievements'
+import { medalKind, PodiumMedal } from './PodiumMedal'
 import { ScoreSignInPrompt } from './ScoreSignInPrompt'
 
 type ScoreSaveProps = {
@@ -44,6 +46,15 @@ type ScoreSaveProps = {
 type BoardHit = { period: LeaderboardPeriod; rank: number }
 type PersonalBestHit = { score: number; gain: number | null }
 
+/** Top-3 finish in a scores/place-points event, either for one game or the whole standings. */
+export type PlacementHit = {
+  place: number
+  scope: 'game' | 'overall'
+  /** Game name (scope: game) or event title (scope: overall). */
+  label: string
+  score?: number | null
+}
+
 export type CelebPayload = {
   boards: BoardHit[]
   personalBest: PersonalBestHit | null
@@ -55,6 +66,8 @@ export type CelebPayload = {
     opponent?: string | null
     eventTitle?: string
   } | null
+  /** Top-3 event standing (non-bracket events). */
+  placement?: PlacementHit | null
 }
 
 export function booksCelebrationPayload(books: RunAchievement[]): CelebPayload {
@@ -79,6 +92,11 @@ export function bracketCelebrationPayload(opts: {
       eventTitle: opts.eventTitle,
     },
   }
+}
+
+export function placementCelebrationPayload(hit: PlacementHit | null): CelebPayload | null {
+  if (!hit || hit.place < 1 || hit.place > 3) return null
+  return { boards: [], personalBest: null, books: [], bracket: null, placement: hit }
 }
 
 export type RankClimb = {
@@ -150,15 +168,18 @@ function buildCelebration(
 
 function awardCards(payload: CelebPayload): {
   id: string
-  kind: 'board' | 'best' | 'book' | 'tourney'
+  kind: 'board' | 'best' | 'book' | 'tourney' | 'placement'
   label: string
   value: string
   detail: string | null
   featured: boolean
+  icon?: ReactNode
+  tone?: 'gold' | 'silver' | 'bronze'
 }[] {
   const featuredId = (() => {
     if (payload.bracket?.champion) return 'tourney-champ'
     if (payload.bracket?.matchWon) return 'tourney-match'
+    if (payload.placement && payload.placement.place === 1) return 'placement'
     const allTimeFirst = payload.boards.find((b) => b.period === 'all' && b.rank === 1)
     if (allTimeFirst) return `board-${allTimeFirst.period}`
     const anyFirst = payload.boards.find((b) => b.rank === 1)
@@ -208,8 +229,29 @@ function awardCards(payload: CelebPayload): {
     return cards
   })()
 
+  const placementCards = (() => {
+    const hit = payload.placement
+    if (!hit) return []
+    const kind = medalKind(hit.place)
+    if (!kind) return []
+    const place = hit.place === 1 ? '1st place' : hit.place === 2 ? '2nd place' : '3rd place'
+    return [
+      {
+        id: 'placement',
+        kind: 'placement' as const,
+        label: hit.label,
+        value: place,
+        detail: hit.score != null ? hit.score.toLocaleString() : null,
+        featured: featuredId === 'placement',
+        icon: <PodiumMedal kind={kind} size="md" />,
+        tone: kind,
+      },
+    ]
+  })()
+
   const cards = [
     ...bracketCards,
+    ...placementCards,
     ...payload.boards.map((board) => ({
       id: `board-${board.period}`,
       kind: 'board' as const,
@@ -448,9 +490,10 @@ export function ScoreCelebration({
           {cards.map((card, i) => (
             <article
               key={card.id}
-              className={`score-celeb__award score-celeb__award--${card.kind}${card.featured ? ' score-celeb__award--featured' : ''}`}
+              className={`score-celeb__award score-celeb__award--${card.kind}${card.tone ? ` score-celeb__award--${card.tone}` : ''}${card.featured ? ' score-celeb__award--featured' : ''}`}
               style={{ animationDelay: `${0.08 + i * 0.07}s` }}
             >
+              {card.icon ? <span className="score-celeb__award-icon">{card.icon}</span> : null}
               <span className="score-celeb__award-label">{card.label}</span>
               <strong className="score-celeb__award-value">{card.value}</strong>
               {card.detail ? (
@@ -713,6 +756,25 @@ export function ScoreSaveCard({
     }
     if (isCancelled?.()) return
     const saved = await addLeaderboardScore(gameSlug, name, score)
+    for (const hit of saved.streakRecords ?? []) {
+      if (
+        shouldCelebrateRecordSubmit({
+          improved: hit.improved,
+          rank: hit.rank,
+          totalEntries: hit.totalEntries,
+        })
+      ) {
+        pushRunAchievement({
+          id: `${gameSlug}:${hit.recordId}`,
+          label: hit.label,
+          value:
+            hit.recordId === 'play-days-streak'
+              ? `${hit.value} day${hit.value === 1 ? '' : 's'}`
+              : `${hit.value}×`,
+          rank: hit.rank,
+        })
+      }
+    }
     void submitScoreToJoinedTournaments(gameSlug, score).catch(() => {})
     if (isCancelled?.()) return
     rememberPersonalBest(gameSlug, Math.max(recordRef.current, score))

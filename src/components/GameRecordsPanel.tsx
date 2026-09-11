@@ -16,18 +16,18 @@ import {
 
 function recordsEmptyDetail(game: string, gameName: string) {
   if (game === 'snake') {
-    return 'Reach length milestones in-game and times will show up here.'
+    return 'Reach length milestones in-game and times will show up here. Daily play and strong-score streaks count too.'
   }
   if (game === 'asteroids') {
-    return 'Clear a wave in-game and the board will show up here.'
+    return 'Clear a wave in-game and the board will show up here. Daily play and strong-score streaks count too.'
   }
   if (game === 'patriot') {
-    return 'Land consecutive perfect hits in-game and the board will show up here.'
+    return 'Land consecutive perfect hits in-game and the board will show up here. Daily play and strong-score streaks count too.'
   }
   if (game === 'stacker') {
-    return 'Stack perfect drops in a row in-game and the board will show up here.'
+    return 'Stack perfect drops in a row in-game and the board will show up here. Daily play and strong-score streaks count too.'
   }
-  return `Set a record in ${gameName} to populate this page.`
+  return `Play ${gameName} on consecutive days or string together strong scores to fill this book.`
 }
 
 type GameRecordsPanelProps = {

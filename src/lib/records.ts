@@ -196,6 +196,23 @@ export const PATRIOT_DIRECT_STREAK_ID = 'direct-streak'
 export const STRIDE_MOST_COINS_ID = 'most-coins'
 export const POP_CENTER_STREAK_ID = 'center-streak'
 export const STACKER_PERFECT_STREAK_ID = 'perfect-streak'
+export const PLAY_DAYS_STREAK_ID = 'play-days-streak'
+export const THRESHOLD_STREAK_ID = 'threshold-streak'
+
+/** Mirrors API SCORE_STREAK_THRESHOLDS for labels / docs. */
+export const SCORE_STREAK_THRESHOLDS: Record<string, number> = {
+  asteroids: 1000,
+  patriot: 1000,
+  snake: 50,
+  stride: 40,
+  stacker: 15,
+  centroid: 6000,
+  pop: 300,
+  simon: 10,
+  crosswalk: 800,
+  spotter: 955_000,
+  pellets: 2000,
+}
 
 export type RecordSubmitOutcome = {
   improved: boolean
@@ -539,6 +556,11 @@ export const GAMES_WITH_RECORDS = [
   'stride',
   'pop',
   'stacker',
+  'centroid',
+  'simon',
+  'crosswalk',
+  'spotter',
+  'pellets',
 ] as const
 export type RecordGame = (typeof GAMES_WITH_RECORDS)[number]
 

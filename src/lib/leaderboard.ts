@@ -565,6 +565,14 @@ export async function addLeaderboardScore(
   ranks?: Partial<Record<LeaderboardPeriod, number>>
   previousBestRanks?: Partial<Record<LeaderboardPeriod, number>>
   bestRanks?: Partial<Record<LeaderboardPeriod, number>>
+  streakRecords?: {
+    recordId: string
+    label: string
+    value: number
+    improved: boolean
+    rank: number | null
+    totalEntries: number
+  }[]
 }> {
   const cleaned = normalizePlayerName(name) || 'PLAYER'
   const token = getClaimToken(cleaned)
@@ -574,6 +582,14 @@ export async function addLeaderboardScore(
     ranks?: Partial<Record<LeaderboardPeriod, number>>
     previousBestRanks?: Partial<Record<LeaderboardPeriod, number>>
     bestRanks?: Partial<Record<LeaderboardPeriod, number>>
+    streakRecords?: {
+      recordId: string
+      label: string
+      value: number
+      improved: boolean
+      rank: number | null
+      totalEntries: number
+    }[]
     name?: string
     token?: string
   }>(`/leaderboards/${slug}`, {
@@ -596,5 +612,6 @@ export async function addLeaderboardScore(
     ranks: data.ranks,
     previousBestRanks: data.previousBestRanks,
     bestRanks: data.bestRanks,
+    streakRecords: data.streakRecords,
   }
 }
