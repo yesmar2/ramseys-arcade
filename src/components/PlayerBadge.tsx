@@ -11,11 +11,7 @@ import {
   setLocalAvatarId,
   type AvatarId,
 } from '../lib/avatars'
-import {
-  linkCurrentNameToAccount,
-  logoutAccount,
-  requestMagicLink,
-} from '../lib/auth'
+import { linkCurrentNameToAccount, logoutAccount } from '../lib/auth'
 import {
   ApiError,
   PLAYER_NAME_MAX,
@@ -43,6 +39,50 @@ type PlayerBadgeProps = {
 
 export type PlayerBadgeHandle = {
   openEdit: () => void
+  openTagEdit: () => void
+}
+
+function EditIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path
+        d="M4.5 16.5 15.8 5.2a1.8 1.8 0 0 1 2.5 0l.5.5a1.8 1.8 0 0 1 0 2.5L7.5 19.5 3.8 20.2z"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M13.8 6.8 17.2 10.2"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+      />
+    </svg>
+  )
+}
+
+function LogoutIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path
+        d="M10 4.5H6.8A2.3 2.3 0 0 0 4.5 6.8v10.4A2.3 2.3 0 0 0 6.8 19.5H10"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+      />
+      <path
+        d="M14 12H20.5M17.5 8.5 21 12l-3.5 3.5"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
 }
 
 export const PlayerBadge = forwardRef<PlayerBadgeHandle, PlayerBadgeProps>(
@@ -58,12 +98,10 @@ export const PlayerBadge = forwardRef<PlayerBadgeHandle, PlayerBadgeProps>(
   ) {
     const name = usePlayerName()
     const impersonation = useImpersonation()
-    const { account, signedIn } = useAuth()
+    const { signedIn } = useAuth()
     const [editing, setEditing] = useState(false)
     const [editingTag, setEditingTag] = useState(false)
     const [draft, setDraft] = useState(name || '')
-    const [emailDraft, setEmailDraft] = useState('')
-    const [showEmailSignIn, setShowEmailSignIn] = useState(false)
     const [busy, setBusy] = useState(false)
     const [authBusy, setAuthBusy] = useState(false)
     const [avatarBusy, setAvatarBusy] = useState(false)
@@ -72,7 +110,6 @@ export const PlayerBadge = forwardRef<PlayerBadgeHandle, PlayerBadgeProps>(
     )
     const [error, setError] = useState<string | null>(null)
     const [authNote, setAuthNote] = useState<string | null>(null)
-    const [devVerifyUrl, setDevVerifyUrl] = useState<string | null>(null)
     const [theme, setTheme] = useState<Theme>(() =>
       typeof document === 'undefined' ? 'light' : currentTheme(),
     )
@@ -111,23 +148,25 @@ export const PlayerBadge = forwardRef<PlayerBadgeHandle, PlayerBadgeProps>(
       if (normalizePlayerName(name)) setEditingTag(false)
     }, [name])
 
-    const startEdit = () => {
-      setDraft(name || '')
-      setError(null)
-      setAuthNote(null)
-      setDevVerifyUrl(null)
-      setShowEmailSignIn(false)
-      setEditing(true)
-      if (signedIn && !normalizePlayerName(name)) setEditingTag(true)
-    }
-
     const startTagEdit = () => {
       setDraft(name || '')
       setError(null)
       setEditingTag(true)
+      if (!embedded) setEditing(true)
     }
 
-    useImperativeHandle(ref, () => ({ openEdit: startEdit }))
+    const startEdit = () => {
+      setDraft(name || '')
+      setError(null)
+      setAuthNote(null)
+      setEditing(true)
+      if (signedIn && !normalizePlayerName(name)) setEditingTag(true)
+    }
+
+    useImperativeHandle(ref, () => ({
+      openEdit: startEdit,
+      openTagEdit: startTagEdit,
+    }))
 
     const save = async () => {
       if (impersonation) {
@@ -157,29 +196,12 @@ export const PlayerBadge = forwardRef<PlayerBadgeHandle, PlayerBadgeProps>(
       }
     }
 
-    const sendMagicLink = async () => {
-      const email = emailDraft.trim()
-      if (!email || authBusy) return
-      setAuthBusy(true)
-      setAuthNote(null)
-      setDevVerifyUrl(null)
-      setError(null)
-      try {
-        const result = await requestMagicLink(email)
-        setAuthNote(`Check ${result.email} for a sign-in link.`)
-        if (result.verifyUrl) setDevVerifyUrl(result.verifyUrl)
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Could not send link')
-      } finally {
-        setAuthBusy(false)
-      }
-    }
-
     const signOut = async () => {
       setAuthBusy(true)
       try {
         await logoutAccount()
-        setAuthNote('Signed out on this device.')
+        setAuthNote(null)
+        if (!embedded) setEditing(false)
       } finally {
         setAuthBusy(false)
       }
@@ -190,8 +212,6 @@ export const PlayerBadge = forwardRef<PlayerBadgeHandle, PlayerBadgeProps>(
       setDraft(name || '')
       setError(null)
       setAuthNote(null)
-      setDevVerifyUrl(null)
-      setShowEmailSignIn(false)
       setEditingTag(false)
       if (!embedded) setEditing(false)
     }
@@ -249,6 +269,8 @@ export const PlayerBadge = forwardRef<PlayerBadgeHandle, PlayerBadgeProps>(
 
     const displayName = normalizePlayerName(name)
     const showTagForm = !displayName || editingTag
+    /* Drawer heading already shows the tag — only expand the form when editing / first set. */
+    const showTagChrome = !embedded || showTagForm
     const triggerClass = icon
       ? `player-badge player-badge--icon${signedIn ? ' player-badge--account' : ' player-badge--signin'}${displayName ? ' player-badge--named' : ''}`
       : `player-badge${compact ? ' player-badge--compact' : ''}${displayName ? '' : ' player-badge--empty'}`
@@ -264,37 +286,26 @@ export const PlayerBadge = forwardRef<PlayerBadgeHandle, PlayerBadgeProps>(
           : 'Set gamer tag'
         : 'Sign in'
 
-    const gamerTagSection = (
+    const gamerTagSection = showTagChrome ? (
       <>
-        <div className="player-badge__tag-head">
+        {!embedded ? (
+          <div className="player-badge__tag-head">
+            <p className="player-badge__panel-title">Gamer tag</p>
+            {displayName && !showTagForm && !impersonation ? (
+              <button
+                type="button"
+                className="player-badge__icon-btn"
+                aria-label="Edit gamer tag"
+                title="Edit gamer tag"
+                onClick={startTagEdit}
+              >
+                <EditIcon />
+              </button>
+            ) : null}
+          </div>
+        ) : !displayName ? (
           <p className="player-badge__panel-title">Gamer tag</p>
-          {displayName && !showTagForm && !impersonation ? (
-            <button
-              type="button"
-              className="player-badge__edit"
-              aria-label="Edit gamer tag"
-              title="Edit gamer tag"
-              onClick={startTagEdit}
-            >
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path
-                  d="M4.5 16.5 15.8 5.2a1.8 1.8 0 0 1 2.5 0l.5.5a1.8 1.8 0 0 1 0 2.5L7.5 19.5 3.8 20.2z"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.7"
-                  strokeLinejoin="round"
-                />
-                <path
-                  d="M13.8 6.8 17.2 10.2"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.7"
-                  strokeLinecap="round"
-                />
-              </svg>
-            </button>
-          ) : null}
-        </div>
+        ) : null}
         {impersonation ? (
           <p className="player-badge__impersonate">
             Acting as {impersonation.name} for testing. Your tag stays{' '}
@@ -307,9 +318,9 @@ export const PlayerBadge = forwardRef<PlayerBadgeHandle, PlayerBadgeProps>(
           </p>
         ) : null}
 
-        {displayName && !showTagForm ? (
+        {displayName && !showTagForm && !embedded ? (
           <p className="player-badge__tag-value">{displayName}</p>
-        ) : (
+        ) : showTagForm ? (
           <label className="player-badge__field">
             <span className="player-badge__label">Tag</span>
             <input
@@ -330,7 +341,7 @@ export const PlayerBadge = forwardRef<PlayerBadgeHandle, PlayerBadgeProps>(
               }}
             />
           </label>
-        )}
+        ) : null}
 
         {AVATARS_ENABLED && (displayName || showTagForm) ? (
           <div className="player-badge__avatars">
@@ -399,98 +410,43 @@ export const PlayerBadge = forwardRef<PlayerBadgeHandle, PlayerBadgeProps>(
           </div>
         ) : null}
       </>
-    )
+    ) : error ? (
+      <p className="player-badge__error">{error}</p>
+    ) : null
 
-    const authSection = (
-      <div className={`player-badge__auth${signedIn ? '' : ' player-badge__auth--lead'}`}>
-        <p className="player-badge__panel-title player-badge__panel-title--sub">
-          {signedIn ? 'Account' : 'Sign in'}
+    const authSection = signedIn ? (
+      embedded ? null : (
+        <div className="player-badge__auth player-badge__auth--compact">
+          <button
+            type="button"
+            className="player-badge__icon-btn"
+            aria-label="Sign out"
+            title="Sign out"
+            disabled={authBusy}
+            onClick={() => void signOut()}
+          >
+            <LogoutIcon />
+          </button>
+        </div>
+      )
+    ) : (
+      <div className="player-badge__auth player-badge__auth--lead">
+        <p className="player-badge__panel-title player-badge__panel-title--sub">Sign in</p>
+        <p className="player-badge__panel-blurb">
+          Sign in to save scores and keep your gamer tag across devices.
         </p>
-        {!signedIn ? (
-          <p className="player-badge__panel-blurb">
-            Sign in to save scores and keep your gamer tag across devices.
-          </p>
-        ) : null}
-        {signedIn && account ? (
-          <>
-            <p className="player-badge__auth-email">{account.email}</p>
-            <button
-              type="button"
-              className="player-badge__btn player-badge__btn--ghost"
-              disabled={authBusy}
-              onClick={() => void signOut()}
-            >
-              {authBusy ? 'Working…' : 'Sign out'}
-            </button>
-          </>
-        ) : (
-          <>
-            <GoogleSignInButton
-              disabled={authBusy}
-              onBusy={setAuthBusy}
-              onError={(message) => setError(message)}
-              onSignedIn={() => {
-                setAuthNote('Signed in.')
-                setError(null)
-                if (!embedded) setEditing(false)
-              }}
-            />
-            {!showEmailSignIn ? (
-              <button
-                type="button"
-                className="player-badge__btn player-badge__btn--ghost"
-                disabled={authBusy}
-                onClick={() => setShowEmailSignIn(true)}
-              >
-                Sign in with email
-              </button>
-            ) : (
-              <>
-                <label className="player-badge__field">
-                  <span className="player-badge__label">Email</span>
-                  <input
-                    className="player-badge__input player-badge__input--email"
-                    type="email"
-                    autoComplete="email"
-                    value={emailDraft}
-                    disabled={authBusy}
-                    placeholder="you@example.com"
-                    onChange={(e) => setEmailDraft(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault()
-                        void sendMagicLink()
-                      }
-                    }}
-                  />
-                </label>
-                <button
-                  type="button"
-                  className="player-badge__btn"
-                  disabled={authBusy || !emailDraft.trim()}
-                  onClick={() => void sendMagicLink()}
-                >
-                  {authBusy ? 'Sending…' : 'Email me a link'}
-                </button>
-              </>
-            )}
-          </>
-        )}
+        <GoogleSignInButton
+          disabled={authBusy}
+          onBusy={setAuthBusy}
+          onError={(message) => setError(message)}
+          onSignedIn={() => {
+            setAuthNote('Signed in.')
+            setError(null)
+            if (!embedded) setEditing(false)
+          }}
+        />
         {authNote && <p className="player-badge__auth-note">{authNote}</p>}
-        {devVerifyUrl && (
-          <p className="player-badge__auth-note">
-            Dev link:{' '}
-            <a
-              href={
-                devVerifyUrl.includes('#')
-                  ? devVerifyUrl.slice(devVerifyUrl.indexOf('#'))
-                  : devVerifyUrl
-              }
-            >
-              Open sign-in link
-            </a>
-          </p>
-        )}
+        {error && <p className="player-badge__error">{error}</p>}
       </div>
     )
 
@@ -506,9 +462,7 @@ export const PlayerBadge = forwardRef<PlayerBadgeHandle, PlayerBadgeProps>(
             }}
           >
             <span className="site-drawer__pref-label">Theme</span>
-            <span className="site-drawer__pref-value">
-              {themeLabel(theme)}
-            </span>
+            <span className="site-drawer__pref-value">{themeLabel(theme)}</span>
           </button>
           <SoundPackSelect variant="drawer" />
         </div>
@@ -525,20 +479,29 @@ export const PlayerBadge = forwardRef<PlayerBadgeHandle, PlayerBadgeProps>(
     ) : (
       <>
         {authSection}
-        {error && !authNote ? <p className="player-badge__error">{error}</p> : null}
         {showSettings ? settingsSection : null}
       </>
     )
 
     if (embedded) {
+      const hasBody =
+        (!signedIn && Boolean(authSection)) ||
+        Boolean(showTagForm) ||
+        Boolean(impersonation) ||
+        Boolean(error) ||
+        Boolean(showSettings) ||
+        (AVATARS_ENABLED && Boolean(displayName))
+
       return (
         <div
-          className={`player-badge-wrap player-badge-wrap--embedded${className ? ` ${className}` : ''}`}
+          className={`player-badge-wrap player-badge-wrap--embedded${hasBody ? '' : ' player-badge-wrap--embedded-empty'}${className ? ` ${className}` : ''}`}
           ref={rootRef}
         >
-          <div className="player-badge__panel player-badge__panel--embedded" role="group">
-            {panelBody}
-          </div>
+          {hasBody ? (
+            <div className="player-badge__panel player-badge__panel--embedded" role="group">
+              {panelBody}
+            </div>
+          ) : null}
         </div>
       )
     }
@@ -605,3 +568,5 @@ export const PlayerBadge = forwardRef<PlayerBadgeHandle, PlayerBadgeProps>(
     )
   },
 )
+
+export { EditIcon, LogoutIcon }

@@ -4,6 +4,7 @@ import { useAuth } from '../hooks/useAuth'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { rankHref, useHashRoute } from '../hooks/useHashRoute'
 import { APP_NAME_ACCENT, APP_NAME_LEAD } from '../lib/brand'
+import { logoutAccount } from '../lib/auth'
 import { useGlobalRank, useGlobalRankLoading } from '../lib/globalRank'
 import { currentTheme, THEME_EVENT, toggleTheme, themeLabel, type Theme } from '../lib/theme'
 import { normalizePlayerName } from '../lib/leaderboard'
@@ -11,7 +12,7 @@ import { useTrophySummary } from '../hooks/useTrophySummary'
 import { useImpersonation } from '../hooks/useImpersonation'
 import { DevImpersonateControl } from './DevImpersonateControl'
 import { PendingInvitesStrip } from './PendingInvitesStrip'
-import { PlayerBadge } from './PlayerBadge'
+import { EditIcon, LogoutIcon, PlayerBadge, type PlayerBadgeHandle } from './PlayerBadge'
 import { SiteGroupControl } from './SiteGroupControl'
 import { SitePeriodControl } from './SitePeriodControl'
 import { SoundPackSelect } from './SoundPackSelect'
@@ -42,6 +43,8 @@ export function SiteHeader() {
   const invitesRef = useRef<HTMLDivElement>(null)
   const drawerRef = useRef<HTMLDivElement>(null)
   const youBtnRef = useRef<HTMLButtonElement>(null)
+  const badgeRef = useRef<PlayerBadgeHandle>(null)
+  const [authBusy, setAuthBusy] = useState(false)
   const drawerTitleId = useId()
   const drawerId = 'site-account-drawer'
 
@@ -239,9 +242,22 @@ export function SiteHeader() {
               >
                 <div className="site-drawer__head">
                   <div className="site-drawer__identity">
-                    <h2 id={drawerTitleId} className="site-drawer__title">
-                      {signedIn ? playerName || 'Account' : 'Sign in'}
-                    </h2>
+                    <div className="site-drawer__title-row">
+                      <h2 id={drawerTitleId} className="site-drawer__title">
+                        {signedIn ? playerName || 'Account' : 'Sign in'}
+                      </h2>
+                      {signedIn && playerName ? (
+                        <button
+                          type="button"
+                          className="site-drawer__icon-btn"
+                          aria-label="Edit gamer tag"
+                          title="Edit gamer tag"
+                          onClick={() => badgeRef.current?.openTagEdit()}
+                        >
+                          <EditIcon />
+                        </button>
+                      ) : null}
+                    </div>
                     {signedIn && playerName ? (
                       <p className="site-drawer__identity-meta">
                         {rankLoading
@@ -272,18 +288,35 @@ export function SiteHeader() {
                       </a>
                     ) : null}
                   </div>
-                  <button
-                    type="button"
-                    className="site-drawer__close"
-                    aria-label="Close menu"
-                    onClick={() => setDrawerOpen(false)}
-                  >
-                    ✕
-                  </button>
+                  <div className="site-drawer__head-actions">
+                    {signedIn ? (
+                      <button
+                        type="button"
+                        className="site-drawer__icon-btn"
+                        aria-label="Sign out"
+                        title="Sign out"
+                        disabled={authBusy}
+                        onClick={() => {
+                          setAuthBusy(true)
+                          void logoutAccount().finally(() => setAuthBusy(false))
+                        }}
+                      >
+                        <LogoutIcon />
+                      </button>
+                    ) : null}
+                    <button
+                      type="button"
+                      className="site-drawer__close"
+                      aria-label="Close menu"
+                      onClick={() => setDrawerOpen(false)}
+                    >
+                      ✕
+                    </button>
+                  </div>
                 </div>
 
                 <section className="site-drawer__section" aria-label="Account">
-                  <PlayerBadge embedded showSettings={false} />
+                  <PlayerBadge ref={badgeRef} embedded showSettings={false} />
                 </section>
 
                 <div className="site-drawer__nav" aria-label="Primary">
