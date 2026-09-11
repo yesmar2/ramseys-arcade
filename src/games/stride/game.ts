@@ -119,11 +119,11 @@ export type GameState = {
  */
 export const COLS = 9
 /** Aim for about this many rows when picking column density. */
-export const TARGET_VISIBLE_ROWS = 7
+export const TARGET_VISIBLE_ROWS = 6
 /** Soft floor so ultra-tall phones still get chunky tiles. */
 export const MIN_COLS = 8
 /** Cap so a wide monitor can't open a runway of incoming cars. */
-export const MAX_COLS = 14
+export const MAX_COLS = 12
 /** Player sits this many rows from the bottom of the view once the camera is rolling. */
 export const PLAYER_VIEW_ROW = 2
 /** Die if you fall this many rows behind the camera. */

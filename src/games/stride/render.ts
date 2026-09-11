@@ -36,7 +36,8 @@ export function computeLayout(
   const { cell: widthCell, availH, hudTop } = cellMetrics(w, h, cols)
   // Tall phones would otherwise show a dozen+ tiny rows. Cap the row budget so
   // tiles grow (sides crop) and pan horizontally to keep the hopper in frame.
-  const maxRows = w < 560 ? 8 : w < 900 ? 9 : 10
+  // Desktop stays tight too — seeing too many lanes ahead makes traffic too readable.
+  const maxRows = w < 560 ? 8 : w < 900 ? 8 : 7
   const cell = availH / widthCell > maxRows ? availH / maxRows : widthCell
   const visibleRows = Math.max(5, Math.min(maxRows, Math.floor(availH / cell)))
   const gridW = cell * cols
@@ -558,8 +559,13 @@ function drawRow(
     ctx.fillRect(0, railY + cell * 0.26, w, cell * 0.08)
 
     if (cycle.phase === 'warn') {
-      drawCrossingLights(ctx, ox + cell * 0.35, y, cell, cycle.flash, dark)
-      drawCrossingLights(ctx, ox + gridW - cell * 0.35, y, cell, cycle.flash, dark)
+      // Keep signals in the canvas even when the playfield is wider than the
+      // viewport (mobile crop / desktop zoom) — posts used to sit off-screen.
+      const inset = Math.max(cell * 0.4, 10)
+      const leftX = Math.max(ox + cell * 0.35, inset)
+      const rightX = Math.min(ox + gridW - cell * 0.35, w - inset)
+      drawCrossingLights(ctx, leftX, y, cell, cycle.flash, dark)
+      drawCrossingLights(ctx, rightX, y, cell, cycle.flash, dark)
     }
 
     for (const v of row.vehicles) {
