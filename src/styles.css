@@ -2468,7 +2468,7 @@ a.lb-board-switcher__item {
   flex: none;
 }
 
-@media (min-width: 641px) {
+@media (min-width: 721px) {
   /* Flatten header so identity can sit after scopes/settings at the far right. */
   .site-header {
     display: contents;
@@ -2842,7 +2842,7 @@ a.site-drawer__period-tab {
   min-width: 0;
 }
 
-@media (max-width: 640px) {
+@media (max-width: 720px) {
   .site-header__links {
     display: none;
   }
