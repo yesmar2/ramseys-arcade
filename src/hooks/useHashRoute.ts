@@ -43,6 +43,7 @@ const GAME_SLUG_ALIASES: Record<string, string> = {
   'dead-center': 'centroid',
   whack: 'pop',
   'whack-a-mole': 'pop',
+  stride: 'crosswalk',
 }
 
 export function canonicalGameSlug(slug: string): string {

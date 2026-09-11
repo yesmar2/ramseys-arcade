@@ -25,17 +25,6 @@ const SCORING: Record<string, ScoreRow[]> = {
     { label: 'Seeker (4)', value: 'locks nearest missile, chains on hit' },
     { label: 'Violet missile', value: 'splits halfway' },
   ],
-  crosswalk: [
-    { label: 'New row forward', value: '+10' },
-    { label: 'Fill a bay', value: '+100' },
-    { label: 'Time left', value: '+5 per second' },
-    { label: 'Bay with a fly', value: '+200' },
-    { label: 'All five bays', value: '+500, rising each level' },
-    { label: 'Level cleared', value: '+1 life (max 5)' },
-    { label: 'Cars, water, timer', value: 'lose a life' },
-    { label: 'Turtles', value: 'dive from level 3' },
-    { label: 'Lives', value: '3' },
-  ],
   snake: [
     { label: 'Food', value: '+10' },
     { label: 'Crash', value: 'game over' },
@@ -58,7 +47,7 @@ const SCORING: Record<string, ScoreRow[]> = {
     { label: 'Time left (if close)', value: 'small bonus' },
     { label: 'Round', value: '10 shapes · 5s each' },
   ],
-  stride: [
+  crosswalk: [
     { label: 'Score', value: 'rows forward' },
     { label: 'Traffic', value: 'one hit ends the run' },
     { label: 'Fall behind', value: 'screen catches you' },

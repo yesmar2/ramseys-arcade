@@ -421,40 +421,22 @@ export function SimonArt() {
   )
 }
 
-/** Frogger / Crossy Road vibe — lanes, cars, a hopper. */
-/** Frogger vibe — bays up top, river in the middle, traffic below. */
+/** Endless hop — lanes, cars, a hopper. */
 export function CrosswalkArt() {
-  const hedge = pastel(HUE.green, 42, 42)
-  const bay = pastel(HUE.sky, 48, 30)
-  const water = pastel(HUE.sky, 54, 26)
-  const log = pastel(HUE.gold, 38, 46)
-  const road = pastel(HUE.sky, 18, 14)
-  const carA = pastel(HUE.rose, 58, 52)
-  const carB = pastel(HUE.violet, 58, 50)
-  const frog = pastel(HUE.green, 58, 55)
+  const grass = pastel(HUE.green, 54, 44)
+  const road = pastel(220, 20, 72)
+  const hopper = pastel(HUE.gold, 58, 52)
+  const car = pastel(HUE.rose, 56, 50)
+  const ground = 82
 
   return (
     <SvgFrame>
       <TileBg />
-      <rect x="18" y="14" width="124" height="12" rx="3" fill={hedge.fill} stroke={hedge.stroke} strokeWidth="1.2" />
-      {[25, 49, 72, 95, 119].map((x) => (
-        <rect key={x} x={x} y="16" width="16" height="8" rx="2.5" fill={bay.fill} stroke={bay.stroke} strokeWidth="1" />
-      ))}
-
-      <rect x="18" y="29" width="124" height="21" rx="3" fill={water.fill} stroke={water.stroke} strokeWidth="1.2" />
-      <rect x="26" y="31.5" width="44" height="7.5" rx="3.7" fill={log.fill} stroke={log.stroke} strokeWidth="1.2" />
-      <rect x="88" y="40" width="36" height="7.5" rx="3.7" fill={log.fill} stroke={log.stroke} strokeWidth="1.2" />
-
-      <rect x="18" y="53" width="124" height="21" rx="3" fill={road.fill} stroke={road.stroke} strokeWidth="1.2" />
-      {[28, 50, 72, 94, 116].map((x) => (
-        <rect key={`d-${x}`} x={x} y="62.5" width="9" height="2" rx="1" fill="rgba(var(--ink-rgb), 0.18)" />
-      ))}
-      <rect x="28" y="55.5" width="22" height="8" rx="2.5" fill={carA.fill} stroke={carA.stroke} strokeWidth="1.2" />
-      <rect x="92" y="64" width="24" height="8" rx="2.5" fill={carB.fill} stroke={carB.stroke} strokeWidth="1.2" />
-
-      <ellipse cx="80" cy="84" rx="8" ry="6.2" fill={frog.fill} stroke={frog.stroke} strokeWidth="1.5" />
-      <circle cx="77" cy="82.4" r="1.3" fill="#1a2b3c" />
-      <circle cx="83" cy="82.4" r="1.3" fill="#1a2b3c" />
+      <rect x="20" y="28" width="120" height="22" rx="4" fill={grass.fill} stroke={grass.stroke} strokeWidth="1.4" />
+      <rect x="20" y="52" width="120" height="22" rx="4" fill={road.fill} stroke={road.stroke} strokeWidth="1.4" />
+      <rect x="34" y="58" width="28" height="12" rx="3" fill={car.fill} stroke={car.stroke} strokeWidth="1.3" />
+      <rect x="88" y="58" width="34" height="12" rx="3" fill={car.fill} stroke={car.stroke} strokeWidth="1.3" />
+      <ellipse cx="80" cy={ground} rx="9" ry="7.5" fill={hopper.fill} stroke={hopper.stroke} strokeWidth="1.6" />
     </SvgFrame>
   )
 }
@@ -582,25 +564,6 @@ export function SpotterArt() {
   )
 }
 
-export function StrideArt() {
-  const grass = pastel(HUE.green, 54, 44)
-  const road = pastel(220, 20, 72)
-  const hopper = pastel(HUE.gold, 58, 52)
-  const car = pastel(HUE.rose, 56, 50)
-  const ground = 82
-
-  return (
-    <SvgFrame>
-      <TileBg />
-      <rect x="20" y="28" width="120" height="22" rx="4" fill={grass.fill} stroke={grass.stroke} strokeWidth="1.4" />
-      <rect x="20" y="52" width="120" height="22" rx="4" fill={road.fill} stroke={road.stroke} strokeWidth="1.4" />
-      <rect x="34" y="58" width="28" height="12" rx="3" fill={car.fill} stroke={car.stroke} strokeWidth="1.3" />
-      <rect x="88" y="58" width="34" height="12" rx="3" fill={car.fill} stroke={car.stroke} strokeWidth="1.3" />
-      <ellipse cx="80" cy={ground} rx="9" ry="7.5" fill={hopper.fill} stroke={hopper.stroke} strokeWidth="1.6" />
-    </SvgFrame>
-  )
-}
-
 const artBySlug: Record<string, () => JSX.Element> = {
   stacker: StackerArt,
   patriot: PatriotArt,
@@ -610,7 +573,6 @@ const artBySlug: Record<string, () => JSX.Element> = {
   asteroids: AsteroidsArt,
   simon: SimonArt,
   crosswalk: CrosswalkArt,
-  stride: StrideArt,
   spotter: SpotterArt,
   pellets: PelletsArt,
   barrage: BarrageArt,

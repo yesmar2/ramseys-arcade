@@ -63,14 +63,13 @@ const GOOGLE_BY_SLUG: Record<string, string> = {
   asteroids: GOOGLE_GREEN,
   patriot: GOOGLE_RED,
   snake: GOOGLE_GREEN,
-  stride: GOOGLE_YELLOW,
+  crosswalk: GOOGLE_YELLOW,
   stacker: GOOGLE_BLUE,
   centroid: GOOGLE_BLUE,
   pop: GOOGLE_BLUE,
   simon: GOOGLE_RED,
   pellets: GOOGLE_YELLOW,
   barrage: GOOGLE_RED,
-  crosswalk: GOOGLE_GREEN,
   spotter: GOOGLE_BLUE,
 }
 

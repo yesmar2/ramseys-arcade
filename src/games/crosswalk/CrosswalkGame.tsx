@@ -1,44 +1,104 @@
-import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { AdminWaveSkip } from '../../components/AdminWaveSkip'
-import { GamePlayChrome, PlayReadout, PlayReadoutCenter, PlayReadoutScore } from '../../components/GameHud'
-import { GameStage } from '../../components/GameStage'
+import {
+  GamePlayChrome,
+  PlayReadout,
+  PlayReadoutCenter,
+  PlayReadoutScore,
+} from '../../components/GameHud'
 import { GameStartCard } from '../../components/GameStartCard'
 import { PauseButton, GamePauseOverlay } from '../../components/PauseControls'
 import { ScoreSaveCard } from '../../components/ScoreSaveCard'
 import { TournamentScoreCard } from '../../components/TournamentScoreCard'
 import { useGamePause } from '../../hooks/useGamePause'
 import { usePersonalBest } from '../../hooks/usePersonalBest'
+import { usePlayerName } from '../../hooks/usePlayerName'
 import { getPersonalBest } from '../../lib/personalBest'
+import { normalizePlayerName } from '../../lib/leaderboard'
+import {
+  clearRunAchievements,
+  pushRunAchievement,
+} from '../../lib/runAchievements'
+import {
+  formatRecordMs,
+  CROSSWALK_ROW_MILESTONE_MAX,
+  CROSSWALK_ROW_MILESTONE_MIN,
+  CROSSWALK_ROW_MILESTONE_STEP,
+  submitCrosswalkFastestRow,
+  submitCrosswalkMostCoins,
+  shouldCelebrateRecordSubmit,
+} from '../../lib/records'
 import { useTournamentPlay } from '../../tournaments/TournamentPlayContext'
 import {
   createInitialState,
   hop,
-  jumpToLevel,
+  jumpToRow,
+  pickCols,
   startGame,
   tick,
   toSnapshot,
+  type DeathCause,
   type Dir,
   type GameState,
   type Snapshot,
 } from './game'
 import { renderGame } from './render'
 
+const DEATH_COPY: Record<DeathCause, string> = {
+  car: 'Flattened by traffic',
+  train: 'The train got you',
+  water: 'Fell in the water',
+  edge: 'Swept off the edge',
+  hawk: 'Snatched by the hawk',
+}
+
 export function CrosswalkGame() {
   const tournament = useTournamentPlay()
   const apiBest = usePersonalBest('crosswalk')
-  const stateRef = useRef<GameState>(createInitialState())
+  const playerName = normalizePlayerName(usePlayerName())
+  const stageRef = useRef<HTMLDivElement>(null)
+  const stateRef = useRef<GameState | null>(null)
+  if (!stateRef.current) {
+    stateRef.current = createInitialState()
+  }
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const [ui, setUi] = useState<Snapshot>(() => toSnapshot(stateRef.current))
+  const [ui, setUi] = useState<Snapshot>(() => toSnapshot(stateRef.current!))
   const [saveOpen, setSaveOpen] = useState(false)
   const offeredScore = useRef<number | null>(null)
   const previousBestRef = useRef(getPersonalBest('crosswalk'))
   const swipeRef = useRef<{ x: number; y: number } | null>(null)
   const hoppedThisSwipe = useRef(false)
   const startGrace = useRef(0)
+  const runStartRef = useRef<number | null>(null)
+  const milestonesRef = useRef<Set<number>>(new Set())
+  const coinsRecordedRef = useRef(false)
   const pausable = ui.phase === 'playing' && !saveOpen
   const { paused, toggle: togglePause, resume } = useGamePause(pausable)
   const pausedRef = useRef(false)
   pausedRef.current = paused
+
+  useLayoutEffect(() => {
+    // Column count is baked into lane wrap maths, so only re-fit between runs.
+    const fit = () => {
+      const stage = stageRef.current
+      const w = stage?.clientWidth ?? window.innerWidth
+      const h = stage?.clientHeight ?? window.innerHeight
+      if (w <= 0 || h <= 0) return
+      const cols = pickCols(w, h)
+      const state = stateRef.current
+      if (state && state.cols !== cols && state.phase === 'menu') {
+        stateRef.current = createInitialState(cols)
+        setUi(toSnapshot(stateRef.current))
+      }
+    }
+    fit()
+    window.addEventListener('resize', fit)
+    window.addEventListener('orientationchange', fit)
+    return () => {
+      window.removeEventListener('resize', fit)
+      window.removeEventListener('orientationchange', fit)
+    }
+  }, [])
 
   useEffect(() => {
     let raf = 0
@@ -50,12 +110,12 @@ export function CrosswalkGame() {
       last = now
 
       if (!pausedRef.current) {
-        stateRef.current = tick(stateRef.current, dt)
+        stateRef.current = tick(stateRef.current!, dt)
       }
       uiAcc += dt
       if (uiAcc > 0.08) {
         uiAcc = 0
-        const snap = toSnapshot(stateRef.current)
+        const snap = toSnapshot(stateRef.current!)
         setUi(snap)
         if (snap.phase === 'gameover' && offeredScore.current !== snap.score) {
           offeredScore.current = snap.score
@@ -69,8 +129,16 @@ export function CrosswalkGame() {
         const w = parent?.clientWidth || 0
         const h = parent?.clientHeight || 0
         if (w > 0 && h > 0) {
+          const dpr = Math.min(2, window.devicePixelRatio || 1)
+          canvas.width = Math.floor(w * dpr)
+          canvas.height = Math.floor(h * dpr)
+          canvas.style.width = `${w}px`
+          canvas.style.height = `${h}px`
           const ctx = canvas.getContext('2d')
-          if (ctx) renderGame(ctx, stateRef.current, w, h)
+          if (ctx) {
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+            renderGame(ctx, stateRef.current!, w, h)
+          }
         }
       }
 
@@ -85,21 +153,71 @@ export function CrosswalkGame() {
     if (ui.phase === 'menu') previousBestRef.current = apiBest
   }, [apiBest, ui.phase])
 
+  useEffect(() => {
+    if (ui.phase !== 'playing' || tournament || !playerName) return
+    if (runStartRef.current == null) return
+    const elapsedMs = performance.now() - runStartRef.current
+    if (!(elapsedMs > 0)) return
+
+    for (
+      let milestone = CROSSWALK_ROW_MILESTONE_MIN;
+      milestone <= CROSSWALK_ROW_MILESTONE_MAX;
+      milestone += CROSSWALK_ROW_MILESTONE_STEP
+    ) {
+      if (ui.score < milestone || milestonesRef.current.has(milestone)) continue
+      milestonesRef.current.add(milestone)
+      void (async () => {
+        const result = await submitCrosswalkFastestRow(milestone, elapsedMs, playerName)
+        if (shouldCelebrateRecordSubmit(result)) {
+          pushRunAchievement({
+            id: `crosswalk:fastest-row-${milestone}`,
+            label: `Fastest to ${milestone}`,
+            value: formatRecordMs(Math.max(1, Math.round(elapsedMs))),
+            rank: result.rank,
+          })
+        }
+      })()
+    }
+  }, [ui.phase, ui.score, playerName, tournament])
+
+  useEffect(() => {
+    if (tournament || !playerName) return
+    if (ui.phase !== 'dying' && ui.phase !== 'gameover') return
+    if (coinsRecordedRef.current || ui.runCoins < 1) return
+    coinsRecordedRef.current = true
+    const coins = ui.runCoins
+    void (async () => {
+      const result = await submitCrosswalkMostCoins(coins, playerName)
+      if (shouldCelebrateRecordSubmit(result)) {
+        pushRunAchievement({
+          id: 'crosswalk:most-coins',
+          label: 'Most coins in a run',
+          value: String(coins),
+          rank: result.rank,
+        })
+      }
+    })()
+  }, [ui.phase, ui.runCoins, playerName, tournament])
+
   const restart = () => {
     setSaveOpen(false)
     offeredScore.current = null
-    stateRef.current = startGame(stateRef.current)
+    clearRunAchievements()
+    stateRef.current = startGame(stateRef.current!)
     previousBestRef.current = getPersonalBest('crosswalk')
     startGrace.current = performance.now() + 220
+    runStartRef.current = performance.now()
+    milestonesRef.current = new Set()
+    coinsRecordedRef.current = false
     setUi(toSnapshot(stateRef.current))
   }
 
   const tryHop = (dir: Dir) => {
     if (saveOpen || pausedRef.current) return
-    const s = stateRef.current
+    const s = stateRef.current!
     if (s.phase === 'menu') {
       restart()
-      stateRef.current = hop(stateRef.current, dir)
+      stateRef.current = hop(stateRef.current!, dir)
       setUi(toSnapshot(stateRef.current))
       return
     }
@@ -129,7 +247,7 @@ export function CrosswalkGame() {
       }
       if (e.code === 'Space' || e.code === 'Enter') {
         e.preventDefault()
-        const s = stateRef.current
+        const s = stateRef.current!
         if (s.phase === 'menu' || s.phase === 'gameover') restart()
       }
     }
@@ -155,7 +273,7 @@ export function CrosswalkGame() {
     } catch {
       /* ignore */
     }
-    if (stateRef.current.phase === 'menu') {
+    if (stateRef.current?.phase === 'menu') {
       if (performance.now() < startGrace.current) return
       restart()
     }
@@ -175,16 +293,8 @@ export function CrosswalkGame() {
     const start = swipeRef.current
     swipeRef.current = null
     if (!start || hoppedThisSwipe.current || saveOpen || pausedRef.current) return
-    const dx = e.clientX - start.x
-    const dy = e.clientY - start.y
-    const dir = dirFromDelta(dx, dy)
+    const dir = dirFromDelta(e.clientX - start.x, e.clientY - start.y)
     tryHop(dir ?? 'up')
-  }
-
-  const padHop = (dir: Dir) => (e: ReactPointerEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    tryHop(dir)
   }
 
   return (
@@ -199,12 +309,12 @@ export function CrosswalkGame() {
             swipeRef.current = null
           }}
         >
-          <GameStage aspectWidth={11} aspectHeight={13}>
+          <div className="crosswalk__stage" ref={stageRef}>
             <canvas ref={canvasRef} className="crosswalk__viewport" />
 
             <GamePlayChrome
               slug="crosswalk"
-              inRun={() => stateRef.current.phase === 'playing'}
+              inRun={() => stateRef.current?.phase === 'playing'}
               paused={paused}
             >
               {(pausable || paused) ? (
@@ -220,22 +330,14 @@ export function CrosswalkGame() {
               </PlayReadoutScore>
               {ui.phase === 'playing' ? (
                 <PlayReadoutCenter
-                  label={`Level ${ui.level + 1}, ${ui.lives} ${ui.lives === 1 ? 'life' : 'lives'}`}
-                  urgent={ui.timeLow}
+                  urgent={ui.beatBest}
+                  label={ui.target > 0 ? 'Record and coins' : 'Coins this run'}
                 >
-                  <span className="crosswalk__level">L{ui.level + 1}</span>
-                  <span className="crosswalk__lives">
-                    {Array.from({ length: ui.lives }, (_, i) => (
-                      <svg
-                        key={i}
-                        className="play-readout__hopper"
-                        viewBox="0 0 16 14"
-                        aria-hidden="true"
-                      >
-                        <ellipse cx="8" cy="7.2" rx="6.2" ry="5.2" fill="currentColor" />
-                      </svg>
-                    ))}
-                  </span>
+                  {ui.beatBest
+                    ? `NEW BEST · ● ${ui.runCoins}`
+                    : ui.target > 0
+                      ? `BEST ${ui.target} · ● ${ui.runCoins}`
+                      : `● ${ui.runCoins}`}
                 </PlayReadoutCenter>
               ) : null}
             </PlayReadout>
@@ -246,35 +348,19 @@ export function CrosswalkGame() {
                 personalBest={ui.phase === 'playing' ? previousBestRef.current : apiBest}
                 paused={paused}
                 onResume={resume}
-                extraMeta={
-                  ui.phase === 'playing' ? (
-                    <>
-                      <div className="game-pause-meta__row">
-                        <span>Level</span>
-                        <strong>{ui.level + 1}</strong>
-                      </div>
-                      <div className="game-pause-meta__row">
-                        <span>Bays filled</span>
-                        <strong>{ui.homes} / {ui.bays.length}</strong>
-                      </div>
-                    </>
-                  ) : null
-                }
                 tools={
                   ui.phase === 'playing' ? (
                     <AdminWaveSkip
-                      unit="level"
-                      wave={ui.level + 1}
+                      unit="row"
+                      wave={Math.max(1, ui.score)}
                       onSkipNext={() => {
-                        stateRef.current = jumpToLevel(
-                          stateRef.current,
-                          stateRef.current.level + 2,
-                        )
+                        const current = Math.max(stateRef.current.row, stateRef.current.score)
+                        stateRef.current = jumpToRow(stateRef.current, current + 25)
                         setUi(toSnapshot(stateRef.current))
                         resume()
                       }}
-                      onJump={(level) => {
-                        stateRef.current = jumpToLevel(stateRef.current, level)
+                      onJump={(row) => {
+                        stateRef.current = jumpToRow(stateRef.current, row)
                         setUi(toSnapshot(stateRef.current))
                         resume()
                       }}
@@ -285,7 +371,7 @@ export function CrosswalkGame() {
               {ui.phase === 'menu' && !saveOpen && !paused && (
                 <GameStartCard
                   title="Crosswalk"
-                  tagline="Cross the traffic, ride the river, fill all five bays."
+                  tagline="Hop forever. Beat your distance."
                   slug="crosswalk"
                 />
               )}
@@ -301,60 +387,21 @@ export function CrosswalkGame() {
                   <ScoreSaveCard
                     gameSlug="crosswalk"
                     score={ui.score}
-                    title="Splat"
-                    subtitle={`Level ${ui.level + 1} · ${
-                      ui.homesTotal === 1 ? '1 bay' : `${ui.homesTotal} bays`
-                    } filled`}
+                    title="Run over"
+                    subtitle={
+                      ui.cause
+                        ? `${DEATH_COPY[ui.cause]} · ${ui.score} ${ui.score === 1 ? 'row' : 'rows'}${
+                            ui.runCoins > 0 ? ` · +${ui.runCoins} coins` : ''
+                          }`
+                        : `${ui.score} ${ui.score === 1 ? 'row' : 'rows'} forward`
+                    }
                     previousBest={Math.max(previousBestRef.current, apiBest)}
                     onDone={restart}
                   />
                 )
               )}
             </div>
-          </GameStage>
-        </div>
-
-        <div className="crosswalk__touch" aria-label="Hop">
-          <button
-            type="button"
-            className="crosswalk__btn crosswalk__btn--up"
-            aria-label="Hop up"
-            onPointerDown={padHop('up')}
-          >
-            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-              <path d="M12 5v14M5 12l7-7 7 7" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </button>
-          <button
-            type="button"
-            className="crosswalk__btn crosswalk__btn--left"
-            aria-label="Hop left"
-            onPointerDown={padHop('left')}
-          >
-            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-              <path d="M19 12H5M12 5l-7 7 7 7" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </button>
-          <button
-            type="button"
-            className="crosswalk__btn crosswalk__btn--down"
-            aria-label="Hop down"
-            onPointerDown={padHop('down')}
-          >
-            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-              <path d="M12 19V5M5 12l7 7 7-7" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </button>
-          <button
-            type="button"
-            className="crosswalk__btn crosswalk__btn--right"
-            aria-label="Hop right"
-            onPointerDown={padHop('right')}
-          >
-            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-              <path d="M5 12h14M12 5l7 7-7 7" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </button>
+          </div>
         </div>
       </div>
     </section>

@@ -5562,14 +5562,12 @@ html[data-theme='dark'] .patriot__power-mark {
   }
 
   .asteroids__hint--keys,
-  .snake__hint--keys,
-  .crosswalk__hint--keys {
+  .snake__hint--keys {
     display: none;
   }
 
   .asteroids__hint--touch,
-  .snake__hint--touch,
-  .crosswalk__hint--touch {
+  .snake__hint--touch {
     display: block;
   }
 
@@ -5756,6 +5754,13 @@ html[data-theme='dark'] .patriot__power-mark {
   touch-action: none;
 }
 
+.crosswalk__stage {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
 .crosswalk__viewport {
   position: absolute;
   inset: 0;
@@ -5765,157 +5770,6 @@ html[data-theme='dark'] .patriot__power-mark {
 }
 
 .crosswalk__overlay {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  pointer-events: none;
-  z-index: 9;
-}
-
-.crosswalk__lives {
-  display: flex;
-  align-items: center;
-  gap: 0.2rem;
-}
-
-.crosswalk__level {
-  padding: 0.12rem 0.45rem;
-  border-radius: 999px;
-  border: 1px solid rgba(var(--ink-rgb), 0.08);
-  background: rgba(var(--surface-rgb), 0.72);
-  font-size: 0.7em;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  color: var(--muted);
-}
-
-.crosswalk__touch {
-  display: none;
-  flex: 0 0 auto;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  grid-template-areas:
-    ". up ."
-    "left down right";
-  gap: 0.45rem;
-  padding: 0.45rem 0.7rem max(0.65rem, env(safe-area-inset-bottom));
-  background: color-mix(in srgb, var(--blob-mint) 45%, var(--surface));
-  border-top: 1px solid rgba(var(--ink-rgb), 0.06);
-}
-
-.crosswalk__btn {
-  min-height: 3.6rem;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  place-items: center;
-  border-radius: 1rem;
-  border: 1px solid rgba(var(--ink-rgb), 0.08);
-  background: rgba(var(--surface-rgb), 0.82);
-  box-shadow: var(--shadow-soft);
-  color: var(--ink);
-  cursor: pointer;
-  touch-action: manipulation;
-  -webkit-tap-highlight-color: transparent;
-  user-select: none;
-}
-
-.crosswalk__btn--up { grid-area: up; }
-.crosswalk__btn--left { grid-area: left; }
-.crosswalk__btn--down { grid-area: down; }
-.crosswalk__btn--right { grid-area: right; }
-
-.crosswalk__btn:active {
-  transform: scale(0.97);
-  background: rgba(var(--surface-rgb), 0.95);
-}
-
-.crosswalk__btn svg {
-  display: block;
-  width: 1.85rem;
-  height: 1.85rem;
-}
-
-.crosswalk--saving .crosswalk__touch {
-  visibility: hidden;
-  pointer-events: none;
-}
-
-@media (max-width: 900px), (pointer: coarse) {
-  .crosswalk__touch {
-    display: grid;
-  }
-}
-
-@media (orientation: landscape) and (max-height: 540px) {
-  .crosswalk__body {
-    flex-direction: row;
-  }
-
-  .crosswalk__touch {
-    width: 8.2rem;
-    grid-template-columns: 1fr 1fr;
-    grid-template-areas:
-      "up up"
-      "left right"
-      "down down";
-    padding: 0.4rem max(0.55rem, env(safe-area-inset-right)) 0.4rem 0.4rem;
-    border-top: 0;
-    border-left: 1px solid rgba(var(--ink-rgb), 0.06);
-    background: color-mix(in srgb, var(--blob-mint) 35%, transparent);
-    align-self: stretch;
-  }
-
-  .crosswalk__btn {
-    min-height: 0;
-  }
-}
-
-/* Stride */
-.stride--fullscreen {
-  position: absolute;
-  inset: 0;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  user-select: none;
-  overscroll-behavior: none;
-}
-
-.stride__body {
-  position: relative;
-  flex: 1;
-  min-width: 0;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-}
-
-.stride__play {
-  position: relative;
-  flex: 1;
-  min-width: 0;
-  min-height: 0;
-  touch-action: none;
-}
-
-.stride__stage {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-}
-
-.stride__viewport {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  display: block;
-}
-
-.stride__overlay {
   position: absolute;
   inset: 0;
   display: flex;

@@ -174,20 +174,6 @@ function DeadCenterThumb({ accent }: { accent?: string }) {
 }
 
 function CrosswalkThumb({ accent }: { accent?: string }) {
-  const body = accent ? accentPastel(accent, 52) : pastel(HUE.green, 58, 52)
-
-  return (
-    <>
-      <ellipse cx="16" cy="17.2" rx="8.2" ry="6.6" {...shape(body, 1.5)} />
-      <circle cx="13.2" cy="15.6" r="1.15" fill="#1a2b3c" />
-      <circle cx="18.8" cy="15.6" r="1.15" fill="#1a2b3c" />
-      <circle cx="13.5" cy="15.3" r="0.35" fill="#fff" />
-      <circle cx="19.1" cy="15.3" r="0.35" fill="#fff" />
-    </>
-  )
-}
-
-function StrideThumb({ accent }: { accent?: string }) {
   const a = accent ?? '#f5b942'
   const body = accentPastel(a, 52)
   return (
@@ -309,7 +295,6 @@ const thumbBySlug: Record<
   'centroid': DeadCenterThumb,
   simon: () => <SimonThumb />,
   crosswalk: CrosswalkThumb,
-  stride: StrideThumb,
   spotter: SpotterThumb,
   pellets: PelletsThumb,
 }

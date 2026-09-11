@@ -17,9 +17,9 @@ export const ASTEROIDS_WAVE_RECORD_MAX = 20
 export const SNAKE_LENGTH_MILESTONE_MIN = 20
 export const SNAKE_LENGTH_MILESTONE_MAX = 100
 export const SNAKE_LENGTH_MILESTONE_STEP = 10
-export const STRIDE_ROW_MILESTONE_MIN = 50
-export const STRIDE_ROW_MILESTONE_MAX = 200
-export const STRIDE_ROW_MILESTONE_STEP = 50
+export const CROSSWALK_ROW_MILESTONE_MIN = 50
+export const CROSSWALK_ROW_MILESTONE_MAX = 200
+export const CROSSWALK_ROW_MILESTONE_STEP = 50
 
 export type RecordDirection = 'lower' | 'higher'
 
@@ -132,27 +132,27 @@ export function parseSnakeLengthFromRecordId(recordId: string): number | null {
   return length
 }
 
-export function strideFastestRowRecordId(rows: number): string | null {
+export function crosswalkFastestRowRecordId(rows: number): string | null {
   if (
     !Number.isInteger(rows) ||
-    rows < STRIDE_ROW_MILESTONE_MIN ||
-    rows > STRIDE_ROW_MILESTONE_MAX ||
-    rows % STRIDE_ROW_MILESTONE_STEP !== 0
+    rows < CROSSWALK_ROW_MILESTONE_MIN ||
+    rows > CROSSWALK_ROW_MILESTONE_MAX ||
+    rows % CROSSWALK_ROW_MILESTONE_STEP !== 0
   ) {
     return null
   }
   return `fastest-row-${rows}`
 }
 
-export function parseStrideRowFromRecordId(recordId: string): number | null {
+export function parseCrosswalkRowFromRecordId(recordId: string): number | null {
   const match = /^fastest-row-(\d+)$/.exec(recordId)
   if (!match) return null
   const rows = Number(match[1])
   if (
     !Number.isInteger(rows) ||
-    rows < STRIDE_ROW_MILESTONE_MIN ||
-    rows > STRIDE_ROW_MILESTONE_MAX ||
-    rows % STRIDE_ROW_MILESTONE_STEP !== 0
+    rows < CROSSWALK_ROW_MILESTONE_MIN ||
+    rows > CROSSWALK_ROW_MILESTONE_MAX ||
+    rows % CROSSWALK_ROW_MILESTONE_STEP !== 0
   ) {
     return null
   }
@@ -162,15 +162,15 @@ export function parseStrideRowFromRecordId(recordId: string): number | null {
 export function recordNavShortLabel(row: { id: string; label: string }): string {
   if (row.id === ASTEROIDS_HIGHEST_COMBO_ID) return 'Combo'
   if (row.id === PATRIOT_DIRECT_STREAK_ID) return 'Direct'
-  if (row.id === STRIDE_MOST_COINS_ID) return 'Coins'
+  if (row.id === CROSSWALK_MOST_COINS_ID) return 'Coins'
   if (row.id === POP_CENTER_STREAK_ID) return 'Center'
   if (row.id === STACKER_PERFECT_STREAK_ID) return 'Perfect'
   const wave = parseAsteroidsWaveFromRecordId(row.id)
   if (wave != null) return `W${wave}`
   const length = parseSnakeLengthFromRecordId(row.id)
   if (length != null) return `L${length}`
-  const strideRow = parseStrideRowFromRecordId(row.id)
-  if (strideRow != null) return `${strideRow}`
+  const crosswalkRow = parseCrosswalkRowFromRecordId(row.id)
+  if (crosswalkRow != null) return `${crosswalkRow}`
   return row.label
 }
 
@@ -193,7 +193,7 @@ export function formatRecordScore(entryScore: number, unit: RecordDef['unit']): 
 
 export const ASTEROIDS_HIGHEST_COMBO_ID = 'highest-combo'
 export const PATRIOT_DIRECT_STREAK_ID = 'direct-streak'
-export const STRIDE_MOST_COINS_ID = 'most-coins'
+export const CROSSWALK_MOST_COINS_ID = 'most-coins'
 export const POP_CENTER_STREAK_ID = 'center-streak'
 export const STACKER_PERFECT_STREAK_ID = 'perfect-streak'
 export const PLAY_DAYS_STREAK_ID = 'play-days-streak'
@@ -204,12 +204,11 @@ export const SCORE_STREAK_THRESHOLDS: Record<string, number> = {
   asteroids: 1000,
   patriot: 1000,
   snake: 50,
-  stride: 40,
+  crosswalk: 40,
   stacker: 15,
   centroid: 6000,
   pop: 300,
   simon: 10,
-  crosswalk: 800,
   spotter: 955_000,
   pellets: 2000,
 }
@@ -481,17 +480,17 @@ export async function submitSnakeFastestLength(
 }
 
 /** Best-effort fastest-to-row submit (elapsed ms from run start). */
-export async function submitStrideFastestRow(
+export async function submitCrosswalkFastestRow(
   rows: number,
   elapsedMs: number,
   name: string,
 ): Promise<RecordSubmitOutcome | null> {
-  const recordId = strideFastestRowRecordId(rows)
+  const recordId = crosswalkFastestRowRecordId(rows)
   const cleaned = normalizePlayerName(name)
   if (!recordId || !cleaned || !(elapsedMs > 0)) return null
   const ms = Math.max(1, Math.round(elapsedMs))
   try {
-    const result = await submitRecord('stride', recordId, cleaned, ms)
+    const result = await submitRecord('crosswalk', recordId, cleaned, ms)
     return toRecordSubmitOutcome(result)
   } catch {
     return null
@@ -499,7 +498,7 @@ export async function submitStrideFastestRow(
 }
 
 /** Best-effort most-coins submit (run total). */
-export async function submitStrideMostCoins(
+export async function submitCrosswalkMostCoins(
   coins: number,
   name: string,
 ): Promise<RecordSubmitOutcome | null> {
@@ -507,7 +506,7 @@ export async function submitStrideMostCoins(
   const cleaned = normalizePlayerName(name)
   if (!cleaned || !(value >= 1)) return null
   try {
-    const result = await submitRecord('stride', STRIDE_MOST_COINS_ID, cleaned, value)
+    const result = await submitRecord('crosswalk', CROSSWALK_MOST_COINS_ID, cleaned, value)
     return toRecordSubmitOutcome(result)
   } catch {
     return null
@@ -553,12 +552,11 @@ export const GAMES_WITH_RECORDS = [
   'asteroids',
   'snake',
   'patriot',
-  'stride',
+  'crosswalk',
   'pop',
   'stacker',
   'centroid',
   'simon',
-  'crosswalk',
   'spotter',
   'pellets',
 ] as const

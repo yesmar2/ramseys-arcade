@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
 import { AsteroidsGame } from '../games/asteroids/AsteroidsGame'
-import { CrosswalkGame } from '../games/crosswalk/CrosswalkGame'
 import { DeadCenterGame } from '../games/dead-center/DeadCenterGame'
 import { PatriotGame } from '../games/patriot/PatriotGame'
 import { SimonGame } from '../games/simon/SimonGame'
@@ -261,7 +260,6 @@ export function TournamentPlayPage({
         {gameSlug === 'simon' && <SimonGame />}
         {gameSlug === 'centroid' && <DeadCenterGame />}
         {gameSlug === 'asteroids' && <AsteroidsGame />}
-        {gameSlug === 'crosswalk' && <CrosswalkGame />}
       </main>
     </TournamentPlayProvider>
   )

@@ -139,7 +139,7 @@ function realisticScore(slug: string, rank: number, rand: () => number): number 
     'centroid': [3200, 9800],
     asteroids: [800, 14000],
     simon: [6, 22],
-    crosswalk: [400, 4200],
+    crosswalk: [12, 420],
     spotter: [15, 90],
   }
   const [min, max] = bands[slug] ?? [100, 999]

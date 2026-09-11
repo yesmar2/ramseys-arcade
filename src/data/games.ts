@@ -45,8 +45,8 @@ export const games: Game[] = [
     playable: true,
   },
   {
-    name: 'Stride',
-    slug: 'stride',
+    name: 'Crosswalk',
+    slug: 'crosswalk',
     description: 'Hop forever. Beat your distance.',
     how: 'Swipe or tap to hop. Dodge traffic, ride the logs, hop the stones, and beat the train. Don’t linger — the hawk is watching. Score is how far you get, one point per row, and your record is marked on the road ahead.',
     accent: '#f5b942',
@@ -83,16 +83,6 @@ export const games: Game[] = [
     how: 'Watch the pads light up, then tap the same pattern. Each round adds a step.',
     accent: '#8a6ad4',
     playable: true,
-  },
-  {
-    name: 'Crosswalk',
-    slug: 'crosswalk',
-    description: 'Dodge traffic, ride the river, fill every bay.',
-    how: 'Hop up through the traffic, then ride logs and turtles across the river. Land in one of the five bays at the top; fill all five to clear the level. Water, cars, and the timer all cost a life.',
-    accent: '#3ecf8e',
-    playable: true,
-    inDevelopment: true,
-    hidden: true,
   },
   {
     name: 'Spotter',

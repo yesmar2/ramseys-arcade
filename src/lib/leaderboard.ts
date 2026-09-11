@@ -19,12 +19,11 @@ export const LEADERBOARD_GAMES = [
   'asteroids',
   'patriot',
   'snake',
-  'stride',
+  'crosswalk',
   'stacker',
   'centroid',
   'pop',
   'simon',
-  'crosswalk',
   'spotter',
   'pellets',
 ] as const
