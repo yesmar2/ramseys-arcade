@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { AdminWaveSkip } from '../../components/AdminWaveSkip'
 import { GamePlayChrome, PlayReadout, PlayReadoutScore } from '../../components/GameHud'
 import { GameStage } from '../../components/GameStage'
 import { GameStartCard } from '../../components/GameStartCard'
@@ -22,6 +23,7 @@ import { STAGE_ASPECT } from '../../lib/stage'
 import { useTournamentPlay } from '../../tournaments/TournamentPlayContext'
 import {
   createInitialState,
+  jumpToHeight,
   placeBlock,
   startGame,
   tick,
@@ -200,6 +202,27 @@ export function StackerGame() {
             personalBest={ui.status === 'playing' ? previousBestRef.current : apiBest}
             paused={paused}
             onResume={resume}
+            tools={
+              ui.status === 'playing' ? (
+                <AdminWaveSkip
+                  unit="height"
+                  wave={Math.max(1, ui.score)}
+                  onSkipNext={() => {
+                    stateRef.current = jumpToHeight(
+                      stateRef.current,
+                      stateRef.current.score + 5,
+                    )
+                    setUi(toSnapshot(stateRef.current))
+                    resume()
+                  }}
+                  onJump={(height) => {
+                    stateRef.current = jumpToHeight(stateRef.current, height)
+                    setUi(toSnapshot(stateRef.current))
+                    resume()
+                  }}
+                />
+              ) : null
+            }
           />
           {ui.status === 'menu' && !saveOpen && !paused && (
             <GameStartCard

@@ -334,6 +334,28 @@ function levelUp(state: GameState): GameState {
   }
 }
 
+/** Admin/testing: jump to a 1-based display level without score/life bonuses. */
+export function jumpToLevel(state: GameState, displayLevel: number): GameState {
+  if (state.phase !== 'playing') return state
+  const level = Math.max(0, Math.floor(displayLevel) - 1)
+  const limit = timeLimitFor(level)
+  return {
+    ...respawn(
+      {
+        ...state,
+        level,
+        lanes: makeLanes(state.cols, level),
+        bays: makeBays(),
+        timeLimit: limit,
+        flyTimer: 6 + Math.random() * 5,
+        flash: 0.15,
+        toast: { text: `Jump · Level ${level + 1}`, t: 1.2 },
+      },
+      0.7,
+    ),
+  }
+}
+
 function fillBay(state: GameState, index: number): GameState {
   const bay = state.bays[index]
   const seconds = Math.max(0, Math.floor(state.timeLeft))

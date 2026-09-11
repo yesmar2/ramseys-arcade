@@ -1,15 +1,42 @@
 import { useEffect, useState } from 'react'
 import { useIsAdmin } from '../lib/admin'
 
+export type AdminStageUnit = 'wave' | 'level' | 'row' | 'height' | 'length'
+
 type AdminWaveSkipProps = {
+  /** Current stage shown in the pause menu (1-based for wave/level/height/length). */
   wave: number
   onSkipNext: () => void
   onJump: (wave: number) => void
+  /** Label noun — defaults to wave for Asteroids/Patriot. */
+  unit?: AdminStageUnit
 }
 
-/** Pause-menu tools to jump waves while testing later rounds. */
-export function AdminWaveSkip({ wave, onSkipNext, onJump }: AdminWaveSkipProps) {
+const UNIT_LABEL: Record<AdminStageUnit, string> = {
+  wave: 'wave',
+  level: 'level',
+  row: 'row',
+  height: 'height',
+  length: 'length',
+}
+
+const NEXT_LABEL: Record<AdminStageUnit, string> = {
+  wave: 'Next wave',
+  level: 'Next level',
+  row: 'Skip +25',
+  height: '+5 height',
+  length: '+5 length',
+}
+
+/** Pause-menu tools to jump stages while testing later rounds (DEV / admin). */
+export function AdminWaveSkip({
+  wave,
+  onSkipNext,
+  onJump,
+  unit = 'wave',
+}: AdminWaveSkipProps) {
   const admin = useIsAdmin()
+  const noun = UNIT_LABEL[unit]
   const [draft, setDraft] = useState(String(Math.max(1, wave + 1)))
 
   useEffect(() => {
@@ -23,17 +50,15 @@ export function AdminWaveSkip({ wave, onSkipNext, onJump }: AdminWaveSkipProps) 
 
   return (
     <div className="admin-wave-skip">
-      <p className="admin-wave-skip__label">Admin · wave {wave}</p>
+      <p className="admin-wave-skip__label">
+        Admin · {noun} {wave}
+      </p>
       <div className="admin-wave-skip__row">
-        <button
-          type="button"
-          className="admin-wave-skip__btn"
-          onClick={onSkipNext}
-        >
-          Next wave
+        <button type="button" className="admin-wave-skip__btn" onClick={onSkipNext}>
+          {NEXT_LABEL[unit]}
         </button>
         <label className="admin-wave-skip__jump">
-          <span className="visually-hidden">Jump to wave</span>
+          <span className="visually-hidden">Jump to {noun}</span>
           <input
             type="number"
             min={1}

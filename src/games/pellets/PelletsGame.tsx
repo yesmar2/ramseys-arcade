@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import { AdminWaveSkip } from '../../components/AdminWaveSkip'
 import {
   GamePlayChrome,
   PlayReadout,
@@ -15,6 +16,7 @@ import { getPersonalBest } from '../../lib/personalBest'
 import { useTournamentPlay } from '../../tournaments/TournamentPlayContext'
 import {
   createInitialState,
+  jumpToLevel,
   pelletsViewport,
   queueDir,
   startGame,
@@ -292,6 +294,27 @@ export function PelletsGame() {
                 personalBest={ui.phase === 'playing' ? previousBestRef.current : apiBest}
                 paused={paused}
                 onResume={resume}
+                tools={
+                  ui.phase === 'playing' || ui.phase === 'clearing' || ui.phase === 'dying' ? (
+                    <AdminWaveSkip
+                      unit="level"
+                      wave={ui.level}
+                      onSkipNext={() => {
+                        stateRef.current = jumpToLevel(
+                          stateRef.current,
+                          stateRef.current.level + 1,
+                        )
+                        setUi(toSnapshot(stateRef.current))
+                        resume()
+                      }}
+                      onJump={(level) => {
+                        stateRef.current = jumpToLevel(stateRef.current, level)
+                        setUi(toSnapshot(stateRef.current))
+                        resume()
+                      }}
+                    />
+                  ) : null
+                }
               />
               {ui.phase === 'menu' && !saveOpen && !paused && (
                 <GameStartCard

@@ -261,6 +261,37 @@ export function startGame(prev: GameState): GameState {
   }
 }
 
+/** Admin/testing: grow to a target length without placing food. */
+export function jumpToLength(state: GameState, length: number): GameState {
+  if (state.phase !== 'playing' && state.phase !== 'menu') return state
+  const segments = Math.max(START_SEGMENTS, Math.floor(length) || START_SEGMENTS)
+  const head = { ...state.head }
+  const back = bodyLength(segments) + 2
+  const dir = state.dir
+  const tail =
+    dir === 'down'
+      ? { x: head.x, y: head.y - back }
+      : dir === 'up'
+        ? { x: head.x, y: head.y + back }
+        : dir === 'left'
+          ? { x: head.x + back, y: head.y }
+          : { x: head.x - back, y: head.y }
+  const next: GameState = {
+    ...state,
+    phase: 'playing',
+    head,
+    trail: [{ ...head }, tail],
+    segments,
+    score: Math.max(0, (segments - START_SEGMENTS) * SCORE_FOOD),
+    speed: Math.min(MAX_SPEED, START_SPEED + (segments - START_SEGMENTS) * SPEED_PER_FOOD),
+    pendingDir: null,
+    bufferedDir: null,
+    floaters: [],
+  }
+  next.food = randomFood(next)
+  return next
+}
+
 function canTurn(from: Dir, next: Dir) {
   return next !== from && next !== OPPOSITE[from]
 }

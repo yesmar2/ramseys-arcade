@@ -126,6 +126,49 @@ export function startGame(prev: GameState): GameState {
   }
 }
 
+/** Admin/testing: build a stack of the given height without awarding streak bonuses. */
+export function jumpToHeight(state: GameState, height: number): GameState {
+  if (state.phase !== 'playing') return state
+  const score = Math.max(0, Math.floor(height) || 0)
+  const stack: Slab[] = []
+  for (let i = 0; i <= score; i++) {
+    stack.push({
+      x: 0,
+      z: 0,
+      w: BASE_SIZE,
+      d: BASE_SIZE,
+      hue: hueFor(i),
+      perfect: i === 0,
+    })
+  }
+  const top = stack[stack.length - 1]!
+  const axis: Axis = score % 2 === 0 ? 'x' : 'z'
+  const startPos = -TRAVEL
+  return {
+    ...state,
+    score,
+    perfectStreak: 0,
+    speed: Math.min(3.2, 1.58 + score * 0.028),
+    axis,
+    stack,
+    moving: {
+      x: axis === 'x' ? startPos : top.x,
+      z: axis === 'z' ? startPos : top.z,
+      w: top.w,
+      d: top.d,
+      hue: hueFor(score + 1),
+      perfect: false,
+    },
+    movingPos: startPos,
+    direction: 1,
+    cameraY: score * 0.55,
+    falling: [],
+    floaters: [],
+    flash: 0.2,
+    shake: 0,
+  }
+}
+
 function expandPlatform(state: GameState): GameState {
   const top = state.stack[state.stack.length - 1]
   const grow = 10

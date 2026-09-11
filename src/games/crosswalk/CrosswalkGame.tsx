@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import { AdminWaveSkip } from '../../components/AdminWaveSkip'
 import { GamePlayChrome, PlayReadout, PlayReadoutCenter, PlayReadoutScore } from '../../components/GameHud'
 import { GameStage } from '../../components/GameStage'
 import { GameStartCard } from '../../components/GameStartCard'
@@ -12,6 +13,7 @@ import { useTournamentPlay } from '../../tournaments/TournamentPlayContext'
 import {
   createInitialState,
   hop,
+  jumpToLevel,
   startGame,
   tick,
   toSnapshot,
@@ -256,6 +258,27 @@ export function CrosswalkGame() {
                         <strong>{ui.homes} / {ui.bays.length}</strong>
                       </div>
                     </>
+                  ) : null
+                }
+                tools={
+                  ui.phase === 'playing' ? (
+                    <AdminWaveSkip
+                      unit="level"
+                      wave={ui.level + 1}
+                      onSkipNext={() => {
+                        stateRef.current = jumpToLevel(
+                          stateRef.current,
+                          stateRef.current.level + 2,
+                        )
+                        setUi(toSnapshot(stateRef.current))
+                        resume()
+                      }}
+                      onJump={(level) => {
+                        stateRef.current = jumpToLevel(stateRef.current, level)
+                        setUi(toSnapshot(stateRef.current))
+                        resume()
+                      }}
+                    />
                   ) : null
                 }
               />

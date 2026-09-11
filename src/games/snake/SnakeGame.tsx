@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import { AdminWaveSkip } from '../../components/AdminWaveSkip'
 import { GamePlayChrome, PlayReadout, PlayReadoutScore } from '../../components/GameHud'
 import { GameStage } from '../../components/GameStage'
 import { GameStartCard } from '../../components/GameStartCard'
@@ -25,6 +26,7 @@ import {
 import { useTournamentPlay } from '../../tournaments/TournamentPlayContext'
 import {
   createInitialState,
+  jumpToLength,
   queueDir,
   queueTurn,
   snakeLayout,
@@ -328,6 +330,27 @@ export function SnakeGame() {
               personalBest={ui.phase === 'playing' ? previousBestRef.current : apiBest}
               paused={paused}
               onResume={resume}
+              tools={
+                ui.phase === 'playing' ? (
+                  <AdminWaveSkip
+                    unit="length"
+                    wave={ui.length}
+                    onSkipNext={() => {
+                      stateRef.current = jumpToLength(
+                        stateRef.current,
+                        stateRef.current.segments + 5,
+                      )
+                      setUi(toSnapshot(stateRef.current))
+                      resume()
+                    }}
+                    onJump={(length) => {
+                      stateRef.current = jumpToLength(stateRef.current, length)
+                      setUi(toSnapshot(stateRef.current))
+                      resume()
+                    }}
+                  />
+                ) : null
+              }
             />
             {ui.phase === 'menu' && !saveOpen && !paused && (
               <GameStartCard

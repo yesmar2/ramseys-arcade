@@ -594,6 +594,7 @@ export function AsteroidsGame() {
               tools={
                 ui.phase === 'playing' || ui.phase === 'waveClear' ? (
                   <AdminWaveSkip
+                    unit="wave"
                     wave={ui.phase === 'waveClear' ? ui.lastWave : ui.wave}
                     onSkipNext={() => {
                       const current =

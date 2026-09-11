@@ -338,6 +338,7 @@ export function PatriotGame() {
               tools={
                 ui.phase === 'playing' || ui.phase === 'waveClear' ? (
                   <AdminWaveSkip
+                    unit="wave"
                     wave={ui.wave}
                     onSkipNext={() => {
                       const { w } = sizeRef.current

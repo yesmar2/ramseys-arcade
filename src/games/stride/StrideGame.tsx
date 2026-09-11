@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import { AdminWaveSkip } from '../../components/AdminWaveSkip'
 import {
   GamePlayChrome,
   PlayReadout,
@@ -31,6 +32,7 @@ import { useTournamentPlay } from '../../tournaments/TournamentPlayContext'
 import {
   createInitialState,
   hop,
+  jumpToRow,
   pickCols,
   startGame,
   tick,
@@ -346,6 +348,25 @@ export function StrideGame() {
                 personalBest={ui.phase === 'playing' ? previousBestRef.current : apiBest}
                 paused={paused}
                 onResume={resume}
+                tools={
+                  ui.phase === 'playing' ? (
+                    <AdminWaveSkip
+                      unit="row"
+                      wave={Math.max(1, ui.score)}
+                      onSkipNext={() => {
+                        const current = Math.max(stateRef.current.row, stateRef.current.score)
+                        stateRef.current = jumpToRow(stateRef.current, current + 25)
+                        setUi(toSnapshot(stateRef.current))
+                        resume()
+                      }}
+                      onJump={(row) => {
+                        stateRef.current = jumpToRow(stateRef.current, row)
+                        setUi(toSnapshot(stateRef.current))
+                        resume()
+                      }}
+                    />
+                  ) : null
+                }
               />
               {ui.phase === 'menu' && !saveOpen && !paused && (
                 <GameStartCard

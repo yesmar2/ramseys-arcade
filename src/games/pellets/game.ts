@@ -361,6 +361,24 @@ export function startGame(prev: GameState, _view?: { cols?: number; rows?: numbe
   return next
 }
 
+/** Admin/testing: jump straight into a level without clear bonuses. */
+export function jumpToLevel(state: GameState, level: number): GameState {
+  if (state.phase === 'menu' || state.phase === 'gameover') return state
+  const nextLevel = Math.max(1, Math.floor(level) || 1)
+  const maze = buildLevelMaze(nextLevel)
+  const next: GameState = {
+    ...state,
+    phase: 'playing',
+    level: nextLevel,
+    deathAnim: 0,
+    clearAnim: 0,
+    pops: [],
+  }
+  applyMaze(next, maze)
+  resetActors(next, maze)
+  return next
+}
+
 export function queueDir(state: GameState, dir: Dir): GameState {
   if (state.phase !== 'playing') return state
   return { ...state, player: { ...state.player, pending: dir, pendingAge: 0 } }

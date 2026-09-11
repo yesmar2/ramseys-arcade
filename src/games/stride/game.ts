@@ -250,7 +250,7 @@ export function pickCols(viewWidth: number, viewHeight: number): number {
   const cellTarget = availH / TARGET_VISIBLE_ROWS
   const ideal = Math.floor(viewWidth / cellTarget)
   const maxForWidth = viewWidth < 480 ? 9 : viewWidth < 720 ? 11 : MAX_COLS
-  const minForWidth = viewWidth < 480 ? MIN_COLS : viewWidth < 720 ? COLS : 11
+  const minForWidth = viewWidth < 480 ? MIN_COLS : viewWidth < 720 ? COLS : 10
   return Math.max(minForWidth, Math.min(maxForWidth, ideal))
 }
 
@@ -948,6 +948,52 @@ export function startGame(prev: GameState): GameState {
     phase: 'playing',
     invuln: RESPAWN_INVULN,
   }
+}
+
+/** Admin/testing: teleport forward to a row without awarding coins. */
+export function jumpToRow(state: GameState, row: number): GameState {
+  if (state.phase !== 'playing') return state
+  const target = Math.max(0, Math.floor(row) || 0)
+  const mid = Math.floor(state.cols / 2)
+  const next: GameState = {
+    ...state,
+    row: target,
+    col: mid,
+    score: Math.max(state.score, target),
+    hop: null,
+    hopCooldown: 0,
+    hopPulse: 0,
+    queued: null,
+    queuedAge: 0,
+    idleTimer: 0,
+    streak: 0,
+    streakTimer: 99,
+    cameraY: Math.max(0, target - PLAYER_VIEW_ROW),
+    rows: new Map(),
+    coinPops: [],
+    deathBits: [],
+    invuln: RESPAWN_INVULN,
+  }
+  ensureRows(
+    next,
+    Math.floor(next.cameraY) - BACK_LIMIT - 2,
+    Math.floor(next.cameraY) + ROW_BUFFER,
+  )
+  const rowData =
+    next.rows.get(target) ?? generateRow(target, next.cols, next.runSeed, next.rows)
+  if (!next.rows.has(target)) next.rows.set(target, rowData)
+  let col = mid
+  if (rowData.kind === 'grass' || rowData.kind === 'road' || rowData.kind === 'rail') {
+    for (let offset = 0; offset < next.cols; offset++) {
+      const c = (mid + offset) % next.cols
+      if (!treesBlock(c, rowData.trees)) {
+        col = c
+        break
+      }
+    }
+  }
+  next.col = col
+  return next
 }
 
 export function hop(state: GameState, dir: Dir): GameState {
