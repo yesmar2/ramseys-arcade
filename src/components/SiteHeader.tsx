@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { useAuth } from '../hooks/useAuth'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { rankHref, useHashRoute } from '../hooks/useHashRoute'
 import { APP_NAME_ACCENT, APP_NAME_LEAD } from '../lib/brand'
@@ -26,11 +27,12 @@ import {
 export function SiteHeader() {
   const route = useHashRoute()
   const hashKey = JSON.stringify(route)
+  const { signedIn } = useAuth()
   const { rank } = useGlobalRank()
   const rankLoading = useGlobalRankLoading()
   const playerName = normalizePlayerName(usePlayerName())
   const impersonation = useImpersonation()
-  const trophySummary = useTrophySummary(playerName)
+  const trophySummary = useTrophySummary(signedIn ? playerName : '')
   const { count: inviteCount } = usePendingInvites()
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [invitesOpen, setInvitesOpen] = useState(false)
@@ -99,20 +101,22 @@ export function SiteHeader() {
   const linkClass = (match: (typeof SITE_NAV_LINKS)[number]['match'], base: string) =>
     `${base}${navActive(match, hash) ? ` ${base}--active` : ''}`
 
-  const youTitle = playerName
-    ? impersonation
-      ? `Menu · Acting as ${playerName}`
-      : rankLoading
-        ? trophySummary.total > 0
-          ? `Menu · ${playerName} · Loading rank · ${trophySummary.total} trophies`
-          : `Menu · ${playerName} · Loading rank`
-        : rank != null
+  const youTitle = signedIn
+    ? playerName
+      ? impersonation
+        ? `Menu · Acting as ${playerName}`
+        : rankLoading
           ? trophySummary.total > 0
-            ? `Menu · ${playerName} · #${rank} · ${trophySummary.total} trophies`
-            : `Menu · ${playerName} · #${rank}`
-          : trophySummary.total > 0
-            ? `Menu · ${playerName} · No rank yet · ${trophySummary.total} trophies`
-            : `Menu · ${playerName} · No rank yet`
+            ? `Menu · ${playerName} · Loading rank · ${trophySummary.total} trophies`
+            : `Menu · ${playerName} · Loading rank`
+          : rank != null
+            ? trophySummary.total > 0
+              ? `Menu · ${playerName} · #${rank} · ${trophySummary.total} trophies`
+              : `Menu · ${playerName} · #${rank}`
+            : trophySummary.total > 0
+              ? `Menu · ${playerName} · No rank yet · ${trophySummary.total} trophies`
+              : `Menu · ${playerName} · No rank yet`
+      : 'Menu · Set gamer tag'
     : 'Menu · Sign in'
 
   return (
@@ -165,7 +169,7 @@ export function SiteHeader() {
           <button
             ref={youBtnRef}
             type="button"
-            className={`site-header__you${drawerOpen ? ' site-header__you--open' : ''}${!playerName ? ' site-header__you--empty' : ''}${impersonation ? ' site-header__you--impersonating' : ''}`}
+            className={`site-header__you${drawerOpen ? ' site-header__you--open' : ''}${!signedIn || !playerName ? ' site-header__you--empty' : ''}${impersonation ? ' site-header__you--impersonating' : ''}`}
             aria-label={youTitle}
             title={youTitle}
             aria-expanded={drawerOpen}
@@ -173,7 +177,7 @@ export function SiteHeader() {
             aria-haspopup="dialog"
             onClick={() => setDrawerOpen((open) => !open)}
           >
-            {playerName ? (
+            {signedIn && playerName ? (
               <>
                 {rankLoading ? (
                   <span
@@ -201,7 +205,9 @@ export function SiteHeader() {
                 ) : null}
               </>
             ) : (
-              <span className="site-header__you-name">Sign in</span>
+              <span className="site-header__you-name">
+                {signedIn ? 'Set tag' : 'Sign in'}
+              </span>
             )}
           </button>
         </div>
@@ -234,9 +240,9 @@ export function SiteHeader() {
                 <div className="site-drawer__head">
                   <div className="site-drawer__identity">
                     <h2 id={drawerTitleId} className="site-drawer__title">
-                      {playerName || 'Account'}
+                      {signedIn ? playerName || 'Account' : 'Sign in'}
                     </h2>
-                    {playerName ? (
+                    {signedIn && playerName ? (
                       <p className="site-drawer__identity-meta">
                         {rankLoading
                           ? 'Loading rank…'
@@ -247,12 +253,16 @@ export function SiteHeader() {
                           ? ` · ${trophySummary.total} troph${trophySummary.total === 1 ? 'y' : 'ies'}`
                           : ''}
                       </p>
+                    ) : signedIn ? (
+                      <p className="site-drawer__identity-meta">
+                        Pick a gamer tag to save scores
+                      </p>
                     ) : (
                       <p className="site-drawer__identity-meta">
-                        Sign in or pick a gamer tag to play
+                        Sign in to save scores and keep your tag across devices
                       </p>
                     )}
-                    {playerName ? (
+                    {signedIn && playerName ? (
                       <a
                         className="site-drawer__profile-link"
                         href={rankHref()}
@@ -298,14 +308,16 @@ export function SiteHeader() {
                       {item.label}
                     </a>
                   ))}
-                  <a
-                    className={linkClass(SITE_DRAWER_YOU.match, 'site-drawer__link')}
-                    href={SITE_DRAWER_YOU.href}
-                    aria-current={navActive('you', hash) ? 'page' : undefined}
-                    onClick={() => setDrawerOpen(false)}
-                  >
-                    {SITE_DRAWER_YOU.label}
-                  </a>
+                  {signedIn ? (
+                    <a
+                      className={linkClass(SITE_DRAWER_YOU.match, 'site-drawer__link')}
+                      href={SITE_DRAWER_YOU.href}
+                      aria-current={navActive('you', hash) ? 'page' : undefined}
+                      onClick={() => setDrawerOpen(false)}
+                    >
+                      {SITE_DRAWER_YOU.label}
+                    </a>
+                  ) : null}
                 </div>
 
                 <div className="site-drawer__footer">

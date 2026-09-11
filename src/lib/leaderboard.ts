@@ -126,8 +126,7 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
   let sessionHeader: Record<string, string> = {}
   try {
     const session = localStorage.getItem('arcade-session')
-    // Skip the signed-in session while acting as another tag so the guest claim is used.
-    if (session && !isImpersonatingNow()) {
+    if (session) {
       sessionHeader = { Authorization: `Bearer ${session}` }
     }
   } catch {

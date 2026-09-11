@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { useAuth } from '../hooks/useAuth'
+import { useImpersonation } from '../hooks/useImpersonation'
 import { gameBoardHref, recordsHref } from '../hooks/useHashRoute'
+import { linkCurrentNameToAccount } from '../lib/auth'
 import {
   addLeaderboardScore,
   ApiError,
@@ -26,6 +29,7 @@ import {
   whenRunAchievementsSettled,
   type RunAchievement,
 } from '../lib/runAchievements'
+import { ScoreSignInPrompt } from './ScoreSignInPrompt'
 
 type ScoreSaveProps = {
   gameSlug: string
@@ -559,7 +563,7 @@ function cleanName(raw: string) {
   return normalizePlayerName(raw)
 }
 
-type Phase = 'checking' | 'needName' | 'saving' | 'saved' | 'error'
+type Phase = 'checking' | 'needAuth' | 'needName' | 'saving' | 'saved' | 'error'
 
 export function ScoreSaveCard({
   gameSlug,
@@ -569,6 +573,9 @@ export function ScoreSaveCard({
   previousBest,
   onDone,
 }: ScoreSaveProps) {
+  const { signedIn, loading: authLoading } = useAuth()
+  const impersonation = useImpersonation()
+  const canSaveScores = signedIn || Boolean(impersonation)
   const [phase, setPhase] = useState<Phase>('checking')
   const [ranks, setRanks] = useState<Partial<Record<LeaderboardPeriod, number>>>()
   const [error, setError] = useState<string | null>(null)
@@ -586,7 +593,8 @@ export function ScoreSaveCard({
 
   const pb = describePersonalBest(score, record)
   const isBestRun = pb?.kind === 'new' || (pb?.kind === 'first' && score > 0)
-  const eyebrow = phase === 'needName' ? 'Board score' : title
+  const eyebrow =
+    phase === 'needAuth' || phase === 'needName' ? 'Board score' : title
   const subParts = [subtitle].filter(Boolean) as string[]
   const pbLine = pb?.headline ?? pb?.detail
 
@@ -674,6 +682,8 @@ export function ScoreSaveCard({
 
     async function run() {
       try {
+        if (authLoading) return
+
         const name = getLastPlayerName().trim().toUpperCase()
         if (name) {
           try {
@@ -699,6 +709,11 @@ export function ScoreSaveCard({
           return
         }
 
+        if (!canSaveScores) {
+          setPhase('needAuth')
+          return
+        }
+
         if (!name) {
           setPhase('needName')
           return
@@ -708,11 +723,14 @@ export function ScoreSaveCard({
         await saveAndCelebrate(name, () => cancelled)
       } catch (err) {
         if (cancelled) return
+        if (err instanceof ApiError && err.code === 'AUTH_REQUIRED') {
+          setPhase('needAuth')
+          setError('Sign in to save this score.')
+          return
+        }
         if (err instanceof ApiError && err.code === 'NAME_TAKEN') {
           setPhase('needName')
-          setError(
-            'That gamer tag is taken. Sign in or pick another.',
-          )
+          setError('That gamer tag is taken. Pick another.')
           return
         }
         setError(err instanceof Error ? err.message : 'Could not save score')
@@ -725,20 +743,30 @@ export function ScoreSaveCard({
       cancelled = true
       window.clearTimeout(celebTimer.current)
     }
-  }, [gameSlug, score])
+  }, [gameSlug, score, authLoading, canSaveScores])
 
   const submitName = async () => {
     const name = cleanName(nameDraft)
     if (!name || savedRef.current) return
+    if (!canSaveScores) {
+      setPhase('needAuth')
+      return
+    }
     setPhase('saving')
     setError(null)
     try {
+      if (signedIn && !impersonation) {
+        await linkCurrentNameToAccount(name)
+      }
       await saveAndCelebrate(name)
     } catch (err) {
+      if (err instanceof ApiError && err.code === 'AUTH_REQUIRED') {
+        setError('Sign in to save this score.')
+        setPhase('needAuth')
+        return
+      }
       if (err instanceof ApiError && err.code === 'NAME_TAKEN') {
-        setError(
-          'That gamer tag is taken. Sign in or pick another.',
-        )
+        setError('That gamer tag is taken. Pick another.')
         setPhase('needName')
         return
       }
@@ -748,7 +776,7 @@ export function ScoreSaveCard({
   }
 
   const celebrating = Boolean(rankClimb) || Boolean(celeb) || celebPending
-  const pending = phase === 'checking' || phase === 'saving' || celebPending
+  const pending = phase === 'checking' || phase === 'saving' || celebPending || authLoading
   const showResults = !celebrating && !pending
 
   return (
@@ -790,8 +818,25 @@ export function ScoreSaveCard({
         )}
       </div>
 
-      {(phase === 'saved' || phase === 'needName') && (
+      {(phase === 'saved' || phase === 'needName' || phase === 'needAuth') && (
         <RankChips ranks={ranks} />
+      )}
+
+      {phase === 'needAuth' && (
+        <>
+          <ScoreSignInPrompt
+            error={error}
+            onSignedIn={() => {
+              setError(null)
+              setPhase('checking')
+            }}
+          />
+          <div className="score-save__actions">
+            <button type="button" className="score-save__btn score-save__btn--ghost" onClick={onDone}>
+              Skip
+            </button>
+          </div>
+        </>
       )}
 
       {phase === 'needName' && (

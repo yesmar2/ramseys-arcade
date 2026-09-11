@@ -640,6 +640,52 @@ img {
   text-align: left;
 }
 
+.player-badge__tag-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.player-badge__tag-head .player-badge__panel-title {
+  margin-bottom: 0;
+}
+
+.player-badge__edit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  flex: none;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(var(--ink-rgb), 0.06);
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.player-badge__edit:hover,
+.player-badge__edit:focus-visible {
+  background: rgba(var(--ink-rgb), 0.1);
+  outline: none;
+}
+
+.player-badge__edit svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.player-badge__tag-value {
+  margin: 0.55rem 0 0;
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  font-weight: 750;
+  letter-spacing: 0.04em;
+  color: var(--ink);
+}
+
 .player-badge__panel-title--sub {
   margin-top: 1rem;
   font-size: 1rem;
@@ -10166,6 +10212,13 @@ a.lb-share:visited:focus-visible {
   gap: 0.55rem;
   width: 100%;
   margin-top: 0.15rem;
+}
+
+.score-save__signin {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  width: 100%;
 }
 
 .score-save__btn {

@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
+import { useAuth } from '../hooks/useAuth'
+import { useImpersonation } from '../hooks/useImpersonation'
 import { usePlayerName } from '../hooks/usePlayerName'
-import { isImpersonating } from '../lib/impersonate'
-import { ApiError, getLastPlayerName, normalizePlayerName, PLAYER_NAME_MAX, rememberPlayerName } from '../lib/leaderboard'
+import { linkCurrentNameToAccount } from '../lib/auth'
+import { ApiError, getLastPlayerName, normalizePlayerName, PLAYER_NAME_MAX } from '../lib/leaderboard'
 import {
   getTournament,
   getTournamentInvite,
@@ -9,6 +11,7 @@ import {
   submitTournamentScore,
   type TournamentDetail,
 } from '../lib/tournaments'
+import { ScoreSignInPrompt } from './ScoreSignInPrompt'
 
 function attemptsLeftLabel(
   remaining: number | null,
@@ -110,12 +113,15 @@ export function TournamentScoreCard({
   subtitle,
   onDone,
 }: TournamentScoreCardProps) {
+  const { signedIn, loading: authLoading } = useAuth()
+  const impersonation = useImpersonation()
+  const canSaveScores = signedIn || Boolean(impersonation)
   const playerName = usePlayerName()
   const knownName = (playerName || getLastPlayerName()).trim().toUpperCase()
   const [name, setName] = useState(knownName)
   const [nameDraft, setNameDraft] = useState('')
-  const [status, setStatus] = useState<'needName' | 'saving' | 'done' | 'error'>(() =>
-    knownName ? 'saving' : 'needName',
+  const [status, setStatus] = useState<'needAuth' | 'needName' | 'saving' | 'done' | 'error'>(
+    () => (authLoading ? 'saving' : !canSaveScores ? 'needAuth' : knownName ? 'saving' : 'needName'),
   )
   const [error, setError] = useState<string | null>(null)
   const [improved, setImproved] = useState(false)
@@ -135,7 +141,20 @@ export function TournamentScoreCard({
   }, [status])
 
   useEffect(() => {
-    if (!name) return
+    if (authLoading) return
+    if (!canSaveScores) {
+      setStatus('needAuth')
+      setName('')
+      return
+    }
+    if (!name && knownName) {
+      setName(knownName)
+      return
+    }
+    if (!name) {
+      setStatus('needName')
+      return
+    }
 
     let cancelled = false
 
@@ -159,11 +178,16 @@ export function TournamentScoreCard({
           err instanceof ApiError
             ? err.code
             : (err as Error & { code?: string }).code
+        if (code === 'AUTH_REQUIRED') {
+          setStatus('needAuth')
+          setError('Sign in to submit this score.')
+          return
+        }
         if (code === 'NAME_TAKEN') {
           setName('')
           setNameDraft('')
           setStatus('needName')
-          setError('That gamer tag is taken. Sign in or pick another.')
+          setError('That gamer tag is taken. Pick another.')
           return
         }
         if (code === 'INVITE_REQUIRED') {
@@ -188,24 +212,31 @@ export function TournamentScoreCard({
     return () => {
       cancelled = true
     }
-  }, [tournamentId, gameSlug, score, name])
+  }, [tournamentId, gameSlug, score, name, authLoading, canSaveScores, knownName])
 
   const submitName = async () => {
     const cleaned = cleanName(nameDraft)
     if (!cleaned) return
+    if (!canSaveScores) {
+      setStatus('needAuth')
+      return
+    }
     setError(null)
     try {
-      if (isImpersonating()) {
+      if (impersonation) {
         setName(cleaned)
         return
       }
-      const claimed = await rememberPlayerName(cleaned)
-      setName(claimed)
+      await linkCurrentNameToAccount(cleaned)
+      setName(cleaned)
     } catch (err) {
       if (err instanceof ApiError && err.code === 'NAME_TAKEN') {
-        setError('That gamer tag is taken. Sign in or pick another.')
+        setError('That gamer tag is taken. Pick another.')
+      } else if (err instanceof ApiError && err.code === 'AUTH_REQUIRED') {
+        setStatus('needAuth')
+        setError('Sign in to submit this score.')
       } else {
-        setError(err instanceof Error ? err.message : 'Could not claim name')
+        setError(err instanceof Error ? err.message : 'Could not save gamer tag')
       }
     }
   }
@@ -228,6 +259,24 @@ export function TournamentScoreCard({
           <p className="score-save__sub">{subtitle}</p>
         )}
       </div>
+
+      {status === 'needAuth' && (
+        <>
+          <ScoreSignInPrompt
+            error={error}
+            onSignedIn={() => {
+              setError(null)
+              if (knownName) setName(knownName)
+              else setStatus('needName')
+            }}
+          />
+          <div className="score-save__actions">
+            <button type="button" className="score-save__btn score-save__btn--ghost" onClick={onDone}>
+              Skip
+            </button>
+          </div>
+        </>
+      )}
 
       {status === 'needName' && (
         <>

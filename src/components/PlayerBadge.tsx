@@ -21,7 +21,6 @@ import {
   PLAYER_NAME_MAX,
   fetchNameAvatar,
   normalizePlayerName,
-  rememberPlayerName,
   setPlayerAvatar,
 } from '../lib/leaderboard'
 import { currentTheme, THEME_EVENT, toggleTheme, themeLabel, type Theme } from '../lib/theme'
@@ -60,7 +59,8 @@ export const PlayerBadge = forwardRef<PlayerBadgeHandle, PlayerBadgeProps>(
     const name = usePlayerName()
     const impersonation = useImpersonation()
     const { account, signedIn } = useAuth()
-    const [editing, setEditing] = useState(embedded)
+    const [editing, setEditing] = useState(false)
+    const [editingTag, setEditingTag] = useState(false)
     const [draft, setDraft] = useState(name || '')
     const [emailDraft, setEmailDraft] = useState('')
     const [showEmailSignIn, setShowEmailSignIn] = useState(false)
@@ -107,11 +107,8 @@ export const PlayerBadge = forwardRef<PlayerBadgeHandle, PlayerBadgeProps>(
     }, [name])
 
     useEffect(() => {
-      if (embedded) setEditing(true)
-    }, [embedded])
-
-    useEffect(() => {
       setDraft(name || '')
+      if (normalizePlayerName(name)) setEditingTag(false)
     }, [name])
 
     const startEdit = () => {
@@ -121,6 +118,13 @@ export const PlayerBadge = forwardRef<PlayerBadgeHandle, PlayerBadgeProps>(
       setDevVerifyUrl(null)
       setShowEmailSignIn(false)
       setEditing(true)
+      if (signedIn && !normalizePlayerName(name)) setEditingTag(true)
+    }
+
+    const startTagEdit = () => {
+      setDraft(name || '')
+      setError(null)
+      setEditingTag(true)
     }
 
     useImperativeHandle(ref, () => ({ openEdit: startEdit }))
@@ -130,25 +134,21 @@ export const PlayerBadge = forwardRef<PlayerBadgeHandle, PlayerBadgeProps>(
         setError('Stop impersonating before changing your gamer tag')
         return
       }
+      if (!signedIn) {
+        setError('Sign in to set a gamer tag')
+        return
+      }
       const cleaned = normalizePlayerName(draft)
       if (!cleaned || busy) return
       setBusy(true)
       setError(null)
       try {
-        if (signedIn) {
-          // Account path: set active tag, free previous, rename scores.
-          await linkCurrentNameToAccount(cleaned)
-        } else {
-          await rememberPlayerName(cleaned)
-        }
+        await linkCurrentNameToAccount(cleaned)
+        setEditingTag(false)
         if (!embedded) setEditing(false)
       } catch (err) {
         if (err instanceof ApiError && err.code === 'NAME_TAKEN') {
-          setError(
-            signedIn
-              ? 'That gamer tag is taken'
-              : 'That gamer tag is taken. Sign in or pick another.',
-          )
+          setError('That gamer tag is taken')
         } else {
           setError(err instanceof Error ? err.message : 'Could not save gamer tag')
         }
@@ -187,27 +187,17 @@ export const PlayerBadge = forwardRef<PlayerBadgeHandle, PlayerBadgeProps>(
 
     const cancel = () => {
       if (busy || authBusy) return
-      if (embedded) {
-        setDraft(name || '')
-        setError(null)
-        setAuthNote(null)
-        setDevVerifyUrl(null)
-        setShowEmailSignIn(false)
-        return
-      }
-      setEditing(false)
+      setDraft(name || '')
       setError(null)
       setAuthNote(null)
       setDevVerifyUrl(null)
       setShowEmailSignIn(false)
+      setEditingTag(false)
+      if (!embedded) setEditing(false)
     }
 
     useEffect(() => {
       if (!editing || embedded) return
-      if (signedIn) {
-        inputRef.current?.focus()
-        inputRef.current?.select()
-      }
 
       const onPointer = (e: PointerEvent) => {
         if (!rootRef.current?.contains(e.target as Node)) cancel()
@@ -221,11 +211,21 @@ export const PlayerBadge = forwardRef<PlayerBadgeHandle, PlayerBadgeProps>(
         window.removeEventListener('pointerdown', onPointer)
         window.removeEventListener('keydown', onKey)
       }
-    }, [editing, busy, authBusy, signedIn, embedded])
+    }, [editing, busy, authBusy, embedded])
+
+    useEffect(() => {
+      if (!editingTag) return
+      inputRef.current?.focus()
+      inputRef.current?.select()
+    }, [editingTag])
 
     const pickAvatar = async (next: AvatarId) => {
       if (impersonation) {
         setError('Stop impersonating before changing an avatar')
+        return
+      }
+      if (!signedIn) {
+        setError('Sign in to set an avatar')
         return
       }
       const cleaned = normalizePlayerName(name || draft)
@@ -234,7 +234,7 @@ export const PlayerBadge = forwardRef<PlayerBadgeHandle, PlayerBadgeProps>(
       setError(null)
       try {
         if (!normalizePlayerName(name)) {
-          await rememberPlayerName(cleaned)
+          await linkCurrentNameToAccount(cleaned)
         }
         const saved = await setPlayerAvatar(cleaned, next)
         const resolved = resolveAvatarId(saved, cleaned)
@@ -248,6 +248,7 @@ export const PlayerBadge = forwardRef<PlayerBadgeHandle, PlayerBadgeProps>(
     }
 
     const displayName = normalizePlayerName(name)
+    const showTagForm = !displayName || editingTag
     const triggerClass = icon
       ? `player-badge player-badge--icon${signedIn ? ' player-badge--account' : ' player-badge--signin'}${displayName ? ' player-badge--named' : ''}`
       : `player-badge${compact ? ' player-badge--compact' : ''}${displayName ? '' : ' player-badge--empty'}`
@@ -257,48 +258,81 @@ export const PlayerBadge = forwardRef<PlayerBadgeHandle, PlayerBadgeProps>(
           ? `Account · ${displayName}`
           : 'Account'
         : 'Sign in'
-      : displayName
-        ? `Gamer tag ${displayName}`
-        : 'Set gamer tag'
+      : signedIn
+        ? displayName
+          ? `Gamer tag ${displayName}`
+          : 'Set gamer tag'
+        : 'Sign in'
 
     const gamerTagSection = (
       <>
-        <p className="player-badge__panel-title">
-          {signedIn ? 'Gamer tag' : 'Play as'}
-        </p>
+        <div className="player-badge__tag-head">
+          <p className="player-badge__panel-title">Gamer tag</p>
+          {displayName && !showTagForm && !impersonation ? (
+            <button
+              type="button"
+              className="player-badge__edit"
+              aria-label="Edit gamer tag"
+              title="Edit gamer tag"
+              onClick={startTagEdit}
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path
+                  d="M4.5 16.5 15.8 5.2a1.8 1.8 0 0 1 2.5 0l.5.5a1.8 1.8 0 0 1 0 2.5L7.5 19.5 3.8 20.2z"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.7"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d="M13.8 6.8 17.2 10.2"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.7"
+                  strokeLinecap="round"
+                />
+              </svg>
+            </button>
+          ) : null}
+        </div>
         {impersonation ? (
           <p className="player-badge__impersonate">
             Acting as {impersonation.name} for testing. Your tag stays{' '}
             {impersonation.previousName || 'unset'}.
           </p>
         ) : null}
-        {!signedIn && !impersonation ? (
+        {!displayName && !impersonation ? (
           <p className="player-badge__panel-blurb">
-            Pick a tag to play. Sign in below to keep it across devices.
+            Pick a gamer tag to save scores to the boards.
           </p>
         ) : null}
-        <label className="player-badge__field">
-          <span className="player-badge__label">Tag</span>
-          <input
-            ref={inputRef}
-            className="player-badge__input"
-            value={draft}
-            maxLength={PLAYER_NAME_MAX}
-            disabled={busy || Boolean(impersonation)}
-            onChange={(e) => {
-              setDraft(e.target.value.toUpperCase().slice(0, PLAYER_NAME_MAX))
-              setError(null)
-            }}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault()
-                void save()
-              }
-            }}
-          />
-        </label>
 
-        {AVATARS_ENABLED ? (
+        {displayName && !showTagForm ? (
+          <p className="player-badge__tag-value">{displayName}</p>
+        ) : (
+          <label className="player-badge__field">
+            <span className="player-badge__label">Tag</span>
+            <input
+              ref={inputRef}
+              className="player-badge__input"
+              value={draft}
+              maxLength={PLAYER_NAME_MAX}
+              disabled={busy || Boolean(impersonation)}
+              onChange={(e) => {
+                setDraft(e.target.value.toUpperCase().slice(0, PLAYER_NAME_MAX))
+                setError(null)
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  void save()
+                }
+              }}
+            />
+          </label>
+        )}
+
+        {AVATARS_ENABLED && (displayName || showTagForm) ? (
           <div className="player-badge__avatars">
             <span className="player-badge__label">Avatar</span>
             <div className="player-badge__avatar-grid" role="listbox" aria-label="Choose avatar">
@@ -323,8 +357,8 @@ export const PlayerBadge = forwardRef<PlayerBadgeHandle, PlayerBadgeProps>(
         ) : null}
 
         {error && <p className="player-badge__error">{error}</p>}
-        <div className="player-badge__panel-actions">
-          {impersonation ? (
+        {impersonation ? (
+          <div className="player-badge__panel-actions">
             <button
               type="button"
               className="player-badge__btn"
@@ -332,11 +366,14 @@ export const PlayerBadge = forwardRef<PlayerBadgeHandle, PlayerBadgeProps>(
                 stopImpersonation()
                 setError(null)
                 setEditing(false)
+                setEditingTag(false)
               }}
             >
               Stop acting as {impersonation.name}
             </button>
-          ) : (
+          </div>
+        ) : showTagForm ? (
+          <div className="player-badge__panel-actions">
             <button
               type="button"
               className="player-badge__btn"
@@ -345,16 +382,22 @@ export const PlayerBadge = forwardRef<PlayerBadgeHandle, PlayerBadgeProps>(
             >
               {busy ? 'Saving…' : 'Save'}
             </button>
-          )}
-          <button
-            type="button"
-            className="player-badge__btn player-badge__btn--ghost"
-            disabled={busy || authBusy}
-            onClick={cancel}
-          >
-            {embedded ? 'Reset' : 'Cancel'}
-          </button>
-        </div>
+            {displayName ? (
+              <button
+                type="button"
+                className="player-badge__btn player-badge__btn--ghost"
+                disabled={busy || authBusy}
+                onClick={() => {
+                  setDraft(name || '')
+                  setError(null)
+                  setEditingTag(false)
+                }}
+              >
+                Cancel
+              </button>
+            ) : null}
+          </div>
+        ) : null}
       </>
     )
 
@@ -365,7 +408,7 @@ export const PlayerBadge = forwardRef<PlayerBadgeHandle, PlayerBadgeProps>(
         </p>
         {!signedIn ? (
           <p className="player-badge__panel-blurb">
-            Keep your gamer tag and scores across phones and browsers.
+            Sign in to save scores and keep your gamer tag across devices.
           </p>
         ) : null}
         {signedIn && account ? (
@@ -482,7 +525,7 @@ export const PlayerBadge = forwardRef<PlayerBadgeHandle, PlayerBadgeProps>(
     ) : (
       <>
         {authSection}
-        <div className="player-badge__guest-tag">{gamerTagSection}</div>
+        {error && !authNote ? <p className="player-badge__error">{error}</p> : null}
         {showSettings ? settingsSection : null}
       </>
     )
