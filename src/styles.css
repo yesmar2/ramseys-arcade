@@ -10023,6 +10023,14 @@ a.lb-share:visited:focus-visible {
   --award-accent: var(--accent-2);
 }
 
+.score-celeb__award--tourney {
+  --award-accent: var(--accent, #2eb8a0);
+}
+
+.score-celeb__award--tourney .score-celeb__award-value {
+  font-size: clamp(1.85rem, 7vw, 2.55rem);
+}
+
 .score-celeb__award--book .score-celeb__award-value {
   font-size: clamp(2.35rem, 10vw, 3.1rem);
 }

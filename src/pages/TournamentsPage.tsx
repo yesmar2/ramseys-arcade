@@ -23,6 +23,7 @@ import {
   getTournament,
   getTournamentInvite,
   isPlayerInTournament,
+  isRosterFull,
   joinTournament,
   listTournaments,
   matchOpponent,
@@ -616,6 +617,11 @@ export function TournamentDetailPage({ id, invite }: { id: string; invite?: stri
   const rosterCap = detail?.rules.maxPlayers ?? 0
   const eventFull =
     detail != null && rosterCap > 0 && detail.playerCount >= rosterCap && !joined
+  const invitesOpen =
+    detail != null &&
+    detail.status !== 'ended' &&
+    !isRosterFull(detail) &&
+    Boolean(detail.inviteCode)
 
   const syncJoined = (data: TournamentDetail, who: string) => {
     setJoined(isPlayerInTournament(data, who, id))
@@ -822,9 +828,13 @@ export function TournamentDetailPage({ id, invite }: { id: string; invite?: stri
               <div className="lb-game-board__trailing">
                 <ShareBoardButton
                   label={`You're invited: ${detail.title} on ${APP_NAME}. Don't ghost the lobby.`}
-                  url={inviteLink ?? tournamentHref(detail.id)}
+                  url={
+                    invitesOpen && inviteLink
+                      ? inviteLink
+                      : `${window.location.origin}${window.location.pathname}${tournamentHref(detail.id)}`
+                  }
                 />
-                {detail.isHost && detail.inviteCode && detail.status !== 'ended' ? (
+                {detail.isHost && invitesOpen ? (
                   <button
                     type="button"
                     className="game-lobby__board-link"
@@ -837,7 +847,7 @@ export function TournamentDetailPage({ id, invite }: { id: string; invite?: stri
             </div>
           </header>
 
-          {detail.isHost && detail.inviteCode && detail.status !== 'ended' ? (
+          {detail.isHost && invitesOpen ? (
             <section className="group-panel event-detail__invite-tag" aria-label="Invite by tag">
               <InviteByTagForm kind="tournament" targetId={id} disabled={busy} />
             </section>

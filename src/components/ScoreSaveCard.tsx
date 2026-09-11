@@ -48,16 +48,43 @@ export type CelebPayload = {
   boards: BoardHit[]
   personalBest: PersonalBestHit | null
   books: RunAchievement[]
+  /** Bracket match / tournament wins (fireworks overlay). */
+  bracket?: {
+    champion: boolean
+    matchWon: boolean
+    opponent?: string | null
+    eventTitle?: string
+  } | null
+}
+
+export function booksCelebrationPayload(books: RunAchievement[]): CelebPayload {
+  return { boards: [], personalBest: null, books, bracket: null }
+}
+
+export function bracketCelebrationPayload(opts: {
+  champion: boolean
+  matchWon: boolean
+  opponent?: string | null
+  eventTitle?: string
+}): CelebPayload | null {
+  if (!opts.champion && !opts.matchWon) return null
+  return {
+    boards: [],
+    personalBest: null,
+    books: [],
+    bracket: {
+      champion: opts.champion,
+      matchWon: opts.matchWon,
+      opponent: opts.opponent ?? null,
+      eventTitle: opts.eventTitle,
+    },
+  }
 }
 
 export type RankClimb = {
   from: number | null
   to: number
   gained: number | null
-}
-
-export function booksCelebrationPayload(books: RunAchievement[]): CelebPayload {
-  return { boards: [], personalBest: null, books }
 }
 
 const PERIOD_ORDER: LeaderboardPeriod[] = ['all', 'monthly', 'weekly', 'daily']
@@ -118,18 +145,20 @@ function buildCelebration(
       : null
   const pendingBooks = peekRunAchievements()
   if (!boards.length && !personalBest && !pendingBooks.length) return null
-  return { boards, personalBest, books: takeRunAchievements() }
+  return { boards, personalBest, books: takeRunAchievements(), bracket: null }
 }
 
 function awardCards(payload: CelebPayload): {
   id: string
-  kind: 'board' | 'best' | 'book'
+  kind: 'board' | 'best' | 'book' | 'tourney'
   label: string
   value: string
   detail: string | null
   featured: boolean
 }[] {
   const featuredId = (() => {
+    if (payload.bracket?.champion) return 'tourney-champ'
+    if (payload.bracket?.matchWon) return 'tourney-match'
     const allTimeFirst = payload.boards.find((b) => b.period === 'all' && b.rank === 1)
     if (allTimeFirst) return `board-${allTimeFirst.period}`
     const anyFirst = payload.boards.find((b) => b.rank === 1)
@@ -142,11 +171,45 @@ function awardCards(payload: CelebPayload): {
     if (bestBoard) return `board-${bestBoard.period}`
     const bookFirst = payload.books.find((b) => b.rank === 1)
     if (bookFirst) return `book-${payload.books.indexOf(bookFirst)}`
-    if (payload.books[0]) return `book-0`
+    if (payload.books[0]) return 'book-0'
     return null
   })()
 
+  const bracketCards = (() => {
+    const b = payload.bracket
+    if (!b) return []
+    const cards: {
+      id: string
+      kind: 'tourney'
+      label: string
+      value: string
+      detail: string | null
+      featured: boolean
+    }[] = []
+    if (b.champion) {
+      cards.push({
+        id: 'tourney-champ',
+        kind: 'tourney',
+        label: b.eventTitle?.trim() || 'Tournament',
+        value: 'Champion',
+        detail: 'You won the bracket',
+        featured: featuredId === 'tourney-champ',
+      })
+    } else if (b.matchWon) {
+      cards.push({
+        id: 'tourney-match',
+        kind: 'tourney',
+        label: 'Match won',
+        value: 'Advance',
+        detail: b.opponent ? `beat ${b.opponent}` : 'On to the next round',
+        featured: featuredId === 'tourney-match',
+      })
+    }
+    return cards
+  })()
+
   const cards = [
+    ...bracketCards,
     ...payload.boards.map((board) => ({
       id: `board-${board.period}`,
       kind: 'board' as const,

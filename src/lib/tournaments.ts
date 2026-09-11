@@ -319,6 +319,12 @@ export function seatsLeft(t: Pick<TournamentSummary, 'playerCount' | 'rules'>): 
   return Math.max(0, cap - t.playerCount)
 }
 
+/** Capped roster with no open seats (brackets lock here). */
+export function isRosterFull(t: Pick<TournamentSummary, 'playerCount' | 'rules'>): boolean {
+  const left = seatsLeft(t)
+  return left != null && left <= 0
+}
+
 export function yourOpenMatch(
   detail: TournamentDetail,
   displayName: string,
@@ -709,6 +715,9 @@ export async function submitTournamentScore(
   attemptsUsed: number
   attemptsRemaining: number | null
   maxAttempts: number | null
+  youWonMatch?: boolean
+  youWonTournament?: boolean
+  matchOpponent?: string | null
 }> {
   const cleaned = normalizePlayerName(name)
   const token = getClaimToken(cleaned)
@@ -718,6 +727,9 @@ export async function submitTournamentScore(
     attemptsUsed: number
     attemptsRemaining: number | null
     maxAttempts: number | null
+    youWonMatch?: boolean
+    youWonTournament?: boolean
+    matchOpponent?: string | null
     token?: string
   }>(`/tournaments/${id}/scores`, {
     method: 'POST',
