@@ -498,16 +498,6 @@ img {
   justify-content: stretch;
 }
 
-.player-badge__panel--embedded {
-  position: static;
-  width: 100%;
-  max-width: none;
-  margin: 0;
-  box-shadow: none;
-  border: 1px solid rgba(var(--ink-rgb), 0.08);
-  background: color-mix(in srgb, var(--ink) 3.5%, var(--surface));
-}
-
 .player-avatar {
   display: inline-grid;
   place-items: center;
