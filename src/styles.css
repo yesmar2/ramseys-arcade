@@ -2181,7 +2181,7 @@ img {
 }
 
 /* Header already shows primary links on desktop. */
-@media (min-width: 641px) {
+@media (min-width: 721px) {
   .site-drawer__nav:not(.site-drawer__nav--always) {
     display: none;
   }
@@ -10466,20 +10466,26 @@ a.lb-share:visited:focus-visible {
 
 .score-save__btn {
   flex: 1;
-  padding: 0.9rem 1rem;
+  padding: 0.85rem 1.6rem;
   border: 0;
-  border-radius: 0.85rem;
-  background: var(--accent-sky);
+  border-radius: 999px;
+  background: var(--accent);
   color: #fff;
   font-family: var(--font-body);
   font-size: 1.05rem;
   font-weight: 700;
   cursor: pointer;
+  touch-action: manipulation;
+}
+
+.score-save__btn:hover {
+  filter: brightness(1.05);
 }
 
 .score-save__btn:disabled {
   opacity: 0.55;
   cursor: not-allowed;
+  filter: none;
 }
 
 .score-save__btn--ghost {

@@ -110,10 +110,10 @@ function buildCelebration(
 ): CelebPayload | null {
   const boards = celebrationBoardHits(ranks)
   const personalBest =
-    score > priorAllTime
+    priorAllTime > 0 && score > priorAllTime
       ? {
           score,
-          gain: priorAllTime > 0 ? score - priorAllTime : null,
+          gain: score - priorAllTime,
         }
       : null
   const pendingBooks = peekRunAchievements()
@@ -165,7 +165,7 @@ function awardCards(payload: CelebPayload): {
             detail:
               payload.personalBest.gain != null
                 ? `+${payload.personalBest.gain}`
-                : 'New mark',
+                : null,
             featured: featuredId === 'best',
           },
         ]
@@ -592,7 +592,7 @@ export function ScoreSaveCard({
   const [record, setRecord] = useState(previousBest ?? 0)
 
   const pb = describePersonalBest(score, record)
-  const isBestRun = pb?.kind === 'new' || (pb?.kind === 'first' && score > 0)
+  const isBestRun = pb?.kind === 'new'
   const eyebrow =
     phase === 'needAuth' || phase === 'needName' ? 'Board score' : title
   const subParts = [subtitle].filter(Boolean) as string[]

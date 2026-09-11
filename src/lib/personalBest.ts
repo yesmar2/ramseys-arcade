@@ -77,10 +77,8 @@ export function describePersonalBest(
   previousBest: number,
 ): PersonalBestResult {
   if (previousBest <= 0) {
-    if (score <= 0) {
-      return { kind: 'first', headline: null, detail: 'Set a personal best', gain: null }
-    }
-    return { kind: 'first', headline: 'Personal best', detail: null, gain: null }
+    // First score for this game — don't celebrate or label it as a personal best.
+    return { kind: 'first', headline: null, detail: null, gain: null }
   }
   if (score > previousBest) {
     return {
