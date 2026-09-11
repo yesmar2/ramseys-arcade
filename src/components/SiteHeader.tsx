@@ -258,34 +258,14 @@ export function SiteHeader() {
                         </button>
                       ) : null}
                     </div>
-                    {signedIn && playerName ? (
-                      <p className="site-drawer__identity-meta">
-                        {rankLoading
-                          ? 'Loading rank…'
-                          : rank != null
-                            ? `Global #${rank}`
-                            : 'No rank yet'}
-                        {trophySummary.total > 0
-                          ? ` · ${trophySummary.total} troph${trophySummary.total === 1 ? 'y' : 'ies'}`
-                          : ''}
-                      </p>
-                    ) : signedIn ? (
-                      <p className="site-drawer__identity-meta">
-                        Pick a gamer tag to save scores
-                      </p>
-                    ) : (
+                    {!signedIn ? (
                       <p className="site-drawer__identity-meta">
                         Sign in to save scores and keep your tag across devices
                       </p>
-                    )}
-                    {signedIn && playerName ? (
-                      <a
-                        className="site-drawer__profile-link"
-                        href={rankHref()}
-                        onClick={() => setDrawerOpen(false)}
-                      >
-                        Open profile
-                      </a>
+                    ) : !playerName ? (
+                      <p className="site-drawer__identity-meta">
+                        Pick a gamer tag to save scores
+                      </p>
                     ) : null}
                   </div>
                   <div className="site-drawer__head-actions">
@@ -318,6 +298,53 @@ export function SiteHeader() {
                 <section className="site-drawer__section" aria-label="Account">
                   <PlayerBadge ref={badgeRef} embedded showSettings={false} />
                 </section>
+
+                {signedIn && playerName ? (
+                  <a
+                    className="site-drawer__rank"
+                    href={rankHref()}
+                    onClick={() => setDrawerOpen(false)}
+                    aria-label={
+                      rankLoading
+                        ? 'View profile · loading rank'
+                        : rank != null
+                          ? `View profile · global rank ${rank}`
+                          : 'View profile · no rank yet'
+                    }
+                  >
+                    {rankLoading ? (
+                      <span
+                        className="site-drawer__rank-circle site-drawer__rank-circle--loading"
+                        aria-hidden="true"
+                      >
+                        <span className="site-drawer__rank-spinner" />
+                      </span>
+                    ) : (
+                      <span
+                        className={`site-drawer__rank-circle${rank == null ? ' site-drawer__rank-circle--empty' : ''}`}
+                        aria-hidden="true"
+                      >
+                        <span className="site-drawer__rank-label">Rank</span>
+                        <span
+                          className={`site-drawer__rank-value${rank == null ? ' site-drawer__rank-value--text' : ''}`}
+                        >
+                          {rank != null ? `#${rank}` : 'No rank'}
+                        </span>
+                      </span>
+                    )}
+                    <span className="site-drawer__rank-foot">
+                      {trophySummary.total > 0 ? (
+                        <TrophyMark
+                          count={trophySummary.total}
+                          podium={trophySummary.podium}
+                          size="md"
+                          className="site-drawer__rank-trophy"
+                        />
+                      ) : null}
+                      <span className="site-drawer__rank-cta">View profile</span>
+                    </span>
+                  </a>
+                ) : null}
 
                 <div className="site-drawer__nav" aria-label="Primary">
                   <a
