@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '../hooks/useAuth'
 import { useImpersonation } from '../hooks/useImpersonation'
 import { usePlayerName } from '../hooks/usePlayerName'
+import { getGame } from '../data/games'
 import { linkCurrentNameToAccount } from '../lib/auth'
 import { ApiError, getLastPlayerName, normalizePlayerName, PLAYER_NAME_MAX } from '../lib/leaderboard'
 import {
@@ -12,12 +13,49 @@ import {
   submitTournamentScore,
   type TournamentDetail,
 } from '../lib/tournaments'
+import { medalKind, PodiumMedal } from './PodiumMedal'
 import {
   bracketCelebrationPayload,
+  placementCelebrationPayload,
   ScoreCelebration,
   type CelebPayload,
+  type PlacementHit,
 } from './ScoreSaveCard'
 import { ScoreSignInPrompt } from './ScoreSignInPrompt'
+
+/** Best top-3 finish worth celebrating from this submission's fresh standings. */
+function findPlacementHit(
+  detail: TournamentDetail | null,
+  gameSlug: string,
+  name: string,
+): PlacementHit | null {
+  if (!detail) return null
+  const you = normalizePlayerName(name)
+  const standing = detail.standings.find((s) => normalizePlayerName(s.name) === you)
+  if (!standing) return null
+  const cell = standing.byGame[gameSlug]
+  if (detail.games.length > 1) {
+    const idx = detail.standings.findIndex((s) => s.playerId === standing.playerId)
+    const overallPlace = idx >= 0 ? idx + 1 : null
+    if (overallPlace != null && overallPlace <= 3) {
+      return {
+        place: overallPlace,
+        scope: 'overall',
+        label: detail.title,
+        score: detail.format === 'place-points' ? standing.totalPoints : null,
+      }
+    }
+  }
+  if (cell?.place != null && cell.place <= 3) {
+    return {
+      place: cell.place,
+      scope: 'game',
+      label: getGame(gameSlug)?.name ?? gameSlug,
+      score: cell.score,
+    }
+  }
+  return null
+}
 
 function attemptsLeftLabel(
   remaining: number | null,
@@ -43,6 +81,16 @@ type TournamentScoreCardProps = {
 
 function cleanName(raw: string) {
   return normalizePlayerName(raw)
+}
+
+function PlaceValue({ place }: { place: number }) {
+  const medal = medalKind(place)
+  return (
+    <strong className="score-save__place-value">
+      {medal ? <PodiumMedal kind={medal} size="sm" /> : null}
+      {`#${place}`}
+    </strong>
+  )
 }
 
 type SubmitSnapshot = {
@@ -218,6 +266,13 @@ export function TournamentScoreCard({
             eventTitle: snapshot.detail?.title,
           })
           if (payload) setCeleb(payload)
+        } else if (!celebratedRef.current && score > 0) {
+          const hit = findPlacementHit(snapshot.detail, gameSlug, name)
+          const payload = placementCelebrationPayload(hit)
+          if (payload) {
+            celebratedRef.current = true
+            setCeleb(payload)
+          }
         }
       } catch (err) {
         if (cancelled) return
@@ -417,7 +472,7 @@ export function TournamentScoreCard({
                 {gameCell?.place != null && (
                   <li>
                     <span>This game</span>
-                    <strong>#{gameCell.place}</strong>
+                    <PlaceValue place={gameCell.place} />
                   </li>
                 )}
                 {gameCell && gameCell.points > 0 && (
@@ -429,7 +484,7 @@ export function TournamentScoreCard({
                 {overallPlace != null && overallPlace > 0 && (
                   <li>
                     <span>Overall</span>
-                    <strong>#{overallPlace}</strong>
+                    <PlaceValue place={overallPlace} />
                   </li>
                 )}
               </ul>

@@ -10031,6 +10031,27 @@ a.lb-share:visited:focus-visible {
   font-size: clamp(1.85rem, 7vw, 2.55rem);
 }
 
+.score-celeb__award--placement {
+  --award-accent: #f2c43a;
+}
+
+.score-celeb__award--placement.score-celeb__award--silver {
+  --award-accent: #9aa6b3;
+}
+
+.score-celeb__award--placement.score-celeb__award--bronze {
+  --award-accent: #db9a5a;
+}
+
+.score-celeb__award--placement .score-celeb__award-value {
+  font-size: clamp(1.55rem, 6vw, 2.15rem);
+}
+
+.score-celeb__award-icon {
+  line-height: 0;
+  margin-bottom: 0.1rem;
+}
+
 .score-celeb__award--book .score-celeb__award-value {
   font-size: clamp(2.35rem, 10vw, 3.1rem);
 }
@@ -10445,6 +10466,12 @@ a.lb-share:visited:focus-visible {
   font-weight: 700;
   line-height: 1;
   color: var(--ink);
+}
+
+.score-save__place-value {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
 }
 
 .score-save__note {
