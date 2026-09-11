@@ -616,6 +616,21 @@ img {
   box-shadow: 0 14px 36px rgba(var(--ink-rgb), 0.14);
 }
 
+/* Must follow .player-badge__panel so absolute popover rules don't win. */
+.player-badge__panel.player-badge__panel--embedded {
+  position: static;
+  top: auto;
+  right: auto;
+  z-index: auto;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  box-shadow: none;
+  backdrop-filter: none;
+  border: 1px solid rgba(var(--ink-rgb), 0.08);
+  background: color-mix(in srgb, var(--ink) 3.5%, var(--surface));
+}
+
 .player-badge__panel-title {
   margin: 0 0 0.25rem;
   font-family: var(--font-display);
