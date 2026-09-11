@@ -101,6 +101,7 @@ export function EventTicker({
     | 'startsAt'
     | 'playerCount'
     | 'rules'
+    | 'nextDeadlineAt'
   >
   joined?: boolean
   /** Current player's rank in the event standings, if they have one. */
@@ -110,19 +111,37 @@ export function EventTicker({
 }) {
   const live = t.status === 'active'
   const upcoming = t.status === 'upcoming'
+  const isBracket = eventKind(t) === 'bracket'
   const unlimited = isUnlimitedDuration(t.rules)
-  const fillingBracket = upcoming && eventKind(t) === 'bracket'
-  const ticking = (live || upcoming) && !unlimited && !fillingBracket
-  const target = upcoming ? t.startsAt : t.endsAt
+  const fillingBracket = upcoming && isBracket
+  const roundDeadline =
+    isBracket && live && t.nextDeadlineAt != null && t.nextDeadlineAt > 0
+      ? t.nextDeadlineAt
+      : null
+  const ticking =
+    fillingBracket
+      ? false
+      : isBracket
+        ? roundDeadline != null
+        : (live || upcoming) && !unlimited
+  const target = isBracket
+    ? (roundDeadline ?? 0)
+    : upcoming
+      ? t.startsAt
+      : t.endsAt
   const clockLabel = fillingBracket
     ? 'Starts'
-    : unlimited && live
-      ? 'Duration'
-      : upcoming
-        ? 'Starts in'
-        : live
-          ? 'Time left'
-          : 'Window'
+    : isBracket && live
+      ? roundDeadline
+        ? 'Round time'
+        : 'Rounds'
+      : unlimited && live
+        ? 'Duration'
+        : upcoming
+          ? 'Starts in'
+          : live
+            ? 'Time left'
+            : 'Window'
 
   return (
     <div className="event-ticker">
@@ -142,6 +161,8 @@ export function EventTicker({
               'When full'
             ) : ticking ? (
               <EventCountdown endsAt={target} precise />
+            ) : isBracket && live ? (
+              'Waiting for matches'
             ) : unlimited && live ? (
               'Open'
             ) : (
@@ -246,7 +267,15 @@ export function EventCard({ t, compact = false, href }: EventCardProps) {
         </div>
         <p className="event-card__games">{gameNames}</p>
         <div className="event-card__foot">
-          {t.status === 'active' ? (
+          {t.status === 'active' && eventKind(t) === 'bracket' ? (
+            t.nextDeadlineAt != null && t.nextDeadlineAt > 0 ? (
+              <span className="event-card__countdown">
+                <EventCountdown endsAt={t.nextDeadlineAt} />
+              </span>
+            ) : (
+              <span className="event-card__window">{eventDurationLabel(t)}</span>
+            )
+          ) : t.status === 'active' ? (
             <span className="event-card__countdown">
               <EventCountdown
                 endsAt={t.endsAt}

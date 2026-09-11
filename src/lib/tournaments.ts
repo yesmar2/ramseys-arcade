@@ -27,6 +27,8 @@ export type TournamentRules = {
   maxPlayers?: number
   scoring?: 'best' | 'sum'
   unlimitedDuration?: boolean
+  /** Bracket only: hours each open match may be played. */
+  roundPlayHours?: number
 }
 
 export type TournamentSummary = {
@@ -47,6 +49,8 @@ export type TournamentSummary = {
   visibility?: 'public' | 'private'
   status: TournamentStatus
   playerCount: number
+  /** Bracket: soonest open-match play deadline. */
+  nextDeadlineAt?: number | null
 }
 
 /** Games eligible for private hosted events (matches API). */
@@ -80,7 +84,18 @@ export function formatRulesSummary(
     const n = t.rules.maxAttempts ?? 1
     const cap = t.rules.maxPlayers ?? 0
     const tries = n === 1 ? '1 attempt' : `${n} attempts`
-    return `Single-elim bracket · ${cap || 'set'} players · ${tries} per match.`
+    const roundH = t.rules.roundPlayHours
+    const round =
+      roundH == null
+        ? null
+        : roundH === 1
+          ? '1h per round'
+          : roundH < 24
+            ? `${roundH}h per round`
+            : roundH === 24
+              ? '1 day per round'
+              : `${roundH / 24} days per round`
+    return `Single-elim bracket · ${cap || 'set'} players · ${tries} per match${round ? ` · ${round}` : ''}.`
   }
   if (t.format === 'place-points') {
     return t.games.length > 1
@@ -144,8 +159,20 @@ export function formatEventTicker(
 }
 
 export function eventDurationLabel(
-  t: Pick<TournamentSummary, 'rules' | 'startsAt' | 'endsAt' | 'status'>,
+  t: Pick<
+    TournamentSummary,
+    'rules' | 'startsAt' | 'endsAt' | 'status' | 'kind' | 'format' | 'nextDeadlineAt' | 'playerCount'
+  >,
 ): string {
+  if (eventKind(t) === 'bracket') {
+    if (t.status === 'ended') return 'Ended'
+    if (t.status === 'upcoming') return 'When full'
+    const deadline = t.nextDeadlineAt
+    if (deadline != null && deadline > 0) {
+      return `Round ${formatEventCountdown(deadline)}`
+    }
+    return 'Round clocks arm when matches fill'
+  }
   if (t.rules.unlimitedDuration) {
     return t.status === 'ended' ? 'Ended' : 'Until everyone finishes'
   }
@@ -252,6 +279,7 @@ export type PublicBracketMatch = {
   round: number
   slot: number
   winnerId: string | null
+  playEndsAt?: number | null
   players: [PublicBracketSide | null, PublicBracketSide | null]
 }
 
@@ -278,8 +306,10 @@ export type CreateTournamentInput = {
   maxAttempts: number
   /** 0 = unlimited roster size */
   maxPlayers: number
-  /** 0 = until everyone finishes */
+  /** Scores: overall length (0 = until finished). Bracket: ignored. */
   durationHours: number
+  /** Bracket: hours to play each open match. */
+  roundPlayHours?: number
   kind?: TournamentKind
 }
 

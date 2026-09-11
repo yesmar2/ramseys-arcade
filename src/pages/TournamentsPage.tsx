@@ -19,6 +19,7 @@ import { resolveGameAccent } from '../lib/theme'
 import {
   attemptsPerGameMax,
   eventKind,
+  formatEventCountdown,
   getTournament,
   getTournamentInvite,
   isPlayerInTournament,
@@ -184,9 +185,17 @@ function bracketPlayLabel(detail: TournamentDetail, joined: boolean, displayName
     const me = match.players.find((p) => p && normalizePlayerName(p.name) === you)
     const used = me?.attemptsUsed ?? 0
     const remaining = Math.max(0, max - used)
+    const roundLeft =
+      match.playEndsAt != null && match.playEndsAt > Date.now()
+        ? formatEventCountdown(match.playEndsAt)
+        : null
     if (!opp) return 'Waiting on your match'
-    if (remaining === 0) return `Waiting on ${opp.name}`
-    return remaining === 1 ? `vs ${opp.name} · 1 try` : `vs ${opp.name} · ${remaining} left`
+    if (remaining === 0) {
+      return roundLeft ? `Waiting on ${opp.name} · ${roundLeft}` : `Waiting on ${opp.name}`
+    }
+    const tries =
+      remaining === 1 ? `vs ${opp.name} · 1 try` : `vs ${opp.name} · ${remaining} left`
+    return roundLeft ? `${tries} · ${roundLeft}` : tries
   }
   const you = normalizePlayerName(displayName)
   const final = detail.bracket.matches.reduce(

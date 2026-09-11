@@ -28,6 +28,9 @@ const DURATIONS = [
   { hours: 0, label: 'Until everyone finishes' },
 ] as const
 
+/** Bracket: finite time to play each open match (no overall tournament clock). */
+const ROUND_DURATIONS = DURATIONS.filter((d) => d.hours > 0)
+
 function attemptsSummary(maxAttempts: number, unlimited: boolean, gameCount: number) {
   const gameWord = gameCount === 1 ? 'game' : 'games'
   if (unlimited) return `Unlimited attempts per ${gameWord}`
@@ -55,6 +58,7 @@ export function CreateTournamentPage() {
   const [maxPlayers, setMaxPlayers] = useState(4)
   const [unlimitedPlayers, setUnlimitedPlayers] = useState(false)
   const [durationHours, setDurationHours] = useState(24)
+  const [roundPlayHours, setRoundPlayHours] = useState(24)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const isBracket = kind === 'bracket'
@@ -68,8 +72,9 @@ export function CreateTournamentPage() {
     return resolveGameAccent(slug, first?.accent ?? '#2eb8a0')
   }, [games])
 
-  const durationLabel =
-    DURATIONS.find((d) => d.hours === durationHours)?.label ?? '24 hours'
+  const durationLabel = isBracket
+    ? (ROUND_DURATIONS.find((d) => d.hours === roundPlayHours)?.label ?? '24 hours')
+    : (DURATIONS.find((d) => d.hours === durationHours)?.label ?? '24 hours')
 
   const selectKind = (next: TournamentKind) => {
     setKind(next)
@@ -79,6 +84,7 @@ export function CreateTournamentPage() {
       setMaxPlayers((n) => clampBracketPlayers(n))
       setMaxAttempts((n) => Math.max(1, n))
       setGames((prev) => prev.slice(0, 1))
+      if (roundPlayHours <= 0) setRoundPlayHours(24)
     }
   }
 
@@ -105,7 +111,8 @@ export function CreateTournamentPage() {
         games,
         maxAttempts: isBracket || !unlimitedAttempts ? Math.max(1, maxAttempts) : 0,
         maxPlayers: isBracket || !unlimitedPlayers ? maxPlayers : 0,
-        durationHours,
+        durationHours: isBracket ? 0 : durationHours,
+        ...(isBracket ? { roundPlayHours } : {}),
         kind,
       }
       const created = await createTournament(input)
@@ -348,28 +355,50 @@ export function CreateTournamentPage() {
               </div>
 
               <div className="event-create__rule">
-                <span className="event-create__rule-title">Duration</span>
-                <select
-                  className="event-create__input event-create__input--duration"
-                  value={durationHours}
-                  onChange={(e) => setDurationHours(Number(e.target.value))}
-                >
-                  {DURATIONS.map((d) => (
-                    <option key={d.hours} value={d.hours}>
-                      {d.label}
-                    </option>
-                  ))}
-                </select>
-                {durationHours === 0 ? (
-                  <p className="event-create__hint">
-                    {isBracket
-                      ? 'Ends when the final has a winner.'
-                      : 'Ends when every player has used all their attempts.'}
-                    {!isBracket && unlimitedAttempts
-                      ? ' Pick a finite attempt limit for this mode.'
-                      : null}
-                  </p>
-                ) : null}
+                <span className="event-create__rule-title">
+                  {isBracket ? 'Time per round' : 'Duration'}
+                </span>
+                {isBracket ? (
+                  <>
+                    <select
+                      className="event-create__input event-create__input--duration"
+                      value={roundPlayHours}
+                      onChange={(e) => setRoundPlayHours(Number(e.target.value))}
+                    >
+                      {ROUND_DURATIONS.map((d) => (
+                        <option key={d.hours} value={d.hours}>
+                          {d.label}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="event-create__hint">
+                      Clock starts when both players are seated. The tournament ends when the
+                      final has a winner — no overall time limit.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <select
+                      className="event-create__input event-create__input--duration"
+                      value={durationHours}
+                      onChange={(e) => setDurationHours(Number(e.target.value))}
+                    >
+                      {DURATIONS.map((d) => (
+                        <option key={d.hours} value={d.hours}>
+                          {d.label}
+                        </option>
+                      ))}
+                    </select>
+                    {durationHours === 0 ? (
+                      <p className="event-create__hint">
+                        Ends when every player has used all their attempts.
+                        {unlimitedAttempts
+                          ? ' Pick a finite attempt limit for this mode.'
+                          : null}
+                      </p>
+                    ) : null}
+                  </>
+                )}
               </div>
             </section>
 
@@ -396,9 +425,13 @@ export function CreateTournamentPage() {
                   {games.map((slug) => getGame(slug)?.name ?? slug).join(' · ')}
                 </p>
                 <ul className="event-create-preview__facts">
-                  <li>{playersSummary(maxPlayers, unlimitedPlayers)}</li>
-                  <li>{attemptsSummary(maxAttempts, unlimitedAttempts, games.length)}</li>
-                  <li>{durationLabel}</li>
+                  <li>{playersSummary(maxPlayers, isBracket ? false : unlimitedPlayers)}</li>
+                  <li>
+                    {isBracket
+                      ? attemptsSummary(maxAttempts, false, 1).replace('per game', 'per match')
+                      : attemptsSummary(maxAttempts, unlimitedAttempts, games.length)}
+                  </li>
+                  <li>{isBracket ? `${durationLabel} per round` : durationLabel}</li>
                   {isBracket ? (
                     <li>Single-elim bracket</li>
                   ) : games.length > 1 ? (
