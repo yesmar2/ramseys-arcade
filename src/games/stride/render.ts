@@ -511,7 +511,6 @@ function drawRow(
   gridW: number,
   cell: number,
   dark: boolean,
-  includeTrees = true,
 ) {
   const row = getRow(state, worldRow)
   const span = laneSpan(state.cols)
@@ -600,10 +599,8 @@ function drawRow(
     }
   }
 
-  if (includeTrees) {
-    for (const treeCol of row.trees) {
-      drawTree(ctx, ox + (treeCol + 0.5) * cell, y + cell * 0.52, cell * 0.88, dark)
-    }
+  for (const treeCol of row.trees) {
+    drawTree(ctx, ox + (treeCol + 0.5) * cell, y + cell * 0.52, cell * 0.88, dark)
   }
 
   const bob = Math.sin(performance.now() / 220 + worldRow) * cell * 0.04
@@ -703,20 +700,10 @@ export function renderGame(
 
   const topRow = Math.ceil(cameraY + visibleRows + 2)
   const bottomRow = Math.floor(cameraY) - 4
-  // Lane + rocks first, then trees on a second pass so canopy always sits above
-  // nearer stepping stones (rocks must never paint over trees).
   for (let worldRow = topRow; worldRow >= bottomRow; worldRow--) {
     const y = rowScreenY(worldRow, cameraY, visibleRows, oy, cell)
     if (y > h + cell || y + cell < 0) continue
-    drawRow(ctx, state, worldRow, y, w, ox, gridW, cell, dark, false)
-  }
-  for (let worldRow = topRow; worldRow >= bottomRow; worldRow--) {
-    const y = rowScreenY(worldRow, cameraY, visibleRows, oy, cell)
-    if (y > h + cell || y + cell < 0) continue
-    const row = getRow(state, worldRow)
-    for (const treeCol of row.trees) {
-      drawTree(ctx, ox + (treeCol + 0.5) * cell, y + cell * 0.52, cell * 0.88, dark)
-    }
+    drawRow(ctx, state, worldRow, y, w, ox, gridW, cell, dark)
   }
 
   for (let worldRow = bottomRow; worldRow <= topRow; worldRow++) {

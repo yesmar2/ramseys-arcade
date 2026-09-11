@@ -440,18 +440,43 @@ function makeRoadRow(row: number, cols: number, rand: () => number, prev?: Row):
 /**
  * Static stepping stones. A few isolated pads — enough choices without turning
  * the river into a sidewalk.
+ * @param blockedCols columns with trees on the row behind — never put a rock
+ *   there or the tree walls you off from that pad.
  */
-function makeStoneRow(cols: number, rand: () => number, d: number): Row {
+function makeStoneRow(
+  cols: number,
+  rand: () => number,
+  d: number,
+  blockedCols: number[] = [],
+): Row {
   // A few more early on; later rows stay stingier.
   const target = d > 0.6 ? 2 : 3
+  const blocked = new Set(blockedCols.filter((c) => c >= 0 && c < cols))
   const rocks = new Set<number>()
   const margin = 1
-  for (let guard = 0; rocks.size < target && guard < 32; guard++) {
-    const c = margin + Math.floor(rand() * Math.max(1, cols - margin * 2))
+  const pool = Array.from({ length: Math.max(1, cols - margin * 2) }, (_, i) => margin + i).filter(
+    (c) => !blocked.has(c),
+  )
+  for (let guard = 0; rocks.size < target && guard < 48; guard++) {
+    if (!pool.length) break
+    const idx = Math.floor(rand() * pool.length)
+    const c = pool[idx]
     // Keep at least one empty tile between pads so each hop is a real choice.
-    if ([...rocks].every((r) => Math.abs(r - c) > 1)) rocks.add(c)
+    if ([...rocks].every((r) => Math.abs(r - c) > 1)) {
+      rocks.add(c)
+      pool.splice(idx, 1)
+    } else {
+      pool.splice(idx, 1)
+    }
   }
-  if (rocks.size === 0) rocks.add(Math.floor(cols / 2))
+  if (rocks.size === 0) {
+    // Prefer an unblocked mid column; fall back only if every column is treed.
+    const fallback =
+      pool[Math.floor(pool.length / 2)] ??
+      Array.from({ length: cols }, (_, i) => i).find((c) => !blocked.has(c)) ??
+      Math.floor(cols / 2)
+    rocks.add(fallback)
+  }
   const rockList = [...rocks].sort((a, b) => a - b)
   const coins: number[] = []
   if (rockList.length && rand() < 0.12) {
@@ -475,6 +500,7 @@ function makeWaterRow(
   chunkStart: number,
   prevIsStone: boolean,
   prevDir: -1 | 1 | 0 = 0,
+  prevTrees: number[] = [],
 ): Row {
   const rand = mulberry32(row * 1_048_583 ^ runSeed)
   const chunkRand = mulberry32(chunkStart * 1_048_583 ^ runSeed)
@@ -483,7 +509,7 @@ function makeWaterRow(
 
   // Never stack two stone rows: from a stone you can only hop straight on, so a
   // second static row could strand you with nowhere legal to land.
-  if (!prevIsStone && rand() < 0.34) return makeStoneRow(cols, rand, d)
+  if (!prevIsStone && rand() < 0.34) return makeStoneRow(cols, rand, d, prevTrees)
 
   // Usually oppose the lane behind you so crossings feel two-way; sometimes
   // match it so the pattern isn't a strict left-right metronome.
@@ -579,6 +605,7 @@ export function generateRow(
   const d = difficultyAt(row)
   const prevRocks =
     prev?.kind === 'water' && prev.rocks.length > 0 ? prev.rocks : []
+  const prevTrees = prev?.kind === 'grass' ? prev.trees : []
 
   if (row < 4) {
     const trees: number[] = []
@@ -613,7 +640,7 @@ export function generateRow(
   if (prev?.kind === 'water') {
     const start = chunkStart(row, 'water', rows)
     if (row < start + chunkLength(start, runSeed, 2, d > 0.5 ? 4 : 3)) {
-      return makeWaterRow(row, cols, runSeed, start, prevIsStone, prevLogDir)
+      return makeWaterRow(row, cols, runSeed, start, prevIsStone, prevLogDir, prevTrees)
     }
   }
 
@@ -633,7 +660,7 @@ export function generateRow(
 
   if (roll < grassChance) return makeGrassRow(cols, rand, d, prevRocks)
   if (roll < grassChance + waterChance) {
-    return makeWaterRow(row, cols, runSeed, row, prevIsStone, prevLogDir)
+    return makeWaterRow(row, cols, runSeed, row, prevIsStone, prevLogDir, prevTrees)
   }
   if (roll < grassChance + waterChance + railChance) return makeRailRow(row, cols, runSeed)
   return makeRoadRow(row, cols, rand, prev)
