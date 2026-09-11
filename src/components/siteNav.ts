@@ -18,7 +18,7 @@ export const SITE_NAV_LINKS: readonly SiteNavItem[] = [
   { href: '#/tournaments', label: 'Events', match: 'events' },
 ] as const
 
-/** Drawer-only: You is also the header chip. */
+/** Drawer Profile link — header chip opens the account drawer instead. */
 export const SITE_DRAWER_YOU: SiteNavItem = {
   href: rankHref(),
   label: 'Profile',

@@ -35,6 +35,10 @@ type PlayerBadgeProps = {
   compact?: boolean
   /** Round icon button instead of the name chip */
   icon?: boolean
+  /** Inline panel for the site drawer (no trigger / popover). */
+  embedded?: boolean
+  /** Include theme/sounds block (popover only; drawer has its own). */
+  showSettings?: boolean
   className?: string
 }
 
@@ -43,11 +47,20 @@ export type PlayerBadgeHandle = {
 }
 
 export const PlayerBadge = forwardRef<PlayerBadgeHandle, PlayerBadgeProps>(
-  function PlayerBadge({ compact = false, icon = false, className = '' }, ref) {
+  function PlayerBadge(
+    {
+      compact = false,
+      icon = false,
+      embedded = false,
+      showSettings = !embedded,
+      className = '',
+    },
+    ref,
+  ) {
     const name = usePlayerName()
     const impersonation = useImpersonation()
     const { account, signedIn } = useAuth()
-    const [editing, setEditing] = useState(false)
+    const [editing, setEditing] = useState(embedded)
     const [draft, setDraft] = useState(name || '')
     const [emailDraft, setEmailDraft] = useState('')
     const [showEmailSignIn, setShowEmailSignIn] = useState(false)
@@ -93,6 +106,14 @@ export const PlayerBadge = forwardRef<PlayerBadgeHandle, PlayerBadgeProps>(
       }
     }, [name])
 
+    useEffect(() => {
+      if (embedded) setEditing(true)
+    }, [embedded])
+
+    useEffect(() => {
+      setDraft(name || '')
+    }, [name])
+
     const startEdit = () => {
       setDraft(name || '')
       setError(null)
@@ -120,7 +141,7 @@ export const PlayerBadge = forwardRef<PlayerBadgeHandle, PlayerBadgeProps>(
         } else {
           await rememberPlayerName(cleaned)
         }
-        setEditing(false)
+        if (!embedded) setEditing(false)
       } catch (err) {
         if (err instanceof ApiError && err.code === 'NAME_TAKEN') {
           setError(
@@ -166,6 +187,14 @@ export const PlayerBadge = forwardRef<PlayerBadgeHandle, PlayerBadgeProps>(
 
     const cancel = () => {
       if (busy || authBusy) return
+      if (embedded) {
+        setDraft(name || '')
+        setError(null)
+        setAuthNote(null)
+        setDevVerifyUrl(null)
+        setShowEmailSignIn(false)
+        return
+      }
       setEditing(false)
       setError(null)
       setAuthNote(null)
@@ -174,7 +203,7 @@ export const PlayerBadge = forwardRef<PlayerBadgeHandle, PlayerBadgeProps>(
     }
 
     useEffect(() => {
-      if (!editing) return
+      if (!editing || embedded) return
       if (signedIn) {
         inputRef.current?.focus()
         inputRef.current?.select()
@@ -192,7 +221,7 @@ export const PlayerBadge = forwardRef<PlayerBadgeHandle, PlayerBadgeProps>(
         window.removeEventListener('pointerdown', onPointer)
         window.removeEventListener('keydown', onKey)
       }
-    }, [editing, busy, authBusy, signedIn])
+    }, [editing, busy, authBusy, signedIn, embedded])
 
     const pickAvatar = async (next: AvatarId) => {
       if (impersonation) {
@@ -323,7 +352,7 @@ export const PlayerBadge = forwardRef<PlayerBadgeHandle, PlayerBadgeProps>(
             disabled={busy || authBusy}
             onClick={cancel}
           >
-            Cancel
+            {embedded ? 'Reset' : 'Cancel'}
           </button>
         </div>
       </>
@@ -360,7 +389,7 @@ export const PlayerBadge = forwardRef<PlayerBadgeHandle, PlayerBadgeProps>(
               onSignedIn={() => {
                 setAuthNote('Signed in.')
                 setError(null)
-                setEditing(false)
+                if (!embedded) setEditing(false)
               }}
             />
             {!showEmailSignIn ? (
@@ -444,6 +473,33 @@ export const PlayerBadge = forwardRef<PlayerBadgeHandle, PlayerBadgeProps>(
       </div>
     )
 
+    const panelBody = signedIn ? (
+      <>
+        {gamerTagSection}
+        {authSection}
+        {showSettings ? settingsSection : null}
+      </>
+    ) : (
+      <>
+        {authSection}
+        <div className="player-badge__guest-tag">{gamerTagSection}</div>
+        {showSettings ? settingsSection : null}
+      </>
+    )
+
+    if (embedded) {
+      return (
+        <div
+          className={`player-badge-wrap player-badge-wrap--embedded${className ? ` ${className}` : ''}`}
+          ref={rootRef}
+        >
+          <div className="player-badge__panel player-badge__panel--embedded" role="group">
+            {panelBody}
+          </div>
+        </div>
+      )
+    }
+
     return (
       <div className={`player-badge-wrap${className ? ` ${className}` : ''}`} ref={rootRef}>
         <button
@@ -499,19 +555,7 @@ export const PlayerBadge = forwardRef<PlayerBadgeHandle, PlayerBadgeProps>(
             role="dialog"
             aria-label={signedIn ? 'Account' : 'Sign in'}
           >
-            {signedIn ? (
-              <>
-                {gamerTagSection}
-                {authSection}
-                {settingsSection}
-              </>
-            ) : (
-              <>
-                {authSection}
-                <div className="player-badge__guest-tag">{gamerTagSection}</div>
-                {settingsSection}
-              </>
-            )}
+            {panelBody}
           </div>
         )}
       </div>

@@ -10,7 +10,7 @@ import { useTrophySummary } from '../hooks/useTrophySummary'
 import { useImpersonation } from '../hooks/useImpersonation'
 import { DevImpersonateControl } from './DevImpersonateControl'
 import { PendingInvitesStrip } from './PendingInvitesStrip'
-import { PlayerBadge, type PlayerBadgeHandle } from './PlayerBadge'
+import { PlayerBadge } from './PlayerBadge'
 import { SiteGroupControl } from './SiteGroupControl'
 import { SitePeriodControl } from './SitePeriodControl'
 import { SoundPackSelect } from './SoundPackSelect'
@@ -39,9 +39,9 @@ export function SiteHeader() {
   )
   const invitesRef = useRef<HTMLDivElement>(null)
   const drawerRef = useRef<HTMLDivElement>(null)
-  const menuBtnRef = useRef<HTMLButtonElement>(null)
-  const playerRef = useRef<PlayerBadgeHandle>(null)
+  const youBtnRef = useRef<HTMLButtonElement>(null)
   const drawerTitleId = useId()
+  const drawerId = 'site-account-drawer'
 
   useEffect(() => {
     const sync = () => setTheme(currentTheme())
@@ -79,12 +79,13 @@ export function SiteHeader() {
     }
     window.addEventListener('keydown', onKey)
     const focusable = drawerRef.current?.querySelector<HTMLElement>(
-      'a[href], button:not([disabled])',
+      'a[href], button:not([disabled]), input:not([disabled])',
     )
     focusable?.focus()
     return () => {
       document.body.style.overflow = prevOverflow
       window.removeEventListener('keydown', onKey)
+      youBtnRef.current?.focus()
     }
   }, [drawerOpen])
 
@@ -98,142 +99,124 @@ export function SiteHeader() {
   const linkClass = (match: (typeof SITE_NAV_LINKS)[number]['match'], base: string) =>
     `${base}${navActive(match, hash) ? ` ${base}--active` : ''}`
 
+  const youTitle = playerName
+    ? impersonation
+      ? `Menu · Acting as ${playerName}`
+      : rankLoading
+        ? trophySummary.total > 0
+          ? `Menu · ${playerName} · Loading rank · ${trophySummary.total} trophies`
+          : `Menu · ${playerName} · Loading rank`
+        : rank != null
+          ? trophySummary.total > 0
+            ? `Menu · ${playerName} · #${rank} · ${trophySummary.total} trophies`
+            : `Menu · ${playerName} · #${rank}`
+          : trophySummary.total > 0
+            ? `Menu · ${playerName} · No rank yet · ${trophySummary.total} trophies`
+            : `Menu · ${playerName} · No rank yet`
+    : 'Menu · Sign in'
+
   return (
     <div className="site-chrome">
-    <nav className="site-header" aria-label="Site">
-      <div className="site-header__start">
-        <button
-          ref={menuBtnRef}
-          type="button"
-          className="site-header__drawer-btn"
-          aria-label={drawerOpen ? 'Close menu' : 'Open menu'}
-          aria-expanded={drawerOpen}
-          aria-controls="site-nav-drawer"
-          onClick={() => setDrawerOpen((open) => !open)}
-        >
-          <svg viewBox="0 0 24 24" aria-hidden="true" width="22" height="22">
-            {drawerOpen ? (
-              <path
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.2"
-                strokeLinecap="round"
-                d="M6 6l12 12M18 6L6 18"
-              />
-            ) : (
-              <path
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.2"
-                strokeLinecap="round"
-                d="M4 7h16M4 12h16M4 17h16"
-              />
-            )}
-          </svg>
-        </button>
-        <a className="site-header__brand" href="#/">
-          {APP_NAME_LEAD}
-          <span>{APP_NAME_ACCENT}</span>
-        </a>
-        <div className="site-header__links" aria-label="Primary">
-          {SITE_NAV_LINKS.map((item) => (
-            <a
-              key={item.href}
-              className={linkClass(item.match, 'site-header__link')}
-              href={item.href}
-              aria-current={navActive(item.match, hash) ? 'page' : undefined}
-            >
-              {item.label}
-            </a>
-          ))}
-        </div>
-      </div>
-
-      <div className="site-header__identity">
-        {inviteCount > 0 ? (
-          <div className="site-header__invites" ref={invitesRef}>
-            <button
-              type="button"
-              className="site-header__invite-btn"
-              aria-label={`${inviteCount} pending invite${inviteCount === 1 ? '' : 's'}`}
-              aria-expanded={invitesOpen}
-              aria-haspopup="dialog"
-              onClick={() => setInvitesOpen((open) => !open)}
-            >
-              <span className="site-header__invite-count">{inviteCount}</span>
-            </button>
-            {invitesOpen ? (
-              <div className="site-header__invite-panel" role="dialog" aria-label="Pending invites">
-                <PendingInvitesStrip compact />
-              </div>
-            ) : null}
-          </div>
-        ) : null}
-
-        {playerName ? (
-          <a
-            className={`site-header__you${navActive('you', hash) ? ' site-header__you--active' : ''}${impersonation ? ' site-header__you--impersonating' : ''}`}
-            href={rankHref()}
-            title={
-              impersonation
-                ? `Acting as ${playerName} (dev)`
-                : rankLoading
-                ? trophySummary.total > 0
-                  ? `Your profile · Loading rank · ${trophySummary.total} trophies`
-                  : 'Your profile · Loading rank'
-                : rank != null
-                  ? trophySummary.total > 0
-                    ? `Your profile · #${rank} · ${trophySummary.total} trophies`
-                    : `Your profile · #${rank}`
-                  : trophySummary.total > 0
-                    ? `Your profile · No rank yet · ${trophySummary.total} trophies`
-                    : 'Your profile · No rank yet'
-            }
-            aria-current={navActive('you', hash) ? 'page' : undefined}
-          >
-            {rankLoading ? (
-              <span
-                className="site-header__you-rank site-header__you-rank--loading"
-                aria-label="Loading rank"
-              >
-                <span className="site-header__rank-spinner" aria-hidden="true" />
-              </span>
-            ) : rank != null ? (
-              <span className="site-header__you-rank">#{rank}</span>
-            ) : null}
-            {impersonation ? (
-              <span className="site-header__you-act" aria-hidden="true">
-                AS
-              </span>
-            ) : null}
-            <span className="site-header__you-name">{playerName}</span>
-            {trophySummary.total > 0 ? (
-              <TrophyMark
-                count={trophySummary.total}
-                podium={trophySummary.podium}
-                size="sm"
-                className="site-header__you-trophy"
-              />
-            ) : null}
+      <nav className="site-header" aria-label="Site">
+        <div className="site-header__start">
+          <a className="site-header__brand" href="#/">
+            {APP_NAME_LEAD}
+            <span>{APP_NAME_ACCENT}</span>
           </a>
-        ) : null}
-
-        <div className="site-header__player">
-          <PlayerBadge ref={playerRef} icon className="site-header__player-badge" />
+          <div className="site-header__links" aria-label="Primary">
+            {SITE_NAV_LINKS.map((item) => (
+              <a
+                key={item.href}
+                className={linkClass(item.match, 'site-header__link')}
+                href={item.href}
+                aria-current={navActive(item.match, hash) ? 'page' : undefined}
+              >
+                {item.label}
+              </a>
+            ))}
+          </div>
         </div>
-      </div>
-    </nav>
 
-    {showBoardFilters ? (
-      <div className="site-scopes" aria-label="Board filters">
-        <SitePeriodControl variant="header" />
-        <SiteGroupControl variant="header" />
-      </div>
-    ) : null}
+        <div className="site-header__identity">
+          {inviteCount > 0 ? (
+            <div className="site-header__invites" ref={invitesRef}>
+              <button
+                type="button"
+                className="site-header__invite-btn"
+                aria-label={`${inviteCount} pending invite${inviteCount === 1 ? '' : 's'}`}
+                aria-expanded={invitesOpen}
+                aria-haspopup="dialog"
+                onClick={() => setInvitesOpen((open) => !open)}
+              >
+                <span className="site-header__invite-count">{inviteCount}</span>
+              </button>
+              {invitesOpen ? (
+                <div
+                  className="site-header__invite-panel"
+                  role="dialog"
+                  aria-label="Pending invites"
+                >
+                  <PendingInvitesStrip compact />
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+
+          <button
+            ref={youBtnRef}
+            type="button"
+            className={`site-header__you${drawerOpen ? ' site-header__you--open' : ''}${!playerName ? ' site-header__you--empty' : ''}${impersonation ? ' site-header__you--impersonating' : ''}`}
+            aria-label={youTitle}
+            title={youTitle}
+            aria-expanded={drawerOpen}
+            aria-controls={drawerId}
+            aria-haspopup="dialog"
+            onClick={() => setDrawerOpen((open) => !open)}
+          >
+            {playerName ? (
+              <>
+                {rankLoading ? (
+                  <span
+                    className="site-header__you-rank site-header__you-rank--loading"
+                    aria-label="Loading rank"
+                  >
+                    <span className="site-header__rank-spinner" aria-hidden="true" />
+                  </span>
+                ) : rank != null ? (
+                  <span className="site-header__you-rank">#{rank}</span>
+                ) : null}
+                {impersonation ? (
+                  <span className="site-header__you-act" aria-hidden="true">
+                    AS
+                  </span>
+                ) : null}
+                <span className="site-header__you-name">{playerName}</span>
+                {trophySummary.total > 0 ? (
+                  <TrophyMark
+                    count={trophySummary.total}
+                    podium={trophySummary.podium}
+                    size="sm"
+                    className="site-header__you-trophy"
+                  />
+                ) : null}
+              </>
+            ) : (
+              <span className="site-header__you-name">Sign in</span>
+            )}
+          </button>
+        </div>
+      </nav>
+
+      {showBoardFilters ? (
+        <div className="site-scopes" aria-label="Board filters">
+          <SitePeriodControl variant="header" />
+          <SiteGroupControl variant="header" />
+        </div>
+      ) : null}
 
       {drawerOpen && typeof document !== 'undefined'
         ? createPortal(
-            <div className="site-drawer" role="presentation">
+            <div className="site-drawer site-drawer--account" role="presentation">
               <button
                 type="button"
                 className="site-drawer__scrim"
@@ -241,7 +224,7 @@ export function SiteHeader() {
                 onClick={() => setDrawerOpen(false)}
               />
               <div
-                id="site-nav-drawer"
+                id={drawerId}
                 ref={drawerRef}
                 className="site-drawer__panel"
                 role="dialog"
@@ -249,10 +232,36 @@ export function SiteHeader() {
                 aria-labelledby={drawerTitleId}
               >
                 <div className="site-drawer__head">
-                  <h2 id={drawerTitleId} className="site-drawer__title">
-                    {APP_NAME_LEAD}
-                    <span>{APP_NAME_ACCENT}</span>
-                  </h2>
+                  <div className="site-drawer__identity">
+                    <h2 id={drawerTitleId} className="site-drawer__title">
+                      {playerName || 'Account'}
+                    </h2>
+                    {playerName ? (
+                      <p className="site-drawer__identity-meta">
+                        {rankLoading
+                          ? 'Loading rank…'
+                          : rank != null
+                            ? `Global #${rank}`
+                            : 'No rank yet'}
+                        {trophySummary.total > 0
+                          ? ` · ${trophySummary.total} troph${trophySummary.total === 1 ? 'y' : 'ies'}`
+                          : ''}
+                      </p>
+                    ) : (
+                      <p className="site-drawer__identity-meta">
+                        Sign in or pick a gamer tag to play
+                      </p>
+                    )}
+                    {playerName ? (
+                      <a
+                        className="site-drawer__profile-link"
+                        href={rankHref()}
+                        onClick={() => setDrawerOpen(false)}
+                      >
+                        Open profile
+                      </a>
+                    ) : null}
+                  </div>
                   <button
                     type="button"
                     className="site-drawer__close"
@@ -262,6 +271,11 @@ export function SiteHeader() {
                     ✕
                   </button>
                 </div>
+
+                <section className="site-drawer__section" aria-label="Account">
+                  <PlayerBadge embedded showSettings={false} />
+                </section>
+
                 <div className="site-drawer__nav" aria-label="Primary">
                   <a
                     className={`site-drawer__link${hash === '#/' || hash === '#' || hash === '' ? ' site-drawer__link--active' : ''}`}
@@ -293,6 +307,7 @@ export function SiteHeader() {
                     {SITE_DRAWER_YOU.label}
                   </a>
                 </div>
+
                 <div className="site-drawer__footer">
                   {showBoardFilters ? (
                     <section className="site-drawer__section" aria-label="Board filters">
