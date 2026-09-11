@@ -24,6 +24,35 @@ import {
   SITE_NAV_LINKS,
 } from './siteNav'
 
+function UserIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <circle cx="12" cy="8.2" r="3.1" fill="none" stroke="currentColor" strokeWidth="1.8" />
+      <path
+        d="M6.2 18.6c.7-3.2 3-4.8 5.8-4.8s5.1 1.6 5.8 4.8"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
+    </svg>
+  )
+}
+
+function MenuIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path
+        d="M5 7.5h14M5 12h14M5 16.5h14"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
+    </svg>
+  )
+}
+
 /** Site-wide navigation — use this on every page (home, leaderboards, game hub, etc.). */
 export function SiteHeader() {
   const route = useHashRoute()
@@ -35,18 +64,23 @@ export function SiteHeader() {
   const impersonation = useImpersonation()
   const trophySummary = useTrophySummary(signedIn ? playerName : '')
   const { count: inviteCount } = usePendingInvites()
-  const [drawerOpen, setDrawerOpen] = useState(false)
+  const [accountOpen, setAccountOpen] = useState(false)
+  const [navOpen, setNavOpen] = useState(false)
   const [invitesOpen, setInvitesOpen] = useState(false)
   const [theme, setTheme] = useState<Theme>(() =>
     typeof document === 'undefined' ? 'light' : currentTheme(),
   )
   const invitesRef = useRef<HTMLDivElement>(null)
-  const drawerRef = useRef<HTMLDivElement>(null)
+  const accountDrawerRef = useRef<HTMLDivElement>(null)
+  const navDrawerRef = useRef<HTMLDivElement>(null)
   const youBtnRef = useRef<HTMLButtonElement>(null)
+  const menuBtnRef = useRef<HTMLButtonElement>(null)
   const badgeRef = useRef<PlayerBadgeHandle>(null)
   const [authBusy, setAuthBusy] = useState(false)
-  const drawerTitleId = useId()
-  const drawerId = 'site-account-drawer'
+  const accountTitleId = useId()
+  const navTitleId = useId()
+  const accountDrawerId = 'site-account-drawer'
+  const navDrawerId = 'site-nav-drawer'
 
   useEffect(() => {
     const sync = () => setTheme(currentTheme())
@@ -55,7 +89,8 @@ export function SiteHeader() {
   }, [])
 
   useEffect(() => {
-    setDrawerOpen(false)
+    setAccountOpen(false)
+    setNavOpen(false)
     setInvitesOpen(false)
   }, [hashKey])
 
@@ -76,23 +111,27 @@ export function SiteHeader() {
   }, [invitesOpen])
 
   useEffect(() => {
-    if (!drawerOpen) return
+    if (!accountOpen && !navOpen) return
     const prevOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setDrawerOpen(false)
+      if (e.key !== 'Escape') return
+      if (accountOpen) setAccountOpen(false)
+      else setNavOpen(false)
     }
     window.addEventListener('keydown', onKey)
-    const focusable = drawerRef.current?.querySelector<HTMLElement>(
+    const panel = accountOpen ? accountDrawerRef.current : navDrawerRef.current
+    const focusable = panel?.querySelector<HTMLElement>(
       'a[href], button:not([disabled]), input:not([disabled])',
     )
     focusable?.focus()
     return () => {
       document.body.style.overflow = prevOverflow
       window.removeEventListener('keydown', onKey)
-      youBtnRef.current?.focus()
+      if (accountOpen) youBtnRef.current?.focus()
+      else menuBtnRef.current?.focus()
     }
-  }, [drawerOpen])
+  }, [accountOpen, navOpen])
 
   const hash = typeof window !== 'undefined' ? window.location.hash : '#/'
   const showBoardFilters =
@@ -107,25 +146,75 @@ export function SiteHeader() {
   const youTitle = signedIn
     ? playerName
       ? impersonation
-        ? `Menu · Acting as ${playerName}`
+        ? `Account · Acting as ${playerName}`
         : rankLoading
           ? trophySummary.total > 0
-            ? `Menu · ${playerName} · Loading rank · ${trophySummary.total} trophies`
-            : `Menu · ${playerName} · Loading rank`
+            ? `Account · ${playerName} · Loading rank · ${trophySummary.total} trophies`
+            : `Account · ${playerName} · Loading rank`
           : rank != null
             ? trophySummary.total > 0
-              ? `Menu · ${playerName} · #${rank} · ${trophySummary.total} trophies`
-              : `Menu · ${playerName} · #${rank}`
+              ? `Account · ${playerName} · #${rank} · ${trophySummary.total} trophies`
+              : `Account · ${playerName} · #${rank}`
             : trophySummary.total > 0
-              ? `Menu · ${playerName} · No rank yet · ${trophySummary.total} trophies`
-              : `Menu · ${playerName} · No rank yet`
-      : 'Menu · Set gamer tag'
-    : 'Menu · Sign in'
+              ? `Account · ${playerName} · No rank yet · ${trophySummary.total} trophies`
+              : `Account · ${playerName} · No rank yet`
+      : 'Account · Set gamer tag'
+    : 'Account'
+
+  const showUserChip = signedIn && Boolean(playerName)
+
+  const navLinks = (
+    <>
+      <a
+        className={`site-drawer__link${hash === '#/' || hash === '#' || hash === '' ? ' site-drawer__link--active' : ''}`}
+        href="#/"
+        aria-current={hash === '#/' || hash === '#' || hash === '' ? 'page' : undefined}
+        onClick={() => setNavOpen(false)}
+      >
+        Games
+      </a>
+      {SITE_NAV_LINKS.map((item) => (
+        <a
+          key={item.href}
+          className={linkClass(item.match, 'site-drawer__link')}
+          href={item.href}
+          aria-current={navActive(item.match, hash) ? 'page' : undefined}
+          onClick={() => setNavOpen(false)}
+        >
+          {item.label}
+        </a>
+      ))}
+      {signedIn ? (
+        <a
+          className={linkClass(SITE_DRAWER_YOU.match, 'site-drawer__link')}
+          href={SITE_DRAWER_YOU.href}
+          aria-current={navActive('you', hash) ? 'page' : undefined}
+          onClick={() => setNavOpen(false)}
+        >
+          {SITE_DRAWER_YOU.label}
+        </a>
+      ) : null}
+    </>
+  )
 
   return (
     <div className="site-chrome">
       <nav className="site-header" aria-label="Site">
         <div className="site-header__start">
+          <button
+            ref={menuBtnRef}
+            type="button"
+            className={`site-header__menu-btn${navOpen ? ' site-header__menu-btn--open' : ''}`}
+            aria-label="Open navigation"
+            aria-expanded={navOpen}
+            aria-controls={navDrawerId}
+            onClick={() => {
+              setAccountOpen(false)
+              setNavOpen((open) => !open)
+            }}
+          >
+            <MenuIcon />
+          </button>
           <a className="site-header__brand" href="#/">
             {APP_NAME_LEAD}
             <span>{APP_NAME_ACCENT}</span>
@@ -172,15 +261,18 @@ export function SiteHeader() {
           <button
             ref={youBtnRef}
             type="button"
-            className={`site-header__you${drawerOpen ? ' site-header__you--open' : ''}${!signedIn || !playerName ? ' site-header__you--empty' : ''}${impersonation ? ' site-header__you--impersonating' : ''}`}
+            className={`site-header__you${accountOpen ? ' site-header__you--open' : ''}${!showUserChip ? ' site-header__you--icon' : ''}${impersonation ? ' site-header__you--impersonating' : ''}`}
             aria-label={youTitle}
             title={youTitle}
-            aria-expanded={drawerOpen}
-            aria-controls={drawerId}
+            aria-expanded={accountOpen}
+            aria-controls={accountDrawerId}
             aria-haspopup="dialog"
-            onClick={() => setDrawerOpen((open) => !open)}
+            onClick={() => {
+              setNavOpen(false)
+              setAccountOpen((open) => !open)
+            }}
           >
-            {signedIn && playerName ? (
+            {showUserChip ? (
               <>
                 {rankLoading ? (
                   <span
@@ -208,9 +300,7 @@ export function SiteHeader() {
                 ) : null}
               </>
             ) : (
-              <span className="site-header__you-name">
-                {signedIn ? 'Set tag' : 'Sign in'}
-              </span>
+              <UserIcon />
             )}
           </button>
         </div>
@@ -223,28 +313,69 @@ export function SiteHeader() {
         </div>
       ) : null}
 
-      {drawerOpen && typeof document !== 'undefined'
+      {navOpen && typeof document !== 'undefined'
+        ? createPortal(
+            <div className="site-drawer site-drawer--nav" role="presentation">
+              <button
+                type="button"
+                className="site-drawer__scrim"
+                aria-label="Close navigation"
+                onClick={() => setNavOpen(false)}
+              />
+              <div
+                id={navDrawerId}
+                ref={navDrawerRef}
+                className="site-drawer__panel"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby={navTitleId}
+              >
+                <div className="site-drawer__head">
+                  <div className="site-drawer__identity">
+                    <h2 id={navTitleId} className="site-drawer__title">
+                      Menu
+                    </h2>
+                  </div>
+                  <button
+                    type="button"
+                    className="site-drawer__close"
+                    aria-label="Close navigation"
+                    onClick={() => setNavOpen(false)}
+                  >
+                    ✕
+                  </button>
+                </div>
+                <div className="site-drawer__nav site-drawer__nav--always" aria-label="Primary">
+                  {navLinks}
+                </div>
+              </div>
+            </div>,
+            document.body,
+          )
+        : null}
+
+      {accountOpen && typeof document !== 'undefined'
         ? createPortal(
             <div className="site-drawer site-drawer--account" role="presentation">
               <button
                 type="button"
                 className="site-drawer__scrim"
-                aria-label="Close menu"
-                onClick={() => setDrawerOpen(false)}
+                aria-label="Close account"
+                onClick={() => setAccountOpen(false)}
               />
               <div
-                id={drawerId}
-                ref={drawerRef}
+                id={accountDrawerId}
+                ref={accountDrawerRef}
                 className="site-drawer__panel"
                 role="dialog"
                 aria-modal="true"
-                aria-labelledby={drawerTitleId}
+                aria-labelledby={accountTitleId}
               >
                 <div className="site-drawer__head">
                   <div className="site-drawer__identity">
                     <div className="site-drawer__title-row">
-                      <h2 id={drawerTitleId} className="site-drawer__title">
-                        {signedIn ? playerName || 'Account' : 'Sign in'}
+                      <h2 id={accountTitleId} className="site-drawer__title">
+                        {signedIn ? playerName || 'Account' : 'Account'}
                       </h2>
                       {signedIn && playerName ? (
                         <button
@@ -287,8 +418,8 @@ export function SiteHeader() {
                     <button
                       type="button"
                       className="site-drawer__close"
-                      aria-label="Close menu"
-                      onClick={() => setDrawerOpen(false)}
+                      aria-label="Close account"
+                      onClick={() => setAccountOpen(false)}
                     >
                       ✕
                     </button>
@@ -303,7 +434,7 @@ export function SiteHeader() {
                   <a
                     className="site-drawer__rank"
                     href={rankHref()}
-                    onClick={() => setDrawerOpen(false)}
+                    onClick={() => setAccountOpen(false)}
                     aria-label={
                       rankLoading
                         ? 'View profile · loading rank'
@@ -345,40 +476,6 @@ export function SiteHeader() {
                     </span>
                   </a>
                 ) : null}
-
-                <div className="site-drawer__nav" aria-label="Primary">
-                  <a
-                    className={`site-drawer__link${hash === '#/' || hash === '#' || hash === '' ? ' site-drawer__link--active' : ''}`}
-                    href="#/"
-                    aria-current={
-                      hash === '#/' || hash === '#' || hash === '' ? 'page' : undefined
-                    }
-                    onClick={() => setDrawerOpen(false)}
-                  >
-                    Games
-                  </a>
-                  {SITE_NAV_LINKS.map((item) => (
-                    <a
-                      key={item.href}
-                      className={linkClass(item.match, 'site-drawer__link')}
-                      href={item.href}
-                      aria-current={navActive(item.match, hash) ? 'page' : undefined}
-                      onClick={() => setDrawerOpen(false)}
-                    >
-                      {item.label}
-                    </a>
-                  ))}
-                  {signedIn ? (
-                    <a
-                      className={linkClass(SITE_DRAWER_YOU.match, 'site-drawer__link')}
-                      href={SITE_DRAWER_YOU.href}
-                      aria-current={navActive('you', hash) ? 'page' : undefined}
-                      onClick={() => setDrawerOpen(false)}
-                    >
-                      {SITE_DRAWER_YOU.label}
-                    </a>
-                  ) : null}
-                </div>
 
                 <div className="site-drawer__footer">
                   <section className="site-drawer__section" aria-label="Settings">

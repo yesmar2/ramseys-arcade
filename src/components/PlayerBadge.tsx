@@ -430,11 +430,15 @@ export const PlayerBadge = forwardRef<PlayerBadgeHandle, PlayerBadgeProps>(
         </div>
       )
     ) : (
-      <div className="player-badge__auth player-badge__auth--lead">
-        <p className="player-badge__panel-title player-badge__panel-title--sub">Sign in</p>
-        <p className="player-badge__panel-blurb">
-          Sign in to save scores and keep your gamer tag across devices.
-        </p>
+      <div className={`player-badge__auth${embedded ? '' : ' player-badge__auth--lead'}`}>
+        {!embedded ? (
+          <>
+            <p className="player-badge__panel-title player-badge__panel-title--sub">Sign in</p>
+            <p className="player-badge__panel-blurb">
+              Sign in to save scores and keep your gamer tag across devices.
+            </p>
+          </>
+        ) : null}
         <GoogleSignInButton
           disabled={authBusy}
           onBusy={setAuthBusy}

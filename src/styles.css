@@ -2176,10 +2176,33 @@ img {
   padding: 0.15rem 0 0.35rem;
 }
 
+.site-drawer__nav--always {
+  display: flex;
+}
+
 /* Header already shows primary links on desktop. */
 @media (min-width: 641px) {
-  .site-drawer__nav {
+  .site-drawer__nav:not(.site-drawer__nav--always) {
     display: none;
+  }
+}
+
+.site-drawer--nav .site-drawer__panel {
+  left: 0;
+  right: auto;
+  border-left: 0;
+  border-right: 1px solid rgba(var(--ink-rgb), 0.08);
+  animation-name: site-drawer-in-left;
+}
+
+@keyframes site-drawer-in-left {
+  from {
+    transform: translateX(-12px);
+    opacity: 0.72;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
   }
 }
 
@@ -2498,6 +2521,21 @@ a.lb-board-switcher__item {
   background: color-mix(in srgb, var(--accent) 18%, var(--surface));
 }
 
+.site-header__you--icon {
+  width: 2.55rem;
+  min-height: 2.55rem;
+  max-width: none;
+  padding: 0;
+  justify-content: center;
+  background: color-mix(in srgb, var(--accent) 14%, var(--surface));
+}
+
+.site-header__you--icon svg {
+  width: 1.2rem;
+  height: 1.2rem;
+  display: block;
+}
+
 .site-header__you:hover,
 .site-header__you:focus-visible {
   background: color-mix(in srgb, var(--accent) 22%, var(--surface));
@@ -2685,7 +2723,7 @@ a.site-drawer__period-tab {
 }
 
 .site-header__menu-btn {
-  display: inline-flex;
+  display: none;
   align-items: center;
   justify-content: center;
   width: 2.55rem;
@@ -2704,7 +2742,8 @@ a.site-drawer__period-tab {
 }
 
 .site-header__menu-btn:hover,
-.site-header__menu-btn:focus-visible {
+.site-header__menu-btn:focus-visible,
+.site-header__menu-btn--open {
   background: color-mix(in srgb, var(--accent) 18%, var(--surface));
   outline: none;
 }
@@ -2808,6 +2847,10 @@ a.site-drawer__period-tab {
     display: none;
   }
 
+  .site-header__menu-btn {
+    display: inline-flex;
+  }
+
   .site-chrome {
     flex-direction: column;
     align-items: stretch;
@@ -2863,6 +2906,13 @@ a.site-drawer__period-tab {
     max-width: 11rem;
     padding: 0.32rem 0.7rem;
     min-height: 2.4rem;
+  }
+
+  .site-header__you--icon {
+    width: 2.4rem;
+    min-height: 2.4rem;
+    max-width: none;
+    padding: 0;
   }
 
   .site-header__you:has(.site-header__you-rank) {
