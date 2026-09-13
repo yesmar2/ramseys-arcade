@@ -6,6 +6,7 @@ import { normalizePlayerName } from '../lib/leaderboard'
 import { resolveGameAccent } from '../lib/theme'
 import { listTournaments, type TournamentSummary } from '../lib/tournaments'
 import { EventCountdown } from './EventCountdown'
+import { GameThumbArt } from './GameThumbArt'
 
 function accentFor(t: TournamentSummary) {
   const slug = t.games[0]
@@ -14,75 +15,51 @@ function accentFor(t: TournamentSummary) {
 }
 
 function gameNames(t: TournamentSummary) {
-  return t.games
-    .map((slug) => getGame(slug)?.name ?? slug)
-    .join(' · ')
+  return t.games.map((slug) => getGame(slug)?.name ?? slug).join(' · ')
 }
 
-/** Wide card for the event that most deserves the attention. */
-function LeadEvent({ t, joined }: { t: TournamentSummary; joined: boolean }) {
+/** An event you are actually in, with the clock and the way back into it. */
+function JoinedEvent({ t }: { t: TournamentSummary }) {
+  const accent = accentFor(t)
   return (
     <a
       className="home-ev"
       href={tournamentHref(t.id)}
-      style={{ '--ev-accent': accentFor(t) } as CSSProperties}
+      style={{ '--ev-accent': accent, '--thumb-accent': accent } as CSSProperties}
     >
-      <div className="home-ev__body">
-        <div className="home-ev__chips">
-          <span className="home-ev__live">Live</span>
-          {joined ? <span className="home-ev__tag home-ev__tag--in">You’re in</span> : null}
-        </div>
-        <h3 className="home-ev__name">{t.title}</h3>
-        <p className="home-ev__games">
-          {gameNames(t)}
-          <span className="home-ev__dot" aria-hidden="true"> · </span>
-          {t.playerCount} {t.playerCount === 1 ? 'player' : 'players'}
-        </p>
-      </div>
-      <div className="home-ev__side">
+      <span className="home-ev__art" aria-hidden="true">
+        <GameThumbArt slug={t.games[0] ?? ''} accent={accent} />
+      </span>
+      <span className="home-ev__body">
+        <span className="home-ev__name">{t.title}</span>
+        <span className="home-ev__games">
+          {gameNames(t)} · {t.playerCount} {t.playerCount === 1 ? 'player' : 'players'}
+        </span>
+      </span>
+      <span className="home-ev__side">
         <EventCountdown
           endsAt={t.endsAt}
           unlimitedDuration={Boolean(t.rules.unlimitedDuration)}
-          className="home-ev__clock-v"
+          className="home-ev__clock"
         />
-        <span className="home-ev__go">{joined ? 'Open' : 'Join'}</span>
-      </div>
-    </a>
-  )
-}
-
-/** Anything after the lead collapses to a single line. */
-function EventRow({ t, joined }: { t: TournamentSummary; joined: boolean }) {
-  return (
-    <a
-      className="home-evrow"
-      href={tournamentHref(t.id)}
-      style={{ '--ev-accent': accentFor(t) } as CSSProperties}
-    >
-      <span className="home-evrow__dot" aria-hidden="true" />
-      <span className="home-evrow__name">{t.title}</span>
-      <span className="home-evrow__games">{gameNames(t)}</span>
-      {joined ? <span className="home-ev__tag home-ev__tag--in">You’re in</span> : null}
-      <EventCountdown
-        endsAt={t.endsAt}
-        unlimitedDuration={Boolean(t.rules.unlimitedDuration)}
-        className="home-evrow__clock"
-      />
+        <span className="home-ev__go">Open</span>
+      </span>
     </a>
   )
 }
 
 /**
- * Live events above the grid.
+ * Live events.
  *
- * The running clock is the reason to open the app, so one event leads at full
- * width and the rest collapse to rows rather than competing with it.
+ * An event you have joined earns a row of its own. Events merely running in the
+ * background do not: with nothing of yours at stake they collapse to a single
+ * line, rather than spending the top of the page on a countdown nobody entered.
  */
 export function HomeEventsStrip() {
   const name = usePlayerName()
   const cleaned = normalizePlayerName(name)
-  const [events, setEvents] = useState<TournamentSummary[]>([])
-  const [mine, setMine] = useState<Set<string>>(new Set())
+  const [live, setLive] = useState<TournamentSummary[]>([])
+  const [mine, setMine] = useState<TournamentSummary[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -96,21 +73,10 @@ export function HomeEventsStrip() {
     ])
       .then(([all, joined]) => {
         if (cancelled) return
+        const active = all.filter((t) => t.status === 'active')
         const joinedIds = new Set(joined.map((t) => t.id))
-        const live = all.filter((t) => t.status === 'active')
-        // Yours first, then the daily, then everything else: the card that
-        // needs you beats the card that is merely running.
-        const ranked = [...live].sort((a, b) => {
-          const am = joinedIds.has(a.id) ? 0 : 1
-          const bm = joinedIds.has(b.id) ? 0 : 1
-          if (am !== bm) return am - bm
-          const ac = a.cadence === 'daily' ? 0 : a.cadence === 'weekly' ? 1 : 2
-          const bc = b.cadence === 'daily' ? 0 : b.cadence === 'weekly' ? 1 : 2
-          if (ac !== bc) return ac - bc
-          return a.endsAt - b.endsAt
-        })
-        setMine(joinedIds)
-        setEvents(ranked.slice(0, 4))
+        setMine(active.filter((t) => joinedIds.has(t.id)).sort((a, b) => a.endsAt - b.endsAt))
+        setLive(active)
       })
       .finally(() => {
         if (!cancelled) setLoading(false)
@@ -120,28 +86,33 @@ export function HomeEventsStrip() {
     }
   }, [cleaned])
 
-  if (loading) {
+  if (loading || live.length === 0) return null
+
+  if (mine.length === 0) {
     return (
-      <section className="home-events" aria-label="Live events" aria-busy="true">
-        <div className="home-ev home-ev--skeleton" aria-hidden="true" />
+      <section className="home-evline" aria-label="Live events">
+        <a href={tournamentsHref()}>
+          <span className="home-evline__pip" aria-hidden="true" />
+          <span className="home-evline__lead">
+            {live.length} event{live.length === 1 ? '' : 's'} running
+          </span>
+          <span className="home-evline__names">{live.map((t) => t.title).join(', ')}</span>
+          <span className="home-evline__go" aria-hidden="true">
+            →
+          </span>
+        </a>
       </section>
     )
   }
 
-  if (events.length === 0) return null
-
-  const [lead, ...rest] = events
-
   return (
-    <section className="home-events" aria-label="Live events">
-      <LeadEvent t={lead} joined={mine.has(lead.id)} />
-      {rest.length > 0 ? (
-        <div className="home-events__rest">
-          {rest.map((t) => (
-            <EventRow key={t.id} t={t} joined={mine.has(t.id)} />
-          ))}
-        </div>
-      ) : null}
+    <section className="home-events" aria-labelledby="home-events-title">
+      <h2 className="home-events__title" id="home-events-title">
+        Your events
+      </h2>
+      {mine.map((t) => (
+        <JoinedEvent key={t.id} t={t} />
+      ))}
       <p className="home-events__all">
         <a href={tournamentsHref()}>All events →</a>
       </p>

@@ -24,3 +24,13 @@ export function dailyPick(slugs: string[]): string | null {
   if (slugs.length === 0) return null
   return slugs[Math.floor(Date.now() / 86_400_000) % slugs.length]
 }
+
+/**
+ * The game the hero is showing. Shared with the grid so the same artwork does
+ * not appear twice within a screen of itself.
+ */
+export function heroSlug(device: DeviceType, recent: string[]): string | null {
+  const slugs = playableHomeGames(device).map((g) => g.slug)
+  const lastPlayed = recent.find((slug) => slugs.includes(slug)) ?? null
+  return lastPlayed ?? newestSlug(device) ?? dailyPick(slugs)
+}

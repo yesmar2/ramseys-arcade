@@ -15,9 +15,9 @@ export function HomePage() {
       <PageShell variant="home">
         <div className="home-rail">
           <HomeHero />
-          <HomeEventsStrip />
-          <HomeSpotterStrip />
           <GameGrid />
+          <HomeSpotterStrip />
+          <HomeEventsStrip />
           <HomeYou />
           <HomeAboutBand />
         </div>

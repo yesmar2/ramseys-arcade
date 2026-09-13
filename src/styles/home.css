@@ -1,308 +1,249 @@
 /*
  * Home page blocks.
  *
- * The first pass stacked eight white cards of identical width, radius and
- * shadow down the page, which read as a form rather than an arcade. The
- * personality of this app lives in its tinted game tiles, so the blocks that
- * lead the page borrow that tint, and the supporting ones give up their edges
- * entirely — a card should mean "separate object", not "here is some content".
+ * This page's existing vocabulary is a pastel art panel floating on the page
+ * gradient with a label underneath — game tiles carry no card, no border and no
+ * background of their own. Earlier passes here stacked opaque slabs instead,
+ * which is why they read as imported from a different app. These blocks follow
+ * the tile: colour lives in the art, hierarchy comes from its size, and text
+ * sits on the page.
  */
 
 .home-rail {
   display: flex;
   flex-direction: column;
-  gap: 1.35rem;
+  gap: 1.6rem;
 }
 
-/* ---------- hero: the one "what should I play" panel ---------- */
+/* ---------- hero: an oversized game tile ---------- */
 
 .home-hero {
-  border-radius: var(--tile-radius);
-  overflow: hidden;
-  background: linear-gradient(
-    135deg,
-    color-mix(in srgb, var(--hero-accent, var(--accent)) 22%, var(--surface)) 0%,
-    color-mix(in srgb, var(--hero-accent, var(--accent)) 9%, var(--surface)) 62%,
-    var(--surface) 100%
-  );
-  box-shadow: var(--shadow-lift);
-}
-
-.home-hero__main {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 13rem) minmax(0, 1fr);
   align-items: center;
-  gap: 1rem;
-  padding: 1rem 1.1rem;
-  text-decoration: none;
-  color: inherit;
+  gap: 1.4rem;
 }
 
 .home-hero__art {
-  --inline-thumb-size: 4.1rem;
   display: block;
   line-height: 0;
 }
 
+.home-hero__art .inline-thumb {
+  --inline-thumb-size: 100%;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 4 / 3;
+  border-radius: 1.1rem;
+  box-shadow: var(--shadow-soft);
+  transition: transform 0.18s ease;
+}
+
+.home-hero__art:hover .inline-thumb {
+  transform: translateY(-2px);
+}
+
+.home-hero__art .inline-thumb .game-thumb__svg {
+  width: 88%;
+  height: 88%;
+}
+
 .home-hero__text {
-  display: flex;
-  flex-direction: column;
   min-width: 0;
 }
 
 .home-hero__kicker {
-  font-size: 0.7rem;
+  margin: 0 0 0.15rem;
+  font-size: 0.72rem;
   font-weight: 750;
-  color: color-mix(in srgb, var(--hero-accent, var(--accent)) 72%, var(--ink));
+  color: color-mix(in srgb, var(--hero-accent, var(--accent)) 62%, var(--ink));
 }
 
 .home-hero__name {
+  margin: 0;
   font-family: var(--font-display);
-  font-size: clamp(1.4rem, 3.6vw, 1.85rem);
+  font-size: clamp(1.7rem, 5vw, 2.4rem);
   font-weight: 800;
-  letter-spacing: -0.028em;
-  line-height: 1.05;
+  letter-spacing: -0.032em;
+  line-height: 1.02;
+}
+
+.home-hero__name a {
+  color: inherit;
+  text-decoration: none;
 }
 
 .home-hero__sub {
-  margin-top: 0.1rem;
-  font-size: 0.84rem;
+  margin: 0.3rem 0 0.9rem;
+  max-width: 32rem;
+  font-size: 0.88rem;
   font-weight: 600;
   color: var(--muted);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .home-hero__go {
-  flex: none;
+  display: inline-flex;
+  align-items: center;
   border-radius: 999px;
-  padding: 0.62rem 1.5rem;
+  padding: 0.6rem 1.6rem;
   background: var(--hero-accent, var(--accent));
   color: #fff;
-  font-size: 0.9rem;
+  font-size: 0.92rem;
   font-weight: 750;
-  white-space: nowrap;
+  text-decoration: none;
 }
 
-.home-hero__main:hover .home-hero__go,
-.home-hero__main:focus-visible .home-hero__go {
+.home-hero__go:hover,
+.home-hero__go:focus-visible {
   filter: brightness(1.06);
 }
 
-/* Anything new rides on the hero footer rather than claiming its own card. */
-.home-hero__also {
-  display: flex;
-  align-items: center;
-  gap: 0.45rem;
-  padding: 0.5rem 1.1rem;
-  border-top: 1px solid color-mix(in srgb, var(--hero-accent, var(--accent)) 22%, transparent);
-  background: rgba(var(--surface-rgb), 0.5);
-  font-size: 0.78rem;
-  font-weight: 700;
-  color: var(--ink);
-  text-decoration: none;
-}
-
-.home-hero__also-k {
-  border-radius: 999px;
-  padding: 0.1rem 0.42rem;
-  background: var(--hero-accent, var(--accent));
-  color: #fff;
-  font-size: 0.58rem;
-  font-weight: 800;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-}
-
 @media (max-width: 40rem) {
-  .home-hero__main {
-    grid-template-columns: auto minmax(0, 1fr);
-    row-gap: 0.7rem;
+  .home-hero {
+    grid-template-columns: 6.5rem minmax(0, 1fr);
+    gap: 0.9rem;
+  }
+
+  .home-hero__sub {
+    display: none;
   }
 
   .home-hero__go {
-    grid-column: 1 / -1;
-    text-align: center;
+    padding: 0.45rem 1.15rem;
+    font-size: 0.84rem;
   }
 }
 
-/* ---------- live events ---------- */
+/* ---------- events ---------- */
 
-.home-events {
+/* Nothing of yours at stake: one line, not a panel. */
+.home-evline {
+  font-size: 0.8rem;
+  font-weight: 650;
+}
+
+.home-evline a {
   display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-}
-
-.home-ev {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: 1rem;
-  padding: 0.85rem 1.1rem;
-  border-radius: var(--tile-radius);
-  background: linear-gradient(
-    120deg,
-    color-mix(in srgb, var(--ev-accent, var(--accent)) 16%, var(--surface)) 0%,
-    var(--surface) 70%
-  );
-  box-shadow: var(--shadow-soft);
-  text-decoration: none;
-  color: inherit;
-}
-
-.home-ev--skeleton {
-  min-height: 4.6rem;
-  background: rgba(var(--surface-rgb), 0.6);
-}
-
-.home-ev__chips {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.35rem;
-  margin-bottom: 0.25rem;
-}
-
-.home-ev__live,
-.home-ev__tag {
-  border-radius: 999px;
-  padding: 0.15rem 0.45rem;
-  font-size: 0.58rem;
-  font-weight: 800;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-}
-
-.home-ev__live {
-  background: #e0483f;
-  color: #fff;
-}
-
-.home-ev__tag--in {
-  background: color-mix(in srgb, var(--accent) 18%, var(--surface));
-  color: color-mix(in srgb, var(--accent) 78%, var(--ink));
-}
-
-.home-ev__name {
-  margin: 0 0 0.08rem;
-  font-family: var(--font-display);
-  font-size: 1.12rem;
-  font-weight: 800;
-  letter-spacing: -0.018em;
-  line-height: 1.15;
-}
-
-.home-ev__games {
-  margin: 0;
-  font-size: 0.76rem;
-  font-weight: 600;
+  gap: 0.45rem;
   color: var(--muted);
-}
-
-/* Clock and action are one column, so they share an edge instead of drifting. */
-.home-ev__side {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 0.4rem;
-  flex: none;
-}
-
-.home-ev__clock-v {
-  font-family: var(--font-display);
-  font-size: 1.15rem;
-  font-weight: 800;
-  letter-spacing: -0.025em;
-  font-variant-numeric: tabular-nums;
-  line-height: 1;
-}
-
-.home-ev__go {
-  border-radius: 999px;
-  padding: 0.4rem 1.15rem;
-  background: var(--ev-accent, var(--accent));
-  color: #fff;
-  font-size: 0.8rem;
-  font-weight: 750;
-  white-space: nowrap;
-}
-
-@media (max-width: 40rem) {
-  .home-ev {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .home-ev__side {
-    flex-direction: row;
-    align-items: center;
-    justify-content: space-between;
-    width: 100%;
-  }
-}
-
-/* Secondary events are rows on the page ground, not cards. */
-.home-evrow {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  padding: 0.42rem 1.1rem;
-  border-radius: 0.8rem;
-  background: rgba(var(--surface-rgb), 0.55);
   text-decoration: none;
-  color: inherit;
-  font-size: 0.8rem;
 }
 
-.home-evrow:hover {
-  background: rgba(var(--surface-rgb), 0.85);
+.home-evline a:hover {
+  color: var(--ink);
 }
 
-.home-evrow__dot {
+.home-evline__pip {
   width: 0.45rem;
   height: 0.45rem;
   flex: none;
   border-radius: 999px;
-  background: var(--ev-accent, var(--accent));
+  background: #e0483f;
 }
 
-.home-evrow__name {
+.home-evline__lead {
+  color: var(--ink);
   font-weight: 750;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
-.home-evrow__games {
-  flex: 1;
+.home-evline__names {
   min-width: 0;
-  color: var(--muted);
-  font-weight: 600;
-  font-size: 0.74rem;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.home-evrow__clock {
+.home-evline__go {
+  color: var(--accent);
+  font-weight: 750;
+}
+
+.home-events {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.home-events__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.home-ev {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.85rem;
+  text-decoration: none;
+  color: inherit;
+}
+
+.home-ev__art {
+  --inline-thumb-size: 3.2rem;
+  display: block;
+  line-height: 0;
+}
+
+.home-ev__body {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.home-ev__name {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: -0.015em;
+  line-height: 1.2;
+}
+
+.home-ev__games {
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.home-ev__side {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
   flex: none;
-  font-weight: 700;
+}
+
+.home-ev__clock {
+  font-weight: 750;
   font-variant-numeric: tabular-nums;
   color: var(--muted);
-  font-size: 0.76rem;
+  font-size: 0.82rem;
+}
+
+.home-ev__go {
+  border-radius: 999px;
+  padding: 0.38rem 1.05rem;
+  background: var(--ev-accent, var(--accent));
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 750;
+  white-space: nowrap;
 }
 
 @media (max-width: 34rem) {
-  .home-evrow__games {
+  .home-ev__clock {
     display: none;
   }
 }
 
 .home-events__all {
-  margin: 0.1rem 0 0;
-  text-align: right;
-  font-size: 0.75rem;
+  margin: 0;
+  font-size: 0.76rem;
   font-weight: 700;
 }
 
@@ -323,7 +264,7 @@
   justify-content: center;
   gap: 0.3rem;
   width: 100%;
-  margin-top: 0.15rem;
+  margin-top: 0.1rem;
   font-size: 0.68rem;
 }
 
@@ -338,12 +279,16 @@
   color: var(--tile-accent, var(--ink));
 }
 
-/* ---------- where you stand: one panel, internal dividers ---------- */
+/* ---------- where you stand ---------- */
 
+/*
+ * The one block that keeps a surface: it is a table of figures, and rows need
+ * an edge to line up against. Kept translucent and shadowless so it settles
+ * into the page rather than sitting on top of it.
+ */
 .home-you {
   border-radius: var(--tile-radius);
-  background: rgba(var(--surface-rgb), 0.96);
-  box-shadow: var(--shadow-soft);
+  background: rgba(var(--surface-rgb), 0.62);
   overflow: hidden;
 }
 
@@ -352,13 +297,13 @@
   align-items: baseline;
   justify-content: space-between;
   gap: 0.75rem;
-  padding: 0.75rem 1rem 0.55rem;
+  padding: 0.7rem 0.95rem 0.5rem;
 }
 
 .home-you__title {
   margin: 0;
   font-family: var(--font-display);
-  font-size: 1rem;
+  font-size: 0.95rem;
   font-weight: 800;
   letter-spacing: 0.03em;
 }
@@ -375,49 +320,50 @@
   color: var(--accent);
 }
 
-/* Four figures on one line, separated by rules rather than by four cards. */
 .home-you__stats {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  padding: 0 1rem 0.75rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.9rem;
+  padding: 0 0.95rem 0.8rem;
 }
 
 .home-you__stat {
   display: flex;
-  flex-direction: column;
-  gap: 0.05rem;
-  padding-left: 0.9rem;
-  border-left: 1px solid rgba(var(--ink-rgb), 0.1);
+  align-items: baseline;
+  gap: 0.35rem;
   min-width: 0;
-}
-
-.home-you__stat:first-child {
-  padding-left: 0;
-  border-left: 0;
 }
 
 .home-you__v {
   font-family: var(--font-display);
-  font-size: 1.3rem;
+  font-size: 1.22rem;
   font-weight: 800;
   letter-spacing: -0.03em;
   font-variant-numeric: tabular-nums;
-  line-height: 1.05;
+  line-height: 1;
 }
 
 .home-you__k {
-  font-size: 0.68rem;
+  font-size: 0.72rem;
   font-weight: 650;
   color: var(--muted);
 }
 
 .home-you__board {
-  border-top: 1px solid rgba(var(--ink-rgb), 0.08);
+  border-top: 1px solid rgba(var(--ink-rgb), 0.07);
+}
+
+.home-you__board-title {
+  margin: 0;
+  padding: 0.5rem 0.95rem 0.3rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--muted);
 }
 
 .home-you__rows {
   margin: 0;
-  padding: 0;
+  padding: 0 0 0.35rem;
   list-style: none;
 }
 
@@ -425,24 +371,18 @@
   display: flex;
   align-items: center;
   gap: 0.6rem;
-  padding: 0.42rem 1rem;
-  border-top: 1px solid rgba(var(--ink-rgb), 0.055);
-  font-size: 0.83rem;
-}
-
-.home-you__row:first-child {
-  border-top: 0;
+  padding: 0.3rem 0.95rem;
+  font-size: 0.84rem;
 }
 
 .home-you__row--me {
-  background: color-mix(in srgb, var(--accent) 10%, transparent);
-  font-weight: 750;
+  font-weight: 800;
 }
 
 .home-you__pos {
-  width: 1.5rem;
+  width: 1.4rem;
   flex: none;
-  font-weight: 800;
+  font-weight: 750;
   font-variant-numeric: tabular-nums;
   color: var(--muted);
 }
@@ -465,24 +405,11 @@
   font-variant-numeric: tabular-nums;
 }
 
-.home-you__empty {
-  margin: 0;
-  padding: 0.7rem 1rem;
-  border-top: 1px solid rgba(var(--ink-rgb), 0.08);
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: var(--muted);
-}
-
+.home-you__empty,
 .home-you__foot {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
   margin: 0;
-  padding: 0.5rem 1rem 0.6rem;
-  border-top: 1px solid rgba(var(--ink-rgb), 0.08);
-  font-size: 0.7rem;
+  padding: 0.55rem 0.95rem 0.7rem;
+  font-size: 0.78rem;
   font-weight: 650;
   color: var(--muted);
 }
@@ -494,41 +421,24 @@
   font-weight: 750;
 }
 
-@media (max-width: 40rem) {
-  .home-you__stats {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0.7rem 0;
-  }
-
-  .home-you__stat:nth-child(3) {
-    padding-left: 0;
-    border-left: 0;
-  }
-}
-
 /* ---------- first visit ---------- */
 
 .home-intro {
-  padding: 1.4rem 1.3rem;
-  border-radius: var(--tile-radius);
-  background: rgba(var(--surface-rgb), 0.9);
-  box-shadow: var(--shadow-soft);
-  text-align: center;
+  max-width: 40rem;
 }
 
 .home-intro__title {
   margin: 0 0 0.4rem;
   font-family: var(--font-display);
-  font-size: clamp(1.15rem, 3.2vw, 1.45rem);
+  font-size: clamp(1.15rem, 3.2vw, 1.4rem);
   font-weight: 800;
   letter-spacing: -0.025em;
-  line-height: 1.2;
+  line-height: 1.22;
   text-wrap: balance;
 }
 
 .home-intro__lead {
-  max-width: 34rem;
-  margin: 0 auto 0.7rem;
+  margin: 0 0 0.55rem;
   font-size: 0.85rem;
   font-weight: 600;
   color: var(--muted);
@@ -545,15 +455,14 @@
   text-decoration: none;
 }
 
-/* ---------- about: a line on the page, not a card ---------- */
+/* ---------- about: a line on the page ---------- */
 
 .home-band {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
-  gap: 0.35rem 0.7rem;
-  padding: 0 0.2rem;
-  font-size: 0.78rem;
+  gap: 0.3rem 0.6rem;
+  font-size: 0.76rem;
 }
 
 .home-band__lead {
@@ -574,15 +483,9 @@
   white-space: nowrap;
 }
 
-/* Flat and Google themes trade soft shadows for flat edges. */
-html[data-theme="flat"] .home-hero,
-html[data-theme="flat"] .home-ev,
+/* Flat and Google themes draw edges instead of soft fills. */
 html[data-theme="flat"] .home-you,
-html[data-theme="flat"] .home-intro,
-html[data-theme="google"] .home-hero,
-html[data-theme="google"] .home-ev,
-html[data-theme="google"] .home-you,
-html[data-theme="google"] .home-intro {
-  box-shadow: none;
+html[data-theme="google"] .home-you {
+  background: transparent;
   border: 1px solid rgba(var(--ink-rgb), 0.12);
 }

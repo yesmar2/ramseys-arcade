@@ -65,7 +65,7 @@ export function HomeYou() {
     setLoaded(false)
     Promise.all([
       fetchGlobalRank(cleaned, period).catch(() => null),
-      fetchGlobalBoard(3, period).catch(() => null),
+      fetchGlobalBoard(6, period).catch(() => null),
       listTournaments('joined', cleaned).catch(() => []),
     ])
       .then(([rank, board, events]) => {
@@ -104,8 +104,16 @@ export function HomeYou() {
     )
   }
 
-  const yourRow = snap.rank != null && !snap.top.some((e) => e.rank === snap.rank)
   const periodLabel = PERIOD_LABELS[period]
+  /*
+   * A rank is only worth showing once there is a field to be ranked against —
+   * "#2 of 4" tells you less than your own score does, and reads worse. Below
+   * that, the board stops being a leaderboard and becomes the whole roster.
+   */
+  const CROWD = 5
+  const crowded = snap.totalPlayers >= CROWD
+  const yourRow = crowded && snap.rank != null && !snap.top.some((e) => e.rank === snap.rank)
+  const rows = crowded ? snap.top.slice(0, 3) : snap.top
 
   return (
     <section className="home-you" aria-labelledby="home-you-heading">
@@ -119,16 +127,21 @@ export function HomeYou() {
       </div>
 
       <div className="home-you__stats">
-        <Stat label="rank" value={snap.rank != null ? `#${snap.rank}` : '—'} />
-        <Stat label={periodLabel.toLowerCase()} value={snap.score.toLocaleString()} />
-        <Stat label="games" value={String(snap.gamesRanked)} />
+        {crowded ? (
+          <Stat label={`of ${snap.totalPlayers}`} value={snap.rank != null ? `#${snap.rank}` : '—'} />
+        ) : null}
+        <Stat label={`points ${periodLabel.toLowerCase()}`} value={snap.score.toLocaleString()} />
+        <Stat label="games played" value={String(snap.gamesRanked)} />
         <Stat label="events" value={String(snap.events)} />
       </div>
 
-      {snap.top.length > 0 ? (
+      {rows.length > 0 ? (
         <div className="home-you__board">
+          <p className="home-you__board-title">
+            {crowded ? `Top ${rows.length}` : 'Everyone'} · {periodLabel.toLowerCase()}
+          </p>
           <ol className="home-you__rows">
-            {snap.top.map((entry) => (
+            {rows.map((entry) => (
               <li
                 key={entry.name}
                 className={`home-you__row${
@@ -156,12 +169,11 @@ export function HomeYou() {
         </p>
       ) : null}
 
-      <p className="home-you__foot">
-        <span>
-          {group ? 'Your group' : 'Everyone'} · {periodLabel.toLowerCase()}
-        </span>
-        {snap.events === 0 ? <a href={tournamentsHref()}>Join an event →</a> : null}
-      </p>
+      {snap.events === 0 ? (
+        <p className="home-you__foot">
+          <a href={tournamentsHref()}>Join an event →</a>
+        </p>
+      ) : null}
     </section>
   )
 }

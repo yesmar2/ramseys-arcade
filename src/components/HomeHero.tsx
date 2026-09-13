@@ -3,7 +3,7 @@ import { getGame } from '../data/games'
 import { gamePlayHref } from '../hooks/useHashRoute'
 import { usePersonalBest } from '../hooks/usePersonalBest'
 import { useDeviceType } from '../lib/device'
-import { dailyPick, newestSlug, playableHomeGames } from '../lib/homePicks'
+import { heroSlug, newestSlug } from '../lib/homePicks'
 import { useRecentGames } from '../lib/lastPlayed'
 import { GameThumbArt } from './GameThumbArt'
 import { resolveGameAccent } from '../lib/theme'
@@ -11,20 +11,17 @@ import { resolveGameAccent } from '../lib/theme'
 /**
  * The single "what should I play" slot.
  *
- * This was two cards — a continue band and a feature tile in the grid — which
- * put two near-identical "here's a game, press Play" panels within a screen of
- * each other. One panel leads, and anything new rides along on its footer.
+ * Built as an oversized game tile rather than a card: the rest of this page is
+ * pastel art panels sitting straight on the page gradient, so a white slab with
+ * a shadow reads as imported from somewhere else.
  */
 export function HomeHero() {
   const device = useDeviceType()
   const recent = useRecentGames()
-  const playable = playableHomeGames(device)
-  const slugs = playable.map((g) => g.slug)
   const newest = newestSlug(device)
-
-  const lastPlayed = recent.find((slug) => slugs.includes(slug)) ?? null
-  const slug = lastPlayed ?? newest ?? dailyPick(slugs)
+  const slug = heroSlug(device, recent)
   const best = usePersonalBest(slug ?? '')
+  const lastPlayed = slug != null && recent.includes(slug)
 
   if (!slug) return null
   const game = getGame(slug)
@@ -32,7 +29,6 @@ export function HomeHero() {
 
   const accent = resolveGameAccent(slug, game.accent)
   const isNew = !lastPlayed && slug === newest
-  const alsoNew = lastPlayed && newest && newest !== slug ? getGame(newest) : null
 
   return (
     <section
@@ -40,28 +36,23 @@ export function HomeHero() {
       style={{ '--hero-accent': accent, '--thumb-accent': accent } as CSSProperties}
       aria-label="Play"
     >
-      <a className="home-hero__main" href={gamePlayHref(slug)}>
-        <span className="home-hero__art">
-          <GameThumbArt slug={slug} accent={accent} />
-        </span>
-        <span className="home-hero__text">
-          <span className="home-hero__kicker">
-            {lastPlayed ? 'Jump back in' : isNew ? 'New in the arcade' : 'Today’s pick'}
-          </span>
-          <span className="home-hero__name">{game.name}</span>
-          <span className="home-hero__sub">
-            {best > 0 ? `Your best ${best.toLocaleString()}` : game.description}
-          </span>
-        </span>
-        <span className="home-hero__go">Play</span>
+      <a className="home-hero__art" href={gamePlayHref(slug)} tabIndex={-1} aria-hidden="true">
+        <GameThumbArt slug={slug} accent={accent} />
       </a>
-      {alsoNew ? (
-        <a className="home-hero__also" href={gamePlayHref(alsoNew.slug)}>
-          <span className="home-hero__also-k">New</span>
-          {alsoNew.name}
-          <span aria-hidden="true"> →</span>
+      <div className="home-hero__text">
+        <p className="home-hero__kicker">
+          {lastPlayed ? 'Jump back in' : isNew ? 'New in the arcade' : 'Today’s pick'}
+        </p>
+        <h2 className="home-hero__name">
+          <a href={gamePlayHref(slug)}>{game.name}</a>
+        </h2>
+        <p className="home-hero__sub">
+          {best > 0 ? `Your best ${best.toLocaleString()}` : game.description}
+        </p>
+        <a className="home-hero__go" href={gamePlayHref(slug)}>
+          Play
         </a>
-      ) : null}
+      </div>
     </section>
   )
 }
