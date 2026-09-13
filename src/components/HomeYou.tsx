@@ -11,7 +11,7 @@ import {
   PERIOD_LABELS,
   type GlobalBoardEntry,
 } from '../lib/leaderboard'
-import { listTournaments } from '../lib/tournaments'
+import { useLiveEvents } from '../hooks/useLiveEvents'
 
 type Snapshot = {
   rank: number | null
@@ -19,7 +19,6 @@ type Snapshot = {
   totalPlayers: number
   gamesRanked: number
   top: GlobalBoardEntry[]
-  events: number
 }
 
 const EMPTY: Snapshot = {
@@ -28,7 +27,6 @@ const EMPTY: Snapshot = {
   totalPlayers: 0,
   gamesRanked: 0,
   top: [],
-  events: 0,
 }
 
 function Stat({ label, value }: { label: string; value: string }) {
@@ -52,6 +50,8 @@ export function HomeYou() {
   const period = useDefaultPeriod()
   const group = useActiveGroup()
   const cleaned = normalizePlayerName(name)
+  // Shared with the two event blocks rather than fetching the same list again.
+  const { mine } = useLiveEvents(cleaned)
   const [snap, setSnap] = useState<Snapshot>(EMPTY)
   const [loaded, setLoaded] = useState(false)
 
@@ -66,9 +66,8 @@ export function HomeYou() {
     Promise.all([
       fetchGlobalRank(cleaned, period).catch(() => null),
       fetchGlobalBoard(6, period).catch(() => null),
-      listTournaments('joined', cleaned).catch(() => []),
     ])
-      .then(([rank, board, events]) => {
+      .then(([rank, board]) => {
         if (cancelled) return
         setSnap({
           rank: rank?.rank ?? null,
@@ -76,7 +75,6 @@ export function HomeYou() {
           totalPlayers: rank?.totalPlayers ?? 0,
           gamesRanked: Object.keys(rank?.byGame ?? {}).length,
           top: board?.entries ?? [],
-          events: events.filter((t) => t.status !== 'ended').length,
         })
       })
       .finally(() => {
@@ -132,7 +130,7 @@ export function HomeYou() {
         ) : null}
         <Stat label={`points ${periodLabel.toLowerCase()}`} value={snap.score.toLocaleString()} />
         <Stat label="games played" value={String(snap.gamesRanked)} />
-        <Stat label="events" value={String(snap.events)} />
+        <Stat label="events" value={String(mine.length)} />
       </div>
 
       {rows.length > 0 ? (
@@ -169,7 +167,7 @@ export function HomeYou() {
         </p>
       ) : null}
 
-      {snap.events === 0 ? (
+      {mine.length === 0 ? (
         <p className="home-you__foot">
           <a href={tournamentsHref()}>Join an event →</a>
         </p>

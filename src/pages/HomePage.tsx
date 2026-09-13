@@ -1,7 +1,8 @@
 import { ArcadeAttendant } from '../components/ArcadeAttendant'
 import { GameGrid } from '../components/GameGrid'
 import { HomeAboutBand } from '../components/HomeAboutBand'
-import { HomeEventsStrip } from '../components/HomeEventsStrip'
+import { HomeOfficialEvents } from '../components/HomeOfficialEvents'
+import { HomeYourEvents } from '../components/HomeYourEvents'
 import { HomeHero } from '../components/HomeHero'
 import { HomeSpotterStrip } from '../components/HomeSpotterStrip'
 import { HomeYou } from '../components/HomeYou'
@@ -14,10 +15,13 @@ export function HomePage() {
     <>
       <PageShell variant="home">
         <div className="home-rail">
-          <HomeHero />
-          <HomeEventsStrip />
+          <div className="home-top">
+            <HomeHero />
+            <HomeOfficialEvents />
+          </div>
           <GameGrid />
           <HomeSpotterStrip />
+          <HomeYourEvents />
           <HomeYou />
           <HomeAboutBand />
         </div>
