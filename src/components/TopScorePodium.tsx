@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react'
-import { formatLeaderboardScore } from '../games/spotter/score'
+import { formatLeaderboardScore } from '../lib/leaderboardFormat'
 import { rankHref } from '../hooks/useHashRoute'
 import { defaultPeriod } from '../lib/defaultPeriod'
 import {

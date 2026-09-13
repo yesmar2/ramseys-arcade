@@ -102,6 +102,14 @@ export const games: Game[] = [
     playable: true,
   },
   {
+    name: 'Find the Bug',
+    slug: 'findbug',
+    description: 'Something is loose in the arcade. Swat it before the clock does.',
+    how: 'Five scenes, one bug in each. It hides in the clutter and bolts when your cursor gets close, so watch for movement. Tap it to swat. Wrong swats add three seconds, and the hint costs eight. Fastest total time wins. Arrow keys move a reticle and space swats.',
+    accent: '#8fb339',
+    playable: true,
+  },
+  {
     name: 'Barrage',
     slug: 'barrage',
     description: 'Rows of ships. One cannon. Hold the line.',

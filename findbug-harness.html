@@ -1,0 +1,62 @@
+<!doctype html>
+<html data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <title>Find the Bug — scenes</title>
+    <style>
+      :root { --playfield:#161d26; --ink:#e8eef5; }
+      body { margin:0; background:#0b1016; padding:14px; font:400 13px "Outfit", system-ui, sans-serif; color:#cfe0ee; }
+      .row { display:flex; gap:14px; }
+      figure { margin:0; }
+      canvas.scene { width:236px; height:315px; display:block; border-radius:8px; }
+      canvas.zoom { width:110px; height:110px; display:block; border-radius:8px; border:1px solid #2b3a49; margin-top:8px; image-rendering:pixelated; }
+      figcaption { padding:6px 0 0; font-weight:600; font-size:12px; color:#7f97ab; }
+      .z { font-size:11px; color:#5f7near; }
+      h1 { font-size:15px; margin:0 0 12px; font-weight:700; color:#e8eef5; }
+    </style>
+  </head>
+  <body>
+    <h1>Find the Bug — the three scenes (dark theme), with the bug magnified below each</h1>
+    <div class="row" id="row"></div>
+    <script type="module">
+      const game = await import('/src/games/findbug/game.ts')
+      const render = await import('/src/games/findbug/render.ts')
+      const row = document.getElementById('row')
+
+      let s = game.startGame(game.createInitialState())
+      const seen = new Set()
+      while (s.phase === 'playing' && seen.size < 3) {
+        // Let the scene settle a moment before drawing it.
+        for (let i = 0; i < 40; i++) s = game.tick(s, 1 / 60)
+        const r = s.round
+        if (!seen.has(r.kind)) {
+          seen.add(r.kind)
+          const fig = document.createElement('figure')
+          const scene = document.createElement('canvas')
+          scene.className = 'scene'
+          scene.width = 540
+          scene.height = 720
+          render.renderGame(scene.getContext('2d'), s, 540, 720)
+
+          const cap = document.createElement('figcaption')
+          cap.textContent = `Round ${r.index + 1} · ${r.kind} · bug ${(r.config.bugSize * 100).toFixed(1)}% · camo ${r.config.camo.toFixed(2)} · ${r.scene.decoys.length} decoys`
+
+          const zoom = document.createElement('canvas')
+          zoom.className = 'zoom'
+          zoom.width = 220
+          zoom.height = 220
+          const g = zoom.getContext('2d')
+          g.imageSmoothingEnabled = false
+          const half = 42
+          g.drawImage(scene, r.x * 540 - half, r.y * 720 - half, half * 2, half * 2, 0, 0, 220, 220)
+
+          fig.append(scene, cap, zoom)
+          row.appendChild(fig)
+        }
+        s = game.hitAt(s, r.x, r.y)
+        for (let i = 0; i < 70; i++) s = game.tick(s, 1 / 60)
+      }
+      window.__ready = true
+    </script>
+  </body>
+</html>

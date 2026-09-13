@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react'
 import { gameBoardHref, rankHref } from '../hooks/useHashRoute'
-import { formatLeaderboardScore } from '../games/spotter/score'
+import { formatLeaderboardScore } from '../lib/leaderboardFormat'
 import {
   PERIOD_LABELS,
   normalizePlayerName,

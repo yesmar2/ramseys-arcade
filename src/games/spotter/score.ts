@@ -32,8 +32,3 @@ export function formatSpotterMs(ms: number): string {
 export function formatSpotterBoardScore(score: number): string {
   return formatSpotterMs(spotterMsFromBoardScore(score))
 }
-
-export function formatLeaderboardScore(slug: string, score: number): string {
-  if (slug === 'spotter') return formatSpotterBoardScore(score)
-  return score.toLocaleString()
-}

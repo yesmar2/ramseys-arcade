@@ -35,7 +35,7 @@ import { usePlayerName } from '../hooks/usePlayerName'
 import { useDeviceType } from '../lib/device'
 import { APP_NAME } from '../lib/brand'
 import { groupBoardEmptyTitle, useActiveGroup } from '../lib/groups'
-import { formatLeaderboardScore } from '../games/spotter/score'
+import { formatLeaderboardScore } from '../lib/leaderboardFormat'
 import { gameHasRecords } from '../lib/records'
 import { resolveGameAccent, THEME_EVENT } from '../lib/theme'
 import {

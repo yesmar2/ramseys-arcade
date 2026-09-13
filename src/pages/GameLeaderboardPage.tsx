@@ -12,7 +12,7 @@ import {
 } from '../hooks/useHashRoute'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { useDeviceType } from '../lib/device'
-import { formatLeaderboardScore } from '../games/spotter/score'
+import { formatLeaderboardScore } from '../lib/leaderboardFormat'
 import { flashYouRow } from '../lib/boardGap'
 import { defaultPeriod } from '../lib/defaultPeriod'
 import { APP_NAME } from '../lib/brand'
