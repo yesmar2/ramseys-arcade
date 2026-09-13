@@ -31,4 +31,5 @@ export const STAGE_ASPECT = {
   asteroids: { w: 16, h: 9 },
   simon: { w: 1, h: 1 },
   findbug: { w: 3, h: 4 },
+  barrage: { w: 3, h: 4 },
 } as const

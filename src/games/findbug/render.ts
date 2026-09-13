@@ -1,5 +1,6 @@
 import { inkColor, playfieldColor, softFillAlpha, strokeOutlined } from '../../lib/theme'
-import { drawBug, mixColor } from './bugSprite'
+import { mixColor } from '../../lib/color'
+import { drawBug } from './bugSprite'
 import { catchRadius, type GameState, type RoundState } from './game'
 import {
   boardRowY,

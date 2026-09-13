@@ -113,9 +113,9 @@ export const games: Game[] = [
     name: 'Barrage',
     slug: 'barrage',
     description: 'Rows of ships. One cannon. Hold the line.',
-    how: 'Coming soon.',
+    how: 'Arrow keys or the thumb pads move the cannon, space or the up pad fires, three shots in the air at once. The fleet does not trade pot shots — it gathers a volley, and the ships about to fire light up and drop a warning lane first. Read the lanes, get into a cold one, and spend the quiet between volleys clearing rows. From wave three the lanes lean, so a cold column is not automatically safe. Four bunkers soak hits and erode as they do, including from your own fire; they come back each wave. Clear a wave for a bonus, clear one without being hit for a bigger one. Any ship reaching the line ends the run whatever your lives say. Three lives.',
     accent: '#e85d75',
-    comingSoon: true,
+    playable: true,
   },
 ]
 

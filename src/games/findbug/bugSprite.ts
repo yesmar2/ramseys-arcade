@@ -24,45 +24,6 @@ export type BugDraw = {
   flash?: number
 }
 
-/**
- * Mix two colors — used to sink the bug into a scene's palette. Accepts hex or
- * the `rgb(...)` form this function itself returns, so mixes can be composed:
- * the scene tones are built by fading one mix into another.
- */
-export function mixColor(from: string, to: string, t: number): string {
-  const a = parseColor(from)
-  const b = parseColor(to)
-  const k = Math.max(0, Math.min(1, t))
-  const ch = (x: number, y: number) => Math.round(x + (y - x) * k)
-  return `rgb(${ch(a.r, b.r)}, ${ch(a.g, b.g)}, ${ch(a.b, b.b)})`
-}
-
-const FALLBACK = { r: 26, g: 43, b: 60 }
-
-function parseColor(value: string) {
-  const raw = value.trim()
-  const rgb = /^rgba?\(([^)]+)\)$/i.exec(raw)
-  if (rgb) {
-    const parts = rgb[1].split(',').map((p) => Number.parseFloat(p))
-    if (parts.length < 3 || parts.some((n) => !Number.isFinite(n))) return FALLBACK
-    return { r: parts[0], g: parts[1], b: parts[2] }
-  }
-
-  const hex = raw.replace('#', '')
-  if (hex.length === 3) {
-    return {
-      r: Number.parseInt(hex[0] + hex[0], 16),
-      g: Number.parseInt(hex[1] + hex[1], 16),
-      b: Number.parseInt(hex[2] + hex[2], 16),
-    }
-  }
-  if (hex.length !== 6) return FALLBACK
-  return {
-    r: Number.parseInt(hex.slice(0, 2), 16),
-    g: Number.parseInt(hex.slice(2, 4), 16),
-    b: Number.parseInt(hex.slice(4, 6), 16),
-  }
-}
 
 /**
  * @param size Body length in canvas px. Everything else scales off it.

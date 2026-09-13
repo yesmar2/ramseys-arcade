@@ -15,6 +15,7 @@ import { refreshGlobalRank } from './lib/globalRank'
 import { refreshPersonalBests } from './lib/personalBest'
 import { silenceMusic, unlockSound } from './lib/sound'
 import { AsteroidsPage } from './pages/AsteroidsPage'
+import { BarragePage } from './pages/BarragePage'
 import { AuthVerifyPage } from './pages/AuthVerifyPage'
 import { CrosswalkPage } from './pages/CrosswalkPage'
 import { DeadCenterPage } from './pages/DeadCenterPage'
@@ -235,6 +236,7 @@ function App() {
   if (route.name === 'gamePlay' && route.slug === 'crosswalk') return <CrosswalkPage />
   if (route.name === 'gamePlay' && route.slug === 'pellets') return <PelletsPage />
   if (route.name === 'gamePlay' && route.slug === 'findbug') return <FindBugPage />
+  if (route.name === 'gamePlay' && route.slug === 'barrage') return <BarragePage />
   if (route.name === 'gamePlay') return <ComingSoonPage slug={route.slug} />
   return <HomePage />
 }
