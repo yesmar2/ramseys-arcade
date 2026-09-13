@@ -354,13 +354,17 @@ export function CrosswalkGame() {
                       unit="row"
                       wave={Math.max(1, ui.score)}
                       onSkipNext={() => {
-                        const current = Math.max(stateRef.current.row, stateRef.current.score)
-                        stateRef.current = jumpToRow(stateRef.current, current + 25)
+                        const state = stateRef.current
+                        if (!state) return
+                        const current = Math.max(state.row, state.score)
+                        stateRef.current = jumpToRow(state, current + 25)
                         setUi(toSnapshot(stateRef.current))
                         resume()
                       }}
                       onJump={(row) => {
-                        stateRef.current = jumpToRow(stateRef.current, row)
+                        const state = stateRef.current
+                        if (!state) return
+                        stateRef.current = jumpToRow(state, row)
                         setUi(toSnapshot(stateRef.current))
                         resume()
                       }}
