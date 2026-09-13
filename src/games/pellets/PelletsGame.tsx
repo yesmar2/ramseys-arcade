@@ -12,7 +12,19 @@ import { ScoreSaveCard } from '../../components/ScoreSaveCard'
 import { TournamentScoreCard } from '../../components/TournamentScoreCard'
 import { useGamePause } from '../../hooks/useGamePause'
 import { usePersonalBest } from '../../hooks/usePersonalBest'
+import { usePlayerName } from '../../hooks/usePlayerName'
+import { normalizePlayerName } from '../../lib/leaderboard'
 import { getPersonalBest } from '../../lib/personalBest'
+import {
+  clearRunAchievements,
+  isRunAssisted,
+  pushRunAchievement,
+} from '../../lib/runAchievements'
+import {
+  PELLETS_CRUMB_STREAK_MIN,
+  shouldCelebrateRecordSubmit,
+  submitPelletsCrumbStreak,
+} from '../../lib/records'
 import { useTournamentPlay } from '../../tournaments/TournamentPlayContext'
 import {
   createInitialState,
@@ -36,6 +48,7 @@ const SWIPE = 18
 export function PelletsGame() {
   const tournament = useTournamentPlay()
   const apiBest = usePersonalBest('pellets')
+  const playerName = normalizePlayerName(usePlayerName())
   const stateRef = useRef<GameState>(createInitialState())
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [ui, setUi] = useState<Snapshot>(() => toSnapshot(stateRef.current))
@@ -45,6 +58,7 @@ export function PelletsGame() {
   const swipeRef = useRef<{ x: number; y: number } | null>(null)
   const draggedRef = useRef(false)
   const startGrace = useRef(0)
+  const streakRecordKey = useRef<string | null>(null)
   const pausable = ui.phase === 'playing' && !saveOpen
   const { paused, toggle: togglePause, resume } = useGamePause(pausable)
   const pausedRef = useRef(false)
@@ -95,6 +109,34 @@ export function PelletsGame() {
     if (ui.phase === 'menu') previousBestRef.current = apiBest
   }, [apiBest, ui.phase])
 
+  /*
+   * Crumb streak is a run peak, posted once the run is over. The streak climbs
+   * on every crumb eaten, so posting each improvement live — the way Pop does
+   * with its perfect centers — would be a request per pellet.
+   */
+  useEffect(() => {
+    if (tournament || !playerName) return
+    if (ui.phase !== 'gameover') return
+    const streak = ui.crumbStreakBest
+    if (streak < PELLETS_CRUMB_STREAK_MIN) return
+    const key = `crumbs:${streak}`
+    if (streakRecordKey.current === key) return
+    streakRecordKey.current = key
+    // A level-skipped run did not earn its streak either.
+    if (isRunAssisted()) return
+    void (async () => {
+      const result = await submitPelletsCrumbStreak(streak, playerName)
+      if (shouldCelebrateRecordSubmit(result)) {
+        pushRunAchievement({
+          id: 'pellets:crumb-streak',
+          label: 'Crumbs in a row',
+          value: String(streak),
+          rank: result.rank,
+        })
+      }
+    })()
+  }, [ui.phase, ui.crumbStreakBest, playerName, tournament])
+
   // Rebuild the maze for the new shape when the window changes between runs.
   useEffect(() => {
     const sync = () => {
@@ -117,6 +159,8 @@ export function PelletsGame() {
   const restart = () => {
     setSaveOpen(false)
     offeredScore.current = null
+    clearRunAchievements()
+    streakRecordKey.current = null
     stateRef.current = startGame(stateRef.current, pelletsViewport())
     previousBestRef.current = getPersonalBest('pellets')
     startGrace.current = performance.now() + 220

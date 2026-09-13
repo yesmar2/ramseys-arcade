@@ -1,5 +1,5 @@
 import { isDarkTheme, isFlatTheme, playfieldColor, softFillAlpha } from '../../lib/theme'
-import { comboMult, type GameState, type Ghost, type GhostKind } from './game'
+import { streakMult, type GameState, type Ghost, type GhostKind } from './game'
 
 /** Gold crumbs — same family as Snake food. */
 const ACCENT = 38
@@ -641,11 +641,11 @@ export function renderGame(
     ctx.fillText('New maze', ox + gridW / 2, oy + gridH / 2 + cell * 0.6)
   }
 
-  if (state.combo >= 10 && state.phase === 'playing') {
+  if (state.crumbStreak >= 10 && state.phase === 'playing') {
     ctx.textAlign = 'center'
     ctx.textBaseline = 'top'
     ctx.font = `900 ${Math.max(12, Math.round(cell * 0.55))}px "Segoe UI", system-ui, sans-serif`
     ctx.fillStyle = hsla(ACCENT, 70, skin.dark ? 64 : 42, 0.9)
-    ctx.fillText(`×${comboMult(state.combo)} streak`, ox + gridW / 2, oy + gridH + pad * 0.35)
+    ctx.fillText(`×${streakMult(state.crumbStreak)} streak`, ox + gridW / 2, oy + gridH + pad * 0.35)
   }
 }

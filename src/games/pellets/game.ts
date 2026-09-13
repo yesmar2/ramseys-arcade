@@ -35,7 +35,8 @@ export type Snapshot = {
   crumbsLeft: number
   surge: number
   surgeTime: number
-  combo: number
+  crumbStreak: number
+  crumbStreakBest: number
 }
 
 export type GameState = {
@@ -70,7 +71,9 @@ export type GameState = {
   /** Chasers bounced during this surge. */
   surgeHits: number
   /** Fresh crumbs eaten without crossing a picked-clean tile. */
-  combo: number
+  crumbStreak: number
+  /** Longest crumb streak this run — the record book's number. Survives deaths. */
+  crumbStreakBest: number
   /** Tile the player was in last frame, so streaks only count new ground. */
   lastTile: Cell
   trail: TrailDot[]
@@ -119,7 +122,7 @@ const RESPAWN_INVULN = 1.2
 const SURGE_CRUMBS = 26
 const SURGE_TIME = 1.7
 /** Clean crumbs per multiplier step, and the cap. */
-const COMBO_STEP = 10
+const STREAK_STEP = 10
 const MAX_MULT = 4
 
 /** How far past a junction a late turn still counts — the "forgiving" feel. */
@@ -305,7 +308,7 @@ function resetActors(state: GameState, maze: Maze) {
   state.frightEaten = 0
   state.surgeTime = 0
   state.surgeHits = 0
-  state.combo = 0
+  state.crumbStreak = 0
   state.lastTile = { x: maze.start.x, y: maze.start.y }
   state.trail = []
   state.invuln = RESPAWN_INVULN
@@ -346,7 +349,8 @@ function emptyState(maze: Maze): GameState {
     surge: 0,
     surgeTime: 0,
     surgeHits: 0,
-    combo: 0,
+    crumbStreak: 0,
+    crumbStreakBest: 0,
     lastTile: { x: maze.start.x, y: maze.start.y },
     trail: [],
     pops: [],
@@ -716,8 +720,8 @@ function sendHome(state: GameState, ghost: Ghost, points: number) {
   addPop(state, ghost.x, ghost.y, `+${points}`)
 }
 
-export function comboMult(combo: number) {
-  return Math.min(MAX_MULT, 1 + Math.floor(combo / COMBO_STEP))
+export function streakMult(crumbStreak: number) {
+  return Math.min(MAX_MULT, 1 + Math.floor(crumbStreak / STREAK_STEP))
 }
 
 function eatAt(state: GameState) {
@@ -730,14 +734,17 @@ function eatAt(state: GameState) {
   if (state.crumbs[y][x]) {
     state.crumbs[y][x] = false
     state.crumbsLeft -= 1
-    state.combo += 1
-    const mult = comboMult(state.combo) * (state.surgeTime > 0 ? 2 : 1)
+    state.crumbStreak += 1
+    if (state.crumbStreak > state.crumbStreakBest) {
+      state.crumbStreakBest = state.crumbStreak
+    }
+    const mult = streakMult(state.crumbStreak) * (state.surgeTime > 0 ? 2 : 1)
     state.score += SCORE_CRUMB * mult
     if (state.surgeTime <= 0) state.surge = Math.min(1, state.surge + 1 / SURGE_CRUMBS)
-    sfx('eat', Math.min(5, Math.floor(state.combo / 8)))
+    sfx('eat', Math.min(5, Math.floor(state.crumbStreak / 8)))
   } else if (!state.power[y][x]) {
     // Retracing picked-clean ground breaks the streak.
-    state.combo = 0
+    state.crumbStreak = 0
   }
 
   if (state.power[y][x]) {
@@ -913,7 +920,7 @@ export function tick(state: GameState, dt: number): GameState {
       }
       next.phase = 'dying'
       next.deathAnim = DEATH_TIME
-      next.combo = 0
+      next.crumbStreak = 0
       sfx('hurt')
       break
     }
@@ -948,6 +955,7 @@ export function toSnapshot(state: GameState): Snapshot {
     crumbsLeft: state.crumbsLeft,
     surge: state.surge,
     surgeTime: state.surgeTime,
-    combo: state.combo,
+    crumbStreak: state.crumbStreak,
+    crumbStreakBest: state.crumbStreakBest,
   }
 }

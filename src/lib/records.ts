@@ -165,6 +165,7 @@ export function recordNavShortLabel(row: { id: string; label: string }): string 
   if (row.id === CROSSWALK_MOST_COINS_ID) return 'Coins'
   if (row.id === POP_CENTER_STREAK_ID) return 'Center'
   if (row.id === STACKER_PERFECT_STREAK_ID) return 'Perfect'
+  if (row.id === PELLETS_CRUMB_STREAK_ID) return 'Crumbs'
   const wave = parseAsteroidsWaveFromRecordId(row.id)
   if (wave != null) return `W${wave}`
   const length = parseSnakeLengthFromRecordId(row.id)
@@ -196,6 +197,12 @@ export const PATRIOT_DIRECT_STREAK_ID = 'direct-streak'
 export const CROSSWALK_MOST_COINS_ID = 'most-coins'
 export const POP_CENTER_STREAK_ID = 'center-streak'
 export const STACKER_PERFECT_STREAK_ID = 'perfect-streak'
+export const PELLETS_CRUMB_STREAK_ID = 'crumb-streak'
+/**
+ * Crumbs come fast enough that a run of two is noise. Ten is the first
+ * multiplier step, so the board starts where the streak starts mattering.
+ */
+export const PELLETS_CRUMB_STREAK_MIN = 10
 export const PLAY_DAYS_STREAK_ID = 'play-days-streak'
 export const THRESHOLD_STREAK_ID = 'threshold-streak'
 
@@ -540,6 +547,27 @@ export async function submitStackerPerfectStreak(
       'stacker',
       STACKER_PERFECT_STREAK_ID,
       name,
+      value,
+    )
+    return toRecordSubmitOutcome(result)
+  } catch {
+    return null
+  }
+}
+
+/** Best-effort Pellets crumb-streak submit (run peak). */
+export async function submitPelletsCrumbStreak(
+  streak: number,
+  name: string,
+): Promise<RecordSubmitOutcome | null> {
+  const value = Math.floor(streak)
+  const cleaned = normalizePlayerName(name)
+  if (!cleaned || !(value >= PELLETS_CRUMB_STREAK_MIN)) return null
+  try {
+    const result = await submitRecord(
+      'pellets',
+      PELLETS_CRUMB_STREAK_ID,
+      cleaned,
       value,
     )
     return toRecordSubmitOutcome(result)

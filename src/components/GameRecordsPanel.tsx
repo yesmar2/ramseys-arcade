@@ -24,6 +24,9 @@ function recordsEmptyDetail(game: string, gameName: string) {
   if (game === 'patriot') {
     return 'Land consecutive perfect hits in-game and the board will show up here. Daily play and strong-score streaks count too.'
   }
+  if (game === 'pellets') {
+    return 'String crumbs together without doubling back and your longest run shows up here. Daily play and strong-score streaks count too.'
+  }
   if (game === 'stacker') {
     return 'Stack perfect drops in a row in-game and the board will show up here. Daily play and strong-score streaks count too.'
   }
