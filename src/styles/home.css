@@ -116,22 +116,18 @@
 
 /* ---------- events ---------- */
 
-/* Nothing of yours at stake: one line, not a panel. */
+/*
+ * Daily and weekly events named on one line. They are the only recurring
+ * reason to come back on a given day, so they are worth saying out loud —
+ * but with nobody entered, not worth a card and a Join button.
+ */
 .home-evline {
-  font-size: 0.8rem;
-  font-weight: 650;
-}
-
-.home-evline a {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 0.45rem;
-  color: var(--muted);
-  text-decoration: none;
-}
-
-.home-evline a:hover {
-  color: var(--ink);
+  gap: 0.4rem 0.9rem;
+  margin: 0;
+  font-size: 0.79rem;
 }
 
 .home-evline__pip {
@@ -142,35 +138,51 @@
   background: #e0483f;
 }
 
-.home-evline__lead {
-  color: var(--ink);
-  font-weight: 750;
+.home-evline__item {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  min-width: 0;
+  text-decoration: none;
+  color: inherit;
 }
 
-.home-evline__names {
-  min-width: 0;
+.home-evline__name {
+  font-weight: 750;
+  color: var(--ink);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.home-evline__go {
-  color: var(--accent);
+.home-evline__item:hover .home-evline__name {
+  color: var(--ev-accent, var(--accent));
+}
+
+.home-evline__clock {
+  flex: none;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+  font-size: 0.74rem;
+}
+
+.home-evline__all {
+  margin-left: auto;
   font-weight: 750;
+  color: var(--muted);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.home-evline__all:hover {
+  color: var(--accent);
 }
 
 .home-events {
   display: flex;
   flex-direction: column;
-  gap: 0.55rem;
-}
-
-.home-events__title {
-  margin: 0;
-  font-family: var(--font-display);
-  font-size: 0.95rem;
-  font-weight: 800;
-  letter-spacing: -0.01em;
+  gap: 0.6rem;
 }
 
 .home-ev {
