@@ -1377,6 +1377,14 @@ html[data-theme="google"] .ev-tile:focus-visible {
   list-style: none;
 }
 
+/*
+ * Feed labels ("Loser of W2") are words, not a placeholder, so they lose the
+ * wide tracking that makes a bare TBD read as a gap.
+ */
+.event-bracket__name--feed {
+  letter-spacing: 0.04em;
+}
+
 @media (max-width: 720px) {
   /*
    * Three stacked draws each own their horizontal scroll; capping their height
@@ -1389,6 +1397,16 @@ html[data-theme="google"] .ev-tile:focus-visible {
   .ev-bracket-cols {
     width: max-content;
     grid-template-columns: repeat(var(--col-count, 2), min(15rem, 70vw));
+  }
+
+  /* Winners / Losers / Grand final picker above the round strip. */
+  .ev-bracket-sides {
+    margin-bottom: 0.15rem;
+  }
+
+  .ev-bracket-sides .event-bracket-rounds__tab {
+    flex: 1;
+    min-width: 0;
   }
 }
 

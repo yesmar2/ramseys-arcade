@@ -11,6 +11,8 @@ import {
   bracketRoundLabel,
   eventKind,
   matchSide,
+  slotFeedLabel,
+  type BracketSide,
   type PublicBracketMatch,
   type TournamentDetail,
 } from '../lib/tournaments'
@@ -42,6 +44,12 @@ function isByeMatch(match: PublicBracketMatch) {
   return match.players.some((side) => side?.name === 'BYE')
 }
 
+function sideTabLabel(side: BracketSide, round: number, maxRound: number) {
+  if (side === 'gf') return round === 1 ? 'Title' : 'Reset'
+  if (side === 'lb') return round === maxRound ? 'LF' : `L${round}`
+  return roundTabLabel(round, maxRound)
+}
+
 function roundTabLabel(round: number, maxRound: number) {
   if (round === maxRound) return 'Final'
   if (round === maxRound - 1) return 'Semis'
@@ -66,13 +74,10 @@ function MatchCard({
   match,
   displayName,
   isYours,
-  dropSides,
 }: {
   match: PublicBracketMatch
   displayName: string
   isYours: boolean
-  /** Seats filled by players dropping out of the winners bracket. */
-  dropSides?: ReadonlySet<number>
 }) {
   const you = normalizePlayerName(displayName)
   return (
@@ -86,6 +91,7 @@ function MatchCard({
         const isBye = side?.name === 'BYE'
         const isTbd = !side
         const vacant = isBye || isTbd
+        const feedLabel = side ? null : slotFeedLabel(match.from?.[idx])
         const isYouSide = Boolean(side && you && normalizePlayerName(side.name) === you)
         const won = Boolean(side && !isBye && match.winnerId === side.id)
         const lost = Boolean(side && !isBye && match.winnerId && match.winnerId !== side.id)
@@ -98,8 +104,12 @@ function MatchCard({
               isTbd ? ' event-bracket__side--tbd' : ''
             }${isYouSide ? ' event-bracket__side--you' : ''}`}
           >
-            <span className={`event-bracket__name${vacant ? ' event-bracket__name--vacant' : ''}`}>
-              {isBye ? 'Bye' : (side?.name ?? (dropSides?.has(idx) ? 'From winners' : 'TBD'))}
+            <span
+              className={`event-bracket__name${vacant ? ' event-bracket__name--vacant' : ''}${
+                feedLabel ? ' event-bracket__name--feed' : ''
+              }`}
+            >
+              {isBye ? 'Bye' : (side?.name ?? feedLabel ?? 'TBD')}
             </span>
             {vacant ? null : (
               <span className="event-bracket__score">
@@ -175,15 +185,12 @@ function BracketTree({
   currentYouId,
   scrollerRef,
   labelFor = bracketRoundLabel,
-  dropsFromWinners = false,
 }: {
   matches: PublicBracketMatch[]
   displayName: string
   currentYouId: string | null
   scrollerRef?: RefObject<HTMLDivElement | null>
   labelFor?: (round: number, maxRound: number) => string
-  /** Losers bracket: empty seats with no incoming line are winners-side drops. */
-  dropsFromWinners?: boolean
 }) {
   const sizeOf = new Map<number, number>()
   for (const match of matches) sizeOf.set(match.round, (sizeOf.get(match.round) ?? 0) + 1)
@@ -230,14 +237,6 @@ function BracketTree({
                 : 'event-bracket__slot--carry'
           // Nothing feeds the opening round, so it gets no incoming line.
           const fed = match.round > firstRound ? ' event-bracket__slot--fed' : ''
-          const prevSize = sizeOf.get(match.round - 1)
-          const dropSides = dropsFromWinners
-            ? match.round === firstRound
-              ? new Set([0, 1])
-              : prevSize === size
-                ? new Set([1])
-                : undefined
-            : undefined
           return (
             <div
               key={match.id}
@@ -251,7 +250,6 @@ function BracketTree({
                 match={match}
                 displayName={displayName}
                 isYours={currentYouId === match.id}
-                dropSides={dropSides}
               />
               {match.round !== maxRound ? (
                 <span className="event-bracket__wires" aria-hidden="true">
@@ -302,12 +300,13 @@ export function EventBracket({
 
   const treeMatches = isDouble ? winners : matches
   const maxRound = treeMatches.reduce((m, row) => Math.max(m, row.round), 1)
-  const rounds = waiting ? [] : Array.from({ length: maxRound }, (_, i) => i + 1)
   const firstCount = treeMatches.filter((m) => m.round === 1).length || 1
   const currentYou = yourCurrentMatch(matches, displayName)
   const youPlaying = Boolean(currentYou)
   const [activeRound, setActiveRound] = useState(currentYou?.round ?? 1)
   const [showTree, setShowTree] = useState(false)
+  /** Narrow screens show one half of a double draw at a time. */
+  const [narrowSide, setNarrowSide] = useState<BracketSide>('wb')
   const [narrow, setNarrow] = useState(
     () => typeof window !== 'undefined' && window.matchMedia('(max-width: 720px)').matches,
   )
@@ -324,11 +323,15 @@ export function EventBracket({
 
   useEffect(() => {
     setActiveRound(currentYou?.round ?? 1)
+    setNarrowSide(currentYou ? matchSide(currentYou) : 'wb')
     setShowTree(false)
-  }, [detail.id, currentYou?.round])
+  }, [detail.id, currentYou?.id, currentYou?.round])
 
   const scrollToYou = () => {
-    if (currentYou) setActiveRound(currentYou.round)
+    if (currentYou) {
+      setActiveRound(currentYou.round)
+      setNarrowSide(matchSide(currentYou))
+    }
     setShowTree(false)
     jumpPending.current = true
     setJumpTick((n) => n + 1)
@@ -361,8 +364,29 @@ export function EventBracket({
 
   if (!isBracket) return null
 
-  const roundMatches = treeMatches
-    .filter((match) => match.round === activeRound)
+  /*
+   * Narrow screens page through one side of the draw. Winners and losers both
+   * number their rounds from 1, so the round strip is scoped to the chosen
+   * side rather than to the draw as a whole.
+   */
+  const sideMatches = !isDouble
+    ? matches
+    : narrowSide === 'lb'
+      ? losers
+      : narrowSide === 'gf'
+        ? grandFinal
+        : winners
+  const sideRounds = [...new Set(sideMatches.map((m) => m.round))].sort((a, b) => a - b)
+  const sideMaxRound = sideRounds.at(-1) ?? 1
+  const shownRound = sideRounds.includes(activeRound) ? activeRound : (sideRounds[0] ?? 1)
+  const sideOptions: { key: BracketSide; label: string }[] = [
+    { key: 'wb', label: 'Winners' },
+    ...(losers.length ? [{ key: 'lb' as BracketSide, label: 'Losers' }] : []),
+    ...(grandFinal.length ? [{ key: 'gf' as BracketSide, label: 'Grand final' }] : []),
+  ]
+
+  const roundMatches = sideMatches
+    .filter((match) => match.round === shownRound)
     .sort((a, b) => {
       const ay = a.id === currentYou?.id ? 0 : 1
       const by = b.id === currentYou?.id ? 0 : 1
@@ -383,9 +407,9 @@ export function EventBracket({
     <section
       className={[
         className,
-        // Double elim has no single round strip to tab through, so it always
-        // shows the full draw rather than the narrow-screen rounds view.
-        showTree || isDouble ? 'event-bracket-wrap--tree' : 'event-bracket-wrap--rounds',
+        narrow && !showTree
+          ? 'event-bracket-wrap--rounds'
+          : 'event-bracket-wrap--tree',
       ]
         .filter(Boolean)
         .join(' ')}
@@ -399,7 +423,7 @@ export function EventBracket({
               Your match
             </button>
           ) : null}
-          {!waiting && !isDouble && maxRound >= 2 ? (
+          {!waiting && (isDouble || maxRound >= 2) ? (
             <button
               type="button"
               className="event-bracket__jump event-bracket__view-toggle"
@@ -423,6 +447,87 @@ export function EventBracket({
             ? `Waiting for ${Math.max(0, cap - detail.playerCount)} more to draw the bracket.`
             : 'Waiting for the roster to fill.'}
         </p>
+      ) : narrow && !showTree ? (
+        <>
+          {isDouble && sideOptions.length > 1 ? (
+            <div
+              className="event-bracket-rounds ev-bracket-sides"
+              role="tablist"
+              aria-label="Bracket"
+            >
+              {sideOptions.map((opt) => (
+                <button
+                  key={opt.key}
+                  type="button"
+                  role="tab"
+                  aria-selected={narrowSide === opt.key}
+                  className={`event-bracket-rounds__tab${
+                    narrowSide === opt.key ? ' event-bracket-rounds__tab--on' : ''
+                  }`}
+                  onClick={() => setNarrowSide(opt.key)}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          ) : null}
+          {sideRounds.length > 1 ? (
+            <div className="event-bracket-rounds" role="tablist" aria-label="Rounds">
+              {sideRounds.map((round) => {
+                const selected = round === shownRound
+                return (
+                  <button
+                    key={round}
+                    type="button"
+                    role="tab"
+                    aria-selected={selected}
+                    aria-label={
+                      isDouble && narrowSide === 'lb'
+                        ? loserRoundLabel(round, sideMaxRound)
+                        : bracketRoundLabel(round, sideMaxRound)
+                    }
+                    className={`event-bracket-rounds__tab${
+                      selected ? ' event-bracket-rounds__tab--on' : ''
+                    }`}
+                    onClick={() => {
+                      setActiveRound(round)
+                      setShowTree(false)
+                    }}
+                  >
+                    {sideTabLabel(isDouble ? narrowSide : 'wb', round, sideMaxRound)}
+                  </button>
+                )
+              })}
+            </div>
+          ) : null}
+          <ul className="event-bracket-list">
+            {playMatches.map((match) => (
+              <li key={match.id}>
+                <MatchCard
+                  match={match}
+                  displayName={displayName}
+                  isYours={currentYou?.id === match.id}
+                />
+              </li>
+            ))}
+            {byeMatches.length ? (
+              <li>
+                <details className="event-bracket-byes">
+                  <summary>
+                    {byeMatches.length} bye{byeMatches.length === 1 ? '' : 's'}
+                  </summary>
+                  <ul className="event-bracket-list event-bracket-list--byes">
+                    {byeMatches.map((match) => (
+                      <li key={match.id}>
+                        <MatchCard match={match} displayName={displayName} isYours={false} />
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              </li>
+            ) : null}
+          </ul>
+        </>
       ) : isDouble ? (
         <div className="ev-bracket-stack">
           <section className="ev-bracket-half">
@@ -440,15 +545,14 @@ export function EventBracket({
             <section className="ev-bracket-half">
               <h3 className="ev-bracket-half__title">Losers bracket</h3>
               <p className="ev-bracket-half__note">
-                Second chance &mdash; one more loss and you&rsquo;re out. Seats marked
-                &ldquo;from winners&rdquo; wait on whoever drops out of the round above.
+                Second chance &mdash; one more loss and you&rsquo;re out. Empty seats name
+                the match they are waiting on.
               </p>
               <BracketTree
                 matches={losers}
                 displayName={displayName}
                 currentYouId={currentYou?.id ?? null}
                 labelFor={loserRoundLabel}
-                dropsFromWinners
               />
             </section>
           ) : null}
@@ -468,69 +572,12 @@ export function EventBracket({
           ) : null}
         </div>
       ) : (
-        <>
-          {narrow && !showTree ? (
-            <>
-              <div className="event-bracket-rounds" role="tablist" aria-label="Rounds">
-                {rounds.map((round) => {
-                  const selected = round === activeRound
-                  return (
-                    <button
-                      key={round}
-                      type="button"
-                      role="tab"
-                      aria-selected={selected}
-                      aria-label={bracketRoundLabel(round, maxRound)}
-                      className={`event-bracket-rounds__tab${
-                        selected ? ' event-bracket-rounds__tab--on' : ''
-                      }`}
-                      onClick={() => {
-                        setActiveRound(round)
-                        setShowTree(false)
-                      }}
-                    >
-                      {roundTabLabel(round, maxRound)}
-                    </button>
-                  )
-                })}
-              </div>
-              <ul className="event-bracket-list">
-                {playMatches.map((match) => (
-                  <li key={match.id}>
-                    <MatchCard
-                      match={match}
-                      displayName={displayName}
-                      isYours={currentYou?.id === match.id}
-                    />
-                  </li>
-                ))}
-                {byeMatches.length ? (
-                  <li>
-                    <details className="event-bracket-byes">
-                      <summary>
-                        {byeMatches.length} bye{byeMatches.length === 1 ? '' : 's'}
-                      </summary>
-                      <ul className="event-bracket-list event-bracket-list--byes">
-                        {byeMatches.map((match) => (
-                          <li key={match.id}>
-                            <MatchCard match={match} displayName={displayName} isYours={false} />
-                          </li>
-                        ))}
-                      </ul>
-                    </details>
-                  </li>
-                ) : null}
-              </ul>
-            </>
-          ) : (
-            <BracketTree
-              matches={treeMatches}
-              displayName={displayName}
-              currentYouId={currentYou?.id ?? null}
-              scrollerRef={scrollerRef}
-            />
-          )}
-        </>
+        <BracketTree
+          matches={treeMatches}
+          displayName={displayName}
+          currentYouId={currentYou?.id ?? null}
+          scrollerRef={scrollerRef}
+        />
       )}
     </section>
   )

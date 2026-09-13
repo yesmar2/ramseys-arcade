@@ -283,6 +283,13 @@ export type Elimination = 'single' | 'double'
 /** Winners / losers / grand final. Absent on single-elim matches. */
 export type BracketSide = 'wb' | 'lb' | 'gf'
 
+/** Where an empty seat's occupant comes from, e.g. the loser of winners R2. */
+export type SlotFeed = {
+  from: 'winner' | 'loser'
+  bracket: BracketSide
+  round: number
+}
+
 export type PublicBracketMatch = {
   id: string
   round: number
@@ -291,6 +298,20 @@ export type PublicBracketMatch = {
   winnerId: string | null
   playEndsAt?: number | null
   players: [PublicBracketSide | null, PublicBracketSide | null]
+  /** Optional: older API builds and single-elim draws send no feeds. */
+  from?: [SlotFeed | null, SlotFeed | null]
+}
+
+/**
+ * Short bracket codes the way printed draws write them: W2, L5.
+ *
+ * The reset is fed by the grand final itself, so naming its source would just
+ * say "winner of GF" on the card sitting next to the grand final — left blank.
+ */
+export function slotFeedLabel(feed: SlotFeed | null | undefined): string | null {
+  if (!feed || feed.bracket === 'gf') return null
+  const code = `${feed.bracket === 'lb' ? 'L' : 'W'}${feed.round}`
+  return `${feed.from === 'loser' ? 'Loser' : 'Winner'} of ${code}`
 }
 
 export type PublicBracket = {
