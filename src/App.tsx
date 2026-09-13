@@ -20,6 +20,8 @@ import { CrosswalkPage } from './pages/CrosswalkPage'
 import { DeadCenterPage } from './pages/DeadCenterPage'
 import { GameHubPage } from './pages/GameHubPage'
 import { GameLeaderboardPage } from './pages/GameLeaderboardPage'
+import { rememberPlayed } from './lib/lastPlayed'
+import { AboutPage } from './pages/AboutPage'
 import { HomePage } from './pages/HomePage'
 import { RankPage } from './pages/RankPage'
 import { LeaderboardsPage } from './pages/LeaderboardsPage'
@@ -132,6 +134,13 @@ function App() {
     window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
   }, [scrollKey])
 
+  // Opening a game is what "recently played" means — the home page offers the
+  // most recent one back rather than making you find it in the grid again.
+  const playingSlug = route.name === 'gamePlay' ? route.slug : null
+  useEffect(() => {
+    if (playingSlug) rememberPlayed(playingSlug)
+  }, [playingSlug])
+
   useEffect(() => {
     void bootstrapApp()
     const onName = () => {
@@ -162,6 +171,7 @@ function App() {
   }
 
   if (route.name === 'home') return <HomePage />
+  if (route.name === 'about') return <AboutPage />
   if (route.name === 'privacy') return <PrivacyPage />
   if (route.name === 'terms') return <TermsPage />
   if (route.name === 'authVerify') return <AuthVerifyPage token={route.token} />

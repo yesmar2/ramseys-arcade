@@ -1,4 +1,5 @@
 import { APP_NAME } from '../lib/brand'
+import { PageShell } from '../components/PageShell'
 import { leaderboardHref, privacyHref, termsHref, tournamentsHref } from '../hooks/useHashRoute'
 
 const HIGHLIGHTS = [
@@ -20,9 +21,10 @@ const HIGHLIGHTS = [
   },
 ] as const
 
-export function HomeAbout() {
+export function AboutPage() {
   return (
-    <section className="home-about" aria-labelledby="home-about-heading">
+    <PageShell>
+      <section className="home-about" aria-labelledby="home-about-heading">
       <h2 id="home-about-heading" className="home-about__title">
         About {APP_NAME}
       </h2>
@@ -70,8 +72,8 @@ export function HomeAbout() {
 
         <h3 className="home-about__subtitle">Ready to play?</h3>
         <p>
-          Scroll up, pick a tile, and hop in. Whether you have two minutes or twenty, there’s
-          always another run to beat. Thanks for stopping by — we’re glad you’re here.
+          Head back to the arcade, pick a tile, and hop in. Whether you have two minutes or
+          twenty, there’s always another run to beat. Thanks for stopping by.
         </p>
       </div>
 
@@ -80,6 +82,7 @@ export function HomeAbout() {
         <span aria-hidden="true"> · </span>
         <a href={termsHref()}>Terms</a>
       </p>
-    </section>
+      </section>
+    </PageShell>
   )
 }

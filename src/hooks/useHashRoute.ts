@@ -35,6 +35,7 @@ export type Route =
   | { name: 'game'; slug: string; board?: 'scores' | 'records'; period?: LeaderboardPeriod }
   | { name: 'gamePlay'; slug: string }
   | { name: 'authVerify'; token: string }
+  | { name: 'about' }
   | { name: 'privacy' }
   | { name: 'terms' }
 
@@ -113,6 +114,10 @@ export function privacyHref() {
 
 export function termsHref() {
   return '#/terms'
+}
+
+export function aboutHref() {
+  return '#/about'
 }
 
 export function tournamentsHref() {
@@ -256,6 +261,7 @@ function parseHash(hash: string): Route {
       ? new URLSearchParams(queryString).get('invite')?.trim().toUpperCase() || undefined
       : undefined
   if (!path) return { name: 'home' }
+  if (path === 'about') return { name: 'about' }
   if (path === 'privacy') return { name: 'privacy' }
   if (path === 'terms') return { name: 'terms' }
   if (path === 'groups') return { name: 'groups' }

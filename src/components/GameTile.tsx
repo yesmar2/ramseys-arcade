@@ -11,6 +11,8 @@ type GameTileProps = {
   href?: string
   /** Keep the tile visible on phones even if the game isn’t playable there. */
   showOnAllDevices?: boolean
+  /** Your best on this game, shown as a footer so the grid reads as a board. */
+  best?: number | null
 }
 
 export function GameTile({
@@ -18,6 +20,7 @@ export function GameTile({
   index,
   href,
   showOnAllDevices = false,
+  best,
 }: GameTileProps) {
   const [, setThemeTick] = useState(0)
   useEffect(() => {
@@ -55,6 +58,17 @@ export function GameTile({
           <span className="game-tile__status">In development</span>
         ) : game.comingSoon ? (
           <span className="game-tile__status">Coming soon</span>
+        ) : best != null ? (
+          <span className="game-tile__best">
+            {best > 0 ? (
+              <>
+                <span className="game-tile__best-k">Your best</span>
+                <span className="game-tile__best-v">{best.toLocaleString()}</span>
+              </>
+            ) : (
+              <span className="game-tile__best-new">Not played yet</span>
+            )}
+          </span>
         ) : null}
       </a>
     </li>
