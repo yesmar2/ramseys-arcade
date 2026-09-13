@@ -108,6 +108,7 @@ export const games: Game[] = [
     how: 'Five scenes of arcade clutter — a cabinet row, a leaderboard, a cable loom, a token spill, the carpet — and one bug hiding in each. It never moves, so nothing on screen will give it away: it just gets smaller and better camouflaged every scene. Tap it to swat. Wrong swats add three seconds, and the hint costs eight. Fastest total time wins. Arrow keys move a reticle and space swats.',
     accent: '#8fb339',
     playable: true,
+    inDevelopment: true,
   },
   {
     name: 'Barrage',
@@ -116,6 +117,7 @@ export const games: Game[] = [
     how: 'Arrow keys or the thumb pads move the cannon, space or the up pad fires, three shots in the air at once. The fleet does not trade pot shots — it gathers a volley, and the ships about to fire light up and drop a warning lane first. Read the lanes, get into a cold one, and spend the quiet between volleys clearing rows. From wave three the lanes lean, so a cold column is not automatically safe. There is no cover: moving is your only defence. Wrecked ships sometimes drop a capsule — Spread fans your fire, Slow drags the volley to a crawl, Pierce punches a round straight through a whole column, and Jam makes the next volley fizzle. They fall, so you have to move under one to take it, and the lane it drops down may be the one about to fire. Clear a wave for a bonus, clear one without being hit for a bigger one. Any ship reaching the line ends the run whatever your lives say. Three lives.',
     accent: '#e85d75',
     playable: true,
+    inDevelopment: true,
   },
 ]
 
