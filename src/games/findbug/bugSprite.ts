@@ -1,6 +1,9 @@
 /**
  * The bug itself — a small pixel-ish beetle drawn on canvas.
  *
+ * The bug never moves, so the sprite has no gait — the shell split and the
+ * antennae are the only things that give it away once you are looking.
+ *
  * Kept free of game state so the site-wide hunt can mount the same sprite in a
  * standalone canvas without pulling in the round logic.
  */
@@ -16,25 +19,36 @@ export type BugLook = {
 export type BugDraw = {
   /** Facing direction in radians. */
   angle: number
-  /** Advances while scurrying so the legs cycle. */
-  legPhase: number
-  moving: boolean
   look: BugLook
   /** 0–1 catch flash. */
   flash?: number
 }
 
-/** Mix two hex colors — used to sink the bug into a scene's palette. */
-export function mixHex(from: string, to: string, t: number): string {
-  const a = parseHex(from)
-  const b = parseHex(to)
+/**
+ * Mix two colors — used to sink the bug into a scene's palette. Accepts hex or
+ * the `rgb(...)` form this function itself returns, so mixes can be composed:
+ * the scene tones are built by fading one mix into another.
+ */
+export function mixColor(from: string, to: string, t: number): string {
+  const a = parseColor(from)
+  const b = parseColor(to)
   const k = Math.max(0, Math.min(1, t))
   const ch = (x: number, y: number) => Math.round(x + (y - x) * k)
   return `rgb(${ch(a.r, b.r)}, ${ch(a.g, b.g)}, ${ch(a.b, b.b)})`
 }
 
-function parseHex(value: string) {
-  const hex = value.trim().replace('#', '')
+const FALLBACK = { r: 26, g: 43, b: 60 }
+
+function parseColor(value: string) {
+  const raw = value.trim()
+  const rgb = /^rgba?\(([^)]+)\)$/i.exec(raw)
+  if (rgb) {
+    const parts = rgb[1].split(',').map((p) => Number.parseFloat(p))
+    if (parts.length < 3 || parts.some((n) => !Number.isFinite(n))) return FALLBACK
+    return { r: parts[0], g: parts[1], b: parts[2] }
+  }
+
+  const hex = raw.replace('#', '')
   if (hex.length === 3) {
     return {
       r: Number.parseInt(hex[0] + hex[0], 16),
@@ -42,7 +56,7 @@ function parseHex(value: string) {
       b: Number.parseInt(hex[2] + hex[2], 16),
     }
   }
-  if (hex.length !== 6) return { r: 26, g: 43, b: 60 }
+  if (hex.length !== 6) return FALLBACK
   return {
     r: Number.parseInt(hex.slice(0, 2), 16),
     g: Number.parseInt(hex.slice(2, 4), 16),
@@ -60,7 +74,7 @@ export function drawBug(
   size: number,
   draw: BugDraw,
 ) {
-  const { angle, legPhase, moving, look } = draw
+  const { angle, look } = draw
   const flash = draw.flash ?? 0
   const rx = size * 0.5
   const ry = size * 0.32
@@ -76,26 +90,22 @@ export function drawBug(
   for (let i = 0; i < 3; i++) {
     // Splay the front legs forward and the back legs aft.
     const baseX = rx * (0.42 - i * 0.42)
-    const swing = moving ? Math.sin(legPhase * Math.PI * 2 + i * 1.9) * size * 0.16 : 0
     const reach = size * 0.44
     const lift = ry * 0.82
     for (const side of [-1, 1]) {
-      // Alternate the gait left/right so it scuttles rather than hops.
-      const phase = side > 0 ? swing : -swing
       ctx.beginPath()
       ctx.moveTo(baseX, side * ry * 0.4)
-      ctx.lineTo(baseX + phase * 0.5, side * lift)
-      ctx.lineTo(baseX + phase, side * (lift + reach * 0.5))
+      ctx.lineTo(baseX, side * lift)
+      ctx.lineTo(baseX, side * (lift + reach * 0.5))
       ctx.stroke()
     }
   }
 
   // Antennae.
-  const twitch = moving ? Math.sin(legPhase * Math.PI * 2.7) * 0.22 : 0
   for (const side of [-1, 1]) {
     ctx.beginPath()
     ctx.moveTo(rx * 0.72, side * ry * 0.28)
-    ctx.lineTo(rx * 1.34, side * (ry * 0.72 + twitch * size * 0.1))
+    ctx.lineTo(rx * 1.34, side * ry * 0.72)
     ctx.stroke()
   }
 

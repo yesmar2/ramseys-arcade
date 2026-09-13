@@ -1,83 +1,48 @@
 import { inkColor, playfieldColor, softFillAlpha, strokeOutlined } from '../../lib/theme'
-import { drawBug, mixHex } from './bugSprite'
+import { drawBug, mixColor } from './bugSprite'
 import { catchRadius, type GameState, type RoundState } from './game'
 import {
   boardRowY,
-  CODE_CHAR_W,
-  CODE_FONT_H,
-  CODE_LEFT,
-  codeLineAt,
+  cableY,
+  type Block,
   type Cabinet,
-  type CodeLine,
+  type Cable,
   type Decoy,
+  type Motif,
   type Scene,
+  type Tie,
+  type Token,
 } from './scenes'
 
 /**
- * Normalized geometry resolves against width for x/sizes and height for y and
- * font size — the stage aspect is fixed, so the code scene's character grid
- * stays aligned with the anchors baked into the scene.
+ * Normalized geometry resolves against width for x and sizes, height for y.
+ * The stage aspect is fixed, so a scene's baked anchors stay put.
  */
 
 const HINT_RADIUS = 0.22
 
 /** Faded furniture tone — decoys and camouflaged bugs both land near here. */
 function fade(t: number): string {
-  return mixHex(inkColor(), playfieldColor(), t)
+  return mixColor(inkColor(), playfieldColor(), t)
 }
 
-function drawBackground(ctx: CanvasRenderingContext2D, w: number, h: number) {
+function alphaHex(a: number): string {
+  return Math.round(Math.max(0, Math.min(1, a)) * 255)
+    .toString(16)
+    .padStart(2, '0')
+}
+
+function drawBackground(ctx: CanvasRenderingContext2D, scene: Scene, w: number, h: number) {
   ctx.fillStyle = playfieldColor()
+  ctx.fillRect(0, 0, w, h)
+  // Floor scenes lay a surface down first, so the gaps between the clutter are
+  // somewhere a camouflaged bug can actually hide.
+  if (scene.ground === undefined) return
+  ctx.fillStyle = fade(scene.ground)
   ctx.fillRect(0, 0, w, h)
 }
 
-function tokenColor(kind: CodeLine['tokens'][number]['kind']): string {
-  if (kind === 'keyword') return 'hsl(265, 52%, 58%)'
-  if (kind === 'number') return 'hsl(35, 68%, 50%)'
-  if (kind === 'string') return 'hsl(150, 48%, 42%)'
-  if (kind === 'punct') return fade(0.42)
-  return fade(0.08)
-}
-
-function drawCodeScene(
-  ctx: CanvasRenderingContext2D,
-  scene: Scene,
-  round: RoundState,
-  w: number,
-  h: number,
-) {
-  // Anchors were baked against a fixed character grid, so size the font until
-  // its real advance matches that grid — otherwise tokens drift off the
-  // semicolon the bug is supposed to be sitting on.
-  const face = 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace'
-  let fontPx = CODE_FONT_H * h
-  ctx.font = `500 ${fontPx}px ${face}`
-  const advance = ctx.measureText('0123456789').width / 10
-  if (advance > 0) {
-    fontPx *= (CODE_CHAR_W * w) / advance
-    ctx.font = `500 ${fontPx}px ${face}`
-  }
-  ctx.textAlign = 'left'
-  ctx.textBaseline = 'middle'
-
-  // While the bug sits on a line end, it is covering — eating — the semicolon.
-  const perched = round.mode === 'idle' && !round.found
-  const eatenLine = perched ? scene.anchors[round.anchorIndex]?.lineIndex : undefined
-
-  scene.codeLines.forEach((line, i) => {
-    const y = codeLineAt(i) * h
-    let col = line.indent * 2
-    for (const token of line.tokens) {
-      if (token.text === ';' && i === eatenLine) {
-        col += token.text.length
-        continue
-      }
-      ctx.fillStyle = tokenColor(token.kind)
-      ctx.fillText(token.text, (CODE_LEFT + col * CODE_CHAR_W) * w, y)
-      col += token.text.length
-    }
-  })
-}
+// ---------------------------------------------------------------- cabinets
 
 function drawCabinet(ctx: CanvasRenderingContext2D, cab: Cabinet, w: number, h: number) {
   const x = cab.x * w
@@ -95,13 +60,13 @@ function drawCabinet(ctx: CanvasRenderingContext2D, cab: Cabinet, w: number, h: 
   strokeOutlined(ctx)
 
   // Marquee.
-  ctx.fillStyle = `${cab.accent}${Math.round(softFillAlpha(0.3) * 255).toString(16).padStart(2, '0')}`
+  ctx.fillStyle = `${cab.accent}${alphaHex(softFillAlpha(0.3))}`
   ctx.beginPath()
   ctx.roundRect(x + cw * 0.1, y + ch * 0.08, cw * 0.8, ch * 0.13, radius * 0.5)
   ctx.fill()
 
   // Screen.
-  ctx.fillStyle = mixHex(playfieldColor(), cab.accent, 0.22 * cab.tone)
+  ctx.fillStyle = mixColor(playfieldColor(), cab.accent, 0.22 * cab.tone)
   ctx.strokeStyle = fade(0.5)
   ctx.lineWidth = Math.max(1, cw * 0.015)
   ctx.beginPath()
@@ -110,9 +75,11 @@ function drawCabinet(ctx: CanvasRenderingContext2D, cab: Cabinet, w: number, h: 
   strokeOutlined(ctx)
 }
 
+// ------------------------------------------------------------------- board
+
 function drawBoardScene(
   ctx: CanvasRenderingContext2D,
-  scene: Scene,
+  rows: readonly { rank: number; name: string; score: number }[],
   w: number,
   h: number,
 ) {
@@ -127,7 +94,7 @@ function drawBoardScene(
   ctx.textAlign = 'right'
   ctx.fillText('SCORE', w * 0.9, h * 0.08)
 
-  scene.rows.forEach((row, i) => {
+  rows.forEach((row, i) => {
     const y = boardRowY(i) * h
 
     ctx.fillStyle = fade(0.82)
@@ -146,17 +113,166 @@ function drawBoardScene(
   })
 }
 
-function drawDecoys(
-  ctx: CanvasRenderingContext2D,
-  decoys: Decoy[],
-  timeS: number,
-  w: number,
-  h: number,
-) {
+// -------------------------------------------------------------------- loom
+
+function drawCable(ctx: CanvasRenderingContext2D, c: Cable, w: number, h: number) {
+  // Same cubic the anchors were sampled from, so a perch lands on the stroke.
+  ctx.strokeStyle = fade(c.tone)
+  ctx.lineWidth = c.width * w
+  ctx.lineCap = 'round'
+  ctx.beginPath()
+  ctx.moveTo(c.x0 * w, cableY(0) * h)
+  ctx.bezierCurveTo(
+    c.x1 * w,
+    cableY(1 / 3) * h,
+    c.x2 * w,
+    cableY(2 / 3) * h,
+    c.x3 * w,
+    cableY(1) * h,
+  )
+  ctx.stroke()
+
+  // A lighter core sells it as a sheathed cable rather than a painted stripe.
+  ctx.strokeStyle = fade(Math.max(0.18, c.tone - 0.16))
+  ctx.lineWidth = c.width * w * 0.36
+  ctx.stroke()
+}
+
+function drawTie(ctx: CanvasRenderingContext2D, tie: Tie, w: number, h: number) {
+  const th = w * 0.014
+  ctx.fillStyle = fade(0.5)
+  ctx.beginPath()
+  ctx.roundRect(tie.x * w, tie.y * h - th / 2, tie.w * w, th, th * 0.4)
+  ctx.fill()
+}
+
+function drawBlock(ctx: CanvasRenderingContext2D, b: Block, w: number, h: number) {
+  const x = b.x * w
+  const y = b.y * h
+  const bw = b.w * w
+  const bh = b.h * h
+  const radius = Math.min(bw, bh) * 0.16
+
+  ctx.fillStyle = fade(0.66)
+  ctx.strokeStyle = fade(0.42)
+  ctx.lineWidth = Math.max(1, bw * 0.02)
+  ctx.beginPath()
+  ctx.roundRect(x, y, bw, bh, radius)
+  ctx.fill()
+  strokeOutlined(ctx)
+
+  ctx.fillStyle = fade(0.34)
+  const pinW = bw / (b.pins * 2 + 1)
+  for (let i = 0; i < b.pins; i++) {
+    ctx.beginPath()
+    ctx.roundRect(x + pinW * (i * 2 + 1), y + bh * 0.62, pinW, bh * 0.3, pinW * 0.3)
+    ctx.fill()
+  }
+}
+
+// ------------------------------------------------------------------ tokens
+
+function drawToken(ctx: CanvasRenderingContext2D, t: Token, w: number, h: number) {
+  const x = t.x * w
+  const y = t.y * h
+  const r = t.r * w
+
+  ctx.fillStyle = fade(t.tone)
+  ctx.beginPath()
+  ctx.arc(x, y, r, 0, Math.PI * 2)
+  ctx.fill()
+
+  ctx.strokeStyle = fade(Math.max(0.2, t.tone - 0.22))
+  ctx.lineWidth = Math.max(1, r * 0.12)
+  ctx.beginPath()
+  ctx.arc(x, y, r * 0.72, 0, Math.PI * 2)
+  ctx.stroke()
+
+  // A milled edge gives the rim the same broken silhouette a bug's legs have.
+  ctx.lineWidth = Math.max(1, r * 0.09)
+  for (let i = 0; i < 16; i++) {
+    const a = (i / 16) * Math.PI * 2
+    ctx.beginPath()
+    ctx.moveTo(x + Math.cos(a) * r * 0.88, y + Math.sin(a) * r * 0.88)
+    ctx.lineTo(x + Math.cos(a) * r, y + Math.sin(a) * r)
+    ctx.stroke()
+  }
+}
+
+// ------------------------------------------------------------------ carpet
+
+function drawMotif(ctx: CanvasRenderingContext2D, m: Motif, w: number, h: number) {
+  const size = m.size * w
+  ctx.save()
+  ctx.translate(m.x * w, m.y * h)
+  ctx.rotate(m.rot)
+  ctx.fillStyle = `${m.accent}${alphaHex(softFillAlpha(0.34))}`
+  ctx.strokeStyle = `${m.accent}${alphaHex(softFillAlpha(0.5))}`
+  ctx.lineWidth = Math.max(1, size * 0.1)
+
+  if (m.kind === 'dot') {
+    ctx.beginPath()
+    ctx.arc(0, 0, size * 0.4, 0, Math.PI * 2)
+    ctx.fill()
+  } else if (m.kind === 'tri') {
+    ctx.beginPath()
+    ctx.moveTo(0, -size * 0.5)
+    ctx.lineTo(size * 0.46, size * 0.36)
+    ctx.lineTo(-size * 0.46, size * 0.36)
+    ctx.closePath()
+    ctx.fill()
+  } else if (m.kind === 'zig') {
+    ctx.beginPath()
+    ctx.moveTo(-size * 0.5, size * 0.24)
+    ctx.lineTo(-size * 0.17, -size * 0.24)
+    ctx.lineTo(size * 0.17, size * 0.24)
+    ctx.lineTo(size * 0.5, -size * 0.24)
+    ctx.stroke()
+  } else {
+    ctx.beginPath()
+    for (let i = 0; i < 10; i++) {
+      const a = (i / 10) * Math.PI * 2 - Math.PI / 2
+      const r = i % 2 === 0 ? size * 0.5 : size * 0.21
+      const px = Math.cos(a) * r
+      const py = Math.sin(a) * r
+      if (i === 0) ctx.moveTo(px, py)
+      else ctx.lineTo(px, py)
+    }
+    ctx.closePath()
+    ctx.fill()
+  }
+
+  ctx.restore()
+}
+
+// ------------------------------------------------------------------ shared
+
+function drawScene(ctx: CanvasRenderingContext2D, scene: Scene, w: number, h: number) {
+  if (scene.kind === 'cabinets') {
+    for (const cab of scene.cabinets) drawCabinet(ctx, cab, w, h)
+    return
+  }
+  if (scene.kind === 'board') {
+    drawBoardScene(ctx, scene.rows, w, h)
+    return
+  }
+  if (scene.kind === 'loom') {
+    for (const c of scene.cables) drawCable(ctx, c, w, h)
+    for (const t of scene.ties) drawTie(ctx, t, w, h)
+    for (const b of scene.blocks) drawBlock(ctx, b, w, h)
+    return
+  }
+  if (scene.kind === 'tokens') {
+    for (const t of scene.tokens) drawToken(ctx, t, w, h)
+    return
+  }
+  for (const m of scene.motifs) drawMotif(ctx, m, w, h)
+}
+
+function drawDecoys(ctx: CanvasRenderingContext2D, decoys: Decoy[], w: number, h: number) {
   ctx.fillStyle = fade(0.46)
   for (const d of decoys) {
-    const wobble = d.driftAmp > 0 ? Math.sin(timeS * d.driftRate * Math.PI * 2 + d.driftPhase) : 0
-    const x = (d.x + wobble * d.driftAmp) * w
+    const x = d.x * w
     const y = d.y * h
     const r = d.r * w
 
@@ -166,7 +282,7 @@ function drawDecoys(
       ctx.fill()
       continue
     }
-    // Specks and stray punctuation read as a resting body at a glance.
+    // Specks read as a resting body at a glance — that is the whole point.
     ctx.beginPath()
     ctx.ellipse(x, y, r * 1.25, r * 0.8, 0.3, 0, Math.PI * 2)
     ctx.fill()
@@ -177,7 +293,7 @@ function drawHintVeil(ctx: CanvasRenderingContext2D, round: RoundState, w: numbe
   const bx = round.x * w
   const by = round.y * h
   ctx.save()
-  ctx.fillStyle = mixHex(playfieldColor(), inkColor(), 0.08)
+  ctx.fillStyle = mixColor(playfieldColor(), inkColor(), 0.08)
   ctx.globalAlpha = 0.82
   ctx.beginPath()
   ctx.rect(0, 0, w, h)
@@ -218,41 +334,24 @@ function drawMissFlash(ctx: CanvasRenderingContext2D, state: GameState, w: numbe
   ctx.stroke()
 }
 
-export function renderGame(
-  ctx: CanvasRenderingContext2D,
-  state: GameState,
-  w: number,
-  h: number,
-) {
-  const timeS = performance.now() / 1000
+export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, w: number, h: number) {
   const round = state.round
   const scene = round.scene
 
-  drawBackground(ctx, w, h)
-
-  if (scene.kind === 'code') drawCodeScene(ctx, scene, round, w, h)
-  else if (scene.kind === 'cabinets') for (const cab of scene.cabinets) drawCabinet(ctx, cab, w, h)
-  else drawBoardScene(ctx, scene, w, h)
-
-  drawDecoys(ctx, scene.decoys, timeS, w, h)
+  drawBackground(ctx, scene, w, h)
+  drawScene(ctx, scene, w, h)
+  drawDecoys(ctx, scene.decoys, w, h)
 
   if (round.hintUsed && !round.found) drawHintVeil(ctx, round, w, h)
 
-  // The bug sinks toward the furniture tone as rounds get harder, but never
-  // past it — there is always contrast left to find.
-  const camoTone = fade(0.55 * round.config.camo)
-  const body = mixHex(camoTone, scene.camoColor, 0.18)
-  // Reduced motion trades the hop for this pulse, so it has to read clearly.
-  const look = {
-    body: round.pulse > 0 ? mixHex(body, '#e85d75', round.pulse * 0.55) : body,
-    leg: mixHex(body, inkColor(), 0.4),
-  }
+  // The bug sinks toward the surface it is sitting on as rounds get harder, but
+  // never all the way — and the legs stay lighter still, so there is always
+  // contrast left to find.
+  const body = mixColor(fade(0.18), fade(scene.camoTone), round.config.camo)
 
   drawBug(ctx, round.x * w, round.y * h, round.config.bugSize * w, {
     angle: round.angle,
-    legPhase: round.legPhase,
-    moving: round.mode === 'scurry',
-    look,
+    look: { body, leg: mixColor(body, inkColor(), 0.4) },
     flash: round.found ? Math.max(0, 0.7 - round.foundAge) : 0,
   })
 
@@ -260,7 +359,13 @@ export function renderGame(
     ctx.strokeStyle = 'hsl(150, 52%, 44%)'
     ctx.lineWidth = Math.max(2, w * 0.009)
     ctx.beginPath()
-    ctx.arc(round.x * w, round.y * h, catchRadius(round) * w * (1 + round.foundAge * 0.6), 0, Math.PI * 2)
+    ctx.arc(
+      round.x * w,
+      round.y * h,
+      catchRadius(round) * w * (1 + round.foundAge * 0.6),
+      0,
+      Math.PI * 2,
+    )
     ctx.stroke()
   }
 

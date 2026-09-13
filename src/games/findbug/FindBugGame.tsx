@@ -40,9 +40,11 @@ import { renderGame } from './render'
 import { findbugBoardScore, formatFindbugMs } from './score'
 
 const SCENE_LABEL: Record<Snapshot['sceneKind'], string> = {
-  code: 'Code wall',
   cabinets: 'Cabinet row',
   board: 'Leaderboard',
+  loom: 'Cable loom',
+  tokens: 'Token spill',
+  carpet: 'Arcade carpet',
 }
 
 const ARROW_KEYS: Record<string, [number, number]> = {
@@ -298,7 +300,7 @@ export function FindBugGame() {
               {ui.phase === 'menu' && !saveOpen && !paused && (
                 <GameStartCard
                   title="Find the Bug"
-                  tagline="Something is moving. Swat it."
+                  tagline="It is sitting perfectly still. Find it anyway."
                   slug="findbug"
                 />
               )}
