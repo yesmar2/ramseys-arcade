@@ -218,10 +218,13 @@ export async function kickGroupMember(id: string, name: string): Promise<GroupPu
 }
 
 export async function renameGroup(id: string, name: string): Promise<GroupPublic> {
-  const data = await api<{ group: GroupPublic }>(`/groups/${encodeURIComponent(id)}/rename`, {
+  const data = await api<{ group?: GroupPublic }>(`/groups/${encodeURIComponent(id)}/rename`, {
     method: 'POST',
-    body: JSON.stringify({ name }),
+    body: JSON.stringify({ name: name.trim() }),
   })
+  if (!data.group?.id || !data.group.name) {
+    throw new Error('Could not rename group')
+  }
   return data.group
 }
 

@@ -338,6 +338,7 @@ export function GroupDetailPage({ id, invite }: { id: string; invite?: string })
   const [note, setNote] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
   const [renameDraft, setRenameDraft] = useState('')
+  const [renameNote, setRenameNote] = useState<string | null>(null)
 
   const storedInvite = invite ?? getGroupInvite(id) ?? undefined
   const accent = groupAccent(id)
@@ -463,13 +464,25 @@ export function GroupDetailPage({ id, invite }: { id: string; invite?: string })
   const onRename = async (e: FormEvent) => {
     e.preventDefault()
     if (busy || !group) return
+    const nextName = renameDraft.trim()
+    if (nextName.length < 2) {
+      setRenameNote('Name must be at least 2 characters.')
+      return
+    }
+    if (nextName === group.name) {
+      setRenameNote('That’s already the name.')
+      return
+    }
     setBusy(true)
-    setNote(null)
+    setRenameNote(null)
     try {
-      const next = await renameGroup(id, renameDraft)
+      const next = await renameGroup(id, nextName)
+      if (!next?.name) throw new Error('Could not rename')
       setGroup(next)
+      setRenameDraft(next.name)
+      setRenameNote('Name saved.')
     } catch (err) {
-      setNote(err instanceof Error ? err.message : 'Could not rename')
+      setRenameNote(err instanceof Error ? err.message : 'Could not rename')
     } finally {
       setBusy(false)
     }
@@ -699,16 +712,27 @@ export function GroupDetailPage({ id, invite }: { id: string; invite?: string })
                     className="event-create__input"
                     value={renameDraft}
                     maxLength={32}
-                    onChange={(e) => setRenameDraft(e.target.value)}
+                    disabled={busy}
+                    onChange={(e) => {
+                      setRenameDraft(e.target.value)
+                      setRenameNote(null)
+                    }}
                   />
                 </label>
+                {renameNote ? (
+                  <p
+                    className={`group-manage__note${renameNote === 'Name saved.' ? '' : ' group-manage__note--error'}`}
+                  >
+                    {renameNote}
+                  </p>
+                ) : null}
                 <div className="group-panel__actions">
                   <button
                     type="submit"
                     className="event-list__create"
-                    disabled={busy || renameDraft.trim().length < 2 || renameDraft.trim() === group.name}
+                    disabled={busy || renameDraft.trim().length < 2}
                   >
-                    Save name
+                    {busy ? 'Saving…' : 'Save name'}
                   </button>
                   <button
                     type="button"

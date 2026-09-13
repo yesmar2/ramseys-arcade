@@ -11,6 +11,7 @@ import { normalizePlayerName } from '../lib/leaderboard'
 import { useTrophySummary } from '../hooks/useTrophySummary'
 import { useImpersonation } from '../hooks/useImpersonation'
 import { DevImpersonateControl } from './DevImpersonateControl'
+import { FriendsPanel } from './FriendsPanel'
 import { PendingInvitesStrip } from './PendingInvitesStrip'
 import { EditIcon, LogoutIcon, PlayerBadge, type PlayerBadgeHandle } from './PlayerBadge'
 import { SiteGroupControl } from './SiteGroupControl'
@@ -475,6 +476,12 @@ export function SiteHeader() {
                       <span className="site-drawer__rank-cta">View profile</span>
                     </span>
                   </a>
+                ) : null}
+
+                {signedIn ? (
+                  <section className="site-drawer__section" aria-label="Friends">
+                    <FriendsPanel />
+                  </section>
                 ) : null}
 
                 <div className="site-drawer__footer">

@@ -7,6 +7,7 @@ import { ShareBoardButton } from '../components/ShareBoardButton'
 import { TrophyCase } from '../components/TrophyCase'
 import { getGame, gamePlayableOn } from '../data/games'
 import { gameBoardHref, gamePlayHref, globalRankingsHref, rankHref } from '../hooks/useHashRoute'
+import { useAuth } from '../hooks/useAuth'
 import { useDefaultPeriod } from '../lib/defaultPeriod'
 import { gapToNextLabel } from '../lib/boardGap'
 import { useDeviceType } from '../lib/device'
@@ -15,7 +16,9 @@ import { useActiveGroup } from '../lib/groups'
 import { useGlobalRank, useGlobalRankLoading } from '../lib/globalRank'
 import { APP_NAME } from '../lib/brand'
 import { resolveGameAccent } from '../lib/theme'
+import { sendFriendRequest } from '../lib/friends'
 import {
+  ApiError,
   fetchGlobalRank,
   PERIOD_LABELS,
   VISIBLE_LEADERBOARD_GAMES,
@@ -23,6 +26,45 @@ import {
   type GlobalRankResult,
   type LeaderboardPeriod,
 } from '../lib/leaderboard'
+
+function AddFriendButton({ name }: { name: string }) {
+  const [status, setStatus] = useState<'idle' | 'busy' | 'sent' | 'error'>('idle')
+  const [error, setError] = useState<string | null>(null)
+
+  const send = async () => {
+    if (status === 'busy' || status === 'sent') return
+    setStatus('busy')
+    setError(null)
+    try {
+      const result = await sendFriendRequest(name)
+      setStatus('sent')
+      if (result.status === 'accepted') setError(null)
+    } catch (err) {
+      setStatus('error')
+      if (err instanceof ApiError && (err.code === 'NOT_A_PLAYER' || /hasn't signed in yet/i.test(err.message))) {
+        setError(`Huh — ${name} doesn’t exist in this arcade`)
+      } else {
+        setError(err instanceof ApiError ? err.message : 'Could not send request')
+      }
+    }
+  }
+
+  return (
+    <span className="rank-page__add-friend">
+      <button
+        type="button"
+        className="lb-share rank-page__add-friend-btn"
+        disabled={status === 'busy' || status === 'sent'}
+        onClick={() => void send()}
+        aria-label={status === 'sent' ? `Friend request sent to ${name}` : `Add ${name} as a friend`}
+        title={status === 'sent' ? 'Request sent' : 'Add friend'}
+      >
+        {status === 'sent' ? 'Sent' : status === 'busy' ? '…' : 'Add friend'}
+      </button>
+      {error ? <span className="rank-page__add-friend-error">{error}</span> : null}
+    </span>
+  )
+}
 
 const empty: GlobalRankResult = {
   rank: null,
@@ -42,6 +84,7 @@ export function RankPage({
   const globalPeriod = useDefaultPeriod()
   const period = periodFromRoute ?? globalPeriod
   const device = useDeviceType()
+  const { signedIn } = useAuth()
   const myName = normalizePlayerName(usePlayerName())
   const viewedName = normalizePlayerName(player ?? '') || myName
   const isSelf = !normalizePlayerName(player ?? '') || viewedName === myName
@@ -119,6 +162,7 @@ export function RankPage({
           </h1>
           {viewedName ? (
             <div className="lb-game-board__trailing">
+              {!isSelf && signedIn ? <AddFriendButton name={viewedName} /> : null}
               <ShareBoardButton
                 label={
                   rank != null
