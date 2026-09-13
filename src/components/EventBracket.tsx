@@ -66,10 +66,13 @@ function MatchCard({
   match,
   displayName,
   isYours,
+  dropSides,
 }: {
   match: PublicBracketMatch
   displayName: string
   isYours: boolean
+  /** Seats filled by players dropping out of the winners bracket. */
+  dropSides?: ReadonlySet<number>
 }) {
   const you = normalizePlayerName(displayName)
   return (
@@ -96,7 +99,7 @@ function MatchCard({
             }${isYouSide ? ' event-bracket__side--you' : ''}`}
           >
             <span className={`event-bracket__name${vacant ? ' event-bracket__name--vacant' : ''}`}>
-              {isBye ? 'Bye' : side?.name ?? 'TBD'}
+              {isBye ? 'Bye' : (side?.name ?? (dropSides?.has(idx) ? 'From winners' : 'TBD'))}
             </span>
             {vacant ? null : (
               <span className="event-bracket__score">
@@ -111,9 +114,9 @@ function MatchCard({
 }
 
 /**
- * Plain round-columns layout. The losers bracket is fed from two places at
- * once (its own survivors plus fresh drops from the winners side), so tree
- * connectors would draw relationships that aren't true — columns stay honest.
+ * Plain round-columns layout, used for the grand final. A solid connector from
+ * the title match into the reset would promise a reset that usually never
+ * happens, so those two stand side by side instead.
  */
 function BracketColumns({
   matches,
@@ -156,25 +159,39 @@ function BracketColumns({
   )
 }
 
+/**
+ * Connector tree for one side of a draw.
+ *
+ * Round geometry is read off the actual match counts rather than assuming
+ * every round halves the field. The winners bracket does halve, but the
+ * losers bracket alternates: minor rounds hold their size while fresh losers
+ * drop in from the winners side, and major rounds pair the survivors off. A
+ * round that halves gets the usual pair-into-one elbow; a round that holds
+ * its size gets a straight carry line.
+ */
 function BracketTree({
   matches,
-  rounds,
-  maxRound,
-  firstCount,
   displayName,
   currentYouId,
   scrollerRef,
   labelFor = bracketRoundLabel,
+  dropsFromWinners = false,
 }: {
   matches: PublicBracketMatch[]
-  rounds: number[]
-  maxRound: number
-  firstCount: number
   displayName: string
   currentYouId: string | null
-  scrollerRef: RefObject<HTMLDivElement | null>
+  scrollerRef?: RefObject<HTMLDivElement | null>
   labelFor?: (round: number, maxRound: number) => string
+  /** Losers bracket: empty seats with no incoming line are winners-side drops. */
+  dropsFromWinners?: boolean
 }) {
+  const sizeOf = new Map<number, number>()
+  for (const match of matches) sizeOf.set(match.round, (sizeOf.get(match.round) ?? 0) + 1)
+  const rounds = [...sizeOf.keys()].sort((a, b) => a - b)
+  const firstRound = rounds[0] ?? 1
+  const maxRound = rounds.at(-1) ?? 1
+  const leafCount = sizeOf.get(firstRound) ?? 1
+
   return (
     <div ref={scrollerRef} className="event-bracket-scroller">
       <div
@@ -182,35 +199,51 @@ function BracketTree({
         style={
           {
             '--round-count': rounds.length,
-            '--first-count': firstCount,
+            '--first-count': leafCount,
           } as CSSProperties
         }
       >
-        {rounds.map((round) => (
+        {rounds.map((round, idx) => (
           <h3
             key={`title-${round}`}
             className="event-bracket__round-title"
-            style={{ gridColumn: round, gridRow: 1 }}
+            style={{ gridColumn: idx + 1, gridRow: 1 }}
           >
             {labelFor(round, maxRound)}
           </h3>
         ))}
         {matches.map((match) => {
-          const span = 1 << (match.round - 1)
+          const column = rounds.indexOf(match.round) + 1
+          const size = sizeOf.get(match.round) ?? 1
+          const span = Math.max(1, Math.round(leafCount / size))
+          const nextSize = sizeOf.get(match.round + 1)
+          // Halving round: two matches elbow into one. Same-size round: the
+          // winner carries straight across into the next seat.
+          const merges = nextSize != null && nextSize < size
           const connector =
             match.round === maxRound
               ? 'event-bracket__slot--final'
-              : match.slot % 2 === 0
-                ? 'event-bracket__slot--out-top'
-                : 'event-bracket__slot--out-bot'
-          // Round 1 has nothing feeding it, so it gets no incoming line.
-          const fed = match.round > 1 ? ' event-bracket__slot--fed' : ''
+              : merges
+                ? match.slot % 2 === 0
+                  ? 'event-bracket__slot--out-top'
+                  : 'event-bracket__slot--out-bot'
+                : 'event-bracket__slot--carry'
+          // Nothing feeds the opening round, so it gets no incoming line.
+          const fed = match.round > firstRound ? ' event-bracket__slot--fed' : ''
+          const prevSize = sizeOf.get(match.round - 1)
+          const dropSides = dropsFromWinners
+            ? match.round === firstRound
+              ? new Set([0, 1])
+              : prevSize === size
+                ? new Set([1])
+                : undefined
+            : undefined
           return (
             <div
               key={match.id}
               className={`event-bracket__slot ${connector}${fed}`}
               style={{
-                gridColumn: match.round,
+                gridColumn: column,
                 gridRow: `${2 + match.slot * span} / span ${span}`,
               }}
             >
@@ -218,11 +251,14 @@ function BracketTree({
                 match={match}
                 displayName={displayName}
                 isYours={currentYouId === match.id}
+                dropSides={dropSides}
               />
               {match.round !== maxRound ? (
                 <span className="event-bracket__wires" aria-hidden="true">
                   <span className="event-bracket__wire event-bracket__wire--h" />
-                  <span className="event-bracket__wire event-bracket__wire--v" />
+                  {merges ? (
+                    <span className="event-bracket__wire event-bracket__wire--v" />
+                  ) : null}
                 </span>
               ) : null}
             </div>
@@ -394,9 +430,6 @@ export function EventBracket({
             <p className="ev-bracket-half__note">Lose once and you drop to the losers bracket.</p>
             <BracketTree
               matches={winners}
-              rounds={rounds}
-              maxRound={maxRound}
-              firstCount={firstCount}
               displayName={displayName}
               currentYouId={currentYou?.id ?? null}
               scrollerRef={scrollerRef}
@@ -407,13 +440,15 @@ export function EventBracket({
             <section className="ev-bracket-half">
               <h3 className="ev-bracket-half__title">Losers bracket</h3>
               <p className="ev-bracket-half__note">
-                Second chance &mdash; one more loss and you&rsquo;re out.
+                Second chance &mdash; one more loss and you&rsquo;re out. Seats marked
+                &ldquo;from winners&rdquo; wait on whoever drops out of the round above.
               </p>
-              <BracketColumns
+              <BracketTree
                 matches={losers}
                 displayName={displayName}
                 currentYouId={currentYou?.id ?? null}
                 labelFor={loserRoundLabel}
+                dropsFromWinners
               />
             </section>
           ) : null}
@@ -490,9 +525,6 @@ export function EventBracket({
           ) : (
             <BracketTree
               matches={treeMatches}
-              rounds={rounds}
-              maxRound={maxRound}
-              firstCount={firstCount}
               displayName={displayName}
               currentYouId={currentYou?.id ?? null}
               scrollerRef={scrollerRef}

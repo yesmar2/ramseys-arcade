@@ -1391,3 +1391,12 @@ html[data-theme="google"] .ev-tile:focus-visible {
     grid-template-columns: repeat(var(--col-count, 2), min(15rem, 70vw));
   }
 }
+
+/*
+ * A round that holds its size (losers-bracket minor rounds, where the winner
+ * carries straight across and a winners-side loser drops into the other seat)
+ * needs the horizontal run but no pair-into-one elbow.
+ */
+.event-bracket__slot--carry .event-bracket__wire--v {
+  display: none;
+}
