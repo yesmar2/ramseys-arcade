@@ -8,6 +8,7 @@ import {
 } from '../../lib/theme'
 import {
   cannonRect,
+  carrierRadius,
   dropRadius,
   FIELD_H,
   HOLD_LINE,
@@ -125,7 +126,11 @@ function drawSurround(ctx: CanvasRenderingContext2D, p: Place, w: number, h: num
   }
 }
 
-/** Two silhouettes, alternating by row, so the formation reads as a fleet. */
+/**
+ * One simple hull, plus a plate for each extra round it can still take. Armour
+ * is drawn from `hp`, not from the tier it started at, so the silhouette itself
+ * says how many hits are left and no separate damage bar is needed.
+ */
 function drawShip(
   ctx: CanvasRenderingContext2D,
   ship: Ship,
@@ -136,51 +141,85 @@ function drawShip(
   hue: number,
 ) {
   const charge = ship.charge
-  ctx.fillStyle = pastelFill(hue, charge > 0 ? 0.22 + charge * 0.5 : 0.22)
+  const lift = charge > 0 ? 0.22 + charge * 0.5 : 0.22
+  ctx.fillStyle =
+    ship.hurt > 0 ? `hsla(0, 0%, 100%, ${0.3 + ship.hurt * 0.45})` : pastelFill(hue, lift)
   ctx.strokeStyle = pastelStroke(hue)
-  ctx.lineWidth = Math.max(1, sw * 0.05)
+  ctx.lineWidth = Math.max(1, sw * 0.055)
 
   const paint = () => {
     ctx.fill()
     strokeOutlined(ctx)
   }
 
-  if (ship.row % 2 === 0) {
-    // Wide hull with swept wings.
+  // Hull: one block and two feet.
+  ctx.beginPath()
+  ctx.roundRect(x + sw * 0.08, y + sh * 0.3, sw * 0.84, sh * 0.48, sh * 0.22)
+  paint()
+  ctx.beginPath()
+  ctx.roundRect(x + sw * 0.14, y + sh * 0.76, sw * 0.18, sh * 0.24, sh * 0.09)
+  paint()
+  ctx.beginPath()
+  ctx.roundRect(x + sw * 0.68, y + sh * 0.76, sw * 0.18, sh * 0.24, sh * 0.09)
+  paint()
+
+  // Second round of punishment: a crest over the top.
+  if (ship.hp >= 2) {
     ctx.beginPath()
-    ctx.roundRect(x + sw * 0.16, y, sw * 0.68, sh * 0.62, sh * 0.24)
+    ctx.roundRect(x + sw * 0.26, y + sh * 0.04, sw * 0.48, sh * 0.3, sh * 0.13)
+    paint()
+  }
+
+  // Third: side pods.
+  if (ship.hp >= 3) {
+    ctx.beginPath()
+    ctx.roundRect(x, y + sh * 0.38, sw * 0.14, sh * 0.34, sh * 0.1)
     paint()
     ctx.beginPath()
-    ctx.roundRect(x, y + sh * 0.36, sw, sh * 0.34, sh * 0.16)
-    paint()
-    ctx.beginPath()
-    ctx.roundRect(x + sw * 0.1, y + sh * 0.7, sw * 0.2, sh * 0.3, sh * 0.12)
-    paint()
-    ctx.beginPath()
-    ctx.roundRect(x + sw * 0.7, y + sh * 0.7, sw * 0.2, sh * 0.3, sh * 0.12)
-    paint()
-  } else {
-    // Squat hull with a dome.
-    ctx.beginPath()
-    ctx.roundRect(x + sw * 0.06, y + sh * 0.32, sw * 0.88, sh * 0.5, sh * 0.2)
-    paint()
-    ctx.beginPath()
-    ctx.arc(x + sw * 0.5, y + sh * 0.36, sw * 0.26, Math.PI, Math.PI * 2)
-    paint()
-    ctx.beginPath()
-    ctx.roundRect(x + sw * 0.16, y + sh * 0.8, sw * 0.18, sh * 0.2, sh * 0.1)
-    paint()
-    ctx.beginPath()
-    ctx.roundRect(x + sw * 0.66, y + sh * 0.8, sw * 0.18, sh * 0.2, sh * 0.1)
+    ctx.roundRect(x + sw * 0.86, y + sh * 0.38, sw * 0.14, sh * 0.34, sh * 0.1)
     paint()
   }
 
   // Eyes — they light as the ship winds up, which is the tell at close range.
   ctx.fillStyle =
     charge > 0 ? `hsla(${HUE_HOT}, 74%, 62%, ${0.55 + charge * 0.45})` : pastelStroke(hue)
-  for (const dx of [0.36, 0.64]) {
+  for (const dx of [0.34, 0.66]) {
     ctx.beginPath()
-    ctx.arc(x + sw * dx, y + sh * 0.5, sw * 0.07, 0, Math.PI * 2)
+    ctx.arc(x + sw * dx, y + sh * 0.52, sw * 0.065, 0, Math.PI * 2)
+    ctx.fill()
+  }
+}
+
+/**
+ * The supply runner, painted in the colour of what it is carrying — so you can
+ * decide whether this one is worth turning the cannon away from the fleet for.
+ */
+function drawCarrier(ctx: CanvasRenderingContext2D, state: GameState, p: Place) {
+  const c = state.carrier
+  if (!c) return
+  const r = p.u(carrierRadius())
+  const cx = p.x(c.x)
+  const cy = p.y(c.y)
+  const hue = POWER_HUE[c.kind]
+
+  ctx.fillStyle = pastelFill(hue, 0.52)
+  ctx.strokeStyle = pastelStroke(hue)
+  ctx.lineWidth = Math.max(1, r * 0.13)
+
+  ctx.beginPath()
+  ctx.ellipse(cx, cy, r, r * 0.42, 0, 0, Math.PI * 2)
+  ctx.fill()
+  strokeOutlined(ctx)
+
+  ctx.beginPath()
+  ctx.arc(cx, cy - r * 0.12, r * 0.42, Math.PI, Math.PI * 2)
+  ctx.fill()
+  strokeOutlined(ctx)
+
+  ctx.fillStyle = `hsla(${hue}, 70%, 72%, 0.95)`
+  for (const dx of [-0.5, 0, 0.5]) {
+    ctx.beginPath()
+    ctx.arc(cx + r * dx, cy + r * 0.2, r * 0.09, 0, Math.PI * 2)
     ctx.fill()
   }
 }
@@ -397,6 +436,7 @@ export function renderGame(
     drawShip(ctx, ship, x, y, p.u(sw), p.u(sh), hue)
   }
 
+  drawCarrier(ctx, state, p)
   drawDrops(ctx, state, p)
   drawShots(ctx, state, p)
   drawCannon(ctx, state, p)

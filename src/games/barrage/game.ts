@@ -27,6 +27,12 @@ export type Ship = {
   col: number
   row: number
   alive: boolean
+  /** 1–3. Higher tiers are plated: a different hull, and more rounds to break. */
+  tier: number
+  /** Rounds left before it breaks. Starts equal to the tier. */
+  hp: number
+  /** 0–1 flash after a hit that did not finish it. */
+  hurt: number
   /** 0–1 charge glow while this ship is winding up to fire. */
   charge: number
   /** Counts down a death flash before the ship is cleared away. */
@@ -52,9 +58,21 @@ export type Shot = {
 export type PowerKind = 'pierce' | 'jam' | 'slow' | 'spread'
 
 /**
- * Drops fall, and the cannon has to be under one to take it. That is the whole
- * point: the lane a capsule falls down may be a lane that is about to fire, so
- * every pickup is a bet against the next volley.
+ * The supply runner. It crosses above the fleet carrying a capsule and will
+ * not give it up until you shoot it down — which means aiming up and away from
+ * whatever the fleet is about to do.
+ */
+export type Carrier = {
+  x: number
+  y: number
+  vx: number
+  kind: PowerKind
+}
+
+/**
+ * A capsule shaken loose from a carrier. It falls, and the cannon has to be
+ * under it to take it: the lane it comes down may be a lane that is about to
+ * fire, so every pickup is a bet against the next volley.
  */
 export type Drop = {
   x: number
@@ -78,6 +96,9 @@ export type GameState = {
   formDir: number
   ships: Ship[]
   shots: Shot[]
+  carrier: Carrier | null
+  /** Seconds until the next carrier runs. */
+  carrierIn: number
   drops: Drop[]
   /** Seconds left of the fan-shot buff. */
   buffSpread: number
@@ -137,25 +158,32 @@ export type Snapshot = {
 
 export const COLS = 6
 export const ROWS = 5
-const SHIP_W = 0.096
-const SHIP_H = 0.064
-const COL_STEP = 0.132
-const ROW_STEP = 0.092
+export const MAX_TIER = 3
+const SHIP_W = 0.108
+const SHIP_H = 0.072
+const COL_STEP = 0.144
+const ROW_STEP = 0.104
 const FORM_W = (COLS - 1) * COL_STEP + SHIP_W
-const MARGIN = 0.035
+const MARGIN = 0.028
 /** Ships reaching this line end the run outright — that is the line you hold. */
 export const HOLD_LINE = FIELD_H - 0.155
 
-const CANNON_W = 0.1
-const CANNON_H = 0.06
+const CANNON_W = 0.112
+const CANNON_H = 0.066
 const CANNON_Y = FIELD_H - 0.085
-const CANNON_SPEED = 0.72
+/** Keeps pace with the wider formation — the gaps to cross got bigger too. */
+const CANNON_SPEED = 0.82
 
 const PLAYER_SHOT_SPEED = 1.5
 const PLAYER_SHOT_W = 0.008
 const PLAYER_SHOT_H = 0.038
-const MAX_PLAYER_SHOTS = 3
-const FIRE_COOLDOWN = 0.28
+/**
+ * The base gun carries more of the work than it used to: hulls take several
+ * rounds now, and pickups only arrive on a carrier you have to shoot down, so
+ * the old three-shot drip left waves grinding.
+ */
+const MAX_PLAYER_SHOTS = 4
+const FIRE_COOLDOWN = 0.22
 
 const ENEMY_SHOT_W = 0.015
 const ENEMY_SHOT_H = 0.04
@@ -168,10 +196,16 @@ const ENEMY_SHOT_H = 0.04
  * A wider formation leaves less room to march, so it turns more often; this is
  * scaled to keep the number of turns to the line roughly where it was.
  */
-const DROP_PER_TURN = 0.019
+const DROP_PER_TURN = 0.013
 
-/** Roughly one capsule every nine kills — frequent enough to plan around. */
-const DROP_CHANCE = 0.11
+/** Below the floating HUD, above the fleet's top row. */
+const CARRIER_Y = 0.078
+const CARRIER_SPEED = 0.2
+const CARRIER_R = 0.05
+const SCORE_CARRIER = 150
+/** Seconds between supply runs. The first comes early enough to teach it. */
+const CARRIER_FIRST = 7
+const CARRIER_GAP = 13
 const DROP_FALL = 0.3
 const DROP_R = 0.031
 const BUFF_TIME = 7
@@ -288,11 +322,26 @@ function aliveShips(state: GameState): Ship[] {
   return state.ships.filter((s) => s.alive)
 }
 
-function makeShips(): Ship[] {
+/**
+ * Plating spreads down from the front of the fleet as the waves go on, so the
+ * top rows are the ones that change first and the ones that take the beating.
+ * Row 0 is the top.
+ */
+export function shipTier(wave: number, row: number): number {
+  const plated = Math.floor((wave - 1) / 2)
+  const heavy = Math.floor((wave - 1) / 5)
+  let tier = 1
+  if (row < plated) tier = 2
+  if (row < heavy) tier = 3
+  return Math.min(MAX_TIER, tier)
+}
+
+function makeShips(wave: number): Ship[] {
   const ships: Ship[] = []
   for (let row = 0; row < ROWS; row++) {
     for (let col = 0; col < COLS; col++) {
-      ships.push({ col, row, alive: true, charge: 0, pop: 0 })
+      const tier = shipTier(wave, row)
+      ships.push({ col, row, alive: true, tier, hp: tier, hurt: 0, charge: 0, pop: 0 })
     }
   }
   return ships
@@ -300,12 +349,12 @@ function makeShips(): Ship[] {
 
 /** Row the formation starts at — later waves get a head start down the board. */
 function startFormY(wave: number): number {
-  return 0.1 + Math.min(0.26, (wave - 1) * 0.032)
+  return 0.14 + Math.min(0.2, (wave - 1) * 0.028)
 }
 
 function resetWave(state: GameState, wave: number) {
   state.wave = wave
-  state.ships = makeShips()
+  state.ships = makeShips(wave)
   state.shots = []
   state.formX = (1 - FORM_W) / 2
   state.formY = startFormY(wave)
@@ -316,6 +365,8 @@ function resetWave(state: GameState, wave: number) {
   state.volleySpread = 0
   state.cleanWave = true
   state.drops = []
+  state.carrier = null
+  state.carrierIn = CARRIER_FIRST
 }
 
 function resetCannon(state: GameState) {
@@ -327,6 +378,8 @@ function resetCannon(state: GameState) {
   state.shots = []
   // Buffs do not survive losing the cannon; the capsules on screen do not either.
   state.drops = []
+  state.carrier = null
+  state.carrierIn = Math.max(state.carrierIn, 4)
   state.buffSpread = 0
   state.buffSlow = 0
   state.pierceLeft = 0
@@ -345,6 +398,8 @@ export function createInitialState(): GameState {
     formDir: 1,
     ships: [],
     shots: [],
+    carrier: null,
+    carrierIn: CARRIER_FIRST,
     drops: [],
     buffSpread: 0,
     buffSlow: 0,
@@ -514,11 +569,6 @@ function overlaps(
   return ax < bx + bw && ax + aw > bx && ay < by + bh && ay + ah > by
 }
 
-function maybeDrop(state: GameState, x: number, y: number) {
-  if (Math.random() > DROP_CHANCE) return
-  state.drops.push({ x, y, kind: pickPowerKind(), life: 12 })
-}
-
 function takeDrop(state: GameState, kind: PowerKind) {
   state.tookKind = kind
   state.tookFor = 1.1
@@ -527,6 +577,58 @@ function takeDrop(state: GameState, kind: PowerKind) {
   else if (kind === 'pierce') state.pierceLeft += PIERCE_SHOTS
   else state.jamArmed = true
   sfx('good')
+}
+
+export function carrierRadius() {
+  return CARRIER_R
+}
+
+function advanceCarrier(state: GameState, dt: number) {
+  if (!state.carrier) {
+    state.carrierIn -= dt
+    if (state.carrierIn > 0) return
+    // Enter from whichever side, just above the fleet's starting rows.
+    const fromLeft = Math.random() < 0.5
+    state.carrier = {
+      x: fromLeft ? -CARRIER_R : 1 + CARRIER_R,
+      y: CARRIER_Y,
+      vx: fromLeft ? CARRIER_SPEED : -CARRIER_SPEED,
+      kind: pickPowerKind(),
+    }
+    state.carrierIn = CARRIER_GAP
+    return
+  }
+
+  const c = state.carrier
+  c.x += c.vx * dt
+  // Off the far side with the capsule still aboard — that one is gone.
+  if (c.x < -CARRIER_R * 2 || c.x > 1 + CARRIER_R * 2) state.carrier = null
+}
+
+/** A player round that met the carrier shakes the capsule loose. */
+function shotHitsCarrier(state: GameState, shot: Shot): boolean {
+  const c = state.carrier
+  if (!c || shot.hostile) return false
+  const size = shotSize(false)
+  if (
+    !overlaps(
+      shot.x - size.w / 2,
+      shot.y,
+      size.w,
+      size.h,
+      c.x - CARRIER_R,
+      c.y - CARRIER_R * 0.6,
+      CARRIER_R * 2,
+      CARRIER_R * 1.2,
+    )
+  ) {
+    return false
+  }
+  state.drops.push({ x: c.x, y: c.y, kind: c.kind, life: 12 })
+  state.score += SCORE_CARRIER
+  state.carrier = null
+  sfx('good')
+  return true
 }
 
 function advanceDrops(state: GameState, dt: number) {
@@ -556,13 +658,21 @@ function advanceDrops(state: GameState, dt: number) {
   state.drops = kept
 }
 
-function killShip(state: GameState, ship: Ship) {
+/** Returns true when the round finished it off. */
+function hitShip(state: GameState, ship: Ship): boolean {
+  state.shotsHit += 1
+  ship.hp -= 1
+  if (ship.hp > 0) {
+    ship.hurt = 1
+    sfx('tap')
+    return false
+  }
   ship.alive = false
   ship.pop = 0.32
-  state.score += SCORE_ROW[Math.min(ship.row, SCORE_ROW.length - 1)]
-  state.shotsHit += 1
-  maybeDrop(state, shipX(state, ship) + SHIP_W / 2, shipY(state, ship) + SHIP_H / 2)
+  // Plated hulls are worth what they cost you to break.
+  state.score += SCORE_ROW[Math.min(ship.row, SCORE_ROW.length - 1)] * ship.tier
   sfx('hit')
+  return true
 }
 
 function loseLife(state: GameState) {
@@ -640,13 +750,15 @@ function advanceShots(state: GameState, dt: number) {
       continue
     }
 
+    if (shotHitsCarrier(state, shot)) continue
+
     let consumed = false
     for (const ship of ships) {
       if (!ship.alive) continue
       const sx = shipX(state, ship)
       const sy = shipY(state, ship)
       if (!overlaps(left, shot.y, size.w, size.h, sx, sy, SHIP_W, SHIP_H)) continue
-      killShip(state, ship)
+      hitShip(state, ship)
       // A piercing round keeps climbing, so it can take a whole column.
       if (!shot.pierce) {
         consumed = true
@@ -664,6 +776,7 @@ export function tick(prev: GameState, dt: number): GameState {
     ...prev,
     ships: prev.ships.map((s) => ({ ...s })),
     shots: prev.shots.map((s) => ({ ...s })),
+    carrier: prev.carrier ? { ...prev.carrier } : null,
     drops: prev.drops.map((d) => ({ ...d })),
     hotCols: [...prev.hotCols],
   }
@@ -671,7 +784,10 @@ export function tick(prev: GameState, dt: number): GameState {
   state.hitFlash = Math.max(0, state.hitFlash - dt * 1.4)
   state.tookFor = Math.max(0, state.tookFor - dt)
   if (state.tookFor <= 0) state.tookKind = null
-  for (const s of state.ships) if (s.pop > 0) s.pop = Math.max(0, s.pop - dt)
+  for (const s of state.ships) {
+    if (s.pop > 0) s.pop = Math.max(0, s.pop - dt)
+    if (s.hurt > 0) s.hurt = Math.max(0, s.hurt - dt * 3)
+  }
 
   if (state.phase === 'menu' || state.phase === 'gameover') return state
 
@@ -710,6 +826,7 @@ export function tick(prev: GameState, dt: number): GameState {
   if (state.firing || state.fireQueued) tryFire(state)
   state.fireQueued = false
 
+  advanceCarrier(state, dt)
   advanceDrops(state, dt)
 
   advanceFormation(state, dt)
