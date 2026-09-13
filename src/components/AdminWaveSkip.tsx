@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useIsAdmin } from '../lib/admin'
+import { markRunAssisted } from '../lib/runAchievements'
 
 export type AdminStageUnit = 'wave' | 'level' | 'row' | 'height' | 'length'
 
@@ -28,7 +29,12 @@ const NEXT_LABEL: Record<AdminStageUnit, string> = {
   length: '+5 length',
 }
 
-/** Pause-menu tools to jump stages while testing later rounds (DEV / admin). */
+/**
+ * Pause-menu tools to jump stages while testing later rounds (DEV / admin).
+ *
+ * Using either control marks the run assisted, which stops its score reaching
+ * the leaderboards or the record books — a skipped run did not earn it.
+ */
 export function AdminWaveSkip({
   wave,
   onSkipNext,
@@ -54,7 +60,14 @@ export function AdminWaveSkip({
         Admin · {noun} {wave}
       </p>
       <div className="admin-wave-skip__row">
-        <button type="button" className="admin-wave-skip__btn" onClick={onSkipNext}>
+        <button
+          type="button"
+          className="admin-wave-skip__btn"
+          onClick={() => {
+            markRunAssisted()
+            onSkipNext()
+          }}
+        >
           {NEXT_LABEL[unit]}
         </button>
         <label className="admin-wave-skip__jump">
@@ -68,6 +81,7 @@ export function AdminWaveSkip({
             onKeyDown={(e) => {
               if (e.key !== 'Enter' || !canJump) return
               e.preventDefault()
+              markRunAssisted()
               onJump(parsed)
             }}
           />
@@ -76,7 +90,9 @@ export function AdminWaveSkip({
             className="admin-wave-skip__btn"
             disabled={!canJump}
             onClick={() => {
-              if (canJump) onJump(parsed)
+              if (!canJump) return
+              markRunAssisted()
+              onJump(parsed)
             }}
           >
             Go

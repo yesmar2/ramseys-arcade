@@ -22,6 +22,7 @@ import {
   type PlacementHit,
 } from './ScoreSaveCard'
 import { ScoreSignInPrompt } from './ScoreSignInPrompt'
+import { isRunAssisted } from '../lib/runAchievements'
 
 /** Best top-3 finish worth celebrating from this submission's fresh standings. */
 function findPlacementHit(
@@ -117,7 +118,9 @@ async function submitTournamentRun(
   name: string,
   score: number,
 ): Promise<SubmitSnapshot> {
-  if (score <= 0) {
+  // A stage-jumped run is not a real attempt; report it like a zero so it
+  // neither posts a score nor burns one of the player's tries.
+  if (score <= 0 || isRunAssisted()) {
     const d = await getTournament(tournamentId, {
       playerName: name,
       game: gameSlug,

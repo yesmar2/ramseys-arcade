@@ -11,6 +11,7 @@ export type RunAchievement = {
 }
 
 let queue: RunAchievement[] = []
+let assisted = false
 let settleTimer = 0
 let settlePromise: Promise<void> | null = null
 let settleResolve: (() => void) | null = null
@@ -69,6 +70,22 @@ export function takeRunAchievements(): RunAchievement[] {
 
 export function clearRunAchievements() {
   queue = []
+  assisted = false
+}
+
+/**
+ * Mark the current run as having used the admin stage-jump tools.
+ *
+ * A run that skipped ahead did not earn its score, so it must not reach the
+ * leaderboards or the record books. Cleared by clearRunAchievements, which
+ * every game already calls when a run starts.
+ */
+export function markRunAssisted() {
+  assisted = true
+}
+
+export function isRunAssisted() {
+  return assisted
 }
 
 export function peekRunAchievements(): readonly RunAchievement[] {

@@ -24,6 +24,7 @@ import { refreshGlobalRank } from '../lib/globalRank'
 import { defaultPeriod, useDefaultPeriod } from '../lib/defaultPeriod'
 import { gameHasRecords, shouldCelebrateRecordSubmit } from '../lib/records'
 import {
+  isRunAssisted,
   peekRunAchievements,
   pushRunAchievement,
   takeRunAchievements,
@@ -669,7 +670,7 @@ function cleanName(raw: string) {
   return normalizePlayerName(raw)
 }
 
-type Phase = 'checking' | 'needAuth' | 'needName' | 'saving' | 'saved' | 'error'
+type Phase = 'checking' | 'needAuth' | 'needName' | 'saving' | 'saved' | 'assisted' | 'error'
 
 export function ScoreSaveCard({
   gameSlug,
@@ -822,6 +823,17 @@ export function ScoreSaveCard({
           }
         }
         if (cancelled) return
+
+        /*
+         * Stage-jumped runs never reach a board or a record book: the score
+         * was not earned. Record-book wins queued earlier in the run go with
+         * it, since those stages were skipped too.
+         */
+        if (isRunAssisted()) {
+          takeRunAchievements()
+          setPhase('assisted')
+          return
+        }
 
         if (score <= 0) {
           const books = peekRunAchievements()
@@ -999,6 +1011,17 @@ export function ScoreSaveCard({
               Skip
             </button>
           </div>
+        </>
+      )}
+
+      {phase === 'assisted' && (
+        <>
+          <p className="score-save__note">
+            Stage skip used — this run was not saved to the boards or record books.
+          </p>
+          <button type="button" className="score-save__btn" onClick={onDone}>
+            Play again
+          </button>
         </>
       )}
 
