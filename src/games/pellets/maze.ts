@@ -102,67 +102,71 @@ function makeLevel(spec: LevelSpec) {
  */
 const LEVELS: readonly LevelSpec[] = [
   {
-    // 1 — staggered blocks, three ways across every row.
+    // 1 — short blocks and T-junctions everywhere: the most ways out of trouble.
+    name: 'pinch',
+    top: ['#o...........#', '#.####.#.###..', '#.##.....###..', '#.##.###.###..', '#.............'],
+    tunnel: 5,
+    links: [1, 3, 5],
+  },
+  {
+    // 2 — lattice of two-wide blocks: plenty of turns, no straightaways.
+    name: 'lattice',
+    top: ['#o............', '#.##.##.##.##.', '#.##....##....', '#.##.##.##.##.', '#.............'],
+    tunnel: 5,
+    links: [1, 3, 5],
+  },
+  {
+    // 3 — staggered blocks, three ways across every row.
     name: 'orchard',
     top: ['#o............', '#.####.###.##.', '#.#...........', '#.#.####.###.#', '#.............'],
     tunnel: 5,
     links: [1, 3, 5],
   },
   {
-    // 2 — rungs: three open corridors stitched by four wide lanes.
-    name: 'ladder',
-    top: ['#o............', '#.##.#####.##.', '#.............', '#.##.#####.##.', '#.............'],
-    tunnel: 5,
-    links: [1, 3, 5],
-  },
-  {
-    // 3 — courtyards, and a long tunnel mouth to sprint along.
-    name: 'courtyard',
-    top: ['#............o', '#.###.###.###.', '#...#.....#...', '#.###.###.###.', '#.............'],
+    // 4 — the top corridor is cut at the centre, so there is no free lap over
+    // the top; the tunnel runs long to make up for it.
+    name: 'spine',
+    top: ['#o...........#', '#.#.#####.##.#', '#.......#.....', '#.##.##.###.#.', '#.............'],
     tunnel: 7,
     links: [1, 4, 7],
   },
   {
-    // 4 — lattice of short blocks; lots of turns, few straightaways.
-    name: 'lattice',
-    top: ['#o............', '#.##.##.##.##.', '#....#.....#..', '#.##.##.##.##.', '#.............'],
+    // 5 — chambers, with the pips out on the ring instead of the top corridor,
+    // and only two cuts off the tunnel from here on.
+    name: 'chambers',
+    top: ['#.............', '#.####.#.####.', '#.#....#....#.', '#.#.##.#.##.#.', '#o............'],
+    tunnel: 7,
+    links: [4, 7],
+  },
+  {
+    // 6 — rungs: three open corridors stitched by four wide lanes and nothing
+    // in between to duck behind.
+    name: 'ladder',
+    top: ['#o............', '#.##.#####.##.', '#.............', '#.##.#####.##.', '#.............'],
     tunnel: 5,
     links: [2, 5],
   },
   {
-    // 5 — chambers with pips out on the ring instead of the top corridor.
-    name: 'chambers',
-    top: ['#.............', '#.####.#.####.', '#.#.......#.#.', '#.#.##.#.##.#.', '#o............'],
-    tunnel: 5,
-    links: [1, 3, 5],
-  },
-  {
-    // 6 — the top corridor is cut at the centre, so no free lap over the top.
-    name: 'spine',
-    top: ['#o...........#', '#.#.#####.##.#', '#.......#.....', '#.##.##.###.#.', '#.............'],
-    tunnel: 5,
-    links: [1, 3, 5],
-  },
-  {
-    // 7 — two long bars: commit to the middle run and you ride it out.
-    name: 'gauntlet',
-    top: ['#............o', '#.#########.#.', '#...........#.', '#.#########.#.', '#.............'],
-    tunnel: 5,
-    links: [1, 3, 5],
-  },
-  {
-    // 8 — pinched: one cut off the tunnel on each side.
-    name: 'pinch',
-    top: ['#...........o#', '#.####.#.###..', '#.#........#..', '#.##.###.###..', '#.............'],
+    // 7 — courtyards: three-row slabs, so the ring rows are the only ways
+    // across. One cut off the tunnel, and two pips from here on.
+    name: 'courtyard',
+    top: ['#............o', '#.####.###.##.', '#.####.###.##.', '#.####.###.##.', '#.............'],
     tunnel: 5,
     links: [5],
   },
   {
-    // 9 — vice: four verticals, a seven-wide slab, one narrow tunnel cut.
+    // 8 — vice: four verticals, seven-wide slabs, one narrow tunnel cut.
     name: 'vice',
-    top: ['#............o', '#.#.#######.#.', '#.#.......#.#.', '#.#.#######.#.', '#.............'],
+    top: ['#............o', '#.#.#######.#.', '#.#.........#.', '#.#.#######.#.', '#.............'],
     tunnel: 3,
     links: [3],
+  },
+  {
+    // 9 — four slabs and three full-width runs: commit and you ride it out.
+    name: 'gauntlet',
+    top: ['#............o', '#.#####.#####.', '#.............', '#.#####.#####.', '#.............'],
+    tunnel: 5,
+    links: [5],
   },
 ]
 
@@ -326,7 +330,9 @@ export function rotateMazeCW(maze: Maze): Maze {
 function levelLayout(level: number) {
   const i = Math.max(0, (Math.floor(level) || 1) - 1)
   if (i < LEVEL_MAZES.length) return LEVEL_MAZES[i]
-  const hard = LEVEL_MAZES.slice(Math.floor(LEVEL_MAZES.length / 2))
+  // Past the tour, rotate the three tightest boards so the layout still
+  // changes every round without handing back an early, roomy one.
+  const hard = LEVEL_MAZES.slice(-3)
   return hard[(i - LEVEL_MAZES.length) % hard.length]
 }
 /**

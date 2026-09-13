@@ -263,6 +263,17 @@ function makeGhosts(maze: Maze, level: number): Ghost[] {
   }))
 }
 
+/** Boards differ, so face the player down whichever lane the start tile opens on. */
+function startDir(maze: Maze): Dir {
+  const { x, y } = maze.start
+  const at = (dx: number, dy: number) =>
+    maze.open[y + dy]?.[(x + dx + maze.cols) % maze.cols] ?? false
+  if (at(-1, 0)) return 'left'
+  if (at(1, 0)) return 'right'
+  if (at(0, -1)) return 'up'
+  return 'down'
+}
+
 function applyMaze(state: GameState, maze: Maze) {
   state.cols = maze.cols
   state.rows = maze.rows
@@ -286,7 +297,7 @@ function applyMaze(state: GameState, maze: Maze) {
 function resetActors(state: GameState, maze: Maze) {
   state.player.x = maze.start.x + 0.5
   state.player.y = maze.start.y + 0.5
-  state.player.dir = 'left'
+  state.player.dir = startDir(maze)
   state.player.pending = null
   state.player.pendingAge = 0
   state.ghosts = makeGhosts(maze, state.level)
@@ -299,7 +310,7 @@ function resetActors(state: GameState, maze: Maze) {
   state.trail = []
   state.invuln = RESPAWN_INVULN
   state.mode = 'scatter'
-  state.modeTimer = 7
+  state.modeTimer = scatterTime(state.level)
 }
 
 function emptyState(maze: Maze): GameState {
@@ -323,7 +334,7 @@ function emptyState(maze: Maze): GameState {
     player: {
       x: maze.start.x + 0.5,
       y: maze.start.y + 0.5,
-      dir: 'left' as Dir,
+      dir: startDir(maze),
       pending: null,
       pendingAge: 0,
     },
@@ -331,7 +342,7 @@ function emptyState(maze: Maze): GameState {
     fright: 0,
     frightEaten: 0,
     mode: 'scatter',
-    modeTimer: 7,
+    modeTimer: scatterTime(1),
     surge: 0,
     surgeTime: 0,
     surgeHits: 0,
@@ -394,8 +405,31 @@ export function triggerSurge(state: GameState): GameState {
   return { ...state, surge: 0, surgeTime: SURGE_TIME, surgeHits: 0 }
 }
 
-function levelSpeed(level: number) {
-  return 1 + Math.min(0.18, (level - 1) * 0.03)
+/**
+ * Difficulty ramp. Everything here climbs with the level, and the player's own
+ * scale climbs slowest — a single shared multiplier left the gap between you
+ * and the chasers identical on level 9 and level 1.
+ */
+function playerSpeedScale(level: number) {
+  return 1 + Math.min(0.08, (level - 1) * 0.02)
+}
+
+function chaserSpeedScale(level: number) {
+  return 1 + Math.min(0.36, (level - 1) * 0.045)
+}
+
+/** Frightened chasers keep pace too, so power pips buy less each round. */
+function frightSpeedScale(level: number) {
+  return 1 + Math.min(0.24, (level - 1) * 0.03)
+}
+
+/** Scatter laps shorten and chase laps stretch, so they hound you longer. */
+function scatterTime(level: number) {
+  return Math.max(3.5, 7 - (level - 1) * 0.45)
+}
+
+function chaseTime(level: number) {
+  return Math.min(30, 20 + (level - 1) * 1.4)
 }
 
 function centerOf(v: number) {
@@ -795,7 +829,8 @@ export function tick(state: GameState, dt: number): GameState {
     next.modeTimer -= dt
     if (next.modeTimer <= 0) {
       next.mode = next.mode === 'scatter' ? 'chase' : 'scatter'
-      next.modeTimer = next.mode === 'scatter' ? 7 : 20
+      next.modeTimer =
+        next.mode === 'scatter' ? scatterTime(next.level) : chaseTime(next.level)
       for (const g of next.ghosts) {
         if (g.mode === 'chase' || g.mode === 'scatter') {
           g.mode = next.mode
@@ -813,9 +848,8 @@ export function tick(state: GameState, dt: number): GameState {
     }
   }
 
-  const spd = levelSpeed(next.level)
   const surging = next.surgeTime > 0
-  movePlayer(next, PLAYER_SPEED * spd * (surging ? SURGE_SPEED : 1), dt)
+  movePlayer(next, PLAYER_SPEED * playerSpeedScale(next.level) * (surging ? SURGE_SPEED : 1), dt)
   eatAt(next)
 
   if (next.crumbsLeft <= 0) {
@@ -838,8 +872,8 @@ export function tick(state: GameState, dt: number): GameState {
       ghost.mode === 'eaten'
         ? EATEN_SPEED
         : ghost.mode === 'frightened'
-          ? FRIGHT_SPEED
-          : GHOST_SPEED * spd
+          ? FRIGHT_SPEED * frightSpeedScale(next.level)
+          : GHOST_SPEED * chaserSpeedScale(next.level)
     moveGhost(next, ghost, speed, dt, cache)
 
     if (ghost.mode === 'leaving') {
