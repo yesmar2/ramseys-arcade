@@ -1,18 +1,19 @@
-import type { CSSProperties } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 import { getGame } from '../data/games'
 import {
-  attemptsPerGameLabel,
+  attemptsPerGameMax,
   cadenceLabel,
   eventDurationLabel,
   eventKind,
+  formatRulesSummary,
   isUnlimitedDuration,
   joinedRosterLabel,
   playerCountLabel,
-  rosterLimitLabel,
   type TournamentStatus,
   type TournamentSummary,
 } from '../lib/tournaments'
 import { EventCountdown } from './EventCountdown'
+import { medalKind, PodiumMedal } from './PodiumMedal'
 import { resolveGameAccent } from '../lib/theme'
 import { GameThumbArt } from './GameThumbArt'
 
@@ -22,31 +23,22 @@ function statusLabel(status: TournamentStatus) {
   return 'Ended'
 }
 
-
 export function eventAccent(games: string[]) {
   const slug = games[0] ?? ''
   const fallback = getGame(slug)?.accent ?? '#2eb8a0'
   return resolveGameAccent(slug, fallback)
 }
 
-function EventMetaChips({
-  t,
-  joined = false,
-  omitStatus = false,
-}: {
-  t: Pick<
-    TournamentSummary,
-    'status' | 'official' | 'cadence' | 'format' | 'formatLabel' | 'private' | 'kind'
-  >
-  joined?: boolean
-  omitStatus?: boolean
-}) {
+type ChipSource = Pick<
+  TournamentSummary,
+  'status' | 'official' | 'cadence' | 'format' | 'formatLabel' | 'private' | 'kind'
+>
+
+function EventMetaChips({ t, joined = false }: { t: ChipSource; joined?: boolean }) {
   const cadence = cadenceLabel(t.cadence)
   return (
     <>
-      {!omitStatus ? (
-        <span className={`tour-pill tour-pill--${t.status}`}>{statusLabel(t.status)}</span>
-      ) : null}
+      <span className={`tour-pill tour-pill--${t.status}`}>{statusLabel(t.status)}</span>
       {cadence ? <span className="tour-pill tour-pill--cadence">{cadence}</span> : null}
       {t.private ? <span className="tour-pill tour-pill--private">Invite only</span> : null}
       {eventKind(t) === 'bracket' ? (
@@ -66,43 +58,64 @@ function EventMetaChips({
 export function EventStatusChips({
   t,
   joined = false,
+  className = 'event-chips',
 }: {
-  t: Pick<
-    TournamentSummary,
-    'status' | 'official' | 'cadence' | 'format' | 'formatLabel' | 'private' | 'kind'
-  >
+  t: ChipSource
   /** Show a Joined chip when the current player is in this event. */
   joined?: boolean
+  className?: string
 }) {
   return (
-    <div className="event-chips">
+    <div className={className}>
       <EventMetaChips t={t} joined={joined} />
     </div>
   )
 }
 
-/** Hub-style live ticker for the event detail page. */
-export function EventTicker({
+type SummarySource = Pick<
+  TournamentSummary,
+  | 'status'
+  | 'official'
+  | 'cadence'
+  | 'format'
+  | 'formatLabel'
+  | 'private'
+  | 'kind'
+  | 'endsAt'
+  | 'startsAt'
+  | 'playerCount'
+  | 'games'
+  | 'rules'
+  | 'nextDeadlineAt'
+>
+
+function attemptsValue(t: SummarySource): string {
+  const n = attemptsPerGameMax(t)
+  if (n == null) return 'Unlimited'
+  if (eventKind(t) === 'bracket') return n === 1 ? '1 per match' : `${n} per match`
+  return n === 1 ? '1 per game' : `${n} per game`
+}
+
+type SummaryStat = {
+  key: string
+  label: string
+  value: ReactNode
+  clock?: boolean
+  live?: boolean
+}
+
+/**
+ * One card of evenly divided stat cells across the top of an event page.
+ * Replaces the old free-floating tiles so every value lines up on one
+ * baseline and the card reads the same on phone and desktop.
+ */
+export function EventSummary({
   t,
   joined = false,
   yourPlace = null,
   matchLine = null,
 }: {
-  t: Pick<
-    TournamentSummary,
-    | 'status'
-    | 'official'
-    | 'cadence'
-    | 'format'
-    | 'formatLabel'
-    | 'private'
-    | 'kind'
-    | 'endsAt'
-    | 'startsAt'
-    | 'playerCount'
-    | 'rules'
-    | 'nextDeadlineAt'
-  >
+  t: SummarySource
   joined?: boolean
   /** Current player's rank in the event standings, if they have one. */
   yourPlace?: number | null
@@ -118,90 +131,92 @@ export function EventTicker({
     isBracket && live && t.nextDeadlineAt != null && t.nextDeadlineAt > 0
       ? t.nextDeadlineAt
       : null
-  const ticking =
-    fillingBracket
-      ? false
-      : isBracket
-        ? roundDeadline != null
-        : (live || upcoming) && !unlimited
-  const target = isBracket
-    ? (roundDeadline ?? 0)
-    : upcoming
-      ? t.startsAt
-      : t.endsAt
+  const ticking = fillingBracket
+    ? false
+    : isBracket
+      ? roundDeadline != null
+      : (live || upcoming) && !unlimited
+  const target = isBracket ? (roundDeadline ?? 0) : upcoming ? t.startsAt : t.endsAt
   const clockLabel = fillingBracket
     ? 'Starts'
     : isBracket && live
       ? roundDeadline
-        ? 'Round time'
+        ? 'Round ends'
         : 'Rounds'
       : unlimited && live
-        ? 'Duration'
+        ? 'Runs'
         : upcoming
           ? 'Starts in'
           : live
             ? 'Time left'
             : 'Window'
+  const clockValue: ReactNode = fillingBracket ? (
+    'When full'
+  ) : ticking ? (
+    <EventCountdown endsAt={target} precise />
+  ) : isBracket && live ? (
+    'Open matches'
+  ) : unlimited && live ? (
+    'Till all done'
+  ) : (
+    eventDurationLabel(t)
+  )
+
+  const medal = yourPlace != null ? medalKind(yourPlace) : null
+  const stats: SummaryStat[] = [
+    { key: 'clock', label: clockLabel, value: clockValue, clock: true, live },
+  ]
+
+  if (isBracket) {
+    stats.push({ key: 'match', label: 'Your match', value: matchLine ?? 'Not seeded' })
+  } else if (joined) {
+    stats.push({
+      key: 'place',
+      label: 'Your place',
+      value:
+        yourPlace != null ? (
+          <>
+            {medal ? <PodiumMedal kind={medal} size="sm" /> : null}
+            {`#${yourPlace}`}
+          </>
+        ) : (
+          'No score yet'
+        ),
+    })
+  }
+
+  stats.push({
+    key: 'players',
+    label: 'Players',
+    value: isBracket ? joinedRosterLabel(t) : playerCountLabel(t.playerCount),
+  })
+  stats.push({ key: 'attempts', label: 'Tries', value: attemptsValue(t) })
 
   return (
-    <div className="event-ticker">
-      <div className="event-ticker__stats">
-        <div
-          className={`lb-stat event-ticker__stat event-ticker__stat--clock${
-            ticking ? ' event-ticker__stat--countdown' : ''
-          }${live ? ' event-ticker__stat--live' : ''}`}
-          role={ticking ? 'timer' : undefined}
-        >
-          <span className="lb-stat__label event-ticker__label">
-            {live ? <span className="event-ticker__dot" aria-hidden="true" /> : null}
-            {clockLabel}
-          </span>
-          <strong>
-            {fillingBracket ? (
-              'When full'
-            ) : ticking ? (
-              <EventCountdown endsAt={target} precise />
-            ) : isBracket && live ? (
-              'Waiting for matches'
-            ) : unlimited && live ? (
-              'Open'
-            ) : (
-              eventDurationLabel(t)
-            )}
-          </strong>
-        </div>
-        <div className="event-ticker__facts">
-          {matchLine ? (
-            <div className="lb-stat event-ticker__stat event-ticker__stat--place">
-              <span className="lb-stat__label">Match</span>
-              <strong>{matchLine}</strong>
-            </div>
-          ) : yourPlace != null ? (
-            <div className="lb-stat event-ticker__stat event-ticker__stat--place">
-              <span className="lb-stat__label">Your place</span>
-              <strong>#{yourPlace}</strong>
-            </div>
-          ) : null}
-          <div className="lb-stat event-ticker__stat">
-            <span className="lb-stat__label">Joined</span>
-            <strong>
-              {eventKind(t) === 'bracket' ? joinedRosterLabel(t) : playerCountLabel(t.playerCount)}
-            </strong>
+    <section className="ev-card ev-summary" aria-label="Event status">
+      <dl
+        className="ev-summary__stats"
+        style={{ '--ev-stat-count': stats.length } as CSSProperties}
+      >
+        {stats.map((stat) => (
+          <div
+            key={stat.key}
+            className={`ev-stat${stat.clock ? ' ev-stat--clock' : ''}${
+              stat.live && stat.clock ? ' ev-stat--live' : ''
+            }`}
+          >
+            <dt className="ev-stat__label">
+              {stat.clock && stat.live ? (
+                <span className="ev-stat__dot" aria-hidden="true" />
+              ) : null}
+              {stat.label}
+            </dt>
+            <dd className="ev-stat__value">{stat.value}</dd>
           </div>
-          <div className="lb-stat event-ticker__stat">
-            <span className="lb-stat__label">Roster</span>
-            <strong>{rosterLimitLabel(t.rules)}</strong>
-          </div>
-          <div className="lb-stat event-ticker__stat">
-            <span className="lb-stat__label">Attempts</span>
-            <strong>{attemptsPerGameLabel(t)}</strong>
-          </div>
-        </div>
-      </div>
-      <div className="event-ticker__chips">
-        <EventMetaChips t={t} joined={joined} omitStatus />
-      </div>
-    </div>
+        ))}
+      </dl>
+      <p className="ev-summary__rules">{formatRulesSummary(t)}</p>
+    </section>
   )
 }
 
@@ -247,47 +262,46 @@ type EventCardProps = {
   href?: string
 }
 
-/** Shared live/ended event card — Events list and home strip. */
+/** Shared list tile — Events list and the home strip. */
 export function EventCard({ t, compact = false, href }: EventCardProps) {
   const accent = eventAccent(t.games)
   const gameNames = t.games.map((g) => getGame(g)?.name ?? g).join(' · ')
   const link = href ?? `#/tournaments/${t.id}`
+  const isBracket = eventKind(t) === 'bracket'
+
+  const clock: ReactNode =
+    t.status === 'active' && isBracket ? (
+      t.nextDeadlineAt != null && t.nextDeadlineAt > 0 ? (
+        <EventCountdown endsAt={t.nextDeadlineAt} />
+      ) : (
+        eventDurationLabel(t)
+      )
+    ) : t.status === 'active' ? (
+      <EventCountdown endsAt={t.endsAt} unlimitedDuration={isUnlimitedDuration(t.rules)} />
+    ) : t.status === 'upcoming' && isBracket ? (
+      'Starts when full'
+    ) : (
+      eventDurationLabel(t)
+    )
 
   return (
     <a
-      className={`event-card${compact ? ' event-card--compact' : ''}`}
+      className={`ev-tile${t.status === 'ended' ? ' ev-tile--ended' : ''}`}
       href={link}
       style={{ '--event-accent': accent } as CSSProperties}
     >
       <EventThumbs games={t.games} size={compact ? 'md' : 'lg'} />
-      <div className="event-card__body">
-        <div className="event-card__top">
-          <h2 className="event-card__title">{t.title}</h2>
+      <div className="ev-tile__body">
+        <div className="ev-tile__top">
+          <h3 className="ev-tile__title">{t.title}</h3>
           <EventStatusChips t={t} />
         </div>
-        <p className="event-card__games">{gameNames}</p>
-        <div className="event-card__foot">
-          {t.status === 'active' && eventKind(t) === 'bracket' ? (
-            t.nextDeadlineAt != null && t.nextDeadlineAt > 0 ? (
-              <span className="event-card__countdown">
-                <EventCountdown endsAt={t.nextDeadlineAt} />
-              </span>
-            ) : (
-              <span className="event-card__window">{eventDurationLabel(t)}</span>
-            )
-          ) : t.status === 'active' ? (
-            <span className="event-card__countdown">
-              <EventCountdown
-                endsAt={t.endsAt}
-                unlimitedDuration={isUnlimitedDuration(t.rules)}
-              />
-            </span>
-          ) : t.status === 'upcoming' && eventKind(t) === 'bracket' ? (
-            <span className="event-card__window">Starts when full</span>
-          ) : (
-            <span className="event-card__window">{eventDurationLabel(t)}</span>
-          )}
-          <span className="event-card__joined">{t.playerCount} joined</span>
+        <p className="ev-tile__games">{gameNames}</p>
+        <div className="ev-tile__foot">
+          <span className="ev-tile__clock">{clock}</span>
+          <span className="ev-tile__players">
+            {isBracket ? joinedRosterLabel(t) : t.playerCount} joined
+          </span>
         </div>
       </div>
     </a>

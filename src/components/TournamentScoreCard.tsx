@@ -273,6 +273,13 @@ export function TournamentScoreCard({
             celebratedRef.current = true
             setCeleb(payload)
           }
+        } else if (!celebratedRef.current && score > 0) {
+          const hit = findPlacementHit(snapshot.detail, gameSlug, name)
+          const payload = placementCelebrationPayload(hit)
+          if (payload) {
+            celebratedRef.current = true
+            setCeleb(payload)
+          }
         }
       } catch (err) {
         if (cancelled) return

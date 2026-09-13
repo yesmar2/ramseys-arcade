@@ -90,42 +90,25 @@ function CreateGroupForm({
   onCancel?: () => void
 }) {
   const inputRef = useRef<HTMLInputElement>(null)
-  const trimmed = name.trim()
-  const previewName = trimmed || 'Your group'
-  const canSubmit = trimmed.length >= 2
+  const canSubmit = name.trim().length >= 2
 
   useEffect(() => {
     inputRef.current?.focus()
   }, [])
 
   return (
-    <form className="group-create" onSubmit={onCreate}>
-      <div className="group-create__hero">
-        <div className="group-create__hero-top">
-          <p className="group-create__eyebrow">Private roster</p>
-          {onCancel ? (
-            <button type="button" className="group-text-btn" onClick={onCancel}>
-              Cancel
-            </button>
-          ) : null}
+    <form className="ev ev-form ev-form--inline" onSubmit={onCreate}>
+      <section className="ev-card">
+        <div className="ev-card__head">
+          <h2 className="ev-card__title">Create a group</h2>
+          <p className="ev-card__note">{name.length}/32</p>
         </div>
-        <h2 className="group-create__title">Create a group</h2>
-        <p className="group-create__lede">
-          Same boards, just your people. Share an invite link and filter weekly, monthly, and
-          all-time scores down to the roster.
-        </p>
-      </div>
-
-      <div className="group-create__layout">
-        <div className="group-create__main">
-          <label className="group-create__field">
-            <span className="group-create__label-row">
-              <span className="group-create__label">Group name</span>
-              <span className="group-create__count">{name.length}/32</span>
-            </span>
+        <div className="ev-card__body">
+          <label className="ev-field">
+            <span className="visually-hidden">Group name</span>
             <input
               ref={inputRef}
-              className="group-create__input"
+              className="ev-field__input"
               value={name}
               maxLength={32}
               placeholder="Bland Family"
@@ -133,48 +116,31 @@ function CreateGroupForm({
               onChange={(e) => setName(e.target.value)}
             />
           </label>
+          <p className="ev-field__hint">
+            Same boards, just your people. Share an invite link and filter weekly, monthly,
+            and all-time scores down to the roster.
+          </p>
 
-          {error ? <p className="group-create__error">{error}</p> : null}
+          <ul className="ev-facts">
+            <li>Filter any board to this roster</li>
+            <li>Up to 20 people per group</li>
+            <li>5 groups per account</li>
+          </ul>
 
-          <div className="group-create__actions">
-            <button
-              type="submit"
-              className="lb-play group-create__submit"
-              disabled={busy || !canSubmit}
-            >
+          {error ? <p className="ev-note ev-note--error">{error}</p> : null}
+
+          <div className="ev-form__actions">
+            <button type="submit" className="ev-join__btn" disabled={busy || !canSubmit}>
               {busy ? 'Creating…' : 'Create group'}
             </button>
             {onCancel ? (
-              <button type="button" className="group-create__secondary" onClick={onCancel}>
+              <button type="button" className="ev-form__cancel" onClick={onCancel}>
                 Not now
               </button>
             ) : null}
           </div>
         </div>
-
-        <aside className="group-create__aside" aria-hidden={trimmed.length === 0}>
-          <p className="group-create__preview-label">Preview</p>
-          <div
-            className={`group-create__preview${trimmed ? ' group-create__preview--live' : ''}`}
-          >
-            <div className="group-faces" aria-hidden="true">
-              <span className="group-faces__item group-faces__item--you">
-                {(trimmed || 'Y').slice(0, 1).toUpperCase()}
-              </span>
-              <span className="group-faces__empty">+</span>
-            </div>
-            <div className="group-create__preview-body">
-              <p className="group-create__preview-name">{previewName}</p>
-              <p className="group-create__preview-meta">1 member · invite ready</p>
-            </div>
-          </div>
-          <ul className="group-create__facts">
-            <li>Filter any board to this roster</li>
-            <li>Up to 20 people per group</li>
-            <li>5 groups per account</li>
-          </ul>
-        </aside>
-      </div>
+      </section>
     </form>
   )
 }

@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
 import { EventBracket } from '../components/EventBracket'
-import { EventCard, EventTicker, eventAccent } from '../components/EventCard'
+import { EventCard, EventStatusChips, EventSummary, eventAccent } from '../components/EventCard'
 import { GameThumbArt } from '../components/GameThumbArt'
 import { PageBackLink } from '../components/PageBackLink'
 import { PageShell } from '../components/PageShell'
@@ -60,7 +60,6 @@ function placeLabel(place: number) {
   return `${place}th`
 }
 
-
 function GameResultCell({
   cell,
   usePoints,
@@ -69,27 +68,16 @@ function GameResultCell({
   usePoints: boolean
 }) {
   if (cell?.score == null) {
-    return <span className="tour-game-result tour-game-result--empty">—</span>
-  }
-  if (!usePoints) {
-    return (
-      <span className="tour-game-result">
-        <span className="tour-game-result__score">{cell.score.toLocaleString()}</span>
-      </span>
-    )
-  }
-  if (cell.place == null) {
-    return <span className="tour-game-result tour-game-result--empty">—</span>
+    return <span className="ev-row__game-result ev-row__game-score">—</span>
   }
   return (
-    <span className="tour-game-result">
-      <span className="tour-game-result__place">{placeLabel(cell.place)}</span>
-      <span className="tour-game-result__meta">
-        <span className="tour-game-result__pts">+{cell.points}</span>
-        {cell.score != null && (
-          <span className="tour-game-result__score">{cell.score.toLocaleString()}</span>
-        )}
-      </span>
+    <span className="ev-row__game-result">
+      {usePoints && cell.place != null ? (
+        <span className="ev-row__game-place">
+          {placeLabel(cell.place)} · +{cell.points}
+        </span>
+      ) : null}
+      <span className="ev-row__game-score">{cell.score.toLocaleString()}</span>
     </span>
   )
 }
@@ -156,12 +144,27 @@ function EventStandings({
   displayName: string
   className?: string
 }) {
-  const title = detail.games.length === 1 ? 'Top scores' : 'Standings'
+  const single = detail.games.length === 1
+  const title = single ? 'Top scores' : 'Standings'
+  const rows = single ? scoredStandings(detail).length : detail.standings.length
   return (
-    <section className={className} aria-label={title}>
-      <h2 className="event-detail__section-title">{title}</h2>
-      {detail.standings.length === 0 ? (
-        <p className="lb-empty">No players yet.</p>
+    <section className={`ev-card${className ? ` ${className}` : ''}`} aria-label={title}>
+      <div className="ev-card__head">
+        <h2 className="ev-card__title">{title}</h2>
+        {rows > 0 ? (
+          <p className="ev-card__note">
+            {rows} {rows === 1 ? 'player' : 'players'}
+          </p>
+        ) : null}
+      </div>
+      {rows === 0 ? (
+        <p className="ev-empty">
+          {detail.status === 'ended'
+            ? 'No scores were posted.'
+            : single
+              ? 'No scores yet — be the first on the board.'
+              : 'No players yet.'}
+        </p>
       ) : (
         <StandingsList detail={detail} displayName={displayName} />
       )}
@@ -170,12 +173,9 @@ function EventStandings({
 }
 
 function bracketPlayLabel(detail: TournamentDetail, joined: boolean, displayName: string) {
-  const left = seatsLeft(detail)
-  if (!detail.bracket) {
-    if (left != null && left > 0) {
-      return `Waiting for ${left} more`
-    }
-    return 'Drawing bracket'
+  if (!detail.bracket?.lockedAt) {
+    // The summary card already counts the empty seats — don't repeat it here.
+    return 'Locked until the bracket draws'
   }
   if (!joined) return 'Join to play'
   const match = yourOpenMatch(detail, displayName)
@@ -243,7 +243,7 @@ function playAttemptsLabel(
 function bracketMatchLine(detail: TournamentDetail, displayName: string): string | null {
   if (eventKind(detail) !== 'bracket') return null
   const left = seatsLeft(detail)
-  if (!detail.bracket) {
+  if (!detail.bracket?.lockedAt) {
     return left != null && left > 0 ? `Waiting for ${left} more` : 'Drawing'
   }
   const match = yourOpenMatch(detail, displayName)
@@ -254,7 +254,8 @@ function bracketMatchLine(detail: TournamentDetail, displayName: string): string
   return bracketPlayLabel(detail, true, displayName)
 }
 
-function EventPlayCards({
+/** One play row per game — same shape whether the event has one game or five. */
+function EventPlayList({
   detail,
   joined,
   playInvite,
@@ -265,70 +266,130 @@ function EventPlayCards({
   playInvite?: string
   displayName: string
 }) {
+  const solo = detail.games.length === 1
+  const bracket = eventKind(detail) === 'bracket'
+  const ended = detail.status === 'ended'
+
   return (
-    <section className="event-detail__play" aria-label="Play">
-      <ul
-        className={`event-play-grid event-play-grid--count-${Math.min(detail.games.length, 3)}`}
-      >
-        {detail.games.map((slug, index) => {
+    <section className="ev-card" aria-label="Play">
+      <div className="ev-card__head">
+        <h2 className="ev-card__title">{solo ? 'Play' : `Play · ${detail.games.length} games`}</h2>
+      </div>
+      <ul className={`ev-play${solo ? ' ev-play--solo' : ''}`}>
+        {detail.games.map((slug) => {
           const g = getGame(slug)
-          const gameAccent = resolveGameAccent(
-            slug,
-            g?.accent ?? eventAccent(detail.games),
-          )
-          const status =
-            detail.playerStatus && detail.games.length === 1 ? detail.playerStatus : null
-          const attemptLabel = playAttemptsLabel(detail, slug, joined, displayName)
-          const bracket = eventKind(detail) === 'bracket'
-          const exhausted = bracket
-            ? !(status?.canPlay || /^vs /i.test(attemptLabel))
-            : Boolean(status && !status.canPlay && joined) ||
-              (joined && attemptLabel === 'No tries left')
           const name = g?.name ?? slug
-          const style = {
-            '--tile-accent': gameAccent,
-            '--thumb-accent': gameAccent,
-            '--event-accent': gameAccent,
-            animationDelay: `${0.05 + index * 0.05}s`,
-          } as CSSProperties
+          const gameAccent = resolveGameAccent(slug, g?.accent ?? eventAccent(detail.games))
+          const attemptLabel = playAttemptsLabel(detail, slug, joined, displayName)
+          const status = solo ? detail.playerStatus : null
+          const locked =
+            ended ||
+            (bracket
+              ? !(status?.canPlay || /^vs /i.test(attemptLabel))
+              : Boolean(status && !status.canPlay && joined) ||
+                (joined && attemptLabel === 'No tries left'))
+          const style = { '--row-accent': gameAccent } as CSSProperties
 
           const inner = (
             <>
-              <GameThumbArt slug={slug} accent={gameAccent} />
-              <span className="game-tile__title">{name}</span>
-              <span className="game-tile__status">{attemptLabel}</span>
+              <span className="ev-play__art">
+                <GameThumbArt slug={slug} accent={gameAccent} />
+              </span>
+              <span className="ev-play__text">
+                <span className="ev-play__name">{name}</span>
+                <span className="ev-play__status">
+                  {ended ? 'Event ended' : attemptLabel}
+                </span>
+              </span>
+              {!locked ? <span className="ev-play__go">Play</span> : null}
             </>
           )
 
-          if (exhausted) {
-            return (
-              <li key={slug}>
+          return (
+            <li key={slug} className="ev-play__row">
+              {locked ? (
                 <div
-                  className="game-tile game-tile--thumb event-play-card event-play-card--disabled"
+                  className="ev-play__link ev-play__link--locked"
                   style={style}
-                  aria-label={`${name}, ${attemptLabel}`}
+                  aria-label={`${name}, ${ended ? 'event ended' : attemptLabel}`}
                 >
                   {inner}
                 </div>
-              </li>
-            )
-          }
-
-          return (
-            <li key={slug}>
-              <a
-                className="game-tile game-tile--thumb event-play-card"
-                href={tournamentPlayHref(detail.id, slug, playInvite)}
-                style={style}
-                aria-label={`Play ${name}, ${attemptLabel}`}
-              >
-                {inner}
-              </a>
+              ) : (
+                <a
+                  className="ev-play__link"
+                  href={tournamentPlayHref(detail.id, slug, playInvite)}
+                  style={style}
+                  aria-label={`Play ${name}, ${attemptLabel}`}
+                >
+                  {inner}
+                </a>
+              )}
             </li>
           )
         })}
       </ul>
     </section>
+  )
+}
+
+/** One standings row. Single- and multi-game events share this so the two
+ *  boards look identical; multi-game rows add a per-game breakdown. */
+function StandingRow({
+  rank,
+  name,
+  avatarId,
+  score,
+  unit,
+  mine,
+  breakdown,
+}: {
+  rank: number
+  name: string
+  avatarId?: string
+  score: string
+  unit?: string
+  mine: boolean
+  breakdown?: ReactNode
+}) {
+  const medal = medalKind(rank)
+  const rowClass = `ev-row${rank <= 3 ? ` ev-row--${rank}` : ''}${mine ? ' ev-row--you' : ''}`
+
+  const cells = (
+    <>
+      <span className="ev-row__rank" aria-label={`Place ${rank}`}>
+        {medal ? <PodiumMedal kind={medal} size="sm" /> : rank}
+      </span>
+      <a className="ev-row__who" href={rankHref(name)} title={name}>
+        <PlayerAvatar avatarId={avatarId} name={name} size="sm" />
+        <span className="ev-row__name">{name}</span>
+        {mine ? <span className="ev-row__you-tag">You</span> : null}
+      </a>
+      <span className="ev-row__score">
+        {score}
+        {unit ? <span className="ev-row__score-unit">{unit}</span> : null}
+      </span>
+    </>
+  )
+
+  if (!breakdown) {
+    return (
+      <li className={rowClass} aria-current={mine ? 'true' : undefined}>
+        <div className="ev-row__main">{cells}</div>
+      </li>
+    )
+  }
+
+  return (
+    <li className={rowClass} aria-current={mine ? 'true' : undefined}>
+      <details className="ev-row__details">
+        <summary className="ev-row__main ev-row__main--expandable ev-row__toggle">
+          {cells}
+          <span className="ev-row__chev" aria-hidden="true" />
+        </summary>
+        {breakdown}
+      </details>
+    </li>
   )
 }
 
@@ -340,135 +401,70 @@ function StandingsList({
   displayName: string
 }) {
   const usePoints = detail.format === 'place-points'
-  if (detail.games.length === 1) {
-    return <SingleGameStandings detail={detail} displayName={displayName} />
-  }
-
-  return (
-    <ul
-      className="tour-standings"
-      style={{ '--lb-you-accent': eventAccent(detail.games) } as CSSProperties}
-    >
-      {detail.standings.map((row, index) => (
-        <StandingCard
-          key={row.playerId}
-          row={row}
-          rank={index + 1}
-          games={detail.games}
-          mine={normalizePlayerName(row.name) === displayName}
-          usePoints={usePoints}
-        />
-      ))}
-    </ul>
-  )
-}
-
-function SingleGameStandings({
-  detail,
-  displayName,
-}: {
-  detail: TournamentDetail
-  displayName: string
-}) {
-  const gameSlug = detail.games[0]!
-  const game = getGame(gameSlug)
-  const accent = resolveGameAccent(gameSlug, game?.accent ?? '#2eb8a0')
   const youName = normalizePlayerName(displayName)
+  const single = detail.games.length === 1
 
-  const rows = useMemo(() => scoredStandings(detail), [detail])
+  const singleRows = useMemo(
+    () => (single ? scoredStandings(detail) : []),
+    [detail, single],
+  )
 
-  if (rows.length === 0) {
-    return <p className="lb-empty">No scores yet. Join and play to post one.</p>
+  if (single) {
+    return (
+      <ol className="ev-board">
+        {singleRows.map(({ row, score }, index) => {
+          const name = normalizePlayerName(row.name)
+          return (
+            <StandingRow
+              key={row.playerId}
+              rank={index + 1}
+              name={name}
+              avatarId={row.avatarId}
+              score={score.toLocaleString()}
+              mine={Boolean(youName) && name === youName}
+            />
+          )
+        })}
+      </ol>
+    )
   }
 
   return (
-    <ol
-      className="lb-list tour-score-list"
-      style={{ '--board-accent': accent, '--lb-you-accent': accent } as CSSProperties}
-    >
-      {rows.map(({ row, score }, index) => {
-        const rank = index + 1
-        const medal = medalKind(rank)
+    <ol className="ev-board">
+      {detail.standings.map((row, index) => {
         const name = normalizePlayerName(row.name)
-        const isYou = Boolean(youName) && name === youName
+        const totalScore = detail.games.reduce(
+          (sum, game) => sum + (row.byGame[game]?.score ?? 0),
+          0,
+        )
         return (
-          <li
+          <StandingRow
             key={row.playerId}
-            className={`lb-row lb-row--score-only${isYou ? ' lb-row--you' : ''}${medal ? ' lb-row--medal' : ''}`}
-            aria-current={isYou ? 'true' : undefined}
-          >
-            <span className="lb-row__rank" aria-label={`#${rank}`}>
-              {medal ? (
-                <PodiumMedal kind={medal} />
-              ) : (
-                <span className="lb-row__rank-num">#{rank}</span>
-              )}
-            </span>
-            <a className="lb-row__name lb-row__name--link" href={rankHref(name)}>
-              <PlayerAvatar avatarId={row.avatarId} name={name} size="sm" />
-              <span className="lb-row__name-text" title={name}>
-                {name}
-              </span>
-              {isYou ? <span className="lb-row__you-tag">You</span> : null}
-            </a>
-            <span className="lb-row__score">{score.toLocaleString()}</span>
-          </li>
+            rank={index + 1}
+            name={name}
+            avatarId={row.avatarId}
+            score={usePoints ? String(row.totalPoints) : totalScore.toLocaleString()}
+            unit={usePoints ? 'pts' : 'total'}
+            mine={Boolean(youName) && name === youName}
+            breakdown={
+              <ul className="ev-row__games">
+                {detail.games.map((game) => {
+                  const label = getGame(game)?.name ?? game
+                  const accent = resolveGameAccent(game, getGame(game)?.accent ?? '#2eb8a0')
+                  return (
+                    <li key={game} className="ev-row__game">
+                      <GameThumbArt slug={game} accent={accent} />
+                      <span className="ev-row__game-name">{label}</span>
+                      <GameResultCell cell={row.byGame[game]} usePoints={usePoints} />
+                    </li>
+                  )
+                })}
+              </ul>
+            }
+          />
         )
       })}
     </ol>
-  )
-}
-
-function StandingCard({
-  row,
-  rank,
-  games,
-  mine,
-  usePoints,
-}: {
-  row: StandingRow
-  rank: number
-  games: string[]
-  mine: boolean
-  usePoints: boolean
-}) {
-  const name = normalizePlayerName(row.name)
-  const totalScore = games.reduce((sum, game) => sum + (row.byGame[game]?.score ?? 0), 0)
-  return (
-    <li className={`tour-standing${mine ? ' tour-standing--you' : ''}`}>
-      <details className="tour-standing__details">
-        <summary className="tour-standing__summary">
-          <span className="tour-standing__rank">{rank}</span>
-          <div className="tour-standing__who">
-            <PlayerAvatar avatarId={row.avatarId} name={name} size="sm" />
-            <a className="tour-standing__name tour-standing__name--link" href={rankHref(name)} title={name}>
-              {name}
-            </a>
-            {mine ? <span className="tour-you-tag">You</span> : null}
-          </div>
-          <span className="tour-standing__total">
-            {usePoints ? row.totalPoints : totalScore.toLocaleString()}
-            <span className="tour-standing__total-label">{usePoints ? 'pts' : 'total'}</span>
-          </span>
-        </summary>
-        <ul className="tour-standing__games">
-          {games.map((game) => {
-            const cell = row.byGame[game]
-            const label = getGame(game)?.name ?? game
-            const accent = resolveGameAccent(game, getGame(game)?.accent ?? '#2eb8a0')
-            return (
-              <li key={game} className="tour-standing__game">
-                <span className="tour-standing__game-label">
-                  <GameThumbArt slug={game} accent={accent} />
-                  <span className="tour-standing__game-name">{label}</span>
-                </span>
-                <GameResultCell cell={cell} usePoints={usePoints} />
-              </li>
-            )
-          })}
-        </ul>
-      </details>
-    </li>
   )
 }
 
@@ -484,7 +480,7 @@ export function TournamentsPage() {
     let cancelled = false
     setLoading(true)
     const name = normalizePlayerName(playerName || getLastPlayerName())
-    listTournaments(filter, filter === 'joined' ? name || undefined : undefined)
+    listTournaments(filter, name || undefined)
       .then((list) => {
         if (!cancelled) setItems(list)
       })
@@ -516,28 +512,42 @@ export function TournamentsPage() {
             ) : null}
           </div>
         </div>
-        <div className="event-list__filters" role="tablist" aria-label="Event filters">
-          {(['all', 'official', 'joined', ...(account ? (['mine'] as const) : [])] as const).map(
-            (key) => (
-            <button
-              key={key}
-              type="button"
-              role="tab"
-              aria-selected={filter === key}
-              className={`event-list__filter${filter === key ? ' event-list__filter--active' : ''}`}
-              onClick={() => setFilter(key)}
+        {(() => {
+          // Same segmented control the boards use for periods.
+          const keys = [
+            'all',
+            'official',
+            'joined',
+            ...(account ? (['mine'] as const) : []),
+          ] as const
+          const labels = {
+            all: 'All',
+            official: 'Official',
+            joined: 'Joined',
+            mine: 'Hosted',
+          } as const
+          return (
+            <div
+              className="lb-periods lb-periods--segment"
+              role="tablist"
+              aria-label="Event filters"
+              style={{ '--period-count': keys.length } as CSSProperties}
             >
-              {key === 'all'
-                ? 'All'
-                : key === 'official'
-                  ? 'Official'
-                  : key === 'joined'
-                    ? 'Joined'
-                    : 'Hosted'}
-            </button>
-          ),
-          )}
-        </div>
+              {keys.map((key) => (
+                <button
+                  key={key}
+                  type="button"
+                  role="tab"
+                  aria-selected={filter === key}
+                  className={`lb-period${filter === key ? ' lb-period--active' : ''}`}
+                  onClick={() => setFilter(key)}
+                >
+                  {labels[key]}
+                </button>
+              ))}
+            </div>
+          )
+        })()}
       </header>
 
       <PendingInvitesStrip kind="tournament" />
@@ -555,28 +565,33 @@ export function TournamentsPage() {
               : 'No events yet.'}
         </p>
       ) : (
-        <div className="event-list">
+        <div className="ev-list">
           {live.length > 0 ? (
-            <ul className="event-list__grid">
-              {live.map((t) => (
-                <li key={t.id}>
-                  <EventCard
-                    t={t}
-                    href={
-                      t.private
-                        ? tournamentHref(t.id, getTournamentInvite(t.id) ?? undefined)
-                        : undefined
-                    }
-                  />
-                </li>
-              ))}
-            </ul>
+            <section className="ev-list__group" aria-label="Open events">
+              {ended.length > 0 ? (
+                <h2 className="ev-list__group-title">Open now</h2>
+              ) : null}
+              <ul className="ev-list__grid">
+                {live.map((t) => (
+                  <li key={t.id}>
+                    <EventCard
+                      t={t}
+                      href={
+                        t.private
+                          ? tournamentHref(t.id, getTournamentInvite(t.id) ?? undefined)
+                          : undefined
+                      }
+                    />
+                  </li>
+                ))}
+              </ul>
+            </section>
           ) : null}
 
           {ended.length > 0 ? (
-            <section className="event-list__ended" aria-label="Ended events">
-              <h2 className="event-list__section-title">Ended</h2>
-              <ul className="event-list__grid">
+            <section className="ev-list__group" aria-label="Ended events">
+              <h2 className="ev-list__group-title">Ended</h2>
+              <ul className="ev-list__grid">
                 {ended.map((t) => (
                   <li key={t.id}>
                     <EventCard
@@ -811,7 +826,7 @@ export function TournamentDetailPage({ id, invite }: { id: string; invite?: stri
         </>
       ) : (
         <div
-          className={`event-detail game-lobby${eventKind(detail) === 'bracket' ? '' : ' game-lobby--split'}`}
+          className="ev"
           style={
             {
               '--event-accent': accent,
@@ -845,77 +860,63 @@ export function TournamentDetailPage({ id, invite }: { id: string; invite?: stri
                 ) : null}
               </div>
             </div>
+            <EventStatusChips t={detail} joined={joined} className="ev-chips" />
           </header>
 
+          <EventSummary
+            t={detail}
+            joined={joined && detail.status !== 'ended'}
+            yourPlace={
+              eventKind(detail) === 'bracket' ? null : yourStandingPlace(detail, displayName)
+            }
+            matchLine={bracketMatchLine(detail, displayName)}
+          />
+
+          {detail.status !== 'ended' && !joined ? (
+            <div className="ev-join">
+              {eventFull ? (
+                <p className="ev-note">This event is full.</p>
+              ) : displayName ? (
+                <button
+                  type="button"
+                  className="ev-join__btn"
+                  disabled={busy}
+                  onClick={() => void onJoin()}
+                >
+                  {busy ? 'Joining…' : `Join as ${displayName}`}
+                </button>
+              ) : (
+                <p className="ev-note">Set your gamer tag in the header first.</p>
+              )}
+              {joinNote ? <p className="ev-note ev-note--error">{joinNote}</p> : null}
+            </div>
+          ) : joinNote ? (
+            <p className="ev-note ev-note--error">{joinNote}</p>
+          ) : null}
+
           {detail.isHost && invitesOpen ? (
-            <section className="group-panel event-detail__invite-tag" aria-label="Invite by tag">
-              <InviteByTagForm kind="tournament" targetId={id} disabled={busy} />
+            <section className="ev-card" aria-label="Invite by tag">
+              <div className="ev-card__body">
+                <InviteByTagForm kind="tournament" targetId={id} disabled={busy} />
+              </div>
             </section>
           ) : null}
 
-          <div className="game-lobby__layout">
-            <div className="game-lobby__main">
-              <EventPlayCards
-                detail={detail}
-                joined={joined}
-                playInvite={playInvite}
-                displayName={displayName}
-              />
+          <div className={`ev-grid${eventKind(detail) === 'bracket' ? '' : ' ev-grid--split'}`}>
+            <EventPlayList
+              detail={detail}
+              joined={joined}
+              playInvite={playInvite}
+              displayName={displayName}
+            />
 
-              {detail.status !== 'ended' && !joined ? (
-                <div className="event-detail__join">
-                  {eventFull ? (
-                    <p className="tour-note tour-note--compact">This event is full.</p>
-                  ) : displayName ? (
-                    <button
-                      type="button"
-                      className="lb-play game-lobby__play game-lobby__play--wide event-detail__join-btn"
-                      style={{ background: accent }}
-                      disabled={busy}
-                      onClick={() => void onJoin()}
-                    >
-                      {busy ? 'Joining…' : `Join as ${displayName}`}
-                    </button>
-                  ) : (
-                    <p className="tour-note tour-note--compact">
-                      Set your gamer tag in the header first.
-                    </p>
-                  )}
-                  {joinNote ? <p className="tour-note tour-note--error">{joinNote}</p> : null}
-                </div>
-              ) : joinNote ? (
-                <p className="tour-note tour-note--error">{joinNote}</p>
-              ) : null}
-
-              <EventTicker
-                t={detail}
-                joined={joined && detail.status !== 'ended'}
-                yourPlace={
-                  eventKind(detail) === 'bracket'
-                    ? null
-                    : yourStandingPlace(detail, displayName)
-                }
-                matchLine={bracketMatchLine(detail, displayName)}
-              />
-
-              <EventBoard
-                detail={detail}
-                displayName={displayName}
-                className={
-                  eventKind(detail) === 'bracket'
-                    ? 'event-detail__board event-detail__board--bracket'
-                    : 'lb-board event-detail__board game-lobby__tops game-lobby__tops--mobile'
-                }
-              />
-            </div>
-
-            {eventKind(detail) === 'bracket' ? null : (
-              <EventBoard
-                detail={detail}
-                displayName={displayName}
-                className="game-lobby__aside event-detail__aside"
-              />
-            )}
+            <EventBoard
+              detail={detail}
+              displayName={displayName}
+              className={
+                eventKind(detail) === 'bracket' ? 'ev-card ev-card--bracket' : undefined
+              }
+            />
           </div>
         </div>
       )}

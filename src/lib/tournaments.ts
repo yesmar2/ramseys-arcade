@@ -29,6 +29,24 @@ export type TournamentRules = {
   unlimitedDuration?: boolean
   /** Bracket only: hours each open match may be played. */
   roundPlayHours?: number
+  /** Bracket only: 'double' adds a losers bracket + grand final. */
+  elimination?: 'single' | 'double'
+}
+
+/** Double elim needs a full draw, so the roster must be a power of two. */
+export const DOUBLE_ELIM_SIZES = [2, 4, 8, 16, 32, 64] as const
+
+export function isDoubleElimSize(n: number): boolean {
+  return (DOUBLE_ELIM_SIZES as readonly number[]).includes(n)
+}
+
+/** Nearest allowed double-elim size at or below `n` (2 at the floor). */
+export function snapToDoubleElimSize(n: number): number {
+  let best: number = DOUBLE_ELIM_SIZES[0]
+  for (const size of DOUBLE_ELIM_SIZES) {
+    if (size <= n) best = size
+  }
+  return best
 }
 
 export type TournamentSummary = {
@@ -95,7 +113,8 @@ export function formatRulesSummary(
             : roundH === 24
               ? '1 day per round'
               : `${roundH / 24} days per round`
-    return `Single-elim bracket · ${cap || 'set'} players · ${tries} per match${round ? ` · ${round}` : ''}.`
+    const style = t.rules.elimination === 'double' ? 'Double-elim' : 'Single-elim'
+    return `${style} bracket · ${cap || 'set'} players · ${tries} per match${round ? ` · ${round}` : ''}.`
   }
   if (t.format === 'place-points') {
     return t.games.length > 1
@@ -204,12 +223,6 @@ export function playerCountLabel(count: number): string {
   return String(count)
 }
 
-export function rosterLimitLabel(rules: TournamentRules | undefined): string {
-  const n = rules?.maxPlayers
-  if (n == null || n <= 0) return 'Open'
-  return `${n} max`
-}
-
 /** Finite attempts per game, or null when the event is unlimited. */
 export function attemptsPerGameMax(
   t: Pick<TournamentSummary, 'format' | 'rules' | 'kind'>,
@@ -222,15 +235,6 @@ export function attemptsPerGameMax(
   if (t.format === 'open' || n == null || n <= 0) return null
   if (t.format === 'single-run' || n === 1) return 1
   return n
-}
-
-export function attemptsPerGameLabel(
-  t: Pick<TournamentSummary, 'format' | 'rules' | 'kind'>,
-): string {
-  const n = attemptsPerGameMax(t)
-  if (n == null) return 'Unlimited'
-  if (eventKind(t) === 'bracket') return n === 1 ? '1 / match' : `${n} / match`
-  return n === 1 ? '1 / game' : `${n} / game`
 }
 
 export function joinedRosterLabel(
@@ -274,10 +278,16 @@ export type PublicBracketSide = {
   attemptsUsed: number
 }
 
+export type Elimination = 'single' | 'double'
+
+/** Winners / losers / grand final. Absent on single-elim matches. */
+export type BracketSide = 'wb' | 'lb' | 'gf'
+
 export type PublicBracketMatch = {
   id: string
   round: number
   slot: number
+  bracket?: BracketSide
   winnerId: string | null
   playEndsAt?: number | null
   players: [PublicBracketSide | null, PublicBracketSide | null]
@@ -285,7 +295,18 @@ export type PublicBracketMatch = {
 
 export type PublicBracket = {
   lockedAt: number
+  elimination?: Elimination
   matches: PublicBracketMatch[]
+}
+
+export function matchSide(m: Pick<PublicBracketMatch, 'bracket'>): BracketSide {
+  return m.bracket ?? 'wb'
+}
+
+export function isDoubleElim(
+  t: Pick<TournamentSummary, 'rules'> & { bracket?: PublicBracket | null },
+): boolean {
+  return t.rules?.elimination === 'double' || t.bracket?.elimination === 'double'
 }
 
 export type TournamentDetail = TournamentSummary & {
@@ -310,6 +331,8 @@ export type CreateTournamentInput = {
   durationHours: number
   /** Bracket: hours to play each open match. */
   roundPlayHours?: number
+  /** Bracket: 'double' adds a losers bracket + grand final. */
+  elimination?: Elimination
   kind?: TournamentKind
 }
 
@@ -330,7 +353,7 @@ export function yourOpenMatch(
   displayName: string,
 ): PublicBracketMatch | null {
   const you = normalizePlayerName(displayName)
-  if (!you || !detail.bracket) return null
+  if (!you || !detail.bracket?.lockedAt) return null
   return (
     detail.bracket.matches.find((m) => {
       if (m.winnerId) return false
@@ -553,7 +576,10 @@ export async function listTournaments(
 ): Promise<TournamentSummary[]> {
   const params = new URLSearchParams()
   if (source !== 'all') params.set('source', source)
-  if (source === 'joined' && playerName) params.set('playerName', playerName)
+  // "All" needs the tag too: it surfaces private events you're already in.
+  if ((source === 'joined' || source === 'all') && playerName) {
+    params.set('playerName', playerName)
+  }
   const qs = params.toString()
   const data = await api<{ tournaments: TournamentSummary[] }>(
     `/tournaments${qs ? `?${qs}` : ''}`,

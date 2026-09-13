@@ -1,5 +1,11 @@
-import { useMemo, useState, type CSSProperties, type FormEvent } from 'react'
-import { EventThumbs } from '../components/EventCard'
+import {
+  useMemo,
+  useState,
+  type CSSProperties,
+  type Dispatch,
+  type FormEvent,
+  type SetStateAction,
+} from 'react'
 import { GameThumbArt } from '../components/GameThumbArt'
 import { PageBackLink } from '../components/PageBackLink'
 import { PageShell } from '../components/PageShell'
@@ -11,9 +17,12 @@ import {
   BRACKET_PLAYERS_MIN,
   bracketDrawSize,
   createTournament,
+  DOUBLE_ELIM_SIZES,
   EVENT_GAMES,
   rememberTournamentInvite,
+  snapToDoubleElimSize,
   type CreateTournamentInput,
+  type Elimination,
   type EventGame,
   type TournamentKind,
 } from '../lib/tournaments'
@@ -48,6 +57,108 @@ function clampBracketPlayers(n: number): number {
   return Math.min(BRACKET_PLAYERS_MAX, Math.max(BRACKET_PLAYERS_MIN, Math.floor(n)))
 }
 
+/**
+ * A number stepper with "Unlimited" built into the same control instead of a
+ * detached checkbox. Nudging the stepper while unlimited is on turns it off,
+ * so the two halves read as one setting.
+ */
+function LimitField({
+  label,
+  value,
+  min,
+  max,
+  unlimited,
+  onValue,
+  onUnlimited,
+  hint,
+}: {
+  label: string
+  value: number
+  min: number
+  max: number
+  /** Omit to hide the Unlimited half entirely (brackets need a fixed size). */
+  unlimited?: boolean
+  onValue: Dispatch<SetStateAction<number>>
+  onUnlimited?: (next: boolean) => void
+  hint: string
+}) {
+  const canBeUnlimited = typeof unlimited === 'boolean' && Boolean(onUnlimited)
+  const isUnlimited = canBeUnlimited && unlimited === true
+  const clamp = (n: number) => Math.min(max, Math.max(min, Math.floor(n)))
+
+  // Functional update so a burst of clicks accumulates instead of each one
+  // recomputing from the same rendered value.
+  const step = (delta: number) => {
+    if (isUnlimited) {
+      onUnlimited?.(false)
+      onValue((prev) => clamp(prev))
+      return
+    }
+    onValue((prev) => clamp(prev + delta))
+  }
+
+  return (
+    <div className="ev-limit">
+      <span className="ev-limit__label" id={`limit-${label}`}>
+        {label}
+      </span>
+      <div
+        className={`ev-limit__control${isUnlimited ? ' ev-limit__control--off' : ''}`}
+        role="group"
+        aria-labelledby={`limit-${label}`}
+      >
+        <div className="ev-limit__stepper">
+          <button
+            type="button"
+            className="ev-limit__btn"
+            aria-label={`Fewer ${label.toLowerCase()}`}
+            disabled={!isUnlimited && value <= min}
+            onClick={() => step(-1)}
+          >
+            −
+          </button>
+          <input
+            className="ev-limit__value"
+            type="number"
+            inputMode="numeric"
+            min={min}
+            max={max}
+            value={isUnlimited ? '' : value}
+            placeholder={isUnlimited ? '∞' : undefined}
+            aria-label={label}
+            onChange={(e) => {
+              const next = Number(e.target.value)
+              if (!e.target.value.trim() || !Number.isFinite(next)) return
+              if (isUnlimited) onUnlimited?.(false)
+              onValue(clamp(next))
+            }}
+          />
+          <button
+            type="button"
+            className="ev-limit__btn"
+            aria-label={`More ${label.toLowerCase()}`}
+            disabled={!isUnlimited && value >= max}
+            onClick={() => step(1)}
+          >
+            +
+          </button>
+        </div>
+        {canBeUnlimited ? (
+          <button
+            type="button"
+            className={`ev-limit__any${isUnlimited ? ' ev-limit__any--on' : ''}`}
+            aria-pressed={isUnlimited}
+            onClick={() => onUnlimited?.(!isUnlimited)}
+          >
+            Unlimited
+          </button>
+        ) : null}
+      </div>
+      <p className="ev-field__hint">{hint}</p>
+    </div>
+  )
+}
+
 export function CreateTournamentPage() {
   const { account, loading: authLoading } = useAuth()
   const [kind, setKind] = useState<TournamentKind>('scores')
@@ -59,10 +170,12 @@ export function CreateTournamentPage() {
   const [unlimitedPlayers, setUnlimitedPlayers] = useState(false)
   const [durationHours, setDurationHours] = useState(24)
   const [roundPlayHours, setRoundPlayHours] = useState(24)
+  const [elimination, setElimination] = useState<Elimination>('single')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const isBracket = kind === 'bracket'
-  const bracketByes = isBracket ? bracketDrawSize(maxPlayers) - maxPlayers : 0
+  const isDouble = isBracket && elimination === 'double'
+  const bracketByes = isBracket && !isDouble ? bracketDrawSize(maxPlayers) - maxPlayers : 0
 
   const waitingForAuth = authLoading && !account
 
@@ -72,20 +185,24 @@ export function CreateTournamentPage() {
     return resolveGameAccent(slug, first?.accent ?? '#2eb8a0')
   }, [games])
 
-  const durationLabel = isBracket
-    ? (ROUND_DURATIONS.find((d) => d.hours === roundPlayHours)?.label ?? '24 hours')
-    : (DURATIONS.find((d) => d.hours === durationHours)?.label ?? '24 hours')
-
   const selectKind = (next: TournamentKind) => {
     setKind(next)
     if (next === 'bracket') {
       setUnlimitedPlayers(false)
       setUnlimitedAttempts(false)
-      setMaxPlayers((n) => clampBracketPlayers(n))
+      setMaxPlayers((n) =>
+        elimination === 'double' ? snapToDoubleElimSize(n) : clampBracketPlayers(n),
+      )
       setMaxAttempts((n) => Math.max(1, n))
       setGames((prev) => prev.slice(0, 1))
       if (roundPlayHours <= 0) setRoundPlayHours(24)
     }
+  }
+
+  const selectElimination = (next: Elimination) => {
+    setElimination(next)
+    // Double elim can't carry byes, so the field has to be a power of two.
+    if (next === 'double') setMaxPlayers((n) => snapToDoubleElimSize(n))
   }
 
   const toggleGame = (slug: EventGame) => {
@@ -112,7 +229,7 @@ export function CreateTournamentPage() {
         maxAttempts: isBracket || !unlimitedAttempts ? Math.max(1, maxAttempts) : 0,
         maxPlayers: isBracket || !unlimitedPlayers ? maxPlayers : 0,
         durationHours: isBracket ? 0 : durationHours,
-        ...(isBracket ? { roundPlayHours } : {}),
+        ...(isBracket ? { roundPlayHours, elimination } : {}),
         kind,
       }
       const created = await createTournament(input)
@@ -144,43 +261,85 @@ export function CreateTournamentPage() {
           </a>
         </div>
       ) : (
-        <div
-          className="event-create-layout"
+        <form
+          className="ev ev-form"
           style={{ '--event-accent': accent } as CSSProperties}
+          onSubmit={(e) => void onSubmit(e)}
         >
-          <form className="event-create" onSubmit={(e) => void onSubmit(e)}>
-            <section className="event-create__card">
-              <h2 className="event-create__section-title">Details</h2>
-              <p className="event-create__hint">
-                Private events are invite-only and won&apos;t appear on the public events list.
-              </p>
-              <div className="event-create__kind" role="group" aria-label="Event type">
+          <section className="ev-card">
+            <div className="ev-card__head">
+              <h2 className="ev-card__title">Format</h2>
+            </div>
+            <div className="ev-card__body">
+              <div className="ev-choice" role="radiogroup" aria-label="Event format">
                 <button
                   type="button"
-                  className={`event-create__kind-btn${kind === 'scores' ? ' event-create__kind-btn--active' : ''}`}
-                  aria-pressed={kind === 'scores'}
+                  role="radio"
+                  aria-checked={kind === 'scores'}
+                  className={`ev-choice__opt${kind === 'scores' ? ' ev-choice__opt--on' : ''}`}
                   onClick={() => selectKind('scores')}
                 >
-                  Top scores
+                  <span className="ev-choice__name">Top scores</span>
+                  <span className="ev-choice__desc">
+                    Everyone posts scores. Best score wins.
+                  </span>
                 </button>
                 <button
                   type="button"
-                  className={`event-create__kind-btn${kind === 'bracket' ? ' event-create__kind-btn--active' : ''}`}
-                  aria-pressed={kind === 'bracket'}
+                  role="radio"
+                  aria-checked={kind === 'bracket'}
+                  className={`ev-choice__opt${kind === 'bracket' ? ' ev-choice__opt--on' : ''}`}
                   onClick={() => selectKind('bracket')}
                 >
-                  Bracket
+                  <span className="ev-choice__name">Bracket</span>
+                  <span className="ev-choice__desc">
+                    Head to head. Higher score takes the match.
+                  </span>
                 </button>
               </div>
-              <p className="event-create__hint">
-                {isBracket
-                  ? 'Single elimination. Both players play the game — higher score wins the match.'
-                  : 'Everyone posts scores. Best score (or place points) wins.'}
-              </p>
-              <label className="event-create__field">
-                <span className="event-create__label">Title</span>
+
+              {isBracket ? (
+                <div
+                  className="ev-choice ev-choice--sub"
+                  role="radiogroup"
+                  aria-label="Elimination"
+                >
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={elimination === 'single'}
+                    className={`ev-choice__opt${elimination === 'single' ? ' ev-choice__opt--on' : ''}`}
+                    onClick={() => selectElimination('single')}
+                  >
+                    <span className="ev-choice__name">Single elimination</span>
+                    <span className="ev-choice__desc">One loss and you&apos;re out.</span>
+                  </button>
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={elimination === 'double'}
+                    className={`ev-choice__opt${elimination === 'double' ? ' ev-choice__opt--on' : ''}`}
+                    onClick={() => selectElimination('double')}
+                  >
+                    <span className="ev-choice__name">Double elimination</span>
+                    <span className="ev-choice__desc">
+                      A loss drops you to the losers bracket.
+                    </span>
+                  </button>
+                </div>
+              ) : null}
+            </div>
+          </section>
+
+          <section className="ev-card">
+            <div className="ev-card__head">
+              <h2 className="ev-card__title">Name</h2>
+            </div>
+            <div className="ev-card__body">
+              <label className="ev-field">
+                <span className="visually-hidden">Event name</span>
                 <input
-                  className="event-create__input"
+                  className="ev-field__input"
                   value={title}
                   maxLength={60}
                   placeholder="Friday Night Arcade"
@@ -188,93 +347,19 @@ export function CreateTournamentPage() {
                   onChange={(e) => setTitle(e.target.value)}
                 />
               </label>
-
-              <div className="event-create__rule">
-                <div className="event-create__rule-head">
-                  <span className="event-create__rule-title">Players</span>
-                  {isBracket ? null : (
-                    <label className="event-create__toggle">
-                      <input
-                        type="checkbox"
-                        checked={unlimitedPlayers}
-                        onChange={(e) => setUnlimitedPlayers(e.target.checked)}
-                      />
-                      <span>Unlimited</span>
-                    </label>
-                  )}
-                </div>
-                {isBracket || !unlimitedPlayers ? (
-                  <div className="event-create__stepper" aria-label="Maximum players">
-                    <button
-                      type="button"
-                      className="event-create__stepper-btn"
-                      aria-label="Fewer players"
-                      disabled={isBracket ? maxPlayers <= BRACKET_PLAYERS_MIN : maxPlayers <= 2}
-                      onClick={() =>
-                        setMaxPlayers((n) =>
-                          isBracket ? clampBracketPlayers(n - 1) : Math.max(2, n - 1),
-                        )
-                      }
-                    >
-                      −
-                    </button>
-                    {isBracket ? (
-                      <input
-                        className="event-create__stepper-value event-create__stepper-input"
-                        type="number"
-                        min={BRACKET_PLAYERS_MIN}
-                        max={BRACKET_PLAYERS_MAX}
-                        value={maxPlayers}
-                        aria-label="Maximum players"
-                        onChange={(e) =>
-                          setMaxPlayers(clampBracketPlayers(Number(e.target.value)))
-                        }
-                      />
-                    ) : (
-                      <span className="event-create__stepper-value">{maxPlayers}</span>
-                    )}
-                    <button
-                      type="button"
-                      className="event-create__stepper-btn"
-                      aria-label="More players"
-                      disabled={isBracket ? maxPlayers >= BRACKET_PLAYERS_MAX : maxPlayers >= 99}
-                      onClick={() =>
-                        setMaxPlayers((n) =>
-                          isBracket ? clampBracketPlayers(n + 1) : Math.min(99, n + 1),
-                        )
-                      }
-                    >
-                      +
-                    </button>
-                  </div>
-                ) : null}
-                <p className="event-create__hint">
-                  {isBracket
-                    ? `${maxPlayers} players. The bracket draws when the last seat fills.${
-                        bracketByes > 0
-                          ? ` ${bracketByes} player${bracketByes === 1 ? '' : 's'} get a bye.`
-                          : ''
-                      }`
-                    : `${playersSummary(maxPlayers, unlimitedPlayers)}.`}
-                </p>
-              </div>
-            </section>
-
-            <section className="event-create__card">
-              <div className="event-create__section-head">
-                <h2 className="event-create__section-title">Games</h2>
-                <span className="event-create__count">
-                  {isBracket ? '1 game' : `${games.length} / 5 selected`}
-                </span>
-              </div>
-              <p className="event-create__hint">
-                {isBracket
-                  ? 'Pick the game every match uses.'
-                  : games.length > 1
-                    ? 'Multiple games use place points — highest total wins.'
-                    : 'Pick one or more games for this event.'}
+              <p className="ev-field__hint">
+                Invite-only — it won&apos;t appear on the public events list.
               </p>
-              <div className="event-create__game-grid">
+            </div>
+          </section>
+
+          <section className="ev-card">
+            <div className="ev-card__head">
+              <h2 className="ev-card__title">Games</h2>
+              <p className="ev-card__note">{isBracket ? 'Pick 1' : `${games.length} of 5`}</p>
+            </div>
+            <div className="ev-card__body">
+              <div className="ev-games">
                 {EVENT_GAMES.map((slug) => {
                   const g = getGame(slug)
                   const gameAccent = resolveGameAccent(slug, g?.accent ?? accent)
@@ -284,18 +369,16 @@ export function CreateTournamentPage() {
                     <button
                       key={slug}
                       type="button"
-                      className={`event-create__game${picked ? ' event-create__game--picked' : ''}${atCap ? ' event-create__game--disabled' : ''}`}
+                      className={`ev-game${picked ? ' ev-game--on' : ''}`}
                       style={{ '--game-accent': gameAccent } as CSSProperties}
                       aria-pressed={picked}
                       disabled={atCap}
                       onClick={() => toggleGame(slug)}
                     >
-                      <span className="event-create__game-art">
-                        <GameThumbArt slug={slug} accent={gameAccent} />
-                      </span>
-                      <span className="event-create__game-name">{g?.name ?? slug}</span>
+                      <GameThumbArt slug={slug} accent={gameAccent} />
+                      <span className="ev-game__name">{g?.name ?? slug}</span>
                       {picked ? (
-                        <span className="event-create__game-check" aria-hidden="true">
+                        <span className="ev-game__check" aria-hidden="true">
                           ✓
                         </span>
                       ) : null}
@@ -303,146 +386,130 @@ export function CreateTournamentPage() {
                   )
                 })}
               </div>
-            </section>
+              <p className="ev-field__hint">
+                {isBracket
+                  ? 'Every match is played on this game.'
+                  : games.length > 1
+                    ? 'Place points across games — highest total wins.'
+                    : 'Pick more than one to score on place points across all of them.'}
+              </p>
+            </div>
+          </section>
 
-            <section className="event-create__card event-create__card--rules">
-              <h2 className="event-create__section-title">Rules</h2>
-
-              <div className="event-create__rule">
-                <div className="event-create__rule-head">
-                  <span className="event-create__rule-title">
-                    {isBracket ? 'Attempts per match' : 'Attempts per game'}
+          <section className="ev-card">
+            <div className="ev-card__head">
+              <h2 className="ev-card__title">Rules</h2>
+            </div>
+            <div className="ev-card__body ev-rules">
+              {isDouble ? (
+                <div className="ev-limit">
+                  <span className="ev-limit__label" id="limit-players">
+                    Players
                   </span>
-                  {isBracket ? null : (
-                    <label className="event-create__toggle">
-                      <input
-                        type="checkbox"
-                        checked={unlimitedAttempts}
-                        onChange={(e) => setUnlimitedAttempts(e.target.checked)}
-                      />
-                      <span>Unlimited</span>
-                    </label>
-                  )}
-                </div>
-                {isBracket || !unlimitedAttempts ? (
-                  <div className="event-create__stepper" aria-label="Attempts per game">
-                    <button
-                      type="button"
-                      className="event-create__stepper-btn"
-                      aria-label="Fewer attempts"
-                      disabled={maxAttempts <= 1}
-                      onClick={() => setMaxAttempts((n) => Math.max(1, n - 1))}
-                    >
-                      −
-                    </button>
-                    <span className="event-create__stepper-value">{maxAttempts}</span>
-                    <button
-                      type="button"
-                      className="event-create__stepper-btn"
-                      aria-label="More attempts"
-                      disabled={maxAttempts >= 99}
-                      onClick={() => setMaxAttempts((n) => Math.min(99, n + 1))}
-                    >
-                      +
-                    </button>
+                  <div
+                    className="ev-sizes"
+                    role="radiogroup"
+                    aria-labelledby="limit-players"
+                  >
+                    {DOUBLE_ELIM_SIZES.map((size) => (
+                      <button
+                        key={size}
+                        type="button"
+                        role="radio"
+                        aria-checked={maxPlayers === size}
+                        className={`ev-size${maxPlayers === size ? ' ev-size--on' : ''}`}
+                        onClick={() => setMaxPlayers(size)}
+                      >
+                        {size}
+                      </button>
+                    ))}
                   </div>
-                ) : null}
-                <p className="event-create__hint">
-                  {isBracket
-                    ? `${attemptsSummary(maxAttempts, false, 1).replace('per game', 'per match')}. Fresh tries each round.`
-                    : `${attemptsSummary(maxAttempts, unlimitedAttempts, games.length)}. Best score counts per game.`}
-                </p>
-              </div>
+                  <p className="ev-field__hint">
+                    Double elimination needs a full draw, so the field is a power of two.
+                    Draws when the last seat fills.
+                  </p>
+                </div>
+              ) : (
+                <LimitField
+                  label="Players"
+                  value={maxPlayers}
+                  min={isBracket ? BRACKET_PLAYERS_MIN : 2}
+                  max={isBracket ? BRACKET_PLAYERS_MAX : 99}
+                  unlimited={isBracket ? undefined : unlimitedPlayers}
+                  onValue={setMaxPlayers}
+                  onUnlimited={isBracket ? undefined : setUnlimitedPlayers}
+                  hint={
+                    isBracket
+                      ? `Draws when the last seat fills.${
+                          bracketByes > 0
+                            ? ` ${bracketByes} player${bracketByes === 1 ? '' : 's'} get a bye.`
+                            : ''
+                        }`
+                      : `${playersSummary(maxPlayers, unlimitedPlayers)}.`
+                  }
+                />
+              )}
 
-              <div className="event-create__rule">
-                <span className="event-create__rule-title">
+              <LimitField
+                label={isBracket ? 'Attempts per match' : 'Attempts per game'}
+                value={maxAttempts}
+                min={1}
+                max={99}
+                unlimited={isBracket ? undefined : unlimitedAttempts}
+                onValue={setMaxAttempts}
+                onUnlimited={isBracket ? undefined : setUnlimitedAttempts}
+                hint={
+                  isBracket
+                    ? 'Fresh tries each round.'
+                    : `${attemptsSummary(maxAttempts, unlimitedAttempts, games.length)}. Best score counts.`
+                }
+              />
+
+              <div className="ev-limit">
+                <span className="ev-limit__label" id="limit-duration">
                   {isBracket ? 'Time per round' : 'Duration'}
                 </span>
-                {isBracket ? (
-                  <>
-                    <select
-                      className="event-create__input event-create__input--duration"
-                      value={roundPlayHours}
-                      onChange={(e) => setRoundPlayHours(Number(e.target.value))}
-                    >
-                      {ROUND_DURATIONS.map((d) => (
-                        <option key={d.hours} value={d.hours}>
-                          {d.label}
-                        </option>
-                      ))}
-                    </select>
-                    <p className="event-create__hint">
-                      Clock starts when both players are seated. The tournament ends when the
-                      final has a winner — no overall time limit.
-                    </p>
-                  </>
-                ) : (
-                  <>
-                    <select
-                      className="event-create__input event-create__input--duration"
-                      value={durationHours}
-                      onChange={(e) => setDurationHours(Number(e.target.value))}
-                    >
-                      {DURATIONS.map((d) => (
-                        <option key={d.hours} value={d.hours}>
-                          {d.label}
-                        </option>
-                      ))}
-                    </select>
-                    {durationHours === 0 ? (
-                      <p className="event-create__hint">
-                        Ends when every player has used all their attempts.
-                        {unlimitedAttempts
-                          ? ' Pick a finite attempt limit for this mode.'
-                          : null}
-                      </p>
-                    ) : null}
-                  </>
-                )}
-              </div>
-            </section>
-
-            {error ? <p className="event-create__error">{error}</p> : null}
-
-            <button
-              type="submit"
-              className="score-save__btn event-create__submit"
-              disabled={busy || title.trim().length < 3 || games.length === 0}
-            >
-              {busy ? 'Creating…' : 'Create event'}
-            </button>
-          </form>
-
-          <aside className="event-create-preview" aria-label="Preview">
-            <p className="event-create-preview__eyebrow">Preview</p>
-            <div className="event-create-preview__card">
-              <EventThumbs games={games} size="lg" />
-              <div className="event-create-preview__body">
-                <h3 className="event-create-preview__title">
-                  {title.trim() || 'Your event title'}
-                </h3>
-                <p className="event-create-preview__meta">
-                  {games.map((slug) => getGame(slug)?.name ?? slug).join(' · ')}
+                <div className="ev-select">
+                  <select
+                    className="ev-field__input ev-field__input--select"
+                    aria-labelledby="limit-duration"
+                    value={isBracket ? roundPlayHours : durationHours}
+                    onChange={(e) =>
+                      isBracket
+                        ? setRoundPlayHours(Number(e.target.value))
+                        : setDurationHours(Number(e.target.value))
+                    }
+                  >
+                    {(isBracket ? ROUND_DURATIONS : DURATIONS).map((d) => (
+                      <option key={d.hours} value={d.hours}>
+                        {d.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <p className="ev-field__hint">
+                  {isBracket
+                    ? 'Clock starts once both players are seated. The event ends when the final has a winner.'
+                    : durationHours === 0
+                      ? `Ends when every player has used all their attempts.${
+                          unlimitedAttempts ? ' Pick a finite attempt limit for this mode.' : ''
+                        }`
+                      : 'The event ends when the clock runs out.'}
                 </p>
-                <ul className="event-create-preview__facts">
-                  <li>{playersSummary(maxPlayers, isBracket ? false : unlimitedPlayers)}</li>
-                  <li>
-                    {isBracket
-                      ? attemptsSummary(maxAttempts, false, 1).replace('per game', 'per match')
-                      : attemptsSummary(maxAttempts, unlimitedAttempts, games.length)}
-                  </li>
-                  <li>{isBracket ? `${durationLabel} per round` : durationLabel}</li>
-                  {isBracket ? (
-                    <li>Single-elim bracket</li>
-                  ) : games.length > 1 ? (
-                    <li>Place points scoring</li>
-                  ) : null}
-                  <li>Private · invite only</li>
-                </ul>
               </div>
             </div>
-          </aside>
-        </div>
+          </section>
+
+          {error ? <p className="ev-note ev-note--error">{error}</p> : null}
+
+          <button
+            type="submit"
+            className="ev-join__btn"
+            disabled={busy || title.trim().length < 3 || games.length === 0}
+          >
+            {busy ? 'Creating…' : 'Create event'}
+          </button>
+        </form>
       )}
     </PageShell>
   )

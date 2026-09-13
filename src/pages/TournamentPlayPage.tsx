@@ -85,7 +85,7 @@ export function TournamentPlayPage({
           isPlayerInTournament(data, playerName.trim().toUpperCase(), tournamentId)
         ) {
           if (data.kind === 'bracket') {
-            if (!data.bracket) {
+            if (!data.bracket?.lockedAt) {
               setLoadError('The bracket draws when the roster fills.')
             } else if (
               playerStatus.maxAttempts != null &&

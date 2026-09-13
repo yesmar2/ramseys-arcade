@@ -1,0 +1,1393 @@
+/*
+ * Events (list, detail, create).
+ *
+ * Kept out of styles.css on purpose: this is a self-contained surface, and a
+ * separate file keeps it reviewable next to the 13k-line main sheet.
+ */
+
+.ev {
+  --ev-gold: #e0a91b;
+  --ev-silver: #8d99a8;
+  --ev-bronze: #c07c3e;
+  --ev-line: rgba(var(--ink-rgb), 0.09);
+  --ev-card: rgba(var(--surface-rgb), 0.92);
+  --ev-pad: 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+@media (min-width: 600px) {
+  .ev {
+    --ev-pad: 1rem;
+  }
+}
+
+/* ---------- shared card ---------- */
+
+.ev-card {
+  border-radius: 1.1rem;
+  background: var(--ev-card);
+  border: 1px solid var(--ev-line);
+  box-shadow: var(--shadow-soft);
+  /* Clip square row tints / rails to the rounded corners — without this the
+     last standings row pokes out of the bottom of the card. */
+  overflow: hidden;
+}
+
+.ev-card__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: var(--ev-pad) var(--ev-pad) 0;
+}
+
+.ev-card__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.ev-card__note {
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 650;
+  color: var(--muted);
+}
+
+.ev-card__body {
+  padding: var(--ev-pad);
+}
+
+/* ---------- header chips ---------- */
+
+.ev-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.5rem;
+}
+
+/* ---------- summary strip ---------- */
+
+.ev-summary {
+  display: flex;
+  flex-direction: column;
+}
+
+.ev-summary__stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 0;
+}
+
+@media (min-width: 640px) {
+  .ev-summary__stats {
+    grid-template-columns: repeat(var(--ev-stat-count, 4), minmax(0, 1fr));
+  }
+}
+
+.ev-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+  padding: 0.7rem var(--ev-pad);
+  border-top: 1px solid var(--ev-line);
+  border-left: 1px solid var(--ev-line);
+}
+
+/* First cell of each row / first column keep the card edge clean. */
+.ev-stat:nth-child(-n + 2) {
+  border-top: 0;
+}
+
+.ev-stat:nth-child(odd) {
+  border-left: 0;
+}
+
+@media (min-width: 640px) {
+  .ev-stat {
+    border-top: 0;
+  }
+
+  .ev-stat:first-child {
+    border-left: 0;
+  }
+
+  .ev-stat:nth-child(odd) {
+    border-left: 1px solid var(--ev-line);
+  }
+
+  .ev-stat:first-child {
+    border-left: 0;
+  }
+}
+
+.ev-stat__label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.ev-stat__value {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 700;
+  line-height: 1.15;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+@media (min-width: 640px) {
+  .ev-stat__value {
+    font-size: 1.3rem;
+  }
+}
+
+/* Countdown is the one value that earns extra weight. */
+.ev-stat--clock .ev-stat__value {
+  font-size: 1.3rem;
+  letter-spacing: -0.01em;
+}
+
+@media (min-width: 640px) {
+  .ev-stat--clock .ev-stat__value {
+    font-size: 1.5rem;
+  }
+}
+
+.ev-stat--live .ev-stat__value {
+  color: color-mix(in srgb, var(--accent) 72%, var(--ink));
+}
+
+.ev-stat__dot {
+  flex: none;
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 45%, transparent);
+  animation: ev-pulse 1.8s ease-out infinite;
+}
+
+@keyframes ev-pulse {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 45%, transparent);
+  }
+  70% {
+    box-shadow: 0 0 0 0.5rem transparent;
+  }
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+
+.ev-summary__rules {
+  margin: 0;
+  padding: 0.6rem var(--ev-pad);
+  border-top: 1px solid var(--ev-line);
+  font-size: 0.82rem;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--muted);
+}
+
+/* ---------- join CTA ---------- */
+
+.ev-join {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+/* Carries its own accent fill — callers only need to set --event-accent,
+   so a form that doesn't (e.g. groups) still gets a real button instead of
+   the UA's grey default. */
+.ev-join__btn {
+  width: 100%;
+  min-height: 3rem;
+  border: 0;
+  border-radius: 999px;
+  background: var(--event-accent, var(--accent));
+  color: #fff;
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: var(--shadow-soft);
+}
+
+.ev-join__btn:hover:not(:disabled),
+.ev-join__btn:focus-visible:not(:disabled) {
+  filter: brightness(1.06);
+  outline: none;
+}
+
+.ev-join__btn:disabled {
+  background: rgba(var(--ink-rgb), 0.13);
+  color: var(--muted);
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+.ev-note {
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 650;
+  color: var(--muted);
+  text-align: center;
+}
+
+.ev-note--error {
+  color: #b42318;
+}
+
+/* ---------- two column layout ---------- */
+
+.ev-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.9rem;
+  align-items: start;
+}
+
+@media (min-width: 860px) {
+  .ev-grid--split {
+    grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+  }
+}
+
+/* ---------- play list ---------- */
+
+.ev-play {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.ev-play__row {
+  border-top: 1px solid var(--ev-line);
+}
+
+.ev-play__row:first-child {
+  border-top: 0;
+}
+
+.ev-play__link {
+  --row-accent: var(--event-accent, var(--accent));
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.7rem var(--ev-pad);
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.ev-play__link:hover,
+.ev-play__link:focus-visible {
+  background: color-mix(in srgb, var(--row-accent) 8%, transparent);
+  outline: none;
+}
+
+.ev-play__link--locked {
+  cursor: default;
+  opacity: 0.72;
+}
+
+.ev-play__link--locked:hover,
+.ev-play__link--locked:focus-visible {
+  background: transparent;
+}
+
+.ev-play__art .inline-thumb {
+  --inline-thumb-size: 2.9rem;
+  width: var(--inline-thumb-size);
+  height: var(--inline-thumb-size);
+  border-radius: 0.8rem;
+}
+
+.ev-play__text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.ev-play__name {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ev-play__status {
+  font-size: 0.76rem;
+  font-weight: 650;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ev-play__go {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.35rem 0.8rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--row-accent) 18%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--row-accent) 32%, transparent);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: color-mix(in srgb, var(--row-accent) 65%, var(--ink));
+}
+
+.ev-play__link:hover .ev-play__go,
+.ev-play__link:focus-visible .ev-play__go {
+  background: color-mix(in srgb, var(--row-accent) 30%, var(--surface));
+}
+
+/* Solo game: the one row is the page's primary action, so give it weight. */
+.ev-play--solo .ev-play__link {
+  padding: 0.95rem var(--ev-pad);
+}
+
+.ev-play--solo .ev-play__art .inline-thumb {
+  --inline-thumb-size: 3.4rem;
+}
+
+.ev-play--solo .ev-play__name {
+  font-size: 1.15rem;
+}
+
+.ev-play--solo .ev-play__go {
+  padding: 0.45rem 1rem;
+  font-size: 0.85rem;
+}
+
+/* ---------- standings ---------- */
+
+.ev-board {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.ev-row {
+  --row-tint: transparent;
+  --row-rail: transparent;
+  position: relative;
+  border-top: 1px solid var(--ev-line);
+  background: var(--row-tint);
+}
+
+.ev-row:first-child {
+  border-top: 0;
+}
+
+.ev-row::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: var(--row-rail);
+}
+
+.ev-row--1 {
+  --row-tint: color-mix(in srgb, var(--ev-gold) 14%, transparent);
+  --row-rail: var(--ev-gold);
+}
+
+.ev-row--2 {
+  --row-tint: color-mix(in srgb, var(--ev-silver) 13%, transparent);
+  --row-rail: var(--ev-silver);
+}
+
+.ev-row--3 {
+  --row-tint: color-mix(in srgb, var(--ev-bronze) 13%, transparent);
+  --row-rail: var(--ev-bronze);
+}
+
+.ev-row--you {
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--event-accent, var(--accent)) 55%, transparent);
+}
+
+.ev-row--you:not(.ev-row--1):not(.ev-row--2):not(.ev-row--3) {
+  --row-tint: color-mix(in srgb, var(--event-accent, var(--accent)) 10%, transparent);
+}
+
+.ev-row__main {
+  display: grid;
+  grid-template-columns: 2.1rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  padding: 0.6rem var(--ev-pad);
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+
+.ev-row__rank {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.1rem;
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.ev-row--1 .ev-row__rank,
+.ev-row--2 .ev-row__rank,
+.ev-row--3 .ev-row__rank {
+  color: var(--ink);
+}
+
+.ev-row__who {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 0;
+  color: inherit;
+  text-decoration: none;
+}
+
+.ev-row__name {
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ev-row__who:hover .ev-row__name,
+.ev-row__who:focus-visible .ev-row__name {
+  color: color-mix(in srgb, var(--event-accent, var(--accent)) 70%, var(--ink));
+}
+
+.ev-row__you-tag {
+  flex: none;
+  padding: 0.1rem 0.4rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--event-accent, var(--accent)) 22%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--event-accent, var(--accent)) 40%, transparent);
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--event-accent, var(--accent)) 60%, var(--ink));
+}
+
+.ev-row__score {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.25rem;
+  flex: none;
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.ev-row__score-unit {
+  font-family: var(--font-body);
+  font-size: 0.64rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.ev-row__score--empty {
+  color: var(--muted);
+  font-weight: 700;
+}
+
+/* Expandable per-game breakdown (multi-game events). */
+.ev-row__toggle {
+  cursor: pointer;
+  list-style: none;
+}
+
+.ev-row__toggle::-webkit-details-marker {
+  display: none;
+}
+
+.ev-row__main--expandable {
+  grid-template-columns: 2.1rem minmax(0, 1fr) auto auto;
+}
+
+.ev-row__chev {
+  flex: none;
+  align-self: center;
+  width: 0.45rem;
+  height: 0.45rem;
+  margin: -0.2rem 0.1rem 0;
+  border-right: 2px solid var(--muted);
+  border-bottom: 2px solid var(--muted);
+  transform: rotate(45deg);
+  transition: transform 0.15s ease;
+  opacity: 0.75;
+}
+
+.ev-row__details[open] .ev-row__chev {
+  transform: rotate(-135deg);
+}
+
+.ev-row__games {
+  list-style: none;
+  margin: 0;
+  padding: 0 var(--ev-pad) 0.65rem calc(var(--ev-pad) + 2.7rem);
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.ev-row__game {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.5rem;
+  border-radius: 0.6rem;
+  background: rgba(var(--surface-rgb), 0.75);
+  border: 1px solid var(--ev-line);
+}
+
+.ev-row__game .inline-thumb {
+  --inline-thumb-size: 1.6rem;
+  width: var(--inline-thumb-size);
+  height: var(--inline-thumb-size);
+  border-radius: 0.4rem;
+  box-shadow: none;
+}
+
+.ev-row__game-name {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ev-row__game-result {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.ev-row__game-place {
+  color: color-mix(in srgb, var(--accent) 70%, var(--ink));
+  font-weight: 800;
+}
+
+.ev-row__game-score {
+  color: var(--muted);
+}
+
+.ev-empty {
+  margin: 0;
+  padding: 1.1rem var(--ev-pad);
+  text-align: center;
+  font-size: 0.88rem;
+  font-weight: 650;
+  color: var(--muted);
+}
+
+/* ---------- bracket ---------- */
+
+/* A little air between the two sides of a match. */
+.event-bracket__match {
+  gap: 0.3rem;
+}
+
+/*
+ * Feed line into every match past round one. The previous pair's vertical join
+ * lands on this column's left edge, so without a run of its own the card just
+ * butts against it instead of being connected to it.
+ */
+.event-bracket__slot--fed {
+  padding-left: var(--bracket-gutter);
+}
+
+.event-bracket__slot--fed::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: var(--bracket-gutter);
+  border-top: 2px solid var(--bracket-line);
+  pointer-events: none;
+}
+
+/* Bracket keeps its own internals; the card just frames them. */
+.ev-card--bracket {
+  padding: var(--ev-pad);
+  min-width: 0;
+  overflow: hidden;
+}
+
+.ev-card--bracket .event-detail__section-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+/* Chips sitting under the page title. */
+.ev-tile__top .event-chips {
+  flex: none;
+  justify-content: flex-end;
+  max-width: 52%;
+  margin-top: 0;
+}
+
+/* ---------- event list ---------- */
+
+.ev-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+}
+
+.ev-list__group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.ev-list__group-title {
+  margin: 0;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.ev-list__grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.7rem;
+}
+
+@media (min-width: 760px) {
+  .ev-list__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.ev-tile {
+  --tile-accent-soft: color-mix(in srgb, var(--event-accent, var(--accent)) 30%, transparent);
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.85rem;
+  height: 100%;
+  padding: 0.8rem 0.9rem;
+  border-radius: 1.1rem;
+  background: var(--ev-card);
+  border: 1px solid var(--tile-accent-soft);
+  box-shadow: var(--shadow-soft);
+  color: inherit;
+  text-decoration: none;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.ev-tile:hover,
+.ev-tile:focus-visible {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 26px rgba(var(--ink-rgb), 0.1);
+  outline: none;
+}
+
+.ev-tile--ended {
+  opacity: 0.82;
+}
+
+.ev-tile__body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  min-width: 0;
+}
+
+.ev-tile__top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.ev-tile__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.02rem;
+  font-weight: 700;
+  line-height: 1.2;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ev-tile__games {
+  margin: 0;
+  font-size: 0.75rem;
+  font-weight: 650;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ev-tile__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  margin-top: auto;
+  padding-top: 0.4rem;
+}
+
+.ev-tile__clock {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-family: var(--font-display);
+  font-size: 0.82rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: color-mix(in srgb, var(--event-accent, var(--accent)) 62%, var(--ink));
+}
+
+.ev-tile__players {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+/* ---------- home strip ---------- */
+
+/* The home strip reuses the list tile at a tighter size. */
+.home-events .ev-tile {
+  padding: 0.7rem 0.8rem;
+  gap: 0.75rem;
+}
+
+.home-events .ev-tile__title {
+  font-size: clamp(0.92rem, 2.4vw, 1.02rem);
+}
+
+/* ---------- flat / google themes ---------- */
+
+html[data-theme="flat"] .ev-card,
+html[data-theme="google"] .ev-card,
+html[data-theme="flat"] .ev-tile,
+html[data-theme="google"] .ev-tile {
+  border-color: var(--flat-border) !important;
+  box-shadow: none !important;
+  filter: none;
+}
+
+html[data-theme="flat"] .ev-tile:hover,
+html[data-theme="google"] .ev-tile:hover {
+  transform: none;
+  box-shadow: none !important;
+}
+
+html[data-theme="flat"] .ev-tile:focus-visible,
+html[data-theme="google"] .ev-tile:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent) 55%, transparent);
+  outline-offset: 2px;
+}
+
+/* ---------- create form ---------- */
+
+.ev-form {
+  width: min(100%, 44rem);
+  margin: 0 auto;
+}
+
+/* Panels embedded in a wider page (e.g. create-group on the groups list). */
+.ev-form--inline {
+  width: 100%;
+  margin: 0 0 1.1rem;
+}
+
+.ev-form__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+  margin-top: 0.9rem;
+}
+
+.ev-form__actions .ev-join__btn {
+  width: auto;
+  min-width: 12rem;
+  padding: 0 1.4rem;
+}
+
+.ev-form__cancel {
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.ev-form__cancel:hover,
+.ev-form__cancel:focus-visible {
+  color: var(--ink);
+  outline: none;
+}
+
+.ev-facts {
+  list-style: none;
+  margin: 0.8rem 0 0;
+  padding: 0.7rem 0.85rem;
+  border-radius: 0.9rem;
+  border: 1px solid var(--ev-line);
+  background: rgba(var(--surface-rgb), 0.6);
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.ev-facts li::before {
+  content: "•";
+  margin-right: 0.45rem;
+  color: var(--event-accent, var(--accent));
+}
+
+/* Format chooser: two side-by-side options, each with its own explainer. */
+.ev-choice {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.5rem;
+}
+
+@media (min-width: 560px) {
+  .ev-choice {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.ev-choice__opt {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.8rem 0.9rem;
+  border-radius: 0.9rem;
+  border: 1px solid var(--ev-line);
+  background: rgba(var(--surface-rgb), 0.6);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ev-choice__opt:hover,
+.ev-choice__opt:focus-visible {
+  border-color: color-mix(in srgb, var(--event-accent, var(--accent)) 40%, transparent);
+  outline: none;
+}
+
+.ev-choice__opt--on {
+  border-color: color-mix(in srgb, var(--event-accent, var(--accent)) 65%, transparent);
+  background: color-mix(in srgb, var(--event-accent, var(--accent)) 12%, var(--surface));
+  box-shadow: inset 0 0 0 1px
+    color-mix(in srgb, var(--event-accent, var(--accent)) 35%, transparent);
+}
+
+.ev-choice__name {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.ev-choice__opt--on .ev-choice__name {
+  color: color-mix(in srgb, var(--event-accent, var(--accent)) 60%, var(--ink));
+}
+
+.ev-choice__desc {
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--muted);
+}
+
+/* Text / select fields */
+.ev-field {
+  display: block;
+}
+
+.ev-field__input {
+  width: 100%;
+  min-height: 2.7rem;
+  padding: 0.55rem 0.8rem;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(var(--ink-rgb), 0.14);
+  background: rgba(var(--surface-rgb), 0.96);
+  color: var(--ink);
+  font: inherit;
+  font-weight: 650;
+}
+
+.ev-field__input:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--event-accent, var(--accent)) 55%, transparent);
+  outline-offset: 1px;
+  border-color: transparent;
+}
+
+/* Own chevron instead of the UA one, which sits flush against the edge. */
+.ev-select {
+  position: relative;
+  display: block;
+  width: min(100%, 16rem);
+}
+
+.ev-select::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: 1rem;
+  width: 0.45rem;
+  height: 0.45rem;
+  margin-top: -0.32rem;
+  border-right: 2px solid var(--muted);
+  border-bottom: 2px solid var(--muted);
+  transform: rotate(45deg);
+  pointer-events: none;
+}
+
+.ev-field__input--select {
+  width: 100%;
+  padding-right: 2.5rem;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.ev-field__hint {
+  margin: 0.4rem 0 0;
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--muted);
+}
+
+/* ---------- limit field (stepper + Unlimited as one control) ---------- */
+
+.ev-rules {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+}
+
+.ev-limit {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.ev-limit__label {
+  font-size: 0.82rem;
+  font-weight: 750;
+  color: var(--ink);
+}
+
+.ev-limit__control {
+  display: inline-flex;
+  align-self: flex-start;
+  align-items: stretch;
+  max-width: 100%;
+  border-radius: 999px;
+  border: 1px solid rgba(var(--ink-rgb), 0.14);
+  background: rgba(var(--surface-rgb), 0.96);
+  overflow: hidden;
+}
+
+.ev-limit__stepper {
+  display: inline-flex;
+  align-items: center;
+}
+
+.ev-limit__btn {
+  width: 2.5rem;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font-size: 1.15rem;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.ev-limit__btn:hover:not(:disabled),
+.ev-limit__btn:focus-visible:not(:disabled) {
+  background: color-mix(in srgb, var(--event-accent, var(--accent)) 14%, transparent);
+  outline: none;
+}
+
+.ev-limit__btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.ev-limit__value {
+  width: 3rem;
+  padding: 0.55rem 0;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  -moz-appearance: textfield;
+}
+
+.ev-limit__value::-webkit-outer-spin-button,
+.ev-limit__value::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.ev-limit__value:focus-visible {
+  outline: none;
+  background: color-mix(in srgb, var(--event-accent, var(--accent)) 12%, transparent);
+}
+
+/* The Unlimited half lives inside the same pill, split by a divider. */
+.ev-limit__any {
+  padding: 0 0.95rem;
+  border: 0;
+  border-left: 1px solid rgba(var(--ink-rgb), 0.14);
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.ev-limit__any:hover,
+.ev-limit__any:focus-visible {
+  background: color-mix(in srgb, var(--event-accent, var(--accent)) 12%, transparent);
+  color: var(--ink);
+  outline: none;
+}
+
+.ev-limit__any--on {
+  background: color-mix(in srgb, var(--event-accent, var(--accent)) 22%, var(--surface));
+  color: color-mix(in srgb, var(--event-accent, var(--accent)) 62%, var(--ink));
+}
+
+/* Unlimited on: the number half recedes but stays live (nudging it turns off). */
+.ev-limit__control--off .ev-limit__stepper {
+  opacity: 0.45;
+}
+
+/* ---------- game picker ---------- */
+
+.ev-games {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(6.2rem, 1fr));
+  gap: 0.5rem;
+}
+
+.ev-game {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.7rem 0.4rem 0.6rem;
+  border-radius: 0.9rem;
+  border: 1px solid var(--ev-line);
+  background: rgba(var(--surface-rgb), 0.6);
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.ev-game:hover:not(:disabled),
+.ev-game:focus-visible:not(:disabled) {
+  border-color: color-mix(in srgb, var(--game-accent, var(--accent)) 45%, transparent);
+  outline: none;
+}
+
+.ev-game:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.ev-game--on {
+  border-color: color-mix(in srgb, var(--game-accent, var(--accent)) 65%, transparent);
+  background: color-mix(in srgb, var(--game-accent, var(--accent)) 12%, var(--surface));
+}
+
+.ev-game .inline-thumb {
+  --inline-thumb-size: 2.6rem;
+  width: var(--inline-thumb-size);
+  height: var(--inline-thumb-size);
+  border-radius: 0.75rem;
+}
+
+.ev-game__name {
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+.ev-game__check {
+  position: absolute;
+  top: 0.35rem;
+  right: 0.4rem;
+  display: grid;
+  place-items: center;
+  width: 1.1rem;
+  height: 1.1rem;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--game-accent, var(--accent)) 85%, var(--surface));
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 800;
+}
+
+/* ---------- create page ---------- */
+
+.ev-create {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.9rem;
+  align-items: start;
+}
+
+@media (min-width: 900px) {
+  .ev-create {
+    grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  }
+
+  .ev-create__aside {
+    position: sticky;
+    top: 4.75rem;
+  }
+}
+
+.ev-create__form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  min-width: 0;
+}
+
+/* Match the create-page cards to the rest of the event surfaces. */
+.event-create__card,
+.event-create-preview__card {
+  border-radius: 1.1rem;
+  border: 1px solid rgba(var(--ink-rgb), 0.09);
+  background: rgba(var(--surface-rgb), 0.92);
+  box-shadow: var(--shadow-soft);
+}
+
+.event-create__card {
+  padding: 1rem;
+  gap: 0.75rem;
+}
+
+/* The preview renders the real list tile; it just isn't a link. */
+.ev-tile--preview {
+  height: auto;
+  cursor: default;
+}
+
+.ev-tile--preview:hover {
+  transform: none;
+  box-shadow: var(--shadow-soft);
+}
+
+/* The aside is narrower than a list column, so let the title wrap here
+   instead of truncating the placeholder to "Your event ti…". */
+.ev-tile--preview .ev-tile__title {
+  white-space: normal;
+  overflow: visible;
+  overflow-wrap: anywhere;
+}
+
+/* A little more room so the preview reads like the real tile. */
+@media (min-width: 900px) {
+  .event-create-layout {
+    grid-template-columns: minmax(0, 1fr) 20rem;
+  }
+}
+
+.event-create-preview__facts {
+  margin-top: 0.7rem;
+  padding: 0.75rem 0.85rem;
+  border-radius: 1.1rem;
+  border: 1px solid rgba(var(--ink-rgb), 0.09);
+  background: rgba(var(--surface-rgb), 0.6);
+}
+
+/* ---------- double elimination ---------- */
+
+/* Format chooser's second row: elimination style, nested under the kind. */
+.ev-choice--sub {
+  margin-top: 0.5rem;
+}
+
+/*
+ * Double elim only draws on a full power-of-two field, so the stepper is
+ * replaced by the handful of sizes that actually work.
+ */
+.ev-sizes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.ev-size {
+  min-width: 2.9rem;
+  padding: 0.5rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid rgba(var(--ink-rgb), 0.14);
+  background: rgba(var(--surface-rgb), 0.96);
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.ev-size:hover,
+.ev-size:focus-visible {
+  border-color: color-mix(in srgb, var(--event-accent, var(--accent)) 45%, transparent);
+  outline: none;
+}
+
+.ev-size--on {
+  border-color: transparent;
+  background: var(--event-accent, var(--accent));
+  color: #fff;
+}
+
+/* The three halves of a double-elim draw, stacked on one page. */
+.ev-bracket-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 1.35rem;
+}
+
+.ev-bracket-half {
+  min-width: 0;
+}
+
+.ev-bracket-half__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 0.9rem;
+  font-weight: 750;
+}
+
+.ev-bracket-half__note {
+  margin: 0.1rem 0 0.6rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+/*
+ * Losers/grand-final layout. These rounds are fed from two places at once, so
+ * they get plain columns rather than the winners side's connector tree.
+ */
+.ev-bracket-cols {
+  display: grid;
+  grid-template-columns: repeat(var(--col-count, 2), minmax(8.5rem, 1fr));
+  gap: 0.65rem;
+  min-width: 0;
+  overflow-x: auto;
+  padding-bottom: 0.2rem;
+}
+
+.ev-bracket-col {
+  min-width: 0;
+}
+
+.ev-bracket-col__list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+@media (max-width: 720px) {
+  /*
+   * Three stacked draws each own their horizontal scroll; capping their height
+   * as well would leave the page with three competing scroll areas.
+   */
+  .ev-bracket-stack .event-bracket-scroller {
+    max-height: none;
+  }
+
+  .ev-bracket-cols {
+    width: max-content;
+    grid-template-columns: repeat(var(--col-count, 2), min(15rem, 70vw));
+  }
+}

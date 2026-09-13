@@ -6743,6 +6743,34 @@ a.lb-share:visited:focus-visible {
   gap: 1.15rem;
 }
 
+.rank-page__add-friend {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.2rem;
+}
+
+.rank-page__add-friend-btn {
+  width: auto;
+  height: auto;
+  padding: 0.4rem 0.75rem;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.rank-page__add-friend-btn:disabled {
+  opacity: 0.7;
+  cursor: default;
+}
+
+.rank-page__add-friend-error {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #b42318;
+}
+
 .rank-page__standings {
   display: flex;
   flex-direction: column;
@@ -10141,6 +10169,27 @@ a.lb-share:visited:focus-visible {
   margin-bottom: 0.1rem;
 }
 
+.score-celeb__award--placement {
+  --award-accent: #f2c43a;
+}
+
+.score-celeb__award--placement.score-celeb__award--silver {
+  --award-accent: #9aa6b3;
+}
+
+.score-celeb__award--placement.score-celeb__award--bronze {
+  --award-accent: #db9a5a;
+}
+
+.score-celeb__award--placement .score-celeb__award-value {
+  font-size: clamp(1.55rem, 6vw, 2.15rem);
+}
+
+.score-celeb__award-icon {
+  line-height: 0;
+  margin-bottom: 0.1rem;
+}
+
 .score-celeb__award--book .score-celeb__award-value {
   font-size: clamp(2.35rem, 10vw, 3.1rem);
 }
@@ -10555,6 +10604,12 @@ a.lb-share:visited:focus-visible {
   font-weight: 700;
   line-height: 1;
   color: var(--ink);
+}
+
+.score-save__place-value {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
 }
 
 .score-save__place-value {
@@ -10986,6 +11041,10 @@ a.lb-share:visited:focus-visible {
   gap: 0.35rem;
 }
 
+.lb-game-board__head .event-chips {
+  margin-top: 0.55rem;
+}
+
 .event-thumbs {
   --event-thumb-size: 3.6rem;
   position: relative;
@@ -11037,81 +11096,63 @@ a.lb-share:visited:focus-visible {
   box-shadow: 0 4px 12px rgba(var(--ink-rgb), 0.08);
 }
 
+/* Multi-game event hero art: a tinted square holding a small cluster of the
+   event's game icons, in place of the single full-bleed thumb single-game
+   pages use. */
+.game-lobby__art--event {
+  background: color-mix(in srgb, var(--event-accent, var(--accent)) 16%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--event-accent, var(--accent)) 32%, transparent);
+}
+
+.event-hero-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.5rem;
+  width: 68%;
+  height: 68%;
+}
+
+.event-hero-grid--1 {
+  grid-template-columns: 1fr;
+}
+
+.event-hero-grid--3 > .inline-thumb:last-child {
+  grid-column: 1 / -1;
+  justify-self: center;
+  width: 50%;
+}
+
+.event-hero-grid .inline-thumb {
+  --inline-thumb-size: 100%;
+  width: 100%;
+  height: 100%;
+  border-radius: 0.85rem;
+  box-shadow: 0 4px 12px rgba(var(--ink-rgb), 0.12);
+}
+
 .event-detail {
   display: flex;
   flex-direction: column;
   gap: 1.1rem;
 }
 
-/* Live ticker built from the game hub's .lb-stat tiles. Type scales off the
-   ticker's own width so it reads the same stacked or in the split layout. */
+/* Ticker sits inside the game hub's .game-lobby__stats — same two stacked
+   .lb-stat cards beside the hero art, so events read like the game pages. */
 .event-ticker {
   container-type: inline-size;
   container-name: event-ticker;
-  display: flex;
-  flex-direction: column;
-  gap: 0.6rem;
-  min-width: 0;
-}
-
-/* Clock gets its own full-width row; the facts share the row below it and
-   always split it evenly, however many of them there are. */
-.event-ticker__stats {
-  display: flex;
-  flex-direction: column;
-  gap: 0.55rem;
-  min-width: 0;
-}
-
-.event-ticker__facts {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.55rem;
-  min-width: 0;
-}
-
-@container event-ticker (min-width: 36rem) {
-  .event-ticker__facts {
-    grid-template-columns: repeat(auto-fit, minmax(8.4rem, 1fr));
-  }
 }
 
 .event-ticker__stat {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
   gap: 0.2rem;
-  padding: 0.8rem 0.9rem;
-  min-width: 0;
-  min-height: 4.6rem;
-  border-radius: 1.15rem;
-  background: rgba(var(--surface-rgb), 0.92);
-  border: 1px solid rgba(var(--ink-rgb), 0.07);
-  box-shadow: var(--shadow-soft);
 }
 
 .event-ticker__stat strong {
-  font-family: var(--font-display);
-  font-size: clamp(1.02rem, 4.6cqi, 1.38rem);
-  font-weight: 700;
   font-variant-numeric: tabular-nums;
-  line-height: 1.15;
   overflow-wrap: anywhere;
 }
 
-.event-ticker__stat--clock {
-  align-items: center;
-  text-align: center;
-  min-height: 5.8rem;
-}
 
-.event-ticker__stat--countdown strong {
-  font-size: clamp(1.9rem, 12cqi, 3rem);
-  font-weight: 800;
-  letter-spacing: -0.04em;
-  line-height: 0.95;
-  overflow-wrap: normal;
-}
 
 .event-ticker__stat--live strong,
 .event-ticker__stat--place strong {
@@ -11119,6 +11160,12 @@ a.lb-share:visited:focus-visible {
 }
 
 .event-ticker__label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.event-ticker__place {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
@@ -11132,20 +11179,6 @@ a.lb-share:visited:focus-visible {
   background: #1a7a5c;
   box-shadow: 0 0 0 0 rgba(26, 122, 92, 0.45);
   animation: event-ticker-pulse 1.6s ease-out infinite;
-}
-
-@container event-ticker (min-width: 26rem) {
-  .event-ticker__stat {
-    padding: 0.85rem 1rem;
-  }
-}
-
-.event-ticker__chips {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: center;
-  gap: 0.3rem;
 }
 
 @keyframes event-ticker-pulse {
@@ -11205,6 +11238,13 @@ a.lb-share:visited:focus-visible {
   align-items: baseline;
   justify-content: space-between;
   gap: 0.75rem;
+}
+
+.event-bracket__note {
+  margin: 0.35rem 0 0;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--muted);
 }
 
 .event-bracket__heading-actions {
@@ -11632,6 +11672,23 @@ a.lb-share:visited:focus-visible {
 .event-play-card--disabled {
   opacity: 0.62;
   pointer-events: none;
+}
+
+.event-play-wide {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+}
+
+.event-play-wide__status {
+  font-size: 0.78rem;
+  font-weight: 700;
+  opacity: 0.85;
+}
+
+.event-play-wide--disabled {
+  width: 100%;
 }
 
 .event-detail__board {
@@ -12331,6 +12388,9 @@ a.lb-share:visited:focus-visible {
 .tour-standing__rank {
   flex: 0 0 auto;
   min-width: 1.5rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   font-family: var(--font-display);
   font-weight: 700;
   font-size: 1.05rem;
@@ -13707,6 +13767,41 @@ a.lb-share:visited:focus-visible {
   outline-offset: 1px;
 }
 
+.invite-by-tag__friends {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.invite-by-tag__friend {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.3rem 0.65rem 0.3rem 0.35rem;
+  border: 1px solid rgba(var(--ink-rgb), 0.12);
+  border-radius: 999px;
+  background: rgba(var(--surface-rgb), 0.9);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.invite-by-tag__friend:hover:not(:disabled),
+.invite-by-tag__friend:focus-visible:not(:disabled) {
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface));
+}
+
+.invite-by-tag__friend:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
 .pending-invites {
   margin: 0 0 1.1rem;
   padding: 0.85rem 0.95rem;
@@ -13776,6 +13871,110 @@ a.lb-share:visited:focus-visible {
 
 .event-detail__invite-tag {
   margin: 0 0 1rem;
+}
+
+.friends-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.friends-panel__add {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.friends-panel__add-field {
+  flex: 1;
+  min-width: 0;
+}
+
+.friends-panel__add-field input {
+  width: 100%;
+  margin: 0;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid rgba(var(--ink-rgb), 0.16);
+  border-radius: 0.6rem;
+  background: rgba(var(--surface-rgb), 0.96);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.friends-panel__add-btn {
+  flex: none;
+  padding: 0.45rem 0.85rem;
+  border: 0;
+  border-radius: 0.6rem;
+  background: color-mix(in srgb, var(--accent) 22%, var(--surface));
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.friends-panel__add-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.friends-panel__note {
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.friends-panel__note--error {
+  color: #b42318;
+}
+
+.friends-panel__requests {
+  margin: 0.2rem 0;
+}
+
+.friends-panel__list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.friends-panel__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.35rem 0;
+  border-bottom: 1px solid rgba(var(--ink-rgb), 0.06);
+}
+
+.friends-panel__row:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.friends-panel__who {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+  color: inherit;
+  text-decoration: none;
+}
+
+.friends-panel__name {
+  font-size: 0.9rem;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .group-invite-code {
