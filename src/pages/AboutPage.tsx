@@ -23,7 +23,7 @@ const HIGHLIGHTS = [
 
 export function AboutPage() {
   return (
-    <PageShell>
+    <PageShell innerClassName="lb-page__inner">
       <section className="home-about" aria-labelledby="home-about-heading">
       <h2 id="home-about-heading" className="home-about__title">
         About {APP_NAME}
