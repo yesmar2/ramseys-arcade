@@ -16,7 +16,7 @@ import { EventCountdown } from './EventCountdown'
  */
 export function HomeOfficialEvents() {
   const cleaned = normalizePlayerName(usePlayerName())
-  const { official, loading } = useLiveEvents(cleaned)
+  const { official, joinedIds, loading } = useLiveEvents(cleaned)
 
   if (loading || official.length === 0) return null
 
@@ -34,6 +34,7 @@ export function HomeOfficialEvents() {
           >
             <span className="home-evs__pip" aria-hidden="true" />
             <span className="home-evs__name">{t.title}</span>
+            {joinedIds.has(t.id) ? <span className="home-evs__in">in</span> : null}
             <EventCountdown
               endsAt={t.endsAt}
               unlimitedDuration={Boolean(t.rules.unlimitedDuration)}

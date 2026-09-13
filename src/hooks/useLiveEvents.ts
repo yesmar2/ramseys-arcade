@@ -2,14 +2,16 @@ import { useEffect, useState } from 'react'
 import { listTournaments, type TournamentSummary } from '../lib/tournaments'
 
 export type LiveEvents = {
-  /** Running daily/weekly events you have not joined. */
+  /** Every running daily/weekly event, joined or not. */
   official: TournamentSummary[]
-  /** Running events you are in, soonest deadline first. */
+  /** Running events you are in that are not the daily/weekly fixtures. */
   mine: TournamentSummary[]
+  /** Ids of everything you have joined, official fixtures included. */
+  joinedIds: Set<string>
   loading: boolean
 }
 
-const EMPTY: LiveEvents = { official: [], mine: [], loading: true }
+const EMPTY: LiveEvents = { official: [], mine: [], joinedIds: new Set(), loading: true }
 
 /*
  * The official line and your own events sit at opposite ends of the home page
@@ -32,9 +34,14 @@ function load(playerName: string): Promise<Omit<LiveEvents, 'loading'>> {
     const active = all.filter((t) => t.status === 'active')
     const joinedIds = new Set(joined.map((t) => t.id))
     return {
-      mine: active.filter((t) => joinedIds.has(t.id)).sort((a, b) => a.endsAt - b.endsAt),
+      joinedIds,
+      // Joining the weekly should not make it vanish from the fixtures line —
+      // daily and weekly read as a pair, so both stay put and get a marker.
+      mine: active
+        .filter((t) => joinedIds.has(t.id) && !t.official)
+        .sort((a, b) => a.endsAt - b.endsAt),
       official: active
-        .filter((t) => t.official && !joinedIds.has(t.id))
+        .filter((t) => t.official)
         // Daily first: it is the one that will be gone tomorrow.
         .sort((a, b) => {
           const rank = (t: TournamentSummary) => (t.cadence === 'daily' ? 0 : 1)
@@ -58,7 +65,8 @@ export function useLiveEvents(playerName: string): LiveEvents {
         if (!cancelled) setState({ ...next, loading: false })
       })
       .catch(() => {
-        if (!cancelled) setState({ official: [], mine: [], loading: false })
+        if (!cancelled)
+          setState({ official: [], mine: [], joinedIds: new Set(), loading: false })
       })
     return () => {
       cancelled = true

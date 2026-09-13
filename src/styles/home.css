@@ -137,7 +137,14 @@
 @media (min-width: 56rem) {
   .home-top {
     grid-template-columns: minmax(0, 1fr) minmax(11rem, 14rem);
-    align-items: center;
+    /* Top-aligned: the fixtures list reads as a sidebar to the hero, not as
+       something floating alongside its middle. */
+    align-items: start;
+  }
+
+  /* Drop the first row onto the hero's kicker line. */
+  .home-evs {
+    padding-top: 0.15rem;
   }
 }
 
@@ -184,6 +191,19 @@
 
 .home-evs__row:hover .home-evs__name {
   color: var(--ev-accent, var(--accent));
+}
+
+/* You are in this fixture — it still belongs on the line. */
+.home-evs__in {
+  flex: none;
+  border-radius: 999px;
+  padding: 0.02rem 0.34rem;
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  color: color-mix(in srgb, var(--accent) 80%, var(--ink));
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
 .home-evs__clock {
