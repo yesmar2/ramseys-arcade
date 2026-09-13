@@ -8,6 +8,9 @@ import { sfx } from '../../lib/sound'
  * at once. The charge is the whole game — you read which columns are hot, move
  * to a cold one, and spend the quiet window pushing damage back.
  *
+ * There is deliberately no cover. A bunker answers a volley for you, which is
+ * the one thing that stops you having to read it.
+ *
  * Coordinates are in stage-width units: x runs 0..1, y runs 0..FIELD_H. Both
  * axes scale off width so speeds and sizes stay isotropic at any size.
  */
@@ -39,13 +42,6 @@ export type Shot = {
   hostile: boolean
 }
 
-export type Bunker = {
-  x: number
-  y: number
-  /** Cell grid, row-major. False once shot away. */
-  cells: boolean[]
-}
-
 export type GameState = {
   phase: Phase
   score: number
@@ -60,7 +56,6 @@ export type GameState = {
   formDir: number
   ships: Ship[]
   shots: Shot[]
-  bunkers: Bunker[]
   cannonX: number
   /** -1, 0 or +1 from the current input. */
   moveDir: number
@@ -110,11 +105,8 @@ const COL_STEP = 0.115
 const ROW_STEP = 0.082
 const FORM_W = (COLS - 1) * COL_STEP + SHIP_W
 const MARGIN = 0.035
-/**
- * Ships reaching this line end the run outright — that is the line you hold. It
- * sits just above the bunkers, so cover is for stopping shots, never ships.
- */
-export const HOLD_LINE = FIELD_H - 0.28
+/** Ships reaching this line end the run outright — that is the line you hold. */
+export const HOLD_LINE = FIELD_H - 0.17
 
 const CANNON_W = 0.085
 const CANNON_H = 0.05
@@ -129,13 +121,6 @@ const FIRE_COOLDOWN = 0.28
 
 const ENEMY_SHOT_W = 0.013
 const ENEMY_SHOT_H = 0.034
-
-const BUNKER_COUNT = 4
-export const BUNKER_COLS = 7
-const BUNKER_ROWS = 4
-export const BUNKER_W = 0.135
-const BUNKER_H = 0.062
-const BUNKER_Y = FIELD_H - 0.235
 
 /**
  * How far the fleet gains on each turn. The run to the line is the backstop for
@@ -202,10 +187,6 @@ export function cannonRect(state: GameState) {
   return { x: state.cannonX - CANNON_W / 2, y: CANNON_Y, w: CANNON_W, h: CANNON_H }
 }
 
-export function bunkerCellSize() {
-  return { w: BUNKER_W / BUNKER_COLS, h: BUNKER_H / BUNKER_ROWS }
-}
-
 export function shotSize(hostile: boolean) {
   return hostile
     ? { w: ENEMY_SHOT_W, h: ENEMY_SHOT_H }
@@ -224,23 +205,6 @@ function makeShips(): Ship[] {
     }
   }
   return ships
-}
-
-function makeBunkers(): Bunker[] {
-  const bunkers: Bunker[] = []
-  const span = 1 / BUNKER_COUNT
-  for (let i = 0; i < BUNKER_COUNT; i++) {
-    const cells: boolean[] = []
-    for (let r = 0; r < BUNKER_ROWS; r++) {
-      for (let c = 0; c < BUNKER_COLS; c++) {
-        // Notch the underside out so it reads as a shield, not a brick.
-        const underArch = r >= BUNKER_ROWS - 2 && c >= 2 && c <= BUNKER_COLS - 3
-        cells.push(!underArch)
-      }
-    }
-    bunkers.push({ x: span * (i + 0.5) - BUNKER_W / 2, y: BUNKER_Y, cells })
-  }
-  return bunkers
 }
 
 /** Row the formation starts at — later waves get a head start down the board. */
@@ -283,7 +247,6 @@ export function createInitialState(): GameState {
     formDir: 1,
     ships: [],
     shots: [],
-    bunkers: makeBunkers(),
     cannonX: 0.5,
     moveDir: 0,
     firing: false,
@@ -317,7 +280,6 @@ export function jumpToWave(prev: GameState, wave: number): GameState {
   if (prev.phase === 'menu' || prev.phase === 'gameover') return prev
   const state: GameState = { ...prev, ships: [...prev.ships], shots: [] }
   resetWave(state, Math.max(1, Math.floor(wave) || 1))
-  state.bunkers = makeBunkers()
   resetCannon(state)
   state.phase = 'playing'
   return state
@@ -424,52 +386,6 @@ function overlaps(
   return ax < bx + bw && ax + aw > bx && ay < by + bh && ay + ah > by
 }
 
-/** Chip a hole in whichever bunker the shot met. Returns true if it was stopped. */
-function hitBunkers(state: GameState, shot: Shot): boolean {
-  const size = shotSize(shot.hostile)
-  const cell = bunkerCellSize()
-  const sx = shot.x - size.w / 2
-  const sy = shot.y
-
-  for (const bunker of state.bunkers) {
-    if (!overlaps(sx, sy, size.w, size.h, bunker.x, bunker.y, BUNKER_W, BUNKER_H)) continue
-
-    // Eat the first intact cell the shot touches, plus its immediate neighbours,
-    // so cover crumbles into a ragged hole instead of a neat pinprick.
-    for (let r = 0; r < BUNKER_ROWS; r++) {
-      // Hostile shots eat downward, the player's eat upward.
-      const row = shot.hostile ? r : BUNKER_ROWS - 1 - r
-      for (let c = 0; c < BUNKER_COLS; c++) {
-        const i = row * BUNKER_COLS + c
-        if (!bunker.cells[i]) continue
-        const cx = bunker.x + c * cell.w
-        const cy = bunker.y + row * cell.h
-        if (!overlaps(sx, sy, size.w, size.h, cx, cy, cell.w, cell.h)) continue
-
-        bunker.cells[i] = false
-        // A hostile round blows a ragged hole; your own thin shot only nicks
-        // the roof, so clearing a lane through your cover stays a choice.
-        const splash = shot.hostile
-          ? ([
-              [-1, 0],
-              [1, 0],
-              [0, 1],
-            ] as const)
-          : ([[0, -1]] as const)
-        for (const [dc, dr] of splash) {
-          const nc = c + dc
-          const nr = row + dr
-          if (nc < 0 || nc >= BUNKER_COLS || nr < 0 || nr >= BUNKER_ROWS) continue
-          bunker.cells[nr * BUNKER_COLS + nc] = false
-        }
-        sfx('chop')
-        return true
-      }
-    }
-  }
-  return false
-}
-
 function killShip(state: GameState, ship: Ship) {
   ship.alive = false
   ship.pop = 0.32
@@ -538,7 +454,6 @@ function advanceShots(state: GameState, dt: number) {
 
     if (shot.y < -size.h || shot.y > FIELD_H + size.h) continue
     if (left < -size.w || left > 1 + size.w) continue
-    if (hitBunkers(state, shot)) continue
 
     if (shot.hostile) {
       if (overlaps(left, shot.y, size.w, size.h, cannon.x, cannon.y, cannon.w, cannon.h)) {
@@ -569,7 +484,6 @@ export function tick(prev: GameState, dt: number): GameState {
     ...prev,
     ships: prev.ships.map((s) => ({ ...s })),
     shots: prev.shots.map((s) => ({ ...s })),
-    bunkers: prev.bunkers.map((b) => ({ ...b, cells: [...b.cells] })),
     hotCols: [...prev.hotCols],
   }
   state.time += dt
@@ -596,8 +510,6 @@ export function tick(prev: GameState, dt: number): GameState {
     state.clearingFor -= dt
     if (state.clearingFor > 0) return state
     resetWave(state, state.wave + 1)
-    // Cover comes back between waves, or a long run is decided by wave three.
-    state.bunkers = makeBunkers()
     resetCannon(state)
     state.phase = 'playing'
     return state

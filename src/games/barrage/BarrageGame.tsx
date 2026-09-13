@@ -247,7 +247,11 @@ export function BarrageGame() {
   return (
     <section className={`barrage barrage--fullscreen${saveOpen ? ' barrage--saving' : ''}`}>
       <div className="game-play">
-        <GameStage aspectWidth={STAGE_ASPECT.barrage.w} aspectHeight={STAGE_ASPECT.barrage.h}>
+        <GameStage
+          aspectWidth={STAGE_ASPECT.barrage.w}
+          aspectHeight={STAGE_ASPECT.barrage.h}
+          fill
+        >
           <div className="barrage__play" onPointerDown={onPlayTap}>
             <canvas ref={canvasRef} className="barrage__viewport" />
 
