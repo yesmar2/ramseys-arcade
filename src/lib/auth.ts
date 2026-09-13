@@ -1,5 +1,6 @@
 import {
   ApiError,
+  clearPlayerNameLocal,
   forgetClaimToken,
   getClaimToken,
   getLastPlayerName,
@@ -54,14 +55,14 @@ export function getSessionToken(): string | null {
   }
 }
 
-export function setSessionToken(token: string | null) {
+export function setSessionToken(token: string | null, opts?: { emit?: boolean }) {
   try {
     if (token) localStorage.setItem(SESSION_KEY, token)
     else localStorage.removeItem(SESSION_KEY)
   } catch {
     /* ignore */
   }
-  emitAuth()
+  if (opts?.emit !== false) emitAuth()
 }
 
 export function authHeaders(): Record<string, string> {
@@ -94,15 +95,46 @@ async function authApi<T>(path: string, init?: RequestInit): Promise<T> {
   return res.json() as Promise<T>
 }
 
+/**
+ * Sync local tag + claim tokens from the account's owned names.
+ * Never clears the local tag here — that belongs to logout / failed adopt,
+ * so a raced empty `/auth/me` cannot wipe a just-linked tag.
+ */
 function applyOwnedNames(names: OwnedName[]) {
   for (const entry of names) {
     if (entry.name && entry.token) rememberClaimToken(entry.name, entry.token)
   }
-  pruneOrphanClaims(names.map((entry) => entry.name))
-  // Signed-in accounts have exactly one active tag — always sync local to it.
   if (names.length >= 1) {
+    pruneOrphanClaims(names.map((entry) => entry.name))
     setPlayerNameLocal(names[0].name)
   }
+}
+
+/**
+ * After a fresh session is written (silently): restore account tag, or adopt the
+ * pre-sign-in local tag when the account has none.
+ */
+async function adoptNamesAfterSignIn(
+  names: OwnedName[],
+  carriedTag: string,
+): Promise<OwnedName[]> {
+  if (names.length >= 1) {
+    applyOwnedNames(names)
+    return names
+  }
+
+  if (carriedTag) {
+    try {
+      const linked = await linkCurrentNameToAccount(carriedTag)
+      if (linked) return [{ name: linked.name, token: linked.token }]
+    } catch {
+      /* Tag belongs to another account — this one stays tagless. */
+    }
+  }
+
+  // Tagless account (and no adoptable local tag): clear leftover local name.
+  clearPlayerNameLocal()
+  return []
 }
 
 export async function requestMagicLink(email: string): Promise<{
@@ -121,6 +153,7 @@ export async function verifyMagicToken(token: string): Promise<{
   account: Account
   names: OwnedName[]
 }> {
+  const carriedTag = getLastPlayerName()
   const data = await authApi<{
     sessionToken: string
     account: Account
@@ -129,9 +162,11 @@ export async function verifyMagicToken(token: string): Promise<{
     method: 'POST',
     body: JSON.stringify({ token }),
   })
-  setSessionToken(data.sessionToken)
-  applyOwnedNames(data.names ?? [])
-  return { account: data.account, names: data.names ?? [] }
+  // Write session without notifying listeners until names are settled.
+  setSessionToken(data.sessionToken, { emit: false })
+  const names = await adoptNamesAfterSignIn(data.names ?? [], carriedTag)
+  emitAuth()
+  return { account: data.account, names }
 }
 
 export async function fetchAuthMe(): Promise<{
@@ -211,24 +246,16 @@ export async function logoutAccount() {
   } catch {
     /* ignore */
   }
-  setSessionToken(null)
+  setSessionToken(null, { emit: false })
+  // Drop the local tag with the session so the next sign-in restores from the
+  // account (and shared browsers do not keep showing someone else's tag).
+  clearPlayerNameLocal()
+  emitAuth()
 }
 
 /** After verify: adopt account tag, or link local guest tag if account has none. */
 export async function completeSignIn(verifyToken: string) {
-  const result = await verifyMagicToken(verifyToken)
-  if ((result.names?.length ?? 0) === 0) {
-    const localName = getLastPlayerName()
-    if (localName) {
-      try {
-        await linkCurrentNameToAccount(localName)
-      } catch {
-        /* ignore */
-      }
-    }
-  }
-  const me = await fetchAuthMe()
-  return me ?? result
+  return verifyMagicToken(verifyToken)
 }
 
 export async function fetchAuthConfig(): Promise<{
@@ -250,6 +277,7 @@ export async function signInWithGoogleIdToken(idToken: string): Promise<{
   account: Account
   names: OwnedName[]
 }> {
+  const carriedTag = getLastPlayerName()
   const data = await authApi<{
     sessionToken: string
     account: Account
@@ -258,18 +286,8 @@ export async function signInWithGoogleIdToken(idToken: string): Promise<{
     method: 'POST',
     body: JSON.stringify({ idToken }),
   })
-  setSessionToken(data.sessionToken)
-  applyOwnedNames(data.names ?? [])
-  if ((data.names?.length ?? 0) === 0) {
-    const localName = getLastPlayerName()
-    if (localName) {
-      try {
-        await linkCurrentNameToAccount(localName)
-      } catch {
-        /* ignore link failures */
-      }
-    }
-  }
-  const me = await fetchAuthMe()
-  return me ?? { account: data.account, names: data.names ?? [] }
+  setSessionToken(data.sessionToken, { emit: false })
+  const names = await adoptNamesAfterSignIn(data.names ?? [], carriedTag)
+  emitAuth()
+  return { account: data.account, names }
 }
