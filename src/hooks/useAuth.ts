@@ -2,29 +2,44 @@ import { useEffect, useState } from 'react'
 import {
   AUTH_EVENT,
   fetchAuthMe,
+  getAuthGeneration,
   getSessionToken,
   type Account,
 } from '../lib/auth'
 
 let cachedAccount: Account | null = null
 let inflightMe: Promise<Account | null> | null = null
+let inflightGeneration = -1
 let lastMeFetchAt = 0
 const ME_CACHE_MS = 60_000
 
 async function loadAuthMe(force = false): Promise<Account | null> {
   if (!getSessionToken()) {
     cachedAccount = null
+    inflightMe = null
+    inflightGeneration = -1
     return null
   }
+  const generation = getAuthGeneration()
   const now = Date.now()
-  if (!force && cachedAccount && now - lastMeFetchAt < ME_CACHE_MS) {
+  if (
+    !force &&
+    cachedAccount &&
+    now - lastMeFetchAt < ME_CACHE_MS &&
+    inflightGeneration === generation
+  ) {
     return cachedAccount
   }
-  if (inflightMe) return inflightMe
+  // Reuse only an in-flight fetch for this same session generation.
+  if (inflightMe && inflightGeneration === generation) return inflightMe
 
+  inflightGeneration = generation
   inflightMe = (async () => {
     try {
       const me = await fetchAuthMe()
+      if (getAuthGeneration() !== generation) {
+        return cachedAccount
+      }
       const next = me?.account ?? null
       cachedAccount = next
       lastMeFetchAt = Date.now()
@@ -32,7 +47,9 @@ async function loadAuthMe(force = false): Promise<Account | null> {
     } catch {
       return cachedAccount
     } finally {
-      inflightMe = null
+      if (inflightGeneration === generation) {
+        inflightMe = null
+      }
     }
   })()
 
@@ -50,6 +67,8 @@ export function useAuth() {
     const sync = async (force = false) => {
       if (!getSessionToken()) {
         cachedAccount = null
+        inflightMe = null
+        inflightGeneration = -1
         if (!cancelled) {
           setAccount(null)
           setLoading(false)
