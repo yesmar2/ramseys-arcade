@@ -34,18 +34,15 @@ export function GameGrid() {
   }, [cleaned])
 
   /*
-   * Games you have opened sort to the front, so the grid answers "what was I
-   * doing" before it answers "what exists".
+   * The grid keeps the fixed shelf order from homeGames rather than sorting
+   * what you played most recently to the front. The hero directly above it is
+   * already the "what was I doing" slot — it opens on your last game — so
+   * reshuffling here only made the shelf move under you, and it dragged
+   * in-development titles up to the front the moment you tried one.
    */
   // The hero already gives this one a full-width slot of its own.
   const hero = heroSlug(device, recent)
-  const ordered = [...tiles].filter((g) => g.slug !== hero).sort((a, b) => {
-    const ai = recent.indexOf(a.slug)
-    const bi = recent.indexOf(b.slug)
-    const ar = ai === -1 ? Number.MAX_SAFE_INTEGER : ai
-    const br = bi === -1 ? Number.MAX_SAFE_INTEGER : bi
-    return ar - br
-  })
+  const ordered = tiles.filter((g) => g.slug !== hero)
 
   return (
     <section className="games games--playable" id="games" aria-labelledby="games-heading">

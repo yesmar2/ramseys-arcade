@@ -146,13 +146,36 @@ export function playableGames(device?: DeviceType) {
   )
 }
 
+/**
+ * How the shelf is arranged. Deliberately not the order of `games` itself —
+ * that stays append-only so "newest in the catalog" keeps meaning something.
+ * Anything left off holds its catalog position after these.
+ */
+const HOME_ORDER: readonly string[] = [
+  'crosswalk',
+  'snake',
+  'asteroids',
+  'pellets',
+  'patriot',
+  'stacker',
+  'centroid',
+]
+
+/** Lower sorts earlier. Titles that are not finished go to the back. */
+function homeRank(game: Game): number {
+  if (game.comingSoon) return 3000
+  if (game.inDevelopment) return 2000
+  const placed = HOME_ORDER.indexOf(game.slug)
+  return placed === -1 ? 1000 : placed
+}
+
 /** Games shown on the home grid (playable on this device + preview tiles). */
 export function homeGames(device: DeviceType) {
-  return games.filter(
-    (g) =>
-      !g.hidden &&
-      (g.comingSoon || g.inDevelopment || gamePlayableOn(g, device)),
-  )
+  return games
+    .filter(
+      (g) => !g.hidden && (g.comingSoon || g.inDevelopment || gamePlayableOn(g, device)),
+    )
+    .sort((a, b) => homeRank(a) - homeRank(b))
 }
 
 export function deviceRequirementLabel(game: Game) {

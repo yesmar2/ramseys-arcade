@@ -1,4 +1,4 @@
-import { homeGames, type Game } from '../data/games'
+import { gamePlayableOn, games, type Game } from '../data/games'
 import type { DeviceType } from './device'
 
 /**
@@ -11,7 +11,11 @@ import type { DeviceType } from './device'
  */
 
 export function playableHomeGames(device: DeviceType): Game[] {
-  return homeGames(device).filter((g) => !g.comingSoon && !g.inDevelopment && g.playable)
+  // Catalog order, not shelf order — `newestSlug` below takes the last entry,
+  // and that only means "newest" while the list is the append-only one.
+  return games.filter(
+    (g) => !g.hidden && !g.comingSoon && !g.inDevelopment && gamePlayableOn(g, device),
+  )
 }
 
 /** Newest addition to the catalog — the grid's feature slot. */
