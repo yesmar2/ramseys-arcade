@@ -182,7 +182,9 @@ export const PlayerBadge = forwardRef<PlayerBadgeHandle, PlayerBadgeProps>(
       setBusy(true)
       setError(null)
       try {
-        await linkCurrentNameToAccount(cleaned)
+        await linkCurrentNameToAccount(cleaned, {
+          renameFrom: normalizePlayerName(name) || null,
+        })
         setEditingTag(false)
         if (!embedded) setEditing(false)
       } catch (err) {

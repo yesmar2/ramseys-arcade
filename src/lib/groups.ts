@@ -51,6 +51,11 @@ export function setActiveGroup(id: string | null) {
   }
 }
 
+/** Clear board scope when the signed-in account changes. */
+export function clearActiveGroup() {
+  setActiveGroup(null)
+}
+
 export function appendGroupQuery(href: string, groupId: string | null = storedActiveGroup()): string {
   const raw = href.replace(/^#/, '')
   const [path, qs] = raw.split('?')

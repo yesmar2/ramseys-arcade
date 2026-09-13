@@ -1,5 +1,6 @@
 import {
   ApiError,
+  clearAllClaimTokens,
   clearPlayerNameLocal,
   forgetClaimToken,
   getClaimToken,
@@ -10,6 +11,7 @@ import {
   rememberClaimToken,
   setPlayerNameLocal,
 } from './leaderboard'
+import { clearActiveGroup } from './groups'
 
 const SESSION_KEY = 'arcade-session'
 const ACCOUNT_TAGS_KEY = 'arcade-account-tags'
@@ -201,6 +203,7 @@ async function adoptNamesAfterSignIn(
   const remembered = recallAccountTag(accountId)
   if (remembered) {
     try {
+      // No renameFrom — never migrate the previous account's tag into this one.
       const linked = await linkCurrentNameToAccount(remembered)
       if (linked) {
         rememberAccountTag(accountId, linked.name)
@@ -215,6 +218,13 @@ async function adoptNamesAfterSignIn(
   // This account has no tag here. Clear leftover UI state from the prior user.
   clearPlayerNameLocal()
   return []
+}
+
+/** Drop prior-account local identity before a new session takes over. */
+function resetDeviceIdentityForAccountSwitch() {
+  clearPlayerNameLocal()
+  clearAllClaimTokens()
+  clearActiveGroup()
 }
 
 export async function requestMagicLink(email: string): Promise<{
@@ -242,6 +252,7 @@ export async function verifyMagicToken(token: string): Promise<{
     body: JSON.stringify({ token }),
   })
   setSessionToken(data.sessionToken, { emit: false })
+  resetDeviceIdentityForAccountSwitch()
   setLastAccountId(data.account.id)
   const names = await adoptNamesAfterSignIn(data.account.id, data.names ?? [])
   emitAuth()
@@ -275,7 +286,10 @@ export async function fetchAuthMe(): Promise<{
   }
 }
 
-export async function linkCurrentNameToAccount(name?: string): Promise<OwnedName | null> {
+export async function linkCurrentNameToAccount(
+  name?: string,
+  opts?: { renameFrom?: string | null },
+): Promise<OwnedName | null> {
   try {
     const raw = localStorage.getItem('arcade-impersonate')
     if (raw) {
@@ -293,7 +307,10 @@ export async function linkCurrentNameToAccount(name?: string): Promise<OwnedName
   }
   const cleaned = (name || getLastPlayerName()).trim().toUpperCase()
   if (!cleaned || !getSessionToken()) return null
-  const previous = getLastPlayerName()
+  // Only rename when the caller explicitly asks (e.g. PlayerBadge edit).
+  // Auto-detecting getLastPlayerName() as previous was rewriting other
+  // accounts' group seats when switching Google logins on one browser.
+  const previous = normalizePlayerName(opts?.renameFrom ?? '')
   const claimToken = getClaimToken(cleaned) ?? undefined
   const previousToken =
     previous && previous !== cleaned ? getClaimToken(previous) ?? undefined : undefined
@@ -314,7 +331,9 @@ export async function linkCurrentNameToAccount(name?: string): Promise<OwnedName
   if (previous && previous !== data.name) {
     forgetClaimToken(previous)
   }
-  await migrateLocalScoresToName(data.name, data.token)
+  if (previous && previous !== data.name) {
+    await migrateLocalScoresToName(data.name, data.token)
+  }
   try {
     const { syncJoinedTournamentRosters } = await import('./tournaments')
     await syncJoinedTournamentRosters(true)
@@ -337,9 +356,11 @@ export async function logoutAccount() {
     /* ignore */
   }
   setSessionToken(null, { emit: false })
-  // Drop the active tag with the session. Per-account memory keeps each
-  // account's tag for the next sign-in on this browser.
+  // Drop local identity with the session. Per-account tag memory remains so
+  // the next sign-in can restore this account's own tag — not the last one's.
   clearPlayerNameLocal()
+  clearAllClaimTokens()
+  clearActiveGroup()
   emitAuth()
 }
 
@@ -376,6 +397,7 @@ export async function signInWithGoogleIdToken(idToken: string): Promise<{
     body: JSON.stringify({ idToken }),
   })
   setSessionToken(data.sessionToken, { emit: false })
+  resetDeviceIdentityForAccountSwitch()
   setLastAccountId(data.account.id)
   const names = await adoptNamesAfterSignIn(data.account.id, data.names ?? [])
   emitAuth()

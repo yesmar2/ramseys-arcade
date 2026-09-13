@@ -201,6 +201,15 @@ export function forgetClaimToken(name: string) {
   writeClaims(claims)
 }
 
+/** Wipe every local claim token (logout / account switch). */
+export function clearAllClaimTokens() {
+  try {
+    localStorage.removeItem(CLAIMS_KEY)
+  } catch {
+    /* ignore */
+  }
+}
+
 /** Drop guest claim tokens that are not the active tag or an account-owned name. */
 export function pruneOrphanClaims(ownedNames: string[] = []) {
   const active = normalizePlayerName(getLastPlayerName())
@@ -286,6 +295,11 @@ export function setPlayerNameLocal(cleaned: string) {
   const name = normalizePlayerName(cleaned)
   if (!name) return
   setLocalPlayerName(name)
+}
+
+/** Forget the locally cached tag — e.g. a different account just signed in. */
+export function clearPlayerNameLocal() {
+  setLocalPlayerName('')
 }
 
 /** Persist name locally and claim it on the server (unique across players). */
