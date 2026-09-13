@@ -1,4 +1,10 @@
-import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import {
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type PointerEvent as ReactPointerEvent,
+} from 'react'
 import {
   GamePlayChrome,
   PlayReadout,
@@ -20,6 +26,8 @@ import { useTournamentPlay } from '../../tournaments/TournamentPlayContext'
 import {
   createInitialState,
   jumpToWave,
+  POWER_HUE,
+  POWER_LABEL,
   setFiring,
   setMove,
   startGame,
@@ -56,6 +64,16 @@ const BY_KEY: Record<string, HoldKey> = {
 
 function holdKeyFor(e: KeyboardEvent): HoldKey | undefined {
   return BY_CODE[e.code] ?? BY_KEY[e.key] ?? BY_KEY[e.key?.toLowerCase()]
+}
+
+/** Active pickups, in the order they matter while you are reading a volley. */
+function activeBuffs(ui: Snapshot) {
+  const out: { kind: keyof typeof POWER_LABEL; note: string }[] = []
+  if (ui.jam) out.push({ kind: 'jam', note: 'next volley' })
+  if (ui.slow > 0) out.push({ kind: 'slow', note: `${Math.ceil(ui.slow)}s` })
+  if (ui.spread > 0) out.push({ kind: 'spread', note: `${Math.ceil(ui.spread)}s` })
+  if (ui.pierce > 0) out.push({ kind: 'pierce', note: `${ui.pierce}` })
+  return out
 }
 
 function isStartKey(e: KeyboardEvent): boolean {
@@ -271,6 +289,21 @@ export function BarrageGame() {
                 {ui.wave} · {ui.lives} {ui.lives === 1 ? 'life' : 'lives'}
               </PlayReadoutCenter>
             </PlayReadout>
+
+            {ui.phase !== 'menu' && !paused && activeBuffs(ui).length > 0 && (
+              <div className="barrage__buffs">
+                {activeBuffs(ui).map((buff) => (
+                  <span
+                    key={buff.kind}
+                    className="barrage__buff"
+                    style={{ '--buff-hue': POWER_HUE[buff.kind] } as CSSProperties}
+                  >
+                    {POWER_LABEL[buff.kind]}
+                    <b>{buff.note}</b>
+                  </span>
+                ))}
+              </div>
+            )}
 
             <div className="barrage__overlay">
               <GamePauseOverlay

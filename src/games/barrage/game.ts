@@ -40,6 +40,28 @@ export type Shot = {
   vy: number
   /** Enemy shots are fatter and slower; the player's are thin and quick. */
   hostile: boolean
+  /** Player shots only: carries on through a hull instead of stopping in it. */
+  pierce?: boolean
+}
+
+/**
+ * Pickups. Three of the four bear on the volley rather than on raw damage,
+ * because the volley is the game — a powerup that only makes you shoot faster
+ * would belong to any shooter.
+ */
+export type PowerKind = 'pierce' | 'jam' | 'slow' | 'spread'
+
+/**
+ * Drops fall, and the cannon has to be under one to take it. That is the whole
+ * point: the lane a capsule falls down may be a lane that is about to fire, so
+ * every pickup is a bet against the next volley.
+ */
+export type Drop = {
+  x: number
+  y: number
+  kind: PowerKind
+  /** Seconds before it falls past the floor and is gone. */
+  life: number
 }
 
 export type GameState = {
@@ -56,6 +78,18 @@ export type GameState = {
   formDir: number
   ships: Ship[]
   shots: Shot[]
+  drops: Drop[]
+  /** Seconds left of the fan-shot buff. */
+  buffSpread: number
+  /** Seconds left of the crawling-volley buff. */
+  buffSlow: number
+  /** Shots left that punch through a hull. */
+  pierceLeft: number
+  /** Held: the next volley to fire fizzles instead. */
+  jamArmed: boolean
+  /** Kind and countdown of the last pickup, for the HUD flash. */
+  tookKind: PowerKind | null
+  tookFor: number
   cannonX: number
   /** -1, 0 or +1 from the current input. */
   moveDir: number
@@ -95,39 +129,92 @@ export type Snapshot = {
   shipsLeft: number
   /** Percentage of shots that found a hull, for the end-of-run card. */
   accuracy: number
+  spread: number
+  slow: number
+  pierce: number
+  jam: boolean
 }
 
 export const COLS = 6
 export const ROWS = 5
-const SHIP_W = 0.082
-const SHIP_H = 0.055
-const COL_STEP = 0.115
-const ROW_STEP = 0.082
+const SHIP_W = 0.096
+const SHIP_H = 0.064
+const COL_STEP = 0.132
+const ROW_STEP = 0.092
 const FORM_W = (COLS - 1) * COL_STEP + SHIP_W
 const MARGIN = 0.035
 /** Ships reaching this line end the run outright — that is the line you hold. */
-export const HOLD_LINE = FIELD_H - 0.17
+export const HOLD_LINE = FIELD_H - 0.155
 
-const CANNON_W = 0.085
-const CANNON_H = 0.05
-const CANNON_Y = FIELD_H - 0.075
+const CANNON_W = 0.1
+const CANNON_H = 0.06
+const CANNON_Y = FIELD_H - 0.085
 const CANNON_SPEED = 0.72
 
 const PLAYER_SHOT_SPEED = 1.5
-const PLAYER_SHOT_W = 0.007
-const PLAYER_SHOT_H = 0.032
+const PLAYER_SHOT_W = 0.008
+const PLAYER_SHOT_H = 0.038
 const MAX_PLAYER_SHOTS = 3
 const FIRE_COOLDOWN = 0.28
 
-const ENEMY_SHOT_W = 0.013
-const ENEMY_SHOT_H = 0.034
+const ENEMY_SHOT_W = 0.015
+const ENEMY_SHOT_H = 0.04
 
 /**
  * How far the fleet gains on each turn. The run to the line is the backstop for
  * playing too slowly, not the main threat — that is what the volleys are for —
  * so this is gentle enough to leave a wave winnable on skill.
+ *
+ * A wider formation leaves less room to march, so it turns more often; this is
+ * scaled to keep the number of turns to the line roughly where it was.
  */
-const DROP_PER_TURN = 0.03
+const DROP_PER_TURN = 0.019
+
+/** Roughly one capsule every nine kills — frequent enough to plan around. */
+const DROP_CHANCE = 0.11
+const DROP_FALL = 0.3
+const DROP_R = 0.031
+const BUFF_TIME = 7
+const PIERCE_SHOTS = 2
+/** How far a caught `slow` drags the volley down. */
+const SLOW_FACTOR = 0.5
+const SPREAD_FAN = 0.3
+
+export const POWER_LABEL: Record<PowerKind, string> = {
+  pierce: 'Pierce',
+  jam: 'Jam',
+  slow: 'Slow',
+  spread: 'Spread',
+}
+
+/** Hues distinct from the fleet's violet and sky and the hostile rose. */
+export const POWER_HUE: Record<PowerKind, number> = {
+  pierce: 38,
+  jam: 172,
+  slow: 128,
+  spread: 18,
+}
+
+/**
+ * Weighted, not uniform: one piercing round takes a whole column and with it a
+ * lane the fleet can never fire from again, so it has to be the rare one.
+ */
+const POWER_WEIGHTS: readonly { kind: PowerKind; weight: number }[] = [
+  { kind: 'pierce', weight: 0.18 },
+  { kind: 'jam', weight: 0.24 },
+  { kind: 'slow', weight: 0.28 },
+  { kind: 'spread', weight: 0.3 },
+]
+
+function pickPowerKind(): PowerKind {
+  const roll = Math.random()
+  let acc = 0
+  for (const entry of POWER_WEIGHTS) {
+    acc += entry.weight
+    if (roll < acc) return entry.kind
+  }
+  return 'spread'
+}
 
 const DEATH_PAUSE = 1.1
 const CLEAR_PAUSE = 1.3
@@ -187,6 +274,10 @@ export function cannonRect(state: GameState) {
   return { x: state.cannonX - CANNON_W / 2, y: CANNON_Y, w: CANNON_W, h: CANNON_H }
 }
 
+export function dropRadius() {
+  return DROP_R
+}
+
 export function shotSize(hostile: boolean) {
   return hostile
     ? { w: ENEMY_SHOT_W, h: ENEMY_SHOT_H }
@@ -224,6 +315,7 @@ function resetWave(state: GameState, wave: number) {
   state.hotCols = []
   state.volleySpread = 0
   state.cleanWave = true
+  state.drops = []
 }
 
 function resetCannon(state: GameState) {
@@ -233,6 +325,12 @@ function resetCannon(state: GameState) {
   state.fireQueued = false
   state.fireCooldown = 0
   state.shots = []
+  // Buffs do not survive losing the cannon; the capsules on screen do not either.
+  state.drops = []
+  state.buffSpread = 0
+  state.buffSlow = 0
+  state.pierceLeft = 0
+  state.jamArmed = false
 }
 
 export function createInitialState(): GameState {
@@ -247,6 +345,13 @@ export function createInitialState(): GameState {
     formDir: 1,
     ships: [],
     shots: [],
+    drops: [],
+    buffSpread: 0,
+    buffSlow: 0,
+    pierceLeft: 0,
+    jamArmed: false,
+    tookKind: null,
+    tookFor: 0,
     cannonX: 0.5,
     moveDir: 0,
     firing: false,
@@ -278,7 +383,7 @@ export function startGame(prev: GameState): GameState {
 /** Admin/testing: jump straight to a wave without banking its bonuses. */
 export function jumpToWave(prev: GameState, wave: number): GameState {
   if (prev.phase === 'menu' || prev.phase === 'gameover') return prev
-  const state: GameState = { ...prev, ships: [...prev.ships], shots: [] }
+  const state: GameState = { ...prev, ships: [...prev.ships], shots: [], drops: [] }
   resetWave(state, Math.max(1, Math.floor(wave) || 1))
   resetCannon(state)
   state.phase = 'playing'
@@ -324,6 +429,18 @@ function frontShipOfColumn(state: GameState, col: number): Ship | null {
 }
 
 function fireVolley(state: GameState) {
+  for (const s of state.ships) s.charge = 0
+
+  if (state.jamArmed) {
+    // The whole formation winds up and then nothing comes out of it.
+    state.jamArmed = false
+    state.hotCols = []
+    state.chargeLeft = 0
+    state.volleyIn = volleyGap(state.wave)
+    sfx('whoosh')
+    return
+  }
+
   const speed = enemyShotSpeed(state.wave)
   let fired = 0
   for (const col of state.hotCols) {
@@ -338,7 +455,6 @@ function fireVolley(state: GameState) {
     })
     fired += 1
   }
-  for (const s of state.ships) s.charge = 0
   state.hotCols = []
   state.chargeLeft = 0
   state.volleyIn = volleyGap(state.wave)
@@ -358,14 +474,26 @@ export function setFiring(state: GameState, firing: boolean): GameState {
 
 function tryFire(state: GameState) {
   if (state.fireCooldown > 0) return
-  if (state.shots.filter((s) => !s.hostile).length >= MAX_PLAYER_SHOTS) return
-  state.shots.push({
-    x: state.cannonX,
-    y: CANNON_Y - PLAYER_SHOT_H,
-    vx: 0,
-    vy: -PLAYER_SHOT_SPEED,
-    hostile: false,
-  })
+  const spread = state.buffSpread > 0
+  // A fan is one trigger pull, so it gets its own headroom rather than
+  // filling the three-shot limit on the first press.
+  const cap = spread ? MAX_PLAYER_SHOTS * 3 : MAX_PLAYER_SHOTS
+  if (state.shots.filter((s) => !s.hostile).length >= cap) return
+
+  const pierce = state.pierceLeft > 0
+  if (pierce) state.pierceLeft -= 1
+
+  const lanes = spread ? [-SPREAD_FAN, 0, SPREAD_FAN] : [0]
+  for (const lane of lanes) {
+    state.shots.push({
+      x: state.cannonX,
+      y: CANNON_Y - PLAYER_SHOT_H,
+      vx: lane * PLAYER_SHOT_SPEED,
+      vy: -PLAYER_SHOT_SPEED,
+      hostile: false,
+      pierce,
+    })
+  }
   state.fireCooldown = FIRE_COOLDOWN
   state.shotsFired += 1
   sfx('fire')
@@ -386,11 +514,54 @@ function overlaps(
   return ax < bx + bw && ax + aw > bx && ay < by + bh && ay + ah > by
 }
 
+function maybeDrop(state: GameState, x: number, y: number) {
+  if (Math.random() > DROP_CHANCE) return
+  state.drops.push({ x, y, kind: pickPowerKind(), life: 12 })
+}
+
+function takeDrop(state: GameState, kind: PowerKind) {
+  state.tookKind = kind
+  state.tookFor = 1.1
+  if (kind === 'spread') state.buffSpread = BUFF_TIME
+  else if (kind === 'slow') state.buffSlow = BUFF_TIME
+  else if (kind === 'pierce') state.pierceLeft += PIERCE_SHOTS
+  else state.jamArmed = true
+  sfx('good')
+}
+
+function advanceDrops(state: GameState, dt: number) {
+  const cannon = cannonRect(state)
+  const kept: Drop[] = []
+  for (const drop of state.drops) {
+    drop.y += DROP_FALL * dt
+    drop.life -= dt
+    if (drop.life <= 0 || drop.y - DROP_R > FIELD_H) continue
+    if (
+      overlaps(
+        drop.x - DROP_R,
+        drop.y - DROP_R,
+        DROP_R * 2,
+        DROP_R * 2,
+        cannon.x,
+        cannon.y,
+        cannon.w,
+        cannon.h,
+      )
+    ) {
+      takeDrop(state, drop.kind)
+      continue
+    }
+    kept.push(drop)
+  }
+  state.drops = kept
+}
+
 function killShip(state: GameState, ship: Ship) {
   ship.alive = false
   ship.pop = 0.32
   state.score += SCORE_ROW[Math.min(ship.row, SCORE_ROW.length - 1)]
   state.shotsHit += 1
+  maybeDrop(state, shipX(state, ship) + SHIP_W / 2, shipY(state, ship) + SHIP_H / 2)
   sfx('hit')
 }
 
@@ -446,9 +617,14 @@ function advanceShots(state: GameState, dt: number) {
   const cannon = cannonRect(state)
   const survivors: Shot[] = []
 
+  // Applied at move time rather than at fire time, so catching `slow` mid-volley
+  // drags the shots already in the air as well as the next ones.
+  const slow = state.buffSlow > 0 ? SLOW_FACTOR : 1
+
   for (const shot of state.shots) {
-    shot.x += shot.vx * dt
-    shot.y += shot.vy * dt
+    const rate = shot.hostile ? slow : 1
+    shot.x += shot.vx * rate * dt
+    shot.y += shot.vy * rate * dt
     const size = shotSize(shot.hostile)
     const left = shot.x - size.w / 2
 
@@ -466,12 +642,16 @@ function advanceShots(state: GameState, dt: number) {
 
     let consumed = false
     for (const ship of ships) {
+      if (!ship.alive) continue
       const sx = shipX(state, ship)
       const sy = shipY(state, ship)
       if (!overlaps(left, shot.y, size.w, size.h, sx, sy, SHIP_W, SHIP_H)) continue
       killShip(state, ship)
-      consumed = true
-      break
+      // A piercing round keeps climbing, so it can take a whole column.
+      if (!shot.pierce) {
+        consumed = true
+        break
+      }
     }
     if (!consumed) survivors.push(shot)
   }
@@ -484,10 +664,13 @@ export function tick(prev: GameState, dt: number): GameState {
     ...prev,
     ships: prev.ships.map((s) => ({ ...s })),
     shots: prev.shots.map((s) => ({ ...s })),
+    drops: prev.drops.map((d) => ({ ...d })),
     hotCols: [...prev.hotCols],
   }
   state.time += dt
   state.hitFlash = Math.max(0, state.hitFlash - dt * 1.4)
+  state.tookFor = Math.max(0, state.tookFor - dt)
+  if (state.tookFor <= 0) state.tookKind = null
   for (const s of state.ships) if (s.pop > 0) s.pop = Math.max(0, s.pop - dt)
 
   if (state.phase === 'menu' || state.phase === 'gameover') return state
@@ -520,9 +703,14 @@ export function tick(prev: GameState, dt: number): GameState {
     CANNON_W / 2 + 0.01,
     Math.min(1 - CANNON_W / 2 - 0.01, state.cannonX + state.moveDir * CANNON_SPEED * dt),
   )
+  state.buffSpread = Math.max(0, state.buffSpread - dt)
+  state.buffSlow = Math.max(0, state.buffSlow - dt)
+
   state.fireCooldown = Math.max(0, state.fireCooldown - dt)
   if (state.firing || state.fireQueued) tryFire(state)
   state.fireQueued = false
+
+  advanceDrops(state, dt)
 
   advanceFormation(state, dt)
 
@@ -573,5 +761,9 @@ export function toSnapshot(state: GameState): Snapshot {
     shipsLeft: state.ships.filter((s) => s.alive).length,
     accuracy:
       state.shotsFired > 0 ? Math.round((state.shotsHit / state.shotsFired) * 100) : 0,
+    spread: state.buffSpread,
+    slow: state.buffSlow,
+    pierce: state.pierceLeft,
+    jam: state.jamArmed,
   }
 }

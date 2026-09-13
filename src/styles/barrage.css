@@ -87,3 +87,37 @@
     display: flex;
   }
 }
+
+/* Active pickups — sits just above the cannon, out of the fleet's way. */
+.barrage__buffs {
+  position: absolute;
+  /* Bottom-left, clear of the cannon — it sits centred on the floor. */
+  left: max(0.6rem, env(safe-area-inset-left, 0px));
+  bottom: 0.6rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.35rem;
+  flex-direction: column;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.barrage__buff {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.3rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: hsl(var(--buff-hue), 62%, 72%);
+  background: hsla(var(--buff-hue), 52%, 30%, 0.42);
+  border: 1px solid hsla(var(--buff-hue), 52%, 58%, 0.5);
+  white-space: nowrap;
+}
+
+.barrage__buff b {
+  font-weight: 600;
+  opacity: 0.75;
+}

@@ -8,8 +8,10 @@ import {
 } from '../../lib/theme'
 import {
   cannonRect,
+  dropRadius,
   FIELD_H,
   HOLD_LINE,
+  POWER_HUE,
   shipSize,
   shipX,
   shipY,
@@ -280,6 +282,64 @@ function drawCannon(ctx: CanvasRenderingContext2D, state: GameState, p: Place) {
   paint()
 }
 
+/**
+ * Falling capsules. Each carries a mark as well as a hue, so they are still
+ * tellable apart without relying on colour.
+ */
+function drawDrops(ctx: CanvasRenderingContext2D, state: GameState, p: Place) {
+  const r = dropRadius()
+  for (const drop of state.drops) {
+    const cx = p.x(drop.x)
+    const cy = p.y(drop.y)
+    const rr = p.u(r)
+    const hue = POWER_HUE[drop.kind]
+    // Blink out over the last second and a half rather than vanishing.
+    const fading = drop.life < 1.5 ? 0.35 + 0.65 * Math.abs(Math.sin(drop.life * 9)) : 1
+
+    ctx.globalAlpha = fading
+    ctx.fillStyle = pastelFill(hue, 0.5)
+    ctx.strokeStyle = pastelStroke(hue)
+    ctx.lineWidth = Math.max(1, rr * 0.16)
+    ctx.beginPath()
+    ctx.roundRect(cx - rr, cy - rr, rr * 2, rr * 2, rr * 0.5)
+    ctx.fill()
+    strokeOutlined(ctx)
+
+    ctx.strokeStyle = `hsla(${hue}, 62%, 74%, 0.95)`
+    ctx.lineWidth = Math.max(1, rr * 0.18)
+    ctx.lineCap = 'round'
+    ctx.beginPath()
+    if (drop.kind === 'pierce') {
+      // An arrow driving up through the mark.
+      ctx.moveTo(cx, cy + rr * 0.5)
+      ctx.lineTo(cx, cy - rr * 0.52)
+      ctx.moveTo(cx - rr * 0.34, cy - rr * 0.18)
+      ctx.lineTo(cx, cy - rr * 0.54)
+      ctx.lineTo(cx + rr * 0.34, cy - rr * 0.18)
+    } else if (drop.kind === 'spread') {
+      // Three diverging lines.
+      for (const lean of [-0.42, 0, 0.42]) {
+        ctx.moveTo(cx, cy + rr * 0.5)
+        ctx.lineTo(cx + rr * lean, cy - rr * 0.5)
+      }
+    } else if (drop.kind === 'slow') {
+      // A bar being held down.
+      ctx.moveTo(cx - rr * 0.45, cy - rr * 0.18)
+      ctx.lineTo(cx + rr * 0.45, cy - rr * 0.18)
+      ctx.moveTo(cx - rr * 0.28, cy + rr * 0.28)
+      ctx.lineTo(cx + rr * 0.28, cy + rr * 0.28)
+    } else {
+      // A struck-through volley.
+      ctx.moveTo(cx - rr * 0.42, cy - rr * 0.42)
+      ctx.lineTo(cx + rr * 0.42, cy + rr * 0.42)
+      ctx.moveTo(cx + rr * 0.42, cy - rr * 0.42)
+      ctx.lineTo(cx - rr * 0.42, cy + rr * 0.42)
+    }
+    ctx.stroke()
+    ctx.globalAlpha = 1
+  }
+}
+
 function drawShots(ctx: CanvasRenderingContext2D, state: GameState, p: Place) {
   for (const shot of state.shots) {
     const size = shotSize(shot.hostile)
@@ -290,7 +350,9 @@ function drawShots(ctx: CanvasRenderingContext2D, state: GameState, p: Place) {
 
     ctx.fillStyle = shot.hostile
       ? `hsla(${HUE_HOT}, 74%, 58%, 0.95)`
-      : withAlpha(mixColor(inkColor(), '#ffffff', 0.35), 0.95)
+      : shot.pierce
+        ? `hsla(${POWER_HUE.pierce}, 80%, 64%, 0.98)`
+        : withAlpha(mixColor(inkColor(), '#ffffff', 0.35), 0.95)
     ctx.beginPath()
     ctx.roundRect(x, y, Math.max(1.5, sw), sh, sw * 0.5)
     ctx.fill()
@@ -335,6 +397,7 @@ export function renderGame(
     drawShip(ctx, ship, x, y, p.u(sw), p.u(sh), hue)
   }
 
+  drawDrops(ctx, state, p)
   drawShots(ctx, state, p)
   drawCannon(ctx, state, p)
 
