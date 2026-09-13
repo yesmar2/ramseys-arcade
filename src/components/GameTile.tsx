@@ -58,16 +58,10 @@ export function GameTile({
           <span className="game-tile__status">In development</span>
         ) : game.comingSoon ? (
           <span className="game-tile__status">Coming soon</span>
-        ) : best != null ? (
+        ) : best ? (
           <span className="game-tile__best">
-            {best > 0 ? (
-              <>
-                <span className="game-tile__best-k">Your best</span>
-                <span className="game-tile__best-v">{best.toLocaleString()}</span>
-              </>
-            ) : (
-              <span className="game-tile__best-new">Not played yet</span>
-            )}
+            <span className="game-tile__best-k">Best</span>
+            <span className="game-tile__best-v">{best.toLocaleString()}</span>
           </span>
         ) : null}
       </a>

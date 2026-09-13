@@ -31,12 +31,11 @@ const EMPTY: Snapshot = {
   events: 0,
 }
 
-function Stat({ label, value, sub }: { label: string; value: string; sub?: string }) {
+function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div className="home-you__stat">
-      <p className="home-you__k">{label}</p>
-      <p className="home-you__v">{value}</p>
-      {sub ? <p className="home-you__sub">{sub}</p> : null}
+      <span className="home-you__v">{value}</span>
+      <span className="home-you__k">{label}</span>
     </div>
   )
 }
@@ -120,30 +119,14 @@ export function HomeYou() {
       </div>
 
       <div className="home-you__stats">
-        <Stat
-          label="Your rank"
-          value={snap.rank != null ? `#${snap.rank}` : '—'}
-          sub={snap.totalPlayers > 0 ? `of ${snap.totalPlayers.toLocaleString()} players` : undefined}
-        />
-        <Stat label={`Points ${periodLabel.toLowerCase()}`} value={snap.score.toLocaleString()} />
-        <Stat
-          label="Games ranked"
-          value={String(snap.gamesRanked)}
-          sub={snap.gamesRanked === 0 ? 'post a score to rank' : undefined}
-        />
-        <Stat
-          label="Events"
-          value={String(snap.events)}
-          sub={snap.events > 0 ? 'in progress' : 'none joined'}
-        />
+        <Stat label="rank" value={snap.rank != null ? `#${snap.rank}` : '—'} />
+        <Stat label={periodLabel.toLowerCase()} value={snap.score.toLocaleString()} />
+        <Stat label="games" value={String(snap.gamesRanked)} />
+        <Stat label="events" value={String(snap.events)} />
       </div>
 
       {snap.top.length > 0 ? (
         <div className="home-you__board">
-          <p className="home-you__board-title">
-            Top {periodLabel.toLowerCase()}
-            {group ? ' · your group' : ' · everyone'}
-          </p>
           <ol className="home-you__rows">
             {snap.top.map((entry) => (
               <li
@@ -173,11 +156,12 @@ export function HomeYou() {
         </p>
       ) : null}
 
-      {snap.events === 0 ? (
-        <p className="home-you__nudge">
-          <a href={tournamentsHref()}>Join an event →</a>
-        </p>
-      ) : null}
+      <p className="home-you__foot">
+        <span>
+          {group ? 'Your group' : 'Everyone'} · {periodLabel.toLowerCase()}
+        </span>
+        {snap.events === 0 ? <a href={tournamentsHref()}>Join an event →</a> : null}
+      </p>
     </section>
   )
 }

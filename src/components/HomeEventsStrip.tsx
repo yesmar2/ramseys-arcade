@@ -30,23 +30,21 @@ function LeadEvent({ t, joined }: { t: TournamentSummary; joined: boolean }) {
       <div className="home-ev__body">
         <div className="home-ev__chips">
           <span className="home-ev__live">Live</span>
-          {t.cadence ? <span className="home-ev__tag">{t.cadence}</span> : null}
           {joined ? <span className="home-ev__tag home-ev__tag--in">You’re in</span> : null}
         </div>
         <h3 className="home-ev__name">{t.title}</h3>
-        <p className="home-ev__games">{gameNames(t)}</p>
+        <p className="home-ev__games">
+          {gameNames(t)}
+          <span className="home-ev__dot" aria-hidden="true"> · </span>
+          {t.playerCount} {t.playerCount === 1 ? 'player' : 'players'}
+        </p>
       </div>
       <div className="home-ev__side">
-        <div className="home-ev__clock">
-          <EventCountdown
-            endsAt={t.endsAt}
-            unlimitedDuration={Boolean(t.rules.unlimitedDuration)}
-            className="home-ev__clock-v"
-          />
-        </div>
-        <span className="home-ev__joined">
-          {t.playerCount} {t.playerCount === 1 ? 'player' : 'players'}
-        </span>
+        <EventCountdown
+          endsAt={t.endsAt}
+          unlimitedDuration={Boolean(t.rules.unlimitedDuration)}
+          className="home-ev__clock-v"
+        />
         <span className="home-ev__go">{joined ? 'Open' : 'Join'}</span>
       </div>
     </a>

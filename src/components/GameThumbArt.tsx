@@ -24,6 +24,22 @@ function ThumbSvg({ children }: { children: ReactNode }) {
   )
 }
 
+/**
+ * Stand-in for a game with no bespoke thumb yet.
+ *
+ * Without it the tile renders an empty tinted box, which reads as a broken
+ * image — and the home hero can land on a brand-new game before its art
+ * exists.
+ */
+function FallbackThumb({ accent }: { accent: string }) {
+  return (
+    <>
+      <rect x="7" y="7" width="18" height="18" rx="5" stroke={accent} strokeWidth="1.8" />
+      <circle cx="16" cy="16" r="3.4" fill={accent} />
+    </>
+  )
+}
+
 function shape(props: ReturnType<typeof pastel>, strokeWidth = 1.5) {
   const flat = isFlatTheme()
   return {
@@ -317,7 +333,9 @@ export function GameThumbArt({ slug, accent, className }: GameThumbArtProps) {
       aria-hidden="true"
       style={style}
     >
-      <ThumbSvg>{Thumb ? <Thumb accent={resolved} /> : null}</ThumbSvg>
+      <ThumbSvg>
+        {Thumb ? <Thumb accent={resolved} /> : <FallbackThumb accent={resolved} />}
+      </ThumbSvg>
     </span>
   )
 }
