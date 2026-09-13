@@ -49,27 +49,42 @@ function placeCenter(row: string, ch: string) {
 }
 
 /**
- * Shared den + the open ring around it. Later levels only add a few walls on
- * the same skeleton so difficulty steps up gently and the board still loops.
+ * A board is authored as five left-half rows (y = 1..5). Row 0 is the top
+ * border, rows 6..8 are the den block, and rows 9..13 mirror 5..1, so one
+ * spec fixes the whole 27x15 grid and every board stays LR + TB symmetric.
  */
-const RING = '#.............'
-const DEN = ['#.#.#.#######=', '......######GG', '#.#.#.########'] as const
-const DEN_TIGHT = ['#####.#######=', '......######GG', '#####.########'] as const
+type LevelSpec = {
+  name: string
+  /** Half-rows for y = 1..5, 14 chars each. */
+  top: readonly [string, string, string, string, string]
+  /** Last open column of the side tunnel on the den row. Bigger = longer run. */
+  tunnel: number
+  /** Columns that link the ring row to the tunnel row past the den wall. */
+  links: readonly number[]
+}
 
-function makeLevel(
-  row2: string,
-  row3: string,
-  row4: string,
-  den: readonly [string, string, string] = DEN,
-) {
-  const top = [row2, row3, row4, RING]
+/**
+ * Den block (y = 6..8): a three-tile pen behind a gate, flanked by the side
+ * tunnel. `tunnel` sets how far the tunnel mouth reaches and `links` which
+ * columns cut through it — fewer links means fewer ways off the tunnel.
+ */
+function denRows(tunnel: number, links: readonly number[]): [string, string, string] {
+  const bar = (center: string) => {
+    let s = '#'
+    for (let x = 1; x <= 12; x++) s += links.includes(x) ? '.' : '#'
+    return s + center
+  }
+  let lane = ''
+  for (let x = 0; x <= 11; x++) lane += x <= tunnel ? '.' : '#'
+  return [bar('='), `${lane}GG`, bar('#')]
+}
+
+function makeLevel(spec: LevelSpec) {
   const halves = [
     '##############',
-    '#o............',
-    ...top,
-    ...den,
-    ...[...top].reverse(),
-    '#o............',
+    ...spec.top,
+    ...denRows(spec.tunnel, spec.links),
+    ...[...spec.top].reverse(),
     '##############',
   ]
   const rows = halves.map(mirrorLR)
@@ -77,33 +92,81 @@ function makeLevel(
   return rows
 }
 
-const R2 = '#.####.###.##.'
-const R3 = '#.#...........'
-const R4 = '#.#.####.###.#'
-
-/** Close a spoke / add a pillar on the left-center half. */
-function seal(half: string, x: number) {
-  return half.slice(0, x) + '#' + half.slice(x + 1)
-}
-
 /**
- * Curated boards: one skeleton, mirrored on both axes, no one-tile stubs.
- * Each level closes a couple more escapes — not a new maze language.
+ * Nine hand-drawn boards, roughly ordered from loopy to mean. Early ones give
+ * you parallel lanes and short blocks to dodge around; later ones trade those
+ * for long committed runs, fewer ways off the tunnel, and — from `gauntlet` on
+ * — a single pair of power pips on the centre line instead of four in the
+ * corners. Levels past the ninth keep cycling the back half, so the board
+ * still changes every round while the chasers keep gaining speed.
  */
-const LEVEL_MAZES: string[][] = [
-  // 1 — roomiest loops
-  makeLevel(R2, R3, R4),
-  // 2 — seal the inner top/bottom gaps
-  makeLevel(seal(R2, 10), R3, R4),
-  // 3 — pillar on the long mid run
-  makeLevel(seal(R2, 10), seal(R3, 7), R4),
-  // 4 — close the center top/bottom spoke
-  makeLevel(seal(seal(R2, 10), 13), seal(R3, 7), R4),
-  // 5 — seal the mid-ring center gaps
-  makeLevel(seal(seal(R2, 10), 13), seal(R3, 7), seal(R4, 12)),
-  // 6+ — tighter den sides
-  makeLevel(seal(seal(R2, 10), 13), seal(R3, 7), seal(R4, 12), DEN_TIGHT),
+const LEVELS: readonly LevelSpec[] = [
+  {
+    // 1 — staggered blocks, three ways across every row.
+    name: 'orchard',
+    top: ['#o............', '#.####.###.##.', '#.#...........', '#.#.####.###.#', '#.............'],
+    tunnel: 5,
+    links: [1, 3, 5],
+  },
+  {
+    // 2 — rungs: three open corridors stitched by four wide lanes.
+    name: 'ladder',
+    top: ['#o............', '#.##.#####.##.', '#.............', '#.##.#####.##.', '#.............'],
+    tunnel: 5,
+    links: [1, 3, 5],
+  },
+  {
+    // 3 — courtyards, and a long tunnel mouth to sprint along.
+    name: 'courtyard',
+    top: ['#............o', '#.###.###.###.', '#...#.....#...', '#.###.###.###.', '#.............'],
+    tunnel: 7,
+    links: [1, 4, 7],
+  },
+  {
+    // 4 — lattice of short blocks; lots of turns, few straightaways.
+    name: 'lattice',
+    top: ['#o............', '#.##.##.##.##.', '#....#.....#..', '#.##.##.##.##.', '#.............'],
+    tunnel: 5,
+    links: [2, 5],
+  },
+  {
+    // 5 — chambers with pips out on the ring instead of the top corridor.
+    name: 'chambers',
+    top: ['#.............', '#.####.#.####.', '#.#.......#.#.', '#.#.##.#.##.#.', '#o............'],
+    tunnel: 5,
+    links: [1, 3, 5],
+  },
+  {
+    // 6 — the top corridor is cut at the centre, so no free lap over the top.
+    name: 'spine',
+    top: ['#o...........#', '#.#.#####.##.#', '#.......#.....', '#.##.##.###.#.', '#.............'],
+    tunnel: 5,
+    links: [1, 3, 5],
+  },
+  {
+    // 7 — two long bars: commit to the middle run and you ride it out.
+    name: 'gauntlet',
+    top: ['#............o', '#.#########.#.', '#...........#.', '#.#########.#.', '#.............'],
+    tunnel: 5,
+    links: [1, 3, 5],
+  },
+  {
+    // 8 — pinched: one cut off the tunnel on each side.
+    name: 'pinch',
+    top: ['#...........o#', '#.####.#.###..', '#.#........#..', '#.##.###.###..', '#.............'],
+    tunnel: 5,
+    links: [5],
+  },
+  {
+    // 9 — vice: four verticals, a seven-wide slab, one narrow tunnel cut.
+    name: 'vice',
+    top: ['#............o', '#.#.#######.#.', '#.#.......#.#.', '#.#.#######.#.', '#.............'],
+    tunnel: 3,
+    links: [3],
+  },
 ]
+
+const LEVEL_MAZES: string[][] = LEVELS.map(makeLevel)
 
 function grid(cols: number, rows: number, value: boolean) {
   return Array.from({ length: rows }, () => Array.from({ length: cols }, () => value))
@@ -256,11 +319,16 @@ export function rotateMazeCW(maze: Maze): Maze {
   }
 }
 
+/**
+ * Board for a level. The first pass walks the whole set in order; after that it
+ * keeps cycling the back half so no two rounds in a row share a layout.
+ */
 function levelLayout(level: number) {
-  const idx = Math.min(LEVEL_MAZES.length - 1, Math.max(0, level - 1))
-  return LEVEL_MAZES[idx]
+  const i = Math.max(0, (Math.floor(level) || 1) - 1)
+  if (i < LEVEL_MAZES.length) return LEVEL_MAZES[i]
+  const hard = LEVEL_MAZES.slice(Math.floor(LEVEL_MAZES.length / 2))
+  return hard[(i - LEVEL_MAZES.length) % hard.length]
 }
-
 /**
  * Curated maze for this level. Always authored in landscape, then rotated for
  * portrait so phone and desktop share the same board.
