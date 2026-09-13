@@ -484,12 +484,6 @@ export function SiteHeader() {
                   </section>
                 ) : null}
 
-                {signedIn ? (
-                  <section className="site-drawer__section" aria-label="Friends">
-                    <FriendsPanel />
-                  </section>
-                ) : null}
-
                 <div className="site-drawer__footer">
                   <section className="site-drawer__section" aria-label="Settings">
                     <h3 className="site-drawer__section-title">Settings</h3>

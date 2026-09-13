@@ -4,7 +4,7 @@ import { listTournaments, type TournamentSummary } from '../lib/tournaments'
 export type LiveEvents = {
   /** Every running daily/weekly event, joined or not. */
   official: TournamentSummary[]
-  /** Running events you are in that are not the daily/weekly fixtures. */
+  /** Every running event you are in, fixtures included. */
   mine: TournamentSummary[]
   /** Ids of everything you have joined, official fixtures included. */
   joinedIds: Set<string>
@@ -35,11 +35,10 @@ function load(playerName: string): Promise<Omit<LiveEvents, 'loading'>> {
     const joinedIds = new Set(joined.map((t) => t.id))
     return {
       joinedIds,
-      // Joining the weekly should not make it vanish from the fixtures line —
-      // daily and weekly read as a pair, so both stay put and get a marker.
-      mine: active
-        .filter((t) => joinedIds.has(t.id) && !t.official)
-        .sort((a, b) => a.endsAt - b.endsAt),
+      // A joined fixture appears twice on purpose: named on the line up top
+      // so daily and weekly always read as a pair, and again below the grid
+      // with its clock and a way back in, like any event you are playing.
+      mine: active.filter((t) => joinedIds.has(t.id)).sort((a, b) => a.endsAt - b.endsAt),
       official: active
         .filter((t) => t.official)
         // Daily first: it is the one that will be gone tomorrow.

@@ -100,8 +100,14 @@
 
 @media (max-width: 40rem) {
   .home-hero {
-    grid-template-columns: 6rem minmax(0, 1fr);
+    grid-template-columns: 5.5rem minmax(0, 1fr);
     gap: 0.9rem;
+  }
+
+  /* Square on a phone, and sized to the text block beside it so the two
+     share a top and bottom edge instead of the art floating inside them. */
+  .home-hero__art .inline-thumb {
+    aspect-ratio: 1;
   }
 
   .home-hero__kicker {

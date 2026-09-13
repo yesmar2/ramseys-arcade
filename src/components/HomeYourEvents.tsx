@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react'
 import { getGame } from '../data/games'
-import { tournamentHref, tournamentsHref } from '../hooks/useHashRoute'
+import { tournamentHref } from '../hooks/useHashRoute'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { useLiveEvents } from '../hooks/useLiveEvents'
 import { normalizePlayerName } from '../lib/leaderboard'
@@ -64,9 +64,6 @@ export function HomeYourEvents() {
           </a>
         )
       })}
-      <p className="home-events__all">
-        <a href={tournamentsHref()}>All events →</a>
-      </p>
     </section>
   )
 }

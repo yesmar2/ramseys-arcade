@@ -269,14 +269,14 @@ export function TournamentScoreCard({
             eventTitle: snapshot.detail?.title,
           })
           if (payload) setCeleb(payload)
-        } else if (!celebratedRef.current && score > 0) {
-          const hit = findPlacementHit(snapshot.detail, gameSlug, name)
-          const payload = placementCelebrationPayload(hit)
-          if (payload) {
-            celebratedRef.current = true
-            setCeleb(payload)
-          }
-        } else if (!celebratedRef.current && score > 0) {
+        } else if (
+          !celebratedRef.current &&
+          score > 0 &&
+          // A bracket has no standings worth celebrating until it is over:
+          // leading on score means nothing while your opponent has not played,
+          // and placing in a draw is decided by winning it, not by scoring.
+          (!snapshot.detail || eventKind(snapshot.detail) !== 'bracket')
+        ) {
           const hit = findPlacementHit(snapshot.detail, gameSlug, name)
           const payload = placementCelebrationPayload(hit)
           if (payload) {

@@ -18,9 +18,17 @@ export function playableHomeGames(device: DeviceType): Game[] {
   )
 }
 
-/** Newest addition to the catalog — the grid's feature slot. */
+/**
+ * Newest addition to the catalog, or null when it will not run here.
+ *
+ * Deliberately not "last game playable on this device": on a phone that is
+ * whatever happens to sit last after the device filter, and calling a years-old
+ * title "new in the arcade" because of it is simply wrong.
+ */
 export function newestSlug(device: DeviceType): string | null {
-  return playableHomeGames(device).at(-1)?.slug ?? null
+  const newest = games.filter((g) => !g.hidden && !g.comingSoon).at(-1)?.slug ?? null
+  if (!newest) return null
+  return playableHomeGames(device).some((g) => g.slug === newest) ? newest : null
 }
 
 /** Stable for the day, so a reload isn't a reshuffle. */
