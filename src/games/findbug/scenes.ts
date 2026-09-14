@@ -6,7 +6,7 @@
  * anything that moved would be a free tell.
  */
 
-export type SceneKind = 'cabinets' | 'board' | 'loom' | 'tokens' | 'carpet'
+export type SceneKind = 'arcade' | 'cabinets' | 'board' | 'loom' | 'tokens' | 'carpet'
 
 /**
  * A perch, and the colour of whatever it is a perch on. The bug takes that
@@ -68,6 +68,57 @@ export type Block = { x: number; y: number; w: number; h: number; pins: number }
 
 export type Token = { x: number; y: number; r: number; colour: string; tone: number }
 
+/**
+ * The arcade floor: a drawn scene rather than a generated pattern. Everything
+ * below describes one thing in it — a machine, somebody standing at one, a cup
+ * left on the carpet — and the renderer paints them back to front, so people
+ * stand behind the cabinets they are playing.
+ */
+export type Machine = {
+  x: number
+  /** Floor line the cabinet stands on. */
+  y: number
+  w: number
+  h: number
+  cab: string
+  accent: string
+  /** Which of the little fake games is on the screen. */
+  screen: number
+}
+
+export type PersonPose = 'play' | 'stand' | 'cheer' | 'walk' | 'kid'
+
+export type Person = {
+  /** Feet position. */
+  x: number
+  y: number
+  /** Head to toe. */
+  h: number
+  skin: string
+  hair: string
+  hairStyle: number
+  shirt: string
+  legs: string
+  pose: PersonPose
+  flip: boolean
+}
+
+export type PropKind =
+  | 'cup'
+  | 'popcorn'
+  | 'token'
+  | 'balloon'
+  | 'plush'
+  | 'cone'
+  | 'skate'
+  | 'cat'
+  | 'bag'
+  | 'crumb'
+
+export type Prop = { x: number; y: number; s: number; kind: PropKind; colour: string }
+
+export type Sign = { x: number; y: number; w: number; h: number; colour: string; kind: number }
+
 export type MotifKind = 'star' | 'tri' | 'dot' | 'zig'
 export type Motif = {
   x: number
@@ -96,6 +147,13 @@ type SceneBase = {
 
 export type Scene = SceneBase &
   (
+    | {
+        kind: 'arcade'
+        machines: Machine[]
+        people: Person[]
+        props: Prop[]
+        signs: Sign[]
+      }
     | { kind: 'cabinets'; cabinets: Cabinet[] }
     | { kind: 'board'; rows: BoardRow[] }
     | { kind: 'loom'; cables: Cable[]; ties: Tie[]; blocks: Block[] }
@@ -146,6 +204,160 @@ const TOKEN_COLOURS = ['#d9a441', '#c8912f', '#e0b45a', '#b9bfc9', '#caa64d'] as
 export const COUNTER_FELT = '#1f4a3d'
 export const CARPET_GROUND = '#211a3d'
 export const BOARD_GROUND = '#131a2b'
+
+// ----------------------------------------------------------- arcade floor
+
+export const ARCADE_WALL = '#241a3a'
+export const ARCADE_FLOOR = '#2b1f47'
+
+const SKIN = ['#f0c5a0', '#d99a6c', '#a86b45', '#7c4a2d', '#f7d9bd', '#c2825a'] as const
+const HAIR = ['#2b2118', '#4a2c1a', '#8a5a2b', '#d9a441', '#b34a4a', '#3a3a4a', '#e0e0e6'] as const
+const SHIRT = [
+  '#e0574f',
+  '#3f8fd8',
+  '#4cb377',
+  '#e8b13c',
+  '#9a6fd0',
+  '#e07ab0',
+  '#3fb8c0',
+  '#f07a3f',
+] as const
+const LEGS = ['#2f3a56', '#3d3350', '#4a4a58', '#2c4a45', '#553344'] as const
+const CAB_BODY = ['#3a2f5c', '#2f4a5c', '#4a2f45', '#33405c', '#3f3a52'] as const
+
+/**
+ * Three ranks of machines running back to front, a crowd playing them, and the
+ * usual debris of a busy arcade on the carpet. Rows further back sit higher and
+ * are drawn smaller, which is all the perspective this needs.
+ */
+function buildArcadeScene(rng: Rng, clutter: number, aspect: number): Scene {
+  const machines: Machine[] = []
+  const people: Person[] = []
+  const props: Prop[] = []
+  const signs: Sign[] = []
+  const anchors: Anchor[] = []
+  const decoys: Decoy[] = []
+
+  const wallBottom = 0.2
+
+  // Neon over the back wall.
+  for (let i = 0; i < 4; i++) {
+    const w = range(rng, 0.1, 0.17)
+    signs.push({
+      x: 0.06 + i * 0.23 + range(rng, -0.02, 0.02),
+      y: range(rng, 0.04, 0.11),
+      w,
+      h: w * range(rng, 0.4, 0.6),
+      colour: pick(rng, SHIRT),
+      kind: Math.floor(rng() * 3),
+    })
+  }
+
+  // Machine ranks. Back rows are smaller and stand higher up the floor.
+  const ranks = [
+    { y: wallBottom + 0.1, h: 0.15, count: 7 },
+    { y: wallBottom + 0.3, h: 0.2, count: 5 },
+    { y: wallBottom + 0.56, h: 0.26, count: 4 },
+  ]
+
+  for (const rank of ranks) {
+    const span = 0.94 / rank.count
+    for (let i = 0; i < rank.count; i++) {
+      const w = span * range(rng, 0.62, 0.76)
+      const x = 0.03 + span * i + (span - w) / 2
+      const cab = pick(rng, CAB_BODY)
+      const accent = pick(rng, SHIRT)
+      machines.push({ x, y: rank.y, w, h: rank.h, cab, accent, screen: Math.floor(rng() * 4) })
+
+      // A bug on a cabinet side or along its top edge.
+      anchors.push({ x: x + w * range(rng, 0.08, 0.92), y: rank.y - rank.h + 0.004, on: cab })
+      anchors.push({ x: x + w * range(rng, 0.05, 0.95), y: rank.y - range(rng, 0.02, 0.06), on: cab })
+
+      // Somebody at roughly two machines in three.
+      if (rng() < 0.66) {
+        people.push({
+          x: x + w * range(rng, 0.25, 0.75),
+          y: rank.y + rank.h * 0.1,
+          h: rank.h * range(rng, 1.25, 1.5),
+          skin: pick(rng, SKIN),
+          hair: pick(rng, HAIR),
+          hairStyle: Math.floor(rng() * 4),
+          shirt: pick(rng, SHIRT),
+          legs: pick(rng, LEGS),
+          pose: rng() < 0.25 ? 'cheer' : 'play',
+          flip: rng() < 0.5,
+        })
+      }
+    }
+  }
+
+  // People crossing the floor in front of everything.
+  const walkers = 5
+  for (let i = 0; i < walkers; i++) {
+    const shirt = pick(rng, SHIRT)
+    const kid = rng() < 0.4
+    people.push({
+      x: range(rng, 0.06, 0.94),
+      y: range(rng, 0.86, 0.99),
+      h: kid ? range(rng, 0.14, 0.19) : range(rng, 0.22, 0.3),
+      skin: pick(rng, SKIN),
+      hair: pick(rng, HAIR),
+      hairStyle: Math.floor(rng() * 4),
+      shirt,
+      legs: pick(rng, LEGS),
+      pose: kid ? 'kid' : rng() < 0.5 ? 'walk' : 'stand',
+      flip: rng() < 0.5,
+    })
+  }
+
+  // A bug on somebody's shirt is the best hiding place in the scene.
+  for (const person of people) {
+    anchors.push({ x: person.x, y: person.y - person.h * range(rng, 0.45, 0.62), on: person.shirt })
+  }
+
+  // Debris on the carpet.
+  const kinds: PropKind[] = ['cup', 'popcorn', 'token', 'plush', 'cone', 'skate', 'bag', 'cat']
+  const propCount = Math.round(range(rng, 9, 13) * clutter)
+  for (let i = 0; i < propCount; i++) {
+    const kind = pick(rng, kinds)
+    const colour = pick(rng, SHIRT)
+    const prop = {
+      x: range(rng, 0.05, 0.95),
+      y: range(rng, wallBottom + 0.62, 0.99),
+      s: range(rng, 0.03, 0.055),
+      kind,
+      colour,
+    }
+    props.push(prop)
+    anchors.push({ x: prop.x + prop.s * 0.5, y: prop.y - prop.s * 0.2, on: colour })
+  }
+
+  // Balloons drifting above the crowd, tied to nothing in particular.
+  for (let i = 0; i < 3; i++) {
+    const colour = pick(rng, SHIRT)
+    props.push({
+      x: range(rng, 0.1, 0.9),
+      y: range(rng, wallBottom + 0.05, wallBottom + 0.3),
+      s: range(rng, 0.035, 0.05),
+      kind: 'balloon',
+      colour,
+    })
+  }
+
+  // Crumbs and dropped tokens: the false positives.
+  const grit = Math.round(range(rng, 26, 38) * clutter)
+  for (let i = 0; i < grit; i++) {
+    decoys.push({
+      x: range(rng, 0.02, 0.98),
+      y: range(rng, wallBottom + 0.05, 0.99),
+      r: range(rng, 0.004, 0.008),
+      kind: rng() < 0.4 ? 'screw' : 'speck',
+    })
+  }
+
+  void aspect
+  return { kind: 'arcade', camoTone: 0.6, decoys, anchors, machines, people, props, signs }
+}
 
 // ---------------------------------------------------------------- cabinets
 
@@ -453,7 +665,7 @@ function buildCarpetScene(rng: Rng, clutter: number, aspect: number): Scene {
  * runs sparse-and-regular to dense-and-patterned, which stacks with the size
  * and camouflage ramp in `roundConfig`.
  */
-export const SCENE_ORDER: readonly SceneKind[] = ['cabinets', 'board', 'loom', 'tokens', 'carpet']
+export const SCENE_ORDER: readonly SceneKind[] = ['arcade', 'board', 'loom', 'tokens', 'carpet']
 
 export function buildScene(
   kind: SceneKind,
@@ -461,6 +673,7 @@ export function buildScene(
   clutter: number,
   aspect: number,
 ): Scene {
+  if (kind === 'arcade') return buildArcadeScene(rng, clutter, aspect)
   if (kind === 'cabinets') return buildCabinetScene(rng, clutter, aspect)
   if (kind === 'board') return buildBoardScene(rng, clutter, aspect)
   if (kind === 'loom') return buildLoomScene(rng, clutter)

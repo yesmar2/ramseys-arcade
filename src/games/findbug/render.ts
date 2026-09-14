@@ -3,6 +3,8 @@ import { isFlatTheme } from '../../lib/theme'
 import { drawBug } from './bugSprite'
 import { catchRadius, fieldRect, type GameState, type RoundState } from './game'
 import {
+  ARCADE_FLOOR,
+  ARCADE_WALL,
   boardRowY,
   BOARD_GROUND,
   cableY,
@@ -11,8 +13,12 @@ import {
   type Block,
   type Cabinet,
   type Cable,
+  type Machine,
   type Motif,
+  type Person,
+  type Prop,
   type Scene,
+  type Sign,
   type Tie,
   type Token,
 } from './scenes'
@@ -35,6 +41,7 @@ function edge(ctx: CanvasRenderingContext2D, colour: string, width: number) {
 }
 
 function groundFor(scene: Scene): string {
+  if (scene.kind === 'arcade') return ARCADE_FLOOR
   if (scene.kind === 'tokens') return COUNTER_FELT
   if (scene.kind === 'carpet') return CARPET_GROUND
   if (scene.kind === 'board') return BOARD_GROUND
@@ -45,6 +52,423 @@ function groundFor(scene: Scene): string {
 function drawBackground(ctx: CanvasRenderingContext2D, scene: Scene, w: number, h: number) {
   ctx.fillStyle = groundFor(scene)
   ctx.fillRect(0, 0, w, h)
+}
+
+// ----------------------------------------------------------- arcade floor
+
+/** Back wall, neon signage, and the carpet running away from you. */
+function drawArcadeRoom(ctx: CanvasRenderingContext2D, signs: Sign[], w: number, h: number) {
+  const wallBottom = 0.2 * h
+
+  ctx.fillStyle = ARCADE_WALL
+  ctx.fillRect(0, 0, w, wallBottom)
+
+  // Carpet. The motifs bunch up and shrink toward the wall, which is all the
+  // perspective a flat scene like this needs.
+  ctx.fillStyle = ARCADE_FLOOR
+  ctx.fillRect(0, wallBottom, w, h - wallBottom)
+  ctx.save()
+  ctx.beginPath()
+  ctx.rect(0, wallBottom, w, h - wallBottom)
+  ctx.clip()
+  const carpet = ['#e0574f', '#3f8fd8', '#e8b13c', '#4cb377']
+  for (let i = 1; i <= 110; i++) {
+    const fx = (Math.sin(i * 12.9898) * 43758.5453) % 1
+    const fy = (Math.sin(i * 78.233) * 12345.6789) % 1
+    const ax = Math.abs(fx)
+    const ay = Math.abs(fy)
+    const y = wallBottom + (h - wallBottom) * (ay * ay)
+    const size = w * 0.013 * (0.3 + ay)
+    ctx.globalAlpha = 0.16 + ay * 0.2
+    ctx.fillStyle = carpet[i % carpet.length]
+    ctx.beginPath()
+    if (i % 3 === 0) {
+      ctx.arc(ax * w, y, size, 0, Math.PI * 2)
+    } else {
+      ctx.moveTo(ax * w, y - size)
+      ctx.lineTo(ax * w + size, y + size)
+      ctx.lineTo(ax * w - size, y + size)
+      ctx.closePath()
+    }
+    ctx.fill()
+  }
+  ctx.restore()
+
+  // Skirting, so wall and floor do not simply abut.
+  ctx.fillStyle = '#15102a'
+  ctx.fillRect(0, wallBottom - h * 0.012, w, h * 0.016)
+
+  for (const sign of signs) {
+    const x = sign.x * w
+    const y = sign.y * h
+    const sw = sign.w * w
+    const sh = sign.h * h
+    ctx.strokeStyle = sign.colour
+    ctx.lineWidth = Math.max(1.5, sw * 0.06)
+    ctx.lineJoin = 'round'
+    ctx.globalAlpha = 0.9
+    ctx.beginPath()
+    if (sign.kind === 0) {
+      ctx.rect(x, y, sw, sh)
+      ctx.moveTo(x + sw * 0.2, y + sh * 0.5)
+      ctx.lineTo(x + sw * 0.8, y + sh * 0.5)
+    } else if (sign.kind === 1) {
+      ctx.arc(x + sw / 2, y + sh / 2, Math.min(sw, sh) * 0.5, 0, Math.PI * 2)
+    } else {
+      ctx.moveTo(x, y + sh)
+      ctx.lineTo(x + sw * 0.3, y)
+      ctx.lineTo(x + sw * 0.6, y + sh)
+      ctx.lineTo(x + sw, y)
+    }
+    ctx.stroke()
+    ctx.globalAlpha = 1
+  }
+}
+
+function drawMachine(ctx: CanvasRenderingContext2D, m: Machine, w: number, h: number) {
+  const x = m.x * w
+  const bottom = m.y * h
+  const mw = m.w * w
+  const mh = m.h * h
+  const top = bottom - mh
+  const r = mw * 0.1
+
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.3)'
+  ctx.beginPath()
+  ctx.ellipse(x + mw / 2, bottom + mh * 0.03, mw * 0.55, mh * 0.05, 0, 0, Math.PI * 2)
+  ctx.fill()
+
+  // Body, with a darker side panel for a little form.
+  ctx.fillStyle = m.cab
+  ctx.beginPath()
+  ctx.roundRect(x, top, mw, mh, r)
+  ctx.fill()
+  ctx.fillStyle = mixColor(m.cab, '#000000', 0.35)
+  ctx.beginPath()
+  ctx.roundRect(x + mw * 0.82, top, mw * 0.18, mh, r)
+  ctx.fill()
+
+  ctx.fillStyle = m.accent
+  ctx.beginPath()
+  ctx.roundRect(x + mw * 0.08, top + mh * 0.03, mw * 0.72, mh * 0.12, r * 0.5)
+  ctx.fill()
+
+  // Screen, with a scrap of a game on it.
+  const sx = x + mw * 0.11
+  const sy = top + mh * 0.2
+  const sw = mw * 0.66
+  const sh = mh * 0.34
+  ctx.fillStyle = '#06080f'
+  ctx.beginPath()
+  ctx.roundRect(sx, sy, sw, sh, r * 0.4)
+  ctx.fill()
+
+  ctx.save()
+  ctx.beginPath()
+  ctx.roundRect(sx, sy, sw, sh, r * 0.4)
+  ctx.clip()
+  ctx.fillStyle = m.accent
+  if (m.screen === 0) {
+    for (let i = 0; i < 6; i++) {
+      ctx.fillRect(sx + sw * (0.1 + i * 0.14), sy + sh * 0.2, sw * 0.08, sh * 0.12)
+    }
+    ctx.fillRect(sx + sw * 0.4, sy + sh * 0.7, sw * 0.2, sh * 0.1)
+  } else if (m.screen === 1) {
+    ctx.beginPath()
+    ctx.arc(sx + sw * 0.5, sy + sh * 0.5, sh * 0.28, 0.4, Math.PI * 2 - 0.4)
+    ctx.lineTo(sx + sw * 0.5, sy + sh * 0.5)
+    ctx.fill()
+  } else if (m.screen === 2) {
+    for (let i = 0; i < 4; i++) {
+      ctx.fillRect(sx + sw * (0.12 + i * 0.22), sy + sh * (0.62 - i * 0.11), sw * 0.12, sh * 0.32)
+    }
+  } else {
+    ctx.fillRect(sx + sw * 0.15, sy + sh * 0.72, sw * 0.7, sh * 0.08)
+    ctx.beginPath()
+    ctx.arc(sx + sw * 0.5, sy + sh * 0.35, sh * 0.12, 0, Math.PI * 2)
+    ctx.fill()
+  }
+  ctx.restore()
+
+  // Control deck, joystick, coin slot.
+  ctx.fillStyle = mixColor(m.cab, '#000000', 0.25)
+  ctx.beginPath()
+  ctx.roundRect(x + mw * 0.05, top + mh * 0.6, mw * 0.78, mh * 0.14, r * 0.35)
+  ctx.fill()
+  ctx.strokeStyle = '#d9d9e2'
+  ctx.lineWidth = Math.max(1, mw * 0.03)
+  ctx.beginPath()
+  ctx.moveTo(x + mw * 0.28, top + mh * 0.66)
+  ctx.lineTo(x + mw * 0.28, top + mh * 0.6)
+  ctx.stroke()
+  ctx.fillStyle = '#e0574f'
+  ctx.beginPath()
+  ctx.arc(x + mw * 0.28, top + mh * 0.585, mw * 0.045, 0, Math.PI * 2)
+  ctx.fill()
+  ctx.fillStyle = '#0d0f18'
+  ctx.fillRect(x + mw * 0.42, top + mh * 0.8, mw * 0.16, mh * 0.03)
+}
+
+/** One person. Simple shapes, but posed, so the crowd is not a row of clones. */
+function drawPerson(ctx: CanvasRenderingContext2D, pr: Person, w: number, h: number) {
+  const ph = pr.h * h
+  const bodyW = ph * 0.3
+  const headR = ph * 0.14
+  const dir = pr.flip ? -1 : 1
+
+  ctx.save()
+  ctx.translate(pr.x * w, pr.y * h)
+
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.28)'
+  ctx.beginPath()
+  ctx.ellipse(0, 0, bodyW * 0.7, ph * 0.035, 0, 0, Math.PI * 2)
+  ctx.fill()
+
+  const hipY = -ph * 0.42
+  const shoulderY = -ph * 0.76
+  const headY = -ph * 0.86
+
+  ctx.lineCap = 'round'
+  ctx.strokeStyle = pr.legs
+  ctx.lineWidth = ph * 0.11
+  const stride = pr.pose === 'walk' ? ph * 0.1 : ph * 0.045
+  ctx.beginPath()
+  ctx.moveTo(-stride, -ph * 0.02)
+  ctx.lineTo(0, hipY)
+  ctx.moveTo(stride, -ph * 0.02)
+  ctx.lineTo(0, hipY)
+  ctx.stroke()
+
+  ctx.fillStyle = pr.shirt
+  ctx.beginPath()
+  ctx.roundRect(-bodyW / 2, shoulderY, bodyW, hipY - shoulderY + ph * 0.04, bodyW * 0.34)
+  ctx.fill()
+
+  ctx.strokeStyle = pr.shirt
+  ctx.lineWidth = ph * 0.085
+  ctx.beginPath()
+  if (pr.pose === 'cheer') {
+    ctx.moveTo(-bodyW * 0.4, shoulderY + ph * 0.05)
+    ctx.lineTo(-bodyW * 0.85, shoulderY - ph * 0.17)
+    ctx.moveTo(bodyW * 0.4, shoulderY + ph * 0.05)
+    ctx.lineTo(bodyW * 0.85, shoulderY - ph * 0.17)
+  } else if (pr.pose === 'play') {
+    // Both hands forward onto the control deck.
+    ctx.moveTo(-bodyW * 0.4, shoulderY + ph * 0.06)
+    ctx.lineTo(dir * bodyW * 0.75, shoulderY + ph * 0.2)
+    ctx.moveTo(bodyW * 0.4, shoulderY + ph * 0.06)
+    ctx.lineTo(dir * bodyW * 0.95, shoulderY + ph * 0.14)
+  } else if (pr.pose === 'walk') {
+    ctx.moveTo(-bodyW * 0.4, shoulderY + ph * 0.06)
+    ctx.lineTo(-bodyW * 0.7, hipY + ph * 0.02)
+    ctx.moveTo(bodyW * 0.4, shoulderY + ph * 0.06)
+    ctx.lineTo(bodyW * 0.7, hipY - ph * 0.04)
+  } else {
+    ctx.moveTo(-bodyW * 0.4, shoulderY + ph * 0.06)
+    ctx.lineTo(-bodyW * 0.62, hipY)
+    ctx.moveTo(bodyW * 0.4, shoulderY + ph * 0.06)
+    ctx.lineTo(bodyW * 0.62, hipY)
+  }
+  ctx.stroke()
+
+  ctx.fillStyle = pr.skin
+  const hands: [number, number][] =
+    pr.pose === 'cheer'
+      ? [
+          [-bodyW * 0.85, shoulderY - ph * 0.17],
+          [bodyW * 0.85, shoulderY - ph * 0.17],
+        ]
+      : pr.pose === 'play'
+        ? [
+            [dir * bodyW * 0.75, shoulderY + ph * 0.2],
+            [dir * bodyW * 0.95, shoulderY + ph * 0.14],
+          ]
+        : [
+            [-bodyW * 0.64, hipY],
+            [bodyW * 0.64, hipY],
+          ]
+  for (const hand of hands) {
+    ctx.beginPath()
+    ctx.arc(hand[0], hand[1], ph * 0.05, 0, Math.PI * 2)
+    ctx.fill()
+  }
+
+  ctx.fillStyle = pr.skin
+  ctx.fillRect(-ph * 0.035, headY + headR * 0.6, ph * 0.07, ph * 0.06)
+  ctx.beginPath()
+  ctx.arc(0, headY, headR, 0, Math.PI * 2)
+  ctx.fill()
+
+  // Hair, four cuts.
+  ctx.fillStyle = pr.hair
+  ctx.beginPath()
+  if (pr.hairStyle === 0) {
+    ctx.arc(0, headY, headR * 1.04, Math.PI, Math.PI * 2)
+    ctx.fill()
+  } else if (pr.hairStyle === 1) {
+    ctx.arc(0, headY - headR * 0.1, headR * 1.1, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.fillStyle = pr.skin
+    ctx.beginPath()
+    ctx.arc(0, headY + headR * 0.24, headR * 0.86, 0, Math.PI * 2)
+    ctx.fill()
+  } else if (pr.hairStyle === 2) {
+    ctx.arc(0, headY, headR * 1.02, Math.PI * 1.05, Math.PI * 2.1)
+    ctx.fill()
+    ctx.beginPath()
+    ctx.arc(dir * headR * 0.9, headY + headR * 0.1, headR * 0.42, 0, Math.PI * 2)
+    ctx.fill()
+  } else {
+    ctx.arc(0, headY, headR * 1.03, Math.PI, Math.PI * 2)
+    ctx.fill()
+    ctx.beginPath()
+    ctx.arc(0, headY - headR * 0.95, headR * 0.34, 0, Math.PI * 2)
+    ctx.fill()
+  }
+
+  ctx.fillStyle = '#181422'
+  for (const ex of [-0.34, 0.34]) {
+    ctx.beginPath()
+    ctx.arc(headR * ex + dir * headR * 0.1, headY + headR * 0.12, headR * 0.1, 0, Math.PI * 2)
+    ctx.fill()
+  }
+
+  ctx.restore()
+}
+
+function drawProp(ctx: CanvasRenderingContext2D, pr: Prop, w: number, h: number) {
+  const s = pr.s * w
+
+  ctx.save()
+  ctx.translate(pr.x * w, pr.y * h)
+  ctx.fillStyle = pr.colour
+  ctx.strokeStyle = pr.colour
+  ctx.lineWidth = Math.max(1, s * 0.14)
+  ctx.lineCap = 'round'
+  ctx.lineJoin = 'round'
+
+  if (pr.kind === 'cup') {
+    ctx.beginPath()
+    ctx.moveTo(-s * 0.3, -s * 0.8)
+    ctx.lineTo(s * 0.3, -s * 0.8)
+    ctx.lineTo(s * 0.2, 0)
+    ctx.lineTo(-s * 0.2, 0)
+    ctx.closePath()
+    ctx.fill()
+    ctx.fillStyle = '#e8e8ee'
+    ctx.fillRect(-s * 0.34, -s * 0.92, s * 0.68, s * 0.14)
+    ctx.fillRect(-s * 0.06, -s * 1.25, s * 0.12, s * 0.35)
+  } else if (pr.kind === 'popcorn') {
+    ctx.fillStyle = '#e0574f'
+    ctx.beginPath()
+    ctx.moveTo(-s * 0.34, -s * 0.75)
+    ctx.lineTo(s * 0.34, -s * 0.75)
+    ctx.lineTo(s * 0.24, 0)
+    ctx.lineTo(-s * 0.24, 0)
+    ctx.closePath()
+    ctx.fill()
+    ctx.fillStyle = '#f2e0b0'
+    const kernels: [number, number][] = [
+      [-0.2, -0.86],
+      [0.05, -0.95],
+      [0.26, -0.82],
+    ]
+    for (const k of kernels) {
+      ctx.beginPath()
+      ctx.arc(k[0] * s, k[1] * s, s * 0.16, 0, Math.PI * 2)
+      ctx.fill()
+    }
+  } else if (pr.kind === 'token') {
+    ctx.fillStyle = '#d9a441'
+    ctx.beginPath()
+    ctx.ellipse(0, -s * 0.1, s * 0.3, s * 0.18, 0, 0, Math.PI * 2)
+    ctx.fill()
+  } else if (pr.kind === 'balloon') {
+    ctx.strokeStyle = '#c9c2e0'
+    ctx.lineWidth = Math.max(1, s * 0.07)
+    ctx.beginPath()
+    ctx.moveTo(0, s * 1.6)
+    ctx.quadraticCurveTo(s * 0.25, s * 0.8, 0, s * 0.45)
+    ctx.stroke()
+    ctx.fillStyle = pr.colour
+    ctx.beginPath()
+    ctx.ellipse(0, 0, s * 0.44, s * 0.54, 0, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.4)'
+    ctx.beginPath()
+    ctx.ellipse(-s * 0.15, -s * 0.18, s * 0.11, s * 0.16, -0.4, 0, Math.PI * 2)
+    ctx.fill()
+  } else if (pr.kind === 'plush') {
+    ctx.beginPath()
+    ctx.arc(0, -s * 0.35, s * 0.36, 0, Math.PI * 2)
+    ctx.fill()
+    for (const ex of [-0.32, 0.32]) {
+      ctx.beginPath()
+      ctx.arc(ex * s, -s * 0.68, s * 0.16, 0, Math.PI * 2)
+      ctx.fill()
+    }
+    ctx.fillStyle = '#181422'
+    for (const ex of [-0.14, 0.14]) {
+      ctx.beginPath()
+      ctx.arc(ex * s, -s * 0.4, s * 0.06, 0, Math.PI * 2)
+      ctx.fill()
+    }
+  } else if (pr.kind === 'cone') {
+    ctx.fillStyle = '#f07a3f'
+    ctx.beginPath()
+    ctx.moveTo(0, -s)
+    ctx.lineTo(s * 0.34, 0)
+    ctx.lineTo(-s * 0.34, 0)
+    ctx.closePath()
+    ctx.fill()
+    ctx.fillStyle = '#f2e8e0'
+    ctx.fillRect(-s * 0.24, -s * 0.55, s * 0.48, s * 0.14)
+  } else if (pr.kind === 'skate') {
+    ctx.beginPath()
+    ctx.roundRect(-s * 0.5, -s * 0.34, s, s * 0.16, s * 0.08)
+    ctx.fill()
+    ctx.fillStyle = '#d9d9e2'
+    for (const wx of [-0.3, 0.3]) {
+      ctx.beginPath()
+      ctx.arc(wx * s, -s * 0.1, s * 0.12, 0, Math.PI * 2)
+      ctx.fill()
+    }
+  } else if (pr.kind === 'cat') {
+    ctx.fillStyle = '#4a4450'
+    ctx.beginPath()
+    ctx.ellipse(0, -s * 0.26, s * 0.5, s * 0.26, 0, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.beginPath()
+    ctx.arc(-s * 0.45, -s * 0.48, s * 0.22, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.beginPath()
+    ctx.moveTo(-s * 0.58, -s * 0.62)
+    ctx.lineTo(-s * 0.52, -s * 0.86)
+    ctx.lineTo(-s * 0.4, -s * 0.64)
+    ctx.closePath()
+    ctx.fill()
+    ctx.strokeStyle = '#4a4450'
+    ctx.lineWidth = Math.max(1, s * 0.1)
+    ctx.beginPath()
+    ctx.moveTo(s * 0.46, -s * 0.3)
+    ctx.quadraticCurveTo(s * 0.8, -s * 0.5, s * 0.66, -s * 0.78)
+    ctx.stroke()
+  } else if (pr.kind === 'bag') {
+    ctx.beginPath()
+    ctx.roundRect(-s * 0.32, -s * 0.7, s * 0.64, s * 0.7, s * 0.06)
+    ctx.fill()
+    ctx.strokeStyle = mixColor(pr.colour, '#000000', 0.4)
+    ctx.lineWidth = Math.max(1, s * 0.08)
+    ctx.beginPath()
+    ctx.arc(0, -s * 0.7, s * 0.2, Math.PI, Math.PI * 2)
+    ctx.stroke()
+  } else {
+    ctx.beginPath()
+    ctx.arc(0, 0, s * 0.12, 0, Math.PI * 2)
+    ctx.fill()
+  }
+
+  ctx.restore()
 }
 
 // ---------------------------------------------------------------- cabinets
@@ -313,6 +737,27 @@ function drawMotif(ctx: CanvasRenderingContext2D, m: Motif, w: number, h: number
 // ------------------------------------------------------------------ shared
 
 function drawScene(ctx: CanvasRenderingContext2D, scene: Scene, w: number, h: number) {
+  if (scene.kind === 'arcade') {
+    drawArcadeRoom(ctx, scene.signs, w, h)
+    // Back to front, so somebody stands behind the machine they are playing and
+    // the litter on the carpet sits in front of everything.
+    const machines = [...scene.machines].sort((a, b) => a.y - b.y)
+    const people = [...scene.people].sort((a, b) => a.y - b.y)
+    let next = 0
+    for (const machine of machines) {
+      while (next < people.length && people[next].y <= machine.y) {
+        drawPerson(ctx, people[next], w, h)
+        next += 1
+      }
+      drawMachine(ctx, machine, w, h)
+    }
+    while (next < people.length) {
+      drawPerson(ctx, people[next], w, h)
+      next += 1
+    }
+    for (const prop of scene.props) drawProp(ctx, prop, w, h)
+    return
+  }
   if (scene.kind === 'cabinets') {
     for (const cab of scene.cabinets) drawCabinet(ctx, cab, w, h)
     return

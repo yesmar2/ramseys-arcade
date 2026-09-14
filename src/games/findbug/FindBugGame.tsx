@@ -42,6 +42,7 @@ import { renderGame } from './render'
 import { findbugBoardScore, formatFindbugMs } from './score'
 
 const SCENE_LABEL: Record<Snapshot['sceneKind'], string> = {
+  arcade: 'Arcade floor',
   cabinets: 'Cabinet row',
   board: 'Leaderboard',
   loom: 'Cable loom',
