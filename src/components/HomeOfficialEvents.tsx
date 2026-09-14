@@ -11,9 +11,10 @@ import { GameThumbArt } from './GameThumbArt'
 /**
  * The daily and weekly events, beside the hero.
  *
- * Each carries its game's artwork rather than a coloured dot: on a phone two
- * bare text lines sat between the hero art and the grid as the only wordmark
- * on a page built from art panels, which read as a hole rather than a list.
+ * Each carries its game's artwork rather than a coloured dot, and on a phone
+ * becomes a full-width row with a way in: as two bare text lines reaching a
+ * third of the way across, this sat between the hero art and the grid looking
+ * like a hole in the page rather than something you could act on.
  */
 export function HomeOfficialEvents() {
   const cleaned = normalizePlayerName(usePlayerName())
@@ -46,6 +47,9 @@ export function HomeOfficialEvents() {
                 unlimitedDuration={Boolean(t.rules.unlimitedDuration)}
                 className="home-evs__clock"
               />
+            </span>
+            <span className="home-evs__go">
+              {joinedIds.has(t.id) ? 'Open' : 'Join'}
             </span>
           </a>
         )

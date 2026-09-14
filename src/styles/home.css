@@ -239,6 +239,10 @@
   font-size: 0.73rem;
 }
 
+.home-evs__go {
+  display: none;
+}
+
 .home-evs__all {
   margin-top: 0.15rem;
   font-size: 0.74rem;
@@ -605,6 +609,27 @@ html[data-theme="google"] .home-you {
 
   .home-evs__clock {
     font-size: 0.74rem;
+  }
+
+  /* A filled row with a way in, spanning the width it used to leave empty. */
+  .home-evs__row {
+    padding: 0.5rem 0.6rem;
+    border-radius: 0.9rem;
+    background: color-mix(in srgb, var(--ev-accent, var(--accent)) 12%, var(--surface));
+  }
+
+  .home-evs__go {
+    display: inline-flex;
+    align-items: center;
+    flex: none;
+    margin-left: auto;
+    border-radius: 999px;
+    padding: 0.36rem 0.95rem;
+    background: var(--ev-accent, var(--accent));
+    color: #fff;
+    font-size: 0.78rem;
+    font-weight: 750;
+    white-space: nowrap;
   }
 
   .home-evs__all {
