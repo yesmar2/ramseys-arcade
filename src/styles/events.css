@@ -1387,3 +1387,20 @@ html[data-theme="google"] .ev-tile:focus-visible {
 .event-bracket__slot--carry .event-bracket__wire--v {
   display: none;
 }
+
+/*
+ * Grand-final seats say how each player got there. The winners-side finalist
+ * and the losers-side survivor are often the same two who met in the winners
+ * final, and without this the rematch reads as the same match drawn twice.
+ */
+.event-bracket__route {
+  flex: none;
+  margin-left: auto;
+  padding-right: 0.3rem;
+  font-size: 0.58rem;
+  font-weight: 750;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--muted) 85%, transparent);
+  white-space: nowrap;
+}

@@ -74,10 +74,13 @@ function MatchCard({
   match,
   displayName,
   isYours,
+  showRoute = false,
 }: {
   match: PublicBracketMatch
   displayName: string
   isYours: boolean
+  /** Tag each seat with the half it came from — used on the grand final. */
+  showRoute?: boolean
 }) {
   const you = normalizePlayerName(displayName)
   return (
@@ -92,6 +95,8 @@ function MatchCard({
         const isTbd = !side
         const vacant = isBye || isTbd
         const feedLabel = side ? null : slotFeedLabel(match.from?.[idx])
+        const from = showRoute && side ? match.from?.[idx]?.bracket : null
+        const route = from === 'wb' || from === 'lb' ? from : null
         const isYouSide = Boolean(side && you && normalizePlayerName(side.name) === you)
         const won = Boolean(side && !isBye && match.winnerId === side.id)
         const lost = Boolean(side && !isBye && match.winnerId && match.winnerId !== side.id)
@@ -111,6 +116,11 @@ function MatchCard({
             >
               {isBye ? 'Bye' : (side?.name ?? feedLabel ?? 'TBD')}
             </span>
+            {route ? (
+              <span className="event-bracket__route" title={`Came through the ${route === 'lb' ? 'losers' : 'winners'} bracket`}>
+                {route === 'lb' ? 'via losers' : 'unbeaten'}
+              </span>
+            ) : null}
             {vacant ? null : (
               <span className="event-bracket__score">
                 {side?.score != null ? side.score.toLocaleString() : '—'}
@@ -204,6 +214,7 @@ function BracketTree({
                 match={match}
                 displayName={displayName}
                 isYours={currentYouId === match.id}
+                showRoute={matchSide(match) === 'gf'}
               />
               {match.round !== maxRound ? (
                 <span className="event-bracket__wires" aria-hidden="true">
@@ -262,7 +273,7 @@ export function EventBracket({
   const crownLabel = (round: number) => {
     if (round <= wbRounds) return winnersRoundLabel(round, wbRounds)
     if (round === wbRounds + 1) return 'Grand final'
-    return resetSeated ? 'Bracket reset' : 'Reset (if needed)'
+    return resetSeated ? 'Decider' : 'Decider (if needed)'
   }
 
   const treeMatches = isDouble ? winners : matches
@@ -501,7 +512,8 @@ export function EventBracket({
             <h3 className="ev-bracket-half__title">Winners bracket</h3>
             <p className="ev-bracket-half__note">
               Lose once and you drop to the losers bracket. The last column is the grand
-              final, where the losers-side survivor comes back in.
+              final, where the losers-side survivor climbs back in &mdash; often for a
+              rematch of the winners final.
             </p>
             <BracketTree
               matches={winnersRun}
