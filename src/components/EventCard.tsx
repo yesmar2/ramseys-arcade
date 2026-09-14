@@ -1,27 +1,21 @@
 import type { CSSProperties, ReactNode } from 'react'
 import { getGame } from '../data/games'
+import { tournamentHref } from '../hooks/useHashRoute'
+import { resolveGameAccent } from '../lib/theme'
 import {
-  attemptsPerGameMax,
   cadenceLabel,
-  eventDurationLabel,
   eventKind,
-  formatRulesSummary,
+  formatEventCountdown,
   isUnlimitedDuration,
   joinedRosterLabel,
-  playerCountLabel,
-  type TournamentStatus,
+  seatsLeft,
+  type PodiumEntry,
+  type TournamentFormat,
   type TournamentSummary,
 } from '../lib/tournaments'
 import { EventCountdown } from './EventCountdown'
-import { medalKind, PodiumMedal } from './PodiumMedal'
-import { resolveGameAccent } from '../lib/theme'
 import { GameThumbArt } from './GameThumbArt'
-
-function statusLabel(status: TournamentStatus) {
-  if (status === 'active') return 'Live'
-  if (status === 'upcoming') return 'Soon'
-  return 'Ended'
-}
+import { medalKind, PodiumMedal } from './PodiumMedal'
 
 export function eventAccent(games: string[]) {
   const slug = games[0] ?? ''
@@ -29,306 +23,310 @@ export function eventAccent(games: string[]) {
   return resolveGameAccent(slug, fallback)
 }
 
-type ChipSource = Pick<
-  TournamentSummary,
-  'status' | 'official' | 'cadence' | 'format' | 'formatLabel' | 'private' | 'kind'
->
-
-function EventMetaChips({ t, joined = false }: { t: ChipSource; joined?: boolean }) {
-  const cadence = cadenceLabel(t.cadence)
-  return (
-    <>
-      <span className={`tour-pill tour-pill--${t.status}`}>{statusLabel(t.status)}</span>
-      {cadence ? <span className="tour-pill tour-pill--cadence">{cadence}</span> : null}
-      {t.private ? <span className="tour-pill tour-pill--private">Invite only</span> : null}
-      {eventKind(t) === 'bracket' ? (
-        <span className="tour-pill tour-pill--format">Bracket</span>
-      ) : null}
-      {!cadence && t.official && !t.private ? (
-        <span className="tour-pill tour-pill--official">Official</span>
-      ) : null}
-      {!cadence && !t.official && !t.private && eventKind(t) !== 'bracket' ? (
-        <span className="tour-pill tour-pill--format">{t.formatLabel}</span>
-      ) : null}
-      {joined ? <span className="tour-pill tour-pill--joined">Joined</span> : null}
-    </>
-  )
-}
-
-export function EventStatusChips({
-  t,
-  joined = false,
-  className = 'event-chips',
-}: {
-  t: ChipSource
-  /** Show a Joined chip when the current player is in this event. */
-  joined?: boolean
-  className?: string
-}) {
-  return (
-    <div className={className}>
-      <EventMetaChips t={t} joined={joined} />
-    </div>
-  )
-}
-
-type SummarySource = Pick<
-  TournamentSummary,
-  | 'status'
-  | 'official'
-  | 'cadence'
-  | 'format'
-  | 'formatLabel'
-  | 'private'
-  | 'kind'
-  | 'endsAt'
-  | 'startsAt'
-  | 'playerCount'
-  | 'games'
-  | 'rules'
-  | 'nextDeadlineAt'
-  | 'winner'
->
-
-function attemptsValue(t: SummarySource): string {
-  const n = attemptsPerGameMax(t)
-  if (n == null) return 'Unlimited'
-  if (eventKind(t) === 'bracket') return n === 1 ? '1 per match' : `${n} per match`
-  return n === 1 ? '1 per game' : `${n} per game`
-}
-
-type SummaryStat = {
-  key: string
-  label: string
-  value: ReactNode
-  clock?: boolean
-  live?: boolean
+export function ordinal(n: number): string {
+  if (n === 1) return '1st'
+  if (n === 2) return '2nd'
+  if (n === 3) return '3rd'
+  return `${n}th`
 }
 
 /**
- * One card of evenly divided stat cells across the top of an event page.
- * Replaces the old free-floating tiles so every value lines up on one
- * baseline and the card reads the same on phone and desktop.
+ * The day a finished event ran: "Sep 12".
+ *
+ * Taken from when it started, not when it ended — a daily closes at midnight,
+ * so its end lands on the next day's date and every daily reads a day late.
  */
-export function EventSummary({
-  t,
-  joined = false,
-  yourPlace = null,
-  matchLine = null,
-}: {
-  t: SummarySource
-  joined?: boolean
-  /** Current player's rank in the event standings, if they have one. */
-  yourPlace?: number | null
-  /** Bracket match line, e.g. "You vs BOB" or "Waiting for 2 more". */
-  matchLine?: string | null
-}) {
-  const live = t.status === 'active'
-  const upcoming = t.status === 'upcoming'
-  const isBracket = eventKind(t) === 'bracket'
-  const unlimited = isUnlimitedDuration(t.rules)
-  const fillingBracket = upcoming && isBracket
-  const roundDeadline =
-    isBracket && live && t.nextDeadlineAt != null && t.nextDeadlineAt > 0
-      ? t.nextDeadlineAt
-      : null
-  const ticking = fillingBracket
-    ? false
-    : isBracket
-      ? roundDeadline != null
-      : (live || upcoming) && !unlimited
-  const target = isBracket ? (roundDeadline ?? 0) : upcoming ? t.startsAt : t.endsAt
-  const clockLabel = fillingBracket
-    ? 'Starts'
-    : isBracket && live
-      ? roundDeadline
-        ? 'Round ends'
-        : 'Rounds'
-      : unlimited && live
-        ? 'Runs'
-        : upcoming
-          ? 'Starts in'
-          : live
-            ? 'Time left'
-            : 'Window'
-  const clockValue: ReactNode = fillingBracket ? (
-    'When full'
-  ) : ticking ? (
-    <EventCountdown endsAt={target} precise />
-  ) : isBracket && live ? (
-    'Open matches'
-  ) : unlimited && live ? (
-    'Till all done'
-  ) : (
-    eventDurationLabel(t)
-  )
-
-  const won = t.status === 'ended' ? (t.winner ?? null) : null
-  const medal = yourPlace != null ? medalKind(yourPlace) : null
-  /*
-   * A finished event leads with its result. The window it ran in is the least
-   * useful thing on the page once it is over, and the winner was previously
-   * not stated anywhere at all.
-   */
-  const stats: SummaryStat[] = won
-    ? [
-        {
-          key: 'winner',
-          label: 'Winner',
-          value: (
-            <>
-              <PodiumMedal kind="gold" size="sm" />
-              {won}
-            </>
-          ),
-        },
-      ]
-    : [{ key: 'clock', label: clockLabel, value: clockValue, clock: true, live }]
-
-  if (isBracket) {
-    stats.push({ key: 'match', label: 'Your match', value: matchLine ?? 'Not seeded' })
-  } else if (joined) {
-    stats.push({
-      key: 'place',
-      label: 'Your place',
-      value:
-        yourPlace != null ? (
-          <>
-            {medal ? <PodiumMedal kind={medal} size="sm" /> : null}
-            {`#${yourPlace}`}
-          </>
-        ) : (
-          'No score yet'
-        ),
-    })
+export function eventDay(t: Pick<TournamentSummary, 'startsAt'>): string {
+  try {
+    return new Date(t.startsAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+  } catch {
+    return ''
   }
-
-  stats.push({
-    key: 'players',
-    label: 'Players',
-    value: isBracket ? joinedRosterLabel(t) : playerCountLabel(t.playerCount),
-  })
-  stats.push({ key: 'attempts', label: 'Tries', value: attemptsValue(t) })
-
-  return (
-    <section className="ev-card ev-summary" aria-label="Event status">
-      <dl
-        className="ev-summary__stats"
-        style={{ '--ev-stat-count': stats.length } as CSSProperties}
-      >
-        {stats.map((stat) => (
-          <div
-            key={stat.key}
-            className={`ev-stat${stat.clock ? ' ev-stat--clock' : ''}${
-              stat.live && stat.clock ? ' ev-stat--live' : ''
-            }`}
-          >
-            <dt className="ev-stat__label">
-              {stat.clock && stat.live ? (
-                <span className="ev-stat__dot" aria-hidden="true" />
-              ) : null}
-              {stat.label}
-            </dt>
-            <dd className="ev-stat__value">{stat.value}</dd>
-          </div>
-        ))}
-      </dl>
-      <p className="ev-summary__rules">{formatRulesSummary(t)}</p>
-    </section>
-  )
 }
 
-export function EventThumbs({
-  games,
-  size = 'md',
-}: {
-  games: string[]
-  size?: 'sm' | 'md' | 'lg'
-}) {
-  const shown = games.slice(0, 3)
+/** Compact label for the scoring format, short enough to sit in a caption. */
+export function formatWord(format: TournamentFormat): string {
+  switch (format) {
+    case 'place-points':
+      return 'Place points'
+    case 'attempt-limited':
+      return 'Limited tries'
+    case 'single-run':
+      return 'One run'
+    case 'cumulative':
+      return 'Total score'
+    default:
+      return 'Best score'
+  }
+}
+
+export type EventPhase = 'live' | 'filling' | 'upcoming' | 'ended'
+
+type PhaseSource = Pick<TournamentSummary, 'status' | 'kind'>
+
+/** A bracket reads "upcoming" until its roster fills — call that filling. */
+export function eventPhase(t: PhaseSource): EventPhase {
+  if (t.status === 'ended') return 'ended'
+  if (t.status === 'upcoming') return eventKind(t) === 'bracket' ? 'filling' : 'upcoming'
+  return 'live'
+}
+
+const PHASE_LABEL: Record<EventPhase, string> = {
+  live: 'Live',
+  filling: 'Filling',
+  upcoming: 'Soon',
+  ended: 'Ended',
+}
+
+/* ---------- art ---------- */
+
+/**
+ * The event's artwork: its game's thumb, or a tinted cluster of up to four
+ * when there are several. Size comes from the parent via --ev-art-size.
+ */
+export function EventArt({ games, className }: { games: string[]; className?: string }) {
+  const shown = games.slice(0, 4)
+  const accent = eventAccent(games)
+  const cls = className ? ` ${className}` : ''
+
+  if (shown.length <= 1) {
+    return (
+      <span className={`ev-art ev-art--solo${cls}`} aria-hidden="true">
+        <GameThumbArt slug={shown[0] ?? ''} accent={accent} />
+      </span>
+    )
+  }
+
   return (
-    <div
-      className={`event-thumbs event-thumbs--${size}${shown.length > 1 ? ' event-thumbs--stack' : ''}`}
+    <span
+      className={`ev-art ev-art--cluster ev-art--n${shown.length}${cls}`}
       aria-hidden="true"
+      style={{ '--thumb-accent': accent } as CSSProperties}
     >
-      {shown.map((slug, i) => {
+      {shown.map((slug) => {
         const g = getGame(slug)
-        const accent = resolveGameAccent(slug, g?.accent ?? '#2eb8a0')
+        const a = resolveGameAccent(slug, g?.accent ?? accent)
         return (
-          <span
-            key={slug}
-            className="event-thumbs__item"
-            style={
-              {
-                '--thumb-accent': accent,
-                zIndex: shown.length - i,
-              } as CSSProperties
-            }
-          >
-            <GameThumbArt slug={slug} accent={accent} />
+          <span key={slug} className="ev-art__cell">
+            <GameThumbArt slug={slug} accent={a} />
           </span>
         )
       })}
-    </div>
+    </span>
   )
 }
 
-type EventCardProps = {
-  t: TournamentSummary
-  /** Slightly smaller thumbs on tight surfaces like home. */
-  compact?: boolean
-  href?: string
+/* ---------- kicker ---------- */
+
+type KickerSource = Pick<
+  TournamentSummary,
+  'status' | 'kind' | 'cadence' | 'official' | 'private' | 'format' | 'rules'
+>
+
+/**
+ * One caption line that says what kind of thing this is and where it is up
+ * to: "● Live · Daily · Best score". Replaces the old row of pills.
+ */
+export function EventKicker({
+  t,
+  joined = false,
+  className,
+}: {
+  t: KickerSource
+  joined?: boolean
+  className?: string
+}) {
+  const phase = eventPhase(t)
+  const bracket = eventKind(t) === 'bracket'
+  const bits: ReactNode[] = [
+    <span key="status" className={`ev-kicker__status ev-kicker__status--${phase}`}>
+      {phase === 'live' ? <span className="ev-live-dot" aria-hidden="true" /> : null}
+      {PHASE_LABEL[phase]}
+    </span>,
+  ]
+
+  const cadence = cadenceLabel(t.cadence)
+  if (cadence) bits.push(cadence)
+  else if (t.private) bits.push('Invite only')
+  else if (t.official) bits.push('Official')
+
+  if (bracket) bits.push(t.rules.elimination === 'double' ? 'Double-elim bracket' : 'Bracket')
+  else bits.push(formatWord(t.format))
+
+  if (joined) {
+    bits.push(
+      <span key="joined" className="ev-kicker__joined">
+        Joined
+      </span>,
+    )
+  }
+
+  return (
+    <p className={`ev-kicker${className ? ` ${className}` : ''}`}>
+      {bits.map((bit, i) => (
+        <span key={i} className="ev-kicker__bit">
+          {bit}
+        </span>
+      ))}
+    </p>
+  )
 }
 
-/** Shared list tile — Events list and the home strip. */
-export function EventCard({ t, compact = false, href }: EventCardProps) {
-  const accent = eventAccent(t.games)
-  const gameNames = t.games.map((g) => getGame(g)?.name ?? g).join(' · ')
-  const link = href ?? `#/tournaments/${t.id}`
-  const isBracket = eventKind(t) === 'bracket'
+/* ---------- list: live card ---------- */
 
-  const clock: ReactNode =
-    t.status === 'active' && isBracket ? (
-      t.nextDeadlineAt != null && t.nextDeadlineAt > 0 ? (
-        <EventCountdown endsAt={t.nextDeadlineAt} />
-      ) : (
-        eventDurationLabel(t)
+function podiumValue(row: PodiumEntry): string {
+  if (row.score != null) return row.score.toLocaleString()
+  if (row.points > 0) return `${row.points} pts`
+  return '—'
+}
+
+function cardClock(t: TournamentSummary): ReactNode {
+  const bracket = eventKind(t) === 'bracket'
+  if (t.status === 'ended') return 'Ended'
+  if (bracket) {
+    if (t.status === 'upcoming') {
+      const left = seatsLeft(t)
+      if (left != null && left > 0) return `${left} ${left === 1 ? 'seat' : 'seats'} left`
+      return 'Drawing the bracket'
+    }
+    if (t.nextDeadlineAt != null && t.nextDeadlineAt > 0) {
+      return (
+        <>
+          Round · <EventCountdown endsAt={t.nextDeadlineAt} />
+        </>
       )
-    ) : t.status === 'active' ? (
-      <EventCountdown endsAt={t.endsAt} unlimitedDuration={isUnlimitedDuration(t.rules)} />
-    ) : t.status === 'upcoming' && isBracket ? (
-      'Starts when full'
-    ) : (
-      eventDurationLabel(t)
-    )
+    }
+    return 'Matches in play'
+  }
+  if (t.status === 'upcoming') {
+    return `Starts in ${formatEventCountdown(t.startsAt).replace(/ left$/, '')}`
+  }
+  return <EventCountdown endsAt={t.endsAt} unlimitedDuration={isUnlimitedDuration(t.rules)} />
+}
+
+function emptyLine(t: TournamentSummary): string {
+  const bracket = eventKind(t) === 'bracket'
+  if (bracket && t.status === 'upcoming') {
+    const left = seatsLeft(t)
+    return left != null && left > 0 ? `Waiting for ${left} more` : 'Bracket is drawing'
+  }
+  if (bracket) return 'Matches in play'
+  if (t.playerCount > 0) return 'No scores yet'
+  return 'Be first on the board'
+}
+
+/**
+ * A running event, as a tinted card led by its artwork.
+ *
+ * The leaders sit inside the card so the week can be read without opening
+ * anything; the clock and a way in sit along the bottom.
+ */
+export function EventLiveCard({
+  t,
+  href,
+  joined = false,
+}: {
+  t: TournamentSummary
+  href?: string
+  joined?: boolean
+}) {
+  const accent = eventAccent(t.games)
+  const bracket = eventKind(t) === 'bracket'
+  const filling = bracket && t.status === 'upcoming'
+  const podium = t.podium ?? []
+  const onPodium = t.yourPlace != null && t.yourPlace <= podium.length
+  const players = bracket
+    ? `${joinedRosterLabel(t)} in`
+    : t.playerCount === 1
+      ? '1 playing'
+      : `${t.playerCount} playing`
+  const go = joined ? (filling ? 'Open' : 'Play') : bracket ? 'Join' : 'Play'
 
   return (
     <a
-      className={`ev-tile${t.status === 'ended' ? ' ev-tile--ended' : ''}`}
-      href={link}
+      className={`evc${filling ? ' evc--filling' : ''}`}
+      href={href ?? tournamentHref(t.id)}
       style={{ '--event-accent': accent } as CSSProperties}
     >
-      <EventThumbs games={t.games} size={compact ? 'md' : 'lg'} />
-      <div className="ev-tile__body">
-        <div className="ev-tile__top">
-          <h3 className="ev-tile__title">{t.title}</h3>
-          <EventStatusChips t={t} />
-        </div>
-        <p className="ev-tile__games">{gameNames}</p>
-        <div className="ev-tile__foot">
-          {t.winner ? (
-            <span className="ev-tile__winner">
-              <PodiumMedal kind="gold" size="sm" />
-              {t.winner} won
-            </span>
-          ) : (
-            <span className="ev-tile__clock">{clock}</span>
-          )}
-          <span className="ev-tile__players">
-            {isBracket ? joinedRosterLabel(t) : t.playerCount} joined
+      <EventArt games={t.games} className="evc__art" />
+      <span className="evc__body">
+        <EventKicker t={t} joined={joined} className="evc__kicker" />
+        <span className="evc__title">{t.title}</span>
+        {podium.length > 0 ? (
+          <ol className="evc__leaders">
+            {podium.slice(0, 3).map((row) => {
+              const medal = medalKind(row.place)
+              return (
+                <li key={row.name} className={`evc__leader evc__leader--${row.place}`}>
+                  <span className="evc__pos">
+                    {medal ? <PodiumMedal kind={medal} size="sm" /> : row.place}
+                  </span>
+                  <span className="evc__who">{row.name}</span>
+                  <span className="evc__val">{podiumValue(row)}</span>
+                </li>
+              )
+            })}
+          </ol>
+        ) : (
+          <span className="evc__empty">{emptyLine(t)}</span>
+        )}
+        {t.yourPlace != null && !onPodium ? (
+          <span className="evc__you">
+            You {ordinal(t.yourPlace)}
+            {t.yourPoints ? ` · ${t.yourPoints} pts` : ''}
           </span>
-        </div>
-      </div>
+        ) : null}
+      </span>
+      <span className="evc__foot">
+        <span className="evc__clock">{cardClock(t)}</span>
+        <span className="evc__players">{players}</span>
+        <span className="evc__go">{go}</span>
+      </span>
+    </a>
+  )
+}
+
+/* ---------- list: result row ---------- */
+
+/** A finished event: one quiet line, led by who won it. */
+export function EventResultRow({ t, href }: { t: TournamentSummary; href?: string }) {
+  const accent = eventAccent(t.games)
+  const podium = t.podium ?? []
+  const top = podium[0]
+  const winner = t.winner ?? top?.name ?? null
+  const value = top ? podiumValue(top) : null
+  const cadence = cadenceLabel(t.cadence)
+  const meta = [
+    eventDay(t),
+    cadence ?? (eventKind(t) === 'bracket' ? 'Bracket' : t.private ? 'Invite only' : null),
+    t.playerCount > 0 ? `${t.playerCount} played` : null,
+  ].filter(Boolean)
+
+  return (
+    <a
+      className="evr"
+      href={href ?? tournamentHref(t.id)}
+      style={{ '--event-accent': accent } as CSSProperties}
+    >
+      <EventArt games={t.games} className="evr__art" />
+      <span className="evr__main">
+        <span className="evr__title">{t.title}</span>
+        <span className="evr__meta">{meta.join(' · ')}</span>
+      </span>
+      {winner ? (
+        <span className="evr__winner">
+          <PodiumMedal kind="gold" size="sm" />
+          <span className="evr__name">{winner}</span>
+          {value && value !== '—' ? <span className="evr__val">{value}</span> : null}
+        </span>
+      ) : (
+        <span className="evr__none">Nobody played</span>
+      )}
+      {t.yourPlace != null ? (
+        <span className={`evr__you${t.yourPlace === 1 ? ' evr__you--won' : ''}`}>
+          {t.yourPlace === 1 ? 'You won' : `You ${ordinal(t.yourPlace)}`}
+        </span>
+      ) : null}
     </a>
   )
 }
