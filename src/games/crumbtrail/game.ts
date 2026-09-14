@@ -1,0 +1,997 @@
+/**
+ * Crumbtrail — Pellets with the exit removed.
+ *
+ * Same chomp, same crumbs, same chasers. The difference is that there is no
+ * board to finish: the maze is generated forever above you and the floor eats
+ * it from below, so the only way to keep playing is to keep climbing. Clearing
+ * ground stops being the goal and becomes the thing you do on the way.
+ *
+ * The board is a rolling window. `open` / `crumbs` / `power` are ordinary fixed
+ * arrays indexed [y][x] with y = 0 at the top, exactly like Pellets, and the
+ * world scrolls by shifting a fresh row in at the top and dropping the bottom
+ * one. Every actor's y drops by one at the same moment. That keeps all the
+ * grid-indexed work — the chaser distance field especially — on a small fixed
+ * array instead of an ever-growing map, and it means the movement and pathing
+ * code is Pellets' with the den taken out.
+ */
+import { getPersonalBest } from '../../lib/personalBest'
+import { sfx } from '../../lib/sound'
+import {
+  HIDDEN_TOP,
+  bufferRows,
+  makeBand,
+  makeOpeningBand,
+  pickCols,
+  type GenRow,
+  type RowKind,
+} from './maze'
+
+export type Dir = 'up' | 'down' | 'left' | 'right'
+export type Phase = 'menu' | 'playing' | 'dying' | 'gameover'
+export type GhostMode = 'chase' | 'scatter' | 'frightened' | 'eaten'
+export type GhostKind = 'blink' | 'pink' | 'inky' | 'clyde'
+export type DeathCause = 'caught' | 'swallowed'
+
+export type Cell = { x: number; y: number }
+
+export type Ghost = {
+  id: number
+  kind: GhostKind
+  x: number
+  y: number
+  dir: Dir
+  mode: GhostMode
+  /** Off-board corner this one laps toward while scattering. */
+  corner: Cell
+  bob: number
+  /** 0..1 flash after a surge hit. */
+  hit: number
+  /** Fades in over the first moments so one never appears on top of you. */
+  arrive: number
+}
+
+export type Pop = { x: number; y: number; life: number; text: string }
+export type TrailDot = { x: number; y: number; life: number }
+
+export type Snapshot = {
+  phase: Phase
+  score: number
+  best: number
+  lives: number
+  /** Rows climbed — the run's distance. */
+  depth: number
+  surge: number
+  surgeTime: number
+  crumbStreak: number
+  crumbStreakBest: number
+  /** 0..1 how close the floor is to the player, for the HUD warning. */
+  pressure: number
+  cause: DeathCause | null
+}
+
+export type GameState = {
+  phase: Phase
+  score: number
+  best: number
+  lives: number
+  cols: number
+  /** Buffer height, including the hidden strip above the view. */
+  rows: number
+  open: boolean[][]
+  crumbs: boolean[][]
+  power: boolean[][]
+  kind: RowKind[]
+  /** World row sitting in buffer row `rows - 1`. */
+  originRow: number
+  /** Next world row the generator will hand out. */
+  genRow: number
+  genQueue: GenRow[]
+  seed: number
+  /** 0..1 between row shifts — how far the world has slid down this row. */
+  scroll: number
+  /** Highest world row the player has stood on. */
+  depth: number
+  player: {
+    x: number
+    y: number
+    dir: Dir
+    pending: Dir | null
+    pendingAge: number
+  }
+  ghosts: Ghost[]
+  nextGhostId: number
+  spawnTimer: number
+  fright: number
+  frightEaten: number
+  mode: 'chase' | 'scatter'
+  modeTimer: number
+  surge: number
+  surgeTime: number
+  surgeHits: number
+  crumbStreak: number
+  crumbStreakBest: number
+  lastTile: Cell
+  trail: TrailDot[]
+  pops: Pop[]
+  deathAnim: number
+  cause: DeathCause | null
+  invuln: number
+  mouth: number
+  time: number
+}
+
+const OPPOSITE: Record<Dir, Dir> = {
+  up: 'down',
+  down: 'up',
+  left: 'right',
+  right: 'left',
+}
+
+const VEC: Record<Dir, Cell> = {
+  up: { x: 0, y: -1 },
+  down: { x: 0, y: 1 },
+  left: { x: -1, y: 0 },
+  right: { x: 1, y: 0 },
+}
+
+/** Arcade tie-break order when two routes are the same length. */
+const DIRS: Dir[] = ['up', 'left', 'down', 'right']
+
+const SCORE_CRUMB = 10
+const SCORE_POWER = 50
+const SCORE_ROW = 5
+const SCORE_GHOST = [200, 400, 800, 1600]
+const SCORE_SURGE = [150, 300, 600, 1200]
+const START_LIVES = 3
+const FRIGHT_TIME = 6.5
+
+const PLAYER_SPEED = 5.2
+const GHOST_SPEED = 3.8
+const FRIGHT_SPEED = 2.7
+const EATEN_SPEED = 9
+const SURGE_SPEED = 1.85
+
+const DEATH_TIME = 0.85
+const RESPAWN_INVULN = 1.6
+const SURGE_CRUMBS = 26
+const SURGE_TIME = 1.7
+const STREAK_STEP = 10
+const MAX_MULT = 4
+
+const LATE_TURN = 0.34
+const CENTER_EPS = 0.001
+const PENDING_TTL = 1.1
+
+/** Rows from the bottom the player is put back on after a life is lost. */
+const RESPAWN_FROM_BOTTOM = 5
+
+function loadBest() {
+  return getPersonalBest('crumbtrail')
+}
+
+function dist2(ax: number, ay: number, bx: number, by: number) {
+  return (ax - bx) ** 2 + (ay - by) ** 2
+}
+
+export function crumbtrailViewport() {
+  const w = typeof window === 'undefined' ? 900 : window.innerWidth
+  const h = typeof window === 'undefined' ? 600 : window.innerHeight
+  const cols = pickCols(w, h)
+  return { cols, rows: bufferRows(w, h, cols) }
+}
+
+export function streakMult(crumbStreak: number) {
+  return Math.min(MAX_MULT, 1 + Math.floor(crumbStreak / STREAK_STEP))
+}
+
+/** World row currently sitting in buffer row `y`. */
+export function worldRowAt(state: GameState, y: number) {
+  return state.originRow + (state.rows - 1 - y)
+}
+
+/**
+ * How fast the floor climbs, in rows per second.
+ *
+ * Tuned against bots rather than by feel, because the first guess was wrong in
+ * an instructive way: at half a row a second a bot that ignored the climb and
+ * just farmed crumbs outscored one that raced, and was swallowed once in
+ * thirty-six deaths. The floor has to be quick enough that doubling back for a
+ * crumb is a real bet. It is still a fraction of the player's 5.2 tiles a
+ * second — you cannot lose a race with it, only a negotiation.
+ */
+function scrollSpeed(depth: number) {
+  return 1.05 + Math.min(1.15, depth * 0.0035)
+}
+
+function chaserSpeedScale(depth: number) {
+  return 1 + Math.min(0.34, depth * 0.0009)
+}
+
+function frightSpeedScale(depth: number) {
+  return 1 + Math.min(0.22, depth * 0.0006)
+}
+
+function scatterTime(depth: number) {
+  return Math.max(3.5, 7 - depth * 0.008)
+}
+
+function chaseTime(depth: number) {
+  return Math.min(30, 20 + depth * 0.02)
+}
+
+/**
+ * Chasers on the board at this depth.
+ *
+ * Starts at one. Pellets can open with four because they begin penned at the
+ * far end of a board you can see all of; here they drop in ahead of you, on
+ * the only route there is, so the opening has to be thinner.
+ */
+function wantGhosts(depth: number) {
+  return Math.min(5, 1 + Math.floor(depth / 40))
+}
+
+function centerOf(v: number) {
+  return Math.floor(v) + 0.5
+}
+
+function atCenter(v: number) {
+  return Math.abs(v - centerOf(v)) < 0.02
+}
+
+function distToNextCenter(p: number, delta: number) {
+  if (delta > 0) return Math.max(CENTER_EPS, Math.floor(p + 0.5) + 0.5 - p)
+  if (delta < 0) return Math.max(CENTER_EPS, p - (Math.ceil(p - 0.5) - 0.5))
+  return 1
+}
+
+function tileOpen(state: GameState, x: number, y: number) {
+  if (y < 0 || y >= state.rows || x < 0 || x >= state.cols) return false
+  return state.open[y][x]
+}
+
+/**
+ * Neighbour tile in `dir`. Sides wrap the way Pellets' tunnels do; top and
+ * bottom never do — the strip has real ends, and the bottom one is fatal.
+ */
+function stepTile(state: GameState, x: number, y: number, dir: Dir) {
+  const v = VEC[dir]
+  let nx = x + v.x
+  const ny = y + v.y
+  let wrapped = false
+  if (ny < 0 || ny >= state.rows) return null
+  if (nx < 0 || nx >= state.cols) {
+    nx = (nx + state.cols) % state.cols
+    wrapped = true
+  }
+  if (!tileOpen(state, nx, ny)) return null
+  return { x: nx, y: ny, wrapped }
+}
+
+/** Breadth-first distance field from `target`; chasers walk downhill on it. */
+function distanceField(state: GameState, target: Cell) {
+  const { cols, rows } = state
+  const field = new Int32Array(cols * rows).fill(-1)
+  const start = nearestOpen(state, target)
+  if (!start) return field
+  const queue = new Int32Array(cols * rows)
+  let head = 0
+  let tail = 0
+  const startIdx = start.y * cols + start.x
+  field[startIdx] = 0
+  queue[tail++] = startIdx
+
+  while (head < tail) {
+    const idx = queue[head++]
+    const x = idx % cols
+    const y = (idx - x) / cols
+    const d = field[idx]
+    for (const dir of DIRS) {
+      const next = stepTile(state, x, y, dir)
+      if (!next) continue
+      const nIdx = next.y * cols + next.x
+      if (field[nIdx] !== -1) continue
+      field[nIdx] = d + 1
+      queue[tail++] = nIdx
+    }
+  }
+  return field
+}
+
+function nearestOpen(state: GameState, cell: Cell): Cell | null {
+  const cx = Math.max(0, Math.min(state.cols - 1, Math.round(cell.x)))
+  const cy = Math.max(0, Math.min(state.rows - 1, Math.round(cell.y)))
+  if (tileOpen(state, cx, cy)) return { x: cx, y: cy }
+  const span = Math.max(state.cols, state.rows)
+  for (let r = 1; r < span; r++) {
+    for (let dy = -r; dy <= r; dy++) {
+      for (let dx = -r; dx <= r; dx++) {
+        if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue
+        const x = cx + dx
+        const y = cy + dy
+        if (tileOpen(state, x, y)) return { x, y }
+      }
+    }
+  }
+  return null
+}
+
+/**
+ * Scatter corners sit outside the strip so a scattering chaser never "arrives"
+ * and ping-pongs on a tile — it keeps pathing at the corner and laps instead.
+ */
+function cornerFor(kind: GhostKind, cols: number, rows: number): Cell {
+  if (kind === 'blink') return { x: cols + 3, y: -3 }
+  if (kind === 'pink') return { x: -3, y: -3 }
+  if (kind === 'inky') return { x: cols + 3, y: rows + 3 }
+  return { x: -3, y: rows + 3 }
+}
+
+// —— Generation ————————————————————————————————————————————————
+
+/** Next world row from the generator, filling the band queue as needed. */
+function pullRow(state: GameState): GenRow {
+  while (!state.genQueue.length) {
+    const band =
+      state.genRow === 0
+        ? makeOpeningBand(state.cols)
+        : makeBand(state.seed, state.genRow, state.cols, state.depth)
+    state.genQueue.push(...band)
+    state.genRow += band.length
+  }
+  return state.genQueue.shift() as GenRow
+}
+
+function fillBuffer(state: GameState) {
+  state.open = new Array(state.rows)
+  state.crumbs = new Array(state.rows)
+  state.power = new Array(state.rows)
+  state.kind = new Array(state.rows)
+  // Bottom row is world row 0, so fill upward and the queue order lines up.
+  for (let y = state.rows - 1; y >= 0; y--) {
+    const row = pullRow(state)
+    state.open[y] = row.open
+    state.crumbs[y] = row.crumbs
+    state.power[y] = row.power
+    state.kind[y] = row.kind
+  }
+}
+
+/**
+ * Slide the world down one row: a fresh row at the top, the bottom one gone,
+ * and everything standing on the board moves down with it.
+ */
+function shiftDown(state: GameState) {
+  const row = pullRow(state)
+  state.open.pop()
+  state.crumbs.pop()
+  state.power.pop()
+  state.kind.pop()
+  state.open.unshift(row.open)
+  state.crumbs.unshift(row.crumbs)
+  state.power.unshift(row.power)
+  state.kind.unshift(row.kind)
+  state.originRow += 1
+
+  state.player.y += 1
+  state.lastTile = { x: state.lastTile.x, y: state.lastTile.y + 1 }
+  for (const ghost of state.ghosts) ghost.y += 1
+  for (const dot of state.trail) dot.y += 1
+  for (const pop of state.pops) pop.y += 1
+}
+
+/** Lowest lane row at or above `fromY` — somewhere you can actually stand. */
+function laneRowNear(state: GameState, fromY: number): number {
+  for (let y = Math.min(state.rows - 2, fromY); y >= 1; y--) {
+    if (state.kind[y] === 'lane') return y
+  }
+  for (let y = Math.min(state.rows - 2, fromY) + 1; y < state.rows - 1; y++) {
+    if (state.kind[y] === 'lane') return y
+  }
+  return Math.max(1, state.rows - RESPAWN_FROM_BOTTOM)
+}
+
+// —— Lifecycle ————————————————————————————————————————————————
+
+function emptyState(view: { cols: number; rows: number }): GameState {
+  const state: GameState = {
+    phase: 'menu',
+    score: 0,
+    best: loadBest(),
+    lives: START_LIVES,
+    cols: view.cols,
+    rows: view.rows,
+    open: [],
+    crumbs: [],
+    power: [],
+    kind: [],
+    originRow: 0,
+    genRow: 0,
+    genQueue: [],
+    seed: (Math.random() * 0xffffffff) >>> 0,
+    scroll: 0,
+    depth: 0,
+    player: { x: 0, y: 0, dir: 'up', pending: null, pendingAge: 0 },
+    ghosts: [],
+    nextGhostId: 1,
+    spawnTimer: 3.5,
+    fright: 0,
+    frightEaten: 0,
+    mode: 'scatter',
+    modeTimer: scatterTime(0),
+    surge: 0,
+    surgeTime: 0,
+    surgeHits: 0,
+    crumbStreak: 0,
+    crumbStreakBest: 0,
+    lastTile: { x: 0, y: 0 },
+    trail: [],
+    pops: [],
+    deathAnim: 0,
+    cause: null,
+    invuln: 0,
+    mouth: 0,
+    time: 0,
+  }
+  fillBuffer(state)
+  placePlayer(state, state.rows - RESPAWN_FROM_BOTTOM)
+  return state
+}
+
+function placePlayer(state: GameState, aroundY: number) {
+  const y = laneRowNear(state, aroundY)
+  const x = Math.floor(state.cols / 2)
+  state.player = {
+    x: x + 0.5,
+    y: y + 0.5,
+    dir: 'up',
+    pending: null,
+    pendingAge: 0,
+  }
+  state.lastTile = { x, y }
+  state.trail = []
+}
+
+export function createInitialState(view = crumbtrailViewport()): GameState {
+  return emptyState(view)
+}
+
+export function startGame(prev: GameState, view = crumbtrailViewport()): GameState {
+  const next = emptyState(view)
+  next.best = Math.max(prev.best, loadBest())
+  next.phase = 'playing'
+  next.invuln = RESPAWN_INVULN
+  return next
+}
+
+/** Admin/testing: jump the floor ahead without crediting the distance. */
+export function jumpToDepth(state: GameState, depth: number): GameState {
+  if (state.phase !== 'playing') return state
+  const target = Math.max(0, Math.floor(depth) || 0)
+  const next: GameState = { ...state, ghosts: [...state.ghosts] }
+  let guard = 0
+  while (worldRowAt(next, Math.floor(next.player.y)) < target && guard++ < 4000) {
+    shiftDown(next)
+    if (next.player.y > next.rows - 2) placePlayer(next, next.rows - RESPAWN_FROM_BOTTOM)
+  }
+  next.depth = Math.max(next.depth, worldRowAt(next, Math.floor(next.player.y)))
+  next.ghosts = []
+  next.spawnTimer = 1.2
+  next.invuln = RESPAWN_INVULN
+  return next
+}
+
+export function queueDir(state: GameState, dir: Dir): GameState {
+  if (state.phase !== 'playing') return state
+  return { ...state, player: { ...state.player, pending: dir, pendingAge: 0 } }
+}
+
+export function surgeReady(state: GameState) {
+  return state.phase === 'playing' && state.surgeTime <= 0 && state.surge >= 1
+}
+
+export function triggerSurge(state: GameState): GameState {
+  if (!surgeReady(state)) return state
+  sfx('whoosh')
+  return { ...state, surge: 0, surgeTime: SURGE_TIME, surgeHits: 0 }
+}
+
+// —— Chasers ——————————————————————————————————————————————————
+
+function targetFor(state: GameState, ghost: Ghost): Cell {
+  if (ghost.mode === 'eaten') return { x: Math.floor(ghost.x), y: -4 }
+  if (ghost.mode === 'scatter') return ghost.corner
+
+  const px = Math.floor(state.player.x)
+  const py = Math.floor(state.player.y)
+  const v = VEC[state.player.dir]
+  if (ghost.kind === 'blink') return { x: px, y: py }
+  if (ghost.kind === 'pink') return { x: px + v.x * 4, y: py + v.y * 4 }
+  if (ghost.kind === 'inky') {
+    const blink = state.ghosts.find((g) => g.kind === 'blink')
+    const ax = px + v.x * 2
+    const ay = py + v.y * 2
+    if (!blink) return { x: ax, y: ay }
+    return { x: ax * 2 - Math.floor(blink.x), y: ay * 2 - Math.floor(blink.y) }
+  }
+  // Clyde keeps his distance — shy once he's within eight tiles.
+  if (dist2(ghost.x, ghost.y, state.player.x, state.player.y) < 64) return ghost.corner
+  return { x: px, y: py }
+}
+
+type FieldCache = Map<string, Int32Array>
+
+function fieldFor(state: GameState, cache: FieldCache, target: Cell) {
+  const key = `${Math.round(target.x)}:${Math.round(target.y)}`
+  const hit = cache.get(key)
+  if (hit) return hit
+  const field = distanceField(state, target)
+  cache.set(key, field)
+  return field
+}
+
+function chooseGhostDir(state: GameState, ghost: Ghost, cache: FieldCache): Dir {
+  const gx = Math.floor(ghost.x)
+  const gy = Math.floor(ghost.y)
+  const cell = targetFor(state, ghost)
+
+  const options: { dir: Dir; tile: Cell }[] = []
+  for (const dir of DIRS) {
+    const next = stepTile(state, gx, gy, dir)
+    if (!next) continue
+    options.push({ dir, tile: next })
+  }
+  if (!options.length) return ghost.dir
+
+  const canReverse =
+    ghost.mode === 'frightened' || ghost.mode === 'eaten' || options.length === 1
+  const forward = canReverse
+    ? options
+    : options.filter((o) => o.dir !== OPPOSITE[ghost.dir])
+  let pool = forward.length ? forward : options
+
+  if (ghost.mode === 'frightened') {
+    return pool[Math.floor(Math.random() * pool.length)].dir
+  }
+
+  const offBoard =
+    cell.x < 0 || cell.y < 0 || cell.x >= state.cols || cell.y >= state.rows
+  if (ghost.mode === 'scatter' || ghost.mode === 'eaten' || offBoard) {
+    const PRIORITY: Dir[] = ['up', 'left', 'down', 'right']
+    let best = pool[0]
+    let bestD = Infinity
+    let bestPri = 99
+    for (const option of pool) {
+      const d = (option.tile.x + 0.5 - cell.x) ** 2 + (option.tile.y + 0.5 - cell.y) ** 2
+      const pri = PRIORITY.indexOf(option.dir)
+      if (d < bestD - 1e-9 || (Math.abs(d - bestD) < 1e-9 && pri >= 0 && pri < bestPri)) {
+        bestD = d
+        bestPri = pri
+        best = option
+      }
+    }
+    return best.dir
+  }
+
+  const field = fieldFor(state, cache, cell)
+  const scoreOf = (option: { dir: Dir; tile: Cell }) => {
+    const d = field[option.tile.y * state.cols + option.tile.x]
+    return d < 0 ? Infinity : d
+  }
+
+  if (!canReverse) {
+    const reverse = options.find((o) => o.dir === OPPOSITE[ghost.dir])
+    if (reverse) {
+      const bestForward = Math.min(...pool.map(scoreOf))
+      if (scoreOf(reverse) < bestForward) pool = [reverse, ...pool]
+    }
+  }
+
+  const PRIORITY: Dir[] = ['up', 'left', 'down', 'right']
+  let best = pool[0]
+  let bestD = Infinity
+  let bestPri = 99
+  for (const option of pool) {
+    const score = scoreOf(option)
+    const pri = PRIORITY.indexOf(option.dir)
+    if (score < bestD || (score === bestD && pri >= 0 && pri < bestPri)) {
+      bestD = score
+      bestPri = pri
+      best = option
+    }
+  }
+  if (bestD === Infinity) {
+    return pool[Math.floor(Math.random() * pool.length)].dir
+  }
+  return best.dir
+}
+
+function advance(actor: { x: number; y: number }, dir: Dir, step: number) {
+  const v = VEC[dir]
+  actor.x += v.x * step
+  actor.y += v.y * step
+}
+
+/**
+ * Keep x on the torus, in [0, cols).
+ *
+ * Pellets stages a wrapping actor just off the board at x = -0.5 and relies on
+ * the very next step inside the same frame to carry it back on. If the frame's
+ * travel budget happens to run out on that staging tile the actor is parked at
+ * a column index of -1, where every step up or down resolves to nothing and it
+ * can never move again. Since the columns genuinely wrap, -0.5 and cols - 0.5
+ * are the same point, so normalising into range costs nothing and the parked
+ * state stops existing.
+ */
+function normalizeX(state: GameState, actor: { x: number }) {
+  const span = state.cols
+  if (actor.x < 0 || actor.x >= span) {
+    actor.x = ((actor.x % span) + span) % span
+  }
+}
+
+function moveGhost(
+  state: GameState,
+  ghost: Ghost,
+  speed: number,
+  dt: number,
+  cache: FieldCache,
+) {
+  let left = speed * dt
+  let guard = 0
+  while (left > CENTER_EPS && guard++ < 12) {
+    if (atCenter(ghost.x) && atCenter(ghost.y)) {
+      ghost.x = centerOf(ghost.x)
+      ghost.y = centerOf(ghost.y)
+      ghost.dir = chooseGhostDir(state, ghost, cache)
+      const gx = Math.floor(ghost.x)
+      const gy = Math.floor(ghost.y)
+      let ahead = stepTile(state, gx, gy, ghost.dir)
+      if (!ahead) {
+        for (const dir of DIRS) {
+          const next = stepTile(state, gx, gy, dir)
+          if (!next) continue
+          ghost.dir = dir
+          ahead = next
+          break
+        }
+        if (!ahead) break
+      }
+    }
+    const v = VEC[ghost.dir]
+    const dist = v.x !== 0 ? distToNextCenter(ghost.x, v.x) : distToNextCenter(ghost.y, v.y)
+    const step = Math.min(left, dist)
+    advance(ghost, ghost.dir, step)
+    normalizeX(state, ghost)
+    left -= step
+  }
+}
+
+const GHOST_ORDER: GhostKind[] = ['blink', 'pink', 'inky', 'clyde']
+
+/**
+ * Drop a chaser into the hidden strip above the view.
+ *
+ * They come in from the top because that is the direction you are heading:
+ * a chaser entering behind you is a free row, one entering ahead is a
+ * decision about which gap to take.
+ */
+function spawnGhost(state: GameState) {
+  const spots: Cell[] = []
+  for (let y = 0; y < HIDDEN_TOP && y < state.rows; y++) {
+    for (let x = 0; x < state.cols; x++) {
+      if (state.open[y][x]) spots.push({ x, y })
+    }
+  }
+  if (!spots.length) return
+  const at = spots[Math.floor(Math.random() * spots.length)]
+  const kind = GHOST_ORDER[state.nextGhostId % GHOST_ORDER.length]
+  state.ghosts.push({
+    id: state.nextGhostId++,
+    kind,
+    x: at.x + 0.5,
+    y: at.y + 0.5,
+    dir: 'down',
+    mode: state.mode,
+    corner: cornerFor(kind, state.cols, state.rows),
+    bob: Math.random() * Math.PI * 2,
+    hit: 0,
+    arrive: 0,
+  })
+}
+
+// —— Player ———————————————————————————————————————————————————
+
+function canStepFrom(state: GameState, x: number, y: number, dir: Dir) {
+  return stepTile(state, x, y, dir) !== null
+}
+
+function movePlayer(state: GameState, speed: number, dt: number) {
+  const p = state.player
+  let left = speed * dt
+  let guard = 0
+
+  while (left > CENTER_EPS && guard++ < 12) {
+    if (p.pending === p.dir) p.pending = null
+    if (p.pending && p.pending === OPPOSITE[p.dir]) {
+      p.dir = p.pending
+      p.pending = null
+    }
+
+    const tileX = Math.floor(p.x)
+    const tileY = Math.floor(p.y)
+    const onBoard = tileX >= 0 && tileY >= 0 && tileX < state.cols && tileY < state.rows
+
+    // Late turn: you just cleared the junction, so still take it.
+    if (onBoard && p.pending && canStepFrom(state, tileX, tileY, p.pending)) {
+      const along = VEC[p.dir].x !== 0 ? p.x : p.y
+      const past = (along - centerOf(along)) * (VEC[p.dir].x + VEC[p.dir].y)
+      if (past > 0 && past <= LATE_TURN) {
+        p.x = tileX + 0.5
+        p.y = tileY + 0.5
+        p.dir = p.pending
+        p.pending = null
+        continue
+      }
+    }
+
+    if (atCenter(p.x) && atCenter(p.y)) {
+      p.x = centerOf(p.x)
+      p.y = centerOf(p.y)
+      if (p.pending && canStepFrom(state, Math.floor(p.x), Math.floor(p.y), p.pending)) {
+        p.dir = p.pending
+        p.pending = null
+      }
+      const ahead = stepTile(state, Math.floor(p.x), Math.floor(p.y), p.dir)
+      if (!ahead) break
+    }
+
+    const v = VEC[p.dir]
+    const dist = v.x !== 0 ? distToNextCenter(p.x, v.x) : distToNextCenter(p.y, v.y)
+    const step = Math.min(left, dist)
+    advance(p, p.dir, step)
+    normalizeX(state, p)
+    left -= step
+  }
+}
+
+function addPop(state: GameState, x: number, y: number, text: string) {
+  state.pops.push({ x, y, life: 0.9, text })
+  if (state.pops.length > 12) state.pops.shift()
+}
+
+function eatAt(state: GameState) {
+  const x = Math.floor(state.player.x)
+  const y = Math.floor(state.player.y)
+  if (y < 0 || y >= state.rows || x < 0 || x >= state.cols) return
+  if (state.lastTile.x === x && state.lastTile.y === y) return
+  state.lastTile = { x, y }
+
+  if (state.crumbs[y][x]) {
+    state.crumbs[y][x] = false
+    state.crumbStreak += 1
+    if (state.crumbStreak > state.crumbStreakBest) {
+      state.crumbStreakBest = state.crumbStreak
+    }
+    const mult = streakMult(state.crumbStreak) * (state.surgeTime > 0 ? 2 : 1)
+    state.score += SCORE_CRUMB * mult
+    if (state.surgeTime <= 0) state.surge = Math.min(1, state.surge + 1 / SURGE_CRUMBS)
+    sfx('eat', Math.min(5, Math.floor(state.crumbStreak / 8)))
+  } else if (!state.power[y][x]) {
+    // Retracing picked-clean ground breaks the streak, same as Pellets.
+    state.crumbStreak = 0
+  }
+
+  if (state.power[y][x]) {
+    state.power[y][x] = false
+    state.score += SCORE_POWER
+    state.surge = Math.min(1, state.surge + 0.25)
+    state.fright = FRIGHT_TIME
+    state.frightEaten = 0
+    for (const ghost of state.ghosts) {
+      if (ghost.mode === 'eaten') continue
+      ghost.mode = 'frightened'
+      ghost.dir = OPPOSITE[ghost.dir]
+    }
+    sfx('wave')
+  }
+}
+
+function loseLife(state: GameState, cause: DeathCause) {
+  state.phase = 'dying'
+  state.deathAnim = DEATH_TIME
+  state.cause = cause
+  state.crumbStreak = 0
+  state.lives -= 1
+  sfx('hurt')
+}
+
+/**
+ * Back on your feet after a life.
+ *
+ * The board keeps climbing, so a respawn has to buy real room or the floor
+ * that just swallowed you swallows you again. Everything currently chasing is
+ * cleared and comes back over the next few seconds.
+ */
+function respawn(state: GameState) {
+  placePlayer(state, state.rows - RESPAWN_FROM_BOTTOM)
+  state.ghosts = []
+  state.spawnTimer = 1.8
+  state.fright = 0
+  state.frightEaten = 0
+  state.surgeTime = 0
+  state.invuln = RESPAWN_INVULN
+  state.cause = null
+  state.phase = 'playing'
+}
+
+// —— Tick —————————————————————————————————————————————————————
+
+export function tick(state: GameState, dt: number): GameState {
+  if (state.phase === 'menu' || state.phase === 'gameover') {
+    return { ...state, time: state.time + dt }
+  }
+
+  const next: GameState = {
+    ...state,
+    ghosts: state.ghosts.map((g) => ({ ...g })),
+    player: { ...state.player },
+    trail: state.trail.map((d) => ({ ...d, life: d.life - dt * 2.6 })).filter((d) => d.life > 0),
+    pops: state.pops.map((p) => ({ ...p, life: p.life - dt })).filter((p) => p.life > 0),
+    time: state.time + dt,
+    mouth: state.mouth + dt * 13,
+    invuln: Math.max(0, state.invuln - dt),
+  }
+
+  if (next.phase === 'dying') {
+    next.deathAnim -= dt
+    if (next.deathAnim <= 0) {
+      if (next.lives <= 0) {
+        next.phase = 'gameover'
+        next.deathAnim = 0
+      } else {
+        respawn(next)
+      }
+    }
+    return next
+  }
+
+  // —— the floor ——
+  next.scroll += scrollSpeed(next.depth) * dt
+  let shifts = 0
+  while (next.scroll >= 1 && shifts++ < 8) {
+    next.scroll -= 1
+    shiftDown(next)
+  }
+  if (Math.floor(next.player.y) >= next.rows - 1) {
+    loseLife(next, 'swallowed')
+    return next
+  }
+
+  // —— you ——
+  if (next.player.pending) {
+    next.player.pendingAge += dt
+    if (next.player.pendingAge > PENDING_TTL) {
+      next.player.pending = null
+      next.player.pendingAge = 0
+    }
+  }
+  const surging = next.surgeTime > 0
+  movePlayer(next, PLAYER_SPEED * (surging ? SURGE_SPEED : 1), dt)
+  eatAt(next)
+
+  const reached = worldRowAt(next, Math.floor(next.player.y))
+  if (reached > next.depth) {
+    next.score += (reached - next.depth) * SCORE_ROW
+    next.depth = reached
+  }
+
+  if (surging) {
+    next.surgeTime = Math.max(0, next.surgeTime - dt)
+    next.trail = [{ x: next.player.x, y: next.player.y, life: 1 }, ...next.trail].slice(0, 18)
+  }
+
+  // —— chase / scatter ——
+  if (next.fright > 0) {
+    next.fright = Math.max(0, next.fright - dt)
+    if (next.fright === 0) {
+      for (const ghost of next.ghosts) {
+        if (ghost.mode === 'frightened') ghost.mode = next.mode
+      }
+    }
+  } else {
+    next.modeTimer -= dt
+    if (next.modeTimer <= 0) {
+      next.mode = next.mode === 'chase' ? 'scatter' : 'chase'
+      next.modeTimer = next.mode === 'chase' ? chaseTime(next.depth) : scatterTime(next.depth)
+      for (const ghost of next.ghosts) {
+        if (ghost.mode === 'chase' || ghost.mode === 'scatter') {
+          ghost.mode = next.mode
+          ghost.dir = OPPOSITE[ghost.dir]
+        }
+      }
+    }
+  }
+
+  // —— chasers ——
+  next.spawnTimer -= dt
+  if (next.ghosts.length < wantGhosts(next.depth) && next.spawnTimer <= 0) {
+    spawnGhost(next)
+    next.spawnTimer = Math.max(1.4, 4 - next.depth * 0.004)
+  }
+
+  const cache: FieldCache = new Map()
+  for (const ghost of next.ghosts) {
+    ghost.bob += dt * 4
+    ghost.hit = Math.max(0, ghost.hit - dt * 3)
+    ghost.arrive = Math.min(1, ghost.arrive + dt * 2)
+    const speed =
+      ghost.mode === 'eaten'
+        ? EATEN_SPEED
+        : ghost.mode === 'frightened'
+          ? FRIGHT_SPEED * frightSpeedScale(next.depth)
+          : GHOST_SPEED * chaserSpeedScale(next.depth)
+    moveGhost(next, ghost, speed, dt, cache)
+  }
+  // Eyes that made it out the top, and anything the floor took, are gone.
+  next.ghosts = next.ghosts.filter((g) => {
+    if (g.mode === 'eaten' && g.y < 0.6) return false
+    return g.y < next.rows - 0.2
+  })
+
+  // —— contact ——
+  for (const ghost of next.ghosts) {
+    if (ghost.mode === 'eaten') continue
+    if (dist2(ghost.x, ghost.y, next.player.x, next.player.y) > 0.42 * 0.42) continue
+
+    if (ghost.mode === 'frightened') {
+      const bonus = SCORE_GHOST[Math.min(next.frightEaten, SCORE_GHOST.length - 1)]
+      next.frightEaten += 1
+      ghost.mode = 'eaten'
+      ghost.hit = 1
+      next.score += bonus
+      addPop(next, ghost.x, ghost.y, `+${bonus}`)
+      sfx('good')
+      continue
+    }
+
+    if (surging) {
+      const bonus = SCORE_SURGE[Math.min(next.surgeHits, SCORE_SURGE.length - 1)]
+      next.surgeHits += 1
+      ghost.mode = 'eaten'
+      ghost.hit = 1
+      next.score += bonus
+      addPop(next, ghost.x, ghost.y, `+${bonus}`)
+      sfx('good')
+      continue
+    }
+
+    if (next.invuln > 0) continue
+
+    loseLife(next, 'caught')
+    return next
+  }
+
+  return next
+}
+
+/** 0..1 — how close the floor is to the player, for the HUD warning band. */
+export function pressureOf(state: GameState): number {
+  const gap = state.rows - 1 - state.player.y
+  return Math.max(0, Math.min(1, 1 - gap / 4))
+}
+
+export function toSnapshot(state: GameState): Snapshot {
+  return {
+    phase: state.phase,
+    score: state.score,
+    best: Math.max(state.best, loadBest()),
+    lives: Math.max(0, state.lives),
+    depth: state.depth,
+    surge: state.surge,
+    surgeTime: state.surgeTime,
+    crumbStreak: state.crumbStreak,
+    crumbStreakBest: state.crumbStreakBest,
+    pressure: pressureOf(state),
+    cause: state.cause,
+  }
+}

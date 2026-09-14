@@ -87,6 +87,18 @@ const SCORING: Record<string, ScoreRow[]> = {
     { label: 'Clear the maze', value: 'next level · curated maze, a bit tougher' },
     { label: 'Lives', value: '3' },
   ],
+  crumbtrail: [
+    { label: 'Row climbed', value: '+5' },
+    { label: 'Crumb', value: '+10 × streak' },
+    { label: 'Streak (fresh crumbs in a row)', value: '×2 at 10 · ×3 at 20 · ×4 at 30' },
+    { label: 'Doubling back over cleared ground', value: 'streak resets' },
+    { label: 'Power crumb', value: '+50 · chasers turn blue' },
+    { label: 'Blue chaser (1st / 2nd / 3rd / 4th)', value: '+200 / +400 / +800 / +1600' },
+    { label: 'Surge (tap or space when charged)', value: 'double crumbs · bounce chasers' },
+    { label: 'Surge bounce (1st / 2nd / 3rd / 4th)', value: '+150 / +300 / +600 / +1200' },
+    { label: 'The edge', value: 'climbs faster the further you get' },
+    { label: 'Lives', value: '3 — caught or swallowed costs one' },
+  ],
 }
 
 export function scoringFor(slug: string): ScoreRow[] | null {

@@ -28,6 +28,7 @@ export const LEADERBOARD_GAMES = [
   'pellets',
   'findbug',
   'barrage',
+  'crumbtrail',
 ] as const
 export type LeaderboardGame = (typeof LEADERBOARD_GAMES)[number]
 

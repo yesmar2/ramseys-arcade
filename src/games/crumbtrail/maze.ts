@@ -1,0 +1,144 @@
+/**
+ * The endless maze.
+ *
+ * Pellets hands you a finished board, so it can afford hand-drawn levels. Here
+ * the board is never finished, and a generator that only *usually* behaves is
+ * no good when the floor is climbing behind you: a single dead end that the
+ * run is forced into is an unearned death.
+ *
+ * So the guarantee comes from the shape rather than from a check. Rows arrive
+ * in bands — one fully open lane row, then one or two wall rows that share the
+ * same gap columns. The open lane means you can always slide sideways to any
+ * gap; the shared gaps mean every wall band is a straight vertical corridor.
+ * Between them, there is always a way up from anywhere, and nothing generated
+ * is ever walled off from the rest.
+ *
+ * The wall rows are what you actually see. One reads as a slim block, two as a
+ * chunky one, and that variation is the whole look of the maze.
+ */
+import { mulberry32 } from '../../lib/seededRandom'
+
+export type RowKind = 'lane' | 'wall'
+
+export type GenRow = {
+  /** World row index, counting up from 0 at the start of a run. */
+  row: number
+  kind: RowKind
+  open: boolean[]
+  crumbs: boolean[]
+  power: boolean[]
+}
+
+export const MIN_COLS = 9
+export const MAX_COLS = 21
+/** Rows we want on screen; the column count is chosen to land near it. */
+export const TARGET_VISIBLE_ROWS = 15
+/** Buffer rows kept above the top of the view — where chasers come in from. */
+export const HIDDEN_TOP = 3
+
+/**
+ * Columns for this viewport.
+ *
+ * A vertical scroller can't rotate its board the way Pellets does, so instead
+ * the grid gets wider on wide screens to keep roughly the same number of rows
+ * in view. A phone plays a 9-wide maze, a desktop a 20-wide one, and both see
+ * about the same distance ahead.
+ */
+export function pickCols(viewW: number, viewH: number): number {
+  if (!(viewW > 0) || !(viewH > 0)) return MIN_COLS
+  const want = Math.round((TARGET_VISIBLE_ROWS * viewW) / viewH)
+  return Math.max(MIN_COLS, Math.min(MAX_COLS, want))
+}
+
+/** Buffer height: everything on screen, plus the hidden strip above it. */
+export function bufferRows(viewW: number, viewH: number, cols: number): number {
+  const cell = viewW / cols
+  const visible =
+    cell > 0 && Number.isFinite(cell)
+      ? Math.ceil(viewH / cell) + 1
+      : TARGET_VISIBLE_ROWS
+  return Math.max(10, visible) + HIDDEN_TOP
+}
+
+/** 0 at the start of a run, 1 once the maze has tightened as far as it goes. */
+export function mazeDifficulty(depth: number): number {
+  return Math.max(0, Math.min(1, depth / 320))
+}
+
+/**
+ * One band, lane row first, then the wall rows stacked above it.
+ *
+ * Gap count scales with the column count — a fixed three doors is a fair maze
+ * at 9 wide and a wall at 21 — and tightens as the run goes on.
+ */
+export function makeBand(
+  seed: number,
+  startRow: number,
+  cols: number,
+  depth: number,
+): GenRow[] {
+  const rand = mulberry32((startRow * 1_048_583) ^ seed)
+  const d = mazeDifficulty(depth)
+
+  const span = Math.max(3, Math.round(cols / 3.2))
+  const gapCount = Math.max(2, span - Math.round(d * 1.6))
+  const gaps = new Set<number>()
+  let guard = 0
+  while (gaps.size < gapCount && guard++ < 80) {
+    gaps.add(Math.floor(rand() * cols))
+  }
+
+  const lane: GenRow = {
+    row: startRow,
+    kind: 'lane',
+    open: new Array(cols).fill(true),
+    crumbs: new Array(cols).fill(true),
+    power: new Array(cols).fill(false),
+  }
+
+  /*
+   * Power crumbs only go on open lanes. On a wall row they'd sit in a corridor
+   * one tile wide, which is exactly where you can't afford to commit to a
+   * detour — the only pip that turns a chase around has to be reachable.
+   */
+  if (startRow > 6 && rand() < 0.1) {
+    const at = Math.floor(rand() * cols)
+    lane.power[at] = true
+    lane.crumbs[at] = false
+  }
+
+  const rows: GenRow[] = [lane]
+  const tall = rand() < 0.36 + d * 0.2
+  for (let i = 0; i < (tall ? 2 : 1); i++) {
+    const open = new Array(cols).fill(false)
+    for (const g of gaps) open[g] = true
+    rows.push({
+      row: startRow + 1 + i,
+      kind: 'wall',
+      open,
+      crumbs: [...open],
+      power: new Array(cols).fill(false),
+    })
+  }
+  return rows
+}
+
+/** Opening stretch: a clear lane to start on, and no wall band right away. */
+export function makeOpeningBand(cols: number): GenRow[] {
+  return [
+    {
+      row: 0,
+      kind: 'lane',
+      open: new Array(cols).fill(true),
+      crumbs: new Array(cols).fill(false),
+      power: new Array(cols).fill(false),
+    },
+    {
+      row: 1,
+      kind: 'lane',
+      open: new Array(cols).fill(true),
+      crumbs: new Array(cols).fill(true),
+      power: new Array(cols).fill(false),
+    },
+  ]
+}

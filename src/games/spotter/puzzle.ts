@@ -77,6 +77,7 @@ const NAME_TYPOS: Record<string, string[]> = {
   pop: ['Popp', 'Po'],
   pellets: ['Pellet', 'Pellets'],
   barrage: ['Barage', 'Barragee'],
+  crumbtrail: ['Crumbtrial', 'Crumtrail'],
 }
 
 const POSTER_GLITCHES: SpotterGlitchType[] = [

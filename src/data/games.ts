@@ -119,6 +119,15 @@ export const games: Game[] = [
     playable: true,
     inDevelopment: true,
   },
+  {
+    name: 'Crumbtrail',
+    slug: 'crumbtrail',
+    description: 'Pellets with no way out. The maze keeps coming, the floor keeps eating.',
+    how: 'Swipe or arrow keys to steer, exactly like Pellets — same chomp, same crumbs, same chasers. What is gone is the exit: the maze is generated above you forever and an edge climbs the bottom of the screen eating it, so standing still is the one thing you cannot do. Score is the rows you climb plus the crumbs you take on the way, and the streak multiplier still breaks the moment you double back over ground you have already cleared, which is the whole tension — the fastest line up is rarely the one with the crumbs on it. Chasers drop in from the top ahead of you and pile up the further you get. Power crumbs still turn them blue and Surge still burns through them. Three lives; falling off the bottom costs one.',
+    accent: '#f5b942',
+    playable: true,
+    inDevelopment: true,
+  },
 ]
 
 export function getGame(slug: string) {

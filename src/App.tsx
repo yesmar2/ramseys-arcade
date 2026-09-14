@@ -18,6 +18,7 @@ import { AsteroidsPage } from './pages/AsteroidsPage'
 import { BarragePage } from './pages/BarragePage'
 import { AuthVerifyPage } from './pages/AuthVerifyPage'
 import { CrosswalkPage } from './pages/CrosswalkPage'
+import { CrumbtrailPage } from './pages/CrumbtrailPage'
 import { DeadCenterPage } from './pages/DeadCenterPage'
 import { GameHubPage } from './pages/GameHubPage'
 import { GameLeaderboardPage } from './pages/GameLeaderboardPage'
@@ -237,6 +238,7 @@ function App() {
   if (route.name === 'gamePlay' && route.slug === 'pellets') return <PelletsPage />
   if (route.name === 'gamePlay' && route.slug === 'findbug') return <FindBugPage />
   if (route.name === 'gamePlay' && route.slug === 'barrage') return <BarragePage />
+  if (route.name === 'gamePlay' && route.slug === 'crumbtrail') return <CrumbtrailPage />
   if (route.name === 'gamePlay') return <ComingSoonPage slug={route.slug} />
   return <HomePage />
 }

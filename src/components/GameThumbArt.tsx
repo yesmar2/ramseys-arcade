@@ -299,6 +299,29 @@ function PelletsThumb({ accent }: { accent?: string }) {
   )
 }
 
+/** Same chomp as Pellets, turned to face the climb, on a crumb trail. */
+function CrumbtrailThumb({ accent }: { accent?: string }) {
+  const flat = isFlatTheme()
+  const you = accent ? accentPastel(accent, 88) : pastel(HUE.gold, 58, 72)
+  return (
+    <g>
+      {[22, 27].map((cy) => (
+        <circle key={cy} cx="16" cy={cy} r="1.5" fill={you.fill} opacity="0.8" />
+      ))}
+      <g transform="translate(16 14) rotate(-90)">
+        <path
+          d={pelletsPacPath(0, 0, 8.6)}
+          fill={flat ? you.fill : 'hsla(38, 58%, 58%, 0.28)'}
+          stroke={flat ? 'none' : 'hsla(38, 58%, 58%, 0.95)'}
+          strokeWidth="1.75"
+          strokeLinejoin="round"
+          strokeLinecap="round"
+        />
+      </g>
+    </g>
+  )
+}
+
 const thumbBySlug: Record<
   string,
   (props: { accent?: string }) => ReactNode
@@ -313,6 +336,7 @@ const thumbBySlug: Record<
   crosswalk: CrosswalkThumb,
   spotter: SpotterThumb,
   pellets: PelletsThumb,
+  crumbtrail: CrumbtrailThumb,
 }
 
 export function GameThumbArt({ slug, accent, className }: GameThumbArtProps) {

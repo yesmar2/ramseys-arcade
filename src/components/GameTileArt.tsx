@@ -476,6 +476,63 @@ export function PelletsArt() {
   )
 }
 
+/** The chomp climbing a crumb trail, with the edge closing from below. */
+export function CrumbtrailArt() {
+  const flat = isFlatTheme()
+  const gold = pastel(HUE.gold, 58, 72)
+  const wall = pastel(HUE.sky, 46, 40)
+  const lane = [24, 56, 88, 120]
+
+  return (
+    <SvgFrame>
+      <TileBg />
+      {/* Wall blocks either side of the climb. */}
+      {[
+        { x: 12, y: 16, w: 34, h: 13 },
+        { x: 114, y: 16, w: 34, h: 13 },
+        { x: 30, y: 46, w: 26, h: 13 },
+        { x: 104, y: 46, w: 26, h: 13 },
+      ].map((r) => (
+        <rect
+          key={`${r.x}-${r.y}`}
+          x={r.x}
+          y={r.y}
+          width={r.w}
+          height={r.h}
+          rx="5"
+          fill={wall.fill}
+          stroke={flat ? 'none' : wall.stroke}
+          strokeWidth="1.6"
+          opacity="0.85"
+        />
+      ))}
+
+      {/* The trail you came up. */}
+      {lane.map((y) => (
+        <circle key={y} cx="80" cy={y} r="2.6" fill={gold.fill} opacity="0.75" />
+      ))}
+
+      {/* Facing up the board. */}
+      <g transform="translate(80 32) rotate(-90)">
+        <path
+          d={pelletsPacPath(0, 0, 17)}
+          fill={flat ? gold.fill : 'hsla(38, 58%, 58%, 0.28)'}
+          stroke={flat ? 'none' : 'hsla(38, 58%, 58%, 0.95)'}
+          strokeWidth="4.4"
+          strokeLinejoin="round"
+          strokeLinecap="round"
+        />
+      </g>
+
+      {/* The edge, eating the bottom. */}
+      <path
+        d="M0 92 Q 20 84 40 92 T 80 92 T 120 92 T 160 92 L160 100 L0 100 Z"
+        fill="rgba(232, 93, 117, 0.5)"
+      />
+    </SvgFrame>
+  )
+}
+
 /** Space Invaders vibe — rows of aliens + a ground cannon. */
 export function BarrageArt() {
   const alien = pastel(HUE.violet, 56, 48)
@@ -575,6 +632,7 @@ const artBySlug: Record<string, () => JSX.Element> = {
   crosswalk: CrosswalkArt,
   spotter: SpotterArt,
   pellets: PelletsArt,
+  crumbtrail: CrumbtrailArt,
   barrage: BarrageArt,
 }
 
