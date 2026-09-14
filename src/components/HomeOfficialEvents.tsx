@@ -6,13 +6,14 @@ import { useLiveEvents } from '../hooks/useLiveEvents'
 import { normalizePlayerName } from '../lib/leaderboard'
 import { resolveGameAccent } from '../lib/theme'
 import { EventCountdown } from './EventCountdown'
+import { GameThumbArt } from './GameThumbArt'
 
 /**
- * The daily and weekly events, named on one line under the hero.
+ * The daily and weekly events, beside the hero.
  *
- * These are the only recurring reason to open the app on a particular day, so
- * they are worth saying out loud up top — but with nobody entered they are not
- * worth a card and a Join button.
+ * Each carries its game's artwork rather than a coloured dot: on a phone two
+ * bare text lines sat between the hero art and the grid as the only wordmark
+ * on a page built from art panels, which read as a hole rather than a list.
  */
 export function HomeOfficialEvents() {
   const cleaned = normalizePlayerName(usePlayerName())
@@ -32,14 +33,20 @@ export function HomeOfficialEvents() {
             href={tournamentHref(t.id)}
             style={{ '--ev-accent': accent } as CSSProperties}
           >
-            <span className="home-evs__pip" aria-hidden="true" />
-            <span className="home-evs__name">{t.title}</span>
-            {joinedIds.has(t.id) ? <span className="home-evs__in">in</span> : null}
-            <EventCountdown
-              endsAt={t.endsAt}
-              unlimitedDuration={Boolean(t.rules.unlimitedDuration)}
-              className="home-evs__clock"
-            />
+            <span className="home-evs__art" aria-hidden="true">
+              <GameThumbArt slug={slug ?? ''} accent={accent} />
+            </span>
+            <span className="home-evs__body">
+              <span className="home-evs__title">
+                <span className="home-evs__name">{t.title}</span>
+                {joinedIds.has(t.id) ? <span className="home-evs__in">in</span> : null}
+              </span>
+              <EventCountdown
+                endsAt={t.endsAt}
+                unlimitedDuration={Boolean(t.rules.unlimitedDuration)}
+                className="home-evs__clock"
+              />
+            </span>
           </a>
         )
       })}
