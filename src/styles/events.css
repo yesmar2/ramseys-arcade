@@ -1402,3 +1402,16 @@ html[data-theme="google"] .ev-tile:focus-visible {
 .event-bracket__slot--maybe .event-bracket__match {
   box-shadow: none;
 }
+
+/* The result, on a finished event's list tile. */
+.ev-tile__winner {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  min-width: 0;
+  font-weight: 750;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

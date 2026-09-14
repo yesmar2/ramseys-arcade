@@ -22,6 +22,7 @@ import {
   type PlacementHit,
 } from './ScoreSaveCard'
 import { ScoreSignInPrompt } from './ScoreSignInPrompt'
+import { markWinsSeen } from '../lib/seenWins'
 import { isRunAssisted } from '../lib/runAchievements'
 
 /** Best top-3 finish worth celebrating from this submission's fresh standings. */
@@ -262,6 +263,14 @@ export function TournamentScoreCard({
 
         if (!celebratedRef.current && (snapshot.youWonTournament || snapshot.youWonMatch)) {
           celebratedRef.current = true
+          const mine = (snapshot.detail?.bracket?.matches ?? []).filter(
+            (m) =>
+              m.winnerId &&
+              m.players.some(
+                (p) => p && normalizePlayerName(p.name) === normalizePlayerName(name) && p.id === m.winnerId,
+              ),
+          )
+          markWinsSeen(tournamentId, mine.map((m) => m.id))
           const payload = bracketCelebrationPayload({
             champion: snapshot.youWonTournament,
             matchWon: snapshot.youWonMatch,

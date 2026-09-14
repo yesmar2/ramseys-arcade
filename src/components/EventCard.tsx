@@ -87,6 +87,7 @@ type SummarySource = Pick<
   | 'games'
   | 'rules'
   | 'nextDeadlineAt'
+  | 'winner'
 >
 
 function attemptsValue(t: SummarySource): string {
@@ -162,10 +163,27 @@ export function EventSummary({
     eventDurationLabel(t)
   )
 
+  const won = t.status === 'ended' ? (t.winner ?? null) : null
   const medal = yourPlace != null ? medalKind(yourPlace) : null
-  const stats: SummaryStat[] = [
-    { key: 'clock', label: clockLabel, value: clockValue, clock: true, live },
-  ]
+  /*
+   * A finished event leads with its result. The window it ran in is the least
+   * useful thing on the page once it is over, and the winner was previously
+   * not stated anywhere at all.
+   */
+  const stats: SummaryStat[] = won
+    ? [
+        {
+          key: 'winner',
+          label: 'Winner',
+          value: (
+            <>
+              <PodiumMedal kind="gold" size="sm" />
+              {won}
+            </>
+          ),
+        },
+      ]
+    : [{ key: 'clock', label: clockLabel, value: clockValue, clock: true, live }]
 
   if (isBracket) {
     stats.push({ key: 'match', label: 'Your match', value: matchLine ?? 'Not seeded' })
@@ -298,7 +316,14 @@ export function EventCard({ t, compact = false, href }: EventCardProps) {
         </div>
         <p className="ev-tile__games">{gameNames}</p>
         <div className="ev-tile__foot">
-          <span className="ev-tile__clock">{clock}</span>
+          {t.winner ? (
+            <span className="ev-tile__winner">
+              <PodiumMedal kind="gold" size="sm" />
+              {t.winner} won
+            </span>
+          ) : (
+            <span className="ev-tile__clock">{clock}</span>
+          )}
           <span className="ev-tile__players">
             {isBracket ? joinedRosterLabel(t) : t.playerCount} joined
           </span>

@@ -69,6 +69,8 @@ export type TournamentSummary = {
   playerCount: number
   /** Bracket: soonest open-match play deadline. */
   nextDeadlineAt?: number | null
+  /** Set once an event is over: the player who won it. */
+  winner?: string | null
 }
 
 /** Games eligible for private hosted events (matches API). */

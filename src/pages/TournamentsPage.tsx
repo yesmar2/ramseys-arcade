@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
+import { BracketWinCelebration } from '../components/BracketWinCelebration'
 import { EventBracket } from '../components/EventBracket'
 import { EventCard, EventStatusChips, EventSummary, eventAccent } from '../components/EventCard'
 import { GameThumbArt } from '../components/GameThumbArt'
@@ -128,7 +129,10 @@ function EventBoard({
 }) {
   if (eventKind(detail) === 'bracket') {
     return (
-      <EventBracket detail={detail} displayName={displayName} className={className} />
+      <>
+        <EventBracket detail={detail} displayName={displayName} className={className} />
+        <BracketWinCelebration detail={detail} displayName={displayName} />
+      </>
     )
   }
   return (
