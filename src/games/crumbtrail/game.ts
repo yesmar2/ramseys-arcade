@@ -96,6 +96,8 @@ export type GameState = {
   originRow: number
   /** Next world row the generator will hand out. */
   genRow: number
+  /** World row the next sleeping chaser is due on. */
+  nextSeedRow: number
   genQueue: GenRow[]
   seed: number
   /** World row drawn along the bottom of the view. Never goes down. */
@@ -260,8 +262,13 @@ function tideSpeed(state: GameState) {
   return top * (0.35 + 0.65 * ramp)
 }
 
+/**
+ * Chasers gain on you as the run goes, but never much: at the ceiling they are
+ * still a fifth slower than you are, so depth makes the board harder to read
+ * rather than making you unable to outrun anything on it.
+ */
 function chaserSpeedScale(depth: number) {
-  return 1 + Math.min(0.34, depth * 0.0009)
+  return 1 + Math.min(0.22, depth * 0.0007)
 }
 
 function frightSpeedScale(depth: number) {
@@ -278,7 +285,23 @@ function chaseTime(depth: number) {
 
 /** Chasers on the board at this depth, asleep and awake together. */
 function wantGhosts(depth: number) {
-  return Math.min(5, 1 + Math.floor(depth / 40))
+  return Math.min(4, 1 + Math.floor(depth / 55))
+}
+
+/**
+ * Rows between one sleeper and the next.
+ *
+ * Seeding used to be a coin flip on every row, which is a lousy way to pace
+ * anything: independent rolls clump, and because rows only arrive when you
+ * climb, a fast stretch bought several rolls in a couple of seconds. You got
+ * nothing for ages and then a knot of them at once. Scheduling the next one a
+ * set distance ahead instead makes the spacing the thing that varies, within a
+ * range that tightens as you go.
+ */
+function seedGap(depth: number) {
+  const tight = Math.min(1, depth / 300)
+  const base = 17 - tight * 7
+  return Math.max(5, Math.round(base * (0.75 + Math.random() * 0.5)))
 }
 
 function centerOf(v: number) {
@@ -413,12 +436,12 @@ const GHOST_ORDER: GhostKind[] = ['blink', 'pink', 'inky', 'clyde']
  * you have been looking at it for a dozen rows and have had every chance to
  * pick a different corridor.
  */
-function seedGhost(state: GameState, y: number) {
-  if (state.kind[y] !== 'lane') return
-  if (state.ghosts.length >= wantGhosts(state.depth)) return
+function seedGhost(state: GameState, y: number): boolean {
+  if (state.kind[y] !== 'lane') return false
+  if (state.ghosts.length >= wantGhosts(state.depth)) return false
   const spots: number[] = []
   for (let x = 0; x < state.cols; x++) if (state.open[y][x]) spots.push(x)
-  if (!spots.length) return
+  if (!spots.length) return false
   const kind = GHOST_ORDER[state.nextGhostId % GHOST_ORDER.length]
   state.ghosts.push({
     id: state.nextGhostId++,
@@ -432,11 +455,7 @@ function seedGhost(state: GameState, y: number) {
     hit: 0,
     arrive: 0,
   })
-}
-
-/** Odds a newly built lane row gets a sleeper on it. */
-function seedChance(depth: number) {
-  return Math.min(0.34, 0.14 + depth * 0.0005)
+  return true
 }
 
 /**
@@ -461,7 +480,15 @@ function shiftDown(state: GameState) {
   for (const dot of state.trail) dot.y += 1
   for (const pop of state.pops) pop.y += 1
 
-  if (Math.random() < seedChance(state.depth)) seedGhost(state, 0)
+  /*
+   * Only move the schedule on when one actually lands. A row at the cap, or a
+   * wall row with nowhere to stand, should leave the next one still due rather
+   * than skipping a whole interval — and because the cap only ever frees one
+   * slot at a time, a backlog can't discharge as a burst.
+   */
+  if (row.row >= state.nextSeedRow && seedGhost(state, 0)) {
+    state.nextSeedRow = row.row + seedGap(state.depth)
+  }
 }
 
 /** Lowest lane row at or above `fromY` — somewhere you can actually stand. */
@@ -490,6 +517,7 @@ function emptyState(view: { cols: number; rows: number }): GameState {
     kind: [],
     originRow: 0,
     genRow: 0,
+    nextSeedRow: 0,
     genQueue: [],
     seed: (Math.random() * 0xffffffff) >>> 0,
     camera: BELOW_VIEW,
@@ -532,9 +560,10 @@ function emptyState(view: { cols: number; rows: number }): GameState {
    * kind of game this is before the first row has even scrolled.
    */
   const playerY = Math.floor(state.player.y)
-  for (let y = 1; y < Math.max(2, playerY - WAKE_RANGE - 1); y++) {
-    if (Math.random() < 0.16) seedGhost(state, y)
+  for (let y = playerY - WAKE_RANGE - 3; y >= 1; y--) {
+    if (seedGhost(state, y)) break
   }
+  state.nextSeedRow = worldRowAt(state, 0) + seedGap(0)
   return state
 }
 
