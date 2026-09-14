@@ -139,12 +139,15 @@ function BracketTree({
   currentYouId,
   scrollerRef,
   labelFor = bracketRoundLabel,
+  dimRound = null,
 }: {
   matches: PublicBracketMatch[]
   displayName: string
   currentYouId: string | null
   scrollerRef?: RefObject<HTMLDivElement | null>
   labelFor?: (round: number, maxRound: number) => string
+  /** Round drawn faint because it only happens on one outcome. */
+  dimRound?: number | null
 }) {
   const sizeOf = new Map<number, number>()
   for (const match of matches) sizeOf.set(match.round, (sizeOf.get(match.round) ?? 0) + 1)
@@ -191,10 +194,11 @@ function BracketTree({
                 : 'event-bracket__slot--carry'
           // Nothing feeds the opening round, so it gets no incoming line.
           const fed = match.round > firstRound ? ' event-bracket__slot--fed' : ''
+          const dim = match.round === dimRound ? ' event-bracket__slot--maybe' : ''
           return (
             <div
               key={match.id}
-              className={`event-bracket__slot ${connector}${fed}`}
+              className={`event-bracket__slot ${connector}${fed}${dim}`}
               style={{
                 gridColumn: column,
                 gridRow: `${2 + match.slot * span} / span ${span}`,
@@ -258,19 +262,20 @@ export function EventBracket({
    */
   const wbRounds = winners.reduce((m, row) => Math.max(m, row.round), 1)
   /*
-   * The decider only happens if the losers-side player wins the grand final,
-   * and most of the time it never does. Drawing it up front puts three finals
-   * on the board when at most two get played, so it appears once someone is
-   * actually seated in it.
+   * The decider stays on the board even before anyone reaches it. Whoever came
+   * up through the losers bracket has to win the grand final AND this to take
+   * the title, while the winners-side finalist only needs the first — hiding
+   * it would hide that asymmetry from the two people it applies to. It is
+   * dimmed until someone is actually seated in it so it does not read as a
+   * third scheduled final.
    */
-  const crown = grandFinal
-    .filter((m) => m.round === 1 || resetSeated)
-    .map((m) => ({ ...m, round: wbRounds + m.round }))
+  const crown = grandFinal.map((m) => ({ ...m, round: wbRounds + m.round }))
+  const deciderRound = wbRounds + 2
   const winnersRun = [...winners, ...crown]
   const crownLabel = (round: number) => {
     if (round <= wbRounds) return winnersRoundLabel(round, wbRounds)
     if (round === wbRounds + 1) return 'Grand final'
-    return 'Decider'
+    return resetSeated ? 'Decider' : 'Decider (if needed)'
   }
 
   const treeMatches = isDouble ? winners : matches
@@ -518,6 +523,7 @@ export function EventBracket({
               currentYouId={currentYou?.id ?? null}
               scrollerRef={scrollerRef}
               labelFor={crownLabel}
+              dimRound={resetSeated ? null : deciderRound}
             />
           </section>
           {losers.length ? (

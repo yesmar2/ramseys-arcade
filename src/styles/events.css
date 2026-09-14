@@ -1388,3 +1388,17 @@ html[data-theme="google"] .ev-tile:focus-visible {
   display: none;
 }
 
+
+/*
+ * The decider before anyone reaches it. It belongs on the board — the
+ * losers-side finalist has to win two matches to the winners-side finalist's
+ * one — but it is only played on one outcome, so it is drawn faint rather
+ * than sitting there looking like a third scheduled final.
+ */
+.event-bracket__slot--maybe {
+  opacity: 0.55;
+}
+
+.event-bracket__slot--maybe .event-bracket__match {
+  box-shadow: none;
+}
