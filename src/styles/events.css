@@ -16,6 +16,7 @@
   --ev-bronze: #c07c3e;
   --ev-line: rgba(var(--ink-rgb), 0.09);
   --ev-card: rgba(var(--surface-rgb), 0.92);
+  --ev-radius: 1.1rem;
   --ev-pad: 0.85rem;
   display: flex;
   flex-direction: column;
@@ -31,7 +32,7 @@
 /* ---------- shared card ---------- */
 
 .ev-card {
-  border-radius: 1.1rem;
+  border-radius: var(--ev-radius);
   background: var(--ev-card);
   border: 1px solid var(--ev-line);
   box-shadow: var(--shadow-soft);
@@ -268,10 +269,27 @@
   position: relative;
   border-top: 1px solid var(--ev-line);
   background: var(--row-tint);
+  /* Clip the rail and the you-outline to the row's own corners. */
+  overflow: hidden;
 }
 
 .ev-row:first-child {
   border-top: 0;
+}
+
+/*
+ * The rows sit flush inside a rounded card, so the last one takes the card's
+ * inner radius. Without this the card's corner clips a straight-edged row:
+ * the medal rail and your outline stopped dead where the curve began.
+ */
+.ev-board > .ev-row:last-child {
+  border-bottom-left-radius: calc(var(--ev-radius) - 1px);
+  border-bottom-right-radius: calc(var(--ev-radius) - 1px);
+}
+
+.ev-board:first-child > .ev-row:first-child {
+  border-top-left-radius: calc(var(--ev-radius) - 1px);
+  border-top-right-radius: calc(var(--ev-radius) - 1px);
 }
 
 .ev-row::before {
