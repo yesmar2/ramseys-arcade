@@ -311,7 +311,14 @@ export function EventResultRow({ t, href }: { t: TournamentSummary; href?: strin
       <EventArt games={t.games} className="evr__art" />
       <span className="evr__main">
         <span className="evr__title">{t.title}</span>
-        <span className="evr__meta">{meta.join(' · ')}</span>
+        <span className="evr__meta">
+          {meta.join(' · ')}
+          {t.yourPlace != null ? (
+            <span className={`evr__you${t.yourPlace === 1 ? ' evr__you--won' : ''}`}>
+              {t.yourPlace === 1 ? 'You won' : `You ${ordinal(t.yourPlace)}`}
+            </span>
+          ) : null}
+        </span>
       </span>
       {winner ? (
         <span className="evr__winner">
@@ -322,11 +329,6 @@ export function EventResultRow({ t, href }: { t: TournamentSummary; href?: strin
       ) : (
         <span className="evr__none">Nobody played</span>
       )}
-      {t.yourPlace != null ? (
-        <span className={`evr__you${t.yourPlace === 1 ? ' evr__you--won' : ''}`}>
-          {t.yourPlace === 1 ? 'You won' : `You ${ordinal(t.yourPlace)}`}
-        </span>
-      ) : null}
     </a>
   )
 }
