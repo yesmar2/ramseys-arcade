@@ -10,15 +10,12 @@ import {
   cannonRect,
   carrierRadius,
   dropRadius,
-  FIELD_H,
-  HOLD_LINE,
   POWER_HUE,
   shipSize,
   shipX,
   shipY,
   shotSize,
-  STAGE_H,
-  STAGE_W,
+  stageFor,
   type GameState,
   type Ship,
 } from './game'
@@ -48,10 +45,11 @@ type Place = {
   fh: number
 }
 
-function placement(w: number, h: number): Place {
-  const scale = Math.min(w / STAGE_W, h / STAGE_H)
-  const fw = scale * STAGE_W
-  const fh = scale * STAGE_H
+function placement(w: number, h: number, portrait: boolean): Place {
+  const stage = stageFor(portrait)
+  const scale = Math.min(w / stage.w, h / stage.h)
+  const fw = scale * stage.w
+  const fh = scale * stage.h
   const ox = (w - fw) / 2
   const oy = (h - fh) / 2
   return { u: (v) => v * fw, x: (v) => ox + v * fw, y: (v) => oy + v * fw, ox, oy, fw, fh }
@@ -230,7 +228,8 @@ function drawCarrier(ctx: CanvasRenderingContext2D, state: GameState, p: Place) 
  */
 function drawChargeLanes(ctx: CanvasRenderingContext2D, state: GameState, p: Place) {
   if (state.chargeLeft <= 0 || state.hotCols.length === 0) return
-  const { w: sw, h: sh } = shipSize()
+  const { w: sw, h: sh } = shipSize(state)
+  const fieldH = state.layout.fieldH
 
   for (const col of state.hotCols) {
     let front: Ship | null = null
@@ -243,12 +242,12 @@ function drawChargeLanes(ctx: CanvasRenderingContext2D, state: GameState, p: Pla
     const progress = front.charge
     const topX = shipX(state, front) + sw / 2
     const topY = shipY(state, front) + sh
-    const drop = FIELD_H - topY
+    const drop = fieldH - topY
     // Lean the band the way the shots will actually drift.
     const botX = topX + state.volleySpread * drop
     const half = sw * (0.22 + progress * 0.16)
 
-    const grad = ctx.createLinearGradient(0, p.y(topY), 0, p.y(FIELD_H))
+    const grad = ctx.createLinearGradient(0, p.y(topY), 0, p.y(fieldH))
     grad.addColorStop(0, `hsla(${HUE_HOT}, 74%, 58%, ${0.06 + progress * 0.22})`)
     grad.addColorStop(0.75, `hsla(${HUE_HOT}, 74%, 58%, ${0.03 + progress * 0.12})`)
     grad.addColorStop(1, `hsla(${HUE_HOT}, 74%, 58%, 0)`)
@@ -256,8 +255,8 @@ function drawChargeLanes(ctx: CanvasRenderingContext2D, state: GameState, p: Pla
     ctx.beginPath()
     ctx.moveTo(p.x(topX - half), p.y(topY))
     ctx.lineTo(p.x(topX + half), p.y(topY))
-    ctx.lineTo(p.x(botX + half), p.y(FIELD_H))
-    ctx.lineTo(p.x(botX - half), p.y(FIELD_H))
+    ctx.lineTo(p.x(botX + half), p.y(fieldH))
+    ctx.lineTo(p.x(botX - half), p.y(fieldH))
     ctx.closePath()
     ctx.fill()
   }
@@ -266,12 +265,13 @@ function drawChargeLanes(ctx: CanvasRenderingContext2D, state: GameState, p: Pla
 function drawHoldLine(ctx: CanvasRenderingContext2D, state: GameState, p: Place) {
   // Redden as the fleet closes, so the stakes show without a HUD label.
   let nearest = 0
-  const { h: sh } = shipSize()
+  const { h: sh } = shipSize(state)
+  const holdLine = state.layout.holdLine
   for (const s of state.ships) {
     if (!s.alive) continue
     nearest = Math.max(nearest, shipY(state, s) + sh)
   }
-  const room = Math.max(0.0001, HOLD_LINE - 0.1)
+  const room = Math.max(0.0001, holdLine - 0.1)
   const pressure = Math.max(0, Math.min(1, (nearest - 0.1) / room))
 
   ctx.save()
@@ -279,8 +279,8 @@ function drawHoldLine(ctx: CanvasRenderingContext2D, state: GameState, p: Place)
   ctx.lineWidth = Math.max(1, p.u(0.004))
   ctx.setLineDash([p.u(0.022), p.u(0.018)])
   ctx.beginPath()
-  ctx.moveTo(p.x(0), p.y(HOLD_LINE))
-  ctx.lineTo(p.x(1), p.y(HOLD_LINE))
+  ctx.moveTo(p.x(0), p.y(holdLine))
+  ctx.lineTo(p.x(1), p.y(holdLine))
   ctx.stroke()
   ctx.restore()
 }
@@ -404,7 +404,7 @@ export function renderGame(
   w: number,
   h: number,
 ) {
-  const p = placement(w, h)
+  const p = placement(w, h, state.layout.fieldH > 1)
 
   ctx.fillStyle = playfieldColor()
   ctx.fillRect(0, 0, w, h)
@@ -415,7 +415,7 @@ export function renderGame(
   drawChargeLanes(ctx, state, p)
   drawHoldLine(ctx, state, p)
 
-  const { w: sw, h: sh } = shipSize()
+  const { w: sw, h: sh } = shipSize(state)
   for (const ship of state.ships) {
     const x = p.x(shipX(state, ship))
     const y = p.y(shipY(state, ship))

@@ -21,12 +21,12 @@ import { useGamePause } from '../../hooks/useGamePause'
 import { usePersonalBest } from '../../hooks/usePersonalBest'
 import { getPersonalBest } from '../../lib/personalBest'
 import { clearRunAchievements } from '../../lib/runAchievements'
-import { STAGE_ASPECT } from '../../lib/stage'
 import { useTournamentPlay } from '../../tournaments/TournamentPlayContext'
 import {
   createInitialState,
   jumpToWave,
   POWER_HUE,
+  stageFor,
   POWER_LABEL,
   setFiring,
   setMove,
@@ -83,7 +83,14 @@ function isStartKey(e: KeyboardEvent): boolean {
 export function BarrageGame() {
   const tournament = useTournamentPlay()
   const apiBest = usePersonalBest('barrage')
-  const stateRef = useRef<GameState>(createInitialState())
+  // Upright on a phone, on its side on a desktop. A run keeps the shape it
+  // started in; the menu adopts a new one straight away.
+  const [portrait, setPortrait] = useState(
+    () => typeof window === 'undefined' || window.innerHeight > window.innerWidth,
+  )
+  const portraitRef = useRef(portrait)
+  portraitRef.current = portrait
+  const stateRef = useRef<GameState>(createInitialState(portrait))
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [ui, setUi] = useState<Snapshot>(() => toSnapshot(stateRef.current))
   const [saveOpen, setSaveOpen] = useState(false)
@@ -130,7 +137,7 @@ export function BarrageGame() {
     offeredScore.current = null
     clearRunAchievements()
     releaseAll()
-    stateRef.current = startGame(stateRef.current)
+    stateRef.current = startGame(stateRef.current, portraitRef.current)
     previousBestRef.current = getPersonalBest('barrage')
     startGrace.current = performance.now() + 220
     setUi(toSnapshot(stateRef.current))
@@ -189,6 +196,24 @@ export function BarrageGame() {
   useEffect(() => {
     if (ui.phase === 'menu') previousBestRef.current = apiBest
   }, [apiBest, ui.phase])
+
+  useEffect(() => {
+    const sync = () => setPortrait(window.innerHeight > window.innerWidth)
+    sync()
+    window.addEventListener('resize', sync)
+    window.addEventListener('orientationchange', sync)
+    return () => {
+      window.removeEventListener('resize', sync)
+      window.removeEventListener('orientationchange', sync)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (stateRef.current.phase !== 'menu') return
+    if (stateRef.current.layout.fieldH > 1 === portrait) return
+    stateRef.current = createInitialState(portrait)
+    setUi(toSnapshot(stateRef.current))
+  }, [portrait])
 
   // Losing the tab mid-hold would otherwise leave the cannon driving itself.
   useEffect(() => {
@@ -266,8 +291,8 @@ export function BarrageGame() {
     <section className={`barrage barrage--fullscreen${saveOpen ? ' barrage--saving' : ''}`}>
       <div className="game-play">
         <GameStage
-          aspectWidth={STAGE_ASPECT.barrage.w}
-          aspectHeight={STAGE_ASPECT.barrage.h}
+          aspectWidth={stageFor(portrait).w}
+          aspectHeight={stageFor(portrait).h}
           fill
         >
           <div className="barrage__play" onPointerDown={onPlayTap}>

@@ -15,10 +15,81 @@ import { sfx } from '../../lib/sound'
  * axes scale off width so speeds and sizes stay isotropic at any size.
  */
 
-export const STAGE_W = 3
-export const STAGE_H = 4
-/** Height of the playfield in width units — the stage aspect, unrolled. */
-export const FIELD_H = STAGE_H / STAGE_W
+/**
+ * Two board shapes. Upright on a phone; on its side on a desktop, where a 3:4
+ * board was a narrow column with the window wasted either side. A landscape
+ * field is too short for five rows of ships plus room to descend, so the fleet
+ * is squatter and wider there — see `makeLayout`.
+ */
+export function stageFor(portrait: boolean) {
+  return portrait ? { w: 3, h: 4 } : { w: 4, h: 3 }
+}
+
+/**
+ * Everything about the board that depends on its shape. Coordinates are in
+ * stage-width units throughout: x runs 0..1, y runs 0..fieldH.
+ */
+export type Layout = {
+  fieldH: number
+  cols: number
+  rows: number
+  shipW: number
+  shipH: number
+  colStep: number
+  rowStep: number
+  formW: number
+  formH: number
+  /** Ships reaching this line end the run outright. */
+  holdLine: number
+  cannonY: number
+  /** Where the fleet starts on wave one. */
+  startY: number
+  /** Ground between the fleet's starting edge and the line. */
+  descent: number
+  /** Gain per turn, derived from the descent so the run to the line takes
+   *  about the same number of turns whichever shape is in play. */
+  dropPerTurn: number
+}
+
+/** Turns from the fleet's starting edge to the line. Fixed across both shapes. */
+const TURNS_TO_LAND = 40
+
+export function makeLayout(portrait: boolean): Layout {
+  const stage = stageFor(portrait)
+  const fieldH = stage.h / stage.w
+
+  // A short field cannot carry five rows, so it trades them for columns —
+  // which is the right shape for a wide board anyway.
+  const cols = portrait ? 6 : 8
+  const rows = portrait ? 5 : 3
+  const shipW = portrait ? 0.108 : 0.085
+  const shipH = portrait ? 0.072 : 0.062
+  const colStep = portrait ? 0.144 : 0.103
+  const rowStep = portrait ? 0.104 : 0.09
+
+  const formW = (cols - 1) * colStep + shipW
+  const formH = (rows - 1) * rowStep + shipH
+  const holdLine = fieldH - 0.155
+  const startY = portrait ? 0.14 : 0.1
+  const descent = Math.max(0.05, holdLine - startY - formH)
+
+  return {
+    fieldH,
+    cols,
+    rows,
+    shipW,
+    shipH,
+    colStep,
+    rowStep,
+    formW,
+    formH,
+    holdLine,
+    cannonY: fieldH - 0.085,
+    startY,
+    descent,
+    dropPerTurn: descent / TURNS_TO_LAND,
+  }
+}
 
 export type Phase = 'menu' | 'playing' | 'dying' | 'clearing' | 'gameover'
 
@@ -83,6 +154,8 @@ export type Drop = {
 }
 
 export type GameState = {
+  /** Board shape this run is being played on. */
+  layout: Layout
   phase: Phase
   score: number
   best: number
@@ -156,21 +229,10 @@ export type Snapshot = {
   jam: boolean
 }
 
-export const COLS = 6
-export const ROWS = 5
 export const MAX_TIER = 3
-const SHIP_W = 0.108
-const SHIP_H = 0.072
-const COL_STEP = 0.144
-const ROW_STEP = 0.104
-const FORM_W = (COLS - 1) * COL_STEP + SHIP_W
 const MARGIN = 0.028
-/** Ships reaching this line end the run outright — that is the line you hold. */
-export const HOLD_LINE = FIELD_H - 0.155
-
 const CANNON_W = 0.112
 const CANNON_H = 0.066
-const CANNON_Y = FIELD_H - 0.085
 /** Keeps pace with the wider formation — the gaps to cross got bigger too. */
 const CANNON_SPEED = 0.82
 
@@ -187,16 +249,6 @@ const FIRE_COOLDOWN = 0.22
 
 const ENEMY_SHOT_W = 0.015
 const ENEMY_SHOT_H = 0.04
-
-/**
- * How far the fleet gains on each turn. The run to the line is the backstop for
- * playing too slowly, not the main threat — that is what the volleys are for —
- * so this is gentle enough to leave a wave winnable on skill.
- *
- * A wider formation leaves less room to march, so it turns more often; this is
- * scaled to keep the number of turns to the line roughly where it was.
- */
-const DROP_PER_TURN = 0.013
 
 /** Below the floating HUD, above the fleet's top row. */
 const CARRIER_Y = 0.078
@@ -261,10 +313,10 @@ const SCORE_CLEAN_WAVE = 500
 // ------------------------------------------------------------------- tuning
 
 /** How fast the formation steps sideways, in units per second. */
-function marchSpeed(wave: number, shipsLeft: number): number {
+function marchSpeed(wave: number, shipsLeft: number, total: number): number {
   const base = 0.09 + Math.min(0.15, (wave - 1) * 0.02)
   // The classic acceleration: the fewer left, the faster they come.
-  const thinning = 1 + (1 - shipsLeft / (COLS * ROWS)) * 2.2
+  const thinning = 1 + (1 - shipsLeft / Math.max(1, total)) * 2.2
   return base * thinning
 }
 
@@ -282,8 +334,13 @@ function volleyGap(wave: number): number {
  * How many columns open up at once. Two from the off, or the first wave would
  * not be a barrage at all; never every column, so there is always a cold lane.
  */
-function volleyWidth(wave: number): number {
-  return Math.min(COLS - 1, 2 + Math.floor((wave - 1) / 2))
+function volleyWidth(wave: number, cols: number): number {
+  // Scaled by column count, not fixed. A wider board has more lanes to dodge
+  // into, so holding the *share* of them that goes hot is what keeps a volley
+  // as threatening on one board shape as on the other.
+  const upright = 2 + Math.floor((wave - 1) / 2)
+  const scaled = Math.round((upright * cols) / 6)
+  return Math.min(cols - 1, Math.max(2, scaled))
 }
 
 function enemyShotSpeed(wave: number): number {
@@ -293,19 +350,24 @@ function enemyShotSpeed(wave: number): number {
 // ------------------------------------------------------------------ helpers
 
 export function shipX(state: GameState, ship: Ship): number {
-  return state.formX + ship.col * COL_STEP
+  return state.formX + ship.col * state.layout.colStep
 }
 
 export function shipY(state: GameState, ship: Ship): number {
-  return state.formY + ship.row * ROW_STEP
+  return state.formY + ship.row * state.layout.rowStep
 }
 
-export function shipSize() {
-  return { w: SHIP_W, h: SHIP_H }
+export function shipSize(state: GameState) {
+  return { w: state.layout.shipW, h: state.layout.shipH }
 }
 
 export function cannonRect(state: GameState) {
-  return { x: state.cannonX - CANNON_W / 2, y: CANNON_Y, w: CANNON_W, h: CANNON_H }
+  return {
+    x: state.cannonX - CANNON_W / 2,
+    y: state.layout.cannonY,
+    w: CANNON_W,
+    h: CANNON_H,
+  }
 }
 
 export function dropRadius() {
@@ -336,10 +398,10 @@ export function shipTier(wave: number, row: number): number {
   return Math.min(MAX_TIER, tier)
 }
 
-function makeShips(wave: number): Ship[] {
+function makeShips(wave: number, layout: Layout): Ship[] {
   const ships: Ship[] = []
-  for (let row = 0; row < ROWS; row++) {
-    for (let col = 0; col < COLS; col++) {
+  for (let row = 0; row < layout.rows; row++) {
+    for (let col = 0; col < layout.cols; col++) {
       const tier = shipTier(wave, row)
       ships.push({ col, row, alive: true, tier, hp: tier, hurt: 0, charge: 0, pop: 0 })
     }
@@ -347,17 +409,21 @@ function makeShips(wave: number): Ship[] {
   return ships
 }
 
-/** Row the formation starts at — later waves get a head start down the board. */
-function startFormY(wave: number): number {
-  return 0.14 + Math.min(0.2, (wave - 1) * 0.028)
+/**
+ * Row the formation starts at. Later waves get a head start, taken as a share
+ * of the ground available rather than a fixed distance, so a short board is not
+ * simply handing later waves the whole run-up.
+ */
+function startFormY(wave: number, layout: Layout): number {
+  return layout.startY + Math.min(0.36, (wave - 1) * 0.05) * layout.descent
 }
 
 function resetWave(state: GameState, wave: number) {
   state.wave = wave
-  state.ships = makeShips(wave)
+  state.ships = makeShips(wave, state.layout)
   state.shots = []
-  state.formX = (1 - FORM_W) / 2
-  state.formY = startFormY(wave)
+  state.formX = (1 - state.layout.formW) / 2
+  state.formY = startFormY(wave, state.layout)
   state.formDir = 1
   state.volleyIn = volleyGap(wave) * 0.8
   state.chargeLeft = 0
@@ -386,8 +452,9 @@ function resetCannon(state: GameState) {
   state.jamArmed = false
 }
 
-export function createInitialState(): GameState {
+export function createInitialState(portrait = true): GameState {
   const state: GameState = {
+    layout: makeLayout(portrait),
     phase: 'menu',
     score: 0,
     best: 0,
@@ -428,8 +495,8 @@ export function createInitialState(): GameState {
   return state
 }
 
-export function startGame(prev: GameState): GameState {
-  const state = createInitialState()
+export function startGame(prev: GameState, portrait = true): GameState {
+  const state = createInitialState(portrait)
   state.phase = 'playing'
   state.best = prev.best
   return state
@@ -456,7 +523,7 @@ function beginCharge(state: GameState) {
   if (live.length === 0) return
 
   const cols = [...new Set(live.map((s) => s.col))]
-  const want = Math.min(cols.length, volleyWidth(state.wave))
+  const want = Math.min(cols.length, volleyWidth(state.wave, state.layout.cols))
 
   // Shuffle, then take — every hot column is a real threat and a real gap.
   for (let i = cols.length - 1; i > 0; i--) {
@@ -502,8 +569,8 @@ function fireVolley(state: GameState) {
     const ship = frontShipOfColumn(state, col)
     if (!ship) continue
     state.shots.push({
-      x: shipX(state, ship) + SHIP_W / 2,
-      y: shipY(state, ship) + SHIP_H,
+      x: shipX(state, ship) + state.layout.shipW / 2,
+      y: shipY(state, ship) + state.layout.shipH,
       vx: state.volleySpread * speed,
       vy: speed,
       hostile: true,
@@ -542,7 +609,7 @@ function tryFire(state: GameState) {
   for (const lane of lanes) {
     state.shots.push({
       x: state.cannonX,
-      y: CANNON_Y - PLAYER_SHOT_H,
+      y: state.layout.cannonY - PLAYER_SHOT_H,
       vx: lane * PLAYER_SHOT_SPEED,
       vy: -PLAYER_SHOT_SPEED,
       hostile: false,
@@ -637,7 +704,7 @@ function advanceDrops(state: GameState, dt: number) {
   for (const drop of state.drops) {
     drop.y += DROP_FALL * dt
     drop.life -= dt
-    if (drop.life <= 0 || drop.y - DROP_R > FIELD_H) continue
+    if (drop.life <= 0 || drop.y - DROP_R > state.layout.fieldH) continue
     if (
       overlaps(
         drop.x - DROP_R,
@@ -670,7 +737,13 @@ function hitShip(state: GameState, ship: Ship): boolean {
   ship.alive = false
   ship.pop = 0.32
   // Plated hulls are worth what they cost you to break.
-  state.score += SCORE_ROW[Math.min(ship.row, SCORE_ROW.length - 1)] * ship.tier
+  // Spread the value table across however many rows this board has, so a
+  // squat landscape fleet is not worth more per ship than a tall upright one.
+  const band = Math.min(
+    SCORE_ROW.length - 1,
+    Math.floor((ship.row * SCORE_ROW.length) / Math.max(1, state.layout.rows)),
+  )
+  state.score += SCORE_ROW[band] * ship.tier
   sfx('hit')
   return true
 }
@@ -705,17 +778,19 @@ function advanceFormation(state: GameState, dt: number) {
 
   const minCol = Math.min(...live.map((s) => s.col))
   const maxCol = Math.max(...live.map((s) => s.col))
-  const leftEdge = state.formX + minCol * COL_STEP
-  const rightEdge = state.formX + maxCol * COL_STEP + SHIP_W
+  const { colStep, shipW } = state.layout
+  const leftEdge = state.formX + minCol * colStep
+  const rightEdge = state.formX + maxCol * colStep + shipW
 
-  const step = marchSpeed(state.wave, live.length) * dt * state.formDir
+  const total = state.layout.cols * state.layout.rows
+  const step = marchSpeed(state.wave, live.length, total) * dt * state.formDir
   const nextLeft = leftEdge + step
   const nextRight = rightEdge + step
 
   if (nextLeft < MARGIN || nextRight > 1 - MARGIN) {
     // Turn and drop — the pressure that eventually reaches the line.
     state.formDir *= -1
-    state.formY += DROP_PER_TURN
+    state.formY += state.layout.dropPerTurn
     sfx('tap')
     return
   }
@@ -723,6 +798,7 @@ function advanceFormation(state: GameState, dt: number) {
 }
 
 function advanceShots(state: GameState, dt: number) {
+  const layout = state.layout
   const ships = aliveShips(state)
   const cannon = cannonRect(state)
   const survivors: Shot[] = []
@@ -738,7 +814,7 @@ function advanceShots(state: GameState, dt: number) {
     const size = shotSize(shot.hostile)
     const left = shot.x - size.w / 2
 
-    if (shot.y < -size.h || shot.y > FIELD_H + size.h) continue
+    if (shot.y < -size.h || shot.y > state.layout.fieldH + size.h) continue
     if (left < -size.w || left > 1 + size.w) continue
 
     if (shot.hostile) {
@@ -757,7 +833,7 @@ function advanceShots(state: GameState, dt: number) {
       if (!ship.alive) continue
       const sx = shipX(state, ship)
       const sy = shipY(state, ship)
-      if (!overlaps(left, shot.y, size.w, size.h, sx, sy, SHIP_W, SHIP_H)) continue
+      if (!overlaps(left, shot.y, size.w, size.h, sx, sy, layout.shipW, layout.shipH)) continue
       hitShip(state, ship)
       // A piercing round keeps climbing, so it can take a whole column.
       if (!shot.pierce) {
@@ -851,7 +927,7 @@ export function tick(prev: GameState, dt: number): GameState {
   // Did anything reach the line?
   const live = aliveShips(state)
   for (const ship of live) {
-    if (shipY(state, ship) + SHIP_H >= HOLD_LINE) {
+    if (shipY(state, ship) + state.layout.shipH >= state.layout.holdLine) {
       endRun(state)
       return state
     }
