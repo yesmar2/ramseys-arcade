@@ -75,35 +75,62 @@ async function fetchTournamentDetail(
 }
 
 /**
- * One game's line in a player's breakdown: the score they posted, then the
- * place and points it earned. Score first — with the points first, "+10 4"
- * read as one number.
+ * One game in a player's breakdown: a small card with the game, a caption
+ * saying how they did in it, and what it earned them on the right.
+ *
+ * In a place-points event the headline is the points — that is what adds
+ * up to the total above — and the caption spells out where the score came
+ * from ("1st of 4 · scored 3,015"). A bare number on the right was read as
+ * the points when it was the score.
  */
-function GameResultCell({
+function GameBreakdownRow({
+  game,
   cell,
   usePoints,
   ended,
+  field,
 }: {
+  game: string
   cell: { score: number | null; place: number | null; points: number } | undefined
   usePoints: boolean
   ended: boolean
+  /** How many players posted a score in this game. */
+  field: number
 }) {
-  if (cell?.score == null) {
-    return (
-      <span className="ev-row__game-result ev-row__game-result--empty">
-        {ended ? 'Not played' : 'Not played yet'}
-      </span>
-    )
+  const label = getGame(game)?.name ?? game
+  const accent = resolveGameAccent(game, getGame(game)?.accent ?? '#2eb8a0')
+  const played = cell?.score != null
+  const score = played ? cell.score!.toLocaleString() : null
+
+  let sub: string
+  let value: string
+  let muted = false
+  if (!played) {
+    sub = ended ? 'Not played' : 'Not played yet'
+    value = usePoints ? '0 pts' : '—'
+    muted = true
+  } else if (usePoints) {
+    sub =
+      cell.place != null
+        ? `${ordinal(cell.place)} of ${field} · scored ${score}`
+        : `Scored ${score}`
+    value = `+${cell.points} pts`
+  } else {
+    sub = 'Counts toward the total'
+    value = score!
   }
+
   return (
-    <span className="ev-row__game-result">
-      <span className="ev-row__game-score">{cell.score.toLocaleString()}</span>
-      {usePoints && cell.place != null ? (
-        <span className="ev-row__game-place">
-          {ordinal(cell.place)} · +{cell.points} pts
-        </span>
-      ) : null}
-    </span>
+    <li className="ev-row__game">
+      <GameThumbArt slug={game} accent={accent} />
+      <span className="ev-row__game-text">
+        <span className="ev-row__game-name">{label}</span>
+        <span className="ev-row__game-sub">{sub}</span>
+      </span>
+      <span className={`ev-row__game-val${muted ? ' ev-row__game-val--muted' : ''}`}>
+        {value}
+      </span>
+    </li>
   )
 }
 
@@ -661,6 +688,14 @@ function StandingsList({
     () => (single ? scoredStandings(detail) : []),
     [detail, single],
   )
+  // Players with a score in each game, for "1st of 4".
+  const fieldByGame = useMemo(() => {
+    const out: Record<string, number> = {}
+    for (const game of detail.games) {
+      out[game] = detail.standings.filter((r) => r.byGame[game]?.score != null).length
+    }
+    return out
+  }, [detail])
 
   if (single) {
     return (
@@ -701,21 +736,16 @@ function StandingsList({
             mine={Boolean(youName) && name === youName}
             breakdown={
               <ul className="ev-row__games">
-                {detail.games.map((game) => {
-                  const label = getGame(game)?.name ?? game
-                  const accent = resolveGameAccent(game, getGame(game)?.accent ?? '#2eb8a0')
-                  return (
-                    <li key={game} className="ev-row__game">
-                      <GameThumbArt slug={game} accent={accent} />
-                      <span className="ev-row__game-name">{label}</span>
-                      <GameResultCell
-                        cell={row.byGame[game]}
-                        usePoints={usePoints}
-                        ended={detail.status === 'ended'}
-                      />
-                    </li>
-                  )
-                })}
+                {detail.games.map((game) => (
+                  <GameBreakdownRow
+                    key={game}
+                    game={game}
+                    cell={row.byGame[game]}
+                    usePoints={usePoints}
+                    ended={detail.status === 'ended'}
+                    field={fieldByGame[game] ?? 0}
+                  />
+                ))}
               </ul>
             }
           />
