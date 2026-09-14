@@ -12,6 +12,8 @@ import {
   type GlobalBoardEntry,
 } from '../lib/leaderboard'
 import { useLiveEvents } from '../hooks/useLiveEvents'
+import { PlayerAvatar } from './PlayerAvatar'
+import { PodiumMedal, medalKind } from './PodiumMedal'
 
 type Snapshot = {
   rank: number | null
@@ -29,9 +31,9 @@ const EMPTY: Snapshot = {
   top: [],
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
+function Figure({ label, value }: { label: string; value: string }) {
   return (
-    <div className="home-you__stat">
+    <div className="home-you__fig">
       <span className="home-you__v">{value}</span>
       <span className="home-you__k">{label}</span>
     </div>
@@ -117,20 +119,35 @@ export function HomeYou() {
     <section className="home-you" aria-labelledby="home-you-heading">
       <div className="home-you__head">
         <h2 className="home-you__title" id="home-you-heading">
-          {cleaned}
+          Your standing
         </h2>
         <a className="home-you__link" href={rankHref(cleaned, period)}>
           Full ranking →
         </a>
       </div>
 
-      <div className="home-you__stats">
-        {crowded ? (
-          <Stat label={`of ${snap.totalPlayers}`} value={snap.rank != null ? `#${snap.rank}` : '—'} />
-        ) : null}
-        <Stat label={`points ${periodLabel.toLowerCase()}`} value={snap.score.toLocaleString()} />
-        <Stat label="games played" value={String(snap.gamesRanked)} />
-        <Stat label="events" value={String(mine.length)} />
+      {/*
+        * You, as a player card rather than a run of loose numbers. Everywhere
+        * else in the app a player is an avatar and a name, so they are here too.
+        */}
+      <div className="home-you__me">
+        <PlayerAvatar name={cleaned} size="lg" />
+        <div className="home-you__me-body">
+          <p className="home-you__me-name">{cleaned}</p>
+          <p className="home-you__me-meta">
+            {snap.gamesRanked} {snap.gamesRanked === 1 ? 'game' : 'games'} ranked ·{' '}
+            {periodLabel.toLowerCase()}
+          </p>
+        </div>
+        <div className="home-you__figs">
+          {crowded ? (
+            <Figure
+              label={`of ${snap.totalPlayers}`}
+              value={snap.rank != null ? `#${snap.rank}` : '—'}
+            />
+          ) : null}
+          <Figure label="points" value={snap.score.toLocaleString()} />
+        </div>
       </div>
 
       {rows.length > 0 ? (
@@ -139,22 +156,45 @@ export function HomeYou() {
             {crowded ? `Top ${rows.length}` : 'Everyone'} · {periodLabel.toLowerCase()}
           </p>
           <ol className="home-you__rows">
-            {rows.map((entry) => (
-              <li
-                key={entry.name}
-                className={`home-you__row${
-                  entry.name === cleaned ? ' home-you__row--me' : ''
-                }`}
-              >
-                <span className="home-you__pos">{entry.rank}</span>
-                <span className="home-you__name">{entry.name}</span>
-                <span className="home-you__score">{entry.score.toLocaleString()}</span>
-              </li>
-            ))}
+            {rows.map((entry) => {
+              const rowName = normalizePlayerName(entry.name ?? '')
+              const isYou = rowName === cleaned
+              const medal = medalKind(entry.rank)
+              return (
+                <li
+                  key={entry.name}
+                  className={`home-you__row${isYou ? ' home-you__row--me' : ''}`}
+                >
+                  <span className="home-you__pos" aria-label={`#${entry.rank}`}>
+                    {medal ? (
+                      <PodiumMedal kind={medal} period={period} />
+                    ) : (
+                      <span className="home-you__pos-num">#{entry.rank}</span>
+                    )}
+                  </span>
+                  <a
+                    className="home-you__player"
+                    href={rankHref(rowName, period)}
+                    title={rowName}
+                  >
+                    <PlayerAvatar avatarId={entry.avatarId} name={rowName} size="sm" />
+                    <span className="home-you__name">{rowName}</span>
+                    {isYou ? <span className="home-you__you">You</span> : null}
+                  </a>
+                  <span className="home-you__score">{entry.score.toLocaleString()}</span>
+                </li>
+              )
+            })}
             {yourRow ? (
               <li className="home-you__row home-you__row--me">
-                <span className="home-you__pos">{snap.rank}</span>
-                <span className="home-you__name">{cleaned} — you</span>
+                <span className="home-you__pos" aria-label={`#${snap.rank}`}>
+                  <span className="home-you__pos-num">#{snap.rank}</span>
+                </span>
+                <a className="home-you__player" href={rankHref(cleaned, period)} title={cleaned}>
+                  <PlayerAvatar name={cleaned} size="sm" />
+                  <span className="home-you__name">{cleaned}</span>
+                  <span className="home-you__you">You</span>
+                </a>
                 <span className="home-you__score">{snap.score.toLocaleString()}</span>
               </li>
             ) : null}

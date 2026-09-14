@@ -412,6 +412,15 @@
  * an edge to line up against. Kept translucent and shadowless so it settles
  * into the page rather than sitting on top of it.
  */
+/*
+ * Your standing.
+ *
+ * This used to be a flat slab with a run of loose numbers and a list of bare
+ * names, which is nothing like how a player is drawn anywhere else in the app.
+ * It is built on the same pieces as the boards now — avatar, medal, You tag —
+ * with a header that matches the other home sections, so it reads as part of
+ * the page rather than as a footer that got away.
+ */
 .home-you {
   border-radius: var(--tile-radius);
   background: rgba(var(--surface-rgb), 0.62);
@@ -423,15 +432,17 @@
   align-items: baseline;
   justify-content: space-between;
   gap: 0.75rem;
-  padding: 0.7rem 0.95rem 0.5rem;
+  padding: 0.8rem 0.95rem 0.15rem;
 }
 
 .home-you__title {
   margin: 0;
   font-family: var(--font-display);
-  font-size: 0.95rem;
+  font-size: 0.78rem;
   font-weight: 800;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
 }
 
 .home-you__link {
@@ -446,17 +457,49 @@
   color: var(--accent);
 }
 
-.home-you__stats {
+/* You: the same avatar-and-name shape a player has everywhere else. */
+.home-you__me {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem 1.9rem;
-  padding: 0 0.95rem 0.8rem;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.55rem 0.95rem 0.8rem;
 }
 
-.home-you__stat {
+.home-you__me-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.home-you__me-name {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.02rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.home-you__me-meta {
+  margin: 0.1rem 0 0;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.home-you__figs {
+  flex: none;
   display: flex;
   align-items: baseline;
-  gap: 0.35rem;
+  gap: 1.15rem;
+}
+
+.home-you__fig {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.12rem;
   min-width: 0;
 }
 
@@ -470,9 +513,11 @@
 }
 
 .home-you__k {
-  font-size: 0.72rem;
+  font-size: 0.66rem;
   font-weight: 650;
+  letter-spacing: 0.03em;
   color: var(--muted);
+  white-space: nowrap;
 }
 
 .home-you__board {
@@ -481,54 +526,103 @@
 
 .home-you__board-title {
   margin: 0;
-  padding: 0.5rem 0.95rem 0.3rem;
-  font-size: 0.68rem;
+  padding: 0.55rem 0.95rem 0.35rem;
+  font-size: 0.66rem;
   font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
   color: var(--muted);
 }
 
 .home-you__rows {
   margin: 0;
-  padding: 0 0 0.35rem;
+  padding: 0 0.6rem 0.55rem;
   list-style: none;
+  display: grid;
+  gap: 0.18rem;
 }
 
+/* Same three-column shape the leaderboard summaries use. */
 .home-you__row {
-  display: flex;
+  display: grid;
+  grid-template-columns: 2.4rem minmax(0, 1fr) auto;
+  gap: 0.35rem;
   align-items: center;
-  gap: 0.6rem;
-  padding: 0.3rem 0.95rem;
-  font-size: 0.84rem;
+  min-height: 1.9rem;
+  padding: 0.1rem 0.35rem;
+  border-radius: 0.5rem;
+  font-size: 0.86rem;
 }
 
 .home-you__row--me {
-  font-weight: 800;
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
 }
 
 .home-you__pos {
-  width: 1.4rem;
-  flex: none;
-  font-weight: 750;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  font-size: 0.7rem;
+  font-weight: 800;
   font-variant-numeric: tabular-nums;
   color: var(--muted);
 }
 
-.home-you__row--me .home-you__pos {
+.home-you__pos-num {
+  flex: none;
+}
+
+.home-you__player {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+  color: inherit;
+  text-decoration: none;
+  font-weight: 700;
+}
+
+.home-you__player:hover .home-you__name,
+.home-you__player:focus-visible .home-you__name {
   color: var(--accent);
 }
 
 .home-you__name {
-  flex: 1;
   min-width: 0;
-  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.home-you__you {
+  flex: none;
+  font-size: 0.58rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--accent);
 }
 
 .home-you__score {
   flex: none;
   font-weight: 750;
   font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 460px) {
+  .home-you__me {
+    flex-wrap: wrap;
+  }
+
+  .home-you__figs {
+    width: 100%;
+    justify-content: flex-start;
+    gap: 1.6rem;
+  }
+
+  .home-you__fig {
+    align-items: flex-start;
+  }
 }
 
 .home-you__empty,
