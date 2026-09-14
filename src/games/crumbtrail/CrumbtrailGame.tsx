@@ -269,6 +269,12 @@ export function CrumbtrailGame() {
                     : `${ui.lives} ${ui.lives === 1 ? 'life' : 'lives'} · ${ui.depth} rows`}
                 </PlayReadoutCenter>
               ) : null}
+              {inRun && ui.crumbStreak >= 2 ? (
+                <p className="crumbtrail__streak" aria-label="Crumbs in a row">
+                  <span className="crumbtrail__streak-count">{ui.crumbStreak}</span>
+                  <span className="crumbtrail__streak-word">in a row</span>
+                </p>
+              ) : null}
             </PlayReadout>
 
             {inRun && !paused && !saveOpen ? (

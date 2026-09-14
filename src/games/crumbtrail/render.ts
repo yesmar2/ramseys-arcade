@@ -1,7 +1,6 @@
 import { isDarkTheme, isFlatTheme, playfieldColor, softFillAlpha } from '../../lib/theme'
 import {
   bufferRowOf,
-  streakMult,
   tidePressure,
   worldRowAt,
   type GameState,
@@ -571,12 +570,4 @@ export function renderGame(
   drawPops(ctx, state, layout, skin)
   drawTide(ctx, state, layout, w, h, skin)
 
-  if (state.crumbStreak >= 10 && state.phase === 'playing') {
-    const { cell } = layout
-    ctx.textAlign = 'center'
-    ctx.textBaseline = 'top'
-    ctx.font = `900 ${Math.max(12, Math.round(cell * 0.5))}px "Segoe UI", system-ui, sans-serif`
-    ctx.fillStyle = hsla(ACCENT, 70, skin.dark ? 64 : 42, 0.9)
-    ctx.fillText(`×${streakMult(state.crumbStreak)} streak`, w / 2, Math.max(8, cell * 0.3))
-  }
 }
