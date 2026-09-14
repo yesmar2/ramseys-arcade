@@ -124,12 +124,17 @@
     display: none;
   }
 
+  /* A 63px pill under the name left most of the row empty. Full width of the
+     text column reads as the page's primary action and fills the space. */
   .home-hero__go {
-    margin-top: 0.55rem;
-    padding: 0.45rem 1.15rem;
-    font-size: 0.84rem;
+    display: flex;
+    justify-content: center;
+    margin-top: 0.5rem;
+    padding: 0.5rem 1.15rem;
+    font-size: 0.86rem;
   }
 }
+
 
 /* ---------- events ---------- */
 
@@ -553,4 +558,26 @@ html[data-theme="flat"] .home-you,
 html[data-theme="google"] .home-you {
   background: transparent;
   border: 1px solid rgba(var(--ink-rgb), 0.12);
+}
+
+@media (max-width: 40rem) {
+  /*
+   * Fixtures read as one line each rather than a name and a clock pinned to
+   * opposite edges — at this width that left a 200px void between them.
+   */
+  .home-evs__row {
+    gap: 0.4rem;
+  }
+
+  .home-evs__name {
+    flex: 0 1 auto;
+  }
+
+  .home-evs__clock::before {
+    content: "· ";
+  }
+
+  .home-evs__all {
+    align-self: flex-start;
+  }
 }
