@@ -7,8 +7,19 @@ import { ScoreSaveCard } from '../../components/ScoreSaveCard'
 import { TournamentScoreCard } from '../../components/TournamentScoreCard'
 import { useGamePause } from '../../hooks/useGamePause'
 import { usePersonalBest } from '../../hooks/usePersonalBest'
+import { usePlayerName } from '../../hooks/usePlayerName'
+import { normalizePlayerName } from '../../lib/leaderboard'
 import { getPersonalBest } from '../../lib/personalBest'
-import { clearRunAchievements } from '../../lib/runAchievements'
+import {
+  clearRunAchievements,
+  isRunAssisted,
+  pushRunAchievement,
+} from '../../lib/runAchievements'
+import {
+  shouldCelebrateRecordSubmit,
+  submitCrumbtrailCrumbStreak,
+  submitCrumbtrailRows,
+} from '../../lib/records'
 import { useTournamentPlay } from '../../tournaments/TournamentPlayContext'
 import {
   createInitialState,
@@ -33,6 +44,7 @@ const SWIPE = 18
 export function CrumbtrailGame() {
   const tournament = useTournamentPlay()
   const apiBest = usePersonalBest('crumbtrail')
+  const playerName = normalizePlayerName(usePlayerName())
   const stateRef = useRef<GameState>(createInitialState())
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [ui, setUi] = useState<Snapshot>(() => toSnapshot(stateRef.current))
@@ -42,6 +54,7 @@ export function CrumbtrailGame() {
   const swipeRef = useRef<{ x: number; y: number } | null>(null)
   const draggedRef = useRef(false)
   const startGrace = useRef(0)
+  const booksKey = useRef<string | null>(null)
   const pausable = ui.phase === 'playing' && !saveOpen
   const { paused, toggle: togglePause, resume } = useGamePause(pausable)
   const pausedRef = useRef(false)
@@ -92,6 +105,40 @@ export function CrumbtrailGame() {
     if (ui.phase === 'menu') previousBestRef.current = apiBest
   }, [apiBest, ui.phase])
 
+  /*
+   * Both books are run totals, so they post once the run is over. Distance and
+   * the crumb streak go together deliberately — they are the two halves of the
+   * same decision, and a board for each says so.
+   */
+  useEffect(() => {
+    if (tournament || !playerName) return
+    if (ui.phase !== 'gameover') return
+    const key = `${playerName}:${ui.depth}:${ui.crumbStreakBest}`
+    if (booksKey.current === key) return
+    booksKey.current = key
+    if (isRunAssisted()) return
+    void (async () => {
+      const rows = await submitCrumbtrailRows(ui.depth, playerName)
+      if (shouldCelebrateRecordSubmit(rows)) {
+        pushRunAchievement({
+          id: 'crumbtrail:most-rows',
+          label: 'Rows climbed',
+          value: String(ui.depth),
+          rank: rows.rank,
+        })
+      }
+      const streak = await submitCrumbtrailCrumbStreak(ui.crumbStreakBest, playerName)
+      if (shouldCelebrateRecordSubmit(streak)) {
+        pushRunAchievement({
+          id: 'crumbtrail:crumb-streak',
+          label: 'Crumbs in a row',
+          value: String(ui.crumbStreakBest),
+          rank: streak.rank,
+        })
+      }
+    })()
+  }, [ui.phase, ui.depth, ui.crumbStreakBest, playerName, tournament])
+
   // The grid is sized from the viewport, so rebuild it between runs on resize.
   useEffect(() => {
     const sync = () => {
@@ -124,6 +171,7 @@ export function CrumbtrailGame() {
     setSaveOpen(false)
     offeredScore.current = null
     clearRunAchievements()
+    booksKey.current = null
     stateRef.current = startGame(stateRef.current, fieldViewport())
     previousBestRef.current = getPersonalBest('crumbtrail')
     startGrace.current = performance.now() + 220
@@ -253,21 +301,15 @@ export function CrumbtrailGame() {
             <header
               className={`crumbtrail__header${ui.tide > 0.35 ? ' crumbtrail__header--warn' : ''}`}
             >
-              <div
-                className="crumbtrail__lives"
-                aria-label={`${ui.lives} ${ui.lives === 1 ? 'life' : 'lives'}`}
-              >
-                {Array.from({ length: inRun ? ui.lives : 0 }, (_, i) => (
-                  <svg
-                    key={i}
-                    className="crumbtrail__pac"
-                    viewBox="0 0 16 16"
-                    aria-hidden="true"
-                  >
-                    <path d="M8 8 L14.14 11.36 A7 7 0 1 1 14.14 4.64 Z" fill="currentColor" />
-                  </svg>
-                ))}
-              </div>
+              {/*
+                * One life, so there is no life counter — which frees the slot
+                * the chomps were in. Distance and streak both get to stay on
+                * screen now instead of taking turns.
+                */}
+              <p className="crumbtrail__stat crumbtrail__stat--lead" aria-label="Rows climbed">
+                <span className="crumbtrail__stat-value">{inRun ? ui.depth : 0}</span>
+                <span className="crumbtrail__stat-label">rows</span>
+              </p>
 
               <p
                 className={`crumbtrail__score${
@@ -279,15 +321,6 @@ export function CrumbtrailGame() {
                 {ui.score.toLocaleString()}
               </p>
 
-              {/*
-                * One secondary stat at a time. Lives, score, distance and
-                * streak all at once do not fit a phone header beside the two
-                * button clusters — the score ends up ellipsised, and the score
-                * is the one number that can never be cut. So the slot shows
-                * whatever matters most right now: the tide if it is coming,
-                * the streak while you are on one, distance otherwise. Your
-                * distance is barely moving while you work a streak anyway.
-                */}
               <div className="crumbtrail__stats">
                 {!inRun ? null : ui.tide > 0.35 ? (
                   <p className="crumbtrail__stat crumbtrail__stat--warn">
@@ -301,12 +334,7 @@ export function CrumbtrailGame() {
                     <span className="crumbtrail__stat-value">{ui.crumbStreak}</span>
                     <span className="crumbtrail__stat-label">in a row</span>
                   </p>
-                ) : (
-                  <p className="crumbtrail__stat" aria-label="Rows climbed">
-                    <span className="crumbtrail__stat-value">{ui.depth}</span>
-                    <span className="crumbtrail__stat-label">rows</span>
-                  </p>
-                )}
+                ) : null}
               </div>
             </header>
 
@@ -376,7 +404,7 @@ export function CrumbtrailGame() {
               {ui.phase === 'menu' && !saveOpen && !paused && (
                 <GameStartCard
                   title="Crumbtrail"
-                  tagline="The maze never ends and the floor is eating it. Keep climbing."
+                  tagline="The maze never ends. Keep climbing, or the tide comes up to meet you."
                   slug="crumbtrail"
                 />
               )}

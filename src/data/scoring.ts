@@ -99,7 +99,9 @@ const SCORING: Record<string, ScoreRow[]> = {
     { label: 'Standing still', value: 'the tide rises after ~5s without a new high row' },
     { label: 'Climbing again', value: 'sends the tide back down' },
     { label: 'Chasers', value: 'asleep on the board ahead — they wake when you get close' },
-    { label: 'Lives', value: '3 — caught or drowned costs one' },
+    { label: 'Fruit', value: '+300 rising to +2,000 — a few rows off your line, seconds only' },
+    { label: 'Bare corridors', value: 'no crumbs — passage that costs you the streak' },
+    { label: 'Lives', value: '1 — caught or drowned ends the run' },
   ],
 }
 

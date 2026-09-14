@@ -61,6 +61,20 @@ export type Ghost = {
   arrive: number
 }
 
+/**
+ * The detour. One appears a few rows up and off your line, keeps for a few
+ * seconds, then goes — a standing offer to spend time you may not have.
+ */
+export type Fruit = {
+  x: number
+  y: number
+  /** Seconds left before it goes. */
+  life: number
+  maxLife: number
+  value: number
+  tier: number
+}
+
 export type Pop = { x: number; y: number; life: number; text: string }
 export type TrailDot = { x: number; y: number; life: number }
 
@@ -128,6 +142,9 @@ export type GameState = {
   surgeHits: number
   crumbStreak: number
   crumbStreakBest: number
+  fruit: Fruit | null
+  /** Seconds until the next one is offered. */
+  fruitTimer: number
   lastTile: Cell
   trail: TrailDot[]
   pops: Pop[]
@@ -160,7 +177,15 @@ const SCORE_POWER = 50
 const SCORE_ROW = 5
 const SCORE_GHOST = [200, 400, 800, 1600]
 const SCORE_SURGE = [150, 300, 600, 1200]
-const START_LIVES = 3
+/**
+ * One life.
+ *
+ * An endless climber with three of them is really three short runs stapled
+ * together: the respawn had to clear the board and shove the tide back to be
+ * survivable at all, which handed you a fresh start rather than a consequence.
+ * One life makes the whole distance one unbroken decision.
+ */
+const START_LIVES = 1
 const FRIGHT_TIME = 6.5
 
 const PLAYER_SPEED = 5.2
@@ -171,7 +196,15 @@ const SURGE_SPEED = 1.85
 
 const DEATH_TIME = 0.85
 const RESPAWN_INVULN = 1.6
-const SURGE_CRUMBS = 26
+/**
+ * Crumbs to fill the surge meter.
+ *
+ * Pellets charges it over 26, which is about five seconds of an open lane
+ * here — the lanes are wall-to-wall crumbs and you are always moving, so it
+ * was refilling faster than you could find a use for it. At eighty it is
+ * something you spend deliberately.
+ */
+const SURGE_CRUMBS = 80
 const SURGE_TIME = 1.7
 const STREAK_STEP = 10
 const MAX_MULT = 4
@@ -201,6 +234,19 @@ const TIDE_EBB = 3.2
 
 /** Rows below a sleeping chaser you have to get before it stirs. */
 const WAKE_RANGE = 5
+
+/**
+ * Fruit. Worth more the deeper you are, so the offer keeps pace with a run
+ * where crumbs are already paying a multiplier.
+ */
+const FRUIT_VALUES = [300, 500, 800, 1200, 2000]
+const FRUIT_LIFE = 8
+/** Seconds between offers — jittered, and only ever one on the board. */
+const FRUIT_GAP_MIN = 14
+const FRUIT_GAP_MAX = 24
+/** Rows above you it can land, and how far off your column it has to be. */
+const FRUIT_ROWS_AHEAD = [3, 8] as const
+const FRUIT_MIN_OFFSET = 2
 
 function loadBest() {
   return getPersonalBest('crumbtrail')
@@ -442,11 +488,31 @@ function seedGhost(state: GameState, y: number): boolean {
   const spots: number[] = []
   for (let x = 0; x < state.cols; x++) if (state.open[y][x]) spots.push(x)
   if (!spots.length) return false
+
+  /*
+   * Sleepers guard the crumbs.
+   *
+   * Bare corridors were a pure tax without this: bots that only ever climbed
+   * through crumbed gaps outscored the ones that took the nearest way up more
+   * than three to one, and outlived them too, so there was no choice being
+   * made — just a worse option and a better one. The band above this lane is
+   * still in the queue, so we can see which of its corridors keep their crumbs
+   * and put the sleeper under one. Now the route that holds your streak is the
+   * route with something waiting on it, and the bare one is what you take when
+   * you would rather be alive than on a run.
+   */
+  const above = state.genQueue[0]
+  const guarded =
+    above && above.kind === 'wall'
+      ? spots.filter((x) => above.open[x] && above.crumbs[x])
+      : []
+  const pool = guarded.length && Math.random() < 0.72 ? guarded : spots
+
   const kind = GHOST_ORDER[state.nextGhostId % GHOST_ORDER.length]
   state.ghosts.push({
     id: state.nextGhostId++,
     kind,
-    x: spots[Math.floor(Math.random() * spots.length)] + 0.5,
+    x: pool[Math.floor(Math.random() * pool.length)] + 0.5,
     y: y + 0.5,
     dir: 'down',
     mode: 'asleep',
@@ -456,6 +522,49 @@ function seedGhost(state: GameState, y: number): boolean {
     arrive: 0,
   })
   return true
+}
+
+/**
+ * Offer a fruit, if there is somewhere worth putting one.
+ *
+ * It goes a few rows up and deliberately off your column: a prize on your
+ * current line is not a decision, it is a pickup. Everything about it — the
+ * distance, the countdown, the tide underneath — is there to make you weigh
+ * the detour rather than take it for free.
+ */
+function placeFruit(state: GameState): boolean {
+  const playerY = Math.floor(state.player.y)
+  const playerX = Math.floor(state.player.x)
+  const tier = Math.min(FRUIT_VALUES.length - 1, Math.floor(state.depth / 60))
+
+  for (let up = FRUIT_ROWS_AHEAD[0]; up <= FRUIT_ROWS_AHEAD[1]; up++) {
+    const y = playerY - up
+    if (y < 1 || y >= state.rows) continue
+    if (state.kind[y] !== 'lane') continue
+    const spots: number[] = []
+    for (let x = 0; x < state.cols; x++) {
+      if (!state.open[y][x] || state.power[y][x]) continue
+      // Wrap-aware: the far side of the board is not actually far away.
+      const gap = Math.abs(x - playerX)
+      if (Math.min(gap, state.cols - gap) < FRUIT_MIN_OFFSET) continue
+      spots.push(x)
+    }
+    if (!spots.length) continue
+    state.fruit = {
+      x: spots[Math.floor(Math.random() * spots.length)] + 0.5,
+      y: y + 0.5,
+      life: FRUIT_LIFE,
+      maxLife: FRUIT_LIFE,
+      value: FRUIT_VALUES[tier],
+      tier,
+    }
+    return true
+  }
+  return false
+}
+
+function fruitGap() {
+  return FRUIT_GAP_MIN + Math.random() * (FRUIT_GAP_MAX - FRUIT_GAP_MIN)
 }
 
 /**
@@ -479,6 +588,7 @@ function shiftDown(state: GameState) {
   for (const ghost of state.ghosts) ghost.y += 1
   for (const dot of state.trail) dot.y += 1
   for (const pop of state.pops) pop.y += 1
+  if (state.fruit) state.fruit.y += 1
 
   /*
    * Only move the schedule on when one actually lands. A row at the cap, or a
@@ -537,6 +647,8 @@ function emptyState(view: { cols: number; rows: number }): GameState {
     surgeHits: 0,
     crumbStreak: 0,
     crumbStreakBest: 0,
+    fruit: null,
+    fruitTimer: FRUIT_GAP_MIN,
     lastTile: { x: 0, y: 0 },
     trail: [],
     pops: [],
@@ -858,6 +970,13 @@ function addPop(state: GameState, x: number, y: number, text: string) {
   if (state.pops.length > 12) state.pops.shift()
 }
 
+/** A fruit sitting here is not cleared ground, so it must not break a streak. */
+function fruitAt(state: GameState, x: number, y: number) {
+  const fruit = state.fruit
+  if (!fruit) return false
+  return Math.floor(fruit.x) === x && Math.floor(fruit.y) === y
+}
+
 function eatAt(state: GameState) {
   const x = Math.floor(state.player.x)
   const y = Math.floor(state.player.y)
@@ -875,15 +994,20 @@ function eatAt(state: GameState) {
     state.score += SCORE_CRUMB * mult
     if (state.surgeTime <= 0) state.surge = Math.min(1, state.surge + 1 / SURGE_CRUMBS)
     sfx('eat', Math.min(5, Math.floor(state.crumbStreak / 8)))
-  } else if (!state.power[y][x]) {
-    // Retracing picked-clean ground breaks the streak, same as Pellets.
+  } else if (!state.power[y][x] && !fruitAt(state, x, y)) {
+    /*
+     * Crumbless ground breaks the streak. That covers tiles you have already
+     * picked clean, the way Pellets does, and now also the corridors the maze
+     * generates bare — which is what makes a bare route a real cost rather
+     * than just a plain-looking one.
+     */
     state.crumbStreak = 0
   }
 
   if (state.power[y][x]) {
     state.power[y][x] = false
     state.score += SCORE_POWER
-    state.surge = Math.min(1, state.surge + 0.25)
+    state.surge = Math.min(1, state.surge + 0.15)
     state.fright = FRIGHT_TIME
     state.frightEaten = 0
     for (const ghost of state.ghosts) {
@@ -902,25 +1026,6 @@ function loseLife(state: GameState, cause: DeathCause) {
   state.crumbStreak = 0
   state.lives -= 1
   sfx('hurt')
-}
-
-/**
- * Back on your feet after a life.
- *
- * The tide is pushed back under the view and the board cleared of chasers,
- * because a respawn into the squeeze that just killed you is not a life.
- */
-function respawn(state: GameState) {
-  placePlayer(state, bufferRowOf(state, state.camera) - followGap(state))
-  state.ghosts = []
-  state.tide = state.camera - TIDE_REST_GAP
-  state.stall = 0
-  state.fright = 0
-  state.frightEaten = 0
-  state.surgeTime = 0
-  state.invuln = RESPAWN_INVULN
-  state.cause = null
-  state.phase = 'playing'
 }
 
 // —— Tick —————————————————————————————————————————————————————
@@ -944,12 +1049,8 @@ export function tick(state: GameState, dt: number): GameState {
   if (next.phase === 'dying') {
     next.deathAnim -= dt
     if (next.deathAnim <= 0) {
-      if (next.lives <= 0) {
-        next.phase = 'gameover'
-        next.deathAnim = 0
-      } else {
-        respawn(next)
-      }
+      next.phase = 'gameover'
+      next.deathAnim = 0
     }
     return next
   }
@@ -992,6 +1093,28 @@ export function tick(state: GameState, dt: number): GameState {
   if (next.invuln <= 0 && worldRowAt(next, next.player.y - 0.5) <= next.tide + 0.3) {
     loseLife(next, 'drowned')
     return next
+  }
+
+  // —— the offer ——
+  if (next.fruit) {
+    next.fruit = { ...next.fruit, life: next.fruit.life - dt }
+    const tideY = bufferRowOf(next, next.tide)
+    if (next.fruit.life <= 0 || next.fruit.y > tideY) {
+      next.fruit = null
+      next.fruitTimer = fruitGap()
+    } else if (dist2(next.fruit.x, next.fruit.y, next.player.x, next.player.y) <= 0.45 * 0.45) {
+      next.score += next.fruit.value
+      addPop(next, next.fruit.x, next.fruit.y, `+${next.fruit.value}`)
+      sfx('good')
+      next.fruit = null
+      next.fruitTimer = fruitGap()
+    }
+  } else {
+    next.fruitTimer -= dt
+    if (next.fruitTimer <= 0) {
+      if (placeFruit(next)) sfx('wave')
+      else next.fruitTimer = 1.5
+    }
   }
 
   // —— chase / scatter ——

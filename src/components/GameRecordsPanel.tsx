@@ -24,6 +24,9 @@ function recordsEmptyDetail(game: string, gameName: string) {
   if (game === 'patriot') {
     return 'Land consecutive perfect hits in-game and the board will show up here. Daily play and strong-score streaks count too.'
   }
+  if (game === 'crumbtrail') {
+    return 'Climb, and string crumbs together on the way — your furthest run and your longest streak both show up here. Daily play and strong-score streaks count too.'
+  }
   if (game === 'pellets') {
     return 'String crumbs together without doubling back and your longest run shows up here. Daily play and strong-score streaks count too.'
   }
@@ -114,7 +117,7 @@ export function GameRecordsPanel({ game, accent, period }: GameRecordsPanelProps
                   </span>
                 )}
                 <a className="records-leaders__time" href={recordHref(game, row.id, period)}>
-                  {row.top ? formatRecordScore(row.top.score, row.unit) : '—'}
+                  {row.top ? formatRecordScore(row.top.score, row.unit, row.id) : '—'}
                 </a>
               </li>
             )

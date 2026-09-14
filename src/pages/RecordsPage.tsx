@@ -293,7 +293,7 @@ function RecordBoardPage({
                 accent={accent}
                 shown={shown}
                 period={period}
-                formatScore={(score) => formatRecordScore(score, unit)}
+                formatScore={(score) => formatRecordScore(score, unit, recordId)}
               />
             )}
 

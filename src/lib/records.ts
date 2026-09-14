@@ -166,6 +166,7 @@ export function recordNavShortLabel(row: { id: string; label: string }): string 
   if (row.id === POP_CENTER_STREAK_ID) return 'Center'
   if (row.id === STACKER_PERFECT_STREAK_ID) return 'Perfect'
   if (row.id === PELLETS_CRUMB_STREAK_ID) return 'Crumbs'
+  if (row.id === CRUMBTRAIL_ROWS_ID) return 'Rows'
   const wave = parseAsteroidsWaveFromRecordId(row.id)
   if (wave != null) return `W${wave}`
   const length = parseSnakeLengthFromRecordId(row.id)
@@ -186,9 +187,20 @@ export function formatRecordValue(entryScore: number, unit: RecordDef['unit']): 
   return String(entryScore)
 }
 
-/** Score column display (combo gets a × prefix). */
-export function formatRecordScore(entryScore: number, unit: RecordDef['unit']): string {
+/**
+ * Score column display.
+ *
+ * Counts wear a × because every one of them until now was a streak or a combo,
+ * where the number is a multiplier you built. Distance is just a tally, and
+ * "×142 rows" reads as nonsense, so boards of that shape print plain.
+ */
+export function formatRecordScore(
+  entryScore: number,
+  unit: RecordDef['unit'],
+  recordId?: string,
+): string {
   if (unit === 'ms') return formatRecordMs(entryScore)
+  if (recordId && PLAIN_COUNT_RECORD_IDS.has(recordId)) return String(entryScore)
   return `×${entryScore}`
 }
 
@@ -198,11 +210,17 @@ export const CROSSWALK_MOST_COINS_ID = 'most-coins'
 export const POP_CENTER_STREAK_ID = 'center-streak'
 export const STACKER_PERFECT_STREAK_ID = 'perfect-streak'
 export const PELLETS_CRUMB_STREAK_ID = 'crumb-streak'
+export const CRUMBTRAIL_CRUMB_STREAK_ID = 'crumb-streak'
+export const CRUMBTRAIL_ROWS_ID = 'most-rows'
+/** A run that ends this short was a misclick, not an attempt. */
+export const CRUMBTRAIL_ROWS_MIN = 10
 /**
  * Crumbs come fast enough that a run of two is noise. Ten is the first
  * multiplier step, so the board starts where the streak starts mattering.
  */
 export const PELLETS_CRUMB_STREAK_MIN = 10
+const PLAIN_COUNT_RECORD_IDS = new Set<string>([CROSSWALK_MOST_COINS_ID, CRUMBTRAIL_ROWS_ID])
+
 export const PLAY_DAYS_STREAK_ID = 'play-days-streak'
 export const THRESHOLD_STREAK_ID = 'threshold-streak'
 
@@ -576,6 +594,43 @@ export async function submitPelletsCrumbStreak(
   }
 }
 
+/** Best-effort Crumbtrail crumb-streak submit (run peak). */
+export async function submitCrumbtrailCrumbStreak(
+  streak: number,
+  name: string,
+): Promise<RecordSubmitOutcome | null> {
+  const value = Math.floor(streak)
+  const cleaned = normalizePlayerName(name)
+  if (!cleaned || !(value >= PELLETS_CRUMB_STREAK_MIN)) return null
+  try {
+    const result = await submitRecord(
+      'crumbtrail',
+      CRUMBTRAIL_CRUMB_STREAK_ID,
+      cleaned,
+      value,
+    )
+    return toRecordSubmitOutcome(result)
+  } catch {
+    return null
+  }
+}
+
+/** Best-effort Crumbtrail distance submit (rows climbed in the run). */
+export async function submitCrumbtrailRows(
+  rows: number,
+  name: string,
+): Promise<RecordSubmitOutcome | null> {
+  const value = Math.floor(rows)
+  const cleaned = normalizePlayerName(name)
+  if (!cleaned || !(value >= CRUMBTRAIL_ROWS_MIN)) return null
+  try {
+    const result = await submitRecord('crumbtrail', CRUMBTRAIL_ROWS_ID, cleaned, value)
+    return toRecordSubmitOutcome(result)
+  } catch {
+    return null
+  }
+}
+
 export const GAMES_WITH_RECORDS = [
   'asteroids',
   'snake',
@@ -587,6 +642,7 @@ export const GAMES_WITH_RECORDS = [
   'simon',
   'spotter',
   'pellets',
+  'crumbtrail',
 ] as const
 export type RecordGame = (typeof GAMES_WITH_RECORDS)[number]
 

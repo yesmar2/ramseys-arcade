@@ -305,10 +305,8 @@ function CrumbtrailThumb({ accent }: { accent?: string }) {
   const you = accent ? accentPastel(accent, 88) : pastel(HUE.gold, 58, 72)
   return (
     <g>
-      {[22, 27].map((cy) => (
-        <circle key={cy} cx="16" cy={cy} r="1.5" fill={you.fill} opacity="0.8" />
-      ))}
-      <g transform="translate(16 14) rotate(-90)">
+      <circle cx="16" cy="5" r="2" fill={you.fill} opacity="0.9" />
+      <g transform="translate(16 18) rotate(-90)">
         <path
           d={pelletsPacPath(0, 0, 8.6)}
           fill={flat ? you.fill : 'hsla(38, 58%, 58%, 0.28)'}

@@ -481,8 +481,6 @@ export function CrumbtrailArt() {
   const flat = isFlatTheme()
   const gold = pastel(HUE.gold, 58, 72)
   const wall = pastel(HUE.sky, 46, 40)
-  const lane = [24, 56, 88, 120]
-
   return (
     <SvgFrame>
       <TileBg />
@@ -507,13 +505,11 @@ export function CrumbtrailArt() {
         />
       ))}
 
-      {/* The trail you came up. */}
-      {lane.map((y) => (
-        <circle key={y} cx="80" cy={y} r="2.6" fill={gold.fill} opacity="0.75" />
-      ))}
+      {/* The one crumb ahead — what the climb is for. */}
+      <circle cx="80" cy="16" r="3.6" fill={gold.fill} opacity="0.9" />
 
-      {/* Facing up the board. */}
-      <g transform="translate(80 32) rotate(-90)">
+      {/* Facing up the board, mouth open at the crumb. */}
+      <g transform="translate(80 44) rotate(-90)">
         <path
           d={pelletsPacPath(0, 0, 17)}
           fill={flat ? gold.fill : 'hsla(38, 58%, 58%, 0.28)'}

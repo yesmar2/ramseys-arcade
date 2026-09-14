@@ -18,6 +18,7 @@ const BOOK_FOCUS: Record<RecordGame, string> = {
   simon: 'Sequence climbs and daily play',
   spotter: 'Fast clears and sub-45s streaks',
   pellets: 'High chomps and consecutive strong boards',
+  crumbtrail: 'Longest climbs and the crumb runs that paid for them',
 }
 
 /** Catalog of games that have record books. */

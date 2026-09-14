@@ -231,6 +231,71 @@ function drawCrumbs(
   }
 }
 
+/**
+ * The fruit.
+ *
+ * Deliberately not in the crumb family: crumbs are small gold dots you take by
+ * the dozen without thinking, and this is one thing worth going out of your way
+ * for, so it is bigger, rose rather than gold, and it breathes. The last two
+ * seconds blink, because an offer you cannot see expiring is not an offer — it
+ * is a prize that was taken away from you.
+ */
+function drawFruit(
+  ctx: CanvasRenderingContext2D,
+  state: GameState,
+  layout: Layout,
+  skin: Skin,
+) {
+  const fruit = state.fruit
+  if (!fruit) return
+  const { cell, rowY } = layout
+  const cx = fruit.x * cell
+  const cy = rowY(fruit.y)
+  const going = fruit.life < 2
+  if (going && Math.floor(state.time * 7) % 2 === 0) return
+
+  const pulse = 0.9 + Math.sin(state.time * 4.5) * 0.1
+  const r = cell * 0.3 * pulse
+  const hue = 348 - fruit.tier * 14
+  const flat = isFlatTheme()
+
+  const glow = ctx.createRadialGradient(cx, cy, r * 0.2, cx, cy, r * 2.4)
+  glow.addColorStop(0, hsla(hue, 68, 60, 0.38))
+  glow.addColorStop(1, hsla(hue, 68, 60, 0))
+  ctx.fillStyle = glow
+  ctx.beginPath()
+  ctx.arc(cx, cy, r * 2.4, 0, Math.PI * 2)
+  ctx.fill()
+
+  // Stem, so it reads as fruit rather than as an oversized crumb.
+  ctx.strokeStyle = hsla(118, 42, skin.dark ? 58 : 38, 0.95)
+  ctx.lineWidth = Math.max(1.2, cell * 0.055)
+  ctx.lineCap = 'round'
+  ctx.beginPath()
+  ctx.moveTo(cx, cy - r * 0.75)
+  ctx.quadraticCurveTo(cx + r * 0.5, cy - r * 1.5, cx + r * 0.95, cy - r * 1.25)
+  ctx.stroke()
+  ctx.lineCap = 'butt'
+
+  ctx.beginPath()
+  ctx.arc(cx, cy, r, 0, Math.PI * 2)
+  ctx.fillStyle = hsla(hue, 68, 58, softFillAlpha(0.3))
+  ctx.fill()
+  if (!flat) {
+    ctx.strokeStyle = hsla(hue, 68, skin.dark ? 62 : 44, 0.95)
+    ctx.lineWidth = Math.max(1.2, cell * 0.06)
+    ctx.stroke()
+  }
+
+  // A ring that empties as the clock runs down.
+  const left = Math.max(0, fruit.life / fruit.maxLife)
+  ctx.beginPath()
+  ctx.arc(cx, cy, r * 1.55, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * left)
+  ctx.strokeStyle = hsla(hue, 68, skin.dark ? 66 : 46, 0.75)
+  ctx.lineWidth = Math.max(1, cell * 0.05)
+  ctx.stroke()
+}
+
 /** Faint row numbers every 50 rows, so the climb has landmarks. */
 function drawMilestones(
   ctx: CanvasRenderingContext2D,
@@ -543,6 +608,7 @@ export function renderGame(
   drawMilestones(ctx, state, layout, skin)
   drawWalls(ctx, state, layout, skin)
   drawCrumbs(ctx, state, layout, skin)
+  drawFruit(ctx, state, layout, skin)
 
   /*
    * Anything straddling the side seam is drawn twice, once on each edge.

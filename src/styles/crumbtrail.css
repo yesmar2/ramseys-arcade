@@ -184,7 +184,7 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding-left: max(2.95rem, calc(env(safe-area-inset-left, 0px) + 2.95rem));
+  padding-left: max(2.85rem, calc(env(safe-area-inset-left, 0px) + 2.85rem));
   padding-right: max(5.4rem, calc(env(safe-area-inset-right, 0px) + 5.4rem));
   background: rgba(var(--surface-rgb), 0.86);
   backdrop-filter: blur(10px);
@@ -195,23 +195,6 @@
 .crumbtrail__header--warn {
   border-bottom-color: color-mix(in srgb, #e85d75 55%, transparent);
   box-shadow: 0 1px 10px color-mix(in srgb, #e85d75 28%, transparent);
-}
-
-/* Lives, as the chomp itself — the same read as Asteroids' ships. */
-.crumbtrail__lives {
-  flex: none;
-  display: flex;
-  align-items: center;
-  gap: 0.2rem;
-  min-width: 2.6rem;
-  color: color-mix(in srgb, #f5b942 84%, var(--ink));
-}
-
-.crumbtrail__pac {
-  display: block;
-  width: 0.95rem;
-  height: 0.95rem;
-  filter: drop-shadow(0 1px 0 rgba(var(--surface-rgb), 0.7));
 }
 
 .crumbtrail__score {
@@ -234,8 +217,16 @@
   color: color-mix(in srgb, #f5b942 62%, var(--ink));
 }
 
+/* Distance leads the band; the streak answers it from the far side. */
+.crumbtrail__stat--lead {
+  flex: none;
+  min-width: 3.4rem;
+}
+
 .crumbtrail__stats {
   flex: none;
+  min-width: 3.4rem;
+  justify-content: flex-end;
   display: flex;
   align-items: baseline;
   gap: 0.5rem;

@@ -121,6 +121,33 @@ export function makeBand(
     lane.crumbs[at] = false
   }
 
+  /*
+   * Some corridors through the band are swept bare.
+   *
+   * Walking a crumbless tile resets the streak — the rule that stops you
+   * farming ground you have already cleared — so a bare corridor is passage
+   * that costs you your run of crumbs. That turns every band into the choice
+   * the game was missing: the nearest way up is often the empty one, and the
+   * one that keeps your streak alive is further along the lane, which is time
+   * you are handing to the tide.
+   *
+   * At least one crumbed route always survives, so the streak is never simply
+   * taken from you, and bare ones only start appearing once there are two to
+   * choose between.
+   */
+  const gapList = [...gaps].sort((a, b) => a - b)
+  const bare = new Set<number>()
+  if (gapList.length >= 2) {
+    const want = Math.min(
+      gapList.length - 1,
+      Math.max(1, Math.round(gapList.length * (0.3 + d * 0.2))),
+    )
+    const pool = [...gapList]
+    for (let i = 0; i < want && pool.length > 1; i++) {
+      bare.add(pool.splice(Math.floor(rand() * pool.length), 1)[0])
+    }
+  }
+
   const rows: GenRow[] = [lane]
   const tall = rand() < 0.36 + d * 0.2
   for (let i = 0; i < (tall ? 2 : 1); i++) {
@@ -130,7 +157,7 @@ export function makeBand(
       row: startRow + 1 + i,
       kind: 'wall',
       open,
-      crumbs: [...open],
+      crumbs: open.map((isOpen, x) => isOpen && !bare.has(x)),
       power: new Array(cols).fill(false),
     })
   }
