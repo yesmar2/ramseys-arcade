@@ -542,6 +542,25 @@ export function rememberJoinedTournament(id: string) {
   }
 }
 
+/**
+ * Drop every local trace of who this device was in events.
+ *
+ * The seat id remembered per event is what lets a gamer-tag rename keep its
+ * scores, but it is device memory, not identity — so it has to go when the
+ * identity does. Left behind across a sign-out it made the next person to sign
+ * in re-join every remembered event carrying the previous player's seat, which
+ * renamed their entry and handed over their score with it.
+ */
+export function clearTournamentIdentity() {
+  for (const key of [JOINED_KEY, PLAYER_IDS_KEY, INVITES_KEY]) {
+    try {
+      localStorage.removeItem(key)
+    } catch {
+      /* ignore */
+    }
+  }
+}
+
 /** Drop local join state for an ended, inaccessible, or unknown event. */
 export function forgetTournamentMembership(tournamentId: string) {
   if (!tournamentId) return

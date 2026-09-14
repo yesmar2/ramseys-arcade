@@ -12,6 +12,7 @@ import {
   setPlayerNameLocal,
 } from './leaderboard'
 import { clearActiveGroup } from './groups'
+import { clearTournamentIdentity } from './tournaments'
 
 const SESSION_KEY = 'arcade-session'
 const ACCOUNT_TAGS_KEY = 'arcade-account-tags'
@@ -217,6 +218,7 @@ async function adoptNamesAfterSignIn(
 
   // This account has no tag here. Clear leftover UI state from the prior user.
   clearPlayerNameLocal()
+  clearTournamentIdentity()
   return []
 }
 
@@ -225,6 +227,7 @@ function resetDeviceIdentityForAccountSwitch() {
   clearPlayerNameLocal()
   clearAllClaimTokens()
   clearActiveGroup()
+  clearTournamentIdentity()
 }
 
 export async function requestMagicLink(email: string): Promise<{
@@ -361,6 +364,7 @@ export async function logoutAccount() {
   clearPlayerNameLocal()
   clearAllClaimTokens()
   clearActiveGroup()
+  clearTournamentIdentity()
   emitAuth()
 }
 
