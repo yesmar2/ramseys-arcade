@@ -1,6 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ComponentType } from 'react'
 import { AsteroidsGame } from '../games/asteroids/AsteroidsGame'
+import { BarrageGame } from '../games/barrage/BarrageGame'
+import { CrosswalkGame } from '../games/crosswalk/CrosswalkGame'
+import { CrumbtrailGame } from '../games/crumbtrail/CrumbtrailGame'
 import { DeadCenterGame } from '../games/dead-center/DeadCenterGame'
+import { FindBugGame } from '../games/findbug/FindBugGame'
 import { PatriotGame } from '../games/patriot/PatriotGame'
 import { SimonGame } from '../games/simon/SimonGame'
 import { SnakeGame } from '../games/snake/SnakeGame'
@@ -25,7 +29,27 @@ import {
 import { tournamentHref } from '../hooks/useHashRoute'
 import { TournamentPlayProvider } from '../tournaments/TournamentPlayContext'
 
-const PLAYABLE = new Set(['stacker', 'patriot', 'snake', 'centroid', 'asteroids', 'pop', 'simon', 'pellets'])
+/*
+ * Every game that can be played inside an event. Each of these reads the
+ * tournament context and saves through the shared score card, so the only
+ * thing that decides whether a slug plays here is whether it is in this map.
+ * The old fixed list of eight left the weekly's newer games — Find the Bug,
+ * Crumbtrail — reporting that they weren't part of an event they were in.
+ */
+const TOURNAMENT_GAMES: Record<string, ComponentType> = {
+  asteroids: AsteroidsGame,
+  barrage: BarrageGame,
+  centroid: DeadCenterGame,
+  crosswalk: CrosswalkGame,
+  crumbtrail: CrumbtrailGame,
+  findbug: FindBugGame,
+  patriot: PatriotGame,
+  pellets: PelletsGame,
+  pop: WhackGame,
+  simon: SimonGame,
+  snake: SnakeGame,
+  stacker: StackerGame,
+}
 
 export function TournamentPlayPage({
   tournamentId,
@@ -47,6 +71,7 @@ export function TournamentPlayPage({
   const [nameDraft, setNameDraft] = useState('')
 
   const game = getGame(gameSlug)
+  const Game = TOURNAMENT_GAMES[gameSlug]
   const backHref = tournamentHref(tournamentId, invite ?? getTournamentInvite(tournamentId) ?? undefined)
 
   useEffect(() => {
@@ -66,7 +91,7 @@ export function TournamentPlayPage({
         })
         if (cancelled) return
         setDetail(data)
-        if (!data.games.includes(gameSlug) || !PLAYABLE.has(gameSlug)) {
+        if (!data.games.includes(gameSlug) || !(gameSlug in TOURNAMENT_GAMES)) {
           setLoadError('That game isn’t part of this tournament.')
           return
         }
@@ -252,14 +277,7 @@ export function TournamentPlayPage({
       }}
     >
       <main className="game-page game-page--fullscreen tour-play">
-        {gameSlug === 'stacker' && <StackerGame />}
-        {gameSlug === 'patriot' && <PatriotGame />}
-        {gameSlug === 'snake' && <SnakeGame />}
-        {gameSlug === 'pellets' && <PelletsGame />}
-        {gameSlug === 'pop' && <WhackGame />}
-        {gameSlug === 'simon' && <SimonGame />}
-        {gameSlug === 'centroid' && <DeadCenterGame />}
-        {gameSlug === 'asteroids' && <AsteroidsGame />}
+        {Game ? <Game /> : null}
       </main>
     </TournamentPlayProvider>
   )
