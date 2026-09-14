@@ -79,6 +79,8 @@ export type RoundState = {
   /** Field shape this scene was laid out for. Held so a rotation mid-round
    *  letterboxes the scene rather than stretching it. */
   aspect: number
+  /** Colour of the surface the bug is perched on — what it camouflages against. */
+  camoBase: string
   x: number
   y: number
   /** Fixed facing, picked once when the round is built. */
@@ -132,7 +134,7 @@ function makeRound(index: number, rng: () => number, aspect: number): RoundState
   const kind = SCENE_ORDER[index % SCENE_ORDER.length]
   const scene = buildScene(kind, rng, config.clutter, aspect)
   const picked = scene.anchors[Math.floor(rng() * scene.anchors.length) % scene.anchors.length]
-  const anchor = clampAnchor(picked ?? { x: 0.5, y: 0.5 })
+  const anchor = clampAnchor(picked ?? { x: 0.5, y: 0.5, on: '#3a4254' })
 
   return {
     index,
@@ -140,6 +142,7 @@ function makeRound(index: number, rng: () => number, aspect: number): RoundState
     scene,
     config,
     aspect,
+    camoBase: anchor.on,
     x: anchor.x,
     y: anchor.y,
     angle: rng() * Math.PI * 2,

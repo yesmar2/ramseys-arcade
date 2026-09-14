@@ -8,7 +8,13 @@
 
 export type SceneKind = 'cabinets' | 'board' | 'loom' | 'tokens' | 'carpet'
 
-export type Anchor = { x: number; y: number }
+/**
+ * A perch, and the colour of whatever it is a perch on. The bug takes that
+ * colour rather than a scene-wide grey, which is what lets a scene be as
+ * saturated as it likes without giving the bug away — it hides against the one
+ * cable or rim or bezel it is sitting on, not against a washed-out room.
+ */
+export type Anchor = { x: number; y: number; on: string }
 
 export type Decoy = {
   x: number
@@ -24,7 +30,10 @@ export type Cabinet = {
   y: number
   w: number
   h: number
+  /** Marquee and screen glow. */
   accent: string
+  /** Enamel the cabinet body is painted. */
+  body: string
   /** Marquee stripe brightness, purely decorative variation. */
   tone: number
 }
@@ -46,6 +55,8 @@ export type Cable = {
   x3: number
   /** Stroke width as a fraction of stage width. */
   width: number
+  /** Sheath colour. Looms are colour coded, so each run looks different. */
+  colour: string
   tone: number
 }
 
@@ -55,7 +66,7 @@ export type Tie = { x: number; y: number; w: number }
 /** A connector block spliced into the loom. */
 export type Block = { x: number; y: number; w: number; h: number; pins: number }
 
-export type Token = { x: number; y: number; r: number; tone: number }
+export type Token = { x: number; y: number; r: number; colour: string; tone: number }
 
 export type MotifKind = 'star' | 'tri' | 'dot' | 'zig'
 export type Motif = {
@@ -126,6 +137,16 @@ function range(rng: Rng, lo: number, hi: number): number {
 /** Scene palettes lean on the same accents so the whole game reads as one arcade. */
 const ACCENTS = ['#2eb87a', '#e85d75', '#4aa8e8', '#f5b942', '#7a6cf0', '#3ecf8e'] as const
 
+/** Cabinet bodies: dark enamel, the colour a real cabinet side is painted. */
+const CABINET_BODY = ['#2b3550', '#34304d', '#26404a', '#3a2f3d', '#2d3a3f'] as const
+/** Sheathed looms are colour coded, which is the whole reason they are fun to search. */
+const CABLE_COLOURS = ['#e0574f', '#3f8fd8', '#e8b13c', '#4cb377', '#b9bfc9', '#9a6fd0'] as const
+/** Brass and nickel, warm against the counter felt. */
+const TOKEN_COLOURS = ['#d9a441', '#c8912f', '#e0b45a', '#b9bfc9', '#caa64d'] as const
+export const COUNTER_FELT = '#1f4a3d'
+export const CARPET_GROUND = '#211a3d'
+export const BOARD_GROUND = '#131a2b'
+
 // ---------------------------------------------------------------- cabinets
 
 const CABINET_COUNT = 20
@@ -147,11 +168,12 @@ function buildCabinetScene(rng: Rng, clutter: number, aspect: number): Scene {
     for (let c = 0; c < CABINET_COLS; c++) {
       const x = padX + cellW * c + (cellW - w) / 2
       const y = padY + cellH * r + (cellH - h) / 2
-      cabinets.push({ x, y, w, h, accent: pick(rng, ACCENTS), tone: range(rng, 0.5, 1) })
+      const body = pick(rng, CABINET_BODY)
+      cabinets.push({ x, y, w, h, accent: pick(rng, ACCENTS), body, tone: range(rng, 0.5, 1) })
 
       // Bezel edges are where something small would actually sit.
-      anchors.push({ x: x + w * range(rng, 0.18, 0.82), y: y + h * 0.93 })
-      anchors.push({ x: x + w * range(rng, 0.18, 0.82), y: y + h * 0.08 })
+      anchors.push({ x: x + w * range(rng, 0.18, 0.82), y: y + h * 0.93, on: body })
+      anchors.push({ x: x + w * range(rng, 0.18, 0.82), y: y + h * 0.08, on: body })
 
       const screws: [number, number][] = [
         [0.09, 0.09],
@@ -226,8 +248,9 @@ function buildBoardScene(rng: Rng, clutter: number, aspect: number): Scene {
 
     const y = boardRowY(i, BOARD_ROW_COUNT)
     // The dead space between name and score is the natural perch.
-    anchors.push({ x: range(rng, 0.42, 0.64), y })
-    if (rng() < 0.5) anchors.push({ x: range(rng, 0.2, 0.28), y })
+    const pill = i % 2 === 0 ? '#1d2740' : '#222c47'
+    anchors.push({ x: range(rng, 0.42, 0.64), y, on: pill })
+    if (rng() < 0.5) anchors.push({ x: range(rng, 0.2, 0.28), y, on: pill })
 
     if (rng() < 0.7 * clutter) {
       decoys.push({ x: range(rng, 0.38, 0.72), y: y + 0.004, r: range(rng, 0.006, 0.009), kind: 'speck' })
@@ -269,6 +292,7 @@ function buildLoomScene(rng: Rng, clutter: number): Scene {
       x2: base - swing,
       x3: base + range(rng, -0.02, 0.02),
       width: range(rng, 0.016, 0.03),
+      colour: pick(rng, CABLE_COLOURS),
       tone: range(rng, 0.68, 0.86),
     })
   }
@@ -277,7 +301,7 @@ function buildLoomScene(rng: Rng, clutter: number): Scene {
     // Three perches per cable — a body lying along a cable is the whole trick.
     for (let i = 0; i < 3; i++) {
       const t = range(rng, 0.08, 0.92)
-      anchors.push({ x: cableX(c, t), y: cableY(t) })
+      anchors.push({ x: cableX(c, t), y: cableY(t), on: c.colour })
     }
     // Tie heads and cable nubs: the same silhouette, on the same line.
     const nubs = Math.round(range(rng, 1, 3) * clutter)
@@ -309,8 +333,8 @@ function buildLoomScene(rng: Rng, clutter: number): Scene {
     const x = Math.max(0.02, Math.min(0.98 - w, cx - w / 2))
     const y = Math.max(0.02, Math.min(0.98 - h, cableY(t) - h / 2))
     blocks.push({ x, y, w, h, pins: 3 + Math.floor(rng() * 4) })
-    anchors.push({ x: x + w * range(rng, 0.1, 0.9), y: y + h + 0.012 })
-    anchors.push({ x: x + w * range(rng, 0.1, 0.9), y: y - 0.012 })
+    anchors.push({ x: x + w * range(rng, 0.1, 0.9), y: y + h + 0.012, on: '#4a5468' })
+    anchors.push({ x: x + w * range(rng, 0.1, 0.9), y: y - 0.012, on: '#4a5468' })
   }
 
   return { kind: 'loom', camoTone: 0.78, decoys, anchors, cables, ties, blocks }
@@ -335,12 +359,23 @@ function buildTokenScene(rng: Rng, clutter: number, aspect: number): Scene {
       const x = cellW * (c + 0.5) + range(rng, -0.35, 0.35) * cellW
       const y = cellH * (r + 0.5) + range(rng, -0.35, 0.35) * cellH
       const radius = range(rng, 0.042, 0.058)
-      tokens.push({ x, y, r: radius, tone: range(rng, 0.55, 0.85) })
+      const colour = pick(rng, TOKEN_COLOURS)
+      tokens.push({ x, y, r: radius, colour, tone: range(rng, 0.55, 0.85) })
 
       // A body tucked against a rim disappears into the token's own shadow.
       const a = rng() * Math.PI * 2
-      anchors.push({ x: x + Math.cos(a) * radius * 0.92, y: y + Math.sin(a) * radius * 0.92 })
-      if (rng() < 0.4) anchors.push({ x: x + range(rng, -0.5, 0.5) * cellW, y: y + cellH * 0.62 })
+      anchors.push({
+        x: x + Math.cos(a) * radius * 0.92,
+        y: y + Math.sin(a) * radius * 0.92,
+        on: colour,
+      })
+      if (rng() < 0.4) {
+        anchors.push({
+          x: x + range(rng, -0.5, 0.5) * cellW,
+          y: y + cellH * 0.62,
+          on: COUNTER_FELT,
+        })
+      }
 
       const chips = Math.round(range(rng, 0, 1.4) * clutter)
       for (let i = 0; i < chips; i++) {
@@ -389,7 +424,11 @@ function buildCarpetScene(rng: Rng, clutter: number, aspect: number): Scene {
       })
 
       // The pattern's own gaps are the only quiet ground on this scene.
-      anchors.push({ x: x + cellW * range(rng, 0.34, 0.5), y: y + cellH * range(rng, 0.3, 0.46) })
+      anchors.push({
+        x: x + cellW * range(rng, 0.34, 0.5),
+        y: y + cellH * range(rng, 0.3, 0.46),
+        on: CARPET_GROUND,
+      })
 
       const crumbs = Math.round(range(rng, 0.6, 2.2) * clutter)
       for (let i = 0; i < crumbs; i++) {
@@ -431,5 +470,9 @@ export function buildScene(
 
 /** Keep every perch far enough inside the stage to be swattable. */
 export function clampAnchor(a: Anchor): Anchor {
-  return { x: Math.max(0.05, Math.min(0.95, a.x)), y: Math.max(0.04, Math.min(0.96, a.y)) }
+  return {
+    x: Math.max(0.05, Math.min(0.95, a.x)),
+    y: Math.max(0.04, Math.min(0.96, a.y)),
+    on: a.on,
+  }
 }

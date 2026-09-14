@@ -70,15 +70,20 @@ export function drawBug(
     ctx.stroke()
   }
 
-  // Abdomen.
+  // Abdomen, outlined. The outline is what keeps the silhouette readable once
+  // the body colour is sitting right on top of the surface it is hiding on —
+  // without it a well-camouflaged bug is a smudge rather than a shape.
   ctx.fillStyle = look.body
   ctx.beginPath()
   ctx.ellipse(0, 0, rx, ry, 0, 0, Math.PI * 2)
   ctx.fill()
+  ctx.strokeStyle = look.leg
+  ctx.lineWidth = Math.max(0.8, size * 0.055)
+  ctx.stroke()
 
   // Shell split — the one hard line that gives it away once you're looking.
   ctx.strokeStyle = look.leg
-  ctx.lineWidth = Math.max(0.6, size * 0.05)
+  ctx.lineWidth = Math.max(0.7, size * 0.055)
   ctx.beginPath()
   ctx.moveTo(-rx * 0.82, 0)
   ctx.lineTo(rx * 0.5, 0)
