@@ -74,24 +74,35 @@ async function fetchTournamentDetail(
   })
 }
 
+/**
+ * One game's line in a player's breakdown: the score they posted, then the
+ * place and points it earned. Score first — with the points first, "+10 4"
+ * read as one number.
+ */
 function GameResultCell({
   cell,
   usePoints,
+  ended,
 }: {
   cell: { score: number | null; place: number | null; points: number } | undefined
   usePoints: boolean
+  ended: boolean
 }) {
   if (cell?.score == null) {
-    return <span className="ev-row__game-result ev-row__game-score">—</span>
+    return (
+      <span className="ev-row__game-result ev-row__game-result--empty">
+        {ended ? 'Not played' : 'Not played yet'}
+      </span>
+    )
   }
   return (
     <span className="ev-row__game-result">
+      <span className="ev-row__game-score">{cell.score.toLocaleString()}</span>
       {usePoints && cell.place != null ? (
         <span className="ev-row__game-place">
-          {ordinal(cell.place)} · +{cell.points}
+          {ordinal(cell.place)} · +{cell.points} pts
         </span>
       ) : null}
-      <span className="ev-row__game-score">{cell.score.toLocaleString()}</span>
     </span>
   )
 }
@@ -697,7 +708,11 @@ function StandingsList({
                     <li key={game} className="ev-row__game">
                       <GameThumbArt slug={game} accent={accent} />
                       <span className="ev-row__game-name">{label}</span>
-                      <GameResultCell cell={row.byGame[game]} usePoints={usePoints} />
+                      <GameResultCell
+                        cell={row.byGame[game]}
+                        usePoints={usePoints}
+                        ended={detail.status === 'ended'}
+                      />
                     </li>
                   )
                 })}
