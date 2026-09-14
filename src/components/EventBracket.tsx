@@ -124,52 +124,6 @@ function MatchCard({
 }
 
 /**
- * Plain round-columns layout, used for the grand final. A solid connector from
- * the title match into the reset would promise a reset that usually never
- * happens, so those two stand side by side instead.
- */
-function BracketColumns({
-  matches,
-  displayName,
-  currentYouId,
-  labelFor,
-}: {
-  matches: PublicBracketMatch[]
-  displayName: string
-  currentYouId: string | null
-  labelFor: (round: number, maxRound: number) => string
-}) {
-  const rounds = [...new Set(matches.map((m) => m.round))].sort((a, b) => a - b)
-  const maxRound = rounds.at(-1) ?? 1
-
-  return (
-    <div className="event-bracket-scroller">
-      <div className="ev-bracket-cols" style={{ '--col-count': rounds.length } as CSSProperties}>
-        {rounds.map((round) => (
-          <div key={round} className="ev-bracket-col">
-            <h3 className="event-bracket__round-title">{labelFor(round, maxRound)}</h3>
-            <ul className="ev-bracket-col__list">
-              {matches
-                .filter((m) => m.round === round)
-                .sort((a, b) => a.slot - b.slot)
-                .map((match) => (
-                  <li key={match.id}>
-                    <MatchCard
-                      match={match}
-                      displayName={displayName}
-                      isYours={currentYouId === match.id}
-                    />
-                  </li>
-                ))}
-            </ul>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-/**
  * Connector tree for one side of a draw.
  *
  * Round geometry is read off the actual match counts rather than assuming
@@ -295,8 +249,21 @@ export function EventBracket({
    * so until someone is actually seated in it, say so rather than promising it.
    */
   const resetSeated = grandFinal.some((m) => m.round > 1 && m.players.some(Boolean))
-  const grandFinalLabel = (round: number) =>
-    round === 1 ? 'Title match' : resetSeated ? 'Bracket reset' : 'Reset (if needed)'
+  /*
+   * The grand final is the winners bracket's last column, not a separate
+   * block: its first seat is whoever won that tree. Renumber its rounds to
+   * continue past the winners final so the two draw as one run of columns —
+   * the losers side still feeds the other seat from its own section, which is
+   * the one relationship a tree cannot show.
+   */
+  const wbRounds = winners.reduce((m, row) => Math.max(m, row.round), 1)
+  const crown = grandFinal.map((m) => ({ ...m, round: wbRounds + m.round }))
+  const winnersRun = [...winners, ...crown]
+  const crownLabel = (round: number) => {
+    if (round <= wbRounds) return winnersRoundLabel(round, wbRounds)
+    if (round === wbRounds + 1) return 'Grand final'
+    return resetSeated ? 'Bracket reset' : 'Reset (if needed)'
+  }
 
   const treeMatches = isDouble ? winners : matches
   const maxRound = treeMatches.reduce((m, row) => Math.max(m, row.round), 1)
@@ -532,13 +499,16 @@ export function EventBracket({
         <div className="ev-bracket-stack">
           <section className="ev-bracket-half">
             <h3 className="ev-bracket-half__title">Winners bracket</h3>
-            <p className="ev-bracket-half__note">Lose once and you drop to the losers bracket.</p>
+            <p className="ev-bracket-half__note">
+              Lose once and you drop to the losers bracket. The last column is the grand
+              final, where the losers-side survivor comes back in.
+            </p>
             <BracketTree
-              matches={winners}
+              matches={winnersRun}
               displayName={displayName}
               currentYouId={currentYou?.id ?? null}
               scrollerRef={scrollerRef}
-              labelFor={winnersRoundLabel}
+              labelFor={crownLabel}
             />
           </section>
           {losers.length ? (
@@ -553,20 +523,6 @@ export function EventBracket({
                 displayName={displayName}
                 currentYouId={currentYou?.id ?? null}
                 labelFor={loserRoundLabel}
-              />
-            </section>
-          ) : null}
-          {grandFinal.length ? (
-            <section className="ev-bracket-half">
-              <h3 className="ev-bracket-half__title">Grand final</h3>
-              <p className="ev-bracket-half__note">
-                The winners-side finalist needs one win. The challenger has to win twice.
-              </p>
-              <BracketColumns
-                matches={grandFinal}
-                displayName={displayName}
-                currentYouId={currentYou?.id ?? null}
-                labelFor={grandFinalLabel}
               />
             </section>
           ) : null}

@@ -1352,32 +1352,6 @@ html[data-theme="google"] .ev-tile:focus-visible {
 }
 
 /*
- * Losers/grand-final layout. These rounds are fed from two places at once, so
- * they get plain columns rather than the winners side's connector tree.
- */
-.ev-bracket-cols {
-  display: grid;
-  grid-template-columns: repeat(var(--col-count, 2), minmax(8.5rem, 1fr));
-  gap: 0.65rem;
-  min-width: 0;
-  overflow-x: auto;
-  padding-bottom: 0.2rem;
-}
-
-.ev-bracket-col {
-  min-width: 0;
-}
-
-.ev-bracket-col__list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.45rem;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-/*
  * Feed labels ("Loser of W2") are words, not a placeholder, so they lose the
  * wide tracking that makes a bare TBD read as a gap.
  */
@@ -1387,16 +1361,11 @@ html[data-theme="google"] .ev-tile:focus-visible {
 
 @media (max-width: 720px) {
   /*
-   * Three stacked draws each own their horizontal scroll; capping their height
-   * as well would leave the page with three competing scroll areas.
+   * Each half owns its horizontal scroll; capping their height as well would
+   * leave the page with competing scroll areas.
    */
   .ev-bracket-stack .event-bracket-scroller {
     max-height: none;
-  }
-
-  .ev-bracket-cols {
-    width: max-content;
-    grid-template-columns: repeat(var(--col-count, 2), min(15rem, 70vw));
   }
 
   /* Winners / Losers / Grand final picker above the round strip. */
