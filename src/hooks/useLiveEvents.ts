@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { listTournaments, type TournamentSummary } from '../lib/tournaments'
+import { eventKind, listTournaments, type TournamentSummary } from '../lib/tournaments'
 
 export type LiveEvents = {
   /** Every running daily/weekly event, joined or not. */
@@ -31,7 +31,14 @@ function load(playerName: string): Promise<Omit<LiveEvents, 'loading'>> {
       ? listTournaments('joined', playerName).catch(() => [] as TournamentSummary[])
       : Promise.resolve([] as TournamentSummary[]),
   ]).then(([all, joined]) => {
-    const active = all.filter((t) => t.status === 'active')
+    /*
+     * A bracket reads as "upcoming" until its roster fills, so matching on
+     * active alone drops a draw you have joined but that is still waiting for
+     * players — exactly when you want to see how close it is to starting.
+     */
+    const active = all.filter(
+      (t) => t.status === 'active' || (t.status === 'upcoming' && eventKind(t) === 'bracket'),
+    )
     const joinedIds = new Set(joined.map((t) => t.id))
     return {
       joinedIds,
