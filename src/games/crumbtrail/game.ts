@@ -208,11 +208,22 @@ function dist2(ax: number, ay: number, bx: number, by: number) {
   return (ax - bx) ** 2 + (ay - by) ** 2
 }
 
+/**
+ * Grid for a playfield of this size.
+ *
+ * Takes the field rather than the window, because the header band eats a real
+ * slice of the screen — sizing the buffer off `innerHeight` would quietly hand
+ * the run a couple of rows it can never see.
+ */
+export function crumbtrailViewportFor(w: number, h: number) {
+  const cols = pickCols(w, h)
+  return { cols, rows: bufferRows(w, h, cols) }
+}
+
 export function crumbtrailViewport() {
   const w = typeof window === 'undefined' ? 900 : window.innerWidth
   const h = typeof window === 'undefined' ? 600 : window.innerHeight
-  const cols = pickCols(w, h)
-  return { cols, rows: bufferRows(w, h, cols) }
+  return crumbtrailViewportFor(w, h)
 }
 
 export function streakMult(crumbStreak: number) {

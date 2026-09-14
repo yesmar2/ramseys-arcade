@@ -1,6 +1,8 @@
 /* —— Crumbtrail —— */
 .crumbtrail {
   position: relative;
+  /* Height of the header band; the playfield starts below it. */
+  --crumbtrail-header: 2.85rem;
 }
 
 .crumbtrail--fullscreen {
@@ -35,6 +37,11 @@
   inset: 0;
   width: 100%;
   height: 100%;
+}
+
+.crumbtrail__field {
+  position: absolute;
+  inset: var(--crumbtrail-header) 0 0 0;
 }
 
 .crumbtrail__viewport {
@@ -156,51 +163,115 @@
 }
 
 /*
- * Crumb streak.
+ * Header.
  *
- * It used to be painted on the canvas at the top centre, which is exactly
- * where the score already is — the two sat on top of each other. It belongs in
- * the readout stack with the rest of the HUD, under the lives line, where it
- * has its own row and can appear and vanish with the streak itself.
+ * Score, lives, distance and streak stacked as floating rows over the maze
+ * were four things competing with the board for the same pixels, and the board
+ * won every time. They get a band of their own instead, and the playfield
+ * starts below it — a climber has to be able to read what is ahead, so the
+ * honest trade is to give up the rows rather than to draw on top of them.
+ *
+ * The leave and fullscreen buttons already float at the top corners, so the
+ * band is padded to clear them rather than trying to lay them out.
  */
-/*
- * The shared readout puts the lives line at a fixed offset while the score
- * above it scales with viewport width, so on a wide screen the two boxes meet.
- * Three stacked rows have no slack for that, so this game spaces its own out.
- */
-.crumbtrail .play-readout__center {
-  top: calc(max(0.55rem, env(safe-area-inset-top, 0px)) + 2.1rem);
+.crumbtrail__header {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--crumbtrail-header);
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding-left: max(2.95rem, calc(env(safe-area-inset-left, 0px) + 2.95rem));
+  padding-right: max(5.4rem, calc(env(safe-area-inset-right, 0px) + 5.4rem));
+  background: rgba(var(--surface-rgb), 0.86);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(var(--ink-rgb), 0.08);
+  pointer-events: none;
 }
 
-.crumbtrail__streak {
-  position: absolute;
-  top: calc(max(0.55rem, env(safe-area-inset-top, 0px)) + 3.7rem);
-  left: 50%;
-  transform: translateX(-50%);
+.crumbtrail__header--warn {
+  border-bottom-color: color-mix(in srgb, #e85d75 55%, transparent);
+  box-shadow: 0 1px 10px color-mix(in srgb, #e85d75 28%, transparent);
+}
+
+/* Lives, as the chomp itself — the same read as Asteroids' ships. */
+.crumbtrail__lives {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+  min-width: 2.6rem;
+  color: color-mix(in srgb, #f5b942 84%, var(--ink));
+}
+
+.crumbtrail__pac {
+  display: block;
+  width: 0.95rem;
+  height: 0.95rem;
+  filter: drop-shadow(0 1px 0 rgba(var(--surface-rgb), 0.7));
+}
+
+.crumbtrail__score {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  text-align: center;
+  font-family: var(--font-display);
+  font-size: clamp(1.1rem, 4vw, 1.5rem);
+  font-weight: 600;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.crumbtrail__score--hot {
+  color: color-mix(in srgb, #f5b942 62%, var(--ink));
+}
+
+.crumbtrail__stats {
+  flex: none;
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.crumbtrail__stat {
   margin: 0;
   display: flex;
   align-items: baseline;
-  gap: 0.32rem;
-  padding: 0.16rem 0.6rem;
-  border-radius: 999px;
-  background: rgba(var(--surface-rgb), 0.72);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, #f5b942 34%, transparent);
+  gap: 0.22rem;
   font-family: var(--font-display);
   line-height: 1;
   white-space: nowrap;
-  color: color-mix(in srgb, #f5b942 76%, var(--ink));
+  color: var(--muted);
 }
 
-.crumbtrail__streak-count {
-  font-size: clamp(0.95rem, 3.2vw, 1.2rem);
+.crumbtrail__stat-value {
+  font-size: clamp(0.9rem, 3vw, 1.1rem);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
+  color: var(--ink);
 }
 
-.crumbtrail__streak-word {
-  font-size: clamp(0.62rem, 2vw, 0.74rem);
+.crumbtrail__stat-label {
+  font-size: clamp(0.56rem, 1.9vw, 0.68rem);
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   opacity: 0.72;
+}
+
+.crumbtrail__stat--streak,
+.crumbtrail__stat--streak .crumbtrail__stat-value {
+  color: color-mix(in srgb, #f5b942 76%, var(--ink));
+}
+
+.crumbtrail__stat--warn .crumbtrail__stat-value {
+  color: #e85d75;
 }

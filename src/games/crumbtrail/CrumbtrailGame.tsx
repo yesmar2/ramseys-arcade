@@ -1,11 +1,6 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { AdminWaveSkip } from '../../components/AdminWaveSkip'
-import {
-  GamePlayChrome,
-  PlayReadout,
-  PlayReadoutCenter,
-  PlayReadoutScore,
-} from '../../components/GameHud'
+import { GamePlayChrome } from '../../components/GameHud'
 import { GameStartCard } from '../../components/GameStartCard'
 import { PauseButton, GamePauseOverlay } from '../../components/PauseControls'
 import { ScoreSaveCard } from '../../components/ScoreSaveCard'
@@ -18,6 +13,7 @@ import { useTournamentPlay } from '../../tournaments/TournamentPlayContext'
 import {
   createInitialState,
   crumbtrailViewport,
+  crumbtrailViewportFor,
   jumpToDepth,
   queueDir,
   startGame,
@@ -101,7 +97,7 @@ export function CrumbtrailGame() {
     const sync = () => {
       const s = stateRef.current
       if (s.phase !== 'menu') return
-      const dims = crumbtrailViewport()
+      const dims = fieldViewport()
       if (s.cols === dims.cols && s.rows === dims.rows) return
       stateRef.current = createInitialState(dims)
       setUi(toSnapshot(stateRef.current))
@@ -115,11 +111,20 @@ export function CrumbtrailGame() {
     }
   }, [])
 
+  /** The playfield sits under the header, so the grid is sized from it. */
+  const fieldViewport = () => {
+    const field = canvasRef.current?.parentElement
+    const w = field?.clientWidth ?? 0
+    const h = field?.clientHeight ?? 0
+    if (w > 0 && h > 0) return crumbtrailViewportFor(w, h)
+    return crumbtrailViewport()
+  }
+
   const restart = () => {
     setSaveOpen(false)
     offeredScore.current = null
     clearRunAchievements()
-    stateRef.current = startGame(stateRef.current, crumbtrailViewport())
+    stateRef.current = startGame(stateRef.current, fieldViewport())
     previousBestRef.current = getPersonalBest('crumbtrail')
     startGrace.current = performance.now() + 220
     setUi(toSnapshot(stateRef.current))
@@ -241,7 +246,69 @@ export function CrumbtrailGame() {
           }}
         >
           <div className="crumbtrail__stage">
-            <canvas ref={canvasRef} className="crumbtrail__viewport" />
+            <div className="crumbtrail__field">
+              <canvas ref={canvasRef} className="crumbtrail__viewport" />
+            </div>
+
+            <header
+              className={`crumbtrail__header${ui.tide > 0.35 ? ' crumbtrail__header--warn' : ''}`}
+            >
+              <div
+                className="crumbtrail__lives"
+                aria-label={`${ui.lives} ${ui.lives === 1 ? 'life' : 'lives'}`}
+              >
+                {Array.from({ length: inRun ? ui.lives : 0 }, (_, i) => (
+                  <svg
+                    key={i}
+                    className="crumbtrail__pac"
+                    viewBox="0 0 16 16"
+                    aria-hidden="true"
+                  >
+                    <path d="M8 8 L14.14 11.36 A7 7 0 1 1 14.14 4.64 Z" fill="currentColor" />
+                  </svg>
+                ))}
+              </div>
+
+              <p
+                className={`crumbtrail__score${
+                  ui.phase === 'playing' && ui.score > previousBestRef.current
+                    ? ' crumbtrail__score--hot'
+                    : ''
+                }`}
+              >
+                {ui.score.toLocaleString()}
+              </p>
+
+              {/*
+                * One secondary stat at a time. Lives, score, distance and
+                * streak all at once do not fit a phone header beside the two
+                * button clusters — the score ends up ellipsised, and the score
+                * is the one number that can never be cut. So the slot shows
+                * whatever matters most right now: the tide if it is coming,
+                * the streak while you are on one, distance otherwise. Your
+                * distance is barely moving while you work a streak anyway.
+                */}
+              <div className="crumbtrail__stats">
+                {!inRun ? null : ui.tide > 0.35 ? (
+                  <p className="crumbtrail__stat crumbtrail__stat--warn">
+                    <span className="crumbtrail__stat-value">Climb!</span>
+                  </p>
+                ) : ui.crumbStreak >= 2 ? (
+                  <p
+                    className="crumbtrail__stat crumbtrail__stat--streak"
+                    aria-label="Crumbs in a row"
+                  >
+                    <span className="crumbtrail__stat-value">{ui.crumbStreak}</span>
+                    <span className="crumbtrail__stat-label">in a row</span>
+                  </p>
+                ) : (
+                  <p className="crumbtrail__stat" aria-label="Rows climbed">
+                    <span className="crumbtrail__stat-value">{ui.depth}</span>
+                    <span className="crumbtrail__stat-label">rows</span>
+                  </p>
+                )}
+              </div>
+            </header>
 
             <GamePlayChrome
               slug="crumbtrail"
@@ -256,26 +323,6 @@ export function CrumbtrailGame() {
               ) : null}
             </GamePlayChrome>
 
-            <PlayReadout>
-              <PlayReadoutScore
-                hot={ui.phase === 'playing' && ui.score > previousBestRef.current}
-              >
-                {ui.score}
-              </PlayReadoutScore>
-              {inRun ? (
-                <PlayReadoutCenter label="Lives and distance">
-                  {ui.tide > 0.35
-                    ? 'Climb!'
-                    : `${ui.lives} ${ui.lives === 1 ? 'life' : 'lives'} · ${ui.depth} rows`}
-                </PlayReadoutCenter>
-              ) : null}
-              {inRun && ui.crumbStreak >= 2 ? (
-                <p className="crumbtrail__streak" aria-label="Crumbs in a row">
-                  <span className="crumbtrail__streak-count">{ui.crumbStreak}</span>
-                  <span className="crumbtrail__streak-word">in a row</span>
-                </p>
-              ) : null}
-            </PlayReadout>
 
             {inRun && !paused && !saveOpen ? (
               <button
