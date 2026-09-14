@@ -1415,3 +1415,169 @@ html[data-theme="google"] .ev-tile:focus-visible {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+/* ==========================================================================
+   The Board — events led by their result
+   ========================================================================== */
+
+.ev-board {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.ev-b {
+  display: grid;
+  grid-template-columns: 2.6rem minmax(0, 1fr);
+  gap: 0.7rem;
+  padding: 0.7rem 0.2rem 0.8rem;
+  border-bottom: 1px solid rgba(var(--ink-rgb), 0.09);
+  text-decoration: none;
+  color: inherit;
+}
+
+.ev-board li:last-child .ev-b {
+  border-bottom: 0;
+}
+
+.ev-b:hover .ev-b__name {
+  color: var(--event-accent, var(--accent));
+}
+
+.ev-b__art {
+  --inline-thumb-size: 2.6rem;
+  display: block;
+  line-height: 0;
+}
+
+.ev-b__body {
+  display: block;
+  min-width: 0;
+}
+
+/* Caption, not headline: the podium under it is the point of the row. */
+.ev-b__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.3rem;
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 650;
+  color: var(--muted);
+}
+
+.ev-b__name {
+  font-size: 0.88rem;
+  font-weight: 800;
+  letter-spacing: -0.012em;
+  color: var(--ink);
+}
+
+.ev-b__podium {
+  list-style: none;
+  margin: 0.35rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.ev-b__place {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.86rem;
+  min-width: 0;
+}
+
+.ev-b__pos {
+  flex: none;
+  width: 1.1rem;
+  display: inline-flex;
+  justify-content: center;
+  font-size: 0.74rem;
+  font-weight: 800;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.ev-b__who {
+  flex: 1;
+  min-width: 0;
+  font-weight: 700;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ev-b__place--1 .ev-b__who {
+  font-weight: 800;
+  color: var(--ink);
+}
+
+.ev-b__val {
+  flex: none;
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+
+.ev-b__place--1 .ev-b__val {
+  color: var(--ink);
+}
+
+.ev-b__empty {
+  margin: 0.35rem 0 0;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--event-accent, var(--accent));
+}
+
+/* Where you stand when the podium does not include you. */
+.ev-b__you {
+  margin: 0.3rem 0 0;
+  font-size: 0.76rem;
+  font-weight: 750;
+  color: var(--accent);
+}
+
+/* Event page: the board leads, so the facts about it are a caption. */
+.ev-meta {
+  margin: -0.2rem 0 0.1rem;
+}
+
+.ev-meta__line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.15rem 0.5rem;
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 650;
+  color: var(--muted);
+}
+
+.ev-meta__bit + .ev-meta__bit::before {
+  content: "· ";
+  color: color-mix(in srgb, var(--muted) 60%, transparent);
+}
+
+.ev-meta__bit:first-child {
+  font-weight: 800;
+  color: var(--ink);
+}
+
+.ev-meta__you {
+  margin: 0.25rem 0 0;
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: var(--accent);
+}
+
+.ev-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}

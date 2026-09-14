@@ -49,6 +49,13 @@ export function snapToDoubleElimSize(n: number): number {
   return best
 }
 
+export type PodiumEntry = {
+  place: number
+  name: string
+  points: number
+  score: number | null
+}
+
 export type TournamentSummary = {
   id: string
   title: string
@@ -71,6 +78,11 @@ export type TournamentSummary = {
   nextDeadlineAt?: number | null
   /** Set once an event is over: the player who won it. */
   winner?: string | null
+  /** Top of the standings; a finished bracket sends its final instead. */
+  podium?: PodiumEntry[]
+  /** Where the viewer stands, when they asked by name. */
+  yourPlace?: number | null
+  yourPoints?: number | null
 }
 
 /** Games eligible for private hosted events (matches API). */

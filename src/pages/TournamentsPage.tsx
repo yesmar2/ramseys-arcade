@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
 import { BracketWinCelebration } from '../components/BracketWinCelebration'
+import { EventBoardRow } from '../components/EventBoardRow'
 import { EventBracket } from '../components/EventBracket'
-import { EventCard, EventStatusChips, EventSummary, eventAccent } from '../components/EventCard'
+import { EventCountdown } from '../components/EventCountdown'
+import { EventStatusChips, eventAccent } from '../components/EventCard'
 import { GameThumbArt } from '../components/GameThumbArt'
 import { PageBackLink } from '../components/PageBackLink'
 import { PageShell } from '../components/PageShell'
@@ -22,6 +24,7 @@ import {
   eventKind,
   finalBracketMatch,
   formatEventCountdown,
+  formatRulesSummary,
   getTournament,
   getTournamentInvite,
   isPlayerInTournament,
@@ -116,6 +119,76 @@ function yourStandingPlace(detail: TournamentDetail, displayName: string): numbe
 
   const idx = detail.standings.findIndex((row) => normalizePlayerName(row.name) === youName)
   return idx >= 0 ? idx + 1 : null
+}
+
+/**
+ * Everything the stat bar used to say, on one line.
+ *
+ * Four boxed figures — window, players, tries — were the loudest thing on an
+ * event page, above the standings they describe. None of them is what anyone
+ * opens an event to find out, so they compress to a caption and the board
+ * takes the top.
+ */
+function EventMetaLine({
+  detail,
+  joined,
+  displayName,
+}: {
+  detail: TournamentDetail
+  joined: boolean
+  displayName: string
+}) {
+  const isBracket = eventKind(detail) === 'bracket'
+  const live = detail.status === 'active'
+  const bits: ReactNode[] = []
+
+  if (detail.status === 'ended') bits.push('Ended')
+  else if (detail.status === 'upcoming') bits.push(isBracket ? 'Filling' : 'Not started')
+  else bits.push('Live')
+
+  if (live && !isBracket) {
+    bits.push(
+      <EventCountdown
+        endsAt={detail.endsAt}
+        unlimitedDuration={Boolean(detail.rules.unlimitedDuration)}
+      />,
+    )
+  }
+  if (live && isBracket && detail.nextDeadlineAt) {
+    bits.push(
+      <>
+        round ends <EventCountdown endsAt={detail.nextDeadlineAt} />
+      </>,
+    )
+  }
+
+  bits.push(detail.games.map((g) => getGame(g)?.name ?? g).join(' · '))
+  bits.push(formatRulesSummary(detail).replace(/\.$/, ''))
+
+  const place = isBracket ? null : yourStandingPlace(detail, displayName)
+  const matchLine = isBracket ? bracketMatchLine(detail, displayName) : null
+
+  return (
+    <div className="ev-meta">
+      <p className="ev-meta__line">
+        {bits.map((bit, i) => (
+          <span key={i} className="ev-meta__bit">
+            {bit}
+          </span>
+        ))}
+      </p>
+      {joined && (place != null || matchLine) ? (
+        <p className="ev-meta__you">{place != null ? `You ${ordinal(place)}` : matchLine}</p>
+      ) : null}
+    </div>
+  )
+}
+
+function ordinal(n: number): string {
+  if (n === 1) return '1st'
+  if (n === 2) return '2nd'
+  if (n === 3) return '3rd'
+  return `${n}th`
 }
 
 function EventBoard({
@@ -573,10 +646,10 @@ export function TournamentsPage() {
               {ended.length > 0 ? (
                 <h2 className="ev-list__group-title">Open now</h2>
               ) : null}
-              <ul className="ev-list__grid">
+              <ul className="ev-board">
                 {live.map((t) => (
                   <li key={t.id}>
-                    <EventCard
+                    <EventBoardRow
                       t={t}
                       href={
                         t.private
@@ -593,10 +666,10 @@ export function TournamentsPage() {
           {ended.length > 0 ? (
             <section className="ev-list__group" aria-label="Ended events">
               <h2 className="ev-list__group-title">Ended</h2>
-              <ul className="ev-list__grid">
+              <ul className="ev-board">
                 {ended.map((t) => (
                   <li key={t.id}>
-                    <EventCard
+                    <EventBoardRow
                       t={t}
                       href={
                         t.private
@@ -865,14 +938,7 @@ export function TournamentDetailPage({ id, invite }: { id: string; invite?: stri
             <EventStatusChips t={detail} joined={joined} className="ev-chips" />
           </header>
 
-          <EventSummary
-            t={detail}
-            joined={joined && detail.status !== 'ended'}
-            yourPlace={
-              eventKind(detail) === 'bracket' ? null : yourStandingPlace(detail, displayName)
-            }
-            matchLine={bracketMatchLine(detail, displayName)}
-          />
+          <EventMetaLine detail={detail} joined={joined} displayName={displayName} />
 
           {detail.status !== 'ended' && !joined ? (
             <div className="ev-join">
@@ -904,20 +970,20 @@ export function TournamentDetailPage({ id, invite }: { id: string; invite?: stri
             </section>
           ) : null}
 
-          <div className={`ev-grid${eventKind(detail) === 'bracket' ? '' : ' ev-grid--split'}`}>
-            <EventPlayList
-              detail={detail}
-              joined={joined}
-              playInvite={playInvite}
-              displayName={displayName}
-            />
-
+          <div className="ev-stack">
             <EventBoard
               detail={detail}
               displayName={displayName}
               className={
                 eventKind(detail) === 'bracket' ? 'ev-card ev-card--bracket' : undefined
               }
+            />
+
+            <EventPlayList
+              detail={detail}
+              joined={joined}
+              playInvite={playInvite}
+              displayName={displayName}
             />
           </div>
         </div>
