@@ -33,8 +33,17 @@ export const MIN_COLS = 9
 export const MAX_COLS = 21
 /** Rows we want on screen; the column count is chosen to land near it. */
 export const TARGET_VISIBLE_ROWS = 15
-/** Buffer rows kept above the top of the view — where chasers come in from. */
-export const HIDDEN_TOP = 3
+/**
+ * Buffer rows kept above the top of the view. Chasers are seeded here, so it
+ * only has to cover the row or two being built before they scroll into sight.
+ */
+export const HIDDEN_TOP = 2
+/**
+ * Buffer rows kept below the bottom of the view. This is the room the hazard
+ * rests in while it is not chasing you, and the short dip back down the board
+ * still allows before it catches you.
+ */
+export const BELOW_VIEW = 3
 
 /**
  * Columns for this viewport.
@@ -50,14 +59,19 @@ export function pickCols(viewW: number, viewH: number): number {
   return Math.max(MIN_COLS, Math.min(MAX_COLS, want))
 }
 
-/** Buffer height: everything on screen, plus the hidden strip above it. */
-export function bufferRows(viewW: number, viewH: number, cols: number): number {
+/** Rows of maze actually on screen. */
+export function visibleRows(viewW: number, viewH: number, cols: number): number {
   const cell = viewW / cols
   const visible =
     cell > 0 && Number.isFinite(cell)
       ? Math.ceil(viewH / cell) + 1
       : TARGET_VISIBLE_ROWS
-  return Math.max(10, visible) + HIDDEN_TOP
+  return Math.max(10, visible)
+}
+
+/** Buffer height: the view, plus the strips kept above and below it. */
+export function bufferRows(viewW: number, viewH: number, cols: number): number {
+  return visibleRows(viewW, viewH, cols) + HIDDEN_TOP + BELOW_VIEW
 }
 
 /** 0 at the start of a run, 1 once the maze has tightened as far as it goes. */
@@ -123,22 +137,13 @@ export function makeBand(
   return rows
 }
 
-/** Opening stretch: a clear lane to start on, and no wall band right away. */
+/** Opening stretch: open lanes to start on, and no wall band right away. */
 export function makeOpeningBand(cols: number): GenRow[] {
-  return [
-    {
-      row: 0,
-      kind: 'lane',
-      open: new Array(cols).fill(true),
-      crumbs: new Array(cols).fill(false),
-      power: new Array(cols).fill(false),
-    },
-    {
-      row: 1,
-      kind: 'lane',
-      open: new Array(cols).fill(true),
-      crumbs: new Array(cols).fill(true),
-      power: new Array(cols).fill(false),
-    },
-  ]
+  return [0, 1, 2, 3].map((row) => ({
+    row,
+    kind: 'lane' as const,
+    open: new Array(cols).fill(true),
+    crumbs: new Array(cols).fill(row > 0),
+    power: new Array(cols).fill(false),
+  }))
 }

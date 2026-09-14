@@ -264,7 +264,9 @@ export function CrumbtrailGame() {
               </PlayReadoutScore>
               {inRun ? (
                 <PlayReadoutCenter label="Lives and distance">
-                  {ui.lives} {ui.lives === 1 ? 'life' : 'lives'} · {ui.depth} rows
+                  {ui.tide > 0.35
+                    ? 'Climb!'
+                    : `${ui.lives} ${ui.lives === 1 ? 'life' : 'lives'} · ${ui.depth} rows`}
                 </PlayReadoutCenter>
               ) : null}
             </PlayReadout>
@@ -337,7 +339,7 @@ export function CrumbtrailGame() {
                   <ScoreSaveCard
                     gameSlug="crumbtrail"
                     score={ui.score}
-                    title={ui.cause === 'swallowed' ? 'Swallowed' : 'Caught'}
+                    title={ui.cause === 'drowned' ? 'Swallowed' : 'Caught'}
                     subtitle={`${ui.depth} rows · ${ui.score.toLocaleString()} points`}
                     previousBest={Math.max(previousBestRef.current, apiBest)}
                     onDone={restart}

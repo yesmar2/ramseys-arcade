@@ -1,5 +1,13 @@
 import { isDarkTheme, isFlatTheme, playfieldColor, softFillAlpha } from '../../lib/theme'
-import { streakMult, worldRowAt, type GameState, type Ghost, type GhostKind } from './game'
+import {
+  bufferRowOf,
+  streakMult,
+  tidePressure,
+  worldRowAt,
+  type GameState,
+  type Ghost,
+  type GhostKind,
+} from './game'
 
 /** Gold crumbs — same family as Pellets and Snake food. */
 const ACCENT = 38
@@ -76,18 +84,18 @@ export type Layout = {
 }
 
 /**
- * The board is anchored to the bottom of the view, not the top: the bottom
- * buffer row is the killing edge and has to sit exactly on the bottom of the
- * screen, while the extra rows above it run off the top where the chasers
- * come in. `scroll` slides everything down by a fraction of a cell so the
- * climb is smooth between the whole-row shifts the state does.
+ * Everything hangs off the camera, which is a world row rather than a buffer
+ * index: the row it names is drawn along the bottom of the view, and the rest
+ * of the strip stacks up from there. Because the camera is a float that tracks
+ * the player continuously, the climb is smooth even though the buffer itself
+ * only ever shifts in whole rows.
  */
 export function computeLayout(w: number, h: number, state: GameState): Layout {
   const cell = w / state.cols
-  const scroll = state.scroll
+  const cameraBuf = bufferRowOf(state, state.camera)
   return {
     cell,
-    rowY: (y: number) => h - (state.rows - y) * cell + scroll * cell,
+    rowY: (y: number) => h - (cameraBuf - y + 1) * cell,
   }
 }
 
@@ -238,7 +246,7 @@ function drawMilestones(
   ctx.font = `900 ${Math.max(14, Math.round(cell * 1.5))}px "Segoe UI", system-ui, sans-serif`
   ctx.fillStyle = skin.dark ? 'rgba(231, 238, 243, 0.07)' : 'rgba(26, 43, 60, 0.07)'
   for (let y = 0; y < state.rows; y++) {
-    const world = worldRowAt(state, y)
+    const world = worldRowAt(state, y) - state.baseRow
     if (world <= 0 || world % MILESTONE_STEP !== 0) continue
     const cy = rowY(y) + cell * 0.5
     if (cy < -cell || cy > ctx.canvas.height + cell) continue
@@ -349,14 +357,20 @@ function drawChaser(
 ) {
   const { cell, rowY } = layout
   const cx = ghost.x * cell
-  const cy = rowY(ghost.y)
+  const cy = rowY(ghost.y) + (ghost.mode === 'asleep' ? Math.sin(ghost.bob * 0.5) * cell * 0.05 : 0)
   const lineW = Math.max(1.15, cell * 0.065)
   const r = cell * 0.34
   const scared = ghost.mode === 'frightened'
   const eaten = ghost.mode === 'eaten'
+  const asleep = ghost.mode === 'asleep'
   const flash = scared && fright < 2 && Math.floor(time * 8) % 2 === 0
 
-  ctx.globalAlpha = 0.35 + 0.65 * ghost.arrive
+  /*
+   * A sleeper is drawn faint and still. It has to be unmistakably there —
+   * seeing it coming is the entire point of seeding them ahead — while never
+   * reading as something already chasing you.
+   */
+  ctx.globalAlpha = asleep ? 0.42 : 0.35 + 0.65 * ghost.arrive
 
   if (eaten) {
     ctx.beginPath()
@@ -384,7 +398,7 @@ function drawChaser(
     ctx.fill()
   }
 
-  const wave = Math.sin(time * 5.5 + ghost.bob) * cell * 0.04
+  const wave = asleep ? 0 : Math.sin(time * 5.5 + ghost.bob) * cell * 0.04
   const foot = cy + r * 0.92
   ctx.beginPath()
   ctx.arc(cx, cy - r * 0.06, r, Math.PI, 0)
@@ -412,17 +426,37 @@ function drawChaser(
     ctx.quadraticCurveTo(cx, cy + cell * 0.2, cx + cell * 0.16, cy + cell * 0.1)
     ctx.stroke()
   }
+
+  if (asleep) {
+    // Shut eyes — the one mark that says "not yet" at a glance.
+    ctx.strokeStyle = hsla(hue, sat, skin.dark ? 70 : 34, 0.85)
+    ctx.lineWidth = Math.max(1, cell * 0.05)
+    ctx.lineCap = 'round'
+    for (const side of [-1, 1]) {
+      ctx.beginPath()
+      ctx.moveTo(cx + side * cell * 0.13 - cell * 0.06, cy - cell * 0.03)
+      ctx.quadraticCurveTo(
+        cx + side * cell * 0.13,
+        cy + cell * 0.03,
+        cx + side * cell * 0.13 + cell * 0.06,
+        cy - cell * 0.03,
+      )
+      ctx.stroke()
+    }
+    ctx.lineCap = 'butt'
+  }
   ctx.globalAlpha = 1
 }
 
 /**
- * The edge that is eating the maze.
+ * The tide.
  *
- * It reads as a stain climbing the bottom of the screen rather than a line,
- * because the thing it has to communicate is not "here is a boundary" but
- * "this is closing" — and it brightens as you let it get near you.
+ * It lives just under the view while you are making ground, so most runs only
+ * ever see the glow that warns it is about to move. Once it is climbing it has
+ * to be unambiguous — a surface with a waterline, not a vignette — because the
+ * only correct response to seeing it is to stop what you are doing and climb.
  */
-function drawEdge(
+function drawTide(
   ctx: CanvasRenderingContext2D,
   state: GameState,
   layout: Layout,
@@ -431,41 +465,39 @@ function drawEdge(
   skin: Skin,
 ) {
   const { cell, rowY } = layout
-  const top = rowY(state.rows - 1)
-  const gap = state.rows - 1 - state.player.y
-  const heat = Math.max(0, Math.min(1, 1 - gap / 4))
+  const surface = rowY(bufferRowOf(state, state.tide))
+  const heat = tidePressure(state)
 
-  const band = ctx.createLinearGradient(0, top - cell * 2.4, 0, h)
-  band.addColorStop(0, 'rgba(232, 93, 117, 0)')
-  band.addColorStop(1, skin.dark ? 'rgba(232, 93, 117, 0.42)' : 'rgba(200, 50, 80, 0.3)')
-  ctx.fillStyle = band
-  ctx.fillRect(0, top - cell * 2.4, w, h - top + cell * 2.4)
+  if (surface > h + cell && heat <= 0.01) return
 
-  ctx.fillStyle = skin.dark ? 'rgba(10, 6, 10, 0.82)' : 'rgba(60, 12, 24, 0.5)'
-  ctx.fillRect(0, top, w, h - top)
+  const top = Math.min(surface, h + cell)
+  const glow = ctx.createLinearGradient(0, top - cell * 3, 0, top)
+  glow.addColorStop(0, 'rgba(232, 93, 117, 0)')
+  glow.addColorStop(1, `rgba(232, 93, 117, ${0.1 + heat * 0.3})`)
+  ctx.fillStyle = glow
+  ctx.fillRect(0, top - cell * 3, w, cell * 3)
 
-  // A ragged lip, chewing along the top of the band.
+  if (top >= h) return
+
+  ctx.fillStyle = skin.dark ? 'rgba(12, 6, 12, 0.88)' : 'rgba(60, 12, 24, 0.58)'
   ctx.beginPath()
   ctx.moveTo(0, h)
   ctx.lineTo(0, top)
-  const teeth = Math.max(6, Math.round(state.cols * 1.5))
+  const teeth = Math.max(8, Math.round(state.cols * 1.5))
   for (let i = 0; i <= teeth; i++) {
     const x = (i / teeth) * w
-    const bite = Math.sin(i * 1.7 + state.time * 3.4) * cell * 0.16
-    ctx.lineTo(x, top + bite)
+    const swell = Math.sin(i * 1.1 + state.time * 2.6) * cell * 0.1
+    ctx.lineTo(x, top + swell)
   }
   ctx.lineTo(w, h)
   ctx.closePath()
-  ctx.fillStyle = skin.dark ? 'rgba(10, 6, 10, 0.82)' : 'rgba(60, 12, 24, 0.5)'
   ctx.fill()
 
-  if (heat > 0) {
-    ctx.strokeStyle = skin.edge
-    ctx.globalAlpha = 0.35 + heat * 0.65
-    ctx.lineWidth = Math.max(1.5, cell * 0.07 * (1 + heat))
-    ctx.stroke()
-    ctx.globalAlpha = 1
-  }
+  ctx.strokeStyle = skin.edge
+  ctx.globalAlpha = 0.5 + heat * 0.5
+  ctx.lineWidth = Math.max(1.5, cell * 0.06)
+  ctx.stroke()
+  ctx.globalAlpha = 1
 }
 
 function drawPops(
@@ -537,7 +569,7 @@ export function renderGame(
     ctx.restore()
   }
   drawPops(ctx, state, layout, skin)
-  drawEdge(ctx, state, layout, w, h, skin)
+  drawTide(ctx, state, layout, w, h, skin)
 
   if (state.crumbStreak >= 10 && state.phase === 'playing') {
     const { cell } = layout

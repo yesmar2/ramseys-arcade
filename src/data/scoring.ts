@@ -96,8 +96,10 @@ const SCORING: Record<string, ScoreRow[]> = {
     { label: 'Blue chaser (1st / 2nd / 3rd / 4th)', value: '+200 / +400 / +800 / +1600' },
     { label: 'Surge (tap or space when charged)', value: 'double crumbs · bounce chasers' },
     { label: 'Surge bounce (1st / 2nd / 3rd / 4th)', value: '+150 / +300 / +600 / +1200' },
-    { label: 'The edge', value: 'climbs faster the further you get' },
-    { label: 'Lives', value: '3 — caught or swallowed costs one' },
+    { label: 'Standing still', value: 'the tide rises after ~5s without a new high row' },
+    { label: 'Climbing again', value: 'sends the tide back down' },
+    { label: 'Chasers', value: 'asleep on the board ahead — they wake when you get close' },
+    { label: 'Lives', value: '3 — caught or drowned costs one' },
   ],
 }
 

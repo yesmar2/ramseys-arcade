@@ -122,8 +122,8 @@ export const games: Game[] = [
   {
     name: 'Crumbtrail',
     slug: 'crumbtrail',
-    description: 'Pellets with no way out. The maze keeps coming, the floor keeps eating.',
-    how: 'Swipe or arrow keys to steer, exactly like Pellets — same chomp, same crumbs, same chasers. What is gone is the exit: the maze is generated above you forever and an edge climbs the bottom of the screen eating it, so standing still is the one thing you cannot do. Score is the rows you climb plus the crumbs you take on the way, and the streak multiplier still breaks the moment you double back over ground you have already cleared, which is the whole tension — the fastest line up is rarely the one with the crumbs on it. Chasers drop in from the top ahead of you and pile up the further you get. Power crumbs still turn them blue and Surge still burns through them. Three lives; falling off the bottom costs one.',
+    description: 'Pellets with no way out. Climb forever. Don’t settle in.',
+    how: 'Swipe or arrow keys to steer, exactly like Pellets — same chomp, same crumbs, same chasers. What is gone is the exit: the maze is generated above you forever, and the run is as long as you can keep climbing it. The screen follows you up and never moves on its own, so reading a junction takes as long as it takes. What you cannot do is settle in — stop climbing, or circle the same few rows farming crumbs, and the tide below the board starts rising, and only making ground again sends it back. Chasers are asleep on the board ahead of you rather than arriving out of nowhere, so you can see what is waiting and pick your corridor around it; get close and they wake. The streak multiplier still breaks the moment you double back over cleared ground, which is the whole tension — the fastest line up is rarely the one with the crumbs on it. Power crumbs still turn chasers blue and Surge still burns through them. Three lives; the tide costs one.',
     accent: '#f5b942',
     playable: true,
     inDevelopment: true,

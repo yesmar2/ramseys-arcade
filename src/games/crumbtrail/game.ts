@@ -2,22 +2,33 @@
  * Crumbtrail — Pellets with the exit removed.
  *
  * Same chomp, same crumbs, same chasers. The difference is that there is no
- * board to finish: the maze is generated forever above you and the floor eats
- * it from below, so the only way to keep playing is to keep climbing. Clearing
- * ground stops being the goal and becomes the thing you do on the way.
+ * board to finish: the maze is generated forever above you, and the run is as
+ * long as you can keep climbing it.
  *
- * The board is a rolling window. `open` / `crumbs` / `power` are ordinary fixed
- * arrays indexed [y][x] with y = 0 at the top, exactly like Pellets, and the
- * world scrolls by shifting a fresh row in at the top and dropping the bottom
- * one. Every actor's y drops by one at the same moment. That keeps all the
- * grid-indexed work — the chaser distance field especially — on a small fixed
- * array instead of an ever-growing map, and it means the movement and pathing
- * code is Pellets' with the den taken out.
+ * Three rules carry the whole thing.
+ *
+ * The camera is yours. It rises to follow you up and never moves on its own,
+ * so the pace of the run is set by you and not by a timer. Reading a junction
+ * before you commit to it is allowed to take as long as it takes.
+ *
+ * What is not allowed is settling in. Stand still — or circle the same few
+ * rows farming crumbs — and the tide below the board starts climbing, and it
+ * does not stop until you have made ground again. Progress is the only thing
+ * that answers it, so a crumb detour is a bet rather than free money.
+ *
+ * And the chasers are already on the board. They are seeded into the maze as
+ * it generates, asleep, far enough ahead that they scroll into view long
+ * before you reach them, and they wake when you get close. You can see what is
+ * waiting and pick your corridor around it; nothing arrives from off screen.
+ *
+ * The board under all of this is a rolling window, so the grid work — the
+ * chaser distance field especially — stays on a small fixed array, and the
+ * movement code is Pellets' with the den taken out.
  */
 import { getPersonalBest } from '../../lib/personalBest'
 import { sfx } from '../../lib/sound'
 import {
-  HIDDEN_TOP,
+  BELOW_VIEW,
   bufferRows,
   makeBand,
   makeOpeningBand,
@@ -28,9 +39,9 @@ import {
 
 export type Dir = 'up' | 'down' | 'left' | 'right'
 export type Phase = 'menu' | 'playing' | 'dying' | 'gameover'
-export type GhostMode = 'chase' | 'scatter' | 'frightened' | 'eaten'
+export type GhostMode = 'asleep' | 'chase' | 'scatter' | 'frightened' | 'eaten'
 export type GhostKind = 'blink' | 'pink' | 'inky' | 'clyde'
-export type DeathCause = 'caught' | 'swallowed'
+export type DeathCause = 'caught' | 'drowned'
 
 export type Cell = { x: number; y: number }
 
@@ -46,7 +57,7 @@ export type Ghost = {
   bob: number
   /** 0..1 flash after a surge hit. */
   hit: number
-  /** Fades in over the first moments so one never appears on top of you. */
+  /** 0..1 stir as it wakes, so the moment it comes alive is legible. */
   arrive: number
 }
 
@@ -64,8 +75,8 @@ export type Snapshot = {
   surgeTime: number
   crumbStreak: number
   crumbStreakBest: number
-  /** 0..1 how close the floor is to the player, for the HUD warning. */
-  pressure: number
+  /** 0..1 — how awake the tide is, for the HUD warning. */
+  tide: number
   cause: DeathCause | null
 }
 
@@ -75,7 +86,7 @@ export type GameState = {
   best: number
   lives: number
   cols: number
-  /** Buffer height, including the hidden strip above the view. */
+  /** Buffer height, including the strips above and below the view. */
   rows: number
   open: boolean[][]
   crumbs: boolean[][]
@@ -87,9 +98,15 @@ export type GameState = {
   genRow: number
   genQueue: GenRow[]
   seed: number
-  /** 0..1 between row shifts — how far the world has slid down this row. */
-  scroll: number
-  /** Highest world row the player has stood on. */
+  /** World row drawn along the bottom of the view. Never goes down. */
+  camera: number
+  /** World row of the tide's surface. */
+  tide: number
+  /** Seconds since the run last reached a new high row. */
+  stall: number
+  /** World row the player started on, so distance reads from zero. */
+  baseRow: number
+  /** Rows climbed. */
   depth: number
   player: {
     x: number
@@ -100,7 +117,6 @@ export type GameState = {
   }
   ghosts: Ghost[]
   nextGhostId: number
-  spawnTimer: number
   fright: number
   frightEaten: number
   mode: 'chase' | 'scatter'
@@ -162,8 +178,27 @@ const LATE_TURN = 0.34
 const CENTER_EPS = 0.001
 const PENDING_TTL = 1.1
 
-/** Rows from the bottom the player is put back on after a life is lost. */
-const RESPAWN_FROM_BOTTOM = 5
+/**
+ * Where you sit on screen once the camera is following: this far up from the
+ * bottom, as a fraction of the view. Low enough that most of the screen is the
+ * maze ahead, high enough that the tide has somewhere to appear from.
+ */
+const FOLLOW_FRAC = 0.36
+
+/**
+ * Seconds without reaching a new high row before the tide starts climbing.
+ *
+ * Long enough to read a junction, double back a lane for a crumb, or wait out
+ * a chaser; short enough that parking in a cleared pocket is not a plan.
+ */
+const STALL_LIMIT = 4.5
+/** Where the tide sits when it is not chasing you: just under the view. */
+const TIDE_REST_GAP = 1.5
+/** How fast it falls back once you have made ground. */
+const TIDE_EBB = 3.2
+
+/** Rows below a sleeping chaser you have to get before it stirs. */
+const WAKE_RANGE = 5
 
 function loadBest() {
   return getPersonalBest('crumbtrail')
@@ -189,18 +224,29 @@ export function worldRowAt(state: GameState, y: number) {
   return state.originRow + (state.rows - 1 - y)
 }
 
+/** Buffer row holding world row `row` — the inverse, and floats are fine. */
+export function bufferRowOf(state: GameState, row: number) {
+  return state.rows - 1 - (row - state.originRow)
+}
+
+/** How far up the view the camera tries to keep you. */
+function followGap(state: GameState) {
+  const visible = state.rows - BELOW_VIEW
+  return Math.max(4, Math.round(visible * FOLLOW_FRAC))
+}
+
 /**
- * How fast the floor climbs, in rows per second.
+ * How fast the tide climbs once it is awake, in rows per second.
  *
- * Tuned against bots rather than by feel, because the first guess was wrong in
- * an instructive way: at half a row a second a bot that ignored the climb and
- * just farmed crumbs outscored one that raced, and was swallowed once in
- * thirty-six deaths. The floor has to be quick enough that doubling back for a
- * crumb is a real bet. It is still a fraction of the player's 5.2 tiles a
- * second — you cannot lose a race with it, only a negotiation.
+ * It eases in over a couple of seconds rather than starting at full speed, so
+ * the first thing you notice is that it has started, not that it has arrived.
  */
-function scrollSpeed(depth: number) {
-  return 1.05 + Math.min(1.15, depth * 0.0035)
+function tideSpeed(state: GameState) {
+  const over = state.stall - STALL_LIMIT
+  if (over <= 0) return 0
+  const ramp = Math.min(1, over / 2.5)
+  const top = 1.1 + Math.min(1.3, state.depth * 0.003)
+  return top * (0.35 + 0.65 * ramp)
 }
 
 function chaserSpeedScale(depth: number) {
@@ -219,13 +265,7 @@ function chaseTime(depth: number) {
   return Math.min(30, 20 + depth * 0.02)
 }
 
-/**
- * Chasers on the board at this depth.
- *
- * Starts at one. Pellets can open with four because they begin penned at the
- * far end of a board you can see all of; here they drop in ahead of you, on
- * the only route there is, so the opening has to be thinner.
- */
+/** Chasers on the board at this depth, asleep and awake together. */
 function wantGhosts(depth: number) {
   return Math.min(5, 1 + Math.floor(depth / 40))
 }
@@ -251,20 +291,16 @@ function tileOpen(state: GameState, x: number, y: number) {
 
 /**
  * Neighbour tile in `dir`. Sides wrap the way Pellets' tunnels do; top and
- * bottom never do — the strip has real ends, and the bottom one is fatal.
+ * bottom never do — the strip has real ends.
  */
 function stepTile(state: GameState, x: number, y: number, dir: Dir) {
   const v = VEC[dir]
   let nx = x + v.x
   const ny = y + v.y
-  let wrapped = false
   if (ny < 0 || ny >= state.rows) return null
-  if (nx < 0 || nx >= state.cols) {
-    nx = (nx + state.cols) % state.cols
-    wrapped = true
-  }
+  if (nx < 0 || nx >= state.cols) nx = (nx + state.cols) % state.cols
   if (!tileOpen(state, nx, ny)) return null
-  return { x: nx, y: ny, wrapped }
+  return { x: nx, y: ny }
 }
 
 /** Breadth-first distance field from `target`; chasers walk downhill on it. */
@@ -356,6 +392,42 @@ function fillBuffer(state: GameState) {
   }
 }
 
+const GHOST_ORDER: GhostKind[] = ['blink', 'pink', 'inky', 'clyde']
+
+/**
+ * Lay a sleeping chaser on a freshly built row.
+ *
+ * This is the whole answer to chasers arriving out of nowhere: they go onto
+ * the board while the row is still above the view, so by the time one matters
+ * you have been looking at it for a dozen rows and have had every chance to
+ * pick a different corridor.
+ */
+function seedGhost(state: GameState, y: number) {
+  if (state.kind[y] !== 'lane') return
+  if (state.ghosts.length >= wantGhosts(state.depth)) return
+  const spots: number[] = []
+  for (let x = 0; x < state.cols; x++) if (state.open[y][x]) spots.push(x)
+  if (!spots.length) return
+  const kind = GHOST_ORDER[state.nextGhostId % GHOST_ORDER.length]
+  state.ghosts.push({
+    id: state.nextGhostId++,
+    kind,
+    x: spots[Math.floor(Math.random() * spots.length)] + 0.5,
+    y: y + 0.5,
+    dir: 'down',
+    mode: 'asleep',
+    corner: cornerFor(kind, state.cols, state.rows),
+    bob: Math.random() * Math.PI * 2,
+    hit: 0,
+    arrive: 0,
+  })
+}
+
+/** Odds a newly built lane row gets a sleeper on it. */
+function seedChance(depth: number) {
+  return Math.min(0.34, 0.14 + depth * 0.0005)
+}
+
 /**
  * Slide the world down one row: a fresh row at the top, the bottom one gone,
  * and everything standing on the board moves down with it.
@@ -377,17 +449,18 @@ function shiftDown(state: GameState) {
   for (const ghost of state.ghosts) ghost.y += 1
   for (const dot of state.trail) dot.y += 1
   for (const pop of state.pops) pop.y += 1
+
+  if (Math.random() < seedChance(state.depth)) seedGhost(state, 0)
 }
 
 /** Lowest lane row at or above `fromY` — somewhere you can actually stand. */
 function laneRowNear(state: GameState, fromY: number): number {
-  for (let y = Math.min(state.rows - 2, fromY); y >= 1; y--) {
+  const lowest = Math.max(1, Math.min(state.rows - 2, Math.floor(fromY)))
+  for (let y = lowest; y >= 1; y--) if (state.kind[y] === 'lane') return y
+  for (let y = lowest + 1; y < state.rows - 1; y++) {
     if (state.kind[y] === 'lane') return y
   }
-  for (let y = Math.min(state.rows - 2, fromY) + 1; y < state.rows - 1; y++) {
-    if (state.kind[y] === 'lane') return y
-  }
-  return Math.max(1, state.rows - RESPAWN_FROM_BOTTOM)
+  return lowest
 }
 
 // —— Lifecycle ————————————————————————————————————————————————
@@ -408,12 +481,14 @@ function emptyState(view: { cols: number; rows: number }): GameState {
     genRow: 0,
     genQueue: [],
     seed: (Math.random() * 0xffffffff) >>> 0,
-    scroll: 0,
+    camera: BELOW_VIEW,
+    tide: BELOW_VIEW - TIDE_REST_GAP,
+    stall: 0,
+    baseRow: BELOW_VIEW,
     depth: 0,
     player: { x: 0, y: 0, dir: 'up', pending: null, pendingAge: 0 },
     ghosts: [],
     nextGhostId: 1,
-    spawnTimer: 3.5,
     fright: 0,
     frightEaten: 0,
     mode: 'scatter',
@@ -433,7 +508,22 @@ function emptyState(view: { cols: number; rows: number }): GameState {
     time: 0,
   }
   fillBuffer(state)
-  placePlayer(state, state.rows - RESPAWN_FROM_BOTTOM)
+  /*
+   * Start where the camera will keep you rather than down on the bottom edge.
+   * Opening against the edge meant the tide's proximity warning fired on frame
+   * one of every run, before anything had happened — and it made the first
+   * screen the only one in the game with no maze above it.
+   */
+  placePlayer(state, bufferRowOf(state, state.camera) - followGap(state))
+  state.baseRow = worldRowAt(state, Math.floor(state.player.y))
+  /*
+   * A sleeper or two already up the board, so the opening screen says what
+   * kind of game this is before the first row has even scrolled.
+   */
+  const playerY = Math.floor(state.player.y)
+  for (let y = 1; y < Math.max(2, playerY - WAKE_RANGE - 1); y++) {
+    if (Math.random() < 0.16) seedGhost(state, y)
+  }
   return state
 }
 
@@ -463,19 +553,22 @@ export function startGame(prev: GameState, view = crumbtrailViewport()): GameSta
   return next
 }
 
-/** Admin/testing: jump the floor ahead without crediting the distance. */
+/** Admin/testing: skip up the board without crediting the distance. */
 export function jumpToDepth(state: GameState, depth: number): GameState {
   if (state.phase !== 'playing') return state
   const target = Math.max(0, Math.floor(depth) || 0)
-  const next: GameState = { ...state, ghosts: [...state.ghosts] }
+  const next: GameState = { ...state, ghosts: [], player: { ...state.player } }
   let guard = 0
-  while (worldRowAt(next, Math.floor(next.player.y)) < target && guard++ < 4000) {
+  while (next.depth < target && guard++ < 4000) {
     shiftDown(next)
-    if (next.player.y > next.rows - 2) placePlayer(next, next.rows - RESPAWN_FROM_BOTTOM)
+    next.camera += 1
+    next.depth += 1
   }
-  next.depth = Math.max(next.depth, worldRowAt(next, Math.floor(next.player.y)))
+  placePlayer(next, bufferRowOf(next, next.camera) - followGap(next))
+  next.baseRow = worldRowAt(next, Math.floor(next.player.y)) - next.depth
+  next.tide = next.camera - TIDE_REST_GAP
+  next.stall = 0
   next.ghosts = []
-  next.spawnTimer = 1.2
   next.invuln = RESPAWN_INVULN
   return next
 }
@@ -507,7 +600,7 @@ function targetFor(state: GameState, ghost: Ghost): Cell {
   if (ghost.kind === 'blink') return { x: px, y: py }
   if (ghost.kind === 'pink') return { x: px + v.x * 4, y: py + v.y * 4 }
   if (ghost.kind === 'inky') {
-    const blink = state.ghosts.find((g) => g.kind === 'blink')
+    const blink = state.ghosts.find((g) => g.kind === 'blink' && g.mode !== 'asleep')
     const ax = px + v.x * 2
     const ay = py + v.y * 2
     if (!blink) return { x: ax, y: ay }
@@ -666,39 +759,6 @@ function moveGhost(
   }
 }
 
-const GHOST_ORDER: GhostKind[] = ['blink', 'pink', 'inky', 'clyde']
-
-/**
- * Drop a chaser into the hidden strip above the view.
- *
- * They come in from the top because that is the direction you are heading:
- * a chaser entering behind you is a free row, one entering ahead is a
- * decision about which gap to take.
- */
-function spawnGhost(state: GameState) {
-  const spots: Cell[] = []
-  for (let y = 0; y < HIDDEN_TOP && y < state.rows; y++) {
-    for (let x = 0; x < state.cols; x++) {
-      if (state.open[y][x]) spots.push({ x, y })
-    }
-  }
-  if (!spots.length) return
-  const at = spots[Math.floor(Math.random() * spots.length)]
-  const kind = GHOST_ORDER[state.nextGhostId % GHOST_ORDER.length]
-  state.ghosts.push({
-    id: state.nextGhostId++,
-    kind,
-    x: at.x + 0.5,
-    y: at.y + 0.5,
-    dir: 'down',
-    mode: state.mode,
-    corner: cornerFor(kind, state.cols, state.rows),
-    bob: Math.random() * Math.PI * 2,
-    hit: 0,
-    arrive: 0,
-  })
-}
-
 // —— Player ———————————————————————————————————————————————————
 
 function canStepFrom(state: GameState, x: number, y: number, dir: Dir) {
@@ -741,8 +801,7 @@ function movePlayer(state: GameState, speed: number, dt: number) {
         p.dir = p.pending
         p.pending = null
       }
-      const ahead = stepTile(state, Math.floor(p.x), Math.floor(p.y), p.dir)
-      if (!ahead) break
+      if (!stepTile(state, Math.floor(p.x), Math.floor(p.y), p.dir)) break
     }
 
     const v = VEC[p.dir]
@@ -788,7 +847,7 @@ function eatAt(state: GameState) {
     state.fright = FRIGHT_TIME
     state.frightEaten = 0
     for (const ghost of state.ghosts) {
-      if (ghost.mode === 'eaten') continue
+      if (ghost.mode === 'eaten' || ghost.mode === 'asleep') continue
       ghost.mode = 'frightened'
       ghost.dir = OPPOSITE[ghost.dir]
     }
@@ -808,14 +867,14 @@ function loseLife(state: GameState, cause: DeathCause) {
 /**
  * Back on your feet after a life.
  *
- * The board keeps climbing, so a respawn has to buy real room or the floor
- * that just swallowed you swallows you again. Everything currently chasing is
- * cleared and comes back over the next few seconds.
+ * The tide is pushed back under the view and the board cleared of chasers,
+ * because a respawn into the squeeze that just killed you is not a life.
  */
 function respawn(state: GameState) {
-  placePlayer(state, state.rows - RESPAWN_FROM_BOTTOM)
+  placePlayer(state, bufferRowOf(state, state.camera) - followGap(state))
   state.ghosts = []
-  state.spawnTimer = 1.8
+  state.tide = state.camera - TIDE_REST_GAP
+  state.stall = 0
   state.fright = 0
   state.frightEaten = 0
   state.surgeTime = 0
@@ -855,18 +914,6 @@ export function tick(state: GameState, dt: number): GameState {
     return next
   }
 
-  // —— the floor ——
-  next.scroll += scrollSpeed(next.depth) * dt
-  let shifts = 0
-  while (next.scroll >= 1 && shifts++ < 8) {
-    next.scroll -= 1
-    shiftDown(next)
-  }
-  if (Math.floor(next.player.y) >= next.rows - 1) {
-    loseLife(next, 'swallowed')
-    return next
-  }
-
   // —— you ——
   if (next.player.pending) {
     next.player.pendingAge += dt
@@ -879,15 +926,32 @@ export function tick(state: GameState, dt: number): GameState {
   movePlayer(next, PLAYER_SPEED * (surging ? SURGE_SPEED : 1), dt)
   eatAt(next)
 
-  const reached = worldRowAt(next, Math.floor(next.player.y))
-  if (reached > next.depth) {
-    next.score += (reached - next.depth) * SCORE_ROW
-    next.depth = reached
+  const climbed = worldRowAt(next, Math.floor(next.player.y)) - next.baseRow
+  if (climbed > next.depth) {
+    next.score += (climbed - next.depth) * SCORE_ROW
+    next.depth = climbed
+    next.stall = 0
+  } else {
+    next.stall += dt
   }
 
-  if (surging) {
-    next.surgeTime = Math.max(0, next.surgeTime - dt)
-    next.trail = [{ x: next.player.x, y: next.player.y, life: 1 }, ...next.trail].slice(0, 18)
+  // —— the camera follows, it never leads ——
+  const want = worldRowAt(next, next.player.y - 0.5) - followGap(next)
+  if (want > next.camera) next.camera = want
+  let shifts = 0
+  while (Math.floor(next.camera) - BELOW_VIEW > next.originRow && shifts++ < 16) {
+    shiftDown(next)
+  }
+
+  // —— the tide answers standing still ——
+  const rest = next.camera - TIDE_REST_GAP
+  const rise = tideSpeed(next)
+  if (rise > 0) next.tide += rise * dt
+  else next.tide = Math.max(rest, next.tide - TIDE_EBB * dt)
+
+  if (next.invuln <= 0 && worldRowAt(next, next.player.y - 0.5) <= next.tide + 0.3) {
+    loseLife(next, 'drowned')
+    return next
   }
 
   // —— chase / scatter ——
@@ -913,16 +977,20 @@ export function tick(state: GameState, dt: number): GameState {
   }
 
   // —— chasers ——
-  next.spawnTimer -= dt
-  if (next.ghosts.length < wantGhosts(next.depth) && next.spawnTimer <= 0) {
-    spawnGhost(next)
-    next.spawnTimer = Math.max(1.4, 4 - next.depth * 0.004)
-  }
-
   const cache: FieldCache = new Map()
   for (const ghost of next.ghosts) {
     ghost.bob += dt * 4
     ghost.hit = Math.max(0, ghost.hit - dt * 3)
+
+    if (ghost.mode === 'asleep') {
+      // Stirs once you are within reach of it, or already past it.
+      if (next.player.y - ghost.y <= WAKE_RANGE) {
+        ghost.mode = next.mode
+        ghost.arrive = 0
+      }
+      continue
+    }
+
     ghost.arrive = Math.min(1, ghost.arrive + dt * 2)
     const speed =
       ghost.mode === 'eaten'
@@ -932,15 +1000,16 @@ export function tick(state: GameState, dt: number): GameState {
           : GHOST_SPEED * chaserSpeedScale(next.depth)
     moveGhost(next, ghost, speed, dt, cache)
   }
-  // Eyes that made it out the top, and anything the floor took, are gone.
+  // Eyes that made it out the top, and anything the tide took, are gone.
+  const tideY = bufferRowOf(next, next.tide)
   next.ghosts = next.ghosts.filter((g) => {
     if (g.mode === 'eaten' && g.y < 0.6) return false
-    return g.y < next.rows - 0.2
+    return g.y < tideY + 0.5
   })
 
   // —— contact ——
   for (const ghost of next.ghosts) {
-    if (ghost.mode === 'eaten') continue
+    if (ghost.mode === 'eaten' || ghost.mode === 'asleep') continue
     if (dist2(ghost.x, ghost.y, next.player.x, next.player.y) > 0.42 * 0.42) continue
 
     if (ghost.mode === 'frightened') {
@@ -971,13 +1040,20 @@ export function tick(state: GameState, dt: number): GameState {
     return next
   }
 
+  if (surging) {
+    next.surgeTime = Math.max(0, next.surgeTime - dt)
+    next.trail = [{ x: next.player.x, y: next.player.y, life: 1 }, ...next.trail].slice(0, 18)
+  }
+
   return next
 }
 
-/** 0..1 — how close the floor is to the player, for the HUD warning band. */
-export function pressureOf(state: GameState): number {
-  const gap = state.rows - 1 - state.player.y
-  return Math.max(0, Math.min(1, 1 - gap / 4))
+/** 0..1 — how awake the tide is, for the HUD and the warning glow. */
+export function tidePressure(state: GameState): number {
+  const gap = worldRowAt(state, state.player.y - 0.5) - state.tide
+  const near = Math.max(0, Math.min(1, 1 - (gap - 1) / 5))
+  const warn = Math.max(0, Math.min(1, (state.stall - STALL_LIMIT + 1.5) / 2))
+  return Math.max(near, warn)
 }
 
 export function toSnapshot(state: GameState): Snapshot {
@@ -991,7 +1067,7 @@ export function toSnapshot(state: GameState): Snapshot {
     surgeTime: state.surgeTime,
     crumbStreak: state.crumbStreak,
     crumbStreakBest: state.crumbStreakBest,
-    pressure: pressureOf(state),
+    tide: tidePressure(state),
     cause: state.cause,
   }
 }
