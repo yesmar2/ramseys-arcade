@@ -19,6 +19,7 @@ import { resolveGameAccent } from '../lib/theme'
 import {
   attemptsPerGameMax,
   eventKind,
+  finalBracketMatch,
   formatEventCountdown,
   getTournament,
   getTournamentInvite,
@@ -199,10 +200,7 @@ function bracketPlayLabel(detail: TournamentDetail, joined: boolean, displayName
     return roundLeft ? `${tries} · ${roundLeft}` : tries
   }
   const you = normalizePlayerName(displayName)
-  const final = detail.bracket.matches.reduce(
-    (best, m) => (m.round > best.round ? m : best),
-    detail.bracket.matches[0]!,
-  )
+  const final = finalBracketMatch(detail.bracket.matches)
   if (final?.winnerId && final.players.some((p) => p && normalizePlayerName(p.name) === you && p.id === final.winnerId)) {
     return 'Champion'
   }

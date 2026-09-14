@@ -392,6 +392,25 @@ export function matchOpponent(
   return other ?? null
 }
 
+/**
+ * The match that decides the whole draw.
+ *
+ * Not simply the highest round number: a double-elim draw numbers its rounds
+ * per side, so the losers bracket routinely runs to a higher round than the
+ * grand final. Taking the maximum picks the losers final and reports the wrong
+ * champion — or none, if the person who won the draw was never in it.
+ */
+export function finalBracketMatch(
+  matches: PublicBracketMatch[],
+): PublicBracketMatch | null {
+  if (matches.length === 0) return null
+  // A voided decider never reaches the client, so the last grand-final match
+  // present is the one that settled it.
+  const crown = matches.filter((m) => matchSide(m) === 'gf')
+  const pool = crown.length > 0 ? crown : matches
+  return pool.reduce((best, m) => (m.round > best.round ? m : best), pool[0]!)
+}
+
 export function bracketRoundLabel(round: number, maxRound: number): string {
   if (round === maxRound) return 'Final'
   if (round === maxRound - 1) return 'Semifinals'
