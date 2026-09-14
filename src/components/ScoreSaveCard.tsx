@@ -31,6 +31,7 @@ import {
   whenRunAchievementsSettled,
   type RunAchievement,
 } from '../lib/runAchievements'
+import { formatLeaderboardScore, isTimeBoard } from '../lib/leaderboardFormat'
 import { medalKind, PodiumMedal } from './PodiumMedal'
 import { ScoreSignInPrompt } from './ScoreSignInPrompt'
 
@@ -701,7 +702,11 @@ export function ScoreSaveCard({
   const pb = describePersonalBest(score, record)
   const isBestRun = pb?.kind === 'new'
   const eyebrow =
-    phase === 'needAuth' || phase === 'needName' ? 'Board score' : title
+    phase === 'needAuth' || phase === 'needName'
+      ? isTimeBoard(gameSlug)
+        ? 'Your time'
+        : 'Board score'
+      : title
   const subParts = [subtitle].filter(Boolean) as string[]
   const pbLine = pb?.headline ?? pb?.detail
 
@@ -939,7 +944,9 @@ export function ScoreSaveCard({
     <div className="score-save" onPointerDown={(e) => e.stopPropagation()}>
       <div className="score-save__hero">
         <span className="score-save__eyebrow">{eyebrow}</span>
-        <strong className="score-save__score">{score}</strong>
+        <strong className="score-save__score">
+          {formatLeaderboardScore(gameSlug, score)}
+        </strong>
         {pbLine ? (
           <p
             className={`score-save__pb${isBestRun ? ' score-save__pb--best' : ''}`}

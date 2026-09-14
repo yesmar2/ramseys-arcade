@@ -24,6 +24,7 @@ import { useTournamentPlay } from '../../tournaments/TournamentPlayContext'
 import {
   clearPointer,
   createInitialState,
+  fieldRect,
   hitAt,
   moveReticle,
   ROUNDS,
@@ -116,12 +117,21 @@ export function FindBugGame() {
       }
 
       if (canvas && w > 0 && h > 0) {
-        if (canvas.width !== w || canvas.height !== h) {
-          canvas.width = w
-          canvas.height = h
+        // Back the canvas at the display's pixel density — at 1x the scenes go
+        // soft, and this game is asking you to spot a speck. Capped at 2 so a
+        // 3x phone is not painting nine times the pixels every frame.
+        const dpr = Math.min(2, window.devicePixelRatio || 1)
+        const bw = Math.round(w * dpr)
+        const bh = Math.round(h * dpr)
+        if (canvas.width !== bw || canvas.height !== bh) {
+          canvas.width = bw
+          canvas.height = bh
         }
         const ctx = canvas.getContext('2d')
-        if (ctx) renderGame(ctx, stateRef.current, w, h)
+        if (ctx) {
+          ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+          renderGame(ctx, stateRef.current, w, h)
+        }
       }
 
       raf = requestAnimationFrame(loop)
@@ -146,13 +156,19 @@ export function FindBugGame() {
     setUi(toSnapshot(stateRef.current))
   }
 
-  /** Canvas-relative pointer position in the normalized space the game uses. */
+  /**
+   * Pointer position in the scene's normalized space. The element now fills the
+   * shell while the scene is a fixed 3:4 inside it, so this has to go through
+   * the same field rect the renderer draws into or every swat lands offset.
+   */
   const normalize = (e: ReactPointerEvent<HTMLElement>) => {
     const rect = e.currentTarget.getBoundingClientRect()
     if (rect.width <= 0 || rect.height <= 0) return null
+    const field = fieldRect(rect.width, rect.height)
+    if (field.w <= 0 || field.h <= 0) return null
     return {
-      x: (e.clientX - rect.left) / rect.width,
-      y: (e.clientY - rect.top) / rect.height,
+      x: (e.clientX - rect.left - field.x) / field.w,
+      y: (e.clientY - rect.top - field.y) / field.h,
     }
   }
 
@@ -237,6 +253,7 @@ export function FindBugGame() {
         <GameStage
           aspectWidth={STAGE_ASPECT.findbug.w}
           aspectHeight={STAGE_ASPECT.findbug.h}
+          fill
         >
           <div
             className="findbug__play"
@@ -318,7 +335,7 @@ export function FindBugGame() {
                     gameSlug="findbug"
                     score={finalScore}
                     title="All clear"
-                    subtitle={`${formatFindbugMs(ui.runMs)} · ${ui.misses} miss${ui.misses === 1 ? '' : 'es'}`}
+                    subtitle={`${ui.misses} wrong swat${ui.misses === 1 ? '' : 's'}`}
                     previousBest={Math.max(previousBestRef.current, apiBest)}
                     onDone={restart}
                   />

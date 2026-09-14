@@ -1,7 +1,7 @@
 import { inkColor, playfieldColor, softFillAlpha, strokeOutlined } from '../../lib/theme'
 import { mixColor } from '../../lib/color'
 import { drawBug } from './bugSprite'
-import { catchRadius, type GameState, type RoundState } from './game'
+import { catchRadius, fieldRect, type GameState, type RoundState } from './game'
 import {
   boardRowY,
   cableY,
@@ -336,6 +336,26 @@ function drawMissFlash(ctx: CanvasRenderingContext2D, state: GameState, w: numbe
 }
 
 export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, w: number, h: number) {
+  const field = fieldRect(w, h)
+
+  // Carry the surround in the scene's own ground tone so a wide window reads as
+  // more of the same surface rather than as bars either side of a box.
+  ctx.fillStyle = playfieldColor()
+  ctx.fillRect(0, 0, w, h)
+  if (state.round.scene.ground !== undefined) {
+    ctx.fillStyle = fade(state.round.scene.ground)
+    ctx.fillRect(0, 0, w, h)
+  }
+
+  // Everything below is authored against a canvas that is exactly the scene, so
+  // shift into the field and hand it the field's size.
+  ctx.save()
+  ctx.translate(field.x, field.y)
+  drawField(ctx, state, field.w, field.h)
+  ctx.restore()
+}
+
+function drawField(ctx: CanvasRenderingContext2D, state: GameState, w: number, h: number) {
   const round = state.round
   const scene = round.scene
 

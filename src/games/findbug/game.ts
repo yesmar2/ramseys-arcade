@@ -21,6 +21,18 @@ const FOUND_HOLD_S = 0.95
 export const STAGE_W = 3
 export const STAGE_H = 4
 
+/**
+ * Where the scene sits inside a canvas that fills the shell. The scene keeps a
+ * fixed 3:4 whatever shape the window is — a wider board would mean a different
+ * amount of ground to search, and the leaderboard is a shared one.
+ */
+export function fieldRect(w: number, h: number) {
+  const scale = Math.min(w / STAGE_W, h / STAGE_H)
+  const fw = scale * STAGE_W
+  const fh = scale * STAGE_H
+  return { x: (w - fw) / 2, y: (h - fh) / 2, w: fw, h: fh }
+}
+
 export type RoundConfig = {
   /** Body length as a fraction of stage width. */
   bugSize: number
@@ -41,9 +53,9 @@ function lerp(a: number, b: number, t: number) {
 export function roundConfig(index: number): RoundConfig {
   const t = ROUNDS > 1 ? index / (ROUNDS - 1) : 0
   return {
-    bugSize: lerp(0.038, 0.021, t),
-    camo: lerp(0.34, 0.78, t),
-    clutter: lerp(0.7, 1.6, t),
+    bugSize: lerp(0.03, 0.019, t),
+    camo: lerp(0.55, 0.84, t),
+    clutter: lerp(1.1, 1.9, t),
   }
 }
 
