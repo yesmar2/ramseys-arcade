@@ -92,6 +92,27 @@ export type Scene = SceneBase &
     | { kind: 'carpet'; motifs: Motif[] }
   )
 
+/**
+ * Scene geometry stays normalised to the field (x and y both 0–1), so a grid
+ * only has to decide how many cells to cut it into. `aspect` is the field's
+ * height over its width: 4/3 upright on a phone, 3/4 on its side on a desktop.
+ *
+ * Solving for square cells at a fixed item count gives cols = sqrt(n / aspect)
+ * and rows = aspect * cols. A cabinet stays a cabinet in either orientation,
+ * and there is the same amount of clutter to search either way — which is what
+ * keeps a landscape run and an upright run the same hunt.
+ */
+function squareGrid(items: number, aspect: number) {
+  // Square cells of side c over a 1 x aspect field hold aspect / c^2 of them,
+  // so c = sqrt(aspect / items). Both counts round off that directly — deriving
+  // rows from the already-rounded cols compounds the error badly on tall fields.
+  const cell = Math.sqrt(aspect / items)
+  return {
+    cols: Math.max(2, Math.round(1 / cell)),
+    rows: Math.max(2, Math.round(aspect / cell)),
+  }
+}
+
 type Rng = () => number
 
 function pick<T>(rng: Rng, list: readonly T[]): T {
@@ -107,10 +128,10 @@ const ACCENTS = ['#2eb87a', '#e85d75', '#4aa8e8', '#f5b942', '#7a6cf0', '#3ecf8e
 
 // ---------------------------------------------------------------- cabinets
 
-const CABINET_COLS = 4
-const CABINET_ROWS = 5
+const CABINET_COUNT = 20
 
-function buildCabinetScene(rng: Rng, clutter: number): Scene {
+function buildCabinetScene(rng: Rng, clutter: number, aspect: number): Scene {
+  const { cols: CABINET_COLS, rows: CABINET_ROWS } = squareGrid(CABINET_COUNT, aspect)
   const cabinets: Cabinet[] = []
   const anchors: Anchor[] = []
   const decoys: Decoy[] = []
@@ -178,16 +199,22 @@ const BOARD_NAMES = [
   'QUA',
   'LUX',
 ] as const
-export const BOARD_ROW_COUNT = 12
 const BOARD_TOP = 0.14
 const BOARD_BOTTOM = 0.94
+/** Rows at the upright aspect; a shorter field simply fits fewer of them. */
+const BOARD_ROWS_UPRIGHT = 12
 
-export function boardRowY(index: number): number {
-  const span = BOARD_BOTTOM - BOARD_TOP
-  return BOARD_TOP + (span * index) / (BOARD_ROW_COUNT - 1)
+export function boardRowCount(aspect: number): number {
+  return Math.max(5, Math.round((BOARD_ROWS_UPRIGHT * aspect) / (4 / 3)))
 }
 
-function buildBoardScene(rng: Rng, clutter: number): Scene {
+export function boardRowY(index: number, rows: number): number {
+  const span = BOARD_BOTTOM - BOARD_TOP
+  return BOARD_TOP + (span * index) / Math.max(1, rows - 1)
+}
+
+function buildBoardScene(rng: Rng, clutter: number, aspect: number): Scene {
+  const BOARD_ROW_COUNT = boardRowCount(aspect)
   const rows: BoardRow[] = []
   const anchors: Anchor[] = []
   const decoys: Decoy[] = []
@@ -197,7 +224,7 @@ function buildBoardScene(rng: Rng, clutter: number): Scene {
     rows.push({ rank: i + 1, name: pick(rng, BOARD_NAMES), score })
     score = Math.max(500, score - Math.floor(rng() * 9000) - 800)
 
-    const y = boardRowY(i)
+    const y = boardRowY(i, BOARD_ROW_COUNT)
     // The dead space between name and score is the natural perch.
     anchors.push({ x: range(rng, 0.42, 0.64), y })
     if (rng() < 0.5) anchors.push({ x: range(rng, 0.2, 0.28), y })
@@ -291,10 +318,10 @@ function buildLoomScene(rng: Rng, clutter: number): Scene {
 
 // ------------------------------------------------------------------ tokens
 
-const TOKEN_COLS = 6
-const TOKEN_ROWS = 8
+const TOKEN_COUNT = 48
 
-function buildTokenScene(rng: Rng, clutter: number): Scene {
+function buildTokenScene(rng: Rng, clutter: number, aspect: number): Scene {
+  const { cols: TOKEN_COLS, rows: TOKEN_ROWS } = squareGrid(TOKEN_COUNT, aspect)
   const tokens: Token[] = []
   const anchors: Anchor[] = []
   const decoys: Decoy[] = []
@@ -334,11 +361,11 @@ function buildTokenScene(rng: Rng, clutter: number): Scene {
 
 // ------------------------------------------------------------------ carpet
 
-const CARPET_COLS = 5
-const CARPET_ROWS = 7
+const CARPET_COUNT = 35
 const MOTIF_KINDS: readonly MotifKind[] = ['star', 'tri', 'dot', 'zig']
 
-function buildCarpetScene(rng: Rng, clutter: number): Scene {
+function buildCarpetScene(rng: Rng, clutter: number, aspect: number): Scene {
+  const { cols: CARPET_COLS, rows: CARPET_ROWS } = squareGrid(CARPET_COUNT, aspect)
   const motifs: Motif[] = []
   const anchors: Anchor[] = []
   const decoys: Decoy[] = []
@@ -389,12 +416,17 @@ function buildCarpetScene(rng: Rng, clutter: number): Scene {
  */
 export const SCENE_ORDER: readonly SceneKind[] = ['cabinets', 'board', 'loom', 'tokens', 'carpet']
 
-export function buildScene(kind: SceneKind, rng: Rng, clutter: number): Scene {
-  if (kind === 'cabinets') return buildCabinetScene(rng, clutter)
-  if (kind === 'board') return buildBoardScene(rng, clutter)
+export function buildScene(
+  kind: SceneKind,
+  rng: Rng,
+  clutter: number,
+  aspect: number,
+): Scene {
+  if (kind === 'cabinets') return buildCabinetScene(rng, clutter, aspect)
+  if (kind === 'board') return buildBoardScene(rng, clutter, aspect)
   if (kind === 'loom') return buildLoomScene(rng, clutter)
-  if (kind === 'tokens') return buildTokenScene(rng, clutter)
-  return buildCarpetScene(rng, clutter)
+  if (kind === 'tokens') return buildTokenScene(rng, clutter, aspect)
+  return buildCarpetScene(rng, clutter, aspect)
 }
 
 /** Keep every perch far enough inside the stage to be swattable. */

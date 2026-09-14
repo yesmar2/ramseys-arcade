@@ -19,12 +19,13 @@ import { useGamePause } from '../../hooks/useGamePause'
 import { usePersonalBest } from '../../hooks/usePersonalBest'
 import { getPersonalBest } from '../../lib/personalBest'
 import { clearRunAchievements } from '../../lib/runAchievements'
-import { STAGE_ASPECT } from '../../lib/stage'
 import { useTournamentPlay } from '../../tournaments/TournamentPlayContext'
 import {
+  aspectFor,
   clearPointer,
   createInitialState,
   fieldRect,
+  stageFor,
   hitAt,
   moveReticle,
   ROUNDS,
@@ -62,7 +63,14 @@ const ARROW_KEYS: Record<string, [number, number]> = {
 export function FindBugGame() {
   const tournament = useTournamentPlay()
   const apiBest = usePersonalBest('findbug')
-  const stateRef = useRef<GameState>(createInitialState())
+  // Upright on a phone, on its side on a desktop, so the scene fills the shell
+  // either way. Read once and on resize; a run keeps the shape it started in.
+  const [portrait, setPortrait] = useState(
+    () => typeof window === 'undefined' || window.innerHeight > window.innerWidth,
+  )
+  const portraitRef = useRef(portrait)
+  portraitRef.current = portrait
+  const stateRef = useRef<GameState>(createInitialState(portrait))
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const sizeRef = useRef({ w: 540, h: 720 })
   const [ui, setUi] = useState<Snapshot>(() => toSnapshot(stateRef.current))
@@ -145,12 +153,31 @@ export function FindBugGame() {
     if (ui.phase === 'menu') previousBestRef.current = apiBest
   }, [apiBest, ui.phase])
 
+  useEffect(() => {
+    const sync = () => setPortrait(window.innerHeight > window.innerWidth)
+    sync()
+    window.addEventListener('resize', sync)
+    window.addEventListener('orientationchange', sync)
+    return () => {
+      window.removeEventListener('resize', sync)
+      window.removeEventListener('orientationchange', sync)
+    }
+  }, [])
+
+  // On the menu there is no run to protect, so adopt the new shape at once.
+  useEffect(() => {
+    if (stateRef.current.phase !== 'menu') return
+    if (stateRef.current.round.aspect === aspectFor(portrait)) return
+    stateRef.current = createInitialState(portrait)
+    setUi(toSnapshot(stateRef.current))
+  }, [portrait])
+
   const restart = () => {
     saveOpenRef.current = false
     setSaveOpen(false)
     offeredScore.current = null
     clearRunAchievements()
-    stateRef.current = startGame(stateRef.current)
+    stateRef.current = startGame(stateRef.current, portraitRef.current)
     previousBestRef.current = getPersonalBest('findbug')
     startGrace.current = performance.now() + 220
     setUi(toSnapshot(stateRef.current))
@@ -164,7 +191,7 @@ export function FindBugGame() {
   const normalize = (e: ReactPointerEvent<HTMLElement>) => {
     const rect = e.currentTarget.getBoundingClientRect()
     if (rect.width <= 0 || rect.height <= 0) return null
-    const field = fieldRect(rect.width, rect.height)
+    const field = fieldRect(rect.width, rect.height, stateRef.current.round.aspect)
     if (field.w <= 0 || field.h <= 0) return null
     return {
       x: (e.clientX - rect.left - field.x) / field.w,
@@ -251,8 +278,8 @@ export function FindBugGame() {
     <section className="findbug findbug--fullscreen">
       <div className="game-play">
         <GameStage
-          aspectWidth={STAGE_ASPECT.findbug.w}
-          aspectHeight={STAGE_ASPECT.findbug.h}
+          aspectWidth={stageFor(portrait).w}
+          aspectHeight={stageFor(portrait).h}
           fill
         >
           <div

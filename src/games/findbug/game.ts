@@ -18,18 +18,30 @@ export const ROUND_FAIL_PENALTY_MS = 15_000
 const FOUND_HOLD_S = 0.95
 
 /** Stage ratio — portrait, matching Pop and Stacker. */
-export const STAGE_W = 3
-export const STAGE_H = 4
+/**
+ * Two board shapes: upright on a phone, on its side on a desktop. The upright
+ * one is tall because phones are — a 3:4 board left a third of the screen
+ * empty. The scene grids scale their rows and columns to whichever shape is in
+ * play, so both hold roughly the same clutter and the two runs stay comparable
+ * on one leaderboard — see `squareGrid` in scenes.ts.
+ */
+export function stageFor(portrait: boolean) {
+  return portrait ? { w: 3, h: 5 } : { w: 4, h: 3 }
+}
+
+/** Field height over field width, which is what the scene grids key off. */
+export function aspectFor(portrait: boolean) {
+  return portrait ? 5 / 3 : 3 / 4
+}
 
 /**
  * Where the scene sits inside a canvas that fills the shell. The scene keeps a
  * fixed 3:4 whatever shape the window is — a wider board would mean a different
  * amount of ground to search, and the leaderboard is a shared one.
  */
-export function fieldRect(w: number, h: number) {
-  const scale = Math.min(w / STAGE_W, h / STAGE_H)
-  const fw = scale * STAGE_W
-  const fh = scale * STAGE_H
+export function fieldRect(w: number, h: number, aspect: number) {
+  const fw = Math.min(w, h / aspect)
+  const fh = fw * aspect
   return { x: (w - fw) / 2, y: (h - fh) / 2, w: fw, h: fh }
 }
 
@@ -64,6 +76,9 @@ export type RoundState = {
   kind: SceneKind
   scene: Scene
   config: RoundConfig
+  /** Field shape this scene was laid out for. Held so a rotation mid-round
+   *  letterboxes the scene rather than stretching it. */
+  aspect: number
   x: number
   y: number
   /** Fixed facing, picked once when the round is built. */
@@ -112,10 +127,10 @@ export type Snapshot = {
   reticleY: number
 }
 
-function makeRound(index: number, rng: () => number): RoundState {
+function makeRound(index: number, rng: () => number, aspect: number): RoundState {
   const config = roundConfig(index)
   const kind = SCENE_ORDER[index % SCENE_ORDER.length]
-  const scene = buildScene(kind, rng, config.clutter)
+  const scene = buildScene(kind, rng, config.clutter, aspect)
   const picked = scene.anchors[Math.floor(rng() * scene.anchors.length) % scene.anchors.length]
   const anchor = clampAnchor(picked ?? { x: 0.5, y: 0.5 })
 
@@ -124,6 +139,7 @@ function makeRound(index: number, rng: () => number): RoundState {
     kind,
     scene,
     config,
+    aspect,
     x: anchor.x,
     y: anchor.y,
     angle: rng() * Math.PI * 2,
@@ -135,12 +151,12 @@ function makeRound(index: number, rng: () => number): RoundState {
   }
 }
 
-export function createInitialState(): GameState {
+export function createInitialState(portrait = true): GameState {
   const seed = Math.floor(Math.random() * 0xffffffff) >>> 0
   const rng = mulberry32(seed)
   return {
     phase: 'menu',
-    round: makeRound(0, rng),
+    round: makeRound(0, rng, aspectFor(portrait)),
     penaltyMs: 0,
     misses: 0,
     bankedMs: 0,
@@ -158,13 +174,13 @@ export function createInitialState(): GameState {
   }
 }
 
-export function startGame(prev: GameState): GameState {
+export function startGame(prev: GameState, portrait = true): GameState {
   const seed = Math.floor(Math.random() * 0xffffffff) >>> 0
   const rng = mulberry32(seed)
   return {
     ...prev,
     phase: 'playing',
-    round: makeRound(0, rng),
+    round: makeRound(0, rng, aspectFor(portrait)),
     penaltyMs: 0,
     misses: 0,
     bankedMs: 0,
@@ -194,7 +210,8 @@ function advanceRound(state: GameState): GameState {
     state.phase = 'gameover'
     return state
   }
-  state.round = makeRound(next, state.rng)
+  // Later rounds keep the shape the run started in.
+  state.round = makeRound(next, state.rng, state.round.aspect)
   return state
 }
 

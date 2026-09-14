@@ -96,7 +96,7 @@ function drawBoardScene(
   ctx.fillText('SCORE', w * 0.9, h * 0.08)
 
   rows.forEach((row, i) => {
-    const y = boardRowY(i) * h
+    const y = boardRowY(i, rows.length) * h
 
     ctx.fillStyle = fade(0.82)
     ctx.beginPath()
@@ -336,7 +336,7 @@ function drawMissFlash(ctx: CanvasRenderingContext2D, state: GameState, w: numbe
 }
 
 export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, w: number, h: number) {
-  const field = fieldRect(w, h)
+  const field = fieldRect(w, h, state.round.aspect)
 
   // Carry the surround in the scene's own ground tone so a wide window reads as
   // more of the same surface rather than as bars either side of a box.
