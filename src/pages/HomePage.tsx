@@ -5,7 +5,7 @@ import { HomeOfficialEvents } from '../components/HomeOfficialEvents'
 import { HomeYourEvents } from '../components/HomeYourEvents'
 import { HomeHero } from '../components/HomeHero'
 import { HomeSpotterStrip } from '../components/HomeSpotterStrip'
-import { HomeYou } from '../components/HomeYou'
+import { HomeIntro } from '../components/HomeIntro'
 import { InstallPrompt } from '../components/InstallPrompt'
 import { PageShell } from '../components/PageShell'
 import { ATTENDANT_ENABLED } from '../lib/attendant'
@@ -22,7 +22,7 @@ export function HomePage() {
           <GameGrid />
           <HomeSpotterStrip />
           <HomeYourEvents />
-          <HomeYou />
+          <HomeIntro />
           <HomeAboutBand />
         </div>
       </PageShell>
