@@ -17,11 +17,33 @@
 
 /* ---------- hero: an oversized game tile ---------- */
 
+/*
+ * Art spans both rows on a wide screen, so Play sits under the description
+ * beside it. On a phone the button drops to its own row under everything,
+ * where a full-width control reads as deliberate rather than as a pill
+ * stranded in the right-hand column.
+ */
 .home-hero {
   display: grid;
   grid-template-columns: minmax(0, 13rem) minmax(0, 1fr);
+  grid-template-areas:
+    "art text"
+    "art go";
   align-items: center;
-  gap: 1.4rem;
+  gap: 0.6rem 1.4rem;
+}
+
+.home-hero__art {
+  grid-area: art;
+}
+
+.home-hero__text {
+  grid-area: text;
+}
+
+.home-hero__go {
+  grid-area: go;
+  justify-self: start;
 }
 
 .home-hero__art {
@@ -74,7 +96,7 @@
 }
 
 .home-hero__sub {
-  margin: 0.3rem 0 0.9rem;
+  margin: 0.3rem 0 0;
   max-width: 32rem;
   font-size: 0.88rem;
   font-weight: 600;
@@ -101,7 +123,10 @@
 @media (max-width: 40rem) {
   .home-hero {
     grid-template-columns: 5.5rem minmax(0, 1fr);
-    gap: 0.9rem;
+    grid-template-areas:
+      "art text"
+      "go  go";
+    gap: 0.7rem 0.9rem;
   }
 
   /* Square on a phone, and sized to the text block beside it so the two
@@ -124,14 +149,12 @@
     display: none;
   }
 
-  /* A 63px pill under the name left most of the row empty. Full width of the
-     text column reads as the page's primary action and fills the space. */
   .home-hero__go {
-    display: flex;
+    justify-self: stretch;
     justify-content: center;
-    margin-top: 0.5rem;
-    padding: 0.5rem 1.15rem;
-    font-size: 0.86rem;
+    margin-top: 0;
+    padding: 0.55rem 1.15rem;
+    font-size: 0.88rem;
   }
 }
 
@@ -147,7 +170,7 @@
 
 @media (min-width: 56rem) {
   .home-top {
-    grid-template-columns: minmax(0, 1fr) minmax(11rem, 14rem);
+    grid-template-columns: minmax(0, 1fr) minmax(15rem, 17rem);
     /* Top-aligned: the fixtures list reads as a sidebar to the hero, not as
        something floating alongside its middle. */
     align-items: start;
@@ -160,22 +183,25 @@
 }
 
 /*
- * Daily and weekly events. They are the only recurring reason to open the app
- * on a given day, so they are named up top — but with nobody entered they get
- * rows on the page, not a card and a Join button.
+ * Daily and weekly events: the recurring reason to open the app on a given
+ * day. Each is a filled row carrying its game's artwork and a way in, tinted
+ * from that game's accent so the block belongs to the same palette as the
+ * tiles rather than being another white surface.
  */
 .home-evs {
   display: flex;
   flex-direction: column;
-  gap: 0.1rem;
+  gap: 0.5rem;
   min-width: 0;
 }
 
 .home-evs__row {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.22rem 0;
+  gap: 0.65rem;
+  padding: 0.5rem 0.6rem;
+  border-radius: 0.9rem;
+  background: color-mix(in srgb, var(--ev-accent, var(--accent)) 12%, var(--surface));
   font-size: 0.79rem;
   text-decoration: none;
   color: inherit;
@@ -183,7 +209,7 @@
 }
 
 .home-evs__art {
-  --inline-thumb-size: 1.65rem;
+  --inline-thumb-size: 2.5rem;
   flex: none;
   display: block;
   line-height: 0;
@@ -191,8 +217,9 @@
 
 .home-evs__body {
   display: flex;
-  align-items: baseline;
-  gap: 0.5rem;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.05rem;
   flex: 1;
   min-width: 0;
 }
@@ -201,13 +228,14 @@
   display: flex;
   align-items: baseline;
   gap: 0.35rem;
-  flex: 1;
+  max-width: 100%;
   min-width: 0;
 }
 
 .home-evs__name {
-  flex: 1;
+  flex: 0 1 auto;
   min-width: 0;
+  font-size: 0.87rem;
   font-weight: 750;
   white-space: nowrap;
   overflow: hidden;
@@ -236,11 +264,21 @@
   font-weight: 650;
   font-variant-numeric: tabular-nums;
   color: var(--muted);
-  font-size: 0.73rem;
+  font-size: 0.74rem;
 }
 
 .home-evs__go {
-  display: none;
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  margin-left: auto;
+  border-radius: 999px;
+  padding: 0.36rem 0.95rem;
+  background: var(--ev-accent, var(--accent));
+  color: #fff;
+  font-size: 0.78rem;
+  font-weight: 750;
+  white-space: nowrap;
 }
 
 .home-evs__all {
@@ -584,54 +622,6 @@ html[data-theme="google"] .home-you {
    * every other block on this page does. As one text line it left the right
    * two thirds of a 355px row empty, which read as a hole in the page.
    */
-  .home-evs {
-    gap: 0.55rem;
-  }
-
-  .home-evs__row {
-    gap: 0.65rem;
-  }
-
-  .home-evs__art {
-    --inline-thumb-size: 2.5rem;
-  }
-
-  .home-evs__body {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.05rem;
-  }
-
-  .home-evs__name {
-    flex: 0 1 auto;
-    font-size: 0.87rem;
-  }
-
-  .home-evs__clock {
-    font-size: 0.74rem;
-  }
-
-  /* A filled row with a way in, spanning the width it used to leave empty. */
-  .home-evs__row {
-    padding: 0.5rem 0.6rem;
-    border-radius: 0.9rem;
-    background: color-mix(in srgb, var(--ev-accent, var(--accent)) 12%, var(--surface));
-  }
-
-  .home-evs__go {
-    display: inline-flex;
-    align-items: center;
-    flex: none;
-    margin-left: auto;
-    border-radius: 999px;
-    padding: 0.36rem 0.95rem;
-    background: var(--ev-accent, var(--accent));
-    color: #fff;
-    font-size: 0.78rem;
-    font-weight: 750;
-    white-space: nowrap;
-  }
-
   .home-evs__all {
     align-self: flex-start;
     margin-top: 0.1rem;

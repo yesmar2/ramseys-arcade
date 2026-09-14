@@ -49,10 +49,10 @@ export function HomeHero() {
         <p className="home-hero__sub">
           {best > 0 ? `Your best ${best.toLocaleString()}` : game.description}
         </p>
-        <a className="home-hero__go" href={gamePlayHref(slug)}>
-          Play
-        </a>
       </div>
+      <a className="home-hero__go" href={gamePlayHref(slug)}>
+        Play
+      </a>
     </section>
   )
 }
