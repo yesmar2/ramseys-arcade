@@ -74,6 +74,8 @@ export type Token = { x: number; y: number; r: number; colour: string; tone: num
  * left on the carpet — and the renderer paints them back to front, so people
  * stand behind the cabinets they are playing.
  */
+export type MachineKind = 'upright' | 'claw' | 'change' | 'pinball'
+
 export type Machine = {
   x: number
   /** Floor line the cabinet stands on. */
@@ -84,12 +86,22 @@ export type Machine = {
   accent: string
   /** Which of the little fake games is on the screen. */
   screen: number
+  kind: MachineKind
 }
 
-export type PersonPose = 'play' | 'stand' | 'cheer' | 'walk' | 'kid'
+export type Poster = {
+  x: number
+  y: number
+  w: number
+  h: number
+  colour: string
+  kind: number
+}
+
+export type PersonPose = 'play' | 'stand' | 'cheer' | 'walk' | 'point'
 
 export type Person = {
-  /** Feet position. */
+  /** Feet position, centred between the shoes. */
   x: number
   y: number
   /** Head to toe. */
@@ -99,6 +111,9 @@ export type Person = {
   hairStyle: number
   shirt: string
   legs: string
+  shoes: string
+  /** 0 none, 1 cap, 2 beanie. */
+  hat: number
   pose: PersonPose
   flip: boolean
 }
@@ -153,6 +168,7 @@ export type Scene = SceneBase &
         people: Person[]
         props: Prop[]
         signs: Sign[]
+        posters: Poster[]
       }
     | { kind: 'cabinets'; cabinets: Cabinet[] }
     | { kind: 'board'; rows: BoardRow[] }
@@ -210,8 +226,19 @@ export const BOARD_GROUND = '#131a2b'
 export const ARCADE_WALL = '#241a3a'
 export const ARCADE_FLOOR = '#2b1f47'
 
-const SKIN = ['#f0c5a0', '#d99a6c', '#a86b45', '#7c4a2d', '#f7d9bd', '#c2825a'] as const
-const HAIR = ['#2b2118', '#4a2c1a', '#8a5a2b', '#d9a441', '#b34a4a', '#3a3a4a', '#e0e0e6'] as const
+const SKIN = ['#f2c9a4', '#dda06f', '#b0774a', '#8a5433', '#f7dcc0', '#c98a5e', '#6d3f26'] as const
+const HAIR = [
+  '#241c16',
+  '#241c16',
+  '#4a2c1a',
+  '#4a2c1a',
+  '#8a5a2b',
+  '#d9a441',
+  '#a83f3f',
+  '#33334a',
+  '#5c3fa8',
+  '#c9c2cf',
+] as const
 const SHIRT = [
   '#e0574f',
   '#3f8fd8',
@@ -221,142 +248,216 @@ const SHIRT = [
   '#e07ab0',
   '#3fb8c0',
   '#f07a3f',
+  '#d8d8e2',
 ] as const
-const LEGS = ['#2f3a56', '#3d3350', '#4a4a58', '#2c4a45', '#553344'] as const
-const CAB_BODY = ['#3a2f5c', '#2f4a5c', '#4a2f45', '#33405c', '#3f3a52'] as const
+const LEGS = ['#2f3a56', '#3d3350', '#4a4a58', '#2c4a45', '#553344', '#6a5a4a'] as const
+const SHOES = ['#1d1a26', '#2b2436', '#8a3f3f', '#d8d8e2'] as const
+const CAB_BODY = ['#3a2f5c', '#2f4a5c', '#4a2f45', '#33405c', '#3f3a52', '#452f52'] as const
+
+/** One row of machines with the crowd standing at it. */
+type Rank = { y: number; h: number; count: number }
+
+function addPerson(
+  rng: Rng,
+  x: number,
+  y: number,
+  h: number,
+  pose: PersonPose,
+): Person {
+  return {
+    x,
+    y,
+    h,
+    skin: pick(rng, SKIN),
+    hair: pick(rng, HAIR),
+    hairStyle: Math.floor(rng() * 4),
+    shirt: pick(rng, SHIRT),
+    legs: pick(rng, LEGS),
+    shoes: pick(rng, SHOES),
+    hat: rng() < 0.22 ? (rng() < 0.6 ? 1 : 2) : 0,
+    pose,
+    flip: rng() < 0.5,
+  }
+}
 
 /**
- * Three ranks of machines running back to front, a crowd playing them, and the
- * usual debris of a busy arcade on the carpet. Rows further back sit higher and
- * are drawn smaller, which is all the perspective this needs.
+ * An arcade hall seen face on. Three ranks of machines run back into the room
+ * with the crowd at them, people cross the aisles between, and the floor
+ * carries the debris of a busy evening. Ranks further back sit higher and are
+ * drawn smaller, which is all the perspective a flat scene needs.
  */
 function buildArcadeScene(rng: Rng, clutter: number, aspect: number): Scene {
   const machines: Machine[] = []
   const people: Person[] = []
   const props: Prop[] = []
   const signs: Sign[] = []
+  const posters: Poster[] = []
   const anchors: Anchor[] = []
   const decoys: Decoy[] = []
 
-  const wallBottom = 0.2
+  const wallBottom = 0.24
 
-  // Neon over the back wall.
-  for (let i = 0; i < 4; i++) {
-    const w = range(rng, 0.1, 0.17)
+  // Neon over the back wall, and framed art between it.
+  for (let i = 0; i < 3; i++) {
+    const w = range(rng, 0.11, 0.16)
     signs.push({
-      x: 0.06 + i * 0.23 + range(rng, -0.02, 0.02),
-      y: range(rng, 0.04, 0.11),
+      x: 0.09 + i * 0.3 + range(rng, -0.02, 0.02),
+      y: range(rng, 0.03, 0.07),
       w,
-      h: w * range(rng, 0.4, 0.6),
+      h: w * range(rng, 0.42, 0.58),
       colour: pick(rng, SHIRT),
       kind: Math.floor(rng() * 3),
     })
   }
-
-  // Machine ranks. Back rows are smaller and stand higher up the floor.
-  const ranks = [
-    { y: wallBottom + 0.1, h: 0.15, count: 7 },
-    { y: wallBottom + 0.3, h: 0.2, count: 5 },
-    { y: wallBottom + 0.56, h: 0.26, count: 4 },
-  ]
-
-  for (const rank of ranks) {
-    const span = 0.94 / rank.count
-    for (let i = 0; i < rank.count; i++) {
-      const w = span * range(rng, 0.62, 0.76)
-      const x = 0.03 + span * i + (span - w) / 2
-      const cab = pick(rng, CAB_BODY)
-      const accent = pick(rng, SHIRT)
-      machines.push({ x, y: rank.y, w, h: rank.h, cab, accent, screen: Math.floor(rng() * 4) })
-
-      // A bug on a cabinet side or along its top edge.
-      anchors.push({ x: x + w * range(rng, 0.08, 0.92), y: rank.y - rank.h + 0.004, on: cab })
-      anchors.push({ x: x + w * range(rng, 0.05, 0.95), y: rank.y - range(rng, 0.02, 0.06), on: cab })
-
-      // Somebody at roughly two machines in three.
-      if (rng() < 0.66) {
-        people.push({
-          x: x + w * range(rng, 0.25, 0.75),
-          y: rank.y + rank.h * 0.1,
-          h: rank.h * range(rng, 1.25, 1.5),
-          skin: pick(rng, SKIN),
-          hair: pick(rng, HAIR),
-          hairStyle: Math.floor(rng() * 4),
-          shirt: pick(rng, SHIRT),
-          legs: pick(rng, LEGS),
-          pose: rng() < 0.25 ? 'cheer' : 'play',
-          flip: rng() < 0.5,
-        })
-      }
-    }
-  }
-
-  // People crossing the floor in front of everything.
-  const walkers = 5
-  for (let i = 0; i < walkers; i++) {
-    const shirt = pick(rng, SHIRT)
-    const kid = rng() < 0.4
-    people.push({
-      x: range(rng, 0.06, 0.94),
-      y: range(rng, 0.86, 0.99),
-      h: kid ? range(rng, 0.14, 0.19) : range(rng, 0.22, 0.3),
-      skin: pick(rng, SKIN),
-      hair: pick(rng, HAIR),
-      hairStyle: Math.floor(rng() * 4),
-      shirt,
-      legs: pick(rng, LEGS),
-      pose: kid ? 'kid' : rng() < 0.5 ? 'walk' : 'stand',
-      flip: rng() < 0.5,
+  for (let i = 0; i < 5; i++) {
+    const w = range(rng, 0.06, 0.1)
+    posters.push({
+      x: 0.04 + i * 0.19 + range(rng, -0.015, 0.015),
+      y: range(rng, 0.12, 0.155),
+      w,
+      h: w * range(rng, 1.15, 1.5),
+      colour: pick(rng, SHIRT),
+      kind: Math.floor(rng() * 4),
     })
   }
 
-  // A bug on somebody's shirt is the best hiding place in the scene.
+  const ranks: Rank[] = [
+    { y: wallBottom + 0.16, h: 0.14, count: 7 },
+    { y: wallBottom + 0.37, h: 0.185, count: 6 },
+    { y: wallBottom + 0.62, h: 0.235, count: 5 },
+  ]
+
+  ranks.forEach((rank, rankIndex) => {
+    const span = 0.96 / rank.count
+    for (let i = 0; i < rank.count; i++) {
+      const w = span * range(rng, 0.6, 0.74)
+      const x = 0.02 + span * i + (span - w) / 2
+      const cab = pick(rng, CAB_BODY)
+      const accent = pick(rng, SHIRT)
+
+      // Mostly uprights, with the odd claw, change booth or pinball table to
+      // break the rhythm of the row.
+      const roll = rng()
+      const kind: MachineKind =
+        roll < 0.12 ? 'claw' : roll < 0.18 ? 'change' : roll < 0.28 ? 'pinball' : 'upright'
+      const h = kind === 'pinball' ? rank.h * 0.72 : kind === 'claw' ? rank.h * 1.12 : rank.h
+
+      machines.push({
+        x,
+        y: rank.y,
+        w,
+        h,
+        cab,
+        accent,
+        screen: Math.floor(rng() * 4),
+        kind,
+      })
+
+      // A bug on a cabinet side, or along its top edge.
+      anchors.push({ x: x + w * range(rng, 0.08, 0.92), y: rank.y - h + 0.006, on: cab })
+      anchors.push({ x: x + w * range(rng, 0.04, 0.96), y: rank.y - range(rng, 0.02, 0.07), on: cab })
+
+      // Somebody at most machines, standing behind it so we see them over the
+      // top of the cabinet.
+      if (kind !== 'change' && rng() < 0.6) {
+        people.push(
+          addPerson(
+            rng,
+            x + w * range(rng, 0.3, 0.7),
+            rank.y - h * 0.24,
+            h * range(rng, 0.98, 1.1),
+            rng() < 0.22 ? 'cheer' : 'play',
+          ),
+        )
+      }
+
+      // Somebody watching over a shoulder on the deeper ranks.
+      if (rankIndex > 0 && rng() < 0.2) {
+        people.push(
+          addPerson(
+            rng,
+            x + w * range(rng, -0.1, 1.1),
+            rank.y + rank.h * 0.08,
+            rank.h * range(rng, 0.92, 1.04),
+            rng() < 0.4 ? 'point' : 'stand',
+          ),
+        )
+      }
+    }
+  })
+
+  // People crossing the floor in front of everything.
+  for (let i = 0; i < 6; i++) {
+    const kid = rng() < 0.35
+    people.push(
+      addPerson(
+        rng,
+        range(rng, 0.05, 0.95),
+        range(rng, 0.88, 1),
+        kid ? range(rng, 0.115, 0.145) : range(rng, 0.175, 0.215),
+        rng() < 0.55 ? 'walk' : 'stand',
+      ),
+    )
+  }
+
+  // A bug on somebody's shirt is the best hiding place in the room.
   for (const person of people) {
-    anchors.push({ x: person.x, y: person.y - person.h * range(rng, 0.45, 0.62), on: person.shirt })
+    anchors.push({
+      x: person.x + person.h * range(rng, -0.07, 0.07),
+      y: person.y - person.h * range(rng, 0.48, 0.66),
+      on: person.shirt,
+    })
   }
 
   // Debris on the carpet.
   const kinds: PropKind[] = ['cup', 'popcorn', 'token', 'plush', 'cone', 'skate', 'bag', 'cat']
-  const propCount = Math.round(range(rng, 9, 13) * clutter)
+  const propCount = Math.round(range(rng, 10, 14) * clutter)
   for (let i = 0; i < propCount; i++) {
-    const kind = pick(rng, kinds)
     const colour = pick(rng, SHIRT)
-    const prop = {
-      x: range(rng, 0.05, 0.95),
-      y: range(rng, wallBottom + 0.62, 0.99),
-      s: range(rng, 0.03, 0.055),
-      kind,
+    const prop: Prop = {
+      x: range(rng, 0.04, 0.96),
+      y: range(rng, wallBottom + 0.5, 0.99),
+      s: range(rng, 0.028, 0.05),
+      kind: pick(rng, kinds),
       colour,
     }
     props.push(prop)
-    anchors.push({ x: prop.x + prop.s * 0.5, y: prop.y - prop.s * 0.2, on: colour })
+    anchors.push({ x: prop.x + prop.s * 0.45, y: prop.y - prop.s * 0.25, on: colour })
   }
 
-  // Balloons drifting above the crowd, tied to nothing in particular.
   for (let i = 0; i < 3; i++) {
-    const colour = pick(rng, SHIRT)
     props.push({
-      x: range(rng, 0.1, 0.9),
-      y: range(rng, wallBottom + 0.05, wallBottom + 0.3),
-      s: range(rng, 0.035, 0.05),
+      x: range(rng, 0.08, 0.92),
+      y: range(rng, wallBottom + 0.04, wallBottom + 0.26),
+      s: range(rng, 0.032, 0.046),
       kind: 'balloon',
-      colour,
+      colour: pick(rng, SHIRT),
     })
   }
 
   // Crumbs and dropped tokens: the false positives.
-  const grit = Math.round(range(rng, 26, 38) * clutter)
+  const grit = Math.round(range(rng, 30, 44) * clutter)
   for (let i = 0; i < grit; i++) {
     decoys.push({
       x: range(rng, 0.02, 0.98),
-      y: range(rng, wallBottom + 0.05, 0.99),
-      r: range(rng, 0.004, 0.008),
+      y: range(rng, wallBottom + 0.04, 0.99),
+      r: range(rng, 0.0035, 0.0075),
       kind: rng() < 0.4 ? 'screw' : 'speck',
     })
   }
 
   void aspect
-  return { kind: 'arcade', camoTone: 0.6, decoys, anchors, machines, people, props, signs }
+  return {
+    kind: 'arcade',
+    camoTone: 0.6,
+    decoys,
+    anchors,
+    machines,
+    people,
+    props,
+    signs,
+    posters,
+  }
 }
 
 // ---------------------------------------------------------------- cabinets

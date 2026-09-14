@@ -65,9 +65,9 @@ function lerp(a: number, b: number, t: number) {
 export function roundConfig(index: number): RoundConfig {
   const t = ROUNDS > 1 ? index / (ROUNDS - 1) : 0
   return {
-    bugSize: lerp(0.03, 0.019, t),
-    camo: lerp(0.55, 0.84, t),
-    clutter: lerp(1.1, 1.9, t),
+    bugSize: lerp(0.026, 0.017, t),
+    camo: lerp(0.74, 0.93, t),
+    clutter: lerp(1.2, 2, t),
   }
 }
 

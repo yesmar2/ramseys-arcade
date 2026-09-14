@@ -70,6 +70,12 @@ export function mixColor(from: string, to: string, t: number): string {
   return `rgb(${ch(a.r, b.r)}, ${ch(a.g, b.g)}, ${ch(a.b, b.b)})`
 }
 
+/** Perceived brightness, 0–255. Used to check one colour reads against another. */
+export function luminance(color: string): number {
+  const { r, g, b } = parseColor(color)
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b
+}
+
 /** Restate a colour at a given alpha, whatever form it arrived in. */
 export function withAlpha(color: string, a: number): string {
   const { r, g, b } = parseColor(color)

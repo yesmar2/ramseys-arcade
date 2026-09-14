@@ -1,4 +1,4 @@
-import { mixColor } from '../../lib/color'
+import { luminance, mixColor } from '../../lib/color'
 import { isFlatTheme } from '../../lib/theme'
 import { drawBug } from './bugSprite'
 import { catchRadius, fieldRect, type GameState, type RoundState } from './game'
@@ -16,6 +16,7 @@ import {
   type Machine,
   type Motif,
   type Person,
+  type Poster,
   type Prop,
   type Scene,
   type Sign,
@@ -31,6 +32,29 @@ import {
  */
 
 const HINT_RADIUS = 0.22
+
+/**
+ * Floor on how close the bug may get to the surface it is sitting on, in
+ * perceived brightness out of 255. Some perches — a dark carpet, a brass token
+ * face — landed the camouflaged body within five or six of the ground, which is
+ * not difficulty, it is invisibility. Anything under this gets pushed away from
+ * the perch: lighter on a dark surface, darker on a light one.
+ */
+const MIN_BUG_CONTRAST = 14
+
+function bugBody(base: string, camo: number): string {
+  const lit = mixColor(base, '#ffffff', 0.5)
+  const target = mixColor(lit, base, camo)
+  const baseLum = luminance(base)
+  if (Math.abs(luminance(target) - baseLum) >= MIN_BUG_CONTRAST) return target
+
+  const away = baseLum < 128 ? '#ffffff' : '#000000'
+  for (let t = 0.05; t <= 0.7; t += 0.05) {
+    const lifted = mixColor(target, away, t)
+    if (Math.abs(luminance(lifted) - baseLum) >= MIN_BUG_CONTRAST) return lifted
+  }
+  return mixColor(target, away, 0.7)
+}
 
 /** Hard outline. Crispness is mostly a matter of committing to an edge. */
 function edge(ctx: CanvasRenderingContext2D, colour: string, width: number) {
@@ -56,14 +80,227 @@ function drawBackground(ctx: CanvasRenderingContext2D, scene: Scene, w: number, 
 
 // ----------------------------------------------------------- arcade floor
 
-/** Back wall, neon signage, and the carpet running away from you. */
-function drawArcadeRoom(ctx: CanvasRenderingContext2D, signs: Sign[], w: number, h: number) {
-  const wallBottom = 0.2 * h
+/** A jointed limb: shoulder to elbow to hand, or hip to knee to foot. */
+function limb(
+  ctx: CanvasRenderingContext2D,
+  a: [number, number],
+  b: [number, number],
+  c: [number, number],
+  width: number,
+  colour: string,
+) {
+  ctx.strokeStyle = colour
+  ctx.lineWidth = width
+  ctx.lineCap = 'round'
+  ctx.lineJoin = 'round'
+  ctx.beginPath()
+  ctx.moveTo(a[0], a[1])
+  ctx.lineTo(b[0], b[1])
+  ctx.lineTo(c[0], c[1])
+  ctx.stroke()
+}
+
+/**
+ * Where each arm bends and where its hand ends up, per pose, as fractions of
+ * height. Authored facing right; the whole figure is mirrored for the other
+ * way round.
+ *
+ * Each shoulder owns exactly one arm. The previous version sent both hands to
+ * the same side, which drew the far arm as a bar straight across the chest —
+ * that is where the spare limbs were coming from.
+ */
+const ARMS: Record<
+  Person['pose'],
+  { back: [[number, number], [number, number]]; front: [[number, number], [number, number]] }
+> = {
+  // Hands converge on the control deck, elbows tucked in at the sides.
+  play: { back: [[-0.15, -0.63], [-0.07, -0.55]], front: [[0.15, -0.63], [0.07, -0.55]] },
+  stand: { back: [[-0.14, -0.62], [-0.15, -0.48]], front: [[0.14, -0.62], [0.15, -0.48]] },
+  cheer: { back: [[-0.19, -0.79], [-0.15, -0.98]], front: [[0.19, -0.79], [0.15, -0.98]] },
+  walk: { back: [[-0.15, -0.63], [-0.1, -0.5]], front: [[0.15, -0.62], [0.19, -0.55]] },
+  point: { back: [[-0.14, -0.62], [-0.15, -0.48]], front: [[0.18, -0.68], [0.31, -0.72]] },
+}
+
+/** Knee and foot per leg, same idea. */
+const LEGS_POSE: Record<
+  Person['pose'],
+  { back: [[number, number], [number, number]]; front: [[number, number], [number, number]] }
+> = {
+  play: { back: [[-0.07, -0.24], [-0.08, -0.01]], front: [[0.07, -0.24], [0.08, -0.01]] },
+  stand: { back: [[-0.07, -0.24], [-0.08, -0.01]], front: [[0.07, -0.24], [0.08, -0.01]] },
+  cheer: { back: [[-0.08, -0.24], [-0.1, -0.01]], front: [[0.08, -0.24], [0.1, -0.01]] },
+  walk: { back: [[-0.11, -0.25], [-0.16, -0.01]], front: [[0.09, -0.23], [0.14, -0.02]] },
+  point: { back: [[-0.07, -0.24], [-0.09, -0.01]], front: [[0.08, -0.24], [0.1, -0.01]] },
+}
+
+/**
+ * One person, built rather than stamped. Drawn back arm first, then legs and
+ * torso, then front arm and head, so the limbs layer the way a body does.
+ */
+function drawPerson(ctx: CanvasRenderingContext2D, pr: Person, w: number, h: number) {
+  const ph = pr.h * h
+  const headR = ph * 0.092
+  const headY = -ph * 0.9
+  const shoulderY = -ph * 0.755
+  const shoulderX = ph * 0.125
+  const hipY = -ph * 0.45
+  const hipX = ph * 0.055
+  const armW = ph * 0.062
+  const legW = ph * 0.078
+
+  const arms = ARMS[pr.pose]
+  const legs = LEGS_POSE[pr.pose]
+  const at = (v: [number, number]): [number, number] => [v[0] * ph, v[1] * ph]
+
+  ctx.save()
+  ctx.translate(pr.x * w, pr.y * h)
+  if (pr.flip) ctx.scale(-1, 1)
+
+  // Contact shadow.
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.26)'
+  ctx.beginPath()
+  ctx.ellipse(0, 0, ph * 0.14, ph * 0.03, 0, 0, Math.PI * 2)
+  ctx.fill()
+
+  const shade = (colour: string) => mixColor(colour, '#000000', 0.26)
+
+  // Far side of the body sits in shadow so the near side reads forward.
+  limb(ctx, [-shoulderX, shoulderY], at(arms.back[0]), at(arms.back[1]), armW, shade(pr.shirt))
+  limb(ctx, [-hipX, hipY], at(legs.back[0]), at(legs.back[1]), legW, shade(pr.legs))
+
+  // Shoes.
+  const shoe = (v: [number, number], colour: string) => {
+    const pt = at(v)
+    ctx.fillStyle = colour
+    ctx.beginPath()
+    ctx.roundRect(pt[0] - ph * 0.045, pt[1] - ph * 0.018, ph * 0.105, ph * 0.04, ph * 0.018)
+    ctx.fill()
+  }
+  shoe(legs.back[1], shade(pr.shoes))
+
+  // Near leg and torso.
+  limb(ctx, [hipX, hipY], at(legs.front[0]), at(legs.front[1]), legW, pr.legs)
+  shoe(legs.front[1], pr.shoes)
+
+  ctx.fillStyle = pr.shirt
+  ctx.beginPath()
+  ctx.roundRect(
+    -shoulderX - armW * 0.2,
+    shoulderY - ph * 0.02,
+    (shoulderX + armW * 0.2) * 2,
+    hipY - shoulderY + ph * 0.06,
+    ph * 0.05,
+  )
+  ctx.fill()
+
+  limb(ctx, [shoulderX, shoulderY], at(arms.front[0]), at(arms.front[1]), armW, pr.shirt)
+
+  // Hands.
+  ctx.fillStyle = pr.skin
+  for (const hand of [arms.back[1], arms.front[1]]) {
+    const pt = at(hand)
+    ctx.beginPath()
+    ctx.arc(pt[0], pt[1], ph * 0.036, 0, Math.PI * 2)
+    ctx.fill()
+  }
+
+  // Neck and head.
+  ctx.fillStyle = shade(pr.skin)
+  ctx.fillRect(-ph * 0.028, headY + headR * 0.55, ph * 0.056, ph * 0.055)
+  ctx.fillStyle = pr.skin
+  ctx.beginPath()
+  ctx.arc(0, headY, headR, 0, Math.PI * 2)
+  ctx.fill()
+
+  // Ear on the far side of the head.
+  ctx.beginPath()
+  ctx.arc(-headR * 0.92, headY + headR * 0.08, headR * 0.22, 0, Math.PI * 2)
+  ctx.fill()
+
+  // Hair. Players are seen from behind, so their hair wraps the whole skull.
+  const fromBehind = pr.pose === 'play' || pr.pose === 'cheer'
+  ctx.fillStyle = pr.hair
+  if (fromBehind) {
+    ctx.beginPath()
+    ctx.arc(0, headY, headR * 1.06, 0, Math.PI * 2)
+    ctx.fill()
+    if (pr.hairStyle === 1) {
+      ctx.beginPath()
+      ctx.arc(0, headY + headR * 0.95, headR * 0.45, 0, Math.PI * 2)
+      ctx.fill()
+    }
+  } else if (pr.hairStyle === 0) {
+    ctx.beginPath()
+    ctx.arc(0, headY, headR * 1.05, Math.PI * 1.02, Math.PI * 2.08)
+    ctx.fill()
+  } else if (pr.hairStyle === 1) {
+    ctx.beginPath()
+    ctx.arc(0, headY - headR * 0.08, headR * 1.12, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.fillStyle = pr.skin
+    ctx.beginPath()
+    ctx.arc(headR * 0.16, headY + headR * 0.26, headR * 0.85, 0, Math.PI * 2)
+    ctx.fill()
+  } else if (pr.hairStyle === 2) {
+    ctx.beginPath()
+    ctx.arc(0, headY, headR * 1.04, Math.PI * 1.02, Math.PI * 2.05)
+    ctx.fill()
+    ctx.beginPath()
+    ctx.arc(-headR * 0.95, headY + headR * 0.2, headR * 0.4, 0, Math.PI * 2)
+    ctx.fill()
+  } else {
+    ctx.beginPath()
+    ctx.arc(0, headY, headR * 1.04, Math.PI * 1.05, Math.PI * 2)
+    ctx.fill()
+    ctx.beginPath()
+    ctx.arc(-headR * 0.2, headY - headR * 0.92, headR * 0.34, 0, Math.PI * 2)
+    ctx.fill()
+  }
+
+  // Hat.
+  if (pr.hat === 1) {
+    ctx.fillStyle = mixColor(pr.shirt, '#000000', 0.15)
+    ctx.beginPath()
+    ctx.arc(0, headY - headR * 0.12, headR * 1.03, Math.PI, Math.PI * 2)
+    ctx.fill()
+    ctx.beginPath()
+    ctx.roundRect(headR * 0.3, headY - headR * 0.22, headR * 1.15, headR * 0.26, headR * 0.12)
+    ctx.fill()
+  } else if (pr.hat === 2) {
+    ctx.fillStyle = mixColor(pr.shirt, '#ffffff', 0.2)
+    ctx.beginPath()
+    ctx.arc(0, headY - headR * 0.1, headR * 1.06, Math.PI, Math.PI * 2)
+    ctx.fill()
+    ctx.fillRect(-headR * 1.06, headY - headR * 0.24, headR * 2.12, headR * 0.3)
+  }
+
+  // Face, only on the people actually turned toward the room.
+  if (!fromBehind) {
+    ctx.fillStyle = '#1a1622'
+    for (const ex of [0.18, 0.5]) {
+      ctx.beginPath()
+      ctx.arc(headR * ex, headY + headR * 0.08, headR * 0.1, 0, Math.PI * 2)
+      ctx.fill()
+    }
+  }
+
+  ctx.restore()
+}
+
+/** Back wall, signage, framed art, and the carpet running away from you. */
+function drawArcadeRoom(
+  ctx: CanvasRenderingContext2D,
+  signs: Sign[],
+  posters: Poster[],
+  w: number,
+  h: number,
+) {
+  const wallBottom = 0.24 * h
 
   ctx.fillStyle = ARCADE_WALL
   ctx.fillRect(0, 0, w, wallBottom)
 
-  // Carpet. The motifs bunch up and shrink toward the wall, which is all the
+  // Carpet. Motifs bunch up and shrink toward the wall, which is all the
   // perspective a flat scene like this needs.
   ctx.fillStyle = ARCADE_FLOOR
   ctx.fillRect(0, wallBottom, w, h - wallBottom)
@@ -71,32 +308,68 @@ function drawArcadeRoom(ctx: CanvasRenderingContext2D, signs: Sign[], w: number,
   ctx.beginPath()
   ctx.rect(0, wallBottom, w, h - wallBottom)
   ctx.clip()
-  const carpet = ['#e0574f', '#3f8fd8', '#e8b13c', '#4cb377']
-  for (let i = 1; i <= 110; i++) {
-    const fx = (Math.sin(i * 12.9898) * 43758.5453) % 1
-    const fy = (Math.sin(i * 78.233) * 12345.6789) % 1
-    const ax = Math.abs(fx)
-    const ay = Math.abs(fy)
-    const y = wallBottom + (h - wallBottom) * (ay * ay)
-    const size = w * 0.013 * (0.3 + ay)
-    ctx.globalAlpha = 0.16 + ay * 0.2
+  const carpet = ['#e0574f', '#3f8fd8', '#e8b13c', '#4cb377', '#9a6fd0']
+  for (let i = 1; i <= 130; i++) {
+    const fx = Math.abs((Math.sin(i * 12.9898) * 43758.5453) % 1)
+    const fy = Math.abs((Math.sin(i * 78.233) * 12345.6789) % 1)
+    const y = wallBottom + (h - wallBottom) * (fy * fy)
+    const size = w * 0.012 * (0.3 + fy)
+    ctx.globalAlpha = 0.14 + fy * 0.18
     ctx.fillStyle = carpet[i % carpet.length]
     ctx.beginPath()
     if (i % 3 === 0) {
-      ctx.arc(ax * w, y, size, 0, Math.PI * 2)
+      ctx.arc(fx * w, y, size, 0, Math.PI * 2)
     } else {
-      ctx.moveTo(ax * w, y - size)
-      ctx.lineTo(ax * w + size, y + size)
-      ctx.lineTo(ax * w - size, y + size)
+      ctx.moveTo(fx * w, y - size)
+      ctx.lineTo(fx * w + size, y + size)
+      ctx.lineTo(fx * w - size, y + size)
       ctx.closePath()
     }
     ctx.fill()
   }
   ctx.restore()
 
-  // Skirting, so wall and floor do not simply abut.
+  // Skirting.
   ctx.fillStyle = '#15102a'
-  ctx.fillRect(0, wallBottom - h * 0.012, w, h * 0.016)
+  ctx.fillRect(0, wallBottom - h * 0.014, w, h * 0.018)
+
+  for (const poster of posters) {
+    const x = poster.x * w
+    const y = poster.y * h
+    const pw = poster.w * w
+    const phh = poster.h * h
+    ctx.fillStyle = '#120f22'
+    ctx.beginPath()
+    ctx.roundRect(x, y, pw, phh, pw * 0.05)
+    ctx.fill()
+    ctx.fillStyle = poster.colour
+    ctx.save()
+    ctx.beginPath()
+    ctx.rect(x + pw * 0.08, y + phh * 0.07, pw * 0.84, phh * 0.86)
+    ctx.clip()
+    if (poster.kind === 0) {
+      ctx.fillRect(x + pw * 0.08, y + phh * 0.5, pw * 0.84, phh * 0.43)
+      ctx.beginPath()
+      ctx.arc(x + pw * 0.5, y + phh * 0.34, pw * 0.2, 0, Math.PI * 2)
+      ctx.fill()
+    } else if (poster.kind === 1) {
+      for (let i = 0; i < 3; i++) {
+        ctx.fillRect(x + pw * (0.16 + i * 0.26), y + phh * (0.62 - i * 0.14), pw * 0.16, phh * 0.3)
+      }
+    } else if (poster.kind === 2) {
+      ctx.beginPath()
+      ctx.moveTo(x + pw * 0.5, y + phh * 0.16)
+      ctx.lineTo(x + pw * 0.86, y + phh * 0.78)
+      ctx.lineTo(x + pw * 0.14, y + phh * 0.78)
+      ctx.closePath()
+      ctx.fill()
+    } else {
+      ctx.fillRect(x + pw * 0.14, y + phh * 0.2, pw * 0.72, phh * 0.16)
+      ctx.fillRect(x + pw * 0.14, y + phh * 0.46, pw * 0.44, phh * 0.14)
+      ctx.fillRect(x + pw * 0.14, y + phh * 0.68, pw * 0.6, phh * 0.14)
+    }
+    ctx.restore()
+  }
 
   for (const sign of signs) {
     const x = sign.x * w
@@ -104,16 +377,19 @@ function drawArcadeRoom(ctx: CanvasRenderingContext2D, signs: Sign[], w: number,
     const sw = sign.w * w
     const sh = sign.h * h
     ctx.strokeStyle = sign.colour
-    ctx.lineWidth = Math.max(1.5, sw * 0.06)
+    ctx.lineWidth = Math.max(1.5, sw * 0.055)
     ctx.lineJoin = 'round'
-    ctx.globalAlpha = 0.9
+    ctx.lineCap = 'round'
+    ctx.globalAlpha = 0.92
     ctx.beginPath()
     if (sign.kind === 0) {
       ctx.rect(x, y, sw, sh)
-      ctx.moveTo(x + sw * 0.2, y + sh * 0.5)
-      ctx.lineTo(x + sw * 0.8, y + sh * 0.5)
+      ctx.moveTo(x + sw * 0.2, y + sh * 0.52)
+      ctx.lineTo(x + sw * 0.8, y + sh * 0.52)
     } else if (sign.kind === 1) {
       ctx.arc(x + sw / 2, y + sh / 2, Math.min(sw, sh) * 0.5, 0, Math.PI * 2)
+      ctx.moveTo(x + sw * 0.3, y + sh * 0.5)
+      ctx.lineTo(x + sw * 0.7, y + sh * 0.5)
     } else {
       ctx.moveTo(x, y + sh)
       ctx.lineTo(x + sw * 0.3, y)
@@ -125,215 +401,184 @@ function drawArcadeRoom(ctx: CanvasRenderingContext2D, signs: Sign[], w: number,
   }
 }
 
+function drawScreenArt(
+  ctx: CanvasRenderingContext2D,
+  m: Machine,
+  sx: number,
+  sy: number,
+  sw: number,
+  sh: number,
+) {
+  ctx.save()
+  ctx.beginPath()
+  ctx.rect(sx, sy, sw, sh)
+  ctx.clip()
+  ctx.fillStyle = m.accent
+  if (m.screen === 0) {
+    for (let i = 0; i < 5; i++) {
+      ctx.fillRect(sx + sw * (0.12 + i * 0.17), sy + sh * 0.18, sw * 0.09, sh * 0.14)
+    }
+    ctx.fillRect(sx + sw * 0.42, sy + sh * 0.7, sw * 0.18, sh * 0.12)
+  } else if (m.screen === 1) {
+    ctx.beginPath()
+    ctx.arc(sx + sw * 0.5, sy + sh * 0.5, sh * 0.3, 0.42, Math.PI * 2 - 0.42)
+    ctx.lineTo(sx + sw * 0.5, sy + sh * 0.5)
+    ctx.fill()
+  } else if (m.screen === 2) {
+    for (let i = 0; i < 4; i++) {
+      ctx.fillRect(sx + sw * (0.1 + i * 0.23), sy + sh * (0.6 - i * 0.1), sw * 0.13, sh * 0.34)
+    }
+  } else {
+    ctx.fillRect(sx + sw * 0.14, sy + sh * 0.74, sw * 0.72, sh * 0.08)
+    ctx.beginPath()
+    ctx.arc(sx + sw * 0.5, sy + sh * 0.34, sh * 0.13, 0, Math.PI * 2)
+    ctx.fill()
+  }
+  ctx.restore()
+}
+
 function drawMachine(ctx: CanvasRenderingContext2D, m: Machine, w: number, h: number) {
   const x = m.x * w
   const bottom = m.y * h
   const mw = m.w * w
   const mh = m.h * h
   const top = bottom - mh
-  const r = mw * 0.1
+  const r = mw * 0.09
+  const dark = mixColor(m.cab, '#000000', 0.38)
 
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.3)'
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.32)'
   ctx.beginPath()
-  ctx.ellipse(x + mw / 2, bottom + mh * 0.03, mw * 0.55, mh * 0.05, 0, 0, Math.PI * 2)
+  ctx.ellipse(x + mw / 2, bottom + mh * 0.025, mw * 0.56, mh * 0.045, 0, 0, Math.PI * 2)
   ctx.fill()
 
-  // Body, with a darker side panel for a little form.
+  if (m.kind === 'claw') {
+    // Glass box on a plinth, prizes heaped in the bottom.
+    ctx.fillStyle = dark
+    ctx.beginPath()
+    ctx.roundRect(x, bottom - mh * 0.34, mw, mh * 0.34, r * 0.6)
+    ctx.fill()
+    ctx.fillStyle = 'rgba(150, 200, 235, 0.16)'
+    ctx.beginPath()
+    ctx.roundRect(x + mw * 0.04, top, mw * 0.92, mh * 0.68, r * 0.5)
+    ctx.fill()
+    ctx.strokeStyle = m.accent
+    ctx.lineWidth = Math.max(1.2, mw * 0.045)
+    ctx.stroke()
+    const prizes = ['#e07ab0', '#e8b13c', '#4cb377', '#3f8fd8']
+    for (let i = 0; i < 5; i++) {
+      ctx.fillStyle = prizes[i % prizes.length]
+      ctx.beginPath()
+      ctx.arc(x + mw * (0.2 + i * 0.16), bottom - mh * (0.4 + (i % 2) * 0.06), mw * 0.1, 0, Math.PI * 2)
+      ctx.fill()
+    }
+    ctx.strokeStyle = '#cfd6e0'
+    ctx.lineWidth = Math.max(1, mw * 0.035)
+    ctx.beginPath()
+    ctx.moveTo(x + mw * 0.5, top + mh * 0.06)
+    ctx.lineTo(x + mw * 0.5, top + mh * 0.3)
+    ctx.moveTo(x + mw * 0.4, top + mh * 0.42)
+    ctx.lineTo(x + mw * 0.5, top + mh * 0.3)
+    ctx.lineTo(x + mw * 0.6, top + mh * 0.42)
+    ctx.stroke()
+    return
+  }
+
+  if (m.kind === 'change') {
+    ctx.fillStyle = m.cab
+    ctx.beginPath()
+    ctx.roundRect(x + mw * 0.1, top, mw * 0.8, mh, r * 0.7)
+    ctx.fill()
+    ctx.fillStyle = m.accent
+    ctx.beginPath()
+    ctx.roundRect(x + mw * 0.2, top + mh * 0.07, mw * 0.6, mh * 0.13, r * 0.4)
+    ctx.fill()
+    ctx.fillStyle = '#d9a441'
+    ctx.beginPath()
+    ctx.arc(x + mw * 0.5, top + mh * 0.42, mw * 0.16, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.fillStyle = '#0d0f18'
+    ctx.fillRect(x + mw * 0.34, top + mh * 0.66, mw * 0.32, mh * 0.05)
+    return
+  }
+
+  if (m.kind === 'pinball') {
+    // Backbox with a low table sloping toward you.
+    ctx.fillStyle = m.cab
+    ctx.beginPath()
+    ctx.roundRect(x + mw * 0.06, top, mw * 0.88, mh * 0.46, r * 0.5)
+    ctx.fill()
+    ctx.fillStyle = m.accent
+    ctx.beginPath()
+    ctx.roundRect(x + mw * 0.14, top + mh * 0.06, mw * 0.72, mh * 0.3, r * 0.35)
+    ctx.fill()
+    ctx.fillStyle = dark
+    ctx.beginPath()
+    ctx.moveTo(x, bottom)
+    ctx.lineTo(x + mw * 0.08, top + mh * 0.46)
+    ctx.lineTo(x + mw * 0.92, top + mh * 0.46)
+    ctx.lineTo(x + mw, bottom)
+    ctx.closePath()
+    ctx.fill()
+    ctx.fillStyle = mixColor(m.accent, '#ffffff', 0.25)
+    for (const bx of [0.3, 0.52, 0.72]) {
+      ctx.beginPath()
+      ctx.arc(x + mw * bx, top + mh * 0.66, mw * 0.05, 0, Math.PI * 2)
+      ctx.fill()
+    }
+    return
+  }
+
+  // Upright.
   ctx.fillStyle = m.cab
   ctx.beginPath()
   ctx.roundRect(x, top, mw, mh, r)
   ctx.fill()
-  ctx.fillStyle = mixColor(m.cab, '#000000', 0.35)
+  ctx.fillStyle = dark
   ctx.beginPath()
-  ctx.roundRect(x + mw * 0.82, top, mw * 0.18, mh, r)
+  ctx.roundRect(x + mw * 0.83, top, mw * 0.17, mh, r)
   ctx.fill()
 
   ctx.fillStyle = m.accent
   ctx.beginPath()
-  ctx.roundRect(x + mw * 0.08, top + mh * 0.03, mw * 0.72, mh * 0.12, r * 0.5)
+  ctx.roundRect(x + mw * 0.07, top + mh * 0.03, mw * 0.72, mh * 0.12, r * 0.5)
+  ctx.fill()
+  ctx.fillStyle = mixColor(m.accent, '#ffffff', 0.45)
+  ctx.beginPath()
+  ctx.roundRect(x + mw * 0.11, top + mh * 0.05, mw * 0.64, mh * 0.04, r * 0.3)
   ctx.fill()
 
-  // Screen, with a scrap of a game on it.
-  const sx = x + mw * 0.11
-  const sy = top + mh * 0.2
+  const sx = x + mw * 0.1
+  const sy = top + mh * 0.19
   const sw = mw * 0.66
-  const sh = mh * 0.34
+  const sh = mh * 0.33
   ctx.fillStyle = '#06080f'
   ctx.beginPath()
-  ctx.roundRect(sx, sy, sw, sh, r * 0.4)
+  ctx.roundRect(sx, sy, sw, sh, r * 0.35)
   ctx.fill()
+  drawScreenArt(ctx, m, sx, sy, sw, sh)
 
-  ctx.save()
+  ctx.fillStyle = mixColor(m.cab, '#000000', 0.22)
   ctx.beginPath()
-  ctx.roundRect(sx, sy, sw, sh, r * 0.4)
-  ctx.clip()
-  ctx.fillStyle = m.accent
-  if (m.screen === 0) {
-    for (let i = 0; i < 6; i++) {
-      ctx.fillRect(sx + sw * (0.1 + i * 0.14), sy + sh * 0.2, sw * 0.08, sh * 0.12)
-    }
-    ctx.fillRect(sx + sw * 0.4, sy + sh * 0.7, sw * 0.2, sh * 0.1)
-  } else if (m.screen === 1) {
-    ctx.beginPath()
-    ctx.arc(sx + sw * 0.5, sy + sh * 0.5, sh * 0.28, 0.4, Math.PI * 2 - 0.4)
-    ctx.lineTo(sx + sw * 0.5, sy + sh * 0.5)
-    ctx.fill()
-  } else if (m.screen === 2) {
-    for (let i = 0; i < 4; i++) {
-      ctx.fillRect(sx + sw * (0.12 + i * 0.22), sy + sh * (0.62 - i * 0.11), sw * 0.12, sh * 0.32)
-    }
-  } else {
-    ctx.fillRect(sx + sw * 0.15, sy + sh * 0.72, sw * 0.7, sh * 0.08)
-    ctx.beginPath()
-    ctx.arc(sx + sw * 0.5, sy + sh * 0.35, sh * 0.12, 0, Math.PI * 2)
-    ctx.fill()
-  }
-  ctx.restore()
-
-  // Control deck, joystick, coin slot.
-  ctx.fillStyle = mixColor(m.cab, '#000000', 0.25)
-  ctx.beginPath()
-  ctx.roundRect(x + mw * 0.05, top + mh * 0.6, mw * 0.78, mh * 0.14, r * 0.35)
+  ctx.roundRect(x + mw * 0.04, top + mh * 0.58, mw * 0.78, mh * 0.13, r * 0.3)
   ctx.fill()
   ctx.strokeStyle = '#d9d9e2'
-  ctx.lineWidth = Math.max(1, mw * 0.03)
+  ctx.lineWidth = Math.max(1, mw * 0.028)
   ctx.beginPath()
-  ctx.moveTo(x + mw * 0.28, top + mh * 0.66)
-  ctx.lineTo(x + mw * 0.28, top + mh * 0.6)
+  ctx.moveTo(x + mw * 0.26, top + mh * 0.64)
+  ctx.lineTo(x + mw * 0.26, top + mh * 0.58)
   ctx.stroke()
   ctx.fillStyle = '#e0574f'
   ctx.beginPath()
-  ctx.arc(x + mw * 0.28, top + mh * 0.585, mw * 0.045, 0, Math.PI * 2)
+  ctx.arc(x + mw * 0.26, top + mh * 0.565, mw * 0.042, 0, Math.PI * 2)
   ctx.fill()
+  ctx.fillStyle = '#e8b13c'
+  for (const bx of [0.48, 0.6]) {
+    ctx.beginPath()
+    ctx.arc(x + mw * bx, top + mh * 0.63, mw * 0.032, 0, Math.PI * 2)
+    ctx.fill()
+  }
   ctx.fillStyle = '#0d0f18'
-  ctx.fillRect(x + mw * 0.42, top + mh * 0.8, mw * 0.16, mh * 0.03)
-}
-
-/** One person. Simple shapes, but posed, so the crowd is not a row of clones. */
-function drawPerson(ctx: CanvasRenderingContext2D, pr: Person, w: number, h: number) {
-  const ph = pr.h * h
-  const bodyW = ph * 0.3
-  const headR = ph * 0.14
-  const dir = pr.flip ? -1 : 1
-
-  ctx.save()
-  ctx.translate(pr.x * w, pr.y * h)
-
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.28)'
-  ctx.beginPath()
-  ctx.ellipse(0, 0, bodyW * 0.7, ph * 0.035, 0, 0, Math.PI * 2)
-  ctx.fill()
-
-  const hipY = -ph * 0.42
-  const shoulderY = -ph * 0.76
-  const headY = -ph * 0.86
-
-  ctx.lineCap = 'round'
-  ctx.strokeStyle = pr.legs
-  ctx.lineWidth = ph * 0.11
-  const stride = pr.pose === 'walk' ? ph * 0.1 : ph * 0.045
-  ctx.beginPath()
-  ctx.moveTo(-stride, -ph * 0.02)
-  ctx.lineTo(0, hipY)
-  ctx.moveTo(stride, -ph * 0.02)
-  ctx.lineTo(0, hipY)
-  ctx.stroke()
-
-  ctx.fillStyle = pr.shirt
-  ctx.beginPath()
-  ctx.roundRect(-bodyW / 2, shoulderY, bodyW, hipY - shoulderY + ph * 0.04, bodyW * 0.34)
-  ctx.fill()
-
-  ctx.strokeStyle = pr.shirt
-  ctx.lineWidth = ph * 0.085
-  ctx.beginPath()
-  if (pr.pose === 'cheer') {
-    ctx.moveTo(-bodyW * 0.4, shoulderY + ph * 0.05)
-    ctx.lineTo(-bodyW * 0.85, shoulderY - ph * 0.17)
-    ctx.moveTo(bodyW * 0.4, shoulderY + ph * 0.05)
-    ctx.lineTo(bodyW * 0.85, shoulderY - ph * 0.17)
-  } else if (pr.pose === 'play') {
-    // Both hands forward onto the control deck.
-    ctx.moveTo(-bodyW * 0.4, shoulderY + ph * 0.06)
-    ctx.lineTo(dir * bodyW * 0.75, shoulderY + ph * 0.2)
-    ctx.moveTo(bodyW * 0.4, shoulderY + ph * 0.06)
-    ctx.lineTo(dir * bodyW * 0.95, shoulderY + ph * 0.14)
-  } else if (pr.pose === 'walk') {
-    ctx.moveTo(-bodyW * 0.4, shoulderY + ph * 0.06)
-    ctx.lineTo(-bodyW * 0.7, hipY + ph * 0.02)
-    ctx.moveTo(bodyW * 0.4, shoulderY + ph * 0.06)
-    ctx.lineTo(bodyW * 0.7, hipY - ph * 0.04)
-  } else {
-    ctx.moveTo(-bodyW * 0.4, shoulderY + ph * 0.06)
-    ctx.lineTo(-bodyW * 0.62, hipY)
-    ctx.moveTo(bodyW * 0.4, shoulderY + ph * 0.06)
-    ctx.lineTo(bodyW * 0.62, hipY)
-  }
-  ctx.stroke()
-
-  ctx.fillStyle = pr.skin
-  const hands: [number, number][] =
-    pr.pose === 'cheer'
-      ? [
-          [-bodyW * 0.85, shoulderY - ph * 0.17],
-          [bodyW * 0.85, shoulderY - ph * 0.17],
-        ]
-      : pr.pose === 'play'
-        ? [
-            [dir * bodyW * 0.75, shoulderY + ph * 0.2],
-            [dir * bodyW * 0.95, shoulderY + ph * 0.14],
-          ]
-        : [
-            [-bodyW * 0.64, hipY],
-            [bodyW * 0.64, hipY],
-          ]
-  for (const hand of hands) {
-    ctx.beginPath()
-    ctx.arc(hand[0], hand[1], ph * 0.05, 0, Math.PI * 2)
-    ctx.fill()
-  }
-
-  ctx.fillStyle = pr.skin
-  ctx.fillRect(-ph * 0.035, headY + headR * 0.6, ph * 0.07, ph * 0.06)
-  ctx.beginPath()
-  ctx.arc(0, headY, headR, 0, Math.PI * 2)
-  ctx.fill()
-
-  // Hair, four cuts.
-  ctx.fillStyle = pr.hair
-  ctx.beginPath()
-  if (pr.hairStyle === 0) {
-    ctx.arc(0, headY, headR * 1.04, Math.PI, Math.PI * 2)
-    ctx.fill()
-  } else if (pr.hairStyle === 1) {
-    ctx.arc(0, headY - headR * 0.1, headR * 1.1, 0, Math.PI * 2)
-    ctx.fill()
-    ctx.fillStyle = pr.skin
-    ctx.beginPath()
-    ctx.arc(0, headY + headR * 0.24, headR * 0.86, 0, Math.PI * 2)
-    ctx.fill()
-  } else if (pr.hairStyle === 2) {
-    ctx.arc(0, headY, headR * 1.02, Math.PI * 1.05, Math.PI * 2.1)
-    ctx.fill()
-    ctx.beginPath()
-    ctx.arc(dir * headR * 0.9, headY + headR * 0.1, headR * 0.42, 0, Math.PI * 2)
-    ctx.fill()
-  } else {
-    ctx.arc(0, headY, headR * 1.03, Math.PI, Math.PI * 2)
-    ctx.fill()
-    ctx.beginPath()
-    ctx.arc(0, headY - headR * 0.95, headR * 0.34, 0, Math.PI * 2)
-    ctx.fill()
-  }
-
-  ctx.fillStyle = '#181422'
-  for (const ex of [-0.34, 0.34]) {
-    ctx.beginPath()
-    ctx.arc(headR * ex + dir * headR * 0.1, headY + headR * 0.12, headR * 0.1, 0, Math.PI * 2)
-    ctx.fill()
-  }
-
-  ctx.restore()
+  ctx.fillRect(x + mw * 0.38, top + mh * 0.8, mw * 0.16, mh * 0.028)
 }
 
 function drawProp(ctx: CanvasRenderingContext2D, pr: Prop, w: number, h: number) {
@@ -738,7 +983,7 @@ function drawMotif(ctx: CanvasRenderingContext2D, m: Motif, w: number, h: number
 
 function drawScene(ctx: CanvasRenderingContext2D, scene: Scene, w: number, h: number) {
   if (scene.kind === 'arcade') {
-    drawArcadeRoom(ctx, scene.signs, w, h)
+    drawArcadeRoom(ctx, scene.signs, scene.posters, w, h)
     // Back to front, so somebody stands behind the machine they are playing and
     // the litter on the carpet sits in front of everything.
     const machines = [...scene.machines].sort((a, b) => a.y - b.y)
@@ -880,12 +1125,13 @@ function drawField(ctx: CanvasRenderingContext2D, state: GameState, w: number, h
    * toward that colour as the rounds get harder, while the legs stay a hard
    * dark line so the silhouette is crisp however close the match gets.
    */
-  const lit = mixColor(round.camoBase, '#ffffff', 0.5)
-  const body = mixColor(lit, round.camoBase, round.config.camo)
+  const body = bugBody(round.camoBase, round.config.camo)
 
   drawBug(ctx, round.x * w, round.y * h, round.config.bugSize * w, {
     angle: round.angle,
-    look: { body, leg: mixColor(body, '#05070c', 0.6) },
+    // The legs stay darker than the shell so the silhouette holds together,
+    // but not so dark that a hard black outline points straight at it.
+    look: { body, leg: mixColor(body, '#05070c', 0.42) },
     flash: round.found ? Math.max(0, 0.7 - round.foundAge) : 0,
   })
 
