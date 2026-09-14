@@ -155,6 +155,16 @@ export const MILESTONE_STEP = 50
  * patch of traffic is the game, so this only has to punish real camping.
  */
 export const STALL_LIMIT = 10
+
+/**
+ * How long you may stand still before the hawk comes. Shortens in overtime, so
+ * a deep run cannot be played by parking on a safe row and waiting for a clean
+ * lane every single time.
+ */
+export function stallLimitAt(row: number): number {
+  const over = Math.max(0, difficultyAt(row) - 1)
+  return Math.max(6.5, STALL_LIMIT - over * 5)
+}
 /** Hawk warning is brief — Crossy-style snatch, not a long approach. */
 export const STALL_WARN = 0.4
 
@@ -185,6 +195,20 @@ const LOG_TIERS = [0.55, 0.78, 1.0, 1.22] as const
 
 const MIN_ROAD_SPEED = 0.75
 const MAX_ROAD_SPEED = 2.05
+
+/**
+ * The speed ceiling lifts in overtime. Without this the deep game barely moved:
+ * lanes were already pinned at the cap by the time the first ramp finished, and
+ * every other screw self-cancels — asking for more cars raises the minimum gap,
+ * which lets fewer of them fit, which hands the width straight back.
+ *
+ * Gaps stay honest because they are sized off the speed, so a quicker lane
+ * carries fewer cars with more road between them: harder to time, never
+ * impossible to stand in.
+ */
+function maxRoadSpeed(d: number): number {
+  return MAX_ROAD_SPEED + Math.max(0, d - 1) * 0.8
+}
 /**
  * Two lanes running the same way at the same speed hold their gaps in lockstep
  * forever, so a crossing that isn't open now never opens. Neighbours have to
@@ -221,9 +245,24 @@ export function getRailCycle(row: Row): { phase: RailPhase; flash: boolean; pass
 }
 
 /** 0 at the start of a run, 1 once the difficulty ramp has topped out. */
+/** How far past the first ramp the screws keep turning. */
+const OVERTIME_MAX = 0.6
+const OVERTIME_ROWS = 1400
+
+/**
+ * Slow ramp — the early game stays readable longer; full heat arrives deeper
+ * in. Past that it keeps creeping rather than stopping dead: the curve used to
+ * cap at row 180, so a run at row 800 was playing exactly the same game as one
+ * at row 200. Overtime adds pressure at roughly a seventh of the early rate and
+ * settles rather than running away.
+ *
+ * The return can exceed 1. Callers that read it as a plain 0–1 mix — the rules
+ * about how long a hazard stretch may run — clamp it themselves.
+ */
 export function difficultyAt(row: number): number {
-  // Slow ramp — early game stays readable longer; full heat arrives deeper in.
-  return Math.max(0, Math.min(1, (row - 10) / 170))
+  const ramp = Math.max(0, Math.min(1, (row - 10) / 170))
+  if (ramp < 1) return ramp
+  return 1 + Math.min(OVERTIME_MAX, (row - 180) / OVERTIME_ROWS)
 }
 
 /**
@@ -410,20 +449,27 @@ function makeRoadRow(row: number, cols: number, rand: () => number, prev?: Row):
   // the same on-screen pace and hold times.
   const speedBase =
     (1.3 + d * 0.6) * pickTier(ROAD_TIERS, d, rand) * (0.94 + rand() * 0.14)
-  let speed = Math.min(MAX_ROAD_SPEED, Math.max(MIN_ROAD_SPEED, speedBase)) * g
+  const speedCap = maxRoadSpeed(d)
+  let speed = Math.min(speedCap, Math.max(MIN_ROAD_SPEED, speedBase)) * g
   const spread = LANE_SPEED_SPREAD * g
   if (prevRoad && prevRoad.dir === dir && Math.abs(speed - prevRoad.speed) < spread) {
     const push = speed >= prevRoad.speed ? spread : -spread
     speed = prevRoad.speed + push
-    if (speed > MAX_ROAD_SPEED * g || speed < MIN_ROAD_SPEED * g) speed = prevRoad.speed - push
-    speed = Math.min(MAX_ROAD_SPEED * g, Math.max(MIN_ROAD_SPEED * g, speed))
+    if (speed > speedCap * g || speed < MIN_ROAD_SPEED * g) speed = prevRoad.speed - push
+    speed = Math.min(speedCap * g, Math.max(MIN_ROAD_SPEED * g, speed))
   }
   const w = (rand() < 0.28 ? 2.0 : 1.4) * sizeScale(cols)
   const span = laneSpan(cols)
   // Gaps are the whole game. Sized in seconds rather than tiles: every hole has
   // to hold you for over a second so a lane is somewhere you can wait, not just
   // a frame you have to hit.
-  const minGap = (1.15 + (speed / g) * 1.35 * (1 - d * 0.12)) * g
+  // The speed-proportional part eases off in overtime. Left alone it hands the
+  // difficulty straight back: a quicker lane demands a bigger minimum gap, so
+  // fewer cars fit, so the hole you are aiming at ends up wider than it was.
+  // The fixed 1.15 is untouched — that is the part that guarantees any hole is
+  // somewhere you can stand rather than a frame you have to hit.
+  const hold = 1 - Math.min(0.32, d * 0.12 + Math.max(0, d - 1) * 0.15)
+  const minGap = (1.15 + (speed / g) * 1.35 * hold) * g
   // Ask for a full lane and let the gap rule below thin it out — the guaranteed
   // hole is what keeps it fair, so a busy lane costs nothing.
   const want = 2 + Math.round(d * 2 + rand() * 1.6)
@@ -551,8 +597,9 @@ function makeRailRow(row: number, cols: number, runSeed: number): Row {
   const d = difficultyAt(row)
   const dir: -1 | 1 = rand() < 0.5 ? -1 : 1
   const trainW = (5 + rand() * 1.6) * sizeScale(cols)
-  // Warning never drops below ~1.5s so the crossing is always telegraphed.
-  const railWarn = 1.9 - d * 0.35 + rand() * 0.9
+  // The lights still always beat the train, but not by as much as they did —
+  // the floor is what keeps the crossing telegraphed rather than a coin flip.
+  const railWarn = Math.max(1.05, 1.5 - d * 0.28 + rand() * 0.6)
   const railPass = 0.44 + rand() * 0.16
   const railCool = 2.4 - d * 0.7 + rand() * 2.4
   const cycle = railWarn + railPass + railCool
@@ -630,13 +677,15 @@ export function generateRow(
   // Guarantee a breather after a stretch of hazards; the stretch grows with
   // difficulty. This runs before chunk continuation so a long water or rail
   // chunk can't stack on top of an already-long run.
-  if (hazardRun(row, rows) >= 3 + Math.round(d * 3)) {
+  // Clamped: overtime is allowed to make a row busier, never to take away the
+  // ground you rest on.
+  if (hazardRun(row, rows) >= 3 + Math.round(Math.min(1, d) * 3)) {
     return makeGrassRow(cols, rand, d, prevRocks)
   }
 
   // Roads come in small groups with a strip to wait on after them. Deeper stacks
   // turn into a wall you have to solve rather than a crossing you can time.
-  if (kindRun(row, 'road', rows) >= 3 + Math.round(d)) {
+  if (kindRun(row, 'road', rows) >= 3 + Math.round(Math.min(1, d))) {
     return makeGrassRow(cols, rand, d, prevRocks)
   }
 
@@ -1202,7 +1251,7 @@ export function tick(state: GameState, dt: number): GameState {
   }
 
   if (next.row < Math.floor(next.cameraY) - BACK_LIMIT) return die(next, 'edge')
-  if (next.row > 2 && next.idleTimer >= STALL_LIMIT) return die(next, 'hawk')
+  if (next.row > 2 && next.idleTimer >= stallLimitAt(next.row)) return die(next, 'hawk')
 
   return next
 }

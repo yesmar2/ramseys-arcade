@@ -2,8 +2,8 @@ import type { GameState, Vehicle } from './game'
 import {
   BACK_LIMIT,
   MILESTONE_STEP,
-  STALL_LIMIT,
   STALL_WARN,
+  stallLimitAt,
   cellMetrics,
   easeHop,
   getRailCycle,
@@ -264,8 +264,10 @@ function drawHawkThreat(
   oy: number,
   idleTimer: number,
   time: number,
+  /** Row the player is on — the stall limit tightens as the run goes deeper. */
+  playerRow: number,
 ) {
-  const warnStart = STALL_LIMIT - STALL_WARN
+  const warnStart = stallLimitAt(playerRow) - STALL_WARN
   if (idleTimer <= warnStart) return
 
   const urgency = Math.min(1, (idleTimer - warnStart) / STALL_WARN)
@@ -856,7 +858,7 @@ export function renderGame(
     ctx.fillRect(0, dangerY, w, bottomY - dangerY)
   }
 
-  if (state.phase === 'playing' && state.idleTimer > STALL_LIMIT - STALL_WARN) {
-    drawHawkThreat(ctx, px, py, cell, w, oy, state.idleTimer, performance.now() / 1000)
+  if (state.phase === 'playing' && state.idleTimer > stallLimitAt(state.row) - STALL_WARN) {
+    drawHawkThreat(ctx, px, py, cell, w, oy, state.idleTimer, performance.now() / 1000, state.row)
   }
 }
