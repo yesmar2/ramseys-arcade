@@ -12,6 +12,8 @@ import { MonthlyTrophyCup, TopTenRibbon, WeeklyMedal } from './TrophyArt'
 
 function TrophyIcon({ rank, period }: { rank: number; period: TrophyPeriod }) {
   const kind = medalKind(rank)
+  // An event win is a cup: you took the whole thing, not a place on a board.
+  if (period === 'event') return <MonthlyTrophyCup tone="gold" />
   if (period === 'monthly') {
     if (kind) return <MonthlyTrophyCup tone={kind} />
     return <TopTenRibbon tone="monthly" />
@@ -36,6 +38,7 @@ function TrophySkeleton() {
 
 function TrophyCard({ trophy }: { trophy: TrophyAward }) {
   const periodLabel = formatTrophyPeriod(trophy.period, trophy.periodKey)
+  const isEvent = trophy.period === 'event'
   const podium = trophy.rank <= 3
   return (
     <li>
@@ -48,18 +51,29 @@ function TrophyCard({ trophy }: { trophy: TrophyAward }) {
         ]
           .filter(Boolean)
           .join(' ')}
-        aria-label={`#${trophy.rank} global, ${periodLabel}, ${trophy.score} points`}
+        aria-label={
+          isEvent
+            ? `Won ${trophy.eventTitle ?? 'an event'}, ${periodLabel}`
+            : `#${trophy.rank} global, ${periodLabel}, ${trophy.score} points`
+        }
       >
         <span
           className={`trophy-case__badge trophy-case__badge--${trophy.period}`}
         >
-          {trophy.period === 'monthly' ? 'Monthly' : 'Weekly'}
+          {isEvent ? 'Event' : trophy.period === 'monthly' ? 'Monthly' : 'Weekly'}
         </span>
         <span className="trophy-case__icon">
           <TrophyIcon rank={trophy.rank} period={trophy.period} />
         </span>
-        <span className="trophy-case__rank">#{trophy.rank}</span>
-        <span className="trophy-case__period">{periodLabel}</span>
+        {isEvent ? (
+          <span className="trophy-case__won">Won</span>
+        ) : (
+          <span className="trophy-case__rank">#{trophy.rank}</span>
+        )}
+        <span className="trophy-case__period">
+          {isEvent ? (trophy.eventTitle ?? 'Event') : periodLabel}
+        </span>
+        {isEvent ? <span className="trophy-case__when">{periodLabel}</span> : null}
       </div>
     </li>
   )
@@ -92,7 +106,13 @@ export function TrophyCase({ name }: { name: string }) {
   }
 
   const summary = summarizeTrophies(trophies)
+  /*
+   * Every period has to be listed, not an allow-list of two: event wins were
+   * counted in the summary and then filtered out of the grid, so the header
+   * claimed five podiums above a case holding one.
+   */
   const sorted = [
+    ...sortTrophies(trophies.filter((t) => t.period === 'event')),
     ...sortTrophies(trophies.filter((t) => t.period === 'monthly')),
     ...sortTrophies(trophies.filter((t) => t.period === 'weekly')),
   ]
@@ -105,9 +125,13 @@ export function TrophyCase({ name }: { name: string }) {
         <div className="trophy-case__panel trophy-case__empty">
           <p className="trophy-case__empty-title">No trophies yet</p>
           <p className="trophy-case__empty-copy">
-            Finish in the global top 10 at the end of a week or month to earn one.
+            Win an event, or finish in the global top 10 at the end of a week or month.
           </p>
           <ul className="trophy-case__legend" aria-label="Trophy tiers">
+            <li>
+              <MonthlyTrophyCup tone="gold" />
+              <span>Win an event — cup</span>
+            </li>
             <li>
               <WeeklyMedal rank={1} />
               <span>Weekly top 3 — medal</span>
@@ -146,10 +170,15 @@ function TrophyHeader({
     <header className="trophy-case__head">
       <div className="trophy-case__titles">
         <h2 className="rank-page__h">Trophies</h2>
-        <p className="trophy-case__sub">Career awards from past weeks and months</p>
+        <p className="trophy-case__sub">Events won, and past weekly and monthly boards</p>
       </div>
       {summary && summary.total > 0 ? (
         <div className="trophy-case__chips" aria-label="Trophy summary">
+          {summary.events > 0 ? (
+            <span className="trophy-case__chip trophy-case__chip--event">
+              {summary.events} event{summary.events === 1 ? '' : 's'} won
+            </span>
+          ) : null}
           {summary.podium > 0 ? (
             <span className="trophy-case__chip trophy-case__chip--podium">
               {summary.podium} podium

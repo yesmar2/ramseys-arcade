@@ -1,9 +1,11 @@
-export type TrophyPeriod = 'weekly' | 'monthly'
+export type TrophyPeriod = 'weekly' | 'monthly' | 'event'
 
 export type TrophySummary = {
   total: number
   podium: number
   topTen: number
+  /** Events won, which are podium finishes but not board placings. */
+  events: number
 }
 
 export type TrophyCount = Pick<TrophySummary, 'total' | 'podium'>
@@ -17,6 +19,9 @@ export type TrophyAward = {
   score: number
   games: number
   accountId?: string
+  /** Set on event wins; absent on the rolling board trophies. */
+  eventId?: string
+  eventTitle?: string
   awardedAt: number
 }
 
@@ -46,6 +51,13 @@ export function invalidateTrophySummaryCache(name?: string) {
 }
 
 export function formatTrophyPeriod(period: TrophyPeriod, periodKey: number) {
+  if (period === 'event') {
+    const y = Math.floor(periodKey / 10_000)
+    const m = Math.floor((periodKey % 10_000) / 100)
+    const d = periodKey % 100
+    const dt = new Date(y, m - 1, d)
+    return dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+  }
   if (period === 'weekly') {
     const y = Math.floor(periodKey / 10_000)
     const m = Math.floor((periodKey % 10_000) / 100)
@@ -59,7 +71,8 @@ export function formatTrophyPeriod(period: TrophyPeriod, periodKey: number) {
   return dt.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
 }
 
-export function trophyRankLabel(rank: number) {
+export function trophyRankLabel(rank: number, period: TrophyPeriod = 'weekly') {
+  if (period === 'event') return 'Won'
   if (rank === 1) return '#1 global'
   if (rank <= 3) return `#${rank} global`
   return `Top 10 · #${rank}`
@@ -68,11 +81,13 @@ export function trophyRankLabel(rank: number) {
 export function summarizeTrophies(trophies: TrophyAward[]) {
   let podium = 0
   let topTen = 0
+  let events = 0
   for (const trophy of trophies) {
-    if (trophy.rank <= 3) podium++
+    if (trophy.period === 'event') events++
+    else if (trophy.rank <= 3) podium++
     else topTen++
   }
-  return { total: trophies.length, podium, topTen }
+  return { total: trophies.length, podium, topTen, events }
 }
 
 export function sortTrophies(trophies: TrophyAward[]) {
@@ -91,7 +106,7 @@ export async function fetchTrophies(name: string): Promise<TrophyAward[]> {
 
 export async function fetchTrophySummary(name: string): Promise<TrophySummary> {
   const cleaned = name.trim().toUpperCase()
-  if (!cleaned) return { total: 0, podium: 0, topTen: 0 }
+  if (!cleaned) return { total: 0, podium: 0, topTen: 0, events: 0 }
   const now = Date.now()
   if (
     summaryCache &&
@@ -107,9 +122,9 @@ export async function fetchTrophySummary(name: string): Promise<TrophySummary> {
   inflightSummary = (async () => {
     const params = new URLSearchParams({ name: cleaned })
     const res = await fetch(`${API_BASE}/trophies/summary?${params}`)
-    if (!res.ok) return { total: 0, podium: 0, topTen: 0 }
+    if (!res.ok) return { total: 0, podium: 0, topTen: 0, events: 0 }
     const body = (await res.json()) as { summary?: TrophySummary }
-    const summary = body.summary ?? { total: 0, podium: 0, topTen: 0 }
+    const summary = body.summary ?? { total: 0, podium: 0, topTen: 0, events: 0 }
     summaryCache = { name: cleaned, at: Date.now(), summary }
     return summary
   })().finally(() => {

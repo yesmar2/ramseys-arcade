@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { fetchTrophySummary, type TrophySummary } from '../lib/trophies'
 
-const empty: TrophySummary = { total: 0, podium: 0, topTen: 0 }
+const empty: TrophySummary = { total: 0, podium: 0, topTen: 0, events: 0 }
 
 export function useTrophySummary(name: string) {
   const [summary, setSummary] = useState<TrophySummary>(empty)

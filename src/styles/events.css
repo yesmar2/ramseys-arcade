@@ -2003,3 +2003,36 @@ html[data-theme="flat"] .evc__go,
 html[data-theme="google"] .evc__go {
   box-shadow: none;
 }
+
+/* ---------- event-win trophies in the trophy case ---------- */
+
+.trophy-case__badge--event {
+  color: #fffaf0;
+  background: rgba(28, 18, 4, 0.78);
+  border: 1px solid rgba(245, 185, 66, 0.6);
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.35);
+}
+
+/* Stands in for the rank line: an event win has no placing to show. */
+.trophy-case__won {
+  flex: none;
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+  color: color-mix(in srgb, var(--accent-2, #f5b942) 55%, var(--ink));
+}
+
+.trophy-case__when {
+  flex: none;
+  margin-top: 0.1rem;
+  font-size: 0.66rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.trophy-case__chip--event {
+  background: color-mix(in srgb, var(--accent-2, #f5b942) 22%, var(--surface));
+  color: color-mix(in srgb, var(--accent-2, #f5b942) 45%, var(--ink));
+}
