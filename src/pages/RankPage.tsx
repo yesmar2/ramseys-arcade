@@ -1,5 +1,5 @@
 import { useEffect, useState, type CSSProperties } from 'react'
-import { BoardSkeleton } from '../components/BoardChrome'
+import { BoardSkeleton, PeriodSwitcher } from '../components/BoardChrome'
 import { GameDeviceBadge } from '../components/GameDeviceBadge'
 import { PageBackLink } from '../components/PageBackLink'
 import { PageShell } from '../components/PageShell'
@@ -122,7 +122,6 @@ export function RankPage({
   const data = ranks[period] ?? cachedSelf ?? empty
   const { rank, score, byGame, nearby = [] } = data
   const rankLoading = !ranks[period] && !cachedSelf
-  const ranksLoading = VISIBLE_LEADERBOARD_PERIODS.some((p) => !ranks[p])
 
   const rankedCount = VISIBLE_LEADERBOARD_GAMES.filter((slug) => Boolean(byGame[slug])).length
   const totalGames = VISIBLE_LEADERBOARD_GAMES.length
@@ -181,55 +180,37 @@ export function RankPage({
           className="rank-page__ranks"
           aria-label={isSelf ? 'Your ranks' : `${viewedName}'s ranks`}
         >
-          <div className="rank-page__tiles" role="tablist" aria-label="Period">
+          <ul className="rank-page__orbs">
             {VISIBLE_LEADERBOARD_PERIODS.map((p) => {
               const row = ranks[p] ?? (p === period ? cachedSelf : null)
-              const active = p === period
-              const href = rankHref(isSelf ? undefined : viewedName, p)
+              const unranked = Boolean(row) && row!.rank == null
               return (
-                <a
-                  key={p}
-                  className={`rank-tile${active ? ' rank-tile--active' : ''}`}
-                  href={href}
-                  role="tab"
-                  aria-selected={active}
-                  onClick={(e) => {
-                    e.preventDefault()
-                    window.location.hash = href
-                  }}
-                >
-                  <span className="rank-tile__label">{PERIOD_LABELS[p]}</span>
-                  {row ? (
-                    <>
+                <li className="rank-orb" key={p}>
+                  <div
+                    className={`rank-orb__circle${unranked ? ' rank-orb__circle--empty' : ''}`}
+                  >
+                    <span className="rank-orb__label">{PERIOD_LABELS[p]}</span>
+                    {row ? (
                       <strong
-                        className={`rank-tile__value${row.rank == null ? ' rank-tile__value--none' : ''}`}
+                        className={`rank-orb__value${unranked ? ' rank-orb__value--none' : ''}`}
                       >
                         {row.rank != null ? `#${row.rank}` : '—'}
                       </strong>
-                      <span className="rank-tile__points">
-                        {row.rank != null
-                          ? `${row.score} pt${row.score === 1 ? '' : 's'}`
-                          : 'Unranked'}
-                      </span>
-                    </>
-                  ) : (
-                    <span className="rank-tile__wait" aria-hidden="true" />
-                  )}
-                </a>
+                    ) : (
+                      <span className="rank-orb__spinner" aria-hidden="true" />
+                    )}
+                  </div>
+                  <span className="rank-orb__points">
+                    {row
+                      ? row.rank != null
+                        ? `${row.score} pt${row.score === 1 ? '' : 's'}`
+                        : 'Unranked'
+                      : ''}
+                  </span>
+                </li>
               )
             })}
-          </div>
-
-          {!ranksLoading && gap ? (
-            <p className="rank-page__gap">
-              {gap.before}
-              {gap.name ? (
-                <a className="lb-scorecard__gap-link" href={rankHref(gap.name, period)}>
-                  {gap.name}
-                </a>
-              ) : null}
-            </p>
-          ) : null}
+          </ul>
         </section>
       ) : null}
 
@@ -240,6 +221,26 @@ export function RankPage({
           className="rank-page__standings"
           aria-label={isSelf ? 'Your standings' : `${viewedName}'s standings`}
         >
+          <PeriodSwitcher
+            period={period}
+            hrefFor={(p) => rankHref(isSelf ? undefined : viewedName, p)}
+            onSelect={(p) => {
+              window.location.hash = rankHref(isSelf ? undefined : viewedName, p)
+            }}
+            label="Period"
+          />
+
+          {!rankLoading && gap ? (
+            <p className="rank-page__gap">
+              {gap.before}
+              {gap.name ? (
+                <a className="lb-scorecard__gap-link" href={rankHref(gap.name, period)}>
+                  {gap.name}
+                </a>
+              ) : null}
+            </p>
+          ) : null}
+
           <section className="rank-page__rank" aria-labelledby="rank-games-heading">
             {rankLoading ? (
               <BoardSkeleton rows={5} />

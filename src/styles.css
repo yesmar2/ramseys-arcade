@@ -6796,104 +6796,105 @@ a.lb-share:visited:focus-visible {
   align-items: center;
 }
 
-/* Every period on screen at once; the selected one drives the board below. */
-.rank-page__tiles {
+/* Every period on screen at once. Read-only — the board's own filter picks
+   which one the by-game list below is scoped to. */
+.rank-page__orbs {
+  list-style: none;
+  margin: 0;
+  padding: 0;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.55rem;
+  gap: 0.6rem;
   width: 100%;
+  justify-items: center;
 }
 
-.rank-tile {
+.rank-orb {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+.rank-orb__circle {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0.2rem;
-  min-height: 5.6rem;
-  padding: 0.75rem 0.5rem 0.7rem;
-  border-radius: var(--tile-radius);
-  border: 1px solid rgba(var(--ink-rgb), 0.08);
-  background: rgba(var(--surface-rgb), 0.55);
-  text-align: center;
-  text-decoration: none;
-  color: inherit;
-  transition:
-    border-color 0.15s ease,
-    background 0.15s ease,
-    transform 0.15s ease;
-}
-
-.rank-tile:hover {
-  border-color: color-mix(in srgb, var(--accent) 35%, transparent);
-  transform: translateY(-1px);
-}
-
-.rank-tile--active {
-  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+  gap: 0.15rem;
+  width: clamp(5.2rem, 25vw, 7.25rem);
+  height: clamp(5.2rem, 25vw, 7.25rem);
+  border-radius: 50%;
   background:
     radial-gradient(
-      circle at 50% 0%,
-      color-mix(in srgb, var(--accent) 18%, var(--surface)),
-      var(--surface) 70%
+      circle at 35% 30%,
+      color-mix(in srgb, var(--accent) 28%, var(--surface)),
+      color-mix(in srgb, var(--accent) 12%, var(--surface)) 55%,
+      var(--surface)
     );
-  box-shadow: 0 6px 18px rgba(var(--ink-rgb), 0.07);
+  border: 3px solid color-mix(in srgb, var(--accent) 55%, transparent);
+  box-shadow:
+    0 10px 28px rgba(var(--ink-rgb), 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.35);
 }
 
-.rank-tile__label {
-  font-size: 0.66rem;
+.rank-orb__circle--empty {
+  border-color: rgba(var(--ink-rgb), 0.12);
+  background: rgba(var(--surface-rgb), 0.92);
+  box-shadow: none;
+}
+
+.rank-orb__label {
+  font-size: 0.58rem;
   font-weight: 800;
-  letter-spacing: 0.07em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
+  line-height: 1.15;
+  text-align: center;
+  padding-inline: 0.35rem;
   color: var(--muted);
 }
 
-.rank-tile--active .rank-tile__label {
-  color: color-mix(in srgb, var(--accent) 72%, var(--ink));
-}
-
-.rank-tile__value {
+.rank-orb__value {
   font-family: var(--font-display);
-  font-size: clamp(1.5rem, 6.5vw, 1.95rem);
+  font-size: clamp(1.45rem, 6vw, 2rem);
   font-weight: 700;
   letter-spacing: -0.04em;
   line-height: 1;
   color: var(--ink);
 }
 
-.rank-tile__value--none {
+.rank-orb__value--none {
   color: rgba(var(--ink-rgb), 0.35);
 }
 
-.rank-tile__points {
+.rank-orb__points {
   font-size: 0.72rem;
   font-weight: 700;
   color: var(--muted);
+  min-height: 1em;
 }
 
-/* Holds the tile's height while the three fetches land. */
-.rank-tile__wait {
-  width: 2.2rem;
-  height: 2.2rem;
-  border-radius: 0.6rem;
-  background: rgba(var(--ink-rgb), 0.06);
+.rank-orb__spinner {
+  width: 1.3rem;
+  height: 1.3rem;
+  border-radius: 50%;
+  border: 3px solid color-mix(in srgb, var(--accent) 25%, transparent);
+  border-top-color: var(--accent);
+  animation: site-header-rank-spin 0.7s linear infinite;
 }
 
 @media (min-width: 40rem) {
-  .rank-page__tiles {
-    gap: 0.75rem;
+  /* Full width spreads three circles into isolated islands; cap the row so
+     they read as one group. */
+  .rank-page__orbs {
+    gap: 1.75rem;
+    max-width: 30rem;
   }
 
-  .rank-tile {
-    min-height: 6.4rem;
-  }
-
-  .rank-tile__label {
-    font-size: 0.7rem;
-  }
-
-  .rank-tile__value {
-    font-size: 2.15rem;
+  .rank-orb__label {
+    font-size: 0.66rem;
   }
 }
 
