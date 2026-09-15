@@ -37,19 +37,23 @@ export const AVATAR_SHAPE_LABELS: Record<AvatarShape, string> = {
   mush: 'Mushroom',
 }
 
-/** The palette. Index is what gets saved, so only ever append. */
+/**
+ * The palette: the app's own colours — the site accent, each game's accent,
+ * and the three medal metals — plus one light neutral so a character can be
+ * pale. Index is what gets saved, so only ever append.
+ */
 export const AVATAR_COLORS = [
-  { id: 'mint', hex: '#2eb8a0' },
-  { id: 'sky', hex: '#4aa8e8' },
-  { id: 'grape', hex: '#8a6ad4' },
-  { id: 'coral', hex: '#e85d4c' },
-  { id: 'sun', hex: '#f5b942' },
-  { id: 'lime', hex: '#8fd14f' },
-  { id: 'rose', hex: '#f06fa0' },
-  { id: 'tangerine', hex: '#f28c28' },
-  { id: 'teal', hex: '#1f8f8a' },
-  { id: 'slate', hex: '#6b7a90' },
-  { id: 'cocoa', hex: '#8b5e3c' },
+  { id: 'mint', hex: '#2eb8a0' }, // site accent
+  { id: 'green', hex: '#2eb87a' }, // Asteroids
+  { id: 'leaf', hex: '#3ecf8e' }, // Snake
+  { id: 'cyan', hex: '#3ec8cf' }, // Find the Bug
+  { id: 'sky', hex: '#4aa8e8' }, // Stacker, Centroid, Pop
+  { id: 'violet', hex: '#8a6ad4' }, // Simon
+  { id: 'indigo', hex: '#7a6cf0' }, // Spotter
+  { id: 'rose', hex: '#e85d75' }, // Patriot, Barrage
+  { id: 'gold', hex: '#f5b942' }, // Crosswalk, Pellets, Crumbtrail
+  { id: 'bronze', hex: '#c07c3e' }, // third place
+  { id: 'silver', hex: '#8d99a8' }, // second place
   { id: 'snow', hex: '#e9eef2' },
 ] as const
 
