@@ -1195,10 +1195,19 @@ export function TournamentDetailPage({ id, invite }: { id: string; invite?: stri
           />
 
           {detail.isHost && invitesOpen ? (
-            <section className="ev-card" aria-label="Invite by tag">
-              <div className="ev-card__body">
-                <InviteByTagForm kind="tournament" targetId={id} disabled={busy} />
+            <section className="ev-card" aria-label="Invite players">
+              <div className="ev-card__head">
+                <h2 className="ev-card__title">Invite players</h2>
+                <p className="ev-card__note">
+                  {(() => {
+                    const left = seatsLeft(detail)
+                    return left != null
+                      ? `${left} ${left === 1 ? 'seat' : 'seats'} left`
+                      : 'Invite only'
+                  })()}
+                </p>
               </div>
+              <InviteByTagForm kind="tournament" targetId={id} disabled={busy} />
             </section>
           ) : null}
 

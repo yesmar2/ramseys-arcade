@@ -235,6 +235,12 @@ export function RankPage({
                 <BackChevronIcon size={18} />
                 Rankings
               </a>
+              {viewedName ? (
+                <div className="hero__tools">
+                  {signedIn ? <AddFriendButton name={viewedName} /> : null}
+                  <ShareBoardButton label={shareLabel} url={shareUrl} />
+                </div>
+              ) : null}
             </div>
           ) : null}
 
@@ -268,20 +274,19 @@ export function RankPage({
                   {standing && games ? ' · ' : null}
                   {games}
                 </p>
-                {/* Actions live under the caption, where the event hero
-                    keeps its Play button — not in a bar or a corner. */}
-                <div className="hero__actions hero__actions--inline">
-                  {!isSelf && signedIn ? <AddFriendButton name={viewedName} /> : null}
-                  <ShareBoardButton
-                    label={shareLabel}
-                    url={shareUrl}
-                    text="Share profile"
-                    className="pfh__share"
-                  />
-                </div>
               </div>
 
-              <div className="hero__aside pfh__ranks" role="tablist" aria-label="Period">
+              {/* On your own profile the share icon sits in the hero's top
+                  corner, where the event page keeps it — above the rank
+                  tiles on a wide screen, in the corner over the text on a
+                  phone. Someone else's profile has a bar for it. */}
+              <div className="hero__aside pfh__aside">
+                {isSelf ? (
+                  <div className="pfh__corner">
+                    <ShareBoardButton label={shareLabel} url={shareUrl} />
+                  </div>
+                ) : null}
+                <div className="pfh__ranks" role="tablist" aria-label="Period">
                 {VISIBLE_LEADERBOARD_PERIODS.map((p) => {
                   const row = ranks[p] ?? (p === period ? cachedSelf : null)
                   const active = p === period
@@ -314,6 +319,7 @@ export function RankPage({
                     </a>
                   )
                 })}
+                </div>
               </div>
             </div>
           ) : (

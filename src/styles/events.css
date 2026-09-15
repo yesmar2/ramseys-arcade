@@ -1673,3 +1673,151 @@ html[data-theme="google"] .evc__go {
   background: color-mix(in srgb, var(--accent-2, #f5b942) 22%, var(--surface));
   color: color-mix(in srgb, var(--accent-2, #f5b942) 45%, var(--ink));
 }
+
+/* ==========================================================================
+   Invite players (host controls, on an event or a group)
+   ========================================================================== */
+
+.inv {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 0 var(--ev-pad, 1rem) var(--ev-pad, 1rem);
+}
+
+.inv__friends {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.inv__label {
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.inv__chips {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.inv__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 2.1rem;
+  padding: 0 0.85rem 0 0.3rem;
+  border: 1px solid color-mix(in srgb, var(--event-accent, var(--accent)) 30%, transparent);
+  border-radius: 999px;
+  background: rgba(var(--surface-rgb), 0.6);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.inv__chip:hover:not(:disabled),
+.inv__chip:focus-visible:not(:disabled) {
+  background: color-mix(in srgb, var(--event-accent, var(--accent)) 14%, var(--surface));
+  border-color: color-mix(in srgb, var(--event-accent, var(--accent)) 50%, transparent);
+  outline: none;
+}
+
+.inv__chip:disabled {
+  cursor: default;
+}
+
+.inv__chip--sent {
+  color: var(--muted);
+  border-style: dashed;
+}
+
+.inv__chip-mark {
+  display: grid;
+  place-items: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 28%;
+  background: color-mix(in srgb, var(--event-accent, var(--accent)) 16%, var(--playfield));
+  font-family: var(--font-display);
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: color-mix(in srgb, var(--event-accent, var(--accent)) 70%, var(--ink));
+}
+
+.inv__row {
+  display: flex;
+  gap: 0.45rem;
+}
+
+.inv__field {
+  flex: 1;
+  min-width: 0;
+}
+
+.inv__input {
+  width: 100%;
+  min-height: 2.5rem;
+  margin: 0;
+  padding: 0.45rem 0.85rem;
+  border: 1px solid rgba(var(--ink-rgb), 0.14);
+  border-radius: 999px;
+  background: rgba(var(--surface-rgb), 0.96);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.86rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.inv__input::placeholder {
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.inv__input:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--event-accent, var(--accent)) 55%, transparent);
+  outline-offset: 1px;
+  border-color: transparent;
+}
+
+.inv__btn {
+  flex: none;
+  min-height: 2.5rem;
+  padding: 0 1.1rem;
+  border: 0;
+  border-radius: 999px;
+  background: var(--event-accent, var(--accent));
+  color: #fff;
+  font: inherit;
+  font-size: 0.84rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.inv__btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.inv__msg {
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 650;
+  color: var(--muted);
+}
+
+.inv__msg--error {
+  color: #b42318;
+}
