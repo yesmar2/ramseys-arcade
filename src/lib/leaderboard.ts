@@ -474,12 +474,14 @@ export async function fetchTopScore(slug: string): Promise<number> {
 
 export async function fetchPlayerBests(
   name: string,
+  period: LeaderboardPeriod = 'all',
 ): Promise<Record<string, number>> {
   const cleaned = normalizePlayerName(name)
   if (!cleaned) return {}
-  return dedupeGet(`bests:${cleaned}`, async () => {
+  return dedupeGet(`bests:${cleaned}:${period}`, async () => {
+    const params = new URLSearchParams({ name: cleaned, period })
     const data = await api<{ bests?: Record<string, number> }>(
-      `/leaderboards/bests?name=${encodeURIComponent(cleaned)}`,
+      `/leaderboards/bests?${params}`,
     )
     return data.bests ?? {}
   })

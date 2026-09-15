@@ -1,10 +1,16 @@
-import type { CSSProperties } from 'react'
+import { useEffect, useState, type CSSProperties } from 'react'
 import { getGame } from '../data/games'
 import { gamePlayHref } from '../hooks/useHashRoute'
-import { usePersonalBest } from '../hooks/usePersonalBest'
+import { useDefaultPeriod } from '../lib/defaultPeriod'
 import { useDeviceType } from '../lib/device'
 import { heroSlug, newestSlug } from '../lib/homePicks'
 import { useRecentGames } from '../lib/lastPlayed'
+import {
+  fetchPlayerBests,
+  normalizePlayerName,
+  PERIOD_LABELS,
+} from '../lib/leaderboard'
+import { usePlayerName } from '../hooks/usePlayerName'
 import { EventArt } from './EventCard'
 import { resolveGameAccent } from '../lib/theme'
 
@@ -20,8 +26,28 @@ export function HomeHero() {
   const recent = useRecentGames()
   const newest = newestSlug(device)
   const slug = heroSlug(device, recent)
-  const best = usePersonalBest(slug ?? '')
+  const name = normalizePlayerName(usePlayerName())
+  const period = useDefaultPeriod()
+  const [best, setBest] = useState(0)
   const lastPlayed = slug != null && recent.includes(slug)
+
+  useEffect(() => {
+    if (!name || !slug) {
+      setBest(0)
+      return
+    }
+    let cancelled = false
+    fetchPlayerBests(name, period)
+      .then((bests) => {
+        if (!cancelled) setBest(bests[slug] ?? 0)
+      })
+      .catch(() => {
+        if (!cancelled) setBest(0)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [name, slug, period])
 
   if (!slug) return null
   const game = getGame(slug)
@@ -54,7 +80,11 @@ export function HomeHero() {
           <a className="hero__cta" href={gamePlayHref(slug)}>
             Play
           </a>
-          {best > 0 ? <span className="hero__hint">Your best {best.toLocaleString()}</span> : null}
+          {best > 0 ? (
+            <span className="hero__hint">
+              {PERIOD_LABELS[period]} best {best.toLocaleString()}
+            </span>
+          ) : null}
         </div>
       </div>
     </section>

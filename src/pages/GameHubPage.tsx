@@ -29,7 +29,6 @@ import {
   useHashRoute,
 } from '../hooks/useHashRoute'
 import { useDefaultPeriod } from '../lib/defaultPeriod'
-import { usePersonalBest } from '../hooks/usePersonalBest'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { useDeviceType } from '../lib/device'
 import { APP_NAME } from '../lib/brand'
@@ -71,7 +70,6 @@ export function GameHubPage({ slug, board: boardFromRoute }: GameHubPageProps) {
   const device = useDeviceType()
   const playerName = normalizePlayerName(usePlayerName())
   const groupId = useActiveGroup()
-  const personalBest = usePersonalBest(slug)
   const allTime = useBoardRecord(slug)
   const [entries, setEntries] = useState<LeaderboardEntry[]>([])
   const [you, setYou] = useState<YouEntry | null>(null)
@@ -148,6 +146,7 @@ export function GameHubPage({ slug, board: boardFromRoute }: GameHubPageProps) {
 
   const players = entries.length
   const yourRank = you?.rank ?? null
+  const yourBest = you?.score ?? 0
 
   return (
     <PageShell innerClassName="lb-page__inner lb-page__inner--events">
@@ -216,9 +215,15 @@ export function GameHubPage({ slug, board: boardFromRoute }: GameHubPageProps) {
               <div className="hero__aside hub__stats" aria-label="Your numbers">
                 <HubStat
                   label="Your best"
-                  value={personalBest > 0 ? formatLeaderboardScore(slug, personalBest) : '—'}
-                  sub="This device"
-                  empty={personalBest <= 0}
+                  value={
+                    loading
+                      ? '…'
+                      : yourBest > 0
+                        ? formatLeaderboardScore(slug, yourBest)
+                        : '—'
+                  }
+                  sub={PERIOD_LABELS[period]}
+                  empty={!loading && yourBest <= 0}
                 />
                 <HubStat
                   label="Your rank"
