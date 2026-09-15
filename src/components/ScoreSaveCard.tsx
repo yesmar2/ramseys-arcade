@@ -268,7 +268,7 @@ function awardCards(payload: CelebPayload): {
             id: 'best',
             kind: 'best' as const,
             label: 'Personal best',
-            value: String(payload.personalBest.score),
+            value: payload.personalBest.score.toLocaleString(),
             detail:
               payload.personalBest.gain != null
                 ? `+${payload.personalBest.gain}`

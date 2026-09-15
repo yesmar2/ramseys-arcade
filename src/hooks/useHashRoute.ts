@@ -38,6 +38,7 @@ export type Route =
   | { name: 'about' }
   | { name: 'privacy' }
   | { name: 'terms' }
+  | { name: 'devCelebrate' }
 
 /** Old URL slugs → current game slugs (name-matching). */
 const GAME_SLUG_ALIASES: Record<string, string> = {
@@ -264,6 +265,7 @@ function parseHash(hash: string): Route {
   if (path === 'about') return { name: 'about' }
   if (path === 'privacy') return { name: 'privacy' }
   if (path === 'terms') return { name: 'terms' }
+  if (path === 'dev/celebrate' && import.meta.env.DEV) return { name: 'devCelebrate' }
   if (path === 'groups') return { name: 'groups' }
   const groupMatch = /^groups\/([^/]+)$/.exec(path)
   if (groupMatch) {

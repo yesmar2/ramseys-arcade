@@ -20,6 +20,7 @@ import { AuthVerifyPage } from './pages/AuthVerifyPage'
 import { CrosswalkPage } from './pages/CrosswalkPage'
 import { CrumbtrailPage } from './pages/CrumbtrailPage'
 import { DeadCenterPage } from './pages/DeadCenterPage'
+import { DevCelebratePage } from './pages/DevCelebratePage'
 import { GameHubPage } from './pages/GameHubPage'
 import { GameLeaderboardPage } from './pages/GameLeaderboardPage'
 import { rememberPlayed } from './lib/lastPlayed'
@@ -174,6 +175,7 @@ function App() {
 
   if (route.name === 'home') return <HomePage />
   if (route.name === 'about') return <AboutPage />
+  if (route.name === 'devCelebrate') return <DevCelebratePage />
   if (route.name === 'privacy') return <PrivacyPage />
   if (route.name === 'terms') return <TermsPage />
   if (route.name === 'authVerify') return <AuthVerifyPage token={route.token} />
