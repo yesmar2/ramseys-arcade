@@ -1,16 +1,15 @@
-import { useEffect, useState, type CSSProperties } from 'react'
+import { useEffect, useState, type CSSProperties, type ReactNode } from 'react'
 import {
   BoardEmpty,
   BoardSkeleton,
   PeriodSwitcher,
 } from '../components/BoardChrome'
-import { SiteHeader } from '../components/SiteHeader'
-import { Footer } from '../components/Footer'
 import { GameThumbArt } from '../components/GameThumbArt'
-import { HowToPlayAccordion } from '../components/ScoreGuide'
+import { GameTile } from '../components/GameTile'
+import { HowToPlayContent } from '../components/ScoreGuide'
 import { LeaderboardList } from '../components/LeaderboardList'
+import { PageShell } from '../components/PageShell'
 import { ShareBoardButton } from '../components/ShareBoardButton'
-import { TopScorePodium } from '../components/TopScorePodium'
 import {
   deviceRequirementLabel,
   getGame,
@@ -45,12 +44,10 @@ import {
   PERIOD_LABELS,
   type LeaderboardGame,
   type LeaderboardEntry,
-  type LeaderboardPeriod,
   type YouEntry,
 } from '../lib/leaderboard'
 
-const DESKTOP_ROWS = 10
-const MOBILE_PODIUM_ROWS = 3
+const BOARD_ROWS = 10
 
 function isBoardGame(slug: string): slug is LeaderboardGame {
   return (LEADERBOARD_GAMES as readonly string[]).includes(slug)
@@ -61,6 +58,11 @@ type GameHubPageProps = {
   board?: 'scores' | 'records'
 }
 
+/**
+ * A game's page: the hero with its art, blurb and play button, your numbers
+ * beside it, then the board on one side and how to play plus the rest of
+ * the shelf on the other.
+ */
 export function GameHubPage({ slug, board: boardFromRoute }: GameHubPageProps) {
   const route = useHashRoute()
   const storedPeriod = useDefaultPeriod()
@@ -94,7 +96,7 @@ export function GameHubPage({ slug, board: boardFromRoute }: GameHubPageProps) {
   const others = homeGames(device).filter((g) => g.slug !== slug)
   const hasRecords = game ? gameHasRecords(game.slug) : false
   const boardHref = boardSlug ? gameBoardHref(boardSlug, period) : null
-  const recordsLink = game ? recordsHref(game.slug, period) : null
+  const recordsLink = game && hasRecords ? recordsHref(game.slug, period) : null
 
   useEffect(() => {
     if (boardFromRoute !== 'records' || !game) return
@@ -138,133 +140,59 @@ export function GameHubPage({ slug, board: boardFromRoute }: GameHubPageProps) {
 
   if (!game) {
     return (
-      <>
-        <main className="lb-page">
-          <SiteHeader />
-          <div className="lb-page__inner">
-            <p className="lb-empty">That game isn’t on the board.</p>
-          </div>
-        </main>
-        <Footer />
-      </>
+      <PageShell>
+        <p className="lb-empty">That game isn’t on the board.</p>
+      </PageShell>
     )
   }
 
-  const scoresProps = boardSlug
-    ? {
-        slug,
-        boardSlug,
-        period,
-        loading,
-        error,
-        entries,
-        you,
-        playerName,
-        accent,
-      }
-    : null
+  const players = entries.length
+  const yourRank = you?.rank ?? null
 
   return (
-    <>
-      <main className="lb-page">
-        <SiteHeader />
-        <div className="lb-page__inner">
-          <div
-            className={`game-lobby${boardSlug ? ' game-lobby--split' : ''}`}
-          style={
-            {
-              '--board-accent': accent,
-              '--period-accent': accent,
-              '--tile-accent': accent,
-              '--thumb-accent': accent,
-            } as CSSProperties
-          }
-        >
-          <div className="game-lobby__layout">
-            <div className="game-lobby__main">
-              <h1 className="visually-hidden">{game.name}</h1>
+    <PageShell innerClassName="lb-page__inner lb-page__inner--events">
+      <div
+        className="ev hub"
+        style={
+          {
+            '--event-accent': accent,
+            '--hero-accent': accent,
+            '--board-accent': accent,
+            '--period-accent': accent,
+            '--tile-accent': accent,
+            '--thumb-accent': accent,
+          } as CSSProperties
+        }
+      >
+        <section className="hero" aria-label={game.name}>
+          <div className="hero__corner">
+            <ShareBoardButton
+              label={`Think you can beat me at ${game.name}? Prove it on ${APP_NAME}.`}
+              url={gameHref(slug)}
+            />
+          </div>
+          <div className={`hero__main${boardSlug ? '' : ' hero__main--bare'}`}>
+            <GameThumbArt slug={game.slug} accent={accent} className="hero__art hub__art" />
+            <div className="hero__text">
+              <p className="ev-kicker hero__kicker">
+                <span className="ev-kicker__bit">Game</span>
+                {inDevelopment ? (
+                  <span className="ev-kicker__bit">In development</span>
+                ) : comingSoon ? (
+                  <span className="ev-kicker__bit">Coming soon</span>
+                ) : null}
+                {boardSlug && !loading && !error && players > 0 ? (
+                  <span className="ev-kicker__bit">
+                    {players} {players === 1 ? 'player' : 'players'} · {PERIOD_LABELS[period]}
+                  </span>
+                ) : null}
+              </p>
+              <h1 className="hero__title">{game.name}</h1>
+              <p className="hero__sub">{game.description}</p>
+            </div>
 
-              <div className="game-lobby__identity game-lobby__intro">
-                <div className="game-lobby__intro-art">
-                  <div className="game-lobby__art">
-                    <GameThumbArt
-                      slug={game.slug}
-                      accent={accent}
-                      className="game-lobby__thumb"
-                    />
-                  </div>
-                </div>
-
-                <div className="game-lobby__intro-body">
-                  <div className="game-lobby__intro-links">
-                    <ShareBoardButton
-                      className="game-lobby__share"
-                      label={`Think you can beat me at ${game.name}? Prove it on ${APP_NAME}.`}
-                      url={gameHref(slug)}
-                    />
-                    {boardHref ? (
-                      <a
-                        className="lb-share game-lobby__share"
-                        href={boardHref}
-                        aria-label="Full board"
-                        title="Full board"
-                      >
-                        <svg
-                          className="lb-share__icon"
-                          viewBox="0 0 24 24"
-                          aria-hidden="true"
-                        >
-                          <path
-                            fill="currentColor"
-                            d="M4 14.5h3.25V20H4zm6.375-5.5H13.6V20h-3.225zM16.75 4H20v16h-3.25z"
-                          />
-                        </svg>
-                      </a>
-                    ) : null}
-                    {hasRecords && recordsLink ? (
-                      <a
-                        className="lb-share game-lobby__share"
-                        href={recordsLink}
-                        aria-label="Records"
-                        title="Records"
-                      >
-                        <svg
-                          className="lb-share__icon"
-                          viewBox="0 0 24 24"
-                          aria-hidden="true"
-                        >
-                          <path
-                            fill="currentColor"
-                            d="M6.5 3.75A2.75 2.75 0 0 0 3.75 6.5v11A2.75 2.75 0 0 0 6.5 20.25h11.75V3.75Zm1.1 1.5h9.15v13.5H6.5a1.25 1.25 0 0 1-1.25-1.25v-11c0-.69.56-1.25 1.25-1.25Zm1.65 2.75v1.5h5.85v-1.5Zm0 3.5v1.5h5.85v-1.5Zm0 3.5v1.5h3.85v-1.5Z"
-                          />
-                        </svg>
-                      </a>
-                    ) : null}
-                  </div>
-
-                  <div className="game-lobby__stats">
-                    <div className="lb-stat">
-                      <span className="lb-stat__label">Your best</span>
-                      <strong>
-                        {personalBest > 0
-                          ? formatLeaderboardScore(slug, personalBest)
-                          : '—'}
-                      </strong>
-                    </div>
-                    <div className="lb-stat">
-                      <span className="lb-stat__label">All time</span>
-                      <strong>
-                        {allTime > 0 ? formatLeaderboardScore(slug, allTime) : '—'}
-                      </strong>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
+            <div className="hero__actions hub__actions">
               <PlayCta
-                className={
-                  boardSlug ? 'game-lobby__play--mobile' : 'game-lobby__play--wide'
-                }
                 game={game}
                 canPlay={canPlay}
                 comingSoon={comingSoon}
@@ -272,69 +200,155 @@ export function GameHubPage({ slug, board: boardFromRoute }: GameHubPageProps) {
                 playHref={playHref}
                 deviceNote={deviceNote}
               />
-
-              {scoresProps ? (
-                <HubScoresSection
-                  {...scoresProps}
-                  className="game-lobby__tops game-lobby__tops--mobile"
-                  variant="mobile"
-                />
+              {boardHref ? (
+                <a className="hero__ghost" href={boardHref}>
+                  Full board
+                </a>
               ) : null}
-
-              <HowToPlayAccordion
-                how={game.how}
-                rows={canPlay ? scoring : null}
-              />
-
-              {others.length > 0 ? (
-                <section className="game-lobby__others" aria-label="More games">
-                  <h2 className="game-lobby__section-title">More games</h2>
-                  <ul className="game-lobby__others-list">
-                    {others.map((g) => {
-                      const otherAccent = resolveGameAccent(g.slug, g.accent)
-                      return (
-                      <li key={g.slug}>
-                        <a
-                          className="game-lobby__other"
-                          href={gameHref(g.slug)}
-                          style={{ '--tile-accent': otherAccent } as CSSProperties}
-                          aria-label={
-                            g.comingSoon
-                              ? `${g.name}, coming soon`
-                              : g.inDevelopment
-                                ? `${g.name}, in development`
-                                : g.name
-                          }
-                        >
-                          <GameThumbArt slug={g.slug} accent={otherAccent} />
-                          <span className="game-lobby__other-name">{g.name}</span>
-                        </a>
-                      </li>
-                      )
-                    })}
-                  </ul>
-                </section>
+              {recordsLink ? (
+                <a className="hero__ghost" href={recordsLink}>
+                  Record books
+                </a>
               ) : null}
             </div>
 
-            {scoresProps ? (
-              <HubScoresSection
-                {...scoresProps}
-                className="game-lobby__aside"
-                variant="desktop"
-              />
+            {boardSlug ? (
+              <div className="hero__aside hub__stats" aria-label="Your numbers">
+                <HubStat
+                  label="Your best"
+                  value={personalBest > 0 ? formatLeaderboardScore(slug, personalBest) : '—'}
+                  sub="This device"
+                  empty={personalBest <= 0}
+                />
+                <HubStat
+                  label="Your rank"
+                  value={loading ? '…' : yourRank != null ? `#${yourRank}` : '—'}
+                  sub={PERIOD_LABELS[period]}
+                  empty={!loading && yourRank == null}
+                />
+                <HubStat
+                  label="Record"
+                  value={allTime > 0 ? formatLeaderboardScore(slug, allTime) : '—'}
+                  sub="All time"
+                  empty={allTime <= 0}
+                />
+              </div>
+            ) : null}
+          </div>
+        </section>
+
+        <div className={`hub__layout${boardSlug ? ' hub__layout--split' : ''}`}>
+          {boardSlug ? (
+            <section className="lst-block hub__board" aria-label={`${PERIOD_LABELS[period]} top scores`}>
+              <div className="lst-block__head">
+                <h2 className="lst-block__title">Top scores</h2>
+                {!loading && !error && players > 0 ? (
+                  <p className="lst-block__note">
+                    {players} {players === 1 ? 'player' : 'players'}
+                  </p>
+                ) : null}
+                <div className="lst-block__tools">
+                  <PeriodSwitcher
+                    period={period}
+                    accent={accent}
+                    hrefFor={(p) => gameHubHref(slug, p)}
+                    onSelect={(p) => {
+                      window.location.hash = gameHubHref(slug, p)
+                    }}
+                  />
+                </div>
+              </div>
+              <div key={`${boardSlug}-${period}`} className="lb-board--fade">
+                {loading ? (
+                  <BoardSkeleton rows={BOARD_ROWS} />
+                ) : error ? (
+                  <BoardEmpty
+                    title="Couldn’t load scores"
+                    detail="Check your connection and try again."
+                  />
+                ) : entries.length === 0 && !you ? (
+                  <BoardEmpty title={groupBoardEmptyTitle('No scores yet')} />
+                ) : (
+                  <LeaderboardList
+                    entries={entries}
+                    you={you}
+                    playerName={playerName}
+                    accent={accent}
+                    shown={BOARD_ROWS}
+                    fillEmptySlots
+                    period={period}
+                    formatScore={(score) => formatLeaderboardScore(boardSlug, score)}
+                  />
+                )}
+              </div>
+              {boardHref && !loading && !error && players > BOARD_ROWS ? (
+                <a className="lst__more" href={boardHref}>
+                  Full board · {players}
+                </a>
+              ) : null}
+            </section>
+          ) : null}
+
+          <div className="hub__side">
+            <section className="ev-card hub__how" aria-labelledby="game-how-heading">
+              <div className="ev-card__head">
+                <h2 className="ev-card__title" id="game-how-heading">
+                  How to play
+                </h2>
+                {canPlay && scoring?.length ? (
+                  <p className="ev-card__note">Scoring</p>
+                ) : null}
+              </div>
+              <div className="ev-card__body">
+                <HowToPlayContent
+                  how={game.how}
+                  rows={canPlay ? scoring : null}
+                  listClassName="hub__scoring"
+                />
+              </div>
+            </section>
+
+            {others.length > 0 ? (
+              <section className="hub__more" aria-label="More games">
+                <div className="lst-block__head">
+                  <h2 className="lst-block__title">More games</h2>
+                  <p className="lst-block__note">{others.length} on the shelf</p>
+                </div>
+                <ul className="hub__grid">
+                  {others.map((g, i) => (
+                    <GameTile key={g.slug} game={g} index={i} showOnAllDevices />
+                  ))}
+                </ul>
+              </section>
             ) : null}
           </div>
         </div>
-        </div>
-      </main>
-      <Footer />
-    </>
+      </div>
+    </PageShell>
+  )
+}
+
+function HubStat({
+  label,
+  value,
+  sub,
+  empty = false,
+}: {
+  label: string
+  value: ReactNode
+  sub: string
+  empty?: boolean
+}) {
+  return (
+    <div className={`hub__stat${empty ? ' hub__stat--empty' : ''}`}>
+      <span className="hub__stat-label">{label}</span>
+      <span className="hub__stat-value">{value}</span>
+      <span className="hub__stat-sub">{sub}</span>
+    </div>
   )
 }
 
 function PlayCta({
-  className,
   game,
   canPlay,
   comingSoon,
@@ -342,7 +356,6 @@ function PlayCta({
   playHref,
   deviceNote,
 }: {
-  className: string
   game: Game
   canPlay: boolean
   comingSoon: boolean
@@ -351,118 +364,23 @@ function PlayCta({
   deviceNote: string | null
 }) {
   if (comingSoon) {
-    return (
-      <p className={`game-lobby__unavailable ${className}`}>
-        Coming soon — tile preview only.
-      </p>
-    )
+    return <span className="hero__hint">Coming soon — tile preview only.</span>
   }
   if (canPlay) {
     return (
       <>
-        {inDevelopment ? (
-          <p className={`game-lobby__dev-note ${className}`}>
-            In development — expect rough edges.
-          </p>
-        ) : null}
-        <a
-          className={`lb-play game-lobby__play ${className}`}
-          href={playHref}
-          style={{ background: resolveGameAccent(game.slug, game.accent) }}
-        >
+        <a className="hero__cta" href={playHref}>
           {`Play ${game.name}`}
         </a>
+        {inDevelopment ? (
+          <span className="hero__hint">In development — expect rough edges.</span>
+        ) : null}
       </>
     )
   }
   return (
-    <p className={`game-lobby__unavailable ${className}`}>
+    <span className="hero__hint">
       {deviceNote ?? `${game.name} isn’t available on this device.`}
-    </p>
-  )
-}
-
-function HubScoresSection({
-  className,
-  variant,
-  slug,
-  boardSlug,
-  period,
-  loading,
-  error,
-  entries,
-  you,
-  playerName,
-  accent,
-}: {
-  className: string
-  variant: 'desktop' | 'mobile'
-  slug: string
-  boardSlug: LeaderboardGame
-  period: LeaderboardPeriod
-  loading: boolean
-  error: string | null
-  entries: LeaderboardEntry[]
-  you: YouEntry | null
-  playerName: string
-  accent: string
-}) {
-  const periodLabel = PERIOD_LABELS[period]
-  const isDesktop = variant === 'desktop'
-  const podiumEntries = entries.slice(0, MOBILE_PODIUM_ROWS)
-
-  const onSelectPeriod = (p: LeaderboardPeriod) => {
-    window.location.hash = gameHubHref(slug, p)
-  }
-
-  return (
-    <section className={className} aria-label={`${periodLabel} top scores`}>
-      <div className="lst-block__head">
-        <h2 className="lst-block__title">Top scores</h2>
-        <div className="lst-block__tools">
-          <PeriodSwitcher
-            period={period}
-            accent={accent}
-            hrefFor={(p) => gameHubHref(slug, p)}
-            onSelect={onSelectPeriod}
-          />
-        </div>
-      </div>
-
-      <div
-        key={`${boardSlug}-${period}-${variant}`}
-        className="lb-board lb-board--fade game-lobby__scores-board"
-      >
-        {loading ? (
-          <BoardSkeleton rows={isDesktop ? DESKTOP_ROWS : MOBILE_PODIUM_ROWS} />
-        ) : error ? (
-          <BoardEmpty
-            title="Couldn’t load scores"
-            detail="Check your connection and try again."
-          />
-        ) : entries.length === 0 && !you && groupBoardEmptyTitle('') ? (
-          <BoardEmpty title={groupBoardEmptyTitle('No scores yet')} />
-        ) : isDesktop ? (
-          <LeaderboardList
-            entries={entries}
-            you={you}
-            playerName={playerName}
-            accent={accent}
-            shown={DESKTOP_ROWS}
-            fillEmptySlots
-            period={period}
-            formatScore={(score) => formatLeaderboardScore(boardSlug, score)}
-          />
-        ) : (
-          <TopScorePodium
-            entries={podiumEntries}
-            playerName={playerName}
-            accent={accent}
-            slug={boardSlug}
-            period={period}
-          />
-        )}
-      </div>
-    </section>
+    </span>
   )
 }

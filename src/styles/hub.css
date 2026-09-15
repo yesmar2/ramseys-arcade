@@ -1,0 +1,224 @@
+/*
+ * A game's page.
+ *
+ * The shared hero carries the art, the blurb, the play button and your
+ * three numbers. Below it the board sits on one side (the right, on a
+ * wide screen) and how to play plus the rest of the shelf on the other.
+ * Rows, chips and labels come from list.css; the hero from hero.css.
+ */
+
+.hub {
+  gap: 1.15rem;
+}
+
+/* ---------- hero ---------- */
+
+.hub__art.inline-thumb {
+  --inline-thumb-size: var(--hero-mark);
+  width: var(--hero-mark);
+  height: var(--hero-mark);
+  border-radius: 24%;
+  box-shadow: 0 3px 10px rgba(var(--ink-rgb), 0.07);
+}
+
+.hub__art.inline-thumb .game-thumb__svg {
+  width: 74%;
+  height: 74%;
+}
+
+/* Your numbers: three quiet tiles. */
+.hub__stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.hub__stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.12rem;
+  min-width: 0;
+  padding: 0.65rem 0.4rem 0.6rem;
+  border-radius: 1rem;
+  background: rgba(var(--surface-rgb), 0.55);
+  border: 1px solid color-mix(in srgb, var(--hero-accent) 22%, transparent);
+  text-align: center;
+}
+
+.hub__stat-label {
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  line-height: 1.2;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.hub__stat-value {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-display);
+  font-size: clamp(1.25rem, 4.4vw, 1.7rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+.hub__stat--empty .hub__stat-value {
+  color: var(--muted);
+}
+
+.hub__stat-sub {
+  font-size: 0.66rem;
+  font-weight: 650;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+/* ---------- below the hero ---------- */
+
+.hub__layout {
+  display: flex;
+  flex-direction: column;
+  gap: 1.15rem;
+}
+
+.hub__side {
+  display: flex;
+  flex-direction: column;
+  gap: 1.15rem;
+  min-width: 0;
+}
+
+.hub__board {
+  min-width: 0;
+}
+
+/* How to play: copy, then the scoring rows. */
+.hub__how .how-to-play__copy {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: var(--ink);
+}
+
+.hub__scoring {
+  list-style: none;
+  margin: 0.85rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.hub__scoring li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.5rem 0.8rem;
+  border-radius: 0.85rem;
+  background: rgba(var(--surface-rgb), 0.55);
+  border: 1px solid rgba(var(--ink-rgb), 0.06);
+  font-size: 0.86rem;
+  font-weight: 650;
+  color: var(--muted);
+}
+
+.hub__scoring strong {
+  flex: none;
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  color: color-mix(in srgb, var(--event-accent, var(--accent)) 65%, var(--ink));
+}
+
+/* The rest of the shelf. */
+.hub__more {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.hub__grid {
+  list-style: none;
+  margin: 0;
+  padding: 0.1rem 0 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem 0.6rem;
+}
+
+.hub__grid > li {
+  display: flex;
+  min-width: 0;
+}
+
+@media (min-width: 560px) {
+  .hub__grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 900px) {
+  .hub__layout--split {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-areas: "side board";
+    gap: 1.35rem;
+    align-items: start;
+  }
+
+  .hub__layout--split .hub__side {
+    grid-area: side;
+  }
+
+  .hub__layout--split .hub__board {
+    grid-area: board;
+  }
+
+  .hub__grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1100px) {
+  .hub__grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+html[data-theme="flat"] .hub__stat,
+html[data-theme="google"] .hub__stat,
+html[data-theme="flat"] .hub__scoring li,
+html[data-theme="google"] .hub__scoring li {
+  border-color: var(--flat-border) !important;
+}
+
+/* Play, then the quiet links, in a row under the art and text — never a
+   stack of full-width buttons. */
+.hub .hub__actions {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.6rem;
+  text-align: left;
+}
+
+.hub .hub__actions .hero__cta,
+.hub .hub__actions .hero__ghost {
+  width: auto;
+}
+
+.hub .hub__actions .hero__hint {
+  flex-basis: 100%;
+}

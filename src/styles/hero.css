@@ -358,6 +358,9 @@
 }
 
 .hero__ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   min-height: 2.9rem;
   padding: 0 1.15rem;
   border: 1px solid color-mix(in srgb, var(--hero-accent) 40%, transparent);
