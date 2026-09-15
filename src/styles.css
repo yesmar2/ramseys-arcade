@@ -446,65 +446,6 @@ img {
   justify-content: stretch;
 }
 
-.player-avatar {
-  display: inline-grid;
-  place-items: center;
-  flex: none;
-  width: var(--avatar-size, 1.45rem);
-  height: var(--avatar-size, 1.45rem);
-  border-radius: 999px;
-  border: 1px solid rgba(var(--ink-rgb), 0.1);
-  background: color-mix(in srgb, var(--accent) 14%, var(--surface));
-  color: var(--ink);
-}
-
-.player-avatar svg {
-  width: 68%;
-  height: 68%;
-  display: block;
-}
-
-.player-badge__avatars {
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-  margin: 0.85rem 0 0.25rem;
-}
-
-.player-badge__avatar-grid {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 0.35rem;
-}
-
-.player-badge__avatar-opt {
-  display: grid;
-  place-items: center;
-  padding: 0.35rem;
-  border-radius: 0.75rem;
-  border: 1px solid rgba(var(--ink-rgb), 0.08);
-  background: rgba(var(--surface-rgb), 0.7);
-  cursor: pointer;
-  appearance: none;
-  color: var(--ink);
-}
-
-.player-badge__avatar-opt:hover,
-.player-badge__avatar-opt:focus-visible {
-  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
-  outline: none;
-}
-
-.player-badge__avatar-opt--on {
-  border-color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 16%, var(--surface));
-}
-
-.player-badge__avatar-opt:disabled {
-  opacity: 0.6;
-  cursor: wait;
-}
-
 .player-badge {
   display: inline-flex;
   align-items: center;

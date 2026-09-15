@@ -12,9 +12,11 @@ import { TrophyCase } from '../components/TrophyCase'
 import { getGame, gamePlayableOn } from '../data/games'
 import { gameBoardHref, gamePlayHref, globalRankingsHref, rankHref } from '../hooks/useHashRoute'
 import { useAuth } from '../hooks/useAuth'
+import { useImpersonation } from '../hooks/useImpersonation'
 import { refreshFriends } from '../hooks/useFriends'
 import { usePlayerName } from '../hooks/usePlayerName'
-import { AVATARS_ENABLED } from '../lib/avatars'
+import { AVATARS_ENABLED, AVATAR_EVENT, getLocalAvatarId } from '../lib/avatars'
+import { AvatarStudio } from '../components/AvatarStudio'
 import { gapToNextLabel } from '../lib/boardGap'
 import { APP_NAME } from '../lib/brand'
 import { useDefaultPeriod } from '../lib/defaultPeriod'
@@ -101,6 +103,9 @@ export function RankPage({
   const period = periodFromRoute ?? globalPeriod
   const device = useDeviceType()
   const { signedIn } = useAuth()
+  const impersonation = useImpersonation()
+  // Editing the avatar needs a session, or the dev impersonation which carries a claim token.
+  const canEditAvatar = signedIn || Boolean(impersonation)
   const myName = normalizePlayerName(usePlayerName())
   const viewedName = normalizePlayerName(player ?? '') || myName
   const isSelf = !normalizePlayerName(player ?? '') || viewedName === myName
@@ -108,6 +113,19 @@ export function RankPage({
   const myRankLoading = useGlobalRankLoading()
   const [ranks, setRanks] = useState<PeriodRanks>({})
   const [trophies, setTrophies] = useState<TrophyAward[] | null>(null)
+  const [studioOpen, setStudioOpen] = useState(false)
+  const [avatarOverride, setAvatarOverride] = useState<string | null>(null)
+
+  // A freshly saved avatar paints at once; the API's copy catches up on the next load.
+  useEffect(() => {
+    setAvatarOverride(viewedName ? getLocalAvatarId(viewedName) : null)
+    const onChange = (e: Event) => {
+      const detail = (e as CustomEvent<{ name?: string; avatarId?: string }>).detail
+      if (detail?.name === viewedName && detail.avatarId) setAvatarOverride(detail.avatarId)
+    }
+    window.addEventListener(AVATAR_EVENT, onChange)
+    return () => window.removeEventListener(AVATAR_EVENT, onChange)
+  }, [viewedName])
   const groupId = useActiveGroup()
 
   // Every period is on screen at once, so fetch the lot rather than the one
@@ -225,6 +243,17 @@ export function RankPage({
   return (
     <PageShell innerClassName="lb-page__inner lb-page__inner--events">
       <div className="ev pf">
+        {studioOpen && viewedName ? (
+          <AvatarStudio
+            name={viewedName}
+            current={avatarOverride ?? data.avatarId}
+            onSaved={(id) => {
+              setAvatarOverride(id)
+              setStudioOpen(false)
+            }}
+            onClose={() => setStudioOpen(false)}
+          />
+        ) : null}
         <section
           className="hero"
           aria-label={isSelf ? 'Your profile' : `${viewedName}'s profile`}
@@ -246,13 +275,31 @@ export function RankPage({
 
           {viewedName ? (
             <div className="hero__main">
-              <span className="hero__mark" aria-hidden="true">
-                {AVATARS_ENABLED ? (
-                  <PlayerAvatar avatarId={data.avatarId} name={viewedName} size="lg" />
-                ) : (
-                  viewedName.charAt(0)
-                )}
-              </span>
+              {isSelf && canEditAvatar && AVATARS_ENABLED ? (
+                <button
+                  type="button"
+                  className="hero__mark pfh__mark-btn"
+                  aria-label="Edit your avatar"
+                  title="Edit your avatar"
+                  onClick={() => setStudioOpen(true)}
+                >
+                  <PlayerAvatar avatarId={avatarOverride ?? data.avatarId} name={viewedName} size="lg" />
+                  <span className="pfh__mark-edit" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M12 20h9" />
+                      <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
+                    </svg>
+                  </span>
+                </button>
+              ) : (
+                <span className="hero__mark" aria-hidden="true">
+                  {AVATARS_ENABLED ? (
+                    <PlayerAvatar avatarId={avatarOverride ?? data.avatarId} name={viewedName} size="lg" />
+                  ) : (
+                    viewedName.charAt(0)
+                  )}
+                </span>
+              )}
 
               <div className="hero__text">
                 <p className="ev-kicker hero__kicker">

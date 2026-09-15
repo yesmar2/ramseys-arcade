@@ -1,219 +1,179 @@
 import type { CSSProperties } from 'react'
-import { resolveAvatarId, AVATARS_ENABLED, type AvatarId } from '../lib/avatars'
+import { avatarColor, resolveAvatar, type Avatar, type AvatarShape } from '../lib/avatars'
 
 type PlayerAvatarProps = {
+  /** Saved avatar string; falls back to the tag's default when missing or stale. */
   avatarId?: string | null
   name?: string
-  size?: 'sm' | 'md' | 'lg'
+  /** A parsed avatar wins over `avatarId`, for previews that haven't been saved. */
+  avatar?: Avatar
+  size?: 'sm' | 'md' | 'lg' | 'xl'
   className?: string
+  title?: string
 }
 
-function glyph(id: AvatarId) {
-  switch (id) {
-    case 'orb':
+const INK = '#1b2430'
+const SIZE_REM: Record<NonNullable<PlayerAvatarProps['size']>, string> = {
+  sm: '1.45rem',
+  md: '2rem',
+  lg: '3.5rem',
+  xl: '7rem',
+}
+
+/**
+ * The cast. Every character is drawn on a 64×64 stage, body colour `b`,
+ * accent colour `a`, and the same two eyes so they read as one family.
+ */
+function Eyes({ cx1, cx2, cy, r = 4.2 }: { cx1: number; cx2: number; cy: number; r?: number }) {
+  return (
+    <>
+      <circle cx={cx1} cy={cy} r={r} fill="#fff" />
+      <circle cx={cx2} cy={cy} r={r} fill="#fff" />
+      <circle cx={cx1 + 0.8} cy={cy + 0.6} r={r * 0.5} fill={INK} />
+      <circle cx={cx2 + 0.8} cy={cy + 0.6} r={r * 0.5} fill={INK} />
+    </>
+  )
+}
+
+function Smile({ cx, cy, w = 8 }: { cx: number; cy: number; w?: number }) {
+  return (
+    <path
+      d={`M${cx - w / 2} ${cy} q${w / 2} ${w * 0.55} ${w} 0`}
+      fill="none"
+      stroke={INK}
+      strokeWidth="2.2"
+      strokeLinecap="round"
+    />
+  )
+}
+
+function Cheeks({ cx1, cx2, cy, a }: { cx1: number; cx2: number; cy: number; a: string }) {
+  return (
+    <>
+      <circle cx={cx1} cy={cy} r="3" fill={a} opacity="0.85" />
+      <circle cx={cx2} cy={cy} r="3" fill={a} opacity="0.85" />
+    </>
+  )
+}
+
+function shapeArt(shape: AvatarShape, b: string, a: string) {
+  switch (shape) {
+    case 'blob':
       return (
         <>
-          <circle cx="12" cy="12" r="6.5" fill="none" stroke="currentColor" strokeWidth="1.8" />
-          <circle cx="12" cy="12" r="2.2" fill="currentColor" />
+          <path
+            d="M32 8c13 0 22 9 23 21 1 11-4 20-10 25-6 5-20 5-27 0C11 49 7 40 9 29 10 17 19 8 32 8z"
+            fill={b}
+          />
+          <Eyes cx1={24} cx2={40} cy={30} />
+          <Smile cx={32} cy={40} />
+          <Cheeks cx1={18} cx2={46} cy={38} a={a} />
         </>
       )
-    case 'bolt':
+    case 'bot':
       return (
-        <path
-          d="M13 3L5.5 13.5h5L10 21l8-11h-5.5L13 3z"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.7"
-          strokeLinejoin="round"
-        />
+        <>
+          <path d="M32 6v8" stroke={a} strokeWidth="3" strokeLinecap="round" />
+          <circle cx="32" cy="6" r="3.5" fill={a} />
+          <rect x="11" y="14" width="42" height="40" rx="11" fill={b} />
+          <rect x="17" y="24" width="30" height="14" rx="7" fill={INK} />
+          <circle cx="25" cy="31" r="3.6" fill="#fff" />
+          <circle cx="39" cy="31" r="3.6" fill="#fff" />
+          <circle cx="25.8" cy="31.6" r="1.8" fill={INK} />
+          <circle cx="39.8" cy="31.6" r="1.8" fill={INK} />
+          <rect x="22" y="44" width="20" height="4" rx="2" fill={a} />
+        </>
       )
-    case 'ship':
+    case 'cat':
       return (
-        <path
-          d="M12 4l6 14H6L12 4z"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.8"
-          strokeLinejoin="round"
-        />
+        <>
+          <path d="M12 30 L10 8 L28 18z" fill={b} />
+          <path d="M52 30 L54 8 L36 18z" fill={b} />
+          <path d="M14 24 L13 12 L23 18z" fill={a} />
+          <path d="M50 24 L51 12 L41 18z" fill={a} />
+          <ellipse cx="32" cy="36" rx="23" ry="20" fill={b} />
+          <Eyes cx1={23} cx2={41} cy={33} r={4} />
+          <path d="M29.5 41.5 L34.5 41.5 L32 44.5z" fill={INK} />
+          <path d="M32 44.5 v3 M32 47.5 q-4 2 -6 -1 M32 47.5 q4 2 6 -1" fill="none" stroke={INK} strokeWidth="1.8" strokeLinecap="round" />
+          <path d="M6 37 L17 39 M6 44 L17 42 M58 37 L47 39 M58 44 L47 42" stroke={INK} strokeWidth="1.6" strokeLinecap="round" opacity="0.7" />
+        </>
+      )
+    case 'ghost':
+      return (
+        <>
+          <path
+            d="M32 7c-13 0-21 9-21 22v26l7-5 7 5 7-5 7 5 7-5 7 5V29C53 16 45 7 32 7z"
+            fill={b}
+          />
+          <Eyes cx1={24} cx2={40} cy={28} r={4.6} />
+          <ellipse cx="32" cy="40" rx="4" ry="3" fill={INK} />
+          <Cheeks cx1={17} cx2={47} cy={36} a={a} />
+        </>
       )
     case 'star':
       return (
-        <path
-          d="M12 3.5l2.1 5.2 5.6.4-4.3 3.6 1.4 5.4L12 15.4 7.2 18.1l1.4-5.4L4.3 9.1l5.6-.4L12 3.5z"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          strokeLinejoin="round"
-        />
-      )
-    case 'pulse':
-      return (
-        <path
-          d="M3 12h4l2-5 3 10 2-5h7"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.8"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      )
-    case 'chip':
-      return (
         <>
-          <rect x="7" y="7" width="10" height="10" rx="1.5" fill="none" stroke="currentColor" strokeWidth="1.8" />
-          <path d="M10 4v3M14 4v3M10 17v3M14 17v3M4 10h3M4 14h3M17 10h3M17 14h3" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+          <path
+            d="M32 5l7.6 15.9 17.4 2.3-12.7 12 3.3 17.3L32 44.2l-15.6 8.3 3.3-17.3-12.7-12 17.4-2.3z"
+            fill={b}
+            strokeLinejoin="round"
+          />
+          <Eyes cx1={26} cx2={38} cy={30} r={3.6} />
+          <Smile cx={32} cy={38} w={7} />
+          <path d="M14 10 l1.5 3.5 3.5 1.5 -3.5 1.5 -1.5 3.5 -1.5 -3.5 -3.5 -1.5 3.5 -1.5z" fill={a} />
         </>
       )
-    case 'ring':
+    case 'drop':
       return (
         <>
-          <circle cx="12" cy="12" r="7" fill="none" stroke="currentColor" strokeWidth="1.8" />
-          <circle cx="12" cy="12" r="3.2" fill="none" stroke="currentColor" strokeWidth="1.6" />
+          <path d="M32 5C32 5 12 29 12 40a20 20 0 0 0 40 0C52 29 32 5 32 5z" fill={b} />
+          <Eyes cx1={25} cx2={39} cy={38} r={4} />
+          <Smile cx={32} cy={47} w={7} />
+          <path d="M22 30c-3 3-5 7-5 11" fill="none" stroke={a} strokeWidth="3" strokeLinecap="round" opacity="0.9" />
         </>
       )
-    case 'wave':
-      return (
-        <path
-          d="M3 14c2.5-4 5-4 7.5 0s5 4 7.5 0 5-4 7.5 0"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.8"
-          strokeLinecap="round"
-        />
-      )
-    case 'coin':
+    case 'block':
       return (
         <>
-          <circle cx="12" cy="12" r="7" fill="none" stroke="currentColor" strokeWidth="1.8" />
-          <path d="M12 8v8M9.5 10.2c.6-1 1.5-1.5 2.5-1.5s2 .7 2 1.8-1 1.7-2.5 2.1-2.5.9-2.5 2.2 1.1 1.9 2.6 1.9 2-.6 2.5-1.5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+          <rect x="9" y="12" width="46" height="44" rx="9" fill={b} />
+          <rect x="9" y="12" width="46" height="9" rx="4.5" fill={a} />
+          <rect x="20" y="30" width="7" height="8" rx="1.5" fill={INK} />
+          <rect x="37" y="30" width="7" height="8" rx="1.5" fill={INK} />
+          <rect x="21" y="31" width="2.5" height="2.5" fill="#fff" />
+          <rect x="38" y="31" width="2.5" height="2.5" fill="#fff" />
+          <rect x="25" y="45" width="14" height="3" rx="1.5" fill={INK} />
         </>
       )
-    case 'spark':
-      return (
-        <path
-          d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5L18 18M18 6l-2.5 2.5M8.5 15.5L6 18"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.7"
-          strokeLinecap="round"
-        />
-      )
-    case 'cube':
-      return (
-        <path
-          d="M12 4l7 4v8l-7 4-7-4V8l7-4zM12 12l7-4M12 12v8M12 12L5 8"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.6"
-          strokeLinejoin="round"
-        />
-      )
-    case 'nova':
-      return (
-        <path
-          d="M12 5l1.2 4.3L17.5 9l-3.4 2.8L15.2 17 12 14.4 8.8 17l1.1-5.2L6.5 9l4.3-.7L12 5z"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          strokeLinejoin="round"
-        />
-      )
-    case 'pixel':
+    case 'mush':
       return (
         <>
-          <rect x="5" y="5" width="5" height="5" fill="currentColor" opacity="0.9" />
-          <rect x="14" y="5" width="5" height="5" fill="currentColor" opacity="0.55" />
-          <rect x="5" y="14" width="5" height="5" fill="currentColor" opacity="0.55" />
-          <rect x="14" y="14" width="5" height="5" fill="currentColor" opacity="0.9" />
+          <rect x="21" y="30" width="22" height="26" rx="8" fill="#f2e6d4" />
+          <path d="M6 32c0-15 12-25 26-25s26 10 26 25c0 2-1 3-3 3H9c-2 0-3-1-3-3z" fill={b} />
+          <circle cx="20" cy="20" r="4" fill={a} />
+          <circle cx="36" cy="14" r="3" fill={a} />
+          <circle cx="46" cy="24" r="3.5" fill={a} />
+          <Eyes cx1={27} cx2={37} cy={42} r={3} />
+          <Smile cx={32} cy={49} w={6} />
         </>
-      )
-    case 'arrow':
-      return (
-        <path
-          d="M12 4v16M12 4l-5 5M12 4l5 5"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.8"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      )
-    case 'hex':
-      return (
-        <path
-          d="M12 3.5l6.5 3.8v7.4L12 18.5l-6.5-3.8V7.3L12 3.5z"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.7"
-          strokeLinejoin="round"
-        />
-      )
-    case 'glow':
-      return (
-        <>
-          <circle cx="12" cy="12" r="3" fill="currentColor" />
-          <circle cx="12" cy="12" r="6.5" fill="none" stroke="currentColor" strokeWidth="1.5" opacity="0.7" />
-          <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" strokeWidth="1.2" opacity="0.35" />
-        </>
-      )
-    case 'disc':
-      return (
-        <>
-          <circle cx="12" cy="12" r="7.5" fill="none" stroke="currentColor" strokeWidth="1.8" />
-          <circle cx="12" cy="12" r="2" fill="currentColor" />
-          <path d="M12 4.5v3M12 16.5v3M4.5 12h3M16.5 12h3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-        </>
-      )
-    case 'beam':
-      return (
-        <path
-          d="M5 19L12 5l7 14H5z"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.7"
-          strokeLinejoin="round"
-        />
-      )
-    case 'core':
-      return (
-        <>
-          <rect x="6" y="6" width="12" height="12" rx="3" fill="none" stroke="currentColor" strokeWidth="1.8" />
-          <circle cx="12" cy="12" r="2.5" fill="currentColor" />
-        </>
-      )
-    case 'flare':
-      return (
-        <path
-          d="M12 3c2 4.5 5.5 7 9 7-3.5 0-7 2.5-9 7-2-4.5-5.5-7-9-7 3.5 0 7-2.5 9-7z"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.6"
-          strokeLinejoin="round"
-        />
       )
   }
 }
 
-export function PlayerAvatar({
-  avatarId,
-  name = '',
-  size = 'md',
-  className = '',
-}: PlayerAvatarProps) {
-  if (!AVATARS_ENABLED) return null
-  const id = resolveAvatarId(avatarId, name)
-  const dim = size === 'sm' ? '1.2rem' : size === 'lg' ? '2.1rem' : '1.45rem'
-  const style = { '--avatar-size': dim } as CSSProperties
+/** One player's character, drawn from their saved avatar or their tag's default. */
+export function PlayerAvatar({ avatarId, name = '', avatar, size = 'md', className, title }: PlayerAvatarProps) {
+  const resolved = avatar ?? resolveAvatar(avatarId, name)
+  const body = avatarColor(resolved.body)
+  const accent = avatarColor(resolved.accent)
+  const style = { '--avatar-size': SIZE_REM[size] } as CSSProperties
   return (
     <span
       className={`player-avatar player-avatar--${size}${className ? ` ${className}` : ''}`}
       style={style}
-      aria-hidden="true"
-      data-avatar={id}
+      role="img"
+      aria-label={title ?? (name ? `${name}'s avatar` : 'Avatar')}
     >
-      <svg viewBox="0 0 24 24" fill="none">
-        {glyph(id)}
+      <svg viewBox="0 0 64 64" aria-hidden="true" focusable="false">
+        {shapeArt(resolved.shape, body, accent)}
       </svg>
     </span>
   )

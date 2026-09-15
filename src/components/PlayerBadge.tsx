@@ -4,7 +4,7 @@ import { useImpersonation } from '../hooks/useImpersonation'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { stopImpersonation } from '../lib/impersonate'
 import {
-  AVATAR_IDS,
+  AVATAR_EVENT,
   AVATARS_ENABLED,
   getLocalAvatarId,
   resolveAvatarId,
@@ -17,7 +17,6 @@ import {
   PLAYER_NAME_MAX,
   fetchNameAvatar,
   normalizePlayerName,
-  setPlayerAvatar,
 } from '../lib/leaderboard'
 import { currentTheme, THEME_EVENT, toggleTheme, themeLabel, type Theme } from '../lib/theme'
 import { DevImpersonateControl } from './DevImpersonateControl'
@@ -104,7 +103,6 @@ export const PlayerBadge = forwardRef<PlayerBadgeHandle, PlayerBadgeProps>(
     const [draft, setDraft] = useState(name || '')
     const [busy, setBusy] = useState(false)
     const [authBusy, setAuthBusy] = useState(false)
-    const [avatarBusy, setAvatarBusy] = useState(false)
     const [avatarId, setAvatarId] = useState<AvatarId>(() =>
       resolveAvatarId(getLocalAvatarId(name), name),
     )
@@ -141,6 +139,17 @@ export const PlayerBadge = forwardRef<PlayerBadgeHandle, PlayerBadgeProps>(
       return () => {
         cancelled = true
       }
+    }, [name])
+
+    useEffect(() => {
+      const cleaned = normalizePlayerName(name)
+      if (!cleaned) return
+      const onChange = (e: Event) => {
+        const detail = (e as CustomEvent<{ name?: string; avatarId?: string }>).detail
+        if (detail?.name === cleaned && detail.avatarId) setAvatarId(resolveAvatarId(detail.avatarId, cleaned))
+      }
+      window.addEventListener(AVATAR_EVENT, onChange)
+      return () => window.removeEventListener(AVATAR_EVENT, onChange)
     }, [name])
 
     useEffect(() => {
@@ -241,34 +250,6 @@ export const PlayerBadge = forwardRef<PlayerBadgeHandle, PlayerBadgeProps>(
       inputRef.current?.select()
     }, [editingTag])
 
-    const pickAvatar = async (next: AvatarId) => {
-      if (impersonation) {
-        setError('Stop impersonating before changing an avatar')
-        return
-      }
-      if (!signedIn) {
-        setError('Sign in to set an avatar')
-        return
-      }
-      const cleaned = normalizePlayerName(name || draft)
-      if (!cleaned || avatarBusy) return
-      setAvatarBusy(true)
-      setError(null)
-      try {
-        if (!normalizePlayerName(name)) {
-          await linkCurrentNameToAccount(cleaned)
-        }
-        const saved = await setPlayerAvatar(cleaned, next)
-        const resolved = resolveAvatarId(saved, cleaned)
-        setAvatarId(resolved)
-        setLocalAvatarId(cleaned, resolved)
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Could not save avatar')
-      } finally {
-        setAvatarBusy(false)
-      }
-    }
-
     const displayName = normalizePlayerName(name)
     const showTagForm = !displayName || editingTag
     /* Drawer heading already shows the tag — only expand the form when editing / first set. */
@@ -343,30 +324,6 @@ export const PlayerBadge = forwardRef<PlayerBadgeHandle, PlayerBadgeProps>(
               }}
             />
           </label>
-        ) : null}
-
-        {AVATARS_ENABLED && (displayName || showTagForm) ? (
-          <div className="player-badge__avatars">
-            <span className="player-badge__label">Avatar</span>
-            <div className="player-badge__avatar-grid" role="listbox" aria-label="Choose avatar">
-              {AVATAR_IDS.map((id) => {
-                const selected = id === avatarId
-                return (
-                  <button
-                    key={id}
-                    type="button"
-                    role="option"
-                    aria-selected={selected}
-                    className={`player-badge__avatar-opt${selected ? ' player-badge__avatar-opt--on' : ''}`}
-                    disabled={avatarBusy || busy || Boolean(impersonation)}
-                    onClick={() => void pickAvatar(id)}
-                  >
-                    <PlayerAvatar avatarId={id} name={displayName || draft} size="md" />
-                  </button>
-                )
-              })}
-            </div>
-          </div>
         ) : null}
 
         {error && <p className="player-badge__error">{error}</p>}
