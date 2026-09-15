@@ -147,16 +147,23 @@
 
 .pfh__main {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-columns: auto minmax(0, 1fr) auto;
   grid-template-areas:
-    "mark text"
-    "ranks ranks";
+    "mark text tools"
+    "ranks ranks ranks";
   gap: 0.85rem 0.95rem;
   align-items: center;
 }
 
 .pfh__main--bare {
+  grid-template-columns: auto minmax(0, 1fr);
   grid-template-areas: "mark text";
+}
+
+/* On your own profile the tools sit in the corner of the hero itself. */
+.pfh__tools--inline {
+  grid-area: tools;
+  align-self: start;
 }
 
 /* The identity mark: an initial on a tinted tile, sized like the event art. */
@@ -323,12 +330,17 @@
   }
 
   /* Mark, text, then the ranks on the right — the same shape as the event
-     hero, with the three tiles where the clock sits. */
+     hero, with the three tiles where the clock sits and the share icon in
+     the far corner. */
   .pfh__main {
-    grid-template-columns: auto minmax(0, 1fr) auto;
-    grid-template-areas: "mark text ranks";
+    grid-template-columns: auto minmax(0, 1fr) auto auto;
+    grid-template-areas: "mark text ranks tools";
     column-gap: 1.35rem;
     align-items: center;
+  }
+
+  .pfh__tools--inline {
+    margin-left: -0.5rem;
   }
 
   .pfh__main--bare {
