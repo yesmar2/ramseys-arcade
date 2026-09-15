@@ -1,4 +1,5 @@
 import type { CSSProperties } from 'react'
+import { EventArt } from '../components/EventCard'
 import { GameThumbArt } from '../components/GameThumbArt'
 import { PageShell } from '../components/PageShell'
 import { getGame } from '../data/games'
@@ -30,59 +31,55 @@ export function RecordsIndexPage() {
   }).filter((game): game is NonNullable<typeof game> => Boolean(game))
 
   return (
-    <PageShell innerClassName="lb-page__inner lb-page__inner--summary records-index-page">
-      <header className="records-index-hero">
-        <p className="lb-page__eyebrow">Hall of fame</p>
-        <h1 className="lb-page__title">Record books</h1>
-        <p className="records-index-hero__blurb">
-          Not the high-score boards — the specialty ledgers. Fastest clears, longest streaks,
-          milestone times. Somebody’s name is in ink.
-        </p>
-        <p className="records-index-hero__count" aria-hidden="true">
-          {games.length} books open
-        </p>
-      </header>
+    <PageShell innerClassName="lb-page__inner lb-page__inner--events">
+      <div className="ev rb">
+        <section className="hero" aria-label="Record books">
+          <div className="hero__main hero__main--bare">
+            <EventArt games={games.slice(0, 4).map((g) => g.slug)} className="hero__art" />
+            <div className="hero__text">
+              <p className="ev-kicker hero__kicker">
+                <span className="ev-kicker__bit">Hall of fame</span>
+                <span className="ev-kicker__bit">
+                  {games.length} {games.length === 1 ? 'book' : 'books'} open
+                </span>
+              </p>
+              <h1 className="hero__title">Record books</h1>
+              <p className="hero__sub">
+                Not the high-score boards — the specialty ledgers. Fastest clears, longest
+                streaks, milestone times. Somebody’s name is in ink.
+              </p>
+            </div>
+          </div>
+        </section>
 
-      {games.length === 0 ? (
-        <p className="lb-empty">No record books yet.</p>
-      ) : (
-        <ul className="records-index">
-          {games.map((game, i) => {
-            const accent = resolveGameAccent(game.slug, game.accent)
-            return (
-              <li
-                key={game.slug}
-                className="records-index__item"
-                style={{ '--i': i, '--book-accent': accent } as CSSProperties}
-              >
-                <a className="records-index__card" href={recordsHref(game.slug)}>
-                  <span className="records-index__spine" aria-hidden="true" />
-                  <span className="records-index__thumb" aria-hidden="true">
-                    <GameThumbArt slug={game.slug} accent={accent} />
-                  </span>
-                  <span className="records-index__copy">
-                    <span className="records-index__name">{game.name}</span>
-                    <span className="records-index__focus">
-                      {BOOK_FOCUS[game.slug]}
+        {games.length === 0 ? (
+          <p className="lb-empty">No record books yet.</p>
+        ) : (
+          <ul className="rb__grid">
+            {games.map((game) => {
+              const accent = resolveGameAccent(game.slug, game.accent)
+              return (
+                <li key={game.slug}>
+                  <a
+                    className="rb-book"
+                    href={recordsHref(game.slug)}
+                    style={{ '--book-accent': accent } as CSSProperties}
+                  >
+                    <span className="ev-art ev-art--solo" aria-hidden="true">
+                      <GameThumbArt slug={game.slug} accent={accent} />
                     </span>
-                  </span>
-                  <span className="records-index__go" aria-hidden="true">
-                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none">
-                      <path
-                        d="M9 5l7 7-7 7"
-                        stroke="currentColor"
-                        strokeWidth="2.25"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                  </span>
-                </a>
-              </li>
-            )
-          })}
-        </ul>
-      )}
+                    <span className="rb-book__text">
+                      <span className="rb-book__name">{game.name}</span>
+                      <span className="rb-book__focus">{BOOK_FOCUS[game.slug]}</span>
+                    </span>
+                    <span className="rb-book__go">Open</span>
+                  </a>
+                </li>
+              )
+            })}
+          </ul>
+        )}
+      </div>
     </PageShell>
   )
 }

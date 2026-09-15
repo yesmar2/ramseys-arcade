@@ -1,0 +1,496 @@
+/*
+ * The page hero — events, profiles, record books.
+ *
+ * Tinted from --hero-accent (the site accent unless a page sets it), with a
+ * piece of art or a mark on the left, kicker / title / caption beside it,
+ * and an optional aside on the right: a big figure (.hero-stat) or a row of
+ * tiles. Actions sit under the caption; a foot strip runs along the bottom.
+ *
+ *   .hero
+ *     .hero__bar        back link + tools (optional)
+ *     .hero__main       grid: art · text · aside, actions under text
+ *       .hero__art | .hero__mark
+ *       .hero__text  > .hero__kicker .hero__title .hero__sub [.hero__actions]
+ *       .hero__aside > .hero-stat | tiles
+ *       .hero__actions (as a grid area, for a page-level CTA)
+ *     .hero__foot       where you stand
+ */
+
+.hero {
+  --hero-accent: var(--accent);
+  --ev-art-size: 7.25rem;
+  --hero-mark: 5.25rem;
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  padding: 0.85rem 1.1rem 1.1rem;
+  border-radius: 1.4rem;
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--hero-accent) 22%, var(--surface)) 0%,
+    color-mix(in srgb, var(--hero-accent) 8%, var(--surface)) 55%,
+    color-mix(in srgb, var(--hero-accent) 4%, var(--surface)) 100%
+  );
+  border: 1px solid color-mix(in srgb, var(--hero-accent) 30%, transparent);
+  box-shadow: var(--shadow-soft);
+  overflow: hidden;
+}
+
+.hero::before,
+.hero::after {
+  content: "";
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: -1;
+}
+
+.hero::before {
+  top: -30%;
+  left: -12%;
+  width: 46%;
+  aspect-ratio: 1;
+  background: radial-gradient(
+    closest-side,
+    color-mix(in srgb, var(--hero-accent) 34%, transparent),
+    transparent
+  );
+}
+
+.hero::after {
+  right: -18%;
+  bottom: -55%;
+  width: 55%;
+  aspect-ratio: 1;
+  background: radial-gradient(
+    closest-side,
+    color-mix(in srgb, var(--hero-accent) 16%, transparent),
+    transparent
+  );
+}
+
+/* ---------- bar: back link and tools ---------- */
+
+.hero__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  min-height: 2.35rem;
+}
+
+.hero__back {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.1rem;
+  margin-left: -0.45rem;
+  padding: 0.3rem 0.65rem 0.3rem 0.3rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 750;
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.hero__back svg {
+  width: 1.15rem;
+  height: 1.15rem;
+}
+
+.hero__back:hover,
+.hero__back:focus-visible {
+  color: var(--ink);
+  background: rgba(var(--ink-rgb), 0.06);
+  outline: none;
+}
+
+.hero__tools {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.hero__tool {
+  min-height: 2.35rem;
+  padding: 0.35rem 0.85rem;
+  border: 1px solid rgba(var(--ink-rgb), 0.1);
+  border-radius: 999px;
+  background: rgba(var(--surface-rgb), 0.85);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 750;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.hero__tool:hover:not(:disabled),
+.hero__tool:focus-visible:not(:disabled) {
+  border-color: color-mix(in srgb, var(--hero-accent) 45%, transparent);
+  color: var(--hero-accent);
+  outline: none;
+}
+
+.hero__tool:disabled {
+  opacity: 0.7;
+  cursor: default;
+}
+
+/* ---------- main grid ---------- */
+
+.hero__main {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-areas:
+    "art text"
+    "aside aside"
+    "actions actions";
+  gap: 0.85rem 0.95rem;
+  align-items: center;
+}
+
+/* Art and text only — no aside, no page-level actions. */
+.hero__main--bare {
+  grid-template-areas: "art text";
+}
+
+.hero__art {
+  grid-area: art;
+}
+
+/* An initial on a tinted tile, where a player has no artwork. */
+.hero__mark {
+  grid-area: art;
+  display: grid;
+  place-items: center;
+  width: var(--hero-mark);
+  height: var(--hero-mark);
+  border-radius: 28%;
+  background: color-mix(in srgb, var(--hero-accent) 16%, var(--playfield));
+  border: 1px solid color-mix(in srgb, var(--hero-accent) 40%, transparent);
+  box-shadow: 0 3px 10px rgba(var(--ink-rgb), 0.07);
+  font-family: var(--font-display);
+  font-size: calc(var(--hero-mark) * 0.5);
+  font-weight: 800;
+  line-height: 1;
+  color: color-mix(in srgb, var(--hero-accent) 70%, var(--ink));
+  user-select: none;
+}
+
+.hero__mark--empty {
+  color: var(--muted);
+  border-style: dashed;
+}
+
+.hero__mark .player-avatar {
+  --avatar-size: calc(var(--hero-mark) * 0.62);
+  border: 0;
+  background: transparent;
+}
+
+.hero__text {
+  grid-area: text;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  min-width: 0;
+}
+
+.hero__kicker {
+  margin: 0;
+}
+
+.hero__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(1.55rem, 5vw, 2.3rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.02;
+  overflow-wrap: anywhere;
+}
+
+.hero__sub {
+  margin: 0.05rem 0 0;
+  font-size: 0.84rem;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--muted);
+}
+
+.hero__sub-link {
+  font-weight: 750;
+  color: color-mix(in srgb, var(--hero-accent) 70%, var(--ink));
+  text-decoration: none;
+}
+
+.hero__sub-link:hover,
+.hero__sub-link:focus-visible {
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
+.hero__aside {
+  grid-area: aside;
+  min-width: 0;
+}
+
+/* ---------- the one big figure ---------- */
+
+.hero-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.hero-stat__label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.hero-stat--live .hero-stat__label::before {
+  content: "";
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--hero-accent);
+  box-shadow: 0 0 0 0 color-mix(in srgb, var(--hero-accent) 45%, transparent);
+  animation: hero-pulse 1.8s ease-out infinite;
+}
+
+@keyframes hero-pulse {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--hero-accent) 45%, transparent);
+  }
+  70% {
+    box-shadow: 0 0 0 0.45rem transparent;
+  }
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-stat--live .hero-stat__label::before {
+    animation: none;
+  }
+}
+
+.hero-stat__value {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-family: var(--font-display);
+  font-size: clamp(1.75rem, 6vw, 2.6rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+.hero-stat--live .hero-stat__value {
+  color: color-mix(in srgb, var(--hero-accent) 72%, var(--ink));
+}
+
+.hero-stat__name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ---------- actions ---------- */
+
+.hero__actions {
+  grid-area: actions;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.55rem 0.85rem;
+}
+
+/* Under the caption, inside the text block: quiet pills in a row. */
+.hero__actions--inline {
+  align-items: flex-start;
+  gap: 0.45rem;
+  margin-top: 0.45rem;
+}
+
+.hero__cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.9rem;
+  padding: 0 1.55rem;
+  border: 0;
+  border-radius: 999px;
+  background: var(--hero-accent);
+  color: #fff;
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 750;
+  letter-spacing: -0.005em;
+  text-decoration: none;
+  cursor: pointer;
+  box-shadow: 0 10px 24px color-mix(in srgb, var(--hero-accent) 32%, transparent);
+  transition: transform 0.12s ease, filter 0.12s ease;
+}
+
+.hero__cta:hover:not(:disabled),
+.hero__cta:focus-visible:not(:disabled) {
+  filter: brightness(1.06);
+  transform: translateY(-1px);
+  outline: none;
+}
+
+.hero__cta:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.hero__ghost {
+  min-height: 2.9rem;
+  padding: 0 1.15rem;
+  border: 1px solid color-mix(in srgb, var(--hero-accent) 40%, transparent);
+  border-radius: 999px;
+  background: rgba(var(--surface-rgb), 0.5);
+  color: color-mix(in srgb, var(--hero-accent) 65%, var(--ink));
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.hero__ghost:hover:not(:disabled),
+.hero__ghost:focus-visible:not(:disabled) {
+  background: color-mix(in srgb, var(--hero-accent) 14%, var(--surface));
+  outline: none;
+}
+
+.hero__state {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 750;
+}
+
+.hero__hint {
+  font-size: 0.78rem;
+  font-weight: 650;
+  color: var(--muted);
+}
+
+.hero__hint--error {
+  color: #b42318;
+}
+
+/* ---------- foot: where you stand ---------- */
+
+.hero__foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.2rem 0.6rem;
+  margin: 0;
+  padding-top: 0.8rem;
+  border-top: 1px solid color-mix(in srgb, var(--hero-accent) 18%, transparent);
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.hero__foot-lead {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: color-mix(in srgb, var(--hero-accent) 72%, var(--ink));
+}
+
+.hero__foot-value {
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+.hero__foot-note {
+  color: var(--muted);
+}
+
+/* ---------- breakpoints ---------- */
+
+@media (max-width: 679px) {
+  /* A page-level CTA fills the width on a phone. */
+  .hero__actions:not(.hero__actions--inline) {
+    flex-direction: column;
+    align-items: stretch;
+    text-align: center;
+  }
+
+  .hero__actions:not(.hero__actions--inline) .hero__cta,
+  .hero__actions:not(.hero__actions--inline) .hero__ghost {
+    width: 100%;
+  }
+}
+
+@media (min-width: 680px) {
+  .hero {
+    --hero-mark: 7.25rem;
+    padding: 0.9rem 1.35rem 1.25rem;
+  }
+
+  /* Art, text, then the aside on the right — the big figure or the tiles. */
+  .hero__main {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      "art text aside"
+      "art actions aside";
+    column-gap: 1.35rem;
+    row-gap: 0.85rem;
+    align-items: start;
+  }
+
+  .hero__main--bare {
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-areas: "art text";
+    align-items: center;
+  }
+
+  .hero__art,
+  .hero__mark {
+    align-self: center;
+  }
+
+  .hero__aside {
+    align-self: center;
+    padding-left: 1rem;
+  }
+
+  .hero-stat {
+    align-items: flex-end;
+    text-align: right;
+  }
+
+  .hero__actions {
+    align-self: end;
+  }
+}
+
+/* ---------- flat / google: no shadows, no edges ---------- */
+
+html[data-theme="flat"] .hero,
+html[data-theme="google"] .hero {
+  border-color: var(--flat-border) !important;
+  box-shadow: none !important;
+}
+
+html[data-theme="flat"] .hero__cta,
+html[data-theme="google"] .hero__cta {
+  box-shadow: none;
+}

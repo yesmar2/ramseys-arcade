@@ -1,0 +1,150 @@
+/*
+ * Record books index.
+ *
+ * The hero comes from hero.css and the page tokens from the `ev` root class;
+ * this file is just the shelf of books — one tinted card per game, the same
+ * shape as a running event's card on the events list.
+ */
+
+.rb {
+  gap: 1rem;
+}
+
+.rb__grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.8rem;
+}
+
+@media (min-width: 720px) {
+  .rb__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.rb__grid > li {
+  display: flex;
+  min-width: 0;
+}
+
+.rb-book {
+  --ev-art-size: 3.8rem;
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.9rem 1rem;
+  border-radius: 1.25rem;
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--book-accent, var(--accent)) 20%, var(--surface)) 0%,
+    color-mix(in srgb, var(--book-accent, var(--accent)) 7%, var(--surface)) 70%
+  );
+  border: 1px solid color-mix(in srgb, var(--book-accent, var(--accent)) 30%, transparent);
+  box-shadow: var(--shadow-soft);
+  color: inherit;
+  text-decoration: none;
+  overflow: hidden;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.rb-book::before {
+  content: "";
+  position: absolute;
+  top: -45%;
+  left: -18%;
+  width: 62%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(
+    closest-side,
+    color-mix(in srgb, var(--book-accent, var(--accent)) 32%, transparent),
+    transparent
+  );
+  z-index: -1;
+  pointer-events: none;
+}
+
+.rb-book:hover,
+.rb-book:focus-visible {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lift);
+  outline: none;
+}
+
+.rb-book__text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.18rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.rb-book__name {
+  font-family: var(--font-display);
+  font-size: 1.18rem;
+  font-weight: 800;
+  letter-spacing: -0.022em;
+  line-height: 1.1;
+}
+
+.rb-book:hover .rb-book__name {
+  color: color-mix(in srgb, var(--book-accent, var(--accent)) 65%, var(--ink));
+}
+
+.rb-book__focus {
+  font-size: 0.78rem;
+  font-weight: 650;
+  line-height: 1.35;
+  color: var(--muted);
+}
+
+.rb-book__go {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  padding: 0.42rem 1.05rem;
+  border-radius: 999px;
+  background: var(--book-accent, var(--accent));
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 800;
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--book-accent, var(--accent)) 28%, transparent);
+}
+
+.rb-book:hover .rb-book__go {
+  filter: brightness(1.06);
+}
+
+@media (max-width: 419px) {
+  .rb-book {
+    gap: 0.7rem;
+    padding: 0.8rem 0.85rem;
+  }
+
+  .rb-book__go {
+    padding-inline: 0.85rem;
+  }
+}
+
+html[data-theme="flat"] .rb-book,
+html[data-theme="google"] .rb-book {
+  border-color: var(--flat-border) !important;
+  box-shadow: none !important;
+}
+
+html[data-theme="flat"] .rb-book:hover,
+html[data-theme="google"] .rb-book:hover {
+  transform: none;
+}
+
+html[data-theme="flat"] .rb-book__go,
+html[data-theme="google"] .rb-book__go {
+  box-shadow: none;
+}

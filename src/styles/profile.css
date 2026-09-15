@@ -6,7 +6,7 @@
  * page's — tinted from the site accent, a mark on the left, the three period
  * ranks as tiles that also switch the board below.
  *
- * `.pfh` hero · `.pft` trophy shelf · `.pfg` by-game board.
+ * Hero from hero.css (`.pfh__rank*` tiles here) · `.pft` trophy shelf · `.pfg` by-game board.
  */
 
 .pf {
@@ -15,121 +15,11 @@
 }
 
 /* ==========================================================================
-   Hero
+   Hero extras: the rank tiles, the share pill, Add friend
+   (the hero itself comes from hero.css)
    ========================================================================== */
 
-.pfh {
-  position: relative;
-  isolation: isolate;
-  display: flex;
-  flex-direction: column;
-  gap: 0.9rem;
-  padding: 0.85rem 1.1rem 1.1rem;
-  border-radius: 1.4rem;
-  background: linear-gradient(
-    135deg,
-    color-mix(in srgb, var(--accent) 22%, var(--surface)) 0%,
-    color-mix(in srgb, var(--accent) 8%, var(--surface)) 55%,
-    color-mix(in srgb, var(--accent) 4%, var(--surface)) 100%
-  );
-  border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
-  box-shadow: var(--shadow-soft);
-  overflow: hidden;
-}
-
-.pfh::before,
-.pfh::after {
-  content: "";
-  position: absolute;
-  border-radius: 50%;
-  pointer-events: none;
-  z-index: -1;
-}
-
-.pfh::before {
-  top: -30%;
-  left: -12%;
-  width: 46%;
-  aspect-ratio: 1;
-  background: radial-gradient(
-    closest-side,
-    color-mix(in srgb, var(--accent) 34%, transparent),
-    transparent
-  );
-}
-
-.pfh::after {
-  right: -18%;
-  bottom: -55%;
-  width: 55%;
-  aspect-ratio: 1;
-  background: radial-gradient(
-    closest-side,
-    color-mix(in srgb, var(--accent) 16%, transparent),
-    transparent
-  );
-}
-
-.pfh__bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-  min-height: 2.35rem;
-}
-
-.pfh__back {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.1rem;
-  margin-left: -0.45rem;
-  padding: 0.3rem 0.65rem 0.3rem 0.3rem;
-  border-radius: 999px;
-  font-size: 0.8rem;
-  font-weight: 750;
-  color: var(--muted);
-  text-decoration: none;
-}
-
-.pfh__back:hover,
-.pfh__back:focus-visible {
-  color: var(--ink);
-  background: rgba(var(--ink-rgb), 0.06);
-  outline: none;
-}
-
-.pfh__tools {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-}
-
-.pfh__tool {
-  min-height: 2.35rem;
-  padding: 0.35rem 0.85rem;
-  border: 1px solid rgba(var(--ink-rgb), 0.1);
-  border-radius: 999px;
-  background: rgba(var(--surface-rgb), 0.85);
-  color: var(--ink);
-  font: inherit;
-  font-size: 0.78rem;
-  font-weight: 750;
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-.pfh__tool:hover:not(:disabled),
-.pfh__tool:focus-visible:not(:disabled) {
-  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
-  color: var(--accent);
-  outline: none;
-}
-
-.pfh__tool:disabled {
-  opacity: 0.7;
-  cursor: default;
-}
-
+/* Add friend, with its error under it. */
 .pfh__friend {
   display: inline-flex;
   flex-direction: column;
@@ -142,17 +32,9 @@
   color: #b42318;
 }
 
-/* Actions under the caption: quiet pills, the way the event hero keeps its
-   Play button under the title. */
-.pfh__actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  gap: 0.45rem;
-  margin-top: 0.45rem;
-}
-
-.pfh__actions .pfh__tool,
+/* Actions under the caption are quiet pills, not the event page's filled
+   button: the profile has nothing to play. */
+.hero__actions--inline .hero__tool,
 .pfh__share.lb-share {
   width: auto;
   height: auto;
@@ -167,7 +49,7 @@
   box-shadow: none;
 }
 
-.pfh__actions .pfh__tool {
+.hero__actions--inline .hero__tool {
   padding-inline: 0.85rem;
 }
 
@@ -184,104 +66,16 @@
 
 .pfh__share.lb-share:hover,
 .pfh__share.lb-share:focus-visible,
-.pfh__actions .pfh__tool:hover:not(:disabled),
-.pfh__actions .pfh__tool:focus-visible:not(:disabled) {
+.hero__actions--inline .hero__tool:hover:not(:disabled),
+.hero__actions--inline .hero__tool:focus-visible:not(:disabled) {
   background: color-mix(in srgb, var(--accent) 14%, var(--surface));
   border-color: color-mix(in srgb, var(--accent) 50%, transparent);
   color: color-mix(in srgb, var(--accent) 75%, var(--ink));
 }
 
-.pfh__main {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  grid-template-areas:
-    "mark text"
-    "ranks ranks";
-  gap: 0.85rem 0.95rem;
-  align-items: center;
-}
-
-.pfh__main--bare {
-  grid-template-areas: "mark text";
-}
-
-/* The identity mark: an initial on a tinted tile, sized like the event art. */
-.pfh__mark {
-  --pf-mark: 5.25rem;
-  grid-area: mark;
-  display: grid;
-  place-items: center;
-  width: var(--pf-mark);
-  height: var(--pf-mark);
-  border-radius: 28%;
-  background: color-mix(in srgb, var(--accent) 16%, var(--playfield));
-  border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
-  box-shadow: 0 3px 10px rgba(var(--ink-rgb), 0.07);
-  font-family: var(--font-display);
-  font-size: calc(var(--pf-mark) * 0.5);
-  font-weight: 800;
-  line-height: 1;
-  color: color-mix(in srgb, var(--accent) 70%, var(--ink));
-  user-select: none;
-}
-
-.pfh__mark--empty {
-  color: var(--muted);
-  border-style: dashed;
-}
-
-.pfh__mark .player-avatar {
-  --avatar-size: calc(var(--pf-mark) * 0.62);
-  border: 0;
-  background: transparent;
-}
-
-.pfh__text {
-  grid-area: text;
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
-  min-width: 0;
-}
-
-.pfh__kicker {
-  margin: 0;
-}
-
-.pfh__title {
-  margin: 0;
-  font-family: var(--font-display);
-  font-size: clamp(1.55rem, 5vw, 2.3rem);
-  font-weight: 800;
-  letter-spacing: -0.03em;
-  line-height: 1.02;
-  overflow-wrap: anywhere;
-}
-
-.pfh__sub {
-  margin: 0.05rem 0 0;
-  font-size: 0.84rem;
-  font-weight: 600;
-  line-height: 1.4;
-  color: var(--muted);
-}
-
-.pfh__sub-link {
-  font-weight: 750;
-  color: color-mix(in srgb, var(--accent) 70%, var(--ink));
-  text-decoration: none;
-}
-
-.pfh__sub-link:hover,
-.pfh__sub-link:focus-visible {
-  text-decoration: underline;
-  text-underline-offset: 0.15em;
-}
-
 /* The three ranks: every period on screen, and the one you tap scopes the
    board below. Filled when selected, outlined otherwise. */
 .pfh__ranks {
-  grid-area: ranks;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.5rem;
@@ -364,29 +158,6 @@
 }
 
 @media (min-width: 680px) {
-  .pfh {
-    padding: 0.9rem 1.35rem 1.25rem;
-  }
-
-  /* Mark, text, then the ranks on the right — the same shape as the event
-     hero, with the three tiles where the clock sits and the share icon in
-     the far corner. */
-  .pfh__main {
-    grid-template-columns: auto minmax(0, 1fr) auto;
-    grid-template-areas: "mark text ranks";
-    column-gap: 1.35rem;
-    align-items: center;
-  }
-
-  .pfh__main--bare {
-    grid-template-columns: auto minmax(0, 1fr);
-    grid-template-areas: "mark text";
-  }
-
-  .pfh__mark {
-    --pf-mark: 7.25rem;
-  }
-
   .pfh__ranks {
     gap: 0.55rem;
   }
@@ -1022,8 +793,6 @@ a.pff__name:focus-visible {
    Flat / Google
    ========================================================================== */
 
-html[data-theme="flat"] .pfh,
-html[data-theme="google"] .pfh,
 html[data-theme="flat"] .pfh__rank,
 html[data-theme="google"] .pfh__rank,
 html[data-theme="flat"] .pft__tile,

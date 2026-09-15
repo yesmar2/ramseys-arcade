@@ -298,7 +298,7 @@ function heroClock(detail: TournamentDetail): HeroClock {
         value: (
           <>
             <PodiumMedal kind="gold" size="md" />
-            <span className="evh__winner-name">{winner}</span>
+            <span className="hero-stat__name">{winner}</span>
           </>
         ),
       }
@@ -449,13 +449,13 @@ function EventHero({
     joined && !bracket ? (
       place != null ? (
         <>
-          <span className="evh__you-place">
+          <span className="hero__foot-lead">
             {detail.status === 'ended' && place === 1 ? 'You won' : `You’re ${ordinal(place)}`}
           </span>
-          {score ? <span className="evh__you-score">{score}</span> : null}
+          {score ? <span className="hero__foot-value">{score}</span> : null}
         </>
       ) : detail.status === 'ended' ? null : (
-        <span className="evh__you-note">You’re in — no score yet</span>
+        <span className="hero__foot-note">You’re in — no score yet</span>
       )
     ) : null
 
@@ -464,79 +464,79 @@ function EventHero({
   const needsTag = open && !joined && !displayName
 
   return (
-    <section className="evh" aria-label="Event">
-      <div className="evh__bar">
-        <a className="evh__back" href={tournamentsHref()}>
+    <section className="hero" aria-label="Event">
+      <div className="hero__bar">
+        <a className="hero__back" href={tournamentsHref()}>
           <BackChevronIcon size={18} />
           Events
         </a>
-        <div className="evh__tools">
+        <div className="hero__tools">
           <ShareBoardButton
             label={`You're invited: ${detail.title} on ${APP_NAME}. Don't ghost the lobby.`}
             url={shareUrl}
           />
           {copyInvite ? (
-            <button type="button" className="evh__tool" onClick={copyInvite}>
+            <button type="button" className="hero__tool" onClick={copyInvite}>
               {copiedInvite ? 'Copied!' : 'Copy invite'}
             </button>
           ) : null}
         </div>
       </div>
 
-      <div className="evh__main">
-        <EventArt games={detail.games} className="evh__art" />
+      <div className="hero__main">
+        <EventArt games={detail.games} className="hero__art" />
 
-        <div className="evh__text">
-          <EventKicker t={detail} joined={joined} className="evh__kicker" />
-          <h1 className="evh__title">{detail.title}</h1>
-          <p className="evh__sub">{sub}</p>
+        <div className="hero__text">
+          <EventKicker t={detail} joined={joined} className="hero__kicker" />
+          <h1 className="hero__title">{detail.title}</h1>
+          <p className="hero__sub">{sub}</p>
         </div>
 
         <div
-          className={`evh__clock${clock.live ? ' evh__clock--live' : ''}${
-            clock.winner ? ' evh__clock--winner' : ''
+          className={`hero__aside hero-stat${clock.live ? ' hero-stat--live' : ''}${
+            clock.winner ? ' hero-stat--winner' : ''
           }`}
         >
-          <span className="evh__clock-label">{clock.label}</span>
-          <span className="evh__clock-value">{clock.value}</span>
+          <span className="hero-stat__label">{clock.label}</span>
+          <span className="hero-stat__value">{clock.value}</span>
         </div>
 
         {action || wantsJoinGhost || needsTag || joinNote ? (
-          <div className="evh__actions">
+          <div className="hero__actions">
             {action?.kind === 'link' ? (
-              <a className="evh__cta" href={action.href}>
+              <a className="hero__cta" href={action.href}>
                 {action.label}
               </a>
             ) : action?.kind === 'join' ? (
               eventFull ? (
-                <span className="evh__state">This event is full</span>
+                <span className="hero__state">This event is full</span>
               ) : displayName ? (
-                <button type="button" className="evh__cta" disabled={busy} onClick={onJoin}>
+                <button type="button" className="hero__cta" disabled={busy} onClick={onJoin}>
                   {busy ? 'Joining…' : `Join as ${displayName}`}
                 </button>
               ) : null
             ) : action?.kind === 'text' ? (
-              <span className="evh__state">{action.label}</span>
+              <span className="hero__state">{action.label}</span>
             ) : null}
 
             {wantsJoinGhost ? (
-              <button type="button" className="evh__ghost" disabled={busy} onClick={onJoin}>
+              <button type="button" className="hero__ghost" disabled={busy} onClick={onJoin}>
                 {busy ? 'Joining…' : `Join as ${displayName}`}
               </button>
             ) : null}
 
             {action && action.kind !== 'join' && action.sub ? (
-              <span className="evh__hint">{action.sub}</span>
+              <span className="hero__hint">{action.sub}</span>
             ) : null}
             {needsTag ? (
-              <span className="evh__hint">Set your gamer tag in the header to join.</span>
+              <span className="hero__hint">Set your gamer tag in the header to join.</span>
             ) : null}
-            {joinNote ? <span className="evh__hint evh__hint--error">{joinNote}</span> : null}
+            {joinNote ? <span className="hero__hint hero__hint--error">{joinNote}</span> : null}
           </div>
         ) : null}
       </div>
 
-      {you ? <p className="evh__you">{you}</p> : null}
+      {you ? <p className="hero__foot">{you}</p> : null}
     </section>
   )
 }

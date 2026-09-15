@@ -62,7 +62,7 @@ function AddFriendButton({ name }: { name: string }) {
     <span className="pfh__friend">
       <button
         type="button"
-        className="pfh__tool"
+        className="hero__tool"
         disabled={status === 'busy' || status === 'sent'}
         onClick={() => void send()}
         aria-label={status === 'sent' ? `Friend request sent to ${name}` : `Add ${name} as a friend`}
@@ -189,7 +189,7 @@ export function RankPage({
         <>
           {gap.before}
           {gap.name ? (
-            <a className="pfh__sub-link" href={rankHref(gap.name, period)}>
+            <a className="hero__sub-link" href={rankHref(gap.name, period)}>
               {gap.name}
             </a>
           ) : null}
@@ -226,12 +226,12 @@ export function RankPage({
     <PageShell innerClassName="lb-page__inner lb-page__inner--events">
       <div className="ev pf">
         <section
-          className="pfh"
+          className="hero"
           aria-label={isSelf ? 'Your profile' : `${viewedName}'s profile`}
         >
           {!isSelf ? (
-            <div className="pfh__bar">
-              <a className="pfh__back" href={globalRankingsHref(period)}>
+            <div className="hero__bar">
+              <a className="hero__back" href={globalRankingsHref(period)}>
                 <BackChevronIcon size={18} />
                 Rankings
               </a>
@@ -239,8 +239,8 @@ export function RankPage({
           ) : null}
 
           {viewedName ? (
-            <div className="pfh__main">
-              <span className="pfh__mark" aria-hidden="true">
+            <div className="hero__main">
+              <span className="hero__mark" aria-hidden="true">
                 {AVATARS_ENABLED ? (
                   <PlayerAvatar avatarId={data.avatarId} name={viewedName} size="lg" />
                 ) : (
@@ -248,8 +248,8 @@ export function RankPage({
                 )}
               </span>
 
-              <div className="pfh__text">
-                <p className="ev-kicker pfh__kicker">
+              <div className="hero__text">
+                <p className="ev-kicker hero__kicker">
                   <span className="ev-kicker__bit">{isSelf ? 'Your profile' : 'Player'}</span>
                   {trophies && trophyCount > 0 ? (
                     <span className="ev-kicker__bit">
@@ -262,15 +262,15 @@ export function RankPage({
                     </span>
                   ) : null}
                 </p>
-                <h1 className="pfh__title">{viewedName}</h1>
-                <p className="pfh__sub">
+                <h1 className="hero__title">{viewedName}</h1>
+                <p className="hero__sub">
                   {standing}
                   {standing && games ? ' · ' : null}
                   {games}
                 </p>
                 {/* Actions live under the caption, where the event hero
                     keeps its Play button — not in a bar or a corner. */}
-                <div className="pfh__actions">
+                <div className="hero__actions hero__actions--inline">
                   {!isSelf && signedIn ? <AddFriendButton name={viewedName} /> : null}
                   <ShareBoardButton
                     label={shareLabel}
@@ -281,7 +281,7 @@ export function RankPage({
                 </div>
               </div>
 
-              <div className="pfh__ranks" role="tablist" aria-label="Period">
+              <div className="hero__aside pfh__ranks" role="tablist" aria-label="Period">
                 {VISIBLE_LEADERBOARD_PERIODS.map((p) => {
                   const row = ranks[p] ?? (p === period ? cachedSelf : null)
                   const active = p === period
@@ -317,16 +317,16 @@ export function RankPage({
               </div>
             </div>
           ) : (
-            <div className="pfh__main pfh__main--bare">
-              <span className="pfh__mark pfh__mark--empty" aria-hidden="true">
+            <div className="hero__main hero__main--bare">
+              <span className="hero__mark hero__mark--empty" aria-hidden="true">
                 ?
               </span>
-              <div className="pfh__text">
-                <p className="ev-kicker pfh__kicker">
+              <div className="hero__text">
+                <p className="ev-kicker hero__kicker">
                   <span className="ev-kicker__bit">Your profile</span>
                 </p>
-                <h1 className="pfh__title">No gamer tag yet</h1>
-                <p className="pfh__sub">
+                <h1 className="hero__title">No gamer tag yet</h1>
+                <p className="hero__sub">
                   Set a gamer tag in the header to earn a global rank and start collecting
                   trophies.
                 </p>
