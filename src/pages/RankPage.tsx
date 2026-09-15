@@ -1,5 +1,5 @@
 import { useEffect, useState, type CSSProperties } from 'react'
-import { BoardSkeleton, PeriodSwitcher } from '../components/BoardChrome'
+import { BoardSkeleton } from '../components/BoardChrome'
 import { GameDeviceBadge } from '../components/GameDeviceBadge'
 import { PageBackLink } from '../components/PageBackLink'
 import { PageShell } from '../components/PageShell'
@@ -22,6 +22,7 @@ import {
   fetchGlobalRank,
   PERIOD_LABELS,
   VISIBLE_LEADERBOARD_GAMES,
+  VISIBLE_LEADERBOARD_PERIODS,
   normalizePlayerName,
   type GlobalRankResult,
   type LeaderboardPeriod,
@@ -66,6 +67,8 @@ function AddFriendButton({ name }: { name: string }) {
   )
 }
 
+type PeriodRanks = Partial<Record<LeaderboardPeriod, GlobalRankResult>>
+
 const empty: GlobalRankResult = {
   rank: null,
   score: 0,
@@ -90,46 +93,36 @@ export function RankPage({
   const isSelf = !normalizePlayerName(player ?? '') || viewedName === myName
   const myRank = useGlobalRank()
   const myRankLoading = useGlobalRankLoading()
-  const [periodRank, setPeriodRank] = useState<GlobalRankResult | null>(null)
+  const [ranks, setRanks] = useState<PeriodRanks>({})
   const groupId = useActiveGroup()
-  const useCachedSelfRank = isSelf && period === globalPeriod
-  const [loading, setLoading] = useState(!useCachedSelfRank)
 
+  // Every period is on screen at once, so fetch the lot rather than the one
+  // the route happens to select.
   useEffect(() => {
-    if (useCachedSelfRank) {
-      setPeriodRank(null)
-      setLoading(false)
-      return
-    }
-    if (!viewedName) {
-      setPeriodRank(null)
-      setLoading(false)
-      return
-    }
+    setRanks({})
+    if (!viewedName) return
     let cancelled = false
-    setLoading(true)
-    void fetchGlobalRank(viewedName, period)
-      .then((data) => {
-        if (!cancelled) {
-          setPeriodRank(data)
-          setLoading(false)
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setPeriodRank(empty)
-          setLoading(false)
-        }
-      })
+    void Promise.all(
+      VISIBLE_LEADERBOARD_PERIODS.map((p) =>
+        fetchGlobalRank(viewedName, p)
+          .then((data) => [p, data] as const)
+          .catch(() => [p, empty] as const),
+      ),
+    ).then((pairs) => {
+      if (!cancelled) setRanks(Object.fromEntries(pairs) as PeriodRanks)
+    })
     return () => {
       cancelled = true
     }
-  }, [viewedName, useCachedSelfRank, period, globalPeriod, groupId])
+  }, [viewedName, groupId])
 
-  const data =
-    useCachedSelfRank ? myRank : (periodRank ?? (isSelf ? myRank : empty))
+  // The cached self-rank paints the common case immediately; the fetch above
+  // then fills in the other two tiles.
+  const cachedSelf = isSelf && period === globalPeriod && !myRankLoading ? myRank : null
+  const data = ranks[period] ?? cachedSelf ?? empty
   const { rank, score, byGame, nearby = [] } = data
-  const rankLoading = loading || (useCachedSelfRank && myRankLoading)
+  const rankLoading = !ranks[period] && !cachedSelf
+  const ranksLoading = VISIBLE_LEADERBOARD_PERIODS.some((p) => !ranks[p])
 
   const rankedCount = VISIBLE_LEADERBOARD_GAMES.filter((slug) => Boolean(byGame[slug])).length
   const totalGames = VISIBLE_LEADERBOARD_GAMES.length
@@ -185,50 +178,68 @@ export function RankPage({
 
       {viewedName ? (
         <section
+          className="rank-page__ranks"
+          aria-label={isSelf ? 'Your ranks' : `${viewedName}'s ranks`}
+        >
+          <div className="rank-page__tiles" role="tablist" aria-label="Period">
+            {VISIBLE_LEADERBOARD_PERIODS.map((p) => {
+              const row = ranks[p] ?? (p === period ? cachedSelf : null)
+              const active = p === period
+              const href = rankHref(isSelf ? undefined : viewedName, p)
+              return (
+                <a
+                  key={p}
+                  className={`rank-tile${active ? ' rank-tile--active' : ''}`}
+                  href={href}
+                  role="tab"
+                  aria-selected={active}
+                  onClick={(e) => {
+                    e.preventDefault()
+                    window.location.hash = href
+                  }}
+                >
+                  <span className="rank-tile__label">{PERIOD_LABELS[p]}</span>
+                  {row ? (
+                    <>
+                      <strong
+                        className={`rank-tile__value${row.rank == null ? ' rank-tile__value--none' : ''}`}
+                      >
+                        {row.rank != null ? `#${row.rank}` : '—'}
+                      </strong>
+                      <span className="rank-tile__points">
+                        {row.rank != null
+                          ? `${row.score} pt${row.score === 1 ? '' : 's'}`
+                          : 'Unranked'}
+                      </span>
+                    </>
+                  ) : (
+                    <span className="rank-tile__wait" aria-hidden="true" />
+                  )}
+                </a>
+              )
+            })}
+          </div>
+
+          {!ranksLoading && gap ? (
+            <p className="rank-page__gap">
+              {gap.before}
+              {gap.name ? (
+                <a className="lb-scorecard__gap-link" href={rankHref(gap.name, period)}>
+                  {gap.name}
+                </a>
+              ) : null}
+            </p>
+          ) : null}
+        </section>
+      ) : null}
+
+      {viewedName ? <TrophyCase name={viewedName} /> : null}
+
+      {viewedName ? (
+        <section
           className="rank-page__standings"
           aria-label={isSelf ? 'Your standings' : `${viewedName}'s standings`}
         >
-          <section className="rank-page__hero" aria-label={isSelf ? 'Your rank' : `${viewedName}'s rank`}>
-            <PeriodSwitcher
-              period={period}
-              hrefFor={(p) => rankHref(isSelf ? undefined : viewedName, p)}
-              onSelect={(p) => {
-                window.location.hash = rankHref(isSelf ? undefined : viewedName, p)
-              }}
-              label="Period"
-            />
-
-            {rankLoading ? (
-              <div className="rank-page__circle rank-page__circle--loading" aria-busy="true">
-                <span className="rank-page__circle-spinner" aria-hidden="true" />
-                <span className="visually-hidden">Loading rank</span>
-              </div>
-            ) : (
-              <div
-                className={`rank-page__circle${rank == null ? ' rank-page__circle--empty' : ''}`}
-                aria-label={rank != null ? `Global rank ${rank}` : 'No rank yet'}
-              >
-                <span className="rank-page__circle-label">Rank</span>
-                <strong
-                  className={`rank-page__circle-value${rank == null ? ' rank-page__circle-value--text' : ''}`}
-                >
-                  {rank != null ? `#${rank}` : 'No rank'}
-                </strong>
-              </div>
-            )}
-
-            {!rankLoading && gap ? (
-              <p className="rank-page__gap">
-                {gap.before}
-                {gap.name ? (
-                  <a className="lb-scorecard__gap-link" href={rankHref(gap.name, period)}>
-                    {gap.name}
-                  </a>
-                ) : null}
-              </p>
-            ) : null}
-          </section>
-
           <section className="rank-page__rank" aria-labelledby="rank-games-heading">
             {rankLoading ? (
               <BoardSkeleton rows={5} />
@@ -314,49 +325,43 @@ export function RankPage({
         </section>
       ) : null}
 
-      {viewedName ? (
-        <>
-          {isSelf ? (
-            <details className="rank-page__how game-lobby__how-panel">
-              <summary className="rank-page__how-summary">
-                <span className="rank-page__h" id="rank-how-heading">
-                  How it works
-                </span>
-              </summary>
-              <div className="rank-page__how-body">
-                <p className="how-to-play__copy">
-                  Your global rank uses <strong>{PERIOD_LABELS[period].toLowerCase()}</strong>{' '}
-                  placements on each game’s leaderboard. Place higher on a board to earn more
-                  points:
-                </p>
-                <ul className="game-lobby__scoring">
-                  <li>
-                    <span>1st place</span>
-                    <strong>100 pts</strong>
-                  </li>
-                  <li>
-                    <span>2nd place</span>
-                    <strong>99 pts</strong>
-                  </li>
-                  <li>
-                    <span>3rd place</span>
-                    <strong>98 pts</strong>
-                  </li>
-                  <li>
-                    <span>100th place</span>
-                    <strong>1 pt</strong>
-                  </li>
-                </ul>
-                <p className="how-to-play__copy">
-                  Points from every game are added together. Climb any board to
-                  move up — playing more games helps too.
-                </p>
-              </div>
-            </details>
-          ) : null}
-
-          <TrophyCase name={viewedName} />
-        </>
+      {isSelf && viewedName ? (
+        <details className="rank-page__how game-lobby__how-panel">
+          <summary className="rank-page__how-summary">
+            <span className="rank-page__h" id="rank-how-heading">
+              How it works
+            </span>
+          </summary>
+          <div className="rank-page__how-body">
+            <p className="how-to-play__copy">
+              Your global rank uses <strong>{PERIOD_LABELS[period].toLowerCase()}</strong>{' '}
+              placements on each game’s leaderboard. Place higher on a board to earn more
+              points:
+            </p>
+            <ul className="game-lobby__scoring">
+              <li>
+                <span>1st place</span>
+                <strong>100 pts</strong>
+              </li>
+              <li>
+                <span>2nd place</span>
+                <strong>99 pts</strong>
+              </li>
+              <li>
+                <span>3rd place</span>
+                <strong>98 pts</strong>
+              </li>
+              <li>
+                <span>100th place</span>
+                <strong>1 pt</strong>
+              </li>
+            </ul>
+            <p className="how-to-play__copy">
+              Points from every game are added together. Climb any board to
+              move up — playing more games helps too.
+            </p>
+          </div>
+        </details>
       ) : null}
     </PageShell>
   )

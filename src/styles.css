@@ -6789,6 +6789,114 @@ a.lb-share:visited:focus-visible {
   margin-top: 0.85rem;
 }
 
+.rank-page__ranks {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  align-items: center;
+}
+
+/* Every period on screen at once; the selected one drives the board below. */
+.rank-page__tiles {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.55rem;
+  width: 100%;
+}
+
+.rank-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.2rem;
+  min-height: 5.6rem;
+  padding: 0.75rem 0.5rem 0.7rem;
+  border-radius: var(--tile-radius);
+  border: 1px solid rgba(var(--ink-rgb), 0.08);
+  background: rgba(var(--surface-rgb), 0.55);
+  text-align: center;
+  text-decoration: none;
+  color: inherit;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease,
+    transform 0.15s ease;
+}
+
+.rank-tile:hover {
+  border-color: color-mix(in srgb, var(--accent) 35%, transparent);
+  transform: translateY(-1px);
+}
+
+.rank-tile--active {
+  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+  background:
+    radial-gradient(
+      circle at 50% 0%,
+      color-mix(in srgb, var(--accent) 18%, var(--surface)),
+      var(--surface) 70%
+    );
+  box-shadow: 0 6px 18px rgba(var(--ink-rgb), 0.07);
+}
+
+.rank-tile__label {
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.rank-tile--active .rank-tile__label {
+  color: color-mix(in srgb, var(--accent) 72%, var(--ink));
+}
+
+.rank-tile__value {
+  font-family: var(--font-display);
+  font-size: clamp(1.5rem, 6.5vw, 1.95rem);
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  color: var(--ink);
+}
+
+.rank-tile__value--none {
+  color: rgba(var(--ink-rgb), 0.35);
+}
+
+.rank-tile__points {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+/* Holds the tile's height while the three fetches land. */
+.rank-tile__wait {
+  width: 2.2rem;
+  height: 2.2rem;
+  border-radius: 0.6rem;
+  background: rgba(var(--ink-rgb), 0.06);
+}
+
+@media (min-width: 40rem) {
+  .rank-page__tiles {
+    gap: 0.75rem;
+  }
+
+  .rank-tile {
+    min-height: 6.4rem;
+  }
+
+  .rank-tile__label {
+    font-size: 0.7rem;
+  }
+
+  .rank-tile__value {
+    font-size: 2.15rem;
+  }
+}
+
 .rank-page__hero {
   display: flex;
   flex-direction: column;
@@ -7220,6 +7328,15 @@ a.lb-share:visited:focus-visible {
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
+}
+
+/* Narrow screens have no room for titles and chips side by side. */
+@media (max-width: 30rem) {
+  .trophy-case__head {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
 }
 
 .trophy-case__titles {
