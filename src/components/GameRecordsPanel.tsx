@@ -116,7 +116,7 @@ export function GameRecordsPanel({ game, accent, period }: GameRecordsPanelProps
                 {holder ? (
                   <a className="rbl__holder" href={rankHref(holder, period)} title={holder}>
                     <span className="rbl__name">{holder}</span>
-                    {isYou ? <span className="ev-row__you-tag">You</span> : null}
+                    {isYou ? <span className="lst__you">You</span> : null}
                   </a>
                 ) : (
                   <span className="rbl__holder rbl__holder--open">Open</span>

@@ -13,12 +13,12 @@ import {
   ordinal,
 } from '../components/EventCard'
 import { GameThumbArt } from '../components/GameThumbArt'
+import { ListRow } from '../components/ListRow'
 import { BackChevronIcon } from '../components/PageBackLink'
 import { InviteByTagForm } from '../components/InviteByTagForm'
 import { PageShell } from '../components/PageShell'
 import { PendingInvitesStrip } from '../components/PendingInvitesStrip'
-import { PlayerAvatar } from '../components/PlayerAvatar'
-import { PodiumMedal, medalKind } from '../components/PodiumMedal'
+import { PodiumMedal } from '../components/PodiumMedal'
 import { ShareBoardButton } from '../components/ShareBoardButton'
 import { getGame } from '../data/games'
 import { useAuth } from '../hooks/useAuth'
@@ -122,13 +122,13 @@ function GameBreakdownRow({
   }
 
   return (
-    <li className="ev-row__game">
+    <li className="lst__game">
       <GameThumbArt slug={game} accent={accent} />
-      <span className="ev-row__game-text">
-        <span className="ev-row__game-name">{label}</span>
-        <span className="ev-row__game-sub">{sub}</span>
+      <span className="lst__game-text">
+        <span className="lst__game-name">{label}</span>
+        <span className="lst__game-sub">{sub}</span>
       </span>
-      <span className={`ev-row__game-val${muted ? ' ev-row__game-val--muted' : ''}`}>
+      <span className={`lst__game-val${muted ? ' lst__game-val--muted' : ''}`}>
         {value}
       </span>
     </li>
@@ -599,66 +599,6 @@ function EventStandings({
   )
 }
 
-/** One standings row. Single- and multi-game events share this so the two
- *  boards look identical; multi-game rows add a per-game breakdown. */
-function StandingRow({
-  rank,
-  name,
-  avatarId,
-  score,
-  unit,
-  mine,
-  breakdown,
-}: {
-  rank: number
-  name: string
-  avatarId?: string
-  score: string
-  unit?: string
-  mine: boolean
-  breakdown?: ReactNode
-}) {
-  const medal = medalKind(rank)
-  const rowClass = `ev-row${rank <= 3 ? ` ev-row--${rank}` : ''}${mine ? ' ev-row--you' : ''}`
-
-  const cells = (
-    <>
-      <span className="ev-row__rank" aria-label={`Place ${rank}`}>
-        {medal ? <PodiumMedal kind={medal} size="sm" /> : rank}
-      </span>
-      <a className="ev-row__who" href={rankHref(name)} title={name}>
-        <PlayerAvatar avatarId={avatarId} name={name} size="sm" />
-        <span className="ev-row__name">{name}</span>
-        {mine ? <span className="ev-row__you-tag">You</span> : null}
-      </a>
-      <span className="ev-row__score">
-        {score}
-        {unit ? <span className="ev-row__score-unit">{unit}</span> : null}
-      </span>
-    </>
-  )
-
-  if (!breakdown) {
-    return (
-      <li className={rowClass} aria-current={mine ? 'true' : undefined}>
-        <div className="ev-row__main">{cells}</div>
-      </li>
-    )
-  }
-
-  return (
-    <li className={rowClass} aria-current={mine ? 'true' : undefined}>
-      <details className="ev-row__details">
-        <summary className="ev-row__main ev-row__main--expandable ev-row__toggle">
-          {cells}
-          <span className="ev-row__chev" aria-hidden="true" />
-        </summary>
-        {breakdown}
-      </details>
-    </li>
-  )
-}
-
 function StandingsList({
   detail,
   displayName,
@@ -685,14 +625,15 @@ function StandingsList({
 
   if (single) {
     return (
-      <ol className="ev-board">
+      <ol className="lst">
         {singleRows.map(({ row, score }, index) => {
           const name = normalizePlayerName(row.name)
           return (
-            <StandingRow
+            <ListRow
               key={row.playerId}
               rank={index + 1}
               name={name}
+              href={rankHref(name)}
               avatarId={row.avatarId}
               score={score.toLocaleString()}
               mine={Boolean(youName) && name === youName}
@@ -704,7 +645,7 @@ function StandingsList({
   }
 
   return (
-    <ol className="ev-board">
+    <ol className="lst">
       {detail.standings.map((row, index) => {
         const name = normalizePlayerName(row.name)
         const totalScore = detail.games.reduce(
@@ -712,16 +653,17 @@ function StandingsList({
           0,
         )
         return (
-          <StandingRow
+          <ListRow
             key={row.playerId}
             rank={index + 1}
             name={name}
             avatarId={row.avatarId}
+            href={rankHref(name)}
             score={usePoints ? String(row.totalPoints) : totalScore.toLocaleString()}
             unit={usePoints ? 'pts' : 'total'}
             mine={Boolean(youName) && name === youName}
             breakdown={
-              <ul className="ev-row__games">
+              <ul className="lst__games">
                 {detail.games.map((game) => (
                   <GameBreakdownRow
                     key={game}

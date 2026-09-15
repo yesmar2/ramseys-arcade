@@ -1,0 +1,398 @@
+/*
+ * Long lists: score boards, the rankings, event standings.
+ *
+ * A soft card per row rather than a painted band. Place as a number, the
+ * player's mark (initial or avatar) with a medal pinned to it for the top
+ * three, name and caption, score on the right. Colour comes from the page
+ * accent (`--event-accent`) for the marks and the "you" row, and from the
+ * three metals for the podium.
+ */
+
+/* ---------- player mark ---------- */
+
+.pmark {
+  --pmark: 2.4rem;
+  position: relative;
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: var(--pmark);
+  height: var(--pmark);
+  border-radius: 28%;
+  background: color-mix(in srgb, var(--event-accent, var(--accent)) 16%, var(--playfield));
+  border: 1px solid color-mix(in srgb, var(--event-accent, var(--accent)) 40%, transparent);
+  font-family: var(--font-display);
+  font-size: calc(var(--pmark) * 0.46);
+  font-weight: 800;
+  line-height: 1;
+  color: color-mix(in srgb, var(--event-accent, var(--accent)) 70%, var(--ink));
+  user-select: none;
+}
+
+.pmark .player-avatar {
+  --avatar-size: calc(var(--pmark) * 0.72);
+  border: 0;
+  background: transparent;
+}
+
+.pmark--empty {
+  background: transparent;
+  border-style: dashed;
+  border-color: rgba(var(--ink-rgb), 0.14);
+}
+
+.pmark__badge {
+  position: absolute;
+  right: -0.45rem;
+  bottom: -0.45rem;
+  display: inline-flex;
+  line-height: 0;
+  transform: scale(0.82);
+  transform-origin: bottom right;
+  filter: drop-shadow(0 1px 2px rgba(var(--ink-rgb), 0.25));
+}
+
+/* ---------- the list ---------- */
+
+.lst {
+  --lst-gold: #e0a91b;
+  --lst-silver: #8d99a8;
+  --lst-bronze: #c07c3e;
+  list-style: none;
+  margin: 0;
+  padding: 0.15rem var(--ev-pad, 1rem) var(--ev-pad, 1rem);
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.lst__row {
+  --tone: var(--event-accent, var(--accent));
+  border-radius: 1rem;
+  background: rgba(var(--surface-rgb), 0.62);
+  border: 1px solid rgba(var(--ink-rgb), 0.07);
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.lst__row:hover {
+  border-color: color-mix(in srgb, var(--tone) 40%, transparent);
+}
+
+.lst__row--gold {
+  --tone: var(--lst-gold);
+}
+
+.lst__row--silver {
+  --tone: var(--lst-silver);
+}
+
+.lst__row--bronze {
+  --tone: var(--lst-bronze);
+}
+
+.lst__row--gold,
+.lst__row--silver,
+.lst__row--bronze {
+  border-color: color-mix(in srgb, var(--tone) 34%, transparent);
+  background: color-mix(in srgb, var(--tone) 7%, rgba(var(--surface-rgb), 0.7));
+}
+
+/* The podium marks take the metal. */
+.lst__row--gold .lst__mark,
+.lst__row--silver .lst__mark,
+.lst__row--bronze .lst__mark {
+  border: 2px solid color-mix(in srgb, var(--tone) 70%, transparent);
+  background: color-mix(in srgb, var(--tone) 18%, var(--playfield));
+  color: color-mix(in srgb, var(--tone) 60%, var(--ink));
+}
+
+.lst__row--you {
+  border-color: color-mix(in srgb, var(--event-accent, var(--accent)) 60%, transparent);
+  background: color-mix(in srgb, var(--event-accent, var(--accent)) 11%, var(--surface));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--event-accent, var(--accent)) 26%, transparent);
+}
+
+.lst__row--pinned {
+  position: sticky;
+  top: 0.55rem;
+  z-index: 8;
+  background: color-mix(in srgb, var(--event-accent, var(--accent)) 11%, var(--surface));
+}
+
+.lst__row--empty {
+  border-style: dashed;
+  background: transparent;
+}
+
+.lst__main {
+  display: grid;
+  grid-template-columns: 1.7rem auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.5rem 0.85rem 0.5rem 0.6rem;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  list-style: none;
+}
+
+.lst__main--expandable {
+  grid-template-columns: 1.7rem auto minmax(0, 1fr) auto auto;
+  cursor: pointer;
+}
+
+.lst__main::-webkit-details-marker {
+  display: none;
+}
+
+.lst__rank {
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  color: var(--muted);
+}
+
+.lst__row--gold .lst__rank,
+.lst__row--silver .lst__rank,
+.lst__row--bronze .lst__rank {
+  color: color-mix(in srgb, var(--tone) 65%, var(--ink));
+}
+
+.lst__row--empty .lst__rank,
+.lst__row--empty .lst__score {
+  color: color-mix(in srgb, var(--muted) 65%, transparent);
+  font-weight: 700;
+}
+
+.lst__text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.08rem;
+  min-width: 0;
+}
+
+.lst__name {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 750;
+  line-height: 1.2;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.lst__name-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+a.lst__name:hover .lst__name-text,
+a.lst__name:focus-visible .lst__name-text {
+  color: color-mix(in srgb, var(--event-accent, var(--accent)) 70%, var(--ink));
+}
+
+.lst__name--open {
+  font-weight: 650;
+  color: color-mix(in srgb, var(--muted) 70%, transparent);
+}
+
+.lst__you {
+  flex: none;
+  padding: 0.08rem 0.42rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--event-accent, var(--accent)) 22%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--event-accent, var(--accent)) 40%, transparent);
+  font-family: var(--font-body);
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--event-accent, var(--accent)) 60%, var(--ink));
+}
+
+.lst__sub {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+  font-size: 0.72rem;
+  font-weight: 650;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.lst__sub .lb-row__device {
+  flex: none;
+  width: 0.95rem;
+  height: 0.95rem;
+}
+
+.lst__score {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.25rem;
+  flex: none;
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+.lst__row--gold .lst__score {
+  color: color-mix(in srgb, var(--lst-gold) 72%, var(--ink));
+}
+
+.lst__unit {
+  font-family: var(--font-body);
+  font-size: 0.64rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.lst__chev {
+  width: 0.45rem;
+  height: 0.45rem;
+  margin: -0.2rem 0.1rem 0;
+  border-right: 2px solid var(--muted);
+  border-bottom: 2px solid var(--muted);
+  transform: rotate(45deg);
+  transition: transform 0.15s ease;
+  opacity: 0.75;
+}
+
+.lst__details[open] .lst__chev {
+  transform: rotate(-135deg);
+}
+
+.lst__split {
+  list-style: none;
+  padding: 0.35rem 0.6rem 0;
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* ---------- per-game breakdown under an event standings row ---------- */
+
+.lst__games {
+  list-style: none;
+  margin: 0;
+  padding: 0.1rem 0.75rem 0.75rem calc(0.6rem + 1.7rem + 0.75rem);
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.lst__game {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.5rem 0.7rem;
+  border-radius: 0.75rem;
+  background: rgba(var(--surface-rgb), 0.88);
+  border: 1px solid rgba(var(--ink-rgb), 0.08);
+}
+
+.lst__game .inline-thumb {
+  --inline-thumb-size: 1.9rem;
+  width: var(--inline-thumb-size);
+  height: var(--inline-thumb-size);
+  border-radius: 0.5rem;
+  box-shadow: none;
+}
+
+.lst__game-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.08rem;
+  min-width: 0;
+}
+
+.lst__game-name {
+  font-size: 0.86rem;
+  font-weight: 750;
+  color: var(--ink);
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lst__game-sub {
+  font-size: 0.72rem;
+  font-weight: 650;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lst__game-val {
+  flex: none;
+  font-family: var(--font-display);
+  font-size: 0.98rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: color-mix(in srgb, var(--event-accent, var(--accent)) 72%, var(--ink));
+}
+
+.lst__game-val--muted {
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+@media (max-width: 480px) {
+  .lst__games {
+    padding-left: 0.6rem;
+  }
+
+  .lst__main {
+    gap: 0.6rem;
+    padding-inline: 0.55rem 0.7rem;
+  }
+
+  .lst__score {
+    font-size: 1.05rem;
+  }
+}
+
+/* The game hub keeps its own padded board around the list. */
+.lb-board > .lst {
+  padding: 0;
+}
+
+/* ---------- flat / google ---------- */
+
+html[data-theme="flat"] .lst__row,
+html[data-theme="google"] .lst__row,
+html[data-theme="flat"] .lst__game,
+html[data-theme="google"] .lst__game {
+  border-color: var(--flat-border) !important;
+  box-shadow: none !important;
+}
+
+html[data-theme="flat"] .lst__row--you,
+html[data-theme="google"] .lst__row--you {
+  background: color-mix(in srgb, var(--event-accent, var(--accent)) 14%, var(--surface));
+}

@@ -1,7 +1,6 @@
 import type { CSSProperties } from 'react'
 import { DeviceIcon } from './DeviceIcon'
-import { PlayerAvatar } from './PlayerAvatar'
-import { PodiumMedal, medalKind } from './PodiumMedal'
+import { ListRow, ListRowEmpty, ListSplit } from './ListRow'
 import { rankHref } from '../hooks/useHashRoute'
 import { defaultPeriod } from '../lib/defaultPeriod'
 import {
@@ -24,10 +23,7 @@ function formatDate(at: number) {
   }
 }
 
-/**
- * A score board, in the same rows an event's standings use: a medal or
- * place, who, the score, and when — with the top three on their bands.
- */
+/** A score board: one soft row per place, the way every long list reads. */
 export function LeaderboardList({
   entries,
   you,
@@ -51,93 +47,53 @@ export function LeaderboardList({
   const visible = entries.slice(0, shown)
   const youName = normalizePlayerName(playerName)
   const youOnVisible = Boolean(
-    you &&
-      visible.some(
-        (entry) => normalizePlayerName(entry.name ?? '') === youName,
-      ),
+    you && visible.some((entry) => normalizePlayerName(entry.name ?? '') === youName),
   )
   const youOffVisible = Boolean(you && !youOnVisible)
-  const style = { '--event-accent': accent } as CSSProperties
 
-  const renderRow = (
-    entry: LeaderboardEntry,
-    rank: number,
-    isYou: boolean,
-    opts?: { markYouId?: boolean; pinned?: boolean },
-  ) => {
-    const medal = medalKind(rank)
+  const row = (entry: LeaderboardEntry, rank: number, isYou: boolean, pinned = false) => {
     const name = normalizePlayerName(entry.name ?? '')
-    const cls = [
-      'ev-row',
-      rank <= 3 ? `ev-row--${rank}` : '',
-      isYou ? 'ev-row--you' : '',
-      opts?.pinned ? 'ev-row--pinned' : '',
-    ]
-      .filter(Boolean)
-      .join(' ')
     return (
-      <li
-        key={`${entry.id}${opts?.markYouId ? '-you' : ''}${opts?.pinned ? '-pin' : ''}`}
-        id={opts?.markYouId ? 'lb-you-row' : undefined}
-        className={cls}
-        aria-current={isYou ? 'true' : undefined}
-      >
-        <div className="ev-row__main ev-row__main--meta">
-          <span className="ev-row__rank" aria-label={`Place ${rank}`}>
-            {medal ? <PodiumMedal kind={medal} period={period} size="sm" /> : rank}
-          </span>
-          <a className="ev-row__who" href={rankHref(name, period)} title={name}>
-            <PlayerAvatar avatarId={entry.avatarId} name={name} size="sm" />
+      <ListRow
+        key={`${entry.id}${pinned ? '-pin' : ''}`}
+        id={isYou && (pinned || !youOffVisible) ? 'lb-you-row' : undefined}
+        rank={rank}
+        name={name}
+        href={rankHref(name, period)}
+        avatarId={entry.avatarId}
+        sub={
+          <>
             <DeviceIcon device={entry.device} />
-            <span className="ev-row__name">{name}</span>
-            {isYou ? <span className="ev-row__you-tag">You</span> : null}
-          </a>
-          <span className="ev-row__score">{formatScore(entry.score)}</span>
-          <span className="ev-row__meta">{formatDate(entry.at)}</span>
-        </div>
-      </li>
+            {formatDate(entry.at)}
+          </>
+        }
+        score={formatScore(entry.score)}
+        mine={isYou}
+        pinned={pinned}
+        period={period}
+      />
     )
   }
 
-  const renderEmptyRow = (rank: number) => (
-    <li key={`empty-${rank}`} className="ev-row ev-row--empty" aria-hidden="true">
-      <div className="ev-row__main ev-row__main--meta">
-        <span className="ev-row__rank">{rank}</span>
-        <span className="ev-row__who">
-          <span className="ev-row__name ev-row__name--open">Open</span>
-        </span>
-        <span className="ev-row__score">—</span>
-        <span className="ev-row__meta" />
-      </div>
-    </li>
-  )
-
   const padSlots = entries.length >= 1 && visible.length < TOP_SLOT_COUNT
-  const slotCount = fillEmptySlots
-    ? shown
-    : padSlots
-      ? TOP_SLOT_COUNT
-      : visible.length
+  const slotCount = fillEmptySlots ? shown : padSlots ? TOP_SLOT_COUNT : visible.length
 
   return (
-    <ol className="ev-board" style={style}>
+    <ol className="lst" style={{ '--event-accent': accent } as CSSProperties}>
       {youOffVisible && you ? (
         <>
-          {renderRow(you, you.rank, true, { markYouId: true, pinned: true })}
-          {slotCount > 0 ? <li className="ev-split">Top {TOP_SLOT_COUNT}</li> : null}
+          {row(you, you.rank, true, true)}
+          {slotCount > 0 ? <ListSplit>Top {TOP_SLOT_COUNT}</ListSplit> : null}
         </>
       ) : null}
       {Array.from({ length: slotCount }, (_, index) => {
         const entry = visible[index]
         const rank = index + 1
         if (entry) {
-          const isYou =
-            Boolean(youName) && normalizePlayerName(entry.name ?? '') === youName
-          return renderRow(entry, rank, isYou, {
-            markYouId: isYou && !youOffVisible,
-          })
+          const isYou = Boolean(youName) && normalizePlayerName(entry.name ?? '') === youName
+          return row(entry, rank, isYou)
         }
-        return renderEmptyRow(rank)
+        return <ListRowEmpty key={`empty-${rank}`} rank={rank} />
       })}
     </ol>
   )
