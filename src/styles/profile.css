@@ -1,0 +1,775 @@
+/*
+ * Profile page (rank, trophies, by-game standings).
+ *
+ * Built on the events vocabulary: the page root carries the `ev` class for
+ * its tokens and neutral `.ev-card` panels, and the hero mirrors the event
+ * page's — tinted from the site accent, a mark on the left, the three period
+ * ranks as tiles that also switch the board below.
+ *
+ * `.pfh` hero · `.pft` trophy shelf · `.pfg` by-game board.
+ */
+
+.pf {
+  --event-accent: var(--accent);
+  gap: 1rem;
+}
+
+/* ==========================================================================
+   Hero
+   ========================================================================== */
+
+.pfh {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  padding: 0.85rem 1.1rem 1.1rem;
+  border-radius: 1.4rem;
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--accent) 22%, var(--surface)) 0%,
+    color-mix(in srgb, var(--accent) 8%, var(--surface)) 55%,
+    color-mix(in srgb, var(--accent) 4%, var(--surface)) 100%
+  );
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+  box-shadow: var(--shadow-soft);
+  overflow: hidden;
+}
+
+.pfh::before,
+.pfh::after {
+  content: "";
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: -1;
+}
+
+.pfh::before {
+  top: -30%;
+  left: -12%;
+  width: 46%;
+  aspect-ratio: 1;
+  background: radial-gradient(
+    closest-side,
+    color-mix(in srgb, var(--accent) 34%, transparent),
+    transparent
+  );
+}
+
+.pfh::after {
+  right: -18%;
+  bottom: -55%;
+  width: 55%;
+  aspect-ratio: 1;
+  background: radial-gradient(
+    closest-side,
+    color-mix(in srgb, var(--accent) 16%, transparent),
+    transparent
+  );
+}
+
+.pfh__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  min-height: 2.35rem;
+}
+
+.pfh__back {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.1rem;
+  margin-left: -0.45rem;
+  padding: 0.3rem 0.65rem 0.3rem 0.3rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 750;
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.pfh__back:hover,
+.pfh__back:focus-visible {
+  color: var(--ink);
+  background: rgba(var(--ink-rgb), 0.06);
+  outline: none;
+}
+
+.pfh__tools {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.pfh__tool {
+  min-height: 2.35rem;
+  padding: 0.35rem 0.85rem;
+  border: 1px solid rgba(var(--ink-rgb), 0.1);
+  border-radius: 999px;
+  background: rgba(var(--surface-rgb), 0.85);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 750;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.pfh__tool:hover:not(:disabled),
+.pfh__tool:focus-visible:not(:disabled) {
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+  color: var(--accent);
+  outline: none;
+}
+
+.pfh__tool:disabled {
+  opacity: 0.7;
+  cursor: default;
+}
+
+.pfh__friend {
+  position: relative;
+  display: inline-flex;
+}
+
+.pfh__friend-error {
+  position: absolute;
+  top: calc(100% + 0.3rem);
+  right: 0;
+  white-space: nowrap;
+  font-size: 0.72rem;
+  font-weight: 650;
+  color: #b42318;
+}
+
+.pfh__main {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-areas:
+    "mark text"
+    "ranks ranks";
+  gap: 0.85rem 0.95rem;
+  align-items: center;
+}
+
+.pfh__main--bare {
+  grid-template-areas: "mark text";
+}
+
+/* The identity mark: an initial on a tinted tile, sized like the event art. */
+.pfh__mark {
+  --pf-mark: 5.25rem;
+  grid-area: mark;
+  display: grid;
+  place-items: center;
+  width: var(--pf-mark);
+  height: var(--pf-mark);
+  border-radius: 28%;
+  background: color-mix(in srgb, var(--accent) 16%, var(--playfield));
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
+  box-shadow: 0 3px 10px rgba(var(--ink-rgb), 0.07);
+  font-family: var(--font-display);
+  font-size: calc(var(--pf-mark) * 0.5);
+  font-weight: 800;
+  line-height: 1;
+  color: color-mix(in srgb, var(--accent) 70%, var(--ink));
+  user-select: none;
+}
+
+.pfh__mark--empty {
+  color: var(--muted);
+  border-style: dashed;
+}
+
+.pfh__mark .player-avatar {
+  --avatar-size: calc(var(--pf-mark) * 0.62);
+  border: 0;
+  background: transparent;
+}
+
+.pfh__text {
+  grid-area: text;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  min-width: 0;
+}
+
+.pfh__kicker {
+  margin: 0;
+}
+
+.pfh__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(1.55rem, 5vw, 2.3rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.02;
+  overflow-wrap: anywhere;
+}
+
+.pfh__sub {
+  margin: 0.05rem 0 0;
+  font-size: 0.84rem;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--muted);
+}
+
+.pfh__sub-link {
+  font-weight: 750;
+  color: color-mix(in srgb, var(--accent) 70%, var(--ink));
+  text-decoration: none;
+}
+
+.pfh__sub-link:hover,
+.pfh__sub-link:focus-visible {
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
+/* The three ranks: every period on screen, and the one you tap scopes the
+   board below. Filled when selected, outlined otherwise. */
+.pfh__ranks {
+  grid-area: ranks;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.pfh__rank {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.12rem;
+  min-width: 0;
+  padding: 0.65rem 0.4rem 0.6rem;
+  border-radius: 1rem;
+  background: rgba(var(--surface-rgb), 0.55);
+  border: 1px solid color-mix(in srgb, var(--accent) 22%, transparent);
+  color: inherit;
+  text-align: center;
+  text-decoration: none;
+  transition: border-color 0.15s ease, background-color 0.15s ease, transform 0.12s ease;
+}
+
+.pfh__rank:hover,
+.pfh__rank:focus-visible {
+  border-color: color-mix(in srgb, var(--accent) 50%, transparent);
+  transform: translateY(-1px);
+  outline: none;
+}
+
+.pfh__rank--on {
+  background: var(--accent);
+  border-color: transparent;
+  color: #fff;
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--accent) 30%, transparent);
+}
+
+.pfh__rank--on:hover,
+.pfh__rank--on:focus-visible {
+  border-color: transparent;
+}
+
+.pfh__rank-label {
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  line-height: 1.2;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.pfh__rank-value {
+  font-family: var(--font-display);
+  font-size: clamp(1.45rem, 5vw, 2rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+.pfh__rank--none .pfh__rank-value {
+  color: var(--muted);
+}
+
+.pfh__rank-sub {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--muted);
+  white-space: nowrap;
+  min-height: 1em;
+}
+
+.pfh__rank--on .pfh__rank-label,
+.pfh__rank--on .pfh__rank-sub {
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.pfh__rank--on .pfh__rank-value {
+  color: #fff;
+}
+
+@media (min-width: 680px) {
+  .pfh {
+    padding: 0.9rem 1.35rem 1.25rem;
+  }
+
+  /* Mark, text, then the ranks on the right — the same shape as the event
+     hero, with the three tiles where the clock sits. */
+  .pfh__main {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas: "mark text ranks";
+    column-gap: 1.35rem;
+    align-items: center;
+  }
+
+  .pfh__main--bare {
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-areas: "mark text";
+  }
+
+  .pfh__mark {
+    --pf-mark: 7.25rem;
+  }
+
+  .pfh__ranks {
+    gap: 0.55rem;
+  }
+
+  .pfh__rank {
+    min-width: 7.1rem;
+    padding: 0.75rem 0.6rem 0.7rem;
+  }
+}
+
+/* ==========================================================================
+   Trophies
+   ========================================================================== */
+
+.pft__count {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 0.5rem;
+  padding: 0.08rem 0.5rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  color: color-mix(in srgb, var(--accent) 75%, var(--ink));
+  font-family: var(--font-body);
+  font-size: 0.72rem;
+  font-weight: 800;
+  vertical-align: 0.1em;
+}
+
+.pft__grid {
+  list-style: none;
+  margin: 0;
+  padding: 0.15rem var(--ev-pad) var(--ev-pad);
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(7.4rem, 1fr));
+  gap: 0.55rem;
+}
+
+/* Tone is the metal for a podium, or the board's ribbon colour. */
+.pft__tile {
+  --pft-tone: var(--muted);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.18rem;
+  min-width: 0;
+  padding: 0.85rem 0.5rem 0.7rem;
+  border-radius: 0.95rem;
+  background: color-mix(in srgb, var(--pft-tone) 12%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--pft-tone) 34%, transparent);
+  text-align: center;
+  box-sizing: border-box;
+}
+
+.pft__tile--gold {
+  --pft-tone: #e0a91b;
+}
+
+.pft__tile--silver {
+  --pft-tone: #8d99a8;
+}
+
+.pft__tile--bronze {
+  --pft-tone: #c07c3e;
+}
+
+.pft__tile--weekly {
+  --pft-tone: #6b8cff;
+}
+
+.pft__tile--monthly {
+  --pft-tone: #b078e8;
+}
+
+.pft__kind {
+  position: absolute;
+  top: 0.45rem;
+  left: 0.55rem;
+  font-size: 0.56rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--pft-tone) 70%, var(--ink));
+}
+
+.pft__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 2.9rem;
+  margin-top: 0.3rem;
+}
+
+.pft__title {
+  max-width: 100%;
+  font-family: var(--font-display);
+  font-size: 0.82rem;
+  font-weight: 750;
+  line-height: 1.2;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+
+.pft__when {
+  max-width: 100%;
+  font-size: 0.68rem;
+  font-weight: 650;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pft__more {
+  display: flex;
+  justify-content: center;
+  padding: 0 var(--ev-pad) var(--ev-pad);
+}
+
+.pft__more-btn {
+  min-height: 2.3rem;
+  padding: 0 1.1rem;
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
+  border-radius: 999px;
+  background: rgba(var(--surface-rgb), 0.5);
+  color: color-mix(in srgb, var(--accent) 65%, var(--ink));
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.pft__more-btn:hover,
+.pft__more-btn:focus-visible {
+  background: color-mix(in srgb, var(--accent) 14%, var(--surface));
+  outline: none;
+}
+
+.pft__empty {
+  padding: 0.1rem var(--ev-pad) var(--ev-pad);
+}
+
+.pft__empty-title {
+  margin: 0;
+  font-weight: 750;
+}
+
+.pft__empty-copy {
+  margin: 0.3rem 0 0.85rem;
+  font-size: 0.86rem;
+  font-weight: 600;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.pft__legend {
+  list-style: none;
+  margin: 0;
+  padding: 0.75rem 0 0;
+  border-top: 1px solid var(--ev-line);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem 1.2rem;
+}
+
+.pft__legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.78rem;
+  font-weight: 650;
+  color: var(--muted);
+}
+
+/* Loading shelf. */
+.pft__tile--skel {
+  min-height: 7.4rem;
+  justify-content: center;
+  gap: 0.45rem;
+  border-color: var(--ev-line);
+  background: rgba(var(--surface-rgb), 0.5);
+}
+
+.pft__skel-icon,
+.pft__skel-line {
+  border-radius: 0.4rem;
+  background: linear-gradient(
+    90deg,
+    rgba(var(--ink-rgb), 0.06) 0%,
+    rgba(var(--ink-rgb), 0.1) 50%,
+    rgba(var(--ink-rgb), 0.06) 100%
+  );
+  background-size: 200% 100%;
+  animation: pft-shimmer 1.2s ease-in-out infinite;
+}
+
+.pft__skel-icon {
+  width: 2.2rem;
+  height: 2.6rem;
+}
+
+.pft__skel-line {
+  width: 70%;
+  height: 0.55rem;
+}
+
+.pft__skel-line--short {
+  width: 45%;
+}
+
+@keyframes pft-shimmer {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: -100% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pft__skel-icon,
+  .pft__skel-line {
+    animation: none;
+  }
+}
+
+/* ==========================================================================
+   By game
+   ========================================================================== */
+
+.pfg__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.pfg__row {
+  --row-tint: transparent;
+  border-top: 1px solid var(--ev-line);
+  background: var(--row-tint);
+}
+
+.pfg__row:first-child {
+  border-top: 0;
+}
+
+.pfg__row--1 {
+  --row-tint: color-mix(in srgb, var(--ev-gold) 12%, transparent);
+}
+
+.pfg__row--2 {
+  --row-tint: color-mix(in srgb, var(--ev-silver) 11%, transparent);
+}
+
+.pfg__row--3 {
+  --row-tint: color-mix(in srgb, var(--ev-bronze) 11%, transparent);
+}
+
+.pfg__row--dim {
+  opacity: 0.75;
+}
+
+.pfg__link {
+  display: grid;
+  grid-template-columns: 2.1rem auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.5rem var(--ev-pad);
+  color: inherit;
+  text-decoration: none;
+}
+
+.pfg__link:hover,
+.pfg__link:focus-visible {
+  background: color-mix(in srgb, var(--row-accent, var(--accent)) 8%, transparent);
+  outline: none;
+}
+
+.pfg__place {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.1rem;
+  font-family: var(--font-display);
+  font-size: 0.92rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+.pfg__row--empty .pfg__place {
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.pfg__art {
+  flex: none;
+  line-height: 0;
+}
+
+.pfg__art .inline-thumb {
+  --inline-thumb-size: 2.2rem;
+  width: var(--inline-thumb-size);
+  height: var(--inline-thumb-size);
+}
+
+.pfg__row--empty .pfg__art {
+  opacity: 0.6;
+}
+
+.pfg__text {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.pfg__name {
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pfg__row--empty .pfg__name {
+  font-weight: 650;
+  color: var(--muted);
+}
+
+.pfg__link:hover .pfg__name,
+.pfg__link:focus-visible .pfg__name {
+  color: color-mix(in srgb, var(--row-accent, var(--accent)) 70%, var(--ink));
+}
+
+.pfg__pts {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.25rem;
+  flex: none;
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.pfg__row--1 .pfg__pts {
+  color: color-mix(in srgb, var(--ev-gold) 72%, var(--ink));
+}
+
+.pfg__pts-unit {
+  font-family: var(--font-body);
+  font-size: 0.64rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.pfg__go {
+  flex: none;
+  padding: 0.3rem 0.85rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--row-accent, var(--accent)) 16%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--row-accent, var(--accent)) 30%, transparent);
+  color: color-mix(in srgb, var(--row-accent, var(--accent)) 65%, var(--ink));
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.pfg__link:hover .pfg__go {
+  background: color-mix(in srgb, var(--row-accent, var(--accent)) 28%, var(--surface));
+}
+
+.pfg__total {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0.7rem var(--ev-pad);
+  border-top: 1px solid var(--ev-line);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.pfg__total strong {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: none;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+.pfg__skel {
+  padding: 0.3rem var(--ev-pad) var(--ev-pad);
+}
+
+/* ==========================================================================
+   Flat / Google
+   ========================================================================== */
+
+html[data-theme="flat"] .pfh,
+html[data-theme="google"] .pfh,
+html[data-theme="flat"] .pfh__rank,
+html[data-theme="google"] .pfh__rank,
+html[data-theme="flat"] .pft__tile,
+html[data-theme="google"] .pft__tile {
+  border-color: var(--flat-border) !important;
+  box-shadow: none !important;
+}
+
+html[data-theme="flat"] .pfh__rank:hover,
+html[data-theme="google"] .pfh__rank:hover {
+  transform: none;
+}
+
+html[data-theme="flat"] .pfh__rank:focus-visible,
+html[data-theme="google"] .pfh__rank:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent) 55%, transparent);
+  outline-offset: 2px;
+}

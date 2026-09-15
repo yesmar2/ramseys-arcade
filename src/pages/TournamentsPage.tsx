@@ -13,6 +13,7 @@ import {
   ordinal,
 } from '../components/EventCard'
 import { GameThumbArt } from '../components/GameThumbArt'
+import { BackChevronIcon } from '../components/PageBackLink'
 import { InviteByTagForm } from '../components/InviteByTagForm'
 import { PageShell } from '../components/PageShell'
 import { PendingInvitesStrip } from '../components/PendingInvitesStrip'
@@ -399,21 +400,6 @@ function heroAction(
   }
 }
 
-function BackChevron() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2.4"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M14.5 5.5L8 12l6.5 6.5"
-      />
-    </svg>
-  )
-}
-
 function EventHero({
   detail,
   joined,
@@ -481,7 +467,7 @@ function EventHero({
     <section className="evh" aria-label="Event">
       <div className="evh__bar">
         <a className="evh__back" href={tournamentsHref()}>
-          <BackChevron />
+          <BackChevronIcon size={18} />
           Events
         </a>
         <div className="evh__tools">
@@ -970,7 +956,7 @@ function PlainHeader({ title }: { title: string }) {
     <header className="lb-page__header lb-page__header--compact lb-game-board__head">
       <div className="lb-page__heading-row">
         <a className="page-back" href={tournamentsHref()} aria-label="Back to Events" title="Back to Events">
-          <BackChevron />
+          <BackChevronIcon size={18} />
         </a>
         <h1 className="lb-page__title">{title}</h1>
         <span className="lb-page__heading-slot" aria-hidden="true" />
