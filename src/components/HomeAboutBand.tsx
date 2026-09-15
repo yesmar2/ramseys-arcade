@@ -2,20 +2,26 @@ import { aboutHref } from '../hooks/useHashRoute'
 import { APP_NAME } from '../lib/brand'
 
 /**
- * What survives of the old About wall on the home page.
+ * Quiet closer at the bottom of home.
  *
- * The full version — nine sections of it — lives on its own route now, where
- * length costs nothing. Here one line carries the promise.
+ * The long About page lives on its own route; here a short promise and a
+ * clear link are enough to send curious players through.
  */
 export function HomeAboutBand() {
   return (
     <section className="home-band" aria-label={`About ${APP_NAME}`}>
-      <p className="home-band__lead">
-        <strong>No ads, no install, no account needed.</strong> Original games that load fast
-        and stay out of your way.
-      </p>
+      <div className="home-band__copy">
+        <p className="home-band__eyebrow">About the arcade</p>
+        <p className="home-band__title">No ads. No install. No account needed.</p>
+        <p className="home-band__lead">
+          Original games that load fast and stay out of your way.
+        </p>
+      </div>
       <a className="home-band__link" href={aboutHref()}>
-        More about {APP_NAME} →
+        More about {APP_NAME}
+        <span className="home-band__arrow" aria-hidden="true">
+          →
+        </span>
       </a>
     </section>
   )

@@ -1,6 +1,4 @@
-import { aboutHref } from '../hooks/useHashRoute'
 import { usePlayerName } from '../hooks/usePlayerName'
-import { APP_NAME } from '../lib/brand'
 import { normalizePlayerName } from '../lib/leaderboard'
 
 /**
@@ -9,7 +7,7 @@ import { normalizePlayerName } from '../lib/leaderboard'
  * This used to be the other half of the standing block: someone who had played
  * got their ranking, anyone else got this. The ranking has come off the home
  * page, but the pitch is the only thing that tells a stranger what the site is,
- * so it stays on its own.
+ * so it stays on its own. The About link lives in HomeAboutBand below.
  */
 export function HomeIntro() {
   const cleaned = normalizePlayerName(usePlayerName())
@@ -23,9 +21,6 @@ export function HomeIntro() {
       <p className="home-intro__lead">
         Original games that load instantly on phone, tablet, and desktop. No ads, no install,
         no account needed — sign in only if you want your name to follow you between devices.
-      </p>
-      <p className="home-intro__more">
-        <a href={aboutHref()}>More about {APP_NAME} →</a>
       </p>
     </section>
   )
