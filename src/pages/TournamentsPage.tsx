@@ -297,8 +297,8 @@ function heroClock(detail: TournamentDetail): HeroClock {
         winner: true,
         value: (
           <>
-              <PodiumMedal kind="gold" size="md" />
-              <span className="hero-stat__name">{winner}</span>
+            <PodiumMedal kind="gold" size="md" />
+            <span className="hero-stat__name">{winner}</span>
           </>
         ),
       }
@@ -891,34 +891,34 @@ export function TournamentsPage() {
         ) : null}
         {!loading && !error && items.length > 0 ? (
           <>
-          {open.length > 0 ? (
-            <section className="evl" aria-label={anyLive ? 'Live now' : 'Open now'}>
-              <h2 className="evl__title">
-                {anyLive ? <span className="ev-live-dot" aria-hidden="true" /> : null}
-                {anyLive ? 'Live now' : 'Open now'}
-              </h2>
-              <ul className="evl__grid">
-                {open.map((t) => (
-                  <li key={t.id}>
-                    <EventLiveCard t={t} href={linkFor(t)} joined={isJoined(t)} />
-                  </li>
-                ))}
-              </ul>
-            </section>
-          ) : null}
-
-          {ended.length > 0 ? (
-            <section className="evl" aria-label="Results">
-              <h2 className="evl__title">Results</h2>
-              <ul className="evl__results">
-                {ended.map((t) => (
-                  <li key={t.id}>
-                    <EventResultRow t={t} href={linkFor(t)} />
-                  </li>
-                ))}
-              </ul>
-            </section>
-          ) : null}
+            {open.length > 0 ? (
+              <section className="evl" aria-label={anyLive ? 'Live now' : 'Open now'}>
+                <h2 className="evl__title">
+                  {anyLive ? <span className="ev-live-dot" aria-hidden="true" /> : null}
+                  {anyLive ? 'Live now' : 'Open now'}
+                </h2>
+                <ul className="evl__grid">
+                  {open.map((t) => (
+                    <li key={t.id}>
+                      <EventLiveCard t={t} href={linkFor(t)} joined={isJoined(t)} />
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ) : null}
+  
+            {ended.length > 0 ? (
+              <section className="evl" aria-label="Results">
+                <h2 className="evl__title">Results</h2>
+                <ul className="evl__results">
+                  {ended.map((t) => (
+                    <li key={t.id}>
+                      <EventResultRow t={t} href={linkFor(t)} />
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ) : null}
           </>
         ) : null}
       </div>
