@@ -134,9 +134,17 @@ export function GameLeaderboardPage({
 
         <section
           key={`${gameSlug}-${period}`}
-          className="lb-board lb-board--fade"
+          className="ev-card lb-board--fade"
           aria-label={`${game.name} leaderboard`}
         >
+          <div className="ev-card__head">
+            <h2 className="ev-card__title">Top scores</h2>
+            {!loading && !error && entries.length > 0 ? (
+              <p className="ev-card__note">
+                {PERIOD_LABELS[period]} · {entries.length} {entries.length === 1 ? 'player' : 'players'}
+              </p>
+            ) : null}
+          </div>
           {loading ? (
             <BoardSkeleton rows={BOARD_ROWS} />
           ) : error ? (

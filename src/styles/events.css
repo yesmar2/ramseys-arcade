@@ -1821,3 +1821,108 @@ html[data-theme="google"] .evc__go {
 .inv__msg--error {
   color: #b42318;
 }
+
+/* ==========================================================================
+   Boards share the standings rows
+   ========================================================================== */
+
+/* The rows carry their own tokens, so a board outside an `.ev` page — the
+   game hub aside, say — still gets its bands and hairlines. */
+.ev-board {
+  --ev-gold: #e0a91b;
+  --ev-silver: #8d99a8;
+  --ev-bronze: #c07c3e;
+  --ev-line: rgba(var(--ink-rgb), 0.09);
+  --ev-radius: 1.1rem;
+  --ev-pad: 0.85rem;
+}
+
+@media (min-width: 600px) {
+  .ev-board {
+    --ev-pad: 1rem;
+  }
+}
+
+/* A fourth cell for the date or the game count. */
+.ev-row__main--meta {
+  grid-template-columns: 2.1rem minmax(0, 1fr) auto auto;
+}
+
+.ev-row__meta {
+  min-width: 3.4rem;
+  font-size: 0.72rem;
+  font-weight: 650;
+  color: var(--muted);
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.ev-row__who .lb-row__device {
+  flex: none;
+}
+
+/* An open slot on a board that is not full yet. */
+.ev-row--empty .ev-row__rank,
+.ev-row--empty .ev-row__score {
+  color: color-mix(in srgb, var(--muted) 70%, transparent);
+  font-weight: 700;
+}
+
+.ev-row__name--open {
+  font-weight: 650;
+  color: color-mix(in srgb, var(--muted) 70%, transparent);
+}
+
+/* Your row pinned above the top ten when you are further down. */
+.ev-row--pinned {
+  position: sticky;
+  top: 0.55rem;
+  z-index: 8;
+  background: var(--surface);
+}
+
+.ev-split {
+  list-style: none;
+  margin: 0;
+  padding: 0.5rem var(--ev-pad) 0.2rem;
+  border-top: 1px solid var(--ev-line);
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* Chrome that sits inside a card now needs the card's padding. */
+.ev-card > .lb-list--skeleton {
+  margin: 0;
+  padding: 0.4rem var(--ev-pad) var(--ev-pad);
+}
+
+.ev-card > .lb-empty-state {
+  padding: 0.6rem var(--ev-pad) 1.4rem;
+}
+
+.ev-card > .lb-more {
+  width: auto;
+  margin: 0;
+  padding: 0.8rem var(--ev-pad);
+  border-top: 1px solid var(--ev-line);
+  border-radius: 0;
+}
+
+.ev-card > .lb-device-note--footer {
+  margin: 0;
+  padding: 0.6rem var(--ev-pad) 0.9rem;
+}
+
+/* The game hub keeps its padded board; pull the rows out to its edges. */
+.lb-board > .ev-board {
+  margin: -0.3rem -1.1rem -1.1rem;
+}
+
+.lb-board > .ev-board > .ev-row:last-child {
+  border-bottom-left-radius: calc(var(--tile-radius) - 1px);
+  border-bottom-right-radius: calc(var(--tile-radius) - 1px);
+}

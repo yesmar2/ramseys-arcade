@@ -1,10 +1,7 @@
 import { useEffect, useState } from 'react'
-import {
-  BoardEmpty,
-  BoardSkeleton,
-  PeriodSwitcher,
-} from '../components/BoardChrome'
+import { BoardEmpty, BoardSkeleton, PeriodSwitcher } from '../components/BoardChrome'
 import { BoardsGameIndex } from '../components/BoardsGameIndex'
+import { EventArt } from '../components/EventCard'
 import { GlobalRankList } from '../components/GlobalRankList'
 import { PageShell } from '../components/PageShell'
 import { ShareBoardButton } from '../components/ShareBoardButton'
@@ -21,6 +18,7 @@ import {
   getLastPlayerName,
   normalizePlayerName,
   PERIOD_LABELS,
+  VISIBLE_LEADERBOARD_GAMES,
   type GameBoardPreview,
   type GlobalBoardEntry,
   type LeaderboardPeriod,
@@ -65,6 +63,53 @@ function BoardsHubSwitcher({
   )
 }
 
+/** The page opens the way events, profiles and record books do. */
+function BoardsHero({
+  global,
+  period,
+  players,
+}: {
+  global: boolean
+  period: LeaderboardPeriod
+  players: number | null
+}) {
+  const games = VISIBLE_LEADERBOARD_GAMES.length
+  return (
+    <section className="hero bx-hero" aria-label="Boards">
+      {global ? (
+        <div className="hero__corner">
+          <ShareBoardButton
+            label={`The ${APP_NAME} board doesn’t lie (${PERIOD_LABELS[period]}). Peek if you dare.`}
+            url={globalRankingsHref(period)}
+          />
+        </div>
+      ) : null}
+      <div className="hero__main hero__main--bare">
+        <EventArt games={VISIBLE_LEADERBOARD_GAMES.slice(0, 4)} className="hero__art" />
+        <div className="hero__text">
+          <p className="ev-kicker hero__kicker">
+            <span className="ev-kicker__bit">Boards</span>
+            <span className="ev-kicker__bit">{PERIOD_LABELS[period]}</span>
+            {global && players ? (
+              <span className="ev-kicker__bit">
+                {players} {players === 1 ? 'player' : 'players'} ranked
+              </span>
+            ) : (
+              <span className="ev-kicker__bit">{games} games</span>
+            )}
+          </p>
+          <h1 className="hero__title">{global ? 'Rankings' : 'Top scores'}</h1>
+          <p className="hero__sub">
+            {global
+              ? 'Every board added up. First on a board is worth 100 points, hundredth is worth 1, and the total is your rank.'
+              : 'The best runs on every game. Open a game for its full board, and pick a period to see who is on top right now.'}
+          </p>
+        </div>
+      </div>
+    </section>
+  )
+}
+
 export function LeaderboardsPage({
   global: showGlobal,
   period: periodFromRoute,
@@ -106,39 +151,37 @@ function LeaderboardsOverview({ period }: { period: LeaderboardPeriod }) {
   }, [period, groupId])
 
   return (
-    <PageShell innerClassName="lb-page__inner lb-page__inner--summary">
-      <header className="lb-page__header lb-page__header--compact">
-        <h1 className="lb-page__title">Boards</h1>
-        <BoardsHubSwitcher global={false} period={period} />
-      </header>
-
-      <PeriodSwitcher
-        period={period}
-        hrefFor={leaderboardHref}
-        onSelect={(p) => {
-          window.location.hash = leaderboardHref(p)
-        }}
-      />
-
-      {error ? (
-        <BoardEmpty
-          title="Couldn’t load scores"
-          detail="Check your connection and try again."
-        />
-      ) : (
-        <section
-          key={period}
-          className="lb-board lb-board--fade"
-          aria-label={`${PERIOD_LABELS[period]} top scores`}
-        >
-          <BoardsGameIndex
-            games={summaries}
-            loading={loading}
-            playerName={playerName}
+    <PageShell innerClassName="lb-page__inner lb-page__inner--events">
+      <div className="ev bx">
+        <BoardsHero global={false} period={period} players={null} />
+        <div className="bx__controls">
+          <BoardsHubSwitcher global={false} period={period} />
+          <PeriodSwitcher
             period={period}
+            hrefFor={leaderboardHref}
+            onSelect={(p) => {
+              window.location.hash = leaderboardHref(p)
+            }}
           />
-        </section>
-      )}
+        </div>
+
+        {error ? (
+          <BoardEmpty title="Couldn’t load scores" detail="Check your connection and try again." />
+        ) : (
+          <section
+            key={period}
+            className="evl"
+            aria-label={`${PERIOD_LABELS[period]} top scores`}
+          >
+            <BoardsGameIndex
+              games={summaries}
+              loading={loading}
+              playerName={playerName}
+              period={period}
+            />
+          </section>
+        )}
+      </div>
     </PageShell>
   )
 }
@@ -253,85 +296,66 @@ function GlobalRankingsView({ period }: { period: LeaderboardPeriod }) {
   }, [entries, shown])
 
   return (
-    <PageShell innerClassName="lb-page__inner lb-page__inner--summary">
-      <header className="lb-page__header lb-page__header--compact">
-        <div className="lb-page__heading-row">
-          <span className="lb-page__heading-slot" aria-hidden="true" />
-          <h1 className="lb-page__title">Boards</h1>
-          <div className="lb-game-board__trailing">
-            <ShareBoardButton
-              label={`The ${APP_NAME} board doesn’t lie (${PERIOD_LABELS[period]}). Peek if you dare.`}
-              url={globalRankingsHref(period)}
-            />
-          </div>
-        </div>
-        <BoardsHubSwitcher global period={period} />
-      </header>
-
-      <PeriodSwitcher
-        period={period}
-        hrefFor={globalRankingsHref}
-        onSelect={(p) => {
-          window.location.hash = globalRankingsHref(p)
-        }}
-      />
-
-      <section
-        key={period}
-        className="lb-board lb-board--fade"
-        aria-label={`${PERIOD_LABELS[period]} global rankings`}
-      >
-        {loading ? (
-          <BoardSkeleton />
-        ) : error ? (
-          <BoardEmpty
-            title="Couldn’t load ranks"
-            detail="Check your connection and try again."
-          />
-        ) : entries.length === 0 ? (
-          <BoardEmpty
-            title={groupBoardEmptyTitle('No ranks yet')}
-            detail={
-              groupId
-                ? undefined
-                : 'Place on any game board to earn global points.'
-            }
-            action={
-              <a className="lb-empty-state__btn" href={leaderboardHref(period)}>
-                Browse boards
-              </a>
-            }
-          />
-        ) : (
-          <GlobalRankList
-            entries={entries}
-            you={you}
-            playerName={playerName}
-            shown={shown}
+    <PageShell innerClassName="lb-page__inner lb-page__inner--events">
+      <div className="ev bx">
+        <BoardsHero global period={period} players={loading ? null : totalPlayers} />
+        <div className="bx__controls">
+          <BoardsHubSwitcher global period={period} />
+          <PeriodSwitcher
             period={period}
-            trophyCounts={trophyCounts}
+            hrefFor={globalRankingsHref}
+            onSelect={(p) => {
+              window.location.hash = globalRankingsHref(p)
+            }}
           />
-        )}
+        </div>
 
-        {!loading && !error && entries.length > shown ? (
-          <button
-            type="button"
-            className="lb-more"
-            onClick={() => setShown(entries.length)}
-          >
-            Show top {entries.length}
-          </button>
-        ) : null}
+        <section
+          key={period}
+          className="ev-card"
+          aria-label={`${PERIOD_LABELS[period]} global rankings`}
+        >
+          <div className="ev-card__head">
+            <h2 className="ev-card__title">Rankings</h2>
+            {!loading && !error && totalPlayers > 0 ? (
+              <p className="ev-card__note">
+                {PERIOD_LABELS[period]} · {totalPlayers} {totalPlayers === 1 ? 'player' : 'players'}
+                {entries.length < totalPlayers ? ` · top ${entries.length}` : ''}
+              </p>
+            ) : null}
+          </div>
+          {loading ? (
+            <BoardSkeleton />
+          ) : error ? (
+            <BoardEmpty title="Couldn’t load ranks" detail="Check your connection and try again." />
+          ) : entries.length === 0 ? (
+            <BoardEmpty
+              title={groupBoardEmptyTitle('No ranks yet')}
+              detail={groupId ? undefined : 'Place on any game board to earn global points.'}
+              action={
+                <a className="lb-empty-state__btn" href={leaderboardHref(period)}>
+                  Browse boards
+                </a>
+              }
+            />
+          ) : (
+            <GlobalRankList
+              entries={entries}
+              you={you}
+              playerName={playerName}
+              shown={shown}
+              period={period}
+              trophyCounts={trophyCounts}
+            />
+          )}
 
-        {!loading && !error && totalPlayers > 0 ? (
-          <p className="lb-device-note lb-device-note--footer">
-            {totalPlayers} ranked {totalPlayers === 1 ? 'player' : 'players'}
-            {entries.length < totalPlayers
-              ? ` · showing top ${entries.length}`
-              : ''}
-          </p>
-        ) : null}
-      </section>
+          {!loading && !error && entries.length > shown ? (
+            <button type="button" className="lb-more" onClick={() => setShown(entries.length)}>
+              Show top {entries.length}
+            </button>
+          ) : null}
+        </section>
+      </div>
     </PageShell>
   )
 }

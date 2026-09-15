@@ -1,13 +1,10 @@
-import { useEffect, useState, type CSSProperties } from 'react'
-import {
-  BoardEmpty,
-  BoardSkeleton,
-} from './BoardChrome'
+import { useEffect, useState } from 'react'
+import { BoardEmpty, BoardSkeleton } from './BoardChrome'
 import { getGame } from '../data/games'
 import { rankHref, recordHref } from '../hooks/useHashRoute'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { groupBoardEmptyTitle, useActiveGroup } from '../lib/groups'
-import { normalizePlayerName, type LeaderboardPeriod } from '../lib/leaderboard'
+import { normalizePlayerName, PERIOD_LABELS, type LeaderboardPeriod } from '../lib/leaderboard'
 import {
   fetchGameRecords,
   formatRecordScore,
@@ -74,8 +71,22 @@ export function GameRecordsPanel({ game, accent, period }: GameRecordsPanelProps
     }
   }, [game, period, groupId])
 
+  const held = records.filter((r) => r.top).length
+
   return (
-    <section className="lb-board" aria-label="Game records">
+    <section
+      className="ev-card rbl"
+      aria-label="Game records"
+      style={{ '--event-accent': accent } as React.CSSProperties}
+    >
+      <div className="ev-card__head">
+        <h2 className="ev-card__title">Records</h2>
+        {!loading && !error && records.length > 0 ? (
+          <p className="ev-card__note">
+            {PERIOD_LABELS[period]} · {held} of {records.length} held
+          </p>
+        ) : null}
+      </div>
       {loading ? (
         <BoardSkeleton rows={5} />
       ) : error ? (
@@ -89,34 +100,28 @@ export function GameRecordsPanel({ game, accent, period }: GameRecordsPanelProps
           detail={groupId ? undefined : recordsEmptyDetail(game, gameTitle)}
         />
       ) : (
-        <ol className="records-leaders">
+        <ol className="rbl__list">
           {records.map((row) => {
             const holder = row.top ? normalizePlayerName(row.top.name) : ''
             const isYou = Boolean(playerName && holder === playerName)
+            const href = recordHref(game, row.id, period)
             return (
               <li
                 key={row.id}
-                className={`records-leaders__row${isYou ? ' records-leaders__row--you' : ''}`}
-                style={{ '--tab-accent': accent } as CSSProperties}
+                className={`rbl__row${isYou ? ' rbl__row--you' : ''}${holder ? '' : ' rbl__row--open'}`}
               >
-                <a className="records-leaders__label" href={recordHref(game, row.id, period)}>
+                <a className="rbl__label" href={href}>
                   {row.label}
                 </a>
                 {holder ? (
-                  <a
-                    className="records-leaders__holder records-leaders__holder--link"
-                    href={rankHref(holder, period)}
-                    title={holder}
-                  >
-                    <span className="records-leaders__name">{holder}</span>
-                    {isYou ? <span className="lb-row__you-tag">You</span> : null}
+                  <a className="rbl__holder" href={rankHref(holder, period)} title={holder}>
+                    <span className="rbl__name">{holder}</span>
+                    {isYou ? <span className="ev-row__you-tag">You</span> : null}
                   </a>
                 ) : (
-                  <span className="records-leaders__holder">
-                    <span className="records-leaders__name">—</span>
-                  </span>
+                  <span className="rbl__holder rbl__holder--open">Open</span>
                 )}
-                <a className="records-leaders__time" href={recordHref(game, row.id, period)}>
+                <a className="rbl__val" href={href}>
                   {row.top ? formatRecordScore(row.top.score, row.unit, row.id) : '—'}
                 </a>
               </li>

@@ -494,3 +494,15 @@ html[data-theme="flat"] .hero__cta,
 html[data-theme="google"] .hero__cta {
   box-shadow: none;
 }
+
+/* A single tool in the hero's top corner, when there is no bar. */
+.hero__corner {
+  position: absolute;
+  top: 0.85rem;
+  right: 1.1rem;
+  z-index: 1;
+}
+
+.hero:has(> .hero__corner) .hero__text {
+  padding-right: 2.7rem;
+}

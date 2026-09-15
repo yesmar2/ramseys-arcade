@@ -1,4 +1,3 @@
-import type { CSSProperties } from 'react'
 import { rankHref } from '../hooks/useHashRoute'
 import {
   normalizePlayerName,
@@ -12,6 +11,7 @@ import type { TrophyCount } from '../lib/trophies'
 
 const TOP_SLOT_COUNT = 10
 
+/** The global rankings, in the same rows an event's standings use. */
 export function GlobalRankList({
   entries,
   you,
@@ -33,68 +33,64 @@ export function GlobalRankList({
     you && visible.some((entry) => normalizePlayerName(entry.name) === youName),
   )
   const youOffVisible = Boolean(you && !youOnVisible)
-  const youStyle = { '--lb-you-accent': 'var(--accent)' } as CSSProperties
 
   const renderRow = (
     entry: GlobalBoardEntry,
     isYou: boolean,
-    opts?: { markYouId?: boolean },
+    opts?: { markYouId?: boolean; pinned?: boolean },
   ) => {
     const medal = medalKind(entry.rank)
     const name = normalizePlayerName(entry.name)
     const trophies = trophyCounts[name]
-    const nameInner = (
-      <>
-        <PlayerAvatar avatarId={entry.avatarId} name={name} size="sm" />
-        <span className="lb-row__name-text" title={name}>
-          {name}
-        </span>
-        {trophies?.total ? (
-          <TrophyMark count={trophies.total} podium={trophies.podium} size="sm" />
-        ) : null}
-        {isYou ? <span className="lb-row__you-tag">You</span> : null}
-      </>
-    )
+    const cls = [
+      'ev-row',
+      entry.rank <= 3 ? `ev-row--${entry.rank}` : '',
+      isYou ? 'ev-row--you' : '',
+      opts?.pinned ? 'ev-row--pinned' : '',
+    ]
+      .filter(Boolean)
+      .join(' ')
     return (
       <li
         key={`${entry.rank}-${name}${opts?.markYouId ? '-you' : ''}`}
         id={opts?.markYouId ? 'lb-you-row' : undefined}
-        className={`lb-row${isYou ? ' lb-row--you' : ''}${medal ? ' lb-row--medal' : ''}`}
-        style={isYou ? youStyle : undefined}
+        className={cls}
         aria-current={isYou ? 'true' : undefined}
       >
-        <span className="lb-row__rank" aria-label={`#${entry.rank}`}>
-          {medal ? (
-            <PodiumMedal kind={medal} period={period} />
-          ) : (
-            <span className="lb-row__rank-num">#{entry.rank}</span>
-          )}
-        </span>
-        <a className="lb-row__name lb-row__name--link" href={rankHref(name, period)}>
-          {nameInner}
-        </a>
-        <span className="lb-row__score">{entry.score}</span>
-        <span className="lb-row__date lb-row__games">
-          {entry.games} {entry.games === 1 ? 'game' : 'games'}
-        </span>
+        <div className="ev-row__main ev-row__main--meta">
+          <span className="ev-row__rank" aria-label={`Place ${entry.rank}`}>
+            {medal ? <PodiumMedal kind={medal} period={period} size="sm" /> : entry.rank}
+          </span>
+          <a className="ev-row__who" href={rankHref(name, period)} title={name}>
+            <PlayerAvatar avatarId={entry.avatarId} name={name} size="sm" />
+            <span className="ev-row__name">{name}</span>
+            {trophies?.total ? (
+              <TrophyMark count={trophies.total} podium={trophies.podium} size="sm" />
+            ) : null}
+            {isYou ? <span className="ev-row__you-tag">You</span> : null}
+          </a>
+          <span className="ev-row__score">
+            {entry.score}
+            <span className="ev-row__score-unit">pts</span>
+          </span>
+          <span className="ev-row__meta">
+            {entry.games} {entry.games === 1 ? 'game' : 'games'}
+          </span>
+        </div>
       </li>
     )
   }
 
   const renderEmptyRow = (rank: number) => (
-    <li
-      key={`empty-${rank}`}
-      className="lb-row lb-row--empty"
-      aria-hidden="true"
-    >
-      <span className="lb-row__rank">
-        <span className="lb-row__rank-num">#{rank}</span>
-      </span>
-      <span className="lb-row__name">
-        <span className="lb-row__name-text lb-row__placeholder">Open</span>
-      </span>
-      <span className="lb-row__score lb-row__placeholder">—</span>
-      <span className="lb-row__date lb-row__placeholder">—</span>
+    <li key={`empty-${rank}`} className="ev-row ev-row--empty" aria-hidden="true">
+      <div className="ev-row__main ev-row__main--meta">
+        <span className="ev-row__rank">{rank}</span>
+        <span className="ev-row__who">
+          <span className="ev-row__name ev-row__name--open">Open</span>
+        </span>
+        <span className="ev-row__score">—</span>
+        <span className="ev-row__meta" />
+      </div>
     </li>
   )
 
@@ -102,21 +98,18 @@ export function GlobalRankList({
   const slotCount = padSlots ? TOP_SLOT_COUNT : visible.length
 
   return (
-    <ol className="lb-list">
+    <ol className="ev-board">
       {youOffVisible && you ? (
         <>
-          {renderRow(you, true, { markYouId: true })}
-          {slotCount > 0 ? (
-            <li className="lb-you-split">Top {TOP_SLOT_COUNT}</li>
-          ) : null}
+          {renderRow(you, true, { markYouId: true, pinned: true })}
+          {slotCount > 0 ? <li className="ev-split">Top {TOP_SLOT_COUNT}</li> : null}
         </>
       ) : null}
       {Array.from({ length: slotCount }, (_, index) => {
         const entry = visible[index]
         const rank = index + 1
         if (entry) {
-          const isYou =
-            Boolean(youName) && normalizePlayerName(entry.name) === youName
+          const isYou = Boolean(youName) && normalizePlayerName(entry.name) === youName
           return renderRow(entry, isYou, { markYouId: isYou && !youOffVisible })
         }
         return renderEmptyRow(rank)

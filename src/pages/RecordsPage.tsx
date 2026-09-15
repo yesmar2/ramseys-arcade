@@ -262,9 +262,17 @@ function RecordBoardPage({
 
           <section
             key={`${recordId}-${period}`}
-            className="lb-board lb-board--fade"
+            className="ev-card lb-board--fade"
             aria-label={record?.label ?? 'Record board'}
           >
+            <div className="ev-card__head">
+              <h2 className="ev-card__title">{unit === 'ms' ? 'Fastest' : 'Best'}</h2>
+              {!loading && !error && entries.length > 0 ? (
+                <p className="ev-card__note">
+                  {PERIOD_LABELS[period]} · {entries.length} {entries.length === 1 ? 'player' : 'players'}
+                </p>
+              ) : null}
+            </div>
             {loading ? (
               <BoardSkeleton />
             ) : error ? (

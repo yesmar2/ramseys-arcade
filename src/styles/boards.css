@@ -1,0 +1,153 @@
+/*
+ * Boards index, rankings, and the per-game record list.
+ *
+ * The index reuses the events list's live card (`.evc`) for each game and
+ * the shared hero; the lists reuse the event standings rows (`.ev-row`).
+ * What is here is only the glue: the controls under the hero, and the
+ * record-book rows.
+ */
+
+.bx {
+  gap: 1rem;
+}
+
+/* Which board, then which period — stacked tight under the hero. */
+.bx__controls {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.bx__controls .lb-board-switcher {
+  margin: 0 0 0.35rem;
+}
+
+.bx__controls .lb-periods--segment {
+  margin-bottom: 0;
+}
+
+/* Loading shelf: the card's shape, nothing in it yet. */
+.evc--skel {
+  min-height: 9.5rem;
+  background: rgba(var(--surface-rgb), 0.5);
+  border-color: var(--ev-line, rgba(var(--ink-rgb), 0.09));
+  animation: lb-skel-shine 1.15s ease-in-out infinite;
+}
+
+.evc--skel::before {
+  display: none;
+}
+
+/* ---------- record books for one game ---------- */
+
+.rbl__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.rbl__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 8rem) auto;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.55rem var(--ev-pad, 1rem);
+  border-top: 1px solid var(--ev-line, rgba(var(--ink-rgb), 0.09));
+}
+
+.rbl__row:first-child {
+  border-top: 0;
+}
+
+.rbl__row--you {
+  background: color-mix(in srgb, var(--event-accent, var(--accent)) 10%, transparent);
+  box-shadow: inset 3px 0 0 var(--event-accent, var(--accent));
+}
+
+.rbl__label {
+  min-width: 0;
+  font-family: var(--font-display);
+  font-size: 0.92rem;
+  font-weight: 750;
+  color: var(--ink);
+  text-decoration: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rbl__label:hover,
+.rbl__label:focus-visible {
+  color: color-mix(in srgb, var(--event-accent, var(--accent)) 70%, var(--ink));
+  outline: none;
+}
+
+.rbl__holder {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.35rem;
+  min-width: 0;
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.rbl__holder:hover .rbl__name,
+.rbl__holder:focus-visible .rbl__name {
+  color: color-mix(in srgb, var(--event-accent, var(--accent)) 70%, var(--ink));
+}
+
+.rbl__holder--open {
+  font-weight: 650;
+  color: color-mix(in srgb, var(--muted) 70%, transparent);
+}
+
+.rbl__name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rbl__val {
+  flex: none;
+  min-width: 3.5rem;
+  font-family: var(--font-display);
+  font-size: 1.02rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  text-align: right;
+  text-decoration: none;
+}
+
+.rbl__row--open .rbl__val {
+  color: var(--muted);
+  font-weight: 700;
+}
+
+@media (max-width: 480px) {
+  .rbl__row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "label val"
+      "holder val";
+    row-gap: 0.1rem;
+  }
+
+  .rbl__label {
+    grid-area: label;
+  }
+
+  .rbl__holder {
+    grid-area: holder;
+    justify-content: flex-start;
+    font-size: 0.76rem;
+  }
+
+  .rbl__val {
+    grid-area: val;
+  }
+}
