@@ -103,6 +103,23 @@ const SCORING: Record<string, ScoreRow[]> = {
     { label: 'Bare corridors', value: 'no crumbs — passage that costs you the streak' },
     { label: 'Lives', value: '1 — caught or drowned ends the run' },
   ],
+  findbug: [
+    { label: 'Scenes', value: '5 — the bug gets smaller each one' },
+    { label: 'Score', value: 'total time, fastest wins' },
+    { label: 'Wrong swat', value: '+3s' },
+    { label: 'Hint', value: '+8s' },
+  ],
+  barrage: [
+    { label: 'Shots in the air', value: '3 at once' },
+    { label: 'Volley', value: 'the lanes about to be hit light up first' },
+    { label: 'From wave 3', value: 'lanes lean — a cold column isn’t safe for long' },
+    { label: 'Supply runner', value: 'shoot it, then catch the capsule it drops' },
+    { label: 'Spread · Slow · Pierce · Jam', value: 'fan fire · slow the volley · punch a column · fizzle the next volley' },
+    { label: 'Plated ships', value: '2–3 rounds to break · ×2 / ×3 score' },
+    { label: 'Clear a wave', value: 'bonus — bigger if you took no hits' },
+    { label: 'A ship reaches the line', value: 'run over, whatever your lives say' },
+    { label: 'Lives', value: '3' },
+  ],
 }
 
 export function scoringFor(slug: string): ScoreRow[] | null {
