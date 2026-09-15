@@ -34,12 +34,29 @@ export function inviteTargetHref(invite: PublicInvite) {
   return tournamentHref(invite.targetId)
 }
 
+const INVITES_INFLIGHT_MS = 5_000
+let invitesInflight: { name: string; at: number; promise: Promise<PublicInvite[]> } | null = null
+
+/**
+ * Pending invites for a player. The header badge and the invites strip ask
+ * at the same moment on every page, so they share one request.
+ */
 export async function listPendingInvites(playerName?: string): Promise<PublicInvite[]> {
   const name = normalizePlayerName(playerName ?? getLastPlayerName())
   if (!name) return []
+  const now = Date.now()
+  if (invitesInflight && invitesInflight.name === name && now - invitesInflight.at < INVITES_INFLIGHT_MS) {
+    return invitesInflight.promise
+  }
   const params = new URLSearchParams({ playerName: name, status: 'pending' })
-  const data = await api<{ invites: PublicInvite[] }>(`/invites?${params}`)
-  return data.invites ?? []
+  const promise = api<{ invites: PublicInvite[] }>(`/invites?${params}`)
+    .then((data) => data.invites ?? [])
+    .catch((err) => {
+      invitesInflight = null
+      throw err
+    })
+  invitesInflight = { name, at: now, promise }
+  return promise
 }
 
 export async function sendInvite(input: {
