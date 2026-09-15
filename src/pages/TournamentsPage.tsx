@@ -297,8 +297,8 @@ function heroClock(detail: TournamentDetail): HeroClock {
         winner: true,
         value: (
           <>
-            <PodiumMedal kind="gold" size="md" />
-            <span className="hero-stat__name">{winner}</span>
+              <PodiumMedal kind="gold" size="md" />
+              <span className="hero-stat__name">{winner}</span>
           </>
         ),
       }
@@ -803,53 +803,94 @@ export function TournamentsPage() {
 
   const keys = ['all', 'official', 'joined', ...(account ? (['mine'] as const) : [])] as const
   const labels = { all: 'All', official: 'Official', joined: 'Joined', mine: 'Hosted' } as const
+  const liveCount = open.filter((t) => eventPhase(t) === 'live').length
+  const heroGames = [...new Set([...open, ...ended].flatMap((t) => t.games))].slice(0, 4)
+  const filters = (
+    <div className="chips" role="tablist" aria-label="Event filters">
+      {keys.map((key) => (
+        <button
+          key={key}
+          type="button"
+          role="tab"
+          aria-selected={filter === key}
+          className={`chips__item${filter === key ? ' chips__item--active' : ''}`}
+          onClick={() => setFilter(key)}
+        >
+          {labels[key]}
+        </button>
+      ))}
+    </div>
+  )
 
   return (
     <PageShell innerClassName="lb-page__inner lb-page__inner--events">
-      <header className="lb-page__header lb-page__header--compact">
-        <div className="lb-page__heading-row">
-          <span className="lb-page__heading-slot" aria-hidden="true" />
-          <h1 className="lb-page__title">Events</h1>
-          <div className="lb-game-board__trailing">
-            {account ? (
-              <a className="event-list__create" href={tournamentCreateHref()}>
-                Create event
-              </a>
-            ) : null}
+      <div className="ev ev--list">
+        <section className="hero" aria-label="Events">
+          <div className="hero__main hero__main--bare">
+            {heroGames.length > 0 ? (
+              <EventArt games={heroGames} className="hero__art" />
+            ) : (
+              <span className="hero__mark hero__mark--empty" aria-hidden="true">
+                ★
+              </span>
+            )}
+            <div className="hero__text">
+              <p className="ev-kicker hero__kicker">
+                <span className="ev-kicker__bit">Events</span>
+                {!loading && !error && liveCount > 0 ? (
+                  <span className="ev-kicker__bit ev-kicker__status ev-kicker__status--live">
+                    <span className="ev-live-dot" aria-hidden="true" />
+                    {liveCount} live
+                  </span>
+                ) : null}
+                {!loading && !error && ended.length > 0 ? (
+                  <span className="ev-kicker__bit">
+                    {ended.length} {ended.length === 1 ? 'result' : 'results'}
+                  </span>
+                ) : null}
+              </p>
+              <h1 className="hero__title">Events</h1>
+              <p className="hero__sub">
+                Daily boards, weekly triples and brackets. Join one, post a score, and see where you land.
+              </p>
+              {account ? (
+                <div className="hero__actions hero__actions--inline">
+                  <a className="hero__cta" href={tournamentCreateHref()}>
+                    Create event
+                  </a>
+                </div>
+              ) : null}
+            </div>
           </div>
-        </div>
-        <div className="chips chips--center" role="tablist" aria-label="Event filters">
-          {keys.map((key) => (
-            <button
-              key={key}
-              type="button"
-              role="tab"
-              aria-selected={filter === key}
-              className={`chips__item${filter === key ? ' chips__item--active' : ''}`}
-              onClick={() => setFilter(key)}
-            >
-              {labels[key]}
-            </button>
-          ))}
-        </div>
-      </header>
+        </section>
 
-      <PendingInvitesStrip kind="tournament" />
+        <PendingInvitesStrip kind="tournament" />
 
-      {loading ? (
-        <p className="lb-empty">Loading…</p>
-      ) : error ? (
-        <p className="lb-empty">Couldn’t load events.</p>
-      ) : items.length === 0 ? (
-        <p className="lb-empty">
-          {filter === 'mine'
-            ? 'You have no hosted events yet.'
-            : filter === 'joined'
-              ? 'You have not joined any private events yet.'
-              : 'No events yet.'}
-        </p>
-      ) : (
-        <div className="ev ev--list">
+        <div className="lst-block__head">
+          <h2 className="lst-block__title">Showing</h2>
+          {!loading && !error ? (
+            <p className="lst-block__note">
+              {items.length} {items.length === 1 ? 'event' : 'events'}
+            </p>
+          ) : null}
+          <div className="lst-block__tools">{filters}</div>
+        </div>
+
+        {loading ? (
+          <p className="lb-empty">Loading…</p>
+        ) : error ? (
+          <p className="lb-empty">Couldn’t load events.</p>
+        ) : items.length === 0 ? (
+          <p className="ev-empty">
+            {filter === 'mine'
+              ? 'You have no hosted events yet.'
+              : filter === 'joined'
+                ? 'You have not joined any private events yet.'
+                : 'No events yet.'}
+          </p>
+        ) : null}
+        {!loading && !error && items.length > 0 ? (
+          <>
           {open.length > 0 ? (
             <section className="evl" aria-label={anyLive ? 'Live now' : 'Open now'}>
               <h2 className="evl__title">
@@ -878,8 +919,9 @@ export function TournamentsPage() {
               </ul>
             </section>
           ) : null}
-        </div>
-      )}
+          </>
+        ) : null}
+      </div>
     </PageShell>
   )
 }
