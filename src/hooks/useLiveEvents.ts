@@ -36,17 +36,25 @@ function load(playerName: string): Promise<Omit<LiveEvents, 'loading'>> {
      * active alone drops a draw you have joined but that is still waiting for
      * players — exactly when you want to see how close it is to starting.
      */
-    const active = all.filter(
-      (t) => t.status === 'active' || (t.status === 'upcoming' && eventKind(t) === 'bracket'),
-    )
+    const running = (t: TournamentSummary) =>
+      t.status === 'active' || (t.status === 'upcoming' && eventKind(t) === 'bracket')
     const joinedIds = new Set(joined.map((t) => t.id))
     return {
       joinedIds,
-      // A joined fixture appears twice on purpose: named on the line up top
-      // so daily and weekly always read as a pair, and again below the grid
-      // with its clock and a way back in, like any event you are playing.
-      mine: active.filter((t) => joinedIds.has(t.id)).sort((a, b) => a.endsAt - b.endsAt),
-      official: active
+      /*
+       * Straight off the joined list, not by looking your events up in the
+       * public one. The unnamed "all" fetch only shows private events to the
+       * account hosting them, so intersecting the two quietly dropped every
+       * private event you had merely joined — on this arcade's own data, five
+       * of the seven running events its player was in.
+       *
+       * A joined fixture still appears twice on purpose: named on the line up
+       * top so daily and weekly always read as a pair, and again below the
+       * grid with its clock and a way back in, like any event you are playing.
+       */
+      mine: joined.filter(running).sort((a, b) => a.endsAt - b.endsAt),
+      official: all
+        .filter(running)
         .filter((t) => t.official)
         // Daily first: it is the one that will be gone tomorrow.
         .sort((a, b) => {
