@@ -1536,3 +1536,31 @@ html[data-theme="google"] .evc__go {
 }
 
 
+
+/* ==========================================================================
+   A quiet card: for grids of many accents (the boards overview), where the
+   hero is the one tinted block. The surface goes neutral and the colour
+   stays in the art, the medals and the pill; the accent returns as an edge
+   on hover.
+   ========================================================================== */
+
+.evc--quiet {
+  background: rgba(var(--surface-rgb), 0.62);
+  border-color: rgba(var(--ink-rgb), 0.07);
+  box-shadow: none;
+}
+
+.evc--quiet::before {
+  display: none;
+}
+
+.evc--quiet:hover,
+.evc--quiet:focus-visible {
+  border-color: color-mix(in srgb, var(--event-accent, var(--accent)) 45%, transparent);
+  box-shadow: var(--shadow-soft);
+}
+
+html[data-theme="flat"] .evc--quiet,
+html[data-theme="google"] .evc--quiet {
+  border-color: var(--flat-border) !important;
+}

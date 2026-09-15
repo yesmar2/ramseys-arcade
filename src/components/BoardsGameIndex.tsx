@@ -64,7 +64,7 @@ export function BoardsGameIndex({
         return (
           <li key={slug}>
             <a
-              className="evc"
+              className="evc evc--quiet"
               href={top.length ? gameBoardHref(slug, period) : gamePlayHref(slug)}
               style={{ '--event-accent': accent } as CSSProperties}
             >
