@@ -58,6 +58,13 @@
     position: static;
   }
 
+  /* The text spans both rows beside the mark (nothing sits under it here),
+     so it can centre on the mark's midline like the tiles do. */
+  .pf .hero__main:not(.hero__main--bare) .hero__text {
+    grid-area: 1 / 2 / 3 / 3;
+    align-self: center;
+  }
+
   .pfh__aside {
     align-self: start;
   }
