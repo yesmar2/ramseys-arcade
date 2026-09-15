@@ -1,53 +1,54 @@
-import { useEffect, useState } from 'react'
-import { useAuth } from '../hooks/useAuth'
+import { useState } from 'react'
+import { useFriends } from '../hooks/useFriends'
 import { rankHref } from '../hooks/useHashRoute'
-import {
-  acceptFriendRequest,
-  cancelFriendRequest,
-  declineFriendRequest,
-  listFriends,
-  removeFriend,
-  sendFriendRequest,
-  type Friend,
-  type FriendRequest,
-} from '../lib/friends'
-import { normalizePlayerName, PLAYER_NAME_MAX, ApiError } from '../lib/leaderboard'
+import { AVATARS_ENABLED } from '../lib/avatars'
+import { ApiError, normalizePlayerName, PLAYER_NAME_MAX } from '../lib/leaderboard'
 import { PlayerAvatar } from './PlayerAvatar'
 
-export function FriendsPanel() {
-  const { signedIn } = useAuth()
-  const [friends, setFriends] = useState<Friend[]>([])
-  const [requests, setRequests] = useState<FriendRequest[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [busyId, setBusyId] = useState<string | null>(null)
+function sinceLabel(ts: number): string {
+  try {
+    return `Since ${new Date(ts).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`
+  } catch {
+    return ''
+  }
+}
+
+/** An initial on a small tinted tile, the way the profile hero marks a player. */
+function Mark({ name, avatarId }: { name: string; avatarId?: string }) {
+  if (AVATARS_ENABLED) return <PlayerAvatar avatarId={avatarId} name={name} size="md" />
+  return (
+    <span className="pff__mark" aria-hidden="true">
+      {name.charAt(0)}
+    </span>
+  )
+}
+
+/**
+ * The friends card on your own profile: add by tag, answer requests, and
+ * the list itself, each name opening that player's profile.
+ */
+export function FriendsCard() {
+  const {
+    signedIn,
+    friends,
+    incoming,
+    outgoing,
+    loaded,
+    error,
+    busyId,
+    send,
+    accept,
+    decline,
+    cancel,
+    remove,
+  } = useFriends()
   const [draft, setDraft] = useState('')
   const [addBusy, setAddBusy] = useState(false)
   const [addError, setAddError] = useState<string | null>(null)
   const [addNote, setAddNote] = useState<string | null>(null)
-
-  const load = () => {
-    setLoading(true)
-    setError(null)
-    listFriends()
-      .then((data) => {
-        setFriends(data.friends)
-        setRequests(data.requests)
-      })
-      .catch((err) => setError(err instanceof Error ? err.message : 'Could not load friends'))
-      .finally(() => setLoading(false))
-  }
-
-  useEffect(() => {
-    if (!signedIn) return
-    load()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [signedIn])
+  const [confirmId, setConfirmId] = useState<string | null>(null)
 
   if (!signedIn) return null
-
-  const incoming = requests.filter((r) => r.direction === 'incoming')
-  const outgoing = requests.filter((r) => r.direction === 'outgoing')
 
   const sendRequest = async () => {
     const name = normalizePlayerName(draft)
@@ -56,14 +57,18 @@ export function FriendsPanel() {
     setAddError(null)
     setAddNote(null)
     try {
-      const result = await sendFriendRequest(name)
+      const result = await send(name)
       setDraft('')
-      setAddNote(result.status === 'accepted' ? `You and ${name} are now friends.` : `Request sent to ${name}.`)
-      load()
+      setAddNote(
+        result.status === 'accepted'
+          ? `You and ${name} are now friends.`
+          : `Request sent to ${name}.`,
+      )
     } catch (err) {
-      if (err instanceof ApiError && err.code === 'NOT_A_PLAYER') {
-        setAddError(`Huh — ${name} doesn’t exist in this arcade`)
-      } else if (err instanceof Error && /hasn't signed in yet/i.test(err.message)) {
+      if (
+        (err instanceof ApiError && err.code === 'NOT_A_PLAYER') ||
+        (err instanceof Error && /hasn't signed in yet/i.test(err.message))
+      ) {
         setAddError(`Huh — ${name} doesn’t exist in this arcade`)
       } else {
         setAddError(err instanceof Error ? err.message : 'Could not send request')
@@ -73,62 +78,33 @@ export function FriendsPanel() {
     }
   }
 
-  const accept = async (id: string) => {
-    setBusyId(id)
-    try {
-      await acceptFriendRequest(id)
-      load()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not accept request')
-    } finally {
-      setBusyId(null)
-    }
-  }
-
-  const decline = async (id: string) => {
-    setBusyId(id)
-    try {
-      await declineFriendRequest(id)
-      load()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not decline request')
-    } finally {
-      setBusyId(null)
-    }
-  }
-
-  const cancel = async (id: string) => {
-    setBusyId(id)
-    try {
-      await cancelFriendRequest(id)
-      load()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not cancel request')
-    } finally {
-      setBusyId(null)
-    }
-  }
-
-  const unfriend = async (accountId: string) => {
-    setBusyId(accountId)
-    try {
-      await removeFriend(accountId)
-      load()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not remove friend')
-    } finally {
-      setBusyId(null)
-    }
-  }
+  const count = friends.length
 
   return (
-    <section className="friends-panel" aria-label="Friends">
-      <h3 className="site-drawer__section-title">Friends</h3>
+    <section className="ev-card pff" aria-label="Friends">
+      <div className="ev-card__head">
+        <h2 className="ev-card__title">
+          Friends
+          {count > 0 ? <span className="pft__count">{count}</span> : null}
+        </h2>
+        {incoming.length > 0 ? (
+          <p className="ev-card__note pff__alert">
+            {incoming.length} {incoming.length === 1 ? 'request' : 'requests'}
+          </p>
+        ) : null}
+      </div>
 
-      <div className="friends-panel__add">
-        <label className="friends-panel__add-field">
+      <form
+        className="pff__add"
+        onSubmit={(e) => {
+          e.preventDefault()
+          void sendRequest()
+        }}
+      >
+        <label className="pff__field">
           <span className="visually-hidden">Gamer tag to add</span>
           <input
+            className="pff__input"
             value={draft}
             maxLength={PLAYER_NAME_MAX}
             placeholder="Add by gamer tag"
@@ -139,109 +115,137 @@ export function FriendsPanel() {
               setAddError(null)
               setAddNote(null)
             }}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault()
-                void sendRequest()
-              }
-            }}
           />
         </label>
         <button
-          type="button"
-          className="friends-panel__add-btn"
+          type="submit"
+          className="pff__add-btn"
           disabled={addBusy || !normalizePlayerName(draft)}
-          onClick={() => void sendRequest()}
         >
           {addBusy ? '…' : 'Add'}
         </button>
-      </div>
-      {addError ? <p className="friends-panel__note friends-panel__note--error">{addError}</p> : null}
-      {addNote ? <p className="friends-panel__note">{addNote}</p> : null}
+      </form>
+      {addError ? <p className="pff__msg pff__msg--error">{addError}</p> : null}
+      {addNote ? <p className="pff__msg">{addNote}</p> : null}
+      {error ? <p className="pff__msg pff__msg--error">{error}</p> : null}
 
-      {loading ? (
-        <p className="friends-panel__note">Loading…</p>
-      ) : error ? (
-        <p className="friends-panel__note friends-panel__note--error">{error}</p>
-      ) : (
-        <>
-          {incoming.length > 0 ? (
-            <ul className="pending-invites__list friends-panel__requests">
-              {incoming.map((r) => (
-                <li key={r.id} className="pending-invites__row">
-                  <div className="pending-invites__copy">
-                    <strong className="pending-invites__name">{r.name}</strong>
-                    <span className="pending-invites__meta">wants to be friends</span>
-                  </div>
-                  <div className="pending-invites__actions">
-                    <button
-                      type="button"
-                      className="event-list__create"
-                      disabled={busyId === r.id}
-                      onClick={() => void accept(r.id)}
-                    >
-                      {busyId === r.id ? '…' : 'Accept'}
-                    </button>
-                    <button
-                      type="button"
-                      className="group-text-btn"
-                      disabled={busyId === r.id}
-                      onClick={() => void decline(r.id)}
-                    >
-                      Decline
-                    </button>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          ) : null}
-
-          {outgoing.length > 0 ? (
-            <ul className="pending-invites__list friends-panel__requests">
-              {outgoing.map((r) => (
-                <li key={r.id} className="pending-invites__row">
-                  <div className="pending-invites__copy">
-                    <strong className="pending-invites__name">{r.name}</strong>
-                    <span className="pending-invites__meta">Request sent</span>
-                  </div>
-                  <div className="pending-invites__actions">
-                    <button
-                      type="button"
-                      className="group-text-btn"
-                      disabled={busyId === r.id}
-                      onClick={() => void cancel(r.id)}
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          ) : null}
-
-          {friends.length === 0 ? (
-            <p className="friends-panel__note">No friends yet — add one by gamer tag.</p>
-          ) : (
-            <ul className="friends-panel__list">
-              {friends.map((f) => (
-                <li key={f.accountId} className="friends-panel__row">
-                  <a className="friends-panel__who" href={rankHref(f.name)}>
-                    <PlayerAvatar avatarId={f.avatarId} name={f.name} size="sm" />
-                    <span className="friends-panel__name">{f.name}</span>
+      {incoming.length > 0 ? (
+        <ul className="pff__requests" aria-label="Friend requests">
+          {incoming.map((r) => {
+            const busy = busyId === r.id
+            return (
+              <li key={r.id} className="pff__request">
+                <Mark name={r.name} />
+                <span className="pff__text">
+                  <a className="pff__name" href={rankHref(r.name)}>
+                    {r.name}
                   </a>
+                  <span className="pff__sub">wants to be friends</span>
+                </span>
+                <span className="pff__actions">
                   <button
                     type="button"
-                    className="group-text-btn"
-                    disabled={busyId === f.accountId}
-                    onClick={() => void unfriend(f.accountId)}
+                    className="pff__btn pff__btn--primary"
+                    disabled={busy}
+                    onClick={() => void accept(r.id)}
                   >
-                    {busyId === f.accountId ? '…' : 'Remove'}
+                    {busy ? '…' : 'Accept'}
                   </button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </>
+                  <button
+                    type="button"
+                    className="pff__btn"
+                    disabled={busy}
+                    onClick={() => void decline(r.id)}
+                  >
+                    Decline
+                  </button>
+                </span>
+              </li>
+            )
+          })}
+        </ul>
+      ) : null}
+
+      {!loaded ? (
+        <p className="ev-empty">Loading…</p>
+      ) : count === 0 && outgoing.length === 0 ? (
+        <p className="ev-empty">No friends yet — add someone by their gamer tag.</p>
+      ) : (
+        <ul className="pff__list">
+          {friends.map((f) => {
+            const busy = busyId === f.accountId
+            const confirming = confirmId === f.accountId
+            return (
+              <li key={f.accountId} className="pff__row">
+                <a className="pff__who" href={rankHref(f.name)}>
+                  <Mark name={f.name} avatarId={f.avatarId} />
+                  <span className="pff__text">
+                    <span className="pff__name">{f.name}</span>
+                    <span className="pff__sub">{sinceLabel(f.since)}</span>
+                  </span>
+                </a>
+                <span className="pff__actions">
+                  {confirming ? (
+                    <>
+                      <button
+                        type="button"
+                        className="pff__btn pff__btn--danger"
+                        disabled={busy}
+                        onClick={() => {
+                          setConfirmId(null)
+                          void remove(f.accountId)
+                        }}
+                      >
+                        {busy ? '…' : 'Remove'}
+                      </button>
+                      <button
+                        type="button"
+                        className="pff__btn"
+                        disabled={busy}
+                        onClick={() => setConfirmId(null)}
+                      >
+                        Keep
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      type="button"
+                      className="pff__btn pff__btn--quiet"
+                      disabled={busy}
+                      onClick={() => setConfirmId(f.accountId)}
+                    >
+                      Remove
+                    </button>
+                  )}
+                </span>
+              </li>
+            )
+          })}
+          {outgoing.map((r) => {
+            const busy = busyId === r.id
+            return (
+              <li key={r.id} className="pff__row pff__row--pending">
+                <a className="pff__who" href={rankHref(r.name)}>
+                  <Mark name={r.name} />
+                  <span className="pff__text">
+                    <span className="pff__name">{r.name}</span>
+                    <span className="pff__sub">Request sent</span>
+                  </span>
+                </a>
+                <span className="pff__actions">
+                  <button
+                    type="button"
+                    className="pff__btn pff__btn--quiet"
+                    disabled={busy}
+                    onClick={() => void cancel(r.id)}
+                  >
+                    {busy ? '…' : 'Cancel'}
+                  </button>
+                </span>
+              </li>
+            )
+          })}
+        </ul>
       )}
     </section>
   )

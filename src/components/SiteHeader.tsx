@@ -9,9 +9,12 @@ import { useGlobalRank, useGlobalRankLoading } from '../lib/globalRank'
 import { currentTheme, THEME_EVENT, toggleTheme, themeLabel, type Theme } from '../lib/theme'
 import { normalizePlayerName } from '../lib/leaderboard'
 import { useTrophySummary } from '../hooks/useTrophySummary'
+import { useFriends } from '../hooks/useFriends'
 import { useImpersonation } from '../hooks/useImpersonation'
+import { useDefaultPeriod } from '../lib/defaultPeriod'
+import { groupsIndexHref } from '../lib/groups'
+import { PERIOD_LABELS } from '../lib/leaderboard'
 import { DevImpersonateControl } from './DevImpersonateControl'
-import { FriendsPanel } from './FriendsPanel'
 import { PendingInvitesStrip } from './PendingInvitesStrip'
 import { EditIcon, LogoutIcon, PlayerBadge, type PlayerBadgeHandle } from './PlayerBadge'
 import { SiteGroupControl } from './SiteGroupControl'
@@ -65,6 +68,9 @@ export function SiteHeader() {
   const impersonation = useImpersonation()
   const trophySummary = useTrophySummary(signedIn ? playerName : '')
   const { count: inviteCount } = usePendingInvites()
+  const friendsState = useFriends()
+  const friendRequests = friendsState.incoming.length
+  const defaultPeriod = useDefaultPeriod()
   const [accountOpen, setAccountOpen] = useState(false)
   const [navOpen, setNavOpen] = useState(false)
   const [invitesOpen, setInvitesOpen] = useState(false)
@@ -303,6 +309,12 @@ export function SiteHeader() {
             ) : (
               <UserIcon />
             )}
+            {friendRequests > 0 ? (
+              <span
+                className="site-header__you-dot"
+                aria-label={`${friendRequests} friend ${friendRequests === 1 ? 'request' : 'requests'}`}
+              />
+            ) : null}
           </button>
         </div>
       </nav>
@@ -433,7 +445,7 @@ export function SiteHeader() {
 
                 {signedIn && playerName ? (
                   <a
-                    className="site-drawer__rank"
+                    className="site-drawer__profile"
                     href={rankHref()}
                     onClick={() => setAccountOpen(false)}
                     aria-label={
@@ -444,44 +456,57 @@ export function SiteHeader() {
                           : 'View profile · no rank yet'
                     }
                   >
-                    {rankLoading ? (
-                      <span
-                        className="site-drawer__rank-circle site-drawer__rank-circle--loading"
-                        aria-hidden="true"
-                      >
-                        <span className="site-drawer__rank-spinner" />
-                      </span>
-                    ) : (
-                      <span
-                        className={`site-drawer__rank-circle${rank == null ? ' site-drawer__rank-circle--empty' : ''}`}
-                        aria-hidden="true"
-                      >
-                        <span className="site-drawer__rank-label">Rank</span>
-                        <span
-                          className={`site-drawer__rank-value${rank == null ? ' site-drawer__rank-value--text' : ''}`}
-                        >
-                          {rank != null ? `#${rank}` : 'No rank'}
-                        </span>
-                      </span>
-                    )}
-                    <span className="site-drawer__rank-foot">
-                      {trophySummary.total > 0 ? (
-                        <TrophyMark
-                          count={trophySummary.total}
-                          podium={trophySummary.podium}
-                          size="md"
-                          className="site-drawer__rank-trophy"
-                        />
-                      ) : null}
-                      <span className="site-drawer__rank-cta">View profile</span>
+                    <span className="site-drawer__profile-mark" aria-hidden="true">
+                      {playerName.charAt(0)}
                     </span>
+                    <span className="site-drawer__profile-text">
+                      <span className="site-drawer__profile-name">{playerName}</span>
+                      <span className="site-drawer__profile-meta">
+                        {rankLoading
+                          ? 'Loading rank…'
+                          : rank != null
+                            ? `#${rank} ${PERIOD_LABELS[defaultPeriod].toLowerCase()}`
+                            : 'No rank yet'}
+                        {trophySummary.total > 0
+                          ? ` · ${trophySummary.total} ${trophySummary.total === 1 ? 'trophy' : 'trophies'}`
+                          : ''}
+                      </span>
+                    </span>
+                    <span className="site-drawer__profile-go">Profile</span>
                   </a>
                 ) : null}
 
                 {signedIn ? (
-                  <section className="site-drawer__section" aria-label="Friends">
-                    <FriendsPanel />
-                  </section>
+                  <nav className="site-drawer__rows" aria-label="Yours">
+                    <a
+                      className="site-drawer__row"
+                      href={rankHref()}
+                      onClick={() => setAccountOpen(false)}
+                    >
+                      <span className="site-drawer__row-label">Friends</span>
+                      <span className="site-drawer__row-value">
+                        {friendsState.loaded ? friendsState.friends.length : ''}
+                        {friendRequests > 0 ? (
+                          <span className="site-drawer__badge">
+                            {friendRequests} {friendRequests === 1 ? 'request' : 'requests'}
+                          </span>
+                        ) : null}
+                      </span>
+                      <span className="site-drawer__row-chev" aria-hidden="true">
+                        ›
+                      </span>
+                    </a>
+                    <a
+                      className="site-drawer__row"
+                      href={groupsIndexHref()}
+                      onClick={() => setAccountOpen(false)}
+                    >
+                      <span className="site-drawer__row-label">Groups</span>
+                      <span className="site-drawer__row-chev" aria-hidden="true">
+                        ›
+                      </span>
+                    </a>
+                  </nav>
                 ) : null}
 
                 <div className="site-drawer__footer">

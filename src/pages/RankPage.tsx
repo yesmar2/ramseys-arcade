@@ -2,6 +2,7 @@ import { useEffect, useState, type CSSProperties, type ReactNode } from 'react'
 import { BoardSkeleton } from '../components/BoardChrome'
 import { GameDeviceBadge } from '../components/GameDeviceBadge'
 import { GameThumbArt } from '../components/GameThumbArt'
+import { FriendsCard } from '../components/FriendsPanel'
 import { BackChevronIcon } from '../components/PageBackLink'
 import { PageShell } from '../components/PageShell'
 import { PlayerAvatar } from '../components/PlayerAvatar'
@@ -11,6 +12,7 @@ import { TrophyCase } from '../components/TrophyCase'
 import { getGame, gamePlayableOn } from '../data/games'
 import { gameBoardHref, gamePlayHref, globalRankingsHref, rankHref } from '../hooks/useHashRoute'
 import { useAuth } from '../hooks/useAuth'
+import { refreshFriends } from '../hooks/useFriends'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { AVATARS_ENABLED } from '../lib/avatars'
 import { gapToNextLabel } from '../lib/boardGap'
@@ -45,6 +47,7 @@ function AddFriendButton({ name }: { name: string }) {
       const result = await sendFriendRequest(name)
       setStatus('sent')
       if (result.status === 'accepted') setError(null)
+      void refreshFriends(true)
     } catch (err) {
       setStatus('error')
       if (err instanceof ApiError && (err.code === 'NOT_A_PLAYER' || /hasn't signed in yet/i.test(err.message))) {
@@ -333,6 +336,8 @@ export function RankPage({
         </section>
 
         {viewedName ? <TrophyCase trophies={trophies} isSelf={isSelf} /> : null}
+
+        {isSelf && viewedName && signedIn ? <FriendsCard /> : null}
 
         {viewedName ? (
           <section

@@ -2092,127 +2092,173 @@ img {
   font-weight: 650;
   color: var(--muted);
 }
-
-.site-drawer__rank {
-  flex: 0 0 auto;
-  display: flex;
-  flex-direction: column;
+/* Your profile, as one row: an initial on a tile, the tag, and where you
+   stand. Replaces the big rank circle — the profile page has the ranks. */
+.site-drawer__profile {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  justify-content: center;
   gap: 0.75rem;
   margin: 0.15rem 0;
-  padding: 1rem 0.85rem;
-  border-radius: 1.25rem;
+  padding: 0.7rem 0.85rem 0.7rem 0.7rem;
+  border-radius: 1rem;
   text-decoration: none;
   color: inherit;
-  background:
-    radial-gradient(
-      ellipse 80% 70% at 50% 35%,
-      color-mix(in srgb, var(--accent) 16%, transparent),
-      transparent 70%
-    ),
-    color-mix(in srgb, var(--ink) 3%, var(--surface));
-  border: 1px solid rgba(var(--ink-rgb), 0.08);
-  transition:
-    transform 0.18s ease,
-    border-color 0.18s ease,
-    background-color 0.18s ease;
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--accent) 18%, var(--surface)) 0%,
+    color-mix(in srgb, var(--accent) 6%, var(--surface)) 100%
+  );
+  border: 1px solid color-mix(in srgb, var(--accent) 28%, transparent);
+  transition: border-color 0.15s ease, transform 0.15s ease;
 }
 
-.site-drawer__rank:hover,
-.site-drawer__rank:focus-visible {
+.site-drawer__profile:hover,
+.site-drawer__profile:focus-visible {
   outline: none;
-  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 50%, transparent);
   transform: translateY(-1px);
 }
 
-.site-drawer__rank-circle {
+.site-drawer__profile-mark {
+  display: grid;
+  place-items: center;
+  width: 3rem;
+  height: 3rem;
+  border-radius: 28%;
+  background: color-mix(in srgb, var(--accent) 16%, var(--playfield));
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 800;
+  line-height: 1;
+  color: color-mix(in srgb, var(--accent) 70%, var(--ink));
+  user-select: none;
+}
+
+.site-drawer__profile-text {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  flex: none;
-  flex-shrink: 0;
-  box-sizing: border-box;
-  width: 8.25rem;
-  height: 8.25rem;
-  aspect-ratio: 1;
-  border-radius: 50%;
-  background:
-    radial-gradient(
-      circle at 35% 30%,
-      color-mix(in srgb, var(--accent) 30%, var(--surface)),
-      color-mix(in srgb, var(--accent) 12%, var(--surface)) 55%,
-      var(--surface)
-    );
-  border: 3px solid color-mix(in srgb, var(--accent) 55%, transparent);
-  box-shadow:
-    0 12px 28px rgba(var(--ink-rgb), 0.1),
-    inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  gap: 0.1rem;
+  min-width: 0;
 }
 
-.site-drawer__rank-circle--empty {
-  border-color: rgba(var(--ink-rgb), 0.12);
-  background: rgba(var(--surface-rgb), 0.96);
-}
-
-.site-drawer__rank-circle--loading {
-  border-color: rgba(var(--ink-rgb), 0.1);
-}
-
-.site-drawer__rank-label {
-  font-size: 0.68rem;
+.site-drawer__profile-name {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
   font-weight: 800;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.site-drawer__profile-meta {
+  font-size: 0.78rem;
+  font-weight: 650;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.site-drawer__profile-go {
+  flex: none;
+  font-size: 0.78rem;
+  font-weight: 750;
+  color: color-mix(in srgb, var(--accent) 70%, var(--ink));
+  white-space: nowrap;
+}
+
+.site-drawer__profile-go::after {
+  content: " \203A";
+}
+
+/* Places of yours — friends, groups — as rows that link out. */
+.site-drawer__rows {
+  display: flex;
+  flex-direction: column;
+  border-radius: 1rem;
+  border: 1px solid rgba(var(--ink-rgb), 0.08);
+  background: color-mix(in srgb, var(--ink) 3.5%, var(--surface));
+  overflow: hidden;
+}
+
+.site-drawer__row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-height: 2.85rem;
+  padding: 0.7rem 0.85rem;
+  border-bottom: 1px solid rgba(var(--ink-rgb), 0.07);
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.site-drawer__row:last-child {
+  border-bottom: 0;
+}
+
+.site-drawer__row:hover,
+.site-drawer__row:focus-visible {
+  background: rgba(var(--ink-rgb), 0.04);
+  outline: none;
+}
+
+.site-drawer__row-label {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+
+.site-drawer__row-value {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.84rem;
+  font-weight: 700;
   color: var(--muted);
 }
 
-.site-drawer__rank-value {
-  font-family: var(--font-display);
-  font-size: 2.35rem;
-  font-weight: 800;
-  letter-spacing: -0.04em;
+.site-drawer__row-chev {
+  flex: none;
+  color: var(--muted);
+  font-size: 1.1rem;
   line-height: 1;
-  color: var(--ink);
 }
 
-.site-drawer__rank-value--text {
-  font-size: 1.05rem;
-  letter-spacing: -0.02em;
-  line-height: 1.15;
-  text-align: center;
-}
-
-.site-drawer__rank-spinner {
-  width: 1.55rem;
-  height: 1.55rem;
-  border-radius: 50%;
-  border: 3px solid color-mix(in srgb, var(--accent) 25%, transparent);
-  border-top-color: var(--accent);
-  animation: site-header-rank-spin 0.7s linear infinite;
-}
-
-.site-drawer__rank-foot {
-  display: flex;
-  flex-direction: column;
+.site-drawer__badge {
+  display: inline-flex;
   align-items: center;
-  gap: 0.45rem;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
 }
 
-.site-drawer__rank-cta {
-  font-family: var(--font-display);
-  font-size: 0.95rem;
-  font-weight: 750;
-  letter-spacing: -0.01em;
-  color: var(--accent);
+/* Something waiting for you — a dot on the header chip. */
+.site-header__you-dot {
+  position: absolute;
+  top: -0.1rem;
+  right: -0.1rem;
+  width: 0.62rem;
+  height: 0.62rem;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid var(--surface);
 }
 
-.site-drawer__rank:hover .site-drawer__rank-cta,
-.site-drawer__rank:focus-visible .site-drawer__rank-cta {
-  text-decoration: underline;
-  text-underline-offset: 0.15em;
+.site-header__you {
+  position: relative;
 }
+
 
 .site-drawer__close {
   width: 2.2rem;
@@ -13046,110 +13092,6 @@ a.lb-share:visited:focus-visible {
   margin: 0 0 1rem;
 }
 
-.friends-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.friends-panel__add {
-  display: flex;
-  gap: 0.35rem;
-}
-
-.friends-panel__add-field {
-  flex: 1;
-  min-width: 0;
-}
-
-.friends-panel__add-field input {
-  width: 100%;
-  margin: 0;
-  padding: 0.45rem 0.6rem;
-  border: 1px solid rgba(var(--ink-rgb), 0.16);
-  border-radius: 0.6rem;
-  background: rgba(var(--surface-rgb), 0.96);
-  color: var(--ink);
-  font: inherit;
-  font-size: 0.85rem;
-  font-weight: 700;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
-}
-
-.friends-panel__add-btn {
-  flex: none;
-  padding: 0.45rem 0.85rem;
-  border: 0;
-  border-radius: 0.6rem;
-  background: color-mix(in srgb, var(--accent) 22%, var(--surface));
-  color: var(--ink);
-  font: inherit;
-  font-size: 0.82rem;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.friends-panel__add-btn:disabled {
-  opacity: 0.5;
-  cursor: default;
-}
-
-.friends-panel__note {
-  margin: 0;
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: var(--muted);
-}
-
-.friends-panel__note--error {
-  color: #b42318;
-}
-
-.friends-panel__requests {
-  margin: 0.2rem 0;
-}
-
-.friends-panel__list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.friends-panel__row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-  padding: 0.35rem 0;
-  border-bottom: 1px solid rgba(var(--ink-rgb), 0.06);
-}
-
-.friends-panel__row:last-child {
-  border-bottom: none;
-  padding-bottom: 0;
-}
-
-.friends-panel__who {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  min-width: 0;
-  color: inherit;
-  text-decoration: none;
-}
-
-.friends-panel__name {
-  font-size: 0.9rem;
-  font-weight: 700;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .group-invite-code {
   margin: 0;
   font-family: var(--font-display);
@@ -13339,111 +13281,6 @@ a.lb-share:visited:focus-visible {
 .invite-by-tag__friend:disabled {
   opacity: 0.55;
   cursor: default;
-}
-
-
-.friends-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.friends-panel__add {
-  display: flex;
-  gap: 0.35rem;
-}
-
-.friends-panel__add-field {
-  flex: 1;
-  min-width: 0;
-}
-
-.friends-panel__add-field input {
-  width: 100%;
-  margin: 0;
-  padding: 0.45rem 0.6rem;
-  border: 1px solid rgba(var(--ink-rgb), 0.16);
-  border-radius: 0.6rem;
-  background: rgba(var(--surface-rgb), 0.96);
-  color: var(--ink);
-  font: inherit;
-  font-size: 0.85rem;
-  font-weight: 700;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
-}
-
-.friends-panel__add-btn {
-  flex: none;
-  padding: 0.45rem 0.85rem;
-  border: 0;
-  border-radius: 0.6rem;
-  background: color-mix(in srgb, var(--accent) 22%, var(--surface));
-  color: var(--ink);
-  font: inherit;
-  font-size: 0.82rem;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.friends-panel__add-btn:disabled {
-  opacity: 0.5;
-  cursor: default;
-}
-
-.friends-panel__note {
-  margin: 0;
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: var(--muted);
-}
-
-.friends-panel__note--error {
-  color: #b42318;
-}
-
-.friends-panel__requests {
-  margin: 0.2rem 0;
-}
-
-.friends-panel__list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.friends-panel__row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-  padding: 0.35rem 0;
-  border-bottom: 1px solid rgba(var(--ink-rgb), 0.06);
-}
-
-.friends-panel__row:last-child {
-  border-bottom: none;
-  padding-bottom: 0;
-}
-
-.friends-panel__who {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  min-width: 0;
-  color: inherit;
-  text-decoration: none;
-}
-
-.friends-panel__name {
-  font-size: 0.9rem;
-  font-weight: 700;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 

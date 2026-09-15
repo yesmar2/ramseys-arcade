@@ -797,6 +797,228 @@
 }
 
 /* ==========================================================================
+   Friends (your own profile)
+   ========================================================================== */
+
+.pff__alert {
+  color: color-mix(in srgb, var(--accent) 75%, var(--ink));
+}
+
+.pff__add {
+  display: flex;
+  gap: 0.45rem;
+  padding: 0 var(--ev-pad) 0.7rem;
+}
+
+.pff__field {
+  flex: 1;
+  min-width: 0;
+}
+
+.pff__input {
+  width: 100%;
+  min-height: 2.5rem;
+  margin: 0;
+  padding: 0.45rem 0.8rem;
+  border: 1px solid rgba(var(--ink-rgb), 0.14);
+  border-radius: 999px;
+  background: rgba(var(--surface-rgb), 0.96);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.86rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.pff__input::placeholder {
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.pff__input:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent) 55%, transparent);
+  outline-offset: 1px;
+  border-color: transparent;
+}
+
+.pff__add-btn {
+  flex: none;
+  min-height: 2.5rem;
+  padding: 0 1.1rem;
+  border: 0;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  font: inherit;
+  font-size: 0.84rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.pff__add-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.pff__msg {
+  margin: -0.25rem 0 0.6rem;
+  padding: 0 var(--ev-pad);
+  font-size: 0.8rem;
+  font-weight: 650;
+  color: var(--muted);
+}
+
+.pff__msg--error {
+  color: #b42318;
+}
+
+.pff__requests,
+.pff__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.pff__request,
+.pff__row {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.55rem var(--ev-pad);
+  border-top: 1px solid var(--ev-line);
+}
+
+/* Someone waiting on you gets the accent, above the list proper. */
+.pff__request {
+  background: color-mix(in srgb, var(--accent) 9%, transparent);
+}
+
+.pff__row--pending {
+  opacity: 0.75;
+}
+
+.pff__who {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.7rem;
+  flex: 1;
+  min-width: 0;
+  color: inherit;
+  text-decoration: none;
+}
+
+.pff__mark {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 2.2rem;
+  height: 2.2rem;
+  border-radius: 28%;
+  background: color-mix(in srgb, var(--accent) 16%, var(--playfield));
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 800;
+  line-height: 1;
+  color: color-mix(in srgb, var(--accent) 70%, var(--ink));
+  user-select: none;
+}
+
+.pff__text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.05rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.pff__name {
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  font-weight: 750;
+  color: var(--ink);
+  text-decoration: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pff__who:hover .pff__name,
+.pff__who:focus-visible .pff__name,
+a.pff__name:hover,
+a.pff__name:focus-visible {
+  color: color-mix(in srgb, var(--accent) 70%, var(--ink));
+}
+
+.pff__sub {
+  font-size: 0.72rem;
+  font-weight: 650;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pff__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex: none;
+}
+
+.pff__btn {
+  min-height: 2rem;
+  padding: 0 0.8rem;
+  border: 1px solid rgba(var(--ink-rgb), 0.12);
+  border-radius: 999px;
+  background: rgba(var(--surface-rgb), 0.6);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.pff__btn:hover:not(:disabled),
+.pff__btn:focus-visible:not(:disabled) {
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+  outline: none;
+}
+
+.pff__btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.pff__btn--primary {
+  border-color: transparent;
+  background: var(--accent);
+  color: #fff;
+}
+
+.pff__btn--quiet {
+  border-color: transparent;
+  background: transparent;
+  color: var(--muted);
+}
+
+.pff__btn--quiet:hover:not(:disabled),
+.pff__btn--quiet:focus-visible:not(:disabled) {
+  border-color: transparent;
+  color: var(--ink);
+  background: rgba(var(--ink-rgb), 0.06);
+}
+
+.pff__btn--danger {
+  border-color: transparent;
+  background: #b42318;
+  color: #fff;
+}
+
+/* ==========================================================================
    Flat / Google
    ========================================================================== */
 
