@@ -575,11 +575,11 @@ function EventStandings({
   const title = single ? (ended ? 'Final scores' : 'Leaders') : ended ? 'Final standings' : 'Standings'
   const rows = single ? scoredStandings(detail).length : detail.standings.length
   return (
-    <section className="ev-card" aria-label={title}>
-      <div className="ev-card__head">
-        <h2 className="ev-card__title">{title}</h2>
+    <section className="lst-block" aria-label={title}>
+      <div className="lst-block__head">
+        <h2 className="lst-block__title">{title}</h2>
         {rows > 0 ? (
-          <p className="ev-card__note">
+          <p className="lst-block__note">
             {rows} {rows === 1 ? 'player' : 'players'}
           </p>
         ) : null}

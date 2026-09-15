@@ -312,13 +312,13 @@ function GlobalRankingsView({ period }: { period: LeaderboardPeriod }) {
 
         <section
           key={period}
-          className="ev-card"
+          className="lst-block"
           aria-label={`${PERIOD_LABELS[period]} global rankings`}
         >
-          <div className="ev-card__head">
-            <h2 className="ev-card__title">Rankings</h2>
+          <div className="lst-block__head">
+            <h2 className="lst-block__title">Rankings</h2>
             {!loading && !error && totalPlayers > 0 ? (
-              <p className="ev-card__note">
+              <p className="lst-block__note">
                 {PERIOD_LABELS[period]} · {totalPlayers} {totalPlayers === 1 ? 'player' : 'players'}
                 {entries.length < totalPlayers ? ` · top ${entries.length}` : ''}
               </p>
@@ -350,7 +350,7 @@ function GlobalRankingsView({ period }: { period: LeaderboardPeriod }) {
           )}
 
           {!loading && !error && entries.length > shown ? (
-            <button type="button" className="lb-more" onClick={() => setShown(entries.length)}>
+            <button type="button" className="lst__more" onClick={() => setShown(entries.length)}>
               Show top {entries.length}
             </button>
           ) : null}

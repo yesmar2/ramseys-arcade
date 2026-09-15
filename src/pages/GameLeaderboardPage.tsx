@@ -134,13 +134,13 @@ export function GameLeaderboardPage({
 
         <section
           key={`${gameSlug}-${period}`}
-          className="ev-card lb-board--fade"
+          className="lst-block lb-board--fade"
           aria-label={`${game.name} leaderboard`}
         >
-          <div className="ev-card__head">
-            <h2 className="ev-card__title">Top scores</h2>
+          <div className="lst-block__head">
+            <h2 className="lst-block__title">Top scores</h2>
             {!loading && !error && entries.length > 0 ? (
-              <p className="ev-card__note">
+              <p className="lst-block__note">
                 {PERIOD_LABELS[period]} · {entries.length} {entries.length === 1 ? 'player' : 'players'}
               </p>
             ) : null}
@@ -178,7 +178,7 @@ export function GameLeaderboardPage({
           {!loading && !error && entries.length > shown ? (
             <button
               type="button"
-              className="lb-more"
+              className="lst__more"
               onClick={() => setShown(entries.length)}
             >
               Show top {entries.length}

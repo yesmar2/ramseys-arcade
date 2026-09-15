@@ -396,3 +396,104 @@ html[data-theme="flat"] .lst__row--you,
 html[data-theme="google"] .lst__row--you {
   background: color-mix(in srgb, var(--event-accent, var(--accent)) 14%, var(--surface));
 }
+
+/* ==========================================================================
+   A list on the page: a small label over the rows, no wrapping card —
+   the rows are the cards.
+   ========================================================================== */
+
+.lst-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.lst-block__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0 0.15rem;
+}
+
+.lst-block__title {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.lst-block__note {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--muted);
+  text-align: right;
+}
+
+.lst-block > .lst {
+  padding: 0;
+}
+
+.lst-block > .lb-list--skeleton {
+  margin: 0;
+}
+
+.lst-block > .lb-empty-state {
+  padding: 1.2rem 1rem 1.4rem;
+  border-radius: 1rem;
+  background: rgba(var(--surface-rgb), 0.5);
+  border: 1px dashed rgba(var(--ink-rgb), 0.12);
+}
+
+.lst-block > .lb-device-note--footer {
+  margin: 0;
+  padding: 0 0.25rem;
+}
+
+/* Show the rest: a quiet pill under the rows. */
+.lst__more {
+  align-self: center;
+  min-height: 2.3rem;
+  margin: 0.1rem 0 0;
+  padding: 0 1.15rem;
+  border: 1px solid color-mix(in srgb, var(--event-accent, var(--accent)) 40%, transparent);
+  border-radius: 999px;
+  background: rgba(var(--surface-rgb), 0.5);
+  color: color-mix(in srgb, var(--event-accent, var(--accent)) 65%, var(--ink));
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.lst__more:hover,
+.lst__more:focus-visible {
+  background: color-mix(in srgb, var(--event-accent, var(--accent)) 14%, var(--surface));
+  outline: none;
+}
+
+/* Rows without a place, e.g. a game's record books. */
+.lst__main--norank {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  padding-left: 0.65rem;
+}
+
+.lst__sub--link,
+.lst__score--link {
+  text-decoration: none;
+}
+
+.lst__sub--link:hover,
+.lst__sub--link:focus-visible {
+  color: color-mix(in srgb, var(--event-accent, var(--accent)) 70%, var(--ink));
+}
+
+.lst-block > .ev-empty {
+  padding: 1.2rem 1rem 1.4rem;
+  border-radius: 1rem;
+  background: rgba(var(--surface-rgb), 0.5);
+  border: 1px dashed rgba(var(--ink-rgb), 0.12);
+}

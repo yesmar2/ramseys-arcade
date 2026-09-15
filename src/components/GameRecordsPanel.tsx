@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react'
 import { useEffect, useState } from 'react'
 import { BoardEmpty, BoardSkeleton } from './BoardChrome'
 import { getGame } from '../data/games'
@@ -10,6 +11,7 @@ import {
   formatRecordScore,
   type RecordSummary,
 } from '../lib/records'
+import { PlayerMark } from './PlayerMark'
 
 function recordsEmptyDetail(game: string, gameName: string) {
   if (game === 'snake') {
@@ -39,7 +41,11 @@ type GameRecordsPanelProps = {
   period: LeaderboardPeriod
 }
 
-/** Record books list for one game (`#/records/{game}` and hub tab). */
+/**
+ * Record books list for one game: the same soft rows as every other list,
+ * with the record as the headline, its holder's mark beside it, and the
+ * value on the right.
+ */
 export function GameRecordsPanel({ game, accent, period }: GameRecordsPanelProps) {
   const gameMeta = getGame(game)
   const playerName = normalizePlayerName(usePlayerName())
@@ -75,14 +81,14 @@ export function GameRecordsPanel({ game, accent, period }: GameRecordsPanelProps
 
   return (
     <section
-      className="ev-card rbl"
+      className="lst-block"
       aria-label="Game records"
-      style={{ '--event-accent': accent } as React.CSSProperties}
+      style={{ '--event-accent': accent } as CSSProperties}
     >
-      <div className="ev-card__head">
-        <h2 className="ev-card__title">Records</h2>
+      <div className="lst-block__head">
+        <h2 className="lst-block__title">Records</h2>
         {!loading && !error && records.length > 0 ? (
-          <p className="ev-card__note">
+          <p className="lst-block__note">
             {PERIOD_LABELS[period]} · {held} of {records.length} held
           </p>
         ) : null}
@@ -100,7 +106,7 @@ export function GameRecordsPanel({ game, accent, period }: GameRecordsPanelProps
           detail={groupId ? undefined : recordsEmptyDetail(game, gameTitle)}
         />
       ) : (
-        <ol className="rbl__list">
+        <ol className="lst">
           {records.map((row) => {
             const holder = row.top ? normalizePlayerName(row.top.name) : ''
             const isYou = Boolean(playerName && holder === playerName)
@@ -108,22 +114,32 @@ export function GameRecordsPanel({ game, accent, period }: GameRecordsPanelProps
             return (
               <li
                 key={row.id}
-                className={`rbl__row${isYou ? ' rbl__row--you' : ''}${holder ? '' : ' rbl__row--open'}`}
+                className={`lst__row${isYou ? ' lst__row--you' : ''}${holder ? '' : ' lst__row--empty'}`}
+                aria-current={isYou ? 'true' : undefined}
               >
-                <a className="rbl__label" href={href}>
-                  {row.label}
-                </a>
-                {holder ? (
-                  <a className="rbl__holder" href={rankHref(holder, period)} title={holder}>
-                    <span className="rbl__name">{holder}</span>
-                    {isYou ? <span className="lst__you">You</span> : null}
+                <div className="lst__main lst__main--norank">
+                  {holder ? (
+                    <PlayerMark name={holder} avatarId={row.top?.avatarId} className="lst__mark" />
+                  ) : (
+                    <span className="pmark pmark--empty lst__mark" aria-hidden="true" />
+                  )}
+                  <span className="lst__text">
+                    <a className="lst__name" href={href} title={row.label}>
+                      <span className="lst__name-text">{row.label}</span>
+                    </a>
+                    {holder ? (
+                      <a className="lst__sub lst__sub--link" href={rankHref(holder, period)}>
+                        Held by {holder}
+                        {isYou ? <span className="lst__you">You</span> : null}
+                      </a>
+                    ) : (
+                      <span className="lst__sub">Nobody yet</span>
+                    )}
+                  </span>
+                  <a className="lst__score lst__score--link" href={href}>
+                    {row.top ? formatRecordScore(row.top.score, row.unit, row.id) : '—'}
                   </a>
-                ) : (
-                  <span className="rbl__holder rbl__holder--open">Open</span>
-                )}
-                <a className="rbl__val" href={href}>
-                  {row.top ? formatRecordScore(row.top.score, row.unit, row.id) : '—'}
-                </a>
+                </div>
               </li>
             )
           })}
