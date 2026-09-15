@@ -89,7 +89,18 @@ export function EventArt({ games, className }: { games: string[]; className?: st
   const accent = eventAccent(games)
   const cls = className ? ` ${className}` : ''
 
-  if (shown.length <= 1) {
+  /*
+   * No games yet means the detail fetch has not landed. Asking for a thumb
+   * without a slug falls through to the generic one, so the hero opened on a
+   * confident little emblem that belongs to no game — it reads as the event's
+   * own artwork rather than as something still arriving, and then swaps. An
+   * empty frame is honest about waiting.
+   */
+  if (shown.length === 0) {
+    return <span className={`ev-art ev-art--pending${cls}`} aria-hidden="true" />
+  }
+
+  if (shown.length === 1) {
     return (
       <span className={`ev-art ev-art--solo${cls}`} aria-hidden="true">
         <GameThumbArt slug={shown[0] ?? ''} accent={accent} />

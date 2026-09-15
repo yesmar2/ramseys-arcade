@@ -8,7 +8,6 @@ import {
   EventLiveCard,
   EventResultRow,
   eventAccent,
-  eventDay,
   eventPhase,
   ordinal,
 } from '../components/EventCard'
@@ -303,7 +302,16 @@ function heroClock(detail: TournamentDetail): HeroClock {
         ),
       }
     }
-    return { label: 'Ended', value: eventDay(detail) || 'Over' }
+    /*
+     * Over, and nobody took it. A bracket gets here by running its rounds out
+     * while matches sat unplayed; a scores event by nobody posting at all.
+     * Either way the date it started is not the answer to "how did it go", and
+     * that is what this slot was showing.
+     */
+    return {
+      label: 'Ended',
+      value: bracket ? 'No winner — rounds went unplayed' : 'No winner — nobody played',
+    }
   }
   if (bracket) {
     if (detail.status === 'upcoming') return { label: 'Starts', value: 'When full' }
@@ -827,7 +835,15 @@ export function TournamentsPage() {
       <div className="ev ev--list">
         <section className="hero" aria-label="Events">
           <div className="hero__main hero__main--bare">
-            {heroGames.length > 0 ? (
+            {/*
+              * The star is the empty state — it means "no events exist". It was
+              * also what you saw for the first half second of every visit,
+              * because the list had not arrived yet and so had no games to draw
+              * from, which made an ordinary load look like an empty arcade.
+              * While it is loading the art frame just sits there quietly, in
+              * the same box the real cluster lands in.
+              */}
+            {heroGames.length > 0 || loading ? (
               <EventArt games={heroGames} className="hero__art" />
             ) : (
               <span className="hero__mark hero__mark--empty" aria-hidden="true">
