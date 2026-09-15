@@ -1,12 +1,11 @@
 /*
  * Home page blocks.
  *
- * This page's existing vocabulary is a pastel art panel floating on the page
- * gradient with a label underneath — game tiles carry no card, no border and no
- * background of their own. Earlier passes here stacked opaque slabs instead,
- * which is why they read as imported from a different app. These blocks follow
- * the tile: colour lives in the art, hierarchy comes from its size, and text
- * sits on the page.
+ * The game tiles are this page's own vocabulary: a pastel art panel floating
+ * on the page gradient with a label underneath, no card. Around them the page
+ * now speaks the same language as the rest of the site — the hero from
+ * hero.css, and the events list's live cards for the events you are in — so
+ * the front door matches the rooms behind it.
  */
 
 .home-rail {
@@ -15,79 +14,20 @@
   gap: 1.6rem;
 }
 
-/* ---------- hero: an oversized game tile ---------- */
+/* ---------- hero: the shared hero, with bigger art ---------- */
 
-/*
- * Art spans both rows on a wide screen, so Play sits under the description
- * beside it. On a phone the button drops to its own row under everything,
- * where a full-width control reads as deliberate rather than as a pill
- * stranded in the right-hand column.
- */
 .home-hero {
-  display: grid;
-  grid-template-columns: minmax(0, 13rem) minmax(0, 1fr);
-  grid-template-areas:
-    "art text"
-    "art go";
-  align-items: center;
-  gap: 0.6rem 1.4rem;
-}
-
-.home-hero__art {
-  grid-area: art;
-}
-
-.home-hero__text {
-  grid-area: text;
-}
-
-.home-hero__go {
-  grid-area: go;
-  justify-self: start;
+  --ev-art-size: 6rem;
 }
 
 .home-hero__art {
   display: block;
   line-height: 0;
-}
-
-.home-hero__art .inline-thumb {
-  --inline-thumb-size: 100%;
-  width: 100%;
-  height: auto;
-  aspect-ratio: 4 / 3;
-  border-radius: 1.1rem;
-  box-shadow: var(--shadow-soft);
   transition: transform 0.18s ease;
 }
 
-.home-hero__art:hover .inline-thumb {
+.home-hero__art:hover {
   transform: translateY(-2px);
-}
-
-.home-hero__art .inline-thumb .game-thumb__svg {
-  width: 88%;
-  height: 88%;
-}
-
-.home-hero__text {
-  min-width: 0;
-}
-
-.home-hero__kicker {
-  margin: 0 0 0.15rem;
-  font-size: 0.72rem;
-  font-weight: 750;
-  color: color-mix(in srgb, var(--hero-accent, var(--accent)) 62%, var(--ink));
-}
-
-.home-hero__name {
-  margin: 0;
-  font-family: var(--font-display);
-  font-size: clamp(1.7rem, 5vw, 2.4rem);
-  font-weight: 800;
-  letter-spacing: -0.032em;
-  line-height: 1.02;
 }
 
 .home-hero__name a {
@@ -95,71 +35,25 @@
   text-decoration: none;
 }
 
-.home-hero__sub {
-  margin: 0.3rem 0 0;
-  max-width: 32rem;
-  font-size: 0.88rem;
-  font-weight: 600;
-  color: var(--muted);
+.home-hero__name a:hover,
+.home-hero__name a:focus-visible {
+  color: color-mix(in srgb, var(--hero-accent) 65%, var(--ink));
+  outline: none;
 }
 
-.home-hero__go {
-  display: inline-flex;
-  align-items: center;
-  border-radius: 999px;
-  padding: 0.6rem 1.6rem;
-  background: var(--hero-accent, var(--accent));
-  color: #fff;
-  font-size: 0.92rem;
-  font-weight: 750;
-  text-decoration: none;
-}
-
-.home-hero__go:hover,
-.home-hero__go:focus-visible {
-  filter: brightness(1.06);
-}
-
-@media (max-width: 40rem) {
+@media (min-width: 680px) {
   .home-hero {
-    grid-template-columns: 5.5rem minmax(0, 1fr);
+    --ev-art-size: 9rem;
+  }
+
+  /* Nothing sits on the right, so the text takes the width. */
+  .home-hero .hero__main {
+    grid-template-columns: auto minmax(0, 1fr);
     grid-template-areas:
       "art text"
-      "go  go";
-    gap: 0.7rem 0.9rem;
-  }
-
-  /* Square on a phone, and sized to the text block beside it so the two
-     share a top and bottom edge instead of the art floating inside them. */
-  .home-hero__art .inline-thumb {
-    aspect-ratio: 1;
-  }
-
-  .home-hero__kicker {
-    margin-bottom: 0.05rem;
-    font-size: 0.68rem;
-  }
-
-  .home-hero__name {
-    font-size: 1.45rem;
-  }
-
-  /* The description carried the gap above Play; without it, restore one. */
-  .home-hero__sub {
-    display: none;
-  }
-
-  .home-hero__go {
-    justify-self: stretch;
-    justify-content: center;
-    margin-top: 0;
-    padding: 0.55rem 1.15rem;
-    font-size: 0.88rem;
+      "art actions";
   }
 }
-
-
-/* ---------- events ---------- */
 
 /* ---------- top row: hero with the running events beside it ---------- */
 
@@ -174,11 +68,6 @@
     /* Top-aligned: the fixtures list reads as a sidebar to the hero, not as
        something floating alongside its middle. */
     align-items: start;
-  }
-
-  /* Drop the first row onto the hero's kicker line. */
-  .home-evs {
-    padding-top: 0.15rem;
   }
 }
 
@@ -202,6 +91,7 @@
   padding: 0.5rem 0.6rem;
   border-radius: 0.9rem;
   background: color-mix(in srgb, var(--ev-accent, var(--accent)) 12%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--ev-accent, var(--accent)) 24%, transparent);
   font-size: 0.79rem;
   text-decoration: none;
   color: inherit;
@@ -293,93 +183,10 @@
   color: var(--accent);
 }
 
+/* ---------- your events: the events list's cards, under the grid ---------- */
+
 .home-events {
-  display: flex;
-  flex-direction: column;
-  gap: 0.6rem;
-}
-
-.home-ev {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 0.85rem;
-  text-decoration: none;
-  color: inherit;
-}
-
-.home-ev__art {
-  --inline-thumb-size: 3.2rem;
-  display: block;
-  line-height: 0;
-}
-
-.home-ev__body {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-
-.home-ev__name {
-  font-family: var(--font-display);
-  font-size: 1.05rem;
-  font-weight: 800;
-  letter-spacing: -0.015em;
-  line-height: 1.2;
-}
-
-.home-ev__games {
-  font-size: 0.76rem;
-  font-weight: 600;
-  color: var(--muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.home-ev__side {
-  display: flex;
-  align-items: center;
-  gap: 0.8rem;
-  flex: none;
-}
-
-.home-ev__clock {
-  font-weight: 750;
-  font-variant-numeric: tabular-nums;
-  color: var(--muted);
-  font-size: 0.82rem;
-}
-
-.home-ev__go {
-  border-radius: 999px;
-  padding: 0.38rem 1.05rem;
-  background: var(--ev-accent, var(--accent));
-  color: #fff;
-  font-size: 0.8rem;
-  font-weight: 750;
-  white-space: nowrap;
-}
-
-@media (max-width: 34rem) {
-  .home-ev__clock {
-    display: none;
-  }
-}
-
-.home-events__all {
-  margin: 0;
-  font-size: 0.76rem;
-  font-weight: 700;
-}
-
-.home-events__all a {
-  color: var(--muted);
-  text-decoration: none;
-}
-
-.home-events__all a:hover {
-  color: var(--accent);
+  gap: 0.7rem;
 }
 
 /* ---------- per-tile best ---------- */
@@ -405,13 +212,8 @@
   color: var(--tile-accent, var(--ink));
 }
 
-/* ---------- where you stand ---------- */
+/* ---------- the pitch, for a first visit ---------- */
 
-/*
- * The one block that keeps a surface: it is a table of figures, and rows need
- * an edge to line up against. Kept translucent and shadowless so it settles
- * into the page rather than sitting on top of it.
- */
 .home-intro {
   max-width: 40rem;
 }
@@ -473,11 +275,6 @@
 }
 
 @media (max-width: 40rem) {
-  /*
-   * Bigger artwork and a stacked body, so a fixture fills its row the way
-   * every other block on this page does. As one text line it left the right
-   * two thirds of a 355px row empty, which read as a hole in the page.
-   */
   .home-evs__all {
     align-self: flex-start;
     margin-top: 0.1rem;

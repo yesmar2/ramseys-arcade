@@ -5,15 +5,15 @@ import { usePersonalBest } from '../hooks/usePersonalBest'
 import { useDeviceType } from '../lib/device'
 import { heroSlug, newestSlug } from '../lib/homePicks'
 import { useRecentGames } from '../lib/lastPlayed'
-import { GameThumbArt } from './GameThumbArt'
+import { EventArt } from './EventCard'
 import { resolveGameAccent } from '../lib/theme'
 
 /**
  * The single "what should I play" slot.
  *
- * Built as an oversized game tile rather than a card: the rest of this page is
- * pastel art panels sitting straight on the page gradient, so a white slab with
- * a shadow reads as imported from somewhere else.
+ * The same hero every other page opens with — tinted from the game's colour,
+ * art on the left, a kicker, the name, a line about it, and Play — so the
+ * home page reads as the front door to the same building.
  */
 export function HomeHero() {
   const device = useDeviceType()
@@ -29,30 +29,34 @@ export function HomeHero() {
 
   const accent = resolveGameAccent(slug, game.accent)
   const isNew = !lastPlayed && slug === newest
+  const kicker = lastPlayed ? 'Jump back in' : isNew ? 'New in the arcade' : 'Today’s pick'
 
   return (
     <section
-      className="home-hero"
+      className="hero home-hero"
       style={{ '--hero-accent': accent, '--thumb-accent': accent } as CSSProperties}
       aria-label="Play"
     >
-      <a className="home-hero__art" href={gamePlayHref(slug)} tabIndex={-1} aria-hidden="true">
-        <GameThumbArt slug={slug} accent={accent} />
-      </a>
-      <div className="home-hero__text">
-        <p className="home-hero__kicker">
-          {lastPlayed ? 'Jump back in' : isNew ? 'New in the arcade' : 'Today’s pick'}
-        </p>
-        <h2 className="home-hero__name">
-          <a href={gamePlayHref(slug)}>{game.name}</a>
-        </h2>
-        <p className="home-hero__sub">
-          {best > 0 ? `Your best ${best.toLocaleString()}` : game.description}
-        </p>
+      <div className="hero__main">
+        <a className="hero__art home-hero__art" href={gamePlayHref(slug)} tabIndex={-1} aria-hidden="true">
+          <EventArt games={[slug]} />
+        </a>
+        <div className="hero__text">
+          <p className="ev-kicker hero__kicker">
+            <span className="ev-kicker__bit">{kicker}</span>
+          </p>
+          <h2 className="hero__title home-hero__name">
+            <a href={gamePlayHref(slug)}>{game.name}</a>
+          </h2>
+          <p className="hero__sub">{game.description}</p>
+        </div>
+        <div className="hero__actions">
+          <a className="hero__cta" href={gamePlayHref(slug)}>
+            Play
+          </a>
+          {best > 0 ? <span className="hero__hint">Your best {best.toLocaleString()}</span> : null}
+        </div>
       </div>
-      <a className="home-hero__go" href={gamePlayHref(slug)}>
-        Play
-      </a>
     </section>
   )
 }
