@@ -260,15 +260,13 @@
 
 /* The mark on your own profile opens the studio. */
 .pfh__mark-btn {
+  /* A button, but it keeps the mark tile's border and fill from hero.css. */
   position: relative;
-  display: grid;
-  place-items: center;
   padding: 0;
-  border: 0;
-  background: none;
+  font: inherit;
   color: inherit;
   cursor: pointer;
-  border-radius: 28%;
+  overflow: visible;
 }
 
 .pfh__mark-btn:focus-visible {
