@@ -22,6 +22,14 @@ export const AVATAR_SHAPES = [
   'drop',
   'block',
   'mush',
+  'alien',
+  'fox',
+  'skull',
+  'slime',
+  'gem',
+  'bolt',
+  'rocket',
+  'pad',
 ] as const
 
 export type AvatarShape = (typeof AVATAR_SHAPES)[number]
@@ -35,6 +43,14 @@ export const AVATAR_SHAPE_LABELS: Record<AvatarShape, string> = {
   drop: 'Drop',
   block: 'Block',
   mush: 'Mushroom',
+  alien: 'Alien',
+  fox: 'Fox',
+  skull: 'Skull',
+  slime: 'Slime',
+  gem: 'Gem',
+  bolt: 'Bolt',
+  rocket: 'Rocket',
+  pad: 'Pad',
 }
 
 /**
