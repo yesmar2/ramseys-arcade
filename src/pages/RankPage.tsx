@@ -219,16 +219,6 @@ export function RankPage({
     return 0
   })
 
-  // Share (and Add friend) share a bar with the back link on someone else's
-  // profile. Your own has no back link, so the bar would be a row of nothing
-  // with one icon in it — the tools sit in the hero's top corner instead.
-  const tools = viewedName ? (
-    <div className={`pfh__tools${isSelf ? ' pfh__tools--inline' : ''}`}>
-      {!isSelf && signedIn ? <AddFriendButton name={viewedName} /> : null}
-      <ShareBoardButton label={shareLabel} url={shareUrl} />
-    </div>
-  ) : null
-
   return (
     <PageShell innerClassName="lb-page__inner lb-page__inner--events">
       <div className="ev pf">
@@ -242,13 +232,11 @@ export function RankPage({
                 <BackChevronIcon size={18} />
                 Rankings
               </a>
-              {tools}
             </div>
           ) : null}
 
           {viewedName ? (
             <div className="pfh__main">
-              {isSelf ? tools : null}
               <span className="pfh__mark" aria-hidden="true">
                 {AVATARS_ENABLED ? (
                   <PlayerAvatar avatarId={data.avatarId} name={viewedName} size="lg" />
@@ -277,6 +265,17 @@ export function RankPage({
                   {standing && games ? ' · ' : null}
                   {games}
                 </p>
+                {/* Actions live under the caption, where the event hero
+                    keeps its Play button — not in a bar or a corner. */}
+                <div className="pfh__actions">
+                  {!isSelf && signedIn ? <AddFriendButton name={viewedName} /> : null}
+                  <ShareBoardButton
+                    label={shareLabel}
+                    url={shareUrl}
+                    text="Share profile"
+                    className="pfh__share"
+                  />
+                </div>
               </div>
 
               <div className="pfh__ranks" role="tablist" aria-label="Period">

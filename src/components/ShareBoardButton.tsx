@@ -11,6 +11,8 @@ type ShareBoardButtonProps = {
    */
   url?: string
   className?: string
+  /** Optional visible label beside the icon, for a pill rather than a round button. */
+  text?: string
 }
 
 /** Build a pasteable absolute URL for a hash route (or pass-through https URLs). */
@@ -72,7 +74,7 @@ function sharePayload(label: string, link: string): ShareData {
   return { title: label, text: label, url: link }
 }
 
-export function ShareBoardButton({ label, url, className = '' }: ShareBoardButtonProps) {
+export function ShareBoardButton({ label, url, className = '', text }: ShareBoardButtonProps) {
   const titleId = useId()
   const buttonRef = useRef<HTMLButtonElement>(null)
   const labelRef = useRef(label)
@@ -161,6 +163,7 @@ export function ShareBoardButton({ label, url, className = '' }: ShareBoardButto
         title={copied ? 'Copied' : 'Share'}
       >
         <ShareIcon copied={copied} />
+        {text ? <span className="lb-share__text">{copied ? 'Copied' : text}</span> : null}
       </button>
 
       {open && typeof document !== 'undefined'

@@ -131,39 +131,78 @@
 }
 
 .pfh__friend {
-  position: relative;
   display: inline-flex;
+  flex-direction: column;
+  gap: 0.2rem;
 }
 
 .pfh__friend-error {
-  position: absolute;
-  top: calc(100% + 0.3rem);
-  right: 0;
-  white-space: nowrap;
   font-size: 0.72rem;
   font-weight: 650;
   color: #b42318;
 }
 
+/* Actions under the caption: quiet pills, the way the event hero keeps its
+   Play button under the title. */
+.pfh__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 0.45rem;
+  margin-top: 0.45rem;
+}
+
+.pfh__actions .pfh__tool,
+.pfh__share.lb-share {
+  width: auto;
+  height: auto;
+  min-height: 2.1rem;
+  padding: 0 0.85rem 0 0.7rem;
+  gap: 0.4rem;
+  border: 1px solid color-mix(in srgb, var(--accent) 34%, transparent);
+  background: rgba(var(--surface-rgb), 0.5);
+  color: color-mix(in srgb, var(--accent) 65%, var(--ink));
+  font-size: 0.78rem;
+  font-weight: 750;
+  box-shadow: none;
+}
+
+.pfh__actions .pfh__tool {
+  padding-inline: 0.85rem;
+}
+
+.pfh__share.lb-share {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+}
+
+.pfh__share.lb-share .lb-share__icon {
+  width: 0.95rem;
+  height: 0.95rem;
+}
+
+.pfh__share.lb-share:hover,
+.pfh__share.lb-share:focus-visible,
+.pfh__actions .pfh__tool:hover:not(:disabled),
+.pfh__actions .pfh__tool:focus-visible:not(:disabled) {
+  background: color-mix(in srgb, var(--accent) 14%, var(--surface));
+  border-color: color-mix(in srgb, var(--accent) 50%, transparent);
+  color: color-mix(in srgb, var(--accent) 75%, var(--ink));
+}
+
 .pfh__main {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr);
   grid-template-areas:
-    "mark text tools"
-    "ranks ranks ranks";
+    "mark text"
+    "ranks ranks";
   gap: 0.85rem 0.95rem;
   align-items: center;
 }
 
 .pfh__main--bare {
-  grid-template-columns: auto minmax(0, 1fr);
   grid-template-areas: "mark text";
-}
-
-/* On your own profile the tools sit in the corner of the hero itself. */
-.pfh__tools--inline {
-  grid-area: tools;
-  align-self: start;
 }
 
 /* The identity mark: an initial on a tinted tile, sized like the event art. */
@@ -333,14 +372,10 @@
      hero, with the three tiles where the clock sits and the share icon in
      the far corner. */
   .pfh__main {
-    grid-template-columns: auto minmax(0, 1fr) auto auto;
-    grid-template-areas: "mark text ranks tools";
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas: "mark text ranks";
     column-gap: 1.35rem;
     align-items: center;
-  }
-
-  .pfh__tools--inline {
-    margin-left: -0.5rem;
   }
 
   .pfh__main--bare {
