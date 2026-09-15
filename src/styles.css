@@ -2379,19 +2379,9 @@ img {
   min-height: 1.1rem;
 }
 
-.site-header__rank-spinner {
-  width: 0.85rem;
-  height: 0.85rem;
-  border-radius: 50%;
-  border: 2px solid color-mix(in srgb, var(--accent) 28%, transparent);
-  border-top-color: var(--accent);
-  animation: site-header-rank-spin 0.7s linear infinite;
-}
-
-@keyframes site-header-rank-spin {
-  to {
-    transform: rotate(360deg);
-  }
+.site-header__rank-skel {
+  --skel-w: 1.4rem;
+  height: 0.7rem;
 }
 
 .site-header__you-name {

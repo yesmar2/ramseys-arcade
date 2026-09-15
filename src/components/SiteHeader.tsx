@@ -286,7 +286,7 @@ export function SiteHeader() {
                     className="site-header__you-rank site-header__you-rank--loading"
                     aria-label="Loading rank"
                   >
-                    <span className="site-header__rank-spinner" aria-hidden="true" />
+                    <span className="skel-line site-header__rank-skel" aria-hidden="true" />
                   </span>
                 ) : rank != null ? (
                   <span className="site-header__you-rank">#{rank}</span>
@@ -463,7 +463,7 @@ export function SiteHeader() {
                       <span className="site-drawer__profile-name">{playerName}</span>
                       <span className="site-drawer__profile-meta">
                         {rankLoading
-                          ? 'Loading rank…'
+                          ? <span className="skel-line" aria-hidden="true" />
                           : rank != null
                             ? `#${rank} ${PERIOD_LABELS[defaultPeriod].toLowerCase()}`
                             : 'No rank yet'}

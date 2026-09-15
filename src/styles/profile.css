@@ -813,3 +813,24 @@ html[data-theme="google"] .pfh__rank:focus-visible {
   outline: 2px solid color-mix(in srgb, var(--accent) 55%, transparent);
   outline-offset: 2px;
 }
+
+/* Loading: three rows of the friends list's shape. */
+.pff__row--skel {
+  pointer-events: none;
+}
+
+.pff__row--skel .pff__text {
+  gap: 0.35rem;
+}
+
+.pff__mark--skel {
+  border: 0;
+  background: linear-gradient(
+    90deg,
+    rgba(var(--ink-rgb), 0.06),
+    rgba(var(--ink-rgb), 0.12),
+    rgba(var(--ink-rgb), 0.06)
+  );
+  background-size: 200% 100%;
+  animation: lb-skel-shine 1.15s ease-in-out infinite;
+}

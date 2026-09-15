@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type CSSProperties } from 'react'
 import { useFriends } from '../hooks/useFriends'
 import { rankHref } from '../hooks/useHashRoute'
 import { AVATARS_ENABLED } from '../lib/avatars'
@@ -167,7 +167,19 @@ export function FriendsCard() {
       ) : null}
 
       {!loaded ? (
-        <p className="ev-empty">Loading…</p>
+        <ul className="pff__list" aria-busy="true" aria-hidden="true">
+          {[0, 1, 2].map((i) => (
+            <li key={i} className="pff__row pff__row--skel">
+              <span className="pff__who">
+                <span className="pff__mark pff__mark--skel" />
+                <span className="pff__text">
+                  <span className="skel-line" style={{ '--skel-w': '5.5rem' } as CSSProperties} />
+                  <span className="skel-line" style={{ '--skel-w': '3.5rem' } as CSSProperties} />
+                </span>
+              </span>
+            </li>
+          ))}
+        </ul>
       ) : count === 0 && outgoing.length === 0 ? (
         <p className="ev-empty">No friends yet — add someone by their gamer tag.</p>
       ) : (
