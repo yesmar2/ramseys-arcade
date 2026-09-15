@@ -222,3 +222,54 @@ html[data-theme="google"] .hub__scoring li {
 .hub .hub__actions .hero__hint {
   flex-basis: 100%;
 }
+
+/* The share icon: in the hero's corner over the text on a phone, above the
+   tiles on a wide screen — the way the profile page keeps it. */
+.hub__aside {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.6rem;
+}
+
+.hub__corner {
+  position: absolute;
+  top: 0.85rem;
+  right: 1.1rem;
+  z-index: 1;
+}
+
+.hub .hero__main:not(.hero__main--bare) .hero__text {
+  padding-right: 2.7rem;
+}
+
+@media (min-width: 680px) {
+  .hub__corner {
+    position: static;
+  }
+
+  .hub__aside {
+    align-self: start;
+  }
+
+  .hub .hero__main:not(.hero__main--bare) .hero__text {
+    padding-right: 0;
+  }
+}
+
+/* On a phone, Play takes the row and the two links share the next one. */
+@media (max-width: 679px) {
+  .hub .hub__actions .hero__cta {
+    flex-basis: 100%;
+  }
+
+  .hub .hub__actions .hero__ghost {
+    flex: 1 1 0;
+  }
+}
+
+.hub__rules-more {
+  display: flex;
+  justify-content: center;
+  margin-top: 0.75rem;
+}

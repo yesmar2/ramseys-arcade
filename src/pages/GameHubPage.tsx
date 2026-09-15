@@ -47,6 +47,7 @@ import {
 } from '../lib/leaderboard'
 
 const BOARD_ROWS = 10
+const RULES_SHOWN = 6
 
 function isBoardGame(slug: string): slug is LeaderboardGame {
   return (LEADERBOARD_GAMES as readonly string[]).includes(slug)
@@ -76,6 +77,7 @@ export function GameHubPage({ slug, board: boardFromRoute }: GameHubPageProps) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [, setThemeTick] = useState(0)
+  const [allRules, setAllRules] = useState(false)
 
   useEffect(() => {
     const sync = () => setThemeTick((n) => n + 1)
@@ -146,6 +148,14 @@ export function GameHubPage({ slug, board: boardFromRoute }: GameHubPageProps) {
 
   const players = entries.length
   const yourRank = you?.rank ?? null
+  const share = (
+    <ShareBoardButton
+      label={`Think you can beat me at ${game.name}? Prove it on ${APP_NAME}.`}
+      url={gameHref(slug)}
+    />
+  )
+  const rules = canPlay && scoring?.length ? scoring : null
+  const shownRules = rules && !allRules && rules.length > RULES_SHOWN + 1 ? rules.slice(0, RULES_SHOWN) : rules
   const yourBest = you?.score ?? 0
 
   return (
@@ -164,12 +174,9 @@ export function GameHubPage({ slug, board: boardFromRoute }: GameHubPageProps) {
         }
       >
         <section className="hero" aria-label={game.name}>
-          <div className="hero__corner">
-            <ShareBoardButton
-              label={`Think you can beat me at ${game.name}? Prove it on ${APP_NAME}.`}
-              url={gameHref(slug)}
-            />
-          </div>
+          {!boardSlug ? (
+            <div className="hero__corner">{share}</div>
+          ) : null}
           <div className={`hero__main${boardSlug ? '' : ' hero__main--bare'}`}>
             <GameThumbArt slug={game.slug} accent={accent} className="hero__art hub__art" />
             <div className="hero__text">
@@ -212,7 +219,9 @@ export function GameHubPage({ slug, board: boardFromRoute }: GameHubPageProps) {
             </div>
 
             {boardSlug ? (
-              <div className="hero__aside hub__stats" aria-label="Your numbers">
+              <div className="hero__aside hub__aside">
+                <div className="hub__corner">{share}</div>
+                <div className="hub__stats" aria-label="Your numbers">
                 <HubStat
                   label="Your best"
                   value={
@@ -237,6 +246,7 @@ export function GameHubPage({ slug, board: boardFromRoute }: GameHubPageProps) {
                   sub="All time"
                   empty={allTime <= 0}
                 />
+                </div>
               </div>
             ) : null}
           </div>
@@ -300,16 +310,25 @@ export function GameHubPage({ slug, board: boardFromRoute }: GameHubPageProps) {
                 <h2 className="ev-card__title" id="game-how-heading">
                   How to play
                 </h2>
-                {canPlay && scoring?.length ? (
-                  <p className="ev-card__note">Scoring</p>
+                {rules ? (
+                  <p className="ev-card__note">
+                    {rules.length} {rules.length === 1 ? 'rule' : 'rules'}
+                  </p>
                 ) : null}
               </div>
               <div className="ev-card__body">
                 <HowToPlayContent
                   how={game.how}
-                  rows={canPlay ? scoring : null}
+                  rows={shownRules}
                   listClassName="hub__scoring"
                 />
+                {rules && shownRules && shownRules.length < rules.length ? (
+                  <div className="hub__rules-more">
+                    <button type="button" className="lst__more" onClick={() => setAllRules(true)}>
+                      All {rules.length} rules
+                    </button>
+                  </div>
+                ) : null}
               </div>
             </section>
 
