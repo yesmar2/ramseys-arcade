@@ -10,7 +10,7 @@ type GameBoardSwitcherProps = {
   onSelect: (tab: BoardTab) => void
 }
 
-/** Underline tabs: Scores vs Record books (hub only; games with records). */
+/** Segmented pill: Scores vs Record books (hub only; games with records). */
 export function GameBoardSwitcher({
   slug,
   accent,
@@ -21,7 +21,7 @@ export function GameBoardSwitcher({
 
   return (
     <div
-      className="lb-board-switcher"
+      className="seg"
       role="tablist"
       aria-label="Board type"
       style={
@@ -35,7 +35,7 @@ export function GameBoardSwitcher({
         type="button"
         role="tab"
         aria-selected={active === 'scores'}
-        className={`lb-board-switcher__item${active === 'scores' ? ' lb-board-switcher__item--active' : ''}`}
+        className={`seg__item${active === 'scores' ? ' seg__item--active' : ''}`}
         onClick={() => onSelect('scores')}
       >
         Scores
@@ -44,7 +44,7 @@ export function GameBoardSwitcher({
         type="button"
         role="tab"
         aria-selected={active === 'records'}
-        className={`lb-board-switcher__item${active === 'records' ? ' lb-board-switcher__item--active' : ''}`}
+        className={`seg__item${active === 'records' ? ' seg__item--active' : ''}`}
         onClick={() => onSelect('records')}
       >
         Record books

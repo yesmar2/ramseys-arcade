@@ -12,6 +12,7 @@ type PeriodSwitcherProps = {
   hrefFor?: (period: LeaderboardPeriod) => string
   accent?: string
   label?: string
+  className?: string
 }
 
 export function PeriodSwitcher({
@@ -20,21 +21,19 @@ export function PeriodSwitcher({
   onSelect,
   accent,
   label = 'Time period',
+  className,
 }: PeriodSwitcherProps) {
-  const style = {
-    '--period-count': VISIBLE_LEADERBOARD_PERIODS.length,
-    ...(accent ? { '--period-accent': accent } : null),
-  } as CSSProperties
+  const style = (accent ? { '--period-accent': accent } : undefined) as CSSProperties | undefined
 
   return (
     <div
-      className="lb-periods lb-periods--segment"
+      className={`chips${className ? ` ${className}` : ''}`}
       role="tablist"
       aria-label={label}
       style={style}
     >
       {VISIBLE_LEADERBOARD_PERIODS.map((p) => {
-        const className = `lb-period${period === p ? ' lb-period--active' : ''}`
+        const cls = `chips__item${period === p ? ' chips__item--active' : ''}`
         if (hrefFor) {
           return (
             <a
@@ -42,7 +41,7 @@ export function PeriodSwitcher({
               href={hrefFor(p)}
               role="tab"
               aria-selected={period === p}
-              className={className}
+              className={cls}
               onClick={(e) => {
                 e.preventDefault()
                 onSelect(p)
@@ -58,7 +57,7 @@ export function PeriodSwitcher({
             type="button"
             role="tab"
             aria-selected={period === p}
-            className={className}
+            className={cls}
             onClick={() => onSelect(p)}
           >
             {PERIOD_LABELS[p]}

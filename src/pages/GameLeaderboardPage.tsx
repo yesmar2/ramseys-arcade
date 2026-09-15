@@ -125,13 +125,6 @@ export function GameLeaderboardPage({
           }
         />
 
-        <PeriodSwitcher
-          period={period}
-          accent={accent}
-          hrefFor={(p) => gameBoardHref(gameSlug, p)}
-          onSelect={selectPeriod}
-        />
-
         <section
           key={`${gameSlug}-${period}`}
           className="lst-block lb-board--fade"
@@ -141,9 +134,17 @@ export function GameLeaderboardPage({
             <h2 className="lst-block__title">Top scores</h2>
             {!loading && !error && entries.length > 0 ? (
               <p className="lst-block__note">
-                {PERIOD_LABELS[period]} · {entries.length} {entries.length === 1 ? 'player' : 'players'}
+                {entries.length} {entries.length === 1 ? 'player' : 'players'}
               </p>
             ) : null}
+            <div className="lst-block__tools">
+              <PeriodSwitcher
+                period={period}
+                accent={accent}
+                hrefFor={(p) => gameBoardHref(gameSlug, p)}
+                onSelect={selectPeriod}
+              />
+            </div>
           </div>
           {loading ? (
             <BoardSkeleton rows={BOARD_ROWS} />

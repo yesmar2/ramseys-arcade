@@ -42,11 +42,11 @@ function BoardsHubSwitcher({
   period: LeaderboardPeriod
 }) {
   return (
-    <div className="lb-board-switcher" role="tablist" aria-label="Boards">
+    <div className="seg" role="tablist" aria-label="Boards">
       <a
         role="tab"
         aria-selected={!global}
-        className={`lb-board-switcher__item${!global ? ' lb-board-switcher__item--active' : ''}`}
+        className={`seg__item${!global ? ' seg__item--active' : ''}`}
         href={leaderboardHref(period)}
       >
         Top Scores
@@ -54,7 +54,7 @@ function BoardsHubSwitcher({
       <a
         role="tab"
         aria-selected={global}
-        className={`lb-board-switcher__item${global ? ' lb-board-switcher__item--active' : ''}`}
+        className={`seg__item${global ? ' seg__item--active' : ''}`}
         href={globalRankingsHref(period)}
       >
         Rankings
@@ -156,13 +156,6 @@ function LeaderboardsOverview({ period }: { period: LeaderboardPeriod }) {
         <BoardsHero global={false} period={period} players={null} />
         <div className="bx__controls">
           <BoardsHubSwitcher global={false} period={period} />
-          <PeriodSwitcher
-            period={period}
-            hrefFor={leaderboardHref}
-            onSelect={(p) => {
-              window.location.hash = leaderboardHref(p)
-            }}
-          />
         </div>
 
         {error ? (
@@ -173,6 +166,19 @@ function LeaderboardsOverview({ period }: { period: LeaderboardPeriod }) {
             className="evl"
             aria-label={`${PERIOD_LABELS[period]} top scores`}
           >
+            <div className="lst-block__head">
+              <h2 className="lst-block__title">Games</h2>
+              <p className="lst-block__note">{VISIBLE_LEADERBOARD_GAMES.length} boards</p>
+              <div className="lst-block__tools">
+                <PeriodSwitcher
+                  period={period}
+                  hrefFor={leaderboardHref}
+                  onSelect={(p) => {
+                    window.location.hash = leaderboardHref(p)
+                  }}
+                />
+              </div>
+            </div>
             <BoardsGameIndex
               games={summaries}
               loading={loading}
@@ -301,13 +307,6 @@ function GlobalRankingsView({ period }: { period: LeaderboardPeriod }) {
         <BoardsHero global period={period} players={loading ? null : totalPlayers} />
         <div className="bx__controls">
           <BoardsHubSwitcher global period={period} />
-          <PeriodSwitcher
-            period={period}
-            hrefFor={globalRankingsHref}
-            onSelect={(p) => {
-              window.location.hash = globalRankingsHref(p)
-            }}
-          />
         </div>
 
         <section
@@ -319,10 +318,19 @@ function GlobalRankingsView({ period }: { period: LeaderboardPeriod }) {
             <h2 className="lst-block__title">Rankings</h2>
             {!loading && !error && totalPlayers > 0 ? (
               <p className="lst-block__note">
-                {PERIOD_LABELS[period]} · {totalPlayers} {totalPlayers === 1 ? 'player' : 'players'}
+                {totalPlayers} {totalPlayers === 1 ? 'player' : 'players'}
                 {entries.length < totalPlayers ? ` · top ${entries.length}` : ''}
               </p>
             ) : null}
+            <div className="lst-block__tools">
+              <PeriodSwitcher
+                period={period}
+                hrefFor={globalRankingsHref}
+                onSelect={(p) => {
+                  window.location.hash = globalRankingsHref(p)
+                }}
+              />
+            </div>
           </div>
           {loading ? (
             <BoardSkeleton />

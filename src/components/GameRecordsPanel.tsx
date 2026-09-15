@@ -1,11 +1,11 @@
-import type { CSSProperties } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 import { useEffect, useState } from 'react'
 import { BoardEmpty, BoardSkeleton } from './BoardChrome'
 import { getGame } from '../data/games'
 import { rankHref, recordHref } from '../hooks/useHashRoute'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { groupBoardEmptyTitle, useActiveGroup } from '../lib/groups'
-import { normalizePlayerName, PERIOD_LABELS, type LeaderboardPeriod } from '../lib/leaderboard'
+import { normalizePlayerName, type LeaderboardPeriod } from '../lib/leaderboard'
 import {
   fetchGameRecords,
   formatRecordScore,
@@ -39,6 +39,8 @@ type GameRecordsPanelProps = {
   game: string
   accent: string
   period: LeaderboardPeriod
+  /** Sits in the label row, e.g. the period chips. */
+  tools?: ReactNode
 }
 
 /**
@@ -46,7 +48,7 @@ type GameRecordsPanelProps = {
  * with the record as the headline, its holder's mark beside it, and the
  * value on the right.
  */
-export function GameRecordsPanel({ game, accent, period }: GameRecordsPanelProps) {
+export function GameRecordsPanel({ game, accent, period, tools }: GameRecordsPanelProps) {
   const gameMeta = getGame(game)
   const playerName = normalizePlayerName(usePlayerName())
   const groupId = useActiveGroup()
@@ -89,9 +91,10 @@ export function GameRecordsPanel({ game, accent, period }: GameRecordsPanelProps
         <h2 className="lst-block__title">Records</h2>
         {!loading && !error && records.length > 0 ? (
           <p className="lst-block__note">
-            {PERIOD_LABELS[period]} · {held} of {records.length} held
+            {held} of {records.length} held
           </p>
         ) : null}
+        {tools ? <div className="lst-block__tools">{tools}</div> : null}
       </div>
       {loading ? (
         <BoardSkeleton rows={5} />

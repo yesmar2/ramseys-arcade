@@ -417,12 +417,17 @@ function HubScoresSection({
 
   return (
     <section className={className} aria-label={`${periodLabel} top scores`}>
-      <PeriodSwitcher
-        period={period}
-        accent={accent}
-        hrefFor={(p) => gameHubHref(slug, p)}
-        onSelect={onSelectPeriod}
-      />
+      <div className="lst-block__head">
+        <h2 className="lst-block__title">Top scores</h2>
+        <div className="lst-block__tools">
+          <PeriodSwitcher
+            period={period}
+            accent={accent}
+            hrefFor={(p) => gameHubHref(slug, p)}
+            onSelect={onSelectPeriod}
+          />
+        </div>
+      </div>
 
       <div
         key={`${boardSlug}-${period}-${variant}`}

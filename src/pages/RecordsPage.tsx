@@ -123,15 +123,21 @@ function GameRecordBookPage({
             />
           }
         />
-        <PeriodSwitcher
-          period={period}
+        <GameRecordsPanel
+          game={game}
           accent={accent}
-          hrefFor={(p) => recordsHref(game, p)}
-          onSelect={(p) => {
-            window.location.hash = recordsHref(game, p)
-          }}
+          period={period}
+          tools={
+            <PeriodSwitcher
+              period={period}
+              accent={accent}
+              hrefFor={(p) => recordsHref(game, p)}
+              onSelect={(p) => {
+                window.location.hash = recordsHref(game, p)
+              }}
+            />
+          }
         />
-        <GameRecordsPanel game={game} accent={accent} period={period} />
         {!canPlay ? (
           <p className="lb-device-note lb-device-note--footer" role="note">
             {deviceNote}
@@ -253,13 +259,6 @@ function RecordBoardPage({
             </header>
           )}
 
-          <PeriodSwitcher
-            period={period}
-            accent={accent}
-            hrefFor={(p) => recordHref(game, recordId, p)}
-            onSelect={selectPeriod}
-          />
-
           <section
             key={`${recordId}-${period}`}
             className="lst-block lb-board--fade"
@@ -269,9 +268,17 @@ function RecordBoardPage({
               <h2 className="lst-block__title">{unit === 'ms' ? 'Fastest' : 'Best'}</h2>
               {!loading && !error && entries.length > 0 ? (
                 <p className="lst-block__note">
-                  {PERIOD_LABELS[period]} · {entries.length} {entries.length === 1 ? 'player' : 'players'}
+                  {entries.length} {entries.length === 1 ? 'player' : 'players'}
                 </p>
               ) : null}
+              <div className="lst-block__tools">
+                <PeriodSwitcher
+                  period={period}
+                  accent={accent}
+                  hrefFor={(p) => recordHref(game, recordId, p)}
+                  onSelect={selectPeriod}
+                />
+              </div>
             </div>
             {loading ? (
               <BoardSkeleton />

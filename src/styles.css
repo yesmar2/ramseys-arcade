@@ -165,8 +165,6 @@ html[data-theme="flat"] .lb-picker__row,
 html[data-theme="google"] .lb-picker__row,
 html[data-theme="flat"] .lb-picker__search,
 html[data-theme="google"] .lb-picker__search input,
-html[data-theme="flat"] .lb-periods--segment,
-html[data-theme="google"] .lb-periods--segment,
 html[data-theme="flat"] .lb-tab,
 html[data-theme="google"] .lb-tab,
 html[data-theme="flat"] .records-leaders__row,
@@ -201,8 +199,6 @@ html[data-theme="flat"] .game-lobby__podium-card,
 html[data-theme="google"] .game-lobby__podium-card,
 html[data-theme="flat"] .rank-page__how,
 html[data-theme="google"] .rank-page__how,
-html[data-theme="flat"] .lb-board-switcher,
-html[data-theme="google"] .lb-board-switcher,
 html[data-theme="flat"] .sound-pack-select,
 html[data-theme="google"] .sound-pack-select,
 html[data-theme="flat"] .sound-pack-btn,
@@ -313,8 +309,6 @@ html[data-theme="flat"] .game-lobby__podium-card,
 html[data-theme="google"] .game-lobby__podium-card,
 html[data-theme="flat"] .rank-page__how,
 html[data-theme="google"] .rank-page__how,
-html[data-theme="flat"] .lb-periods--segment,
-html[data-theme="google"] .lb-periods--segment,
 html[data-theme="flat"] .lb-picker__row,
 html[data-theme="google"] .lb-picker__row,
 html[data-theme="flat"] .lb-board,
@@ -400,11 +394,6 @@ html[data-theme="google"] .game-lobby__podium-card--you {
   background: color-mix(in srgb, var(--board-accent, var(--accent)) 12%, var(--surface));
 }
 
-html[data-theme="flat"] .lb-periods--segment,
-html[data-theme="google"] .lb-periods--segment .lb-period--active {
-  box-shadow: none !important;
-}
-
 html[data-theme="flat"] .lb-tab--active,
 html[data-theme="google"] .lb-tab--active {
   box-shadow: none !important;
@@ -419,8 +408,6 @@ html[data-theme="google"] .score-save__ranks li + li {
   border-top-color: var(--flat-border-faint);
 }
 
-html[data-theme="flat"] .lb-board-switcher__item--active,
-html[data-theme="google"] .lb-board-switcher__item--active,
 html[data-theme="flat"] .site-drawer__period-tab[aria-selected="true"],
 html[data-theme="google"] .site-drawer__period-tab[aria-selected="true"],
 html[data-theme="flat"] .site-drawer__period-tab.is-active,
@@ -2354,14 +2341,6 @@ img {
 .site-drawer__util:focus-visible {
   background: rgba(var(--ink-rgb), 0.05);
   outline: none;
-}
-
-a.lb-board-switcher__item {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  text-decoration: none;
-  box-sizing: border-box;
 }
 
 .site-header__end {
@@ -5873,10 +5852,6 @@ html[data-theme='dark'] .patriot__power-mark {
   text-align: left;
 }
 
-.lb-page__inner--game-board .lb-periods {
-  margin-top: 0.1rem;
-}
-
 .lb-page__inner--game-board .lb-board {
   margin-top: 0;
 }
@@ -7468,81 +7443,6 @@ a.lb-share:visited:focus-visible {
   font-variant-numeric: tabular-nums;
 }
 
-.lb-periods {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
-  justify-content: center;
-  margin: -0.35rem 0 1.25rem;
-}
-
-.lb-periods--segment {
-  display: grid;
-  grid-template-columns: repeat(var(--period-count, 3), minmax(0, 1fr));
-  gap: 0.2rem;
-  width: 100%;
-  margin-inline: auto;
-  margin-bottom: 1.1rem;
-  padding: 0.22rem;
-  border-radius: 999px;
-  background: rgba(var(--surface-rgb), 0.78);
-  border: 1px solid rgba(var(--ink-rgb), 0.08);
-  box-shadow: var(--shadow-soft);
-}
-
-.lb-periods--segment .lb-period {
-  justify-content: center;
-  min-height: 2.4rem;
-  padding: 0.45rem 0.35rem;
-  border-radius: 999px;
-  border: 0;
-  background: transparent;
-  box-shadow: none;
-  font-size: 0.78rem;
-  text-align: center;
-  appearance: none;
-  cursor: pointer;
-}
-
-@media (max-width: 420px) {
-  .lb-periods--segment .lb-period {
-    font-size: 0.7rem;
-    letter-spacing: 0;
-    padding-inline: 0.2rem;
-  }
-}
-
-.lb-periods--segment .lb-period--active {
-  color: #fff;
-  background: var(--period-accent, var(--accent));
-  box-shadow: 0 1px 0 color-mix(in srgb, var(--period-accent, var(--accent)) 35%, transparent);
-}
-
-.lb-period {
-  padding: 0.4rem 0.75rem;
-  min-height: 2.75rem;
-  display: inline-flex;
-  align-items: center;
-  border-radius: 999px;
-  border: 1px solid transparent;
-  background: transparent;
-  font-family: var(--font-body);
-  font-weight: 700;
-  font-size: 0.8rem;
-  letter-spacing: 0.02em;
-  color: var(--muted);
-  text-decoration: none;
-  cursor: pointer;
-  appearance: none;
-}
-
-.lb-period--active {
-  color: var(--ink);
-  background: rgba(var(--surface-rgb), 0.85);
-  border-color: rgba(var(--ink-rgb), 0.08);
-  box-shadow: var(--shadow-soft);
-}
-
 .lb-empty {
   margin: 0.5rem 0 1.25rem;
   text-align: center;
@@ -7955,68 +7855,6 @@ a.lb-share:visited:focus-visible {
   box-shadow: var(--shadow-soft);
 }
 
-/* View switch (Top Scores / Rankings, Scores / Records) ? underline tabs.
-   Distinct from .lb-periods--segment pills used for time filters. */
-.lb-board-switcher {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0;
-  width: 100%;
-  margin: 0.1rem 0 1.85rem;
-  padding: 0;
-  border: 0;
-  border-bottom: 1px solid rgba(var(--ink-rgb), 0.1);
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
-}
-
-.lb-board-switcher__item {
-  appearance: none;
-  position: relative;
-  margin: 0;
-  min-height: 2.55rem;
-  padding: 0.55rem 0.75rem 0.65rem;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  font: inherit;
-  font-size: 0.92rem;
-  font-weight: 700;
-  letter-spacing: 0.01em;
-  color: var(--muted);
-  text-align: center;
-  cursor: pointer;
-}
-
-.lb-board-switcher__item::after {
-  content: '';
-  position: absolute;
-  left: 0.35rem;
-  right: 0.35rem;
-  bottom: -1px;
-  height: 2px;
-  border-radius: 2px 2px 0 0;
-  background: transparent;
-}
-
-.lb-board-switcher__item:hover,
-.lb-board-switcher__item:focus-visible {
-  color: var(--ink);
-  outline: none;
-}
-
-.lb-board-switcher__item--active {
-  color: var(--ink);
-  background: transparent;
-  box-shadow: none;
-  cursor: default;
-}
-
-.lb-board-switcher__item--active::after {
-  background: var(--period-accent, var(--board-accent, var(--accent)));
-}
-
 .lb-board-links {
   display: flex;
   flex-wrap: wrap;
@@ -8039,11 +7877,6 @@ a.lb-share:visited:focus-visible {
 
 .lb-board-links a::after {
   content: ' \2192';
-}
-
-.game-lobby .lb-board-switcher {
-  margin-top: 0.1rem;
-  margin-bottom: 0.65rem;
 }
 
 /* Game lobby */
@@ -8294,11 +8127,6 @@ a.lb-share:visited:focus-visible {
   margin: 0;
 }
 
-.game-lobby__aside .lb-periods,
-.game-lobby__tops .lb-periods {
-  margin: 0;
-}
-
 .game-lobby__podium {
   list-style: none;
   margin: 0;
@@ -8433,10 +8261,6 @@ a.lb-share:visited:focus-visible {
   color: var(--accent);
   text-align: right;
   flex: none;
-}
-
-.game-lobby .lb-periods {
-  margin: 0;
 }
 
 .game-lobby__others {

@@ -18,12 +18,8 @@
   gap: 0.35rem;
 }
 
-.bx__controls .lb-board-switcher {
-  margin: 0 0 0.35rem;
-}
-
-.bx__controls .lb-periods--segment {
-  margin-bottom: 0;
+.bx__controls .seg {
+  margin: 0;
 }
 
 /* Loading shelf: the card's shape, nothing in it yet. */

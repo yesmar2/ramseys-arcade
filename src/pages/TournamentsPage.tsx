@@ -818,19 +818,14 @@ export function TournamentsPage() {
             ) : null}
           </div>
         </div>
-        <div
-          className="lb-periods lb-periods--segment"
-          role="tablist"
-          aria-label="Event filters"
-          style={{ '--period-count': keys.length } as CSSProperties}
-        >
+        <div className="chips chips--center" role="tablist" aria-label="Event filters">
           {keys.map((key) => (
             <button
               key={key}
               type="button"
               role="tab"
               aria-selected={filter === key}
-              className={`lb-period${filter === key ? ' lb-period--active' : ''}`}
+              className={`chips__item${filter === key ? ' chips__item--active' : ''}`}
               onClick={() => setFilter(key)}
             >
               {labels[key]}
