@@ -480,8 +480,15 @@
     text-align: right;
   }
 
-  .hero__actions {
+  /* The aside sets the row heights and spare space splits evenly between
+     the two rows, so text hugging the boundary from above and actions from
+     below puts the pair on the aside's midline. */
+  .hero__main:not(.hero__main--bare) .hero__text {
     align-self: end;
+  }
+
+  .hero__actions {
+    align-self: start;
   }
 }
 
