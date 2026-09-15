@@ -150,13 +150,57 @@ export function useActiveGroup(): string | null {
   return useSyncExternalStore(subscribeActiveGroup, storedActiveGroup, () => null)
 }
 
+const GROUPS_CACHE_KEY = 'skermix-my-groups'
+const GROUPS_INFLIGHT_MS = 5_000
+let groupsInflight: { key: string; at: number; promise: Promise<GroupPublic[]> } | null = null
+
+/** The last list this device saw for the current player, for a first paint before the API answers. */
+export function cachedMyGroups(): GroupPublic[] {
+  try {
+    const raw = localStorage.getItem(GROUPS_CACHE_KEY)
+    if (!raw) return []
+    const parsed = JSON.parse(raw) as { player?: string; groups?: GroupPublic[] }
+    const player = normalizePlayerName(getLastPlayerName())
+    return parsed.player === player && Array.isArray(parsed.groups) ? parsed.groups : []
+  } catch {
+    return []
+  }
+}
+
+function rememberMyGroups(player: string, groups: GroupPublic[]) {
+  try {
+    localStorage.setItem(GROUPS_CACHE_KEY, JSON.stringify({ player, groups }))
+  } catch {
+    /* ignore */
+  }
+}
+
+/**
+ * Groups the current player is in. Callers that mount together (the header
+ * and the drawer) share one request, and the answer is remembered on the
+ * device so the next visit can paint the group's name before asking again.
+ */
 export async function listMyGroups(): Promise<GroupPublic[]> {
   const params = new URLSearchParams()
   const player = normalizePlayerName(getLastPlayerName())
   if (player) params.set('playerName', player)
   const q = params.toString()
-  const data = await api<{ groups: GroupPublic[] }>(`/groups${q ? `?${q}` : ''}`)
-  return data.groups ?? []
+  const now = Date.now()
+  if (groupsInflight && groupsInflight.key === q && now - groupsInflight.at < GROUPS_INFLIGHT_MS) {
+    return groupsInflight.promise
+  }
+  const promise = api<{ groups: GroupPublic[] }>(`/groups${q ? `?${q}` : ''}`)
+    .then((data) => {
+      const groups = data.groups ?? []
+      rememberMyGroups(player, groups)
+      return groups
+    })
+    .catch((err) => {
+      groupsInflight = null
+      throw err
+    })
+  groupsInflight = { key: q, at: now, promise }
+  return promise
 }
 
 export async function fetchGroupDetail(

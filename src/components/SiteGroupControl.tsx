@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { applySiteGroup, useHashRoute } from '../hooks/useHashRoute'
 import { useAuth } from '../hooks/useAuth'
 import {
+  cachedMyGroups,
   groupsIndexHref,
   listMyGroups,
   setActiveGroup,
@@ -19,7 +20,8 @@ export function SiteGroupControl({ variant, onSelect }: SiteGroupControlProps) {
   const route = useHashRoute()
   const { account } = useAuth()
   const activeId = useActiveGroup()
-  const [groups, setGroups] = useState<GroupPublic[]>([])
+  const [groups, setGroups] = useState<GroupPublic[]>(() => cachedMyGroups())
+  const [loaded, setLoaded] = useState(false)
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
@@ -29,6 +31,7 @@ export function SiteGroupControl({ variant, onSelect }: SiteGroupControlProps) {
       .then((list) => {
         if (cancelled) return
         setGroups(list)
+        setLoaded(true)
         const current = storedActiveGroup()
         if (current && !list.some((g) => g.id === current)) {
           setActiveGroup(null)
@@ -59,6 +62,7 @@ export function SiteGroupControl({ variant, onSelect }: SiteGroupControlProps) {
   }, [open, variant])
 
   const active = groups.find((g) => g.id === activeId) ?? null
+  const pending = Boolean(activeId) && !active && !loaded
   const label = activeId ? (active?.name ?? 'Group') : 'Everyone'
 
   const select = (id: string | null) => {
@@ -113,7 +117,9 @@ export function SiteGroupControl({ variant, onSelect }: SiteGroupControlProps) {
         aria-haspopup="listbox"
         onClick={() => setOpen((value) => !value)}
       >
-        <span className="site-header__period-btn-label">{label}</span>
+        <span className="site-header__period-btn-label">
+          {pending ? <span className="skel-line" aria-hidden="true" /> : label}
+        </span>
         <svg viewBox="0 0 12 12" aria-hidden="true" width="10" height="10">
           <path
             fill="none"

@@ -257,12 +257,20 @@ export function RankPage({
               <div className="hero__text">
                 <p className="ev-kicker hero__kicker">
                   <span className="ev-kicker__bit">{isSelf ? 'Your profile' : 'Player'}</span>
-                  {trophies && trophyCount > 0 ? (
+                  {trophies === null ? (
+                    <span className="ev-kicker__bit" aria-hidden="true">
+                      <span className="skel-line" style={{ '--skel-w': '4.5rem' } as CSSProperties} />
+                    </span>
+                  ) : trophyCount > 0 ? (
                     <span className="ev-kicker__bit">
                       {trophyCount} {trophyCount === 1 ? 'trophy' : 'trophies'}
                     </span>
                   ) : null}
-                  {!rankLoading && data.totalPlayers > 0 ? (
+                  {rankLoading ? (
+                    <span className="ev-kicker__bit" aria-hidden="true">
+                      <span className="skel-line" style={{ '--skel-w': '7rem' } as CSSProperties} />
+                    </span>
+                  ) : data.totalPlayers > 0 ? (
                     <span className="ev-kicker__bit">
                       {data.totalPlayers} {data.totalPlayers === 1 ? 'player' : 'players'} ranked
                     </span>
@@ -307,7 +315,11 @@ export function RankPage({
                     >
                       <span className="pfh__rank-label">{PERIOD_LABELS[p]}</span>
                       <span className="pfh__rank-value">
-                        {row ? (row.rank != null ? `#${row.rank}` : '—') : '…'}
+                        {row ? (
+                          row.rank != null ? `#${row.rank}` : '—'
+                        ) : (
+                          <span className="skel-line pfh__rank-skel" aria-hidden="true" />
+                        )}
                       </span>
                       <span className="pfh__rank-sub">
                         {row

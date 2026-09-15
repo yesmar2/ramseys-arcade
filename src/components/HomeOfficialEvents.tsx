@@ -12,15 +12,31 @@ import { GameThumbArt } from './GameThumbArt'
  * The daily and weekly events, beside the hero.
  *
  * Each carries its game's artwork rather than a coloured dot, and on a phone
- * becomes a full-width row with a way in: as two bare text lines reaching a
- * third of the way across, this sat between the hero art and the grid looking
- * like a hole in the page rather than something you could act on.
+ * becomes a full-width row with a way in. There is nearly always a daily and
+ * a weekly running, so while they load two rows of their shape hold the
+ * space instead of the block popping in.
  */
 export function HomeOfficialEvents() {
   const cleaned = normalizePlayerName(usePlayerName())
   const { official, joinedIds, loading } = useLiveEvents(cleaned)
 
-  if (loading || official.length === 0) return null
+  if (loading) {
+    return (
+      <section className="home-evs" aria-label="Running events" aria-busy="true">
+        {[0, 1].map((i) => (
+          <span key={i} className="home-evs__row home-evs__row--skel" aria-hidden="true">
+            <span className="home-evs__art home-evs__skel-art" />
+            <span className="home-evs__body">
+              <span className="skel-line" style={{ '--skel-w': '7rem' } as CSSProperties} />
+              <span className="skel-line" style={{ '--skel-w': '4rem' } as CSSProperties} />
+            </span>
+          </span>
+        ))}
+      </section>
+    )
+  }
+
+  if (official.length === 0) return null
 
   return (
     <section className="home-evs" aria-label="Running events">
@@ -54,8 +70,8 @@ export function HomeOfficialEvents() {
           </a>
         )
       })}
-      <a className="home-evs__all" href={tournamentsHref()}>
-        All events →
+      <a className="chips__item home-evs__all" href={tournamentsHref()}>
+        All events
       </a>
     </section>
   )

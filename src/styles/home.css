@@ -335,3 +335,26 @@
     align-items: flex-start;
   }
 }
+
+/* ---------- loading: the rail keeps its shape ---------- */
+
+.home-evs__row--skel {
+  --ev-accent: var(--muted);
+  pointer-events: none;
+}
+
+.home-evs__row--skel .home-evs__body {
+  gap: 0.4rem;
+}
+
+.home-evs__skel-art {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 0.7rem;
+  background: rgba(var(--ink-rgb), 0.08);
+}
+
+.home-evs__all {
+  align-self: flex-end;
+  margin-top: 0.1rem;
+}
