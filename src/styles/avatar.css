@@ -307,3 +307,8 @@ html[data-theme="google"] .studio__shape {
   border-color: var(--flat-border) !important;
   box-shadow: none !important;
 }
+
+/* The drawer's profile row shows your character on its tile. */
+.site-drawer__profile-mark .player-avatar {
+  --avatar-size: 2.2rem;
+}

@@ -6,6 +6,8 @@ import { rankHref, useHashRoute } from '../hooks/useHashRoute'
 import { APP_NAME_ACCENT, APP_NAME_LEAD } from '../lib/brand'
 import { logoutAccount } from '../lib/auth'
 import { useGlobalRank, useGlobalRankLoading } from '../lib/globalRank'
+import { AVATAR_EVENT, AVATARS_ENABLED, getLocalAvatarId } from '../lib/avatars'
+import { PlayerAvatar } from './PlayerAvatar'
 import { currentTheme, THEME_EVENT, toggleTheme, themeLabel, type Theme } from '../lib/theme'
 import { normalizePlayerName } from '../lib/leaderboard'
 import { useTrophySummary } from '../hooks/useTrophySummary'
@@ -62,7 +64,7 @@ export function SiteHeader() {
   const route = useHashRoute()
   const hashKey = JSON.stringify(route)
   const { signedIn } = useAuth()
-  const { rank } = useGlobalRank()
+  const { rank, avatarId: rankAvatarId } = useGlobalRank()
   const rankLoading = useGlobalRankLoading()
   const playerName = normalizePlayerName(usePlayerName())
   const impersonation = useImpersonation()
@@ -70,6 +72,18 @@ export function SiteHeader() {
   const { count: inviteCount } = usePendingInvites()
   const friendsState = useFriends()
   const friendRequests = friendsState.incoming.length
+
+  // The drawer draws your mark: what you saved on this device wins until the API catches up.
+  const [localAvatarId, setLocalAvatar] = useState<string | null>(() => getLocalAvatarId(playerName))
+  useEffect(() => {
+    setLocalAvatar(getLocalAvatarId(playerName))
+    const onChange = (e: Event) => {
+      const detail = (e as CustomEvent<{ name?: string; avatarId?: string }>).detail
+      if (detail?.name === playerName && detail.avatarId) setLocalAvatar(detail.avatarId)
+    }
+    window.addEventListener(AVATAR_EVENT, onChange)
+    return () => window.removeEventListener(AVATAR_EVENT, onChange)
+  }, [playerName])
   const defaultPeriod = useDefaultPeriod()
   const [accountOpen, setAccountOpen] = useState(false)
   const [navOpen, setNavOpen] = useState(false)
@@ -457,7 +471,11 @@ export function SiteHeader() {
                     }
                   >
                     <span className="site-drawer__profile-mark" aria-hidden="true">
-                      {playerName.charAt(0)}
+                      {AVATARS_ENABLED ? (
+                        <PlayerAvatar avatarId={localAvatarId ?? rankAvatarId} name={playerName} size="md" />
+                      ) : (
+                        playerName.charAt(0)
+                      )}
                     </span>
                     <span className="site-drawer__profile-text">
                       <span className="site-drawer__profile-name">{playerName}</span>
