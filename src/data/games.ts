@@ -106,7 +106,7 @@ export const games: Game[] = [
     slug: 'findbug',
     description: 'Something is hiding in the arcade. Find it before the clock does.',
     how: 'Five scenes of arcade clutter — a cabinet row, a leaderboard, a cable loom, a token spill, the carpet — and one bug hiding in each. It never moves, so nothing on screen will give it away: it just gets smaller and better camouflaged every scene. Tap it to swat. Wrong swats add three seconds, and the hint costs eight. Fastest total time wins. Arrow keys move a reticle and space swats.',
-    accent: '#8fb339',
+    accent: '#3ec8cf',
     playable: true,
     inDevelopment: true,
   },
