@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 import { AVATARS_ENABLED } from '../lib/avatars'
 import { PlayerAvatar } from './PlayerAvatar'
 
@@ -12,15 +12,17 @@ export function PlayerMark({
   avatarId,
   badge,
   className = '',
+  style,
 }: {
   name: string
   avatarId?: string | null
   /** Something to pin to the corner, e.g. a medal. */
   badge?: ReactNode
   className?: string
+  style?: CSSProperties
 }) {
   return (
-    <span className={`pmark${className ? ` ${className}` : ''}`} aria-hidden="true">
+    <span className={`pmark${className ? ` ${className}` : ''}`} style={style} aria-hidden="true">
       {AVATARS_ENABLED ? (
         <PlayerAvatar avatarId={avatarId} name={name} size="md" />
       ) : (

@@ -1,0 +1,180 @@
+/*
+ * Groups: the index and one group.
+ *
+ * Both open on the shared hero. The index lists groups as soft rows with
+ * a stack of member marks; a group shows its invite card beside the roster
+ * (as rows) and folds the owner's controls into a card at the bottom.
+ */
+
+.grp {
+  gap: 1.15rem;
+}
+
+/* ---------- hero ---------- */
+
+.grp__mark svg {
+  width: calc(var(--hero-mark) * 0.56);
+  height: calc(var(--hero-mark) * 0.56);
+}
+
+.grp__mark-dots {
+  display: block;
+  width: 40%;
+  height: 0.35rem;
+  border-radius: 999px;
+  background: currentColor;
+  opacity: 0.4;
+}
+
+.grp__mark-lock {
+  font-size: calc(var(--hero-mark) * 0.5);
+}
+
+/* ---------- the index: a stack of faces per group ---------- */
+
+.grp__faces {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  padding-right: 0.25rem;
+}
+
+.grp__face {
+  --pmark: 2.05rem;
+  position: relative;
+  margin-right: -0.55rem;
+  box-shadow: 0 0 0 2px var(--surface);
+}
+
+.grp__face:last-child {
+  margin-right: 0;
+}
+
+.grp__face--more {
+  display: grid;
+  place-items: center;
+  width: var(--pmark, 2.05rem);
+  height: var(--pmark, 2.05rem);
+  border-radius: 28%;
+  background: color-mix(in srgb, var(--event-accent, var(--accent)) 22%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--event-accent, var(--accent)) 40%, transparent);
+  font-family: var(--font-display);
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: color-mix(in srgb, var(--event-accent, var(--accent)) 70%, var(--ink));
+}
+
+.grp__boards {
+  flex: none;
+  min-height: 2.1rem;
+  padding: 0 0.9rem;
+  border: 1px solid color-mix(in srgb, var(--event-accent, var(--accent)) 40%, transparent);
+  border-radius: 999px;
+  background: rgba(var(--surface-rgb), 0.5);
+  color: color-mix(in srgb, var(--event-accent, var(--accent)) 65%, var(--ink));
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.grp__boards:hover,
+.grp__boards:focus-visible {
+  background: color-mix(in srgb, var(--event-accent, var(--accent)) 14%, var(--surface));
+  outline: none;
+}
+
+/* ---------- one group ---------- */
+
+.grp__layout {
+  display: flex;
+  flex-direction: column;
+  gap: 1.15rem;
+}
+
+@media (min-width: 900px) {
+  .grp__layout--two {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 1.35rem;
+    align-items: start;
+  }
+}
+
+.grp__code {
+  font-family: var(--font-display);
+  font-size: 0.9rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  color: color-mix(in srgb, var(--event-accent, var(--accent)) 65%, var(--ink));
+}
+
+.grp__code-input {
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.grp__invite-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.85rem;
+  margin-bottom: 0.7rem;
+}
+
+.grp__invite .inv {
+  margin-top: 0.85rem;
+}
+
+.grp__kick {
+  flex: none;
+  font-size: 0.78rem;
+}
+
+.grp__manage-summary {
+  cursor: pointer;
+  list-style: none;
+  padding-bottom: var(--ev-pad);
+  user-select: none;
+}
+
+.grp__manage-summary::-webkit-details-marker {
+  display: none;
+}
+
+.grp__manage[open] .grp__manage-summary {
+  padding-bottom: 0.55rem;
+}
+
+.grp__manage .ev-form {
+  gap: 0.6rem;
+}
+
+.grp__danger {
+  color: #b42318;
+}
+
+.grp__danger:hover,
+.grp__danger:focus-visible {
+  color: #8f1a12;
+}
+
+.grp__leave {
+  display: flex;
+  justify-content: center;
+  padding: 0.25rem 0 0.5rem;
+}
+
+.grp__gate {
+  max-width: 28rem;
+}
+
+html[data-theme="flat"] .grp__boards,
+html[data-theme="google"] .grp__boards,
+html[data-theme="flat"] .grp__face--more,
+html[data-theme="google"] .grp__face--more {
+  border-color: var(--flat-border) !important;
+}
