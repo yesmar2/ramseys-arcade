@@ -644,7 +644,27 @@ export function BopArt() {
   )
 }
 
+/** A hole seen from above: green, a wall, the cup with its flag, the ball and its aim. */
+export function PuttArt() {
+  const green = pastel(HUE.green, 45, 42)
+  const wall = pastel(HUE.sky, 22, 40)
+  const flag = pastel(HUE.rose, 60, 60)
+  return (
+    <SvgFrame>
+      <TileBg />
+      <rect x="20" y="10" width="120" height="80" rx="12" fill={green.fill} stroke={green.stroke} strokeWidth="2" />
+      <line x1="62" y1="10" x2="62" y2="52" stroke={wall.stroke} strokeWidth="6" strokeLinecap="round" />
+      <circle cx="112" cy="30" r="7" fill="rgba(20,27,36,0.85)" />
+      <line x1="113.5" y1="29" x2="113.5" y2="12" stroke="rgba(232,238,243,0.9)" strokeWidth="2" strokeLinecap="round" />
+      <path d="M113.5 12 L127 16 L113.5 20z" fill={flag.fill} stroke={flag.stroke} strokeWidth="1.5" strokeLinejoin="round" />
+      <circle cx="42" cy="74" r="6" fill="rgba(245,247,250,0.98)" stroke="rgba(20,27,36,0.55)" strokeWidth="1.5" />
+      <path d="M48 70 L86 58" stroke="rgba(232,238,243,0.6)" strokeWidth="2" strokeDasharray="4 4" strokeLinecap="round" />
+    </SvgFrame>
+  )
+}
+
 const artBySlug: Record<string, () => JSX.Element> = {
+  putt: PuttArt,
   bop: BopArt,
   stacker: StackerArt,
   patriot: PatriotArt,

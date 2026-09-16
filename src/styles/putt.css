@@ -1,0 +1,44 @@
+/* Putt: a portrait green on the stage; the shell is the same as Simon's. */
+
+.putt--fullscreen {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.putt .game-play {
+  cursor: pointer;
+  position: relative;
+}
+
+.putt__play {
+  position: absolute;
+  inset: 0;
+  cursor: pointer;
+  touch-action: none;
+}
+
+.putt__viewport {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.putt__overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4.75rem 0.85rem max(1rem, env(safe-area-inset-bottom));
+  overflow: auto;
+  pointer-events: none;
+  z-index: 45;
+}

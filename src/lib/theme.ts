@@ -71,6 +71,7 @@ const GOOGLE_BY_SLUG: Record<string, string> = {
   pellets: GOOGLE_YELLOW,
   crumbtrail: GOOGLE_YELLOW,
   bop: GOOGLE_RED,
+  putt: GOOGLE_GREEN,
   barrage: GOOGLE_RED,
   spotter: GOOGLE_BLUE,
 }

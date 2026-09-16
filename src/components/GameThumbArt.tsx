@@ -337,10 +337,27 @@ function BopThumb() {
   )
 }
 
+/** A green with the cup, its flag, and the ball on its way. */
+function PuttThumb() {
+  const green = pastel(HUE.green, 45, 42)
+  const flag = pastel(HUE.rose, 60, 60)
+  return (
+    <g>
+      <rect x="4" y="4" width="24" height="24" rx="5" {...shape(green, 1.5)} />
+      <circle cx="20" cy="11" r="2.6" fill="rgba(20,27,36,0.85)" />
+      <line x1="20.6" y1="10.5" x2="20.6" y2="4.5" stroke="rgba(232,238,243,0.9)" strokeWidth="1.2" strokeLinecap="round" />
+      <path d="M20.6 4.5 L25.5 6 L20.6 7.5z" fill={flag.fill} stroke={flag.stroke} strokeWidth="0.8" strokeLinejoin="round" />
+      <circle cx="10" cy="23" r="2.2" fill="rgba(245,247,250,0.98)" stroke="rgba(20,27,36,0.55)" strokeWidth="1" />
+      <path d="M12 21 L17.5 14.5" stroke="rgba(232,238,243,0.55)" strokeWidth="1" strokeDasharray="1.5 1.5" strokeLinecap="round" />
+    </g>
+  )
+}
+
 const thumbBySlug: Record<
   string,
   (props: { accent?: string }) => ReactNode
 > = {
+  putt: () => <PuttThumb />,
   bop: () => <BopThumb />,
   asteroids: AsteroidsThumb,
   patriot: PatriotThumb,

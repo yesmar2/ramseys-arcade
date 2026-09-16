@@ -109,6 +109,13 @@ const SCORING: Record<string, ScoreRow[]> = {
     { label: 'Wrong swat', value: '+3s' },
     { label: 'Hint', value: '+8s' },
   ],
+  putt: [
+    { label: 'Each hole', value: '(par + 2 − strokes) × 100' },
+    { label: 'On a par 3', value: 'birdie 300 · par 200 · bogey 100' },
+    { label: 'Hole in one', value: '+200 on top' },
+    { label: 'Par + 3', value: 'picked up · 0 for the hole' },
+    { label: 'Round', value: '9 holes, par 29' },
+  ],
   bop: [
     { label: 'Right control', value: '+1' },
     { label: 'Quick (first half of the ring)', value: '+1 more' },

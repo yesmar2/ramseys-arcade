@@ -136,6 +136,15 @@ export const games: Game[] = [
     playable: true,
     inDevelopment: true,
   },
+  {
+    name: 'Putt',
+    slug: 'putt',
+    description: 'Nine holes. One tap to aim, one to hit.',
+    how: 'Two taps a stroke: the first stops the aim as it sweeps round the ball, the second stops the power bar. Walls bounce, bumpers kick, sand drags, and a ball rolling too fast skips over the cup. Fewer strokes score more on every hole; at par plus three the ball is picked up. Space or Enter taps on a keyboard.',
+    accent: '#5cc46a',
+    playable: true,
+    inDevelopment: true,
+  },
 ]
 
 export function getGame(slug: string) {

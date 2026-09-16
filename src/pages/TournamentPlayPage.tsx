@@ -3,6 +3,7 @@ import { AsteroidsGame } from '../games/asteroids/AsteroidsGame'
 import { BarrageGame } from '../games/barrage/BarrageGame'
 import { CrosswalkGame } from '../games/crosswalk/CrosswalkGame'
 import { BopGame } from '../games/bop/BopGame'
+import { PuttGame } from '../games/putt/PuttGame'
 import { CrumbtrailGame } from '../games/crumbtrail/CrumbtrailGame'
 import { DeadCenterGame } from '../games/dead-center/DeadCenterGame'
 import { FindBugGame } from '../games/findbug/FindBugGame'
@@ -44,6 +45,7 @@ const TOURNAMENT_GAMES: Record<string, ComponentType> = {
   crosswalk: CrosswalkGame,
   crumbtrail: CrumbtrailGame,
   bop: BopGame,
+  putt: PuttGame,
   findbug: FindBugGame,
   patriot: PatriotGame,
   pellets: PelletsGame,
