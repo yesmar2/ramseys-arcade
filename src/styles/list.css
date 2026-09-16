@@ -149,12 +149,15 @@
 }
 
 .lst__rank {
+  display: grid;
+  place-items: center;
   font-family: var(--font-display);
   font-size: 0.95rem;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
   text-align: center;
   color: var(--muted);
+  line-height: 1;
 }
 
 .lst__row--gold .lst__rank,

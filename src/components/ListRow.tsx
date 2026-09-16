@@ -55,15 +55,17 @@ export function ListRow({
 
   const cells = (
     <>
+      {/*
+        * The medal sits in the rank slot, not pinned to the avatar.
+        * Clipped to the avatar's corner it overlapped the artwork, and it
+        * doubled up with the number beside it — two marks for one fact, in the
+        * tightest part of the row. Here it simply is the rank, which is the
+        * same shape the board summaries already use.
+        */}
       <span className="lst__rank" aria-label={`Place ${rank}`}>
-        {rank}
+        {medal ? <PodiumMedal kind={medal} period={period} size="sm" /> : rank}
       </span>
-      <PlayerMark
-        name={name}
-        avatarId={avatarId}
-        className="lst__mark"
-        badge={medal ? <PodiumMedal kind={medal} period={period} size="sm" /> : null}
-      />
+      <PlayerMark name={name} avatarId={avatarId} className="lst__mark" />
       <span className="lst__text">
         {href ? (
           <a className="lst__name" href={href} title={name}>
