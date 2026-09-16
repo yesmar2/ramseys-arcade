@@ -33,27 +33,6 @@ export function HowToPlayContent({
   )
 }
 
-type HowToPlayAccordionProps = {
-  how: string
-  rows?: ScoreRow[] | null
-}
-
-/** Collapsible How to play on the game hub. */
-export function HowToPlayAccordion({ how, rows }: HowToPlayAccordionProps) {
-  return (
-    <details className="rank-page__how game-lobby__how-panel">
-      <summary className="rank-page__how-summary">
-        <span className="rank-page__h" id="game-how-heading">
-          How to play
-        </span>
-      </summary>
-      <div className="rank-page__how-body">
-        <HowToPlayContent how={how} rows={rows} />
-      </div>
-    </details>
-  )
-}
-
 type ScoreGuideProps = {
   how: string
   rows?: ScoreRow[] | null

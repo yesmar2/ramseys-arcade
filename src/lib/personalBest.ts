@@ -99,7 +99,3 @@ export function describePersonalBest(
     gain: null,
   }
 }
-
-export function menuBestLine(best: number): string {
-  return best > 0 ? `Break your record of ${best}` : 'Set a personal best'
-}
