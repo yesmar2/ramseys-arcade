@@ -482,6 +482,39 @@ html[data-theme="google"] .lst__row--you {
   outline: none;
 }
 
+.lst__more[disabled] {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* The foot of a board that keeps going: the reveal, and how deep it runs. */
+.lst__foot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.1rem;
+}
+
+/*
+ * Reaching this is what asks for the next rows, so it has to be in the flow
+ * with a little height of its own — a zero-height marker can be skipped over
+ * by a fast scroll before the observer ever sees it.
+ */
+.lst__sentinel {
+  display: block;
+  width: 100%;
+  height: 1px;
+}
+
+.lst__count {
+  margin: 0;
+  font-size: 0.74rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+
 /* Rows without a place, e.g. a game's record books. */
 .lst__main--norank {
   grid-template-columns: auto minmax(0, 1fr) auto;

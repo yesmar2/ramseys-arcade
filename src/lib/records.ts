@@ -41,6 +41,8 @@ export type RecordBoardResult = {
   period: LeaderboardPeriod
   entries: LeaderboardEntry[]
   you: YouEntry | null
+  /** Players on this board, loaded or not. Absent on older API builds. */
+  total?: number
 }
 
 function resolveApiBase() {
@@ -316,11 +318,14 @@ export async function fetchRecordBoard(
   recordId: string,
   period: LeaderboardPeriod = 'all',
   name?: string,
+  page?: { offset?: number; limit?: number },
 ): Promise<RecordBoardResult> {
   const data = await withGroupFallback(async () => {
     const params = applyBoardScope(new URLSearchParams({ period }))
     const cleaned = normalizePlayerName(name ?? '')
     if (cleaned) params.set('name', cleaned)
+    if (page?.offset) params.set('offset', String(Math.max(0, Math.floor(page.offset))))
+    if (page?.limit) params.set('limit', String(Math.max(1, Math.floor(page.limit))))
     return api<RecordBoardResult>(
       `/records/${encodeURIComponent(game)}/${encodeURIComponent(recordId)}?${params.toString()}`,
     )
@@ -333,6 +338,8 @@ export async function fetchRecordBoard(
       : period,
     entries: data.entries ?? [],
     you: data.you ?? null,
+    // An API that predates paging sends no total: what came back is all of it.
+    total: data.total ?? (page?.offset ?? 0) + (data.entries?.length ?? 0),
   }
 }
 

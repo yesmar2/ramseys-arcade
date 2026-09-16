@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState, type CSSProperties } from 'react'
+import { useEffect, useRef, type CSSProperties } from 'react'
 import {
   BoardEmpty,
+  BoardMore,
   BoardSkeleton,
   PeriodSwitcher,
 } from '../components/BoardChrome'
@@ -21,6 +22,7 @@ import {
 } from '../hooks/useHashRoute'
 import { flashYouRow } from '../lib/boardGap'
 import { useDeviceType } from '../lib/device'
+import { usePagedBoard } from '../hooks/usePagedBoard'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { APP_NAME } from '../lib/brand'
 import { defaultPeriod } from '../lib/defaultPeriod'
@@ -31,12 +33,11 @@ import {
   PERIOD_LABELS,
   type LeaderboardEntry,
   type LeaderboardPeriod,
-  type YouEntry,
 } from '../lib/leaderboard'
 import {
   fetchRecordBoard,
   formatRecordScore,
-  type RecordDef,
+  type RecordBoardResult,
 } from '../lib/records'
 
 const INITIAL_ROWS = 10
@@ -160,40 +161,19 @@ function RecordBoardPage({
   const gameMeta = getGame(game)
   const playerName = normalizePlayerName(usePlayerName())
   const groupId = useActiveGroup()
-  const [record, setRecord] = useState<RecordDef | null>(null)
-  const [entries, setEntries] = useState<LeaderboardEntry[]>([])
-  const [you, setYou] = useState<YouEntry | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [shown, setShown] = useState(INITIAL_ROWS)
+  const board = usePagedBoard<LeaderboardEntry, RecordBoardResult>(
+    (offset, limit) =>
+      fetchRecordBoard(game, recordId, period, playerName || undefined, { offset, limit }),
+    [game, recordId, period, playerName, groupId],
+    { initial: INITIAL_ROWS },
+  )
+  const { entries, shown, loading, error } = board
+  const record = board.first?.record ?? null
+  const you = board.first?.you ?? null
   const pulsed = useRef(false)
 
   useEffect(() => {
-    let cancelled = false
-    setLoading(true)
-    setError(null)
-    setShown(INITIAL_ROWS)
     pulsed.current = false
-    void fetchRecordBoard(game, recordId, period, playerName || undefined)
-      .then((board) => {
-        if (cancelled) return
-        setRecord(board.record)
-        setEntries(board.entries)
-        setYou(board.you)
-      })
-      .catch((err) => {
-        if (cancelled) return
-        setRecord(null)
-        setEntries([])
-        setYou(null)
-        setError(err instanceof Error ? err.message : 'Failed to load')
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false)
-      })
-    return () => {
-      cancelled = true
-    }
   }, [game, recordId, period, playerName, groupId])
 
   useEffect(() => {
@@ -312,15 +292,11 @@ function RecordBoardPage({
               />
             )}
 
-            {!loading && !error && entries.length > shown ? (
-              <button
-                type="button"
-                className="lst__more"
-                onClick={() => setShown(entries.length)}
-              >
-                Show top {entries.length}
-              </button>
-            ) : null}
+            <BoardMore
+              board={board}
+              hidden={Boolean(loading || error || entries.length === 0)}
+              unit="players"
+            />
 
             {!canPlay && !(loading || error) ? (
               <p className="lb-device-note lb-device-note--footer" role="note">

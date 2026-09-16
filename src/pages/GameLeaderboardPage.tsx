@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState, type CSSProperties } from 'react'
-import { BoardEmpty, BoardSkeleton, PeriodSwitcher } from '../components/BoardChrome'
+import { useEffect, useRef, type CSSProperties } from 'react'
+import { BoardEmpty, BoardMore, BoardSkeleton, PeriodSwitcher } from '../components/BoardChrome'
 import { GamePageHeader } from '../components/GamePageHeader'
 import { LeaderboardList } from '../components/LeaderboardList'
 import { PageShell } from '../components/PageShell'
@@ -10,6 +10,7 @@ import {
   gamePlayHref,
   leaderboardHref,
 } from '../hooks/useHashRoute'
+import { usePagedBoard } from '../hooks/usePagedBoard'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { useDeviceType } from '../lib/device'
 import { formatLeaderboardScore } from '../lib/leaderboardFormat'
@@ -25,7 +26,6 @@ import {
   type LeaderboardGame,
   type LeaderboardPeriod,
   type LeaderboardEntry,
-  type YouEntry,
 } from '../lib/leaderboard'
 
 const BOARD_ROWS = 10
@@ -44,11 +44,14 @@ export function GameLeaderboardPage({
   const device = useDeviceType()
   const playerName = normalizePlayerName(usePlayerName())
   const groupId = useActiveGroup()
-  const [entries, setEntries] = useState<LeaderboardEntry[]>([])
-  const [you, setYou] = useState<YouEntry | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [shown, setShown] = useState(BOARD_ROWS)
+  const board = usePagedBoard<LeaderboardEntry, Awaited<ReturnType<typeof getLeaderboard>>>(
+    (offset, limit) =>
+      getLeaderboard(gameSlug, period, playerName || undefined, { offset, limit }),
+    [gameSlug, period, playerName, groupId],
+    { initial: BOARD_ROWS },
+  )
+  const { entries, shown, total, loading, error } = board
+  const you = board.first?.you ?? null
   const pulsed = useRef(false)
 
   const accent = resolveGameAccent(gameSlug, game?.accent ?? '#2eb8a0')
@@ -57,29 +60,7 @@ export function GameLeaderboardPage({
   const deviceNote = game ? deviceRequirementLabel(game) : null
 
   useEffect(() => {
-    let cancelled = false
-    setLoading(true)
-    setError(null)
-    setShown(BOARD_ROWS)
     pulsed.current = false
-    getLeaderboard(gameSlug, period, playerName || undefined)
-      .then((board) => {
-        if (cancelled) return
-        setEntries(board.entries)
-        setYou(board.you)
-      })
-      .catch((err) => {
-        if (cancelled) return
-        setEntries([])
-        setYou(null)
-        setError(err instanceof Error ? err.message : 'Failed to load')
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false)
-      })
-    return () => {
-      cancelled = true
-    }
   }, [gameSlug, period, playerName, groupId])
 
   useEffect(() => {
@@ -132,9 +113,10 @@ export function GameLeaderboardPage({
         >
           <div className="lst-block__head">
             <h2 className="lst-block__title">Top scores</h2>
-            {!loading && !error && entries.length > 0 ? (
+            {!loading && !error && total > 0 ? (
+              /* Runs, not people: one player can hold several of these. */
               <p className="lst-block__note">
-                {entries.length} {entries.length === 1 ? 'player' : 'players'}
+                {total.toLocaleString()} {total === 1 ? 'score' : 'scores'}
               </p>
             ) : null}
             <div className="lst-block__tools">
@@ -176,15 +158,11 @@ export function GameLeaderboardPage({
             />
           )}
 
-          {!loading && !error && entries.length > shown ? (
-            <button
-              type="button"
-              className="lst__more"
-              onClick={() => setShown(entries.length)}
-            >
-              Show top {entries.length}
-            </button>
-          ) : null}
+          <BoardMore
+            board={board}
+            hidden={Boolean(loading || error || entries.length === 0)}
+            unit="scores"
+          />
 
           {!canPlay && !(loading || error) ? (
             <p className="lb-device-note lb-device-note--footer" role="note">

@@ -500,8 +500,8 @@ export function RankPage({
             <div className="rank-page__how-body">
               <p className="how-to-play__copy">
                 Your global rank uses <strong>{periodPhrase(period)}</strong> placements among
-                everyone who posted on each game — not just the top 100 on the public board.
-                Higher place earns more points on that game’s field:
+                everyone who posted on each game. Higher place earns more points on that
+                game’s field:
               </p>
               <ul className="game-lobby__scoring">
                 <li>
@@ -519,7 +519,8 @@ export function RankPage({
               </ul>
               <p className="how-to-play__copy">
                 Points from every game are added together. Climb any board to move up —
-                playing more games helps too. Public game boards still show the top 100.
+                playing more games helps too. Every score is kept, so the boards run all
+                the way down.
               </p>
             </div>
           </details>

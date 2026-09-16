@@ -455,15 +455,26 @@ export async function getLeaderboard(
   slug: string,
   period: LeaderboardPeriod = 'all',
   name?: string,
-): Promise<{ entries: LeaderboardEntry[]; you: YouEntry | null }> {
+  page?: { offset?: number; limit?: number },
+): Promise<{ entries: LeaderboardEntry[]; you: YouEntry | null; total: number }> {
   return withGroupFallback(async () => {
     const params = applyBoardScope(new URLSearchParams({ period }))
     const cleaned = normalizePlayerName(name ?? '')
     if (cleaned) params.set('name', cleaned)
-    const data = await api<{ entries: LeaderboardEntry[]; you?: YouEntry | null }>(
-      `/leaderboards/${slug}?${params.toString()}`,
-    )
-    return { entries: data.entries ?? [], you: data.you ?? null }
+    if (page?.offset) params.set('offset', String(Math.max(0, Math.floor(page.offset))))
+    if (page?.limit) params.set('limit', String(Math.max(1, Math.floor(page.limit))))
+    const data = await api<{
+      entries: LeaderboardEntry[]
+      you?: YouEntry | null
+      total?: number
+    }>(`/leaderboards/${slug}?${params.toString()}`)
+    const entries = data.entries ?? []
+    return {
+      entries,
+      you: data.you ?? null,
+      // An API that predates paging sends no total: what came back is all of it.
+      total: data.total ?? (page?.offset ?? 0) + entries.length,
+    }
   })
 }
 
@@ -542,13 +553,16 @@ export type GlobalBoardResult = {
 export async function fetchGlobalBoard(
   limit = 100,
   period: LeaderboardPeriod = 'all',
+  offset = 0,
 ): Promise<GlobalBoardResult> {
-  const capped = Math.min(100, Math.max(1, Math.floor(limit)))
+  const capped = Math.min(500, Math.max(1, Math.floor(limit)))
+  const from = Math.max(0, Math.floor(offset))
   return dedupeGet(
-    `rank-board:${capped}:${period}:${storedActiveGroup() ?? 'everyone'}`,
+    `rank-board:${capped}:${from}:${period}:${storedActiveGroup() ?? 'everyone'}`,
     () =>
       withGroupFallback(async () => {
         const qs = applyBoardScope(new URLSearchParams({ limit: String(capped) }))
+        if (from) qs.set('offset', String(from))
         if (period !== 'all') qs.set('period', period)
         const data = await api<GlobalBoardResult>(`/leaderboards/rank?${qs}`)
         return {

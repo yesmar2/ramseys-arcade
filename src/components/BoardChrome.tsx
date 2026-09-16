@@ -1,4 +1,5 @@
 import type { CSSProperties, ReactNode } from 'react'
+import type { PagedBoard } from '../hooks/usePagedBoard'
 import {
   PERIOD_LABELS,
   VISIBLE_LEADERBOARD_PERIODS,
@@ -96,6 +97,53 @@ export function BoardEmpty({
       <p className="lb-empty-state__title">{title}</p>
       {detail ? <p className="lb-empty-state__detail">{detail}</p> : null}
       {action ? <div className="lb-empty-state__action">{action}</div> : null}
+    </div>
+  )
+}
+
+/**
+ * The foot of a board that keeps going.
+ *
+ * Scrolling reveals the next rows on its own; the button is what makes that
+ * visible, and the way down for anyone on a keyboard or without an observer.
+ * The count is the point of the whole exercise — it says how deep the field
+ * a rank is measured against actually goes.
+ */
+export function BoardMore({
+  board,
+  hidden,
+  unit = 'rows',
+}: {
+  board: Pick<
+    PagedBoard<unknown, unknown>,
+    'shown' | 'total' | 'loadingMore' | 'showMore' | 'sentinelRef'
+  >
+  hidden?: boolean
+  unit?: string
+}) {
+  const { shown, total, loadingMore, showMore, sentinelRef } = board
+  if (hidden) return null
+  const left = Math.max(0, total - shown)
+  return (
+    <div className="lst__foot">
+      {/* Sits below the last row: reaching it is what asks for more. */}
+      <span ref={sentinelRef} className="lst__sentinel" aria-hidden="true" />
+      {left > 0 ? (
+        /* One step at a time, same as scrolling — so it says so, and the
+           count below carries how far there is left to go. */
+        <button type="button" className="lst__more" onClick={showMore} disabled={loadingMore}>
+          {loadingMore ? 'Loading…' : 'Show more'}
+        </button>
+      ) : null}
+      {total > shown ? (
+        <p className="lst__count" role="status">
+          {shown.toLocaleString()} of {total.toLocaleString()} {unit}
+        </p>
+      ) : total > 0 ? (
+        <p className="lst__count">
+          All {total.toLocaleString()} {unit}
+        </p>
+      ) : null}
     </div>
   )
 }
