@@ -329,9 +329,16 @@ function chaseTime(depth: number) {
   return Math.min(30, 20 + depth * 0.02)
 }
 
-/** Chasers on the board at this depth, asleep and awake together. */
+/**
+ * Chasers on the board at this depth, asleep and awake together.
+ *
+ * Opening on one, and taking until row 165 to reach four, left the early run
+ * too quiet — a single chaser is one corridor to avoid, which is a puzzle
+ * rather than a chase. Starting on two means there is always a second thing to
+ * account for, and the full four now arrive by row 90.
+ */
 function wantGhosts(depth: number) {
-  return Math.min(4, 1 + Math.floor(depth / 55))
+  return Math.min(4, 2 + Math.floor(depth / 45))
 }
 
 /**
@@ -346,8 +353,8 @@ function wantGhosts(depth: number) {
  */
 function seedGap(depth: number) {
   const tight = Math.min(1, depth / 300)
-  const base = 17 - tight * 7
-  return Math.max(5, Math.round(base * (0.75 + Math.random() * 0.5)))
+  const base = 10 - tight * 4
+  return Math.max(4, Math.round(base * (0.75 + Math.random() * 0.5)))
 }
 
 function centerOf(v: number) {
@@ -668,12 +675,20 @@ function emptyState(view: { cols: number; rows: number }): GameState {
   placePlayer(state, bufferRowOf(state, state.camera) - followGap(state))
   state.baseRow = worldRowAt(state, Math.floor(state.player.y))
   /*
-   * A sleeper or two already up the board, so the opening screen says what
-   * kind of game this is before the first row has even scrolled.
+   * Sleepers already up the board, so the opening screen says what kind of game
+   * this is before the first row has even scrolled.
+   *
+   * The scan used to start a full wake range plus three above the player, which
+   * on a 22-row buffer with the player at row 9 left exactly one row to look
+   * at — so the opening laid nought or one chaser however high the cap went.
+   * Starting four rows up gives it the lanes it needs. The nearer ones stir
+   * almost at once, which is the point: they are still several rows ahead and
+   * in plain sight, not on top of you.
    */
   const playerY = Math.floor(state.player.y)
-  for (let y = playerY - WAKE_RANGE - 3; y >= 1; y--) {
-    if (seedGhost(state, y)) break
+  for (let y = playerY - 4; y >= 1; y--) {
+    if (state.ghosts.length >= wantGhosts(0)) break
+    seedGhost(state, y)
   }
   state.nextSeedRow = worldRowAt(state, 0) + seedGap(0)
   return state
