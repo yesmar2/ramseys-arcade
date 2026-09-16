@@ -598,22 +598,72 @@ function SentInvites({ tournamentId, roster }: { tournamentId: string; roster: n
   if (!invites.length) return null
 
   return (
-    <div className="ev-sent">
-      <p className="ev-sent__title">
+    <div className="ev-people ev-people--divided">
+      <p className="ev-people__title">
         Waiting on {invites.length} {invites.length === 1 ? 'invite' : 'invites'}
       </p>
-      <ul className="ev-sent__list">
+      <ul className="ev-people__list">
         {invites.map((invite) => (
-          <li key={invite.id} className="ev-sent__row">
+          <li key={invite.id} className="ev-people__row ev-people__row--pending">
             <span className="pmark" aria-hidden="true">
               <PlayerAvatar name={invite.toName} size="sm" />
             </span>
-            <span className="ev-sent__name">{invite.toName}</span>
-            <span className="ev-sent__when">{inviteAge(invite.createdAt)}</span>
+            <span className="ev-people__name">{invite.toName}</span>
+            <span className="ev-people__note">{inviteAge(invite.createdAt)}</span>
           </li>
         ))}
       </ul>
     </div>
+  )
+}
+
+/**
+ * Who has taken a seat so far.
+ *
+ * A bracket keeps its draw hidden until the roster fills, so until then the
+ * page was a wall of TBD: no way to tell whether the people you invited had
+ * actually turned up. The seats were never the secret — only the pairings
+ * are — so they are worth showing, open ones included.
+ */
+function EventRoster({ detail, displayName }: { detail: TournamentDetail; displayName: string }) {
+  const you = normalizePlayerName(displayName)
+  const seated = [...detail.players].sort((a, b) => a.joinedAt - b.joinedAt)
+  const open = seatsLeft(detail) ?? 0
+  const cap = detail.rules.maxPlayers
+
+  return (
+    <section className="ev-card" aria-label="Who's in">
+      <div className="ev-card__head">
+        <h2 className="ev-card__title">Who's in</h2>
+        <p className="ev-card__note">
+          {cap && cap > 0
+            ? `${seated.length} of ${cap} seats`
+            : `${seated.length} ${seated.length === 1 ? 'player' : 'players'}`}
+        </p>
+      </div>
+      <div className="ev-people">
+        <ul className="ev-people__list">
+          {seated.map((p) => (
+            <li key={p.id} className="ev-people__row">
+              <span className="pmark" aria-hidden="true">
+                <PlayerAvatar name={p.name} size="sm" />
+              </span>
+              <span className="ev-people__name">{p.name}</span>
+              {normalizePlayerName(p.name) === you ? (
+                <span className="ev-people__tag">{detail.isHost ? 'You · host' : 'You'}</span>
+              ) : null}
+            </li>
+          ))}
+          {/* Open seats, so the wait has a shape rather than just a number. */}
+          {Array.from({ length: open }, (_, i) => (
+            <li key={`open-${i}`} className="ev-people__row ev-people__row--open">
+              <span className="ev-people__seat" aria-hidden="true" />
+              <span className="ev-people__name">Open seat</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </section>
   )
 }
 
@@ -1294,6 +1344,14 @@ export function TournamentDetailPage({ id, invite }: { id: string; invite?: stri
               />
               <SentInvites tournamentId={id} roster={detail.players.length} />
             </section>
+          ) : null}
+
+          {/*
+            * Only while a bracket is still filling. Once it locks the draw
+            * itself names everyone, and a scores event has its standings.
+            */}
+          {eventKind(detail) === 'bracket' && !detail.bracket?.lockedAt ? (
+            <EventRoster detail={detail} displayName={displayName} />
           ) : null}
 
           <EventBoard detail={detail} displayName={displayName} />
