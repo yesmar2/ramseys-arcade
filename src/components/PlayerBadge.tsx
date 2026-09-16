@@ -447,13 +447,24 @@ export const PlayerBadge = forwardRef<PlayerBadgeHandle, PlayerBadgeProps>(
     )
 
     if (embedded) {
+      /*
+       * Only claim a body when something will actually draw one, or the panel
+       * renders as an empty padded slab. Signed in, in the drawer, with a tag
+       * and nothing being edited, every branch above comes back null: the tag
+       * itself is in the drawer heading and settings are drawn by the drawer,
+       * so the panel has nothing left to show.
+       *
+       * Having a tag used to be listed here as a reason to render, on the
+       * assumption an avatar would sit in the panel. None does — the avatar is
+       * on the trigger button — so while AVATARS_ENABLED was false the clause
+       * was harmless, and turning it on put a grey bar under the gamer tag.
+       */
       const hasBody =
         (!signedIn && Boolean(authSection)) ||
         Boolean(showTagForm) ||
         Boolean(impersonation) ||
         Boolean(error) ||
-        Boolean(showSettings) ||
-        (AVATARS_ENABLED && Boolean(displayName))
+        Boolean(showSettings)
 
       return (
         <div
