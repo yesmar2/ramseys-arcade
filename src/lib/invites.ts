@@ -71,6 +71,24 @@ export async function listPendingInvites(playerName?: string): Promise<PublicInv
   return promise
 }
 
+/**
+ * Who the host has invited to this event and not heard back from.
+ *
+ * Host only — the other listing answers what you have been invited to, this
+ * answers who you have invited. Returns [] rather than throwing when you are
+ * not the host, so a non-host detail page simply shows nothing.
+ */
+export async function listEventInvites(tournamentId: string): Promise<PublicInvite[]> {
+  try {
+    const data = await api<{ invites?: PublicInvite[] }>(
+      `/tournaments/${encodeURIComponent(tournamentId)}/invites`,
+    )
+    return data.invites ?? []
+  } catch {
+    return []
+  }
+}
+
 export async function sendInvite(input: {
   kind: InviteKind
   targetId: string

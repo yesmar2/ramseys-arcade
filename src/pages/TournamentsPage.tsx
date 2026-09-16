@@ -15,6 +15,7 @@ import { GameThumbArt } from '../components/GameThumbArt'
 import { ListRow } from '../components/ListRow'
 import { BackChevronIcon } from '../components/PageBackLink'
 import { InviteByTagForm } from '../components/InviteByTagForm'
+import { listEventInvites, type PublicInvite } from '../lib/invites'
 import { PageShell } from '../components/PageShell'
 import { PendingInvitesStrip } from '../components/PendingInvitesStrip'
 import { PodiumMedal } from '../components/PodiumMedal'
@@ -566,6 +567,61 @@ function EventHero({
 /* ====================================================================== */
 /* Board                                                                   */
 /* ====================================================================== */
+
+/**
+ * Who the host has invited and not heard back from.
+ *
+ * Sending an invite used to leave no trace the host could see, so there was no
+ * telling a name you had already chased from one you never got round to —
+ * particularly once a few had gone out over a few days. Joined and expired
+ * invites drop off, so what is left is exactly who you are still waiting on.
+ */
+function SentInvites({ tournamentId, roster }: { tournamentId: string; roster: number }) {
+  const [invites, setInvites] = useState<PublicInvite[]>([])
+
+  useEffect(() => {
+    let cancelled = false
+    listEventInvites(tournamentId)
+      .then((rows) => {
+        if (!cancelled) setInvites(rows)
+      })
+      .catch(() => {
+        if (!cancelled) setInvites([])
+      })
+    return () => {
+      cancelled = true
+    }
+    // Roster changes mean someone accepted — their invite should drop off.
+  }, [tournamentId, roster])
+
+  if (!invites.length) return null
+
+  return (
+    <div className="ev-sent">
+      <p className="ev-sent__title">
+        Waiting on {invites.length} {invites.length === 1 ? 'invite' : 'invites'}
+      </p>
+      <ul className="ev-sent__list">
+        {invites.map((invite) => (
+          <li key={invite.id} className="ev-sent__row">
+            <span className="ev-sent__name">{invite.toName}</span>
+            <span className="ev-sent__when">{inviteAge(invite.createdAt)}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
+/** "2h ago" / "3d ago" — enough to tell a fresh invite from a stale one. */
+function inviteAge(at: number): string {
+  const mins = Math.max(0, Math.round((Date.now() - at) / 60000))
+  if (mins < 1) return 'just now'
+  if (mins < 60) return `${mins}m ago`
+  const hours = Math.round(mins / 60)
+  if (hours < 24) return `${hours}h ago`
+  return `${Math.round(hours / 24)}d ago`
+}
 
 function EventBoard({
   detail,
@@ -1222,6 +1278,7 @@ export function TournamentDetailPage({ id, invite }: { id: string; invite?: stri
                 disabled={busy}
                 excludeNames={detail.players.map((p) => p.name)}
               />
+              <SentInvites tournamentId={id} roster={detail.players.length} />
             </section>
           ) : null}
 
