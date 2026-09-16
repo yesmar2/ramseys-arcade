@@ -8,6 +8,7 @@ import { HomeSpotterStrip } from '../components/HomeSpotterStrip'
 import { HomeIntro } from '../components/HomeIntro'
 import { InstallPrompt } from '../components/InstallPrompt'
 import { PageShell } from '../components/PageShell'
+import { PendingInvitesStrip } from '../components/PendingInvitesStrip'
 import { ATTENDANT_ENABLED } from '../lib/attendant'
 
 export function HomePage() {
@@ -19,6 +20,7 @@ export function HomePage() {
             <HomeHero />
             <HomeOfficialEvents />
           </div>
+          <PendingInvitesStrip />
           <GameGrid />
           <HomeSpotterStrip />
           <HomeYourEvents />
@@ -27,7 +29,6 @@ export function HomePage() {
         </div>
       </PageShell>
       <InstallPrompt />
-      {ATTENDANT_ENABLED ? <ArcadeAttendant /> : null}
     </>
   )
 }

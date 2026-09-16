@@ -743,10 +743,15 @@ export function GroupDetailPage({ id, invite }: { id: string; invite?: string })
                   </button>
                 </div>
                 <p className="ev-field__hint">
-                  Anyone with the link can join. Or send it straight to a gamer tag and
-                  they’ll see it in the app.
+                  Anyone with the link can join. Or invite a gamer tag — they’ll get a header
+                  badge and can accept from Home or Events.
                 </p>
-                <InviteByTagForm kind="group" targetId={id} disabled={busy} />
+                <InviteByTagForm
+                  kind="group"
+                  targetId={id}
+                  disabled={busy}
+                  excludeNames={roster.map((m) => m.name)}
+                />
               </div>
             </section>
           ) : null}

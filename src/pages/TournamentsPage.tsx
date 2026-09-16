@@ -35,7 +35,9 @@ import { ApiError, getLastPlayerName, normalizePlayerName } from '../lib/leaderb
 import { resolveGameAccent } from '../lib/theme'
 import {
   attemptsPerGameMax,
+  bracketGameForRound,
   eventKind,
+  hasPerRoundGames,
   finalBracketMatch,
   formatEventCountdown,
   formatRulesSummary,
@@ -383,11 +385,23 @@ function heroAction(
           sub: roundLeft ? `Round ends in ${roundLeft}` : 'Your tries are in',
         }
       }
+      /*
+       * The round decides the game, not the event. Sending everyone to
+       * games[0] was fine while a bracket was one game the whole way through;
+       * with a plan per round it would drop you into the wrong one, and the
+       * server would refuse the score.
+       */
+      const roundGame = bracketGameForRound(detail, match.round)
+      const roundGameName = getGame(roundGame)?.name ?? roundGame
       return {
         kind: 'link',
         label: `Play vs ${opp.name}`,
-        href: tournamentPlayHref(detail.id, detail.games[0] ?? '', playInvite),
-        sub: [remaining === 1 ? '1 try' : `${remaining} tries left`, roundLeft ? `round ends in ${roundLeft}` : null]
+        href: tournamentPlayHref(detail.id, roundGame, playInvite),
+        sub: [
+          hasPerRoundGames(detail) ? roundGameName : null,
+          remaining === 1 ? '1 try' : `${remaining} tries left`,
+          roundLeft ? `round ends in ${roundLeft}` : null,
+        ]
           .filter(Boolean)
           .join(' · '),
       }
@@ -1202,7 +1216,12 @@ export function TournamentDetailPage({ id, invite }: { id: string; invite?: stri
                   })()}
                 </p>
               </div>
-              <InviteByTagForm kind="tournament" targetId={id} disabled={busy} />
+              <InviteByTagForm
+                kind="tournament"
+                targetId={id}
+                disabled={busy}
+                excludeNames={detail.players.map((p) => p.name)}
+              />
             </section>
           ) : null}
 
