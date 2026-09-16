@@ -376,6 +376,17 @@ export function CrosswalkGame() {
                 <GameStartCard
                   title="Crosswalk"
                   slug="crosswalk"
+                  tools={
+                    <AdminWaveSkip
+                      mode="start"
+                      unit="row"
+                      onJump={(row) => {
+                        restart()
+                        stateRef.current = jumpToRow(stateRef.current!, row)
+                        setUi(toSnapshot(stateRef.current))
+                      }}
+                    />
+                  }
                 />
               )}
               {ui.phase === 'gameover' && saveOpen && (

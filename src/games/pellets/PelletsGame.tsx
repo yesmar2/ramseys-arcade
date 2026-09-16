@@ -364,6 +364,17 @@ export function PelletsGame() {
                 <GameStartCard
                   title="Pellets"
                   slug="pellets"
+                  tools={
+                    <AdminWaveSkip
+                      mode="start"
+                      unit="level"
+                      onJump={(level) => {
+                        restart()
+                        stateRef.current = jumpToLevel(stateRef.current, level)
+                        setUi(toSnapshot(stateRef.current))
+                      }}
+                    />
+                  }
                 />
               )}
               {ui.phase === 'gameover' && saveOpen && (

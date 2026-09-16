@@ -228,6 +228,17 @@ export function StackerGame() {
             <GameStartCard
               title="Stacker"
               slug="stacker"
+              tools={
+                <AdminWaveSkip
+                  mode="start"
+                  unit="height"
+                  onJump={(height) => {
+                    restart()
+                    stateRef.current = jumpToHeight(stateRef.current, height)
+                    setUi(toSnapshot(stateRef.current))
+                  }}
+                />
+              }
             />
           )}
           {ui.status === 'gameover' && saveOpen && (

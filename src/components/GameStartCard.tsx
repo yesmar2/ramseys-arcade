@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { usePersonalBest } from '../hooks/usePersonalBest'
 import { GamePanelBody } from './PauseControls'
 
@@ -7,13 +8,22 @@ import { GamePanelBody } from './PauseControls'
  * built separately and slowly drifted apart, which made stopping a run feel
  * like landing somewhere else. Same panel, two moments.
  */
-export function GameStartCard({ title, slug }: { title: string; slug: string }) {
+export function GameStartCard({
+  title,
+  slug,
+  tools,
+}: {
+  title: string
+  slug: string
+  /** Admin stage picker, same slot the pause panel puts it in. */
+  tools?: ReactNode
+}) {
   const personalBest = usePersonalBest(slug)
 
   return (
     <div className="game-pause-card game-start-card">
       <h2>{title}</h2>
-      <GamePanelBody slug={slug} personalBest={personalBest} />
+      <GamePanelBody slug={slug} personalBest={personalBest} tools={tools} />
       <span className="game-start-card__cue">Tap to start</span>
     </div>
   )

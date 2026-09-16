@@ -364,6 +364,18 @@ export function PatriotGame() {
               <GameStartCard
                 title="Patriot"
                 slug="patriot"
+                tools={
+                  <AdminWaveSkip
+                    mode="start"
+                    unit="wave"
+                    onJump={(wave) => {
+                      restart()
+                      const { w } = sizeRef.current
+                      stateRef.current = jumpToWave(stateRef.current, wave, w)
+                      setUi(toSnapshot(stateRef.current))
+                    }}
+                  />
+                }
               />
             )}
             {ui.phase === 'waveClear' && !needsRotate && !paused && (

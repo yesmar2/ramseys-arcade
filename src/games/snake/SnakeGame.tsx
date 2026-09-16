@@ -356,6 +356,17 @@ export function SnakeGame() {
               <GameStartCard
                 title="Snake"
                 slug="snake"
+                tools={
+                  <AdminWaveSkip
+                    mode="start"
+                    unit="length"
+                    onJump={(length) => {
+                      restart()
+                      stateRef.current = jumpToLength(stateRef.current, length)
+                      setUi(toSnapshot(stateRef.current))
+                    }}
+                  />
+                }
               />
             )}
             {ui.phase === 'gameover' && saveOpen && (

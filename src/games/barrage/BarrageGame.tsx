@@ -359,6 +359,17 @@ export function BarrageGame() {
                 <GameStartCard
                   title="Barrage"
                   slug="barrage"
+                  tools={
+                    <AdminWaveSkip
+                      mode="start"
+                      unit="wave"
+                      onJump={(wave) => {
+                        restart()
+                        stateRef.current = jumpToWave(stateRef.current, wave)
+                        setUi(toSnapshot(stateRef.current))
+                      }}
+                    />
+                  }
                 />
               )}
               {ui.phase === 'gameover' &&

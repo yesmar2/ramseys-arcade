@@ -3431,6 +3431,11 @@ a.game-hud__board {
   pointer-events: auto;
 }
 
+/* Admin stage picker, in the same slot the pause panel gives it. */
+.game-start-card .admin-wave-skip {
+  pointer-events: auto;
+}
+
 /* Visible on touch, unlike the pause card's keyboard hint. */
 .game-start-card__cue {
   font-size: 0.78rem;

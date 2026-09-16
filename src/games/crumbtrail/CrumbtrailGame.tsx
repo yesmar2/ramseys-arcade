@@ -405,6 +405,17 @@ export function CrumbtrailGame() {
                 <GameStartCard
                   title="Crumbtrail"
                   slug="crumbtrail"
+                  tools={
+                    <AdminWaveSkip
+                      mode="start"
+                      unit="row"
+                      onJump={(row) => {
+                        restart()
+                        stateRef.current = jumpToDepth(stateRef.current, row)
+                        setUi(toSnapshot(stateRef.current))
+                      }}
+                    />
+                  }
                 />
               )}
               {ui.phase === 'gameover' && saveOpen && (
