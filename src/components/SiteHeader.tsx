@@ -11,6 +11,7 @@ import { PlayerAvatar } from './PlayerAvatar'
 import { currentTheme, THEME_EVENT, toggleTheme, themeLabel, type Theme } from '../lib/theme'
 import { normalizePlayerName } from '../lib/leaderboard'
 import { useTrophySummary } from '../hooks/useTrophySummary'
+import { NotificationBell } from './NotificationBell'
 import { useFriends } from '../hooks/useFriends'
 import { useImpersonation } from '../hooks/useImpersonation'
 import { useDefaultPeriod } from '../lib/defaultPeriod'
@@ -255,6 +256,8 @@ export function SiteHeader() {
         </div>
 
         <div className="site-header__identity">
+          <NotificationBell enabled={signedIn} />
+
           {inviteCount > 0 ? (
             <div className="site-header__invites" ref={invitesRef}>
               <button

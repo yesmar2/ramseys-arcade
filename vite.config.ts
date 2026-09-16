@@ -17,6 +17,10 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       injectRegister: 'auto',
+      // A generated worker cannot receive `push`; bracket match clocks need it.
+      strategies: 'injectManifest',
+      srcDir: 'src',
+      filename: 'sw.ts',
       includeAssets: [
         'favicon.svg',
         'apple-touch-icon.png',
@@ -55,13 +59,9 @@ export default defineConfig({
           },
         ],
       },
-      workbox: {
+      // Routing, cleanup and claim now live in src/sw.ts.
+      injectManifest: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2,webmanifest}'],
-        navigateFallback: '/index.html',
-        cleanupOutdatedCaches: true,
-        clientsClaim: true,
-        // API + auth stay network-only (different origin / dynamic).
-        runtimeCaching: [],
       },
       devOptions: {
         enabled: false,
