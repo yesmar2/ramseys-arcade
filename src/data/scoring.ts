@@ -109,6 +109,12 @@ const SCORING: Record<string, ScoreRow[]> = {
     { label: 'Wrong swat', value: '+3s' },
     { label: 'Hint', value: '+8s' },
   ],
+  bop: [
+    { label: 'Right control', value: '+1' },
+    { label: 'Quick (first half of the ring)', value: '+1 more' },
+    { label: 'The window', value: 'starts at 2.2s, shrinks each call, never under 0.6s' },
+    { label: 'Wrong control or too slow', value: 'run over' },
+  ],
   barrage: [
     { label: 'Shots in the air', value: '3 at once' },
     { label: 'Volley', value: 'the lanes about to be hit light up first' },

@@ -617,7 +617,35 @@ export function SpotterArt() {
   )
 }
 
+/** The console: big button in the middle, knob, lever, switch and wheel around it. */
+export function BopArt() {
+  const button = pastel(HUE.rose, 56, 62)
+  const knob = pastel(HUE.sky, 56, 40)
+  const lever = pastel(HUE.gold, 56, 40)
+  const flick = pastel(HUE.teal, 56, 40)
+  const wheel = pastel(HUE.violet, 56, 40)
+  return (
+    <SvgFrame>
+      <TileBg />
+      <circle cx="80" cy="50" r="24" fill={button.fill} stroke={button.stroke} strokeWidth="2" />
+      <circle cx="80" cy="50" r="13" fill={button.fill} stroke={button.stroke} strokeWidth="1.5" />
+      <circle cx="32" cy="30" r="11" fill={knob.fill} stroke={knob.stroke} strokeWidth="2" />
+      <line x1="32" y1="30" x2="32" y2="21" stroke={knob.stroke} strokeWidth="2.5" strokeLinecap="round" />
+      <line x1="128" y1="18" x2="128" y2="42" stroke={lever.stroke} strokeWidth="4" strokeLinecap="round" />
+      <circle cx="128" cy="21" r="7" fill={lever.fill} stroke={lever.stroke} strokeWidth="2" />
+      <rect x="22" y="60" width="20" height="30" rx="6" fill={flick.fill} stroke={flick.stroke} strokeWidth="2" />
+      <rect x="27" y="66" width="10" height="9" rx="3" fill={flick.stroke} />
+      <circle cx="128" cy="74" r="13" fill={wheel.fill} stroke={wheel.stroke} strokeWidth="2" />
+      <line x1="115" y1="74" x2="141" y2="74" stroke={wheel.stroke} strokeWidth="2" />
+      <line x1="128" y1="61" x2="128" y2="87" stroke={wheel.stroke} strokeWidth="2" />
+      <line x1="119" y1="65" x2="137" y2="83" stroke={wheel.stroke} strokeWidth="2" />
+      <line x1="137" y1="65" x2="119" y2="83" stroke={wheel.stroke} strokeWidth="2" />
+    </SvgFrame>
+  )
+}
+
 const artBySlug: Record<string, () => JSX.Element> = {
+  bop: BopArt,
   stacker: StackerArt,
   patriot: PatriotArt,
   snake: SnakeArt,

@@ -127,6 +127,15 @@ export const games: Game[] = [
     accent: '#f5b942',
     playable: true,
   },
+  {
+    name: 'Bop',
+    slug: 'bop',
+    description: 'Five controls. One voice. Do what it says, faster.',
+    how: 'The console calls a control — bop, twist, pull, flick or spin — and you have until the ring runs out to do it. Tap the button to bop; drag the knob sideways to twist, the lever down to pull, the switch up to flick, the wheel any way to spin. On a keyboard: space, left/right, down, up, S. Wrong control or too slow ends the run.',
+    accent: '#e85d75',
+    playable: true,
+    inDevelopment: true,
+  },
 ]
 
 export function getGame(slug: string) {

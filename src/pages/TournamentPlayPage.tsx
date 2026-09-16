@@ -2,6 +2,7 @@ import { useEffect, useState, type ComponentType } from 'react'
 import { AsteroidsGame } from '../games/asteroids/AsteroidsGame'
 import { BarrageGame } from '../games/barrage/BarrageGame'
 import { CrosswalkGame } from '../games/crosswalk/CrosswalkGame'
+import { BopGame } from '../games/bop/BopGame'
 import { CrumbtrailGame } from '../games/crumbtrail/CrumbtrailGame'
 import { DeadCenterGame } from '../games/dead-center/DeadCenterGame'
 import { FindBugGame } from '../games/findbug/FindBugGame'
@@ -42,6 +43,7 @@ const TOURNAMENT_GAMES: Record<string, ComponentType> = {
   centroid: DeadCenterGame,
   crosswalk: CrosswalkGame,
   crumbtrail: CrumbtrailGame,
+  bop: BopGame,
   findbug: FindBugGame,
   patriot: PatriotGame,
   pellets: PelletsGame,

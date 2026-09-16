@@ -320,10 +320,28 @@ function CrumbtrailThumb({ accent }: { accent?: string }) {
   )
 }
 
+/** The big button, with the knob and lever flanking it. */
+function BopThumb() {
+  const button = pastel(HUE.rose, 56, 62)
+  const knob = pastel(HUE.sky, 56, 40)
+  const lever = pastel(HUE.gold, 56, 40)
+  return (
+    <g>
+      <circle cx="16" cy="17" r="8" {...shape(button, 1.5)} />
+      <circle cx="16" cy="17" r="4" {...shape(button, 1.2)} />
+      <circle cx="5.5" cy="9" r="3.4" {...shape(knob, 1.3)} />
+      <line x1="5.5" y1="9" x2="5.5" y2="6.4" stroke={knob.stroke} strokeWidth="1.4" strokeLinecap="round" />
+      <line x1="26.5" y1="6" x2="26.5" y2="15" stroke={lever.stroke} strokeWidth="2" strokeLinecap="round" />
+      <circle cx="26.5" cy="7.5" r="2.6" {...shape(lever, 1.3)} />
+    </g>
+  )
+}
+
 const thumbBySlug: Record<
   string,
   (props: { accent?: string }) => ReactNode
 > = {
+  bop: () => <BopThumb />,
   asteroids: AsteroidsThumb,
   patriot: PatriotThumb,
   snake: () => <SnakeThumb />,

@@ -70,6 +70,7 @@ const GOOGLE_BY_SLUG: Record<string, string> = {
   simon: GOOGLE_RED,
   pellets: GOOGLE_YELLOW,
   crumbtrail: GOOGLE_YELLOW,
+  bop: GOOGLE_RED,
   barrage: GOOGLE_RED,
   spotter: GOOGLE_BLUE,
 }
