@@ -17,10 +17,10 @@ export function PendingInvitesStrip({
   compact = false,
   className = '',
 }: PendingInvitesStripProps) {
-  const { invites, error, busyId, accept, decline, playerName } = usePendingInvites()
+  const { invites, error, busyId, accept, decline } = usePendingInvites()
   const rows = kind ? invites.filter((i) => i.kind === kind) : invites
 
-  if (!playerName || rows.length === 0) return null
+  if (rows.length === 0 && !error) return null
 
   return (
     <section
@@ -29,45 +29,47 @@ export function PendingInvitesStrip({
     >
       {!compact ? <h2 className="pending-invites__title">Invites for you</h2> : null}
       {error ? <p className="tour-note tour-note--error">{error}</p> : null}
-      <ul className="pending-invites__list">
-        {rows.map((invite) => {
-          const busy = busyId === invite.id
-          return (
-            <li key={invite.id} className="pending-invites__row">
-              <div className="pending-invites__copy">
-                <strong className="pending-invites__name">{invite.targetName}</strong>
-                <span className="pending-invites__meta">
-                  {kindLabel(invite)}
-                  {invite.fromName ? ` · from ${invite.fromName}` : ''}
-                </span>
-              </div>
-              <div className="pending-invites__actions">
-                <button
-                  type="button"
-                  className="event-list__create"
-                  disabled={busy}
-                  onClick={() => {
-                    void accept(invite.id).then((result) => {
-                      if (!result) return
-                      window.location.hash = inviteTargetHref(invite)
-                    })
-                  }}
-                >
-                  {busy ? '…' : 'Accept'}
-                </button>
-                <button
-                  type="button"
-                  className="group-text-btn"
-                  disabled={busy}
-                  onClick={() => void decline(invite.id)}
-                >
-                  Decline
-                </button>
-              </div>
-            </li>
-          )
-        })}
-      </ul>
+      {rows.length > 0 ? (
+        <ul className="pending-invites__list">
+          {rows.map((invite) => {
+            const busy = busyId === invite.id
+            return (
+              <li key={invite.id} className="pending-invites__row">
+                <div className="pending-invites__copy">
+                  <strong className="pending-invites__name">{invite.targetName}</strong>
+                  <span className="pending-invites__meta">
+                    {kindLabel(invite)}
+                    {invite.fromName ? ` · from ${invite.fromName}` : ''}
+                  </span>
+                </div>
+                <div className="pending-invites__actions">
+                  <button
+                    type="button"
+                    className="event-list__create"
+                    disabled={busy}
+                    onClick={() => {
+                      void accept(invite.id).then((result) => {
+                        if (!result) return
+                        window.location.hash = inviteTargetHref(invite)
+                      })
+                    }}
+                  >
+                    {busy ? '…' : 'Accept'}
+                  </button>
+                  <button
+                    type="button"
+                    className="group-text-btn"
+                    disabled={busy}
+                    onClick={() => void decline(invite.id)}
+                  >
+                    Decline
+                  </button>
+                </div>
+              </li>
+            )
+          })}
+        </ul>
+      ) : null}
     </section>
   )
 }

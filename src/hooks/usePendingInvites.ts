@@ -7,12 +7,14 @@ import {
   type PublicInvite,
 } from '../lib/invites'
 import { normalizePlayerName, getLastPlayerName } from '../lib/leaderboard'
+import { useAuth } from './useAuth'
 import { usePlayerName } from './usePlayerName'
 
 const POLL_MS = 45_000
 const EVENT = 'arcade-pending-invites'
 
 type Store = {
+  key: string
   playerName: string
   invites: PublicInvite[]
   loading: boolean
@@ -22,6 +24,7 @@ type Store = {
 }
 
 const empty: Store = {
+  key: '',
   playerName: '',
   invites: [],
   loading: false,
@@ -34,6 +37,8 @@ const empty: Store = {
 let snapshot: Store = empty
 let focusBound = false
 let inFlight: Promise<void> | null = null
+/** Latest signed-in flag for focus/interval refresh. */
+let signedInLatest = false
 
 function emit(next: Store) {
   snapshot = next
@@ -53,28 +58,29 @@ function patch(partial: Partial<Store>) {
   emit({ ...snapshot, ...partial })
 }
 
-async function refresh(playerName: string, force = false) {
+async function refresh(playerName: string, signedIn: boolean, force = false) {
   const name = normalizePlayerName(playerName)
-  if (!name) {
+  const key = name || (signedIn ? '__session__' : '')
+  if (!key) {
     emit({ ...empty })
     return
   }
 
   if (
     !force &&
-    snapshot.playerName === name &&
+    snapshot.key === key &&
     Date.now() - snapshot.lastFetchedAt < 8_000 &&
     inFlight
   ) {
     return inFlight
   }
 
-  patch({ playerName: name, loading: true })
+  patch({ key, playerName: name, loading: true })
 
   const run = (async () => {
     try {
-      const next = await listPendingInvites(name)
-      if (snapshot.playerName !== name) return
+      const next = await listPendingInvites(name || undefined)
+      if (snapshot.key !== key) return
       patch({
         invites: next,
         error: null,
@@ -82,7 +88,7 @@ async function refresh(playerName: string, force = false) {
         loading: false,
       })
     } catch (err) {
-      if (snapshot.playerName !== name) return
+      if (snapshot.key !== key) return
       patch({
         error: err instanceof Error ? err.message : 'Could not load invites',
         loading: false,
@@ -100,7 +106,7 @@ function ensureListeners() {
   focusBound = true
   const onFocus = () => {
     const name = normalizePlayerName(getLastPlayerName())
-    if (name) void refresh(name)
+    if (name || signedInLatest) void refresh(name, signedInLatest)
   }
   window.addEventListener('focus', onFocus)
   document.addEventListener('visibilitychange', () => {
@@ -109,23 +115,29 @@ function ensureListeners() {
   window.setInterval(() => {
     if (document.visibilityState !== 'visible') return
     const name = normalizePlayerName(getLastPlayerName())
-    if (name) void refresh(name)
+    if (name || signedInLatest) void refresh(name, signedInLatest)
   }, POLL_MS)
 }
 
 export function usePendingInvites() {
+  const { signedIn } = useAuth()
   const rawName = usePlayerName()
   const playerName = normalizePlayerName(rawName)
   const snap = useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
+  const key = playerName || (signedIn ? '__session__' : '')
+
+  useEffect(() => {
+    signedInLatest = signedIn
+  }, [signedIn])
 
   useEffect(() => {
     ensureListeners()
-    if (!playerName) {
+    if (!key) {
       emit({ ...empty })
       return
     }
-    void refresh(playerName)
-  }, [playerName])
+    void refresh(playerName, signedIn)
+  }, [playerName, signedIn, key])
 
   const accept = useCallback(async (id: string): Promise<AcceptInviteResult | null> => {
     patch({ busyId: id, error: null })
@@ -163,15 +175,15 @@ export function usePendingInvites() {
     }
   }, [])
 
-  const invites = playerName && snap.playerName === playerName ? snap.invites : []
+  const invites = key && snap.key === key ? snap.invites : []
 
   return {
     invites,
     count: invites.length,
-    loading: snap.loading && snap.playerName === playerName,
-    error: snap.playerName === playerName ? snap.error : null,
+    loading: snap.loading && snap.key === key,
+    error: snap.key === key ? snap.error : null,
     busyId: snap.busyId,
-    refresh: () => refresh(playerName, true),
+    refresh: () => refresh(playerName, signedIn, true),
     accept,
     decline,
     playerName,

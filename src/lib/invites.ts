@@ -44,22 +44,30 @@ let invitesInflight: { name: string; at: number; promise: Promise<PublicInvite[]
 /**
  * Pending invites for a player. The header badge and the invites strip ask
  * at the same moment on every page, so they share one request.
+ *
+ * Prefer the local gamer tag; if none is set yet but a session exists, still
+ * hit the API so account-owned tags can receive invites.
  */
 export async function listPendingInvites(playerName?: string): Promise<PublicInvite[]> {
   const name = normalizePlayerName(playerName ?? getLastPlayerName())
-  if (!name) return []
   const now = Date.now()
-  if (invitesInflight && invitesInflight.name === name && now - invitesInflight.at < INVITES_INFLIGHT_MS) {
+  const cacheKey = name || '__session__'
+  if (
+    invitesInflight &&
+    invitesInflight.name === cacheKey &&
+    now - invitesInflight.at < INVITES_INFLIGHT_MS
+  ) {
     return invitesInflight.promise
   }
-  const params = new URLSearchParams({ playerName: name, status: 'pending' })
+  const params = new URLSearchParams({ status: 'pending' })
+  if (name) params.set('playerName', name)
   const promise = api<{ invites: PublicInvite[] }>(`/invites?${params}`)
     .then((data) => data.invites ?? [])
     .catch((err) => {
       invitesInflight = null
       throw err
     })
-  invitesInflight = { name, at: now, promise }
+  invitesInflight = { name: cacheKey, at: now, promise }
   return promise
 }
 
