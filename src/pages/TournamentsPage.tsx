@@ -15,6 +15,7 @@ import { GameThumbArt } from '../components/GameThumbArt'
 import { ListRow } from '../components/ListRow'
 import { BackChevronIcon } from '../components/PageBackLink'
 import { InviteByTagForm } from '../components/InviteByTagForm'
+import { PlayerAvatar } from '../components/PlayerAvatar'
 import { listEventInvites, type PublicInvite } from '../lib/invites'
 import { PageShell } from '../components/PageShell'
 import { PendingInvitesStrip } from '../components/PendingInvitesStrip'
@@ -604,6 +605,9 @@ function SentInvites({ tournamentId, roster }: { tournamentId: string; roster: n
       <ul className="ev-sent__list">
         {invites.map((invite) => (
           <li key={invite.id} className="ev-sent__row">
+            <span className="pmark" aria-hidden="true">
+              <PlayerAvatar name={invite.toName} size="sm" />
+            </span>
             <span className="ev-sent__name">{invite.toName}</span>
             <span className="ev-sent__when">{inviteAge(invite.createdAt)}</span>
           </li>
