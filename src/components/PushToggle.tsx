@@ -14,6 +14,8 @@ const REASONS: Record<string, string> = {
   denied: 'Your browser is blocking notifications. Allow them in site settings, then try again.',
   unavailable: 'Push is not set up on this server yet.',
   unsupported: 'This browser cannot do push notifications.',
+  'no-worker':
+    'No service worker is running on this page, so there is nothing to receive alerts. On a dev server this is expected.',
   failed: 'Could not turn alerts on. Try again in a moment.',
 }
 

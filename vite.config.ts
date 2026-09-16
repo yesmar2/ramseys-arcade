@@ -63,8 +63,16 @@ export default defineConfig({
       injectManifest: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2,webmanifest}'],
       },
+      /*
+       * The worker runs in dev too, otherwise push is untestable without a
+       * production build: with no worker registered there is nothing to
+       * receive a `push` event, and the opt-in has nothing to subscribe.
+       */
       devOptions: {
-        enabled: false,
+        enabled: true,
+        type: 'module',
+        navigateFallback: 'index.html',
+        suppressWarnings: true,
       },
     }),
   ],

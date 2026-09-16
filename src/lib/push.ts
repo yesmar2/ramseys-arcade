@@ -97,9 +97,38 @@ function urlBase64ToUint8Array(base64: string): Uint8Array {
   return out
 }
 
+/**
+ * The active service worker, or null.
+ *
+ * `navigator.serviceWorker.ready` never settles when nothing is registered —
+ * it waits forever rather than rejecting — so a plain await on it leaves the
+ * caller hanging with no way to report why. Notably true in `vite dev` unless
+ * the PWA plugin's devOptions are on.
+ */
+async function readyRegistration(
+  timeoutMs = 4000,
+): Promise<ServiceWorkerRegistration | null> {
+  if (!('serviceWorker' in navigator)) return null
+  const existing = await navigator.serviceWorker.getRegistration()
+  if (!existing) return null
+  return Promise.race([
+    navigator.serviceWorker.ready,
+    new Promise<null>((resolve) => setTimeout(() => resolve(null), timeoutMs)),
+  ])
+}
+
 export type EnableResult =
   | { ok: true; status: PushStatus }
-  | { ok: false; reason: 'unsupported' | 'home-screen' | 'denied' | 'unavailable' | 'failed' }
+  | {
+      ok: false
+      reason:
+        | 'unsupported'
+        | 'home-screen'
+        | 'denied'
+        | 'unavailable'
+        | 'no-worker'
+        | 'failed'
+    }
 
 export async function enablePush(): Promise<EnableResult> {
   if (!pushSupported()) {
@@ -120,7 +149,8 @@ export async function enablePush(): Promise<EnableResult> {
   if (permission !== 'granted') return { ok: false, reason: 'denied' }
 
   try {
-    const registration = await navigator.serviceWorker.ready
+    const registration = await readyRegistration()
+    if (!registration) return { ok: false, reason: 'no-worker' }
     const existing = await registration.pushManager.getSubscription()
     const subscription =
       existing ??
@@ -155,8 +185,8 @@ export async function enablePush(): Promise<EnableResult> {
 export async function disablePush(): Promise<PushStatus> {
   let endpoint: string | undefined
   try {
-    const registration = await navigator.serviceWorker.ready
-    const subscription = await registration.pushManager.getSubscription()
+    const registration = await readyRegistration()
+    const subscription = await registration?.pushManager.getSubscription()
     if (subscription) {
       endpoint = subscription.endpoint
       await subscription.unsubscribe()
