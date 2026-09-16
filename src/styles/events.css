@@ -1901,3 +1901,18 @@ html[data-theme="google"] .evc--quiet {
   font-variant-numeric: tabular-nums;
 }
 
+
+/* Host controls on a roster row: two small buttons, never a wrapped mess. */
+.grp__row-actions {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+@media (max-width: 30rem) {
+  .grp__row-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

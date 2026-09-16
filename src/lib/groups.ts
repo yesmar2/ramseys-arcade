@@ -23,6 +23,8 @@ export type GroupPublic = {
   members: GroupMember[]
   isOwner: boolean
   isMember: boolean
+  /** Tag of the member who holds the group. Absent on older API builds. */
+  ownerName?: string | null
   inviteCode: string | null
 }
 
@@ -269,6 +271,15 @@ export async function renameGroup(id: string, name: string): Promise<GroupPublic
   if (!data.group?.id || !data.group.name) {
     throw new Error('Could not rename group')
   }
+  return data.group
+}
+
+/** Hand the group to another member, who must have signed in at least once. */
+export async function transferGroup(id: string, name: string): Promise<GroupPublic> {
+  const data = await api<{ group: GroupPublic }>(
+    `/groups/${encodeURIComponent(id)}/transfer`,
+    { method: 'POST', body: JSON.stringify({ name: name.trim().toUpperCase() }) },
+  )
   return data.group
 }
 

@@ -21,6 +21,7 @@ import {
   groupsIndexHref,
   joinGroup,
   kickGroupMember,
+  transferGroup,
   leaveGroup,
   listMyGroups,
   rememberGroupInvite,
@@ -569,6 +570,28 @@ export function GroupDetailPage({ id, invite }: { id: string; invite?: string })
     }
   }
 
+  /*
+   * Handing over is one-way and takes the invite controls with it, so it
+   * asks first and says exactly what it costs.
+   */
+  const onTransfer = async (name: string) => {
+    if (busy) return
+    const ok = window.confirm(
+      `Make ${name} the host? They get the invite code and the roster controls, and you won’t be able to undo it yourself.`,
+    )
+    if (!ok) return
+    setBusy(true)
+    setNote(null)
+    try {
+      const next = await transferGroup(id, name)
+      setGroup(next)
+    } catch (err) {
+      setNote(err instanceof Error ? err.message : 'Could not hand the group over')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   const style = { '--event-accent': accent, '--board-accent': accent } as CSSProperties
 
   if (loading) {
@@ -661,6 +684,13 @@ export function GroupDetailPage({ id, invite }: { id: string; invite?: string })
 
   const canInvite = group.isOwner && Boolean(group.inviteCode)
   const roster = group.members
+  const ownerTag = normalizePlayerName(group.ownerName ?? '')
+  const isHost = (name: string) => {
+    const tag = normalizePlayerName(name)
+    // An older API sends no owner: better to label nobody than the wrong one.
+    if (ownerTag) return tag === ownerTag
+    return group.isOwner && Boolean(playerName) && tag === playerName
+  }
 
   return (
     <PageShell innerClassName="lb-page__inner lb-page__inner--events">
@@ -787,23 +817,33 @@ export function GroupDetailPage({ id, invite }: { id: string; invite?: string })
                             <span className="lst__name-text">{member.name}</span>
                             {you ? <span className="lst__you">You</span> : null}
                           </span>
-                          <span className="lst__sub">
-                            {index === 0 && group.isOwner && you
-                              ? 'Host'
-                              : index === 0
-                                ? 'Host'
-                                : 'Member'}
-                          </span>
+                          {/*
+                            * Who holds the group, not who turned up first.
+                            * These had been the same guess, which labelled
+                            * the earliest member Host while the invite
+                            * controls — correctly — stayed with the owner.
+                            */}
+                          <span className="lst__sub">{isHost(member.name) ? 'Host' : 'Member'}</span>
                         </span>
                         {group.isOwner && !you ? (
-                          <button
-                            type="button"
-                            className="ev-form__cancel grp__kick"
-                            disabled={busy}
-                            onClick={() => void onKick(member.name)}
-                          >
-                            Remove
-                          </button>
+                          <div className="grp__row-actions">
+                            <button
+                              type="button"
+                              className="ev-form__cancel grp__hand"
+                              disabled={busy}
+                              onClick={() => void onTransfer(member.name)}
+                            >
+                              Make host
+                            </button>
+                            <button
+                              type="button"
+                              className="ev-form__cancel grp__kick"
+                              disabled={busy}
+                              onClick={() => void onKick(member.name)}
+                            >
+                              Remove
+                            </button>
+                          </div>
                         ) : null}
                       </div>
                     </li>
