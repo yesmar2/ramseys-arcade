@@ -8,7 +8,6 @@ import { usePersonalBest } from '../../hooks/usePersonalBest'
 import { getPersonalBest } from '../../lib/personalBest'
 import { useTournamentPlay } from '../../tournaments/TournamentPlayContext'
 import {
-  COURSE_PAR,
   createInitialState,
   puttLayout,
   resizeState,
@@ -158,7 +157,7 @@ export function PuttGame() {
         </GameStage>
         <div className="putt__overlay">
           {ui.phase === 'menu' && !saveOpen && (
-            <GameStartCard title="Putt" tagline={`Nine holes, par ${COURSE_PAR}. Tap to aim, tap to hit.`} slug="putt" />
+            <GameStartCard title="Putt" slug="putt" />
           )}
           {ui.phase === 'gameover' && saveOpen && (
             tournament ? (

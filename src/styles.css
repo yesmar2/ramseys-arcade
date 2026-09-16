@@ -3426,7 +3426,7 @@ a.game-hud__board {
   border: 1px solid rgba(var(--ink-rgb), 0.08);
   box-shadow: var(--shadow-soft);
   text-align: center;
-  max-width: min(17.5rem, calc(100% - 2.5rem));
+  max-width: min(15rem, calc(100% - 2.5rem));
 }
 
 .game-start-card h2 {
@@ -3459,6 +3459,22 @@ a.game-hud__board {
   font-weight: 700;
   letter-spacing: 0.01em;
   color: var(--muted);
+}
+
+/*
+ * The rules, behind an icon. The card itself sits in a layer that ignores the
+ * pointer so a tap anywhere starts the game; this one control takes it back,
+ * and ScoreGuide stops the press from reaching the playfield underneath.
+ */
+.game-start-card__how {
+  margin-top: 0.55rem;
+  pointer-events: auto;
+}
+
+.game-start-card__how .patriot__info {
+  width: 2rem;
+  height: 2rem;
+  font-size: 0.95rem;
 }
 
 /* Plain playfield readouts: score center, secondary under it (no chips). */
@@ -3967,14 +3983,18 @@ a.game-hud__board {
   flex-direction: column;
   gap: 0.4rem;
   min-height: 0;
-  overflow: auto;
+  /* Vertical only. A long rule used to push the panel sideways and hide half
+     its own value behind a horizontal scrollbar. */
+  overflow: hidden auto;
   -webkit-overflow-scrolling: touch;
 }
 
 .patriot__info-list li {
   display: flex;
   justify-content: space-between;
-  gap: 0.75rem;
+  /* Wrap the value under the label when the pair will not fit on one line. */
+  flex-wrap: wrap;
+  gap: 0.15rem 0.75rem;
   align-items: baseline;
   padding: 0.45rem 0.55rem;
   border-radius: 0.65rem;
@@ -3983,18 +4003,20 @@ a.game-hud__board {
 }
 
 .patriot__info-list span {
+  flex: 1 1 8rem;
+  min-width: 0;
   font-size: 0.85rem;
   font-weight: 600;
   color: var(--muted);
-  white-space: nowrap;
 }
 
 .patriot__info-list strong {
+  min-width: 0;
   font-family: var(--font-display);
   font-size: 1rem;
   font-weight: 700;
   color: var(--ink);
-  white-space: nowrap;
+  text-align: right;
 }
 
 .patriot__overlay {

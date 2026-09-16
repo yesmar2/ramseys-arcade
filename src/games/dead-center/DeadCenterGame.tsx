@@ -234,7 +234,6 @@ export function DeadCenterGame() {
             {ui.phase === 'menu' && !saveOpen && (
               <GameStartCard
                 title="Centroid"
-                tagline="Tap the true center."
                 slug="centroid"
               />
             )}

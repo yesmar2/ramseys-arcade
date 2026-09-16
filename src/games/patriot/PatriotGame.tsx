@@ -363,7 +363,6 @@ export function PatriotGame() {
             {ui.phase === 'menu' && !saveOpen && !needsRotate && !paused && (
               <GameStartCard
                 title="Patriot"
-                tagline="Defend the cities."
                 slug="patriot"
               />
             )}

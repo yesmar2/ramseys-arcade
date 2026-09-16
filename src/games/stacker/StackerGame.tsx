@@ -227,7 +227,6 @@ export function StackerGame() {
           {ui.status === 'menu' && !saveOpen && !paused && (
             <GameStartCard
               title="Stacker"
-              tagline="Time the drop. Don’t miss."
               slug="stacker"
             />
           )}

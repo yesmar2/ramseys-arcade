@@ -404,7 +404,6 @@ export function CrumbtrailGame() {
               {ui.phase === 'menu' && !saveOpen && !paused && (
                 <GameStartCard
                   title="Crumbtrail"
-                  tagline="The maze never ends. Keep climbing, or the tide comes up to meet you."
                   slug="crumbtrail"
                 />
               )}

@@ -6,7 +6,6 @@ import {
 } from '../components/BoardChrome'
 import { GameThumbArt } from '../components/GameThumbArt'
 import { GameTile } from '../components/GameTile'
-import { HowToPlayContent } from '../components/ScoreGuide'
 import { LeaderboardList } from '../components/LeaderboardList'
 import { PageShell } from '../components/PageShell'
 import { ShareBoardButton } from '../components/ShareBoardButton'
@@ -17,7 +16,6 @@ import {
   homeGames,
   type Game,
 } from '../data/games'
-import { scoringFor } from '../data/scoring'
 import { useBoardRecord } from '../hooks/useBoardRecord'
 import {
   gameBoardHref,
@@ -47,7 +45,6 @@ import {
 } from '../lib/leaderboard'
 
 const BOARD_ROWS = 10
-const RULES_SHOWN = 6
 
 function isBoardGame(slug: string): slug is LeaderboardGame {
   return (LEADERBOARD_GAMES as readonly string[]).includes(slug)
@@ -77,7 +74,6 @@ export function GameHubPage({ slug, board: boardFromRoute }: GameHubPageProps) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [, setThemeTick] = useState(0)
-  const [allRules, setAllRules] = useState(false)
 
   useEffect(() => {
     const sync = () => setThemeTick((n) => n + 1)
@@ -88,7 +84,6 @@ export function GameHubPage({ slug, board: boardFromRoute }: GameHubPageProps) {
   const canPlay = game ? gamePlayableOn(game, device) : false
   const comingSoon = Boolean(game?.comingSoon)
   const inDevelopment = Boolean(game?.inDevelopment)
-  const scoring = scoringFor(slug)
   const boardSlug: LeaderboardGame | null = isBoardGame(slug) ? slug : null
   const accent = resolveGameAccent(slug, game?.accent ?? '#2eb8a0')
   const playHref = gamePlayHref(slug)
@@ -154,8 +149,6 @@ export function GameHubPage({ slug, board: boardFromRoute }: GameHubPageProps) {
       url={gameHref(slug)}
     />
   )
-  const rules = canPlay && scoring?.length ? scoring : null
-  const shownRules = rules && !allRules && rules.length > RULES_SHOWN + 1 ? rules.slice(0, RULES_SHOWN) : rules
   const yourBest = you?.score ?? 0
 
   return (
@@ -180,14 +173,13 @@ export function GameHubPage({ slug, board: boardFromRoute }: GameHubPageProps) {
           <div className={`hero__main${boardSlug ? '' : ' hero__main--bare'}`}>
             <GameThumbArt slug={game.slug} accent={accent} className="hero__art hub__art" />
             <div className="hero__text">
-              <p className="ev-kicker hero__kicker">
-                <span className="ev-kicker__bit">Game</span>
-                {inDevelopment ? (
-                  <span className="ev-kicker__bit">In development</span>
-                ) : comingSoon ? (
-                  <span className="ev-kicker__bit">Coming soon</span>
-                ) : null}
-              </p>
+              {inDevelopment || comingSoon ? (
+                <p className="ev-kicker hero__kicker">
+                  <span className="ev-kicker__bit">
+                    {inDevelopment ? 'In development' : 'Coming soon'}
+                  </span>
+                </p>
+              ) : null}
               <h1 className="hero__title">{game.name}</h1>
             </div>
 
@@ -299,33 +291,6 @@ export function GameHubPage({ slug, board: boardFromRoute }: GameHubPageProps) {
           ) : null}
 
           <div className="hub__side">
-            <section className="ev-card hub__how" aria-labelledby="game-how-heading">
-              <div className="ev-card__head">
-                <h2 className="ev-card__title" id="game-how-heading">
-                  How to play
-                </h2>
-                {rules ? (
-                  <p className="ev-card__note">
-                    {rules.length} {rules.length === 1 ? 'rule' : 'rules'}
-                  </p>
-                ) : null}
-              </div>
-              <div className="ev-card__body">
-                <HowToPlayContent
-                  how={game.how}
-                  rows={shownRules}
-                  listClassName="hub__scoring"
-                />
-                {rules && shownRules && shownRules.length < rules.length ? (
-                  <div className="hub__rules-more">
-                    <button type="button" className="lst__more" onClick={() => setAllRules(true)}>
-                      All {rules.length} rules
-                    </button>
-                  </div>
-                ) : null}
-              </div>
-            </section>
-
             {others.length > 0 ? (
               <section className="hub__more" aria-label="More games">
                 <div className="lst-block__head">

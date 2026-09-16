@@ -363,7 +363,6 @@ export function PelletsGame() {
               {ui.phase === 'menu' && !saveOpen && !paused && (
                 <GameStartCard
                   title="Pellets"
-                  tagline="Clear the maze. Bank a streak. Surge through the chasers."
                   slug="pellets"
                 />
               )}

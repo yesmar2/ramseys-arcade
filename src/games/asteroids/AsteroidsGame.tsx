@@ -658,7 +658,6 @@ export function AsteroidsGame() {
             {ui.phase === 'menu' && !saveOpen && !paused && (
               <GameStartCard
                 title="Asteroids"
-                tagline="Clear the rocks. Chain hits."
                 slug="asteroids"
               />
             )}

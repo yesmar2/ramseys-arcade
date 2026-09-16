@@ -358,7 +358,6 @@ export function BarrageGame() {
               {ui.phase === 'menu' && !saveOpen && !paused && (
                 <GameStartCard
                   title="Barrage"
-                  tagline="They light up before they fire. Be somewhere else."
                   slug="barrage"
                 />
               )}

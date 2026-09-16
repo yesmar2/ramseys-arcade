@@ -375,7 +375,6 @@ export function CrosswalkGame() {
               {ui.phase === 'menu' && !saveOpen && !paused && (
                 <GameStartCard
                   title="Crosswalk"
-                  tagline="Hop forever. Beat your distance."
                   slug="crosswalk"
                 />
               )}

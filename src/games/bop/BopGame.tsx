@@ -244,7 +244,7 @@ export function BopGame() {
         </GameStage>
         <div className="bop__overlay">
           {ui.phase === 'menu' && !saveOpen && (
-            <GameStartCard title="Bop" tagline="Do what it says. Faster." slug="bop" />
+            <GameStartCard title="Bop" slug="bop" />
           )}
           {ui.phase === 'gameover' && saveOpen && (
             tournament ? (

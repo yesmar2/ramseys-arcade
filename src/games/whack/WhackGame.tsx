@@ -264,7 +264,6 @@ export function WhackGame() {
             {ui.phase === 'menu' && !saveOpen && !paused && (
               <GameStartCard
                 title="Pop"
-                tagline="Tap before they fade."
                 slug="pop"
               />
             )}

@@ -188,7 +188,6 @@ export function SimonGame() {
           {ui.phase === 'menu' && !saveOpen && (
             <GameStartCard
               title="Simon"
-              tagline="Watch. Repeat. Don’t miss."
               slug="simon"
             />
           )}

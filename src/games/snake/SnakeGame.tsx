@@ -355,7 +355,6 @@ export function SnakeGame() {
             {ui.phase === 'menu' && !saveOpen && !paused && (
               <GameStartCard
                 title="Snake"
-                tagline="Eat. Grow. Don’t crash."
                 slug="snake"
               />
             )}

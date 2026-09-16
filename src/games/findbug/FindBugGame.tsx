@@ -345,7 +345,6 @@ export function FindBugGame() {
               {ui.phase === 'menu' && !saveOpen && !paused && (
                 <GameStartCard
                   title="Find the Bug"
-                  tagline="It is sitting perfectly still. Find it anyway."
                   slug="findbug"
                 />
               )}
