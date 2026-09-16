@@ -1,4 +1,5 @@
 import {
+  useEffect,
   useMemo,
   useState,
   type CSSProperties,
@@ -16,6 +17,8 @@ import {
   BRACKET_PLAYERS_MAX,
   BRACKET_PLAYERS_MIN,
   bracketDrawSize,
+  bracketRoundCount,
+  bracketRoundLabel,
   createTournament,
   DOUBLE_ELIM_SIZES,
   EVENT_GAMES,
@@ -171,11 +174,37 @@ export function CreateTournamentPage() {
   const [durationHours, setDurationHours] = useState(24)
   const [roundPlayHours, setRoundPlayHours] = useState(24)
   const [elimination, setElimination] = useState<Elimination>('single')
+  /**
+   * One game per winners round, round 1 first. Seeded from the single game
+   * picker, so a host who never touches it gets the same game all the way
+   * through — which is what every bracket did before this existed.
+   */
+  const [roundGames, setRoundGames] = useState<EventGame[]>([])
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const isBracket = kind === 'bracket'
   const isDouble = isBracket && elimination === 'double'
   const bracketByes = isBracket && !isDouble ? bracketDrawSize(maxPlayers) - maxPlayers : 0
+  const rounds = isBracket ? bracketRoundCount(maxPlayers) : 0
+
+  /*
+   * The round count follows the roster size, so the plan is resized whenever
+   * that changes: new rounds inherit the game before them, extra rounds fall
+   * away. Growing a draw from four to eight should not silently reset a plan
+   * the host already made.
+   */
+  useEffect(() => {
+    if (!isBracket) {
+      setRoundGames((prev) => (prev.length ? [] : prev))
+      return
+    }
+    setRoundGames((prev) => {
+      const base = games[0] ?? 'stacker'
+      const next = Array.from({ length: rounds }, (_, i) => prev[i] ?? prev[i - 1] ?? base)
+      const same = next.length === prev.length && next.every((g, i) => g === prev[i])
+      return same ? prev : next
+    })
+  }, [isBracket, rounds, games])
 
   const waitingForAuth = authLoading && !account
 
@@ -225,7 +254,8 @@ export function CreateTournamentPage() {
     try {
       const input: CreateTournamentInput = {
         title: title.trim(),
-        games,
+        games: isBracket && roundGames.length ? [...new Set(roundGames)] : games,
+        ...(isBracket && roundGames.length ? { roundGames } : {}),
         maxAttempts: isBracket || !unlimitedAttempts ? Math.max(1, maxAttempts) : 0,
         maxPlayers: isBracket || !unlimitedPlayers ? maxPlayers : 0,
         durationHours: isBracket ? 0 : durationHours,
@@ -356,9 +386,56 @@ export function CreateTournamentPage() {
           <section className="ev-card">
             <div className="ev-card__head">
               <h2 className="ev-card__title">Games</h2>
-              <p className="ev-card__note">{isBracket ? 'Pick 1' : `${games.length} of 5`}</p>
+              <p className="ev-card__note">
+                {isBracket ? `${rounds} round${rounds === 1 ? '' : 's'}` : `${games.length} of 5`}
+              </p>
             </div>
             <div className="ev-card__body">
+              {/*
+                * A bracket picks a game per round rather than one for the draw.
+                * Leaving every row on the same game is the old behaviour, so
+                * "same game the whole way" needs no separate mode — it is just
+                * the plan you get if you change nothing.
+                */}
+              {isBracket ? (
+                <ol className="ev-rounds">
+                  {roundGames.map((slug, i) => {
+                    const g = getGame(slug)
+                    const roundAccent = resolveGameAccent(slug, g?.accent ?? accent)
+                    return (
+                      <li className="ev-round" key={i}>
+                        <span className="ev-round__art" aria-hidden="true">
+                          <GameThumbArt slug={slug} accent={roundAccent} />
+                        </span>
+                        <span className="ev-round__name">
+                          {bracketRoundLabel(i + 1, rounds)}
+                        </span>
+                        <label className="ev-round__pick">
+                          <span className="visually-hidden">
+                            Game for {bracketRoundLabel(i + 1, rounds)}
+                          </span>
+                          <select
+                            className="ev-round__select"
+                            value={slug}
+                            onChange={(e) => {
+                              const next = e.target.value as EventGame
+                              setRoundGames((prev) =>
+                                prev.map((cur, idx) => (idx === i ? next : cur)),
+                              )
+                            }}
+                          >
+                            {EVENT_GAMES.map((option) => (
+                              <option key={option} value={option}>
+                                {getGame(option)?.name ?? option}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                      </li>
+                    )
+                  })}
+                </ol>
+              ) : (
               <div className="ev-games">
                 {EVENT_GAMES.map((slug) => {
                   const g = getGame(slug)
@@ -386,9 +463,12 @@ export function CreateTournamentPage() {
                   )
                 })}
               </div>
+              )}
               <p className="ev-field__hint">
                 {isBracket
-                  ? 'Every match is played on this game.'
+                  ? new Set(roundGames).size > 1
+                    ? 'Each round is played on its own game. In a double-elim draw the losers round matches the winners round of the same number.'
+                    : 'Every match is played on this game — change a round to mix it up.'
                   : games.length > 1
                     ? 'Place points across games — highest total wins.'
                     : 'Pick more than one to score on place points across all of them.'}

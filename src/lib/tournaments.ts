@@ -31,6 +31,11 @@ export type TournamentRules = {
   roundPlayHours?: number
   /** Bracket only: 'double' adds a losers bracket + grand final. */
   elimination?: 'single' | 'double'
+  /**
+   * Bracket only: the game each winners-bracket round is played on, round 1
+   * first. Absent, or all the same, means one game the whole way through.
+   */
+  roundGames?: string[]
 }
 
 /** Double elim needs a full draw, so the roster must be a power of two. */
@@ -370,6 +375,8 @@ export type CreateTournamentInput = {
   roundPlayHours?: number
   /** Bracket: 'double' adds a losers bracket + grand final. */
   elimination?: Elimination
+  /** Bracket: game per winners round, round 1 first. */
+  roundGames?: EventGame[]
   kind?: TournamentKind
 }
 
@@ -425,6 +432,39 @@ export function finalBracketMatch(
   const crown = matches.filter((m) => matchSide(m) === 'gf')
   const pool = crown.length > 0 ? crown : matches
   return pool.reduce((best, m) => (m.round > best.round ? m : best), pool[0]!)
+}
+
+/** Rounds a draw of this size will run. */
+export function bracketRoundCount(maxPlayers: number): number {
+  const size = bracketDrawSize(Math.max(2, maxPlayers))
+  return Math.max(1, Math.round(Math.log2(size)))
+}
+
+/**
+ * The game a bracket round is played on.
+ *
+ * Losers rounds reuse the winners round of the same number, so both halves of
+ * round two play the same game, and the grand final follows the last winners
+ * round. A losers bracket runs more rounds than the winners one, so anything
+ * past the end clamps rather than falling back to round one — the closer you
+ * get to the end, the more the last round is the right answer.
+ */
+export function bracketGameForRound(
+  t: Pick<TournamentSummary, 'games' | 'rules'>,
+  round: number,
+): string {
+  const planned = t.rules?.roundGames ?? []
+  if (!planned.length) return t.games[0] ?? ''
+  const index = Math.min(Math.max(1, round), planned.length) - 1
+  return planned[index] ?? t.games[0] ?? ''
+}
+
+/** True when the host actually set different games across the rounds. */
+export function hasPerRoundGames(
+  t: Pick<TournamentSummary, 'rules'>,
+): boolean {
+  const planned = t.rules?.roundGames ?? []
+  return planned.length > 1 && new Set(planned).size > 1
 }
 
 export function bracketRoundLabel(round: number, maxRound: number): string {
