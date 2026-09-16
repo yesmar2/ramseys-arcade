@@ -136,6 +136,18 @@ export async function enablePush(): Promise<EnableResult> {
   }
   if (needsHomeScreen()) return { ok: false, reason: 'home-screen' }
 
+  /*
+   * Ask before doing anything asynchronous.
+   *
+   * requestPermission() is only honoured inside the brief user-activation
+   * window that follows the click. Fetching first burns that window — and on a
+   * cold-starting host the fetch alone can outlast it, so the prompt would
+   * silently never appear. Nothing is lost by asking first: the toggle only
+   * renders once the server has said it can do push.
+   */
+  const permission = await Notification.requestPermission()
+  if (permission !== 'granted') return { ok: false, reason: 'denied' }
+
   let key: string
   try {
     const body = await api<{ key?: string }>('/notifications/push/key')
@@ -144,9 +156,6 @@ export async function enablePush(): Promise<EnableResult> {
   } catch {
     return { ok: false, reason: 'unavailable' }
   }
-
-  const permission = await Notification.requestPermission()
-  if (permission !== 'granted') return { ok: false, reason: 'denied' }
 
   try {
     const registration = await readyRegistration()
