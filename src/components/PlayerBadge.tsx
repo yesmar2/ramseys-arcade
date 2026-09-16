@@ -107,7 +107,6 @@ export const PlayerBadge = forwardRef<PlayerBadgeHandle, PlayerBadgeProps>(
       resolveAvatarId(getLocalAvatarId(name), name),
     )
     const [error, setError] = useState<string | null>(null)
-    const [authNote, setAuthNote] = useState<string | null>(null)
     const [theme, setTheme] = useState<Theme>(() =>
       typeof document === 'undefined' ? 'light' : currentTheme(),
     )
@@ -167,7 +166,6 @@ export const PlayerBadge = forwardRef<PlayerBadgeHandle, PlayerBadgeProps>(
     const startEdit = () => {
       setDraft(name || '')
       setError(null)
-      setAuthNote(null)
       setEditing(true)
       if (signedIn && !normalizePlayerName(name)) setEditingTag(true)
     }
@@ -211,7 +209,6 @@ export const PlayerBadge = forwardRef<PlayerBadgeHandle, PlayerBadgeProps>(
       setAuthBusy(true)
       try {
         await logoutAccount()
-        setAuthNote(null)
         if (!embedded) setEditing(false)
       } finally {
         setAuthBusy(false)
@@ -222,7 +219,6 @@ export const PlayerBadge = forwardRef<PlayerBadgeHandle, PlayerBadgeProps>(
       if (busy || authBusy) return
       setDraft(name || '')
       setError(null)
-      setAuthNote(null)
       setEditingTag(false)
       if (!embedded) setEditing(false)
     }
@@ -403,12 +399,10 @@ export const PlayerBadge = forwardRef<PlayerBadgeHandle, PlayerBadgeProps>(
           onBusy={setAuthBusy}
           onError={(message) => setError(message)}
           onSignedIn={() => {
-            setAuthNote('Signed in.')
             setError(null)
             if (!embedded) setEditing(false)
           }}
         />
-        {authNote && <p className="player-badge__auth-note">{authNote}</p>}
         {error && <p className="player-badge__error">{error}</p>}
       </div>
     )
@@ -466,13 +460,24 @@ export const PlayerBadge = forwardRef<PlayerBadgeHandle, PlayerBadgeProps>(
         Boolean(error) ||
         Boolean(showSettings)
 
+      /*
+       * Signed out, the body is the auth section and nothing else — the tag
+       * form and impersonation notice only exist on the signed-in branch. That
+       * makes the card chrome around a single Google button, so drop it and
+       * let the button sit straight on the drawer.
+       */
+      const bare = !signedIn && !showSettings
+
       return (
         <div
           className={`player-badge-wrap player-badge-wrap--embedded${hasBody ? '' : ' player-badge-wrap--embedded-empty'}${className ? ` ${className}` : ''}`}
           ref={rootRef}
         >
           {hasBody ? (
-            <div className="player-badge__panel player-badge__panel--embedded" role="group">
+            <div
+              className={`player-badge__panel player-badge__panel--embedded${bare ? ' player-badge__panel--bare' : ''}`}
+              role="group"
+            >
               {panelBody}
             </div>
           ) : null}

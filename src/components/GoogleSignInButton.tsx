@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { fetchAuthConfig, signInWithGoogleIdToken } from '../lib/auth'
+import { isDarkTheme, THEME_EVENT } from '../lib/theme'
 
 type GoogleCredentialResponse = {
   credential?: string
@@ -60,6 +61,9 @@ function loadGisScript(): Promise<void> {
  */
 const LOAD_TIMEOUT_MS = 10_000
 
+/** Resolved once per page — a theme change re-renders the button, not this. */
+let cachedClientId: string | null | undefined
+
 function withTimeout<T>(work: Promise<T>, ms: number): Promise<T> {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(
@@ -105,20 +109,29 @@ export function GoogleSignInButton({
   const [state, setState] = useState<LoadState>('loading')
   const [busy, setBusy] = useState(false)
   const [attempt, setAttempt] = useState(0)
+  const [dark, setDark] = useState(() => isDarkTheme())
   const handlersRef = useRef({ onBusy, onError, onSignedIn })
   handlersRef.current = { onBusy, onError, onSignedIn }
 
   useEffect(() => {
+    const sync = () => setDark(isDarkTheme())
+    window.addEventListener(THEME_EVENT, sync)
+    return () => window.removeEventListener(THEME_EVENT, sync)
+  }, [])
+
+  useEffect(() => {
     let cancelled = false
-    setState('loading')
+    // Re-rendering for a new theme keeps the button on screen; a retry from
+    // `failed` goes back to loading.
+    setState((prev) => (prev === 'ready' ? prev : 'loading'))
     ;(async () => {
       try {
-        const envId = (import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined)?.trim()
-        let clientId = envId || null
-        if (!clientId) {
-          const config = await withTimeout(fetchAuthConfig(), LOAD_TIMEOUT_MS)
-          clientId = config.googleClientId
+        if (cachedClientId === undefined) {
+          const envId = (import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined)?.trim()
+          cachedClientId =
+            envId || (await withTimeout(fetchAuthConfig(), LOAD_TIMEOUT_MS)).googleClientId
         }
+        const clientId = cachedClientId
         if (cancelled) return
         if (!clientId) {
           setState('missing')
@@ -157,7 +170,7 @@ export function GoogleSignInButton({
         })
         const width = Math.min(320, Math.max(220, hostRef.current.clientWidth || 280))
         window.google.accounts.id.renderButton(hostRef.current, {
-          theme: 'outline',
+          theme: dark ? 'filled_black' : 'outline',
           size: 'large',
           text: 'continue_with',
           shape: 'pill',
@@ -168,13 +181,16 @@ export function GoogleSignInButton({
       } catch {
         // Ad blockers routinely block Google's script. The retry below says so
         // where it happened, which beats a red line somewhere else on the card.
-        if (!cancelled) setState('failed')
+        if (!cancelled) {
+          cachedClientId = undefined
+          setState('failed')
+        }
       }
     })()
     return () => {
       cancelled = true
     }
-  }, [attempt])
+  }, [attempt, dark])
 
   if (state === 'missing') return null
 

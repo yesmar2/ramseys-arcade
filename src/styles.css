@@ -520,6 +520,20 @@ img {
   background: color-mix(in srgb, var(--ink) 3.5%, var(--surface));
 }
 
+/* Holding nothing but the sign-in button, the panel is chrome around chrome. */
+.player-badge__panel.player-badge__panel--bare {
+  padding: 0;
+  border: 0;
+  background: none;
+}
+
+/* No card above it to be divided from. */
+.player-badge__panel--bare .player-badge__auth {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
+}
+
 .player-badge__panel-title {
   margin: 0 0 0.25rem;
   font-family: var(--font-display);
@@ -728,18 +742,7 @@ img {
   word-break: break-all;
 }
 
-.player-badge__auth-note {
-  margin: 0;
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: var(--muted);
-  text-align: left;
-}
 
-.player-badge__auth-note a {
-  color: var(--accent);
-  font-weight: 700;
-}
 
 .google-signin {
   position: relative;
