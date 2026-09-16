@@ -272,6 +272,7 @@ export function EventLiveCard({
   const bracket = eventKind(t) === 'bracket'
   const filling = bracket && t.status === 'upcoming'
   const podium = t.podium ?? []
+  const matches = bracket ? (t.openMatches ?? []).slice(0, 3) : []
   const onPodium = t.yourPlace != null && t.yourPlace <= podium.length
   const players = bracket
     ? `${joinedRosterLabel(t)} in`
@@ -296,7 +297,22 @@ export function EventLiveCard({
         * in the column beside the thumb, so the two kinds of card drew the
         * same three names to different widths on the same page.
         */}
-      {podium.length > 0 ? (
+      {matches.length > 0 ? (
+        /*
+          * A live bracket has no standings to show, so it shows who is on:
+          * the same three rows a scores event fills with its podium, which is
+          * what stops a bracket card sitting half empty beside one.
+          */
+        <ol className="evc__leaders">
+          {matches.map((m) => (
+            <li key={`${m.a}-${m.b}`} className="evc__leader evc__leader--match">
+              <span className="evc__side">{m.a}</span>
+              <span className="evc__vs">vs</span>
+              <span className="evc__side evc__side--away">{m.b}</span>
+            </li>
+          ))}
+        </ol>
+      ) : podium.length > 0 ? (
         <ol className="evc__leaders">
           {podium.slice(0, 3).map((row) => {
             const medal = medalKind(row.place)

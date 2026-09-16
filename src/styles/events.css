@@ -1289,6 +1289,8 @@
   gap: 0.55rem;
   min-width: 0;
   padding: 0.3rem 0.55rem;
+  /* A medal makes the podium rows taller; hold that height without one. */
+  min-height: 2.375rem;
   border-radius: 0.7rem;
   background: color-mix(in srgb, var(--surface) 55%, transparent);
   /* A fill with no edge reads as a smudge rather than a row. */
@@ -1328,6 +1330,38 @@
 .evc__leader--1 .evc__who,
 .evc__leader--1 .evc__val {
   font-weight: 800;
+}
+
+/*
+ * Bracket rows carry a match, not a place: two names sharing the width
+ * evenly so neither side reads as the favourite.
+ */
+.evc__leader--match {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 0.4rem;
+}
+
+.evc__side {
+  min-width: 0;
+  font-weight: 750;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.evc__side--away {
+  text-align: right;
+}
+
+.evc__vs {
+  flex: none;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
 }
 
 .evc__empty {

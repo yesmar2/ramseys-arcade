@@ -86,6 +86,11 @@ export type TournamentSummary = {
   winner?: string | null
   /** Top of the standings; a finished bracket sends its final instead. */
   podium?: PodiumEntry[]
+  /**
+   * Bracket only: the match-ups being played right now. Empty until the draw
+   * locks — a filling bracket has no pairings yet, by design.
+   */
+  openMatches?: { a: string; b: string }[]
   /** Where the viewer stands, when they asked by name. */
   yourPlace?: number | null
   yourPoints?: number | null
