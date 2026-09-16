@@ -187,14 +187,8 @@ export function GameHubPage({ slug, board: boardFromRoute }: GameHubPageProps) {
                 ) : comingSoon ? (
                   <span className="ev-kicker__bit">Coming soon</span>
                 ) : null}
-                {boardSlug && !loading && !error && players > 0 ? (
-                  <span className="ev-kicker__bit">
-                    {players} {players === 1 ? 'player' : 'players'} · {PERIOD_LABELS[period]}
-                  </span>
-                ) : null}
               </p>
               <h1 className="hero__title">{game.name}</h1>
-              <p className="hero__sub">{game.description}</p>
             </div>
 
             <div className="hero__actions hub__actions">

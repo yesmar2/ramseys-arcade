@@ -69,7 +69,7 @@ const GOOGLE_BY_SLUG: Record<string, string> = {
   pop: GOOGLE_BLUE,
   simon: GOOGLE_RED,
   pellets: GOOGLE_YELLOW,
-  crumbtrail: GOOGLE_YELLOW,
+  crumbtrail: GOOGLE_GREEN,
   bop: GOOGLE_RED,
   putt: GOOGLE_GREEN,
   barrage: GOOGLE_RED,

@@ -9,7 +9,13 @@ import {
 } from './game'
 
 /** Gold crumbs — same family as Pellets and Snake food. */
-const ACCENT = 38
+/*
+ * Crumbs and the player. Green rather than the gold it shared with Pellets:
+ * the chasers sit on 355, 320, 190 and 28 and fruit runs 292 to 348, so this
+ * is the one wide arc of the wheel with nothing else in it — the two things
+ * you track every second read clearly against everything that can kill you.
+ */
+const ACCENT = 152
 /** Distance markers every this many rows. */
 const MILESTONE_STEP = 50
 

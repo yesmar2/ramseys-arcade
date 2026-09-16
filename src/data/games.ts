@@ -124,7 +124,7 @@ export const games: Game[] = [
     slug: 'crumbtrail',
     description: 'Pellets with no way out. Climb forever. Don’t settle in.',
     how: 'Swipe or arrow keys to steer. The maze goes up forever: eat fresh crumbs to build a streak, pick your way around the sleeping chasers, and keep climbing — stop, and the tide rises. One life.',
-    accent: '#f5b942',
+    accent: '#3ed69b',
     playable: true,
   },
   {

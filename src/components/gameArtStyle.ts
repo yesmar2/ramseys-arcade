@@ -16,6 +16,8 @@ export const HUE = {
   violet: 272,
   orange: 18,
   green: 128,
+  /** Crumbtrail's own green — clear of every chaser and fruit hue in that game. */
+  crumb: 152,
 } as const
 
 /** Map any illustration hue onto a classic Google primary hex. */

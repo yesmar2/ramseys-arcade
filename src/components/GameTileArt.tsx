@@ -479,7 +479,7 @@ export function PelletsArt() {
 /** The chomp climbing a crumb trail, with the edge closing from below. */
 export function CrumbtrailArt() {
   const flat = isFlatTheme()
-  const gold = pastel(HUE.gold, 58, 72)
+  const crumb = pastel(HUE.crumb, 58, 72)
   const wall = pastel(HUE.sky, 46, 40)
   return (
     <SvgFrame>
@@ -506,14 +506,14 @@ export function CrumbtrailArt() {
       ))}
 
       {/* The one crumb ahead — what the climb is for. */}
-      <circle cx="80" cy="16" r="3.6" fill={gold.fill} opacity="0.9" />
+      <circle cx="80" cy="16" r="3.6" fill={crumb.fill} opacity="0.9" />
 
       {/* Facing up the board, mouth open at the crumb. */}
       <g transform="translate(80 44) rotate(-90)">
         <path
           d={pelletsPacPath(0, 0, 17)}
-          fill={flat ? gold.fill : 'hsla(38, 58%, 58%, 0.28)'}
-          stroke={flat ? 'none' : 'hsla(38, 58%, 58%, 0.95)'}
+          fill={flat ? crumb.fill : 'hsla(152, 58%, 58%, 0.28)'}
+          stroke={flat ? 'none' : 'hsla(152, 58%, 58%, 0.95)'}
           strokeWidth="4.4"
           strokeLinejoin="round"
           strokeLinecap="round"

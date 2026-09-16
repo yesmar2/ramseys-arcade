@@ -74,7 +74,6 @@ export function HomeHero() {
           <h2 className="hero__title home-hero__name">
             <a href={gamePlayHref(slug)}>{game.name}</a>
           </h2>
-          <p className="hero__sub">{game.description}</p>
         </div>
         <div className="hero__actions">
           <a className="hero__cta" href={gamePlayHref(slug)}>

@@ -302,15 +302,15 @@ function PelletsThumb({ accent }: { accent?: string }) {
 /** Same chomp as Pellets, turned to face the climb, on a crumb trail. */
 function CrumbtrailThumb({ accent }: { accent?: string }) {
   const flat = isFlatTheme()
-  const you = accent ? accentPastel(accent, 88) : pastel(HUE.gold, 58, 72)
+  const you = accent ? accentPastel(accent, 88) : pastel(HUE.crumb, 58, 72)
   return (
     <g>
       <circle cx="16" cy="5" r="2" fill={you.fill} opacity="0.9" />
       <g transform="translate(16 18) rotate(-90)">
         <path
           d={pelletsPacPath(0, 0, 8.6)}
-          fill={flat ? you.fill : 'hsla(38, 58%, 58%, 0.28)'}
-          stroke={flat ? 'none' : 'hsla(38, 58%, 58%, 0.95)'}
+          fill={flat ? you.fill : 'hsla(152, 58%, 58%, 0.28)'}
+          stroke={flat ? 'none' : 'hsla(152, 58%, 58%, 0.95)'}
           strokeWidth="1.75"
           strokeLinejoin="round"
           strokeLinecap="round"
