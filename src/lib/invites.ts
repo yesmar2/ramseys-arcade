@@ -1,7 +1,11 @@
 import { api, getClaimToken, getLastPlayerName, normalizePlayerName, rememberClaimToken } from './leaderboard'
 import type { GroupPublic } from './groups'
 import { rememberGroupInvite } from './groups'
-import { rememberTournamentInvite, type TournamentDetail } from './tournaments'
+import {
+  rememberTournamentInvite,
+  rememberTournamentPlayer,
+  type TournamentDetail,
+} from './tournaments'
 import { groupHref } from './groups'
 import { tournamentHref } from '../hooks/useHashRoute'
 
@@ -90,8 +94,11 @@ export async function acceptInvite(id: string): Promise<AcceptInviteResult> {
   if (data.kind === 'group' && data.group.inviteCode) {
     rememberGroupInvite(data.group.id, data.group.inviteCode)
   }
-  if (data.kind === 'tournament' && data.tournament.inviteCode) {
-    rememberTournamentInvite(data.tournament.id, data.tournament.inviteCode)
+  if (data.kind === 'tournament') {
+    rememberTournamentPlayer(data.tournament.id, data.player.id)
+    if (data.tournament.inviteCode) {
+      rememberTournamentInvite(data.tournament.id, data.tournament.inviteCode)
+    }
   }
   if (data.token && name) rememberClaimToken(name, data.token)
   return data

@@ -83,6 +83,8 @@ export type TournamentSummary = {
   /** Where the viewer stands, when they asked by name. */
   yourPlace?: number | null
   yourPoints?: number | null
+  /** True when the viewer's gamer tag is already on the roster. */
+  joined?: boolean
 }
 
 /** Games eligible for private hosted events (matches API). */
@@ -649,10 +651,9 @@ export async function listTournaments(
 ): Promise<TournamentSummary[]> {
   const params = new URLSearchParams()
   if (source !== 'all') params.set('source', source)
-  // "All" needs the tag too: it surfaces private events you're already in.
-  if ((source === 'joined' || source === 'all') && playerName) {
-    params.set('playerName', playerName)
-  }
+  // Always send the tag when we have one so the API can mark `joined`
+  // (and surface private events you're already in on "all").
+  if (playerName) params.set('playerName', playerName)
   const qs = params.toString()
   const data = await api<{ tournaments: TournamentSummary[] }>(
     `/tournaments${qs ? `?${qs}` : ''}`,

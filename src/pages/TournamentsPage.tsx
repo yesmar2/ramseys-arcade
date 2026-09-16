@@ -798,10 +798,10 @@ export function TournamentsPage() {
     }
   }, [filter, playerName])
 
-  // Which of these you are in: what this device remembers joining, plus
-  // anything the API already ranks you in.
+  // Server roster membership first; local join memory / score place as fallback.
   const joinedIds = new Set(getJoinedTournamentIds())
-  const isJoined = (t: TournamentSummary) => joinedIds.has(t.id) || t.yourPlace != null
+  const isJoined = (t: TournamentSummary) =>
+    Boolean(t.joined) || joinedIds.has(t.id) || t.yourPlace != null
   const linkFor = (t: TournamentSummary) =>
     t.private ? tournamentHref(t.id, getTournamentInvite(t.id) ?? undefined) : undefined
 
