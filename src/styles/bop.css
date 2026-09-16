@@ -42,7 +42,3 @@
   pointer-events: none;
   z-index: 45;
 }
-
-.bop__overlay > * {
-  pointer-events: auto;
-}
