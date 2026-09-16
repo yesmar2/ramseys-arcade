@@ -1170,9 +1170,10 @@
   grid-template-columns: auto minmax(0, 1fr);
   /* The body row takes the slack so a short card's foot still sits on the
      same baseline as its neighbour's. */
-  grid-template-rows: minmax(0, 1fr) auto;
+  grid-template-rows: auto auto auto;
   grid-template-areas:
     "art body"
+    "lead lead"
     "foot foot";
   gap: 0.55rem 0.95rem;
   width: 100%;
@@ -1219,7 +1220,7 @@
 
 .evc__art {
   grid-area: art;
-  align-self: start;
+  align-self: center;
 }
 
 .evc__body {
@@ -1257,19 +1258,23 @@
  * weight, with room to sit apart.
  */
 .evc__leaders {
+  grid-area: lead;
   list-style: none;
-  margin: 0.4rem 0 0;
+  margin: 0.15rem 0 0;
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.3rem;
+  gap: 0.25rem;
 }
 
 .evc__leader {
   display: flex;
   align-items: center;
-  gap: 0.45rem;
+  gap: 0.55rem;
   min-width: 0;
+  padding: 0.3rem 0.55rem;
+  border-radius: 0.7rem;
+  background: color-mix(in srgb, var(--surface) 55%, transparent);
   font-size: 0.86rem;
 }
 
@@ -1308,6 +1313,7 @@
 }
 
 .evc__empty {
+  grid-area: lead;
   margin-top: 0.3rem;
   font-size: 0.84rem;
   font-weight: 700;

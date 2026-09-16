@@ -78,27 +78,34 @@ export function BoardsGameIndex({
                   {yours ? <span className="ev-kicker__bit ev-kicker__joined">You’re up</span> : null}
                 </span>
                 <span className="evc__title">{game.name}</span>
-                {top.length ? (
-                  <ol className="evc__leaders">
-                    {top.map((entry, i) => {
-                      const place = i + 1
-                      const medal = medalKind(place)
-                      const name = normalizePlayerName(entry.name ?? '')
-                      return (
-                        <li key={entry.id} className={`evc__leader evc__leader--${place}`}>
-                          <span className="evc__pos">
-                            {medal ? <PodiumMedal kind={medal} period={period} size="sm" /> : place}
-                          </span>
-                          <span className="evc__who">{name}</span>
-                          <span className="evc__val">{formatLeaderboardScore(slug, entry.score)}</span>
-                        </li>
-                      )
-                    })}
-                  </ol>
-                ) : (
-                  <span className="evc__empty">No scores yet — be first on the board</span>
-                )}
               </span>
+              {/*
+                * The podium sits on its own row, under the artwork rather than
+                * beside it. In the body column it ran past the bottom of the
+                * thumb, so every card carried a block of dead space under its
+                * game image — and the three rows were squeezed into whatever
+                * width was left over.
+                */}
+              {top.length ? (
+                <ol className="evc__leaders">
+                  {top.map((entry, i) => {
+                    const place = i + 1
+                    const medal = medalKind(place)
+                    const name = normalizePlayerName(entry.name ?? '')
+                    return (
+                      <li key={entry.id} className={`evc__leader evc__leader--${place}`}>
+                        <span className="evc__pos">
+                          {medal ? <PodiumMedal kind={medal} period={period} size="sm" /> : place}
+                        </span>
+                        <span className="evc__who">{name}</span>
+                        <span className="evc__val">{formatLeaderboardScore(slug, entry.score)}</span>
+                      </li>
+                    )
+                  })}
+                </ol>
+              ) : (
+                <span className="evc__empty">No scores yet — be first on the board</span>
+              )}
               <span className="evc__foot">
                 <span className="evc__players">
                   {top.length ? 'Tap for the full board' : 'Nobody has played yet'}
