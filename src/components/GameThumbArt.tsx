@@ -353,6 +353,61 @@ function PuttThumb() {
   )
 }
 
+/**
+ * The fleet's own silhouette at full health — crest, hull, side pods, feet —
+ * so the thumb is the thing you shoot at, not a generic invader.
+ */
+function BarrageThumb({ accent }: { accent?: string }) {
+  const a = accent ?? '#e85d75'
+  const hull = shape(accentPastel(a, 52), 1.3)
+  const eye = isFlatTheme() ? a : `color-mix(in srgb, ${a} 78%, #1a1a1a)`
+
+  return (
+    <>
+      {/* Feet, pods and crest sit under the hull so its outline stays whole. */}
+      <rect x="6.6" y="22.2" width="4.7" height="5.8" rx="2.2" {...hull} />
+      <rect x="20.7" y="22.2" width="4.7" height="5.8" rx="2.2" {...hull} />
+      <rect x="3" y="13.1" width="3.6" height="8.2" rx="2.4" {...hull} />
+      <rect x="25.4" y="13.1" width="3.6" height="8.2" rx="2.4" {...hull} />
+      <rect x="9.8" y="5" width="12.5" height="7.2" rx="3.1" {...hull} />
+      <rect x="5.1" y="11.2" width="21.8" height="11.5" rx="5.3" {...hull} />
+      <circle cx="11.8" cy="16.5" r="1.7" fill={eye} />
+      <circle cx="20.2" cy="16.5" r="1.7" fill={eye} />
+    </>
+  )
+}
+
+/**
+ * The beetle from the game, turned to face up so its long axis fills a square.
+ * Legs, antennae and the shell split are stroke-only and keep their colour in
+ * flat theme — take them away and the shape stops reading as a bug.
+ */
+function FindBugThumb({ accent }: { accent?: string }) {
+  const a = accent ?? '#3ec8cf'
+  const body = accentPastel(a, 52)
+  const cy = 17.4
+  const legs = [13.6, 17.4, 21.2]
+
+  return (
+    <>
+      {/* Legs first, so they read as underneath the shell. */}
+      <g stroke={a} strokeWidth="1.35" strokeLinecap="round">
+        {legs.map((y) => (
+          <g key={y}>
+            <line x1="13.7" y1={y} x2="7.3" y2={y} />
+            <line x1="18.3" y1={y} x2="24.7" y2={y} />
+          </g>
+        ))}
+        <line x1="14.4" y1="10.9" x2="11.9" y2="5.3" />
+        <line x1="17.6" y1="10.9" x2="20.1" y2="5.3" />
+      </g>
+      <ellipse cx="16" cy={cy} rx="5.8" ry="9" fill={body.fill} stroke={a} strokeWidth="1" />
+      <line x1="16" y1="24.8" x2="16" y2="12.9" stroke={a} strokeWidth="1" />
+      <ellipse cx="16" cy="10.4" rx="3.8" ry="3.1" fill={a} />
+    </>
+  )
+}
+
 const thumbBySlug: Record<
   string,
   (props: { accent?: string }) => ReactNode
@@ -370,6 +425,8 @@ const thumbBySlug: Record<
   spotter: SpotterThumb,
   pellets: PelletsThumb,
   crumbtrail: CrumbtrailThumb,
+  barrage: BarrageThumb,
+  findbug: FindBugThumb,
 }
 
 export function GameThumbArt({ slug, accent, className }: GameThumbArtProps) {

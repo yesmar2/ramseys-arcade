@@ -74,6 +74,7 @@ const GOOGLE_BY_SLUG: Record<string, string> = {
   putt: GOOGLE_GREEN,
   barrage: GOOGLE_RED,
   spotter: GOOGLE_BLUE,
+  findbug: GOOGLE_GREEN,
 }
 
 /** Game / thumb accent — remapped onto Google primaries in Google theme. */
