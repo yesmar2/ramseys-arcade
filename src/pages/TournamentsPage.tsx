@@ -918,7 +918,17 @@ export function TournamentsPage() {
               * the same box the real cluster lands in.
               */}
             {heroGames.length > 0 || loading ? (
-              <EventArt games={heroGames} className="hero__art" />
+              /*
+               * The frame takes the hero's colour. Left to itself it picks the
+               * accent of whichever game leads the set, so the Events hero sat
+               * in a lavender tile on a green band. The thumbs inside keep
+               * their own colours.
+               */
+              <EventArt
+                games={heroGames}
+                className="hero__art"
+                frameAccent="var(--hero-accent)"
+              />
             ) : (
               <span className="hero__mark hero__mark--empty" aria-hidden="true">
                 ★

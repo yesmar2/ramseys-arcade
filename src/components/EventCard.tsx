@@ -23,11 +23,26 @@ export function eventAccent(games: string[]) {
   return resolveGameAccent(slug, fallback)
 }
 
+/**
+ * 1st, 2nd, 3rd, 4th — and 11th, 21st, 32nd.
+ *
+ * Only the first three were spelled out before, so every rank above three took
+ * "th": a field of thirty-eight put "You 32th" on the card. The teens are the
+ * exception that makes this worth a lookup rather than a last-digit check.
+ */
 export function ordinal(n: number): string {
-  if (n === 1) return '1st'
-  if (n === 2) return '2nd'
-  if (n === 3) return '3rd'
-  return `${n}th`
+  const teens = Math.abs(n) % 100
+  if (teens >= 11 && teens <= 13) return `${n}th`
+  switch (Math.abs(n) % 10) {
+    case 1:
+      return `${n}st`
+    case 2:
+      return `${n}nd`
+    case 3:
+      return `${n}rd`
+    default:
+      return `${n}th`
+  }
 }
 
 /**
@@ -84,7 +99,19 @@ const PHASE_LABEL: Record<EventPhase, string> = {
  * The event's artwork: its game's thumb, or a tinted cluster of up to four
  * when there are several. Size comes from the parent via --ev-art-size.
  */
-export function EventArt({ games, className }: { games: string[]; className?: string }) {
+export function EventArt({
+  games,
+  className,
+  frameAccent,
+}: {
+  games: string[]
+  className?: string
+  /**
+   * Colour for the cluster's frame, when the surrounding block sets the tone.
+   * The individual thumbs keep their own game colours either way.
+   */
+  frameAccent?: string
+}) {
   const shown = games.slice(0, 4)
   const accent = eventAccent(games)
   const cls = className ? ` ${className}` : ''
@@ -112,7 +139,7 @@ export function EventArt({ games, className }: { games: string[]; className?: st
     <span
       className={`ev-art ev-art--cluster ev-art--n${shown.length}${cls}`}
       aria-hidden="true"
-      style={{ '--thumb-accent': accent } as CSSProperties}
+      style={{ '--thumb-accent': frameAccent ?? accent } as CSSProperties}
     >
       {shown.map((slug) => {
         const g = getGame(slug)

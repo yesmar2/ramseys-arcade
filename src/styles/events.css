@@ -1218,8 +1218,17 @@
   outline: none;
 }
 
+/*
+ * Top of its cell, as ever. Only the boards cards centre it, where the row
+ * beside it is just a kicker and a title — an event card's body is taller, and
+ * centring left its thumb floating halfway down with a gap above.
+ */
 .evc__art {
   grid-area: art;
+  align-self: start;
+}
+
+.evc--quiet .evc__art {
   align-self: center;
 }
 
@@ -1275,6 +1284,8 @@
   padding: 0.3rem 0.55rem;
   border-radius: 0.7rem;
   background: color-mix(in srgb, var(--surface) 55%, transparent);
+  /* A fill with no edge reads as a smudge rather than a row. */
+  border: 1px solid color-mix(in srgb, var(--event-accent, var(--accent)) 16%, transparent);
   font-size: 0.86rem;
 }
 
