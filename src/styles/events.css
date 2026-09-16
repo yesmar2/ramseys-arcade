@@ -731,6 +731,27 @@
 
 /* ---------- game picker ---------- */
 
+/* One tap back to a single game, only offered once the plan has diverged. */
+.ev-rounds__same {
+  appearance: none;
+  align-self: flex-start;
+  margin: 0 0 0.5rem;
+  padding: 0.3rem 0.7rem;
+  border-radius: 999px;
+  border: 1px dashed rgba(var(--ink-rgb), 0.22);
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.ev-rounds__same:hover {
+  color: var(--ink);
+  border-color: rgba(var(--ink-rgb), 0.4);
+}
+
 /* Bracket: one row per round, in the order they will be played. */
 .ev-rounds {
   list-style: none;

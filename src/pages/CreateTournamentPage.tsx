@@ -206,6 +206,61 @@ export function CreateTournamentPage() {
     })
   }, [isBracket, rounds, games])
 
+  /*
+   * Players gets its own card ahead of Games for a bracket: the roster size is
+   * what decides how many rounds there are, and so how many games the host is
+   * about to be asked for. Picking games first and watching the list resize
+   * underneath is the wrong way round.
+   */
+  const playersField = <>{isDouble ? (
+                <div className="ev-limit">
+                  <span className="ev-limit__label" id="limit-players">
+                    Players
+                  </span>
+                  <div
+                    className="ev-sizes"
+                    role="radiogroup"
+                    aria-labelledby="limit-players"
+                  >
+                    {DOUBLE_ELIM_SIZES.map((size) => (
+                      <button
+                        key={size}
+                        type="button"
+                        role="radio"
+                        aria-checked={maxPlayers === size}
+                        className={`ev-size${maxPlayers === size ? ' ev-size--on' : ''}`}
+                        onClick={() => setMaxPlayers(size)}
+                      >
+                        {size}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="ev-field__hint">
+                    Double elimination needs a full draw, so the field is a power of two.
+                    Draws when the last seat fills.
+                  </p>
+                </div>
+              ) : (
+                <LimitField
+                  label="Players"
+                  value={maxPlayers}
+                  min={isBracket ? BRACKET_PLAYERS_MIN : 2}
+                  max={isBracket ? BRACKET_PLAYERS_MAX : 99}
+                  unlimited={isBracket ? undefined : unlimitedPlayers}
+                  onValue={setMaxPlayers}
+                  onUnlimited={isBracket ? undefined : setUnlimitedPlayers}
+                  hint={
+                    isBracket
+                      ? `Draws when the last seat fills.${
+                          bracketByes > 0
+                            ? ` ${bracketByes} player${bracketByes === 1 ? '' : 's'} get a bye.`
+                            : ''
+                        }`
+                      : `${playersSummary(maxPlayers, unlimitedPlayers)}.`
+                  }
+                />
+              )}</>
+
   const waitingForAuth = authLoading && !account
 
   const accent = useMemo(() => {
@@ -383,6 +438,18 @@ export function CreateTournamentPage() {
             </div>
           </section>
 
+          {isBracket ? (
+            <section className="ev-card">
+              <div className="ev-card__head">
+                <h2 className="ev-card__title">Players</h2>
+                <p className="ev-card__note">
+                  {rounds} round{rounds === 1 ? '' : 's'}
+                </p>
+              </div>
+              <div className="ev-card__body ev-rules">{playersField}</div>
+            </section>
+          ) : null}
+
           <section className="ev-card">
             <div className="ev-card__head">
               <h2 className="ev-card__title">Games</h2>
@@ -398,6 +465,20 @@ export function CreateTournamentPage() {
                 * the plan you get if you change nothing.
                 */}
               {isBracket ? (
+                <>
+                {new Set(roundGames).size > 1 ? (
+                  <button
+                    type="button"
+                    className="ev-rounds__same"
+                    onClick={() =>
+                      setRoundGames((prev) =>
+                        prev.length ? prev.map(() => prev[0] as EventGame) : prev,
+                      )
+                    }
+                  >
+                    Use {getGame(roundGames[0] ?? '')?.name ?? roundGames[0]} for every round
+                  </button>
+                ) : null}
                 <ol className="ev-rounds">
                   {roundGames.map((slug, i) => {
                     const g = getGame(slug)
@@ -435,6 +516,7 @@ export function CreateTournamentPage() {
                     )
                   })}
                 </ol>
+                </>
               ) : (
               <div className="ev-games">
                 {EVENT_GAMES.map((slug) => {
@@ -481,54 +563,7 @@ export function CreateTournamentPage() {
               <h2 className="ev-card__title">Rules</h2>
             </div>
             <div className="ev-card__body ev-rules">
-              {isDouble ? (
-                <div className="ev-limit">
-                  <span className="ev-limit__label" id="limit-players">
-                    Players
-                  </span>
-                  <div
-                    className="ev-sizes"
-                    role="radiogroup"
-                    aria-labelledby="limit-players"
-                  >
-                    {DOUBLE_ELIM_SIZES.map((size) => (
-                      <button
-                        key={size}
-                        type="button"
-                        role="radio"
-                        aria-checked={maxPlayers === size}
-                        className={`ev-size${maxPlayers === size ? ' ev-size--on' : ''}`}
-                        onClick={() => setMaxPlayers(size)}
-                      >
-                        {size}
-                      </button>
-                    ))}
-                  </div>
-                  <p className="ev-field__hint">
-                    Double elimination needs a full draw, so the field is a power of two.
-                    Draws when the last seat fills.
-                  </p>
-                </div>
-              ) : (
-                <LimitField
-                  label="Players"
-                  value={maxPlayers}
-                  min={isBracket ? BRACKET_PLAYERS_MIN : 2}
-                  max={isBracket ? BRACKET_PLAYERS_MAX : 99}
-                  unlimited={isBracket ? undefined : unlimitedPlayers}
-                  onValue={setMaxPlayers}
-                  onUnlimited={isBracket ? undefined : setUnlimitedPlayers}
-                  hint={
-                    isBracket
-                      ? `Draws when the last seat fills.${
-                          bracketByes > 0
-                            ? ` ${bracketByes} player${bracketByes === 1 ? '' : 's'} get a bye.`
-                            : ''
-                        }`
-                      : `${playersSummary(maxPlayers, unlimitedPlayers)}.`
-                  }
-                />
-              )}
+              {isBracket ? null : playersField}
 
               <LimitField
                 label={isBracket ? 'Attempts per match' : 'Attempts per game'}
