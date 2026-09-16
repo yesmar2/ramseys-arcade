@@ -1,4 +1,3 @@
-import { ArcadeAttendant } from '../components/ArcadeAttendant'
 import { GameGrid } from '../components/GameGrid'
 import { HomeAboutBand } from '../components/HomeAboutBand'
 import { HomeOfficialEvents } from '../components/HomeOfficialEvents'
@@ -9,7 +8,6 @@ import { HomeIntro } from '../components/HomeIntro'
 import { InstallPrompt } from '../components/InstallPrompt'
 import { PageShell } from '../components/PageShell'
 import { PendingInvitesStrip } from '../components/PendingInvitesStrip'
-import { ATTENDANT_ENABLED } from '../lib/attendant'
 
 export function HomePage() {
   return (
