@@ -290,31 +290,36 @@ export function EventLiveCard({
       <span className="evc__body">
         <EventKicker t={t} joined={joined} className="evc__kicker" />
         <span className="evc__title">{t.title}</span>
-        {podium.length > 0 ? (
-          <ol className="evc__leaders">
-            {podium.slice(0, 3).map((row) => {
-              const medal = medalKind(row.place)
-              return (
-                <li key={row.name} className={`evc__leader evc__leader--${row.place}`}>
-                  <span className="evc__pos">
-                    {medal ? <PodiumMedal kind={medal} size="sm" /> : row.place}
-                  </span>
-                  <span className="evc__who">{row.name}</span>
-                  <span className="evc__val">{podiumValue(row)}</span>
-                </li>
-              )
-            })}
-          </ol>
-        ) : (
-          <span className="evc__empty">{emptyLine(t)}</span>
-        )}
-        {t.yourPlace != null && !onPodium ? (
-          <span className="evc__you">
-            You {ordinal(t.yourPlace)}
-            {t.yourPoints ? ` · ${t.yourPoints} pts` : ''}
-          </span>
-        ) : null}
       </span>
+      {/*
+        * Same full-width row the boards cards use. Left inside the body it sat
+        * in the column beside the thumb, so the two kinds of card drew the
+        * same three names to different widths on the same page.
+        */}
+      {podium.length > 0 ? (
+        <ol className="evc__leaders">
+          {podium.slice(0, 3).map((row) => {
+            const medal = medalKind(row.place)
+            return (
+              <li key={row.name} className={`evc__leader evc__leader--${row.place}`}>
+                <span className="evc__pos">
+                  {medal ? <PodiumMedal kind={medal} size="sm" /> : row.place}
+                </span>
+                <span className="evc__who">{row.name}</span>
+                <span className="evc__val">{podiumValue(row)}</span>
+              </li>
+            )
+          })}
+        </ol>
+      ) : (
+        <span className="evc__empty">{emptyLine(t)}</span>
+      )}
+      {t.yourPlace != null && !onPodium ? (
+        <span className="evc__you">
+          You {ordinal(t.yourPlace)}
+          {t.yourPoints ? ` · ${t.yourPoints} pts` : ''}
+        </span>
+      ) : null}
       <span className="evc__foot">
         <span className="evc__clock">{cardClock(t)}</span>
         <span className="evc__players">{players}</span>

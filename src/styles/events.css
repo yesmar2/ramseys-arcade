@@ -1170,10 +1170,17 @@
   grid-template-columns: auto minmax(0, 1fr);
   /* The body row takes the slack so a short card's foot still sits on the
      same baseline as its neighbour's. */
-  grid-template-rows: auto auto auto;
+  /*
+   * The podium row takes the slack. Cards share a grid row, so a card with no
+   * top three is stretched to match the one beside it that has one — and the
+   * spare height has to land somewhere deliberate, or the foot floats up the
+   * middle instead of sitting on its neighbour's baseline.
+   */
+  grid-template-rows: auto minmax(0, 1fr) auto auto;
   grid-template-areas:
     "art body"
     "lead lead"
+    "you you"
     "foot foot";
   gap: 0.55rem 0.95rem;
   width: 100%;
@@ -1332,6 +1339,7 @@
 }
 
 .evc__you {
+  grid-area: you;
   margin-top: 0.15rem;
   font-size: 0.76rem;
   font-weight: 800;
