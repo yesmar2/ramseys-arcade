@@ -32,10 +32,11 @@ export type TournamentRules = {
   /** Bracket only: 'double' adds a losers bracket + grand final. */
   elimination?: 'single' | 'double'
   /**
-   * Bracket only: the game each winners-bracket round is played on, round 1
-   * first. Absent, or all the same, means one game the whole way through.
+   * Bracket only: the games each winners-bracket round is played on, round 1
+   * first. A round holds one or more; a bare slug reads as a round of one.
+   * Absent, or all the same, means one game the whole way through.
    */
-  roundGames?: string[]
+  roundGames?: (string | string[])[]
 }
 
 /** Double elim needs a full draw, so the roster must be a power of two. */
@@ -375,8 +376,8 @@ export type CreateTournamentInput = {
   roundPlayHours?: number
   /** Bracket: 'double' adds a losers bracket + grand final. */
   elimination?: Elimination
-  /** Bracket: game per winners round, round 1 first. */
-  roundGames?: EventGame[]
+  /** Bracket: games per winners round, round 1 first. */
+  roundGames?: EventGame[][]
   kind?: TournamentKind
 }
 
@@ -449,22 +450,46 @@ export function bracketRoundCount(maxPlayers: number): number {
  * past the end clamps rather than falling back to round one — the closer you
  * get to the end, the more the last round is the right answer.
  */
+export function roundGamePlan(
+  t: Pick<TournamentSummary, 'rules'>,
+): string[][] {
+  const raw = t.rules?.roundGames
+  if (!Array.isArray(raw)) return []
+  const plan: string[][] = []
+  for (const entry of raw) {
+    const list = (Array.isArray(entry) ? entry : [entry]).filter(
+      (g): g is string => typeof g === 'string' && g.length > 0,
+    )
+    if (list.length) plan.push(list)
+  }
+  return plan
+}
+
+export function bracketGamesForRound(
+  t: Pick<TournamentSummary, 'games' | 'rules'>,
+  round: number,
+): string[] {
+  const plan = roundGamePlan(t)
+  if (!plan.length) return t.games.slice(0, 1)
+  const index = Math.min(Math.max(1, round), plan.length) - 1
+  return plan[index] ?? t.games.slice(0, 1)
+}
+
+/** The one game a round is on, or the first of several. */
 export function bracketGameForRound(
   t: Pick<TournamentSummary, 'games' | 'rules'>,
   round: number,
 ): string {
-  const planned = t.rules?.roundGames ?? []
-  if (!planned.length) return t.games[0] ?? ''
-  const index = Math.min(Math.max(1, round), planned.length) - 1
-  return planned[index] ?? t.games[0] ?? ''
+  return bracketGamesForRound(t, round)[0] ?? t.games[0] ?? ''
 }
 
 /** True when the host actually set different games across the rounds. */
 export function hasPerRoundGames(
   t: Pick<TournamentSummary, 'rules'>,
 ): boolean {
-  const planned = t.rules?.roundGames ?? []
-  return planned.length > 1 && new Set(planned).size > 1
+  const plan = roundGamePlan(t)
+  if (plan.length > 1 && new Set(plan.map((r) => r.join('+'))).size > 1) return true
+  return plan.some((round) => round.length > 1)
 }
 
 export function bracketRoundLabel(round: number, maxRound: number): string {
