@@ -21,9 +21,9 @@ import {
  *
  * Drag to aim; the guide is a short stub, so the line is yours to judge.
  * Then the swing is three taps, the way golf games have always done it:
- * one starts the gauge, one takes the power where the gauge is, and the
- * gauge comes back down for a third that has to land on the line — early
- * hooks the shot, late slices it. The ball rolls on physics: walls at any
+ * one starts the gauge, one takes the power where the gauge is, and then
+ * the arrow wobbles either side of the line until a third tap strikes —
+ * on the line is pure, off it hooks or slices. The ball rolls on physics: walls at any
  * angle, sand that drags, water that costs a stroke, windmills, pads that
  * push, pipes that take it somewhere else, a cup that will not always sit
  * still, and a cup that pulls a slow ball in and lets a fast one skip
@@ -57,16 +57,16 @@ export const STREAK_MAX = 500
 
 /** The swing gauge runs up and back down over this many seconds. */
 export const SWING_PERIOD = 1.8
-/** On the way back for the accuracy tap the gauge covers its full length in half a period. */
-const METER_SPEED = 2 / SWING_PERIOD
-/** The gauge comes back from at least this high, so a soft shot still gives time to tap. */
-const ACCURACY_START = 0.4
-/** Within this of the line is a pure strike. */
-export const SWEET = 0.05
-/** The gauge runs this far past the line before the shot goes by itself, at full shank. */
-export const SHANK_RANGE = 0.3
-/** The most a shot goes off line, in radians. */
-const MAX_SHANK = 0.22
+/**
+ * After the power is taken the arrow wobbles left and right of the line, one
+ * full swing every this many seconds, until the strike. It never stops, so a
+ * shot can wait for a windmill, and the window is the same at any power.
+ */
+export const WOBBLE_PERIOD = 1.4
+/** The wobble runs from -1 to 1; within this of the line is a pure strike. */
+export const SWEET = 0.2
+/** The most a shot goes off line, in radians, at the ends of the wobble. */
+export const MAX_SHANK = 0.16
 /** How far the aim guide reaches, in field units. */
 export const AIM_STUB = 14
 /** A swing at the bottom of the gauge still hits this hard. */
@@ -133,7 +133,11 @@ export type GameState = {
   aim: number
   /** A finger is dragging the aim. */
   aiming: boolean
-  /** The swing: which tap is next, how long this stage has run, where the gauge is, the power taken. */
+  /**
+   * The swing: which tap is next, how long this stage has run, the power
+   * taken, and the meter: the gauge while taking power, the wobble (-1 to 1)
+   * while lining up the strike.
+   */
   swing: SwingStage
   swingT: number
   meter: number
@@ -353,19 +357,22 @@ export function swing(state: GameState): GameState {
   }
   if (state.swing === 'power') {
     sfx('tap', 0)
-    const power = state.meter
-    return { ...state, swing: 'accuracy', swingT: 0, power, meter: Math.max(power, ACCURACY_START) }
+    // The wobble starts at the far end, so a quick double tap is no free pure strike.
+    return { ...state, swing: 'accuracy', swingT: 0, power: state.meter, meter: 1 }
   }
   return strike(state)
 }
 
-/** The third tap: where the gauge is against the line decides how straight the shot goes. */
+/** The wobble, as an angle off the line, for the arrow and the strike. */
+export function wobbleOf(state: GameState) {
+  return state.swing === 'accuracy' ? state.meter * MAX_SHANK : 0
+}
+
+/** The third tap: where the arrow is against the line decides how straight the shot goes. */
 function strike(state: GameState): GameState {
-  const miss = Math.max(-SHANK_RANGE, Math.min(SHANK_RANGE, state.meter))
-  const pure = Math.abs(miss) <= SWEET
-  // Early (the gauge still above the line) hooks left; late slices right.
-  const shank = pure ? 0 : -(miss / SHANK_RANGE) * MAX_SHANK
-  const text = pure ? 'PURE' : miss > 0 ? 'HOOK' : 'SLICE'
+  const pure = Math.abs(state.meter) <= SWEET
+  const shank = pure ? 0 : wobbleOf(state)
+  const text = pure ? 'PURE' : shank < 0 ? 'HOOK' : 'SLICE'
   if (pure) sfx('good', 4)
   const floaters = [...state.floaters, { x: state.ball.x, y: state.ball.y - 4, text, life: 0.9 }]
   return shoot({ ...state, floaters }, shank)
@@ -705,9 +712,7 @@ export function tick(state: GameState, dt: number): GameState {
         s.meter = powerAt(s.swingT)
       } else if (s.swing === 'accuracy') {
         s.swingT += dt
-        s.meter = Math.max(s.power, ACCURACY_START) - s.swingT * METER_SPEED
-        // Left too long, the shot goes by itself, as far off line as it gets.
-        if (s.meter <= -SHANK_RANGE) return strike({ ...s, meter: -SHANK_RANGE })
+        s.meter = Math.cos((Math.PI * 2 * s.swingT) / WOBBLE_PERIOD)
       }
       // A windmill blade sweeping through a resting ball nudges it along.
       const hole = currentHole(s)

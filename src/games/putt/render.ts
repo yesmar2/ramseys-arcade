@@ -9,10 +9,10 @@ import {
   cupAt,
   currentHole,
   fieldFrame,
-  SHANK_RANGE,
   spinnerWall,
   SWEET,
   toScreen,
+  wobbleOf,
   type GameState,
 } from './game'
 
@@ -359,33 +359,47 @@ export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, w: n
 
   // ---- aim: a short stub in the direction of the shot. The rest is up to you.
   if (state.phase === 'aim') {
-    const power = state.swing === 'power' ? state.meter : state.swing === 'accuracy' ? state.power : 0
+    const wobbling = state.swing === 'accuracy'
+    const power = state.swing === 'power' ? state.meter : wobbling ? state.power : 0
     const live = state.aiming || state.swing !== 'idle'
-    const end = aimTrace(state, state.aim, AIM_STUB)
     const b = P(state.ball.x, state.ball.y)
-    const e = P(end.x, end.y)
-    const hue = 128 - power * 100
-    ctx.save()
-    ctx.setLineDash([s * 1.4, s * 1.6])
-    ctx.strokeStyle = live ? `hsla(${hue}, 65%, 50%, 0.95)` : ink(0.45)
-    ctx.lineWidth = Math.max(1.4, s * (live ? 0.7 : 0.55))
-    ctx.beginPath()
-    ctx.moveTo(b.x, b.y)
-    ctx.lineTo(e.x, e.y)
-    ctx.stroke()
-    ctx.restore()
-    // Arrowhead, in screen space so the rotation is right.
-    const a = Math.atan2(e.y - b.y, e.x - b.x)
-    const dist = Math.hypot(e.x - b.x, e.y - b.y)
-    const tipX = b.x + Math.cos(a) * Math.min(dist, s * 8)
-    const tipY = b.y + Math.sin(a) * Math.min(dist, s * 8)
-    ctx.fillStyle = live ? `hsla(${hue}, 65%, 50%, 0.95)` : ink(0.55)
-    ctx.beginPath()
-    ctx.moveTo(tipX + Math.cos(a) * s * 1.8, tipY + Math.sin(a) * s * 1.8)
-    ctx.lineTo(tipX + Math.cos(a + 2.4) * s * 1.5, tipY + Math.sin(a + 2.4) * s * 1.5)
-    ctx.lineTo(tipX + Math.cos(a - 2.4) * s * 1.5, tipY + Math.sin(a - 2.4) * s * 1.5)
-    ctx.closePath()
-    ctx.fill()
+    const stub = (angle: number, color: string, width: number, head: boolean) => {
+      const end = aimTrace(state, angle, AIM_STUB)
+      const e = P(end.x, end.y)
+      ctx.save()
+      ctx.setLineDash([s * 1.4, s * 1.6])
+      ctx.strokeStyle = color
+      ctx.lineWidth = width
+      ctx.beginPath()
+      ctx.moveTo(b.x, b.y)
+      ctx.lineTo(e.x, e.y)
+      ctx.stroke()
+      ctx.restore()
+      if (!head) return
+      // Arrowhead, in screen space so the rotation is right.
+      const a = Math.atan2(e.y - b.y, e.x - b.x)
+      const dist = Math.hypot(e.x - b.x, e.y - b.y)
+      const tipX = b.x + Math.cos(a) * Math.min(dist, s * 8)
+      const tipY = b.y + Math.sin(a) * Math.min(dist, s * 8)
+      ctx.fillStyle = color
+      ctx.beginPath()
+      ctx.moveTo(tipX + Math.cos(a) * s * 1.8, tipY + Math.sin(a) * s * 1.8)
+      ctx.lineTo(tipX + Math.cos(a + 2.4) * s * 1.5, tipY + Math.sin(a + 2.4) * s * 1.5)
+      ctx.lineTo(tipX + Math.cos(a - 2.4) * s * 1.5, tipY + Math.sin(a - 2.4) * s * 1.5)
+      ctx.closePath()
+      ctx.fill()
+    }
+    if (wobbling) {
+      // The line you chose stays faint underneath; the arrow wanders across it. Tap when they meet.
+      stub(state.aim, ink(0.3), Math.max(1.2, s * 0.5), false)
+      const off = Math.min(1, Math.abs(state.meter))
+      const hue = off <= SWEET ? 128 : 128 - ((off - SWEET) / (1 - SWEET)) * 128
+      stub(state.aim + wobbleOf(state), `hsla(${hue}, 70%, 48%, 0.95)`, Math.max(1.6, s * 0.8), true)
+    } else {
+      const hue = 128 - power * 100
+      const color = live ? `hsla(${hue}, 65%, 50%, 0.95)` : ink(0.5)
+      stub(state.aim, color, Math.max(1.4, s * (live ? 0.7 : 0.55)), true)
+    }
   }
 
   // ---- ball
@@ -443,68 +457,69 @@ export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, w: n
   {
     const by = h - f.bottom / 2
     if (state.phase === 'aim' && state.swing !== 'idle') {
-      // The track runs from a little past the line (left) to full power (right).
       const gw = Math.min(w * 0.6, 380)
       const gh = Math.max(10, Math.min(16, f.bottom * 0.3))
       const gx = (w - gw) / 2
       const gy = by - gh / 2
-      const span = 1 + SHANK_RANGE
-      const X = (m: number) => gx + ((m + SHANK_RANGE) / span) * gw
-      const zero = X(0)
       const accuracy = state.swing === 'accuracy'
-      const power = accuracy ? state.power : state.meter
-      const hue = 128 - power * 100
       ctx.fillStyle = ink(0.1)
       ctx.beginPath()
       ctx.roundRect(gx, gy, gw, gh, gh / 2)
       ctx.fill()
-      // The shank zone, left of the line.
-      ctx.fillStyle = `hsla(${BUMPER_HUE}, 60%, 55%, 0.18)`
-      ctx.beginPath()
-      ctx.roundRect(gx, gy, zero - gx, gh, [gh / 2, 0, 0, gh / 2])
-      ctx.fill()
-      // The power taken so far, or locked in.
-      ctx.fillStyle = `hsla(${hue}, 70%, 50%, ${accuracy ? 0.4 : 0.95})`
-      ctx.beginPath()
-      ctx.rect(zero, gy, Math.max(2, X(power) - zero), gh)
-      ctx.fill()
-      // The sweet spot on the line.
-      ctx.fillStyle = `hsla(${GREEN_HUE}, 70%, 45%, ${accuracy ? 0.9 : 0.5})`
-      ctx.beginPath()
-      ctx.rect(X(-SWEET), gy - 2, X(SWEET) - X(-SWEET), gh + 4)
-      ctx.fill()
-      ctx.strokeStyle = ink(0.35)
-      ctx.lineWidth = 1
-      for (const q of [0.25, 0.5, 0.75]) {
-        ctx.beginPath()
-        ctx.moveTo(X(q), gy - 3)
-        ctx.lineTo(X(q), gy + gh + 3)
-        ctx.stroke()
-      }
-      ctx.strokeStyle = ink(0.5)
-      ctx.lineWidth = Math.max(1, gh * 0.12)
-      ctx.beginPath()
-      ctx.roundRect(gx, gy, gw, gh, gh / 2)
-      ctx.stroke()
       if (accuracy) {
-        // The marker coming back to the line.
-        const mx = X(Math.max(-SHANK_RANGE, state.meter))
+        // The wobble, centred: the sweet spot in the middle, the marker swinging through it.
+        const X = (m: number) => gx + ((m + 1) / 2) * gw
+        ctx.fillStyle = `hsla(${GREEN_HUE}, 70%, 45%, 0.9)`
+        ctx.beginPath()
+        ctx.rect(X(-SWEET), gy - 2, X(SWEET) - X(-SWEET), gh + 4)
+        ctx.fill()
+        ctx.strokeStyle = ink(0.35)
+        ctx.lineWidth = 1
+        for (const q of [-0.5, 0.5]) {
+          ctx.beginPath()
+          ctx.moveTo(X(q), gy - 3)
+          ctx.lineTo(X(q), gy + gh + 3)
+          ctx.stroke()
+        }
+        const mx = X(Math.max(-1, Math.min(1, state.meter)))
         ctx.strokeStyle = ink(0.95)
         ctx.lineWidth = Math.max(2, gh * 0.22)
         ctx.beginPath()
         ctx.moveTo(mx, gy - 5)
         ctx.lineTo(mx, gy + gh + 5)
         ctx.stroke()
+      } else {
+        // The gauge filling with power.
+        const hue = 128 - state.meter * 100
+        ctx.fillStyle = `hsla(${hue}, 70%, 50%, 0.95)`
+        ctx.beginPath()
+        ctx.roundRect(gx, gy, Math.max(gh, gw * state.meter), gh, gh / 2)
+        ctx.fill()
+        ctx.strokeStyle = ink(0.35)
+        ctx.lineWidth = 1
+        for (const q of [0.25, 0.5, 0.75]) {
+          ctx.beginPath()
+          ctx.moveTo(gx + gw * q, gy - 3)
+          ctx.lineTo(gx + gw * q, gy + gh + 3)
+          ctx.stroke()
+        }
       }
+      ctx.strokeStyle = ink(0.5)
+      ctx.lineWidth = Math.max(1, gh * 0.12)
+      ctx.beginPath()
+      ctx.roundRect(gx, gy, gw, gh, gh / 2)
+      ctx.stroke()
       ctx.textAlign = 'center'
       ctx.textBaseline = 'middle'
       ctx.font = font(Math.max(10, textScale * 0.024), 800)
       ctx.fillStyle = ink(0.7)
-      const label = accuracy ? 'TAP ON THE LINE' : `${Math.round(state.meter * 100)}%`
+      const label = accuracy
+        ? `${Math.round(state.power * 100)}%  ·  TAP WHEN THE ARROW IS ON YOUR LINE`
+        : `${Math.round(state.meter * 100)}%`
       ctx.fillText(label, w / 2, gy - Math.max(8, textScale * 0.02))
     } else {
       let cue = ''
-      if (state.phase === 'aim') cue = state.aiming ? 'LET GO, THEN TAP TO SWING' : 'DRAG TO AIM  ·  TAP, TAP FOR POWER, TAP ON THE LINE'
+      if (state.phase === 'aim') cue = state.aiming ? 'LET GO, THEN TAP TO SWING' : 'DRAG TO AIM  ·  TAP, TAP FOR POWER, TAP ON YOUR LINE'
       else if (state.phase === 'intro') cue = hole.name.toUpperCase()
       if (cue) {
         ctx.textAlign = 'center'
