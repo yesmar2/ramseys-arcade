@@ -1,4 +1,4 @@
-import { inkColor, isFlatTheme, playfieldColor, softFillAlpha, strokeOutlined } from '../../lib/theme'
+import { inkColor, isFlatTheme, playfieldColor, playfieldRgb, softFillAlpha, strokeOutlined } from '../../lib/theme'
 import { EDGE_T, FIELD_W, LANE_R, PORTAL_R, SPINNER_T, TARGET_R, type Hole, type Shape, type Vec } from './course'
 import { centreOf } from './terrain'
 import {
@@ -8,6 +8,7 @@ import {
   COURSE,
   CUP_R,
   cupAt,
+  LANE_POINTS,
   currentHole,
   edgesOf,
   fieldFrame,
@@ -40,6 +41,19 @@ function ink(alpha: number) {
   const g = parseInt(hex.slice(2, 4), 16)
   const b = parseInt(hex.slice(4, 6), 16)
   return `rgba(${r}, ${g}, ${b}, ${alpha})`
+}
+
+/**
+ * The ground's green as an opaque colour: the green mixed into the playfield
+ * by `alpha`. Opaque, so two shapes that overlap paint the same shade as one
+ * — a translucent green doubled up wherever the strokes crossed.
+ */
+function groundColor(alpha: number) {
+  const base = playfieldRgb()
+  // hsl(128, 45%, 52%) as rgb.
+  const g = { r: 78, g: 187, b: 100 }
+  const mix = (a: number, b: number) => Math.round(a + (b - a) * alpha)
+  return `rgb(${mix(base.r, g.r)}, ${mix(base.g, g.g)}, ${mix(base.b, g.b)})`
 }
 
 /** The playfield colour at an alpha, for panels that sit over the field. */
@@ -97,7 +111,7 @@ function drawMap(ctx: CanvasRenderingContext2D, state: GameState, hole: Hole, f:
   ctx.stroke()
 
   const shapeM = (sh: Shape) => traceShape(ctx, sh, (x, y) => M(x, y), k, f.rotated)
-  ctx.fillStyle = `hsla(${GREEN_HUE}, 45%, 52%, 0.4)`
+  ctx.fillStyle = groundColor(0.45)
   for (const sh of hole.green) {
     shapeM(sh)
     ctx.fill()
@@ -329,7 +343,7 @@ export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, w: n
   ctx.roundRect(f.x, f.y, f.w, f.h, s * 3)
   ctx.clip()
   const shape = (sh: Shape) => traceShape(ctx, sh, P, s, f.rotated)
-  ctx.fillStyle = `hsla(${GREEN_HUE}, 45%, 52%, ${softFillAlpha(0.2)})`
+  ctx.fillStyle = groundColor(softFillAlpha(0.2))
   for (const sh of hole.green) {
     shape(sh)
     ctx.fill()
@@ -376,7 +390,7 @@ export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, w: n
 
   // ---- bridges: ground laid over the water, planked so it reads as a crossing
   for (const sh of hole.bridges) {
-    ctx.fillStyle = `hsla(${GREEN_HUE}, 45%, 52%, ${softFillAlpha(0.2)})`
+    ctx.fillStyle = groundColor(softFillAlpha(0.2))
     shape(sh)
     ctx.fill()
     ctx.fillStyle = `hsla(${SAND_HUE}, 35%, 55%, ${softFillAlpha(0.28)})`
@@ -506,26 +520,24 @@ export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, w: n
     ctx.setLineDash([])
   }
 
-  // ---- lanes: a ring that lights up once the ball has rolled over it
+  // ---- lanes: a rollover that says what it pays, and lights up once the ball has crossed it
   hole.lanes.forEach((l, i) => {
     const c = P(l.x, l.y)
     const lit = state.lanesLit[i]
     ctx.fillStyle = lit
-      ? `hsla(${LANE_HUE}, 70%, 60%, ${softFillAlpha(0.7)})`
-      : `hsla(${LANE_HUE}, 50%, 55%, ${softFillAlpha(0.12)})`
-    ctx.strokeStyle = `hsla(${LANE_HUE}, 60%, ${lit ? 62 : 45}%, ${lit ? 1 : 0.8})`
+      ? `hsla(${LANE_HUE}, 70%, 58%, ${softFillAlpha(0.75)})`
+      : `hsla(${LANE_HUE}, 50%, 55%, ${softFillAlpha(0.14)})`
+    ctx.strokeStyle = `hsla(${LANE_HUE}, 60%, ${lit ? 62 : 45}%, ${lit ? 1 : 0.85})`
     ctx.lineWidth = Math.max(1.2, s * 0.55)
     ctx.beginPath()
     ctx.arc(c.x, c.y, LANE_R * s, 0, Math.PI * 2)
     ctx.fill()
     strokeOutlined(ctx)
-    if (!lit) {
-      ctx.setLineDash([s * 1.2, s * 1.2])
-      ctx.beginPath()
-      ctx.arc(c.x, c.y, LANE_R * s * 0.55, 0, Math.PI * 2)
-      ctx.stroke()
-      ctx.setLineDash([])
-    }
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.font = font(Math.max(8, s * 2.1), 800)
+    ctx.fillStyle = lit ? 'rgba(255, 255, 255, 0.95)' : `hsla(${LANE_HUE}, 60%, 40%, 0.95)`
+    ctx.fillText(lit ? '✓' : `${LANE_POINTS}`, c.x, c.y + s * 0.15)
   })
 
   // ---- placed walls and kickers. Their flashes sit after the traced edge's in the list.
