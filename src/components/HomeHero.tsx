@@ -100,29 +100,27 @@ export function HomeHero() {
           </a>
         </div>
         {scores && scores.top > 0 ? (
-          <div className="hero__aside">
-            <dl className="hero-scores" aria-label={`${game.name} scores`}>
-              <div className="hero-scores__cell">
-                <dt className="hero-scores__label">Your best</dt>
-                <dd className="hero-scores__value">
-                  {scores.best > 0 ? scores.best.toLocaleString() : '—'}
-                </dd>
-                <dd className="hero-scores__note">
-                  {scores.best > 0
-                    ? scores.rank > 0
-                      ? `#${scores.rank} ${PERIOD_LABELS[period].toLowerCase()}`
-                      : PERIOD_LABELS[period]
-                    : 'Not on the board yet'}
-                </dd>
-              </div>
-              <div className="hero-scores__cell">
-                <dt className="hero-scores__label">Top score</dt>
-                <dd className="hero-scores__value">{scores.top.toLocaleString()}</dd>
-                <dd className="hero-scores__note">
-                  {scores.topName ? `by ${scores.topName}` : PERIOD_LABELS[period]}
-                </dd>
-              </div>
-            </dl>
+          <div className="hero__aside hero-scores" aria-label={`${game.name} scores`}>
+            <div className="hero-score">
+              <span className="hero-score__label">Your best</span>
+              <span className="hero-score__value">
+                {scores.best > 0 ? scores.best.toLocaleString() : '—'}
+              </span>
+              <span className="hero-score__note">
+                {scores.best > 0
+                  ? scores.rank > 0
+                    ? `#${scores.rank} ${PERIOD_LABELS[period].toLowerCase()}`
+                    : PERIOD_LABELS[period]
+                  : 'Not on the board yet'}
+              </span>
+            </div>
+            <div className="hero-score">
+              <span className="hero-score__label">Top score</span>
+              <span className="hero-score__value">{scores.top.toLocaleString()}</span>
+              <span className="hero-score__note">
+                {scores.topName ? `by ${scores.topName}` : PERIOD_LABELS[period]}
+              </span>
+            </div>
           </div>
         ) : null}
       </div>

@@ -58,9 +58,22 @@
 @media (min-width: 56rem) {
   .home-top {
     grid-template-columns: minmax(0, 1fr) minmax(15rem, 17rem);
-    /* Top-aligned: the fixtures list reads as a sidebar to the hero, not as
-       something floating alongside its middle. */
-    align-items: start;
+    /*
+     * The two columns are a matched pair: same top, same bottom. Stretching
+     * rather than top-aligning means whichever side is taller sets the height
+     * and the other fills it, so the block stays square however many events
+     * happen to be running.
+     */
+    align-items: stretch;
+  }
+
+  .home-top > .home-evs {
+    height: 100%;
+  }
+
+  /* The rows share whatever height the hero leaves them. */
+  .home-top > .home-evs .home-evs__row {
+    flex: 1;
   }
 }
 
@@ -355,29 +368,30 @@
 /*
  * Your best against the board's best, inside the hero.
  *
- * Two figures side by side so the comparison is the point — the gap between
- * them is the reason to press Play. Sits in the hero's own aside slot, which
- * puts it on the right on a wide screen and on its own row on a phone.
+ * Two separate cards rather than one split panel: each figure is its own
+ * object, and the gap between them is the reason to press Play. They sit in
+ * the hero's own aside slot — on the right on a wide screen, on their own row
+ * on a phone.
  */
 .hero-scores {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.55rem;
+  gap: 0.5rem;
   margin: 0;
-  padding: 0.6rem 0.7rem;
-  border-radius: 0.9rem;
-  background: color-mix(in srgb, var(--hero-accent, var(--accent)) 10%, var(--surface));
-  border: 1px solid color-mix(in srgb, var(--hero-accent, var(--accent)) 22%, transparent);
 }
 
-.hero-scores__cell {
+.hero-score {
   display: flex;
   flex-direction: column;
   gap: 0.05rem;
   min-width: 0;
+  padding: 0.55rem 0.7rem 0.6rem;
+  border-radius: 0.85rem;
+  background: color-mix(in srgb, var(--hero-accent, var(--accent)) 10%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--hero-accent, var(--accent)) 22%, transparent);
 }
 
-.hero-scores__label {
+.hero-score__label {
   font-size: 0.62rem;
   font-weight: 800;
   letter-spacing: 0.07em;
@@ -385,19 +399,17 @@
   color: var(--muted);
 }
 
-.hero-scores__value {
-  margin: 0;
+.hero-score__value {
   font-family: var(--font-display);
   font-size: 1.3rem;
   font-weight: 700;
   letter-spacing: -0.03em;
-  line-height: 1.1;
+  line-height: 1.15;
   font-variant-numeric: tabular-nums;
   color: var(--ink);
 }
 
-.hero-scores__note {
-  margin: 0;
+.hero-score__note {
   font-size: 0.68rem;
   font-weight: 600;
   line-height: 1.3;
@@ -410,11 +422,10 @@
   /* Stacked in the aside column, where the width is tight. */
   .home-hero .hero-scores {
     grid-template-columns: minmax(0, 1fr);
-    gap: 0.6rem;
     min-width: 9.5rem;
   }
 
-  .home-hero .hero-scores__value {
+  .home-hero .hero-score__value {
     font-size: 1.45rem;
   }
 }
