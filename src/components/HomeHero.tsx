@@ -6,13 +6,20 @@ import { useDeviceType } from '../lib/device'
 import { heroSlug, newestSlug } from '../lib/homePicks'
 import { useRecentGames } from '../lib/lastPlayed'
 import {
-  fetchPlayerBests,
+  getLeaderboard,
   normalizePlayerName,
   PERIOD_LABELS,
 } from '../lib/leaderboard'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { EventArt } from './EventCard'
 import { resolveGameAccent } from '../lib/theme'
+
+type HeroScores = {
+  best: number
+  rank: number
+  top: number
+  topName: string
+}
 
 /**
  * The single "what should I play" slot.
@@ -28,21 +35,33 @@ export function HomeHero() {
   const slug = heroSlug(device, recent)
   const name = normalizePlayerName(usePlayerName())
   const period = useDefaultPeriod()
-  const [best, setBest] = useState(0)
+  const [scores, setScores] = useState<HeroScores | null>(null)
   const lastPlayed = slug != null && recent.includes(slug)
 
   useEffect(() => {
-    if (!name || !slug) {
-      setBest(0)
+    if (!slug) {
+      setScores(null)
       return
     }
     let cancelled = false
-    fetchPlayerBests(name, period)
-      .then((bests) => {
-        if (!cancelled) setBest(bests[slug] ?? 0)
+    /*
+     * One call for both figures. The board already carries the leader and the
+     * player's own row, so asking for bests separately was a second round trip
+     * for something the first response contained.
+     */
+    getLeaderboard(slug, period, name || undefined, { limit: 1 })
+      .then(({ entries, you }) => {
+        if (cancelled) return
+        const leader = entries[0]
+        setScores({
+          best: you?.score ?? 0,
+          rank: you?.rank ?? 0,
+          top: leader?.score ?? 0,
+          topName: leader?.name ?? '',
+        })
       })
       .catch(() => {
-        if (!cancelled) setBest(0)
+        if (!cancelled) setScores(null)
       })
     return () => {
       cancelled = true
@@ -79,12 +98,33 @@ export function HomeHero() {
           <a className="hero__cta" href={gamePlayHref(slug)}>
             Play
           </a>
-          {best > 0 ? (
-            <span className="hero__hint">
-              {PERIOD_LABELS[period]} best {best.toLocaleString()}
-            </span>
-          ) : null}
         </div>
+        {scores && scores.top > 0 ? (
+          <div className="hero__aside">
+            <dl className="hero-scores" aria-label={`${game.name} scores`}>
+              <div className="hero-scores__cell">
+                <dt className="hero-scores__label">Your best</dt>
+                <dd className="hero-scores__value">
+                  {scores.best > 0 ? scores.best.toLocaleString() : '—'}
+                </dd>
+                <dd className="hero-scores__note">
+                  {scores.best > 0
+                    ? scores.rank > 0
+                      ? `#${scores.rank} ${PERIOD_LABELS[period].toLowerCase()}`
+                      : PERIOD_LABELS[period]
+                    : 'Not on the board yet'}
+                </dd>
+              </div>
+              <div className="hero-scores__cell">
+                <dt className="hero-scores__label">Top score</dt>
+                <dd className="hero-scores__value">{scores.top.toLocaleString()}</dd>
+                <dd className="hero-scores__note">
+                  {scores.topName ? `by ${scores.topName}` : PERIOD_LABELS[period]}
+                </dd>
+              </div>
+            </dl>
+          </div>
+        ) : null}
       </div>
     </section>
   )

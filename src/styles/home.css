@@ -46,13 +46,6 @@
     --ev-art-size: 9rem;
   }
 
-  /* Nothing sits on the right, so the text takes the width. */
-  .home-hero .hero__main {
-    grid-template-columns: auto minmax(0, 1fr);
-    grid-template-areas:
-      "art text"
-      "art actions";
-  }
 }
 
 /* ---------- top row: hero with the running events beside it ---------- */
@@ -357,4 +350,81 @@
 .home-evs__all {
   align-self: flex-end;
   margin-top: 0.1rem;
+}
+
+/*
+ * Your best against the board's best, inside the hero.
+ *
+ * Two figures side by side so the comparison is the point — the gap between
+ * them is the reason to press Play. Sits in the hero's own aside slot, which
+ * puts it on the right on a wide screen and on its own row on a phone.
+ */
+.hero-scores {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.55rem;
+  margin: 0;
+  padding: 0.6rem 0.7rem;
+  border-radius: 0.9rem;
+  background: color-mix(in srgb, var(--hero-accent, var(--accent)) 10%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--hero-accent, var(--accent)) 22%, transparent);
+}
+
+.hero-scores__cell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.05rem;
+  min-width: 0;
+}
+
+.hero-scores__label {
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.hero-scores__value {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+.hero-scores__note {
+  margin: 0;
+  font-size: 0.68rem;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (min-width: 680px) {
+  /* Stacked in the aside column, where the width is tight. */
+  .home-hero .hero-scores {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.6rem;
+    min-width: 9.5rem;
+  }
+
+  .home-hero .hero-scores__value {
+    font-size: 1.45rem;
+  }
+}
+
+/* The heading over the daily and weekly rows. */
+.home-evs__head {
+  margin: 0 0 0.1rem;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--muted);
 }

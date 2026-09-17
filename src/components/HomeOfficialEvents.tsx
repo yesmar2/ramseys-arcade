@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react'
 import { getGame } from '../data/games'
-import { tournamentHref, tournamentsHref } from '../hooks/useHashRoute'
+import { tournamentHref } from '../hooks/useHashRoute'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { useLiveEvents } from '../hooks/useLiveEvents'
 import { normalizePlayerName } from '../lib/leaderboard'
@@ -22,7 +22,10 @@ export function HomeOfficialEvents() {
 
   if (loading) {
     return (
-      <section className="home-evs" aria-label="Running events" aria-busy="true">
+      <section className="home-evs" aria-labelledby="home-evs-title" aria-busy="true">
+        <h2 className="home-evs__head" id="home-evs-title">
+          Live events
+        </h2>
         {[0, 1].map((i) => (
           <span key={i} className="home-evs__row home-evs__row--skel" aria-hidden="true">
             <span className="home-evs__art home-evs__skel-art" />
@@ -39,7 +42,10 @@ export function HomeOfficialEvents() {
   if (official.length === 0) return null
 
   return (
-    <section className="home-evs" aria-label="Running events">
+    <section className="home-evs" aria-labelledby="home-evs-title">
+      <h2 className="home-evs__head" id="home-evs-title">
+        Live events
+      </h2>
       {official.map((t) => {
         const slug = t.games[0]
         const accent = resolveGameAccent(slug ?? '', getGame(slug ?? '')?.accent ?? 'var(--accent)')
@@ -70,9 +76,6 @@ export function HomeOfficialEvents() {
           </a>
         )
       })}
-      <a className="chips__item home-evs__all" href={tournamentsHref()}>
-        All events
-      </a>
     </section>
   )
 }
