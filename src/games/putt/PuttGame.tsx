@@ -9,6 +9,7 @@ import { getPersonalBest } from '../../lib/personalBest'
 import { useTournamentPlay } from '../../tournaments/TournamentPlayContext'
 import {
   aimAt,
+  cancelSwing,
   catchUp,
   COURSE,
   createInitialState,
@@ -146,6 +147,11 @@ export function PuttGame() {
     setUi(toSnapshot(stateRef.current))
   }
 
+  const cancel = () => {
+    stateRef.current = cancelSwing(stateRef.current)
+    setUi(toSnapshot(stateRef.current))
+  }
+
   const restart = () => {
     setSaveOpen(false)
     offeredScore.current = null
@@ -210,6 +216,11 @@ export function PuttGame() {
       if (e.code === 'ArrowLeft') keysRef.current.left = true
       if (e.code === 'ArrowRight') keysRef.current.right = true
       if (e.code === 'ArrowLeft' || e.code === 'ArrowRight') e.preventDefault()
+      if (e.code === 'Escape' && s.phase === 'aim' && s.swing !== 'idle') {
+        e.preventDefault()
+        cancel()
+        return
+      }
       if (e.code === 'Space' || e.code === 'Enter') {
         e.preventDefault()
         if (e.repeat) return
@@ -252,6 +263,20 @@ export function PuttGame() {
                 {ui.score}
               </PlayReadoutScore>
             </PlayReadout>
+            {ui.phase === 'aim' && ui.swing !== 'idle' && (
+              <button
+                type="button"
+                className="putt__cancel"
+                onPointerDown={(e) => {
+                  // Not a swing tap: this press is the way out of the swing.
+                  e.stopPropagation()
+                  e.preventDefault()
+                  cancel()
+                }}
+              >
+                Cancel
+              </button>
+            )}
           </div>
         </GameStage>
         <div className="putt__overlay">

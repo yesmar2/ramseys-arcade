@@ -381,6 +381,13 @@ export function swing(state: GameState): GameState {
   return strike(state)
 }
 
+/** Changed your mind mid-swing: back to aiming, nothing spent. */
+export function cancelSwing(state: GameState): GameState {
+  if (state.phase !== 'aim' || state.swing === 'idle') return state
+  sfx('tap', -5)
+  return { ...state, swing: 'idle', swingT: 0, meter: 0, power: 0 }
+}
+
 /** The wobble, as an angle off the line, for the arrow and the strike. */
 export function wobbleOf(state: GameState) {
   return state.swing === 'accuracy' ? state.meter * MAX_SHANK : 0
