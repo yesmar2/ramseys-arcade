@@ -13,6 +13,7 @@ import {
   catchUp,
   COURSE,
   createInitialState,
+  currentHole,
   endAim,
   fieldFrame,
   jumpToHole,
@@ -197,8 +198,9 @@ export function PuttGame() {
     const y = e.clientY - rect.top
     if (!press.moved && Math.hypot(x - press.x, y - press.y) < TAP_SLOP) return
     press.moved = true
-    const f = fieldFrame(rect.width, rect.height)
-    stateRef.current = aimAt(stateRef.current, toField(f, x, y))
+    const s = stateRef.current
+    const f = fieldFrame(rect.width, rect.height, currentHole(s).h)
+    stateRef.current = aimAt(s, toField(f, s.cam, x, y))
   }
 
   const onPointerUp = (e: ReactPointerEvent<HTMLElement>) => {

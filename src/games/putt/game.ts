@@ -3,7 +3,6 @@ import { sfx } from '../../lib/sound'
 import {
   COURSE,
   COURSE_PAR,
-  FIELD_H,
   FIELD_W,
   LANE_R,
   PORTAL_R,
@@ -89,7 +88,12 @@ const TOP_SPEED = 320
 /** A ball slower than this within the cup drops; faster, it skips across. */
 const CUP_CAPTURE_SPEED = 85
 const CUP_PULL = 1.7
-const INTRO_TIME = 1.0
+/** The intro flies the length of the hole, cup to tee, in this long. */
+const INTRO_TIME = 2.2
+/** How fast the camera closes on where it wants to be, per second. */
+const CAM_EASE = 5
+/** While aiming the view leans this far along the line, as a share of the window. */
+const CAM_LOOK = 0.22
 const SPLASH_TIME = 1.0
 const SUNK_TIME = 0.95
 const PICKUP_TIME = 1.2
@@ -129,6 +133,8 @@ export type GameState = {
   t: number
   /** Runs the whole round; the windmills turn and the cups slide on it. */
   clock: number
+  /** The camera: the field y at the cup end of the window on screen. */
+  cam: number
   /** The shot being lined up. */
   aim: number
   /** A finger is dragging the aim. */
@@ -207,6 +213,7 @@ export function createInitialState(w = 540, h = 720): GameState {
     ball: { x: first.tee.x, y: first.tee.y, vx: 0, vy: 0 },
     t: 0,
     clock: 0,
+    cam: camFor(fieldFrame(w, h, first.h), first.tee.y),
     aim: 0,
     aiming: false,
     swing: 'idle',
@@ -237,23 +244,25 @@ export function resizeState(state: GameState, w: number, h: number): GameState {
 }
 
 /**
- * Where the field sits on the screen. The field is portrait; on a landscape
- * screen it lies on its side, tee on the left and cup on the right, so it
- * fills the screen either way. A band above carries the hole and strokes,
- * one below carries the swing gauge and the cue.
+ * Where the view of the field sits on the screen. The hole is 100 wide and
+ * longer than the screen: the width fills the screen's short side, and a
+ * window `vis` units long shows part of the length. On a landscape screen
+ * the hole lies on its side, tee on the left and cup on the right. A band
+ * above carries the hole and strokes, one below the swing gauge and cue.
  */
-export function fieldFrame(w: number, h: number) {
+export function fieldFrame(w: number, h: number, len: number) {
   const top = Math.max(40, h * 0.085)
   const bottom = Math.max(44, h * 0.09)
   const side = Math.max(8, w * 0.02)
   const availW = w - side * 2
   const availH = h - top - bottom
   const rotated = availW > availH
-  const fw = rotated ? FIELD_H : FIELD_W
-  const fh = rotated ? FIELD_W : FIELD_H
-  const s = Math.min(availW / fw, availH / fh)
-  const pw = fw * s
-  const ph = fh * s
+  const short = rotated ? availH : availW
+  const long = rotated ? availW : availH
+  const s = short / FIELD_W
+  const vis = Math.min(len, long / s)
+  const pw = rotated ? vis * s : FIELD_W * s
+  const ph = rotated ? FIELD_W * s : vis * s
   return {
     s,
     rotated,
@@ -263,21 +272,28 @@ export function fieldFrame(w: number, h: number) {
     h: ph,
     top,
     bottom,
+    vis,
+    len,
   }
 }
 
 export type Frame = ReturnType<typeof fieldFrame>
 
-/** Field coordinates to screen. */
-export function toScreen(f: Frame, p: Vec): Vec {
-  if (f.rotated) return { x: f.x + (FIELD_H - p.y) * f.s, y: f.y + p.x * f.s }
-  return { x: f.x + p.x * f.s, y: f.y + p.y * f.s }
+/** The camera that shows the window centred on `centreY`, kept within the hole. */
+export function camFor(f: Frame, centreY: number) {
+  return Math.max(0, Math.min(f.len - f.vis, centreY - f.vis / 2))
+}
+
+/** Field coordinates to screen, with the camera at `cam` (the field y at the cup end of the window). */
+export function toScreen(f: Frame, cam: number, p: Vec): Vec {
+  if (f.rotated) return { x: f.x + (cam + f.vis - p.y) * f.s, y: f.y + p.x * f.s }
+  return { x: f.x + p.x * f.s, y: f.y + (p.y - cam) * f.s }
 }
 
 /** A screen point to field coordinates. */
-export function toField(f: Frame, sx: number, sy: number): Vec {
-  if (f.rotated) return { x: (sy - f.y) / f.s, y: FIELD_H - (sx - f.x) / f.s }
-  return { x: (sx - f.x) / f.s, y: (sy - f.y) / f.s }
+export function toField(f: Frame, cam: number, sx: number, sy: number): Vec {
+  if (f.rotated) return { x: (sy - f.y) / f.s, y: cam + f.vis - (sx - f.x) / f.s }
+  return { x: (sx - f.x) / f.s, y: cam + (sy - f.y) / f.s }
 }
 
 function angleTo(from: Vec, to: Vec) {
@@ -293,6 +309,8 @@ function beginHole(state: GameState, index: number): GameState {
     strokes: 0,
     ball: { x: hole.tee.x, y: hole.tee.y, vx: 0, vy: 0 },
     t: 0,
+    // The intro flies the hole from the cup back to the tee.
+    cam: 0,
     aim: angleTo(hole.tee, cupAt(hole, state.clock)),
     aiming: false,
     swing: 'idle',
@@ -721,6 +739,7 @@ export function tick(state: GameState, dt: number): GameState {
   if (s.wallFlash.some((v) => v > 0)) {
     s.wallFlash = s.wallFlash.map((v) => Math.max(0, v - dt))
   }
+  s.cam = moveCamera(s, dt)
 
   switch (s.phase) {
     case 'intro':
@@ -880,6 +899,28 @@ export function tick(state: GameState, dt: number): GameState {
   }
 }
 
+/**
+ * Where the camera goes this frame. The intro flies from the cup end to the
+ * tee; aiming leans the view along the line so more of what is ahead shows;
+ * rolling follows the ball with a little lead. Everything else eases in.
+ */
+function moveCamera(s: GameState, dt: number): number {
+  if (s.phase === 'menu' || s.phase === 'gameover') return s.cam
+  const hole = currentHole(s)
+  const f = fieldFrame(s.stageW, s.stageH, hole.h)
+  if (s.phase === 'intro') {
+    const u = Math.min(1, s.t / INTRO_TIME)
+    const e = u < 0.5 ? 2 * u * u : 1 - Math.pow(-2 * u + 2, 2) / 2
+    return camFor(f, hole.tee.y) * e
+  }
+  let centre = s.ball.y
+  if (s.phase === 'aim') centre += Math.sin(s.aim) * f.vis * CAM_LOOK
+  else if (s.phase === 'roll') centre += s.ball.vy * 0.12
+  const target = camFor(f, centre)
+  const k = Math.min(1, dt * CAM_EASE)
+  return s.cam + (target - s.cam) * k
+}
+
 function advance(s: GameState): GameState {
   if (s.holeIndex + 1 >= COURSE.length) {
     const best = Math.max(s.best, s.score)
@@ -933,4 +974,4 @@ export function toSnapshot(s: GameState): Snapshot {
   }
 }
 
-export { COURSE, COURSE_PAR, FIELD_H, FIELD_W }
+export { COURSE, COURSE_PAR, FIELD_W }

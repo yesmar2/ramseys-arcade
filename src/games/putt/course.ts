@@ -1,18 +1,20 @@
 /*
- * The course: nine holes on one field, the same every round, so a score
- * means the same thing to everyone on the board.
+ * The course: nine holes, the same every round, so a score means the same
+ * thing to everyone on the board.
  *
- * The field is 100 units wide and 200 tall, y growing downward. Tees sit
- * near the bottom, cups near the top. Walls are thick segments, so they
- * can sit at any angle; a kicker is a wall that throws the ball back
- * harder. Windmills turn, pads push the ball along their arrows, pipes
- * take it in one end and out the other, sand drags it to a stop, and
- * water costs a stroke. Then the pinball: bumpers that pop the ball away
- * and pay for every hit, and lanes that light up and pay once.
+ * Every hole is 100 units wide and as long as it needs to be — longer than
+ * the screen, so the view follows the ball and a map in the corner shows
+ * the rest. y grows downward: tees sit near the bottom, cups near the top,
+ * and no cup is within one shot of its tee. Walls are thick segments, so
+ * they can sit at any angle; a kicker is a wall that throws the ball back
+ * harder. Windmills turn, pads push the ball along their arrows, pipes take
+ * it in one end and out the other, sand drags it to a stop, and water costs
+ * a stroke. Then the pinball: bumpers that pop the ball away and pay for
+ * every hit, lanes that light up and pay once, and drop targets that pay
+ * big when the whole bank is down.
  */
 
 export const FIELD_W = 100
-export const FIELD_H = 200
 
 export type Vec = { x: number; y: number }
 
@@ -52,6 +54,8 @@ export type CupPath = { to: Vec; period: number }
 export type Hole = {
   name: string
   par: number
+  /** How long the hole is, in field units. */
+  h: number
   tee: Vec
   cup: Vec
   cupPath?: CupPath
@@ -73,18 +77,20 @@ export const TARGET_R = 2.3
 export const SPINNER_T = 1.5
 
 export const UP = -Math.PI / 2
+export const DOWN = Math.PI / 2
 export const LEFT = Math.PI
+export const RIGHT = 0
 
 const EDGE = 1
 const BAR = 2.2
 
-/** The rails around the field. Every hole has them. */
-function rails(): Wall[] {
+/** The rails around a hole. Every hole has them. */
+function rails(h: number): Wall[] {
   return [
     { a: { x: EDGE, y: EDGE }, b: { x: FIELD_W - EDGE, y: EDGE }, t: EDGE },
-    { a: { x: FIELD_W - EDGE, y: EDGE }, b: { x: FIELD_W - EDGE, y: FIELD_H - EDGE }, t: EDGE },
-    { a: { x: FIELD_W - EDGE, y: FIELD_H - EDGE }, b: { x: EDGE, y: FIELD_H - EDGE }, t: EDGE },
-    { a: { x: EDGE, y: FIELD_H - EDGE }, b: { x: EDGE, y: EDGE }, t: EDGE },
+    { a: { x: FIELD_W - EDGE, y: EDGE }, b: { x: FIELD_W - EDGE, y: h - EDGE }, t: EDGE },
+    { a: { x: FIELD_W - EDGE, y: h - EDGE }, b: { x: EDGE, y: h - EDGE }, t: EDGE },
+    { a: { x: EDGE, y: h - EDGE }, b: { x: EDGE, y: EDGE }, t: EDGE },
   ]
 }
 
@@ -94,6 +100,14 @@ function bar(x1: number, y1: number, x2: number, y2: number, t = BAR): Wall {
 
 function kicker(x1: number, y1: number, x2: number, y2: number): Wall {
   return { ...bar(x1, y1, x2, y2), kick: true }
+}
+
+/** A gate: a wall across the hole at `y` with a gap from `from` to `to`. */
+function gate(y: number, from: number, to: number): Wall[] {
+  const walls: Wall[] = []
+  if (from > 0) walls.push(bar(0, y, from, y))
+  if (to < FIELD_W) walls.push(bar(to, y, FIELD_W, y))
+  return walls
 }
 
 function pop(x: number, y: number, r = 5): Bumper {
@@ -125,12 +139,13 @@ function bank(x: number, y: number, dx: number, dy: number): Target[] {
   return [0, 1, 2].map((i) => ({ x: x + dx * i, y: y + dy * i }))
 }
 
-type Spec = Pick<Hole, 'name' | 'par' | 'tee' | 'cup'> & Partial<Omit<Hole, 'name' | 'par' | 'tee' | 'cup'>>
+type Spec = Pick<Hole, 'name' | 'par' | 'h' | 'tee' | 'cup'> &
+  Partial<Omit<Hole, 'name' | 'par' | 'h' | 'tee' | 'cup'>>
 
 function hole(spec: Spec): Hole {
   return {
     ...spec,
-    walls: [...rails(), ...(spec.walls ?? [])],
+    walls: [...rails(spec.h), ...(spec.walls ?? [])],
     bumpers: spec.bumpers ?? [],
     lanes: spec.lanes ?? [],
     targets: spec.targets ?? [],
@@ -143,109 +158,129 @@ function hole(spec: Spec): Hole {
 }
 
 export const COURSE: Hole[] = [
-  // A straight run with a belt of sand to judge the power through, and a bank of targets up the left rail.
+  // A long straight run: a belt of sand, then a gate with a bumper square behind it, so the
+  // second shot has to come through on an angle.
   hole({
-    name: 'Opener',
-    par: 3,
-    tee: { x: 50, y: 184 },
-    cup: { x: 50, y: 26 },
-    sand: [rect(0, 104, 100, 14)],
-    bumpers: [pop(28, 66), pop(72, 66)],
-    lanes: [lane(50, 80)],
-    targets: bank(9, 58, 0, 9),
-  }),
-  // A windmill in the only gap. Time it.
-  hole({
-    name: 'Windmill',
-    par: 3,
-    tee: { x: 50, y: 184 },
-    cup: { x: 50, y: 24 },
-    walls: [bar(0, 100, 28, 100), bar(72, 100, 100, 100)],
-    spinners: [mill(50, 100, 40, 1.7)],
-    lanes: [lane(50, 64)],
-    sand: [rect(6, 8, 26, 34), rect(68, 8, 26, 34)],
-  }),
-  // Round the wall, then either side of a pool that costs a stroke.
-  hole({
-    name: 'Splash',
+    name: 'Long drive',
     par: 4,
-    tee: { x: 20, y: 184 },
-    cup: { x: 22, y: 30 },
-    walls: [bar(0, 124, 62, 124)],
-    water: [rect(36, 46, 34, 44)],
-    bumpers: [pop(88, 60)],
-    lanes: [lane(82, 124), lane(50, 32)],
+    h: 330,
+    tee: { x: 50, y: 314 },
+    cup: { x: 50, y: 26 },
+    sand: [rect(0, 230, 100, 14)],
+    walls: gate(150, 36, 64),
+    bumpers: [pop(50, 118)],
+    lanes: [lane(50, 150), lane(50, 60)],
+    targets: bank(9, 60, 0, 9),
   }),
-  // The long way is round the wall. The short way is down the pipe.
+  // Four levels, the gap swapping sides each time. A windmill in the second, water in the fourth.
+  hole({
+    name: 'Switchback',
+    par: 5,
+    h: 380,
+    tee: { x: 16, y: 364 },
+    cup: { x: 84, y: 24 },
+    walls: [...gate(300, 68, 100), ...gate(220, 0, 32), ...gate(140, 68, 100), ...gate(60, 0, 32)],
+    sand: [rect(72, 340, 24, 22)],
+    spinners: [mill(16, 220, 28, 1.8)],
+    bumpers: [pop(50, 180)],
+    water: [rect(34, 72, 32, 24)],
+    lanes: [lane(84, 140), lane(16, 60)],
+  }),
+  // A wall down the middle. Left is water and precision; right is windmills and timing.
+  hole({
+    name: 'Two roads',
+    par: 5,
+    h: 400,
+    tee: { x: 50, y: 384 },
+    cup: { x: 50, y: 26 },
+    walls: [bar(50, 80, 50, 300)],
+    sand: [rect(0, 320, 100, 12)],
+    water: [rect(4, 120, 26, 40), rect(20, 200, 26, 40)],
+    spinners: [mill(75, 150, 40, 2.0), mill(75, 250, 40, -2.0, 1.1)],
+    bumpers: [pop(30, 50), pop(70, 50)],
+    lanes: [lane(25, 160), lane(25, 260), lane(75, 200)],
+  }),
+  // Three locks: a windmill in each gate, sand pockets either side to catch the misses.
+  hole({
+    name: 'Locks',
+    par: 5,
+    h: 360,
+    tee: { x: 50, y: 344 },
+    cup: { x: 50, y: 24 },
+    walls: [...gate(270, 28, 72), ...gate(180, 28, 72), ...gate(90, 28, 72)],
+    spinners: [mill(50, 270, 40, 1.6), mill(50, 180, 40, -2.0, 1), mill(50, 90, 40, 2.4, 2)],
+    sand: [rect(4, 276, 22, 18), rect(74, 276, 22, 18), rect(4, 186, 22, 18), rect(74, 186, 22, 18)],
+    lanes: [lane(50, 225), lane(50, 135)],
+  }),
+  // Kickers, a field of bumpers, two banks of targets, and a cup that will not sit still.
+  hole({
+    name: 'Pinball alley',
+    par: 5,
+    h: 400,
+    tee: { x: 50, y: 386 },
+    cup: { x: 30, y: 22 },
+    cupPath: { to: { x: 70, y: 22 }, period: 6 },
+    walls: [kicker(6, 370, 30, 330), kicker(94, 370, 70, 330), ...gate(80, 34, 66)],
+    bumpers: [pop(50, 300), pop(30, 270), pop(70, 270), pop(50, 240), pop(30, 210), pop(70, 210), pop(50, 180)],
+    targets: [...bank(9, 150, 0, 9), ...bank(91, 150, 0, 9)],
+    lanes: [lane(20, 120), lane(80, 120), lane(50, 150)],
+  }),
+  // A canal down the middle with three bridges. The tee is on the left bank, under the windmill;
+  // the right bank has sand and a bumper. Pads on the bridges carry you across. The cup sits at
+  // the head of the water, so the last shot comes in from a side.
+  hole({
+    name: 'The canal',
+    par: 6,
+    h: 440,
+    tee: { x: 20, y: 424 },
+    cup: { x: 50, y: 30 },
+    water: [rect(38, 316, 24, 84), rect(38, 206, 24, 94), rect(38, 106, 24, 84), rect(38, 60, 24, 30)],
+    boosts: [pad(38, 300, 24, 16, LEFT), pad(38, 190, 24, 16, RIGHT)],
+    spinners: [mill(19, 250, 30, 2.0)],
+    sand: [rect(62, 200, 38, 16), rect(62, 300, 38, 16)],
+    bumpers: [pop(81, 150)],
+    lanes: [lane(19, 350), lane(81, 350), lane(50, 98)],
+  }),
+  // Two walls make an S. One pipe skips the first bend; the other sends you back to the start.
   hole({
     name: 'Pipes',
-    par: 3,
-    tee: { x: 50, y: 184 },
-    cup: { x: 16, y: 26 },
-    walls: [bar(0, 90, 78, 90)],
-    portals: [pipe(86, 150, 16, 66, UP)],
-    bumpers: [pop(50, 134)],
-    lanes: [lane(89, 90)],
+    par: 5,
+    h: 380,
+    tee: { x: 50, y: 364 },
+    cup: { x: 16, y: 24 },
+    walls: [...gate(260, 0, 22), ...gate(120, 78, 100)],
+    portals: [pipe(86, 300, 50, 200, UP), pipe(12, 200, 84, 330, DOWN)],
+    bumpers: [pop(66, 170)],
     sand: [rect(30, 8, 44, 26)],
+    lanes: [lane(11, 260), lane(89, 120)],
   }),
-  // Kickers at the bottom, a wall of bumpers in front of a cup that will not sit still.
+  // Four gates, the gap swapping sides, a windmill in every one. Water past the cup.
   hole({
-    name: 'Slings',
-    par: 4,
-    tee: { x: 50, y: 186 },
-    cup: { x: 30, y: 20 },
-    cupPath: { to: { x: 70, y: 20 }, period: 6 },
-    walls: [kicker(6, 166, 30, 132), kicker(94, 166, 70, 132)],
-    bumpers: [pop(50, 104), pop(30, 82), pop(70, 82), pop(50, 58, 4)],
-    lanes: [lane(14, 40), lane(86, 40)],
-    targets: bank(9, 100, 0, 9),
-  }),
-  // Two pads carry the ball round the bends, if it gets on them.
-  hole({
-    name: 'Conveyor',
-    par: 4,
-    tee: { x: 16, y: 184 },
-    cup: { x: 84, y: 24 },
-    walls: [bar(0, 144, 70, 144), bar(30, 84, 100, 84)],
-    boosts: [pad(72, 92, 24, 48, UP), pad(34, 100, 36, 28, LEFT)],
-    bumpers: [pop(84, 52)],
-    lanes: [lane(84, 116), lane(16, 64)],
-    sand: [rect(4, 8, 30, 30)],
-  }),
-  // The cup sits on an island. One narrow bridge, and it is dead straight from the tee.
-  hole({
-    name: 'Island',
-    par: 4,
-    tee: { x: 50, y: 186 },
-    cup: { x: 50, y: 50 },
-    water: [rect(20, 20, 60, 15), rect(20, 35, 15, 45), rect(65, 35, 15, 45), rect(35, 65, 11, 15), rect(54, 65, 11, 15)],
-    bumpers: [pop(26, 122), pop(74, 122)],
-    lanes: [lane(50, 72)],
-  }),
-  // Two mills turning opposite ways, and water either side of the cup.
-  hole({
-    name: 'Twin mills',
-    par: 4,
-    tee: { x: 16, y: 186 },
-    cup: { x: 50, y: 24 },
-    walls: [bar(0, 144, 64, 144), bar(36, 84, 100, 84)],
-    spinners: [mill(82, 144, 30, 1.9), mill(18, 84, 30, -1.9, 1.2)],
-    water: [rect(0, 8, 26, 40), rect(74, 8, 26, 40)],
-    lanes: [lane(82, 120), lane(18, 60)],
+    name: 'Windmill row',
+    par: 5,
+    h: 400,
+    tee: { x: 50, y: 384 },
+    cup: { x: 50, y: 26 },
+    walls: [...gate(310, 60, 100), ...gate(230, 0, 40), ...gate(150, 60, 100), ...gate(70, 0, 40)],
+    spinners: [mill(80, 310, 36, 1.8), mill(20, 230, 36, -1.8, 1), mill(80, 150, 36, 2.2, 2), mill(20, 70, 36, -2.2, 3)],
+    water: [rect(70, 4, 30, 56)],
+    lanes: [lane(80, 270), lane(20, 190), lane(80, 110)],
   }),
   // Everything at once.
   hole({
-    name: 'Gauntlet',
-    par: 5,
-    tee: { x: 50, y: 188 },
-    cup: { x: 50, y: 20 },
-    walls: [kicker(6, 176, 28, 144), kicker(94, 176, 72, 144)],
-    boosts: [pad(40, 130, 20, 28, UP)],
-    bumpers: [pop(32, 110), pop(68, 110), pop(50, 88)],
-    water: [rect(0, 16, 30, 46), rect(70, 16, 30, 46)],
-    spinners: [mill(50, 54, 34, 2.3)],
-    lanes: [lane(50, 144), lane(18, 90), lane(82, 90)],
-    targets: bank(91, 112, 0, 9),
+    name: 'The gauntlet',
+    par: 6,
+    h: 440,
+    tee: { x: 50, y: 426 },
+    cup: { x: 50, y: 24 },
+    walls: [kicker(6, 410, 28, 376), kicker(94, 410, 72, 376), ...gate(180, 36, 64), ...gate(90, 28, 72)],
+    boosts: [pad(40, 360, 20, 30, UP)],
+    bumpers: [pop(32, 330), pop(68, 330), pop(50, 300)],
+    water: [rect(0, 240, 30, 50), rect(70, 240, 30, 50)],
+    spinners: [mill(50, 265, 34, 2.3), mill(50, 90, 40, -2.0, 1)],
+    sand: [rect(36, 150, 28, 14)],
+    targets: bank(91, 120, 0, 9),
+    lanes: [lane(50, 375), lane(18, 300), lane(82, 300), lane(50, 180)],
   }),
 ]
 
