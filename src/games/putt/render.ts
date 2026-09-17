@@ -16,6 +16,7 @@ import {
   spinnerWall,
   SWEET,
   toScreen,
+  underMap,
   wobbleOf,
   type Frame,
   type GameState,
@@ -58,7 +59,11 @@ function paper(alpha: number) {
  */
 function drawMap(ctx: CanvasRenderingContext2D, state: GameState, hole: Hole, f: Frame, flat: boolean) {
   const len = hole.h
-  const { x: mx, y: my, w: mw, h: mh, k } = mapLayout(f, len)
+  const layout = mapLayout(f, len, state.mapSide)
+  const { x: mx, y: my, w: mw, h: mh, k } = layout
+  // The ball rolling under the map shows through it.
+  const ballOnScreen = toScreen(f, state.cam, state.ball)
+  const faded = state.phase !== 'gameover' && underMap(layout, ballOnScreen.x, ballOnScreen.y)
   const M = (x: number, y: number): Vec =>
     f.rotated ? { x: mx + (len - y) * k, y: my + x * k } : { x: mx + x * k, y: my + y * k }
   const R = (x: number, y: number, w: number, h: number) => {
@@ -82,6 +87,7 @@ function drawMap(ctx: CanvasRenderingContext2D, state: GameState, hole: Hole, f:
   }
 
   ctx.save()
+  if (faded) ctx.globalAlpha = 0.3
   ctx.fillStyle = paper(0.88)
   ctx.strokeStyle = ink(0.22)
   ctx.lineWidth = 1

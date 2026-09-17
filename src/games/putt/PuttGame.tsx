@@ -197,7 +197,7 @@ export function PuttGame() {
     const y = e.clientY - rect.top
     // On the map, the press looks along the hole instead of lining up a shot.
     const f = fieldFrame(rect.width, rect.height, currentHole(s).h)
-    const m = mapLayout(f, currentHole(s).h)
+    const m = mapLayout(f, currentHole(s).h, s.mapSide)
     const kind = onMap(m, x, y) ? 'look' : 'aim'
     if (kind === 'look') stateRef.current = lookAt(s, mapFieldY(m, f, x, y))
     pressRef.current = { id: e.pointerId, x, y, moved: false, kind }
@@ -217,7 +217,7 @@ export function PuttGame() {
     const s = stateRef.current
     const f = fieldFrame(rect.width, rect.height, currentHole(s).h)
     if (press.kind === 'look') {
-      stateRef.current = lookAt(s, mapFieldY(mapLayout(f, currentHole(s).h), f, x, y))
+      stateRef.current = lookAt(s, mapFieldY(mapLayout(f, currentHole(s).h, s.mapSide), f, x, y))
       return
     }
     if (!press.moved && Math.hypot(x - press.x, y - press.y) < TAP_SLOP) return

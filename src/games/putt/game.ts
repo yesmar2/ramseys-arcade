@@ -146,6 +146,8 @@ export type GameState = {
   cam: number
   /** Where the camera is headed while aiming: the ball, until the player looks along the hole. */
   look: number
+  /** Which corner the map is in, chosen at each address so it is not over the ball. */
+  mapSide: MapSide
   /** The shot being lined up. */
   aim: number
   /** A finger is dragging the aim. */
@@ -262,6 +264,7 @@ export function createInitialState(w = 540, h = 720): GameState {
     clock: 0,
     cam: startCam,
     look: startCam,
+    mapSide: 'near',
     aim: 0,
     aiming: false,
     swing: 'idle',
@@ -468,18 +471,43 @@ export function lookAt(state: GameState, y: number): GameState {
   return { ...state, look: camFor(f, y) }
 }
 
+/** Which corner at the cup end the map takes: the usual one, or the other when the ball is under it. */
+export type MapSide = 'near' | 'far'
+
 /**
- * Where the map sits on screen: the corner of the window nearest the cup,
- * a fifth of the window's short side wide, as long as the hole is.
+ * Where the map sits on screen: a corner of the window at the cup end, a
+ * fifth of the window's short side wide, as long as the hole is. Upright,
+ * the corners are top-right and top-left; on its side, top-right and
+ * bottom-right.
  */
-export function mapLayout(f: Frame, len: number) {
-  const short = Math.max(44, Math.min(72, (f.rotated ? f.h : f.w) * 0.2))
-  const k = short / FIELD_W
+export function mapLayout(f: Frame, len: number, side: MapSide = 'near') {
+  // A fifth of the short side wide, but never more than half the window long: a long hole on a
+  // phone would otherwise run the map down most of the screen.
+  const shortWanted = Math.max(44, Math.min(72, (f.rotated ? f.h : f.w) * 0.2))
+  const k = Math.min(shortWanted / FIELD_W, ((f.rotated ? f.w : f.h) * 0.48) / len)
+  const short = FIELD_W * k
   const long = len * k
   const w = f.rotated ? long : short
   const h = f.rotated ? short : long
   const inset = 8
-  return { x: f.x + f.w - w - inset, y: f.y + inset, w, h, k, len }
+  const right = f.x + f.w - w - inset
+  const top = f.y + inset
+  const x = f.rotated || side === 'near' ? right : f.x + inset
+  const y = !f.rotated || side === 'near' ? top : f.y + f.h - h - inset
+  return { x, y, w, h, k, len }
+}
+
+/** Whether a screen point sits under the map, with a little room around it. */
+export function underMap(m: MapLayout, sx: number, sy: number, room = 14) {
+  return sx > m.x - room && sx < m.x + m.w + room && sy > m.y - room && sy < m.y + m.h + room
+}
+
+/** The corner for the next shot: away from wherever the ball has come to rest. */
+function mapSideFor(s: GameState): MapSide {
+  const hole = currentHole(s)
+  const f = fieldFrame(s.stageW, s.stageH, hole.h)
+  const p = toScreen(f, camFor(f, s.ball.y), s.ball)
+  return underMap(mapLayout(f, hole.h, 'near'), p.x, p.y) ? 'far' : 'near'
 }
 
 export type MapLayout = ReturnType<typeof mapLayout>
@@ -896,6 +924,7 @@ function readyToAim(s: GameState): GameState {
     phase: 'aim',
     t: 0,
     look: lookAtBall(s),
+    mapSide: mapSideFor(s),
     aim: UP,
     aiming: false,
     swing: 'idle',
