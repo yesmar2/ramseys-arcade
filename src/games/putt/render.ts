@@ -1,13 +1,17 @@
 import { inkColor, isFlatTheme, playfieldColor, softFillAlpha, strokeOutlined } from '../../lib/theme'
-import { LANE_R, PORTAL_R, SPINNER_T, type Vec } from './course'
+import { LANE_R, PORTAL_R, SPINNER_T, TARGET_R, type Vec } from './course'
 import {
+  AIM_STUB,
   aimTrace,
   BALL_R,
   COURSE,
   CUP_R,
+  cupAt,
   currentHole,
   fieldFrame,
+  SHANK_RANGE,
   spinnerWall,
+  SWEET,
   toScreen,
   type GameState,
 } from './game'
@@ -290,9 +294,46 @@ export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, w: n
     ctx.fill()
   })
 
-  // ---- cup and flag
+  // ---- drop targets: up until hit, then a ghost until the bank resets
+  hole.targets.forEach((tg, i) => {
+    const c = P(tg.x, tg.y)
+    const down = state.targetsDown[i]
+    const half = TARGET_R * s * 0.95
+    ctx.beginPath()
+    ctx.roundRect(c.x - half, c.y - half, half * 2, half * 2, half * 0.45)
+    if (down) {
+      ctx.strokeStyle = `hsla(${PAD_HUE}, 60%, 45%, 0.45)`
+      ctx.lineWidth = Math.max(1, s * 0.4)
+      ctx.setLineDash([s * 1.2, s * 1.2])
+      ctx.stroke()
+      ctx.setLineDash([])
+      return
+    }
+    ctx.fillStyle = `hsla(${PAD_HUE}, 85%, 58%, ${softFillAlpha(0.75)})`
+    ctx.strokeStyle = `hsla(${PAD_HUE}, 70%, 40%, 0.95)`
+    ctx.lineWidth = Math.max(1.2, s * 0.6)
+    ctx.fill()
+    strokeOutlined(ctx)
+    ctx.fillStyle = `hsla(${PAD_HUE}, 70%, 35%, 0.8)`
+    ctx.beginPath()
+    ctx.arc(c.x, c.y, half * 0.3, 0, Math.PI * 2)
+    ctx.fill()
+  })
+
+  // ---- cup and flag; a sliding cup shows the slot it runs in
+  const cup = cupAt(hole, state.clock)
+  if (hole.cupPath) {
+    const a = P(hole.cup.x, hole.cup.y)
+    const b = P(hole.cupPath.to.x, hole.cupPath.to.y)
+    ctx.strokeStyle = `hsla(${GREEN_HUE}, 40%, 30%, 0.35)`
+    ctx.lineWidth = CUP_R * 2 * s
+    ctx.beginPath()
+    ctx.moveTo(a.x, a.y)
+    ctx.lineTo(b.x, b.y)
+    ctx.stroke()
+  }
   {
-    const c = P(hole.cup.x, hole.cup.y)
+    const c = P(cup.x, cup.y)
     ctx.fillStyle = 'rgba(20, 27, 36, 0.9)'
     ctx.beginPath()
     ctx.arc(c.x, c.y, CUP_R * s, 0, Math.PI * 2)
@@ -316,12 +357,11 @@ export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, w: n
     ctx.fill()
   }
 
-  // ---- aim: a dotted line to what the shot would hit, growing with the gauge
+  // ---- aim: a short stub in the direction of the shot. The rest is up to you.
   if (state.phase === 'aim') {
-    const power = state.swinging ? state.power : 0
-    const live = state.aiming || state.swinging
-    const reach = 18 + power * 70
-    const end = aimTrace(state, state.aim, reach)
+    const power = state.swing === 'power' ? state.meter : state.swing === 'accuracy' ? state.power : 0
+    const live = state.aiming || state.swing !== 'idle'
+    const end = aimTrace(state, state.aim, AIM_STUB)
     const b = P(state.ball.x, state.ball.y)
     const e = P(end.x, end.y)
     const hue = 128 - power * 100
@@ -402,26 +442,43 @@ export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, w: n
   // ---- the band below: the swing gauge while it runs, the cue otherwise
   {
     const by = h - f.bottom / 2
-    if (state.phase === 'aim' && state.swinging) {
-      const gw = Math.min(w * 0.56, 360)
+    if (state.phase === 'aim' && state.swing !== 'idle') {
+      // The track runs from a little past the line (left) to full power (right).
+      const gw = Math.min(w * 0.6, 380)
       const gh = Math.max(10, Math.min(16, f.bottom * 0.3))
       const gx = (w - gw) / 2
       const gy = by - gh / 2
-      const hue = 128 - state.power * 100
+      const span = 1 + SHANK_RANGE
+      const X = (m: number) => gx + ((m + SHANK_RANGE) / span) * gw
+      const zero = X(0)
+      const accuracy = state.swing === 'accuracy'
+      const power = accuracy ? state.power : state.meter
+      const hue = 128 - power * 100
       ctx.fillStyle = ink(0.1)
       ctx.beginPath()
       ctx.roundRect(gx, gy, gw, gh, gh / 2)
       ctx.fill()
-      ctx.fillStyle = `hsla(${hue}, 70%, 50%, 0.95)`
+      // The shank zone, left of the line.
+      ctx.fillStyle = `hsla(${BUMPER_HUE}, 60%, 55%, 0.18)`
       ctx.beginPath()
-      ctx.roundRect(gx, gy, Math.max(gh, gw * state.power), gh, gh / 2)
+      ctx.roundRect(gx, gy, zero - gx, gh, [gh / 2, 0, 0, gh / 2])
+      ctx.fill()
+      // The power taken so far, or locked in.
+      ctx.fillStyle = `hsla(${hue}, 70%, 50%, ${accuracy ? 0.4 : 0.95})`
+      ctx.beginPath()
+      ctx.rect(zero, gy, Math.max(2, X(power) - zero), gh)
+      ctx.fill()
+      // The sweet spot on the line.
+      ctx.fillStyle = `hsla(${GREEN_HUE}, 70%, 45%, ${accuracy ? 0.9 : 0.5})`
+      ctx.beginPath()
+      ctx.rect(X(-SWEET), gy - 2, X(SWEET) - X(-SWEET), gh + 4)
       ctx.fill()
       ctx.strokeStyle = ink(0.35)
       ctx.lineWidth = 1
       for (const q of [0.25, 0.5, 0.75]) {
         ctx.beginPath()
-        ctx.moveTo(gx + gw * q, gy - 3)
-        ctx.lineTo(gx + gw * q, gy + gh + 3)
+        ctx.moveTo(X(q), gy - 3)
+        ctx.lineTo(X(q), gy + gh + 3)
         ctx.stroke()
       }
       ctx.strokeStyle = ink(0.5)
@@ -429,14 +486,25 @@ export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, w: n
       ctx.beginPath()
       ctx.roundRect(gx, gy, gw, gh, gh / 2)
       ctx.stroke()
+      if (accuracy) {
+        // The marker coming back to the line.
+        const mx = X(Math.max(-SHANK_RANGE, state.meter))
+        ctx.strokeStyle = ink(0.95)
+        ctx.lineWidth = Math.max(2, gh * 0.22)
+        ctx.beginPath()
+        ctx.moveTo(mx, gy - 5)
+        ctx.lineTo(mx, gy + gh + 5)
+        ctx.stroke()
+      }
       ctx.textAlign = 'center'
       ctx.textBaseline = 'middle'
       ctx.font = font(Math.max(10, textScale * 0.024), 800)
       ctx.fillStyle = ink(0.7)
-      ctx.fillText(`${Math.round(state.power * 100)}%`, w / 2, gy - Math.max(8, textScale * 0.02))
+      const label = accuracy ? 'TAP ON THE LINE' : `${Math.round(state.meter * 100)}%`
+      ctx.fillText(label, w / 2, gy - Math.max(8, textScale * 0.02))
     } else {
       let cue = ''
-      if (state.phase === 'aim') cue = state.aiming ? 'LET GO, THEN TAP TO SWING' : 'DRAG TO AIM  ·  TAP TO SWING, TAP TO HIT'
+      if (state.phase === 'aim') cue = state.aiming ? 'LET GO, THEN TAP TO SWING' : 'DRAG TO AIM  ·  TAP, TAP FOR POWER, TAP ON THE LINE'
       else if (state.phase === 'intro') cue = hole.name.toUpperCase()
       if (cue) {
         ctx.textAlign = 'center'

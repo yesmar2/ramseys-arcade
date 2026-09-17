@@ -8,6 +8,7 @@ import {
   LANE_R,
   PORTAL_R,
   SPINNER_T,
+  TARGET_R,
   type Hole,
   type Rect,
   type Spinner,
@@ -18,18 +19,23 @@ import {
 /*
  * Putt: nine holes of mini golf with a pinball streak.
  *
- * Drag to aim. Tap to start the swing: a gauge runs up and back down, and
- * a second tap sets the power where it is — the way golf games have
- * always done it. The ball rolls on physics: walls at any angle, sand
- * that drags, water that costs a stroke, windmills, pads that push, pipes
- * that take it somewhere else, and a cup that pulls a slow ball in and
- * lets a fast one skip across. The pinball is the scoring: bumpers and
- * kickers pop the ball away and pay, lanes light up and pay once a hole.
- * Fewer strokes still score most, and the whole hole — pinball and all —
- * is forfeit if the ball is picked up at par plus three.
+ * Drag to aim; the guide is a short stub, so the line is yours to judge.
+ * Then the swing is three taps, the way golf games have always done it:
+ * one starts the gauge, one takes the power where the gauge is, and the
+ * gauge comes back down for a third that has to land on the line — early
+ * hooks the shot, late slices it. The ball rolls on physics: walls at any
+ * angle, sand that drags, water that costs a stroke, windmills, pads that
+ * push, pipes that take it somewhere else, a cup that will not always sit
+ * still, and a cup that pulls a slow ball in and lets a fast one skip
+ * across. The pinball is the scoring: bumpers and kickers pop the ball
+ * away and pay, lanes light up and pay once a hole, drop targets pay and
+ * pay big when the whole bank is down. Par or better on consecutive
+ * holes builds a streak bonus. Fewer strokes still score most, and the
+ * whole hole is forfeit if the ball is picked up at par plus three.
  */
 
 export type Phase = 'menu' | 'intro' | 'aim' | 'roll' | 'splash' | 'sunk' | 'pickup' | 'gameover'
+export type SwingStage = 'idle' | 'power' | 'accuracy'
 
 export const BALL_R = 1.7
 export const CUP_R = 2.7
@@ -42,9 +48,27 @@ export const ACE_BONUS = 200
 export const BUMPER_STEP = 50
 export const KICKER_POINTS = 25
 export const LANE_POINTS = 100
+export const TARGET_POINTS = 50
+/** Knocking the whole bank of targets down pays this, and they stand back up. */
+export const BANK_POINTS = 300
+/** Par or better on consecutive holes: the second pays 100, the third 200, up to the cap. */
+export const STREAK_STEP = 100
+export const STREAK_MAX = 500
 
 /** The swing gauge runs up and back down over this many seconds. */
 export const SWING_PERIOD = 1.8
+/** On the way back for the accuracy tap the gauge covers its full length in half a period. */
+const METER_SPEED = 2 / SWING_PERIOD
+/** The gauge comes back from at least this high, so a soft shot still gives time to tap. */
+const ACCURACY_START = 0.4
+/** Within this of the line is a pure strike. */
+export const SWEET = 0.05
+/** The gauge runs this far past the line before the shot goes by itself, at full shank. */
+export const SHANK_RANGE = 0.3
+/** The most a shot goes off line, in radians. */
+const MAX_SHANK = 0.22
+/** How far the aim guide reaches, in field units. */
+export const AIM_STUB = 14
 /** A swing at the bottom of the gauge still hits this hard. */
 const MIN_POWER = 0.08
 /** Full power sends a ball this far on the green before it stops. */
@@ -53,6 +77,7 @@ const FRICTION_GREEN = 1.25
 const FRICTION_SAND = 5.2
 const STOP_SPEED = 1.6
 const WALL_BOUNCE = 0.6
+const TARGET_BOUNCE = 0.5
 /** A bumper sends the ball away at least this fast, whatever it arrived at. */
 const BUMPER_POP = 110
 const BUMPER_KEEP = 0.85
@@ -80,6 +105,7 @@ export type HoleResult = {
   par: number
   golf: number
   pinball: number
+  streak: number
   points: number
   label: string
 }
@@ -96,18 +122,21 @@ export type GameState = {
   holeIndex: number
   strokes: number
   results: HoleResult[]
+  /** Holes in a row at par or better, so far. */
+  streak: number
   ball: Ball
   /** Seconds the current phase has run. */
   t: number
-  /** Runs the whole round; the windmills turn on it. */
+  /** Runs the whole round; the windmills turn and the cups slide on it. */
   clock: number
   /** The shot being lined up. */
   aim: number
   /** A finger is dragging the aim. */
   aiming: boolean
-  /** The gauge is running: `power` is where it is, `swingT` how long it has run. */
-  swinging: boolean
+  /** The swing: which tap is next, how long this stage has run, where the gauge is, the power taken. */
+  swing: SwingStage
   swingT: number
+  meter: number
   power: number
   /** Where this stroke started, for a splash to send the ball back to. */
   strokeStart: Vec
@@ -117,9 +146,10 @@ export type GameState = {
   onPad: boolean
   /** Ball scale while dropping into the cup. */
   drop: number
-  /** Pinball, this hole: bumper hits in the current stroke, lit lanes, points banked so far. */
+  /** Pinball, this hole: bumper hits in the current stroke, lit lanes, targets down, points banked so far. */
   strokeHits: number
   lanesLit: boolean[]
+  targetsDown: boolean[]
   holeBonus: number
   /** Flash timers per bumper and per wall (kickers), for the renderer. */
   bumperFlash: number[]
@@ -139,7 +169,7 @@ export type Snapshot = {
   strokes: number
   par: number
   toPar: number
-  swinging: boolean
+  swing: SwingStage
 }
 
 function loadBest() {
@@ -148,6 +178,16 @@ function loadBest() {
 
 export function currentHole(state: GameState): Hole {
   return COURSE[Math.min(state.holeIndex, COURSE.length - 1)]!
+}
+
+/** Where the cup is right now: most sit still, one slides. */
+export function cupAt(hole: Hole, clock: number): Vec {
+  const path = hole.cupPath
+  if (!path) return hole.cup
+  const u = (clock % path.period) / path.period
+  const k = u < 0.5 ? u * 2 : 2 - u * 2
+  const e = k * k * (3 - 2 * k)
+  return { x: hole.cup.x + (path.to.x - hole.cup.x) * e, y: hole.cup.y + (path.to.y - hole.cup.y) * e }
 }
 
 export function createInitialState(w = 540, h = 720): GameState {
@@ -159,13 +199,15 @@ export function createInitialState(w = 540, h = 720): GameState {
     holeIndex: 0,
     strokes: 0,
     results: [],
+    streak: 0,
     ball: { x: first.tee.x, y: first.tee.y, vx: 0, vy: 0 },
     t: 0,
     clock: 0,
     aim: 0,
     aiming: false,
-    swinging: false,
+    swing: 'idle',
     swingT: 0,
+    meter: 0,
     power: 0,
     strokeStart: { x: first.tee.x, y: first.tee.y },
     rollTime: 0,
@@ -174,6 +216,7 @@ export function createInitialState(w = 540, h = 720): GameState {
     drop: 1,
     strokeHits: 0,
     lanesLit: first.lanes.map(() => false),
+    targetsDown: first.targets.map(() => false),
     holeBonus: 0,
     bumperFlash: first.bumpers.map(() => 0),
     wallFlash: first.walls.map(() => 0),
@@ -246,10 +289,11 @@ function beginHole(state: GameState, index: number): GameState {
     strokes: 0,
     ball: { x: hole.tee.x, y: hole.tee.y, vx: 0, vy: 0 },
     t: 0,
-    aim: angleTo(hole.tee, hole.cup),
+    aim: angleTo(hole.tee, cupAt(hole, state.clock)),
     aiming: false,
-    swinging: false,
+    swing: 'idle',
     swingT: 0,
+    meter: 0,
     power: 0,
     strokeStart: { x: hole.tee.x, y: hole.tee.y },
     rollTime: 0,
@@ -258,6 +302,7 @@ function beginHole(state: GameState, index: number): GameState {
     drop: 1,
     strokeHits: 0,
     lanesLit: hole.lanes.map(() => false),
+    targetsDown: hole.targets.map(() => false),
     holeBonus: 0,
     bumperFlash: hole.bumpers.map(() => 0),
     wallFlash: hole.walls.map(() => 0),
@@ -281,9 +326,9 @@ export function powerAt(swingT: number) {
   return cycle <= 1 ? cycle : 2 - cycle
 }
 
-/** A finger on the field: the aim points from the ball to it. Not during the swing. */
+/** A finger on the field: the aim points from the ball to it. Not once the swing has started. */
 export function aimAt(state: GameState, p: Vec): GameState {
-  if (state.phase !== 'aim' || state.swinging) return state
+  if (state.phase !== 'aim' || state.swing !== 'idle') return state
   const d = Math.hypot(p.x - state.ball.x, p.y - state.ball.y)
   if (d < 3) return { ...state, aiming: true }
   return { ...state, aiming: true, aim: angleTo(state.ball, p) }
@@ -293,33 +338,51 @@ export function endAim(state: GameState): GameState {
   return state.aiming ? { ...state, aiming: false } : state
 }
 
-/** Keyboard: turn the aim, not during the swing. */
+/** Keyboard: turn the aim, not once the swing has started. */
 export function turnAim(state: GameState, turn: number, dt: number): GameState {
-  if (state.phase !== 'aim' || state.swinging || turn === 0) return state
+  if (state.phase !== 'aim' || state.swing !== 'idle' || turn === 0) return state
   return { ...state, aim: state.aim + turn * KEY_TURN * dt }
 }
 
-/** Tap: start the gauge, or stop it where it is and hit. */
+/** Tap: start the gauge; take the power; then hit, on the line or off it. */
 export function swing(state: GameState): GameState {
   if (state.phase !== 'aim') return state
-  if (!state.swinging) {
+  if (state.swing === 'idle') {
     sfx('tap', -2)
-    return { ...state, swinging: true, swingT: 0, power: 0, aiming: false }
+    return { ...state, swing: 'power', swingT: 0, meter: 0, power: 0, aiming: false }
   }
-  return shoot(state)
+  if (state.swing === 'power') {
+    sfx('tap', 0)
+    const power = state.meter
+    return { ...state, swing: 'accuracy', swingT: 0, power, meter: Math.max(power, ACCURACY_START) }
+  }
+  return strike(state)
 }
 
-/** The shot happens with the aim and power lined up. */
-export function shoot(state: GameState): GameState {
+/** The third tap: where the gauge is against the line decides how straight the shot goes. */
+function strike(state: GameState): GameState {
+  const miss = Math.max(-SHANK_RANGE, Math.min(SHANK_RANGE, state.meter))
+  const pure = Math.abs(miss) <= SWEET
+  // Early (the gauge still above the line) hooks left; late slices right.
+  const shank = pure ? 0 : -(miss / SHANK_RANGE) * MAX_SHANK
+  const text = pure ? 'PURE' : miss > 0 ? 'HOOK' : 'SLICE'
+  if (pure) sfx('good', 4)
+  const floaters = [...state.floaters, { x: state.ball.x, y: state.ball.y - 4, text, life: 0.9 }]
+  return shoot({ ...state, floaters }, shank)
+}
+
+/** The shot happens with the aim and power lined up, plus whatever the strike put on it. */
+export function shoot(state: GameState, shank = 0): GameState {
   if (state.phase !== 'aim') return state
   const power = MIN_POWER + (1 - MIN_POWER) * Math.max(0, Math.min(1, state.power))
   const speed = FULL_DISTANCE * FRICTION_GREEN * power
+  const angle = state.aim + shank
   sfx('whoosh')
   return {
     ...state,
     phase: 'roll',
     aiming: false,
-    swinging: false,
+    swing: 'idle',
     t: 0,
     rollTime: 0,
     strokes: state.strokes + 1,
@@ -327,8 +390,8 @@ export function shoot(state: GameState): GameState {
     strokeStart: { x: state.ball.x, y: state.ball.y },
     ball: {
       ...state.ball,
-      vx: Math.cos(state.aim) * speed,
-      vy: Math.sin(state.aim) * speed,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed,
     },
   }
 }
@@ -414,6 +477,7 @@ type StepOut = {
   kickers: number[]
   bumpers: number[]
   lanes: number[]
+  targets: number[]
   sand: boolean
   pad: boolean
   water: boolean
@@ -421,7 +485,7 @@ type StepOut = {
 }
 
 /** One sub-step of rolling. Mutates the ball; returns what it touched. */
-function step(ball: Ball, hole: Hole, dt: number, clock: number): StepOut {
+function step(ball: Ball, hole: Hole, targetsDown: boolean[], dt: number, clock: number): StepOut {
   ball.x += ball.vx * dt
   ball.y += ball.vy * dt
 
@@ -431,7 +495,17 @@ function step(ball: Ball, hole: Hole, dt: number, clock: number): StepOut {
   ball.vx *= decay
   ball.vy *= decay
 
-  const out: StepOut = { wall: false, kickers: [], bumpers: [], lanes: [], sand, pad: false, water: false, piped: false }
+  const out: StepOut = {
+    wall: false,
+    kickers: [],
+    bumpers: [],
+    lanes: [],
+    targets: [],
+    sand,
+    pad: false,
+    water: false,
+    piped: false,
+  }
 
   for (const pad of hole.boosts) {
     if (!inRect(pad, ball.x, ball.y)) continue
@@ -463,6 +537,11 @@ function step(ball: Ball, hole: Hole, dt: number, clock: number): StepOut {
   hole.bumpers.forEach((b, i) => {
     if (popBumper(ball, b.x, b.y, b.r + BALL_R)) out.bumpers.push(i)
   })
+  hole.targets.forEach((tg, i) => {
+    if (targetsDown[i]) return
+    const c = bounce(ball, tg.x, tg.y, TARGET_R + BALL_R, TARGET_BOUNCE)
+    if (c && c.reflected) out.targets.push(i)
+  })
   hole.lanes.forEach((l, i) => {
     if (Math.hypot(ball.x - l.x, ball.y - l.y) < LANE_R) out.lanes.push(i)
   })
@@ -482,8 +561,9 @@ function step(ball: Ball, hole: Hole, dt: number, clock: number): StepOut {
   }
 
   // The cup pulls a slow ball the last little way, and drops it.
-  const dx = hole.cup.x - ball.x
-  const dy = hole.cup.y - ball.y
+  const cup = cupAt(hole, clock)
+  const dx = cup.x - ball.x
+  const dy = cup.y - ball.y
   const d = Math.hypot(dx, dy)
   if (d < CUP_R * 1.8 && d > 1e-6) {
     const sp = Math.hypot(ball.vx, ball.vy)
@@ -516,24 +596,39 @@ function finishHole(state: GameState, pickedUp: boolean): GameState {
   const hole = currentHole(state)
   const golf = pickedUp ? 0 : golfPoints(state.strokes, hole.par)
   const pinball = pickedUp ? 0 : state.holeBonus
-  const points = golf + pinball
+  const madePar = !pickedUp && state.strokes <= hole.par
+  const streak = madePar ? state.streak + 1 : 0
+  const streakBonus = streak >= 2 ? Math.min(STREAK_MAX, (streak - 1) * STREAK_STEP) : 0
+  const points = golf + pinball + streakBonus
   const label = pickedUp ? 'Picked up' : resultLabel(state.strokes, hole.par)
-  const result: HoleResult = { strokes: state.strokes, par: hole.par, golf, pinball, points, label }
+  const result: HoleResult = {
+    strokes: state.strokes,
+    par: hole.par,
+    golf,
+    pinball,
+    streak: streakBonus,
+    points,
+    label,
+  }
   if (pickedUp) sfx('miss')
   else if (state.strokes === 1 || state.strokes < hole.par) sfx('perfect')
   else sfx('good')
-  const sub = pickedUp ? null : pinball > 0 ? `+${golf} · pinball +${pinball}` : `+${golf}`
+  const parts = [`+${golf}`]
+  if (pinball > 0) parts.push(`pinball +${pinball}`)
+  if (streakBonus > 0) parts.push(`streak ×${streak} +${streakBonus}`)
+  const sub = pickedUp ? null : parts.join(' · ')
   return {
     ...state,
     phase: pickedUp ? 'pickup' : 'sunk',
     t: 0,
     score: state.score + points,
     results: [...state.results, result],
+    streak,
     popup: { text: label, sub, life: 1.7 },
     flash: pickedUp ? 0.12 : 0.22,
     ball: { ...state.ball, vx: 0, vy: 0 },
     aiming: false,
-    swinging: false,
+    swing: 'idle',
     power: 0,
   }
 }
@@ -547,7 +642,7 @@ function splash(state: GameState): GameState {
     strokes: state.strokes + 1,
     ball: { x: state.strokeStart.x, y: state.strokeStart.y, vx: 0, vy: 0 },
     aiming: false,
-    swinging: false,
+    swing: 'idle',
     power: 0,
     inSand: false,
     onPad: false,
@@ -569,10 +664,11 @@ function readyToAim(s: GameState): GameState {
     ...s,
     phase: 'aim',
     t: 0,
-    aim: angleTo(s.ball, hole.cup),
+    aim: angleTo(s.ball, cupAt(hole, s.clock)),
     aiming: false,
-    swinging: false,
+    swing: 'idle',
     swingT: 0,
+    meter: 0,
     power: 0,
   }
 }
@@ -604,9 +700,14 @@ export function tick(state: GameState, dt: number): GameState {
       return s
 
     case 'aim': {
-      if (s.swinging) {
+      if (s.swing === 'power') {
         s.swingT += dt
-        s.power = powerAt(s.swingT)
+        s.meter = powerAt(s.swingT)
+      } else if (s.swing === 'accuracy') {
+        s.swingT += dt
+        s.meter = Math.max(s.power, ACCURACY_START) - s.swingT * METER_SPEED
+        // Left too long, the shot goes by itself, as far off line as it gets.
+        if (s.meter <= -SHANK_RANGE) return strike({ ...s, meter: -SHANK_RANGE })
       }
       // A windmill blade sweeping through a resting ball nudges it along.
       const hole = currentHole(s)
@@ -632,6 +733,7 @@ export function tick(state: GameState, dt: number): GameState {
       let hits = s.strokeHits
       let bonus = s.holeBonus
       const lanesLit = [...s.lanesLit]
+      const targetsDown = [...s.targetsDown]
       const bumperFlash = [...s.bumperFlash]
       const wallFlash = [...s.wallFlash]
       const floaters = [...s.floaters]
@@ -640,8 +742,11 @@ export function tick(state: GameState, dt: number): GameState {
       let popped = false
       let kicked = false
       let piped = false
+      let dropped = false
+      let banked = false
       for (let i = 0; i < SUBSTEPS; i++) {
-        const out = step(ball, hole, sub, s.clock + sub * i)
+        const now = s.clock + sub * i
+        const out = step(ball, hole, targetsDown, sub, now)
         if (out.wall) hitWall = true
         if (out.piped) piped = true
         sand = out.sand
@@ -661,6 +766,22 @@ export function tick(state: GameState, dt: number): GameState {
           kicked = true
           floaters.push({ x: ball.x, y: ball.y - 4, text: `+${KICKER_POINTS}`, life: 0.8 })
         }
+        for (const ti of out.targets) {
+          if (targetsDown[ti]) continue
+          targetsDown[ti] = true
+          bonus += TARGET_POINTS
+          dropped = true
+          const tg = hole.targets[ti]!
+          floaters.push({ x: tg.x, y: tg.y - 4, text: `+${TARGET_POINTS}`, life: 0.9 })
+          if (targetsDown.every(Boolean)) {
+            bonus += BANK_POINTS
+            banked = true
+            const cx = hole.targets.reduce((sum, t) => sum + t.x, 0) / hole.targets.length
+            const cy = hole.targets.reduce((sum, t) => sum + t.y, 0) / hole.targets.length
+            floaters.push({ x: cx, y: cy - 9, text: `BANK +${BANK_POINTS}`, life: 1.4 })
+            targetsDown.fill(false)
+          }
+        }
         for (const li of out.lanes) {
           if (lanesLit[li]) continue
           lanesLit[li] = true
@@ -675,18 +796,22 @@ export function tick(state: GameState, dt: number): GameState {
           strokeHits: hits,
           holeBonus: bonus,
           lanesLit,
+          targetsDown,
           bumperFlash,
           wallFlash,
           floaters,
         }
         if (out.water) return splash(carried)
-        const d = Math.hypot(hole.cup.x - ball.x, hole.cup.y - ball.y)
+        const cup = cupAt(hole, now)
+        const d = Math.hypot(cup.x - ball.x, cup.y - ball.y)
         const speed = Math.hypot(ball.vx, ball.vy)
         if (d < CUP_R * 0.75 && speed < CUP_CAPTURE_SPEED) {
-          return finishHole({ ...carried, ball: { ...ball, x: hole.cup.x, y: hole.cup.y } }, false)
+          return finishHole({ ...carried, ball: { ...ball, x: cup.x, y: cup.y } }, false)
         }
       }
-      if (popped) sfx('hit')
+      if (banked) sfx('perfect', 2)
+      else if (popped) sfx('hit')
+      else if (dropped) sfx('pad', 6)
       else if (kicked) sfx('pad', 3)
       else if (piped) sfx('whoosh', 5)
       else if (hitWall) sfx('tap', 2)
@@ -696,6 +821,7 @@ export function tick(state: GameState, dt: number): GameState {
       s.strokeHits = hits
       s.holeBonus = bonus
       s.lanesLit = lanesLit
+      s.targetsDown = targetsDown
       s.bumperFlash = bumperFlash
       s.wallFlash = wallFlash
       s.floaters = floaters
@@ -732,7 +858,7 @@ function advance(s: GameState): GameState {
   return beginHole(s, s.holeIndex + 1)
 }
 
-/** Where a shot from the ball along `angle` first meets something, for the aim line. */
+/** Where a shot from the ball along `angle` first meets something within `maxLen`, for the aim guide. */
 export function aimTrace(state: GameState, angle: number, maxLen: number): Vec {
   const hole = currentHole(state)
   const blades = hole.spinners.map((sp) => spinnerWall(sp, state.clock))
@@ -773,7 +899,7 @@ export function toSnapshot(s: GameState): Snapshot {
     strokes: s.strokes,
     par: hole.par,
     toPar: played - parPlayed,
-    swinging: s.swinging,
+    swing: s.swing,
   }
 }
 

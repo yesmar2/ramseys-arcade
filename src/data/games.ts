@@ -140,7 +140,7 @@ export const games: Game[] = [
     name: 'Putt',
     slug: 'putt',
     description: 'Nine holes. One tap to aim, one to hit.',
-    how: 'Drag to aim. Tap to start the swing gauge, and tap again to set the power where it is. Walls bounce, sand drags, water costs a stroke and sends you back, windmills turn, pads push the ball along, pipes spit it out somewhere else, and a ball rolling too fast skips over the cup. Bumpers and kickers pop the ball away and pay pinball points; lanes pay once when you roll over them. Fewer strokes still score most; at par plus three the ball is picked up and the hole scores nothing. On a keyboard, arrows aim and Space starts and stops the gauge.',
+    how: 'Drag to aim; the guide only shows the first few feet. Then three taps: one starts the swing gauge, one takes the power where it is, and one has to land on the line as the gauge comes back. Early hooks the shot, late slices it. Walls bounce, sand drags, water costs a stroke and sends you back, windmills turn, pads push the ball along, pipes spit it out somewhere else, one cup slides, and a ball rolling too fast skips over the cup. Bumpers, kickers and drop targets pay pinball points, lanes pay once, and knocking a whole bank of targets down pays big. Par or better on consecutive holes builds a streak bonus. At par plus three the ball is picked up and the hole scores nothing. On a keyboard, arrows aim and Space taps.',
     accent: '#5cc46a',
     playable: true,
     inDevelopment: true,

@@ -43,14 +43,22 @@ export type Spinner = { x: number; y: number; len: number; speed: number; phase:
 /** A pipe: a ball that rolls into `a` comes out at `b` heading along `out`. */
 export type Portal = { a: Vec; b: Vec; out: number }
 
+/** A drop target: stands until the ball hits it. Knock the whole bank down for the bonus. */
+export type Target = { x: number; y: number }
+
+/** The cup slides from its spot to `to` and back, once every `period` seconds. */
+export type CupPath = { to: Vec; period: number }
+
 export type Hole = {
   name: string
   par: number
   tee: Vec
   cup: Vec
+  cupPath?: CupPath
   walls: Wall[]
   bumpers: Bumper[]
   lanes: Lane[]
+  targets: Target[]
   sand: Sand[]
   water: Water[]
   boosts: Boost[]
@@ -60,6 +68,7 @@ export type Hole = {
 
 export const LANE_R = 3.2
 export const PORTAL_R = 3.6
+export const TARGET_R = 2.3
 /** Half of a windmill blade's thickness. */
 export const SPINNER_T = 1.5
 
@@ -111,6 +120,11 @@ function pipe(ax: number, ay: number, bx: number, by: number, out: number): Port
   return { a: { x: ax, y: ay }, b: { x: bx, y: by }, out }
 }
 
+/** A bank of three targets in a line from (x, y), stepping by (dx, dy). */
+function bank(x: number, y: number, dx: number, dy: number): Target[] {
+  return [0, 1, 2].map((i) => ({ x: x + dx * i, y: y + dy * i }))
+}
+
 type Spec = Pick<Hole, 'name' | 'par' | 'tee' | 'cup'> & Partial<Omit<Hole, 'name' | 'par' | 'tee' | 'cup'>>
 
 function hole(spec: Spec): Hole {
@@ -119,6 +133,7 @@ function hole(spec: Spec): Hole {
     walls: [...rails(), ...(spec.walls ?? [])],
     bumpers: spec.bumpers ?? [],
     lanes: spec.lanes ?? [],
+    targets: spec.targets ?? [],
     sand: spec.sand ?? [],
     water: spec.water ?? [],
     boosts: spec.boosts ?? [],
@@ -128,7 +143,7 @@ function hole(spec: Spec): Hole {
 }
 
 export const COURSE: Hole[] = [
-  // A straight run with a belt of sand to judge the power through.
+  // A straight run with a belt of sand to judge the power through, and a bank of targets up the left rail.
   hole({
     name: 'Opener',
     par: 3,
@@ -137,6 +152,7 @@ export const COURSE: Hole[] = [
     sand: [rect(0, 104, 100, 14)],
     bumpers: [pop(28, 66), pop(72, 66)],
     lanes: [lane(50, 80)],
+    targets: bank(9, 58, 0, 9),
   }),
   // A windmill in the only gap. Time it.
   hole({
@@ -172,15 +188,17 @@ export const COURSE: Hole[] = [
     lanes: [lane(89, 90)],
     sand: [rect(30, 8, 44, 26)],
   }),
-  // Kickers at the bottom, a wall of bumpers in front of the cup.
+  // Kickers at the bottom, a wall of bumpers in front of a cup that will not sit still.
   hole({
     name: 'Slings',
     par: 4,
     tee: { x: 50, y: 186 },
-    cup: { x: 50, y: 20 },
+    cup: { x: 30, y: 20 },
+    cupPath: { to: { x: 70, y: 20 }, period: 6 },
     walls: [kicker(6, 166, 30, 132), kicker(94, 166, 70, 132)],
     bumpers: [pop(50, 104), pop(30, 82), pop(70, 82), pop(50, 58, 4)],
     lanes: [lane(14, 40), lane(86, 40)],
+    targets: bank(9, 100, 0, 9),
   }),
   // Two pads carry the ball round the bends, if it gets on them.
   hole({
@@ -227,6 +245,7 @@ export const COURSE: Hole[] = [
     water: [rect(0, 16, 30, 46), rect(70, 16, 30, 46)],
     spinners: [mill(50, 54, 34, 2.3)],
     lanes: [lane(50, 144), lane(18, 90), lane(82, 90)],
+    targets: bank(91, 112, 0, 9),
   }),
 ]
 

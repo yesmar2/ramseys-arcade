@@ -39,10 +39,10 @@ function toParLabel(toPar: number) {
 
 /**
  * The field fills the screen, portrait or landscape. Drag anywhere to aim:
- * the line points from the ball to the finger. Tap to start the swing
- * gauge, tap again to set the power and hit. Keyboard: left and right turn
- * the aim, Space starts and stops the gauge. A plain tap starts a round
- * from the title or the score card.
+ * the line points from the ball to the finger. Then three taps: one starts
+ * the swing gauge, one takes the power, and one has to land on the line as
+ * the gauge comes back. Keyboard: left and right turn the aim, Space is the
+ * tap. A plain tap starts a round from the title or the score card.
  */
 export function PuttGame() {
   const tournament = useTournamentPlay()
@@ -121,7 +121,7 @@ export function PuttGame() {
     w.__puttShoot = (angle, power) => {
       const s = stateRef.current
       if (s.phase !== 'aim') return
-      stateRef.current = shoot({ ...s, aim: angle, power, swinging: false })
+      stateRef.current = shoot({ ...s, aim: angle, power, swing: 'idle' }, 0)
     }
     w.__puttJump = (index) => {
       stateRef.current = jumpToHole(stateRef.current, index)
