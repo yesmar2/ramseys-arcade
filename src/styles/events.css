@@ -1916,3 +1916,74 @@ html[data-theme="google"] .evc--quiet {
     align-items: stretch;
   }
 }
+
+/* ------------------------------------------------------------ plans ---- */
+
+/*
+ * Marks a control as Plus. Shown before the fact, never after: what people
+ * resent about a paywall is the surprise, not the price.
+ */
+.plus-badge {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 0.35rem;
+  padding: 0.05rem 0.34rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent-2) 26%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--accent-2) 45%, transparent);
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--accent-2) 55%, var(--ink));
+  vertical-align: middle;
+}
+
+.ev-choice__opt--locked,
+.ev-size--locked {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.ev-rounds__locked {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.1rem;
+  margin-bottom: 0.4rem;
+}
+
+/* Shown when the server refuses a write on plan grounds. */
+.plus-wall {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-top: 0.6rem;
+  padding: 0.7rem 0.85rem;
+  border-radius: var(--tile-radius);
+  background: color-mix(in srgb, var(--accent-2) 12%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--accent-2) 32%, transparent);
+}
+
+.plus-wall__msg {
+  margin: 0;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.plus-wall__offer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.plus-wall__price {
+  flex: none;
+  font-weight: 800;
+  color: color-mix(in srgb, var(--accent-2) 55%, var(--ink));
+}

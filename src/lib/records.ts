@@ -78,14 +78,22 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
   if (!res.ok) {
     let message = `API error ${res.status}`
     let code: string | undefined
+    let detail: { limit?: string; plan?: string; allowed?: number | boolean } | undefined
     try {
-      const body = (await res.json()) as { error?: string; code?: string }
+      const body = (await res.json()) as {
+        error?: string
+        code?: string
+        limit?: string
+        plan?: string
+        allowed?: number | boolean
+      }
       if (body.error) message = body.error
       code = body.code
+      if (body.limit) detail = { limit: body.limit, plan: body.plan, allowed: body.allowed }
     } catch {
       /* ignore */
     }
-    throw new ApiError(message, res.status, code)
+    throw new ApiError(message, res.status, code, detail)
   }
   return res.json() as Promise<T>
 }

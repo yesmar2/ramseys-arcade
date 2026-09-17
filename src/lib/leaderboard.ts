@@ -107,11 +107,23 @@ function dedupeGet<T>(key: string, run: () => Promise<T>): Promise<T> {
 export class ApiError extends Error {
   status: number
   code?: string
+  /** Set on a 402 PLAN_LIMIT: which allowance, and what it is. */
+  limit?: string
+  plan?: string
+  allowed?: number | boolean
 
-  constructor(message: string, status: number, code?: string) {
+  constructor(
+    message: string,
+    status: number,
+    code?: string,
+    detail?: { limit?: string; plan?: string; allowed?: number | boolean },
+  ) {
     super(message)
     this.status = status
     this.code = code
+    this.limit = detail?.limit
+    this.plan = detail?.plan
+    this.allowed = detail?.allowed
   }
 }
 
@@ -147,14 +159,22 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
   if (!res.ok) {
     let message = `API error ${res.status}`
     let code: string | undefined
+    let detail: { limit?: string; plan?: string; allowed?: number | boolean } | undefined
     try {
-      const body = (await res.json()) as { error?: string; code?: string }
+      const body = (await res.json()) as {
+        error?: string
+        code?: string
+        limit?: string
+        plan?: string
+        allowed?: number | boolean
+      }
       if (body.error) message = body.error
       code = body.code
+      if (body.limit) detail = { limit: body.limit, plan: body.plan, allowed: body.allowed }
     } catch {
       /* ignore */
     }
-    throw new ApiError(message, res.status, code)
+    throw new ApiError(message, res.status, code, detail)
   }
   return res.json() as Promise<T>
 }

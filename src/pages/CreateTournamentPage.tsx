@@ -13,6 +13,8 @@ import { PageShell } from '../components/PageShell'
 import { getGame } from '../data/games'
 import { tournamentHref } from '../hooks/useHashRoute'
 import { useAuth } from '../hooks/useAuth'
+import { PlanLimitNotice, PlusBadge } from '../components/PlusBadge'
+import { isPlanLimitError } from '../lib/plans'
 import {
   BRACKET_PLAYERS_MAX,
   BRACKET_PLAYERS_MIN,
@@ -163,7 +165,7 @@ function LimitField({
 }
 
 export function CreateTournamentPage() {
-  const { account, loading: authLoading } = useAuth()
+  const { account, limits, loading: authLoading } = useAuth()
   const [kind, setKind] = useState<TournamentKind>('scores')
   const [title, setTitle] = useState('')
   const [games, setGames] = useState<EventGame[]>(['stacker'])
@@ -182,6 +184,7 @@ export function CreateTournamentPage() {
   const [roundGames, setRoundGames] = useState<EventGame[][]>([])
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [planError, setPlanError] = useState<unknown>(null)
   const isBracket = kind === 'bracket'
   const isDouble = isBracket && elimination === 'double'
   const bracketByes = isBracket && !isDouble ? bracketDrawSize(maxPlayers) - maxPlayers : 0
@@ -228,18 +231,25 @@ export function CreateTournamentPage() {
                     role="radiogroup"
                     aria-labelledby="limit-players"
                   >
-                    {DOUBLE_ELIM_SIZES.map((size) => (
-                      <button
-                        key={size}
-                        type="button"
-                        role="radio"
-                        aria-checked={maxPlayers === size}
-                        className={`ev-size${maxPlayers === size ? ' ev-size--on' : ''}`}
-                        onClick={() => setMaxPlayers(size)}
-                      >
-                        {size}
-                      </button>
-                    ))}
+                    {DOUBLE_ELIM_SIZES.map((size) => {
+                      const locked = size > limits.maxDraw
+                      return (
+                        <button
+                          key={size}
+                          type="button"
+                          role="radio"
+                          aria-checked={maxPlayers === size}
+                          disabled={locked}
+                          title={locked ? `Draws over ${limits.maxDraw} are a Plus feature` : undefined}
+                          className={`ev-size${maxPlayers === size ? ' ev-size--on' : ''}${
+                            locked ? ' ev-size--locked' : ''
+                          }`}
+                          onClick={() => setMaxPlayers(size)}
+                        >
+                          {size}
+                        </button>
+                      )
+                    })}
                   </div>
                   <p className="ev-field__hint">
                     Double elimination needs a full draw, so the field is a power of two.
@@ -251,7 +261,7 @@ export function CreateTournamentPage() {
                   label="Players"
                   value={maxPlayers}
                   min={isBracket ? BRACKET_PLAYERS_MIN : 2}
-                  max={isBracket ? BRACKET_PLAYERS_MAX : 99}
+                  max={Math.min(limits.maxDraw, isBracket ? BRACKET_PLAYERS_MAX : 99)}
                   unlimited={isBracket ? undefined : unlimitedPlayers}
                   onValue={setMaxPlayers}
                   onUnlimited={isBracket ? undefined : setUnlimitedPlayers}
@@ -327,7 +337,14 @@ export function CreateTournamentPage() {
       if (created.inviteCode) rememberTournamentInvite(created.id, created.inviteCode)
       window.location.hash = tournamentHref(created.id, created.inviteCode ?? undefined)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not create event')
+      // A plan refusal gets its own notice; everything else is a plain error.
+      if (isPlanLimitError(err)) {
+        setPlanError(err)
+        setError(null)
+      } else {
+        setPlanError(null)
+        setError(err instanceof Error ? err.message : 'Could not create event')
+      }
       setBusy(false)
     }
   }
@@ -409,10 +426,16 @@ export function CreateTournamentPage() {
                     type="button"
                     role="radio"
                     aria-checked={elimination === 'double'}
-                    className={`ev-choice__opt${elimination === 'double' ? ' ev-choice__opt--on' : ''}`}
+                    disabled={!limits.doubleElimination}
+                    className={`ev-choice__opt${elimination === 'double' ? ' ev-choice__opt--on' : ''}${
+                      limits.doubleElimination ? '' : ' ev-choice__opt--locked'
+                    }`}
                     onClick={() => selectElimination('double')}
                   >
-                    <span className="ev-choice__name">Double elimination</span>
+                    <span className="ev-choice__name">
+                      Double elimination
+                      {limits.doubleElimination ? null : <PlusBadge />}
+                    </span>
                     <span className="ev-choice__desc">
                       A loss drops you to the losers bracket.
                     </span>
@@ -485,6 +508,12 @@ export function CreateTournamentPage() {
                     Use round 1’s games for every round
                   </button>
                 ) : null}
+                {limits.multiGameRounds ? null : (
+                  <p className="ev-field__hint ev-rounds__locked">
+                    Every round plays the same game.
+                    <PlusBadge /> a different game each round.
+                  </p>
+                )}
                 <ol className="ev-rounds">
                   {roundGames.map((round, i) => {
                     const spare = EVENT_GAMES.filter((g) => !round.includes(g))
@@ -524,7 +553,7 @@ export function CreateTournamentPage() {
                               </span>
                             )
                           })}
-                          {spare.length ? (
+                          {limits.multiGameRounds && spare.length ? (
                             <label className="ev-round__add">
                               <span className="visually-hidden">
                                 Add a game to {bracketRoundLabel(i + 1, rounds)}
@@ -656,6 +685,7 @@ export function CreateTournamentPage() {
           </section>
 
           {error ? <p className="ev-note ev-note--error">{error}</p> : null}
+          <PlanLimitNotice error={planError} />
 
           <button
             type="submit"

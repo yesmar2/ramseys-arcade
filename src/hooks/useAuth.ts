@@ -6,8 +6,11 @@ import {
   getSessionToken,
   type Account,
 } from '../lib/auth'
+import { FREE_LIMITS, type PlanLimits } from '../lib/plans'
 
 let cachedAccount: Account | null = null
+/** Travels with the account: same fetch, same lifetime, same invalidation. */
+let cachedLimits: PlanLimits = FREE_LIMITS
 let inflightMe: Promise<Account | null> | null = null
 let inflightGeneration = -1
 let lastMeFetchAt = 0
@@ -16,6 +19,7 @@ const ME_CACHE_MS = 60_000
 async function loadAuthMe(force = false): Promise<Account | null> {
   if (!getSessionToken()) {
     cachedAccount = null
+    cachedLimits = FREE_LIMITS
     inflightMe = null
     inflightGeneration = -1
     return null
@@ -42,6 +46,7 @@ async function loadAuthMe(force = false): Promise<Account | null> {
       }
       const next = me?.account ?? null
       cachedAccount = next
+      cachedLimits = me?.limits ?? FREE_LIMITS
       lastMeFetchAt = Date.now()
       return next
     } catch {
@@ -58,6 +63,7 @@ async function loadAuthMe(force = false): Promise<Account | null> {
 
 export function useAuth() {
   const [account, setAccount] = useState<Account | null>(() => cachedAccount)
+  const [limits, setLimits] = useState<PlanLimits>(() => cachedLimits)
   const [loading, setLoading] = useState(
     () => Boolean(getSessionToken()) && !cachedAccount,
   )
@@ -67,10 +73,12 @@ export function useAuth() {
     const sync = async (force = false) => {
       if (!getSessionToken()) {
         cachedAccount = null
+        cachedLimits = FREE_LIMITS
         inflightMe = null
         inflightGeneration = -1
         if (!cancelled) {
           setAccount(null)
+          setLimits(FREE_LIMITS)
           setLoading(false)
         }
         return
@@ -79,6 +87,7 @@ export function useAuth() {
       const next = await loadAuthMe(force)
       if (!cancelled) {
         setAccount(next)
+        setLimits(cachedLimits)
         setLoading(false)
       }
     }
@@ -100,5 +109,11 @@ export function useAuth() {
     }
   }, [])
 
-  return { account, loading, signedIn: Boolean(account) }
+  return {
+    account,
+    limits,
+    loading,
+    signedIn: Boolean(account),
+    isPlus: account?.plan === 'plus',
+  }
 }

@@ -18,6 +18,8 @@ const SESSION_KEY = 'arcade-session'
 const ACCOUNT_TAGS_KEY = 'arcade-account-tags'
 export const AUTH_EVENT = 'arcade-auth'
 
+import type { PlanLimits } from './plans'
+
 export type AccountPlan = 'free' | 'plus'
 
 export type Account = {
@@ -154,14 +156,22 @@ async function authApi<T>(path: string, init?: RequestInit): Promise<T> {
   if (!res.ok) {
     let message = `API error ${res.status}`
     let code: string | undefined
+    let detail: { limit?: string; plan?: string; allowed?: number | boolean } | undefined
     try {
-      const body = (await res.json()) as { error?: string; code?: string }
+      const body = (await res.json()) as {
+        error?: string
+        code?: string
+        limit?: string
+        plan?: string
+        allowed?: number | boolean
+      }
       if (body.error) message = body.error
       code = body.code
+      if (body.limit) detail = { limit: body.limit, plan: body.plan, allowed: body.allowed }
     } catch {
       /* ignore */
     }
-    throw new ApiError(message, res.status, code)
+    throw new ApiError(message, res.status, code, detail)
   }
   if (res.status === 204) return undefined as T
   return res.json() as Promise<T>
@@ -265,12 +275,17 @@ export async function verifyMagicToken(token: string): Promise<{
 export async function fetchAuthMe(): Promise<{
   account: Account
   names: OwnedName[]
+  limits?: PlanLimits
 } | null> {
   const tokenAtStart = getSessionToken()
   const generationAtStart = authGeneration
   if (!tokenAtStart) return null
   try {
-    const data = await authApi<{ account: Account; names: OwnedName[] }>('/auth/me')
+    const data = await authApi<{
+      account: Account
+      names: OwnedName[]
+      limits?: PlanLimits
+    }>('/auth/me')
     // Session changed while this request was in flight — ignore the result.
     if (getSessionToken() !== tokenAtStart || authGeneration !== generationAtStart) {
       return null
