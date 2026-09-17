@@ -1987,3 +1987,218 @@ html[data-theme="google"] .evc--quiet {
   font-weight: 800;
   color: color-mix(in srgb, var(--accent-2) 55%, var(--ink));
 }
+
+/* ------------------------------------------------------- plus page ---- */
+
+.plus-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+  text-align: center;
+  padding: 1.4rem 1rem 1.6rem;
+}
+
+.plus-hero__kicker {
+  margin: 0;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--accent-2) 55%, var(--ink));
+}
+
+.plus-hero__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(1.8rem, 6vw, 2.6rem);
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  line-height: 1.05;
+  text-wrap: balance;
+  color: var(--ink);
+}
+
+.plus-hero__lead {
+  margin: 0;
+  max-width: 34rem;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.plus-hero__cta {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  margin-top: 0.4rem;
+}
+
+.plus-hero__price {
+  display: flex;
+  align-items: baseline;
+  gap: 0.15rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.plus-hero__price strong {
+  font-family: var(--font-display);
+  font-size: 1.9rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--ink);
+}
+
+.plus-hero__btn {
+  padding: 0.55rem 1.1rem;
+  border-radius: 999px;
+  border: 1px solid rgba(var(--ink-rgb), 0.12);
+  background: rgba(var(--surface-rgb), 0.85);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: var(--muted);
+  cursor: not-allowed;
+}
+
+.plus-hero__have {
+  padding: 0.4rem 0.9rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent-2) 22%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--accent-2) 42%, transparent);
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: color-mix(in srgb, var(--accent-2) 55%, var(--ink));
+}
+
+.plus-hero__soon {
+  margin: 0;
+  max-width: 28rem;
+  font-size: 0.76rem;
+  line-height: 1.4;
+  color: var(--muted);
+}
+
+.plus-table {
+  margin-top: 1.5rem;
+}
+
+.plus-table__head {
+  margin-bottom: 0.6rem;
+}
+
+.plus-table__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+
+.plus-table__blurb {
+  margin: 0.1rem 0 0;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.plus-grid {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.86rem;
+}
+
+.plus-grid th,
+.plus-grid td {
+  padding: 0.6rem 0.7rem;
+  text-align: left;
+  border-top: 1px solid rgba(var(--ink-rgb), 0.07);
+}
+
+.plus-grid thead th {
+  border-top: 0;
+  padding-bottom: 0.35rem;
+  font-size: 0.64rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.plus-grid tbody th {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.plus-grid__note {
+  display: block;
+  margin-top: 0.1rem;
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.plus-grid td {
+  width: 6.5rem;
+  text-align: center;
+}
+
+.plus-grid thead th:not(:first-child) {
+  text-align: center;
+}
+
+/* The paid column gets a tint so the two are distinguishable at a glance. */
+.plus-grid__paid {
+  background: color-mix(in srgb, var(--accent-2) 8%, transparent);
+}
+
+.plus-cell {
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.plus-cell--yes {
+  color: var(--accent);
+  font-size: 1rem;
+}
+
+.plus-cell--no {
+  color: rgba(var(--ink-rgb), 0.3);
+}
+
+.plus-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-top: 1.6rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(var(--ink-rgb), 0.07);
+}
+
+.plus-foot__line {
+  margin: 0;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.plus-foot__link {
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: var(--accent);
+  text-decoration: none;
+}
+
+@media (max-width: 30rem) {
+  .plus-grid th,
+  .plus-grid td {
+    padding: 0.5rem 0.4rem;
+  }
+
+  .plus-grid td {
+    width: 4.5rem;
+  }
+}

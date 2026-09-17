@@ -27,6 +27,7 @@ import { GameHubPage } from './pages/GameHubPage'
 import { GameLeaderboardPage } from './pages/GameLeaderboardPage'
 import { rememberPlayed } from './lib/lastPlayed'
 import { AboutPage } from './pages/AboutPage'
+import { PlusPage } from './pages/PlusPage'
 import { HomePage } from './pages/HomePage'
 import { RankPage } from './pages/RankPage'
 import { LeaderboardsPage } from './pages/LeaderboardsPage'
@@ -177,6 +178,7 @@ function App() {
 
   if (route.name === 'home') return <HomePage />
   if (route.name === 'about') return <AboutPage />
+  if (route.name === 'plus') return <PlusPage />
   if (route.name === 'devCelebrate') return <DevCelebratePage />
   if (route.name === 'privacy') return <PrivacyPage />
   if (route.name === 'terms') return <TermsPage />

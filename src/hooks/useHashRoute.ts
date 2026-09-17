@@ -36,6 +36,7 @@ export type Route =
   | { name: 'gamePlay'; slug: string }
   | { name: 'authVerify'; token: string }
   | { name: 'about' }
+  | { name: 'plus' }
   | { name: 'privacy' }
   | { name: 'terms' }
   | { name: 'devCelebrate' }
@@ -119,6 +120,10 @@ export function termsHref() {
 
 export function aboutHref() {
   return '#/about'
+}
+
+export function plusHref() {
+  return '#/plus'
 }
 
 export function tournamentsHref() {
@@ -263,6 +268,7 @@ function parseHash(hash: string): Route {
       : undefined
   if (!path) return { name: 'home' }
   if (path === 'about') return { name: 'about' }
+  if (path === 'plus') return { name: 'plus' }
   if (path === 'privacy') return { name: 'privacy' }
   if (path === 'terms') return { name: 'terms' }
   if (path === 'dev/celebrate' && import.meta.env.DEV) return { name: 'devCelebrate' }

@@ -1,3 +1,4 @@
+import { plusHref } from '../hooks/useHashRoute'
 import { isPlanLimitError, PLAN_UPSELL, PLUS_PRICE } from '../lib/plans'
 
 /**
@@ -29,7 +30,9 @@ export function PlanLimitNotice({ error }: { error: unknown }) {
       <p className="plus-wall__msg">{error.message}</p>
       <p className="plus-wall__offer">
         <span className="plus-wall__what">{PLAN_UPSELL[error.limit]}</span>
-        <span className="plus-wall__price">Plus · {PLUS_PRICE}</span>
+        <a className="plus-wall__price" href={plusHref()}>
+          Plus · {PLUS_PRICE}
+        </a>
       </p>
     </div>
   )
