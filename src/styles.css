@@ -10628,3 +10628,42 @@ a.notif:focus-visible {
   border-radius: 0;
   background: none;
 }
+
+/*
+ * The panel is a column that scrolls. Its parts must never shrink to fit the
+ * screen, or on a short phone the row lists collapse onto each other and the
+ * last rows disappear under the settings.
+ */
+.site-drawer__panel > * {
+  flex: none;
+}
+
+/* On a phone the hero comes in a little, so the whole drawer usually fits without scrolling. */
+@media (max-width: 720px) {
+  .site-drawer__hero {
+    gap: 0.5rem;
+    padding: 0.85rem 0.9rem 0.85rem;
+  }
+
+  .site-drawer__hero-name {
+    font-size: 1.25rem;
+  }
+
+  .site-drawer__row {
+    min-height: 2.65rem;
+    padding: 0.55rem 0.85rem;
+  }
+}
+
+/* The mark in the hero: big, but not the profile page's size. */
+.site-drawer__hero-mark--avatar .player-avatar {
+  width: 5.75rem;
+  height: 5.75rem;
+}
+
+@media (max-width: 720px) {
+  .site-drawer__hero-mark--avatar .player-avatar {
+    width: 4.75rem;
+    height: 4.75rem;
+  }
+}
