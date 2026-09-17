@@ -43,6 +43,7 @@ import { StackerPage } from './pages/StackerPage'
 import { WhackPage } from './pages/WhackPage'
 import { CreateTournamentPage } from './pages/CreateTournamentPage'
 import { GroupDetailPage, GroupsPage } from './pages/GroupsPage'
+import { isImpersonating } from './lib/impersonate'
 import { pruneOrphanTournamentIds } from './lib/tournaments'
 import { TournamentDetailPage, TournamentsPage } from './pages/TournamentsPage'
 import { PrivacyPage } from './pages/PrivacyPage'
@@ -58,6 +59,22 @@ async function bootstrapApp() {
 async function onPlayerNameChanged() {
   const name = getLastPlayerName()
   const token = name ? getClaimToken(name) : null
+  /*
+   * Borrowing a tag is not changing yours.
+   *
+   * This fires the moment impersonation sets the active tag, and the two
+   * things it does next both assume the new tag is yours: pruning drops the
+   * claim tokens of every other tag — your own included — and the migration
+   * asks the server to move that tag's scores onto the borrowed one. The
+   * server refuses when the borrowed tag belongs to another account, so this
+   * has been landing as a failed request rather than lost scores, but a tag
+   * nobody has claimed would have taken them.
+   */
+  if (isImpersonating()) {
+    await refreshPersonalBests()
+    await refreshGlobalRank()
+    return
+  }
   pruneOrphanClaims()
   if (name && token) {
     await migrateLocalScoresToName(name, token)

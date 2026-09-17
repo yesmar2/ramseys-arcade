@@ -12,6 +12,7 @@ import {
   setPlayerNameLocal,
 } from './leaderboard'
 import { clearActiveGroup } from './groups'
+import { isImpersonating } from './impersonate'
 import { clearTournamentIdentity } from './tournaments'
 
 const SESSION_KEY = 'arcade-session'
@@ -186,8 +187,18 @@ function applyOwnedNames(names: OwnedName[], accountId?: string) {
     if (entry.name && entry.token) rememberClaimToken(entry.name, entry.token)
   }
   if (names.length >= 1) {
-    pruneOrphanClaims(names.map((entry) => entry.name))
-    setPlayerNameLocal(names[0].name)
+    /*
+     * Impersonation is a local override of which tag you are playing as, so
+     * the account's own tag must not be written back over it. This runs on
+     * every /auth/me — which is every page that mounts useAuth, plus every
+     * window focus — and it was quietly ending the impersonation one
+     * navigation later. Pruning is skipped with it: the borrowed tag's claim
+     * token is not one of the account's own, and would be swept away.
+     */
+    if (!isImpersonating()) {
+      pruneOrphanClaims(names.map((entry) => entry.name))
+      setPlayerNameLocal(names[0].name)
+    }
     if (accountId) {
       setLastAccountId(accountId)
       rememberAccountTag(accountId, names[0].name)
