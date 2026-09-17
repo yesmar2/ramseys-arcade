@@ -140,7 +140,7 @@ export const games: Game[] = [
     name: 'Putt',
     slug: 'putt',
     description: 'Nine holes. One tap to aim, one to hit.',
-    how: 'Two taps a stroke: the first stops the aim as it sweeps round the ball, the second stops the power bar. Walls bounce, bumpers kick, sand drags, and a ball rolling too fast skips over the cup. Fewer strokes score more on every hole; at par plus three the ball is picked up. Space or Enter taps on a keyboard.',
+    how: 'Pull back from the ball and let go to shoot; the further you pull, the harder it goes. Walls bounce, sand drags, and a ball rolling too fast skips over the cup. Bumpers pop the ball away and pay more for every hit in a stroke, and lanes pay once when you roll over them. Fewer strokes still score most; at par plus three the ball is picked up and the hole scores nothing. On a keyboard, arrows aim and holding Space charges the shot.',
     accent: '#5cc46a',
     playable: true,
     inDevelopment: true,

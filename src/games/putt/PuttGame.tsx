@@ -8,19 +8,24 @@ import { usePersonalBest } from '../../hooks/usePersonalBest'
 import { getPersonalBest } from '../../lib/personalBest'
 import { useTournamentPlay } from '../../tournaments/TournamentPlayContext'
 import {
+  cancelAim,
+  COURSE,
   createInitialState,
-  puttLayout,
+  fieldFrame,
+  keyAim,
   resizeState,
+  setDragAim,
+  shoot,
   startGame,
-  tap,
   tick,
+  toFieldDelta,
   toSnapshot,
   type GameState,
   type Snapshot,
 } from './game'
 import { renderGame } from './render'
 
-const IN_RUN = new Set(['intro', 'aim', 'power', 'roll', 'sunk', 'pickup'])
+const IN_RUN = new Set(['intro', 'aim', 'roll', 'sunk', 'pickup'])
 
 function toParLabel(toPar: number) {
   if (toPar === 0) return 'Level par'
@@ -28,13 +33,20 @@ function toParLabel(toPar: number) {
   return `${n} ${toPar < 0 ? 'under' : 'over'} par`
 }
 
+/**
+ * The field fills the screen, portrait or landscape. To shoot, press anywhere
+ * and pull back; the ball goes the other way, harder the further you pull.
+ * Keyboard: left and right turn the aim, hold space to charge, release to
+ * shoot. A plain tap starts a round from the title or the score card.
+ */
 export function PuttGame() {
   const tournament = useTournamentPlay()
   const apiBest = usePersonalBest('putt')
-  const layout = puttLayout()
   const stateRef = useRef<GameState>(createInitialState())
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const sizeRef = useRef({ w: 540, h: 720 })
+  const dragRef = useRef<{ id: number; x: number; y: number; moved: boolean } | null>(null)
+  const keysRef = useRef({ left: false, right: false, charge: false })
   const [ui, setUi] = useState<Snapshot>(() => toSnapshot(stateRef.current))
   const [saveOpen, setSaveOpen] = useState(false)
   const offeredScore = useRef<number | null>(null)
@@ -59,6 +71,11 @@ export function PuttGame() {
         stateRef.current = resizeState(stateRef.current, w, h)
       }
 
+      const keys = keysRef.current
+      const turn = (keys.right ? 1 : 0) - (keys.left ? 1 : 0)
+      if (turn !== 0 || keys.charge || stateRef.current.aiming === 'key') {
+        stateRef.current = keyAim(stateRef.current, turn, keys.charge, dt)
+      }
       stateRef.current = tick(stateRef.current, dt)
 
       uiAcc += dt
@@ -88,19 +105,32 @@ export function PuttGame() {
     if (ui.phase === 'menu') previousBestRef.current = apiBest
   }, [apiBest, ui.phase])
 
-  // Dev only: lets a script read the state to drive a play-test.
+  // Dev only: lets a script read and drive the state for a play-test.
   useEffect(() => {
     if (!import.meta.env.DEV) return
-    const w = window as unknown as { __putt?: () => GameState }
+    const w = window as unknown as {
+      __putt?: () => GameState
+      __puttShoot?: (angle: number, power: number) => void
+      __puttCourse?: typeof COURSE
+    }
     w.__putt = () => stateRef.current
+    w.__puttCourse = COURSE
+    w.__puttShoot = (angle, power) => {
+      const s = stateRef.current
+      if (s.phase !== 'aim') return
+      stateRef.current = shoot({ ...s, aim: angle, power, aiming: 'drag' })
+    }
     return () => {
       delete w.__putt
+      delete w.__puttShoot
+      delete w.__puttCourse
     }
   }, [])
 
   const restart = () => {
     setSaveOpen(false)
     offeredScore.current = null
+    dragRef.current = null
     const { w, h } = sizeRef.current
     stateRef.current = startGame(resizeState(createInitialState(w, h), w, h))
     previousBestRef.current = getPersonalBest('putt')
@@ -108,35 +138,80 @@ export function PuttGame() {
     setUi(toSnapshot(stateRef.current))
   }
 
-  const onTap = () => {
+  const onPointerDown = (e: ReactPointerEvent<HTMLElement>) => {
+    if (saveOpen) return
+    e.preventDefault()
     const s = stateRef.current
     if (s.phase === 'menu' || s.phase === 'gameover') {
       if (performance.now() < startGrace.current) return
       restart()
       return
     }
-    if (performance.now() < startGrace.current) return
-    stateRef.current = tap(s)
+    if (s.phase !== 'aim') return
+    const rect = e.currentTarget.getBoundingClientRect()
+    dragRef.current = { id: e.pointerId, x: e.clientX - rect.left, y: e.clientY - rect.top, moved: false }
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId)
+    } catch {
+      // A pointer that is already gone; the drag still works off the element.
+    }
+  }
+
+  const onPointerMove = (e: ReactPointerEvent<HTMLElement>) => {
+    const drag = dragRef.current
+    if (!drag || drag.id !== e.pointerId) return
+    const rect = e.currentTarget.getBoundingClientRect()
+    const dx = e.clientX - rect.left - drag.x
+    const dy = e.clientY - rect.top - drag.y
+    if (!drag.moved && Math.hypot(dx, dy) < 4) return
+    drag.moved = true
+    const f = fieldFrame(rect.width, rect.height)
+    const pull = toFieldDelta(f, dx, dy)
+    stateRef.current = setDragAim(stateRef.current, pull.x, pull.y)
+  }
+
+  const onPointerUp = (e: ReactPointerEvent<HTMLElement>) => {
+    const drag = dragRef.current
+    if (!drag || drag.id !== e.pointerId) return
+    dragRef.current = null
+    stateRef.current = drag.moved ? shoot(stateRef.current) : cancelAim(stateRef.current)
     setUi(toSnapshot(stateRef.current))
   }
 
-  const onPointerDown = (e: ReactPointerEvent<HTMLElement>) => {
-    if (saveOpen) return
-    e.preventDefault()
-    onTap()
-  }
-
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
+    const onDown = (e: KeyboardEvent) => {
       if (saveOpen) return
+      const s = stateRef.current
+      if (e.code === 'ArrowLeft') keysRef.current.left = true
+      if (e.code === 'ArrowRight') keysRef.current.right = true
       if (e.code === 'Space' || e.code === 'Enter') {
-        if (e.repeat) return
         e.preventDefault()
-        onTap()
+        if (e.repeat) return
+        if (s.phase === 'menu' || s.phase === 'gameover') {
+          if (performance.now() >= startGrace.current) restart()
+          return
+        }
+        if (s.phase === 'aim' && s.aiming !== 'drag') keysRef.current.charge = true
+      }
+      if (e.code === 'ArrowLeft' || e.code === 'ArrowRight') e.preventDefault()
+    }
+    const onUp = (e: KeyboardEvent) => {
+      if (e.code === 'ArrowLeft') keysRef.current.left = false
+      if (e.code === 'ArrowRight') keysRef.current.right = false
+      if ((e.code === 'Space' || e.code === 'Enter') && keysRef.current.charge) {
+        keysRef.current.charge = false
+        if (stateRef.current.phase === 'aim' && stateRef.current.aiming === 'key') {
+          stateRef.current = shoot(stateRef.current)
+          setUi(toSnapshot(stateRef.current))
+        }
       }
     }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
+    window.addEventListener('keydown', onDown)
+    window.addEventListener('keyup', onUp)
+    return () => {
+      window.removeEventListener('keydown', onDown)
+      window.removeEventListener('keyup', onUp)
+    }
   }, [saveOpen])
 
   const inRun = IN_RUN.has(ui.phase)
@@ -144,8 +219,14 @@ export function PuttGame() {
   return (
     <section className="putt putt--fullscreen">
       <div className="game-play">
-        <GameStage aspectWidth={layout.aspectW} aspectHeight={layout.aspectH}>
-          <div className="putt__play" onPointerDown={onPointerDown}>
+        <GameStage aspectWidth={3} aspectHeight={4} fill>
+          <div
+            className="putt__play"
+            onPointerDown={onPointerDown}
+            onPointerMove={onPointerMove}
+            onPointerUp={onPointerUp}
+            onPointerCancel={onPointerUp}
+          >
             <canvas ref={canvasRef} className="putt__viewport" />
             <GamePlayChrome slug="putt" inRun={() => IN_RUN.has(stateRef.current.phase)} />
             <PlayReadout>
@@ -156,9 +237,7 @@ export function PuttGame() {
           </div>
         </GameStage>
         <div className="putt__overlay">
-          {ui.phase === 'menu' && !saveOpen && (
-            <GameStartCard title="Putt" slug="putt" />
-          )}
+          {ui.phase === 'menu' && !saveOpen && <GameStartCard title="Putt" slug="putt" />}
           {ui.phase === 'gameover' && saveOpen && (
             tournament ? (
               <TournamentScoreCard

@@ -1,59 +1,80 @@
 import { getPersonalBest } from '../../lib/personalBest'
 import { sfx } from '../../lib/sound'
-import { COURSE, COURSE_PAR, FIELD_H, FIELD_W, type Hole, type Vec, type Wall } from './course'
+import {
+  COURSE,
+  COURSE_PAR,
+  FIELD_H,
+  FIELD_W,
+  LANE_R,
+  type Hole,
+  type Vec,
+  type Wall,
+} from './course'
 
 /*
- * Putt: nine holes, two taps a stroke.
+ * Putt: nine holes of mini golf with a pinball streak.
  *
- * The aim sweeps round the ball; a tap stops it. The power bar rises and
- * falls; a tap stops that. Then the ball rolls, and physics does the rest:
- * walls at any angle, bumpers, sand, a cup that pulls a slow ball in and
- * lets a fast one skip across. Fewer strokes score more, hole by hole, and
- * a hole that gets away from you is picked up at par plus three.
+ * Pull back from the ball and let go to shoot — further back, harder. The
+ * ball rolls on physics: walls at any angle, sand that drags, a cup that
+ * pulls a slow ball in and lets a fast one skip across. The pinball is the
+ * scoring: bumpers pop the ball away and pay more for every hit in the
+ * same stroke, lanes light up and pay once a hole. Fewer strokes still
+ * score most, and the whole hole — bumpers, lanes and all — is forfeit if
+ * the ball is picked up at par plus three.
  */
 
-export type Phase =
-  | 'menu'
-  | 'intro' // "Hole 3 · Par 3", for a moment
-  | 'aim'
-  | 'power'
-  | 'roll'
-  | 'sunk' // the ball dropping in, before the next hole
-  | 'pickup' // over the stroke cap; picked up, before the next hole
-  | 'gameover'
+export type Phase = 'menu' | 'intro' | 'aim' | 'roll' | 'sunk' | 'pickup' | 'gameover'
 
 export const BALL_R = 1.7
-export const CUP_R = 2.6
+export const CUP_R = 2.7
 /** Strokes allowed over par before the ball is picked up. */
 export const PICKUP_OVER = 3
 /** Points per stroke under par plus two: par is 200, birdie 300, bogey 100. */
 export const POINTS_PER = 100
 export const ACE_BONUS = 200
+/** A bumper pays 50 for the first hit in a stroke, 100 for the second, and on. */
+export const BUMPER_STEP = 50
+export const LANE_POINTS = 100
 
-const AIM_PERIOD = 2.6
-const POWER_PERIOD = 1.5
-const MIN_POWER = 0.14
+/** Pulling back this far, in field units, is full power. */
+export const MAX_DRAG = 46
+const MIN_POWER = 0.08
 /** Full power sends a ball this far on the green before it stops. */
-const FULL_DISTANCE = 128
-const FRICTION_GREEN = 1.45
+const FULL_DISTANCE = 215
+const FRICTION_GREEN = 1.25
 const FRICTION_SAND = 5.2
-const STOP_SPEED = 1.5
-const WALL_BOUNCE = 0.62
-const BUMPER_BOUNCE = 0.95
+const STOP_SPEED = 1.6
+const WALL_BOUNCE = 0.6
+/** A bumper sends the ball away at least this fast, whatever it arrived at. */
+const BUMPER_POP = 105
+const BUMPER_KEEP = 0.85
 /** A ball slower than this within the cup drops; faster, it skips across. */
-const CUP_CAPTURE_SPEED = 95
+const CUP_CAPTURE_SPEED = 100
 const CUP_PULL = 1.7
-const INTRO_TIME = 1.1
+const INTRO_TIME = 1.0
 const SUNK_TIME = 0.95
 const PICKUP_TIME = 1.2
-const MAX_ROLL = 9
+const MAX_ROLL = 10
 const SUBSTEPS = 6
+/** Keyboard aim turns this fast, and the held-space charge takes this long up and back. */
+const KEY_TURN = 1.9
+const KEY_CHARGE = 1.3
 
 export type Ball = { x: number; y: number; vx: number; vy: number }
 
-export type HoleResult = { strokes: number; par: number; points: number; label: string }
+export type HoleResult = {
+  strokes: number
+  par: number
+  golf: number
+  pinball: number
+  points: number
+  label: string
+}
 
 export type Popup = { text: string; sub: string | null; life: number }
+
+/** A little "+50" rising from where it happened, in field coordinates. */
+export type Floater = { x: number; y: number; text: string; life: number }
 
 export type GameState = {
   phase: Phase
@@ -63,19 +84,26 @@ export type GameState = {
   strokes: number
   results: HoleResult[]
   ball: Ball
-  /** Seconds the current phase has run, for the sweeps and the timers. */
+  /** Seconds the current phase has run. */
   t: number
-  /** Where the aim sits, in radians, and where it started this stroke. */
+  /** The shot being lined up: direction and power, and whether a drag or the keys are setting it. */
   aim: number
-  aimStart: number
-  /** Locked when the aim is stopped, 0..1 when the power is. */
   power: number
+  aiming: 'none' | 'drag' | 'key'
+  /** Space is held: the power is climbing and falling. */
+  charging: boolean
   /** How long the ball has rolled this stroke. */
   rollTime: number
-  /** Whether the ball is in sand right now, for the renderer. */
   inSand: boolean
   /** Ball scale while dropping into the cup. */
   drop: number
+  /** Pinball, this hole: bumper hits in the current stroke, lit lanes, points banked so far. */
+  strokeHits: number
+  lanesLit: boolean[]
+  holeBonus: number
+  /** Flash timers per bumper, for the renderer. */
+  bumperFlash: number[]
+  floaters: Floater[]
   popup: Popup | null
   flash: number
   stageW: number
@@ -90,7 +118,7 @@ export type Snapshot = {
   strokes: number
   par: number
   toPar: number
-  finished: boolean
+  aiming: GameState['aiming']
 }
 
 function loadBest() {
@@ -113,11 +141,17 @@ export function createInitialState(w = 540, h = 720): GameState {
     ball: { x: first.tee.x, y: first.tee.y, vx: 0, vy: 0 },
     t: 0,
     aim: 0,
-    aimStart: 0,
     power: 0,
+    aiming: 'none',
+    charging: false,
     rollTime: 0,
     inSand: false,
     drop: 1,
+    strokeHits: 0,
+    lanesLit: first.lanes.map(() => false),
+    holeBonus: 0,
+    bumperFlash: first.bumpers.map(() => 0),
+    floaters: [],
     popup: null,
     flash: 0,
     stageW: w,
@@ -129,19 +163,48 @@ export function resizeState(state: GameState, w: number, h: number): GameState {
   return { ...state, stageW: w, stageH: h }
 }
 
-export function puttLayout() {
-  return { aspectW: 3, aspectH: 4 }
+/**
+ * Where the field sits on the screen. The field is portrait; on a landscape
+ * screen it lies on its side, tee on the left and cup on the right, so it
+ * fills the screen either way. A band above carries the hole and strokes,
+ * one below carries the cue.
+ */
+export function fieldFrame(w: number, h: number) {
+  const top = Math.max(40, h * 0.085)
+  const bottom = Math.max(30, h * 0.07)
+  const side = Math.max(8, w * 0.02)
+  const availW = w - side * 2
+  const availH = h - top - bottom
+  const rotated = availW > availH
+  const fw = rotated ? FIELD_H : FIELD_W
+  const fh = rotated ? FIELD_W : FIELD_H
+  const s = Math.min(availW / fw, availH / fh)
+  const pw = fw * s
+  const ph = fh * s
+  return {
+    s,
+    rotated,
+    x: side + (availW - pw) / 2,
+    y: top + (availH - ph) / 2,
+    w: pw,
+    h: ph,
+    top,
+    bottom,
+  }
 }
 
-/** Where the field sits on the stage: a band above for the hole, one below for the bar. */
-export function fieldFrame(w: number, h: number) {
-  const top = h * 0.1
-  const bottom = h * 0.09
-  const availH = h - top - bottom
-  const s = Math.min((w * 0.94) / FIELD_W, availH / FIELD_H)
-  const fw = FIELD_W * s
-  const fh = FIELD_H * s
-  return { s, x: (w - fw) / 2, y: top + (availH - fh) / 2, w: fw, h: fh, top, bottom }
+export type Frame = ReturnType<typeof fieldFrame>
+
+/** Field coordinates to screen. */
+export function toScreen(f: Frame, p: Vec): Vec {
+  if (f.rotated) return { x: f.x + (FIELD_H - p.y) * f.s, y: f.y + p.x * f.s }
+  return { x: f.x + p.x * f.s, y: f.y + p.y * f.s }
+}
+
+/** A screen-space movement to field units. */
+export function toFieldDelta(f: Frame, dx: number, dy: number): Vec {
+  if (f.rotated) return { x: dy / f.s, y: -dx / f.s }
+  return { x: dx / f.s, y: dy / f.s }
 }
 
 function angleTo(from: Vec, to: Vec) {
@@ -158,11 +221,17 @@ function beginHole(state: GameState, index: number): GameState {
     ball: { x: hole.tee.x, y: hole.tee.y, vx: 0, vy: 0 },
     t: 0,
     aim: angleTo(hole.tee, hole.cup),
-    aimStart: angleTo(hole.tee, hole.cup),
     power: 0,
+    aiming: 'none',
+    charging: false,
     rollTime: 0,
     inSand: false,
     drop: 1,
+    strokeHits: 0,
+    lanesLit: hole.lanes.map(() => false),
+    holeBonus: 0,
+    bumperFlash: hole.bumpers.map(() => 0),
+    floaters: [],
   }
 }
 
@@ -171,41 +240,58 @@ export function startGame(prev: GameState): GameState {
   return beginHole({ ...fresh, best: Math.max(prev.best, loadBest()) }, 0)
 }
 
-/** The aim, for a phase time t: a steady sweep starting where the last one stopped. */
-function sweepAngle(start: number, t: number) {
-  return start + (t / AIM_PERIOD) * Math.PI * 2
+/** A drag in progress: the pull-back vector, in field units. */
+export function setDragAim(state: GameState, pullX: number, pullY: number): GameState {
+  if (state.phase !== 'aim') return state
+  const len = Math.hypot(pullX, pullY)
+  const power = Math.min(1, len / MAX_DRAG)
+  const aim = len > 0.5 ? Math.atan2(-pullY, -pullX) : state.aim
+  return { ...state, aiming: 'drag', charging: false, aim, power }
 }
 
-/** The power bar, for a phase time t: up and back down, 0..1. */
-export function powerAt(t: number) {
-  return (1 - Math.cos((t / POWER_PERIOD) * Math.PI * 2)) / 2
+export function cancelAim(state: GameState): GameState {
+  if (state.phase !== 'aim') return state
+  return { ...state, aiming: 'none', charging: false, power: 0 }
 }
 
-/** The one input: a tap. What it does depends on where the stroke is. */
-export function tap(state: GameState): GameState {
-  if (state.phase === 'aim') {
-    sfx('tap')
-    return { ...state, phase: 'power', aim: sweepAngle(state.aimStart, state.t), t: 0 }
+/**
+ * Keyboard, called every frame the keys are doing something: turn the aim by
+ * `turn` (−1, 0, 1), and while space is held run the power up and back down.
+ * A finger on the field takes precedence.
+ */
+export function keyAim(state: GameState, turn: number, charging: boolean, dt: number): GameState {
+  if (state.phase !== 'aim' || state.aiming === 'drag') return state
+  const aim = state.aim + turn * KEY_TURN * dt
+  if (!charging) return { ...state, aim, aiming: 'key', charging: false, power: 0 }
+  // The charge counts from the press, not from however long the aim sat still.
+  const t = state.charging ? state.t : 0
+  const cycle = (t % (KEY_CHARGE * 2)) / KEY_CHARGE
+  const power = cycle <= 1 ? cycle : 2 - cycle
+  return { ...state, aim, aiming: 'key', charging: true, power, t }
+}
+
+/** Let go: the shot happens with the aim and power lined up. */
+export function shoot(state: GameState): GameState {
+  if (state.phase !== 'aim') return state
+  if (state.power < MIN_POWER) return cancelAim(state)
+  const power = MIN_POWER + (1 - MIN_POWER) * state.power
+  const speed = FULL_DISTANCE * FRICTION_GREEN * power
+  sfx('whoosh')
+  return {
+    ...state,
+    phase: 'roll',
+    aiming: 'none',
+    charging: false,
+    t: 0,
+    rollTime: 0,
+    strokes: state.strokes + 1,
+    strokeHits: 0,
+    ball: {
+      ...state.ball,
+      vx: Math.cos(state.aim) * speed,
+      vy: Math.sin(state.aim) * speed,
+    },
   }
-  if (state.phase === 'power') {
-    const power = MIN_POWER + (1 - MIN_POWER) * powerAt(state.t)
-    const speed = FULL_DISTANCE * FRICTION_GREEN * power
-    sfx('whoosh')
-    return {
-      ...state,
-      phase: 'roll',
-      power,
-      t: 0,
-      rollTime: 0,
-      strokes: state.strokes + 1,
-      ball: {
-        ...state.ball,
-        vx: Math.cos(state.aim) * speed,
-        vy: Math.sin(state.aim) * speed,
-      },
-    }
-  }
-  return state
 }
 
 function inSandAt(hole: Hole, x: number, y: number) {
@@ -221,7 +307,7 @@ function closestOnWall(wall: Wall, p: Vec): Vec {
   return { x: wall.a.x + abx * u, y: wall.a.y + aby * u }
 }
 
-/** Bounce a ball off a round thing at (cx, cy) it has come within `reach` of. Returns whether it hit. */
+/** Bounce a ball off a round thing it has come within `reach` of. Returns whether it hit. */
 function bounce(ball: Ball, cx: number, cy: number, reach: number, restitution: number): boolean {
   let nx = ball.x - cx
   let ny = ball.y - cy
@@ -244,8 +330,21 @@ function bounce(ball: Ball, cx: number, cy: number, reach: number, restitution: 
   return true
 }
 
-/** One sub-step of rolling. Mutates the ball; returns what happened. */
-function step(ball: Ball, hole: Hole, dt: number): { hit: 'wall' | 'bumper' | null; sand: boolean } {
+/** A bumper is a bounce that adds its own kick. */
+function popBumper(ball: Ball, cx: number, cy: number, reach: number): boolean {
+  const before = Math.hypot(ball.vx, ball.vy)
+  if (!bounce(ball, cx, cy, reach, BUMPER_KEEP)) return false
+  const after = Math.hypot(ball.vx, ball.vy) || 1
+  const want = Math.max(BUMPER_POP, before * BUMPER_KEEP)
+  ball.vx *= want / after
+  ball.vy *= want / after
+  return true
+}
+
+type StepOut = { wall: boolean; bumpers: number[]; lanes: number[]; sand: boolean }
+
+/** One sub-step of rolling. Mutates the ball; returns what it touched. */
+function step(ball: Ball, hole: Hole, dt: number): StepOut {
   ball.x += ball.vx * dt
   ball.y += ball.vy * dt
 
@@ -255,14 +354,17 @@ function step(ball: Ball, hole: Hole, dt: number): { hit: 'wall' | 'bumper' | nu
   ball.vx *= decay
   ball.vy *= decay
 
-  let hit: 'wall' | 'bumper' | null = null
+  const out: StepOut = { wall: false, bumpers: [], lanes: [], sand }
   for (const wall of hole.walls) {
     const p = closestOnWall(wall, ball)
-    if (bounce(ball, p.x, p.y, wall.t + BALL_R, WALL_BOUNCE)) hit = 'wall'
+    if (bounce(ball, p.x, p.y, wall.t + BALL_R, WALL_BOUNCE)) out.wall = true
   }
-  for (const b of hole.bumpers) {
-    if (bounce(ball, b.x, b.y, b.r + BALL_R, BUMPER_BOUNCE)) hit = 'bumper'
-  }
+  hole.bumpers.forEach((b, i) => {
+    if (popBumper(ball, b.x, b.y, b.r + BALL_R)) out.bumpers.push(i)
+  })
+  hole.lanes.forEach((l, i) => {
+    if (Math.hypot(ball.x - l.x, ball.y - l.y) < LANE_R) out.lanes.push(i)
+  })
 
   // The cup pulls a slow ball the last little way, and drops it.
   const dx = hole.cup.x - ball.x
@@ -276,7 +378,7 @@ function step(ball: Ball, hole: Hole, dt: number): { hit: 'wall' | 'bumper' | nu
       ball.vy += dy * pull * dt
     }
   }
-  return { hit, sand }
+  return out
 }
 
 function resultLabel(strokes: number, par: number) {
@@ -290,28 +392,34 @@ function resultLabel(strokes: number, par: number) {
   return `+${diff}`
 }
 
-function holePoints(strokes: number, par: number) {
+function golfPoints(strokes: number, par: number) {
   const base = Math.max(0, par + 2 - strokes) * POINTS_PER
   return base + (strokes === 1 ? ACE_BONUS : 0)
 }
 
-function finishHole(state: GameState, strokes: number, pickedUp: boolean): GameState {
+function finishHole(state: GameState, pickedUp: boolean): GameState {
   const hole = currentHole(state)
-  const points = pickedUp ? 0 : holePoints(strokes, hole.par)
-  const label = pickedUp ? 'Picked up' : resultLabel(strokes, hole.par)
-  const result: HoleResult = { strokes, par: hole.par, points, label }
+  const golf = pickedUp ? 0 : golfPoints(state.strokes, hole.par)
+  const pinball = pickedUp ? 0 : state.holeBonus
+  const points = golf + pinball
+  const label = pickedUp ? 'Picked up' : resultLabel(state.strokes, hole.par)
+  const result: HoleResult = { strokes: state.strokes, par: hole.par, golf, pinball, points, label }
   if (pickedUp) sfx('miss')
-  else if (strokes === 1 || strokes < hole.par) sfx('perfect')
+  else if (state.strokes === 1 || state.strokes < hole.par) sfx('perfect')
   else sfx('good')
+  const sub = pickedUp ? null : pinball > 0 ? `+${golf} · pinball +${pinball}` : `+${golf}`
   return {
     ...state,
     phase: pickedUp ? 'pickup' : 'sunk',
     t: 0,
     score: state.score + points,
     results: [...state.results, result],
-    popup: { text: label, sub: points > 0 ? `+${points}` : null, life: 1.6 },
+    popup: { text: label, sub, life: 1.7 },
     flash: pickedUp ? 0.12 : 0.22,
     ball: { ...state.ball, vx: 0, vy: 0 },
+    aiming: 'none',
+    charging: false,
+    power: 0,
   }
 }
 
@@ -322,14 +430,16 @@ export function tick(state: GameState, dt: number): GameState {
     const life = s.popup.life - dt
     s.popup = life > 0 ? { ...s.popup, life } : null
   }
+  if (s.floaters.length) {
+    s.floaters = s.floaters.map((f) => ({ ...f, life: f.life - dt })).filter((f) => f.life > 0)
+  }
+  if (s.bumperFlash.some((v) => v > 0)) {
+    s.bumperFlash = s.bumperFlash.map((v) => Math.max(0, v - dt))
+  }
 
   switch (s.phase) {
     case 'intro':
       if (s.t >= INTRO_TIME) return { ...s, phase: 'aim', t: 0 }
-      return s
-
-    case 'aim':
-      s.aim = sweepAngle(s.aimStart, s.t)
       return s
 
     case 'roll': {
@@ -337,31 +447,66 @@ export function tick(state: GameState, dt: number): GameState {
       const ball = { ...s.ball }
       const sub = dt / SUBSTEPS
       let hitWall = false
-      let hitBumper = false
+      let hits = s.strokeHits
+      let bonus = s.holeBonus
+      const lanesLit = [...s.lanesLit]
+      const bumperFlash = [...s.bumperFlash]
+      const floaters = [...s.floaters]
       let sand = false
+      let popped = false
       for (let i = 0; i < SUBSTEPS; i++) {
         const out = step(ball, hole, sub)
-        if (out.hit === 'wall') hitWall = true
-        if (out.hit === 'bumper') hitBumper = true
+        if (out.wall) hitWall = true
         sand = out.sand
+        for (const bi of out.bumpers) {
+          hits += 1
+          const pts = BUMPER_STEP * hits
+          bonus += pts
+          bumperFlash[bi] = 0.35
+          popped = true
+          const b = hole.bumpers[bi]!
+          floaters.push({ x: b.x, y: b.y - b.r - 2, text: `+${pts}`, life: 0.9 })
+        }
+        for (const li of out.lanes) {
+          if (lanesLit[li]) continue
+          lanesLit[li] = true
+          bonus += LANE_POINTS
+          const l = hole.lanes[li]!
+          floaters.push({ x: l.x, y: l.y - 4, text: `+${LANE_POINTS}`, life: 0.9 })
+          sfx('place')
+        }
         const d = Math.hypot(hole.cup.x - ball.x, hole.cup.y - ball.y)
         const speed = Math.hypot(ball.vx, ball.vy)
         if (d < CUP_R * 0.75 && speed < CUP_CAPTURE_SPEED) {
-          return finishHole({ ...s, ball: { ...ball, x: hole.cup.x, y: hole.cup.y } }, s.strokes, false)
+          return finishHole(
+            {
+              ...s,
+              ball: { ...ball, x: hole.cup.x, y: hole.cup.y },
+              strokeHits: hits,
+              holeBonus: bonus,
+              lanesLit,
+              bumperFlash,
+              floaters,
+            },
+            false,
+          )
         }
       }
-      if (hitBumper) sfx('hit')
+      if (popped) sfx('hit')
       else if (hitWall) sfx('tap', 2)
       s.ball = ball
       s.inSand = sand
+      s.strokeHits = hits
+      s.holeBonus = bonus
+      s.lanesLit = lanesLit
+      s.bumperFlash = bumperFlash
+      s.floaters = floaters
       s.rollTime += dt
       const speed = Math.hypot(ball.vx, ball.vy)
       if (speed < STOP_SPEED || s.rollTime > MAX_ROLL) {
         s.ball = { ...ball, vx: 0, vy: 0 }
-        if (s.strokes >= hole.par + PICKUP_OVER) return finishHole(s, s.strokes, true)
-        // The next sweep starts pointing at the cup again.
-        const aim = angleTo(s.ball, hole.cup)
-        return { ...s, phase: 'aim', t: 0, aim, aimStart: aim }
+        if (s.strokes >= hole.par + PICKUP_OVER) return finishHole(s, true)
+        return { ...s, phase: 'aim', t: 0, aim: angleTo(s.ball, hole.cup), power: 0, aiming: 'none', charging: false }
       }
       return s
     }
@@ -390,7 +535,7 @@ function advance(s: GameState): GameState {
 }
 
 /** Where a shot from the ball along `angle` first meets something, for the aim line. */
-export function aimTrace(state: GameState, angle: number, maxLen = 60): Vec {
+export function aimTrace(state: GameState, angle: number, maxLen: number): Vec {
   const hole = currentHole(state)
   const dx = Math.cos(angle)
   const dy = Math.sin(angle)
@@ -425,7 +570,7 @@ export function toSnapshot(s: GameState): Snapshot {
     strokes: s.strokes,
     par: hole.par,
     toPar: played - parPlayed,
-    finished: s.results.length >= COURSE.length,
+    aiming: s.aiming,
   }
 }
 
