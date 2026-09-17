@@ -35,7 +35,7 @@ import {
 } from './game'
 import { renderGame } from './render'
 
-const IN_RUN = new Set(['intro', 'aim', 'roll', 'splash', 'sunk', 'pickup'])
+const IN_RUN = new Set(['intro', 'aim', 'roll', 'splash', 'sunk'])
 /** A press that moves less than this is a tap. */
 const TAP_SLOP = 8
 /** Holding up or down looks along the hole this fast, in field units a second. */

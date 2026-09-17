@@ -51,6 +51,13 @@ export type Target = { x: number; y: number }
 /** The cup slides from its spot to `to` and back, once every `period` seconds. */
 export type CupPath = { to: Vec; period: number }
 
+/**
+ * A rover: a loose ball that bounces around its pen at a steady speed, off
+ * the pen's edges and anything inside it. Your ball caroms off it, and it
+ * caroms off yours. Hitting it pays.
+ */
+export type Rover = { x: number; y: number; r: number; speed: number; heading: number; pen: Rect }
+
 export type Hole = {
   name: string
   par: number
@@ -68,6 +75,7 @@ export type Hole = {
   boosts: Boost[]
   spinners: Spinner[]
   portals: Portal[]
+  rovers: Rover[]
 }
 
 export const LANE_R = 3.2
@@ -139,6 +147,10 @@ function bank(x: number, y: number, dx: number, dy: number): Target[] {
   return [0, 1, 2].map((i) => ({ x: x + dx * i, y: y + dy * i }))
 }
 
+function rover(x: number, y: number, r: number, speed: number, heading: number, pen: Rect): Rover {
+  return { x, y, r, speed, heading, pen }
+}
+
 type Spec = Pick<Hole, 'name' | 'par' | 'h' | 'tee' | 'cup'> &
   Partial<Omit<Hole, 'name' | 'par' | 'h' | 'tee' | 'cup'>>
 
@@ -154,23 +166,29 @@ function hole(spec: Spec): Hole {
     boosts: spec.boosts ?? [],
     spinners: spec.spinners ?? [],
     portals: spec.portals ?? [],
+    rovers: spec.rovers ?? [],
   }
 }
 
 export const COURSE: Hole[] = [
-  // A long straight run: a belt of sand, then a gate with a bumper square behind it, so the
-  // second shot has to come through on an angle.
+  // Two rovers roam a pen across the whole fairway, so every shot from the tee is timed around
+  // them — or aimed at one for the strike. Past the pen a triangle of bumpers, and then a gate
+  // whose gap is off to the right: the straight ball hits the wall and comes back down through
+  // the bumpers. Two slings low on the sides fire a falling ball back up and pay. Through the
+  // gap, a bumper sits just inside for the ball that comes through hot, a bank of targets waits
+  // on the far rail, and sand in the top corners catches the overhit. Lay up right, then thread it.
   hole({
-    name: 'Long drive',
+    name: 'Bumper run',
     par: 4,
     h: 330,
     tee: { x: 50, y: 314 },
     cup: { x: 50, y: 26 },
-    sand: [rect(0, 230, 100, 14)],
-    walls: gate(150, 36, 64),
-    bumpers: [pop(50, 118)],
-    lanes: [lane(50, 150), lane(50, 60)],
-    targets: bank(9, 60, 0, 9),
+    walls: [kicker(6, 302, 26, 270), kicker(94, 302, 74, 270), ...gate(90, 60, 84)],
+    rovers: [rover(30, 230, 2.8, 70, -0.6, rect(4, 196, 92, 76)), rover(70, 250, 2.8, 88, 2.5, rect(4, 196, 92, 76))],
+    bumpers: [pop(50, 150), pop(28, 118), pop(72, 118), pop(78, 54, 4.5)],
+    sand: [rect(0, 4, 24, 18), rect(76, 4, 24, 18)],
+    lanes: [lane(72, 90), lane(50, 60)],
+    targets: bank(9, 40, 0, 9),
   }),
   // Four levels, the gap swapping sides each time. A windmill in the second, water in the fourth.
   hole({

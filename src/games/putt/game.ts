@@ -29,19 +29,18 @@ import {
  * still, and a cup that pulls a slow ball in and lets a fast one skip
  * across. The pinball is the scoring: bumpers and kickers pop the ball
  * away and pay, lanes light up and pay once a hole, drop targets pay and
- * pay big when the whole bank is down. Par or better on consecutive
- * holes builds a streak bonus. Fewer strokes still score most, and the
- * whole hole is forfeit if the ball is picked up at par plus three.
+ * pay big when the whole bank is down, and rovers roam their pens and pay
+ * for a strike. Par or better on consecutive holes builds a streak bonus.
+ * Fewer strokes still score most; a hole is played until the ball drops,
+ * however long that takes.
  */
 
-export type Phase = 'menu' | 'intro' | 'aim' | 'roll' | 'splash' | 'sunk' | 'pickup' | 'gameover'
+export type Phase = 'menu' | 'intro' | 'aim' | 'roll' | 'splash' | 'sunk' | 'gameover'
 export type SwingStage = 'idle' | 'power' | 'accuracy'
 
 export const BALL_R = 1.7
 export const CUP_R = 2.7
-/** Strokes allowed over par before the ball is picked up. */
-export const PICKUP_OVER = 3
-/** Points per stroke under par plus two: par is 200, birdie 300, bogey 100. */
+/** Points per stroke under par plus two: par is 200, birdie 300, bogey 100, and never below 0. */
 export const POINTS_PER = 100
 export const ACE_BONUS = 200
 /** A bumper pays 50 for the first hit in a stroke, 100 for the second, and on. */
@@ -51,6 +50,8 @@ export const LANE_POINTS = 100
 export const TARGET_POINTS = 50
 /** Knocking the whole bank of targets down pays this, and they stand back up. */
 export const BANK_POINTS = 300
+/** Striking a rover pays this. */
+export const ROVER_POINTS = 150
 /** Par or better on consecutive holes: the second pays 100, the third 200, up to the cap. */
 export const STREAK_STEP = 100
 export const STREAK_MAX = 500
@@ -95,13 +96,18 @@ const INTRO_TIME = 2.2
 const CAM_EASE = 5
 const SPLASH_TIME = 1.0
 const SUNK_TIME = 0.95
-const PICKUP_TIME = 1.2
 const MAX_ROLL = 12
+/** A rover hit throws the ball back this hard, plus half the rover's own motion. */
+const ROVER_BOUNCE = 0.9
+const ROVER_CARRY = 0.5
 const SUBSTEPS = 6
 /** Keyboard aim turns this fast, in radians a second. */
 const KEY_TURN = 1.9
 
 export type Ball = { x: number; y: number; vx: number; vy: number }
+
+/** A rover on the move, and how long until it can pay again. */
+export type RoverState = { x: number; y: number; vx: number; vy: number; cool: number }
 
 export type HoleResult = {
   strokes: number
@@ -165,6 +171,9 @@ export type GameState = {
   /** Flash timers per bumper and per wall (kickers), for the renderer. */
   bumperFlash: number[]
   wallFlash: number[]
+  /** The rovers, where they are and where they are going. */
+  rovers: RoverState[]
+  roverFlash: number[]
   floaters: Floater[]
   popup: Popup | null
   flash: number
@@ -234,6 +243,8 @@ export function createInitialState(w = 540, h = 720): GameState {
     holeBonus: 0,
     bumperFlash: first.bumpers.map(() => 0),
     wallFlash: first.walls.map(() => 0),
+    rovers: roversAtStart(first),
+    roverFlash: first.rovers.map(() => 0),
     floaters: [],
     popup: null,
     flash: 0,
@@ -333,8 +344,20 @@ function beginHole(state: GameState, index: number): GameState {
     holeBonus: 0,
     bumperFlash: hole.bumpers.map(() => 0),
     wallFlash: hole.walls.map(() => 0),
+    rovers: roversAtStart(hole),
+    roverFlash: hole.rovers.map(() => 0),
     floaters: [],
   }
+}
+
+function roversAtStart(hole: Hole): RoverState[] {
+  return hole.rovers.map((r) => ({
+    x: r.x,
+    y: r.y,
+    vx: Math.cos(r.heading) * r.speed,
+    vy: Math.sin(r.heading) * r.speed,
+    cool: 0,
+  }))
 }
 
 export function startGame(prev: GameState): GameState {
@@ -581,14 +604,56 @@ type StepOut = {
   bumpers: number[]
   lanes: number[]
   targets: number[]
+  rovers: number[]
   sand: boolean
   pad: boolean
   water: boolean
   piped: boolean
 }
 
-/** One sub-step of rolling. Mutates the ball; returns what it touched. */
-function step(ball: Ball, hole: Hole, targetsDown: boolean[], dt: number, clock: number): StepOut {
+/**
+ * The ball meets a rover: it comes off like a bumper, carrying some of the
+ * rover's motion, and the rover caroms away at its steady speed. Mutates both.
+ */
+function strikeRover(ball: Ball, rv: RoverState, r: number, speed: number): boolean {
+  const dx = ball.x - rv.x
+  const dy = ball.y - rv.y
+  const d = Math.hypot(dx, dy)
+  const reach = BALL_R + r
+  if (d >= reach || d < 1e-6) return false
+  const nx = dx / d
+  const ny = dy / d
+  const push = reach - d
+  ball.x += nx * push * 0.5
+  ball.y += ny * push * 0.5
+  rv.x -= nx * push * 0.5
+  rv.y -= ny * push * 0.5
+  const along = ball.vx * nx + ball.vy * ny
+  const rAlong = rv.vx * nx + rv.vy * ny
+  if (rAlong > 0) {
+    rv.vx -= 2 * rAlong * nx
+    rv.vy -= 2 * rAlong * ny
+    const sp = Math.hypot(rv.vx, rv.vy) || 1
+    rv.vx = (rv.vx / sp) * speed
+    rv.vy = (rv.vy / sp) * speed
+  }
+  if (along - rAlong >= 0) return false
+  ball.vx -= (1 + ROVER_BOUNCE) * along * nx
+  ball.vy -= (1 + ROVER_BOUNCE) * along * ny
+  ball.vx += rv.vx * ROVER_CARRY
+  ball.vy += rv.vy * ROVER_CARRY
+  return true
+}
+
+/** One sub-step of rolling. Mutates the ball and the rovers; returns what it touched. */
+function step(
+  ball: Ball,
+  hole: Hole,
+  targetsDown: boolean[],
+  rovers: RoverState[],
+  dt: number,
+  clock: number,
+): StepOut {
   ball.x += ball.vx * dt
   ball.y += ball.vy * dt
 
@@ -604,6 +669,7 @@ function step(ball: Ball, hole: Hole, targetsDown: boolean[], dt: number, clock:
     bumpers: [],
     lanes: [],
     targets: [],
+    rovers: [],
     sand,
     pad: false,
     water: false,
@@ -644,6 +710,13 @@ function step(ball: Ball, hole: Hole, targetsDown: boolean[], dt: number, clock:
     if (targetsDown[i]) return
     const c = bounce(ball, tg.x, tg.y, TARGET_R + BALL_R, TARGET_BOUNCE)
     if (c && c.reflected) out.targets.push(i)
+  })
+  hole.rovers.forEach((spec, i) => {
+    const rv = rovers[i]!
+    if (!strikeRover(ball, rv, spec.r, spec.speed)) return
+    if (rv.cool > 0) return
+    rv.cool = 0.35
+    out.rovers.push(i)
   })
   hole.lanes.forEach((l, i) => {
     if (Math.hypot(ball.x - l.x, ball.y - l.y) < LANE_R) out.lanes.push(i)
@@ -695,15 +768,16 @@ function golfPoints(strokes: number, par: number) {
   return base + (strokes === 1 ? ACE_BONUS : 0)
 }
 
-function finishHole(state: GameState, pickedUp: boolean): GameState {
+/** The ball is down. Golf points for the strokes, the pinball banked on the hole, and any streak. */
+function finishHole(state: GameState): GameState {
   const hole = currentHole(state)
-  const golf = pickedUp ? 0 : golfPoints(state.strokes, hole.par)
-  const pinball = pickedUp ? 0 : state.holeBonus
-  const madePar = !pickedUp && state.strokes <= hole.par
+  const golf = golfPoints(state.strokes, hole.par)
+  const pinball = state.holeBonus
+  const madePar = state.strokes <= hole.par
   const streak = madePar ? state.streak + 1 : 0
   const streakBonus = streak >= 2 ? Math.min(STREAK_MAX, (streak - 1) * STREAK_STEP) : 0
   const points = golf + pinball + streakBonus
-  const label = pickedUp ? 'Picked up' : resultLabel(state.strokes, hole.par)
+  const label = resultLabel(state.strokes, hole.par)
   const result: HoleResult = {
     strokes: state.strokes,
     par: hole.par,
@@ -713,22 +787,20 @@ function finishHole(state: GameState, pickedUp: boolean): GameState {
     points,
     label,
   }
-  if (pickedUp) sfx('miss')
-  else if (state.strokes === 1 || state.strokes < hole.par) sfx('perfect')
+  if (state.strokes === 1 || state.strokes < hole.par) sfx('perfect')
   else sfx('good')
   const parts = [`+${golf}`]
   if (pinball > 0) parts.push(`pinball +${pinball}`)
   if (streakBonus > 0) parts.push(`streak ×${streak} +${streakBonus}`)
-  const sub = pickedUp ? null : parts.join(' · ')
   return {
     ...state,
-    phase: pickedUp ? 'pickup' : 'sunk',
+    phase: 'sunk',
     t: 0,
     score: state.score + points,
     results: [...state.results, result],
     streak,
-    popup: { text: label, sub, life: 1.7 },
-    flash: pickedUp ? 0.12 : 0.22,
+    popup: { text: label, sub: parts.join(' · '), life: 1.7 },
+    flash: 0.22,
     ball: { ...state.ball, vx: 0, vy: 0 },
     aiming: false,
     swing: 'idle',
@@ -738,7 +810,6 @@ function finishHole(state: GameState, pickedUp: boolean): GameState {
 
 /** Into the water: a stroke, and back to where the shot was played from. */
 function splash(state: GameState): GameState {
-  const hole = currentHole(state)
   sfx('hurt')
   const back: GameState = {
     ...state,
@@ -752,7 +823,6 @@ function splash(state: GameState): GameState {
     flash: 0.14,
     floaters: [...state.floaters, { x: state.ball.x, y: state.ball.y - 3, text: 'SPLASH', life: 1.0 }],
   }
-  if (back.strokes >= hole.par + PICKUP_OVER) return finishHole(back, true)
   return {
     ...back,
     phase: 'splash',
@@ -792,6 +862,11 @@ export function tick(state: GameState, dt: number): GameState {
   if (s.wallFlash.some((v) => v > 0)) {
     s.wallFlash = s.wallFlash.map((v) => Math.max(0, v - dt))
   }
+  if (s.roverFlash.some((v) => v > 0)) {
+    s.roverFlash = s.roverFlash.map((v) => Math.max(0, v - dt))
+  }
+  // The rovers keep bouncing whatever the ball is doing; while it rolls, the roll's own steps move them.
+  if (s.phase !== 'roll' && s.rovers.length) s.rovers = moveRovers(s, dt)
   s.cam = moveCamera(s, dt)
 
   switch (s.phase) {
@@ -838,7 +913,9 @@ export function tick(state: GameState, dt: number): GameState {
       const targetsDown = [...s.targetsDown]
       const bumperFlash = [...s.bumperFlash]
       const wallFlash = [...s.wallFlash]
+      const roverFlash = [...s.roverFlash]
       const floaters = [...s.floaters]
+      let rovers = s.rovers
       let sand = false
       let pad = false
       let popped = false
@@ -846,9 +923,18 @@ export function tick(state: GameState, dt: number): GameState {
       let piped = false
       let dropped = false
       let banked = false
+      let struck = false
       for (let i = 0; i < SUBSTEPS; i++) {
         const now = s.clock + sub * i
-        const out = step(ball, hole, targetsDown, sub, now)
+        rovers = moveRovers({ ...s, rovers, ball }, sub)
+        const out = step(ball, hole, targetsDown, rovers, sub, now)
+        for (const ri of out.rovers) {
+          bonus += ROVER_POINTS
+          roverFlash[ri] = 0.4
+          struck = true
+          const rv = rovers[ri]!
+          floaters.push({ x: rv.x, y: rv.y - 6, text: `STRIKE +${ROVER_POINTS}`, life: 1.1 })
+        }
         if (out.wall) hitWall = true
         if (out.piped) piped = true
         sand = out.sand
@@ -901,6 +987,8 @@ export function tick(state: GameState, dt: number): GameState {
           targetsDown,
           bumperFlash,
           wallFlash,
+          rovers,
+          roverFlash,
           floaters,
         }
         if (out.water) return splash(carried)
@@ -908,10 +996,11 @@ export function tick(state: GameState, dt: number): GameState {
         const d = Math.hypot(cup.x - ball.x, cup.y - ball.y)
         const speed = Math.hypot(ball.vx, ball.vy)
         if (d < CUP_R * 0.75 && speed < CUP_CAPTURE_SPEED) {
-          return finishHole({ ...carried, ball: { ...ball, x: cup.x, y: cup.y } }, false)
+          return finishHole({ ...carried, ball: { ...ball, x: cup.x, y: cup.y } })
         }
       }
-      if (banked) sfx('perfect', 2)
+      if (struck) sfx('hit', 4)
+      else if (banked) sfx('perfect', 2)
       else if (popped) sfx('hit')
       else if (dropped) sfx('pad', 6)
       else if (kicked) sfx('pad', 3)
@@ -926,12 +1015,13 @@ export function tick(state: GameState, dt: number): GameState {
       s.targetsDown = targetsDown
       s.bumperFlash = bumperFlash
       s.wallFlash = wallFlash
+      s.rovers = rovers
+      s.roverFlash = roverFlash
       s.floaters = floaters
       s.rollTime += dt
       const speed = Math.hypot(ball.vx, ball.vy)
       if ((speed < STOP_SPEED && !pad) || s.rollTime > MAX_ROLL) {
         s.ball = { ...ball, vx: 0, vy: 0 }
-        if (s.strokes >= hole.par + PICKUP_OVER) return finishHole(s, true)
         return readyToAim(s)
       }
       return s
@@ -943,13 +1033,45 @@ export function tick(state: GameState, dt: number): GameState {
       return advance(s)
     }
 
-    case 'pickup':
-      if (s.t < PICKUP_TIME) return s
-      return advance(s)
-
     default:
       return s
   }
+}
+
+/**
+ * The rovers, moved on by `dt`: straight lines at a steady speed, bouncing
+ * off the edges of their pens and off anything in them — walls, bumpers,
+ * and a ball that is sitting still. A rolling ball is handled in the roll.
+ */
+function moveRovers(s: GameState, dt: number): RoverState[] {
+  const hole = currentHole(s)
+  return s.rovers.map((rv, i) => {
+    const spec = hole.rovers[i]!
+    const b: Ball = { x: rv.x + rv.vx * dt, y: rv.y + rv.vy * dt, vx: rv.vx, vy: rv.vy }
+    const pen = spec.pen
+    if (b.x - spec.r < pen.x) {
+      b.x = pen.x + spec.r
+      b.vx = Math.abs(b.vx)
+    } else if (b.x + spec.r > pen.x + pen.w) {
+      b.x = pen.x + pen.w - spec.r
+      b.vx = -Math.abs(b.vx)
+    }
+    if (b.y - spec.r < pen.y) {
+      b.y = pen.y + spec.r
+      b.vy = Math.abs(b.vy)
+    } else if (b.y + spec.r > pen.y + pen.h) {
+      b.y = pen.y + pen.h - spec.r
+      b.vy = -Math.abs(b.vy)
+    }
+    for (const wall of hole.walls) {
+      const p = closestOnWall(wall, b)
+      bounce(b, p.x, p.y, wall.t + spec.r, 1)
+    }
+    for (const bp of hole.bumpers) bounce(b, bp.x, bp.y, bp.r + spec.r, 1)
+    if (s.phase !== 'roll') bounce(b, s.ball.x, s.ball.y, BALL_R + spec.r, 1)
+    const sp = Math.hypot(b.vx, b.vy) || 1
+    return { x: b.x, y: b.y, vx: (b.vx / sp) * spec.speed, vy: (b.vy / sp) * spec.speed, cool: Math.max(0, rv.cool - dt) }
+  })
 }
 
 /**

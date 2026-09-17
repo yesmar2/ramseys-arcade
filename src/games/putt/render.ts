@@ -23,6 +23,7 @@ const SAND_HUE = 38
 const WATER_HUE = 205
 const PAD_HUE = 48
 const PIPE_HUE = 280
+const ROVER_HUE = 26
 const BUMPER_HUE = 348
 const LANE_HUE = 198
 const WALL_HUE = 214
@@ -124,6 +125,11 @@ function drawMap(ctx: CanvasRenderingContext2D, state: GameState, hole: Hole, f:
   })
   ctx.fillStyle = `hsla(${LANE_HUE}, 60%, 55%, 0.9)`
   for (const l of hole.lanes) dot(l, 1.2)
+  ctx.fillStyle = `hsla(${ROVER_HUE}, 85%, 55%, 0.95)`
+  hole.rovers.forEach((spec, i) => {
+    const rv = state.rovers[i]
+    if (rv) dot(rv, Math.max(1.6, spec.r * k))
+  })
 
   ctx.fillStyle = 'rgba(20, 27, 36, 0.95)'
   dot(cupAt(hole, state.clock), Math.max(2, CUP_R * k))
@@ -281,6 +287,19 @@ export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, w: n
     }
   }
 
+  // ---- rover pens: the ground a rover roams, marked so the timing can be read
+  for (const rv of hole.rovers) {
+    const pen = rv.pen
+    ctx.fillStyle = `hsla(${ROVER_HUE}, 80%, 55%, ${softFillAlpha(0.07)})`
+    ctx.strokeStyle = `hsla(${ROVER_HUE}, 70%, 48%, 0.55)`
+    ctx.lineWidth = Math.max(1, s * 0.4)
+    ctx.setLineDash([s * 2.2, s * 1.8])
+    fieldRect(pen.x, pen.y, pen.w, pen.h, s * 2)
+    ctx.fill()
+    ctx.stroke()
+    ctx.setLineDash([])
+  }
+
   // ---- lanes: a ring that lights up once the ball has rolled over it
   hole.lanes.forEach((l, i) => {
     const c = P(l.x, l.y)
@@ -408,6 +427,33 @@ export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, w: n
     ctx.fillStyle = `hsla(${BUMPER_HUE}, 55%, 46%, ${flash > 0 ? 0.95 : 0.6})`
     ctx.beginPath()
     ctx.arc(c.x, c.y, b.r * s * 0.36, 0, Math.PI * 2)
+    ctx.fill()
+  })
+
+  // ---- rovers: loose balls on the move, with a band so the spin reads
+  hole.rovers.forEach((spec, i) => {
+    const rv = state.rovers[i]
+    if (!rv) return
+    const c = P(rv.x, rv.y)
+    const flash = state.roverFlash[i] ?? 0
+    const r = spec.r * s * (flash > 0 ? 1 + 0.2 * (flash / 0.4) : 1)
+    ctx.fillStyle = `hsla(${ROVER_HUE}, 85%, ${flash > 0 ? 66 : 58}%, 0.98)`
+    ctx.strokeStyle = `hsla(${ROVER_HUE}, 70%, 38%, 0.95)`
+    ctx.lineWidth = Math.max(1.2, s * 0.55)
+    ctx.beginPath()
+    ctx.arc(c.x, c.y, r, 0, Math.PI * 2)
+    ctx.fill()
+    strokeOutlined(ctx)
+    // The band turns with the way it is going.
+    const heading = Math.atan2(rv.vy, rv.vx) + (f.rotated ? -Math.PI / 2 : 0) + state.clock * 3
+    ctx.strokeStyle = `hsla(${ROVER_HUE}, 70%, 32%, 0.7)`
+    ctx.lineWidth = Math.max(1.2, s * 0.7)
+    ctx.beginPath()
+    ctx.arc(c.x, c.y, r * 0.55, heading, heading + Math.PI)
+    ctx.stroke()
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.55)'
+    ctx.beginPath()
+    ctx.arc(c.x - r * 0.3, c.y - r * 0.3, r * 0.22, 0, Math.PI * 2)
     ctx.fill()
   })
 

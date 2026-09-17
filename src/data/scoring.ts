@@ -116,10 +116,10 @@ const SCORING: Record<string, ScoreRow[]> = {
     { label: 'Kicker', value: '+25 a hit' },
     { label: 'Lane', value: '+100 the first time you roll over it' },
     { label: 'Drop targets', value: '+50 each · +300 for the whole bank' },
+    { label: 'Rover', value: '+150 a strike' },
     { label: 'Streak', value: 'par or better in a row · +100, +200… up to +500' },
     { label: 'Water', value: '+1 stroke, back to where you shot from' },
-    { label: 'Par + 3', value: 'picked up · 0 for the hole, pinball included' },
-    { label: 'Round', value: '9 holes, par 46 · no cup within one shot of its tee' },
+    { label: 'Round', value: '9 holes, par 46 · no cup within one shot of its tee · play until it drops' },
   ],
   bop: [
     { label: 'Right control', value: '+1' },
