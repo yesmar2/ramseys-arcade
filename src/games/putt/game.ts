@@ -3,6 +3,7 @@ import { sfx } from '../../lib/sound'
 import {
   COURSE,
   COURSE_PAR,
+  EDGE_T,
   FIELD_W,
   LANE_R,
   PORTAL_R,
@@ -15,6 +16,7 @@ import {
   type Vec,
   type Wall,
 } from './course'
+import { centreOf, contours, inAny, inside } from './terrain'
 
 /*
  * Putt: nine holes of mini golf with a pinball streak.
@@ -86,6 +88,8 @@ const BUMPER_KEEP = 0.85
 const KICK_SPEED = 55
 /** A pad pushes the ball along its arrow this hard. */
 const BOOST_ACCEL = 240
+/** Extra drag in a bowl, per second, so the ball settles instead of circling. */
+const BOWL_DRAG = 2.5
 const TOP_SPEED = 320
 /** A ball slower than this within the cup drops; faster, it skips across. */
 const CUP_CAPTURE_SPEED = 85
@@ -200,6 +204,38 @@ export function currentHole(state: GameState): Hole {
   return COURSE[Math.min(state.holeIndex, COURSE.length - 1)]!
 }
 
+/*
+ * The walls of a hole are the traced edge of its ground plus whatever was
+ * placed by hand. Tracing costs a few milliseconds, so it is done once per
+ * hole and kept.
+ */
+const traced = new WeakMap<Hole, { edges: Vec[][]; walls: Wall[] }>()
+
+function trace(hole: Hole) {
+  let t = traced.get(hole)
+  if (t) return t
+  const edges = contours(hole.green, FIELD_W, hole.h)
+  const walls: Wall[] = []
+  for (const line of edges) {
+    for (let i = 1; i < line.length; i++) {
+      walls.push({ a: line[i - 1]!, b: line[i]!, t: EDGE_T, edge: true })
+    }
+  }
+  t = { edges, walls: [...walls, ...hole.walls] }
+  traced.set(hole, t)
+  return t
+}
+
+/** Every wall on a hole: the traced edge first, then the placed ones. */
+export function wallsOf(hole: Hole): Wall[] {
+  return trace(hole).walls
+}
+
+/** The traced edge of a hole's ground, as polylines, for drawing. */
+export function edgesOf(hole: Hole): Vec[][] {
+  return trace(hole).edges
+}
+
 /** Where the cup is right now: most sit still, one slides. */
 export function cupAt(hole: Hole, clock: number): Vec {
   const path = hole.cupPath
@@ -242,7 +278,7 @@ export function createInitialState(w = 540, h = 720): GameState {
     targetsDown: first.targets.map(() => false),
     holeBonus: 0,
     bumperFlash: first.bumpers.map(() => 0),
-    wallFlash: first.walls.map(() => 0),
+    wallFlash: wallsOf(first).map(() => 0),
     rovers: roversAtStart(first),
     roverFlash: first.rovers.map(() => 0),
     floaters: [],
@@ -343,7 +379,7 @@ function beginHole(state: GameState, index: number): GameState {
     targetsDown: hole.targets.map(() => false),
     holeBonus: 0,
     bumperFlash: hole.bumpers.map(() => 0),
-    wallFlash: hole.walls.map(() => 0),
+    wallFlash: wallsOf(hole).map(() => 0),
     rovers: roversAtStart(hole),
     roverFlash: hole.rovers.map(() => 0),
     floaters: [],
@@ -607,6 +643,7 @@ type StepOut = {
   rovers: number[]
   sand: boolean
   pad: boolean
+  slope: boolean
   water: boolean
   piped: boolean
 }
@@ -657,7 +694,7 @@ function step(
   ball.x += ball.vx * dt
   ball.y += ball.vy * dt
 
-  const sand = hole.sand.some((r) => inRect(r, ball.x, ball.y))
+  const sand = inAny(hole.sand, ball)
   const k = sand ? FRICTION_SAND : FRICTION_GREEN
   const decay = Math.exp(-k * dt)
   ball.vx *= decay
@@ -672,6 +709,7 @@ function step(
     rovers: [],
     sand,
     pad: false,
+    slope: false,
     water: false,
     piped: false,
   }
@@ -682,13 +720,34 @@ function step(
     ball.vy += Math.sin(pad.dir) * BOOST_ACCEL * dt
     out.pad = true
   }
+  // Hills push downhill; bowls pull to the middle. A ball on either never quite comes to rest.
+  for (const sl of hole.slopes) {
+    if (!inside(sl.shape, ball)) continue
+    if (sl.pull) {
+      ball.vx += sl.pull.x * dt
+      ball.vy += sl.pull.y * dt
+    }
+    if (sl.bowl) {
+      const c = centreOf(sl.shape)
+      const dx = c.x - ball.x
+      const dy = c.y - ball.y
+      const d = Math.hypot(dx, dy) || 1
+      ball.vx += (dx / d) * sl.bowl * dt
+      ball.vy += (dy / d) * sl.bowl * dt
+      // A bowl drains: the ball loses its swirl and settles to the middle rather than orbiting.
+      const drag = Math.exp(-BOWL_DRAG * dt)
+      ball.vx *= drag
+      ball.vy *= drag
+    }
+    out.slope = true
+  }
   const speed = Math.hypot(ball.vx, ball.vy)
   if (speed > TOP_SPEED) {
     ball.vx *= TOP_SPEED / speed
     ball.vy *= TOP_SPEED / speed
   }
 
-  hole.walls.forEach((wall, i) => {
+  wallsOf(hole).forEach((wall, i) => {
     const p = closestOnWall(wall, ball)
     const c = bounce(ball, p.x, p.y, wall.t + BALL_R, wall.kick ? 1 : WALL_BOUNCE)
     if (!c || !c.reflected) return
@@ -731,7 +790,7 @@ function step(
     out.piped = true
     break
   }
-  if (hole.water.some((r) => inRect(r, ball.x, ball.y))) {
+  if (!inAny(hole.bridges, ball) && inAny(hole.water, ball)) {
     out.water = true
     return out
   }
@@ -918,6 +977,7 @@ export function tick(state: GameState, dt: number): GameState {
       let rovers = s.rovers
       let sand = false
       let pad = false
+      let slope = false
       let popped = false
       let kicked = false
       let piped = false
@@ -939,6 +999,7 @@ export function tick(state: GameState, dt: number): GameState {
         if (out.piped) piped = true
         sand = out.sand
         pad = out.pad
+        slope = out.slope
         for (const bi of out.bumpers) {
           hits += 1
           const pts = BUMPER_STEP * hits
@@ -1020,7 +1081,7 @@ export function tick(state: GameState, dt: number): GameState {
       s.floaters = floaters
       s.rollTime += dt
       const speed = Math.hypot(ball.vx, ball.vy)
-      if ((speed < STOP_SPEED && !pad) || s.rollTime > MAX_ROLL) {
+      if ((speed < STOP_SPEED && !pad && !slope) || s.rollTime > MAX_ROLL) {
         s.ball = { ...ball, vx: 0, vy: 0 }
         return readyToAim(s)
       }
@@ -1063,7 +1124,7 @@ function moveRovers(s: GameState, dt: number): RoverState[] {
       b.y = pen.y + pen.h - spec.r
       b.vy = -Math.abs(b.vy)
     }
-    for (const wall of hole.walls) {
+    for (const wall of wallsOf(hole)) {
       const p = closestOnWall(wall, b)
       bounce(b, p.x, p.y, wall.t + spec.r, 1)
     }
@@ -1117,7 +1178,7 @@ export function aimTrace(state: GameState, angle: number, maxLen: number): Vec {
   for (let len = 0; len < maxLen; len += stepLen) {
     const nx = x + dx * stepLen
     const ny = y + dy * stepLen
-    for (const wall of hole.walls) {
+    for (const wall of wallsOf(hole)) {
       const p = closestOnWall(wall, { x: nx, y: ny })
       if (Math.hypot(nx - p.x, ny - p.y) < wall.t + BALL_R) return { x, y }
     }

@@ -1,5 +1,6 @@
 import { inkColor, isFlatTheme, playfieldColor, softFillAlpha, strokeOutlined } from '../../lib/theme'
-import { FIELD_W, LANE_R, PORTAL_R, SPINNER_T, TARGET_R, type Hole, type Vec } from './course'
+import { EDGE_T, FIELD_W, LANE_R, PORTAL_R, SPINNER_T, TARGET_R, type Hole, type Shape, type Vec } from './course'
+import { centreOf } from './terrain'
 import {
   AIM_STUB,
   aimTrace,
@@ -8,8 +9,10 @@ import {
   CUP_R,
   cupAt,
   currentHole,
+  edgesOf,
   fieldFrame,
   mapLayout,
+  wallsOf,
   spinnerWall,
   SWEET,
   toScreen,
@@ -87,18 +90,43 @@ function drawMap(ctx: CanvasRenderingContext2D, state: GameState, hole: Hole, f:
   ctx.fill()
   ctx.stroke()
 
+  const shapeM = (sh: Shape) => traceShape(ctx, sh, (x, y) => M(x, y), k, f.rotated)
   ctx.fillStyle = `hsla(${GREEN_HUE}, 45%, 52%, 0.4)`
-  R(0, 0, FIELD_W, len)
+  for (const sh of hole.green) {
+    shapeM(sh)
+    ctx.fill()
+  }
   ctx.fillStyle = `hsla(${SAND_HUE}, 60%, 55%, 0.85)`
-  for (const r of hole.sand) R(r.x, r.y, r.w, r.h)
+  for (const sh of hole.sand) {
+    shapeM(sh)
+    ctx.fill()
+  }
   ctx.fillStyle = `hsla(${WATER_HUE}, 70%, 55%, 0.9)`
-  for (const r of hole.water) R(r.x, r.y, r.w, r.h)
+  for (const sh of hole.water) {
+    shapeM(sh)
+    ctx.fill()
+  }
+  ctx.fillStyle = `hsla(${SAND_HUE}, 35%, 55%, 0.9)`
+  for (const sh of hole.bridges) {
+    shapeM(sh)
+    ctx.fill()
+  }
   ctx.fillStyle = `hsla(${PAD_HUE}, 85%, 55%, 0.8)`
   for (const r of hole.boosts) R(r.x, r.y, r.w, r.h)
 
   ctx.lineCap = 'round'
-  hole.walls.forEach((wall, i) => {
-    if (i < 4) return
+  ctx.strokeStyle = `hsla(${GREEN_HUE}, 45%, ${flat ? 30 : 38}%, 0.9)`
+  ctx.lineWidth = 1
+  for (const line of edgesOf(hole)) {
+    ctx.beginPath()
+    line.forEach((p, i) => {
+      const q = M(p.x, p.y)
+      if (i === 0) ctx.moveTo(q.x, q.y)
+      else ctx.lineTo(q.x, q.y)
+    })
+    ctx.stroke()
+  }
+  hole.walls.forEach((wall) => {
     ctx.strokeStyle = wall.kick
       ? `hsla(${BUMPER_HUE}, 55%, 50%, 0.95)`
       : `hsla(${WALL_HUE}, 22%, ${flat ? 62 : 38}%, 0.95)`
@@ -155,6 +183,89 @@ function drawMap(ctx: CanvasRenderingContext2D, state: GameState, hole: Hole, f:
   ctx.restore()
 }
 
+/** A field shape as a canvas path, through a mapping from field to screen (`P`) at `s` pixels a unit. */
+function traceShape(
+  ctx: CanvasRenderingContext2D,
+  sh: Shape,
+  P: (x: number, y: number) => Vec,
+  s: number,
+  rotated: boolean,
+) {
+  const rot = rotated ? Math.PI / 2 : 0
+  ctx.beginPath()
+  switch (sh.kind) {
+    case 'rect': {
+      const a = P(sh.x, sh.y)
+      const b = P(sh.x + sh.w, sh.y)
+      const c = P(sh.x + sh.w, sh.y + sh.h)
+      const d = P(sh.x, sh.y + sh.h)
+      ctx.moveTo(a.x, a.y)
+      ctx.lineTo(b.x, b.y)
+      ctx.lineTo(c.x, c.y)
+      ctx.lineTo(d.x, d.y)
+      ctx.closePath()
+      break
+    }
+    case 'disc': {
+      const c = P(sh.x, sh.y)
+      ctx.arc(c.x, c.y, sh.r * s, 0, Math.PI * 2)
+      break
+    }
+    case 'capsule': {
+      const a = P(sh.a.x, sh.a.y)
+      const b = P(sh.b.x, sh.b.y)
+      const th = Math.atan2(b.y - a.y, b.x - a.x)
+      const r = sh.r * s
+      ctx.arc(a.x, a.y, r, th + Math.PI / 2, th + Math.PI * 1.5)
+      ctx.arc(b.x, b.y, r, th - Math.PI / 2, th + Math.PI / 2)
+      ctx.closePath()
+      break
+    }
+    case 'arc': {
+      const c = P(sh.x, sh.y)
+      ctx.arc(c.x, c.y, (sh.R + sh.r) * s, sh.a0 + rot, sh.a1 + rot)
+      ctx.arc(c.x, c.y, Math.max(0, sh.R - sh.r) * s, sh.a1 + rot, sh.a0 + rot, true)
+      ctx.closePath()
+      break
+    }
+    case 'poly': {
+      sh.pts.forEach((p, i) => {
+        const q = P(p.x, p.y)
+        if (i === 0) ctx.moveTo(q.x, q.y)
+        else ctx.lineTo(q.x, q.y)
+      })
+      ctx.closePath()
+      break
+    }
+  }
+}
+
+/** A shape's box in field units, for laying ripples and chevrons across it. */
+function bboxOf(sh: Shape): { x: number; y: number; w: number; h: number } {
+  switch (sh.kind) {
+    case 'rect':
+      return { x: sh.x, y: sh.y, w: sh.w, h: sh.h }
+    case 'disc':
+      return { x: sh.x - sh.r, y: sh.y - sh.r, w: sh.r * 2, h: sh.r * 2 }
+    case 'capsule': {
+      const x0 = Math.min(sh.a.x, sh.b.x) - sh.r
+      const y0 = Math.min(sh.a.y, sh.b.y) - sh.r
+      return { x: x0, y: y0, w: Math.max(sh.a.x, sh.b.x) + sh.r - x0, h: Math.max(sh.a.y, sh.b.y) + sh.r - y0 }
+    }
+    case 'arc': {
+      const R = sh.R + sh.r
+      return { x: sh.x - R, y: sh.y - R, w: R * 2, h: R * 2 }
+    }
+    case 'poly': {
+      const xs = sh.pts.map((p) => p.x)
+      const ys = sh.pts.map((p) => p.y)
+      const x0 = Math.min(...xs)
+      const y0 = Math.min(...ys)
+      return { x: x0, y: y0, w: Math.max(...xs) - x0, h: Math.max(...ys) - y0 }
+    }
+  }
+}
+
 function drawBackground(ctx: CanvasRenderingContext2D, w: number, h: number) {
   ctx.fillStyle = playfieldColor()
   ctx.fillRect(0, 0, w, h)
@@ -206,53 +317,142 @@ export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, w: n
     })
   }
 
-  // ---- the green, seen through the window. Everything on the field is clipped to it.
+  // ---- the ground, seen through the window. Everything on the field is clipped to it.
   ctx.save()
   ctx.beginPath()
   ctx.roundRect(f.x, f.y, f.w, f.h, s * 3)
   ctx.clip()
+  const shape = (sh: Shape) => traceShape(ctx, sh, P, s, f.rotated)
   ctx.fillStyle = `hsla(${GREEN_HUE}, 45%, 52%, ${softFillAlpha(0.2)})`
-  ctx.strokeStyle = `hsla(${GREEN_HUE}, 45%, 42%, 0.9)`
-  ctx.lineWidth = Math.max(1.5, s * 0.6)
-  fieldRect(0, 0, FIELD_W, hole.h, s * 3)
-  ctx.fill()
-  strokeOutlined(ctx)
+  for (const sh of hole.green) {
+    shape(sh)
+    ctx.fill()
+  }
 
   // ---- sand
-  for (const sand of hole.sand) {
-    ctx.fillStyle = `hsla(${SAND_HUE}, 60%, 58%, ${softFillAlpha(0.32)})`
-    ctx.strokeStyle = `hsla(${SAND_HUE}, 55%, 48%, 0.85)`
-    ctx.lineWidth = Math.max(1, s * 0.5)
-    fieldRect(sand.x, sand.y, sand.w, sand.h, s * 2.5)
+  ctx.fillStyle = `hsla(${SAND_HUE}, 60%, 58%, ${softFillAlpha(0.34)})`
+  ctx.strokeStyle = `hsla(${SAND_HUE}, 55%, 48%, 0.85)`
+  ctx.lineWidth = Math.max(1, s * 0.5)
+  for (const sh of hole.sand) {
+    shape(sh)
     ctx.fill()
     strokeOutlined(ctx)
   }
 
-  // ---- water, with a couple of ripples drifting across
-  for (const pool of hole.water) {
-    ctx.fillStyle = `hsla(${WATER_HUE}, 70%, 55%, ${softFillAlpha(0.38)})`
+  // ---- water, with ripples drifting across
+  for (const sh of hole.water) {
+    ctx.fillStyle = `hsla(${WATER_HUE}, 70%, 55%, ${softFillAlpha(0.4)})`
     ctx.strokeStyle = `hsla(${WATER_HUE}, 60%, 42%, 0.85)`
     ctx.lineWidth = Math.max(1, s * 0.5)
-    fieldRect(pool.x, pool.y, pool.w, pool.h, s * 2.5)
+    shape(sh)
     ctx.fill()
     strokeOutlined(ctx)
     ctx.save()
+    shape(sh)
     ctx.clip()
     ctx.strokeStyle = `hsla(${WATER_HUE}, 70%, 80%, 0.55)`
     ctx.lineWidth = Math.max(1, s * 0.45)
     ctx.setLineDash([s * 3, s * 2.5])
     ctx.lineDashOffset = -(state.clock * s * 4) % (s * 5.5)
-    const rows = Math.max(1, Math.floor(pool.h / 9))
+    const bb = bboxOf(sh)
+    const rows = Math.max(1, Math.floor(bb.h / 9))
     for (let r = 1; r <= rows; r++) {
-      const y = pool.y + (pool.h * r) / (rows + 1)
+      const y = bb.y + (bb.h * r) / (rows + 1)
       fieldPath([
-        { x: pool.x + 2, y },
-        { x: pool.x + pool.w - 2, y },
+        { x: bb.x, y },
+        { x: bb.x + bb.w, y },
       ])
       ctx.stroke()
     }
     ctx.setLineDash([])
     ctx.restore()
+  }
+
+  // ---- bridges: ground laid over the water, planked so it reads as a crossing
+  for (const sh of hole.bridges) {
+    ctx.fillStyle = `hsla(${GREEN_HUE}, 45%, 52%, ${softFillAlpha(0.2)})`
+    shape(sh)
+    ctx.fill()
+    ctx.fillStyle = `hsla(${SAND_HUE}, 35%, 55%, ${softFillAlpha(0.28)})`
+    shape(sh)
+    ctx.fill()
+    ctx.strokeStyle = `hsla(${SAND_HUE}, 35%, 38%, 0.8)`
+    ctx.lineWidth = Math.max(1, s * 0.5)
+    shape(sh)
+    ctx.stroke()
+    if (sh.kind === 'capsule') {
+      const len = Math.hypot(sh.b.x - sh.a.x, sh.b.y - sh.a.y) || 1
+      const dx = (sh.b.x - sh.a.x) / len
+      const dy = (sh.b.y - sh.a.y) / len
+      ctx.strokeStyle = `hsla(${SAND_HUE}, 35%, 38%, 0.45)`
+      ctx.lineWidth = Math.max(1, s * 0.35)
+      for (let k = 4; k < len - 2; k += 5) {
+        const cx = sh.a.x + dx * k
+        const cy = sh.a.y + dy * k
+        fieldPath([
+          { x: cx - dy * sh.r, y: cy + dx * sh.r },
+          { x: cx + dy * sh.r, y: cy - dx * sh.r },
+        ])
+        ctx.stroke()
+      }
+    }
+  }
+
+  // ---- slopes: a hill is shaded and arrowed downhill; a bowl is ringed toward its middle
+  for (const sl of hole.slopes) {
+    ctx.fillStyle = `hsla(${GREEN_HUE}, 40%, 34%, ${softFillAlpha(0.1)})`
+    shape(sl.shape)
+    ctx.fill()
+    ctx.save()
+    shape(sl.shape)
+    ctx.clip()
+    ctx.strokeStyle = ink(0.28)
+    ctx.lineWidth = Math.max(1.2, s * 0.6)
+    if (sl.pull) {
+      const mag = Math.hypot(sl.pull.x, sl.pull.y) || 1
+      const dx = sl.pull.x / mag
+      const dy = sl.pull.y / mag
+      const px = -dy
+      const py = dx
+      const bb = bboxOf(sl.shape)
+      const cx = bb.x + bb.w / 2
+      const cy = bb.y + bb.h / 2
+      const along = Math.abs(dx) * bb.h + Math.abs(dy) * bb.w + 4
+      const across = Math.abs(dx) * bb.w + Math.abs(dy) * bb.h
+      for (let k = -along / 2; k < along / 2; k += 9) {
+        for (let m = -across / 2 + 6; m < across / 2; m += 12) {
+          const tx = cx + dx * k + px * m
+          const ty = cy + dy * k + py * m
+          fieldPath([
+            { x: tx - dx * 2.6 + px * 2.6, y: ty - dy * 2.6 + py * 2.6 },
+            { x: tx, y: ty },
+            { x: tx - dx * 2.6 - px * 2.6, y: ty - dy * 2.6 - py * 2.6 },
+          ])
+          ctx.stroke()
+        }
+      }
+    } else if (sl.bowl) {
+      const c = centreOf(sl.shape)
+      const bb = bboxOf(sl.shape)
+      const rad = Math.min(bb.w, bb.h) / 2
+      const q = P(c.x, c.y)
+      ctx.setLineDash([s * 1.6, s * 1.6])
+      for (const k of [0.36, 0.68]) {
+        ctx.beginPath()
+        ctx.arc(q.x, q.y, rad * k * s, 0, Math.PI * 2)
+        ctx.stroke()
+      }
+      ctx.setLineDash([])
+    }
+    ctx.restore()
+  }
+
+  // ---- the edge of the ground: the walls the course itself makes
+  ctx.strokeStyle = `hsla(${GREEN_HUE}, 45%, ${flat ? 30 : 38}%, 0.95)`
+  ctx.lineWidth = Math.max(1.5, EDGE_T * 2 * s)
+  for (const line of edgesOf(hole)) {
+    fieldPath(line)
+    ctx.stroke()
   }
 
   // ---- pads: chevrons run along the arrow
@@ -322,13 +522,13 @@ export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, w: n
     }
   })
 
-  // ---- walls (skip the rails; the green's edge is the rail) and kickers
+  // ---- placed walls and kickers. Their flashes sit after the traced edge's in the list.
+  const edgeCount = wallsOf(hole).length - hole.walls.length
   hole.walls.forEach((wall, i) => {
-    if (i < 4) return
     const a = P(wall.a.x, wall.a.y)
     const b = P(wall.b.x, wall.b.y)
     if (wall.kick) {
-      const flash = state.wallFlash[i] ?? 0
+      const flash = state.wallFlash[edgeCount + i] ?? 0
       ctx.strokeStyle = `hsla(${BUMPER_HUE}, 55%, ${flash > 0 ? 62 : 48}%, 0.95)`
     } else {
       ctx.strokeStyle = `hsla(${WALL_HUE}, 22%, ${flat ? 62 : 38}%, 0.95)`
