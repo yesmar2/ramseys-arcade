@@ -8,6 +8,7 @@ import {
   PORTAL_R,
   SPINNER_T,
   TARGET_R,
+  UP,
   type Hole,
   type Rect,
   type Spinner,
@@ -92,8 +93,6 @@ const CUP_PULL = 1.7
 const INTRO_TIME = 2.2
 /** How fast the camera closes on where it wants to be, per second. */
 const CAM_EASE = 5
-/** While aiming the view leans this far along the line, as a share of the window. */
-const CAM_LOOK = 0.22
 const SPLASH_TIME = 1.0
 const SUNK_TIME = 0.95
 const PICKUP_TIME = 1.2
@@ -135,6 +134,8 @@ export type GameState = {
   clock: number
   /** The camera: the field y at the cup end of the window on screen. */
   cam: number
+  /** Where the camera is headed while aiming: the ball, until the player looks along the hole. */
+  look: number
   /** The shot being lined up. */
   aim: number
   /** A finger is dragging the aim. */
@@ -202,6 +203,7 @@ export function cupAt(hole: Hole, clock: number): Vec {
 
 export function createInitialState(w = 540, h = 720): GameState {
   const first = COURSE[0]!
+  const startCam = camFor(fieldFrame(w, h, first.h), first.tee.y)
   return {
     phase: 'menu',
     score: 0,
@@ -213,7 +215,8 @@ export function createInitialState(w = 540, h = 720): GameState {
     ball: { x: first.tee.x, y: first.tee.y, vx: 0, vy: 0 },
     t: 0,
     clock: 0,
-    cam: camFor(fieldFrame(w, h, first.h), first.tee.y),
+    cam: startCam,
+    look: startCam,
     aim: 0,
     aiming: false,
     swing: 'idle',
@@ -311,7 +314,9 @@ function beginHole(state: GameState, index: number): GameState {
     t: 0,
     // The intro flies the hole from the cup back to the tee.
     cam: 0,
-    aim: angleTo(hole.tee, cupAt(hole, state.clock)),
+    look: 0,
+    // Straight up the hole, not at the cup: the line is the player's to find.
+    aim: UP,
     aiming: false,
     swing: 'idle',
     swingT: 0,
@@ -384,12 +389,60 @@ export function turnAim(state: GameState, turn: number, dt: number): GameState {
   return { ...state, aim: state.aim + turn * KEY_TURN * dt }
 }
 
+/** The window start that puts the ball in the middle of the view. */
+function lookAtBall(state: GameState) {
+  const f = fieldFrame(state.stageW, state.stageH, currentHole(state).h)
+  return camFor(f, state.ball.y)
+}
+
+/** Looking along the hole before the swing: move the view by `dy` field units. */
+export function panLook(state: GameState, dy: number): GameState {
+  if (state.phase !== 'aim' || state.swing !== 'idle' || dy === 0) return state
+  const f = fieldFrame(state.stageW, state.stageH, currentHole(state).h)
+  return { ...state, look: Math.max(0, Math.min(f.len - f.vis, state.look + dy)) }
+}
+
+/** Looking along the hole before the swing: centre the view on field `y`. */
+export function lookAt(state: GameState, y: number): GameState {
+  if (state.phase !== 'aim' || state.swing !== 'idle') return state
+  const f = fieldFrame(state.stageW, state.stageH, currentHole(state).h)
+  return { ...state, look: camFor(f, y) }
+}
+
+/**
+ * Where the map sits on screen: the corner of the window nearest the cup,
+ * a fifth of the window's short side wide, as long as the hole is.
+ */
+export function mapLayout(f: Frame, len: number) {
+  const short = Math.max(44, Math.min(72, (f.rotated ? f.h : f.w) * 0.2))
+  const k = short / FIELD_W
+  const long = len * k
+  const w = f.rotated ? long : short
+  const h = f.rotated ? short : long
+  const inset = 8
+  return { x: f.x + f.w - w - inset, y: f.y + inset, w, h, k, len }
+}
+
+export type MapLayout = ReturnType<typeof mapLayout>
+
+/** Whether a screen point is on the map, with a little grace around it. */
+export function onMap(m: MapLayout, sx: number, sy: number) {
+  const grace = 8
+  return sx >= m.x - grace && sx <= m.x + m.w + grace && sy >= m.y - grace && sy <= m.y + m.h + grace
+}
+
+/** The field y a screen point on the map stands for. */
+export function mapFieldY(m: MapLayout, f: Frame, sx: number, sy: number) {
+  return f.rotated ? m.len - (sx - m.x) / m.k : (sy - m.y) / m.k
+}
+
 /** Tap: start the gauge; take the power; then hit, on the line or off it. */
 export function swing(state: GameState): GameState {
   if (state.phase !== 'aim') return state
   if (state.swing === 'idle') {
     sfx('tap', -2)
-    return { ...state, swing: 'power', swingT: 0, meter: 0, power: 0, aiming: false }
+    // The swing brings the view back to the ball, wherever the player was looking.
+    return { ...state, swing: 'power', swingT: 0, meter: 0, power: 0, aiming: false, look: lookAtBall(state) }
   }
   if (state.swing === 'power') {
     sfx('tap', 0)
@@ -709,12 +762,12 @@ function splash(state: GameState): GameState {
 }
 
 function readyToAim(s: GameState): GameState {
-  const hole = currentHole(s)
   return {
     ...s,
     phase: 'aim',
     t: 0,
-    aim: angleTo(s.ball, cupAt(hole, s.clock)),
+    look: lookAtBall(s),
+    aim: UP,
     aiming: false,
     swing: 'idle',
     swingT: 0,
@@ -901,8 +954,10 @@ export function tick(state: GameState, dt: number): GameState {
 
 /**
  * Where the camera goes this frame. The intro flies from the cup end to the
- * tee; aiming leans the view along the line so more of what is ahead shows;
- * rolling follows the ball with a little lead. Everything else eases in.
+ * tee. Aiming holds still on wherever the player is looking — the ball,
+ * unless they have looked along the hole — so the view never shifts under a
+ * finger that is lining up a shot. Rolling follows the ball with a little
+ * lead. Everything else eases in.
  */
 function moveCamera(s: GameState, dt: number): number {
   if (s.phase === 'menu' || s.phase === 'gameover') return s.cam
@@ -913,10 +968,9 @@ function moveCamera(s: GameState, dt: number): number {
     const e = u < 0.5 ? 2 * u * u : 1 - Math.pow(-2 * u + 2, 2) / 2
     return camFor(f, hole.tee.y) * e
   }
-  let centre = s.ball.y
-  if (s.phase === 'aim') centre += Math.sin(s.aim) * f.vis * CAM_LOOK
-  else if (s.phase === 'roll') centre += s.ball.vy * 0.12
-  const target = camFor(f, centre)
+  let target: number
+  if (s.phase === 'aim') target = Math.max(0, Math.min(f.len - f.vis, s.look))
+  else target = camFor(f, s.ball.y + (s.phase === 'roll' ? s.ball.vy * 0.12 : 0))
   const k = Math.min(1, dt * CAM_EASE)
   return s.cam + (target - s.cam) * k
 }

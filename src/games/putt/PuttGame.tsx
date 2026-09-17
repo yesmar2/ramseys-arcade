@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type WheelEvent as ReactWheelEvent } from 'react'
 import { GamePlayChrome, PlayReadout, PlayReadoutScore } from '../../components/GameHud'
 import { GameStage } from '../../components/GameStage'
 import { GameStartCard } from '../../components/GameStartCard'
@@ -17,6 +17,11 @@ import {
   endAim,
   fieldFrame,
   jumpToHole,
+  lookAt,
+  mapFieldY,
+  mapLayout,
+  onMap,
+  panLook,
   resizeState,
   shoot,
   startGame,
@@ -33,6 +38,8 @@ import { renderGame } from './render'
 const IN_RUN = new Set(['intro', 'aim', 'roll', 'splash', 'sunk', 'pickup'])
 /** A press that moves less than this is a tap. */
 const TAP_SLOP = 8
+/** Holding up or down looks along the hole this fast, in field units a second. */
+const KEY_PAN = 180
 
 function toParLabel(toPar: number) {
   if (toPar === 0) return 'Level par'
@@ -53,8 +60,9 @@ export function PuttGame() {
   const stateRef = useRef<GameState>(createInitialState())
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const sizeRef = useRef({ w: 540, h: 720 })
-  const pressRef = useRef<{ id: number; x: number; y: number; moved: boolean } | null>(null)
-  const keysRef = useRef({ left: false, right: false })
+  /** A press on the field lines up a shot; a press on the map looks along the hole. */
+  const pressRef = useRef<{ id: number; x: number; y: number; moved: boolean; kind: 'aim' | 'look' } | null>(null)
+  const keysRef = useRef({ left: false, right: false, up: false, down: false })
   const [ui, setUi] = useState<Snapshot>(() => toSnapshot(stateRef.current))
   const [saveOpen, setSaveOpen] = useState(false)
   const offeredScore = useRef<number | null>(null)
@@ -85,6 +93,9 @@ export function PuttGame() {
       const keys = keysRef.current
       const turn = (keys.right ? 1 : 0) - (keys.left ? 1 : 0)
       if (turn !== 0) stateRef.current = turnAim(stateRef.current, turn, dt)
+      // Up looks toward the cup, down back toward the tee.
+      const pan = (keys.down ? 1 : 0) - (keys.up ? 1 : 0)
+      if (pan !== 0) stateRef.current = panLook(stateRef.current, pan * KEY_PAN * dt)
       stateRef.current = tick(stateRef.current, dt)
 
       uiAcc += dt
@@ -182,7 +193,14 @@ export function PuttGame() {
       return
     }
     const rect = e.currentTarget.getBoundingClientRect()
-    pressRef.current = { id: e.pointerId, x: e.clientX - rect.left, y: e.clientY - rect.top, moved: false }
+    const x = e.clientX - rect.left
+    const y = e.clientY - rect.top
+    // On the map, the press looks along the hole instead of lining up a shot.
+    const f = fieldFrame(rect.width, rect.height, currentHole(s).h)
+    const m = mapLayout(f, currentHole(s).h)
+    const kind = onMap(m, x, y) ? 'look' : 'aim'
+    if (kind === 'look') stateRef.current = lookAt(s, mapFieldY(m, f, x, y))
+    pressRef.current = { id: e.pointerId, x, y, moved: false, kind }
     try {
       e.currentTarget.setPointerCapture(e.pointerId)
     } catch {
@@ -196,10 +214,14 @@ export function PuttGame() {
     const rect = e.currentTarget.getBoundingClientRect()
     const x = e.clientX - rect.left
     const y = e.clientY - rect.top
-    if (!press.moved && Math.hypot(x - press.x, y - press.y) < TAP_SLOP) return
-    press.moved = true
     const s = stateRef.current
     const f = fieldFrame(rect.width, rect.height, currentHole(s).h)
+    if (press.kind === 'look') {
+      stateRef.current = lookAt(s, mapFieldY(mapLayout(f, currentHole(s).h), f, x, y))
+      return
+    }
+    if (!press.moved && Math.hypot(x - press.x, y - press.y) < TAP_SLOP) return
+    press.moved = true
     stateRef.current = aimAt(s, toField(f, s.cam, x, y))
   }
 
@@ -207,8 +229,19 @@ export function PuttGame() {
     const press = pressRef.current
     if (!press || press.id !== e.pointerId) return
     pressRef.current = null
+    if (press.kind === 'look') return
     stateRef.current = press.moved ? endAim(stateRef.current) : swing(stateRef.current)
     setUi(toSnapshot(stateRef.current))
+  }
+
+  /** The wheel looks along the hole: down the screen in portrait, along it when the hole lies on its side. */
+  const onWheel = (e: ReactWheelEvent<HTMLElement>) => {
+    const s = stateRef.current
+    if (s.phase !== 'aim' || s.swing !== 'idle') return
+    const rect = e.currentTarget.getBoundingClientRect()
+    const f = fieldFrame(rect.width, rect.height, currentHole(s).h)
+    const px = f.rotated ? -(e.deltaY + e.deltaX) : e.deltaY
+    stateRef.current = panLook(s, px / f.s)
   }
 
   useEffect(() => {
@@ -217,7 +250,9 @@ export function PuttGame() {
       const s = stateRef.current
       if (e.code === 'ArrowLeft') keysRef.current.left = true
       if (e.code === 'ArrowRight') keysRef.current.right = true
-      if (e.code === 'ArrowLeft' || e.code === 'ArrowRight') e.preventDefault()
+      if (e.code === 'ArrowUp') keysRef.current.up = true
+      if (e.code === 'ArrowDown') keysRef.current.down = true
+      if (e.code.startsWith('Arrow')) e.preventDefault()
       if (e.code === 'Escape' && s.phase === 'aim' && s.swing !== 'idle') {
         e.preventDefault()
         cancel()
@@ -236,6 +271,8 @@ export function PuttGame() {
     const onUp = (e: KeyboardEvent) => {
       if (e.code === 'ArrowLeft') keysRef.current.left = false
       if (e.code === 'ArrowRight') keysRef.current.right = false
+      if (e.code === 'ArrowUp') keysRef.current.up = false
+      if (e.code === 'ArrowDown') keysRef.current.down = false
     }
     window.addEventListener('keydown', onDown)
     window.addEventListener('keyup', onUp)
@@ -257,6 +294,7 @@ export function PuttGame() {
             onPointerMove={onPointerMove}
             onPointerUp={onPointerUp}
             onPointerCancel={onPointerUp}
+            onWheel={onWheel}
           >
             <canvas ref={canvasRef} className="putt__viewport" />
             <GamePlayChrome slug="putt" inRun={() => IN_RUN.has(stateRef.current.phase)} />

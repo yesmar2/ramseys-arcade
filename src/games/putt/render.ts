@@ -9,6 +9,7 @@ import {
   cupAt,
   currentHole,
   fieldFrame,
+  mapLayout,
   spinnerWall,
   SWEET,
   toScreen,
@@ -53,14 +54,7 @@ function paper(alpha: number) {
  */
 function drawMap(ctx: CanvasRenderingContext2D, state: GameState, hole: Hole, f: Frame, flat: boolean) {
   const len = hole.h
-  const short = Math.max(44, Math.min(72, (f.rotated ? f.h : f.w) * 0.2))
-  const k = short / FIELD_W
-  const long = len * k
-  const mw = f.rotated ? long : short
-  const mh = f.rotated ? short : long
-  const inset = 8
-  const mx = f.x + f.w - mw - inset
-  const my = f.y + inset
+  const { x: mx, y: my, w: mw, h: mh, k } = mapLayout(f, len)
   const M = (x: number, y: number): Vec =>
     f.rotated ? { x: mx + (len - y) * k, y: my + x * k } : { x: mx + x * k, y: my + y * k }
   const R = (x: number, y: number, w: number, h: number) => {
@@ -526,6 +520,7 @@ export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, w: n
   }
 
   // ---- ball
+  const ballOffScreen = state.ball.y < state.cam || state.ball.y > state.cam + f.vis
   if (state.phase !== 'menu' && state.phase !== 'gameover' && state.drop > 0) {
     const c = P(state.ball.x, state.ball.y)
     const r = BALL_R * s * state.drop
@@ -536,6 +531,27 @@ export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, w: n
     ctx.arc(c.x, c.y, r, 0, Math.PI * 2)
     ctx.fill()
     strokeOutlined(ctx)
+    // Looking away from the ball: a marker on the window's edge says which way it is.
+    if (ballOffScreen) {
+      const m = r + 6
+      const ex = Math.max(f.x + m, Math.min(f.x + f.w - m, c.x))
+      const ey = Math.max(f.y + m, Math.min(f.y + f.h - m, c.y))
+      ctx.fillStyle = 'rgba(245, 247, 250, 0.98)'
+      ctx.strokeStyle = ink(0.7)
+      ctx.lineWidth = Math.max(1.2, s * 0.5)
+      ctx.beginPath()
+      ctx.arc(ex, ey, r * 1.2, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.stroke()
+      const a = Math.atan2(c.y - ey, c.x - ex)
+      ctx.fillStyle = ink(0.8)
+      ctx.beginPath()
+      ctx.moveTo(ex + Math.cos(a) * (r * 1.2 + 6), ey + Math.sin(a) * (r * 1.2 + 6))
+      ctx.lineTo(ex + Math.cos(a + 2.3) * (r * 1.2 + 2), ey + Math.sin(a + 2.3) * (r * 1.2 + 2))
+      ctx.lineTo(ex + Math.cos(a - 2.3) * (r * 1.2 + 2), ey + Math.sin(a - 2.3) * (r * 1.2 + 2))
+      ctx.closePath()
+      ctx.fill()
+    }
   }
 
   // ---- floaters: "+50" rising off a bumper or a lane
@@ -646,7 +662,13 @@ export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, w: n
       ctx.fillText(label, w / 2, gy - Math.max(8, textScale * 0.02))
     } else {
       let cue = ''
-      if (state.phase === 'aim') cue = state.aiming ? 'LET GO, THEN TAP TO SWING' : 'DRAG TO AIM  ·  TAP, TAP FOR POWER, TAP ON YOUR LINE'
+      if (state.phase === 'aim') {
+        cue = ballOffScreen
+          ? 'LOOKING AHEAD  ·  TAP TO SWING AND THE VIEW COMES BACK'
+          : state.aiming
+            ? 'LET GO, THEN TAP TO SWING'
+            : 'DRAG TO AIM  ·  TAP, TAP FOR POWER, TAP ON YOUR LINE  ·  MAP OR SCROLL TO LOOK'
+      }
       else if (state.phase === 'intro') cue = hole.name.toUpperCase()
       if (cue) {
         ctx.textAlign = 'center'
