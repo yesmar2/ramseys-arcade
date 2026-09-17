@@ -10,7 +10,13 @@ import { PodiumMedal, medalKind } from '../components/PodiumMedal'
 import { ShareBoardButton } from '../components/ShareBoardButton'
 import { TrophyCase } from '../components/TrophyCase'
 import { getGame, gamePlayableOn } from '../data/games'
-import { gameBoardHref, gamePlayHref, globalRankingsHref, rankHref } from '../hooks/useHashRoute'
+import {
+  gameBoardHref,
+  gamePlayHref,
+  globalRankingsHref,
+  rankHref,
+  statsHref,
+} from '../hooks/useHashRoute'
 import { useAuth } from '../hooks/useAuth'
 import { useImpersonation } from '../hooks/useImpersonation'
 import { refreshFriends } from '../hooks/useFriends'
@@ -401,6 +407,20 @@ export function RankPage({
         </section>
 
         {viewedName ? <TrophyCase trophies={trophies} isSelf={isSelf} /> : null}
+
+        {isSelf && viewedName ? (
+          <a className="rank-page__stats-link" href={statsHref()}>
+            <span className="rank-page__stats-main">
+              <span className="rank-page__stats-name">Your stats</span>
+              <span className="rank-page__stats-sub">
+                Streaks, trends, and the records you&rsquo;re closest to taking
+              </span>
+            </span>
+            <span className="rank-page__stats-go" aria-hidden="true">
+              →
+            </span>
+          </a>
+        ) : null}
 
         {isSelf && viewedName && signedIn ? <FriendsCard /> : null}
 

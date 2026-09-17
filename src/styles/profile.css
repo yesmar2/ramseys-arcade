@@ -834,3 +834,319 @@ html[data-theme="google"] .pfh__rank:focus-visible {
   background-size: 200% 100%;
   animation: lb-skel-shine 1.15s ease-in-out infinite;
 }
+
+/* ------------------------------------------------------- your stats ---- */
+
+.st-note {
+  margin: 1rem 0;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.st-tiles {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.55rem;
+}
+
+.st-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1rem;
+  padding: 0.7rem 0.4rem;
+  border-radius: var(--tile-radius);
+  background: rgba(var(--surface-rgb), 0.6);
+  border: 1px solid rgba(var(--ink-rgb), 0.07);
+  text-align: center;
+}
+
+.st-tile__value {
+  font-family: var(--font-display);
+  font-size: clamp(1.25rem, 5vw, 1.7rem);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+.st-tile__label {
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.st-block {
+  margin-top: 1.5rem;
+}
+
+.st-block__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+
+.st-block__blurb {
+  margin: 0.1rem 0 0.6rem;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+/* Play calendar: twelve weeks of squares, one column per week. */
+.st-cal {
+  display: grid;
+  grid-template-rows: repeat(7, 0.85rem);
+  grid-auto-flow: column;
+  grid-auto-columns: 0.85rem;
+  gap: 0.2rem;
+  overflow-x: auto;
+  padding-bottom: 0.2rem;
+}
+
+.st-cal__day {
+  border-radius: 0.2rem;
+  background: rgba(var(--ink-rgb), 0.07);
+}
+
+.st-cal__day--on {
+  background: var(--accent);
+}
+
+.st-nears,
+.st-games {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.st-near__link {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 0.6rem 0.75rem;
+  border-radius: 0.85rem;
+  background: rgba(var(--surface-rgb), 0.62);
+  border: 1px solid rgba(var(--ink-rgb), 0.06);
+  text-decoration: none;
+  color: inherit;
+}
+
+.st-near__link:hover,
+.st-near__link:focus-visible {
+  border-color: color-mix(in srgb, var(--st-accent, var(--accent)) 35%, transparent);
+  outline: none;
+}
+
+.st-near__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+.st-near__label {
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.st-near__game {
+  flex: none;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.st-near__bar {
+  display: block;
+  height: 0.35rem;
+  border-radius: 999px;
+  background: rgba(var(--ink-rgb), 0.08);
+  overflow: hidden;
+}
+
+.st-near__fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--st-accent, var(--accent));
+}
+
+.st-near__nums {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.6rem;
+  font-size: 0.74rem;
+  color: var(--muted);
+}
+
+.st-near__need {
+  text-align: right;
+  font-weight: 600;
+}
+
+.st-game {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.55rem 0.75rem;
+  border-radius: 0.85rem;
+  background: rgba(var(--surface-rgb), 0.62);
+  border: 1px solid rgba(var(--ink-rgb), 0.06);
+}
+
+.st-game__main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.05rem;
+  min-width: 0;
+  flex: 1;
+  text-decoration: none;
+  color: inherit;
+}
+
+.st-game__name {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.st-game__meta {
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.st-trend {
+  flex: none;
+  display: block;
+}
+
+.st-game__figures {
+  flex: none;
+  display: flex;
+  align-items: baseline;
+  gap: 0.65rem;
+}
+
+.st-game__rank {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+.st-game__of {
+  font-family: var(--font-body, inherit);
+  font-size: 0.62rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.st-game__pct {
+  min-width: 2.6rem;
+  text-align: right;
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--accent);
+}
+
+.st-locked {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  padding: 0.75rem 0.85rem;
+  border-radius: var(--tile-radius);
+  background: color-mix(in srgb, var(--accent-2) 10%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--accent-2) 28%, transparent);
+}
+
+.st-locked__what {
+  margin: 0;
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.st-locked__cta {
+  flex: none;
+  padding: 0.3rem 0.7rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent-2) 24%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--accent-2) 45%, transparent);
+  font-size: 0.76rem;
+  font-weight: 800;
+  color: color-mix(in srgb, var(--accent-2) 55%, var(--ink));
+  text-decoration: none;
+}
+
+@media (max-width: 34rem) {
+  .st-tiles {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .st-trend {
+    display: none;
+  }
+}
+
+/* Entry point to the stats page, from the profile. */
+.rank-page__stats-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.7rem 0.9rem;
+  border-radius: var(--tile-radius);
+  background: rgba(var(--surface-rgb), 0.6);
+  border: 1px solid rgba(var(--ink-rgb), 0.07);
+  text-decoration: none;
+  color: inherit;
+}
+
+.rank-page__stats-link:hover,
+.rank-page__stats-link:focus-visible {
+  border-color: color-mix(in srgb, var(--accent) 35%, transparent);
+  outline: none;
+}
+
+.rank-page__stats-main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.08rem;
+  min-width: 0;
+}
+
+.rank-page__stats-name {
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: var(--ink);
+}
+
+.rank-page__stats-sub {
+  font-size: 0.76rem;
+  color: var(--muted);
+}
+
+.rank-page__stats-go {
+  flex: none;
+  font-size: 1rem;
+  color: var(--accent);
+}

@@ -37,6 +37,7 @@ export type Route =
   | { name: 'authVerify'; token: string }
   | { name: 'about' }
   | { name: 'plus' }
+  | { name: 'stats' }
   | { name: 'privacy' }
   | { name: 'terms' }
   | { name: 'devCelebrate' }
@@ -124,6 +125,10 @@ export function aboutHref() {
 
 export function plusHref() {
   return '#/plus'
+}
+
+export function statsHref() {
+  return '#/stats'
 }
 
 export function tournamentsHref() {
@@ -269,6 +274,7 @@ function parseHash(hash: string): Route {
   if (!path) return { name: 'home' }
   if (path === 'about') return { name: 'about' }
   if (path === 'plus') return { name: 'plus' }
+  if (path === 'stats') return { name: 'stats' }
   if (path === 'privacy') return { name: 'privacy' }
   if (path === 'terms') return { name: 'terms' }
   if (path === 'dev/celebrate' && import.meta.env.DEV) return { name: 'devCelebrate' }
