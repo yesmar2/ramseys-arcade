@@ -62,9 +62,9 @@ export const SWING_PERIOD = 1.8
  * full swing every this many seconds, until the strike. It never stops, so a
  * shot can wait for a windmill, and the window is the same at any power.
  */
-export const WOBBLE_PERIOD = 1.4
-/** The wobble runs from -1 to 1; within this of the line is a pure strike. */
-export const SWEET = 0.2
+export const WOBBLE_PERIOD = 1.6
+/** The wobble runs from -1 to 1; within this of the line is a pure strike: about 65 ms either side. */
+export const SWEET = 0.26
 /** The most a shot goes off line, in radians, at the ends of the wobble. */
 export const MAX_SHANK = 0.16
 /** How far the aim guide reaches, in field units. */
@@ -328,6 +328,24 @@ export function jumpToHole(state: GameState, index: number): GameState {
 export function powerAt(swingT: number) {
   const cycle = (swingT % SWING_PERIOD) / (SWING_PERIOD / 2)
   return cycle <= 1 ? cycle : 2 - cycle
+}
+
+/** The wobble at a moment: starts at the far end and swings through the line. */
+export function wobbleAt(swingT: number) {
+  return Math.cos((Math.PI * 2 * swingT) / WOBBLE_PERIOD)
+}
+
+/**
+ * The meter as of a moment between frames. A tap lands between two frames;
+ * this moves the gauge or the wobble on by that much first, so the strike
+ * is taken where the player saw it, not where the last frame left it.
+ */
+export function catchUp(state: GameState, dt: number): GameState {
+  if (state.phase !== 'aim' || dt <= 0) return state
+  const swingT = state.swingT + dt
+  if (state.swing === 'power') return { ...state, swingT, meter: powerAt(swingT) }
+  if (state.swing === 'accuracy') return { ...state, swingT, meter: wobbleAt(swingT) }
+  return state
 }
 
 /** A finger on the field: the aim points from the ball to it. Not once the swing has started. */
@@ -712,7 +730,7 @@ export function tick(state: GameState, dt: number): GameState {
         s.meter = powerAt(s.swingT)
       } else if (s.swing === 'accuracy') {
         s.swingT += dt
-        s.meter = Math.cos((Math.PI * 2 * s.swingT) / WOBBLE_PERIOD)
+        s.meter = wobbleAt(s.swingT)
       }
       // A windmill blade sweeping through a resting ball nudges it along.
       const hole = currentHole(s)

@@ -9,6 +9,7 @@ import { getPersonalBest } from '../../lib/personalBest'
 import { useTournamentPlay } from '../../tournaments/TournamentPlayContext'
 import {
   aimAt,
+  catchUp,
   COURSE,
   createInitialState,
   endAim,
@@ -57,6 +58,8 @@ export function PuttGame() {
   const offeredScore = useRef<number | null>(null)
   const previousBestRef = useRef(getPersonalBest('putt'))
   const startGrace = useRef(0)
+  /** When the last frame ran, so a tap can be placed between frames. */
+  const frameAtRef = useRef(performance.now())
 
   useEffect(() => {
     let raf = 0
@@ -66,6 +69,7 @@ export function PuttGame() {
     const loop = (now: number) => {
       const dt = Math.min(0.033, (now - last) / 1000)
       last = now
+      frameAtRef.current = now
 
       const canvas = canvasRef.current
       const parent = canvas?.parentElement
@@ -135,6 +139,13 @@ export function PuttGame() {
     }
   }, [])
 
+  /** A tap that counts right now: the power or the strike, taken as of this instant. */
+  const tapNow = () => {
+    const dt = Math.min(0.06, (performance.now() - frameAtRef.current) / 1000)
+    stateRef.current = swing(catchUp(stateRef.current, dt))
+    setUi(toSnapshot(stateRef.current))
+  }
+
   const restart = () => {
     setSaveOpen(false)
     offeredScore.current = null
@@ -156,6 +167,13 @@ export function PuttGame() {
       return
     }
     if (s.phase !== 'aim') return
+    // Once the swing is under way a press is the tap, on the press itself: waiting for the
+    // release would put the strike a click's length late, and that is a miss.
+    if (s.swing !== 'idle') {
+      pressRef.current = null
+      tapNow()
+      return
+    }
     const rect = e.currentTarget.getBoundingClientRect()
     pressRef.current = { id: e.pointerId, x: e.clientX - rect.left, y: e.clientY - rect.top, moved: false }
     try {
@@ -199,10 +217,7 @@ export function PuttGame() {
           if (performance.now() >= startGrace.current) restart()
           return
         }
-        if (s.phase === 'aim') {
-          stateRef.current = swing(s)
-          setUi(toSnapshot(stateRef.current))
-        }
+        if (s.phase === 'aim') tapNow()
       }
     }
     const onUp = (e: KeyboardEvent) => {
