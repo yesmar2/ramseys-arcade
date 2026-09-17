@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState, type CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
 import { useAuth } from '../hooks/useAuth'
 import { usePlayerName } from '../hooks/usePlayerName'
@@ -8,7 +8,7 @@ import { logoutAccount } from '../lib/auth'
 import { useGlobalRank, useGlobalRankLoading } from '../lib/globalRank'
 import { AVATAR_EVENT, AVATARS_ENABLED, getLocalAvatarId } from '../lib/avatars'
 import { PlayerAvatar } from './PlayerAvatar'
-import { currentTheme, THEME_EVENT, toggleTheme, themeLabel, type Theme } from '../lib/theme'
+import { currentTheme, setTheme as chooseTheme, THEME_EVENT, themeLabel, type Theme } from '../lib/theme'
 import { normalizePlayerName } from '../lib/leaderboard'
 import { useTrophySummary } from '../hooks/useTrophySummary'
 import { NotificationBell } from './NotificationBell'
@@ -19,17 +19,13 @@ import { groupsIndexHref } from '../lib/groups'
 import { PERIOD_LABELS } from '../lib/leaderboard'
 import { DevImpersonateControl } from './DevImpersonateControl'
 import { PendingInvitesStrip } from './PendingInvitesStrip'
-import { EditIcon, LogoutIcon, PlayerBadge, type PlayerBadgeHandle } from './PlayerBadge'
+import { PlayerBadge, type PlayerBadgeHandle } from './PlayerBadge'
 import { SiteGroupControl } from './SiteGroupControl'
 import { SitePeriodControl } from './SitePeriodControl'
 import { SoundPackSelect } from './SoundPackSelect'
 import { TrophyMark } from './TrophyMark'
 import { usePendingInvites } from '../hooks/usePendingInvites'
-import {
-  navActive,
-  SITE_DRAWER_YOU,
-  SITE_NAV_LINKS,
-} from './siteNav'
+import { navActive, SITE_NAV_LINKS } from './siteNav'
 
 function UserIcon() {
   return (
@@ -46,19 +42,8 @@ function UserIcon() {
   )
 }
 
-function MenuIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path
-        d="M5 7.5h14M5 12h14M5 16.5h14"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-      />
-    </svg>
-  )
-}
+/** The themes, in the order the picker shows them. */
+const THEME_CHOICES: Theme[] = ['light', 'dark', 'flat', 'google']
 
 /** Site-wide navigation — use this on every page (home, leaderboards, game hub, etc.). */
 export function SiteHeader() {
@@ -87,22 +72,17 @@ export function SiteHeader() {
   }, [playerName])
   const defaultPeriod = useDefaultPeriod()
   const [accountOpen, setAccountOpen] = useState(false)
-  const [navOpen, setNavOpen] = useState(false)
   const [invitesOpen, setInvitesOpen] = useState(false)
   const [theme, setTheme] = useState<Theme>(() =>
     typeof document === 'undefined' ? 'light' : currentTheme(),
   )
   const invitesRef = useRef<HTMLDivElement>(null)
   const accountDrawerRef = useRef<HTMLDivElement>(null)
-  const navDrawerRef = useRef<HTMLDivElement>(null)
   const youBtnRef = useRef<HTMLButtonElement>(null)
-  const menuBtnRef = useRef<HTMLButtonElement>(null)
   const badgeRef = useRef<PlayerBadgeHandle>(null)
   const [authBusy, setAuthBusy] = useState(false)
   const accountTitleId = useId()
-  const navTitleId = useId()
   const accountDrawerId = 'site-account-drawer'
-  const navDrawerId = 'site-nav-drawer'
 
   useEffect(() => {
     const sync = () => setTheme(currentTheme())
@@ -112,7 +92,6 @@ export function SiteHeader() {
 
   useEffect(() => {
     setAccountOpen(false)
-    setNavOpen(false)
     setInvitesOpen(false)
   }, [hashKey])
 
@@ -133,27 +112,25 @@ export function SiteHeader() {
   }, [invitesOpen])
 
   useEffect(() => {
-    if (!accountOpen && !navOpen) return
+    if (!accountOpen) return
     const prevOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
     const onKey = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape') return
-      if (accountOpen) setAccountOpen(false)
-      else setNavOpen(false)
+      if (e.key === 'Escape') setAccountOpen(false)
     }
     window.addEventListener('keydown', onKey)
-    const panel = accountOpen ? accountDrawerRef.current : navDrawerRef.current
-    const focusable = panel?.querySelector<HTMLElement>(
+    const focusable = accountDrawerRef.current?.querySelector<HTMLElement>(
       'a[href], button:not([disabled]), input:not([disabled])',
     )
     focusable?.focus()
+    // The chip that opened the drawer gets focus back when it closes.
+    const opener = youBtnRef.current
     return () => {
       document.body.style.overflow = prevOverflow
       window.removeEventListener('keydown', onKey)
-      if (accountOpen) youBtnRef.current?.focus()
-      else menuBtnRef.current?.focus()
+      opener?.focus()
     }
-  }, [accountOpen, navOpen])
+  }, [accountOpen])
 
   const hash = typeof window !== 'undefined' ? window.location.hash : '#/'
   const showBoardFilters =
@@ -185,58 +162,54 @@ export function SiteHeader() {
 
   const showUserChip = signedIn && Boolean(playerName)
 
-  const navLinks = (
+  const homeActive = hash === '#/' || hash === '#' || hash === ''
+  const goRows = (
     <>
       <a
-        className={`site-drawer__link${hash === '#/' || hash === '#' || hash === '' ? ' site-drawer__link--active' : ''}`}
+        className={`site-drawer__row${homeActive ? ' site-drawer__row--active' : ''}`}
         href="#/"
-        aria-current={hash === '#/' || hash === '#' || hash === '' ? 'page' : undefined}
-        onClick={() => setNavOpen(false)}
+        aria-current={homeActive ? 'page' : undefined}
+        onClick={() => setAccountOpen(false)}
       >
-        Games
+        <span className="site-drawer__row-label">Games</span>
+        <span className="site-drawer__row-chev" aria-hidden="true">
+          ›
+        </span>
       </a>
       {SITE_NAV_LINKS.map((item) => (
         <a
           key={item.href}
-          className={linkClass(item.match, 'site-drawer__link')}
+          className={linkClass(item.match, 'site-drawer__row')}
           href={item.href}
           aria-current={navActive(item.match, hash) ? 'page' : undefined}
-          onClick={() => setNavOpen(false)}
+          onClick={() => setAccountOpen(false)}
         >
-          {item.label}
+          <span className="site-drawer__row-label">{item.label}</span>
+          <span className="site-drawer__row-chev" aria-hidden="true">
+            ›
+          </span>
         </a>
       ))}
-      {signedIn ? (
-        <a
-          className={linkClass(SITE_DRAWER_YOU.match, 'site-drawer__link')}
-          href={SITE_DRAWER_YOU.href}
-          aria-current={navActive('you', hash) ? 'page' : undefined}
-          onClick={() => setNavOpen(false)}
-        >
-          {SITE_DRAWER_YOU.label}
-        </a>
-      ) : null}
     </>
   )
+
+  const standingText = `${
+    rank != null ? `#${rank} ${PERIOD_LABELS[defaultPeriod].toLowerCase()}` : 'No rank yet'
+  }${
+    trophySummary.total > 0
+      ? ` · ${trophySummary.total} ${trophySummary.total === 1 ? 'trophy' : 'trophies'}`
+      : ''
+  }`
+  const profileLabel = rankLoading
+    ? 'View profile · loading rank'
+    : rank != null
+      ? `View profile · global rank ${rank}`
+      : 'View profile · no rank yet'
 
   return (
     <div className="site-chrome">
       <nav className="site-header" aria-label="Site">
         <div className="site-header__start">
-          <button
-            ref={menuBtnRef}
-            type="button"
-            className={`site-header__menu-btn${navOpen ? ' site-header__menu-btn--open' : ''}`}
-            aria-label="Open navigation"
-            aria-expanded={navOpen}
-            aria-controls={navDrawerId}
-            onClick={() => {
-              setAccountOpen(false)
-              setNavOpen((open) => !open)
-            }}
-          >
-            <MenuIcon />
-          </button>
           <a className="site-header__brand" href="#/">
             {APP_NAME_LEAD}
             <span>{APP_NAME_ACCENT}</span>
@@ -291,10 +264,7 @@ export function SiteHeader() {
             aria-expanded={accountOpen}
             aria-controls={accountDrawerId}
             aria-haspopup="dialog"
-            onClick={() => {
-              setNavOpen(false)
-              setAccountOpen((open) => !open)
-            }}
+            onClick={() => setAccountOpen((open) => !open)}
           >
             {showUserChip ? (
               <>
@@ -343,54 +313,13 @@ export function SiteHeader() {
         </div>
       ) : null}
 
-      {navOpen && typeof document !== 'undefined'
-        ? createPortal(
-            <div className="site-drawer site-drawer--nav" role="presentation">
-              <button
-                type="button"
-                className="site-drawer__scrim"
-                aria-label="Close navigation"
-                onClick={() => setNavOpen(false)}
-              />
-              <div
-                id={navDrawerId}
-                ref={navDrawerRef}
-                className="site-drawer__panel"
-                role="dialog"
-                aria-modal="true"
-                aria-labelledby={navTitleId}
-              >
-                <div className="site-drawer__head">
-                  <div className="site-drawer__identity">
-                    <h2 id={navTitleId} className="site-drawer__title">
-                      Menu
-                    </h2>
-                  </div>
-                  <button
-                    type="button"
-                    className="site-drawer__close"
-                    aria-label="Close navigation"
-                    onClick={() => setNavOpen(false)}
-                  >
-                    ✕
-                  </button>
-                </div>
-                <div className="site-drawer__nav site-drawer__nav--always" aria-label="Primary">
-                  {navLinks}
-                </div>
-              </div>
-            </div>,
-            document.body,
-          )
-        : null}
-
       {accountOpen && typeof document !== 'undefined'
         ? createPortal(
             <div className="site-drawer site-drawer--account" role="presentation">
               <button
                 type="button"
                 className="site-drawer__scrim"
-                aria-label="Close account"
+                aria-label="Close menu"
                 onClick={() => setAccountOpen(false)}
               />
               <div
@@ -401,101 +330,85 @@ export function SiteHeader() {
                 aria-modal="true"
                 aria-labelledby={accountTitleId}
               >
-                <div className="site-drawer__head">
-                  <div className="site-drawer__identity">
-                    <div className="site-drawer__title-row">
-                      <h2 id={accountTitleId} className="site-drawer__title">
-                        {signedIn ? playerName || 'Account' : 'Account'}
-                      </h2>
-                      {signedIn && playerName ? (
+                {/* You, as a hero: the mark, the tag, where you stand. The whole thing goes to the profile. */}
+                <div className="site-drawer__hero">
+                  <button
+                    type="button"
+                    className="site-drawer__close"
+                    aria-label="Close menu"
+                    onClick={() => setAccountOpen(false)}
+                  >
+                    ✕
+                  </button>
+                  {signedIn && playerName ? (
+                    <>
+                      <a
+                        className="site-drawer__hero-id"
+                        href={rankHref()}
+                        onClick={() => setAccountOpen(false)}
+                        aria-label={profileLabel}
+                      >
+                        <span
+                          className={`site-drawer__hero-mark${AVATARS_ENABLED ? ' site-drawer__hero-mark--avatar' : ''}`}
+                          aria-hidden="true"
+                        >
+                          {AVATARS_ENABLED ? (
+                            <PlayerAvatar
+                              avatarId={localAvatarId ?? rankAvatarId}
+                              name={playerName}
+                              size="xl"
+                            />
+                          ) : (
+                            playerName.charAt(0)
+                          )}
+                        </span>
+                        <span id={accountTitleId} className="site-drawer__hero-name">
+                          {playerName}
+                        </span>
+                        <span className="site-drawer__hero-meta">
+                          {rankLoading ? <span className="skel-line" aria-hidden="true" /> : standingText}
+                        </span>
+                      </a>
+                      <div className="site-drawer__hero-actions">
+                        <a
+                          className="site-drawer__ghost"
+                          href={rankHref()}
+                          onClick={() => setAccountOpen(false)}
+                        >
+                          Profile
+                        </a>
                         <button
                           type="button"
-                          className="site-drawer__icon-btn"
-                          aria-label="Edit gamer tag"
-                          title="Edit gamer tag"
+                          className="site-drawer__ghost"
                           onClick={() => badgeRef.current?.openTagEdit()}
                         >
-                          <EditIcon />
+                          Edit tag
                         </button>
-                      ) : null}
+                      </div>
+                    </>
+                  ) : (
+                    <div className="site-drawer__hero-text">
+                      <h2 id={accountTitleId} className="site-drawer__hero-name">
+                        {signedIn ? 'Pick a gamer tag' : 'Sign in'}
+                      </h2>
+                      <p className="site-drawer__hero-meta">
+                        {signedIn
+                          ? 'A tag saves your scores and puts you on the boards.'
+                          : 'Save scores and keep your tag across devices.'}
+                      </p>
                     </div>
-                    {!signedIn ? (
-                      <p className="site-drawer__identity-meta">
-                        Sign in to save scores and keep your tag across devices
-                      </p>
-                    ) : !playerName ? (
-                      <p className="site-drawer__identity-meta">
-                        Pick a gamer tag to save scores
-                      </p>
-                    ) : null}
-                  </div>
-                  <div className="site-drawer__head-actions">
-                    {signedIn ? (
-                      <button
-                        type="button"
-                        className="site-drawer__icon-btn"
-                        aria-label="Sign out"
-                        title="Sign out"
-                        disabled={authBusy}
-                        onClick={() => {
-                          setAuthBusy(true)
-                          void logoutAccount().finally(() => setAuthBusy(false))
-                        }}
-                      >
-                        <LogoutIcon />
-                      </button>
-                    ) : null}
-                    <button
-                      type="button"
-                      className="site-drawer__close"
-                      aria-label="Close account"
-                      onClick={() => setAccountOpen(false)}
-                    >
-                      ✕
-                    </button>
-                  </div>
+                  )}
                 </div>
 
+                {/* The tag form, the sign-in button, and any error: only there when there is something to show. */}
                 <section className="site-drawer__section" aria-label="Account">
                   <PlayerBadge ref={badgeRef} embedded showSettings={false} />
                 </section>
 
-                {signedIn && playerName ? (
-                  <a
-                    className="site-drawer__profile"
-                    href={rankHref()}
-                    onClick={() => setAccountOpen(false)}
-                    aria-label={
-                      rankLoading
-                        ? 'View profile · loading rank'
-                        : rank != null
-                          ? `View profile · global rank ${rank}`
-                          : 'View profile · no rank yet'
-                    }
-                  >
-                    <span className="site-drawer__profile-mark" aria-hidden="true">
-                      {AVATARS_ENABLED ? (
-                        <PlayerAvatar avatarId={localAvatarId ?? rankAvatarId} name={playerName} size="md" />
-                      ) : (
-                        playerName.charAt(0)
-                      )}
-                    </span>
-                    <span className="site-drawer__profile-text">
-                      <span className="site-drawer__profile-name">{playerName}</span>
-                      <span className="site-drawer__profile-meta">
-                        {rankLoading
-                          ? <span className="skel-line" aria-hidden="true" />
-                          : rank != null
-                            ? `#${rank} ${PERIOD_LABELS[defaultPeriod].toLowerCase()}`
-                            : 'No rank yet'}
-                        {trophySummary.total > 0
-                          ? ` · ${trophySummary.total} ${trophySummary.total === 1 ? 'trophy' : 'trophies'}`
-                          : ''}
-                      </span>
-                    </span>
-                    <span className="site-drawer__profile-go">Profile</span>
-                  </a>
-                ) : null}
+                {/* Where to go. On wide screens the header carries these, so the rows only show on phones. */}
+                <nav className="site-drawer__rows site-drawer__rows--go" aria-label="Primary">
+                  {goRows}
+                </nav>
 
                 {signedIn ? (
                   <nav className="site-drawer__rows" aria-label="Yours">
@@ -530,27 +443,45 @@ export function SiteHeader() {
                   </nav>
                 ) : null}
 
-                <div className="site-drawer__footer">
-                  <section className="site-drawer__section" aria-label="Settings">
-                    <h3 className="site-drawer__section-title">Settings</h3>
-                    <div className="site-drawer__prefs">
+                {/* Settings as controls you can see all of, not rows that cycle. */}
+                <section className="site-drawer__settings" aria-label="Settings">
+                  <h3 className="site-drawer__section-title">Theme</h3>
+                  <div
+                    className="seg"
+                    role="group"
+                    aria-label="Theme"
+                    style={{ '--seg-count': THEME_CHOICES.length } as CSSProperties}
+                  >
+                    {THEME_CHOICES.map((choice) => (
                       <button
+                        key={choice}
                         type="button"
-                        className="site-drawer__pref"
-                        onClick={() => {
-                          toggleTheme()
-                        }}
+                        className={`seg__item${theme === choice ? ' seg__item--active' : ''}`}
+                        aria-pressed={theme === choice}
+                        onClick={() => chooseTheme(choice)}
                       >
-                        <span className="site-drawer__pref-label">Theme</span>
-                        <span className="site-drawer__pref-value">
-                          {themeLabel(theme)}
-                        </span>
+                        {themeLabel(choice)}
                       </button>
-                      <SoundPackSelect variant="drawer" />
-                    </div>
-                    <DevImpersonateControl variant="drawer" />
-                  </section>
-                </div>
+                    ))}
+                  </div>
+                  <h3 className="site-drawer__section-title">Sounds</h3>
+                  <SoundPackSelect variant="chips" />
+                  <DevImpersonateControl variant="drawer" />
+                </section>
+
+                {signedIn ? (
+                  <button
+                    type="button"
+                    className="site-drawer__signout"
+                    disabled={authBusy}
+                    onClick={() => {
+                      setAuthBusy(true)
+                      void logoutAccount().finally(() => setAuthBusy(false))
+                    }}
+                  >
+                    Sign out
+                  </button>
+                ) : null}
               </div>
             </div>,
             document.body,
@@ -559,9 +490,3 @@ export function SiteHeader() {
     </div>
   )
 }
-
-/** @deprecated Use SiteHeader */
-export const HomeBar = SiteHeader
-
-/** @deprecated Use SiteHeader */
-export const Header = SiteHeader
