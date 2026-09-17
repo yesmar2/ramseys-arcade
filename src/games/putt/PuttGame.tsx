@@ -8,24 +8,28 @@ import { usePersonalBest } from '../../hooks/usePersonalBest'
 import { getPersonalBest } from '../../lib/personalBest'
 import { useTournamentPlay } from '../../tournaments/TournamentPlayContext'
 import {
-  cancelAim,
+  aimAt,
   COURSE,
   createInitialState,
+  endAim,
   fieldFrame,
-  keyAim,
+  jumpToHole,
   resizeState,
-  setDragAim,
   shoot,
   startGame,
+  swing,
   tick,
-  toFieldDelta,
+  toField,
   toSnapshot,
+  turnAim,
   type GameState,
   type Snapshot,
 } from './game'
 import { renderGame } from './render'
 
-const IN_RUN = new Set(['intro', 'aim', 'roll', 'sunk', 'pickup'])
+const IN_RUN = new Set(['intro', 'aim', 'roll', 'splash', 'sunk', 'pickup'])
+/** A press that moves less than this is a tap. */
+const TAP_SLOP = 8
 
 function toParLabel(toPar: number) {
   if (toPar === 0) return 'Level par'
@@ -34,10 +38,11 @@ function toParLabel(toPar: number) {
 }
 
 /**
- * The field fills the screen, portrait or landscape. To shoot, press anywhere
- * and pull back; the ball goes the other way, harder the further you pull.
- * Keyboard: left and right turn the aim, hold space to charge, release to
- * shoot. A plain tap starts a round from the title or the score card.
+ * The field fills the screen, portrait or landscape. Drag anywhere to aim:
+ * the line points from the ball to the finger. Tap to start the swing
+ * gauge, tap again to set the power and hit. Keyboard: left and right turn
+ * the aim, Space starts and stops the gauge. A plain tap starts a round
+ * from the title or the score card.
  */
 export function PuttGame() {
   const tournament = useTournamentPlay()
@@ -45,8 +50,8 @@ export function PuttGame() {
   const stateRef = useRef<GameState>(createInitialState())
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const sizeRef = useRef({ w: 540, h: 720 })
-  const dragRef = useRef<{ id: number; x: number; y: number; moved: boolean } | null>(null)
-  const keysRef = useRef({ left: false, right: false, charge: false })
+  const pressRef = useRef<{ id: number; x: number; y: number; moved: boolean } | null>(null)
+  const keysRef = useRef({ left: false, right: false })
   const [ui, setUi] = useState<Snapshot>(() => toSnapshot(stateRef.current))
   const [saveOpen, setSaveOpen] = useState(false)
   const offeredScore = useRef<number | null>(null)
@@ -73,9 +78,7 @@ export function PuttGame() {
 
       const keys = keysRef.current
       const turn = (keys.right ? 1 : 0) - (keys.left ? 1 : 0)
-      if (turn !== 0 || keys.charge || stateRef.current.aiming === 'key') {
-        stateRef.current = keyAim(stateRef.current, turn, keys.charge, dt)
-      }
+      if (turn !== 0) stateRef.current = turnAim(stateRef.current, turn, dt)
       stateRef.current = tick(stateRef.current, dt)
 
       uiAcc += dt
@@ -111,18 +114,23 @@ export function PuttGame() {
     const w = window as unknown as {
       __putt?: () => GameState
       __puttShoot?: (angle: number, power: number) => void
+      __puttJump?: (index: number) => void
       __puttCourse?: typeof COURSE
     }
     w.__putt = () => stateRef.current
-    w.__puttCourse = COURSE
     w.__puttShoot = (angle, power) => {
       const s = stateRef.current
       if (s.phase !== 'aim') return
-      stateRef.current = shoot({ ...s, aim: angle, power, aiming: 'drag' })
+      stateRef.current = shoot({ ...s, aim: angle, power, swinging: false })
     }
+    w.__puttJump = (index) => {
+      stateRef.current = jumpToHole(stateRef.current, index)
+    }
+    w.__puttCourse = COURSE
     return () => {
       delete w.__putt
       delete w.__puttShoot
+      delete w.__puttJump
       delete w.__puttCourse
     }
   }, [])
@@ -130,7 +138,7 @@ export function PuttGame() {
   const restart = () => {
     setSaveOpen(false)
     offeredScore.current = null
-    dragRef.current = null
+    pressRef.current = null
     const { w, h } = sizeRef.current
     stateRef.current = startGame(resizeState(createInitialState(w, h), w, h))
     previousBestRef.current = getPersonalBest('putt')
@@ -149,32 +157,31 @@ export function PuttGame() {
     }
     if (s.phase !== 'aim') return
     const rect = e.currentTarget.getBoundingClientRect()
-    dragRef.current = { id: e.pointerId, x: e.clientX - rect.left, y: e.clientY - rect.top, moved: false }
+    pressRef.current = { id: e.pointerId, x: e.clientX - rect.left, y: e.clientY - rect.top, moved: false }
     try {
       e.currentTarget.setPointerCapture(e.pointerId)
     } catch {
-      // A pointer that is already gone; the drag still works off the element.
+      // A pointer that is already gone; the press still works off the element.
     }
   }
 
   const onPointerMove = (e: ReactPointerEvent<HTMLElement>) => {
-    const drag = dragRef.current
-    if (!drag || drag.id !== e.pointerId) return
+    const press = pressRef.current
+    if (!press || press.id !== e.pointerId) return
     const rect = e.currentTarget.getBoundingClientRect()
-    const dx = e.clientX - rect.left - drag.x
-    const dy = e.clientY - rect.top - drag.y
-    if (!drag.moved && Math.hypot(dx, dy) < 4) return
-    drag.moved = true
+    const x = e.clientX - rect.left
+    const y = e.clientY - rect.top
+    if (!press.moved && Math.hypot(x - press.x, y - press.y) < TAP_SLOP) return
+    press.moved = true
     const f = fieldFrame(rect.width, rect.height)
-    const pull = toFieldDelta(f, dx, dy)
-    stateRef.current = setDragAim(stateRef.current, pull.x, pull.y)
+    stateRef.current = aimAt(stateRef.current, toField(f, x, y))
   }
 
   const onPointerUp = (e: ReactPointerEvent<HTMLElement>) => {
-    const drag = dragRef.current
-    if (!drag || drag.id !== e.pointerId) return
-    dragRef.current = null
-    stateRef.current = drag.moved ? shoot(stateRef.current) : cancelAim(stateRef.current)
+    const press = pressRef.current
+    if (!press || press.id !== e.pointerId) return
+    pressRef.current = null
+    stateRef.current = press.moved ? endAim(stateRef.current) : swing(stateRef.current)
     setUi(toSnapshot(stateRef.current))
   }
 
@@ -184,6 +191,7 @@ export function PuttGame() {
       const s = stateRef.current
       if (e.code === 'ArrowLeft') keysRef.current.left = true
       if (e.code === 'ArrowRight') keysRef.current.right = true
+      if (e.code === 'ArrowLeft' || e.code === 'ArrowRight') e.preventDefault()
       if (e.code === 'Space' || e.code === 'Enter') {
         e.preventDefault()
         if (e.repeat) return
@@ -191,20 +199,15 @@ export function PuttGame() {
           if (performance.now() >= startGrace.current) restart()
           return
         }
-        if (s.phase === 'aim' && s.aiming !== 'drag') keysRef.current.charge = true
+        if (s.phase === 'aim') {
+          stateRef.current = swing(s)
+          setUi(toSnapshot(stateRef.current))
+        }
       }
-      if (e.code === 'ArrowLeft' || e.code === 'ArrowRight') e.preventDefault()
     }
     const onUp = (e: KeyboardEvent) => {
       if (e.code === 'ArrowLeft') keysRef.current.left = false
       if (e.code === 'ArrowRight') keysRef.current.right = false
-      if ((e.code === 'Space' || e.code === 'Enter') && keysRef.current.charge) {
-        keysRef.current.charge = false
-        if (stateRef.current.phase === 'aim' && stateRef.current.aiming === 'key') {
-          stateRef.current = shoot(stateRef.current)
-          setUi(toSnapshot(stateRef.current))
-        }
-      }
     }
     window.addEventListener('keydown', onDown)
     window.addEventListener('keyup', onUp)

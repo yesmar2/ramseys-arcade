@@ -114,9 +114,11 @@ const SCORING: Record<string, ScoreRow[]> = {
     { label: 'On a par 3', value: 'birdie 300 · par 200 · bogey 100' },
     { label: 'Hole in one', value: '+200 on top' },
     { label: 'Bumper', value: '+50, then +100, +150… per hit in one stroke' },
+    { label: 'Kicker', value: '+25 a hit' },
     { label: 'Lane', value: '+100 the first time you roll over it' },
+    { label: 'Water', value: '+1 stroke, back to where you shot from' },
     { label: 'Par + 3', value: 'picked up · 0 for the hole, pinball included' },
-    { label: 'Round', value: '9 holes, par 29' },
+    { label: 'Round', value: '9 holes, par 34' },
   ],
   bop: [
     { label: 'Right control', value: '+1' },
