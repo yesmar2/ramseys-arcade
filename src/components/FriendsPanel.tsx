@@ -81,7 +81,7 @@ export function FriendsCard() {
   const count = friends.length
 
   return (
-    <section className="ev-card pff" aria-label="Friends">
+    <section className="ev-card pff" id="friends" aria-label="Friends">
       <div className="ev-card__head">
         <h2 className="ev-card__title">
           Friends

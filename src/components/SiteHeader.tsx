@@ -412,9 +412,10 @@ export function SiteHeader() {
 
                 {signedIn ? (
                   <nav className="site-drawer__rows" aria-label="Yours">
+                    {/* The profile is long, and friends live near the bottom. */}
                     <a
                       className="site-drawer__row"
-                      href={rankHref()}
+                      href={rankHref(undefined, undefined, 'friends')}
                       onClick={() => setAccountOpen(false)}
                     >
                       <span className="site-drawer__row-label">Friends</span>

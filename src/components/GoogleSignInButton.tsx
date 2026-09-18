@@ -168,7 +168,12 @@ export function GoogleSignInButton({
           auto_select: false,
           cancel_on_tap_outside: true,
         })
-        const width = Math.min(320, Math.max(220, hostRef.current.clientWidth || 280))
+        /*
+         * Fill the slot it was given. Google clamps this at 400, which is the
+         * only reason for a cap here — at 320 the button sat visibly short of
+         * the drawer's edge while everything beside it ran full width.
+         */
+        const width = Math.min(400, Math.max(220, hostRef.current.clientWidth || 280))
         window.google.accounts.id.renderButton(hostRef.current, {
           theme: dark ? 'filled_black' : 'outline',
           size: 'large',

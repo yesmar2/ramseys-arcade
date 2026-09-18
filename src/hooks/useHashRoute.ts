@@ -79,12 +79,25 @@ export function globalRankingsHref(period: LeaderboardPeriod = defaultPeriod()) 
   return `#/leaderboards/global/${period}`
 }
 
-export function rankHref(player?: string, period: LeaderboardPeriod = defaultPeriod()) {
+export function rankHref(
+  player?: string,
+  period: LeaderboardPeriod = defaultPeriod(),
+  /** Land on a section rather than the top — the profile is a long page. */
+  focus?: 'friends',
+) {
   const cleaned = player?.trim().toUpperCase().slice(0, 12)
-  if (cleaned) {
-    return `#/rank/${encodeURIComponent(cleaned)}/${period}`
-  }
-  return `#/rank/${period}`
+  const base = cleaned
+    ? `#/rank/${encodeURIComponent(cleaned)}/${period}`
+    : `#/rank/${period}`
+  return focus ? `${base}?focus=${focus}` : base
+}
+
+/** Section the current route asks to be scrolled to, if any. */
+export function focusFromHash(): string | null {
+  if (typeof window === 'undefined') return null
+  const query = window.location.hash.split('?')[1]
+  if (!query) return null
+  return new URLSearchParams(query).get('focus')
 }
 
 /** Game hub / lobby. Optional records tab: `#/games/{slug}/records`. */

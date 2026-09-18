@@ -14,6 +14,7 @@ import {
   gameBoardHref,
   gamePlayHref,
   globalRankingsHref,
+  focusFromHash,
   rankHref,
   statsHref,
 } from '../hooks/useHashRoute'
@@ -121,6 +122,26 @@ export function RankPage({
   const [trophies, setTrophies] = useState<TrophyAward[] | null>(null)
   const [studioOpen, setStudioOpen] = useState(false)
   const [avatarOverride, setAvatarOverride] = useState<string | null>(null)
+
+  /*
+   * Arriving from the drawer's Friends row, which asks for a section rather
+   * than the top of a long page. It waits for the card to exist — the profile
+   * fills in over a few requests, and friends are near the bottom of it.
+   */
+  useEffect(() => {
+    if (focusFromHash() !== 'friends') return
+    let tries = 0
+    const id = window.setInterval(() => {
+      const card = document.getElementById('friends')
+      if (card) {
+        window.clearInterval(id)
+        card.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      } else if (++tries > 40) {
+        window.clearInterval(id)
+      }
+    }, 80)
+    return () => window.clearInterval(id)
+  }, [])
 
   // A freshly saved avatar paints at once; the API's copy catches up on the next load.
   useEffect(() => {
