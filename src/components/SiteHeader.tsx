@@ -2,7 +2,7 @@ import { useEffect, useId, useRef, useState, type CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
 import { useAuth } from '../hooks/useAuth'
 import { usePlayerName } from '../hooks/usePlayerName'
-import { rankHref, useHashRoute } from '../hooks/useHashRoute'
+import { currentPath, homeHref, rankHref, useRoute } from '../hooks/useHashRoute'
 import { APP_NAME_ACCENT, APP_NAME_LEAD } from '../lib/brand'
 import { logoutAccount } from '../lib/auth'
 import { useGlobalRank, useGlobalRankLoading } from '../lib/globalRank'
@@ -47,7 +47,7 @@ const THEME_CHOICES: Theme[] = ['light', 'dark']
 
 /** Site-wide navigation — use this on every page (home, leaderboards, game hub, etc.). */
 export function SiteHeader() {
-  const route = useHashRoute()
+  const route = useRoute()
   const hashKey = JSON.stringify(route)
   const { signedIn } = useAuth()
   const { rank, avatarId: rankAvatarId } = useGlobalRank()
@@ -132,7 +132,7 @@ export function SiteHeader() {
     }
   }, [accountOpen])
 
-  const hash = typeof window !== 'undefined' ? window.location.hash : '#/'
+  const path = currentPath()
   const showBoardFilters =
     route.name !== 'tournaments' &&
     route.name !== 'tournament' &&
@@ -140,7 +140,7 @@ export function SiteHeader() {
     route.name !== 'tournamentPlay'
 
   const linkClass = (match: (typeof SITE_NAV_LINKS)[number]['match'], base: string) =>
-    `${base}${navActive(match, hash) ? ` ${base}--active` : ''}`
+    `${base}${navActive(match, path) ? ` ${base}--active` : ''}`
 
   const youTitle = signedIn
     ? playerName
@@ -162,12 +162,12 @@ export function SiteHeader() {
 
   const showUserChip = signedIn && Boolean(playerName)
 
-  const homeActive = hash === '#/' || hash === '#' || hash === ''
+  const homeActive = path === '/'
   const goRows = (
     <>
       <a
         className={`site-drawer__row${homeActive ? ' site-drawer__row--active' : ''}`}
-        href="#/"
+        href={homeHref()}
         aria-current={homeActive ? 'page' : undefined}
         onClick={() => setAccountOpen(false)}
       >
@@ -181,7 +181,7 @@ export function SiteHeader() {
           key={item.href}
           className={linkClass(item.match, 'site-drawer__row')}
           href={item.href}
-          aria-current={navActive(item.match, hash) ? 'page' : undefined}
+          aria-current={navActive(item.match, path) ? 'page' : undefined}
           onClick={() => setAccountOpen(false)}
         >
           <span className="site-drawer__row-label">{item.label}</span>
@@ -210,7 +210,7 @@ export function SiteHeader() {
     <div className="site-chrome">
       <nav className="site-header" aria-label="Site">
         <div className="site-header__start">
-          <a className="site-header__brand" href="#/">
+          <a className="site-header__brand" href={homeHref()}>
             {APP_NAME_LEAD}
             <span>{APP_NAME_ACCENT}</span>
           </a>
@@ -220,7 +220,7 @@ export function SiteHeader() {
                 key={item.href}
                 className={linkClass(item.match, 'site-header__link')}
                 href={item.href}
-                aria-current={navActive(item.match, hash) ? 'page' : undefined}
+                aria-current={navActive(item.match, path) ? 'page' : undefined}
               >
                 {item.label}
               </a>

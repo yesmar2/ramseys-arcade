@@ -1,7 +1,9 @@
 import {
+  currentPath,
   leaderboardHref,
   rankHref,
   recordsIndexHref,
+  tournamentsHref,
 } from '../hooks/useHashRoute'
 
 export type SiteNavItem = {
@@ -15,7 +17,7 @@ export type SiteNavItem = {
 export const SITE_NAV_LINKS: readonly SiteNavItem[] = [
   { href: leaderboardHref(), label: 'Boards', match: 'boards' },
   { href: recordsIndexHref(), label: 'Record books', match: 'records' },
-  { href: '#/tournaments', label: 'Events', match: 'events' },
+  { href: tournamentsHref(), label: 'Events', match: 'events' },
 ] as const
 
 /** Drawer Profile link — header chip opens the account drawer instead. */
@@ -25,30 +27,20 @@ export const SITE_DRAWER_YOU: SiteNavItem = {
   match: 'you',
 }
 
-function currentHash(hash = typeof window !== 'undefined' ? window.location.hash : '') {
-  const raw = hash || '#/'
-  return raw.startsWith('#') ? raw : `#${raw}`
+function under(path: string, section: string) {
+  return path === section || path.startsWith(`${section}/`)
 }
 
 /** Whether a primary nav item should show as the current section. */
-export function navActive(
-  match: SiteNavItem['match'],
-  hash = typeof window !== 'undefined' ? window.location.hash : '',
-): boolean {
-  const h = currentHash(hash)
+export function navActive(match: SiteNavItem['match'], path = currentPath()): boolean {
+  const p = currentPath(path)
 
-  if (match === 'boards') {
-    return h === '#/leaderboards' || h.startsWith('#/leaderboards/')
-  }
+  if (match === 'boards') return under(p, '/leaderboards')
   if (match === 'records') {
-    if (h === '#/records' || h.startsWith('#/records/')) return true
-    return /^#\/games\/[^/]+\/records(?:\/|$)/.test(h)
+    if (under(p, '/records')) return true
+    return /^\/games\/[^/]+\/records(?:\/|$)/.test(p)
   }
-  if (match === 'events') {
-    return h === '#/tournaments' || h.startsWith('#/tournaments/')
-  }
-  if (match === 'you') {
-    return h === '#/rank' || h.startsWith('#/rank/')
-  }
+  if (match === 'events') return under(p, '/tournaments')
+  if (match === 'you') return under(p, '/rank')
   return false
 }

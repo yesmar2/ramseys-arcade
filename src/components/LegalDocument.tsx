@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { CONTACT_EMAIL } from '../lib/brand'
+import { homeHref } from '../hooks/useHashRoute'
 import { PageShell } from './PageShell'
 
 type LegalDocumentProps = {
@@ -12,7 +13,7 @@ export function LegalDocument({ title, updated, children }: LegalDocumentProps) 
   return (
     <PageShell innerClassName="legal-page__inner">
       <header className="legal-page__header">
-        <a className="legal-page__back" href="#/">
+        <a className="legal-page__back" href={homeHref()}>
           ← Home
         </a>
         <h1 className="legal-page__title">{title}</h1>

@@ -11,7 +11,7 @@ import { GameThumbArt } from '../components/GameThumbArt'
 import { PageBackLink } from '../components/PageBackLink'
 import { PageShell } from '../components/PageShell'
 import { getGame } from '../data/games'
-import { tournamentHref } from '../hooks/useHashRoute'
+import { navigate, tournamentHref, tournamentsHref } from '../hooks/useHashRoute'
 import { useAuth } from '../hooks/useAuth'
 import { PlanLimitNotice, PlusBadge } from '../components/PlusBadge'
 import { isPlanLimitError } from '../lib/plans'
@@ -335,7 +335,7 @@ export function CreateTournamentPage() {
       }
       const created = await createTournament(input)
       if (created.inviteCode) rememberTournamentInvite(created.id, created.inviteCode)
-      window.location.hash = tournamentHref(created.id, created.inviteCode ?? undefined)
+      navigate(tournamentHref(created.id, created.inviteCode ?? undefined))
     } catch (err) {
       // A plan refusal gets its own notice; everything else is a plain error.
       if (isPlanLimitError(err)) {
@@ -353,7 +353,7 @@ export function CreateTournamentPage() {
     <PageShell innerClassName="lb-page__inner lb-page__inner--events">
       <header className="lb-page__header lb-page__header--compact lb-game-board__head">
         <div className="lb-page__heading-row">
-          <PageBackLink href="#/tournaments" label="Back to Events" />
+          <PageBackLink href={tournamentsHref()} label="Back to Events" />
           <h1 className="lb-page__title">Create event</h1>
           <span className="lb-page__heading-slot" aria-hidden="true" />
         </div>
@@ -364,7 +364,7 @@ export function CreateTournamentPage() {
       ) : !account ? (
         <div className="event-create-gate">
           <p className="tour-note">Sign in to host a private invite-only event.</p>
-          <a className="score-save__btn" href="#/tournaments">
+          <a className="score-save__btn" href={tournamentsHref()}>
             Back to events
           </a>
         </div>

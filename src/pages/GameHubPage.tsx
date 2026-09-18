@@ -18,13 +18,15 @@ import {
 } from '../data/games'
 import { useBoardRecord } from '../hooks/useBoardRecord'
 import {
+  currentHref,
   gameBoardHref,
   gameHref,
   gameHubHref,
   gamePlayHref,
+  navigate,
   periodFromRoute,
   recordsHref,
-  useHashRoute,
+  useRoute,
 } from '../hooks/useHashRoute'
 import { useDefaultPeriod } from '../lib/defaultPeriod'
 import { usePlayerName } from '../hooks/usePlayerName'
@@ -62,7 +64,7 @@ type GameHubPageProps = {
  * the shelf on the other.
  */
 export function GameHubPage({ slug, board: boardFromRoute }: GameHubPageProps) {
-  const route = useHashRoute()
+  const route = useRoute()
   const storedPeriod = useDefaultPeriod()
   const period = periodFromRoute(route) ?? storedPeriod
   const game = getGame(slug)
@@ -97,10 +99,7 @@ export function GameHubPage({ slug, board: boardFromRoute }: GameHubPageProps) {
   useEffect(() => {
     if (boardFromRoute !== 'records' || !game) return
     const next = recordsHref(game.slug, period)
-    if (window.location.hash !== next) {
-      window.history.replaceState(null, '', next)
-      window.dispatchEvent(new HashChangeEvent('hashchange'))
-    }
+    if (currentHref() !== next) navigate(next, { replace: true })
   }, [boardFromRoute, game, period])
 
   useEffect(() => {
@@ -257,7 +256,7 @@ export function GameHubPage({ slug, board: boardFromRoute }: GameHubPageProps) {
                     accent={accent}
                     hrefFor={(p) => gameHubHref(slug, p)}
                     onSelect={(p) => {
-                      window.location.hash = gameHubHref(slug, p)
+                      navigate(gameHubHref(slug, p))
                     }}
                   />
                 </div>

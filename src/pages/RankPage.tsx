@@ -14,7 +14,8 @@ import {
   gameBoardHref,
   gamePlayHref,
   globalRankingsHref,
-  focusFromHash,
+  navigate,
+  focusFromUrl,
   rankHref,
   statsHref,
 } from '../hooks/useHashRoute'
@@ -129,7 +130,7 @@ export function RankPage({
    * fills in over a few requests, and friends are near the bottom of it.
    */
   useEffect(() => {
-    if (focusFromHash() !== 'friends') return
+    if (focusFromUrl() !== 'friends') return
     let tries = 0
     const id = window.setInterval(() => {
       const card = document.getElementById('friends')
@@ -384,7 +385,7 @@ export function RankPage({
                       href={hrefFor(p)}
                       onClick={(e) => {
                         e.preventDefault()
-                        window.location.hash = hrefFor(p)
+                        navigate(hrefFor(p))
                       }}
                     >
                       <span className="pfh__rank-label">{PERIOD_LABELS[p]}</span>

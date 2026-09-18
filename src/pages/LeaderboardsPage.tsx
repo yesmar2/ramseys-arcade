@@ -5,7 +5,7 @@ import { EventArt } from '../components/EventCard'
 import { GlobalRankList } from '../components/GlobalRankList'
 import { PageShell } from '../components/PageShell'
 import { ShareBoardButton } from '../components/ShareBoardButton'
-import { globalRankingsHref, leaderboardHref } from '../hooks/useHashRoute'
+import { globalRankingsHref, leaderboardHref, navigate } from '../hooks/useHashRoute'
 import { defaultPeriod } from '../lib/defaultPeriod'
 import { groupBoardEmptyTitle, useActiveGroup } from '../lib/groups'
 import { getGlobalRankSnapshot } from '../lib/globalRank'
@@ -175,7 +175,7 @@ function LeaderboardsOverview({ period }: { period: LeaderboardPeriod }) {
                   period={period}
                   hrefFor={leaderboardHref}
                   onSelect={(p) => {
-                    window.location.hash = leaderboardHref(p)
+                    navigate(leaderboardHref(p))
                   }}
                 />
               </div>
@@ -314,7 +314,7 @@ function GlobalRankingsView({ period }: { period: LeaderboardPeriod }) {
                 period={period}
                 hrefFor={globalRankingsHref}
                 onSelect={(p) => {
-                  window.location.hash = globalRankingsHref(p)
+                  navigate(globalRankingsHref(p))
                 }}
               />
             </div>

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { SiteHeader } from '../components/SiteHeader'
 import { Footer } from '../components/Footer'
 import { completeSignIn } from '../lib/auth'
+import { homeHref, navigate } from '../hooks/useHashRoute'
 
 export function AuthVerifyPage({ token }: { token: string }) {
   const [status, setStatus] = useState<'working' | 'ok' | 'error'>('working')
@@ -20,7 +21,7 @@ export function AuthVerifyPage({ token }: { token: string }) {
             : 'Signed in',
         )
         window.setTimeout(() => {
-          window.location.hash = '#/'
+          navigate(homeHref())
         }, 900)
       } catch (err) {
         if (cancelled) return
@@ -43,7 +44,7 @@ export function AuthVerifyPage({ token }: { token: string }) {
           </h1>
           <p className="game-page__blurb">{message}</p>
           {status === 'error' ? (
-            <a className="game-page__cta" href="#/">
+            <a className="game-page__cta" href={homeHref()}>
               Back to games
             </a>
           ) : null}

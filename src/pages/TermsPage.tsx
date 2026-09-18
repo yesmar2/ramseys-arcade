@@ -1,5 +1,6 @@
 import { APP_NAME } from '../lib/brand'
 import { LegalContact, LegalDocument } from '../components/LegalDocument'
+import { privacyHref } from '../hooks/useHashRoute'
 
 const UPDATED = 'September 4, 2026'
 
@@ -100,7 +101,7 @@ export function TermsPage() {
       <LegalContact />
 
       <p className="legal-prose__fine">
-        See also our <a href="#/privacy">Privacy Policy</a>.
+        See also our <a href={privacyHref()}>Privacy Policy</a>.
       </p>
     </LegalDocument>
   )

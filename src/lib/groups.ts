@@ -59,13 +59,13 @@ export function clearActiveGroup() {
 }
 
 export function appendGroupQuery(href: string, groupId: string | null = storedActiveGroup()): string {
-  const raw = href.replace(/^#/, '')
+  const raw = href.replace(/^#/, '')  // tolerate old `#/…` hrefs
   const [path, qs] = raw.split('?')
   const params = new URLSearchParams(qs || '')
   if (groupId) params.set('group', groupId)
   else params.delete('group')
   const q = params.toString()
-  return `#${path}${q ? `?${q}` : ''}`
+  return `${path}${q ? `?${q}` : ''}`
 }
 
 export function parseGroupQuery(queryString?: string): string | null {
@@ -296,11 +296,11 @@ export async function deleteGroup(id: string): Promise<void> {
 }
 
 export function groupHref(id: string, invite?: string) {
-  const base = `#/groups/${encodeURIComponent(id)}`
+  const base = `/groups/${encodeURIComponent(id)}`
   if (!invite?.trim()) return base
   return `${base}?invite=${encodeURIComponent(invite.trim().toUpperCase())}`
 }
 
 export function groupsIndexHref() {
-  return '#/groups'
+  return '/groups'
 }

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { applySiteGroup, useHashRoute } from '../hooks/useHashRoute'
+import { applySiteGroup, useRoute } from '../hooks/useHashRoute'
 import { useAuth } from '../hooks/useAuth'
 import {
   cachedMyGroups,
@@ -17,7 +17,7 @@ type SiteGroupControlProps = {
 }
 
 export function SiteGroupControl({ variant, onSelect }: SiteGroupControlProps) {
-  const route = useHashRoute()
+  const route = useRoute()
   const { account } = useAuth()
   const activeId = useActiveGroup()
   const [groups, setGroups] = useState<GroupPublic[]>(() => cachedMyGroups())

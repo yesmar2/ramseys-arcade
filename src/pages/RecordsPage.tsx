@@ -16,6 +16,7 @@ import { ShareBoardButton } from '../components/ShareBoardButton'
 import { getGame, gamePlayableOn, deviceRequirementLabel } from '../data/games'
 import {
   gamePlayHref,
+  navigate,
   recordHref,
   recordsHref,
   recordsIndexHref,
@@ -59,7 +60,7 @@ type RecordsPageProps = {
   period?: LeaderboardPeriod
 }
 
-/** Game record book (`#/records/{game}`) or one record board (`…/{id}/{period}`). */
+/** Game record book (`/records/{game}`) or one record board (`…/{id}/{period}`). */
 export function RecordsPage({
   game,
   recordId,
@@ -134,7 +135,7 @@ function GameRecordBookPage({
               accent={accent}
               hrefFor={(p) => recordsHref(game, p)}
               onSelect={(p) => {
-                window.location.hash = recordsHref(game, p)
+                navigate(recordsHref(game, p))
               }}
             />
           }
@@ -190,7 +191,7 @@ function RecordBoardPage({
   const deviceNote = gameMeta ? deviceRequirementLabel(gameMeta) : null
 
   const selectPeriod = (next: LeaderboardPeriod) => {
-    window.location.hash = recordHref(game, recordId, next)
+    navigate(recordHref(game, recordId, next))
   }
 
   return (

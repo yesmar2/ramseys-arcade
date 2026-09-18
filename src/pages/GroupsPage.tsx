@@ -6,7 +6,7 @@ import { PlayerMark } from '../components/PlayerMark'
 import { InviteByTagForm } from '../components/InviteByTagForm'
 import { PendingInvitesStrip } from '../components/PendingInvitesStrip'
 import { ShareBoardButton } from '../components/ShareBoardButton'
-import { leaderboardHref, useHashRoute } from '../hooks/useHashRoute'
+import { leaderboardHref, navigate, useRoute } from '../hooks/useHashRoute'
 import { useAuth } from '../hooks/useAuth'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { APP_NAME } from '../lib/brand'
@@ -46,7 +46,7 @@ function groupAccent(id: string) {
 }
 
 function inviteUrl(id: string, code: string) {
-  return `${window.location.origin}${window.location.pathname}${groupHref(id, code)}`
+  return `${window.location.origin}${groupHref(id, code)}`
 }
 
 function memberLabel(count: number) {
@@ -55,7 +55,7 @@ function memberLabel(count: number) {
 
 function openBoards(id: string) {
   setActiveGroup(id)
-  window.location.hash = appendGroupQuery(leaderboardHref())
+  navigate(appendGroupQuery(leaderboardHref()))
 }
 
 /** Two heads, for the groups index hero. */
@@ -264,7 +264,7 @@ export function GroupsPage() {
       const group = await createGroup(name)
       if (group.inviteCode) rememberGroupInvite(group.id, group.inviteCode)
       setActiveGroup(group.id)
-      window.location.hash = groupHref(group.id, group.inviteCode ?? undefined)
+      navigate(groupHref(group.id, group.inviteCode ?? undefined))
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not create group')
       setBusy(false)
@@ -382,7 +382,7 @@ export function GroupsPage() {
 }
 
 export function GroupDetailPage({ id, invite }: { id: string; invite?: string }) {
-  const route = useHashRoute()
+  const route = useRoute()
   const { account } = useAuth()
   const playerName = normalizePlayerName(usePlayerName())
   const [group, setGroup] = useState<GroupPublic | null>(null)
@@ -497,7 +497,7 @@ export function GroupDetailPage({ id, invite }: { id: string; invite?: string })
     try {
       await leaveGroup(id)
       if (storedActiveGroup() === id) setActiveGroup(null)
-      window.location.hash = groupsIndexHref()
+      navigate(groupsIndexHref())
     } catch (err) {
       setNote(err instanceof Error ? err.message : 'Could not leave')
       setBusy(false)
@@ -510,7 +510,7 @@ export function GroupDetailPage({ id, invite }: { id: string; invite?: string })
     try {
       await deleteGroup(id)
       if (storedActiveGroup() === id) setActiveGroup(null)
-      window.location.hash = groupsIndexHref()
+      navigate(groupsIndexHref())
     } catch (err) {
       setNote(err instanceof Error ? err.message : 'Could not delete')
       setBusy(false)

@@ -10,17 +10,35 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="Skermix" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <!--
+      The home page's tags, for crawlers and link unfurlers that do not run
+      scripts. `usePageMeta` rewrites them per route once the app is up, and
+      the build fills in %VITE_SITE_ORIGIN% (see vite.config.ts).
+    -->
     <meta
       name="description"
-      content="Skermix — simple games, no ads, just play."
+      content="Free browser games with no ads and nothing to install. Snake, Asteroids, Crosswalk and more, with daily, weekly and all-time leaderboards, record books, and events to play with friends."
     />
+    <link rel="canonical" href="%VITE_SITE_ORIGIN%/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Skermix" />
+    <meta property="og:title" content="Skermix · Simple games, no ads, just play" />
+    <meta
+      property="og:description"
+      content="Free browser games with no ads and nothing to install. Snake, Asteroids, Crosswalk and more, with daily, weekly and all-time leaderboards, record books, and events to play with friends."
+    />
+    <meta property="og:url" content="%VITE_SITE_ORIGIN%/" />
+    <meta property="og:image" content="%VITE_SITE_ORIGIN%/og.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600&display=swap"
       rel="stylesheet"
     />
-    <title>Skermix</title>
+    <title>Skermix · Simple games, no ads, just play</title>
     <script>
       (function () {
         try {

@@ -8,7 +8,8 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview --host",
-    "icons:pwa": "node scripts/gen-pwa-icons.mjs"
+    "icons:pwa": "node scripts/gen-pwa-icons.mjs",
+    "icons:og": "node scripts/gen-og-images.mjs"
   },
   "dependencies": {
     "react": "^19.2.7",

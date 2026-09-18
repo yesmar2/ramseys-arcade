@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { defaultPeriod } from './lib/defaultPeriod'
 import { Footer } from './components/Footer'
 import { SiteHeader } from './components/SiteHeader'
 import { getGame, isGameHidden } from './data/games'
-import { useHashRoute } from './hooks/useHashRoute'
+import { homeHref, useRoute } from './hooks/useHashRoute'
+import { usePageMeta } from './hooks/usePageMeta'
 import {
   getClaimToken,
   getLastPlayerName,
@@ -91,12 +92,12 @@ function ComingSoonPage({ slug }: { slug: string }) {
       <SiteHeader />
       <main className="game-page">
         <div className="game-page__inner game-page__inner--narrow">
-          <a className="game-page__back" href="#/">
+          <a className="game-page__back" href={homeHref()}>
             ← Games
           </a>
           <h1 className="game-page__title">{game?.name ?? 'Game'}</h1>
           <p className="game-page__blurb">That game isn’t on the board.</p>
-          <a className="game-page__cta" href="#/">
+          <a className="game-page__cta" href={homeHref()}>
             See available games
           </a>
         </div>
@@ -106,43 +107,12 @@ function ComingSoonPage({ slug }: { slug: string }) {
   )
 }
 
-function groupsRouteFromUrl():
-  | { name: 'groups' }
-  | { name: 'group'; id: string; invite?: string }
-  | null {
-  const hashRaw = window.location.hash.replace(/^#\/?/, '')
-  const pathRaw = window.location.pathname.replace(/^\//, '')
-  const raw = (hashRaw || pathRaw).replace(/\/$/, '')
-  const [path, queryString] = raw.split('?')
-  const invite =
-    new URLSearchParams(queryString || window.location.search).get('invite')?.trim().toUpperCase() ||
-    undefined
-  if (path === 'groups') return { name: 'groups' }
-  const match = /^groups\/([^/]+)$/.exec(path)
-  if (!match) return null
-  return { name: 'group', id: decodeURIComponent(match[1]), invite }
-}
-
-function useGroupsRouteFromUrl() {
-  const [, setTick] = useState(0)
-  useEffect(() => {
-    const sync = () => setTick((n) => n + 1)
-    window.addEventListener('hashchange', sync)
-    window.addEventListener('popstate', sync)
-    return () => {
-      window.removeEventListener('hashchange', sync)
-      window.removeEventListener('popstate', sync)
-    }
-  }, [])
-  return groupsRouteFromUrl()
-}
-
-function isGameScreen(route: ReturnType<typeof useHashRoute>) {
+function isGameScreen(route: ReturnType<typeof useRoute>) {
   return route.name === 'gamePlay' || route.name === 'tournamentPlay'
 }
 
 /** Scroll on real navigation — not period-only changes on the same board/record. */
-function routeScrollKey(route: ReturnType<typeof useHashRoute>): string {
+function routeScrollKey(route: ReturnType<typeof useRoute>): string {
   const key = { ...route } as Record<string, unknown>
   delete key.period
   delete key.board
@@ -150,9 +120,10 @@ function routeScrollKey(route: ReturnType<typeof useHashRoute>): string {
 }
 
 function App() {
-  const route = useHashRoute()
+  const route = useRoute()
   const onGameScreen = isGameScreen(route)
   const scrollKey = routeScrollKey(route)
+  usePageMeta(route)
 
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
@@ -185,13 +156,9 @@ function App() {
     if (!onGameScreen) silenceMusic()
   }, [onGameScreen])
 
-  const groupsFromUrl = useGroupsRouteFromUrl()
-  if (route.name === 'groups' || groupsFromUrl?.name === 'groups') return <GroupsPage />
+  if (route.name === 'groups') return <GroupsPage />
   if (route.name === 'group') {
     return <GroupDetailPage id={route.id} invite={route.invite} />
-  }
-  if (groupsFromUrl?.name === 'group') {
-    return <GroupDetailPage id={groupsFromUrl.id} invite={groupsFromUrl.invite} />
   }
 
   if (route.name === 'home') return <HomePage />

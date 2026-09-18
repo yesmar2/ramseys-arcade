@@ -18,9 +18,11 @@ import './styles/findbug.css'
 import './styles/barrage.css'
 import './styles/crumbtrail.css'
 import App from './App.tsx'
+import { bootRouter } from './hooks/useHashRoute'
 import { bootTheme } from './lib/theme'
 import { bootPwaInstall } from './lib/pwaInstall'
 
+bootRouter()
 bootTheme()
 bootPwaInstall()
 

@@ -30,7 +30,7 @@ import {
   tournamentHref,
   tournamentPlayHref,
   tournamentsHref,
-  useHashRoute,
+  useRoute,
 } from '../hooks/useHashRoute'
 import { APP_NAME } from '../lib/brand'
 import { ApiError, getLastPlayerName, normalizePlayerName } from '../lib/leaderboard'
@@ -1096,7 +1096,7 @@ function PlainHeader({ title }: { title: string }) {
 }
 
 export function TournamentDetailPage({ id, invite }: { id: string; invite?: string }) {
-  const route = useHashRoute()
+  const route = useRoute()
   const playerName = usePlayerName()
   const [detail, setDetail] = useState<TournamentDetail | null>(null)
   const [loading, setLoading] = useState(true)
@@ -1213,9 +1213,9 @@ export function TournamentDetailPage({ id, invite }: { id: string; invite?: stri
 
   const inviteLink =
     detail?.inviteCode != null
-      ? `${window.location.origin}${window.location.pathname}${tournamentHref(id, detail.inviteCode)}`
+      ? `${window.location.origin}${tournamentHref(id, detail.inviteCode)}`
       : playInvite
-        ? `${window.location.origin}${window.location.pathname}${tournamentHref(id, playInvite)}`
+        ? `${window.location.origin}${tournamentHref(id, playInvite)}`
         : null
 
   const copyInviteLink = async () => {
@@ -1321,7 +1321,7 @@ export function TournamentDetailPage({ id, invite }: { id: string; invite?: stri
             shareUrl={
               invitesOpen && inviteLink
                 ? inviteLink
-                : `${window.location.origin}${window.location.pathname}${tournamentHref(detail.id)}`
+                : `${window.location.origin}${tournamentHref(detail.id)}`
             }
             copyInvite={detail.isHost && invitesOpen ? () => void copyInviteLink() : null}
             copiedInvite={copiedInvite}

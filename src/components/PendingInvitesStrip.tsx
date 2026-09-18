@@ -1,5 +1,6 @@
 import { inviteTargetHref, type PublicInvite } from '../lib/invites'
 import { usePendingInvites } from '../hooks/usePendingInvites'
+import { navigate } from '../hooks/useHashRoute'
 
 type PendingInvitesStripProps = {
   /** Limit to one kind on a list page, or show all in the header panel. */
@@ -50,7 +51,7 @@ export function PendingInvitesStrip({
                     onClick={() => {
                       void accept(invite.id).then((result) => {
                         if (!result) return
-                        window.location.hash = inviteTargetHref(invite)
+                        navigate(inviteTargetHref(invite))
                       })
                     }}
                   >

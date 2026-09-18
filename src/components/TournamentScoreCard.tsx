@@ -3,6 +3,7 @@ import { useAuth } from '../hooks/useAuth'
 import { useImpersonation } from '../hooks/useImpersonation'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { getGame } from '../data/games'
+import { tournamentHref } from '../hooks/useHashRoute'
 import { linkCurrentNameToAccount } from '../lib/auth'
 import { ApiError, getLastPlayerName, normalizePlayerName, PLAYER_NAME_MAX } from '../lib/leaderboard'
 import {
@@ -510,7 +511,7 @@ export function TournamentScoreCard({
             )}
             <div className="score-save__actions">
               {exhausted || youWonMatch ? (
-                <a className="score-save__btn" href={`#/tournaments/${tournamentId}`}>
+                <a className="score-save__btn" href={tournamentHref(tournamentId)}>
                   {youWonTournament || isBracket ? 'View bracket' : 'View standings'}
                 </a>
               ) : (
@@ -524,7 +525,7 @@ export function TournamentScoreCard({
 
         {!exhausted && !youWonMatch ? (
           <div className="score-save__links">
-            <a href={`#/tournaments/${tournamentId}`}>Standings</a>
+            <a href={tournamentHref(tournamentId)}>Standings</a>
           </div>
         ) : null}
       </div>

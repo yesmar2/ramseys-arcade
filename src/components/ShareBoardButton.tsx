@@ -6,8 +6,8 @@ type ShareBoardButtonProps = {
   /** Clever line for share sheet / clipboard / Messages / email — not link-only. */
   label: string
   /**
-   * Hash path (`#/games/asteroids`), absolute URL, or omit for the current page.
-   * Hash paths become full links so they work when pasted outside the app.
+   * In-app path (`/games/asteroids`), absolute URL, or omit for the current page.
+   * Paths become full links so they work when pasted outside the app.
    */
   url?: string
   className?: string
@@ -15,13 +15,14 @@ type ShareBoardButtonProps = {
   text?: string
 }
 
-/** Build a pasteable absolute URL for a hash route (or pass-through https URLs). */
+/** Build a pasteable absolute URL for an in-app path (or pass-through https URLs). */
 export function absoluteShareUrl(url?: string): string {
   if (typeof window === 'undefined') return url ?? ''
   if (!url) return window.location.href
   if (/^https?:\/\//i.test(url)) return url
-  const hash = url.startsWith('#') ? url : `#/${url.replace(/^\//, '')}`
-  return `${window.location.origin}${window.location.pathname}${hash}`
+  // Old `#/…` hrefs mean the same path.
+  const path = url.replace(/^#/, '')
+  return `${window.location.origin}${path.startsWith('/') ? path : `/${path}`}`
 }
 
 function ShareIcon({ copied }: { copied: boolean }) {

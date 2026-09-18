@@ -8,6 +8,7 @@ import {
   ACTIVE_GROUP_EVENT,
   appendGroupQuery,
   groupHref,
+  groupsIndexHref,
   parseGroupQuery,
   setActiveGroup,
 } from '../lib/groups'
@@ -18,6 +19,17 @@ import {
   type LeaderboardGame,
   type LeaderboardPeriod,
 } from '../lib/leaderboard'
+
+/*
+ * Routing.
+ *
+ * URLs are real paths (`/games/snake`, `/leaderboards/week`) pushed with the
+ * History API, so crawlers and link unfurlers see one page per route. The
+ * file keeps its old name because it is imported from everywhere; the hash
+ * router it replaced lives on only as `migrateLegacyHash`, which turns the
+ * `#/…` links still out there (shared boards, sign-in emails, push payloads)
+ * into the path they mean.
+ */
 
 export type Route =
   | { name: 'home' }
@@ -42,6 +54,9 @@ export type Route =
   | { name: 'terms' }
   | { name: 'devCelebrate' }
 
+/** Fired after in-app navigation has changed the URL. */
+export const ROUTE_EVENT = 'skermix:route'
+
 /** Old URL slugs → current game slugs (name-matching). */
 const GAME_SLUG_ALIASES: Record<string, string> = {
   'dead-center': 'centroid',
@@ -62,9 +77,17 @@ function isLeaderboardPeriod(value: string): value is LeaderboardPeriod {
   return (LEADERBOARD_PERIODS as readonly string[]).includes(value)
 }
 
+/* ------------------------------------------------------------------ */
+/* Hrefs                                                               */
+/* ------------------------------------------------------------------ */
+
+export function homeHref() {
+  return '/'
+}
+
 /** Leaderboards overview hub (top scores). */
 export function leaderboardHref(period: LeaderboardPeriod = defaultPeriod()) {
-  return `#/leaderboards/${period}`
+  return `/leaderboards/${period}`
 }
 
 /** Full board for one game. */
@@ -72,11 +95,11 @@ export function gameBoardHref(
   game: LeaderboardGame,
   period: LeaderboardPeriod = defaultPeriod(),
 ) {
-  return `#/leaderboards/${encodeURIComponent(game)}/${period}`
+  return `/leaderboards/${encodeURIComponent(game)}/${period}`
 }
 
 export function globalRankingsHref(period: LeaderboardPeriod = defaultPeriod()) {
-  return `#/leaderboards/global/${period}`
+  return `/leaderboards/global/${period}`
 }
 
 export function rankHref(
@@ -87,22 +110,20 @@ export function rankHref(
 ) {
   const cleaned = player?.trim().toUpperCase().slice(0, 12)
   const base = cleaned
-    ? `#/rank/${encodeURIComponent(cleaned)}/${period}`
-    : `#/rank/${period}`
+    ? `/rank/${encodeURIComponent(cleaned)}/${period}`
+    : `/rank/${period}`
   return focus ? `${base}?focus=${focus}` : base
 }
 
-/** Section the current route asks to be scrolled to, if any. */
-export function focusFromHash(): string | null {
+/** Section the current URL asks to be scrolled to, if any. */
+export function focusFromUrl(): string | null {
   if (typeof window === 'undefined') return null
-  const query = window.location.hash.split('?')[1]
-  if (!query) return null
-  return new URLSearchParams(query).get('focus')
+  return new URLSearchParams(window.location.search).get('focus')
 }
 
-/** Game hub / lobby. Optional records tab: `#/games/{slug}/records`. */
+/** Game hub / lobby. Optional records tab: `/games/{slug}/records`. */
 export function gameHref(slug: string, board: 'scores' | 'records' = 'scores') {
-  const base = `#/games/${encodeURIComponent(slug)}`
+  const base = `/games/${encodeURIComponent(slug)}`
   if (board === 'records') return `${base}/records`
   return base
 }
@@ -112,64 +133,64 @@ export function gameHubHref(
   slug: string,
   period: LeaderboardPeriod = defaultPeriod(),
 ) {
-  return `#/games/${encodeURIComponent(slug)}/${period}`
+  return `/games/${encodeURIComponent(slug)}/${period}`
 }
 
 export function gamePlayHref(slug: string) {
-  return `#/games/${encodeURIComponent(slug)}/play`
+  return `/games/${encodeURIComponent(slug)}/play`
 }
 
 /** Site-wide record books catalog. */
 export function recordsIndexHref() {
-  return '#/records'
+  return '/records'
 }
 
 export function privacyHref() {
-  return '#/privacy'
+  return '/privacy'
 }
 
 export function termsHref() {
-  return '#/terms'
+  return '/terms'
 }
 
 export function aboutHref() {
-  return '#/about'
+  return '/about'
 }
 
 export function plusHref() {
-  return '#/plus'
+  return '/plus'
 }
 
 export function statsHref() {
-  return '#/stats'
+  return '/stats'
 }
 
 export function tournamentsHref() {
-  return '#/tournaments'
+  return '/tournaments'
 }
 
 export function tournamentCreateHref() {
-  return '#/tournaments/create'
+  return '/tournaments/create'
 }
 
 export function tournamentHref(id: string, invite?: string) {
-  const base = `#/tournaments/${encodeURIComponent(id)}`
+  const base = `/tournaments/${encodeURIComponent(id)}`
   if (!invite?.trim()) return base
   return `${base}?invite=${encodeURIComponent(invite.trim().toUpperCase())}`
 }
 
 export function tournamentPlayHref(id: string, game: string, invite?: string) {
-  const base = `#/tournaments/${encodeURIComponent(id)}/play/${encodeURIComponent(game)}`
+  const base = `/tournaments/${encodeURIComponent(id)}/play/${encodeURIComponent(game)}`
   if (!invite?.trim()) return base
   return `${base}?invite=${encodeURIComponent(invite.trim().toUpperCase())}`
 }
 
-/** Record books for one game (`#/records/{game}/{period}`). Individual boards use `recordHref`. */
+/** Record books for one game (`/records/{game}/{period}`). Individual boards use `recordHref`. */
 export function recordsHref(
   game: string,
   period: LeaderboardPeriod = defaultPeriod(),
 ) {
-  return `#/records/${encodeURIComponent(game)}/${period}`
+  return `/records/${encodeURIComponent(game)}/${period}`
 }
 
 export function recordHref(
@@ -177,7 +198,7 @@ export function recordHref(
   recordId: string,
   period: LeaderboardPeriod = defaultPeriod(),
 ) {
-  return `#/records/${encodeURIComponent(game)}/${encodeURIComponent(recordId)}/${period}`
+  return `/records/${encodeURIComponent(game)}/${encodeURIComponent(recordId)}/${period}`
 }
 
 function gameLeaderboardRoute(
@@ -191,11 +212,109 @@ function gameLeaderboardRoute(
   }
 }
 
-function normalizeHash(hash: string): string {
-  return hash.replace(/\/$/, '')
+/* ------------------------------------------------------------------ */
+/* The current URL                                                     */
+/* ------------------------------------------------------------------ */
+
+/** A trailing slash means the same page. */
+function normalizeHref(href: string): string {
+  return href.replace(/\/(?=\?|$)/, '')
 }
 
-/** Canonical hash for period-aware routes; null when route has no period segment. */
+/** Path plus query of the current URL — what an in-app href looks like. */
+export function currentHref(): string {
+  if (typeof window === 'undefined') return '/'
+  return `${window.location.pathname}${window.location.search}`
+}
+
+/** The current path, without a trailing slash; `/` for the home page. */
+export function currentPath(pathname = typeof window !== 'undefined' ? window.location.pathname : '/') {
+  const trimmed = pathname.replace(/\/+$/, '')
+  return trimmed || '/'
+}
+
+/** `#/games/snake` and friends: the path an old hash URL stands for, else null. */
+function legacyHashPath(hash: string): string | null {
+  if (!hash.startsWith('#/')) return null
+  return hash.slice(1)
+}
+
+/**
+ * Rewrite an old `#/…` URL into its path in place, without a navigation.
+ * Returns whether there was one.
+ */
+export function migrateLegacyHash(): boolean {
+  if (typeof window === 'undefined') return false
+  const path = legacyHashPath(window.location.hash)
+  if (!path) return false
+  window.history.replaceState(window.history.state, '', path)
+  return true
+}
+
+/** An in-app href (path, `#/…`, or absolute same-origin URL) as path + query. */
+function resolveInAppHref(href: string): string {
+  const url = new URL(href, window.location.href)
+  const legacy = legacyHashPath(url.hash)
+  if (legacy) return legacy
+  return `${url.pathname}${url.search}`
+}
+
+/**
+ * Go to an in-app href. Pushes a history entry unless the URL is already
+ * there; either way the route listeners re-sync, so leaving a game to the
+ * page you are technically already on still closes the game.
+ */
+export function navigate(href: string, options: { replace?: boolean } = {}) {
+  const target = resolveInAppHref(href)
+  if (normalizeHref(target) !== normalizeHref(currentHref())) {
+    if (options.replace) window.history.replaceState(null, '', target)
+    else window.history.pushState(null, '', target)
+  }
+  window.dispatchEvent(new Event(ROUTE_EVENT))
+}
+
+/**
+ * Plain `<a href="/games/snake">` links navigate in-app. Anything that is
+ * not a left click on a same-origin link (new tab, download, mailto, an
+ * in-page `#section`) is left to the browser.
+ */
+function onDocumentClick(event: MouseEvent) {
+  if (event.defaultPrevented || event.button !== 0) return
+  if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
+  const target = event.target
+  if (!(target instanceof Element)) return
+  const anchor = target.closest('a[href]')
+  if (!(anchor instanceof HTMLAnchorElement)) return
+  if (anchor.target && anchor.target !== '_self') return
+  if (anchor.hasAttribute('download')) return
+  const raw = anchor.getAttribute('href') ?? ''
+  if (raw.startsWith('#') && !raw.startsWith('#/')) return
+  let url: URL
+  try {
+    url = new URL(anchor.href)
+  } catch {
+    return
+  }
+  if (url.origin !== window.location.origin) return
+  event.preventDefault()
+  navigate(resolveInAppHref(url.href))
+}
+
+let routerBooted = false
+
+/** Call once before the first render: fix up legacy URLs and take over link clicks. */
+export function bootRouter() {
+  if (routerBooted || typeof window === 'undefined') return
+  routerBooted = true
+  migrateLegacyHash()
+  document.addEventListener('click', onDocumentClick)
+}
+
+/* ------------------------------------------------------------------ */
+/* Routes ⇄ hrefs                                                      */
+/* ------------------------------------------------------------------ */
+
+/** Canonical href for period-aware routes; null when route has no period segment. */
 export function hrefForRoute(
   route: Route,
   period: LeaderboardPeriod = defaultPeriod(),
@@ -223,7 +342,7 @@ export function hrefForRoute(
     case 'tournamentPlay':
       return tournamentPlayHref(route.id, route.game, route.invite)
     case 'groups':
-      return '#/groups'
+      return groupsIndexHref()
     case 'group':
       return groupHref(route.id, route.invite)
     default:
@@ -245,45 +364,30 @@ export function periodFromRoute(route: Route): LeaderboardPeriod | undefined {
   }
 }
 
-export function applySitePeriod(
-  period: LeaderboardPeriod,
-  route: Route = parseHash(window.location.hash),
-) {
+export function applySitePeriod(period: LeaderboardPeriod, route: Route = currentRoute()) {
   const nextPeriod = coerceVisiblePeriod(period)
   setDefaultPeriod(nextPeriod)
   const next = hrefForRoute(route, nextPeriod)
-  if (next && normalizeHash(window.location.hash) !== normalizeHash(next)) {
-    window.location.hash = next
+  if (next && normalizeHref(currentHref()) !== normalizeHref(next)) {
+    navigate(next)
   }
 }
 
-export function applySiteGroup(
-  groupId: string | null,
-  route: Route = parseHash(window.location.hash),
-) {
+export function applySiteGroup(groupId: string | null, route: Route = currentRoute()) {
   setActiveGroup(groupId)
   const next = hrefForRoute(route, periodFromRoute(route) ?? defaultPeriod())
-  if (next && normalizeHash(window.location.hash) !== normalizeHash(next)) {
-    window.location.hash = next
+  if (next && normalizeHref(currentHref()) !== normalizeHref(next)) {
+    navigate(next)
   }
 }
 
-/** Turn `/groups` path URLs into `#/groups` so the hash router can see them. */
-function syncGroupsPathname() {
-  const path = window.location.pathname.replace(/\/$/, '')
-  if (path !== '/groups' && !path.startsWith('/groups/')) return
-  const next = `#${path}${window.location.search}`
-  if (window.location.hash === next) return
-  window.history.replaceState(null, '', `/${next}`)
-}
+/* ------------------------------------------------------------------ */
+/* Parsing                                                             */
+/* ------------------------------------------------------------------ */
 
-function parseHash(hash: string): Route {
-  const raw = hash.replace(/^#\/?/, '').replace(/\/$/, '')
-  const [path, queryString] = raw.split('?')
-  const invite =
-    queryString && queryString.length > 0
-      ? new URLSearchParams(queryString).get('invite')?.trim().toUpperCase() || undefined
-      : undefined
+export function parseUrl(pathname: string, search: string): Route {
+  const path = pathname.replace(/^\/+/, '').replace(/\/+$/, '')
+  const invite = new URLSearchParams(search).get('invite')?.trim().toUpperCase() || undefined
   if (!path) return { name: 'home' }
   if (path === 'about') return { name: 'about' }
   if (path === 'plus') return { name: 'plus' }
@@ -426,44 +530,63 @@ function parseHash(hash: string): Route {
   return { name: 'home' }
 }
 
-export function useHashRoute(): Route {
-  const [route, setRoute] = useState(() => parseHash(window.location.hash))
+/** The route the current URL means (after any legacy `#/…` fix-up). */
+export function currentRoute(): Route {
+  if (typeof window === 'undefined') return { name: 'home' }
+  migrateLegacyHash()
+  return parseUrl(window.location.pathname, window.location.search)
+}
+
+function sameRoute(a: Route, b: Route) {
+  return JSON.stringify(a) === JSON.stringify(b)
+}
+
+/* ------------------------------------------------------------------ */
+/* Hook                                                                */
+/* ------------------------------------------------------------------ */
+
+export function useRoute(): Route {
+  const [route, setRoute] = useState(() => currentRoute())
 
   useEffect(() => {
-    const p = periodFromRoute(parseHash(window.location.hash))
+    const p = periodFromRoute(currentRoute())
     if (p) setDefaultPeriod(p)
   }, [])
 
   useEffect(() => {
     const syncRoute = () => {
-      syncGroupsPathname()
-      const next = parseHash(window.location.hash)
+      let next = currentRoute()
       const p = periodFromRoute(next)
       if (p) setDefaultPeriod(p)
-      const query = window.location.hash.split('?')[1]
-      const groupParams = new URLSearchParams(query || '')
+      const groupParams = new URLSearchParams(window.location.search)
       if (groupParams.has('group')) {
-        setActiveGroup(parseGroupQuery(query))
+        setActiveGroup(parseGroupQuery(window.location.search))
       }
       const canonical = hrefForRoute(next, p ?? defaultPeriod())
-      if (canonical && normalizeHash(window.location.hash) !== normalizeHash(canonical)) {
-        window.location.replace(canonical)
-        return
+      if (canonical && normalizeHref(currentHref()) !== normalizeHref(canonical)) {
+        window.history.replaceState(window.history.state, '', canonical)
+        next = currentRoute()
       }
-      setRoute(next)
+      setRoute((prev) => (sameRoute(prev, next) ? prev : next))
     }
+    window.addEventListener('popstate', syncRoute)
+    window.addEventListener(ROUTE_EVENT, syncRoute)
+    // Old `#/…` links set the hash rather than the path; fold them in too.
     window.addEventListener('hashchange', syncRoute)
     syncRoute()
-    return () => window.removeEventListener('hashchange', syncRoute)
+    return () => {
+      window.removeEventListener('popstate', syncRoute)
+      window.removeEventListener(ROUTE_EVENT, syncRoute)
+      window.removeEventListener('hashchange', syncRoute)
+    }
   }, [])
 
   useEffect(() => {
     const syncPeriodUrl = () => {
-      const currentRoute = parseHash(window.location.hash)
       const period = defaultPeriod()
-      const next = hrefForRoute(currentRoute, period)
-      if (next && normalizeHash(window.location.hash) !== normalizeHash(next)) {
-        window.location.hash = next
+      const next = hrefForRoute(currentRoute(), period)
+      if (next && normalizeHref(currentHref()) !== normalizeHref(next)) {
+        navigate(next)
       }
     }
 
@@ -477,3 +600,6 @@ export function useHashRoute(): Route {
 
   return route
 }
+
+/** @deprecated The router is not hash-based any more; call `useRoute`. */
+export const useHashRoute = useRoute

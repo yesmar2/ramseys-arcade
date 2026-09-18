@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import { gameHref } from '../hooks/useHashRoute'
+import { currentHref, gameHref, navigate, tournamentHref } from '../hooks/useHashRoute'
 import {
   exitFullscreen,
   fullscreenSupported,
@@ -155,18 +155,14 @@ export function GamePlayChrome({
 }
 
 function playLeaveHref(slug: string, tournamentId?: string) {
-  if (tournamentId) return `#/tournaments/${tournamentId}`
+  if (tournamentId) return tournamentHref(tournamentId)
   return gameHref(slug)
 }
 
-function navigateHash(target: string) {
-  const hash = target.startsWith('#') ? target : `#${target}`
+/** Leave the stage for an in-app href. The same URL still re-syncs the route. */
+function leaveTo(target: string) {
   void exitFullscreen()
-  if (window.location.hash === hash) {
-    window.dispatchEvent(new HashChangeEvent('hashchange'))
-    return
-  }
-  window.location.hash = hash
+  navigate(target)
 }
 
 function PlayLeaveButton({
@@ -193,7 +189,7 @@ function PlayLeaveButton({
   const goNow = () => {
     armedRef.current = false
     setConfirming(false)
-    navigateHash(hrefRef.current)
+    leaveTo(hrefRef.current)
   }
 
   useEffect(() => {
@@ -216,21 +212,21 @@ function PlayLeaveButton({
 
   // Mobile / browser back → same leave confirm as the in-game back button.
   useEffect(() => {
-    const playHash = window.location.hash
+    const playUrl = currentHref()
     const guard = { arcadeLeaveGuard: true as const }
-    history.pushState(guard, '', playHash)
+    history.pushState(guard, '', playUrl)
 
     armedRef.current = true
     const onPopState = () => {
       if (!armedRef.current) return
       const running = resolveInRun(inRunRef.current) || pausedRef.current
-      history.pushState(guard, '', playHash)
+      history.pushState(guard, '', playUrl)
       if (running) {
         setConfirming(true)
         return
       }
       armedRef.current = false
-      navigateHash(hrefRef.current)
+      leaveTo(hrefRef.current)
     }
     window.addEventListener('popstate', onPopState)
     return () => {

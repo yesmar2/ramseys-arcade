@@ -9,6 +9,7 @@ import {
   gameBoardHref,
   gamePlayHref,
   leaderboardHref,
+  navigate,
 } from '../hooks/useHashRoute'
 import { usePagedBoard } from '../hooks/usePagedBoard'
 import { usePlayerName } from '../hooks/usePlayerName'
@@ -70,7 +71,7 @@ export function GameLeaderboardPage({
   }, [loading, you, period])
 
   const selectPeriod = (next: LeaderboardPeriod) => {
-    window.location.hash = gameBoardHref(gameSlug, next)
+    navigate(gameBoardHref(gameSlug, next))
   }
 
   if (!game) {

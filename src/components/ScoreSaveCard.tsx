@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { useAuth } from '../hooks/useAuth'
 import { useImpersonation } from '../hooks/useImpersonation'
-import { gameBoardHref, recordsHref } from '../hooks/useHashRoute'
+import { gameBoardHref, gameHref, navigate, recordsHref } from '../hooks/useHashRoute'
 import { linkCurrentNameToAccount } from '../lib/auth'
 import {
   addLeaderboardScore,
@@ -310,19 +310,16 @@ function RankChips({ ranks }: { ranks?: Partial<Record<LeaderboardPeriod, number
   )
 }
 
-/** Leave the play overlay and open an in-app hash route. */
+/** Leave the play overlay and open an in-app route. */
 function leavePlayTo(href: string) {
-  const hash = href.startsWith('#') ? href : `#${href}`
-  const next = `${window.location.pathname}${window.location.search}${hash}`
-  window.history.pushState(null, '', next)
-  window.dispatchEvent(new Event('hashchange'))
+  navigate(href)
 }
 
 function boardsHref(gameSlug: string) {
   if ((LEADERBOARD_GAMES as readonly string[]).includes(gameSlug)) {
     return gameBoardHref(gameSlug as LeaderboardGame, defaultPeriod())
   }
-  return `#/games/${encodeURIComponent(gameSlug)}`
+  return gameHref(gameSlug)
 }
 
 type Particle = {

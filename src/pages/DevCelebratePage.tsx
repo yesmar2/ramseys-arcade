@@ -1,6 +1,7 @@
 import { useState, type CSSProperties } from 'react'
 import { PageShell } from '../components/PageShell'
 import { PodiumMedal } from '../components/PodiumMedal'
+import { tournamentsHref } from '../hooks/useHashRoute'
 import {
   RankUpCelebration,
   ScoreCelebration,
@@ -8,7 +9,7 @@ import {
 } from '../components/ScoreSaveCard'
 
 /**
- * Dev only (`#/dev/celebrate`): the after-run screens with made-up data, so
+ * Dev only (`/dev/celebrate`): the after-run screens with made-up data, so
  * they can be styled without playing a game to the end each time. Not
  * routed in production builds.
  */
@@ -163,7 +164,7 @@ export function DevCelebratePage() {
                 </button>
               </div>
               <div className="score-save__links">
-                <a href="#/tournaments">Standings</a>
+                <a href={tournamentsHref()}>Standings</a>
               </div>
             </div>
           </div>
