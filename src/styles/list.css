@@ -387,19 +387,6 @@ a.lst__name:focus-visible .lst__name-text {
 
 /* ---------- flat / google ---------- */
 
-html[data-theme="flat"] .lst__row,
-html[data-theme="google"] .lst__row,
-html[data-theme="flat"] .lst__game,
-html[data-theme="google"] .lst__game {
-  border-color: var(--flat-border) !important;
-  box-shadow: none !important;
-}
-
-html[data-theme="flat"] .lst__row--you,
-html[data-theme="google"] .lst__row--you {
-  background: color-mix(in srgb, var(--event-accent, var(--accent)) 14%, var(--surface));
-}
-
 /* ==========================================================================
    A list on the page: a small label over the rows, no wrapping card —
    the rows are the cards.
@@ -639,19 +626,6 @@ html[data-theme="google"] .lst__row--you {
   border-color: color-mix(in srgb, var(--period-accent, var(--event-accent, var(--accent))) 45%, transparent);
   color: color-mix(in srgb, var(--period-accent, var(--event-accent, var(--accent))) 62%, var(--ink));
   cursor: default;
-}
-
-html[data-theme="flat"] .seg,
-html[data-theme="google"] .seg,
-html[data-theme="flat"] .chips__item,
-html[data-theme="google"] .chips__item {
-  border-color: var(--flat-border) !important;
-  box-shadow: none !important;
-}
-
-html[data-theme="flat"] .seg__item--active,
-html[data-theme="google"] .seg__item--active {
-  box-shadow: none !important;
 }
 
 /* ==========================================================================

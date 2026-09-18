@@ -2,25 +2,27 @@ export const THEME_KEY = 'skermix-theme'
 const LEGACY_THEME_KEYS = ['fordriva-theme', 'acralia-theme', 'archivade-theme'] as const
 export const THEME_EVENT = 'arcade-theme'
 
-export type Theme = 'light' | 'dark' | 'flat' | 'google'
+/** Two themes: dark by default, light by choice. */
+export type Theme = 'light' | 'dark'
 
-const THEMES: Theme[] = ['dark', 'light', 'flat', 'google']
+const THEMES: Theme[] = ['dark', 'light']
 
 function isTheme(value: string | null | undefined): value is Theme {
-  return value === 'light' || value === 'dark' || value === 'flat' || value === 'google'
+  return value === 'light' || value === 'dark'
 }
 
 export function systemTheme(): Theme {
   return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
 }
 
+/** The stored choice, or null. A choice from a theme that no longer exists reads as null. */
 export function storedTheme(): Theme | null {
   try {
     let value = localStorage.getItem(THEME_KEY)
     if (!isTheme(value)) {
       for (const key of LEGACY_THEME_KEYS) {
         value = localStorage.getItem(key)
-        if (value === 'light' || value === 'dark') {
+        if (isTheme(value)) {
           localStorage.setItem(THEME_KEY, value)
           break
         }
@@ -38,66 +40,35 @@ export function currentTheme(): Theme {
   return storedTheme() ?? 'dark'
 }
 
-/** Dark chrome colors only — Flat sits on the light palette. */
 export function isDarkTheme() {
   return currentTheme() === 'dark'
 }
 
-/** Fill-forward art: no outlines on beads / thumbs / soft shapes. */
+/**
+ * There used to be flat themes that drew no outlines. Both themes outline
+ * now; this stays so the games' renderers keep reading the same way.
+ */
 export function isFlatTheme() {
-  const theme = currentTheme()
-  return theme === 'flat' || theme === 'google'
+  return false
 }
 
-export function isGoogleTheme() {
-  return currentTheme() === 'google'
-}
-
-/** Classic Google brand primaries. */
-export const GOOGLE_BLUE = '#4285F4'
-export const GOOGLE_RED = '#EA4335'
-export const GOOGLE_YELLOW = '#FBBC04'
-export const GOOGLE_GREEN = '#34A853'
-
-const GOOGLE_BY_SLUG: Record<string, string> = {
-  asteroids: GOOGLE_GREEN,
-  patriot: GOOGLE_RED,
-  snake: GOOGLE_GREEN,
-  crosswalk: GOOGLE_YELLOW,
-  stacker: GOOGLE_BLUE,
-  centroid: GOOGLE_BLUE,
-  pop: GOOGLE_BLUE,
-  simon: GOOGLE_RED,
-  pellets: GOOGLE_YELLOW,
-  crumbtrail: GOOGLE_GREEN,
-  bop: GOOGLE_RED,
-  putt: GOOGLE_GREEN,
-  barrage: GOOGLE_RED,
-  spotter: GOOGLE_BLUE,
-  findbug: GOOGLE_GREEN,
-}
-
-/** Game / thumb accent — remapped onto Google primaries in Google theme. */
-export function resolveGameAccent(slug: string, fallback: string) {
-  if (!isGoogleTheme()) return fallback
-  return GOOGLE_BY_SLUG[slug] ?? GOOGLE_BLUE
+/** A game's accent is its own in every theme. */
+export function resolveGameAccent(_slug: string, fallback: string) {
+  return fallback
 }
 
 export function themeLabel(theme: Theme = currentTheme()) {
-  if (theme === 'flat') return 'Flat'
-  if (theme === 'google') return 'Google'
-  if (theme === 'light') return 'Light'
-  return 'Dark'
+  return theme === 'light' ? 'Light' : 'Dark'
 }
 
-/** Soft bead / crumb fill alpha — stronger when outlines are off. */
+/** Soft bead / crumb fill alpha. */
 export function softFillAlpha(base = 0.22) {
-  return isFlatTheme() ? Math.min(0.82, base * 3.5) : base
+  return base
 }
 
-/** Stroke only in outlined themes (Dark / Light). */
+/** Stroke an outlined shape. */
 export function strokeOutlined(ctx: CanvasRenderingContext2D) {
-  if (!isFlatTheme()) ctx.stroke()
+  ctx.stroke()
 }
 
 export function applyTheme(theme: Theme) {
@@ -117,10 +88,10 @@ export function setTheme(theme: Theme) {
   window.dispatchEvent(new Event(THEME_EVENT))
 }
 
-/** Cycle Dark → Light → Flat → Google → Dark. */
+/** Dark ↔ Light. */
 export function cycleTheme() {
   const i = THEMES.indexOf(currentTheme())
-  setTheme(THEMES[(i + 1) % THEMES.length])
+  setTheme(THEMES[(i + 1) % THEMES.length]!)
 }
 
 /** @deprecated Prefer cycleTheme — kept for existing call sites. */

@@ -685,27 +685,6 @@
 
 /* ---------- flat / google ---------- */
 
-html[data-theme="flat"] .score-save,
-html[data-theme="google"] .score-save,
-html[data-theme="flat"] .score-celeb__shell,
-html[data-theme="google"] .score-celeb__shell,
-html[data-theme="flat"] .score-celeb__award,
-html[data-theme="google"] .score-celeb__award,
-html[data-theme="flat"] .score-save__ranks li,
-html[data-theme="google"] .score-save__ranks li,
-html[data-theme="flat"] .score-save__input,
-html[data-theme="google"] .score-save__input {
-  border-color: var(--flat-border) !important;
-  box-shadow: none !important;
-}
-
-html[data-theme="flat"] .score-save__btn,
-html[data-theme="google"] .score-save__btn,
-html[data-theme="flat"] .score-celeb__btn,
-html[data-theme="google"] .score-celeb__btn {
-  box-shadow: none;
-}
-
 /* ---------- small screens, short screens, less motion ---------- */
 
 @media (max-height: 700px) {

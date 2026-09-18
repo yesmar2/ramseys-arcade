@@ -1090,7 +1090,6 @@
   display: none;
 }
 
-
 /*
  * The decider before anyone reaches it. It belongs on the board — the
  * losers-side finalist has to win two matches to the winners-side finalist's
@@ -1542,39 +1541,6 @@
    Flat / Google: no shadows, no edges — colour carries the surfaces
    ========================================================================== */
 
-html[data-theme="flat"] .ev-card,
-html[data-theme="google"] .ev-card,
-html[data-theme="flat"] .evl__results,
-html[data-theme="google"] .evl__results,
-html[data-theme="flat"] .evc,
-html[data-theme="google"] .evc,
-html[data-theme="flat"] .ev-lineup__tile,
-html[data-theme="google"] .ev-lineup__tile {
-  border-color: var(--flat-border) !important;
-  box-shadow: none !important;
-}
-
-html[data-theme="flat"] .evc:hover,
-html[data-theme="google"] .evc:hover,
-html[data-theme="flat"] .ev-lineup__tile:hover,
-html[data-theme="google"] .ev-lineup__tile:hover {
-  transform: none;
-  box-shadow: none !important;
-}
-
-html[data-theme="flat"] .evc:focus-visible,
-html[data-theme="google"] .evc:focus-visible,
-html[data-theme="flat"] .evr:focus-visible,
-html[data-theme="google"] .evr:focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--event-accent, var(--accent)) 55%, transparent);
-  outline-offset: 2px;
-}
-
-html[data-theme="flat"] .evc__go,
-html[data-theme="google"] .evc__go {
-  box-shadow: none;
-}
-
 /* ---------- event-win trophies in the trophy case ---------- */
 
 .trophy-case__badge--event {
@@ -1763,8 +1729,6 @@ html[data-theme="google"] .evc__go {
   color: #b42318;
 }
 
-
-
 /* ==========================================================================
    A quiet card: for grids of many accents (the boards overview), where the
    hero is the one tinted block. The surface goes neutral and the colour
@@ -1786,11 +1750,6 @@ html[data-theme="google"] .evc__go {
 .evc--quiet:focus-visible {
   border-color: color-mix(in srgb, var(--event-accent, var(--accent)) 45%, transparent);
   box-shadow: var(--shadow-soft);
-}
-
-html[data-theme="flat"] .evc--quiet,
-html[data-theme="google"] .evc--quiet {
-  border-color: var(--flat-border) !important;
 }
 
 /*
@@ -1904,7 +1863,6 @@ html[data-theme="google"] .evc--quiet {
   color: var(--muted);
   font-variant-numeric: tabular-nums;
 }
-
 
 /* Host controls on a roster row: two small buttons, never a wrapped mess. */
 .grp__row-actions {

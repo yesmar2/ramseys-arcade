@@ -172,9 +172,3 @@
   max-width: 28rem;
 }
 
-html[data-theme="flat"] .grp__boards,
-html[data-theme="google"] .grp__boards,
-html[data-theme="flat"] .grp__face--more,
-html[data-theme="google"] .grp__face--more {
-  border-color: var(--flat-border) !important;
-}

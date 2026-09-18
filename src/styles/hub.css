@@ -197,13 +197,6 @@
   }
 }
 
-html[data-theme="flat"] .hub__stat,
-html[data-theme="google"] .hub__stat,
-html[data-theme="flat"] .hub__scoring li,
-html[data-theme="google"] .hub__scoring li {
-  border-color: var(--flat-border) !important;
-}
-
 /* Play, then the quiet links, in a row under the art and text — never a
    stack of full-width buttons. */
 .hub .hub__actions {

@@ -795,25 +795,6 @@ a.pff__name:focus-visible {
    Flat / Google
    ========================================================================== */
 
-html[data-theme="flat"] .pfh__rank,
-html[data-theme="google"] .pfh__rank,
-html[data-theme="flat"] .pft__tile,
-html[data-theme="google"] .pft__tile {
-  border-color: var(--flat-border) !important;
-  box-shadow: none !important;
-}
-
-html[data-theme="flat"] .pfh__rank:hover,
-html[data-theme="google"] .pfh__rank:hover {
-  transform: none;
-}
-
-html[data-theme="flat"] .pfh__rank:focus-visible,
-html[data-theme="google"] .pfh__rank:focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--accent) 55%, transparent);
-  outline-offset: 2px;
-}
-
 /* Loading: three rows of the friends list's shape. */
 .pff__row--skel {
   pointer-events: none;

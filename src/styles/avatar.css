@@ -298,16 +298,6 @@
   height: 0.9rem;
 }
 
-html[data-theme="flat"] .studio__card,
-html[data-theme="google"] .studio__card,
-html[data-theme="flat"] .studio__stage,
-html[data-theme="google"] .studio__stage,
-html[data-theme="flat"] .studio__shape,
-html[data-theme="google"] .studio__shape {
-  border-color: var(--flat-border) !important;
-  box-shadow: none !important;
-}
-
 /* The drawer's profile row shows your character on its tile. */
 .site-drawer__profile-mark .player-avatar {
   --avatar-size: 2.2rem;

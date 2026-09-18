@@ -495,17 +495,6 @@
 
 /* ---------- flat / google: no shadows, no edges ---------- */
 
-html[data-theme="flat"] .hero,
-html[data-theme="google"] .hero {
-  border-color: var(--flat-border) !important;
-  box-shadow: none !important;
-}
-
-html[data-theme="flat"] .hero__cta,
-html[data-theme="google"] .hero__cta {
-  box-shadow: none;
-}
-
 /* A single tool in the hero's top corner, when there is no bar. */
 .hero__corner {
   position: absolute;

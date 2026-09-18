@@ -23,24 +23,7 @@ export function ThemeToggle({ className = '' }: { className?: string }) {
       onClick={() => toggleTheme()}
     >
       <svg viewBox="0 0 24 24" aria-hidden="true">
-        {theme === 'google' ? (
-          <>
-            <circle cx="8.2" cy="8.2" r="2.4" fill="#4285f4" />
-            <circle cx="15.8" cy="8.2" r="2.4" fill="#ea4335" />
-            <circle cx="8.2" cy="15.8" r="2.4" fill="#fbbc04" />
-            <circle cx="15.8" cy="15.8" r="2.4" fill="#34a853" />
-          </>
-        ) : theme === 'flat' ? (
-          <rect
-            x="5"
-            y="5"
-            width="14"
-            height="14"
-            rx="2.5"
-            fill="currentColor"
-            opacity="0.9"
-          />
-        ) : theme === 'dark' ? (
+        {theme === 'dark' ? (
           <>
             <circle cx="12" cy="12" r="3.6" fill="none" stroke="currentColor" strokeWidth="1.8" />
             <path

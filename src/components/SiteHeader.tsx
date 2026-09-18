@@ -43,7 +43,7 @@ function UserIcon() {
 }
 
 /** The themes, in the order the picker shows them. */
-const THEME_CHOICES: Theme[] = ['light', 'dark', 'flat', 'google']
+const THEME_CHOICES: Theme[] = ['light', 'dark']
 
 /** Site-wide navigation — use this on every page (home, leaderboards, game hub, etc.). */
 export function SiteHeader() {
