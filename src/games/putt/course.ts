@@ -1,5 +1,5 @@
 /*
- * The course: nine holes, the same every round, so a score means the same
+ * The course: five holes, the same every round, so a score means the same
  * thing to everyone on the board.
  *
  * A hole is painted. Its ground is a union of shapes — discs, capsules,
@@ -7,11 +7,13 @@
  * needs, and its walls are wherever the ground ends, so a curve is a curve
  * and a fork is two strokes that overlap. y grows downward: tees sit near
  * the bottom, cups near the top, and no cup is within one shot of its tee.
- * Sand drags, water costs a stroke, a bridge is ground over water, a hill
- * pushes the ball downhill, a bowl pulls it to its middle. Windmills turn,
- * pads push, pipes take the ball in one end and out the other. Then the
- * pinball: bumpers, kickers, lanes, drop targets and rovers, all of which
- * pay.
+ * Sand drags, water costs a stroke, a bridge is ground over water and a
+ * drawbridge is one that is only there part of the time, a hill pushes the
+ * ball downhill, a bowl pulls it to its middle, a repeller pushes it away,
+ * and a spinning floor carries it round. Windmills turn, sliders sweep
+ * across, flaps let the ball through one way only, pads push, ramps launch
+ * it over whatever is in the way, pipes take it in one end and out the
+ * other, and bumpers and rovers knock it about.
  */
 
 import { arc, capsule, disc, rect, type Shape, type Vec } from './terrain'
@@ -25,41 +27,52 @@ export type Wall = {
   b: Vec
   /** Half of the wall's thickness. */
   t: number
-  /** A kicker: the ball comes off it faster than it arrived, and it pays. */
+  /** A kicker: the ball comes off it faster than it arrived. */
   kick?: boolean
   /** Traced from the edge of the ground, not placed by hand. */
   edge?: boolean
+  /** A flap: the ball goes through when it is heading this way (radians), and it is a wall from the other side. */
+  pass?: number
 }
 
 export type Bumper = { x: number; y: number; r: number }
-
-/** A rollover: a lit marker the ball has to pass over. */
-export type Lane = { x: number; y: number }
 
 export type Rect = { x: number; y: number; w: number; h: number }
 
 /** A pad that pushes the ball along `dir` (radians) while it is on it. */
 export type Boost = Rect & { dir: number }
 
-/** A slope: ground that pushes the ball along `pull` each second, or a bowl that pulls it to the middle. */
-export type Slope = { shape: Shape; pull?: Vec; bowl?: number }
+/**
+ * A slope: ground that pushes the ball along `pull` each second; a bowl that
+ * pulls it to the middle; a repeller that pushes it away from the middle; or
+ * a floor that spins, carrying the ball round its middle — positive is
+ * anticlockwise on screen, up the right side and down the left — and
+ * pressing it outward to the bank.
+ */
+export type Slope = { shape: Shape; pull?: Vec; bowl?: number; repel?: number; spin?: number }
 
 /** A windmill: a bar `len` long turning about (x, y) at `speed` radians a second. */
 export type Spinner = { x: number; y: number; len: number; speed: number; phase: number }
 
+/** A slider: a bar `t` thick from a to b that slides by (dx, dy) and back, once every `period` seconds. */
+export type Slider = { a: Vec; b: Vec; t: number; dx: number; dy: number; period: number; phase?: number }
+
 /** A pipe: a ball that rolls into `a` comes out at `b` heading along `out`. */
 export type Portal = { a: Vec; b: Vec; out: number }
-
-/** A drop target: stands until the ball hits it. Knock the whole bank down for the bonus. */
-export type Target = { x: number; y: number }
 
 /** The cup slides from its spot to `to` and back, once every `period` seconds. */
 export type CupPath = { to: Vec; period: number }
 
+/** A drawbridge: ground over the water for the first `down` share of each `period` seconds, gone the rest. */
+export type Drawbridge = { shape: Shape; period: number; down: number; phase?: number }
+
+/** A ramp: a ball crossing it along `dir` fast enough takes off and flies `len` units over whatever is there. */
+export type Ramp = Rect & { dir: number; len: number }
+
 /**
  * A rover: a loose ball that bounces around its pen at a steady speed, off
  * the pen's edges and anything inside it. Your ball caroms off it, and it
- * caroms off yours. Hitting it pays.
+ * caroms off yours.
  */
 export type Rover = { x: number; y: number; r: number; speed: number; heading: number; pen: Rect }
 
@@ -76,26 +89,25 @@ export type Hole = {
   cupPath?: CupPath
   /** The ground. Walls are traced along its edge. */
   green: Shape[]
-  /** Walls placed by hand, on top of the traced edge: bars and kickers. */
+  /** Walls placed by hand, on top of the traced edge: bars, kickers and flaps. */
   walls: Wall[]
   bumpers: Bumper[]
-  lanes: Lane[]
-  targets: Target[]
   sand: Shape[]
   water: Shape[]
   /** Ground laid over water. */
   bridges: Shape[]
+  drawbridges: Drawbridge[]
   slopes: Slope[]
   boosts: Boost[]
+  ramps: Ramp[]
   spinners: Spinner[]
+  sliders: Slider[]
   portals: Portal[]
   rovers: Rover[]
   marks: Mark[]
 }
 
-export const LANE_R = 3.2
 export const PORTAL_R = 3.6
-export const TARGET_R = 2.3
 /** Half of a windmill blade's thickness. */
 export const SPINNER_T = 1.5
 /** Half of a traced edge wall's thickness. */
@@ -112,68 +124,54 @@ function bar(x1: number, y1: number, x2: number, y2: number, t = BAR): Wall {
   return { a: { x: x1, y: y1 }, b: { x: x2, y: y2 }, t }
 }
 
-function kicker(x1: number, y1: number, x2: number, y2: number): Wall {
-  return { ...bar(x1, y1, x2, y2), kick: true }
-}
-
-/** A gate: a wall across the hole at `y` with a gap from `from` to `to`. */
-function gate(y: number, from: number, to: number): Wall[] {
-  const walls: Wall[] = []
-  if (from > 0) walls.push(bar(0, y, from, y))
-  if (to < FIELD_W) walls.push(bar(to, y, FIELD_W, y))
-  return walls
+/** A flap across the ground from (x1, y1) to (x2, y2): the ball passes heading along `pass`, and never back. */
+function flap(x1: number, y1: number, x2: number, y2: number, pass: number): Wall {
+  return { ...bar(x1, y1, x2, y2), pass }
 }
 
 function pop(x: number, y: number, r = 5): Bumper {
   return { x, y, r }
 }
 
-function lane(x: number, y: number): Lane {
-  return { x, y }
-}
-
-function pad(x: number, y: number, w: number, h: number, dir: number): Boost {
-  return { x, y, w, h, dir }
-}
-
 /** A hill: the ball is pushed along (px, py) — downhill — while on the shape. */
-export function hill(shape: Shape, px: number, py: number): Slope {
+function hill(shape: Shape, px: number, py: number): Slope {
   return { shape, pull: { x: px, y: py } }
 }
 
-/** A bowl: the ball is pulled toward the shape's middle this hard. */
-export function bowl(shape: Shape, strength: number): Slope {
-  return { shape, bowl: strength }
+/** A repeller: the ball is pushed away from the shape's middle this hard. */
+function repel(shape: Shape, strength: number): Slope {
+  return { shape, repel: strength }
+}
+
+/** A spinning floor: the ball is carried round the shape's middle this hard, anticlockwise on screen. */
+function spin(shape: Shape, strength: number): Slope {
+  return { shape, spin: strength }
 }
 
 function mill(x: number, y: number, len: number, speed: number, phase = 0): Spinner {
   return { x, y, len, speed, phase }
 }
 
+/** A slider: a bar from (x1, y1) to (x2, y2) that slides by (dx, dy) and back every `period` seconds. */
+function slider(x1: number, y1: number, x2: number, y2: number, dx: number, dy: number, period: number): Slider {
+  return { a: { x: x1, y: y1 }, b: { x: x2, y: y2 }, t: BAR, dx, dy, period }
+}
+
 function pipe(ax: number, ay: number, bx: number, by: number, out: number): Portal {
   return { a: { x: ax, y: ay }, b: { x: bx, y: by }, out }
 }
 
-/**
- * A ribbon of ground `r` wide either side of a line through the points: a
- * corridor that turns wherever the line does, with round elbows.
- */
-export function ribbon(r: number, ...pts: [number, number][]): Shape[] {
-  const out: Shape[] = []
-  for (let i = 1; i < pts.length; i++) {
-    const [x1, y1] = pts[i - 1]!
-    const [x2, y2] = pts[i]!
-    out.push(capsule(x1, y1, x2, y2, r))
-  }
-  return out
+/** A drawbridge over the water: down for the first `down` share of every `period` seconds. */
+function drawbridge(shape: Shape, period: number, down: number): Drawbridge {
+  return { shape, period, down }
 }
 
-/** A bank of three targets in a line from (x, y), stepping by (dx, dy). */
-function bank(x: number, y: number, dx: number, dy: number): Target[] {
-  return [0, 1, 2].map((i) => ({ x: x + dx * i, y: y + dy * i }))
+/** A ramp: cross the box along `dir` fast enough and the ball flies `len` units. */
+function ramp(x: number, y: number, w: number, h: number, dir: number, len: number): Ramp {
+  return { x, y, w, h, dir, len }
 }
 
-/** A plain box, for pens and pads, as distinct from painted ground. */
+/** A plain box, for pens, as distinct from painted ground. */
 function box(x: number, y: number, w: number, h: number): Rect {
   return { x, y, w, h }
 }
@@ -196,14 +194,15 @@ function hole(spec: Spec): Hole {
     green: spec.green ?? [rect(0, 0, FIELD_W, spec.h)],
     walls: spec.walls ?? [],
     bumpers: spec.bumpers ?? [],
-    lanes: spec.lanes ?? [],
-    targets: spec.targets ?? [],
     sand: spec.sand ?? [],
     water: spec.water ?? [],
     bridges: spec.bridges ?? [],
+    drawbridges: spec.drawbridges ?? [],
     slopes: spec.slopes ?? [],
     boosts: spec.boosts ?? [],
+    ramps: spec.ramps ?? [],
     spinners: spec.spinners ?? [],
+    sliders: spec.sliders ?? [],
     portals: spec.portals ?? [],
     rovers: spec.rovers ?? [],
     marks: spec.marks ?? [],
@@ -213,20 +212,19 @@ function hole(spec: Spec): Hole {
 export const COURSE: Hole[] = [
   /*
    * Orbit. Long, and not the usual mini golf. Up the left leg, through an
-   * S of two bends — sand inside the first, a lane on the outside of each
-   * — and up the right leg, where a rover roams the corridor. Then a ring:
-   * the leg feeds the outer bank, and the ball can ride it like a pinball
-   * orbit. Sand on the inside keeps you on the bank, and lanes at the top
-   * pay for it. Off the top of the ring a spur runs up past a windmill to
-   * the green; ride the ring all the way round instead and a pipe at its
-   * foot lifts you onto the green, low on its left. The green is a plaza
-   * with a pond in the middle and a narrow bridge straight over it, a
-   * bumper either side, a bank of targets on the right, and a cup that
+   * S of two bends with sand inside the first, and up the right leg, where
+   * a rover roams the corridor. Then a ring whose floor spins: the leg
+   * feeds the outer bank, and the floor carries the ball round like a
+   * pinball orbit and presses it to the bank. Off the top of the ring a
+   * spur runs up past a windmill to the green; stay on the ring and it
+   * carries you round to a pipe at its foot that lifts you onto the green,
+   * low on its left. The green is a plaza with a pond in the middle and a
+   * narrow bridge straight over it, a bumper either side, and a cup that
    * slides across the line the bridge lands on.
    */
   hole({
     name: 'Orbit',
-    par: 7,
+    par: 5,
     h: 616,
     tee: { x: 26, y: 600 },
     cup: { x: 46, y: 40 },
@@ -245,123 +243,112 @@ export const COURSE: Hole[] = [
     bridges: [capsule(56, 68, 56, 44, 4)],
     portals: [pipe(56, 264, 32, 60, UP)],
     spinners: [mill(56, 150, 22, 2.0)],
+    slopes: [spin(arc(56, 225, 30, 0, Math.PI * 2, 13), 35)],
     sand: [disc(40, 444, 6), disc(56, 202, 5)],
     bumpers: [pop(44, 68, 4), pop(68, 68, 4)],
-    targets: bank(82, 34, 0, 8),
-    lanes: [lane(28, 432), lane(84, 428), lane(84, 197), lane(28, 197), lane(56, 110)],
     rovers: [rover(86, 320, 2.8, 60, 1.0, box(73, 260, 26, 120))],
     marks: [mark(26, 560, UP), mark(86, 250, UP), mark(56, 180, UP)],
   }),
-  // Four levels, the gap swapping sides each time. A windmill in the second, water in the fourth.
+  /*
+   * The Snail. One turn of a spiral: along the bottom, up and over the big
+   * right-hand half, round the smaller left-hand half with sand on its
+   * inside, and in to a round green at the middle. The green is a hilltop:
+   * everything on it rolls away from the cup, so the ball has to arrive
+   * softly and close, or it slides back to the rim.
+   */
   hole({
-    name: 'Switchback',
-    par: 5,
-    h: 380,
-    tee: { x: 16, y: 364 },
-    cup: { x: 84, y: 24 },
-    walls: [...gate(300, 68, 100), ...gate(220, 0, 32), ...gate(140, 68, 100), ...gate(60, 0, 32)],
-    sand: [rect(72, 340, 24, 22)],
-    spinners: [mill(16, 220, 28, 1.8)],
-    bumpers: [pop(50, 180)],
-    water: [rect(34, 72, 32, 24)],
-    lanes: [lane(84, 140), lane(16, 60)],
+    name: 'The Snail',
+    par: 3,
+    h: 110,
+    tee: { x: 20, y: 93 },
+    cup: { x: 64, y: 60 },
+    green: [
+      disc(18, 93, 11),
+      capsule(18, 93, 50, 93, 9),
+      arc(50, 54, 39, -Math.PI / 2, Math.PI / 2, 9),
+      arc(50, 43, 28, Math.PI / 2, Math.PI * 1.5, 9),
+      capsule(50, 71, 60, 65, 9),
+      disc(64, 60, 11),
+    ],
+    slopes: [repel(disc(64, 60, 11), 40)],
+    sand: [disc(28, 43, 5)],
+    marks: [mark(34, 93, RIGHT), mark(89, 54, UP)],
   }),
-  // A wall down the middle. Left is water and precision; right is windmills and timing.
+  /*
+   * The Climb. Two hills, each a straight pushing the ball back down, with
+   * a flap at the crest that lets a ball through going up and never back,
+   * so a climb made stays made. A round elbow joins them, a bumper sits on
+   * the second hill, and the summit is a round green with the cup tucked
+   * below the line the last elbow sends you on.
+   */
   hole({
-    name: 'Two roads',
-    par: 5,
-    h: 400,
-    tee: { x: 50, y: 384 },
-    cup: { x: 50, y: 26 },
-    walls: [bar(50, 80, 50, 300)],
-    sand: [rect(0, 320, 100, 12)],
-    water: [rect(4, 120, 26, 40), rect(20, 200, 26, 40)],
-    spinners: [mill(75, 150, 40, 2.0), mill(75, 250, 40, -2.0, 1.1)],
-    bumpers: [pop(30, 50), pop(70, 50)],
-    lanes: [lane(25, 160), lane(25, 260), lane(75, 200)],
+    name: 'The Climb',
+    par: 4,
+    h: 300,
+    tee: { x: 20, y: 282 },
+    cup: { x: 30, y: 54 },
+    green: [
+      disc(20, 284, 14),
+      capsule(20, 284, 20, 200, 12),
+      arc(44, 200, 24, Math.PI, Math.PI * 1.5, 12),
+      capsule(44, 176, 56, 176, 12),
+      arc(56, 152, 24, 0, Math.PI / 2, 12),
+      capsule(80, 152, 80, 70, 12),
+      arc(56, 70, 24, -Math.PI / 2, 0, 12),
+      disc(40, 44, 20),
+    ],
+    slopes: [hill(capsule(20, 272, 20, 206, 12), 0, 100), hill(capsule(80, 128, 80, 84, 12), 0, 65)],
+    walls: [flap(8, 202, 32, 202, UP), flap(68, 72, 92, 72, UP)],
+    bumpers: [pop(74, 112, 3)],
+    marks: [mark(20, 240, UP), mark(80, 110, UP)],
   }),
-  // Three locks: a windmill in each gate, sand pockets either side to catch the misses.
+  /*
+   * The Lake. A wide green with water across the middle and three ways
+   * over. In the middle a drawbridge that is down half the time; on the
+   * left a ramp that flies the ball over if it is going fast enough, and
+   * drops it in if it is not, and lands it in sand; on the right a dry
+   * channel with a bar that slides across it. Three bumpers guard the far
+   * shore, one square in the middle.
+   */
   hole({
-    name: 'Locks',
-    par: 5,
-    h: 360,
-    tee: { x: 50, y: 344 },
-    cup: { x: 50, y: 24 },
-    walls: [...gate(270, 28, 72), ...gate(180, 28, 72), ...gate(90, 28, 72)],
-    spinners: [mill(50, 270, 40, 1.6), mill(50, 180, 40, -2.0, 1), mill(50, 90, 40, 2.4, 2)],
-    sand: [rect(4, 276, 22, 18), rect(74, 276, 22, 18), rect(4, 186, 22, 18), rect(74, 186, 22, 18)],
-    lanes: [lane(50, 225), lane(50, 135)],
+    name: 'The Lake',
+    par: 3,
+    h: 250,
+    tee: { x: 50, y: 228 },
+    cup: { x: 50, y: 40 },
+    green: [capsule(50, 60, 50, 200, 46)],
+    water: [rect(4, 90, 72, 60)],
+    drawbridges: [drawbridge(capsule(40, 154, 40, 86, 7), 4, 0.6)],
+    ramps: [ramp(8, 156, 22, 8, UP, 82)],
+    sliders: [slider(76, 120, 88, 120, 8, 0, 2.6)],
+    bumpers: [pop(30, 62, 4), pop(50, 66, 4), pop(70, 62, 4)],
+    sand: [disc(19, 76, 9)],
+    marks: [mark(19, 178, UP), mark(40, 178, UP), mark(86, 164, UP)],
   }),
-  // Kickers, a field of bumpers, two banks of targets, and a cup that will not sit still.
+  /*
+   * Figure Eight. Two rings, one on top of the other, sharing a waist. Up
+   * the stem into the lower ring and round either side, through the waist
+   * — where a bar slides across, closing one side and then the other — and
+   * round the upper ring to a green at the top. A bumper on the outside of
+   * each ring and sand on the inside keep the line honest.
+   */
   hole({
-    name: 'Pinball alley',
-    par: 5,
-    h: 400,
-    tee: { x: 50, y: 386 },
-    cup: { x: 30, y: 22 },
-    cupPath: { to: { x: 70, y: 22 }, period: 6 },
-    walls: [kicker(6, 370, 30, 330), kicker(94, 370, 70, 330), ...gate(80, 34, 66)],
-    bumpers: [pop(50, 300), pop(30, 270), pop(70, 270), pop(50, 240), pop(30, 210), pop(70, 210), pop(50, 180)],
-    targets: [...bank(9, 150, 0, 9), ...bank(91, 150, 0, 9)],
-    lanes: [lane(20, 120), lane(80, 120), lane(50, 150)],
-  }),
-  // A canal down the middle with three bridges. The tee is on the left bank, under the windmill;
-  // the right bank has sand and a bumper. Pads on the bridges carry you across. The cup sits at
-  // the head of the water, so the last shot comes in from a side.
-  hole({
-    name: 'The canal',
-    par: 6,
-    h: 440,
-    tee: { x: 20, y: 424 },
-    cup: { x: 50, y: 30 },
-    water: [rect(38, 316, 24, 84), rect(38, 206, 24, 94), rect(38, 106, 24, 84), rect(38, 60, 24, 30)],
-    boosts: [pad(38, 300, 24, 16, LEFT), pad(38, 190, 24, 16, RIGHT)],
-    spinners: [mill(19, 250, 30, 2.0)],
-    sand: [rect(62, 200, 38, 16), rect(62, 300, 38, 16)],
-    bumpers: [pop(81, 150)],
-    lanes: [lane(19, 350), lane(81, 350), lane(50, 98)],
-  }),
-  // Two walls make an S. One pipe skips the first bend; the other sends you back to the start.
-  hole({
-    name: 'Pipes',
-    par: 5,
-    h: 380,
-    tee: { x: 50, y: 364 },
-    cup: { x: 16, y: 24 },
-    walls: [...gate(260, 0, 22), ...gate(120, 78, 100)],
-    portals: [pipe(86, 300, 50, 200, UP), pipe(12, 200, 84, 330, DOWN)],
-    bumpers: [pop(66, 170)],
-    sand: [rect(30, 8, 44, 26)],
-    lanes: [lane(11, 260), lane(89, 120)],
-  }),
-  // Four gates, the gap swapping sides, a windmill in every one. Water past the cup.
-  hole({
-    name: 'Windmill row',
-    par: 5,
-    h: 400,
-    tee: { x: 50, y: 384 },
-    cup: { x: 50, y: 26 },
-    walls: [...gate(310, 60, 100), ...gate(230, 0, 40), ...gate(150, 60, 100), ...gate(70, 0, 40)],
-    spinners: [mill(80, 310, 36, 1.8), mill(20, 230, 36, -1.8, 1), mill(80, 150, 36, 2.2, 2), mill(20, 70, 36, -2.2, 3)],
-    water: [rect(70, 4, 30, 56)],
-    lanes: [lane(80, 270), lane(20, 190), lane(80, 110)],
-  }),
-  // Everything at once.
-  hole({
-    name: 'The gauntlet',
-    par: 6,
-    h: 440,
-    tee: { x: 50, y: 426 },
-    cup: { x: 50, y: 24 },
-    walls: [kicker(6, 410, 28, 376), kicker(94, 410, 72, 376), ...gate(180, 36, 64), ...gate(90, 28, 72)],
-    boosts: [pad(40, 360, 20, 30, UP)],
-    bumpers: [pop(32, 330), pop(68, 330), pop(50, 300)],
-    water: [rect(0, 240, 30, 50), rect(70, 240, 30, 50)],
-    spinners: [mill(50, 265, 34, 2.3), mill(50, 90, 40, -2.0, 1)],
-    sand: [rect(36, 150, 28, 14)],
-    targets: bank(91, 120, 0, 9),
-    lanes: [lane(50, 375), lane(18, 300), lane(82, 300), lane(50, 180)],
-    rovers: [rover(50, 200, 2.8, 70, -0.6, box(4, 196, 92, 40))],
+    name: 'Figure Eight',
+    par: 4,
+    h: 284,
+    tee: { x: 50, y: 266 },
+    cup: { x: 50, y: 100 },
+    green: [
+      disc(50, 268, 14),
+      capsule(50, 268, 50, 246, 12),
+      arc(50, 200, 30, 0, Math.PI * 2, 12),
+      arc(50, 140, 30, 0, Math.PI * 2, 12),
+      disc(50, 102, 14),
+    ],
+    sliders: [slider(25, 170, 55, 170, 20, 0, 3.0)],
+    bumpers: [pop(84, 200, 4), pop(16, 140, 4)],
+    sand: [disc(70, 140, 5), disc(30, 200, 5)],
+    marks: [mark(50, 252, UP), mark(50, 176, UP)],
   }),
 ]
 

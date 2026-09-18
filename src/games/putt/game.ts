@@ -5,35 +5,33 @@ import {
   COURSE_PAR,
   EDGE_T,
   FIELD_W,
-  LANE_R,
   PORTAL_R,
   SPINNER_T,
-  TARGET_R,
   UP,
+  type Drawbridge,
   type Hole,
   type Rect,
+  type Slider,
   type Spinner,
   type Vec,
   type Wall,
 } from './course'
-import { centreOf, contours, inAny, inside } from './terrain'
+import { centreOf, contours, inAny, inside, pivotOf } from './terrain'
 
 /*
- * Putt: nine holes of mini golf with a pinball streak.
+ * Putt: five holes of mini golf, none of them the usual kind.
  *
  * Pull back from the ball and let go: the further the pull, the harder the
  * shot, and the guide grows with the pull to say how hard. A short pull is a
  * real shot. The ball rolls on physics — it sheds a share of its speed every
- * frame, so it leaves fast and settles softly — off walls at any
- * angle, sand that drags, water that costs a stroke, windmills, pads that
- * push, pipes that take it somewhere else, a cup that will not always sit
- * still, and a cup that pulls a slow ball in and lets a fast one skip
- * across. The pinball is the scoring: bumpers and kickers pop the ball
- * away and pay, lanes light up and pay once a hole, drop targets pay and
- * pay big when the whole bank is down, and rovers roam their pens and pay
- * for a strike. Par or better on consecutive holes builds a streak bonus.
- * Fewer strokes still score most; a hole is played until the ball drops,
- * however long that takes.
+ * frame, so it leaves fast and settles softly — off walls at any angle,
+ * through sand that drags and water that costs a stroke, past windmills,
+ * sliders and one-way flaps, up hills and down into bowls, round a floor
+ * that spins, off ramps that fly it over whatever is there, into pipes that
+ * take it somewhere else, and off bumpers and rovers that knock it about. A
+ * cup pulls a slow ball in and lets a fast one skip across, and one cup
+ * slides. The score is golf: strokes against par, and nothing else. A hole
+ * is played until the ball drops, however long that takes.
  */
 
 export type Phase = 'menu' | 'intro' | 'aim' | 'roll' | 'splash' | 'sunk' | 'gameover'
@@ -43,18 +41,6 @@ export const CUP_R = 2.7
 /** Points per stroke under par plus two: par is 200, birdie 300, bogey 100, and never below 0. */
 export const POINTS_PER = 100
 export const ACE_BONUS = 200
-/** A bumper pays 50 for the first hit in a stroke, 100 for the second, and on. */
-export const BUMPER_STEP = 50
-export const KICKER_POINTS = 25
-export const LANE_POINTS = 100
-export const TARGET_POINTS = 50
-/** Knocking the whole bank of targets down pays this, and they stand back up. */
-export const BANK_POINTS = 300
-/** Striking a rover pays this. */
-export const ROVER_POINTS = 150
-/** Par or better on consecutive holes: the second pays 100, the third 200, up to the cap. */
-export const STREAK_STEP = 100
-export const STREAK_MAX = 500
 
 /** Pulling back this far, in field units, is full power: under a third of the width, so a flick is a real shot. */
 export const MAX_DRAG = 30
@@ -82,8 +68,9 @@ const FADE_GREEN = -Math.log(FRICTION_GREEN) * 60
 const MAX_SPEED = FULL_DISTANCE * FADE_GREEN
 /** Below this the ball is at rest. */
 const STOP_SPEED = 1.2
+/** A ball slower than that for this long is at rest whatever is pushing it: pinned to a wall on a hill, say. */
+const REST_TIME = 0.4
 const WALL_BOUNCE = 0.82
-const TARGET_BOUNCE = 0.5
 /** A bumper sends the ball away at least this fast, whatever it arrived at. */
 const BUMPER_POP = 110
 const BUMPER_KEEP = 0.85
@@ -93,6 +80,16 @@ const KICK_SPEED = 55
 const BOOST_ACCEL = 240
 /** Extra drag in a bowl, per second, so the ball settles instead of circling. */
 const BOWL_DRAG = 2.5
+/** A spinning floor presses the ball outward this share as hard as it carries it round. */
+const SPIN_OUT = 0.7
+/** A ball has to be going this fast to take off from a ramp; slower, it rolls over it. */
+const RAMP_MIN = 60
+/** And it has to be heading up the ramp: within this much of straight (the cosine of about 35°). */
+const RAMP_SQUARE = 0.82
+/** Landing keeps this share of the speed. */
+const LAND_KEEP = 0.85
+/** A drawbridge takes this long to come down or go up. */
+export const BRIDGE_SWING = 0.35
 const TOP_SPEED = 320
 /** A ball slower than this within the cup drops; faster, it skips across. */
 const CUP_CAPTURE_SPEED = 85
@@ -113,22 +110,19 @@ const KEY_TURN = 1.9
 
 export type Ball = { x: number; y: number; vx: number; vy: number }
 
-/** A rover on the move, and how long until it can pay again. */
+/** A rover on the move, and how long until its flash can go again. */
 export type RoverState = { x: number; y: number; vx: number; vy: number; cool: number }
 
 export type HoleResult = {
   strokes: number
   par: number
-  golf: number
-  pinball: number
-  streak: number
   points: number
   label: string
 }
 
 export type Popup = { text: string; sub: string | null; life: number }
 
-/** A little "+50" rising from where it happened, in field coordinates. */
+/** A word rising from where it happened, in field coordinates: a splash, or out of bounds. */
 export type Floater = { x: number; y: number; text: string; life: number }
 
 export type GameState = {
@@ -138,12 +132,10 @@ export type GameState = {
   holeIndex: number
   strokes: number
   results: HoleResult[]
-  /** Holes in a row at par or better, so far. */
-  streak: number
   ball: Ball
   /** Seconds the current phase has run. */
   t: number
-  /** Runs the whole round; the windmills turn and the cups slide on it. */
+  /** Runs the whole round; the windmills turn, the sliders slide and the cups slide on it. */
   clock: number
   /** The camera: the field y at the cup end of the window on screen. */
   cam: number
@@ -162,15 +154,15 @@ export type GameState = {
   strokeStart: Vec
   /** How long the ball has rolled this stroke. */
   rollTime: number
+  /** How long the ball has been all but still this stroke. */
+  restT: number
   inSand: boolean
   onPad: boolean
+  /** Off a ramp: how far the ball still has to fly, and how far the flight was. Zero on the ground. */
+  air: number
+  airMax: number
   /** Ball scale while dropping into the cup. */
   drop: number
-  /** Pinball, this hole: bumper hits in the current stroke, lit lanes, targets down, points banked so far. */
-  strokeHits: number
-  lanesLit: boolean[]
-  targetsDown: boolean[]
-  holeBonus: number
   /** Flash timers per bumper and per wall (kickers), for the renderer. */
   bumperFlash: number[]
   wallFlash: number[]
@@ -248,6 +240,37 @@ export function cupAt(hole: Hole, clock: number): Vec {
   return { x: hole.cup.x + (path.to.x - hole.cup.x) * e, y: hole.cup.y + (path.to.y - hole.cup.y) * e }
 }
 
+/**
+ * How far down a drawbridge is, 0 up to 1 down: it comes down at the start
+ * of each period, stays for its `down` share, and goes up again, each swing
+ * taking BRIDGE_SWING. The ball can cross above a half.
+ */
+export function bridgeLevel(db: Drawbridge, clock: number) {
+  const t = clock + (db.phase ?? 0)
+  const u = ((t % db.period) + db.period) % db.period
+  const downFor = db.period * db.down
+  const coming = Math.min(1, u / BRIDGE_SWING)
+  const going = Math.min(1, Math.max(0, (u - downFor) / BRIDGE_SWING))
+  return Math.max(0, coming - going)
+}
+
+/** Where a slider is along its run, 0 to 1, and how fast it is going. */
+export function sliderAt(sl: Slider, clock: number) {
+  const w = (Math.PI * 2) / sl.period
+  const t = clock + (sl.phase ?? 0)
+  const u = 0.5 - 0.5 * Math.cos(w * t)
+  const du = 0.5 * w * Math.sin(w * t)
+  return { u, vx: sl.dx * du, vy: sl.dy * du }
+}
+
+/** A slider's bar, as a wall, at a moment. */
+export function sliderWall(sl: Slider, clock: number): Wall {
+  const { u } = sliderAt(sl, clock)
+  const ox = sl.dx * u
+  const oy = sl.dy * u
+  return { a: { x: sl.a.x + ox, y: sl.a.y + oy }, b: { x: sl.b.x + ox, y: sl.b.y + oy }, t: sl.t }
+}
+
 export function createInitialState(w = 540, h = 720): GameState {
   const first = COURSE[0]!
   const startCam = camFor(fieldFrame(w, h, first.h), first.tee.y)
@@ -258,7 +281,6 @@ export function createInitialState(w = 540, h = 720): GameState {
     holeIndex: 0,
     strokes: 0,
     results: [],
-    streak: 0,
     ball: { x: first.tee.x, y: first.tee.y, vx: 0, vy: 0 },
     t: 0,
     clock: 0,
@@ -271,13 +293,12 @@ export function createInitialState(w = 540, h = 720): GameState {
     power: 0,
     strokeStart: { x: first.tee.x, y: first.tee.y },
     rollTime: 0,
+    restT: 0,
     inSand: false,
     onPad: false,
+    air: 0,
+    airMax: 0,
     drop: 1,
-    strokeHits: 0,
-    lanesLit: first.lanes.map(() => false),
-    targetsDown: first.targets.map(() => false),
-    holeBonus: 0,
     bumperFlash: first.bumpers.map(() => 0),
     wallFlash: wallsOf(first).map(() => 0),
     rovers: roversAtStart(first),
@@ -366,13 +387,12 @@ function beginHole(state: GameState, index: number): GameState {
     power: 0,
     strokeStart: { x: hole.tee.x, y: hole.tee.y },
     rollTime: 0,
+    restT: 0,
     inSand: false,
     onPad: false,
+    air: 0,
+    airMax: 0,
     drop: 1,
-    strokeHits: 0,
-    lanesLit: hole.lanes.map(() => false),
-    targetsDown: hole.targets.map(() => false),
-    holeBonus: 0,
     bumperFlash: hole.bumpers.map(() => 0),
     wallFlash: wallsOf(hole).map(() => 0),
     rovers: roversAtStart(hole),
@@ -531,8 +551,8 @@ export function shoot(state: GameState, shank = 0): GameState {
     aiming: 'none',
     t: 0,
     rollTime: 0,
+    restT: 0,
     strokes: state.strokes + 1,
-    strokeHits: 0,
     strokeStart: { x: state.ball.x, y: state.ball.y },
     ball: {
       ...state.ball,
@@ -561,6 +581,11 @@ export function spinnerWall(sp: Spinner, clock: number): Wall {
   const dx = Math.cos(angle) * sp.len * 0.5
   const dy = Math.sin(angle) * sp.len * 0.5
   return { a: { x: sp.x - dx, y: sp.y - dy }, b: { x: sp.x + dx, y: sp.y + dy }, t: SPINNER_T }
+}
+
+/** Whether a ball heading (vx, vy) goes through a flap rather than meeting it. */
+function passesFlap(wall: Wall, vx: number, vy: number) {
+  return wall.pass !== undefined && vx * Math.cos(wall.pass) + vy * Math.sin(wall.pass) > 0
 }
 
 type Contact = { nx: number; ny: number; reflected: boolean }
@@ -604,32 +629,48 @@ function popBumper(ball: Ball, cx: number, cy: number, reach: number): boolean {
   return true
 }
 
-/** A blade is a wall that moves: the ball bounces relative to the blade's own speed at the contact. */
-function bounceSpinner(ball: Ball, sp: Spinner, clock: number, restitution: number): boolean {
-  const w = spinnerWall(sp, clock)
+/** A wall that moves: the ball bounces relative to the wall's own motion at the contact. */
+function bounceMoving(ball: Ball, w: Wall, wvx: number, wvy: number, restitution: number): boolean {
   const p = closestOnWall(w, ball)
-  const svx = -sp.speed * (p.y - sp.y)
-  const svy = sp.speed * (p.x - sp.x)
-  ball.vx -= svx
-  ball.vy -= svy
+  ball.vx -= wvx
+  ball.vy -= wvy
   const c = bounce(ball, p.x, p.y, w.t + BALL_R, restitution)
-  ball.vx += svx
-  ball.vy += svy
+  ball.vx += wvx
+  ball.vy += wvy
   return !!c
 }
 
+/** A blade is a wall that turns: its speed at the contact is across the radius. */
+function bounceSpinner(ball: Ball, sp: Spinner, clock: number, restitution: number): boolean {
+  const w = spinnerWall(sp, clock)
+  const p = closestOnWall(w, ball)
+  return bounceMoving(ball, w, -sp.speed * (p.y - sp.y), sp.speed * (p.x - sp.x), restitution)
+}
+
+/** A slider is a wall that slides: the whole bar shares one speed. */
+function bounceSlider(ball: Ball, sl: Slider, clock: number, restitution: number): boolean {
+  const { vx, vy } = sliderAt(sl, clock)
+  return bounceMoving(ball, sliderWall(sl, clock), vx, vy, restitution)
+}
+
+/** A flight off a ramp: how far is left, and how far it was. */
+type Flight = { air: number; max: number }
+
 type StepOut = {
   wall: boolean
-  kickers: number[]
+  kicked: boolean
   bumpers: number[]
-  lanes: number[]
-  targets: number[]
   rovers: number[]
   sand: boolean
   pad: boolean
   slope: boolean
+  spin: boolean
   water: boolean
   piped: boolean
+  launched: boolean
+  landed: boolean
+  /** Landed off the ground altogether. */
+  oob: boolean
 }
 
 /**
@@ -666,37 +707,55 @@ function strikeRover(ball: Ball, rv: RoverState, r: number, speed: number): bool
   return true
 }
 
-/** One sub-step of rolling. Mutates the ball and the rovers; returns what it touched. */
-function step(
-  ball: Ball,
-  hole: Hole,
-  targetsDown: boolean[],
-  rovers: RoverState[],
-  dt: number,
-  clock: number,
-): StepOut {
+/** Whether a point is dry: on a bridge, on a drawbridge that is down, or not over water at all. */
+function dryAt(hole: Hole, p: Vec, clock: number) {
+  if (!inAny(hole.water, p)) return true
+  if (inAny(hole.bridges, p)) return true
+  return hole.drawbridges.some((db) => bridgeLevel(db, clock) > 0.5 && inside(db.shape, p))
+}
+
+/** One sub-step of rolling. Mutates the ball, the rovers and the flight; returns what it touched. */
+function step(ball: Ball, hole: Hole, rovers: RoverState[], flight: Flight, dt: number, clock: number): StepOut {
+  const out: StepOut = {
+    wall: false,
+    kicked: false,
+    bumpers: [],
+    rovers: [],
+    sand: false,
+    pad: false,
+    slope: false,
+    spin: false,
+    water: false,
+    piped: false,
+    launched: false,
+    landed: false,
+    oob: false,
+  }
+
+  // In the air: a straight line at a steady speed over whatever is below, until the flight runs out.
+  if (flight.air > 0) {
+    const dist = Math.hypot(ball.vx, ball.vy) * dt
+    ball.x += ball.vx * dt
+    ball.y += ball.vy * dt
+    flight.air -= dist
+    if (flight.air > 0 && dist > 0) return out
+    flight.air = 0
+    ball.vx *= LAND_KEEP
+    ball.vy *= LAND_KEEP
+    out.landed = true
+    if (!inAny(hole.green, ball)) out.oob = true
+    return out
+  }
+
   ball.x += ball.vx * dt
   ball.y += ball.vy * dt
 
   const sand = inAny(hole.sand, ball)
+  out.sand = sand
   // The share is set per sixtieth, so the fade is the same whatever the frame rate.
   const keep = Math.pow(sand ? FRICTION_SAND : FRICTION_GREEN, dt * 60)
   ball.vx *= keep
   ball.vy *= keep
-
-  const out: StepOut = {
-    wall: false,
-    kickers: [],
-    bumpers: [],
-    lanes: [],
-    targets: [],
-    rovers: [],
-    sand,
-    pad: false,
-    slope: false,
-    water: false,
-    piped: false,
-  }
 
   for (const pad of hole.boosts) {
     if (!inRect(pad, ball.x, ball.y)) continue
@@ -704,9 +763,11 @@ function step(
     ball.vy += Math.sin(pad.dir) * BOOST_ACCEL * dt
     out.pad = true
   }
-  // Hills push downhill; bowls pull to the middle. A ball on either never quite comes to rest.
+  // Hills push downhill, bowls pull to the middle, repellers push away from it, and a spinning floor
+  // carries the ball round it. A ball on any of them does not settle the way it does on the flat.
   for (const sl of hole.slopes) {
     if (!inside(sl.shape, ball)) continue
+    out.slope = true
     if (sl.pull) {
       ball.vx += sl.pull.x * dt
       ball.vy += sl.pull.y * dt
@@ -723,7 +784,42 @@ function step(
       ball.vx *= drag
       ball.vy *= drag
     }
-    out.slope = true
+    if (sl.repel) {
+      const c = pivotOf(sl.shape)
+      const dx = ball.x - c.x
+      const dy = ball.y - c.y
+      const d = Math.hypot(dx, dy) || 1
+      ball.vx += (dx / d) * sl.repel * dt
+      ball.vy += (dy / d) * sl.repel * dt
+    }
+    if (sl.spin) {
+      out.spin = true
+      const c = pivotOf(sl.shape)
+      const dx = ball.x - c.x
+      const dy = ball.y - c.y
+      const d = Math.hypot(dx, dy) || 1
+      // Round: anticlockwise on screen is up the right side, over the top, down the left.
+      ball.vx += (dy / d) * sl.spin * dt
+      ball.vy += (-dx / d) * sl.spin * dt
+      // And outward, to the bank.
+      const press = Math.abs(sl.spin) * SPIN_OUT
+      ball.vx += (dx / d) * press * dt
+      ball.vy += (dy / d) * press * dt
+    }
+  }
+  // A ramp: crossed the right way fast enough, the ball takes off and this step is over.
+  for (const rp of hole.ramps) {
+    if (!inRect(rp, ball.x, ball.y)) continue
+    const along = ball.vx * Math.cos(rp.dir) + ball.vy * Math.sin(rp.dir)
+    const sp = Math.hypot(ball.vx, ball.vy)
+    if (sp < RAMP_MIN || along < sp * RAMP_SQUARE) continue
+    // The ramp throws the ball its own way, at the speed it arrived.
+    ball.vx = Math.cos(rp.dir) * sp
+    ball.vy = Math.sin(rp.dir) * sp
+    flight.air = rp.len
+    flight.max = rp.len
+    out.launched = true
+    return out
   }
   const speed = Math.hypot(ball.vx, ball.vy)
   if (speed > TOP_SPEED) {
@@ -732,13 +828,16 @@ function step(
   }
 
   wallsOf(hole).forEach((wall, i) => {
+    // A flap is open from one side.
+    if (passesFlap(wall, ball.vx, ball.vy)) return
     const p = closestOnWall(wall, ball)
     const c = bounce(ball, p.x, p.y, wall.t + BALL_R, wall.kick ? 1 : WALL_BOUNCE)
     if (!c || !c.reflected) return
     if (wall.kick) {
       ball.vx += c.nx * KICK_SPEED
       ball.vy += c.ny * KICK_SPEED
-      out.kickers.push(i)
+      out.kicked = true
+      void i
     } else {
       out.wall = true
     }
@@ -746,13 +845,11 @@ function step(
   for (const sp of hole.spinners) {
     if (bounceSpinner(ball, sp, clock, WALL_BOUNCE)) out.wall = true
   }
+  for (const sl of hole.sliders) {
+    if (bounceSlider(ball, sl, clock, WALL_BOUNCE)) out.wall = true
+  }
   hole.bumpers.forEach((b, i) => {
     if (popBumper(ball, b.x, b.y, b.r + BALL_R)) out.bumpers.push(i)
-  })
-  hole.targets.forEach((tg, i) => {
-    if (targetsDown[i]) return
-    const c = bounce(ball, tg.x, tg.y, TARGET_R + BALL_R, TARGET_BOUNCE)
-    if (c && c.reflected) out.targets.push(i)
   })
   hole.rovers.forEach((spec, i) => {
     const rv = rovers[i]!
@@ -760,9 +857,6 @@ function step(
     if (rv.cool > 0) return
     rv.cool = 0.35
     out.rovers.push(i)
-  })
-  hole.lanes.forEach((l, i) => {
-    if (Math.hypot(ball.x - l.x, ball.y - l.y) < LANE_R) out.lanes.push(i)
   })
   for (const pipe of hole.portals) {
     if (Math.hypot(ball.x - pipe.a.x, ball.y - pipe.a.y) >= PORTAL_R) continue
@@ -774,7 +868,7 @@ function step(
     out.piped = true
     break
   }
-  if (!inAny(hole.bridges, ball) && inAny(hole.water, ball)) {
+  if (!dryAt(hole, ball, clock)) {
     out.water = true
     return out
   }
@@ -811,64 +905,46 @@ function golfPoints(strokes: number, par: number) {
   return base + (strokes === 1 ? ACE_BONUS : 0)
 }
 
-/** The ball is down. Golf points for the strokes, the pinball banked on the hole, and any streak. */
+/** The ball is down. Points for the strokes against par, and nothing else. */
 function finishHole(state: GameState): GameState {
   const hole = currentHole(state)
-  const golf = golfPoints(state.strokes, hole.par)
-  const pinball = state.holeBonus
-  const madePar = state.strokes <= hole.par
-  const streak = madePar ? state.streak + 1 : 0
-  const streakBonus = streak >= 2 ? Math.min(STREAK_MAX, (streak - 1) * STREAK_STEP) : 0
-  const points = golf + pinball + streakBonus
+  const points = golfPoints(state.strokes, hole.par)
   const label = resultLabel(state.strokes, hole.par)
-  const result: HoleResult = {
-    strokes: state.strokes,
-    par: hole.par,
-    golf,
-    pinball,
-    streak: streakBonus,
-    points,
-    label,
-  }
+  const result: HoleResult = { strokes: state.strokes, par: hole.par, points, label }
   if (state.strokes === 1 || state.strokes < hole.par) sfx('perfect')
   else sfx('good')
-  const parts = [`+${golf}`]
-  if (pinball > 0) parts.push(`pinball +${pinball}`)
-  if (streakBonus > 0) parts.push(`streak ×${streak} +${streakBonus}`)
   return {
     ...state,
     phase: 'sunk',
     t: 0,
     score: state.score + points,
     results: [...state.results, result],
-    streak,
-    popup: { text: label, sub: parts.join(' · '), life: 1.7 },
+    popup: { text: label, sub: points > 0 ? `+${points}` : `${state.strokes} strokes`, life: 1.7 },
     flash: 0.22,
     ball: { ...state.ball, vx: 0, vy: 0 },
+    air: 0,
     aiming: 'none',
     power: 0,
   }
 }
 
-/** Into the water: a stroke, and back to where the shot was played from. */
-function splash(state: GameState): GameState {
+/** Into the water, or off the ground: a stroke, and back to where the shot was played from. */
+function penalty(state: GameState, title: string, word: string): GameState {
   sfx('hurt')
-  const back: GameState = {
+  return {
     ...state,
+    phase: 'splash',
+    t: 0,
     strokes: state.strokes + 1,
     ball: { x: state.strokeStart.x, y: state.strokeStart.y, vx: 0, vy: 0 },
+    air: 0,
     aiming: 'none',
     power: 0,
     inSand: false,
     onPad: false,
     flash: 0.14,
-    floaters: [...state.floaters, { x: state.ball.x, y: state.ball.y - 3, text: 'SPLASH', life: 1.0 }],
-  }
-  return {
-    ...back,
-    phase: 'splash',
-    t: 0,
-    popup: { text: 'Splash', sub: '+1 stroke · back you go', life: 1.5 },
+    floaters: [...state.floaters, { x: state.ball.x, y: state.ball.y - 3, text: word, life: 1.0 }],
+    popup: { text: title, sub: '+1 stroke · back you go', life: 1.5 },
   }
 }
 
@@ -883,6 +959,8 @@ function readyToAim(s: GameState): GameState {
     aiming: 'none',
     chargeT: 0,
     power: 0,
+    restT: 0,
+    air: 0,
   }
 }
 
@@ -919,13 +997,18 @@ export function tick(state: GameState, dt: number): GameState {
       return s
 
     case 'aim': {
-      // A windmill blade sweeping through a resting ball nudges it along.
+      // A blade or a bar sweeping through a resting ball nudges it along.
       const hole = currentHole(s)
-      if (!hole.spinners.length) return s
+      if (!hole.spinners.length && !hole.sliders.length) return s
       const ball = { ...s.ball }
       let moved = false
       for (const sp of hole.spinners) {
         const w = spinnerWall(sp, s.clock)
+        const p = closestOnWall(w, ball)
+        if (bounce(ball, p.x, p.y, w.t + BALL_R + 0.2, 0)) moved = true
+      }
+      for (const sl of hole.sliders) {
+        const w = sliderWall(sl, s.clock)
         const p = closestOnWall(w, ball)
         if (bounce(ball, p.x, p.y, w.t + BALL_R + 0.2, 0)) moved = true
       }
@@ -938,95 +1021,57 @@ export function tick(state: GameState, dt: number): GameState {
     case 'roll': {
       const hole = currentHole(s)
       const ball = { ...s.ball }
+      const flight: Flight = { air: s.air, max: s.airMax }
       const sub = dt / SUBSTEPS
-      let hitWall = false
-      let hits = s.strokeHits
-      let bonus = s.holeBonus
-      const lanesLit = [...s.lanesLit]
-      const targetsDown = [...s.targetsDown]
       const bumperFlash = [...s.bumperFlash]
       const wallFlash = [...s.wallFlash]
       const roverFlash = [...s.roverFlash]
-      const floaters = [...s.floaters]
       let rovers = s.rovers
+      let hitWall = false
       let sand = false
       let pad = false
       let slope = false
+      let spin = false
       let popped = false
       let kicked = false
       let piped = false
-      let dropped = false
-      let banked = false
       let struck = false
+      let launched = false
+      let landed = false
       for (let i = 0; i < SUBSTEPS; i++) {
         const now = s.clock + sub * i
         rovers = moveRovers({ ...s, rovers, ball }, sub)
-        const out = step(ball, hole, targetsDown, rovers, sub, now)
+        const out = step(ball, hole, rovers, flight, sub, now)
         for (const ri of out.rovers) {
-          bonus += ROVER_POINTS
           roverFlash[ri] = 0.4
           struck = true
-          const rv = rovers[ri]!
-          floaters.push({ x: rv.x, y: rv.y - 6, text: `STRIKE +${ROVER_POINTS}`, life: 1.1 })
+        }
+        for (const bi of out.bumpers) {
+          bumperFlash[bi] = 0.35
+          popped = true
         }
         if (out.wall) hitWall = true
+        if (out.kicked) kicked = true
         if (out.piped) piped = true
+        if (out.launched) launched = true
+        if (out.landed) landed = true
         sand = out.sand
         pad = out.pad
         slope = out.slope
-        for (const bi of out.bumpers) {
-          hits += 1
-          const pts = BUMPER_STEP * hits
-          bonus += pts
-          bumperFlash[bi] = 0.35
-          popped = true
-          const b = hole.bumpers[bi]!
-          floaters.push({ x: b.x, y: b.y - b.r - 2, text: `+${pts}`, life: 0.9 })
-        }
-        for (const wi of out.kickers) {
-          bonus += KICKER_POINTS
-          wallFlash[wi] = 0.3
-          kicked = true
-          floaters.push({ x: ball.x, y: ball.y - 4, text: `+${KICKER_POINTS}`, life: 0.8 })
-        }
-        for (const ti of out.targets) {
-          if (targetsDown[ti]) continue
-          targetsDown[ti] = true
-          bonus += TARGET_POINTS
-          dropped = true
-          const tg = hole.targets[ti]!
-          floaters.push({ x: tg.x, y: tg.y - 4, text: `+${TARGET_POINTS}`, life: 0.9 })
-          if (targetsDown.every(Boolean)) {
-            bonus += BANK_POINTS
-            banked = true
-            const cx = hole.targets.reduce((sum, t) => sum + t.x, 0) / hole.targets.length
-            const cy = hole.targets.reduce((sum, t) => sum + t.y, 0) / hole.targets.length
-            floaters.push({ x: cx, y: cy - 9, text: `BANK +${BANK_POINTS}`, life: 1.4 })
-            targetsDown.fill(false)
-          }
-        }
-        for (const li of out.lanes) {
-          if (lanesLit[li]) continue
-          lanesLit[li] = true
-          bonus += LANE_POINTS
-          const l = hole.lanes[li]!
-          floaters.push({ x: l.x, y: l.y - 4, text: `+${LANE_POINTS}`, life: 0.9 })
-          sfx('place')
-        }
+        spin = out.spin
         const carried: GameState = {
           ...s,
           ball,
-          strokeHits: hits,
-          holeBonus: bonus,
-          lanesLit,
-          targetsDown,
+          air: flight.air,
+          airMax: flight.max,
           bumperFlash,
           wallFlash,
           rovers,
           roverFlash,
-          floaters,
         }
-        if (out.water) return splash(carried)
+        if (out.oob) return penalty(carried, 'Out of bounds', 'OUT')
+        if (out.water) return penalty(carried, 'Splash', 'SPLASH')
+        if (flight.air > 0) continue
         const cup = cupAt(hole, now)
         const d = Math.hypot(cup.x - ball.x, cup.y - ball.y)
         const speed = Math.hypot(ball.vx, ball.vy)
@@ -1035,27 +1080,27 @@ export function tick(state: GameState, dt: number): GameState {
         }
       }
       if (struck) sfx('hit', 4)
-      else if (banked) sfx('perfect', 2)
       else if (popped) sfx('hit')
-      else if (dropped) sfx('pad', 6)
+      else if (launched) sfx('whoosh', 3)
       else if (kicked) sfx('pad', 3)
       else if (piped) sfx('whoosh', 5)
+      else if (landed) sfx('tap', 1)
       else if (hitWall) sfx('tap', 2)
       s.ball = ball
+      s.air = flight.air
+      s.airMax = flight.max
       s.inSand = sand
       s.onPad = pad
-      s.strokeHits = hits
-      s.holeBonus = bonus
-      s.lanesLit = lanesLit
-      s.targetsDown = targetsDown
       s.bumperFlash = bumperFlash
       s.wallFlash = wallFlash
       s.rovers = rovers
       s.roverFlash = roverFlash
-      s.floaters = floaters
       s.rollTime += dt
       const speed = Math.hypot(ball.vx, ball.vy)
-      if ((speed < STOP_SPEED && !pad && !slope) || s.rollTime > MAX_ROLL) {
+      const still = speed < STOP_SPEED && flight.air === 0
+      s.restT = still ? s.restT + dt : 0
+      // At rest: still on the flat, or still for a while against whatever is pushing it, or out of time.
+      if ((still && !pad && !slope) || (still && s.restT > REST_TIME && !spin) || s.rollTime > MAX_ROLL) {
         s.ball = { ...ball, vx: 0, vy: 0 }
         return readyToAim(s)
       }
@@ -1103,7 +1148,7 @@ function moveRovers(s: GameState, dt: number): RoverState[] {
       bounce(b, p.x, p.y, wall.t + spec.r, 1)
     }
     for (const bp of hole.bumpers) bounce(b, bp.x, bp.y, bp.r + spec.r, 1)
-    if (s.phase !== 'roll') bounce(b, s.ball.x, s.ball.y, BALL_R + spec.r, 1)
+    if (s.phase !== 'roll' || s.air > 0) bounce(b, s.ball.x, s.ball.y, BALL_R + spec.r, 1)
     const sp = Math.hypot(b.vx, b.vy) || 1
     return { x: b.x, y: b.y, vx: (b.vx / sp) * spec.speed, vy: (b.vy / sp) * spec.speed, cool: Math.max(0, rv.cool - dt) }
   })
@@ -1143,7 +1188,10 @@ function advance(s: GameState): GameState {
 /** Where a shot from the ball along `angle` first meets something within `maxLen`, for the aim guide. */
 export function aimTrace(state: GameState, angle: number, maxLen: number): Vec {
   const hole = currentHole(state)
-  const blades = hole.spinners.map((sp) => spinnerWall(sp, state.clock))
+  const moving = [
+    ...hole.spinners.map((sp) => spinnerWall(sp, state.clock)),
+    ...hole.sliders.map((sl) => sliderWall(sl, state.clock)),
+  ]
   const dx = Math.cos(angle)
   const dy = Math.sin(angle)
   const stepLen = 0.6
@@ -1153,10 +1201,11 @@ export function aimTrace(state: GameState, angle: number, maxLen: number): Vec {
     const nx = x + dx * stepLen
     const ny = y + dy * stepLen
     for (const wall of wallsOf(hole)) {
+      if (passesFlap(wall, dx, dy)) continue
       const p = closestOnWall(wall, { x: nx, y: ny })
       if (Math.hypot(nx - p.x, ny - p.y) < wall.t + BALL_R) return { x, y }
     }
-    for (const wall of blades) {
+    for (const wall of moving) {
       const p = closestOnWall(wall, { x: nx, y: ny })
       if (Math.hypot(nx - p.x, ny - p.y) < wall.t + BALL_R) return { x, y }
     }

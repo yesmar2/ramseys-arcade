@@ -112,14 +112,10 @@ const SCORING: Record<string, ScoreRow[]> = {
   putt: [
     { label: 'Each hole', value: '(par + 2 − strokes) × 100' },
     { label: 'On a par 5', value: 'eagle 400 · birdie 300 · par 200 · bogey 100' },
-    { label: 'Bumper', value: '+50, then +100, +150… per hit in one stroke' },
-    { label: 'Kicker', value: '+25 a hit' },
-    { label: 'Lane', value: '+100 the first time you roll over it' },
-    { label: 'Drop targets', value: '+50 each · +300 for the whole bank' },
-    { label: 'Rover', value: '+150 a strike' },
-    { label: 'Streak', value: 'par or better in a row · +100, +200… up to +500' },
+    { label: 'Ace', value: '+200 on top' },
     { label: 'Water', value: '+1 stroke, back to where you shot from' },
-    { label: 'Round', value: '9 holes, par 50 · no cup within one shot of its tee · play until it drops' },
+    { label: 'Off the ground', value: 'the same: a ramp that lands you nowhere' },
+    { label: 'Round', value: '5 holes, par 25 · no cup within one shot of its tee · play until it drops' },
   ],
   bop: [
     { label: 'Right control', value: '+1' },

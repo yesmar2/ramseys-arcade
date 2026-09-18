@@ -121,6 +121,12 @@ export function centreOf(s: Shape): Vec {
   }
 }
 
+/** The point a shape turns or pushes about: a disc or an arc by its centre, anything else by its box. */
+export function pivotOf(s: Shape): Vec {
+  if (s.kind === 'arc') return { x: s.x, y: s.y }
+  return centreOf(s)
+}
+
 function unionSdf(shapes: readonly Shape[], p: Vec) {
   let best = Infinity
   for (const s of shapes) best = Math.min(best, sdf(s, p))

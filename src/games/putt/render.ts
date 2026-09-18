@@ -1,24 +1,25 @@
 import { inkColor, isFlatTheme, playfieldColor, playfieldRgb, softFillAlpha, strokeOutlined } from '../../lib/theme'
-import { EDGE_T, FIELD_W, LANE_R, PORTAL_R, SPINNER_T, TARGET_R, type Hole, type Shape, type Vec } from './course'
-import { centreOf } from './terrain'
+import { EDGE_T, FIELD_W, PORTAL_R, SPINNER_T, type Hole, type Shape, type Vec } from './course'
+import { centreOf, pivotOf } from './terrain'
 import {
   AIM_STUB,
   aimTrace,
   BALL_R,
+  bridgeLevel,
   COURSE,
   CUP_R,
   cupAt,
-  LANE_POINTS,
   currentHole,
   edgesOf,
   fieldFrame,
-  mapLayout,
-  wallsOf,
-  spinnerWall,
   GUIDE_REACH,
+  mapLayout,
   MAX_DRAG,
+  sliderWall,
+  spinnerWall,
   toScreen,
   underMap,
+  wallsOf,
   type Frame,
   type GameState,
 } from './game'
@@ -30,8 +31,8 @@ const PAD_HUE = 48
 const PIPE_HUE = 280
 const ROVER_HUE = 26
 const BUMPER_HUE = 348
-const LANE_HUE = 198
 const WALL_HUE = 214
+const FLAP_HUE = 168
 
 /** The theme's ink at an alpha: text, the aim line and the flagpole read on light and dark alike. */
 function ink(alpha: number) {
@@ -68,8 +69,8 @@ function paper(alpha: number) {
 
 /**
  * The map: the whole hole, small, in the corner of the window nearest the
- * cup. Enough to plan a route by: walls, water, sand, pads, bumpers, the
- * cup, the ball, and the part of the hole the window is showing.
+ * cup. Enough to plan a route by: walls, water, sand, pads, ramps, bumpers,
+ * the cup, the ball, and the part of the hole the window is showing.
  */
 function drawMap(ctx: CanvasRenderingContext2D, state: GameState, hole: Hole, f: Frame, flat: boolean) {
   const len = hole.h
@@ -131,8 +132,14 @@ function drawMap(ctx: CanvasRenderingContext2D, state: GameState, hole: Hole, f:
     shapeM(sh)
     ctx.fill()
   }
+  for (const db of hole.drawbridges) {
+    ctx.fillStyle = `hsla(${SAND_HUE}, 35%, 55%, ${0.3 + 0.6 * bridgeLevel(db, state.clock)})`
+    shapeM(db.shape)
+    ctx.fill()
+  }
   ctx.fillStyle = `hsla(${PAD_HUE}, 85%, 55%, 0.8)`
   for (const r of hole.boosts) R(r.x, r.y, r.w, r.h)
+  for (const r of hole.ramps) R(r.x, r.y, r.w, r.h)
 
   ctx.lineCap = 'round'
   ctx.strokeStyle = `hsla(${GREEN_HUE}, 45%, ${flat ? 30 : 38}%, 0.9)`
@@ -149,7 +156,9 @@ function drawMap(ctx: CanvasRenderingContext2D, state: GameState, hole: Hole, f:
   hole.walls.forEach((wall) => {
     ctx.strokeStyle = wall.kick
       ? `hsla(${BUMPER_HUE}, 55%, 50%, 0.95)`
-      : `hsla(${WALL_HUE}, 22%, ${flat ? 62 : 38}%, 0.95)`
+      : wall.pass !== undefined
+        ? `hsla(${FLAP_HUE}, 45%, 50%, 0.95)`
+        : `hsla(${WALL_HUE}, 22%, ${flat ? 62 : 38}%, 0.95)`
     ctx.lineWidth = Math.max(1.5, wall.t * 2 * k)
     line(wall.a, wall.b)
   })
@@ -159,6 +168,11 @@ function drawMap(ctx: CanvasRenderingContext2D, state: GameState, hole: Hole, f:
     const blade = spinnerWall(sp, state.clock)
     line(blade.a, blade.b)
   }
+  for (const sl of hole.sliders) {
+    const barNow = sliderWall(sl, state.clock)
+    ctx.lineWidth = Math.max(1.5, sl.t * 2 * k)
+    line(barNow.a, barNow.b)
+  }
   ctx.fillStyle = `hsla(${BUMPER_HUE}, 55%, 52%, 0.95)`
   for (const b of hole.bumpers) dot(b, Math.max(1.6, b.r * k))
   for (const sp of hole.spinners) dot(sp, 1.6)
@@ -167,12 +181,6 @@ function drawMap(ctx: CanvasRenderingContext2D, state: GameState, hole: Hole, f:
     dot(p.a, Math.max(1.6, PORTAL_R * k))
     dot(p.b, Math.max(1.6, PORTAL_R * k))
   }
-  ctx.fillStyle = `hsla(${PAD_HUE}, 85%, 50%, 0.95)`
-  hole.targets.forEach((t, i) => {
-    if (!state.targetsDown[i]) dot(t, 1.3)
-  })
-  ctx.fillStyle = `hsla(${LANE_HUE}, 60%, 55%, 0.9)`
-  for (const l of hole.lanes) dot(l, 1.2)
   ctx.fillStyle = `hsla(${ROVER_HUE}, 85%, 55%, 0.95)`
   hole.rovers.forEach((spec, i) => {
     const rv = state.rovers[i]
@@ -336,6 +344,27 @@ export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, w: n
       else ctx.lineTo(q.x, q.y)
     })
   }
+  /** A chevron on the ground at (x, y) pointing along (dx, dy), `size` units across. */
+  const chevron = (x: number, y: number, dx: number, dy: number, size: number) => {
+    const px = -dy
+    const py = dx
+    fieldPath([
+      { x: x - dx * size + px * size, y: y - dy * size + py * size },
+      { x, y },
+      { x: x - dx * size - px * size, y: y - dy * size - py * size },
+    ])
+    ctx.stroke()
+  }
+  /** A wall bar from a to b, `t` half-thick, in the current stroke style. */
+  const bar = (a: Vec, b: Vec, t: number) => {
+    const p = P(a.x, a.y)
+    const q = P(b.x, b.y)
+    ctx.lineWidth = Math.max(1.5, t * 2 * s)
+    ctx.beginPath()
+    ctx.moveTo(p.x, p.y)
+    ctx.lineTo(q.x, q.y)
+    ctx.stroke()
+  }
 
   // ---- the ground, seen through the window. Everything on the field is clipped to it.
   ctx.save()
@@ -388,39 +417,50 @@ export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, w: n
     ctx.restore()
   }
 
-  // ---- bridges: ground laid over the water, planked so it reads as a crossing
-  for (const sh of hole.bridges) {
-    ctx.fillStyle = groundColor(softFillAlpha(0.2))
+  // ---- bridges: ground laid over the water, planked so it reads as a crossing. A drawbridge's
+  // two leaves reach out from the banks as far as it is down, and a raised one shows as a ghost.
+  const drawBridge = (sh: Shape, level: number) => {
+    if (level >= 1) {
+      ctx.fillStyle = groundColor(softFillAlpha(0.2))
+      shape(sh)
+      ctx.fill()
+    }
+    ctx.fillStyle = `hsla(${SAND_HUE}, 35%, 55%, ${softFillAlpha(0.28) * level})`
     shape(sh)
     ctx.fill()
-    ctx.fillStyle = `hsla(${SAND_HUE}, 35%, 55%, ${softFillAlpha(0.28)})`
-    shape(sh)
-    ctx.fill()
-    ctx.strokeStyle = `hsla(${SAND_HUE}, 35%, 38%, 0.8)`
+    ctx.strokeStyle = `hsla(${SAND_HUE}, 35%, 38%, ${0.25 + 0.55 * level})`
     ctx.lineWidth = Math.max(1, s * 0.5)
+    if (level < 1) ctx.setLineDash([s * 1.5, s * 1.5])
     shape(sh)
     ctx.stroke()
-    if (sh.kind === 'capsule') {
-      const len = Math.hypot(sh.b.x - sh.a.x, sh.b.y - sh.a.y) || 1
-      const dx = (sh.b.x - sh.a.x) / len
-      const dy = (sh.b.y - sh.a.y) / len
-      ctx.strokeStyle = `hsla(${SAND_HUE}, 35%, 38%, 0.45)`
-      ctx.lineWidth = Math.max(1, s * 0.35)
-      for (let k = 4; k < len - 2; k += 5) {
-        const cx = sh.a.x + dx * k
-        const cy = sh.a.y + dy * k
-        fieldPath([
-          { x: cx - dy * sh.r, y: cy + dx * sh.r },
-          { x: cx + dy * sh.r, y: cy - dx * sh.r },
-        ])
-        ctx.stroke()
-      }
+    ctx.setLineDash([])
+    if (sh.kind !== 'capsule') return
+    const len = Math.hypot(sh.b.x - sh.a.x, sh.b.y - sh.a.y) || 1
+    const dx = (sh.b.x - sh.a.x) / len
+    const dy = (sh.b.y - sh.a.y) / len
+    ctx.strokeStyle = `hsla(${SAND_HUE}, 35%, 38%, ${0.2 + 0.3 * level})`
+    ctx.lineWidth = Math.max(1, s * 0.35)
+    const reach = (len / 2) * level
+    for (let k = 4; k < len - 2; k += 5) {
+      // Planks only where a leaf has reached.
+      const fromEnd = Math.min(k, len - k)
+      if (fromEnd > reach) continue
+      const cx = sh.a.x + dx * k
+      const cy = sh.a.y + dy * k
+      fieldPath([
+        { x: cx - dy * sh.r, y: cy + dx * sh.r },
+        { x: cx + dy * sh.r, y: cy - dx * sh.r },
+      ])
+      ctx.stroke()
     }
   }
+  for (const sh of hole.bridges) drawBridge(sh, 1)
+  for (const db of hole.drawbridges) drawBridge(db.shape, bridgeLevel(db, state.clock))
 
-  // ---- slopes: a hill is shaded and arrowed downhill; a bowl is ringed toward its middle
+  // ---- slopes: a hill is shaded and arrowed downhill; a bowl is ringed toward its middle; a
+  // repeller sends rings out from its middle; a spinning floor runs chevrons round it.
   for (const sl of hole.slopes) {
-    ctx.fillStyle = `hsla(${GREEN_HUE}, 40%, 34%, ${softFillAlpha(0.1)})`
+    ctx.fillStyle = `hsla(${GREEN_HUE}, 40%, 34%, ${softFillAlpha(sl.spin ? 0.06 : 0.1)})`
     shape(sl.shape)
     ctx.fill()
     ctx.save()
@@ -441,14 +481,7 @@ export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, w: n
       const across = Math.abs(dx) * bb.w + Math.abs(dy) * bb.h
       for (let k = -along / 2; k < along / 2; k += 9) {
         for (let m = -across / 2 + 6; m < across / 2; m += 12) {
-          const tx = cx + dx * k + px * m
-          const ty = cy + dy * k + py * m
-          fieldPath([
-            { x: tx - dx * 2.6 + px * 2.6, y: ty - dy * 2.6 + py * 2.6 },
-            { x: tx, y: ty },
-            { x: tx - dx * 2.6 - px * 2.6, y: ty - dy * 2.6 - py * 2.6 },
-          ])
-          ctx.stroke()
+          chevron(cx + dx * k + px * m, cy + dy * k + py * m, dx, dy, 2.6)
         }
       }
     } else if (sl.bowl) {
@@ -463,6 +496,38 @@ export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, w: n
         ctx.stroke()
       }
       ctx.setLineDash([])
+    } else if (sl.repel) {
+      // Rings running outward, so it reads as a hilltop the ball will roll off.
+      const c = pivotOf(sl.shape)
+      const bb = bboxOf(sl.shape)
+      const rad = Math.max(bb.w, bb.h) / 2
+      const q = P(c.x, c.y)
+      ctx.setLineDash([s * 1.2, s * 2])
+      for (let i = 0; i < 3; i++) {
+        const u = ((state.clock * 0.35 + i / 3) % 1)
+        ctx.strokeStyle = ink(0.32 * (1 - u))
+        ctx.beginPath()
+        ctx.arc(q.x, q.y, Math.max(0.5, u * rad * s), 0, Math.PI * 2)
+        ctx.stroke()
+      }
+      ctx.setLineDash([])
+    } else if (sl.spin && sl.shape.kind === 'arc') {
+      // Chevrons run round the ring the way the floor turns.
+      const c = pivotOf(sl.shape)
+      const R = sl.shape.R
+      const n = Math.max(6, Math.round((Math.PI * 2 * R) / 12))
+      const turn = -state.clock * 0.9 * Math.sign(sl.spin)
+      ctx.strokeStyle = ink(0.3)
+      ctx.lineWidth = Math.max(1.4, s * 0.8)
+      for (let i = 0; i < n; i++) {
+        const a = turn + (i / n) * Math.PI * 2
+        const x = c.x + Math.cos(a) * R
+        const y = c.y + Math.sin(a) * R
+        // The tangent, anticlockwise on screen.
+        const dx = Math.sin(a) * Math.sign(sl.spin)
+        const dy = -Math.cos(a) * Math.sign(sl.spin)
+        chevron(x, y, dx, dy, 3)
+      }
     }
     ctx.restore()
   }
@@ -485,8 +550,6 @@ export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, w: n
     strokeOutlined(ctx)
     const dx = Math.cos(pad.dir)
     const dy = Math.sin(pad.dir)
-    const px = -dy
-    const py = dx
     const cx = pad.x + pad.w / 2
     const cy = pad.y + pad.h / 2
     const along = Math.abs(dx) * pad.w + Math.abs(dy) * pad.h
@@ -496,35 +559,51 @@ export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, w: n
     ctx.lineWidth = Math.max(1.5, s * 0.9)
     for (let k = -along / 2 + offset; k < along / 2 - 2; k += spacing) {
       if (k < -along / 2 + 2) continue
-      const tx = cx + dx * (k + 2.2)
-      const ty = cy + dy * (k + 2.2)
-      fieldPath([
-        { x: tx - dx * 3 + px * 3.4, y: ty - dy * 3 + py * 3.4 },
-        { x: tx, y: ty },
-        { x: tx - dx * 3 - px * 3.4, y: ty - dy * 3 - py * 3.4 },
-      ])
-      ctx.stroke()
+      chevron(cx + dx * (k + 2.2), cy + dy * (k + 2.2), dx, dy, 3.2)
     }
+  }
+
+  // ---- ramps: a wedge that darkens toward the lip, and the lip itself
+  for (const rp of hole.ramps) {
+    const dx = Math.cos(rp.dir)
+    const dy = Math.sin(rp.dir)
+    const cx = rp.x + rp.w / 2
+    const cy = rp.y + rp.h / 2
+    const half = (Math.abs(dx) * rp.w + Math.abs(dy) * rp.h) / 2
+    const foot = P(cx - dx * half, cy - dy * half)
+    const lip = P(cx + dx * half, cy + dy * half)
+    const g = ctx.createLinearGradient(foot.x, foot.y, lip.x, lip.y)
+    g.addColorStop(0, `hsla(${PAD_HUE}, 80%, 60%, ${softFillAlpha(0.12)})`)
+    g.addColorStop(1, `hsla(${PAD_HUE}, 80%, 45%, ${softFillAlpha(0.55)})`)
+    ctx.fillStyle = g
+    ctx.strokeStyle = `hsla(${PAD_HUE}, 70%, 42%, 0.9)`
+    ctx.lineWidth = Math.max(1, s * 0.5)
+    fieldRect(rp.x, rp.y, rp.w, rp.h, s * 1.2)
+    ctx.fill()
+    strokeOutlined(ctx)
+    // The lip: a bold edge across the far end.
+    const px = -dy
+    const py = dx
+    const across = (Math.abs(dx) * rp.h + Math.abs(dy) * rp.w) / 2
+    ctx.strokeStyle = `hsla(${PAD_HUE}, 75%, 32%, 0.95)`
+    ctx.lineWidth = Math.max(2, s * 1.1)
+    fieldPath([
+      { x: cx + dx * half + px * across, y: cy + dy * half + py * across },
+      { x: cx + dx * half - px * across, y: cy + dy * half - py * across },
+    ])
+    ctx.stroke()
+    ctx.strokeStyle = `hsla(${PAD_HUE}, 75%, 32%, 0.8)`
+    ctx.lineWidth = Math.max(1.4, s * 0.8)
+    chevron(cx + dx * (half - 3), cy + dy * (half - 3), dx, dy, 2.6)
   }
 
   // ---- marks: a chevron on the ground, pointing at something worth a look
   for (const mk of hole.marks) {
     const dx = Math.cos(mk.dir)
     const dy = Math.sin(mk.dir)
-    const px = -dy
-    const py = dx
     ctx.strokeStyle = ink(0.42)
     ctx.lineWidth = Math.max(1.4, s * 0.7)
-    for (const k of [0, 3.2]) {
-      const tx = mk.x + dx * k
-      const ty = mk.y + dy * k
-      fieldPath([
-        { x: tx - dx * 2.6 + px * 2.6, y: ty - dy * 2.6 + py * 2.6 },
-        { x: tx, y: ty },
-        { x: tx - dx * 2.6 - px * 2.6, y: ty - dy * 2.6 - py * 2.6 },
-      ])
-      ctx.stroke()
-    }
+    for (const k of [0, 3.2]) chevron(mk.x + dx * k, mk.y + dy * k, dx, dy, 2.6)
   }
 
   // ---- rover pens: the ground a rover roams, marked so the timing can be read
@@ -540,66 +619,69 @@ export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, w: n
     ctx.setLineDash([])
   }
 
-  // ---- lanes: a rollover that says what it pays, and lights up once the ball has crossed it
-  hole.lanes.forEach((l, i) => {
-    const c = P(l.x, l.y)
-    const lit = state.lanesLit[i]
-    ctx.fillStyle = lit
-      ? `hsla(${LANE_HUE}, 70%, 58%, ${softFillAlpha(0.75)})`
-      : `hsla(${LANE_HUE}, 50%, 55%, ${softFillAlpha(0.14)})`
-    ctx.strokeStyle = `hsla(${LANE_HUE}, 60%, ${lit ? 62 : 45}%, ${lit ? 1 : 0.85})`
-    ctx.lineWidth = Math.max(1.2, s * 0.55)
-    ctx.beginPath()
-    ctx.arc(c.x, c.y, LANE_R * s, 0, Math.PI * 2)
-    ctx.fill()
-    strokeOutlined(ctx)
-    ctx.textAlign = 'center'
-    ctx.textBaseline = 'middle'
-    ctx.font = font(Math.max(8, s * 2.1), 800)
-    ctx.fillStyle = lit ? 'rgba(255, 255, 255, 0.95)' : `hsla(${LANE_HUE}, 60%, 40%, 0.95)`
-    ctx.fillText(lit ? '✓' : `${LANE_POINTS}`, c.x, c.y + s * 0.15)
-  })
-
-  // ---- placed walls and kickers. Their flashes sit after the traced edge's in the list.
+  // ---- placed walls, kickers and flaps. Their flashes sit after the traced edge's in the list.
   const edgeCount = wallsOf(hole).length - hole.walls.length
   hole.walls.forEach((wall, i) => {
-    const a = P(wall.a.x, wall.a.y)
-    const b = P(wall.b.x, wall.b.y)
+    if (wall.pass !== undefined) {
+      // A flap: a lighter bar, with chevrons the way it opens.
+      ctx.strokeStyle = `hsla(${FLAP_HUE}, 45%, ${flat ? 62 : 46}%, 0.95)`
+      bar(wall.a, wall.b, wall.t)
+      const dx = Math.cos(wall.pass)
+      const dy = Math.sin(wall.pass)
+      const len = Math.hypot(wall.b.x - wall.a.x, wall.b.y - wall.a.y) || 1
+      const ux = (wall.b.x - wall.a.x) / len
+      const uy = (wall.b.y - wall.a.y) / len
+      ctx.strokeStyle = `hsla(${FLAP_HUE}, 60%, 88%, 0.9)`
+      ctx.lineWidth = Math.max(1.2, s * 0.55)
+      for (let k = 4; k < len - 2; k += 6) {
+        chevron(wall.a.x + ux * k + dx * 1.2, wall.a.y + uy * k + dy * 1.2, dx, dy, 1.6)
+      }
+      return
+    }
     if (wall.kick) {
       const flash = state.wallFlash[edgeCount + i] ?? 0
       ctx.strokeStyle = `hsla(${BUMPER_HUE}, 55%, ${flash > 0 ? 62 : 48}%, 0.95)`
     } else {
       ctx.strokeStyle = `hsla(${WALL_HUE}, 22%, ${flat ? 62 : 38}%, 0.95)`
     }
-    ctx.lineWidth = wall.t * 2 * s
-    ctx.beginPath()
-    ctx.moveTo(a.x, a.y)
-    ctx.lineTo(b.x, b.y)
-    ctx.stroke()
+    bar(wall.a, wall.b, wall.t)
     if (wall.kick) {
       ctx.strokeStyle = `hsla(${BUMPER_HUE}, 60%, 85%, 0.7)`
       ctx.lineWidth = Math.max(1, s * 0.5)
       ctx.setLineDash([s * 1.5, s * 1.5])
-      ctx.beginPath()
-      ctx.moveTo(a.x, a.y)
-      ctx.lineTo(b.x, b.y)
+      fieldPath([wall.a, wall.b])
       ctx.stroke()
       ctx.setLineDash([])
     }
   })
 
+  // ---- sliders: the run it slides along, and the bar where it is now
+  for (const sl of hole.sliders) {
+    const mid = { x: (sl.a.x + sl.b.x) / 2, y: (sl.a.y + sl.b.y) / 2 }
+    ctx.strokeStyle = ink(0.22)
+    ctx.lineWidth = Math.max(1, s * 0.4)
+    ctx.setLineDash([s * 1.2, s * 1.6])
+    fieldPath([mid, { x: mid.x + sl.dx, y: mid.y + sl.dy }])
+    ctx.stroke()
+    ctx.setLineDash([])
+    const now = sliderWall(sl, state.clock)
+    ctx.strokeStyle = `hsla(${WALL_HUE}, 22%, ${flat ? 62 : 38}%, 0.95)`
+    bar(now.a, now.b, sl.t)
+    ctx.fillStyle = `hsla(${BUMPER_HUE}, 55%, 52%, 0.95)`
+    for (const end of [now.a, now.b]) {
+      const q = P(end.x, end.y)
+      ctx.beginPath()
+      ctx.arc(q.x, q.y, Math.max(1.5, s * 1.1), 0, Math.PI * 2)
+      ctx.fill()
+    }
+  }
+
   // ---- windmills: a blade on a hub
   for (const sp of hole.spinners) {
     const blade = spinnerWall(sp, state.clock)
-    const a = P(blade.a.x, blade.a.y)
-    const b = P(blade.b.x, blade.b.y)
-    const c = P(sp.x, sp.y)
     ctx.strokeStyle = `hsla(${WALL_HUE}, 22%, ${flat ? 62 : 38}%, 0.95)`
-    ctx.lineWidth = SPINNER_T * 2 * s
-    ctx.beginPath()
-    ctx.moveTo(a.x, a.y)
-    ctx.lineTo(b.x, b.y)
-    ctx.stroke()
+    bar(blade.a, blade.b, SPINNER_T)
+    const c = P(sp.x, sp.y)
     ctx.fillStyle = `hsla(${BUMPER_HUE}, 55%, 52%, 0.95)`
     ctx.beginPath()
     ctx.arc(c.x, c.y, s * 2.3, 0, Math.PI * 2)
@@ -692,32 +774,6 @@ export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, w: n
     ctx.fillStyle = 'rgba(255, 255, 255, 0.55)'
     ctx.beginPath()
     ctx.arc(c.x - r * 0.3, c.y - r * 0.3, r * 0.22, 0, Math.PI * 2)
-    ctx.fill()
-  })
-
-  // ---- drop targets: up until hit, then a ghost until the bank resets
-  hole.targets.forEach((tg, i) => {
-    const c = P(tg.x, tg.y)
-    const down = state.targetsDown[i]
-    const half = TARGET_R * s * 0.95
-    ctx.beginPath()
-    ctx.roundRect(c.x - half, c.y - half, half * 2, half * 2, half * 0.45)
-    if (down) {
-      ctx.strokeStyle = `hsla(${PAD_HUE}, 60%, 45%, 0.45)`
-      ctx.lineWidth = Math.max(1, s * 0.4)
-      ctx.setLineDash([s * 1.2, s * 1.2])
-      ctx.stroke()
-      ctx.setLineDash([])
-      return
-    }
-    ctx.fillStyle = `hsla(${PAD_HUE}, 85%, 58%, ${softFillAlpha(0.75)})`
-    ctx.strokeStyle = `hsla(${PAD_HUE}, 70%, 40%, 0.95)`
-    ctx.lineWidth = Math.max(1.2, s * 0.6)
-    ctx.fill()
-    strokeOutlined(ctx)
-    ctx.fillStyle = `hsla(${PAD_HUE}, 70%, 35%, 0.8)`
-    ctx.beginPath()
-    ctx.arc(c.x, c.y, half * 0.3, 0, Math.PI * 2)
     ctx.fill()
   })
 
@@ -818,16 +874,25 @@ export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, w: n
     }
   }
 
-  // ---- ball
+  // ---- ball. In the air it rises off its shadow and comes back down along the flight.
   const ballOffScreen = state.ball.y < state.cam || state.ball.y > state.cam + f.vis
   if (state.phase !== 'menu' && state.phase !== 'gameover' && state.drop > 0) {
     const c = P(state.ball.x, state.ball.y)
-    const r = BALL_R * s * state.drop
+    const flying = state.air > 0 && state.airMax > 0
+    const lift = flying ? Math.sin(Math.PI * (1 - state.air / state.airMax)) : 0
+    const r = BALL_R * s * state.drop * (1 + 0.55 * lift)
+    if (flying) {
+      ctx.fillStyle = 'rgba(20, 27, 36, 0.28)'
+      ctx.beginPath()
+      ctx.ellipse(c.x, c.y + s * 0.6, BALL_R * s * (1 + 0.3 * lift), BALL_R * s * 0.7, 0, 0, Math.PI * 2)
+      ctx.fill()
+    }
+    const by = c.y - lift * s * 7
     ctx.fillStyle = state.inSand ? 'rgba(240, 232, 216, 0.98)' : 'rgba(245, 247, 250, 0.98)'
     ctx.strokeStyle = 'rgba(20, 27, 36, 0.55)'
     ctx.lineWidth = Math.max(1, s * 0.45)
     ctx.beginPath()
-    ctx.arc(c.x, c.y, r, 0, Math.PI * 2)
+    ctx.arc(c.x, by, r, 0, Math.PI * 2)
     ctx.fill()
     strokeOutlined(ctx)
     // Looking away from the ball: a marker on the window's edge says which way it is.
@@ -853,7 +918,7 @@ export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, w: n
     }
   }
 
-  // ---- floaters: "+50" rising off a bumper or a lane
+  // ---- floaters: a word rising from a splash or a ball gone out of bounds
   for (const fl of state.floaters) {
     const c = P(fl.x, fl.y)
     const rise = (0.9 - fl.life) * s * 6
@@ -861,8 +926,7 @@ export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, w: n
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
     ctx.font = font(Math.max(11, s * 4.2), 800)
-    ctx.fillStyle =
-      fl.text === 'SPLASH' ? `hsla(${WATER_HUE}, 70%, 45%, ${alpha})` : `hsla(${LANE_HUE}, 70%, 60%, ${alpha})`
+    ctx.fillStyle = fl.text === 'SPLASH' ? `hsla(${WATER_HUE}, 70%, 45%, ${alpha})` : ink(0.85 * alpha)
     ctx.fillText(fl.text, c.x, c.y - rise)
   }
 
@@ -870,29 +934,21 @@ export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, w: n
   ctx.restore()
   if (state.phase !== 'menu') drawMap(ctx, state, hole, f, flat)
 
-  // ---- the band above: hole, par, strokes, and this hole's pinball so far
+  // ---- the band above: hole, par and strokes
   if (state.phase !== 'menu') {
     const holeNo = Math.min(state.holeIndex + 1, COURSE.length)
     const inset = Math.max(w * 0.12, 56)
     const cy = f.top * 0.55
-    const hasBonus = state.holeBonus > 0
-    // With pinball on the board the right side takes two lines, and the top line lifts to make room.
-    const lift = hasBonus ? f.top * 0.17 : 0
     ctx.textAlign = 'left'
     ctx.textBaseline = 'middle'
     ctx.font = font(Math.max(12, textScale * 0.035), 800)
     ctx.fillStyle = ink(0.92)
-    ctx.fillText(`HOLE ${holeNo}`, inset, cy - lift)
+    ctx.fillText(`HOLE ${holeNo}`, inset, cy)
     ctx.textAlign = 'right'
     ctx.fillStyle = ink(0.62)
     ctx.font = font(Math.max(11, textScale * 0.03), 750)
     const strokeWord = state.strokes === 1 ? 'STROKE' : 'STROKES'
-    ctx.fillText(`PAR ${hole.par}  ·  ${state.strokes} ${strokeWord}`, w - inset, cy - lift)
-    if (hasBonus) {
-      ctx.font = font(Math.max(10, textScale * 0.026), 800)
-      ctx.fillStyle = `hsla(${LANE_HUE}, 60%, 48%, 0.95)`
-      ctx.fillText(`PINBALL +${state.holeBonus}`, w - inset, cy + f.top * 0.2)
-    }
+    ctx.fillText(`PAR ${hole.par}  ·  ${state.strokes} ${strokeWord}`, w - inset, cy)
   }
 
   // ---- the band below: the cue, and how hard the pull is
