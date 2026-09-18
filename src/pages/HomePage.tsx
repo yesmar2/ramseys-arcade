@@ -1,25 +1,27 @@
-import { GameGrid } from '../components/GameGrid'
+import { GameWall } from '../components/GameWall'
 import { HomeAboutBand } from '../components/HomeAboutBand'
-import { HomeOfficialEvents } from '../components/HomeOfficialEvents'
 import { HomeYourEvents } from '../components/HomeYourEvents'
 import { HomeHero } from '../components/HomeHero'
+import { HomePulse } from '../components/HomePulse'
 import { HomeSpotterStrip } from '../components/HomeSpotterStrip'
 import { HomeIntro } from '../components/HomeIntro'
 import { InstallPrompt } from '../components/InstallPrompt'
 import { PageShell } from '../components/PageShell'
 import { PendingInvitesStrip } from '../components/PendingInvitesStrip'
 
+/**
+ * The front door, at the width of the screen: a banner for the one game to
+ * open now, a strip of what is true today, then the wall of every game.
+ */
 export function HomePage() {
   return (
     <>
       <PageShell variant="home">
         <div className="home-rail">
-          <div className="home-top">
-            <HomeHero />
-            <HomeOfficialEvents />
-          </div>
+          <HomeHero />
+          <HomePulse />
           <PendingInvitesStrip />
-          <GameGrid />
+          <GameWall />
           <HomeSpotterStrip />
           <HomeYourEvents />
           <HomeIntro />

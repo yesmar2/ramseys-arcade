@@ -24,7 +24,7 @@
   --font-display: "Outfit", system-ui, sans-serif;
   --font-body: "Outfit", system-ui, sans-serif;
   --content-width: 60rem;
-  --max-width: var(--content-width);
+  --max-width: 100rem;
   --shell: #d5e8f2;
   --inline-thumb-size: 2.35rem;
   --inline-thumb-gap: 0.4rem;

@@ -1,6 +1,9 @@
 import type { DeviceType } from '../lib/device'
 import { formatDeviceList } from '../lib/device'
 
+/** What kind of game it is, for the home page's tabs. */
+export type GameTag = 'arcade' | 'puzzle' | 'quick' | 'sport'
+
 export type Game = {
   name: string
   slug: string
@@ -9,6 +12,7 @@ export type Game = {
   /** One-line how to play, shown on the game page. */
   how: string
   playable?: boolean
+  tags?: GameTag[]
   /** Home tile only — not a real game yet. */
   comingSoon?: boolean
   /** On the grid, but not ready to play. */
@@ -23,6 +27,7 @@ export const games: Game[] = [
   {
     name: 'Asteroids',
     slug: 'asteroids',
+    tags: ['arcade'],
     description: 'Spin, thrust, clear the rocks. Chain hits for more.',
     how: 'Arrow keys or WASD to turn and thrust. Space fires. Break rocks into smaller ones without getting hit.',
     accent: '#2eb87a',
@@ -31,6 +36,7 @@ export const games: Game[] = [
   {
     name: 'Patriot',
     slug: 'patriot',
+    tags: ['arcade'],
     description: 'Defend the cities. Aim. Fire. Survive the wave.',
     how: 'Move to aim. Click or tap to shoot. Protect the cities through each wave. Keys 1–4 use powers.',
     accent: '#e85d75',
@@ -39,6 +45,7 @@ export const games: Game[] = [
   {
     name: 'Snake',
     slug: 'snake',
+    tags: ['arcade', 'quick'],
     description: 'Grow longer. Don’t crash.',
     how: 'Swipe or use arrow keys. Eat, grow, and don’t hit the walls or yourself.',
     accent: '#3ecf8e',
@@ -47,6 +54,7 @@ export const games: Game[] = [
   {
     name: 'Crosswalk',
     slug: 'crosswalk',
+    tags: ['arcade'],
     description: 'Hop forever. Beat your distance.',
     how: 'Swipe or tap to hop. Dodge traffic, ride the logs, hop the stones, and beat the train. Don’t linger — the hawk is watching. Score is how far you get, one point per row, and your record is marked on the road ahead.',
     accent: '#f5b942',
@@ -55,6 +63,7 @@ export const games: Game[] = [
   {
     name: 'Stacker',
     slug: 'stacker',
+    tags: ['quick', 'puzzle'],
     description: 'Time the drop. Stack higher. Don’t miss.',
     how: 'Tap or press space to drop the block. Land it on the stack — miss and the round is over.',
     accent: '#4aa8e8',
@@ -63,6 +72,7 @@ export const games: Game[] = [
   {
     name: 'Centroid',
     slug: 'centroid',
+    tags: ['puzzle', 'quick'],
     description: 'Find the shape’s true center. Closer scores more.',
     how: 'Tap where you think the center is. Closer scores more. Ten shapes, five seconds each.',
     accent: '#4aa8e8',
@@ -71,6 +81,7 @@ export const games: Game[] = [
   {
     name: 'Pop',
     slug: 'pop',
+    tags: ['quick', 'arcade'],
     description: 'Tap the circles before they fade. Center hits score more.',
     how: 'Tap circles before they fade. Hits closer to the center score more.',
     accent: '#4aa8e8',
@@ -79,6 +90,7 @@ export const games: Game[] = [
   {
     name: 'Simon',
     slug: 'simon',
+    tags: ['puzzle', 'quick'],
     description: 'Watch the pattern. Repeat it. Don’t miss.',
     how: 'Watch the pads light up, then tap the same pattern. Each round adds a step.',
     accent: '#8a6ad4',
@@ -87,6 +99,7 @@ export const games: Game[] = [
   {
     name: 'Spotter',
     slug: 'spotter',
+    tags: ['puzzle'],
     description: 'Find the wrong tile. A new hunt every day.',
     how: 'Every day, one game on the wall isn’t right. Tap the glitch. Fewer wrong taps and faster finds rank higher.',
     accent: '#7a6cf0',
@@ -96,6 +109,7 @@ export const games: Game[] = [
   {
     name: 'Pellets',
     slug: 'pellets',
+    tags: ['arcade'],
     description: 'Clear the maze. Bank a streak. Surge.',
     how: 'Swipe or arrow keys to steer. Clear the maze: fresh crumbs build a streak, doubling back breaks it, and a full charge lets you Surge through the chasers. Three lives.',
     accent: '#f5b942',
@@ -104,6 +118,7 @@ export const games: Game[] = [
   {
     name: 'Find the Bug',
     slug: 'findbug',
+    tags: ['puzzle'],
     description: 'Something is hiding in the arcade. Find it before the clock does.',
     how: 'Five scenes, one bug hiding in each. Tap it to swat, or move the reticle with the arrow keys and swat with space. It never moves — it just gets smaller and better hidden each scene. Fastest total time wins.',
     accent: '#3ec8cf',
@@ -113,6 +128,7 @@ export const games: Game[] = [
   {
     name: 'Barrage',
     slug: 'barrage',
+    tags: ['arcade'],
     description: 'Rows of ships. One cannon. Hold the line.',
     how: 'Arrow keys or the thumb pads move the cannon; space or the up pad fires. The fleet fires in volleys and lights up the lanes it will hit first — read them, get into a cold one, and clear rows in the quiet between. There is no cover. Three lives.',
     accent: '#e85d75',
@@ -122,6 +138,7 @@ export const games: Game[] = [
   {
     name: 'Crumbtrail',
     slug: 'crumbtrail',
+    tags: ['arcade'],
     description: 'Pellets with no way out. Climb forever. Don’t settle in.',
     how: 'Swipe or arrow keys to steer. The maze goes up forever: eat fresh crumbs to build a streak, pick your way around the sleeping chasers, and keep climbing — stop, and the tide rises. One life.',
     accent: '#3ed69b',
@@ -130,6 +147,7 @@ export const games: Game[] = [
   {
     name: 'Bop',
     slug: 'bop',
+    tags: ['quick', 'arcade'],
     description: 'Five controls. One voice. Do what it says, faster.',
     how: 'The console calls a control — bop, twist, pull, flick or spin — and you have until the ring runs out to do it. Tap the button to bop; drag the knob sideways to twist, the lever down to pull, the switch up to flick, the wheel any way to spin. On a keyboard: space, left/right, down, up, S. Wrong control or too slow ends the run.',
     accent: '#e85d75',
@@ -139,7 +157,8 @@ export const games: Game[] = [
   {
     name: 'Putt',
     slug: 'putt',
-    description: 'Nine holes of pinball golf. Drag to aim, three taps to hit.',
+    tags: ['sport'],
+    description: 'Nine holes of pinball golf. Pull back, let go, and find the shortcut.',
     how: 'Every hole is longer than the screen: the intro flies it from cup to tee, the view follows the ball, and the map in the corner shows the rest, so plan the route. Before a swing, drag or tap the map, scroll, or hold the up and down arrows to look along the hole; the swing brings the view back. Pull back from the ball and let go to shoot: the further you pull, the harder it goes, and the guide only shows the first few feet. Pull back to the ball to change your mind. Holes bend and fork, and the walls are wherever the ground ends. Sand drags, water costs a stroke and sends you back, a bridge is the dry way over it, hills push the ball back down unless you hit it firmly, bowls pull it to their middle, windmills turn, pads push the ball along, pipes spit it out somewhere else, one cup slides, and a ball rolling too fast skips over the cup. Some holes hide a shortcut for the shot that is dead on. Bumpers, kickers and drop targets pay pinball points, lanes pay once, and knocking a whole bank of targets down pays big. Par or better on consecutive holes builds a streak bonus. A rover is a loose ball that roams its pen; time your shot around it, or hit it for a strike. On a keyboard, arrows aim and holding Space charges the shot; let go to hit.',
     accent: '#5cc46a',
     playable: true,
