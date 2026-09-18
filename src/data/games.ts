@@ -4,6 +4,14 @@ import { formatDeviceList } from '../lib/device'
 /** What kind of game it is, for the home page's tabs. */
 export type GameTag = 'arcade' | 'puzzle' | 'quick' | 'sport'
 
+/** The kind of game, as the home page names it. */
+export const TAG_LABELS: Record<GameTag, string> = {
+  arcade: 'Arcade',
+  puzzle: 'Puzzle',
+  quick: 'Quick play',
+  sport: 'Sport',
+}
+
 /**
  * The ten colours a game can be. Every game picks one, so the wall, the hub
  * pages, the event cards and the boards all agree, and a hundred games would
@@ -183,6 +191,16 @@ export const games: Game[] = [
     description: 'Five holes of mini golf, none of them the usual kind. Pull back, let go, and find the line.',
     how: 'Every hole is longer than the screen: the intro flies it from cup to tee, the view follows the ball, and the map in the corner shows the rest, so plan the route. Before a swing, drag or tap the map, scroll, or hold the up and down arrows to look along the hole; the swing brings the view back. Pull back from the ball and let go to shoot: the further you pull, the harder it goes, and the guide grows with the pull. Pull back to the ball to change your mind. Holes bend and loop, and the walls are wherever the ground ends. Sand drags, water costs a stroke and sends you back, a bridge is the dry way over it and a drawbridge is only down some of the time, hills push the ball back down unless you hit it firmly, bowls pull it to their middle, a hilltop green rolls it away from the cup, a spinning floor carries it round, windmills turn, sliders sweep across, flaps let you through one way and never back, ramps fly the ball over whatever is in the way if it is going fast enough, pipes spit it out somewhere else, one cup slides, and a ball rolling too fast skips over the cup. Bumpers pop the ball away, and a rover is a loose ball that roams its pen; time your shot around it or bounce off it. The score is golf: par pays 200, a birdie 300, a bogey 100, an ace extra. On a keyboard, arrows aim and holding Space charges the shot; let go to hit.',
     accent: PALETTE.green,
+    playable: true,
+    inDevelopment: true,
+  },
+  {
+    name: 'Frenzy',
+    slug: 'frenzy',
+    tags: ['arcade'],
+    description: 'One tank, one rule. Eat anything smaller. Anything bigger eats you.',
+    how: 'Move the cursor, or drag a finger, to swim — the fish follows. Arrow keys or WASD work too. Eat anything smaller to grow; anything bigger is a killer. Near enough in size just bounces off. One life.',
+    accent: PALETTE.magenta,
     playable: true,
     inDevelopment: true,
   },

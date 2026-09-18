@@ -1,99 +1,57 @@
 /*
- * A game's page.
+ * A game's page, at the width of the home page.
  *
- * The shared hero carries the art, the blurb, the play button and your
- * three numbers. Below it the board sits on one side (the right, on a
- * wide screen) and how to play plus the rest of the shelf on the other.
- * Rows, chips and labels come from list.css; the hero from hero.css.
+ * The banner is the home page's banner (home.css) with the game's own words
+ * in it, and the shelf below is the wall's tiles (home.css). What lives here
+ * is the rail, the split below the banner, and how to play.
  */
 
-.hub {
-  gap: 1.15rem;
-}
-
-/* ---------- hero ---------- */
-
-.hub__art.inline-thumb {
-  --inline-thumb-size: var(--hero-mark);
-  width: var(--hero-mark);
-  height: var(--hero-mark);
-  border-radius: 24%;
-  box-shadow: 0 3px 10px rgba(var(--ink-rgb), 0.07);
-}
-
-.hub__art.inline-thumb .game-thumb__svg {
-  width: 74%;
-  height: 74%;
-}
-
-/* Your numbers: three quiet tiles. */
-.hub__stats {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.5rem;
-  width: 100%;
-}
-
-.hub__stat {
+.hub-rail {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 0.12rem;
-  min-width: 0;
-  padding: 0.65rem 0.4rem 0.6rem;
-  border-radius: 1rem;
-  background: rgba(var(--surface-rgb), 0.55);
-  border: 1px solid color-mix(in srgb, var(--hero-accent) 22%, transparent);
-  text-align: center;
+  gap: 1.35rem;
+  width: min(100% - 1.25rem, var(--max-width));
+  margin: 0 auto;
+  padding-bottom: 2rem;
 }
 
-.hub__stat-label {
-  font-size: 0.6rem;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  line-height: 1.2;
-  color: var(--muted);
-  white-space: nowrap;
+.hub {
+  display: flex;
+  flex-direction: column;
+  gap: 1.35rem;
 }
 
-.hub__stat-value {
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-family: var(--font-display);
-  font-size: clamp(1.25rem, 4.4vw, 1.7rem);
-  font-weight: 800;
-  letter-spacing: -0.03em;
-  line-height: 1.05;
-  font-variant-numeric: tabular-nums;
-  color: var(--ink);
+/* ---------- the banner, with a heading in it rather than a link ---------- */
+
+.hub-banner .home-banner__name {
+  color: #fff;
 }
 
-.hub__stat--empty .hub__stat-value {
-  color: var(--muted);
+.hub-banner .home-banner__art {
+  cursor: default;
 }
 
-.hub__stat-sub {
-  font-size: 0.66rem;
-  font-weight: 650;
-  color: var(--muted);
-  white-space: nowrap;
+/* A note in the banner where Play would be: coming soon, not on this device. */
+.hub__hint {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: rgba(238, 244, 248, 0.78);
 }
 
-/* ---------- below the hero ---------- */
+/* ---------- below the banner ---------- */
 
 .hub__layout {
   display: flex;
   flex-direction: column;
-  gap: 1.15rem;
+  gap: 1.35rem;
 }
 
 .hub__side {
   display: flex;
   flex-direction: column;
-  gap: 1.15rem;
+  gap: 1.35rem;
   min-width: 0;
 }
 
@@ -101,17 +59,27 @@
   min-width: 0;
 }
 
-/* How to play: copy, then the scoring rows. */
+/* How to play: the copy, then the scoring rows. */
+.hub__how {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 1rem 1.1rem 1.1rem;
+  border-radius: 1.1rem;
+  background: var(--surface);
+  border: 1px solid rgba(var(--ink-rgb), 0.08);
+}
+
 .hub__how .how-to-play__copy {
   margin: 0;
-  font-size: 0.9rem;
-  line-height: 1.5;
+  font-size: 0.92rem;
+  line-height: 1.55;
   color: var(--ink);
 }
 
 .hub__scoring {
   list-style: none;
-  margin: 0.85rem 0 0;
+  margin: 0.35rem 0 0;
   padding: 0;
   display: flex;
   flex-direction: column;
@@ -142,38 +110,35 @@
   color: color-mix(in srgb, var(--event-accent, var(--accent)) 65%, var(--ink));
 }
 
-/* The rest of the shelf. */
+/* The rest of the shelf, as wall tiles: four across beside the board, fewer as the width goes. */
 .hub__more {
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
 }
 
-.hub__grid {
-  list-style: none;
-  margin: 0;
-  padding: 0.1rem 0 0;
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.75rem 0.6rem;
+.hub .wall__grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
-.hub__grid > li {
-  display: flex;
-  min-width: 0;
-}
-
-@media (min-width: 560px) {
-  .hub__grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+@media (max-width: 42rem) {
+  .hub .wall__grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
-@media (min-width: 900px) {
+@media (max-width: 30rem) {
+  .hub .wall__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Wide: how to play and the shelf on the left, the board on the right. */
+@media (min-width: 64rem) {
   .hub__layout--split {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    grid-template-areas: "side board";
+    grid-template-columns: minmax(0, 3fr) minmax(22rem, 2fr);
+    grid-template-areas: 'side board';
     gap: 1.35rem;
     align-items: start;
   }
@@ -185,84 +150,4 @@
   .hub__layout--split .hub__board {
     grid-area: board;
   }
-
-  .hub__grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-}
-
-@media (min-width: 1100px) {
-  .hub__grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
-}
-
-/* Play, then the quiet links, in a row under the art and text — never a
-   stack of full-width buttons. */
-.hub .hub__actions {
-  flex-direction: row;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.5rem 0.6rem;
-  text-align: left;
-}
-
-.hub .hub__actions .hero__cta,
-.hub .hub__actions .hero__ghost {
-  width: auto;
-}
-
-.hub .hub__actions .hero__hint {
-  flex-basis: 100%;
-}
-
-/* The share icon: in the hero's corner over the text on a phone, above the
-   tiles on a wide screen — the way the profile page keeps it. */
-.hub__aside {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 0.6rem;
-}
-
-.hub__corner {
-  position: absolute;
-  top: 0.85rem;
-  right: 1.1rem;
-  z-index: 1;
-}
-
-.hub .hero__main:not(.hero__main--bare) .hero__text {
-  padding-right: 2.7rem;
-}
-
-@media (min-width: 680px) {
-  .hub__corner {
-    position: static;
-  }
-
-  .hub__aside {
-    align-self: start;
-  }
-
-  .hub .hero__main:not(.hero__main--bare) .hero__text {
-    padding-right: 0;
-  }
-}
-
-/* On a phone, Play takes the row and the two links share the next one. */
-@media (max-width: 679px) {
-  .hub .hub__actions .hero__cta {
-    flex-basis: 100%;
-  }
-
-  .hub .hub__actions .hero__ghost {
-    flex: 1 1 0;
-  }
-}
-
-.hub__rules-more {
-  display: flex;
-  justify-content: center;
-  margin-top: 0.75rem;
 }

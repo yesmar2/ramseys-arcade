@@ -1,5 +1,5 @@
 import { useEffect, useState, type CSSProperties } from 'react'
-import { games, homeGames, type Game, type GameTag } from '../data/games'
+import { games, homeGames, TAG_LABELS, type Game, type GameTag } from '../data/games'
 import { gameHref } from '../hooks/useHashRoute'
 import { useLiveEvents } from '../hooks/useLiveEvents'
 import { usePlayerName } from '../hooks/usePlayerName'
@@ -16,10 +16,10 @@ type Tab = 'all' | GameTag | 'new'
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'all', label: 'All' },
-  { id: 'arcade', label: 'Arcade' },
-  { id: 'puzzle', label: 'Puzzle' },
-  { id: 'quick', label: 'Quick play' },
-  { id: 'sport', label: 'Sport' },
+  { id: 'arcade', label: TAG_LABELS.arcade },
+  { id: 'puzzle', label: TAG_LABELS.puzzle },
+  { id: 'quick', label: TAG_LABELS.quick },
+  { id: 'sport', label: TAG_LABELS.sport },
   { id: 'new', label: 'New' },
 ]
 
@@ -243,7 +243,7 @@ export function GameWall() {
   )
 }
 
-function WallTile({
+export function WallTile({
   game,
   index,
   size,

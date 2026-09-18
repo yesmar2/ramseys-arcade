@@ -5,17 +5,20 @@ import {
   PeriodSwitcher,
 } from '../components/BoardChrome'
 import { GameThumbArt } from '../components/GameThumbArt'
-import { GameTile } from '../components/GameTile'
+import { WallTile } from '../components/GameWall'
 import { LeaderboardList } from '../components/LeaderboardList'
 import { PageShell } from '../components/PageShell'
+import { HowToPlayContent } from '../components/ScoreGuide'
 import { ShareBoardButton } from '../components/ShareBoardButton'
 import {
   deviceRequirementLabel,
   getGame,
   gamePlayableOn,
   homeGames,
+  TAG_LABELS,
   type Game,
 } from '../data/games'
+import { scoringFor } from '../data/scoring'
 import { useBoardRecord } from '../hooks/useBoardRecord'
 import {
   currentHref,
@@ -59,9 +62,11 @@ type GameHubPageProps = {
 }
 
 /**
- * A game's page: the hero with its art, blurb and play button, your numbers
- * beside it, then the board on one side and how to play plus the rest of
- * the shelf on the other.
+ * A game's page, at the width of the home page. The banner is the home
+ * page's banner with this game's own words in it: the mark big on the right,
+ * the name, the blurb, Play and the two links, and your three numbers. Below
+ * it the board sits on the right on a wide screen, and how to play plus the
+ * rest of the shelf, as wall tiles, on the left.
  */
 export function GameHubPage({ slug, board: boardFromRoute }: GameHubPageProps) {
   const route = useRoute()
@@ -143,18 +148,26 @@ export function GameHubPage({ slug, board: boardFromRoute }: GameHubPageProps) {
 
   const players = entries.length
   const yourRank = you?.rank ?? null
+  const yourBest = you?.score ?? 0
+  const firstTag = game.tags?.[0]
+  const kicker = inDevelopment
+    ? 'In development'
+    : comingSoon
+      ? 'Coming soon'
+      : firstTag
+        ? TAG_LABELS[firstTag]
+        : 'Game'
   const share = (
     <ShareBoardButton
       label={`Think you can beat me at ${game.name}? Prove it on ${APP_NAME}.`}
       url={gameHref(slug)}
     />
   )
-  const yourBest = you?.score ?? 0
 
   return (
-    <PageShell innerClassName="lb-page__inner lb-page__inner--events">
+    <PageShell innerClassName="hub-rail">
       <div
-        className="ev hub"
+        className="hub"
         style={
           {
             '--event-accent': accent,
@@ -168,24 +181,12 @@ export function GameHubPage({ slug, board: boardFromRoute }: GameHubPageProps) {
           } as CSSProperties
         }
       >
-        <section className="hero" aria-label={game.name}>
-          {!boardSlug ? (
-            <div className="hero__corner">{share}</div>
-          ) : null}
-          <div className={`hero__main${boardSlug ? '' : ' hero__main--bare'}`}>
-            <GameThumbArt slug={game.slug} accent={accent} className="hero__art hub__art" />
-            <div className="hero__text">
-              {inDevelopment || comingSoon ? (
-                <p className="ev-kicker hero__kicker">
-                  <span className="ev-kicker__bit">
-                    {inDevelopment ? 'In development' : 'Coming soon'}
-                  </span>
-                </p>
-              ) : null}
-              <h1 className="hero__title">{game.name}</h1>
-            </div>
-
-            <div className="hero__actions hub__actions">
+        <section className="home-banner hub-banner" aria-label={game.name}>
+          <div className="home-banner__text">
+            <p className="home-banner__kicker">{kicker}</p>
+            <h1 className="home-banner__name">{game.name}</h1>
+            <p className="home-banner__blurb">{game.description}</p>
+            <div className="home-banner__acts">
               <PlayCta
                 game={game}
                 canPlay={canPlay}
@@ -195,48 +196,39 @@ export function GameHubPage({ slug, board: boardFromRoute }: GameHubPageProps) {
                 deviceNote={deviceNote}
               />
               {boardHref ? (
-                <a className="hero__ghost" href={boardHref}>
+                <a className="home-banner__ghost" href={boardHref}>
                   Full board
                 </a>
               ) : null}
               {recordsLink ? (
-                <a className="hero__ghost" href={recordsLink}>
+                <a className="home-banner__ghost" href={recordsLink}>
                   Record books
                 </a>
               ) : null}
+              {share}
             </div>
-
             {boardSlug ? (
-              <div className="hero__aside hub__aside">
-                <div className="hub__corner">{share}</div>
-                <div className="hub__stats" aria-label="Your numbers">
-                <HubStat
+              <dl className="home-banner__figures" aria-label="Your numbers">
+                <Figure
                   label="Your best"
-                  value={
-                    loading
-                      ? '…'
-                      : yourBest > 0
-                        ? formatLeaderboardScore(slug, yourBest)
-                        : '—'
-                  }
+                  value={loading ? '…' : yourBest > 0 ? formatLeaderboardScore(slug, yourBest) : '—'}
                   sub={PERIOD_LABELS[period]}
-                  empty={!loading && yourBest <= 0}
                 />
-                <HubStat
+                <Figure
                   label="Your rank"
                   value={loading ? '…' : yourRank != null ? `#${yourRank}` : '—'}
                   sub={PERIOD_LABELS[period]}
-                  empty={!loading && yourRank == null}
                 />
-                <HubStat
+                <Figure
                   label="Record"
                   value={allTime > 0 ? formatLeaderboardScore(slug, allTime) : '—'}
                   sub="All time"
-                  empty={allTime <= 0}
                 />
-                </div>
-              </div>
+              </dl>
             ) : null}
+          </div>
+          <div className="home-banner__art" aria-hidden="true">
+            <GameThumbArt slug={game.slug} accent={accent} />
           </div>
         </section>
 
@@ -293,15 +285,22 @@ export function GameHubPage({ slug, board: boardFromRoute }: GameHubPageProps) {
           ) : null}
 
           <div className="hub__side">
+            <section className="hub__how" aria-label="How to play">
+              <div className="lst-block__head">
+                <h2 className="lst-block__title">How to play</h2>
+              </div>
+              <HowToPlayContent how={game.how} rows={scoringFor(game.slug)} listClassName="hub__scoring" />
+            </section>
+
             {others.length > 0 ? (
               <section className="hub__more" aria-label="More games">
                 <div className="lst-block__head">
                   <h2 className="lst-block__title">More games</h2>
                   <p className="lst-block__note">{others.length} on the shelf</p>
                 </div>
-                <ul className="hub__grid">
+                <ul className="wall__grid">
                   {others.map((g, i) => (
-                    <GameTile key={g.slug} game={g} index={i} showOnAllDevices />
+                    <WallTile key={g.slug} game={g} index={i} size="one" best={null} daily={false} />
                   ))}
                 </ul>
               </section>
@@ -313,22 +312,15 @@ export function GameHubPage({ slug, board: boardFromRoute }: GameHubPageProps) {
   )
 }
 
-function HubStat({
-  label,
-  value,
-  sub,
-  empty = false,
-}: {
-  label: string
-  value: ReactNode
-  sub: string
-  empty?: boolean
-}) {
+/** One of your numbers in the banner: the label, the figure, and what period it is for. */
+function Figure({ label, value, sub }: { label: string; value: ReactNode; sub: string }) {
   return (
-    <div className={`hub__stat${empty ? ' hub__stat--empty' : ''}`}>
-      <span className="hub__stat-label">{label}</span>
-      <span className="hub__stat-value">{value}</span>
-      <span className="hub__stat-sub">{sub}</span>
+    <div className="home-banner__figure">
+      <dt>{label}</dt>
+      <dd>
+        {value}
+        <small> {sub}</small>
+      </dd>
     </div>
   )
 }
@@ -349,23 +341,17 @@ function PlayCta({
   deviceNote: string | null
 }) {
   if (comingSoon) {
-    return <span className="hero__hint">Coming soon — tile preview only.</span>
+    return <p className="hub__hint">Coming soon — tile preview only.</p>
   }
   if (canPlay) {
     return (
       <>
-        <a className="hero__cta" href={playHref}>
+        <a className="home-banner__cta" href={playHref}>
           {`Play ${game.name}`}
         </a>
-        {inDevelopment ? (
-          <span className="hero__hint">In development — expect rough edges.</span>
-        ) : null}
+        {inDevelopment ? <p className="hub__hint">In development — expect rough edges.</p> : null}
       </>
     )
   }
-  return (
-    <span className="hero__hint">
-      {deviceNote ?? `${game.name} isn’t available on this device.`}
-    </span>
-  )
+  return <p className="hub__hint">{deviceNote ?? `${game.name} isn’t available on this device.`}</p>
 }
