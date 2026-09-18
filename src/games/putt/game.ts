@@ -53,7 +53,7 @@ const KEY_CHARGE = 1.4
 /** How far the aim guide reaches, in field units. */
 export const AIM_STUB = 14
 /** Full power sends a ball about this far on the green before it stops. */
-const FULL_DISTANCE = 235
+const FULL_DISTANCE = 290
 /**
  * A rolling ball keeps this share of its speed each frame, at sixty a
  * second: it leaves fast and eases out in a long soft tail instead of

@@ -138,6 +138,11 @@ function hill(shape: Shape, px: number, py: number): Slope {
   return { shape, pull: { x: px, y: py } }
 }
 
+/** A bowl: the ball is pulled toward the shape's middle this hard. */
+function bowl(shape: Shape, strength: number): Slope {
+  return { shape, bowl: strength }
+}
+
 /** A repeller: the ball is pushed away from the shape's middle this hard. */
 function repel(shape: Shape, strength: number): Slope {
   return { shape, repel: strength }
@@ -211,8 +216,9 @@ function hole(spec: Spec): Hole {
 
 export const COURSE: Hole[] = [
   /*
-   * Orbit. Long, and not the usual mini golf. Up the left leg, through an
-   * S of two bends with sand inside the first, and up the right leg, where
+   * Orbit. Long, and not the usual mini golf. Up the left leg into a plaza
+   * with three bumpers to thread, through an S of two bends with sand
+   * inside the first, and up the right leg, where
    * a rover roams the corridor. Then a ring whose floor spins: the leg
    * feeds the outer bank, and the floor carries the ball round like a
    * pinball orbit and presses it to the bank. Off the top of the ring a
@@ -224,14 +230,15 @@ export const COURSE: Hole[] = [
    */
   hole({
     name: 'Orbit',
-    par: 5,
+    par: 6,
     h: 616,
     tee: { x: 26, y: 600 },
     cup: { x: 46, y: 40 },
     cupPath: { to: { x: 66, y: 40 }, period: 6 },
     green: [
       disc(26, 600, 15),
-      capsule(26, 600, 26, 460, 13),
+      capsule(26, 600, 26, 520, 13),
+      disc(38, 486, 30),
       arc(56, 460, 30, Math.PI, Math.PI * 1.5, 13),
       arc(56, 400, 30, 0, Math.PI / 2, 13),
       capsule(86, 400, 86, 225, 13),
@@ -245,24 +252,33 @@ export const COURSE: Hole[] = [
     spinners: [mill(56, 150, 22, 2.0)],
     slopes: [spin(arc(56, 225, 30, 0, Math.PI * 2, 13), 35)],
     sand: [disc(40, 444, 6), disc(56, 202, 5)],
-    bumpers: [pop(44, 68, 4), pop(68, 68, 4)],
+    bumpers: [pop(22, 480, 4), pop(40, 470, 4), pop(36, 498, 4), pop(44, 68, 4), pop(68, 68, 4)],
     rovers: [rover(86, 320, 2.8, 60, 1.0, box(73, 260, 26, 120))],
     marks: [mark(56, 180, UP)],
   }),
   /*
-   * The Snail. A spiral: in along the bottom, and round and round, a turn
-   * and a half, each lap a little tighter, to the cup at the middle. The
-   * middle is a hilltop: everything near the cup rolls away from it, so the
-   * last of the way in has to be rolled soft and true.
+   * The Snail. Out of the tee into a round plaza with a crater in its
+   * middle: a bowl that bends any ball crossing it toward the centre and
+   * swallows a slow one, which then has to climb back out. Off the plaza's
+   * right side a long straight runs up to the spiral: a turn and a quarter,
+   * each lap a little tighter, in to the cup at the middle. The middle is a
+   * hilltop, so the last of the way in has to be rolled soft and true.
    */
   hole({
     name: 'The Snail',
-    par: 4,
-    h: 108,
-    tee: { x: 16, y: 92.5 },
-    cup: { x: 50, y: 44 },
-    green: [disc(15, 92.5, 9), capsule(15, 92.5, 50, 92.5, 7.5), spiral(50, 54, 10, 19, -Math.PI / 2, Math.PI * 2.5, 7.5)],
-    slopes: [repel(disc(50, 44, 12), 35)],
+    par: 5,
+    h: 332,
+    tee: { x: 16, y: 318 },
+    cup: { x: 50, y: 42.75 },
+    green: [
+      disc(16, 318, 11),
+      capsule(16, 318, 28, 280, 7.5),
+      disc(50, 250, 36),
+      capsule(85, 250, 85, 54, 7.5),
+      spiral(50, 54, 11.25, 19, -Math.PI / 2, Math.PI * 2, 7.5),
+    ],
+    slopes: [bowl(disc(50, 250, 24), 100), repel(disc(50, 42.75, 12), 35)],
+    marks: [mark(85, 200, UP)],
   }),
   /*
    * The Climb. Two hills, each a straight that pushes the ball back down,
@@ -303,14 +319,15 @@ export const COURSE: Hole[] = [
    * left a ramp that flies the ball over if it is going fast enough, and
    * drops it in if it is not, and lands it in sand; on the right a dry
    * channel with a bar that slides across it. Three bumpers guard the far
-   * shore, one square in the middle.
+   * shore, and the cup sits off every crossing's line, so each needs an
+   * angled approach.
    */
   hole({
     name: 'The Lake',
     par: 3,
     h: 250,
     tee: { x: 50, y: 228 },
-    cup: { x: 50, y: 40 },
+    cup: { x: 60, y: 40 },
     green: [capsule(50, 60, 50, 200, 46)],
     water: [rect(4, 90, 72, 60)],
     drawbridges: [drawbridge(capsule(40, 154, 40, 86, 7), 4, 0.6)],
@@ -324,23 +341,24 @@ export const COURSE: Hole[] = [
    * Figure Eight. Two rings, one on top of the other, sharing a waist. Up
    * the stem into the lower ring and round either side, through the waist
    * — where a bar slides across, closing one side and then the other — and
-   * round the upper ring to a green at the top. A bumper on the outside of
-   * each ring and sand on the inside keep the line honest.
+   * round the upper ring to a green at the top, with a second bar across
+   * its neck. A bumper on the outside of each ring and sand on the inside
+   * keep the line honest.
    */
   hole({
     name: 'Figure Eight',
     par: 4,
-    h: 284,
-    tee: { x: 50, y: 266 },
+    h: 308,
+    tee: { x: 50, y: 290 },
     cup: { x: 50, y: 100 },
     green: [
-      disc(50, 268, 14),
-      capsule(50, 268, 50, 246, 12),
+      disc(50, 292, 14),
+      capsule(50, 292, 50, 246, 12),
       arc(50, 200, 30, 0, Math.PI * 2, 12),
       arc(50, 140, 30, 0, Math.PI * 2, 12),
       disc(50, 102, 14),
     ],
-    sliders: [slider(25, 170, 55, 170, 20, 0, 3.0)],
+    sliders: [slider(25, 170, 55, 170, 20, 0, 3.0), slider(36, 110, 52, 110, 12, 0, 2.2)],
     bumpers: [pop(84, 200, 4), pop(16, 140, 4)],
     sand: [disc(70, 140, 5), disc(30, 200, 5)],
     marks: [mark(50, 176, UP)],
