@@ -8,9 +8,7 @@ import { heroSlug, newestSlug } from '../lib/homePicks'
 import { useRecentGames } from '../lib/lastPlayed'
 import { getLeaderboard, normalizePlayerName, PERIOD_LABELS } from '../lib/leaderboard'
 import { usePlayerName } from '../hooks/usePlayerName'
-import { hasPoster } from '../games/posters'
 import { inkOn } from '../lib/color'
-import { GamePoster } from './GamePoster'
 import { GameThumbArt } from './GameThumbArt'
 
 type HeroScores = {
@@ -22,7 +20,7 @@ type HeroScores = {
 
 /**
  * The banner: the one game to open right now, run big across the whole
- * width. A still of the game leans as a big card on the right; the
+ * width. The game's thumb leans as a big card on the right; the
  * left carries the kicker, the name, the game's own line about itself, Play,
  * and the two figures that make a reason to press it — the board's top and
  * yours. Tinted from the game's colour, like every hero on the site.
@@ -115,13 +113,7 @@ export function HomeHero() {
         ) : null}
       </div>
       <a className="home-banner__art" href={gamePlayHref(slug)} tabIndex={-1} aria-hidden="true">
-        {hasPoster(slug) ? (
-          <span className="home-banner__poster">
-            <GamePoster slug={slug} />
-          </span>
-        ) : (
-          <GameThumbArt slug={slug} accent={accent} />
-        )}
+        <GameThumbArt slug={slug} accent={accent} />
       </a>
     </section>
   )

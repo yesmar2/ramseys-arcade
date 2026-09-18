@@ -555,28 +555,6 @@
   transform: translateY(-50%) rotate(-5deg) scale(1.03);
 }
 
-/* A still of the game as the card, where the game has one: a screen, not an icon. */
-.home-banner__poster {
-  position: absolute;
-  right: -3rem;
-  top: 50%;
-  width: clamp(18rem, 80%, 32rem);
-  aspect-ratio: 4 / 3;
-  overflow: hidden;
-  border-radius: 1.25rem;
-  background: color-mix(in srgb, var(--hero-accent) 30%, #0c141b);
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  box-shadow:
-    0 30px 70px rgba(0, 0, 0, 0.45),
-    inset 0 1px 0 rgba(255, 255, 255, 0.12);
-  transform: translateY(-50%) rotate(-6deg);
-  transition: transform 0.25s ease;
-}
-
-.home-banner__art:hover .home-banner__poster {
-  transform: translateY(-50%) rotate(-4deg) scale(1.02);
-}
-
 @media (max-width: 56rem) {
   .home-banner {
     grid-template-columns: minmax(0, 1fr);
@@ -598,12 +576,6 @@
     right: -0.75rem;
     top: 52%;
     width: 10.5rem;
-  }
-
-  .home-banner__poster {
-    right: -1.5rem;
-    top: 50%;
-    width: 15rem;
   }
 
   .home-banner__text {
@@ -881,36 +853,6 @@ html[data-theme="dark"] .wall-tile {
   transform: scale(1.06);
 }
 
-/* A poster: the game's own frame, edge to edge behind the name strip. */
-.wall-tile__art--poster {
-  --playfield: inherit;
-  inset: 0;
-  padding: 0;
-  display: block;
-}
-
-.wall-tile__art--poster::before {
-  display: none;
-}
-
-.game-poster {
-  display: block;
-  width: 100%;
-  height: 100%;
-  opacity: 0;
-  transition: opacity 0.35s ease;
-}
-
-.game-poster--ready {
-  opacity: 1;
-}
-
-.wall-tile:hover .game-poster,
-.wall-tile:focus-visible .game-poster {
-  transform: scale(1.03);
-  transition: opacity 0.35s ease, transform 0.18s ease;
-}
-
 .wall-tile__meta {
   position: absolute;
   left: 0;
@@ -997,8 +939,6 @@ html[data-theme="dark"] .wall-tile {
 @media (prefers-reduced-motion: reduce) {
   .wall-tile,
   .wall-tile__art .inline-thumb,
-  .game-poster,
-  .home-banner__poster,
   .home-banner__art .inline-thumb {
     animation: none;
     transition: none;
