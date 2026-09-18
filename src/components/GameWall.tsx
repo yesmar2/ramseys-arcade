@@ -1,6 +1,7 @@
 import { useEffect, useState, type CSSProperties } from 'react'
 import { games, homeGames, type Game, type GameTag } from '../data/games'
 import { gameHref } from '../hooks/useHashRoute'
+import { useLiveEvents } from '../hooks/useLiveEvents'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { useDefaultPeriod } from '../lib/defaultPeriod'
 import { useDeviceType } from '../lib/device'
@@ -33,8 +34,8 @@ function inTab(game: Game, tab: Tab) {
  * wide screen and two on a phone. The first game on the shelf takes a
  * two-by-two cell and the newest takes two across, so the grid has a rhythm
  * rather than a beat. Each game's thumb sits in its tile on a wash of its
- * colour, with the name under it. Tabs along the top cut the wall by what
- * kind of game it is.
+ * colour, with the name under it, and the daily's game wears a badge. Tabs
+ * along the top cut the wall by what kind of game it is.
  */
 export function GameWall() {
   const device = useDeviceType()
@@ -43,6 +44,7 @@ export function GameWall() {
   const period = useDefaultPeriod()
   const groupId = useActiveGroup()
   const recent = useRecentGames()
+  const { official } = useLiveEvents(cleaned)
   const [tab, setTab] = useState<Tab>('all')
   const [bests, setBests] = useState<Record<string, number> | null>(null)
 
@@ -70,6 +72,8 @@ export function GameWall() {
   const hero = heroSlug(device, recent)
   const big = shown.find((g) => g.slug !== hero && !g.inDevelopment && !g.comingSoon)?.slug ?? null
   const newest = games.filter((g) => !g.hidden).at(-1)?.slug ?? null
+  // The daily's game wears its badge on the wall.
+  const dailySlug = official.find((t) => t.cadence === 'daily')?.games[0] ?? null
 
   return (
     <section className="wall" aria-labelledby="games-heading">
@@ -107,6 +111,7 @@ export function GameWall() {
             index={index}
             size={game.slug === big ? 'big' : game.slug === newest && shown.length > 4 ? 'wide' : 'one'}
             best={bests?.[game.slug] ?? null}
+            daily={game.slug === dailySlug}
           />
         ))}
       </ul>
@@ -119,30 +124,40 @@ function WallTile({
   index,
   size,
   best,
+  daily,
 }: {
   game: Game
   index: number
   size: 'one' | 'wide' | 'big'
   best: number | null
+  daily: boolean
 }) {
   const accent = resolveGameAccent(game.slug, game.accent)
   const style = {
     '--tile-accent': accent,
     animationDelay: `${Math.min(index, 12) * 0.04}s`,
   } as CSSProperties
-  const status = game.inDevelopment ? 'New' : game.comingSoon ? 'Coming soon' : null
+  const flag = game.inDevelopment
+    ? { label: 'New', kind: 'new' }
+    : game.comingSoon
+      ? { label: 'Coming soon', kind: 'soon' }
+      : daily
+        ? { label: 'Daily', kind: 'daily' }
+        : null
   return (
     <li className={`wall__cell wall__cell--${size}`}>
       <a
         className="wall-tile"
         href={gameHref(game.slug)}
         style={style}
-        aria-label={status ? `${game.name}, ${status.toLowerCase()}` : game.name}
+        aria-label={flag ? `${game.name}, ${flag.label.toLowerCase()}` : game.name}
       >
         <span className="wall-tile__art" aria-hidden="true">
           <GameThumbArt slug={game.slug} accent={accent} />
         </span>
-        {status ? <span className="wall-tile__flag">{status}</span> : null}
+        {flag ? (
+          <span className={`wall-tile__flag wall-tile__flag--${flag.kind}`}>{flag.label}</span>
+        ) : null}
         <span className="wall-tile__meta">
           <span className="wall-tile__name">{game.name}</span>
           {best ? (
