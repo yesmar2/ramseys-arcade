@@ -12,8 +12,9 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <!--
       The home page's tags, for crawlers and link unfurlers that do not run
-      scripts. `usePageMeta` rewrites them per route once the app is up, and
-      the build fills in %VITE_SITE_ORIGIN% (see vite.config.ts).
+      scripts. `usePageMeta` rewrites them per route once the app is up, the
+      build fills in the site origin (see vite.config.ts), and
+      scripts/prerender.mjs stamps a copy of this file per public route.
     -->
     <meta
       name="description"
@@ -39,8 +40,15 @@
       rel="stylesheet"
     />
     <title>Skermix · Simple games, no ads, just play</title>
+    <!-- Prerendered page content is for readers without scripts; the app draws the rest. -->
+    <style>
+      html.js .prerender {
+        display: none;
+      }
+    </style>
     <script>
       (function () {
+        document.documentElement.classList.add('js')
         try {
           var t = localStorage.getItem('skermix-theme')
           if (t !== 'light' && t !== 'dark' && t !== 'flat' && t !== 'google') {

@@ -1,4 +1,4 @@
-import { getGame, type Game } from '../data/games'
+import { games, getGame, type Game } from '../data/games'
 import {
   aboutHref,
   gameHref,
@@ -18,6 +18,8 @@ import {
 } from '../hooks/useHashRoute'
 import { APP_NAME } from './brand'
 import { groupHref, groupsIndexHref } from './groups'
+import { LEADERBOARD_GAMES, type LeaderboardGame } from './leaderboard'
+import { gameHasRecords } from './records'
 
 /**
  * What each page tells the outside world: the tab title, the description
@@ -98,6 +100,116 @@ function gameName(slug: string) {
   return getGame(slug)?.name ?? 'Game'
 }
 
+function isBoardGame(slug: string): slug is LeaderboardGame {
+  return (LEADERBOARD_GAMES as readonly string[]).includes(slug)
+}
+
+/** Boards and record books carry a period in the app; the page is known without one. */
+function gameBoardPath(slug: string) {
+  return `/leaderboards/${encodeURIComponent(slug)}`
+}
+
+function gameRecordsPath(slug: string) {
+  return `/records/${encodeURIComponent(slug)}`
+}
+
+function visibleGames() {
+  return games.filter((game) => !game.hidden)
+}
+
+/**
+ * Every page worth a crawler's time: what the build prerenders and what the
+ * sitemap lists. Anything that is somebody's own, or needs an invite, is not
+ * here.
+ */
+export function publicRoutes(): Route[] {
+  const routes: Route[] = [
+    { name: 'home' },
+    { name: 'about' },
+    { name: 'plus' },
+    { name: 'tournaments' },
+    { name: 'leaderboards' },
+    { name: 'leaderboards', global: true },
+    { name: 'recordsIndex' },
+    { name: 'privacy' },
+    { name: 'terms' },
+  ]
+  for (const game of visibleGames()) {
+    routes.push({ name: 'game', slug: game.slug })
+    if (game.playable) routes.push({ name: 'gamePlay', slug: game.slug })
+    if (isBoardGame(game.slug)) routes.push({ name: 'gameLeaderboard', game: game.slug })
+    if (gameHasRecords(game.slug)) routes.push({ name: 'records', game: game.slug })
+  }
+  return routes
+}
+
+export type PageLink = { href: string; label: string }
+
+/** What a page says when nothing runs: a heading, some prose, and where to go next. */
+export type PageContent = {
+  heading: string
+  paragraphs: string[]
+  links: PageLink[]
+}
+
+function gameLinks(): PageLink[] {
+  return visibleGames().map((game) => ({ href: gameHref(game.slug), label: game.name }))
+}
+
+function siteLinks(): PageLink[] {
+  return [
+    { href: '/leaderboards', label: 'Leaderboards' },
+    { href: recordsIndexHref(), label: 'Record books' },
+    { href: tournamentsHref(), label: 'Events' },
+    { href: aboutHref(), label: `About ${APP_NAME}` },
+  ]
+}
+
+function gameContentLinks(game: Game): PageLink[] {
+  const links: PageLink[] = [{ href: gamePlayHref(game.slug), label: `Play ${game.name}` }]
+  if (isBoardGame(game.slug)) {
+    links.push({ href: gameBoardPath(game.slug), label: `${game.name} leaderboard` })
+  }
+  if (gameHasRecords(game.slug)) {
+    links.push({ href: gameRecordsPath(game.slug), label: `${game.name} record books` })
+  }
+  links.push({ href: homeHref(), label: 'All games' })
+  return links
+}
+
+/** The static content the build writes into a public page's shell. */
+export function pageContent(route: Route): PageContent {
+  const meta = pageMeta(route)
+  const heading = meta.title.replace(` · ${APP_NAME}`, '')
+  switch (route.name) {
+    case 'home':
+      return {
+        heading: `${APP_NAME}: ${SITE_TAGLINE}`,
+        paragraphs: [SITE_DESCRIPTION],
+        links: [...gameLinks(), ...siteLinks()],
+      }
+    case 'game':
+    case 'gamePlay': {
+      const game = getGame(route.slug)
+      if (!game || game.hidden) break
+      return { heading, paragraphs: [game.description, game.how], links: gameContentLinks(game) }
+    }
+    case 'gameLeaderboard':
+    case 'records': {
+      const game = getGame(route.game)
+      if (!game || game.hidden) break
+      return { heading, paragraphs: [meta.description], links: gameContentLinks(game) }
+    }
+    case 'leaderboards':
+    case 'recordsIndex':
+    case 'tournaments':
+      return { heading, paragraphs: [meta.description], links: [...gameLinks(), ...siteLinks()] }
+    default:
+      break
+  }
+  return { heading, paragraphs: [meta.description], links: siteLinks() }
+}
+
 export function pageMeta(route: Route): PageMeta {
   const site = { description: SITE_DESCRIPTION, image: DEFAULT_IMAGE }
   switch (route.name) {
@@ -151,7 +263,7 @@ export function pageMeta(route: Route): PageMeta {
         path: '/leaderboards',
       }
     case 'gameLeaderboard': {
-      const meta = gameMeta(route.game, `/leaderboards/${encodeURIComponent(route.game)}`)
+      const meta = gameMeta(route.game, gameBoardPath(route.game))
       return {
         ...meta,
         title: titled(`${gameName(route.game)} leaderboard`),
@@ -166,7 +278,7 @@ export function pageMeta(route: Route): PageMeta {
         path: recordsIndexHref(),
       }
     case 'records': {
-      const meta = gameMeta(route.game, `/records/${encodeURIComponent(route.game)}`)
+      const meta = gameMeta(route.game, gameRecordsPath(route.game))
       return {
         ...meta,
         title: titled(`${gameName(route.game)} records`),

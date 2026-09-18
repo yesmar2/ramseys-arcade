@@ -12,6 +12,13 @@
       "autoPort": true
     },
     {
+      "name": "preview",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "preview"],
+      "port": 4173,
+      "autoPort": true
+    },
+    {
       "name": "web-5173",
       "runtimeExecutable": "npm",
       "runtimeArgs": [
