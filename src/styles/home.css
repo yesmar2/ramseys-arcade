@@ -513,7 +513,6 @@
 }
 
 .home-banner__art .inline-thumb {
-  --playfield: #f4f8fb;
   position: absolute;
   right: -2.5rem;
   top: 50%;
@@ -590,6 +589,11 @@
   grid-template-columns: auto minmax(0, 1fr);
   gap: 0.75rem;
   align-items: stretch;
+}
+
+/* Signed out there is no standing card, and the events take the whole row. */
+.home-pulse > :only-child {
+  grid-column: 1 / -1;
 }
 
 .home-pulse__standing {
@@ -800,30 +804,14 @@ html[data-theme="dark"] .wall-tile {
   outline-offset: 2px;
 }
 
-/*
- * The thumb sits in the tile above the name strip. The thumbs were drawn for a
- * pale square and mix their fills with the playfield, so they are given a pale
- * one here and sit on the poster as light stickers with an outline.
- */
+/* The thumb sits in the tile above the name strip: a mark in the game's own colour. */
 .wall-tile__art {
-  --playfield: #f4f8fb;
   position: absolute;
   inset: 0 0 1.6rem;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 0.6rem;
-}
-
-/* A faint halo under the thumb: the icons were drawn for a pale square. */
-.wall-tile__art::before {
-  content: "";
-  position: absolute;
-  width: 58%;
-  aspect-ratio: 1;
-  border-radius: 50%;
-  background: radial-gradient(closest-side, rgba(255, 255, 255, 0.16), transparent);
-  pointer-events: none;
 }
 
 .wall-tile__art .inline-thumb {
