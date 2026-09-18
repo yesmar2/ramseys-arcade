@@ -755,24 +755,27 @@
 }
 
 /*
- * A tile is a poster: the game's colour sunk into the dark, in Light as much
- * as in Dark. A colour only deepens cleanly that far (a mid amber is brown), and
- * on a light page the wall reads as posters on a wall. Light text on both, over
- * a scrim at the foot.
+ * A tile is a block of the game's colour, and the theme decides how deep. In
+ * Light it is a pale tint of the colour with the name in ink, the way a light
+ * page carries colour; in Dark it is the colour sunk into the night with the
+ * name in white over a scrim, the way the mock did. The mark on it is an
+ * outline in the colour itself, so it reads on either.
  */
 .wall-tile {
-  --wall-a: color-mix(in srgb, var(--tile-accent) 50%, #0c141b);
-  --wall-b: color-mix(in srgb, var(--tile-accent) 28%, #0c141b);
+  --wall-a: color-mix(in srgb, var(--tile-accent) 30%, #ffffff);
+  --wall-b: color-mix(in srgb, var(--tile-accent) 16%, #ffffff);
+  --wall-ink: var(--ink);
+  --wall-muted: var(--muted);
   position: relative;
   display: block;
   height: 100%;
   border-radius: 1rem;
   overflow: hidden;
-  color: #f4f8fb;
+  color: var(--wall-ink);
   text-decoration: none;
   background: linear-gradient(160deg, var(--wall-a), var(--wall-b));
-  border: 1px solid color-mix(in srgb, var(--tile-accent) 30%, rgba(255, 255, 255, 0.08));
-  box-shadow: 0 6px 16px rgba(var(--shade-rgb), 0.16);
+  border: 1px solid color-mix(in srgb, var(--tile-accent) 34%, transparent);
+  box-shadow: 0 1px 2px rgba(var(--shade-rgb), 0.06);
   animation: hero-in 0.5s ease-out both;
   transition: transform 0.18s ease, box-shadow 0.18s ease;
 }
@@ -780,11 +783,14 @@
 html[data-theme="dark"] .wall-tile {
   --wall-a: color-mix(in srgb, var(--tile-accent) 46%, #0c141b);
   --wall-b: color-mix(in srgb, var(--tile-accent) 24%, #0c141b);
+  --wall-ink: #fff;
+  --wall-muted: rgba(244, 248, 251, 0.72);
+  border-color: color-mix(in srgb, var(--tile-accent) 30%, rgba(255, 255, 255, 0.08));
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
 }
 
-/* The gloss: light falling from the top left. */
-.wall-tile::before {
+/* The gloss: light falling from the top left, where the tile is deep enough to catch it. */
+html[data-theme="dark"] .wall-tile::before {
   content: '';
   position: absolute;
   inset: 0;
@@ -795,13 +801,22 @@ html[data-theme="dark"] .wall-tile {
 .wall-tile:hover,
 .wall-tile:focus-visible {
   transform: translateY(-3px);
-  box-shadow: 0 16px 34px color-mix(in srgb, var(--tile-accent) 35%, rgba(0, 0, 0, 0.3));
+  box-shadow: 0 14px 30px color-mix(in srgb, var(--tile-accent) 28%, transparent);
   outline: none;
 }
 
+html[data-theme="dark"] .wall-tile:hover,
+html[data-theme="dark"] .wall-tile:focus-visible {
+  box-shadow: 0 16px 34px color-mix(in srgb, var(--tile-accent) 35%, rgba(0, 0, 0, 0.3));
+}
+
 .wall-tile:focus-visible {
-  outline: 2px solid rgba(255, 255, 255, 0.7);
+  outline: 2px solid color-mix(in srgb, var(--tile-accent) 70%, transparent);
   outline-offset: 2px;
+}
+
+html[data-theme="dark"] .wall-tile:focus-visible {
+  outline-color: rgba(255, 255, 255, 0.7);
 }
 
 /* The thumb sits in the tile above the name strip: a mark in the game's own colour, run big. */
@@ -823,8 +838,12 @@ html[data-theme="dark"] .wall-tile {
   background: none;
   border: 0;
   box-shadow: none;
-  filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.28));
   transition: transform 0.18s ease;
+}
+
+/* A deep tile lifts its mark with a shadow; a pale one has nothing dark to cast. */
+html[data-theme="dark"] .wall-tile__art .inline-thumb {
+  filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.28));
 }
 
 .wall__cell--big .wall-tile__art .inline-thumb {
@@ -851,6 +870,10 @@ html[data-theme="dark"] .wall-tile {
   justify-content: space-between;
   gap: 0.5rem;
   padding: 1.8rem 0.75rem 0.6rem;
+  background: linear-gradient(transparent, rgba(255, 255, 255, 0.72));
+}
+
+html[data-theme="dark"] .wall-tile__meta {
   background: linear-gradient(transparent, rgba(10, 16, 22, 0.8));
 }
 
@@ -860,7 +883,7 @@ html[data-theme="dark"] .wall-tile {
   font-size: 0.92rem;
   font-weight: 800;
   letter-spacing: -0.02em;
-  color: #fff;
+  color: var(--wall-ink);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -878,14 +901,14 @@ html[data-theme="dark"] .wall-tile {
   flex: none;
   font-size: 0.7rem;
   font-weight: 650;
-  color: rgba(244, 248, 251, 0.72);
+  color: var(--wall-muted);
   white-space: nowrap;
 }
 
 .wall-tile__best b {
   font-weight: 800;
   font-variant-numeric: tabular-nums;
-  color: #fff;
+  color: var(--wall-ink);
 }
 
 .wall-tile__flag {
@@ -897,9 +920,9 @@ html[data-theme="dark"] .wall-tile {
   gap: 0.35rem;
   padding: 0.22rem 0.6rem;
   border-radius: 999px;
-  background: rgba(10, 16, 22, 0.55);
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  color: #f4f8fb;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid color-mix(in srgb, var(--tile-accent) 40%, transparent);
+  color: color-mix(in srgb, var(--tile-accent) 65%, var(--ink));
   font-size: 0.62rem;
   font-weight: 800;
   letter-spacing: 0.08em;
@@ -907,11 +930,25 @@ html[data-theme="dark"] .wall-tile {
   backdrop-filter: blur(6px);
 }
 
+html[data-theme="dark"] .wall-tile__flag {
+  background: rgba(10, 16, 22, 0.55);
+  border-color: rgba(255, 255, 255, 0.14);
+  color: #f4f8fb;
+}
+
 .wall-tile__flag--soon {
+  color: var(--muted);
+}
+
+html[data-theme="dark"] .wall-tile__flag--soon {
   color: rgba(244, 248, 251, 0.75);
 }
 
 .wall-tile__flag--daily {
+  color: color-mix(in srgb, #f5b942 62%, var(--ink));
+}
+
+html[data-theme="dark"] .wall-tile__flag--daily {
   color: #f5b942;
 }
 
