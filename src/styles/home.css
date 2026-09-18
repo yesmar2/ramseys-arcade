@@ -464,7 +464,7 @@
   color: var(--muted);
 }
 
-/* The art: the game's tile scene as a big card, leaning, bleeding off the right edge. */
+/* The art: the game's thumb as a big card, leaning, on a glow of its colour. */
 .home-banner__art {
   position: relative;
   display: block;
@@ -472,29 +472,46 @@
   overflow: hidden;
 }
 
-.home-banner__art .game-tile__art-svg {
+.home-banner__art::before {
+  content: '';
   position: absolute;
-  right: -7%;
+  right: -6rem;
   top: 50%;
-  width: 96%;
-  max-width: none;
+  width: 26rem;
+  height: 26rem;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--hero-accent) 32%, transparent),
+    transparent 68%
+  );
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.home-banner__art .inline-thumb {
+  position: absolute;
+  right: 9%;
+  top: 50%;
+  width: clamp(10rem, 44%, 15rem);
   height: auto;
-  border-radius: 1.4rem;
-  transform: translateY(-50%) rotate(-5deg);
-  box-shadow: 0 22px 48px rgba(0, 0, 0, 0.28);
+  aspect-ratio: 1;
+  overflow: visible;
+  border-radius: 24%;
+  background: color-mix(in srgb, var(--hero-accent) 30%, var(--playfield));
+  border: 1px solid color-mix(in srgb, var(--hero-accent) 55%, transparent);
+  box-shadow: 0 22px 48px color-mix(in srgb, var(--hero-accent) 35%, rgba(0, 0, 0, 0.25));
+  transform: translateY(-50%) rotate(-6deg);
   transition: transform 0.25s ease;
 }
 
-.home-banner__art:hover .game-tile__art-svg {
-  transform: translateY(-50%) rotate(-3deg) scale(1.02);
+.home-banner__art .inline-thumb .game-thumb__svg {
+  width: 72%;
+  height: 72%;
 }
 
-.home-banner__art .tile-art__bg > rect:first-child {
-  fill: color-mix(in srgb, var(--hero-accent) 26%, var(--surface));
-}
-
-.home-banner__art .tile-art__wash {
-  opacity: 0.3;
+.home-banner__art:hover .inline-thumb {
+  transform: translateY(-50%) rotate(-3deg) scale(1.03);
 }
 
 @media (max-width: 56rem) {
@@ -508,10 +525,16 @@
     min-height: 11rem;
   }
 
-  .home-banner__art .game-tile__art-svg {
-    right: -12%;
-    width: 78%;
-    top: 58%;
+  .home-banner__art::before {
+    width: 18rem;
+    height: 18rem;
+    right: -4rem;
+  }
+
+  .home-banner__art .inline-thumb {
+    right: 1.5rem;
+    top: 54%;
+    width: 8.5rem;
   }
 
   .home-banner__text {
@@ -685,8 +708,14 @@
   overflow: hidden;
   color: var(--ink);
   text-decoration: none;
-  background: color-mix(in srgb, var(--tile-accent) 18%, var(--surface));
-  border: 1px solid color-mix(in srgb, var(--tile-accent) 30%, transparent);
+  background:
+    radial-gradient(
+      ellipse 70% 62% at 50% 40%,
+      color-mix(in srgb, var(--tile-accent) 22%, transparent),
+      transparent 72%
+    ),
+    color-mix(in srgb, var(--tile-accent) 14%, var(--playfield));
+  border: 1px solid color-mix(in srgb, var(--tile-accent) 34%, transparent);
   animation: hero-in 0.5s ease-out both;
   transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
 }
@@ -699,25 +728,36 @@
   outline: none;
 }
 
-/* The scene fills the tile: the tile is its ground, so the scene's own square goes. */
+/* The thumb sits in the tile above the name strip. */
 .wall-tile__art {
   position: absolute;
-  inset: 0;
-  display: block;
+  inset: 0 0 1.7rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.6rem;
 }
 
-.wall-tile__art .game-tile__art-svg {
-  display: block;
+.wall-tile__art .inline-thumb {
+  width: auto;
+  height: 74%;
+  aspect-ratio: 1;
+  overflow: visible;
+  border-radius: 0;
+  background: none;
+  border: 0;
+  box-shadow: none;
+  transition: transform 0.18s ease;
+}
+
+.wall-tile__art .inline-thumb .game-thumb__svg {
   width: 100%;
   height: 100%;
 }
 
-.wall-tile__art .tile-art__bg > rect:first-child {
-  fill: transparent;
-}
-
-.wall-tile__art .tile-art__wash {
-  opacity: 0.24;
+.wall-tile:hover .inline-thumb,
+.wall-tile:focus-visible .inline-thumb {
+  transform: scale(1.06);
 }
 
 .wall-tile__meta {
@@ -730,7 +770,6 @@
   justify-content: space-between;
   gap: 0.5rem;
   padding: 1.5rem 0.75rem 0.6rem;
-  background: linear-gradient(transparent, color-mix(in srgb, var(--surface) 90%, transparent));
 }
 
 .wall-tile__name {
@@ -783,7 +822,8 @@
 
 @media (prefers-reduced-motion: reduce) {
   .wall-tile,
-  .home-banner__art .game-tile__art-svg {
+  .home-banner__art .inline-thumb,
+  .wall-tile__art .inline-thumb {
     animation: none;
     transition: none;
   }

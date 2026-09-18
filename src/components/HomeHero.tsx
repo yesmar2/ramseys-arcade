@@ -9,7 +9,7 @@ import { useRecentGames } from '../lib/lastPlayed'
 import { getLeaderboard, normalizePlayerName, PERIOD_LABELS } from '../lib/leaderboard'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { inkOn } from '../lib/color'
-import { GameTileArt } from './GameTileArt'
+import { GameThumbArt } from './GameThumbArt'
 
 type HeroScores = {
   best: number
@@ -20,7 +20,7 @@ type HeroScores = {
 
 /**
  * The banner: the one game to open right now, run big across the whole
- * width. The game's art fills the right half and bleeds off the edge; the
+ * width. The game's thumb leans as a big card on the right; the
  * left carries the kicker, the name, the game's own line about itself, Play,
  * and the two figures that make a reason to press it — the board's top and
  * yours. Tinted from the game's colour, like every hero on the site.
@@ -113,7 +113,7 @@ export function HomeHero() {
         ) : null}
       </div>
       <a className="home-banner__art" href={gamePlayHref(slug)} tabIndex={-1} aria-hidden="true">
-        <GameTileArt slug={slug} />
+        <GameThumbArt slug={slug} accent={accent} />
       </a>
     </section>
   )

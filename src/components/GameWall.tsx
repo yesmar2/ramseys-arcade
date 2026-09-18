@@ -8,7 +8,8 @@ import { useActiveGroup } from '../lib/groups'
 import { heroSlug } from '../lib/homePicks'
 import { useRecentGames } from '../lib/lastPlayed'
 import { fetchPlayerBests, normalizePlayerName } from '../lib/leaderboard'
-import { GameTileArt } from './GameTileArt'
+import { resolveGameAccent } from '../lib/theme'
+import { GameThumbArt } from './GameThumbArt'
 
 type Tab = 'all' | GameTag | 'new'
 
@@ -31,8 +32,9 @@ function inTab(game: Game, tab: Tab) {
  * The wall: every game, edge to edge, in a grid that runs six across on a
  * wide screen and two on a phone. The first game on the shelf takes a
  * two-by-two cell and the newest takes two across, so the grid has a rhythm
- * rather than a beat. Art fills each tile and the name sits over it. Tabs
- * along the top cut the wall by what kind of game it is.
+ * rather than a beat. Each game's thumb sits in its tile on a wash of its
+ * colour, with the name under it. Tabs along the top cut the wall by what
+ * kind of game it is.
  */
 export function GameWall() {
   const device = useDeviceType()
@@ -123,8 +125,9 @@ function WallTile({
   size: 'one' | 'wide' | 'big'
   best: number | null
 }) {
+  const accent = resolveGameAccent(game.slug, game.accent)
   const style = {
-    '--tile-accent': game.accent,
+    '--tile-accent': accent,
     animationDelay: `${Math.min(index, 12) * 0.04}s`,
   } as CSSProperties
   const status = game.inDevelopment ? 'New' : game.comingSoon ? 'Coming soon' : null
@@ -137,7 +140,7 @@ function WallTile({
         aria-label={status ? `${game.name}, ${status.toLowerCase()}` : game.name}
       >
         <span className="wall-tile__art" aria-hidden="true">
-          <GameTileArt slug={game.slug} />
+          <GameThumbArt slug={game.slug} accent={accent} />
         </span>
         {status ? <span className="wall-tile__flag">{status}</span> : null}
         <span className="wall-tile__meta">
