@@ -416,7 +416,7 @@ export function startGame(prev: GameState): GameState {
   return beginHole({ ...fresh, best: Math.max(prev.best, loadBest()) }, 0)
 }
 
-/** Dev only: skip to a hole. */
+/** Admin and dev: skip to a hole. The round is marked assisted by the caller, so its score stays off the boards. */
 export function jumpToHole(state: GameState, index: number): GameState {
   return beginHole(state, Math.max(0, Math.min(COURSE.length - 1, index)))
 }

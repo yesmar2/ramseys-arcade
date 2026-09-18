@@ -1,9 +1,12 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type WheelEvent as ReactWheelEvent } from 'react'
 import { GamePlayChrome, PlayReadout, PlayReadoutScore } from '../../components/GameHud'
 import { GameStage } from '../../components/GameStage'
+import { AdminWaveSkip } from '../../components/AdminWaveSkip'
 import { GameStartCard } from '../../components/GameStartCard'
+import { GamePauseOverlay, PauseButton } from '../../components/PauseControls'
 import { ScoreSaveCard } from '../../components/ScoreSaveCard'
 import { TournamentScoreCard } from '../../components/TournamentScoreCard'
+import { useGamePause } from '../../hooks/useGamePause'
 import { usePersonalBest } from '../../hooks/usePersonalBest'
 import { getPersonalBest } from '../../lib/personalBest'
 import { useTournamentPlay } from '../../tournaments/TournamentPlayContext'
@@ -50,7 +53,9 @@ function toParLabel(toPar: number) {
  * letting go shoots. A pull that comes back to nothing is a change of mind.
  * Keyboard: left and right turn the aim, hold Space to charge, release to
  * shoot, Escape to think again. A press on the map looks along the hole. A
- * plain tap starts a round from the title or the score card.
+ * plain tap starts a round from the title or the score card. P or Escape
+ * pauses; the pause menu carries the admin tools to skip a hole, which marks
+ * the round assisted so its score stays off the boards.
  */
 export function PuttGame() {
   const tournament = useTournamentPlay()
@@ -66,6 +71,13 @@ export function PuttGame() {
   const offeredScore = useRef<number | null>(null)
   const previousBestRef = useRef(getPersonalBest('putt'))
   const startGrace = useRef(0)
+  const inRun = IN_RUN.has(ui.phase)
+  const pausable = inRun && !saveOpen
+  /** While a shot is being set, Escape means "think again", not "pause". */
+  const ignorePauseKeys = useRef(false)
+  const { paused, toggle: togglePause, resume } = useGamePause(pausable, ignorePauseKeys)
+  const pausedRef = useRef(false)
+  pausedRef.current = paused
 
   useEffect(() => {
     let raf = 0
@@ -85,15 +97,19 @@ export function PuttGame() {
         stateRef.current = resizeState(stateRef.current, w, h)
       }
 
-      const keys = keysRef.current
-      const turn = (keys.right ? 1 : 0) - (keys.left ? 1 : 0)
-      if (turn !== 0 || keys.charge || stateRef.current.aiming === 'key') {
-        stateRef.current = keyAim(stateRef.current, turn, keys.charge, dt)
+      ignorePauseKeys.current = stateRef.current.aiming !== 'none'
+      // Paused, the world holds still: the ball, the windmills and the sliders all wait.
+      if (!pausedRef.current) {
+        const keys = keysRef.current
+        const turn = (keys.right ? 1 : 0) - (keys.left ? 1 : 0)
+        if (turn !== 0 || keys.charge || stateRef.current.aiming === 'key') {
+          stateRef.current = keyAim(stateRef.current, turn, keys.charge, dt)
+        }
+        // Up looks toward the cup, down back toward the tee.
+        const pan = (keys.down ? 1 : 0) - (keys.up ? 1 : 0)
+        if (pan !== 0) stateRef.current = panLook(stateRef.current, pan * KEY_PAN * dt)
+        stateRef.current = tick(stateRef.current, dt)
       }
-      // Up looks toward the cup, down back toward the tee.
-      const pan = (keys.down ? 1 : 0) - (keys.up ? 1 : 0)
-      if (pan !== 0) stateRef.current = panLook(stateRef.current, pan * KEY_PAN * dt)
-      stateRef.current = tick(stateRef.current, dt)
 
       uiAcc += dt
       if (uiAcc > 0.08) {
@@ -160,8 +176,14 @@ export function PuttGame() {
     setUi(toSnapshot(stateRef.current))
   }
 
+  /** Admin and testing: a fresh round, or the round in hand, moved to a hole. */
+  const goToHole = (index: number) => {
+    stateRef.current = jumpToHole(stateRef.current, index)
+    setUi(toSnapshot(stateRef.current))
+  }
+
   const onPointerDown = (e: ReactPointerEvent<HTMLElement>) => {
-    if (saveOpen) return
+    if (saveOpen || pausedRef.current) return
     e.preventDefault()
     const s = stateRef.current
     if (s.phase === 'menu' || s.phase === 'gameover') {
@@ -188,7 +210,7 @@ export function PuttGame() {
 
   const onPointerMove = (e: ReactPointerEvent<HTMLElement>) => {
     const press = pressRef.current
-    if (!press || press.id !== e.pointerId) return
+    if (!press || press.id !== e.pointerId || pausedRef.current) return
     const rect = e.currentTarget.getBoundingClientRect()
     const x = e.clientX - rect.left
     const y = e.clientY - rect.top
@@ -210,7 +232,7 @@ export function PuttGame() {
     const press = pressRef.current
     if (!press || press.id !== e.pointerId) return
     pressRef.current = null
-    if (press.kind === 'look') return
+    if (press.kind === 'look' || pausedRef.current) return
     // Letting go shoots; a pull that never got going, or came back to the ball, does not.
     stateRef.current = press.moved ? shoot(stateRef.current) : cancelAim(stateRef.current)
     setUi(toSnapshot(stateRef.current))
@@ -219,7 +241,7 @@ export function PuttGame() {
   /** The wheel looks along the hole: down the screen in portrait, along it when the hole lies on its side. */
   const onWheel = (e: ReactWheelEvent<HTMLElement>) => {
     const s = stateRef.current
-    if (s.phase !== 'aim' || s.aiming !== 'none') return
+    if (s.phase !== 'aim' || s.aiming !== 'none' || pausedRef.current) return
     const rect = e.currentTarget.getBoundingClientRect()
     const f = fieldFrame(rect.width, rect.height, currentHole(s).h)
     const px = f.rotated ? -(e.deltaY + e.deltaX) : e.deltaY
@@ -228,7 +250,7 @@ export function PuttGame() {
 
   useEffect(() => {
     const onDown = (e: KeyboardEvent) => {
-      if (saveOpen) return
+      if (saveOpen || pausedRef.current) return
       const s = stateRef.current
       if (e.code === 'ArrowLeft') keysRef.current.left = true
       if (e.code === 'ArrowRight') keysRef.current.right = true
@@ -258,6 +280,7 @@ export function PuttGame() {
       if (e.code === 'ArrowDown') keysRef.current.down = false
       if ((e.code === 'Space' || e.code === 'Enter') && keysRef.current.charge) {
         keysRef.current.charge = false
+        if (pausedRef.current) return
         const s = stateRef.current
         if (s.phase === 'aim' && s.aiming === 'key') {
           stateRef.current = shoot(s)
@@ -273,8 +296,6 @@ export function PuttGame() {
     }
   }, [saveOpen])
 
-  const inRun = IN_RUN.has(ui.phase)
-
   return (
     <section className="putt putt--fullscreen">
       <div className="game-play">
@@ -288,7 +309,9 @@ export function PuttGame() {
             onWheel={onWheel}
           >
             <canvas ref={canvasRef} className="putt__viewport" />
-            <GamePlayChrome slug="putt" inRun={() => IN_RUN.has(stateRef.current.phase)} />
+            <GamePlayChrome slug="putt" inRun={() => IN_RUN.has(stateRef.current.phase)} paused={paused}>
+              {pausable || paused ? <PauseButton paused={paused} onToggle={togglePause} /> : null}
+            </GamePlayChrome>
             <PlayReadout>
               <PlayReadoutScore hot={inRun && ui.score > previousBestRef.current}>
                 {ui.score}
@@ -297,7 +320,44 @@ export function PuttGame() {
           </div>
         </GameStage>
         <div className="putt__overlay">
-          {ui.phase === 'menu' && !saveOpen && <GameStartCard title="Putt" slug="putt" />}
+          <GamePauseOverlay
+            slug="putt"
+            personalBest={inRun ? previousBestRef.current : apiBest}
+            paused={paused}
+            onResume={resume}
+            tools={
+              inRun ? (
+                <AdminWaveSkip
+                  unit="hole"
+                  wave={ui.holeIndex + 1}
+                  onSkipNext={() => {
+                    goToHole(stateRef.current.holeIndex + 1)
+                    resume()
+                  }}
+                  onJump={(hole) => {
+                    goToHole(hole - 1)
+                    resume()
+                  }}
+                />
+              ) : null
+            }
+          />
+          {ui.phase === 'menu' && !saveOpen && !paused && (
+            <GameStartCard
+              title="Putt"
+              slug="putt"
+              tools={
+                <AdminWaveSkip
+                  mode="start"
+                  unit="hole"
+                  onJump={(hole) => {
+                    restart()
+                    goToHole(hole - 1)
+                  }}
+                />
+              }
+            />
+          )}
           {ui.phase === 'gameover' && saveOpen && (
             tournament ? (
               <TournamentScoreCard

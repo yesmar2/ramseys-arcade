@@ -14,7 +14,10 @@
     {
       "name": "preview",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "preview"],
+      "runtimeArgs": [
+        "run",
+        "preview"
+      ],
       "port": 4173,
       "autoPort": true
     },
@@ -34,8 +37,26 @@
     {
       "name": "api",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev", "--prefix", "../ramseys-arcade-api"],
+      "runtimeArgs": [
+        "run",
+        "dev",
+        "--prefix",
+        "../ramseys-arcade-api"
+      ],
       "port": 8787
+    },
+    {
+      "name": "web-5175",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev",
+        "--",
+        "--port",
+        "5175",
+        "--strictPort"
+      ],
+      "port": 5175
     }
   ]
 }

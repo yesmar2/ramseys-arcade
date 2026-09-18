@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useIsAdmin } from '../lib/admin'
 import { markRunAssisted } from '../lib/runAchievements'
 
-export type AdminStageUnit = 'wave' | 'level' | 'row' | 'height' | 'length'
+export type AdminStageUnit = 'wave' | 'level' | 'row' | 'height' | 'length' | 'hole'
 
 type AdminStageBase = {
   onJump: (stage: number) => void
@@ -31,6 +31,7 @@ const UNIT_LABEL: Record<AdminStageUnit, string> = {
   row: 'row',
   height: 'height',
   length: 'length',
+  hole: 'hole',
 }
 
 const NEXT_LABEL: Record<AdminStageUnit, string> = {
@@ -39,6 +40,7 @@ const NEXT_LABEL: Record<AdminStageUnit, string> = {
   row: 'Skip +25',
   height: '+5 height',
   length: '+5 length',
+  hole: 'Next hole',
 }
 
 /**
