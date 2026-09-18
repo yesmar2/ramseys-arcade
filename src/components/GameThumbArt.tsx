@@ -130,32 +130,31 @@ function PopThumb({ accent }: { accent: string }) {
   )
 }
 
-/** One slab of a stack, in the game's own isometric view: a diamond top and two faces. */
-function IsoSlab({ cx, cy, half, h, accent }: { cx: number; cy: number; half: number; h: number; accent: string }) {
-  const t = `${cx},${cy - half * 0.5}`
-  const r = `${cx + half * 0.9},${cy}`
-  const b = `${cx},${cy + half * 0.5}`
-  const l = `${cx - half * 0.9},${cy}`
-  const rd = `${cx + half * 0.9},${cy + h}`
-  const bd = `${cx},${cy + half * 0.5 + h}`
-  const ld = `${cx - half * 0.9},${cy + h}`
-  const face = mark(accent, 0.22, 1.2)
-  return (
-    <>
-      <polygon points={`${l} ${b} ${bd} ${ld}`} {...face} />
-      <polygon points={`${r} ${b} ${bd} ${rd}`} {...face} />
-      <polygon points={`${t} ${r} ${b} ${l}`} {...mark(accent, 0.4, 1.2)} />
-    </>
-  )
-}
-
-/** Three slabs up, each a little smaller than the last. */
+/**
+ * Three slabs up, each narrower than the last and a little off the one
+ * below, the way a run really stacks; the top one is the piece landing.
+ * Seen from the side rather than in the game's isometric view, because
+ * three iso slabs are nine faces of outline and the mark turned to noise.
+ */
 function StackerThumb({ accent }: { accent: string }) {
+  const slabs = [
+    { x: 5, y: 21, w: 22 },
+    { x: 7.5, y: 15, w: 16 },
+    { x: 11.5, y: 9, w: 11 },
+  ]
   return (
     <>
-      <IsoSlab cx={16} cy={17} half={9.5} h={3.6} accent={accent} />
-      <IsoSlab cx={16} cy={13.4} half={7.6} h={3.6} accent={accent} />
-      <IsoSlab cx={16} cy={9.8} half={5.8} h={3.6} accent={accent} />
+      {slabs.map((s, i) => (
+        <rect
+          key={i}
+          x={s.x}
+          y={s.y}
+          width={s.w}
+          height="5.2"
+          rx="1.8"
+          {...mark(accent, i === 2 ? 0.8 : 0.28, 1.5)}
+        />
+      ))}
     </>
   )
 }
