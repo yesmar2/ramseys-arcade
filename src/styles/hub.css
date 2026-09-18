@@ -23,10 +23,6 @@
 
 /* ---------- the banner, with a heading in it rather than a link ---------- */
 
-.hub-banner .home-banner__name {
-  color: #fff;
-}
-
 .hub-banner .home-banner__art {
   cursor: default;
 }
@@ -37,7 +33,7 @@
   margin: 0;
   font-size: 0.9rem;
   font-weight: 600;
-  color: rgba(238, 244, 248, 0.78);
+  color: var(--banner-faint);
 }
 
 /* ---------- below the banner ---------- */
