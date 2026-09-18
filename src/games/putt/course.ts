@@ -154,6 +154,20 @@ function pipe(ax: number, ay: number, bx: number, by: number, out: number): Port
   return { a: { x: ax, y: ay }, b: { x: bx, y: by }, out }
 }
 
+/**
+ * A ribbon of ground `r` wide either side of a line through the points: a
+ * corridor that turns wherever the line does, with round elbows.
+ */
+function ribbon(r: number, ...pts: [number, number][]): Shape[] {
+  const out: Shape[] = []
+  for (let i = 1; i < pts.length; i++) {
+    const [x1, y1] = pts[i - 1]!
+    const [x2, y2] = pts[i]!
+    out.push(capsule(x1, y1, x2, y2, r))
+  }
+  return out
+}
+
 /** A bank of three targets in a line from (x, y), stepping by (dx, dy). */
 function bank(x: number, y: number, dx: number, dy: number): Target[] {
   return [0, 1, 2].map((i) => ({ x: x + dx * i, y: y + dy * i }))
@@ -196,71 +210,69 @@ function hole(spec: Spec): Hole {
   }
 }
 
-const Q = Math.PI / 2
-
 export const COURSE: Hole[] = [
   /*
-   * The Fork. Out of the tee bulb, up a channel that bends hard left into a
-   * corridor and a plaza where the hole splits.
+   * The Fork. The tee bulb opens on a stem that turns right, then left,
+   * into the plaza where the hole splits.
    *
-   * Left is the long way: a hill that has to be climbed in one, then a
-   * bridge over the lake with a lane in the middle of it — roll off the
-   * side and it is a splash, back to where you shot from. Right is shorter and guarded: a thin
-   * corridor with a windmill across it. Both come out on the upper plaza,
-   * with a bowl at its near side: roll into it and it pulls the ball to a
-   * pipe that drops it onto the green from the side. Or take the last hill
-   * straight — a soft shot rolls back down to the plaza. The green is a
-   * plateau with a pond below the cup, sand in the far corners, and a
+   * Left is the long way: out to the wall, a hill to climb in one, then a
+   * bridge that crosses the lake on a diagonal, with a lane in the middle
+   * of it — off the side is a splash, back to where you shot from. Right is
+   * shorter and guarded: it jogs out to the wall, past a windmill, and jogs
+   * back. Both come out on the upper plaza, a bumper in its middle and a
+   * bowl at its top right: roll into it and it pulls the ball to a pipe
+   * that drops it onto the green from the side. Or leave by the top left
+   * and take the last stretch on foot: a dogleg left, a hill, a dogleg right onto the
+   * green, which is a plateau with a pond, sand in the corners, and a
    * backstop behind the cup that sends a hot ball back toward it.
    *
-   * There is also a tunnel. Its mouth is a seven-unit hole in the channel
-   * wall just past the tee, going up and right, with a chevron on the
-   * ground pointing into it; hit it dead on and the tube runs the whole
-   * right edge to the upper plaza and skips the fork altogether.
+   * There is also a tunnel. Its mouth is a seven-unit hole in the stem's
+   * right wall just past the tee, with a chevron on the ground pointing
+   * into it, and its line runs straight back through the tee: hit it dead
+   * on and the tube runs the whole right edge to the plaza and skips the
+   * fork altogether.
    */
   hole({
     name: 'The Fork',
     par: 7,
-    h: 640,
-    tee: { x: 50, y: 604 },
-    cup: { x: 50, y: 62 },
+    h: 700,
+    tee: { x: 50, y: 668 },
+    cup: { x: 62, y: 58 },
     green: [
-      disc(50, 596, 22),
-      capsule(50, 596, 50, 540, 14),
-      arc(18, 540, 32, -Q, 0, 14),
-      capsule(18, 508, 18, 436, 14),
-      disc(32, 428, 26),
-      // The long way, left.
-      capsule(18, 428, 18, 330, 12),
-      rect(4, 266, 56, 52),
-      capsule(18, 332, 18, 238, 7),
-      // The guarded way, right.
-      capsule(50, 420, 74, 396, 9),
-      capsule(74, 396, 74, 248, 11),
-      // The tunnel. Its line, run back, passes the tee, so it can be hit from there — just.
-      capsule(61, 566, 88, 470, 3.6),
-      capsule(88, 470, 88, 270, 3.6),
-      capsule(88, 270, 78, 246, 3.6),
-      // The upper plaza, the last hill, and the green.
-      disc(50, 228, 36),
-      capsule(50, 228, 50, 96, 14),
-      disc(50, 72, 30),
+      disc(50, 660, 22),
+      // The stem: up, right, up, left, up to the fork.
+      ...ribbon(16, [50, 660], [50, 610], [20, 566], [20, 500], [60, 456], [60, 420]),
+      disc(60, 420, 26),
+      // The long way, left: out, up the hill, across the lake on a slant.
+      ...ribbon(14, [60, 420], [22, 392], [22, 300]),
+      rect(4, 248, 64, 44),
+      capsule(22, 300, 42, 232, 7),
+      // The guarded way, right: out, up past the windmill, back in.
+      ...ribbon(11, [60, 420], [86, 392], [86, 330], [70, 290], [68, 236]),
+      // The tunnel, on the line of the tee.
+      capsule(62, 610, 92, 465, 3.6),
+      capsule(92, 465, 92, 280, 3.6),
+      capsule(92, 280, 74, 232, 3.6),
+      // The upper plaza, the last stretch, and the green.
+      disc(50, 212, 34),
+      ...ribbon(16, [50, 212], [24, 170], [24, 120], [56, 80]),
+      disc(60, 64, 28),
     ],
-    water: [rect(4, 266, 56, 52), disc(64, 92, 7)],
-    bridges: [capsule(18, 332, 18, 238, 7)],
+    water: [rect(4, 248, 64, 44), disc(76, 84, 7)],
+    bridges: [capsule(22, 300, 42, 232, 7)],
     slopes: [
-      hill(capsule(18, 392, 18, 352, 10), 0, 65),
-      hill(capsule(50, 190, 50, 150, 12), 0, 70),
-      bowl(disc(50, 252, 12), 160),
+      hill(capsule(22, 388, 22, 344, 10), 0, 65),
+      hill(capsule(24, 158, 24, 124, 12), 0, 65),
+      bowl(disc(70, 198, 9), 160),
     ],
-    portals: [pipe(50, 252, 76, 74, LEFT)],
-    spinners: [mill(74, 330, 12, 2.2)],
-    walls: [bar(32, 48, 50, 40), bar(50, 40, 68, 48)],
-    bumpers: [pop(30, 208, 4.5), pop(70, 208, 4.5)],
-    targets: bank(82, 214, 0, 8),
-    sand: [disc(27, 60, 6), disc(73, 60, 6)],
-    lanes: [lane(18, 380), lane(18, 285), lane(74, 290), lane(50, 236), lane(50, 150)],
-    marks: [mark(62, 552, Math.atan2(470 - 566, 88 - 61))],
+    portals: [pipe(70, 198, 84, 70, LEFT)],
+    spinners: [mill(86, 340, 12, 2.2)],
+    walls: [bar(40, 46, 58, 38), bar(58, 38, 66, 38), bar(66, 38, 84, 46)],
+    bumpers: [pop(50, 214, 5)],
+    targets: bank(20, 196, 0, 8),
+    sand: [disc(38, 84, 6)],
+    lanes: [lane(22, 366), lane(32, 266), lane(86, 300), lane(60, 204), lane(24, 140)],
+    marks: [mark(66, 594, Math.atan2(465 - 610, 92 - 62))],
   }),
   // Four levels, the gap swapping sides each time. A windmill in the second, water in the fourth.
   hole({
