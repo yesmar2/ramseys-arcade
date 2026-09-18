@@ -339,6 +339,23 @@ function FindBugThumb({ accent }: { accent: string }) {
   )
 }
 
+/** A fish mid-chase, closing on a smaller one — the whole rule in one shape. */
+function FrenzyThumb({ accent }: { accent: string }) {
+  return (
+    <g>
+      <g transform="translate(21.5 20.5)">
+        <path d="M2 0 L-6.5 -4.3 L-4.2 0 L-6.5 4.3 Z" {...mark(accent, 0.6, 1)} />
+        <ellipse cx="0" cy="0" rx="6.5" ry="4.6" {...mark(accent, 0.75, 1.3)} />
+        <circle cx="3.4" cy="-1" r="0.9" fill="#fff" />
+      </g>
+      <g transform="translate(9 12) scale(0.62)">
+        <path d="M2 0 L-6.5 -4.3 L-4.2 0 L-6.5 4.3 Z" {...mark(accent, 0.22, 1)} />
+        <ellipse cx="0" cy="0" rx="6.5" ry="4.6" {...mark(accent, 0.16, 1.3)} />
+      </g>
+    </g>
+  )
+}
+
 const thumbBySlug: Record<string, (props: { accent: string }) => ReactNode> = {
   putt: PuttThumb,
   bop: BopThumb,
@@ -355,6 +372,7 @@ const thumbBySlug: Record<string, (props: { accent: string }) => ReactNode> = {
   crumbtrail: CrumbtrailThumb,
   barrage: BarrageThumb,
   findbug: FindBugThumb,
+  frenzy: FrenzyThumb,
 }
 
 export function GameThumbArt({ slug, accent, className }: GameThumbArtProps) {

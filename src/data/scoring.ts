@@ -134,6 +134,12 @@ const SCORING: Record<string, ScoreRow[]> = {
     { label: 'A ship reaches the line', value: 'run over, whatever your lives say' },
     { label: 'Lives', value: '3' },
   ],
+  frenzy: [
+    { label: 'Eat something smaller', value: 'points by its size · grows you a little' },
+    { label: 'Close in size', value: 'a bounce, not a bite' },
+    { label: 'Eaten by something bigger', value: 'game over' },
+    { label: 'Lives', value: '1' },
+  ],
 }
 
 export function scoringFor(slug: string): ScoreRow[] | null {

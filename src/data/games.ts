@@ -194,6 +194,16 @@ export const games: Game[] = [
     playable: true,
     inDevelopment: true,
   },
+  {
+    name: 'Frenzy',
+    slug: 'frenzy',
+    tags: ['arcade'],
+    description: 'One tank, one rule. Eat anything smaller. Anything bigger eats you.',
+    how: 'Move the cursor, or drag a finger, to swim — the fish follows. Arrow keys or WASD work too. Eat anything smaller to grow; anything bigger is a killer. Near enough in size just bounces off. One life.',
+    accent: PALETTE.magenta,
+    playable: true,
+    inDevelopment: true,
+  },
 ]
 
 export function getGame(slug: string) {
