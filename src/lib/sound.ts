@@ -301,8 +301,23 @@ if (typeof document !== 'undefined') {
   document.addEventListener('visibilitychange', applyMusicGain)
 }
 
+let hush = 0
+
+/**
+ * Runs fn with every sound effect swallowed. Building a poster of a game runs
+ * its tick, which asks for its sounds; the home page must not play them.
+ */
+export function hushed<T>(fn: () => T): T {
+  hush++
+  try {
+    return fn()
+  } finally {
+    hush--
+  }
+}
+
 export function sfx(name: SoundName, pitch = 0) {
-  if (muted) return
+  if (muted || hush > 0) return
   const audio = getCtx()
   if (!audio || !master) return
   if (audio.state === 'suspended') void audio.resume()

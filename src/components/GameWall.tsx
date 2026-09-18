@@ -1,5 +1,6 @@
 import { useEffect, useState, type CSSProperties } from 'react'
 import { games, homeGames, type Game, type GameTag } from '../data/games'
+import { hasPoster } from '../games/posters'
 import { gameHref } from '../hooks/useHashRoute'
 import { useLiveEvents } from '../hooks/useLiveEvents'
 import { usePlayerName } from '../hooks/usePlayerName'
@@ -10,6 +11,7 @@ import { heroSlug } from '../lib/homePicks'
 import { useRecentGames } from '../lib/lastPlayed'
 import { fetchPlayerBests, normalizePlayerName } from '../lib/leaderboard'
 import { resolveGameAccent } from '../lib/theme'
+import { GamePoster } from './GamePoster'
 import { GameThumbArt } from './GameThumbArt'
 
 type Tab = 'all' | GameTag | 'new'
@@ -150,8 +152,9 @@ function arrangeWall(list: Game[], lead: string | null, spanOf: (g: Game) => Spa
  * The wall: every game, edge to edge, in a grid that runs six across on a
  * wide screen and two on a phone. The first game on the shelf takes a
  * two-by-two cell and the newest takes two across, so the grid has a rhythm
- * rather than a beat. Each game's thumb sits in its tile on a block of its
- * colour, with the name under it, and no two tiles of one colour touch. The
+ * rather than a beat. A tile is a still of the game itself where the game has
+ * one, else its thumb on a block of its colour; the name sits under it, and no
+ * two tiles of one colour touch. The
  * daily's game wears a badge. Tabs along the top cut the wall by what kind of
  * game it is.
  */
@@ -276,9 +279,15 @@ function WallTile({
         style={style}
         aria-label={flag ? `${game.name}, ${flag.label.toLowerCase()}` : game.name}
       >
-        <span className="wall-tile__art" aria-hidden="true">
-          <GameThumbArt slug={game.slug} accent={accent} />
-        </span>
+        {hasPoster(game.slug) ? (
+          <span className="wall-tile__art wall-tile__art--poster" aria-hidden="true">
+            <GamePoster slug={game.slug} />
+          </span>
+        ) : (
+          <span className="wall-tile__art" aria-hidden="true">
+            <GameThumbArt slug={game.slug} accent={accent} />
+          </span>
+        )}
         {flag ? (
           <span className={`wall-tile__flag wall-tile__flag--${flag.kind}`}>{flag.label}</span>
         ) : null}
