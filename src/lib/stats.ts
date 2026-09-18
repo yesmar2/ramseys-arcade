@@ -71,8 +71,9 @@ function resolveApiBase() {
 
 const API_BASE = resolveApiBase()
 
-export async function fetchMyStats(): Promise<StatsResponse> {
-  const res = await fetch(`${API_BASE}/stats/me`, { headers: { ...authHeaders() } })
+export async function fetchMyStats(period?: string): Promise<StatsResponse> {
+  const qs = period && period !== 'all' ? `?period=${encodeURIComponent(period)}` : ''
+  const res = await fetch(`${API_BASE}/stats/me${qs}`, { headers: { ...authHeaders() } })
   if (!res.ok) throw new Error(`Request failed (${res.status})`)
   return (await res.json()) as StatsResponse
 }

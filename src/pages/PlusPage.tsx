@@ -27,6 +27,12 @@ const PLAY: Row[] = [
   { label: 'Friends', free: true, plus: true },
   { label: 'Match alerts', free: true, plus: true },
   {
+    label: 'Your stats',
+    free: 'Totals and streak',
+    plus: 'The whole history',
+    note: 'Per-game rank, percentile and trend, every day you have played, and the records you are closest to taking.',
+  },
+  {
     label: 'Joining events',
     free: 'Any size',
     plus: 'Any size',

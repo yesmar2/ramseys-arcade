@@ -1,6 +1,9 @@
 import { useEffect, useState, type CSSProperties } from 'react'
 import { PageShell } from '../components/PageShell'
 import { PageBackLink } from '../components/PageBackLink'
+import { PeriodSwitcher } from '../components/BoardChrome'
+import { setDefaultPeriod, useDefaultPeriod } from '../lib/defaultPeriod'
+import type { LeaderboardPeriod } from '../lib/leaderboard'
 import { getGame } from '../data/games'
 import { gameHubHref, plusHref, rankHref, recordHref } from '../hooks/useHashRoute'
 import { useAuth } from '../hooks/useAuth'
@@ -144,6 +147,38 @@ function Calendar({ days }: { days: number[] }) {
   )
 }
 
+/**
+ * The page's own shape, greyed out.
+ *
+ * Stats arrive in one request that has to read every board the player is on,
+ * so the wait is real. A word saying "Loading" left the page empty for it;
+ * this holds the layout so nothing jumps when the numbers land.
+ */
+function StatsSkeleton() {
+  return (
+    <div className="st-skel" aria-hidden="true">
+      <section className="st-tiles">
+        {Array.from({ length: 4 }, (_, i) => (
+          <div key={i} className="st-tile st-skel__tile">
+            <span className="st-skel__bar st-skel__bar--value" />
+            <span className="st-skel__bar st-skel__bar--label" />
+          </div>
+        ))}
+      </section>
+      {Array.from({ length: 3 }, (_, i) => (
+        <section key={i} className="st-block">
+          <span className="st-skel__bar st-skel__bar--title" />
+          <div className="st-skel__rows">
+            {Array.from({ length: 3 }, (_, r) => (
+              <span key={r} className="st-skel__row" />
+            ))}
+          </div>
+        </section>
+      ))}
+    </div>
+  )
+}
+
 function Locked({ what }: { what: string }) {
   return (
     <div className="st-locked">
@@ -165,6 +200,10 @@ function Locked({ what }: { what: string }) {
  */
 export function StatsPage() {
   const { signedIn, loading: authLoading } = useAuth()
+  const period = useDefaultPeriod()
+  // The page reads the app-wide timeframe, and setting it here sets it there:
+  // the numbers below are the same boards, cut the same way.
+  const selectPeriod = (next: LeaderboardPeriod) => setDefaultPeriod(next)
   const [data, setData] = useState<StatsResponse | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -175,7 +214,7 @@ export function StatsPage() {
     }
     let cancelled = false
     setLoading(true)
-    void fetchMyStats()
+    void fetchMyStats(period)
       .then((body) => {
         if (!cancelled) setData(body)
       })
@@ -186,7 +225,7 @@ export function StatsPage() {
     return () => {
       cancelled = true
     }
-  }, [signedIn])
+  }, [signedIn, period])
 
   const stats = data?.stats
   const locked = Boolean(data?.locked)
@@ -199,10 +238,13 @@ export function StatsPage() {
           <h1 className="lb-page__title">Your stats</h1>
           <span className="lb-page__heading-slot" aria-hidden="true" />
         </div>
+        <div className="st-period">
+          <PeriodSwitcher period={period} onSelect={selectPeriod} />
+        </div>
       </header>
 
       {authLoading || loading ? (
-        <p className="st-note">Loading…</p>
+        <StatsSkeleton />
       ) : !signedIn ? (
         <p className="st-note">Sign in to see your stats.</p>
       ) : !stats || stats.headline.runs === 0 ? (
