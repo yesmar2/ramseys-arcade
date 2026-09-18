@@ -3,6 +3,7 @@ import { getGame } from '../data/games'
 import { gamePlayHref } from '../hooks/useHashRoute'
 import { useDefaultPeriod } from '../lib/defaultPeriod'
 import { useDeviceType } from '../lib/device'
+import { useActiveGroup } from '../lib/groups'
 import { heroSlug, newestSlug } from '../lib/homePicks'
 import { useRecentGames } from '../lib/lastPlayed'
 import {
@@ -35,6 +36,9 @@ export function HomeHero() {
   const slug = heroSlug(device, recent)
   const name = normalizePlayerName(usePlayerName())
   const period = useDefaultPeriod()
+  // Both figures below are group-scoped on the wire; switching group has to
+  // refetch them or the hero keeps quoting the last group's board.
+  const groupId = useActiveGroup()
   const [scores, setScores] = useState<HeroScores | null>(null)
   const lastPlayed = slug != null && recent.includes(slug)
 
@@ -66,7 +70,7 @@ export function HomeHero() {
     return () => {
       cancelled = true
     }
-  }, [name, slug, period])
+  }, [name, slug, period, groupId])
 
   if (!slug) return null
   const game = getGame(slug)

@@ -3,6 +3,7 @@ import { homeGames } from '../data/games'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { useDefaultPeriod } from '../lib/defaultPeriod'
 import { useDeviceType } from '../lib/device'
+import { useActiveGroup } from '../lib/groups'
 import { heroSlug } from '../lib/homePicks'
 import { useRecentGames } from '../lib/lastPlayed'
 import { fetchPlayerBests, normalizePlayerName } from '../lib/leaderboard'
@@ -13,6 +14,9 @@ export function GameGrid() {
   const name = usePlayerName()
   const cleaned = normalizePlayerName(name)
   const period = useDefaultPeriod()
+  // Picking a group changes whose board these are measured on, so the tiles
+  // have to ask again — not just re-render what the last group answered.
+  const groupId = useActiveGroup()
   const recent = useRecentGames()
   const tiles = homeGames(device)
   const [bests, setBests] = useState<Record<string, number> | null>(null)
@@ -33,7 +37,7 @@ export function GameGrid() {
     return () => {
       cancelled = true
     }
-  }, [cleaned, period])
+  }, [cleaned, period, groupId])
 
   /*
    * The grid keeps the fixed shelf order from homeGames rather than sorting

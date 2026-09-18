@@ -511,13 +511,17 @@ export async function fetchPlayerBests(
 ): Promise<Record<string, number>> {
   const cleaned = normalizePlayerName(name)
   if (!cleaned) return {}
-  return dedupeGet(`bests:${cleaned}:${period}`, async () => {
-    const params = new URLSearchParams({ name: cleaned, period })
-    const data = await api<{ bests?: Record<string, number> }>(
-      `/leaderboards/bests?${params}`,
-    )
-    return data.bests ?? {}
-  })
+  return dedupeGet(
+    `bests:${cleaned}:${period}:${storedActiveGroup() ?? 'everyone'}`,
+    () =>
+      withGroupFallback(async () => {
+        const params = applyBoardScope(new URLSearchParams({ name: cleaned, period }))
+        const data = await api<{ bests?: Record<string, number> }>(
+          `/leaderboards/bests?${params}`,
+        )
+        return data.bests ?? {}
+      }),
+  )
 }
 
 export type GlobalGamePlace = {
