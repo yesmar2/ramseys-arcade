@@ -225,7 +225,7 @@ export function pageMeta(route: Route): PageMeta {
     case 'plus':
       return {
         ...site,
-        title: titled(`${APP_NAME} Plus`),
+        title: titled('Plus'),
         description:
           'Playing is free, always. Plus is for whoever runs the events: bigger draws, more events at once, double elimination, and a different game each round. $3 a month.',
         path: plusHref(),
