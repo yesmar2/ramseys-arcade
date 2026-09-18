@@ -2,7 +2,7 @@ import type { GameState } from './game'
 import { BEAD_SPACING, visualSegments } from './game'
 import { isDarkTheme, isFlatTheme, playfieldColor, softFillAlpha } from '../../lib/theme'
 
-const HEAD_HUE = 84
+const HEAD_HUE = 158
 /** Degrees of hue each bead steps away from the head — wraps the rainbow as you grow. */
 const HUE_PER_BEAD = 10
 

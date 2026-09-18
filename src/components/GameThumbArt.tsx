@@ -100,12 +100,12 @@ function PatriotThumb() {
 
 function SnakeThumb() {
   const cells = [
-    // Lime, tail to head, like the tile it sits on.
-    { cx: 8, cy: 20, hue: 66 },
-    { cx: 14.5, cy: 20, hue: 72 },
-    { cx: 21, cy: 20, hue: 78 },
-    { cx: 21, cy: 13.5, hue: 84 },
-    { cx: 27.5, cy: 13.5, hue: 90 },
+    // Green, tail to head, like the tile it sits on.
+    { cx: 8, cy: 20, hue: 136 },
+    { cx: 14.5, cy: 20, hue: 144 },
+    { cx: 21, cy: 20, hue: 152 },
+    { cx: 21, cy: 13.5, hue: 160 },
+    { cx: 27.5, cy: 13.5, hue: 168 },
   ]
 
   return (

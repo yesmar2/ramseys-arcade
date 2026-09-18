@@ -20,7 +20,7 @@ export const PALETTE = {
   sky: '#4aa8e8',
   teal: '#3ec8cf',
   green: '#3ecf8e',
-  lime: '#a3cf3e',
+  magenta: '#c65bd9',
 } as const
 
 export type Swatch = keyof typeof PALETTE
@@ -70,7 +70,7 @@ export const games: Game[] = [
     tags: ['arcade', 'quick'],
     description: 'Grow longer. Don’t crash.',
     how: 'Swipe or use arrow keys. Eat, grow, and don’t hit the walls or yourself.',
-    accent: PALETTE.lime,
+    accent: PALETTE.green,
     playable: true,
   },
   {

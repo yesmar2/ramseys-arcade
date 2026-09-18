@@ -513,6 +513,7 @@
 }
 
 .home-banner__art .inline-thumb {
+  --playfield: #f4f8fb;
   position: absolute;
   right: -2.5rem;
   top: 50%;
@@ -750,13 +751,14 @@
 }
 
 /*
- * A tile is a block of the game's colour: in Light the colour, deepened so an
- * icon drawn in that colour still stands out of it; in Dark the
- * colour sunk into the night. Light text on both, over a scrim at the foot.
+ * A tile is a poster: the game's colour sunk into the dark, in Light as much
+ * as in Dark. A colour only deepens cleanly that far (a mid amber is brown), and
+ * on a light page the wall reads as posters on a wall. Light text on both, over
+ * a scrim at the foot.
  */
 .wall-tile {
-  --wall-a: color-mix(in srgb, var(--tile-accent) 72%, #12202c);
-  --wall-b: color-mix(in srgb, var(--tile-accent) 48%, #12202c);
+  --wall-a: color-mix(in srgb, var(--tile-accent) 50%, #0c141b);
+  --wall-b: color-mix(in srgb, var(--tile-accent) 28%, #0c141b);
   position: relative;
   display: block;
   height: 100%;
@@ -765,8 +767,8 @@
   color: #f4f8fb;
   text-decoration: none;
   background: linear-gradient(160deg, var(--wall-a), var(--wall-b));
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+  border: 1px solid color-mix(in srgb, var(--tile-accent) 30%, rgba(255, 255, 255, 0.08));
+  box-shadow: 0 6px 16px rgba(var(--shade-rgb), 0.16);
   animation: hero-in 0.5s ease-out both;
   transition: transform 0.18s ease, box-shadow 0.18s ease;
 }
@@ -774,7 +776,7 @@
 html[data-theme="dark"] .wall-tile {
   --wall-a: color-mix(in srgb, var(--tile-accent) 46%, #0c141b);
   --wall-b: color-mix(in srgb, var(--tile-accent) 24%, #0c141b);
-  border-color: color-mix(in srgb, var(--tile-accent) 28%, rgba(255, 255, 255, 0.06));
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
 }
 
 /* The gloss: light falling from the top left. */
@@ -798,8 +800,13 @@ html[data-theme="dark"] .wall-tile {
   outline-offset: 2px;
 }
 
-/* The thumb sits in the tile above the name strip. */
+/*
+ * The thumb sits in the tile above the name strip. The thumbs were drawn for a
+ * pale square and mix their fills with the playfield, so they are given a pale
+ * one here and sit on the poster as light stickers with an outline.
+ */
 .wall-tile__art {
+  --playfield: #f4f8fb;
   position: absolute;
   inset: 0 0 1.6rem;
   display: flex;

@@ -34,7 +34,9 @@ function inTab(game: Game, tab: Tab) {
  * laid out here the way CSS dense auto-placement will lay it out at each of
  * its column counts, and the games keep their shelf order except that the
  * next one placed is the first that touches no tile of its own colour in
- * any of those layouts. The big tile leads whatever happens.
+ * any of those layouts. When that runs into a corner, a few seeded runs try
+ * other clean choices and the arrangement with the fewest clashes wins. The
+ * big tile leads whatever happens.
  */
 const WALL_COLUMNS = [6, 5, 4, 3, 2]
 
@@ -68,7 +70,39 @@ function touches(a: Placed, b: Placed): boolean {
   )
 }
 
-function arrangeWall(list: Game[], lead: string | null, spanOf: (g: Game) => Span): Game[] {
+/** Seeded, so the wall settles the same way on every render. */
+function rng(seed: number): () => number {
+  let s = seed >>> 0
+  return () => {
+    s = (s + 0x6d2b79f5) >>> 0
+    let t = s
+    t = Math.imul(t ^ (t >>> 15), t | 1)
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61)
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+  }
+}
+
+/** Placed tiles of one colour that share an edge, summed over every layout. */
+function clashesIn(layouts: Placed[][]): number {
+  let n = 0
+  for (const placed of layouts) {
+    for (let i = 0; i < placed.length; i++) {
+      for (let j = i + 1; j < placed.length; j++) {
+        const a = placed[i]!
+        const b = placed[j]!
+        if (a.accent === b.accent && touches(a, b)) n++
+      }
+    }
+  }
+  return n
+}
+
+function arrangeOnce(
+  list: Game[],
+  lead: string | null,
+  spanOf: (g: Game) => Span,
+  random: (() => number) | null,
+): { order: Game[]; clashes: number } {
   const pool = [...list]
   const out: Game[] = []
   const layouts = WALL_COLUMNS.map(() => [] as Placed[])
@@ -86,23 +120,30 @@ function arrangeWall(list: Game[], lead: string | null, spanOf: (g: Game) => Spa
   const leadAt = pool.findIndex((g) => g.slug === lead)
   if (leadAt >= 0) take(leadAt)
   while (pool.length) {
-    let best = 0
-    let fewest = Infinity
-    for (let i = 0; i < pool.length && fewest > 0; i++) {
-      const g = pool[i]!
+    const scored = pool.map((g) => {
       let clashes = 0
       layouts.forEach((placed, li) => {
         const at = placeIn(g, placed, WALL_COLUMNS[li]!)
         clashes += placed.filter((p) => p.accent === g.accent && touches(p, at)).length
       })
-      if (clashes < fewest) {
-        best = i
-        fewest = clashes
-      }
-    }
-    take(best)
+      return clashes
+    })
+    const fewest = Math.min(...scored)
+    const clean = scored.flatMap((c, i) => (c === fewest ? [i] : []))
+    // Shelf order first; a seeded run sometimes takes another clean candidate instead.
+    const pick = random && clean.length > 1 && random() < 0.5 ? clean[Math.floor(random() * clean.length)]! : clean[0]!
+    take(pick)
   }
-  return out
+  return { order: out, clashes: clashesIn(layouts) }
+}
+
+function arrangeWall(list: Game[], lead: string | null, spanOf: (g: Game) => Span): Game[] {
+  let best = arrangeOnce(list, lead, spanOf, null)
+  for (let seed = 1; seed <= 24 && best.clashes > 0; seed++) {
+    const next = arrangeOnce(list, lead, spanOf, rng(seed))
+    if (next.clashes < best.clashes) best = next
+  }
+  return best.order
 }
 
 /**
