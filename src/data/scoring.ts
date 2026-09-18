@@ -119,7 +119,7 @@ const SCORING: Record<string, ScoreRow[]> = {
     { label: 'Rover', value: '+150 a strike' },
     { label: 'Streak', value: 'par or better in a row · +100, +200… up to +500' },
     { label: 'Water', value: '+1 stroke, back to where you shot from' },
-    { label: 'Round', value: '9 holes, par 49 · no cup within one shot of its tee · play until it drops' },
+    { label: 'Round', value: '9 holes, par 50 · no cup within one shot of its tee · play until it drops' },
   ],
   bop: [
     { label: 'Right control', value: '+1' },
