@@ -63,6 +63,9 @@ export type CupPath = { to: Vec; period: number }
  */
 export type Rover = { x: number; y: number; r: number; speed: number; heading: number; pen: Rect }
 
+/** A mark on the ground: a chevron at (x, y) pointing along `dir`, a hint and nothing more. */
+export type Mark = { x: number; y: number; dir: number }
+
 export type Hole = {
   name: string
   par: number
@@ -87,6 +90,7 @@ export type Hole = {
   spinners: Spinner[]
   portals: Portal[]
   rovers: Rover[]
+  marks: Mark[]
 }
 
 export const LANE_R = 3.2
@@ -160,6 +164,10 @@ function box(x: number, y: number, w: number, h: number): Rect {
   return { x, y, w, h }
 }
 
+function mark(x: number, y: number, dir: number): Mark {
+  return { x, y, dir }
+}
+
 function rover(x: number, y: number, r: number, speed: number, heading: number, pen: Rect): Rover {
   return { x, y, r, speed, heading, pen }
 }
@@ -184,6 +192,7 @@ function hole(spec: Spec): Hole {
     spinners: spec.spinners ?? [],
     portals: spec.portals ?? [],
     rovers: spec.rovers ?? [],
+    marks: spec.marks ?? [],
   }
 }
 
@@ -195,18 +204,19 @@ export const COURSE: Hole[] = [
    * corridor and a plaza where the hole splits.
    *
    * Left is the long way: a hill that has to be climbed in one, then a
-   * narrow bridge over the lake — roll off the side and it is a splash,
-   * back to where you shot from. Right is shorter and guarded: a thin
+   * bridge over the lake with a lane in the middle of it — roll off the
+   * side and it is a splash, back to where you shot from. Right is shorter and guarded: a thin
    * corridor with a windmill across it. Both come out on the upper plaza,
    * with a bowl at its near side: roll into it and it pulls the ball to a
    * pipe that drops it onto the green from the side. Or take the last hill
-   * straight — a soft shot rolls back down to the plaza. The green is a plateau with a pond below the cup and sand behind
-   * it, and the hill in front means a soft shot rolls back down.
+   * straight — a soft shot rolls back down to the plaza. The green is a
+   * plateau with a pond below the cup, sand in the far corners, and a
+   * backstop behind the cup that sends a hot ball back toward it.
    *
    * There is also a tunnel. Its mouth is a seven-unit hole in the channel
-   * wall just past the tee, going up and right; hit it dead on and the
-   * tube runs the whole right edge to the upper plaza and skips the fork
-   * altogether. Most people never see it.
+   * wall just past the tee, going up and right, with a chevron on the
+   * ground pointing into it; hit it dead on and the tube runs the whole
+   * right edge to the upper plaza and skips the fork altogether.
    */
   hole({
     name: 'The Fork',
@@ -223,7 +233,7 @@ export const COURSE: Hole[] = [
       // The long way, left.
       capsule(18, 428, 18, 330, 12),
       rect(4, 266, 56, 52),
-      capsule(18, 332, 18, 238, 6),
+      capsule(18, 332, 18, 238, 7),
       // The guarded way, right.
       capsule(50, 420, 74, 396, 9),
       capsule(74, 396, 74, 248, 11),
@@ -237,17 +247,20 @@ export const COURSE: Hole[] = [
       disc(50, 72, 30),
     ],
     water: [rect(4, 266, 56, 52), disc(64, 92, 7)],
-    bridges: [capsule(18, 332, 18, 238, 6)],
+    bridges: [capsule(18, 332, 18, 238, 7)],
     slopes: [
-      hill(capsule(18, 400, 18, 344, 12), 0, 70),
+      hill(capsule(18, 392, 18, 352, 10), 0, 65),
       hill(capsule(50, 190, 50, 150, 12), 0, 70),
       bowl(disc(50, 252, 12), 160),
     ],
     portals: [pipe(50, 252, 76, 74, LEFT)],
     spinners: [mill(74, 330, 12, 2.2)],
+    walls: [bar(32, 48, 50, 40), bar(50, 40, 68, 48)],
     bumpers: [pop(30, 208, 4.5), pop(70, 208, 4.5)],
-    sand: [disc(50, 46, 8)],
-    lanes: [lane(18, 380), lane(74, 290), lane(50, 150)],
+    targets: bank(82, 214, 0, 8),
+    sand: [disc(27, 60, 6), disc(73, 60, 6)],
+    lanes: [lane(18, 380), lane(18, 285), lane(74, 290), lane(50, 236), lane(50, 150)],
+    marks: [mark(62, 552, Math.atan2(470 - 566, 88 - 61))],
   }),
   // Four levels, the gap swapping sides each time. A windmill in the second, water in the fourth.
   hole({

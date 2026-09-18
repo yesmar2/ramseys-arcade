@@ -506,6 +506,26 @@ export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, w: n
     }
   }
 
+  // ---- marks: a chevron on the ground, pointing at something worth a look
+  for (const mk of hole.marks) {
+    const dx = Math.cos(mk.dir)
+    const dy = Math.sin(mk.dir)
+    const px = -dy
+    const py = dx
+    ctx.strokeStyle = ink(0.42)
+    ctx.lineWidth = Math.max(1.4, s * 0.7)
+    for (const k of [0, 3.2]) {
+      const tx = mk.x + dx * k
+      const ty = mk.y + dy * k
+      fieldPath([
+        { x: tx - dx * 2.6 + px * 2.6, y: ty - dy * 2.6 + py * 2.6 },
+        { x: tx, y: ty },
+        { x: tx - dx * 2.6 - px * 2.6, y: ty - dy * 2.6 - py * 2.6 },
+      ])
+      ctx.stroke()
+    }
+  }
+
   // ---- rover pens: the ground a rover roams, marked so the timing can be read
   for (const rv of hole.rovers) {
     const pen = rv.pen
