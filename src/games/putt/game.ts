@@ -21,11 +21,9 @@ import { centreOf, contours, inAny, inside } from './terrain'
 /*
  * Putt: nine holes of mini golf with a pinball streak.
  *
- * Drag to aim; the guide is a short stub, so the line is yours to judge.
- * Then the swing is three taps, the way golf games have always done it:
- * one starts the gauge, one takes the power where the gauge is, and then
- * the arrow wobbles either side of the line until a third tap strikes —
- * on the line is pure, off it hooks or slices. The ball rolls on physics: walls at any
+ * Pull back from the ball and let go: the further the pull, the harder the
+ * shot, and the guide is a short stub, so the line is yours to judge. The
+ * ball rolls on physics — it slows at a steady rate, like a real one — off walls at any
  * angle, sand that drags, water that costs a stroke, windmills, pads that
  * push, pipes that take it somewhere else, a cup that will not always sit
  * still, and a cup that pulls a slow ball in and lets a fast one skip
@@ -38,7 +36,6 @@ import { centreOf, contours, inAny, inside } from './terrain'
  */
 
 export type Phase = 'menu' | 'intro' | 'aim' | 'roll' | 'splash' | 'sunk' | 'gameover'
-export type SwingStage = 'idle' | 'power' | 'accuracy'
 
 export const BALL_R = 1.7
 export const CUP_R = 2.7
@@ -58,27 +55,25 @@ export const ROVER_POINTS = 150
 export const STREAK_STEP = 100
 export const STREAK_MAX = 500
 
-/** The swing gauge runs up and back down over this many seconds. */
-export const SWING_PERIOD = 1.8
-/**
- * After the power is taken the arrow wobbles left and right of the line, one
- * full swing every this many seconds, until the strike. It never stops, so a
- * shot can wait for a windmill, and the window is the same at any power.
- */
-export const WOBBLE_PERIOD = 1.6
-/** The wobble runs from -1 to 1; within this of the line is a pure strike: about 65 ms either side. */
-export const SWEET = 0.26
-/** The most a shot goes off line, in radians, at the ends of the wobble. */
-export const MAX_SHANK = 0.16
+/** Pulling back this far, in field units, is full power. */
+export const MAX_DRAG = 46
+/** A pull shorter than this share of full is a change of mind, not a shot. */
+export const MIN_POWER = 0.08
+/** Holding space runs the charge up and back down over this many seconds. */
+const KEY_CHARGE = 1.4
 /** How far the aim guide reaches, in field units. */
 export const AIM_STUB = 14
-/** A swing at the bottom of the gauge still hits this hard. */
-const MIN_POWER = 0.08
-/** Full power sends a ball this far on the green before it stops. */
+/** Full power sends a ball about this far on the green before it stops. */
 const FULL_DISTANCE = 235
-const FRICTION_GREEN = 1.25
-const FRICTION_SAND = 5.2
-const STOP_SPEED = 1.6
+/**
+ * A rolling ball slows at a steady rate, like a real one, with a touch of
+ * drag that grows with speed. Sand slows it several times harder.
+ */
+const DECEL_GREEN = 62
+const DECEL_SAND = 340
+const DRAG = 0.1
+/** Below this the ball is at rest. */
+const STOP_SPEED = 3
 const WALL_BOUNCE = 0.6
 const TARGET_BOUNCE = 0.5
 /** A bumper sends the ball away at least this fast, whatever it arrived at. */
@@ -150,16 +145,10 @@ export type GameState = {
   mapSide: MapSide
   /** The shot being lined up. */
   aim: number
-  /** A finger is dragging the aim. */
-  aiming: boolean
-  /**
-   * The swing: which tap is next, how long this stage has run, the power
-   * taken, and the meter: the gauge while taking power, the wobble (-1 to 1)
-   * while lining up the strike.
-   */
-  swing: SwingStage
-  swingT: number
-  meter: number
+  /** The shot being set: a finger pulling back, or space held down; and how hard, 0 to 1. */
+  aiming: 'none' | 'drag' | 'key'
+  /** Seconds space has been held, for the charge. */
+  chargeT: number
   power: number
   /** Where this stroke started, for a splash to send the ball back to. */
   strokeStart: Vec
@@ -195,7 +184,7 @@ export type Snapshot = {
   strokes: number
   par: number
   toPar: number
-  swing: SwingStage
+  aiming: 'none' | 'drag' | 'key'
 }
 
 function loadBest() {
@@ -266,10 +255,8 @@ export function createInitialState(w = 540, h = 720): GameState {
     look: startCam,
     mapSide: 'near',
     aim: 0,
-    aiming: false,
-    swing: 'idle',
-    swingT: 0,
-    meter: 0,
+    aiming: 'none',
+    chargeT: 0,
     power: 0,
     strokeStart: { x: first.tee.x, y: first.tee.y },
     rollTime: 0,
@@ -301,7 +288,7 @@ export function resizeState(state: GameState, w: number, h: number): GameState {
  * longer than the screen: the width fills the screen's short side, and a
  * window `vis` units long shows part of the length. On a landscape screen
  * the hole lies on its side, tee on the left and cup on the right. A band
- * above carries the hole and strokes, one below the swing gauge and cue.
+ * above carries the hole and strokes, one below the cue.
  */
 export function fieldFrame(w: number, h: number, len: number) {
   const top = Math.max(40, h * 0.085)
@@ -349,10 +336,6 @@ export function toField(f: Frame, cam: number, sx: number, sy: number): Vec {
   return { x: (sx - f.x) / f.s, y: cam + (sy - f.y) / f.s }
 }
 
-function angleTo(from: Vec, to: Vec) {
-  return Math.atan2(to.y - from.y, to.x - from.x)
-}
-
 function beginHole(state: GameState, index: number): GameState {
   const hole = COURSE[index]!
   return {
@@ -367,10 +350,8 @@ function beginHole(state: GameState, index: number): GameState {
     look: 0,
     // Straight up the hole, not at the cup: the line is the player's to find.
     aim: UP,
-    aiming: false,
-    swing: 'idle',
-    swingT: 0,
-    meter: 0,
+    aiming: 'none',
+    chargeT: 0,
     power: 0,
     strokeStart: { x: hole.tee.x, y: hole.tee.y },
     rollTime: 0,
@@ -409,46 +390,49 @@ export function jumpToHole(state: GameState, index: number): GameState {
   return beginHole(state, Math.max(0, Math.min(COURSE.length - 1, index)))
 }
 
-/** The gauge: up over half the period, back down over the other half. */
-export function powerAt(swingT: number) {
-  const cycle = (swingT % SWING_PERIOD) / (SWING_PERIOD / 2)
+/** Holding space: the charge runs up over half the time and back down over the other half. */
+export function chargeAt(t: number) {
+  const cycle = (t % (KEY_CHARGE * 2)) / KEY_CHARGE
   return cycle <= 1 ? cycle : 2 - cycle
 }
 
-/** The wobble at a moment: starts at the far end and swings through the line. */
-export function wobbleAt(swingT: number) {
-  return Math.cos((Math.PI * 2 * swingT) / WOBBLE_PERIOD)
+/** A screen-space movement to field units. */
+export function toFieldDelta(f: Frame, dx: number, dy: number): Vec {
+  if (f.rotated) return { x: dy / f.s, y: -dx / f.s }
+  return { x: dx / f.s, y: dy / f.s }
 }
 
-/**
- * The meter as of a moment between frames. A tap lands between two frames;
- * this moves the gauge or the wobble on by that much first, so the strike
- * is taken where the player saw it, not where the last frame left it.
- */
-export function catchUp(state: GameState, dt: number): GameState {
-  if (state.phase !== 'aim' || dt <= 0) return state
-  const swingT = state.swingT + dt
-  if (state.swing === 'power') return { ...state, swingT, meter: powerAt(swingT) }
-  if (state.swing === 'accuracy') return { ...state, swingT, meter: wobbleAt(swingT) }
-  return state
+/** A finger pulling back from the ball: the shot goes the other way, harder the further the pull. */
+export function setDragAim(state: GameState, pullX: number, pullY: number): GameState {
+  if (state.phase !== 'aim' || state.aiming === 'key') return state
+  const len = Math.hypot(pullX, pullY)
+  const power = Math.min(1, len / MAX_DRAG)
+  const aim = len > 0.5 ? Math.atan2(-pullY, -pullX) : state.aim
+  // Setting a shot brings the view back to the ball, wherever the player was looking.
+  const look = state.aiming === 'drag' ? state.look : lookAtBall(state)
+  return { ...state, aiming: 'drag', aim, power, look }
 }
 
-/** A finger on the field: the aim points from the ball to it. Not once the swing has started. */
-export function aimAt(state: GameState, p: Vec): GameState {
-  if (state.phase !== 'aim' || state.swing !== 'idle') return state
-  const d = Math.hypot(p.x - state.ball.x, p.y - state.ball.y)
-  if (d < 3) return { ...state, aiming: true }
-  return { ...state, aiming: true, aim: angleTo(state.ball, p) }
+/** The finger lifts short of a shot, or space is let go early: nothing spent. */
+export function cancelAim(state: GameState): GameState {
+  if (state.phase !== 'aim') return state
+  return { ...state, aiming: 'none', power: 0, chargeT: 0 }
 }
 
-export function endAim(state: GameState): GameState {
-  return state.aiming ? { ...state, aiming: false } : state
+/** Keyboard, each frame: turn the aim, and while space is held run the charge up and down. */
+export function keyAim(state: GameState, turn: number, charging: boolean, dt: number): GameState {
+  if (state.phase !== 'aim' || state.aiming === 'drag') return state
+  const aim = state.aim + turn * KEY_TURN * dt
+  if (!charging) return { ...state, aim, aiming: 'none', power: 0, chargeT: 0 }
+  const starting = state.aiming !== 'key'
+  const chargeT = starting ? 0 : state.chargeT + dt
+  const look = starting ? lookAtBall(state) : state.look
+  return { ...state, aim, aiming: 'key', chargeT, power: chargeAt(chargeT), look }
 }
 
-/** Keyboard: turn the aim, not once the swing has started. */
-export function turnAim(state: GameState, turn: number, dt: number): GameState {
-  if (state.phase !== 'aim' || state.swing !== 'idle' || turn === 0) return state
-  return { ...state, aim: state.aim + turn * KEY_TURN * dt }
+/** The speed that carries a ball `power` of the full distance, against the steady slowing. */
+function launchSpeed(power: number) {
+  return Math.sqrt(2 * DECEL_GREEN * FULL_DISTANCE * power)
 }
 
 /** The window start that puts the ball in the middle of the view. */
@@ -457,16 +441,16 @@ function lookAtBall(state: GameState) {
   return camFor(f, state.ball.y)
 }
 
-/** Looking along the hole before the swing: move the view by `dy` field units. */
+/** Looking along the hole before the shot: move the view by `dy` field units. */
 export function panLook(state: GameState, dy: number): GameState {
-  if (state.phase !== 'aim' || state.swing !== 'idle' || dy === 0) return state
+  if (state.phase !== 'aim' || state.aiming !== 'none' || dy === 0) return state
   const f = fieldFrame(state.stageW, state.stageH, currentHole(state).h)
   return { ...state, look: Math.max(0, Math.min(f.len - f.vis, state.look + dy)) }
 }
 
-/** Looking along the hole before the swing: centre the view on field `y`. */
+/** Looking along the hole before the shot: centre the view on field `y`. */
 export function lookAt(state: GameState, y: number): GameState {
-  if (state.phase !== 'aim' || state.swing !== 'idle') return state
+  if (state.phase !== 'aim' || state.aiming !== 'none') return state
   const f = fieldFrame(state.stageW, state.stageH, currentHole(state).h)
   return { ...state, look: camFor(f, y) }
 }
@@ -497,6 +481,8 @@ export function mapLayout(f: Frame, len: number, side: MapSide = 'near') {
   return { x, y, w, h, k, len }
 }
 
+export type MapLayout = ReturnType<typeof mapLayout>
+
 /** Whether a screen point sits under the map, with a little room around it. */
 export function underMap(m: MapLayout, sx: number, sy: number, room = 14) {
   return sx > m.x - room && sx < m.x + m.w + room && sy > m.y - room && sy < m.y + m.h + room
@@ -510,8 +496,6 @@ function mapSideFor(s: GameState): MapSide {
   return underMap(mapLayout(f, hole.h, 'near'), p.x, p.y) ? 'far' : 'near'
 }
 
-export type MapLayout = ReturnType<typeof mapLayout>
-
 /** Whether a screen point is on the map, with a little grace around it. */
 export function onMap(m: MapLayout, sx: number, sy: number) {
   const grace = 8
@@ -523,56 +507,17 @@ export function mapFieldY(m: MapLayout, f: Frame, sx: number, sy: number) {
   return f.rotated ? m.len - (sx - m.x) / m.k : (sy - m.y) / m.k
 }
 
-/** Tap: start the gauge; take the power; then hit, on the line or off it. */
-export function swing(state: GameState): GameState {
-  if (state.phase !== 'aim') return state
-  if (state.swing === 'idle') {
-    sfx('tap', -2)
-    // The swing brings the view back to the ball, wherever the player was looking.
-    return { ...state, swing: 'power', swingT: 0, meter: 0, power: 0, aiming: false, look: lookAtBall(state) }
-  }
-  if (state.swing === 'power') {
-    sfx('tap', 0)
-    // The wobble starts at the far end, so a quick double tap is no free pure strike.
-    return { ...state, swing: 'accuracy', swingT: 0, power: state.meter, meter: 1 }
-  }
-  return strike(state)
-}
-
-/** Changed your mind mid-swing: back to aiming, nothing spent. */
-export function cancelSwing(state: GameState): GameState {
-  if (state.phase !== 'aim' || state.swing === 'idle') return state
-  sfx('tap', -5)
-  return { ...state, swing: 'idle', swingT: 0, meter: 0, power: 0 }
-}
-
-/** The wobble, as an angle off the line, for the arrow and the strike. */
-export function wobbleOf(state: GameState) {
-  return state.swing === 'accuracy' ? state.meter * MAX_SHANK : 0
-}
-
-/** The third tap: where the arrow is against the line decides how straight the shot goes. */
-function strike(state: GameState): GameState {
-  const pure = Math.abs(state.meter) <= SWEET
-  const shank = pure ? 0 : wobbleOf(state)
-  const text = pure ? 'PURE' : shank < 0 ? 'HOOK' : 'SLICE'
-  if (pure) sfx('good', 4)
-  const floaters = [...state.floaters, { x: state.ball.x, y: state.ball.y - 4, text, life: 0.9 }]
-  return shoot({ ...state, floaters }, shank)
-}
-
-/** The shot happens with the aim and power lined up, plus whatever the strike put on it. */
+/** Let go: the shot happens with the aim and power lined up. Too little pull is a change of mind. */
 export function shoot(state: GameState, shank = 0): GameState {
   if (state.phase !== 'aim') return state
-  const power = MIN_POWER + (1 - MIN_POWER) * Math.max(0, Math.min(1, state.power))
-  const speed = FULL_DISTANCE * FRICTION_GREEN * power
+  if (state.power < MIN_POWER) return cancelAim(state)
+  const speed = launchSpeed(Math.min(1, state.power))
   const angle = state.aim + shank
   sfx('whoosh')
   return {
     ...state,
     phase: 'roll',
-    aiming: false,
-    swing: 'idle',
+    aiming: 'none',
     t: 0,
     rollTime: 0,
     strokes: state.strokes + 1,
@@ -723,10 +668,12 @@ function step(
   ball.y += ball.vy * dt
 
   const sand = inAny(hole.sand, ball)
-  const k = sand ? FRICTION_SAND : FRICTION_GREEN
-  const decay = Math.exp(-k * dt)
-  ball.vx *= decay
-  ball.vy *= decay
+  const speed0 = Math.hypot(ball.vx, ball.vy)
+  if (speed0 > 0) {
+    const slowed = Math.max(0, speed0 - ((sand ? DECEL_SAND : DECEL_GREEN) + speed0 * DRAG) * dt)
+    ball.vx *= slowed / speed0
+    ball.vy *= slowed / speed0
+  }
 
   const out: StepOut = {
     wall: false,
@@ -889,8 +836,7 @@ function finishHole(state: GameState): GameState {
     popup: { text: label, sub: parts.join(' · '), life: 1.7 },
     flash: 0.22,
     ball: { ...state.ball, vx: 0, vy: 0 },
-    aiming: false,
-    swing: 'idle',
+    aiming: 'none',
     power: 0,
   }
 }
@@ -902,8 +848,7 @@ function splash(state: GameState): GameState {
     ...state,
     strokes: state.strokes + 1,
     ball: { x: state.strokeStart.x, y: state.strokeStart.y, vx: 0, vy: 0 },
-    aiming: false,
-    swing: 'idle',
+    aiming: 'none',
     power: 0,
     inSand: false,
     onPad: false,
@@ -926,10 +871,8 @@ function readyToAim(s: GameState): GameState {
     look: lookAtBall(s),
     mapSide: mapSideFor(s),
     aim: UP,
-    aiming: false,
-    swing: 'idle',
-    swingT: 0,
-    meter: 0,
+    aiming: 'none',
+    chargeT: 0,
     power: 0,
   }
 }
@@ -967,13 +910,6 @@ export function tick(state: GameState, dt: number): GameState {
       return s
 
     case 'aim': {
-      if (s.swing === 'power') {
-        s.swingT += dt
-        s.meter = powerAt(s.swingT)
-      } else if (s.swing === 'accuracy') {
-        s.swingT += dt
-        s.meter = wobbleAt(s.swingT)
-      }
       // A windmill blade sweeping through a resting ball nudges it along.
       const hole = currentHole(s)
       if (!hole.spinners.length) return s
@@ -1236,7 +1172,7 @@ export function toSnapshot(s: GameState): Snapshot {
     strokes: s.strokes,
     par: hole.par,
     toPar: played - parPlayed,
-    swing: s.swing,
+    aiming: s.aiming,
   }
 }
 

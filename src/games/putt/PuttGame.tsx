@@ -8,36 +8,33 @@ import { usePersonalBest } from '../../hooks/usePersonalBest'
 import { getPersonalBest } from '../../lib/personalBest'
 import { useTournamentPlay } from '../../tournaments/TournamentPlayContext'
 import {
-  aimAt,
-  cancelSwing,
-  catchUp,
+  cancelAim,
   COURSE,
   createInitialState,
   currentHole,
-  endAim,
   fieldFrame,
   jumpToHole,
+  keyAim,
   lookAt,
   mapFieldY,
   mapLayout,
   onMap,
   panLook,
   resizeState,
+  setDragAim,
   shoot,
   startGame,
-  swing,
   tick,
-  toField,
+  toFieldDelta,
   toSnapshot,
-  turnAim,
   type GameState,
   type Snapshot,
 } from './game'
 import { renderGame } from './render'
 
 const IN_RUN = new Set(['intro', 'aim', 'roll', 'splash', 'sunk'])
-/** A press that moves less than this is a tap. */
-const TAP_SLOP = 8
+/** A press that moves less than this is a tap, not a pull. */
+const TAP_SLOP = 6
 /** Holding up or down looks along the hole this fast, in field units a second. */
 const KEY_PAN = 180
 
@@ -48,11 +45,12 @@ function toParLabel(toPar: number) {
 }
 
 /**
- * The field fills the screen, portrait or landscape. Drag anywhere to aim:
- * the line points from the ball to the finger. Then three taps: one starts
- * the swing gauge, one takes the power, and one has to land on the line as
- * the gauge comes back. Keyboard: left and right turn the aim, Space is the
- * tap. A plain tap starts a round from the title or the score card.
+ * The field fills the screen, portrait or landscape. Press anywhere and
+ * pull back: the ball goes the other way, harder the further the pull, and
+ * letting go shoots. A pull that comes back to nothing is a change of mind.
+ * Keyboard: left and right turn the aim, hold Space to charge, release to
+ * shoot, Escape to think again. A press on the map looks along the hole. A
+ * plain tap starts a round from the title or the score card.
  */
 export function PuttGame() {
   const tournament = useTournamentPlay()
@@ -60,16 +58,14 @@ export function PuttGame() {
   const stateRef = useRef<GameState>(createInitialState())
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const sizeRef = useRef({ w: 540, h: 720 })
-  /** A press on the field lines up a shot; a press on the map looks along the hole. */
-  const pressRef = useRef<{ id: number; x: number; y: number; moved: boolean; kind: 'aim' | 'look' } | null>(null)
-  const keysRef = useRef({ left: false, right: false, up: false, down: false })
+  /** A press on the field pulls a shot back; a press on the map looks along the hole. */
+  const pressRef = useRef<{ id: number; x: number; y: number; moved: boolean; kind: 'pull' | 'look' } | null>(null)
+  const keysRef = useRef({ left: false, right: false, up: false, down: false, charge: false })
   const [ui, setUi] = useState<Snapshot>(() => toSnapshot(stateRef.current))
   const [saveOpen, setSaveOpen] = useState(false)
   const offeredScore = useRef<number | null>(null)
   const previousBestRef = useRef(getPersonalBest('putt'))
   const startGrace = useRef(0)
-  /** When the last frame ran, so a tap can be placed between frames. */
-  const frameAtRef = useRef(performance.now())
 
   useEffect(() => {
     let raf = 0
@@ -79,7 +75,6 @@ export function PuttGame() {
     const loop = (now: number) => {
       const dt = Math.min(0.033, (now - last) / 1000)
       last = now
-      frameAtRef.current = now
 
       const canvas = canvasRef.current
       const parent = canvas?.parentElement
@@ -92,7 +87,9 @@ export function PuttGame() {
 
       const keys = keysRef.current
       const turn = (keys.right ? 1 : 0) - (keys.left ? 1 : 0)
-      if (turn !== 0) stateRef.current = turnAim(stateRef.current, turn, dt)
+      if (turn !== 0 || keys.charge || stateRef.current.aiming === 'key') {
+        stateRef.current = keyAim(stateRef.current, turn, keys.charge, dt)
+      }
       // Up looks toward the cup, down back toward the tee.
       const pan = (keys.down ? 1 : 0) - (keys.up ? 1 : 0)
       if (pan !== 0) stateRef.current = panLook(stateRef.current, pan * KEY_PAN * dt)
@@ -138,7 +135,7 @@ export function PuttGame() {
     w.__puttShoot = (angle, power) => {
       const s = stateRef.current
       if (s.phase !== 'aim') return
-      stateRef.current = shoot({ ...s, aim: angle, power, swing: 'idle' }, 0)
+      stateRef.current = shoot({ ...s, aim: angle, power, aiming: 'drag' })
     }
     w.__puttJump = (index) => {
       stateRef.current = jumpToHole(stateRef.current, index)
@@ -151,18 +148,6 @@ export function PuttGame() {
       delete w.__puttCourse
     }
   }, [])
-
-  /** A tap that counts right now: the power or the strike, taken as of this instant. */
-  const tapNow = () => {
-    const dt = Math.min(0.06, (performance.now() - frameAtRef.current) / 1000)
-    stateRef.current = swing(catchUp(stateRef.current, dt))
-    setUi(toSnapshot(stateRef.current))
-  }
-
-  const cancel = () => {
-    stateRef.current = cancelSwing(stateRef.current)
-    setUi(toSnapshot(stateRef.current))
-  }
 
   const restart = () => {
     setSaveOpen(false)
@@ -184,21 +169,14 @@ export function PuttGame() {
       restart()
       return
     }
-    if (s.phase !== 'aim') return
-    // Once the swing is under way a press is the tap, on the press itself: waiting for the
-    // release would put the strike a click's length late, and that is a miss.
-    if (s.swing !== 'idle') {
-      pressRef.current = null
-      tapNow()
-      return
-    }
+    if (s.phase !== 'aim' || s.aiming === 'key') return
     const rect = e.currentTarget.getBoundingClientRect()
     const x = e.clientX - rect.left
     const y = e.clientY - rect.top
-    // On the map, the press looks along the hole instead of lining up a shot.
+    // On the map, the press looks along the hole instead of pulling a shot.
     const f = fieldFrame(rect.width, rect.height, currentHole(s).h)
     const m = mapLayout(f, currentHole(s).h, s.mapSide)
-    const kind = onMap(m, x, y) ? 'look' : 'aim'
+    const kind = onMap(m, x, y) ? 'look' : 'pull'
     if (kind === 'look') stateRef.current = lookAt(s, mapFieldY(m, f, x, y))
     pressRef.current = { id: e.pointerId, x, y, moved: false, kind }
     try {
@@ -220,9 +198,12 @@ export function PuttGame() {
       stateRef.current = lookAt(s, mapFieldY(mapLayout(f, currentHole(s).h, s.mapSide), f, x, y))
       return
     }
-    if (!press.moved && Math.hypot(x - press.x, y - press.y) < TAP_SLOP) return
+    const dx = x - press.x
+    const dy = y - press.y
+    if (!press.moved && Math.hypot(dx, dy) < TAP_SLOP) return
     press.moved = true
-    stateRef.current = aimAt(s, toField(f, s.cam, x, y))
+    const pull = toFieldDelta(f, dx, dy)
+    stateRef.current = setDragAim(s, pull.x, pull.y)
   }
 
   const onPointerUp = (e: ReactPointerEvent<HTMLElement>) => {
@@ -230,14 +211,15 @@ export function PuttGame() {
     if (!press || press.id !== e.pointerId) return
     pressRef.current = null
     if (press.kind === 'look') return
-    stateRef.current = press.moved ? endAim(stateRef.current) : swing(stateRef.current)
+    // Letting go shoots; a pull that never got going, or came back to the ball, does not.
+    stateRef.current = press.moved ? shoot(stateRef.current) : cancelAim(stateRef.current)
     setUi(toSnapshot(stateRef.current))
   }
 
   /** The wheel looks along the hole: down the screen in portrait, along it when the hole lies on its side. */
   const onWheel = (e: ReactWheelEvent<HTMLElement>) => {
     const s = stateRef.current
-    if (s.phase !== 'aim' || s.swing !== 'idle') return
+    if (s.phase !== 'aim' || s.aiming !== 'none') return
     const rect = e.currentTarget.getBoundingClientRect()
     const f = fieldFrame(rect.width, rect.height, currentHole(s).h)
     const px = f.rotated ? -(e.deltaY + e.deltaX) : e.deltaY
@@ -253,9 +235,10 @@ export function PuttGame() {
       if (e.code === 'ArrowUp') keysRef.current.up = true
       if (e.code === 'ArrowDown') keysRef.current.down = true
       if (e.code.startsWith('Arrow')) e.preventDefault()
-      if (e.code === 'Escape' && s.phase === 'aim' && s.swing !== 'idle') {
+      if (e.code === 'Escape' && s.phase === 'aim' && s.aiming === 'key') {
         e.preventDefault()
-        cancel()
+        keysRef.current.charge = false
+        stateRef.current = cancelAim(s)
         return
       }
       if (e.code === 'Space' || e.code === 'Enter') {
@@ -265,7 +248,7 @@ export function PuttGame() {
           if (performance.now() >= startGrace.current) restart()
           return
         }
-        if (s.phase === 'aim') tapNow()
+        if (s.phase === 'aim' && s.aiming !== 'drag') keysRef.current.charge = true
       }
     }
     const onUp = (e: KeyboardEvent) => {
@@ -273,6 +256,14 @@ export function PuttGame() {
       if (e.code === 'ArrowRight') keysRef.current.right = false
       if (e.code === 'ArrowUp') keysRef.current.up = false
       if (e.code === 'ArrowDown') keysRef.current.down = false
+      if ((e.code === 'Space' || e.code === 'Enter') && keysRef.current.charge) {
+        keysRef.current.charge = false
+        const s = stateRef.current
+        if (s.phase === 'aim' && s.aiming === 'key') {
+          stateRef.current = shoot(s)
+          setUi(toSnapshot(stateRef.current))
+        }
+      }
     }
     window.addEventListener('keydown', onDown)
     window.addEventListener('keyup', onUp)
@@ -303,20 +294,6 @@ export function PuttGame() {
                 {ui.score}
               </PlayReadoutScore>
             </PlayReadout>
-            {ui.phase === 'aim' && ui.swing !== 'idle' && (
-              <button
-                type="button"
-                className="putt__cancel"
-                onPointerDown={(e) => {
-                  // Not a swing tap: this press is the way out of the swing.
-                  e.stopPropagation()
-                  e.preventDefault()
-                  cancel()
-                }}
-              >
-                Cancel
-              </button>
-            )}
           </div>
         </GameStage>
         <div className="putt__overlay">

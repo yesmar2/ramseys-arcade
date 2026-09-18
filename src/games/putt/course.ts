@@ -198,9 +198,9 @@ export const COURSE: Hole[] = [
    * narrow bridge over the lake — roll off the side and it is a splash,
    * back to where you shot from. Right is shorter and guarded: a thin
    * corridor with a windmill across it. Both come out on the upper plaza,
-   * where a bowl pulls the ball to a pipe in its middle that drops it onto
-   * the green from the side — the last hill is for the ball that misses the
-   * bowl. The green is a plateau with a pond below the cup and sand behind
+   * with a bowl at its near side: roll into it and it pulls the ball to a
+   * pipe that drops it onto the green from the side. Or take the last hill
+   * straight — a soft shot rolls back down to the plaza. The green is a plateau with a pond below the cup and sand behind
    * it, and the hill in front means a soft shot rolls back down.
    *
    * There is also a tunnel. Its mouth is a seven-unit hole in the channel
@@ -222,7 +222,7 @@ export const COURSE: Hole[] = [
       disc(32, 428, 26),
       // The long way, left.
       capsule(18, 428, 18, 330, 12),
-      rect(4, 250, 56, 68),
+      rect(4, 266, 56, 52),
       capsule(18, 332, 18, 238, 6),
       // The guarded way, right.
       capsule(50, 420, 74, 396, 9),
@@ -236,14 +236,14 @@ export const COURSE: Hole[] = [
       capsule(50, 228, 50, 96, 14),
       disc(50, 72, 30),
     ],
-    water: [rect(4, 250, 56, 68), disc(64, 92, 7)],
+    water: [rect(4, 266, 56, 52), disc(64, 92, 7)],
     bridges: [capsule(18, 332, 18, 238, 6)],
     slopes: [
-      hill(capsule(18, 400, 18, 344, 12), 0, 40),
-      hill(capsule(50, 200, 50, 130, 14), 0, 45),
-      bowl(disc(50, 228, 16), 160),
+      hill(capsule(18, 400, 18, 344, 12), 0, 70),
+      hill(capsule(50, 190, 50, 150, 12), 0, 70),
+      bowl(disc(50, 252, 12), 160),
     ],
-    portals: [pipe(50, 228, 76, 74, LEFT)],
+    portals: [pipe(50, 252, 76, 74, LEFT)],
     spinners: [mill(74, 330, 12, 2.2)],
     bumpers: [pop(30, 208, 4.5), pop(70, 208, 4.5)],
     sand: [disc(50, 46, 8)],
