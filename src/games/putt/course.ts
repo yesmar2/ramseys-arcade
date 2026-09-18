@@ -212,31 +212,45 @@ function hole(spec: Spec): Hole {
 
 export const COURSE: Hole[] = [
   /*
-   * The Horseshoe. A clean opener that fits on one screen: up the left
-   * leg, round the crown in one half-circle, and down the right leg, where
-   * the cup sits a little off the rail. The outer bank carries a ball all
-   * the way round, and a lane at the crown pays for riding it; cutting the
-   * corner runs through sand. A full pull that rides the bank finishes by
-   * the cup, and the ace is the line that peels off the rail at the right
-   * speed. An overshoot runs on down the leg to a bumper that pops it back.
+   * Orbit. Long, and not the usual mini golf. Up the left leg, through an
+   * S of two bends — sand inside the first, a lane on the outside of each
+   * — and up the right leg, where a rover roams the corridor. Then a ring:
+   * the leg feeds the outer bank, and the ball can ride it like a pinball
+   * orbit. Sand on the inside keeps you on the bank, and lanes at the top
+   * pay for it. Off the top of the ring a spur runs up past a windmill to
+   * the green; ride the ring all the way round instead and a pipe at its
+   * foot lifts you onto the green, low on its left. The green is a plaza
+   * with a pond in the middle and a narrow bridge straight over it, a
+   * bumper either side, a bank of targets on the right, and a cup that
+   * slides across the line the bridge lands on.
    */
   hole({
-    name: 'The Horseshoe',
-    par: 3,
-    h: 160,
-    tee: { x: 26, y: 138 },
-    cup: { x: 88, y: 104 },
+    name: 'Orbit',
+    par: 7,
+    h: 616,
+    tee: { x: 26, y: 600 },
+    cup: { x: 46, y: 40 },
+    cupPath: { to: { x: 66, y: 40 }, period: 6 },
     green: [
-      disc(26, 138, 15),
-      capsule(26, 138, 26, 76, 13),
-      arc(56, 76, 30, Math.PI, Math.PI * 2, 13),
-      capsule(86, 76, 86, 138, 13),
-      disc(86, 138, 15),
+      disc(26, 600, 15),
+      capsule(26, 600, 26, 460, 13),
+      arc(56, 460, 30, Math.PI, Math.PI * 1.5, 13),
+      arc(56, 400, 30, 0, Math.PI / 2, 13),
+      capsule(86, 400, 86, 225, 13),
+      arc(56, 225, 30, 0, Math.PI * 2, 13),
+      capsule(56, 195, 56, 78, 13),
+      disc(56, 46, 32),
     ],
-    sand: [disc(56, 53, 6)],
-    lanes: [lane(56, 37)],
-    bumpers: [pop(86, 140, 4.5)],
-    marks: [mark(26, 108, UP), mark(56, 40, RIGHT)],
+    water: [disc(56, 56, 9)],
+    bridges: [capsule(56, 68, 56, 44, 4)],
+    portals: [pipe(56, 264, 32, 60, UP)],
+    spinners: [mill(56, 150, 22, 2.0)],
+    sand: [disc(40, 444, 6), disc(56, 202, 5)],
+    bumpers: [pop(44, 68, 4), pop(68, 68, 4)],
+    targets: bank(82, 34, 0, 8),
+    lanes: [lane(28, 432), lane(84, 428), lane(84, 197), lane(28, 197), lane(56, 110)],
+    rovers: [rover(86, 320, 2.8, 60, 1.0, box(73, 260, 26, 120))],
+    marks: [mark(26, 560, UP), mark(86, 250, UP), mark(56, 180, UP)],
   }),
   // Four levels, the gap swapping sides each time. A windmill in the second, water in the fourth.
   hole({
