@@ -80,7 +80,11 @@ export function ScoreGuide({ how, rows }: ScoreGuideProps) {
                   ×
                 </button>
               </div>
-              <HowToPlayContent how={how} rows={rows} listClassName="patriot__info-list" />
+              {/* Scrolls on its own so a long rulebook cannot push the
+                  close button, or its own last line, off the screen. */}
+              <div className="patriot__info-body">
+                <HowToPlayContent how={how} rows={rows} listClassName="patriot__info-list" />
+              </div>
             </div>
           </div>,
           document.body,

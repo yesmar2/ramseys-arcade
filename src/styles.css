@@ -3686,6 +3686,18 @@ a.game-hud__board {
   pointer-events: auto;
 }
 
+/*
+ * The rules scroll, the frame does not. Some games explain themselves at
+ * length, and the panel is capped to the viewport — without this the tail of
+ * a long explanation simply ran off the bottom of the screen.
+ */
+.patriot__info-body {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
 .patriot__info-head {
   display: flex;
   align-items: center;
