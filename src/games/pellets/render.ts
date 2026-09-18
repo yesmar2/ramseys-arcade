@@ -3,6 +3,8 @@ import { streakMult, type GameState, type Ghost, type GhostKind } from './game'
 
 /** Gold crumbs — same family as Snake food. */
 const ACCENT = 38
+/** The player in the game's own orange, the colour it wears on the shelf. */
+const PLAYER = 24
 
 type Skin = {
   dark: boolean
@@ -405,8 +407,8 @@ function drawPlayer(
   const surging = state.surgeTime > 0
   const lineW = Math.max(1.2, cell * 0.07)
   const r = cell * (surging ? 0.42 : 0.38)
-  const fill = hsla(ACCENT, 58, 58, softFillAlpha(surging ? 0.34 : 0.22))
-  const stroke = hsla(ACCENT, 58, skin.dark ? 58 : 42, 0.95)
+  const fill = hsla(PLAYER, 58, 58, softFillAlpha(surging ? 0.34 : 0.22))
+  const stroke = hsla(PLAYER, 58, skin.dark ? 58 : 42, 0.95)
   const flat = isFlatTheme()
 
   /**

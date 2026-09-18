@@ -8,9 +8,11 @@ import {
   type Rock,
   type Saucer,
 } from './game'
+import { getGame } from '../../data/games'
 import { inkColor, isFlatTheme, playfieldColor, softFillAlpha, strokeOutlined } from '../../lib/theme'
 
-const ACCENT = '#2eb87a'
+/** The ship wears the game's colour from the shelf, so the tile and the play agree. */
+const ACCENT = getGame('asteroids')?.accent ?? '#6b74e8'
 const ACCENT_SKY = '#4aa8e8'
 const ACCENT_GOLD = '#f5b942'
 const SAUCER = '#c45c5c'

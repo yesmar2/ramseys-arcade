@@ -100,11 +100,12 @@ function PatriotThumb() {
 
 function SnakeThumb() {
   const cells = [
-    { cx: 8, cy: 20, hue: 208 },
-    { cx: 14.5, cy: 20, hue: 198 },
-    { cx: 21, cy: 20, hue: 188 },
-    { cx: 21, cy: 13.5, hue: 178 },
-    { cx: 27.5, cy: 13.5, hue: 168 },
+    // Lime, tail to head, like the tile it sits on.
+    { cx: 8, cy: 20, hue: 66 },
+    { cx: 14.5, cy: 20, hue: 72 },
+    { cx: 21, cy: 20, hue: 78 },
+    { cx: 21, cy: 13.5, hue: 84 },
+    { cx: 27.5, cy: 13.5, hue: 90 },
   ]
 
   return (
@@ -163,15 +164,16 @@ function StackerThumb() {
   const baseCy = 21
   const cx = 16
 
-  // Shifted up so the iso stack sits nearer the frame’s vertical center.
+  // Shifted up so the iso stack sits nearer the frame's vertical center. Three
+  // blues, sky to violet, so the stack and its sky tile read as one family.
   return (
     <g transform="translate(0, -1.5)">
-      <IsoSlab cx={cx} cy={baseCy} w={14} d={14} h={3.2} hue={HUE.teal} strokeWidth={0.75} />
+      <IsoSlab cx={cx} cy={baseCy} w={14} d={14} h={3.2} hue={205} strokeWidth={0.75} />
       <g transform="translate(0, -3.4)">
-        <IsoSlab cx={cx} cy={baseCy} w={11} d={11} h={3.2} hue={HUE.sky} strokeWidth={0.75} />
+        <IsoSlab cx={cx} cy={baseCy} w={11} d={11} h={3.2} hue={232} strokeWidth={0.75} />
       </g>
       <g transform="translate(0, -6.8)">
-        <IsoSlab cx={cx} cy={baseCy} w={8} d={8} h={3.2} hue={HUE.violet} strokeWidth={0.75} />
+        <IsoSlab cx={cx} cy={baseCy} w={8} d={8} h={3.2} hue={262} strokeWidth={0.75} />
       </g>
     </g>
   )
