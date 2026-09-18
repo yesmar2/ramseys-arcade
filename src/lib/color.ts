@@ -81,3 +81,35 @@ export function withAlpha(color: string, a: number): string {
   const { r, g, b } = parseColor(color)
   return `rgba(${r}, ${g}, ${b}, ${Math.max(0, Math.min(1, a))})`
 }
+
+/* ---------- readable text on a coloured fill ---------- */
+
+function toLinear(channel: number): number {
+  const c = channel / 255
+  return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4
+}
+
+/** WCAG relative luminance, 0–1. Not the same thing as perceived brightness. */
+function relativeLuminance(color: string): number {
+  const { r, g, b } = parseColor(color)
+  return 0.2126 * toLinear(r) + 0.7152 * toLinear(g) + 0.0722 * toLinear(b)
+}
+
+/** WCAG contrast ratio between two colours, 1–21. */
+export function contrastRatio(a: string, b: string): number {
+  const la = relativeLuminance(a)
+  const lb = relativeLuminance(b)
+  const [hi, lo] = la > lb ? [la, lb] : [lb, la]
+  return (hi + 0.05) / (lo + 0.05)
+}
+
+/**
+ * Text that can be read on a given fill.
+ *
+ * Game accents run from deep violet to butter yellow, so a button painted in
+ * one cannot always take white — on the yellows it comes out at under 2:1.
+ * Whichever of the two inks holds up better wins.
+ */
+export function inkOn(background: string, dark = '#1a2b3c', light = '#ffffff'): string {
+  return contrastRatio(background, dark) >= contrastRatio(background, light) ? dark : light
+}

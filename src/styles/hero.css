@@ -334,7 +334,8 @@
   border: 0;
   border-radius: 999px;
   background: var(--hero-accent);
-  color: #fff;
+  /* Set beside the accent; white only where white can be read. */
+  color: var(--hero-ink, #fff);
   font-family: var(--font-display);
   font-size: 1rem;
   font-weight: 750;

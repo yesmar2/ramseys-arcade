@@ -12,6 +12,7 @@ import {
 import { resolveGameAccent } from '../lib/theme'
 import { GameThumbArt } from './GameThumbArt'
 import { PodiumMedal, medalKind } from './PodiumMedal'
+import { inkOn } from '../lib/color'
 
 type BoardsGameIndexProps = {
   games: GameBoardPreview[]
@@ -66,7 +67,7 @@ export function BoardsGameIndex({
             <a
               className="evc evc--quiet"
               href={top.length ? gameBoardHref(slug, period) : gamePlayHref(slug)}
-              style={{ '--event-accent': accent } as CSSProperties}
+              style={{ '--event-accent': accent, '--event-ink': inkOn(accent) } as CSSProperties}
             >
               <span className="ev-art ev-art--solo evc__art" aria-hidden="true">
                 <GameThumbArt slug={slug} accent={accent} />

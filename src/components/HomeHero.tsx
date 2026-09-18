@@ -14,6 +14,7 @@ import {
 import { usePlayerName } from '../hooks/usePlayerName'
 import { EventArt } from './EventCard'
 import { resolveGameAccent } from '../lib/theme'
+import { inkOn } from '../lib/color'
 
 type HeroScores = {
   best: number
@@ -83,7 +84,7 @@ export function HomeHero() {
   return (
     <section
       className="hero home-hero"
-      style={{ '--hero-accent': accent, '--thumb-accent': accent } as CSSProperties}
+      style={{ '--hero-accent': accent, '--hero-ink': inkOn(accent), '--thumb-accent': accent } as CSSProperties}
       aria-label="Play"
     >
       <div className="hero__main">

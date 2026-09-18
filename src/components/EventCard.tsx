@@ -16,6 +16,7 @@ import {
 import { EventCountdown } from './EventCountdown'
 import { GameThumbArt } from './GameThumbArt'
 import { medalKind, PodiumMedal } from './PodiumMedal'
+import { inkOn } from '../lib/color'
 
 export function eventAccent(games: string[]) {
   const slug = games[0] ?? ''
@@ -285,7 +286,7 @@ export function EventLiveCard({
     <a
       className={`evc${filling ? ' evc--filling' : ''}`}
       href={href ?? tournamentHref(t.id)}
-      style={{ '--event-accent': accent } as CSSProperties}
+      style={{ '--event-accent': accent, '--event-ink': inkOn(accent) } as CSSProperties}
     >
       <EventArt games={t.games} className="evc__art" />
       <span className="evc__body">
@@ -365,7 +366,7 @@ export function EventResultRow({ t, href }: { t: TournamentSummary; href?: strin
     <a
       className="evr"
       href={href ?? tournamentHref(t.id)}
-      style={{ '--event-accent': accent } as CSSProperties}
+      style={{ '--event-accent': accent, '--event-ink': inkOn(accent) } as CSSProperties}
     >
       <EventArt games={t.games} className="evr__art" />
       <span className="evr__main">

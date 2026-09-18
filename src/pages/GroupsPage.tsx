@@ -11,6 +11,7 @@ import { useAuth } from '../hooks/useAuth'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { APP_NAME } from '../lib/brand'
 import { ApiError, normalizePlayerName } from '../lib/leaderboard'
+import { inkOn } from '../lib/color'
 import {
   appendGroupQuery,
   createGroup,
@@ -121,7 +122,7 @@ function GroupsHero({
     <section
       className="hero"
       aria-label={title}
-      style={accent ? ({ '--hero-accent': accent } as CSSProperties) : undefined}
+      style={accent ? ({ '--hero-accent': accent, '--hero-ink': inkOn(accent) } as CSSProperties) : undefined}
     >
       {back || tools ? (
         <div className="hero__bar">
@@ -592,7 +593,11 @@ export function GroupDetailPage({ id, invite }: { id: string; invite?: string })
     }
   }
 
-  const style = { '--event-accent': accent, '--board-accent': accent } as CSSProperties
+  const style = {
+    '--event-accent': accent,
+    '--event-ink': inkOn(accent),
+    '--board-accent': accent,
+  } as CSSProperties
 
   if (loading) {
     return (

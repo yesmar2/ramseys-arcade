@@ -35,6 +35,7 @@ import {
 import { APP_NAME } from '../lib/brand'
 import { ApiError, getLastPlayerName, normalizePlayerName } from '../lib/leaderboard'
 import { resolveGameAccent } from '../lib/theme'
+import { inkOn } from '../lib/color'
 import {
   attemptsPerGameMax,
   bracketGameForRound,
@@ -1299,6 +1300,9 @@ export function TournamentDetailPage({ id, invite }: { id: string; invite?: stri
           style={
             {
               '--event-accent': accent,
+              '--event-ink': inkOn(accent),
+              '--hero-accent': accent,
+              '--hero-ink': inkOn(accent),
               '--board-accent': accent,
               '--tile-accent': accent,
               '--thumb-accent': accent,

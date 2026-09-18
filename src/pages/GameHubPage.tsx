@@ -34,6 +34,7 @@ import { groupBoardEmptyTitle, useActiveGroup } from '../lib/groups'
 import { formatLeaderboardScore } from '../lib/leaderboardFormat'
 import { gameHasRecords } from '../lib/records'
 import { resolveGameAccent, THEME_EVENT } from '../lib/theme'
+import { inkOn } from '../lib/color'
 import {
   getLeaderboard,
   LEADERBOARD_GAMES,
@@ -158,7 +159,9 @@ export function GameHubPage({ slug, board: boardFromRoute }: GameHubPageProps) {
         style={
           {
             '--event-accent': accent,
+            '--event-ink': inkOn(accent),
             '--hero-accent': accent,
+            '--hero-ink': inkOn(accent),
             '--board-accent': accent,
             '--period-accent': accent,
             '--tile-accent': accent,
