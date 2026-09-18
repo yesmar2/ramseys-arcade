@@ -545,8 +545,8 @@
 
 .home-banner__art .inline-thumb .game-thumb__svg {
   position: relative;
-  width: 66%;
-  height: 66%;
+  width: 80%;
+  height: 80%;
   filter: drop-shadow(0 10px 24px rgba(0, 0, 0, 0.35));
 }
 
@@ -804,19 +804,19 @@ html[data-theme="dark"] .wall-tile {
   outline-offset: 2px;
 }
 
-/* The thumb sits in the tile above the name strip: a mark in the game's own colour. */
+/* The thumb sits in the tile above the name strip: a mark in the game's own colour, run big. */
 .wall-tile__art {
   position: absolute;
-  inset: 0 0 1.6rem;
+  inset: 0 0 1.3rem;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0.6rem;
+  padding: 0.2rem;
 }
 
 .wall-tile__art .inline-thumb {
   width: auto;
-  height: 62%;
+  height: 100%;
   aspect-ratio: 1;
   overflow: visible;
   border-radius: 0;
@@ -828,7 +828,7 @@ html[data-theme="dark"] .wall-tile {
 }
 
 .wall__cell--big .wall-tile__art .inline-thumb {
-  height: 50%;
+  height: 88%;
 }
 
 .wall-tile__art .inline-thumb .game-thumb__svg {
