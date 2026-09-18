@@ -16,6 +16,13 @@ export type Shape =
   | { kind: 'capsule'; a: Vec; b: Vec; r: number }
   /** A curved stroke: the arc of radius R about (x, y) from angle a0 to a1, `r` thick either side. */
   | { kind: 'arc'; x: number; y: number; R: number; a0: number; a1: number; r: number }
+  /**
+   * A spiral stroke: the curve about (x, y) whose radius is r0 at angle t0
+   * and grows by `pitch` every turn out to angle t1, `r` thick either side.
+   * Angles grow clockwise on screen, so a spiral that winds in as the angle
+   * falls is walked from t1 down to t0.
+   */
+  | { kind: 'spiral'; x: number; y: number; r0: number; pitch: number; t0: number; t1: number; r: number }
   | { kind: 'poly'; pts: Vec[] }
 
 export const rect = (x: number, y: number, w: number, h: number): Shape => ({ kind: 'rect', x, y, w, h })
@@ -35,7 +42,23 @@ export const arc = (x: number, y: number, R: number, a0: number, a1: number, r: 
   a1,
   r,
 })
+export const spiral = (x: number, y: number, r0: number, pitch: number, t0: number, t1: number, r: number): Shape => ({
+  kind: 'spiral',
+  x,
+  y,
+  r0,
+  pitch,
+  t0,
+  t1,
+  r,
+})
 export const poly = (...pts: [number, number][]): Shape => ({ kind: 'poly', pts: pts.map(([x, y]) => ({ x, y })) })
+
+/** Where a spiral's curve is at an angle. */
+export function onSpiral(s: Extract<Shape, { kind: 'spiral' }>, th: number): Vec {
+  const R = s.r0 + (s.pitch / (Math.PI * 2)) * (th - s.t0)
+  return { x: s.x + Math.cos(th) * R, y: s.y + Math.sin(th) * R }
+}
 
 /** A point on an arc, for placing things along a curve. */
 export function onArc(x: number, y: number, R: number, angle: number): Vec {
@@ -74,6 +97,27 @@ export function sdf(s: Shape, p: Vec): number {
       const e1 = onArc(s.x, s.y, s.R, s.a1)
       return Math.min(Math.hypot(p.x - e0.x, p.y - e0.y), Math.hypot(p.x - e1.x, p.y - e1.y)) - s.r
     }
+    case 'spiral': {
+      // The turns are near enough circles that the distance is radial: the point's own angle,
+      // once a turn, wherever that falls within the spiral's span, and the two ends.
+      const dx = p.x - s.x
+      const dy = p.y - s.y
+      const d = Math.hypot(dx, dy)
+      const b = s.pitch / (Math.PI * 2)
+      const phi = Math.atan2(dy, dx)
+      let best = Infinity
+      const kLo = Math.ceil((s.t0 - phi) / (Math.PI * 2))
+      const kHi = Math.floor((s.t1 - phi) / (Math.PI * 2))
+      for (let k = kLo; k <= kHi; k++) {
+        const th = phi + k * Math.PI * 2
+        best = Math.min(best, Math.abs(d - (s.r0 + b * (th - s.t0))))
+      }
+      for (const th of [s.t0, s.t1]) {
+        const e = onSpiral(s, th)
+        best = Math.min(best, Math.hypot(p.x - e.x, p.y - e.y))
+      }
+      return best - s.r
+    }
     case 'poly': {
       const pts = s.pts
       let best = Infinity
@@ -111,6 +155,8 @@ export function centreOf(s: Shape): Vec {
       return { x: (s.a.x + s.b.x) / 2, y: (s.a.y + s.b.y) / 2 }
     case 'arc':
       return onArc(s.x, s.y, s.R, (s.a0 + s.a1) / 2)
+    case 'spiral':
+      return { x: s.x, y: s.y }
     case 'poly': {
       const n = s.pts.length || 1
       return {
@@ -123,7 +169,7 @@ export function centreOf(s: Shape): Vec {
 
 /** The point a shape turns or pushes about: a disc or an arc by its centre, anything else by its box. */
 export function pivotOf(s: Shape): Vec {
-  if (s.kind === 'arc') return { x: s.x, y: s.y }
+  if (s.kind === 'arc' || s.kind === 'spiral') return { x: s.x, y: s.y }
   return centreOf(s)
 }
 

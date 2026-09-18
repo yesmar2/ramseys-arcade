@@ -16,9 +16,9 @@
  * other, and bumpers and rovers knock it about.
  */
 
-import { arc, capsule, disc, rect, type Shape, type Vec } from './terrain'
+import { arc, capsule, disc, rect, spiral, type Shape, type Vec } from './terrain'
 
-export { arc, capsule, disc, rect, type Shape, type Vec }
+export { arc, capsule, disc, rect, spiral, type Shape, type Vec }
 
 export const FIELD_W = 100
 
@@ -247,39 +247,32 @@ export const COURSE: Hole[] = [
     sand: [disc(40, 444, 6), disc(56, 202, 5)],
     bumpers: [pop(44, 68, 4), pop(68, 68, 4)],
     rovers: [rover(86, 320, 2.8, 60, 1.0, box(73, 260, 26, 120))],
-    marks: [mark(26, 560, UP), mark(86, 250, UP), mark(56, 180, UP)],
+    marks: [mark(56, 180, UP)],
   }),
   /*
-   * The Snail. One turn of a spiral: along the bottom, up and over the big
-   * right-hand half, round the smaller left-hand half with sand on its
-   * inside, and in to a round green at the middle. The green is a hilltop:
-   * everything on it rolls away from the cup, so the ball has to arrive
-   * softly and close, or it slides back to the rim.
+   * The Snail. A spiral: in along the bottom, and round and round, a turn
+   * and a half, each lap a little tighter, to the cup at the middle. The
+   * middle is a hilltop: everything near the cup rolls away from it, so the
+   * last of the way in has to be rolled soft and true.
    */
   hole({
     name: 'The Snail',
-    par: 3,
-    h: 110,
-    tee: { x: 20, y: 93 },
-    cup: { x: 64, y: 60 },
-    green: [
-      disc(18, 93, 11),
-      capsule(18, 93, 50, 93, 9),
-      arc(50, 54, 39, -Math.PI / 2, Math.PI / 2, 9),
-      arc(50, 43, 28, Math.PI / 2, Math.PI * 1.5, 9),
-      capsule(50, 71, 60, 65, 9),
-      disc(64, 60, 11),
-    ],
-    slopes: [repel(disc(64, 60, 11), 40)],
-    sand: [disc(28, 43, 5)],
-    marks: [mark(34, 93, RIGHT), mark(89, 54, UP)],
+    par: 4,
+    h: 108,
+    tee: { x: 16, y: 92.5 },
+    cup: { x: 50, y: 44 },
+    green: [disc(15, 92.5, 9), capsule(15, 92.5, 50, 92.5, 7.5), spiral(50, 54, 10, 19, -Math.PI / 2, Math.PI * 2.5, 7.5)],
+    slopes: [repel(disc(50, 44, 12), 35)],
   }),
   /*
-   * The Climb. Two hills, each a straight pushing the ball back down, with
-   * a flap at the crest that lets a ball through going up and never back,
-   * so a climb made stays made. A round elbow joins them, a bumper sits on
-   * the second hill, and the summit is a round green with the cup tucked
-   * below the line the last elbow sends you on.
+   * The Climb. Two hills, each a straight that pushes the ball back down,
+   * joined by round elbows to a summit green. At the top of the first hill
+   * a spur runs off to the right to a pipe that drops the ball onto the
+   * summit — but just past the spur's mouth is a flap that lets a ball
+   * through going up and never back. Crest the hill gently and the spur
+   * is yours; crest it hard and you are through the flap and committed to
+   * the long way: the elbows, the second hill with its bumper, and the
+   * summit from the far side.
    */
   hole({
     name: 'The Climb',
@@ -289,18 +282,20 @@ export const COURSE: Hole[] = [
     cup: { x: 30, y: 54 },
     green: [
       disc(20, 284, 14),
-      capsule(20, 284, 20, 200, 12),
-      arc(44, 200, 24, Math.PI, Math.PI * 1.5, 12),
-      capsule(44, 176, 56, 176, 12),
-      arc(56, 152, 24, 0, Math.PI / 2, 12),
-      capsule(80, 152, 80, 70, 12),
+      capsule(20, 284, 20, 190, 12),
+      capsule(20, 198, 52, 198, 6),
+      arc(44, 190, 24, Math.PI, Math.PI * 1.5, 12),
+      capsule(44, 166, 56, 166, 12),
+      arc(56, 142, 24, 0, Math.PI / 2, 12),
+      capsule(80, 142, 80, 70, 12),
       arc(56, 70, 24, -Math.PI / 2, 0, 12),
       disc(40, 44, 20),
     ],
-    slopes: [hill(capsule(20, 272, 20, 206, 12), 0, 100), hill(capsule(80, 128, 80, 84, 12), 0, 65)],
-    walls: [flap(8, 202, 32, 202, UP), flap(68, 72, 92, 72, UP)],
-    bumpers: [pop(74, 112, 3)],
-    marks: [mark(20, 240, UP), mark(80, 110, UP)],
+    slopes: [hill(capsule(20, 272, 20, 214, 12), 0, 100), hill(capsule(80, 128, 80, 84, 12), 0, 65)],
+    walls: [flap(9, 189, 31, 189, UP)],
+    portals: [pipe(50, 198, 40, 62, UP)],
+    bumpers: [pop(74, 110, 3)],
+    marks: [mark(30, 198, RIGHT)],
   }),
   /*
    * The Lake. A wide green with water across the middle and three ways
@@ -348,7 +343,7 @@ export const COURSE: Hole[] = [
     sliders: [slider(25, 170, 55, 170, 20, 0, 3.0)],
     bumpers: [pop(84, 200, 4), pop(16, 140, 4)],
     sand: [disc(70, 140, 5), disc(30, 200, 5)],
-    marks: [mark(50, 252, UP), mark(50, 176, UP)],
+    marks: [mark(50, 176, UP)],
   }),
 ]
 

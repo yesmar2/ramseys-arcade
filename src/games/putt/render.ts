@@ -1,6 +1,6 @@
 import { inkColor, isFlatTheme, playfieldColor, playfieldRgb, softFillAlpha, strokeOutlined } from '../../lib/theme'
 import { EDGE_T, FIELD_W, PORTAL_R, SPINNER_T, type Hole, type Shape, type Vec } from './course'
-import { centreOf, pivotOf } from './terrain'
+import { centreOf, onSpiral, pivotOf } from './terrain'
 import {
   AIM_STUB,
   aimTrace,
@@ -256,6 +256,33 @@ function traceShape(
       ctx.closePath()
       break
     }
+    case 'spiral': {
+      // The band as a polygon out along the outer edge and back along the inner, with a round cap on each end.
+      const b = sh.pitch / (Math.PI * 2)
+      const R = (th: number) => sh.r0 + b * (th - sh.t0)
+      const span = sh.t1 - sh.t0
+      const n = Math.max(16, Math.ceil((span * (R(sh.t1) + sh.r)) / 1.2))
+      const outer: Vec[] = []
+      const inner: Vec[] = []
+      for (let i = 0; i <= n; i++) {
+        const th = sh.t0 + (span * i) / n
+        const c = Math.cos(th)
+        const sn = Math.sin(th)
+        outer.push(P(sh.x + c * (R(th) + sh.r), sh.y + sn * (R(th) + sh.r)))
+        const ri = Math.max(0, R(th) - sh.r)
+        inner.push(P(sh.x + c * ri, sh.y + sn * ri))
+      }
+      outer.forEach((q, i) => (i === 0 ? ctx.moveTo(q.x, q.y) : ctx.lineTo(q.x, q.y)))
+      for (let i = inner.length - 1; i >= 0; i--) ctx.lineTo(inner[i]!.x, inner[i]!.y)
+      ctx.closePath()
+      for (const th of [sh.t0, sh.t1]) {
+        const e = onSpiral(sh, th)
+        const c = P(e.x, e.y)
+        ctx.moveTo(c.x + sh.r * s, c.y)
+        ctx.arc(c.x, c.y, sh.r * s, 0, Math.PI * 2)
+      }
+      break
+    }
     case 'poly': {
       sh.pts.forEach((p, i) => {
         const q = P(p.x, p.y)
@@ -282,6 +309,10 @@ function bboxOf(sh: Shape): { x: number; y: number; w: number; h: number } {
     }
     case 'arc': {
       const R = sh.R + sh.r
+      return { x: sh.x - R, y: sh.y - R, w: R * 2, h: R * 2 }
+    }
+    case 'spiral': {
+      const R = sh.r0 + (sh.pitch / (Math.PI * 2)) * (sh.t1 - sh.t0) + sh.r
       return { x: sh.x - R, y: sh.y - R, w: R * 2, h: R * 2 }
     }
     case 'poly': {
@@ -477,10 +508,14 @@ export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, w: n
       const bb = bboxOf(sl.shape)
       const cx = bb.x + bb.w / 2
       const cy = bb.y + bb.h / 2
-      const along = Math.abs(dx) * bb.h + Math.abs(dy) * bb.w + 4
-      const across = Math.abs(dx) * bb.w + Math.abs(dy) * bb.h
-      for (let k = -along / 2; k < along / 2; k += 9) {
-        for (let m = -across / 2 + 6; m < across / 2; m += 12) {
+      // The hill's length runs along the pull, its width across it; chevrons every 9 down the length,
+      // in rows 12 apart centred on the width.
+      const along = Math.abs(dx) * bb.w + Math.abs(dy) * bb.h
+      const across = Math.abs(dx) * bb.h + Math.abs(dy) * bb.w
+      const rows = Math.max(1, Math.floor(across / 12))
+      for (let k = -along / 2 + 5; k < along / 2 - 2; k += 9) {
+        for (let i = 0; i < rows; i++) {
+          const m = (i - (rows - 1) / 2) * 12
           chevron(cx + dx * k + px * m, cy + dy * k + py * m, dx, dy, 2.6)
         }
       }
