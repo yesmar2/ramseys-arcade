@@ -291,15 +291,37 @@ function integrate(
 ) {
   const maxSpeed = maxSpeedFor(f.radius, scale)
   const accel = accelFor(f.radius, scale)
+
+  let dx = 0
+  let dy = 0
   if (target) {
-    const dx = target.x - f.x
-    const dy = target.y - f.y
+    dx = target.x - f.x
+    dy = target.y - f.y
     const d = Math.hypot(dx, dy)
     if (d > DEADZONE) {
-      f.vx += (dx / d) * accel * dt
-      f.vy += (dy / d) * accel * dt
+      dx /= d
+      dy /= d
+    } else {
+      dx = 0
+      dy = 0
     }
   }
+
+  // Push toward the interior, growing sharply near an edge — this is a real
+  // driving force, not just a clamp on the seek target, so a fish that's
+  // wandered or fled into a corner still has somewhere to go instead of
+  // just running out of thrust and sitting there.
+  const margin = f.radius * 3 + 60
+  let wx = 0
+  let wy = 0
+  if (f.x < margin) wx = (margin - f.x) / margin
+  else if (f.x > w - margin) wx = -(f.x - (w - margin)) / margin
+  if (f.y < margin) wy = (margin - f.y) / margin
+  else if (f.y > h - margin) wy = -(f.y - (h - margin)) / margin
+
+  f.vx += (dx + wx * 2.4) * accel * dt
+  f.vy += (dy + wy * 2.4) * accel * dt
+
   const speed = Math.hypot(f.vx, f.vy)
   if (speed > maxSpeed) {
     f.vx = (f.vx / speed) * maxSpeed
