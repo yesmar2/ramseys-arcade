@@ -22,8 +22,9 @@ import { centreOf, contours, inAny, inside } from './terrain'
  * Putt: nine holes of mini golf with a pinball streak.
  *
  * Pull back from the ball and let go: the further the pull, the harder the
- * shot, and the guide is a short stub, so the line is yours to judge. The
- * ball rolls on physics — it slows at a steady rate, like a real one — off walls at any
+ * shot, and the guide grows with the pull to say how hard. A short pull is a
+ * real shot. The ball rolls on physics — it sheds a share of its speed every
+ * frame, so it leaves fast and settles softly — off walls at any
  * angle, sand that drags, water that costs a stroke, windmills, pads that
  * push, pipes that take it somewhere else, a cup that will not always sit
  * still, and a cup that pulls a slow ball in and lets a fast one skip
@@ -55,8 +56,10 @@ export const ROVER_POINTS = 150
 export const STREAK_STEP = 100
 export const STREAK_MAX = 500
 
-/** Pulling back this far, in field units, is full power. */
-export const MAX_DRAG = 46
+/** Pulling back this far, in field units, is full power: under a third of the width, so a flick is a real shot. */
+export const MAX_DRAG = 30
+/** The aim guide reaches this far at full pull. It shows the power, not where the ball will stop. */
+export const GUIDE_REACH = MAX_DRAG * 1.6
 /** A pull shorter than this share of full is a change of mind, not a shot. */
 export const MIN_POWER = 0.08
 /** Holding space runs the charge up and back down over this many seconds. */
@@ -66,15 +69,20 @@ export const AIM_STUB = 14
 /** Full power sends a ball about this far on the green before it stops. */
 const FULL_DISTANCE = 235
 /**
- * A rolling ball slows at a steady rate, like a real one, with a touch of
- * drag that grows with speed. Sand slows it several times harder.
+ * A rolling ball keeps this share of its speed each frame, at sixty a
+ * second: it leaves fast and eases out in a long soft tail instead of
+ * slowing on a steady count. Sand keeps far less and swallows a shot in a
+ * moment.
  */
-const DECEL_GREEN = 62
-const DECEL_SAND = 340
-const DRAG = 0.1
+const FRICTION_GREEN = 0.985
+const FRICTION_SAND = 0.92
+/** The rate the green bleeds speed, per second, for working out distances. */
+const FADE_GREEN = -Math.log(FRICTION_GREEN) * 60
+/** The release speed at full pull: what carries FULL_DISTANCE against the fade. */
+const MAX_SPEED = FULL_DISTANCE * FADE_GREEN
 /** Below this the ball is at rest. */
-const STOP_SPEED = 3
-const WALL_BOUNCE = 0.6
+const STOP_SPEED = 1.2
+const WALL_BOUNCE = 0.82
 const TARGET_BOUNCE = 0.5
 /** A bumper sends the ball away at least this fast, whatever it arrived at. */
 const BUMPER_POP = 110
@@ -197,15 +205,18 @@ export function currentHole(state: GameState): Hole {
 
 /*
  * The walls of a hole are the traced edge of its ground plus whatever was
- * placed by hand. Tracing costs a few milliseconds, so it is done once per
- * hole and kept.
+ * placed by hand. The trace samples every unit and keeps the line within an
+ * eighth of one, so a curve reads as a curve. It costs a few milliseconds,
+ * so it is done once per hole and kept.
  */
+const TRACE_CELL = 1
+const TRACE_TOL = 0.12
 const traced = new WeakMap<Hole, { edges: Vec[][]; walls: Wall[] }>()
 
 function trace(hole: Hole) {
   let t = traced.get(hole)
   if (t) return t
-  const edges = contours(hole.green, FIELD_W, hole.h)
+  const edges = contours(hole.green, FIELD_W, hole.h, TRACE_CELL, TRACE_TOL)
   const walls: Wall[] = []
   for (const line of edges) {
     for (let i = 1; i < line.length; i++) {
@@ -430,9 +441,9 @@ export function keyAim(state: GameState, turn: number, charging: boolean, dt: nu
   return { ...state, aim, aiming: 'key', chargeT, power: chargeAt(chargeT), look }
 }
 
-/** The speed that carries a ball `power` of the full distance, against the steady slowing. */
+/** The release speed for a pull of `power`: in straight proportion, so twice the pull carries twice as far. */
 function launchSpeed(power: number) {
-  return Math.sqrt(2 * DECEL_GREEN * FULL_DISTANCE * power)
+  return MAX_SPEED * power
 }
 
 /** The window start that puts the ball in the middle of the view. */
@@ -668,12 +679,10 @@ function step(
   ball.y += ball.vy * dt
 
   const sand = inAny(hole.sand, ball)
-  const speed0 = Math.hypot(ball.vx, ball.vy)
-  if (speed0 > 0) {
-    const slowed = Math.max(0, speed0 - ((sand ? DECEL_SAND : DECEL_GREEN) + speed0 * DRAG) * dt)
-    ball.vx *= slowed / speed0
-    ball.vy *= slowed / speed0
-  }
+  // The share is set per sixtieth, so the fade is the same whatever the frame rate.
+  const keep = Math.pow(sand ? FRICTION_SAND : FRICTION_GREEN, dt * 60)
+  ball.vx *= keep
+  ball.vy *= keep
 
   const out: StepOut = {
     wall: false,

@@ -15,6 +15,7 @@ import {
   mapLayout,
   wallsOf,
   spinnerWall,
+  GUIDE_REACH,
   MAX_DRAG,
   toScreen,
   underMap,
@@ -757,36 +758,53 @@ export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, w: n
     ctx.fill()
   }
 
-  // ---- aim: a short stub the way the shot will go, and the pull behind the ball. The rest is up to you.
+  // ---- aim: a stub the way the shot will go. Pulling, it grows with the pull and turns red; the pull shows behind the ball.
   if (state.phase === 'aim') {
     const live = state.aiming !== 'none'
     const power = live ? state.power : 0
     const b = P(state.ball.x, state.ball.y)
     const hue = 128 - power * 100
     const color = live ? `hsla(${hue}, 65%, 50%, 0.95)` : ink(0.5)
-    const end = aimTrace(state, state.aim, AIM_STUB + power * 8)
+    const reach = live ? Math.max(AIM_STUB, power * GUIDE_REACH) : AIM_STUB
+    const end = aimTrace(state, state.aim, reach)
     const e = P(end.x, end.y)
     ctx.save()
     ctx.setLineDash([s * 1.4, s * 1.6])
-    ctx.strokeStyle = color
-    ctx.lineWidth = Math.max(1.4, s * (live ? 0.7 : 0.55))
+    if (live) {
+      // Yellow at the ball, red at the far end.
+      const g = ctx.createLinearGradient(b.x, b.y, e.x, e.y)
+      g.addColorStop(0, 'hsla(48, 92%, 58%, 0.95)')
+      g.addColorStop(1, 'hsla(0, 80%, 56%, 0.95)')
+      ctx.strokeStyle = g
+    } else {
+      ctx.strokeStyle = color
+    }
+    ctx.lineWidth = Math.max(1.4, s * (live ? 0.9 : 0.55))
     ctx.beginPath()
     ctx.moveTo(b.x, b.y)
     ctx.lineTo(e.x, e.y)
     ctx.stroke()
     ctx.restore()
-    // Arrowhead, in screen space so the rotation is right.
     const a = Math.atan2(e.y - b.y, e.x - b.x)
     const dist = Math.hypot(e.x - b.x, e.y - b.y)
-    const tipX = b.x + Math.cos(a) * Math.min(dist, s * 8)
-    const tipY = b.y + Math.sin(a) * Math.min(dist, s * 8)
-    ctx.fillStyle = color
-    ctx.beginPath()
-    ctx.moveTo(tipX + Math.cos(a) * s * 1.8, tipY + Math.sin(a) * s * 1.8)
-    ctx.lineTo(tipX + Math.cos(a + 2.4) * s * 1.5, tipY + Math.sin(a + 2.4) * s * 1.5)
-    ctx.lineTo(tipX + Math.cos(a - 2.4) * s * 1.5, tipY + Math.sin(a - 2.4) * s * 1.5)
-    ctx.closePath()
-    ctx.fill()
+    if (live) {
+      // A dot caps the guide where it reaches.
+      ctx.fillStyle = 'hsla(0, 80%, 56%, 0.95)'
+      ctx.beginPath()
+      ctx.arc(e.x, e.y, Math.max(2.5, s * 1.3), 0, Math.PI * 2)
+      ctx.fill()
+    } else {
+      // Arrowhead, in screen space so the rotation is right.
+      const tipX = b.x + Math.cos(a) * Math.min(dist, s * 8)
+      const tipY = b.y + Math.sin(a) * Math.min(dist, s * 8)
+      ctx.fillStyle = color
+      ctx.beginPath()
+      ctx.moveTo(tipX + Math.cos(a) * s * 1.8, tipY + Math.sin(a) * s * 1.8)
+      ctx.lineTo(tipX + Math.cos(a + 2.4) * s * 1.5, tipY + Math.sin(a + 2.4) * s * 1.5)
+      ctx.lineTo(tipX + Math.cos(a - 2.4) * s * 1.5, tipY + Math.sin(a - 2.4) * s * 1.5)
+      ctx.closePath()
+      ctx.fill()
+    }
     // The pull, behind the ball: how hard it will go.
     if (live && power > 0) {
       const back = a + Math.PI
