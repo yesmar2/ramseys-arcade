@@ -21,6 +21,7 @@ import { DevImpersonateControl } from './DevImpersonateControl'
 import { PendingInvitesStrip } from './PendingInvitesStrip'
 import { PlayerBadge, type PlayerBadgeHandle } from './PlayerBadge'
 import { SiteGroupControl } from './SiteGroupControl'
+import { SiteSearch } from './SiteSearch'
 import { SitePeriodControl } from './SitePeriodControl'
 import { SoundPackSelect } from './SoundPackSelect'
 import { TrophyMark } from './TrophyMark'
@@ -162,20 +163,8 @@ export function SiteHeader() {
 
   const showUserChip = signedIn && Boolean(playerName)
 
-  const homeActive = path === '/'
   const goRows = (
     <>
-      <a
-        className={`site-drawer__row${homeActive ? ' site-drawer__row--active' : ''}`}
-        href={homeHref()}
-        aria-current={homeActive ? 'page' : undefined}
-        onClick={() => setAccountOpen(false)}
-      >
-        <span className="site-drawer__row-label">Games</span>
-        <span className="site-drawer__row-chev" aria-hidden="true">
-          ›
-        </span>
-      </a>
       {SITE_NAV_LINKS.map((item) => (
         <a
           key={item.href}
@@ -226,6 +215,7 @@ export function SiteHeader() {
               </a>
             ))}
           </div>
+          <SiteSearch />
         </div>
 
         <div className="site-header__identity">

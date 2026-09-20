@@ -1,5 +1,6 @@
 import {
   currentPath,
+  homeHref,
   leaderboardHref,
   rankHref,
   recordsIndexHref,
@@ -10,14 +11,15 @@ export type SiteNavItem = {
   href: string
   label: string
   /** Match nested routes under this destination. */
-  match: 'boards' | 'records' | 'events' | 'you'
+  match: 'games' | 'boards' | 'records' | 'events' | 'you'
 }
 
-/** Primary destinations — desktop links + drawer (Global lives under Boards). */
+/** Primary destinations — desktop links + drawer (Global lives under Boards). Games first: it is the shelf. */
 export const SITE_NAV_LINKS: readonly SiteNavItem[] = [
+  { href: homeHref(), label: 'Games', match: 'games' },
   { href: leaderboardHref(), label: 'Boards', match: 'boards' },
-  { href: recordsIndexHref(), label: 'Record books', match: 'records' },
   { href: tournamentsHref(), label: 'Events', match: 'events' },
+  { href: recordsIndexHref(), label: 'Record books', match: 'records' },
 ] as const
 
 /** Drawer Profile link — header chip opens the account drawer instead. */
@@ -35,6 +37,8 @@ function under(path: string, section: string) {
 export function navActive(match: SiteNavItem['match'], path = currentPath()): boolean {
   const p = currentPath(path)
 
+  // A game's page is under Games; its record book is under Record books.
+  if (match === 'games') return p === '/' || (under(p, '/games') && !/\/records(?:\/|$)/.test(p))
   if (match === 'boards') return under(p, '/leaderboards')
   if (match === 'records') {
     if (under(p, '/records')) return true
