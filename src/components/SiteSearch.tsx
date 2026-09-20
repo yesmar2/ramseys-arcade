@@ -1,18 +1,27 @@
 import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from 'react'
 import { games, TAG_LABELS, type Game } from '../data/games'
 import { gameHref, navigate, rankHref, tournamentHref } from '../hooks/useHashRoute'
-import { checkNameAvailable, normalizePlayerName } from '../lib/leaderboard'
+import { usePlayerName } from '../hooks/usePlayerName'
+import {
+  checkNameAvailable,
+  fetchGlobalBoard,
+  normalizePlayerName,
+  type GlobalBoardEntry,
+} from '../lib/leaderboard'
 import { listTournaments, type TournamentSummary } from '../lib/tournaments'
 import { GameThumbArt } from './GameThumbArt'
 
 /*
- * Search, from the header: games by name, events by title, and a player by
- * tag. Games are on the page already; events are fetched once when the field
- * is first used and kept for a minute; a tag is looked up on the API, with a
- * pause after typing, and offered only when someone has it. "/" anywhere on
- * the page puts the cursor in the field, the arrows walk the results, Enter
- * opens one, Escape clears. On a phone the field hides behind a button and
- * drops over the header when opened.
+ * Search, from the header: games by name, events by title, and players by
+ * tag. Games are on the page already. Events and the players on the global
+ * board are fetched once when the field is first used and kept for a
+ * minute, and a part of a tag is enough to find a player on the board. A
+ * whole tag that is not on the board is looked up on the API, with a pause
+ * after typing, and offered when someone has it; your own tag counts, since
+ * the API calls a tag you hold "available" to you. "/" anywhere on the page
+ * puts the cursor in the field, the arrows walk the results, Enter opens
+ * one, Escape clears. On a phone the field hides behind a button and drops
+ * over the header when opened.
  */
 
 type Hit =
@@ -20,14 +29,26 @@ type Hit =
   | { kind: 'event'; key: string; href: string; label: string; hint: string }
   | { kind: 'player'; key: string; href: string; label: string; hint: string }
 
-const EVENTS_TTL = 60_000
+const CACHE_TTL = 60_000
 let eventsCache: { at: number; promise: Promise<TournamentSummary[]> } | null = null
+let playersCache: { at: number; promise: Promise<GlobalBoardEntry[]> } | null = null
 
 function loadEvents(): Promise<TournamentSummary[]> {
   const now = Date.now()
-  if (eventsCache && now - eventsCache.at < EVENTS_TTL) return eventsCache.promise
+  if (eventsCache && now - eventsCache.at < CACHE_TTL) return eventsCache.promise
   const promise = listTournaments('all').catch(() => [] as TournamentSummary[])
   eventsCache = { at: now, promise }
+  return promise
+}
+
+/** Everyone on the all-time board, which for now is everyone who has ever scored. */
+function loadPlayers(): Promise<GlobalBoardEntry[]> {
+  const now = Date.now()
+  if (playersCache && now - playersCache.at < CACHE_TTL) return playersCache.promise
+  const promise = fetchGlobalBoard(500, 'all')
+    .then((board) => board.entries)
+    .catch(() => [] as GlobalBoardEntry[])
+  playersCache = { at: now, promise }
   return promise
 }
 
@@ -46,30 +67,48 @@ export function SiteSearch() {
   const [focused, setFocused] = useState(false)
   const [active, setActive] = useState(0)
   const [events, setEvents] = useState<TournamentSummary[] | null>(null)
+  const [players, setPlayers] = useState<GlobalBoardEntry[] | null>(null)
   const [player, setPlayer] = useState<string | null>(null)
+  const ownTag = normalizePlayerName(usePlayerName())
   const rootRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const listId = useId()
 
   const query = q.trim().toLowerCase()
 
-  // Events come in once the field is in use, so the page never pays for them otherwise.
+  // Events and the board come in once the field is in use, so the page never pays for them otherwise.
   useEffect(() => {
-    if (!focused || events) return
+    if (!focused || (events && players)) return
     let cancelled = false
-    void loadEvents().then((list) => {
-      if (!cancelled) setEvents(list)
-    })
+    if (!events) {
+      void loadEvents().then((list) => {
+        if (!cancelled) setEvents(list)
+      })
+    }
+    if (!players) {
+      void loadPlayers().then((list) => {
+        if (!cancelled) setPlayers(list)
+      })
+    }
     return () => {
       cancelled = true
     }
-  }, [focused, events])
+  }, [focused, events, players])
 
-  // A tag is only offered when someone has it, so a typo never leads to an empty profile.
+  /*
+   * A whole tag is looked up so a player who has never scored can still be
+   * found, and only offered when someone has it, so a typo never leads to an
+   * empty profile. The API answers from the asker's side and calls a tag you
+   * hold "available" to you, so your own tag is taken as found.
+   */
   useEffect(() => {
     const cleaned = normalizePlayerName(q)
     if (cleaned.length < 2) {
       setPlayer(null)
+      return
+    }
+    if (cleaned === ownTag) {
+      setPlayer(cleaned)
       return
     }
     let cancelled = false
@@ -86,7 +125,7 @@ export function SiteSearch() {
       cancelled = true
       window.clearTimeout(timer)
     }
-  }, [q])
+  }, [q, ownTag])
 
   const hits = useMemo<Hit[]>(() => {
     if (!query) return []
@@ -119,7 +158,30 @@ export function SiteSearch() {
         if (++n >= 4) break
       }
     }
-    if (player) {
+    // Players: a part of a tag finds anyone on the board, those starting with it first.
+    const seen = new Set<string>()
+    const upper = query.toUpperCase()
+    if (players) {
+      const matches = players
+        .filter((p) => p.name.includes(upper))
+        .sort((a, b) => {
+          const aStarts = a.name.startsWith(upper) ? 0 : 1
+          const bStarts = b.name.startsWith(upper) ? 0 : 1
+          return aStarts - bStarts || a.rank - b.rank
+        })
+        .slice(0, 5)
+      for (const p of matches) {
+        seen.add(p.name)
+        out.push({
+          kind: 'player',
+          key: `player:${p.name}`,
+          href: rankHref(p.name),
+          label: p.name,
+          hint: `Player · #${p.rank}`,
+        })
+      }
+    }
+    if (player && !seen.has(player)) {
       out.push({
         kind: 'player',
         key: `player:${player}`,
@@ -129,7 +191,7 @@ export function SiteSearch() {
       })
     }
     return out
-  }, [query, events, player])
+  }, [query, events, players, player])
 
   useEffect(() => {
     setActive(0)
