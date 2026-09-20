@@ -89,7 +89,7 @@ export function HomeHero() {
             Play {game.name}
           </a>
           <a className="home-banner__ghost" href={gameHref(slug)}>
-            How it scores
+            Leaderboard
           </a>
         </div>
         {scores && scores.top > 0 ? (

@@ -8,7 +8,6 @@ import { GameThumbArt } from '../components/GameThumbArt'
 import { WallTile } from '../components/GameWall'
 import { LeaderboardList } from '../components/LeaderboardList'
 import { PageShell } from '../components/PageShell'
-import { HowToPlayContent } from '../components/ScoreGuide'
 import { ShareBoardButton } from '../components/ShareBoardButton'
 import {
   deviceRequirementLabel,
@@ -18,7 +17,6 @@ import {
   TAG_LABELS,
   type Game,
 } from '../data/games'
-import { scoringFor } from '../data/scoring'
 import { useBoardRecord } from '../hooks/useBoardRecord'
 import {
   currentHref,
@@ -26,6 +24,7 @@ import {
   gameHref,
   gameHubHref,
   gamePlayHref,
+  homeHref,
   navigate,
   periodFromRoute,
   recordsHref,
@@ -62,11 +61,13 @@ type GameHubPageProps = {
 }
 
 /**
- * A game's page, at the width of the home page. The banner is the home
- * page's banner with this game's own words in it: the mark big on the right,
- * the name, the blurb, Play and the two links, and your three numbers. Below
- * it the board sits on the right on a wide screen, and how to play plus the
- * rest of the shelf, as wall tiles, on the left.
+ * A game's page, at the width of the home page but not dressed as it: the
+ * home page sells one game with a poster, this page is that game's own
+ * page. A breadcrumb says where you are, the header sets the mark in a
+ * square card beside the name, the blurb, Play and the two links, with your
+ * three numbers in a strip at its end. Below it the board stands on the
+ * right on a wide screen and the rest of the shelf, as wall tiles, on the
+ * left. The rules live in the game itself, not here.
  */
 export function GameHubPage({ slug, board: boardFromRoute }: GameHubPageProps) {
   const route = useRoute()
@@ -181,12 +182,21 @@ export function GameHubPage({ slug, board: boardFromRoute }: GameHubPageProps) {
           } as CSSProperties
         }
       >
-        <section className="home-banner hub-banner" aria-label={game.name}>
-          <div className="home-banner__text">
-            <p className="home-banner__kicker">{kicker}</p>
-            <h1 className="home-banner__name">{game.name}</h1>
-            <p className="home-banner__blurb">{game.description}</p>
-            <div className="home-banner__acts">
+        <nav className="hub__crumbs" aria-label="Breadcrumb">
+          <a href={homeHref()}>Games</a>
+          <span aria-hidden="true">›</span>
+          <span aria-current="page">{game.name}</span>
+        </nav>
+
+        <header className="hub-head" aria-label={game.name}>
+          <div className="hub-head__mark" aria-hidden="true">
+            <GameThumbArt slug={game.slug} accent={accent} />
+          </div>
+          <div className="hub-head__text">
+            <p className="hub-head__kicker">{kicker}</p>
+            <h1 className="hub-head__name">{game.name}</h1>
+            <p className="hub-head__blurb">{game.description}</p>
+            <div className="hub-head__acts">
               <PlayCta
                 game={game}
                 canPlay={canPlay}
@@ -196,41 +206,38 @@ export function GameHubPage({ slug, board: boardFromRoute }: GameHubPageProps) {
                 deviceNote={deviceNote}
               />
               {boardHref ? (
-                <a className="home-banner__ghost" href={boardHref}>
+                <a className="hub-head__ghost" href={boardHref}>
                   Full board
                 </a>
               ) : null}
               {recordsLink ? (
-                <a className="home-banner__ghost" href={recordsLink}>
+                <a className="hub-head__ghost" href={recordsLink}>
                   Record books
                 </a>
               ) : null}
               {share}
             </div>
-            {boardSlug ? (
-              <dl className="home-banner__figures" aria-label="Your numbers">
-                <Figure
-                  label="Your best"
-                  value={loading ? '…' : yourBest > 0 ? formatLeaderboardScore(slug, yourBest) : '—'}
-                  sub={PERIOD_LABELS[period]}
-                />
-                <Figure
-                  label="Your rank"
-                  value={loading ? '…' : yourRank != null ? `#${yourRank}` : '—'}
-                  sub={PERIOD_LABELS[period]}
-                />
-                <Figure
-                  label="Record"
-                  value={allTime > 0 ? formatLeaderboardScore(slug, allTime) : '—'}
-                  sub="All time"
-                />
-              </dl>
-            ) : null}
           </div>
-          <div className="home-banner__art" aria-hidden="true">
-            <GameThumbArt slug={game.slug} accent={accent} />
-          </div>
-        </section>
+          {boardSlug ? (
+            <dl className="hub-head__figures" aria-label="Your numbers">
+              <Figure
+                label="Your best"
+                value={loading ? '…' : yourBest > 0 ? formatLeaderboardScore(slug, yourBest) : '—'}
+                sub={PERIOD_LABELS[period]}
+              />
+              <Figure
+                label="Your rank"
+                value={loading ? '…' : yourRank != null ? `#${yourRank}` : '—'}
+                sub={PERIOD_LABELS[period]}
+              />
+              <Figure
+                label="Record"
+                value={allTime > 0 ? formatLeaderboardScore(slug, allTime) : '—'}
+                sub="All time"
+              />
+            </dl>
+          ) : null}
+        </header>
 
         <div className={`hub__layout${boardSlug ? ' hub__layout--split' : ''}`}>
           {boardSlug ? (
@@ -285,13 +292,6 @@ export function GameHubPage({ slug, board: boardFromRoute }: GameHubPageProps) {
           ) : null}
 
           <div className="hub__side">
-            <section className="hub__how" aria-label="How to play">
-              <div className="lst-block__head">
-                <h2 className="lst-block__title">How to play</h2>
-              </div>
-              <HowToPlayContent how={game.how} rows={scoringFor(game.slug)} listClassName="hub__scoring" />
-            </section>
-
             {others.length > 0 ? (
               <section className="hub__more" aria-label="More games">
                 <div className="lst-block__head">
@@ -312,14 +312,14 @@ export function GameHubPage({ slug, board: boardFromRoute }: GameHubPageProps) {
   )
 }
 
-/** One of your numbers in the banner: the label, the figure, and what period it is for. */
+/** One of your numbers in the header: the label, the figure, and what period it is for. */
 function Figure({ label, value, sub }: { label: string; value: ReactNode; sub: string }) {
   return (
-    <div className="home-banner__figure">
+    <div className="hub-head__figure">
       <dt>{label}</dt>
       <dd>
         {value}
-        <small> {sub}</small>
+        <small>{sub}</small>
       </dd>
     </div>
   )
@@ -346,7 +346,7 @@ function PlayCta({
   if (canPlay) {
     return (
       <>
-        <a className="home-banner__cta" href={playHref}>
+        <a className="hub-head__cta" href={playHref}>
           {`Play ${game.name}`}
         </a>
         {inDevelopment ? <p className="hub__hint">In development — expect rough edges.</p> : null}

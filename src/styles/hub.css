@@ -1,9 +1,11 @@
 /*
- * A game's page, at the width of the home page.
+ * A game's page, at the width of the home page but not dressed as it.
  *
- * The banner is the home page's banner (home.css) with the game's own words
- * in it, and the shelf below is the wall's tiles (home.css). What lives here
- * is the rail, the split below the banner, and how to play.
+ * The home page sells one game with a poster; this is that game's own page.
+ * A breadcrumb says where you are. The header is a surface card with a wash
+ * of the game's colour at its left edge: the mark in a square card, the name
+ * and blurb beside it, Play and the links, and your three numbers in a strip
+ * at the end. The shelf below is the wall's tiles (home.css).
  */
 
 .hub-rail {
@@ -18,25 +20,256 @@
 .hub {
   display: flex;
   flex-direction: column;
-  gap: 1.35rem;
+  gap: 1.1rem;
 }
 
-/* ---------- the banner, with a heading in it rather than a link ---------- */
+/* ---------- where you are ---------- */
 
-.hub-banner .home-banner__art {
-  cursor: default;
+.hub__crumbs {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0.2rem 0 -0.3rem 0.25rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--muted);
 }
 
-/* A note in the banner where Play would be: coming soon, not on this device. */
+.hub__crumbs a {
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.hub__crumbs a:hover,
+.hub__crumbs a:focus-visible {
+  color: var(--ink);
+  outline: none;
+}
+
+.hub__crumbs [aria-current] {
+  color: var(--ink);
+}
+
+/* ---------- the header ---------- */
+
+.hub-head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 1.5rem;
+  align-items: center;
+  padding: 1.4rem 1.6rem;
+  border-radius: 1.25rem;
+  background: linear-gradient(
+    100deg,
+    color-mix(in srgb, var(--hero-accent) 18%, var(--surface)) 0%,
+    var(--surface) 62%
+  );
+  border: 1px solid color-mix(in srgb, var(--hero-accent) 28%, rgba(var(--ink-rgb), 0.08));
+  box-shadow: var(--shadow-soft);
+}
+
+.hub-head__mark {
+  display: grid;
+  place-items: center;
+  width: 7.5rem;
+  aspect-ratio: 1;
+  border-radius: 24%;
+  background: color-mix(in srgb, var(--hero-accent) 18%, var(--playfield));
+  border: 1px solid color-mix(in srgb, var(--hero-accent) 40%, transparent);
+}
+
+.hub-head__mark .inline-thumb {
+  width: 100%;
+  height: 100%;
+  border-radius: 0;
+  background: none;
+  border: 0;
+  box-shadow: none;
+}
+
+.hub-head__mark .game-thumb__svg {
+  width: 76%;
+  height: 76%;
+}
+
+.hub-head__text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.hub-head__kicker {
+  margin: 0;
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--hero-accent) 70%, var(--ink));
+}
+
+.hub-head__name {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(1.9rem, 3.4vw, 2.6rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+  color: var(--ink);
+}
+
+.hub-head__blurb {
+  margin: 0;
+  max-width: 48ch;
+  font-size: 0.98rem;
+  font-weight: 550;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.hub-head__acts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.3rem;
+}
+
+.hub-head__cta {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.6rem;
+  padding: 0 1.3rem;
+  border-radius: 999px;
+  background: var(--hero-accent);
+  color: var(--hero-ink, #fff);
+  font-size: 0.95rem;
+  font-weight: 800;
+  text-decoration: none;
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--hero-accent) 35%, transparent);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.hub-head__cta:hover,
+.hub-head__cta:focus-visible {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 24px color-mix(in srgb, var(--hero-accent) 45%, transparent);
+  outline: none;
+}
+
+.hub-head__ghost {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.6rem;
+  padding: 0 1rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--hero-accent) 35%, transparent);
+  background: color-mix(in srgb, var(--hero-accent) 8%, var(--surface));
+  color: color-mix(in srgb, var(--hero-accent) 65%, var(--ink));
+  font-size: 0.9rem;
+  font-weight: 750;
+  text-decoration: none;
+  transition: background 0.15s ease;
+}
+
+.hub-head__ghost:hover,
+.hub-head__ghost:focus-visible {
+  background: color-mix(in srgb, var(--hero-accent) 16%, var(--surface));
+  outline: none;
+}
+
+/* A note where Play would be: coming soon, not on this device. */
 .hub__hint {
   flex-basis: 100%;
   margin: 0;
   font-size: 0.9rem;
   font-weight: 600;
-  color: var(--banner-faint);
+  color: var(--muted);
 }
 
-/* ---------- below the banner ---------- */
+/* Your three numbers, as a strip at the end of the header. */
+.hub-head__figures {
+  display: grid;
+  grid-auto-flow: column;
+  gap: 0.5rem;
+  margin: 0;
+}
+
+.hub-head__figure {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1rem;
+  min-width: 6.5rem;
+  padding: 0.7rem 0.9rem 0.65rem;
+  border-radius: 1rem;
+  background: rgba(var(--surface-rgb), 0.6);
+  border: 1px solid color-mix(in srgb, var(--hero-accent) 22%, transparent);
+  text-align: center;
+}
+
+.hub-head__figure dt {
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.hub-head__figure dd {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+.hub-head__figure dd small {
+  font-family: var(--font-body);
+  font-size: 0.66rem;
+  font-weight: 650;
+  letter-spacing: 0;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+@media (max-width: 56rem) {
+  .hub-head {
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 1rem 1.1rem;
+    padding: 1.1rem 1.15rem 1.15rem;
+  }
+
+  .hub-head__mark {
+    width: 4.75rem;
+    align-self: start;
+  }
+
+  .hub-head__figures {
+    grid-column: 1 / -1;
+    grid-auto-flow: row;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .hub-head__figure {
+    min-width: 0;
+    padding: 0.55rem 0.4rem 0.5rem;
+  }
+
+  .hub-head__figure dd {
+    font-size: 1.15rem;
+  }
+}
+
+/* ---------- below the header ---------- */
 
 .hub__layout {
   display: flex;
@@ -53,57 +286,6 @@
 
 .hub__board {
   min-width: 0;
-}
-
-/* How to play: the copy, then the scoring rows. */
-.hub__how {
-  display: flex;
-  flex-direction: column;
-  gap: 0.6rem;
-  padding: 1rem 1.1rem 1.1rem;
-  border-radius: 1.1rem;
-  background: var(--surface);
-  border: 1px solid rgba(var(--ink-rgb), 0.08);
-}
-
-.hub__how .how-to-play__copy {
-  margin: 0;
-  font-size: 0.92rem;
-  line-height: 1.55;
-  color: var(--ink);
-}
-
-.hub__scoring {
-  list-style: none;
-  margin: 0.35rem 0 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-}
-
-.hub__scoring li {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  padding: 0.5rem 0.8rem;
-  border-radius: 0.85rem;
-  background: rgba(var(--surface-rgb), 0.55);
-  border: 1px solid rgba(var(--ink-rgb), 0.06);
-  font-size: 0.86rem;
-  font-weight: 650;
-  color: var(--muted);
-}
-
-.hub__scoring strong {
-  flex: none;
-  font-family: var(--font-display);
-  font-size: 0.95rem;
-  font-weight: 800;
-  font-variant-numeric: tabular-nums;
-  text-align: right;
-  color: color-mix(in srgb, var(--event-accent, var(--accent)) 65%, var(--ink));
 }
 
 /* The rest of the shelf, as wall tiles: four across beside the board, fewer as the width goes. */
@@ -129,7 +311,7 @@
   }
 }
 
-/* Wide: how to play and the shelf on the left, the board on the right. */
+/* Wide: the shelf on the left, the board on the right. */
 @media (min-width: 64rem) {
   .hub__layout--split {
     display: grid;
