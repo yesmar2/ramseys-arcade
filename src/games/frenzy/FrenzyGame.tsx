@@ -10,11 +10,11 @@ import { usePersonalBest } from '../../hooks/usePersonalBest'
 import { getPersonalBest } from '../../lib/personalBest'
 import { useTournamentPlay } from '../../tournaments/TournamentPlayContext'
 import {
-  clearPointerTarget,
+  clearPointerDir,
   createInitialState,
   resizeState,
   setKey,
-  setPointerTarget,
+  setPointerDir,
   startGame,
   tick,
   toSnapshot,
@@ -108,10 +108,10 @@ export function FrenzyGame() {
 
   const aimFromEvent = (e: ReactPointerEvent<HTMLElement>) => {
     const rect = e.currentTarget.getBoundingClientRect()
-    stateRef.current = setPointerTarget(
+    stateRef.current = setPointerDir(
       stateRef.current,
-      e.clientX - rect.left,
-      e.clientY - rect.top,
+      e.clientX - (rect.left + rect.width / 2),
+      e.clientY - (rect.top + rect.height / 2),
     )
   }
 
@@ -136,7 +136,7 @@ export function FrenzyGame() {
   }
 
   const onPointerUp = () => {
-    stateRef.current = clearPointerTarget(stateRef.current)
+    stateRef.current = clearPointerDir(stateRef.current)
   }
 
   useEffect(() => {
@@ -195,8 +195,8 @@ export function FrenzyGame() {
               {ui.score}
             </PlayReadoutScore>
             {ui.phase === 'playing' ? (
-              <PlayReadoutCenter label="Current size" urgent={ui.danger}>
-                {ui.tier}
+              <PlayReadoutCenter label="Current level" urgent={ui.danger}>
+                Level {ui.level}
               </PlayReadoutCenter>
             ) : null}
           </PlayReadout>

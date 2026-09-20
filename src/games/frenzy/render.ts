@@ -1,68 +1,80 @@
 import { getGame } from '../../data/games'
 import { inkColor, playfieldColor, strokeOutlined } from '../../lib/theme'
-import type { Fish, GameState } from './game'
+import { radiusForLevel, type Fish, type GameState } from './game'
 
 const ACCENT = getGame('frenzy')?.accent ?? '#c65bd9'
 const SAFE_HUE = 172
-const NEUTRAL_HUE = 206
 const DANGER_HUE = 6
-const EAT_MARGIN = 1.12
 
-function drawBackground(ctx: CanvasRenderingContext2D, w: number, h: number, elapsed: number) {
+function worldToScreen(state: GameState, x: number, y: number) {
+  return {
+    x: (x - state.cameraX) * state.zoom + state.stageW / 2,
+    y: (y - state.cameraY) * state.zoom + state.stageH / 2,
+  }
+}
+
+function hashCell(ix: number, iy: number) {
+  const n = Math.sin(ix * 127.1 + iy * 311.7) * 43758.5453
+  return n - Math.floor(n)
+}
+
+function drawBackground(ctx: CanvasRenderingContext2D, state: GameState) {
+  const { stageW: w, stageH: h, zoom, cameraX, cameraY, elapsed } = state
   ctx.fillStyle = playfieldColor()
   ctx.fillRect(0, 0, w, h)
 
-  ctx.save()
-  ctx.globalAlpha = 0.05
-  ctx.strokeStyle = inkColor()
-  ctx.lineWidth = 1
-  for (let i = 0; i < 5; i++) {
-    const x = ((i * 190 + elapsed * 14) % (w + 160)) - 80
-    ctx.beginPath()
-    ctx.moveTo(x, 0)
-    ctx.lineTo(x - 60, h)
-    ctx.stroke()
-  }
-  ctx.restore()
+  const halfW = w / 2 / zoom
+  const halfH = h / 2 / zoom
+  const grid = 130
+  const x0 = Math.floor((cameraX - halfW) / grid) - 1
+  const x1 = Math.ceil((cameraX + halfW) / grid) + 1
+  const y0 = Math.floor((cameraY - halfH) / grid) - 1
+  const y1 = Math.ceil((cameraY + halfH) / grid) + 1
 
   ctx.save()
   ctx.fillStyle = inkColor()
-  for (let i = 0; i < 14; i++) {
-    const seed = i * 137.5
-    const bx = (seed * 1.9) % w
-    const t = (elapsed * (10 + (i % 5) * 4) + seed) % (h + 60)
-    const by = h - t
-    const r = 1.4 + (i % 3) * 0.9
-    ctx.globalAlpha = 0.08 + 0.05 * Math.sin(elapsed + i)
-    ctx.beginPath()
-    ctx.arc(bx, by, r, 0, Math.PI * 2)
-    ctx.fill()
+  for (let iy = y0; iy <= y1; iy++) {
+    for (let ix = x0; ix <= x1; ix++) {
+      const jitterX = (hashCell(ix, iy) - 0.5) * grid * 0.7
+      const jitterY = (hashCell(ix + 91, iy - 47) - 0.5) * grid * 0.7
+      const wx = ix * grid + grid / 2 + jitterX
+      const wy = iy * grid + grid / 2 + jitterY
+      const p = worldToScreen(state, wx, wy)
+      const drift = Math.sin(elapsed * 0.6 + ix * 1.7 + iy) * 6
+      const r = 1.1 + hashCell(ix * 3, iy * 5) * 1.6
+      ctx.globalAlpha = 0.06 + 0.05 * hashCell(ix * 7, iy * 11)
+      ctx.beginPath()
+      ctx.arc(p.x, p.y + drift * zoom, Math.max(0.6, r * zoom), 0, Math.PI * 2)
+      ctx.fill()
+    }
   }
   ctx.restore()
 }
 
-function threatHue(radius: number, playerRadius: number) {
-  if (radius > playerRadius * EAT_MARGIN) return DANGER_HUE
-  if (radius < playerRadius / EAT_MARGIN) return SAFE_HUE
-  return NEUTRAL_HUE
+function threatHue(level: number, playerLevel: number) {
+  return level > playerLevel ? DANGER_HUE : SAFE_HUE
 }
 
 function drawFish(
   ctx: CanvasRenderingContext2D,
-  f: Fish,
+  screenX: number,
+  screenY: number,
+  radius: number,
+  angle: number,
+  tail: number,
+  shark: boolean,
   color: string,
   player: boolean,
   invuln: boolean,
 ) {
   ctx.save()
-  ctx.translate(f.x, f.y)
-  ctx.rotate(f.angle)
-  if (invuln) ctx.globalAlpha = 0.55 + 0.35 * Math.sin(f.tail * 6)
+  ctx.translate(screenX, screenY)
+  ctx.rotate(angle)
+  if (invuln) ctx.globalAlpha = 0.55 + 0.35 * Math.sin(tail * 6)
 
-  const r = f.radius
-  const wag = Math.sin(f.tail) * 0.55
+  const r = radius
+  const wag = Math.sin(tail) * 0.55
 
-  // Tail
   ctx.save()
   ctx.translate(-r * 0.92, 0)
   ctx.rotate(wag * 0.6)
@@ -76,7 +88,7 @@ function drawFish(
   ctx.fill()
   ctx.restore()
 
-  if (f.shark) {
+  if (shark) {
     ctx.beginPath()
     ctx.moveTo(-r * 0.1, -r * 0.9)
     ctx.lineTo(r * 0.2, -r * 1.5)
@@ -86,7 +98,6 @@ function drawFish(
     ctx.fill()
   }
 
-  // Body
   ctx.beginPath()
   ctx.ellipse(0, 0, r, r * 0.68, 0, 0, Math.PI * 2)
   ctx.fillStyle = `color-mix(in srgb, ${color} ${player ? 42 : 30}%, transparent)`
@@ -95,7 +106,6 @@ function drawFish(
   ctx.lineWidth = Math.max(1.2, r * 0.09)
   strokeOutlined(ctx)
 
-  // Eye
   ctx.beginPath()
   ctx.arc(r * 0.5, -r * 0.14, Math.max(1.1, r * 0.11), 0, Math.PI * 2)
   ctx.fillStyle = player ? '#fff' : color
@@ -110,13 +120,27 @@ function drawFish(
   ctx.restore()
 }
 
+function drawLevelBadge(ctx: CanvasRenderingContext2D, x: number, y: number, radius: number, level: number) {
+  const fontSize = Math.min(26, Math.max(10, radius * 0.62))
+  ctx.save()
+  ctx.font = `800 ${fontSize}px var(--font-body, sans-serif)`
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  ctx.lineWidth = Math.max(2, fontSize * 0.22)
+  ctx.strokeStyle = 'rgba(0, 0, 0, 0.55)'
+  ctx.strokeText(String(level), x, y)
+  ctx.fillStyle = '#fff'
+  ctx.fillText(String(level), x, y)
+  ctx.restore()
+}
+
 export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, w: number, h: number) {
   const dpr = Math.min(window.devicePixelRatio || 1, 2)
   if (ctx.canvas.width !== Math.floor(w * dpr) || ctx.canvas.height !== Math.floor(h * dpr)) {
     ctx.canvas.width = Math.floor(w * dpr)
     ctx.canvas.height = Math.floor(h * dpr)
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
   }
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
 
   ctx.save()
   if (state.shake > 0) {
@@ -124,33 +148,50 @@ export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, w: n
     ctx.translate((Math.random() - 0.5) * k, (Math.random() - 0.5) * k)
   }
 
-  drawBackground(ctx, w, h, state.elapsed)
+  drawBackground(ctx, state)
 
-  for (const f of state.fishes) {
-    const hue = threatHue(f.radius, state.player.radius) + f.hueJitter
-    const sat = f.shark ? 30 : 62
-    const light = f.shark ? 34 : 54
-    drawFish(ctx, f, `hsl(${hue}, ${sat}%, ${light}%)`, false, false)
+  const badges: { x: number; y: number; radius: number; level: number }[] = []
+
+  const drawOne = (f: Fish, player: boolean) => {
+    const radius = radiusForLevel(f.level, state.scale) * state.zoom
+    const p = worldToScreen(state, f.x, f.y)
+    if (
+      p.x < -radius - 40 ||
+      p.x > state.stageW + radius + 40 ||
+      p.y < -radius - 40 ||
+      p.y > state.stageH + radius + 40
+    ) {
+      return
+    }
+    const hue = player ? 0 : threatHue(f.level, state.player.level) + f.hueJitter
+    const color = player ? ACCENT : `hsl(${hue}, ${f.shark ? 30 : 62}%, ${f.shark ? 34 : 54}%)`
+    drawFish(ctx, p.x, p.y, radius, f.angle, f.tail, f.shark, color, player, player && state.invuln > 0)
+    badges.push({ x: p.x, y: p.y, radius, level: f.level })
   }
 
-  drawFish(ctx, state.player, ACCENT, true, state.invuln > 0)
+  for (const f of state.fishes) drawOne(f, false)
+  drawOne(state.player, true)
 
   for (const p of state.particles) {
+    const sp = worldToScreen(state, p.x, p.y)
     const a = Math.max(0, p.life)
     ctx.beginPath()
     ctx.fillStyle = `hsla(${p.hue}, 70%, 60%, ${a})`
-    ctx.arc(p.x, p.y, Math.max(1, 3 * a), 0, Math.PI * 2)
+    ctx.arc(sp.x, sp.y, Math.max(1, 3 * a * state.zoom), 0, Math.PI * 2)
     ctx.fill()
   }
 
+  for (const badge of badges) drawLevelBadge(ctx, badge.x, badge.y, badge.radius, badge.level)
+
   for (const f of state.floaters) {
+    const sp = worldToScreen(state, f.x, f.y)
     const a = Math.max(0, f.life)
     ctx.save()
     ctx.globalAlpha = a
     ctx.fillStyle = inkColor()
-    ctx.font = `700 ${Math.max(12, 14 * state.scale)}px var(--font-body, sans-serif)`
+    ctx.font = `700 ${Math.max(12, 15 * state.scale)}px var(--font-body, sans-serif)`
     ctx.textAlign = 'center'
-    ctx.fillText(f.text, f.x, f.y)
+    ctx.fillText(f.text, sp.x, sp.y)
     ctx.restore()
   }
 

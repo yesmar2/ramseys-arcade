@@ -2,9 +2,10 @@ import { getPersonalBest } from '../../lib/personalBest'
 import { sfx } from '../../lib/sound'
 
 /*
- * Frenzy: one open tank, one rule. Anything smaller is food; anything bigger
- * is not. Steer with the cursor or a finger — the fish swims toward it — and
- * grow by eating until something you can't out-swim finds you.
+ * Frenzy: a scrolling ocean, camera locked to your fish. Every fish carries
+ * its level. Eat anything at your level or below — that's the whole rule —
+ * and each bite is +1. Anything above your level eats you. Steering is
+ * direct: point a direction, the fish turns and swims, no drift to fight.
  */
 
 export type Phase = 'menu' | 'playing' | 'gameover'
@@ -13,9 +14,7 @@ export type Fish = {
   id: number
   x: number
   y: number
-  vx: number
-  vy: number
-  radius: number
+  level: number
   angle: number
   tail: number
   wander: number
@@ -47,8 +46,7 @@ export type Snapshot = {
   score: number
   best: number
   phase: Phase
-  size: number
-  tier: string
+  level: number
   danger: boolean
 }
 
@@ -59,11 +57,14 @@ export type GameState = {
   stageW: number
   stageH: number
   scale: number
+  cameraX: number
+  cameraY: number
+  zoom: number
   player: Fish
   fishes: Fish[]
   particles: Particle[]
   floaters: Floater[]
-  pointerTarget: { x: number; y: number } | null
+  pointerDir: { x: number; y: number } | null
   keys: { up: boolean; down: boolean; left: boolean; right: boolean }
   invuln: number
   danger: boolean
@@ -77,15 +78,15 @@ export const DESIGN_W = 960
 export const DESIGN_H = 540
 const REF_SHORT = 540
 
-export const PLAYER_START_RADIUS = 15
-const MIN_ENEMY_RADIUS = 8
-const SPEED_BASE = 150
-const ACCEL_BASE = 520
-const EAT_MARGIN = 1.12
+const BASE_RADIUS = 15
+const BASE_SPEED = 210
+const BASE_TURN_RATE = 7.5
+const POINTER_FULL_SPEED_DIST = 130
 const START_INVULN = 2.2
-const GROW_FACTOR = 0.55
-const SPAWN_INTERVAL = 0.55
-const DEADZONE = 6
+const SPAWN_INTERVAL = 0.4
+const MIN_SPAWN_GAP = 90
+/** The player always out-swims anything it could eat, since there's no wall to corner it against. */
+const PLAYER_HUNT_SPEED_MULT = 1.15
 
 let nextId = 1
 function uid() {
@@ -104,15 +105,37 @@ function dist(ax: number, ay: number, bx: number, by: number) {
   return Math.hypot(ax - bx, ay - by)
 }
 
-function makeFish(x: number, y: number, radius: number, opts?: Partial<Fish>): Fish {
+export function radiusForLevel(level: number, scale: number) {
+  return BASE_RADIUS * scale * Math.pow(Math.max(1, level), 0.33)
+}
+
+/** A gentle curve — level matters far more for the eat rule than for a foot race. */
+function speedForLevel(level: number, scale: number) {
+  return BASE_SPEED * scale * Math.min(1.06, Math.max(0.78, Math.pow(Math.max(1, level), -0.06)))
+}
+
+
+function turnRateForLevel(level: number) {
+  return BASE_TURN_RATE * Math.min(1.15, Math.max(0.42, Math.pow(Math.max(1, level), -0.22)))
+}
+
+export function zoomForLevel(level: number) {
+  return Math.min(1, Math.max(0.34, 1 / Math.pow(Math.max(1, level), 0.22)))
+}
+
+function viewHalfDiagonal(state: GameState) {
+  const halfW = state.stageW / 2 / state.zoom
+  const halfH = state.stageH / 2 / state.zoom
+  return Math.hypot(halfW, halfH)
+}
+
+function makeFish(x: number, y: number, level: number, opts?: Partial<Fish>): Fish {
   const ang = Math.random() * Math.PI * 2
   return {
     id: uid(),
     x,
     y,
-    vx: Math.cos(ang) * 20,
-    vy: Math.sin(ang) * 20,
-    radius,
+    level,
     angle: ang,
     tail: Math.random() * Math.PI * 2,
     wander: ang,
@@ -123,70 +146,44 @@ function makeFish(x: number, y: number, radius: number, opts?: Partial<Fish>): F
   }
 }
 
-function makePlayer(w: number, h: number, scale: number): Fish {
-  return makeFish(w / 2, h / 2, PLAYER_START_RADIUS * scale)
-}
-
-export function tierFor(designRadius: number): string {
-  if (designRadius < 22) return 'Minnow'
-  if (designRadius < 32) return 'Guppy'
-  if (designRadius < 46) return 'Snapper'
-  if (designRadius < 65) return 'Barracuda'
-  if (designRadius < 90) return 'Grouper'
-  if (designRadius < 120) return 'Marlin'
-  return 'Leviathan'
-}
-
-/** How many enemies the tank tries to keep stocked as the run goes on. */
-function targetPopulation(elapsed: number) {
-  return Math.min(26, 12 + Math.floor(elapsed / 14))
-}
-
-/** How likely — and how large — the next spawn's threat is, as the run goes on. */
-function pickSizeFactor(elapsed: number, score: number) {
-  const threatBias = Math.min(0.5, 0.14 + score / 4500 + elapsed / 900)
-  const roll = Math.random()
-  if (roll > threatBias) {
-    return 0.38 + Math.random() * 0.58
-  }
-  const maxDanger = 1.35 + Math.min(0.65, score / 5000)
-  return 1.08 + Math.random() * (maxDanger - 1.08)
-}
-
-function spawnAwayFrom(w: number, h: number, x0: number, y0: number, minDist: number) {
-  for (let i = 0; i < 12; i++) {
-    const x = Math.random() * w
-    const y = Math.random() * h
-    if (dist(x, y, x0, y0) > minDist) return { x, y }
-  }
-  const edge = Math.floor(Math.random() * 4)
-  if (edge === 0) return { x: 2, y: Math.random() * h }
-  if (edge === 1) return { x: w - 2, y: Math.random() * h }
-  if (edge === 2) return { x: Math.random() * w, y: 2 }
-  return { x: Math.random() * w, y: h - 2 }
+/** How many levels above/below the player the next spawn should be. */
+function pickSpawnLevel(playerLevel: number, elapsed: number) {
+  const dangerChance = Math.min(0.5, 0.22 + elapsed / 300)
+  const spread = Math.min(7, 2 + Math.floor(elapsed / 25))
+  const magnitude = 1 + Math.floor(Math.random() * spread)
+  const level = Math.random() < dangerChance ? playerLevel + magnitude : playerLevel - magnitude
+  return Math.max(1, level)
 }
 
 function spawnFish(state: GameState): Fish {
-  const factor = pickSizeFactor(state.elapsed, state.score)
-  const scale = state.scale
-  const cap = Math.min(state.stageW, state.stageH) * 0.22
-  const radius = Math.min(cap, Math.max(MIN_ENEMY_RADIUS * scale, state.player.radius * factor))
-  const spot = spawnAwayFrom(
-    state.stageW,
-    state.stageH,
-    state.player.x,
-    state.player.y,
-    Math.min(state.stageW, state.stageH) * 0.32,
-  )
-  const dangerous = radius > state.player.radius * EAT_MARGIN
-  return makeFish(spot.x, spot.y, radius, {
+  const level = pickSpawnLevel(state.player.level, state.elapsed)
+  const radius = viewHalfDiagonal(state)
+  const ringMin = radius * 1.05
+  const ringMax = radius * 1.35
+  const ring = ringMin + Math.random() * (ringMax - ringMin)
+  const angle = Math.random() * Math.PI * 2
+  const x = state.player.x + Math.cos(angle) * ring
+  const y = state.player.y + Math.sin(angle) * ring
+  const dangerous = level > state.player.level
+  return makeFish(x, y, level, {
     aggressive: dangerous && Math.random() < 0.5,
-    shark: dangerous && radius > state.player.radius * 1.55,
+    shark: dangerous && level > state.player.level + 4,
   })
+}
+
+/** How many enemies the ocean tries to keep stocked — more once there's more to see. */
+function targetPopulation(state: GameState) {
+  const area = (1 / state.zoom - 1) * 10
+  return Math.min(42, 14 + Math.floor(state.elapsed / 12) + Math.floor(area))
+}
+
+function makePlayer(w: number, h: number): Fish {
+  return makeFish(w / 2, h / 2, 1)
 }
 
 export function createInitialState(w = DESIGN_W, h = DESIGN_H): GameState {
   const scale = designScale(w, h)
+  const player = makePlayer(0, 0)
   return {
     phase: 'menu',
     score: 0,
@@ -194,11 +191,14 @@ export function createInitialState(w = DESIGN_W, h = DESIGN_H): GameState {
     stageW: w,
     stageH: h,
     scale,
-    player: makePlayer(w, h, scale),
+    cameraX: player.x,
+    cameraY: player.y,
+    zoom: zoomForLevel(player.level),
+    player,
     fishes: [],
     particles: [],
     floaters: [],
-    pointerTarget: null,
+    pointerDir: null,
     keys: { up: false, down: false, left: false, right: false },
     invuln: START_INVULN,
     danger: false,
@@ -211,44 +211,23 @@ export function createInitialState(w = DESIGN_W, h = DESIGN_H): GameState {
 
 export function resizeState(state: GameState, w: number, h: number): GameState {
   if (w <= 0 || h <= 0) return state
-  const scale = designScale(w, h)
-  const sx = w / (state.stageW || w)
-  const sy = h / (state.stageH || h)
-  const k = scale / (state.scale || 1)
-  const rescale = (f: Fish): Fish => ({
-    ...f,
-    x: f.x * sx,
-    y: f.y * sy,
-    vx: f.vx * k,
-    vy: f.vy * k,
-    radius: f.radius * k,
-  })
-  return {
-    ...state,
-    stageW: w,
-    stageH: h,
-    scale,
-    player: rescale(state.player),
-    fishes: state.fishes.map(rescale),
-  }
+  return { ...state, stageW: w, stageH: h, scale: designScale(w, h) }
 }
 
 export function startGame(prev: GameState): GameState {
   const fresh = createInitialState(prev.stageW, prev.stageH)
-  return {
-    ...fresh,
-    best: Math.max(prev.best, loadBest()),
-    phase: 'playing',
-    fishes: Array.from({ length: 10 }, () => spawnFish(fresh)),
-  }
+  fresh.best = Math.max(prev.best, loadBest())
+  fresh.phase = 'playing'
+  fresh.fishes = Array.from({ length: 12 }, () => spawnFish(fresh))
+  return fresh
 }
 
-export function setPointerTarget(state: GameState, x: number, y: number): GameState {
-  return { ...state, pointerTarget: { x, y } }
+export function setPointerDir(state: GameState, offsetX: number, offsetY: number): GameState {
+  return { ...state, pointerDir: { x: offsetX, y: offsetY } }
 }
 
-export function clearPointerTarget(state: GameState): GameState {
-  return { ...state, pointerTarget: null }
+export function clearPointerDir(state: GameState): GameState {
+  return { ...state, pointerDir: null }
 }
 
 export function setKey(state: GameState, key: keyof GameState['keys'], down: boolean): GameState {
@@ -256,8 +235,9 @@ export function setKey(state: GameState, key: keyof GameState['keys'], down: boo
   return { ...state, keys: { ...state.keys, [key]: down } }
 }
 
-function steerInput(state: GameState): { x: number; y: number } | null {
-  const { keys, player } = state
+/** What the player wants to do this tick: a heading and how hard to swim it. */
+function playerDesire(state: GameState): { angle: number; speedFrac: number } | null {
+  const { keys } = state
   let dx = 0
   let dy = 0
   if (keys.up) dy -= 1
@@ -265,120 +245,75 @@ function steerInput(state: GameState): { x: number; y: number } | null {
   if (keys.left) dx -= 1
   if (keys.right) dx += 1
   if (dx !== 0 || dy !== 0) {
-    const len = Math.hypot(dx, dy) || 1
-    return { x: player.x + (dx / len) * 1000, y: player.y + (dy / len) * 1000 }
+    return { angle: Math.atan2(dy, dx), speedFrac: 1 }
   }
-  return state.pointerTarget
+  if (state.pointerDir) {
+    const d = Math.hypot(state.pointerDir.x, state.pointerDir.y)
+    if (d < 4) return null
+    return {
+      angle: Math.atan2(state.pointerDir.y, state.pointerDir.x),
+      speedFrac: Math.min(1, d / POINTER_FULL_SPEED_DIST),
+    }
+  }
+  return null
 }
 
-function maxSpeedFor(radius: number, scale: number) {
-  const ratio = (PLAYER_START_RADIUS * scale) / Math.max(1, radius)
-  return SPEED_BASE * scale * Math.min(1.4, Math.max(0.45, ratio ** 0.3))
-}
-
-function accelFor(radius: number, scale: number) {
-  const ratio = (PLAYER_START_RADIUS * scale) / Math.max(1, radius)
-  return ACCEL_BASE * scale * Math.min(1.4, Math.max(0.42, ratio ** 0.3))
+function turnToward(current: number, target: number, maxDelta: number) {
+  let diff = target - current
+  diff = Math.atan2(Math.sin(diff), Math.cos(diff))
+  if (diff > maxDelta) diff = maxDelta
+  else if (diff < -maxDelta) diff = -maxDelta
+  return current + diff
 }
 
 function integrate(
   f: Fish,
-  target: { x: number; y: number } | null,
+  desire: { angle: number; speedFrac: number } | null,
   dt: number,
   scale: number,
-  w: number,
-  h: number,
+  speedMult = 1,
 ) {
-  const maxSpeed = maxSpeedFor(f.radius, scale)
-  const accel = accelFor(f.radius, scale)
+  const speed = speedForLevel(f.level, scale) * speedMult
+  const turnRate = turnRateForLevel(f.level)
+  const speedFrac = desire?.speedFrac ?? 0
 
-  let dx = 0
-  let dy = 0
-  if (target) {
-    dx = target.x - f.x
-    dy = target.y - f.y
-    const d = Math.hypot(dx, dy)
-    if (d > DEADZONE) {
-      dx /= d
-      dy /= d
-    } else {
-      dx = 0
-      dy = 0
-    }
+  if (desire && speedFrac > 0.02) {
+    f.angle = turnToward(f.angle, desire.angle, turnRate * dt)
+    const vx = Math.cos(f.angle) * speed * speedFrac
+    const vy = Math.sin(f.angle) * speed * speedFrac
+    f.x += vx * dt
+    f.y += vy * dt
+    f.tail += dt * (4 + speed * speedFrac * 0.02)
+  } else {
+    f.tail += dt * 2
   }
-
-  // Push toward the interior, growing sharply near an edge — this is a real
-  // driving force, not just a clamp on the seek target, so a fish that's
-  // wandered or fled into a corner still has somewhere to go instead of
-  // just running out of thrust and sitting there.
-  const margin = f.radius * 3 + 60
-  let wx = 0
-  let wy = 0
-  if (f.x < margin) wx = (margin - f.x) / margin
-  else if (f.x > w - margin) wx = -(f.x - (w - margin)) / margin
-  if (f.y < margin) wy = (margin - f.y) / margin
-  else if (f.y > h - margin) wy = -(f.y - (h - margin)) / margin
-
-  f.vx += (dx + wx * 2.4) * accel * dt
-  f.vy += (dy + wy * 2.4) * accel * dt
-
-  const speed = Math.hypot(f.vx, f.vy)
-  if (speed > maxSpeed) {
-    f.vx = (f.vx / speed) * maxSpeed
-    f.vy = (f.vy / speed) * maxSpeed
-  }
-  const drag = Math.pow(0.985, dt * 60)
-  f.vx *= drag
-  f.vy *= drag
-  f.x += f.vx * dt
-  f.y += f.vy * dt
-
-  const pad = f.radius
-  if (f.x < pad) {
-    f.x = pad
-    f.vx = Math.abs(f.vx) * 0.4
-  } else if (f.x > w - pad) {
-    f.x = w - pad
-    f.vx = -Math.abs(f.vx) * 0.4
-  }
-  if (f.y < pad) {
-    f.y = pad
-    f.vy = Math.abs(f.vy) * 0.4
-  } else if (f.y > h - pad) {
-    f.y = h - pad
-    f.vy = -Math.abs(f.vy) * 0.4
-  }
-
-  const vs = Math.hypot(f.vx, f.vy)
-  if (vs > 4) f.angle = Math.atan2(f.vy, f.vx)
-  f.tail += dt * (4 + vs * 0.02)
 }
 
-function wanderTarget(f: Fish, dt: number) {
-  f.wander += (Math.random() - 0.5) * dt * 2.4
-  const reach = f.radius * 5 + 40
-  return { x: f.x + Math.cos(f.wander) * reach, y: f.y + Math.sin(f.wander) * reach }
+function wanderDesire(f: Fish, dt: number): { angle: number; speedFrac: number } {
+  f.wander += (Math.random() - 0.5) * dt * 2.2
+  return { angle: f.wander, speedFrac: 0.55 }
 }
 
-function aiTarget(
+function aiDesire(
   f: Fish,
   player: Fish,
   dt: number,
+  scale: number,
   huntingAllowed: boolean,
-): { x: number; y: number } {
+): { angle: number; speedFrac: number } {
   const d = dist(f.x, f.y, player.x, player.y)
-  const playerIsFood = player.radius > f.radius * EAT_MARGIN
-  const playerIsThreat = f.radius > player.radius * EAT_MARGIN
-  if (playerIsFood && d < f.radius * 2.5 + 46) {
-    const dx = f.x - player.x
-    const dy = f.y - player.y
-    const len = Math.hypot(dx, dy) || 1
-    return { x: f.x + (dx / len) * 140, y: f.y + (dy / len) * 140 }
+  const r = radiusForLevel(f.level, scale)
+  const playerIsFood = player.level >= f.level
+  const playerIsThreat = f.level > player.level
+  if (playerIsFood && d < r * 2.6 + 44) {
+    const angle = Math.atan2(f.y - player.y, f.x - player.x)
+    return { angle, speedFrac: 1 }
   }
-  if (huntingAllowed && playerIsThreat && f.aggressive && d < f.radius * 9 + 140) {
-    return { x: player.x, y: player.y }
+  if (huntingAllowed && playerIsThreat && f.aggressive && d < r * 9 + 140) {
+    const angle = Math.atan2(player.y - f.y, player.x - f.x)
+    return { angle, speedFrac: 0.92 }
   }
-  return wanderTarget(f, dt)
+  return wanderDesire(f, dt)
 }
 
 function spawnBurst(state: GameState, x: number, y: number, hue: number, count: number) {
@@ -422,42 +357,38 @@ export function tick(state: GameState, dt: number): GameState {
   s.flash = Math.max(0, s.flash - dt * 1.6)
   s.shake = Math.max(0, s.shake - dt * 3)
 
-  integrate(s.player, steerInput(s), dt, s.scale, s.stageW, s.stageH)
+  integrate(s.player, playerDesire(s), dt, s.scale, PLAYER_HUNT_SPEED_MULT)
 
   const huntingAllowed = s.invuln <= 0
   for (const f of s.fishes) {
-    integrate(f, aiTarget(f, s.player, dt, huntingAllowed), dt, s.scale, s.stageW, s.stageH)
+    integrate(f, aiDesire(f, s.player, dt, s.scale, huntingAllowed), dt, s.scale)
   }
 
+  // Camera: tight follow, with zoom easing out as the player levels up.
+  s.cameraX += (s.player.x - s.cameraX) * Math.min(1, dt * 10)
+  s.cameraY += (s.player.y - s.cameraY) * Math.min(1, dt * 10)
+  const targetZoom = zoomForLevel(s.player.level)
+  s.zoom += (targetZoom - s.zoom) * Math.min(1, dt * 1.6)
+
+  const playerRadius = radiusForLevel(s.player.level, s.scale)
   const survivors: Fish[] = []
   let ate = false
   for (const f of s.fishes) {
     const d = dist(f.x, f.y, s.player.x, s.player.y)
-    if (d < f.radius + s.player.radius) {
-      if (f.radius <= s.player.radius / EAT_MARGIN) {
-        const designRadius = f.radius / s.scale
-        const points = Math.max(1, Math.round(designRadius * 3))
+    const fRadius = radiusForLevel(f.level, s.scale)
+    if (d < fRadius + playerRadius) {
+      if (s.player.level >= f.level) {
+        const points = f.level * 10
         s.score += points
-        s.player.radius = Math.sqrt(s.player.radius ** 2 + f.radius ** 2 * GROW_FACTOR)
+        s.player.level += 1
         spawnBurst(s, f.x, f.y, 172, 10)
-        s.floaters.push({ x: f.x, y: f.y - f.radius - 6, text: `+${points}`, life: 1, maxLife: 0.9 })
+        s.floaters.push({ x: f.x, y: f.y - fRadius - 8, text: `+${points}`, life: 1, maxLife: 0.9 })
         ate = true
         continue
       }
-      if (f.radius >= s.player.radius * EAT_MARGIN) {
-        if (s.invuln <= 0) {
-          endRun(s, s.player.x, s.player.y)
-          return s
-        }
-      } else {
-        const dx = s.player.x - f.x
-        const dy = s.player.y - f.y
-        const len = Math.hypot(dx, dy) || 1
-        const push = (f.radius + s.player.radius - len) * 0.5
-        s.player.x += (dx / len) * push
-        s.player.y += (dy / len) * push
-        f.x -= (dx / len) * push
-        f.y -= (dy / len) * push
+      if (s.invuln <= 0) {
+        endRun(s, s.player.x, s.player.y)
+        return s
       }
     }
     survivors.push(f)
@@ -465,11 +396,17 @@ export function tick(state: GameState, dt: number): GameState {
   if (ate) sfx('eat')
   s.fishes = survivors
 
+  // Keep the ocean stocked near the camera, and let stragglers drift out of memory.
+  const despawnRadius = viewHalfDiagonal(s) * 2.2
+  s.fishes = s.fishes.filter((f) => dist(f.x, f.y, s.player.x, s.player.y) < despawnRadius)
+
   s.spawnTimer -= dt
-  const target = targetPopulation(s.elapsed)
+  const target = targetPopulation(s)
   if (s.spawnTimer <= 0 && s.fishes.length < target) {
     s.spawnTimer = SPAWN_INTERVAL
-    s.fishes.push(spawnFish(s))
+    const spot = spawnFish(s)
+    const tooClose = s.fishes.some((f) => dist(f.x, f.y, spot.x, spot.y) < MIN_SPAWN_GAP)
+    if (!tooClose) s.fishes.push(spot)
   }
 
   s.particles = s.particles.filter((p) => {
@@ -489,21 +426,19 @@ export function tick(state: GameState, dt: number): GameState {
 
   s.danger = s.fishes.some(
     (f) =>
-      f.radius > s.player.radius * EAT_MARGIN &&
-      dist(f.x, f.y, s.player.x, s.player.y) < s.player.radius * 7 + 60,
+      f.level > s.player.level &&
+      dist(f.x, f.y, s.player.x, s.player.y) < radiusForLevel(f.level, s.scale) * 7 + 70,
   )
 
   return s
 }
 
 export function toSnapshot(s: GameState): Snapshot {
-  const designRadius = s.player.radius / s.scale
   return {
     score: s.score,
     best: s.best,
     phase: s.phase,
-    size: designRadius,
-    tier: tierFor(designRadius),
+    level: s.player.level,
     danger: s.danger,
   }
 }
