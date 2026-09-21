@@ -954,7 +954,7 @@ html[data-theme="dark"] .wall-tile__art .inline-thumb {
 .wall-tile__foot {
   flex: none;
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
   min-height: 2.3rem;
