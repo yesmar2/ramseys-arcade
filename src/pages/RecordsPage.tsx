@@ -27,7 +27,6 @@ import { useDeviceType } from '../lib/device'
 import { usePagedBoard } from '../hooks/usePagedBoard'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { APP_NAME } from '../lib/brand'
-import { defaultPeriod } from '../lib/defaultPeriod'
 import { groupBoardEmptyTitle, useActiveGroup } from '../lib/groups'
 import { resolveGameAccent } from '../lib/theme'
 import {
@@ -71,7 +70,7 @@ export function RecordsPage({
     return (
       <GameRecordBookPage
         game={game}
-        period={periodFromRoute ?? defaultPeriod()}
+        period={periodFromRoute ?? 'all'}
       />
     )
   }
@@ -80,7 +79,7 @@ export function RecordsPage({
     <RecordBoardPage
       game={game}
       recordId={recordId}
-      period={periodFromRoute ?? defaultPeriod()}
+      period={periodFromRoute ?? 'all'}
     />
   )
 }

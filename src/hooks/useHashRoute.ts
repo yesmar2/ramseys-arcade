@@ -185,18 +185,22 @@ export function tournamentPlayHref(id: string, game: string, invite?: string) {
   return `${base}?invite=${encodeURIComponent(invite.trim().toUpperCase())}`
 }
 
-/** Record books for one game (`/records/{game}/{period}`). Individual boards use `recordHref`. */
-export function recordsHref(
-  game: string,
-  period: LeaderboardPeriod = defaultPeriod(),
-) {
+/**
+ * Record books for one game (`/records/{game}/{period}`). Individual boards
+ * use `recordHref`.
+ *
+ * Records are lifetime achievements, not the rotating weekly competition —
+ * a book win is judged against the all-time holder, so the book itself
+ * defaults to `all` rather than the site's general leaderboard period.
+ */
+export function recordsHref(game: string, period: LeaderboardPeriod = 'all') {
   return `/records/${encodeURIComponent(game)}/${period}`
 }
 
 export function recordHref(
   game: string,
   recordId: string,
-  period: LeaderboardPeriod = defaultPeriod(),
+  period: LeaderboardPeriod = 'all',
 ) {
   return `/records/${encodeURIComponent(game)}/${encodeURIComponent(recordId)}/${period}`
 }
@@ -436,7 +440,7 @@ export function parseUrl(pathname: string, search: string): Route {
       name: 'records',
       game,
       recordId,
-      period: isLeaderboardPeriod(periodRaw) ? periodRaw : defaultPeriod(),
+      period: isLeaderboardPeriod(periodRaw) ? periodRaw : 'all',
     }
   }
 
@@ -451,7 +455,7 @@ export function parseUrl(pathname: string, search: string): Route {
       name: 'records',
       game,
       recordId: second,
-      period: defaultPeriod(),
+      period: 'all',
     }
   }
 
@@ -460,7 +464,7 @@ export function parseUrl(pathname: string, search: string): Route {
     return {
       name: 'records',
       game: canonicalGameSlug(decodeURIComponent(recordsMatch[1])),
-      period: defaultPeriod(),
+      period: 'all',
     }
   }
 
@@ -549,15 +553,18 @@ export function useRoute(): Route {
   const [route, setRoute] = useState(() => currentRoute())
 
   useEffect(() => {
-    const p = periodFromRoute(currentRoute())
-    if (p) setDefaultPeriod(p)
+    const start = currentRoute()
+    const p = periodFromRoute(start)
+    // Record books default to `all`, a period of their own — landing on one
+    // must not overwrite the sticky period the rest of the site shares.
+    if (p && start.name !== 'records') setDefaultPeriod(p)
   }, [])
 
   useEffect(() => {
     const syncRoute = () => {
       let next = currentRoute()
       const p = periodFromRoute(next)
-      if (p) setDefaultPeriod(p)
+      if (p && next.name !== 'records') setDefaultPeriod(p)
       const groupParams = new URLSearchParams(window.location.search)
       if (groupParams.has('group')) {
         setActiveGroup(parseGroupQuery(window.location.search))

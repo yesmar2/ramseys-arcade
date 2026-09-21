@@ -195,7 +195,7 @@ function App() {
       <RecordsPage
         game={route.game}
         recordId={route.recordId}
-        period={route.period ?? defaultPeriod()}
+        period={route.period ?? 'all'}
       />
     )
   }
