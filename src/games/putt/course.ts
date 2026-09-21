@@ -257,28 +257,35 @@ export const COURSE: Hole[] = [
     marks: [mark(56, 180, UP)],
   }),
   /*
-   * The Snail. Out of the tee into a round plaza with a crater in its
-   * middle: a bowl that bends any ball crossing it toward the centre and
-   * swallows a slow one, which then has to climb back out. Off the plaza's
-   * right side a long straight runs up to the spiral: a turn and a quarter,
-   * each lap a little tighter, in to the cup at the middle. The middle is a
-   * hilltop, so the last of the way in has to be rolled soft and true.
+   * Crater. Out of the tee into a round plaza with a crater in its middle:
+   * a bowl that bends any ball crossing it toward the centre and swallows
+   * a slow one, which then has to climb back out. Two ways off the plaza.
+   * Right is a narrow straight with a windmill across its top, and it comes
+   * out beside the cup: short, but the line has to be true and the timing
+   * right. Left is a wide, plain corridor that bends round into the far
+   * side of the green: long, safe, and a long putt past a bumper to
+   * finish. The cup sits on a hilltop either way.
    */
   hole({
-    name: 'The Snail',
+    name: 'Crater',
     par: 5,
     h: 332,
     tee: { x: 16, y: 318 },
-    cup: { x: 50, y: 42.75 },
+    cup: { x: 78, y: 66 },
     green: [
       disc(16, 318, 11),
       capsule(16, 318, 28, 280, 7.5),
       disc(50, 250, 36),
-      capsule(85, 250, 85, 54, 7.5),
-      spiral(50, 54, 11.25, 19, -Math.PI / 2, Math.PI * 2, 7.5),
+      capsule(85, 250, 85, 85, 6),
+      capsule(18, 250, 18, 120, 11),
+      arc(42, 120, 24, Math.PI, Math.PI * 1.5, 11),
+      capsule(42, 96, 50, 96, 11),
+      disc(58, 74, 30),
     ],
-    slopes: [bowl(disc(50, 250, 24), 100), repel(disc(50, 42.75, 12), 35)],
-    marks: [mark(85, 200, UP)],
+    slopes: [bowl(disc(50, 250, 24), 100), repel(disc(78, 66, 10), 30)],
+    spinners: [mill(85, 118, 12, 2.4)],
+    bumpers: [pop(58, 82, 4)],
+    marks: [mark(85, 200, UP), mark(18, 200, UP)],
   }),
   /*
    * The Climb. Two hills, each a straight that pushes the ball back down,

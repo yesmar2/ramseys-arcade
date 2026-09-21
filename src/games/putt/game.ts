@@ -1,4 +1,5 @@
 import { getPersonalBest } from '../../lib/personalBest'
+import { isRunAssisted } from '../../lib/runAchievements'
 import { sfx } from '../../lib/sound'
 import {
   COURSE,
@@ -16,6 +17,7 @@ import {
   type Vec,
   type Wall,
 } from './course'
+import { loadHoleBests, recordHoleBest } from './holeBests'
 import { centreOf, contours, inAny, inside, pivotOf } from './terrain'
 
 /*
@@ -118,6 +120,8 @@ export type HoleResult = {
   par: number
   points: number
   label: string
+  /** The fewest strokes this player has ever taken here. */
+  best: boolean
 }
 
 export type Popup = { text: string; sub: string | null; life: number }
@@ -132,6 +136,8 @@ export type GameState = {
   holeIndex: number
   strokes: number
   results: HoleResult[]
+  /** The fewest strokes ever taken on each hole, by name: what there is to beat. */
+  holeBests: Record<string, number>
   ball: Ball
   /** Seconds the current phase has run. */
   t: number
@@ -184,6 +190,8 @@ export type Snapshot = {
   strokes: number
   par: number
   toPar: number
+  /** Holes this round played in fewer strokes than ever before. */
+  bests: number
   aiming: 'none' | 'drag' | 'key'
 }
 
@@ -281,6 +289,7 @@ export function createInitialState(w = 540, h = 720): GameState {
     holeIndex: 0,
     strokes: 0,
     results: [],
+    holeBests: loadHoleBests(),
     ball: { x: first.tee.x, y: first.tee.y, vx: 0, vy: 0 },
     t: 0,
     clock: 0,
@@ -905,21 +914,27 @@ function golfPoints(strokes: number, par: number) {
   return base + (strokes === 1 ? ACE_BONUS : 0)
 }
 
-/** The ball is down. Points for the strokes against par, and nothing else. */
+/** The ball is down. Points for the strokes against par, and nothing else; and a best on the hole is kept. */
 function finishHole(state: GameState): GameState {
   const hole = currentHole(state)
   const points = golfPoints(state.strokes, hole.par)
   const label = resultLabel(state.strokes, hole.par)
-  const result: HoleResult = { strokes: state.strokes, par: hole.par, points, label }
+  // A round that skipped ahead did not earn a best.
+  const best = !isRunAssisted() && recordHoleBest(hole.name, state.strokes)
+  const holeBests = best ? { ...state.holeBests, [hole.name]: state.strokes } : state.holeBests
+  const result: HoleResult = { strokes: state.strokes, par: hole.par, points, label, best }
   if (state.strokes === 1 || state.strokes < hole.par) sfx('perfect')
   else sfx('good')
+  const sub = [points > 0 ? `+${points}` : `${state.strokes} strokes`]
+  if (best) sub.push(state.holeBests[hole.name] === undefined ? 'first time down' : 'new best')
   return {
     ...state,
     phase: 'sunk',
     t: 0,
     score: state.score + points,
     results: [...state.results, result],
-    popup: { text: label, sub: points > 0 ? `+${points}` : `${state.strokes} strokes`, life: 1.7 },
+    holeBests,
+    popup: { text: label, sub: sub.join(' · '), life: 1.7 },
     flash: 0.22,
     ball: { ...state.ball, vx: 0, vy: 0 },
     air: 0,
@@ -1230,6 +1245,7 @@ export function toSnapshot(s: GameState): Snapshot {
     strokes: s.strokes,
     par: hole.par,
     toPar: played - parPlayed,
+    bests: s.results.filter((r) => r.best).length,
     aiming: s.aiming,
   }
 }

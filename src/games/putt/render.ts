@@ -983,7 +983,9 @@ export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, w: n
     ctx.fillStyle = ink(0.62)
     ctx.font = font(Math.max(11, textScale * 0.03), 750)
     const strokeWord = state.strokes === 1 ? 'STROKE' : 'STROKES'
-    ctx.fillText(`PAR ${hole.par}  ·  ${state.strokes} ${strokeWord}`, w - inset, cy)
+    const best = state.holeBests[hole.name]
+    const bestPart = best !== undefined ? `BEST ${best}  ·  ` : ''
+    ctx.fillText(`PAR ${hole.par}  ·  ${bestPart}${state.strokes} ${strokeWord}`, w - inset, cy)
   }
 
   // ---- the band below: the cue, and how hard the pull is
@@ -1021,7 +1023,9 @@ export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, w: n
     ctx.fillText(`Hole ${state.holeIndex + 1}`, cx, cy)
     ctx.font = font(Math.max(13, textScale * 0.04), 750)
     ctx.fillStyle = ink(0.7)
-    ctx.fillText(`Par ${hole.par}  ·  ${hole.name}`, cx, cy + textScale * 0.08)
+    const best = state.holeBests[hole.name]
+    const bestLine = best !== undefined ? `  ·  Your best ${best}` : ''
+    ctx.fillText(`Par ${hole.par}  ·  ${hole.name}${bestLine}`, cx, cy + textScale * 0.08)
   }
 
   // ---- popup: the result of the hole, or a splash

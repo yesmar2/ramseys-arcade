@@ -47,6 +47,13 @@ function toParLabel(toPar: number) {
   return `${n} ${toPar < 0 ? 'under' : 'over'} par`
 }
 
+/** "2 under par · 3 holes at a new best", or just the par when nothing was beaten. */
+function roundLabel(toPar: number, bests: number) {
+  const par = toParLabel(toPar)
+  if (bests === 0) return par
+  return `${par} · ${bests} ${bests === 1 ? 'hole' : 'holes'} at a new best`
+}
+
 /**
  * The field fills the screen, portrait or landscape. Press anywhere and
  * pull back: the ball goes the other way, harder the further the pull, and
@@ -371,7 +378,7 @@ export function PuttGame() {
                 gameSlug="putt"
                 score={ui.score}
                 title="Round over"
-                subtitle={toParLabel(ui.toPar)}
+                subtitle={roundLabel(ui.toPar, ui.bests)}
                 previousBest={Math.max(previousBestRef.current, apiBest)}
                 onDone={restart}
               />
