@@ -1,4 +1,5 @@
 import { applyBoardScope, withGroupFallback } from './groups'
+import { isRunAssisted } from './runAchievements'
 import { runIdFor } from './runSession'
 import {
   ApiError,
@@ -18,6 +19,15 @@ export const ASTEROIDS_WAVE_RECORD_MAX = 20
 export const SNAKE_LENGTH_MILESTONE_MIN = 20
 export const SNAKE_LENGTH_MILESTONE_MAX = 100
 export const SNAKE_LENGTH_MILESTONE_STEP = 10
+/**
+ * The milestone Snake puts on its start card.
+ *
+ * Its score board rewards a long run without a mistake — a fine goal once you
+ * are hooked, a poor one for a first visit. Length 20 is well under a minute,
+ * so the first screen also offers a goal you can attempt before deciding
+ * whether you like the game.
+ */
+export const SNAKE_SPRINT_LENGTH = SNAKE_LENGTH_MILESTONE_MIN
 export const CROSSWALK_ROW_MILESTONE_MIN = 100
 export const CROSSWALK_ROW_MILESTONE_MAX = 200
 export const CROSSWALK_ROW_MILESTONE_STEP = 50
@@ -366,6 +376,14 @@ export async function submitRecord(
   entry: LeaderboardEntry | null
   totalEntries: number | null
 }> {
+  // A run that used the admin stage jump did not earn where it got to. The
+  // score boards have always refused it, but the record books were writing it
+  // down — which is how a single jumped run came to hold every Snake milestone
+  // at once, each at the few milliseconds the jump itself took.
+  if (isRunAssisted()) {
+    return { improved: false, rank: null, entry: null, totalEntries: null }
+  }
+
   const cleaned = normalizePlayerName(name) || 'PLAYER'
   const token = getClaimToken(cleaned)
   // The run this record came out of; the server reads it but never spends it,
