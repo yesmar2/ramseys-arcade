@@ -1,6 +1,5 @@
 import type { CSSProperties } from 'react'
 import { getGame } from '../data/games'
-import { useAuth } from '../hooks/useAuth'
 import { rankHref, tournamentHref } from '../hooks/useHashRoute'
 import { useLiveEvents } from '../hooks/useLiveEvents'
 import { usePlayerName } from '../hooks/usePlayerName'
@@ -24,7 +23,8 @@ import { HomeOfficialEvents } from './HomeOfficialEvents'
  * you are in something — so it is full on the first day as on the thousandth.
  */
 export function HomePulse() {
-  const { signedIn } = useAuth()
+  // Keyed on the active tag, like the wall and the hub: the rank below is fetched by name,
+  // so a borrowed tag in dev or a remembered one with a lapsed session shows its standing too.
   const name = normalizePlayerName(usePlayerName())
   const { rank } = useGlobalRank()
   const loading = useGlobalRankLoading()
@@ -40,7 +40,7 @@ export function HomePulse() {
 
   return (
     <div className="home-pulse">
-      {signedIn && name ? (
+      {name ? (
         <a className="home-pulse__standing" href={rankHref()}>
           <span className="home-pulse__k">{groupId ? 'Your group standing' : 'Your standing'}</span>
           <span className="home-pulse__v">
