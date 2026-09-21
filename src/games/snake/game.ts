@@ -370,7 +370,12 @@ function randomFood(
     return free
   }
 
-  const free = pick(1.1).length ? pick(1.1) : pick(0.75)
+  // Scanned once and kept. Written as `pick(1.1).length ? pick(1.1) : …` it ran
+  // the whole board twice on the path it takes nearly every time — a few
+  // hundred cells against every bead of the body, at the moment of eating,
+  // which is the worst moment to spend anything.
+  const roomy = pick(1.1)
+  const free = roomy.length ? roomy : pick(0.75)
   if (free.length) return free[Math.floor(Math.random() * free.length)]
 
   // Board this full: take any open cell at all, but never a walled one —
