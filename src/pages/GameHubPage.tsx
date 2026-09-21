@@ -310,7 +310,7 @@ export function GameHubPage({ slug, board: boardFromRoute }: GameHubPageProps) {
                   index={i}
                   size="one"
                   best={null}
-                  place={byGame[g.slug]?.place ?? null}
+                  standing={byGame[g.slug] ?? null}
                   daily={false}
                 />
               ))}

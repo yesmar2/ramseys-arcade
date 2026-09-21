@@ -528,6 +528,8 @@ export async function fetchPlayerBests(
 export type GlobalGamePlace = {
   place: number
   points: number
+  /** How many players are on that board for the period; older API builds leave it out. */
+  total?: number
 }
 
 export type GlobalRankNearby = {
