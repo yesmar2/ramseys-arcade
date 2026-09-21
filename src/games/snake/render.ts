@@ -35,14 +35,19 @@ export function renderGame(
     }
   }
 
-  const pad = Math.min(w, h) * 0.06
+  // A strip under the board belongs to the level and the boost tank, taken out
+  // before the board is sized rather than after. Sizing the board first and
+  // then drawing into whatever gap was left is how the level label came to sit
+  // on the board's own edge — on a short screen there was no gap at all.
+  const footer = Math.max(22, Math.min(w, h) * 0.07)
+  const pad = Math.min(w, h) * 0.05
   const boardW = w - pad * 2
-  const boardH = h - pad * 2
+  const boardH = h - pad * 2 - footer
   const cell = Math.min(boardW / state.cols, boardH / state.rows)
   const gridW = cell * state.cols
   const gridH = cell * state.rows
   const ox = (w - gridW) / 2
-  const oy = (h - gridH) / 2 + h * 0.02
+  const oy = pad + Math.max(0, (boardH - gridH) / 2)
 
   // Board panel
   const radius = Math.max(12, cell * 0.55)
@@ -67,6 +72,13 @@ export function renderGame(
       ctx.fill()
     }
   }
+
+  // Everything that belongs to the playfield is confined to it. A trail can
+  // reach past the board — the admin jump lays out a body longer than the board
+  // is tall — and without this the beads are drawn up over the score.
+  ctx.save()
+  roundRect(ctx, ox - 10, oy - 10, gridW + 20, gridH + 20, radius)
+  ctx.clip()
 
   // Barriers — read as built into the board, not dropped onto it, so the eye
   // sorts them from the food and the body at a glance.
@@ -248,34 +260,57 @@ export function renderGame(
     ctx.restore()
   }
 
-  // Boost tank, along the bottom of the board panel. On a phone the control
-  // itself can show this, but on a desktop there is no control to look at.
-  {
-    const fuel = boostFuelLeft(state)
-    const barW = gridW * 0.34
-    const barH = Math.max(3, cell * 0.11)
-    const bx = ox + (gridW - barW) / 2
-    const by = oy + gridH + Math.max(7, cell * 0.34)
+  // Back out to the whole canvas for the footer and the flash.
+  ctx.restore()
 
-    roundRect(ctx, bx, by, barW, barH, barH / 2)
+  // Footer: level at one end, boost tank at the other, both on the board's own
+  // margins so the row reads as one strip rather than two stray marks. The HUD
+  // above the board stays the score alone.
+  {
+    const panelBottom = oy + gridH + 10
+    const midY = panelBottom + (h - panelBottom) / 2
+    const muted = dark ? 'rgba(231, 238, 243, 0.55)' : 'rgba(26, 43, 60, 0.5)'
+    const label = Math.max(11, Math.min(footer * 0.52, cell * 0.42))
+
+    ctx.save()
+    ctx.font = `600 ${label}px Outfit, system-ui, sans-serif`
+    ctx.textAlign = 'left'
+    ctx.textBaseline = 'middle'
+    ctx.fillStyle = muted
+    ctx.fillText(`LEVEL ${state.level}`, ox, midY)
+    ctx.restore()
+
+    const fuel = boostFuelLeft(state)
+    const barW = Math.min(gridW * 0.3, label * 9)
+    const barH = Math.max(4, label * 0.36)
+    const barX = ox + gridW - barW
+    const barY = midY - barH / 2
+
+    // A bolt ahead of the bar, so the strip says what it is measuring.
+    const boltH = label * 0.95
+    const boltX = barX - boltH * 0.85
+    ctx.save()
+    ctx.fillStyle = boosting ? 'rgba(245, 185, 66, 0.98)' : muted
+    ctx.beginPath()
+    ctx.moveTo(boltX + boltH * 0.34, midY - boltH / 2)
+    ctx.lineTo(boltX, midY + boltH * 0.08)
+    ctx.lineTo(boltX + boltH * 0.22, midY + boltH * 0.08)
+    ctx.lineTo(boltX + boltH * 0.08, midY + boltH / 2)
+    ctx.lineTo(boltX + boltH * 0.42, midY - boltH * 0.06)
+    ctx.lineTo(boltX + boltH * 0.2, midY - boltH * 0.06)
+    ctx.closePath()
+    ctx.fill()
+    ctx.restore()
+
+    roundRect(ctx, barX, barY, barW, barH, barH / 2)
     ctx.fillStyle = dark ? 'rgba(231, 238, 243, 0.12)' : 'rgba(26, 43, 60, 0.1)'
     ctx.fill()
 
     if (fuel > 0) {
-      roundRect(ctx, bx, by, barW * fuel, barH, barH / 2)
+      roundRect(ctx, barX, barY, barW * fuel, barH, barH / 2)
       ctx.fillStyle = boosting ? 'rgba(245, 185, 66, 0.98)' : 'rgba(245, 185, 66, 0.6)'
       ctx.fill()
     }
-
-    // Which shape you are on, next to the tank. The HUD above the board is kept
-    // to the score alone, and the barriers say most of this already.
-    ctx.save()
-    ctx.font = `600 ${Math.max(10, cell * 0.38)}px Outfit, system-ui, sans-serif`
-    ctx.textAlign = 'left'
-    ctx.textBaseline = 'middle'
-    ctx.fillStyle = dark ? 'rgba(231, 238, 243, 0.5)' : 'rgba(26, 43, 60, 0.45)'
-    ctx.fillText(`L${state.level}`, bx + barW + Math.max(8, cell * 0.3), by + barH / 2)
-    ctx.restore()
   }
 
   if (state.flash > 0) {

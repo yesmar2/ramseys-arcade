@@ -163,8 +163,14 @@ const TURN_BOOST = 2
 const BOOST_MULT = 1.75
 /** Seconds of boost the tank holds. */
 const BOOST_FUEL_MAX = 4
-/** Seconds of boost each food is worth. */
-const BOOST_FUEL_PER_FOOD = 1.5
+/**
+ * Seconds of boost each food is worth.
+ *
+ * Under a second, so a full tank is five foods of saving rather than three.
+ * Refilling faster than this made boost something you always had, and a thing
+ * you always have is a speed setting, not a decision.
+ */
+const BOOST_FUEL_PER_FOOD = 0.8
 
 /** Boost runs on the tank, so it stops when that is dry. */
 export function isBoosting(s: Pick<GameState, 'boostHeld' | 'phase' | 'boostFuel'>) {
@@ -192,8 +198,17 @@ const WALL_SOFT = 0.5
 const WALL_HARD = 0.22
 
 const START_SPEED = 6.2
-const MAX_SPEED = 10
-const SPEED_PER_FOOD = 0.06
+/**
+ * Pace, and how quickly it climbs.
+ *
+ * The ceiling is what a long body can still be steered at, not the fastest the
+ * engine will run: boost multiplies this, so a 10 here meant 17.5 cells a
+ * second with the tank open, which is past reading the board and into hoping.
+ * The climb is gentle enough that the first twenty food barely feel it — the
+ * difficulty in that stretch is meant to be the barriers and your own length.
+ */
+const MAX_SPEED = 8.5
+const SPEED_PER_FOOD = 0.035
 
 const OPPOSITE: Record<Dir, Dir> = {
   up: 'down',
