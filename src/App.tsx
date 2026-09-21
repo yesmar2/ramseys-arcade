@@ -1,6 +1,8 @@
-import { useEffect } from 'react'
+import { lazy, Suspense, useEffect, type ComponentType } from 'react'
 import { defaultPeriod } from './lib/defaultPeriod'
+import { BoardSkeleton } from './components/BoardChrome'
 import { Footer } from './components/Footer'
+import { PageShell } from './components/PageShell'
 import { SiteHeader } from './components/SiteHeader'
 import { getGame, isGameHidden } from './data/games'
 import { homeHref, useRoute } from './hooks/useHashRoute'
@@ -15,42 +17,62 @@ import {
 import { refreshGlobalRank } from './lib/globalRank'
 import { refreshPersonalBests } from './lib/personalBest'
 import { silenceMusic, unlockSound } from './lib/sound'
-import { AsteroidsPage } from './pages/AsteroidsPage'
-import { BarragePage } from './pages/BarragePage'
-import { AuthVerifyPage } from './pages/AuthVerifyPage'
-import { CrosswalkPage } from './pages/CrosswalkPage'
-import { BopPage } from './pages/BopPage'
-import { PuttPage } from './pages/PuttPage'
-import { FrenzyPage } from './pages/FrenzyPage'
-import { CrumbtrailPage } from './pages/CrumbtrailPage'
-import { DeadCenterPage } from './pages/DeadCenterPage'
-import { DevCelebratePage } from './pages/DevCelebratePage'
+import { rememberPlayed } from './lib/lastPlayed'
+import { isImpersonating } from './lib/impersonate'
+import { pruneOrphanTournamentIds } from './lib/tournaments'
 import { GameHubPage } from './pages/GameHubPage'
 import { GameLeaderboardPage } from './pages/GameLeaderboardPage'
-import { rememberPlayed } from './lib/lastPlayed'
-import { AboutPage } from './pages/AboutPage'
-import { PlusPage } from './pages/PlusPage'
-import { StatsPage } from './pages/StatsPage'
 import { HomePage } from './pages/HomePage'
-import { RankPage } from './pages/RankPage'
 import { LeaderboardsPage } from './pages/LeaderboardsPage'
 import { RecordsIndexPage } from './pages/RecordsIndexPage'
 import { RecordsPage } from './pages/RecordsPage'
-import { PatriotPage } from './pages/PatriotPage'
-import { SimonPage } from './pages/SimonPage'
-import { SnakePage } from './pages/SnakePage'
-import { FindBugPage } from './pages/FindBugPage'
-import { PelletsPage } from './pages/PelletsPage'
-import { StackerPage } from './pages/StackerPage'
-import { WhackPage } from './pages/WhackPage'
-import { CreateTournamentPage } from './pages/CreateTournamentPage'
-import { GroupDetailPage, GroupsPage } from './pages/GroupsPage'
-import { isImpersonating } from './lib/impersonate'
-import { pruneOrphanTournamentIds } from './lib/tournaments'
-import { TournamentDetailPage, TournamentsPage } from './pages/TournamentsPage'
-import { PrivacyPage } from './pages/PrivacyPage'
-import { TermsPage } from './pages/TermsPage'
-import { TournamentPlayPage } from './pages/TournamentPlayPage'
+
+/**
+ * A page that arrives with its route. The first load carries the shell, the
+ * home page and the pages a visitor browses from it (a game's hub, the
+ * boards, the record books); every game and every heavier page is its own
+ * chunk, so opening one game does not download fifteen.
+ */
+function page<P extends object>(load: () => Promise<ComponentType<P>>) {
+  return lazy(async () => ({ default: await load() }))
+}
+
+const AsteroidsPage = page(() => import('./pages/AsteroidsPage').then((m) => m.AsteroidsPage))
+const BarragePage = page(() => import('./pages/BarragePage').then((m) => m.BarragePage))
+const BopPage = page(() => import('./pages/BopPage').then((m) => m.BopPage))
+const CrosswalkPage = page(() => import('./pages/CrosswalkPage').then((m) => m.CrosswalkPage))
+const CrumbtrailPage = page(() => import('./pages/CrumbtrailPage').then((m) => m.CrumbtrailPage))
+const DeadCenterPage = page(() => import('./pages/DeadCenterPage').then((m) => m.DeadCenterPage))
+const FindBugPage = page(() => import('./pages/FindBugPage').then((m) => m.FindBugPage))
+const FrenzyPage = page(() => import('./pages/FrenzyPage').then((m) => m.FrenzyPage))
+const PatriotPage = page(() => import('./pages/PatriotPage').then((m) => m.PatriotPage))
+const PelletsPage = page(() => import('./pages/PelletsPage').then((m) => m.PelletsPage))
+const PuttPage = page(() => import('./pages/PuttPage').then((m) => m.PuttPage))
+const SimonPage = page(() => import('./pages/SimonPage').then((m) => m.SimonPage))
+const SnakePage = page(() => import('./pages/SnakePage').then((m) => m.SnakePage))
+const StackerPage = page(() => import('./pages/StackerPage').then((m) => m.StackerPage))
+const WhackPage = page(() => import('./pages/WhackPage').then((m) => m.WhackPage))
+
+const AboutPage = page(() => import('./pages/AboutPage').then((m) => m.AboutPage))
+const AuthVerifyPage = page(() => import('./pages/AuthVerifyPage').then((m) => m.AuthVerifyPage))
+const CreateTournamentPage = page(() =>
+  import('./pages/CreateTournamentPage').then((m) => m.CreateTournamentPage),
+)
+const DevCelebratePage = page(() => import('./pages/DevCelebratePage').then((m) => m.DevCelebratePage))
+const GroupDetailPage = page(() => import('./pages/GroupsPage').then((m) => m.GroupDetailPage))
+const GroupsPage = page(() => import('./pages/GroupsPage').then((m) => m.GroupsPage))
+const PlusPage = page(() => import('./pages/PlusPage').then((m) => m.PlusPage))
+const PrivacyPage = page(() => import('./pages/PrivacyPage').then((m) => m.PrivacyPage))
+const RankPage = page(() => import('./pages/RankPage').then((m) => m.RankPage))
+const StatsPage = page(() => import('./pages/StatsPage').then((m) => m.StatsPage))
+const TermsPage = page(() => import('./pages/TermsPage').then((m) => m.TermsPage))
+const TournamentDetailPage = page(() =>
+  import('./pages/TournamentsPage').then((m) => m.TournamentDetailPage),
+)
+const TournamentsPage = page(() => import('./pages/TournamentsPage').then((m) => m.TournamentsPage))
+const TournamentPlayPage = page(() =>
+  import('./pages/TournamentPlayPage').then((m) => m.TournamentPlayPage),
+)
 
 async function bootstrapApp() {
   pruneOrphanTournamentIds()
@@ -157,6 +179,30 @@ function App() {
     if (!onGameScreen) silenceMusic()
   }, [onGameScreen])
 
+  return (
+    <Suspense fallback={<RouteFallback game={onGameScreen} />}>
+      <Screen route={route} />
+    </Suspense>
+  )
+}
+
+/** While a page's chunk is on its way: a game gets its dark stage, anything else the shell. */
+function RouteFallback({ game }: { game: boolean }) {
+  if (game) {
+    return (
+      <main className="game-page game-page--fullscreen tour-play" aria-busy="true">
+        <p className="tour-play__message">Loading…</p>
+      </main>
+    )
+  }
+  return (
+    <PageShell>
+      <BoardSkeleton rows={4} />
+    </PageShell>
+  )
+}
+
+function Screen({ route }: { route: ReturnType<typeof useRoute> }) {
   if (route.name === 'groups') return <GroupsPage />
   if (route.name === 'group') {
     return <GroupDetailPage id={route.id} invite={route.invite} />

@@ -4,6 +4,7 @@ import {
   useState,
   type PointerEvent as ReactPointerEvent,
 } from 'react'
+import '../../styles/findbug.css'
 import {
   GamePlayChrome,
   PlayReadout,

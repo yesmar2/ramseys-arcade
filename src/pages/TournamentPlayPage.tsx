@@ -1,18 +1,4 @@
-import { useEffect, useState, type ComponentType } from 'react'
-import { AsteroidsGame } from '../games/asteroids/AsteroidsGame'
-import { BarrageGame } from '../games/barrage/BarrageGame'
-import { CrosswalkGame } from '../games/crosswalk/CrosswalkGame'
-import { BopGame } from '../games/bop/BopGame'
-import { PuttGame } from '../games/putt/PuttGame'
-import { CrumbtrailGame } from '../games/crumbtrail/CrumbtrailGame'
-import { DeadCenterGame } from '../games/dead-center/DeadCenterGame'
-import { FindBugGame } from '../games/findbug/FindBugGame'
-import { PatriotGame } from '../games/patriot/PatriotGame'
-import { SimonGame } from '../games/simon/SimonGame'
-import { SnakeGame } from '../games/snake/SnakeGame'
-import { PelletsGame } from '../games/pellets/PelletsGame'
-import { StackerGame } from '../games/stacker/StackerGame'
-import { WhackGame } from '../games/whack/WhackGame'
+import { lazy, Suspense, useEffect, useState, type ComponentType } from 'react'
 import { DeviceUnavailable } from '../components/DeviceUnavailable'
 import { getGame, gamePlayableOn } from '../data/games'
 import { useDeviceType } from '../lib/device'
@@ -37,22 +23,29 @@ import { TournamentPlayProvider } from '../tournaments/TournamentPlayContext'
  * thing that decides whether a slug plays here is whether it is in this map.
  * The old fixed list of eight left the weekly's newer games — Find the Bug,
  * Crumbtrail — reporting that they weren't part of an event they were in.
+ *
+ * Each game is the same chunk its own page loads, fetched when the event
+ * opens it, so this page does not carry every game to play one.
  */
+function game(load: () => Promise<ComponentType>) {
+  return lazy(async () => ({ default: await load() }))
+}
+
 const TOURNAMENT_GAMES: Record<string, ComponentType> = {
-  asteroids: AsteroidsGame,
-  barrage: BarrageGame,
-  centroid: DeadCenterGame,
-  crosswalk: CrosswalkGame,
-  crumbtrail: CrumbtrailGame,
-  bop: BopGame,
-  putt: PuttGame,
-  findbug: FindBugGame,
-  patriot: PatriotGame,
-  pellets: PelletsGame,
-  pop: WhackGame,
-  simon: SimonGame,
-  snake: SnakeGame,
-  stacker: StackerGame,
+  asteroids: game(() => import('../games/asteroids/AsteroidsGame').then((m) => m.AsteroidsGame)),
+  barrage: game(() => import('../games/barrage/BarrageGame').then((m) => m.BarrageGame)),
+  centroid: game(() => import('../games/dead-center/DeadCenterGame').then((m) => m.DeadCenterGame)),
+  crosswalk: game(() => import('../games/crosswalk/CrosswalkGame').then((m) => m.CrosswalkGame)),
+  crumbtrail: game(() => import('../games/crumbtrail/CrumbtrailGame').then((m) => m.CrumbtrailGame)),
+  bop: game(() => import('../games/bop/BopGame').then((m) => m.BopGame)),
+  putt: game(() => import('../games/putt/PuttGame').then((m) => m.PuttGame)),
+  findbug: game(() => import('../games/findbug/FindBugGame').then((m) => m.FindBugGame)),
+  patriot: game(() => import('../games/patriot/PatriotGame').then((m) => m.PatriotGame)),
+  pellets: game(() => import('../games/pellets/PelletsGame').then((m) => m.PelletsGame)),
+  pop: game(() => import('../games/whack/WhackGame').then((m) => m.WhackGame)),
+  simon: game(() => import('../games/simon/SimonGame').then((m) => m.SimonGame)),
+  snake: game(() => import('../games/snake/SnakeGame').then((m) => m.SnakeGame)),
+  stacker: game(() => import('../games/stacker/StackerGame').then((m) => m.StackerGame)),
 }
 
 export function TournamentPlayPage({
@@ -281,7 +274,11 @@ export function TournamentPlayPage({
       }}
     >
       <main className="game-page game-page--fullscreen tour-play">
-        {Game ? <Game /> : null}
+        {Game ? (
+          <Suspense fallback={<p className="tour-play__message">Loading {game?.name ?? gameSlug}…</p>}>
+            <Game />
+          </Suspense>
+        ) : null}
       </main>
     </TournamentPlayProvider>
   )

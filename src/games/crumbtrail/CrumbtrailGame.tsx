@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import '../../styles/crumbtrail.css'
 import { AdminWaveSkip } from '../../components/AdminWaveSkip'
 import { GamePlayChrome } from '../../components/GameHud'
 import { GameStartCard } from '../../components/GameStartCard'

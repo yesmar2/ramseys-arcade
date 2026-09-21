@@ -5,6 +5,7 @@ import {
   type CSSProperties,
   type PointerEvent as ReactPointerEvent,
 } from 'react'
+import '../../styles/barrage.css'
 import {
   GamePlayChrome,
   PlayReadout,
