@@ -1,16 +1,16 @@
-import { useEffect, useState, type CSSProperties } from 'react'
+import { useState, type CSSProperties } from 'react'
 import { games, homeGames, TAG_LABELS, type Game, type GameTag } from '../data/games'
 import { useBoardLeaders, type BoardLeader } from '../hooks/useBoardLeaders'
 import { gameHref } from '../hooks/useHashRoute'
 import { useLiveEvents } from '../hooks/useLiveEvents'
+import { usePlayerBests } from '../hooks/usePlayerBests'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { useDefaultPeriod } from '../lib/defaultPeriod'
 import { useDeviceType } from '../lib/device'
 import { useGlobalRank } from '../lib/globalRank'
-import { useActiveGroup } from '../lib/groups'
 import { heroSlug } from '../lib/homePicks'
 import { useRecentGames } from '../lib/lastPlayed'
-import { fetchPlayerBests, normalizePlayerName, type GlobalGamePlace } from '../lib/leaderboard'
+import { normalizePlayerName, type GlobalGamePlace } from '../lib/leaderboard'
 import { formatLeaderboardScore } from '../lib/leaderboardFormat'
 import { resolveGameAccent } from '../lib/theme'
 import { GameThumbArt } from './GameThumbArt'
@@ -163,33 +163,14 @@ export function GameWall() {
   const name = usePlayerName()
   const cleaned = normalizePlayerName(name)
   const period = useDefaultPeriod()
-  const groupId = useActiveGroup()
   const recent = useRecentGames()
   const { official } = useLiveEvents(cleaned)
   const [tab, setTab] = useState<Tab>('all')
-  const [bests, setBests] = useState<Record<string, number> | null>(null)
-  // Where you stand on each board this period, from the rank the header already fetched.
+  // Your best on each game, where you stand on each board (from the rank the
+  // header already fetched), and who leads each board where you have neither.
+  const bests = usePlayerBests(cleaned, period)
   const { byGame } = useGlobalRank()
-  // Who leads each board, for the tiles where you have no numbers of your own.
   const leaders = useBoardLeaders(period)
-
-  useEffect(() => {
-    if (!cleaned) {
-      setBests(null)
-      return
-    }
-    let cancelled = false
-    fetchPlayerBests(cleaned, period)
-      .then((next) => {
-        if (!cancelled) setBests(next)
-      })
-      .catch(() => {
-        if (!cancelled) setBests(null)
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [cleaned, period, groupId])
 
   const all = homeGames(device)
   const shown = all.filter((g) => inTab(g, tab))
