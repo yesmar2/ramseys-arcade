@@ -272,7 +272,7 @@ export function difficultyAt(row: number): number {
  * while hop pixels stayed the same.)
  */
 export function cellMetrics(viewWidth: number, viewHeight: number, cols = COLS) {
-  const hudTop = playHeader(viewWidth, { center: true })
+  const hudTop = playHeader(viewWidth)
   const padBottom = Math.max(14, viewHeight * 0.02)
   const availH = viewHeight - hudTop - padBottom
   const cell = Math.max(1, viewWidth / cols)
@@ -284,7 +284,7 @@ export function cellMetrics(viewWidth: number, viewHeight: number, cols = COLS) 
  * wider screens pick up columns so hops stay short without opening a runway.
  */
 export function pickCols(viewWidth: number, viewHeight: number): number {
-  const hudTop = playHeader(viewWidth, { center: true })
+  const hudTop = playHeader(viewWidth)
   const padBottom = Math.max(14, viewHeight * 0.02)
   const availH = viewHeight - hudTop - padBottom
   const cellTarget = availH / TARGET_VISIBLE_ROWS

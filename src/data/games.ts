@@ -86,7 +86,7 @@ export const games: Game[] = [
     slug: 'crosswalk',
     tags: ['arcade'],
     description: 'Hop forever. Beat your distance.',
-    how: 'Swipe or tap to hop. Dodge traffic, ride the logs, hop the stones, and beat the train. Don’t linger — the hawk is watching. Score is how far you get, one point per row, and your record is marked on the road ahead.',
+    how: 'Swipe or tap to hop, or use the arrow keys. Cross the road, the river and the rails — one mistake ends the run, and so does standing still.',
     accent: PALETTE.amber,
     playable: true,
   },

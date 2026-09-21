@@ -15,7 +15,16 @@ import { isDarkTheme, isFlatTheme, playfieldColor, softFillAlpha, strokeOutlined
 const GRASS_A = 142
 const GRASS_B = 152
 const TREE = 158
-const HOPPER = 42
+/*
+ * The hopper is pale, not gold.
+ *
+ * It used to be hue 42 at full saturation, which collided three ways: the coin
+ * is 48, one of the cars is 38, and all three were the same size of round.
+ * Near-white belongs to nothing else on this board and carries on grass, road
+ * and water alike.
+ */
+const HOPPER = 44
+const HOPPER_SAT = 34
 
 export type CrosswalkLayout = {
   cell: number
@@ -193,12 +202,25 @@ function drawHopper(
   const r = size * 0.3 * scale
   const rx = r * (1 - squeeze * 0.32) * squashX * (1 + land * 0.22)
   const ry = r * (1 + squeeze * 0.18) * squashY * (1 - land * 0.28)
-  const bodyHue = dying ? 4 : HOPPER
-  const body = fill(bodyHue, dying ? 72 : 62, dark ? 58 : 54, dying ? 1 - deathT * 0.35 : 1)
-  const stroke = fill(bodyHue, dying ? 72 : 62, dark ? 48 : 36, dying ? 1 - deathT * 0.35 : 1)
+  const alpha = dying ? 1 - deathT * 0.35 : 1
+  const body = dying
+    ? fill(4, 72, dark ? 58 : 54, alpha)
+    : fill(HOPPER, HOPPER_SAT, dark ? 92 : 96, alpha)
+  const stroke = dying
+    ? fill(4, 72, dark ? 48 : 36, alpha)
+    : fill(HOPPER, 30, dark ? 24 : 30, alpha)
 
-  ctx.beginPath()
-  ctx.ellipse(drawX, drawY, rx, ry, 0, 0, Math.PI * 2)
+  /*
+   * A squat body rather than a disc.
+   *
+   * A disc in the coin's own colour is what this was, and the thing you steer
+   * looked like the thing you collect — six degrees of hue between them, the
+   * same circle, the same highlight. It is pale now, which nothing else on the
+   * board is, and shaped like something that squats rather than rolls.
+   */
+  const bw = rx * 2.1
+  const bh = ry * 1.72
+  roundRect(ctx, drawX - bw / 2, drawY - bh / 2 + ry * 0.12, bw, bh, Math.min(bw, bh) * 0.42)
   ctx.fillStyle = body
   ctx.fill()
   ctx.strokeStyle = stroke
@@ -219,15 +241,28 @@ function drawHopper(
     return
   }
 
+  /*
+   * White with a dark pupil, which is how every other face on the site is
+   * built — this one had it inverted, a dark blob with a white speck, and at
+   * this size that read as two holes. Set high and proud of the body, the one
+   * cheap cue that says frog rather than ball.
+   */
+  const eyeR = Math.max(1.6, r * 0.26)
+  const eyeX = bw * 0.26
+  const eyeY = drawY - bh * 0.38 + ry * 0.12
+  ctx.beginPath()
+  ctx.arc(drawX - eyeX, eyeY, eyeR, 0, Math.PI * 2)
+  ctx.arc(drawX + eyeX, eyeY, eyeR, 0, Math.PI * 2)
+  ctx.fillStyle = '#fff'
+  ctx.fill()
+  ctx.strokeStyle = stroke
+  ctx.lineWidth = Math.max(1.4, size * 0.04)
+  strokeOutlined(ctx)
+
   ctx.fillStyle = '#1a2b3c'
   ctx.beginPath()
-  ctx.arc(drawX - rx * 0.28, drawY - ry * 0.1, r * 0.14, 0, Math.PI * 2)
-  ctx.arc(drawX + rx * 0.28, drawY - ry * 0.1, r * 0.14, 0, Math.PI * 2)
-  ctx.fill()
-  ctx.fillStyle = '#fff'
-  ctx.beginPath()
-  ctx.arc(drawX - rx * 0.24, drawY - ry * 0.14, r * 0.05, 0, Math.PI * 2)
-  ctx.arc(drawX + rx * 0.32, drawY - ry * 0.14, r * 0.05, 0, Math.PI * 2)
+  ctx.arc(drawX - eyeX, eyeY + eyeR * 0.12, eyeR * 0.46, 0, Math.PI * 2)
+  ctx.arc(drawX + eyeX, eyeY + eyeR * 0.12, eyeR * 0.46, 0, Math.PI * 2)
   ctx.fill()
 }
 
@@ -690,6 +725,22 @@ export function renderGame(
   const pos = playerPos(state)
   const layout = computeLayout(w, h, state.cols, pos.c)
   const { cell, visibleRows, ox, oy, gridW } = layout
+
+  /*
+   * Tell the page where the field starts, so the strip above it — score,
+   * figures and the controls at either end — can share one middle. Nothing in
+   * the DOM can see the canvas, so without this they each guess. Written only
+   * when it changes, so it costs nothing per frame.
+   */
+  const host = ctx.canvas.parentElement
+  if (host) {
+    const middle = Math.round(oy / 2)
+    if (host.dataset.readoutMiddle !== String(middle)) {
+      host.dataset.readoutMiddle = String(middle)
+      host.style.setProperty('--readout-middle', `${middle}px`)
+    }
+  }
+
   const cameraY = state.cameraY
   const shake =
     state.shake > 0

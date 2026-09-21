@@ -3,9 +3,9 @@ import { AdminWaveSkip } from '../../components/AdminWaveSkip'
 import {
   GamePlayChrome,
   PlayReadout,
-  PlayReadoutCenter,
   PlayReadoutScore,
 } from '../../components/GameHud'
+import { PlayReadoutStats, PlayStat } from '../../components/PlayStats'
 import { GameStartCard } from '../../components/GameStartCard'
 import { PauseButton, GamePauseOverlay } from '../../components/PauseControls'
 import { ScoreSaveCard } from '../../components/ScoreSaveCard'
@@ -341,16 +341,14 @@ export function CrosswalkGame() {
                 {ui.score}
               </PlayReadoutScore>
               {ui.phase === 'playing' ? (
-                <PlayReadoutCenter
-                  urgent={ui.beatBest}
-                  label={ui.target > 0 ? 'Record and coins' : 'Coins this run'}
-                >
-                  {ui.beatBest
-                    ? `NEW BEST · ● ${ui.runCoins}`
-                    : ui.target > 0
-                      ? `BEST ${ui.target} · ● ${ui.runCoins}`
-                      : `● ${ui.runCoins}`}
-                </PlayReadoutCenter>
+                <PlayReadoutStats>
+                  {ui.target > 0 ? (
+                    /* Lit once you are past it — the old line said NEW BEST
+                       here, and the marker on the road says it louder. */
+                    <PlayStat label="Best" value={ui.target} urgent={ui.beatBest} />
+                  ) : null}
+                  <PlayStat label="Coins" value={ui.runCoins} />
+                </PlayReadoutStats>
               ) : null}
             </PlayReadout>
 
