@@ -1127,8 +1127,13 @@ html[data-theme="dark"] .wall-tile__flag--daily {
   row-gap: 0.15rem;
 }
 
+/* The dot follows a bit rather than leading the next, so a line the pill wraps onto does not start with one. */
 .home-banner__kicker .ev-kicker__bit + .ev-kicker__bit::before {
-  color: currentColor;
+  display: none;
+}
+
+.home-banner__kicker .ev-kicker__bit:not(:last-child)::after {
+  content: "·";
   opacity: 0.45;
 }
 
