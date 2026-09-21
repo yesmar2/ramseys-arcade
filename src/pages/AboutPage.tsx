@@ -1,6 +1,13 @@
 import { APP_NAME } from '../lib/brand'
+import { PageBanner } from '../components/PageBanner'
 import { PageShell } from '../components/PageShell'
-import { leaderboardHref, privacyHref, termsHref, tournamentsHref } from '../hooks/useHashRoute'
+import {
+  homeHref,
+  leaderboardHref,
+  privacyHref,
+  termsHref,
+  tournamentsHref,
+} from '../hooks/useHashRoute'
 
 const HIGHLIGHTS = [
   {
@@ -24,16 +31,15 @@ const HIGHLIGHTS = [
 export function AboutPage() {
   return (
     <PageShell innerClassName="lb-page__inner">
-      <section className="home-about" aria-labelledby="home-about-heading">
-      <h2 id="home-about-heading" className="home-about__title">
-        About {APP_NAME}
-      </h2>
-
-      <p className="home-about__lead">
-        {APP_NAME} is a small browser arcade built for quick sessions and high scores. Tap a
-        game, play instantly, and see how you stack up — no account required, though you can
-        sign in to keep your name across devices.
-      </p>
+      <div className="page-stack">
+      <PageBanner
+        size="compact"
+        crumbs={[{ href: homeHref(), label: 'Home' }, { label: 'About' }]}
+        kicker="About"
+        title={`About ${APP_NAME}`}
+        blurb={`${APP_NAME} is a small browser arcade built for quick sessions and high scores. Tap a game, play instantly, and see how you stack up — no account required, though you can sign in to keep your name across devices.`}
+      />
+      <section className="home-about" aria-label={`About ${APP_NAME}`}>
 
       <ul className="home-about__highlights">
         {HIGHLIGHTS.map((item) => (
@@ -83,6 +89,7 @@ export function AboutPage() {
         <a href={termsHref()}>Terms</a>
       </p>
       </section>
+      </div>
     </PageShell>
   )
 }

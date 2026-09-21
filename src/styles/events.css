@@ -1949,50 +1949,7 @@
 
 /* ------------------------------------------------------- plus page ---- */
 
-.plus-hero {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.6rem;
-  text-align: center;
-  padding: 1.4rem 1rem 1.6rem;
-}
-
-.plus-hero__kicker {
-  margin: 0;
-  font-size: 0.68rem;
-  font-weight: 800;
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
-  color: color-mix(in srgb, var(--accent-2) 55%, var(--ink));
-}
-
-.plus-hero__title {
-  margin: 0;
-  font-family: var(--font-display);
-  font-size: clamp(1.8rem, 6vw, 2.6rem);
-  font-weight: 700;
-  letter-spacing: -0.035em;
-  line-height: 1.05;
-  text-wrap: balance;
-  color: var(--ink);
-}
-
-.plus-hero__lead {
-  margin: 0;
-  max-width: 34rem;
-  font-size: 0.95rem;
-  line-height: 1.5;
-  color: var(--muted);
-}
-
-.plus-hero__cta {
-  display: flex;
-  align-items: center;
-  gap: 0.85rem;
-  margin-top: 0.4rem;
-}
-
+/* The price and the button sit in the banner's actions row. */
 .plus-hero__price {
   display: flex;
   align-items: baseline;
@@ -2029,14 +1986,6 @@
   font-size: 0.85rem;
   font-weight: 800;
   color: color-mix(in srgb, var(--accent-2) 55%, var(--ink));
-}
-
-.plus-hero__soon {
-  margin: 0;
-  max-width: 28rem;
-  font-size: 0.76rem;
-  line-height: 1.4;
-  color: var(--muted);
 }
 
 .plus-table {
@@ -2170,7 +2119,6 @@
 }
 
 /* Plus is a pitch and a table: it keeps a measure inside the wide frame. */
-.plus-hero,
 .plus-table,
 .plus-wall {
   max-width: 64rem;

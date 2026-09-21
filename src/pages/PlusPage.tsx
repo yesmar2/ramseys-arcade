@@ -1,7 +1,8 @@
+import { PageBanner } from '../components/PageBanner'
 import { PageShell } from '../components/PageShell'
 import { useAuth } from '../hooks/useAuth'
 import { APP_NAME } from '../lib/brand'
-import { tournamentsHref } from '../hooks/useHashRoute'
+import { homeHref, tournamentsHref } from '../hooks/useHashRoute'
 
 /**
  * What the two plans get you.
@@ -116,17 +117,14 @@ export function PlusPage() {
 
   return (
     <PageShell innerClassName="lb-page__inner">
-      <header className="plus-hero">
-        <p className="plus-hero__kicker">{APP_NAME} Plus</p>
-        <h1 className="plus-hero__title">Playing is free. Always.</h1>
-        <p className="plus-hero__lead">
-          Every game, every leaderboard and every record board is free, and joining
-          somebody&rsquo;s tournament is free however big it is. Plus is for the person
-          running them — bigger draws, more events at once, and the formats that make a
-          real competition.
-        </p>
-        <div className="plus-hero__cta">
-          {isPlus ? (
+      <PageBanner
+        size="compact"
+        crumbs={[{ href: homeHref(), label: 'Home' }, { label: 'Plus' }]}
+        kicker={`${APP_NAME} Plus`}
+        title="Playing is free. Always."
+        blurb="Every game, every leaderboard and every record board is free, and joining somebody’s tournament is free however big it is. Plus is for the person running them — bigger draws, more events at once, and the formats that make a real competition."
+        actions={
+          isPlus ? (
             <span className="plus-hero__have">You&rsquo;re on Plus</span>
           ) : (
             <>
@@ -137,16 +135,14 @@ export function PlusPage() {
               <button type="button" className="plus-hero__btn" disabled>
                 Not on sale yet
               </button>
+              <span className="home-banner__hint">
+                Plus isn&rsquo;t purchasable yet — this page is here so you can see what it
+                will cover before anything costs money.
+              </span>
             </>
-          )}
-        </div>
-        {isPlus ? null : (
-          <p className="plus-hero__soon">
-            Plus isn&rsquo;t purchasable yet — this page is here so you can see what it
-            will cover before anything costs money.
-          </p>
-        )}
-      </header>
+          )
+        }
+      />
 
       <Table
         title="Playing"

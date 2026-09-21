@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { CONTACT_EMAIL } from '../lib/brand'
 import { homeHref } from '../hooks/useHashRoute'
+import { PageBanner } from './PageBanner'
 import { PageShell } from './PageShell'
 
 type LegalDocumentProps = {
@@ -9,17 +10,20 @@ type LegalDocumentProps = {
   children: ReactNode
 }
 
+/** A policy page: the compact banner, then the document at a reading measure. */
 export function LegalDocument({ title, updated, children }: LegalDocumentProps) {
   return (
-    <PageShell innerClassName="legal-page__inner">
-      <header className="legal-page__header">
-        <a className="legal-page__back" href={homeHref()}>
-          ← Home
-        </a>
-        <h1 className="legal-page__title">{title}</h1>
-        <p className="legal-page__updated">Last updated: {updated}</p>
-      </header>
-      <article className="legal-prose">{children}</article>
+    <PageShell innerClassName="lb-page__inner">
+      <div className="page-stack">
+        <PageBanner
+          size="compact"
+          crumbs={[{ href: homeHref(), label: 'Home' }, { label: title }]}
+          kicker="Legal"
+          title={title}
+          blurb={`Last updated ${updated}.`}
+        />
+        <article className="legal-prose">{children}</article>
+      </div>
     </PageShell>
   )
 }
