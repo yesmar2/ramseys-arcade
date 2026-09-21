@@ -40,6 +40,8 @@ export type Floater = {
   text: string
   life: number
   maxLife: number
+  /** How big a catch this was, 0..1 — a bigger fish makes a bigger splash of text. */
+  weight: number
 }
 
 export type Snapshot = {
@@ -83,8 +85,8 @@ const BASE_SPEED = 210
 const BASE_TURN_RATE = 7.5
 const POINTER_FULL_SPEED_DIST = 55
 const START_INVULN = 2.2
-const SPAWN_INTERVAL = 0.4
-const MIN_SPAWN_GAP = 90
+const SPAWN_INTERVAL = 0.22
+const MIN_SPAWN_GAP = 80
 /** The player always out-swims anything it could eat, since there's no wall to corner it against. */
 const PLAYER_HUNT_SPEED_MULT = 1.35
 
@@ -158,8 +160,8 @@ function pickSpawnLevel(playerLevel: number, elapsed: number) {
 function spawnFish(state: GameState): Fish {
   const level = pickSpawnLevel(state.player.level, state.elapsed)
   const radius = viewHalfDiagonal(state)
-  const ringMin = radius * 1.05
-  const ringMax = radius * 1.35
+  const ringMin = radius * 0.95
+  const ringMax = radius * 1.7
   const ring = ringMin + Math.random() * (ringMax - ringMin)
   const angle = Math.random() * Math.PI * 2
   const x = state.player.x + Math.cos(angle) * ring
@@ -173,8 +175,8 @@ function spawnFish(state: GameState): Fish {
 
 /** How many enemies the ocean tries to keep stocked — more once there's more to see. */
 function targetPopulation(state: GameState) {
-  const area = (1 / state.zoom - 1) * 10
-  return Math.min(42, 14 + Math.floor(state.elapsed / 12) + Math.floor(area))
+  const area = (1 / state.zoom - 1) * 16
+  return Math.min(64, 24 + Math.floor(state.elapsed / 7) + Math.floor(area))
 }
 
 function makePlayer(w: number, h: number): Fish {
@@ -218,7 +220,7 @@ export function startGame(prev: GameState): GameState {
   const fresh = createInitialState(prev.stageW, prev.stageH)
   fresh.best = Math.max(prev.best, loadBest())
   fresh.phase = 'playing'
-  fresh.fishes = Array.from({ length: 12 }, () => spawnFish(fresh))
+  fresh.fishes = Array.from({ length: 22 }, () => spawnFish(fresh))
   return fresh
 }
 
@@ -307,7 +309,12 @@ function aiDesire(
   const playerIsThreat = f.level > player.level
   if (playerIsFood && d < r * 2 + 34) {
     const angle = Math.atan2(f.y - player.y, f.x - player.x)
-    return { angle, speedFrac: 0.82 }
+    // A fish near your own level is worth more and fights harder for it —
+    // small fry barely bother fleeing, a near-equal catch is a real chase.
+    const gap = player.level - f.level
+    const closeness = Math.max(0, 1 - gap / 7)
+    const speedFrac = 0.6 + closeness * 0.42
+    return { angle, speedFrac }
   }
   if (huntingAllowed && playerIsThreat && f.aggressive && d < r * 9 + 140) {
     const angle = Math.atan2(player.y - f.y, player.x - f.x)
@@ -381,8 +388,16 @@ export function tick(state: GameState, dt: number): GameState {
         const points = f.level * 10
         s.score += points
         s.player.level += 1
-        spawnBurst(s, f.x, f.y, 172, 10)
-        s.floaters.push({ x: f.x, y: f.y - fRadius - 8, text: `+${points}`, life: 1, maxLife: 0.9 })
+        const weight = Math.max(0, Math.min(1, 1 - (s.player.level - 1 - f.level) / 7))
+        spawnBurst(s, f.x, f.y, 172, 10 + Math.round(weight * 10))
+        s.floaters.push({
+          x: f.x,
+          y: f.y - fRadius - 10,
+          text: `+${points}`,
+          life: 1,
+          maxLife: 1.1,
+          weight,
+        })
         ate = true
         continue
       }
@@ -404,9 +419,19 @@ export function tick(state: GameState, dt: number): GameState {
   const target = targetPopulation(s)
   if (s.spawnTimer <= 0 && s.fishes.length < target) {
     s.spawnTimer = SPAWN_INTERVAL
-    const spot = spawnFish(s)
-    const tooClose = s.fishes.some((f) => dist(f.x, f.y, spot.x, spot.y) < MIN_SPAWN_GAP)
-    if (!tooClose) s.fishes.push(spot)
+    // Catch up in batches when well under target, and retry a crowded ring
+    // spot a few times instead of just giving up on the whole interval.
+    const needed = Math.min(4, target - s.fishes.length)
+    for (let n = 0; n < needed; n++) {
+      for (let attempt = 0; attempt < 5; attempt++) {
+        const spot = spawnFish(s)
+        const tooClose = s.fishes.some((f) => dist(f.x, f.y, spot.x, spot.y) < MIN_SPAWN_GAP)
+        if (!tooClose) {
+          s.fishes.push(spot)
+          break
+        }
+      }
+    }
   }
 
   s.particles = s.particles.filter((p) => {

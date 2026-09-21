@@ -185,12 +185,19 @@ export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, w: n
 
   for (const f of state.floaters) {
     const sp = worldToScreen(state, f.x, f.y)
-    const a = Math.max(0, f.life)
+    const alpha = Math.max(0, f.life)
+    const age = 1 - f.life
+    const pop = age < 0.15 ? 1 + (0.15 - age) * 2.4 : 1
+    const size = (15 + f.weight * 15) * Math.max(0.75, state.scale) * pop
     ctx.save()
-    ctx.globalAlpha = a
-    ctx.fillStyle = inkColor()
-    ctx.font = `700 ${Math.max(12, 15 * state.scale)}px var(--font-body, sans-serif)`
+    ctx.globalAlpha = alpha
+    ctx.font = `800 ${size}px var(--font-body, sans-serif)`
     ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.lineWidth = Math.max(2.5, size * 0.16)
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.55)'
+    ctx.strokeText(f.text, sp.x, sp.y)
+    ctx.fillStyle = f.weight > 0.55 ? '#ffd166' : '#ffffff'
     ctx.fillText(f.text, sp.x, sp.y)
     ctx.restore()
   }
