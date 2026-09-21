@@ -20,7 +20,7 @@ export type Snapshot = {
   length: number
   /** Boost actually paying out, not just held — drives the control's lit state. */
   boosting: boolean
-  /** There is tail left to spend, so the control is worth offering. */
+  /** There are points left to spend, so the control is worth offering. */
   canBoost: boolean
 }
 
@@ -50,8 +50,8 @@ export type GameState = {
   speed: number
   /** Boost control held. Whether it is actually paying out is {@link isBoosting}. */
   boostHeld: boolean
-  /** Fraction of a segment burned so far, carried until it makes a whole one. */
-  boostDebt: number
+  /** Fraction of a point spent so far, carried until it makes a whole one. */
+  boostSpend: number
   flash: number
   floaters: Floater[]
 }
@@ -123,24 +123,27 @@ const EAT_DIST = 0.55
 const TURN_BOOST = 2
 
 /**
- * Boost: speed bought with your own tail.
+ * Boost: speed bought with the score, and nothing else.
  *
- * A run only ever ends one way, so the decision worth offering is whether to
- * spend the number you are chasing in order to keep the run alive — burning
- * tail to slip out of a box you closed around yourself, or to reach food while
- * its ring is still full. Length alone would be no price at all, because a
- * shorter snake is an easier one; the points have to go with it.
+ * Shortening the snake was the obvious price and the wrong one. Slither can
+ * charge length because a body there is harmless, so length is only ever
+ * score; here the body is the hazard, and a shorter snake has less of itself
+ * to hit, more free board and a slower pace. Every part of that is a reward,
+ * so the cost pointed the wrong way.
+ *
+ * The points alone are the price, and the body is left exactly as it was. That
+ * makes the score the fuel tank: early on there is nothing to spend, and late,
+ * when your own body has filled the board and an escape is worth paying for,
+ * the tank is full. Speed is its own risk — 1.75× is less time to read what is
+ * coming — so boosting into trouble is never the safe option.
  */
 const BOOST_MULT = 1.75
-/** Segments burned per second held, each one costing what a food paid. */
-const BOOST_BURN_PER_SECOND = 1.4
+/** Points spent per second held. */
+const BOOST_COST_PER_SECOND = 15
 
-/**
- * Boost only pays out while there is tail to spend. The floor is the length a
- * run starts at, so boosting can never shorten you into nothing.
- */
-export function isBoosting(s: Pick<GameState, 'boostHeld' | 'phase' | 'segments'>) {
-  return s.boostHeld && s.phase === 'playing' && s.segments > START_SEGMENTS
+/** Boost runs on the score, so it stops when there is nothing left to spend. */
+export function isBoosting(s: Pick<GameState, 'boostHeld' | 'phase' | 'score'>) {
+  return s.boostHeld && s.phase === 'playing' && s.score > 0
 }
 
 /** Hold or release the boost control. */
@@ -324,7 +327,7 @@ export function createInitialState(
     foodAge: 0,
     speed: START_SPEED,
     boostHeld: false,
-    boostDebt: 0,
+    boostSpend: 0,
     flash: 0,
     floaters: [],
   }
@@ -367,7 +370,7 @@ export function jumpToLength(state: GameState, length: number): GameState {
     pendingDir: null,
     bufferedDir: null,
     boostHeld: false,
-    boostDebt: 0,
+    boostSpend: 0,
     floaters: [],
   }
   next.food = randomFood(next)
@@ -427,7 +430,7 @@ function die(state: GameState): GameState {
     pendingDir: null,
     bufferedDir: null,
     boostHeld: false,
-    boostDebt: 0,
+    boostSpend: 0,
     flash: 0.4,
   }
 }
@@ -514,23 +517,18 @@ function turnSpeed(s: GameState) {
   return s.speed * hurry
 }
 
-/**
- * Spend tail for the speed being used. The points go with the segment, because
- * a shorter snake is an easier one — length on its own would be a reward.
- */
+/** Charge the score for the speed being used. The body is not touched. */
 function burnBoost(s: GameState, dt: number) {
   if (!isBoosting(s)) {
-    s.boostDebt = 0
+    s.boostSpend = 0
     return
   }
-  s.boostDebt += BOOST_BURN_PER_SECOND * dt
-  while (s.boostDebt >= 1 && s.segments > START_SEGMENTS) {
-    s.boostDebt -= 1
-    s.segments -= 1
-    s.score = Math.max(0, s.score - SCORE_FOOD)
-    s.speed = speedFor(s.segments)
+  s.boostSpend += BOOST_COST_PER_SECOND * dt
+  const whole = Math.floor(s.boostSpend)
+  if (whole > 0) {
+    s.boostSpend -= whole
+    s.score = Math.max(0, s.score - whole)
   }
-  if (s.segments <= START_SEGMENTS) s.boostDebt = 0
 }
 
 function pastHardWall(s: GameState) {
@@ -639,6 +637,6 @@ export function toSnapshot(s: GameState): Snapshot {
     phase: s.phase,
     length: s.segments,
     boosting: isBoosting(s),
-    canBoost: s.phase === 'playing' && s.segments > START_SEGMENTS,
+    canBoost: s.phase === 'playing' && s.score > 0,
   }
 }

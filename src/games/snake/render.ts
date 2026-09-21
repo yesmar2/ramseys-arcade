@@ -132,12 +132,11 @@ export function renderGame(
     const hue = ((HEAD_HUE + i * HUE_PER_BEAD) % 360 + 360) % 360
     const sat = 58 + Math.min(12, i * 0.15)
 
-    // Burning tail: the last few beads smoulder amber and the head carries a
-    // halo, so the cost is visible on the snake and not only on the score.
+    // Boosting: a halo on the head and heat trailing off the beads behind it,
+    // so the speed is visible on the snake and not only in how fast it moves.
     if (boosting) {
-      const fromTail = segments.length - 1 - i
-      if (fromTail < 3) {
-        const heat = (3 - fromTail) / 3
+      if (i < 4) {
+        const heat = (4 - i) / 4
         const glow = ctx.createRadialGradient(
           sx + sw / 2,
           sy + sh / 2,

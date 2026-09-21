@@ -29,8 +29,8 @@ const SCORING: Record<string, ScoreRow[]> = {
     { label: 'Food', value: '+10' },
     { label: 'Fresh food (the ring on it)', value: '+20 / +15 / +10 / +5 on top' },
     { label: 'The ring', value: 'full to empty in 3.6s' },
-    { label: 'Boost (space, or the bolt)', value: '1.75× speed' },
-    { label: 'Boosting burns your tail', value: '−1 length and −10 every 0.7s' },
+    { label: 'Boost (space, or the bolt)', value: '1.75× speed · −15 a second' },
+    { label: 'Boost runs on your score', value: 'nothing banked, nothing to spend' },
     { label: 'Crash', value: 'game over' },
   ],
   pop: [

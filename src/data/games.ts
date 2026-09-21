@@ -77,7 +77,7 @@ export const games: Game[] = [
     slug: 'snake',
     tags: ['arcade', 'quick'],
     description: 'Grow longer. Don’t crash.',
-    how: 'Swipe or use arrow keys. Eat, grow, and don’t hit the walls or yourself. Food is worth more the sooner you reach it — the ring around it is the bonus draining away, so the safe loop and the tight line past your own tail are never worth the same. Hold space or the bolt to boost, which burns your own tail to buy the speed — the way out of a box you closed around yourself, if you will pay for it.',
+    how: 'Swipe or use arrow keys. Eat, grow, and don’t hit the walls or yourself. Food is worth more the sooner you reach it — the ring around it is the bonus draining away, so the safe loop and the tight line past your own tail are never worth the same. Hold space or the bolt to boost: 1.75× speed, paid for out of your score at fifteen a second. It is the way out of a box you closed around yourself, if you will pay for it — and you can only pay with what you have banked.',
     accent: PALETTE.green,
     playable: true,
   },
