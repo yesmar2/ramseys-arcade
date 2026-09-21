@@ -2171,3 +2171,11 @@
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
+
+/* Plus is a pitch and a table: it keeps a measure inside the wide frame. */
+.plus-hero,
+.plus-table,
+.plus-wall {
+  max-width: 64rem;
+  margin-inline: auto;
+}

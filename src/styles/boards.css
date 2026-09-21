@@ -198,3 +198,23 @@
   --inline-thumb-size: 1.9rem;
   flex: none;
 }
+
+/* The rail may come first in the markup, for the phone, and still sit on the right on a wide screen. */
+@media (min-width: 64rem) {
+  .split__main {
+    order: 1;
+  }
+
+  .split__side {
+    order: 2;
+  }
+}
+
+/* A split with nothing in its rail runs as one column. */
+.split--solo {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.split--solo > .split__side:empty {
+  display: none;
+}

@@ -10689,3 +10689,9 @@ a.notif:focus-visible {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
+
+/* Reading pages keep a measure inside the wide frame. */
+.lb-page__inner > .home-about {
+  max-width: 52rem;
+  margin-inline: auto;
+}

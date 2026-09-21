@@ -1193,3 +1193,24 @@ a.pff__name:focus-visible {
   font-size: 1rem;
   color: var(--accent);
 }
+
+/* At the site width the stats page runs its blocks two across; the totals and the games list take the row. */
+@media (min-width: 64rem) {
+  .lb-page__inner:has(> .st-tiles) {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1.25rem 1.5rem;
+    align-items: start;
+  }
+
+  .lb-page__inner:has(> .st-tiles) > .lb-page__header,
+  .lb-page__inner:has(> .st-tiles) > .st-tiles,
+  .lb-page__inner:has(> .st-tiles) > .st-note,
+  .lb-page__inner:has(> .st-tiles) > .st-block:nth-of-type(3) {
+    grid-column: 1 / -1;
+  }
+
+  .lb-page__inner:has(> .st-tiles) > .st-block {
+    margin-top: 0;
+  }
+}

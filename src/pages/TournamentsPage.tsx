@@ -1327,6 +1327,16 @@ export function TournamentDetailPage({ id, invite }: { id: string; invite?: stri
             copiedInvite={copiedInvite}
           />
 
+          <div
+            className={`split${
+              (detail.isHost && invitesOpen) ||
+              (eventKind(detail) === 'bracket' && !detail.bracket?.lockedAt) ||
+              (eventKind(detail) !== 'bracket' && detail.games.length > 1 && detail.status !== 'ended')
+                ? ''
+                : ' split--solo'
+            }`}
+          >
+            <aside className="split__side" aria-label="Invites, roster and games">
           {detail.isHost && invitesOpen ? (
             <section className="ev-card" aria-label="Invite players">
               <div className="ev-card__head">
@@ -1358,8 +1368,6 @@ export function TournamentDetailPage({ id, invite }: { id: string; invite?: stri
             <EventRoster detail={detail} displayName={displayName} />
           ) : null}
 
-          <EventBoard detail={detail} displayName={displayName} />
-
           {eventKind(detail) !== 'bracket' &&
           detail.games.length > 1 &&
           detail.status !== 'ended' ? (
@@ -1370,6 +1378,11 @@ export function TournamentDetailPage({ id, invite }: { id: string; invite?: stri
               displayName={displayName}
             />
           ) : null}
+            </aside>
+            <div className="split__main">
+              <EventBoard detail={detail} displayName={displayName} />
+            </div>
+          </div>
         </div>
       )}
     </PageShell>

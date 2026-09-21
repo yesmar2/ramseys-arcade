@@ -311,6 +311,8 @@ export function GroupsPage() {
           <>
             <PendingInvitesStrip kind="group" />
 
+            <div className={`split${creating && account ? '' : ' split--solo'}`}>
+              <aside className="split__side">
             {creating && account ? (
               <CreateGroupForm
                 name={name}
@@ -322,6 +324,8 @@ export function GroupsPage() {
               />
             ) : null}
 
+              </aside>
+              <div className="split__main">
             {groups.length === 0 ? (
               <BoardEmpty
                 title="No groups yet"
@@ -374,6 +378,8 @@ export function GroupsPage() {
                 </ol>
               </section>
             )}
+              </div>
+            </div>
           </>
         )}
       </div>

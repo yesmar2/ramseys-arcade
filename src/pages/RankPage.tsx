@@ -428,6 +428,8 @@ export function RankPage({
           )}
         </section>
 
+        <div className="split">
+          <aside className="split__side" aria-label="Your trophies, stats and friends">
         {viewedName ? <TrophyCase trophies={trophies} isSelf={isSelf} /> : null}
 
         {isSelf && viewedName ? (
@@ -445,6 +447,8 @@ export function RankPage({
         ) : null}
 
         {isSelf && viewedName && signedIn ? <FriendsCard /> : null}
+          </aside>
+          <div className="split__main">
 
         {viewedName ? (
           <section
@@ -567,6 +571,8 @@ export function RankPage({
             </div>
           </details>
         ) : null}
+          </div>
+        </div>
       </div>
     </PageShell>
   )
