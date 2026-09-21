@@ -70,8 +70,9 @@ const SCORING: Record<string, ScoreRow[]> = {
     { label: 'Trees', value: 'block a hop — go round' },
     { label: 'Rails', value: 'about two seconds of warning, then the train' },
     { label: 'Falling behind', value: 'more than two rows back from the edge ends the run' },
-    { label: 'Coins', value: 'a tally and a record of their own, not score' },
+    { label: 'Coin', value: '+60, climbing to +300 as the run gets deeper' },
     { label: 'A coin in the road', value: 'free if it is in your lane, a sidestep in traffic if not' },
+    { label: 'Worth the detour?', value: 'yes with a cold chain — a hot one costs more than the coin pays' },
     { label: 'Your furthest', value: 'marked on the road ahead' },
   ],
   spotter: [

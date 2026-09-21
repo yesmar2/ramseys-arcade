@@ -53,6 +53,8 @@ export type CoinPop = {
   c: number
   r: number
   t: number
+  /** Points it paid, so the pop can say so. */
+  value: number
 }
 
 export type Snapshot = {
@@ -192,9 +194,11 @@ export function stallLimitAt(row: number): number {
  * This was 0.4s — a snatch with no approach. On a ten second clock that meant
  * the only signal the clock existed at all arrived four tenths of a second
  * before it killed you, which is not enough time to read it, let alone move.
- * Long enough to be a warning now.
+ *
+ * 2.5s was an overcorrection the other way: long enough that the ring sat there
+ * nagging. A hop takes 0.17s, so this is still eight hops of notice.
  */
-export const STALL_WARN = 2.5
+export const STALL_WARN = 1.4
 
 /**
  * Break new ground again within this long and the chain grows.
@@ -212,6 +216,28 @@ const MOMENTUM_PITCH_MAX = 6
 
 /** Points for breaking new ground, before the chain multiplier. */
 const ROW_POINTS = 10
+
+/**
+ * What a coin pays, by how deep the run has got.
+ *
+ * Crumbtrail's fruit in shape but not in size: tiers that climb with depth, so
+ * a pickup keeps mattering once rows are paying 30 and 40 apiece. Its numbers
+ * would not transfer — a fruit is worth up to 2,000 because it appears maybe
+ * twice a run and lives eight seconds, where a coin turns up every twenty-odd
+ * rows and waits. At these values a coin is five to ten rows of scoring, which
+ * is worth a detour when the chain is cold and not worth breaking a hot one.
+ *
+ * That swing is the whole point: coins are what you take when you are not
+ * flowing, rather than a toll on flow.
+ */
+const COIN_VALUES = [60, 100, 150, 220, 300] as const
+/** Rows between value tiers — Crumbtrail steps its fruit on the same cadence. */
+const COIN_TIER_ROWS = 60
+
+export function coinValue(furthest: number): number {
+  const tier = Math.floor(Math.max(0, furthest) / COIN_TIER_ROWS)
+  return COIN_VALUES[Math.min(COIN_VALUES.length - 1, tier)]
+}
 
 /**
  * What a chain is worth.
@@ -1049,11 +1075,13 @@ function collectCoin(state: GameState): GameState {
   const rows = new Map(state.rows)
   rows.set(state.row, { ...row, coins })
   sfx('good')
+  const value = coinValue(state.furthest)
   return {
     ...state,
     rows,
+    score: state.score + value,
     runCoins: state.runCoins + 1,
-    coinPops: [...state.coinPops, { c, r: state.row, t: 0.42 }],
+    coinPops: [...state.coinPops, { c, r: state.row, t: 0.42, value }],
   }
 }
 
