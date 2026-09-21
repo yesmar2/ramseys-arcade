@@ -11,10 +11,13 @@ import { GamePanelBody } from './PauseControls'
 export function GameStartCard({
   title,
   slug,
+  extraMeta,
   tools,
 }: {
   title: string
   slug: string
+  /** Extra rows under Your best / All time, same slot the pause panel uses. */
+  extraMeta?: ReactNode
   /** Admin stage picker, same slot the pause panel puts it in. */
   tools?: ReactNode
 }) {
@@ -23,7 +26,12 @@ export function GameStartCard({
   return (
     <div className="game-pause-card game-start-card">
       <h2>{title}</h2>
-      <GamePanelBody slug={slug} personalBest={personalBest} tools={tools} />
+      <GamePanelBody
+        slug={slug}
+        personalBest={personalBest}
+        extraMeta={extraMeta}
+        tools={tools}
+      />
       <span className="game-start-card__cue">Tap to start</span>
     </div>
   )

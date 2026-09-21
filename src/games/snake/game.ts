@@ -40,6 +40,8 @@ export type GameState = {
   /** Number of body segments (grows with score). */
   segments: number
   food: Cell
+  /** Seconds since the current food appeared — drives the freshness bonus. */
+  foodAge: number
   /** Cells per second. */
   speed: number
   flash: number
@@ -65,6 +67,41 @@ export function snakeLayout(portrait: boolean) {
 }
 const START_SEGMENTS = 3
 const SCORE_FOOD = 10
+
+/**
+ * Food is worth more the sooner you reach it.
+ *
+ * Without this the score is a straight function of survival time, so the board
+ * ranks patience rather than play. With it every pickup is a choice — the safe
+ * loop or the tight line past your own tail — and the choice sharpens as the
+ * body grows, which is exactly where a long run used to go flat.
+ */
+const HUNGER_MAX = 20
+/** Seconds from a food appearing to its bonus reaching zero. */
+const HUNGER_WINDOW = 3.6
+/** Bonus granularity, so the floater reads +30 / +25 / +20, never +27. */
+const HUNGER_STEP = 5
+
+/**
+ * Bonus still on the current food, in points.
+ *
+ * Banded upward, not downward: you are always travelling when you arrive, so a
+ * band measured from the top would leave the full bonus reachable only at the
+ * instant the food appeared — a number on the board that nobody could ever
+ * score. Each band is a real quarter of the window instead.
+ */
+export function foodBonus(foodAge: number): number {
+  const left = foodBonusLeft(foodAge)
+  if (left <= 0) return 0
+  const bands = HUNGER_MAX / HUNGER_STEP
+  return Math.ceil(left * bands) * HUNGER_STEP
+}
+
+/** How much of the bonus window is left, 1 → 0. Drawn as the ring on the food. */
+export function foodBonusLeft(foodAge: number): number {
+  return Math.max(0, Math.min(1, 1 - foodAge / HUNGER_WINDOW))
+}
+
 
 /** Distance between body / visual bead centers in grid cells. */
 export const BEAD_SPACING = 0.7
@@ -244,6 +281,7 @@ export function createInitialState(
     lineBreak: false,
     segments: START_SEGMENTS,
     food: { x: 0, y: 0 },
+    foodAge: 0,
     speed: START_SPEED,
     flash: 0,
     floaters: [],
@@ -289,6 +327,7 @@ export function jumpToLength(state: GameState, length: number): GameState {
     floaters: [],
   }
   next.food = randomFood(next)
+  next.foodAge = 0
   return next
 }
 
@@ -466,17 +505,22 @@ function tryEat(s: GameState, previousBest: number) {
   const foodCenter = { x: s.food.x + 0.5, y: s.food.y + 0.5 }
   if (dist(s.head, foodCenter) >= EAT_DIST) return
 
+  const bonus = foodBonus(s.foodAge)
+  const gained = SCORE_FOOD + bonus
+
   sfx('eat')
   s.segments += 1
-  s.score += SCORE_FOOD
+  s.score += gained
   s.best = Math.max(s.best, s.score)
   if (s.best !== previousBest) saveBest(s.best)
   s.speed = Math.min(MAX_SPEED, START_SPEED + (s.segments - START_SEGMENTS) * SPEED_PER_FOOD)
   s.food = randomFood(s)
-  s.flash = 0.28
+  s.foodAge = 0
+  // A clean full-bonus grab flashes harder, so the good line is felt, not read.
+  s.flash = bonus === HUNGER_MAX ? 0.42 : 0.28
   s.floaters = [
     ...s.floaters,
-    { x: s.head.x, y: s.head.y - 0.3, text: `+${SCORE_FOOD}`, life: 0.9 },
+    { x: s.head.x, y: s.head.y - 0.3, text: `+${gained}`, life: 0.9 },
   ]
 }
 
@@ -488,6 +532,8 @@ export function tick(state: GameState, dt: number): GameState {
     .filter((f) => f.life > 0)
 
   if (s.phase !== 'playing') return s
+
+  s.foodAge += dt
 
   // Walk the frame in short hops so nothing can be passed over between checks,
   // however fast the snake is going or however long the frame took.

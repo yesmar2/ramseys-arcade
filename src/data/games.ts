@@ -77,7 +77,7 @@ export const games: Game[] = [
     slug: 'snake',
     tags: ['arcade', 'quick'],
     description: 'Grow longer. Don’t crash.',
-    how: 'Swipe or use arrow keys. Eat, grow, and don’t hit the walls or yourself.',
+    how: 'Swipe or use arrow keys. Eat, grow, and don’t hit the walls or yourself. Food is worth more the sooner you reach it — the ring around it is the bonus draining away, so the safe loop and the tight line past your own tail are never worth the same.',
     accent: PALETTE.green,
     playable: true,
   },

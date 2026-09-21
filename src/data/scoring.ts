@@ -27,6 +27,8 @@ const SCORING: Record<string, ScoreRow[]> = {
   ],
   snake: [
     { label: 'Food', value: '+10' },
+    { label: 'Fresh food (the ring on it)', value: '+20 / +15 / +10 / +5 on top' },
+    { label: 'The ring', value: 'full to empty in 3.6s' },
     { label: 'Crash', value: 'game over' },
   ],
   pop: [

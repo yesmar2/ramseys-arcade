@@ -1,5 +1,5 @@
 import type { GameState } from './game'
-import { BEAD_SPACING, visualSegments } from './game'
+import { BEAD_SPACING, foodBonusLeft, visualSegments } from './game'
 import { isDarkTheme, isFlatTheme, playfieldColor, softFillAlpha } from '../../lib/theme'
 
 const HEAD_HUE = 158
@@ -80,6 +80,25 @@ export function renderGame(
     ctx.beginPath()
     ctx.arc(fx, fy, r * 2.2, 0, Math.PI * 2)
     ctx.fill()
+
+    // Freshness ring: the bonus draining away. On the board, not in the rules
+    // panel — the decision it asks for is made while moving.
+    const fresh = foodBonusLeft(state.foodAge)
+    if (fresh > 0) {
+      const ringR = r * 1.75
+      ctx.save()
+      ctx.lineWidth = Math.max(1.6, cell * 0.1)
+      ctx.lineCap = 'round'
+      ctx.strokeStyle = dark ? 'rgba(245, 185, 66, 0.15)' : 'rgba(150, 100, 16, 0.15)'
+      ctx.beginPath()
+      ctx.arc(fx, fy, ringR, 0, Math.PI * 2)
+      ctx.stroke()
+      ctx.strokeStyle = 'hsla(38, 82%, 56%, 0.95)'
+      ctx.beginPath()
+      ctx.arc(fx, fy, ringR, -Math.PI / 2, -Math.PI / 2 + fresh * Math.PI * 2)
+      ctx.stroke()
+      ctx.restore()
+    }
 
     ctx.fillStyle = `hsla(38, 58%, 58%, ${softFillAlpha(0.22)})`
     ctx.beginPath()

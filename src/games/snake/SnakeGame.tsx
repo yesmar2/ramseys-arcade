@@ -17,12 +17,15 @@ import {
 } from '../../lib/runAchievements'
 import {
   formatRecordMs,
+  snakeFastestLengthRecordId,
   SNAKE_LENGTH_MILESTONE_MAX,
   SNAKE_LENGTH_MILESTONE_MIN,
   SNAKE_LENGTH_MILESTONE_STEP,
+  SNAKE_SPRINT_LENGTH,
   submitSnakeFastestLength,
   shouldCelebrateRecordSubmit,
 } from '../../lib/records'
+import { useRecordTop } from '../../hooks/useRecordTop'
 import { useTournamentPlay } from '../../tournaments/TournamentPlayContext'
 import {
   createInitialState,
@@ -42,6 +45,22 @@ import { beginRun } from '../../lib/runSession'
 
 function currentLayout() {
   return snakeLayout(typeof window !== 'undefined' && window.innerHeight > window.innerWidth)
+}
+
+/**
+ * The skill goal, sat beside the endurance one on the start card. The score
+ * board asks for a long clean run; this asks how fast you can get there, which
+ * is a question a first visit can actually answer.
+ */
+function SnakeSprintRow() {
+  const top = useRecordTop('snake', snakeFastestLengthRecordId(SNAKE_SPRINT_LENGTH))
+
+  return (
+    <div className="game-pause-meta__row">
+      <span>Fastest to {SNAKE_SPRINT_LENGTH}</span>
+      <strong>{top ? formatRecordMs(top.score) : '—'}</strong>
+    </div>
+  )
 }
 
 export function SnakeGame() {
@@ -358,6 +377,7 @@ export function SnakeGame() {
               <GameStartCard
                 title="Snake"
                 slug="snake"
+                extraMeta={<SnakeSprintRow />}
                 tools={
                   <AdminWaveSkip
                     mode="start"
