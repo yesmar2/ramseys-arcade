@@ -7,7 +7,7 @@ import { normalizePlayerName } from '../lib/leaderboard'
  * This used to be the other half of the standing block: someone who had played
  * got their ranking, anyone else got this. The ranking has come off the home
  * page, but the pitch is the only thing that tells a stranger what the site is,
- * so it stays on its own. The About link lives in HomeAboutBand below.
+ * so it stays on its own. The About link lives in the footer.
  */
 export function HomeIntro() {
   const cleaned = normalizePlayerName(usePlayerName())

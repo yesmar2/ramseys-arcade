@@ -1,5 +1,4 @@
 import { GameWall } from '../components/GameWall'
-import { HomeAboutBand } from '../components/HomeAboutBand'
 import { HomeYourEvents } from '../components/HomeYourEvents'
 import { HomeHero } from '../components/HomeHero'
 import { HomePulse } from '../components/HomePulse'
@@ -28,7 +27,6 @@ export function HomePage() {
           <HomeSpotterStrip />
           <HomeYourEvents />
           <HomeIntro />
-          <HomeAboutBand />
         </div>
       </PageShell>
       <InstallPrompt />
