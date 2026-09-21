@@ -58,12 +58,15 @@ function fixedPx(w: number, size: { base: number; small: number }) {
 /**
  * Top strip to leave clear, in px.
  *
- * Pass `center` for a game that shows a second line under the score — the run
- * state most of them carry. It sits lower than the score, so it needs the room.
+ * The score and the figures beside it are one row, so a game that shows both
+ * needs no more height than a game showing only a score. Pass `center` only
+ * for the older free-text line, which still hangs below the row.
  */
 export function playHeader(w: number, opts: { center?: boolean } = {}): number {
-  if (!opts.center) return Math.round(SCORE_TOP + fontPx(w, SCORE_FONT) + CLEARANCE)
-  const stats =
-    STATS_DROP + fixedPx(w, STAT_LABEL) + STAT_GAP + fixedPx(w, STAT_VALUE) * STAT_LEADING
-  return Math.round(SCORE_TOP + stats + CLEARANCE)
+  const row = Math.max(
+    fontPx(w, SCORE_FONT),
+    fixedPx(w, STAT_LABEL) + STAT_GAP + fixedPx(w, STAT_VALUE) * STAT_LEADING,
+  )
+  const bottom = opts.center ? STATS_DROP + fixedPx(w, STAT_VALUE) * STAT_LEADING : row
+  return Math.round(SCORE_TOP + bottom + CLEARANCE)
 }

@@ -2919,13 +2919,32 @@ a.game-hud__board {
   inset: 0;
   z-index: 8;
   pointer-events: none;
+  /*
+   * The score and the run's figures share one row across the top.
+   *
+   * They used to stack, which spent twice the height on a strip that sits over
+   * the playfield and pushed the board down with it. Side by side, the whole
+   * readout is one line and the board gets the difference back.
+   *
+   * Only in-flow children join this row. The left-hand group and the older
+   * centre line are both positioned, so they are out of it and keep their own
+   * places — which is how games that have not moved to figures are untouched.
+   */
+  display: flex;
+  justify-content: center;
+  /*
+   * Tops, not bottoms: this box is the whole stage, so aligning to its end
+   * would put the readout on the floor. The score and a label-over-value
+   * column are within a couple of pixels of the same height, so their numbers
+   * land on the same line either way.
+   */
+  align-items: flex-start;
+  gap: 1.1rem;
+  padding-top: max(0.55rem, env(safe-area-inset-top, 0px));
 }
 
 .play-readout__score {
-  position: absolute;
-  top: max(0.55rem, env(safe-area-inset-top, 0px));
-  left: 50%;
-  transform: translateX(-50%);
+  /* In the row now, not pinned over it. */
   margin: 0;
   font-family: var(--font-display);
   font-size: clamp(1.35rem, 4.5vw, 1.85rem);
@@ -2979,13 +2998,8 @@ a.game-hud__board {
  * Sized down, because this one sits over a playfield rather than on a panel.
  */
 .play-stats {
-  position: absolute;
-  /* Clear of the score's baseline rather than tucked under it. */
-  top: calc(max(0.55rem, env(safe-area-inset-top, 0px)) + 2.05rem);
-  left: 50%;
-  transform: translateX(-50%);
   display: flex;
-  align-items: flex-start;
+  align-items: flex-end;
   gap: 1.15rem;
   white-space: nowrap;
   pointer-events: none;

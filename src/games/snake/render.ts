@@ -46,9 +46,7 @@ export function renderGame(
   // The panel is drawn PANEL_PAD outside the grid on every side, so the header
   // has to cover that too — clearing the grid alone still leaves the panel's
   // top border reaching up into the score.
-  // `center` because the readout now carries a second line — length and level,
-  // in the slot every other game puts its run state in.
-  const header = playHeader(w, { center: true }) + PANEL_PAD
+  const header = playHeader(w) + PANEL_PAD
   const footer = Math.max(22, Math.min(w, h) * 0.07)
   // On a phone the board is limited by width — fifteen columns across 375px —
   // so every pixel of side margin comes straight off the cell. Trimmed to the

@@ -188,6 +188,7 @@ export function recordNavShortLabel(row: { id: string; label: string }): string 
   if (row.id === STACKER_PERFECT_STREAK_ID) return 'Perfect'
   if (row.id === PELLETS_CRUMB_STREAK_ID) return 'Crumbs'
   if (row.id === CRUMBTRAIL_ROWS_ID) return 'Rows'
+  if (row.id === SNAKE_LONGEST_ID) return 'Longest'
   const wave = parseAsteroidsWaveFromRecordId(row.id)
   if (wave != null) return `W${wave}`
   const length = parseSnakeLengthFromRecordId(row.id)
@@ -233,6 +234,9 @@ export const STACKER_PERFECT_STREAK_ID = 'perfect-streak'
 export const PELLETS_CRUMB_STREAK_ID = 'crumb-streak'
 export const CRUMBTRAIL_CRUMB_STREAK_ID = 'crumb-streak'
 export const CRUMBTRAIL_ROWS_ID = 'most-rows'
+export const SNAKE_LONGEST_ID = 'longest'
+/** A run this short was a misclick, not an attempt at a long snake. */
+export const SNAKE_LONGEST_MIN = 8
 /** A run that ends this short was a misclick, not an attempt. */
 export const CRUMBTRAIL_ROWS_MIN = 10
 /**
@@ -240,7 +244,11 @@ export const CRUMBTRAIL_ROWS_MIN = 10
  * multiplier step, so the board starts where the streak starts mattering.
  */
 export const PELLETS_CRUMB_STREAK_MIN = 10
-const PLAIN_COUNT_RECORD_IDS = new Set<string>([CROSSWALK_MOST_COINS_ID, CRUMBTRAIL_ROWS_ID])
+const PLAIN_COUNT_RECORD_IDS = new Set<string>([
+  CROSSWALK_MOST_COINS_ID,
+  CRUMBTRAIL_ROWS_ID,
+  SNAKE_LONGEST_ID,
+])
 
 export const PLAY_DAYS_STREAK_ID = 'play-days-streak'
 export const THRESHOLD_STREAK_ID = 'threshold-streak'
@@ -665,6 +673,22 @@ export async function submitCrumbtrailRows(
   if (!cleaned || !(value >= CRUMBTRAIL_ROWS_MIN)) return null
   try {
     const result = await submitRecord('crumbtrail', CRUMBTRAIL_ROWS_ID, cleaned, value)
+    return toRecordSubmitOutcome(result)
+  } catch {
+    return null
+  }
+}
+
+/** Best-effort longest-snake submit (the run's peak length). */
+export async function submitSnakeLongest(
+  length: number,
+  name: string,
+): Promise<RecordSubmitOutcome | null> {
+  const value = Math.floor(length)
+  const cleaned = normalizePlayerName(name)
+  if (!cleaned || !(value >= SNAKE_LONGEST_MIN)) return null
+  try {
+    const result = await submitRecord('snake', SNAKE_LONGEST_ID, cleaned, value)
     return toRecordSubmitOutcome(result)
   } catch {
     return null

@@ -35,6 +35,7 @@ import {
   SNAKE_LENGTH_MILESTONE_STEP,
   SNAKE_SPRINT_LENGTH,
   submitSnakeFastestLength,
+  submitSnakeLongest,
   shouldCelebrateRecordSubmit,
 } from '../../lib/records'
 import { useRecordTop } from '../../hooks/useRecordTop'
@@ -96,6 +97,9 @@ export function SnakeGame() {
   const holdTimer = useRef<number | null>(null)
   const runStartRef = useRef<number | null>(null)
   const milestonesRef = useRef<Set<number>>(new Set())
+  /** Peak length this run, so the board is not what you died at. */
+  const longestRef = useRef(0)
+  const longestSentRef = useRef(false)
   const pausable = ui.phase === 'playing' && !saveOpen
   const { paused, toggle: togglePause, resume } = useGamePause(pausable)
   const pausedRef = useRef(false)
@@ -177,6 +181,36 @@ export function SnakeGame() {
     }
   }, [ui.phase, ui.length, playerName, tournament])
 
+  /**
+   * Longest snake of the run, sent once it is over.
+   *
+   * The peak, not the length at the end. Nothing shortens a snake today, so
+   * the two are the same number — but boost very nearly did, and a board built
+   * on the final length would have quietly started measuring where people died
+   * rather than how far they got.
+   */
+  useEffect(() => {
+    if (ui.phase === 'playing') {
+      longestRef.current = Math.max(longestRef.current, ui.length)
+      return
+    }
+    if (ui.phase !== 'gameover' || longestSentRef.current) return
+    if (tournament || !playerName) return
+    longestSentRef.current = true
+    const peak = longestRef.current
+    void (async () => {
+      const result = await submitSnakeLongest(peak, playerName)
+      if (shouldCelebrateRecordSubmit(result)) {
+        pushRunAchievement({
+          id: 'snake:longest',
+          label: 'Longest snake',
+          value: String(peak),
+          rank: result.rank,
+        })
+      }
+    })()
+  }, [ui.phase, ui.length, playerName, tournament])
+
   useEffect(() => {
     const sync = () => {
       const s = stateRef.current
@@ -212,6 +246,8 @@ export function SnakeGame() {
     startGrace.current = performance.now() + 220
     runStartRef.current = performance.now()
     milestonesRef.current = new Set()
+    longestRef.current = 0
+    longestSentRef.current = false
     setUi(toSnapshot(stateRef.current))
   }
 
@@ -236,6 +272,8 @@ export function SnakeGame() {
     startGrace.current = performance.now() + 220
     runStartRef.current = null
     milestonesRef.current = new Set()
+    longestRef.current = 0
+    longestSentRef.current = false
     setUi(toSnapshot(stateRef.current))
   }
 

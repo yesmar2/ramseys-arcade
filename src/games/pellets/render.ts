@@ -72,9 +72,9 @@ function roundRect(
 
 export function computeLayout(w: number, h: number, cols: number, rows: number) {
   const padX = Math.max(6, Math.min(20, w * 0.012))
-  // Shared with every other stage. The number this worked out for itself was
-  // short of where the streak line actually sits, so the maze ran under it.
-  const hud = playHeader(w, { center: true })
+  // Shared with every other stage, rather than a figure this worked out for
+  // itself and got wrong.
+  const hud = playHeader(w)
   const padBottom = Math.max(8, Math.min(28, h * 0.02))
   const availW = w - padX * 2
   const availH = h - hud - padBottom
