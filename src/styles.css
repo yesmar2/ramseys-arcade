@@ -4987,7 +4987,7 @@ html[data-theme='dark'] .patriot__power-mark {
 }
 
 .lb-page__inner {
-  width: min(100% - 2rem, var(--content-width));
+  width: min(100% - 1.25rem, var(--max-width));
   margin-inline: auto;
 }
 
@@ -4995,7 +4995,7 @@ html[data-theme='dark'] .patriot__power-mark {
   display: flex;
   flex-direction: column;
   gap: 0.85rem;
-  width: min(100% - 2rem, var(--content-width));
+  width: min(100% - 1.25rem, var(--max-width));
 }
 
 .lb-game-board__head {
@@ -6358,14 +6358,14 @@ a.lb-share:visited:focus-visible {
 
 /* Leaderboards overview — top 3 per game per period */
 .lb-page__inner--summary {
-  width: min(100% - 2rem, var(--content-width));
+  width: min(100% - 1.25rem, var(--max-width));
 }
 
 .lb-page__inner--events {
   display: flex;
   flex-direction: column;
   gap: 1.15rem;
-  width: min(100% - 2rem, var(--content-width));
+  width: min(100% - 1.25rem, var(--max-width));
 }
 
 .lb-summary {
@@ -10674,5 +10674,18 @@ a.notif:focus-visible {
     top: calc(100% + 3.4rem);
     right: 0;
     width: auto;
+  }
+}
+
+/* At the site width the boards overview runs three and four cards across. */
+@media (min-width: 64rem) {
+  .lb-summary {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 90rem) {
+  .lb-summary {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }

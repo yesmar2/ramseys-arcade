@@ -5,6 +5,7 @@ import {
   BoardSkeleton,
   PeriodSwitcher,
 } from '../components/BoardChrome'
+import { BoardSideRail } from '../components/BoardSideRail'
 import { Footer } from '../components/Footer'
 import { GamePageHeader } from '../components/GamePageHeader'
 import { GameRecordsPanel } from '../components/GameRecordsPanel'
@@ -125,26 +126,33 @@ function GameRecordBookPage({
             />
           }
         />
-        <GameRecordsPanel
-          game={game}
-          accent={accent}
-          period={period}
-          tools={
-            <PeriodSwitcher
-              period={period}
+        <div className="split">
+          <div className="split__main">
+            <GameRecordsPanel
+              game={game}
               accent={accent}
-              hrefFor={(p) => recordsHref(game, p)}
-              onSelect={(p) => {
-                navigate(recordsHref(game, p))
-              }}
+              period={period}
+              tools={
+                <PeriodSwitcher
+                  period={period}
+                  accent={accent}
+                  hrefFor={(p) => recordsHref(game, p)}
+                  onSelect={(p) => {
+                    navigate(recordsHref(game, p))
+                  }}
+                />
+              }
             />
-          }
-        />
-        {!canPlay ? (
-          <p className="lb-device-note lb-device-note--footer" role="note">
-            {deviceNote}
-          </p>
-        ) : null}
+            {!canPlay ? (
+              <p className="lb-device-note lb-device-note--footer" role="note">
+                {deviceNote}
+              </p>
+            ) : null}
+          </div>
+          <aside className="split__side" aria-label="More">
+            <BoardSideRail slug={game} accent={accent} period={period} canPlay={canPlay} mode="records" />
+          </aside>
+        </div>
       </div>
     </PageShell>
   )
@@ -240,6 +248,8 @@ function RecordBoardPage({
             </header>
           )}
 
+          <div className="split">
+            <div className="split__main">
           <section
             key={`${recordId}-${period}`}
             className="lst-block lb-board--fade"
@@ -305,6 +315,11 @@ function RecordBoardPage({
               </p>
             ) : null}
           </section>
+            </div>
+            <aside className="split__side" aria-label="More">
+              <BoardSideRail slug={game} accent={accent} period={period} canPlay={canPlay} mode="records" />
+            </aside>
+          </div>
         </div>
       </main>
       <Footer />

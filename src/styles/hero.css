@@ -506,3 +506,8 @@
 .hero:has(> .hero__corner) .hero__text {
   padding-right: 2.7rem;
 }
+
+/* A wide page does not mean a wide sentence: the hero copy keeps a measure. */
+.hero__text {
+  max-width: 46rem;
+}

@@ -112,3 +112,16 @@
   }
 }
 
+
+/* At the site width the record books run three and four across. */
+@media (min-width: 64rem) {
+  .rb__grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 90rem) {
+  .rb__grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}

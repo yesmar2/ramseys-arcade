@@ -34,3 +34,167 @@
   display: none;
 }
 
+
+/* ---------- split: a board in a main column, the way onward in a side rail ---------- */
+
+.split {
+  display: flex;
+  flex-direction: column;
+  gap: 1.35rem;
+}
+
+.split__main {
+  display: flex;
+  flex-direction: column;
+  gap: 1.15rem;
+  min-width: 0;
+}
+
+.split__side {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-width: 0;
+}
+
+@media (min-width: 64rem) {
+  .split {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 22rem;
+    align-items: start;
+  }
+
+  .split__side {
+    position: sticky;
+    top: calc(var(--header-h, 4.5rem) + 1rem);
+  }
+}
+
+/* The game a board belongs to. */
+.side-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem 1.1rem;
+  border-radius: 1.25rem;
+  background: color-mix(in srgb, var(--board-accent, var(--accent)) 10%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--board-accent, var(--accent)) 26%, transparent);
+}
+
+.side-card__top {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+}
+
+.side-card .inline-thumb {
+  --inline-thumb-size: 3.6rem;
+  flex: none;
+}
+
+.side-card__text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.side-card__name {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+
+.side-card__desc {
+  margin: 0;
+  font-size: 0.84rem;
+  font-weight: 550;
+  line-height: 1.4;
+  color: var(--muted);
+}
+
+.side-card__acts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.side-card__cta,
+.side-card__link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.2rem;
+  padding: 0 0.95rem;
+  border-radius: 999px;
+  font-size: 0.84rem;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.side-card__cta {
+  background: var(--board-accent, var(--accent));
+  color: #fff;
+}
+
+.side-card__link {
+  border: 1px solid color-mix(in srgb, var(--board-accent, var(--accent)) 35%, transparent);
+  color: color-mix(in srgb, var(--board-accent, var(--accent)) 65%, var(--ink));
+}
+
+.side-card__link:hover,
+.side-card__link:focus-visible {
+  background: color-mix(in srgb, var(--board-accent, var(--accent)) 12%, var(--surface));
+  outline: none;
+}
+
+/* The rest of the family: the other boards, or the other record books. */
+.side-list {
+  padding: 0.85rem 0.9rem 0.6rem;
+  border-radius: 1.25rem;
+  background: var(--surface);
+  border: 1px solid rgba(var(--ink-rgb), 0.08);
+}
+
+.side-list__head {
+  margin: 0 0.3rem 0.4rem;
+  font-size: 0.64rem;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.side-list__items {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.side-list__items a {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.3rem 0.4rem;
+  border-radius: 0.7rem;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.side-list__items a:hover,
+.side-list__items a:focus-visible {
+  background: rgba(var(--ink-rgb), 0.05);
+  outline: none;
+}
+
+.side-list__items .inline-thumb {
+  --inline-thumb-size: 1.9rem;
+  flex: none;
+}

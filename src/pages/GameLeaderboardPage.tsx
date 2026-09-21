@@ -1,5 +1,6 @@
 import { useEffect, useRef, type CSSProperties } from 'react'
 import { BoardEmpty, BoardMore, BoardSkeleton, PeriodSwitcher } from '../components/BoardChrome'
+import { BoardSideRail } from '../components/BoardSideRail'
 import { GamePageHeader } from '../components/GamePageHeader'
 import { LeaderboardList } from '../components/LeaderboardList'
 import { PageShell } from '../components/PageShell'
@@ -107,6 +108,8 @@ export function GameLeaderboardPage({
           }
         />
 
+        <div className="split">
+          <div className="split__main">
         <section
           key={`${gameSlug}-${period}`}
           className="lst-block lb-board--fade"
@@ -171,6 +174,11 @@ export function GameLeaderboardPage({
             </p>
           ) : null}
         </section>
+          </div>
+          <aside className="split__side" aria-label="More">
+            <BoardSideRail slug={gameSlug} accent={accent} period={period} canPlay={canPlay} mode="board" />
+          </aside>
+        </div>
       </div>
     </PageShell>
   )
