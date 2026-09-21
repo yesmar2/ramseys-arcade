@@ -257,7 +257,7 @@ export const THRESHOLD_STREAK_ID = 'threshold-streak'
 export const SCORE_STREAK_THRESHOLDS: Record<string, number> = {
   asteroids: 1000,
   patriot: 1000,
-  snake: 50,
+  snake: 500,
   crosswalk: 200,
   stacker: 15,
   centroid: 6000,
