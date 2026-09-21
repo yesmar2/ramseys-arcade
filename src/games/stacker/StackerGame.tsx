@@ -130,17 +130,28 @@ export function StackerGame() {
     })()
   }, [ui.status, ui.perfectStreakBest, playerName, tournament])
 
-  const restart = () => {
+  const restart = (intoMenu = false) => {
     setSaveOpen(false)
     offeredScore.current = null
     streakRecordKey.current = ''
     clearRunAchievements()
-    beginRun('stacker')
+    if (!intoMenu) beginRun('stacker')
     stateRef.current = startGame(stateRef.current)
     previousBestRef.current = getPersonalBest('stacker')
     startGrace.current = performance.now() + 280
+    // Same reset, stopped at the start card instead of in play.
+    // The snapshot renames this to status; the state itself calls it phase.
+    if (intoMenu) stateRef.current = { ...stateRef.current, phase: 'menu' }
     setUi(toSnapshot(stateRef.current))
   }
+
+  /**
+   * Done with the run: back to the start card rather than into another one.
+   * That card is where the numbers a run just changed are shown, and dropping
+   * the player straight back into play skips past all of it. No run is opened,
+   * so nothing counts until they actually start one.
+   */
+  const toMenu = () => restart(true)
 
   const act = (e?: { preventDefault?: () => void }) => {
     e?.preventDefault?.()
@@ -249,7 +260,7 @@ export function StackerGame() {
                 tournamentId={tournament.tournamentId}
                 gameSlug="stacker"
                 score={ui.score}
-                onDone={restart}
+                onDone={toMenu}
               />
             ) : (
               <ScoreSaveCard
@@ -257,7 +268,7 @@ export function StackerGame() {
                 score={ui.score}
                 title="Nice stack"
                 previousBest={Math.max(previousBestRef.current, apiBest)}
-                onDone={restart}
+                onDone={toMenu}
               />
             )
           )}

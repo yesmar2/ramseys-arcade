@@ -122,17 +122,27 @@ export function BopGame() {
     }
   }, [])
 
-  const restart = () => {
+  const restart = (intoMenu = false) => {
     setSaveOpen(false)
     offeredScore.current = null
-    beginRun('bop')
+    if (!intoMenu) beginRun('bop')
     dragRef.current = null
     const { w, h } = sizeRef.current
     stateRef.current = startGame(resizeState(createInitialState(w, h), w, h))
     previousBestRef.current = getPersonalBest('bop')
     startGrace.current = performance.now() + 260
+    // Same reset, stopped at the start card instead of in play.
+    if (intoMenu) stateRef.current = { ...stateRef.current, phase: 'menu' }
     setUi(toSnapshot(stateRef.current))
   }
+
+  /**
+   * Done with the run: back to the start card rather than into another one.
+   * That card is where the numbers a run just changed are shown, and dropping
+   * the player straight back into play skips past all of it. No run is opened,
+   * so nothing counts until they actually start one.
+   */
+  const toMenu = () => restart(true)
 
   const perform = (control: Control) => {
     stateRef.current = act(stateRef.current, control)
@@ -255,7 +265,7 @@ export function BopGame() {
                 tournamentId={tournament.tournamentId}
                 gameSlug="bop"
                 score={ui.score}
-                onDone={restart}
+                onDone={toMenu}
               />
             ) : (
               <ScoreSaveCard
@@ -264,7 +274,7 @@ export function BopGame() {
                 title={title}
                 subtitle={`${ui.streak} in a row`}
                 previousBest={Math.max(previousBestRef.current, apiBest)}
-                onDone={restart}
+                onDone={toMenu}
               />
             )
           )}

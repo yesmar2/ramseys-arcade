@@ -134,18 +134,28 @@ export function BarrageGame() {
     syncControls()
   }
 
-  const restart = () => {
+  const restart = (intoMenu = false) => {
     saveOpenRef.current = false
     setSaveOpen(false)
     offeredScore.current = null
     clearRunAchievements()
-    beginRun('barrage')
+    if (!intoMenu) beginRun('barrage')
     releaseAll()
     stateRef.current = startGame(stateRef.current, portraitRef.current)
     previousBestRef.current = getPersonalBest('barrage')
     startGrace.current = performance.now() + 220
+    // Same reset, stopped at the start card instead of in play.
+    if (intoMenu) stateRef.current = { ...stateRef.current, phase: 'menu' }
     setUi(toSnapshot(stateRef.current))
   }
+
+  /**
+   * Done with the run: back to the start card rather than into another one.
+   * That card is where the numbers a run just changed are shown, and dropping
+   * the player straight back into play skips past all of it. No run is opened,
+   * so nothing counts until they actually start one.
+   */
+  const toMenu = () => restart(true)
 
   useEffect(() => {
     let raf = 0
@@ -387,7 +397,7 @@ export function BarrageGame() {
                     tournamentId={tournament.tournamentId}
                     gameSlug="barrage"
                     score={ui.score}
-                    onDone={restart}
+                    onDone={toMenu}
                   />
                 ) : (
                   <ScoreSaveCard
@@ -396,7 +406,7 @@ export function BarrageGame() {
                     title="Line broken"
                     subtitle={`Wave ${ui.wave} · ${ui.accuracy}% accuracy`}
                     previousBest={Math.max(previousBestRef.current, apiBest)}
-                    onDone={restart}
+                    onDone={toMenu}
                   />
                 ))}
             </div>

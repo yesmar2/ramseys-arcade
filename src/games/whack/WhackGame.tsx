@@ -132,19 +132,29 @@ export function WhackGame() {
     })()
   }, [ui.phase, ui.centerStreakBest, playerName, tournament])
 
-  const restart = () => {
+  const restart = (intoMenu = false) => {
     saveOpenRef.current = false
     setSaveOpen(false)
     offeredScore.current = null
     clearRunAchievements()
-    beginRun('pop')
+    if (!intoMenu) beginRun('pop')
     streakRecordKey.current = null
     const { w, h } = sizeRef.current
     stateRef.current = setScale(startGame(stateRef.current), w, h)
     previousBestRef.current = getPersonalBest('pop')
     startGrace.current = performance.now() + 220
+    // Same reset, stopped at the start card instead of in play.
+    if (intoMenu) stateRef.current = { ...stateRef.current, phase: 'menu' }
     setUi(toSnapshot(stateRef.current))
   }
+
+  /**
+   * Done with the run: back to the start card rather than into another one.
+   * That card is where the numbers a run just changed are shown, and dropping
+   * the player straight back into play skips past all of it. No run is opened,
+   * so nothing counts until they actually start one.
+   */
+  const toMenu = () => restart(true)
 
   const onPointerDown = (e: ReactPointerEvent<HTMLElement>) => {
     if (saveOpenRef.current || pausedRef.current) return
@@ -277,7 +287,7 @@ export function WhackGame() {
                   tournamentId={tournament.tournamentId}
                   gameSlug="pop"
                   score={ui.score}
-                  onDone={restart}
+                  onDone={toMenu}
                 />
               ) : (
                 <ScoreSaveCard
@@ -286,7 +296,7 @@ export function WhackGame() {
                   title="Time’s up"
                   subtitle={`${ui.hits} hits`}
                   previousBest={Math.max(previousBestRef.current, apiBest)}
-                  onDone={restart}
+                  onDone={toMenu}
                 />
               )
             )}

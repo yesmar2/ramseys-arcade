@@ -116,18 +116,28 @@ export function DeadCenterGame() {
     }
   }, [])
 
-  const restart = () => {
+  const restart = (intoMenu = false) => {
     setSaveOpen(false)
     offeredScore.current = null
-    beginRun('centroid')
+    if (!intoMenu) beginRun('centroid')
     const next = currentLayout()
     setAspect({ w: next.aspectW, h: next.aspectH })
     const { w, h } = sizeRef.current
     stateRef.current = startGame(resizeState(createInitialState(w, h), w, h))
     previousBestRef.current = getPersonalBest('centroid')
     startGrace.current = performance.now() + 180
+    // Same reset, stopped at the start card instead of in play.
+    if (intoMenu) stateRef.current = { ...stateRef.current, phase: 'menu' }
     setUi(toSnapshot(stateRef.current))
   }
+
+  /**
+   * Done with the run: back to the start card rather than into another one.
+   * That card is where the numbers a run just changed are shown, and dropping
+   * the player straight back into play skips past all of it. No run is opened,
+   * so nothing counts until they actually start one.
+   */
+  const toMenu = () => restart(true)
 
   const goNext = () => {
     if (saveOpen) return
@@ -272,7 +282,7 @@ export function DeadCenterGame() {
                   gameSlug="centroid"
                   score={ui.score}
                   subtitle={`${ui.avgAccuracy}% accuracy`}
-                  onDone={restart}
+                  onDone={toMenu}
                 />
               ) : (
                 <ScoreSaveCard
@@ -281,7 +291,7 @@ export function DeadCenterGame() {
                   title="Round complete"
                   subtitle={`${ui.avgAccuracy}% accuracy`}
                   previousBest={Math.max(previousBestRef.current, apiBest)}
-                  onDone={restart}
+                  onDone={toMenu}
                 />
               )
             )}

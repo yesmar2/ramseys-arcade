@@ -169,17 +169,27 @@ export function CrumbtrailGame() {
     return crumbtrailViewport()
   }
 
-  const restart = () => {
+  const restart = (intoMenu = false) => {
     setSaveOpen(false)
     offeredScore.current = null
     clearRunAchievements()
-    beginRun('crumbtrail')
+    if (!intoMenu) beginRun('crumbtrail')
     booksKey.current = null
     stateRef.current = startGame(stateRef.current, fieldViewport())
     previousBestRef.current = getPersonalBest('crumbtrail')
     startGrace.current = performance.now() + 220
+    // Same reset, stopped at the start card instead of in play.
+    if (intoMenu) stateRef.current = { ...stateRef.current, phase: 'menu' }
     setUi(toSnapshot(stateRef.current))
   }
+
+  /**
+   * Done with the run: back to the start card rather than into another one.
+   * That card is where the numbers a run just changed are shown, and dropping
+   * the player straight back into play skips past all of it. No run is opened,
+   * so nothing counts until they actually start one.
+   */
+  const toMenu = () => restart(true)
 
   const steer = (dir: Dir) => {
     if (saveOpen || pausedRef.current) return
@@ -427,7 +437,7 @@ export function CrumbtrailGame() {
                     tournamentId={tournament.tournamentId}
                     gameSlug="crumbtrail"
                     score={ui.score}
-                    onDone={restart}
+                    onDone={toMenu}
                   />
                 ) : (
                   <ScoreSaveCard
@@ -436,7 +446,7 @@ export function CrumbtrailGame() {
                     title={ui.cause === 'drowned' ? 'Swallowed' : 'Caught'}
                     subtitle={`${ui.depth} rows · ${ui.score.toLocaleString()} points`}
                     previousBest={Math.max(previousBestRef.current, apiBest)}
-                    onDone={restart}
+                    onDone={toMenu}
                   />
                 )
               )}

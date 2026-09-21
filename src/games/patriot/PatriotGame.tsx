@@ -191,17 +191,27 @@ export function PatriotGame() {
     aimFromEvent(e)
   }
 
-  const restart = () => {
+  const restart = (intoMenu = false) => {
     setSaveOpen(false)
     offeredScore.current = null
     streakRecordKey.current = null
     clearRunAchievements()
-    beginRun('patriot')
+    if (!intoMenu) beginRun('patriot')
     const { w, h } = sizeRef.current
     stateRef.current = startGame(stateRef.current, w, h)
     previousBestRef.current = getPersonalBest('patriot')
+    // Same reset, stopped at the start card instead of in play.
+    if (intoMenu) stateRef.current = { ...stateRef.current, phase: 'menu' }
     setUi(toSnapshot(stateRef.current))
   }
+
+  /**
+   * Done with the run: back to the start card rather than into another one.
+   * That card is where the numbers a run just changed are shown, and dropping
+   * the player straight back into play skips past all of it. No run is opened,
+   * so nothing counts until they actually start one.
+   */
+  const toMenu = () => restart(true)
 
   const act = () => {
     if (pausedRef.current || saveOpen) return
@@ -418,7 +428,7 @@ export function PatriotGame() {
                   tournamentId={tournament.tournamentId}
                   gameSlug="patriot"
                   score={ui.score}
-                  onDone={restart}
+                  onDone={toMenu}
                 />
               ) : (
                 <ScoreSaveCard
@@ -426,7 +436,7 @@ export function PatriotGame() {
                   score={ui.score}
                   title="Cities lost"
                   previousBest={Math.max(previousBestRef.current, apiBest)}
-                  onDone={restart}
+                  onDone={toMenu}
                 />
               )
             )}

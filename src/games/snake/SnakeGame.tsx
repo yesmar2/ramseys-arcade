@@ -215,6 +215,30 @@ export function SnakeGame() {
     setUi(toSnapshot(stateRef.current))
   }
 
+  /**
+   * Done with the run: back to the start card rather than straight into
+   * another one.
+   *
+   * The card is where the numbers a run just changed are shown — your best,
+   * the all-time, the record within reach — and dropping the player back into
+   * play skips past all of it. No run is opened here, so nothing is counted
+   * until they actually start one.
+   */
+  const toMenu = () => {
+    setSaveOpen(false)
+    offeredScore.current = null
+    clearRunAchievements()
+    const next = currentLayout()
+    stateRef.current = createInitialState(next.cols, next.rows, next.dir)
+    setAspect({ w: next.aspectW, h: next.aspectH })
+    previousBestRef.current = getPersonalBest('snake')
+    // The tap that dismissed the card must not also start the next run.
+    startGrace.current = performance.now() + 220
+    runStartRef.current = null
+    milestonesRef.current = new Set()
+    setUi(toSnapshot(stateRef.current))
+  }
+
   const turn = (dir: Dir) => {
     if (saveOpen || pausedRef.current) return
     const s = stateRef.current
@@ -459,7 +483,7 @@ export function SnakeGame() {
                   tournamentId={tournament.tournamentId}
                   gameSlug="snake"
                   score={ui.score}
-                  onDone={restart}
+                  onDone={toMenu}
                 />
               ) : (
                 <ScoreSaveCard
@@ -467,7 +491,7 @@ export function SnakeGame() {
                   score={ui.score}
                   title="Game over"
                   previousBest={Math.max(previousBestRef.current, apiBest)}
-                  onDone={restart}
+                  onDone={toMenu}
                 />
               )
             )}

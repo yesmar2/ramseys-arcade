@@ -101,14 +101,24 @@ export function FrenzyGame() {
     if (ui.phase === 'menu') previousBestRef.current = apiBest
   }, [apiBest, ui.phase])
 
-  const restart = () => {
+  const restart = (intoMenu = false) => {
     setSaveOpen(false)
     offeredScore.current = null
-    beginRun('frenzy')
+    if (!intoMenu) beginRun('frenzy')
     stateRef.current = startGame(stateRef.current)
     previousBestRef.current = getPersonalBest('frenzy')
+    // Same reset, stopped at the start card instead of in play.
+    if (intoMenu) stateRef.current = { ...stateRef.current, phase: 'menu' }
     setUi(toSnapshot(stateRef.current))
   }
+
+  /**
+   * Done with the run: back to the start card rather than into another one.
+   * That card is where the numbers a run just changed are shown, and dropping
+   * the player straight back into play skips past all of it. No run is opened,
+   * so nothing counts until they actually start one.
+   */
+  const toMenu = () => restart(true)
 
   const aimFromEvent = (e: ReactPointerEvent<HTMLElement>) => {
     const rect = e.currentTarget.getBoundingClientRect()
@@ -221,7 +231,7 @@ export function FrenzyGame() {
                   tournamentId={tournament.tournamentId}
                   gameSlug="frenzy"
                   score={ui.score}
-                  onDone={restart}
+                  onDone={toMenu}
                 />
               ) : (
                 <ScoreSaveCard
@@ -229,7 +239,7 @@ export function FrenzyGame() {
                   score={ui.score}
                   title="Eaten"
                   previousBest={Math.max(previousBestRef.current, apiBest)}
-                  onDone={restart}
+                  onDone={toMenu}
                 />
               )
             )}

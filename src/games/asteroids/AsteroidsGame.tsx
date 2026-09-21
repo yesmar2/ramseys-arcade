@@ -333,7 +333,7 @@ export function AsteroidsGame() {
     }
   }, [])
 
-  const restart = () => {
+  const restart = (intoMenu = false) => {
     setSaveOpen(false)
     offeredScore.current = null
     waveRecordKey.current = null
@@ -341,7 +341,7 @@ export function AsteroidsGame() {
     pendingWaveCelebRef.current = null
     comboRecordKey.current = null
     clearRunAchievements()
-    beginRun('asteroids')
+    if (!intoMenu) beginRun('asteroids')
     setWaveCeleb(null)
     clearPressed()
     const next = currentLayout()
@@ -350,8 +350,18 @@ export function AsteroidsGame() {
     stateRef.current = startGame(resizeState(createInitialState(w, h), w, h))
     previousBestRef.current = getPersonalBest('asteroids')
     startGrace.current = performance.now() + 180
+    // Same reset, stopped at the start card instead of in play.
+    if (intoMenu) stateRef.current = { ...stateRef.current, phase: 'menu' }
     setUi(toSnapshot(stateRef.current))
   }
+
+  /**
+   * Done with the run: back to the start card rather than into another one.
+   * That card is where the numbers a run just changed are shown, and dropping
+   * the player straight back into play skips past all of it. No run is opened,
+   * so nothing counts until they actually start one.
+   */
+  const toMenu = () => restart(true)
 
   const press = (key: HoldKey, id: string) => {
     if (saveOpenRef.current || pausedRef.current) return
@@ -684,7 +694,7 @@ export function AsteroidsGame() {
                   tournamentId={tournament.tournamentId}
                   gameSlug="asteroids"
                   score={ui.score}
-                  onDone={restart}
+                  onDone={toMenu}
                 />
               ) : (
                 <ScoreSaveCard
@@ -693,7 +703,7 @@ export function AsteroidsGame() {
                   title="Ship down"
                   subtitle={`Wave ${ui.wave}`}
                   previousBest={Math.max(previousBestRef.current, apiBest)}
-                  onDone={restart}
+                  onDone={toMenu}
                 />
               )
             )}

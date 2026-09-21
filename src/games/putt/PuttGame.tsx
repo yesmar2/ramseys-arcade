@@ -174,17 +174,27 @@ export function PuttGame() {
     }
   }, [])
 
-  const restart = () => {
+  const restart = (intoMenu = false) => {
     setSaveOpen(false)
     offeredScore.current = null
-    beginRun('putt')
+    if (!intoMenu) beginRun('putt')
     pressRef.current = null
     const { w, h } = sizeRef.current
     stateRef.current = startGame(resizeState(createInitialState(w, h), w, h))
     previousBestRef.current = getPersonalBest('putt')
     startGrace.current = performance.now() + 260
+    // Same reset, stopped at the start card instead of in play.
+    if (intoMenu) stateRef.current = { ...stateRef.current, phase: 'menu' }
     setUi(toSnapshot(stateRef.current))
   }
+
+  /**
+   * Done with the run: back to the start card rather than into another one.
+   * That card is where the numbers a run just changed are shown, and dropping
+   * the player straight back into play skips past all of it. No run is opened,
+   * so nothing counts until they actually start one.
+   */
+  const toMenu = () => restart(true)
 
   /** Admin and testing: a fresh round, or the round in hand, moved to a hole. */
   const goToHole = (index: number) => {
@@ -374,7 +384,7 @@ export function PuttGame() {
                 tournamentId={tournament.tournamentId}
                 gameSlug="putt"
                 score={ui.score}
-                onDone={restart}
+                onDone={toMenu}
               />
             ) : (
               <ScoreSaveCard
@@ -383,7 +393,7 @@ export function PuttGame() {
                 title="Round over"
                 subtitle={roundLabel(ui.toPar, ui.bests)}
                 previousBest={Math.max(previousBestRef.current, apiBest)}
-                onDone={restart}
+                onDone={toMenu}
               />
             )
           )}

@@ -175,17 +175,27 @@ export function FindBugGame() {
     setUi(toSnapshot(stateRef.current))
   }, [portrait])
 
-  const restart = () => {
+  const restart = (intoMenu = false) => {
     saveOpenRef.current = false
     setSaveOpen(false)
     offeredScore.current = null
     clearRunAchievements()
-    beginRun('findbug')
+    if (!intoMenu) beginRun('findbug')
     stateRef.current = startGame(stateRef.current, portraitRef.current)
     previousBestRef.current = getPersonalBest('findbug')
     startGrace.current = performance.now() + 220
+    // Same reset, stopped at the start card instead of in play.
+    if (intoMenu) stateRef.current = { ...stateRef.current, phase: 'menu' }
     setUi(toSnapshot(stateRef.current))
   }
+
+  /**
+   * Done with the run: back to the start card rather than into another one.
+   * That card is where the numbers a run just changed are shown, and dropping
+   * the player straight back into play skips past all of it. No run is opened,
+   * so nothing counts until they actually start one.
+   */
+  const toMenu = () => restart(true)
 
   /**
    * Pointer position in the scene's normalized space. The element now fills the
@@ -361,7 +371,7 @@ export function FindBugGame() {
                     tournamentId={tournament.tournamentId}
                     gameSlug="findbug"
                     score={finalScore}
-                    onDone={restart}
+                    onDone={toMenu}
                   />
                 ) : (
                   <ScoreSaveCard
@@ -370,7 +380,7 @@ export function FindBugGame() {
                     title="All clear"
                     subtitle={`${ui.misses} wrong swat${ui.misses === 1 ? '' : 's'}`}
                     previousBest={Math.max(previousBestRef.current, apiBest)}
-                    onDone={restart}
+                    onDone={toMenu}
                   />
                 ))}
             </div>

@@ -100,16 +100,26 @@ export function SimonGame() {
     if (ui.phase === 'menu') previousBestRef.current = apiBest
   }, [apiBest, ui.phase])
 
-  const restart = () => {
+  const restart = (intoMenu = false) => {
     setSaveOpen(false)
     offeredScore.current = null
-    beginRun('simon')
+    if (!intoMenu) beginRun('simon')
     const { w, h } = sizeRef.current
     stateRef.current = startGame(resizeState(createInitialState(w, h), w, h))
     previousBestRef.current = getPersonalBest('simon')
     startGrace.current = performance.now() + 180
+    // Same reset, stopped at the start card instead of in play.
+    if (intoMenu) stateRef.current = { ...stateRef.current, phase: 'menu' }
     setUi(toSnapshot(stateRef.current))
   }
+
+  /**
+   * Done with the run: back to the start card rather than into another one.
+   * That card is where the numbers a run just changed are shown, and dropping
+   * the player straight back into play skips past all of it. No run is opened,
+   * so nothing counts until they actually start one.
+   */
+  const toMenu = () => restart(true)
 
   const onPointerDown = (e: ReactPointerEvent<HTMLElement>) => {
     if (saveOpen) return
@@ -199,7 +209,7 @@ export function SimonGame() {
                 tournamentId={tournament.tournamentId}
                 gameSlug="simon"
                 score={ui.score}
-                onDone={restart}
+                onDone={toMenu}
               />
             ) : (
               <ScoreSaveCard
@@ -207,7 +217,7 @@ export function SimonGame() {
                 score={ui.score}
                 title="Pattern broke"
                 previousBest={Math.max(previousBestRef.current, apiBest)}
-                onDone={restart}
+                onDone={toMenu}
               />
             )
           )}
