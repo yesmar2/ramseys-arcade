@@ -18,6 +18,10 @@ export type Snapshot = {
   best: number
   phase: Phase
   length: number
+  /** Boost actually paying out, not just held — drives the control's lit state. */
+  boosting: boolean
+  /** There is tail left to spend, so the control is worth offering. */
+  canBoost: boolean
 }
 
 export type GameState = {
@@ -44,6 +48,10 @@ export type GameState = {
   foodAge: number
   /** Cells per second. */
   speed: number
+  /** Boost control held. Whether it is actually paying out is {@link isBoosting}. */
+  boostHeld: boolean
+  /** Fraction of a segment burned so far, carried until it makes a whole one. */
+  boostDebt: number
   flash: number
   floaters: Floater[]
 }
@@ -113,6 +121,33 @@ const EAT_DIST = 0.55
 
 /** Speed multiplier while a turn is queued, to shorten the wait for the next center. */
 const TURN_BOOST = 2
+
+/**
+ * Boost: speed bought with your own tail.
+ *
+ * A run only ever ends one way, so the decision worth offering is whether to
+ * spend the number you are chasing in order to keep the run alive — burning
+ * tail to slip out of a box you closed around yourself, or to reach food while
+ * its ring is still full. Length alone would be no price at all, because a
+ * shorter snake is an easier one; the points have to go with it.
+ */
+const BOOST_MULT = 1.75
+/** Segments burned per second held, each one costing what a food paid. */
+const BOOST_BURN_PER_SECOND = 1.4
+
+/**
+ * Boost only pays out while there is tail to spend. The floor is the length a
+ * run starts at, so boosting can never shorten you into nothing.
+ */
+export function isBoosting(s: Pick<GameState, 'boostHeld' | 'phase' | 'segments'>) {
+  return s.boostHeld && s.phase === 'playing' && s.segments > START_SEGMENTS
+}
+
+/** Hold or release the boost control. */
+export function setBoost(state: GameState, held: boolean): GameState {
+  if (state.boostHeld === held) return state
+  return { ...state, boostHeld: held }
+}
 /** Longest movement resolved between collision checks, so nothing is skipped over. */
 const MAX_SUBSTEP = 0.35
 /** Edge cell center — past this the head is in the wall buffer. */
@@ -205,6 +240,11 @@ function bodyLength(segments: number) {
   return (segments - 1) * SEG_SPACING
 }
 
+/** Pace for a body this long. Boost is applied on top, per frame. */
+function speedFor(segments: number) {
+  return Math.min(MAX_SPEED, START_SPEED + (segments - START_SEGMENTS) * SPEED_PER_FOOD)
+}
+
 /** True once the head overlaps its own body, ignoring the neck. */
 function hitsBody(state: GameState) {
   const { trail, head } = state
@@ -283,6 +323,8 @@ export function createInitialState(
     food: { x: 0, y: 0 },
     foodAge: 0,
     speed: START_SPEED,
+    boostHeld: false,
+    boostDebt: 0,
     flash: 0,
     floaters: [],
   }
@@ -321,9 +363,11 @@ export function jumpToLength(state: GameState, length: number): GameState {
     trail: [{ ...head }, tail],
     segments,
     score: Math.max(0, (segments - START_SEGMENTS) * SCORE_FOOD),
-    speed: Math.min(MAX_SPEED, START_SPEED + (segments - START_SEGMENTS) * SPEED_PER_FOOD),
+    speed: speedFor(segments),
     pendingDir: null,
     bufferedDir: null,
+    boostHeld: false,
+    boostDebt: 0,
     floaters: [],
   }
   next.food = randomFood(next)
@@ -382,6 +426,8 @@ function die(state: GameState): GameState {
     best,
     pendingDir: null,
     bufferedDir: null,
+    boostHeld: false,
+    boostDebt: 0,
     flash: 0.4,
   }
 }
@@ -461,7 +507,30 @@ function move(s: GameState, travel: number) {
  * scaling it to the remaining distance would decay and never arrive on time.
  */
 function turnSpeed(s: GameState) {
-  return s.pendingDir ? s.speed * TURN_BOOST : s.speed
+  // Not multiplied together: the turn hurry is already a sprint to the next
+  // centre, and stacking it on a boost would fling the head across the board
+  // faster than anyone could read it.
+  const hurry = Math.max(s.pendingDir ? TURN_BOOST : 1, isBoosting(s) ? BOOST_MULT : 1)
+  return s.speed * hurry
+}
+
+/**
+ * Spend tail for the speed being used. The points go with the segment, because
+ * a shorter snake is an easier one — length on its own would be a reward.
+ */
+function burnBoost(s: GameState, dt: number) {
+  if (!isBoosting(s)) {
+    s.boostDebt = 0
+    return
+  }
+  s.boostDebt += BOOST_BURN_PER_SECOND * dt
+  while (s.boostDebt >= 1 && s.segments > START_SEGMENTS) {
+    s.boostDebt -= 1
+    s.segments -= 1
+    s.score = Math.max(0, s.score - SCORE_FOOD)
+    s.speed = speedFor(s.segments)
+  }
+  if (s.segments <= START_SEGMENTS) s.boostDebt = 0
 }
 
 function pastHardWall(s: GameState) {
@@ -513,7 +582,7 @@ function tryEat(s: GameState, previousBest: number) {
   s.score += gained
   s.best = Math.max(s.best, s.score)
   if (s.best !== previousBest) saveBest(s.best)
-  s.speed = Math.min(MAX_SPEED, START_SPEED + (s.segments - START_SEGMENTS) * SPEED_PER_FOOD)
+  s.speed = speedFor(s.segments)
   s.food = randomFood(s)
   s.foodAge = 0
   // A clean full-bonus grab flashes harder, so the good line is felt, not read.
@@ -534,6 +603,7 @@ export function tick(state: GameState, dt: number): GameState {
   if (s.phase !== 'playing') return s
 
   s.foodAge += dt
+  burnBoost(s, dt)
 
   // Walk the frame in short hops so nothing can be passed over between checks,
   // however fast the snake is going or however long the frame took.
@@ -568,5 +638,7 @@ export function toSnapshot(s: GameState): Snapshot {
     best: s.best,
     phase: s.phase,
     length: s.segments,
+    boosting: isBoosting(s),
+    canBoost: s.phase === 'playing' && s.segments > START_SEGMENTS,
   }
 }

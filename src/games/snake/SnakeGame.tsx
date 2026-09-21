@@ -32,6 +32,7 @@ import {
   jumpToLength,
   queueDir,
   queueTurn,
+  setBoost,
   snakeLayout,
   startGame,
   tick,
@@ -46,6 +47,9 @@ import { beginRun } from '../../lib/runSession'
 function currentLayout() {
   return snakeLayout(typeof window !== 'undefined' && window.innerHeight > window.innerWidth)
 }
+
+/** Space is the obvious one; shift is there for a hand already on the arrows. */
+const BOOST_KEYS = new Set(['Space', 'ShiftLeft', 'ShiftRight'])
 
 /**
  * The skill goal, sat beside the endurance one on the start card. The score
@@ -225,6 +229,13 @@ export function SnakeGame() {
     stateRef.current = queueTurn(s, side)
   }
 
+  const holdBoost = (held: boolean) => {
+    if (held && (saveOpen || pausedRef.current)) return
+    stateRef.current = setBoost(stateRef.current, held)
+  }
+
+  const releaseBoost = () => holdBoost(false)
+
   const stopHold = () => {
     if (holdTimer.current != null) {
       window.clearTimeout(holdTimer.current)
@@ -243,6 +254,12 @@ export function SnakeGame() {
   }
 
   useEffect(() => () => stopHold(), [])
+
+  // Pausing or landing on the save card drops the boost, so it is not still
+  // burning tail behind an overlay the player is reading.
+  useEffect(() => {
+    if (paused || saveOpen) stateRef.current = setBoost(stateRef.current, false)
+  }, [paused, saveOpen])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -263,14 +280,35 @@ export function SnakeGame() {
         turn(dir)
         return
       }
-      if (e.code === 'Space' || e.code === 'Enter') {
+      if (BOOST_KEYS.has(e.code)) {
+        e.preventDefault()
+        const s = stateRef.current
+        if (s.phase === 'playing') {
+          stateRef.current = setBoost(s, true)
+          return
+        }
+        if (e.code === 'Space') restart()
+        return
+      }
+      if (e.code === 'Enter') {
         e.preventDefault()
         const s = stateRef.current
         if (s.phase === 'menu' || s.phase === 'gameover') restart()
       }
     }
+    // Releasing is never gated on pause or the save card: a key let go while
+    // one of those is up must still stop the boost, or it stays on underneath.
+    const onKeyUp = (e: KeyboardEvent) => {
+      if (BOOST_KEYS.has(e.code)) releaseBoost()
+    }
     window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
+    window.addEventListener('keyup', onKeyUp)
+    window.addEventListener('blur', releaseBoost)
+    return () => {
+      window.removeEventListener('keydown', onKey)
+      window.removeEventListener('keyup', onKeyUp)
+      window.removeEventListener('blur', releaseBoost)
+    }
   }, [saveOpen])
 
   const SWIPE = 26
@@ -440,6 +478,34 @@ export function SnakeGame() {
                 stroke="currentColor"
                 strokeWidth="1.9"
                 strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </button>
+          <button
+            type="button"
+            className={`snake__boost${ui.boosting ? ' snake__boost--on' : ''}${
+              ui.canBoost ? '' : ' snake__boost--spent'
+            }`}
+            aria-label="Boost"
+            aria-pressed={ui.boosting}
+            // Deliberately never disabled: a control that goes dead under the
+            // thumb never sends its release, and the boost would stay on.
+            onPointerDown={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              holdBoost(true)
+            }}
+            onPointerUp={releaseBoost}
+            onPointerCancel={releaseBoost}
+            onPointerLeave={releaseBoost}
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                d="M13 2.5 5.5 13.2h5.2l-.7 8.3 7.5-10.7h-5.2l.7-8.3z"
+                fill="currentColor"
+                stroke="currentColor"
+                strokeWidth="1.2"
                 strokeLinejoin="round"
               />
             </svg>

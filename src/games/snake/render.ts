@@ -1,5 +1,5 @@
 import type { GameState } from './game'
-import { BEAD_SPACING, foodBonusLeft, visualSegments } from './game'
+import { BEAD_SPACING, foodBonusLeft, isBoosting, visualSegments } from './game'
 import { isDarkTheme, isFlatTheme, playfieldColor, softFillAlpha } from '../../lib/theme'
 
 const HEAD_HUE = 158
@@ -117,6 +117,7 @@ export function renderGame(
 
   // Snake — fixed bead size and spacing so they kiss at every length
   const segments = visualSegments(state)
+  const boosting = isBoosting(state)
   const lineW = Math.max(1.2, cell * 0.07)
   const sw = cell * BEAD_SPACING - (flat ? 0 : lineW)
   const sh = sw
@@ -130,6 +131,38 @@ export function renderGame(
     const sy = oy + seg.y * cell + gap
     const hue = ((HEAD_HUE + i * HUE_PER_BEAD) % 360 + 360) % 360
     const sat = 58 + Math.min(12, i * 0.15)
+
+    // Burning tail: the last few beads smoulder amber and the head carries a
+    // halo, so the cost is visible on the snake and not only on the score.
+    if (boosting) {
+      const fromTail = segments.length - 1 - i
+      if (fromTail < 3) {
+        const heat = (3 - fromTail) / 3
+        const glow = ctx.createRadialGradient(
+          sx + sw / 2,
+          sy + sh / 2,
+          sw * 0.2,
+          sx + sw / 2,
+          sy + sh / 2,
+          sw * 1.1,
+        )
+        glow.addColorStop(0, `rgba(245, 185, 66, ${0.4 * heat})`)
+        glow.addColorStop(1, 'rgba(245, 185, 66, 0)')
+        ctx.fillStyle = glow
+        ctx.beginPath()
+        ctx.arc(sx + sw / 2, sy + sh / 2, sw * 1.1, 0, Math.PI * 2)
+        ctx.fill()
+      }
+      if (i === 0) {
+        ctx.save()
+        ctx.strokeStyle = 'rgba(245, 185, 66, 0.9)'
+        ctx.lineWidth = Math.max(1.6, cell * 0.11)
+        ctx.beginPath()
+        ctx.arc(sx + sw / 2, sy + sh / 2, sw * 0.82, 0, Math.PI * 2)
+        ctx.stroke()
+        ctx.restore()
+      }
+    }
 
     roundRect(ctx, sx, sy, sw, sh, segR)
     ctx.fillStyle = `hsla(${hue}, ${sat}%, 58%, ${softFillAlpha(0.22)})`

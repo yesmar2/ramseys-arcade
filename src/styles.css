@@ -4882,6 +4882,45 @@ html[data-theme='dark'] .patriot__power-mark {
   height: 2.15rem;
 }
 
+/* Narrower than the turns: a modifier, not a fourth direction. */
+.snake__boost {
+  flex: 0 0 auto;
+  width: 4.7rem;
+  min-height: 4.35rem;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 1.05rem;
+  border: 1px solid rgba(var(--ink-rgb), 0.08);
+  background: rgba(var(--surface-rgb), 0.82);
+  box-shadow: var(--shadow-soft);
+  color: var(--ink);
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  transition: background 90ms ease, color 90ms ease, transform 90ms ease;
+}
+
+.snake__boost svg {
+  display: block;
+  width: 1.85rem;
+  height: 1.85rem;
+}
+
+.snake__boost--on {
+  transform: scale(0.97);
+  /* The amber the food glows with, so the control reads as what it buys. */
+  background: color-mix(in srgb, #f5b942 70%, var(--surface));
+  color: #1a2b3c;
+}
+
+/* No tail left to spend — dimmed rather than disabled. */
+.snake__boost--spent {
+  opacity: 0.4;
+}
+
 .snake--saving .snake__touch {
   visibility: hidden;
   pointer-events: none;
@@ -4918,6 +4957,17 @@ html[data-theme='dark'] .patriot__power-mark {
   .snake__turn svg {
     width: 1.85rem;
     height: 1.85rem;
+  }
+
+  .snake__boost {
+    flex: 0 0 auto;
+    width: 100%;
+    min-height: 3.1rem;
+  }
+
+  .snake__boost svg {
+    width: 1.55rem;
+    height: 1.55rem;
   }
 }
 
