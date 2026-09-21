@@ -67,6 +67,10 @@ export type Snapshot = {
   runCoins: number
   /** Lifetime banked coins. */
   wallet: number
+  /** Rows broken in an unbroken chain right now. */
+  chain: number
+  /** Longest chain this run — what the record book wants. */
+  bestChain: number
 }
 
 export type GameState = {
@@ -90,11 +94,21 @@ export type GameState = {
   deathFlash: number
   deathAnim: number
   cause: DeathCause | null
-  /** Seconds since last hop up or down. */
+  /**
+   * Seconds since the last *new furthest row*, not since the last hop.
+   *
+   * It used to reset on any row change, which meant the hawk only ever caught a
+   * player standing perfectly still: bouncing between two safe rows reset it
+   * forever, the camera is a high-water mark and never creeps up on its own, so
+   * a run could be parked indefinitely and every crossing taken on a free look.
+   * Tying it to progress is what the constant's own comment always claimed.
+   */
   idleTimer: number
   /** Consecutive quick forward hops — drives the rising hop pitch. */
   streak: number
   streakTimer: number
+  /** Longest `streak` reached this run. */
+  bestChain: number
   /** Row of the record this run is chasing (0 when there isn't one). */
   target: number
   beatBest: boolean
@@ -168,6 +182,20 @@ export function stallLimitAt(row: number): number {
 }
 /** Hawk warning is brief — Crossy-style snatch, not a long approach. */
 export const STALL_WARN = 0.4
+
+/**
+ * Break new ground again within this long and the chain grows.
+ *
+ * Generous on open grass, which is the point: grass is where a chain is built
+ * and traffic is where it is risked. A road crossing usually costs more than
+ * this to wait out, so the only way to carry a chain through one is to take the
+ * tight gap — see the near-miss grace in `tick`.
+ */
+const MOMENTUM_WINDOW = 1.2
+/** Below this the chain is noise, so the readout stays quiet. */
+export const MOMENTUM_SHOW = 3
+/** Ceiling for the rising hop pitch, in the steps `sfx` counts. */
+const MOMENTUM_PITCH_MAX = 6
 
 const HOP_COOLDOWN = 0.05
 const HOP_DURATION = 0.12
@@ -978,6 +1006,7 @@ export function createInitialState(cols = COLS): GameState {
     idleTimer: 0,
     streak: 0,
     streakTimer: 99,
+    bestChain: 0,
     target: best,
     beatBest: false,
     celebrate: 0,
@@ -1027,6 +1056,7 @@ export function jumpToRow(state: GameState, row: number): GameState {
     idleTimer: 0,
     streak: 0,
     streakTimer: 99,
+    bestChain: 0,
     cameraY: Math.max(0, target - PLAYER_VIEW_ROW),
     rows: new Map(),
     coinPops: [],
@@ -1080,16 +1110,31 @@ export function hop(state: GameState, dir: Dir): GameState {
   if (!colInBounds(target, state.cols)) return blocked()
   if (rowData.kind !== 'water' && treesBlock(target, rowData.trees)) return blocked()
 
-  sfx('hop')
+  /*
+   * Only breaking new ground counts. A sidestep leaves both clocks running —
+   * lining up a crossing is part of the hop, not a rest — and dropping back a
+   * row ends the chain outright, because ground given up is not flow.
+   */
+  const progress = nr > state.score
+  const chain = progress
+    ? state.streakTimer <= MOMENTUM_WINDOW
+      ? state.streak + 1
+      : 1
+    : nr < fromR
+      ? 0
+      : state.streak
+
+  sfx('hop', Math.min(MOMENTUM_PITCH_MAX, Math.floor(chain / 2)))
 
   const next: GameState = {
     ...state,
     col: target,
     row: nr,
     score: Math.max(state.score, nr),
-    idleTimer: nr !== fromR ? 0 : state.idleTimer,
-    streak: 0,
-    streakTimer: 99,
+    idleTimer: progress ? 0 : state.idleTimer,
+    streak: chain,
+    bestChain: Math.max(state.bestChain, chain),
+    streakTimer: progress ? 0 : state.streakTimer,
     hop: { fromC, fromR, toC: target, toR: nr, t: 0 },
     hopCooldown: HOP_COOLDOWN,
     hopPulse: 0.12,
@@ -1160,6 +1205,9 @@ export function tick(state: GameState, dt: number): GameState {
     shake: Math.max(0, state.shake - dt),
     idleTimer: state.idleTimer + dt,
     streakTimer: state.streakTimer + dt,
+    // Let the chain die where the player can see it happen, rather than holding
+    // a stale number on the readout until the next hop quietly resets it.
+    streak: state.streakTimer + dt > MOMENTUM_WINDOW ? 0 : state.streak,
     queuedAge: state.queued ? state.queuedAge + dt : 0,
     coinPops: state.coinPops
       .map((p) => ({ ...p, t: p.t - dt }))
@@ -1245,6 +1293,16 @@ export function tick(state: GameState, dt: number): GameState {
         if (close) {
           next.nearMiss = 0.28
           next.nearMissCooldown = 0.7
+          /*
+           * Squeezing past traffic buys back the chain window. This is what
+           * makes a chain survive a road at all: take the tight gap and it
+           * lives, wait for the comfortable one and it lapses.
+           *
+           * Mid-hop only. Standing beside a slow lane re-triggers this every
+           * cooldown, so crediting it while parked would be free to farm — and
+           * would pay for exactly the loitering the hawk is there to punish.
+           */
+          if (next.hop) next.streakTimer = 0
           sfx('whoosh')
         }
       }
@@ -1267,6 +1325,8 @@ export function toSnapshot(state: GameState): Snapshot {
     cause: state.cause,
     runCoins: state.runCoins,
     wallet: state.wallet,
+    chain: state.streak,
+    bestChain: state.bestChain,
   }
 }
 

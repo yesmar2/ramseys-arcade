@@ -2,6 +2,7 @@ import type { GameState, Vehicle } from './game'
 import {
   BACK_LIMIT,
   MILESTONE_STEP,
+  MOMENTUM_SHOW,
   STALL_WARN,
   stallLimitAt,
   cellMetrics,
@@ -161,6 +162,8 @@ function drawHopper(
   /** Forward-hop squeeze: 0 = round, 1 = max skinny. */
   squeeze = 0,
   cause: GameState['cause'] = null,
+  /** Rows taken back to back right now. */
+  chain = 0,
 ) {
   let drawX = cx
   let drawY = cy
@@ -206,6 +209,24 @@ function drawHopper(
    */
   const body = fill(bodyHue, bodySat, dark ? 58 : 54, softFillAlpha(dark ? 0.32 : 0.26) * fade)
   const stroke = fill(bodyHue, bodySat, dark ? 48 : 36, 0.95 * fade)
+
+  /*
+   * A chain shows as warmth gathering under the hopper — the same amber Snake
+   * burns for boost, so momentum reads as one idea across the arcade. It lights
+   * at the same count the readout starts at, so nothing glows that the HUD is
+   * not also counting.
+   */
+  if (!dying && chain >= MOMENTUM_SHOW) {
+    const heat = Math.min(1, (chain - MOMENTUM_SHOW + 1) / 12)
+    const glowR = r * (1.6 + heat * 0.9)
+    const glow = ctx.createRadialGradient(drawX, drawY, r * 0.4, drawX, drawY, glowR)
+    glow.addColorStop(0, `rgba(245, 185, 66, ${0.32 * heat})`)
+    glow.addColorStop(1, 'rgba(245, 185, 66, 0)')
+    ctx.fillStyle = glow
+    ctx.beginPath()
+    ctx.arc(drawX, drawY, glowR, 0, Math.PI * 2)
+    ctx.fill()
+  }
 
   ctx.beginPath()
   ctx.ellipse(drawX, drawY, rx, ry, 0, 0, Math.PI * 2)
@@ -789,6 +810,7 @@ export function renderGame(
       deathT,
       squeeze,
       state.cause,
+      state.streak,
     )
   }
 

@@ -26,10 +26,13 @@ import {
   CROSSWALK_ROW_MILESTONE_STEP,
   submitCrosswalkFastestRow,
   submitCrosswalkMostCoins,
+  submitCrosswalkLongestChain,
+  CROSSWALK_LONGEST_CHAIN_MIN,
   shouldCelebrateRecordSubmit,
 } from '../../lib/records'
 import { useTournamentPlay } from '../../tournaments/TournamentPlayContext'
 import {
+  MOMENTUM_SHOW,
   createInitialState,
   hop,
   jumpToRow,
@@ -73,6 +76,7 @@ export function CrosswalkGame() {
   const runStartRef = useRef<number | null>(null)
   const milestonesRef = useRef<Set<number>>(new Set())
   const coinsRecordedRef = useRef(false)
+  const chainRecordedRef = useRef(false)
   const pausable = ui.phase === 'playing' && !saveOpen
   const { paused, toggle: togglePause, resume } = useGamePause(pausable)
   const pausedRef = useRef(false)
@@ -200,6 +204,25 @@ export function CrosswalkGame() {
     })()
   }, [ui.phase, ui.runCoins, playerName, tournament])
 
+  useEffect(() => {
+    if (tournament || !playerName) return
+    if (ui.phase !== 'dying' && ui.phase !== 'gameover') return
+    if (chainRecordedRef.current || ui.bestChain < CROSSWALK_LONGEST_CHAIN_MIN) return
+    chainRecordedRef.current = true
+    const chain = ui.bestChain
+    void (async () => {
+      const result = await submitCrosswalkLongestChain(chain, playerName)
+      if (shouldCelebrateRecordSubmit(result)) {
+        pushRunAchievement({
+          id: 'crosswalk:longest-chain',
+          label: 'Longest chain',
+          value: String(chain),
+          rank: result.rank,
+        })
+      }
+    })()
+  }, [ui.phase, ui.bestChain, playerName, tournament])
+
   const restart = (intoMenu = false) => {
     setSaveOpen(false)
     offeredScore.current = null
@@ -211,6 +234,7 @@ export function CrosswalkGame() {
     runStartRef.current = performance.now()
     milestonesRef.current = new Set()
     coinsRecordedRef.current = false
+    chainRecordedRef.current = false
     // Same reset, stopped at the start card instead of in play.
     if (intoMenu) stateRef.current = { ...stateRef.current, phase: 'menu' }
     setUi(toSnapshot(stateRef.current))
@@ -348,6 +372,11 @@ export function CrosswalkGame() {
                     <PlayStat label="Best" value={ui.target} urgent={ui.beatBest} />
                   ) : null}
                   <PlayStat label="Coins" value={ui.runCoins} />
+                  {/* Only once it means something — a chain of one or two is
+                      just walking, and a readout that never rests is noise. */}
+                  {ui.chain >= MOMENTUM_SHOW ? (
+                    <PlayStat label="Chain" value={ui.chain} urgent />
+                  ) : null}
                 </PlayReadoutStats>
               ) : null}
             </PlayReadout>

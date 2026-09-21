@@ -184,6 +184,7 @@ export function recordNavShortLabel(row: { id: string; label: string }): string 
   if (row.id === ASTEROIDS_HIGHEST_COMBO_ID) return 'Combo'
   if (row.id === PATRIOT_DIRECT_STREAK_ID) return 'Direct'
   if (row.id === CROSSWALK_MOST_COINS_ID) return 'Coins'
+  if (row.id === CROSSWALK_LONGEST_CHAIN_ID) return 'Chain'
   if (row.id === POP_CENTER_STREAK_ID) return 'Center'
   if (row.id === STACKER_PERFECT_STREAK_ID) return 'Perfect'
   if (row.id === PELLETS_CRUMB_STREAK_ID) return 'Crumbs'
@@ -229,6 +230,12 @@ export function formatRecordScore(
 export const ASTEROIDS_HIGHEST_COMBO_ID = 'highest-combo'
 export const PATRIOT_DIRECT_STREAK_ID = 'direct-streak'
 export const CROSSWALK_MOST_COINS_ID = 'most-coins'
+export const CROSSWALK_LONGEST_CHAIN_ID = 'longest-chain'
+/**
+ * Below this a chain is just a stretch of open grass. The board should start
+ * where holding one has actually cost the player something.
+ */
+export const CROSSWALK_LONGEST_CHAIN_MIN = 6
 export const POP_CENTER_STREAK_ID = 'center-streak'
 export const STACKER_PERFECT_STREAK_ID = 'perfect-streak'
 export const PELLETS_CRUMB_STREAK_ID = 'crumb-streak'
@@ -246,6 +253,7 @@ export const CRUMBTRAIL_ROWS_MIN = 10
 export const PELLETS_CRUMB_STREAK_MIN = 10
 const PLAIN_COUNT_RECORD_IDS = new Set<string>([
   CROSSWALK_MOST_COINS_ID,
+  CROSSWALK_LONGEST_CHAIN_ID,
   CRUMBTRAIL_ROWS_ID,
   SNAKE_LONGEST_ID,
 ])
@@ -580,6 +588,22 @@ export async function submitCrosswalkMostCoins(
   if (!cleaned || !(value >= 1)) return null
   try {
     const result = await submitRecord('crosswalk', CROSSWALK_MOST_COINS_ID, cleaned, value)
+    return toRecordSubmitOutcome(result)
+  } catch {
+    return null
+  }
+}
+
+/** Best-effort longest-chain submit (run peak). */
+export async function submitCrosswalkLongestChain(
+  chain: number,
+  name: string,
+): Promise<RecordSubmitOutcome | null> {
+  const value = Math.floor(chain)
+  const cleaned = normalizePlayerName(name)
+  if (!cleaned || !(value >= CROSSWALK_LONGEST_CHAIN_MIN)) return null
+  try {
+    const result = await submitRecord('crosswalk', CROSSWALK_LONGEST_CHAIN_ID, cleaned, value)
     return toRecordSubmitOutcome(result)
   } catch {
     return null
