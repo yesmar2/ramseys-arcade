@@ -1,4 +1,5 @@
 import { applyBoardScope, storedActiveGroup, withGroupFallback } from './groups'
+import { endRun, runIdFor } from './runSession'
 import type { DeviceType } from './device'
 import { getGame } from '../data/games'
 import { detectDeviceType, DEVICE_LABELS, isDeviceType } from './device'
@@ -637,6 +638,8 @@ export async function addLeaderboardScore(
 }> {
   const cleaned = normalizePlayerName(name) || 'PLAYER'
   const token = getClaimToken(cleaned)
+  // Undefined when the run could not be opened; the score still saves.
+  const runId = await runIdFor(slug)
   const data = await api<{
     entries: LeaderboardEntry[]
     rank: number | null
@@ -660,8 +663,13 @@ export async function addLeaderboardScore(
       score,
       device: detectDeviceType(),
       ...(token ? { token } : {}),
+      ...(runId ? { runId } : {}),
     }),
   })
+
+  // Only once it saved: a submission that threw on the way (a taken name, most
+  // often) leaves the run unspent, so retrying under another name still has it.
+  endRun(slug)
 
   const finalName = (data.name ?? cleaned).toUpperCase()
   if (data.token) rememberClaimToken(finalName, data.token)

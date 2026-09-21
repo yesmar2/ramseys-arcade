@@ -41,6 +41,7 @@ import {
   type Snapshot,
 } from './game'
 import { renderGame } from './render'
+import { beginRun } from '../../lib/runSession'
 
 /** Pixels of drag before a swipe counts as a turn. */
 const SWIPE = 18
@@ -160,6 +161,7 @@ export function PelletsGame() {
     setSaveOpen(false)
     offeredScore.current = null
     clearRunAchievements()
+    beginRun('pellets')
     streakRecordKey.current = null
     stateRef.current = startGame(stateRef.current, pelletsViewport())
     previousBestRef.current = getPersonalBest('pellets')

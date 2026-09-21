@@ -38,6 +38,7 @@ import {
   type Snapshot,
 } from './game'
 import { renderGame } from './render'
+import { beginRun } from '../../lib/runSession'
 
 type HoldKey = 'left' | 'right' | 'fire'
 
@@ -137,6 +138,7 @@ export function BarrageGame() {
     setSaveOpen(false)
     offeredScore.current = null
     clearRunAchievements()
+    beginRun('barrage')
     releaseAll()
     stateRef.current = startGame(stateRef.current, portraitRef.current)
     previousBestRef.current = getPersonalBest('barrage')

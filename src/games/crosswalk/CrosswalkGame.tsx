@@ -43,6 +43,7 @@ import {
   type Snapshot,
 } from './game'
 import { renderGame } from './render'
+import { beginRun } from '../../lib/runSession'
 
 const DEATH_COPY: Record<DeathCause, string> = {
   car: 'Flattened by traffic',
@@ -203,6 +204,7 @@ export function CrosswalkGame() {
     setSaveOpen(false)
     offeredScore.current = null
     clearRunAchievements()
+    beginRun('crosswalk')
     stateRef.current = startGame(stateRef.current!)
     previousBestRef.current = getPersonalBest('crosswalk')
     startGrace.current = performance.now() + 220

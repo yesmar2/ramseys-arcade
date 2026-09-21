@@ -35,6 +35,7 @@ import {
   type Snapshot,
 } from './game'
 import { renderGame } from './render'
+import { beginRun } from '../../lib/runSession'
 
 const IN_RUN = new Set(['intro', 'aim', 'roll', 'splash', 'sunk'])
 /** A press that moves less than this is a tap, not a pull. */
@@ -176,6 +177,7 @@ export function PuttGame() {
   const restart = () => {
     setSaveOpen(false)
     offeredScore.current = null
+    beginRun('putt')
     pressRef.current = null
     const { w, h } = sizeRef.current
     stateRef.current = startGame(resizeState(createInitialState(w, h), w, h))

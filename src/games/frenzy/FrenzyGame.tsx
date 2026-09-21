@@ -23,6 +23,7 @@ import {
   type Snapshot,
 } from './game'
 import { renderGame } from './render'
+import { beginRun } from '../../lib/runSession'
 
 const KEY_MAP: Record<string, 'up' | 'down' | 'left' | 'right'> = {
   ArrowUp: 'up',
@@ -102,6 +103,7 @@ export function FrenzyGame() {
   const restart = () => {
     setSaveOpen(false)
     offeredScore.current = null
+    beginRun('frenzy')
     stateRef.current = startGame(stateRef.current)
     previousBestRef.current = getPersonalBest('frenzy')
     setUi(toSnapshot(stateRef.current))

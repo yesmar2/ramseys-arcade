@@ -36,6 +36,7 @@ import {
   jumpToWave,
 } from './game'
 import { renderGame } from './render'
+import { beginRun } from '../../lib/runSession'
 
 function PowerMark({ kind }: { kind: PowerKind }) {
   return (
@@ -195,6 +196,7 @@ export function PatriotGame() {
     offeredScore.current = null
     streakRecordKey.current = null
     clearRunAchievements()
+    beginRun('patriot')
     const { w, h } = sizeRef.current
     stateRef.current = startGame(stateRef.current, w, h)
     previousBestRef.current = getPersonalBest('patriot')

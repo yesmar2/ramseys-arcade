@@ -41,6 +41,7 @@ import {
 } from './game'
 import { renderGame } from './render'
 import { findbugBoardScore, formatFindbugMs } from './score'
+import { beginRun } from '../../lib/runSession'
 
 const SCENE_LABEL: Record<Snapshot['sceneKind'], string> = {
   arcade: 'Arcade floor',
@@ -179,6 +180,7 @@ export function FindBugGame() {
     setSaveOpen(false)
     offeredScore.current = null
     clearRunAchievements()
+    beginRun('findbug')
     stateRef.current = startGame(stateRef.current, portraitRef.current)
     previousBestRef.current = getPersonalBest('findbug')
     startGrace.current = performance.now() + 220

@@ -21,6 +21,7 @@ import {
   type Snapshot,
 } from './game'
 import { renderGame } from './render'
+import { beginRun } from '../../lib/runSession'
 
 function currentLayout() {
   return deadCenterLayout(typeof window !== 'undefined' && window.innerHeight > window.innerWidth)
@@ -118,6 +119,7 @@ export function DeadCenterGame() {
   const restart = () => {
     setSaveOpen(false)
     offeredScore.current = null
+    beginRun('centroid')
     const next = currentLayout()
     setAspect({ w: next.aspectW, h: next.aspectH })
     const { w, h } = sizeRef.current

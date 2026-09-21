@@ -14,6 +14,7 @@ import {
 } from './score'
 import { getSpotterStreak, isSpotterSolvedToday, saveSpotterResult } from './storage'
 import { spotterDayKey } from './dayKey'
+import { beginRun } from '../../lib/runSession'
 
 type Phase = 'intro' | 'playing' | 'won' | 'revealed'
 
@@ -204,6 +205,7 @@ export function SpotterGame() {
 
   const start = () => {
     setPhase('playing')
+    beginRun('spotter')
     setStrikes(0)
     setElapsedMs(0)
     setHint(false)

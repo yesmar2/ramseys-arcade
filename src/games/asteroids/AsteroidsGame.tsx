@@ -44,6 +44,7 @@ import {
   type Snapshot,
 } from './game'
 import { renderGame } from './render'
+import { beginRun } from '../../lib/runSession'
 
 type HoldKey = 'turnLeft' | 'turnRight' | 'thrust' | 'reverse'
 
@@ -339,6 +340,7 @@ export function AsteroidsGame() {
     pendingWaveCelebRef.current = null
     comboRecordKey.current = null
     clearRunAchievements()
+    beginRun('asteroids')
     setWaveCeleb(null)
     clearPressed()
     const next = currentLayout()

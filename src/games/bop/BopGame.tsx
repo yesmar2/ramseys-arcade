@@ -22,6 +22,7 @@ import {
   type Snapshot,
 } from './game'
 import { renderGame } from './render'
+import { beginRun } from '../../lib/runSession'
 
 function currentLayout() {
   return bopLayout(typeof window !== 'undefined' && window.innerHeight > window.innerWidth)
@@ -124,6 +125,7 @@ export function BopGame() {
   const restart = () => {
     setSaveOpen(false)
     offeredScore.current = null
+    beginRun('bop')
     dragRef.current = null
     const { w, h } = sizeRef.current
     stateRef.current = startGame(resizeState(createInitialState(w, h), w, h))

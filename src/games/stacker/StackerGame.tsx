@@ -31,6 +31,7 @@ import {
   type StackerSnapshot,
 } from './StackerEngine'
 import { renderGame } from './render'
+import { beginRun } from '../../lib/runSession'
 
 function toSnapshot(s: GameState): StackerSnapshot {
   return {
@@ -134,6 +135,7 @@ export function StackerGame() {
     offeredScore.current = null
     streakRecordKey.current = ''
     clearRunAchievements()
+    beginRun('stacker')
     stateRef.current = startGame(stateRef.current)
     previousBestRef.current = getPersonalBest('stacker')
     startGrace.current = performance.now() + 280

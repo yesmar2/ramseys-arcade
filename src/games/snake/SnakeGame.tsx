@@ -38,6 +38,7 @@ import {
   type Snapshot,
 } from './game'
 import { renderGame } from './render'
+import { beginRun } from '../../lib/runSession'
 
 function currentLayout() {
   return snakeLayout(typeof window !== 'undefined' && window.innerHeight > window.innerWidth)
@@ -164,6 +165,7 @@ export function SnakeGame() {
     setSaveOpen(false)
     offeredScore.current = null
     clearRunAchievements()
+    beginRun('snake')
     const next = currentLayout()
     stateRef.current = startGame({
       ...stateRef.current,

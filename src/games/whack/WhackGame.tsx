@@ -33,6 +33,7 @@ import {
   type Snapshot,
 } from './game'
 import { renderGame } from './render'
+import { beginRun } from '../../lib/runSession'
 
 export function WhackGame() {
   const tournament = useTournamentPlay()
@@ -135,6 +136,7 @@ export function WhackGame() {
     setSaveOpen(false)
     offeredScore.current = null
     clearRunAchievements()
+    beginRun('pop')
     streakRecordKey.current = null
     const { w, h } = sizeRef.current
     stateRef.current = setScale(startGame(stateRef.current), w, h)
