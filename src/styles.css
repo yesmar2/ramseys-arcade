@@ -2919,6 +2919,16 @@ a.game-hud__board {
   inset: 0;
   z-index: 8;
   pointer-events: none;
+  /*
+   * Where the score's last line sits. Anything that wants to read as level
+   * with the score lines its own last line up with this, rather than matching
+   * its top — the two blocks are not the same height, and on a phone they are
+   * not even close, because the score shrinks at 420px and the figures barely
+   * do. Mirrors the size on .play-readout__score just below.
+   */
+  --readout-line: calc(
+    max(0.55rem, env(safe-area-inset-top, 0px)) + clamp(1.35rem, 4.5vw, 1.85rem)
+  );
 }
 
 .play-readout__score {
@@ -2990,10 +3000,12 @@ a.game-hud__board {
    * uses, clear of the back control, so the row costs no height at all.
    */
   position: absolute;
-  top: max(0.45rem, env(safe-area-inset-top, 0px));
+  /* Label + gap + value, so the value's foot lands on the score's line. */
+  --stat-block: calc(0.58rem + 0.1rem + 1.02rem * 1.05);
+  top: calc(var(--readout-line) - var(--stat-block));
   left: max(2.6rem, calc(env(safe-area-inset-left, 0px) + 2.45rem));
   display: flex;
-  align-items: flex-start;
+  align-items: flex-end;
   gap: 1.15rem;
   white-space: nowrap;
   pointer-events: none;
@@ -3047,8 +3059,13 @@ a.game-hud__board {
 }
 
 @media (max-width: 420px) {
+  .play-readout {
+    --readout-line: calc(max(0.55rem, env(safe-area-inset-top, 0px)) + 1.25rem);
+  }
+
   .play-stats {
     gap: 0.95rem;
+    --stat-block: calc(0.54rem + 0.1rem + 0.95rem * 1.05);
   }
 
   .play-stat__label {
