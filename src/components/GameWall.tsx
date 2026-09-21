@@ -286,32 +286,44 @@ export function WallTile({
   ]
     .filter(Boolean)
     .join(', ')
+  // Without a score of yours the band says what kind of game this is instead.
+  const kind = (game.tags ?? []).map((tag) => TAG_LABELS[tag]).join(' · ') || 'Game'
   return (
     <li className={`wall__cell wall__cell--${size}`}>
       <a className="wall-tile" href={gameHref(game.slug)} style={style} aria-label={label}>
-        <span className="wall-tile__art" aria-hidden="true">
-          <GameThumbArt slug={game.slug} accent={accent} />
+        <span className="wall-tile__body">
+          <span className="wall-tile__art" aria-hidden="true">
+            <GameThumbArt slug={game.slug} accent={accent} />
+          </span>
+          {flag ? (
+            <span className={`wall-tile__flag wall-tile__flag--${flag.kind}`}>{flag.label}</span>
+          ) : null}
+          <span className="wall-tile__name" aria-hidden="true">
+            {game.name}
+          </span>
         </span>
-        {flag ? (
-          <span className={`wall-tile__flag wall-tile__flag--${flag.kind}`}>{flag.label}</span>
-        ) : null}
-        <span className="wall-tile__meta" aria-hidden="true">
-          <span className="wall-tile__name">{game.name}</span>
+        <span className="wall-tile__foot" aria-hidden="true">
           {place || best ? (
-            <span className="wall-tile__fig">
+            <>
+              <span className="wall-tile__best">
+                {best ? (
+                  <>
+                    Best <b>{best.toLocaleString()}</b>
+                  </>
+                ) : (
+                  'No score yet'
+                )}
+              </span>
               {place ? (
                 <span className={`wall-tile__rank${place <= 3 ? ' wall-tile__rank--podium' : ''}`}>
                   #{place}
                   {total ? <small> of {total.toLocaleString()}</small> : null}
                 </span>
               ) : null}
-              {best ? (
-                <span className="wall-tile__best">
-                  Best <b>{best.toLocaleString()}</b>
-                </span>
-              ) : null}
-            </span>
-          ) : null}
+            </>
+          ) : (
+            <span className="wall-tile__kind">{kind}</span>
+          )}
         </span>
       </a>
     </li>
