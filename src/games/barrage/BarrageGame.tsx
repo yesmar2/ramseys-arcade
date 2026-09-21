@@ -10,10 +10,10 @@ import { haptic } from '../../lib/haptics'
 import {
   GamePlayChrome,
   PlayReadout,
-  PlayReadoutCenter,
   PlayReadoutScore,
 } from '../../components/GameHud'
 import { GameStage } from '../../components/GameStage'
+import { PlayReadoutStats, PlayStat } from '../../components/PlayStats'
 import { GameStartCard } from '../../components/GameStartCard'
 import { AdminWaveSkip } from '../../components/AdminWaveSkip'
 import { GamePauseOverlay, PauseButton } from '../../components/PauseControls'
@@ -317,9 +317,10 @@ export function BarrageGame() {
 
             <PlayReadout>
               <PlayReadoutScore>{ui.score.toLocaleString()}</PlayReadoutScore>
-              <PlayReadoutCenter label="Wave">
-                {ui.wave} · {ui.lives} {ui.lives === 1 ? 'life' : 'lives'}
-              </PlayReadoutCenter>
+              <PlayReadoutStats>
+                <PlayStat label="Wave" value={ui.wave} />
+                <PlayStat label="Lives" value={ui.lives} />
+              </PlayReadoutStats>
             </PlayReadout>
 
             {ui.phase !== 'menu' && !paused && activeBuffs(ui).length > 0 && (

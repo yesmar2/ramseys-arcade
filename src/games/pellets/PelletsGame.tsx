@@ -3,9 +3,9 @@ import { AdminWaveSkip } from '../../components/AdminWaveSkip'
 import {
   GamePlayChrome,
   PlayReadout,
-  PlayReadoutCenter,
   PlayReadoutScore,
 } from '../../components/GameHud'
+import { PlayReadoutStats, PlayStat } from '../../components/PlayStats'
 import { GameStartCard } from '../../components/GameStartCard'
 import { PauseButton, GamePauseOverlay } from '../../components/PauseControls'
 import { ScoreSaveCard } from '../../components/ScoreSaveCard'
@@ -307,9 +307,10 @@ export function PelletsGame() {
                 {ui.score}
               </PlayReadoutScore>
               {inRun ? (
-                <PlayReadoutCenter label="Lives and level">
-                  {ui.lives} {ui.lives === 1 ? 'life' : 'lives'} · L{ui.level}
-                </PlayReadoutCenter>
+                <PlayReadoutStats>
+                  <PlayStat label="Lives" value={ui.lives} />
+                  <PlayStat label="Level" value={ui.level} />
+                </PlayReadoutStats>
               ) : null}
             </PlayReadout>
 

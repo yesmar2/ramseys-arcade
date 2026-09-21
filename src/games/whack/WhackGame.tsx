@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
-import { GamePlayChrome, PlayReadout, PlayReadoutCenter, PlayReadoutScore } from '../../components/GameHud'
+import { GamePlayChrome, PlayReadout, PlayReadoutScore } from '../../components/GameHud'
 import { GameStage } from '../../components/GameStage'
+import { PlayReadoutStats, PlayStat } from '../../components/PlayStats'
 import { GameStartCard } from '../../components/GameStartCard'
 import { PauseButton, GamePauseOverlay } from '../../components/PauseControls'
 import { ScoreSaveCard } from '../../components/ScoreSaveCard'
@@ -248,12 +249,13 @@ export function WhackGame() {
               >
                 {ui.score}
               </PlayReadoutScore>
-              <PlayReadoutCenter
-                label="Time"
-                urgent={ui.phase === 'playing' && ui.timeLeft <= 10}
-              >
-                {ui.phase === 'menu' ? 45 : ui.timeLeft}
-              </PlayReadoutCenter>
+              <PlayReadoutStats>
+                <PlayStat
+                  label="Time"
+                  value={ui.phase === 'menu' ? 45 : ui.timeLeft}
+                  urgent={ui.phase === 'playing' && ui.timeLeft <= 10}
+                />
+              </PlayReadoutStats>
             </PlayReadout>
 
             <div className="whack__overlay">

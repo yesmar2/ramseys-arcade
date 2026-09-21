@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import '../../styles/frenzy.css'
-import { GamePlayChrome, PlayReadout, PlayReadoutCenter, PlayReadoutScore } from '../../components/GameHud'
+import { GamePlayChrome, PlayReadout, PlayReadoutScore } from '../../components/GameHud'
 import { GameStage } from '../../components/GameStage'
+import { PlayReadoutStats, PlayStat } from '../../components/PlayStats'
 import { GameStartCard } from '../../components/GameStartCard'
 import { PauseButton, GamePauseOverlay } from '../../components/PauseControls'
 import { ScoreSaveCard } from '../../components/ScoreSaveCard'
@@ -198,9 +199,9 @@ export function FrenzyGame() {
               {ui.score}
             </PlayReadoutScore>
             {ui.phase === 'playing' ? (
-              <PlayReadoutCenter label="Current level" urgent={ui.danger}>
-                Level {ui.level}
-              </PlayReadoutCenter>
+              <PlayReadoutStats>
+                <PlayStat label="Level" value={ui.level} urgent={ui.danger} />
+              </PlayReadoutStats>
             ) : null}
           </PlayReadout>
 

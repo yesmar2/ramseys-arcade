@@ -9,10 +9,10 @@ import { AdminWaveSkip } from '../../components/AdminWaveSkip'
 import {
   GamePlayChrome,
   PlayReadout,
-  PlayReadoutCenter,
   PlayReadoutScore,
 } from '../../components/GameHud'
 import { GameStage } from '../../components/GameStage'
+import { PlayReadoutStats, PlayStat } from '../../components/PlayStats'
 import { GameStartCard } from '../../components/GameStartCard'
 import { PauseButton, GamePauseOverlay } from '../../components/PauseControls'
 import { ScoreSaveCard } from '../../components/ScoreSaveCard'
@@ -401,11 +401,10 @@ export function SnakeGame() {
             >
               {ui.score}
             </PlayReadoutScore>
-            {/* Same slot, same shape as every other game's second line:
-                Pellets reads "3 lives · L2", this reads "24 long · L3". */}
-            <PlayReadoutCenter label="Length and level">
-              {ui.length} long · L{ui.level}
-            </PlayReadoutCenter>
+            <PlayReadoutStats>
+              <PlayStat label="Length" value={ui.length} />
+              <PlayStat label="Level" value={ui.level} />
+            </PlayReadoutStats>
           </PlayReadout>
 
           <div className="snake__overlay">

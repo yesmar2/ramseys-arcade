@@ -8,10 +8,10 @@ import '../../styles/findbug.css'
 import {
   GamePlayChrome,
   PlayReadout,
-  PlayReadoutCenter,
   PlayReadoutScore,
 } from '../../components/GameHud'
 import { GameStage } from '../../components/GameStage'
+import { PlayReadoutStats, PlayStat } from '../../components/PlayStats'
 import { GameStartCard } from '../../components/GameStartCard'
 import { GamePauseOverlay, PauseButton } from '../../components/PauseControls'
 import { ScoreSaveCard } from '../../components/ScoreSaveCard'
@@ -308,9 +308,12 @@ export function FindBugGame() {
               <PlayReadoutScore className="findbug__clock">
                 {formatFindbugMs(ui.runMs)}
               </PlayReadoutScore>
-              <PlayReadoutCenter label="Round">
-                {ui.phase === 'menu' ? `1/${ROUNDS}` : `${ui.roundNumber}/${ROUNDS}`}
-              </PlayReadoutCenter>
+              <PlayReadoutStats>
+                <PlayStat
+                  label="Round"
+                  value={ui.phase === 'menu' ? `1/${ROUNDS}` : `${ui.roundNumber}/${ROUNDS}`}
+                />
+              </PlayReadoutStats>
             </PlayReadout>
 
             {ui.phase === 'playing' && !paused && (
