@@ -2931,15 +2931,21 @@ a.game-hud__board {
    * Mirrors the size set on .play-readout__score just below.
    */
   --score-size: clamp(1.35rem, 4.5vw, 1.85rem);
-  --readout-middle: calc(
-    max(0.55rem, env(safe-area-inset-top, 0px)) + var(--score-size) / 2
+  /*
+   * A game that publishes where its board starts gets the readout centred in
+   * the gap above it. Everything else keeps the old placement, near the top —
+   * the fallback is exactly what this used to compute.
+   */
+  --readout-middle: var(
+    --board-middle,
+    calc(max(0.55rem, env(safe-area-inset-top, 0px)) + var(--score-size) / 2)
   );
 }
 
 .play-readout__score {
-  /* Centred, and on its own. It is the one figure a glance is looking for. */
+  /* Centred across, and hung off the readout's middle down the page. */
   position: absolute;
-  top: max(0.55rem, env(safe-area-inset-top, 0px));
+  top: calc(var(--readout-middle) - var(--score-size) / 2);
   left: 50%;
   transform: translateX(-50%);
   margin: 0;

@@ -62,6 +62,27 @@ export function renderGame(
   const ox = (w - gridW) / 2
   const oy = header + Math.max(0, (boardH - gridH) / 2)
 
+  /*
+   * Tell the page where the board actually starts.
+   *
+   * The readout floats above it in the DOM and cannot see the canvas, so it
+   * had been centring itself on the room it asked to have reserved. That is
+   * not the room it got: the board is centred in what is left over, and on a
+   * phone the board is limited by width, so half of a lot of spare height
+   * lands above it. The strip came out 113px tall with the readout sitting in
+   * the top 30 of it and eighty-odd below.
+   *
+   * Written only when it changes, so this costs nothing per frame.
+   */
+  const host = ctx.canvas.parentElement
+  if (host) {
+    const middle = Math.round((oy - PANEL_PAD) / 2)
+    if (host.dataset.boardMiddle !== String(middle)) {
+      host.dataset.boardMiddle = String(middle)
+      host.style.setProperty('--board-middle', `${middle}px`)
+    }
+  }
+
   // Board panel
   const radius = Math.max(12, cell * 0.55)
   const flat = isFlatTheme()
