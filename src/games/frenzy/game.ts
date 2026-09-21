@@ -81,12 +81,12 @@ const REF_SHORT = 540
 const BASE_RADIUS = 15
 const BASE_SPEED = 210
 const BASE_TURN_RATE = 7.5
-const POINTER_FULL_SPEED_DIST = 130
+const POINTER_FULL_SPEED_DIST = 55
 const START_INVULN = 2.2
 const SPAWN_INTERVAL = 0.4
 const MIN_SPAWN_GAP = 90
 /** The player always out-swims anything it could eat, since there's no wall to corner it against. */
-const PLAYER_HUNT_SPEED_MULT = 1.15
+const PLAYER_HUNT_SPEED_MULT = 1.35
 
 let nextId = 1
 function uid() {
@@ -305,9 +305,9 @@ function aiDesire(
   const r = radiusForLevel(f.level, scale)
   const playerIsFood = player.level >= f.level
   const playerIsThreat = f.level > player.level
-  if (playerIsFood && d < r * 2.6 + 44) {
+  if (playerIsFood && d < r * 2 + 34) {
     const angle = Math.atan2(f.y - player.y, f.x - player.x)
-    return { angle, speedFrac: 1 }
+    return { angle, speedFrac: 0.82 }
   }
   if (huntingAllowed && playerIsThreat && f.aggressive && d < r * 9 + 140) {
     const angle = Math.atan2(player.y - f.y, player.x - f.x)
