@@ -116,13 +116,19 @@ export function wallsForLevel(level: number, cols: number, rows: number): Set<st
 }
 
 /**
- * The walls of a level, minus any the snake is standing on or about to reach.
+ * The walls of a level, minus any the snake is standing on or could be killed
+ * by before it could possibly answer.
  *
- * Levels arrive mid-run, wherever the snake happens to be, and a block that
- * appears under the head — or just in front of it at full speed — is a death
- * nobody could have avoided. Those cells simply sit this level out. The
- * shape loses a piece rather than the run losing its fairness, and what is
- * drawn is always exactly what can kill you.
+ * Levels arrive mid-run, wherever the snake happens to be, so three things have
+ * to be kept clear. The body, or a block is drawn straight through the snake.
+ * The lane ahead, because at full speed with the boost open the head covers
+ * ground faster than anyone reads it. And a ring around the head — which is the
+ * one that was missing: guarding only the direction of travel left blocks free
+ * to appear hard against the head's flank, where the turn the player had
+ * already asked for drove into them inside a tenth of a second.
+ *
+ * Those cells sit the level out. The shape loses a piece rather than the run
+ * losing its fairness, and what is drawn is always exactly what can kill you.
  */
 export function clearOfSnake(
   walls: Set<string>,
@@ -130,13 +136,24 @@ export function clearOfSnake(
   head: Cell,
   dir: Dir,
   // Six cells is about a third of a second at full speed with the boost held,
-  // which is the least warning a new block can fairly give.
+  // which is the least warning a new block can fairly give head-on.
   lookAhead = 6,
+  // Sideways there is a turn to make first, so the same warning needs less
+  // room — but it needs more than none.
+  headClear = 3,
 ): Set<string> {
   const spared = new Set<string>()
 
   for (const seg of body) {
     spared.add(wallKey(Math.floor(seg.x), Math.floor(seg.y)))
+  }
+
+  const hx = Math.floor(head.x)
+  const hy = Math.floor(head.y)
+  for (let dx = -headClear; dx <= headClear; dx++) {
+    for (let dy = -headClear; dy <= headClear; dy++) {
+      spared.add(wallKey(hx + dx, hy + dy))
+    }
   }
 
   const step: Cell =
