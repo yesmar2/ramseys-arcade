@@ -49,8 +49,7 @@ const LAYOUTS: Rect[][] = [
     { x: 15, y: 10, w: 2, h: 2 },
     { x: 10, y: 6, w: 1, h: 3 },
   ],
-  // 6 — the densest shape. Past here the walls stop growing and start taking
-  // turns: more of them would make a maze, and a maze is a different game.
+  // 6 — full density, and the shape the climb arrives at. Corners and a spine.
   [
     { x: 4, y: 3, w: 2, h: 2 },
     { x: 15, y: 3, w: 2, h: 2 },
@@ -62,19 +61,53 @@ const LAYOUTS: Rect[][] = [
     { x: 10, y: 2, w: 1, h: 1 },
     { x: 10, y: 12, w: 1, h: 1 },
   ],
+  // 7 — gates. Two broken columns you thread rather than round, same count.
+  [
+    { x: 6, y: 2, w: 1, h: 4 },
+    { x: 6, y: 9, w: 1, h: 4 },
+    { x: 14, y: 2, w: 1, h: 4 },
+    { x: 14, y: 9, w: 1, h: 4 },
+    { x: 10, y: 6, w: 1, h: 3 },
+    { x: 3, y: 7, w: 1, h: 1 },
+    { x: 17, y: 7, w: 1, h: 1 },
+    { x: 10, y: 2, w: 1, h: 1 },
+    { x: 10, y: 12, w: 1, h: 1 },
+  ],
+  // 8 — a room with a door top and bottom. The only shape you can be inside.
+  [
+    { x: 7, y: 5, w: 3, h: 1 },
+    { x: 11, y: 5, w: 3, h: 1 },
+    { x: 7, y: 9, w: 3, h: 1 },
+    { x: 11, y: 9, w: 3, h: 1 },
+    { x: 7, y: 6, w: 1, h: 3 },
+    { x: 13, y: 6, w: 1, h: 3 },
+    { x: 3, y: 7, w: 1, h: 1 },
+    { x: 17, y: 7, w: 1, h: 1 },
+    { x: 10, y: 1, w: 1, h: 1 },
+    { x: 10, y: 13, w: 1, h: 1 },
+    { x: 10, y: 7, w: 1, h: 1 },
+  ],
 ]
 
 /** Levels with a layout of their own. Past this the shapes come round again. */
 export const AUTHORED_LEVELS = LAYOUTS.length
 
 /**
- * Where the repeat starts. A record run eats well past a hundred food, so
- * freezing the board at the last layout would leave most of it on one shape —
- * the flat stretch these levels exist to remove. The density has nowhere
- * sensible left to climb, so what keeps changing is the shape: the level count
- * carries on and the three hardest layouts come round in turn.
+ * Where the repeat starts, and it must be the level the climb tops out at.
+ *
+ * A record run eats well past a hundred food, so holding the last layout for
+ * all of it would leave most of a run on one shape — the flat stretch these
+ * levels exist to remove. The density has nowhere sensible left to climb, so
+ * what keeps changing past the top is the shape.
+ *
+ * This pointed at 4 to begin with, on the reasoning that the three hardest
+ * layouts taking turns would hold the difficulty. They do not: 4, 5 and 6 are
+ * 16, 19 and 23 cells, so every lap began by dropping a third of the walls and
+ * level 7 played easier than level 6 — a level that goes backwards is worse
+ * than one that repeats. The layouts from here on are all the same count, and
+ * a new one has to be too.
  */
-const CYCLE_FROM = 4
+const CYCLE_FROM = 6
 
 export function wallKey(x: number, y: number) {
   return `${x},${y}`
