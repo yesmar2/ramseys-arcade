@@ -48,7 +48,12 @@ export function renderGame(
   // top border reaching up into the score.
   const header = playHeader(w) + PANEL_PAD
   const footer = Math.max(22, Math.min(w, h) * 0.07)
-  const pad = Math.min(w, h) * 0.05
+  // On a phone the board is limited by width — fifteen columns across 375px —
+  // so every pixel of side margin comes straight off the cell. Trimmed to the
+  // panel's own thickness plus a hair, which is as tight as it can be drawn
+  // without the panel border running off the edge. Landscape is limited by
+  // height instead, so this costs it nothing.
+  const pad = Math.max(PANEL_PAD + 2, Math.min(w, h) * 0.03)
   const boardW = w - pad * 2
   const boardH = h - pad - header - footer
   const cell = Math.min(boardW / state.cols, boardH / state.rows)
