@@ -27,7 +27,7 @@ type PageBannerProps = {
   back?: { href: string; label: string }
   /** Tools for the bar's right end: share, copy invite, add friend. */
   tools?: ReactNode
-  /** Where this page sits, above the banner: Games › Asteroids › Top scores. The last one is here. */
+  /** Where this page sits, in the banner's bar: Games › Asteroids › Top scores. The last one is here. */
   crumbs?: Crumb[]
   /**
    * The full banner opens a page on one thing; the compact one heads a page
@@ -44,9 +44,9 @@ type PageBannerProps = {
  * page draw the same banner by hand; this is the same markup for pages
  * whose art is not a game's mark. A wash of the accent with the words on
  * the left and the art on a leaning card on the right, coloured through the
- * banner tokens in home.css so the theme follows. A page that needs a way
- * back or tools gets a bar across the top; a page that sits under others
- * gets breadcrumbs above.
+ * banner tokens in home.css so the theme follows. A bar across the top holds
+ * the way back, or the breadcrumbs of a page that sits under others, and any
+ * tools.
  */
 export function PageBanner({
   accent,
@@ -68,7 +68,8 @@ export function PageBanner({
   const style = accent
     ? ({ '--hero-accent': accent, '--hero-ink': inkOn(accent), '--tile-accent': accent } as CSSProperties)
     : undefined
-  const barred = Boolean(back || tools)
+  const hasCrumbs = Boolean(crumbs && crumbs.length > 0)
+  const barred = Boolean(back || tools || hasCrumbs)
   const card = art ? (
     onArtClick ? (
       <button type="button" className="home-banner__card home-banner__card--btn" onClick={onArtClick} aria-label={artLabel}>
@@ -93,24 +94,25 @@ export function PageBanner({
 
   return (
     <>
-      {crumbs && crumbs.length > 0 ? (
-        <nav className="page-crumbs" aria-label="Breadcrumb">
-          {crumbs.map((crumb, i) => (
-            <Fragment key={i}>
-              {i > 0 ? <span aria-hidden="true">›</span> : null}
-              {crumb.href && i < crumbs.length - 1 ? (
-                <a href={crumb.href}>{crumb.label}</a>
-              ) : (
-                <span aria-current={i === crumbs.length - 1 ? 'page' : undefined}>{crumb.label}</span>
-              )}
-            </Fragment>
-          ))}
-        </nav>
-      ) : null}
       <section className={classes} style={style} aria-label={ariaLabel}>
         {barred ? (
           <div className="home-banner__bar">
-            {back ? (
+            {hasCrumbs && crumbs ? (
+              <nav className="home-banner__crumbs" aria-label="Breadcrumb">
+                {crumbs.map((crumb, i) => (
+                  <Fragment key={i}>
+                    {i > 0 ? <span aria-hidden="true">›</span> : null}
+                    {crumb.href && i < crumbs.length - 1 ? (
+                      <a href={crumb.href}>{crumb.label}</a>
+                    ) : (
+                      <span aria-current={i === crumbs.length - 1 ? 'page' : undefined}>
+                        {crumb.label}
+                      </span>
+                    )}
+                  </Fragment>
+                ))}
+              </nav>
+            ) : back ? (
               <a className="home-banner__back" href={back.href}>
                 <BackChevronIcon size={18} />
                 {back.label}

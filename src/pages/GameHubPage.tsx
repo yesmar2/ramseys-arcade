@@ -196,14 +196,16 @@ export function GameHubPage({ slug, board: boardFromRoute }: GameHubPageProps) {
           } as CSSProperties
         }
       >
-        <nav className="hub__crumbs" aria-label="Breadcrumb">
-          <a href={homeHref()}>Games</a>
-          <span aria-hidden="true">›</span>
-          <span aria-current="page">{game.name}</span>
-        </nav>
-
         <div className="hub-top">
-          <section className="home-banner hub-banner" aria-label={game.name}>
+          <section className="home-banner hub-banner page-banner--barred" aria-label={game.name}>
+            {/* Where you are, in the banner's bar, the way every page under another says it. */}
+            <div className="home-banner__bar">
+              <nav className="home-banner__crumbs" aria-label="Breadcrumb">
+                <a href={homeHref()}>Games</a>
+                <span aria-hidden="true">›</span>
+                <span aria-current="page">{game.name}</span>
+              </nav>
+            </div>
             <div className="home-banner__text">
               <p className="home-banner__kicker">{kicker}</p>
               <h1 className="home-banner__name">{game.name}</h1>

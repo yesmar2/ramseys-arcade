@@ -25,31 +25,6 @@
 
 /* ---------- where you are ---------- */
 
-.hub__crumbs {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin: 0.2rem 0 -0.6rem 0.25rem;
-  font-size: 0.8rem;
-  font-weight: 700;
-  color: var(--muted);
-}
-
-.hub__crumbs a {
-  color: var(--muted);
-  text-decoration: none;
-}
-
-.hub__crumbs a:hover,
-.hub__crumbs a:focus-visible {
-  color: var(--ink);
-  outline: none;
-}
-
-.hub__crumbs [aria-current] {
-  color: var(--ink);
-}
-
 /* ---------- the banner and the standings beside it ---------- */
 
 .hub-top {
@@ -171,3 +146,4 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
