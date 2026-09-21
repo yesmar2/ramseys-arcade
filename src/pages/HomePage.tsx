@@ -11,15 +11,18 @@ import { PendingInvitesStrip } from '../components/PendingInvitesStrip'
 
 /**
  * The front door, at the width of the screen: a banner for the one game to
- * open now, a strip of what is true today, then the wall of every game.
+ * open now with what is true today in a rail beside it, then the wall of
+ * every game. On a narrow screen the rail becomes a strip under the banner.
  */
 export function HomePage() {
   return (
     <>
       <PageShell variant="home">
         <div className="home-rail">
-          <HomeHero />
-          <HomePulse />
+          <div className="home-top">
+            <HomeHero />
+            <HomePulse />
+          </div>
           <PendingInvitesStrip />
           <GameWall />
           <HomeSpotterStrip />
