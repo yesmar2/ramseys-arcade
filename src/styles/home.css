@@ -998,6 +998,62 @@ html[data-theme="dark"] .wall-tile__flag--daily {
   box-shadow: 0 0 0 3px rgba(245, 185, 66, 0.25);
 }
 
+/*
+ * Your place on this game's board, for the period in the header: a pill in
+ * the tile's other corner, opposite the flag. The podium fills with the
+ * game's colour; anywhere else is a tint of it.
+ */
+.wall-tile__rank {
+  position: absolute;
+  top: 0.6rem;
+  right: 0.6rem;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.3rem;
+  padding: 0.2rem 0.6rem 0.22rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--tile-accent) 20%, rgba(255, 255, 255, 0.86));
+  border: 1px solid color-mix(in srgb, var(--tile-accent) 45%, transparent);
+  color: color-mix(in srgb, var(--tile-accent) 70%, var(--ink));
+  font-family: var(--font-display);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+  backdrop-filter: blur(6px);
+}
+
+.wall-tile__rank small {
+  font-family: var(--font-body);
+  font-size: 0.56rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.8;
+}
+
+html[data-theme="dark"] .wall-tile__rank {
+  background: color-mix(in srgb, var(--tile-accent) 32%, rgba(10, 16, 22, 0.6));
+  border-color: color-mix(in srgb, var(--tile-accent) 55%, transparent);
+  color: #fff;
+}
+
+.wall-tile__rank--podium,
+html[data-theme="dark"] .wall-tile__rank--podium {
+  background: var(--tile-accent);
+  border-color: transparent;
+  color: var(--tile-ink, #fff);
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--tile-accent) 40%, transparent);
+}
+
+.wall__cell--big .wall-tile__rank {
+  top: 0.8rem;
+  right: 0.8rem;
+  font-size: 0.9rem;
+  padding: 0.28rem 0.75rem 0.3rem;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .wall-tile,
   .wall-tile__art .inline-thumb,

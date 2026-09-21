@@ -3,8 +3,10 @@ import { games, homeGames, TAG_LABELS, type Game, type GameTag } from '../data/g
 import { gameHref } from '../hooks/useHashRoute'
 import { useLiveEvents } from '../hooks/useLiveEvents'
 import { usePlayerName } from '../hooks/usePlayerName'
+import { inkOn } from '../lib/color'
 import { useDefaultPeriod } from '../lib/defaultPeriod'
 import { useDeviceType } from '../lib/device'
+import { useGlobalRank } from '../lib/globalRank'
 import { useActiveGroup } from '../lib/groups'
 import { heroSlug } from '../lib/homePicks'
 import { useRecentGames } from '../lib/lastPlayed'
@@ -165,6 +167,8 @@ export function GameWall() {
   const { official } = useLiveEvents(cleaned)
   const [tab, setTab] = useState<Tab>('all')
   const [bests, setBests] = useState<Record<string, number> | null>(null)
+  // Where you stand on each board this period, from the rank the header already fetched.
+  const { byGame } = useGlobalRank()
 
   useEffect(() => {
     if (!cleaned) {
@@ -235,6 +239,7 @@ export function GameWall() {
             index={index}
             size={sizeOf(game)}
             best={bests?.[game.slug] ?? null}
+            place={byGame[game.slug]?.place ?? null}
             daily={game.slug === dailySlug}
           />
         ))}
@@ -248,17 +253,21 @@ export function WallTile({
   index,
   size,
   best,
+  place = null,
   daily,
 }: {
   game: Game
   index: number
   size: 'one' | 'wide' | 'big'
   best: number | null
+  /** Your place on this game's board for the period, when you have one. */
+  place?: number | null
   daily: boolean
 }) {
   const accent = resolveGameAccent(game.slug, game.accent)
   const style = {
     '--tile-accent': accent,
+    '--tile-ink': inkOn(accent),
     animationDelay: `${Math.min(index, 12) * 0.04}s`,
   } as CSSProperties
   const flag = game.inDevelopment
@@ -268,19 +277,30 @@ export function WallTile({
       : daily
         ? { label: 'Daily', kind: 'daily' }
         : null
+  const label = [
+    game.name,
+    flag ? flag.label.toLowerCase() : null,
+    place ? `you are #${place}` : null,
+  ]
+    .filter(Boolean)
+    .join(', ')
   return (
     <li className={`wall__cell wall__cell--${size}`}>
-      <a
-        className="wall-tile"
-        href={gameHref(game.slug)}
-        style={style}
-        aria-label={flag ? `${game.name}, ${flag.label.toLowerCase()}` : game.name}
-      >
+      <a className="wall-tile" href={gameHref(game.slug)} style={style} aria-label={label}>
         <span className="wall-tile__art" aria-hidden="true">
           <GameThumbArt slug={game.slug} accent={accent} />
         </span>
         {flag ? (
           <span className={`wall-tile__flag wall-tile__flag--${flag.kind}`}>{flag.label}</span>
+        ) : null}
+        {place ? (
+          <span
+            className={`wall-tile__rank${place <= 3 ? ' wall-tile__rank--podium' : ''}`}
+            title={`Your place on the ${game.name} board`}
+            aria-hidden="true"
+          >
+            <small>You</small>#{place}
+          </span>
         ) : null}
         <span className="wall-tile__meta">
           <span className="wall-tile__name">{game.name}</span>

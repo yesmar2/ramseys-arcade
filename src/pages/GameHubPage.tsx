@@ -33,6 +33,7 @@ import {
 import { useDefaultPeriod } from '../lib/defaultPeriod'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { useDeviceType } from '../lib/device'
+import { useGlobalRank } from '../lib/globalRank'
 import { APP_NAME } from '../lib/brand'
 import { groupBoardEmptyTitle, useActiveGroup } from '../lib/groups'
 import { formatLeaderboardScore } from '../lib/leaderboardFormat'
@@ -79,6 +80,8 @@ export function GameHubPage({ slug, board: boardFromRoute }: GameHubPageProps) {
   const playerName = normalizePlayerName(usePlayerName())
   const groupId = useActiveGroup()
   const allTime = useBoardRecord(slug)
+  // Your place on the other games' boards, for the shelf below, from the rank the header fetched.
+  const { byGame } = useGlobalRank()
   const [entries, setEntries] = useState<LeaderboardEntry[]>([])
   const [you, setYou] = useState<YouEntry | null>(null)
   const [loading, setLoading] = useState(true)
@@ -301,7 +304,15 @@ export function GameHubPage({ slug, board: boardFromRoute }: GameHubPageProps) {
             </div>
             <ul className="wall__grid">
               {others.map((g, i) => (
-                <WallTile key={g.slug} game={g} index={i} size="one" best={null} daily={false} />
+                <WallTile
+                  key={g.slug}
+                  game={g}
+                  index={i}
+                  size="one"
+                  best={null}
+                  place={byGame[g.slug]?.place ?? null}
+                  daily={false}
+                />
               ))}
             </ul>
           </section>
