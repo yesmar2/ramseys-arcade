@@ -1,4 +1,5 @@
 import { applyBoardScope, withGroupFallback } from './groups'
+import { runIdFor } from './runSession'
 import {
   ApiError,
   detectDeviceType,
@@ -367,6 +368,9 @@ export async function submitRecord(
 }> {
   const cleaned = normalizePlayerName(name) || 'PLAYER'
   const token = getClaimToken(cleaned)
+  // The run this record came out of; the server reads it but never spends it,
+  // because one run fills several books.
+  const runId = await runIdFor(game)
   const data = await api<{
     improved?: boolean
     rank: number | null
@@ -382,6 +386,7 @@ export async function submitRecord(
       score: Math.floor(score),
       device: detectDeviceType(),
       ...(token ? { token } : {}),
+      ...(runId ? { runId } : {}),
     }),
   })
 

@@ -63,9 +63,11 @@ export async function runIdFor(slug: string): Promise<string | undefined> {
 /**
  * Forget this game's run.
  *
- * Called once a score has been saved, since the server spends the id at the
- * same moment: keeping it would only produce a second submission rejected for
- * reusing it.
+ * Rarely needed: a run is not cleared when its score saves, because one run
+ * legitimately keeps paying out after that — the boards first, then every
+ * joined tournament that includes the game, with record books filling up along
+ * the way. The server tracks what each run has already been cashed in for, so
+ * the id stays useful until {@link beginRun} replaces it.
  */
 export function endRun(slug: string): void {
   open.delete(slug)

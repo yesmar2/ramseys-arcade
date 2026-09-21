@@ -1,5 +1,5 @@
 import { applyBoardScope, storedActiveGroup, withGroupFallback } from './groups'
-import { endRun, runIdFor } from './runSession'
+import { runIdFor } from './runSession'
 import type { DeviceType } from './device'
 import { getGame } from '../data/games'
 import { detectDeviceType, DEVICE_LABELS, isDeviceType } from './device'
@@ -666,10 +666,6 @@ export async function addLeaderboardScore(
       ...(runId ? { runId } : {}),
     }),
   })
-
-  // Only once it saved: a submission that threw on the way (a taken name, most
-  // often) leaves the run unspent, so retrying under another name still has it.
-  endRun(slug)
 
   const finalName = (data.name ?? cleaned).toUpperCase()
   if (data.token) rememberClaimToken(finalName, data.token)

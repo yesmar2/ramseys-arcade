@@ -1,4 +1,5 @@
 import { isImpersonating } from './impersonate'
+import { runIdFor } from './runSession'
 import { getClaimToken, getLastPlayerName, normalizePlayerName, rememberClaimToken, ApiError } from './leaderboard'
 
 export type TournamentStatus = 'upcoming' | 'active' | 'ended'
@@ -899,6 +900,9 @@ export async function submitTournamentScore(
 }> {
   const cleaned = normalizePlayerName(name)
   const token = getClaimToken(cleaned)
+  // Same run the board score came from — claimed per event, so one game can
+  // score in every tournament it qualifies for, once each.
+  const runId = await runIdFor(game)
   const data = await api<{
     improved: boolean
     best: number
@@ -916,6 +920,7 @@ export async function submitTournamentScore(
       game,
       score,
       ...(token ? { token } : {}),
+      ...(runId ? { runId } : {}),
       ...tournamentAccessQuery(id),
     }),
   })
