@@ -1,5 +1,6 @@
-import { lazy, Suspense, useEffect, useState, type ComponentType } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { DeviceUnavailable } from '../components/DeviceUnavailable'
+import { lazyPage, type LazyPage } from '../lib/lazyPage'
 import { getGame, gamePlayableOn } from '../data/games'
 import { useDeviceType } from '../lib/device'
 import { usePlayerName } from '../hooks/usePlayerName'
@@ -24,28 +25,25 @@ import { TournamentPlayProvider } from '../tournaments/TournamentPlayContext'
  * The old fixed list of eight left the weekly's newer games — Find the Bug,
  * Crumbtrail — reporting that they weren't part of an event they were in.
  *
- * Each game is the same chunk its own page loads, fetched when the event
- * opens it, so this page does not carry every game to play one.
+ * Each game is the same chunk its own page loads. It is fetched as soon as
+ * this page mounts, while the event detail is still on its way, so by the
+ * time the gate opens the game is usually already here.
  */
-function game(load: () => Promise<ComponentType>) {
-  return lazy(async () => ({ default: await load() }))
-}
-
-const TOURNAMENT_GAMES: Record<string, ComponentType> = {
-  asteroids: game(() => import('../games/asteroids/AsteroidsGame').then((m) => m.AsteroidsGame)),
-  barrage: game(() => import('../games/barrage/BarrageGame').then((m) => m.BarrageGame)),
-  centroid: game(() => import('../games/dead-center/DeadCenterGame').then((m) => m.DeadCenterGame)),
-  crosswalk: game(() => import('../games/crosswalk/CrosswalkGame').then((m) => m.CrosswalkGame)),
-  crumbtrail: game(() => import('../games/crumbtrail/CrumbtrailGame').then((m) => m.CrumbtrailGame)),
-  bop: game(() => import('../games/bop/BopGame').then((m) => m.BopGame)),
-  putt: game(() => import('../games/putt/PuttGame').then((m) => m.PuttGame)),
-  findbug: game(() => import('../games/findbug/FindBugGame').then((m) => m.FindBugGame)),
-  patriot: game(() => import('../games/patriot/PatriotGame').then((m) => m.PatriotGame)),
-  pellets: game(() => import('../games/pellets/PelletsGame').then((m) => m.PelletsGame)),
-  pop: game(() => import('../games/whack/WhackGame').then((m) => m.WhackGame)),
-  simon: game(() => import('../games/simon/SimonGame').then((m) => m.SimonGame)),
-  snake: game(() => import('../games/snake/SnakeGame').then((m) => m.SnakeGame)),
-  stacker: game(() => import('../games/stacker/StackerGame').then((m) => m.StackerGame)),
+const TOURNAMENT_GAMES: Record<string, LazyPage<object>> = {
+  asteroids: lazyPage(() => import('../games/asteroids/AsteroidsGame').then((m) => m.AsteroidsGame)),
+  barrage: lazyPage(() => import('../games/barrage/BarrageGame').then((m) => m.BarrageGame)),
+  centroid: lazyPage(() => import('../games/dead-center/DeadCenterGame').then((m) => m.DeadCenterGame)),
+  crosswalk: lazyPage(() => import('../games/crosswalk/CrosswalkGame').then((m) => m.CrosswalkGame)),
+  crumbtrail: lazyPage(() => import('../games/crumbtrail/CrumbtrailGame').then((m) => m.CrumbtrailGame)),
+  bop: lazyPage(() => import('../games/bop/BopGame').then((m) => m.BopGame)),
+  putt: lazyPage(() => import('../games/putt/PuttGame').then((m) => m.PuttGame)),
+  findbug: lazyPage(() => import('../games/findbug/FindBugGame').then((m) => m.FindBugGame)),
+  patriot: lazyPage(() => import('../games/patriot/PatriotGame').then((m) => m.PatriotGame)),
+  pellets: lazyPage(() => import('../games/pellets/PelletsGame').then((m) => m.PelletsGame)),
+  pop: lazyPage(() => import('../games/whack/WhackGame').then((m) => m.WhackGame)),
+  simon: lazyPage(() => import('../games/simon/SimonGame').then((m) => m.SimonGame)),
+  snake: lazyPage(() => import('../games/snake/SnakeGame').then((m) => m.SnakeGame)),
+  stacker: lazyPage(() => import('../games/stacker/StackerGame').then((m) => m.StackerGame)),
 }
 
 export function TournamentPlayPage({
@@ -70,6 +68,10 @@ export function TournamentPlayPage({
   const game = getGame(gameSlug)
   const Game = TOURNAMENT_GAMES[gameSlug]
   const backHref = tournamentHref(tournamentId, invite ?? getTournamentInvite(tournamentId) ?? undefined)
+
+  useEffect(() => {
+    void Game?.preload()
+  }, [Game])
 
   useEffect(() => {
     if (invite) rememberTournamentInvite(tournamentId, invite)

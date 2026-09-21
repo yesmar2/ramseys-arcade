@@ -9,6 +9,7 @@ import { useRecentGames } from '../lib/lastPlayed'
 import { getLeaderboard, normalizePlayerName, PERIOD_LABELS } from '../lib/leaderboard'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { inkOn } from '../lib/color'
+import { preloadGamePage } from '../pages/gamePages'
 import { GameThumbArt } from './GameThumbArt'
 
 type HeroScores = {
@@ -62,6 +63,11 @@ export function HomeHero() {
       cancelled = true
     }
   }, [name, slug, period, groupId])
+
+  // The game the banner offers is fetched once the banner is up, so Play opens it without a wait.
+  useEffect(() => {
+    if (slug) preloadGamePage(slug)
+  }, [slug])
 
   if (!slug) return null
   const game = getGame(slug)

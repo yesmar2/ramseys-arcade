@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, type ComponentType } from 'react'
+import { Suspense, useEffect } from 'react'
 import { defaultPeriod } from './lib/defaultPeriod'
 import { BoardSkeleton } from './components/BoardChrome'
 import { Footer } from './components/Footer'
@@ -27,50 +27,34 @@ import { LeaderboardsPage } from './pages/LeaderboardsPage'
 import { RecordsIndexPage } from './pages/RecordsIndexPage'
 import { RecordsPage } from './pages/RecordsPage'
 
-/**
- * A page that arrives with its route. The first load carries the shell, the
- * home page and the pages a visitor browses from it (a game's hub, the
- * boards, the record books); every game and every heavier page is its own
- * chunk, so opening one game does not download fifteen.
+import { GAME_PAGES, preloadGameFromHref } from './pages/gamePages'
+import { lazyPage } from './lib/lazyPage'
+
+/*
+ * A page arrives with its route. The first load carries the shell, the home
+ * page and the pages a visitor browses from it (a game's hub, the boards, the
+ * record books); every game (gamePages.ts) and every heavier page below is
+ * its own chunk, so opening one game does not download fifteen.
  */
-function page<P extends object>(load: () => Promise<ComponentType<P>>) {
-  return lazy(async () => ({ default: await load() }))
-}
 
-const AsteroidsPage = page(() => import('./pages/AsteroidsPage').then((m) => m.AsteroidsPage))
-const BarragePage = page(() => import('./pages/BarragePage').then((m) => m.BarragePage))
-const BopPage = page(() => import('./pages/BopPage').then((m) => m.BopPage))
-const CrosswalkPage = page(() => import('./pages/CrosswalkPage').then((m) => m.CrosswalkPage))
-const CrumbtrailPage = page(() => import('./pages/CrumbtrailPage').then((m) => m.CrumbtrailPage))
-const DeadCenterPage = page(() => import('./pages/DeadCenterPage').then((m) => m.DeadCenterPage))
-const FindBugPage = page(() => import('./pages/FindBugPage').then((m) => m.FindBugPage))
-const FrenzyPage = page(() => import('./pages/FrenzyPage').then((m) => m.FrenzyPage))
-const PatriotPage = page(() => import('./pages/PatriotPage').then((m) => m.PatriotPage))
-const PelletsPage = page(() => import('./pages/PelletsPage').then((m) => m.PelletsPage))
-const PuttPage = page(() => import('./pages/PuttPage').then((m) => m.PuttPage))
-const SimonPage = page(() => import('./pages/SimonPage').then((m) => m.SimonPage))
-const SnakePage = page(() => import('./pages/SnakePage').then((m) => m.SnakePage))
-const StackerPage = page(() => import('./pages/StackerPage').then((m) => m.StackerPage))
-const WhackPage = page(() => import('./pages/WhackPage').then((m) => m.WhackPage))
-
-const AboutPage = page(() => import('./pages/AboutPage').then((m) => m.AboutPage))
-const AuthVerifyPage = page(() => import('./pages/AuthVerifyPage').then((m) => m.AuthVerifyPage))
-const CreateTournamentPage = page(() =>
+const AboutPage = lazyPage(() => import('./pages/AboutPage').then((m) => m.AboutPage))
+const AuthVerifyPage = lazyPage(() => import('./pages/AuthVerifyPage').then((m) => m.AuthVerifyPage))
+const CreateTournamentPage = lazyPage(() =>
   import('./pages/CreateTournamentPage').then((m) => m.CreateTournamentPage),
 )
-const DevCelebratePage = page(() => import('./pages/DevCelebratePage').then((m) => m.DevCelebratePage))
-const GroupDetailPage = page(() => import('./pages/GroupsPage').then((m) => m.GroupDetailPage))
-const GroupsPage = page(() => import('./pages/GroupsPage').then((m) => m.GroupsPage))
-const PlusPage = page(() => import('./pages/PlusPage').then((m) => m.PlusPage))
-const PrivacyPage = page(() => import('./pages/PrivacyPage').then((m) => m.PrivacyPage))
-const RankPage = page(() => import('./pages/RankPage').then((m) => m.RankPage))
-const StatsPage = page(() => import('./pages/StatsPage').then((m) => m.StatsPage))
-const TermsPage = page(() => import('./pages/TermsPage').then((m) => m.TermsPage))
-const TournamentDetailPage = page(() =>
+const DevCelebratePage = lazyPage(() => import('./pages/DevCelebratePage').then((m) => m.DevCelebratePage))
+const GroupDetailPage = lazyPage(() => import('./pages/GroupsPage').then((m) => m.GroupDetailPage))
+const GroupsPage = lazyPage(() => import('./pages/GroupsPage').then((m) => m.GroupsPage))
+const PlusPage = lazyPage(() => import('./pages/PlusPage').then((m) => m.PlusPage))
+const PrivacyPage = lazyPage(() => import('./pages/PrivacyPage').then((m) => m.PrivacyPage))
+const RankPage = lazyPage(() => import('./pages/RankPage').then((m) => m.RankPage))
+const StatsPage = lazyPage(() => import('./pages/StatsPage').then((m) => m.StatsPage))
+const TermsPage = lazyPage(() => import('./pages/TermsPage').then((m) => m.TermsPage))
+const TournamentDetailPage = lazyPage(() =>
   import('./pages/TournamentsPage').then((m) => m.TournamentDetailPage),
 )
-const TournamentsPage = page(() => import('./pages/TournamentsPage').then((m) => m.TournamentsPage))
-const TournamentPlayPage = page(() =>
+const TournamentsPage = lazyPage(() => import('./pages/TournamentsPage').then((m) => m.TournamentsPage))
+const TournamentPlayPage = lazyPage(() =>
   import('./pages/TournamentPlayPage').then((m) => m.TournamentPlayPage),
 )
 
@@ -165,13 +149,22 @@ function App() {
       void onPlayerNameChanged()
     }
     const unlock = () => unlockSound()
+    // A Play link pointed at or focused fetches its game, so the tap lands on a game that is already here.
+    const warm = (e: Event) => {
+      const link = (e.target as Element | null)?.closest?.('a[href]')
+      if (link) preloadGameFromHref(link.getAttribute('href') ?? '')
+    }
     window.addEventListener(PLAYER_NAME_EVENT, onName)
     window.addEventListener('pointerdown', unlock, true)
     window.addEventListener('keydown', unlock, true)
+    window.addEventListener('pointerover', warm, true)
+    window.addEventListener('focusin', warm, true)
     return () => {
       window.removeEventListener(PLAYER_NAME_EVENT, onName)
       window.removeEventListener('pointerdown', unlock, true)
       window.removeEventListener('keydown', unlock, true)
+      window.removeEventListener('pointerover', warm, true)
+      window.removeEventListener('focusin', warm, true)
     }
   }, [])
 
@@ -266,22 +259,10 @@ function Screen({ route }: { route: ReturnType<typeof useRoute> }) {
   if (route.name === 'gamePlay' && isGameHidden(route.slug)) {
     return <ComingSoonPage slug={route.slug} />
   }
-  if (route.name === 'gamePlay' && route.slug === 'stacker') return <StackerPage />
-  if (route.name === 'gamePlay' && route.slug === 'patriot') return <PatriotPage />
-  if (route.name === 'gamePlay' && route.slug === 'snake') return <SnakePage />
-  if (route.name === 'gamePlay' && route.slug === 'pop') return <WhackPage />
-  if (route.name === 'gamePlay' && route.slug === 'simon') return <SimonPage />
-  if (route.name === 'gamePlay' && route.slug === 'centroid') return <DeadCenterPage />
-  if (route.name === 'gamePlay' && route.slug === 'asteroids') return <AsteroidsPage />
-  if (route.name === 'gamePlay' && route.slug === 'crosswalk') return <CrosswalkPage />
-  if (route.name === 'gamePlay' && route.slug === 'pellets') return <PelletsPage />
-  if (route.name === 'gamePlay' && route.slug === 'findbug') return <FindBugPage />
-  if (route.name === 'gamePlay' && route.slug === 'barrage') return <BarragePage />
-  if (route.name === 'gamePlay' && route.slug === 'crumbtrail') return <CrumbtrailPage />
-  if (route.name === 'gamePlay' && route.slug === 'bop') return <BopPage />
-  if (route.name === 'gamePlay' && route.slug === 'putt') return <PuttPage />
-  if (route.name === 'gamePlay' && route.slug === 'frenzy') return <FrenzyPage />
-  if (route.name === 'gamePlay') return <ComingSoonPage slug={route.slug} />
+  if (route.name === 'gamePlay') {
+    const GamePage = GAME_PAGES[route.slug]
+    return GamePage ? <GamePage /> : <ComingSoonPage slug={route.slug} />
+  }
   return <HomePage />
 }
 

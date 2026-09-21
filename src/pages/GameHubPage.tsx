@@ -39,6 +39,7 @@ import { formatLeaderboardScore } from '../lib/leaderboardFormat'
 import { gameHasRecords } from '../lib/records'
 import { resolveGameAccent, THEME_EVENT } from '../lib/theme'
 import { inkOn } from '../lib/color'
+import { preloadGamePage } from './gamePages'
 import {
   getLeaderboard,
   LEADERBOARD_GAMES,
@@ -101,6 +102,11 @@ export function GameHubPage({ slug, board: boardFromRoute }: GameHubPageProps) {
   const hasRecords = game ? gameHasRecords(game.slug) : false
   const boardHref = boardSlug ? gameBoardHref(boardSlug, period) : null
   const recordsLink = game && hasRecords ? recordsHref(game.slug, period) : null
+
+  // The game is fetched while its room is on screen, so Play opens it without a wait.
+  useEffect(() => {
+    if (canPlay) preloadGamePage(slug)
+  }, [slug, canPlay])
 
   useEffect(() => {
     if (boardFromRoute !== 'records' || !game) return
