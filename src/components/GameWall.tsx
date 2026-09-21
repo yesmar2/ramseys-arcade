@@ -1,5 +1,6 @@
 import { useEffect, useState, type CSSProperties } from 'react'
 import { games, homeGames, TAG_LABELS, type Game, type GameTag } from '../data/games'
+import { useBoardLeaders, type BoardLeader } from '../hooks/useBoardLeaders'
 import { gameHref } from '../hooks/useHashRoute'
 import { useLiveEvents } from '../hooks/useLiveEvents'
 import { usePlayerName } from '../hooks/usePlayerName'
@@ -10,6 +11,7 @@ import { useActiveGroup } from '../lib/groups'
 import { heroSlug } from '../lib/homePicks'
 import { useRecentGames } from '../lib/lastPlayed'
 import { fetchPlayerBests, normalizePlayerName, type GlobalGamePlace } from '../lib/leaderboard'
+import { formatLeaderboardScore } from '../lib/leaderboardFormat'
 import { resolveGameAccent } from '../lib/theme'
 import { GameThumbArt } from './GameThumbArt'
 
@@ -168,6 +170,8 @@ export function GameWall() {
   const [bests, setBests] = useState<Record<string, number> | null>(null)
   // Where you stand on each board this period, from the rank the header already fetched.
   const { byGame } = useGlobalRank()
+  // Who leads each board, for the tiles where you have no numbers of your own.
+  const leaders = useBoardLeaders(period)
 
   useEffect(() => {
     if (!cleaned) {
@@ -239,6 +243,7 @@ export function GameWall() {
             size={sizeOf(game)}
             best={bests?.[game.slug] ?? null}
             standing={byGame[game.slug] ?? null}
+            top={leaders?.[game.slug] ?? null}
             daily={game.slug === dailySlug}
           />
         ))}
@@ -253,6 +258,7 @@ export function WallTile({
   size,
   best,
   standing = null,
+  top = null,
   daily,
 }: {
   game: Game
@@ -262,6 +268,8 @@ export function WallTile({
   best: number | null
   /** Your place on this game's board for the period, and how many are on it, when you are. */
   standing?: GlobalGamePlace | null
+  /** Who leads this game's board: shown where you have no numbers of your own. */
+  top?: BoardLeader | null
   daily: boolean
 }) {
   const accent = resolveGameAccent(game.slug, game.accent)
@@ -278,15 +286,21 @@ export function WallTile({
         : null
   const place = standing?.place ?? null
   const total = standing?.total ?? null
+  const yours = Boolean(place || best)
+  // The high score on the cabinet: this period's, or the all-time holder while nobody has posted yet.
+  const topWord = top?.period === 'all' ? 'All time' : 'Top'
   const label = [
     game.name,
     flag ? flag.label.toLowerCase() : null,
     place ? `you are #${place}${total ? ` of ${total}` : ''}` : null,
-    best ? `best ${best.toLocaleString()}` : null,
+    best ? `best ${formatLeaderboardScore(game.slug, best)}` : null,
+    !yours && top
+      ? `${topWord.toLowerCase()} ${formatLeaderboardScore(game.slug, top.entry.score)} by ${top.entry.name}`
+      : null,
   ]
     .filter(Boolean)
     .join(', ')
-  // Without a score of yours the band says what kind of game this is instead.
+  // With no score of yours and none on the board, the band says what kind of game this is.
   const kind = (game.tags ?? []).map((tag) => TAG_LABELS[tag]).join(' · ') || 'Game'
   return (
     <li className={`wall__cell wall__cell--${size}`}>
@@ -303,12 +317,12 @@ export function WallTile({
           </span>
         </span>
         <span className="wall-tile__foot" aria-hidden="true">
-          {place || best ? (
+          {yours ? (
             <>
               <span className="wall-tile__best">
                 {best ? (
                   <>
-                    Best <b>{best.toLocaleString()}</b>
+                    Best <b>{formatLeaderboardScore(game.slug, best)}</b>
                   </>
                 ) : (
                   'No score yet'
@@ -320,6 +334,13 @@ export function WallTile({
                   {total ? <small> of {total.toLocaleString()}</small> : null}
                 </span>
               ) : null}
+            </>
+          ) : top ? (
+            <>
+              <span className="wall-tile__best">
+                {topWord} <b>{formatLeaderboardScore(game.slug, top.entry.score)}</b>
+              </span>
+              <span className="wall-tile__leader">{top.entry.name}</span>
             </>
           ) : (
             <span className="wall-tile__kind">{kind}</span>

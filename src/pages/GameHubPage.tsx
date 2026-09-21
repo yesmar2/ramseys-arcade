@@ -17,6 +17,7 @@ import {
   TAG_LABELS,
   type Game,
 } from '../data/games'
+import { useBoardLeaders } from '../hooks/useBoardLeaders'
 import { useBoardRecord } from '../hooks/useBoardRecord'
 import {
   currentHref,
@@ -80,8 +81,10 @@ export function GameHubPage({ slug, board: boardFromRoute }: GameHubPageProps) {
   const playerName = normalizePlayerName(usePlayerName())
   const groupId = useActiveGroup()
   const allTime = useBoardRecord(slug)
-  // Your place on the other games' boards, for the shelf below, from the rank the header fetched.
+  // Your place on the other games' boards, for the shelf below, from the rank the header fetched,
+  // and who leads each where you have none.
   const { byGame } = useGlobalRank()
+  const leaders = useBoardLeaders(period)
   const [entries, setEntries] = useState<LeaderboardEntry[]>([])
   const [you, setYou] = useState<YouEntry | null>(null)
   const [loading, setLoading] = useState(true)
@@ -311,6 +314,7 @@ export function GameHubPage({ slug, board: boardFromRoute }: GameHubPageProps) {
                   size="one"
                   best={null}
                   standing={byGame[g.slug] ?? null}
+                  top={leaders?.[g.slug] ?? null}
                   daily={false}
                 />
               ))}

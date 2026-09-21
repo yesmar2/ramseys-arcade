@@ -1014,6 +1014,17 @@ html[data-theme="dark"] .wall-tile__foot {
   color: var(--muted);
 }
 
+/* The leader's tag, beside the high score on a cabinet you have not played. */
+.wall-tile__leader {
+  flex: none;
+  max-width: 45%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 750;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+}
+
 .wall__cell--big .wall-tile__foot {
   min-height: 2.8rem;
   padding: 0.65rem 1rem;
