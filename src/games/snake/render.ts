@@ -1,5 +1,6 @@
 import type { GameState } from './game'
 import { BEAD_SPACING, boostFuelLeft, foodBonusLeft, isBoosting, visualSegments } from './game'
+import { drawEyes } from '../eyes'
 import { playHeader } from '../playHeader'
 import { isDarkTheme, isFlatTheme, playfieldColor, softFillAlpha } from '../../lib/theme'
 
@@ -271,36 +272,14 @@ export function renderGame(
     }
 
     if (i === 0) {
-      const face = state.pendingDir ?? state.dir
-      const eye = cell * 0.09
-      let ex1 = sx + sw * 0.32
-      let ey1 = sy + sh * 0.35
-      let ex2 = sx + sw * 0.68
-      let ey2 = sy + sh * 0.35
-      if (face === 'left') {
-        ex1 = sx + sw * 0.28
-        ex2 = sx + sw * 0.28
-        ey1 = sy + sh * 0.32
-        ey2 = sy + sh * 0.68
-      } else if (face === 'right') {
-        ex1 = sx + sw * 0.72
-        ex2 = sx + sw * 0.72
-        ey1 = sy + sh * 0.32
-        ey2 = sy + sh * 0.68
-      } else if (face === 'down') {
-        ey1 = sy + sh * 0.68
-        ey2 = sy + sh * 0.68
-      }
-      ctx.fillStyle = '#fff'
-      ctx.beginPath()
-      ctx.arc(ex1, ey1, eye, 0, Math.PI * 2)
-      ctx.arc(ex2, ey2, eye, 0, Math.PI * 2)
-      ctx.fill()
-      ctx.fillStyle = '#1a2b3c'
-      ctx.beginPath()
-      ctx.arc(ex1, ey1, eye * 0.45, 0, Math.PI * 2)
-      ctx.arc(ex2, ey2, eye * 0.45, 0, Math.PI * 2)
-      ctx.fill()
+      drawEyes(ctx, {
+        x: sx + sw / 2,
+        y: sy + sh / 2,
+        rx: sw / 2,
+        ry: sh / 2,
+        radius: cell * 0.09,
+        facing: state.pendingDir ?? state.dir,
+      })
     }
   }
 

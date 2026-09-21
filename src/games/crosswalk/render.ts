@@ -10,6 +10,7 @@ import {
   getRow,
   laneSpan,
 } from './game'
+import { drawEyes } from '../eyes'
 import { isDarkTheme, isFlatTheme, playfieldColor, softFillAlpha, strokeOutlined } from '../../lib/theme'
 
 const GRASS_A = 142
@@ -228,16 +229,12 @@ function drawHopper(
     return
   }
 
-  ctx.fillStyle = '#1a2b3c'
-  ctx.beginPath()
-  ctx.arc(drawX - rx * 0.28, drawY - ry * 0.1, r * 0.14, 0, Math.PI * 2)
-  ctx.arc(drawX + rx * 0.28, drawY - ry * 0.1, r * 0.14, 0, Math.PI * 2)
-  ctx.fill()
-  ctx.fillStyle = '#fff'
-  ctx.beginPath()
-  ctx.arc(drawX - rx * 0.24, drawY - ry * 0.14, r * 0.05, 0, Math.PI * 2)
-  ctx.arc(drawX + rx * 0.32, drawY - ry * 0.14, r * 0.05, 0, Math.PI * 2)
-  ctx.fill()
+  /*
+   * Snake's eyes, at Snake's proportions. The radius comes off `r` rather than
+   * `rx`, so a hopper mid-squeeze keeps round pupils while they ride along with
+   * the body the squeeze gave it.
+   */
+  drawEyes(ctx, { x: drawX, y: drawY, rx, ry, radius: r * 0.26 })
 }
 
 function drawCoin(
