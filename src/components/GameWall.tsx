@@ -269,12 +269,12 @@ export function WallTile({
   const total = standing?.total ?? null
   const yours = Boolean(place || best)
   // The high score on the cabinet: this period's, or the all-time holder while nobody has posted yet.
-  const topWord = top?.period === 'all' ? 'All time' : 'Top'
+  const topWord = top?.period === 'all' ? 'All time' : 'Top score'
   const label = [
     game.name,
     flag ? flag.label.toLowerCase() : null,
     place ? `you are #${place}${total ? ` of ${total}` : ''}` : null,
-    best ? `best ${formatLeaderboardScore(game.slug, best)}` : null,
+    best ? `best score ${formatLeaderboardScore(game.slug, best)}` : null,
     !yours && top
       ? `${topWord.toLowerCase()} ${formatLeaderboardScore(game.slug, top.entry.score)} by ${top.entry.name}`
       : null,
@@ -303,7 +303,7 @@ export function WallTile({
               <span className="wall-tile__best">
                 {best ? (
                   <>
-                    Best <b>{formatLeaderboardScore(game.slug, best)}</b>
+                    Best score <b>{formatLeaderboardScore(game.slug, best)}</b>
                   </>
                 ) : (
                   'No score yet'

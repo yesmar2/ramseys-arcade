@@ -11,6 +11,8 @@ import { resolveGameAccent } from '../lib/theme'
 import { EventCountdown } from './EventCountdown'
 import { GameThumbArt } from './GameThumbArt'
 import { HomeOfficialEvents } from './HomeOfficialEvents'
+import { PlayerMark } from './PlayerMark'
+import { PodiumMedal, medalKind } from './PodiumMedal'
 
 /**
  * The rail beside the banner, a strip under it on a narrow screen: the
@@ -26,11 +28,12 @@ export function HomePulse() {
   // Keyed on the active tag, like the wall and the hub: the rank below is fetched by name,
   // so a borrowed tag in dev or a remembered one with a lapsed session shows its standing too.
   const name = normalizePlayerName(usePlayerName())
-  const { rank } = useGlobalRank()
+  const { rank, score, totalPlayers, avatarId } = useGlobalRank()
   const loading = useGlobalRankLoading()
   const period = useDefaultPeriod()
   const groupId = useActiveGroup()
   const { mine } = useLiveEvents(name)
+  const medal = !loading && rank != null ? medalKind(rank) : null
   // The official fixtures already have their own rows above; this card is for the rest.
   const next = mine.find((t) => !t.official) ?? null
   const nextSlug = next?.games[0] ?? null
@@ -41,18 +44,43 @@ export function HomePulse() {
   return (
     <div className="home-pulse">
       {name ? (
-        <a className="home-pulse__standing" href={rankHref()}>
+        <a
+          className={`home-pulse__standing${medal ? ` home-pulse__standing--${medal}` : ''}`}
+          href={rankHref()}
+        >
           <span className="home-pulse__k">{groupId ? 'Your group standing' : 'Your standing'}</span>
-          <span className="home-pulse__v">
-            {loading ? (
-              <span className="skel-line" aria-hidden="true" />
-            ) : rank != null ? (
-              `#${rank}`
-            ) : (
-              'Not ranked yet'
-            )}
+          <span className="home-pulse__me">
+            <PlayerMark
+              name={name}
+              avatarId={avatarId}
+              className="home-pulse__mark"
+              badge={medal ? <PodiumMedal kind={medal} period={period} /> : null}
+            />
+            <span className="home-pulse__figure">
+              <span className="home-pulse__v">
+                {loading ? (
+                  <span className="skel-line" aria-hidden="true" />
+                ) : rank != null ? (
+                  `#${rank}`
+                ) : (
+                  'Not ranked yet'
+                )}
+              </span>
+              <span className="home-pulse__tag">{name}</span>
+            </span>
+            {!loading && rank != null ? (
+              <span className="home-pulse__pts">
+                <b>{score.toLocaleString()}</b> pts
+              </span>
+            ) : null}
           </span>
-          <span className="home-pulse__n">{PERIOD_LABELS[period]} · Profile ›</span>
+          <span className="home-pulse__n">
+            {PERIOD_LABELS[period]}
+            {!loading && totalPlayers > 0
+              ? ` · ${totalPlayers.toLocaleString()} ${totalPlayers === 1 ? 'player' : 'players'} ranked`
+              : null}{' '}
+            ›
+          </span>
         </a>
       ) : (
         <a className="home-pulse__standing" href={rankHref()}>
