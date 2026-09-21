@@ -29,10 +29,7 @@
   }
 }
 
-/* The hero takes the event's game colour. */
-.ev .hero {
-  --hero-accent: var(--event-accent, var(--accent));
-}
+/* The banner takes the event's game colour (the rule lives with the banner in home.css). */
 
 /* ---------- shared card ---------- */
 

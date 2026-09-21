@@ -3,6 +3,7 @@ import { BoardEmpty, BoardMore, BoardSkeleton, PeriodSwitcher } from '../compone
 import { BoardsGameIndex } from '../components/BoardsGameIndex'
 import { EventArt } from '../components/EventCard'
 import { GlobalRankList } from '../components/GlobalRankList'
+import { PageBanner } from '../components/PageBanner'
 import { PageShell } from '../components/PageShell'
 import { ShareBoardButton } from '../components/ShareBoardButton'
 import { globalRankingsHref, leaderboardHref, navigate } from '../hooks/useHashRoute'
@@ -64,7 +65,7 @@ function BoardsHubSwitcher({
   )
 }
 
-/** The page opens the way events, profiles and record books do. */
+/** The page opens on the site's banner, with four of the games on the card. */
 function BoardsHero({
   global,
   period,
@@ -76,38 +77,39 @@ function BoardsHero({
 }) {
   const games = VISIBLE_LEADERBOARD_GAMES.length
   return (
-    <section className="hero bx-hero" aria-label="Boards">
-      {global ? (
-        <div className="hero__corner">
+    <PageBanner
+      ariaLabel="Boards"
+      kicker={
+        <>
+          <span className="ev-kicker__bit">Boards</span>
+          <span className="ev-kicker__bit">{PERIOD_LABELS[period]}</span>
+          {global && players ? (
+            <span className="ev-kicker__bit">
+              {players} {players === 1 ? 'player' : 'players'} ranked
+            </span>
+          ) : (
+            <span className="ev-kicker__bit">{games} games</span>
+          )}
+        </>
+      }
+      title={global ? 'Rankings' : 'Top scores'}
+      blurb={
+        global
+          ? 'Every board added up. First on a board is worth 100 points, hundredth is worth 1, and the total is your rank.'
+          : 'The best runs on every game. Open a game for its full board, and pick a period to see who is on top right now.'
+      }
+      actions={
+        global ? (
           <ShareBoardButton
+            className="home-banner__ghost"
+            text="Share"
             label={`The ${APP_NAME} board doesn’t lie (${PERIOD_LABELS[period]}). Peek if you dare.`}
             url={globalRankingsHref(period)}
           />
-        </div>
-      ) : null}
-      <div className="hero__main hero__main--bare">
-        <EventArt games={VISIBLE_LEADERBOARD_GAMES.slice(0, 4)} className="hero__art" />
-        <div className="hero__text">
-          <p className="ev-kicker hero__kicker">
-            <span className="ev-kicker__bit">Boards</span>
-            <span className="ev-kicker__bit">{PERIOD_LABELS[period]}</span>
-            {global && players ? (
-              <span className="ev-kicker__bit">
-                {players} {players === 1 ? 'player' : 'players'} ranked
-              </span>
-            ) : (
-              <span className="ev-kicker__bit">{games} games</span>
-            )}
-          </p>
-          <h1 className="hero__title">{global ? 'Rankings' : 'Top scores'}</h1>
-          <p className="hero__sub">
-            {global
-              ? 'Every board added up. First on a board is worth 100 points, hundredth is worth 1, and the total is your rank.'
-              : 'The best runs on every game. Open a game for its full board, and pick a period to see who is on top right now.'}
-          </p>
-        </div>
-      </div>
-    </section>
+        ) : undefined
+      }
+      art={<EventArt games={VISIBLE_LEADERBOARD_GAMES.slice(0, 4)} />}
+    />
   )
 }
 

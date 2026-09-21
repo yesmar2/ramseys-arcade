@@ -3,7 +3,7 @@ import { BoardSkeleton } from '../components/BoardChrome'
 import { GameDeviceBadge } from '../components/GameDeviceBadge'
 import { GameThumbArt } from '../components/GameThumbArt'
 import { FriendsCard } from '../components/FriendsPanel'
-import { BackChevronIcon } from '../components/PageBackLink'
+import { PageBanner } from '../components/PageBanner'
 import { PageShell } from '../components/PageShell'
 import { PlayerAvatar } from '../components/PlayerAvatar'
 import { PodiumMedal, medalKind } from '../components/PodiumMedal'
@@ -72,7 +72,7 @@ function AddFriendButton({ name }: { name: string }) {
     <span className="pfh__friend">
       <button
         type="button"
-        className="hero__tool"
+        className="home-banner__tool"
         disabled={status === 'busy' || status === 'sent'}
         onClick={() => void send()}
         aria-label={status === 'sent' ? `Friend request sent to ${name}` : `Add ${name} as a friend`}
@@ -282,94 +282,60 @@ export function RankPage({
             onClose={() => setStudioOpen(false)}
           />
         ) : null}
-        <section
-          className="hero"
-          aria-label={isSelf ? 'Your profile' : `${viewedName}'s profile`}
-        >
-          {!isSelf ? (
-            <div className="hero__bar">
-              <a className="hero__back" href={globalRankingsHref(period)}>
-                <BackChevronIcon size={18} />
-                Rankings
-              </a>
-              {viewedName ? (
-                <div className="hero__tools">
+        {viewedName ? (
+          <PageBanner
+            ariaLabel={isSelf ? 'Your profile' : `${viewedName}'s profile`}
+            /* Someone else's profile has a way back to the rankings and the
+               tools in a bar; your own keeps Share in the actions row. */
+            back={isSelf ? undefined : { href: globalRankingsHref(period), label: 'Rankings' }}
+            tools={
+              isSelf ? undefined : (
+                <>
                   {signedIn ? <AddFriendButton name={viewedName} /> : null}
                   <ShareBoardButton label={shareLabel} url={shareUrl} />
-                </div>
-              ) : null}
-            </div>
-          ) : null}
-
-          {viewedName ? (
-            <div className="hero__main">
-              {isSelf && canEditAvatar && AVATARS_ENABLED ? (
-                <button
-                  type="button"
-                  className="hero__mark pfh__mark-btn"
-                  aria-label="Edit your avatar"
-                  title="Edit your avatar"
-                  onClick={() => setStudioOpen(true)}
-                >
-                  <PlayerAvatar avatarId={avatarOverride ?? data.avatarId} name={viewedName} size="lg" />
-                  <span className="pfh__mark-edit" aria-hidden="true">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M12 20h9" />
-                      <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
-                    </svg>
+                </>
+              )
+            }
+            kicker={
+              <>
+                <span className="ev-kicker__bit">{isSelf ? 'Your profile' : 'Player'}</span>
+                {trophies === null ? (
+                  <span className="ev-kicker__bit" aria-hidden="true">
+                    <span className="skel-line" style={{ '--skel-w': '4.5rem' } as CSSProperties} />
                   </span>
-                </button>
-              ) : (
-                <span className="hero__mark" aria-hidden="true">
-                  {AVATARS_ENABLED ? (
-                    <PlayerAvatar avatarId={avatarOverride ?? data.avatarId} name={viewedName} size="lg" />
-                  ) : (
-                    viewedName.charAt(0)
-                  )}
-                </span>
-              )}
-
-              <div className="hero__text">
-                <p className="ev-kicker hero__kicker">
-                  <span className="ev-kicker__bit">{isSelf ? 'Your profile' : 'Player'}</span>
-                  {trophies === null ? (
-                    <span className="ev-kicker__bit" aria-hidden="true">
-                      <span className="skel-line" style={{ '--skel-w': '4.5rem' } as CSSProperties} />
-                    </span>
-                  ) : trophyCount > 0 ? (
-                    <span className="ev-kicker__bit">
-                      {trophyCount} {trophyCount === 1 ? 'trophy' : 'trophies'}
-                    </span>
-                  ) : null}
-                  {rankLoading ? (
-                    <span className="ev-kicker__bit" aria-hidden="true">
-                      <span className="skel-line" style={{ '--skel-w': '7rem' } as CSSProperties} />
-                    </span>
-                  ) : data.totalPlayers > 0 ? (
-                    <span className="ev-kicker__bit">
-                      {data.totalPlayers} {data.totalPlayers === 1 ? 'player' : 'players'} ranked
-                    </span>
-                  ) : null}
-                </p>
-                <h1 className="hero__title">{viewedName}</h1>
-                <p className="hero__sub">
+                ) : trophyCount > 0 ? (
+                  <span className="ev-kicker__bit">
+                    {trophyCount} {trophyCount === 1 ? 'trophy' : 'trophies'}
+                  </span>
+                ) : null}
+                {rankLoading ? (
+                  <span className="ev-kicker__bit" aria-hidden="true">
+                    <span className="skel-line" style={{ '--skel-w': '7rem' } as CSSProperties} />
+                  </span>
+                ) : data.totalPlayers > 0 ? (
+                  <span className="ev-kicker__bit">
+                    {data.totalPlayers} {data.totalPlayers === 1 ? 'player' : 'players'} ranked
+                  </span>
+                ) : null}
+              </>
+            }
+            title={viewedName}
+            blurb={
+              standing || games ? (
+                <>
                   {standing}
                   {standing && games ? ' · ' : null}
                   {games}
-                </p>
-              </div>
-
-              {/* On your own profile the share icon sits in the hero's top
-                  corner, where the event page keeps it — above the rank
-                  tiles on a wide screen, in the corner over the text on a
-                  phone. Someone else's profile has a bar for it. */}
-              <div className="hero__aside pfh__aside">
-                {isSelf ? (
-                  <div className="pfh__corner">
-                    <ShareBoardButton label={shareLabel} url={shareUrl} />
-                  </div>
-                ) : null}
-                <div className="pfh__ranks" role="tablist" aria-label="Period">
+                </>
+              ) : undefined
+            }
+            actions={
+              isSelf ? (
+                <ShareBoardButton className="home-banner__ghost" text="Share" label={shareLabel} url={shareUrl} />
+              ) : undefined
+            }
+            figures={
+              <div className="pfh__ranks" role="tablist" aria-label="Period">
                 {VISIBLE_LEADERBOARD_PERIODS.map((p) => {
                   const row = ranks[p] ?? (p === period ? cachedSelf : null)
                   const active = p === period
@@ -401,32 +367,42 @@ export function RankPage({
                           ? row.rank != null
                             ? `${row.score} pt${row.score === 1 ? '' : 's'}`
                             : 'Unranked'
-                          : ' '}
+                          : ' '}
                       </span>
                     </a>
                   )
                 })}
-                </div>
               </div>
-            </div>
-          ) : (
-            <div className="hero__main hero__main--bare">
-              <span className="hero__mark hero__mark--empty" aria-hidden="true">
-                ?
-              </span>
-              <div className="hero__text">
-                <p className="ev-kicker hero__kicker">
-                  <span className="ev-kicker__bit">Your profile</span>
-                </p>
-                <h1 className="hero__title">No gamer tag yet</h1>
-                <p className="hero__sub">
-                  Set a gamer tag in the header to earn a global rank and start collecting
-                  trophies.
-                </p>
-              </div>
-            </div>
-          )}
-        </section>
+            }
+            art={
+              AVATARS_ENABLED ? (
+                <>
+                  <PlayerAvatar avatarId={avatarOverride ?? data.avatarId} name={viewedName} size="xl" />
+                  {isSelf && canEditAvatar ? (
+                    <span className="pfh__mark-edit" aria-hidden="true">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M12 20h9" />
+                        <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
+                      </svg>
+                    </span>
+                  ) : null}
+                </>
+              ) : (
+                <span className="home-banner__glyph">{viewedName.charAt(0).toUpperCase()}</span>
+              )
+            }
+            onArtClick={isSelf && canEditAvatar && AVATARS_ENABLED ? () => setStudioOpen(true) : undefined}
+            artLabel="Edit your avatar"
+          />
+        ) : (
+          <PageBanner
+            ariaLabel="Your profile"
+            kicker={<span className="ev-kicker__bit">Your profile</span>}
+            title="No gamer tag yet"
+            blurb="Set a gamer tag in the header to earn a global rank and start collecting trophies."
+            art={<span className="home-banner__glyph home-banner__glyph--faint">?</span>}
+          />
+        )}
 
         <div className="split">
           <aside className="split__side" aria-label="Your trophies, stats and friends">

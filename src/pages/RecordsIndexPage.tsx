@@ -1,6 +1,7 @@
 import type { CSSProperties } from 'react'
 import { EventArt } from '../components/EventCard'
 import { GameThumbArt } from '../components/GameThumbArt'
+import { PageBanner } from '../components/PageBanner'
 import { PageShell } from '../components/PageShell'
 import { getGame } from '../data/games'
 import { recordsHref } from '../hooks/useHashRoute'
@@ -33,24 +34,20 @@ export function RecordsIndexPage() {
   return (
     <PageShell innerClassName="lb-page__inner lb-page__inner--events">
       <div className="ev rb">
-        <section className="hero" aria-label="Record books">
-          <div className="hero__main hero__main--bare">
-            <EventArt games={games.slice(0, 4).map((g) => g.slug)} className="hero__art" />
-            <div className="hero__text">
-              <p className="ev-kicker hero__kicker">
-                <span className="ev-kicker__bit">Hall of fame</span>
-                <span className="ev-kicker__bit">
-                  {games.length} {games.length === 1 ? 'book' : 'books'} open
-                </span>
-              </p>
-              <h1 className="hero__title">Record books</h1>
-              <p className="hero__sub">
-                Not the high-score boards — the specialty ledgers. Fastest clears, longest
-                streaks, milestone times. Somebody’s name is in ink.
-              </p>
-            </div>
-          </div>
-        </section>
+        <PageBanner
+          ariaLabel="Record books"
+          kicker={
+            <>
+              <span className="ev-kicker__bit">Hall of fame</span>
+              <span className="ev-kicker__bit">
+                {games.length} {games.length === 1 ? 'book' : 'books'} open
+              </span>
+            </>
+          }
+          title="Record books"
+          blurb="Not the high-score boards — the specialty ledgers. Fastest clears, longest streaks, milestone times. Somebody’s name is in ink."
+          art={<EventArt games={games.slice(0, 4).map((g) => g.slug)} />}
+        />
 
         {games.length === 0 ? (
           <p className="lb-empty">No record books yet.</p>

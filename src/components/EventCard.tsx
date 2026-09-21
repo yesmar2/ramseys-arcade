@@ -170,10 +170,13 @@ export function EventKicker({
   t,
   joined = false,
   className,
+  bare = false,
 }: {
   t: KickerSource
   joined?: boolean
   className?: string
+  /** Only the bits, for a caller that already has the line to put them on (the banner's pill). */
+  bare?: boolean
 }) {
   const phase = eventPhase(t)
   const bracket = eventKind(t) === 'bracket'
@@ -200,15 +203,13 @@ export function EventKicker({
     )
   }
 
-  return (
-    <p className={`ev-kicker${className ? ` ${className}` : ''}`}>
-      {bits.map((bit, i) => (
-        <span key={i} className="ev-kicker__bit">
-          {bit}
-        </span>
-      ))}
-    </p>
-  )
+  const spans = bits.map((bit, i) => (
+    <span key={i} className="ev-kicker__bit">
+      {bit}
+    </span>
+  ))
+  if (bare) return <>{spans}</>
+  return <p className={`ev-kicker${className ? ` ${className}` : ''}`}>{spans}</p>
 }
 
 /* ---------- list: live card ---------- */

@@ -455,7 +455,7 @@ html[data-theme="dark"] .home-banner {
   pointer-events: none;
 }
 
-.home-banner__art .inline-thumb {
+.home-banner__art > .inline-thumb {
   position: absolute;
   right: -2.5rem;
   top: 50%;
@@ -471,7 +471,7 @@ html[data-theme="dark"] .home-banner {
   transition: transform 0.25s ease;
 }
 
-.home-banner__art .inline-thumb::after {
+.home-banner__art > .inline-thumb::after {
   content: '';
   position: absolute;
   inset: 0;
@@ -480,14 +480,14 @@ html[data-theme="dark"] .home-banner {
   pointer-events: none;
 }
 
-.home-banner__art .inline-thumb .game-thumb__svg {
+.home-banner__art > .inline-thumb .game-thumb__svg {
   position: relative;
   width: 74%;
   height: 74%;
   filter: var(--banner-mark-shadow);
 }
 
-.home-banner__art:hover .inline-thumb {
+.home-banner__art:hover > .inline-thumb {
   transform: translateY(-50%) rotate(-5deg) scale(1.03);
 }
 
@@ -508,7 +508,7 @@ html[data-theme="dark"] .home-banner {
     right: -4rem;
   }
 
-  .home-banner__art .inline-thumb {
+  .home-banner__art > .inline-thumb {
     right: -0.75rem;
     top: 52%;
     width: 10.5rem;
@@ -1001,7 +1001,464 @@ html[data-theme="dark"] .wall-tile__flag--daily {
 @media (prefers-reduced-motion: reduce) {
   .wall-tile,
   .wall-tile__art .inline-thumb,
-  .home-banner__art .inline-thumb {
+  .home-banner__art > .inline-thumb {
+    animation: none;
+    transition: none;
+  }
+}
+
+/* ---------- the banner on every other page ---------- */
+
+/*
+ * The boards, the record books, an event, a player, a group: each opens on
+ * the same banner as the home page, drawn by PageBanner. What changes is the
+ * art on the leaning card, which here is anything that stands for the
+ * thing: a cluster of thumbs, a character, a letter. A page with a way back
+ * or tools gets a bar across the top of both columns.
+ */
+
+/* A page with nothing of its own is washed in the site's colour. */
+.home-banner {
+  --hero-accent: var(--accent);
+}
+
+.ev .home-banner {
+  --hero-accent: var(--event-accent, var(--accent));
+}
+
+.page-banner--barred {
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+.home-banner__bar {
+  position: relative;
+  z-index: 2;
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  min-height: 2.35rem;
+  padding: 0.9rem 1.25rem 0 1.6rem;
+}
+
+.home-banner__back {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  margin-left: -0.55rem;
+  padding: 0.3rem 0.75rem 0.3rem 0.35rem;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 750;
+  color: var(--banner-muted);
+  text-decoration: none;
+}
+
+.home-banner__back svg {
+  width: 1.1rem;
+  height: 1.1rem;
+}
+
+.home-banner__back:hover,
+.home-banner__back:focus-visible {
+  color: var(--banner-ink);
+  background: var(--banner-chip-bg);
+  outline: none;
+}
+
+.home-banner__tools {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+/* Tools sit on chips like the kicker's, so they read on either wash. */
+.home-banner__tool,
+.home-banner__tools .lb-share {
+  min-height: 2.35rem;
+  border: 1px solid var(--banner-chip-border);
+  background: var(--banner-chip-bg);
+  color: var(--banner-chip-ink);
+}
+
+.home-banner__tool {
+  padding: 0.35rem 0.9rem;
+  border-radius: 999px;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 750;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.home-banner__tool:hover:not(:disabled),
+.home-banner__tool:focus-visible:not(:disabled),
+.home-banner__tools .lb-share:hover,
+.home-banner__tools .lb-share:focus-visible {
+  background: var(--banner-chip-hover);
+  border-color: var(--banner-chip-border);
+  color: var(--banner-ink);
+  outline: none;
+}
+
+.home-banner__tool:disabled {
+  opacity: 0.7;
+  cursor: default;
+}
+
+.page-banner--barred .home-banner__text {
+  padding-top: 1rem;
+}
+
+/* A player's tag or an event's title is not a game's name: it can run long. */
+.page-banner .home-banner__name {
+  overflow-wrap: anywhere;
+  text-wrap: balance;
+}
+
+.page-banner .home-banner__blurb {
+  max-width: 52ch;
+}
+
+/* The kicker keeps the events vocabulary inside the pill: bits with dots between. */
+.home-banner__kicker {
+  flex-wrap: wrap;
+  row-gap: 0.15rem;
+}
+
+.home-banner__kicker .ev-kicker__bit + .ev-kicker__bit::before {
+  color: currentColor;
+  opacity: 0.45;
+}
+
+.home-banner__kicker .ev-kicker__status,
+.home-banner__kicker .ev-kicker__joined {
+  color: inherit;
+}
+
+.home-banner__kicker .ev-kicker__joined {
+  background: color-mix(in srgb, currentColor 16%, transparent);
+}
+
+/* The pill has its own dot; a live event makes it beat instead of adding a second. */
+.home-banner__kicker .ev-live-dot {
+  display: none;
+}
+
+.home-banner__kicker:has(.ev-kicker__status--live)::before {
+  animation: hero-pulse 1.8s ease-out infinite;
+}
+
+.home-banner__kicker .skel-line {
+  background: color-mix(in srgb, currentColor 22%, transparent);
+}
+
+/* Actions can be buttons here, not only links. */
+button.home-banner__cta,
+button.home-banner__ghost {
+  font-family: inherit;
+  line-height: inherit;
+  cursor: pointer;
+}
+
+button.home-banner__cta {
+  border: 0;
+}
+
+.home-banner__cta:disabled,
+.home-banner__ghost:disabled {
+  opacity: 0.6;
+  cursor: default;
+  transform: none;
+}
+
+/* Share as a pill in the actions row, where a page has nothing else to press. */
+.home-banner__ghost.lb-share {
+  display: inline-flex;
+  gap: 0.45rem;
+  width: auto;
+  height: auto;
+  min-height: 2.8rem;
+  padding: 0 1.1rem 0 0.95rem;
+  border: 1px solid var(--banner-chip-border);
+  background: var(--banner-chip-bg);
+  color: var(--banner-chip-ink);
+}
+
+.home-banner__ghost.lb-share:hover,
+.home-banner__ghost.lb-share:focus-visible {
+  background: var(--banner-chip-hover);
+  border-color: var(--banner-chip-border);
+  color: var(--banner-chip-ink);
+}
+
+.home-banner__state {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 750;
+  color: var(--banner-ink);
+}
+
+.home-banner__hint {
+  flex-basis: 100%;
+  font-size: 0.8rem;
+  font-weight: 650;
+  color: var(--banner-faint);
+}
+
+.home-banner__hint--error {
+  color: #b42318;
+}
+
+html[data-theme="dark"] .home-banner__hint--error {
+  color: #ff9d94;
+}
+
+/* A figure that is still moving: a countdown, a round in play. */
+.page-banner .home-banner__figure dd {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.home-banner__figure-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.home-banner__figure--live dt::before {
+  content: '';
+  display: inline-block;
+  width: 0.45rem;
+  height: 0.45rem;
+  margin-right: 0.4rem;
+  border-radius: 50%;
+  background: var(--banner-dot);
+  vertical-align: 0.05em;
+  animation: hero-pulse 1.8s ease-out infinite;
+}
+
+/* The three period ranks on a profile, as chips on the wash. */
+.page-banner .pfh__ranks {
+  max-width: 27rem;
+  margin-top: 0.4rem;
+}
+
+.page-banner .pfh__rank {
+  background: var(--banner-chip-bg);
+  border-color: var(--banner-chip-border);
+}
+
+.page-banner .pfh__rank:hover,
+.page-banner .pfh__rank:focus-visible {
+  background: var(--banner-chip-hover);
+  border-color: var(--banner-chip-border);
+}
+
+.page-banner .pfh__rank-label,
+.page-banner .pfh__rank-sub {
+  color: var(--banner-faint);
+}
+
+.page-banner .pfh__rank-value {
+  color: var(--banner-ink);
+}
+
+.page-banner .pfh__rank--none .pfh__rank-value {
+  color: var(--banner-faint);
+}
+
+.page-banner .pfh__rank--on,
+.page-banner .pfh__rank--on:hover,
+.page-banner .pfh__rank--on:focus-visible {
+  background: var(--hero-accent);
+  border-color: transparent;
+  color: var(--hero-ink, #fff);
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--hero-accent) 30%, transparent);
+}
+
+.page-banner .pfh__rank--on .pfh__rank-label,
+.page-banner .pfh__rank--on .pfh__rank-sub {
+  color: color-mix(in srgb, var(--hero-ink, #fff) 78%, transparent);
+}
+
+.page-banner .pfh__rank--on .pfh__rank-value {
+  color: var(--hero-ink, #fff);
+}
+
+/* The card: the same leaning tile the home banner puts a game's mark on. */
+.home-banner__card {
+  position: absolute;
+  right: -2.5rem;
+  top: 50%;
+  display: grid;
+  place-items: center;
+  width: clamp(14rem, 66%, 24rem);
+  aspect-ratio: 1;
+  padding: 0;
+  border-radius: 24%;
+  background: linear-gradient(160deg, var(--banner-card-a), var(--banner-card-b));
+  border: 1px solid var(--banner-card-border);
+  box-shadow: var(--banner-card-shadow);
+  color: var(--banner-ink);
+  container-type: inline-size;
+  transform: translateY(-50%) rotate(-8deg);
+  transition: transform 0.25s ease;
+}
+
+.home-banner__card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(120% 80% at 30% 20%, var(--banner-gloss), transparent 60%);
+  pointer-events: none;
+}
+
+.home-banner__card > * {
+  position: relative;
+  z-index: 1;
+}
+
+.home-banner__card--btn {
+  font: inherit;
+  cursor: pointer;
+}
+
+.home-banner__card--btn:hover,
+.home-banner__card--btn:focus-visible {
+  transform: translateY(-50%) rotate(-5deg) scale(1.03);
+  outline: none;
+}
+
+.home-banner__card--btn:focus-visible {
+  border-color: var(--banner-ink);
+}
+
+/* A set of games: the card is the frame, the thumbs keep their own colours. */
+.home-banner__card .ev-art {
+  width: 72%;
+  height: 72%;
+  filter: var(--banner-mark-shadow);
+}
+
+.home-banner__card .ev-art--cluster {
+  padding: 0;
+  gap: 9%;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  overflow: visible;
+}
+
+.home-banner__card .ev-art--cluster .inline-thumb {
+  border-radius: 24%;
+  border-color: color-mix(in srgb, var(--thumb-accent, var(--accent)) 55%, transparent);
+}
+
+.home-banner__card .ev-art--solo .inline-thumb {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  overflow: visible;
+}
+
+.home-banner__card .ev-art--solo .game-thumb__svg {
+  width: 100%;
+  height: 100%;
+}
+
+.home-banner__card .ev-art--pending {
+  background: transparent;
+  box-shadow: none;
+  animation: none;
+}
+
+/* A player's character. */
+.home-banner__card .player-avatar {
+  width: 66%;
+  height: 66%;
+  filter: var(--banner-mark-shadow);
+}
+
+.home-banner__card .pfh__mark-edit {
+  position: absolute;
+  right: 9%;
+  bottom: 9%;
+  width: 2.6rem;
+  height: 2.6rem;
+  color: var(--hero-ink, #fff);
+}
+
+.home-banner__card .pfh__mark-edit svg {
+  width: 1.3rem;
+  height: 1.3rem;
+}
+
+/* A letter or a glyph, where there is no picture. */
+.home-banner__glyph {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  font-family: var(--font-display);
+  font-size: 42cqi;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--banner-ink);
+  filter: var(--banner-mark-shadow);
+  user-select: none;
+}
+
+.home-banner__glyph svg {
+  width: 48%;
+  height: 48%;
+}
+
+.home-banner__glyph--faint {
+  color: var(--banner-faint);
+}
+
+.home-banner__glyph .grp__mark-dots {
+  width: 40%;
+  height: 0.4rem;
+}
+
+@media (max-width: 56rem) {
+  .home-banner__bar {
+    order: -2;
+    padding: 0.85rem 1rem 0 1.25rem;
+  }
+
+  .home-banner__card {
+    right: -0.75rem;
+    top: 52%;
+    width: 10.5rem;
+  }
+
+  .home-banner__card .pfh__mark-edit {
+    width: 1.9rem;
+    height: 1.9rem;
+  }
+
+  .home-banner__card .pfh__mark-edit svg {
+    width: 1rem;
+    height: 1rem;
+  }
+
+  .page-banner--barred .home-banner__text {
+    padding-top: 0.5rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-banner__card,
+  .home-banner__kicker::before,
+  .home-banner__figure--live dt::before {
     animation: none;
     transition: none;
   }

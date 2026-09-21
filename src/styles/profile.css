@@ -2,11 +2,12 @@
  * Profile page (rank, trophies, by-game standings).
  *
  * Built on the events vocabulary: the page root carries the `ev` class for
- * its tokens and neutral `.ev-card` panels, and the hero mirrors the event
- * page's — tinted from the site accent, a mark on the left, the three period
- * ranks as tiles that also switch the board below.
+ * its tokens and neutral `.ev-card` panels, and the page opens on the site's
+ * banner (PageBanner, home.css) with the player's character on the card and
+ * the three period ranks as tiles under the caption that also switch the
+ * board below.
  *
- * Hero from hero.css (`.pfh__rank*` tiles here) · `.pft` trophy shelf · `.pfg` by-game board.
+ * `.pfh__rank*` tiles here · `.pft` trophy shelf · `.pfg` by-game board.
  */
 
 .pf {
@@ -15,8 +16,7 @@
 }
 
 /* ==========================================================================
-   Hero extras: the rank tiles, the share pill, Add friend
-   (the hero itself comes from hero.css)
+   Banner extras: the rank tiles, Add friend
    ========================================================================== */
 
 /* Add friend, with its error under it. */
@@ -32,50 +32,9 @@
   color: #b42318;
 }
 
-/* The aside holds the share icon above the rank tiles. On a phone the tiles
-   span the width under the text and the icon goes to the hero's corner,
-   where the event page keeps it, with the caption kept clear of it. */
-.pfh__aside {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 0.6rem;
-}
-
-.pfh__corner {
-  position: absolute;
-  top: 0.85rem;
-  right: 1.1rem;
-  z-index: 1;
-}
-
-.pf .hero__main:not(.hero__main--bare) .hero__text {
-  padding-right: 2.7rem;
-}
-
-@media (min-width: 680px) {
-  .pfh__corner {
-    position: static;
-  }
-
-  /* The text spans both rows beside the mark (nothing sits under it here),
-     so it can centre on the mark's midline like the tiles do. */
-  .pf .hero__main:not(.hero__main--bare) .hero__text {
-    grid-area: 1 / 2 / 3 / 3;
-    align-self: center;
-  }
-
-  .pfh__aside {
-    align-self: start;
-  }
-
-  .pf .hero__main:not(.hero__main--bare) .hero__text {
-    padding-right: 0;
-  }
-}
-
 /* The three ranks: every period on screen, and the one you tap scopes the
-   board below. Filled when selected, outlined otherwise. */
+   board below. Filled when selected, outlined otherwise. The banner recolours
+   them through its tokens in home.css. */
 .pfh__ranks {
   width: 100%;
   display: grid;

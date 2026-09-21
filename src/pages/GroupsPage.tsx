@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type CSSProperties, type FormEvent, type ReactNode } from 'react'
 import { BoardEmpty, BoardSkeleton } from '../components/BoardChrome'
-import { BackChevronIcon } from '../components/PageBackLink'
+import { PageBanner } from '../components/PageBanner'
 import { PageShell } from '../components/PageShell'
 import { PlayerMark } from '../components/PlayerMark'
 import { InviteByTagForm } from '../components/InviteByTagForm'
@@ -98,7 +98,7 @@ function GroupFaces({ members }: { members: GroupMember[] }) {
   )
 }
 
-/** The page opens the way every other page does; the body is whatever the state calls for. */
+/** The page opens on the site's banner; the body is whatever the state calls for. */
 function GroupsHero({
   accent,
   back,
@@ -112,6 +112,7 @@ function GroupsHero({
   accent?: string
   back?: boolean
   tools?: ReactNode
+  /** What stands on the card: the two heads, a letter, a lock. */
   mark: ReactNode
   kicker: ReactNode
   title: string
@@ -119,36 +120,17 @@ function GroupsHero({
   actions?: ReactNode
 }) {
   return (
-    <section
-      className="hero"
-      aria-label={title}
-      style={accent ? ({ '--hero-accent': accent, '--hero-ink': inkOn(accent) } as CSSProperties) : undefined}
-    >
-      {back || tools ? (
-        <div className="hero__bar">
-          {back ? (
-            <a className="hero__back" href={groupsIndexHref()}>
-              <BackChevronIcon size={18} />
-              Groups
-            </a>
-          ) : (
-            <span />
-          )}
-          {tools ? <div className="hero__tools">{tools}</div> : null}
-        </div>
-      ) : null}
-      <div className="hero__main hero__main--bare">
-        <span className="hero__mark grp__mark" aria-hidden="true">
-          {mark}
-        </span>
-        <div className="hero__text">
-          <p className="ev-kicker hero__kicker">{kicker}</p>
-          <h1 className="hero__title">{title}</h1>
-          <p className="hero__sub">{sub}</p>
-          {actions ? <div className="hero__actions hero__actions--inline">{actions}</div> : null}
-        </div>
-      </div>
-    </section>
+    <PageBanner
+      accent={accent}
+      ariaLabel={title}
+      back={back ? { href: groupsIndexHref(), label: 'Groups' } : undefined}
+      tools={tools}
+      kicker={kicker}
+      title={title}
+      blurb={sub}
+      actions={actions}
+      art={<span className="home-banner__glyph">{mark}</span>}
+    />
   )
 }
 
@@ -294,13 +276,13 @@ export function GroupsPage() {
             account ? (
               <button
                 type="button"
-                className={creating ? 'hero__ghost' : 'hero__cta'}
+                className={creating ? 'home-banner__ghost' : 'home-banner__cta'}
                 onClick={() => setCreating((open) => !open)}
               >
                 {creating ? 'Close' : 'Create group'}
               </button>
             ) : (
-              <span className="hero__hint">Sign in from the header to create a group.</span>
+              <span className="home-banner__hint">Sign in from the header to create a group.</span>
             )
           }
         />
@@ -734,23 +716,23 @@ export function GroupDetailPage({ id, invite }: { id: string; invite?: string })
           actions={
             <>
               {group.isMember ? (
-                <button type="button" className="hero__cta" onClick={() => openBoards(group.id)}>
+                <button type="button" className="home-banner__cta" onClick={() => openBoards(group.id)}>
                   View boards
                 </button>
               ) : playerName ? (
                 <button
                   type="button"
-                  className="hero__cta"
+                  className="home-banner__cta"
                   disabled={busy || !(storedInvite || inviteDraft)}
                   onClick={() => void onJoin()}
                 >
                   {busy ? 'Joining…' : `Join as ${playerName}`}
                 </button>
               ) : (
-                <span className="hero__hint">Set your gamer tag in the header to join.</span>
+                <span className="home-banner__hint">Set your gamer tag in the header to join.</span>
               )}
               {!group.isMember ? (
-                <button type="button" className="hero__ghost" onClick={() => openBoards(group.id)}>
+                <button type="button" className="home-banner__ghost" onClick={() => openBoards(group.id)}>
                   Peek at the boards
                 </button>
               ) : null}

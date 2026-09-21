@@ -1,22 +1,19 @@
 /*
  * Groups: the index and one group.
  *
- * Both open on the shared hero. The index lists groups as soft rows with
- * a stack of member marks; a group shows its invite card beside the roster
- * (as rows) and folds the owner's controls into a card at the bottom.
+ * Both open on the site's banner (PageBanner, home.css) with the group's
+ * mark on the card. The index lists groups as soft rows with a stack of
+ * member marks; a group shows its invite card beside the roster (as rows)
+ * and folds the owner's controls into a card at the bottom.
  */
 
 .grp {
   gap: 1.15rem;
 }
 
-/* ---------- hero ---------- */
+/* ---------- banner marks ---------- */
 
-.grp__mark svg {
-  width: calc(var(--hero-mark) * 0.56);
-  height: calc(var(--hero-mark) * 0.56);
-}
-
+/* Loading: a quiet dash where the letter will be. */
 .grp__mark-dots {
   display: block;
   width: 40%;
@@ -24,10 +21,6 @@
   border-radius: 999px;
   background: currentColor;
   opacity: 0.4;
-}
-
-.grp__mark-lock {
-  font-size: calc(var(--hero-mark) * 0.5);
 }
 
 /* ---------- the index: a stack of faces per group ---------- */

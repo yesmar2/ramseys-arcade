@@ -17,6 +17,7 @@ import { BackChevronIcon } from '../components/PageBackLink'
 import { InviteByTagForm } from '../components/InviteByTagForm'
 import { PlayerAvatar } from '../components/PlayerAvatar'
 import { listEventInvites, type PublicInvite } from '../lib/invites'
+import { PageBanner } from '../components/PageBanner'
 import { PageShell } from '../components/PageShell'
 import { PendingInvitesStrip } from '../components/PendingInvitesStrip'
 import { PodiumMedal } from '../components/PodiumMedal'
@@ -302,7 +303,7 @@ function heroClock(detail: TournamentDetail): HeroClock {
         value: (
           <>
             <PodiumMedal kind="gold" size="md" />
-            <span className="hero-stat__name">{winner}</span>
+            <span className="home-banner__figure-name">{winner}</span>
           </>
         ),
       }
@@ -467,20 +468,26 @@ function EventHero({
     .filter(Boolean)
     .join(' · ')
 
-  // Where you stand, for anyone with something on the board.
+  // Where you stand, for anyone with something on the board: a second figure beside the clock.
   const place = joined && !bracket ? yourStandingPlace(detail, displayName) : null
   const score = place != null ? yourStandingScore(detail, displayName) : null
   const you: ReactNode =
     joined && !bracket ? (
       place != null ? (
-        <>
-          <span className="hero__foot-lead">
-            {detail.status === 'ended' && place === 1 ? 'You won' : `You’re ${ordinal(place)}`}
-          </span>
-          {score ? <span className="hero__foot-value">{score}</span> : null}
-        </>
+        <div className="home-banner__figure">
+          <dt>You</dt>
+          <dd>
+            {detail.status === 'ended' && place === 1 ? 'Won' : ordinal(place)}
+            {score ? <small>{score}</small> : null}
+          </dd>
+        </div>
       ) : detail.status === 'ended' ? null : (
-        <span className="hero__foot-note">You’re in — no score yet</span>
+        <div className="home-banner__figure">
+          <dt>You</dt>
+          <dd>
+            In<small>no score yet</small>
+          </dd>
+        </div>
       )
     ) : null
 
@@ -489,80 +496,71 @@ function EventHero({
   const needsTag = open && !joined && !displayName
 
   return (
-    <section className="hero" aria-label="Event">
-      <div className="hero__bar">
-        <a className="hero__back" href={tournamentsHref()}>
-          <BackChevronIcon size={18} />
-          Events
-        </a>
-        <div className="hero__tools">
+    <PageBanner
+      ariaLabel="Event"
+      back={{ href: tournamentsHref(), label: 'Events' }}
+      tools={
+        <>
           <ShareBoardButton
             label={`You're invited: ${detail.title} on ${APP_NAME}. Don't ghost the lobby.`}
             url={shareUrl}
           />
           {copyInvite ? (
-            <button type="button" className="hero__tool" onClick={copyInvite}>
+            <button type="button" className="home-banner__tool" onClick={copyInvite}>
               {copiedInvite ? 'Copied!' : 'Copy invite'}
             </button>
           ) : null}
-        </div>
-      </div>
-
-      <div className="hero__main">
-        <EventArt games={detail.games} className="hero__art" />
-
-        <div className="hero__text">
-          <EventKicker t={detail} joined={joined} className="hero__kicker" />
-          <h1 className="hero__title">{detail.title}</h1>
-          <p className="hero__sub">{sub}</p>
-        </div>
-
-        <div
-          className={`hero__aside hero-stat${clock.live ? ' hero-stat--live' : ''}${
-            clock.winner ? ' hero-stat--winner' : ''
-          }`}
-        >
-          <span className="hero-stat__label">{clock.label}</span>
-          <span className="hero-stat__value">{clock.value}</span>
-        </div>
-
-        {action || wantsJoinGhost || needsTag || joinNote ? (
-          <div className="hero__actions">
+        </>
+      }
+      kicker={<EventKicker t={detail} joined={joined} bare />}
+      title={detail.title}
+      blurb={sub}
+      actions={
+        action || wantsJoinGhost || needsTag || joinNote ? (
+          <>
             {action?.kind === 'link' ? (
-              <a className="hero__cta" href={action.href}>
+              <a className="home-banner__cta" href={action.href}>
                 {action.label}
               </a>
             ) : action?.kind === 'join' ? (
               eventFull ? (
-                <span className="hero__state">This event is full</span>
+                <span className="home-banner__state">This event is full</span>
               ) : displayName ? (
-                <button type="button" className="hero__cta" disabled={busy} onClick={onJoin}>
+                <button type="button" className="home-banner__cta" disabled={busy} onClick={onJoin}>
                   {busy ? 'Joining…' : `Join as ${displayName}`}
                 </button>
               ) : null
             ) : action?.kind === 'text' ? (
-              <span className="hero__state">{action.label}</span>
+              <span className="home-banner__state">{action.label}</span>
             ) : null}
 
             {wantsJoinGhost ? (
-              <button type="button" className="hero__ghost" disabled={busy} onClick={onJoin}>
+              <button type="button" className="home-banner__ghost" disabled={busy} onClick={onJoin}>
                 {busy ? 'Joining…' : `Join as ${displayName}`}
               </button>
             ) : null}
 
             {action && action.kind !== 'join' && action.sub ? (
-              <span className="hero__hint">{action.sub}</span>
+              <span className="home-banner__hint">{action.sub}</span>
             ) : null}
             {needsTag ? (
-              <span className="hero__hint">Set your gamer tag in the header to join.</span>
+              <span className="home-banner__hint">Set your gamer tag in the header to join.</span>
             ) : null}
-            {joinNote ? <span className="hero__hint hero__hint--error">{joinNote}</span> : null}
+            {joinNote ? <span className="home-banner__hint home-banner__hint--error">{joinNote}</span> : null}
+          </>
+        ) : undefined
+      }
+      figures={
+        <dl className="home-banner__figures" aria-label="Where the event is up to">
+          <div className={`home-banner__figure${clock.live ? ' home-banner__figure--live' : ''}`}>
+            <dt>{clock.label}</dt>
+            <dd>{clock.value}</dd>
           </div>
-        ) : null}
-      </div>
-
-      {you ? <p className="hero__foot">{you}</p> : null}
-    </section>
+          {you}
+        </dl>
+      }
+      art={<EventArt games={detail.games} />}
+    />
   )
 }
 
@@ -958,62 +956,49 @@ export function TournamentsPage() {
   return (
     <PageShell innerClassName="lb-page__inner lb-page__inner--events">
       <div className="ev ev--list">
-        <section className="hero" aria-label="Events">
-          <div className="hero__main hero__main--bare">
-            {/*
-              * The star is the empty state — it means "no events exist". It was
-              * also what you saw for the first half second of every visit,
-              * because the list had not arrived yet and so had no games to draw
-              * from, which made an ordinary load look like an empty arcade.
-              * While it is loading the art frame just sits there quietly, in
-              * the same box the real cluster lands in.
-              */}
-            {heroGames.length > 0 || loading ? (
-              /*
-               * The frame takes the hero's colour. Left to itself it picks the
-               * accent of whichever game leads the set, so the Events hero sat
-               * in a lavender tile on a green band. The thumbs inside keep
-               * their own colours.
-               */
-              <EventArt
-                games={heroGames}
-                className="hero__art"
-                frameAccent="var(--hero-accent)"
-              />
-            ) : (
-              <span className="hero__mark hero__mark--empty" aria-hidden="true">
-                ★
-              </span>
-            )}
-            <div className="hero__text">
-              <p className="ev-kicker hero__kicker">
-                <span className="ev-kicker__bit">Events</span>
-                {!loading && !error && liveCount > 0 ? (
-                  <span className="ev-kicker__bit ev-kicker__status ev-kicker__status--live">
-                    <span className="ev-live-dot" aria-hidden="true" />
-                    {liveCount} live
-                  </span>
-                ) : null}
-                {!loading && !error && ended.length > 0 ? (
-                  <span className="ev-kicker__bit">
-                    {ended.length} {ended.length === 1 ? 'result' : 'results'}
-                  </span>
-                ) : null}
-              </p>
-              <h1 className="hero__title">Events</h1>
-              <p className="hero__sub">
-                Daily boards, weekly triples and brackets. Join one, post a score, and see where you land.
-              </p>
-              {account ? (
-                <div className="hero__actions hero__actions--inline">
-                  <a className="hero__cta" href={tournamentCreateHref()}>
-                    Create event
-                  </a>
-                </div>
+        <PageBanner
+          ariaLabel="Events"
+          kicker={
+            <>
+              <span className="ev-kicker__bit">Events</span>
+              {!loading && !error && liveCount > 0 ? (
+                <span className="ev-kicker__bit ev-kicker__status ev-kicker__status--live">
+                  <span className="ev-live-dot" aria-hidden="true" />
+                  {liveCount} live
+                </span>
               ) : null}
-            </div>
-          </div>
-        </section>
+              {!loading && !error && ended.length > 0 ? (
+                <span className="ev-kicker__bit">
+                  {ended.length} {ended.length === 1 ? 'result' : 'results'}
+                </span>
+              ) : null}
+            </>
+          }
+          title="Events"
+          blurb="Daily boards, weekly triples and brackets. Join one, post a score, and see where you land."
+          actions={
+            account ? (
+              <a className="home-banner__cta" href={tournamentCreateHref()}>
+                Create event
+              </a>
+            ) : undefined
+          }
+          art={
+            /*
+             * The star is the empty state — it means "no events exist". It was
+             * also what you saw for the first half second of every visit,
+             * because the list had not arrived yet and so had no games to draw
+             * from, which made an ordinary load look like an empty arcade.
+             * While it is loading the card just sits there quietly, and the
+             * cluster lands on it.
+             */
+            heroGames.length > 0 || loading ? (
+              <EventArt games={heroGames} />
+            ) : (
+              <span className="home-banner__glyph home-banner__glyph--faint">★</span>
+            )
+          }
+        />
 
         <PendingInvitesStrip kind="tournament" />
 
