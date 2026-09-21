@@ -1,6 +1,10 @@
 import type { GameState } from './game'
 import { BEAD_SPACING, boostFuelLeft, foodBonusLeft, isBoosting, visualSegments } from './game'
+import { playHeader } from '../playHeader'
 import { isDarkTheme, isFlatTheme, playfieldColor, softFillAlpha } from '../../lib/theme'
+
+/** How far the board panel is drawn outside the grid, on every side. */
+const PANEL_PAD = 10
 
 const HEAD_HUE = 158
 /** Degrees of hue each bead steps away from the head — wraps the rainbow as you grow. */
@@ -35,14 +39,14 @@ export function renderGame(
     }
   }
 
-  // The board gets what is left after both strips, not the whole canvas.
+  // The board gets what is left after both strips, not the whole canvas: the
+  // header is the room the score readout needs, the footer the room the level
+  // and tank need.
   //
-  // The score is a DOM element sitting over this canvas, so nothing here knows
-  // it is there; sizing the board to the full height and trusting it to miss is
-  // what put the two on top of each other on a wide screen. The header is the
-  // room the score needs, the footer the room the level and tank need, and the
-  // board is sized to what remains.
-  const header = Math.max(40, Math.min(w, h) * 0.09)
+  // The panel is drawn PANEL_PAD outside the grid on every side, so the header
+  // has to cover that too — clearing the grid alone still leaves the panel's
+  // top border reaching up into the score.
+  const header = playHeader(w) + PANEL_PAD
   const footer = Math.max(22, Math.min(w, h) * 0.07)
   const pad = Math.min(w, h) * 0.05
   const boardW = w - pad * 2
@@ -56,7 +60,7 @@ export function renderGame(
   // Board panel
   const radius = Math.max(12, cell * 0.55)
   const flat = isFlatTheme()
-  roundRect(ctx, ox - 10, oy - 10, gridW + 20, gridH + 20, radius)
+  roundRect(ctx, ox - PANEL_PAD, oy - PANEL_PAD, gridW + PANEL_PAD * 2, gridH + PANEL_PAD * 2, radius)
   ctx.fillStyle = dark ? 'rgba(8, 14, 20, 0.55)' : 'rgba(255, 255, 255, 0.55)'
   ctx.fill()
   if (!flat) {
@@ -81,7 +85,7 @@ export function renderGame(
   // reach past the board — the admin jump lays out a body longer than the board
   // is tall — and without this the beads are drawn up over the score.
   ctx.save()
-  roundRect(ctx, ox - 10, oy - 10, gridW + 20, gridH + 20, radius)
+  roundRect(ctx, ox - PANEL_PAD, oy - PANEL_PAD, gridW + PANEL_PAD * 2, gridH + PANEL_PAD * 2, radius)
   ctx.clip()
 
   // Barriers — read as built into the board, not dropped onto it, so the eye
@@ -271,7 +275,7 @@ export function renderGame(
   // margins so the row reads as one strip rather than two stray marks. The HUD
   // above the board stays the score alone.
   {
-    const panelBottom = oy + gridH + 10
+    const panelBottom = oy + gridH + PANEL_PAD
     const midY = panelBottom + (h - panelBottom) / 2
     const muted = dark ? 'rgba(231, 238, 243, 0.55)' : 'rgba(26, 43, 60, 0.5)'
     const label = Math.max(11, Math.min(footer * 0.52, cell * 0.42))

@@ -1,3 +1,4 @@
+import { playHeader } from '../playHeader'
 import { isDarkTheme, isFlatTheme, playfieldColor, softFillAlpha } from '../../lib/theme'
 import { streakMult, type GameState, type Ghost, type GhostKind } from './game'
 
@@ -71,7 +72,9 @@ function roundRect(
 
 export function computeLayout(w: number, h: number, cols: number, rows: number) {
   const padX = Math.max(6, Math.min(20, w * 0.012))
-  const hud = Math.max(40, Math.min(64, h * 0.075))
+  // Shared with every other stage. The number this worked out for itself was
+  // short of where the streak line actually sits, so the maze ran under it.
+  const hud = playHeader(w, { center: true })
   const padBottom = Math.max(8, Math.min(28, h * 0.02))
   const availW = w - padX * 2
   const availH = h - hud - padBottom

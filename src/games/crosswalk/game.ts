@@ -1,4 +1,5 @@
 import { getPersonalBest } from '../../lib/personalBest'
+import { playHeader } from '../playHeader'
 import { sfx } from '../../lib/sound'
 
 export type Dir = 'up' | 'down' | 'left' | 'right'
@@ -271,7 +272,7 @@ export function difficultyAt(row: number): number {
  * while hop pixels stayed the same.)
  */
 export function cellMetrics(viewWidth: number, viewHeight: number, cols = COLS) {
-  const hudTop = Math.max(52, Math.min(76, viewHeight * 0.11))
+  const hudTop = playHeader(viewWidth, { center: true })
   const padBottom = Math.max(14, viewHeight * 0.02)
   const availH = viewHeight - hudTop - padBottom
   const cell = Math.max(1, viewWidth / cols)
@@ -283,7 +284,7 @@ export function cellMetrics(viewWidth: number, viewHeight: number, cols = COLS) 
  * wider screens pick up columns so hops stay short without opening a runway.
  */
 export function pickCols(viewWidth: number, viewHeight: number): number {
-  const hudTop = Math.max(52, Math.min(76, viewHeight * 0.11))
+  const hudTop = playHeader(viewWidth, { center: true })
   const padBottom = Math.max(14, viewHeight * 0.02)
   const availH = viewHeight - hudTop - padBottom
   const cellTarget = availH / TARGET_VISIBLE_ROWS
