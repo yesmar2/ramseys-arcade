@@ -3446,7 +3446,13 @@ a.game-hud__board {
   top: auto;
   right: auto;
   z-index: 51;
-  width: min(22rem, calc(100% - 2.5rem));
+  /*
+   * Wide enough for two columns of rules. At 22rem the value column came to
+   * about 170px and nearly every line in it wrapped three deep; a phone is
+   * still held to the screen it has, so this only spends room where there is
+   * room to spend.
+   */
+  width: min(27rem, calc(100% - 2.5rem));
   max-height: calc(100dvh - 2rem);
   display: flex;
   flex-direction: column;
@@ -3506,11 +3512,18 @@ a.game-hud__board {
 }
 
 .patriot__info-list li {
-  display: flex;
-  justify-content: space-between;
-  /* Wrap the value under the label when the pair will not fit on one line. */
-  flex-wrap: wrap;
-  gap: 0.15rem 0.75rem;
+  /*
+   * Two columns, not a row pushed apart.
+   *
+   * Pushed apart with space-between, a value short enough to share the line sat
+   * hard right, one too long wrapped underneath and sat left, and a rule whose
+   * label ran long put it somewhere between the two — so no two values in the
+   * list began in the same place and each one had to be hunted for. A column
+   * holds them all in line and lets the long ones wrap inside it.
+   */
+  display: grid;
+  grid-template-columns: minmax(5.5rem, 0.85fr) minmax(0, 1.15fr);
+  gap: 0.15rem 0.85rem;
   align-items: baseline;
   padding: 0.45rem 0.55rem;
   border-radius: 0.65rem;
@@ -3519,7 +3532,6 @@ a.game-hud__board {
 }
 
 .patriot__info-list span {
-  flex: 1 1 8rem;
   min-width: 0;
   font-size: 0.85rem;
   font-weight: 600;
@@ -3532,7 +3544,15 @@ a.game-hud__board {
   font-size: 1rem;
   font-weight: 700;
   color: var(--ink);
-  text-align: right;
+  /* Left, with the column. Ragged right was what made the list hard to scan. */
+  text-align: left;
+}
+
+/* Too narrow for two columns: label over value, still all starting in line. */
+@media (max-width: 400px) {
+  .patriot__info-list li {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 .patriot__overlay {
