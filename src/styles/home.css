@@ -1017,12 +1017,12 @@ html[data-theme="dark"] .wall-tile__flag--daily {
  * or tools gets a bar across the top of both columns.
  */
 
-/* A page with nothing of its own is washed in the site's colour. */
-.home-banner {
-  --hero-accent: var(--accent);
-}
-
-.ev .home-banner {
+/*
+ * A page with nothing of its own is washed in its section's colour, else the
+ * site's. Only PageBanner takes this default: the home and hub banners are
+ * given theirs by a wrapper and must go on inheriting it.
+ */
+.page-banner {
   --hero-accent: var(--event-accent, var(--accent));
 }
 
