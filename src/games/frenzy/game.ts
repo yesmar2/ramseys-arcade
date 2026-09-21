@@ -4,10 +4,11 @@ import { sfx } from '../../lib/sound'
 /*
  * Frenzy: a scrolling ocean, camera locked to your fish. Every fish carries
  * its level. Eat anything at your level or below — that's the whole rule —
- * and the closer to your own level it was, the more it grows you. Anything
- * above your level eats you, and mines don't care about your level at all.
- * Steering is direct: point a direction, the fish turns and swims, no drift
- * to fight.
+ * and the fish's own number is what it's worth: a 1 is always a nibble, a
+ * big number is always a real meal, whatever level you happen to be.
+ * Anything above your level eats you, and mines don't care about your level
+ * at all. Steering is direct: point a direction, the fish turns and swims,
+ * no drift to fight.
  */
 
 export type Phase = 'menu' | 'playing' | 'gameover'
@@ -22,6 +23,8 @@ export type Fish = {
   wander: number
   hueJitter: number
   aggressive: boolean
+  /** Seconds spent actively hunting the player — a chase tires a fish out. */
+  huntTime: number
 }
 
 /** A mine — an obstacle, not a fish. No level, no fleeing: touch it and the run ends. */
@@ -159,6 +162,7 @@ function makeFish(x: number, y: number, level: number, opts?: Partial<Fish>): Fi
     wander: ang,
     hueJitter: (Math.random() - 0.5) * 16,
     aggressive: false,
+    huntTime: 0,
     ...opts,
   }
 }
@@ -374,10 +378,14 @@ function aiDesire(
   }
   if (huntingAllowed && playerIsThreat && f.aggressive && d < r * 11 + 190) {
     const angle = Math.atan2(player.y - f.y, player.x - f.x)
-    // A real lunge — an aggressive hunter should be a genuine threat, not
-    // something you can just idly out-swim.
-    return { angle, speedFrac: 1.3 }
+    // A real lunge at first — an aggressive hunter should be a genuine
+    // threat — but it tires: run for a few seconds and it drops below your
+    // own speed, so a chase is always survivable if you react and commit.
+    f.huntTime += dt
+    const speedFrac = Math.max(0.82, 1.22 - f.huntTime * 0.075)
+    return { angle, speedFrac }
   }
+  f.huntTime = Math.max(0, f.huntTime - dt * 2)
   return wanderDesire(f, dt)
 }
 
@@ -446,9 +454,12 @@ export function tick(state: GameState, dt: number): GameState {
       if (s.player.level >= f.level) {
         const points = f.level * 10
         const weight = catchCloseness(s.player.level, f.level)
-        // A big, near-level catch grows you up to 3 levels at once; small
-        // fry is still worth eating, just barely worth a level.
-        const growth = 1 + Math.round(weight * 2)
+        // Growth tracks the fish's own number, not yours — a "1" is always
+        // a nibble and a "30" is always a real meal, whatever level you're
+        // at. (A flat +1 regardless of size read as broken: eating a fish
+        // labeled 1 could jump you several levels just because you were
+        // also low-level yourself.)
+        const growth = Math.max(1, Math.round(Math.log2(f.level + 1)))
         s.score += points
         s.player.level += growth
         spawnBurst(s, f.x, f.y, 172, 10 + Math.round(weight * 10))
@@ -458,7 +469,7 @@ export function tick(state: GameState, dt: number): GameState {
           text: `+${points}`,
           sub: `Level +${growth}`,
           life: 1,
-          maxLife: 1.1,
+          maxLife: 1.6,
           weight,
         })
         ate = true

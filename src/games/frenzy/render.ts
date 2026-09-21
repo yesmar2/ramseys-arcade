@@ -336,29 +336,31 @@ export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, w: n
 
   for (const f of state.floaters) {
     const sp = worldToScreen(state, f.x, f.y)
-    const alpha = Math.max(0, f.life)
+    // Hold at full opacity, then fade in the back half — a linear fade from
+    // the start reads as "barely there" the whole time.
+    const alpha = f.life > 0.5 ? 1 : Math.max(0, f.life * 2)
     const age = 1 - f.life
-    const pop = age < 0.15 ? 1 + (0.15 - age) * 2.4 : 1
-    const size = (15 + f.weight * 15) * Math.max(0.75, state.scale) * pop
+    const pop = age < 0.18 ? 1 + (0.18 - age) * 3 : 1
+    const size = (24 + f.weight * 20) * Math.max(0.85, state.scale) * pop
     ctx.save()
     ctx.globalAlpha = alpha
     ctx.font = `800 ${size}px var(--font-body, sans-serif)`
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
-    ctx.lineWidth = Math.max(2.5, size * 0.16)
-    ctx.strokeStyle = 'rgba(0, 0, 0, 0.55)'
+    ctx.lineWidth = Math.max(3, size * 0.17)
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.65)'
     ctx.strokeText(f.text, sp.x, sp.y)
     ctx.fillStyle = f.weight > 0.55 ? '#ffd166' : '#ffffff'
     ctx.fillText(f.text, sp.x, sp.y)
 
     if (f.sub) {
-      const subSize = size * 0.52
-      const subY = sp.y + size * 0.72
-      ctx.font = `700 ${subSize}px var(--font-body, sans-serif)`
-      ctx.lineWidth = Math.max(2, subSize * 0.18)
-      ctx.strokeStyle = 'rgba(0, 0, 0, 0.55)'
+      const subSize = size * 0.72
+      const subY = sp.y + size * 0.78
+      ctx.font = `800 ${subSize}px var(--font-body, sans-serif)`
+      ctx.lineWidth = Math.max(2.5, subSize * 0.2)
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.65)'
       ctx.strokeText(f.sub, sp.x, subY)
-      ctx.fillStyle = f.weight > 0.55 ? '#ffe1a3' : '#dfe9f2'
+      ctx.fillStyle = '#5eeaa0'
       ctx.fillText(f.sub, sp.x, subY)
     }
     ctx.restore()
