@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react'
+import { haptic } from '../../lib/haptics'
 import { GamePlayChrome, PlayReadout, PlayReadoutScore } from '../../components/GameHud'
 import { GameStage } from '../../components/GameStage'
 import { GameStartCard } from '../../components/GameStartCard'
@@ -381,6 +382,9 @@ export function AsteroidsGame() {
       } catch {
         /* ignore */
       }
+      // Every pad, one place: an on-screen control gives the eye
+      // feedback and the hand none, which is the gap this closes.
+      haptic(key === 'thrust' ? 'boost' : 'turn')
       press(key, `pad:${e.pointerId}`)
     },
     onPointerUp: (e: ReactPointerEvent<HTMLButtonElement>) => {

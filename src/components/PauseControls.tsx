@@ -9,6 +9,7 @@ import { gameHasRecords } from '../lib/records'
 import { useTournamentPlay } from '../tournaments/TournamentPlayContext'
 import { ScoreGuide } from './ScoreGuide'
 import { SoundPackSelect } from './SoundPackSelect'
+import { HapticsToggle } from './HapticsToggle'
 import { SoundToggle } from './SoundToggle'
 
 function isBoardGame(slug: string): slug is LeaderboardGame {
@@ -141,6 +142,8 @@ export function GamePanelBody({
         <div className="game-sound-row">
           <SoundToggle className="game-sound--bare" />
           <SoundPackSelect />
+          {/* Renders nothing where there is no motor to buzz. */}
+          <HapticsToggle />
         </div>
         {game?.how ? <ScoreGuide how={game.how} rows={scoring} /> : null}
         {board ? (

@@ -15,6 +15,7 @@ import { TournamentScoreCard } from '../../components/TournamentScoreCard'
 import { useGamePause } from '../../hooks/useGamePause'
 import { usePersonalBest } from '../../hooks/usePersonalBest'
 import { usePlayerName } from '../../hooks/usePlayerName'
+import { haptic } from '../../lib/haptics'
 import { getPersonalBest } from '../../lib/personalBest'
 import { normalizePlayerName } from '../../lib/leaderboard'
 import {
@@ -219,7 +220,11 @@ export function SnakeGame() {
       return
     }
     if (s.phase !== 'playing') return
-    stateRef.current = queueDir(s, dir)
+    const next = queueDir(s, dir)
+    // Only when the turn was taken. A reversal the engine refuses must not
+    // buzz, or the hand is told something happened that did not.
+    if (next !== s) haptic('turn')
+    stateRef.current = next
   }
 
   const steer = (side: 'left' | 'right') => {
@@ -232,12 +237,16 @@ export function SnakeGame() {
       return
     }
     if (s.phase !== 'playing') return
-    stateRef.current = queueTurn(s, side)
+    const next = queueTurn(s, side)
+    if (next !== s) haptic('turn')
+    stateRef.current = next
   }
 
   const holdBoost = (held: boolean) => {
     if (held && (saveOpen || pausedRef.current)) return
-    stateRef.current = setBoost(stateRef.current, held)
+    const next = setBoost(stateRef.current, held)
+    if (held && next !== stateRef.current) haptic('boost')
+    stateRef.current = next
   }
 
   const releaseBoost = () => holdBoost(false)

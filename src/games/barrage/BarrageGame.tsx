@@ -6,6 +6,7 @@ import {
   type PointerEvent as ReactPointerEvent,
 } from 'react'
 import '../../styles/barrage.css'
+import { haptic } from '../../lib/haptics'
 import {
   GamePlayChrome,
   PlayReadout,
@@ -272,6 +273,9 @@ export function BarrageGame() {
       } catch {
         /* capture is a nicety; the pad still works without it */
       }
+      // Every pad, one place: an on-screen control gives the eye
+      // feedback and the hand none, which is the gap this closes.
+      haptic(key === 'fire' ? 'hit' : 'turn')
       press(key, `pad:${e.pointerId}`)
     },
     onPointerUp: (e: ReactPointerEvent<HTMLButtonElement>) => release(key, `pad:${e.pointerId}`),

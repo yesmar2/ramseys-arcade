@@ -1,4 +1,5 @@
 import { getPersonalBest } from '../../lib/personalBest'
+import { haptic } from '../../lib/haptics'
 import { sfx } from '../../lib/sound'
 import {
   assertLevelsAreOpen,
@@ -525,6 +526,7 @@ function die(state: GameState): GameState {
   const best = Math.max(state.best, state.score)
   saveBest(best)
   sfx('die')
+  haptic('crash')
   return {
     ...state,
     phase: 'gameover',
