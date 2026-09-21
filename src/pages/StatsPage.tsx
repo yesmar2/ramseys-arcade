@@ -1,14 +1,20 @@
 import { useEffect, useState, type CSSProperties } from 'react'
+import { BoardSkeleton, PeriodSwitcher } from '../components/BoardChrome'
+import { GameThumbArt } from '../components/GameThumbArt'
+import { PageBanner } from '../components/PageBanner'
 import { PageShell } from '../components/PageShell'
-import { PageBackLink } from '../components/PageBackLink'
-import { PeriodSwitcher } from '../components/BoardChrome'
-import { setDefaultPeriod, useDefaultPeriod } from '../lib/defaultPeriod'
-import type { LeaderboardPeriod } from '../lib/leaderboard'
+import { PlayerAvatar } from '../components/PlayerAvatar'
 import { getGame } from '../data/games'
 import { gameHubHref, plusHref, rankHref, recordHref } from '../hooks/useHashRoute'
 import { useAuth } from '../hooks/useAuth'
-import { resolveGameAccent } from '../lib/theme'
+import { usePlayerName } from '../hooks/usePlayerName'
+import { AVATARS_ENABLED, avatarWashColor, getLocalAvatarId, resolveAvatar } from '../lib/avatars'
+import { setDefaultPeriod, useDefaultPeriod } from '../lib/defaultPeriod'
+import { useGlobalRank } from '../lib/globalRank'
+import { normalizePlayerName, PERIOD_LABELS, type LeaderboardPeriod } from '../lib/leaderboard'
+import { formatLeaderboardScore } from '../lib/leaderboardFormat'
 import { PLUS_PRICE } from '../lib/plans'
+import { resolveGameAccent } from '../lib/theme'
 import {
   dateToDayKey,
   dayKeyToDate,
@@ -19,14 +25,7 @@ import {
   type StatsResponse,
 } from '../lib/stats'
 
-function Tile({ value, label }: { value: string; label: string }) {
-  return (
-    <div className="st-tile">
-      <strong className="st-tile__value">{value}</strong>
-      <span className="st-tile__label">{label}</span>
-    </div>
-  )
-}
+const CALENDAR_DAYS = 84
 
 /**
  * Best-per-day as a sparkline.
@@ -67,28 +66,42 @@ function Trend({ points, accent }: { points: { at: number; score: number }[]; ac
   )
 }
 
-function GameRow({ stat }: { stat: GameStat }) {
+/** "today", "yesterday", "5 days ago", then a date. */
+function whenPlayed(at: number): string {
+  const days = Math.floor((Date.now() - at) / 86_400_000)
+  if (days <= 0) return 'today'
+  if (days === 1) return 'yesterday'
+  if (days < 14) return `${days} days ago`
+  return new Date(at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+}
+
+function GameRow({ stat, period }: { stat: GameStat; period: LeaderboardPeriod }) {
   const game = getGame(stat.slug)
   const accent = resolveGameAccent(stat.slug, game?.accent ?? 'var(--accent)')
+  const podium = stat.rank != null && stat.rank <= 3
   return (
     <li className="st-game" style={{ '--st-accent': accent } as CSSProperties}>
-      <a className="st-game__main" href={gameHubHref(stat.slug, 'all')}>
-        <span className="st-game__name">{game?.name ?? stat.slug}</span>
-        <span className="st-game__meta">
-          {stat.runs} run{stat.runs === 1 ? '' : 's'} · best {stat.best.toLocaleString()} ·
-          avg {stat.average.toLocaleString()}
+      <a className="st-game__link" href={gameHubHref(stat.slug, period)}>
+        <GameThumbArt slug={stat.slug} accent={accent} />
+        <span className="st-game__text">
+          <span className="st-game__name">{game?.name ?? stat.slug}</span>
+          <span className="st-game__meta">
+            {stat.runs} {stat.runs === 1 ? 'run' : 'runs'} · best{' '}
+            {formatLeaderboardScore(stat.slug, stat.best)} · avg{' '}
+            {formatLeaderboardScore(stat.slug, stat.average)} · {whenPlayed(stat.lastPlayedAt)}
+          </span>
+        </span>
+        <Trend points={stat.trend} accent={accent} />
+        <span className="st-game__figures">
+          <span className={`st-game__rank${podium ? ' st-game__rank--podium' : ''}`}>
+            {stat.rank != null ? `#${stat.rank}` : '—'}
+            <small> of {stat.totalPlayers.toLocaleString()}</small>
+          </span>
+          <span className="st-game__pct" title="Share of every run on this board your best beats">
+            Beats {stat.percentile}%
+          </span>
         </span>
       </a>
-      <Trend points={stat.trend} accent={accent} />
-      <span className="st-game__figures">
-        <span className="st-game__rank">
-          {stat.rank != null ? `#${stat.rank}` : '—'}
-          <span className="st-game__of">of {stat.totalPlayers}</span>
-        </span>
-        <span className="st-game__pct" title="Share of every run on this board your best beats">
-          {stat.percentile}%
-        </span>
-      </span>
     </li>
   )
 }
@@ -109,10 +122,10 @@ function NearRow({ rec }: { rec: NearRecord }) {
         </span>
         <span className="st-near__nums">
           <span>
-            You {formatRecordValue(rec.yourBest, rec.unit)}
+            You <b>{formatRecordValue(rec.yourBest, rec.unit)}</b>
           </span>
           <span className="st-near__need">
-            {verb} {formatRecordValue(rec.leader, rec.unit)} to take it from {rec.leaderName}
+            {verb} <b>{formatRecordValue(rec.leader, rec.unit)}</b> to take it from {rec.leaderName}
           </span>
         </span>
       </a>
@@ -120,12 +133,12 @@ function NearRow({ rec }: { rec: NearRecord }) {
   )
 }
 
-/** The last 12 weeks, so a streak has somewhere to show. */
+/** The last 12 weeks, one column per week, so a streak has somewhere to show. */
 function Calendar({ days }: { days: number[] }) {
   const have = new Set(days)
   const today = new Date()
   const cells: { key: number; on: boolean }[] = []
-  for (let i = 83; i >= 0; i--) {
+  for (let i = CALENDAR_DAYS - 1; i >= 0; i--) {
     const d = new Date(today)
     d.setDate(d.getDate() - i)
     const key = dateToDayKey(d)
@@ -147,38 +160,6 @@ function Calendar({ days }: { days: number[] }) {
   )
 }
 
-/**
- * The page's own shape, greyed out.
- *
- * Stats arrive in one request that has to read every board the player is on,
- * so the wait is real. A word saying "Loading" left the page empty for it;
- * this holds the layout so nothing jumps when the numbers land.
- */
-function StatsSkeleton() {
-  return (
-    <div className="st-skel" aria-hidden="true">
-      <section className="st-tiles">
-        {Array.from({ length: 4 }, (_, i) => (
-          <div key={i} className="st-tile st-skel__tile">
-            <span className="st-skel__bar st-skel__bar--value" />
-            <span className="st-skel__bar st-skel__bar--label" />
-          </div>
-        ))}
-      </section>
-      {Array.from({ length: 3 }, (_, i) => (
-        <section key={i} className="st-block">
-          <span className="st-skel__bar st-skel__bar--title" />
-          <div className="st-skel__rows">
-            {Array.from({ length: 3 }, (_, r) => (
-              <span key={r} className="st-skel__row" />
-            ))}
-          </div>
-        </section>
-      ))}
-    </div>
-  )
-}
-
 function Locked({ what }: { what: string }) {
   return (
     <div className="st-locked">
@@ -190,6 +171,11 @@ function Locked({ what }: { what: string }) {
   )
 }
 
+function sinceWord(at: number | null): string {
+  if (!at) return ''
+  return ` since ${new Date(at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}`
+}
+
 /**
  * Your own numbers, over time.
  *
@@ -197,10 +183,17 @@ function Locked({ what }: { what: string }) {
  * show: how you got here, how you compare to every run ever posted, and which
  * record is within reach. Free sees the headline, which is what makes the rest
  * worth having.
+ *
+ * Laid out like the rest of the site: your banner with the four totals as
+ * its figures, the period under it, then the boards' split — the games you
+ * have played in the main column, when you play and the records within
+ * reach in the rail.
  */
 export function StatsPage() {
   const { signedIn, loading: authLoading } = useAuth()
   const period = useDefaultPeriod()
+  const name = normalizePlayerName(usePlayerName())
+  const { avatarId: rankAvatarId } = useGlobalRank()
   // The page reads the app-wide timeframe, and setting it here sets it there:
   // the numbers below are the same boards, cut the same way.
   const selectPeriod = (next: LeaderboardPeriod) => setDefaultPeriod(next)
@@ -227,91 +220,154 @@ export function StatsPage() {
     }
   }, [signedIn, period])
 
-  const stats = data?.stats
+  const isSignedIn = signedIn
+  const busy = authLoading || loading
+  const stats = data?.stats ?? null
   const locked = Boolean(data?.locked)
+  const runs = stats?.headline.runs ?? 0
+  const avatar =
+    AVATARS_ENABLED && name ? resolveAvatar(getLocalAvatarId(name) ?? rankAvatarId, name) : null
+  const accent = avatar ? avatarWashColor(avatar) : undefined
+  const blurb = !isSignedIn
+    ? 'Sign in to see how you got here: your streaks, your trends, and the records within reach.'
+    : stats && runs > 0
+      ? `${runs.toLocaleString()} ${runs === 1 ? 'run' : 'runs'} across ${stats.headline.games} ${
+          stats.headline.games === 1 ? 'game' : 'games'
+        }${sinceWord(stats.headline.firstPlayedAt)}.`
+      : 'Play a game and your numbers will start showing up here.'
 
   return (
-    <PageShell innerClassName="lb-page__inner">
-      <header className="lb-page__header lb-page__header--compact">
-        <div className="lb-page__heading-row">
-          <PageBackLink href={rankHref()} label="Back to profile" />
-          <h1 className="lb-page__title">Your stats</h1>
-          <span className="lb-page__heading-slot" aria-hidden="true" />
-        </div>
-        <div className="st-period">
-          <PeriodSwitcher period={period} onSelect={selectPeriod} />
-        </div>
-      </header>
-
-      {authLoading || loading ? (
-        <StatsSkeleton />
-      ) : !signedIn ? (
-        <p className="st-note">Sign in to see your stats.</p>
-      ) : !stats || stats.headline.runs === 0 ? (
-        <p className="st-note">
-          Play a game and your numbers will start showing up here.
-        </p>
-      ) : (
-        <>
-          <section className="st-tiles" aria-label="Totals">
-            <Tile value={stats.headline.runs.toLocaleString()} label="Runs" />
-            <Tile value={String(stats.streak.current)} label="Day streak" />
-            <Tile value={String(stats.streak.best)} label="Best streak" />
-            <Tile value={String(stats.headline.games)} label="Games played" />
-          </section>
-
-          <section className="st-block" aria-labelledby="st-cal-title">
-            <h2 className="st-block__title" id="st-cal-title">
-              When you play
-            </h2>
-            {locked ? (
-              <Locked what="See every day you have played, and the streaks behind them." />
+    <PageShell innerClassName="lb-page__inner lb-page__inner--events">
+      <div className="ev st">
+        <PageBanner
+          accent={accent}
+          ariaLabel="Your stats"
+          back={{ href: rankHref(), label: 'Profile' }}
+          kicker={
+            <>
+              <span className="ev-kicker__bit">Your stats</span>
+              <span className="ev-kicker__bit">{PERIOD_LABELS[period]}</span>
+            </>
+          }
+          title={name || 'Your stats'}
+          blurb={blurb}
+          figures={
+            stats && runs > 0 ? (
+              <dl className="home-banner__figures" aria-label="Totals">
+                <div className="home-banner__figure">
+                  <dt>Runs</dt>
+                  <dd>{runs.toLocaleString()}</dd>
+                </div>
+                <div className="home-banner__figure">
+                  <dt>Day streak</dt>
+                  <dd>{stats.streak.current}</dd>
+                </div>
+                <div className="home-banner__figure">
+                  <dt>Best streak</dt>
+                  <dd>{stats.streak.best}</dd>
+                </div>
+                <div className="home-banner__figure">
+                  <dt>Games played</dt>
+                  <dd>{stats.headline.games}</dd>
+                </div>
+              </dl>
+            ) : undefined
+          }
+          art={
+            avatar ? (
+              <PlayerAvatar avatar={avatar} name={name} size="xl" />
             ) : (
-              <Calendar days={stats.streak.days} />
-            )}
-          </section>
+              <span className="home-banner__glyph home-banner__glyph--faint">?</span>
+            )
+          }
+        />
 
-          <section className="st-block" aria-labelledby="st-near-title">
-            <h2 className="st-block__title" id="st-near-title">
-              Closest records
-            </h2>
-            <p className="st-block__blurb">
-              Boards you are on but not top of, nearest first.
-            </p>
-            {locked ? (
-              <Locked what="See which records you are closest to taking, and by how much." />
-            ) : stats.nearRecords.length === 0 ? (
-              <p className="st-note">
-                Post a record score and the ones within reach will show up here.
-              </p>
-            ) : (
-              <ul className="st-nears">
-                {stats.nearRecords.map((rec) => (
-                  <NearRow key={`${rec.game}-${rec.recordId}`} rec={rec} />
-                ))}
-              </ul>
-            )}
-          </section>
+        {isSignedIn ? (
+          <div className="st__controls">
+            <PeriodSwitcher period={period} onSelect={selectPeriod} />
+          </div>
+        ) : null}
 
-          <section className="st-block" aria-labelledby="st-games-title">
-            <h2 className="st-block__title" id="st-games-title">
-              By game
-            </h2>
-            <p className="st-block__blurb">
-              Where your best sits, and how it has moved.
-            </p>
-            {locked ? (
-              <Locked what="See your rank, your percentile and your trend on every game." />
-            ) : (
-              <ul className="st-games">
-                {stats.games.map((stat) => (
-                  <GameRow key={stat.slug} stat={stat} />
-                ))}
-              </ul>
-            )}
-          </section>
-        </>
-      )}
+        {busy ? (
+          <BoardSkeleton rows={5} />
+        ) : !isSignedIn ? null : !stats || runs === 0 ? null : (
+          <div className="split">
+            <aside className="split__side" aria-label="When you play, and the records within reach">
+              <section className="ev-card" aria-labelledby="st-cal-title">
+                <div className="ev-card__head">
+                  <h2 className="ev-card__title" id="st-cal-title">
+                    When you play
+                  </h2>
+                  <p className="ev-card__note">
+                    {stats.streak.days.length} of the last {CALENDAR_DAYS} days
+                  </p>
+                </div>
+                <div className="ev-card__body">
+                  {locked ? (
+                    <Locked what="See every day you have played, and the streaks behind them." />
+                  ) : (
+                    <>
+                      <Calendar days={stats.streak.days} />
+                      <p className="st-cal__legend">
+                        <b>{stats.streak.current}</b>-day streak · best <b>{stats.streak.best}</b>
+                      </p>
+                    </>
+                  )}
+                </div>
+              </section>
+
+              <section className="ev-card" aria-labelledby="st-near-title">
+                <div className="ev-card__head">
+                  <h2 className="ev-card__title" id="st-near-title">
+                    Closest records
+                  </h2>
+                  <p className="ev-card__note">Nearest first</p>
+                </div>
+                <div className="ev-card__body">
+                  {locked ? (
+                    <Locked what="See which records you are closest to taking, and by how much." />
+                  ) : stats.nearRecords.length === 0 ? (
+                    <p className="st-note">
+                      Post a record score and the ones within reach will show up here.
+                    </p>
+                  ) : (
+                    <ul className="st-nears">
+                      {stats.nearRecords.map((rec) => (
+                        <NearRow key={`${rec.game}-${rec.recordId}`} rec={rec} />
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </section>
+            </aside>
+
+            <div className="split__main">
+              <section className="lst-block" aria-labelledby="st-games-title">
+                <div className="lst-block__head">
+                  <h2 className="lst-block__title" id="st-games-title">
+                    By game
+                  </h2>
+                  <p className="lst-block__note">
+                    {stats.games.length} {stats.games.length === 1 ? 'game' : 'games'} · where your
+                    best sits, and how it has moved
+                  </p>
+                </div>
+                {locked ? (
+                  <div className="st-games">
+                    <Locked what="See your rank, your percentile and your trend on every game." />
+                  </div>
+                ) : (
+                  <ul className="st-games">
+                    {stats.games.map((stat) => (
+                      <GameRow key={stat.slug} stat={stat} period={period} />
+                    ))}
+                  </ul>
+                )}
+              </section>
+            </div>
+          </div>
+        )}
+      </div>
     </PageShell>
   )
 }
