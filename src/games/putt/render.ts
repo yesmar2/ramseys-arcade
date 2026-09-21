@@ -57,6 +57,19 @@ function groundColor(alpha: number) {
   return `rgb(${mix(base.r, g.r)}, ${mix(base.g, g.g)}, ${mix(base.b, g.b)})`
 }
 
+/** The playfield mixed toward black by `k`, opaque, for a shadow that overlapping shapes paint once. */
+function shadeColor(k: number) {
+  const base = playfieldRgb()
+  const mix = (a: number) => Math.round(a * (1 - k))
+  return `rgb(${mix(base.r)}, ${mix(base.g)}, ${mix(base.b)})`
+}
+
+/** A stable speckle, 0 to 1, for a grid point: sand grains that stay put from frame to frame. */
+function speckle(i: number, j: number) {
+  const n = Math.sin(i * 127.1 + j * 311.7) * 43758.5453
+  return n - Math.floor(n)
+}
+
 /** The playfield colour at an alpha, for panels that sit over the field. */
 function paper(alpha: number) {
   const hex = playfieldColor().replace('#', '')
@@ -218,9 +231,10 @@ function traceShape(
   P: (x: number, y: number) => Vec,
   s: number,
   rotated: boolean,
+  fresh = true,
 ) {
   const rot = rotated ? Math.PI / 2 : 0
-  ctx.beginPath()
+  if (fresh) ctx.beginPath()
   switch (sh.kind) {
     case 'rect': {
       const a = P(sh.x, sh.y)
@@ -236,6 +250,7 @@ function traceShape(
     }
     case 'disc': {
       const c = P(sh.x, sh.y)
+      ctx.moveTo(c.x + sh.r * s, c.y)
       ctx.arc(c.x, c.y, sh.r * s, 0, Math.PI * 2)
       break
     }
@@ -244,6 +259,7 @@ function traceShape(
       const b = P(sh.b.x, sh.b.y)
       const th = Math.atan2(b.y - a.y, b.x - a.x)
       const r = sh.r * s
+      ctx.moveTo(a.x + Math.cos(th + Math.PI / 2) * r, a.y + Math.sin(th + Math.PI / 2) * r)
       ctx.arc(a.x, a.y, r, th + Math.PI / 2, th + Math.PI * 1.5)
       ctx.arc(b.x, b.y, r, th - Math.PI / 2, th + Math.PI / 2)
       ctx.closePath()
@@ -251,7 +267,9 @@ function traceShape(
     }
     case 'arc': {
       const c = P(sh.x, sh.y)
-      ctx.arc(c.x, c.y, (sh.R + sh.r) * s, sh.a0 + rot, sh.a1 + rot)
+      const Ro = (sh.R + sh.r) * s
+      ctx.moveTo(c.x + Math.cos(sh.a0 + rot) * Ro, c.y + Math.sin(sh.a0 + rot) * Ro)
+      ctx.arc(c.x, c.y, Ro, sh.a0 + rot, sh.a1 + rot)
       ctx.arc(c.x, c.y, Math.max(0, sh.R - sh.r) * s, sh.a1 + rot, sh.a0 + rot, true)
       ctx.closePath()
       break
@@ -403,11 +421,44 @@ export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, w: n
   ctx.roundRect(f.x, f.y, f.w, f.h, s * 3)
   ctx.clip()
   const shape = (sh: Shape) => traceShape(ctx, sh, P, s, f.rotated)
+  /** One path through every ground shape, for a clip that is their union. */
+  const groundPath = () => {
+    ctx.beginPath()
+    for (const sh of hole.green) traceShape(ctx, sh, P, s, f.rotated, false)
+  }
+  // A shadow under the ground, so it sits above the field.
+  ctx.save()
+  ctx.translate(0, Math.max(2, s * 1.1))
+  ctx.fillStyle = shadeColor(flat ? 0.18 : 0.42)
+  for (const sh of hole.green) {
+    shape(sh)
+    ctx.fill()
+  }
+  ctx.restore()
   ctx.fillStyle = groundColor(softFillAlpha(0.2))
   for (const sh of hole.green) {
     shape(sh)
     ctx.fill()
   }
+  // Mowing stripes: bands a shade lighter, on the diagonal, clipped to the ground.
+  ctx.save()
+  groundPath()
+  ctx.clip()
+  ctx.fillStyle = groundColor(softFillAlpha(0.25))
+  // Laid in field units, so the stripes roll with the ground rather than sit on the glass.
+  const band = 9
+  const len = hole.h
+  for (let k = -len; k < FIELD_W + len; k += band * 2) {
+    fieldPath([
+      { x: k, y: 0 },
+      { x: k + band, y: 0 },
+      { x: k + band + len, y: len },
+      { x: k + len, y: len },
+    ])
+    ctx.closePath()
+    ctx.fill()
+  }
+  ctx.restore()
 
   // ---- sand
   ctx.fillStyle = `hsla(${SAND_HUE}, 60%, 58%, ${softFillAlpha(0.34)})`
@@ -417,6 +468,23 @@ export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, w: n
     shape(sh)
     ctx.fill()
     strokeOutlined(ctx)
+    // Grains, on a grid, each one where its speckle says.
+    ctx.save()
+    shape(sh)
+    ctx.clip()
+    ctx.fillStyle = `hsla(${SAND_HUE}, 50%, 35%, 0.35)`
+    const bb = bboxOf(sh)
+    for (let gy = Math.floor(bb.y); gy < bb.y + bb.h; gy += 2.5) {
+      for (let gx = Math.floor(bb.x); gx < bb.x + bb.w; gx += 2.5) {
+        const r = speckle(gx, gy)
+        if (r > 0.45) continue
+        const q = P(gx + r * 2, gy + speckle(gy, gx) * 2)
+        ctx.beginPath()
+        ctx.arc(q.x, q.y, Math.max(0.6, s * 0.28), 0, Math.PI * 2)
+        ctx.fill()
+      }
+    }
+    ctx.restore()
   }
 
   // ---- water, with ripples drifting across
@@ -430,6 +498,17 @@ export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, w: n
     ctx.save()
     shape(sh)
     ctx.clip()
+    {
+      // Lighter toward the middle, like depth under a sky.
+      const bbw = bboxOf(sh)
+      const c = P(bbw.x + bbw.w / 2, bbw.y + bbw.h / 2)
+      const rad = (Math.max(bbw.w, bbw.h) / 2) * s
+      const g = ctx.createRadialGradient(c.x, c.y, 0, c.x, c.y, Math.max(1, rad))
+      g.addColorStop(0, `hsla(${WATER_HUE}, 80%, 75%, 0.22)`)
+      g.addColorStop(1, `hsla(${WATER_HUE}, 80%, 30%, 0)`)
+      ctx.fillStyle = g
+      ctx.fillRect(c.x - rad, c.y - rad, rad * 2, rad * 2)
+    }
     ctx.strokeStyle = `hsla(${WATER_HUE}, 70%, 80%, 0.55)`
     ctx.lineWidth = Math.max(1, s * 0.45)
     ctx.setLineDash([s * 3, s * 2.5])
@@ -546,10 +625,10 @@ export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, w: n
         ctx.stroke()
       }
       ctx.setLineDash([])
-    } else if (sl.spin && sl.shape.kind === 'arc') {
-      // Chevrons run round the ring the way the floor turns.
+    } else if (sl.spin && (sl.shape.kind === 'arc' || sl.shape.kind === 'disc')) {
+      // Chevrons run round the way the floor turns: along a ring's middle, or two thirds out on a disc.
       const c = pivotOf(sl.shape)
-      const R = sl.shape.R
+      const R = sl.shape.kind === 'arc' ? sl.shape.R : sl.shape.r * 0.64
       const n = Math.max(6, Math.round((Math.PI * 2 * R) / 12))
       const turn = -state.clock * 0.9 * Math.sign(sl.spin)
       ctx.strokeStyle = ink(0.3)
@@ -567,9 +646,15 @@ export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, w: n
     ctx.restore()
   }
 
-  // ---- the edge of the ground: the walls the course itself makes
-  ctx.strokeStyle = `hsla(${GREEN_HUE}, 45%, ${flat ? 30 : 38}%, 0.95)`
-  ctx.lineWidth = Math.max(1.5, EDGE_T * 2 * s)
+  // ---- the edge of the ground: the walls the course itself makes, dark on the outside and lit along the top
+  ctx.strokeStyle = `hsla(${GREEN_HUE}, 45%, ${flat ? 30 : 24}%, 0.95)`
+  ctx.lineWidth = Math.max(2, EDGE_T * 2.6 * s)
+  for (const line of edgesOf(hole)) {
+    fieldPath(line)
+    ctx.stroke()
+  }
+  ctx.strokeStyle = `hsla(${GREEN_HUE}, 50%, ${flat ? 42 : 46}%, 0.95)`
+  ctx.lineWidth = Math.max(1, EDGE_T * 1.1 * s)
   for (const line of edgesOf(hole)) {
     fieldPath(line)
     ctx.stroke()
@@ -826,11 +911,19 @@ export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, w: n
   }
   {
     const c = P(cup.x, cup.y)
-    ctx.fillStyle = 'rgba(20, 27, 36, 0.9)'
+    // A lip of lighter turf around the hole, then the dark of it, deeper toward one side.
+    ctx.fillStyle = `hsla(${GREEN_HUE}, 45%, ${flat ? 48 : 40}%, 0.9)`
+    ctx.beginPath()
+    ctx.arc(c.x, c.y, CUP_R * s * 1.35, 0, Math.PI * 2)
+    ctx.fill()
+    const cupG = ctx.createRadialGradient(c.x - s * 0.6, c.y - s * 0.6, 0, c.x, c.y, CUP_R * s)
+    cupG.addColorStop(0, 'rgba(40, 50, 62, 0.95)')
+    cupG.addColorStop(1, 'rgba(10, 14, 20, 0.98)')
+    ctx.fillStyle = cupG
     ctx.beginPath()
     ctx.arc(c.x, c.y, CUP_R * s, 0, Math.PI * 2)
     ctx.fill()
-    ctx.strokeStyle = `hsla(${GREEN_HUE}, 40%, 30%, 0.8)`
+    ctx.strokeStyle = `hsla(${GREEN_HUE}, 40%, 22%, 0.9)`
     ctx.lineWidth = Math.max(1, s * 0.4)
     ctx.stroke()
     // The flag stands up the screen whichever way the field lies.
@@ -923,7 +1016,17 @@ export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, w: n
       ctx.fill()
     }
     const by = c.y - lift * s * 7
-    ctx.fillStyle = state.inSand ? 'rgba(240, 232, 216, 0.98)' : 'rgba(245, 247, 250, 0.98)'
+    if (!flying) {
+      ctx.fillStyle = 'rgba(10, 14, 20, 0.28)'
+      ctx.beginPath()
+      ctx.ellipse(c.x + s * 0.5, c.y + s * 0.7, r * 1.05, r * 0.85, 0, 0, Math.PI * 2)
+      ctx.fill()
+    }
+    const ballG = ctx.createRadialGradient(c.x - r * 0.4, by - r * 0.45, r * 0.1, c.x, by, r)
+    ballG.addColorStop(0, 'rgba(255, 255, 255, 1)')
+    ballG.addColorStop(0.6, state.inSand ? 'rgba(238, 230, 214, 1)' : 'rgba(236, 240, 245, 1)')
+    ballG.addColorStop(1, state.inSand ? 'rgba(196, 186, 168, 1)' : 'rgba(186, 194, 204, 1)')
+    ctx.fillStyle = ballG
     ctx.strokeStyle = 'rgba(20, 27, 36, 0.55)'
     ctx.lineWidth = Math.max(1, s * 0.45)
     ctx.beginPath()
@@ -974,18 +1077,36 @@ export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, w: n
     const holeNo = Math.min(state.holeIndex + 1, COURSE.length)
     const inset = Math.max(w * 0.12, 56)
     const cy = f.top * 0.55
-    ctx.textAlign = 'left'
-    ctx.textBaseline = 'middle'
-    ctx.font = font(Math.max(12, textScale * 0.035), 800)
-    ctx.fillStyle = ink(0.92)
-    ctx.fillText(`HOLE ${holeNo}`, inset, cy)
-    ctx.textAlign = 'right'
-    ctx.fillStyle = ink(0.62)
-    ctx.font = font(Math.max(11, textScale * 0.03), 750)
+    const left = `HOLE ${holeNo}`
     const strokeWord = state.strokes === 1 ? 'STROKE' : 'STROKES'
     const best = state.holeBests[hole.name]
-    const bestPart = best !== undefined ? `BEST ${best}  ·  ` : ''
-    ctx.fillText(`PAR ${hole.par}  ·  ${bestPart}${state.strokes} ${strokeWord}`, w - inset, cy)
+    const withBest = best !== undefined ? `PAR ${hole.par}  ·  BEST ${best}  ·  ${state.strokes} ${strokeWord}` : null
+    const plain = `PAR ${hole.par}  ·  ${state.strokes} ${strokeWord}`
+    // The two labels share one line: a size that fits both, and the best only if there is room for it.
+    let leftSize = Math.max(12, textScale * 0.035)
+    let rightSize = Math.max(11, textScale * 0.03)
+    let right = withBest ?? plain
+    const room = w - inset * 2 - 12
+    const fits = () => {
+      ctx.font = font(leftSize, 800)
+      const a = ctx.measureText(left).width
+      ctx.font = font(rightSize, 750)
+      return a + ctx.measureText(right).width <= room
+    }
+    if (!fits() && withBest) right = plain
+    for (let i = 0; i < 3 && !fits(); i++) {
+      leftSize *= 0.85
+      rightSize *= 0.85
+    }
+    ctx.textAlign = 'left'
+    ctx.textBaseline = 'middle'
+    ctx.font = font(leftSize, 800)
+    ctx.fillStyle = ink(0.92)
+    ctx.fillText(left, inset, cy)
+    ctx.textAlign = 'right'
+    ctx.fillStyle = ink(0.62)
+    ctx.font = font(rightSize, 750)
+    ctx.fillText(right, w - inset, cy)
   }
 
   // ---- the band below: the cue, and how hard the pull is

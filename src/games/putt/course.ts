@@ -133,6 +133,11 @@ function pop(x: number, y: number, r = 5): Bumper {
   return { x, y, r }
 }
 
+/** A pad that pushes the ball along `dir` while it is on it. */
+function pad(x: number, y: number, w: number, h: number, dir: number): Boost {
+  return { x, y, w, h, dir }
+}
+
 /** A hill: the ball is pushed along (px, py) — downhill — while on the shape. */
 function hill(shape: Shape, px: number, py: number): Slope {
   return { shape, pull: { x: px, y: py } }
@@ -257,24 +262,29 @@ export const COURSE: Hole[] = [
     marks: [mark(56, 180, UP)],
   }),
   /*
-   * Crater. Out of the tee into a round plaza with a crater in its middle:
-   * a bowl that bends any ball crossing it toward the centre and swallows
-   * a slow one, which then has to climb back out. Two ways off the plaza.
-   * Right is a narrow straight with a windmill across its top, and it comes
-   * out beside the cup: short, but the line has to be true and the timing
-   * right. Left is a wide, plain corridor that bends round into the far
-   * side of the green: long, safe, and a long putt past a bumper to
-   * finish. The cup sits on a hilltop either way.
+   * Crater. Out of the tee the ground splits round an island: the left
+   * lane has sand across it, the right lane two bumpers. Both open onto a
+   * round plaza with a crater in its middle, a bowl that bends any ball
+   * crossing it toward the centre and swallows a slow one, which then has
+   * to climb back out. Two ways off the plaza. Right is a narrow straight
+   * with a windmill across its top, and it comes out beside the cup:
+   * short, but the line has to be true and the timing right. Left is a
+   * wide, plain corridor that bends round into the far side of the green:
+   * long, safe, and a long putt past a bumper to finish. The cup sits on a
+   * hilltop either way.
    */
   hole({
     name: 'Crater',
-    par: 5,
-    h: 332,
-    tee: { x: 16, y: 318 },
+    par: 6,
+    h: 442,
+    tee: { x: 50, y: 426 },
     cup: { x: 78, y: 66 },
     green: [
-      disc(16, 318, 11),
-      capsule(16, 318, 28, 280, 7.5),
+      disc(50, 428, 12),
+      capsule(50, 405, 50, 420, 22),
+      capsule(38, 300, 38, 405, 8),
+      capsule(62, 300, 62, 405, 8),
+      capsule(50, 280, 50, 300, 22),
       disc(50, 250, 36),
       capsule(85, 250, 85, 85, 6),
       capsule(18, 250, 18, 120, 11),
@@ -284,7 +294,8 @@ export const COURSE: Hole[] = [
     ],
     slopes: [bowl(disc(50, 250, 24), 100), repel(disc(78, 66, 10), 30)],
     spinners: [mill(85, 118, 12, 2.4)],
-    bumpers: [pop(58, 82, 4)],
+    bumpers: [pop(62, 340, 3), pop(62, 375, 3), pop(58, 82, 4)],
+    sand: [disc(38, 352, 6)],
     marks: [mark(85, 200, UP), mark(18, 200, UP)],
   }),
   /*
@@ -295,17 +306,20 @@ export const COURSE: Hole[] = [
    * through going up and never back. Crest the hill gently and the spur
    * is yours; crest it hard and you are through the flap and committed to
    * the long way: the elbows, the second hill with its bumper, and the
-   * summit from the far side.
+   * summit from the far side. Before any of that, the approach: a pad
+   * tight against the left wall that throws the ball up the hill for free
+   * if you hug the wall over it, sand on the right if you drift wide, and
+   * a plain full pull up the middle gets neither.
    */
   hole({
     name: 'The Climb',
     par: 4,
-    h: 300,
-    tee: { x: 20, y: 282 },
+    h: 400,
+    tee: { x: 20, y: 382 },
     cup: { x: 30, y: 54 },
     green: [
-      disc(20, 284, 14),
-      capsule(20, 284, 20, 190, 12),
+      disc(20, 384, 14),
+      capsule(20, 384, 20, 190, 12),
       capsule(20, 198, 52, 198, 6),
       arc(44, 190, 24, Math.PI, Math.PI * 1.5, 12),
       capsule(44, 166, 56, 166, 12),
@@ -317,6 +331,8 @@ export const COURSE: Hole[] = [
     slopes: [hill(capsule(20, 272, 20, 214, 12), 0, 100), hill(capsule(80, 128, 80, 84, 12), 0, 65)],
     walls: [flap(9, 189, 31, 189, UP)],
     portals: [pipe(50, 198, 40, 62, UP)],
+    boosts: [pad(8, 318, 9, 16, UP)],
+    sand: [disc(26, 300, 5)],
     bumpers: [pop(74, 110, 3)],
     marks: [mark(30, 198, RIGHT)],
   }),
@@ -327,20 +343,21 @@ export const COURSE: Hole[] = [
    * drops it in if it is not, and lands it in sand; on the right a dry
    * channel with a bar that slides across it. Three bumpers guard the far
    * shore, and the cup sits off every crossing's line, so each needs an
-   * angled approach.
+   * angled approach. Between the tee and the near shore a field of five
+   * bumpers: the lane you thread sets up which crossing you can take.
    */
   hole({
     name: 'The Lake',
     par: 3,
-    h: 250,
-    tee: { x: 50, y: 228 },
+    h: 350,
+    tee: { x: 50, y: 328 },
     cup: { x: 60, y: 40 },
-    green: [capsule(50, 60, 50, 200, 46)],
+    green: [capsule(50, 60, 50, 300, 46)],
     water: [rect(4, 90, 72, 60)],
     drawbridges: [drawbridge(capsule(40, 154, 40, 86, 7), 4, 0.6)],
     ramps: [ramp(8, 156, 22, 8, UP, 82)],
     sliders: [slider(76, 120, 88, 120, 8, 0, 2.6)],
-    bumpers: [pop(30, 62, 4), pop(50, 66, 4), pop(70, 62, 4)],
+    bumpers: [pop(30, 62, 4), pop(50, 66, 4), pop(70, 62, 4), pop(34, 236, 4), pop(66, 236, 4), pop(50, 262, 4), pop(18, 262, 4), pop(82, 262, 4)],
     sand: [disc(19, 76, 9)],
     marks: [mark(19, 178, UP), mark(40, 178, UP), mark(86, 164, UP)],
   }),
@@ -350,21 +367,26 @@ export const COURSE: Hole[] = [
    * — where a bar slides across, closing one side and then the other — and
    * round the upper ring to a green at the top, with a second bar across
    * its neck. A bumper on the outside of each ring and sand on the inside
-   * keep the line honest.
+   * keep the line honest. It starts on a round plaza whose middle is a
+   * turntable: a ball crossing it is carried sideways, so the tee shot is
+   * aimed off to come out straight, or round the edge to stay off it.
    */
   hole({
     name: 'Figure Eight',
     par: 4,
-    h: 308,
-    tee: { x: 50, y: 290 },
+    h: 388,
+    tee: { x: 50, y: 372 },
     cup: { x: 50, y: 100 },
     green: [
-      disc(50, 292, 14),
-      capsule(50, 292, 50, 246, 12),
+      disc(50, 374, 12),
+      capsule(50, 374, 50, 350, 10),
+      disc(50, 330, 30),
+      capsule(50, 300, 50, 246, 12),
       arc(50, 200, 30, 0, Math.PI * 2, 12),
       arc(50, 140, 30, 0, Math.PI * 2, 12),
       disc(50, 102, 14),
     ],
+    slopes: [spin(disc(50, 330, 20), 40)],
     sliders: [slider(25, 170, 55, 170, 20, 0, 3.0), slider(36, 110, 52, 110, 12, 0, 2.2)],
     bumpers: [pop(84, 200, 4), pop(16, 140, 4)],
     sand: [disc(70, 140, 5), disc(30, 200, 5)],
