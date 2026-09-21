@@ -2920,14 +2920,19 @@ a.game-hud__board {
   z-index: 8;
   pointer-events: none;
   /*
-   * Where the score's last line sits. Anything that wants to read as level
-   * with the score lines its own last line up with this, rather than matching
-   * its top — the two blocks are not the same height, and on a phone they are
-   * not even close, because the score shrinks at 420px and the figures barely
-   * do. Mirrors the size on .play-readout__score just below.
+   * The score's own size and the middle of the line it sits on.
+   *
+   * Anything meant to read as level with the score centres on that middle. Not
+   * its top, because a label over a value is the taller block and matching
+   * tops drops it; and not its baseline either, which was the next guess — a
+   * two-line block sharing a foot with a one-line number sits visibly high.
+   * Two blocks of different heights only look level when they share a middle.
+   *
+   * Mirrors the size set on .play-readout__score just below.
    */
-  --readout-line: calc(
-    max(0.55rem, env(safe-area-inset-top, 0px)) + clamp(1.35rem, 4.5vw, 1.85rem)
+  --score-size: clamp(1.35rem, 4.5vw, 1.85rem);
+  --readout-middle: calc(
+    max(0.55rem, env(safe-area-inset-top, 0px)) + var(--score-size) / 2
   );
 }
 
@@ -3000,9 +3005,9 @@ a.game-hud__board {
    * uses, clear of the back control, so the row costs no height at all.
    */
   position: absolute;
-  /* Label + gap + value, so the value's foot lands on the score's line. */
+  /* Label + gap + value, hung so the block's middle is the score's middle. */
   --stat-block: calc(0.58rem + 0.1rem + 1.02rem * 1.05);
-  top: calc(var(--readout-line) - var(--stat-block));
+  top: calc(var(--readout-middle) - var(--stat-block) / 2);
   left: max(2.6rem, calc(env(safe-area-inset-left, 0px) + 2.45rem));
   display: flex;
   align-items: flex-end;
@@ -3060,7 +3065,7 @@ a.game-hud__board {
 
 @media (max-width: 420px) {
   .play-readout {
-    --readout-line: calc(max(0.55rem, env(safe-area-inset-top, 0px)) + 1.25rem);
+    --score-size: 1.25rem;
   }
 
   .play-stats {
