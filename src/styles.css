@@ -1,4 +1,25 @@
+/*
+ * One line for everything across the top of a stage.
+ *
+ * The score, a game's figures and the chrome either side of them all hang off
+ * this middle, so they share a line however tall each of them is.
+ *
+ * It is declared at the root, not on a stage, because not every game has the
+ * same stage: Crosswalk builds its own rather than using GameStage, so a rule
+ * hung on .game-stage simply did not exist there, every position that referred
+ * to it was thrown away as invalid, and the controls fell back to the corner.
+ *
+ * A renderer that knows where its playfield starts overrides this with the
+ * middle of the gap above it — set on an element, so it lands on everything
+ * inside that stage. Custom properties inherit as computed values, so the
+ * override has to be written where it is wanted, not resolved up here.
+ */
 :root {
+  --score-size: clamp(1.35rem, 4.5vw, 1.85rem);
+  --readout-middle: calc(
+    max(0.55rem, env(safe-area-inset-top, 0px)) + var(--score-size) / 2
+  );
+
   --bg: #e8f4fc;
   --bg-mid: #f0faf6;
   --bg-gold: #fff8eb;
@@ -2710,22 +2731,6 @@ a.game-hud__board {
 }
 
 .game-stage {
-  /*
-   * One line for everything across the top of a stage.
-   *
-   * The score, the run's figures and the chrome either side of them all hang
-   * off this, so they share a centre however tall each of them happens to be.
-   * It lives here rather than on the readout because the chrome is its
-   * sibling, not its child.
-   *
-   * A game that publishes where its board starts gets that gap's middle;
-   * anything else keeps the placement it had, near the top.
-   */
-  --score-size: clamp(1.35rem, 4.5vw, 1.85rem);
-  --readout-middle: var(
-    --board-middle,
-    calc(max(0.55rem, env(safe-area-inset-top, 0px)) + var(--score-size) / 2)
-  );
   position: relative;
   max-width: 100%;
   max-height: 100%;
@@ -3078,7 +3083,7 @@ a.game-hud__board {
 }
 
 @media (max-width: 420px) {
-  .game-stage {
+  :root {
     --score-size: 1.25rem;
   }
 

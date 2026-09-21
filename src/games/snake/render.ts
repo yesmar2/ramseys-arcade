@@ -79,9 +79,9 @@ export function renderGame(
   const host = ctx.canvas.parentElement
   if (host) {
     const middle = Math.round((oy - PANEL_PAD) / 2)
-    if (host.dataset.boardMiddle !== String(middle)) {
-      host.dataset.boardMiddle = String(middle)
-      host.style.setProperty('--board-middle', `${middle}px`)
+    if (host.dataset.readoutMiddle !== String(middle)) {
+      host.dataset.readoutMiddle = String(middle)
+      host.style.setProperty('--readout-middle', `${middle}px`)
     }
   }
 
