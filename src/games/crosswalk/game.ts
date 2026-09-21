@@ -4,7 +4,7 @@ import { sfx } from '../../lib/sound'
 
 export type Dir = 'up' | 'down' | 'left' | 'right'
 export type Phase = 'menu' | 'playing' | 'dying' | 'gameover'
-export type DeathCause = 'car' | 'train' | 'water' | 'edge' | 'hawk'
+export type DeathCause = 'car' | 'train' | 'water' | 'edge' | 'stall'
 
 export type Vehicle = {
   /** Lane position of the left edge, always normalised to [0, laneSpan). */
@@ -186,8 +186,15 @@ export function stallLimitAt(row: number): number {
   const over = Math.max(0, difficultyAt(row) - 1)
   return Math.max(6.5, STALL_LIMIT - over * 5)
 }
-/** Hawk warning is brief — Crossy-style snatch, not a long approach. */
-export const STALL_WARN = 0.4
+/**
+ * How long the run-out-of-time warning is on screen before it lands.
+ *
+ * This was 0.4s — a snatch with no approach. On a ten second clock that meant
+ * the only signal the clock existed at all arrived four tenths of a second
+ * before it killed you, which is not enough time to read it, let alone move.
+ * Long enough to be a warning now.
+ */
+export const STALL_WARN = 2.5
 
 /**
  * Break new ground again within this long and the chain grows.
@@ -993,11 +1000,11 @@ function spawnDeathBits(col: number, row: number, cause: DeathCause): DeathBit[]
     bits.push({
       x: col + 0.5,
       y: row,
-      vx: Math.cos(ang) * speed * (cause === 'hawk' ? 0.55 : 1),
-      vy: Math.sin(ang) * speed * 0.35 - (cause === 'hawk' ? 2.8 : 0.8) - Math.random(),
+      vx: Math.cos(ang) * speed * (cause === 'stall' ? 0.55 : 1),
+      vy: Math.sin(ang) * speed * 0.35 - (cause === 'stall' ? 2.8 : 0.8) - Math.random(),
       life: 0.45 + Math.random() * 0.5,
       max: 0,
-      hue: cause === 'water' ? 200 : cause === 'hawk' ? 30 : 18,
+      hue: cause === 'water' ? 200 : cause === 'stall' ? 30 : 18,
       size: 0.08 + Math.random() * 0.12,
     })
     bits[bits.length - 1].max = bits[bits.length - 1].life
@@ -1007,7 +1014,7 @@ function spawnDeathBits(col: number, row: number, cause: DeathCause): DeathBit[]
 
 function die(state: GameState, cause: DeathCause): GameState {
   if (cause === 'car' || cause === 'train') sfx('boom')
-  else if (cause === 'hawk') {
+  else if (cause === 'stall') {
     sfx('whoosh')
     sfx('hurt')
   } else sfx('die')
@@ -1383,7 +1390,13 @@ export function tick(state: GameState, dt: number): GameState {
   }
 
   if (next.row < Math.floor(next.cameraY) - BACK_LIMIT) return die(next, 'edge')
-  if (next.row > 2 && next.idleTimer >= stallLimitAt(next.row)) return die(next, 'hawk')
+  /*
+   * No row guard. The warning graphic never had one, so rows 0-2 showed the
+   * threat and then did nothing with it — the game bluffing for as long as a
+   * player cared to sit there, and a free place to idle out any bad patch.
+   * Ten seconds from a standing start is grace enough.
+   */
+  if (next.idleTimer >= stallLimitAt(next.row)) return die(next, 'stall')
 
   return next
 }

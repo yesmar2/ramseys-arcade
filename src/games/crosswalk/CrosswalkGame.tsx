@@ -55,7 +55,7 @@ const DEATH_COPY: Record<DeathCause, string> = {
   train: 'The train got you',
   water: 'Fell in the water',
   edge: 'Swept off the edge',
-  hawk: 'Snatched by the hawk',
+  stall: 'Ran out of time',
 }
 
 export function CrosswalkGame() {

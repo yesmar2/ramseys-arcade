@@ -172,7 +172,7 @@ function drawHopper(
   let squashY = 1
 
   if (dying) {
-    if (cause === 'hawk') {
+    if (cause === 'stall') {
       drawY -= deathT * size * 3.2
       deathScale = 1 - deathT * 0.25
       squashX = 1 - deathT * 0.15
@@ -282,13 +282,27 @@ function drawCoin(
 }
 
 /** Brief shadow, then a fast Crossy-style snatch. */
-function drawHawkThreat(
+/**
+ * Time running out, drawn as pressure closing on the hopper.
+ *
+ * This used to be a hawk: a body, a head, a beak, two curved wings and three
+ * talons, all at about a third of a tile and all inside four tenths of a
+ * second. At that size and that speed it read as a dark smudge, and nothing in
+ * this game is drawn that way — cars are rounded rectangles, trees are circles,
+ * the hopper is an ellipse. So it is a ring and a shadow now, which is the same
+ * vocabulary as the rest of the board and legible at a glance.
+ *
+ * The ring is the clock: it starts wide and amber and closes to a tight red
+ * collar, pulsing faster as it goes. Nothing is coming from off-screen, so
+ * there is nothing for the eye to track and miss.
+ */
+function drawStallThreat(
   ctx: CanvasRenderingContext2D,
   px: number,
   py: number,
   cell: number,
   w: number,
-  oy: number,
+  h: number,
   idleTimer: number,
   time: number,
   /** Row the player is on — the stall limit tightens as the run goes deeper. */
@@ -297,84 +311,51 @@ function drawHawkThreat(
   const warnStart = stallLimitAt(playerRow) - STALL_WARN
   if (idleTimer <= warnStart) return
 
-  const urgency = Math.min(1, (idleTimer - warnStart) / STALL_WARN)
-  // Ease in hard so most of the dive happens in the last blink.
-  const dive = Math.pow(urgency, 0.55)
+  const t = Math.min(1, (idleTimer - warnStart) / STALL_WARN)
+  // Late-weighted, so the first second is a nudge and the last is a shout.
+  const heat = Math.pow(t, 1.6)
+  // Amber to red, the same two ends the rail warning uses.
+  const hue = 42 - heat * 40
+  const beat = 0.5 + 0.5 * Math.sin(time * (7 + heat * 26))
 
-  const shadowW = cell * (0.35 + dive * 0.7)
-  const shadowH = cell * (0.12 + dive * 0.14)
-  ctx.fillStyle = `rgba(20, 12, 28, ${0.2 + dive * 0.5})`
+  // Ground shadow: something overhead, without drawing the something.
+  ctx.fillStyle = `rgba(18, 12, 26, ${0.12 + heat * 0.4})`
   ctx.beginPath()
-  ctx.ellipse(px, py + cell * 0.34, shadowW, shadowH, 0, 0, Math.PI * 2)
+  ctx.ellipse(px, py + cell * 0.34, cell * (0.3 + heat * 0.5), cell * (0.1 + heat * 0.16), 0, 0, Math.PI * 2)
   ctx.fill()
 
-  const startX = px + cell * 3.2
-  const startY = oy - cell * 1.8
-  const hx = startX + (px - startX) * dive
-  const hy = startY + (py - cell * 0.4 - startY) * dive
-  const wing = cell * (0.85 + dive * 0.35)
-  const flap = Math.sin(time * 40) * cell * 0.1 * (1 - dive * 0.5)
-  const tilt = -0.55 + dive * 0.85
-
+  // The closing ring — the clock made visible.
+  const r = cell * (2.5 - heat * 1.9)
   ctx.save()
-  ctx.translate(hx, hy)
-  ctx.rotate(tilt)
-  ctx.scale(1 + dive * 0.25, 1 + dive * 0.25)
-
-  ctx.fillStyle = `rgba(28, 22, 36, ${0.85 + dive * 0.15})`
+  ctx.strokeStyle = fill(hue, 88, 56, 0.35 + beat * 0.45 * (0.4 + heat * 0.6))
+  ctx.lineWidth = Math.max(2, cell * (0.05 + heat * 0.06))
+  ctx.setLineDash([cell * 0.3, cell * 0.22])
+  ctx.lineDashOffset = -time * cell * (1.5 + heat * 5)
   ctx.beginPath()
-  ctx.ellipse(0, 0, cell * 0.24, cell * 0.15, 0, 0, Math.PI * 2)
-  ctx.fill()
-
-  ctx.beginPath()
-  ctx.arc(cell * 0.2, -cell * 0.08, cell * 0.11, 0, Math.PI * 2)
-  ctx.fill()
-  ctx.fillStyle = `rgba(255, 120, 48, ${0.9})`
-  ctx.beginPath()
-  ctx.moveTo(cell * 0.28, -cell * 0.08)
-  ctx.lineTo(cell * 0.48, -cell * 0.02)
-  ctx.lineTo(cell * 0.28, cell * 0.04)
-  ctx.closePath()
-  ctx.fill()
-
-  ctx.fillStyle = `rgba(42, 34, 52, ${0.9})`
-  ctx.beginPath()
-  ctx.moveTo(-cell * 0.05, -cell * 0.02 + flap)
-  ctx.quadraticCurveTo(-wing * 0.55, -cell * 0.5 + flap, -wing, -cell * 0.04 + flap)
-  ctx.quadraticCurveTo(-wing * 0.45, cell * 0.1 + flap, -cell * 0.05, cell * 0.08 + flap)
-  ctx.closePath()
-  ctx.fill()
-  ctx.beginPath()
-  ctx.moveTo(cell * 0.05, -cell * 0.02 - flap)
-  ctx.quadraticCurveTo(wing * 0.55, -cell * 0.5 - flap, wing, -cell * 0.04 - flap)
-  ctx.quadraticCurveTo(wing * 0.45, cell * 0.1 - flap, cell * 0.05, cell * 0.08 - flap)
-  ctx.closePath()
-  ctx.fill()
-
-  if (dive > 0.4) {
-    const reach = (dive - 0.4) / 0.6
-    ctx.strokeStyle = `rgba(255, 210, 72, ${0.55 + reach * 0.45})`
-    ctx.lineWidth = Math.max(2, cell * 0.055)
-    ctx.lineCap = 'round'
-    for (const ox of [-cell * 0.1, 0, cell * 0.1]) {
-      ctx.beginPath()
-      ctx.moveTo(ox, cell * 0.1)
-      ctx.lineTo(ox - cell * 0.08 * reach, cell * (0.3 + reach * 0.28))
-      ctx.moveTo(ox, cell * 0.1)
-      ctx.lineTo(ox + cell * 0.08 * reach, cell * (0.3 + reach * 0.28))
-      ctx.stroke()
-    }
-  }
-
+  ctx.arc(px, py, r, 0, Math.PI * 2)
+  ctx.stroke()
   ctx.restore()
 
-  if (dive > 0.25) {
-    const heat = (dive - 0.25) / 0.75
-    const grad = ctx.createRadialGradient(px, py, cell * 0.15, px, py, cell * 3.5)
-    grad.addColorStop(0, `rgba(255, 60, 60, ${heat * 0.28})`)
-    grad.addColorStop(1, 'rgba(255, 60, 60, 0)')
+  // A soft wash inside it once it is genuinely close.
+  if (heat > 0.35) {
+    const wash = (heat - 0.35) / 0.65
+    const grad = ctx.createRadialGradient(px, py, cell * 0.1, px, py, r)
+    grad.addColorStop(0, fill(hue, 90, 56, wash * 0.22 * (0.5 + beat * 0.5)))
+    grad.addColorStop(1, fill(hue, 90, 56, 0))
     ctx.fillStyle = grad
-    ctx.fillRect(0, 0, w, oy + cell * 20)
+    ctx.beginPath()
+    ctx.arc(px, py, r, 0, Math.PI * 2)
+    ctx.fill()
+  }
+
+  // Edges darkening in the last moment, so it lands even if the eye is on traffic.
+  if (heat > 0.6) {
+    const close = (heat - 0.6) / 0.4
+    const vig = ctx.createRadialGradient(px, py, cell * 2, px, py, Math.max(w, h) * 0.8)
+    vig.addColorStop(0, 'rgba(0, 0, 0, 0)')
+    vig.addColorStop(1, `rgba(24, 6, 10, ${close * 0.5})`)
+    ctx.fillStyle = vig
+    ctx.fillRect(0, 0, w, h)
   }
 }
 
@@ -867,7 +848,7 @@ export function renderGame(
       train: 'SMOOSHED!',
       water: 'SPLASH!',
       edge: 'YEETED!',
-      hawk: 'SNATCHED!',
+      stall: 'TOO SLOW!',
     }
     const t = Math.min(1, deathT * 1.4)
     ctx.save()
@@ -903,6 +884,6 @@ export function renderGame(
   }
 
   if (state.phase === 'playing' && state.idleTimer > stallLimitAt(state.row) - STALL_WARN) {
-    drawHawkThreat(ctx, px, py, cell, w, oy, state.idleTimer, performance.now() / 1000, state.row)
+    drawStallThreat(ctx, px, py, cell, w, h, state.idleTimer, performance.now() / 1000, state.row)
   }
 }
