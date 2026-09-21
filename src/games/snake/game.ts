@@ -474,7 +474,7 @@ export function jumpToLength(state: GameState, length: number): GameState {
   // the same grace a live level change gives: whole layout, and whatever the
   // head landed inside stays quiet until it leaves.
   next.walls = wallsForLevel(next.level, next.cols, next.rows)
-  next.dormant = new Set(blocksUnderHead(next))
+  next.dormant = dormantAtHead(next)
   next.nextWalls = nextLevelPreview(next)
   next.food = randomFood(next)
   next.foodAge = 0
@@ -637,69 +637,78 @@ function pastHardWall(s: GameState) {
 }
 
 /**
- * How far past a block's drawn edge the head reaches before it counts as a hit.
+ * How far into a block the head gets before it counts as a crash.
  *
- * Measured from the head's own edge, not its centre, which is what was wrong
- * before: waiting for the centre to get a quarter of the way into the cell put
- * three quarters of the head inside the block by the time the run ended, and it
- * looked like the snake had driven into it rather than hit it.
+ * This is give, and it is the same quarter-cell the outer walls allow. It was
+ * briefly taken away in the name of appearances — the head used to end up
+ * buried three quarters deep, which looked like driving into a block rather
+ * than hitting one — but that cost about fifty milliseconds of reaction, which
+ * is most of a turn, to fix something the eye could have been told instead.
  *
- * A bead is {@link BEAD_SPACING} across and a block is drawn inset a little
- * from its cell, so the head's leading edge meets the block while the centre is
- * still outside — hence a threshold that sits *outside* the cell. The tolerance
- * left in is enough to clip a corner in passing and live.
+ * So the two are separate now: this decides when you die, {@link BARRIER_REST}
+ * decides where the snake is left lying.
  */
-const BARRIER_REACH = BEAD_SPACING / 2 - 0.06 - 0.1
+const BARRIER_GIVE = 0.24
 
 /**
- * Walls the head is inside right now.
+ * Where the head is put down once a block has killed it.
  *
- * The head can be outside the cell it touches, so the neighbours are checked
- * too. A lane runs 0.5 from a block's edge and the reach is well under that, so
- * passing alongside one never registers.
+ * Against the block's drawn edge rather than inside it. A bead is
+ * {@link BEAD_SPACING} across and a block is drawn inset a little from its
+ * cell, so resting the centre just outside leaves them touching. The step back
+ * from wherever the frame landed happens under the crash flash, and reads as
+ * the recoil of hitting something.
  */
-function blocksUnderHead(s: GameState): string[] {
-  if (s.walls.size === 0) return []
-  const found: string[] = []
-  const hx = Math.floor(s.head.x)
-  const hy = Math.floor(s.head.y)
-  for (let cx = hx - 1; cx <= hx + 1; cx++) {
-    for (let cy = hy - 1; cy <= hy + 1; cy++) {
-      const key = wallKey(cx, cy)
-      if (!s.walls.has(key)) continue
-      if (
-        s.head.x > cx - BARRIER_REACH &&
-        s.head.x < cx + 1 + BARRIER_REACH &&
-        s.head.y > cy - BARRIER_REACH &&
-        s.head.y < cy + 1 + BARRIER_REACH
-      ) {
-        found.push(key)
-      }
-    }
-  }
-  return found
+const BARRIER_REST = BEAD_SPACING / 2 - 0.06 - 0.1
+
+/**
+ * The walled cell the head is standing in, if any.
+ *
+ * Deliberately the cell the head's centre falls in and nothing wider. The give
+ * is measured inside that cell, so no neighbour can register — which is also
+ * why running the lane alongside a block is never a crash.
+ */
+function wallUnderHead(s: GameState): string | null {
+  if (s.walls.size === 0) return null
+  const key = wallKey(Math.floor(s.head.x), Math.floor(s.head.y))
+  return s.walls.has(key) ? key : null
+}
+
+/** The block the head is standing in when a layout lands, if there is one. */
+function dormantAtHead(s: GameState): Set<string> {
+  const key = wallUnderHead(s)
+  return key ? new Set([key]) : new Set()
 }
 
 /**
- * Let go of any block the head has finally left, so it can kill like the rest.
+ * Let a block go once the head has left its cell, so it can kill like the rest.
  *
- * Done before the hit test rather than after, or a block would stay harmless
- * for the one step in which the head re-entered it.
+ * Dormancy is per cell rather than per hit, or a block that arrived under a
+ * head only barely inside it would wake while the head was still there and
+ * kill it for moving deeper into where it was already standing.
+ *
+ * Done before the hit test, or a block would stay harmless for the one step in
+ * which the head came back.
  */
 function wakeBlocks(s: GameState) {
   if (s.dormant.size === 0) return
-  const under = new Set(blocksUnderHead(s))
-  const still = new Set<string>()
-  for (const key of s.dormant) if (under.has(key)) still.add(key)
-  if (still.size !== s.dormant.size) s.dormant = still
+  const under = wallUnderHead(s)
+  if (under && s.dormant.has(under) && s.dormant.size === 1) return
+  s.dormant = under && s.dormant.has(under) ? new Set([under]) : new Set()
 }
 
 /** The block the head has run into, rather than merely reached, or null. */
 function barrierHit(s: GameState): Cell | null {
-  for (const key of blocksUnderHead(s)) {
-    if (s.dormant.has(key)) continue
-    const [x, y] = key.split(',').map(Number)
-    return { x, y }
+  const key = wallUnderHead(s)
+  if (!key || s.dormant.has(key)) return null
+  const [cx, cy] = key.split(',').map(Number)
+  if (
+    s.head.x > cx + BARRIER_GIVE &&
+    s.head.x < cx + 1 - BARRIER_GIVE &&
+    s.head.y > cy + BARRIER_GIVE &&
+    s.head.y < cy + 1 - BARRIER_GIVE
+  ) {
+    return { x: cx, y: cy }
   }
   return null
 }
@@ -712,10 +721,10 @@ function barrierHit(s: GameState): Cell | null {
  */
 function restAgainst(s: GameState, block: Cell) {
   const head = { ...s.head }
-  if (s.dir === 'right') head.x = Math.min(head.x, block.x - BARRIER_REACH)
-  else if (s.dir === 'left') head.x = Math.max(head.x, block.x + 1 + BARRIER_REACH)
-  else if (s.dir === 'down') head.y = Math.min(head.y, block.y - BARRIER_REACH)
-  else head.y = Math.max(head.y, block.y + 1 + BARRIER_REACH)
+  if (s.dir === 'right') head.x = Math.min(head.x, block.x - BARRIER_REST)
+  else if (s.dir === 'left') head.x = Math.max(head.x, block.x + 1 + BARRIER_REST)
+  else if (s.dir === 'down') head.y = Math.min(head.y, block.y - BARRIER_REST)
+  else head.y = Math.max(head.y, block.y + 1 + BARRIER_REST)
   s.head = head
   s.trail[0] = head
 }
@@ -771,7 +780,7 @@ function tryEat(s: GameState, previousBest: number) {
     // The whole shape, every time. Only the blocks the head is standing in
     // when they land are held back, and only until it has moved off them.
     s.walls = wallsForLevel(level, s.cols, s.rows)
-    s.dormant = new Set(blocksUnderHead(s))
+    s.dormant = dormantAtHead(s)
     s.flash = 0.5
     s.floaters = [
       ...s.floaters,
