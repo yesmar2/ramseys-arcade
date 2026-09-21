@@ -60,17 +60,19 @@ export function renderGame(
   const gridW = cell * state.cols
   const gridH = cell * state.rows
   const ox = (w - gridW) / 2
-  const oy = header + Math.max(0, (boardH - gridH) / 2)
+  /*
+   * Board straight under the header, not floated in the middle of what is
+   * left. Centring it split the spare height in two and put half of it above
+   * the board, which on a phone is a lot — the strip over the board came out
+   * twice the height it needed and the readout swam in it. All of it belongs
+   * at the bottom, next to the thumbs.
+   */
+  const oy = header
 
   /*
-   * Tell the page where the board actually starts.
-   *
-   * The readout floats above it in the DOM and cannot see the canvas, so it
-   * had been centring itself on the room it asked to have reserved. That is
-   * not the room it got: the board is centred in what is left over, and on a
-   * phone the board is limited by width, so half of a lot of spare height
-   * lands above it. The strip came out 113px tall with the readout sitting in
-   * the top 30 of it and eighty-odd below.
+   * Tell the page where the board starts, so the strip above it — score,
+   * figures, and the controls at either end — can share its middle. Nothing
+   * in the DOM can see the canvas, so without this they each guess.
    *
    * Written only when it changes, so this costs nothing per frame.
    */
@@ -326,8 +328,15 @@ export function renderGame(
   // before it moved up to the readout where every other game keeps its run
   // state — a number printed twice is a number you check in two places.
   {
-    const panelBottom = oy + gridH + PANEL_PAD
-    const midY = panelBottom + (h - panelBottom) / 2
+    /*
+     * At the foot of the canvas, not tucked under the board.
+     *
+     * Portrait is limited by width, so there is height to spare below the
+     * board and it has to go somewhere. Put the tank at the bottom and the
+     * spare becomes the gap above it rather than a band under it — and the
+     * tank ends up next to the boost control it is the gauge for.
+     */
+    const midY = h - footer / 2
     const muted = dark ? 'rgba(231, 238, 243, 0.55)' : 'rgba(26, 43, 60, 0.5)'
     const label = Math.max(11, Math.min(footer * 0.52, cell * 0.42))
 

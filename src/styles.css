@@ -2710,6 +2710,22 @@ a.game-hud__board {
 }
 
 .game-stage {
+  /*
+   * One line for everything across the top of a stage.
+   *
+   * The score, the run's figures and the chrome either side of them all hang
+   * off this, so they share a centre however tall each of them happens to be.
+   * It lives here rather than on the readout because the chrome is its
+   * sibling, not its child.
+   *
+   * A game that publishes where its board starts gets that gap's middle;
+   * anything else keeps the placement it had, near the top.
+   */
+  --score-size: clamp(1.35rem, 4.5vw, 1.85rem);
+  --readout-middle: var(
+    --board-middle,
+    calc(max(0.55rem, env(safe-area-inset-top, 0px)) + var(--score-size) / 2)
+  );
   position: relative;
   max-width: 100%;
   max-height: 100%;
@@ -2722,7 +2738,9 @@ a.game-hud__board {
 
 .game-play-chrome {
   position: absolute;
-  top: max(0.35rem, env(safe-area-inset-top, 0px));
+  /* Same line as the score. translate, so the button's own height centres. */
+  top: var(--readout-middle);
+  transform: translateY(-50%);
   z-index: 13;
   display: flex;
   align-items: center;
@@ -2930,16 +2948,6 @@ a.game-hud__board {
    *
    * Mirrors the size set on .play-readout__score just below.
    */
-  --score-size: clamp(1.35rem, 4.5vw, 1.85rem);
-  /*
-   * A game that publishes where its board starts gets the readout centred in
-   * the gap above it. Everything else keeps the old placement, near the top —
-   * the fallback is exactly what this used to compute.
-   */
-  --readout-middle: var(
-    --board-middle,
-    calc(max(0.55rem, env(safe-area-inset-top, 0px)) + var(--score-size) / 2)
-  );
 }
 
 .play-readout__score {
@@ -3070,7 +3078,7 @@ a.game-hud__board {
 }
 
 @media (max-width: 420px) {
-  .play-readout {
+  .game-stage {
     --score-size: 1.25rem;
   }
 
@@ -5070,6 +5078,21 @@ html[data-theme='dark'] .patriot__power-mark {
 @media (max-width: 900px), (pointer: coarse) {
   .snake__touch {
     display: flex;
+  }
+}
+
+/*
+ * Taller thumbs on a tall phone.
+ *
+ * Portrait is limited by width, so the board stops growing long before the
+ * screen runs out of height — on a 812pt phone it needs about 583 of the 723
+ * it is given. That slack used to sit as dead canvas; it is worth more under
+ * a thumb. Kept off short screens, where there is no slack to spend.
+ */
+@media (pointer: coarse) and (min-height: 700px) and (orientation: portrait) {
+  .snake__turn,
+  .snake__boost {
+    min-height: 5.5rem;
   }
 }
 
