@@ -1,4 +1,10 @@
-import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import {
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type PointerEvent as ReactPointerEvent,
+} from 'react'
 import { AdminWaveSkip } from '../../components/AdminWaveSkip'
 import { GamePlayChrome, PlayReadout, PlayReadoutScore } from '../../components/GameHud'
 import { GameStage } from '../../components/GameStage'
@@ -489,6 +495,7 @@ export function SnakeGame() {
             }`}
             aria-label="Boost"
             aria-pressed={ui.boosting}
+            style={{ '--boost-fuel': ui.fuel } as CSSProperties}
             // Deliberately never disabled: a control that goes dead under the
             // thumb never sends its release, and the boost would stay on.
             onPointerDown={(e) => {

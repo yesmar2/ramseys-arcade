@@ -4893,14 +4893,22 @@ html[data-theme='dark'] .patriot__power-mark {
   place-items: center;
   border-radius: 1.05rem;
   border: 1px solid rgba(var(--ink-rgb), 0.08);
-  background: rgba(var(--surface-rgb), 0.82);
+  /* Fills from the bottom with what is left in the tank. */
+  background:
+    linear-gradient(
+      to top,
+      rgba(245, 185, 66, 0.42) calc(var(--boost-fuel, 1) * 100%),
+      transparent calc(var(--boost-fuel, 1) * 100%)
+    ),
+    rgba(var(--surface-rgb), 0.82);
   box-shadow: var(--shadow-soft);
   color: var(--ink);
   cursor: pointer;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
   user-select: none;
-  transition: background 90ms ease, color 90ms ease, transform 90ms ease;
+  /* Not background: the fill tracks a draining tank and must not lag it. */
+  transition: color 90ms ease, border-color 90ms ease, transform 90ms ease;
 }
 
 .snake__boost svg {
@@ -4909,14 +4917,14 @@ html[data-theme='dark'] .patriot__power-mark {
   height: 1.85rem;
 }
 
+/* Lit by border and bolt, never by a flood fill — the fill is the fuel gauge. */
 .snake__boost--on {
   transform: scale(0.97);
-  /* The amber the food glows with, so the control reads as what it buys. */
-  background: color-mix(in srgb, #f5b942 70%, var(--surface));
-  color: #1a2b3c;
+  border-color: rgba(245, 185, 66, 0.9);
+  color: #f5b942;
 }
 
-/* No tail left to spend — dimmed rather than disabled. */
+/* Tank dry — dimmed rather than disabled. */
 .snake__boost--spent {
   opacity: 0.4;
 }

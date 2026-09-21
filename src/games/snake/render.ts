@@ -1,5 +1,5 @@
 import type { GameState } from './game'
-import { BEAD_SPACING, foodBonusLeft, isBoosting, visualSegments } from './game'
+import { BEAD_SPACING, boostFuelLeft, foodBonusLeft, isBoosting, visualSegments } from './game'
 import { isDarkTheme, isFlatTheme, playfieldColor, softFillAlpha } from '../../lib/theme'
 
 const HEAD_HUE = 158
@@ -222,6 +222,26 @@ export function renderGame(
     ctx.shadowBlur = 8
     ctx.fillText(f.text, px, py)
     ctx.restore()
+  }
+
+  // Boost tank, along the bottom of the board panel. On a phone the control
+  // itself can show this, but on a desktop there is no control to look at.
+  {
+    const fuel = boostFuelLeft(state)
+    const barW = gridW * 0.34
+    const barH = Math.max(3, cell * 0.11)
+    const bx = ox + (gridW - barW) / 2
+    const by = oy + gridH + Math.max(7, cell * 0.34)
+
+    roundRect(ctx, bx, by, barW, barH, barH / 2)
+    ctx.fillStyle = dark ? 'rgba(231, 238, 243, 0.12)' : 'rgba(26, 43, 60, 0.1)'
+    ctx.fill()
+
+    if (fuel > 0) {
+      roundRect(ctx, bx, by, barW * fuel, barH, barH / 2)
+      ctx.fillStyle = boosting ? 'rgba(245, 185, 66, 0.98)' : 'rgba(245, 185, 66, 0.6)'
+      ctx.fill()
+    }
   }
 
   if (state.flash > 0) {

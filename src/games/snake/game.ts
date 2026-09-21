@@ -20,8 +20,10 @@ export type Snapshot = {
   length: number
   /** Boost actually paying out, not just held — drives the control's lit state. */
   boosting: boolean
-  /** There are points left to spend, so the control is worth offering. */
+  /** Fuel left in the tank, so the control is worth offering. */
   canBoost: boolean
+  /** Tank level 1 → 0, for the control's own meter. */
+  fuel: number
 }
 
 export type GameState = {
@@ -50,8 +52,8 @@ export type GameState = {
   speed: number
   /** Boost control held. Whether it is actually paying out is {@link isBoosting}. */
   boostHeld: boolean
-  /** Fraction of a point spent so far, carried until it makes a whole one. */
-  boostSpend: number
+  /** Seconds of boost left in the tank. Filled by eating, drained by holding. */
+  boostFuel: number
   flash: number
   floaters: Floater[]
 }
@@ -123,27 +125,34 @@ const EAT_DIST = 0.55
 const TURN_BOOST = 2
 
 /**
- * Boost: speed bought with the score, and nothing else.
+ * Boost: free, and limited by a tank that food fills.
  *
- * Shortening the snake was the obvious price and the wrong one. Slither can
- * charge length because a body there is harmless, so length is only ever
- * score; here the body is the hazard, and a shorter snake has less of itself
- * to hit, more free board and a slower pace. Every part of that is a reward,
- * so the cost pointed the wrong way.
+ * Two prices were tried and both were wrong. Length is a reward here, not a
+ * cost — a shorter snake has less of itself to hit and more open board — and
+ * charging the score taxed the one thing a player would obviously reach for
+ * boost to do, which is catch food before its ring runs down. A mechanic whose
+ * obvious use is a trap gets used once and written off.
  *
- * The points alone are the price, and the body is left exactly as it was. That
- * makes the score the fuel tank: early on there is nothing to spend, and late,
- * when your own body has filled the board and an escape is worth paying for,
- * the tank is full. Speed is its own risk — 1.75× is less time to read what is
- * coming — so boosting into trouble is never the safe option.
+ * Nothing is charged. The price is already in the speed: 1.75× is less time to
+ * read what is coming, and a long body threading a gap at that pace is a
+ * genuine risk. What the tank adds is a reason to choose a moment — it fills
+ * only by eating, so the loop pays for itself, and it caps, so fuel left in
+ * the tank is fuel wasted.
  */
 const BOOST_MULT = 1.75
-/** Points spent per second held. */
-const BOOST_COST_PER_SECOND = 15
+/** Seconds of boost the tank holds. */
+const BOOST_FUEL_MAX = 4
+/** Seconds of boost each food is worth. */
+const BOOST_FUEL_PER_FOOD = 1.5
 
-/** Boost runs on the score, so it stops when there is nothing left to spend. */
-export function isBoosting(s: Pick<GameState, 'boostHeld' | 'phase' | 'score'>) {
-  return s.boostHeld && s.phase === 'playing' && s.score > 0
+/** Boost runs on the tank, so it stops when that is dry. */
+export function isBoosting(s: Pick<GameState, 'boostHeld' | 'phase' | 'boostFuel'>) {
+  return s.boostHeld && s.phase === 'playing' && s.boostFuel > 0
+}
+
+/** How full the tank is, 1 → 0. Drawn as the boost meter. */
+export function boostFuelLeft(s: Pick<GameState, 'boostFuel'>) {
+  return Math.max(0, Math.min(1, s.boostFuel / BOOST_FUEL_MAX))
 }
 
 /** Hold or release the boost control. */
@@ -327,7 +336,7 @@ export function createInitialState(
     foodAge: 0,
     speed: START_SPEED,
     boostHeld: false,
-    boostSpend: 0,
+    boostFuel: BOOST_FUEL_MAX,
     flash: 0,
     floaters: [],
   }
@@ -370,7 +379,7 @@ export function jumpToLength(state: GameState, length: number): GameState {
     pendingDir: null,
     bufferedDir: null,
     boostHeld: false,
-    boostSpend: 0,
+    boostFuel: BOOST_FUEL_MAX,
     floaters: [],
   }
   next.food = randomFood(next)
@@ -430,7 +439,7 @@ function die(state: GameState): GameState {
     pendingDir: null,
     bufferedDir: null,
     boostHeld: false,
-    boostSpend: 0,
+    boostFuel: BOOST_FUEL_MAX,
     flash: 0.4,
   }
 }
@@ -517,18 +526,10 @@ function turnSpeed(s: GameState) {
   return s.speed * hurry
 }
 
-/** Charge the score for the speed being used. The body is not touched. */
+/** Run the tank down for the speed being used. Score and body are untouched. */
 function burnBoost(s: GameState, dt: number) {
-  if (!isBoosting(s)) {
-    s.boostSpend = 0
-    return
-  }
-  s.boostSpend += BOOST_COST_PER_SECOND * dt
-  const whole = Math.floor(s.boostSpend)
-  if (whole > 0) {
-    s.boostSpend -= whole
-    s.score = Math.max(0, s.score - whole)
-  }
+  if (!isBoosting(s)) return
+  s.boostFuel = Math.max(0, s.boostFuel - dt)
 }
 
 function pastHardWall(s: GameState) {
@@ -581,6 +582,9 @@ function tryEat(s: GameState, previousBest: number) {
   s.best = Math.max(s.best, s.score)
   if (s.best !== previousBest) saveBest(s.best)
   s.speed = speedFor(s.segments)
+  // The loop pays for itself: eating buys the speed that catches the next one
+  // while its ring is still full. Capped, so a hoarded tank is wasted fuel.
+  s.boostFuel = Math.min(BOOST_FUEL_MAX, s.boostFuel + BOOST_FUEL_PER_FOOD)
   s.food = randomFood(s)
   s.foodAge = 0
   // A clean full-bonus grab flashes harder, so the good line is felt, not read.
@@ -637,6 +641,7 @@ export function toSnapshot(s: GameState): Snapshot {
     phase: s.phase,
     length: s.segments,
     boosting: isBoosting(s),
-    canBoost: s.phase === 'playing' && s.score > 0,
+    canBoost: s.phase === 'playing' && s.boostFuel > 0,
+    fuel: boostFuelLeft(s),
   }
 }
