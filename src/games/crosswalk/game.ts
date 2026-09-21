@@ -20,7 +20,7 @@ export type Row = {
   trees: number[]
   /** Static stepping stones on a water row. A row has stones or logs, never both. */
   rocks: number[]
-  /** Coin columns on grass (and sometimes stones). */
+  /** Coin columns — grass, stepping stones, and rarely a road. */
   coins: number[]
   vehicles: Vehicle[]
   /** Rail crossing cycle timer (seconds). */
@@ -56,7 +56,10 @@ export type CoinPop = {
 }
 
 export type Snapshot = {
+  /** Points. Distance is `furthest`. */
   score: number
+  /** Furthest row this run — the distance, which is now a record of its own. */
+  furthest: number
   best: number
   phase: Phase
   /** Best to beat, captured when the run started. */
@@ -75,7 +78,10 @@ export type Snapshot = {
 
 export type GameState = {
   phase: Phase
+  /** Points, accumulated per row at the chain multiplier. */
   score: number
+  /** Furthest row reached. What "progress" is measured against. */
+  furthest: number
   best: number
   cols: number
   /** Fractional while riding a log, otherwise a whole column. */
@@ -196,6 +202,27 @@ const MOMENTUM_WINDOW = 1.2
 export const MOMENTUM_SHOW = 3
 /** Ceiling for the rising hop pitch, in the steps `sfx` counts. */
 const MOMENTUM_PITCH_MAX = 6
+
+/** Points for breaking new ground, before the chain multiplier. */
+const ROW_POINTS = 10
+
+/**
+ * What a chain is worth.
+ *
+ * Score used to be the furthest row, which meant two players who both reached
+ * row 200 scored the same whether one flowed the whole way or crawled at the
+ * stall limit. Distance is a record now; this is where *how* you crossed gets
+ * counted.
+ *
+ * The ladder is Pellets' and Crumbtrail's, to the step, because a streak
+ * multiplier already means something specific in this arcade.
+ */
+export function chainMultiplier(chain: number): number {
+  if (chain >= 30) return 4
+  if (chain >= 20) return 3
+  if (chain >= 10) return 2
+  return 1
+}
 
 const HOP_COOLDOWN = 0.05
 const HOP_DURATION = 0.12
@@ -364,6 +391,32 @@ function loadBest() {
   return getPersonalBest('crosswalk')
 }
 
+const BEST_ROW_KEY = 'crosswalk-best-row'
+
+/**
+ * Furthest row ever reached, for the line painted on the road ahead.
+ *
+ * Kept separately and locally because `getPersonalBest` is the server's best
+ * *score*, and score is points now. The marker marks a row, so it has to be fed
+ * a row — feeding it a score is what would have put it on the wrong one.
+ */
+export function loadBestRow(): number {
+  try {
+    const n = Number(localStorage.getItem(BEST_ROW_KEY) || '0')
+    return Number.isFinite(n) && n > 0 ? Math.floor(n) : 0
+  } catch {
+    return 0
+  }
+}
+
+function saveBestRow(n: number) {
+  try {
+    localStorage.setItem(BEST_ROW_KEY, String(Math.max(0, Math.floor(n))))
+  } catch {
+    /* ignore */
+  }
+}
+
 function mulberry32(seed: number) {
   let t = seed >>> 0
   return () => {
@@ -460,7 +513,7 @@ function makeGrassRow(
   }
   const coins: number[] = []
   // Sparse pickups — chase-worthy, not carpeted.
-  if (pool.length && rand() < 0.2) {
+  if (pool.length && rand() < 0.12) {
     coins.push(pool[Math.floor(rand() * pool.length)])
   }
   return { kind: 'grass', dir: 0, speed: 0, trees, rocks: [], coins, vehicles: [] }
@@ -503,13 +556,27 @@ function makeRoadRow(row: number, cols: number, rand: () => number, prev?: Row):
   // hole is what keeps it fair, so a busy lane costs nothing.
   const want = 2 + Math.round(d * 2 + rand() * 1.6)
   const count = laneCount(span, w, minGap, want)
+  /*
+   * Coins in traffic.
+   *
+   * Every coin used to sit on grass or on a stone — on safe ground, by
+   * construction — so taking one cost nothing and "most coins" was really just
+   * a slower way of measuring distance. One in the road is a decision: it is
+   * free if it happens to be in your column and a sidestep in live traffic if
+   * it is not.
+   *
+   * Rare on purpose. The grass ones already ask for a detour, which the chain
+   * now charges for, so this is the tail of the distribution rather than the
+   * bulk of it.
+   */
+  const coins: number[] = rand() < 0.02 ? [Math.floor(rand() * cols)] : []
   return {
     kind: 'road',
     dir,
     speed,
     trees: [],
     rocks: [],
-    coins: [],
+    coins,
     vehicles: spawnLane(
       span,
       count,
@@ -948,6 +1015,7 @@ function die(state: GameState, cause: DeathCause): GameState {
   const best = Math.max(state.best, state.score, loadBest())
   const wallet = state.wallet + state.runCoins
   if (state.runCoins > 0) saveWallet(wallet)
+  if (state.furthest > loadBestRow()) saveBestRow(state.furthest)
 
   return {
     ...state,
@@ -988,6 +1056,7 @@ export function createInitialState(cols = COLS): GameState {
   const state: GameState = {
     phase: 'menu',
     score: 0,
+    furthest: 0,
     best,
     cols,
     col: Math.floor(cols / 2),
@@ -1032,7 +1101,8 @@ export function startGame(prev: GameState): GameState {
   return {
     ...next,
     best,
-    target: best,
+    // A row, not a score — this is the line drawn on the road ahead.
+    target: loadBestRow(),
     phase: 'playing',
     invuln: RESPAWN_INVULN,
   }
@@ -1047,7 +1117,7 @@ export function jumpToRow(state: GameState, row: number): GameState {
     ...state,
     row: target,
     col: mid,
-    score: Math.max(state.score, target),
+    furthest: Math.max(state.furthest, target),
     hop: null,
     hopCooldown: 0,
     hopPulse: 0,
@@ -1115,7 +1185,7 @@ export function hop(state: GameState, dir: Dir): GameState {
    * lining up a crossing is part of the hop, not a rest — and dropping back a
    * row ends the chain outright, because ground given up is not flow.
    */
-  const progress = nr > state.score
+  const progress = nr > state.furthest
   const chain = progress
     ? state.streakTimer <= MOMENTUM_WINDOW
       ? state.streak + 1
@@ -1130,7 +1200,10 @@ export function hop(state: GameState, dir: Dir): GameState {
     ...state,
     col: target,
     row: nr,
-    score: Math.max(state.score, nr),
+    // The hop that reaches a tier is paid at that tier, so crossing 10 feels
+    // like arriving somewhere rather than like the row after it.
+    score: state.score + (progress ? ROW_POINTS * chainMultiplier(chain) : 0),
+    furthest: Math.max(state.furthest, nr),
     idleTimer: progress ? 0 : state.idleTimer,
     streak: chain,
     bestChain: Math.max(state.bestChain, chain),
@@ -1327,6 +1400,7 @@ export function toSnapshot(state: GameState): Snapshot {
     wallet: state.wallet,
     chain: state.streak,
     bestChain: state.bestChain,
+    furthest: state.furthest,
   }
 }
 

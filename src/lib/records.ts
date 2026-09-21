@@ -185,6 +185,7 @@ export function recordNavShortLabel(row: { id: string; label: string }): string 
   if (row.id === PATRIOT_DIRECT_STREAK_ID) return 'Direct'
   if (row.id === CROSSWALK_MOST_COINS_ID) return 'Coins'
   if (row.id === CROSSWALK_LONGEST_CHAIN_ID) return 'Chain'
+  if (row.id === CROSSWALK_FURTHEST_ID) return 'Furthest'
   if (row.id === POP_CENTER_STREAK_ID) return 'Center'
   if (row.id === STACKER_PERFECT_STREAK_ID) return 'Perfect'
   if (row.id === PELLETS_CRUMB_STREAK_ID) return 'Crumbs'
@@ -231,6 +232,9 @@ export const ASTEROIDS_HIGHEST_COMBO_ID = 'highest-combo'
 export const PATRIOT_DIRECT_STREAK_ID = 'direct-streak'
 export const CROSSWALK_MOST_COINS_ID = 'most-coins'
 export const CROSSWALK_LONGEST_CHAIN_ID = 'longest-chain'
+export const CROSSWALK_FURTHEST_ID = 'furthest-run'
+/** A run that ends this short was a misclick, not an attempt at distance. */
+export const CROSSWALK_FURTHEST_MIN = 10
 /**
  * Below this a chain is just a stretch of open grass. The board should start
  * where holding one has actually cost the player something.
@@ -254,6 +258,7 @@ export const PELLETS_CRUMB_STREAK_MIN = 10
 const PLAIN_COUNT_RECORD_IDS = new Set<string>([
   CROSSWALK_MOST_COINS_ID,
   CROSSWALK_LONGEST_CHAIN_ID,
+  CROSSWALK_FURTHEST_ID,
   CRUMBTRAIL_ROWS_ID,
   SNAKE_LONGEST_ID,
 ])
@@ -266,7 +271,7 @@ export const SCORE_STREAK_THRESHOLDS: Record<string, number> = {
   asteroids: 1000,
   patriot: 1000,
   snake: 500,
-  crosswalk: 200,
+  crosswalk: 2000,
   stacker: 15,
   centroid: 6000,
   pop: 300,
@@ -588,6 +593,22 @@ export async function submitCrosswalkMostCoins(
   if (!cleaned || !(value >= 1)) return null
   try {
     const result = await submitRecord('crosswalk', CROSSWALK_MOST_COINS_ID, cleaned, value)
+    return toRecordSubmitOutcome(result)
+  } catch {
+    return null
+  }
+}
+
+/** Best-effort furthest-run submit (rows crossed). */
+export async function submitCrosswalkFurthest(
+  rows: number,
+  name: string,
+): Promise<RecordSubmitOutcome | null> {
+  const value = Math.floor(rows)
+  const cleaned = normalizePlayerName(name)
+  if (!cleaned || !(value >= CROSSWALK_FURTHEST_MIN)) return null
+  try {
+    const result = await submitRecord('crosswalk', CROSSWALK_FURTHEST_ID, cleaned, value)
     return toRecordSubmitOutcome(result)
   } catch {
     return null
