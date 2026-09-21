@@ -4,8 +4,10 @@ import { sfx } from '../../lib/sound'
 /*
  * Frenzy: a scrolling ocean, camera locked to your fish. Every fish carries
  * its level. Eat anything at your level or below — that's the whole rule —
- * and each bite is +1. Anything above your level eats you. Steering is
- * direct: point a direction, the fish turns and swims, no drift to fight.
+ * and the closer to your own level it was, the more it grows you. Anything
+ * above your level eats you, and mines don't care about your level at all.
+ * Steering is direct: point a direction, the fish turns and swims, no drift
+ * to fight.
  */
 
 export type Phase = 'menu' | 'playing' | 'gameover'
@@ -20,7 +22,15 @@ export type Fish = {
   wander: number
   hueJitter: number
   aggressive: boolean
-  shark: boolean
+}
+
+/** A mine — an obstacle, not a fish. No level, no fleeing: touch it and the run ends. */
+export type Hazard = {
+  id: number
+  x: number
+  y: number
+  bob: number
+  spin: number
 }
 
 export type Particle = {
@@ -38,6 +48,8 @@ export type Floater = {
   x: number
   y: number
   text: string
+  /** Smaller second line — how many levels that catch was worth. */
+  sub: string
   life: number
   maxLife: number
   /** How big a catch this was, 0..1 — a bigger fish makes a bigger splash of text. */
@@ -64,6 +76,7 @@ export type GameState = {
   zoom: number
   player: Fish
   fishes: Fish[]
+  hazards: Hazard[]
   particles: Particle[]
   floaters: Floater[]
   pointerDir: { x: number; y: number } | null
@@ -87,8 +100,6 @@ const POINTER_FULL_SPEED_DIST = 55
 const START_INVULN = 2.2
 const SPAWN_INTERVAL = 0.22
 const MIN_SPAWN_GAP = 80
-/** The player always out-swims anything it could eat, since there's no wall to corner it against. */
-const PLAYER_HUNT_SPEED_MULT = 1.35
 
 let nextId = 1
 function uid() {
@@ -107,8 +118,13 @@ function dist(ax: number, ay: number, bx: number, by: number) {
   return Math.hypot(ax - bx, ay - by)
 }
 
+/** 1 for a fish right at your own level, fading to 0 by 7 levels below — how "big" a catch it is. */
+function catchCloseness(playerLevel: number, preyLevel: number) {
+  return Math.max(0, Math.min(1, 1 - (playerLevel - preyLevel) / 7))
+}
+
 export function radiusForLevel(level: number, scale: number) {
-  return BASE_RADIUS * scale * Math.pow(Math.max(1, level), 0.33)
+  return BASE_RADIUS * scale * Math.pow(Math.max(1, level), 0.46)
 }
 
 /** A gentle curve — level matters far more for the eat rule than for a foot race. */
@@ -122,7 +138,7 @@ function turnRateForLevel(level: number) {
 }
 
 export function zoomForLevel(level: number) {
-  return Math.min(1, Math.max(0.34, 1 / Math.pow(Math.max(1, level), 0.22)))
+  return Math.min(1, Math.max(0.3, 1 / Math.pow(Math.max(1, level), 0.16)))
 }
 
 function viewHalfDiagonal(state: GameState) {
@@ -143,18 +159,34 @@ function makeFish(x: number, y: number, level: number, opts?: Partial<Fish>): Fi
     wander: ang,
     hueJitter: (Math.random() - 0.5) * 16,
     aggressive: false,
-    shark: false,
     ...opts,
   }
 }
 
-/** How many levels above/below the player the next spawn should be. */
+/**
+ * How many levels above/below the player the next spawn should be.
+ * Danger is common and gets more so over time — this is the challenge.
+ * Below the player, small fry and big near-level fish are both common —
+ * small fry stay easy filler, a near-level catch is the one worth chasing.
+ */
 function pickSpawnLevel(playerLevel: number, elapsed: number) {
-  const dangerChance = Math.min(0.5, 0.22 + elapsed / 300)
+  const dangerChance = Math.min(0.62, 0.34 + elapsed / 220)
+  if (Math.random() < dangerChance) {
+    // Most danger is a manageable step above you, but a real and growing
+    // share of it is a shark-tier monster — not a rare fluke.
+    const sharkChance = Math.min(0.4, 0.1 + elapsed / 240)
+    if (Math.random() < sharkChance) {
+      return playerLevel + 11 + Math.floor(Math.random() * 12)
+    }
+    const spread = Math.min(9, 3 + Math.floor(elapsed / 20))
+    const magnitude = 1 + Math.floor(Math.random() * spread)
+    return playerLevel + magnitude
+  }
   const spread = Math.min(7, 2 + Math.floor(elapsed / 25))
-  const magnitude = 1 + Math.floor(Math.random() * spread)
-  const level = Math.random() < dangerChance ? playerLevel + magnitude : playerLevel - magnitude
-  return Math.max(1, level)
+  // Skewed low: most food spawns land close to the player's level (a "big"
+  // catch), with a long tail out to trivial small fry.
+  const magnitude = 1 + Math.floor(Math.random() ** 1.7 * spread)
+  return Math.max(1, playerLevel - magnitude)
 }
 
 function spawnFish(state: GameState): Fish {
@@ -168,8 +200,7 @@ function spawnFish(state: GameState): Fish {
   const y = state.player.y + Math.sin(angle) * ring
   const dangerous = level > state.player.level
   return makeFish(x, y, level, {
-    aggressive: dangerous && Math.random() < 0.5,
-    shark: dangerous && level > state.player.level + 4,
+    aggressive: dangerous && Math.random() < 0.65,
   })
 }
 
@@ -177,6 +208,29 @@ function spawnFish(state: GameState): Fish {
 function targetPopulation(state: GameState) {
   const area = (1 / state.zoom - 1) * 16
   return Math.min(64, 24 + Math.floor(state.elapsed / 7) + Math.floor(area))
+}
+
+export const HAZARD_RADIUS = 13
+
+function spawnHazard(state: GameState): Hazard {
+  const radius = viewHalfDiagonal(state)
+  const ringMin = radius * 0.9
+  const ringMax = radius * 1.75
+  const ring = ringMin + Math.random() * (ringMax - ringMin)
+  const angle = Math.random() * Math.PI * 2
+  return {
+    id: uid(),
+    x: state.player.x + Math.cos(angle) * ring,
+    y: state.player.y + Math.sin(angle) * ring,
+    bob: Math.random() * Math.PI * 2,
+    spin: (Math.random() - 0.5) * 0.6,
+  }
+}
+
+/** Mines are a constant, low-density hazard — not a threat that scales with level. */
+function targetHazards(state: GameState) {
+  const area = (1 / state.zoom - 1) * 5
+  return Math.min(20, 8 + Math.floor(area))
 }
 
 function makePlayer(w: number, h: number): Fish {
@@ -198,6 +252,7 @@ export function createInitialState(w = DESIGN_W, h = DESIGN_H): GameState {
     zoom: zoomForLevel(player.level),
     player,
     fishes: [],
+    hazards: [],
     particles: [],
     floaters: [],
     pointerDir: null,
@@ -221,6 +276,7 @@ export function startGame(prev: GameState): GameState {
   fresh.best = Math.max(prev.best, loadBest())
   fresh.phase = 'playing'
   fresh.fishes = Array.from({ length: 22 }, () => spawnFish(fresh))
+  fresh.hazards = Array.from({ length: 8 }, () => spawnHazard(fresh))
   return fresh
 }
 
@@ -311,14 +367,16 @@ function aiDesire(
     const angle = Math.atan2(f.y - player.y, f.x - player.x)
     // A fish near your own level is worth more and fights harder for it —
     // small fry barely bother fleeing, a near-equal catch is a real chase.
-    const gap = player.level - f.level
-    const closeness = Math.max(0, 1 - gap / 7)
-    const speedFrac = 0.6 + closeness * 0.42
+    // Always capped under 1: you have no blanket speed edge any more, so a
+    // fleeing fish must never out-run its own predator's top speed.
+    const speedFrac = 0.55 + catchCloseness(player.level, f.level) * 0.33
     return { angle, speedFrac }
   }
-  if (huntingAllowed && playerIsThreat && f.aggressive && d < r * 9 + 140) {
+  if (huntingAllowed && playerIsThreat && f.aggressive && d < r * 11 + 190) {
     const angle = Math.atan2(player.y - f.y, player.x - f.x)
-    return { angle, speedFrac: 0.92 }
+    // A real lunge — an aggressive hunter should be a genuine threat, not
+    // something you can just idly out-swim.
+    return { angle, speedFrac: 1.3 }
   }
   return wanderDesire(f, dt)
 }
@@ -356,6 +414,7 @@ export function tick(state: GameState, dt: number): GameState {
     ...state,
     player: { ...state.player },
     fishes: state.fishes.map((f) => ({ ...f })),
+    hazards: [...state.hazards],
     particles: [...state.particles],
     floaters: [...state.floaters],
   }
@@ -364,7 +423,7 @@ export function tick(state: GameState, dt: number): GameState {
   s.flash = Math.max(0, s.flash - dt * 1.6)
   s.shake = Math.max(0, s.shake - dt * 3)
 
-  integrate(s.player, playerDesire(s), dt, s.scale, PLAYER_HUNT_SPEED_MULT)
+  integrate(s.player, playerDesire(s), dt, s.scale)
 
   const huntingAllowed = s.invuln <= 0
   for (const f of s.fishes) {
@@ -386,14 +445,18 @@ export function tick(state: GameState, dt: number): GameState {
     if (d < fRadius + playerRadius) {
       if (s.player.level >= f.level) {
         const points = f.level * 10
+        const weight = catchCloseness(s.player.level, f.level)
+        // A big, near-level catch grows you up to 3 levels at once; small
+        // fry is still worth eating, just barely worth a level.
+        const growth = 1 + Math.round(weight * 2)
         s.score += points
-        s.player.level += 1
-        const weight = Math.max(0, Math.min(1, 1 - (s.player.level - 1 - f.level) / 7))
+        s.player.level += growth
         spawnBurst(s, f.x, f.y, 172, 10 + Math.round(weight * 10))
         s.floaters.push({
           x: f.x,
           y: f.y - fRadius - 10,
           text: `+${points}`,
+          sub: `Level +${growth}`,
           life: 1,
           maxLife: 1.1,
           weight,
@@ -411,9 +474,28 @@ export function tick(state: GameState, dt: number): GameState {
   if (ate) sfx('eat')
   s.fishes = survivors
 
+  // Mines don't care about your level — touch one and the run ends.
+  for (const hz of s.hazards) {
+    hz.bob += dt
+    hz.x += Math.cos(hz.bob * 0.6) * 4 * dt
+    hz.y += Math.sin(hz.bob * 0.5) * 4 * dt
+    if (s.invuln <= 0 && dist(hz.x, hz.y, s.player.x, s.player.y) < HAZARD_RADIUS * s.scale + playerRadius) {
+      endRun(s, s.player.x, s.player.y)
+      return s
+    }
+  }
+
   // Keep the ocean stocked near the camera, and let stragglers drift out of memory.
   const despawnRadius = viewHalfDiagonal(s) * 2.2
   s.fishes = s.fishes.filter((f) => dist(f.x, f.y, s.player.x, s.player.y) < despawnRadius)
+  s.hazards = s.hazards.filter((hz) => dist(hz.x, hz.y, s.player.x, s.player.y) < despawnRadius)
+  if (s.hazards.length < targetHazards(s) && Math.random() < dt * 0.6) {
+    const spot = spawnHazard(s)
+    const tooClose =
+      s.hazards.some((hz) => dist(hz.x, hz.y, spot.x, spot.y) < HAZARD_RADIUS * s.scale * 6) ||
+      dist(spot.x, spot.y, s.player.x, s.player.y) < 220 * s.scale
+    if (!tooClose) s.hazards.push(spot)
+  }
 
   s.spawnTimer -= dt
   const target = targetPopulation(s)
@@ -449,10 +531,12 @@ export function tick(state: GameState, dt: number): GameState {
     return f.life > 0
   })
 
+  // Matches (and slightly exceeds) the aggressive hunt trigger range, so the
+  // warning always lands before a hunter actually commits to the chase.
   s.danger = s.fishes.some(
     (f) =>
       f.level > s.player.level &&
-      dist(f.x, f.y, s.player.x, s.player.y) < radiusForLevel(f.level, s.scale) * 7 + 70,
+      dist(f.x, f.y, s.player.x, s.player.y) < radiusForLevel(f.level, s.scale) * 12 + 210,
   )
 
   return s

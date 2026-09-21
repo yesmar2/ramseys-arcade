@@ -136,8 +136,10 @@ const SCORING: Record<string, ScoreRow[]> = {
   ],
   frenzy: [
     { label: 'Every fish', value: 'shows its number' },
-    { label: 'Eat your level or below', value: '+10 × their level · your level +1' },
+    { label: 'Eat your level or below', value: '+10 × their level · your level +1 to +3' },
+    { label: 'Closer to your own level', value: 'grows you more' },
     { label: 'A higher number', value: 'game over' },
+    { label: 'Mines', value: 'no number — always deadly' },
     { label: 'Camera', value: 'pulls back as you level up' },
     { label: 'Lives', value: '1' },
   ],
