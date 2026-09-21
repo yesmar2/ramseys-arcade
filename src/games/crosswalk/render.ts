@@ -15,16 +15,7 @@ import { isDarkTheme, isFlatTheme, playfieldColor, softFillAlpha, strokeOutlined
 const GRASS_A = 142
 const GRASS_B = 152
 const TREE = 158
-/*
- * The hopper is pale, not gold.
- *
- * It used to be hue 42 at full saturation, which collided three ways: the coin
- * is 48, one of the cars is 38, and all three were the same size of round.
- * Near-white belongs to nothing else on this board and carries on grass, road
- * and water alike.
- */
-const HOPPER = 44
-const HOPPER_SAT = 34
+const HOPPER = 42
 
 export type CrosswalkLayout = {
   cell: number
@@ -202,25 +193,21 @@ function drawHopper(
   const r = size * 0.3 * scale
   const rx = r * (1 - squeeze * 0.32) * squashX * (1 + land * 0.22)
   const ry = r * (1 + squeeze * 0.18) * squashY * (1 - land * 0.28)
-  const alpha = dying ? 1 - deathT * 0.35 : 1
-  const body = dying
-    ? fill(4, 72, dark ? 58 : 54, alpha)
-    : fill(HOPPER, HOPPER_SAT, dark ? 92 : 96, alpha)
-  const stroke = dying
-    ? fill(4, 72, dark ? 48 : 36, alpha)
-    : fill(HOPPER, 30, dark ? 24 : 30, alpha)
-
+  const fade = dying ? 1 - deathT * 0.35 : 1
+  const bodyHue = dying ? 4 : HOPPER
+  const bodySat = dying ? 72 : 62
   /*
-   * A squat body rather than a disc.
+   * Translucent, like the cars on the same road and the beads in Snake.
    *
-   * A disc in the coin's own colour is what this was, and the thing you steer
-   * looked like the thing you collect — six degrees of hue between them, the
-   * same circle, the same highlight. It is pale now, which nothing else on the
-   * board is, and shaped like something that squats rather than rolls.
+   * This was the one solid fill on the field — alpha 1 where everything else
+   * is a soft wash behind a saturated outline — which is what made it sit on
+   * top of the board rather than in it.
    */
-  const bw = rx * 2.1
-  const bh = ry * 1.72
-  roundRect(ctx, drawX - bw / 2, drawY - bh / 2 + ry * 0.12, bw, bh, Math.min(bw, bh) * 0.42)
+  const body = fill(bodyHue, bodySat, dark ? 58 : 54, softFillAlpha(dark ? 0.32 : 0.26) * fade)
+  const stroke = fill(bodyHue, bodySat, dark ? 48 : 36, 0.95 * fade)
+
+  ctx.beginPath()
+  ctx.ellipse(drawX, drawY, rx, ry, 0, 0, Math.PI * 2)
   ctx.fillStyle = body
   ctx.fill()
   ctx.strokeStyle = stroke
@@ -241,28 +228,15 @@ function drawHopper(
     return
   }
 
-  /*
-   * White with a dark pupil, which is how every other face on the site is
-   * built — this one had it inverted, a dark blob with a white speck, and at
-   * this size that read as two holes. Set high and proud of the body, the one
-   * cheap cue that says frog rather than ball.
-   */
-  const eyeR = Math.max(1.6, r * 0.26)
-  const eyeX = bw * 0.26
-  const eyeY = drawY - bh * 0.38 + ry * 0.12
-  ctx.beginPath()
-  ctx.arc(drawX - eyeX, eyeY, eyeR, 0, Math.PI * 2)
-  ctx.arc(drawX + eyeX, eyeY, eyeR, 0, Math.PI * 2)
-  ctx.fillStyle = '#fff'
-  ctx.fill()
-  ctx.strokeStyle = stroke
-  ctx.lineWidth = Math.max(1.4, size * 0.04)
-  strokeOutlined(ctx)
-
   ctx.fillStyle = '#1a2b3c'
   ctx.beginPath()
-  ctx.arc(drawX - eyeX, eyeY + eyeR * 0.12, eyeR * 0.46, 0, Math.PI * 2)
-  ctx.arc(drawX + eyeX, eyeY + eyeR * 0.12, eyeR * 0.46, 0, Math.PI * 2)
+  ctx.arc(drawX - rx * 0.28, drawY - ry * 0.1, r * 0.14, 0, Math.PI * 2)
+  ctx.arc(drawX + rx * 0.28, drawY - ry * 0.1, r * 0.14, 0, Math.PI * 2)
+  ctx.fill()
+  ctx.fillStyle = '#fff'
+  ctx.beginPath()
+  ctx.arc(drawX - rx * 0.24, drawY - ry * 0.14, r * 0.05, 0, Math.PI * 2)
+  ctx.arc(drawX + rx * 0.32, drawY - ry * 0.14, r * 0.05, 0, Math.PI * 2)
   ctx.fill()
 }
 
