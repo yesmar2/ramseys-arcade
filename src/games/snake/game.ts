@@ -166,11 +166,13 @@ const BOOST_FUEL_MAX = 4
 /**
  * Seconds of boost each food is worth.
  *
- * Under a second, so a full tank is five foods of saving rather than three.
- * Refilling faster than this made boost something you always had, and a thing
- * you always have is a speed setting, not a decision.
+ * Half a second, so a full tank is eight foods of saving. One food buys about
+ * two cells of gained ground — enough to change which band of the ring you
+ * reach the next one in, and not enough to hold the boost open. Refilling
+ * faster than this made boost a thing you always had, and a thing you always
+ * have is a speed setting, not a decision.
  */
-const BOOST_FUEL_PER_FOOD = 0.8
+const BOOST_FUEL_PER_FOOD = 0.5
 
 /** Boost runs on the tank, so it stops when that is dry. */
 export function isBoosting(s: Pick<GameState, 'boostHeld' | 'phase' | 'boostFuel'>) {
@@ -602,26 +604,58 @@ function pastHardWall(s: GameState) {
 }
 
 /**
- * How far the head gets into a barrier cell before it counts as a crash.
+ * How far past a block's drawn edge the head reaches before it counts as a hit.
  *
- * Matched to the forgiveness the outer walls already give: clipping the corner
- * of a block on the way past is not what anybody means by hitting it.
+ * Measured from the head's own edge, not its centre, which is what was wrong
+ * before: waiting for the centre to get a quarter of the way into the cell put
+ * three quarters of the head inside the block by the time the run ended, and it
+ * looked like the snake had driven into it rather than hit it.
+ *
+ * A bead is {@link BEAD_SPACING} across and a block is drawn inset a little
+ * from its cell, so the head's leading edge meets the block while the centre is
+ * still outside — hence a threshold that sits *outside* the cell. The tolerance
+ * left in is enough to clip a corner in passing and live.
  */
-const BARRIER_BITE = 0.24
+const BARRIER_REACH = BEAD_SPACING / 2 - 0.06 - 0.1
 
-/** True once the head is properly inside a walled cell, not just brushing one. */
-function hitsBarrier(s: GameState) {
-  if (s.walls.size === 0) return false
-  // Inner rects never overlap, so only the cell under the head can be hit.
-  const cx = Math.floor(s.head.x)
-  const cy = Math.floor(s.head.y)
-  if (!s.walls.has(wallKey(cx, cy))) return false
-  return (
-    s.head.x > cx + BARRIER_BITE &&
-    s.head.x < cx + 1 - BARRIER_BITE &&
-    s.head.y > cy + BARRIER_BITE &&
-    s.head.y < cy + 1 - BARRIER_BITE
-  )
+/** The block the head has run into, rather than merely reached, or null. */
+function barrierHit(s: GameState): Cell | null {
+  if (s.walls.size === 0) return null
+  // The head can be outside the cell it touches, so look at the neighbours too.
+  // A lane runs 0.5 from a block's edge and the reach is well under that, so
+  // passing alongside one never registers.
+  const hx = Math.floor(s.head.x)
+  const hy = Math.floor(s.head.y)
+  for (let cx = hx - 1; cx <= hx + 1; cx++) {
+    for (let cy = hy - 1; cy <= hy + 1; cy++) {
+      if (!s.walls.has(wallKey(cx, cy))) continue
+      if (
+        s.head.x > cx - BARRIER_REACH &&
+        s.head.x < cx + 1 + BARRIER_REACH &&
+        s.head.y > cy - BARRIER_REACH &&
+        s.head.y < cy + 1 + BARRIER_REACH
+      ) {
+        return { x: cx, y: cy }
+      }
+    }
+  }
+  return null
+}
+
+/**
+ * Come to rest against the block instead of wherever the frame happened to
+ * land. A step covers real ground, and the faster the snake the further past
+ * the contact point it ends up — at boost speed that was half the head buried.
+ * The step back is a few pixels and happens under the crash flash.
+ */
+function restAgainst(s: GameState, block: Cell) {
+  const head = { ...s.head }
+  if (s.dir === 'right') head.x = Math.min(head.x, block.x - BARRIER_REACH)
+  else if (s.dir === 'left') head.x = Math.max(head.x, block.x + 1 + BARRIER_REACH)
+  else if (s.dir === 'down') head.y = Math.min(head.y, block.y - BARRIER_REACH)
+  else head.y = Math.max(head.y, block.y + 1 + BARRIER_REACH)
+  s.head = head
+  s.trail[0] = head
 }
 
 /** True while the head is nosing past the edge lane, before the hard crash. */
@@ -722,7 +756,11 @@ export function tick(state: GameState, dt: number): GameState {
     move(s, hop)
 
     if (pastHardWall(s)) return die(s)
-    if (hitsBarrier(s)) return die(s)
+    const block = barrierHit(s)
+    if (block) {
+      restAgainst(s, block)
+      return die(s)
+    }
     if (hitsBody(s)) return die(s)
     tryEat(s, state.best)
   }

@@ -2970,11 +2970,6 @@ a.game-hud__board {
   color: color-mix(in srgb, var(--accent) 55%, var(--ink));
 }
 
-.snake .play-readout__score {
-  top: max(0.35rem, env(safe-area-inset-top, 0px));
-  padding-bottom: 0.7rem;
-}
-
 .play-readout__center {
   position: absolute;
   top: calc(max(0.55rem, env(safe-area-inset-top, 0px)) + 1.65rem);

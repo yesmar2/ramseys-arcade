@@ -165,6 +165,22 @@ function leaveTo(target: string) {
   navigate(target)
 }
 
+/**
+ * Ask whoever owns the run to pause it, and report whether anyone did.
+ *
+ * Backing out of a live run should stop it, not ask whether to throw it away:
+ * pausing is the ordinary reason to reach for back, and the pause panel already
+ * offers leaving for the rare one. A game with no pause to offer must fall back
+ * to the old confirm rather than have the control do nothing, so the caller
+ * needs an answer — dispatch is synchronous, so the flag is set by the time
+ * this returns.
+ */
+function askToPause() {
+  const request = new CustomEvent('arcade:pause', { detail: { handled: false } })
+  window.dispatchEvent(request)
+  return request.detail.handled === true
+}
+
 function PlayLeaveButton({
   slug,
   inRun,
@@ -210,7 +226,8 @@ function PlayLeaveButton({
     return () => window.removeEventListener('keydown', onKey, true)
   }, [confirming])
 
-  // Mobile / browser back → same leave confirm as the in-game back button.
+  // Mobile / browser back behaves as the in-game back control does: pause a
+  // live run, and leave only from the pause panel.
   useEffect(() => {
     const playUrl = currentHref()
     const guard = { arcadeLeaveGuard: true as const }
@@ -219,10 +236,13 @@ function PlayLeaveButton({
     armedRef.current = true
     const onPopState = () => {
       if (!armedRef.current) return
-      const running = resolveInRun(inRunRef.current) || pausedRef.current
       history.pushState(guard, '', playUrl)
-      if (running) {
+      if (pausedRef.current) {
         setConfirming(true)
+        return
+      }
+      if (resolveInRun(inRunRef.current)) {
+        if (!askToPause()) setConfirming(true)
         return
       }
       armedRef.current = false
@@ -235,13 +255,16 @@ function PlayLeaveButton({
     }
   }, [slug])
 
-  const onClick = () => {
-    const running = resolveInRun(inRun) || paused
-    if (!running) {
+  const backOut = () => {
+    if (paused) {
+      setConfirming(true)
+      return
+    }
+    if (!resolveInRun(inRunRef.current)) {
       goNow()
       return
     }
-    setConfirming(true)
+    if (!askToPause()) setConfirming(true)
   }
 
   return (
@@ -254,7 +277,7 @@ function PlayLeaveButton({
         onPointerDown={(e) => e.stopPropagation()}
         onClick={(e) => {
           e.stopPropagation()
-          onClick()
+          backOut()
         }}
       >
         <svg className="game-play-back__icon" viewBox="0 0 24 24" aria-hidden="true">

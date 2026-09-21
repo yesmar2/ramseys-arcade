@@ -35,19 +35,23 @@ export function renderGame(
     }
   }
 
-  // A strip under the board belongs to the level and the boost tank, taken out
-  // before the board is sized rather than after. Sizing the board first and
-  // then drawing into whatever gap was left is how the level label came to sit
-  // on the board's own edge — on a short screen there was no gap at all.
+  // The board gets what is left after both strips, not the whole canvas.
+  //
+  // The score is a DOM element sitting over this canvas, so nothing here knows
+  // it is there; sizing the board to the full height and trusting it to miss is
+  // what put the two on top of each other on a wide screen. The header is the
+  // room the score needs, the footer the room the level and tank need, and the
+  // board is sized to what remains.
+  const header = Math.max(40, Math.min(w, h) * 0.09)
   const footer = Math.max(22, Math.min(w, h) * 0.07)
   const pad = Math.min(w, h) * 0.05
   const boardW = w - pad * 2
-  const boardH = h - pad * 2 - footer
+  const boardH = h - pad - header - footer
   const cell = Math.min(boardW / state.cols, boardH / state.rows)
   const gridW = cell * state.cols
   const gridH = cell * state.rows
   const ox = (w - gridW) / 2
-  const oy = pad + Math.max(0, (boardH - gridH) / 2)
+  const oy = header + Math.max(0, (boardH - gridH) / 2)
 
   // Board panel
   const radius = Math.max(12, cell * 0.55)
