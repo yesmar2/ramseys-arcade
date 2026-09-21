@@ -23,7 +23,13 @@ import { useAuth } from '../hooks/useAuth'
 import { useImpersonation } from '../hooks/useImpersonation'
 import { refreshFriends } from '../hooks/useFriends'
 import { usePlayerName } from '../hooks/usePlayerName'
-import { AVATARS_ENABLED, AVATAR_EVENT, getLocalAvatarId } from '../lib/avatars'
+import {
+  AVATARS_ENABLED,
+  AVATAR_EVENT,
+  avatarWashColor,
+  getLocalAvatarId,
+  resolveAvatar,
+} from '../lib/avatars'
 import { AvatarStudio } from '../components/AvatarStudio'
 import { gapToNextLabel } from '../lib/boardGap'
 import { APP_NAME } from '../lib/brand'
@@ -268,6 +274,11 @@ export function RankPage({
     return 0
   })
 
+  // The banner takes its colour from the character on it, the way a game's page takes the game's.
+  const avatarId = avatarOverride ?? data.avatarId
+  const bannerAccent =
+    AVATARS_ENABLED && viewedName ? avatarWashColor(resolveAvatar(avatarId, viewedName)) : undefined
+
   return (
     <PageShell innerClassName="lb-page__inner lb-page__inner--events">
       <div className="ev pf">
@@ -284,6 +295,7 @@ export function RankPage({
         ) : null}
         {viewedName ? (
           <PageBanner
+            accent={bannerAccent}
             ariaLabel={isSelf ? 'Your profile' : `${viewedName}'s profile`}
             /* Someone else's profile has a way back to the rankings and the
                tools in a bar; your own keeps Share in the actions row. */

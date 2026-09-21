@@ -1390,10 +1390,16 @@ html[data-theme="dark"] .home-banner__hint--error {
   filter: var(--banner-mark-shadow);
 }
 
+/*
+ * The pencil sits at the character's lower left. The card is taller than the
+ * banner and runs off its right edge, so its corners are clipped; this spot
+ * stays on screen at every width, rotation included.
+ */
 .home-banner__card .pfh__mark-edit {
   position: absolute;
-  right: 9%;
-  bottom: 9%;
+  left: 16%;
+  right: auto;
+  bottom: 26%;
   width: 2.6rem;
   height: 2.6rem;
   color: var(--hero-ink, #fff);

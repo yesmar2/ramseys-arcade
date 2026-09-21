@@ -151,6 +151,22 @@ export function avatarColor(index: number): string {
   return AVATAR_COLORS[index]?.hex ?? AVATAR_COLORS[0].hex
 }
 
+/** Bodies that carry no hue of their own; a page washed in them would go grey. */
+const NEUTRAL_AVATAR_COLORS: ReadonlySet<string> = new Set(['silver', 'snow'])
+
+/**
+ * The one colour that stands for a character, for a page to take its tone
+ * from: the body, unless the body is a neutral, then the accent, and the
+ * site's own mint when both are.
+ */
+export function avatarWashColor(avatar: Avatar): string {
+  for (const index of [avatar.body, avatar.accent]) {
+    const color = AVATAR_COLORS[index]
+    if (color && !NEUTRAL_AVATAR_COLORS.has(color.id)) return color.hex
+  }
+  return AVATAR_COLORS[0].hex
+}
+
 /* ---------- this device's copy, so a mark paints before the API answers ---------- */
 
 const AVATAR_STORAGE_KEY = 'arcade-avatar-id'
