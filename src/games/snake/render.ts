@@ -46,7 +46,9 @@ export function renderGame(
   // The panel is drawn PANEL_PAD outside the grid on every side, so the header
   // has to cover that too — clearing the grid alone still leaves the panel's
   // top border reaching up into the score.
-  const header = playHeader(w) + PANEL_PAD
+  // `center` because the readout now carries a second line — length and level,
+  // in the slot every other game puts its run state in.
+  const header = playHeader(w, { center: true }) + PANEL_PAD
   const footer = Math.max(22, Math.min(w, h) * 0.07)
   // On a phone the board is limited by width — fifteen columns across 375px —
   // so every pixel of side margin comes straight off the cell. Trimmed to the
@@ -301,27 +303,19 @@ export function renderGame(
   // Back out to the whole canvas for the footer and the flash.
   ctx.restore()
 
-  // Footer: level at one end, boost tank at the other, both on the board's own
-  // margins so the row reads as one strip rather than two stray marks. The HUD
-  // above the board stays the score alone.
+  // Footer: the boost tank, and only that. The level used to sit here too,
+  // before it moved up to the readout where every other game keeps its run
+  // state — a number printed twice is a number you check in two places.
   {
     const panelBottom = oy + gridH + PANEL_PAD
     const midY = panelBottom + (h - panelBottom) / 2
     const muted = dark ? 'rgba(231, 238, 243, 0.55)' : 'rgba(26, 43, 60, 0.5)'
     const label = Math.max(11, Math.min(footer * 0.52, cell * 0.42))
 
-    ctx.save()
-    ctx.font = `600 ${label}px Outfit, system-ui, sans-serif`
-    ctx.textAlign = 'left'
-    ctx.textBaseline = 'middle'
-    ctx.fillStyle = muted
-    ctx.fillText(`LEVEL ${state.level}`, ox, midY)
-    ctx.restore()
-
     const fuel = boostFuelLeft(state)
-    const barW = Math.min(gridW * 0.3, label * 9)
+    const barW = Math.min(gridW * 0.42, label * 12)
     const barH = Math.max(4, label * 0.36)
-    const barX = ox + gridW - barW
+    const barX = ox + (gridW - barW) / 2 + label * 0.5
     const barY = midY - barH / 2
 
     // A bolt ahead of the bar, so the strip says what it is measuring.
