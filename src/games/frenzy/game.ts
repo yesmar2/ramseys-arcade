@@ -376,11 +376,14 @@ function aiDesire(
     const speedFrac = 0.55 + catchCloseness(player.level, f.level) * 0.33
     return { angle, speedFrac }
   }
-  if (huntingAllowed && playerIsThreat && f.aggressive && d < r * 11 + 190) {
+  if (huntingAllowed && playerIsThreat && f.aggressive && d < r * 4 + 70) {
     const angle = Math.atan2(player.y - f.y, player.x - f.x)
     // A real lunge at first — an aggressive hunter should be a genuine
     // threat — but it tires: run for a few seconds and it drops below your
     // own speed, so a chase is always survivable if you react and commit.
+    // The short trigger range matters just as much as the fatigue: engaging
+    // only when it's already close means you get to see it coming instead
+    // of being caught mid-lunge from off in the distance.
     f.huntTime += dt
     const speedFrac = Math.max(0.82, 1.22 - f.huntTime * 0.075)
     return { angle, speedFrac }
@@ -544,11 +547,15 @@ export function tick(state: GameState, dt: number): GameState {
 
   // Matches (and slightly exceeds) the aggressive hunt trigger range, so the
   // warning always lands before a hunter actually commits to the chase.
-  s.danger = s.fishes.some(
-    (f) =>
-      f.level > s.player.level &&
-      dist(f.x, f.y, s.player.x, s.player.y) < radiusForLevel(f.level, s.scale) * 12 + 210,
-  )
+  // Suppressed during invuln — a fish merely existing somewhere nearby while
+  // you can't be touched yet isn't a warning, it's noise.
+  s.danger =
+    s.invuln <= 0 &&
+    s.fishes.some(
+      (f) =>
+        f.level > s.player.level &&
+        dist(f.x, f.y, s.player.x, s.player.y) < radiusForLevel(f.level, s.scale) * 5 + 90,
+    )
 
   return s
 }
