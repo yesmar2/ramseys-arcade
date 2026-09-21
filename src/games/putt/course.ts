@@ -1,19 +1,22 @@
 /*
  * The course: five holes, the same every round, so a score means the same
- * thing to everyone on the board.
+ * thing to everyone on the board. Every hole is a journey of several parts,
+ * each with something of its own to get past or a way to choose, so a good
+ * round is five or six strokes a hole and par sits around seven.
  *
  * A hole is painted. Its ground is a union of shapes — discs, capsules,
- * arcs, polygons — inside a box 100 units wide and as long as the hole
- * needs, and its walls are wherever the ground ends, so a curve is a curve
- * and a fork is two strokes that overlap. y grows downward: tees sit near
- * the bottom, cups near the top, and no cup is within one shot of its tee.
- * Sand drags, water costs a stroke, a bridge is ground over water and a
- * drawbridge is one that is only there part of the time, a hill pushes the
- * ball downhill, a bowl pulls it to its middle, a repeller pushes it away,
- * and a spinning floor carries it round. Windmills turn, sliders sweep
- * across, flaps let the ball through one way only, pads push, ramps launch
- * it over whatever is in the way, pipes take it in one end and out the
- * other, and bumpers and rovers knock it about.
+ * arcs, spirals, polygons — inside a box 100 units wide and as long as the
+ * hole needs, and its walls are wherever the ground ends, so a curve is a
+ * curve and a fork is two strokes that overlap. y grows downward: tees sit
+ * near the bottom, cups near the top, and no cup is within one shot of its
+ * tee. Sand drags, water costs a stroke, a bridge is ground over water and
+ * a drawbridge is one that is only there part of the time, a hill pushes
+ * the ball downhill, a bowl pulls it to its middle, a repeller pushes it
+ * away, and a spinning floor carries it round. Windmills turn, sliders
+ * sweep across, flaps let the ball through one way only, kickers throw it
+ * back harder, pads push, ramps launch it over whatever is in the way,
+ * pipes take it in one end and out the other, and bumpers and rovers knock
+ * it about.
  */
 
 import { arc, capsule, disc, rect, spiral, type Shape, type Vec } from './terrain'
@@ -124,6 +127,11 @@ function bar(x1: number, y1: number, x2: number, y2: number, t = BAR): Wall {
   return { a: { x: x1, y: y1 }, b: { x: x2, y: y2 }, t }
 }
 
+/** A kicker: a bar the ball comes off faster than it arrived. */
+function kicker(x1: number, y1: number, x2: number, y2: number): Wall {
+  return { ...bar(x1, y1, x2, y2), kick: true }
+}
+
 /** A flap across the ground from (x1, y1) to (x2, y2): the ball passes heading along `pass`, and never back. */
 function flap(x1: number, y1: number, x2: number, y2: number, pass: number): Wall {
   return { ...bar(x1, y1, x2, y2), pass }
@@ -221,32 +229,33 @@ function hole(spec: Spec): Hole {
 
 export const COURSE: Hole[] = [
   /*
-   * Orbit. Long, and not the usual mini golf. Up the left leg into a plaza
-   * with three bumpers to thread, through an S of two bends with sand
-   * inside the first, and up the right leg, where
-   * a rover roams the corridor. Then a ring whose floor spins: the leg
-   * feeds the outer bank, and the floor carries the ball round like a
-   * pinball orbit and presses it to the bank. Off the top of the ring a
-   * spur runs up past a windmill to the green; stay on the ring and it
-   * carries you round to a pipe at its foot that lifts you onto the green,
-   * low on its left. The green is a plaza with a pond in the middle and a
-   * narrow bridge straight over it, a bumper either side, and a cup that
-   * slides across the line the bridge lands on.
+   * Orbit. Up the left leg into a plaza with three bumpers to thread,
+   * through an S of two bends with sand inside the first, and up the right
+   * leg: first between two kickers angled in from the walls, a slingshot
+   * that throws a ball off line back across the corridor, then past a
+   * rover roaming its pen. Then a ring whose floor spins: the leg feeds the
+   * outer bank, and the floor carries the ball round like a pinball orbit
+   * and presses it to the bank. Off the top of the ring a spur runs up past
+   * a windmill to the green; stay on the ring and it carries you round to a
+   * pipe at its foot that lifts you onto the green, low on its left. The
+   * green is a plaza with a pond in the middle and a narrow bridge straight
+   * over it, a bumper either side, and a cup that slides across the line
+   * the bridge lands on.
    */
   hole({
     name: 'Orbit',
-    par: 6,
-    h: 616,
-    tee: { x: 26, y: 600 },
+    par: 7,
+    h: 716,
+    tee: { x: 26, y: 700 },
     cup: { x: 46, y: 40 },
     cupPath: { to: { x: 66, y: 40 }, period: 6 },
     green: [
-      disc(26, 600, 15),
-      capsule(26, 600, 26, 520, 13),
-      disc(38, 486, 30),
-      arc(56, 460, 30, Math.PI, Math.PI * 1.5, 13),
-      arc(56, 400, 30, 0, Math.PI / 2, 13),
-      capsule(86, 400, 86, 225, 13),
+      disc(26, 700, 15),
+      capsule(26, 700, 26, 620, 13),
+      disc(38, 586, 30),
+      arc(56, 560, 30, Math.PI, Math.PI * 1.5, 13),
+      arc(56, 500, 30, 0, Math.PI / 2, 13),
+      capsule(86, 500, 86, 225, 13),
       arc(56, 225, 30, 0, Math.PI * 2, 13),
       capsule(56, 195, 56, 78, 13),
       disc(56, 46, 32),
@@ -256,32 +265,36 @@ export const COURSE: Hole[] = [
     portals: [pipe(56, 264, 32, 60, UP)],
     spinners: [mill(56, 150, 22, 2.0)],
     slopes: [spin(arc(56, 225, 30, 0, Math.PI * 2, 13), 35)],
-    sand: [disc(40, 444, 6), disc(56, 202, 5)],
-    bumpers: [pop(22, 480, 4), pop(40, 470, 4), pop(36, 498, 4), pop(44, 68, 4), pop(68, 68, 4)],
+    walls: [kicker(73, 482, 80, 462), kicker(99, 482, 92, 462)],
+    sand: [disc(40, 544, 6), disc(56, 202, 5)],
+    bumpers: [pop(22, 580, 4), pop(40, 570, 4), pop(36, 598, 4), pop(44, 68, 4), pop(68, 68, 4)],
     rovers: [rover(86, 320, 2.8, 60, 1.0, box(73, 260, 26, 120))],
     marks: [mark(56, 180, UP)],
   }),
   /*
-   * Crater. Out of the tee the ground splits round an island: the left
-   * lane has sand across it, the right lane two bumpers. Both open onto a
-   * round plaza with a crater in its middle, a bowl that bends any ball
-   * crossing it toward the centre and swallows a slow one, which then has
-   * to climb back out. Two ways off the plaza. Right is a narrow straight
-   * with a windmill across its top, and it comes out beside the cup:
-   * short, but the line has to be true and the timing right. Left is a
-   * wide, plain corridor that bends round into the far side of the green:
-   * long, safe, and a long putt past a bumper to finish. The cup sits on a
-   * hilltop either way.
+   * Crater. Out of the tee into a pocket of three bumpers, then the ground
+   * splits round an island: the left lane has sand across it, the right
+   * lane two bumpers. Both open onto a round plaza with a crater in its
+   * middle, a bowl that bends any ball crossing it toward the centre and
+   * swallows a slow one, which then has to climb back out. Two ways off
+   * the plaza. Right is a narrow straight with a pothole halfway and a
+   * windmill across its top, and it comes out beside the cup: short, but
+   * the line has to be true and the timing right. Left is a wide, plain
+   * corridor that bends round into the far side of the green: long, safe,
+   * and a long putt past a bumper to finish. The cup sits on a hilltop
+   * either way.
    */
   hole({
     name: 'Crater',
-    par: 6,
-    h: 442,
-    tee: { x: 50, y: 426 },
+    par: 7,
+    h: 562,
+    tee: { x: 50, y: 546 },
     cup: { x: 78, y: 66 },
     green: [
-      disc(50, 428, 12),
-      capsule(50, 405, 50, 420, 22),
+      disc(50, 548, 12),
+      capsule(50, 548, 50, 500, 10),
+      disc(50, 470, 30),
+      capsule(50, 405, 50, 430, 22),
       capsule(38, 300, 38, 405, 8),
       capsule(62, 300, 62, 405, 8),
       capsule(50, 280, 50, 300, 22),
@@ -292,105 +305,147 @@ export const COURSE: Hole[] = [
       capsule(42, 96, 50, 96, 11),
       disc(58, 74, 30),
     ],
-    slopes: [bowl(disc(50, 250, 24), 100), repel(disc(78, 66, 10), 30)],
+    slopes: [bowl(disc(50, 250, 24), 100), bowl(disc(85, 170, 5), 80), repel(disc(78, 66, 10), 30)],
     spinners: [mill(85, 118, 12, 2.4)],
-    bumpers: [pop(62, 340, 3), pop(62, 375, 3), pop(58, 82, 4)],
+    bumpers: [pop(38, 462, 4), pop(62, 462, 4), pop(50, 484, 4), pop(62, 340, 3), pop(62, 375, 3), pop(58, 82, 4)],
     sand: [disc(38, 352, 6)],
     marks: [mark(85, 200, UP), mark(18, 200, UP)],
   }),
   /*
-   * The Climb. Two hills, each a straight that pushes the ball back down,
-   * joined by round elbows to a summit green. At the top of the first hill
-   * a spur runs off to the right to a pipe that drops the ball onto the
-   * summit — but just past the spur's mouth is a flap that lets a ball
-   * through going up and never back. Crest the hill gently and the spur
-   * is yours; crest it hard and you are through the flap and committed to
-   * the long way: the elbows, the second hill with its bumper, and the
-   * summit from the far side. Before any of that, the approach: a pad
-   * tight against the left wall that throws the ball up the hill for free
-   * if you hug the wall over it, sand on the right if you drift wide, and
-   * a plain full pull up the middle gets neither.
+   * The Climb. Three hills, each a straight that pushes the ball back
+   * down. The approach first: a pad tight against the left wall that throws
+   * the ball up the first hill for free if you hug the wall over it, sand
+   * on the right if you drift wide, and a plain full pull up the middle
+   * gets neither. At the top of the first hill a spur runs off to the right
+   * to a pipe that drops the ball onto the traverse near the top — but just
+   * past the spur's mouth is a flap that lets a ball through going up and
+   * never back. Crest the hill gently and the spur is yours; crest it hard
+   * and you are through the flap and committed to the long way: two
+   * elbows, the second hill with its bumper, and round onto the traverse,
+   * a corridor across the top with two windmills in it, timed or squeezed
+   * past at the very edge. The traverse ends on a landing, and from the
+   * landing the third hill climbs to the summit green.
    */
   hole({
     name: 'The Climb',
-    par: 4,
-    h: 400,
-    tee: { x: 20, y: 382 },
-    cup: { x: 30, y: 54 },
+    par: 7,
+    h: 640,
+    tee: { x: 20, y: 622 },
+    cup: { x: 32, y: 86 },
     green: [
-      disc(20, 384, 14),
-      capsule(20, 384, 20, 190, 12),
-      capsule(20, 198, 52, 198, 6),
-      arc(44, 190, 24, Math.PI, Math.PI * 1.5, 12),
-      capsule(44, 166, 56, 166, 12),
-      arc(56, 142, 24, 0, Math.PI / 2, 12),
-      capsule(80, 142, 80, 70, 12),
-      arc(56, 70, 24, -Math.PI / 2, 0, 12),
-      disc(40, 44, 20),
+      disc(20, 624, 14),
+      capsule(20, 624, 20, 400, 12),
+      capsule(20, 408, 52, 408, 6),
+      arc(44, 400, 24, Math.PI, Math.PI * 1.5, 12),
+      capsule(44, 376, 56, 376, 12),
+      arc(56, 352, 24, 0, Math.PI / 2, 12),
+      capsule(80, 352, 80, 270, 12),
+      arc(56, 270, 24, -Math.PI / 2, 0, 12),
+      capsule(56, 246, 30, 246, 12),
+      disc(24, 246, 18),
+      capsule(24, 246, 24, 118, 12),
+      disc(30, 96, 22),
     ],
-    slopes: [hill(capsule(20, 272, 20, 214, 12), 0, 100), hill(capsule(80, 128, 80, 84, 12), 0, 65)],
-    walls: [flap(9, 189, 31, 189, UP)],
-    portals: [pipe(50, 198, 40, 62, UP)],
-    boosts: [pad(8, 318, 9, 16, UP)],
-    sand: [disc(26, 300, 5)],
-    bumpers: [pop(74, 110, 3)],
-    marks: [mark(30, 198, RIGHT)],
+    slopes: [
+      hill(capsule(20, 500, 20, 420, 12), 0, 100),
+      hill(capsule(80, 336, 80, 284, 12), 0, 65),
+      hill(capsule(24, 226, 24, 130, 12), 0, 90),
+    ],
+    walls: [flap(9, 399, 31, 399, UP)],
+    portals: [pipe(50, 408, 58, 246, LEFT)],
+    boosts: [pad(8, 560, 9, 16, UP)],
+    sand: [disc(26, 542, 5)],
+    bumpers: [pop(74, 316, 3)],
+    spinners: [mill(50, 246, 14, 2.0), mill(36, 246, 14, -1.8, 1.2)],
+    marks: [mark(30, 408, RIGHT)],
   }),
   /*
-   * The Lake. A wide green with water across the middle and three ways
-   * over. In the middle a drawbridge that is down half the time; on the
-   * left a ramp that flies the ball over if it is going fast enough, and
+   * The Lake. A wide green with water across it and three ways over. In
+   * the middle a drawbridge that is down six seconds in ten; on the left a
+   * ramp that flies the ball over if it is going fast and straight, and
    * drops it in if it is not, and lands it in sand; on the right a dry
-   * channel with a bar that slides across it. Three bumpers guard the far
-   * shore, and the cup sits off every crossing's line, so each needs an
-   * angled approach. Between the tee and the near shore a field of five
-   * bumpers: the lane you thread sets up which crossing you can take.
+   * channel with a bar that slides across it. Before the water a field of
+   * five bumpers, and after it three more guarding the mouth of a channel
+   * that runs on up the middle, past five ponds set in it left and right,
+   * a slalom that a clipped edge turns into a splash. At the top an island
+   * green with a moat round it: a drawbridge across the moat, or a ramp to
+   * jump it, and the island a bowl that gathers what lands on it to the
+   * cup in the middle.
    */
   hole({
     name: 'The Lake',
-    par: 3,
-    h: 350,
-    tee: { x: 50, y: 328 },
-    cup: { x: 60, y: 40 },
-    green: [capsule(50, 60, 50, 300, 46)],
-    water: [rect(4, 90, 72, 60)],
-    drawbridges: [drawbridge(capsule(40, 154, 40, 86, 7), 4, 0.6)],
-    ramps: [ramp(8, 156, 22, 8, UP, 82)],
-    sliders: [slider(76, 120, 88, 120, 8, 0, 2.6)],
-    bumpers: [pop(30, 62, 4), pop(50, 66, 4), pop(70, 62, 4), pop(34, 236, 4), pop(66, 236, 4), pop(50, 262, 4), pop(18, 262, 4), pop(82, 262, 4)],
-    sand: [disc(19, 76, 9)],
-    marks: [mark(19, 178, UP), mark(40, 178, UP), mark(86, 164, UP)],
+    par: 6,
+    h: 620,
+    tee: { x: 50, y: 598 },
+    cup: { x: 50, y: 86 },
+    green: [capsule(50, 330, 50, 570, 46), capsule(50, 290, 50, 136, 14), disc(50, 90, 40)],
+    water: [
+      rect(4, 360, 72, 60),
+      disc(40, 262, 9),
+      disc(60, 232, 9),
+      disc(40, 202, 9),
+      disc(60, 172, 9),
+      disc(50, 150, 6),
+      arc(50, 90, 24, 0, Math.PI * 2, 5),
+    ],
+    drawbridges: [drawbridge(capsule(40, 424, 40, 356, 7), 4, 0.6), drawbridge(capsule(50, 124, 50, 104, 5), 5, 0.5)],
+    ramps: [ramp(8, 426, 22, 8, UP, 82), ramp(40, 128, 20, 8, UP, 42)],
+    slopes: [bowl(disc(50, 90, 18), 50)],
+    sliders: [slider(76, 390, 88, 390, 8, 0, 2.6)],
+    bumpers: [
+      pop(34, 506, 4),
+      pop(66, 506, 4),
+      pop(50, 532, 4),
+      pop(18, 532, 4),
+      pop(82, 532, 4),
+      pop(30, 332, 4),
+      pop(50, 336, 4),
+      pop(70, 332, 4),
+    ],
+    sand: [disc(19, 346, 9)],
+    marks: [mark(19, 448, UP), mark(40, 448, UP), mark(86, 434, UP)],
   }),
   /*
-   * Figure Eight. Two rings, one on top of the other, sharing a waist. Up
-   * the stem into the lower ring and round either side, through the waist
-   * — where a bar slides across, closing one side and then the other — and
-   * round the upper ring to a green at the top, with a second bar across
-   * its neck. A bumper on the outside of each ring and sand on the inside
-   * keep the line honest. It starts on a round plaza whose middle is a
-   * turntable: a ball crossing it is carried sideways, so the tee shot is
-   * aimed off to come out straight, or round the edge to stay off it.
+   * Figure Eight. Out of the tee three lanes round two islands: sand in
+   * the left one, a windmill in the middle one, two bumpers in the right.
+   * They meet on a round plaza whose middle is a turntable that carries a
+   * crossing ball sideways, so the shot up the stem is aimed off to come
+   * out straight, or skirts the edge. Then two rings, one on top of the
+   * other, sharing a waist: round either side of the lower ring, through
+   * the waist, where a bar slides across, closing one side and then the
+   * other, and round the upper ring — a bumper on the outside of each ring
+   * and sand on the inside — to a neck with a second bar across it. The
+   * green at the top is a turntable too, the cup at its centre: the floor
+   * carries a putt round and presses it out to the rim, so the last stroke
+   * is aimed against the spin.
    */
   hole({
     name: 'Figure Eight',
-    par: 4,
-    h: 388,
-    tee: { x: 50, y: 372 },
-    cup: { x: 50, y: 100 },
+    par: 7,
+    h: 576,
+    tee: { x: 50, y: 560 },
+    cup: { x: 50, y: 60 },
     green: [
-      disc(50, 374, 12),
-      capsule(50, 374, 50, 350, 10),
+      disc(50, 562, 12),
+      capsule(50, 562, 50, 500, 10),
+      capsule(50, 480, 50, 500, 24),
+      capsule(30, 376, 30, 480, 7),
+      capsule(50, 376, 50, 480, 7),
+      capsule(70, 376, 70, 480, 7),
+      capsule(50, 356, 50, 376, 24),
       disc(50, 330, 30),
-      capsule(50, 300, 50, 246, 12),
-      arc(50, 200, 30, 0, Math.PI * 2, 12),
-      arc(50, 140, 30, 0, Math.PI * 2, 12),
-      disc(50, 102, 14),
+      capsule(50, 262, 50, 300, 12),
+      arc(50, 220, 30, 0, Math.PI * 2, 12),
+      arc(50, 160, 30, 0, Math.PI * 2, 12),
+      capsule(50, 90, 50, 130, 12),
+      disc(50, 60, 30),
     ],
-    slopes: [spin(disc(50, 330, 20), 40)],
-    sliders: [slider(25, 170, 55, 170, 20, 0, 3.0), slider(36, 110, 52, 110, 12, 0, 2.2)],
-    bumpers: [pop(84, 200, 4), pop(16, 140, 4)],
-    sand: [disc(70, 140, 5), disc(30, 200, 5)],
-    marks: [mark(50, 176, UP)],
+    slopes: [spin(disc(50, 330, 20), 40), spin(disc(50, 60, 26), 35)],
+    sliders: [slider(25, 190, 55, 190, 20, 0, 3.0), slider(38, 106, 54, 106, 12, 0, 2.2)],
+    spinners: [mill(50, 428, 12, 2.2)],
+    bumpers: [pop(84, 220, 4), pop(16, 160, 4), pop(70, 415, 3), pop(70, 445, 3)],
+    sand: [disc(70, 160, 5), disc(30, 220, 5), disc(30, 430, 5)],
+    marks: [mark(50, 486, UP), mark(50, 190, UP)],
   }),
 ]
 
