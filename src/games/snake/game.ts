@@ -2,7 +2,6 @@ import { getPersonalBest } from '../../lib/personalBest'
 import { sfx } from '../../lib/sound'
 import {
   assertLevelsAreOpen,
-  clearOfSnake,
   levelFor,
   wallKey,
   wallsForLevel,
@@ -66,6 +65,23 @@ export type GameState = {
   level: number
   /** Walled cells, keyed "x,y". Replaced on a level change, never mutated. */
   walls: Set<string>
+  /**
+   * Walls the head was already standing in when they arrived.
+   *
+   * A level lands wherever the snake happens to be, and dropping the cells it
+   * overlapped meant the shape turned up with pieces missing for the whole
+   * level. Better to build it whole and let the few blocks the head is inside
+   * hold their fire until it has left them — the block is there, drawn and
+   * plain, it simply does not kill you for being where it was put.
+   */
+  dormant: Set<string>
+  /**
+   * The layout the next food will bring, once there is only one to go.
+   *
+   * Drawn ahead of itself so a level is something you steer around rather than
+   * something that happens to you.
+   */
+  nextWalls: Set<string> | null
   flash: number
   floaters: Floater[]
 }
@@ -290,6 +306,21 @@ function bodyLength(segments: number) {
   return (segments - 1) * SEG_SPACING
 }
 
+/**
+ * The layout one more food would bring, or null while that is further off.
+ *
+ * The level a run is about to reach is knowable — it is the next mouthful — so
+ * there is no reason to spring it. Shown from the moment only one food stands
+ * between, which is the whole time it takes to go and get that food.
+ */
+function nextLevelPreview(
+  s: Pick<GameState, 'segments' | 'level' | 'cols' | 'rows'>,
+): Set<string> | null {
+  const next = levelFor(s.segments + 1, START_SEGMENTS)
+  if (next === s.level) return null
+  return wallsForLevel(next, s.cols, s.rows)
+}
+
 /** Pace for a body this long. Boost is applied on top, per frame. */
 function speedFor(segments: number) {
   return Math.min(MAX_SPEED, START_SPEED + (segments - START_SEGMENTS) * SPEED_PER_FOOD)
@@ -390,6 +421,8 @@ export function createInitialState(
     // shape the player has to read before they have moved.
     level: 1,
     walls: wallsForLevel(1, cols, rows),
+    dormant: new Set<string>(),
+    nextWalls: null,
     flash: 0,
     floaters: [],
   }
@@ -436,14 +469,12 @@ export function jumpToLength(state: GameState, length: number): GameState {
     level: levelFor(segments, START_SEGMENTS),
     floaters: [],
   }
-  // Jumping puts the snake straight into a later level's shape, so the same
-  // clearance a live level change gets applies here too.
-  next.walls = clearOfSnake(
-    wallsForLevel(next.level, next.cols, next.rows),
-    visualSegments(next).map((seg) => ({ x: seg.x + 0.5, y: seg.y + 0.5 })),
-    next.head,
-    next.dir,
-  )
+  // Jumping drops the snake straight into a later level's shape, so it gets
+  // the same grace a live level change gives: whole layout, and whatever the
+  // head landed inside stays quiet until it leaves.
+  next.walls = wallsForLevel(next.level, next.cols, next.rows)
+  next.dormant = new Set(blocksUnderHead(next))
+  next.nextWalls = nextLevelPreview(next)
   next.food = randomFood(next)
   next.foodAge = 0
   return next
@@ -618,26 +649,55 @@ function pastHardWall(s: GameState) {
  */
 const BARRIER_REACH = BEAD_SPACING / 2 - 0.06 - 0.1
 
-/** The block the head has run into, rather than merely reached, or null. */
-function barrierHit(s: GameState): Cell | null {
-  if (s.walls.size === 0) return null
-  // The head can be outside the cell it touches, so look at the neighbours too.
-  // A lane runs 0.5 from a block's edge and the reach is well under that, so
-  // passing alongside one never registers.
+/**
+ * Walls the head is inside right now.
+ *
+ * The head can be outside the cell it touches, so the neighbours are checked
+ * too. A lane runs 0.5 from a block's edge and the reach is well under that, so
+ * passing alongside one never registers.
+ */
+function blocksUnderHead(s: GameState): string[] {
+  if (s.walls.size === 0) return []
+  const found: string[] = []
   const hx = Math.floor(s.head.x)
   const hy = Math.floor(s.head.y)
   for (let cx = hx - 1; cx <= hx + 1; cx++) {
     for (let cy = hy - 1; cy <= hy + 1; cy++) {
-      if (!s.walls.has(wallKey(cx, cy))) continue
+      const key = wallKey(cx, cy)
+      if (!s.walls.has(key)) continue
       if (
         s.head.x > cx - BARRIER_REACH &&
         s.head.x < cx + 1 + BARRIER_REACH &&
         s.head.y > cy - BARRIER_REACH &&
         s.head.y < cy + 1 + BARRIER_REACH
       ) {
-        return { x: cx, y: cy }
+        found.push(key)
       }
     }
+  }
+  return found
+}
+
+/**
+ * Let go of any block the head has finally left, so it can kill like the rest.
+ *
+ * Done before the hit test rather than after, or a block would stay harmless
+ * for the one step in which the head re-entered it.
+ */
+function wakeBlocks(s: GameState) {
+  if (s.dormant.size === 0) return
+  const under = new Set(blocksUnderHead(s))
+  const still = new Set<string>()
+  for (const key of s.dormant) if (under.has(key)) still.add(key)
+  if (still.size !== s.dormant.size) s.dormant = still
+}
+
+/** The block the head has run into, rather than merely reached, or null. */
+function barrierHit(s: GameState): Cell | null {
+  for (const key of blocksUnderHead(s)) {
+    if (s.dormant.has(key)) continue
+    const [x, y] = key.split(',').map(Number)
+    return { x, y }
   }
   return null
 }
@@ -706,18 +766,17 @@ function tryEat(s: GameState, previousBest: number) {
   const level = levelFor(s.segments, START_SEGMENTS)
   if (level !== s.level) {
     s.level = level
-    s.walls = clearOfSnake(
-      wallsForLevel(level, s.cols, s.rows),
-      visualSegments(s).map((seg) => ({ x: seg.x + 0.5, y: seg.y + 0.5 })),
-      s.head,
-      s.dir,
-    )
+    // The whole shape, every time. Only the blocks the head is standing in
+    // when they land are held back, and only until it has moved off them.
+    s.walls = wallsForLevel(level, s.cols, s.rows)
+    s.dormant = new Set(blocksUnderHead(s))
     s.flash = 0.5
     s.floaters = [
       ...s.floaters,
       { x: s.head.x, y: s.head.y - 1.2, text: `LEVEL ${level}`, life: 1.4 },
     ]
   }
+  s.nextWalls = nextLevelPreview(s)
 
   // After the walls, so a new level never drops food inside one.
   s.food = randomFood(s)
@@ -756,6 +815,7 @@ export function tick(state: GameState, dt: number): GameState {
     move(s, hop)
 
     if (pastHardWall(s)) return die(s)
+    wakeBlocks(s)
     const block = barrierHit(s)
     if (block) {
       restAgainst(s, block)

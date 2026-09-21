@@ -88,25 +88,50 @@ export function renderGame(
   roundRect(ctx, ox - PANEL_PAD, oy - PANEL_PAD, gridW + PANEL_PAD * 2, gridH + PANEL_PAD * 2, radius)
   ctx.clip()
 
-  // Barriers — read as built into the board, not dropped onto it, so the eye
-  // sorts them from the food and the body at a glance.
-  for (const wall of state.walls) {
-    const [wx, wy] = wall.split(',').map(Number)
-    const bx = ox + wx * cell
-    const by = oy + wy * cell
-    const inset = cell * 0.06
+  const blockInset = cell * 0.06
+  const blockRadius = Math.max(2, cell * 0.22)
+  const blockPath = (key: string) => {
+    const [wx, wy] = key.split(',').map(Number)
     roundRect(
       ctx,
-      bx + inset,
-      by + inset,
-      cell - inset * 2,
-      cell - inset * 2,
-      Math.max(2, cell * 0.22),
+      ox + wx * cell + blockInset,
+      oy + wy * cell + blockInset,
+      cell - blockInset * 2,
+      cell - blockInset * 2,
+      blockRadius,
     )
-    ctx.fillStyle = dark ? 'rgba(122, 150, 172, 0.30)' : 'rgba(26, 43, 60, 0.20)'
+  }
+
+  // The shape the next food brings, sketched where it will stand. A level you
+  // can see coming is one you steer around instead of one you discover.
+  if (state.nextWalls) {
+    ctx.save()
+    ctx.setLineDash([Math.max(3, cell * 0.16), Math.max(3, cell * 0.14)])
+    ctx.strokeStyle = dark ? 'rgba(160, 190, 210, 0.3)' : 'rgba(26, 43, 60, 0.22)'
+    ctx.lineWidth = Math.max(1, cell * 0.05)
+    for (const key of state.nextWalls) {
+      if (state.walls.has(key)) continue
+      blockPath(key)
+      ctx.stroke()
+    }
+    ctx.restore()
+  }
+
+  // Barriers — read as built into the board, not dropped onto it, so the eye
+  // sorts them from the food and the body at a glance. A block the head was
+  // standing in when the level landed is drawn faint until the head leaves it,
+  // which is exactly as long as it will not kill you.
+  for (const wall of state.walls) {
+    const asleep = state.dormant.has(wall)
+    blockPath(wall)
+    ctx.fillStyle = dark
+      ? `rgba(122, 150, 172, ${asleep ? 0.12 : 0.3})`
+      : `rgba(26, 43, 60, ${asleep ? 0.08 : 0.2})`
     ctx.fill()
     if (!flat) {
-      ctx.strokeStyle = dark ? 'rgba(160, 190, 210, 0.45)' : 'rgba(26, 43, 60, 0.32)'
+      ctx.strokeStyle = dark
+        ? `rgba(160, 190, 210, ${asleep ? 0.2 : 0.45})`
+        : `rgba(26, 43, 60, ${asleep ? 0.14 : 0.32})`
       ctx.lineWidth = Math.max(1, cell * 0.05)
       ctx.stroke()
     }

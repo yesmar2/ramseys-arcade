@@ -77,7 +77,7 @@ export const games: Game[] = [
     slug: 'snake',
     tags: ['arcade', 'quick'],
     description: 'Grow longer. Beat the board. Don’t crash.',
-    how: 'Swipe or use arrow keys. Eat, grow, and don’t hit the walls or yourself. Food is worth more the sooner you reach it — the ring around it is the bonus draining away, so the safe loop and the tight line past your own tail are never worth the same. Hold space or the bolt to boost: 1.75× speed, and it costs you nothing but the risk of going that fast. The tank holds four seconds and every food is worth one and a half, so eating buys the speed that catches the next one while its ring is still full. Every ten food the board changes: barriers arrive from level two and build to level six, after which the shapes come round again rather than closing in any further.',
+    how: 'Swipe or use arrow keys. Eat, grow, and don’t hit the walls or yourself. Food is worth more the sooner you reach it — the ring around it is the bonus draining away, so the safe loop and the tight line past your own tail are never worth the same. Hold space or the bolt to boost: 1.75× speed, and it costs you nothing but the risk of going that fast. The tank holds four seconds and every food is worth one and a half, so eating buys the speed that catches the next one while its ring is still full. Every ten food the board changes: barriers arrive from level two and build to level six, after which the shapes come round again rather than closing in any further. You see the next set coming as dashed outlines while you go for the food that brings them, and a barrier that lands where you are standing holds its fire until you have left it.',
     accent: PALETTE.green,
     playable: true,
   },

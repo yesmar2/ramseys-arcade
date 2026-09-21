@@ -1,7 +1,7 @@
 // Types only, deliberately. `game.ts` imports this module for its walls, so a
 // value imported back the other way would be a cycle — and reading one while
 // the modules were still initialising is exactly how this file first broke.
-import type { Cell, Dir } from './game'
+import type { Cell } from './game'
 
 /** Food eaten between levels. */
 export const LEVEL_FOOD = 10
@@ -113,65 +113,6 @@ export function wallsForLevel(level: number, cols: number, rows: number): Set<st
     }
   }
   return walls
-}
-
-/**
- * The walls of a level, minus any the snake is standing on or could be killed
- * by before it could possibly answer.
- *
- * Levels arrive mid-run, wherever the snake happens to be, so three things have
- * to be kept clear. The body, or a block is drawn straight through the snake.
- * The lane ahead, because at full speed with the boost open the head covers
- * ground faster than anyone reads it. And a ring around the head — which is the
- * one that was missing: guarding only the direction of travel left blocks free
- * to appear hard against the head's flank, where the turn the player had
- * already asked for drove into them inside a tenth of a second.
- *
- * Those cells sit the level out. The shape loses a piece rather than the run
- * losing its fairness, and what is drawn is always exactly what can kill you.
- */
-export function clearOfSnake(
-  walls: Set<string>,
-  body: Cell[],
-  head: Cell,
-  dir: Dir,
-  // Six cells is about a third of a second at full speed with the boost held,
-  // which is the least warning a new block can fairly give head-on.
-  lookAhead = 6,
-  // Sideways there is a turn to make first, so the same warning needs less
-  // room — but it needs more than none.
-  headClear = 3,
-): Set<string> {
-  const spared = new Set<string>()
-
-  for (const seg of body) {
-    spared.add(wallKey(Math.floor(seg.x), Math.floor(seg.y)))
-  }
-
-  const hx = Math.floor(head.x)
-  const hy = Math.floor(head.y)
-  for (let dx = -headClear; dx <= headClear; dx++) {
-    for (let dy = -headClear; dy <= headClear; dy++) {
-      spared.add(wallKey(hx + dx, hy + dy))
-    }
-  }
-
-  const step: Cell =
-    dir === 'up'
-      ? { x: 0, y: -1 }
-      : dir === 'down'
-        ? { x: 0, y: 1 }
-        : dir === 'left'
-          ? { x: -1, y: 0 }
-          : { x: 1, y: 0 }
-
-  for (let i = 0; i <= lookAhead; i++) {
-    spared.add(wallKey(Math.floor(head.x + step.x * i), Math.floor(head.y + step.y * i)))
-  }
-
-  const safe = new Set<string>()
-  for (const cell of walls) if (!spared.has(cell)) safe.add(cell)
-  return safe
 }
 
 /**
