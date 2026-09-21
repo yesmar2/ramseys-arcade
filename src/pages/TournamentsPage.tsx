@@ -13,7 +13,6 @@ import {
 } from '../components/EventCard'
 import { GameThumbArt } from '../components/GameThumbArt'
 import { ListRow } from '../components/ListRow'
-import { BackChevronIcon } from '../components/PageBackLink'
 import { InviteByTagForm } from '../components/InviteByTagForm'
 import { PlayerAvatar } from '../components/PlayerAvatar'
 import { listEventInvites, type PublicInvite } from '../lib/invites'
@@ -1066,17 +1065,15 @@ export function TournamentsPage() {
 /* Event page                                                              */
 /* ====================================================================== */
 
+/** The event page before it has an event to show: a gate, a not-found, a wait. */
 function PlainHeader({ title }: { title: string }) {
   return (
-    <header className="lb-page__header lb-page__header--compact lb-game-board__head">
-      <div className="lb-page__heading-row">
-        <a className="page-back" href={tournamentsHref()} aria-label="Back to Events" title="Back to Events">
-          <BackChevronIcon size={18} />
-        </a>
-        <h1 className="lb-page__title">{title}</h1>
-        <span className="lb-page__heading-slot" aria-hidden="true" />
-      </div>
-    </header>
+    <PageBanner
+      size="compact"
+      crumbs={[{ href: tournamentsHref(), label: 'Events' }, { label: title }]}
+      kicker="Events"
+      title={title}
+    />
   )
 }
 
@@ -1373,3 +1370,4 @@ export function TournamentDetailPage({ id, invite }: { id: string; invite?: stri
     </PageShell>
   )
 }
+

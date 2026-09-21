@@ -1,6 +1,11 @@
-import type { CSSProperties, ReactNode } from 'react'
+import { Fragment, type CSSProperties, type ReactNode } from 'react'
 import { inkOn } from '../lib/color'
 import { BackChevronIcon } from './PageBackLink'
+
+export type Crumb = {
+  href?: string
+  label: string
+}
 
 type PageBannerProps = {
   /** The colour the banner is washed in. The site's own when a page has none. */
@@ -22,6 +27,13 @@ type PageBannerProps = {
   back?: { href: string; label: string }
   /** Tools for the bar's right end: share, copy invite, add friend. */
   tools?: ReactNode
+  /** Where this page sits, above the banner: Games › Asteroids › Top scores. The last one is here. */
+  crumbs?: Crumb[]
+  /**
+   * The full banner opens a page on one thing; the compact one heads a page
+   * that is mostly a list or a form, at half the height with a smaller card.
+   */
+  size?: 'full' | 'compact'
   className?: string
   ariaLabel?: string
 }
@@ -33,7 +45,8 @@ type PageBannerProps = {
  * whose art is not a game's mark. A wash of the accent with the words on
  * the left and the art on a leaning card on the right, coloured through the
  * banner tokens in home.css so the theme follows. A page that needs a way
- * back or tools gets a bar across the top.
+ * back or tools gets a bar across the top; a page that sits under others
+ * gets breadcrumbs above.
  */
 export function PageBanner({
   accent,
@@ -47,6 +60,8 @@ export function PageBanner({
   artLabel,
   back,
   tools,
+  crumbs,
+  size = 'full',
   className,
   ariaLabel,
 }: PageBannerProps) {
@@ -65,34 +80,56 @@ export function PageBanner({
       </span>
     )
   ) : null
+  const classes = [
+    'home-banner',
+    'page-banner',
+    barred ? 'page-banner--barred' : '',
+    size === 'compact' ? 'page-banner--compact' : '',
+    card ? '' : 'page-banner--bare',
+    className ?? '',
+  ]
+    .filter(Boolean)
+    .join(' ')
 
   return (
-    <section
-      className={`home-banner page-banner${barred ? ' page-banner--barred' : ''}${className ? ` ${className}` : ''}`}
-      style={style}
-      aria-label={ariaLabel}
-    >
-      {barred ? (
-        <div className="home-banner__bar">
-          {back ? (
-            <a className="home-banner__back" href={back.href}>
-              <BackChevronIcon size={18} />
-              {back.label}
-            </a>
-          ) : (
-            <span />
-          )}
-          {tools ? <div className="home-banner__tools">{tools}</div> : null}
-        </div>
+    <>
+      {crumbs && crumbs.length > 0 ? (
+        <nav className="page-crumbs" aria-label="Breadcrumb">
+          {crumbs.map((crumb, i) => (
+            <Fragment key={i}>
+              {i > 0 ? <span aria-hidden="true">›</span> : null}
+              {crumb.href && i < crumbs.length - 1 ? (
+                <a href={crumb.href}>{crumb.label}</a>
+              ) : (
+                <span aria-current={i === crumbs.length - 1 ? 'page' : undefined}>{crumb.label}</span>
+              )}
+            </Fragment>
+          ))}
+        </nav>
       ) : null}
-      <div className="home-banner__text">
-        {kicker ? <p className="home-banner__kicker">{kicker}</p> : null}
-        <h1 className="home-banner__name">{title}</h1>
-        {blurb ? <p className="home-banner__blurb">{blurb}</p> : null}
-        {actions ? <div className="home-banner__acts">{actions}</div> : null}
-        {figures}
-      </div>
-      <div className="home-banner__art">{card}</div>
-    </section>
+      <section className={classes} style={style} aria-label={ariaLabel}>
+        {barred ? (
+          <div className="home-banner__bar">
+            {back ? (
+              <a className="home-banner__back" href={back.href}>
+                <BackChevronIcon size={18} />
+                {back.label}
+              </a>
+            ) : (
+              <span />
+            )}
+            {tools ? <div className="home-banner__tools">{tools}</div> : null}
+          </div>
+        ) : null}
+        <div className="home-banner__text">
+          {kicker ? <p className="home-banner__kicker">{kicker}</p> : null}
+          <h1 className="home-banner__name">{title}</h1>
+          {blurb ? <p className="home-banner__blurb">{blurb}</p> : null}
+          {actions ? <div className="home-banner__acts">{actions}</div> : null}
+          {figures}
+        </div>
+        {card ? <div className="home-banner__art">{card}</div> : null}
+      </section>
+    </>
   )
 }

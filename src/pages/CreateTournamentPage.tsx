@@ -8,7 +8,7 @@ import {
   type SetStateAction,
 } from 'react'
 import { GameThumbArt } from '../components/GameThumbArt'
-import { PageBackLink } from '../components/PageBackLink'
+import { PageBanner } from '../components/PageBanner'
 import { PageShell } from '../components/PageShell'
 import { getGame } from '../data/games'
 import { navigate, tournamentHref, tournamentsHref } from '../hooks/useHashRoute'
@@ -351,13 +351,15 @@ export function CreateTournamentPage() {
 
   return (
     <PageShell innerClassName="lb-page__inner lb-page__inner--events">
-      <header className="lb-page__header lb-page__header--compact lb-game-board__head">
-        <div className="lb-page__heading-row">
-          <PageBackLink href={tournamentsHref()} label="Back to Events" />
-          <h1 className="lb-page__title">Create event</h1>
-          <span className="lb-page__heading-slot" aria-hidden="true" />
-        </div>
-      </header>
+      <div className="page-stack">
+        <PageBanner
+          size="compact"
+          crumbs={[{ href: tournamentsHref(), label: 'Events' }, { label: 'Create event' }]}
+          kicker="Events"
+          title="Create event"
+          blurb="Pick the games, set the rules, and invite your people."
+        />
+      </div>
 
       {waitingForAuth ? (
         <p className="lb-empty">Loading…</p>

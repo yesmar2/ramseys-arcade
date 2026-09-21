@@ -6,21 +6,22 @@ import {
   PeriodSwitcher,
 } from '../components/BoardChrome'
 import { BoardSideRail } from '../components/BoardSideRail'
+import { EventArt } from '../components/EventCard'
 import { Footer } from '../components/Footer'
-import { GamePageHeader } from '../components/GamePageHeader'
 import { GameRecordsPanel } from '../components/GameRecordsPanel'
-import { PageBackLink } from '../components/PageBackLink'
+import { PageBanner } from '../components/PageBanner'
 import { PageShell } from '../components/PageShell'
 import { SiteHeader } from '../components/SiteHeader'
 import { LeaderboardList } from '../components/LeaderboardList'
 import { ShareBoardButton } from '../components/ShareBoardButton'
 import { getGame, gamePlayableOn, deviceRequirementLabel } from '../data/games'
 import {
+  gameHref,
   gamePlayHref,
+  homeHref,
   navigate,
   recordHref,
   recordsHref,
-  recordsIndexHref,
 } from '../hooks/useHashRoute'
 import { flashYouRow } from '../lib/boardGap'
 import { useDeviceType } from '../lib/device'
@@ -110,20 +111,40 @@ function GameRecordBookPage({
     <PageShell
       innerClassName="lb-page__inner lb-page__inner--game-board"
     >
-      <div style={{ '--board-accent': accent } as CSSProperties}>
-        <GamePageHeader
-          slug={game}
+      <div className="page-stack" style={{ '--board-accent': accent } as CSSProperties}>
+        <PageBanner
+          size="compact"
           accent={accent}
-          title={`${title} record books`}
-          backHref={recordsIndexHref()}
-          backLabel="Back to Record books"
-          playHref={canPlay ? gamePlayHref(game) : undefined}
-          action={
-            <ShareBoardButton
-              label={`${title} record books on ${APP_NAME} (${PERIOD_LABELS[period]}). Somebody's name is in ink.`}
-              url={recordsHref(game, period)}
-            />
+          ariaLabel={`${title} record books`}
+          crumbs={[
+            { href: homeHref(), label: 'Games' },
+            { href: gameHref(game), label: title },
+            { label: 'Record books' },
+          ]}
+          kicker={
+            <>
+              <span className="ev-kicker__bit">Record books</span>
+              <span className="ev-kicker__bit">{PERIOD_LABELS[period]}</span>
+            </>
           }
+          title={title}
+          blurb={`The specialty ledgers for ${title}: fastest clears, longest streaks, milestone times.`}
+          actions={
+            <>
+              {canPlay ? (
+                <a className="home-banner__cta" href={gamePlayHref(game)}>
+                  Play {title}
+                </a>
+              ) : null}
+              <ShareBoardButton
+                className="home-banner__ghost"
+                text="Share"
+                label={`${title} record books on ${APP_NAME} (${PERIOD_LABELS[period]}). Somebody's name is in ink.`}
+                url={recordsHref(game, period)}
+              />
+            </>
+          }
+          art={<EventArt games={[game]} />}
         />
         <div className="split">
           <div className="split__main">
@@ -206,7 +227,7 @@ function RecordBoardPage({
       <main className="lb-page">
         <SiteHeader />
         <div
-          className="lb-page__inner lb-page__inner--game-board"
+          className="lb-page__inner lb-page__inner--game-board page-stack"
           style={
             {
               '--period-accent': accent,
@@ -214,38 +235,41 @@ function RecordBoardPage({
             } as CSSProperties
           }
         >
-          {gameMeta ? (
-            <GamePageHeader
-              slug={game}
-              accent={accent}
-              title={record?.label ?? 'Record'}
-              backHref={recordsHref(game)}
-              backLabel={`Back to ${gameTitle} records`}
-              playHref={canPlay ? gamePlayHref(game) : undefined}
-              action={
+          <PageBanner
+            size="compact"
+            accent={gameMeta ? accent : undefined}
+            ariaLabel={record?.label ?? 'Record'}
+            crumbs={[
+              { href: homeHref(), label: 'Games' },
+              { href: gameHref(game), label: gameTitle },
+              { href: recordsHref(game, period), label: 'Record books' },
+              { label: record?.label ?? 'Record' },
+            ]}
+            kicker={
+              <>
+                <span className="ev-kicker__bit">Record book</span>
+                <span className="ev-kicker__bit">{PERIOD_LABELS[period]}</span>
+              </>
+            }
+            title={record?.label ?? 'Record'}
+            blurb={`${gameTitle} · ${unit === 'ms' ? 'fastest first' : 'highest first'}`}
+            actions={
+              <>
+                {canPlay ? (
+                  <a className="home-banner__cta" href={gamePlayHref(game)}>
+                    Play {gameTitle}
+                  </a>
+                ) : null}
                 <ShareBoardButton
+                  className="home-banner__ghost"
+                  text="Share"
                   label={`${record?.label ?? 'Record'} on ${APP_NAME} (${PERIOD_LABELS[period]}). History doesn't forget.`}
                   url={recordHref(game, recordId, period)}
                 />
-              }
-            />
-          ) : (
-            <header className="lb-page__header lb-page__header--compact">
-              <div className="lb-page__heading-row">
-                <PageBackLink
-                  href={recordsHref(game)}
-                  label={`Back to ${gameTitle} records`}
-                />
-                <h1 className="lb-page__title">{record?.label ?? 'Record'}</h1>
-                <div className="lb-game-board__trailing">
-                  <ShareBoardButton
-                    label={`${record?.label ?? 'Record'} on ${APP_NAME} (${PERIOD_LABELS[period]}). History doesn't forget.`}
-                    url={recordHref(game, recordId, period)}
-                  />
-                </div>
-              </div>
-            </header>
-          )}
+              </>
+            }
+            art={gameMeta ? <EventArt games={[game]} /> : undefined}
+          />
 
           <div className="split">
             <div className="split__main">

@@ -1,17 +1,21 @@
 import { useEffect, useRef, type CSSProperties } from 'react'
 import { BoardEmpty, BoardMore, BoardSkeleton, PeriodSwitcher } from '../components/BoardChrome'
 import { BoardSideRail } from '../components/BoardSideRail'
-import { GamePageHeader } from '../components/GamePageHeader'
+import { EventArt } from '../components/EventCard'
 import { LeaderboardList } from '../components/LeaderboardList'
+import { PageBanner } from '../components/PageBanner'
 import { PageShell } from '../components/PageShell'
 import { ShareBoardButton } from '../components/ShareBoardButton'
 import { getGame, gamePlayableOn, deviceRequirementLabel } from '../data/games'
 import {
   gameBoardHref,
+  gameHref,
   gamePlayHref,
-  leaderboardHref,
+  homeHref,
   navigate,
+  recordsHref,
 } from '../hooks/useHashRoute'
+import { gameHasRecords } from '../lib/records'
 import { usePagedBoard } from '../hooks/usePagedBoard'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { useDeviceType } from '../lib/device'
@@ -86,6 +90,7 @@ export function GameLeaderboardPage({
   return (
     <PageShell innerClassName="lb-page__inner lb-page__inner--game-board">
       <div
+        className="page-stack"
         style={
           {
             '--board-accent': accent,
@@ -93,19 +98,44 @@ export function GameLeaderboardPage({
           } as CSSProperties
         }
       >
-        <GamePageHeader
-          slug={gameSlug}
+        <PageBanner
+          size="compact"
           accent={accent}
-          title={`${game.name} Top Scores`}
-          backHref={leaderboardHref()}
-          backLabel="Back to Boards"
-          playHref={canPlay ? playHref : undefined}
-          action={
-            <ShareBoardButton
-              label={`${game.name} high scores on ${APP_NAME} (${PERIOD_LABELS[period]}). Your move.`}
-              url={gameBoardHref(gameSlug, period)}
-            />
+          ariaLabel={`${game.name} top scores`}
+          crumbs={[
+            { href: homeHref(), label: 'Games' },
+            { href: gameHref(gameSlug), label: game.name },
+            { label: 'Top scores' },
+          ]}
+          kicker={
+            <>
+              <span className="ev-kicker__bit">Top scores</span>
+              <span className="ev-kicker__bit">{PERIOD_LABELS[period]}</span>
+            </>
           }
+          title={game.name}
+          blurb={game.description}
+          actions={
+            <>
+              {canPlay ? (
+                <a className="home-banner__cta" href={playHref}>
+                  Play {game.name}
+                </a>
+              ) : null}
+              {gameHasRecords(gameSlug) ? (
+                <a className="home-banner__ghost" href={recordsHref(gameSlug, period)}>
+                  Record books
+                </a>
+              ) : null}
+              <ShareBoardButton
+                className="home-banner__ghost"
+                text="Share"
+                label={`${game.name} high scores on ${APP_NAME} (${PERIOD_LABELS[period]}). Your move.`}
+                url={gameBoardHref(gameSlug, period)}
+              />
+            </>
+          }
+          art={<EventArt games={[gameSlug]} />}
         />
 
         <div className="split">
