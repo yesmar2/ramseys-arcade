@@ -6,12 +6,13 @@ import {
   recordsIndexHref,
   tournamentsHref,
 } from '../hooks/useHashRoute'
+import { groupsIndexHref } from '../lib/groups'
 
 export type SiteNavItem = {
   href: string
   label: string
   /** Match nested routes under this destination. */
-  match: 'games' | 'boards' | 'records' | 'events' | 'you'
+  match: 'games' | 'boards' | 'records' | 'events' | 'groups' | 'you'
 }
 
 /** Primary destinations — desktop links + drawer (Global lives under Boards). Games first: it is the shelf. */
@@ -20,6 +21,7 @@ export const SITE_NAV_LINKS: readonly SiteNavItem[] = [
   { href: leaderboardHref(), label: 'Boards', match: 'boards' },
   { href: tournamentsHref(), label: 'Events', match: 'events' },
   { href: recordsIndexHref(), label: 'Record books', match: 'records' },
+  { href: groupsIndexHref(), label: 'Groups', match: 'groups' },
 ] as const
 
 /** Drawer Profile link — header chip opens the account drawer instead. */
@@ -45,6 +47,7 @@ export function navActive(match: SiteNavItem['match'], path = currentPath()): bo
     return /^\/games\/[^/]+\/records(?:\/|$)/.test(p)
   }
   if (match === 'events') return under(p, '/tournaments')
+  if (match === 'groups') return under(p, '/groups')
   if (match === 'you') return under(p, '/rank')
   return false
 }

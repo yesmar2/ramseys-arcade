@@ -78,6 +78,29 @@
   border-color: color-mix(in srgb, var(--tone) 40%, transparent);
 }
 
+/*
+ * A record book row is one link to its record: the record's name stretches
+ * over the whole row, and only the holder's tag, raised above it, goes to
+ * their profile instead.
+ */
+.lst--records .lst__row {
+  position: relative;
+}
+
+.lst--records .lst__name::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+}
+
+.lst--records .lst__sub--link {
+  position: relative;
+  z-index: 1;
+  width: fit-content;
+  max-width: 100%;
+}
+
 .lst__row--gold {
   --tone: var(--lst-gold);
 }

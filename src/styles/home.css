@@ -552,6 +552,71 @@ html[data-theme="dark"] .home-banner {
   color: var(--accent);
 }
 
+/* A podium place colours the card in its metal instead of the site's accent. */
+.home-pulse__standing--gold {
+  --standing-tone: #e8b23c;
+}
+
+.home-pulse__standing--silver {
+  --standing-tone: #b9c4cf;
+}
+
+.home-pulse__standing--bronze {
+  --standing-tone: #cd8b5c;
+}
+
+.home-pulse__standing--gold,
+.home-pulse__standing--silver,
+.home-pulse__standing--bronze {
+  background: color-mix(in srgb, var(--standing-tone) 14%, var(--surface));
+  border-color: color-mix(in srgb, var(--standing-tone) 38%, transparent);
+}
+
+/* Your face, your number, your points: the row that makes the card yours. */
+.home-pulse__me {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-width: 0;
+}
+
+.home-pulse__mark {
+  flex: none;
+}
+
+.home-pulse__figure {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.home-pulse__tag {
+  overflow: hidden;
+  font-size: 0.7rem;
+  font-weight: 750;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.home-pulse__pts {
+  margin-left: auto;
+  flex: none;
+  font-size: 0.72rem;
+  font-weight: 650;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.home-pulse__pts b {
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
 .home-pulse__k {
   font-size: 0.64rem;
   font-weight: 800;
@@ -1202,6 +1267,27 @@ html[data-theme="dark"] .wall-tile__flag--daily {
   padding-top: 1rem;
 }
 
+/*
+ * Beside the art, the bar floats over the banner instead of taking a row of
+ * its own. A row shortens the art cell, and the card centred in that cell
+ * meets the bar's edge as a hard line sawn across the face on it. Stacked,
+ * the bar keeps its place in the flow above the art.
+ */
+@media (min-width: 56.01rem) {
+  .page-banner--barred {
+    grid-template-rows: minmax(0, 1fr);
+  }
+
+  .page-banner--barred .home-banner__bar {
+    position: absolute;
+    inset: 0 0 auto;
+  }
+
+  .page-banner--barred .home-banner__text {
+    padding-top: 3.6rem;
+  }
+}
+
 /* A player's tag or an event's title is not a game's name: it can run long. */
 .page-banner .home-banner__name {
   overflow-wrap: anywhere;
@@ -1564,4 +1650,9 @@ html[data-theme="dark"] .home-banner__hint--error {
     animation: none;
     transition: none;
   }
+}
+
+/* The shell while a page chunk arrives: room for the page, nothing drawn in it. */
+.route-fallback {
+  min-height: 50vh;
 }

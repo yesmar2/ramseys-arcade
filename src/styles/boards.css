@@ -66,7 +66,8 @@
 
   .split__side {
     position: sticky;
-    top: calc(var(--header-h, 4.5rem) + 1rem);
+    /* The header scrolls away with the page, so the rail needs only its own breathing room. */
+    top: 1rem;
   }
 }
 

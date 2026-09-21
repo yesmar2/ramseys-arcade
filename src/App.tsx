@@ -1,6 +1,5 @@
 import { Suspense, useEffect } from 'react'
 import { defaultPeriod } from './lib/defaultPeriod'
-import { BoardSkeleton } from './components/BoardChrome'
 import { Footer } from './components/Footer'
 import { PageShell } from './components/PageShell'
 import { SiteHeader } from './components/SiteHeader'
@@ -149,10 +148,13 @@ function App() {
       void onPlayerNameChanged()
     }
     const unlock = () => unlockSound()
-    // A Play link pointed at or focused fetches its game, so the tap lands on a game that is already here.
+    // A link pointed at or focused fetches its game or its page, so the tap lands on one that is already here.
     const warm = (e: Event) => {
       const link = (e.target as Element | null)?.closest?.('a[href]')
-      if (link) preloadGameFromHref(link.getAttribute('href') ?? '')
+      if (!link) return
+      const href = link.getAttribute('href') ?? ''
+      preloadGameFromHref(href)
+      preloadPageFromHref(href)
     }
     window.addEventListener(PLAYER_NAME_EVENT, onName)
     window.addEventListener('pointerdown', unlock, true)
@@ -179,7 +181,12 @@ function App() {
   )
 }
 
-/** While a page's chunk is on its way: a game gets its dark stage, anything else the shell. */
+/**
+ * While a page's chunk is on its way: a game gets its dark stage, anything
+ * else the shell with an empty body. The page then draws its own skeleton,
+ * so the shell shows nothing of its own here rather than a second, smaller
+ * skeleton that the real one replaces a moment later.
+ */
 function RouteFallback({ game }: { game: boolean }) {
   if (game) {
     return (
@@ -190,9 +197,34 @@ function RouteFallback({ game }: { game: boolean }) {
   }
   return (
     <PageShell>
-      <BoardSkeleton rows={4} />
+      <div className="route-fallback" aria-busy="true" />
     </PageShell>
   )
+}
+
+/*
+ * The chunked pages a link can lead to, so pointing at a nav link fetches
+ * the page before the tap, the way Play links fetch their game. The browse
+ * pages are in the first load already and need no entry here.
+ */
+const PAGE_PRELOADS: { test: RegExp; page: { preload: () => Promise<void> } }[] = [
+  { test: /^\/tournaments\/create(?:[/?#]|$)/, page: CreateTournamentPage },
+  { test: /^\/tournaments\/[^/?#]+\/play\//, page: TournamentPlayPage },
+  { test: /^\/tournaments\/[^/?#]+/, page: TournamentDetailPage },
+  { test: /^\/tournaments(?:[/?#]|$)/, page: TournamentsPage },
+  { test: /^\/groups\/[^/?#]+/, page: GroupDetailPage },
+  { test: /^\/groups(?:[/?#]|$)/, page: GroupsPage },
+  { test: /^\/rank(?:[/?#]|$)/, page: RankPage },
+  { test: /^\/stats(?:[/?#]|$)/, page: StatsPage },
+  { test: /^\/plus(?:[/?#]|$)/, page: PlusPage },
+  { test: /^\/about(?:[/?#]|$)/, page: AboutPage },
+  { test: /^\/privacy(?:[/?#]|$)/, page: PrivacyPage },
+  { test: /^\/terms(?:[/?#]|$)/, page: TermsPage },
+]
+
+function preloadPageFromHref(href: string) {
+  const hit = PAGE_PRELOADS.find((entry) => entry.test.test(href))
+  if (hit) void hit.page.preload()
 }
 
 function Screen({ route }: { route: ReturnType<typeof useRoute> }) {

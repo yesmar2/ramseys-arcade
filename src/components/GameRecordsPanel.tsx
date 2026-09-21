@@ -109,7 +109,7 @@ export function GameRecordsPanel({ game, accent, period, tools }: GameRecordsPan
           detail={groupId ? undefined : recordsEmptyDetail(game, gameTitle)}
         />
       ) : (
-        <ol className="lst">
+        <ol className="lst lst--records">
           {records.map((row) => {
             const holder = row.top ? normalizePlayerName(row.top.name) : ''
             const isYou = Boolean(playerName && holder === playerName)
