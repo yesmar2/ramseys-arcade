@@ -31,7 +31,9 @@ const SCORING: Record<string, ScoreRow[]> = {
     { label: 'The ring', value: 'full to empty in 3.6s' },
     { label: 'Boost (space, or the bolt)', value: '1.75× speed · costs nothing' },
     { label: 'Boost tank', value: '4s, and every food is worth 1.5s' },
-    { label: 'Crash', value: 'game over' },
+    { label: 'Level', value: 'every 10 food · barriers arrive from level 2' },
+    { label: 'From level 6', value: 'the shapes take turns instead of growing' },
+    { label: 'Crash', value: 'wall, barrier or yourself — game over' },
   ],
   pop: [
     { label: 'Hit', value: '+10' },

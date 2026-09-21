@@ -68,6 +68,30 @@ export function renderGame(
     }
   }
 
+  // Barriers — read as built into the board, not dropped onto it, so the eye
+  // sorts them from the food and the body at a glance.
+  for (const wall of state.walls) {
+    const [wx, wy] = wall.split(',').map(Number)
+    const bx = ox + wx * cell
+    const by = oy + wy * cell
+    const inset = cell * 0.06
+    roundRect(
+      ctx,
+      bx + inset,
+      by + inset,
+      cell - inset * 2,
+      cell - inset * 2,
+      Math.max(2, cell * 0.22),
+    )
+    ctx.fillStyle = dark ? 'rgba(122, 150, 172, 0.30)' : 'rgba(26, 43, 60, 0.20)'
+    ctx.fill()
+    if (!flat) {
+      ctx.strokeStyle = dark ? 'rgba(160, 190, 210, 0.45)' : 'rgba(26, 43, 60, 0.32)'
+      ctx.lineWidth = Math.max(1, cell * 0.05)
+      ctx.stroke()
+    }
+  }
+
   // Food
   {
     const fx = ox + (state.food.x + 0.5) * cell
@@ -242,6 +266,16 @@ export function renderGame(
       ctx.fillStyle = boosting ? 'rgba(245, 185, 66, 0.98)' : 'rgba(245, 185, 66, 0.6)'
       ctx.fill()
     }
+
+    // Which shape you are on, next to the tank. The HUD above the board is kept
+    // to the score alone, and the barriers say most of this already.
+    ctx.save()
+    ctx.font = `600 ${Math.max(10, cell * 0.38)}px Outfit, system-ui, sans-serif`
+    ctx.textAlign = 'left'
+    ctx.textBaseline = 'middle'
+    ctx.fillStyle = dark ? 'rgba(231, 238, 243, 0.5)' : 'rgba(26, 43, 60, 0.45)'
+    ctx.fillText(`L${state.level}`, bx + barW + Math.max(8, cell * 0.3), by + barH / 2)
+    ctx.restore()
   }
 
   if (state.flash > 0) {

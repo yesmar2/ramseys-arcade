@@ -1,5 +1,12 @@
 import { getPersonalBest } from '../../lib/personalBest'
 import { sfx } from '../../lib/sound'
+import {
+  assertLevelsAreOpen,
+  clearOfSnake,
+  levelFor,
+  wallKey,
+  wallsForLevel,
+} from './levels'
 
 export type Dir = 'up' | 'down' | 'left' | 'right'
 export type Phase = 'menu' | 'playing' | 'gameover'
@@ -20,6 +27,7 @@ export type Snapshot = {
   length: number
   /** Boost actually paying out, not just held — drives the control's lit state. */
   boosting: boolean
+  level: number
   /** Fuel left in the tank, so the control is worth offering. */
   canBoost: boolean
   /** Tank level 1 → 0, for the control's own meter. */
@@ -54,6 +62,10 @@ export type GameState = {
   boostHeld: boolean
   /** Seconds of boost left in the tank. Filled by eating, drained by holding. */
   boostFuel: number
+  /** Rises every ten food, and brings the next barrier layout with it. */
+  level: number
+  /** Walled cells, keyed "x,y". Replaced on a level change, never mutated. */
+  walls: Set<string>
   flash: number
   floaters: Floater[]
 }
@@ -68,6 +80,15 @@ export const GRID_LONG = 21
 export const GRID_SHORT = 15
 export const COLS = GRID_LONG
 export const ROWS = GRID_SHORT
+
+// Layouts are checked here rather than in levels.ts: the board's dimensions
+// live in this file, and by the time this runs the other module is loaded.
+if (import.meta.env.DEV) {
+  const problems = assertLevelsAreOpen(GRID_LONG, GRID_SHORT)
+  if (problems.length) {
+    console.error('[snake] barrier layout strands open cells:\n  ' + problems.join('\n  '))
+  }
+}
 
 /** Same 21×15 board, rotated so the long side matches the screen. */
 export function snakeLayout(portrait: boolean) {
@@ -283,13 +304,16 @@ function hitsBody(state: GameState) {
   return false
 }
 
-function randomFood(state: Pick<GameState, 'cols' | 'rows' | 'trail' | 'segments'>): Cell {
+function randomFood(
+  state: Pick<GameState, 'cols' | 'rows' | 'trail' | 'segments' | 'walls'>,
+): Cell {
   const body = sampleTrail(state.trail, state.segments * 2, SEG_SPACING * 0.5)
 
   const pick = (clearance: number) => {
     const free: Cell[] = []
     for (let y = 0; y < state.rows; y++) {
       for (let x = 0; x < state.cols; x++) {
+        if (state.walls.has(wallKey(x, y))) continue
         const center = { x: x + 0.5, y: y + 0.5 }
         if (body.every((seg) => dist(seg, center) > clearance)) free.push({ x, y })
       }
@@ -298,8 +322,16 @@ function randomFood(state: Pick<GameState, 'cols' | 'rows' | 'trail' | 'segments
   }
 
   const free = pick(1.1).length ? pick(1.1) : pick(0.75)
-  if (free.length === 0) return { x: 0, y: 0 }
-  return free[Math.floor(Math.random() * free.length)]
+  if (free.length) return free[Math.floor(Math.random() * free.length)]
+
+  // Board this full: take any open cell at all, but never a walled one —
+  // food inside a barrier is food that can never be eaten.
+  for (let y = 0; y < state.rows; y++) {
+    for (let x = 0; x < state.cols; x++) {
+      if (!state.walls.has(wallKey(x, y))) return { x, y }
+    }
+  }
+  return { x: 0, y: 0 }
 }
 
 export function createInitialState(
@@ -337,6 +369,10 @@ export function createInitialState(
     speed: START_SPEED,
     boostHeld: false,
     boostFuel: BOOST_FUEL_MAX,
+    // A run always opens on the empty board, so the first screen is never a
+    // shape the player has to read before they have moved.
+    level: 1,
+    walls: wallsForLevel(1, cols, rows),
     flash: 0,
     floaters: [],
   }
@@ -380,8 +416,17 @@ export function jumpToLength(state: GameState, length: number): GameState {
     bufferedDir: null,
     boostHeld: false,
     boostFuel: BOOST_FUEL_MAX,
+    level: levelFor(segments, START_SEGMENTS),
     floaters: [],
   }
+  // Jumping puts the snake straight into a later level's shape, so the same
+  // clearance a live level change gets applies here too.
+  next.walls = clearOfSnake(
+    wallsForLevel(next.level, next.cols, next.rows),
+    visualSegments(next).map((seg) => ({ x: seg.x + 0.5, y: seg.y + 0.5 })),
+    next.head,
+    next.dir,
+  )
   next.food = randomFood(next)
   next.foodAge = 0
   return next
@@ -541,6 +586,29 @@ function pastHardWall(s: GameState) {
   )
 }
 
+/**
+ * How far the head gets into a barrier cell before it counts as a crash.
+ *
+ * Matched to the forgiveness the outer walls already give: clipping the corner
+ * of a block on the way past is not what anybody means by hitting it.
+ */
+const BARRIER_BITE = 0.24
+
+/** True once the head is properly inside a walled cell, not just brushing one. */
+function hitsBarrier(s: GameState) {
+  if (s.walls.size === 0) return false
+  // Inner rects never overlap, so only the cell under the head can be hit.
+  const cx = Math.floor(s.head.x)
+  const cy = Math.floor(s.head.y)
+  if (!s.walls.has(wallKey(cx, cy))) return false
+  return (
+    s.head.x > cx + BARRIER_BITE &&
+    s.head.x < cx + 1 - BARRIER_BITE &&
+    s.head.y > cy + BARRIER_BITE &&
+    s.head.y < cy + 1 - BARRIER_BITE
+  )
+}
+
 /** True while the head is nosing past the edge lane, before the hard crash. */
 function inWallBuffer(s: GameState) {
   return (
@@ -585,6 +653,24 @@ function tryEat(s: GameState, previousBest: number) {
   // The loop pays for itself: eating buys the speed that catches the next one
   // while its ring is still full. Capped, so a hoarded tank is wasted fuel.
   s.boostFuel = Math.min(BOOST_FUEL_MAX, s.boostFuel + BOOST_FUEL_PER_FOOD)
+
+  const level = levelFor(s.segments, START_SEGMENTS)
+  if (level !== s.level) {
+    s.level = level
+    s.walls = clearOfSnake(
+      wallsForLevel(level, s.cols, s.rows),
+      visualSegments(s).map((seg) => ({ x: seg.x + 0.5, y: seg.y + 0.5 })),
+      s.head,
+      s.dir,
+    )
+    s.flash = 0.5
+    s.floaters = [
+      ...s.floaters,
+      { x: s.head.x, y: s.head.y - 1.2, text: `LEVEL ${level}`, life: 1.4 },
+    ]
+  }
+
+  // After the walls, so a new level never drops food inside one.
   s.food = randomFood(s)
   s.foodAge = 0
   // A clean full-bonus grab flashes harder, so the good line is felt, not read.
@@ -621,6 +707,7 @@ export function tick(state: GameState, dt: number): GameState {
     move(s, hop)
 
     if (pastHardWall(s)) return die(s)
+    if (hitsBarrier(s)) return die(s)
     if (hitsBody(s)) return die(s)
     tryEat(s, state.best)
   }
@@ -641,6 +728,7 @@ export function toSnapshot(s: GameState): Snapshot {
     phase: s.phase,
     length: s.segments,
     boosting: isBoosting(s),
+    level: s.level,
     canBoost: s.phase === 'playing' && s.boostFuel > 0,
     fuel: boostFuelLeft(s),
   }
