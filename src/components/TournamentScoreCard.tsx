@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '../hooks/useAuth'
+import { gameAccentStyle } from '../lib/gameAccentStyle'
 import { useImpersonation } from '../hooks/useImpersonation'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { getGame } from '../data/games'
@@ -387,10 +388,14 @@ export function TournamentScoreCard({
     return `Best still ${best}`
   })()
 
+  const accentStyle = gameAccentStyle(gameSlug)
+
   return (
     <>
-      {celeb ? <ScoreCelebration payload={celeb} onDone={() => setCeleb(null)} /> : null}
-      <div className="score-save tour-score" onPointerDown={(e) => e.stopPropagation()}>
+      {celeb ? (
+        <ScoreCelebration payload={celeb} onDone={() => setCeleb(null)} style={accentStyle} />
+      ) : null}
+      <div className="score-save tour-score" style={accentStyle} onPointerDown={(e) => e.stopPropagation()}>
         <div className="score-save__hero">
           <span className="score-save__eyebrow">{detail?.title ?? 'Tournament'}</span>
           <strong className="score-save__score">{score}</strong>

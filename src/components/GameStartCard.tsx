@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { usePersonalBest } from '../hooks/usePersonalBest'
+import { gameAccentStyle } from '../lib/gameAccentStyle'
 import { GamePanelBody } from './PauseControls'
 
 /**
@@ -24,7 +25,7 @@ export function GameStartCard({
   const personalBest = usePersonalBest(slug)
 
   return (
-    <div className="game-pause-card game-start-card">
+    <div className="game-pause-card game-start-card" style={gameAccentStyle(slug)}>
       <h2>{title}</h2>
       <GamePanelBody
         slug={slug}

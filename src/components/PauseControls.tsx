@@ -1,6 +1,7 @@
-import type { ReactNode } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 import { getGame } from '../data/games'
 import { scoringFor } from '../data/scoring'
+import { gameAccentStyle } from '../lib/gameAccentStyle'
 import { gameBoardHref, recordsHref } from '../hooks/useHashRoute'
 import { useBoardRecord } from '../hooks/useBoardRecord'
 import { LEADERBOARD_GAMES, type LeaderboardGame } from '../lib/leaderboard'
@@ -59,7 +60,8 @@ export function PauseOverlay({
   onResume,
   children,
   showResume = true,
-}: PauseOverlayProps & { showResume?: boolean }) {
+  style,
+}: PauseOverlayProps & { showResume?: boolean; style?: CSSProperties }) {
   if (!paused) return null
   return (
     <div
@@ -75,6 +77,7 @@ export function PauseOverlay({
     >
       <div
         className="game-pause-card"
+        style={style}
         onPointerDown={(e) => e.stopPropagation()}
       >
         {children ?? (
@@ -145,7 +148,7 @@ export function GamePanelBody({
           {/* Renders nothing where there is no motor to buzz. */}
           <HapticsToggle />
         </div>
-        {game?.how ? <ScoreGuide how={game.how} rows={scoring} /> : null}
+        {game?.how ? <ScoreGuide how={game.how} rows={scoring} style={gameAccentStyle(slug)} /> : null}
         {board ? (
           <a
             className="game-pause-btn game-pause-board"
@@ -236,7 +239,7 @@ export function GamePauseOverlay({
   const leaveLabel = tournament ? 'Back to event' : `Leave ${gameName}`
 
   return (
-    <PauseOverlay paused={paused} onResume={onResume} showResume={false}>
+    <PauseOverlay paused={paused} onResume={onResume} showResume={false} style={gameAccentStyle(slug)}>
       <h2>Paused</h2>
       <GamePanelBody
         slug={slug}

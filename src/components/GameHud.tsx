@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { currentHref, gameHref, navigate, tournamentHref } from '../hooks/useHashRoute'
+import { gameAccentStyle } from '../lib/gameAccentStyle'
 import {
   exitFullscreen,
   fullscreenSupported,
@@ -300,7 +301,7 @@ function PlayLeaveButton({
               aria-describedby="game-leave-copy"
               onPointerDown={(e) => e.stopPropagation()}
             >
-              <div className="game-leave-card">
+              <div className="game-leave-card" style={gameAccentStyle(slug)}>
                 <p id="game-leave-title">Leave this run?</p>
                 <p id="game-leave-copy" className="game-leave-card__copy">
                   Your score won’t be saved.

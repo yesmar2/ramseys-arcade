@@ -1,5 +1,6 @@
 import { Suspense, useEffect, useState } from 'react'
 import { DeviceUnavailable } from '../components/DeviceUnavailable'
+import { gameAccentStyle } from '../lib/gameAccentStyle'
 import { lazyPage, type LazyPage } from '../lib/lazyPage'
 import { getGame, gamePlayableOn } from '../data/games'
 import { useDeviceType } from '../lib/device'
@@ -67,6 +68,7 @@ export function TournamentPlayPage({
 
   const game = getGame(gameSlug)
   const Game = TOURNAMENT_GAMES[gameSlug]
+  const accentStyle = gameAccentStyle(gameSlug)
   const backHref = tournamentHref(tournamentId, invite ?? getTournamentInvite(tournamentId) ?? undefined)
 
   useEffect(() => {
@@ -202,11 +204,16 @@ export function TournamentPlayPage({
           ← Event
         </a>
         <div className="tour-play__gate">
-          <h1>{detail?.title ?? 'Tournament'}</h1>
-          <p>{loadError}</p>
-          <a className="score-save__btn" href={backHref}>
-            Back to event
-          </a>
+          <div className="game-pause-card tour-play__card" style={accentStyle}>
+            <p className="tour-play__eyebrow">Tournament</p>
+            <h1>{detail?.title ?? 'Tournament'}</h1>
+            <p>{loadError}</p>
+            <div className="tour-play__gate-actions">
+              <a className="score-save__btn" href={backHref}>
+                Back to event
+              </a>
+            </div>
+          </div>
         </div>
       </main>
     )
@@ -219,6 +226,7 @@ export function TournamentPlayPage({
           ← Event
         </a>
         <div className="tour-play__gate">
+          <div className="game-pause-card tour-play__card" style={accentStyle}>
           <p className="tour-play__eyebrow">Tournament</p>
           <h1>{detail?.title}</h1>
           <p className="tour-play__game">{game?.name ?? gameSlug}</p>
@@ -256,6 +264,7 @@ export function TournamentPlayPage({
             <a className="tour-play__ghost" href={backHref}>
               Back
             </a>
+          </div>
           </div>
         </div>
       </main>

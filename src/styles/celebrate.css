@@ -778,3 +778,519 @@
     animation: none;
   }
 }
+
+/* ==========================================================================
+   The banner's language, on the cards a game shows
+
+   The start card, the pause card, the score card and the two celebrations
+   all wear the game's colour the way the banner does: a pale wash in Light
+   with the words in ink, the colour sunk into the night in Dark with the
+   words in white. The tokens mirror the banner's in home.css, keyed on
+   --celeb-accent, which each card sets from its game.
+   ========================================================================== */
+
+.score-save,
+.score-celeb__shell,
+.game-pause-card,
+.game-leave-card,
+.patriot__info-panel {
+  --hero-accent: var(--celeb-accent, var(--accent));
+  --banner-ink: var(--ink);
+  --banner-muted: color-mix(in srgb, var(--hero-accent) 30%, var(--muted));
+  --banner-faint: var(--muted);
+  --banner-hover: color-mix(in srgb, var(--hero-accent) 70%, var(--ink));
+  --banner-chip-bg: rgba(255, 255, 255, 0.72);
+  --banner-chip-border: color-mix(in srgb, var(--hero-accent) 40%, transparent);
+  --banner-chip-ink: color-mix(in srgb, var(--hero-accent) 65%, var(--ink));
+  --banner-chip-hover: rgba(255, 255, 255, 0.92);
+  --banner-dot: var(--hero-accent);
+  color: var(--banner-ink);
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--hero-accent) 38%, #ffffff) 0%,
+    color-mix(in srgb, var(--hero-accent) 24%, #ffffff) 55%,
+    color-mix(in srgb, var(--hero-accent) 16%, #ffffff) 100%
+  );
+  border: 1px solid color-mix(in srgb, var(--hero-accent) 40%, transparent);
+  box-shadow: 0 18px 44px color-mix(in srgb, var(--hero-accent) 24%, rgba(0, 0, 0, 0.12));
+}
+
+html[data-theme="dark"] .score-save,
+html[data-theme="dark"] .score-celeb__shell,
+html[data-theme="dark"] .game-pause-card,
+html[data-theme="dark"] .game-leave-card,
+html[data-theme="dark"] .patriot__info-panel {
+  --banner-ink: #fff;
+  --banner-muted: color-mix(in srgb, var(--hero-accent) 22%, #dfe9f0);
+  --banner-faint: rgba(238, 244, 248, 0.68);
+  --banner-hover: color-mix(in srgb, var(--hero-accent) 45%, #fff);
+  --banner-chip-bg: rgba(255, 255, 255, 0.12);
+  --banner-chip-border: rgba(255, 255, 255, 0.16);
+  --banner-chip-ink: #f4f8fb;
+  --banner-chip-hover: rgba(255, 255, 255, 0.2);
+  --banner-dot: color-mix(in srgb, var(--hero-accent) 60%, #fff);
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--hero-accent) 50%, #0b1620) 0%,
+    color-mix(in srgb, var(--hero-accent) 34%, #0b1620) 55%,
+    color-mix(in srgb, var(--hero-accent) 24%, #0b1620) 100%
+  );
+  border-color: color-mix(in srgb, var(--hero-accent) 45%, transparent);
+  box-shadow: 0 22px 54px rgba(0, 0, 0, 0.45);
+}
+
+/* ---- the small line above: a pill with a dot, like the banner's kicker ---- */
+
+.score-save__eyebrow,
+.score-celeb__kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0;
+  padding: 0.28rem 0.75rem 0.28rem 0.6rem;
+  border-radius: 999px;
+  background: var(--banner-chip-bg);
+  border: 1px solid var(--banner-chip-border);
+  font-size: 0.64rem;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--banner-chip-ink);
+}
+
+.score-save__eyebrow::before,
+.score-celeb__kicker::before {
+  content: '';
+  width: 0.42rem;
+  height: 0.42rem;
+  border-radius: 50%;
+  background: var(--banner-dot);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--hero-accent) 35%, transparent);
+}
+
+.score-save__hero {
+  gap: 0.45rem;
+}
+
+/* ---- words and figures take the banner's ink ---- */
+
+.score-save__score,
+.score-save__as,
+.score-save__ranks strong,
+.score-celeb__title,
+.rank-up__number {
+  color: var(--banner-ink);
+}
+
+.score-save__pb,
+.score-save__sub,
+.score-save__note,
+.score-save__label,
+.score-save__links a,
+.score-save__text-link,
+.score-celeb__award-label,
+.score-celeb__award-detail,
+.rank-up__detail,
+.rank-up__from {
+  color: var(--banner-muted);
+}
+
+.score-save__ranks li {
+  background: var(--banner-chip-bg);
+  border-color: var(--banner-chip-border);
+  color: var(--banner-muted);
+}
+
+.score-save__pb--best,
+.score-save__gain,
+.score-save__text-btn {
+  color: var(--banner-hover);
+}
+
+.score-save__note--error {
+  color: #b42318;
+}
+
+html[data-theme="dark"] .score-save__note--error {
+  color: #ff9d94;
+}
+
+/* ---- one thing to press, and quiet chips for the rest ---- */
+
+.score-save__btn,
+.score-celeb__btn {
+  color: var(--hero-ink, #fff);
+  box-shadow: 0 8px 22px color-mix(in srgb, var(--hero-accent) 45%, transparent);
+}
+
+.score-save__btn--ghost,
+.score-save__tag,
+.score-save__links a,
+.score-save__text-link {
+  background: var(--banner-chip-bg);
+  border: 1px solid var(--banner-chip-border);
+  color: var(--banner-chip-ink);
+}
+
+.score-save__btn--ghost:hover:not(:disabled),
+.score-save__btn--ghost:focus-visible:not(:disabled),
+.score-save__links a:hover,
+.score-save__links a:focus-visible,
+.score-save__text-link:hover,
+.score-save__text-link:focus-visible {
+  background: var(--banner-chip-hover);
+  border-color: var(--banner-chip-border);
+  color: var(--banner-ink);
+}
+
+.score-save__input {
+  background: var(--banner-chip-bg);
+  border-color: var(--banner-chip-border);
+  color: var(--banner-ink);
+}
+
+.score-save__input::placeholder {
+  color: var(--banner-faint);
+}
+
+.score-save__input:focus {
+  border-color: color-mix(in srgb, var(--hero-accent) 70%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--hero-accent) 28%, transparent);
+}
+
+/* ---- the awards: quiet tiles on the wash, each tinted by what it is ---- */
+
+.score-celeb__award {
+  background: var(--banner-chip-bg);
+  border-color: color-mix(in srgb, var(--award-accent) 45%, transparent);
+}
+
+.score-celeb__award--featured {
+  background: color-mix(in srgb, var(--award-accent) 22%, var(--banner-chip-bg));
+  border-color: color-mix(in srgb, var(--award-accent) 70%, transparent);
+  box-shadow: 0 12px 28px color-mix(in srgb, var(--award-accent) 30%, transparent);
+}
+
+.score-celeb__award-value {
+  color: color-mix(in srgb, var(--award-accent) 55%, var(--banner-ink));
+}
+
+/* ==========================================================================
+   The start and pause cards: the same wash, the figures side by side
+   ========================================================================== */
+
+.game-pause-card {
+  gap: 0.85rem;
+  padding: 1.35rem 1.4rem 1.3rem;
+  border-radius: 1.4rem;
+  backdrop-filter: blur(14px);
+}
+
+.game-pause-card h2 {
+  font-size: clamp(1.7rem, 4.5vw, 2.3rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  color: var(--banner-ink);
+}
+
+.game-pause-card p {
+  color: var(--banner-muted);
+}
+
+/* Your best and the all-time record as figures in a row, the banner's way. */
+.game-pause-meta {
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.35rem 1.6rem;
+  width: auto;
+  padding: 0;
+  background: none;
+  border: 0;
+}
+
+.game-pause-meta__row {
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+}
+
+.game-pause-meta__row span {
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--banner-faint);
+}
+
+.game-pause-meta__row strong {
+  font-size: 1.35rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--banner-ink);
+}
+
+/* Sound, pack, the guide and the board: chips on the wash. */
+.game-pause-card .game-pause-btn {
+  border-color: var(--banner-chip-border);
+  background: var(--banner-chip-bg);
+  color: var(--banner-chip-ink);
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+.game-pause-card .game-pause-btn:hover,
+.game-pause-card .game-pause-btn:focus-visible {
+  background: var(--banner-chip-hover);
+  color: var(--banner-ink);
+  outline: none;
+}
+
+.game-pause-card__resume,
+.game-start-card__cue {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.8rem;
+  margin: 0.1rem 0 0;
+  padding: 0 1.5rem;
+  border: 0;
+  border-radius: 999px;
+  background: var(--hero-accent);
+  color: var(--hero-ink, #fff);
+  font-family: var(--font-display);
+  font-size: 0.98rem;
+  font-weight: 800;
+  box-shadow: 0 8px 22px color-mix(in srgb, var(--hero-accent) 45%, transparent);
+}
+
+.game-pause-card__resume:hover,
+.game-pause-card__resume:focus-visible {
+  filter: none;
+  transform: translateY(-1px);
+  outline: none;
+}
+
+.game-pause-card__leave {
+  background: var(--banner-chip-bg);
+  border: 1px solid var(--banner-chip-border);
+  color: var(--banner-chip-ink);
+}
+
+.game-pause-card__leave:hover,
+.game-pause-card__leave:focus-visible {
+  background: var(--banner-chip-hover);
+  color: var(--banner-ink);
+}
+
+.game-pause-card__hint {
+  color: var(--banner-faint) !important;
+}
+
+
+
+/* ---- leaving a run: the same card, asking ---- */
+
+.game-leave-card {
+  gap: 0.5rem;
+  padding: 1.35rem 1.4rem 1.3rem;
+  border-radius: 1.4rem;
+  backdrop-filter: blur(14px);
+}
+
+.game-leave-card p {
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--banner-ink);
+}
+
+.game-leave-card__copy {
+  color: var(--banner-muted) !important;
+}
+
+.game-leave-card__go {
+  background: var(--hero-accent);
+  color: var(--hero-ink, #fff);
+  font-family: var(--font-display);
+  font-weight: 800;
+  box-shadow: 0 8px 22px color-mix(in srgb, var(--hero-accent) 45%, transparent);
+}
+
+.game-leave-card__stay {
+  border-color: var(--banner-chip-border);
+  background: var(--banner-chip-bg);
+  color: var(--banner-chip-ink);
+  font-weight: 750;
+}
+
+.game-leave-card__stay:hover,
+.game-leave-card__stay:focus-visible {
+  background: var(--banner-chip-hover);
+  color: var(--banner-ink);
+  outline: none;
+}
+
+/* ---- the event gate: a card on the stage, in the event's game's colour ---- */
+
+.tour-play__gate {
+  background: color-mix(in srgb, var(--shell, #edf7f4) 60%, transparent);
+  backdrop-filter: blur(8px);
+}
+
+.tour-play__card {
+  width: min(100%, 22rem);
+  max-width: 22rem;
+  gap: 0.6rem;
+}
+
+.tour-play__card .tour-play__eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.28rem 0.75rem 0.28rem 0.6rem;
+  border-radius: 999px;
+  background: var(--banner-chip-bg);
+  border: 1px solid var(--banner-chip-border);
+  font-size: 0.64rem;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  color: var(--banner-chip-ink);
+}
+
+.tour-play__card .tour-play__eyebrow::before {
+  content: '';
+  width: 0.42rem;
+  height: 0.42rem;
+  border-radius: 50%;
+  background: var(--banner-dot);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--hero-accent) 35%, transparent);
+}
+
+.tour-play__card h1 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(1.5rem, 4vw, 2rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+  color: var(--banner-ink);
+}
+
+.tour-play__card .tour-play__game,
+.tour-play__card p {
+  margin: 0;
+  color: var(--banner-muted);
+}
+
+.tour-play__card .tour-play__game {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 750;
+}
+
+.tour-play__card .tour-play__name-field {
+  width: 100%;
+}
+
+.tour-play__card .tour-play__gate-actions {
+  width: 100%;
+}
+
+.tour-play__card .tour-play__ghost {
+  min-height: 2.9rem;
+  padding: 0 1.1rem;
+  border-radius: 999px;
+  border: 1px solid var(--banner-chip-border);
+  background: var(--banner-chip-bg);
+  color: var(--banner-chip-ink);
+  font-weight: 750;
+  text-decoration: none;
+}
+
+.tour-play__card .tour-play__ghost:hover,
+.tour-play__card .tour-play__ghost:focus-visible {
+  background: var(--banner-chip-hover);
+  color: var(--banner-ink);
+  outline: none;
+}
+
+
+
+/* ---- the rules sheet: the same card, opened from the pause panel ---- */
+
+.patriot__info-panel {
+  border-radius: 1.4rem;
+  padding: 1rem 1.05rem 1.05rem;
+  backdrop-filter: blur(14px);
+}
+
+.patriot__info-panel .patriot__label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.28rem 0.75rem 0.28rem 0.6rem;
+  border-radius: 999px;
+  background: var(--banner-chip-bg);
+  border: 1px solid var(--banner-chip-border);
+  font-size: 0.64rem;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  color: var(--banner-chip-ink);
+}
+
+.patriot__info-panel .patriot__label::before {
+  content: '';
+  width: 0.42rem;
+  height: 0.42rem;
+  border-radius: 50%;
+  background: var(--banner-dot);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--hero-accent) 35%, transparent);
+}
+
+.patriot__info-panel .patriot__info-close {
+  width: 1.9rem;
+  height: 1.9rem;
+  border: 1px solid var(--banner-chip-border);
+  background: var(--banner-chip-bg);
+  color: var(--banner-chip-ink);
+}
+
+.patriot__info-panel .patriot__info-close:hover,
+.patriot__info-panel .patriot__info-close:focus-visible {
+  background: var(--banner-chip-hover);
+  color: var(--banner-ink);
+  outline: none;
+}
+
+.patriot__info-panel .how-to-play__copy {
+  color: var(--banner-muted);
+}
+
+.patriot__info-panel .patriot__info-list li {
+  background: var(--banner-chip-bg);
+  border-color: var(--banner-chip-border);
+}
+
+.patriot__info-panel .patriot__info-list span {
+  color: var(--banner-muted);
+}
+
+.patriot__info-panel .patriot__info-list strong {
+  color: var(--banner-ink);
+}
+
+/* The "i" that opens it sits among the other chips on the card. */
+.game-pause-card .patriot__info {
+  border-color: var(--banner-chip-border);
+  background: var(--banner-chip-bg);
+  color: var(--banner-chip-ink);
+  box-shadow: none;
+}
+
+.game-pause-card .patriot__info:hover,
+.game-pause-card .patriot__info:focus-visible {
+  background: var(--banner-chip-hover);
+  color: var(--banner-ink);
+  outline: none;
+}

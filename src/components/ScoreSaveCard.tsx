@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
+import { gameAccentStyle } from '../lib/gameAccentStyle'
 import { useAuth } from '../hooks/useAuth'
 import { useImpersonation } from '../hooks/useImpersonation'
 import { gameBoardHref, gameHref, navigate, recordsHref } from '../hooks/useHashRoute'
@@ -459,9 +460,12 @@ function FireworksCanvas() {
 export function ScoreCelebration({
   payload,
   onDone,
+  style,
 }: {
   payload: CelebPayload
   onDone: () => void
+  /** The game's colour for the shell; the overlay portals out of the game's tree and cannot inherit it. */
+  style?: CSSProperties
 }) {
   const [leaving, setLeaving] = useState(false)
   const cards = awardCards(payload)
@@ -476,6 +480,7 @@ export function ScoreCelebration({
   return createPortal(
     <div
       className={`score-celeb${leaving ? ' score-celeb--out' : ''}`}
+      style={style}
       role="dialog"
       aria-label="Run celebration"
       onPointerDown={(e) => e.stopPropagation()}
@@ -524,9 +529,12 @@ function prefersReducedMotion() {
 export function RankUpCelebration({
   climb,
   onDone,
+  style,
 }: {
   climb: RankClimb
   onDone: () => void
+  /** The game's colour for the shell; see ScoreCelebration. */
+  style?: CSSProperties
 }) {
   const period = useDefaultPeriod()
   const [leaving, setLeaving] = useState(false)
@@ -615,6 +623,7 @@ export function RankUpCelebration({
   return createPortal(
     <div
       className={`score-celeb rank-up${leaving ? ' score-celeb--out' : ''}${settled ? ' rank-up--settled' : ''}`}
+      style={style}
       role="dialog"
       aria-label="Global rank up celebration"
       onPointerDown={(e) => e.stopPropagation()}
@@ -698,6 +707,8 @@ export function ScoreSaveCard({
 
   const pb = describePersonalBest(score, record)
   const isBestRun = pb?.kind === 'new'
+  // The card and its celebrations wear the game's colour, the way the banner does.
+  const accentStyle = gameAccentStyle(gameSlug)
   const eyebrow =
     phase === 'needAuth' || phase === 'needName'
       ? isTimeBoard(gameSlug)
@@ -921,13 +932,13 @@ export function ScoreSaveCard({
   return (
     <>
       {rankClimb ? (
-        <RankUpCelebration climb={rankClimb} onDone={finishRankClimb} />
+        <RankUpCelebration climb={rankClimb} onDone={finishRankClimb} style={accentStyle} />
       ) : null}
       {celeb && !rankClimb ? (
-        <ScoreCelebration payload={celeb} onDone={() => setCeleb(null)} />
+        <ScoreCelebration payload={celeb} onDone={() => setCeleb(null)} style={accentStyle} />
       ) : null}
       {pending && !celeb && !rankClimb && (
-        <div className="score-save" onPointerDown={(e) => e.stopPropagation()}>
+        <div className="score-save" style={accentStyle} onPointerDown={(e) => e.stopPropagation()}>
           <p className="score-save__note">
             {phase === 'checking'
               ? 'Checking boards…'
@@ -938,7 +949,7 @@ export function ScoreSaveCard({
         </div>
       )}
       {showResults && (
-    <div className="score-save" onPointerDown={(e) => e.stopPropagation()}>
+    <div className="score-save" style={accentStyle} onPointerDown={(e) => e.stopPropagation()}>
       <div className="score-save__hero">
         <span className="score-save__eyebrow">{eyebrow}</span>
         <strong className="score-save__score">

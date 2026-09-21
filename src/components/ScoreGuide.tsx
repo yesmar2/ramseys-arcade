@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
 import type { ScoreRow } from '../data/scoring'
 
@@ -36,10 +36,12 @@ export function HowToPlayContent({
 type ScoreGuideProps = {
   how: string
   rows?: ScoreRow[] | null
+  /** Colour tokens for the sheet, usually the game's accent. */
+  style?: CSSProperties
 }
 
 /** In-game How to play modal (pause / HUD info). */
-export function ScoreGuide({ how, rows }: ScoreGuideProps) {
+export function ScoreGuide({ how, rows, style }: ScoreGuideProps) {
   const [open, setOpen] = useState(false)
 
   useEffect(() => {
@@ -65,6 +67,7 @@ export function ScoreGuide({ how, rows }: ScoreGuideProps) {
           >
             <div
               className="patriot__info-panel"
+              style={style}
               role="dialog"
               aria-label="How to play"
               onPointerDown={(e) => e.stopPropagation()}
