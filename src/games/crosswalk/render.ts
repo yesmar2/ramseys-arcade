@@ -34,6 +34,8 @@ export function computeLayout(
   h: number,
   cols: number,
   focusCol = (cols - 1) / 2,
+  /** Where the hopper actually is, so framing can never hide it. */
+  playerCol = focusCol,
 ): CrosswalkLayout {
   const { cell: widthCell, availH, hudTop } = cellMetrics(w, h, cols)
   // Tall phones would otherwise show a dozen+ tiny rows. Cap the row budget so
@@ -48,6 +50,18 @@ export function computeLayout(
   if (gridW > w + 0.5) {
     const focusX = (focusCol + 0.5) * cell
     ox = w * 0.5 - focusX
+    ox = Math.max(w - gridW, Math.min(0, ox))
+    /*
+     * The framing above follows a camera that deliberately lags the hopper, so
+     * that riding a log looks like being carried rather than like the board
+     * sliding. This is the guard on that: whatever the lag says, the hopper
+     * stays on screen with a tile to spare. Belt and braces, so the dead zone
+     * can be tuned without re-deriving whether it can ever lose the player.
+     */
+    const margin = cell * 0.75
+    const px = ox + (playerCol + 0.5) * cell
+    if (px < margin) ox += margin - px
+    else if (px > w - margin) ox -= px - (w - margin)
     ox = Math.max(w - gridW, Math.min(0, ox))
   } else {
     ox = Math.max(0, ox)
@@ -696,7 +710,7 @@ export function renderGame(
 ) {
   const dark = isDarkTheme()
   const pos = playerPos(state)
-  const layout = computeLayout(w, h, state.cols, pos.c)
+  const layout = computeLayout(w, h, state.cols, state.cameraX, pos.c)
   const { cell, visibleRows, ox, oy, gridW } = layout
 
   /*
