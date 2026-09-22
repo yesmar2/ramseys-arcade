@@ -8,6 +8,7 @@ import {
   privacyHref,
   rankHref,
   recordsIndexHref,
+  siteRecordsHref,
   statsHref,
   termsHref,
   tournamentCreateHref,
@@ -131,6 +132,7 @@ export function publicRoutes(): Route[] {
     { name: 'leaderboards' },
     { name: 'leaderboards', global: true },
     { name: 'recordsIndex' },
+    { name: 'siteRecords' },
     { name: 'privacy' },
     { name: 'terms' },
   ]
@@ -202,6 +204,7 @@ export function pageContent(route: Route): PageContent {
     }
     case 'leaderboards':
     case 'recordsIndex':
+    case 'siteRecords':
     case 'tournaments':
       return { heading, paragraphs: [meta.description], links: [...gameLinks(), ...siteLinks()] }
     default:
@@ -276,6 +279,13 @@ export function pageMeta(route: Route): PageMeta {
         title: titled('Record books'),
         description: `The record books: the best single runs, streaks and times ever set on ${APP_NAME}.`,
         path: recordsIndexHref(),
+      }
+    case 'siteRecords':
+      return {
+        ...site,
+        title: titled('House records'),
+        description: `The records that belong to the whole arcade rather than one game: longest streaks, busiest days and the widest players on ${APP_NAME}.`,
+        path: siteRecordsHref(),
       }
     case 'records': {
       const meta = gameMeta(route.game, gameRecordsPath(route.game))

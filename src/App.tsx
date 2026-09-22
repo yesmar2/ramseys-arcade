@@ -37,6 +37,9 @@ import { lazyPage } from './lib/lazyPage'
  */
 
 const AboutPage = lazyPage(() => import('./pages/AboutPage').then((m) => m.AboutPage))
+const SiteRecordsPage = lazyPage(() =>
+  import('./pages/SiteRecordsPage').then((m) => m.SiteRecordsPage),
+)
 const AuthVerifyPage = lazyPage(() => import('./pages/AuthVerifyPage').then((m) => m.AuthVerifyPage))
 const CreateTournamentPage = lazyPage(() =>
   import('./pages/CreateTournamentPage').then((m) => m.CreateTournamentPage),
@@ -261,6 +264,7 @@ function Screen({ route }: { route: ReturnType<typeof useRoute> }) {
     )
   }
   if (route.name === 'recordsIndex') return <RecordsIndexPage />
+  if (route.name === 'siteRecords') return <SiteRecordsPage />
   if (route.name === 'records') {
     return (
       <RecordsPage

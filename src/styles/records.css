@@ -30,6 +30,30 @@
   min-width: 0;
 }
 
+/*
+ * The house book sits above the cabinets and spans the row, because it is the
+ * only one that is about all of them. Two columns would file it as a game.
+ */
+.rb__grid--house {
+  margin-bottom: 0.8rem;
+}
+
+@media (min-width: 720px) {
+  .rb__grid--house {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.rb-book--house {
+  --ev-art-size: 4.2rem;
+  background: linear-gradient(
+    120deg,
+    color-mix(in srgb, var(--accent) 12%, rgba(var(--surface-rgb), 0.62)),
+    rgba(var(--surface-rgb), 0.62) 62%
+  );
+  border-color: color-mix(in srgb, var(--accent) 28%, transparent);
+}
+
 .rb-book {
   --ev-art-size: 3.8rem;
   position: relative;

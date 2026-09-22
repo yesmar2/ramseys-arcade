@@ -36,6 +36,7 @@ export type Route =
   | { name: 'leaderboards'; global?: boolean; period?: LeaderboardPeriod }
   | { name: 'gameLeaderboard'; game: LeaderboardGame; period?: LeaderboardPeriod }
   | { name: 'recordsIndex' }
+  | { name: 'siteRecords' }
   | { name: 'records'; game: string; recordId?: string; period?: LeaderboardPeriod }
   | { name: 'rank'; player?: string; period?: LeaderboardPeriod }
   | { name: 'groups' }
@@ -143,6 +144,11 @@ export function gamePlayHref(slug: string) {
 /** Site-wide record books catalog. */
 export function recordsIndexHref() {
   return '/records'
+}
+
+/** The one book that is about the whole arcade rather than a cabinet. */
+export function siteRecordsHref() {
+  return '/records/site'
 }
 
 export function privacyHref() {
@@ -411,6 +417,8 @@ export function parseUrl(pathname: string, search: string): Route {
   if (path === 'leaderboards') return { name: 'leaderboards', period: defaultPeriod() }
   if (path === 'rank') return { name: 'rank', period: defaultPeriod() }
   if (path === 'records') return { name: 'recordsIndex' }
+  // Before the game-record patterns below, which would read "site" as a slug.
+  if (path === 'records/site') return { name: 'siteRecords' }
 
   const rankMatch = /^rank\/([^/]+)(?:\/([^/]+))?$/.exec(path)
   if (rankMatch) {
