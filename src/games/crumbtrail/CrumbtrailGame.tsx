@@ -32,6 +32,7 @@ import {
   jumpToDepth,
   queueDir,
   startGame,
+  streakMult,
   surgeReady,
   tick,
   toSnapshot,
@@ -362,7 +363,17 @@ export function CrumbtrailGame() {
                   {ui.tide > 0.35 ? (
                     <PlayStat label="Tide" value="Climb!" urgent />
                   ) : ui.crumbStreak >= 2 ? (
-                    <PlayStat label="In a row" value={ui.crumbStreak} />
+                    <PlayStat
+                      label="In a row"
+                      value={
+                        <>
+                          {ui.crumbStreak}
+                          {streakMult(ui.crumbStreak) >= 2 ? (
+                            <span className="crumbtrail__mult">×{streakMult(ui.crumbStreak)}</span>
+                          ) : null}
+                        </>
+                      }
+                    />
                   ) : null}
                 </PlayReadoutStats>
               ) : null}

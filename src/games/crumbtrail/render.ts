@@ -1,11 +1,14 @@
 import { isDarkTheme, isFlatTheme, playfieldColor, softFillAlpha } from '../../lib/theme'
 import {
   bufferRowOf,
+  MILESTONE_ROWS,
   tidePressure,
   worldRowAt,
+  type Dir,
   type GameState,
   type Ghost,
   type GhostKind,
+  type PopTone,
 } from './game'
 
 /** Gold crumbs — same family as Pellets and Snake food. */
@@ -16,8 +19,15 @@ import {
  * you track every second read clearly against everything that can kill you.
  */
 const ACCENT = 152
-/** Distance markers every this many rows. */
-const MILESTONE_STEP = 50
+/** The site's own face, at a weight it loads; a canvas can't read the CSS variable. */
+const FONT = '"Outfit", system-ui, sans-serif'
+const TAU = Math.PI * 2
+const LOOK: Record<Dir, { x: number; y: number }> = {
+  up: { x: 0, y: -1 },
+  down: { x: 0, y: 1 },
+  left: { x: -1, y: 0 },
+  right: { x: 1, y: 0 },
+}
 
 type Skin = {
   dark: boolean
@@ -251,6 +261,33 @@ function drawCrumbs(
 }
 
 /**
+ * A crumb, just eaten: its ring opens out and fades where it was, a fifth of a
+ * second each. At a crumb a tile it is a steady patter behind the chomp rather
+ * than a burst, which is what eating the trail should feel like.
+ */
+function drawBites(
+  ctx: CanvasRenderingContext2D,
+  state: GameState,
+  layout: Layout,
+  skin: Skin,
+) {
+  if (!state.bites.length) return
+  const { cell, rowY } = layout
+  const crumbR = Math.max(1.5, cell * 0.12)
+  ctx.save()
+  ctx.lineWidth = Math.max(1, cell * 0.04)
+  for (const bite of state.bites) {
+    const t = 1 - bite.life
+    ctx.globalAlpha = Math.max(0, bite.life) * 0.8
+    ctx.strokeStyle = hsla(ACCENT, 62, skin.dark ? 66 : 40, 1)
+    ctx.beginPath()
+    ctx.arc(bite.x * cell, rowY(bite.y), crumbR * (1.2 + t * 1.8), 0, TAU)
+    ctx.stroke()
+  }
+  ctx.restore()
+}
+
+/**
  * The fruit.
  *
  * Deliberately not in the crumb family: crumbs are small gold dots you take by
@@ -441,11 +478,11 @@ function drawMilestones(
   ctx.save()
   ctx.textAlign = 'center'
   ctx.textBaseline = 'middle'
-  ctx.font = `900 ${Math.max(14, Math.round(cell * 1.5))}px "Segoe UI", system-ui, sans-serif`
+  ctx.font = `600 ${Math.max(14, Math.round(cell * 1.5))}px ${FONT}`
   ctx.fillStyle = skin.dark ? 'rgba(231, 238, 243, 0.07)' : 'rgba(26, 43, 60, 0.07)'
   for (let y = 0; y < state.rows; y++) {
     const world = worldRowAt(state, y) - state.baseRow
-    if (world <= 0 || world % MILESTONE_STEP !== 0) continue
+    if (world <= 0 || world % MILESTONE_ROWS !== 0) continue
     const cy = rowY(y) + cell * 0.5
     if (cy < -cell || cy > ctx.canvas.height + cell) continue
     ctx.fillText(String(world), (state.cols * cell) / 2, cy)
@@ -515,6 +552,15 @@ function drawPlayer(
     ctx.globalAlpha = 0.4
   }
 
+  // A little light of your own on the floor, so your eye finds you first in a busy maze.
+  const lamp = ctx.createRadialGradient(cx, cy, r * 0.5, cx, cy, r * 2.4)
+  lamp.addColorStop(0, hsla(ACCENT, 70, 58, skin.dark ? 0.2 : 0.16))
+  lamp.addColorStop(1, hsla(ACCENT, 70, 58, 0))
+  ctx.fillStyle = lamp
+  ctx.beginPath()
+  ctx.arc(cx, cy, r * 2.4, 0, TAU)
+  ctx.fill()
+
   if (surging) {
     const glow = ctx.createRadialGradient(cx, cy, r * 0.3, cx, cy, r * 2)
     glow.addColorStop(0, 'rgba(245, 185, 66, 0.35)')
@@ -545,6 +591,43 @@ function drawPlayer(
   ctx.globalAlpha = 1
 }
 
+/**
+ * A chaser's eyes, which are how you read one: they look the way it is going,
+ * so its next turn shows on its face before it takes it, and a train's sweep
+ * reads from across the board. They open as it wakes, and they are all that is
+ * left of one you have eaten, on its way home.
+ */
+function drawEyes(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  r: number,
+  dir: Dir,
+  open: number,
+  skin: Skin,
+  rim: string,
+) {
+  const look = LOOK[dir]
+  const rx = r * 0.25
+  const ry = r * 0.31 * Math.max(0.15, open)
+  for (const side of [-1, 1]) {
+    const ex = cx + side * r * 0.36 + look.x * r * 0.1
+    const ey = cy - r * 0.2 + look.y * r * 0.08
+    ctx.beginPath()
+    ctx.ellipse(ex, ey, rx, ry, 0, 0, TAU)
+    ctx.fillStyle = skin.dark ? '#eef3f6' : '#ffffff'
+    ctx.fill()
+    ctx.strokeStyle = rim
+    ctx.lineWidth = Math.max(0.9, r * 0.07)
+    ctx.stroke()
+    if (open < 0.35) continue
+    ctx.beginPath()
+    ctx.arc(ex + look.x * rx * 0.42, ey + look.y * ry * 0.42, Math.min(rx, ry) * 0.55, 0, TAU)
+    ctx.fillStyle = skin.dark ? '#0d1520' : '#1a2b3c'
+    ctx.fill()
+  }
+}
+
 function drawChaser(
   ctx: CanvasRenderingContext2D,
   ghost: Ghost,
@@ -571,16 +654,8 @@ function drawChaser(
   ctx.globalAlpha = asleep ? 0.42 : 0.35 + 0.65 * ghost.arrive
 
   if (eaten) {
-    ctx.beginPath()
-    ctx.arc(cx, cy, cell * 0.2, 0, Math.PI * 2)
-    if (isFlatTheme()) {
-      ctx.fillStyle = hsla(chaserHue(ghost.kind), 50, skin.dark ? 62 : 42, 0.45)
-      ctx.fill()
-    } else {
-      ctx.strokeStyle = hsla(chaserHue(ghost.kind), 50, skin.dark ? 62 : 42, 0.7)
-      ctx.lineWidth = Math.max(1.2, cell * 0.06)
-      ctx.stroke()
-    }
+    // Only the eyes are left, heading home — the way it has always been.
+    drawEyes(ctx, cx, cy, r, ghost.dir, 1, skin, hsla(chaserHue(ghost.kind), 50, skin.dark ? 62 : 42, 0.9))
     ctx.globalAlpha = 1
     return
   }
@@ -658,12 +733,21 @@ function drawChaser(
   }
 
   if (scared) {
+    // Pin eyes over the wobbly mouth: the face of a chaser that knows it is food.
+    ctx.fillStyle = flash ? hsla(8, 60, 30, 0.9) : hsla(210, 30, skin.dark ? 84 : 96, 0.95)
+    for (const side of [-1, 1]) {
+      ctx.beginPath()
+      ctx.arc(cx + side * r * 0.3, cy - r * 0.2, Math.max(1, r * 0.1), 0, TAU)
+      ctx.fill()
+    }
     ctx.strokeStyle = flash ? hsla(8, 60, 30, 0.9) : hsla(210, 30, 70, 0.9)
     ctx.lineWidth = Math.max(1, cell * 0.045)
     ctx.beginPath()
     ctx.moveTo(cx - cell * 0.16, cy + cell * 0.1)
     ctx.quadraticCurveTo(cx, cy + cell * 0.2, cx + cell * 0.16, cy + cell * 0.1)
     ctx.stroke()
+  } else if (!asleep) {
+    drawEyes(ctx, cx, cy, r, ghost.dir, 0.2 + 0.8 * ghost.arrive, skin, hsla(hue, sat, skin.dark ? 62 : 40, 0.95))
   }
 
   if (asleep) {
@@ -747,16 +831,42 @@ function drawPops(
 ) {
   if (!state.pops.length) return
   const { cell, rowY } = layout
+  const field = playfieldColor()
+  ctx.save()
   ctx.textAlign = 'center'
   ctx.textBaseline = 'middle'
-  ctx.font = `800 ${Math.max(11, Math.round(cell * 0.52))}px "Segoe UI", system-ui, sans-serif`
+  ctx.lineJoin = 'round'
   for (const pop of state.pops) {
-    const t = 1 - pop.life / 0.9
-    ctx.globalAlpha = Math.max(0, pop.life / 0.9)
-    ctx.fillStyle = skin.ink
-    ctx.fillText(pop.text, pop.x * cell, rowY(pop.y) - t * cell * 0.9)
+    const t = 1 - pop.life / pop.maxLife
+    // Pops land big and settle, so the moment reads before the words do.
+    const land = t < 0.12 ? 1 + (0.12 - t) * 2.2 : 1
+    const size = Math.max(11, Math.round(cell * POP_SCALE[pop.tone] * land))
+    ctx.font = `600 ${size}px ${FONT}`
+    ctx.globalAlpha = Math.min(1, (pop.life / pop.maxLife) * 2.5)
+    const x = pop.x * cell
+    const y = rowY(pop.y) - t * cell * (pop.tone === 'row' ? 0.5 : 0.9)
+    // A halo of the floor behind the words, so they read over crumbs and walls alike.
+    ctx.strokeStyle = field
+    ctx.lineWidth = Math.max(3, size * 0.28)
+    ctx.strokeText(pop.text, x, y)
+    ctx.fillStyle = popColour(pop.tone, skin)
+    ctx.fillText(pop.text, x, y)
   }
-  ctx.globalAlpha = 1
+  ctx.restore()
+}
+
+const POP_SCALE: Record<PopTone, number> = { ink: 0.52, streak: 0.62, lost: 0.46, row: 0.78 }
+
+/** The streak keeps the amber the readout gives it; a lost one goes the tide's red. */
+function popColour(tone: PopTone, skin: Skin) {
+  switch (tone) {
+    case 'streak':
+      return hsla(40, 86, skin.dark ? 66 : 38, 1)
+    case 'lost':
+      return hsla(350, 64, skin.dark ? 72 : 44, 0.95)
+    default:
+      return skin.ink
+  }
 }
 
 export function renderGame(
@@ -783,6 +893,7 @@ export function renderGame(
   drawMilestones(ctx, state, layout, skin)
   drawWalls(ctx, state, layout, skin)
   drawCrumbs(ctx, state, layout, skin)
+  drawBites(ctx, state, layout, skin)
   drawFruit(ctx, state, layout, skin)
   drawCharm(ctx, state, layout, skin)
   drawBeam(ctx, state, layout)

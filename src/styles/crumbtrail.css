@@ -225,3 +225,10 @@
 .crumbtrail .play-stats .play-stat__value--urgent {
   color: #e85d75;
 }
+
+/* What the streak is paying, beside it: the number that makes the streak worth keeping. */
+.crumbtrail__mult {
+  margin-left: 0.3em;
+  font-size: 0.72em;
+  opacity: 0.86;
+}

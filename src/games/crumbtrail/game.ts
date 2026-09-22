@@ -116,7 +116,12 @@ export type Fruit = {
   tier: number
 }
 
-export type Pop = { x: number; y: number; life: number; text: string }
+/**
+ * What a pop is saying, which decides how it looks: a plain figure, the streak
+ * paying more, the streak gone, or a landmark on the climb.
+ */
+export type PopTone = 'ink' | 'streak' | 'lost' | 'row'
+export type Pop = { x: number; y: number; life: number; maxLife: number; text: string; tone: PopTone }
 export type TrailDot = { x: number; y: number; life: number }
 
 export type Snapshot = {
@@ -211,6 +216,8 @@ export type GameState = {
   fruitTimer: number
   lastTile: Cell
   trail: TrailDot[]
+  /** Crumbs just eaten, each leaving a ring for a moment where it was. */
+  bites: TrailDot[]
   pops: Pop[]
   deathAnim: number
   cause: DeathCause | null
@@ -296,6 +303,12 @@ const MAX_MULT_LATE = 8
  */
 const STREAK_LANDMARK = 100
 const SCORE_LANDMARK = 1000
+
+/**
+ * Rows between the landmarks on the climb. The number is drawn faintly into
+ * the maze as it approaches, and passing it gets a moment of its own.
+ */
+export const MILESTONE_ROWS = 50
 
 const LATE_TURN = 0.34
 const CENTER_EPS = 0.001
@@ -943,6 +956,7 @@ function shiftDown(state: GameState) {
   state.lastTile = { x: state.lastTile.x, y: state.lastTile.y + 1 }
   for (const ghost of state.ghosts) ghost.y += 1
   for (const dot of state.trail) dot.y += 1
+  for (const bite of state.bites) bite.y += 1
   for (const pop of state.pops) pop.y += 1
   if (state.fruit) state.fruit.y += 1
   if (state.charm) state.charm.y += 1
@@ -1059,6 +1073,7 @@ function emptyState(view: { cols: number; rows: number }): GameState {
     beam: null,
     lastTile: { x: 0, y: 0 },
     trail: [],
+    bites: [],
     pops: [],
     deathAnim: 0,
     cause: null,
@@ -1405,8 +1420,10 @@ function movePlayer(state: GameState, speed: number, dt: number) {
   }
 }
 
-function addPop(state: GameState, x: number, y: number, text: string) {
-  state.pops.push({ x, y, life: 0.9, text })
+function addPop(state: GameState, x: number, y: number, text: string, tone: PopTone = 'ink') {
+  // A landmark stays up a little longer: it is the one you are meant to stop and read.
+  const life = tone === 'row' ? 1.5 : 0.9
+  state.pops.push({ x, y, life, maxLife: life, text, tone })
   if (state.pops.length > 12) state.pops.shift()
 }
 
@@ -1433,6 +1450,7 @@ function eatAt(state: GameState) {
 
   if (state.crumbs[y][x]) {
     state.crumbs[y][x] = false
+    const multBefore = streakMult(state.crumbStreak)
     state.crumbStreak += 1
     if (state.crumbStreak > state.crumbStreakBest) {
       state.crumbStreakBest = state.crumbStreak
@@ -1441,13 +1459,21 @@ function eatAt(state: GameState) {
     state.score += SCORE_CRUMB * mult
     if (state.surgeTime <= 0) state.surge = Math.min(1, state.surge + 1 / SURGE_CRUMBS)
     sfx('eat', Math.min(5, Math.floor(state.crumbStreak / 8)))
+    state.bites.push({ x: x + 0.5, y: y + 0.5, life: 1 })
+    if (state.bites.length > 8) state.bites.shift()
+
+    // The streak starts paying more: say so where you are looking.
+    const multAfter = streakMult(state.crumbStreak)
+    if (multAfter > multBefore && state.crumbStreak % STREAK_LANDMARK !== 0) {
+      addPop(state, state.player.x, state.player.y - 0.7, `×${multAfter}`, 'streak')
+      sfx('hop', Math.min(12, multAfter * 2))
+    }
 
     // Every hundredth fresh crumb scatters the board.
     if (state.crumbStreak % STREAK_LANDMARK === 0) {
       state.score += SCORE_LANDMARK
-      state.fright = FRIGHT_TIME
-      state.frightEaten = 0
-      addPop(state, x + 0.5, y + 0.5, `${state.crumbStreak} IN A ROW!`)
+      frighten(state)
+      addPop(state, x + 0.5, y + 0.5, `${state.crumbStreak} IN A ROW!`, 'streak')
       sfx('wave')
       haptic('boost')
     }
@@ -1457,7 +1483,16 @@ function eatAt(state: GameState) {
      * picked clean, the way Pellets does, and now also the corridors the maze
      * generates bare — which is what makes a bare route a real cost rather
      * than just a plain-looking one.
+     *
+     * A streak worth having gets a word as it goes, or the rule is one the
+     * player only ever discovers by watching a number quietly reset. Not a x2
+     * one: those break constantly on the bare corridors, and a pop that fires
+     * eight times a minute stops being read at all.
      */
+    if (streakMult(state.crumbStreak) >= 3) {
+      addPop(state, state.player.x, state.player.y - 0.7, 'streak lost', 'lost')
+      sfx('miss')
+    }
     state.crumbStreak = 0
   }
 
@@ -1465,14 +1500,26 @@ function eatAt(state: GameState) {
     state.power[y][x] = false
     state.score += SCORE_POWER
     state.surge = Math.min(1, state.surge + 0.15)
-    state.fright = FRIGHT_TIME
-    state.frightEaten = 0
-    for (const ghost of state.ghosts) {
-      if (ghost.mode === 'eaten' || ghost.mode === 'asleep') continue
-      ghost.mode = 'frightened'
-      ghost.dir = OPPOSITE[ghost.dir]
-    }
+    frighten(state)
     sfx('wave')
+  }
+}
+
+/**
+ * Every chaser on the board turns and runs.
+ *
+ * Shared by the power crumb and the hundred-in-a-row landmark. The landmark
+ * used to set only the clock, which nothing reads to decide how a chaser
+ * behaves, so the flock it promised never fled: the chase carried on and only
+ * its chase-and-scatter timer paused.
+ */
+function frighten(state: GameState) {
+  state.fright = FRIGHT_TIME
+  state.frightEaten = 0
+  for (const ghost of state.ghosts) {
+    if (ghost.mode === 'eaten' || ghost.mode === 'asleep') continue
+    ghost.mode = 'frightened'
+    ghost.dir = OPPOSITE[ghost.dir]
   }
 }
 
@@ -1498,6 +1545,7 @@ export function tick(state: GameState, dt: number): GameState {
     ghosts: state.ghosts.map((g) => ({ ...g })),
     player: { ...state.player },
     trail: state.trail.map((d) => ({ ...d, life: d.life - dt * 2.6 })).filter((d) => d.life > 0),
+    bites: state.bites.map((b) => ({ ...b, life: b.life - dt * 4.5 })).filter((b) => b.life > 0),
     pops: state.pops.map((p) => ({ ...p, life: p.life - dt })).filter((p) => p.life > 0),
     time: state.time + dt,
     mouth: state.mouth + dt * 13,
@@ -1527,6 +1575,11 @@ export function tick(state: GameState, dt: number): GameState {
 
   const climbed = worldRowAt(next, Math.floor(next.player.y)) - next.baseRow
   if (climbed > next.depth) {
+    const landmark = Math.floor(climbed / MILESTONE_ROWS) * MILESTONE_ROWS
+    if (landmark > next.depth && landmark > 0) {
+      addPop(next, next.player.x, next.player.y - 0.9, `ROW ${landmark}`, 'row')
+      sfx('perfect')
+    }
     next.score += (climbed - next.depth) * SCORE_ROW
     next.depth = climbed
     next.stall = 0
