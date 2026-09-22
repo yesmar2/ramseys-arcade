@@ -223,71 +223,70 @@ function craftTrail(
   ctx.stroke()
 }
 
+/*
+ * One outline per craft.
+ *
+ * These were each built from four or five overlapping polygons — wings, then a
+ * fuselage over them, then a tailplane, then pods, then a nose — and every one
+ * of those carries its own stroke. At the size they actually fly at that is a
+ * knot of lines with a shape somewhere inside it. A single silhouette per
+ * craft reads as the thing from across the field, and the three stay apart by
+ * shape rather than by detail: the plane is a swept dart, the bomber is blunt
+ * with straight wings and a double tail, the drone hangs under a rotor.
+ */
+
+/** Swept dart, notched tail. */
+const PLANE_BODY = [
+  { x: 21, y: 0 },
+  { x: -9, y: -15 },
+  { x: -17, y: -15 },
+  { x: -21, y: -6 },
+  { x: -13, y: 0 },
+  { x: -21, y: 6 },
+  { x: -17, y: 15 },
+  { x: -9, y: 15 },
+] as const
+
+/** Blunt nose, straight wings, wide tailplane — heavier than the plane. */
+const BOMBER_BODY = [
+  { x: 30, y: -4 },
+  { x: 33, y: 0 },
+  { x: 30, y: 4 },
+  { x: 6, y: 6 },
+  { x: 2, y: 22 },
+  { x: -9, y: 22 },
+  { x: -7, y: 6 },
+  { x: -25, y: 6 },
+  { x: -30, y: 17 },
+  { x: -36, y: 17 },
+  { x: -33, y: 0 },
+  { x: -36, y: -17 },
+  { x: -30, y: -17 },
+  { x: -25, y: -6 },
+  { x: -7, y: -6 },
+  { x: -9, y: -22 },
+  { x: 2, y: -22 },
+  { x: 6, y: -6 },
+] as const
+
+/** Cabin slung under the rotor bar. */
+const DRONE_BODY = [
+  { x: -10, y: -5 },
+  { x: 7, y: -5 },
+  { x: 12, y: 0 },
+  { x: 7, y: 6 },
+  { x: -10, y: 6 },
+] as const
+
 function drawPlane(ctx: CanvasRenderingContext2D, plane: Plane, scale: number) {
   const s = scale
   const dir = plane.vx >= 0 ? 1 : -1
-  const x = plane.x
-  const y = plane.y
   const hue = 198
 
-  craftTrail(ctx, x, y, dir, s, 18, 16, hue, 1.6)
-
-  // Main wings
-  washPoly(
-    ctx,
-    craftLocal(x, y, dir, s, [
-      { x: -4, y: -2 },
-      { x: 2, y: -2 },
-      { x: 6, y: -14 },
-      { x: 11, y: -14 },
-      { x: 8, y: -2 },
-      { x: 8, y: 2 },
-      { x: 11, y: 14 },
-      { x: 6, y: 14 },
-      { x: 2, y: 2 },
-      { x: -4, y: 2 },
-    ]),
-    hue,
-    s,
-    42,
-  )
-
-  // Fuselage + nose
-  washPoly(
-    ctx,
-    craftLocal(x, y, dir, s, [
-      { x: -18, y: -3.5 },
-      { x: 14, y: -3.5 },
-      { x: 20, y: 0 },
-      { x: 14, y: 3.5 },
-      { x: -18, y: 3.5 },
-      { x: -20, y: 0 },
-    ]),
-    hue,
-    s,
-    46,
-  )
-
-  // Tailplane
-  washPoly(
-    ctx,
-    craftLocal(x, y, dir, s, [
-      { x: -18, y: -2 },
-      { x: -12, y: -2 },
-      { x: -14, y: -9 },
-      { x: -19, y: -9 },
-      { x: -19, y: 9 },
-      { x: -14, y: 9 },
-      { x: -12, y: 2 },
-      { x: -18, y: 2 },
-    ]),
-    hue,
-    s,
-    40,
-  )
-
-  // Cockpit
-  washCircle(ctx, x + 8 * s * dir, y, 2.6 * s, hue, s, 58)
+  craftTrail(ctx, plane.x, plane.y, dir, s, 20, 16, hue, 1.6)
+  washPoly(ctx, craftLocal(plane.x, plane.y, dir, s, [...PLANE_BODY]), hue, s, 46)
+  // The one mark that says which way it is pointing.
+  washCircle(ctx, plane.x + 9 * s * dir, plane.y, 2.6 * s, hue, s, 62)
 }
 
 function drawBomber(ctx: CanvasRenderingContext2D, bomber: Bomber, scale: number) {
@@ -297,96 +296,11 @@ function drawBomber(ctx: CanvasRenderingContext2D, bomber: Bomber, scale: number
   const y = bomber.y
   const hue = 18
 
-  craftTrail(ctx, x, y - 3 * s, dir, s, 30, 22, hue, 2.2)
-  craftTrail(ctx, x, y + 3 * s, dir, s, 30, 22, hue, 2.2)
+  craftTrail(ctx, x, y - 4 * s, dir, s, 34, 22, hue, 2.2)
+  craftTrail(ctx, x, y + 4 * s, dir, s, 34, 22, hue, 2.2)
+  washPoly(ctx, craftLocal(x, y, dir, s, [...BOMBER_BODY]), hue, s, 50)
+  washCircle(ctx, x + 18 * s * dir, y, 3.4 * s, hue, s, 60)
 
-  // Broad wings
-  washPoly(
-    ctx,
-    craftLocal(x, y, dir, s, [
-      { x: -6, y: -4 },
-      { x: 10, y: -4 },
-      { x: 16, y: -24 },
-      { x: 24, y: -24 },
-      { x: 18, y: -4 },
-      { x: 18, y: 4 },
-      { x: 24, y: 24 },
-      { x: 16, y: 24 },
-      { x: 10, y: 4 },
-      { x: -6, y: 4 },
-    ]),
-    hue,
-    s,
-    46,
-  )
-
-  // Twin engine pods
-  washPoly(
-    ctx,
-    craftLocal(x, y, dir, s, [
-      { x: -2, y: -18 },
-      { x: 12, y: -18 },
-      { x: 14, y: -14 },
-      { x: 12, y: -10 },
-      { x: -2, y: -10 },
-      { x: -4, y: -14 },
-    ]),
-    hue,
-    s,
-    40,
-  )
-  washPoly(
-    ctx,
-    craftLocal(x, y, dir, s, [
-      { x: -2, y: 10 },
-      { x: 12, y: 10 },
-      { x: 14, y: 14 },
-      { x: 12, y: 18 },
-      { x: -2, y: 18 },
-      { x: -4, y: 14 },
-    ]),
-    hue,
-    s,
-    40,
-  )
-
-  // Thick fuselage
-  washPoly(
-    ctx,
-    craftLocal(x, y, dir, s, [
-      { x: -28, y: -6 },
-      { x: 22, y: -6 },
-      { x: 30, y: 0 },
-      { x: 22, y: 6 },
-      { x: -28, y: 6 },
-      { x: -32, y: 0 },
-    ]),
-    hue,
-    s,
-    50,
-  )
-
-  // Tail fin
-  washPoly(
-    ctx,
-    craftLocal(x, y, dir, s, [
-      { x: -30, y: -5 },
-      { x: -20, y: -5 },
-      { x: -24, y: -16 },
-      { x: -32, y: -16 },
-      { x: -32, y: 16 },
-      { x: -24, y: 16 },
-      { x: -20, y: 5 },
-      { x: -30, y: 5 },
-    ]),
-    hue,
-    s,
-    42,
-  )
-
-  // Nose / cockpit
-  washCircle(ctx, x + 16 * s * dir, y, 3.4 * s, hue, s, 56)
-  washBox(ctx, x - 8 * s * dir, y - 2.2 * s, 14 * s, 4.4 * s, hue, s, 38)
 
   // Health bar — segmented so each hit reads clearly
   const maxHp = Math.max(1, bomber.maxHp)
@@ -440,44 +354,29 @@ function drawDrone(ctx: CanvasRenderingContext2D, drone: Drone, scale: number) {
   const x = drone.x
   const y = drone.y
   const hue = POWER_HUE[drone.kind]
+  // The cabin hangs below the bar, so the rotor reads as holding it up.
+  const body = y + 5 * s
 
-  craftTrail(ctx, x, y, dir, s, 12, 14, hue, 1.4)
+  craftTrail(ctx, x, body, dir, s, 13, 14, hue, 1.4)
 
-  // Rotor bars
-  washBox(ctx, x - 14 * s, y - 1.1 * s, 28 * s, 2.2 * s, hue, s, 48)
-  washBox(ctx, x - 1.1 * s, y - 10 * s, 2.2 * s, 20 * s, hue, s, 48)
+  // Rotor: one bar and the mast, instead of a cross plus a pair of skids.
+  washBox(ctx, x - 15 * s, y - 7.6 * s, 30 * s, 2.2 * s, hue, s, 48)
+  washBox(ctx, x - 1.1 * s, y - 6 * s, 2.2 * s, 5 * s, hue, s, 48)
 
-  // Body hull
-  washPoly(
-    ctx,
-    craftLocal(x, y, dir, s, [
-      { x: -9, y: -5 },
-      { x: 7, y: -5 },
-      { x: 11, y: 0 },
-      { x: 7, y: 5 },
-      { x: -9, y: 5 },
-      { x: -11, y: 0 },
-    ]),
-    hue,
-    s,
-    58,
-  )
+  washPoly(ctx, craftLocal(x, body, dir, s, [...DRONE_BODY]), hue, s, 58)
 
-  // Side skids
-  washBox(ctx, x - 8 * s * dir, y + 5.5 * s, 12 * s, 1.8 * s, hue, s, 44)
-  washBox(ctx, x - 8 * s * dir, y - 7.3 * s, 12 * s, 1.8 * s, hue, s, 44)
-
+  // What it is carrying — the one detail that has to survive the shrink.
   if (drone.kind === 'ammo') {
-    const plus = 2.4 * s
-    washBox(ctx, x - plus * 2, y - plus * 0.45, plus * 4, plus * 0.9, hue, s, 70)
-    washBox(ctx, x - plus * 0.45, y - plus * 2, plus * 0.9, plus * 4, hue, s, 70)
+    const arm = 2.4 * s
+    washBox(ctx, x - arm * 1.8, body - arm * 0.4, arm * 3.6, arm * 0.8, hue, s, 74)
+    washBox(ctx, x - arm * 0.4, body - arm * 1.8, arm * 0.8, arm * 3.6, hue, s, 74)
   } else if (drone.kind === 'shield') {
-    washCircle(ctx, x + 1 * s * dir, y, 3.8 * s, hue, s, 70)
+    washCircle(ctx, x, body, 3.4 * s, hue, s, 74)
   } else if (drone.kind === 'slow') {
-    washBox(ctx, x - 3.6 * s, y - 1.2 * s, 7.2 * s, 2.4 * s, hue, s, 70)
+    washBox(ctx, x - 3.4 * s, body - 1.2 * s, 6.8 * s, 2.4 * s, hue, s, 74)
   } else {
-    washCircle(ctx, x + 1 * s * dir, y, 4.6 * s, hue, s, 72)
-    washCircle(ctx, x + 1 * s * dir, y, 2 * s, hue, s, 78)
+    washCircle(ctx, x, body, 4 * s, hue, s, 74)
+    washCircle(ctx, x, body, 1.7 * s, hue, s, 80)
   }
 }
 

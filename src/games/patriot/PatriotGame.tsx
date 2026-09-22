@@ -326,10 +326,7 @@ export function PatriotGame() {
             )}
           </PlayReadout>
 
-          {/*
-            Under the score rather than in the left slot, which the run's
-            figures now hold — the same place Asteroids hangs its buffs.
-          */}
+          {/* A column down the left edge, under the run's figures. */}
           {inPlay &&
             !needsRotate &&
             POWER_ORDER.some((kind) => (ui.pack?.[kind] ?? 0) > 0) && (
