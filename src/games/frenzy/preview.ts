@@ -39,18 +39,21 @@ type Pilot = {
 
 const HUNTING = new Set(['alert', 'windup', 'lunge', 'strike'])
 
-/** A tile shows a closer view than the full game, or every fish is a speck. */
-function zoomFor(h: number) {
-  return h >= 380 ? 1 : Math.min(1.9, 380 / h)
-}
+/**
+ * The renderer draws any fish shorter than 15px as a plain oval and tail, so a
+ * tile left at its own small scale shows nothing but plain fish. Draw it at the
+ * scale the game itself has on a 390px phone instead, where even a starting
+ * fish is about 24px long and gets its stripes, fins and eye.
+ */
+const PHONE_SCALE = 390 / 540
 
-function sized(s: GameState, h: number): GameState {
-  s.scale *= zoomFor(h)
+function sized(s: GameState): GameState {
+  s.scale = Math.max(s.scale, PHONE_SCALE)
   return s
 }
 
 function newRun(w: number, h: number): GameState {
-  return sized(startGame(createInitialState(w, h)), h)
+  return sized(startGame(createInitialState(w, h)))
 }
 
 function freshPilot(): Pilot {
@@ -193,11 +196,11 @@ export function createPreview(): Preview {
         if (!s) {
           s = newRun(w, h)
           size = key
-          // Open mid-run rather than on the first second of a fresh one.
-          for (let i = 0; i < 90; i++) s = step(s, m, 1 / 30, w, h)
+          // Open eight seconds into a run, once the water around the fish has filled in.
+          for (let i = 0; i < 240; i++) s = step(s, m, 1 / 30, w, h)
         } else if (key !== size) {
           size = key
-          s = sized(resizeState(s, w, h), h)
+          s = sized(resizeState(s, w, h))
         }
         // Big steps would let the pilot skip past a lunge; split them.
         let left = Math.min(dt, 0.25)
