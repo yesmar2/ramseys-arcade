@@ -448,6 +448,74 @@ function drawLog(
 }
 
 /** Static stepping stone — reads as solid ground, unlike the drifting logs. */
+/** Ripples shed behind a log, in cells. */
+const WAKE_SPACING = 0.45
+const WAKE_COUNT = 3
+
+/**
+ * The wake a log leaves, which is the only thing on a water row that says the
+ * log is the thing moving.
+ *
+ * On a phone the board is twice the width of the screen, so the view pans to
+ * follow the hopper. Riding a log that pins the log too — it travels at your
+ * speed because you are standing on it — and with the biggest nearby object
+ * sitting still, the eye reads the board as sliding instead of you.
+ *
+ * These chevrons are shed at the log's trailing edge and drift backwards at the
+ * log's own speed, so they stream away from it whatever the camera is doing.
+ * The cue is between the log and its own wake rather than between the log and
+ * the screen, which is what makes it survive the pan.
+ */
+function drawWake(
+  ctx: CanvasRenderingContext2D,
+  sx: number,
+  vy: number,
+  logW: number,
+  vh: number,
+  cell: number,
+  dir: number,
+  speed: number,
+  dark: boolean,
+  time: number,
+) {
+  if (!speed || !dir) return
+  const midY = vy + vh * 0.5
+  const away = dir > 0 ? -1 : 1
+  const back = dir > 0 ? sx : sx + logW
+  const spacing = cell * WAKE_SPACING
+  // Phase advances at the log's speed, so a new ripple is shed each time the
+  // log has moved one spacing — the trail never slides relative to the water.
+  const phase = ((time * Math.abs(speed)) / WAKE_SPACING) % 1
+
+  ctx.save()
+  ctx.strokeStyle = dark ? 'rgba(198, 228, 255, 0.5)' : 'rgba(255, 255, 255, 0.75)'
+  ctx.lineWidth = Math.max(1, cell * 0.035)
+  ctx.lineCap = 'round'
+  ctx.lineJoin = 'round'
+  for (let i = 0; i < WAKE_COUNT; i++) {
+    const step = i + phase
+    const alpha = 1 - step / WAKE_COUNT
+    if (alpha <= 0) continue
+    ctx.globalAlpha = alpha * 0.8
+    const x = back + away * step * spacing
+    const spread = vh * (0.2 + step * 0.14)
+    ctx.beginPath()
+    ctx.moveTo(x, midY - spread)
+    ctx.lineTo(x + away * cell * 0.1, midY)
+    ctx.lineTo(x, midY + spread)
+    ctx.stroke()
+  }
+
+  // A crest shouldered up at the leading edge.
+  const lead = dir > 0 ? sx + logW : sx
+  ctx.globalAlpha = 0.55
+  ctx.beginPath()
+  ctx.moveTo(lead - away * cell * 0.04, midY - vh * 0.3)
+  ctx.quadraticCurveTo(lead - away * cell * 0.16, midY, lead - away * cell * 0.04, midY + vh * 0.3)
+  ctx.stroke()
+  ctx.restore()
+}
+
 function drawRock(
   ctx: CanvasRenderingContext2D,
   cx: number,
@@ -545,8 +613,11 @@ function drawRow(
     }
     const vy = y + cell * 0.28
     const vh = cell * 0.44
+    const wakeTime = performance.now() / 1000
     for (const log of row.vehicles) {
       eachLaneCopy(log, span, ox, cell, w, (sx) => {
+        // Wake under the log, so the plank sits on top of its own ripples.
+        drawWake(ctx, sx, vy, log.w * cell, vh, cell, row.dir, row.speed, dark, wakeTime)
         drawLog(ctx, sx, vy, log.w * cell, vh, dark)
       })
     }
