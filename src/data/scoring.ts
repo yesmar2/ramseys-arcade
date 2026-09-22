@@ -153,7 +153,8 @@ const SCORING: Record<string, ScoreRow[]> = {
     { label: 'Ace', value: '+200 on top' },
     { label: 'Water', value: '+1 stroke, back to where you shot from' },
     { label: 'Off the ground', value: 'the same: a ramp that lands you nowhere' },
-    { label: 'Round', value: '5 holes, par 34 · no cup within one shot of its tee · play until it drops' },
+    { label: 'Windmill', value: 'a sail across a door shuts it · time the run through' },
+    { label: 'Round', value: 'one hole for now, par 7 · play until it drops' },
   ],
   bop: [
     { label: 'Right control', value: '+1' },

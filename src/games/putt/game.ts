@@ -7,10 +7,12 @@ import {
   EDGE_T,
   FIELD_W,
   PORTAL_R,
+  SAIL_T,
   SPINNER_T,
   UP,
   type Drawbridge,
   type Hole,
+  type Mill,
   type Rect,
   type Slider,
   type Spinner,
@@ -18,21 +20,21 @@ import {
   type Wall,
 } from './course'
 import { loadHoleBests, recordHoleBest } from './holeBests'
-import { centreOf, contours, inAny, inside, pivotOf } from './terrain'
+import { centreOf, contours, inAny, inside, inUnion, pivotOf } from './terrain'
 
 /*
- * Putt: five holes of mini golf, none of them the usual kind.
+ * Putt: mini golf on long holes, none of them the usual kind.
  *
  * Pull back from the ball and let go: the further the pull, the harder the
  * shot, and the guide grows with the pull to say how hard. A short pull is a
  * real shot. The ball rolls on physics — it sheds a share of its speed every
- * frame, so it leaves fast and settles softly — off walls at any angle,
- * through sand that drags and water that costs a stroke, past windmills,
- * sliders and one-way flaps, up hills and down into bowls, round a floor
- * that spins, off ramps that fly it over whatever is there, into pipes that
- * take it somewhere else, and off bumpers and rovers that knock it about. A
- * cup pulls a slow ball in and lets a fast one skip across, and one cup
- * slides. The score is golf: strokes against par, and nothing else. A hole
+ * frame, so it leaves fast and settles softly — off rails at any angle,
+ * through sand that drags and water that costs a stroke, under windmills
+ * whose sails shut their doors, past sliders and one-way flaps, up hills and
+ * down into bowls, round a floor that spins, off ramps that fly it over
+ * whatever is there, into pipes that take it somewhere else, and off rocks,
+ * bumpers and rovers. A cup pulls a slow ball in and lets a fast one skip
+ * across. The score is golf: strokes against par, and nothing else. A hole
  * is played until the ball drops, however long that takes.
  */
 
@@ -73,6 +75,8 @@ const STOP_SPEED = 1.2
 /** A ball slower than that for this long is at rest whatever is pushing it: pinned to a wall on a hill, say. */
 const REST_TIME = 0.4
 const WALL_BOUNCE = 0.82
+/** A shut windmill door is timber, not a rail: the ball thuds off it and does not fly back to the tee. */
+const DOOR_BOUNCE = 0.35
 /** A bumper sends the ball away at least this fast, whatever it arrived at. */
 const BUMPER_POP = 110
 const BUMPER_KEEP = 0.85
@@ -84,7 +88,7 @@ const BOOST_ACCEL = 240
 const BOWL_DRAG = 2.5
 /** A spinning floor presses the ball outward this share as hard as it carries it round. */
 const SPIN_OUT = 0.7
-/** A ball has to be going this fast to take off from a ramp; slower, it rolls over it. */
+/** A ball has to be going this fast to take off from a ramp, unless the ramp asks for more; slower, it rolls over it. */
 const RAMP_MIN = 60
 /** And it has to be heading up the ramp: within this much of straight (the cosine of about 35°). */
 const RAMP_SQUARE = 0.82
@@ -97,7 +101,9 @@ const TOP_SPEED = 320
 const CUP_CAPTURE_SPEED = 85
 const CUP_PULL = 1.7
 /** The intro flies the length of the hole, cup to tee, in this long. */
-const INTRO_TIME = 2.2
+const INTRO_TIME = 2.6
+/** Lining up a shot, the ball sits this share of the window below the middle, so more of the way ahead shows. */
+const AIM_LEAD = 0.16
 /** How fast the camera closes on where it wants to be, per second. */
 const CAM_EASE = 5
 const SPLASH_TIME = 1.0
@@ -204,38 +210,151 @@ export function currentHole(state: GameState): Hole {
 }
 
 /*
- * The walls of a hole are the traced edge of its ground plus whatever was
- * placed by hand. The trace samples every unit and keeps the line within an
- * eighth of one, so a curve reads as a curve. It costs a few milliseconds,
- * so it is done once per hole and kept.
+ * The walls of a hole are the traced edge of its ground, then whatever was
+ * placed by hand, then the towers of its windmills. The trace samples every
+ * unit and keeps the line within an eighth of one, so a curve reads as a
+ * curve. It costs a few tens of milliseconds, so it is done once per hole
+ * and kept.
  */
 const TRACE_CELL = 1
 const TRACE_TOL = 0.12
-const traced = new WeakMap<Hole, { edges: Vec[][]; walls: Wall[] }>()
+/** The walls are filed by the square of the ground they could touch a ball in, this many units a side. */
+const WALL_CELL = 6
+const WALL_MARGIN = 10
+type Traced = { edges: Vec[][]; walls: Wall[]; cols: number; cells: Wall[][] }
+const traced = new WeakMap<Hole, Traced>()
 
-function trace(hole: Hole) {
+function trace(hole: Hole): Traced {
   let t = traced.get(hole)
   if (t) return t
-  const edges = contours(hole.green, FIELD_W, hole.h, TRACE_CELL, TRACE_TOL)
-  const walls: Wall[] = []
+  const edges = contours(hole.green, FIELD_W, hole.h, TRACE_CELL, TRACE_TOL, hole.blend)
+  const edgeWalls: Wall[] = []
   for (const line of edges) {
     for (let i = 1; i < line.length; i++) {
-      walls.push({ a: line[i - 1]!, b: line[i]!, t: EDGE_T, edge: true })
+      edgeWalls.push({ a: line[i - 1]!, b: line[i]!, t: EDGE_T, edge: true })
     }
   }
-  t = { edges, walls: [...walls, ...hole.walls] }
+  const walls = [...edgeWalls, ...hole.walls, ...hole.mills.flatMap(towerWalls)]
+  // Each wall goes in every square within a ball's reach of it, in order, so a ball need only ask its own square.
+  const cols = Math.ceil((FIELD_W + WALL_MARGIN * 2) / WALL_CELL)
+  const rows = Math.ceil((hole.h + WALL_MARGIN * 2) / WALL_CELL)
+  const cells: Wall[][] = Array.from({ length: cols * rows }, () => [])
+  for (const wall of walls) {
+    const reach = wall.t + BALL_R + 0.5
+    const c0 = Math.max(0, Math.floor((Math.min(wall.a.x, wall.b.x) - reach + WALL_MARGIN) / WALL_CELL))
+    const c1 = Math.min(cols - 1, Math.floor((Math.max(wall.a.x, wall.b.x) + reach + WALL_MARGIN) / WALL_CELL))
+    const r0 = Math.max(0, Math.floor((Math.min(wall.a.y, wall.b.y) - reach + WALL_MARGIN) / WALL_CELL))
+    const r1 = Math.min(rows - 1, Math.floor((Math.max(wall.a.y, wall.b.y) + reach + WALL_MARGIN) / WALL_CELL))
+    for (let r = r0; r <= r1; r++) for (let c = c0; c <= c1; c++) cells[r * cols + c]!.push(wall)
+  }
+  t = { edges, walls, cols, cells }
   traced.set(hole, t)
   return t
 }
 
-/** Every wall on a hole: the traced edge first, then the placed ones. */
+/** Every wall on a hole: the traced edge first, then the placed ones, then the windmills' towers. */
 export function wallsOf(hole: Hole): Wall[] {
   return trace(hole).walls
 }
 
-/** The traced edge of a hole's ground, as polylines, for drawing. */
+const NO_WALLS: Wall[] = []
+
+/** The walls a ball at `p` could be touching: those filed under its square. */
+function wallsNear(hole: Hole, p: Vec): Wall[] {
+  const t = trace(hole)
+  const c = Math.floor((p.x + WALL_MARGIN) / WALL_CELL)
+  const r = Math.floor((p.y + WALL_MARGIN) / WALL_CELL)
+  if (c < 0 || c >= t.cols || r < 0) return NO_WALLS
+  return t.cells[r * t.cols + c] ?? NO_WALLS
+}
+
+/** The traced edge of a hole's ground, as closed loops, for drawing. */
 export function edgesOf(hole: Hole): Vec[][] {
   return trace(hole).edges
+}
+
+/** Whether a point is on the ground: the green, blended as it is traced. */
+export function onGround(hole: Hole, p: Vec) {
+  return inUnion(hole.green, p, hole.blend)
+}
+
+/**
+ * A windmill's tower as walls: its round face, open at the two doors, and
+ * the two sides of the tunnel between them. Hidden, because the tower is
+ * drawn as itself.
+ */
+function towerWalls(m: Mill): Wall[] {
+  const t = 1
+  // The face's centre line, so its outside is at r; and the tunnel's sides, so it is `door` clear either side.
+  const R = m.r - t
+  const half = m.door + t
+  const ux = Math.cos(m.dir)
+  const uy = Math.sin(m.dir)
+  const gap = Math.asin(Math.min(1, half / R))
+  const along = Math.sqrt(Math.max(0, R * R - half * half))
+  const at = (a: number): Vec => ({ x: m.x + Math.cos(a) * R, y: m.y + Math.sin(a) * R })
+  const walls: Wall[] = []
+  for (const side of [1, -1]) {
+    const a0 = m.dir + side * gap
+    const a1 = m.dir + side * (Math.PI - gap)
+    const n = 12
+    for (let i = 0; i < n; i++) {
+      walls.push({ a: at(a0 + ((a1 - a0) * i) / n), b: at(a0 + ((a1 - a0) * (i + 1)) / n), t, hidden: true })
+    }
+    const ox = -uy * half * side
+    const oy = ux * half * side
+    walls.push({
+      a: { x: m.x + ox - ux * along, y: m.y + oy - uy * along },
+      b: { x: m.x + ox + ux * along, y: m.y + oy + uy * along },
+      t,
+      hidden: true,
+    })
+  }
+  return walls
+}
+
+/**
+ * Whether a sail is over a windmill's door at a moment: the sails sweep
+ * down past both doors, and a door is shut while one of them is across it.
+ */
+function doorShut(m: Mill, doorAngle: number, clock: number) {
+  const half = Math.atan2(m.door + SAIL_T * 1.25, m.r)
+  const base = m.phase + m.speed * clock
+  for (let k = 0; k < m.sails; k++) {
+    let d = (base + (k * Math.PI * 2) / m.sails - doorAngle) % (Math.PI * 2)
+    if (d > Math.PI) d -= Math.PI * 2
+    if (d < -Math.PI) d += Math.PI * 2
+    if (Math.abs(d) < half) return true
+  }
+  return false
+}
+
+/**
+ * A windmill's shut doors at a moment, as walls across the ends of its
+ * tunnel. A ball meets one square on and comes back off it; one caught in the
+ * doorway as it shuts is put out of the way, in or out, never into the stone.
+ */
+export function millGates(m: Mill, clock: number): Wall[] {
+  const R = m.r - 1
+  const half = m.door + 1
+  const along = Math.sqrt(Math.max(0, R * R - half * half))
+  const out: Wall[] = []
+  for (const turn of [0, Math.PI]) {
+    const a = m.dir + turn
+    if (!doorShut(m, a, clock)) continue
+    const ux = Math.cos(a)
+    const uy = Math.sin(a)
+    const cx = m.x + ux * along
+    const cy = m.y + uy * along
+    out.push({ a: { x: cx - uy * half, y: cy + ux * half }, b: { x: cx + uy * half, y: cy - ux * half }, t: 1 })
+  }
+  return out
+}
+
+/** The windmill whose roof is over a point, if any: a ball in the tunnel is out of sight. */
+export function millOver(hole: Hole, p: Vec): Mill | null {
+  for (const m of hole.mills) if (Math.hypot(p.x - m.x, p.y - m.y) < m.r) return m
+  return null
 }
 
 /** Where the cup is right now: most sit still, one slides. */
@@ -281,7 +400,7 @@ export function sliderWall(sl: Slider, clock: number): Wall {
 
 export function createInitialState(w = 540, h = 720): GameState {
   const first = COURSE[0]!
-  const startCam = camFor(fieldFrame(w, h, first.h), first.tee.y)
+  const startCam = aimCam(fieldFrame(w, h, first.h), first.tee.y)
   return {
     phase: 'menu',
     score: 0,
@@ -363,6 +482,11 @@ export type Frame = ReturnType<typeof fieldFrame>
 /** The camera that shows the window centred on `centreY`, kept within the hole. */
 export function camFor(f: Frame, centreY: number) {
   return Math.max(0, Math.min(f.len - f.vis, centreY - f.vis / 2))
+}
+
+/** The camera for lining up a shot from field y `ballY`: the ball a little below the middle, more of the hole ahead. */
+export function aimCam(f: Frame, ballY: number) {
+  return camFor(f, ballY - f.vis * AIM_LEAD)
 }
 
 /** Field coordinates to screen, with the camera at `cam` (the field y at the cup end of the window). */
@@ -475,10 +599,10 @@ function launchSpeed(power: number) {
   return MAX_SPEED * power
 }
 
-/** The window start that puts the ball in the middle of the view. */
+/** The window start for lining up a shot: the ball a little below the middle of the view. */
 function lookAtBall(state: GameState) {
   const f = fieldFrame(state.stageW, state.stageH, currentHole(state).h)
-  return camFor(f, state.ball.y)
+  return aimCam(f, state.ball.y)
 }
 
 /** Looking along the hole before the shot: move the view by `dy` field units. */
@@ -532,7 +656,7 @@ export function underMap(m: MapLayout, sx: number, sy: number, room = 14) {
 function mapSideFor(s: GameState): MapSide {
   const hole = currentHole(s)
   const f = fieldFrame(s.stageW, s.stageH, hole.h)
-  const p = toScreen(f, camFor(f, s.ball.y), s.ball)
+  const p = toScreen(f, aimCam(f, s.ball.y), s.ball)
   return underMap(mapLayout(f, hole.h, 'near'), p.x, p.y) ? 'far' : 'near'
 }
 
@@ -752,7 +876,7 @@ function step(ball: Ball, hole: Hole, rovers: RoverState[], flight: Flight, dt: 
     ball.vx *= LAND_KEEP
     ball.vy *= LAND_KEEP
     out.landed = true
-    if (!inAny(hole.green, ball)) out.oob = true
+    if (!onGround(hole, ball)) out.oob = true
     return out
   }
 
@@ -821,7 +945,7 @@ function step(ball: Ball, hole: Hole, rovers: RoverState[], flight: Flight, dt: 
     if (!inRect(rp, ball.x, ball.y)) continue
     const along = ball.vx * Math.cos(rp.dir) + ball.vy * Math.sin(rp.dir)
     const sp = Math.hypot(ball.vx, ball.vy)
-    if (sp < RAMP_MIN || along < sp * RAMP_SQUARE) continue
+    if (sp < (rp.min ?? RAMP_MIN) || along < sp * RAMP_SQUARE) continue
     // The ramp throws the ball its own way, at the speed it arrived.
     ball.vx = Math.cos(rp.dir) * sp
     ball.vy = Math.sin(rp.dir) * sp
@@ -836,26 +960,34 @@ function step(ball: Ball, hole: Hole, rovers: RoverState[], flight: Flight, dt: 
     ball.vy *= TOP_SPEED / speed
   }
 
-  wallsOf(hole).forEach((wall, i) => {
+  for (const wall of wallsNear(hole, ball)) {
     // A flap is open from one side.
-    if (passesFlap(wall, ball.vx, ball.vy)) return
+    if (passesFlap(wall, ball.vx, ball.vy)) continue
     const p = closestOnWall(wall, ball)
     const c = bounce(ball, p.x, p.y, wall.t + BALL_R, wall.kick ? 1 : WALL_BOUNCE)
-    if (!c || !c.reflected) return
+    if (!c || !c.reflected) continue
     if (wall.kick) {
       ball.vx += c.nx * KICK_SPEED
       ball.vy += c.ny * KICK_SPEED
       out.kicked = true
-      void i
     } else {
       out.wall = true
     }
-  })
+  }
   for (const sp of hole.spinners) {
     if (bounceSpinner(ball, sp, clock, WALL_BOUNCE)) out.wall = true
   }
+  for (const m of hole.mills) {
+    for (const gate of millGates(m, clock)) {
+      const p = closestOnWall(gate, ball)
+      if (bounce(ball, p.x, p.y, gate.t + BALL_R, DOOR_BOUNCE)?.reflected) out.wall = true
+    }
+  }
   for (const sl of hole.sliders) {
     if (bounceSlider(ball, sl, clock, WALL_BOUNCE)) out.wall = true
+  }
+  for (const rk of hole.rocks) {
+    if (bounce(ball, rk.x, rk.y, rk.r + BALL_R, WALL_BOUNCE)?.reflected) out.wall = true
   }
   hole.bumpers.forEach((b, i) => {
     if (popBumper(ball, b.x, b.y, b.r + BALL_R)) out.bumpers.push(i)
@@ -1012,13 +1144,13 @@ export function tick(state: GameState, dt: number): GameState {
       return s
 
     case 'aim': {
-      // A blade or a bar sweeping through a resting ball nudges it along.
+      // A blade or a bar sweeping through a resting ball, or a door shutting on it, nudges it along.
       const hole = currentHole(s)
-      if (!hole.spinners.length && !hole.sliders.length) return s
+      if (!hole.spinners.length && !hole.sliders.length && !hole.mills.length) return s
       const ball = { ...s.ball }
       let moved = false
-      for (const sp of hole.spinners) {
-        const w = spinnerWall(sp, s.clock)
+      const movers = [...hole.spinners.map((sp) => spinnerWall(sp, s.clock)), ...hole.mills.flatMap((m) => millGates(m, s.clock))]
+      for (const w of movers) {
         const p = closestOnWall(w, ball)
         if (bounce(ball, p.x, p.y, w.t + BALL_R + 0.2, 0)) moved = true
       }
@@ -1162,7 +1294,7 @@ function moveRovers(s: GameState, dt: number): RoverState[] {
       const p = closestOnWall(wall, b)
       bounce(b, p.x, p.y, wall.t + spec.r, 1)
     }
-    for (const bp of hole.bumpers) bounce(b, bp.x, bp.y, bp.r + spec.r, 1)
+    for (const bp of [...hole.bumpers, ...hole.rocks]) bounce(b, bp.x, bp.y, bp.r + spec.r, 1)
     if (s.phase !== 'roll' || s.air > 0) bounce(b, s.ball.x, s.ball.y, BALL_R + spec.r, 1)
     const sp = Math.hypot(b.vx, b.vy) || 1
     return { x: b.x, y: b.y, vx: (b.vx / sp) * spec.speed, vy: (b.vy / sp) * spec.speed, cool: Math.max(0, rv.cool - dt) }
@@ -1181,9 +1313,10 @@ function moveCamera(s: GameState, dt: number): number {
   const hole = currentHole(s)
   const f = fieldFrame(s.stageW, s.stageH, hole.h)
   if (s.phase === 'intro') {
-    const u = Math.min(1, s.t / INTRO_TIME)
+    // A beat on the green, then the flight down to the tee.
+    const u = Math.max(0, Math.min(1, (s.t - 0.35) / (INTRO_TIME - 0.35)))
     const e = u < 0.5 ? 2 * u * u : 1 - Math.pow(-2 * u + 2, 2) / 2
-    return camFor(f, hole.tee.y) * e
+    return aimCam(f, hole.tee.y) * e
   }
   let target: number
   if (s.phase === 'aim') target = Math.max(0, Math.min(f.len - f.vis, s.look))
@@ -1205,6 +1338,7 @@ export function aimTrace(state: GameState, angle: number, maxLen: number): Vec {
   const hole = currentHole(state)
   const moving = [
     ...hole.spinners.map((sp) => spinnerWall(sp, state.clock)),
+    ...hole.mills.flatMap((m) => millGates(m, state.clock)),
     ...hole.sliders.map((sl) => sliderWall(sl, state.clock)),
   ]
   const dx = Math.cos(angle)
@@ -1215,7 +1349,7 @@ export function aimTrace(state: GameState, angle: number, maxLen: number): Vec {
   for (let len = 0; len < maxLen; len += stepLen) {
     const nx = x + dx * stepLen
     const ny = y + dy * stepLen
-    for (const wall of wallsOf(hole)) {
+    for (const wall of wallsNear(hole, { x: nx, y: ny })) {
       if (passesFlap(wall, dx, dy)) continue
       const p = closestOnWall(wall, { x: nx, y: ny })
       if (Math.hypot(nx - p.x, ny - p.y) < wall.t + BALL_R) return { x, y }
@@ -1224,7 +1358,7 @@ export function aimTrace(state: GameState, angle: number, maxLen: number): Vec {
       const p = closestOnWall(wall, { x: nx, y: ny })
       if (Math.hypot(nx - p.x, ny - p.y) < wall.t + BALL_R) return { x, y }
     }
-    for (const b of hole.bumpers) {
+    for (const b of [...hole.bumpers, ...hole.rocks]) {
       if (Math.hypot(nx - b.x, ny - b.y) < b.r + BALL_R) return { x, y }
     }
     x = nx
