@@ -1,3 +1,4 @@
+import type { Swatch } from '../../data/games'
 import { getPersonalBest } from '../../lib/personalBest'
 import { sfx } from '../../lib/sound'
 
@@ -238,7 +239,18 @@ export type GameState = {
   time: number
   /** Seconds of the fall left, before the card. */
   dying: number
+  /** Powers just taken from a shot-down carrier, on their way to the column. */
+  pickups: Pickup[]
+  /** Seconds since the domes last went up, for the rise. */
+  shieldAge: number
+  /** 1 → 0 after an ammo power: the racks glow while they fill. */
+  reloadT: number
 }
+
+export type Pickup = { id: number; kind: PowerKind; x: number; y: number; age: number }
+
+/** How long a taken power takes to fly to the column. */
+export const PICKUP_FLIGHT = 0.7
 
 /** Design reference for the fixed 16:9 playfield. */
 export const DESIGN_W = 960
@@ -287,7 +299,7 @@ const DRONE_FROM_WAVE = 2
  */
 const SEEKER_HUES = [272, 320, 12, 48, 140, 190]
 const POWER_MAX = 3
-const SLOW_TIME = 5
+export const SLOW_TIME = 5
 const SLOW_RATE = 0.32
 const CITY_DRAW = 1.85
 /** How long the fall plays before the card. */
@@ -304,14 +316,15 @@ export const POWER_LABEL: Record<PowerKind, string> = {
   slow: 'Slow',
   burst: 'Seeker',
 }
-export const POWER_HUE: Record<PowerKind, number> = {
-  ammo: 42,
-  shield: 172,
-  slow: 198,
-  burst: 272,
-}
 export const POWER_TONE: Record<PowerKind, Tone> = {
   ammo: 'gold',
+  shield: 'teal',
+  slow: 'sky',
+  burst: 'violet',
+}
+/** Each power's palette colour, shared by its blimp, its badge and its button. */
+export const POWER_SWATCH: Record<PowerKind, Swatch> = {
+  ammo: 'amber',
   shield: 'teal',
   slow: 'sky',
   burst: 'violet',
@@ -400,6 +413,9 @@ export function createInitialState(w = DESIGN_W, h = DESIGN_H): GameState {
     shake: 0,
     time: 0,
     dying: 0,
+    pickups: [],
+    shieldAge: 99,
+    reloadT: 0,
   }
 }
 
@@ -492,6 +508,7 @@ export function resizeState(state: GameState, w: number, h: number): GameState {
       vy: p.vy * k,
       size: p.size * k,
     })),
+    pickups: (state.pickups ?? []).map((p) => ({ ...p, x: p.x * sx, y: p.y * sy })),
     cursor: { x: state.cursor.x * sx, y: state.cursor.y * sy },
   }
 }
@@ -575,6 +592,13 @@ function updateEffects(s: GameState, dt: number) {
   }
   s.particles = particles
   s.shake = Math.max(0, (s.shake ?? 0) - dt * 2.4)
+  s.shieldAge = (s.shieldAge ?? 99) + dt
+  s.reloadT = Math.max(0, (s.reloadT ?? 0) - dt * 1.4)
+  if (s.pickups?.length) {
+    s.pickups = s.pickups
+      .map((p) => ({ ...p, age: p.age + dt }))
+      .filter((p) => p.age < PICKUP_FLIGHT)
+  }
   if (s.banner) {
     const life = s.banner.life - dt
     s.banner = life > 0 ? { ...s.banner, life } : null
@@ -914,10 +938,14 @@ export function activatePower(state: GameState, kind: PowerKind): GameState {
 
   const midX =
     state.cities.reduce((n, c) => n + c.x, 0) / Math.max(1, state.cities.length)
+  // Powers used back to back stack their names rather than printing over each other.
+  const stacked = state.floaters.filter(
+    (f) => f.life > 0.6 && Math.abs(f.x - midX) < 4 && f.y > state.groundY * 0.2,
+  ).length
   const floater = (text: string): Floater => ({
     id: uid(),
     x: midX,
-    y: state.groundY * 0.42,
+    y: state.groundY * 0.42 + stacked * 26 * state.scale,
     text,
     life: 1.2,
   })
@@ -963,36 +991,49 @@ export function activatePower(state: GameState, kind: PowerKind): GameState {
     return {
       ...fired,
       pack: { ...state.pack, burst: state.pack.burst - 1 },
-      floaters: [...fired.floaters, floater('SEEKER')],
+      floaters: [...fired.floaters, { ...floater('SEEKER'), tone: 'violet' as const }],
     }
   }
 
   const pack = { ...state.pack, [kind]: state.pack[kind] - 1 }
   sfx('good')
   if (kind === 'ammo') {
-    return {
+    const next: GameState = {
       ...state,
       pack,
       batteries: restockBatteries(state.batteries, AMMO_PACK),
-      floaters: [...state.floaters, floater(`AMMO +${AMMO_PACK}`)],
+      floaters: [...state.floaters, { ...floater(`AMMO +${AMMO_PACK}`), tone: 'gold' as const }],
+      reloadT: 1,
+      particles: [...(state.particles ?? [])],
     }
+    // Sparks off every rack as it fills.
+    for (const b of next.batteries) {
+      if (b.alive) emit(next, 'spark', b.x, state.groundY + 16 * state.scale, 8, 110, 1.3, 'gold', 0.5, { angle: -Math.PI / 2, spread: 2.2 })
+    }
+    return next
   }
   if (kind === 'shield') {
-    return {
+    const next: GameState = {
       ...state,
       pack,
       cities: state.cities.map((c) =>
         c.alive ? { ...c, shielded: true } : c,
       ),
       shieldT: 1,
-      floaters: [...state.floaters, floater('SHIELD')],
+      shieldAge: 0,
+      floaters: [...state.floaters, { ...floater('SHIELD'), tone: 'teal' as const }],
+      particles: [...(state.particles ?? [])],
     }
+    for (const c of next.cities) {
+      if (c.alive) emit(next, 'spark', c.x, state.groundY - 30 * state.scale, 7, 120, 1.3, 'teal', 0.55, { angle: -Math.PI / 2, spread: 2.6 })
+    }
+    return next
   }
   return {
     ...state,
     pack,
     slowT: SLOW_TIME,
-    floaters: [...state.floaters, floater('SLOW')],
+    floaters: [...state.floaters, { ...floater('SLOW'), tone: 'sky' as const }],
   }
 }
 
@@ -1769,7 +1810,9 @@ export function tick(state: GameState, dt: number, w: number): GameState {
   if (extraBlasts.length) s.blasts = [...s.blasts, ...extraBlasts]
 
   const survivingPlanes: Plane[] = []
-  const planeHitR = 16 * scale
+  // Matched to the jet as drawn side on: longer than it is tall, so a little
+  // more than half its height and a little less than half its length.
+  const planeHitR = 19 * scale
   for (const plane of s.planes) {
     let down = false
     for (const b of s.blasts) {
@@ -1865,7 +1908,9 @@ export function tick(state: GameState, dt: number, w: number): GameState {
   }
   s.bombers = survivingBombers
 
-  const droneHitR = 14 * scale
+  // The blimp is drawn larger than the pod it replaced; a blast that visibly
+  // touches its envelope should take it.
+  const droneHitR = 19 * scale
   const liveDronesHit: Drone[] = []
   for (const drone of s.drones) {
     let caught = false
@@ -1886,6 +1931,11 @@ export function tick(state: GameState, dt: number, w: number): GameState {
           life: 1.15,
         })
         emit(s, 'spark', drone.x, drone.y, 12, 160, 1.5, POWER_TONE[drone.kind], 0.55)
+        emit(s, 'debris', drone.x, drone.y + 6 * scale, 6, 70, 1.8, 'ink', 1.4, { angle: Math.PI / 2, spread: 1.6 })
+        // What it carried flies off to the column, so you see where it went.
+        if (held < POWER_MAX) {
+          s.pickups = [...(s.pickups ?? []), { id: uid(), kind: drone.kind, x: drone.x, y: drone.y, age: 0 }]
+        }
         flash = Math.max(flash, 0.28)
         break
       }

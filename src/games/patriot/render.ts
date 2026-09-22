@@ -1,8 +1,22 @@
-import { PALETTE, type Swatch } from '../../data/games'
-import { isDarkTheme, playfieldColor } from '../../lib/theme'
-import type { Battery, Blast, Bomber, City, Drone, GameState, Incoming, Plane, Shot, Tone } from './game'
-import { POWER_HUE, shieldRadius } from './game'
+import type { Swatch } from '../../data/games'
+import type { Battery, Blast, City, GameState, Incoming, Shot } from './game'
+import { SLOW_TIME, shieldRadius } from './game'
 import { PATRIOT_CITY_DRAW } from './cityArt'
+import { drawBomber, drawCarrier, drawPickups, drawPlane } from './craft'
+import {
+  clamp01,
+  css,
+  hash,
+  hsla,
+  hue,
+  mix,
+  mulberry32,
+  outline,
+  skin,
+  soft,
+  toneColor,
+  type Skin,
+} from './paint'
 
 /*
  * Night watch, drawn back to front: the sky and its stars (or dawn and its
@@ -19,169 +33,6 @@ import { PATRIOT_CITY_DRAW } from './cityArt'
  */
 
 const FONT = '"Outfit", system-ui, sans-serif'
-
-type RGB = [number, number, number]
-
-function css(c: RGB, a = 1) {
-  return `rgba(${Math.round(c[0])}, ${Math.round(c[1])}, ${Math.round(c[2])}, ${a})`
-}
-
-function mix(a: RGB, b: RGB, t: number): RGB {
-  return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t]
-}
-
-function hexRgb(hex: string): RGB {
-  const n = Number.parseInt(hex.replace('#', ''), 16)
-  return [(n >> 16) & 255, (n >> 8) & 255, n & 255]
-}
-
-function hslRgb(h: number, s: number, l: number): RGB {
-  const a = s * Math.min(l, 1 - l)
-  const f = (n: number) => {
-    const k = (n + h / 30) % 12
-    return l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1))
-  }
-  return [f(0) * 255, f(8) * 255, f(4) * 255]
-}
-
-function hueOfRgb([r, g, b]: RGB) {
-  const R = r / 255
-  const G = g / 255
-  const B = b / 255
-  const max = Math.max(R, G, B)
-  const min = Math.min(R, G, B)
-  if (max === min) return 0
-  const d = max - min
-  const h = max === R ? (G - B) / d + (G < B ? 6 : 0) : max === G ? (B - R) / d + 2 : (R - G) / d + 4
-  return h * 60
-}
-
-const swatchHues = new Map<Swatch, number>()
-function hue(s: Swatch) {
-  let h = swatchHues.get(s)
-  if (h === undefined) {
-    h = Math.round(hueOfRgb(hexRgb(PALETTE[s])))
-    swatchHues.set(s, h)
-  }
-  return h
-}
-
-function hsla(h: number, s: number, l: number, a = 1) {
-  return `hsla(${h}, ${s}%, ${l}%, ${a})`
-}
-
-function clamp01(t: number) {
-  return Math.max(0, Math.min(1, t))
-}
-
-function mulberry32(seed: number) {
-  let t = seed >>> 0
-  return () => {
-    t += 0x6d2b79f5
-    let r = Math.imul(t ^ (t >>> 15), 1 | t)
-    r ^= r + Math.imul(r ^ (r >>> 7), 61 | r)
-    return ((r ^ (r >>> 14)) >>> 0) / 4294967296
-  }
-}
-
-function hash(a: number, b = 0, c = 0, d = 0) {
-  const n = Math.sin(a * 127.1 + b * 311.7 + c * 74.7 + d * 191.3) * 43758.5453
-  return n - Math.floor(n)
-}
-
-// Skin ----------------------------------------------------------------------------
-
-type Skin = {
-  key: string
-  dark: boolean
-  field: RGB
-  skyTop: RGB
-  skyLow: RGB
-  hillFar: RGB
-  hillNear: RGB
-  ground: RGB
-  ink: RGB
-  /** Outline lightness, %. */
-  lineL: number
-}
-
-let cachedSkin: Skin | null = null
-
-function skin(): Skin {
-  const field = playfieldColor()
-  const dark = isDarkTheme()
-  const key = `${field}|${dark}`
-  if (cachedSkin?.key === key) return cachedSkin
-  const f = field.startsWith('#') ? hexRgb(field) : ([18, 28, 36] as RGB)
-  const teal = hslRgb(hue('teal'), 0.6, 0.5)
-  const green = hslRgb(hue('green'), 0.55, 0.5)
-  const amber = hslRgb(hue('amber'), 0.9, 0.6)
-  cachedSkin = dark
-    ? {
-        key,
-        dark,
-        field: f,
-        skyTop: mix(f, [3, 6, 12], 0.45),
-        // The glow a city throws up into the night.
-        skyLow: mix(mix(f, teal, 0.1), amber, 0.07),
-        hillFar: mix(mix(f, [3, 6, 12], 0.15), teal, 0.1),
-        hillNear: mix(mix(f, [3, 6, 12], 0.25), teal, 0.14),
-        ground: mix(mix(f, [3, 6, 12], 0.3), green, 0.12),
-        ink: [231, 238, 243],
-        lineL: 64,
-      }
-    : {
-        key,
-        dark,
-        field: f,
-        skyTop: mix(f, [214, 236, 248], 0.55),
-        // Dawn along the horizon.
-        skyLow: mix(f, amber, 0.2),
-        hillFar: mix(f, teal, 0.16),
-        hillNear: mix(f, teal, 0.24),
-        ground: mix(f, green, 0.3),
-        ink: [26, 43, 60],
-        lineL: 42,
-      }
-  return cachedSkin
-}
-
-/** A palette colour's outline on this sky. */
-function outline(sk: Skin, s: Swatch | number, a = 0.95, sat = 64) {
-  const h = typeof s === 'number' ? s : hue(s)
-  return hsla(h, sat, sk.lineL, a)
-}
-
-/** A soft fill, opaque, mixed over `under`. */
-function soft(under: RGB, s: Swatch | number, amount: number, sat = 0.64) {
-  const h = typeof s === 'number' ? s : hue(s)
-  return css(mix(under, hslRgb(h, sat, 0.58), amount))
-}
-
-function toneColor(sk: Skin, tone: Tone | undefined, a = 1): string {
-  switch (tone) {
-    case 'red':
-      return hsla(hue('red'), 80, sk.dark ? 66 : 46, a)
-    case 'teal':
-      return hsla(hue('teal'), 70, sk.dark ? 62 : 36, a)
-    case 'sky':
-      return hsla(hue('sky'), 76, sk.dark ? 66 : 42, a)
-    case 'violet':
-      return hsla(hue('violet'), 70, sk.dark ? 72 : 48, a)
-    case 'ink':
-      return css(sk.ink, a)
-    case 'orange':
-      return hsla(hue('orange'), 86, sk.dark ? 62 : 46, a)
-    case 'green':
-      return hsla(hue('green'), 70, sk.dark ? 60 : 36, a)
-    case 'pink':
-      return hsla(hue('pink'), 76, sk.dark ? 68 : 46, a)
-    case 'hot':
-      return hsla(hue('orange'), 92, sk.dark ? 64 : 48, a)
-    default:
-      return sk.dark ? `rgba(245, 190, 72, ${a})` : hsla(hue('amber'), 80, 34, a)
-  }
-}
 
 // Sky, hills and ground -------------------------------------------------------------
 
@@ -483,7 +334,12 @@ function drawCity(ctx: CanvasRenderingContext2D, sk: Skin, city: City, s: GameSt
     }
   }
 
-  if (city.shielded) drawShield(ctx, sk, city.x, gy, shieldRadius(u), s.time, u)
+  if (city.shielded) {
+    // Domes rise when the power is used, over-reaching a little before settling.
+    const t = clamp01((s.shieldAge ?? 99) / 0.45)
+    const rise = t >= 1 ? 1 : 1 + 2.2 * (t - 1) ** 3 + 1.2 * (t - 1) ** 2
+    drawShield(ctx, sk, city.x, gy, shieldRadius(u) * Math.max(0.05, rise), s.time, u)
+  }
 }
 
 function drawShield(ctx: CanvasRenderingContext2D, sk: Skin, x: number, gy: number, r: number, time: number, u: number) {
@@ -592,19 +448,31 @@ function drawBattery(ctx: CanvasRenderingContext2D, sk: Skin, bat: Battery, s: G
   const under = sk.ground
   const red = hue('red')
 
-  // The rack: ten shells in two rows, spent ones left as outlines.
+  // The rack: ten shells in two rows, spent ones left as outlines. An ammo
+  // power lights the rack while it fills.
+  const reload = bat.alive ? (s.reloadT ?? 0) : 0
+  if (reload > 0) {
+    ctx.save()
+    ctx.globalAlpha = reload * (sk.dark ? 0.5 : 0.4)
+    ctx.fillStyle = hsla(hue('amber'), 90, sk.dark ? 60 : 70, 1)
+    ctx.beginPath()
+    ctx.roundRect(x - 21 * u, gy + 6 * u, 42 * u, 28 * u, 6 * u)
+    ctx.fill()
+    ctx.restore()
+  }
   for (let i = 0; i < 10; i++) {
     const col = i % 5
     const row = Math.floor(i / 5)
     const mx = x + (col - 2) * 7.4 * u
     const my = gy + 9 * u + row * 13 * u
     const full = bat.alive && i < bat.ammo
+    const k = full && reload > 0 ? 1 + 0.3 * reload * Math.max(0, Math.sin((1 - reload) * 12 - i * 0.6)) : 1
     ctx.beginPath()
-    ctx.moveTo(mx, my)
-    ctx.lineTo(mx + 2 * u, my + 3 * u)
-    ctx.lineTo(mx + 2 * u, my + 9 * u)
-    ctx.lineTo(mx - 2 * u, my + 9 * u)
-    ctx.lineTo(mx - 2 * u, my + 3 * u)
+    ctx.moveTo(mx, my + 4.5 * u - 4.5 * u * k)
+    ctx.lineTo(mx + 2 * u * k, my + 4.5 * u - 1.5 * u * k)
+    ctx.lineTo(mx + 2 * u * k, my + 4.5 * u + 4.5 * u * k)
+    ctx.lineTo(mx - 2 * u * k, my + 4.5 * u + 4.5 * u * k)
+    ctx.lineTo(mx - 2 * u * k, my + 4.5 * u - 1.5 * u * k)
     ctx.closePath()
     ctx.fillStyle = full ? soft(under, 'amber', sk.dark ? 0.7 : 0.6) : 'rgba(0, 0, 0, 0)'
     ctx.fill()
@@ -891,245 +759,6 @@ function drawBlast(ctx: CanvasRenderingContext2D, sk: Skin, b: Blast, s: GameSta
   }
 }
 
-// Craft -----------------------------------------------------------------------------
-
-/*
- * One outline per craft.
- *
- * These were each built from four or five overlapping polygons — wings, then a
- * fuselage over them, then a tailplane, then pods, then a nose — and every one
- * of those carries its own stroke. At the size they actually fly at that is a
- * knot of lines with a shape somewhere inside it. A single silhouette per
- * craft reads as the thing from across the field, and the three stay apart by
- * shape rather than by detail: the plane is a swept dart, the bomber is blunt
- * with straight wings and a double tail, the drone is a cargo pod.
- */
-
-/** Swept dart, notched tail. */
-const PLANE_BODY = [
-  { x: 21, y: 0 },
-  { x: -9, y: -15 },
-  { x: -17, y: -15 },
-  { x: -21, y: -6 },
-  { x: -13, y: 0 },
-  { x: -21, y: 6 },
-  { x: -17, y: 15 },
-  { x: -9, y: 15 },
-] as const
-
-/** Blunt nose, straight wings, wide tailplane — heavier than the plane. */
-const BOMBER_BODY = [
-  { x: 30, y: -4 },
-  { x: 33, y: 0 },
-  { x: 30, y: 4 },
-  { x: 6, y: 6 },
-  { x: 2, y: 22 },
-  { x: -9, y: 22 },
-  { x: -7, y: 6 },
-  { x: -25, y: 6 },
-  { x: -30, y: 17 },
-  { x: -36, y: 17 },
-  { x: -33, y: 0 },
-  { x: -36, y: -17 },
-  { x: -30, y: -17 },
-  { x: -25, y: -6 },
-  { x: -7, y: -6 },
-  { x: -9, y: -22 },
-  { x: 2, y: -22 },
-  { x: 6, y: -6 },
-] as const
-
-/** Cargo pod, and nothing else, so the mark inside it can be big. */
-const DRONE_BODY = [
-  { x: -13, y: -4 },
-  { x: -7, y: -11 },
-  { x: 7, y: -11 },
-  { x: 14, y: 0 },
-  { x: 7, y: 11 },
-  { x: -7, y: 11 },
-  { x: -13, y: 4 },
-] as const
-
-function craftPoly(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  dir: number,
-  u: number,
-  pts: readonly { x: number; y: number }[],
-) {
-  ctx.beginPath()
-  pts.forEach((p, i) => {
-    const px = x + p.x * u * dir
-    const py = y + p.y * u
-    if (i === 0) ctx.moveTo(px, py)
-    else ctx.lineTo(px, py)
-  })
-  ctx.closePath()
-}
-
-function exhaust(ctx: CanvasRenderingContext2D, sk: Skin, x: number, y: number, dir: number, u: number, len: number, h: number, time: number) {
-  const flick = 0.75 + 0.25 * Math.sin(time * 40)
-  const tail = x - len * u * dir
-  const g = ctx.createLinearGradient(tail, y, tail - 14 * u * dir * flick, y)
-  g.addColorStop(0, hsla(h, 60, sk.dark ? 70 : 50, 0.5))
-  g.addColorStop(1, hsla(h, 60, sk.dark ? 70 : 50, 0))
-  ctx.strokeStyle = g
-  ctx.lineWidth = Math.max(1.4, 2.4 * u)
-  ctx.lineCap = 'round'
-  ctx.beginPath()
-  ctx.moveTo(tail, y)
-  ctx.lineTo(tail - 14 * u * dir * flick, y)
-  ctx.stroke()
-}
-
-function drawPlane(ctx: CanvasRenderingContext2D, sk: Skin, plane: Plane, s: GameState) {
-  const u = s.scale
-  const dir = plane.vx >= 0 ? 1 : -1
-  exhaust(ctx, sk, plane.x, plane.y, dir, u, 20, hue('sky'), s.time)
-  craftPoly(ctx, plane.x, plane.y, dir, u, PLANE_BODY)
-  ctx.fillStyle = soft(sk.skyTop, 'sky', sk.dark ? 0.5 : 0.42)
-  ctx.fill()
-  ctx.strokeStyle = outline(sk, 'sky')
-  ctx.lineWidth = Math.max(1.2, 1.5 * u)
-  ctx.lineJoin = 'round'
-  ctx.stroke()
-  // Cockpit: the one mark that says which way it is pointing.
-  ctx.beginPath()
-  ctx.ellipse(plane.x + 9 * u * dir, plane.y, 3.6 * u, 2.2 * u, 0, 0, Math.PI * 2)
-  ctx.fillStyle = sk.dark ? 'rgba(236, 246, 255, 0.85)' : outline(sk, 'sky', 0.7)
-  ctx.fill()
-}
-
-function drawBomber(ctx: CanvasRenderingContext2D, sk: Skin, bomber: Bomber, s: GameState) {
-  const u = s.scale
-  const dir = bomber.vx >= 0 ? 1 : -1
-  const x = bomber.x
-  const y = bomber.y
-  exhaust(ctx, sk, x, y - 4 * u, dir, u, 33, hue('orange'), s.time)
-  exhaust(ctx, sk, x, y + 4 * u, dir, u, 33, hue('orange'), s.time + 0.3)
-  craftPoly(ctx, x, y, dir, u, BOMBER_BODY)
-  ctx.fillStyle = soft(sk.skyTop, 'orange', sk.dark ? 0.48 : 0.42)
-  ctx.fill()
-  ctx.strokeStyle = outline(sk, 'orange')
-  ctx.lineWidth = Math.max(1.2, 1.6 * u)
-  ctx.lineJoin = 'round'
-  ctx.stroke()
-  ctx.beginPath()
-  ctx.ellipse(x + 20 * u * dir, y, 4.4 * u, 2.6 * u, 0, 0, Math.PI * 2)
-  ctx.fillStyle = sk.dark ? 'rgba(255, 240, 220, 0.85)' : outline(sk, 'orange', 0.7)
-  ctx.fill()
-  // Its engines, lit.
-  for (const side of [-1, 1]) {
-    ctx.beginPath()
-    ctx.arc(x - 2 * u * dir, y + side * 14 * u, 2.2 * u, 0, Math.PI * 2)
-    ctx.fillStyle = hsla(hue('amber'), 95, sk.dark ? 70 : 55, 0.6 + 0.4 * Math.sin(s.time * 20 + side))
-    ctx.fill()
-  }
-
-  // Health: one pip per hit it can still take.
-  const maxHp = Math.max(1, bomber.maxHp)
-  const hp = Math.max(0, bomber.hp)
-  const pip = 6 * u
-  const gap = 2.4 * u
-  const barW = maxHp * pip + (maxHp - 1) * gap
-  const bx = x - barW / 2
-  const by = y + 30 * u
-  for (let i = 0; i < maxHp; i++) {
-    const px = bx + i * (pip + gap)
-    ctx.beginPath()
-    ctx.roundRect(px, by, pip, pip * 0.9, pip * 0.3)
-    const t = hp / maxHp
-    ctx.fillStyle =
-      i < hp
-        ? t > 0.55
-          ? hsla(hue('green'), 70, sk.dark ? 56 : 44, 0.95)
-          : t > 0.3
-            ? hsla(hue('amber'), 85, sk.dark ? 58 : 48, 0.95)
-            : hsla(hue('red'), 80, sk.dark ? 60 : 50, 0.95)
-        : 'rgba(0, 0, 0, 0)'
-    ctx.fill()
-    ctx.strokeStyle = outline(sk, 'orange', i < hp ? 0.9 : 0.35)
-    ctx.lineWidth = Math.max(1, 1.1 * u)
-    ctx.stroke()
-  }
-}
-
-function drawDrone(ctx: CanvasRenderingContext2D, sk: Skin, drone: Drone, s: GameState) {
-  const u = s.scale
-  const dir = drone.vx >= 0 ? 1 : -1
-  const x = drone.x
-  const y = drone.y + Math.sin(s.time * 5 + drone.id) * 2 * u
-  const h = POWER_HUE[drone.kind]
-  exhaust(ctx, sk, x, y, dir, u, 13, h, s.time)
-  if (sk.dark) {
-    const glow = ctx.createRadialGradient(x, y, 0, x, y, 24 * u)
-    glow.addColorStop(0, hsla(h, 80, 60, 0.28))
-    glow.addColorStop(1, hsla(h, 80, 60, 0))
-    ctx.fillStyle = glow
-    ctx.fillRect(x - 24 * u, y - 24 * u, 48 * u, 48 * u)
-  }
-  craftPoly(ctx, x, y, dir, u, DRONE_BODY)
-  ctx.fillStyle = soft(sk.skyTop, h, sk.dark ? 0.5 : 0.44)
-  ctx.fill()
-  ctx.strokeStyle = outline(sk, h)
-  ctx.lineWidth = Math.max(1.2, 1.5 * u)
-  ctx.lineJoin = 'round'
-  ctx.stroke()
-
-  /*
-   * What it is carrying, at nearly half the pod across.
-   *
-   * It used to be a third that size, tucked inside a cabin under a rotor, and
-   * at the size these actually fly at four different cargoes all came out as
-   * the same smudge in a different colour. Nothing else on the field is this
-   * shape, so the pod can give the whole of its middle to the mark.
-   */
-  const r = 6.4 * u
-  ctx.strokeStyle = outline(sk, h, 1, 74)
-  ctx.fillStyle = soft(sk.skyTop, h, 0.75, 0.74)
-  ctx.lineWidth = Math.max(1.2, 1.5 * u)
-  if (drone.kind === 'ammo') {
-    const a = r * 0.85
-    ctx.beginPath()
-    ctx.rect(x - a, y - a * 0.28, a * 2, a * 0.56)
-    ctx.rect(x - a * 0.28, y - a, a * 0.56, a * 2)
-    ctx.fill()
-    ctx.beginPath()
-    ctx.moveTo(x - a, y)
-    ctx.lineTo(x + a, y)
-    ctx.moveTo(x, y - a)
-    ctx.lineTo(x, y + a)
-    ctx.lineWidth = Math.max(1.6, 2.2 * u)
-    ctx.stroke()
-  } else if (drone.kind === 'shield') {
-    ctx.beginPath()
-    ctx.arc(x, y + r * 0.35, r * 0.8, Math.PI, 0)
-    ctx.closePath()
-    ctx.fill()
-    ctx.stroke()
-  } else if (drone.kind === 'slow') {
-    ctx.beginPath()
-    ctx.arc(x, y, r * 0.75, 0, Math.PI * 2)
-    ctx.fill()
-    ctx.stroke()
-    ctx.beginPath()
-    ctx.moveTo(x, y)
-    ctx.lineTo(x, y - r * 0.5)
-    ctx.moveTo(x, y)
-    ctx.lineTo(x + r * 0.35, y + r * 0.1)
-    ctx.stroke()
-  } else {
-    ctx.beginPath()
-    ctx.arc(x, y, r * 0.9, 0, Math.PI * 2)
-    ctx.stroke()
-    ctx.beginPath()
-    ctx.arc(x, y, r * 0.38, 0, Math.PI * 2)
-    ctx.fill()
-    ctx.stroke()
-  }
-}
-
 // Fire, smoke and words ---------------------------------------------------------------
 
 function drawParticles(ctx: CanvasRenderingContext2D, sk: Skin, s: GameState) {
@@ -1309,9 +938,19 @@ export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, w: n
   drawSkyLife(ctx, sk, s, w)
 
   if (s.slowT > 0) {
-    // Slowed: the sky takes a cold tint that thins as the power runs out.
+    // Slowed: the sky takes a cold tint that thins as the power runs out, and
+    // the moment it starts a ring of it sweeps out across the sky.
     ctx.fillStyle = hsla(hue('sky'), 80, 60, 0.1 * Math.min(1, s.slowT))
     ctx.fillRect(0, 0, w, s.groundY)
+    const since = SLOW_TIME - s.slowT
+    if (since < 0.9) {
+      const t = since / 0.9
+      ctx.beginPath()
+      ctx.arc(w / 2, s.groundY * 0.55, Math.hypot(w, h) * 0.6 * (1 - (1 - t) ** 2), 0, Math.PI * 2)
+      ctx.strokeStyle = hsla(hue('sky'), 80, sk.dark ? 70 : 50, 0.55 * (1 - t))
+      ctx.lineWidth = Math.max(2, 10 * s.scale * (1 - t))
+      ctx.stroke()
+    }
   }
 
   const ready = s.phase === 'playing' ? readyBattery(s) : null
@@ -1322,12 +961,14 @@ export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, w: n
   for (const m of s.incoming) drawIncoming(ctx, sk, m, s)
   for (const plane of s.planes) drawPlane(ctx, sk, plane, s)
   for (const bomber of s.bombers ?? []) drawBomber(ctx, sk, bomber, s)
-  for (const drone of s.drones ?? []) drawDrone(ctx, sk, drone, s)
+  for (const drone of s.drones ?? []) drawCarrier(ctx, sk, drone, s)
   for (const shot of s.shots) drawShot(ctx, sk, shot, s)
   for (const b of s.blasts) drawBlast(ctx, sk, b, s)
   drawParticles(ctx, sk, s)
   ctx.restore()
 
+  // Off the shaking layer: these are headed for the buttons, which hold still.
+  drawPickups(ctx, sk, s)
   drawFloaters(ctx, sk, s)
   drawBanner(ctx, sk, s, w, h)
   drawSight(ctx, sk, s, ready)

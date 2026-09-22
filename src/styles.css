@@ -3628,7 +3628,8 @@ a.game-hud__board {
   flex-direction: column;
   flex-wrap: wrap;
   align-content: flex-start;
-  gap: 0.38rem;
+  /* craft.ts flies each taken power to its slot here: keep the two in step. */
+  gap: 0.4rem;
   /*
    * Stop half a button above the ground line, which sits at 90% of the stage,
    * so a long column never reaches the left turret or its ammo rack. Written
@@ -3640,24 +3641,34 @@ a.game-hud__board {
   pointer-events: auto;
 }
 
+/*
+ * One badge per power held, the same badge the blimp carries on its side: a
+ * white disc ringed in the power's colour with its mark inside, and a count
+ * when there is more than one.
+ */
 .patriot__power {
-  --hue: 198;
+  --power: #4aa8e8;
   position: relative;
   display: grid;
   place-items: center;
-  width: 2.35rem;
-  height: 2.35rem;
+  width: 2.6rem;
+  height: 2.6rem;
   padding: 0;
   border-radius: 999px;
-  border: 1.5px solid hsla(var(--hue), 52%, 42%, 0.55);
-  background: hsla(var(--hue), 52%, 58%, 0.28);
+  border: 2px solid var(--power);
+  background: #ffffff;
+  color: color-mix(in srgb, var(--power) 62%, #10202e);
+  box-shadow: 0 2px 7px rgba(var(--ink-rgb), 0.16);
   cursor: pointer;
-  color: var(--ink);
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  animation: patriot-power-in 0.34s ease-out both;
 }
 
 .patriot__power--hot {
-  border-color: hsla(var(--hue), 52%, 42%, 0.95);
-  background: hsla(var(--hue), 52%, 58%, 0.46);
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--power) 40%, transparent),
+    0 0 18px color-mix(in srgb, var(--power) 70%, transparent);
 }
 
 .patriot__power:disabled {
@@ -3665,33 +3676,84 @@ a.game-hud__board {
 }
 
 .patriot__power-mark {
-  width: 1.3rem;
-  height: 1.3rem;
+  width: 1.5rem;
+  height: 1.5rem;
   margin: 0;
   fill: none;
-  stroke: var(--ink);
-  stroke-width: 2.45;
+  stroke: currentColor;
+  stroke-width: 2.3;
   stroke-linecap: round;
   stroke-linejoin: round;
   overflow: visible;
-  opacity: 0.95;
-  filter: drop-shadow(0 0 0.5px rgba(var(--surface-rgb), 0.95));
+}
+
+.patriot__power-solid {
+  fill: currentColor;
+  stroke: none;
+}
+
+.patriot__power-count {
+  position: absolute;
+  right: -0.35rem;
+  bottom: -0.3rem;
+  min-width: 1.2rem;
+  padding: 0 0.25rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--power) 78%, #10202e);
+  color: #ffffff;
+  font-family: var(--font-display);
+  font-size: 0.66rem;
+  font-weight: 800;
+  line-height: 1.15rem;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The key that fires it, for a hand on a keyboard. */
+.patriot__power-key {
+  position: absolute;
+  left: -0.3rem;
+  top: -0.3rem;
+  min-width: 0.95rem;
+  padding: 0 0.18rem;
+  border-radius: 0.3rem;
+  background: rgba(var(--surface-rgb), 0.92);
+  border: 1px solid rgba(var(--ink-rgb), 0.18);
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: 0.6rem;
+  font-weight: 800;
+  line-height: 0.95rem;
+}
+
+@media (pointer: coarse) {
+  .patriot__power-key {
+    display: none;
+  }
 }
 
 html[data-theme='dark'] .patriot__power {
-  border-color: hsla(var(--hue), 50%, 68%, 0.65);
-  background: hsla(var(--hue), 40%, 28%, 0.55);
+  background: rgba(248, 250, 252, 0.96);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--power) 45%, transparent);
 }
 
-html[data-theme='dark'] .patriot__power--hot {
-  border-color: hsla(var(--hue), 55%, 72%, 0.9);
-  background: hsla(var(--hue), 45%, 34%, 0.7);
+@keyframes patriot-power-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.45);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.14);
+  }
+  100% {
+    transform: scale(1);
+  }
 }
 
-html[data-theme='dark'] .patriot__power-mark {
-  stroke: #f4f8fb;
-  opacity: 1;
-  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.65));
+@media (prefers-reduced-motion: reduce) {
+  .patriot__power {
+    animation: none;
+  }
 }
 
 /*

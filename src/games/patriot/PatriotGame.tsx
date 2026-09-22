@@ -20,12 +20,13 @@ import {
 import { submitPatriotDirectStreak, shouldCelebrateRecordSubmit } from '../../lib/records'
 import { STAGE_ASPECT } from '../../lib/stage'
 import { useTournamentPlay } from '../../tournaments/TournamentPlayContext'
+import { PALETTE } from '../../data/games'
 import {
   createInitialState,
   fire,
-  POWER_HUE,
   POWER_LABEL,
   POWER_ORDER,
+  POWER_SWATCH,
   resizeState,
   setCursor,
   startGame,
@@ -40,23 +41,28 @@ import {
 import { renderGame } from './render'
 import { beginRun } from '../../lib/runSession'
 
+/**
+ * The same four marks the blimps carry on their sides: two shells, a dome, an
+ * hourglass, a sight. A power flies off a wreck as its badge and lands here as
+ * the same badge.
+ */
 function PowerMark({ kind }: { kind: PowerKind }) {
   return (
     <svg className="patriot__power-mark" viewBox="0 0 24 24" aria-hidden="true">
       {kind === 'ammo' ? (
-        <path d="M12 5v14M5 12h14" />
+        <path className="patriot__power-solid" d="M8.4 4.3 10.8 8.2V19H6V8.2ZM15.6 4.3 18 8.2V19h-4.8V8.2Z" />
       ) : kind === 'shield' ? (
-        <path d="M7 15c0-3.4 2.2-7 5-7s5 3.6 5 7" />
+        <path d="M4.8 16a7.2 7.2 0 0 1 14.4 0M3.5 16h17M8.3 12.7a4 4 0 0 1 2.6-1.5" />
       ) : kind === 'slow' ? (
         <>
-          <path d="M6 12h12" />
-          <path d="M9 8 5 12l4 4M15 8l4 4-4 4" />
+          <path d="M6.5 4h11M6.5 20h11M7.6 4 12 12l-4.4 8M16.4 4 12 12l4.4 8" />
+          <path className="patriot__power-solid" d="M9.3 20 12 15.3l2.7 4.7Z" />
         </>
       ) : (
         <>
-          <circle cx="12" cy="12" r="6.5" />
-          <circle cx="12" cy="12" r="2.4" />
-          <path d="M12 3.25v2.75M12 18v2.75M3.25 12H6M18 12h2.75" />
+          <circle cx="12" cy="12" r="5.4" />
+          <path d="M12 3v5.4M12 15.6V21M3 12h5.4M15.6 12H21" />
+          <circle className="patriot__power-solid" cx="12" cy="12" r="1.4" />
         </>
       )}
     </svg>
@@ -363,19 +369,20 @@ export function PatriotGame() {
               className="patriot__powers"
               onPointerDown={(e) => e.stopPropagation()}
             >
-              {POWER_ORDER.flatMap((kind) => {
+              {POWER_ORDER.filter((kind) => (ui.pack?.[kind] ?? 0) > 0).map((kind) => {
                 const count = ui.pack?.[kind] ?? 0
                 const hot =
                   (kind === 'shield' && ui.shieldT > 0) ||
                   (kind === 'slow' && ui.slowT > 0)
-                return Array.from({ length: count }, (_, n) => (
+                return (
                   <button
-                    key={`${kind}-${n}`}
+                    // Keyed on the count, so the badge pops each time one lands or is spent.
+                    key={`${kind}-${count}`}
                     type="button"
                     className={`patriot__power${hot ? ' patriot__power--hot' : ''}`}
-                    style={{ '--hue': String(POWER_HUE[kind]) } as CSSProperties}
+                    style={{ '--power': PALETTE[POWER_SWATCH[kind]] } as CSSProperties}
                     disabled={ui.phase !== 'playing' || paused}
-                    aria-label={POWER_LABEL[kind]}
+                    aria-label={count > 1 ? `${POWER_LABEL[kind]}, ${count} held` : POWER_LABEL[kind]}
                     onPointerDown={(e) => {
                       e.stopPropagation()
                       e.preventDefault()
@@ -383,8 +390,16 @@ export function PatriotGame() {
                     }}
                   >
                     <PowerMark kind={kind} />
+                    {count > 1 ? (
+                      <span className="patriot__power-count" aria-hidden="true">
+                        ×{count}
+                      </span>
+                    ) : null}
+                    <span className="patriot__power-key" aria-hidden="true">
+                      {POWER_ORDER.indexOf(kind) + 1}
+                    </span>
                   </button>
-                ))
+                )
               })}
             </div>
           )}
