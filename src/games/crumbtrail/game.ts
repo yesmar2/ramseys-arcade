@@ -346,7 +346,16 @@ const EYES_MAX = 4
  * than part of the standing roster, and the tide clears them like anything else
  * once it goes past.
  */
-const TRAIN_SIZE = 3
+/**
+ * How many abreast, which also has to follow the width.
+ *
+ * Three across a nine-column phone is a third of every route out; across a
+ * twenty-one column desktop it is a seventh. Same line, and on one of them it
+ * is a wall.
+ */
+function trainSize(cols: number) {
+  return cols >= 14 ? 3 : 2
+}
 const TRAIN_FIRST_ROW = 25
 /** Rows between one train and the next, tightening with depth. */
 function trainGap(depth: number) {
@@ -514,8 +523,16 @@ function chaseTime(depth: number) {
  * rather than a chase. Starting on two means there is always a second thing to
  * account for, and the full four now arrive by row 90.
  */
-function wantGhosts(depth: number) {
-  return Math.min(4, 2 + Math.floor(depth / 45))
+function wantGhosts(depth: number, cols: number) {
+  /*
+   * The ceiling follows the width of the board, because the board is not one
+   * width. A phone gets nine columns and a desktop twenty-one, and a flat cap
+   * of four put the same chase on a third of the room: 0.44 chasers a column
+   * against 0.19, or half again as crowded by area. Same game, much harder,
+   * for no reason the player could see or do anything about.
+   */
+  const ceiling = Math.max(3, Math.min(4, Math.round(cols / 6)))
+  return Math.min(ceiling, 2 + Math.floor(depth / 45))
 }
 
 /**
@@ -686,7 +703,7 @@ const GHOST_ORDER: GhostKind[] = ['blink', 'pink', 'herd', 'inky', 'clyde']
  */
 function seedGhost(state: GameState, y: number): boolean {
   if (state.kind[y] !== 'lane') return false
-  if (state.ghosts.filter((g) => g.kind !== 'train').length >= wantGhosts(state.depth)) return false
+  if (state.ghosts.filter((g) => g.kind !== 'train').length >= wantGhosts(state.depth, state.cols)) return false
   const spots: number[] = []
   for (let x = 0; x < state.cols; x++) if (state.open[y][x]) spots.push(x)
   if (!spots.length) return false
@@ -942,12 +959,13 @@ function seedTrain(state: GameState, y: number): boolean {
     run = state.open[y][x] ? run + 1 : 0
     if (run > best.len) best = { start: x - run + 1, len: run }
   }
+  const size = trainSize(state.cols)
   // wide enough for the line and some road to sweep
-  if (best.len < TRAIN_SIZE + 3) return false
+  if (best.len < size + 3) return false
 
   const dir: Dir = Math.random() < 0.5 ? 'left' : 'right'
-  const from = best.start + Math.floor((best.len - TRAIN_SIZE) / 2)
-  for (let i = 0; i < TRAIN_SIZE; i++) {
+  const from = best.start + Math.floor((best.len - size) / 2)
+  for (let i = 0; i < size; i++) {
     state.ghosts.push({
       id: state.nextGhostId++,
       kind: 'train',
@@ -1052,7 +1070,7 @@ function emptyState(view: { cols: number; rows: number }): GameState {
    */
   const playerY = Math.floor(state.player.y)
   for (let y = playerY - 4; y >= 1; y--) {
-    if (state.ghosts.length >= wantGhosts(0)) break
+    if (state.ghosts.length >= wantGhosts(0, state.cols)) break
     seedGhost(state, y)
   }
   state.nextSeedRow = worldRowAt(state, 0) + seedGap(0)
