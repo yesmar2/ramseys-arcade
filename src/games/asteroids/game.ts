@@ -45,6 +45,9 @@ export type Powerup = {
   radius: number
 }
 
+/** A dent in a rock's face, in the rock's own frame. Looks only: collisions stay circles. */
+export type Crater = { x: number; y: number; r: number }
+
 export type Rock = {
   id: number
   x: number
@@ -56,8 +59,21 @@ export type Rock = {
   size: RockSize
   radius: number
   verts: Point[]
+  craters: Crater[]
   hue: number
   sat: number
+}
+
+/** A shock ring from an explosion, a pickup or a jump: grows from r0 to r1 and fades. */
+export type Ring = {
+  id: number
+  x: number
+  y: number
+  r0: number
+  r1: number
+  life: number
+  maxLife: number
+  hue: number
 }
 
 export type Bullet = {
@@ -86,6 +102,8 @@ export type Particle = {
   life: number
   maxLife: number
   hue: number
+  /** A tumbling chip of rock (or hull) rather than a spark. */
+  shard?: { size: number; angle: number; spin: number }
 }
 
 export type Ship = {
@@ -135,6 +153,11 @@ export type GameState = {
   /** Seconds until the next saucer may spawn (wave 3+). */
   saucerCooldown: number
   particles: Particle[]
+  rings: Ring[]
+  /** Screen shake, 0–1, decaying. Looks only. */
+  shake: number
+  /** Seconds left of the "Wave N" banner at the start of a wave. */
+  waveIntro: number
   powerups: Powerup[]
   turnLeft: boolean
   turnRight: boolean
@@ -199,8 +222,10 @@ const BULLET_SPEED = 480
 const BULLET_LIFE = 0.55
 const SHIP_RADIUS = 22
 const START_LIVES = 3
-const COMBO_WINDOW = 0.75
-const POWER_LIFE = 8
+export const COMBO_WINDOW = 0.75
+export const POWER_LIFE = 8
+/** How long the "Wave N" banner stays up as a wave begins. */
+export const WAVE_INTRO = 1.7
 const BUFF_DURATION = 8
 const HYPERSPACE_COOLDOWN = 2.6
 
@@ -304,15 +329,32 @@ function pickRockColor() {
   return { hue, sat }
 }
 
+/**
+ * A rugged outline: more corners than a gem, a chip taken out here and there,
+ * but never past 0.72 of the radius, so the rock you see stays the size of the
+ * circle it collides as.
+ */
 function rockVerts(radius: number): Point[] {
-  const n = 7 + Math.floor(Math.random() * 4)
+  const n = 10 + Math.floor(Math.random() * 4)
   const pts: Point[] = []
   for (let i = 0; i < n; i++) {
-    const a = (i / n) * Math.PI * 2
-    const r = radius * (0.72 + Math.random() * 0.28)
+    const a = ((i + (Math.random() - 0.5) * 0.35) / n) * Math.PI * 2
+    const chip = Math.random() < 0.22 ? 0.84 : 1
+    const r = radius * Math.max(0.72, (0.8 + Math.random() * 0.2) * chip)
     pts.push({ x: Math.cos(a) * r, y: Math.sin(a) * r })
   }
   return pts
+}
+
+function rockCraters(radius: number, size: RockSize): Crater[] {
+  const n = size === 'large' ? 3 : size === 'medium' ? 2 : Math.random() < 0.5 ? 1 : 0
+  const out: Crater[] = []
+  for (let i = 0; i < n; i++) {
+    const a = Math.random() * Math.PI * 2
+    const d = radius * (0.1 + Math.random() * 0.38)
+    out.push({ x: Math.cos(a) * d, y: Math.sin(a) * d, r: radius * (0.12 + Math.random() * 0.1) })
+  }
+  return out
 }
 
 function makeRock(
@@ -342,6 +384,7 @@ function makeRock(
     size,
     radius,
     verts: rockVerts(radius),
+    craters: rockCraters(radius, size),
     hue: tint.hue,
     sat: tint.sat,
   }
@@ -529,6 +572,49 @@ function burst(
   }
 }
 
+/** Tumbling chips of whatever just broke, thrown outward. */
+function shards(
+  particles: Particle[],
+  x: number,
+  y: number,
+  hue: number,
+  n: number,
+  speed: number,
+  size: number,
+) {
+  for (let i = 0; i < n; i++) {
+    const a = Math.random() * Math.PI * 2
+    const s = speed * (0.35 + Math.random() * 0.85)
+    const life = 0.55 + Math.random() * 0.5
+    particles.push({
+      id: uid(),
+      x: x + Math.cos(a) * size * 0.6,
+      y: y + Math.sin(a) * size * 0.6,
+      vx: Math.cos(a) * s,
+      vy: Math.sin(a) * s,
+      life,
+      maxLife: life,
+      hue,
+      shard: { size: size * (0.55 + Math.random() * 0.6), angle: Math.random() * Math.PI * 2, spin: (Math.random() - 0.5) * 9 },
+    })
+  }
+}
+
+function ring(rings: Ring[], x: number, y: number, r0: number, r1: number, life: number, hue: number) {
+  rings.push({ id: uid(), x, y, r0, r1, life, maxLife: life, hue })
+}
+
+/** How hard each rock size shakes the screen when it breaks. */
+const ROCK_SHAKE: Record<RockSize, number> = { large: 0.34, medium: 0.2, small: 0.1 }
+
+/** A rock breaking: chips, a ring the size of the rock, and a knock on the screen. */
+function breakRock(particles: Particle[], rings: Ring[], rock: Rock, scale: number) {
+  const big = rock.size === 'large'
+  shards(particles, rock.x, rock.y, rock.hue, big ? 7 : rock.size === 'medium' ? 5 : 3, 95 * scale, rock.radius * 0.26)
+  burst(particles, rock.x, rock.y, rock.hue, big ? 10 : 6, 120 * scale)
+  ring(rings, rock.x, rock.y, rock.radius * 0.45, rock.radius * 1.7, big ? 0.42 : 0.32, rock.hue)
+}
+
 function splitRock(rock: Rock, speedScale: number, worldScale: number): Rock[] {
   if (rock.size === 'small') return []
   const next: RockSize = rock.size === 'large' ? 'medium' : 'small'
@@ -569,6 +655,10 @@ function maybeSpawnPowerup(rock: Rock, scale: number): Powerup | null {
 
 function applyPowerup(state: GameState, kind: PowerKind): GameState {
   sfx('good')
+  const hull = shipRadius(state.scale)
+  const rings = [...(state.rings ?? [])]
+  ring(rings, state.ship.x, state.ship.y, hull * 0.8, hull * 3.2, 0.45, POWER_HUE[kind])
+  state = { ...state, rings }
   const floaters = [
     ...state.floaters,
     {
@@ -635,10 +725,16 @@ function tryHyperspace(state: GameState): GameState {
   const particles = [...state.particles]
   burst(particles, state.ship.x, state.ship.y, 210, 14, 130)
   burst(particles, x, y, 172, 12, 110)
+  // Folds in where you were, opens out where you land.
+  const rings = [...(state.rings ?? [])]
+  ring(rings, state.ship.x, state.ship.y, hull * 3, hull * 0.4, 0.3, 236)
+  ring(rings, x, y, hull * 0.4, hull * 3.4, 0.4, 172)
   sfx('tap')
 
   return {
     ...state,
+    rings,
+    shake: Math.max(state.shake ?? 0, 0.15),
     ship: {
       ...state.ship,
       x,
@@ -670,6 +766,9 @@ export function createInitialState(w = DESIGN_W, h = DESIGN_H): GameState {
     saucer: null,
     saucerCooldown: 999,
     particles: [],
+    rings: [],
+    shake: 0,
+    waveIntro: 0,
     powerups: [],
     turnLeft: false,
     turnRight: false,
@@ -728,7 +827,9 @@ export function resizeState(state: GameState, w: number, h: number): GameState {
       vy: r.vy * k,
       radius: r.radius * k,
       verts: r.verts.map((v) => ({ x: v.x * k, y: v.y * k })),
+      craters: (r.craters ?? []).map((c) => ({ x: c.x * k, y: c.y * k, r: c.r * k })),
     })),
+    rings: (state.rings ?? []).map((g) => ({ ...g, x: g.x * sx, y: g.y * sy, r0: g.r0 * k, r1: g.r1 * k })),
     bullets: state.bullets.map((b) => ({
       ...b,
       x: b.x * sx,
@@ -761,6 +862,7 @@ export function resizeState(state: GameState, w: number, h: number): GameState {
       y: p.y * sy,
       vx: p.vx * k,
       vy: p.vy * k,
+      shard: p.shard ? { ...p.shard, size: p.shard.size * k } : undefined,
     })),
     floaters: state.floaters.map((f) => ({
       ...f,
@@ -789,6 +891,7 @@ export function startGame(prev: GameState): GameState {
     wave: 1,
     waveElapsed: 0,
     wavePause: 0,
+    waveIntro: WAVE_INTRO,
     saucer: null,
     enemyBullets: [],
     saucerCooldown: firstSaucerCooldown(1),
@@ -816,6 +919,7 @@ export function beginNextWave(state: GameState): GameState {
     powerups: [],
     waveElapsed: 0,
     wavePause: 0,
+    waveIntro: WAVE_INTRO,
     turnLeft: false,
     turnRight: false,
     turn: 0,
@@ -857,6 +961,7 @@ export function jumpToWave(state: GameState, wave: number): GameState {
     floaters: state.floaters ?? [],
     waveElapsed: 0,
     wavePause: 0,
+    waveIntro: WAVE_INTRO,
     turnLeft: false,
     turnRight: false,
     turn: 0,
@@ -918,7 +1023,13 @@ function tryFire(state: GameState): GameState {
 
 function killShip(state: GameState): GameState {
   const particles = [...state.particles]
+  const hull = shipRadius(state.scale)
   burst(particles, state.ship.x, state.ship.y, 200, 18, 160)
+  // The hull comes apart in the ship's own colour.
+  shards(particles, state.ship.x, state.ship.y, 236, 6, 110 * state.scale, hull * 0.32)
+  const rings = [...(state.rings ?? [])]
+  ring(rings, state.ship.x, state.ship.y, hull * 0.5, hull * 5, 0.6, 236)
+  state = { ...state, rings, shake: 0.85 }
   const lives = state.lives - 1
   if (lives <= 0) {
     const best = Math.max(state.best, state.score)
@@ -975,19 +1086,34 @@ function tickFloaters(floaters: Floater[], dt: number, scale: number): Floater[]
     .filter((f) => f.life > 0)
 }
 
+function tickParticles(particles: Particle[], dt: number): Particle[] {
+  // Chips of rock lose their speed and tumble to a stop; sparks fly on.
+  const drag = Math.pow(0.35, dt)
+  return particles
+    .map((p) => ({
+      ...p,
+      x: p.x + p.vx * dt,
+      y: p.y + p.vy * dt,
+      vx: p.shard ? p.vx * drag : p.vx,
+      vy: p.shard ? p.vy * drag : p.vy,
+      life: p.life - dt,
+      shard: p.shard ? { ...p.shard, angle: p.shard.angle + p.shard.spin * dt } : undefined,
+    }))
+    .filter((p) => p.life > 0)
+}
+
+function tickRings(rings: Ring[] | undefined, dt: number): Ring[] {
+  return (rings ?? []).map((g) => ({ ...g, life: g.life - dt })).filter((g) => g.life > 0)
+}
+
 export function tick(state: GameState, dt: number): GameState {
   if (state.phase !== 'playing') {
     return {
       ...state,
       flash: Math.max(0, state.flash - dt * 1.6),
-      particles: state.particles
-        .map((p) => ({
-          ...p,
-          x: p.x + p.vx * dt,
-          y: p.y + p.vy * dt,
-          life: p.life - dt,
-        }))
-        .filter((p) => p.life > 0),
+      shake: Math.max(0, (state.shake ?? 0) - dt * 2.2),
+      particles: tickParticles(state.particles, dt),
+      rings: tickRings(state.rings, dt),
       floaters: tickFloaters(state.floaters, dt, state.scale),
     }
   }
@@ -995,6 +1121,9 @@ export function tick(state: GameState, dt: number): GameState {
   let s: GameState = {
     ...state,
     flash: Math.max(0, state.flash - dt * 1.6),
+    shake: Math.max(0, (state.shake ?? 0) - dt * 2.2),
+    waveIntro: Math.max(0, (state.waveIntro ?? 0) - dt),
+    rings: tickRings(state.rings, dt),
     fireCooldown: Math.max(0, state.fireCooldown - dt),
     waveElapsed: state.waveElapsed + dt,
     comboTimer: Math.max(0, state.comboTimer - dt),
@@ -1034,8 +1163,11 @@ export function tick(state: GameState, dt: number): GameState {
     ship.vx += Math.cos(ship.angle) * THRUST * sc * dt
     ship.vy += Math.sin(ship.angle) * THRUST * sc * dt
   }
-  ship.vx *= DRAG
-  ship.vy *= DRAG
+  // DRAG is per 60th of a second; applied per frame it made a 144Hz screen
+  // coast half as far as a 60Hz one, on a leaderboard game.
+  const drag = Math.pow(DRAG, dt * 60)
+  ship.vx *= drag
+  ship.vy *= drag
   const maxSpeed = MAX_SPEED * sc
   const spd = Math.hypot(ship.vx, ship.vy)
   if (spd > maxSpeed) {
@@ -1051,14 +1183,9 @@ export function tick(state: GameState, dt: number): GameState {
   s = tryFire(s)
   ship = s.ship
 
-  let particles = s.particles
-    .map((p) => ({
-      ...p,
-      x: p.x + p.vx * dt,
-      y: p.y + p.vy * dt,
-      life: p.life - dt,
-    }))
-    .filter((p) => p.life > 0)
+  const particles = tickParticles(s.particles, dt)
+  const rings = [...s.rings]
+  let shake = s.shake
 
   if (ship.thrusting && Math.random() < 0.55) {
     const back = ship.angle + Math.PI
@@ -1172,7 +1299,8 @@ export function tick(state: GameState, dt: number): GameState {
         runComboBest = Math.max(runComboBest, combo)
         const gained = Math.round(ROCK_SCORE[r.size] * comboMultiplier(combo))
         score += gained
-        burst(particles, r.x, r.y, r.hue, r.size === 'large' ? 14 : 9, 120)
+        breakRock(particles, rings, r, sc)
+        shake = Math.max(shake, ROCK_SHAKE[r.size])
         sfx('hit', combo)
         spawned.push(...splitRock(r, speedScale, sc))
         const drop = maybeSpawnPowerup(r, sc)
@@ -1201,6 +1329,9 @@ export function tick(state: GameState, dt: number): GameState {
         comboBest = Math.max(comboBest, combo)
         runComboBest = Math.max(runComboBest, combo)
         burst(particles, saucer.x, saucer.y, 38, saucer.size === 'large' ? 16 : 10, 140)
+        shards(particles, saucer.x, saucer.y, 0, saucer.size === 'large' ? 6 : 4, 110 * sc, saucer.radius * 0.3)
+        ring(rings, saucer.x, saucer.y, saucer.radius * 0.5, saucer.radius * 3.4, 0.5, 38)
+        shake = Math.max(shake, 0.45)
         sfx('boom')
         floaters.push({
           x: saucer.x,
@@ -1231,6 +1362,7 @@ export function tick(state: GameState, dt: number): GameState {
           comboBest = Math.max(comboBest, combo)
           runComboBest = Math.max(runComboBest, combo)
           burst(particles, e.x, e.y, 18, 10, 110)
+          ring(rings, e.x, e.y, e.radius, e.radius * 4.5, 0.3, 18)
           sfx('hit', combo)
           floaters.push({
             x: e.x,
@@ -1254,16 +1386,10 @@ export function tick(state: GameState, dt: number): GameState {
       if (hitRock.has(r.id) || hitEnemyBullet.has(b.id)) continue
       if (dist(b.x, b.y, r.x, r.y) < r.radius + b.radius) {
         hitEnemyBullet.add(b.id)
-        if (b.kind === 'missile') {
-          hitRock.add(r.id)
-          burst(particles, r.x, r.y, r.hue, r.size === 'large' ? 10 : 6, 100)
-          burst(particles, b.x, b.y, 18, 8, 90)
-          spawned.push(...splitRock(r, speedScale, sc))
-        } else {
-          hitRock.add(r.id)
-          burst(particles, r.x, r.y, r.hue, r.size === 'large' ? 10 : 6, 100)
-          spawned.push(...splitRock(r, speedScale, sc))
-        }
+        hitRock.add(r.id)
+        breakRock(particles, rings, r, sc)
+        if (b.kind === 'missile') burst(particles, b.x, b.y, 18, 8, 90)
+        spawned.push(...splitRock(r, speedScale, sc))
       }
     }
   }
@@ -1274,8 +1400,11 @@ export function tick(state: GameState, dt: number): GameState {
       if (hitRock.has(r.id)) continue
       if (dist(saucer.x, saucer.y, r.x, r.y) < saucer.radius + r.radius * 0.85) {
         hitRock.add(r.id)
-        burst(particles, r.x, r.y, r.hue, 8, 90)
+        breakRock(particles, rings, r, sc)
         burst(particles, saucer.x, saucer.y, 38, 10, 110)
+        shards(particles, saucer.x, saucer.y, 0, 4, 100 * sc, saucer.radius * 0.3)
+        ring(rings, saucer.x, saucer.y, saucer.radius * 0.5, saucer.radius * 3, 0.45, 38)
+        shake = Math.max(shake, 0.3)
         spawned.push(...splitRock(r, speedScale, sc))
         saucer = null
         sfx('boom')
@@ -1302,6 +1431,8 @@ export function tick(state: GameState, dt: number): GameState {
     saucerCooldown,
     rocks,
     particles,
+    rings,
+    shake,
     powerups,
     combo,
     comboTimer,
