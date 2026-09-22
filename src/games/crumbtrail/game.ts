@@ -80,11 +80,21 @@ export type CharmKind = 'freeze' | 'laser'
 
 /** A shot, kept only long enough to draw it. */
 export type Beam = {
+  /** Where the shot actually leaves from: the player, not their tile. */
   x: number
   y: number
   dir: Dir
-  /** Tiles it reached before a wall stopped it. */
-  len: number
+  /**
+   * Distance to the wall face, in tiles and fractions of one.
+   *
+   * It used to leave from the middle of the player's tile and run a whole
+   * number of tiles, so while the player glided between tiles the beam's start
+   * jumped from centre to centre and its length stepped a tile at a time. It
+   * looked like the beam had a different length each time it fired. Measuring
+   * from the player to the face of the wall makes it one continuous thing that
+   * always touches both ends.
+   */
+  reach: number
   life: number
 }
 
@@ -792,18 +802,19 @@ function offerCharm(state: GameState): boolean {
  */
 function fireBeam(state: GameState) {
   const v = VEC[state.player.dir]
-  let x = Math.floor(state.player.x)
-  let y = Math.floor(state.player.y)
-  let len = 0
-  let hits = 0
+  const tileX = Math.floor(state.player.x)
+  const tileY = Math.floor(state.player.y)
 
-  for (let i = 0; i < LASER_RANGE; i++) {
+  // How far to the wall, in whole tiles.
+  let x = tileX
+  let y = tileY
+  let tiles = 0
+  for (let i = 0; i <= LASER_RANGE; i++) {
     /*
      * Deliberately not stepTile, which wraps: the board is a cylinder and a
      * chaser one tile off the left edge is one tile from the right one. The
      * beam used to walk through that seam and cut down something on the far
-     * side of the screen while the line on screen ran off the edge — so a shot
-     * killed what you could not see and missed what you were pointing at.
+     * side of the screen while the line on screen ran off the edge.
      */
     const nx = x + v.x
     const ny = y + v.y
@@ -811,29 +822,58 @@ function fireBeam(state: GameState) {
     if (!tileOpen(state, nx, ny)) break
     x = nx
     y = ny
-    len += 1
-    for (const ghost of state.ghosts) {
-      if (ghost.mode === 'eaten' || ghost.mode === 'asleep') continue
-      if (Math.floor(ghost.x) !== x || Math.floor(ghost.y) !== y) continue
-      const bonus = SCORE_GHOST[Math.min(state.laserHits, SCORE_GHOST.length - 1)]
-      state.laserHits += 1
-      ghost.mode = 'eaten'
-      ghost.hit = 1
-      state.score += bonus
-      addPop(state, ghost.x, ghost.y, `+${bonus}`)
-      hits += 1
-    }
+    tiles += 1
+  }
+
+  /*
+   * Measured from the player rather than from the middle of their tile, and cut
+   * off at the range as a distance rather than as a count of tiles.
+   *
+   * Both used to be tile-aligned, so while the player glided across a tile the
+   * far end sat still and then jumped a whole tile when they crossed — which
+   * read as the beam being a different length every time it fired. It is one
+   * continuous measure now, so the end glides with the player and pins itself
+   * to a wall when there is one in range.
+   */
+  const wallFace =
+    v.x > 0
+      ? tileX + tiles + 1 - state.player.x
+      : v.x < 0
+        ? state.player.x - (tileX - tiles)
+        : v.y > 0
+          ? tileY + tiles + 1 - state.player.y
+          : state.player.y - (tileY - tiles)
+  const reach = Math.max(0, Math.min(wallFace, LASER_RANGE))
+
+  // Anything awake standing in that stretch. Sleepers are spared: they have not
+  // entered the run yet, and clearing the board above you before you have met
+  // what is on it takes away the reading the game is built on.
+  let hits = 0
+  for (const ghost of state.ghosts) {
+    if (ghost.mode === 'eaten' || ghost.mode === 'asleep') continue
+    const dx = ghost.x - state.player.x
+    const dy = ghost.y - state.player.y
+    const along = dx * v.x + dy * v.y
+    const across = Math.abs(dx * v.y + dy * v.x)
+    if (along <= 0 || along > reach || across > 0.5) continue
+    const bonus = SCORE_GHOST[Math.min(state.laserHits, SCORE_GHOST.length - 1)]
+    state.laserHits += 1
+    ghost.mode = 'eaten'
+    ghost.hit = 1
+    state.score += bonus
+    addPop(state, ghost.x, ghost.y, `+${bonus}`)
+    hits += 1
   }
 
   state.beam = {
-    x: Math.floor(state.player.x) + 0.5,
-    y: Math.floor(state.player.y) + 0.5,
+    x: state.player.x,
+    y: state.player.y,
     dir: state.player.dir,
-    len,
+    reach,
     life: BEAM_LIFE,
   }
-  // Only a kill makes a noise: the beam is held down continuously now, and a
-  // whoosh every frame would be a siren.
+  // Only a kill makes a noise: the beam is held continuously, and a whoosh
+  // every frame would be a siren.
   if (hits > 0) {
     sfx('whoosh')
     haptic('hit')

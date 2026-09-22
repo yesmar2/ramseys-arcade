@@ -268,8 +268,9 @@ function drawCrumbs(
 /**
  * The shot itself, for the sixth of a second it exists.
  *
- * Drawn from the tile the player stood in, out to the wall that stopped it, so
- * what it hit and how far it reached are both plain. Bright core over a wide
+ * Drawn from the player to the face of the wall that stopped it, so what it hit
+ * and how far it reached are both plain, and it stays put against them as the
+ * player moves. Bright core over a wide
  * soft pass, which is how the rest of the board draws anything hot.
  */
 function drawBeam(
@@ -278,14 +279,14 @@ function drawBeam(
   layout: Layout,
 ) {
   const beam = state.beam
-  if (!beam || beam.len <= 0) return
+  if (!beam || beam.reach <= 0) return
   const { cell, rowY } = layout
-  const fade = Math.max(0, beam.life / 0.16)
+  const fade = Math.max(0, beam.life / 0.14)
   const v = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] }[beam.dir] as number[]
   const x0 = beam.x * cell
   const y0 = rowY(beam.y)
-  const x1 = (beam.x + v[0] * beam.len) * cell
-  const y1 = rowY(beam.y + v[1] * beam.len)
+  const x1 = (beam.x + v[0] * beam.reach) * cell
+  const y1 = rowY(beam.y + v[1] * beam.reach)
 
   ctx.save()
   ctx.lineCap = 'round'
