@@ -5,8 +5,12 @@ import { sfx } from '../../lib/sound'
  *
  * The twist the name asks for: the fleet does not drip random shots. It gathers
  * a volley, lights up the ships that are about to fire, and then looses the lot
- * at once. The charge is the whole game — you read which columns are hot, move
- * to a cold one, and spend the quiet window pushing damage back.
+ * at once. The charge is the whole game — you read which lanes are hot, move to
+ * a cold one, and spend the quiet window pushing damage back.
+ *
+ * The charge is also an opening. Only the front ship of a hot column winds up,
+ * and a lit ship destroyed before it fires takes its shot with it. Standing in a
+ * hot lane to do that is the bet the game is built on.
  *
  * There is deliberately no cover. A bunker answers a volley for you, which is
  * the one thing that stops you having to read it.
@@ -93,21 +97,34 @@ export function makeLayout(portrait: boolean): Layout {
 
 export type Phase = 'menu' | 'playing' | 'dying' | 'clearing' | 'gameover'
 
+/**
+ * Three kinds of ship, by rank: the narrow ones at the top are worth the most,
+ * the broad ones at the front the least. Which kind a row gets depends only on
+ * where it sits in the formation, so the upright and the wide board carry the
+ * same three.
+ */
+export type Species = 'squid' | 'crab' | 'octo'
+
+export function speciesFor(row: number, rows: number): Species {
+  if (row === 0) return 'squid'
+  return row < rows * 0.6 ? 'crab' : 'octo'
+}
+
 export type Ship = {
   /** Column and row in the formation, fixed for the life of the ship. */
   col: number
   row: number
   alive: boolean
-  /** 1–3. Higher tiers are plated: a different hull, and more rounds to break. */
+  /** 1–3. Higher tiers are plated: armour over the hull, and more rounds to break. */
   tier: number
   /** Rounds left before it breaks. Starts equal to the tier. */
   hp: number
   /** 0–1 flash after a hit that did not finish it. */
   hurt: number
-  /** 0–1 charge glow while this ship is winding up to fire. */
+  /** This ship is the front of a hot column, winding up to fire. */
+  charging: boolean
+  /** 0–1 progress of that wind-up. */
   charge: number
-  /** Counts down a death flash before the ship is cleared away. */
-  pop: number
 }
 
 export type Shot = {
@@ -119,6 +136,8 @@ export type Shot = {
   hostile: boolean
   /** Player shots only: carries on through a hull instead of stopping in it. */
   pierce?: boolean
+  /** Player shots only: this round has already found something, for accuracy. */
+  hit?: boolean
 }
 
 /**
@@ -153,6 +172,60 @@ export type Drop = {
   life: number
 }
 
+/** A column that has fired and is still emptying its burst. */
+export type Burst = {
+  col: number
+  row: number
+  left: number
+  next: number
+}
+
+/** Debris. Shards are hull, plates are armour, sparks are light. */
+export type Bit = {
+  kind: 'shard' | 'plate' | 'spark'
+  x: number
+  y: number
+  vx: number
+  vy: number
+  life: number
+  maxLife: number
+  /** Hue, or -1 for the ink colour. */
+  hue: number
+  size: number
+  angle: number
+  spin: number
+}
+
+/** A shock ring, out fast and fading. */
+export type Ring = {
+  x: number
+  y: number
+  r0: number
+  r1: number
+  life: number
+  maxLife: number
+  hue: number
+}
+
+export type FloaterTone = 'score' | 'defuse' | 'chain' | 'pickup' | 'jam'
+
+export type Floater = {
+  x: number
+  y: number
+  text: string
+  tone: FloaterTone
+  life: number
+  maxLife: number
+}
+
+/** Where a volley's shot crossed the line — the field flexes where it is passed. */
+export type Ripple = {
+  x: number
+  life: number
+}
+
+export type EndCause = 'line' | 'lives'
+
 export type GameState = {
   /** Board shape this run is being played on. */
   layout: Layout
@@ -161,14 +234,19 @@ export type GameState = {
   best: number
   lives: number
   wave: number
+  /** Seconds since this wave began: the fleet flies in over the first of them. */
+  waveT: number
   /** Left edge of the leftmost column. */
   formX: number
   /** Top edge of the top row. */
   formY: number
   /** +1 marching right, -1 left. */
   formDir: number
+  /** Steps marched, for the fleet's two-frame gait. */
+  gait: number
   ships: Ship[]
   shots: Shot[]
+  bursts: Burst[]
   carrier: Carrier | null
   /** Seconds until the next carrier runs. */
   carrierIn: number
@@ -185,8 +263,10 @@ export type GameState = {
   tookKind: PowerKind | null
   tookFor: number
   cannonX: number
-  /** -1, 0 or +1 from the current input. */
+  /** -1, 0 or +1 from the keys or pads. */
   moveDir: number
+  /** Where a finger or pointer on the field wants the cannon, or null. */
+  steerX: number | null
   firing: boolean
   /**
    * A tap that began and ended inside one frame. Held fire is sampled in the
@@ -206,13 +286,37 @@ export type GameState = {
   dyingFor: number
   /** Counts down the wave-clear pause. */
   clearingFor: number
+  /** What the wave just cleared paid, for the banner. */
+  clearBonus: { clear: number; clean: number } | null
   /** 0–1 flash when the cannon is hit. */
   hitFlash: number
   /** Ships killed this wave without being hit — drives the clean-wave bonus. */
   cleanWave: boolean
+  /** Kills in a row, each inside CHAIN_WINDOW of the last. */
+  chain: number
+  /** Seconds left to land the next one. */
+  chainT: number
+  bestChain: number
+  /** Lit ships destroyed before they fired. */
+  defused: number
   shotsFired: number
   shotsHit: number
   time: number
+  /** How the run ended, once it has. */
+  endCause: EndCause | null
+  // Presentation only: nothing below changes what happens in a run.
+  bits: Bit[]
+  rings: Ring[]
+  floaters: Floater[]
+  ripples: Ripple[]
+  /** 0–1 knock on the screen, decaying. */
+  shake: number
+  /** 0–1 barrel recoil after a shot. */
+  kick: number
+  /** -1..1, the cannon leaning into its travel. */
+  lean: number
+  /** 0–1 as the cannon arrives after a respawn. */
+  respawn: number
 }
 
 export type Snapshot = {
@@ -221,12 +325,16 @@ export type Snapshot = {
   lives: number
   wave: number
   shipsLeft: number
-  /** Percentage of shots that found a hull, for the end-of-run card. */
+  /** Percentage of rounds that found something, for the end-of-run card. */
   accuracy: number
   spread: number
   slow: number
   pierce: number
   jam: boolean
+  chain: number
+  mult: number
+  bestChain: number
+  endCause: EndCause | null
 }
 
 export const MAX_TIER = 3
@@ -235,6 +343,8 @@ const CANNON_W = 0.112
 const CANNON_H = 0.066
 /** Keeps pace with the wider formation — the gaps to cross got bigger too. */
 const CANNON_SPEED = 0.82
+/** A steering finger closer than this to the cannon holds it still. */
+const STEER_DEAD = 0.004
 
 const PLAYER_SHOT_SPEED = 1.5
 const PLAYER_SHOT_W = 0.008
@@ -244,11 +354,13 @@ const PLAYER_SHOT_H = 0.038
  * rounds now, and pickups only arrive on a carrier you have to shoot down, so
  * the old three-shot drip left waves grinding.
  */
-const MAX_PLAYER_SHOTS = 4
+export const MAX_PLAYER_SHOTS = 4
 const FIRE_COOLDOWN = 0.22
 
 const ENEMY_SHOT_W = 0.015
 const ENEMY_SHOT_H = 0.04
+/** Seconds between the rounds of one column's burst. */
+const BURST_GAP = 0.11
 
 /** Below the floating HUD, above the fleet's top row. */
 const CARRIER_Y = 0.078
@@ -273,12 +385,15 @@ export const POWER_LABEL: Record<PowerKind, string> = {
   spread: 'Spread',
 }
 
-/** Hues distinct from the fleet's violet and sky and the hostile rose. */
+/**
+ * The site's own colours, kept clear of the fleet's purples, the cannon's
+ * green and the volley's red: amber, orange, teal and sky.
+ */
 export const POWER_HUE: Record<PowerKind, number> = {
-  pierce: 38,
-  jam: 172,
-  slow: 128,
-  spread: 18,
+  pierce: 40,
+  jam: 204,
+  slow: 183,
+  spread: 22,
 }
 
 /**
@@ -302,13 +417,35 @@ function pickPowerKind(): PowerKind {
   return 'spread'
 }
 
-const DEATH_PAUSE = 1.1
-const CLEAR_PAUSE = 1.3
+const DEATH_PAUSE = 1.3
+/** Long enough to watch the line go. */
+export const LINE_PAUSE = 1.8
+export const CLEAR_PAUSE = 1.7
 const RESPAWN_FLASH = 0.9
+
+/** Seconds each ship takes to fly into its slot, and how long a wave's name holds. */
+const ENTER_TIME = 0.75
+export const WAVE_BANNER = 2
 
 const SCORE_ROW = [40, 30, 20, 15, 10] as const
 const SCORE_WAVE_CLEAR = 250
 const SCORE_CLEAN_WAVE = 500
+/** On top of the ship's own points, for taking a lit ship before it fires. */
+const SCORE_DEFUSE = 50
+
+/**
+ * Kills in quick succession. Any hit keeps the chain alive, so grinding through
+ * plate does not break it; only kills lengthen it. It holds still while there
+ * is nothing to shoot — a wave flying in, a wave cleared — and carries on into
+ * the next wave.
+ */
+export const CHAIN_WINDOW = 1.8
+export const CHAIN_STEP = 8
+export const MAX_MULT = 4
+
+export function chainMult(chain: number): number {
+  return Math.min(MAX_MULT, 1 + Math.floor(chain / CHAIN_STEP))
+}
 
 // ------------------------------------------------------------------- tuning
 
@@ -321,7 +458,7 @@ function marchSpeed(wave: number, shipsLeft: number, total: number): number {
 }
 
 /** Seconds of warning before a volley fires. Shrinking this is the real ramp. */
-function chargeTime(wave: number): number {
+export function chargeTime(wave: number): number {
   return Math.max(0.62, 1.25 - (wave - 1) * 0.07)
 }
 
@@ -347,14 +484,54 @@ function enemyShotSpeed(wave: number): number {
   return 0.44 + Math.min(0.3, (wave - 1) * 0.035)
 }
 
+/** Rounds per hot column: a pair at first, three from wave five. */
+function burstCount(wave: number): number {
+  return wave < 5 ? 2 : 3
+}
+
+/** How far the volley's lanes lean, from wave three. */
+function leanFor(wave: number): number {
+  return wave >= 3 ? 0.16 + Math.min(0.16, (wave - 3) * 0.03) : 0
+}
+
 // ------------------------------------------------------------------ helpers
 
+function clamp01(v: number) {
+  return Math.max(0, Math.min(1, v))
+}
+
+/** Seconds from a wave's start until the last of its ships is in its slot. */
+export function introTime(layout: Layout): number {
+  return (layout.rows - 1) * 0.1 + ((layout.cols - 1) / 2) * 0.045 + ENTER_TIME
+}
+
+/**
+ * 0 while a ship waits above the field, 1 once it is in its slot. The front row
+ * comes in first, the middle of each row before its ends, so nothing flies in
+ * through a ship already parked.
+ */
+export function enterProgress(state: GameState, ship: Ship): number {
+  const { rows, cols } = state.layout
+  const delay = (rows - 1 - ship.row) * 0.1 + Math.abs(ship.col - (cols - 1) / 2) * 0.045
+  return clamp01((state.waveT - delay) / ENTER_TIME)
+}
+
+/**
+ * Where a ship is, flight in included — hits are taken where it is drawn. Each
+ * ship drops straight down its own column into its slot, so nothing overlaps on
+ * the way in and a round that meets one early meets it where it will be.
+ */
 export function shipX(state: GameState, ship: Ship): number {
   return state.formX + ship.col * state.layout.colStep
 }
 
 export function shipY(state: GameState, ship: Ship): number {
-  return state.formY + ship.row * state.layout.rowStep
+  const slot = state.formY + ship.row * state.layout.rowStep
+  const e = enterProgress(state, ship)
+  if (e >= 1) return slot
+  const from = -state.layout.shipH - 0.06
+  const k = 1 - (1 - e) ** 3
+  return from + (slot - from) * k
 }
 
 export function shipSize(state: GameState) {
@@ -370,6 +547,11 @@ export function cannonRect(state: GameState) {
   }
 }
 
+/** Top of the ground the cannon runs on. */
+export function railY(layout: Layout) {
+  return layout.cannonY + CANNON_H
+}
+
 export function dropRadius() {
   return DROP_R
 }
@@ -378,6 +560,13 @@ export function shotSize(hostile: boolean) {
   return hostile
     ? { w: ENEMY_SHOT_W, h: ENEMY_SHOT_H }
     : { w: PLAYER_SHOT_W, h: PLAYER_SHOT_H }
+}
+
+/** Trigger pulls the cannon could make right now, 0–4, for the lights on its base. */
+export function roundsReady(state: GameState): number {
+  const inAir = state.shots.filter((s) => !s.hostile).length
+  if (state.buffSpread > 0) return Math.max(0, Math.min(4, Math.floor((MAX_PLAYER_SHOTS * 3 - inAir) / 3)))
+  return Math.max(0, MAX_PLAYER_SHOTS - inAir)
 }
 
 function aliveShips(state: GameState): Ship[] {
@@ -398,12 +587,21 @@ export function shipTier(wave: number, row: number): number {
   return Math.min(MAX_TIER, tier)
 }
 
+/** Hue each kind of ship wears: the site's magenta, violet and indigo. */
+export const SPECIES_HUE: Record<Species, number> = {
+  squid: 289,
+  crab: 259,
+  octo: 236,
+}
+
+export const CANNON_HUE = 153
+
 function makeShips(wave: number, layout: Layout): Ship[] {
   const ships: Ship[] = []
   for (let row = 0; row < layout.rows; row++) {
     for (let col = 0; col < layout.cols; col++) {
       const tier = shipTier(wave, row)
-      ships.push({ col, row, alive: true, tier, hp: tier, hurt: 0, charge: 0, pop: 0 })
+      ships.push({ col, row, alive: true, tier, hp: tier, hurt: 0, charging: false, charge: 0 })
     }
   }
   return ships
@@ -420,8 +618,10 @@ function startFormY(wave: number, layout: Layout): number {
 
 function resetWave(state: GameState, wave: number) {
   state.wave = wave
+  state.waveT = 0
   state.ships = makeShips(wave, state.layout)
   state.shots = []
+  state.bursts = []
   state.formX = (1 - state.layout.formW) / 2
   state.formY = startFormY(wave, state.layout)
   state.formDir = 1
@@ -430,15 +630,18 @@ function resetWave(state: GameState, wave: number) {
   state.hotCols = []
   state.volleySpread = 0
   state.cleanWave = true
+  state.clearBonus = null
   state.drops = []
   state.carrier = null
   state.carrierIn = CARRIER_FIRST
 }
 
+/**
+ * A fresh cannon after losing one. The input stays as it is — a key still held
+ * through the pause should drive the new cannon, not wait to be pressed again.
+ */
 function resetCannon(state: GameState) {
   state.cannonX = 0.5
-  state.moveDir = 0
-  state.firing = false
   state.fireQueued = false
   state.fireCooldown = 0
   state.shots = []
@@ -450,6 +653,9 @@ function resetCannon(state: GameState) {
   state.buffSlow = 0
   state.pierceLeft = 0
   state.jamArmed = false
+  state.lean = 0
+  state.kick = 0
+  state.respawn = 1
 }
 
 export function createInitialState(portrait = true): GameState {
@@ -460,11 +666,14 @@ export function createInitialState(portrait = true): GameState {
     best: 0,
     lives: 3,
     wave: 1,
+    waveT: 0,
     formX: 0,
     formY: 0,
     formDir: 1,
+    gait: 0,
     ships: [],
     shots: [],
+    bursts: [],
     carrier: null,
     carrierIn: CARRIER_FIRST,
     drops: [],
@@ -476,6 +685,7 @@ export function createInitialState(portrait = true): GameState {
     tookFor: 0,
     cannonX: 0.5,
     moveDir: 0,
+    steerX: null,
     firing: false,
     fireQueued: false,
     fireCooldown: 0,
@@ -485,20 +695,38 @@ export function createInitialState(portrait = true): GameState {
     volleySpread: 0,
     dyingFor: 0,
     clearingFor: 0,
+    clearBonus: null,
     hitFlash: 0,
     cleanWave: true,
+    chain: 0,
+    chainT: 0,
+    bestChain: 0,
+    defused: 0,
     shotsFired: 0,
     shotsHit: 0,
     time: 0,
+    endCause: null,
+    bits: [],
+    rings: [],
+    floaters: [],
+    ripples: [],
+    shake: 0,
+    kick: 0,
+    lean: 0,
+    respawn: 0,
   }
   resetWave(state, 1)
+  // Behind the start card the fleet is already in formation.
+  state.waveT = 99
   return state
 }
 
 export function startGame(prev: GameState, portrait = true): GameState {
   const state = createInitialState(portrait)
   state.phase = 'playing'
+  state.waveT = 0
   state.best = prev.best
+  state.respawn = 1
   return state
 }
 
@@ -510,6 +738,111 @@ export function jumpToWave(prev: GameState, wave: number): GameState {
   resetCannon(state)
   state.phase = 'playing'
   return state
+}
+
+// ------------------------------------------------------------------- effects
+
+function rand(a: number, b: number) {
+  return a + Math.random() * (b - a)
+}
+
+function addRing(state: GameState, x: number, y: number, r0: number, r1: number, life: number, hue: number) {
+  state.rings.push({ x, y, r0, r1, life, maxLife: life, hue })
+}
+
+function addSparks(state: GameState, x: number, y: number, n: number, hue: number, speed = 0.5, up = 0) {
+  for (let i = 0; i < n; i++) {
+    const a = Math.random() * Math.PI * 2
+    const v = speed * rand(0.35, 1)
+    const life = rand(0.22, 0.45)
+    state.bits.push({
+      kind: 'spark',
+      x,
+      y,
+      vx: Math.cos(a) * v,
+      vy: Math.sin(a) * v - up,
+      life,
+      maxLife: life,
+      hue,
+      size: rand(0.004, 0.008),
+      angle: 0,
+      spin: 0,
+    })
+  }
+}
+
+function addShards(state: GameState, x: number, y: number, n: number, hue: number, spread: number, size: number) {
+  for (let i = 0; i < n; i++) {
+    const a = Math.random() * Math.PI * 2
+    const v = rand(0.08, 0.34)
+    const life = rand(0.55, 1.05)
+    state.bits.push({
+      kind: 'shard',
+      x: x + Math.cos(a) * spread * Math.random(),
+      y: y + Math.sin(a) * spread * Math.random(),
+      vx: Math.cos(a) * v,
+      vy: Math.sin(a) * v - 0.06,
+      life,
+      maxLife: life,
+      hue,
+      size: size * rand(0.55, 1.15),
+      angle: Math.random() * Math.PI * 2,
+      spin: rand(-9, 9),
+    })
+  }
+}
+
+function addFloater(state: GameState, x: number, y: number, text: string, tone: FloaterTone, life = 0.9) {
+  state.floaters.push({ x, y, text, tone, life, maxLife: life })
+  if (state.floaters.length > 14) state.floaters.shift()
+}
+
+function addShake(state: GameState, amount: number) {
+  state.shake = Math.min(1, state.shake + amount)
+}
+
+/** Keep the debris bounded however busy a moment gets. */
+const MAX_BITS = 420
+
+function tickEffects(state: GameState, dt: number) {
+  const bits: Bit[] = []
+  const from = Math.max(0, state.bits.length - MAX_BITS)
+  for (let i = from; i < state.bits.length; i++) {
+    const b = state.bits[i]!
+    const life = b.life - dt
+    if (life <= 0) continue
+    // Per second, not per frame, so a fast screen throws debris no shorter.
+    const drag = Math.pow(b.kind === 'spark' ? 0.04 : 0.3, dt)
+    const fall = b.kind === 'plate' ? 0.95 : b.kind === 'shard' ? 0.3 : 0.12
+    const vx = b.vx * drag
+    const vy = b.vy * drag + fall * dt
+    bits.push({ ...b, life, vx, vy, x: b.x + vx * dt, y: b.y + vy * dt, angle: b.angle + b.spin * dt })
+  }
+  state.bits = bits
+  state.rings = state.rings.filter((r) => r.life > dt).map((r) => ({ ...r, life: r.life - dt }))
+  state.floaters = state.floaters
+    .filter((f) => f.life > dt)
+    .map((f) => ({ ...f, life: f.life - dt, y: f.y - dt * 0.05 }))
+  state.ripples = state.ripples.filter((r) => r.life > dt).map((r) => ({ ...r, life: r.life - dt }))
+  state.shake = Math.max(0, state.shake - dt * 2.4)
+  state.kick = Math.max(0, state.kick - dt * 7)
+  state.respawn = Math.max(0, state.respawn - dt * 2.2)
+}
+
+/** A ship's centre, for aiming debris at. */
+function shipCentre(state: GameState, ship: Ship) {
+  return {
+    x: shipX(state, ship) + state.layout.shipW / 2,
+    y: shipY(state, ship) + state.layout.shipH / 2,
+  }
+}
+
+/** Where a ship's shots leave it: the nozzle under its middle. */
+export function emitterOf(state: GameState, ship: Ship) {
+  return {
+    x: shipX(state, ship) + state.layout.shipW / 2,
+    y: shipY(state, ship) + state.layout.shipH * 0.92,
+  }
 }
 
 // ------------------------------------------------------------------- volleys
@@ -528,12 +861,20 @@ function beginCharge(state: GameState) {
   // Shuffle, then take — every hot column is a real threat and a real gap.
   for (let i = cols.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1))
-    ;[cols[i], cols[j]] = [cols[j], cols[i]]
+    ;[cols[i], cols[j]] = [cols[j]!, cols[i]!]
   }
   state.hotCols = cols.slice(0, want).sort((a, b) => a - b)
+  // The front ship of each hot column is the one that winds up and fires.
+  for (const col of state.hotCols) {
+    const front = frontShipOfColumn(state, col)
+    if (front) {
+      front.charging = true
+      front.charge = 0
+    }
+  }
 
   // From wave 3 the curtain can lean, so a cold column is not automatically safe.
-  const lean = state.wave >= 3 ? 0.16 + Math.min(0.16, (state.wave - 3) * 0.03) : 0
+  const lean = leanFor(state.wave)
   state.volleySpread = lean === 0 ? 0 : (Math.random() * 2 - 1) * lean
 
   state.chargeLeft = chargeTime(state.wave)
@@ -551,42 +892,72 @@ function frontShipOfColumn(state: GameState, col: number): Ship | null {
 }
 
 function fireVolley(state: GameState) {
-  for (const s of state.ships) s.charge = 0
-
-  if (state.jamArmed) {
-    // The whole formation winds up and then nothing comes out of it.
-    state.jamArmed = false
-    state.hotCols = []
-    state.chargeLeft = 0
-    state.volleyIn = volleyGap(state.wave)
-    sfx('whoosh')
-    return
-  }
-
-  const speed = enemyShotSpeed(state.wave)
-  let fired = 0
-  for (const col of state.hotCols) {
-    const ship = frontShipOfColumn(state, col)
-    if (!ship) continue
-    state.shots.push({
-      x: shipX(state, ship) + state.layout.shipW / 2,
-      y: shipY(state, ship) + state.layout.shipH,
-      vx: state.volleySpread * speed,
-      vy: speed,
-      hostile: true,
-    })
-    fired += 1
+  const lanes = state.ships.filter((s) => s.alive && s.charging)
+  for (const s of state.ships) {
+    s.charging = false
+    s.charge = 0
   }
   state.hotCols = []
   state.chargeLeft = 0
   state.volleyIn = volleyGap(state.wave)
-  if (fired > 0) sfx('boom')
+  if (lanes.length === 0) return
+
+  if (state.jamArmed) {
+    // The whole formation winds up and then nothing comes out of it.
+    state.jamArmed = false
+    for (const ship of lanes) {
+      const e = emitterOf(state, ship)
+      addSparks(state, e.x, e.y, 6, POWER_HUE.jam, 0.28)
+    }
+    const mid = lanes[Math.floor(lanes.length / 2)]!
+    const e = emitterOf(state, mid)
+    addFloater(state, e.x, e.y + 0.05, 'Jammed', 'jam', 1.1)
+    sfx('whoosh')
+    return
+  }
+
+  for (const ship of lanes) {
+    state.bursts.push({ col: ship.col, row: ship.row, left: burstCount(state.wave), next: 0 })
+  }
+  sfx('boom')
+}
+
+/** Let each fired column empty its burst. A ship that dies mid-burst takes the rest with it. */
+function advanceBursts(state: GameState, dt: number) {
+  if (state.bursts.length === 0) return
+  const speed = enemyShotSpeed(state.wave)
+  const kept: Burst[] = []
+  for (const burst of state.bursts) {
+    const ship = state.ships.find((s) => s.col === burst.col && s.row === burst.row)
+    if (!ship || !ship.alive) continue
+    burst.next -= dt
+    if (burst.next <= 0) {
+      const e = emitterOf(state, ship)
+      state.shots.push({
+        x: e.x,
+        y: e.y - ENEMY_SHOT_H * 0.5,
+        vx: state.volleySpread * speed,
+        vy: speed,
+        hostile: true,
+      })
+      addSparks(state, e.x, e.y, 3, 4, 0.22)
+      burst.left -= 1
+      burst.next += BURST_GAP
+    }
+    if (burst.left > 0) kept.push(burst)
+  }
+  state.bursts = kept
 }
 
 // -------------------------------------------------------------------- inputs
 
 export function setMove(state: GameState, dir: number): GameState {
   return { ...state, moveDir: Math.max(-1, Math.min(1, dir)) }
+}
+
+/** Steer toward a point on the field, in stage-width units; null lets go. */
+export function setSteer(state: GameState, x: number | null): GameState {
+  return { ...state, steerX: x === null ? null : Math.max(0, Math.min(1, x)) }
 }
 
 export function setFiring(state: GameState, firing: boolean): GameState {
@@ -598,7 +969,7 @@ function tryFire(state: GameState) {
   if (state.fireCooldown > 0) return
   const spread = state.buffSpread > 0
   // A fan is one trigger pull, so it gets its own headroom rather than
-  // filling the three-shot limit on the first press.
+  // filling the four-shot limit on the first press.
   const cap = spread ? MAX_PLAYER_SHOTS * 3 : MAX_PLAYER_SHOTS
   if (state.shots.filter((s) => !s.hostile).length >= cap) return
 
@@ -617,7 +988,8 @@ function tryFire(state: GameState) {
     })
   }
   state.fireCooldown = FIRE_COOLDOWN
-  state.shotsFired += 1
+  state.shotsFired += lanes.length
+  state.kick = 1
   sfx('fire')
 }
 
@@ -636,6 +1008,19 @@ function overlaps(
   return ax < bx + bw && ax + aw > bx && ay < by + bh && ay + ah > by
 }
 
+/**
+ * The cannon's body, as two boxes rather than one: the full-width sled, and
+ * the turret on top of it. A shot that only clips the empty air over the sled's
+ * shoulders is a miss, as it looks.
+ */
+function hitsCannon(state: GameState, x: number, y: number, w: number, h: number) {
+  const c = cannonRect(state)
+  const sledTop = c.y + c.h * 0.5
+  if (overlaps(x, y, w, h, c.x, sledTop, c.w, c.h - c.h * 0.5)) return true
+  const turretW = c.w * 0.5
+  return overlaps(x, y, w, h, state.cannonX - turretW / 2, c.y - c.h * 0.1, turretW, c.h * 0.6)
+}
+
 function takeDrop(state: GameState, kind: PowerKind) {
   state.tookKind = kind
   state.tookFor = 1.1
@@ -643,6 +1028,10 @@ function takeDrop(state: GameState, kind: PowerKind) {
   else if (kind === 'slow') state.buffSlow = BUFF_TIME
   else if (kind === 'pierce') state.pierceLeft += PIERCE_SHOTS
   else state.jamArmed = true
+  const c = cannonRect(state)
+  addRing(state, state.cannonX, c.y + c.h * 0.4, 0.02, 0.11, 0.5, POWER_HUE[kind])
+  addSparks(state, state.cannonX, c.y + c.h * 0.3, 10, POWER_HUE[kind], 0.4, 0.1)
+  addFloater(state, state.cannonX, c.y - 0.03, POWER_LABEL[kind], 'pickup', 1.1)
   sfx('good')
 }
 
@@ -657,7 +1046,7 @@ function advanceCarrier(state: GameState, dt: number) {
     // Enter from whichever side, just above the fleet's starting rows.
     const fromLeft = Math.random() < 0.5
     state.carrier = {
-      x: fromLeft ? -CARRIER_R : 1 + CARRIER_R,
+      x: fromLeft ? -CARRIER_R * 1.5 : 1 + CARRIER_R * 1.5,
       y: CARRIER_Y,
       vx: fromLeft ? CARRIER_SPEED : -CARRIER_SPEED,
       kind: pickPowerKind(),
@@ -672,7 +1061,7 @@ function advanceCarrier(state: GameState, dt: number) {
   if (c.x < -CARRIER_R * 2 || c.x > 1 + CARRIER_R * 2) state.carrier = null
 }
 
-/** A player round that met the carrier shakes the capsule loose. */
+/** A player round that met the carrier, or the capsule under it, shakes the capsule loose. */
 function shotHitsCarrier(state: GameState, shot: Shot): boolean {
   const c = state.carrier
   if (!c || shot.hostile) return false
@@ -686,37 +1075,35 @@ function shotHitsCarrier(state: GameState, shot: Shot): boolean {
       c.x - CARRIER_R,
       c.y - CARRIER_R * 0.6,
       CARRIER_R * 2,
-      CARRIER_R * 1.2,
+      CARRIER_R * 1.9,
     )
   ) {
     return false
   }
-  state.drops.push({ x: c.x, y: c.y, kind: c.kind, life: 12 })
+  if (!shot.hit) {
+    shot.hit = true
+    state.shotsHit += 1
+  }
+  if (state.chain > 0) state.chainT = CHAIN_WINDOW
+  state.drops.push({ x: c.x, y: c.y + CARRIER_R * 0.9, kind: c.kind, life: 12 })
   state.score += SCORE_CARRIER
+  addShards(state, c.x, c.y, 8, POWER_HUE[c.kind], CARRIER_R * 0.6, 0.012)
+  addSparks(state, c.x, c.y, 10, POWER_HUE[c.kind], 0.5)
+  addRing(state, c.x, c.y, 0.02, 0.1, 0.45, POWER_HUE[c.kind])
+  addFloater(state, c.x, c.y - 0.035, `+${SCORE_CARRIER}`, 'score')
+  addShake(state, 0.12)
   state.carrier = null
   sfx('good')
   return true
 }
 
 function advanceDrops(state: GameState, dt: number) {
-  const cannon = cannonRect(state)
   const kept: Drop[] = []
   for (const drop of state.drops) {
     drop.y += DROP_FALL * dt
     drop.life -= dt
     if (drop.life <= 0 || drop.y - DROP_R > state.layout.fieldH) continue
-    if (
-      overlaps(
-        drop.x - DROP_R,
-        drop.y - DROP_R,
-        DROP_R * 2,
-        DROP_R * 2,
-        cannon.x,
-        cannon.y,
-        cannon.w,
-        cannon.h,
-      )
-    ) {
+    if (hitsCannon(state, drop.x - DROP_R, drop.y - DROP_R, DROP_R * 2, DROP_R * 2)) {
       takeDrop(state, drop.kind)
       continue
     }
@@ -725,27 +1112,123 @@ function advanceDrops(state: GameState, dt: number) {
   state.drops = kept
 }
 
+/** Which band of the points table a row falls in, spread over however many rows this board has. */
+function scoreBand(state: GameState, row: number) {
+  return Math.min(
+    SCORE_ROW.length - 1,
+    Math.floor((row * SCORE_ROW.length) / Math.max(1, state.layout.rows)),
+  )
+}
+
+/** Armour coming off: the plate itself, a few sparks, a small knock. */
+function shedPlate(state: GameState, ship: Ship) {
+  const { x, y } = shipCentre(state, ship)
+  const { shipW, shipH } = state.layout
+  const hue = SPECIES_HUE[speciesFor(ship.row, state.layout.rows)]
+  // hp has already dropped: 2 left means the side plates went, 1 the helmet.
+  const plates =
+    ship.hp >= 2
+      ? [
+          { dx: -shipW * 0.45, dy: 0 },
+          { dx: shipW * 0.45, dy: 0 },
+        ]
+      : [{ dx: 0, dy: -shipH * 0.42 }]
+  for (const p of plates) {
+    const life = rand(0.7, 1)
+    state.bits.push({
+      kind: 'plate',
+      x: x + p.dx,
+      y: y + p.dy,
+      vx: Math.sign(p.dx || rand(-1, 1)) * rand(0.06, 0.16),
+      vy: rand(-0.2, -0.08),
+      life,
+      maxLife: life,
+      hue,
+      size: shipW * (p.dy ? 0.36 : 0.16),
+      angle: 0,
+      spin: rand(-7, 7),
+    })
+  }
+  addSparks(state, x, y - shipH * 0.2, 6, -1, 0.42)
+  addShake(state, 0.05)
+}
+
+function explodeShip(state: GameState, ship: Ship) {
+  const { x, y } = shipCentre(state, ship)
+  const { shipW } = state.layout
+  const hue = SPECIES_HUE[speciesFor(ship.row, state.layout.rows)]
+  addShards(state, x, y, 9, hue, shipW * 0.3, shipW * 0.13)
+  addSparks(state, x, y, 8, hue, 0.55)
+  addRing(state, x, y, shipW * 0.2, shipW * 0.62, 0.34, hue)
+  addShake(state, ship.tier >= 2 ? 0.16 : 0.1)
+}
+
 /** Returns true when the round finished it off. */
-function hitShip(state: GameState, ship: Ship): boolean {
-  state.shotsHit += 1
+function hitShip(state: GameState, ship: Ship, shot: Shot): boolean {
+  if (!shot.hit) {
+    shot.hit = true
+    state.shotsHit += 1
+  }
+  // Any hit keeps the chain going; only a kill makes it longer.
+  if (state.chain > 0) state.chainT = CHAIN_WINDOW
+
   ship.hp -= 1
   if (ship.hp > 0) {
     ship.hurt = 1
+    shedPlate(state, ship)
     sfx('tap')
     return false
   }
+
   ship.alive = false
-  ship.pop = 0.32
+  const before = chainMult(state.chain)
+  state.chain += 1
+  state.chainT = CHAIN_WINDOW
+  state.bestChain = Math.max(state.bestChain, state.chain)
+  const mult = chainMult(state.chain)
+
   // Plated hulls are worth what they cost you to break.
   // Spread the value table across however many rows this board has, so a
   // squat landscape fleet is not worth more per ship than a tall upright one.
-  const band = Math.min(
-    SCORE_ROW.length - 1,
-    Math.floor((ship.row * SCORE_ROW.length) / Math.max(1, state.layout.rows)),
-  )
-  state.score += SCORE_ROW[band] * ship.tier
-  sfx('hit')
+  let gained = SCORE_ROW[scoreBand(state, ship.row)] * ship.tier * mult
+  const { x, y } = shipCentre(state, ship)
+
+  if (ship.charging) {
+    // A lit ship taken before it fires takes its shot with it.
+    gained += SCORE_DEFUSE * mult
+    ship.charging = false
+    ship.charge = 0
+    state.hotCols = state.hotCols.filter((c) => c !== ship.col)
+    state.defused += 1
+    addSparks(state, x, y + state.layout.shipH * 0.4, 10, 4, 0.5)
+    addFloater(state, x, y + state.layout.shipH * 0.9, 'Stopped', 'defuse', 1)
+    sfx('perfect')
+  }
+
+  state.score += gained
+  explodeShip(state, ship)
+  addFloater(state, x, y - state.layout.shipH * 0.2, `+${gained}`, 'score')
+  if (mult > before) {
+    addFloater(state, x, y - state.layout.shipH * 0.75, `×${mult} chain`, 'chain', 1.2)
+    sfx('good')
+  }
+  sfx('hit', Math.min(5, Math.floor(state.chain / 3)))
   return true
+}
+
+function breakChain(state: GameState) {
+  state.chain = 0
+  state.chainT = 0
+}
+
+function clearCharge(state: GameState) {
+  state.chargeLeft = 0
+  state.hotCols = []
+  state.bursts = []
+  for (const s of state.ships) {
+    s.charging = false
+    s.charge = 0
+  }
 }
 
 function loseLife(state: GameState) {
@@ -755,18 +1238,41 @@ function loseLife(state: GameState) {
   state.phase = 'dying'
   state.dyingFor = DEATH_PAUSE
   state.shots = []
-  state.chargeLeft = 0
-  state.hotCols = []
-  for (const s of state.ships) s.charge = 0
+  clearCharge(state)
+  breakChain(state)
+  if (state.lives <= 0) state.endCause = 'lives'
+
+  // The cannon goes up in pieces.
+  const c = cannonRect(state)
+  const cx = state.cannonX
+  const cy = c.y + c.h * 0.55
+  addShards(state, cx, cy, 18, CANNON_HUE, c.w * 0.4, 0.016)
+  addSparks(state, cx, cy, 16, 4, 0.7, 0.2)
+  addSparks(state, cx, cy, 10, CANNON_HUE, 0.5, 0.25)
+  addRing(state, cx, cy, 0.02, 0.2, 0.55, 4)
+  addRing(state, cx, cy, 0.01, 0.12, 0.4, CANNON_HUE)
+  addShake(state, 0.9)
   sfx(state.lives > 0 ? 'hurt' : 'die')
 }
 
 /** Ships on the line end the run outright, however many lives are left. */
 function endRun(state: GameState) {
-  state.phase = 'gameover'
+  state.phase = 'dying'
+  state.dyingFor = LINE_PAUSE
   state.lives = 0
+  state.endCause = 'line'
   state.shots = []
-  state.best = Math.max(state.best, state.score)
+  state.hitFlash = 1
+  clearCharge(state)
+  breakChain(state)
+  // The line gives way along its whole length.
+  const y = state.layout.holdLine
+  for (let i = 0; i <= 12; i++) {
+    const x = i / 12
+    addSparks(state, x, y, 3, 4, 0.35, 0.1)
+    addShards(state, x, y, 1, 4, 0.01, 0.01)
+  }
+  addShake(state, 1)
   sfx('die')
 }
 
@@ -783,9 +1289,12 @@ function advanceFormation(state: GameState, dt: number) {
   const rightEdge = state.formX + maxCol * colStep + shipW
 
   const total = state.layout.cols * state.layout.rows
-  const step = marchSpeed(state.wave, live.length, total) * dt * state.formDir
+  const speed = marchSpeed(state.wave, live.length, total)
+  const step = speed * dt * state.formDir
   const nextLeft = leftEdge + step
   const nextRight = rightEdge + step
+  // Legs and claws keep time with the march, faster as the fleet thins.
+  state.gait += (speed * dt) / 0.022
 
   if (nextLeft < MARGIN || nextRight > 1 - MARGIN) {
     // Turn and drop — the pressure that eventually reaches the line.
@@ -800,8 +1309,8 @@ function advanceFormation(state: GameState, dt: number) {
 function advanceShots(state: GameState, dt: number) {
   const layout = state.layout
   const ships = aliveShips(state)
-  const cannon = cannonRect(state)
   const survivors: Shot[] = []
+  const floor = railY(layout)
 
   // Applied at move time rather than at fire time, so catching `slow` mid-volley
   // drags the shots already in the air as well as the next ones.
@@ -809,6 +1318,7 @@ function advanceShots(state: GameState, dt: number) {
 
   for (const shot of state.shots) {
     const rate = shot.hostile ? slow : 1
+    const lastY = shot.y
     shot.x += shot.vx * rate * dt
     shot.y += shot.vy * rate * dt
     const size = shotSize(shot.hostile)
@@ -818,9 +1328,18 @@ function advanceShots(state: GameState, dt: number) {
     if (left < -size.w || left > 1 + size.w) continue
 
     if (shot.hostile) {
-      if (overlaps(left, shot.y, size.w, size.h, cannon.x, cannon.y, cannon.w, cannon.h)) {
+      const nose = shot.y + size.h
+      if (lastY + size.h < layout.holdLine && nose >= layout.holdLine) {
+        state.ripples.push({ x: shot.x, life: 0.45 })
+      }
+      if (hitsCannon(state, left, shot.y, size.w, size.h)) {
         loseLife(state)
         return
+      }
+      if (nose >= floor) {
+        // Into the ground, in a spit of sparks.
+        addSparks(state, shot.x, floor, 4, 8, 0.3, 0.25)
+        continue
       }
       survivors.push(shot)
       continue
@@ -834,7 +1353,7 @@ function advanceShots(state: GameState, dt: number) {
       const sx = shipX(state, ship)
       const sy = shipY(state, ship)
       if (!overlaps(left, shot.y, size.w, size.h, sx, sy, layout.shipW, layout.shipH)) continue
-      hitShip(state, ship)
+      hitShip(state, ship, shot)
       // A piercing round keeps climbing, so it can take a whole column.
       if (!shot.pierce) {
         consumed = true
@@ -847,23 +1366,46 @@ function advanceShots(state: GameState, dt: number) {
   state.shots = survivors
 }
 
+function moveCannon(state: GameState, dt: number) {
+  const x0 = state.cannonX
+  const lo = CANNON_W / 2 + 0.01
+  const hi = 1 - CANNON_W / 2 - 0.01
+  let next = x0
+  if (state.moveDir !== 0) {
+    next = x0 + state.moveDir * CANNON_SPEED * dt
+  } else if (state.steerX !== null) {
+    const want = Math.max(lo, Math.min(hi, state.steerX))
+    const d = want - x0
+    if (Math.abs(d) > STEER_DEAD) next = x0 + Math.sign(d) * Math.min(Math.abs(d), CANNON_SPEED * dt)
+  }
+  state.cannonX = Math.max(lo, Math.min(hi, next))
+  const v = dt > 0 ? (state.cannonX - x0) / (CANNON_SPEED * dt) : 0
+  state.lean += (v - state.lean) * Math.min(1, dt * 12)
+}
+
 export function tick(prev: GameState, dt: number): GameState {
   const state: GameState = {
     ...prev,
     ships: prev.ships.map((s) => ({ ...s })),
     shots: prev.shots.map((s) => ({ ...s })),
+    bursts: prev.bursts.map((b) => ({ ...b })),
     carrier: prev.carrier ? { ...prev.carrier } : null,
     drops: prev.drops.map((d) => ({ ...d })),
     hotCols: [...prev.hotCols],
+    bits: prev.bits,
+    rings: prev.rings,
+    floaters: prev.floaters,
+    ripples: prev.ripples,
   }
   state.time += dt
   state.hitFlash = Math.max(0, state.hitFlash - dt * 1.4)
   state.tookFor = Math.max(0, state.tookFor - dt)
   if (state.tookFor <= 0) state.tookKind = null
   for (const s of state.ships) {
-    if (s.pop > 0) s.pop = Math.max(0, s.pop - dt)
     if (s.hurt > 0) s.hurt = Math.max(0, s.hurt - dt * 3)
   }
+  // Debris keeps flying through every pause, so a death or a clear plays out.
+  tickEffects(state, dt)
 
   if (state.phase === 'menu' || state.phase === 'gameover') return state
 
@@ -883,18 +1425,24 @@ export function tick(prev: GameState, dt: number): GameState {
 
   if (state.phase === 'clearing') {
     state.clearingFor -= dt
+    // Rounds still climbing carry on off the top; there is nothing left to hit.
+    state.shots = state.shots.filter((s) => {
+      s.x += s.vx * dt
+      s.y += s.vy * dt
+      return s.y > -PLAYER_SHOT_H
+    })
     if (state.clearingFor > 0) return state
+    // The cannon stays where it is, and so do its buffs: a wave cleared is
+    // not a cannon lost.
     resetWave(state, state.wave + 1)
-    resetCannon(state)
     state.phase = 'playing'
     return state
   }
 
-  // Cannon.
-  state.cannonX = Math.max(
-    CANNON_W / 2 + 0.01,
-    Math.min(1 - CANNON_W / 2 - 0.01, state.cannonX + state.moveDir * CANNON_SPEED * dt),
-  )
+  state.waveT += dt
+  const entering = state.waveT < introTime(state.layout)
+
+  moveCannon(state, dt)
   state.buffSpread = Math.max(0, state.buffSpread - dt)
   state.buffSlow = Math.max(0, state.buffSlow - dt)
 
@@ -905,24 +1453,32 @@ export function tick(prev: GameState, dt: number): GameState {
   advanceCarrier(state, dt)
   advanceDrops(state, dt)
 
-  advanceFormation(state, dt)
+  // The fleet holds its fire and its march until every ship is in its slot.
+  if (!entering) {
+    advanceFormation(state, dt)
 
-  // Volley cycle: wait, light up, loose.
-  if (state.chargeLeft > 0) {
-    state.chargeLeft -= dt
-    const total = chargeTime(state.wave)
-    const progress = 1 - Math.max(0, state.chargeLeft) / total
-    for (const s of state.ships) {
-      s.charge = s.alive && state.hotCols.includes(s.col) ? progress : 0
+    // Volley cycle: wait, light up, loose.
+    if (state.chargeLeft > 0) {
+      state.chargeLeft -= dt
+      const total = chargeTime(state.wave)
+      const progress = 1 - Math.max(0, state.chargeLeft) / total
+      for (const s of state.ships) s.charge = s.alive && s.charging ? progress : 0
+      if (state.chargeLeft <= 0) fireVolley(state)
+    } else {
+      state.volleyIn -= dt
+      if (state.volleyIn <= 0) beginCharge(state)
     }
-    if (state.chargeLeft <= 0) fireVolley(state)
-  } else {
-    state.volleyIn -= dt
-    if (state.volleyIn <= 0) beginCharge(state)
   }
 
+  advanceBursts(state, dt)
   advanceShots(state, dt)
   if (state.phase !== 'playing') return state
+
+  // The chain's clock only runs while there is something to shoot.
+  if (!entering && state.chain > 0) {
+    state.chainT -= dt
+    if (state.chainT <= 0) breakChain(state)
+  }
 
   // Did anything reach the line?
   const live = aliveShips(state)
@@ -934,11 +1490,18 @@ export function tick(prev: GameState, dt: number): GameState {
   }
 
   if (live.length === 0) {
-    state.score += SCORE_WAVE_CLEAR
-    if (state.cleanWave) state.score += SCORE_CLEAN_WAVE
+    const clear = SCORE_WAVE_CLEAR
+    const clean = state.cleanWave ? SCORE_CLEAN_WAVE : 0
+    state.score += clear + clean
+    state.clearBonus = { clear, clean }
     state.phase = 'clearing'
     state.clearingFor = CLEAR_PAUSE
-    state.shots = []
+    // What was still falling fizzles out where it is.
+    for (const shot of state.shots) {
+      if (shot.hostile) addSparks(state, shot.x, shot.y + ENEMY_SHOT_H / 2, 3, 4, 0.2)
+    }
+    state.shots = state.shots.filter((s) => !s.hostile)
+    state.bursts = []
     sfx('good')
   }
 
@@ -958,5 +1521,9 @@ export function toSnapshot(state: GameState): Snapshot {
     slow: state.buffSlow,
     pierce: state.pierceLeft,
     jam: state.jamArmed,
+    chain: state.chain,
+    mult: chainMult(state.chain),
+    bestChain: state.bestChain,
+    endCause: state.endCause,
   }
 }

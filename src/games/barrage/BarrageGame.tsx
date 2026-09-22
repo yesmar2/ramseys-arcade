@@ -32,13 +32,14 @@ import {
   POWER_LABEL,
   setFiring,
   setMove,
+  setSteer,
   startGame,
   tick,
   toSnapshot,
   type GameState,
   type Snapshot,
 } from './game'
-import { renderGame } from './render'
+import { fieldXAt, renderGame } from './render'
 import { beginRun } from '../../lib/runSession'
 
 type HoldKey = 'left' | 'right' | 'fire'
@@ -129,8 +130,26 @@ export function BarrageGame() {
     syncControls()
   }
 
+  /** The finger or pointer steering the cannon across the field, if any. */
+  const steerRef = useRef<number | null>(null)
+
+  const steerTo = (clientX: number) => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const rect = canvas.getBoundingClientRect()
+    const portraitField = stateRef.current.layout.fieldH > 1
+    const x = fieldXAt(clientX - rect.left, rect.width, rect.height, portraitField)
+    stateRef.current = setSteer(stateRef.current, x)
+  }
+
+  const endSteer = () => {
+    steerRef.current = null
+    stateRef.current = setSteer(stateRef.current, null)
+  }
+
   const releaseAll = () => {
     for (const key of ['left', 'right', 'fire'] as HoldKey[]) heldRef.current[key].clear()
+    endSteer()
     syncControls()
   }
 
@@ -192,12 +211,19 @@ export function BarrageGame() {
       }
 
       if (canvas && w > 0 && h > 0) {
-        if (canvas.width !== w || canvas.height !== h) {
-          canvas.width = w
-          canvas.height = h
+        // Drawn at the screen's own density, or a phone shows every outline soft.
+        const dpr = Math.min(window.devicePixelRatio || 1, 2)
+        const cw = Math.round(w * dpr)
+        const ch = Math.round(h * dpr)
+        if (canvas.width !== cw || canvas.height !== ch) {
+          canvas.width = cw
+          canvas.height = ch
         }
         const ctx = canvas.getContext('2d')
-        if (ctx) renderGame(ctx, stateRef.current, w, h)
+        if (ctx) {
+          ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+          renderGame(ctx, stateRef.current, w, h)
+        }
       }
 
       raf = requestAnimationFrame(loop)
@@ -296,12 +322,33 @@ export function BarrageGame() {
     onContextMenu: (e: { preventDefault: () => void }) => e.preventDefault(),
   })
 
-  const onPlayTap = () => {
+  const onPlayPointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
     if (saveOpenRef.current || pausedRef.current) return
     const s = stateRef.current
-    if (s.phase !== 'menu' && s.phase !== 'gameover') return
-    if (performance.now() < startGrace.current) return
-    restart()
+    if (s.phase === 'menu' || s.phase === 'gameover') {
+      if (performance.now() < startGrace.current) return
+      restart()
+      return
+    }
+    // Touching the field steers: the cannon runs to where the finger is, at
+    // its own speed, so a finger is no faster than the keys. The chrome's
+    // buttons sit on top of the field and are not part of it.
+    if (e.target !== canvasRef.current || steerRef.current !== null) return
+    steerRef.current = e.pointerId
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId)
+    } catch {
+      /* capture is a nicety; steering still follows moves over the field */
+    }
+    steerTo(e.clientX)
+  }
+
+  const onPlayPointerMove = (e: ReactPointerEvent<HTMLDivElement>) => {
+    if (e.pointerId === steerRef.current) steerTo(e.clientX)
+  }
+
+  const onPlayPointerEnd = (e: ReactPointerEvent<HTMLDivElement>) => {
+    if (e.pointerId === steerRef.current) endSteer()
   }
 
   return (
@@ -312,7 +359,14 @@ export function BarrageGame() {
           aspectHeight={stageFor(portrait).h}
           fill
         >
-          <div className="barrage__play" onPointerDown={onPlayTap}>
+          <div
+            className="barrage__play"
+            onPointerDown={onPlayPointerDown}
+            onPointerMove={onPlayPointerMove}
+            onPointerUp={onPlayPointerEnd}
+            onPointerCancel={onPlayPointerEnd}
+            onLostPointerCapture={onPlayPointerEnd}
+          >
             <canvas ref={canvasRef} className="barrage__viewport" />
 
             <GamePlayChrome
@@ -329,7 +383,18 @@ export function BarrageGame() {
               <PlayReadoutScore>{ui.score.toLocaleString()}</PlayReadoutScore>
               <PlayReadoutStats>
                 <PlayStat label="Wave" value={ui.wave} />
-                <PlayStat label="Lives" value={ui.lives} />
+                <PlayStat label="Lives" value={ui.lives} urgent={ui.lives === 1 && ui.phase !== 'menu'} />
+                {ui.chain >= 2 && ui.phase !== 'menu' ? (
+                  <PlayStat
+                    label="Chain"
+                    value={
+                      <>
+                        {ui.chain}
+                        {ui.mult >= 2 ? <span className="barrage__mult">×{ui.mult}</span> : null}
+                      </>
+                    }
+                  />
+                ) : null}
               </PlayReadoutStats>
             </PlayReadout>
 
@@ -403,8 +468,8 @@ export function BarrageGame() {
                   <ScoreSaveCard
                     gameSlug="barrage"
                     score={ui.score}
-                    title="Line broken"
-                    subtitle={`Wave ${ui.wave} · ${ui.accuracy}% accuracy`}
+                    title={ui.endCause === 'line' ? 'Line broken' : 'Out of cannons'}
+                    subtitle={`Wave ${ui.wave} · best chain ${ui.bestChain} · ${ui.accuracy}% accuracy`}
                     previousBest={Math.max(previousBestRef.current, apiBest)}
                     onDone={toMenu}
                   />
@@ -414,18 +479,37 @@ export function BarrageGame() {
         </GameStage>
       </div>
 
+      {/*
+        Steering under the left thumb and the trigger under the right, so both
+        can be held at once. The fire pad used to sit between the arrows, which
+        took the same thumb off the move to shoot. Dragging on the field steers
+        as well.
+      */}
       <div className="barrage__touch" aria-label="Cannon controls">
-        <button type="button" className="barrage__btn" aria-label="Move left" {...holdPad('left')}>
-          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <path
-              d="M15 5 L8 12 L15 19"
-              stroke="currentColor"
-              strokeWidth="2.1"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-        </button>
+        <div className="barrage__steer">
+          <button type="button" className="barrage__btn" aria-label="Move left" {...holdPad('left')}>
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path
+                d="M15 5 L8 12 L15 19"
+                stroke="currentColor"
+                strokeWidth="2.1"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </button>
+          <button type="button" className="barrage__btn" aria-label="Move right" {...holdPad('right')}>
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path
+                d="M9 5 L16 12 L9 19"
+                stroke="currentColor"
+                strokeWidth="2.1"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </button>
+        </div>
         <button
           type="button"
           className="barrage__btn barrage__btn--fire"
@@ -441,17 +525,7 @@ export function BarrageGame() {
               strokeLinejoin="round"
             />
           </svg>
-        </button>
-        <button type="button" className="barrage__btn" aria-label="Move right" {...holdPad('right')}>
-          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <path
-              d="M9 5 L16 12 L9 19"
-              stroke="currentColor"
-              strokeWidth="2.1"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
+          <span>Fire</span>
         </button>
       </div>
     </section>

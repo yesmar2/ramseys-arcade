@@ -160,7 +160,7 @@ export const games: Game[] = [
     slug: 'barrage',
     tags: ['arcade'],
     description: 'Rows of ships. One cannon. Hold the line.',
-    how: 'Arrow keys or the thumb pads move the cannon; space or the up pad fires. The fleet fires in volleys and lights up the lanes it will hit first — read them, get into a cold one, and clear rows in the quiet between. There is no cover. Three lives.',
+    how: 'Arrow keys or A and D move the cannon, space fires; on a phone, drag on the field or use the left pads to move, and hold Fire. The fleet fires in volleys: the ships about to shoot light up and their lanes show where the shots will land. Get into a cold lane, or destroy a lit ship before it fires to stop its shot. Kills in quick succession build a chain that multiplies your points. There is no cover, and a ship that reaches the line ends the run. Three lives.',
     accent: PALETTE.red,
     playable: true,
     inDevelopment: true,

@@ -45,12 +45,21 @@
   box-sizing: border-box;
 }
 
+/* Left thumb. */
+.barrage__steer {
+  flex: 1.25;
+  min-width: 0;
+  display: flex;
+  gap: 0.5rem;
+}
+
 .barrage__btn {
   flex: 1;
   min-width: 0;
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 0.4rem;
   padding: 0.85rem 0;
   border: 1px solid rgba(var(--ink-rgb), 0.12);
   border-radius: 0.85rem;
@@ -67,10 +76,28 @@
   height: 1.6rem;
 }
 
+/* Right thumb: the cannon's own green, like the shots it sends up. */
 .barrage__btn--fire {
-  flex: 1.4;
-  color: var(--game-accent, #e85d75);
-  border-color: color-mix(in srgb, var(--game-accent, #e85d75) 45%, transparent);
+  color: color-mix(in srgb, #3ecf8e 78%, var(--ink));
+  border-color: color-mix(in srgb, #3ecf8e 50%, transparent);
+  background: color-mix(in srgb, #3ecf8e 10%, var(--surface));
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.barrage__btn--fire svg {
+  width: 1.35rem;
+  height: 1.35rem;
+}
+
+/* What the chain is paying, beside its length. */
+.barrage__mult {
+  margin-left: 0.3em;
+  font-size: 0.72em;
+  color: color-mix(in srgb, #f5b942 80%, var(--ink));
 }
 
 .barrage__btn:active {
@@ -111,9 +138,10 @@
   font-size: 0.72rem;
   font-weight: 700;
   letter-spacing: 0.01em;
-  color: hsl(var(--buff-hue), 62%, 72%);
-  background: hsla(var(--buff-hue), 52%, 30%, 0.42);
-  border: 1px solid hsla(var(--buff-hue), 52%, 58%, 0.5);
+  /* Mixed toward the ink, so the label reads on either theme's ground. */
+  color: color-mix(in srgb, hsl(var(--buff-hue), 70%, 52%) 62%, var(--ink));
+  background: hsla(var(--buff-hue), 70%, 55%, 0.16);
+  border: 1px solid hsla(var(--buff-hue), 60%, 52%, 0.55);
   white-space: nowrap;
 }
 

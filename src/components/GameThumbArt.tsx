@@ -295,22 +295,34 @@ function PuttThumb({ accent }: { accent: string }) {
 }
 
 /**
- * The fleet's own silhouette at full health — crest, hull, side pods, feet —
- * so the thumb is the thing you shoot at, not a generic invader.
+ * One of the fleet's crabs, claws up — the same drawing the game makes, so the
+ * thumb is the thing you shoot at, not a generic invader. The whites of its
+ * eyes are white in the game too.
  */
 function BarrageThumb({ accent }: { accent: string }) {
-  const hull = mark(accent, 0.28, 1.3)
+  const limb = {
+    fill: 'none',
+    stroke: accent,
+    strokeWidth: 1.3,
+    strokeLinecap: 'round' as const,
+    strokeLinejoin: 'round' as const,
+  }
   return (
     <>
-      {/* Feet, pods and crest sit under the hull so its outline stays whole. */}
-      <rect x="6.6" y="22.2" width="4.7" height="5.8" rx="2.2" {...hull} />
-      <rect x="20.7" y="22.2" width="4.7" height="5.8" rx="2.2" {...hull} />
-      <rect x="3" y="13.1" width="3.6" height="8.2" rx="2.4" {...hull} />
-      <rect x="25.4" y="13.1" width="3.6" height="8.2" rx="2.4" {...hull} />
-      <rect x="9.8" y="5" width="12.5" height="7.2" rx="3.1" {...hull} />
-      <rect x="5.1" y="11.2" width="21.8" height="11.5" rx="5.3" {...hull} />
-      <circle cx="11.8" cy="16.5" r="1.7" fill={accent} />
-      <circle cx="20.2" cy="16.5" r="1.7" fill={accent} />
+      {/* Antennae, claws and legs go under the hull, so its outline runs whole over their roots. */}
+      <path d="M13.6 11.9 Q13.4 9.4 11.4 8.7 M18.4 11.9 Q18.6 9.4 20.6 8.7" {...limb} />
+      <circle cx="11.4" cy="8.7" r="1.05" fill={accent} />
+      <circle cx="20.6" cy="8.7" r="1.05" fill={accent} />
+      <path
+        d="M9.4 18.2 Q5 18.2 6.1 11.7 L8.1 9 M6.1 11.7 L4.6 9.2 M22.6 18.2 Q27 18.2 25.9 11.7 L23.9 9 M25.9 11.7 L27.4 9.2"
+        {...limb}
+      />
+      <path d="M12.7 22.4 L10.7 26.1 M19.3 22.4 L21.3 26.1" {...limb} />
+      <rect x="9" y="11.7" width="14" height="10.8" rx="3.4" {...mark(accent, 0.28, 1.3)} />
+      <circle cx="12.7" cy="16.2" r="2.15" fill="#fff" stroke={accent} strokeWidth="1" />
+      <circle cx="19.3" cy="16.2" r="2.15" fill="#fff" stroke={accent} strokeWidth="1" />
+      <circle cx="12.95" cy="16.85" r="1.05" fill={accent} />
+      <circle cx="19.55" cy="16.85" r="1.05" fill={accent} />
     </>
   )
 }
