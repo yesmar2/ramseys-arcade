@@ -157,7 +157,7 @@ const SCORING: Record<string, ScoreRow[]> = {
   ],
   bop: [
     { label: 'Right control', value: '+1' },
-    { label: 'Quick (first half of the ring)', value: '+1 more' },
+    { label: 'Quick (first half of the rim)', value: '+1 more' },
     { label: 'The window', value: 'starts at 2.2s, shrinks each call, never under 0.6s' },
     { label: 'Wrong control or too slow', value: 'run over' },
   ],

@@ -10,7 +10,6 @@ import { getPersonalBest } from '../../lib/personalBest'
 import { useTournamentPlay } from '../../tournaments/TournamentPlayContext'
 import {
   act,
-  bopLayout,
   controlAt,
   createInitialState,
   resizeState,
@@ -24,12 +23,30 @@ import {
 import { renderGame } from './render'
 import { beginRun } from '../../lib/runSession'
 
-function currentLayout() {
-  return bopLayout(typeof window !== 'undefined' && window.innerHeight > window.innerWidth)
-}
-
 /** How far a drag has to travel, in stage units, before it counts as the gesture. */
 const DRAG_UNITS = 5
+
+/**
+ * How long a finished run stays on the toy before the score card covers it.
+ * The card used to open on the next frame, so the red ring on the wrong
+ * control and the call it should have been were never seen.
+ */
+const END_BEAT = 0.8
+
+/**
+ * Where the page's own score and buttons end, measured from the top of the
+ * play area, so the toy can start below them. They move with the safe area on
+ * a notched phone, which the canvas has no other way to know.
+ */
+function measureTop(play: HTMLElement): number | undefined {
+  const top = play.getBoundingClientRect().top
+  let bottom = 0
+  play.querySelectorAll('.play-readout__score, .game-play-chrome').forEach((el) => {
+    const r = el.getBoundingClientRect()
+    if (r.height > 0 && r.bottom - top < play.clientHeight * 0.4) bottom = Math.max(bottom, r.bottom - top)
+  })
+  return bottom > 0 ? Math.round(bottom + 10) : undefined
+}
 
 /**
  * Each control has its own gesture, so the wrong gesture on the right control
@@ -41,30 +58,15 @@ type Drag = { control: Control; x: number; y: number; done: boolean }
 export function BopGame() {
   const tournament = useTournamentPlay()
   const apiBest = usePersonalBest('bop')
-  const layout0 = currentLayout()
   const stateRef = useRef<GameState>(createInitialState())
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const sizeRef = useRef({ w: 540, h: 540 })
   const dragRef = useRef<Drag | null>(null)
-  const [aspect, setAspect] = useState({ w: layout0.aspectW, h: layout0.aspectH })
   const [ui, setUi] = useState<Snapshot>(() => toSnapshot(stateRef.current))
   const [saveOpen, setSaveOpen] = useState(false)
   const offeredScore = useRef<number | null>(null)
   const previousBestRef = useRef(getPersonalBest('bop'))
   const startGrace = useRef(0)
-
-  useEffect(() => {
-    const sync = () => {
-      const next = currentLayout()
-      setAspect({ w: next.aspectW, h: next.aspectH })
-    }
-    window.addEventListener('resize', sync)
-    window.addEventListener('orientationchange', sync)
-    return () => {
-      window.removeEventListener('resize', sync)
-      window.removeEventListener('orientationchange', sync)
-    }
-  }, [])
 
   useEffect(() => {
     let raf = 0
@@ -79,9 +81,9 @@ export function BopGame() {
       const parent = canvas?.parentElement
       const w = parent?.clientWidth || 0
       const h = parent?.clientHeight || 0
-      if (w > 0 && h > 0 && (w !== sizeRef.current.w || h !== sizeRef.current.h)) {
+      if (parent && w > 0 && h > 0 && (w !== sizeRef.current.w || h !== sizeRef.current.h)) {
         sizeRef.current = { w, h }
-        stateRef.current = resizeState(stateRef.current, w, h)
+        stateRef.current = resizeState(stateRef.current, w, h, measureTop(parent))
       }
 
       stateRef.current = tick(stateRef.current, dt)
@@ -91,7 +93,7 @@ export function BopGame() {
         uiAcc = 0
         const snap = toSnapshot(stateRef.current)
         setUi(snap)
-        if (snap.phase === 'gameover' && offeredScore.current !== snap.score) {
+        if (snap.phase === 'gameover' && snap.overFor >= END_BEAT && offeredScore.current !== snap.score) {
           offeredScore.current = snap.score
           setSaveOpen(true)
         }
@@ -153,7 +155,10 @@ export function BopGame() {
     if (saveOpen) return
     e.preventDefault()
     const s = stateRef.current
-    if (s.phase === 'menu' || s.phase === 'gameover') {
+    // A finished run waits for its card: a panicked tap after a miss would
+    // otherwise start the next run and throw the score away unsaved.
+    if (s.phase === 'gameover') return
+    if (s.phase === 'menu') {
       if (performance.now() < startGrace.current) return
       restart()
       return
@@ -201,7 +206,8 @@ export function BopGame() {
     const onKey = (e: KeyboardEvent) => {
       if (saveOpen) return
       const s = stateRef.current
-      if (s.phase === 'menu' || s.phase === 'gameover') {
+      if (s.phase === 'gameover') return
+      if (s.phase === 'menu') {
         if (e.code === 'Space' || e.code === 'Enter') {
           e.preventDefault()
           restart()
@@ -238,7 +244,7 @@ export function BopGame() {
   return (
     <section className="bop bop--fullscreen">
       <div className="game-play">
-        <GameStage aspectWidth={aspect.w} aspectHeight={aspect.h}>
+        <GameStage aspectWidth={3} aspectHeight={4} fill>
           <div
             className="bop__play"
             onPointerDown={onPointerDown}

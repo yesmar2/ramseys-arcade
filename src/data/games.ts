@@ -179,7 +179,7 @@ export const games: Game[] = [
     slug: 'bop',
     tags: ['quick', 'arcade'],
     description: 'Five controls. One voice. Do what it says, faster.',
-    how: 'The console calls a control — bop, twist, pull, flick or spin — and you have until the ring runs out to do it. Tap the button to bop; drag the knob sideways to twist, the lever down to pull, the switch up to flick, the wheel any way to spin. On a keyboard: space, left/right, down, up, S. Wrong control or too slow ends the run.',
+    how: 'The toy calls a control on its screen — bop, twist, pull, flick or spin — and you have until the light round its rim runs out to do it. Tap the button to bop; drag the knob sideways to twist, the lever down to pull, the switch up to flick, the wheel any way to spin. On a keyboard: space, left/right, down, up, S. Wrong control or too slow ends the run.',
     accent: PALETTE.pink,
     playable: true,
     inDevelopment: true,
