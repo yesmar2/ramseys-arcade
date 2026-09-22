@@ -340,9 +340,16 @@ function trainGap(depth: number) {
  * climbing, so this one aims at where the player is going and tries to be
  * standing in it. It is the one chaser you go around rather than away from.
  *
+ * Two rows, not six. At six it settled six or seven rows up and sat there: it
+ * is slower than you are, so it can never hold a distant mark, and all a player
+ * saw was a chaser retreating up the screen forever. Measured, it drifted from
+ * 3.25 rows ahead out to 6.99 and stayed. At two it sits in the corridor you
+ * are about to enter, which is the entire idea — and because you are faster,
+ * you pass it, and then it has to cross you to get back in front.
+ *
  * Buffer rows count downward as the world goes up, so ahead is a smaller y.
  */
-const HERD_LEAD = 6
+const HERD_LEAD = 2
 
 /**
  * Fruit. Worth more the deeper you are, so the offer keeps pace with a run
@@ -388,10 +395,16 @@ const FREEZE_TIME = 3.6
  * Chasers it cuts down pay the ladder they pay when eaten, because that is a
  * reward the player already understands.
  */
-const LASER_TIME = 3.8
-const LASER_INTERVAL = 0.42
+const LASER_TIME = 5.5
+/*
+ * Short enough that the shots overlap the life of the one before, so it reads
+ * as a beam you are holding rather than a gun you are firing. Kept as a repeat
+ * rather than a true constant beam because the repeat is what the ladder counts
+ * and what gives the thing a rhythm to aim along.
+ */
+const LASER_INTERVAL = 0.24
 const LASER_RANGE = 9
-const BEAM_LIFE = 0.16
+const BEAM_LIFE = 0.2
 const FRUIT_MIN_OFFSET = 2
 
 function loadBest() {
