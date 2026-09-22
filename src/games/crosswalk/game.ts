@@ -211,21 +211,12 @@ export const STALL_WARN = 1.4
  * flash for 1.9s, so the game's own warning told you to do the thing that cost
  * you the multiplier.
  *
- * 1.8s covers the common forced wait outright. Anything longer is handled by
- * bleeding rather than snapping — see MOMENTUM_DECAY.
+ * 1.8s covers the common forced wait outright, which is the point of it: at
+ * 1.2s a third of hazard crossings took the chain for reasons the player had no
+ * say in. Past 1.8s it breaks cleanly.
  */
 const MOMENTUM_WINDOW = 1.8
 
-/**
- * Links shed per second once the window has lapsed.
- *
- * The chain used to reset to zero the instant it expired, which punished a
- * twenty-five chain and a three chain identically and made one unlucky train
- * worth more than a minute of clean play. Bleeding costs a forced two second
- * wait about half a link and genuine loitering the whole chain, which is the
- * distinction the mechanic was always trying to draw.
- */
-const MOMENTUM_DECAY = 2.5
 /** Below this the chain is noise, so the readout stays quiet. */
 export const MOMENTUM_SHOW = 3
 /** Ceiling for the rising hop pitch, in the steps `sfx` counts. */
@@ -1187,7 +1178,7 @@ export function hop(state: GameState, dir: Dir): GameState {
    */
   const progress = nr > state.furthest
   const chain = progress
-    ? Math.floor(state.streak) + 1
+    ? state.streak + 1
     : nr < fromR
       ? 0
       : state.streak
@@ -1273,12 +1264,11 @@ export function tick(state: GameState, dt: number): GameState {
     shake: Math.max(0, state.shake - dt),
     idleTimer: state.idleTimer + dt,
     streakTimer: state.streakTimer + dt,
-    // Past the window the chain bleeds instead of snapping, and it does it on
-    // screen, so a player can watch what hesitating is costing them.
-    streak:
-      state.streakTimer + dt > MOMENTUM_WINDOW
-        ? Math.max(0, state.streak - MOMENTUM_DECAY * dt)
-        : state.streak,
+    // Lapse the chain where the player can see it go, rather than holding a
+    // stale number until the next hop quietly resets it. A clean break rather
+    // than a bleed: the chain feeds a record now, not the score, so watching it
+    // tick down link by link was noise in exchange for nothing.
+    streak: state.streakTimer + dt > MOMENTUM_WINDOW ? 0 : state.streak,
     queuedAge: state.queued ? state.queuedAge + dt : 0,
     coinPops: state.coinPops
       .map((p) => ({ ...p, t: p.t - dt }))
@@ -1402,7 +1392,7 @@ export function toSnapshot(state: GameState): Snapshot {
     cause: state.cause,
     runCoins: state.runCoins,
     wallet: state.wallet,
-    chain: Math.floor(state.streak),
+    chain: state.streak,
     bestChain: state.bestChain,
   }
 }
