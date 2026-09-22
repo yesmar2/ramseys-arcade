@@ -201,14 +201,31 @@ export function stallLimitAt(row: number): number {
 export const STALL_WARN = 1.4
 
 /**
- * Break new ground again within this long and the chain grows.
+ * How long the chain holds at full strength without new ground.
  *
- * Generous on open grass, which is the point: grass is where a chain is built
- * and traffic is where it is risked. A road crossing usually costs more than
- * this to wait out, so the only way to carry a chain through one is to take the
- * tight gap — see the near-miss grace in `tick`.
+ * Measured against how long the terrain actually locks you out: with a horizon
+ * long enough to catch a train arriving or a log drifting off, 42% of road
+ * crossings, 30% of water and 22% of rails force a wait past 1.2s, which is
+ * where this used to sit. A third of hazards were taking the chain for reasons
+ * the player had no say in, and rails were the worst of it — the crossing lights
+ * flash for 1.9s, so the game's own warning told you to do the thing that cost
+ * you the multiplier.
+ *
+ * 1.8s covers the common forced wait outright. Anything longer is handled by
+ * bleeding rather than snapping — see MOMENTUM_DECAY.
  */
-const MOMENTUM_WINDOW = 1.2
+const MOMENTUM_WINDOW = 1.8
+
+/**
+ * Links shed per second once the window has lapsed.
+ *
+ * The chain used to reset to zero the instant it expired, which punished a
+ * twenty-five chain and a three chain identically and made one unlucky train
+ * worth more than a minute of clean play. Bleeding costs a forced two second
+ * wait about half a link and genuine loitering the whole chain, which is the
+ * distinction the mechanic was always trying to draw.
+ */
+const MOMENTUM_DECAY = 2.5
 /** Below this the chain is noise, so the readout stays quiet. */
 export const MOMENTUM_SHOW = 3
 /** Ceiling for the rising hop pitch, in the steps `sfx` counts. */
@@ -1222,9 +1239,7 @@ export function hop(state: GameState, dir: Dir): GameState {
    */
   const progress = nr > state.furthest
   const chain = progress
-    ? state.streakTimer <= MOMENTUM_WINDOW
-      ? state.streak + 1
-      : 1
+    ? Math.floor(state.streak) + 1
     : nr < fromR
       ? 0
       : state.streak
@@ -1313,9 +1328,12 @@ export function tick(state: GameState, dt: number): GameState {
     shake: Math.max(0, state.shake - dt),
     idleTimer: state.idleTimer + dt,
     streakTimer: state.streakTimer + dt,
-    // Let the chain die where the player can see it happen, rather than holding
-    // a stale number on the readout until the next hop quietly resets it.
-    streak: state.streakTimer + dt > MOMENTUM_WINDOW ? 0 : state.streak,
+    // Past the window the chain bleeds instead of snapping, and it does it on
+    // screen, so a player can watch what hesitating is costing them.
+    streak:
+      state.streakTimer + dt > MOMENTUM_WINDOW
+        ? Math.max(0, state.streak - MOMENTUM_DECAY * dt)
+        : state.streak,
     queuedAge: state.queued ? state.queuedAge + dt : 0,
     coinPops: state.coinPops
       .map((p) => ({ ...p, t: p.t - dt }))
@@ -1439,7 +1457,7 @@ export function toSnapshot(state: GameState): Snapshot {
     cause: state.cause,
     runCoins: state.runCoins,
     wallet: state.wallet,
-    chain: state.streak,
+    chain: Math.floor(state.streak),
     bestChain: state.bestChain,
     furthest: state.furthest,
   }
