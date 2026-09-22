@@ -41,7 +41,7 @@ import {
 export type Dir = 'up' | 'down' | 'left' | 'right'
 export type Phase = 'menu' | 'playing' | 'dying' | 'gameover'
 export type GhostMode = 'asleep' | 'chase' | 'scatter' | 'frightened' | 'eaten'
-export type GhostKind = 'blink' | 'pink' | 'herd' | 'inky' | 'clyde'
+export type GhostKind = 'blink' | 'pink' | 'herd' | 'inky' | 'clyde' | 'train'
 export type DeathCause = 'caught' | 'drowned'
 
 export type Cell = { x: number; y: number }
@@ -115,6 +115,8 @@ export type GameState = {
   genRow: number
   /** World row the next sleeping chaser is due on. */
   nextSeedRow: number
+  /** World row the next train is due on. */
+  nextTrainRow: number
   genQueue: GenRow[]
   seed: number
   /** World row drawn along the bottom of the view. Never goes down. */
@@ -270,6 +272,25 @@ const TIDE_EBB = 3.2
 
 /** Rows below a sleeping chaser you have to get before it stirs. */
 const WAKE_RANGE = 5
+
+/**
+ * A line of chasers sweeping one row, side to side.
+ *
+ * The five personalities all answer the same question — where is the player —
+ * so more of them is more of one idea. A train does not care where you are. It
+ * closes a row and leaves a gap, which makes it a thing you read and time
+ * rather than a thing you flee, and that is a different kind of moment.
+ *
+ * They are excluded from the chaser budget, because they are an event rather
+ * than part of the standing roster, and the tide clears them like anything else
+ * once it goes past.
+ */
+const TRAIN_SIZE = 3
+const TRAIN_FIRST_ROW = 25
+/** Rows between one train and the next, tightening with depth. */
+function trainGap(depth: number) {
+  return Math.max(26, Math.round(52 - Math.min(26, depth * 0.05)))
+}
 
 /**
  * Rows ahead of the player the herder aims for.
@@ -494,6 +515,9 @@ function nearestOpen(state: GameState, cell: Cell): Cell | null {
  * and ping-pongs on a tile — it keeps pathing at the corner and laps instead.
  */
 function cornerFor(kind: GhostKind, cols: number, rows: number): Cell {
+  // A train never consults a corner — it only ever goes straight on — but every
+  // chaser carries one, so give it the row it is already sweeping.
+  if (kind === 'train') return { x: cols + 3, y: -3 }
   if (kind === 'blink') return { x: cols + 3, y: -3 }
   if (kind === 'pink') return { x: -3, y: -3 }
   // The herder laps toward the middle of the way out, not a corner, because
@@ -557,7 +581,7 @@ const GHOST_ORDER: GhostKind[] = ['blink', 'pink', 'herd', 'inky', 'clyde']
  */
 function seedGhost(state: GameState, y: number): boolean {
   if (state.kind[y] !== 'lane') return false
-  if (state.ghosts.length >= wantGhosts(state.depth)) return false
+  if (state.ghosts.filter((g) => g.kind !== 'train').length >= wantGhosts(state.depth)) return false
   const spots: number[] = []
   for (let x = 0; x < state.cols; x++) if (state.open[y][x]) spots.push(x)
   if (!spots.length) return false
@@ -672,6 +696,47 @@ function shiftDown(state: GameState) {
   if (row.row >= state.nextSeedRow && seedGhost(state, 0)) {
     state.nextSeedRow = row.row + seedGap(state.depth)
   }
+  if (row.row >= state.nextTrainRow && seedTrain(state, 0)) {
+    state.nextTrainRow = row.row + trainGap(state.depth)
+  }
+}
+
+/**
+ * Lay a line of chasers across a freshly built row.
+ *
+ * Needs a run of open tiles wide enough to hold them and room to sweep, so it
+ * only takes a lane row with a clear stretch. They share a direction and a
+ * speed, so they stay a line rather than drifting into a crowd.
+ */
+function seedTrain(state: GameState, y: number): boolean {
+  if (state.kind[y] !== 'lane') return false
+  // longest open run on this row
+  let best = { start: -1, len: 0 }
+  let run = 0
+  for (let x = 0; x < state.cols; x++) {
+    run = state.open[y][x] ? run + 1 : 0
+    if (run > best.len) best = { start: x - run + 1, len: run }
+  }
+  // wide enough for the line and some road to sweep
+  if (best.len < TRAIN_SIZE + 3) return false
+
+  const dir: Dir = Math.random() < 0.5 ? 'left' : 'right'
+  const from = best.start + Math.floor((best.len - TRAIN_SIZE) / 2)
+  for (let i = 0; i < TRAIN_SIZE; i++) {
+    state.ghosts.push({
+      id: state.nextGhostId++,
+      kind: 'train',
+      x: from + i + 0.5,
+      y: y + 0.5,
+      dir,
+      mode: 'asleep',
+      corner: cornerFor('train', state.cols, state.rows),
+      bob: Math.random() * Math.PI * 2,
+      hit: 0,
+      arrive: 0,
+    })
+  }
+  return true
 }
 
 /** Lowest lane row at or above `fromY` — somewhere you can actually stand. */
@@ -700,6 +765,7 @@ function emptyState(view: { cols: number; rows: number }): GameState {
     kind: [],
     originRow: 0,
     genRow: 0,
+    nextTrainRow: TRAIN_FIRST_ROW,
     nextSeedRow: 0,
     genQueue: [],
     seed: (Math.random() * 0xffffffff) >>> 0,
@@ -827,6 +893,8 @@ export function triggerSurge(state: GameState): GameState {
 
 function targetFor(state: GameState, ghost: Ghost): Cell {
   if (ghost.mode === 'eaten') return { x: Math.floor(ghost.x), y: -4 }
+  // Trains are steered in chooseGhostDir and never ask for a target.
+  if (ghost.kind === 'train') return { x: Math.floor(ghost.x), y: Math.floor(ghost.y) }
   if (ghost.mode === 'scatter') return ghost.corner
 
   const px = Math.floor(state.player.x)
@@ -861,6 +929,19 @@ function fieldFor(state: GameState, cache: FieldCache, target: Cell) {
 function chooseGhostDir(state: GameState, ghost: Ghost, cache: FieldCache): Dir {
   const gx = Math.floor(ghost.x)
   const gy = Math.floor(ghost.y)
+
+  /*
+   * A train holds its line: straight on until the row runs out, then back the
+   * other way. It never turns up or down, so the row it took stays the row it
+   * closes, and the gap it leaves is somewhere you can learn to be.
+   *
+   * Frightened and eaten still behave normally — a train you have earned the
+   * right to eat should scatter and run home like any other chaser.
+   */
+  if (ghost.kind === 'train' && ghost.mode !== 'frightened' && ghost.mode !== 'eaten') {
+    return stepTile(state, gx, gy, ghost.dir) ? ghost.dir : OPPOSITE[ghost.dir]
+  }
+
   const cell = targetFor(state, ghost)
 
   const options: { dir: Dir; tile: Cell }[] = []

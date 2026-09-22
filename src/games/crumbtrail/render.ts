@@ -75,7 +75,18 @@ function roundRect(
   ctx.closePath()
 }
 
+/**
+ * A train is told apart by being a line of identical chasers sweeping together,
+ * which no single chaser can look like — so rather than spend a hue the wheel
+ * does not have, it reads as a different material: the same warm tone drained
+ * of colour, like something built rather than something hunting.
+ */
+function chaserSat(kind: GhostKind) {
+  return kind === 'train' ? 20 : 56
+}
+
 function chaserHue(kind: GhostKind) {
+  if (kind === 'train') return 42
   if (kind === 'blink') return 355
   if (kind === 'pink') return 320
   // Violet, clear of the other four and of the green crumbs it stands among.
@@ -460,7 +471,7 @@ function drawChaser(
   }
 
   const hue = scared ? (flash ? 8 : 224) : chaserHue(ghost.kind)
-  const sat = scared ? (flash ? 70 : 55) : 56
+  const sat = scared ? (flash ? 70 : 55) : chaserSat(ghost.kind)
   const flat = isFlatTheme()
 
   if (ghost.hit > 0) {
