@@ -68,7 +68,7 @@ export const games: Game[] = [
     slug: 'patriot',
     tags: ['arcade'],
     description: 'Defend the cities. Aim. Fire. Survive the wave.',
-    how: 'Move to aim. Click or tap to shoot. Protect the cities through each wave. Keys 1–4 use powers.',
+    how: 'Move to aim, click or tap to shoot, and hold the six cities through each wave. Each turret carries ten shells and only refills between waves, so a blast that catches two missiles is worth more than two that each catch one — and a hit dead on the missile scores double. Violet ones split halfway down. Planes and, later, bombers cross the sky dropping more; the bomber takes several blasts and the wave will not end while it lives. Helicopters carry powers, and you collect one by blowing it up, which costs a shell: ammo, a one-hit dome over every city, a slow-motion sky, and a seeker that finds the nearest missile itself. Keys 1–4 use them, or tap them under the score.',
     accent: PALETTE.red,
     playable: true,
   },

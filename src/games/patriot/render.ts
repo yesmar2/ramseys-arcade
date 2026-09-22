@@ -6,7 +6,13 @@ import {
   PATRIOT_TURRET_HUE,
   patriotTurretPoints,
 } from './turretArt'
-import { isFlatTheme, playfieldColor, softFillAlpha, strokeOutlined } from '../../lib/theme'
+import {
+  isDarkTheme,
+  isFlatTheme,
+  playfieldColor,
+  softFillAlpha,
+  strokeOutlined,
+} from '../../lib/theme'
 
 /** Plain rectangles only — scales cleanly on any stage size. */
 function washBox(
@@ -541,6 +547,11 @@ export function renderGame(
     strokeOutlined(ctx)
   }
 
+  // Gold either way, but a gold that carries against the field behind it: the
+  // one shade was tuned on the dark playfield and sat near 2.5:1 on the light
+  // one. The halo is the playfield, so it separates the text in both.
+  const dark = isDarkTheme()
+  const floaterInk = dark ? '#f0b429' : '#8a5a06'
   for (const f of state.floaters) {
     const alpha = Math.min(1, f.life * 2) * Math.min(1, f.life * 1.4)
     ctx.save()
@@ -548,15 +559,19 @@ export function renderGame(
     ctx.font = `600 ${18 * scale}px Outfit, system-ui, sans-serif`
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
-    ctx.fillStyle = '#c98a12'
-    ctx.shadowColor = 'rgba(255,255,255,0.85)'
+    ctx.fillStyle = floaterInk
+    ctx.shadowColor = playfieldColor()
     ctx.shadowBlur = 8 * scale
     ctx.fillText(f.text, f.x, f.y)
     ctx.restore()
   }
 
+  // White over a near-white playfield moved it about three points and read as
+  // nothing, so the light theme flashes dark instead.
   if (state.flash > 0) {
-    ctx.fillStyle = `rgba(255,255,255,${state.flash * 0.35})`
+    ctx.fillStyle = dark
+      ? `rgba(255,255,255,${state.flash * 0.35})`
+      : `rgba(26,43,60,${state.flash * 0.24})`
     ctx.fillRect(0, 0, w, h)
   }
 }

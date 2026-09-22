@@ -2991,16 +2991,6 @@ a.game-hud__board {
   flex: none;
 }
 
-.play-readout__left .patriot__powers {
-  position: static;
-  top: auto;
-  left: auto;
-  transform: none;
-  max-width: none;
-  flex: 1 1 auto;
-  min-width: 0;
-}
-
 .play-readout__score--hot {
   color: color-mix(in srgb, var(--accent) 55%, var(--ink));
 }
@@ -3614,23 +3604,25 @@ a.game-hud__board {
   z-index: 9;
 }
 
+/*
+ * Centred under the score. The top-left slot these used to hold is where the
+ * run's figures live now, and that slot is the one every other game puts them
+ * in. This is the same shelf Asteroids hangs its buffs from — clear of the
+ * back control, the score and the pause buttons — and it wraps, because a full
+ * pack is twelve of them and a phone is not twelve buttons wide.
+ */
 .patriot__powers {
   position: absolute;
-  top: 0.55rem;
-  left: 0.55rem;
-  transform: none;
+  top: calc(max(0.55rem, env(safe-area-inset-top, 0px)) + 2.45rem);
+  left: 50%;
+  transform: translateX(-50%);
   z-index: 12;
   display: flex;
-  flex-direction: row;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
+  justify-content: center;
   gap: 0.38rem;
-  max-width: none;
+  max-width: min(22rem, calc(100% - 6rem));
   pointer-events: auto;
-}
-
-.play-readout__left .patriot__powers {
-  max-width: none;
-  flex-wrap: nowrap;
 }
 
 .patriot__power {
@@ -3776,7 +3768,12 @@ html[data-theme='dark'] .patriot__power-mark {
   align-items: center;
   justify-content: center;
   padding: 1.5rem;
-  background: rgba(237, 247, 244, 0.94);
+  /*
+   * The playfield, not a fixed near-white: this was the one surface in the
+   * game that ignored the theme, so turning a phone in the dark threw up a
+   * full white screen.
+   */
+  background: color-mix(in srgb, var(--playfield) 94%, transparent);
   backdrop-filter: blur(10px);
 }
 
@@ -3809,6 +3806,10 @@ html[data-theme='dark'] .patriot__power-mark {
   margin: 0;
   font-weight: 600;
   color: var(--muted);
+}
+
+.patriot__rotate-leave {
+  margin-top: 1rem;
 }
 
 @keyframes patriot-rotate-hint {

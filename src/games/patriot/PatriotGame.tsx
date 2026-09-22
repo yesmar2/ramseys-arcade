@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react'
 import { GamePlayChrome, PlayReadout, PlayReadoutScore } from '../../components/GameHud'
+import { PlayReadoutStats, PlayStat } from '../../components/PlayStats'
 import { GameStage } from '../../components/GameStage'
 import { GameStartCard } from '../../components/GameStartCard'
 import { PauseButton, GamePauseOverlay } from '../../components/PauseControls'
@@ -61,6 +62,19 @@ function PowerMark({ kind }: { kind: PowerKind }) {
   )
 }
 
+/**
+ * What the run was, under the score — the wave it ended on, and the streak if
+ * there was one worth naming. Every other game names its run this way; this
+ * card was showing the number alone.
+ */
+function gameOverNote(ui: Snapshot) {
+  const parts = [`Wave ${ui.wave}`]
+  if (ui.directStreakBest >= 2) {
+    parts.push(`${ui.directStreakBest} direct hits in a row`)
+  }
+  return parts.join(' · ')
+}
+
 function useNeedsLandscape() {
   const [portrait, setPortrait] = useState(() => {
     if (typeof window === 'undefined') return false
@@ -98,7 +112,9 @@ export function PatriotGame() {
   const needsRotate = useNeedsLandscape()
   const ignorePauseKeys = useRef(false)
   ignorePauseKeys.current = saveOpen
-  const pausable = (ui.phase === 'playing' || ui.phase === 'waveClear') && !saveOpen
+  /** A run is on screen: mid-wave, or on the card between waves. */
+  const inPlay = ui.phase === 'playing' || ui.phase === 'waveClear'
+  const pausable = inPlay && !saveOpen
   const { paused, toggle: togglePause, resume } = useGamePause(pausable, ignorePauseKeys)
   const pausedRef = useRef(false)
   pausedRef.current = needsRotate || paused
@@ -295,47 +311,57 @@ export function PatriotGame() {
           <PlayReadout>
             <PlayReadoutScore
               hot={
-                (ui.phase === 'playing' || ui.phase === 'waveClear') &&
+                inPlay &&
                 ui.score > previousBestRef.current
               }
             >
               {ui.score}
             </PlayReadoutScore>
-            {(ui.phase === 'playing' || ui.phase === 'waveClear') &&
-              !needsRotate &&
-              POWER_ORDER.some((kind) => (ui.pack?.[kind] ?? 0) > 0) && (
-              <div className="play-readout__left">
-                <div
-                  className="patriot__powers"
-                  onPointerDown={(e) => e.stopPropagation()}
-                >
-                  {POWER_ORDER.flatMap((kind) => {
-                    const count = ui.pack?.[kind] ?? 0
-                    const hot =
-                      (kind === 'shield' && ui.shieldT > 0) ||
-                      (kind === 'slow' && ui.slowT > 0)
-                    return Array.from({ length: count }, (_, n) => (
-                      <button
-                        key={`${kind}-${n}`}
-                        type="button"
-                        className={`patriot__power${hot ? ' patriot__power--hot' : ''}`}
-                        style={{ '--hue': String(POWER_HUE[kind]) } as CSSProperties}
-                        disabled={ui.phase !== 'playing' || paused}
-                        aria-label={POWER_LABEL[kind]}
-                        onPointerDown={(e) => {
-                          e.stopPropagation()
-                          e.preventDefault()
-                          activate(kind)
-                        }}
-                      >
-                        <PowerMark kind={kind} />
-                      </button>
-                    ))
-                  })}
-                </div>
-              </div>
+            {inPlay && !needsRotate && (
+              <PlayReadoutStats>
+                <PlayStat label="Wave" value={ui.wave} />
+                <PlayStat label="Cities" value={ui.citiesLeft} urgent={ui.citiesLeft <= 2} />
+                <PlayStat label="Ammo" value={ui.ammoLeft} urgent={ui.ammoLeft <= 5} />
+              </PlayReadoutStats>
             )}
           </PlayReadout>
+
+          {/*
+            Under the score rather than in the left slot, which the run's
+            figures now hold — the same place Asteroids hangs its buffs.
+          */}
+          {inPlay &&
+            !needsRotate &&
+            POWER_ORDER.some((kind) => (ui.pack?.[kind] ?? 0) > 0) && (
+            <div
+              className="patriot__powers"
+              onPointerDown={(e) => e.stopPropagation()}
+            >
+              {POWER_ORDER.flatMap((kind) => {
+                const count = ui.pack?.[kind] ?? 0
+                const hot =
+                  (kind === 'shield' && ui.shieldT > 0) ||
+                  (kind === 'slow' && ui.slowT > 0)
+                return Array.from({ length: count }, (_, n) => (
+                  <button
+                    key={`${kind}-${n}`}
+                    type="button"
+                    className={`patriot__power${hot ? ' patriot__power--hot' : ''}`}
+                    style={{ '--hue': String(POWER_HUE[kind]) } as CSSProperties}
+                    disabled={ui.phase !== 'playing' || paused}
+                    aria-label={POWER_LABEL[kind]}
+                    onPointerDown={(e) => {
+                      e.stopPropagation()
+                      e.preventDefault()
+                      activate(kind)
+                    }}
+                  >
+                    <PowerMark kind={kind} />
+                  </button>
+                ))
+              })}
+            </div>
+          )}
 
           <div className="patriot__overlay">
             <GamePauseOverlay
@@ -435,6 +461,7 @@ export function PatriotGame() {
                   gameSlug="patriot"
                   score={ui.score}
                   title="Cities lost"
+                  subtitle={gameOverNote(ui)}
                   previousBest={Math.max(previousBestRef.current, apiBest)}
                   onDone={toMenu}
                 />
@@ -453,6 +480,20 @@ export function PatriotGame() {
             </div>
             <h2>Turn your phone</h2>
             <p>Patriot plays in landscape.</p>
+            {/*
+              A way back out. This panel covers the whole stage, back control
+              included, so without it the only exit from a portrait phone was
+              the browser's own gesture. Same leave flow the pause panel uses.
+            */}
+            <button
+              type="button"
+              className="game-pause-card__leave patriot__rotate-leave"
+              onClick={() =>
+                window.dispatchEvent(new Event('arcade:leave-confirm'))
+              }
+            >
+              {tournament ? 'Back to event' : 'Leave Patriot'}
+            </button>
           </div>
         </div>
       )}

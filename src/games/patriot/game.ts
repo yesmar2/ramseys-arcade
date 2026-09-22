@@ -196,8 +196,6 @@ function loadBest() {
   return getPersonalBest('patriot')
 }
 
-function saveBest(_score: number) {}
-
 const BATTERY_AMMO = 10
 const AMMO_PACK = 10
 const BLAST_MAX = 82
@@ -217,7 +215,7 @@ const BATTERY_HIT_RANGE = 52
 const SPLIT_FROM_WAVE = 3
 const SPLIT_AT = 0.5
 const CLEAN_WAVES_TO_REBUILD = 1
-const PLANE_FROM_WAVE = 4
+const PLANE_FROM_WAVE = 5
 const BOMBER_FROM_WAVE = 6
 const DRONE_FROM_WAVE = 2
 const POWER_MAX = 3
@@ -561,6 +559,29 @@ export function setCursor(state: GameState, x: number, y: number): GameState {
   }
 }
 
+const DRY_TEXT = 'NO AMMO'
+
+/**
+ * Say so when there is nothing left to fire.
+ *
+ * A dry click used to return the state untouched: no sound, no mark, nothing
+ * to tell the difference between an empty battery and a dead control. One
+ * notice at a time, since a held finger asks about ten times a second.
+ */
+function dryFire(state: GameState, at: { x: number; y: number }): GameState {
+  if (state.floaters.some((f) => f.text === DRY_TEXT && f.life > 0.55)) {
+    return state
+  }
+  sfx('miss')
+  return {
+    ...state,
+    floaters: [
+      ...state.floaters,
+      { id: uid(), x: at.x, y: at.y, text: DRY_TEXT, life: 1.1 },
+    ],
+  }
+}
+
 export function fire(
   state: GameState,
   aim?: { x: number; y: number },
@@ -568,7 +589,7 @@ export function fire(
   if (state.phase !== 'playing') return state
 
   const alive = state.batteries.filter((b) => b.alive && b.ammo > 0)
-  if (alive.length === 0) return state
+  if (alive.length === 0) return dryFire(state, aim ?? state.cursor)
 
   const target = aim ?? state.cursor
   let best = alive[0]
@@ -680,7 +701,7 @@ export function activatePower(state: GameState, kind: PowerKind): GameState {
     if (alive.length === 0) {
       return {
         ...state,
-        floaters: [...state.floaters, floater('NO AMMO')],
+        floaters: [...state.floaters, floater(DRY_TEXT)],
       }
     }
 
@@ -700,7 +721,7 @@ export function activatePower(state: GameState, kind: PowerKind): GameState {
     if (fired.shots.length === state.shots.length) {
       return {
         ...state,
-        floaters: [...state.floaters, floater('NO AMMO')],
+        floaters: [...state.floaters, floater(DRY_TEXT)],
       }
     }
 
@@ -1494,7 +1515,6 @@ export function tick(state: GameState, dt: number, w: number): GameState {
   const citiesLeft = s.cities.filter((c) => c.alive).length
   if (citiesLeft === 0) {
     const best = Math.max(s.best, s.score)
-    saveBest(best)
     sfx('die')
     return { ...s, phase: 'gameover', best }
   }
@@ -1532,7 +1552,6 @@ export function tick(state: GameState, dt: number, w: number): GameState {
     )
     const score = s.score + cityBonus + ammoBonus
     const best = Math.max(s.best, score)
-    if (best !== s.best) saveBest(best)
 
     const bonusFloaters: Floater[] = s.cities
       .filter((c) => c.alive)
