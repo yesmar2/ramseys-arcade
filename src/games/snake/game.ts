@@ -190,6 +190,15 @@ const BOOST_FUEL_MAX = 4
  * have is a speed setting, not a decision.
  */
 const BOOST_FUEL_PER_FOOD = 0.5
+/**
+ * What a run opens with.
+ *
+ * A full tank meant four seconds of boost before eating anything, which is most
+ * of the early game handed over before the player has done a thing to earn it.
+ * Half is enough to find the control and feel what it does, and leaves the rest
+ * to be filled a food at a time.
+ */
+const BOOST_FUEL_START = BOOST_FUEL_MAX / 2
 
 /** Boost runs on the tank, so it stops when that is dry. */
 export function isBoosting(s: Pick<GameState, 'boostHeld' | 'phase' | 'boostFuel'>) {
@@ -422,7 +431,7 @@ export function createInitialState(
     foodAge: 0,
     speed: START_SPEED,
     boostHeld: false,
-    boostFuel: BOOST_FUEL_MAX,
+    boostFuel: BOOST_FUEL_START,
     // A run always opens on the empty board, so the first screen is never a
     // shape the player has to read before they have moved.
     level: 1,
