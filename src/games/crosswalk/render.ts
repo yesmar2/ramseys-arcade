@@ -606,7 +606,11 @@ function drawRow(
     drawLaneBand(ctx, y, w, cell, fill(205, 58, dark ? 46 : 62, dark ? 0.42 : 0.28))
     ctx.strokeStyle = fill(205, 50, dark ? 58 : 48, 0.2)
     ctx.lineWidth = 1
-    for (let wave = cell * 0.2; wave < w; wave += cell * 0.55) {
+    // Stepped from the board's origin so the ripples sit in the water rather
+    // than on the glass — same fault as the lane markings above.
+    const dotStep = cell * 0.55
+    const dotPhase = ((((ox + cell * 0.2) % dotStep) + dotStep) % dotStep)
+    for (let wave = dotPhase; wave < w; wave += dotStep) {
       ctx.beginPath()
       ctx.arc(wave, y + cell * 0.55, cell * 0.08, 0, Math.PI * 2)
       ctx.stroke()
@@ -667,15 +671,28 @@ function drawRow(
     }
   } else {
     drawLaneBand(ctx, y, w, cell, fill(220, 14, dark ? 34 : 78, dark ? 0.35 : 0.2))
+    ctx.save()
     ctx.strokeStyle = fill(45, 70, 62, 0.22)
     ctx.setLineDash([cell * 0.12, cell * 0.18])
+    /*
+     * Anchored to the board, not to the screen.
+     *
+     * The line spans the viewport, so without this the dash pattern starts at
+     * screen x=0 and the markings are welded to the window: when the view pans
+     * sideways every car, tree, log and the hopper move with the world and the
+     * lane markings alone stay put. They are the most road-like thing on the
+     * row, so the eye takes them for the fixed ground, and then the ground is
+     * the one thing not moving while everything else slides — which is what
+     * made riding a log look like the board was sliding instead of the player.
+     */
+    ctx.lineDashOffset = -ox
     ctx.lineWidth = 2
     const midY = y + cell * 0.5
     ctx.beginPath()
     ctx.moveTo(0, midY)
     ctx.lineTo(w, midY)
     ctx.stroke()
-    ctx.setLineDash([])
+    ctx.restore()
 
     const vy = y + cell * 0.22
     const vh = cell * 0.56
@@ -701,6 +718,7 @@ function drawMilestone(
   ctx: CanvasRenderingContext2D,
   y: number,
   w: number,
+  ox: number,
   cell: number,
   label: number,
   dark: boolean,
@@ -709,16 +727,19 @@ function drawMilestone(
   ctx.strokeStyle = dark ? 'rgba(255, 255, 255, 0.16)' : 'rgba(30, 40, 60, 0.14)'
   ctx.lineWidth = 1.5
   ctx.setLineDash([cell * 0.16, cell * 0.16])
+  // Dashes belong to the board, so they slide with it when the view pans.
+  ctx.lineDashOffset = -ox
   ctx.beginPath()
   ctx.moveTo(0, y)
   ctx.lineTo(w, y)
   ctx.stroke()
   ctx.setLineDash([])
+  ctx.lineDashOffset = 0
   ctx.font = `700 ${Math.max(9, Math.round(cell * 0.24))}px system-ui, sans-serif`
   ctx.textAlign = 'left'
   ctx.textBaseline = 'bottom'
   ctx.fillStyle = dark ? 'rgba(255, 255, 255, 0.34)' : 'rgba(30, 40, 60, 0.32)'
-  ctx.fillText(String(label), cell * 0.18, y - cell * 0.06)
+  ctx.fillText(String(label), ox + cell * 0.18, y - cell * 0.06)
   ctx.restore()
 }
 
@@ -727,6 +748,7 @@ function drawBestLine(
   ctx: CanvasRenderingContext2D,
   y: number,
   w: number,
+  ox: number,
   cell: number,
   best: number,
   passed: boolean,
@@ -736,11 +758,13 @@ function drawBestLine(
   ctx.strokeStyle = `rgba(245, 185, 66, ${alpha})`
   ctx.lineWidth = Math.max(2, cell * 0.05)
   ctx.setLineDash([cell * 0.3, cell * 0.2])
+  ctx.lineDashOffset = -ox
   ctx.beginPath()
   ctx.moveTo(0, y)
   ctx.lineTo(w, y)
   ctx.stroke()
   ctx.setLineDash([])
+  ctx.lineDashOffset = 0
 
   const text = passed ? `BEAT ${best}` : `BEST ${best}`
   ctx.font = `800 ${Math.max(10, Math.round(cell * 0.26))}px system-ui, sans-serif`
@@ -814,13 +838,13 @@ export function renderGame(
     if (state.target > 0 && worldRow === state.target) continue
     const y = rowScreenY(worldRow, cameraY, visibleRows, oy, cell)
     if (y < -cell || y > h + cell) continue
-    drawMilestone(ctx, y, w, cell, worldRow, dark)
+    drawMilestone(ctx, y, w, ox, cell, worldRow, dark)
   }
 
   if (state.target > 0 && state.phase !== 'menu') {
     const y = rowScreenY(state.target, cameraY, visibleRows, oy, cell)
     if (y > -cell * 2 && y < h + cell) {
-      drawBestLine(ctx, y, w, cell, state.target, state.beatBest)
+      drawBestLine(ctx, y, w, ox, cell, state.target, state.beatBest)
     }
   }
 
