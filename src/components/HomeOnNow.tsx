@@ -5,7 +5,7 @@ import { useLiveEvents } from '../hooks/useLiveEvents'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { normalizePlayerName } from '../lib/leaderboard'
 import { resolveGameAccent } from '../lib/theme'
-import type { TournamentSummary } from '../lib/tournaments'
+import { howItWins, type TournamentSummary } from '../lib/tournaments'
 import { EventCountdown } from './EventCountdown'
 import { GameThumbArt } from './GameThumbArt'
 import { medalKind } from './PodiumMedal'
@@ -14,22 +14,6 @@ const PLACES = ['1st', '2nd', '3rd']
 
 function pts(n: number) {
   return `${n} ${n === 1 ? 'pt' : 'pts'}`
-}
-
-/** How an event is won, in the words a player would use. */
-function howItWins(t: TournamentSummary): string {
-  switch (t.format) {
-    case 'place-points':
-      return t.games.length === 3 ? 'Places on all three games earn points' : 'Places on every game earn points'
-    case 'single-run':
-      return 'One run each; best score wins'
-    case 'attempt-limited':
-      return 'A few runs each; best score wins'
-    case 'cumulative':
-      return 'Every run adds to your total'
-    default:
-      return 'Best score wins'
-  }
 }
 
 function gameNames(t: TournamentSummary): string {

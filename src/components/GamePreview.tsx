@@ -69,9 +69,14 @@ export function GamePreview({ slug, className }: { slug: string; className?: str
     }
     const moving = () =>
       Boolean(preview) && (hovered || focused || centred) && near && !document.hidden && !still.matches
+    // Marked on the canvas while it runs, so the tile can clear anything drawn over it.
+    const playing = (on: boolean) => canvas.toggleAttribute('data-playing', on)
     const frame = (now: number) => {
       raf = 0
-      if (!moving()) return
+      if (!moving()) {
+        playing(false)
+        return
+      }
       owed += last ? Math.min(0.25, (now - last) / 1000) : 0
       last = now
       if (owed >= 1 / FPS) {
@@ -85,6 +90,7 @@ export function GamePreview({ slug, className }: { slug: string; className?: str
       last = 0
       owed = 0
       raf = requestAnimationFrame(frame)
+      playing(true)
     }
     // A frozen preview still redraws for a new theme or size.
     const redraw = () => {
@@ -180,6 +186,7 @@ export function GamePreview({ slug, className }: { slug: string; className?: str
       still.removeEventListener('change', resume)
       window.removeEventListener(THEME_EVENT, redraw)
       if (raf) cancelAnimationFrame(raf)
+      playing(false)
     }
   }, [slug])
 

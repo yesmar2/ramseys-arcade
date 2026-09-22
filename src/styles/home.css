@@ -43,30 +43,6 @@
   color: var(--tile-accent, var(--ink));
 }
 
-/* ---------- the pitch, for a first visit ---------- */
-
-.home-intro {
-  max-width: 40rem;
-}
-
-.home-intro__title {
-  margin: 0 0 0.4rem;
-  font-family: var(--font-display);
-  font-size: clamp(1.15rem, 3.2vw, 1.4rem);
-  font-weight: 800;
-  letter-spacing: -0.025em;
-  line-height: 1.22;
-  text-wrap: balance;
-}
-
-.home-intro__lead {
-  margin: 0;
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: var(--muted);
-}
-
-
 /* ---------- the banner: one game, run big across the width ---------- */
 
 /*
@@ -548,8 +524,11 @@ html[data-theme="dark"] .home-banner {
   fill: currentColor;
 }
 
-/* Along the bottom, the whole width: where you stand across the arcade this period. */
-.home-banner__standing {
+/*
+ * Along the bottom, the whole width: where you stand across the arcade this
+ * period, or on a first visit, what the arcade promises.
+ */
+.home-banner__strip {
   grid-column: 1 / -1;
   position: relative;
   z-index: 1;
@@ -609,16 +588,110 @@ html[data-theme="dark"] .home-banner {
   text-underline-offset: 0.2em;
 }
 
+/* ---------- the banner on a first visit: what the arcade is ---------- */
+
+.home-banner--welcome .home-banner__text {
+  gap: 0.9rem;
+}
+
+.home-banner__goal--pitch {
+  max-width: none;
+  font-size: clamp(2.2rem, 4.4vw, 3.6rem);
+}
+
+/* Today's daily as a way in: its game, how it is won, its clock. */
+.home-banner__daily {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  width: min(100%, 28rem);
+  min-height: 4.1rem;
+  box-sizing: border-box;
+  padding: 0.55rem 1rem 0.55rem 0.55rem;
+  border-radius: 1rem;
+  background: var(--banner-chip-bg);
+  border: 1px solid var(--banner-chip-border);
+  color: var(--banner-ink);
+  text-decoration: none;
+  transition: background 0.15s ease;
+}
+
+.home-banner__daily:hover,
+.home-banner__daily:focus-visible {
+  background: var(--banner-chip-hover);
+  outline: none;
+}
+
+/* While the events are asked for, the card's room is kept, so nothing under it jumps. */
+.home-banner__daily--wait {
+  opacity: 0.5;
+}
+
+.home-banner__daily-art {
+  --inline-thumb-size: 2.9rem;
+  flex: none;
+  display: flex;
+  line-height: 0;
+}
+
+.home-banner__daily-text {
+  display: grid;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.home-banner__daily-title {
+  font-size: 0.98rem;
+  font-weight: 800;
+}
+
+.home-banner__daily-sub {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--banner-muted);
+}
+
+.home-banner__daily-go {
+  flex: none;
+  width: 1rem;
+  height: 1rem;
+  margin-left: auto;
+  color: var(--banner-faint);
+}
+
+.home-banner__promises {
+  align-items: center;
+}
+
+.home-banner__promise {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.home-banner__promise svg {
+  flex: none;
+  width: 1.1rem;
+  height: 1.1rem;
+  color: var(--banner-accent-ink);
+}
+
+.home-banner__promise-short {
+  display: none;
+}
+
 @media (max-width: 56rem) {
-  .home-banner--rung .home-banner__art {
+  .home-banner--rung .home-banner__art,
+  .home-banner--welcome .home-banner__art {
     min-height: 8.5rem;
   }
 
-  .home-banner--rung .home-banner__art > .inline-thumb {
+  .home-banner--rung .home-banner__art > .inline-thumb,
+  .home-banner--welcome .home-banner__art > .inline-thumb {
     width: 8.5rem;
   }
 
-  .home-banner__standing {
+  .home-banner__strip {
     padding: 0.85rem 1.25rem;
   }
 }
@@ -644,6 +717,22 @@ html[data-theme="dark"] .home-banner {
     display: inline-flex;
     gap: 0.3rem;
     margin-left: auto;
+  }
+
+  /* The promises shorten to three: no ads, no install, no account. */
+  .home-banner__promises {
+    justify-content: space-between;
+    gap: 0.4rem 0.8rem;
+    font-size: 0.82rem;
+  }
+
+  .home-banner__promise--roomy,
+  .home-banner__promise-long {
+    display: none;
+  }
+
+  .home-banner__promise-short {
+    display: inline;
   }
 }
 
@@ -1468,18 +1557,22 @@ html[data-theme="dark"] .home-banner {
   }
 }
 
-/* ---------- the wall: every game, edge to edge ---------- */
+/* ---------- the wall: every game as a cabinet ---------- */
 
 .wall {
   display: grid;
+  /* One column the width of the page, whatever the tabs' scrolling line would like. */
+  grid-template-columns: minmax(0, 1fr);
   gap: 0.9rem;
+  /* Browse all games lands the heading clear of the header. */
+  scroll-margin-top: calc(var(--header-h) + 1.5rem);
 }
 
 .wall__bar {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.9rem;
+  gap: 0.6rem 0.9rem;
 }
 
 .wall__title {
@@ -1491,94 +1584,134 @@ html[data-theme="dark"] .home-banner {
 }
 
 .wall__count {
-  margin-left: auto;
   font-size: 0.78rem;
   font-weight: 700;
   color: var(--muted);
 }
 
-/* Six across on a desktop, dense so the big and wide cells leave no holes. */
+.wall__tabs {
+  margin-left: auto;
+}
+
+/* How many games each tab holds, beside its name. */
+.wall__tab-n {
+  margin-left: 0.4rem;
+  font-size: 0.66rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.62;
+}
+
+/* The games still being tuned: a row of their own under the floor, with its own heading. */
+.wall__sub {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.2rem 0.75rem;
+  margin-top: 1.3rem;
+}
+
+.wall__subtitle {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.wall__subnote {
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+/* Five across on a desktop, two on a phone, every cabinet the same size. */
 .wall__grid {
   list-style: none;
   margin: 0;
   padding: 0;
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-  grid-auto-flow: dense;
-  gap: 0.7rem;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 1rem;
 }
 
-@media (max-width: 72rem) {
+@media (min-width: 100rem) {
   .wall__grid {
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+    grid-template-columns: repeat(6, minmax(0, 1fr));
   }
 }
 
-@media (max-width: 56rem) {
+@media (max-width: 64rem) {
   .wall__grid {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
 
-@media (max-width: 42rem) {
+@media (max-width: 50rem) {
   .wall__grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.8rem;
   }
 }
 
-@media (max-width: 30rem) {
+@media (max-width: 36rem) {
   .wall__grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0.55rem;
+    gap: 0.65rem;
   }
 
-  /* Two figures on a narrow band wrap rather than clip. */
-  .wall__cell--one .wall-tile__foot {
-    flex-wrap: wrap;
-    padding-inline: 0.6rem;
+  /* On a phone the tabs run in a line that scrolls, out to the screen's edges past the rail's gutter. */
+  .wall__tabs {
+    flex-wrap: nowrap;
+    width: calc(100% + 1.25rem);
+    margin: 0 -0.625rem;
+    padding: 0 0.625rem;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .wall__tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .wall__tabs .chips__item {
+    flex: none;
+    min-height: 2.4rem;
   }
 }
 
 .wall__cell {
+  display: flex;
   min-width: 0;
-  aspect-ratio: 5 / 4;
-}
-
-.wall__cell--wide {
-  grid-column: span 2;
-  aspect-ratio: 5 / 2;
-}
-
-.wall__cell--big {
-  grid-column: span 2;
-  grid-row: span 2;
-  aspect-ratio: 5 / 4;
 }
 
 /*
- * A tile is the game's colour with the mark and the name on it, and under
- * that a band of the page's own surface carrying your numbers, the way the
- * mock drew it. The theme decides how deep the colour goes: in Light a pale
- * tint with the name in ink, in Dark the colour sunk into the night with the
- * name in white. The mark is an outline in the colour itself, so it reads on
- * either.
+ * A cabinet: a card of the page's own surface with a screen set into it, the
+ * game's colour behind the glass and its mark on it, and under the screen the
+ * name, the board's high score and yours. The theme decides how deep the
+ * colour goes: in Light a pale tint, in Dark the colour sunk into the night.
  */
 .wall-tile {
   --wall-a: color-mix(in srgb, var(--tile-accent) 30%, #ffffff);
   --wall-b: color-mix(in srgb, var(--tile-accent) 16%, #ffffff);
-  --wall-ink: var(--ink);
-  --wall-muted: var(--muted);
+  --wall-scrim: rgba(246, 249, 251, 0.94);
+  --wall-accent-ink: color-mix(in srgb, var(--tile-accent) 62%, var(--ink));
+  --wall-you-ink: color-mix(in srgb, var(--accent) 70%, var(--ink));
   position: relative;
   display: flex;
   flex-direction: column;
-  height: 100%;
-  border-radius: 1rem;
-  overflow: hidden;
-  color: var(--wall-ink);
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 0.5rem;
+  border-radius: 1.2rem;
+  color: var(--ink);
   text-decoration: none;
   background: var(--surface);
-  border: 1px solid color-mix(in srgb, var(--tile-accent) 34%, transparent);
-  box-shadow: 0 1px 2px rgba(var(--shade-rgb), 0.06);
+  border: 1px solid rgba(var(--ink-rgb), 0.08);
+  box-shadow:
+    0 1px 2px rgba(var(--shade-rgb), 0.05),
+    0 26px 40px -32px color-mix(in srgb, var(--tile-accent) 50%, transparent);
   animation: hero-in 0.5s ease-out both;
   transition: transform 0.18s ease, box-shadow 0.18s ease;
 }
@@ -1586,23 +1719,25 @@ html[data-theme="dark"] .home-banner {
 html[data-theme="dark"] .wall-tile {
   --wall-a: color-mix(in srgb, var(--tile-accent) 46%, #0c141b);
   --wall-b: color-mix(in srgb, var(--tile-accent) 24%, #0c141b);
-  --wall-ink: #fff;
-  --wall-muted: rgba(244, 248, 251, 0.72);
-  /* No edge in the dark: the colour block and the band are the shape. */
-  border-color: transparent;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+  --wall-scrim: rgba(10, 16, 22, 0.9);
+  --wall-accent-ink: color-mix(in srgb, var(--tile-accent) 72%, #fff);
+  --wall-you-ink: var(--accent);
+  border-color: rgba(255, 255, 255, 0.06);
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.14),
+    0 30px 46px -34px color-mix(in srgb, var(--tile-accent) 60%, transparent);
 }
 
 .wall-tile:hover,
 .wall-tile:focus-visible {
-  transform: translateY(-3px);
-  box-shadow: 0 14px 30px color-mix(in srgb, var(--tile-accent) 28%, transparent);
+  transform: translateY(-4px);
+  box-shadow: 0 16px 32px color-mix(in srgb, var(--tile-accent) 28%, transparent);
   outline: none;
 }
 
 html[data-theme="dark"] .wall-tile:hover,
 html[data-theme="dark"] .wall-tile:focus-visible {
-  box-shadow: 0 16px 34px color-mix(in srgb, var(--tile-accent) 35%, rgba(0, 0, 0, 0.3));
+  box-shadow: 0 18px 36px color-mix(in srgb, var(--tile-accent) 35%, rgba(0, 0, 0, 0.3));
 }
 
 .wall-tile:focus-visible {
@@ -1614,50 +1749,42 @@ html[data-theme="dark"] .wall-tile:focus-visible {
   outline-color: rgba(255, 255, 255, 0.7);
 }
 
-/* The coloured part: the mark, and the name along its foot. */
-.wall-tile__body {
+/* The screen: the game's colour behind glass, its mark in the middle. */
+.wall-tile__screen {
   position: relative;
-  flex: 1 1 auto;
-  min-height: 0;
+  aspect-ratio: 4 / 3;
+  border-radius: 0.8rem;
+  overflow: hidden;
+  isolation: isolate;
   background: linear-gradient(160deg, var(--wall-a), var(--wall-b));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tile-accent) 32%, transparent);
 }
 
-/* The gloss: light falling from the top left, where the tile is deep enough to catch it. */
-html[data-theme="dark"] .wall-tile__body::before {
+/* The glass: light falling from the top left, over the mark and any game playing. */
+.wall-tile__screen::after {
   content: '';
   position: absolute;
   inset: 0;
-  background: radial-gradient(120% 80% at 30% 20%, rgba(255, 255, 255, 0.14), transparent 60%);
+  z-index: 1;
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.3) 0%, transparent 42%);
   pointer-events: none;
 }
 
-/* A scrim under the name, so it reads where the mark's foot runs behind it. */
-.wall-tile__body::after {
-  content: '';
-  position: absolute;
-  inset: auto 0 0 0;
-  height: 2.6rem;
-  background: linear-gradient(transparent, rgba(255, 255, 255, 0.5));
-  pointer-events: none;
+html[data-theme="dark"] .wall-tile__screen::after {
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.12) 0%, transparent 42%);
 }
 
-html[data-theme="dark"] .wall-tile__body::after {
-  background: linear-gradient(transparent, rgba(10, 16, 22, 0.6));
-}
-
-/* The thumb sits in the coloured part above the name: a mark in the game's own colour, run big. */
 .wall-tile__art {
   position: absolute;
-  inset: 0 0 0.9rem;
+  inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0.3rem;
 }
 
 .wall-tile__art .inline-thumb {
   width: auto;
-  height: 88%;
+  height: 64%;
   aspect-ratio: 1;
   overflow: visible;
   border-radius: 0;
@@ -1667,13 +1794,9 @@ html[data-theme="dark"] .wall-tile__body::after {
   transition: transform 0.18s ease;
 }
 
-/* A deep tile lifts its mark with a shadow; a pale one has nothing dark to cast. */
+/* A deep screen lifts its mark with a shadow; a pale one has nothing dark to cast. */
 html[data-theme="dark"] .wall-tile__art .inline-thumb {
   filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.28));
-}
-
-.wall__cell--big .wall-tile__art .inline-thumb {
-  height: 78%;
 }
 
 .wall-tile__art .inline-thumb .game-thumb__svg {
@@ -1687,10 +1810,9 @@ html[data-theme="dark"] .wall-tile__art .inline-thumb {
 }
 
 /*
- * A game that can play itself fills the coloured part with the real thing,
- * drawn by its own renderer. It sits over the thumb and fades in once its
- * first frame is down, so a slow load or a failed one leaves the thumb
- * showing; the name and its scrim stay on top.
+ * A game that can play itself fills the screen with the real thing, drawn by
+ * its own renderer. It sits over the thumb and fades in once its first frame
+ * is down, so a slow load or a failed one leaves the thumb showing.
  */
 .wall-tile__preview {
   position: absolute;
@@ -1706,130 +1828,12 @@ html[data-theme="dark"] .wall-tile__art .inline-thumb {
   opacity: 1;
 }
 
-.wall-tile__name {
-  position: absolute;
-  left: 0.75rem;
-  right: 0.75rem;
-  bottom: 0.5rem;
-  z-index: 1;
-  font-family: var(--font-display);
-  font-size: 0.92rem;
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  color: var(--wall-ink);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.wall__cell--big .wall-tile__name {
-  left: 1rem;
-  bottom: 0.7rem;
-  font-size: 1.45rem;
-}
-
-.wall__cell--wide .wall-tile__name {
-  font-size: 1.08rem;
-}
-
-/*
- * The band: your best on the left and where you stand on the right, for the
- * period in the header, on the page's surface so it reads as a label under
- * the picture. A podium place takes the game's colour. Without a score of
- * yours the band names the game's kind, so every tile carries the same band.
- */
-.wall-tile__foot {
-  flex: none;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-  min-height: 2.3rem;
-  padding: 0.5rem 0.75rem;
-  border-top: 1px solid rgba(var(--ink-rgb), 0.06);
-  color: var(--ink);
-  font-size: 0.72rem;
-  line-height: 1.2;
-  white-space: nowrap;
-}
-
-html[data-theme="dark"] .wall-tile__foot {
-  border-top-color: rgba(255, 255, 255, 0.06);
-}
-
-.wall-tile__best {
-  min-width: 0;
-  font-weight: 650;
-  color: var(--muted);
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.wall-tile__best b {
-  font-weight: 800;
-  font-variant-numeric: tabular-nums;
-  color: var(--ink);
-}
-
-.wall-tile__rank {
-  flex: none;
-  font-family: var(--font-display);
-  font-size: 0.88rem;
-  font-weight: 800;
-  letter-spacing: -0.01em;
-  font-variant-numeric: tabular-nums;
-  color: var(--ink);
-}
-
-.wall-tile__rank small {
-  font-family: var(--font-body);
-  font-size: 0.68rem;
-  font-weight: 650;
-  letter-spacing: 0;
-  color: var(--muted);
-}
-
-.wall-tile__rank--podium {
-  color: color-mix(in srgb, var(--tile-accent) 72%, var(--ink));
-}
-
-.wall-tile__kind {
-  font-size: 0.64rem;
-  font-weight: 750;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
-  color: var(--muted);
-}
-
-/* The leader's tag, beside the high score on a cabinet you have not played. */
-.wall-tile__leader {
-  flex: none;
-  max-width: 45%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  font-weight: 750;
-  letter-spacing: 0.02em;
-  color: var(--muted);
-}
-
-.wall__cell--big .wall-tile__foot {
-  min-height: 2.8rem;
-  padding: 0.65rem 1rem;
-  font-size: 0.8rem;
-}
-
-.wall__cell--big .wall-tile__rank {
-  font-size: 1.1rem;
-}
-
-.wall__cell--big .wall-tile__rank small {
-  font-size: 0.78rem;
-}
-
+/* The badge sits on the glass; the high-score table, when it comes up, covers it. */
 .wall-tile__flag {
   position: absolute;
-  top: 0.6rem;
-  left: 0.6rem;
+  top: 0.5rem;
+  left: 0.5rem;
+  z-index: 2;
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
@@ -1859,27 +1863,294 @@ html[data-theme="dark"] .wall-tile__flag--soon {
   color: rgba(244, 248, 251, 0.75);
 }
 
-.wall-tile__flag--daily {
-  color: color-mix(in srgb, #f5b942 62%, var(--ink));
+.wall-tile__flag--daily,
+.wall-tile__flag--weekly {
+  --flag-dot: #f5b942;
+  color: color-mix(in srgb, var(--flag-dot) 62%, var(--ink));
 }
 
-html[data-theme="dark"] .wall-tile__flag--daily {
-  color: #f5b942;
+.wall-tile__flag--weekly {
+  --flag-dot: var(--accent);
 }
 
-.wall-tile__flag--daily::before {
+html[data-theme="dark"] .wall-tile__flag--daily,
+html[data-theme="dark"] .wall-tile__flag--weekly {
+  color: var(--flag-dot);
+}
+
+.wall-tile__flag--daily::before,
+.wall-tile__flag--weekly::before {
   content: '';
   width: 0.4rem;
   height: 0.4rem;
   border-radius: 50%;
-  background: #f5b942;
-  box-shadow: 0 0 0 3px rgba(245, 185, 66, 0.25);
+  background: var(--flag-dot);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--flag-dot) 25%, transparent);
+}
+
+/*
+ * The high-score table, over the screen. It comes up under a pointer or
+ * keyboard focus, and otherwise for a few seconds in every sixteen, each
+ * cabinet at its own point in the loop, so the wall takes turns showing its
+ * tables. A cabinet whose game plays itself keeps the pointer for the game,
+ * and puts the table away while it plays.
+ */
+.wall-tile__scores {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0 1rem;
+  background: var(--wall-scrim);
+  opacity: 0;
+  animation: wall-attract 16s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes wall-attract {
+  0%,
+  76% {
+    opacity: 0;
+  }
+  79%,
+  95% {
+    opacity: 1;
+  }
+  98%,
+  100% {
+    opacity: 0;
+  }
+}
+
+.wall-tile:not(.wall-tile--live):hover .wall-tile__scores,
+.wall-tile:not(.wall-tile--live):focus-visible .wall-tile__scores {
+  animation: none;
+  opacity: 1;
+}
+
+.wall-tile:has(.game-preview[data-playing]) .wall-tile__scores {
+  animation: none;
+  opacity: 0;
+}
+
+.wall-tile__scores-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--wall-accent-ink);
+}
+
+.wall-tile__scores-head small {
+  font-size: 0.58rem;
+  font-weight: 750;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+.wall-tile__score {
+  display: flex;
+  align-items: baseline;
+  gap: 0.55rem;
+  min-width: 0;
+  font-size: 0.8rem;
+  font-weight: 700;
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
+}
+
+.wall-tile__score-place {
+  flex: none;
+  width: 1.7rem;
+  font-size: 0.64rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--wall-accent-ink);
+}
+
+.wall-tile__score-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  letter-spacing: 0.02em;
+  color: var(--ink);
+}
+
+.wall-tile__score--you .wall-tile__score-name {
+  color: var(--wall-you-ink);
+}
+
+.wall-tile__score-value {
+  flex: none;
+  margin-left: auto;
+  font-weight: 800;
+  color: var(--ink);
+}
+
+.wall-tile__score-none {
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: var(--ink);
+}
+
+.wall-tile__score-hint {
+  font-size: 0.74rem;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--muted);
+}
+
+/* Under the screen: the name and what kind of game, the board's high score, and yours. */
+.wall-tile__info {
+  display: grid;
+  align-content: start;
+  gap: 0.3rem;
+  min-width: 0;
+  padding: 0.7rem 0.35rem 0.25rem;
+}
+
+.wall-tile__title {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.wall-tile__name {
+  flex: none;
+  max-width: 100%;
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.wall-tile__kind {
+  flex: 1 1 auto;
+  min-width: 0;
+  text-align: right;
+  font-size: 0.6rem;
+  font-weight: 750;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--muted);
+}
+
+.wall-tile__line {
+  display: flex;
+  align-items: baseline;
+  gap: 0.45rem;
+  min-width: 0;
+  font-size: 0.76rem;
+  font-weight: 650;
+  line-height: 1.2;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+
+.wall-tile__tag {
+  flex: none;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: var(--wall-accent-ink);
+}
+
+.wall-tile__tag--you {
+  color: var(--wall-you-ink);
+}
+
+.wall-tile__figure {
+  font-weight: 800;
+  color: var(--ink);
+}
+
+.wall-tile__who {
+  min-width: 0;
+  margin-left: auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 750;
+  letter-spacing: 0.02em;
+}
+
+.wall-tile__mine {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+/* On a phone a cabinet keeps to the essentials: no kind, no ordinals, no spelled-out periods. */
+@media (max-width: 36rem) {
+  .wall-tile {
+    padding: 0.4rem;
+    border-radius: 1rem;
+  }
+
+  .wall-tile__screen {
+    border-radius: 0.65rem;
+  }
+
+  .wall-tile__flag {
+    top: 0.4rem;
+    left: 0.4rem;
+    padding: 0.18rem 0.5rem;
+    font-size: 0.56rem;
+  }
+
+  .wall-tile__kind,
+  .wall-tile__roomy,
+  .wall-tile__score-place,
+  .wall-tile__scores-head small {
+    display: none;
+  }
+
+  .wall-tile__scores {
+    gap: 0.3rem;
+    padding: 0 0.7rem;
+  }
+
+  .wall-tile__score {
+    font-size: 0.7rem;
+  }
+
+  .wall-tile__info {
+    gap: 0.25rem;
+    padding: 0.55rem 0.25rem 0.15rem;
+  }
+
+  .wall-tile__name {
+    font-size: 0.92rem;
+  }
+
+  .wall-tile__line {
+    font-size: 0.7rem;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .wall-tile,
   .wall-tile__art .inline-thumb,
   .wall-tile__preview,
+  .wall-tile__scores,
   .home-banner__art > .inline-thumb {
     animation: none;
     transition: none;

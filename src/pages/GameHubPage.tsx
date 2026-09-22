@@ -315,7 +315,6 @@ export function GameHubPage({ slug, board: boardFromRoute }: GameHubPageProps) {
                   key={g.slug}
                   game={g}
                   index={i}
-                  size="one"
                   best={bests?.[g.slug] ?? null}
                   standing={byGame[g.slug] ?? null}
                   top={leaders?.[g.slug] ?? null}

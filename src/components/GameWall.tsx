@@ -1,5 +1,5 @@
 import { useState, type CSSProperties } from 'react'
-import { games, homeGames, TAG_LABELS, type Game, type GameTag } from '../data/games'
+import { homeGames, TAG_LABELS, type Game, type GameTag } from '../data/games'
 import { useBoardLeaders, type BoardLeader } from '../hooks/useBoardLeaders'
 import { gameHref } from '../hooks/useHashRoute'
 import { useLiveEvents } from '../hooks/useLiveEvents'
@@ -9,10 +9,9 @@ import { useDefaultPeriod } from '../lib/defaultPeriod'
 import { useDeviceType } from '../lib/device'
 import { hasGamePreview } from '../lib/gamePreviews'
 import { useGlobalRank } from '../lib/globalRank'
-import { heroSlug } from '../lib/homePicks'
-import { useRecentGames } from '../lib/lastPlayed'
-import { normalizePlayerName, type GlobalGamePlace } from '../lib/leaderboard'
+import { normalizePlayerName, PERIOD_LABELS, type GlobalGamePlace } from '../lib/leaderboard'
 import { formatLeaderboardScore } from '../lib/leaderboardFormat'
+import { numberWord } from '../lib/numberWord'
 import { resolveGameAccent } from '../lib/theme'
 import { GamePreview } from './GamePreview'
 import { GameThumbArt } from './GameThumbArt'
@@ -40,8 +39,8 @@ function inTab(game: Game, tab: Tab) {
  * its column counts, and the games keep their shelf order except that the
  * next one placed is the first that touches no tile of its own colour in
  * any of those layouts. When that runs into a corner, a few seeded runs try
- * other clean choices and the arrangement with the fewest clashes wins. The
- * big tile leads whatever happens.
+ * other clean choices and the arrangement with the fewest clashes wins. A
+ * lead, when one is given, goes first whatever happens.
  */
 const WALL_COLUMNS = [6, 5, 4, 3, 2]
 
@@ -151,50 +150,69 @@ function arrangeWall(list: Game[], lead: string | null, spanOf: (g: Game) => Spa
   return best.order
 }
 
+
+/** Still being tuned, or on its way: the games with a row of their own. */
+function isFresh(game: Game) {
+  return Boolean(game.inDevelopment || game.comingSoon)
+}
+
+const ONE: Span = { w: 1, h: 1 }
+
+/** The places in a cabinet's high-score table. */
+const PLACES = ['1st', '2nd', '3rd']
+
 /**
- * The wall: every game, edge to edge, in a grid that runs six across on a
- * wide screen and two on a phone. The first game on the shelf takes a
- * two-by-two cell and the newest takes two across, so the grid has a rhythm
- * rather than a beat. Each game's thumb sits in its tile on a block of its
- * colour, with the name under it, and no two tiles of one colour touch. The
- * daily's game wears a badge. Tabs along the top cut the wall by what kind of
- * game it is.
+ * The wall: every game as an arcade cabinet, in a grid that runs five across
+ * on a desktop and two on a phone, and no two cabinets of one colour side by
+ * side. The finished games stand on the floor; the ones still being tuned get
+ * a row of their own under them. Each cabinet's screen carries the game's
+ * mark and, every so often or under a pointer, its high-score table; under
+ * the screen go the name, the board's high score and yours. The daily's game
+ * and the weekly's wear a badge. Tabs along the top cut the wall by what kind
+ * of game it is, and say how many of each there are.
  */
 export function GameWall() {
   const device = useDeviceType()
-  const name = usePlayerName()
-  const cleaned = normalizePlayerName(name)
+  const cleaned = normalizePlayerName(usePlayerName())
   const period = useDefaultPeriod()
-  const recent = useRecentGames()
   const { official } = useLiveEvents(cleaned)
   const [tab, setTab] = useState<Tab>('all')
   // Your best on each game, where you stand on each board (from the rank the
-  // header already fetched), and who leads each board where you have neither.
+  // header already fetched), and the top three on each board.
   const bests = usePlayerBests(cleaned, period)
   const { byGame } = useGlobalRank()
   const leaders = useBoardLeaders(period)
 
   const all = homeGames(device)
   const shown = all.filter((g) => inTab(g, tab))
-  // The banner above already has the hero; the wall's big cell goes to the next shelf game.
-  const hero = heroSlug(device, recent)
-  const big = shown.find((g) => g.slug !== hero && !g.inDevelopment && !g.comingSoon)?.slug ?? null
-  const newest = games.filter((g) => !g.hidden).at(-1)?.slug ?? null
-  const sizeOf = (g: Game): 'one' | 'wide' | 'big' =>
-    g.slug === big ? 'big' : g.slug === newest && shown.length > 4 ? 'wide' : 'one'
-  const ordered = arrangeWall(shown, big, (g) => {
-    const size = sizeOf(g)
-    return size === 'big' ? { w: 2, h: 2 } : size === 'wide' ? { w: 2, h: 1 } : { w: 1, h: 1 }
-  })
-  // The daily's game wears its badge on the wall.
+  const floor = arrangeWall(shown.filter((g) => !isFresh(g)), null, () => ONE)
+  const fresh = arrangeWall(shown.filter(isFresh), null, () => ONE)
+  // The daily's game and the weekly's wear their badges on the wall.
   const dailySlug = official.find((t) => t.cadence === 'daily')?.games[0] ?? null
+  const weekly = new Set(official.find((t) => t.cadence === 'weekly')?.games ?? [])
+
+  const cabinet = (game: Game, index: number) => (
+    <WallTile
+      key={game.slug}
+      game={game}
+      index={index}
+      best={bests?.[game.slug] ?? null}
+      standing={byGame[game.slug] ?? null}
+      top={leaders?.[game.slug] ?? null}
+      daily={game.slug === dailySlug}
+      weekly={weekly.has(game.slug)}
+      newFlag={false}
+      preview
+    />
+  )
 
   return (
-    <section className="wall" aria-labelledby="games-heading">
+    <section className="wall" id="games" aria-labelledby="games-heading">
       <div className="wall__bar">
         <h2 id="games-heading" className="wall__title">
           Games
         </h2>
+        <span className="wall__count">{shown.length} on the floor</span>
         <div className="chips wall__tabs" role="tablist" aria-label="Kind of game">
           {TABS.map((t) => {
             const count = all.filter((g) => inTab(g, t.id)).length
@@ -209,29 +227,28 @@ export function GameWall() {
                 onClick={() => setTab(t.id)}
               >
                 {t.label}
+                <span className="wall__tab-n">{count}</span>
               </button>
             )
           })}
         </div>
-        <span className="wall__count">
-          {shown.length} {shown.length === 1 ? 'game' : 'games'}
-        </span>
       </div>
-      <ul className="wall__grid">
-        {ordered.map((game, index) => (
-          <WallTile
-            key={game.slug}
-            game={game}
-            index={index}
-            size={sizeOf(game)}
-            best={bests?.[game.slug] ?? null}
-            standing={byGame[game.slug] ?? null}
-            top={leaders?.[game.slug] ?? null}
-            daily={game.slug === dailySlug}
-            preview
-          />
-        ))}
-      </ul>
+      {floor.length > 0 ? <ul className="wall__grid">{floor.map((g, i) => cabinet(g, i))}</ul> : null}
+      {fresh.length > 0 ? (
+        <>
+          <div className="wall__sub">
+            <h3 className="wall__subtitle">New on the floor</h3>
+            <p className="wall__subnote">
+              {tab !== 'all' && tab !== 'new'
+                ? 'Still being tuned.'
+                : fresh.length === 1
+                  ? 'The newest, still being tuned.'
+                  : `The ${numberWord(fresh.length)} newest, still being tuned.`}
+            </p>
+          </div>
+          <ul className="wall__grid">{fresh.map((g, i) => cabinet(g, floor.length + i))}</ul>
+        </>
+      ) : null}
     </section>
   )
 }
@@ -239,102 +256,141 @@ export function GameWall() {
 export function WallTile({
   game,
   index,
-  size,
   best,
   standing = null,
   top = null,
-  daily,
+  daily = false,
+  weekly = false,
+  newFlag = true,
   preview = false,
 }: {
   game: Game
   index: number
-  size: 'one' | 'wide' | 'big'
   /** Your top score on this game for the period, when you have one. */
   best: number | null
   /** Your place on this game's board for the period, and how many are on it, when you are. */
   standing?: GlobalGamePlace | null
-  /** Who leads this game's board: shown where you have no numbers of your own. */
+  /** The board's top runs: the high score under the screen, and the table on it. */
   top?: BoardLeader | null
-  daily: boolean
-  /** Let a game that can play itself do so in the tile, over its thumb. */
+  daily?: boolean
+  weekly?: boolean
+  /** Badge a game still being tuned as new; off where its row already says so. */
+  newFlag?: boolean
+  /** Let a game that can play itself do so on the screen, over its thumb. */
   preview?: boolean
 }) {
+  const period = useDefaultPeriod()
+  const you = normalizePlayerName(usePlayerName())
   const accent = resolveGameAccent(game.slug, game.accent)
+  const live = preview && hasGamePreview(game.slug)
   const style = {
     '--tile-accent': accent,
     animationDelay: `${Math.min(index, 12) * 0.04}s`,
   } as CSSProperties
-  const flag = game.inDevelopment
-    ? { label: 'New', kind: 'new' }
-    : game.comingSoon
-      ? { label: 'Coming soon', kind: 'soon' }
-      : daily
-        ? { label: 'Daily', kind: 'daily' }
-        : null
+  // Every cabinet shows its table for a few seconds of a sixteen-second loop, each at its own point in it.
+  const attract = { animationDelay: `-${(((index * 7) % 15) * 1.07).toFixed(2)}s` } as CSSProperties
+  const flag = game.comingSoon
+    ? { label: 'Coming soon', kind: 'soon' }
+    : daily
+      ? { label: 'Daily', kind: 'daily' }
+      : weekly
+        ? { label: 'Weekly', kind: 'weekly' }
+        : newFlag && game.inDevelopment
+          ? { label: 'New', kind: 'new' }
+          : null
+  const fmt = (score: number) => formatLeaderboardScore(game.slug, score)
   const place = standing?.place ?? null
   const total = standing?.total ?? null
-  const yours = Boolean(place || best)
-  // The high score on the cabinet: this period's, or the all-time holder while nobody has posted yet.
-  const topWord = top?.period === 'all' ? 'All time' : 'Top score'
+  const periodWord = PERIOD_LABELS[period].toLowerCase()
+  const rows = top ? (top.entries.length > 0 ? top.entries : [top.entry]) : []
+  const kind = (game.tags ?? []).map((tag) => TAG_LABELS[tag]).join(' · ') || 'Game'
   const label = [
     game.name,
     flag ? flag.label.toLowerCase() : null,
-    place ? `you are #${place}${total ? ` of ${total}` : ''}` : null,
-    best ? `best score ${formatLeaderboardScore(game.slug, best)}` : null,
-    !yours && top
-      ? `${topWord.toLowerCase()} ${formatLeaderboardScore(game.slug, top.entry.score)} by ${top.entry.name}`
-      : null,
+    top
+      ? `high score ${fmt(top.entry.score)} by ${top.entry.name}${top.period === 'all' ? ', all time' : ''}`
+      : 'no high score yet',
+    place ? `you are #${place}${total ? ` of ${total}` : ''} ${periodWord}` : null,
+    best ? `your best ${fmt(best)}` : null,
   ]
     .filter(Boolean)
     .join(', ')
-  // With no score of yours and none on the board, the band says what kind of game this is.
-  const kind = (game.tags ?? []).map((tag) => TAG_LABELS[tag]).join(' · ') || 'Game'
+
   return (
-    <li className={`wall__cell wall__cell--${size}`}>
-      <a className="wall-tile" href={gameHref(game.slug)} style={style} aria-label={label}>
-        <span className="wall-tile__body">
+    <li className="wall__cell">
+      <a
+        className={`wall-tile${live ? ' wall-tile--live' : ''}`}
+        href={gameHref(game.slug)}
+        style={style}
+        aria-label={label}
+      >
+        <span className="wall-tile__screen">
           <span className="wall-tile__art" aria-hidden="true">
             <GameThumbArt slug={game.slug} accent={accent} />
           </span>
-          {preview && hasGamePreview(game.slug) ? (
-            <GamePreview slug={game.slug} className="wall-tile__preview" />
-          ) : null}
+          {live ? <GamePreview slug={game.slug} className="wall-tile__preview" /> : null}
           {flag ? (
-            <span className={`wall-tile__flag wall-tile__flag--${flag.kind}`}>{flag.label}</span>
+            <span className={`wall-tile__flag wall-tile__flag--${flag.kind}`} aria-hidden="true">
+              {flag.label}
+            </span>
           ) : null}
-          <span className="wall-tile__name" aria-hidden="true">
-            {game.name}
+          <span className="wall-tile__scores" style={attract} aria-hidden="true">
+            <span className="wall-tile__scores-head">
+              High scores
+              {top ? <small>{top.period === 'all' ? 'All time' : PERIOD_LABELS[top.period]}</small> : null}
+            </span>
+            {rows.length > 0 ? (
+              rows.map((e, i) => (
+                <span
+                  key={e.id}
+                  className={`wall-tile__score${you && e.name === you ? ' wall-tile__score--you' : ''}`}
+                >
+                  <span className="wall-tile__score-place">{PLACES[i]}</span>
+                  <span className="wall-tile__score-name">{e.name}</span>
+                  <span className="wall-tile__score-value">{fmt(e.score)}</span>
+                </span>
+              ))
+            ) : (
+              <>
+                <span className="wall-tile__score-none">No scores yet</span>
+                <span className="wall-tile__score-hint">The first run posted holds the record.</span>
+              </>
+            )}
           </span>
         </span>
-        <span className="wall-tile__foot" aria-hidden="true">
-          {yours ? (
-            <>
-              <span className="wall-tile__best">
-                {best ? (
-                  <>
-                    Best score <b>{formatLeaderboardScore(game.slug, best)}</b>
-                  </>
-                ) : (
-                  'No score yet'
-                )}
-              </span>
-              {place ? (
-                <span className={`wall-tile__rank${place <= 3 ? ' wall-tile__rank--podium' : ''}`}>
-                  #{place}
-                  {total ? <small> of {total.toLocaleString()}</small> : null}
-                </span>
-              ) : null}
-            </>
-          ) : top ? (
-            <>
-              <span className="wall-tile__best">
-                {topWord} <b>{formatLeaderboardScore(game.slug, top.entry.score)}</b>
-              </span>
-              <span className="wall-tile__leader">{top.entry.name}</span>
-            </>
-          ) : (
+        <span className="wall-tile__info" aria-hidden="true">
+          <span className="wall-tile__title">
+            <span className="wall-tile__name">{game.name}</span>
             <span className="wall-tile__kind">{kind}</span>
-          )}
+          </span>
+          <span className="wall-tile__line">
+            <span className="wall-tile__tag">HI</span>
+            {top ? (
+              <>
+                <b className="wall-tile__figure">{fmt(top.entry.score)}</b>
+                <span className="wall-tile__who">{top.entry.name}</span>
+              </>
+            ) : (
+              <span>
+                open<span className="wall-tile__roomy">, first run takes it</span>
+              </span>
+            )}
+          </span>
+          {place || best ? (
+            <span className="wall-tile__line">
+              <span className="wall-tile__tag wall-tile__tag--you">YOU</span>
+              <span className="wall-tile__mine">
+                {place ? (
+                  <>
+                    #{place}
+                    <span className="wall-tile__roomy"> {periodWord}</span>
+                  </>
+                ) : null}
+                {place && best ? ' · ' : null}
+                {best ? fmt(best) : null}
+              </span>
+            </span>
+          ) : null}
         </span>
       </a>
     </li>

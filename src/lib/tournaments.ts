@@ -119,6 +119,22 @@ export const FORMAT_LABELS: Record<TournamentFormat, string> = {
   cumulative: 'Total score',
 }
 
+/** How an event is won, in the words a player would use. */
+export function howItWins(t: Pick<TournamentSummary, 'format' | 'games'>): string {
+  switch (t.format) {
+    case 'place-points':
+      return t.games.length === 3 ? 'Places on all three games earn points' : 'Places on every game earn points'
+    case 'single-run':
+      return 'One run each; best score wins'
+    case 'attempt-limited':
+      return 'A few runs each; best score wins'
+    case 'cumulative':
+      return 'Every run adds to your total'
+    default:
+      return 'Best score wins'
+  }
+}
+
 export function eventKind(t: Pick<TournamentSummary, 'kind'>): TournamentKind {
   return t.kind === 'bracket' ? 'bracket' : 'scores'
 }

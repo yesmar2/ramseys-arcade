@@ -1,6 +1,8 @@
-import { useEffect, useMemo, useState, type CSSProperties } from 'react'
-import { getGame } from '../data/games'
-import { gameHref, gamePlayHref, rankHref } from '../hooks/useHashRoute'
+import { useEffect, useMemo, useState, type CSSProperties, type MouseEvent } from 'react'
+import { getGame, homeGames } from '../data/games'
+import { aboutHref, gameHref, gamePlayHref, rankHref, tournamentHref } from '../hooks/useHashRoute'
+import { useLiveEvents } from '../hooks/useLiveEvents'
+import { APP_NAME } from '../lib/brand'
 import { useDefaultPeriod } from '../lib/defaultPeriod'
 import { useDeviceType } from '../lib/device'
 import { useGlobalRank } from '../lib/globalRank'
@@ -9,9 +11,13 @@ import { heroSlug, newestSlug } from '../lib/homePicks'
 import { useRecentGames } from '../lib/lastPlayed'
 import { getLeaderboard, normalizePlayerName, PERIOD_LABELS } from '../lib/leaderboard'
 import { formatLeaderboardScore, isTimeBoard } from '../lib/leaderboardFormat'
+import { numberWord } from '../lib/numberWord'
+import { resolveGameAccent } from '../lib/theme'
+import { howItWins, type TournamentSummary } from '../lib/tournaments'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { inkOn } from '../lib/color'
 import { preloadGamePage } from '../pages/gamePages'
+import { EventCountdown } from './EventCountdown'
 import { GameThumbArt } from './GameThumbArt'
 
 type HeroScores = {
@@ -205,6 +211,96 @@ function RaceLine({ slug, name, rung }: { slug: string; name: string; rung: Rung
   )
 }
 
+type PromiseKind = 'ads' | 'install' | 'account' | 'devices'
+
+/** What a stranger should know before anything else, long and, for a phone, short. */
+const PROMISES: { kind: PromiseKind; long: string; short: string | null }[] = [
+  { kind: 'ads', long: 'No ads, ever', short: 'No ads' },
+  { kind: 'install', long: 'Nothing to install', short: 'No install' },
+  { kind: 'account', long: 'No account needed', short: 'No account' },
+  { kind: 'devices', long: 'Phone or desk', short: null },
+]
+
+function PromiseIcon({ kind }: { kind: PromiseKind }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      {kind === 'ads' ? (
+        <>
+          <circle cx="12" cy="12" r="9" />
+          <path d="M5.6 5.6l12.8 12.8" />
+        </>
+      ) : kind === 'install' ? (
+        <path d="M13 2L4 14h7l-1 8 9-12h-7l1-8z" />
+      ) : kind === 'account' ? (
+        <>
+          <circle cx="12" cy="8" r="4" />
+          <path d="M4 21c0-4 3.6-6.5 8-6.5s8 2.5 8 6.5" />
+        </>
+      ) : (
+        <>
+          <rect x="2" y="4" width="14" height="10" rx="1.5" />
+          <path d="M6 18h6" />
+          <rect x="17" y="9" width="5" height="11" rx="1.2" />
+        </>
+      )}
+    </svg>
+  )
+}
+
+/** Browse all games: down to the wall, gliding unless motion is turned down, without a hash in the address. */
+function toWall(event: MouseEvent<HTMLAnchorElement>) {
+  const wall = document.getElementById('games')
+  if (!wall) return
+  event.preventDefault()
+  const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  // `auto` would still glide: the page asks for smooth scrolling in its stylesheet.
+  wall.scrollIntoView({ behavior: still ? 'instant' : 'smooth', block: 'start' })
+}
+
+/** Today's daily on the first-visit banner: its game, how it is won, its clock, and the way in. */
+function DailyCard({ t }: { t: TournamentSummary }) {
+  const lead = t.games[0] ?? null
+  const only = t.games.length === 1 && lead ? getGame(lead) : null
+  const accent = lead ? resolveGameAccent(lead, getGame(lead)?.accent ?? 'var(--accent)') : 'var(--accent)'
+  return (
+    <a className="home-banner__daily" href={tournamentHref(t.id)} style={{ '--daily-accent': accent } as CSSProperties}>
+      <span className="home-banner__daily-art" aria-hidden="true">
+        {lead ? <GameThumbArt slug={lead} accent={accent} /> : null}
+      </span>
+      <span className="home-banner__daily-text">
+        <span className="home-banner__daily-title">
+          {only ? `Today’s daily is ${only.name}` : `Today’s daily: ${t.title}`}
+        </span>
+        <span className="home-banner__daily-sub">
+          {howItWins(t)} ·{' '}
+          <EventCountdown endsAt={t.endsAt} unlimitedDuration={Boolean(t.rules.unlimitedDuration)} />
+        </span>
+      </span>
+      <svg
+        className="home-banner__daily-go"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden="true"
+      >
+        <path d="M5 12h14" />
+        <path d="M13 6l6 6-6 6" />
+      </svg>
+    </a>
+  )
+}
+
 /**
  * The banner: the one game to open right now, run big across the whole
  * width. The game's thumb leans as a big card on the right.
@@ -212,9 +308,11 @@ function RaceLine({ slug, name, rung }: { slug: string; name: string; rung: Rung
  * For a player with a score on that game, the banner is about the next place
  * up on its all-time board: how far it is in the game's own unit, who holds
  * it, who is close behind, all laid on a line; and along the bottom, where
- * they stand across the arcade this period. Everyone else gets the kicker,
- * the name, the game's own line about itself, Play, and the board's top and
- * their best. Tinted from the game's colour, like every hero on the site.
+ * they stand across the arcade this period. A first visit, with no tag and
+ * nothing played on this device, gets what the arcade is: the promise, today's
+ * daily, Play, and a way to the wall. Everyone else gets the kicker, the name,
+ * the game's own line about itself, Play, and the board's top and their best.
+ * Tinted from the game's colour, like every hero on the site.
  */
 export function HomeHero() {
   const device = useDeviceType()
@@ -228,7 +326,9 @@ export function HomeHero() {
   const groupId = useActiveGroup()
   const [scores, setScores] = useState<HeroScores | null>(null)
   const standing = useGlobalRank()
+  const { official, loading: eventsLoading } = useLiveEvents(name)
   const lastPlayed = slug != null && recent.includes(slug)
+  const firstVisit = !name && recent.length === 0
 
   const rungKey = name && slug ? `${groupId ?? ''}|${name}|${slug}` : ''
   const [fetched, setFetched] = useState<{ key: string; rung: Rung | null } | null>(null)
@@ -353,7 +453,7 @@ export function HomeHero() {
         </div>
         {art}
         {standing.rank != null ? (
-          <div className="home-banner__standing">
+          <div className="home-banner__strip home-banner__standing">
             <span className="home-banner__stat">
               <span className="home-banner__stat-k">Your standing</span>
               <b className="home-banner__stat-rank">#{standing.rank}</b>
@@ -385,6 +485,53 @@ export function HomeHero() {
             </a>
           </div>
         ) : null}
+      </section>
+    )
+  }
+
+  if (firstVisit) {
+    const count = numberWord(homeGames(device).length)
+    const daily = official.find((t) => t.cadence === 'daily') ?? null
+    return (
+      <section className="home-banner home-banner--welcome" style={style} aria-label="Welcome">
+        <div className="home-banner__text">
+          <p className="home-banner__kicker">Free browser arcade</p>
+          <h2 className="home-banner__goal home-banner__goal--pitch">
+            Simple games.
+            <br />
+            No ads. <span className="home-banner__gap">Just play.</span>
+          </h2>
+          <p className="home-banner__blurb">
+            {count.charAt(0).toUpperCase() + count.slice(1)} original games that start in a tap, on a phone or at
+            a desk. Post a score and see where you land.
+          </p>
+          {daily ? (
+            <DailyCard t={daily} />
+          ) : eventsLoading ? (
+            <span className="home-banner__daily home-banner__daily--wait" aria-hidden="true" />
+          ) : null}
+          <div className="home-banner__acts">
+            <a className="home-banner__cta" href={gamePlayHref(slug)}>
+              Play {game.name}
+            </a>
+            <a className="home-banner__ghost" href="#games" onClick={toWall}>
+              Browse all games
+            </a>
+          </div>
+        </div>
+        {art}
+        <div className="home-banner__strip home-banner__promises">
+          {PROMISES.map((p) => (
+            <span key={p.kind} className={`home-banner__promise${p.short ? '' : ' home-banner__promise--roomy'}`}>
+              <PromiseIcon kind={p.kind} />
+              <span className="home-banner__promise-long">{p.long}</span>
+              {p.short ? <span className="home-banner__promise-short">{p.short}</span> : null}
+            </span>
+          ))}
+          <a className="home-banner__standing-link" href={aboutHref()}>
+            About {APP_NAME} ›
+          </a>
+        </div>
       </section>
     )
   }
