@@ -100,6 +100,15 @@ export type Blast = {
    * Splash kills on these blasts do not break the direct streak.
    */
   fromPerfect?: boolean
+  /**
+   * Where a shot the player fired went off. Only these can score a direct.
+   *
+   * Every other blast is centred on a point nobody chose — a missile's grave,
+   * a Seeker ring, a bomber coming apart — so a missile drifting through the
+   * middle of one was collecting +100 and a streak for a shot that was never
+   * aimed at it.
+   */
+  aimed?: boolean
 }
 
 export type Floater = {
@@ -1166,6 +1175,7 @@ export function tick(state: GameState, dt: number, w: number): GameState {
         burst: shot.burst,
         wait: 0,
         growRate: 120,
+        aimed: true,
       })
     } else {
       newShots.push({ ...shot, x: step.x, y: step.y })
@@ -1218,7 +1228,10 @@ export function tick(state: GameState, dt: number, w: number): GameState {
     }
 
     if (hitBlast) {
-      const direct = dist(m.x, m.y, hitBlast.x, hitBlast.y) <= directR
+      // Dead centre of a shot the player aimed, and nothing else.
+      const direct =
+        hitBlast.aimed === true &&
+        dist(m.x, m.y, hitBlast.x, hitBlast.y) <= directR
       sfx('hit', direct ? 2 : 0)
       if (direct) {
         directStreak += 1
