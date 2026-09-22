@@ -27,9 +27,7 @@ import {
   submitCrosswalkFastestRow,
   submitCrosswalkMostCoins,
   submitCrosswalkLongestChain,
-  submitCrosswalkFurthest,
   CROSSWALK_LONGEST_CHAIN_MIN,
-  CROSSWALK_FURTHEST_MIN,
   shouldCelebrateRecordSubmit,
 } from '../../lib/records'
 import { useTournamentPlay } from '../../tournaments/TournamentPlayContext'
@@ -79,7 +77,6 @@ export function CrosswalkGame() {
   const milestonesRef = useRef<Set<number>>(new Set())
   const coinsRecordedRef = useRef(false)
   const chainRecordedRef = useRef(false)
-  const furthestRecordedRef = useRef(false)
   const pausable = ui.phase === 'playing' && !saveOpen
   const { paused, toggle: togglePause, resume } = useGamePause(pausable)
   const pausedRef = useRef(false)
@@ -172,7 +169,7 @@ export function CrosswalkGame() {
       milestone <= CROSSWALK_ROW_MILESTONE_MAX;
       milestone += CROSSWALK_ROW_MILESTONE_STEP
     ) {
-      if (ui.furthest < milestone || milestonesRef.current.has(milestone)) continue
+      if (ui.score < milestone || milestonesRef.current.has(milestone)) continue
       milestonesRef.current.add(milestone)
       void (async () => {
         const result = await submitCrosswalkFastestRow(milestone, elapsedMs, playerName)
@@ -186,7 +183,7 @@ export function CrosswalkGame() {
         }
       })()
     }
-  }, [ui.phase, ui.furthest, playerName, tournament])
+  }, [ui.phase, ui.score, playerName, tournament])
 
   useEffect(() => {
     if (tournament || !playerName) return
@@ -226,24 +223,6 @@ export function CrosswalkGame() {
     })()
   }, [ui.phase, ui.bestChain, playerName, tournament])
 
-  useEffect(() => {
-    if (tournament || !playerName) return
-    if (ui.phase !== 'dying' && ui.phase !== 'gameover') return
-    if (furthestRecordedRef.current || ui.furthest < CROSSWALK_FURTHEST_MIN) return
-    furthestRecordedRef.current = true
-    const rows = ui.furthest
-    void (async () => {
-      const result = await submitCrosswalkFurthest(rows, playerName)
-      if (shouldCelebrateRecordSubmit(result)) {
-        pushRunAchievement({
-          id: 'crosswalk:furthest-run',
-          label: 'Furthest run',
-          value: String(rows),
-          rank: result.rank,
-        })
-      }
-    })()
-  }, [ui.phase, ui.furthest, playerName, tournament])
 
   const restart = (intoMenu = false) => {
     setSaveOpen(false)
@@ -257,7 +236,6 @@ export function CrosswalkGame() {
     milestonesRef.current = new Set()
     coinsRecordedRef.current = false
     chainRecordedRef.current = false
-    furthestRecordedRef.current = false
     // Same reset, stopped at the start card instead of in play.
     if (intoMenu) stateRef.current = { ...stateRef.current, phase: 'menu' }
     setUi(toSnapshot(stateRef.current))
@@ -394,8 +372,6 @@ export function CrosswalkGame() {
                        here, and the marker on the road says it louder. */
                     <PlayStat label="Best" value={ui.target} urgent={ui.beatBest} />
                   ) : null}
-                  {/* Distance is no longer the score, so it needs saying. */}
-                  <PlayStat label="Rows" value={ui.furthest} />
                   <PlayStat label="Coins" value={ui.runCoins} />
                   {/* Only once it means something — a chain of one or two is
                       just walking, and a readout that never rests is noise. */}
@@ -416,7 +392,7 @@ export function CrosswalkGame() {
                   ui.phase === 'playing' ? (
                     <AdminWaveSkip
                       unit="row"
-                      wave={Math.max(1, ui.furthest)}
+                      wave={Math.max(1, ui.score)}
                       onSkipNext={() => {
                         const state = stateRef.current
                         if (!state) return
@@ -468,10 +444,10 @@ export function CrosswalkGame() {
                     title="Run over"
                     subtitle={
                       ui.cause
-                        ? `${DEATH_COPY[ui.cause]} · ${ui.furthest} ${ui.furthest === 1 ? 'row' : 'rows'}${
+                        ? `${DEATH_COPY[ui.cause]} · ${ui.score} ${ui.score === 1 ? 'row' : 'rows'}${
                             ui.runCoins > 0 ? ` · +${ui.runCoins} coins` : ''
                           }`
-                        : `${ui.furthest} ${ui.furthest === 1 ? 'row' : 'rows'} forward`
+                        : `${ui.score} ${ui.score === 1 ? 'row' : 'rows'} forward`
                     }
                     previousBest={Math.max(previousBestRef.current, apiBest)}
                     onDone={toMenu}

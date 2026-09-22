@@ -805,7 +805,7 @@ export function renderGame(
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
     ctx.fillStyle = fill(48, 90, dark ? 62 : 48, 1)
-    ctx.fillText(`+${pop.value}`, cx, cy)
+    ctx.fillText('+1', cx, cy)
     ctx.restore()
   }
 

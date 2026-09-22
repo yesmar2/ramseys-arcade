@@ -53,15 +53,11 @@ export type CoinPop = {
   c: number
   r: number
   t: number
-  /** Points it paid, so the pop can say so. */
-  value: number
 }
 
 export type Snapshot = {
-  /** Points. Distance is `furthest`. */
+  /** Furthest row reached. Distance is the score. */
   score: number
-  /** Furthest row this run — the distance, which is now a record of its own. */
-  furthest: number
   best: number
   phase: Phase
   /** Best to beat, captured when the run started. */
@@ -80,9 +76,13 @@ export type Snapshot = {
 
 export type GameState = {
   phase: Phase
-  /** Points, accumulated per row at the chain multiplier. */
-  score: number
-  /** Furthest row reached. What "progress" is measured against. */
+  /**
+   * Furthest row reached — the score, and what "progress" is measured against.
+   *
+   * These were split apart while the score was points and the chain multiplied
+   * it. They are one number again: the marker painted on the road is a row, and
+   * keeping score and row identical is what makes that trivially correct.
+   */
   furthest: number
   best: number
   cols: number
@@ -231,48 +231,6 @@ export const MOMENTUM_SHOW = 3
 /** Ceiling for the rising hop pitch, in the steps `sfx` counts. */
 const MOMENTUM_PITCH_MAX = 6
 
-/** Points for breaking new ground, before the chain multiplier. */
-const ROW_POINTS = 10
-
-/**
- * What a coin pays, by how deep the run has got.
- *
- * Crumbtrail's fruit in shape but not in size: tiers that climb with depth, so
- * a pickup keeps mattering once rows are paying 30 and 40 apiece. Its numbers
- * would not transfer — a fruit is worth up to 2,000 because it appears maybe
- * twice a run and lives eight seconds, where a coin turns up every twenty-odd
- * rows and waits. At these values a coin is five to ten rows of scoring, which
- * is worth a detour when the chain is cold and not worth breaking a hot one.
- *
- * That swing is the whole point: coins are what you take when you are not
- * flowing, rather than a toll on flow.
- */
-const COIN_VALUES = [60, 100, 150, 220, 300] as const
-/** Rows between value tiers — Crumbtrail steps its fruit on the same cadence. */
-const COIN_TIER_ROWS = 60
-
-export function coinValue(furthest: number): number {
-  const tier = Math.floor(Math.max(0, furthest) / COIN_TIER_ROWS)
-  return COIN_VALUES[Math.min(COIN_VALUES.length - 1, tier)]
-}
-
-/**
- * What a chain is worth.
- *
- * Score used to be the furthest row, which meant two players who both reached
- * row 200 scored the same whether one flowed the whole way or crawled at the
- * stall limit. Distance is a record now; this is where *how* you crossed gets
- * counted.
- *
- * The ladder is Pellets' and Crumbtrail's, to the step, because a streak
- * multiplier already means something specific in this arcade.
- */
-export function chainMultiplier(chain: number): number {
-  if (chain >= 30) return 4
-  if (chain >= 20) return 3
-  if (chain >= 10) return 2
-  return 1
-}
 
 const HOP_COOLDOWN = 0.05
 const HOP_DURATION = 0.12
@@ -441,31 +399,6 @@ function loadBest() {
   return getPersonalBest('crosswalk')
 }
 
-const BEST_ROW_KEY = 'crosswalk-best-row'
-
-/**
- * Furthest row ever reached, for the line painted on the road ahead.
- *
- * Kept separately and locally because `getPersonalBest` is the server's best
- * *score*, and score is points now. The marker marks a row, so it has to be fed
- * a row — feeding it a score is what would have put it on the wrong one.
- */
-export function loadBestRow(): number {
-  try {
-    const n = Number(localStorage.getItem(BEST_ROW_KEY) || '0')
-    return Number.isFinite(n) && n > 0 ? Math.floor(n) : 0
-  } catch {
-    return 0
-  }
-}
-
-function saveBestRow(n: number) {
-  try {
-    localStorage.setItem(BEST_ROW_KEY, String(Math.max(0, Math.floor(n))))
-  } catch {
-    /* ignore */
-  }
-}
 
 function mulberry32(seed: number) {
   let t = seed >>> 0
@@ -1062,10 +995,9 @@ function die(state: GameState, cause: DeathCause): GameState {
     sfx('hurt')
   } else sfx('die')
 
-  const best = Math.max(state.best, state.score, loadBest())
+  const best = Math.max(state.best, state.furthest, loadBest())
   const wallet = state.wallet + state.runCoins
   if (state.runCoins > 0) saveWallet(wallet)
-  if (state.furthest > loadBestRow()) saveBestRow(state.furthest)
 
   return {
     ...state,
@@ -1092,13 +1024,11 @@ function collectCoin(state: GameState): GameState {
   const rows = new Map(state.rows)
   rows.set(state.row, { ...row, coins })
   sfx('good')
-  const value = coinValue(state.furthest)
   return {
     ...state,
     rows,
-    score: state.score + value,
     runCoins: state.runCoins + 1,
-    coinPops: [...state.coinPops, { c, r: state.row, t: 0.42, value }],
+    coinPops: [...state.coinPops, { c, r: state.row, t: 0.42 }],
   }
 }
 
@@ -1107,7 +1037,6 @@ export function createInitialState(cols = COLS): GameState {
   const best = loadBest()
   const state: GameState = {
     phase: 'menu',
-    score: 0,
     furthest: 0,
     best,
     cols,
@@ -1153,8 +1082,7 @@ export function startGame(prev: GameState): GameState {
   return {
     ...next,
     best,
-    // A row, not a score — this is the line drawn on the road ahead.
-    target: loadBestRow(),
+    target: best,
     phase: 'playing',
     invuln: RESPAWN_INVULN,
   }
@@ -1250,9 +1178,6 @@ export function hop(state: GameState, dir: Dir): GameState {
     ...state,
     col: target,
     row: nr,
-    // The hop that reaches a tier is paid at that tier, so crossing 10 feels
-    // like arriving somewhere rather than like the row after it.
-    score: state.score + (progress ? ROW_POINTS * chainMultiplier(chain) : 0),
     furthest: Math.max(state.furthest, nr),
     idleTimer: progress ? 0 : state.idleTimer,
     streak: chain,
@@ -1449,7 +1374,7 @@ export function tick(state: GameState, dt: number): GameState {
 
 export function toSnapshot(state: GameState): Snapshot {
   return {
-    score: state.score,
+    score: state.furthest,
     best: Math.max(state.best, loadBest()),
     phase: state.phase,
     target: state.target,
@@ -1459,7 +1384,6 @@ export function toSnapshot(state: GameState): Snapshot {
     wallet: state.wallet,
     chain: Math.floor(state.streak),
     bestChain: state.bestChain,
-    furthest: state.furthest,
   }
 }
 
