@@ -232,7 +232,7 @@ function craftTrail(
  * knot of lines with a shape somewhere inside it. A single silhouette per
  * craft reads as the thing from across the field, and the three stay apart by
  * shape rather than by detail: the plane is a swept dart, the bomber is blunt
- * with straight wings and a double tail, the drone hangs under a rotor.
+ * with straight wings and a double tail, the drone is a cargo pod.
  */
 
 /** Swept dart, notched tail. */
@@ -269,13 +269,15 @@ const BOMBER_BODY = [
   { x: 6, y: -6 },
 ] as const
 
-/** Cabin slung under the rotor bar. */
+/** Cargo pod, and nothing else, so the mark inside it can be big. */
 const DRONE_BODY = [
-  { x: -10, y: -5 },
-  { x: 7, y: -5 },
-  { x: 12, y: 0 },
-  { x: 7, y: 6 },
-  { x: -10, y: 6 },
+  { x: -13, y: -4 },
+  { x: -7, y: -11 },
+  { x: 7, y: -11 },
+  { x: 14, y: 0 },
+  { x: 7, y: 11 },
+  { x: -7, y: 11 },
+  { x: -13, y: 4 },
 ] as const
 
 function drawPlane(ctx: CanvasRenderingContext2D, plane: Plane, scale: number) {
@@ -354,29 +356,30 @@ function drawDrone(ctx: CanvasRenderingContext2D, drone: Drone, scale: number) {
   const x = drone.x
   const y = drone.y
   const hue = POWER_HUE[drone.kind]
-  // The cabin hangs below the bar, so the rotor reads as holding it up.
-  const body = y + 5 * s
 
-  craftTrail(ctx, x, body, dir, s, 13, 14, hue, 1.4)
+  craftTrail(ctx, x, y, dir, s, 15, 14, hue, 1.4)
+  washPoly(ctx, craftLocal(x, y, dir, s, [...DRONE_BODY]), hue, s, 54)
 
-  // Rotor: one bar and the mast, instead of a cross plus a pair of skids.
-  washBox(ctx, x - 15 * s, y - 7.6 * s, 30 * s, 2.2 * s, hue, s, 48)
-  washBox(ctx, x - 1.1 * s, y - 6 * s, 2.2 * s, 5 * s, hue, s, 48)
-
-  washPoly(ctx, craftLocal(x, body, dir, s, [...DRONE_BODY]), hue, s, 58)
-
-  // What it is carrying — the one detail that has to survive the shrink.
+  /*
+   * What it is carrying, at nearly half the pod across.
+   *
+   * It used to be a third that size, tucked inside a cabin under a rotor, and
+   * at the size these actually fly at four different cargoes all came out as
+   * the same smudge in a different colour. Nothing else on the field is this
+   * shape, so the pod can give the whole of its middle to the mark.
+   */
+  const r = 6.4 * s
   if (drone.kind === 'ammo') {
-    const arm = 2.4 * s
-    washBox(ctx, x - arm * 1.8, body - arm * 0.4, arm * 3.6, arm * 0.8, hue, s, 74)
-    washBox(ctx, x - arm * 0.4, body - arm * 1.8, arm * 0.8, arm * 3.6, hue, s, 74)
+    const a = r * 0.85
+    washBox(ctx, x - a, y - a * 0.28, a * 2, a * 0.56, hue, s, 74)
+    washBox(ctx, x - a * 0.28, y - a, a * 0.56, a * 2, hue, s, 74)
   } else if (drone.kind === 'shield') {
-    washCircle(ctx, x, body, 3.4 * s, hue, s, 74)
+    washCircle(ctx, x, y, r * 0.8, hue, s, 74)
   } else if (drone.kind === 'slow') {
-    washBox(ctx, x - 3.4 * s, body - 1.2 * s, 6.8 * s, 2.4 * s, hue, s, 74)
+    washBox(ctx, x - r * 0.85, y - r * 0.3, r * 1.7, r * 0.6, hue, s, 74)
   } else {
-    washCircle(ctx, x, body, 4 * s, hue, s, 74)
-    washCircle(ctx, x, body, 1.7 * s, hue, s, 80)
+    washCircle(ctx, x, y, r * 0.9, hue, s, 74)
+    washCircle(ctx, x, y, r * 0.38, hue, s, 80)
   }
 }
 
