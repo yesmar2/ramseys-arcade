@@ -178,8 +178,12 @@ export type GameState = {
 /** Design reference for the fixed 16:9 playfield. */
 export const DESIGN_W = 960
 export const DESIGN_H = 540
-/** Draw smaller than the stage so the field feels zoomed out. */
-const VIEW_ZOOM = 0.56
+/**
+ * Draw smaller than the stage so the field feels zoomed out. Everything that
+ * moves divides this back out again, so the zoom sets how big the world looks
+ * without touching how fast it plays.
+ */
+const VIEW_ZOOM = 0.9
 
 export function worldScale(w: number, h: number) {
   return (Math.min(w / DESIGN_W, h / DESIGN_H) || 1) * VIEW_ZOOM
@@ -246,7 +250,8 @@ function uid() {
 }
 
 function layoutWorld(w: number, h: number) {
-  const groundY = h * 0.935
+  // Leaves room under the turrets for the ammo rack now the art draws bigger.
+  const groundY = h * 0.9
   const scale = worldScale(w, h)
   const edge = Math.max(w * 0.06, 22 * scale * 1.85)
   const left = edge
@@ -358,7 +363,9 @@ function bomberMaxHp(wave: number) {
 
 function waveSpeed(wave: number, scale: number) {
   const n = wave <= 6 ? 46 + wave * 5 : 76 + (wave - 6) * 3.5
-  return n * scale
+  // Same VIEW_ZOOM correction every other moving thing gets — without it the
+  // sky falls at a fraction of the speed the turrets shoot at.
+  return n * (scale / VIEW_ZOOM)
 }
 
 export function startGame(prev: GameState, w: number, h: number): GameState {
