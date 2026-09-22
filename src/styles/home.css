@@ -81,6 +81,7 @@
   --banner-muted: color-mix(in srgb, var(--hero-accent) 30%, var(--muted));
   --banner-faint: var(--muted);
   --banner-hover: color-mix(in srgb, var(--hero-accent) 70%, var(--ink));
+  --banner-accent-ink: color-mix(in srgb, var(--hero-accent) 62%, var(--ink));
   --banner-chip-bg: rgba(255, 255, 255, 0.72);
   --banner-chip-border: color-mix(in srgb, var(--hero-accent) 40%, transparent);
   --banner-chip-ink: color-mix(in srgb, var(--hero-accent) 65%, var(--ink));
@@ -116,6 +117,7 @@ html[data-theme="dark"] .home-banner {
   --banner-muted: color-mix(in srgb, var(--hero-accent) 22%, #dfe9f0);
   --banner-faint: rgba(238, 244, 248, 0.68);
   --banner-hover: color-mix(in srgb, var(--hero-accent) 45%, #fff);
+  --banner-accent-ink: color-mix(in srgb, var(--hero-accent) 55%, #fff);
   --banner-chip-bg: rgba(255, 255, 255, 0.12);
   --banner-chip-border: rgba(255, 255, 255, 0.16);
   --banner-chip-ink: #f4f8fb;
@@ -371,6 +373,280 @@ html[data-theme="dark"] .home-banner {
 
   .home-banner__text {
     padding: 1.2rem 1.25rem 1.5rem;
+  }
+}
+
+/* ---------- the banner for a returning player: the next place up ---------- */
+
+.home-banner--rung .home-banner__text {
+  gap: 0.85rem;
+}
+
+.home-banner__kicker-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.7rem;
+}
+
+.home-banner__kicker-note {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--banner-faint);
+}
+
+.home-banner__goal {
+  margin: 0;
+  max-width: 17ch;
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 3.7vw, 3.05rem);
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  line-height: 1.02;
+  text-wrap: balance;
+  color: var(--banner-ink);
+}
+
+.home-banner__gap {
+  color: var(--banner-accent-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.home-banner--rung .home-banner__blurb {
+  max-width: 46ch;
+}
+
+/* The race line: their names over the track, yours and the gap under it. */
+.hero-race {
+  position: relative;
+  width: min(100%, 29rem);
+  height: 4.4rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.hero-race__track,
+.hero-race__lit {
+  position: absolute;
+  top: 50%;
+  border-radius: 999px;
+  transform: translateY(-50%);
+}
+
+.hero-race__track {
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: color-mix(in srgb, var(--banner-ink) 20%, transparent);
+}
+
+.hero-race__lit {
+  height: 4px;
+  background: var(--banner-dot);
+  transform-origin: left center;
+  animation: hero-race-grow 0.9s cubic-bezier(0.2, 0.7, 0.2, 1) 0.15s both;
+}
+
+@keyframes hero-race-grow {
+  from {
+    transform: translateY(-50%) scaleX(0);
+  }
+  to {
+    transform: translateY(-50%) scaleX(1);
+  }
+}
+
+.hero-race__dot {
+  position: absolute;
+  top: 50%;
+  width: 0.75rem;
+  height: 0.75rem;
+  box-sizing: border-box;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.hero-race__dot--above {
+  background: var(--banner-ink);
+}
+
+.hero-race__dot--below {
+  background: var(--banner-chip-bg);
+  box-shadow: inset 0 0 0 2px var(--banner-faint);
+}
+
+.hero-race__dot--you {
+  width: 1.1rem;
+  height: 1.1rem;
+  background: var(--banner-dot);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--hero-accent) 30%, transparent);
+}
+
+.hero-race__label {
+  position: absolute;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-size: 0.74rem;
+  font-weight: 750;
+  letter-spacing: 0.03em;
+  line-height: 1.15;
+}
+
+/* The two names over the line hang from opposite ends and never pass the middle. */
+.hero-race__label--top {
+  bottom: calc(50% + 0.7rem);
+  max-width: 40%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hero-race__label--above {
+  color: var(--banner-ink);
+}
+
+.hero-race__label--below {
+  color: var(--banner-faint);
+}
+
+.hero-race__label--you,
+.hero-race__label--gap {
+  top: calc(50% + 0.85rem);
+  color: var(--banner-accent-ink);
+}
+
+.hero-race__label--you {
+  font-size: 0.8rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.hero-race__label--start {
+  transform: translateX(-0.45rem);
+}
+
+.hero-race__label--end {
+  transform: translateX(calc(-100% + 0.45rem));
+}
+
+.hero-race__flag {
+  width: 0.72rem;
+  height: 0.72rem;
+  margin-right: 0.28rem;
+  vertical-align: -0.08rem;
+}
+
+.hero-race__flag path:first-child {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+}
+
+.hero-race__flag path:last-child {
+  fill: currentColor;
+}
+
+/* Along the bottom, the whole width: where you stand across the arcade this period. */
+.home-banner__standing {
+  grid-column: 1 / -1;
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem 2rem;
+  padding: 0.95rem 2.2rem;
+  border-top: 1px solid color-mix(in srgb, var(--banner-ink) 12%, transparent);
+  background: color-mix(in srgb, var(--banner-chip-bg) 55%, transparent);
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--banner-muted);
+}
+
+.home-banner__stat {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.home-banner__stat-k {
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--banner-faint);
+}
+
+.home-banner__stat b {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--banner-ink);
+}
+
+.home-banner__stat-rank {
+  font-size: 1.25rem;
+  letter-spacing: -0.02em;
+}
+
+.home-banner__stat--next {
+  display: none;
+}
+
+.home-banner__standing-link {
+  margin-left: auto;
+  font-weight: 750;
+  color: var(--banner-chip-ink);
+  text-decoration: none;
+}
+
+.home-banner__standing-link:hover,
+.home-banner__standing-link:focus-visible {
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+@media (max-width: 56rem) {
+  .home-banner--rung .home-banner__art {
+    min-height: 8.5rem;
+  }
+
+  .home-banner--rung .home-banner__art > .inline-thumb {
+    width: 8.5rem;
+  }
+
+  .home-banner__standing {
+    padding: 0.85rem 1.25rem;
+  }
+}
+
+/* On a phone the strip keeps to one line: your place, and what the next one up costs. */
+@media (max-width: 42rem) {
+  .home-banner__standing {
+    align-items: center;
+    gap: 0.4rem 1rem;
+  }
+
+  .home-banner__standing .home-banner__stat-k,
+  .home-banner__stat--side,
+  .home-banner__standing-link {
+    display: none;
+  }
+
+  .home-banner__standing:not(:has(.home-banner__stat--next)) .home-banner__standing-link {
+    display: inline;
+  }
+
+  .home-banner__stat--next {
+    display: inline-flex;
+    gap: 0.3rem;
+    margin-left: auto;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-race__lit {
+    animation: none;
   }
 }
 
