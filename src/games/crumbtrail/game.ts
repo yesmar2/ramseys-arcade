@@ -26,6 +26,7 @@
  * movement code is Pellets' with the den taken out.
  */
 import { getPersonalBest } from '../../lib/personalBest'
+import { haptic } from '../../lib/haptics'
 import { sfx } from '../../lib/sound'
 import {
   BELOW_VIEW,
@@ -89,6 +90,8 @@ export type Snapshot = {
   surgeTime: number
   crumbStreak: number
   crumbStreakBest: number
+  /** Blue chasers eaten this run. */
+  ghostsEaten: number
   /** 0..1 — how awake the tide is, for the HUD warning. */
   tide: number
   cause: DeathCause | null
@@ -135,6 +138,15 @@ export type GameState = {
   nextGhostId: number
   fright: number
   frightEaten: number
+  /**
+   * Blue chasers eaten this run, for the record book.
+   *
+   * Only the frightened ones. A surge bounces a chaser off rather than eating
+   * it, and the two are different acts with different ladders — folding them
+   * together would make the board read as "chasers removed", which is not what
+   * it says.
+   */
+  ghostsEaten: number
   mode: 'chase' | 'scatter'
   modeTimer: number
   surge: number
@@ -647,6 +659,7 @@ function emptyState(view: { cols: number; rows: number }): GameState {
     nextGhostId: 1,
     fright: 0,
     frightEaten: 0,
+    ghostsEaten: 0,
     mode: 'scatter',
     modeTimer: scatterTime(0),
     surge: 0,
@@ -752,6 +765,7 @@ export function surgeReady(state: GameState) {
 export function triggerSurge(state: GameState): GameState {
   if (!surgeReady(state)) return state
   sfx('whoosh')
+  haptic('boost')
   return { ...state, surge: 0, surgeTime: SURGE_TIME, surgeHits: 0 }
 }
 
@@ -1041,6 +1055,7 @@ function loseLife(state: GameState, cause: DeathCause) {
   state.crumbStreak = 0
   state.lives -= 1
   sfx('hurt')
+  haptic('crash')
 }
 
 // —— Tick —————————————————————————————————————————————————————
@@ -1193,11 +1208,13 @@ export function tick(state: GameState, dt: number): GameState {
     if (ghost.mode === 'frightened') {
       const bonus = SCORE_GHOST[Math.min(next.frightEaten, SCORE_GHOST.length - 1)]
       next.frightEaten += 1
+      next.ghostsEaten += 1
       ghost.mode = 'eaten'
       ghost.hit = 1
       next.score += bonus
       addPop(next, ghost.x, ghost.y, `+${bonus}`)
       sfx('good')
+      haptic('hit')
       continue
     }
 
@@ -1245,6 +1262,7 @@ export function toSnapshot(state: GameState): Snapshot {
     surgeTime: state.surgeTime,
     crumbStreak: state.crumbStreak,
     crumbStreakBest: state.crumbStreakBest,
+    ghostsEaten: state.ghostsEaten,
     tide: tidePressure(state),
     cause: state.cause,
   }

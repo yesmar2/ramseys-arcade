@@ -190,6 +190,7 @@ export function recordNavShortLabel(row: { id: string; label: string }): string 
   if (row.id === STACKER_PERFECT_STREAK_ID) return 'Perfect'
   if (row.id === PELLETS_CRUMB_STREAK_ID) return 'Crumbs'
   if (row.id === CRUMBTRAIL_ROWS_ID) return 'Rows'
+  if (row.id === CRUMBTRAIL_GHOSTS_ID) return 'Chasers'
   if (row.id === SNAKE_LONGEST_ID) return 'Longest'
   const wave = parseAsteroidsWaveFromRecordId(row.id)
   if (wave != null) return `W${wave}`
@@ -245,6 +246,9 @@ export const STACKER_PERFECT_STREAK_ID = 'perfect-streak'
 export const PELLETS_CRUMB_STREAK_ID = 'crumb-streak'
 export const CRUMBTRAIL_CRUMB_STREAK_ID = 'crumb-streak'
 export const CRUMBTRAIL_ROWS_ID = 'most-rows'
+export const CRUMBTRAIL_GHOSTS_ID = 'chasers-eaten'
+/** A power crumb usually buys one. Two means you went hunting. */
+export const CRUMBTRAIL_GHOSTS_MIN = 2
 export const SNAKE_LONGEST_ID = 'longest'
 /** A run this short was a misclick, not an attempt at a long snake. */
 export const SNAKE_LONGEST_MIN = 8
@@ -260,6 +264,7 @@ const PLAIN_COUNT_RECORD_IDS = new Set<string>([
   CROSSWALK_LONGEST_CHAIN_ID,
   CROSSWALK_NEAR_MISSES_ID,
   CRUMBTRAIL_ROWS_ID,
+  CRUMBTRAIL_GHOSTS_ID,
   SNAKE_LONGEST_ID,
 ])
 
@@ -278,6 +283,7 @@ export const SCORE_STREAK_THRESHOLDS: Record<string, number> = {
   simon: 10,
   spotter: 955_000,
   pellets: 2000,
+  crumbtrail: 2000,
   bop: 25,
   putt: 2000,
 }
@@ -702,6 +708,22 @@ export async function submitCrumbtrailCrumbStreak(
       cleaned,
       value,
     )
+    return toRecordSubmitOutcome(result)
+  } catch {
+    return null
+  }
+}
+
+/** Best-effort Crumbtrail chasers-eaten submit (run total). */
+export async function submitCrumbtrailGhosts(
+  eaten: number,
+  name: string,
+): Promise<RecordSubmitOutcome | null> {
+  const value = Math.floor(eaten)
+  const cleaned = normalizePlayerName(name)
+  if (!cleaned || !(value >= CRUMBTRAIL_GHOSTS_MIN)) return null
+  try {
+    const result = await submitRecord('crumbtrail', CRUMBTRAIL_GHOSTS_ID, cleaned, value)
     return toRecordSubmitOutcome(result)
   } catch {
     return null

@@ -10,6 +10,7 @@ import { useGamePause } from '../../hooks/useGamePause'
 import { usePersonalBest } from '../../hooks/usePersonalBest'
 import { usePlayerName } from '../../hooks/usePlayerName'
 import { normalizePlayerName } from '../../lib/leaderboard'
+import { haptic } from '../../lib/haptics'
 import { getPersonalBest } from '../../lib/personalBest'
 import {
   clearRunAchievements,
@@ -19,6 +20,7 @@ import {
 import {
   shouldCelebrateRecordSubmit,
   submitCrumbtrailCrumbStreak,
+  submitCrumbtrailGhosts,
   submitCrumbtrailRows,
 } from '../../lib/records'
 import { useTournamentPlay } from '../../tournaments/TournamentPlayContext'
@@ -115,7 +117,7 @@ export function CrumbtrailGame() {
   useEffect(() => {
     if (tournament || !playerName) return
     if (ui.phase !== 'gameover') return
-    const key = `${playerName}:${ui.depth}:${ui.crumbStreakBest}`
+    const key = `${playerName}:${ui.depth}:${ui.crumbStreakBest}:${ui.ghostsEaten}`
     if (booksKey.current === key) return
     booksKey.current = key
     if (isRunAssisted()) return
@@ -138,8 +140,17 @@ export function CrumbtrailGame() {
           rank: streak.rank,
         })
       }
+      const eaten = await submitCrumbtrailGhosts(ui.ghostsEaten, playerName)
+      if (shouldCelebrateRecordSubmit(eaten)) {
+        pushRunAchievement({
+          id: 'crumbtrail:chasers-eaten',
+          label: 'Chasers eaten in a run',
+          value: String(ui.ghostsEaten),
+          rank: eaten.rank,
+        })
+      }
     })()
-  }, [ui.phase, ui.depth, ui.crumbStreakBest, playerName, tournament])
+  }, [ui.phase, ui.depth, ui.crumbStreakBest, ui.ghostsEaten, playerName, tournament])
 
   // The grid is sized from the viewport, so rebuild it between runs on resize.
   useEffect(() => {
@@ -191,16 +202,32 @@ export function CrumbtrailGame() {
    */
   const toMenu = () => restart(true)
 
+  /**
+   * Buzz for a direction that asks for something new.
+   *
+   * Not for one already being travelled or already queued. A maze is steered by
+   * tapping constantly, and a held arrow key repeats, so buzzing on every call
+   * would leave the phone rattling the whole way up rather than marking the
+   * moments the player actually decided something.
+   */
+  const steerFeedback = (before: GameState, dir: Dir) => {
+    if (before.player.dir === dir || before.player.pending === dir) return
+    haptic('turn')
+  }
+
   const steer = (dir: Dir) => {
     if (saveOpen || pausedRef.current) return
     const s = stateRef.current
     if (s.phase === 'menu') {
       restart()
-      stateRef.current = queueDir(stateRef.current, dir)
+      const from = stateRef.current
+      steerFeedback(from, dir)
+      stateRef.current = queueDir(from, dir)
       setUi(toSnapshot(stateRef.current))
       return
     }
     if (s.phase !== 'playing') return
+    steerFeedback(s, dir)
     stateRef.current = queueDir(s, dir)
   }
 
