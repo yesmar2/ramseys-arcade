@@ -199,7 +199,7 @@ export const games: Game[] = [
     slug: 'frenzy',
     tags: ['arcade'],
     description: 'Every fish has a number. Eat your level or below. Anything higher eats you.',
-    how: 'Move the cursor, or drag a finger, to swim — the fish points and swims that way. Arrow keys or WASD work too. Every fish carries a number: eat one at your level or below to grow, more for one close to your own. A higher number is a killer, and mines don’t care what your number is. The camera pulls back as you grow, so the ocean gets bigger with you. One life.',
+    how: 'Move the cursor, or drag a finger, to swim — arrow keys or WASD work too. Click, tap or press Space to dash; a dash slips you past a bite. Green numbers are food: eat them to grow. Red numbers eat you, and they flash ! before they lunge. The deeper you swim, the more every bite pays — ×2, ×3, then ×5 — but the deep brings jellyfish that stun and mines that blow up everything near them. Eat in quick succession for a combo; eight in a row sets off a Frenzy. One life.',
     accent: PALETTE.magenta,
     playable: true,
     inDevelopment: true,

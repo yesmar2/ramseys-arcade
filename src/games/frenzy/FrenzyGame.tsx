@@ -14,6 +14,7 @@ import { useTournamentPlay } from '../../tournaments/TournamentPlayContext'
 import {
   clearPointerDir,
   createInitialState,
+  requestDash,
   resizeState,
   setKey,
   setPointerDir,
@@ -37,12 +38,19 @@ const KEY_MAP: Record<string, 'up' | 'down' | 'left' | 'right'> = {
   KeyD: 'right',
 }
 
+const DASH_KEYS = new Set(['Space', 'ShiftLeft', 'ShiftRight'])
+
+/** A touch this short and this still is a tap, and a tap is a dash. */
+const TAP_MS = 230
+const TAP_SLOP = 14
+
 export function FrenzyGame() {
   const tournament = useTournamentPlay()
   const apiBest = usePersonalBest('frenzy')
   const stateRef = useRef<GameState>(createInitialState())
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const sizeRef = useRef({ w: 0, h: 0 })
+  const touchRef = useRef<{ x: number; y: number; t: number } | null>(null)
   const [ui, setUi] = useState<Snapshot>(() => toSnapshot(stateRef.current))
   const [saveOpen, setSaveOpen] = useState(false)
   const offeredScore = useRef<number | null>(null)
@@ -120,13 +128,17 @@ export function FrenzyGame() {
    */
   const toMenu = () => restart(true)
 
-  const aimFromEvent = (e: ReactPointerEvent<HTMLElement>) => {
+  const offsetFromCentre = (e: ReactPointerEvent<HTMLElement>) => {
     const rect = e.currentTarget.getBoundingClientRect()
-    stateRef.current = setPointerDir(
-      stateRef.current,
-      e.clientX - (rect.left + rect.width / 2),
-      e.clientY - (rect.top + rect.height / 2),
-    )
+    return {
+      x: e.clientX - (rect.left + rect.width / 2),
+      y: e.clientY - (rect.top + rect.height / 2),
+    }
+  }
+
+  const aimFromEvent = (e: ReactPointerEvent<HTMLElement>) => {
+    const o = offsetFromCentre(e)
+    stateRef.current = setPointerDir(stateRef.current, o.x, o.y)
   }
 
   const onPointerDown = (e: ReactPointerEvent<HTMLElement>) => {
@@ -137,10 +149,21 @@ export function FrenzyGame() {
     } catch {
       /* ignore */
     }
-    if (stateRef.current.phase !== 'playing') {
+    const phase = stateRef.current.phase
+    if (phase === 'menu') {
       restart()
+      aimFromEvent(e)
+      return
     }
+    if (phase !== 'playing') return
     aimFromEvent(e)
+    if (e.pointerType === 'mouse') {
+      // Mouse steers by hovering, so a click is free to mean dash.
+      const o = offsetFromCentre(e)
+      stateRef.current = requestDash(stateRef.current, Math.hypot(o.x, o.y) > 8 ? Math.atan2(o.y, o.x) : undefined)
+    } else {
+      touchRef.current = { x: e.clientX, y: e.clientY, t: performance.now() }
+    }
   }
 
   const onPointerMove = (e: ReactPointerEvent<HTMLElement>) => {
@@ -149,24 +172,47 @@ export function FrenzyGame() {
     aimFromEvent(e)
   }
 
-  const onPointerUp = () => {
+  const onPointerUp = (e: ReactPointerEvent<HTMLElement>) => {
+    const touch = touchRef.current
+    touchRef.current = null
+    if (
+      touch &&
+      e.pointerType !== 'mouse' &&
+      stateRef.current.phase === 'playing' &&
+      performance.now() - touch.t < TAP_MS &&
+      Math.hypot(e.clientX - touch.x, e.clientY - touch.y) < TAP_SLOP
+    ) {
+      const o = offsetFromCentre(e)
+      stateRef.current = requestDash(stateRef.current, Math.atan2(o.y, o.x))
+    }
+    if (e.pointerType !== 'mouse') stateRef.current = clearPointerDir(stateRef.current)
+  }
+
+  const onPointerCancel = () => {
+    touchRef.current = null
     stateRef.current = clearPointerDir(stateRef.current)
   }
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
+      if (saveOpen || pausedRef.current) return
+      const phase = stateRef.current.phase
       const dir = KEY_MAP[e.code]
       if (dir) {
-        if (saveOpen || pausedRef.current) return
         e.preventDefault()
-        if (stateRef.current.phase !== 'playing') restart()
+        if (phase === 'menu') restart()
         stateRef.current = setKey(stateRef.current, dir, true)
         return
       }
-      if (e.code === 'Space' || e.code === 'Enter') {
-        if (saveOpen || pausedRef.current) return
+      if (DASH_KEYS.has(e.code) || e.code === 'Enter') {
         e.preventDefault()
-        if (stateRef.current.phase !== 'playing') restart()
+        if (phase === 'menu') {
+          if (e.code !== 'ShiftLeft' && e.code !== 'ShiftRight') restart()
+          return
+        }
+        if (phase === 'playing' && DASH_KEYS.has(e.code) && !e.repeat) {
+          stateRef.current = requestDash(stateRef.current)
+        }
       }
     }
     const onKeyUp = (e: KeyboardEvent) => {
@@ -182,6 +228,8 @@ export function FrenzyGame() {
     }
   }, [saveOpen])
 
+  const inRun = ui.phase === 'playing'
+
   return (
     <section className={`frenzy frenzy--fullscreen${saveOpen ? ' frenzy--saving' : ''}`}>
       <div
@@ -189,7 +237,7 @@ export function FrenzyGame() {
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
-        onPointerCancel={onPointerUp}
+        onPointerCancel={onPointerCancel}
       >
         <GameStage aspectWidth={16} aspectHeight={9} fill>
           <canvas ref={canvasRef} className="frenzy__viewport" />
@@ -205,12 +253,13 @@ export function FrenzyGame() {
           </GamePlayChrome>
 
           <PlayReadout>
-            <PlayReadoutScore hot={ui.phase === 'playing' && ui.score > previousBestRef.current}>
-              {ui.score}
+            <PlayReadoutScore hot={inRun && ui.score > previousBestRef.current}>
+              {ui.score.toLocaleString()}
             </PlayReadoutScore>
-            {ui.phase === 'playing' ? (
+            {inRun || ui.phase === 'dying' ? (
               <PlayReadoutStats>
-                <PlayStat label="Level" value={ui.level} urgent={ui.danger} />
+                <PlayStat label="Level" value={ui.level.toLocaleString()} urgent={ui.danger} />
+                <PlayStat label="Depth" value={`×${ui.mult}`} />
               </PlayReadoutStats>
             ) : null}
           </PlayReadout>
@@ -218,7 +267,7 @@ export function FrenzyGame() {
           <div className="frenzy__overlay">
             <GamePauseOverlay
               slug="frenzy"
-              personalBest={ui.phase === 'playing' ? previousBestRef.current : apiBest}
+              personalBest={inRun ? previousBestRef.current : apiBest}
               paused={paused}
               onResume={resume}
             />
@@ -237,7 +286,7 @@ export function FrenzyGame() {
                 <ScoreSaveCard
                   gameSlug="frenzy"
                   score={ui.score}
-                  title="Eaten"
+                  title={ui.deathCause || 'Eaten'}
                   previousBest={Math.max(previousBestRef.current, apiBest)}
                   onDone={toMenu}
                 />

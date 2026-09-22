@@ -1,4 +1,4 @@
-/* Frenzy: an open tank, edge to edge. Steering is the whole play area. */
+/* Frenzy: an open ocean, edge to edge. Steering is the whole play area. */
 
 .frenzy--fullscreen {
   position: absolute;
@@ -24,6 +24,18 @@
   width: 100%;
   height: 100%;
   display: block;
+}
+
+/*
+ * The water is blue in both themes and gets dark with depth, so the score and
+ * the figures beside it are always light on a dark halo here — the theme's own
+ * ink is navy in the light theme and would sink into the deep. Scoped to the
+ * readout alone: the start, pause and score cards keep their themed panels.
+ */
+.frenzy .play-readout {
+  --ink: #f4fbff;
+  --ink-rgb: 244, 251, 255;
+  --surface-rgb: 3, 18, 34;
 }
 
 .frenzy__overlay {
