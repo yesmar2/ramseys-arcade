@@ -129,10 +129,10 @@ export function sceneSpec(index: number): SceneSpec {
 
 // ----------------------------------------------------------------- palette
 
-const HAT_COLOURS = ['#3f78d8', '#3fa05a', '#f2c230', '#8c5ad6', '#f08a2a', '#ea6fa6', '#2e2a36', '#34b3a0', WHITE] as const
-const BRIGHT = ['#3f78d8', '#3fa05a', '#f2c230', '#8c5ad6', '#f08a2a', '#ea6fa6', '#34b3a0', '#e2433b'] as const
-const HEADS = [CREAM, '#f2c9a0', '#d9a974', '#3d3346', '#8fd16a', '#ffd95a', '#f4a3b8', '#9fb3d9', '#b58ee0', '#f0b27a'] as const
-const LIMBS = [NAVY, '#3a3046', '#4a3326', '#2e4a3a', '#4a2f5a'] as const
+const HAT_COLOURS = ['#3d99d8', '#40a276', '#e6ac39', '#7d57d5', '#e67732', '#e969a1', '#2a3136', '#34aeb4', WHITE] as const
+const BRIGHT = ['#3d99d8', '#40a276', '#e6ac39', '#7d57d5', '#e67732', '#e969a1', '#34aeb4', '#e24139'] as const
+const HEADS = [CREAM, '#f1b996', '#d8976f', '#3e384c', '#66d0a1', '#ecbf66', '#f299c0', '#98bdd6', '#a187de', '#eea374'] as const
+const LIMBS = [NAVY, '#3c344d', '#52392a', '#325143', '#593260'] as const
 
 type Cast = {
   species: [Species, number][]
@@ -191,68 +191,68 @@ function randomLook(rng: Rng, cast: Cast, species?: Species): Look {
       const roll = rng()
       if (roll < 0.28) {
         // Ladybird.
-        body = pick(rng, ['#e2433b', '#f08a2a', '#f2c230', '#ea6fa6'])
-        trim = '#2a2032'
+        body = pick(rng, ['#e24139', '#e67732', '#e6ac39', '#e969a1'])
+        trim = '#1a2b3c'
         pattern = 'spots'
-        head = pick(rng, ['#3d3346', '#2e2a36', CREAM])
+        head = pick(rng, ['#3e384c', '#2a3136', CREAM])
       } else {
         body = pick(rng, BRIGHT)
-        trim = pick(rng, [WHITE, '#2a2032', ...BRIGHT])
+        trim = pick(rng, [WHITE, '#1a2b3c', ...BRIGHT])
         pattern = weighted(rng, [['plain', 3], ['spots', 2], ['dots', 2], ['stripes', 2]] as [Pattern, number][])
         if (trim === body) trim = WHITE
       }
       break
     }
     case 'ant':
-      body = pick(rng, ['#a2472e', '#2e2536', '#7a4a2a', '#c0582e', '#5a3a6a'])
-      head = body === '#2e2536' ? '#3d3346' : mixHead(rng, body)
-      limb = body === '#2e2536' ? '#2e2536' : '#4a2a1c'
+      body = pick(rng, ['#9f5e35', '#302a3e', '#7f4c2c', '#c1672e', '#6f327a'])
+      head = body === '#302a3e' ? '#3e384c' : mixHead(rng, body)
+      limb = body === '#302a3e' ? '#302a3e' : '#53331f'
       trim = body
       break
     case 'bee':
-      body = pick(rng, ['#ffd23f', '#ffc234', '#f7b733'])
-      trim = '#2e2536'
-      head = pick(rng, ['#ffd95a', '#3d3346', CREAM])
-      limb = '#2e2536'
+      body = pick(rng, ['#e9b650', '#e8b247', '#e7af3f'])
+      trim = '#302a3e'
+      head = pick(rng, ['#ecbf66', '#3e384c', CREAM])
+      limb = '#302a3e'
       break
     case 'grasshopper':
-      body = pick(rng, ['#7ccf5a', '#9bd84a', '#5fbf55', '#b5d65a'])
-      head = pick(rng, ['#8fd86a', '#a8e070', '#7ccf5a'])
-      limb = '#3f8a3a'
+      body = pick(rng, ['#57ce99', '#48d897', '#54bf8f', '#57d59d'])
+      head = pick(rng, ['#66d7a4', '#6bdfab', '#57ce99'])
+      limb = '#3a8f69'
       trim = body
       break
     case 'spider':
-      body = pick(rng, ['#7a5ad0', '#3d3346', '#5a3a2a', '#3f78d8', '#e2433b'])
-      trim = pick(rng, ['#f2c230', '#ea6fa6', WHITE, '#34b3a0'])
-      limb = pick(rng, ['#4a3490', '#2e2536', '#3a2618'])
+      body = pick(rng, ['#7c57cf', '#3e384c', '#61412d', '#3d99d8', '#e24139'])
+      trim = pick(rng, ['#e6ac39', '#e969a1', WHITE, '#34aeb4'])
+      limb = pick(rng, ['#523593', '#302a3e', '#442b1c'])
       head = body
       break
     case 'butterfly':
-      body = pick(rng, ['#ec7fb0', '#f08a2a', '#3f78d8', '#f2c230', '#8c5ad6', '#34b3a0', WHITE])
+      body = pick(rng, ['#eb77aa', '#e67732', '#3d99d8', '#e6ac39', '#7d57d5', '#34aeb4', WHITE])
       trim = pick(rng, BRIGHT.filter((c) => c !== body))
-      head = pick(rng, [CREAM, '#3d3346', '#f4a3b8'])
-      limb = '#3a3046'
+      head = pick(rng, [CREAM, '#3e384c', '#f299c0'])
+      limb = '#3c344d'
       break
     case 'caterpillar':
-      body = pick(rng, ['#7ccf5a', '#f2c230', '#f08a2a', '#3f78d8', '#8c5ad6', '#34b3a0'])
-      trim = pick(rng, ['#f2c230', '#7ccf5a', WHITE, '#ea6fa6', '#2e2536'])
+      body = pick(rng, ['#57ce99', '#e6ac39', '#e67732', '#3d99d8', '#7d57d5', '#34aeb4'])
+      trim = pick(rng, ['#e6ac39', '#57ce99', WHITE, '#e969a1', '#302a3e'])
       if (trim === body) trim = WHITE
-      head = pick(rng, ['#8fd86a', '#f2c9a0', '#ffd95a', CREAM])
+      head = pick(rng, ['#66d7a4', '#f1b996', '#ecbf66', CREAM])
       break
     case 'snail':
-      body = pick(rng, ['#e0a458', '#c98f4a', '#ea6fa6', '#8fb6e8', '#b58ee0', '#f2c230'])
-      trim = pick(rng, ['#9a5a2a', '#7a3a5a', '#3f5a9a', WHITE])
-      head = pick(rng, ['#b9c7a0', '#c9c0b0', '#e6d6b8', '#a8c6b8'])
+      body = pick(rng, ['#dfb154', '#c99e49', '#e969a1', '#87c0e6', '#a187de', '#e6ac39'])
+      trim = pick(rng, ['#975932', '#843658', '#40469c', WHITE])
+      head = pick(rng, ['#8ed1b3', '#d6c29a', '#e3d1af', '#92d3b6'])
       break
     case 'worm':
-      body = pick(rng, ['#f4a3b8', '#f08c9c', '#e8b0a0'])
+      body = pick(rng, ['#f299c0', '#ef8883', '#e6b697'])
       head = body
       break
   }
 
   const canWear = sp !== 'snail' || rng() < 0.25
   const hat: Hat = canWear ? weighted(rng, HATS) : 'none'
-  const hatColour = hat === 'crown' ? '#f2c230' : hat === 'straw' ? '#e8c27a' : pick(rng, HAT_COLOURS)
+  const hatColour = hat === 'crown' ? '#e6ac39' : hat === 'straw' ? '#e7c073' : pick(rng, HAT_COLOURS)
   let hatTrim: string = pick(rng, [WHITE, ...HAT_COLOURS])
   if (hatTrim === hatColour) hatTrim = WHITE
 
@@ -274,12 +274,12 @@ function randomLook(rng: Rng, cast: Cast, species?: Species): Look {
     glasses,
     scarf: bipedal && rng() < 0.1 ? pick(rng, HAT_COLOURS) : null,
     held,
-    heldColour: held === 'crumb' ? '#e8c27a' : held === 'leaf' ? '#5fbf55' : pick(rng, BRIGHT),
+    heldColour: held === 'crumb' ? '#e7c073' : held === 'leaf' ? '#54bf8f' : pick(rng, BRIGHT),
   }
 }
 
 function mixHead(rng: Rng, body: string): string {
-  return rng() < 0.5 ? body : pick(rng, ['#b8543a', '#8a4a2a', '#d0703e'])
+  return rng() < 0.5 ? body : pick(rng, ['#b9403a', '#8b522e', '#d0763d'])
 }
 
 /** Every one of the Bug's features. Anybody else may have some of them, never all. */
@@ -337,7 +337,7 @@ class Layout {
       x,
       y,
       s,
-      colour: opts.colour ?? '#e2433b',
+      colour: opts.colour ?? '#e24139',
       colour2: opts.colour2 ?? WHITE,
       variant: opts.variant ?? Math.floor(this.rng() * 8),
       flip: opts.flip ?? this.rng() < 0.5,
@@ -560,14 +560,14 @@ function buildPicnic(L: Layout): Built {
   L.perch(sand, sand.y - sand.s * 0.5, sand.s * 0.25, 2, () => randomLook(rng, L.cast))
 
   const cakeAt = onBlanket(range(rng, 0.62, 0.72), range(rng, 0.22, 0.3))
-  L.addProp('cupcake', cakeAt[0], cakeAt[1], size * 1.7, { colour: pick(rng, ['#f7c6d9', '#fff3e0', '#c6e6ff']), colour2: pick(rng, ['#8fd3c8', '#f2c230', '#b58ee0']) })
+  L.addProp('cupcake', cakeAt[0], cakeAt[1], size * 1.7, { colour: pick(rng, ['#f5b9d3', '#faedd3', '#bee0f7']), colour2: pick(rng, ['#89cdd1', '#e6ac39', '#a187de']) })
 
   const cheeseAt = onBlanket(range(rng, 0.3, 0.4), range(rng, 0.75, 0.85))
   const cheese = L.addProp('cheese', cheeseAt[0], cheeseAt[1], size * 2)
   L.perch(cheese, cheese.y - cheese.s * 0.36, cheese.s * 0.2, 1, () => randomLook(rng, L.cast))
 
   const cupAt = onBlanket(range(rng, 0.45, 0.55), range(rng, 0.12, 0.2))
-  L.addProp('teacup', cupAt[0], cupAt[1], size * 1.3, { colour: pick(rng, ['#3f78d8', '#34b3a0', '#ea6fa6']) })
+  L.addProp('teacup', cupAt[0], cupAt[1], size * 1.3, { colour: pick(rng, ['#3d99d8', '#34aeb4', '#e969a1']) })
 
   const berries = 2 + Math.floor(rng() * 2)
   for (let k = 0; k < berries; k++) {
@@ -576,9 +576,9 @@ function buildPicnic(L: Layout): Built {
     L.addProp('strawberry', at[0], at[1], size * range(rng, 0.9, 1.1))
   }
   const grapesAt = onBlanket(range(rng, 0.84, 0.92), range(rng, 0.2, 0.4))
-  L.addProp('grapes', grapesAt[0], grapesAt[1], size * 1.4, { colour: pick(rng, ['#8c5ad6', '#6fbf4a']) })
+  L.addProp('grapes', grapesAt[0], grapesAt[1], size * 1.4, { colour: pick(rng, ['#7d57d5', '#49bf8a']) })
   const juiceAt = onBlanket(range(rng, 0.08, 0.16), range(rng, 0.6, 0.8))
-  L.addProp('juicebox', juiceAt[0], juiceAt[1], size * 1.2, { colour: pick(rng, ['#f08a2a', '#5fbf55', '#ea6fa6']), colour2: pick(rng, ['#e2433b', '#f2c230']) })
+  L.addProp('juicebox', juiceAt[0], juiceAt[1], size * 1.2, { colour: pick(rng, ['#e67732', '#54bf8f', '#e969a1']), colour2: pick(rng, ['#e24139', '#e6ac39']) })
 
   // Plates are flat, painted with the cloth; somebody always sits round one.
   const plates: { x: number; y: number; r: number }[] = []
@@ -599,7 +599,7 @@ function buildPicnic(L: Layout): Built {
     [(cakeAt[0] + hillX) / 2 + range(rng, -1, 1) * size * 2, (cakeAt[1] + hillY) / 2 + range(rng, -1, 1) * size * 2],
     [hillX, hillY + size * 0.3],
   ]
-  L.march(trail, size * 0.62, speciesLook(L, 'ant', { held: 'crumb', heldColour: '#e8c27a', hat: 'none' }))
+  L.march(trail, size * 0.62, speciesLook(L, 'ant', { held: 'crumb', heldColour: '#e7c073', hat: 'none' }))
 
   for (let k = 0; k < 9; k++) {
     const x = range(rng, 0.04, 0.96) * w
@@ -607,8 +607,8 @@ function buildPicnic(L: Layout): Built {
     if (inBlanket(x, y, -size * 0.6) || L.inSolid(x, y)) continue
     const kind = pick(rng, ['daisy', 'daisy', 'dandelion', 'tulip'] as const)
     L.addProp(kind, x, y, size * range(rng, 1.4, 1.9), {
-      colour: kind === 'daisy' ? WHITE : pick(rng, ['#e2433b', '#ea6fa6', '#f2c230', '#8c5ad6']),
-      colour2: '#f2c230',
+      colour: kind === 'daisy' ? WHITE : pick(rng, ['#e24139', '#e969a1', '#e6ac39', '#7d57d5']),
+      colour2: '#e6ac39',
       solid: false,
     })
   }
@@ -616,13 +616,13 @@ function buildPicnic(L: Layout): Built {
     const x = range(rng, 0.03, 0.97) * w
     const y = range(rng, 0.05, 0.99) * h
     if (inBlanket(x, y, -size * 0.3)) continue
-    L.addProp('pebble', x, y, size * range(rng, 0.7, 1.1), { colour: pick(rng, ['#b9b3c4', '#a8a2b8', '#c8bfae']) })
+    L.addProp('pebble', x, y, size * range(rng, 0.7, 1.1), { colour: pick(rng, ['#b3bdc4', '#a3afb7', '#d5c098']) })
   }
   for (let k = 0; k < 14; k++) {
     const x = range(rng, 0.02, 0.98) * w
     const y = range(rng, 0.04, 1) * h
     if (inBlanket(x, y, -size * 0.2)) continue
-    L.addProp('tuft', x, y, size * range(rng, 0.5, 0.75), { colour: '#5fae45', colour2: '#76c24f', solid: false })
+    L.addProp('tuft', x, y, size * range(rng, 0.5, 0.75), { colour: '#45af7f', colour2: '#4ec28e', solid: false })
   }
 
   // Grass texture and the odd crumb.
@@ -630,13 +630,13 @@ function buildPicnic(L: Layout): Built {
     const x = rng() * w
     const y = rng() * h
     if (inBlanket(x, y)) {
-      if (rng() < 0.08) L.decal('crumb', x, y, size * range(rng, 0.05, 0.09), '#e8c27a', rng() * 6)
+      if (rng() < 0.08) L.decal('crumb', x, y, size * range(rng, 0.05, 0.09), '#e7c073', rng() * 6)
       continue
     }
     const roll = rng()
-    if (roll < 0.8) L.decal('blade', x, y, size * range(rng, 0.14, 0.24), rng() < 0.5 ? '#5ea844' : '#9ad06a', range(rng, -0.4, 0.4))
-    else if (roll < 0.93) L.decal('clover', x, y, size * range(rng, 0.14, 0.2), '#4f9e3c', rng() * 6)
-    else L.decal('bloom', x, y, size * range(rng, 0.07, 0.1), pick(rng, [WHITE, '#f2c230', '#f4a3c8']), 0)
+    if (roll < 0.8) L.decal('blade', x, y, size * range(rng, 0.14, 0.24), rng() < 0.5 ? '#44a97c' : '#66cfa0', range(rng, -0.4, 0.4))
+    else if (roll < 0.93) L.decal('clover', x, y, size * range(rng, 0.14, 0.2), '#3da074', rng() * 6)
+    else L.decal('bloom', x, y, size * range(rng, 0.07, 0.1), pick(rng, [WHITE, '#e6ac39', '#f299c0']), 0)
   }
 
   // Butterflies and bees over the grass.
@@ -691,7 +691,7 @@ function buildGarden(L: Layout): Built {
   // Flowers planted in rows in each bed.
   for (const bed of beds) {
     const kind = pick(rng, ['tulip', 'sunflower', 'daisy', 'tulip'] as const)
-    const colour = kind === 'daisy' ? WHITE : pick(rng, ['#e2433b', '#ea6fa6', '#f2c230', '#8c5ad6', '#f08a2a'])
+    const colour = kind === 'daisy' ? WHITE : pick(rng, ['#e24139', '#e969a1', '#e6ac39', '#7d57d5', '#e67732'])
     const n = Math.max(2, Math.floor((bed.x1 - bed.x0) / (size * 1.5)))
     const lines = Math.max(1, Math.floor((bed.y1 - bed.y0) / (size * 2.4)))
     for (let row = 0; row < lines; row++) {
@@ -699,19 +699,19 @@ function buildGarden(L: Layout): Built {
       for (let k = 0; k < n; k++) {
         if (rng() < 0.35) continue
         const x = bed.x0 + ((k + 0.5) * (bed.x1 - bed.x0)) / n + range(rng, -0.2, 0.2) * size
-        L.addProp(kind, x, y, size * range(rng, 1.7, 2.3), { colour, colour2: '#f2c230', solid: false })
+        L.addProp(kind, x, y, size * range(rng, 1.7, 2.3), { colour, colour2: '#e6ac39', solid: false })
       }
     }
     // A toadstool or two where the soil is damp.
     if (rng() < 0.6) {
       L.addProp('toadstool', range(rng, bed.x0 + size, bed.x1 - size), range(rng, bed.y0 + size, bed.y1), size * range(rng, 1.1, 1.5), {
-        colour: pick(rng, ['#e2433b', '#e2433b', '#f08a2a', '#8c5ad6']),
+        colour: pick(rng, ['#e24139', '#e24139', '#e67732', '#7d57d5']),
       })
     }
   }
 
   // Tools and pots along the paths.
-  L.addProp('wateringcan', range(rng, 0.15, 0.85) * w, range(rng, 0.2, 0.8) * h, size * 2.4, { colour: pick(rng, ['#3fa05a', '#3f78d8', '#34b3a0']) })
+  L.addProp('wateringcan', range(rng, 0.15, 0.85) * w, range(rng, 0.2, 0.8) * h, size * 2.4, { colour: pick(rng, ['#40a276', '#3d99d8', '#34aeb4']) })
   for (let k = 0; k < 3; k++) {
     const x = range(rng, 0.08, 0.92) * w
     const y = range(rng, 0.1, 0.95) * h
@@ -722,7 +722,7 @@ function buildGarden(L: Layout): Built {
   // A picket fence along the back.
   const panel = size * 3
   for (let x = panel * 0.5; x < w; x += panel * 0.98) {
-    L.addProp('fence', x, size * 1.25, panel, { colour: '#f4ecdc', solid: false, flip: false })
+    L.addProp('fence', x, size * 1.25, panel, { colour: '#f0e5cf', solid: false, flip: false })
   }
 
   // Stepping stones on the paths.
@@ -747,9 +747,9 @@ function buildGarden(L: Layout): Built {
     const y = rng() * h
     const inBed = beds.some((b) => x > b.x0 && x < b.x1 && y > b.y0 && y < b.y1)
     if (inBed) {
-      if (rng() < 0.4) L.decal('speck', x, y, size * range(rng, 0.03, 0.06), '#5a3a22', 0)
+      if (rng() < 0.4) L.decal('speck', x, y, size * range(rng, 0.03, 0.06), '#623c25', 0)
     } else {
-      L.decal('blade', x, y, size * range(rng, 0.14, 0.22), rng() < 0.5 ? '#5ea844' : '#8ccc62', range(rng, -0.4, 0.4))
+      L.decal('blade', x, y, size * range(rng, 0.14, 0.22), rng() < 0.5 ? '#44a97c' : '#5fcb9b', range(rng, -0.4, 0.4))
     }
   }
 
@@ -806,12 +806,12 @@ function buildPond(L: Layout, shoreY: (x: number) => number): Built {
     L.addProp('umbrella', x, y, size * range(rng, 2.2, 2.6), { colour: RED, colour2: WHITE, solid: false })
   }
   const castleX = range(rng, 0.2, 0.8) * w
-  L.addProp('sandcastle', castleX, Math.max(sandTop + size * 2, shoreY(castleX) - size * 1.2), size * 2.4, { colour: pick(rng, ['#3f78d8', '#e2433b']) })
+  L.addProp('sandcastle', castleX, Math.max(sandTop + size * 2, shoreY(castleX) - size * 1.2), size * 2.4, { colour: pick(rng, ['#3d99d8', '#e24139']) })
   for (let k = 0; k < 2; k++) {
     const x = range(rng, 0.1, 0.9) * w
     const y = range(rng, sandTop + size, shoreY(x) - size * 0.5)
     if (L.inSolid(x, y)) continue
-    L.addProp('bucket', x, y, size * 1.1, { colour: pick(rng, ['#3f78d8', '#f2c230', '#ea6fa6', '#34b3a0']) })
+    L.addProp('bucket', x, y, size * 1.1, { colour: pick(rng, ['#3d99d8', '#e6ac39', '#e969a1', '#34aeb4']) })
   }
   const guardX = rng() < 0.5 ? w * 0.12 : w * 0.88
   const guard = L.addProp('lifeguard', guardX, shoreY(guardX) - size * 0.6, size * 1.6)
@@ -825,7 +825,7 @@ function buildPond(L: Layout, shoreY: (x: number) => number): Built {
   for (let k = 0; k < 5; k++) {
     const x = range(rng, 0.03, 0.97) * w
     const y = range(rng, sandTop, shoreY(x) - size * 0.3)
-    L.addProp('pebble', x, y, size * range(rng, 0.6, 0.9), { colour: pick(rng, ['#c8bfae', '#b9b3c4', '#e0d2b8']) })
+    L.addProp('pebble', x, y, size * range(rng, 0.6, 0.9), { colour: pick(rng, ['#d5c098', '#b3bdc4', '#deceae']) })
   }
 
   // Sunbathers on towels are drawn as critters sitting; swimmers float in rings.
@@ -840,7 +840,7 @@ function buildPond(L: Layout, shoreY: (x: number) => number): Built {
     const x = range(rng, 0.15, 0.85) * w
     const y = range(rng, 0.2, 0.95) * h
     if (y < shoreY(x) + size * 1.6 || y > h - size * 0.4) continue
-    const boat = L.addProp('boat', x, y, size * 2.6, { colour: '#5fb04a', colour2: pick(rng, [WHITE, '#f4a3c8', '#f2c230']) })
+    const boat = L.addProp('boat', x, y, size * 2.6, { colour: '#49b283', colour2: pick(rng, [WHITE, '#f299c0', '#e6ac39']) })
     L.perch(boat, boat.y - boat.s * 0.06, boat.s * 0.22, 2, () => randomLook(rng, L.cast), { pose: 'wave' })
   }
 
@@ -849,7 +849,7 @@ function buildPond(L: Layout, shoreY: (x: number) => number): Built {
     const x = rng() * w
     const y = rng() * h
     if (y < shoreY(x)) {
-      L.decal(rng() < 0.9 ? 'speck' : 'shell', x, y, size * range(rng, 0.03, 0.12), pick(rng, ['#c9a266', '#e8cf98', '#f4a3b8', WHITE]), rng() * 6)
+      L.decal(rng() < 0.9 ? 'speck' : 'shell', x, y, size * range(rng, 0.03, 0.12), pick(rng, ['#c8a663', '#e6c990', '#f299c0', WHITE]), rng() * 6)
     } else if (rng() < 0.35) {
       L.decal('ripple', x, y, size * range(rng, 0.3, 0.7), 'rgba(255, 255, 255, 0.35)', 0)
     }
@@ -884,8 +884,8 @@ const ARCADE_CAST: Cast = {
   poses: [['stand', 28], ['wave', 14], ['walk', 18], ['cheer', 18], ['hold', 10]],
 }
 
-const CABINET_BODIES = ['#3a2f5c', '#2f4a5c', '#4a2f45', '#33405c', '#452f52', '#2f3f58'] as const
-const NEONS = ['#5ff0c8', '#ff6fa8', '#ffd84a', '#6fb6ff', '#c79bff'] as const
+const CABINET_BODIES = ['#413262', '#324f62', '#4c3351', '#363962', '#533358', '#324c5e'] as const
+const NEONS = ['#5eebac', '#ee77ab', '#eaba59', '#77beee', '#b59bf3'] as const
 
 function buildArcade(L: Layout, wall: number): Built {
   const { w, h, rng, size } = L
@@ -912,9 +912,9 @@ function buildArcade(L: Layout, wall: number): Built {
       if (rng() < 0.12) continue
       const roll = rng()
       if (roll < 0.14) {
-        L.addProp('claw', x, y, cabW * 1.2, { colour: pick(rng, ['#ea6fa6', '#3f78d8', '#8c5ad6']) })
+        L.addProp('claw', x, y, cabW * 1.2, { colour: pick(rng, ['#e969a1', '#3d99d8', '#7d57d5']) })
       } else if (roll < 0.2) {
-        L.addProp('changer', x, y, cabW * 0.9, { colour: pick(rng, ['#e2433b', '#3f78d8']) })
+        L.addProp('changer', x, y, cabW * 0.9, { colour: pick(rng, ['#e24139', '#3d99d8']) })
       } else {
         L.addProp('cabinet', x, y, cabW, { colour: pick(rng, CABINET_BODIES), colour2: pick(rng, NEONS) })
       }
@@ -924,7 +924,7 @@ function buildArcade(L: Layout, wall: number): Built {
   // The prize counter, with a queue.
   const counterX = range(rng, 0.25, 0.75) * w
   const counterY = h - size * 1.6
-  L.addProp('counter', counterX, counterY, size * 4.4, { colour: '#6a3fa0', colour2: '#ffd84a' })
+  L.addProp('counter', counterX, counterY, size * 4.4, { colour: '#5d40a2', colour2: '#eaba59' })
   L.march(
     [
       [counterX - size * 2.6, counterY + size * 0.9],
@@ -934,7 +934,7 @@ function buildArcade(L: Layout, wall: number): Built {
     () => ({ ...randomLook(rng, L.cast), held: rng() < 0.5 ? 'token' : 'none' }),
     { pose: 'stand' },
   )
-  L.addProp('bench', range(rng, 0.1, 0.9) * w, range(rng, wall + size * 3, h - size * 3), size * 2.4, { colour: '#5a4480' })
+  L.addProp('bench', range(rng, 0.1, 0.9) * w, range(rng, wall + size * 3, h - size * 3), size * 2.4, { colour: '#543a8f' })
 
   for (let k = 0; k < 360; k++) {
     const x = rng() * w
@@ -942,7 +942,7 @@ function buildArcade(L: Layout, wall: number): Built {
     L.decal('confetti', x, y, size * range(rng, 0.1, 0.2), pick(rng, NEONS), rng() * 6)
   }
   for (let k = 0; k < 30; k++) {
-    L.decal('crumb', rng() * w, wall + rng() * (h - wall), size * 0.1, '#f1b93a', 0)
+    L.decal('crumb', rng() * w, wall + rng() * (h - wall), size * 0.1, '#e7af40', 0)
   }
 
   return { ground: { kind: 'arcade', wall } }
@@ -985,11 +985,11 @@ function buildNight(L: Layout, horizon: number): Built {
       if (x < size * 2 || x > w - size * 2) continue
       const striped = rng() < 0.55
       const stall = L.addProp('stall', x, y, size * range(rng, 2.8, 3.3), {
-        colour: striped ? RED : pick(rng, ['#3f78d8', '#8c5ad6', '#3fa05a', '#f08a2a']),
+        colour: striped ? RED : pick(rng, ['#3d99d8', '#7d57d5', '#40a276', '#e67732']),
         colour2: WHITE,
         variant: r,
       })
-      lights.push({ x: stall.x, y: stall.y - stall.s * 0.6, r: size * 3.2, colour: 'rgba(255, 200, 120, 0.5)' })
+      lights.push({ x: stall.x, y: stall.y - stall.s * 0.6, r: size * 3.2, colour: 'rgba(239, 201, 126, 0.5)' })
       // Somebody minding every stall.
       L.addCritter(stall.x + range(rng, -0.2, 0.2) * stall.s, stall.y - stall.s * 0.38, randomLook(rng, L.cast), { z: stall.z - 1, pose: 'wave' })
     }
@@ -999,20 +999,20 @@ function buildNight(L: Layout, horizon: number): Built {
   const tents = Math.max(2, Math.round(w / (size * 5)))
   for (let k = 0; k < tents; k++) {
     L.addProp('tent', ((k + 0.5) / tents) * w + range(rng, -0.5, 0.5) * size, horizon + size * 1.2, size * range(rng, 2.6, 3.2), {
-      colour: pick(rng, ['#3f78d8', '#8c5ad6', '#34b3a0', '#f08a2a']),
-      colour2: pick(rng, [WHITE, '#f2c230']),
+      colour: pick(rng, ['#3d99d8', '#7d57d5', '#34aeb4', '#e67732']),
+      colour2: pick(rng, [WHITE, '#e6ac39']),
     })
   }
   for (let k = 0; k < 4; k++) {
     const y = range(rng, horizon + size * 2, h - size)
     const x = pathX(y) + (rng() < 0.5 ? -1 : 1) * size * 1.6
     L.addProp('lamp', x, y, size * 1.1, { solid: false })
-    lights.push({ x, y: y - size * 1.9, r: size * 3.4, colour: 'rgba(255, 226, 150, 0.55)' })
+    lights.push({ x, y: y - size * 1.9, r: size * 3.4, colour: 'rgba(242, 212, 151, 0.55)' })
   }
   const fireY = range(rng, horizon + (h - horizon) * 0.4, h - size * 2)
   const fireX = w - pathX(fireY) > w * 0.5 ? pathX(fireY) + w * 0.2 : pathX(fireY) - w * 0.2
   L.addProp('campfire', fireX, fireY, size * 1.3)
-  lights.push({ x: fireX, y: fireY - size * 0.4, r: size * 4.5, colour: 'rgba(255, 150, 70, 0.6)' })
+  lights.push({ x: fireX, y: fireY - size * 0.4, r: size * 4.5, colour: 'rgba(234, 143, 85, 0.6)' })
   L.ring(fireX, fireY - size * 0.2, size * 1.9, size * 1.0, 7, () => randomLook(rng, L.cast), { pose: 'cheer' })
   for (let k = 0; k < 3; k++) {
     const x = range(rng, 0.05, 0.95) * w
@@ -1022,7 +1022,7 @@ function buildNight(L: Layout, horizon: number): Built {
   for (let k = 0; k < 8; k++) {
     const x = range(rng, 0.03, 0.97) * w
     const y = range(rng, horizon + size, h)
-    L.addProp('toadstool', x, y, size * range(rng, 0.8, 1.1), { colour: pick(rng, ['#8c5ad6', '#34b3a0', '#e2433b']), solid: false })
+    L.addProp('toadstool', x, y, size * range(rng, 0.8, 1.1), { colour: pick(rng, ['#7d57d5', '#34aeb4', '#e24139']), solid: false })
   }
 
   // String lights across the whole market.
@@ -1035,18 +1035,18 @@ function buildNight(L: Layout, horizon: number): Built {
       const x = (t / 12) * w
       points.push([x, y0 + Math.sin((t / 12) * Math.PI * 3) * size * 0.9 - size * 0.4])
     }
-    garlands.push({ points, colours: ['#ffd84a', '#ff6fa8', '#6fb6ff', '#7ee08a', '#ff9f5a'] })
+    garlands.push({ points, colours: ['#eaba59', '#ee77ab', '#77beee', '#78dfb1', '#ec9a66'] })
   }
 
   for (let k = 0; k < 420; k++) {
     const x = rng() * w
     const y = horizon + rng() * (h - horizon)
     const onPath = Math.abs(x - pathX(y)) < w * 0.08
-    if (onPath) L.decal('speck', x, y, size * range(rng, 0.03, 0.07), '#6a5a4a', 0)
-    else L.decal('blade', x, y, size * range(rng, 0.14, 0.22), rng() < 0.5 ? '#2f5a4a' : '#3d6e52', range(rng, -0.4, 0.4))
+    if (onPath) L.decal('speck', x, y, size * range(rng, 0.03, 0.07), '#6e594c', 0)
+    else L.decal('blade', x, y, size * range(rng, 0.14, 0.22), rng() < 0.5 ? '#32604c' : '#347e5d', range(rng, -0.4, 0.4))
   }
   for (let k = 0; k < 60; k++) {
-    L.decal('star', rng() * w, rng() * horizon * 0.9, size * range(rng, 0.04, 0.09), '#fff6d0', 0)
+    L.decal('star', rng() * w, rng() * horizon * 0.9, size * range(rng, 0.04, 0.09), '#f8e7c6', 0)
   }
 
   // Fireflies: tiny glowing flyers.
@@ -1065,16 +1065,16 @@ function buildNight(L: Layout, horizon: number): Built {
 function twinOf(rng: Rng, index: number): Look {
   // The early scenes change something loud; the late ones something small.
   const loud: ((l: Look) => Look)[] = [
-    (l) => ({ ...l, hatColour: pick(rng, ['#3f78d8', '#3fa05a', '#f2c230', '#8c5ad6']) }),
-    (l) => ({ ...l, body: pick(rng, ['#3f78d8', '#3fa05a', '#8c5ad6']) }),
+    (l) => ({ ...l, hatColour: pick(rng, ['#3d99d8', '#40a276', '#e6ac39', '#7d57d5']) }),
+    (l) => ({ ...l, body: pick(rng, ['#3d99d8', '#40a276', '#7d57d5']) }),
     (l) => ({ ...l, hat: pick(rng, ['cap', 'party', 'tophat'] as Hat[]) }),
   ]
   const quiet: ((l: Look) => Look)[] = [
     (l) => ({ ...l, hat: 'beanie' }),
     (l) => ({ ...l, glasses: 'none' }),
     (l) => ({ ...l, glasses: 'shades' }),
-    (l) => ({ ...l, trim: '#f2c230' }),
-    (l) => ({ ...l, hatTrim: '#3f78d8' }),
+    (l) => ({ ...l, trim: '#e6ac39' }),
+    (l) => ({ ...l, hatTrim: '#3d99d8' }),
   ]
   const pool = index < 2 ? loud : index < 3 ? [...loud, ...quiet] : quiet
   return pick(rng, pool)({ ...THE_BUG })

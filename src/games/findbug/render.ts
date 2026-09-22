@@ -11,7 +11,7 @@
  * A map app does the same: blurry while you drag, sharp when you let go.
  */
 
-import { playfieldColor } from '../../lib/theme'
+import { isDarkTheme, playfieldColor } from '../../lib/theme'
 import { drawCritter, INK } from './critters'
 import { drawProp } from './props'
 import {
@@ -43,55 +43,96 @@ function ep(ctx: Ctx, x: number, y: number, rx: number, ry: number, rot = 0) {
 
 // ------------------------------------------------------------------ ground
 
+/**
+ * The daytime scenes sink to dusk in the dark theme, so a sunlit lawn doesn't
+ * glare out of the site's dark screens: deeper grass, sand and water, and the
+ * marks on them go down with them. In the light theme they stay in daylight.
+ * Critters and props are the same in both, so every clue reads the same.
+ */
+function atDusk(scene: Scene) {
+  return isDarkTheme() && (scene.kind === 'picnic' || scene.kind === 'garden' || scene.kind === 'pond')
+}
+
+const DUSK = {
+  picnicGrass: ['#387157', '#2f604a'],
+  gardenGrass: ['#366d54', '#2d5c47'],
+  lilyPad: '#37815f',
+  sand: ['#b29c70', '#a88f5d'],
+  wetSand: '#8f794d',
+  water: ['#295d70', '#1b3950'],
+  /** Sunlight, faint, on grass the sun has left. */
+  sunPatch: 'rgba(248, 232, 200, 0.04)',
+} as const
+
+const sunkCache = new Map<string, string>()
+
+/** A mark on the ground gone down with the ground under it: same hue, much darker. */
+function sunk(colour: string): string {
+  let out = sunkCache.get(colour)
+  if (out === undefined) {
+    out = colour
+    const m = /^#([0-9a-f]{6})$/i.exec(colour)
+    if (m) {
+      const n = Number.parseInt(m[1]!, 16)
+      const k = 0.58
+      out = `rgb(${Math.round(((n >> 16) & 255) * k)}, ${Math.round(((n >> 8) & 255) * k)}, ${Math.round((n & 255) * k)})`
+    }
+    sunkCache.set(colour, out)
+  }
+  return out
+}
+
 /** The colour round the edge of a scene, for anything the scene does not cover. */
 export function edgeColour(scene: Scene): string {
+  const dusk = atDusk(scene)
   switch (scene.kind) {
     case 'picnic':
-      return '#6fb04e'
+      return dusk ? DUSK.picnicGrass[1] : '#4ab485'
     case 'garden':
-      return '#6aa84a'
+      return dusk ? DUSK.gardenGrass[1] : '#46ad7f'
     case 'pond':
-      return '#3f8fbf'
+      return dusk ? DUSK.water[1] : '#3f8bbf'
     case 'arcade':
-      return '#1c1430'
+      return '#23183b'
     default:
-      return '#17213a'
+      return '#1b1e44'
   }
 }
 
 function* paintPicnic(ctx: Ctx, scene: Scene): Steps {
   if (scene.ground.kind !== 'picnic') return
   const { w, h } = scene
+  const dusk = atDusk(scene)
   const grass = ctx.createLinearGradient(0, 0, 0, h)
-  grass.addColorStop(0, '#9bd46c')
-  grass.addColorStop(1, '#7dc05a')
+  grass.addColorStop(0, dusk ? DUSK.picnicGrass[0] : '#68d3a3')
+  grass.addColorStop(1, dusk ? DUSK.picnicGrass[1] : '#58bf91')
   ctx.fillStyle = grass
   ctx.fillRect(0, 0, w, h)
   yield
-  yield* sunPatches(ctx, scene, 'rgba(255, 255, 210, 0.12)')
+  yield* sunPatches(ctx, scene, dusk ? DUSK.sunPatch : 'rgba(248, 232, 200, 0.12)')
   yield
 
   const b = scene.ground.blanket
   ctx.save()
   ctx.translate(b.x, b.y)
   ctx.rotate(b.rot)
-  ctx.fillStyle = 'rgba(40, 70, 20, 0.28)'
+  ctx.fillStyle = 'rgba(26, 77, 54, 0.28)'
   ctx.beginPath()
   ctx.roundRect(-b.w / 2 + scene.unit * 0.12, -b.h / 2 + scene.unit * 0.18, b.w, b.h, scene.unit * 0.2)
   ctx.fill()
   ctx.beginPath()
   ctx.roundRect(-b.w / 2, -b.h / 2, b.w, b.h, scene.unit * 0.16)
-  ctx.fillStyle = '#fbf5ea'
+  ctx.fillStyle = '#f1f3f4'
   ctx.fill()
   ctx.save()
   ctx.clip()
   // Gingham: red bands both ways, darker where they cross.
   const cell = scene.unit * 0.58
-  ctx.fillStyle = 'rgba(214, 58, 52, 0.46)'
+  ctx.fillStyle = 'rgba(214, 59, 51, 0.46)'
   for (let x = -b.w / 2; x < b.w / 2; x += cell * 2) ctx.fillRect(x, -b.h / 2, cell, b.h)
   for (let y = -b.h / 2; y < b.h / 2; y += cell * 2) ctx.fillRect(-b.w / 2, y, b.w, cell)
   // Folds in the cloth.
-  ctx.strokeStyle = 'rgba(120, 30, 40, 0.12)'
+  ctx.strokeStyle = 'rgba(119, 43, 40, 0.12)'
   ctx.lineWidth = scene.unit * 0.12
   for (const t of [-0.18, 0.22]) {
     ctx.beginPath()
@@ -118,7 +159,7 @@ function* paintPicnic(ctx: Ctx, scene: Scene): Steps {
   yield
   for (const p of scene.ground.plates) {
     ep(ctx, p.x + scene.unit * 0.06, p.y + scene.unit * 0.1, p.r, p.r * 0.55)
-    ctx.fillStyle = 'rgba(60, 30, 40, 0.2)'
+    ctx.fillStyle = 'rgba(69, 34, 49, 0.2)'
     ctx.fill()
     ep(ctx, p.x, p.y, p.r, p.r * 0.55)
     ctx.fillStyle = '#ffffff'
@@ -127,18 +168,18 @@ function* paintPicnic(ctx: Ctx, scene: Scene): Steps {
     ctx.lineWidth = 1.5
     ctx.stroke()
     ep(ctx, p.x, p.y, p.r * 0.72, p.r * 0.38)
-    ctx.strokeStyle = 'rgba(120, 140, 200, 0.5)'
+    ctx.strokeStyle = 'rgba(116, 122, 198, 0.5)'
     ctx.lineWidth = 1.2
     ctx.stroke()
     // Biscuits.
     for (const [dx, dy] of [[-0.3, -0.05], [0.12, -0.1], [0.32, 0.08], [-0.08, 0.14]] as const) {
       ep(ctx, p.x + dx * p.r, p.y + dy * p.r, p.r * 0.2, p.r * 0.12)
-      ctx.fillStyle = '#d9a059'
+      ctx.fillStyle = '#d8ac56'
       ctx.fill()
       ctx.strokeStyle = INK
       ctx.lineWidth = 1.1
       ctx.stroke()
-      ctx.fillStyle = '#5a3420'
+      ctx.fillStyle = '#623b23'
       ep(ctx, p.x + dx * p.r - p.r * 0.05, p.y + dy * p.r, p.r * 0.03, p.r * 0.02)
       ctx.fill()
       ep(ctx, p.x + dx * p.r + p.r * 0.06, p.y + dy * p.r - p.r * 0.03, p.r * 0.03, p.r * 0.02)
@@ -175,18 +216,19 @@ function* paintGarden(ctx: Ctx, scene: Scene): Steps {
   if (scene.ground.kind !== 'garden') return
   const { w, h } = scene
   const u = scene.unit
+  const dusk = atDusk(scene)
   const grass = ctx.createLinearGradient(0, 0, 0, h)
-  grass.addColorStop(0, '#93cf66')
-  grass.addColorStop(1, '#7cbd57')
+  grass.addColorStop(0, dusk ? DUSK.gardenGrass[0] : '#63ce9e')
+  grass.addColorStop(1, dusk ? DUSK.gardenGrass[1] : '#56bd8e')
   ctx.fillStyle = grass
   ctx.fillRect(0, 0, w, h)
   yield
-  yield* sunPatches(ctx, scene, 'rgba(255, 255, 210, 0.1)')
+  yield* sunPatches(ctx, scene, dusk ? DUSK.sunPatch : 'rgba(248, 232, 200, 0.1)')
   yield
 
   for (const s of scene.ground.stones) {
     ep(ctx, s.x, s.y, s.r, s.r * 0.6)
-    ctx.fillStyle = '#c9c3b8'
+    ctx.fillStyle = '#b9c2c8'
     ctx.fill()
     ctx.strokeStyle = INK
     ctx.lineWidth = 1.2
@@ -200,18 +242,18 @@ function* paintGarden(ctx: Ctx, scene: Scene): Steps {
   for (const bed of scene.ground.beds) {
     const bw = bed.x1 - bed.x0
     const bh = bed.y1 - bed.y0
-    ctx.fillStyle = 'rgba(30, 50, 20, 0.25)'
+    ctx.fillStyle = 'rgba(24, 61, 44, 0.25)'
     ctx.beginPath()
     ctx.roundRect(bed.x0 + u * 0.08, bed.y0 + u * 0.14, bw, bh, u * 0.3)
     ctx.fill()
     ctx.beginPath()
     ctx.roundRect(bed.x0, bed.y0, bw, bh, u * 0.3)
-    ctx.fillStyle = '#7a5236'
+    ctx.fillStyle = '#7e5338'
     ctx.fill()
     ctx.save()
     ctx.clip()
     // Furrows.
-    ctx.strokeStyle = 'rgba(50, 28, 14, 0.35)'
+    ctx.strokeStyle = 'rgba(59, 35, 20, 0.35)'
     ctx.lineWidth = u * 0.1
     for (let y = bed.y0 + u * 0.4; y < bed.y1; y += u * 0.7) {
       ctx.beginPath()
@@ -226,7 +268,7 @@ function* paintGarden(ctx: Ctx, scene: Scene): Steps {
     ctx.strokeStyle = INK
     ctx.lineWidth = u * 0.2
     ctx.stroke()
-    ctx.strokeStyle = '#c28a52'
+    ctx.strokeStyle = '#c27c51'
     ctx.lineWidth = u * 0.13
     ctx.stroke()
   }
@@ -237,9 +279,10 @@ function* paintPond(ctx: Ctx, scene: Scene): Steps {
   const { w, h } = scene
   const u = scene.unit
   const shore = scene.ground.shore
+  const dusk = atDusk(scene)
   const sand = ctx.createLinearGradient(0, 0, 0, h * 0.5)
-  sand.addColorStop(0, '#f6e2ae')
-  sand.addColorStop(1, '#ecd092')
+  sand.addColorStop(0, dusk ? DUSK.sand[0] : '#f4d9a3')
+  sand.addColorStop(1, dusk ? DUSK.sand[1] : '#eaca89')
   ctx.fillStyle = sand
   ctx.fillRect(0, 0, w, h)
 
@@ -260,12 +303,12 @@ function* paintPond(ctx: Ctx, scene: Scene): Steps {
   ctx.lineTo(w, h)
   ctx.lineTo(0, h)
   ctx.closePath()
-  ctx.fillStyle = '#d9b777'
+  ctx.fillStyle = dusk ? DUSK.wetSand : '#d8b672'
   ctx.fill()
 
   const water = ctx.createLinearGradient(0, h * 0.35, 0, h)
-  water.addColorStop(0, '#6cc6e6')
-  water.addColorStop(1, '#3b8fc4')
+  water.addColorStop(0, dusk ? DUSK.water[0] : '#66b2e5')
+  water.addColorStop(1, dusk ? DUSK.water[1] : '#3b8dc4')
   ctx.beginPath()
   shoreline(0)
   ctx.lineTo(w, h)
@@ -308,19 +351,19 @@ function* paintPond(ctx: Ctx, scene: Scene): Steps {
     ctx.save()
     ctx.translate(pad.x, pad.y)
     ctx.scale(1, 0.55)
-    ctx.fillStyle = 'rgba(20, 60, 90, 0.3)'
+    ctx.fillStyle = 'rgba(30, 67, 91, 0.3)'
     ep(ctx, u * 0.1, u * 0.2, pad.r, pad.r)
     ctx.fill()
     ctx.beginPath()
     ctx.moveTo(0, 0)
     ctx.arc(0, 0, pad.r, pad.rot + 0.35, pad.rot + TAU - 0.35)
     ctx.closePath()
-    ctx.fillStyle = '#5fb04a'
+    ctx.fillStyle = dusk ? DUSK.lilyPad : '#49b283'
     ctx.fill()
     ctx.strokeStyle = INK
     ctx.lineWidth = 1.5 / 0.75
     ctx.stroke()
-    ctx.strokeStyle = 'rgba(30, 80, 20, 0.35)'
+    ctx.strokeStyle = 'rgba(28, 84, 59, 0.35)'
     ctx.lineWidth = u * 0.05
     for (let k = 1; k < 7; k++) {
       const a = pad.rot + 0.35 + (k / 7) * (TAU - 0.7)
@@ -338,24 +381,24 @@ function paintArcade(ctx: Ctx, scene: Scene) {
   const { w, h } = scene
   const u = scene.unit
   const wall = scene.ground.wall
-  ctx.fillStyle = '#261a44'
+  ctx.fillStyle = '#2c1e4d'
   ctx.fillRect(0, 0, w, h)
   // Wall with a stripe, skirting board below it.
   const wallFill = ctx.createLinearGradient(0, 0, 0, wall)
-  wallFill.addColorStop(0, '#1d1436')
-  wallFill.addColorStop(1, '#33245a')
+  wallFill.addColorStop(0, '#241841')
+  wallFill.addColorStop(1, '#392761')
   ctx.fillStyle = wallFill
   ctx.fillRect(0, 0, w, wall)
   ctx.fillStyle = 'rgba(255, 255, 255, 0.04)'
   for (let x = 0; x < w; x += u * 0.8) ctx.fillRect(x, 0, u * 0.35, wall)
-  ctx.fillStyle = '#140e26'
+  ctx.fillStyle = '#1c1232'
   ctx.fillRect(0, wall - u * 0.16, w, u * 0.24)
-  ctx.fillStyle = '#ff6fa8'
+  ctx.fillStyle = '#ee77ab'
   ctx.fillRect(0, wall - u * 0.2, w, u * 0.05)
   // A glow on the floor under the wall.
   const glow = ctx.createLinearGradient(0, wall, 0, wall + u * 3)
-  glow.addColorStop(0, 'rgba(255, 111, 168, 0.18)')
-  glow.addColorStop(1, 'rgba(255, 111, 168, 0)')
+  glow.addColorStop(0, 'rgba(238, 119, 171, 0.18)')
+  glow.addColorStop(1, 'rgba(238, 119, 171, 0)')
   ctx.fillStyle = glow
   ctx.fillRect(0, wall, w, u * 3)
 }
@@ -366,23 +409,23 @@ function* paintNight(ctx: Ctx, scene: Scene): Steps {
   const u = scene.unit
   const horizon = scene.ground.horizon
   const sky = ctx.createLinearGradient(0, 0, 0, horizon)
-  sky.addColorStop(0, '#141a44')
-  sky.addColorStop(1, '#3b2f66')
+  sky.addColorStop(0, '#191d4c')
+  sky.addColorStop(1, '#43326c')
   ctx.fillStyle = sky
   ctx.fillRect(0, 0, w, horizon)
   // The moon.
   const mx = w * 0.82
   const my = horizon * 0.42
   const moonGlow = ctx.createRadialGradient(mx, my, 0, mx, my, u * 2.4)
-  moonGlow.addColorStop(0, 'rgba(255, 244, 200, 0.45)')
-  moonGlow.addColorStop(1, 'rgba(255, 244, 200, 0)')
+  moonGlow.addColorStop(0, 'rgba(247, 229, 192, 0.45)')
+  moonGlow.addColorStop(1, 'rgba(247, 229, 192, 0)')
   ctx.fillStyle = moonGlow
   ctx.fillRect(mx - u * 2.4, my - u * 2.4, u * 4.8, u * 4.8)
   ep(ctx, mx, my, u * 0.62, u * 0.62)
-  ctx.fillStyle = '#fff4c8'
+  ctx.fillStyle = '#f7e5c0'
   ctx.fill()
   ep(ctx, mx + u * 0.18, my - u * 0.08, u * 0.1, u * 0.1)
-  ctx.fillStyle = 'rgba(200, 180, 120, 0.4)'
+  ctx.fillStyle = 'rgba(198, 171, 116, 0.4)'
   ctx.fill()
 
   yield
@@ -392,13 +435,13 @@ function* paintNight(ctx: Ctx, scene: Scene): Steps {
   for (let x = 0; x <= w; x += u) ctx.lineTo(x, horizon - u * 0.5 - Math.sin(x * 0.01) * u * 0.5 - Math.sin(x * 0.037) * u * 0.25)
   ctx.lineTo(w, horizon)
   ctx.closePath()
-  ctx.fillStyle = '#1f2f3a'
+  ctx.fillStyle = '#243643'
   ctx.fill()
 
   yield
   const ground = ctx.createLinearGradient(0, horizon, 0, h)
-  ground.addColorStop(0, '#24433a')
-  ground.addColorStop(1, '#2f5646')
+  ground.addColorStop(0, '#284b3b')
+  ground.addColorStop(1, '#325c4a')
   ctx.fillStyle = ground
   ctx.fillRect(0, horizon, w, h - horizon)
 
@@ -416,30 +459,31 @@ function* paintNight(ctx: Ctx, scene: Scene): Steps {
   }
   ctx.lineCap = 'round'
   ctx.lineJoin = 'round'
-  ctx.strokeStyle = '#4e4034'
+  ctx.strokeStyle = '#544338'
   ctx.lineWidth = w * 0.17
   ctx.stroke()
-  ctx.strokeStyle = '#6a5a48'
+  ctx.strokeStyle = '#6e584a'
   ctx.lineWidth = w * 0.14
   ctx.stroke()
   ctx.restore()
 }
 
-function paintDecal(ctx: Ctx, d: Decal) {
+function paintDecal(ctx: Ctx, d: Decal, dusk: boolean) {
   const s = d.s
+  const colour = dusk ? sunk(d.colour) : d.colour
   switch (d.kind) {
     case 'blade': {
       ctx.beginPath()
       ctx.moveTo(d.x, d.y)
       ctx.quadraticCurveTo(d.x + d.rot * s * 0.3, d.y - s * 0.6, d.x + d.rot * s, d.y - s)
-      ctx.strokeStyle = d.colour
+      ctx.strokeStyle = colour
       ctx.lineWidth = s * 0.22
       ctx.lineCap = 'round'
       ctx.stroke()
       return
     }
     case 'clover': {
-      ctx.fillStyle = d.colour
+      ctx.fillStyle = colour
       for (let k = 0; k < 3; k++) {
         const a = d.rot + (k / 3) * TAU
         ep(ctx, d.x + Math.cos(a) * s * 0.3, d.y + Math.sin(a) * s * 0.3 * 0.6, s * 0.3, s * 0.22, a)
@@ -448,24 +492,24 @@ function paintDecal(ctx: Ctx, d: Decal) {
       return
     }
     case 'bloom': {
-      ctx.fillStyle = d.colour
+      ctx.fillStyle = colour
       for (let k = 0; k < 5; k++) {
         const a = (k / 5) * TAU
         ep(ctx, d.x + Math.cos(a) * s * 0.55, d.y + Math.sin(a) * s * 0.4, s * 0.4, s * 0.3)
         ctx.fill()
       }
-      ctx.fillStyle = '#f2c230'
+      ctx.fillStyle = dusk ? sunk('#e6ac39') : '#e6ac39'
       ep(ctx, d.x, d.y, s * 0.3, s * 0.25)
       ctx.fill()
       return
     }
     case 'speck':
-      ctx.fillStyle = d.colour
+      ctx.fillStyle = colour
       ep(ctx, d.x, d.y, s, s * 0.7)
       ctx.fill()
       return
     case 'crumb':
-      ctx.fillStyle = d.colour
+      ctx.fillStyle = colour
       ctx.beginPath()
       ctx.moveTo(d.x - s, d.y)
       ctx.lineTo(d.x - s * 0.3, d.y - s * 0.8)
@@ -477,8 +521,8 @@ function paintDecal(ctx: Ctx, d: Decal) {
     case 'confetti': {
       ctx.save()
       ctx.globalAlpha = 0.55
-      ctx.fillStyle = d.colour
-      ctx.strokeStyle = d.colour
+      ctx.fillStyle = colour
+      ctx.strokeStyle = colour
       ctx.lineWidth = s * 0.25
       ctx.lineCap = 'round'
       const kind = Math.floor(d.rot * 10) % 3
@@ -503,7 +547,7 @@ function paintDecal(ctx: Ctx, d: Decal) {
       return
     }
     case 'shell':
-      ctx.fillStyle = d.colour
+      ctx.fillStyle = colour
       ctx.beginPath()
       ctx.moveTo(d.x, d.y + s * 0.3)
       ctx.arc(d.x, d.y + s * 0.3, s * 0.6, Math.PI * 1.1, Math.PI * 1.9)
@@ -511,14 +555,14 @@ function paintDecal(ctx: Ctx, d: Decal) {
       ctx.fill()
       return
     case 'ripple':
-      ctx.strokeStyle = d.colour
+      ctx.strokeStyle = colour
       ctx.lineWidth = s * 0.08
       ctx.beginPath()
       ctx.ellipse(d.x, d.y, s, s * 0.3, 0, Math.PI * 1.1, Math.PI * 1.9)
       ctx.stroke()
       return
     case 'star': {
-      ctx.fillStyle = d.colour
+      ctx.fillStyle = colour
       ctx.beginPath()
       ctx.moveTo(d.x, d.y - s)
       ctx.lineTo(d.x + s * 0.25, d.y - s * 0.25)
@@ -547,7 +591,7 @@ function* paintGarlands(ctx: Ctx, scene: Scene, view?: WorldRect): Steps {
       const [x1, y1] = pts[k]
       ctx.quadraticCurveTo(x0, y0, (x0 + x1) / 2, (y0 + y1) / 2)
     }
-    ctx.strokeStyle = '#161224'
+    ctx.strokeStyle = '#1e172f'
     ctx.lineWidth = 1.6
     ctx.stroke()
     let n = 0
@@ -612,7 +656,7 @@ function* paintLighting(ctx: Ctx, scene: Scene): Steps {
   const dark = small()
   const warm = small()
   if (!dark || !warm) return
-  dark.fillStyle = `rgba(10, 12, 44, ${scene.dusk})`
+  dark.fillStyle = `rgba(18, 20, 53, ${scene.dusk})`
   dark.fillRect(0, 0, scene.w, scene.h)
   dark.globalCompositeOperation = 'destination-out'
   for (const l of lights) {
@@ -624,8 +668,8 @@ function* paintLighting(ctx: Ctx, scene: Scene): Steps {
     dark.fillRect(l.x - l.r, l.y - l.r, l.r * 2, l.r * 2)
     // A warm tint where the light falls.
     const t = warm.createRadialGradient(l.x, l.y, 0, l.x, l.y, l.r * 0.8)
-    t.addColorStop(0, 'rgba(255, 170, 80, 0.14)')
-    t.addColorStop(1, 'rgba(255, 170, 80, 0)')
+    t.addColorStop(0, 'rgba(235, 148, 94, 0.14)')
+    t.addColorStop(1, 'rgba(235, 148, 94, 0)')
     warm.fillStyle = t
     warm.fillRect(l.x - l.r, l.y - l.r, l.r * 2, l.r * 2)
   }
@@ -674,10 +718,11 @@ export function* paintSteps(ctx: Ctx, scene: Scene, view?: WorldRect): Steps {
   }
   yield
   const pad = scene.unit
+  const dusk = atDusk(scene)
   let n = 0
   for (const d of scene.decals) {
     if (view && (d.x < view.x0 - pad || d.x > view.x1 + pad || d.y < view.y0 - pad || d.y > view.y1 + pad)) continue
-    paintDecal(ctx, d)
+    paintDecal(ctx, d, dusk)
     if (++n % 120 === 0) yield
   }
   yield
@@ -726,7 +771,7 @@ function paintOverlays(ctx: Ctx, scene: Scene, cam: Camera, field: Field, o: Ove
     ctx.beginPath()
     ctx.rect(field.x, field.y, field.w, field.h)
     ctx.arc(c.x, c.y, r, 0, TAU, true)
-    ctx.fillStyle = `rgba(12, 8, 24, ${o.veil.alpha})`
+    ctx.fillStyle = `rgba(14, 16, 18, ${o.veil.alpha})`
     ctx.fill()
     ctx.beginPath()
     ctx.arc(c.x, c.y, r, 0, TAU)
@@ -749,7 +794,7 @@ function paintOverlays(ctx: Ctx, scene: Scene, cam: Camera, field: Field, o: Ove
     ctx.arc(c.x, c.y, r, 0, TAU)
     ctx.stroke()
     // Sparkles round the ring.
-    ctx.fillStyle = '#fff6c8'
+    ctx.fillStyle = '#f7e5c0'
     for (let n = 0; n < 8; n++) {
       const a = (n / 8) * TAU + now * 0.0015
       const d = r * 1.28
@@ -786,14 +831,14 @@ function paintOverlays(ctx: Ctx, scene: Scene, cam: Camera, field: Field, o: Ove
     ctx.moveTo(c.x + s, c.y - s)
     ctx.lineTo(c.x - s, c.y + s)
     ctx.stroke()
-    ctx.strokeStyle = '#e2433b'
+    ctx.strokeStyle = '#e24139'
     ctx.lineWidth = 4
     ctx.stroke()
     ctx.restore()
   }
 
   if (o.dim > 0) {
-    ctx.fillStyle = `rgba(12, 8, 24, ${Math.min(0.6, o.dim)})`
+    ctx.fillStyle = `rgba(14, 16, 18, ${Math.min(0.6, o.dim)})`
     ctx.fillRect(field.x, field.y, field.w, field.h)
   }
 
@@ -806,7 +851,7 @@ function paintOverlays(ctx: Ctx, scene: Scene, cam: Camera, field: Field, o: Ove
     ctx.beginPath()
     ctx.arc(c.x, c.y, r, 0, TAU)
     ctx.stroke()
-    ctx.strokeStyle = '#3ec8cf'
+    ctx.strokeStyle = '#3dc8cf'
     ctx.lineWidth = 2.5
     ctx.stroke()
     ctx.beginPath()
@@ -856,6 +901,8 @@ type Layer = {
   h: number
   /** The view a detail was painted for; null for the base. */
   cam: Camera | null
+  /** Painted at dusk (the dark theme): a theme switch repaints the scene. */
+  dusk: boolean
 }
 
 type Job = Layer & { steps: Steps; ctx: CanvasRenderingContext2D }
@@ -903,19 +950,21 @@ export class SceneView {
   private ensureBase(scene: Scene, field: Field, dpr: number) {
     const w = Math.max(1, Math.round(field.w * dpr))
     const h = Math.max(1, Math.round(field.h * dpr))
+    const dusk = atDusk(scene)
     const b = this.base
-    if (b && b.scene === scene && b.w === w && b.h === h) return
+    if (b && b.scene === scene && b.w === w && b.h === h && b.dusk === dusk) return
     const j = this.baseJob
-    if (j && j.scene === scene && j.w === w && j.h === h) return
+    if (j && j.scene === scene && j.w === w && j.h === h && j.dusk === dusk) return
     // A different scene: drop everything painted for the last one. The same
-    // scene at a new size keeps its old base on screen until the new one is done.
+    // scene at a new size, or in the other theme, keeps its old base on screen
+    // until the new one is done; a detail in the old theme is no use to anyone.
     if (b && b.scene !== scene) this.base = null
-    if (this.detail && this.detail.scene !== scene) this.detail = null
-    if (this.detailJob && this.detailJob.scene !== scene) this.detailJob = null
+    if (this.detail && (this.detail.scene !== scene || this.detail.dusk !== dusk)) this.detail = null
+    if (this.detailJob && (this.detailJob.scene !== scene || this.detailJob.dusk !== dusk)) this.detailJob = null
     const { canvas, ctx } = layerCanvas(w, h)
     if (!ctx) return
     ctx.setTransform(w / scene.w, 0, 0, h / scene.h, 0, 0)
-    this.baseJob = { canvas, ctx, scene, w, h, cam: null, steps: paintSteps(ctx, scene) }
+    this.baseJob = { canvas, ctx, scene, w, h, cam: null, dusk, steps: paintSteps(ctx, scene) }
   }
 
   private startDetail(scene: Scene, field: Field, cam: Camera, dpr: number) {
@@ -929,7 +978,16 @@ export class SceneView {
     ctx.setTransform(1, 0, 0, 1, 0, 0)
     ctx.clearRect(0, 0, w, h)
     ctx.setTransform(k, 0, 0, k, w / 2 - cam.cx * k, h / 2 - cam.cy * k)
-    this.detailJob = { canvas, ctx, scene, w, h, cam: { ...cam }, steps: paintSteps(ctx, scene, viewRect(cam, field)) }
+    this.detailJob = {
+      canvas,
+      ctx,
+      scene,
+      w,
+      h,
+      cam: { ...cam },
+      dusk: atDusk(scene),
+      steps: paintSteps(ctx, scene, viewRect(cam, field)),
+    }
   }
 
   /**
@@ -956,6 +1014,8 @@ export class SceneView {
       if (job === this.baseJob) {
         this.base = job
         this.baseJob = null
+        // Frost is made from the base, so a fresh base (new size, other theme) needs fresh frost.
+        this.frostFor = null
         return
       } else {
         if (this.detail) this.spare = this.detail.canvas
@@ -1039,7 +1099,7 @@ export class SceneView {
         ctx.imageSmoothingEnabled = true
         ctx.drawImage(this.frost, field.x, field.y, field.w, field.h)
       }
-      ctx.fillStyle = 'rgba(16, 10, 30, 0.35)'
+      ctx.fillStyle = 'rgba(18, 20, 22, 0.35)'
       ctx.fillRect(field.x, field.y, field.w, field.h)
       ctx.restore()
       return

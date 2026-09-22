@@ -299,7 +299,7 @@ export function FindBugGame() {
           y: face.y + t.size * 0.12,
           r: t.size * (0.7 + 0.04 * Math.sin(now / 110)),
           alpha: p,
-          colour: s.phase === 'found' ? '#3ecf8e' : '#ffd84a',
+          colour: s.phase === 'found' ? '#3dcf8d' : '#eaba59',
         }
       }
       return {

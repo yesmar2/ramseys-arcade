@@ -26,7 +26,7 @@ type Pt = readonly [number, number]
 const TAU = Math.PI * 2
 
 /** The one line colour everything is drawn in. A deep plum reads warmer than black. */
-export const INK = '#2a2032'
+export const INK = '#1a2b3c'
 
 /** Outline weight, in critter heights. */
 const O = 0.034
@@ -129,10 +129,10 @@ export type Critter = {
 
 // ------------------------------------------------------------------ palette
 
-export const RED = '#e2433b'
-export const WHITE = '#f7f2e8'
-export const CREAM = '#f7dfb6'
-export const NAVY = '#35406e'
+export const RED = '#e24139'
+export const WHITE = '#f2eadb'
+export const CREAM = '#f5dcab'
+export const NAVY = '#313779'
 
 /**
  * The Bug. Red and white stripes, a red bobble hat with a white band, round
@@ -157,8 +157,8 @@ export const THE_BUG: Look = {
 
 // ------------------------------------------------------------------ helpers
 
-const SHADE = 'rgba(42, 20, 64, 0.26)'
-const SHADE_SOFT = 'rgba(42, 20, 64, 0.18)'
+const SHADE = 'rgba(39, 24, 73, 0.26)'
+const SHADE_SOFT = 'rgba(39, 24, 73, 0.18)'
 
 /**
  * Whether the critter being drawn is big enough on screen for the fine
@@ -341,7 +341,7 @@ function drawFace(ctx: Ctx, head: HeadSpec, c: Critter, facing: number) {
     ctx.beginPath()
     ellipseSub(ctx, lx - r * 0.1, y + r * 0.36, r * 0.15, r * 0.1)
     ellipseSub(ctx, rxEye + r * 0.1, y + r * 0.36, r * 0.15, r * 0.1)
-    ctx.fillStyle = 'rgba(255, 105, 125, 0.4)'
+    ctx.fillStyle = 'rgba(238, 120, 114, 0.4)'
     ctx.fill()
   }
 
@@ -353,10 +353,10 @@ function drawFace(ctx: Ctx, head: HeadSpec, c: Critter, facing: number) {
     ctx.moveTo(mx - r * 0.2, my - r * 0.06)
     ctx.quadraticCurveTo(mx, my + r * 0.34, mx + r * 0.2, my - r * 0.06)
     ctx.closePath()
-    fillInk(ctx, '#8c2b3c', O * 0.8)
+    fillInk(ctx, '#90312c', O * 0.8)
   } else if (c.mood === 'o') {
     ellipsePath(ctx, mx, my + r * 0.04, r * 0.08, r * 0.1)
-    fillInk(ctx, '#8c2b3c', O * 0.8)
+    fillInk(ctx, '#90312c', O * 0.8)
   } else {
     ctx.beginPath()
     ctx.arc(mx, my - r * 0.14, r * 0.2, 0.2 * Math.PI, 0.8 * Math.PI)
@@ -367,7 +367,7 @@ function drawFace(ctx: Ctx, head: HeadSpec, c: Critter, facing: number) {
     const ring = r * 0.38
     ctx.beginPath()
     for (const [ex, sq] of eyes) ellipseSub(ctx, ex, eyeY, ring * sq, ring)
-    ctx.fillStyle = 'rgba(220, 240, 255, 0.22)'
+    ctx.fillStyle = 'rgba(208, 233, 249, 0.22)'
     ctx.fill()
     ctx.moveTo(lx + ring * lSquash, eyeY - r * 0.06)
     ctx.quadraticCurveTo((lx + rxEye) / 2, eyeY - r * 0.2, rxEye - ring, eyeY - r * 0.06)
@@ -377,7 +377,7 @@ function drawFace(ctx: Ctx, head: HeadSpec, c: Critter, facing: number) {
     for (const [ex, sq] of eyes) ctx.roundRect(ex - r * 0.36 * sq, eyeY - r * 0.26, r * 0.72 * sq, r * 0.46, r * 0.16)
     ctx.moveTo(lx + r * 0.34 * lSquash, eyeY - r * 0.08)
     ctx.lineTo(rxEye - r * 0.34, eyeY - r * 0.08)
-    fillInk(ctx, '#1d1826', O * 0.85)
+    fillInk(ctx, '#231e2f', O * 0.85)
     if (fine) {
       ctx.beginPath()
       for (const [ex, sq] of eyes) ctx.roundRect(ex - r * 0.24 * sq, eyeY - r * 0.18, r * 0.16 * sq, r * 0.1, r * 0.05)
@@ -432,7 +432,7 @@ function drawHat(ctx: Ctx, head: HeadSpec, look: Look, facing: number) {
           ctx.moveTo(cx + k * r, base)
           ctx.quadraticCurveTo(cx + k * r * 1.1, base - r * 0.4, cx + k * r * 0.5, base - r * 0.66)
         }
-        ctx.strokeStyle = 'rgba(42, 20, 64, 0.22)'
+        ctx.strokeStyle = 'rgba(39, 24, 73, 0.22)'
         ctx.lineWidth = O * 0.6
         ctx.stroke()
       }
@@ -669,7 +669,7 @@ function drawHeldUp(ctx: Ctx, at: Pt, look: Look) {
       ctx.lineTo(hx, hy + 0.06)
       ctx.lineTo(hx + 0.06, hy - 0.08)
       ctx.closePath()
-      fillInk(ctx, '#e0a458', O * 0.8)
+      fillInk(ctx, '#dfb154', O * 0.8)
       ellipsePath(ctx, hx, hy - 0.13, 0.075, 0.07)
       fillInk(ctx, colour, O * 0.8)
       ellipsePath(ctx, hx + 0.01, hy - 0.2, 0.014, 0.014)
@@ -694,7 +694,7 @@ function drawHeldUp(ctx: Ctx, at: Pt, look: Look) {
       ctx.beginPath()
       ctx.moveTo(hx, hy + 0.04)
       ctx.lineTo(hx, hy - 0.2)
-      ctx.strokeStyle = '#f2ece0'
+      ctx.strokeStyle = '#ede5d4'
       ctx.lineWidth = O * 0.9
       ctx.stroke()
       ellipsePath(ctx, hx, hy - 0.26, 0.085, 0.085)
@@ -708,9 +708,9 @@ function drawHeldUp(ctx: Ctx, at: Pt, look: Look) {
     }
     case 'token': {
       ellipsePath(ctx, hx, hy - 0.06, 0.07, 0.07)
-      fillInk(ctx, '#f1b93a', O * 0.8)
+      fillInk(ctx, '#e7af40', O * 0.8)
       ellipsePath(ctx, hx, hy - 0.06, 0.036, 0.036)
-      ctx.strokeStyle = '#b57a18'
+      ctx.strokeStyle = '#b98318'
       ctx.lineWidth = O * 0.6
       ctx.stroke()
       return
@@ -734,7 +734,7 @@ function drawHeldUp(ctx: Ctx, at: Pt, look: Look) {
       ink(ctx, O)
       ellipsePath(ctx, hx, hy - 0.3, 0.085, 0.1)
       fillInk(ctx, colour, O * 0.8)
-      ctx.fillStyle = 'rgba(255, 244, 200, 0.75)'
+      ctx.fillStyle = 'rgba(247, 229, 192, 0.75)'
       ellipsePath(ctx, hx, hy - 0.3, 0.04, 0.06)
       ctx.fill()
       return
@@ -775,7 +775,7 @@ function drawCarried(ctx: Ctx, cx: number, cy: number, look: Look) {
     if (fine) {
       ctx.beginPath()
       for (const [dx, dy] of [[-0.08, -0.04], [0.06, -0.06], [0.1, 0.02]] as const) ellipseSub(ctx, cx + dx, cy + dy, 0.018, 0.014)
-      ctx.fillStyle = 'rgba(120, 70, 20, 0.35)'
+      ctx.fillStyle = 'rgba(112, 66, 37, 0.35)'
       ctx.fill()
     }
     return
@@ -790,7 +790,7 @@ function drawCarried(ctx: Ctx, cx: number, cy: number, look: Look) {
     ctx.beginPath()
     ctx.moveTo(cx - 0.3, cy + 0.03)
     ctx.quadraticCurveTo(cx, cy - 0.06, cx + 0.3, cy - 0.02)
-    ctx.strokeStyle = 'rgba(30, 60, 20, 0.45)'
+    ctx.strokeStyle = 'rgba(24, 71, 49, 0.45)'
     ctx.lineWidth = O * 0.8
     ctx.stroke()
     return
@@ -1050,7 +1050,7 @@ function drawBiped(ctx: Ctx, c: Critter, facing: number) {
   if (sp === 'bee') {
     ctx.beginPath()
     for (const side of [-1, 1]) ellipseSub(ctx, side * 0.27, -0.6, 0.2, 0.12, side * -0.55)
-    ctx.fillStyle = 'rgba(214, 238, 255, 0.78)'
+    ctx.fillStyle = 'rgba(203, 230, 249, 0.78)'
     ctx.fill()
     ink(ctx, O * 0.8)
   } else if (sp === 'butterfly') {
@@ -1134,7 +1134,7 @@ function drawBiped(ctx: Ctx, c: Critter, facing: number) {
         ctx.moveTo(-0.12, k - 0.14)
         ctx.quadraticCurveTo(0, k - 0.1, 0.12, k - 0.14)
       }
-      ctx.strokeStyle = 'rgba(42, 20, 64, 0.3)'
+      ctx.strokeStyle = 'rgba(39, 24, 73, 0.3)'
       ctx.lineWidth = O * 0.7
       ctx.stroke()
     }
@@ -1292,9 +1292,9 @@ function drawSnail(ctx: Ctx, c: Critter) {
 function drawWorm(ctx: Ctx, c: Critter, facing: number) {
   const look = c.look
   ellipsePath(ctx, 0, -0.03, 0.27, 0.075)
-  fillInk(ctx, '#4a3326')
+  fillInk(ctx, '#52392a')
   ellipsePath(ctx, 0, -0.035, 0.19, 0.045)
-  ctx.fillStyle = '#20150f'
+  ctx.fillStyle = '#15181a'
   ctx.fill()
 
   ctx.beginPath()
@@ -1310,7 +1310,7 @@ function drawWorm(ctx: Ctx, c: Critter, facing: number) {
       ctx.moveTo(-0.1, k)
       ctx.quadraticCurveTo(0, k + 0.03, 0.09, k - 0.01)
     }
-    ctx.strokeStyle = 'rgba(42, 20, 64, 0.25)'
+    ctx.strokeStyle = 'rgba(39, 24, 73, 0.25)'
     ctx.lineWidth = O * 0.8
     ctx.stroke()
   }
@@ -1326,7 +1326,7 @@ function drawWorm(ctx: Ctx, c: Critter, facing: number) {
 function groundShadow(ctx: Ctx, c: Critter) {
   const wide = c.look.species === 'snail' || c.look.species === 'caterpillar' ? 1.5 : 1
   const fade = 1 / (1 + c.lift * 1.6)
-  ctx.fillStyle = c.lift === 0 ? 'rgba(20, 10, 40, 0.22)' : `rgba(20, 10, 40, ${0.22 * fade})`
+  ctx.fillStyle = c.lift === 0 ? 'rgba(22, 26, 28, 0.22)' : `rgba(22, 26, 28, ${0.22 * fade})`
   ellipsePath(ctx, 0, 0, 0.32 * wide * (0.7 + fade * 0.3), 0.07 * (0.7 + fade * 0.3))
   ctx.fill()
 }
