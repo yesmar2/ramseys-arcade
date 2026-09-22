@@ -69,6 +69,8 @@ export type Snapshot = {
   runCoins: number
   /** Lifetime banked coins. */
   wallet: number
+  /** Cars squeezed past mid-hop this run. */
+  nearMisses: number
   /** Rows broken in an unbroken chain right now. */
   chain: number
   /** Longest chain this run — what the record book wants. */
@@ -126,6 +128,14 @@ export type GameState = {
   milestoneRow: number
   nearMiss: number
   nearMissCooldown: number
+  /**
+   * Cars squeezed past *while hopping*, which is the whole record.
+   *
+   * A near miss re-fires every cooldown while you simply stand beside a slow
+   * lane, so counting those would make the board a test of parking next to
+   * traffic. Only the ones taken in flight count.
+   */
+  nearMisses: number
   runCoins: number
   wallet: number
   coinPops: CoinPop[]
@@ -1121,6 +1131,7 @@ export function createInitialState(cols = COLS): GameState {
     milestoneRow: 0,
     nearMiss: 0,
     nearMissCooldown: 0,
+    nearMisses: 0,
     runCoins: 0,
     wallet: loadWallet(),
     coinPops: [],
@@ -1411,6 +1422,7 @@ export function tick(state: GameState, dt: number): GameState {
            */
           if (next.hop) {
             next.streakTimer = 0
+            next.nearMisses += 1
             haptic('hit')
           }
           sfx('whoosh')
@@ -1441,6 +1453,7 @@ export function toSnapshot(state: GameState): Snapshot {
     cause: state.cause,
     runCoins: state.runCoins,
     wallet: state.wallet,
+    nearMisses: state.nearMisses,
     chain: state.streak,
     bestChain: state.bestChain,
   }

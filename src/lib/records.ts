@@ -185,6 +185,7 @@ export function recordNavShortLabel(row: { id: string; label: string }): string 
   if (row.id === PATRIOT_DIRECT_STREAK_ID) return 'Direct'
   if (row.id === CROSSWALK_MOST_COINS_ID) return 'Coins'
   if (row.id === CROSSWALK_LONGEST_CHAIN_ID) return 'Chain'
+  if (row.id === CROSSWALK_NEAR_MISSES_ID) return 'Calls'
   if (row.id === POP_CENTER_STREAK_ID) return 'Center'
   if (row.id === STACKER_PERFECT_STREAK_ID) return 'Perfect'
   if (row.id === PELLETS_CRUMB_STREAK_ID) return 'Crumbs'
@@ -231,6 +232,9 @@ export const ASTEROIDS_HIGHEST_COMBO_ID = 'highest-combo'
 export const PATRIOT_DIRECT_STREAK_ID = 'direct-streak'
 export const CROSSWALK_MOST_COINS_ID = 'most-coins'
 export const CROSSWALK_LONGEST_CHAIN_ID = 'longest-chain'
+export const CROSSWALK_NEAR_MISSES_ID = 'near-misses'
+/** One lucky brush is not a run of nerve. */
+export const CROSSWALK_NEAR_MISSES_MIN = 3
 /**
  * Below this a chain is just a stretch of open grass. The board should start
  * where holding one has actually cost the player something.
@@ -254,6 +258,7 @@ export const PELLETS_CRUMB_STREAK_MIN = 10
 const PLAIN_COUNT_RECORD_IDS = new Set<string>([
   CROSSWALK_MOST_COINS_ID,
   CROSSWALK_LONGEST_CHAIN_ID,
+  CROSSWALK_NEAR_MISSES_ID,
   CRUMBTRAIL_ROWS_ID,
   SNAKE_LONGEST_ID,
 ])
@@ -588,6 +593,22 @@ export async function submitCrosswalkMostCoins(
   if (!cleaned || !(value >= 1)) return null
   try {
     const result = await submitRecord('crosswalk', CROSSWALK_MOST_COINS_ID, cleaned, value)
+    return toRecordSubmitOutcome(result)
+  } catch {
+    return null
+  }
+}
+
+/** Best-effort closest-calls submit (run total). */
+export async function submitCrosswalkNearMisses(
+  calls: number,
+  name: string,
+): Promise<RecordSubmitOutcome | null> {
+  const value = Math.floor(calls)
+  const cleaned = normalizePlayerName(name)
+  if (!cleaned || !(value >= CROSSWALK_NEAR_MISSES_MIN)) return null
+  try {
+    const result = await submitRecord('crosswalk', CROSSWALK_NEAR_MISSES_ID, cleaned, value)
     return toRecordSubmitOutcome(result)
   } catch {
     return null

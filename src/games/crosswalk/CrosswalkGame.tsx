@@ -28,7 +28,9 @@ import {
   submitCrosswalkFastestRow,
   submitCrosswalkMostCoins,
   submitCrosswalkLongestChain,
+  submitCrosswalkNearMisses,
   CROSSWALK_LONGEST_CHAIN_MIN,
+  CROSSWALK_NEAR_MISSES_MIN,
   shouldCelebrateRecordSubmit,
 } from '../../lib/records'
 import { useTournamentPlay } from '../../tournaments/TournamentPlayContext'
@@ -78,6 +80,7 @@ export function CrosswalkGame() {
   const milestonesRef = useRef<Set<number>>(new Set())
   const coinsRecordedRef = useRef(false)
   const chainRecordedRef = useRef(false)
+  const callsRecordedRef = useRef(false)
   const pausable = ui.phase === 'playing' && !saveOpen
   const { paused, toggle: togglePause, resume } = useGamePause(pausable)
   const pausedRef = useRef(false)
@@ -225,6 +228,25 @@ export function CrosswalkGame() {
   }, [ui.phase, ui.bestChain, playerName, tournament])
 
 
+  useEffect(() => {
+    if (tournament || !playerName) return
+    if (ui.phase !== 'dying' && ui.phase !== 'gameover') return
+    if (callsRecordedRef.current || ui.nearMisses < CROSSWALK_NEAR_MISSES_MIN) return
+    callsRecordedRef.current = true
+    const calls = ui.nearMisses
+    void (async () => {
+      const result = await submitCrosswalkNearMisses(calls, playerName)
+      if (shouldCelebrateRecordSubmit(result)) {
+        pushRunAchievement({
+          id: 'crosswalk:near-misses',
+          label: 'Closest calls in a run',
+          value: String(calls),
+          rank: result.rank,
+        })
+      }
+    })()
+  }, [ui.phase, ui.nearMisses, playerName, tournament])
+
   const restart = (intoMenu = false) => {
     setSaveOpen(false)
     offeredScore.current = null
@@ -237,6 +259,7 @@ export function CrosswalkGame() {
     milestonesRef.current = new Set()
     coinsRecordedRef.current = false
     chainRecordedRef.current = false
+    callsRecordedRef.current = false
     // Same reset, stopped at the start card instead of in play.
     if (intoMenu) stateRef.current = { ...stateRef.current, phase: 'menu' }
     setUi(toSnapshot(stateRef.current))

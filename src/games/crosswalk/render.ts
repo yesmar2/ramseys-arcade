@@ -15,9 +15,81 @@ import { drawEyes } from '../eyes'
 import { isDarkTheme, isFlatTheme, playfieldColor, softFillAlpha, strokeOutlined } from '../../lib/theme'
 
 const GRASS_A = 142
-const GRASS_B = 152
 const TREE = 158
 const HOPPER = 42
+
+/**
+ * The ground changes as you get deeper, so a long run has somewhere to arrive.
+ *
+ * Only the ground: grass, trees, water. Cars, logs, coins and the hopper keep
+ * their hues everywhere, because those are the things a player reads to stay
+ * alive and a palette is not worth making a hazard harder to pick out.
+ *
+ * Each row asks for its own biome, so a change arrives as a band sweeping down
+ * the board ahead of you rather than the whole screen flipping at once.
+ */
+type Biome = {
+  grass: number
+  tree: number
+  water: number
+  /** Scales the saturation the land was authored at. */
+  satMul: number
+  /** Added to the land's lightness. */
+  lightAdd: number
+  /**
+   * Water gets its own pair, because it has a job the grass does not: it has to
+   * stay obviously deadly. Frost was the case that forced this — snow and river
+   * had landed three degrees of hue apart, which is the safe ground and the
+   * thing that drowns you rendered almost identically.
+   */
+  waterSatMul: number
+  waterLightAdd: number
+}
+
+const BIOMES: Biome[] = [
+  // Meadow — the numbers the game was drawn with.
+  { grass: GRASS_A, tree: TREE, water: 205, satMul: 1, lightAdd: 0, waterSatMul: 1, waterLightAdd: 0 },
+  // Autumn: the greens turn.
+  { grass: 34, tree: 20, water: 200, satMul: 1.05, lightAdd: 1, waterSatMul: 1, waterLightAdd: -2 },
+  // Night: everything cools and drops.
+  { grass: 172, tree: 184, water: 226, satMul: 0.72, lightAdd: -11, waterSatMul: 0.9, waterLightAdd: -13 },
+  // Frost: snow goes almost white, the river stays a cold blue so it still
+  // reads as water rather than more ground.
+  { grass: 198, tree: 205, water: 208, satMul: 0.2, lightAdd: 16, waterSatMul: 1.15, waterLightAdd: -10 },
+]
+
+/** Rows in a biome, and how many it takes to turn over. */
+const BIOME_ROWS = 100
+const BIOME_BLEND = 20
+
+/** Shortest way round the wheel, so 350 to 10 goes forwards not backwards. */
+function lerpHue(a: number, b: number, t: number) {
+  const d = ((b - a + 540) % 360) - 180
+  return (a + d * t + 360) % 360
+}
+
+function mixBiome(a: Biome, b: Biome, t: number): Biome {
+  const mix = (x: number, y: number) => x + (y - x) * t
+  return {
+    grass: lerpHue(a.grass, b.grass, t),
+    tree: lerpHue(a.tree, b.tree, t),
+    water: lerpHue(a.water, b.water, t),
+    satMul: mix(a.satMul, b.satMul),
+    lightAdd: mix(a.lightAdd, b.lightAdd),
+    waterSatMul: mix(a.waterSatMul, b.waterSatMul),
+    waterLightAdd: mix(a.waterLightAdd, b.waterLightAdd),
+  }
+}
+
+export function biomeAt(row: number): Biome {
+  const r = Math.max(0, row)
+  const index = Math.floor(r / BIOME_ROWS)
+  const into = r - index * BIOME_ROWS
+  const here = BIOMES[index % BIOMES.length]
+  if (into < BIOME_ROWS - BIOME_BLEND) return here
+  const next = BIOMES[(index + 1) % BIOMES.length]
+  return mixBiome(here, next, (into - (BIOME_ROWS - BIOME_BLEND)) / BIOME_BLEND)
+}
 
 export type CrosswalkLayout = {
   cell: number
@@ -133,10 +205,16 @@ function drawTree(
   cy: number,
   size: number,
   dark: boolean,
+  /** Hue for this row's depth — trees turn with the ground they stand on. */
+  hue = TREE,
+  satMul = 1,
+  lightAdd = 0,
 ) {
-  const trunk = fill(TREE, 38, dark ? 38 : 34, 0.9)
-  const leaf = fill(TREE, 48, dark ? 52 : 48, softFillAlpha(dark ? 0.34 : 0.28))
-  const stroke = fill(TREE, 48, dark ? 58 : 36, 0.9)
+  const sat = (n: number) => Math.max(0, Math.min(100, n * satMul))
+  const lit = (n: number) => Math.max(0, Math.min(100, n + lightAdd))
+  const trunk = fill(hue, sat(38), lit(dark ? 38 : 34), 0.9)
+  const leaf = fill(hue, sat(48), lit(dark ? 52 : 48), softFillAlpha(dark ? 0.34 : 0.28))
+  const stroke = fill(hue, sat(48), lit(dark ? 58 : 36), 0.9)
   const tw = size * 0.22
   roundRect(ctx, cx - tw / 2, cy + size * 0.08, tw, size * 0.34, tw * 0.3)
   ctx.fillStyle = trunk
@@ -525,18 +603,25 @@ function drawRow(
 ) {
   const row = getRow(state, worldRow)
   const span = laneSpan(state.cols)
-  const grassHue = worldRow % 2 === 0 ? GRASS_A : GRASS_B
+  // Each row takes the biome at its own depth, so a change sweeps down the
+  // board ahead of the hopper instead of the screen flipping all at once.
+  const biome = biomeAt(worldRow)
+  const grassHue = worldRow % 2 === 0 ? biome.grass : biome.grass + 10
+  const sat = (base: number) => Math.max(0, Math.min(100, base * biome.satMul))
+  const lit = (base: number) => Math.max(0, Math.min(100, base + biome.lightAdd))
+  const wSat = (base: number) => Math.max(0, Math.min(100, base * biome.waterSatMul))
+  const wLit = (base: number) => Math.max(0, Math.min(100, base + biome.waterLightAdd))
 
   if (row.kind === 'grass') {
-    drawLaneBand(ctx, y, w, cell, fill(grassHue, 42, dark ? 48 : 72, dark ? 0.28 : 0.22))
+    drawLaneBand(ctx, y, w, cell, fill(grassHue, sat(42), lit(dark ? 48 : 72), dark ? 0.28 : 0.22))
     if (!isFlatTheme()) {
-      ctx.strokeStyle = fill(grassHue, 30, dark ? 58 : 58, 0.12)
+      ctx.strokeStyle = fill(grassHue, sat(30), lit(dark ? 58 : 58), 0.12)
       ctx.lineWidth = 1
       ctx.strokeRect(ox + 0.5, y + 0.5, gridW - 1, cell - 1)
     }
   } else if (row.kind === 'water') {
-    drawLaneBand(ctx, y, w, cell, fill(205, 58, dark ? 46 : 62, dark ? 0.42 : 0.28))
-    ctx.strokeStyle = fill(205, 50, dark ? 58 : 48, 0.2)
+    drawLaneBand(ctx, y, w, cell, fill(biome.water, wSat(58), wLit(dark ? 46 : 62), dark ? 0.42 : 0.28))
+    ctx.strokeStyle = fill(biome.water, wSat(50), wLit(dark ? 58 : 48), 0.2)
     ctx.lineWidth = 1
     // Stepped from the board's origin so the ripples sit in the water rather
     // than on the glass — same fault as the lane markings above.
@@ -633,7 +718,7 @@ function drawRow(
   }
 
   for (const treeCol of row.trees) {
-    drawTree(ctx, ox + (treeCol + 0.5) * cell, y + cell * 0.52, cell * 0.88, dark)
+    drawTree(ctx, ox + (treeCol + 0.5) * cell, y + cell * 0.52, cell * 0.88, dark, biome.tree, biome.satMul, biome.lightAdd)
   }
 
   const bob = Math.sin(performance.now() / 220 + worldRow) * cell * 0.04
