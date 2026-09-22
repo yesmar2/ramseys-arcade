@@ -78,6 +78,8 @@ function roundRect(
 function chaserHue(kind: GhostKind) {
   if (kind === 'blink') return 355
   if (kind === 'pink') return 320
+  // Violet, clear of the other four and of the green crumbs it stands among.
+  if (kind === 'herd') return 262
   if (kind === 'inky') return 190
   return 28
 }

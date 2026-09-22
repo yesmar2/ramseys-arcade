@@ -41,7 +41,7 @@ import {
 export type Dir = 'up' | 'down' | 'left' | 'right'
 export type Phase = 'menu' | 'playing' | 'dying' | 'gameover'
 export type GhostMode = 'asleep' | 'chase' | 'scatter' | 'frightened' | 'eaten'
-export type GhostKind = 'blink' | 'pink' | 'inky' | 'clyde'
+export type GhostKind = 'blink' | 'pink' | 'herd' | 'inky' | 'clyde'
 export type DeathCause = 'caught' | 'drowned'
 
 export type Cell = { x: number; y: number }
@@ -246,6 +246,18 @@ const TIDE_EBB = 3.2
 
 /** Rows below a sleeping chaser you have to get before it stirs. */
 const WAKE_RANGE = 5
+
+/**
+ * Rows ahead of the player the herder aims for.
+ *
+ * Every chaser borrowed from Pac-Man converges on where the player *is* — even
+ * Pinky's ambush is four tiles along the same idea. This game's verb is
+ * climbing, so this one aims at where the player is going and tries to be
+ * standing in it. It is the one chaser you go around rather than away from.
+ *
+ * Buffer rows count downward as the world goes up, so ahead is a smaller y.
+ */
+const HERD_LEAD = 6
 
 /**
  * Fruit. Worth more the deeper you are, so the offer keeps pace with a run
@@ -457,6 +469,9 @@ function nearestOpen(state: GameState, cell: Cell): Cell | null {
 function cornerFor(kind: GhostKind, cols: number, rows: number): Cell {
   if (kind === 'blink') return { x: cols + 3, y: -3 }
   if (kind === 'pink') return { x: -3, y: -3 }
+  // The herder laps toward the middle of the way out, not a corner, because
+  // sitting in the middle of the climb is the whole of what it does.
+  if (kind === 'herd') return { x: Math.floor(cols / 2), y: -3 }
   if (kind === 'inky') return { x: cols + 3, y: rows + 3 }
   return { x: -3, y: rows + 3 }
 }
@@ -491,7 +506,19 @@ function fillBuffer(state: GameState) {
   }
 }
 
-const GHOST_ORDER: GhostKind[] = ['blink', 'pink', 'inky', 'clyde']
+/**
+ * The order sleepers are laid down in, and so the order they are met.
+ *
+ * It used to be indexed by `nextGhostId`, which starts at 1, so the run opened
+ * on pink and inky — and inky's whole trick is a vector drawn from blink, who
+ * did not arrive until the fourth slot. With no blink awake it falls back to
+ * aiming two tiles ahead, which is pinky's four tiles with a shorter arm. The
+ * first two chasers of every run were near enough the same thing.
+ *
+ * Blink leads now: the one that simply comes straight at you is the one worth
+ * learning first, and by the time inky arrives there is a blink to draw from.
+ */
+const GHOST_ORDER: GhostKind[] = ['blink', 'pink', 'herd', 'inky', 'clyde']
 
 /**
  * Lay a sleeping chaser on a freshly built row.
@@ -527,7 +554,7 @@ function seedGhost(state: GameState, y: number): boolean {
       : []
   const pool = guarded.length && Math.random() < 0.72 ? guarded : spots
 
-  const kind = GHOST_ORDER[state.nextGhostId % GHOST_ORDER.length]
+  const kind = GHOST_ORDER[(state.nextGhostId - 1) % GHOST_ORDER.length]
   state.ghosts.push({
     id: state.nextGhostId++,
     kind,
@@ -780,6 +807,7 @@ function targetFor(state: GameState, ghost: Ghost): Cell {
   const v = VEC[state.player.dir]
   if (ghost.kind === 'blink') return { x: px, y: py }
   if (ghost.kind === 'pink') return { x: px + v.x * 4, y: py + v.y * 4 }
+  if (ghost.kind === 'herd') return { x: px, y: py - HERD_LEAD }
   if (ghost.kind === 'inky') {
     const blink = state.ghosts.find((g) => g.kind === 'blink' && g.mode !== 'asleep')
     const ax = px + v.x * 2
