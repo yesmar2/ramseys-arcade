@@ -1,1157 +1,1068 @@
-import { luminance, mixColor } from '../../lib/color'
-import { isFlatTheme } from '../../lib/theme'
-import { drawBug } from './bugSprite'
-import { catchRadius, fieldRect, type GameState, type RoundState } from './game'
+/**
+ * Painting a scene, and putting it on screen.
+ *
+ * A scene is two hundred critters and a set of props, all drawn in vector —
+ * far too much to repaint every frame. So it is painted once into a layer the
+ * size of the field, and each frame only copies that layer to the canvas and
+ * draws the few things that move on top: the found ring, a miss, the hint.
+ *
+ * Zoomed in, the copy is magnified and goes soft, so once the view stops
+ * moving the part in view is repainted at the new size into a second layer.
+ * A map app does the same: blurry while you drag, sharp when you let go.
+ */
+
+import { playfieldColor } from '../../lib/theme'
+import { drawCritter, INK } from './critters'
+import { drawProp } from './props'
 import {
-  ARCADE_FLOOR,
-  ARCADE_WALL,
-  boardRowY,
-  BOARD_GROUND,
-  cableY,
-  CARPET_GROUND,
-  COUNTER_FELT,
-  type Block,
-  type Cabinet,
-  type Cable,
-  type Machine,
-  type Motif,
-  type Person,
-  type Poster,
-  type Prop,
-  type Scene,
-  type Sign,
-  type Tie,
-  type Token,
-} from './scenes'
+  pxPerUnit,
+  sameCamera,
+  viewRect,
+  worldToScreen,
+  type Camera,
+  type Field,
+  type WorldRect,
+} from './camera'
+import { itemBounds, type Decal, type Scene } from './scenes'
 
-/**
- * Scene geometry is normalized: x against width, y against height. Everything
- * here paints a real surface in its own colours rather than a wash of the app
- * playfield — the bug hides against the one thing it is sitting on, not against
- * a drained room, so the scenes are free to be as saturated as they like.
- */
+type Ctx = CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D
 
-const HINT_RADIUS = 0.22
+/** Painting done a piece at a time: every `yield` is a place a frame may end. */
+type Steps = Generator<void, void, void>
 
-/**
- * Floor on how close the bug may get to the surface it is sitting on, in
- * perceived brightness out of 255. Some perches — a dark carpet, a brass token
- * face — landed the camouflaged body within five or six of the ground, which is
- * not difficulty, it is invisibility. Anything under this gets pushed away from
- * the perch: lighter on a dark surface, darker on a light one.
- */
-const MIN_BUG_CONTRAST = 14
+const TAU = Math.PI * 2
 
-function bugBody(base: string, camo: number): string {
-  const lit = mixColor(base, '#ffffff', 0.5)
-  const target = mixColor(lit, base, camo)
-  const baseLum = luminance(base)
-  if (Math.abs(luminance(target) - baseLum) >= MIN_BUG_CONTRAST) return target
+function overlaps(a: WorldRect, b: WorldRect) {
+  return a.x0 < b.x1 && a.x1 > b.x0 && a.y0 < b.y1 && a.y1 > b.y0
+}
 
-  const away = baseLum < 128 ? '#ffffff' : '#000000'
-  for (let t = 0.05; t <= 0.7; t += 0.05) {
-    const lifted = mixColor(target, away, t)
-    if (Math.abs(luminance(lifted) - baseLum) >= MIN_BUG_CONTRAST) return lifted
+function ep(ctx: Ctx, x: number, y: number, rx: number, ry: number, rot = 0) {
+  ctx.beginPath()
+  ctx.ellipse(x, y, rx, ry, rot, 0, TAU)
+}
+
+// ------------------------------------------------------------------ ground
+
+/** The colour round the edge of a scene, for anything the scene does not cover. */
+export function edgeColour(scene: Scene): string {
+  switch (scene.kind) {
+    case 'picnic':
+      return '#6fb04e'
+    case 'garden':
+      return '#6aa84a'
+    case 'pond':
+      return '#3f8fbf'
+    case 'arcade':
+      return '#1c1430'
+    default:
+      return '#17213a'
   }
-  return mixColor(target, away, 0.7)
 }
 
-/** Hard outline. Crispness is mostly a matter of committing to an edge. */
-function edge(ctx: CanvasRenderingContext2D, colour: string, width: number) {
-  if (isFlatTheme()) return
-  ctx.strokeStyle = colour
-  ctx.lineWidth = Math.max(1, width)
-  ctx.stroke()
-}
-
-function groundFor(scene: Scene): string {
-  if (scene.kind === 'arcade') return ARCADE_FLOOR
-  if (scene.kind === 'tokens') return COUNTER_FELT
-  if (scene.kind === 'carpet') return CARPET_GROUND
-  if (scene.kind === 'board') return BOARD_GROUND
-  if (scene.kind === 'loom') return '#171d29'
-  return '#151a24'
-}
-
-function drawBackground(ctx: CanvasRenderingContext2D, scene: Scene, w: number, h: number) {
-  ctx.fillStyle = groundFor(scene)
+function* paintPicnic(ctx: Ctx, scene: Scene): Steps {
+  if (scene.ground.kind !== 'picnic') return
+  const { w, h } = scene
+  const grass = ctx.createLinearGradient(0, 0, 0, h)
+  grass.addColorStop(0, '#9bd46c')
+  grass.addColorStop(1, '#7dc05a')
+  ctx.fillStyle = grass
   ctx.fillRect(0, 0, w, h)
+  yield
+  yield* sunPatches(ctx, scene, 'rgba(255, 255, 210, 0.12)')
+  yield
+
+  const b = scene.ground.blanket
+  ctx.save()
+  ctx.translate(b.x, b.y)
+  ctx.rotate(b.rot)
+  ctx.fillStyle = 'rgba(40, 70, 20, 0.28)'
+  ctx.beginPath()
+  ctx.roundRect(-b.w / 2 + scene.unit * 0.12, -b.h / 2 + scene.unit * 0.18, b.w, b.h, scene.unit * 0.2)
+  ctx.fill()
+  ctx.beginPath()
+  ctx.roundRect(-b.w / 2, -b.h / 2, b.w, b.h, scene.unit * 0.16)
+  ctx.fillStyle = '#fbf5ea'
+  ctx.fill()
+  ctx.save()
+  ctx.clip()
+  // Gingham: red bands both ways, darker where they cross.
+  const cell = scene.unit * 0.58
+  ctx.fillStyle = 'rgba(214, 58, 52, 0.46)'
+  for (let x = -b.w / 2; x < b.w / 2; x += cell * 2) ctx.fillRect(x, -b.h / 2, cell, b.h)
+  for (let y = -b.h / 2; y < b.h / 2; y += cell * 2) ctx.fillRect(-b.w / 2, y, b.w, cell)
+  // Folds in the cloth.
+  ctx.strokeStyle = 'rgba(120, 30, 40, 0.12)'
+  ctx.lineWidth = scene.unit * 0.12
+  for (const t of [-0.18, 0.22]) {
+    ctx.beginPath()
+    ctx.moveTo(-b.w / 2, t * b.h)
+    ctx.bezierCurveTo(-b.w * 0.2, t * b.h - scene.unit * 0.3, b.w * 0.2, t * b.h + scene.unit * 0.3, b.w / 2, t * b.h)
+    ctx.stroke()
+  }
+  ctx.restore()
+  // Hem stitching.
+  ctx.setLineDash([scene.unit * 0.12, scene.unit * 0.1])
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)'
+  ctx.lineWidth = scene.unit * 0.04
+  ctx.beginPath()
+  ctx.roundRect(-b.w / 2 + scene.unit * 0.16, -b.h / 2 + scene.unit * 0.16, b.w - scene.unit * 0.32, b.h - scene.unit * 0.32, scene.unit * 0.1)
+  ctx.stroke()
+  ctx.setLineDash([])
+  ctx.beginPath()
+  ctx.roundRect(-b.w / 2, -b.h / 2, b.w, b.h, scene.unit * 0.16)
+  ctx.strokeStyle = INK
+  ctx.lineWidth = 1.6
+  ctx.stroke()
+  ctx.restore()
+
+  yield
+  for (const p of scene.ground.plates) {
+    ep(ctx, p.x + scene.unit * 0.06, p.y + scene.unit * 0.1, p.r, p.r * 0.55)
+    ctx.fillStyle = 'rgba(60, 30, 40, 0.2)'
+    ctx.fill()
+    ep(ctx, p.x, p.y, p.r, p.r * 0.55)
+    ctx.fillStyle = '#ffffff'
+    ctx.fill()
+    ctx.strokeStyle = INK
+    ctx.lineWidth = 1.5
+    ctx.stroke()
+    ep(ctx, p.x, p.y, p.r * 0.72, p.r * 0.38)
+    ctx.strokeStyle = 'rgba(120, 140, 200, 0.5)'
+    ctx.lineWidth = 1.2
+    ctx.stroke()
+    // Biscuits.
+    for (const [dx, dy] of [[-0.3, -0.05], [0.12, -0.1], [0.32, 0.08], [-0.08, 0.14]] as const) {
+      ep(ctx, p.x + dx * p.r, p.y + dy * p.r, p.r * 0.2, p.r * 0.12)
+      ctx.fillStyle = '#d9a059'
+      ctx.fill()
+      ctx.strokeStyle = INK
+      ctx.lineWidth = 1.1
+      ctx.stroke()
+      ctx.fillStyle = '#5a3420'
+      ep(ctx, p.x + dx * p.r - p.r * 0.05, p.y + dy * p.r, p.r * 0.03, p.r * 0.02)
+      ctx.fill()
+      ep(ctx, p.x + dx * p.r + p.r * 0.06, p.y + dy * p.r - p.r * 0.03, p.r * 0.03, p.r * 0.02)
+      ctx.fill()
+    }
+  }
 }
 
-// ----------------------------------------------------------- arcade floor
+/** Big soft pools of sunlight, so a field of grass is not one flat colour. */
+function* sunPatches(ctx: Ctx, scene: Scene, colour: string): Steps {
+  const { w, h } = scene
+  const spots = [
+    [0.2, 0.25, 0.35],
+    [0.75, 0.6, 0.4],
+    [0.35, 0.85, 0.3],
+  ] as const
+  for (const [fx, fy, fr] of spots) {
+    const r = Math.max(w, h) * fr
+    const cx = fx * w
+    const cy = fy * h
+    const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, r)
+    g.addColorStop(0, colour)
+    g.addColorStop(1, 'rgba(255, 255, 255, 0)')
+    ctx.fillStyle = g
+    // Only the square the pool reaches: a gradient costs every pixel it covers.
+    const x0 = Math.max(0, cx - r)
+    const y0 = Math.max(0, cy - r)
+    ctx.fillRect(x0, y0, Math.min(w, cx + r) - x0, Math.min(h, cy + r) - y0)
+    yield
+  }
+}
 
-/** A jointed limb: shoulder to elbow to hand, or hip to knee to foot. */
-function limb(
-  ctx: CanvasRenderingContext2D,
-  a: [number, number],
-  b: [number, number],
-  c: [number, number],
-  width: number,
-  colour: string,
-) {
-  ctx.strokeStyle = colour
-  ctx.lineWidth = width
+function* paintGarden(ctx: Ctx, scene: Scene): Steps {
+  if (scene.ground.kind !== 'garden') return
+  const { w, h } = scene
+  const u = scene.unit
+  const grass = ctx.createLinearGradient(0, 0, 0, h)
+  grass.addColorStop(0, '#93cf66')
+  grass.addColorStop(1, '#7cbd57')
+  ctx.fillStyle = grass
+  ctx.fillRect(0, 0, w, h)
+  yield
+  yield* sunPatches(ctx, scene, 'rgba(255, 255, 210, 0.1)')
+  yield
+
+  for (const s of scene.ground.stones) {
+    ep(ctx, s.x, s.y, s.r, s.r * 0.6)
+    ctx.fillStyle = '#c9c3b8'
+    ctx.fill()
+    ctx.strokeStyle = INK
+    ctx.lineWidth = 1.2
+    ctx.stroke()
+    ep(ctx, s.x - s.r * 0.2, s.y - s.r * 0.15, s.r * 0.4, s.r * 0.18)
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.35)'
+    ctx.fill()
+  }
+
+  yield
+  for (const bed of scene.ground.beds) {
+    const bw = bed.x1 - bed.x0
+    const bh = bed.y1 - bed.y0
+    ctx.fillStyle = 'rgba(30, 50, 20, 0.25)'
+    ctx.beginPath()
+    ctx.roundRect(bed.x0 + u * 0.08, bed.y0 + u * 0.14, bw, bh, u * 0.3)
+    ctx.fill()
+    ctx.beginPath()
+    ctx.roundRect(bed.x0, bed.y0, bw, bh, u * 0.3)
+    ctx.fillStyle = '#7a5236'
+    ctx.fill()
+    ctx.save()
+    ctx.clip()
+    // Furrows.
+    ctx.strokeStyle = 'rgba(50, 28, 14, 0.35)'
+    ctx.lineWidth = u * 0.1
+    for (let y = bed.y0 + u * 0.4; y < bed.y1; y += u * 0.7) {
+      ctx.beginPath()
+      ctx.moveTo(bed.x0, y)
+      for (let x = bed.x0; x <= bed.x1; x += u * 0.5) ctx.lineTo(x, y + Math.sin(x * 0.05) * u * 0.06)
+      ctx.stroke()
+    }
+    ctx.restore()
+    // Timber edging.
+    ctx.beginPath()
+    ctx.roundRect(bed.x0, bed.y0, bw, bh, u * 0.3)
+    ctx.strokeStyle = INK
+    ctx.lineWidth = u * 0.2
+    ctx.stroke()
+    ctx.strokeStyle = '#c28a52'
+    ctx.lineWidth = u * 0.13
+    ctx.stroke()
+  }
+}
+
+function* paintPond(ctx: Ctx, scene: Scene): Steps {
+  if (scene.ground.kind !== 'pond') return
+  const { w, h } = scene
+  const u = scene.unit
+  const shore = scene.ground.shore
+  const sand = ctx.createLinearGradient(0, 0, 0, h * 0.5)
+  sand.addColorStop(0, '#f6e2ae')
+  sand.addColorStop(1, '#ecd092')
+  ctx.fillStyle = sand
+  ctx.fillRect(0, 0, w, h)
+
+  const shoreline = (offset: number) => {
+    ctx.moveTo(0, shore[0] + offset)
+    for (let k = 1; k < shore.length; k++) {
+      const x0 = ((k - 1) / (shore.length - 1)) * w
+      const x1 = (k / (shore.length - 1)) * w
+      ctx.quadraticCurveTo(x0, shore[k - 1] + offset, (x0 + x1) / 2, (shore[k - 1] + shore[k]) / 2 + offset)
+    }
+    ctx.lineTo(w, shore[shore.length - 1] + offset)
+  }
+
+  yield
+  // Wet sand, then the water.
+  ctx.beginPath()
+  shoreline(-u * 0.5)
+  ctx.lineTo(w, h)
+  ctx.lineTo(0, h)
+  ctx.closePath()
+  ctx.fillStyle = '#d9b777'
+  ctx.fill()
+
+  const water = ctx.createLinearGradient(0, h * 0.35, 0, h)
+  water.addColorStop(0, '#6cc6e6')
+  water.addColorStop(1, '#3b8fc4')
+  ctx.beginPath()
+  shoreline(0)
+  ctx.lineTo(w, h)
+  ctx.lineTo(0, h)
+  ctx.closePath()
+  ctx.fillStyle = water
+  ctx.fill()
+  ctx.save()
+  ctx.clip()
+  // Light on the water.
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.16)'
+  ctx.lineWidth = u * 0.1
+  for (let y = 0; y < h; y += u * 1.1) {
+    ctx.beginPath()
+    for (let x = 0; x <= w; x += u * 0.6) {
+      const yy = y + Math.sin(x * 0.03 + y) * u * 0.12
+      if (x === 0) ctx.moveTo(x, yy)
+      else ctx.lineTo(x, yy)
+    }
+    ctx.stroke()
+  }
+  ctx.restore()
+  yield
+  // Foam along the edge.
+  ctx.beginPath()
+  shoreline(0)
+  ctx.strokeStyle = INK
+  ctx.lineWidth = 1.6
+  ctx.stroke()
+  ctx.beginPath()
+  shoreline(u * 0.14)
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)'
+  ctx.lineWidth = u * 0.1
+  ctx.setLineDash([u * 0.5, u * 0.25])
+  ctx.stroke()
+  ctx.setLineDash([])
+
+  yield
+  for (const pad of scene.ground.pads) {
+    ctx.save()
+    ctx.translate(pad.x, pad.y)
+    ctx.scale(1, 0.55)
+    ctx.fillStyle = 'rgba(20, 60, 90, 0.3)'
+    ep(ctx, u * 0.1, u * 0.2, pad.r, pad.r)
+    ctx.fill()
+    ctx.beginPath()
+    ctx.moveTo(0, 0)
+    ctx.arc(0, 0, pad.r, pad.rot + 0.35, pad.rot + TAU - 0.35)
+    ctx.closePath()
+    ctx.fillStyle = '#5fb04a'
+    ctx.fill()
+    ctx.strokeStyle = INK
+    ctx.lineWidth = 1.5 / 0.75
+    ctx.stroke()
+    ctx.strokeStyle = 'rgba(30, 80, 20, 0.35)'
+    ctx.lineWidth = u * 0.05
+    for (let k = 1; k < 7; k++) {
+      const a = pad.rot + 0.35 + (k / 7) * (TAU - 0.7)
+      ctx.beginPath()
+      ctx.moveTo(0, 0)
+      ctx.lineTo(Math.cos(a) * pad.r * 0.85, Math.sin(a) * pad.r * 0.85)
+      ctx.stroke()
+    }
+    ctx.restore()
+  }
+}
+
+function paintArcade(ctx: Ctx, scene: Scene) {
+  if (scene.ground.kind !== 'arcade') return
+  const { w, h } = scene
+  const u = scene.unit
+  const wall = scene.ground.wall
+  ctx.fillStyle = '#261a44'
+  ctx.fillRect(0, 0, w, h)
+  // Wall with a stripe, skirting board below it.
+  const wallFill = ctx.createLinearGradient(0, 0, 0, wall)
+  wallFill.addColorStop(0, '#1d1436')
+  wallFill.addColorStop(1, '#33245a')
+  ctx.fillStyle = wallFill
+  ctx.fillRect(0, 0, w, wall)
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.04)'
+  for (let x = 0; x < w; x += u * 0.8) ctx.fillRect(x, 0, u * 0.35, wall)
+  ctx.fillStyle = '#140e26'
+  ctx.fillRect(0, wall - u * 0.16, w, u * 0.24)
+  ctx.fillStyle = '#ff6fa8'
+  ctx.fillRect(0, wall - u * 0.2, w, u * 0.05)
+  // A glow on the floor under the wall.
+  const glow = ctx.createLinearGradient(0, wall, 0, wall + u * 3)
+  glow.addColorStop(0, 'rgba(255, 111, 168, 0.18)')
+  glow.addColorStop(1, 'rgba(255, 111, 168, 0)')
+  ctx.fillStyle = glow
+  ctx.fillRect(0, wall, w, u * 3)
+}
+
+function* paintNight(ctx: Ctx, scene: Scene): Steps {
+  if (scene.ground.kind !== 'night') return
+  const { w, h } = scene
+  const u = scene.unit
+  const horizon = scene.ground.horizon
+  const sky = ctx.createLinearGradient(0, 0, 0, horizon)
+  sky.addColorStop(0, '#141a44')
+  sky.addColorStop(1, '#3b2f66')
+  ctx.fillStyle = sky
+  ctx.fillRect(0, 0, w, horizon)
+  // The moon.
+  const mx = w * 0.82
+  const my = horizon * 0.42
+  const moonGlow = ctx.createRadialGradient(mx, my, 0, mx, my, u * 2.4)
+  moonGlow.addColorStop(0, 'rgba(255, 244, 200, 0.45)')
+  moonGlow.addColorStop(1, 'rgba(255, 244, 200, 0)')
+  ctx.fillStyle = moonGlow
+  ctx.fillRect(mx - u * 2.4, my - u * 2.4, u * 4.8, u * 4.8)
+  ep(ctx, mx, my, u * 0.62, u * 0.62)
+  ctx.fillStyle = '#fff4c8'
+  ctx.fill()
+  ep(ctx, mx + u * 0.18, my - u * 0.08, u * 0.1, u * 0.1)
+  ctx.fillStyle = 'rgba(200, 180, 120, 0.4)'
+  ctx.fill()
+
+  yield
+  // Hills on the horizon.
+  ctx.beginPath()
+  ctx.moveTo(0, horizon)
+  for (let x = 0; x <= w; x += u) ctx.lineTo(x, horizon - u * 0.5 - Math.sin(x * 0.01) * u * 0.5 - Math.sin(x * 0.037) * u * 0.25)
+  ctx.lineTo(w, horizon)
+  ctx.closePath()
+  ctx.fillStyle = '#1f2f3a'
+  ctx.fill()
+
+  yield
+  const ground = ctx.createLinearGradient(0, horizon, 0, h)
+  ground.addColorStop(0, '#24433a')
+  ground.addColorStop(1, '#2f5646')
+  ctx.fillStyle = ground
+  ctx.fillRect(0, horizon, w, h - horizon)
+
+  // The path winding through, kept off the sky.
+  const path = scene.ground.path
+  ctx.save()
+  ctx.beginPath()
+  ctx.rect(0, horizon, w, h - horizon)
+  ctx.clip()
+  ctx.beginPath()
+  for (let k = 0; k < path.length; k++) {
+    const y = horizon + ((h - horizon) * k) / (path.length - 1)
+    if (k === 0) ctx.moveTo(path[k], y)
+    else ctx.lineTo(path[k], y)
+  }
   ctx.lineCap = 'round'
   ctx.lineJoin = 'round'
-  ctx.beginPath()
-  ctx.moveTo(a[0], a[1])
-  ctx.lineTo(b[0], b[1])
-  ctx.lineTo(c[0], c[1])
+  ctx.strokeStyle = '#4e4034'
+  ctx.lineWidth = w * 0.17
   ctx.stroke()
-}
-
-/**
- * Where each arm bends and where its hand ends up, per pose, as fractions of
- * height. Authored facing right; the whole figure is mirrored for the other
- * way round.
- *
- * Each shoulder owns exactly one arm. The previous version sent both hands to
- * the same side, which drew the far arm as a bar straight across the chest —
- * that is where the spare limbs were coming from.
- */
-const ARMS: Record<
-  Person['pose'],
-  { back: [[number, number], [number, number]]; front: [[number, number], [number, number]] }
-> = {
-  // Hands converge on the control deck, elbows tucked in at the sides.
-  play: { back: [[-0.15, -0.63], [-0.07, -0.55]], front: [[0.15, -0.63], [0.07, -0.55]] },
-  stand: { back: [[-0.14, -0.62], [-0.15, -0.48]], front: [[0.14, -0.62], [0.15, -0.48]] },
-  cheer: { back: [[-0.19, -0.79], [-0.15, -0.98]], front: [[0.19, -0.79], [0.15, -0.98]] },
-  walk: { back: [[-0.15, -0.63], [-0.1, -0.5]], front: [[0.15, -0.62], [0.19, -0.55]] },
-  point: { back: [[-0.14, -0.62], [-0.15, -0.48]], front: [[0.18, -0.68], [0.31, -0.72]] },
-}
-
-/** Knee and foot per leg, same idea. */
-const LEGS_POSE: Record<
-  Person['pose'],
-  { back: [[number, number], [number, number]]; front: [[number, number], [number, number]] }
-> = {
-  play: { back: [[-0.07, -0.24], [-0.08, -0.01]], front: [[0.07, -0.24], [0.08, -0.01]] },
-  stand: { back: [[-0.07, -0.24], [-0.08, -0.01]], front: [[0.07, -0.24], [0.08, -0.01]] },
-  cheer: { back: [[-0.08, -0.24], [-0.1, -0.01]], front: [[0.08, -0.24], [0.1, -0.01]] },
-  walk: { back: [[-0.11, -0.25], [-0.16, -0.01]], front: [[0.09, -0.23], [0.14, -0.02]] },
-  point: { back: [[-0.07, -0.24], [-0.09, -0.01]], front: [[0.08, -0.24], [0.1, -0.01]] },
-}
-
-/**
- * One person, built rather than stamped. Drawn back arm first, then legs and
- * torso, then front arm and head, so the limbs layer the way a body does.
- */
-function drawPerson(ctx: CanvasRenderingContext2D, pr: Person, w: number, h: number) {
-  const ph = pr.h * h
-  const headR = ph * 0.092
-  const headY = -ph * 0.9
-  const shoulderY = -ph * 0.755
-  const shoulderX = ph * 0.125
-  const hipY = -ph * 0.45
-  const hipX = ph * 0.055
-  const armW = ph * 0.062
-  const legW = ph * 0.078
-
-  const arms = ARMS[pr.pose]
-  const legs = LEGS_POSE[pr.pose]
-  const at = (v: [number, number]): [number, number] => [v[0] * ph, v[1] * ph]
-
-  ctx.save()
-  ctx.translate(pr.x * w, pr.y * h)
-  if (pr.flip) ctx.scale(-1, 1)
-
-  // Contact shadow.
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.26)'
-  ctx.beginPath()
-  ctx.ellipse(0, 0, ph * 0.14, ph * 0.03, 0, 0, Math.PI * 2)
-  ctx.fill()
-
-  const shade = (colour: string) => mixColor(colour, '#000000', 0.26)
-
-  // Far side of the body sits in shadow so the near side reads forward.
-  limb(ctx, [-shoulderX, shoulderY], at(arms.back[0]), at(arms.back[1]), armW, shade(pr.shirt))
-  limb(ctx, [-hipX, hipY], at(legs.back[0]), at(legs.back[1]), legW, shade(pr.legs))
-
-  // Shoes.
-  const shoe = (v: [number, number], colour: string) => {
-    const pt = at(v)
-    ctx.fillStyle = colour
-    ctx.beginPath()
-    ctx.roundRect(pt[0] - ph * 0.045, pt[1] - ph * 0.018, ph * 0.105, ph * 0.04, ph * 0.018)
-    ctx.fill()
-  }
-  shoe(legs.back[1], shade(pr.shoes))
-
-  // Near leg and torso.
-  limb(ctx, [hipX, hipY], at(legs.front[0]), at(legs.front[1]), legW, pr.legs)
-  shoe(legs.front[1], pr.shoes)
-
-  ctx.fillStyle = pr.shirt
-  ctx.beginPath()
-  ctx.roundRect(
-    -shoulderX - armW * 0.2,
-    shoulderY - ph * 0.02,
-    (shoulderX + armW * 0.2) * 2,
-    hipY - shoulderY + ph * 0.06,
-    ph * 0.05,
-  )
-  ctx.fill()
-
-  limb(ctx, [shoulderX, shoulderY], at(arms.front[0]), at(arms.front[1]), armW, pr.shirt)
-
-  // Hands.
-  ctx.fillStyle = pr.skin
-  for (const hand of [arms.back[1], arms.front[1]]) {
-    const pt = at(hand)
-    ctx.beginPath()
-    ctx.arc(pt[0], pt[1], ph * 0.036, 0, Math.PI * 2)
-    ctx.fill()
-  }
-
-  // Neck and head.
-  ctx.fillStyle = shade(pr.skin)
-  ctx.fillRect(-ph * 0.028, headY + headR * 0.55, ph * 0.056, ph * 0.055)
-  ctx.fillStyle = pr.skin
-  ctx.beginPath()
-  ctx.arc(0, headY, headR, 0, Math.PI * 2)
-  ctx.fill()
-
-  // Ear on the far side of the head.
-  ctx.beginPath()
-  ctx.arc(-headR * 0.92, headY + headR * 0.08, headR * 0.22, 0, Math.PI * 2)
-  ctx.fill()
-
-  // Hair. Players are seen from behind, so their hair wraps the whole skull.
-  const fromBehind = pr.pose === 'play' || pr.pose === 'cheer'
-  ctx.fillStyle = pr.hair
-  if (fromBehind) {
-    ctx.beginPath()
-    ctx.arc(0, headY, headR * 1.06, 0, Math.PI * 2)
-    ctx.fill()
-    if (pr.hairStyle === 1) {
-      ctx.beginPath()
-      ctx.arc(0, headY + headR * 0.95, headR * 0.45, 0, Math.PI * 2)
-      ctx.fill()
-    }
-  } else if (pr.hairStyle === 0) {
-    ctx.beginPath()
-    ctx.arc(0, headY, headR * 1.05, Math.PI * 1.02, Math.PI * 2.08)
-    ctx.fill()
-  } else if (pr.hairStyle === 1) {
-    ctx.beginPath()
-    ctx.arc(0, headY - headR * 0.08, headR * 1.12, 0, Math.PI * 2)
-    ctx.fill()
-    ctx.fillStyle = pr.skin
-    ctx.beginPath()
-    ctx.arc(headR * 0.16, headY + headR * 0.26, headR * 0.85, 0, Math.PI * 2)
-    ctx.fill()
-  } else if (pr.hairStyle === 2) {
-    ctx.beginPath()
-    ctx.arc(0, headY, headR * 1.04, Math.PI * 1.02, Math.PI * 2.05)
-    ctx.fill()
-    ctx.beginPath()
-    ctx.arc(-headR * 0.95, headY + headR * 0.2, headR * 0.4, 0, Math.PI * 2)
-    ctx.fill()
-  } else {
-    ctx.beginPath()
-    ctx.arc(0, headY, headR * 1.04, Math.PI * 1.05, Math.PI * 2)
-    ctx.fill()
-    ctx.beginPath()
-    ctx.arc(-headR * 0.2, headY - headR * 0.92, headR * 0.34, 0, Math.PI * 2)
-    ctx.fill()
-  }
-
-  // Hat.
-  if (pr.hat === 1) {
-    ctx.fillStyle = mixColor(pr.shirt, '#000000', 0.15)
-    ctx.beginPath()
-    ctx.arc(0, headY - headR * 0.12, headR * 1.03, Math.PI, Math.PI * 2)
-    ctx.fill()
-    ctx.beginPath()
-    ctx.roundRect(headR * 0.3, headY - headR * 0.22, headR * 1.15, headR * 0.26, headR * 0.12)
-    ctx.fill()
-  } else if (pr.hat === 2) {
-    ctx.fillStyle = mixColor(pr.shirt, '#ffffff', 0.2)
-    ctx.beginPath()
-    ctx.arc(0, headY - headR * 0.1, headR * 1.06, Math.PI, Math.PI * 2)
-    ctx.fill()
-    ctx.fillRect(-headR * 1.06, headY - headR * 0.24, headR * 2.12, headR * 0.3)
-  }
-
-  // Face, only on the people actually turned toward the room.
-  if (!fromBehind) {
-    ctx.fillStyle = '#1a1622'
-    for (const ex of [0.18, 0.5]) {
-      ctx.beginPath()
-      ctx.arc(headR * ex, headY + headR * 0.08, headR * 0.1, 0, Math.PI * 2)
-      ctx.fill()
-    }
-  }
-
+  ctx.strokeStyle = '#6a5a48'
+  ctx.lineWidth = w * 0.14
+  ctx.stroke()
   ctx.restore()
 }
 
-/** Back wall, signage, framed art, and the carpet running away from you. */
-function drawArcadeRoom(
-  ctx: CanvasRenderingContext2D,
-  signs: Sign[],
-  posters: Poster[],
-  w: number,
-  h: number,
-) {
-  const wallBottom = 0.24 * h
-
-  ctx.fillStyle = ARCADE_WALL
-  ctx.fillRect(0, 0, w, wallBottom)
-
-  // Carpet. Motifs bunch up and shrink toward the wall, which is all the
-  // perspective a flat scene like this needs.
-  ctx.fillStyle = ARCADE_FLOOR
-  ctx.fillRect(0, wallBottom, w, h - wallBottom)
-  ctx.save()
-  ctx.beginPath()
-  ctx.rect(0, wallBottom, w, h - wallBottom)
-  ctx.clip()
-  const carpet = ['#e0574f', '#3f8fd8', '#e8b13c', '#4cb377', '#9a6fd0']
-  for (let i = 1; i <= 130; i++) {
-    const fx = Math.abs((Math.sin(i * 12.9898) * 43758.5453) % 1)
-    const fy = Math.abs((Math.sin(i * 78.233) * 12345.6789) % 1)
-    const y = wallBottom + (h - wallBottom) * (fy * fy)
-    const size = w * 0.012 * (0.3 + fy)
-    ctx.globalAlpha = 0.14 + fy * 0.18
-    ctx.fillStyle = carpet[i % carpet.length]
-    ctx.beginPath()
-    if (i % 3 === 0) {
-      ctx.arc(fx * w, y, size, 0, Math.PI * 2)
-    } else {
-      ctx.moveTo(fx * w, y - size)
-      ctx.lineTo(fx * w + size, y + size)
-      ctx.lineTo(fx * w - size, y + size)
+function paintDecal(ctx: Ctx, d: Decal) {
+  const s = d.s
+  switch (d.kind) {
+    case 'blade': {
+      ctx.beginPath()
+      ctx.moveTo(d.x, d.y)
+      ctx.quadraticCurveTo(d.x + d.rot * s * 0.3, d.y - s * 0.6, d.x + d.rot * s, d.y - s)
+      ctx.strokeStyle = d.colour
+      ctx.lineWidth = s * 0.22
+      ctx.lineCap = 'round'
+      ctx.stroke()
+      return
+    }
+    case 'clover': {
+      ctx.fillStyle = d.colour
+      for (let k = 0; k < 3; k++) {
+        const a = d.rot + (k / 3) * TAU
+        ep(ctx, d.x + Math.cos(a) * s * 0.3, d.y + Math.sin(a) * s * 0.3 * 0.6, s * 0.3, s * 0.22, a)
+        ctx.fill()
+      }
+      return
+    }
+    case 'bloom': {
+      ctx.fillStyle = d.colour
+      for (let k = 0; k < 5; k++) {
+        const a = (k / 5) * TAU
+        ep(ctx, d.x + Math.cos(a) * s * 0.55, d.y + Math.sin(a) * s * 0.4, s * 0.4, s * 0.3)
+        ctx.fill()
+      }
+      ctx.fillStyle = '#f2c230'
+      ep(ctx, d.x, d.y, s * 0.3, s * 0.25)
+      ctx.fill()
+      return
+    }
+    case 'speck':
+      ctx.fillStyle = d.colour
+      ep(ctx, d.x, d.y, s, s * 0.7)
+      ctx.fill()
+      return
+    case 'crumb':
+      ctx.fillStyle = d.colour
+      ctx.beginPath()
+      ctx.moveTo(d.x - s, d.y)
+      ctx.lineTo(d.x - s * 0.3, d.y - s * 0.8)
+      ctx.lineTo(d.x + s, d.y - s * 0.3)
+      ctx.lineTo(d.x + s * 0.4, d.y + s * 0.6)
       ctx.closePath()
+      ctx.fill()
+      return
+    case 'confetti': {
+      ctx.save()
+      ctx.globalAlpha = 0.55
+      ctx.fillStyle = d.colour
+      ctx.strokeStyle = d.colour
+      ctx.lineWidth = s * 0.25
+      ctx.lineCap = 'round'
+      const kind = Math.floor(d.rot * 10) % 3
+      if (kind === 0) {
+        ctx.beginPath()
+        ctx.moveTo(d.x, d.y - s * 0.6)
+        ctx.lineTo(d.x + s * 0.55, d.y + s * 0.4)
+        ctx.lineTo(d.x - s * 0.55, d.y + s * 0.4)
+        ctx.closePath()
+        ctx.fill()
+      } else if (kind === 1) {
+        ctx.beginPath()
+        ctx.moveTo(d.x - s * 0.7, d.y)
+        ctx.quadraticCurveTo(d.x - s * 0.35, d.y - s * 0.6, d.x, d.y)
+        ctx.quadraticCurveTo(d.x + s * 0.35, d.y + s * 0.6, d.x + s * 0.7, d.y)
+        ctx.stroke()
+      } else {
+        ep(ctx, d.x, d.y, s * 0.35, s * 0.35)
+        ctx.fill()
+      }
+      ctx.restore()
+      return
     }
-    ctx.fill()
+    case 'shell':
+      ctx.fillStyle = d.colour
+      ctx.beginPath()
+      ctx.moveTo(d.x, d.y + s * 0.3)
+      ctx.arc(d.x, d.y + s * 0.3, s * 0.6, Math.PI * 1.1, Math.PI * 1.9)
+      ctx.closePath()
+      ctx.fill()
+      return
+    case 'ripple':
+      ctx.strokeStyle = d.colour
+      ctx.lineWidth = s * 0.08
+      ctx.beginPath()
+      ctx.ellipse(d.x, d.y, s, s * 0.3, 0, Math.PI * 1.1, Math.PI * 1.9)
+      ctx.stroke()
+      return
+    case 'star': {
+      ctx.fillStyle = d.colour
+      ctx.beginPath()
+      ctx.moveTo(d.x, d.y - s)
+      ctx.lineTo(d.x + s * 0.25, d.y - s * 0.25)
+      ctx.lineTo(d.x + s, d.y)
+      ctx.lineTo(d.x + s * 0.25, d.y + s * 0.25)
+      ctx.lineTo(d.x, d.y + s)
+      ctx.lineTo(d.x - s * 0.25, d.y + s * 0.25)
+      ctx.lineTo(d.x - s, d.y)
+      ctx.lineTo(d.x - s * 0.25, d.y - s * 0.25)
+      ctx.closePath()
+      ctx.fill()
+      return
+    }
   }
-  ctx.restore()
+}
 
-  // Skirting.
-  ctx.fillStyle = '#15102a'
-  ctx.fillRect(0, wallBottom - h * 0.014, w, h * 0.018)
-
-  for (const poster of posters) {
-    const x = poster.x * w
-    const y = poster.y * h
-    const pw = poster.w * w
-    const phh = poster.h * h
-    ctx.fillStyle = '#120f22'
+function* paintGarlands(ctx: Ctx, scene: Scene, view?: WorldRect): Steps {
+  const u = scene.unit
+  for (const g of scene.garlands) {
+    yield
+    const pts = g.points
     ctx.beginPath()
-    ctx.roundRect(x, y, pw, phh, pw * 0.05)
-    ctx.fill()
-    ctx.fillStyle = poster.colour
+    ctx.moveTo(pts[0][0], pts[0][1])
+    for (let k = 1; k < pts.length; k++) {
+      const [x0, y0] = pts[k - 1]
+      const [x1, y1] = pts[k]
+      ctx.quadraticCurveTo(x0, y0, (x0 + x1) / 2, (y0 + y1) / 2)
+    }
+    ctx.strokeStyle = '#161224'
+    ctx.lineWidth = 1.6
+    ctx.stroke()
+    let n = 0
+    for (let k = 1; k < pts.length; k++) {
+      const [x0, y0] = pts[k - 1]
+      const [x1, y1] = pts[k]
+      for (let t = 0; t < 1; t += 0.34) {
+        const x = x0 + (x1 - x0) * t
+        const y = y0 + (y1 - y0) * t + u * 0.12
+        n++
+        if (view && (x < view.x0 - u || x > view.x1 + u || y < view.y0 - u || y > view.y1 + u)) continue
+        const colour = g.colours[n % g.colours.length]
+        ctx.globalCompositeOperation = 'lighter'
+        const halo = ctx.createRadialGradient(x, y, 0, x, y, u * 0.7)
+        halo.addColorStop(0, hexGlow(colour, 0.45))
+        halo.addColorStop(1, hexGlow(colour, 0))
+        ctx.fillStyle = halo
+        ctx.fillRect(x - u * 0.7, y - u * 0.7, u * 1.4, u * 1.4)
+        ctx.globalCompositeOperation = 'source-over'
+        ep(ctx, x, y, u * 0.1, u * 0.13)
+        ctx.fillStyle = colour
+        ctx.fill()
+        ctx.strokeStyle = INK
+        ctx.lineWidth = 1
+        ctx.stroke()
+      }
+    }
+  }
+}
+
+function hexGlow(hex: string, alpha: number): string {
+  const v = hex.replace('#', '')
+  const r = Number.parseInt(v.slice(0, 2), 16)
+  const g = Number.parseInt(v.slice(2, 4), 16)
+  const b = Number.parseInt(v.slice(4, 6), 16)
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`
+}
+
+/**
+ * Night: darken everything, then lift the dark where there is a light. Done in
+ * a scratch layer so the lights cut holes in the dark rather than painting
+ * yellow over it.
+ */
+function* paintLighting(ctx: Ctx, scene: Scene): Steps {
+  if (scene.dusk <= 0) return
+  // Light is all soft edges, so it is painted at a quarter of the size and
+  // stretched over the scene: a sixteenth of the pixels for the same look.
+  const canvas = ctx.canvas
+  const w = Math.max(1, Math.ceil(canvas.width / 4))
+  const h = Math.max(1, Math.ceil(canvas.height / 4))
+  const m = ctx.getTransform()
+  const small = (): CanvasRenderingContext2D | null => {
+    const c = document.createElement('canvas')
+    c.width = w
+    c.height = h
+    const s = c.getContext('2d', { willReadFrequently: true })
+    s?.setTransform(m.a / 4, m.b / 4, m.c / 4, m.d / 4, m.e / 4, m.f / 4)
+    return s
+  }
+  const lights = [...scene.lights, ...lanternLights(scene)]
+
+  const dark = small()
+  const warm = small()
+  if (!dark || !warm) return
+  dark.fillStyle = `rgba(10, 12, 44, ${scene.dusk})`
+  dark.fillRect(0, 0, scene.w, scene.h)
+  dark.globalCompositeOperation = 'destination-out'
+  for (const l of lights) {
+    const g = dark.createRadialGradient(l.x, l.y, 0, l.x, l.y, l.r)
+    g.addColorStop(0, 'rgba(0, 0, 0, 0.95)')
+    g.addColorStop(0.55, 'rgba(0, 0, 0, 0.5)')
+    g.addColorStop(1, 'rgba(0, 0, 0, 0)')
+    dark.fillStyle = g
+    dark.fillRect(l.x - l.r, l.y - l.r, l.r * 2, l.r * 2)
+    // A warm tint where the light falls.
+    const t = warm.createRadialGradient(l.x, l.y, 0, l.x, l.y, l.r * 0.8)
+    t.addColorStop(0, 'rgba(255, 170, 80, 0.14)')
+    t.addColorStop(1, 'rgba(255, 170, 80, 0)')
+    warm.fillStyle = t
+    warm.fillRect(l.x - l.r, l.y - l.r, l.r * 2, l.r * 2)
+  }
+  dark.getImageData(0, 0, 1, 1)
+  warm.getImageData(0, 0, 1, 1)
+  yield
+  ctx.save()
+  ctx.setTransform(1, 0, 0, 1, 0, 0)
+  ctx.imageSmoothingEnabled = true
+  ctx.drawImage(dark.canvas, 0, 0, canvas.width, canvas.height)
+  ctx.globalCompositeOperation = 'lighter'
+  ctx.drawImage(warm.canvas, 0, 0, canvas.width, canvas.height)
+  ctx.restore()
+}
+
+function lanternLights(scene: Scene) {
+  const out: { x: number; y: number; r: number }[] = []
+  for (const c of scene.critters) {
+    if (c.look.held !== 'lantern') continue
+    out.push({ x: c.x + (c.flip ? -1 : 1) * c.size * 0.35, y: c.y - c.size * (0.75 + c.lift), r: c.size * 1.5 })
+  }
+  return out
+}
+
+/**
+ * Paint the scene in world units, one small piece per step, so the work can
+ * be spread over several frames. The caller sets the transform.
+ */
+export function* paintSteps(ctx: Ctx, scene: Scene, view?: WorldRect): Steps {
+  switch (scene.kind) {
+    case 'picnic':
+      yield* paintPicnic(ctx, scene)
+      break
+    case 'garden':
+      yield* paintGarden(ctx, scene)
+      break
+    case 'pond':
+      yield* paintPond(ctx, scene)
+      break
+    case 'arcade':
+      paintArcade(ctx, scene)
+      break
+    case 'night':
+      yield* paintNight(ctx, scene)
+      break
+  }
+  yield
+  const pad = scene.unit
+  let n = 0
+  for (const d of scene.decals) {
+    if (view && (d.x < view.x0 - pad || d.x > view.x1 + pad || d.y < view.y0 - pad || d.y > view.y1 + pad)) continue
+    paintDecal(ctx, d)
+    if (++n % 120 === 0) yield
+  }
+  yield
+  for (const item of scene.items) {
+    if (view && !overlaps(itemBounds(item), view)) continue
+    if (item.critter) drawCritter(ctx, item.critter)
+    else if (item.prop) drawProp(ctx, item.prop)
+    yield
+  }
+  yield* paintGarlands(ctx, scene, view)
+  yield
+  yield* paintLighting(ctx, scene)
+}
+
+/** Paint the whole scene in one go. */
+export function paintScene(ctx: Ctx, scene: Scene, view?: WorldRect) {
+  const steps = paintSteps(ctx, scene, view)
+  while (!steps.next().done) {
+    /* keep going */
+  }
+}
+
+// ----------------------------------------------------------------- overlays
+
+export type Overlays = {
+  /** Hide the scene: paused, or waiting behind the scene card. */
+  cover: boolean
+  /** Full-field dim, 0–1: the daze after a wrong tap. */
+  dim: number
+  /** Everything outside this circle dims — the hint, or the spotlight on a find. */
+  veil: { x: number; y: number; r: number; alpha: number } | null
+  /** A ring round the Bug when he is found, or shown when time runs out. */
+  ring: { x: number; y: number; r: number; alpha: number; colour: string } | null
+  /** Where the wrong taps landed, with how old each one is (0–1). */
+  misses: { x: number; y: number; age: number }[]
+  /** Keyboard cursor. */
+  reticle: { x: number; y: number } | null
+}
+
+function paintOverlays(ctx: Ctx, scene: Scene, cam: Camera, field: Field, o: Overlays, now: number) {
+  const k = pxPerUnit(cam, field)
+  if (o.veil) {
+    const c = worldToScreen(o.veil.x, o.veil.y, cam, field)
+    const r = o.veil.r * k
     ctx.save()
     ctx.beginPath()
-    ctx.rect(x + pw * 0.08, y + phh * 0.07, pw * 0.84, phh * 0.86)
-    ctx.clip()
-    if (poster.kind === 0) {
-      ctx.fillRect(x + pw * 0.08, y + phh * 0.5, pw * 0.84, phh * 0.43)
+    ctx.rect(field.x, field.y, field.w, field.h)
+    ctx.arc(c.x, c.y, r, 0, TAU, true)
+    ctx.fillStyle = `rgba(12, 8, 24, ${o.veil.alpha})`
+    ctx.fill()
+    ctx.beginPath()
+    ctx.arc(c.x, c.y, r, 0, TAU)
+    ctx.strokeStyle = `rgba(255, 255, 255, ${o.veil.alpha * 0.9})`
+    ctx.lineWidth = 2
+    ctx.setLineDash([6, 6])
+    ctx.stroke()
+    ctx.setLineDash([])
+    ctx.restore()
+  }
+
+  if (o.ring) {
+    const c = worldToScreen(o.ring.x, o.ring.y, cam, field)
+    const r = o.ring.r * k
+    ctx.save()
+    ctx.globalAlpha = o.ring.alpha
+    ctx.strokeStyle = o.ring.colour
+    ctx.lineWidth = Math.max(3, r * 0.1)
+    ctx.beginPath()
+    ctx.arc(c.x, c.y, r, 0, TAU)
+    ctx.stroke()
+    // Sparkles round the ring.
+    ctx.fillStyle = '#fff6c8'
+    for (let n = 0; n < 8; n++) {
+      const a = (n / 8) * TAU + now * 0.0015
+      const d = r * 1.28
+      const sx = c.x + Math.cos(a) * d
+      const sy = c.y + Math.sin(a) * d
+      const s = Math.max(3, r * 0.1)
       ctx.beginPath()
-      ctx.arc(x + pw * 0.5, y + phh * 0.34, pw * 0.2, 0, Math.PI * 2)
-      ctx.fill()
-    } else if (poster.kind === 1) {
-      for (let i = 0; i < 3; i++) {
-        ctx.fillRect(x + pw * (0.16 + i * 0.26), y + phh * (0.62 - i * 0.14), pw * 0.16, phh * 0.3)
-      }
-    } else if (poster.kind === 2) {
-      ctx.beginPath()
-      ctx.moveTo(x + pw * 0.5, y + phh * 0.16)
-      ctx.lineTo(x + pw * 0.86, y + phh * 0.78)
-      ctx.lineTo(x + pw * 0.14, y + phh * 0.78)
+      ctx.moveTo(sx, sy - s)
+      ctx.lineTo(sx + s * 0.3, sy - s * 0.3)
+      ctx.lineTo(sx + s, sy)
+      ctx.lineTo(sx + s * 0.3, sy + s * 0.3)
+      ctx.lineTo(sx, sy + s)
+      ctx.lineTo(sx - s * 0.3, sy + s * 0.3)
+      ctx.lineTo(sx - s, sy)
+      ctx.lineTo(sx - s * 0.3, sy - s * 0.3)
       ctx.closePath()
       ctx.fill()
-    } else {
-      ctx.fillRect(x + pw * 0.14, y + phh * 0.2, pw * 0.72, phh * 0.16)
-      ctx.fillRect(x + pw * 0.14, y + phh * 0.46, pw * 0.44, phh * 0.14)
-      ctx.fillRect(x + pw * 0.14, y + phh * 0.68, pw * 0.6, phh * 0.14)
     }
     ctx.restore()
   }
 
-  for (const sign of signs) {
-    const x = sign.x * w
-    const y = sign.y * h
-    const sw = sign.w * w
-    const sh = sign.h * h
-    ctx.strokeStyle = sign.colour
-    ctx.lineWidth = Math.max(1.5, sw * 0.055)
-    ctx.lineJoin = 'round'
+  for (const m of o.misses) {
+    const c = worldToScreen(m.x, m.y, cam, field)
+    const fade = 1 - m.age
+    const s = 11 + m.age * 6
+    ctx.save()
+    ctx.globalAlpha = Math.max(0, fade)
     ctx.lineCap = 'round'
-    ctx.globalAlpha = 0.92
+    ctx.strokeStyle = '#ffffff'
+    ctx.lineWidth = 7
     ctx.beginPath()
-    if (sign.kind === 0) {
-      ctx.rect(x, y, sw, sh)
-      ctx.moveTo(x + sw * 0.2, y + sh * 0.52)
-      ctx.lineTo(x + sw * 0.8, y + sh * 0.52)
-    } else if (sign.kind === 1) {
-      ctx.arc(x + sw / 2, y + sh / 2, Math.min(sw, sh) * 0.5, 0, Math.PI * 2)
-      ctx.moveTo(x + sw * 0.3, y + sh * 0.5)
-      ctx.lineTo(x + sw * 0.7, y + sh * 0.5)
-    } else {
-      ctx.moveTo(x, y + sh)
-      ctx.lineTo(x + sw * 0.3, y)
-      ctx.lineTo(x + sw * 0.6, y + sh)
-      ctx.lineTo(x + sw, y)
+    ctx.moveTo(c.x - s, c.y - s)
+    ctx.lineTo(c.x + s, c.y + s)
+    ctx.moveTo(c.x + s, c.y - s)
+    ctx.lineTo(c.x - s, c.y + s)
+    ctx.stroke()
+    ctx.strokeStyle = '#e2433b'
+    ctx.lineWidth = 4
+    ctx.stroke()
+    ctx.restore()
+  }
+
+  if (o.dim > 0) {
+    ctx.fillStyle = `rgba(12, 8, 24, ${Math.min(0.6, o.dim)})`
+    ctx.fillRect(field.x, field.y, field.w, field.h)
+  }
+
+  if (o.reticle) {
+    const c = worldToScreen(o.reticle.x, o.reticle.y, cam, field)
+    const r = Math.max(14, scene.unit * 0.55 * k)
+    ctx.save()
+    ctx.strokeStyle = '#ffffff'
+    ctx.lineWidth = 4.5
+    ctx.beginPath()
+    ctx.arc(c.x, c.y, r, 0, TAU)
+    ctx.stroke()
+    ctx.strokeStyle = '#3ec8cf'
+    ctx.lineWidth = 2.5
+    ctx.stroke()
+    ctx.beginPath()
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
+      ctx.moveTo(c.x + dx * r * 0.45, c.y + dy * r * 0.45)
+      ctx.lineTo(c.x + dx * r * 1.35, c.y + dy * r * 1.35)
     }
     ctx.stroke()
-    ctx.globalAlpha = 1
+    ctx.restore()
   }
 }
 
-function drawScreenArt(
-  ctx: CanvasRenderingContext2D,
-  m: Machine,
-  sx: number,
-  sy: number,
-  sw: number,
-  sh: number,
-) {
-  ctx.save()
-  ctx.beginPath()
-  ctx.rect(sx, sy, sw, sh)
-  ctx.clip()
-  ctx.fillStyle = m.accent
-  if (m.screen === 0) {
-    for (let i = 0; i < 5; i++) {
-      ctx.fillRect(sx + sw * (0.12 + i * 0.17), sy + sh * 0.18, sw * 0.09, sh * 0.14)
-    }
-    ctx.fillRect(sx + sw * 0.42, sy + sh * 0.7, sw * 0.18, sh * 0.12)
-  } else if (m.screen === 1) {
-    ctx.beginPath()
-    ctx.arc(sx + sw * 0.5, sy + sh * 0.5, sh * 0.3, 0.42, Math.PI * 2 - 0.42)
-    ctx.lineTo(sx + sw * 0.5, sy + sh * 0.5)
-    ctx.fill()
-  } else if (m.screen === 2) {
-    for (let i = 0; i < 4; i++) {
-      ctx.fillRect(sx + sw * (0.1 + i * 0.23), sy + sh * (0.6 - i * 0.1), sw * 0.13, sh * 0.34)
-    }
-  } else {
-    ctx.fillRect(sx + sw * 0.14, sy + sh * 0.74, sw * 0.72, sh * 0.08)
-    ctx.beginPath()
-    ctx.arc(sx + sw * 0.5, sy + sh * 0.34, sh * 0.13, 0, Math.PI * 2)
-    ctx.fill()
-  }
-  ctx.restore()
-}
+// ------------------------------------------------------------------ layers
 
-function drawMachine(ctx: CanvasRenderingContext2D, m: Machine, w: number, h: number) {
-  const x = m.x * w
-  const bottom = m.y * h
-  const mw = m.w * w
-  const mh = m.h * h
-  const top = bottom - mh
-  const r = mw * 0.09
-  const dark = mixColor(m.cab, '#000000', 0.38)
-
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.32)'
-  ctx.beginPath()
-  ctx.ellipse(x + mw / 2, bottom + mh * 0.025, mw * 0.56, mh * 0.045, 0, 0, Math.PI * 2)
-  ctx.fill()
-
-  if (m.kind === 'claw') {
-    // Glass box on a plinth, prizes heaped in the bottom.
-    ctx.fillStyle = dark
-    ctx.beginPath()
-    ctx.roundRect(x, bottom - mh * 0.34, mw, mh * 0.34, r * 0.6)
-    ctx.fill()
-    ctx.fillStyle = 'rgba(150, 200, 235, 0.16)'
-    ctx.beginPath()
-    ctx.roundRect(x + mw * 0.04, top, mw * 0.92, mh * 0.68, r * 0.5)
-    ctx.fill()
-    ctx.strokeStyle = m.accent
-    ctx.lineWidth = Math.max(1.2, mw * 0.045)
-    ctx.stroke()
-    const prizes = ['#e07ab0', '#e8b13c', '#4cb377', '#3f8fd8']
-    for (let i = 0; i < 5; i++) {
-      ctx.fillStyle = prizes[i % prizes.length]
-      ctx.beginPath()
-      ctx.arc(x + mw * (0.2 + i * 0.16), bottom - mh * (0.4 + (i % 2) * 0.06), mw * 0.1, 0, Math.PI * 2)
-      ctx.fill()
-    }
-    ctx.strokeStyle = '#cfd6e0'
-    ctx.lineWidth = Math.max(1, mw * 0.035)
-    ctx.beginPath()
-    ctx.moveTo(x + mw * 0.5, top + mh * 0.06)
-    ctx.lineTo(x + mw * 0.5, top + mh * 0.3)
-    ctx.moveTo(x + mw * 0.4, top + mh * 0.42)
-    ctx.lineTo(x + mw * 0.5, top + mh * 0.3)
-    ctx.lineTo(x + mw * 0.6, top + mh * 0.42)
-    ctx.stroke()
-    return
-  }
-
-  if (m.kind === 'change') {
-    ctx.fillStyle = m.cab
-    ctx.beginPath()
-    ctx.roundRect(x + mw * 0.1, top, mw * 0.8, mh, r * 0.7)
-    ctx.fill()
-    ctx.fillStyle = m.accent
-    ctx.beginPath()
-    ctx.roundRect(x + mw * 0.2, top + mh * 0.07, mw * 0.6, mh * 0.13, r * 0.4)
-    ctx.fill()
-    ctx.fillStyle = '#d9a441'
-    ctx.beginPath()
-    ctx.arc(x + mw * 0.5, top + mh * 0.42, mw * 0.16, 0, Math.PI * 2)
-    ctx.fill()
-    ctx.fillStyle = '#0d0f18'
-    ctx.fillRect(x + mw * 0.34, top + mh * 0.66, mw * 0.32, mh * 0.05)
-    return
-  }
-
-  if (m.kind === 'pinball') {
-    // Backbox with a low table sloping toward you.
-    ctx.fillStyle = m.cab
-    ctx.beginPath()
-    ctx.roundRect(x + mw * 0.06, top, mw * 0.88, mh * 0.46, r * 0.5)
-    ctx.fill()
-    ctx.fillStyle = m.accent
-    ctx.beginPath()
-    ctx.roundRect(x + mw * 0.14, top + mh * 0.06, mw * 0.72, mh * 0.3, r * 0.35)
-    ctx.fill()
-    ctx.fillStyle = dark
-    ctx.beginPath()
-    ctx.moveTo(x, bottom)
-    ctx.lineTo(x + mw * 0.08, top + mh * 0.46)
-    ctx.lineTo(x + mw * 0.92, top + mh * 0.46)
-    ctx.lineTo(x + mw, bottom)
-    ctx.closePath()
-    ctx.fill()
-    ctx.fillStyle = mixColor(m.accent, '#ffffff', 0.25)
-    for (const bx of [0.3, 0.52, 0.72]) {
-      ctx.beginPath()
-      ctx.arc(x + mw * bx, top + mh * 0.66, mw * 0.05, 0, Math.PI * 2)
-      ctx.fill()
-    }
-    return
-  }
-
-  // Upright.
-  ctx.fillStyle = m.cab
-  ctx.beginPath()
-  ctx.roundRect(x, top, mw, mh, r)
-  ctx.fill()
-  ctx.fillStyle = dark
-  ctx.beginPath()
-  ctx.roundRect(x + mw * 0.83, top, mw * 0.17, mh, r)
-  ctx.fill()
-
-  ctx.fillStyle = m.accent
-  ctx.beginPath()
-  ctx.roundRect(x + mw * 0.07, top + mh * 0.03, mw * 0.72, mh * 0.12, r * 0.5)
-  ctx.fill()
-  ctx.fillStyle = mixColor(m.accent, '#ffffff', 0.45)
-  ctx.beginPath()
-  ctx.roundRect(x + mw * 0.11, top + mh * 0.05, mw * 0.64, mh * 0.04, r * 0.3)
-  ctx.fill()
-
-  const sx = x + mw * 0.1
-  const sy = top + mh * 0.19
-  const sw = mw * 0.66
-  const sh = mh * 0.33
-  ctx.fillStyle = '#06080f'
-  ctx.beginPath()
-  ctx.roundRect(sx, sy, sw, sh, r * 0.35)
-  ctx.fill()
-  drawScreenArt(ctx, m, sx, sy, sw, sh)
-
-  ctx.fillStyle = mixColor(m.cab, '#000000', 0.22)
-  ctx.beginPath()
-  ctx.roundRect(x + mw * 0.04, top + mh * 0.58, mw * 0.78, mh * 0.13, r * 0.3)
-  ctx.fill()
-  ctx.strokeStyle = '#d9d9e2'
-  ctx.lineWidth = Math.max(1, mw * 0.028)
-  ctx.beginPath()
-  ctx.moveTo(x + mw * 0.26, top + mh * 0.64)
-  ctx.lineTo(x + mw * 0.26, top + mh * 0.58)
-  ctx.stroke()
-  ctx.fillStyle = '#e0574f'
-  ctx.beginPath()
-  ctx.arc(x + mw * 0.26, top + mh * 0.565, mw * 0.042, 0, Math.PI * 2)
-  ctx.fill()
-  ctx.fillStyle = '#e8b13c'
-  for (const bx of [0.48, 0.6]) {
-    ctx.beginPath()
-    ctx.arc(x + mw * bx, top + mh * 0.63, mw * 0.032, 0, Math.PI * 2)
-    ctx.fill()
-  }
-  ctx.fillStyle = '#0d0f18'
-  ctx.fillRect(x + mw * 0.38, top + mh * 0.8, mw * 0.16, mh * 0.028)
-}
-
-function drawProp(ctx: CanvasRenderingContext2D, pr: Prop, w: number, h: number) {
-  const s = pr.s * w
-
-  ctx.save()
-  ctx.translate(pr.x * w, pr.y * h)
-  ctx.fillStyle = pr.colour
-  ctx.strokeStyle = pr.colour
-  ctx.lineWidth = Math.max(1, s * 0.14)
-  ctx.lineCap = 'round'
-  ctx.lineJoin = 'round'
-
-  if (pr.kind === 'cup') {
-    ctx.beginPath()
-    ctx.moveTo(-s * 0.3, -s * 0.8)
-    ctx.lineTo(s * 0.3, -s * 0.8)
-    ctx.lineTo(s * 0.2, 0)
-    ctx.lineTo(-s * 0.2, 0)
-    ctx.closePath()
-    ctx.fill()
-    ctx.fillStyle = '#e8e8ee'
-    ctx.fillRect(-s * 0.34, -s * 0.92, s * 0.68, s * 0.14)
-    ctx.fillRect(-s * 0.06, -s * 1.25, s * 0.12, s * 0.35)
-  } else if (pr.kind === 'popcorn') {
-    ctx.fillStyle = '#e0574f'
-    ctx.beginPath()
-    ctx.moveTo(-s * 0.34, -s * 0.75)
-    ctx.lineTo(s * 0.34, -s * 0.75)
-    ctx.lineTo(s * 0.24, 0)
-    ctx.lineTo(-s * 0.24, 0)
-    ctx.closePath()
-    ctx.fill()
-    ctx.fillStyle = '#f2e0b0'
-    const kernels: [number, number][] = [
-      [-0.2, -0.86],
-      [0.05, -0.95],
-      [0.26, -0.82],
-    ]
-    for (const k of kernels) {
-      ctx.beginPath()
-      ctx.arc(k[0] * s, k[1] * s, s * 0.16, 0, Math.PI * 2)
-      ctx.fill()
-    }
-  } else if (pr.kind === 'token') {
-    ctx.fillStyle = '#d9a441'
-    ctx.beginPath()
-    ctx.ellipse(0, -s * 0.1, s * 0.3, s * 0.18, 0, 0, Math.PI * 2)
-    ctx.fill()
-  } else if (pr.kind === 'balloon') {
-    ctx.strokeStyle = '#c9c2e0'
-    ctx.lineWidth = Math.max(1, s * 0.07)
-    ctx.beginPath()
-    ctx.moveTo(0, s * 1.6)
-    ctx.quadraticCurveTo(s * 0.25, s * 0.8, 0, s * 0.45)
-    ctx.stroke()
-    ctx.fillStyle = pr.colour
-    ctx.beginPath()
-    ctx.ellipse(0, 0, s * 0.44, s * 0.54, 0, 0, Math.PI * 2)
-    ctx.fill()
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.4)'
-    ctx.beginPath()
-    ctx.ellipse(-s * 0.15, -s * 0.18, s * 0.11, s * 0.16, -0.4, 0, Math.PI * 2)
-    ctx.fill()
-  } else if (pr.kind === 'plush') {
-    ctx.beginPath()
-    ctx.arc(0, -s * 0.35, s * 0.36, 0, Math.PI * 2)
-    ctx.fill()
-    for (const ex of [-0.32, 0.32]) {
-      ctx.beginPath()
-      ctx.arc(ex * s, -s * 0.68, s * 0.16, 0, Math.PI * 2)
-      ctx.fill()
-    }
-    ctx.fillStyle = '#181422'
-    for (const ex of [-0.14, 0.14]) {
-      ctx.beginPath()
-      ctx.arc(ex * s, -s * 0.4, s * 0.06, 0, Math.PI * 2)
-      ctx.fill()
-    }
-  } else if (pr.kind === 'cone') {
-    ctx.fillStyle = '#f07a3f'
-    ctx.beginPath()
-    ctx.moveTo(0, -s)
-    ctx.lineTo(s * 0.34, 0)
-    ctx.lineTo(-s * 0.34, 0)
-    ctx.closePath()
-    ctx.fill()
-    ctx.fillStyle = '#f2e8e0'
-    ctx.fillRect(-s * 0.24, -s * 0.55, s * 0.48, s * 0.14)
-  } else if (pr.kind === 'skate') {
-    ctx.beginPath()
-    ctx.roundRect(-s * 0.5, -s * 0.34, s, s * 0.16, s * 0.08)
-    ctx.fill()
-    ctx.fillStyle = '#d9d9e2'
-    for (const wx of [-0.3, 0.3]) {
-      ctx.beginPath()
-      ctx.arc(wx * s, -s * 0.1, s * 0.12, 0, Math.PI * 2)
-      ctx.fill()
-    }
-  } else if (pr.kind === 'cat') {
-    ctx.fillStyle = '#4a4450'
-    ctx.beginPath()
-    ctx.ellipse(0, -s * 0.26, s * 0.5, s * 0.26, 0, 0, Math.PI * 2)
-    ctx.fill()
-    ctx.beginPath()
-    ctx.arc(-s * 0.45, -s * 0.48, s * 0.22, 0, Math.PI * 2)
-    ctx.fill()
-    ctx.beginPath()
-    ctx.moveTo(-s * 0.58, -s * 0.62)
-    ctx.lineTo(-s * 0.52, -s * 0.86)
-    ctx.lineTo(-s * 0.4, -s * 0.64)
-    ctx.closePath()
-    ctx.fill()
-    ctx.strokeStyle = '#4a4450'
-    ctx.lineWidth = Math.max(1, s * 0.1)
-    ctx.beginPath()
-    ctx.moveTo(s * 0.46, -s * 0.3)
-    ctx.quadraticCurveTo(s * 0.8, -s * 0.5, s * 0.66, -s * 0.78)
-    ctx.stroke()
-  } else if (pr.kind === 'bag') {
-    ctx.beginPath()
-    ctx.roundRect(-s * 0.32, -s * 0.7, s * 0.64, s * 0.7, s * 0.06)
-    ctx.fill()
-    ctx.strokeStyle = mixColor(pr.colour, '#000000', 0.4)
-    ctx.lineWidth = Math.max(1, s * 0.08)
-    ctx.beginPath()
-    ctx.arc(0, -s * 0.7, s * 0.2, Math.PI, Math.PI * 2)
-    ctx.stroke()
-  } else {
-    ctx.beginPath()
-    ctx.arc(0, 0, s * 0.12, 0, Math.PI * 2)
-    ctx.fill()
-  }
-
-  ctx.restore()
-}
-
-// ---------------------------------------------------------------- cabinets
-
-function drawCabinet(ctx: CanvasRenderingContext2D, cab: Cabinet, w: number, h: number) {
-  const x = cab.x * w
-  const y = cab.y * h
-  const cw = cab.w * w
-  const ch = cab.h * h
-  const radius = Math.min(cw, ch) * 0.1
-
-  // Enamel body, with a lit edge down one side so it reads as a solid object.
-  ctx.fillStyle = cab.body
-  ctx.beginPath()
-  ctx.roundRect(x, y, cw, ch, radius)
-  ctx.fill()
-  edge(ctx, mixColor(cab.body, '#000000', 0.45), cw * 0.022)
-
-  ctx.fillStyle = mixColor(cab.body, '#ffffff', 0.1)
-  ctx.beginPath()
-  ctx.roundRect(x + cw * 0.03, y + ch * 0.04, cw * 0.07, ch * 0.92, radius * 0.5)
-  ctx.fill()
-
-  // Marquee — the brightest thing on the cabinet, as it should be.
-  ctx.fillStyle = cab.accent
-  ctx.beginPath()
-  ctx.roundRect(x + cw * 0.12, y + ch * 0.07, cw * 0.76, ch * 0.15, radius * 0.45)
-  ctx.fill()
-  ctx.fillStyle = mixColor(cab.accent, '#ffffff', 0.5)
-  ctx.beginPath()
-  ctx.roundRect(x + cw * 0.16, y + ch * 0.09, cw * 0.68, ch * 0.05, radius * 0.3)
-  ctx.fill()
-
-  // Screen: a dark well washed with the cabinet's own glow, plus scanlines.
-  const sx = x + cw * 0.13
-  const sy = y + ch * 0.29
-  const sw = cw * 0.74
-  const sh = ch * 0.44
-  ctx.fillStyle = mixColor('#05070c', cab.accent, 0.32 * cab.tone)
-  ctx.beginPath()
-  ctx.roundRect(sx, sy, sw, sh, radius * 0.4)
-  ctx.fill()
-  edge(ctx, '#0a0d14', cw * 0.02)
-
-  ctx.save()
-  ctx.beginPath()
-  ctx.roundRect(sx, sy, sw, sh, radius * 0.4)
-  ctx.clip()
-  ctx.globalAlpha = 0.18
-  ctx.fillStyle = mixColor(cab.accent, '#ffffff', 0.55)
-  const lines = 7
-  for (let i = 0; i < lines; i++) {
-    ctx.fillRect(sx, sy + (sh * (i + 0.25)) / lines, sw, Math.max(1, sh * 0.035))
-  }
-  ctx.restore()
-
-  // Control deck.
-  ctx.fillStyle = mixColor(cab.body, '#000000', 0.32)
-  ctx.beginPath()
-  ctx.roundRect(x + cw * 0.1, y + ch * 0.78, cw * 0.8, ch * 0.12, radius * 0.4)
-  ctx.fill()
-}
-
-// ------------------------------------------------------------------- board
-
-const MEDALS = ['#f5c542', '#cfd6e0', '#d08a45'] as const
-
-function drawBoardScene(
-  ctx: CanvasRenderingContext2D,
-  rows: readonly { rank: number; name: string; score: number }[],
-  w: number,
-  h: number,
-) {
-  const fontPx = Math.min(h * 0.032, w * 0.05)
-  ctx.textBaseline = 'middle'
-
-  ctx.font = `700 ${fontPx * 0.78}px Outfit, system-ui, sans-serif`
-  ctx.fillStyle = '#5f7fae'
-  ctx.textAlign = 'left'
-  ctx.fillText('RANK', w * 0.1, h * 0.07)
-  ctx.fillText('NAME', w * 0.24, h * 0.07)
-  ctx.textAlign = 'right'
-  ctx.fillText('SCORE', w * 0.9, h * 0.07)
-
-  rows.forEach((row, i) => {
-    const y = boardRowY(i, rows.length) * h
-    const pill = i % 2 === 0 ? '#1d2740' : '#222c47'
-    const medal: string | null = MEDALS[i] ?? null
-
-    ctx.fillStyle = pill
-    ctx.beginPath()
-    ctx.roundRect(w * 0.07, y - fontPx * 0.92, w * 0.86, fontPx * 1.84, fontPx * 0.42)
-    ctx.fill()
-
-    ctx.font = `800 ${fontPx}px Outfit, system-ui, sans-serif`
-    ctx.textAlign = 'left'
-    ctx.fillStyle = medal ?? '#556f96'
-    ctx.fillText(String(row.rank), w * 0.1, y)
-    ctx.fillStyle = medal ?? '#dce6f5'
-    ctx.fillText(row.name, w * 0.24, y)
-    ctx.textAlign = 'right'
-    ctx.fillStyle = medal ?? '#7fe0b0'
-    ctx.fillText(row.score.toLocaleString(), w * 0.9, y)
-  })
-}
-
-// -------------------------------------------------------------------- loom
-
-function drawCable(ctx: CanvasRenderingContext2D, c: Cable, w: number, h: number) {
-  const path = () => {
-    ctx.beginPath()
-    ctx.moveTo(c.x0 * w, cableY(0) * h)
-    ctx.bezierCurveTo(
-      c.x1 * w,
-      cableY(1 / 3) * h,
-      c.x2 * w,
-      cableY(2 / 3) * h,
-      c.x3 * w,
-      cableY(1) * h,
-    )
-  }
-
-  ctx.lineCap = 'round'
-
-  // Dark casing, sheath colour, then a highlight down one side.
-  ctx.strokeStyle = mixColor(c.colour, '#000000', 0.55)
-  ctx.lineWidth = c.width * w
-  path()
-  ctx.stroke()
-
-  ctx.strokeStyle = c.colour
-  ctx.lineWidth = c.width * w * 0.72
-  path()
-  ctx.stroke()
-
-  ctx.save()
-  ctx.translate(-c.width * w * 0.2, 0)
-  ctx.strokeStyle = mixColor(c.colour, '#ffffff', 0.45)
-  ctx.lineWidth = c.width * w * 0.18
-  path()
-  ctx.stroke()
-  ctx.restore()
-}
-
-function drawTie(ctx: CanvasRenderingContext2D, tie: Tie, w: number, h: number) {
-  const th = w * 0.015
-  ctx.fillStyle = '#39414f'
-  ctx.beginPath()
-  ctx.roundRect(tie.x * w, tie.y * h - th / 2, tie.w * w, th, th * 0.35)
-  ctx.fill()
-  edge(ctx, '#20252e', w * 0.003)
-}
-
-function drawBlock(ctx: CanvasRenderingContext2D, b: Block, w: number, h: number) {
-  const x = b.x * w
-  const y = b.y * h
-  const bw = b.w * w
-  const bh = b.h * h
-  const radius = Math.min(bw, bh) * 0.14
-
-  ctx.fillStyle = '#4a5468'
-  ctx.beginPath()
-  ctx.roundRect(x, y, bw, bh, radius)
-  ctx.fill()
-  edge(ctx, '#262c38', bw * 0.02)
-
-  // Brass pins.
-  ctx.fillStyle = '#d9a441'
-  const pinW = bw / (b.pins * 2 + 1)
-  for (let i = 0; i < b.pins; i++) {
-    ctx.beginPath()
-    ctx.roundRect(x + pinW * (i * 2 + 1), y + bh * 0.62, pinW, bh * 0.3, pinW * 0.3)
-    ctx.fill()
-  }
-}
-
-// ------------------------------------------------------------------ tokens
-
-function drawToken(ctx: CanvasRenderingContext2D, t: Token, w: number, h: number) {
-  const x = t.x * w
-  const y = t.y * h
-  const r = t.r * w
-  const face = mixColor(t.colour, '#000000', (1 - t.tone) * 0.3)
-
-  // Rim, struck face, milled edge.
-  ctx.fillStyle = mixColor(face, '#000000', 0.4)
-  ctx.beginPath()
-  ctx.arc(x, y, r, 0, Math.PI * 2)
-  ctx.fill()
-
-  ctx.fillStyle = face
-  ctx.beginPath()
-  ctx.arc(x, y - r * 0.05, r * 0.88, 0, Math.PI * 2)
-  ctx.fill()
-
-  ctx.strokeStyle = mixColor(face, '#ffffff', 0.42)
-  ctx.lineWidth = Math.max(1, r * 0.1)
-  ctx.beginPath()
-  ctx.arc(x, y - r * 0.05, r * 0.62, 0, Math.PI * 2)
-  ctx.stroke()
-
-  ctx.lineWidth = Math.max(1, r * 0.08)
-  ctx.strokeStyle = mixColor(face, '#000000', 0.32)
-  for (let i = 0; i < 18; i++) {
-    const a = (i / 18) * Math.PI * 2
-    ctx.beginPath()
-    ctx.moveTo(x + Math.cos(a) * r * 0.88, y - r * 0.05 + Math.sin(a) * r * 0.88)
-    ctx.lineTo(x + Math.cos(a) * r, y - r * 0.05 + Math.sin(a) * r)
-    ctx.stroke()
-  }
-}
-
-// ------------------------------------------------------------------ carpet
-
-function drawMotif(ctx: CanvasRenderingContext2D, m: Motif, w: number, h: number) {
-  const size = m.size * w
-  ctx.save()
-  ctx.translate(m.x * w, m.y * h)
-  ctx.rotate(m.rot)
-  ctx.fillStyle = m.accent
-  ctx.strokeStyle = m.accent
-  ctx.lineWidth = Math.max(1.5, size * 0.16)
-  ctx.lineCap = 'round'
-  ctx.lineJoin = 'round'
-
-  if (m.kind === 'dot') {
-    ctx.beginPath()
-    ctx.arc(0, 0, size * 0.34, 0, Math.PI * 2)
-    ctx.fill()
-    ctx.strokeStyle = mixColor(m.accent, '#ffffff', 0.5)
-    ctx.lineWidth = Math.max(1, size * 0.08)
-    ctx.beginPath()
-    ctx.arc(0, 0, size * 0.5, 0, Math.PI * 2)
-    ctx.stroke()
-  } else if (m.kind === 'tri') {
-    ctx.beginPath()
-    ctx.moveTo(0, -size * 0.48)
-    ctx.lineTo(size * 0.44, size * 0.34)
-    ctx.lineTo(-size * 0.44, size * 0.34)
-    ctx.closePath()
-    ctx.fill()
-  } else if (m.kind === 'zig') {
-    ctx.beginPath()
-    ctx.moveTo(-size * 0.5, size * 0.24)
-    ctx.lineTo(-size * 0.17, -size * 0.24)
-    ctx.lineTo(size * 0.17, size * 0.24)
-    ctx.lineTo(size * 0.5, -size * 0.24)
-    ctx.stroke()
-  } else {
-    ctx.beginPath()
-    for (let i = 0; i < 10; i++) {
-      const a = (i / 10) * Math.PI * 2 - Math.PI / 2
-      const rr = i % 2 === 0 ? size * 0.5 : size * 0.2
-      const px = Math.cos(a) * rr
-      const py = Math.sin(a) * rr
-      if (i === 0) ctx.moveTo(px, py)
-      else ctx.lineTo(px, py)
-    }
-    ctx.closePath()
-    ctx.fill()
-  }
-
-  ctx.restore()
-}
-
-// ------------------------------------------------------------------ shared
-
-function drawScene(ctx: CanvasRenderingContext2D, scene: Scene, w: number, h: number) {
-  if (scene.kind === 'arcade') {
-    drawArcadeRoom(ctx, scene.signs, scene.posters, w, h)
-    // Back to front, so somebody stands behind the machine they are playing and
-    // the litter on the carpet sits in front of everything.
-    const machines = [...scene.machines].sort((a, b) => a.y - b.y)
-    const people = [...scene.people].sort((a, b) => a.y - b.y)
-    let next = 0
-    for (const machine of machines) {
-      while (next < people.length && people[next].y <= machine.y) {
-        drawPerson(ctx, people[next], w, h)
-        next += 1
+/** One pass of a 3×3 box blur, in place. Only ever run on a thumbnail. */
+function boxBlur(px: Uint8ClampedArray, w: number, h: number) {
+  const src = new Uint8ClampedArray(px)
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      for (let c = 0; c < 3; c++) {
+        let sum = 0
+        let n = 0
+        for (let dy = -1; dy <= 1; dy++) {
+          const yy = y + dy
+          if (yy < 0 || yy >= h) continue
+          for (let dx = -1; dx <= 1; dx++) {
+            const xx = x + dx
+            if (xx < 0 || xx >= w) continue
+            sum += src[(yy * w + xx) * 4 + c]
+            n++
+          }
+        }
+        px[(y * w + x) * 4 + c] = sum / n
       }
-      drawMachine(ctx, machine, w, h)
     }
-    while (next < people.length) {
-      drawPerson(ctx, people[next], w, h)
-      next += 1
-    }
-    for (const prop of scene.props) drawProp(ctx, prop, w, h)
-    return
   }
-  if (scene.kind === 'cabinets') {
-    for (const cab of scene.cabinets) drawCabinet(ctx, cab, w, h)
-    return
-  }
-  if (scene.kind === 'board') {
-    drawBoardScene(ctx, scene.rows, w, h)
-    return
-  }
-  if (scene.kind === 'loom') {
-    for (const c of scene.cables) drawCable(ctx, c, w, h)
-    for (const t of scene.ties) drawTie(ctx, t, w, h)
-    for (const b of scene.blocks) drawBlock(ctx, b, w, h)
-    return
-  }
-  if (scene.kind === 'tokens') {
-    for (const t of scene.tokens) drawToken(ctx, t, w, h)
-    return
-  }
-  for (const m of scene.motifs) drawMotif(ctx, m, w, h)
 }
 
 /**
- * Decoys take the colour of the ground they lie on, so they read as grit in the
- * scene rather than as a layer painted over it.
+ * A painted picture of the scene: the whole of it at the field's size (the
+ * base), or the part in view at the current zoom (a detail).
  */
-function drawDecoys(ctx: CanvasRenderingContext2D, scene: Scene, w: number, h: number) {
-  ctx.fillStyle = mixColor(groundFor(scene), '#ffffff', 0.34)
-  for (const d of scene.decoys) {
-    const x = d.x * w
-    const y = d.y * h
-    const r = d.r * w
+type Layer = {
+  canvas: HTMLCanvasElement
+  scene: Scene
+  w: number
+  h: number
+  /** The view a detail was painted for; null for the base. */
+  cam: Camera | null
+}
 
-    if (d.kind === 'screw') {
-      ctx.beginPath()
-      ctx.arc(x, y, r, 0, Math.PI * 2)
-      ctx.fill()
-      continue
-    }
-    // Specks read as a resting body at a glance — that is the whole point.
-    ctx.beginPath()
-    ctx.ellipse(x, y, r * 1.25, r * 0.8, 0.3, 0, Math.PI * 2)
-    ctx.fill()
+type Job = Layer & { steps: Steps; ctx: CanvasRenderingContext2D }
+
+/**
+ * A canvas to paint a layer into. Software backed on purpose: a scene is
+ * thousands of small paths, which the CPU rasteriser gets through about twice
+ * as fast as the GPU one — and it paints as it goes, so spreading the work
+ * over frames really does spread it, rather than piling it all up for one
+ * flush at the end.
+ */
+function layerCanvas(w: number, h: number, reuse?: HTMLCanvasElement) {
+  const canvas = reuse ?? document.createElement('canvas')
+  if (canvas.width !== w) canvas.width = w
+  if (canvas.height !== h) canvas.height = h
+  const ctx = canvas.getContext('2d', { willReadFrequently: true })
+  return { canvas, ctx }
+}
+
+/**
+ * Holds the painted layers for one scene and puts them on screen.
+ *
+ * Painting happens a slice at a time inside `frame`, within the budget it is
+ * given, so a new scene or a sharp repaint after a zoom never stalls a frame.
+ * The base must be complete before a scene is shown at all — `ready` says
+ * when — so nobody ever searches a picture that is still arriving.
+ */
+export class SceneView {
+  private base: Layer | null = null
+  private baseJob: Job | null = null
+  private detail: Layer | null = null
+  private detailJob: Job | null = null
+  /** The canvas the last detail was painted into, kept to paint the next one. */
+  private spare: HTMLCanvasElement | null = null
+  private frost = document.createElement('canvas')
+  private frostFor: Scene | null = null
+  private lastCam: Camera | null = null
+  private stillSince = 0
+
+  /** Whether a complete painting of this scene exists to show. */
+  ready(scene: Scene): boolean {
+    return this.base?.scene === scene
   }
-}
 
-function drawHintVeil(ctx: CanvasRenderingContext2D, round: RoundState, w: number, h: number) {
-  const bx = round.x * w
-  const by = round.y * h
-  ctx.save()
-  ctx.fillStyle = '#05070c'
-  ctx.globalAlpha = 0.8
-  ctx.beginPath()
-  ctx.rect(0, 0, w, h)
-  // Reversed arc punches the hole the player still has to search.
-  ctx.arc(bx, by, HINT_RADIUS * w, 0, Math.PI * 2, true)
-  ctx.fill()
-  ctx.restore()
-}
+  private ensureBase(scene: Scene, field: Field, dpr: number) {
+    const w = Math.max(1, Math.round(field.w * dpr))
+    const h = Math.max(1, Math.round(field.h * dpr))
+    const b = this.base
+    if (b && b.scene === scene && b.w === w && b.h === h) return
+    const j = this.baseJob
+    if (j && j.scene === scene && j.w === w && j.h === h) return
+    // A different scene: drop everything painted for the last one. The same
+    // scene at a new size keeps its old base on screen until the new one is done.
+    if (b && b.scene !== scene) this.base = null
+    if (this.detail && this.detail.scene !== scene) this.detail = null
+    if (this.detailJob && this.detailJob.scene !== scene) this.detailJob = null
+    const { canvas, ctx } = layerCanvas(w, h)
+    if (!ctx) return
+    ctx.setTransform(w / scene.w, 0, 0, h / scene.h, 0, 0)
+    this.baseJob = { canvas, ctx, scene, w, h, cam: null, steps: paintSteps(ctx, scene) }
+  }
 
-function drawReticle(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number) {
-  const px = x * w
-  const py = y * h
-  const r = w * 0.05
-  ctx.strokeStyle = 'hsl(198, 70%, 52%)'
-  ctx.lineWidth = Math.max(1.5, w * 0.005)
-  ctx.beginPath()
-  ctx.arc(px, py, r, 0, Math.PI * 2)
-  ctx.stroke()
-  ctx.beginPath()
-  ctx.moveTo(px - r * 1.5, py)
-  ctx.lineTo(px - r * 0.4, py)
-  ctx.moveTo(px + r * 0.4, py)
-  ctx.lineTo(px + r * 1.5, py)
-  ctx.moveTo(px, py - r * 1.5)
-  ctx.lineTo(px, py - r * 0.4)
-  ctx.moveTo(px, py + r * 0.4)
-  ctx.lineTo(px, py + r * 1.5)
-  ctx.stroke()
-}
+  private startDetail(scene: Scene, field: Field, cam: Camera, dpr: number) {
+    const w = Math.max(1, Math.round(field.w * dpr))
+    const h = Math.max(1, Math.round(field.h * dpr))
+    const reuse = this.detailJob?.canvas ?? this.spare ?? undefined
+    this.spare = null
+    const { canvas, ctx } = layerCanvas(w, h, reuse)
+    if (!ctx) return
+    const k = pxPerUnit(cam, field) * dpr
+    ctx.setTransform(1, 0, 0, 1, 0, 0)
+    ctx.clearRect(0, 0, w, h)
+    ctx.setTransform(k, 0, 0, k, w / 2 - cam.cx * k, h / 2 - cam.cy * k)
+    this.detailJob = { canvas, ctx, scene, w, h, cam: { ...cam }, steps: paintSteps(ctx, scene, viewRect(cam, field)) }
+  }
 
-function drawMissFlash(ctx: CanvasRenderingContext2D, state: GameState, w: number, h: number) {
-  const t = state.missFlash
-  if (t <= 0) return
-  ctx.strokeStyle = `hsla(352, 62%, 54%, ${t})`
-  ctx.lineWidth = Math.max(2, w * 0.008)
-  ctx.beginPath()
-  ctx.arc(state.missX * w, state.missY * h, w * 0.03 * (1.6 - t), 0, Math.PI * 2)
-  ctx.stroke()
-}
-
-export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, w: number, h: number) {
-  const field = fieldRect(w, h, state.round.aspect)
-
-  // Carry the surround in the scene's own ground, so a window that does not
-  // match the board reads as more of the same surface rather than as bars.
-  ctx.fillStyle = groundFor(state.round.scene)
-  ctx.fillRect(0, 0, w, h)
-
-  // Everything below is authored against a canvas that is exactly the scene, so
-  // shift into the field and hand it the field's size.
-  ctx.save()
-  ctx.translate(field.x, field.y)
-  drawField(ctx, state, field.w, field.h)
-  ctx.restore()
-}
-
-function drawField(ctx: CanvasRenderingContext2D, state: GameState, w: number, h: number) {
-  const round = state.round
-  const scene = round.scene
-
-  drawBackground(ctx, scene, w, h)
-  drawScene(ctx, scene, w, h)
-  drawDecoys(ctx, scene, w, h)
-
-  if (round.hintUsed && !round.found) drawHintVeil(ctx, round, w, h)
-
-  /*
-   * Camouflage is against the one surface the bug is perched on, not against a
-   * drained scene — that is what lets everything above stay saturated. It sinks
-   * toward that colour as the rounds get harder, while the legs stay a hard
-   * dark line so the silhouette is crisp however close the match gets.
+  /**
+   * Paint for up to `budgetMs`: the base first, then any detail.
+   *
+   * The canvas only records what it is told until something reads it back, and
+   * then rasterises the lot at once — so each step is followed by a one-pixel
+   * read, which makes the step pay for itself inside the budget instead of the
+   * whole layer landing on whichever frame first shows it.
    */
-  const body = bugBody(round.camoBase, round.config.camo)
-
-  drawBug(ctx, round.x * w, round.y * h, round.config.bugSize * w, {
-    angle: round.angle,
-    // The legs stay darker than the shell so the silhouette holds together,
-    // but not so dark that a hard black outline points straight at it.
-    look: { body, leg: mixColor(body, '#05070c', 0.42) },
-    flash: round.found ? Math.max(0, 0.7 - round.foundAge) : 0,
-  })
-
-  if (round.found) {
-    ctx.strokeStyle = 'hsl(150, 60%, 50%)'
-    ctx.lineWidth = Math.max(2, w * 0.009)
-    ctx.beginPath()
-    ctx.arc(
-      round.x * w,
-      round.y * h,
-      catchRadius(round) * w * (1 + round.foundAge * 0.6),
-      0,
-      Math.PI * 2,
-    )
-    ctx.stroke()
+  private pump(budgetMs: number) {
+    const start = performance.now()
+    while (performance.now() - start < budgetMs) {
+      // The frost is its own piece of work, in a frame of its own.
+      if (this.base && this.frostFor !== this.base.scene) {
+        this.paintFrost(this.base)
+        continue
+      }
+      const job = this.baseJob ?? this.detailJob
+      if (!job) return
+      const done = job.steps.next().done
+      job.ctx.getImageData(0, 0, 1, 1)
+      if (!done) continue
+      if (job === this.baseJob) {
+        this.base = job
+        this.baseJob = null
+        return
+      } else {
+        if (this.detail) this.spare = this.detail.canvas
+        this.detail = job
+        this.detailJob = null
+      }
+    }
   }
 
-  drawMissFlash(ctx, state, w, h)
+  /**
+   * Frosted glass for behind the cards: the scene shrunk by halves, blurred,
+   * and stretched back out. Nobody can pick a Bug out of it, but it is still
+   * plainly the next place.
+   */
+  private paintFrost(layer: Layer) {
+    const w = Math.max(1, Math.round(layer.w / 8))
+    const h = Math.max(1, Math.round(layer.h / 8))
+    this.frost.width = w
+    this.frost.height = h
+    const f = this.frost.getContext('2d', { willReadFrequently: true })
+    if (!f) return
+    f.imageSmoothingEnabled = true
+    f.imageSmoothingQuality = 'high'
+    f.drawImage(layer.canvas, 0, 0, w, h)
+    const img = f.getImageData(0, 0, w, h)
+    for (let pass = 0; pass < 3; pass++) boxBlur(img.data, w, h)
+    f.putImageData(img, 0, 0)
+    this.frostFor = layer.scene
+  }
 
-  if (state.keyboardMode && state.phase === 'playing' && !round.found) {
-    drawReticle(ctx, state.reticleX, state.reticleY, w, h)
+  /**
+   * Draw one frame, after spending up to `budgetMs` on painting. `moving`
+   * holds back the sharp repaint while a finger or the wheel is still
+   * changing the view.
+   */
+  frame(
+    ctx: CanvasRenderingContext2D,
+    canvasW: number,
+    canvasH: number,
+    scene: Scene | null,
+    field: Field | null,
+    cam: Camera,
+    dpr: number,
+    overlays: Overlays,
+    moving: boolean,
+    now: number,
+    budgetMs: number,
+  ) {
+    ctx.fillStyle = playfieldColor()
+    ctx.fillRect(0, 0, canvasW, canvasH)
+    if (!scene || !field) return
+
+    this.ensureBase(scene, field, dpr)
+
+    if (!sameCamera(cam, this.lastCam, 0.001)) {
+      this.lastCam = { ...cam }
+      this.stillSince = now
+    }
+    const zoomed = cam.zoom > 1.001
+    const settled = !moving && now - this.stillSince > 110
+    if (zoomed && settled && this.ready(scene)) {
+      const want = !sameCamera(cam, this.detail?.cam ?? null) && !sameCamera(cam, this.detailJob?.cam ?? null)
+      if (want) this.startDetail(scene, field, cam, dpr)
+    } else if (!zoomed && this.detailJob) {
+      this.spare = this.detailJob.canvas
+      this.detailJob = null
+    }
+
+    this.pump(budgetMs)
+
+    ctx.save()
+    ctx.beginPath()
+    ctx.roundRect(field.x, field.y, field.w, field.h, field.x > 1 ? 10 : 0)
+    ctx.clip()
+    ctx.fillStyle = edgeColour(scene)
+    ctx.fillRect(field.x, field.y, field.w, field.h)
+
+    const base = this.base && this.base.scene === scene ? this.base : null
+    if (overlays.cover || !base) {
+      if (this.frostFor === scene) {
+        ctx.imageSmoothingEnabled = true
+        ctx.drawImage(this.frost, field.x, field.y, field.w, field.h)
+      }
+      ctx.fillStyle = 'rgba(16, 10, 30, 0.35)'
+      ctx.fillRect(field.x, field.y, field.w, field.h)
+      ctx.restore()
+      return
+    }
+
+    ctx.imageSmoothingEnabled = true
+    if (!zoomed) {
+      ctx.drawImage(base.canvas, field.x, field.y, field.w, field.h)
+    } else {
+      const k = pxPerUnit(cam, field)
+      const origin = worldToScreen(0, 0, cam, field)
+      ctx.drawImage(base.canvas, origin.x, origin.y, scene.w * k, scene.h * k)
+      const d = this.detail
+      if (d && d.scene === scene && d.cam && Math.abs(d.cam.zoom - cam.zoom) < 0.001) {
+        const dk = pxPerUnit(d.cam, field)
+        const view = viewRect(d.cam, field)
+        const at = worldToScreen(view.x0, view.y0, cam, field)
+        const scale = k / dk
+        ctx.drawImage(d.canvas, at.x, at.y, field.w * scale, field.h * scale)
+      }
+    }
+
+    paintOverlays(ctx, scene, cam, field, overlays, now)
+    ctx.restore()
   }
 }

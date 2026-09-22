@@ -1,315 +1,293 @@
-import { mulberry32 } from '../../lib/seededRandom'
-import { buildScene, clampAnchor, SCENE_ORDER, type Scene, type SceneKind } from './scenes'
+/**
+ * Find the Bug: a timed Where's Waldo.
+ *
+ * Five scenes, one Bug hidden in each. A scene gets a minute; find him and the
+ * clock stops, run out and he is shown and the whole minute counts. The score
+ * is the total, fastest wins.
+ *
+ * Every millisecond in the total is one that really passed. A wrong tap costs
+ * time by leaving the player dazed — the scene dims and ignores taps for a
+ * moment while the clock keeps going — rather than by adding seconds nobody
+ * spent. The leaderboard checks a claimed time against its own clock, and a
+ * total padded with penalty seconds could claim more time than the run took.
+ */
 
-export type Phase = 'menu' | 'playing' | 'gameover'
+import { hashString, mulberry32 } from '../../lib/seededRandom'
+import { faceCentre } from './critters'
+import { buildScene, SCENE_NAMES, SCENE_ORDER, tapFindsTarget, type Scene, type SceneKind } from './scenes'
+
+export type Phase = 'menu' | 'intro' | 'playing' | 'found' | 'timeout' | 'gameover'
 
 export const ROUNDS = SCENE_ORDER.length
 
-/** A wrong swat costs time, the way a Spotter strike does. */
-export const MISS_PENALTY_MS = 3000
-/** Taking the hint is deliberately expensive. */
-export const HINT_PENALTY_MS = 8000
-/** The hint only unlocks once a round has genuinely stalled. */
-export const HINT_AFTER_MS = 12_000
-/** A round always ends, so a run always produces a score. */
-export const ROUND_CAP_MS = 45_000
-export const ROUND_FAIL_PENALTY_MS = 15_000
-/** Pause on the caught bug before the next scene. */
-const FOUND_HOLD_S = 0.95
+/** How long a scene lasts before he is shown and the next one starts. */
+export const SCENE_LIMIT_MS = 60_000
+/** A wide circle round where he is, once a scene has dragged on. */
+export const HINT_WIDE_MS = 25_000
+/** A tighter one later still. */
+export const HINT_NARROW_MS = 42_000
+/** How long a wrong tap leaves the scene dimmed and deaf. */
+export const DAZE_MS = 1_500
+/** Time on the scene card before the clock starts. The first one shows him for longer. */
+const INTRO_FIRST_MS = 2_600
+const INTRO_MS = 1_700
+/** The pause on a find, and on being shown where he was. */
+const FOUND_HOLD_MS = 1_350
+const TIMEOUT_HOLD_MS = 2_400
+const MISS_MARK_MS = 900
 
-/** Stage ratio — portrait, matching Pop and Stacker. */
-/**
- * Two board shapes: upright on a phone, on its side on a desktop. The upright
- * one is tall because phones are — a 3:4 board left a third of the screen
- * empty. The scene grids scale their rows and columns to whichever shape is in
- * play, so both hold roughly the same clutter and the two runs stay comparable
- * on one leaderboard — see `squareGrid` in scenes.ts.
- */
-export function stageFor(portrait: boolean) {
-  return portrait ? { w: 3, h: 5 } : { w: 4, h: 3 }
-}
+export type Hint = { x: number; y: number; r: number }
 
-/** Field height over field width, which is what the scene grids key off. */
-export function aspectFor(portrait: boolean) {
-  return portrait ? 5 / 3 : 3 / 4
-}
-
-/**
- * Where the scene sits inside a canvas that fills the shell. The scene keeps a
- * fixed 3:4 whatever shape the window is — a wider board would mean a different
- * amount of ground to search, and the leaderboard is a shared one.
- */
-export function fieldRect(w: number, h: number, aspect: number) {
-  const fw = Math.min(w, h / aspect)
-  const fh = fw * aspect
-  return { x: (w - fw) / 2, y: (h - fh) / 2, w: fw, h: fh }
-}
-
-export type RoundConfig = {
-  /** Body length as a fraction of stage width. */
-  bugSize: number
-  /** How far the bug's color sinks toward the scene's. */
-  camo: number
-  /** Multiplier on a scene's decoy count — later rounds are grubbier. */
-  clutter: number
-}
-
-function lerp(a: number, b: number, t: number) {
-  return a + (b - a) * t
-}
-
-/**
- * The bug holds still, so size, camouflage and clutter are the whole difficulty
- * curve. They all climb together across the run.
- */
-export function roundConfig(index: number): RoundConfig {
-  const t = ROUNDS > 1 ? index / (ROUNDS - 1) : 0
-  return {
-    bugSize: lerp(0.026, 0.017, t),
-    camo: lerp(0.74, 0.93, t),
-    clutter: lerp(1.2, 2, t),
-  }
-}
-
-export type RoundState = {
-  index: number
-  kind: SceneKind
-  scene: Scene
-  config: RoundConfig
-  /** Field shape this scene was laid out for. Held so a rotation mid-round
-   *  letterboxes the scene rather than stretching it. */
-  aspect: number
-  /** Colour of the surface the bug is perched on — what it camouflages against. */
-  camoBase: string
-  x: number
-  y: number
-  /** Fixed facing, picked once when the round is built. */
-  angle: number
-  elapsedMs: number
-  found: boolean
-  foundAge: number
-  failed: boolean
-  hintUsed: boolean
-}
+export type MissMark = { x: number; y: number; ageMs: number }
 
 export type GameState = {
   phase: Phase
-  round: RoundState
-  penaltyMs: number
-  misses: number
-  /** Wall-clock ms across finished rounds, so the HUD can show a running total. */
-  bankedMs: number
-  pointerX: number
-  pointerY: number
-  pointerActive: boolean
-  keyboardMode: boolean
-  reticleX: number
-  reticleY: number
-  missFlash: number
-  missX: number
-  missY: number
   seed: number
-  rng: () => number
+  /** Field height over width the next scene is built for. */
+  aspect: number
+  index: number
+  scene: Scene
+  /**
+   * The scene has been painted and can be shown. It is painted a little at a
+   * time behind the scene card, and the clock waits for it: nobody should be
+   * timed on a picture that is still arriving.
+   */
+  ready: boolean
+  /** Clock for the scene in play. Stops on a find. */
+  sceneMs: number
+  /** Scenes already finished, in real milliseconds. */
+  bankedMs: number
+  /** Time in the current card or pause between scenes. */
+  phaseMs: number
+  found: number
+  misses: number
+  dazeMs: number
+  marks: MissMark[]
+  hints: [Hint, Hint]
+  times: number[]
 }
 
 export type Snapshot = {
   phase: Phase
-  roundNumber: number
+  index: number
   sceneKind: SceneKind
+  sceneName: string
   runMs: number
-  penaltyMs: number
+  sceneMs: number
+  sceneLeftMs: number
+  found: number
   misses: number
-  roundMs: number
-  found: boolean
-  failed: boolean
-  hintUsed: boolean
-  hintReady: boolean
-  keyboardMode: boolean
-  reticleX: number
-  reticleY: number
+  dazed: boolean
+  hintLevel: 0 | 1 | 2
+  lastTimeMs: number | null
+  ready: boolean
 }
 
-function makeRound(index: number, rng: () => number, aspect: number): RoundState {
-  const config = roundConfig(index)
-  const kind = SCENE_ORDER[index % SCENE_ORDER.length]
-  const scene = buildScene(kind, rng, config.clutter, aspect)
-  const picked = scene.anchors[Math.floor(rng() * scene.anchors.length) % scene.anchors.length]
-  const anchor = clampAnchor(picked ?? { x: 0.5, y: 0.5, on: '#3a4254' })
+function sceneSeed(seed: number, index: number): number {
+  return hashString(`${seed}:${index}`)
+}
 
+/**
+ * Two circles that contain him, off centre so the middle of a circle is not
+ * an answer in itself. The narrow one sits inside the wide one.
+ */
+function makeHints(scene: Scene, seed: number): [Hint, Hint] {
+  const rng = mulberry32(seed ^ 0x9e3779b9)
+  const f = faceCentre(scene.target)
+  const span = Math.min(scene.w, scene.h)
+  const wideR = span * 0.3
+  const narrowR = span * 0.15
+  const off = (r: number, share: number) => {
+    const a = rng() * Math.PI * 2
+    const d = r * share * (0.4 + rng() * 0.6)
+    return { x: f.x + Math.cos(a) * d, y: f.y + Math.sin(a) * d }
+  }
+  const wide = off(wideR, 0.55)
+  const narrow = off(narrowR, 0.5)
+  return [
+    { ...wide, r: wideR },
+    { ...narrow, r: narrowR },
+  ]
+}
+
+function enterScene(state: GameState, index: number): GameState {
+  const seed = sceneSeed(state.seed, index)
+  const scene = buildScene(SCENE_ORDER[index], index, seed, state.aspect)
   return {
+    ...state,
+    phase: 'intro',
     index,
-    kind,
     scene,
-    config,
-    aspect,
-    camoBase: anchor.on,
-    x: anchor.x,
-    y: anchor.y,
-    angle: rng() * Math.PI * 2,
-    elapsedMs: 0,
-    found: false,
-    foundAge: 0,
-    failed: false,
-    hintUsed: false,
+    ready: false,
+    sceneMs: 0,
+    phaseMs: 0,
+    dazeMs: 0,
+    marks: [],
+    hints: makeHints(scene, seed),
   }
 }
 
-export function createInitialState(portrait = true): GameState {
-  const seed = Math.floor(Math.random() * 0xffffffff) >>> 0
-  const rng = mulberry32(seed)
+function newSeed(): number {
+  return Math.floor(Math.random() * 0xffffffff) >>> 0
+}
+
+export function createInitialState(aspect: number): GameState {
+  const seed = newSeed()
+  const scene = buildScene(SCENE_ORDER[0], 0, sceneSeed(seed, 0), aspect)
   return {
     phase: 'menu',
-    round: makeRound(0, rng, aspectFor(portrait)),
-    penaltyMs: 0,
-    misses: 0,
-    bankedMs: 0,
-    pointerX: 0.5,
-    pointerY: 0.5,
-    pointerActive: false,
-    keyboardMode: false,
-    reticleX: 0.5,
-    reticleY: 0.5,
-    missFlash: 0,
-    missX: 0,
-    missY: 0,
     seed,
-    rng,
+    aspect,
+    index: 0,
+    scene,
+    ready: false,
+    sceneMs: 0,
+    bankedMs: 0,
+    phaseMs: 0,
+    found: 0,
+    misses: 0,
+    dazeMs: 0,
+    marks: [],
+    hints: makeHints(scene, seed),
+    times: [],
   }
 }
 
-export function startGame(prev: GameState, portrait = true): GameState {
-  const seed = Math.floor(Math.random() * 0xffffffff) >>> 0
-  const rng = mulberry32(seed)
-  return {
+export function startGame(prev: GameState, aspect: number): GameState {
+  const fresh: GameState = {
     ...prev,
-    phase: 'playing',
-    round: makeRound(0, rng, aspectFor(portrait)),
-    penaltyMs: 0,
-    misses: 0,
+    seed: newSeed(),
+    aspect,
     bankedMs: 0,
-    missFlash: 0,
-    keyboardMode: false,
-    reticleX: 0.5,
-    reticleY: 0.5,
-    seed,
-    rng,
+    found: 0,
+    misses: 0,
+    times: [],
   }
+  return enterScene(fresh, 0)
 }
 
-/** Total run time including penalties — the number the score inverts. */
+/** Shape the canvas is now, for whichever scene gets built next. */
+export function setAspect(prev: GameState, aspect: number): GameState {
+  return Math.abs(prev.aspect - aspect) < 0.01 ? prev : { ...prev, aspect }
+}
+
+/** Total run time, in real milliseconds — the number the score inverts. */
 export function runMs(state: GameState): number {
-  return state.bankedMs + state.round.elapsedMs + state.penaltyMs
+  const live = state.phase === 'playing' || state.phase === 'found' || state.phase === 'timeout'
+  return state.bankedMs + (live ? state.sceneMs : 0)
 }
 
-export function hintReady(state: GameState): boolean {
-  const r = state.round
-  return state.phase === 'playing' && !r.hintUsed && !r.found && r.elapsedMs >= HINT_AFTER_MS
+export function hintLevel(state: GameState): 0 | 1 | 2 {
+  if (state.phase !== 'playing') return 0
+  if (state.sceneMs >= HINT_NARROW_MS) return 2
+  if (state.sceneMs >= HINT_WIDE_MS) return 1
+  return 0
 }
 
-function advanceRound(state: GameState): GameState {
-  const next = state.round.index + 1
-  state.bankedMs += state.round.elapsedMs
+function finishScene(state: GameState): GameState {
+  const next = state.index + 1
+  const banked = state.bankedMs + state.sceneMs
   if (next >= ROUNDS) {
-    state.phase = 'gameover'
-    return state
+    return { ...state, phase: 'gameover', bankedMs: banked, sceneMs: 0, phaseMs: 0 }
   }
-  // Later rounds keep the shape the run started in.
-  state.round = makeRound(next, state.rng, state.round.aspect)
-  return state
+  return enterScene({ ...state, bankedMs: banked }, next)
 }
 
-export function tick(prev: GameState, dt: number): GameState {
-  const state = { ...prev, round: { ...prev.round } }
-  state.missFlash = Math.max(0, state.missFlash - dt * 2.2)
-
-  if (state.phase !== 'playing') return state
-
-  const round = state.round
-
-  if (round.found) {
-    round.foundAge += dt
-    if (round.foundAge >= FOUND_HOLD_S) return advanceRound(state)
-    return state
+export function tick(prev: GameState, dtMs: number): GameState {
+  if (prev.phase === 'menu' || prev.phase === 'gameover') return prev
+  const state = { ...prev }
+  if (state.marks.length) {
+    state.marks = state.marks.map((m) => ({ ...m, ageMs: m.ageMs + dtMs })).filter((m) => m.ageMs < MISS_MARK_MS)
   }
 
-  round.elapsedMs += dt * 1000
-
-  if (round.elapsedMs >= ROUND_CAP_MS) {
-    round.failed = true
-    state.penaltyMs += ROUND_FAIL_PENALTY_MS
-    return advanceRound(state)
+  switch (state.phase) {
+    case 'intro': {
+      state.phaseMs += dtMs
+      const hold = state.index === 0 ? INTRO_FIRST_MS : INTRO_MS
+      if (state.phaseMs >= hold && state.ready) {
+        state.phase = 'playing'
+        state.phaseMs = 0
+      }
+      return state
+    }
+    case 'playing': {
+      state.sceneMs = Math.min(SCENE_LIMIT_MS, state.sceneMs + dtMs)
+      state.dazeMs = Math.max(0, state.dazeMs - dtMs)
+      if (state.sceneMs >= SCENE_LIMIT_MS) {
+        state.phase = 'timeout'
+        state.phaseMs = 0
+        state.dazeMs = 0
+        state.times = [...state.times, SCENE_LIMIT_MS]
+      }
+      return state
+    }
+    case 'found':
+    case 'timeout': {
+      state.phaseMs += dtMs
+      const hold = state.phase === 'found' ? FOUND_HOLD_MS : TIMEOUT_HOLD_MS
+      if (state.phaseMs >= hold) return finishScene(state)
+      return state
+    }
+    default:
+      return state
   }
-
-  return state
 }
 
-/** Swat tolerance in normalized units — generous enough for a thumb. */
-export function catchRadius(round: RoundState): number {
-  return Math.max(round.config.bugSize * 0.95, 0.036)
+/** Skip the rest of the scene card. The clock has not started, so nothing is lost. */
+export function skipIntro(prev: GameState): GameState {
+  if (prev.phase !== 'intro' || !prev.ready) return prev
+  return { ...prev, phase: 'playing', phaseMs: 0 }
 }
 
-export function hitAt(prev: GameState, x: number, y: number): GameState {
-  if (prev.phase !== 'playing' || prev.round.found || prev.round.failed) return prev
-  const state = { ...prev, round: { ...prev.round } }
-  const round = state.round
+/** The scene is painted and can be shown. */
+export function markReady(prev: GameState): GameState {
+  return prev.ready ? prev : { ...prev, ready: true }
+}
 
-  if (Math.hypot(x - round.x, y - round.y) <= catchRadius(round)) {
-    round.found = true
-    round.foundAge = 0
-    return state
+export type TapResult = 'found' | 'miss' | 'ignored'
+
+/** A tap on the scene, in world units. */
+export function tapAt(prev: GameState, x: number, y: number): { state: GameState; result: TapResult } {
+  if (prev.phase !== 'playing' || prev.dazeMs > 0) return { state: prev, result: 'ignored' }
+  if (tapFindsTarget(prev.scene, x, y)) {
+    return {
+      state: {
+        ...prev,
+        phase: 'found',
+        phaseMs: 0,
+        found: prev.found + 1,
+        times: [...prev.times, prev.sceneMs],
+      },
+      result: 'found',
+    }
   }
-
-  state.misses += 1
-  state.penaltyMs += MISS_PENALTY_MS
-  state.missFlash = 1
-  state.missX = x
-  state.missY = y
-  return state
-}
-
-export function applyHint(prev: GameState): GameState {
-  if (!hintReady(prev)) return prev
-  const state = { ...prev, round: { ...prev.round } }
-  state.round.hintUsed = true
-  state.penaltyMs += HINT_PENALTY_MS
-  return state
-}
-
-export function setPointer(prev: GameState, x: number, y: number): GameState {
-  return { ...prev, pointerX: x, pointerY: y, pointerActive: true, keyboardMode: false }
-}
-
-export function clearPointer(prev: GameState): GameState {
-  return { ...prev, pointerActive: false }
-}
-
-/** Arrow-key scanning — the keyboard path to the same swat. */
-export function moveReticle(prev: GameState, dx: number, dy: number): GameState {
-  const step = 0.022
   return {
-    ...prev,
-    keyboardMode: true,
-    pointerActive: false,
-    reticleX: Math.max(0.02, Math.min(0.98, prev.reticleX + dx * step)),
-    reticleY: Math.max(0.02, Math.min(0.98, prev.reticleY + dy * step)),
+    state: {
+      ...prev,
+      misses: prev.misses + 1,
+      dazeMs: DAZE_MS,
+      marks: [...prev.marks, { x, y, ageMs: 0 }],
+    },
+    result: 'miss',
   }
 }
 
 export function toSnapshot(s: GameState): Snapshot {
   return {
     phase: s.phase,
-    roundNumber: s.round.index + 1,
-    sceneKind: s.round.kind,
+    index: s.index,
+    sceneKind: s.scene.kind,
+    sceneName: SCENE_NAMES[s.scene.kind],
     runMs: runMs(s),
-    penaltyMs: s.penaltyMs,
+    sceneMs: s.sceneMs,
+    sceneLeftMs: Math.max(0, SCENE_LIMIT_MS - s.sceneMs),
+    found: s.found,
     misses: s.misses,
-    roundMs: s.round.elapsedMs,
-    found: s.round.found,
-    failed: s.round.failed,
-    hintUsed: s.round.hintUsed,
-    hintReady: hintReady(s),
-    keyboardMode: s.keyboardMode,
-    reticleX: s.reticleX,
-    reticleY: s.reticleY,
+    dazed: s.dazeMs > 0,
+    hintLevel: hintLevel(s),
+    lastTimeMs: s.times.length ? s.times[s.times.length - 1] : null,
+    ready: s.ready,
   }
 }
+
+export { MISS_MARK_MS }

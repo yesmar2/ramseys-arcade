@@ -315,26 +315,35 @@ function BarrageThumb({ accent }: { accent: string }) {
   )
 }
 
-/** The beetle from the game, turned to face up so its long axis fills a square. */
+/**
+ * The Bug himself, face on: bobble hat, round glasses, a striped shell. The
+ * one character the game is about, so he is the thumb.
+ */
 function FindBugThumb({ accent }: { accent: string }) {
-  const cy = 17.4
-  const legs = [13.6, 17.4, 21.2]
   return (
     <>
-      {/* Legs first, so they read as underneath the shell. */}
-      <g stroke={accent} strokeWidth="1.35" strokeLinecap="round">
-        {legs.map((y) => (
-          <g key={y}>
-            <line x1="13.7" y1={y} x2="7.3" y2={y} />
-            <line x1="18.3" y1={y} x2="24.7" y2={y} />
-          </g>
-        ))}
-        <line x1="14.4" y1="10.9" x2="11.9" y2="5.3" />
-        <line x1="17.6" y1="10.9" x2="20.1" y2="5.3" />
+      <g stroke={accent} strokeWidth="1.3" strokeLinecap="round">
+        <path d="M12.6 8.8 Q11.6 6.2 9.6 5.6" fill="none" />
+        <path d="M19.4 8.8 Q20.4 6.2 22.4 5.6" fill="none" />
+        <path d="M10.4 21.4 Q7.8 22.4 7.6 24.8" fill="none" />
+        <path d="M21.6 21.4 Q24.2 22.4 24.4 24.8" fill="none" />
       </g>
-      <ellipse cx="16" cy={cy} rx="5.8" ry="9" {...mark(accent, 0.28, 1)} />
-      <line x1="16" y1="24.8" x2="16" y2="12.9" stroke={accent} strokeWidth="1" />
-      <ellipse cx="16" cy="10.4" rx="3.8" ry="3.1" fill={accent} />
+      <circle cx="9.4" cy="5.5" r="1.1" fill={accent} />
+      <circle cx="22.6" cy="5.5" r="1.1" fill={accent} />
+      <ellipse cx="16" cy="24" rx="6.4" ry="5.4" {...mark(accent, 0.28, 1.3)} />
+      <g stroke={accent} strokeWidth="1.3" strokeLinecap="round">
+        <line x1="10.4" y1="22.4" x2="21.6" y2="22.4" />
+        <line x1="10.6" y1="25.9" x2="21.4" y2="25.9" />
+      </g>
+      <circle cx="16" cy="14.2" r="5.2" {...mark(accent, 0.18, 1.3)} />
+      <path d="M10.6 11.4 A5.4 4.2 0 0 1 21.4 11.4 Z" {...mark(accent, 0.55, 1.3)} />
+      <rect x="10.2" y="10.6" width="11.6" height="2" rx="1" fill={accent} />
+      <circle cx="16" cy="6.4" r="1.6" fill={accent} />
+      <g stroke={accent} strokeWidth="1.1" fill="none">
+        <circle cx="13.9" cy="15.2" r="1.6" />
+        <circle cx="18.1" cy="15.2" r="1.6" />
+        <line x1="15.5" y1="15" x2="16.5" y2="15" />
+      </g>
     </>
   )
 }

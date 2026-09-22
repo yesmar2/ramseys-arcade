@@ -1,792 +1,1424 @@
 /**
- * Scene generators — the arcade clutter the bug hides in.
+ * Scene builder: a picture-book spread with the Bug somewhere in it.
  *
- * Geometry is normalized (0–1 across the stage) so a scene survives resizing
- * without being rebuilt. Nothing in a scene animates: the bug sits still, so
- * anything that moved would be a free tell.
- */
-
-export type SceneKind = 'arcade' | 'cabinets' | 'board' | 'loom' | 'tokens' | 'carpet'
-
-/**
- * A perch, and the colour of whatever it is a perch on. The bug takes that
- * colour rather than a scene-wide grey, which is what lets a scene be as
- * saturated as it likes without giving the bug away — it hides against the one
- * cable or rim or bezel it is sitting on, not against a washed-out room.
- */
-export type Anchor = { x: number; y: number; on: string }
-
-export type Decoy = {
-  x: number
-  y: number
-  /** Radius as a fraction of stage width. */
-  r: number
-  /** `screw` draws as a disc, `speck` as a body-shaped ellipse. */
-  kind: 'screw' | 'speck'
-}
-
-export type Cabinet = {
-  x: number
-  y: number
-  w: number
-  h: number
-  /** Marquee and screen glow. */
-  accent: string
-  /** Enamel the cabinet body is painted. */
-  body: string
-  /** Marquee stripe brightness, purely decorative variation. */
-  tone: number
-}
-
-export type BoardRow = {
-  rank: number
-  name: string
-  score: number
-}
-
-/**
- * One cable in the loom. `x` is a cubic in the run from top to bottom, so the
- * renderer's bezier and the anchors sampled off `cableX` trace the same line.
- */
-export type Cable = {
-  x0: number
-  x1: number
-  x2: number
-  x3: number
-  /** Stroke width as a fraction of stage width. */
-  width: number
-  /** Sheath colour. Looms are colour coded, so each run looks different. */
-  colour: string
-  tone: number
-}
-
-/** A zip tie strapping neighbouring cables together. */
-export type Tie = { x: number; y: number; w: number }
-
-/** A connector block spliced into the loom. */
-export type Block = { x: number; y: number; w: number; h: number; pins: number }
-
-export type Token = { x: number; y: number; r: number; colour: string; tone: number }
-
-/**
- * The arcade floor: a drawn scene rather than a generated pattern. Everything
- * below describes one thing in it — a machine, somebody standing at one, a cup
- * left on the carpet — and the renderer paints them back to front, so people
- * stand behind the cabinets they are playing.
- */
-export type MachineKind = 'upright' | 'claw' | 'change' | 'pinball'
-
-export type Machine = {
-  x: number
-  /** Floor line the cabinet stands on. */
-  y: number
-  w: number
-  h: number
-  cab: string
-  accent: string
-  /** Which of the little fake games is on the screen. */
-  screen: number
-  kind: MachineKind
-}
-
-export type Poster = {
-  x: number
-  y: number
-  w: number
-  h: number
-  colour: string
-  kind: number
-}
-
-export type PersonPose = 'play' | 'stand' | 'cheer' | 'walk' | 'point'
-
-export type Person = {
-  /** Feet position, centred between the shoes. */
-  x: number
-  y: number
-  /** Head to toe. */
-  h: number
-  skin: string
-  hair: string
-  hairStyle: number
-  shirt: string
-  legs: string
-  shoes: string
-  /** 0 none, 1 cap, 2 beanie. */
-  hat: number
-  pose: PersonPose
-  flip: boolean
-}
-
-export type PropKind =
-  | 'cup'
-  | 'popcorn'
-  | 'token'
-  | 'balloon'
-  | 'plush'
-  | 'cone'
-  | 'skate'
-  | 'cat'
-  | 'bag'
-  | 'crumb'
-
-export type Prop = { x: number; y: number; s: number; kind: PropKind; colour: string }
-
-export type Sign = { x: number; y: number; w: number; h: number; colour: string; kind: number }
-
-export type MotifKind = 'star' | 'tri' | 'dot' | 'zig'
-export type Motif = {
-  x: number
-  y: number
-  size: number
-  rot: number
-  kind: MotifKind
-  accent: string
-}
-
-type SceneBase = {
-  /**
-   * Fade level of the surface the bug actually perches on — the tone its
-   * camouflage sinks toward. Kept as a level rather than a hex so it tracks
-   * whichever theme is on.
-   */
-  camoTone: number
-  /**
-   * Fade level for a full-stage surface under the scene. Scenes whose clutter
-   * floats on bare playfield need one, or a mid-tone bug lights up in the gaps.
-   */
-  ground?: number
-  decoys: Decoy[]
-  anchors: Anchor[]
-}
-
-export type Scene = SceneBase &
-  (
-    | {
-        kind: 'arcade'
-        machines: Machine[]
-        people: Person[]
-        props: Prop[]
-        signs: Sign[]
-        posters: Poster[]
-      }
-    | { kind: 'cabinets'; cabinets: Cabinet[] }
-    | { kind: 'board'; rows: BoardRow[] }
-    | { kind: 'loom'; cables: Cable[]; ties: Tie[]; blocks: Block[] }
-    | { kind: 'tokens'; tokens: Token[] }
-    | { kind: 'carpet'; motifs: Motif[] }
-  )
-
-/**
- * Scene geometry stays normalised to the field (x and y both 0–1), so a grid
- * only has to decide how many cells to cut it into. `aspect` is the field's
- * height over its width: 4/3 upright on a phone, 3/4 on its side on a desktop.
+ * Every scene is a place — a picnic, a garden, a pond, an arcade, a night
+ * market — laid out as a few big set pieces, groups of critters doing things
+ * among them, and a crowd filling the rest. Then one critter becomes the Bug
+ * and a handful of others become the reason he is hard to find: they share his
+ * stripes, or his hat, or all of it bar one thing.
  *
- * Solving for square cells at a fixed item count gives cols = sqrt(n / aspect)
- * and rows = aspect * cols. A cabinet stays a cabinet in either orientation,
- * and there is the same amount of clutter to search either way — which is what
- * keeps a landscape run and an upright run the same hunt.
+ * World units: every scene covers the same area whatever its shape, so a phone
+ * held upright and a desktop both search the same amount of ground, with the
+ * same number of critters at the same size.
  */
-function squareGrid(items: number, aspect: number) {
-  // Square cells of side c over a 1 x aspect field hold aspect / c^2 of them,
-  // so c = sqrt(aspect / items). Both counts round off that directly — deriving
-  // rows from the already-rounded cols compounds the error badly on tall fields.
-  const cell = Math.sqrt(aspect / items)
-  return {
-    cols: Math.max(2, Math.round(1 / cell)),
-    rows: Math.max(2, Math.round(aspect / cell)),
-  }
+
+import { mulberry32 } from '../../lib/seededRandom'
+import {
+  CREAM,
+  critterBounds,
+  faceCentre,
+  NAVY,
+  RED,
+  THE_BUG,
+  WHITE,
+  type Critter,
+  type Glasses,
+  type Hat,
+  type Held,
+  type Look,
+  type Mood,
+  type Pattern,
+  type Pose,
+  type Species,
+} from './critters'
+import { isLowProp, propBounds, propOccluders, type Prop, type PropKind } from './props'
+
+export type SceneKind = 'picnic' | 'garden' | 'pond' | 'arcade' | 'night'
+
+/**
+ * Fixed order, so every run faces the same climb; only the contents are
+ * seeded. Bright and open to begin with, dark and crowded at the end.
+ */
+export const SCENE_ORDER: readonly SceneKind[] = ['picnic', 'garden', 'pond', 'arcade', 'night']
+
+export const SCENE_NAMES: Record<SceneKind, string> = {
+  picnic: 'The Picnic',
+  garden: 'The Garden',
+  pond: 'The Pond',
+  arcade: 'The Bug Arcade',
+  night: 'The Night Market',
+}
+
+/** Square world units every scene covers, whatever its shape. */
+export const WORLD_AREA = 720_000
+
+export type Rect = { x0: number; y0: number; x1: number; y1: number }
+
+export type DecalKind = 'blade' | 'clover' | 'bloom' | 'speck' | 'crumb' | 'confetti' | 'shell' | 'ripple' | 'star'
+
+/** Flat marks on the ground: texture, never in the way of anything. */
+export type Decal = { kind: DecalKind; x: number; y: number; s: number; rot: number; colour: string }
+
+/** A pool of light at night. */
+export type Light = { x: number; y: number; r: number; colour: string }
+
+export type Ground =
+  | { kind: 'picnic'; blanket: { x: number; y: number; w: number; h: number; rot: number }; plates: { x: number; y: number; r: number }[] }
+  | { kind: 'garden'; beds: Rect[]; stones: { x: number; y: number; r: number }[] }
+  | { kind: 'pond'; shore: number[]; pads: { x: number; y: number; r: number; rot: number }[] }
+  | { kind: 'arcade'; wall: number }
+  | { kind: 'night'; horizon: number; path: number[] }
+
+export type Item = { z: number; critter?: Critter; prop?: Prop }
+
+/** String lights and anything else hung over the whole scene. */
+export type Garland = { points: [number, number][]; colours: string[] }
+
+export type Scene = {
+  kind: SceneKind
+  index: number
+  w: number
+  h: number
+  /** A critter's height here, the yardstick everything else is laid out in. */
+  unit: number
+  ground: Ground
+  decals: Decal[]
+  items: Item[]
+  critters: Critter[]
+  target: Critter
+  garlands: Garland[]
+  lights: Light[]
+  /** How dark the night is, 0 in daylight. */
+  dusk: number
 }
 
 type Rng = () => number
 
+// ------------------------------------------------------------------ tuning
+
+/**
+ * The difficulty climb, per scene. The crowd grows and shrinks a little, more
+ * of it borrows the Bug's look, and from the third scene he may stand behind
+ * something with only his top half showing.
+ */
+export type SceneSpec = {
+  crowd: number
+  size: number
+  /** Critters that share all of the Bug's look bar one thing. */
+  twins: number
+  /** Other critters in his red and white stripes. */
+  stripes: number
+  /** Other critters in his red bobble hat. */
+  hats: number
+  /** Share of the crowd in round glasses like his. */
+  glasses: number
+  /** Whether he may stand half behind something. */
+  tuck: boolean
+}
+
+export function sceneSpec(index: number): SceneSpec {
+  const specs: SceneSpec[] = [
+    { crowd: 120, size: 50, twins: 1, stripes: 6, hats: 5, glasses: 0.14, tuck: false },
+    { crowd: 150, size: 48, twins: 2, stripes: 8, hats: 7, glasses: 0.18, tuck: false },
+    { crowd: 175, size: 46, twins: 4, stripes: 10, hats: 9, glasses: 0.22, tuck: true },
+    { crowd: 200, size: 44, twins: 6, stripes: 12, hats: 11, glasses: 0.26, tuck: true },
+    { crowd: 225, size: 43, twins: 8, stripes: 14, hats: 13, glasses: 0.3, tuck: true },
+  ]
+  return specs[Math.max(0, Math.min(specs.length - 1, index))]
+}
+
+// ----------------------------------------------------------------- palette
+
+const HAT_COLOURS = ['#3f78d8', '#3fa05a', '#f2c230', '#8c5ad6', '#f08a2a', '#ea6fa6', '#2e2a36', '#34b3a0', WHITE] as const
+const BRIGHT = ['#3f78d8', '#3fa05a', '#f2c230', '#8c5ad6', '#f08a2a', '#ea6fa6', '#34b3a0', '#e2433b'] as const
+const HEADS = [CREAM, '#f2c9a0', '#d9a974', '#3d3346', '#8fd16a', '#ffd95a', '#f4a3b8', '#9fb3d9', '#b58ee0', '#f0b27a'] as const
+const LIMBS = [NAVY, '#3a3046', '#4a3326', '#2e4a3a', '#4a2f5a'] as const
+
+type Cast = {
+  species: [Species, number][]
+  held: Held[]
+  heldChance: number
+  poses: [Pose, number][]
+}
+
 function pick<T>(rng: Rng, list: readonly T[]): T {
   return list[Math.floor(rng() * list.length) % list.length]
+}
+
+function weighted<T>(rng: Rng, list: readonly [T, number][]): T {
+  let total = 0
+  for (const [, w] of list) total += w
+  let roll = rng() * total
+  for (const [v, w] of list) {
+    roll -= w
+    if (roll <= 0) return v
+  }
+  return list[list.length - 1][0]
 }
 
 function range(rng: Rng, lo: number, hi: number): number {
   return lo + rng() * (hi - lo)
 }
 
-/** Scene palettes lean on the same accents so the whole game reads as one arcade. */
-const ACCENTS = ['#2eb87a', '#e85d75', '#4aa8e8', '#f5b942', '#7a6cf0', '#3ecf8e'] as const
-
-/** Cabinet bodies: dark enamel, the colour a real cabinet side is painted. */
-const CABINET_BODY = ['#2b3550', '#34304d', '#26404a', '#3a2f3d', '#2d3a3f'] as const
-/** Sheathed looms are colour coded, which is the whole reason they are fun to search. */
-const CABLE_COLOURS = ['#e0574f', '#3f8fd8', '#e8b13c', '#4cb377', '#b9bfc9', '#9a6fd0'] as const
-/** Brass and nickel, warm against the counter felt. */
-const TOKEN_COLOURS = ['#d9a441', '#c8912f', '#e0b45a', '#b9bfc9', '#caa64d'] as const
-export const COUNTER_FELT = '#1f4a3d'
-export const CARPET_GROUND = '#211a3d'
-export const BOARD_GROUND = '#131a2b'
-
-// ----------------------------------------------------------- arcade floor
-
-export const ARCADE_WALL = '#241a3a'
-export const ARCADE_FLOOR = '#2b1f47'
-
-const SKIN = ['#f2c9a4', '#dda06f', '#b0774a', '#8a5433', '#f7dcc0', '#c98a5e', '#6d3f26'] as const
-const HAIR = [
-  '#241c16',
-  '#241c16',
-  '#4a2c1a',
-  '#4a2c1a',
-  '#8a5a2b',
-  '#d9a441',
-  '#a83f3f',
-  '#33334a',
-  '#5c3fa8',
-  '#c9c2cf',
-] as const
-const SHIRT = [
-  '#e0574f',
-  '#3f8fd8',
-  '#4cb377',
-  '#e8b13c',
-  '#9a6fd0',
-  '#e07ab0',
-  '#3fb8c0',
-  '#f07a3f',
-  '#d8d8e2',
-] as const
-const LEGS = ['#2f3a56', '#3d3350', '#4a4a58', '#2c4a45', '#553344', '#6a5a4a'] as const
-const SHOES = ['#1d1a26', '#2b2436', '#8a3f3f', '#d8d8e2'] as const
-const CAB_BODY = ['#3a2f5c', '#2f4a5c', '#4a2f45', '#33405c', '#3f3a52', '#452f52'] as const
-
-/** One row of machines with the crowd standing at it. */
-type Rank = { y: number; h: number; count: number }
-
-function addPerson(
-  rng: Rng,
-  x: number,
-  y: number,
-  h: number,
-  pose: PersonPose,
-): Person {
-  return {
-    x,
-    y,
-    h,
-    skin: pick(rng, SKIN),
-    hair: pick(rng, HAIR),
-    hairStyle: Math.floor(rng() * 4),
-    shirt: pick(rng, SHIRT),
-    legs: pick(rng, LEGS),
-    shoes: pick(rng, SHOES),
-    hat: rng() < 0.22 ? (rng() < 0.6 ? 1 : 2) : 0,
-    pose,
-    flip: rng() < 0.5,
-  }
-}
+const HATS: [Hat, number][] = [
+  ['none', 40],
+  ['cap', 12],
+  ['beanie', 8],
+  ['bobble', 6],
+  ['straw', 5],
+  ['party', 4],
+  ['bow', 6],
+  ['flower', 5],
+  ['tophat', 3],
+  ['crown', 2],
+  ['headphones', 4],
+]
 
 /**
- * An arcade hall seen face on. Three ranks of machines run back into the room
- * with the crowd at them, people cross the aisles between, and the floor
- * carries the debris of a busy evening. Ranks further back sit higher and are
- * drawn smaller, which is all the perspective a flat scene needs.
+ * A random crowd member. Colours are drawn per species so a bee is still
+ * yellow and an ant still ant-coloured; hats and glasses are anybody's.
  */
-function buildArcadeScene(rng: Rng, clutter: number, aspect: number): Scene {
-  const machines: Machine[] = []
-  const people: Person[] = []
-  const props: Prop[] = []
-  const signs: Sign[] = []
-  const posters: Poster[] = []
-  const anchors: Anchor[] = []
-  const decoys: Decoy[] = []
+function randomLook(rng: Rng, cast: Cast, species?: Species): Look {
+  const sp = species ?? weighted(rng, cast.species)
+  let body: string = pick(rng, BRIGHT)
+  let trim: string = pick(rng, BRIGHT)
+  let pattern: Pattern = 'plain'
+  let head: string = pick(rng, HEADS)
+  let limb: string = pick(rng, LIMBS)
 
-  const wallBottom = 0.24
-
-  // Neon over the back wall, and framed art between it.
-  for (let i = 0; i < 3; i++) {
-    const w = range(rng, 0.11, 0.16)
-    signs.push({
-      x: 0.09 + i * 0.3 + range(rng, -0.02, 0.02),
-      y: range(rng, 0.03, 0.07),
-      w,
-      h: w * range(rng, 0.42, 0.58),
-      colour: pick(rng, SHIRT),
-      kind: Math.floor(rng() * 3),
-    })
-  }
-  for (let i = 0; i < 5; i++) {
-    const w = range(rng, 0.06, 0.1)
-    posters.push({
-      x: 0.04 + i * 0.19 + range(rng, -0.015, 0.015),
-      y: range(rng, 0.12, 0.155),
-      w,
-      h: w * range(rng, 1.15, 1.5),
-      colour: pick(rng, SHIRT),
-      kind: Math.floor(rng() * 4),
-    })
-  }
-
-  const ranks: Rank[] = [
-    { y: wallBottom + 0.16, h: 0.14, count: 7 },
-    { y: wallBottom + 0.37, h: 0.185, count: 6 },
-    { y: wallBottom + 0.62, h: 0.235, count: 5 },
-  ]
-
-  ranks.forEach((rank, rankIndex) => {
-    const span = 0.96 / rank.count
-    for (let i = 0; i < rank.count; i++) {
-      const w = span * range(rng, 0.6, 0.74)
-      const x = 0.02 + span * i + (span - w) / 2
-      const cab = pick(rng, CAB_BODY)
-      const accent = pick(rng, SHIRT)
-
-      // Mostly uprights, with the odd claw, change booth or pinball table to
-      // break the rhythm of the row.
+  switch (sp) {
+    case 'beetle': {
       const roll = rng()
-      const kind: MachineKind =
-        roll < 0.12 ? 'claw' : roll < 0.18 ? 'change' : roll < 0.28 ? 'pinball' : 'upright'
-      const h = kind === 'pinball' ? rank.h * 0.72 : kind === 'claw' ? rank.h * 1.12 : rank.h
-
-      machines.push({
-        x,
-        y: rank.y,
-        w,
-        h,
-        cab,
-        accent,
-        screen: Math.floor(rng() * 4),
-        kind,
-      })
-
-      // A bug on a cabinet side, or along its top edge.
-      anchors.push({ x: x + w * range(rng, 0.08, 0.92), y: rank.y - h + 0.006, on: cab })
-      anchors.push({ x: x + w * range(rng, 0.04, 0.96), y: rank.y - range(rng, 0.02, 0.07), on: cab })
-
-      // Somebody at most machines, standing behind it so we see them over the
-      // top of the cabinet.
-      if (kind !== 'change' && rng() < 0.6) {
-        people.push(
-          addPerson(
-            rng,
-            x + w * range(rng, 0.3, 0.7),
-            rank.y - h * 0.24,
-            h * range(rng, 0.98, 1.1),
-            rng() < 0.22 ? 'cheer' : 'play',
-          ),
-        )
+      if (roll < 0.28) {
+        // Ladybird.
+        body = pick(rng, ['#e2433b', '#f08a2a', '#f2c230', '#ea6fa6'])
+        trim = '#2a2032'
+        pattern = 'spots'
+        head = pick(rng, ['#3d3346', '#2e2a36', CREAM])
+      } else {
+        body = pick(rng, BRIGHT)
+        trim = pick(rng, [WHITE, '#2a2032', ...BRIGHT])
+        pattern = weighted(rng, [['plain', 3], ['spots', 2], ['dots', 2], ['stripes', 2]] as [Pattern, number][])
+        if (trim === body) trim = WHITE
       }
-
-      // Somebody watching over a shoulder on the deeper ranks.
-      if (rankIndex > 0 && rng() < 0.2) {
-        people.push(
-          addPerson(
-            rng,
-            x + w * range(rng, -0.1, 1.1),
-            rank.y + rank.h * 0.08,
-            rank.h * range(rng, 0.92, 1.04),
-            rng() < 0.4 ? 'point' : 'stand',
-          ),
-        )
-      }
+      break
     }
-  })
-
-  // People crossing the floor in front of everything.
-  for (let i = 0; i < 6; i++) {
-    const kid = rng() < 0.35
-    people.push(
-      addPerson(
-        rng,
-        range(rng, 0.05, 0.95),
-        range(rng, 0.88, 1),
-        kid ? range(rng, 0.115, 0.145) : range(rng, 0.175, 0.215),
-        rng() < 0.55 ? 'walk' : 'stand',
-      ),
-    )
+    case 'ant':
+      body = pick(rng, ['#a2472e', '#2e2536', '#7a4a2a', '#c0582e', '#5a3a6a'])
+      head = body === '#2e2536' ? '#3d3346' : mixHead(rng, body)
+      limb = body === '#2e2536' ? '#2e2536' : '#4a2a1c'
+      trim = body
+      break
+    case 'bee':
+      body = pick(rng, ['#ffd23f', '#ffc234', '#f7b733'])
+      trim = '#2e2536'
+      head = pick(rng, ['#ffd95a', '#3d3346', CREAM])
+      limb = '#2e2536'
+      break
+    case 'grasshopper':
+      body = pick(rng, ['#7ccf5a', '#9bd84a', '#5fbf55', '#b5d65a'])
+      head = pick(rng, ['#8fd86a', '#a8e070', '#7ccf5a'])
+      limb = '#3f8a3a'
+      trim = body
+      break
+    case 'spider':
+      body = pick(rng, ['#7a5ad0', '#3d3346', '#5a3a2a', '#3f78d8', '#e2433b'])
+      trim = pick(rng, ['#f2c230', '#ea6fa6', WHITE, '#34b3a0'])
+      limb = pick(rng, ['#4a3490', '#2e2536', '#3a2618'])
+      head = body
+      break
+    case 'butterfly':
+      body = pick(rng, ['#ec7fb0', '#f08a2a', '#3f78d8', '#f2c230', '#8c5ad6', '#34b3a0', WHITE])
+      trim = pick(rng, BRIGHT.filter((c) => c !== body))
+      head = pick(rng, [CREAM, '#3d3346', '#f4a3b8'])
+      limb = '#3a3046'
+      break
+    case 'caterpillar':
+      body = pick(rng, ['#7ccf5a', '#f2c230', '#f08a2a', '#3f78d8', '#8c5ad6', '#34b3a0'])
+      trim = pick(rng, ['#f2c230', '#7ccf5a', WHITE, '#ea6fa6', '#2e2536'])
+      if (trim === body) trim = WHITE
+      head = pick(rng, ['#8fd86a', '#f2c9a0', '#ffd95a', CREAM])
+      break
+    case 'snail':
+      body = pick(rng, ['#e0a458', '#c98f4a', '#ea6fa6', '#8fb6e8', '#b58ee0', '#f2c230'])
+      trim = pick(rng, ['#9a5a2a', '#7a3a5a', '#3f5a9a', WHITE])
+      head = pick(rng, ['#b9c7a0', '#c9c0b0', '#e6d6b8', '#a8c6b8'])
+      break
+    case 'worm':
+      body = pick(rng, ['#f4a3b8', '#f08c9c', '#e8b0a0'])
+      head = body
+      break
   }
 
-  // A bug on somebody's shirt is the best hiding place in the room.
-  for (const person of people) {
-    anchors.push({
-      x: person.x + person.h * range(rng, -0.07, 0.07),
-      y: person.y - person.h * range(rng, 0.48, 0.66),
-      on: person.shirt,
-    })
-  }
+  const canWear = sp !== 'snail' || rng() < 0.25
+  const hat: Hat = canWear ? weighted(rng, HATS) : 'none'
+  const hatColour = hat === 'crown' ? '#f2c230' : hat === 'straw' ? '#e8c27a' : pick(rng, HAT_COLOURS)
+  let hatTrim: string = pick(rng, [WHITE, ...HAT_COLOURS])
+  if (hatTrim === hatColour) hatTrim = WHITE
 
-  // Debris on the carpet.
-  const kinds: PropKind[] = ['cup', 'popcorn', 'token', 'plush', 'cone', 'skate', 'bag', 'cat']
-  const propCount = Math.round(range(rng, 10, 14) * clutter)
-  for (let i = 0; i < propCount; i++) {
-    const colour = pick(rng, SHIRT)
-    const prop: Prop = {
-      x: range(rng, 0.04, 0.96),
-      y: range(rng, wallBottom + 0.5, 0.99),
-      s: range(rng, 0.028, 0.05),
-      kind: pick(rng, kinds),
-      colour,
-    }
-    props.push(prop)
-    anchors.push({ x: prop.x + prop.s * 0.45, y: prop.y - prop.s * 0.25, on: colour })
-  }
+  const facesUs = sp !== 'snail' && sp !== 'spider'
+  const glasses: Glasses = facesUs ? (rng() < 0.12 ? 'round' : rng() < 0.08 ? 'shades' : 'none') : 'none'
+  const bipedal = sp === 'beetle' || sp === 'ant' || sp === 'bee' || sp === 'grasshopper' || sp === 'butterfly'
+  const held: Held = bipedal && rng() < cast.heldChance ? pick(rng, cast.held) : 'none'
 
-  for (let i = 0; i < 3; i++) {
-    props.push({
-      x: range(rng, 0.08, 0.92),
-      y: range(rng, wallBottom + 0.04, wallBottom + 0.26),
-      s: range(rng, 0.032, 0.046),
-      kind: 'balloon',
-      colour: pick(rng, SHIRT),
-    })
-  }
-
-  // Crumbs and dropped tokens: the false positives.
-  const grit = Math.round(range(rng, 30, 44) * clutter)
-  for (let i = 0; i < grit; i++) {
-    decoys.push({
-      x: range(rng, 0.02, 0.98),
-      y: range(rng, wallBottom + 0.04, 0.99),
-      r: range(rng, 0.0035, 0.0075),
-      kind: rng() < 0.4 ? 'screw' : 'speck',
-    })
-  }
-
-  void aspect
   return {
-    kind: 'arcade',
-    camoTone: 0.6,
-    decoys,
-    anchors,
-    machines,
-    people,
-    props,
-    signs,
-    posters,
+    species: sp,
+    body,
+    trim,
+    pattern,
+    head,
+    limb,
+    hat,
+    hatColour,
+    hatTrim,
+    glasses,
+    scarf: bipedal && rng() < 0.1 ? pick(rng, HAT_COLOURS) : null,
+    held,
+    heldColour: held === 'crumb' ? '#e8c27a' : held === 'leaf' ? '#5fbf55' : pick(rng, BRIGHT),
   }
 }
 
-// ---------------------------------------------------------------- cabinets
+function mixHead(rng: Rng, body: string): string {
+  return rng() < 0.5 ? body : pick(rng, ['#b8543a', '#8a4a2a', '#d0703e'])
+}
 
-const CABINET_COUNT = 20
+/** Every one of the Bug's features. Anybody else may have some of them, never all. */
+export function isTheBugsLook(look: Look): boolean {
+  return (
+    look.species === 'beetle' &&
+    look.pattern === 'stripes' &&
+    look.body === RED &&
+    look.trim === WHITE &&
+    look.hat === 'bobble' &&
+    look.hatColour === RED &&
+    look.hatTrim === WHITE &&
+    look.glasses === 'round'
+  )
+}
 
-function buildCabinetScene(rng: Rng, clutter: number, aspect: number): Scene {
-  const { cols: CABINET_COLS, rows: CABINET_ROWS } = squareGrid(CABINET_COUNT, aspect)
-  const cabinets: Cabinet[] = []
-  const anchors: Anchor[] = []
-  const decoys: Decoy[] = []
+// ------------------------------------------------------------------ layout
 
-  const padX = 0.06
-  const padY = 0.06
-  const cellW = (1 - padX * 2) / CABINET_COLS
-  const cellH = (1 - padY * 2) / CABINET_ROWS
-  const w = cellW * 0.82
-  const h = cellH * 0.84
+class Layout {
+  props: Prop[] = []
+  critters: Critter[] = []
+  decals: Decal[] = []
+  /** Ground a critter's feet may not land on. */
+  private solids: { x: number; y: number; rx: number; ry: number }[] = []
+  private cells = new Map<number, Critter[]>()
+  private cell: number
+  nextId = 0
+  readonly w: number
+  readonly h: number
+  readonly rng: Rng
+  readonly size: number
+  readonly cast: Cast
+  /** Extra rule for where feet may go: water, walls. */
+  readonly walkable: (x: number, y: number) => boolean
 
-  for (let r = 0; r < CABINET_ROWS; r++) {
-    for (let c = 0; c < CABINET_COLS; c++) {
-      const x = padX + cellW * c + (cellW - w) / 2
-      const y = padY + cellH * r + (cellH - h) / 2
-      const body = pick(rng, CABINET_BODY)
-      cabinets.push({ x, y, w, h, accent: pick(rng, ACCENTS), body, tone: range(rng, 0.5, 1) })
+  constructor(w: number, h: number, rng: Rng, size: number, cast: Cast, walkable: (x: number, y: number) => boolean) {
+    this.w = w
+    this.h = h
+    this.rng = rng
+    this.size = size
+    this.cast = cast
+    this.walkable = walkable
+    this.cell = size
+  }
 
-      // Bezel edges are where something small would actually sit.
-      anchors.push({ x: x + w * range(rng, 0.18, 0.82), y: y + h * 0.93, on: body })
-      anchors.push({ x: x + w * range(rng, 0.18, 0.82), y: y + h * 0.08, on: body })
+  addProp(
+    kind: PropKind,
+    x: number,
+    y: number,
+    s: number,
+    opts: Partial<Pick<Prop, 'colour' | 'colour2' | 'variant' | 'flip'>> & { solid?: boolean } = {},
+  ): Prop {
+    const prop: Prop = {
+      kind,
+      x,
+      y,
+      s,
+      colour: opts.colour ?? '#e2433b',
+      colour2: opts.colour2 ?? WHITE,
+      variant: opts.variant ?? Math.floor(this.rng() * 8),
+      flip: opts.flip ?? this.rng() < 0.5,
+      z: y,
+    }
+    this.props.push(prop)
+    if (opts.solid !== false) {
+      const b = propBounds(prop)
+      this.solids.push({ x, y: y - s * 0.12, rx: (b.x1 - b.x0) * 0.46, ry: Math.max(s * 0.16, this.size * 0.3) })
+    }
+    return prop
+  }
 
-      const screws: [number, number][] = [
-        [0.09, 0.09],
-        [0.91, 0.09],
-        [0.09, 0.91],
-        [0.91, 0.91],
-      ]
-      for (const [sx, sy] of screws) {
-        decoys.push({ x: x + w * sx, y: y + h * sy, r: 0.0075, kind: 'screw' })
+  private key(cx: number, cy: number) {
+    return cx * 4096 + cy
+  }
+
+  private near(x: number, y: number, radius: number): Critter[] {
+    const out: Critter[] = []
+    const r = Math.ceil(radius / this.cell)
+    const cx = Math.floor(x / this.cell)
+    const cy = Math.floor(y / this.cell)
+    for (let dx = -r; dx <= r; dx++) {
+      for (let dy = -r; dy <= r; dy++) {
+        const list = this.cells.get(this.key(cx + dx, cy + dy))
+        if (list) out.push(...list)
       }
-      // Later rounds grime up the bezels with flecks that read like a body.
-      const flecks = Math.round(range(rng, 0, 1.6) * clutter)
-      for (let i = 0; i < flecks; i++) {
-        decoys.push({
-          x: x + w * range(rng, 0.12, 0.88),
-          y: y + h * range(rng, 0.75, 0.97),
-          r: range(rng, 0.005, 0.008),
-          kind: 'speck',
-        })
-      }
+    }
+    return out
+  }
+
+  inSolid(x: number, y: number): boolean {
+    for (const s of this.solids) {
+      const dx = (x - s.x) / s.rx
+      const dy = (y - s.y) / s.ry
+      if (dx * dx + dy * dy < 1) return true
+    }
+    return false
+  }
+
+  /** Is there room for feet here, at least `gap` from anybody else's? */
+  free(x: number, y: number, gap: number, margin = 0.02): boolean {
+    const mx = this.w * margin
+    if (x < mx || x > this.w - mx || y < this.size * 1.05 || y > this.h - this.size * 0.06) return false
+    if (!this.walkable(x, y) || this.inSolid(x, y)) return false
+    for (const c of this.near(x, y, gap)) {
+      if (c.lift > 0) continue
+      const dx = c.x - x
+      const dy = (c.y - y) * 1.15
+      if (dx * dx + dy * dy < gap * gap) return false
+    }
+    return true
+  }
+
+  addCritter(x: number, y: number, look: Look, opts: Partial<Critter> = {}): Critter {
+    const rng = this.rng
+    const size = (opts.size ?? this.size) * (opts.size ? 1 : range(rng, 0.92, 1.08))
+    const bipedal = look.species !== 'snail' && look.species !== 'caterpillar' && look.species !== 'spider' && look.species !== 'worm'
+    let pose: Pose = opts.pose ?? (bipedal ? weighted(rng, this.cast.poses) : 'stand')
+    if (look.held === 'crumb' || look.held === 'leaf' || look.held === 'plush') pose = 'carry'
+    else if (pose === 'carry') pose = 'stand'
+    const critter: Critter = {
+      id: this.nextId++,
+      x,
+      y,
+      size,
+      look,
+      pose,
+      facing: opts.facing ?? (rng() < 0.42 ? 1 : 0),
+      flip: opts.flip ?? rng() < 0.5,
+      gazeX: opts.gazeX ?? range(rng, -1, 1),
+      gazeY: opts.gazeY ?? range(rng, -0.4, 0.8),
+      mood: opts.mood ?? weighted(rng, [['smile', 60], ['open', 24], ['o', 8], ['sleepy', 6]] as [Mood, number][]),
+      lift: opts.lift ?? 0,
+      z: opts.z ?? y,
+    }
+    this.critters.push(critter)
+    if (critter.lift === 0) {
+      const k = this.key(Math.floor(x / this.cell), Math.floor(y / this.cell))
+      const list = this.cells.get(k)
+      if (list) list.push(critter)
+      else this.cells.set(k, [critter])
+    }
+    return critter
+  }
+
+  /** Dart-throw a crowd into whatever room is left. */
+  fillCrowd(count: number, gap: number, region?: Rect, look?: () => Look) {
+    const rng = this.rng
+    const r = region ?? { x0: 0, y0: 0, x1: this.w, y1: this.h }
+    let placed = 0
+    let tries = 0
+    while (placed < count && tries < count * 60) {
+      tries++
+      const x = range(rng, r.x0, r.x1)
+      const y = range(rng, r.y0, r.y1)
+      if (!this.free(x, y, gap)) continue
+      this.addCritter(x, y, look ? look() : randomLook(rng, this.cast))
+      placed++
+    }
+    return placed
+  }
+
+  /** A line of critters walking a path — ants to the hill, a queue. */
+  march(points: [number, number][], spacing: number, look: () => Look, opts: Partial<Critter> = {}) {
+    const lengths: number[] = [0]
+    for (let k = 1; k < points.length; k++) {
+      const [ax, ay] = points[k - 1]
+      const [bx, by] = points[k]
+      lengths.push(lengths[k - 1] + Math.hypot(bx - ax, by - ay))
+    }
+    const total = lengths[lengths.length - 1]
+    for (let d = spacing * 0.5; d < total; d += spacing * range(this.rng, 0.9, 1.15)) {
+      let k = 1
+      while (k < lengths.length - 1 && lengths[k] < d) k++
+      const t = (d - lengths[k - 1]) / Math.max(1e-6, lengths[k] - lengths[k - 1])
+      const [ax, ay] = points[k - 1]
+      const [bx, by] = points[k]
+      const x = ax + (bx - ax) * t + range(this.rng, -0.06, 0.06) * this.size
+      const y = ay + (by - ay) * t + range(this.rng, -0.06, 0.06) * this.size
+      if (!this.free(x, y, this.size * 0.5)) continue
+      // Face the way the line is going. Snails and caterpillars are drawn
+      // heading left, everybody else turned to their right.
+      const l = look()
+      const headsLeft = l.species === 'snail' || l.species === 'caterpillar'
+      this.addCritter(x, y, l, { facing: 1, flip: headsLeft ? bx > ax : bx < ax, ...opts })
     }
   }
 
-  // Bezel gray is what a bug on a cabinet edge has to disappear into.
-  return { kind: 'cabinets', camoTone: 0.72, decoys, anchors, cabinets }
-}
-
-// ------------------------------------------------------------------- board
-
-const BOARD_NAMES = [
-  'RMB',
-  'ACE',
-  'DOT',
-  'PIX',
-  'ZAP',
-  'JYN',
-  'ORB',
-  'KAT',
-  'VEX',
-  'NIL',
-  'RAY',
-  'TAU',
-  'MOX',
-  'FIZ',
-  'QUA',
-  'LUX',
-] as const
-const BOARD_TOP = 0.14
-const BOARD_BOTTOM = 0.94
-/** Rows at the upright aspect; a shorter field simply fits fewer of them. */
-const BOARD_ROWS_UPRIGHT = 12
-
-export function boardRowCount(aspect: number): number {
-  return Math.max(5, Math.round((BOARD_ROWS_UPRIGHT * aspect) / (4 / 3)))
-}
-
-export function boardRowY(index: number, rows: number): number {
-  const span = BOARD_BOTTOM - BOARD_TOP
-  return BOARD_TOP + (span * index) / Math.max(1, rows - 1)
-}
-
-function buildBoardScene(rng: Rng, clutter: number, aspect: number): Scene {
-  const BOARD_ROW_COUNT = boardRowCount(aspect)
-  const rows: BoardRow[] = []
-  const anchors: Anchor[] = []
-  const decoys: Decoy[] = []
-
-  let score = 90_000 + Math.floor(rng() * 20_000)
-  for (let i = 0; i < BOARD_ROW_COUNT; i++) {
-    rows.push({ rank: i + 1, name: pick(rng, BOARD_NAMES), score })
-    score = Math.max(500, score - Math.floor(rng() * 9000) - 800)
-
-    const y = boardRowY(i, BOARD_ROW_COUNT)
-    // The dead space between name and score is the natural perch.
-    const pill = i % 2 === 0 ? '#1d2740' : '#222c47'
-    anchors.push({ x: range(rng, 0.42, 0.64), y, on: pill })
-    if (rng() < 0.5) anchors.push({ x: range(rng, 0.2, 0.28), y, on: pill })
-
-    if (rng() < 0.7 * clutter) {
-      decoys.push({ x: range(rng, 0.38, 0.72), y: y + 0.004, r: range(rng, 0.006, 0.009), kind: 'speck' })
+  /** A ring of critters round a spot: dancing, gathered at a fire. */
+  ring(cx: number, cy: number, rx: number, ry: number, n: number, look: () => Look, opts: Partial<Critter> = {}) {
+    for (let k = 0; k < n; k++) {
+      const a = (k / n) * Math.PI * 2 + range(this.rng, -0.15, 0.15)
+      const x = cx + Math.cos(a) * rx
+      const y = cy + Math.sin(a) * ry
+      if (!this.free(x, y, this.size * 0.45)) continue
+      this.addCritter(x, y, look(), { flip: Math.cos(a) > 0, ...opts })
     }
   }
 
-  return { kind: 'board', camoTone: 0.82, decoys, anchors, rows }
+  /**
+   * Critters standing on top of a prop. They take its draw order plus a
+   * little, so they are painted over it rather than behind it.
+   */
+  perch(prop: Prop, topY: number, halfWidth: number, n: number, look: () => Look, opts: Partial<Critter> = {}) {
+    for (let k = 0; k < n; k++) {
+      const x = prop.x + (n === 1 ? 0 : (k / (n - 1) - 0.5) * 2 * halfWidth) + range(this.rng, -0.05, 0.05) * this.size
+      this.addCritter(x, topY, look(), { z: prop.z + 0.5 + k * 0.01, ...opts })
+    }
+  }
+
+  /** Something in the air: a bee, a butterfly. */
+  flyer(x: number, y: number, look: Look, lift: number) {
+    return this.addCritter(x, y, look, { lift, pose: this.rng() < 0.5 ? 'wave' : 'cheer' })
+  }
+
+  decal(kind: DecalKind, x: number, y: number, s: number, colour: string, rot = 0) {
+    this.decals.push({ kind, x, y, s, rot, colour })
+  }
 }
 
-// -------------------------------------------------------------------- loom
+// ----------------------------------------------------------------- scenes
 
-const LOOM_TOP = 0.03
-const LOOM_BOTTOM = 0.97
-const CABLE_COUNT = 7
+type Built = { ground: Ground; garlands?: Garland[]; lights?: Light[]; dusk?: number }
 
-/** Where a cable sits at `t` (0 at the top of its run, 1 at the bottom). */
-function cableX(c: Cable, t: number): number {
-  const u = 1 - t
-  return u * u * u * c.x0 + 3 * u * u * t * c.x1 + 3 * u * t * t * c.x2 + t * t * t * c.x3
+function speciesLook(L: Layout, species: Species, patch: Partial<Look> = {}): () => Look {
+  return () => ({ ...randomLook(L.rng, L.cast, species), ...patch })
 }
 
-export function cableY(t: number): number {
-  return LOOM_TOP + t * (LOOM_BOTTOM - LOOM_TOP)
+// Picnic ------------------------------------------------------------------
+
+const PICNIC_CAST: Cast = {
+  species: [
+    ['beetle', 30],
+    ['ant', 22],
+    ['bee', 8],
+    ['grasshopper', 8],
+    ['butterfly', 6],
+    ['caterpillar', 7],
+    ['snail', 5],
+    ['spider', 5],
+    ['worm', 3],
+  ],
+  held: ['icecream', 'drink', 'balloon', 'flag', 'lollipop', 'crumb'],
+  heldChance: 0.26,
+  poses: [['stand', 30], ['wave', 16], ['walk', 20], ['cheer', 10], ['sit', 12], ['hold', 6]],
 }
 
-function buildLoomScene(rng: Rng, clutter: number): Scene {
-  const cables: Cable[] = []
-  const ties: Tie[] = []
-  const blocks: Block[] = []
-  const anchors: Anchor[] = []
-  const decoys: Decoy[] = []
+function buildPicnic(L: Layout): Built {
+  const { w, h, rng, size } = L
+  const bw = w * range(rng, 0.52, 0.6)
+  const bh = h * range(rng, 0.42, 0.5)
+  const blanket = { x: w * range(rng, 0.44, 0.56), y: h * range(rng, 0.46, 0.54), w: bw, h: bh, rot: range(rng, -0.1, 0.1) }
 
-  for (let i = 0; i < CABLE_COUNT; i++) {
-    const base = 0.09 + (0.82 * i) / (CABLE_COUNT - 1)
-    const swing = range(rng, 0.03, 0.11)
-    cables.push({
-      x0: base + range(rng, -0.02, 0.02),
-      x1: base + swing,
-      x2: base - swing,
-      x3: base + range(rng, -0.02, 0.02),
-      width: range(rng, 0.016, 0.03),
-      colour: pick(rng, CABLE_COLOURS),
-      tone: range(rng, 0.68, 0.86),
+  const inBlanket = (x: number, y: number, pad = 0) => {
+    const dx = x - blanket.x
+    const dy = y - blanket.y
+    const c = Math.cos(-blanket.rot)
+    const s = Math.sin(-blanket.rot)
+    const lx = dx * c - dy * s
+    const ly = dx * s + dy * c
+    return Math.abs(lx) < bw / 2 - pad && Math.abs(ly) < bh / 2 - pad
+  }
+  const onBlanket = (u: number, v: number): [number, number] => {
+    const lx = (u - 0.5) * bw
+    const ly = (v - 0.5) * bh
+    const c = Math.cos(blanket.rot)
+    const s = Math.sin(blanket.rot)
+    return [blanket.x + lx * c - ly * s, blanket.y + lx * s + ly * c]
+  }
+
+  // The spread, laid out on the cloth.
+  const melonAt = onBlanket(range(rng, 0.2, 0.3), range(rng, 0.3, 0.4))
+  const melon = L.addProp('watermelon', melonAt[0], melonAt[1], size * 3.2)
+  // Standing along the flat top of the slice.
+  L.perch(melon, melon.y - melon.s * 0.45, melon.s * 0.32, 2 + Math.floor(rng() * 2), () => randomLook(rng, L.cast))
+
+  const sandAt = onBlanket(range(rng, 0.7, 0.8), range(rng, 0.62, 0.72))
+  const sand = L.addProp('sandwich', sandAt[0], sandAt[1], size * 2.6, { colour: pick(rng, BRIGHT) })
+  L.perch(sand, sand.y - sand.s * 0.5, sand.s * 0.25, 2, () => randomLook(rng, L.cast))
+
+  const cakeAt = onBlanket(range(rng, 0.62, 0.72), range(rng, 0.22, 0.3))
+  L.addProp('cupcake', cakeAt[0], cakeAt[1], size * 1.7, { colour: pick(rng, ['#f7c6d9', '#fff3e0', '#c6e6ff']), colour2: pick(rng, ['#8fd3c8', '#f2c230', '#b58ee0']) })
+
+  const cheeseAt = onBlanket(range(rng, 0.3, 0.4), range(rng, 0.75, 0.85))
+  const cheese = L.addProp('cheese', cheeseAt[0], cheeseAt[1], size * 2)
+  L.perch(cheese, cheese.y - cheese.s * 0.36, cheese.s * 0.2, 1, () => randomLook(rng, L.cast))
+
+  const cupAt = onBlanket(range(rng, 0.45, 0.55), range(rng, 0.12, 0.2))
+  L.addProp('teacup', cupAt[0], cupAt[1], size * 1.3, { colour: pick(rng, ['#3f78d8', '#34b3a0', '#ea6fa6']) })
+
+  const berries = 2 + Math.floor(rng() * 2)
+  for (let k = 0; k < berries; k++) {
+    const at = onBlanket(range(rng, 0.1, 0.9), range(rng, 0.1, 0.9))
+    if (L.inSolid(at[0], at[1])) continue
+    L.addProp('strawberry', at[0], at[1], size * range(rng, 0.9, 1.1))
+  }
+  const grapesAt = onBlanket(range(rng, 0.84, 0.92), range(rng, 0.2, 0.4))
+  L.addProp('grapes', grapesAt[0], grapesAt[1], size * 1.4, { colour: pick(rng, ['#8c5ad6', '#6fbf4a']) })
+  const juiceAt = onBlanket(range(rng, 0.08, 0.16), range(rng, 0.6, 0.8))
+  L.addProp('juicebox', juiceAt[0], juiceAt[1], size * 1.2, { colour: pick(rng, ['#f08a2a', '#5fbf55', '#ea6fa6']), colour2: pick(rng, ['#e2433b', '#f2c230']) })
+
+  // Plates are flat, painted with the cloth; somebody always sits round one.
+  const plates: { x: number; y: number; r: number }[] = []
+  const plateAt = onBlanket(range(rng, 0.44, 0.56), range(rng, 0.5, 0.6))
+  plates.push({ x: plateAt[0], y: plateAt[1], r: size * 1.1 })
+  L.ring(plateAt[0], plateAt[1], size * 1.25, size * 0.75, 6, () => randomLook(rng, L.cast), { pose: 'sit' })
+
+  // Off the cloth: the basket, the anthill, flowers in the grass.
+  const basketX = blanket.x + (rng() < 0.5 ? -1 : 1) * (bw / 2 + size * 1.2)
+  L.addProp('basket', Math.max(size * 2, Math.min(w - size * 2, basketX)), blanket.y - bh * 0.3, size * 2.6)
+
+  const hillX = rng() < 0.5 ? w * range(rng, 0.08, 0.2) : w * range(rng, 0.8, 0.92)
+  const hillY = rng() < 0.5 ? h * range(rng, 0.1, 0.18) : h * range(rng, 0.84, 0.94)
+  L.addProp('anthill', hillX, hillY, size * 2.2)
+  // The ant trail: from the cupcake to the hill, each one carrying a crumb.
+  const trail: [number, number][] = [
+    [cakeAt[0], cakeAt[1] + size * 0.4],
+    [(cakeAt[0] + hillX) / 2 + range(rng, -1, 1) * size * 2, (cakeAt[1] + hillY) / 2 + range(rng, -1, 1) * size * 2],
+    [hillX, hillY + size * 0.3],
+  ]
+  L.march(trail, size * 0.62, speciesLook(L, 'ant', { held: 'crumb', heldColour: '#e8c27a', hat: 'none' }))
+
+  for (let k = 0; k < 9; k++) {
+    const x = range(rng, 0.04, 0.96) * w
+    const y = range(rng, 0.06, 0.98) * h
+    if (inBlanket(x, y, -size * 0.6) || L.inSolid(x, y)) continue
+    const kind = pick(rng, ['daisy', 'daisy', 'dandelion', 'tulip'] as const)
+    L.addProp(kind, x, y, size * range(rng, 1.4, 1.9), {
+      colour: kind === 'daisy' ? WHITE : pick(rng, ['#e2433b', '#ea6fa6', '#f2c230', '#8c5ad6']),
+      colour2: '#f2c230',
+      solid: false,
+    })
+  }
+  for (let k = 0; k < 7; k++) {
+    const x = range(rng, 0.03, 0.97) * w
+    const y = range(rng, 0.05, 0.99) * h
+    if (inBlanket(x, y, -size * 0.3)) continue
+    L.addProp('pebble', x, y, size * range(rng, 0.7, 1.1), { colour: pick(rng, ['#b9b3c4', '#a8a2b8', '#c8bfae']) })
+  }
+  for (let k = 0; k < 14; k++) {
+    const x = range(rng, 0.02, 0.98) * w
+    const y = range(rng, 0.04, 1) * h
+    if (inBlanket(x, y, -size * 0.2)) continue
+    L.addProp('tuft', x, y, size * range(rng, 0.5, 0.75), { colour: '#5fae45', colour2: '#76c24f', solid: false })
+  }
+
+  // Grass texture and the odd crumb.
+  for (let k = 0; k < 520; k++) {
+    const x = rng() * w
+    const y = rng() * h
+    if (inBlanket(x, y)) {
+      if (rng() < 0.08) L.decal('crumb', x, y, size * range(rng, 0.05, 0.09), '#e8c27a', rng() * 6)
+      continue
+    }
+    const roll = rng()
+    if (roll < 0.8) L.decal('blade', x, y, size * range(rng, 0.14, 0.24), rng() < 0.5 ? '#5ea844' : '#9ad06a', range(rng, -0.4, 0.4))
+    else if (roll < 0.93) L.decal('clover', x, y, size * range(rng, 0.14, 0.2), '#4f9e3c', rng() * 6)
+    else L.decal('bloom', x, y, size * range(rng, 0.07, 0.1), pick(rng, [WHITE, '#f2c230', '#f4a3c8']), 0)
+  }
+
+  // Butterflies and bees over the grass.
+  for (let k = 0; k < 6; k++) {
+    const x = range(rng, 0.06, 0.94) * w
+    const y = range(rng, 0.12, 0.96) * h
+    L.flyer(x, y, randomLook(rng, L.cast, rng() < 0.5 ? 'butterfly' : 'bee'), range(rng, 0.5, 1.1))
+  }
+
+  return { ground: { kind: 'picnic', blanket, plates } }
+}
+
+// Garden ------------------------------------------------------------------
+
+const GARDEN_CAST: Cast = {
+  species: [
+    ['beetle', 28],
+    ['ant', 12],
+    ['bee', 12],
+    ['grasshopper', 10],
+    ['butterfly', 8],
+    ['caterpillar', 10],
+    ['snail', 9],
+    ['spider', 5],
+    ['worm', 6],
+  ],
+  held: ['spade', 'flag', 'icecream', 'drink', 'leaf', 'balloon'],
+  heldChance: 0.24,
+  poses: [['stand', 30], ['wave', 16], ['walk', 18], ['cheer', 10], ['sit', 8], ['hold', 8]],
+}
+
+function buildGarden(L: Layout): Built {
+  const { w, h, rng, size } = L
+  // Beds in two or three rows with grass paths between.
+  const rows = h > w * 1.2 ? 3 : 2
+  const cols = w > h * 1.2 ? 3 : 2
+  const beds: Rect[] = []
+  const padX = w * 0.06
+  const padY = h * 0.08
+  const gapX = size * 1.6
+  const gapY = size * 1.9
+  const bedW = (w - padX * 2 - gapX * (cols - 1)) / cols
+  const bedH = (h - padY * 2 - gapY * (rows - 1)) / rows
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const x0 = padX + c * (bedW + gapX)
+      const y0 = padY + r * (bedH + gapY)
+      beds.push({ x0, y0: y0 + size * 0.4, x1: x0 + bedW, y1: y0 + bedH })
+    }
+  }
+
+  // Flowers planted in rows in each bed.
+  for (const bed of beds) {
+    const kind = pick(rng, ['tulip', 'sunflower', 'daisy', 'tulip'] as const)
+    const colour = kind === 'daisy' ? WHITE : pick(rng, ['#e2433b', '#ea6fa6', '#f2c230', '#8c5ad6', '#f08a2a'])
+    const n = Math.max(2, Math.floor((bed.x1 - bed.x0) / (size * 1.5)))
+    const lines = Math.max(1, Math.floor((bed.y1 - bed.y0) / (size * 2.4)))
+    for (let row = 0; row < lines; row++) {
+      const y = bed.y0 + ((row + 0.8) * (bed.y1 - bed.y0)) / (lines + 0.3)
+      for (let k = 0; k < n; k++) {
+        if (rng() < 0.35) continue
+        const x = bed.x0 + ((k + 0.5) * (bed.x1 - bed.x0)) / n + range(rng, -0.2, 0.2) * size
+        L.addProp(kind, x, y, size * range(rng, 1.7, 2.3), { colour, colour2: '#f2c230', solid: false })
+      }
+    }
+    // A toadstool or two where the soil is damp.
+    if (rng() < 0.6) {
+      L.addProp('toadstool', range(rng, bed.x0 + size, bed.x1 - size), range(rng, bed.y0 + size, bed.y1), size * range(rng, 1.1, 1.5), {
+        colour: pick(rng, ['#e2433b', '#e2433b', '#f08a2a', '#8c5ad6']),
+      })
+    }
+  }
+
+  // Tools and pots along the paths.
+  L.addProp('wateringcan', range(rng, 0.15, 0.85) * w, range(rng, 0.2, 0.8) * h, size * 2.4, { colour: pick(rng, ['#3fa05a', '#3f78d8', '#34b3a0']) })
+  for (let k = 0; k < 3; k++) {
+    const x = range(rng, 0.08, 0.92) * w
+    const y = range(rng, 0.1, 0.95) * h
+    if (L.inSolid(x, y)) continue
+    L.addProp('flowerpot', x, y, size * range(rng, 1.2, 1.5))
+  }
+  L.addProp('sign', range(rng, 0.1, 0.9) * w, range(rng, 0.1, 0.9) * h, size * 1.4)
+  // A picket fence along the back.
+  const panel = size * 3
+  for (let x = panel * 0.5; x < w; x += panel * 0.98) {
+    L.addProp('fence', x, size * 1.25, panel, { colour: '#f4ecdc', solid: false, flip: false })
+  }
+
+  // Stepping stones on the paths.
+  const stones: { x: number; y: number; r: number }[] = []
+  for (let k = 0; k < 22; k++) {
+    stones.push({ x: rng() * w, y: rng() * h, r: size * range(rng, 0.3, 0.5) })
+  }
+
+  // A snail race down one path, and a queue of gardeners.
+  const raceY = beds[0].y1 + gapY * 0.6
+  L.march(
+    [
+      [w * 0.12, raceY],
+      [w * 0.62, raceY + range(rng, -0.3, 0.3) * size],
+    ],
+    size * 1.3,
+    speciesLook(L, 'snail'),
+  )
+
+  for (let k = 0; k < 520; k++) {
+    const x = rng() * w
+    const y = rng() * h
+    const inBed = beds.some((b) => x > b.x0 && x < b.x1 && y > b.y0 && y < b.y1)
+    if (inBed) {
+      if (rng() < 0.4) L.decal('speck', x, y, size * range(rng, 0.03, 0.06), '#5a3a22', 0)
+    } else {
+      L.decal('blade', x, y, size * range(rng, 0.14, 0.22), rng() < 0.5 ? '#5ea844' : '#8ccc62', range(rng, -0.4, 0.4))
+    }
+  }
+
+  for (let k = 0; k < 10; k++) {
+    const x = range(rng, 0.05, 0.95) * w
+    const y = range(rng, 0.1, 0.95) * h
+    L.flyer(x, y, randomLook(rng, L.cast, rng() < 0.55 ? 'bee' : 'butterfly'), range(rng, 0.6, 1.3))
+  }
+
+  return { ground: { kind: 'garden', beds, stones } }
+}
+
+// Pond --------------------------------------------------------------------
+
+const POND_CAST: Cast = {
+  species: [
+    ['beetle', 32],
+    ['ant', 12],
+    ['bee', 7],
+    ['grasshopper', 10],
+    ['butterfly', 6],
+    ['caterpillar', 8],
+    ['snail', 6],
+    ['spider', 5],
+    ['worm', 3],
+  ],
+  held: ['tube', 'spade', 'icecream', 'drink', 'lollipop', 'flag'],
+  heldChance: 0.3,
+  poses: [['stand', 26], ['wave', 18], ['walk', 16], ['cheer', 12], ['sit', 18]],
+}
+
+function buildPond(L: Layout, shoreY: (x: number) => number): Built {
+  const { w, h, rng, size } = L
+  const shore: number[] = []
+  for (let k = 0; k <= 16; k++) shore.push(shoreY((k / 16) * w))
+
+  // Lily pads out on the water, somebody sitting on most of them.
+  const pads: { x: number; y: number; r: number; rot: number }[] = []
+  for (let k = 0; k < 40 && pads.length < 11; k++) {
+    const x = range(rng, 0.08, 0.92) * w
+    const y = range(rng, 0.05, 0.95) * h
+    if (y < shoreY(x) + size * 1.2 || y > h - size * 0.8) continue
+    const r = size * range(rng, 0.8, 1.1)
+    if (pads.some((p) => Math.hypot(p.x - x, (p.y - y) * 1.6) < p.r + r + size * 0.5)) continue
+    pads.push({ x, y, r, rot: rng() * 6 })
+  }
+
+  // Beach things on the sand.
+  const sandTop = size * 1.2
+  for (let k = 0; k < 3; k++) {
+    const x = range(rng, 0.12, 0.88) * w
+    const y = range(rng, sandTop + size, shoreY(x) - size * 0.8)
+    if (y < sandTop + size * 0.5 || L.inSolid(x, y)) continue
+    L.addProp('umbrella', x, y, size * range(rng, 2.2, 2.6), { colour: RED, colour2: WHITE, solid: false })
+  }
+  const castleX = range(rng, 0.2, 0.8) * w
+  L.addProp('sandcastle', castleX, Math.max(sandTop + size * 2, shoreY(castleX) - size * 1.2), size * 2.4, { colour: pick(rng, ['#3f78d8', '#e2433b']) })
+  for (let k = 0; k < 2; k++) {
+    const x = range(rng, 0.1, 0.9) * w
+    const y = range(rng, sandTop + size, shoreY(x) - size * 0.5)
+    if (L.inSolid(x, y)) continue
+    L.addProp('bucket', x, y, size * 1.1, { colour: pick(rng, ['#3f78d8', '#f2c230', '#ea6fa6', '#34b3a0']) })
+  }
+  const guardX = rng() < 0.5 ? w * 0.12 : w * 0.88
+  const guard = L.addProp('lifeguard', guardX, shoreY(guardX) - size * 0.6, size * 1.6)
+  L.perch(guard, guard.y - guard.s * 1.12, 0, 1, () => ({ ...randomLook(rng, L.cast, 'beetle'), glasses: 'shades', hat: 'cap', hatColour: RED, hatTrim: WHITE }), { pose: 'wave' })
+
+  // Reeds where the water meets the sand.
+  for (let k = 0; k < 7; k++) {
+    const x = range(rng, 0.03, 0.97) * w
+    L.addProp('reeds', x, shoreY(x) + size * 0.25, size * range(rng, 1.6, 2.2), { solid: false })
+  }
+  for (let k = 0; k < 5; k++) {
+    const x = range(rng, 0.03, 0.97) * w
+    const y = range(rng, sandTop, shoreY(x) - size * 0.3)
+    L.addProp('pebble', x, y, size * range(rng, 0.6, 0.9), { colour: pick(rng, ['#c8bfae', '#b9b3c4', '#e0d2b8']) })
+  }
+
+  // Sunbathers on towels are drawn as critters sitting; swimmers float in rings.
+  for (const pad of pads) {
+    if (rng() < 0.8) {
+      L.addCritter(pad.x + range(rng, -0.2, 0.2) * pad.r, pad.y + pad.r * 0.1, randomLook(rng, L.cast), { pose: rng() < 0.5 ? 'sit' : 'wave', z: pad.y + 0.5 })
+    }
+  }
+
+  // A boat or two.
+  for (let k = 0; k < 2; k++) {
+    const x = range(rng, 0.15, 0.85) * w
+    const y = range(rng, 0.2, 0.95) * h
+    if (y < shoreY(x) + size * 1.6 || y > h - size * 0.4) continue
+    const boat = L.addProp('boat', x, y, size * 2.6, { colour: '#5fb04a', colour2: pick(rng, [WHITE, '#f4a3c8', '#f2c230']) })
+    L.perch(boat, boat.y - boat.s * 0.06, boat.s * 0.22, 2, () => randomLook(rng, L.cast), { pose: 'wave' })
+  }
+
+  // Sand speckle and ripples on the water.
+  for (let k = 0; k < 480; k++) {
+    const x = rng() * w
+    const y = rng() * h
+    if (y < shoreY(x)) {
+      L.decal(rng() < 0.9 ? 'speck' : 'shell', x, y, size * range(rng, 0.03, 0.12), pick(rng, ['#c9a266', '#e8cf98', '#f4a3b8', WHITE]), rng() * 6)
+    } else if (rng() < 0.35) {
+      L.decal('ripple', x, y, size * range(rng, 0.3, 0.7), 'rgba(255, 255, 255, 0.35)', 0)
+    }
+  }
+
+  // Dragonflies are just butterflies here, darting over the water.
+  for (let k = 0; k < 7; k++) {
+    const x = range(rng, 0.05, 0.95) * w
+    const y = range(rng, 0.1, 0.95) * h
+    L.flyer(x, y, randomLook(rng, L.cast, rng() < 0.6 ? 'butterfly' : 'bee'), range(rng, 0.6, 1.2))
+  }
+
+  return { ground: { kind: 'pond', shore, pads } }
+}
+
+// Arcade ------------------------------------------------------------------
+
+const ARCADE_CAST: Cast = {
+  species: [
+    ['beetle', 34],
+    ['ant', 16],
+    ['bee', 9],
+    ['grasshopper', 9],
+    ['butterfly', 5],
+    ['caterpillar', 8],
+    ['snail', 4],
+    ['spider', 8],
+    ['worm', 2],
+  ],
+  held: ['token', 'token', 'drink', 'plush', 'balloon', 'lollipop', 'icecream'],
+  heldChance: 0.32,
+  poses: [['stand', 28], ['wave', 14], ['walk', 18], ['cheer', 18], ['hold', 10]],
+}
+
+const CABINET_BODIES = ['#3a2f5c', '#2f4a5c', '#4a2f45', '#33405c', '#452f52', '#2f3f58'] as const
+const NEONS = ['#5ff0c8', '#ff6fa8', '#ffd84a', '#6fb6ff', '#c79bff'] as const
+
+function buildArcade(L: Layout, wall: number): Built {
+  const { w, h, rng, size } = L
+  // Neon on the back wall.
+  const signs = Math.max(3, Math.round(w / (size * 4)))
+  for (let k = 0; k < signs; k++) {
+    L.addProp('neon', ((k + 0.5) / signs) * w + range(rng, -0.3, 0.3) * size, wall * 0.86, size * range(rng, 1.2, 1.6), {
+      colour: pick(rng, NEONS),
+      variant: k,
+      solid: false,
     })
   }
 
-  for (const c of cables) {
-    // Three perches per cable — a body lying along a cable is the whole trick.
-    for (let i = 0; i < 3; i++) {
-      const t = range(rng, 0.08, 0.92)
-      anchors.push({ x: cableX(c, t), y: cableY(t), on: c.colour })
+  // Rows of cabinets, a gap between each machine for players to stand in.
+  const rows = Math.max(2, Math.round((h - wall) / (size * 4.4)))
+  const rowGap = (h - wall) / (rows + 0.35)
+  for (let r = 0; r < rows; r++) {
+    const y = wall + rowGap * (r + 0.9)
+    const cabW = size * 1.25
+    const n = Math.max(3, Math.floor(w / (cabW * 2.3)))
+    const offset = r % 2 ? 0.5 : 0
+    for (let k = 0; k < n; k++) {
+      const x = ((k + 0.5 + offset * 0.5) / (n + offset * 0.5)) * w
+      if (rng() < 0.12) continue
+      const roll = rng()
+      if (roll < 0.14) {
+        L.addProp('claw', x, y, cabW * 1.2, { colour: pick(rng, ['#ea6fa6', '#3f78d8', '#8c5ad6']) })
+      } else if (roll < 0.2) {
+        L.addProp('changer', x, y, cabW * 0.9, { colour: pick(rng, ['#e2433b', '#3f78d8']) })
+      } else {
+        L.addProp('cabinet', x, y, cabW, { colour: pick(rng, CABINET_BODIES), colour2: pick(rng, NEONS) })
+      }
     }
-    // Tie heads and cable nubs: the same silhouette, on the same line.
-    const nubs = Math.round(range(rng, 1, 3) * clutter)
-    for (let i = 0; i < nubs; i++) {
-      const t = range(rng, 0.06, 0.94)
-      decoys.push({ x: cableX(c, t), y: cableY(t), r: range(rng, 0.007, 0.011), kind: 'speck' })
-    }
   }
 
-  // Zip ties strap a neighbouring pair together wherever they run close.
-  for (let i = 0; i < CABLE_COUNT - 1; i++) {
-    if (rng() < 0.55) continue
-    const t = range(rng, 0.12, 0.88)
-    const a = cableX(cables[i], t)
-    const b = cableX(cables[i + 1], t)
-    const left = Math.min(a, b)
-    const width = Math.abs(b - a)
-    ties.push({ x: left - 0.012, y: cableY(t), w: width + 0.024 })
-    decoys.push({ x: left - 0.012, y: cableY(t), r: 0.008, kind: 'screw' })
+  // The prize counter, with a queue.
+  const counterX = range(rng, 0.25, 0.75) * w
+  const counterY = h - size * 1.6
+  L.addProp('counter', counterX, counterY, size * 4.4, { colour: '#6a3fa0', colour2: '#ffd84a' })
+  L.march(
+    [
+      [counterX - size * 2.6, counterY + size * 0.9],
+      [counterX - size * 6, counterY + size * 1.1],
+    ],
+    size * 0.6,
+    () => ({ ...randomLook(rng, L.cast), held: rng() < 0.5 ? 'token' : 'none' }),
+    { pose: 'stand' },
+  )
+  L.addProp('bench', range(rng, 0.1, 0.9) * w, range(rng, wall + size * 3, h - size * 3), size * 2.4, { colour: '#5a4480' })
+
+  for (let k = 0; k < 360; k++) {
+    const x = rng() * w
+    const y = wall + rng() * (h - wall)
+    L.decal('confetti', x, y, size * range(rng, 0.1, 0.2), pick(rng, NEONS), rng() * 6)
+  }
+  for (let k = 0; k < 30; k++) {
+    L.decal('crumb', rng() * w, wall + rng() * (h - wall), size * 0.1, '#f1b93a', 0)
   }
 
-  const blockCount = 2 + Math.floor(rng() * 2)
-  for (let i = 0; i < blockCount; i++) {
-    const t = range(rng, 0.12, 0.86)
-    const c = cables[Math.floor(rng() * cables.length) % cables.length]
-    const cx = cableX(c, t)
-    const w = range(rng, 0.1, 0.16)
-    const h = range(rng, 0.05, 0.08)
-    const x = Math.max(0.02, Math.min(0.98 - w, cx - w / 2))
-    const y = Math.max(0.02, Math.min(0.98 - h, cableY(t) - h / 2))
-    blocks.push({ x, y, w, h, pins: 3 + Math.floor(rng() * 4) })
-    anchors.push({ x: x + w * range(rng, 0.1, 0.9), y: y + h + 0.012, on: '#4a5468' })
-    anchors.push({ x: x + w * range(rng, 0.1, 0.9), y: y - 0.012, on: '#4a5468' })
-  }
-
-  return { kind: 'loom', camoTone: 0.78, decoys, anchors, cables, ties, blocks }
+  return { ground: { kind: 'arcade', wall } }
 }
 
-// ------------------------------------------------------------------ tokens
+// Night market ------------------------------------------------------------
 
-const TOKEN_COUNT = 48
-
-function buildTokenScene(rng: Rng, clutter: number, aspect: number): Scene {
-  const { cols: TOKEN_COLS, rows: TOKEN_ROWS } = squareGrid(TOKEN_COUNT, aspect)
-  const tokens: Token[] = []
-  const anchors: Anchor[] = []
-  const decoys: Decoy[] = []
-
-  const cellW = 1 / TOKEN_COLS
-  const cellH = 1 / TOKEN_ROWS
-
-  for (let r = 0; r < TOKEN_ROWS; r++) {
-    for (let c = 0; c < TOKEN_COLS; c++) {
-      // Jitter past the cell edge so the spill overlaps instead of gridding up.
-      const x = cellW * (c + 0.5) + range(rng, -0.35, 0.35) * cellW
-      const y = cellH * (r + 0.5) + range(rng, -0.35, 0.35) * cellH
-      const radius = range(rng, 0.042, 0.058)
-      const colour = pick(rng, TOKEN_COLOURS)
-      tokens.push({ x, y, r: radius, colour, tone: range(rng, 0.55, 0.85) })
-
-      // A body tucked against a rim disappears into the token's own shadow.
-      const a = rng() * Math.PI * 2
-      anchors.push({
-        x: x + Math.cos(a) * radius * 0.92,
-        y: y + Math.sin(a) * radius * 0.92,
-        on: colour,
-      })
-      if (rng() < 0.4) {
-        anchors.push({
-          x: x + range(rng, -0.5, 0.5) * cellW,
-          y: y + cellH * 0.62,
-          on: COUNTER_FELT,
-        })
-      }
-
-      const chips = Math.round(range(rng, 0, 1.4) * clutter)
-      for (let i = 0; i < chips; i++) {
-        const ca = rng() * Math.PI * 2
-        const cr = radius * range(rng, 0.95, 1.25)
-        decoys.push({
-          x: x + Math.cos(ca) * cr,
-          y: y + Math.sin(ca) * cr,
-          r: range(rng, 0.006, 0.01),
-          kind: 'speck',
-        })
-      }
-    }
-  }
-
-  return { kind: 'tokens', camoTone: 0.72, ground: 0.9, decoys, anchors, tokens }
+const NIGHT_CAST: Cast = {
+  species: [
+    ['beetle', 32],
+    ['ant', 14],
+    ['bee', 6],
+    ['grasshopper', 9],
+    ['butterfly', 7],
+    ['caterpillar', 8],
+    ['snail', 6],
+    ['spider', 8],
+    ['worm', 3],
+  ],
+  held: ['lantern', 'lantern', 'lantern', 'icecream', 'balloon', 'drink', 'lollipop'],
+  heldChance: 0.34,
+  poses: [['stand', 28], ['wave', 14], ['walk', 20], ['cheer', 14], ['sit', 8], ['hold', 8]],
 }
 
-// ------------------------------------------------------------------ carpet
+function buildNight(L: Layout, horizon: number): Built {
+  const { w, h, rng, size } = L
+  const lights: Light[] = []
 
-const CARPET_COUNT = 35
-const MOTIF_KINDS: readonly MotifKind[] = ['star', 'tri', 'dot', 'zig']
+  // A winding path through the middle of the market.
+  const path: number[] = []
+  const pathX = (y: number) => w * (0.5 + 0.18 * Math.sin((y / h) * Math.PI * 2 + 0.6))
+  for (let k = 0; k <= 20; k++) path.push(pathX(horizon + ((h - horizon) * k) / 20))
 
-function buildCarpetScene(rng: Rng, clutter: number, aspect: number): Scene {
-  const { cols: CARPET_COLS, rows: CARPET_ROWS } = squareGrid(CARPET_COUNT, aspect)
-  const motifs: Motif[] = []
-  const anchors: Anchor[] = []
-  const decoys: Decoy[] = []
-
-  const cellW = 1 / CARPET_COLS
-  const cellH = 1 / CARPET_ROWS
-
-  for (let r = 0; r < CARPET_ROWS; r++) {
-    for (let c = 0; c < CARPET_COLS; c++) {
-      // Offset every other row, the way real arcade carpet tiles.
-      const offset = r % 2 === 0 ? 0 : cellW * 0.5
-      const x = cellW * (c + 0.5) + offset + range(rng, -0.12, 0.12) * cellW
-      const y = cellH * (r + 0.5) + range(rng, -0.12, 0.12) * cellH
-      motifs.push({
-        x,
-        y,
-        size: range(rng, 0.055, 0.085),
-        rot: rng() * Math.PI * 2,
-        kind: pick(rng, MOTIF_KINDS),
-        accent: pick(rng, ACCENTS),
+  // Stalls either side of it, their awnings in the Bug's colours as often as not.
+  const rows = Math.max(2, Math.round((h - horizon) / (size * 4.2)))
+  for (let r = 0; r < rows; r++) {
+    const y = horizon + ((r + 0.85) * (h - horizon)) / (rows + 0.2)
+    for (const side of [-1, 1]) {
+      const x = pathX(y) + side * range(rng, 0.2, 0.3) * w
+      if (x < size * 2 || x > w - size * 2) continue
+      const striped = rng() < 0.55
+      const stall = L.addProp('stall', x, y, size * range(rng, 2.8, 3.3), {
+        colour: striped ? RED : pick(rng, ['#3f78d8', '#8c5ad6', '#3fa05a', '#f08a2a']),
+        colour2: WHITE,
+        variant: r,
       })
-
-      // The pattern's own gaps are the only quiet ground on this scene.
-      anchors.push({
-        x: x + cellW * range(rng, 0.34, 0.5),
-        y: y + cellH * range(rng, 0.3, 0.46),
-        on: CARPET_GROUND,
-      })
-
-      const crumbs = Math.round(range(rng, 0.6, 2.2) * clutter)
-      for (let i = 0; i < crumbs; i++) {
-        decoys.push({
-          x: x + range(rng, -0.6, 0.6) * cellW,
-          y: y + range(rng, -0.6, 0.6) * cellH,
-          r: range(rng, 0.005, 0.009),
-          kind: 'speck',
-        })
-      }
+      lights.push({ x: stall.x, y: stall.y - stall.s * 0.6, r: size * 3.2, colour: 'rgba(255, 200, 120, 0.5)' })
+      // Somebody minding every stall.
+      L.addCritter(stall.x + range(rng, -0.2, 0.2) * stall.s, stall.y - stall.s * 0.38, randomLook(rng, L.cast), { z: stall.z - 1, pose: 'wave' })
     }
   }
 
-  return { kind: 'carpet', camoTone: 0.88, ground: 0.9, decoys, anchors, motifs }
+  // Tents at the back, lamps and a campfire.
+  const tents = Math.max(2, Math.round(w / (size * 5)))
+  for (let k = 0; k < tents; k++) {
+    L.addProp('tent', ((k + 0.5) / tents) * w + range(rng, -0.5, 0.5) * size, horizon + size * 1.2, size * range(rng, 2.6, 3.2), {
+      colour: pick(rng, ['#3f78d8', '#8c5ad6', '#34b3a0', '#f08a2a']),
+      colour2: pick(rng, [WHITE, '#f2c230']),
+    })
+  }
+  for (let k = 0; k < 4; k++) {
+    const y = range(rng, horizon + size * 2, h - size)
+    const x = pathX(y) + (rng() < 0.5 ? -1 : 1) * size * 1.6
+    L.addProp('lamp', x, y, size * 1.1, { solid: false })
+    lights.push({ x, y: y - size * 1.9, r: size * 3.4, colour: 'rgba(255, 226, 150, 0.55)' })
+  }
+  const fireY = range(rng, horizon + (h - horizon) * 0.4, h - size * 2)
+  const fireX = w - pathX(fireY) > w * 0.5 ? pathX(fireY) + w * 0.2 : pathX(fireY) - w * 0.2
+  L.addProp('campfire', fireX, fireY, size * 1.3)
+  lights.push({ x: fireX, y: fireY - size * 0.4, r: size * 4.5, colour: 'rgba(255, 150, 70, 0.6)' })
+  L.ring(fireX, fireY - size * 0.2, size * 1.9, size * 1.0, 7, () => randomLook(rng, L.cast), { pose: 'cheer' })
+  for (let k = 0; k < 3; k++) {
+    const x = range(rng, 0.05, 0.95) * w
+    const y = range(rng, horizon + size, h - size * 0.4)
+    L.addProp('log', x, y, size * 1.8, {})
+  }
+  for (let k = 0; k < 8; k++) {
+    const x = range(rng, 0.03, 0.97) * w
+    const y = range(rng, horizon + size, h)
+    L.addProp('toadstool', x, y, size * range(rng, 0.8, 1.1), { colour: pick(rng, ['#8c5ad6', '#34b3a0', '#e2433b']), solid: false })
+  }
+
+  // String lights across the whole market.
+  const garlands: Garland[] = []
+  const strands = Math.max(2, Math.round((h - horizon) / (size * 6)))
+  for (let k = 0; k < strands; k++) {
+    const y0 = horizon + ((k + 0.4) * (h - horizon)) / strands
+    const points: [number, number][] = []
+    for (let t = 0; t <= 12; t++) {
+      const x = (t / 12) * w
+      points.push([x, y0 + Math.sin((t / 12) * Math.PI * 3) * size * 0.9 - size * 0.4])
+    }
+    garlands.push({ points, colours: ['#ffd84a', '#ff6fa8', '#6fb6ff', '#7ee08a', '#ff9f5a'] })
+  }
+
+  for (let k = 0; k < 420; k++) {
+    const x = rng() * w
+    const y = horizon + rng() * (h - horizon)
+    const onPath = Math.abs(x - pathX(y)) < w * 0.08
+    if (onPath) L.decal('speck', x, y, size * range(rng, 0.03, 0.07), '#6a5a4a', 0)
+    else L.decal('blade', x, y, size * range(rng, 0.14, 0.22), rng() < 0.5 ? '#2f5a4a' : '#3d6e52', range(rng, -0.4, 0.4))
+  }
+  for (let k = 0; k < 60; k++) {
+    L.decal('star', rng() * w, rng() * horizon * 0.9, size * range(rng, 0.04, 0.09), '#fff6d0', 0)
+  }
+
+  // Fireflies: tiny glowing flyers.
+  for (let k = 0; k < 6; k++) {
+    const x = range(rng, 0.05, 0.95) * w
+    const y = range(rng, horizon + size, h)
+    L.flyer(x, y, randomLook(rng, L.cast, rng() < 0.5 ? 'butterfly' : 'bee'), range(rng, 0.6, 1.3))
+  }
+
+  return { ground: { kind: 'night', horizon, path }, garlands, lights, dusk: 0.42 }
+}
+
+// ------------------------------------------------------------------ decoys
+
+/** Look-alikes that match the Bug in everything but one thing. */
+function twinOf(rng: Rng, index: number): Look {
+  // The early scenes change something loud; the late ones something small.
+  const loud: ((l: Look) => Look)[] = [
+    (l) => ({ ...l, hatColour: pick(rng, ['#3f78d8', '#3fa05a', '#f2c230', '#8c5ad6']) }),
+    (l) => ({ ...l, body: pick(rng, ['#3f78d8', '#3fa05a', '#8c5ad6']) }),
+    (l) => ({ ...l, hat: pick(rng, ['cap', 'party', 'tophat'] as Hat[]) }),
+  ]
+  const quiet: ((l: Look) => Look)[] = [
+    (l) => ({ ...l, hat: 'beanie' }),
+    (l) => ({ ...l, glasses: 'none' }),
+    (l) => ({ ...l, glasses: 'shades' }),
+    (l) => ({ ...l, trim: '#f2c230' }),
+    (l) => ({ ...l, hatTrim: '#3f78d8' }),
+  ]
+  const pool = index < 2 ? loud : index < 3 ? [...loud, ...quiet] : quiet
+  return pick(rng, pool)({ ...THE_BUG })
+}
+
+function stripedStranger(rng: Rng, cast: Cast): Look {
+  const species = weighted(rng, [['beetle', 4], ['bee', 1], ['caterpillar', 1], ['snail', 1]] as [Species, number][])
+  const base = randomLook(rng, cast, species)
+  if (species === 'beetle') {
+    // His shell with somebody else's hat.
+    return { ...base, body: RED, trim: WHITE, pattern: 'stripes', hat: weighted(rng, HATS.filter(([h]) => h !== 'bobble')) }
+  }
+  return { ...base, body: RED, trim: WHITE }
+}
+
+function hattedStranger(rng: Rng, cast: Cast): Look {
+  const base = randomLook(rng, cast)
+  return { ...base, hat: 'bobble', hatColour: RED, hatTrim: WHITE, glasses: rng() < 0.4 ? 'round' : base.glasses }
 }
 
 // ------------------------------------------------------------------- build
 
-/**
- * Scene order is fixed so every run faces the same shape of challenge; only the
- * contents are seeded. A random order would make leaderboard times unfair. It
- * runs sparse-and-regular to dense-and-patterned, which stacks with the size
- * and camouflage ramp in `roundConfig`.
- */
-export const SCENE_ORDER: readonly SceneKind[] = ['arcade', 'board', 'loom', 'tokens', 'carpet']
-
-export function buildScene(
-  kind: SceneKind,
-  rng: Rng,
-  clutter: number,
-  aspect: number,
-): Scene {
-  if (kind === 'arcade') return buildArcadeScene(rng, clutter, aspect)
-  if (kind === 'cabinets') return buildCabinetScene(rng, clutter, aspect)
-  if (kind === 'board') return buildBoardScene(rng, clutter, aspect)
-  if (kind === 'loom') return buildLoomScene(rng, clutter)
-  if (kind === 'tokens') return buildTokenScene(rng, clutter, aspect)
-  return buildCarpetScene(rng, clutter, aspect)
+const CASTS: Record<SceneKind, Cast> = {
+  picnic: PICNIC_CAST,
+  garden: GARDEN_CAST,
+  pond: POND_CAST,
+  arcade: ARCADE_CAST,
+  night: NIGHT_CAST,
 }
 
-/** Keep every perch far enough inside the stage to be swattable. */
-export function clampAnchor(a: Anchor): Anchor {
+/** Field height over width, clamped to shapes the layouts are designed for. */
+export function clampAspect(aspect: number): number {
+  return Math.max(0.5, Math.min(2.1, aspect))
+}
+
+export function sceneSize(aspect: number): { w: number; h: number } {
+  const a = clampAspect(aspect)
+  const w = Math.sqrt(WORLD_AREA / a)
+  return { w, h: w * a }
+}
+
+function boxesOverlap(a: Rect, b: Rect) {
+  return a.x0 < b.x1 && a.x1 > b.x0 && a.y0 < b.y1 && a.y1 > b.y0
+}
+
+export function itemBounds(item: Item): Rect {
+  if (item.critter) return critterBounds(item.critter)
+  return propBounds(item.prop!)
+}
+
+/** The box round a critter's face — eyes, glasses and all — that must stay in view. */
+export function faceBox(c: Critter): Rect {
+  const f = faceCentre(c)
+  const s = c.size
+  return { x0: f.x - 0.25 * s, y0: f.y - 0.36 * s, x1: f.x + 0.25 * s, y1: f.y + 0.2 * s }
+}
+
+/**
+ * Whether anything painted after this critter covers its face. The face is
+ * what identifies the Bug, so it must always show; the rest of him may not.
+ */
+export function faceHiddenBy(target: Critter, items: Item[]): Item[] {
+  const face = faceBox(target)
+  const out: Item[] = []
+  for (const item of items) {
+    if (item.critter === target || item.z <= target.z) continue
+    const covers = item.critter
+      ? critterOccluders(item.critter).some((b) => boxesOverlap(face, b))
+      : propOccluders(item.prop!).some((b) => boxesOverlap(face, b))
+    if (covers) out.push(item)
+  }
+  return out
+}
+
+/** Whether a string of lights, hung over everything, runs across this box. */
+function garlandCrosses(box: Rect, garlands: Garland[], unit: number): boolean {
+  const pad = unit * 0.25
+  for (const g of garlands) {
+    for (let k = 1; k < g.points.length; k++) {
+      const [x0, y0] = g.points[k - 1]
+      const [x1, y1] = g.points[k]
+      for (let t = 0; t <= 1; t += 0.1) {
+        const x = x0 + (x1 - x0) * t
+        const y = y0 + (y1 - y0) * t + unit * 0.12
+        if (x > box.x0 - pad && x < box.x1 + pad && y > box.y0 - pad && y < box.y1 + pad) return true
+      }
+    }
+  }
+  return false
+}
+
+/**
+ * The parts of a critter that cover whatever is behind it: its body and head
+ * (and hat), wings or legs spread out to the sides, and anything held up.
+ */
+function critterOccluders(c: Critter): Rect[] {
+  const s = c.size
+  const look = c.look
+  const up = c.lift * s
+  const spread: Record<string, [number, number]> = {
+    beetle: [0.3, 0.86],
+    ant: [0.3, 0.86],
+    grasshopper: [0.3, 0.9],
+    bee: [0.47, 0.86],
+    butterfly: [0.6, 0.86],
+    spider: [0.5, 0.72],
+    caterpillar: [0.6, 0.62],
+    snail: [0.5, 0.6],
+    worm: [0.27, 0.77],
+  }
+  const [half, height] = spread[look.species] ?? [0.3, 0.86]
+  const top = look.hat !== 'none' ? Math.max(height, 1.02) : height
+  const boxes: Rect[] = [{ x0: c.x - half * s, y0: c.y - top * s - up, x1: c.x + half * s, y1: c.y - up }]
+  // Held things go up in the right hand, which is the left one when mirrored.
+  const dir = c.flip ? -1 : 1
+  const at = (x0: number, x1: number, y0: number, y1: number): Rect => {
+    const a = c.x + dir * x0 * s
+    const b = c.x + dir * x1 * s
+    return { x0: Math.min(a, b), y0: c.y - y0 * s - up, x1: Math.max(a, b), y1: c.y - y1 * s - up }
+  }
+  switch (look.held) {
+    case 'balloon':
+      boxes.push(at(0.22, 0.52, 1.28, 0.9))
+      break
+    case 'flag':
+      boxes.push(at(0.3, 0.6, 0.9, 0.7))
+      break
+    case 'crumb':
+    case 'leaf':
+    case 'plush':
+      boxes.push({ x0: c.x - 0.36 * s, y0: c.y - 1.1 * s - up, x1: c.x + 0.36 * s, y1: c.y - 0.84 * s - up })
+      break
+    case 'none':
+    case 'tube':
+      break
+    default:
+      boxes.push(at(0.24, 0.46, 0.86, 0.45))
+  }
+  return boxes
+}
+
+/** The critter under a world point: whoever is painted last there wins. */
+export function critterAt(scene: Scene, x: number, y: number): Critter | null {
+  for (let i = scene.items.length - 1; i >= 0; i--) {
+    const c = scene.items[i].critter
+    if (!c) continue
+    const s = c.size
+    const top = c.y - (0.9 + c.lift) * s
+    const bottom = c.y - c.lift * s
+    if (x > c.x - 0.36 * s && x < c.x + 0.36 * s && y > top && y < bottom) return c
+  }
+  return null
+}
+
+/**
+ * Did a tap at this world point land on the Bug?
+ *
+ * Yes if he is what is painted there, or if the nearest face to the tap is his
+ * and not far off — a thumb on a phone lands a few pixels wide, and his face
+ * is never covered, so the forgiveness cannot hand anybody a false find.
+ */
+export function tapFindsTarget(scene: Scene, x: number, y: number): boolean {
+  const t = scene.target
+  if (critterAt(scene, x, y) === t) return true
+  let best: Critter | null = null
+  let bestD = Infinity
+  for (const c of scene.critters) {
+    const f = faceCentre(c)
+    const d = Math.hypot(f.x - x, f.y - y)
+    if (d < bestD) {
+      bestD = d
+      best = c
+    }
+  }
+  return best === t && bestD < t.size * 0.55
+}
+
+export function buildScene(kind: SceneKind, index: number, seed: number, aspect: number): Scene {
+  const rng = mulberry32(seed)
+  const { w, h } = sceneSize(aspect)
+  const spec = sceneSpec(index)
+  const size = spec.size
+  const cast = CASTS[kind]
+
+  let walkable: (x: number, y: number) => boolean = () => true
+  let shoreY: ((x: number) => number) | null = null
+  let wall = 0
+  let horizon = 0
+
+  if (kind === 'pond') {
+    const phase = rng() * 6
+    const base = h * range(rng, 0.36, 0.44)
+    shoreY = (x: number) => base + Math.sin((x / w) * Math.PI * 2 + phase) * size * 1.2 + Math.sin((x / w) * Math.PI * 5 + phase * 2) * size * 0.4
+    const sy = shoreY
+    walkable = (x, y) => y < sy(x) - size * 0.1
+  } else if (kind === 'arcade') {
+    wall = h * 0.12
+    walkable = (_x, y) => y > wall + size * 0.9
+  } else if (kind === 'night') {
+    horizon = h * 0.13
+    walkable = (_x, y) => y > horizon + size * 0.9
+  }
+
+  const L = new Layout(w, h, rng, size, cast, walkable)
+
+  let built: Built
+  if (kind === 'picnic') built = buildPicnic(L)
+  else if (kind === 'garden') built = buildGarden(L)
+  else if (kind === 'pond') built = buildPond(L, shoreY!)
+  else if (kind === 'arcade') built = buildArcade(L, wall)
+  else built = buildNight(L, horizon)
+
+  // Swimmers in the pond: rings round their middles, in water nobody walks on.
+  // The water is most of the picture, so it takes a good share of the crowd,
+  // or the beach packs solid and the pond sits empty.
+  if (kind === 'pond' && shoreY) {
+    const sy = shoreY
+    let land = 0
+    for (let k = 0; k <= 20; k++) land += sy((k / 20) * w) / h
+    land /= 21
+    const want = Math.round(spec.crowd * (1 - land) * 0.5)
+    let swimmers = 0
+    for (let tries = 0; tries < want * 40 && swimmers < want; tries++) {
+      const x = range(rng, 0.05, 0.95) * w
+      const y = range(rng, 0.05, 0.98) * h
+      if (y < sy(x) + size * 0.9 || y > h - size * 0.2) continue
+      if (L.critters.some((c) => Math.hypot(c.x - x, (c.y - y) * 1.2) < size * 0.8)) continue
+      if ((built.ground.kind === 'pond' ? built.ground.pads : []).some((p) => Math.hypot(p.x - x, (p.y - y) * 1.6) < p.r + size * 0.4)) continue
+      const look = randomLook(rng, cast, rng() < 0.7 ? 'beetle' : 'ant')
+      L.addCritter(x, y, { ...look, held: 'tube', heldColour: rng() < 0.5 ? RED : pick(rng, BRIGHT) }, { pose: 'wave' })
+      swimmers++
+    }
+  }
+
+  // The rest of the crowd, as dense as the room allows.
+  const already = L.critters.length
+  const room = w * h * 0.7
+  const gap = Math.max(size * 0.62, Math.sqrt(room / spec.crowd) * 0.82)
+  L.fillCrowd(Math.max(0, spec.crowd - already), gap)
+  if (L.critters.length < spec.crowd) L.fillCrowd(spec.crowd - L.critters.length, size * 0.6)
+
+  const items: Item[] = [
+    ...L.props.map((prop) => ({ z: prop.z, prop })),
+    ...L.critters.map((critter) => ({ z: critter.z, critter })),
+  ]
+  items.sort((a, b) => a.z - b.z)
+
+  // Pick his spot: a grounded biped, clear of the edges, face in view.
+  const margin = size * 0.9
+  const candidates = L.critters.filter((c) => {
+    if (c.lift > 0 || c.look.held === 'tube') return false
+    const sp = c.look.species
+    if (sp !== 'beetle' && sp !== 'ant' && sp !== 'bee' && sp !== 'grasshopper') return false
+    if (c.x < margin || c.x > w - margin || c.y < size * 1.4 || c.y > h - size * 0.15) return false
+    if (kind === 'arcade' && c.y < wall + size * 1.2) return false
+    if (kind === 'night' && c.y < horizon + size * 1.2) return false
+    return true
+  })
+
+  // Later scenes prefer a spot where something stands in front of his body.
+  const tucked = spec.tuck
+    ? candidates.filter((c) => {
+        const body: Rect = { x0: c.x - c.size * 0.25, y0: c.y - c.size * 0.45, x1: c.x + c.size * 0.25, y1: c.y }
+        return items.some(
+          (it) => it.z > c.z && it.prop && !isLowProp(it.prop.kind) && propOccluders(it.prop).some((b) => boxesOverlap(body, b)),
+        )
+      })
+    : []
+
+  const shuffle = <T,>(list: T[]) => list.map((v) => ({ v, r: rng() })).sort((a, b) => a.r - b.r).map((e) => e.v)
+  const order = [...(tucked.length && rng() < 0.7 ? shuffle(tucked) : []), ...shuffle(candidates)]
+  const garlands = built.garlands ?? []
+  let target: Critter | null = null
+  for (const c of order) {
+    if (garlandCrosses(faceBox(c), garlands, size)) continue
+    const blocking = faceHiddenBy(c, items)
+    if (blocking.some((b) => b.prop)) continue
+    // Critters in front of his face step out of the picture.
+    for (const b of blocking) {
+      const i = items.indexOf(b)
+      if (i >= 0) items.splice(i, 1)
+      const j = L.critters.indexOf(b.critter!)
+      if (j >= 0) L.critters.splice(j, 1)
+    }
+    target = c
+    break
+  }
+  if (!target) target = candidates[0] ?? L.critters[0]
+
+  target.look = { ...THE_BUG }
+  if (target.pose === 'carry' || target.pose === 'hold') target.pose = 'wave'
+  if (target.pose === 'sit' && rng() < 0.5) target.pose = 'stand'
+  target.mood = rng() < 0.7 ? 'smile' : 'open'
+  target.facing = rng() < 0.6 ? 0 : 1
+
+  // Now the look-alikes, taken from the crowd well away from him.
+  // Flyers and carriers keep their looks: a snail in the air, or arms up round
+  // a crumb that is no longer there, would give the game away for nothing.
+  const others = L.critters.filter(
+    (c) =>
+      c !== target &&
+      c.lift === 0 &&
+      c.pose !== 'carry' &&
+      c.look.held !== 'tube' &&
+      Math.hypot(c.x - target!.x, c.y - target!.y) > size * 2.5,
+  )
+  const shuffled = shuffle(others)
+  let at = 0
+  const take = (n: number, make: (c: Critter) => Look | null) => {
+    let done = 0
+    while (done < n && at < shuffled.length) {
+      const c = shuffled[at++]
+      const look = make(c)
+      if (!look) continue
+      c.look = look
+      done++
+    }
+  }
+  const bipeds = (c: Critter) => c.look.species === 'beetle' || c.look.species === 'ant' || c.look.species === 'bee' || c.look.species === 'grasshopper'
+  take(spec.twins, (c) => (bipeds(c) ? twinOf(rng, index) : null))
+  take(spec.stripes, () => stripedStranger(rng, cast))
+  take(spec.hats, (c) => (c.look.species === 'snail' ? null : hattedStranger(rng, cast)))
+  for (const c of L.critters) {
+    if (c === target) continue
+    const sp = c.look.species
+    if (sp === 'snail' || sp === 'spider') continue
+    if (c.look.glasses === 'none' && rng() < spec.glasses) c.look = { ...c.look, glasses: 'round' }
+    // Nobody else gets all of it.
+    if (isTheBugsLook(c.look)) c.look = { ...c.look, glasses: 'none' }
+  }
+
   return {
-    x: Math.max(0.05, Math.min(0.95, a.x)),
-    y: Math.max(0.04, Math.min(0.96, a.y)),
-    on: a.on,
+    kind,
+    index,
+    w,
+    h,
+    unit: size,
+    ground: built.ground,
+    decals: L.decals,
+    items,
+    critters: L.critters,
+    target,
+    garlands: built.garlands ?? [],
+    lights: built.lights ?? [],
+    dusk: built.dusk ?? 0,
   }
 }

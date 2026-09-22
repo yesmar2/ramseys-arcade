@@ -136,10 +136,12 @@ const SCORING: Record<string, ScoreRow[]> = {
     { label: 'Lives', value: '1 — caught or drowned ends the run' },
   ],
   findbug: [
-    { label: 'Scenes', value: '5 — the bug gets smaller each one' },
+    { label: 'Scenes', value: '5 — busier, darker and with more look-alikes each one' },
     { label: 'Score', value: 'total time, fastest wins' },
-    { label: 'Wrong swat', value: '+3s' },
-    { label: 'Hint', value: '+8s' },
+    { label: 'Each scene', value: 'a minute — run out and he is shown, and the whole minute counts' },
+    { label: 'Wrong tap', value: 'dazed for 1.5s while the clock keeps running' },
+    { label: 'Stuck', value: 'a circle round him after 25s, a tighter one after 42s' },
+    { label: 'Zoom', value: 'pinch, scroll, or + and −' },
   ],
   putt: [
     { label: 'Each hole', value: '(par + 2 − strokes) × 100' },

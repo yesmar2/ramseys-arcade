@@ -4,54 +4,80 @@
     <meta charset="utf-8" />
     <title>Find the Bug — scenes</title>
     <style>
-      :root { --playfield:#161d26; --ink:#e8eef5; }
-      body { margin:0; background:#0b1016; padding:14px; font:400 13px "Outfit", system-ui, sans-serif; color:#cfe0ee; }
-      .row { display:flex; gap:14px; flex-wrap:wrap; }
-      figure { margin:0; }
-      canvas.scene { width:236px; height:315px; display:block; border-radius:8px; }
-      canvas.zoom { width:110px; height:110px; display:block; border-radius:8px; border:1px solid #2b3a49; margin-top:8px; image-rendering:pixelated; }
-      figcaption { padding:6px 0 0; font-weight:600; font-size:12px; color:#7f97ab; max-width:236px; }
-      h1 { font-size:15px; margin:0 0 12px; font-weight:700; color:#e8eef5; }
+      body { margin: 0; background: #0b1016; padding: 14px; font: 400 13px "Outfit", system-ui, sans-serif; color: #cfe0ee; }
+      .row { display: flex; gap: 14px; flex-wrap: wrap; align-items: flex-start; }
+      figure { margin: 0; }
+      canvas.scene { display: block; border-radius: 8px; }
+      canvas.zoom { width: 150px; height: 150px; display: block; border-radius: 8px; border: 1px solid #2b3a49; margin-top: 8px; }
+      figcaption { padding: 6px 0 0; font-weight: 600; font-size: 12px; color: #7f97ab; max-width: 360px; }
+      h1 { font-size: 15px; margin: 0 0 4px; font-weight: 700; color: #e8eef5; }
+      p { margin: 0 0 12px; color: #7f97ab; }
     </style>
   </head>
   <body>
-    <h1>Find the Bug — every scene (dark theme), with the bug magnified below each</h1>
+    <h1>Find the Bug — every scene, with the Bug magnified below each</h1>
+    <p>?shape=phone for the upright layout · ?seed=N for another run · ?show=1 to ring him in the scene</p>
     <div class="row" id="row"></div>
     <script type="module">
-      const game = await import('/src/games/findbug/game.ts')
+      const scenes = await import('/src/games/findbug/scenes.ts')
       const render = await import('/src/games/findbug/render.ts')
+      const critters = await import('/src/games/findbug/critters.ts')
+      const params = new URLSearchParams(location.search)
+      const phone = params.get('shape') === 'phone'
+      const seed = Number(params.get('seed') || 1)
+      const show = params.get('show') === '1'
+      const aspect = phone ? 1.66 : 0.66
+      const width = phone ? 240 : 360
       const row = document.getElementById('row')
 
-      let s = game.startGame(game.createInitialState())
-      let guard = 0
-      while (s.phase === 'playing' && guard++ < 20) {
-        const r = s.round
-        const fig = document.createElement('figure')
-        const scene = document.createElement('canvas')
-        scene.className = 'scene'
-        scene.width = 540
-        scene.height = 720
-        render.renderGame(scene.getContext('2d'), s, 540, 720)
-
-        const cap = document.createElement('figcaption')
-        cap.textContent = `Round ${r.index + 1} · ${r.kind} · bug ${(r.config.bugSize * 100).toFixed(1)}% · camo ${r.config.camo.toFixed(2)} · ${r.scene.decoys.length} decoys · ${r.scene.anchors.length} perches`
+      scenes.SCENE_ORDER.forEach((kind, index) => {
+        const scene = scenes.buildScene(kind, index, seed * 7919 + index, aspect)
+        const h = Math.round((width * scene.h) / scene.w)
+        const dpr = window.devicePixelRatio || 1
+        const canvas = document.createElement('canvas')
+        canvas.className = 'scene'
+        canvas.width = width * dpr
+        canvas.height = h * dpr
+        canvas.style.width = width + 'px'
+        canvas.style.height = h + 'px'
+        const ctx = canvas.getContext('2d')
+        ctx.setTransform(canvas.width / scene.w, 0, 0, canvas.height / scene.h, 0, 0)
+        render.paintScene(ctx, scene)
+        const target = scene.target
+        const face = critters.faceCentre(target)
+        if (show) {
+          ctx.strokeStyle = '#3ec8cf'
+          ctx.lineWidth = scene.unit * 0.08
+          ctx.beginPath()
+          ctx.arc(face.x, face.y + target.size * 0.15, target.size * 0.9, 0, Math.PI * 2)
+          ctx.stroke()
+        }
 
         const zoom = document.createElement('canvas')
         zoom.className = 'zoom'
-        zoom.width = 220
-        zoom.height = 220
-        const g = zoom.getContext('2d')
-        g.imageSmoothingEnabled = false
-        const half = 42
-        g.drawImage(scene, r.x * 540 - half, r.y * 720 - half, half * 2, half * 2, 0, 0, 220, 220)
+        zoom.width = 300
+        zoom.height = 300
+        const z = zoom.getContext('2d')
+        const span = scene.unit * 3
+        const k = 300 / span
+        z.setTransform(k, 0, 0, k, 150 - face.x * k, 150 - (face.y + target.size * 0.2) * k)
+        render.paintScene(z, scene, { x0: face.x - span, y0: face.y - span, x1: face.x + span, y1: face.y + span })
 
-        fig.append(scene, cap, zoom)
+        const lookalikes = scene.critters.filter((c) => {
+          if (c === target) return false
+          let diff = 0
+          for (const key of ['species', 'pattern', 'body', 'trim', 'hat', 'hatColour', 'hatTrim', 'glasses']) {
+            if (c.look[key] !== target.look[key]) diff++
+          }
+          return diff === 1
+        }).length
+        const cap = document.createElement('figcaption')
+        cap.textContent = `${index + 1} · ${scenes.SCENE_NAMES[kind]} · ${scene.critters.length} critters · ${lookalikes} near twins · he is at ${(target.x / scene.w).toFixed(2)}, ${(target.y / scene.h).toFixed(2)}`
+
+        const fig = document.createElement('figure')
+        fig.append(canvas, cap, zoom)
         row.appendChild(fig)
-
-        // Swat it where it sits, then let the catch hold run out into the next round.
-        s = game.hitAt(s, r.x, r.y)
-        for (let i = 0; i < 70; i++) s = game.tick(s, 1 / 60)
-      }
+      })
       window.__ready = true
     </script>
   </body>
