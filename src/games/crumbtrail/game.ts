@@ -220,6 +220,30 @@ const SURGE_CRUMBS = 80
 const SURGE_TIME = 1.7
 const STREAK_STEP = 10
 const MAX_MULT = 4
+/**
+ * Past x4 the steps get longer, but they never stop.
+ *
+ * The multiplier used to stop dead at a streak of thirty, which you clear in
+ * the first twenty seconds — so a streak of two hundred paid exactly what a
+ * streak of thirty did, and the mechanic the game is named after quietly
+ * stopped being worth holding. Everything a long streak costs you (the route
+ * round the bare corridors, the crumb you double back for) was being spent for
+ * nothing.
+ */
+const LATE_STEP = 30
+const MAX_MULT_LATE = 8
+
+/**
+ * Fresh crumbs in a row that summon the flock.
+ *
+ * Pac-Man 256 hangs its whole identity on a streak number big enough to be
+ * worth telling someone about. This is that: every hundred sends every chaser
+ * on the board fleeing at once, which is the power crumb's payoff earned by
+ * route-reading rather than found on the floor. It repeats, so a deep run keeps
+ * a target in front of it.
+ */
+const STREAK_LANDMARK = 100
+const SCORE_LANDMARK = 1000
 
 const LATE_TURN = 0.34
 const CENTER_EPS = 0.001
@@ -299,7 +323,10 @@ export function crumbtrailViewport() {
 }
 
 export function streakMult(crumbStreak: number) {
-  return Math.min(MAX_MULT, 1 + Math.floor(crumbStreak / STREAK_STEP))
+  const early = 1 + Math.floor(crumbStreak / STREAK_STEP)
+  if (early < MAX_MULT) return early
+  const over = crumbStreak - STREAK_STEP * (MAX_MULT - 1)
+  return Math.min(MAX_MULT_LATE, MAX_MULT + Math.floor(over / LATE_STEP))
 }
 
 /** World row currently sitting in buffer row `y`. */
@@ -1051,6 +1078,16 @@ function eatAt(state: GameState) {
     state.score += SCORE_CRUMB * mult
     if (state.surgeTime <= 0) state.surge = Math.min(1, state.surge + 1 / SURGE_CRUMBS)
     sfx('eat', Math.min(5, Math.floor(state.crumbStreak / 8)))
+
+    // Every hundredth fresh crumb scatters the board.
+    if (state.crumbStreak % STREAK_LANDMARK === 0) {
+      state.score += SCORE_LANDMARK
+      state.fright = FRIGHT_TIME
+      state.frightEaten = 0
+      addPop(state, x + 0.5, y + 0.5, `${state.crumbStreak} IN A ROW!`)
+      sfx('wave')
+      haptic('boost')
+    }
   } else if (!state.power[y][x] && !fruitAt(state, x, y)) {
     /*
      * Crumbless ground breaks the streak. That covers tiles you have already
