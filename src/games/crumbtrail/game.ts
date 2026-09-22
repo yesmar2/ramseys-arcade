@@ -66,6 +66,24 @@ export type Ghost = {
  * The detour. One appears a few rows up and off your line, keeps for a few
  * seconds, then goes — a standing offer to spend time you may not have.
  */
+/**
+ * A charm: the thing that happens, other than a chaser.
+ *
+ * Crumbtrail had three events in its whole vocabulary — power crumb, surge,
+ * fruit — so a run's texture barely changed from the first row to the last.
+ * These are the rest of the sentence: brief, loud, and frequent enough that
+ * something is always about to happen.
+ */
+export type CharmKind = 'freeze' | 'bolt'
+
+export type Charm = {
+  x: number
+  y: number
+  life: number
+  maxLife: number
+  kind: CharmKind
+}
+
 export type Fruit = {
   x: number
   y: number
@@ -157,6 +175,13 @@ export type GameState = {
   crumbStreak: number
   crumbStreakBest: number
   fruit: Fruit | null
+  charm: Charm | null
+  /** Seconds until the next charm is offered. */
+  charmTimer: number
+  /** Seconds chasers stay stopped. */
+  freeze: number
+  /** Seconds the climb stays quick. */
+  bolt: number
   /** Seconds until the next one is offered. */
   fruitTimer: number
   lastTile: Cell
@@ -315,6 +340,17 @@ const FRUIT_GAP_MIN = 14
 const FRUIT_GAP_MAX = 24
 /** Rows above you it can land, and how far off your column it has to be. */
 const FRUIT_ROWS_AHEAD = [3, 8] as const
+
+/** Charms: rarer than crumbs, commoner than fruit, and never two at once. */
+const CHARM_GAP_MIN = 9
+const CHARM_GAP_MAX = 17
+const CHARM_LIFE = 7
+const CHARM_KINDS: CharmKind[] = ['freeze', 'bolt']
+/** Chasers stand still this long. */
+const FREEZE_TIME = 3.6
+/** And this long with the climb quickened. */
+const BOLT_TIME = 4.5
+const BOLT_MULT = 1.55
 const FRUIT_MIN_OFFSET = 2
 
 function loadBest() {
@@ -660,6 +696,36 @@ function placeFruit(state: GameState): boolean {
   return false
 }
 
+/** Put a charm a few rows up, off the straight line, like a fruit. */
+function offerCharm(state: GameState): boolean {
+  for (let up = FRUIT_ROWS_AHEAD[0]; up <= FRUIT_ROWS_AHEAD[1]; up++) {
+    const y = Math.floor(state.player.y) - up
+    if (y < 1 || y >= state.rows) continue
+    if (state.kind[y] !== 'lane') continue
+    const spots: number[] = []
+    for (let x = 0; x < state.cols; x++) {
+      if (!state.open[y][x]) continue
+      const gap = Math.abs(x - Math.floor(state.player.x))
+      if (Math.min(gap, state.cols - gap) < FRUIT_MIN_OFFSET) continue
+      spots.push(x)
+    }
+    if (!spots.length) continue
+    state.charm = {
+      x: spots[Math.floor(Math.random() * spots.length)] + 0.5,
+      y: y + 0.5,
+      life: CHARM_LIFE,
+      maxLife: CHARM_LIFE,
+      kind: CHARM_KINDS[Math.floor(Math.random() * CHARM_KINDS.length)],
+    }
+    return true
+  }
+  return false
+}
+
+function charmGap() {
+  return CHARM_GAP_MIN + Math.random() * (CHARM_GAP_MAX - CHARM_GAP_MIN)
+}
+
 function fruitGap() {
   return FRUIT_GAP_MIN + Math.random() * (FRUIT_GAP_MAX - FRUIT_GAP_MIN)
 }
@@ -686,6 +752,7 @@ function shiftDown(state: GameState) {
   for (const dot of state.trail) dot.y += 1
   for (const pop of state.pops) pop.y += 1
   if (state.fruit) state.fruit.y += 1
+  if (state.charm) state.charm.y += 1
 
   /*
    * Only move the schedule on when one actually lands. A row at the cap, or a
@@ -789,6 +856,10 @@ function emptyState(view: { cols: number; rows: number }): GameState {
     crumbStreakBest: 0,
     fruit: null,
     fruitTimer: FRUIT_GAP_MIN,
+    charm: null,
+    charmTimer: CHARM_GAP_MIN,
+    freeze: 0,
+    bolt: 0,
     lastTile: { x: 0, y: 0 },
     trail: [],
     pops: [],
@@ -1135,6 +1206,13 @@ function addPop(state: GameState, x: number, y: number, text: string) {
   if (state.pops.length > 12) state.pops.shift()
 }
 
+/** Nor is a charm — same reason as the fruit below. */
+function charmAt(state: GameState, x: number, y: number) {
+  const charm = state.charm
+  if (!charm) return false
+  return Math.floor(charm.x) === x && Math.floor(charm.y) === y
+}
+
 /** A fruit sitting here is not cleared ground, so it must not break a streak. */
 function fruitAt(state: GameState, x: number, y: number) {
   const fruit = state.fruit
@@ -1169,7 +1247,7 @@ function eatAt(state: GameState) {
       sfx('wave')
       haptic('boost')
     }
-  } else if (!state.power[y][x] && !fruitAt(state, x, y)) {
+  } else if (!state.power[y][x] && !fruitAt(state, x, y) && !charmAt(state, x, y)) {
     /*
      * Crumbless ground breaks the streak. That covers tiles you have already
      * picked clean, the way Pellets does, and now also the corridors the maze
@@ -1240,7 +1318,7 @@ export function tick(state: GameState, dt: number): GameState {
     }
   }
   const surging = next.surgeTime > 0
-  movePlayer(next, PLAYER_SPEED * (surging ? SURGE_SPEED : 1), dt)
+  movePlayer(next, PLAYER_SPEED * (surging ? SURGE_SPEED : 1) * (next.bolt > 0 ? BOLT_MULT : 1), dt)
   eatAt(next)
 
   const climbed = worldRowAt(next, Math.floor(next.player.y)) - next.baseRow
@@ -1272,6 +1350,37 @@ export function tick(state: GameState, dt: number): GameState {
   }
 
   // —— the offer ——
+  next.freeze = Math.max(0, next.freeze - dt)
+  next.bolt = Math.max(0, next.bolt - dt)
+
+  if (next.charm) {
+    next.charm = { ...next.charm, life: next.charm.life - dt }
+    const charmTideY = bufferRowOf(next, next.tide)
+    if (next.charm.life <= 0 || next.charm.y > charmTideY) {
+      next.charm = null
+      next.charmTimer = charmGap()
+    } else if (dist2(next.charm.x, next.charm.y, next.player.x, next.player.y) <= 0.45 * 0.45) {
+      const kind = next.charm.kind
+      if (kind === 'freeze') {
+        next.freeze = FREEZE_TIME
+        addPop(next, next.charm.x, next.charm.y, 'FREEZE')
+      } else {
+        next.bolt = BOLT_TIME
+        addPop(next, next.charm.x, next.charm.y, 'BOLT')
+      }
+      sfx('good')
+      haptic('boost')
+      next.charm = null
+      next.charmTimer = charmGap()
+    }
+  } else {
+    next.charmTimer -= dt
+    if (next.charmTimer <= 0) {
+      if (offerCharm(next)) next.charmTimer = charmGap()
+      else next.charmTimer = 1.5
+    }
+  }
+
   if (next.fruit) {
     next.fruit = { ...next.fruit, life: next.fruit.life - dt }
     const tideY = bufferRowOf(next, next.tide)
@@ -1331,6 +1440,12 @@ export function tick(state: GameState, dt: number): GameState {
     }
 
     ghost.arrive = Math.min(1, ghost.arrive + dt * 2)
+    /*
+     * A freeze stops the hunt, not the retreat: eyes already heading home keep
+     * going, so a chaser you ate cannot be parked on the board by a charm you
+     * picked up afterwards.
+     */
+    if (next.freeze > 0 && ghost.mode !== 'eaten') continue
     const speed =
       ghost.mode === 'eaten'
         ? EATEN_SPEED

@@ -259,6 +259,79 @@ function drawCrumbs(
  * seconds blink, because an offer you cannot see expiring is not an offer — it
  * is a prize that was taken away from you.
  */
+/**
+ * A charm, drawn as a ring with a mark rather than a fruit with a stem, so the
+ * two offers on the board never read as the same thing. Freeze is the cold
+ * blue-white of the frightened state it resembles; bolt takes the amber the
+ * surge already uses for speed. Both blink out their last two seconds, for the
+ * same reason the fruit does.
+ */
+function drawCharm(
+  ctx: CanvasRenderingContext2D,
+  state: GameState,
+  layout: Layout,
+  skin: Skin,
+) {
+  const charm = state.charm
+  if (!charm) return
+  const { cell, rowY } = layout
+  const cx = charm.x * cell
+  const cy = rowY(charm.y)
+  if (charm.life < 2 && Math.floor(state.time * 7) % 2 === 0) return
+
+  const pulse = 0.92 + Math.sin(state.time * 5) * 0.08
+  const r = cell * 0.28 * pulse
+  const hue = charm.kind === 'freeze' ? 196 : 42
+  const flat = isFlatTheme()
+
+  const glow = ctx.createRadialGradient(cx, cy, r * 0.2, cx, cy, r * 2.3)
+  glow.addColorStop(0, hsla(hue, 70, 62, 0.4))
+  glow.addColorStop(1, hsla(hue, 70, 62, 0))
+  ctx.fillStyle = glow
+  ctx.beginPath()
+  ctx.arc(cx, cy, r * 2.3, 0, Math.PI * 2)
+  ctx.fill()
+
+  ctx.beginPath()
+  ctx.arc(cx, cy, r, 0, Math.PI * 2)
+  ctx.fillStyle = hsla(hue, 70, 58, softFillAlpha(0.28))
+  ctx.fill()
+  if (!flat) {
+    ctx.strokeStyle = hsla(hue, 70, skin.dark ? 66 : 42, 0.95)
+    ctx.lineWidth = Math.max(1.2, cell * 0.06)
+    ctx.stroke()
+  }
+
+  // The mark: a star for a freeze, a bolt for the other.
+  ctx.strokeStyle = hsla(hue, 60, skin.dark ? 86 : 30, 0.95)
+  ctx.lineWidth = Math.max(1, cell * 0.05)
+  ctx.lineCap = 'round'
+  ctx.lineJoin = 'round'
+  ctx.beginPath()
+  if (charm.kind === 'freeze') {
+    for (let i = 0; i < 3; i++) {
+      const a = (i * Math.PI) / 3
+      ctx.moveTo(cx - Math.cos(a) * r * 0.62, cy - Math.sin(a) * r * 0.62)
+      ctx.lineTo(cx + Math.cos(a) * r * 0.62, cy + Math.sin(a) * r * 0.62)
+    }
+  } else {
+    ctx.moveTo(cx + r * 0.26, cy - r * 0.62)
+    ctx.lineTo(cx - r * 0.24, cy + r * 0.06)
+    ctx.lineTo(cx + r * 0.1, cy + r * 0.06)
+    ctx.lineTo(cx - r * 0.26, cy + r * 0.66)
+  }
+  ctx.stroke()
+  ctx.lineCap = 'butt'
+
+  // The same emptying ring the fruit uses, so a clock reads as a clock.
+  const left = Math.max(0, charm.life / charm.maxLife)
+  ctx.strokeStyle = hsla(hue, 70, skin.dark ? 70 : 46, 0.75)
+  ctx.lineWidth = Math.max(1, cell * 0.05)
+  ctx.beginPath()
+  ctx.arc(cx, cy, r * 1.5, -Math.PI / 2, -Math.PI / 2 + left * Math.PI * 2)
+  ctx.stroke()
+}
+
 function drawFruit(
   ctx: CanvasRenderingContext2D,
   state: GameState,
@@ -659,6 +732,7 @@ export function renderGame(
   drawWalls(ctx, state, layout, skin)
   drawCrumbs(ctx, state, layout, skin)
   drawFruit(ctx, state, layout, skin)
+  drawCharm(ctx, state, layout, skin)
 
   /*
    * Anything straddling the side seam is drawn twice, once on each edge.
