@@ -162,6 +162,9 @@ export type GameState = {
   wavePause: number
   flash: number
   groundY: number
+  /** Stage the pixels in this state were laid out against. */
+  stageW: number
+  stageH: number
   /** Scale vs design 16:9 stage (960×540). */
   scale: number
   clearBonus: WaveClearBonus | null
@@ -307,6 +310,8 @@ export function createInitialState(w = DESIGN_W, h = DESIGN_H): GameState {
     wavePause: 0,
     flash: 0,
     groundY,
+    stageW: w,
+    stageH: h,
     scale,
     clearBonus: null,
     citiesAtWaveStart: cities.length,
@@ -316,11 +321,28 @@ export function createInitialState(w = DESIGN_W, h = DESIGN_H): GameState {
   }
 }
 
+/**
+ * Move the world onto a new stage. Everything in flight is stored in stage
+ * pixels — including the point a missile is already aimed at — so it all has
+ * to come along. Leave it behind and a missile keeps flying at a ground line
+ * and a city that have both moved, detonates in open sky, and takes out
+ * whichever city now happens to sit near its stale target x.
+ */
 export function resizeState(state: GameState, w: number, h: number): GameState {
+  if (w <= 0 || h <= 0) return state
   const { groundY, cities, batteries, scale } = layoutWorld(w, h)
+  const sx = w / (state.stageW || w)
+  const sy = h / (state.stageH || h)
+  /** Lengths and speeds, which are all laid down as multiples of scale. */
+  const k = scale / (state.scale || scale)
+  const moveAim = (aim: Aim): Aim =>
+    aim.type === 'ground' ? { ...aim, x: aim.x * sx } : aim
+
   return {
     ...state,
     groundY,
+    stageW: w,
+    stageH: h,
     scale,
     cities: cities.map((c, i) => ({
       ...c,
@@ -332,6 +354,55 @@ export function resizeState(state: GameState, w: number, h: number): GameState {
       ammo: state.batteries[i]?.ammo ?? BATTERY_AMMO,
       alive: state.batteries[i]?.alive ?? true,
     })),
+    incoming: state.incoming.map((m) => ({
+      ...m,
+      x0: m.x0 * sx,
+      y0: m.y0 * sy,
+      x1: m.x1 * sx,
+      y1: m.y1 * sy,
+      x: m.x * sx,
+      y: m.y * sy,
+      speed: m.speed * k,
+      aim: moveAim(m.aim),
+    })),
+    shots: state.shots.map((s) => ({
+      ...s,
+      x0: s.x0 * sx,
+      y0: s.y0 * sy,
+      x1: s.x1 * sx,
+      y1: s.y1 * sy,
+      x: s.x * sx,
+      y: s.y * sy,
+      speed: s.speed * k,
+    })),
+    // growRate stays put: it is multiplied by the live scale on every tick.
+    blasts: state.blasts.map((b) => ({
+      ...b,
+      x: b.x * sx,
+      y: b.y * sy,
+      r: b.r * k,
+      maxR: b.maxR * k,
+    })),
+    planes: state.planes.map((p) => ({
+      ...p,
+      x: p.x * sx,
+      y: p.y * sy,
+      vx: p.vx * k,
+    })),
+    bombers: (state.bombers ?? []).map((b) => ({
+      ...b,
+      x: b.x * sx,
+      y: b.y * sy,
+      vx: b.vx * k,
+    })),
+    drones: (state.drones ?? []).map((d) => ({
+      ...d,
+      x: d.x * sx,
+      y: d.y * sy,
+      vx: d.vx * k,
+    })),
+    floaters: state.floaters.map((f) => ({ ...f, x: f.x * sx, y: f.y * sy })),
+    cursor: { x: state.cursor.x * sx, y: state.cursor.y * sy },
   }
 }
 
