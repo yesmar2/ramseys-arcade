@@ -27,15 +27,15 @@
 }
 
 /*
- * The water is blue in both themes and gets dark with depth, so the score and
- * the figures beside it are always light on a dark halo here — the theme's own
- * ink is navy in the light theme and would sink into the deep. Scoped to the
- * readout alone: the start, pause and score cards keep their themed panels.
+ * The water is the site's own playfield at the surface, so the readout keeps
+ * the theme's ink there. Below the twilight the water is dark in either theme,
+ * and the readout goes light with it. Scoped to the readout alone: the start,
+ * pause and score cards keep their themed panels.
  */
-.frenzy .play-readout {
-  --ink: #f4fbff;
-  --ink-rgb: 244, 251, 255;
-  --surface-rgb: 3, 18, 34;
+.frenzy--deep .play-readout {
+  --ink: #e7eef3;
+  --ink-rgb: 231, 238, 243;
+  --surface-rgb: 24, 36, 46;
 }
 
 .frenzy__overlay {

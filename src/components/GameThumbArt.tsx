@@ -339,18 +339,23 @@ function FindBugThumb({ accent }: { accent: string }) {
   )
 }
 
-/** A fish mid-chase, closing on a smaller one — the whole rule in one shape. */
+/** A fish mid-chase, mouth open, one bite behind a smaller one — the whole rule in one shape. */
 function FrenzyThumb({ accent }: { accent: string }) {
   return (
     <g>
-      <g transform="translate(21.5 20.5)">
-        <path d="M2 0 L-6.5 -4.3 L-4.2 0 L-6.5 4.3 Z" {...mark(accent, 0.6, 1)} />
-        <ellipse cx="0" cy="0" rx="6.5" ry="4.6" {...mark(accent, 0.75, 1.3)} />
-        <circle cx="3.4" cy="-1" r="0.9" fill="#fff" />
+      <g transform="translate(27.8 6.6) rotate(-18)">
+        <path d="M-2.3 0 L-4.9 -2.1 L-4.9 2.1 Z" {...mark(accent, 0.14, 1.1)} />
+        <ellipse cx="0" cy="0" rx="3" ry="2" {...mark(accent, 0.14, 1.1)} />
       </g>
-      <g transform="translate(9 12) scale(0.62)">
-        <path d="M2 0 L-6.5 -4.3 L-4.2 0 L-6.5 4.3 Z" {...mark(accent, 0.22, 1)} />
-        <ellipse cx="0" cy="0" rx="6.5" ry="4.6" {...mark(accent, 0.16, 1.3)} />
+      {/* Tail and fin first, so the body's outline runs whole over their roots. */}
+      <g transform="translate(16 18.6) rotate(-18)">
+        <path d="M-7.2 0 L-12.6 -5 Q-10.8 0 -12.6 5 Z" {...mark(accent, 0.22, 1.4)} />
+        <path d="M-3.8 -5.2 L-0.8 -9.6 L2.8 -6.5 Z" {...mark(accent, 0.22, 1.4)} />
+        <path
+          d="M8.6 -1.4 C7.4 -6.2 -0.6 -7.4 -5 -4.6 C-7 -3.3 -8.4 -1.4 -8.4 0 C-8.4 1.4 -7 3.3 -5 4.6 C-0.6 7.4 7.4 6.2 8.6 1.4 L5.8 0 Z"
+          {...mark(accent, 0.3, 1.6)}
+        />
+        <circle cx="3.6" cy="-2.6" r="1.3" fill="#fff" />
       </g>
     </g>
   )

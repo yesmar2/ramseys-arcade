@@ -1,3 +1,4 @@
+import type { Swatch } from '../../data/games'
 import type { ZoneId } from './world'
 
 /*
@@ -53,21 +54,15 @@ export type FishArt = {
   height: number
   /** Half-thickness at u = 0, .1, .3, .55, .8, 1 along the body, nose to tail base. */
   profile: readonly [number, number, number, number, number, number]
-  back: string
-  belly: string
-  fin: string
-  outline: string
   tail: TailKind
   /** Tail length ÷ body height. */
   tailSize: number
-  tailColor?: string
   dorsal: FinKind
   /** Dorsal height ÷ body height. */
   dorsalSize: number
   /** A matching fin underneath (tall-bodied reef fish). */
   anal: boolean
   pattern: PatternKind
-  patternColor: string
   /** Eye radius ÷ body height. */
   eye: number
   mouth: MouthKind
@@ -78,6 +73,10 @@ export type FishArt = {
   gills?: boolean
   /** Photophores and golden shimmer glow this colour in the dark. */
   glow?: string
+  /** The palette colour the whole fish is drawn in. */
+  swatch: Swatch
+  /** A tail in a second palette colour, when the fish is known by it. */
+  tailSwatch?: Swatch
 }
 
 export type Species = {
@@ -113,19 +112,15 @@ export const SPECIES: Record<SpeciesId, Species> = {
       length: 2.5,
       height: 0.25,
       profile: [0.25, 0.75, 1, 0.88, 0.48, 0.2],
-      back: '#3d6c9c',
-      belly: '#e6eff6',
-      fin: '#a3bcd4',
-      outline: '#233f60',
       tail: 'fork',
       tailSize: 1.15,
       dorsal: 'small',
       dorsalSize: 0.4,
       anal: false,
       pattern: 'lateral',
-      patternColor: '#9fe0f4',
       eye: 0.19,
       mouth: 'small',
+      swatch: 'sky',
     },
   },
   clownfish: {
@@ -141,19 +136,15 @@ export const SPECIES: Record<SpeciesId, Species> = {
       length: 2.2,
       height: 0.5,
       profile: [0.36, 0.8, 1, 0.94, 0.62, 0.4],
-      back: '#f06a18',
-      belly: '#ffae66',
-      fin: '#f58a3a',
-      outline: '#7c2c05',
       tail: 'round',
       tailSize: 0.56,
       dorsal: 'double',
       dorsalSize: 0.42,
       anal: true,
       pattern: 'bands',
-      patternColor: '#ffffff',
       eye: 0.14,
       mouth: 'small',
+      swatch: 'orange',
     },
   },
   tang: {
@@ -169,20 +160,16 @@ export const SPECIES: Record<SpeciesId, Species> = {
       length: 2.1,
       height: 0.58,
       profile: [0.3, 0.8, 1, 0.9, 0.5, 0.22],
-      back: '#2350c4',
-      belly: '#5586f0',
-      fin: '#1c3f9e',
-      outline: '#0f2566',
       tail: 'lunate',
       tailSize: 0.78,
-      tailColor: '#f7cf2c',
       dorsal: 'long',
       dorsalSize: 0.26,
       anal: true,
       pattern: 'swoosh',
-      patternColor: '#0c1633',
       eye: 0.13,
       mouth: 'small',
+      swatch: 'indigo',
+      tailSwatch: 'amber',
     },
   },
   angelfish: {
@@ -198,19 +185,15 @@ export const SPECIES: Record<SpeciesId, Species> = {
       length: 1.9,
       height: 0.82,
       profile: [0.34, 0.84, 1, 0.9, 0.5, 0.2],
-      back: '#f1c434',
-      belly: '#fbe89c',
-      fin: '#f6d45a',
-      outline: '#7d5f08',
       tail: 'round',
       tailSize: 0.6,
       dorsal: 'long',
       dorsalSize: 0.48,
       anal: true,
       pattern: 'bars',
-      patternColor: '#1b1b22',
       eye: 0.1,
       mouth: 'small',
+      swatch: 'amber',
     },
   },
   puffer: {
@@ -226,19 +209,15 @@ export const SPECIES: Record<SpeciesId, Species> = {
       length: 1.9,
       height: 0.66,
       profile: [0.46, 0.9, 1, 0.95, 0.62, 0.32],
-      back: '#cda35a',
-      belly: '#f7ecd2',
-      fin: '#b88d45',
-      outline: '#6a4e1c',
       tail: 'round',
       tailSize: 0.55,
       dorsal: 'small',
       dorsalSize: 0.26,
       anal: false,
       pattern: 'spots',
-      patternColor: '#56401d',
       eye: 0.17,
       mouth: 'small',
+      swatch: 'teal',
     },
   },
   lanternfish: {
@@ -254,20 +233,16 @@ export const SPECIES: Record<SpeciesId, Species> = {
       length: 2.3,
       height: 0.3,
       profile: [0.3, 0.8, 1, 0.85, 0.45, 0.2],
-      back: '#26344f',
-      belly: '#43577a',
-      fin: '#3a4d70',
-      outline: '#0f1729',
       tail: 'fork',
       tailSize: 1.0,
       dorsal: 'small',
       dorsalSize: 0.34,
       anal: false,
       pattern: 'photophores',
-      patternColor: '#72f2ff',
       eye: 0.26,
       mouth: 'small',
       glow: '#72f2ff',
+      swatch: 'violet',
     },
   },
   hatchetfish: {
@@ -283,20 +258,16 @@ export const SPECIES: Record<SpeciesId, Species> = {
       length: 1.7,
       height: 0.72,
       profile: [0.26, 0.62, 1, 0.8, 0.36, 0.18],
-      back: '#728da6',
-      belly: '#eaf4fb',
-      fin: '#8ea8be',
-      outline: '#33485b',
       tail: 'fork',
       tailSize: 0.72,
       dorsal: 'small',
       dorsalSize: 0.3,
       anal: false,
       pattern: 'photophores',
-      patternColor: '#a8f6ff',
       eye: 0.2,
       mouth: 'small',
       glow: '#a8f6ff',
+      swatch: 'sky',
     },
   },
   barracuda: {
@@ -312,19 +283,15 @@ export const SPECIES: Record<SpeciesId, Species> = {
       length: 3.0,
       height: 0.2,
       profile: [0.16, 0.6, 0.9, 1, 0.7, 0.26],
-      back: '#5d7888',
-      belly: '#e3ebf0',
-      fin: '#7893a3',
-      outline: '#2b3d4b',
       tail: 'fork',
       tailSize: 1.15,
       dorsal: 'double',
       dorsalSize: 0.5,
       anal: false,
       pattern: 'bars',
-      patternColor: '#2c3e4c',
       eye: 0.17,
       mouth: 'under',
+      swatch: 'violet',
     },
   },
   grouper: {
@@ -340,19 +307,15 @@ export const SPECIES: Record<SpeciesId, Species> = {
       length: 2.3,
       height: 0.45,
       profile: [0.42, 0.86, 1, 0.9, 0.55, 0.3],
-      back: '#6c5d43',
-      belly: '#bca77f',
-      fin: '#5a4c35',
-      outline: '#30271a',
       tail: 'round',
       tailSize: 0.7,
       dorsal: 'spiky',
       dorsalSize: 0.42,
       anal: true,
       pattern: 'mottled',
-      patternColor: '#3a3021',
       eye: 0.12,
       mouth: 'wide',
+      swatch: 'pink',
     },
   },
   shark: {
@@ -368,20 +331,16 @@ export const SPECIES: Record<SpeciesId, Species> = {
       length: 2.9,
       height: 0.28,
       profile: [0.1, 0.52, 0.9, 1, 0.55, 0.18],
-      back: '#526c82',
-      belly: '#eef3f6',
-      fin: '#48607a',
-      outline: '#233647',
       tail: 'lunate',
       tailSize: 1.3,
       dorsal: 'triangle',
       dorsalSize: 1.05,
       anal: false,
       pattern: 'none',
-      patternColor: '#000000',
       eye: 0.1,
       mouth: 'under',
       gills: true,
+      swatch: 'sky',
     },
   },
   swordfish: {
@@ -397,20 +356,16 @@ export const SPECIES: Record<SpeciesId, Species> = {
       length: 2.8,
       height: 0.24,
       profile: [0.1, 0.6, 0.95, 1, 0.55, 0.18],
-      back: '#1e3d63',
-      belly: '#cad9e5',
-      fin: '#284f7c',
-      outline: '#0e2136',
       tail: 'lunate',
       tailSize: 1.25,
       dorsal: 'sail',
       dorsalSize: 1.25,
       anal: false,
       pattern: 'none',
-      patternColor: '#000000',
       eye: 0.14,
       mouth: 'small',
       bill: 0.42,
+      swatch: 'indigo',
     },
   },
   anglerfish: {
@@ -426,20 +381,16 @@ export const SPECIES: Record<SpeciesId, Species> = {
       length: 2.0,
       height: 0.62,
       profile: [0.52, 0.96, 1, 0.9, 0.55, 0.25],
-      back: '#3b2f38',
-      belly: '#5a4755',
-      fin: '#2e242b',
-      outline: '#140f18',
       tail: 'round',
       tailSize: 0.55,
       dorsal: 'small',
       dorsalSize: 0.2,
       anal: false,
       pattern: 'spots',
-      patternColor: '#271d25',
       eye: 0.08,
       mouth: 'jaws',
       lure: '#ffd66e',
+      swatch: 'pink',
     },
   },
   goldfish: {
@@ -455,20 +406,16 @@ export const SPECIES: Record<SpeciesId, Species> = {
       length: 2.0,
       height: 0.5,
       profile: [0.36, 0.8, 1, 0.9, 0.5, 0.25],
-      back: '#ffae1f',
-      belly: '#fff1b8',
-      fin: '#ffd35c',
-      outline: '#8f5200',
       tail: 'fan',
       tailSize: 1.0,
       dorsal: 'long',
       dorsalSize: 0.46,
       anal: true,
       pattern: 'none',
-      patternColor: '#000000',
       eye: 0.15,
       mouth: 'small',
       glow: '#ffe27a',
+      swatch: 'amber',
     },
   },
 }
@@ -495,19 +442,15 @@ const PLAYER_BASE: FishArt = {
   length: 2.2,
   height: 0.44,
   profile: [0.34, 0.82, 1, 0.9, 0.52, 0.24],
-  back: '#9d3cbc',
-  belly: '#f1b8f8',
-  fin: '#d173e8',
-  outline: '#551b69',
   tail: 'fork',
   tailSize: 1.0,
   dorsal: 'small',
   dorsalSize: 0.42,
   anal: false,
   pattern: 'lateral',
-  patternColor: '#fbdcff',
   eye: 0.17,
   mouth: 'small',
+  swatch: 'magenta',
 }
 
 const playerArtCache: FishArt[] = []
@@ -519,7 +462,7 @@ export function playerArt(stage: number): FishArt {
   if (stage >= 1) art = { ...art, dorsal: 'sail', dorsalSize: 0.62, tailSize: 1.1 }
   if (stage >= 2) art = { ...art, tail: 'fan', tailSize: 1.05, anal: true }
   if (stage >= 3) art = { ...art, dorsal: 'long', dorsalSize: 0.6, glow: '#f7b2ff' }
-  if (stage >= 4) art = { ...art, tailSize: 1.2, dorsalSize: 0.72, back: '#8a2fb0', patternColor: '#ffe9ff' }
+  if (stage >= 4) art = { ...art, tailSize: 1.2, dorsalSize: 0.72 }
   if (stage >= 5) art = { ...art, tailSize: 1.32, dorsalSize: 0.82, glow: '#ffd2ff' }
   playerArtCache[stage] = art
   return art

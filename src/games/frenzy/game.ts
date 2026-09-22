@@ -1,3 +1,4 @@
+import { PALETTE } from '../../data/games'
 import { getPersonalBest } from '../../lib/personalBest'
 import { sfx } from '../../lib/sound'
 import {
@@ -22,8 +23,8 @@ import {
 
 /*
  * Frenzy: every fish carries a number, and you can eat any fish whose number
- * is no bigger than yours. Each catch grows you by about an eighth of what
- * you ate, and catches in quick succession build a combo — eight in a row is
+ * is no bigger than yours. Each catch grows you by about an eighteenth of
+ * what you ate, and catches in quick succession build a combo — eight in a row is
  * a frenzy, worth double.
  *
  * The ocean has a surface and no floor. Deeper zones pay more per fish and
@@ -204,6 +205,9 @@ const ZOOM_EXP = 0.23
 const MIN_ZOOM = 0.16
 const BASE_SPEED = 205
 const PLAYER_TURN = 7.2
+/** Pointer this close to the middle of the screen (px): hold still. */
+const POINTER_DEAD_ZONE = 16
+/** Pointer this far past the dead zone (px): full speed. */
 const POINTER_FULL_SPEED_DIST = 55
 const START_INVULN = 2
 const DASH_TIME = 0.3
@@ -616,6 +620,11 @@ export function clearPointerDir(state: GameState): GameState {
   return { ...state, pointerDir: null }
 }
 
+/** Let go of everything: the window lost focus, so no key-up is coming. */
+export function releaseInput(state: GameState): GameState {
+  return { ...state, pointerDir: null, keys: { up: false, down: false, left: false, right: false } }
+}
+
 export function setKey(state: GameState, key: keyof GameState['keys'], down: boolean): GameState {
   if (state.keys[key] === down) return state
   return { ...state, keys: { ...state.keys, [key]: down } }
@@ -638,8 +647,12 @@ function playerDesire(s: GameState): { angle: number; frac: number } | null {
   if (dx !== 0 || dy !== 0) return { angle: Math.atan2(dy, dx), frac: 1 }
   if (s.pointerDir) {
     const d = Math.hypot(s.pointerDir.x, s.pointerDir.y)
-    if (d < 4) return null
-    return { angle: Math.atan2(s.pointerDir.y, s.pointerDir.x), frac: Math.min(1, d / POINTER_FULL_SPEED_DIST) }
+    // A resting fish sits in the middle of the screen, so a pointer on it means stay.
+    if (d < POINTER_DEAD_ZONE) return null
+    return {
+      angle: Math.atan2(s.pointerDir.y, s.pointerDir.x),
+      frac: Math.min(1, (d - POINTER_DEAD_ZONE) / POINTER_FULL_SPEED_DIST),
+    }
   }
   return null
 }
@@ -1222,7 +1235,7 @@ function eat(s: GameState, f: Fish) {
   p.gulp = 1
   s.eaten += 1
   const fr = fishRadius(f)
-  emit(s, 'bit', f.x, f.y, 9, 70, 2.4, spec.art.back, 0.8)
+  emit(s, 'bit', f.x, f.y, 9, 70, 2.4, PALETTE[spec.art.swatch], 0.8)
   emit(s, 'bubble', f.x, f.y, 6, 60, 2.6, 'rgba(255,255,255,0.8)', 0.8)
   if (s.combo >= 3 || golden) emit(s, 'spark', f.x, f.y, 8, 120, 2.2, golden ? '#ffe27a' : comboColor(s), 0.5)
   s.floaters.push({
@@ -1306,7 +1319,7 @@ function explode(s: GameState, m: Mine) {
   const onScreen = (x: number, y: number) => Math.abs(x - s.cameraX) < v.w && Math.abs(y - s.cameraY) < v.h
   s.fishes = s.fishes.filter((f) => {
     if (dist(f.x, f.y, m.x, m.y) > R + fishRadius(f)) return true
-    emit(s, 'bit', f.x, f.y, 6, 90, 2.4, SPECIES[f.species].art.back, 0.8)
+    emit(s, 'bit', f.x, f.y, 6, 90, 2.4, PALETTE[SPECIES[f.species].art.swatch], 0.8)
     if (s.phase === 'playing' && onScreen(f.x, f.y)) {
       s.combo = s.comboTimer > 0 ? s.combo + 1 : 1
       s.comboTimer = COMBO_WINDOW

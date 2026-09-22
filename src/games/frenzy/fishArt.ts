@@ -4,9 +4,10 @@ import type { FishArt, FinKind, TailKind } from './species'
  * One renderer draws every fish from its species' parameters. The body is
  * sampled along a spine that carries a travelling wave — the head steady,
  * the tail whipping — so every fish actually swims instead of sliding a
- * stiff shape around. Countershading (dark back, pale belly), a pattern,
- * fins that flutter, an eye that looks where it means to go and a mouth that
- * opens when it is about to bite do the rest.
+ * stiff shape around. It is drawn the arcade's way, a soft fill inside a
+ * clean outline in one palette colour; a pattern, fins that flutter, an eye
+ * that looks where it means to go and a mouth that opens when it is about to
+ * bite do the rest.
  *
  * Drawn in the fish's own frame: +x is forward, the caller has already
  * translated to the fish, rotated to its heading and flipped it upright.
@@ -30,31 +31,26 @@ export type FishPose = {
   alarm: number
   /** 0..1 puffer inflation. */
   puff: number
-  /** 0..1 how far the depth has dimmed this fish. */
-  tint: number
   /** Seconds, for lures and shimmer. */
   time: number
 }
 
-const DEEP = [4, 12, 26]
-const tintCache = new Map<string, string>()
-
-/** A species colour, dimmed toward deep water. Never all the way to black. */
-export function tinted(hex: string, tint: number): string {
-  if (tint <= 0.02) return hex
-  const bucket = Math.min(12, Math.round(tint * 12))
-  const key = `${hex}${bucket}`
-  let out = tintCache.get(key)
-  if (!out) {
-    const n = Number.parseInt(hex.slice(1), 16)
-    const r = (n >> 16) & 255
-    const g = (n >> 8) & 255
-    const b = n & 255
-    const t = (bucket / 12) * 0.6
-    out = `rgb(${Math.round(r + (DEEP[0]! - r) * t)}, ${Math.round(g + (DEEP[1]! - g) * t)}, ${Math.round(b + (DEEP[2]! - b) * t)})`
-    tintCache.set(key, out)
-  }
-  return out
+/**
+ * Every colour a fish is drawn in, handed over by the renderer: the fish's
+ * palette colour mixed over the water it is swimming in.
+ */
+export type FishPaint = {
+  body: string
+  fin: string
+  tail: string
+  line: string
+  /** A tail in a second colour is outlined in it too, or it reads as grey. */
+  tailLine: string
+  pattern: string
+  eye: string
+  pupil: string
+  mouth: string
+  teeth: string
 }
 
 const U = [0, 0.1, 0.3, 0.55, 0.8, 1] as const
@@ -253,9 +249,17 @@ function seeded(seed: number) {
   }
 }
 
-function drawPattern(ctx: CanvasRenderingContext2D, art: FishArt, L: number, H: number, tint: number, seed: number, glows: Glow[] | null) {
-  const color = tinted(art.patternColor, tint * 0.8)
-  const outline = tinted(art.outline, tint)
+function drawPattern(
+  ctx: CanvasRenderingContext2D,
+  art: FishArt,
+  paint: FishPaint,
+  L: number,
+  H: number,
+  seed: number,
+  glows: Glow[] | null,
+) {
+  const color = paint.pattern
+  const outline = paint.line
   const xAt = (u: number) => L / 2 - u * L
   switch (art.pattern) {
     case 'none':
@@ -365,8 +369,8 @@ function drawPattern(ctx: CanvasRenderingContext2D, art: FishArt, L: number, H: 
       return
     }
     case 'photophores': {
-      const glowColor = art.glow ?? art.patternColor
-      ctx.fillStyle = art.patternColor
+      const glowColor = art.glow ?? color
+      ctx.fillStyle = glowColor
       for (let i = 0; i < 9; i++) {
         const u = 0.14 + (i / 8) * 0.74
         const half = (thickness(art.profile, u, 0) * H) / 2
@@ -383,13 +387,13 @@ function drawPattern(ctx: CanvasRenderingContext2D, art: FishArt, L: number, H: 
   }
 }
 
-function drawMouth(ctx: CanvasRenderingContext2D, art: FishArt, L: number, H: number, open: number, tint: number) {
+function drawMouth(ctx: CanvasRenderingContext2D, art: FishArt, paint: FishPaint, L: number, H: number, open: number) {
   const nx = topX[0]! + H * 0.07
   const ny = spineY[0]!
-  const inner = tinted('#2a0c12', tint * 0.5)
-  const line = tinted(art.outline, tint)
-  const teeth = tinted('#f3efe4', tint * 0.6)
-  ctx.lineWidth = Math.max(1, L * 0.012)
+  const inner = paint.mouth
+  const line = paint.line
+  const teeth = paint.teeth
+  ctx.lineWidth = Math.max(1, L * 0.018)
   ctx.strokeStyle = line
   if (art.mouth === 'jaws') {
     const o = 0.35 + 0.65 * open
@@ -469,12 +473,12 @@ function drawMouth(ctx: CanvasRenderingContext2D, art: FishArt, L: number, H: nu
   ctx.fill()
 }
 
-function drawEye(ctx: CanvasRenderingContext2D, art: FishArt, L: number, H: number, pose: FishPose) {
+function drawEye(ctx: CanvasRenderingContext2D, art: FishArt, paint: FishPaint, L: number, H: number, pose: FishPose) {
   const eu = art.mouth === 'jaws' ? 0.21 : 0.14
   const ex = L / 2 - eu * L
   const ey = spineAt(eu) - H * (art.mouth === 'jaws' ? 0.22 : 0.1)
   const er = Math.max(1.3, H * art.eye)
-  ctx.fillStyle = tinted('#f6fafc', pose.tint * 0.45)
+  ctx.fillStyle = paint.eye
   ctx.beginPath()
   ctx.arc(ex, ey, er, 0, Math.PI * 2)
   ctx.fill()
@@ -487,7 +491,7 @@ function drawEye(ctx: CanvasRenderingContext2D, art: FishArt, L: number, H: numb
   const len = Math.hypot(pose.lookX, pose.lookY) || 1
   const px = ex + (pose.lookX / len) * er * 0.32
   const py = ey + (pose.lookY / len) * er * 0.32
-  ctx.fillStyle = '#0c131b'
+  ctx.fillStyle = paint.pupil
   ctx.beginPath()
   ctx.arc(px, py, er * 0.56, 0, Math.PI * 2)
   ctx.fill()
@@ -497,44 +501,55 @@ function drawEye(ctx: CanvasRenderingContext2D, art: FishArt, L: number, H: numb
     ctx.arc(px - er * 0.2, py - er * 0.22, er * 0.2, 0, Math.PI * 2)
     ctx.fill()
   }
-  ctx.lineWidth = Math.max(0.8, L * 0.008)
-  ctx.strokeStyle = tinted(art.outline, pose.tint)
+  ctx.lineWidth = Math.max(0.8, L * 0.012)
+  ctx.strokeStyle = paint.line
   ctx.beginPath()
   ctx.arc(ex, ey, er, 0, Math.PI * 2)
   ctx.stroke()
 }
 
 /** A few pixels long: a lozenge and a tail, nothing that would only read as noise. */
-function drawTiny(ctx: CanvasRenderingContext2D, art: FishArt, L: number, H: number, pose: FishPose, glows: Glow[] | null) {
-  ctx.fillStyle = tinted(art.back, pose.tint)
-  ctx.beginPath()
-  ctx.ellipse(0, 0, L / 2, Math.max(1, H / 2), 0, 0, Math.PI * 2)
-  ctx.fill()
-  ctx.fillStyle = tinted(art.tailColor ?? art.fin, pose.tint)
+function drawTiny(ctx: CanvasRenderingContext2D, art: FishArt, paint: FishPaint, L: number, H: number, pose: FishPose, glows: Glow[] | null) {
   const wag = Math.sin(pose.swim) * H * 0.25
+  ctx.fillStyle = paint.tail
   ctx.beginPath()
   ctx.moveTo(-L / 2 + 1, 0)
   ctx.lineTo(-L / 2 - H * 0.7, -H * 0.5 + wag)
   ctx.lineTo(-L / 2 - H * 0.7, H * 0.5 + wag)
   ctx.closePath()
   ctx.fill()
+  ctx.strokeStyle = paint.line
+  ctx.lineWidth = 1
+  ctx.lineJoin = 'round'
+  ctx.stroke()
+  ctx.fillStyle = paint.body
+  ctx.beginPath()
+  ctx.ellipse(0, 0, L / 2, Math.max(1, H / 2), 0, 0, Math.PI * 2)
+  ctx.fill()
+  ctx.stroke()
   if (glows && art.lure) glows.push({ x: L * 0.55, y: -H * 0.9, r: H * 1.4, color: art.lure, strength: 0.8 })
 }
 
 /** Draw one fish; bioluminescent bits are pushed to `glows` in the fish's own frame. */
-export function drawFish(ctx: CanvasRenderingContext2D, art: FishArt, pose: FishPose, seed: number, glows: Glow[] | null) {
+export function drawFish(
+  ctx: CanvasRenderingContext2D,
+  art: FishArt,
+  pose: FishPose,
+  seed: number,
+  glows: Glow[] | null,
+  paint: FishPaint,
+) {
   const L = pose.length
   const H = L * art.height * (1 + 0.45 * pose.puff)
   if (L < 15) {
-    drawTiny(ctx, art, L, H, pose, glows)
+    drawTiny(ctx, art, paint, L, H, pose, glows)
     return
   }
-  const tint = pose.tint
-  const back = tinted(art.back, tint)
-  const belly = tinted(art.belly, tint)
-  const fin = tinted(art.fin, tint)
-  const outline = tinted(art.outline, tint)
-  const lineW = Math.max(1, L * 0.016)
+  const fin = paint.fin
+  const outline = paint.line
+  // The outline is the shape: heavy, but capped so a leviathan isn't drawn in marker pen.
+  const lineW = Math.min(3.4, Math.max(1.3, L * 0.03))
+  ctx.lineJoin = 'round'
 
   buildBody(art, L, H, pose)
 
@@ -563,10 +578,10 @@ export function drawFish(ctx: CanvasRenderingContext2D, art: FishArt, pose: Fish
   ctx.translate(bx, by)
   ctx.rotate(tailAngle)
   tailPath(ctx, art.tail, T, h1, Math.sin(pose.swim * 0.7))
-  ctx.fillStyle = art.tailColor ? tinted(art.tailColor, tint) : fin
+  ctx.fillStyle = paint.tail
   ctx.fill()
   ctx.lineWidth = lineW * 0.85
-  ctx.strokeStyle = outline
+  ctx.strokeStyle = paint.tailLine
   ctx.stroke()
   if (T > 10) {
     ctx.globalAlpha *= 0.22
@@ -581,14 +596,21 @@ export function drawFish(ctx: CanvasRenderingContext2D, art: FishArt, pose: Fish
   }
   ctx.restore()
 
-  // Fins behind the body.
+  // Fins behind the body, their outlines softer, so the body's outline
+  // carries the silhouette instead of a tangle of fins.
+  const finLineAlpha = 0.55
+  const paintFin = () => {
+    ctx.fill()
+    ctx.globalAlpha *= finLineAlpha
+    ctx.stroke()
+    ctx.globalAlpha /= finLineAlpha
+  }
   ctx.fillStyle = fin
   ctx.strokeStyle = outline
   ctx.lineWidth = lineW * 0.75
   for (const shape of finShapes(art.dorsal, art.dorsalSize, -1, H, pose.time)) {
     drawFin(ctx, shape, -1)
-    ctx.fill()
-    ctx.stroke()
+    paintFin()
   }
   if (art.anal) {
     const kind: FinKind = art.dorsal === 'long' ? 'long' : 'small'
@@ -598,27 +620,18 @@ export function drawFish(ctx: CanvasRenderingContext2D, art: FishArt, pose: Fish
         shape.b = 0.8
       }
       drawFin(ctx, shape, 1)
-      ctx.fill()
-      ctx.stroke()
+      paintFin()
     }
   }
 
-  // Body, countershaded.
+  // Body, one flat fill with the pattern inside it.
   bodyPath(ctx, H)
-  const grad = ctx.createLinearGradient(0, -H / 2, 0, H / 2)
-  grad.addColorStop(0, back)
-  grad.addColorStop(0.42, back)
-  grad.addColorStop(1, belly)
-  ctx.fillStyle = grad
+  ctx.fillStyle = paint.body
   ctx.fill()
 
   ctx.save()
   ctx.clip()
-  drawPattern(ctx, art, L, H, tint, seed, glows)
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.16)'
-  ctx.beginPath()
-  ctx.ellipse(L * 0.08, spineAt(0.42) - H * 0.24, L * 0.34, H * 0.13, 0, 0, Math.PI * 2)
-  ctx.fill()
+  drawPattern(ctx, art, paint, L, H, seed, glows)
   ctx.restore()
 
   bodyPath(ctx, H)
@@ -652,7 +665,9 @@ export function drawFish(ctx: CanvasRenderingContext2D, art: FishArt, pose: Fish
   ctx.fill()
   ctx.globalAlpha /= 0.78
   ctx.lineWidth = lineW * 0.6
+  ctx.globalAlpha *= finLineAlpha
   ctx.stroke()
+  ctx.globalAlpha /= finLineAlpha
   ctx.restore()
 
   if (art.gills) {
@@ -670,8 +685,8 @@ export function drawFish(ctx: CanvasRenderingContext2D, art: FishArt, pose: Fish
     ctx.globalAlpha /= 0.45
   }
 
-  drawMouth(ctx, art, L, H, pose.mouth, tint)
-  drawEye(ctx, art, L, H, pose)
+  drawMouth(ctx, art, paint, L, H, pose.mouth)
+  drawEye(ctx, art, paint, L, H, pose)
 
   if (art.lure) {
     const sway = Math.sin(pose.time * 2.2 + seed) * H * 0.08
@@ -679,7 +694,7 @@ export function drawFish(ctx: CanvasRenderingContext2D, art: FishArt, pose: Fish
     const sy = spineAt(0.24) - H * 0.4
     const ex = L * 0.74 + sway
     const ey = spineAt(0.1) - H * 0.72
-    ctx.strokeStyle = fin
+    ctx.strokeStyle = outline
     ctx.lineWidth = Math.max(1, H * 0.045)
     ctx.beginPath()
     ctx.moveTo(sx, sy)
