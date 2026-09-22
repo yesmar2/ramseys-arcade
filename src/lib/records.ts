@@ -28,9 +28,9 @@ export const SNAKE_LENGTH_MILESTONE_STEP = 10
  * whether you like the game.
  */
 export const SNAKE_SPRINT_LENGTH = SNAKE_LENGTH_MILESTONE_MIN
-export const CROSSWALK_ROW_MILESTONE_MIN = 100
+export const CROSSWALK_ROW_MILESTONE_MIN = 25
 export const CROSSWALK_ROW_MILESTONE_MAX = 200
-export const CROSSWALK_ROW_MILESTONE_STEP = 50
+export const CROSSWALK_ROW_MILESTONE_STEP = 25
 
 export type RecordDirection = 'lower' | 'higher'
 
@@ -266,7 +266,7 @@ export const SCORE_STREAK_THRESHOLDS: Record<string, number> = {
   asteroids: 1000,
   patriot: 1000,
   snake: 500,
-  crosswalk: 200,
+  crosswalk: 75,
   stacker: 15,
   centroid: 6000,
   pop: 300,

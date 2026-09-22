@@ -1,5 +1,6 @@
 import { getPersonalBest } from '../../lib/personalBest'
 import { playHeader } from '../playHeader'
+import { haptic } from '../../lib/haptics'
 import { sfx } from '../../lib/sound'
 
 export type Dir = 'up' | 'down' | 'left' | 'right'
@@ -1006,6 +1007,8 @@ function die(state: GameState, cause: DeathCause): GameState {
     sfx('hurt')
   } else sfx('die')
 
+  haptic('crash')
+
   const best = Math.max(state.best, state.furthest, loadBest())
   const wallet = state.wallet + state.runCoins
   if (state.runCoins > 0) saveWallet(wallet)
@@ -1035,6 +1038,7 @@ function collectCoin(state: GameState): GameState {
   const rows = new Map(state.rows)
   rows.set(state.row, { ...row, coins })
   sfx('good')
+  haptic('hit')
   return {
     ...state,
     rows,
@@ -1363,7 +1367,10 @@ export function tick(state: GameState, dt: number): GameState {
            * cooldown, so crediting it while parked would be free to farm — and
            * would pay for exactly the loitering the hawk is there to punish.
            */
-          if (next.hop) next.streakTimer = 0
+          if (next.hop) {
+            next.streakTimer = 0
+            haptic('hit')
+          }
           sfx('whoosh')
         }
       }

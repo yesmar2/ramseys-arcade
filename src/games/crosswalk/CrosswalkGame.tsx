@@ -13,6 +13,7 @@ import { TournamentScoreCard } from '../../components/TournamentScoreCard'
 import { useGamePause } from '../../hooks/useGamePause'
 import { usePersonalBest } from '../../hooks/usePersonalBest'
 import { usePlayerName } from '../../hooks/usePlayerName'
+import { haptic } from '../../lib/haptics'
 import { getPersonalBest } from '../../lib/personalBest'
 import { normalizePlayerName } from '../../lib/leaderboard'
 import {
@@ -249,18 +250,37 @@ export function CrosswalkGame() {
    */
   const toMenu = () => restart(true)
 
+  /**
+   * Buzz for a hop that actually happened.
+   *
+   * Not for a blocked one — that bumps against a tree, and telling the hand it
+   * moved when it did not is worse than saying nothing. Not for one that took a
+   * coin either: `collectCoin` buzzes for itself, and since `vibrate` replaces
+   * whatever is running, a tick fired afterwards would just erase it.
+   */
+  const hopFeedback = (before: GameState, after: GameState) => {
+    const moved = after.row !== before.row || after.col !== before.col
+    const tookCoin = after.runCoins !== before.runCoins
+    if (moved && !tookCoin) haptic('turn')
+  }
+
   const tryHop = (dir: Dir) => {
     if (saveOpen || pausedRef.current) return
     const s = stateRef.current!
     if (s.phase === 'menu') {
       restart()
-      stateRef.current = hop(stateRef.current!, dir)
-      setUi(toSnapshot(stateRef.current))
+      const from = stateRef.current!
+      const next = hop(from, dir)
+      hopFeedback(from, next)
+      stateRef.current = next
+      setUi(toSnapshot(next))
       return
     }
     if (s.phase !== 'playing') return
-    stateRef.current = hop(s, dir)
-    setUi(toSnapshot(stateRef.current))
+    const next = hop(s, dir)
+    hopFeedback(s, next)
+    stateRef.current = next
+    setUi(toSnapshot(next))
   }
 
   useEffect(() => {
