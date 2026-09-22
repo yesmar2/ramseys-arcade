@@ -490,6 +490,37 @@ function drawChaser(
     ctx.stroke()
   }
 
+  /*
+   * The herder wears a crest, because colour had run out.
+   *
+   * Four chasers, green crumbs, blue walls and a blue frightened state already
+   * claim most of the wheel: the violet here sits 57 from frightened and 67
+   * from the wall stroke, which are the two closest things on the board and the
+   * two worst to mistake it for — frightened most of all, since that is the
+   * moment the answer decides whether you eat or die.
+   *
+   * So it is told apart by outline rather than by hue, which reads at a glance,
+   * at speed, and to an eye that does not separate violet from blue. It points
+   * up on purpose: this is the one that runs ahead to stand in the way out, and
+   * the mark may as well say so. Drawn in every mode, frightened included,
+   * because that is when knowing which one it is matters most.
+   */
+  if (ghost.kind === 'herd') {
+    ctx.beginPath()
+    ctx.moveTo(cx - r * 0.42, cy - r * 0.82)
+    ctx.lineTo(cx, cy - r * 1.46)
+    ctx.lineTo(cx + r * 0.42, cy - r * 0.82)
+    ctx.closePath()
+    ctx.fillStyle = hsla(hue, sat, skin.dark ? 62 : 46, 0.9)
+    ctx.fill()
+    if (!flat) {
+      ctx.strokeStyle = hsla(hue, sat, skin.dark ? 72 : 34, 0.95)
+      ctx.lineWidth = Math.max(1, lineW * 0.8)
+      ctx.lineJoin = 'round'
+      ctx.stroke()
+    }
+  }
+
   if (scared) {
     ctx.strokeStyle = flash ? hsla(8, 60, 30, 0.9) : hsla(210, 30, 70, 0.9)
     ctx.lineWidth = Math.max(1, cell * 0.045)
