@@ -109,6 +109,8 @@ export type Blast = {
    * aimed at it.
    */
   aimed?: boolean
+  /** Overrides the drawn colour. The Seeker ring sets one per blast. */
+  hue?: number
 }
 
 export type Floater = {
@@ -227,6 +229,12 @@ const CLEAN_WAVES_TO_REBUILD = 1
 const PLANE_FROM_WAVE = 5
 const BOMBER_FROM_WAVE = 6
 const DRONE_FROM_WAVE = 2
+/**
+ * The Seeker's ring goes off in colour, one per charge, in the order they
+ * bloom — it is the one thing in the game that fires itself, and six identical
+ * violet circles gave the most expensive power the plainest explosion.
+ */
+const SEEKER_HUES = [272, 320, 12, 48, 140, 190]
 const POWER_MAX = 3
 const SLOW_TIME = 5
 const SLOW_RATE = 0.32
@@ -428,8 +436,10 @@ function waveHasPlane(wave: number) {
 }
 
 function waveIncomingCount(wave: number) {
-  let n =
-    wave <= 3 ? 5 + wave : wave <= 7 ? 7 + wave : 14 + (wave - 7)
+  // Was 5 + wave for the first three, which opened on six missiles and thirty
+  // shells. The two branches after it both worked out to wave + 7, so the
+  // whole curve is that line now and the opening simply starts on it.
+  let n = 7 + wave
   // Bomber drops replace some sky traffic so overall pressure stays similar.
   if (waveHasBomber(wave)) n = Math.max(5, n - 3)
   return n
@@ -440,7 +450,9 @@ function bomberMaxHp(wave: number) {
 }
 
 function waveSpeed(wave: number, scale: number) {
-  const n = wave <= 6 ? 46 + wave * 5 : 76 + (wave - 6) * 3.5
+  // Starts about a tenth quicker and climbs more gently to meet the old line
+  // exactly at wave 6, so only the opening changes.
+  const n = wave <= 6 ? 52 + wave * 4 : 76 + (wave - 6) * 3.5
   // Same VIEW_ZOOM correction every other moving thing gets — without it the
   // sky falls at a fraction of the speed the turrets shoot at.
   return n * (scale / VIEW_ZOOM)
@@ -881,11 +893,17 @@ function spawnOneIncoming(state: GameState, w: number): GameState {
 function spawnBurst(state: GameState, w: number): GameState {
   if (state.toSpawn <= 0) return state
 
+  /*
+   * Group size is where the opening actually felt slack: a wave that arrives
+   * one missile at a time, three seconds apart, is a queue rather than a wave,
+   * however many are coming. The first two used to average 1.35 a group. Wave
+   * 5 and on is untouched — the early groups just climb to meet it sooner.
+   */
   let size: number
   if (state.wave <= 2) {
-    size = Math.random() < 0.65 ? 1 : 2
+    size = Math.random() < 0.6 ? 2 : 3
   } else if (state.wave <= 4) {
-    size = Math.random() < 0.55 ? 2 : 3
+    size = Math.random() < 0.6 ? 3 : 4
   } else {
     size = Math.random() < 0.4 ? 4 : 3
   }
@@ -996,6 +1014,25 @@ function firstShieldHit(
     }
   }
   return best
+}
+
+/**
+ * A shot leaves the turret at three quarters speed and arrives at 1.3×.
+ *
+ * The pair is not arbitrary. Flight time over a ramp is the integral of ds/v,
+ * which for a straight ramp from a to b comes to ln(b/a) / (b - a) times the
+ * flat-speed time; at 0.75 and 1.3 that is 0.5500 / 0.55, or 1.0000. So the
+ * shot visibly gathers pace and still lands on exactly the frame it used to —
+ * no interception the player could make before is out of reach now, and the
+ * Seeker's lead, which is worked out against the flat speed, stays true.
+ */
+const SHOT_LAUNCH = 0.75
+const SHOT_ARRIVE = 1.3
+
+function shotSpeedAt(shot: Shot) {
+  const total = dist(shot.x0, shot.y0, shot.x1, shot.y1) || 1
+  const gone = Math.min(1, dist(shot.x0, shot.y0, shot.x, shot.y) / total)
+  return shot.speed * (SHOT_LAUNCH + (SHOT_ARRIVE - SHOT_LAUNCH) * gone)
 }
 
 function advanceAlong(
@@ -1162,7 +1199,7 @@ export function tick(state: GameState, dt: number, w: number): GameState {
   const newBlasts = [...s.blasts]
   for (const shot of s.shots) {
     const step = advanceAlong(
-      shot.x0, shot.y0, shot.x1, shot.y1, shot.x, shot.y, shot.speed, dt,
+      shot.x0, shot.y0, shot.x1, shot.y1, shot.x, shot.y, shotSpeedAt(shot), dt,
     )
     if (step.done) {
       newBlasts.push({
@@ -1275,6 +1312,9 @@ export function tick(state: GameState, dt: number, w: number): GameState {
         wait: 0.05,
         growRate: 110,
         fromPerfect: chainPerfect,
+        // A kill keeps the colour of whatever set it off, so a chain that
+        // starts on the green charge stays green the whole way down.
+        hue: hitBlast.hue,
       })
 
       if (hitBlast.burst) {
@@ -1299,6 +1339,7 @@ export function tick(state: GameState, dt: number, w: number): GameState {
             wait: 0.14 + i * 0.08,
             growRate: 78,
             fromPerfect: chainPerfect,
+            hue: SEEKER_HUES[i % SEEKER_HUES.length],
           })
         }
       }

@@ -438,13 +438,20 @@ export function renderGame(
 
   for (const b of state.blasts) {
     if ((b.wait ?? 0) > 0 || b.r < 2) continue
-    const hue = b.burst ? 272 : 38
+    // A blast carrying its own hue rings in that colour too; the ordinary ones
+    // keep the pairing they have always had.
+    const hue = b.hue ?? (b.burst ? 272 : 38)
     const alpha = softFillAlpha(b.growing ? 0.28 : 0.16)
     ctx.fillStyle = `hsla(${hue}, 58%, 58%, ${alpha})`
     ctx.beginPath()
     ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2)
     ctx.fill()
-    ctx.strokeStyle = b.burst ? 'hsla(272, 52%, 42%, 0.75)' : 'hsla(172, 52%, 42%, 0.7)'
+    ctx.strokeStyle =
+      b.hue != null
+        ? `hsla(${b.hue}, 56%, 46%, 0.8)`
+        : b.burst
+          ? 'hsla(272, 52%, 42%, 0.75)'
+          : 'hsla(172, 52%, 42%, 0.7)'
     ctx.lineWidth = (b.burst ? 3 : 2) * scale
     strokeOutlined(ctx)
   }
