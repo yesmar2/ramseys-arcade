@@ -77,7 +77,7 @@ export const games: Game[] = [
     slug: 'snake',
     tags: ['arcade', 'quick'],
     description: 'Grow longer. Beat the board. Don’t crash.',
-    how: 'Swipe, use the arrow keys, or the turn buttons on a phone. Eat to grow, and don’t hit the walls, the barriers or yourself. Hold space or the bolt to boost.',
+    how: 'Swipe, use the arrow keys, or the turn buttons on a phone. Eat fruit to grow, and reach each one before its ring closes to build a chain — every link makes the next fruit worth more. Golden apples don’t wait long, and the mouse runs: cut it off with your own body. Don’t hit the walls, the stones or yourself. Hold space or the bolt to boost.',
     accent: PALETTE.green,
     playable: true,
   },

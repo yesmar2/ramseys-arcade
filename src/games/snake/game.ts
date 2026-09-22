@@ -1,24 +1,110 @@
+import type { Swatch } from '../../data/games'
 import { getPersonalBest } from '../../lib/personalBest'
 import { haptic } from '../../lib/haptics'
 import { sfx } from '../../lib/sound'
 import {
   assertLevelsAreOpen,
   levelFor,
+  levelName,
   wallKey,
   wallsForLevel,
 } from './levels'
+import { catchable, createMouse, mouseDoor, stepMouse, type Mouse, type MouseWorld } from './mouse'
+
+/*
+ * Snake: eat, grow, don't hit anything.
+ *
+ * What a run is judged on is the chain. Every fruit that appears while a chain
+ * is going carries a ring, and the ring is how long you have to reach it: get
+ * there first and the chain grows and the next fruit is worth more, let it
+ * close and the chain is gone. The ring is sized to the trip — how far the
+ * fruit really is, around walls and your own body — so a chain is lost to a
+ * slow line, never to where a fruit happened to fall. It tightens as the chain
+ * grows, and that is what the boost tank is for.
+ *
+ * Two things turn up now and then besides fruit: a golden apple that does not
+ * wait long, and a mouse that runs. Neither touches the chain, so each is a
+ * choice between a big bite and the rhythm you are keeping.
+ */
 
 export type Dir = 'up' | 'down' | 'left' | 'right'
-export type Phase = 'menu' | 'playing' | 'gameover'
+export type Phase = 'menu' | 'playing' | 'dying' | 'gameover'
 
 export type Cell = { x: number; y: number }
+
+/** A colour an effect is drawn in: a palette swatch, the site's ink, or white. */
+export type Tint = Swatch | 'ink' | 'white'
+
+export type FruitKind = 'apple' | 'cherry' | 'grape' | 'orange' | 'lemon' | 'berry' | 'plum'
+
+export const FRUIT_KINDS: readonly FruitKind[] = [
+  'apple',
+  'cherry',
+  'grape',
+  'orange',
+  'lemon',
+  'berry',
+  'plum',
+]
+
+/** The palette colour each fruit is known by, for its bits when it is eaten. */
+export const FRUIT_TINT: Record<FruitKind, Swatch> = {
+  apple: 'red',
+  cherry: 'pink',
+  grape: 'violet',
+  orange: 'orange',
+  lemon: 'amber',
+  berry: 'indigo',
+  plum: 'magenta',
+}
+
+export type Fruit = {
+  /** Cell. */
+  x: number
+  y: number
+  kind: FruitKind
+  /** Seconds since it appeared. */
+  age: number
+  /** Seconds its ring runs for. 0 when there was no chain to keep, so no ring. */
+  window: number
+  /** The ring is still running: eating this now keeps the chain. */
+  live: boolean
+}
+
+export type Golden = { x: number; y: number; age: number; life: number }
+
+export type ParticleKind = 'bit' | 'spark' | 'puff' | 'ring'
+
+export type Particle = {
+  x: number
+  y: number
+  vx: number
+  vy: number
+  /** 1 → 0. */
+  life: number
+  maxLife: number
+  /** Radius, in cells. */
+  size: number
+  tint: Tint
+  kind: ParticleKind
+}
 
 export type Floater = {
   x: number
   y: number
   text: string
+  sub: string
+  /** 1 → 0. */
   life: number
+  maxLife: number
+  tint: Tint
+  /** 0 → 1, how big it is drawn. */
+  weight: number
 }
+
+export type Banner = { text: string; sub: string; tint: Tint; life: number; maxLife: number }
+
+export type DeathCause = 'wall' | 'block' | 'self'
 
 export type Snapshot = {
   score: number
@@ -32,6 +118,8 @@ export type Snapshot = {
   canBoost: boolean
   /** Tank level 1 → 0, for the control's own meter. */
   fuel: number
+  chain: number
+  deathCause: DeathCause | null
 }
 
 export type GameState = {
@@ -51,18 +139,25 @@ export type GameState = {
   bufferedDir: Dir | null
   /** The next move starts a new straight line, so the trail needs a vertex. */
   lineBreak: boolean
-  /** Number of body segments (grows with score). */
+  /** Number of body segments (grows with every bite). */
   segments: number
-  food: Cell
-  /** Seconds since the current food appeared — drives the freshness bonus. */
-  foodAge: number
+  fruit: Fruit
+  golden: Golden | null
+  /** Seconds until the next golden apple is due. */
+  goldenTimer: number
+  mouse: Mouse | null
+  /** Seconds until the next mouse is due. */
+  mouseTimer: number
+  /** Fruits eaten back to back, each before its ring closed. */
+  chain: number
+  bestChain: number
   /** Cells per second. */
   speed: number
   /** Boost control held. Whether it is actually paying out is {@link isBoosting}. */
   boostHeld: boolean
   /** Seconds of boost left in the tank. Filled by eating, drained by holding. */
   boostFuel: number
-  /** Rises every ten food, and brings the next barrier layout with it. */
+  /** Rises every ten bites, and brings the next barrier layout with it. */
   level: number
   /** Walled cells, keyed "x,y". Replaced on a level change, never mutated. */
   walls: Set<string>
@@ -77,21 +172,36 @@ export type GameState = {
    */
   dormant: Set<string>
   /**
-   * The layout the next food will bring, once there is only one to go.
+   * The layout the next bite will bring, once there is only one to go.
    *
    * Drawn ahead of itself so a level is something you steer around rather than
    * something that happens to you.
    */
   nextWalls: Set<string> | null
+  /** Seconds since the current layout landed, for the blocks growing in. */
+  levelAge: number
+  /** Seconds since the page opened this state, menus included. Drives idle motion. */
+  time: number
+  /** Seconds of the run so far. */
+  elapsed: number
+  /** Fruit eaten this run. */
+  eaten: number
   flash: number
+  flashTint: Tint
+  shake: number
+  /** Swallowed bites on their way down, as distance from the head in cells. */
+  bulges: number[]
+  particles: Particle[]
   floaters: Floater[]
+  banners: Banner[]
+  /** Seconds left of the crash, before the card. */
+  dying: number
+  deathCause: DeathCause | null
 }
 
 function loadBest() {
   return getPersonalBest('snake')
 }
-
-function saveBest(_score: number) {}
 
 export const GRID_LONG = 21
 export const GRID_SHORT = 15
@@ -114,42 +224,57 @@ export function snakeLayout(portrait: boolean) {
     : { cols: GRID_LONG, rows: GRID_SHORT, dir: 'right' as Dir, aspectW: 7, aspectH: 5 }
 }
 const START_SEGMENTS = 3
-const SCORE_FOOD = 10
 
 /**
- * Food is worth more the sooner you reach it.
+ * What a fruit is worth: ten, and two more for every link of the chain it
+ * extends, up to thirty.
  *
- * Without this the score is a straight function of survival time, so the board
- * ranks patience rather than play. With it every pickup is a choice — the safe
- * loop or the tight line past your own tail — and the choice sharpens as the
- * body grows, which is exactly where a long run used to go flat.
+ * Thirty is where the old freshness bonus topped out, deliberately. The board,
+ * the record of strong runs and the server's check on how fast a score can
+ * grow were all set against that ceiling, so the chain changes who reaches it
+ * and how often — not how high the numbers go.
  */
-const HUNGER_MAX = 20
-/** Seconds from a food appearing to its bonus reaching zero. */
-const HUNGER_WINDOW = 3.6
-/** Bonus granularity, so the floater reads +30 / +25 / +20, never +27. */
-const HUNGER_STEP = 5
+const FRUIT_POINTS = 10
+const CHAIN_STEP = 2
+const CHAIN_STEPS = 10
+/** The chain at which a fruit is worth all it can be. */
+export const CHAIN_TOP = CHAIN_STEPS + 1
+
+export function fruitValue(chain: number) {
+  return FRUIT_POINTS + CHAIN_STEP * Math.min(CHAIN_STEPS, Math.max(0, chain - 1))
+}
 
 /**
- * Bonus still on the current food, in points.
+ * How long a fruit's ring runs.
  *
- * Banded upward, not downward: you are always travelling when you arrive, so a
- * band measured from the top would leave the full bonus reachable only at the
- * instant the food appeared — a number on the board that nobody could ever
- * score. Each band is a real quarter of the window instead.
+ * The trip is the real one — walls and the body in the way — at the pace the
+ * snake is going without boost, then given slack: generous while the chain is
+ * short, tight once it is long. At the top a straight line at cruising speed
+ * still makes it, with most of a second to spare, but a detour does not
+ * without the boost, and that is the tank's job.
  */
-export function foodBonus(foodAge: number): number {
-  const left = foodBonusLeft(foodAge)
-  if (left <= 0) return 0
-  const bands = HUNGER_MAX / HUNGER_STEP
-  return Math.ceil(left * bands) * HUNGER_STEP
+function chainWindow(pathCells: number, speed: number, chain: number) {
+  const slack = 1.08 + 0.42 * Math.exp(-chain / 8)
+  const base = 0.6 + 0.6 * Math.exp(-chain / 10)
+  return base + (slack * pathCells) / speed
 }
 
-/** How much of the bonus window is left, 1 → 0. Drawn as the ring on the food. */
-export function foodBonusLeft(foodAge: number): number {
-  return Math.max(0, Math.min(1, 1 - foodAge / HUNGER_WINDOW))
-}
+const GOLDEN_POINTS = 50
+const MOUSE_POINTS = 50
+/** Seconds a golden apple waits. */
+const GOLDEN_LIFE = 7
+/** Run time before the first golden apple, then the gap between them. */
+const GOLDEN_FIRST = 14
+const GOLDEN_GAP: [number, number] = [18, 28]
+/** Run time before the first mouse, then the gap between them. */
+const MOUSE_FIRST = 26
+const MOUSE_GAP: [number, number] = [32, 46]
+/** How close the head has to get to the mouse, cells. */
+const MOUSE_EAT = 0.62
 
+/** How long the crash plays before the card. */
+export const DYING_TIME = 1.15
+const MAX_PARTICLES = 320
 
 /** Distance between body / visual bead centers in grid cells. */
 export const BEAD_SPACING = 0.7
@@ -184,12 +309,14 @@ const BOOST_FUEL_MAX = 4
  * Seconds of boost each food is worth.
  *
  * Half a second, so a full tank is eight foods of saving. One food buys about
- * two cells of gained ground — enough to change which band of the ring you
- * reach the next one in, and not enough to hold the boost open. Refilling
- * faster than this made boost a thing you always had, and a thing you always
- * have is a speed setting, not a decision.
+ * two cells of gained ground — enough to save a ring that is running out, and
+ * not enough to hold the boost open. Refilling faster than this made boost a
+ * thing you always had, and a thing you always have is a speed setting, not a
+ * decision.
  */
 const BOOST_FUEL_PER_FOOD = 0.5
+/** A golden apple is worth two seconds; a mouse fills the tank. */
+const BOOST_FUEL_GOLDEN = 1
 /**
  * What a run opens with.
  *
@@ -213,7 +340,9 @@ export function boostFuelLeft(s: Pick<GameState, 'boostFuel'>) {
 /** Hold or release the boost control. */
 export function setBoost(state: GameState, held: boolean): GameState {
   if (state.boostHeld === held) return state
-  return { ...state, boostHeld: held }
+  const next = { ...state, boostHeld: held }
+  if (held && isBoosting(next)) sfx('whoosh')
+  return next
 }
 /** Longest movement resolved between collision checks, so nothing is skipped over. */
 const MAX_SUBSTEP = 0.35
@@ -245,11 +374,15 @@ const OPPOSITE: Record<Dir, Dir> = {
   right: 'left',
 }
 
-const VEC: Record<Dir, Cell> = {
+export const VEC: Record<Dir, Cell> = {
   up: { x: 0, y: -1 },
   down: { x: 0, y: 1 },
   left: { x: -1, y: 0 },
   right: { x: 1, y: 0 },
+}
+
+function rand(a = 0, b = 1) {
+  return a + Math.random() * (b - a)
 }
 
 function dist(a: Cell, b: Cell) {
@@ -272,7 +405,7 @@ function lerp(a: Cell, b: Cell, t: number): Cell {
 }
 
 /** Points every `spacing` cells back along the trail, starting at the head. */
-function sampleTrail(trail: Cell[], count: number, spacing: number): Cell[] {
+export function sampleTrail(trail: Cell[], count: number, spacing: number): Cell[] {
   const out: Cell[] = []
   if (trail.length === 0 || count <= 0) return out
 
@@ -312,16 +445,17 @@ function pruneTrail(trail: Cell[], keep: number) {
   }
 }
 
-function bodyLength(segments: number) {
+/** How long the body is, head to tail tip, in cells. */
+export function bodyLength(segments: number) {
   return (segments - 1) * SEG_SPACING
 }
 
 /**
- * The layout one more food would bring, or null while that is further off.
+ * The layout one more bite would bring, or null while that is further off.
  *
  * The level a run is about to reach is knowable — it is the next mouthful — so
- * there is no reason to spring it. Shown from the moment only one food stands
- * between, which is the whole time it takes to go and get that food.
+ * there is no reason to spring it. Shown from the moment only one bite stands
+ * between, which is the whole time it takes to go and get it.
  */
 function nextLevelPreview(
   s: Pick<GameState, 'segments' | 'level' | 'cols' | 'rows'>,
@@ -362,16 +496,89 @@ function hitsBody(state: GameState) {
   return false
 }
 
+type Grid = {
+  cols: number
+  rows: number
+  /** 1 where a wall or the body is. The head's own cell is left open. */
+  cells: Uint8Array
+}
+
+/** Walls and body as a grid, for anything that has to find its way around them. */
+function occupancy(s: GameState): Grid {
+  const cells = new Uint8Array(s.cols * s.rows)
+  for (const key of s.walls) {
+    const [x, y] = key.split(',').map(Number)
+    cells[y * s.cols + x] = 1
+  }
+  const body = sampleTrail(s.trail, Math.ceil(bodyLength(s.segments) / 0.45) + 1, 0.45)
+  for (const p of body) {
+    const x = Math.floor(p.x)
+    const y = Math.floor(p.y)
+    if (x >= 0 && y >= 0 && x < s.cols && y < s.rows) cells[y * s.cols + x] = 1
+  }
+  const hx = Math.floor(s.head.x)
+  const hy = Math.floor(s.head.y)
+  if (hx >= 0 && hy >= 0 && hx < s.cols && hy < s.rows) cells[hy * s.cols + hx] = 0
+  return { cols: s.cols, rows: s.rows, cells }
+}
+
+/** Steps from one cell to another around whatever is in the way, or null. */
+function pathCells(grid: Grid, from: Cell, to: Cell): number | null {
+  const { cols, rows, cells } = grid
+  if (from.x === to.x && from.y === to.y) return 0
+  const seen = new Int16Array(cols * rows).fill(-1)
+  const start = from.y * cols + from.x
+  if (start < 0 || start >= seen.length) return null
+  seen[start] = 0
+  const queue = [start]
+  const goal = to.y * cols + to.x
+  for (let q = 0; q < queue.length; q++) {
+    const at = queue[q]
+    const x = at % cols
+    const y = (at - x) / cols
+    const d = seen[at]
+    for (const [dx, dy] of [
+      [1, 0],
+      [-1, 0],
+      [0, 1],
+      [0, -1],
+    ]) {
+      const nx = x + dx
+      const ny = y + dy
+      if (nx < 0 || ny < 0 || nx >= cols || ny >= rows) continue
+      const k = ny * cols + nx
+      if (seen[k] >= 0) continue
+      if (k === goal) return d + 1
+      if (cells[k]) continue
+      seen[k] = d + 1
+      queue.push(k)
+    }
+  }
+  return null
+}
+
+function headCell(s: Pick<GameState, 'head'>): Cell {
+  return { x: Math.floor(s.head.x), y: Math.floor(s.head.y) }
+}
+
 function randomFood(
-  state: Pick<GameState, 'cols' | 'rows' | 'trail' | 'segments' | 'walls'>,
+  state: Pick<GameState, 'cols' | 'rows' | 'trail' | 'segments' | 'walls'> &
+    Partial<Pick<GameState, 'golden' | 'mouse'>>,
 ): Cell {
   const body = sampleTrail(state.trail, state.segments * 2, SEG_SPACING * 0.5)
+  const golden = state.golden
+  const mouse = state.mouse
+
+  const taken = (x: number, y: number) =>
+    state.walls.has(wallKey(x, y)) ||
+    (golden != null && golden.x === x && golden.y === y) ||
+    (mouse != null && Math.hypot(mouse.x - (x + 0.5), mouse.y - (y + 0.5)) < 1.2)
 
   const pick = (clearance: number) => {
     const free: Cell[] = []
     for (let y = 0; y < state.rows; y++) {
       for (let x = 0; x < state.cols; x++) {
-        if (state.walls.has(wallKey(x, y))) continue
+        if (taken(x, y)) continue
         const center = { x: x + 0.5, y: y + 0.5 }
         if (body.every((seg) => dist(seg, center) > clearance)) free.push({ x, y })
       }
@@ -395,6 +602,24 @@ function randomFood(
     }
   }
   return { x: 0, y: 0 }
+}
+
+function pickKind(previous: FruitKind | null): FruitKind {
+  const options = FRUIT_KINDS.filter((k) => k !== previous)
+  return options[Math.floor(Math.random() * options.length)]
+}
+
+/** A new fruit, with a ring if there is a chain for it to carry on. */
+function placeFruit(s: GameState, previous: FruitKind | null) {
+  const cell = randomFood(s)
+  let window = 0
+  if (s.chain > 0) {
+    const path = pathCells(occupancy(s), headCell(s), cell)
+    const trip =
+      path ?? (Math.abs(cell.x - Math.floor(s.head.x)) + Math.abs(cell.y - Math.floor(s.head.y))) * 1.6 + 3
+    window = chainWindow(trip, s.speed, s.chain)
+  }
+  s.fruit = { x: cell.x, y: cell.y, kind: pickKind(previous), age: 0, window, live: window > 0 }
 }
 
 export function createInitialState(
@@ -427,8 +652,13 @@ export function createInitialState(
     bufferedDir: null,
     lineBreak: false,
     segments: START_SEGMENTS,
-    food: { x: 0, y: 0 },
-    foodAge: 0,
+    fruit: { x: 0, y: 0, kind: 'apple', age: 0, window: 0, live: false },
+    golden: null,
+    goldenTimer: GOLDEN_FIRST + rand(0, 4),
+    mouse: null,
+    mouseTimer: MOUSE_FIRST + rand(0, 6),
+    chain: 0,
+    bestChain: 0,
     speed: START_SPEED,
     boostHeld: false,
     boostFuel: BOOST_FUEL_START,
@@ -438,11 +668,25 @@ export function createInitialState(
     walls: wallsForLevel(1, cols, rows),
     dormant: new Set<string>(),
     nextWalls: null,
+    levelAge: 99,
+    time: 0,
+    elapsed: 0,
+    eaten: 0,
     flash: 0,
+    flashTint: 'white',
+    shake: 0,
+    bulges: [],
+    particles: [],
     floaters: [],
+    banners: [],
+    dying: 0,
+    deathCause: null,
   }
 
-  return { ...base, food: randomFood(base) }
+  placeFruit(base, null)
+  // The first fruit of a run is an apple: the one everybody knows a snake eats.
+  base.fruit.kind = 'apple'
+  return base
 }
 
 export function startGame(prev: GameState): GameState {
@@ -450,6 +694,7 @@ export function startGame(prev: GameState): GameState {
   return {
     ...next,
     best: Math.max(prev.best, loadBest()),
+    time: prev.time,
     phase: 'playing',
   }
 }
@@ -475,14 +720,19 @@ export function jumpToLength(state: GameState, length: number): GameState {
     head,
     trail: [{ ...head }, tail],
     segments,
-    score: Math.max(0, (segments - START_SEGMENTS) * SCORE_FOOD),
+    score: Math.max(0, (segments - START_SEGMENTS) * FRUIT_POINTS),
     speed: speedFor(segments),
     pendingDir: null,
     bufferedDir: null,
     boostHeld: false,
     boostFuel: BOOST_FUEL_MAX,
     level: levelFor(segments, START_SEGMENTS),
+    chain: 0,
+    golden: null,
+    mouse: null,
+    bulges: [],
     floaters: [],
+    banners: [],
   }
   // Jumping drops the snake straight into a later level's shape, so it gets
   // the same grace a live level change gives: whole layout, and whatever the
@@ -490,8 +740,8 @@ export function jumpToLength(state: GameState, length: number): GameState {
   next.walls = wallsForLevel(next.level, next.cols, next.rows)
   next.dormant = dormantAtHead(next)
   next.nextWalls = nextLevelPreview(next)
-  next.food = randomFood(next)
-  next.foodAge = 0
+  next.levelAge = 0
+  placeFruit(next, state.fruit.kind)
   return next
 }
 
@@ -536,21 +786,114 @@ export function queueTurn(state: GameState, side: 'left' | 'right'): GameState {
   return queueDir(state, side === 'left' ? LEFT_OF[from] : RIGHT_OF[from])
 }
 
-function die(state: GameState): GameState {
+// Effects --------------------------------------------------------------------
+
+function emit(
+  s: GameState,
+  kind: ParticleKind,
+  x: number,
+  y: number,
+  count: number,
+  speed: number,
+  size: number,
+  tint: Tint,
+  life: number,
+) {
+  for (let i = 0; i < count; i++) {
+    if (s.particles.length >= MAX_PARTICLES) s.particles.shift()
+    const a = Math.random() * Math.PI * 2
+    const v = speed * (0.35 + Math.random() * 0.65)
+    const maxLife = life * (0.6 + Math.random() * 0.6)
+    s.particles.push({
+      x,
+      y,
+      vx: Math.cos(a) * v,
+      vy: Math.sin(a) * v,
+      life: 1,
+      maxLife,
+      size: size * (0.6 + Math.random() * 0.7),
+      tint,
+      kind,
+    })
+  }
+}
+
+function floater(
+  s: GameState,
+  x: number,
+  y: number,
+  text: string,
+  sub: string,
+  tint: Tint,
+  weight: number,
+  maxLife = 1.05,
+) {
+  s.floaters.push({ x, y, text, sub, life: 1, maxLife, tint, weight })
+}
+
+function banner(s: GameState, text: string, sub: string, tint: Tint, life = 1.9) {
+  // One at a time: a level and a chain landing together would talk over each other.
+  if (s.banners.length >= 2) s.banners.shift()
+  s.banners.push({ text, sub, tint, life, maxLife: life })
+}
+
+/** Always fresh arrays, so nothing pushed this frame lands in the state before it. */
+function updateEffects(s: GameState, dt: number) {
+  const particles: Particle[] = []
+  for (const p of s.particles) {
+    const life = p.life - dt / p.maxLife
+    if (life <= 0) continue
+    const drag = Math.exp(-dt * (p.kind === 'puff' ? 2.2 : 3.4))
+    particles.push({
+      ...p,
+      life,
+      x: p.x + p.vx * dt,
+      y: p.y + p.vy * dt,
+      vx: p.vx * drag,
+      vy: p.vy * drag,
+    })
+  }
+  s.particles = particles
+  s.floaters = s.floaters
+    .map((f) => ({ ...f, y: f.y - dt * 0.9, life: f.life - dt / f.maxLife }))
+    .filter((f) => f.life > 0)
+  if (s.banners.length) {
+    const [first, ...rest] = s.banners
+    const life = first.life - dt
+    s.banners = life > 0 ? [{ ...first, life }, ...rest] : rest
+  } else {
+    s.banners = []
+  }
+}
+
+/** Notes of a major scale, in semitones: each link of a chain sings one higher. */
+const CHAIN_NOTES = [0, 2, 4, 5, 7, 9, 11, 12, 14, 16]
+
+// Dying -------------------------------------------------------------------------
+
+function die(state: GameState, cause: DeathCause): GameState {
   const best = Math.max(state.best, state.score)
-  saveBest(best)
+  sfx('hurt')
   sfx('die')
   haptic('crash')
-  return {
+  const s: GameState = {
     ...state,
-    phase: 'gameover',
+    phase: 'dying',
     best,
     pendingDir: null,
     bufferedDir: null,
     boostHeld: false,
     boostFuel: BOOST_FUEL_MAX,
-    flash: 0.4,
+    flash: 0.55,
+    flashTint: 'red',
+    shake: 1,
+    dying: DYING_TIME,
+    deathCause: cause,
+    particles: [...state.particles],
   }
+  emit(s, 'bit', s.head.x, s.head.y, 14, 4.2, 0.1, 'green', 0.7)
+  emit(s, 'puff', s.head.x, s.head.y, 6, 1.6, 0.28, 'ink', 0.8)
+  return s
 }
 
 /**
@@ -771,60 +1114,285 @@ function escapeWall(s: GameState) {
   return true
 }
 
-function tryEat(s: GameState, previousBest: number) {
-  const foodCenter = { x: s.food.x + 0.5, y: s.food.y + 0.5 }
-  if (dist(s.head, foodCenter) >= EAT_DIST) return
+// Eating ------------------------------------------------------------------------
 
-  const bonus = foodBonus(s.foodAge)
-  const gained = SCORE_FOOD + bonus
-
-  sfx('eat')
+/** One more bead: pace, tank and the swallow on its way down. */
+function grow(s: GameState, fuel: number) {
   s.segments += 1
-  s.score += gained
   s.best = Math.max(s.best, s.score)
-  if (s.best !== previousBest) saveBest(s.best)
   s.speed = speedFor(s.segments)
-  // The loop pays for itself: eating buys the speed that catches the next one
-  // while its ring is still full. Capped, so a hoarded tank is wasted fuel.
-  s.boostFuel = Math.min(BOOST_FUEL_MAX, s.boostFuel + BOOST_FUEL_PER_FOOD)
-
-  const level = levelFor(s.segments, START_SEGMENTS)
-  if (level !== s.level) {
-    s.level = level
-    // The whole shape, every time. Only the blocks the head is standing in
-    // when they land are held back, and only until it has moved off them.
-    s.walls = wallsForLevel(level, s.cols, s.rows)
-    s.dormant = dormantAtHead(s)
-    s.flash = 0.5
-    s.floaters = [
-      ...s.floaters,
-      { x: s.head.x, y: s.head.y - 1.2, text: `LEVEL ${level}`, life: 1.4 },
-    ]
-  }
-  s.nextWalls = nextLevelPreview(s)
-
-  // After the walls, so a new level never drops food inside one.
-  s.food = randomFood(s)
-  s.foodAge = 0
-  // A clean full-bonus grab flashes harder, so the good line is felt, not read.
-  s.flash = bonus === HUNGER_MAX ? 0.42 : 0.28
-  s.floaters = [
-    ...s.floaters,
-    { x: s.head.x, y: s.head.y - 0.3, text: `+${gained}`, life: 0.9 },
-  ]
+  s.boostFuel = Math.min(BOOST_FUEL_MAX, s.boostFuel + fuel)
+  s.bulges = [0, ...s.bulges]
 }
+
+/**
+ * A new layout, whole, wherever the snake is. Only the blocks the head is
+ * standing in hold their fire, and only until it has moved off them.
+ */
+function landLevel(s: GameState, level: number) {
+  s.level = level
+  s.walls = wallsForLevel(level, s.cols, s.rows)
+  s.dormant = dormantAtHead(s)
+  s.levelAge = 0
+  s.flash = Math.max(s.flash, 0.3)
+  s.flashTint = 'green'
+  sfx('wave')
+  banner(s, `Level ${level}`, levelName(level), 'green', 2.1)
+  for (const key of s.walls) {
+    const [x, y] = key.split(',').map(Number)
+    emit(s, 'puff', x + 0.5, y + 0.5, 1, 0.9, 0.3, 'ink', 0.7)
+  }
+  // Anything standing where a block just came down is moved on.
+  if (s.golden && s.walls.has(wallKey(s.golden.x, s.golden.y))) {
+    emit(s, 'spark', s.golden.x + 0.5, s.golden.y + 0.5, 6, 2.4, 0.1, 'amber', 0.5)
+    s.golden = null
+    s.goldenTimer = rand(...GOLDEN_GAP) * 0.5
+  }
+  if (s.mouse) {
+    const at = s.mouse.t < 0.5 ? s.mouse.from : s.mouse.to
+    if (s.walls.has(wallKey(at.x, at.y))) {
+      emit(s, 'puff', s.mouse.x, s.mouse.y, 5, 1.4, 0.26, 'ink', 0.6)
+      s.mouse = null
+      s.mouseTimer = rand(...MOUSE_GAP) * 0.5
+    }
+  }
+  // A golden apple or a mouse can bring a level while a fruit is out.
+  if (s.walls.has(wallKey(s.fruit.x, s.fruit.y))) placeFruit(s, s.fruit.kind)
+}
+
+function levelUp(s: GameState) {
+  const level = levelFor(s.segments, START_SEGMENTS)
+  if (level !== s.level) landLevel(s, level)
+  s.nextWalls = nextLevelPreview(s)
+}
+
+function tryEat(s: GameState): boolean {
+  const f = s.fruit
+  const at = { x: f.x + 0.5, y: f.y + 0.5 }
+  if (dist(s.head, at) >= EAT_DIST) return false
+
+  const kept = f.live && f.window > 0
+  s.chain = kept ? s.chain + 1 : 1
+  s.bestChain = Math.max(s.bestChain, s.chain)
+  const gained = fruitValue(s.chain)
+  s.score += gained
+  s.eaten += 1
+  grow(s, BOOST_FUEL_PER_FOOD)
+
+  const tint = FRUIT_TINT[f.kind]
+  emit(s, 'bit', at.x, at.y, 9, 3, 0.085, tint, 0.55)
+  emit(s, 'ring', at.x, at.y, 1, 0, 0.42, tint, 0.32)
+  floater(
+    s,
+    at.x,
+    at.y - 0.55,
+    `+${gained}`,
+    s.chain >= 2 ? `Chain ${s.chain}` : '',
+    s.chain >= CHAIN_TOP ? 'amber' : 'ink',
+    Math.min(1, 0.3 + s.chain / CHAIN_TOP),
+  )
+  sfx('eat')
+  if (s.chain >= 2) sfx('hop', CHAIN_NOTES[Math.min(CHAIN_NOTES.length - 1, s.chain - 2)])
+
+  if (s.chain === CHAIN_TOP) {
+    banner(s, 'Top chain', `Every fruit +${fruitValue(CHAIN_TOP)} while it lasts`, 'amber', 1.9)
+    sfx('perfect')
+    s.flash = Math.max(s.flash, 0.3)
+    s.flashTint = 'amber'
+    emit(s, 'spark', s.head.x, s.head.y, 14, 4, 0.1, 'amber', 0.7)
+  } else if (s.chain > CHAIN_TOP && s.chain % 10 === 0) {
+    banner(s, `Chain ${s.chain}`, 'Still going', 'amber', 1.5)
+    sfx('perfect')
+    emit(s, 'spark', s.head.x, s.head.y, 12, 4, 0.1, 'amber', 0.7)
+  }
+
+  levelUp(s)
+  // After the walls, so a new level never drops a fruit inside one.
+  placeFruit(s, f.kind)
+  return true
+}
+
+function tryEatGolden(s: GameState) {
+  const g = s.golden
+  if (!g) return
+  const at = { x: g.x + 0.5, y: g.y + 0.5 }
+  if (dist(s.head, at) >= EAT_DIST) return
+  s.golden = null
+  s.goldenTimer = rand(...GOLDEN_GAP)
+  s.score += GOLDEN_POINTS
+  grow(s, BOOST_FUEL_GOLDEN)
+  emit(s, 'spark', at.x, at.y, 16, 4.4, 0.11, 'amber', 0.75)
+  emit(s, 'ring', at.x, at.y, 1, 0, 0.6, 'amber', 0.4)
+  floater(s, at.x, at.y - 0.6, `+${GOLDEN_POINTS}`, 'Golden apple', 'amber', 1, 1.3)
+  s.flash = Math.max(s.flash, 0.28)
+  s.flashTint = 'amber'
+  sfx('good')
+  levelUp(s)
+}
+
+function tryCatchMouse(s: GameState) {
+  const m = s.mouse
+  if (!m || !catchable(m)) return
+  if (Math.hypot(s.head.x - m.x, s.head.y - m.y) >= MOUSE_EAT) return
+  s.mouse = null
+  s.mouseTimer = rand(...MOUSE_GAP)
+  s.score += MOUSE_POINTS
+  grow(s, BOOST_FUEL_MAX)
+  // A mouse is a mouthful: it goes down as a bigger lump.
+  s.bulges = [0, 0.18, ...s.bulges.slice(1)]
+  emit(s, 'puff', m.x, m.y, 7, 2, 0.26, 'ink', 0.6)
+  emit(s, 'spark', m.x, m.y, 12, 3.8, 0.1, 'pink', 0.6)
+  emit(s, 'ring', m.x, m.y, 1, 0, 0.6, 'pink', 0.4)
+  floater(s, m.x, m.y - 0.6, `+${MOUSE_POINTS}`, 'Caught! Tank full', 'pink', 1, 1.35)
+  s.flash = Math.max(s.flash, 0.3)
+  s.flashTint = 'pink'
+  s.shake = Math.max(s.shake, 0.25)
+  sfx('good')
+  sfx('hop', 16)
+  levelUp(s)
+}
+
+function breakChain(s: GameState) {
+  const lost = s.chain
+  s.chain = 0
+  const f = s.fruit
+  const at = { x: f.x + 0.5, y: f.y + 0.5 }
+  // The ring comes apart where it was.
+  for (let i = 0; i < 10; i++) {
+    const a = (i / 10) * Math.PI * 2
+    s.particles.push({
+      x: at.x + Math.cos(a) * 0.62,
+      y: at.y + Math.sin(a) * 0.62,
+      vx: Math.cos(a) * 1.4,
+      vy: Math.sin(a) * 1.4,
+      life: 1,
+      maxLife: 0.45,
+      size: 0.06,
+      tint: 'amber',
+      kind: 'bit',
+    })
+  }
+  if (lost >= 2) {
+    floater(s, at.x, at.y - 0.7, 'Chain lost', `×${lost}`, 'red', 0.45, 1.2)
+    sfx('miss')
+  }
+}
+
+// Golden apple and mouse ----------------------------------------------------------
+
+function spawnGolden(s: GameState, grid: Grid) {
+  const from = headCell(s)
+  const mouse = s.mouse
+  const spots: Cell[] = []
+  for (let y = 0; y < s.rows; y++) {
+    for (let x = 0; x < s.cols; x++) {
+      if (grid.cells[y * s.cols + x]) continue
+      if (Math.abs(x - s.fruit.x) + Math.abs(y - s.fruit.y) < 2) continue
+      if (mouse && Math.hypot(mouse.x - (x + 0.5), mouse.y - (y + 0.5)) < 1.5) continue
+      const far = Math.abs(x - from.x) + Math.abs(y - from.y)
+      if (far < 5 || far > 17) continue
+      spots.push({ x, y })
+    }
+  }
+  if (!spots.length) {
+    s.goldenTimer = 3
+    return
+  }
+  const at = spots[Math.floor(Math.random() * spots.length)]
+  s.golden = { x: at.x, y: at.y, age: 0, life: GOLDEN_LIFE }
+  emit(s, 'spark', at.x + 0.5, at.y + 0.5, 8, 2.4, 0.09, 'amber', 0.5)
+  sfx('tap')
+}
+
+function mouseWorld(s: GameState, grid: Grid): MouseWorld {
+  const v = VEC[s.dir]
+  return {
+    cols: s.cols,
+    rows: s.rows,
+    blocked: (x, y) => grid.cells[y * s.cols + x] === 1,
+    head: s.head,
+    heading: v,
+  }
+}
+
+function updateBonuses(s: GameState, dt: number) {
+  // Built only when something needs to find its way around the board.
+  let grid: Grid | null = null
+  const occ = () => (grid ??= occupancy(s))
+
+  if (s.golden) {
+    const g = { ...s.golden, age: s.golden.age + dt }
+    if (g.age >= g.life) {
+      emit(s, 'spark', g.x + 0.5, g.y + 0.5, 6, 1.6, 0.08, 'amber', 0.45)
+      s.golden = null
+      s.goldenTimer = rand(...GOLDEN_GAP)
+    } else {
+      s.golden = g
+    }
+  } else {
+    s.goldenTimer -= dt
+    if (s.goldenTimer <= 0) spawnGolden(s, occ())
+  }
+
+  if (s.mouse) {
+    const m = stepMouse(s.mouse, dt, mouseWorld(s, occ()), Math.random)
+    if (m.mode === 'gone' && m.fade <= 0) {
+      s.mouse = null
+      s.mouseTimer = rand(...MOUSE_GAP)
+    } else {
+      s.mouse = m
+    }
+  } else {
+    s.mouseTimer -= dt
+    if (s.mouseTimer <= 0) {
+      const world = mouseWorld(s, occ())
+      const door = mouseDoor(world, Math.random)
+      if (door) {
+        s.mouse = createMouse(door, s.cols, s.rows, Math.floor(Math.random() * 1e6))
+        sfx('hop', 14)
+      } else {
+        s.mouseTimer = 3
+      }
+    }
+  }
+}
+
+// Tick --------------------------------------------------------------------------
 
 export function tick(state: GameState, dt: number): GameState {
   const s = { ...state }
+  s.time += dt
   s.flash = Math.max(0, s.flash - dt * 1.8)
-  s.floaters = s.floaters
-    .map((f) => ({ ...f, y: f.y - 0.7 * dt, life: f.life - dt * 1.2 }))
-    .filter((f) => f.life > 0)
+  s.shake = Math.max(0, s.shake - dt * 2.8)
+  updateEffects(s, dt)
 
+  if (s.phase === 'dying') {
+    s.dying = Math.max(0, s.dying - dt)
+    if (s.dying <= 0) s.phase = 'gameover'
+    return s
+  }
   if (s.phase !== 'playing') return s
 
-  s.foodAge += dt
+  s.elapsed += dt
+  s.levelAge += dt
+
+  // The ring runs down; let it close and the chain goes with it.
+  const f = s.fruit
+  s.fruit = { ...f, age: f.age + dt }
+  if (s.fruit.live && s.fruit.age >= s.fruit.window) {
+    s.fruit = { ...s.fruit, live: false }
+    if (s.chain > 0) breakChain(s)
+  }
+
   burnBoost(s, dt)
+  updateBonuses(s, dt)
+
+  // Swallowed bites travel to the tail in about a second and a half, however long it is.
+  if (s.bulges.length) {
+    const len = bodyLength(s.segments)
+    const rate = Math.max(6, len / 1.5)
+    s.bulges = s.bulges.map((b) => b + rate * dt).filter((b) => b < len + 0.5)
+  }
 
   // Walk the frame in short hops so nothing can be passed over between checks,
   // however fast the snake is going or however long the frame took.
@@ -839,15 +1407,17 @@ export function tick(state: GameState, dt: number): GameState {
 
     move(s, hop)
 
-    if (pastHardWall(s)) return die(s)
+    if (pastHardWall(s)) return die(s, 'wall')
     wakeBlocks(s)
     const block = barrierHit(s)
     if (block) {
       restAgainst(s, block)
-      return die(s)
+      return die(s, 'block')
     }
-    if (hitsBody(s)) return die(s)
-    tryEat(s, state.best)
+    if (hitsBody(s)) return die(s, 'self')
+    tryEat(s)
+    tryEatGolden(s)
+    tryCatchMouse(s)
   }
 
   return s
@@ -857,6 +1427,12 @@ export function tick(state: GameState, dt: number): GameState {
 export function visualSegments(state: GameState): Cell[] {
   const points = sampleTrail(state.trail, state.segments, BEAD_SPACING)
   return points.map((p) => ({ x: p.x - 0.5, y: p.y - 0.5 }))
+}
+
+/** How much of the fruit's ring is left, 1 → 0; 0 when it has none. */
+export function ringLeft(f: Fruit) {
+  if (!f.live || f.window <= 0) return 0
+  return Math.max(0, Math.min(1, 1 - f.age / f.window))
 }
 
 export function toSnapshot(s: GameState): Snapshot {
@@ -869,5 +1445,7 @@ export function toSnapshot(s: GameState): Snapshot {
     level: s.level,
     canBoost: s.phase === 'playing' && s.boostFuel > 0,
     fuel: boostFuelLeft(s),
+    chain: s.chain,
+    deathCause: s.deathCause,
   }
 }

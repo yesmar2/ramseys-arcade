@@ -41,6 +41,7 @@ import {
 import { useRecordTop } from '../../hooks/useRecordTop'
 import { useTournamentPlay } from '../../tournaments/TournamentPlayContext'
 import {
+  CHAIN_TOP,
   createInitialState,
   jumpToLength,
   queueDir,
@@ -50,6 +51,7 @@ import {
   startGame,
   tick,
   toSnapshot,
+  type DeathCause,
   type Dir,
   type GameState,
   type Snapshot,
@@ -63,6 +65,16 @@ function currentLayout() {
 
 /** Space is the obvious one; shift is there for a hand already on the arrows. */
 const BOOST_KEYS = new Set(['Space', 'ShiftLeft', 'ShiftRight'])
+
+/** The card after a crash says what the crash was. */
+const DEATH_TITLE: Record<DeathCause, string> = {
+  wall: 'Hit the wall',
+  block: 'Hit a stone',
+  self: 'Bit your tail',
+}
+
+/** A chain of one is just a bite; the readout shows it once it is a chain. */
+const CHAIN_SHOW = 2
 
 /**
  * The skill goal, sat beside the endurance one on the start card. The score
@@ -369,7 +381,9 @@ export function SnakeGame() {
           stateRef.current = setBoost(s, true)
           return
         }
-        if (e.code === 'Space') restart()
+        // Only from the start card: a space held through the crash must not
+        // skip the card that offers to save the run.
+        if (e.code === 'Space' && s.phase === 'menu') restart()
         return
       }
       if (e.code === 'Enter') {
@@ -466,6 +480,9 @@ export function SnakeGame() {
             <PlayReadoutStats>
               <PlayStat label="Length" value={ui.length} />
               <PlayStat label="Level" value={ui.level} />
+              {ui.phase === 'playing' && ui.chain >= CHAIN_SHOW ? (
+                <PlayStat label="Chain" value={ui.chain} urgent={ui.chain >= CHAIN_TOP} />
+              ) : null}
             </PlayReadoutStats>
           </PlayReadout>
 
@@ -527,7 +544,7 @@ export function SnakeGame() {
                 <ScoreSaveCard
                   gameSlug="snake"
                   score={ui.score}
-                  title="Game over"
+                  title={ui.deathCause ? DEATH_TITLE[ui.deathCause] : 'Game over'}
                   previousBest={Math.max(previousBestRef.current, apiBest)}
                   onDone={toMenu}
                 />

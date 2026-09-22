@@ -89,6 +89,18 @@ const LAYOUTS: Rect[][] = [
   ],
 ]
 
+/** What each layout is called when it lands, in the same order. */
+const NAMES = [
+  'The Lawn',
+  'Two Posts',
+  'The Gate',
+  'Four Beds',
+  'The Fountain',
+  'The Garden',
+  'The Gates',
+  'The Room',
+]
+
 /** Levels with a layout of their own. Past this the shapes come round again. */
 export const AUTHORED_LEVELS = LAYOUTS.length
 
@@ -119,11 +131,20 @@ export function levelFor(segments: number, startSegments: number) {
   return 1 + Math.floor(eaten / LEVEL_FOOD)
 }
 
-function layoutFor(level: number): Rect[] {
+function layoutIndex(level: number): number {
   const at = Math.max(1, level)
-  if (at <= AUTHORED_LEVELS) return LAYOUTS[at - 1]
+  if (at <= AUTHORED_LEVELS) return at - 1
   const span = AUTHORED_LEVELS - CYCLE_FROM + 1
-  return LAYOUTS[CYCLE_FROM - 1 + ((at - AUTHORED_LEVELS - 1) % span)]
+  return CYCLE_FROM - 1 + ((at - AUTHORED_LEVELS - 1) % span)
+}
+
+function layoutFor(level: number): Rect[] {
+  return LAYOUTS[layoutIndex(level)]
+}
+
+/** The name the level's banner carries. A shape that comes round again keeps its name. */
+export function levelName(level: number): string {
+  return NAMES[layoutIndex(level)] ?? ''
 }
 
 /** Cells walled off at this level, for a board of this shape. */
