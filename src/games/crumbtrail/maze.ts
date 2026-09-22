@@ -29,7 +29,18 @@ export type GenRow = {
   power: boolean[]
 }
 
-export const MIN_COLS = 9
+/**
+ * Ten, not nine.
+ *
+ * A tall screen clamps to this floor, so the phone plays the narrowest board
+ * there is: nine columns against a desktop's twenty-one, which is five open
+ * cells in a row to run through against nearly twelve. One more column is not
+ * parity — it cannot be, the screen is the shape it is — but it is the most
+ * that can be added before the cell gets too small to read, and it comes with
+ * a matching easing of chaser pace in game.ts rather than carrying the whole
+ * correction on its own.
+ */
+export const MIN_COLS = 10
 export const MAX_COLS = 21
 /** Rows we want on screen; the column count is chosen to land near it. */
 export const TARGET_VISIBLE_ROWS = 15

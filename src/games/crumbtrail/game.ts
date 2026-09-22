@@ -503,6 +503,24 @@ function chaserSpeedScale(depth: number) {
   return 1 + Math.min(0.22, depth * 0.0007)
 }
 
+/**
+ * Chasers ease off on a narrow board.
+ *
+ * Outrunning one is a matter of having somewhere to go: the player is 1.37
+ * times quicker, which is plenty of edge when there are a dozen open cells in
+ * a row and not much when there are five. A phone runs out of board before the
+ * advantage has paid for itself.
+ *
+ * So the edge grows as the board narrows — about 1.47 times at ten columns,
+ * back to the full 1.37 by eighteen. Only the hunt is slowed. Frightened and
+ * eaten chasers keep their own pace, because those are the ones the player is
+ * chasing, and making them easier to catch was never the problem.
+ */
+function boardSpeedScale(cols: number) {
+  const t = Math.max(0, Math.min(1, (cols - 10) / 8))
+  return 0.93 + t * 0.07
+}
+
 function frightSpeedScale(depth: number) {
   return 1 + Math.min(0.22, depth * 0.0006)
 }
@@ -1645,7 +1663,7 @@ export function tick(state: GameState, dt: number): GameState {
         ? EATEN_SPEED
         : ghost.mode === 'frightened'
           ? FRIGHT_SPEED * frightSpeedScale(next.depth)
-          : GHOST_SPEED * chaserSpeedScale(next.depth)
+          : GHOST_SPEED * chaserSpeedScale(next.depth) * boardSpeedScale(next.cols)
     moveGhost(next, ghost, speed, dt, cache)
   }
   // Eyes that made it out the top, and anything the tide took, are gone.
