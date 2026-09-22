@@ -24,8 +24,12 @@ type HeroScores = {
 /** One run's place on a game's all-time board. */
 type Place = { name: string; score: number; rank: number }
 
-/** Your best on the banner's game, all time, with the run just above it and the nearest other player's below. */
-type Rung = { you: Place; above: Place | null; below: Place | null }
+/**
+ * Your best on the banner's game, all time, with the run just above it and
+ * the nearest other player below; on top of the board, also the player after
+ * that, so the line still shows second and third.
+ */
+type Rung = { you: Place; above: Place | null; below: Place | null; third?: Place | null }
 
 /** What each game counts, where it is not points. Time boards count seconds. */
 const UNITS: Record<string, [string, string]> = {
@@ -51,20 +55,34 @@ function pts(n: number) {
   return `${n.toLocaleString()} ${n === 1 ? 'pt' : 'pts'}`
 }
 
+const RUNG_PAGE = 25
+
 /*
  * A board lists runs, not players. Your best is your highest run, so the run
- * just above it is always someone else's, but the runs below can be your own
- * and are skipped until another name turns up.
+ * just above it is always someone else's. The runs below can be your own, or
+ * another of that player's, so they are read a page at a time, one run per
+ * player, until enough other players turn up: one behind you, or two when
+ * nobody is ahead of you.
  */
 async function fetchRung(slug: string, name: string): Promise<Rung | null> {
   const { you } = await getLeaderboard(slug, 'all', name, { limit: 1 })
   if (!you) return null
-  const offset = Math.max(0, you.rank - 2)
-  const { entries } = await getLeaderboard(slug, 'all', name, { offset, limit: 6 })
-  const placed: Place[] = entries.map((e, i) => ({ name: e.name, score: e.score, rank: offset + 1 + i }))
-  const above = placed.filter((p) => p.rank < you.rank && p.name !== name).at(-1) ?? null
-  const below = placed.find((p) => p.rank > you.rank && p.name !== name) ?? null
-  return { you: { name, score: you.score, rank: you.rank }, above, below }
+  const wanted = you.rank === 1 ? 2 : 1
+  let above: Place | null = null
+  const behind: Place[] = []
+  let offset = Math.max(0, you.rank - 2)
+  for (let page = 0; page < 3 && behind.length < wanted; page += 1) {
+    const { entries } = await getLeaderboard(slug, 'all', name, { offset, limit: RUNG_PAGE })
+    for (const [i, e] of entries.entries()) {
+      const place: Place = { name: e.name, score: e.score, rank: offset + 1 + i }
+      if (place.name === name) continue
+      if (place.rank < you.rank) above = place
+      else if (place.name !== above?.name && !behind.some((b) => b.name === place.name)) behind.push(place)
+    }
+    if (entries.length < RUNG_PAGE) break
+    offset += RUNG_PAGE
+  }
+  return { you: { name, score: you.score, rank: you.rank }, above, below: behind[0] ?? null, third: behind[1] ?? null }
 }
 
 /*
@@ -107,22 +125,27 @@ function rememberRung(key: string, rung: Rung | null) {
   }
 }
 
-/** Where each mark sits along the line, in percent. */
-function layout({ you, above, below }: Rung) {
-  if (above && below) {
-    const span = above.score - below.score
-    const raw = span > 0 ? 8 + (84 * (you.score - below.score)) / span : 50
-    // Kept off both ends, so the labels always have room between them.
-    return { below: 8, you: Math.min(60, Math.max(34, raw)), above: 92 }
-  }
-  if (above) return { below: null, you: 22, above: 88 }
-  if (below) return { below: 12, you: 78, above: null }
-  return { below: null, you: 50, above: null }
+/*
+ * The line has three slots in score order: the top of it on the right, the
+ * middle, and whoever is furthest back on the left. Chasing, you are the
+ * middle, between the place you are after and the player behind you. On top
+ * of the board, you are the top, with second and third behind you.
+ */
+type Slots = { hi: Place; mid: Place; lo: Place | null }
+
+function slots({ you, above, below, third }: Rung): Slots | null {
+  if (above) return { hi: above, mid: you, lo: below }
+  // Alone on the board, there is nobody to draw you against.
+  return below ? { hi: you, mid: below, lo: third ?? null } : null
 }
 
-/** A label near either end hangs inward from its mark, so it never runs off the line. */
-function align(x: number) {
-  return x < 20 ? ' hero-race__label--start' : x > 80 ? ' hero-race__label--end' : ''
+/** Where each slot sits along the line, in percent. */
+function layout({ hi, mid, lo }: Slots) {
+  if (!lo) return { lo: null, mid: 22, hi: 88 }
+  const span = hi.score - lo.score
+  const raw = span > 0 ? 8 + (84 * (mid.score - lo.score)) / span : 50
+  // Kept off both ends, so the labels always have room between them.
+  return { lo: 8, mid: Math.min(60, Math.max(34, raw)), hi: 92 }
 }
 
 function Flag() {
@@ -135,49 +158,47 @@ function Flag() {
 }
 
 /**
- * Your best, the run above it and the player below, laid on a line in score
- * order, with the stretch still to cover lit in the game's colour. Their
- * names sit over the line and yours under it, beside what is left to go.
+ * The board around you, laid on a line in score order, with the stretch
+ * between the middle and the top lit in the game's colour: what you still
+ * have to cover, or on top, your lead. The ends are named over the line; the
+ * middle is named under it, beside the lit stretch's own figure.
  */
 function RaceLine({ slug, name, rung }: { slug: string; name: string; rung: Rung }) {
-  const { you, above, below } = rung
-  const x = layout(rung)
+  const s = slots(rung)
+  if (!s) return null
+  const x = layout(s)
   const fmt = (score: number) => formatLeaderboardScore(slug, score)
-  const said = [above ? `${above.name} ${fmt(above.score)}` : null, `you ${fmt(you.score)}`, below ? `${below.name} ${fmt(below.score)}` : null]
-  // With a mark each side, your label hangs left so the gap's own label fits to its right.
-  const youAlign = above && below ? ' hero-race__label--end' : align(x.you)
-  const lit = above && x.above != null ? { from: x.you, to: x.above } : below && x.below != null ? { from: x.below, to: x.you } : null
-  const litGap = above ? above.score - you.score : below ? you.score - below.score : 0
+  const onTop = s.hi === rung.you
+  const gap = s.hi.score - s.mid.score
+  const said = [s.hi, s.mid, s.lo].filter((p): p is Place => p != null).map((p) => `${p === rung.you ? 'you' : p.name} ${fmt(p.score)}`)
+
+  const mark = (p: Place, at: number, slot: 'hi' | 'mid' | 'lo', edge: string) => {
+    const who = p === rung.you ? 'you' : slot === 'lo' ? 'trail' : 'rival'
+    return (
+      <>
+        <span className={`hero-race__dot hero-race__dot--${who}`} style={{ left: `${at}%` }} />
+        <span
+          className={`hero-race__label hero-race__label--${slot === 'mid' ? 'under' : 'over'} hero-race__label--${who}${edge}`}
+          style={{ left: `${at}%` }}
+        >
+          {slot === 'hi' && p.rank === 1 ? <Flag /> : null}
+          {p === rung.you ? 'You' : p.name} {fmt(p.score)}
+        </span>
+      </>
+    )
+  }
 
   return (
-    <div className="hero-race" role="img" aria-label={`${name} all-time board: ${said.filter(Boolean).join(', ')}`}>
+    <div className="hero-race" role="img" aria-label={`${name} all-time board: ${said.join(', ')}`}>
       <span className="hero-race__track" />
-      {lit && litGap > 0 ? <span className="hero-race__lit" style={{ left: `${lit.from}%`, width: `${lit.to - lit.from}%` }} /> : null}
-      {below && x.below != null ? (
-        <>
-          <span className="hero-race__dot hero-race__dot--below" style={{ left: `${x.below}%` }} />
-          <span className={`hero-race__label hero-race__label--top hero-race__label--below${align(x.below)}`} style={{ left: `${x.below}%` }}>
-            {below.name} {fmt(below.score)}
-          </span>
-        </>
-      ) : null}
-      {above && x.above != null ? (
-        <>
-          <span className="hero-race__dot hero-race__dot--above" style={{ left: `${x.above}%` }} />
-          <span className={`hero-race__label hero-race__label--top hero-race__label--above${align(x.above)}`} style={{ left: `${x.above}%` }}>
-            {above.rank === 1 ? <Flag /> : null}
-            {above.name} {fmt(above.score)}
-          </span>
-        </>
-      ) : null}
-      <span className="hero-race__dot hero-race__dot--you" style={{ left: `${x.you}%` }} />
-      <span className={`hero-race__label hero-race__label--you${youAlign}`} style={{ left: `${x.you}%` }}>
-        {above ? null : <Flag />}
-        You {fmt(you.score)}
-      </span>
-      {lit && litGap > 0 ? (
-        <span className="hero-race__label hero-race__label--gap" style={{ left: `${(lit.from + lit.to) / 2}%` }}>
-          {gapFigure(slug, litGap)} {above ? 'to go' : 'ahead'}
+      {gap > 0 ? <span className="hero-race__lit" style={{ left: `${x.mid}%`, width: `${x.hi - x.mid}%` }} /> : null}
+      {s.lo && x.lo != null ? mark(s.lo, x.lo, 'lo', ' hero-race__label--start') : null}
+      {mark(s.hi, x.hi, 'hi', ' hero-race__label--end')}
+      {/* With a mark behind it, the middle's label hangs left, so the lit stretch's figure fits to its right. */}
+      {mark(s.mid, x.mid, 'mid', s.lo ? ' hero-race__label--end' : '')}
+      {gap > 0 ? (
+        <span className="hero-race__label hero-race__label--under hero-race__label--gap" style={{ left: `${(x.mid + x.hi) / 2}%` }}>
+          {gapFigure(slug, gap)} {onTop ? 'ahead' : 'to go'}
         </span>
       ) : null}
     </div>
