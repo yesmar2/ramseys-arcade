@@ -11,6 +11,7 @@ import { useGamePause } from '../../hooks/useGamePause'
 import { usePersonalBest } from '../../hooks/usePersonalBest'
 import { usePlayerName } from '../../hooks/usePlayerName'
 import { getPersonalBest } from '../../lib/personalBest'
+import { gameAccentStyle } from '../../lib/gameAccentStyle'
 import { normalizePlayerName } from '../../lib/leaderboard'
 import {
   clearRunAchievements,
@@ -60,6 +61,31 @@ function PowerMark({ kind }: { kind: PowerKind }) {
       )}
     </svg>
   )
+}
+
+/*
+ * The wave card, in the arcade's own grammar: a kicker for what happened, the
+ * figure it was worth, and the breakdown under it. It used to put a sentence
+ * where the figure goes — "3 cities +300" set at 2.4rem — so the one card
+ * between waves read as a different game to the four around it.
+ */
+function waveClearLabel(ui: Snapshot) {
+  if (ui.clearBonus?.perfect) return 'Perfect wave'
+  if (ui.clearBonus?.rebuilt) return 'City rebuilt'
+  return `Wave ${ui.wave} clear`
+}
+
+function waveClearTotal(ui: Snapshot) {
+  const b = ui.clearBonus
+  return b ? b.cityBonus + b.ammoBonus : 0
+}
+
+function waveClearDetail(ui: Snapshot) {
+  const b = ui.clearBonus
+  if (!b) return ''
+  const parts = [`${b.cities} ${b.cities === 1 ? 'city' : 'cities'} +${b.cityBonus}`]
+  if (b.ammoBonus > 0) parts.push(`unused ammo +${b.ammoBonus}`)
+  return parts.join(' · ')
 }
 
 /**
@@ -416,33 +442,14 @@ export function PatriotGame() {
             {ui.phase === 'waveClear' && !needsRotate && !paused && (
               <div
                 className={`patriot__card patriot__card--clear${ui.clearBonus?.perfect ? ' patriot__card--perfect' : ''}${ui.clearBonus?.rebuilt ? ' patriot__card--rebuilt' : ''}`}
+                style={gameAccentStyle('patriot')}
                 aria-hidden="true"
               >
-                {ui.clearBonus?.perfect ? (
-                  <>
-                    <h2>Wave {ui.wave} · Perfect</h2>
-                    <p className="patriot__bonus">+{ui.clearBonus.cityBonus}</p>
-                  </>
-                ) : ui.clearBonus?.rebuilt ? (
-                  <>
-                    <h2>Wave {ui.wave} · City rebuilt</h2>
-                    <p className="patriot__bonus">
-                      {ui.clearBonus.cities} {ui.clearBonus.cities === 1 ? 'city' : 'cities'} +{ui.clearBonus.cityBonus}
-                    </p>
-                  </>
-                ) : (
-                  <>
-                    <h2>Wave {ui.wave} clear</h2>
-                    <p className="patriot__bonus">
-                      {ui.clearBonus
-                        ? `${ui.clearBonus.cities} ${ui.clearBonus.cities === 1 ? 'city' : 'cities'} +${ui.clearBonus.cityBonus}`
-                        : null}
-                    </p>
-                  </>
-                )}
-                {ui.clearBonus && ui.clearBonus.ammoBonus > 0 && (
-                  <span>Unused ammo +{ui.clearBonus.ammoBonus}</span>
-                )}
+                <span className="patriot__card-eyebrow">
+                  {waveClearLabel(ui)}
+                </span>
+                <p className="patriot__bonus">+{waveClearTotal(ui)}</p>
+                <p className="patriot__card-sub">{waveClearDetail(ui)}</p>
               </div>
             )}
             {ui.phase === 'gameover' && saveOpen && !needsRotate && (

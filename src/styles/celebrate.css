@@ -793,7 +793,8 @@
 .score-celeb__shell,
 .game-pause-card,
 .game-leave-card,
-.patriot__info-panel {
+.patriot__info-panel,
+.patriot__card {
   --hero-accent: var(--celeb-accent, var(--accent));
   --banner-ink: var(--ink);
   --banner-muted: color-mix(in srgb, var(--hero-accent) 30%, var(--muted));
@@ -819,7 +820,8 @@ html[data-theme="dark"] .score-save,
 html[data-theme="dark"] .score-celeb__shell,
 html[data-theme="dark"] .game-pause-card,
 html[data-theme="dark"] .game-leave-card,
-html[data-theme="dark"] .patriot__info-panel {
+html[data-theme="dark"] .patriot__info-panel,
+html[data-theme="dark"] .patriot__card {
   --banner-ink: #fff;
   --banner-muted: color-mix(in srgb, var(--hero-accent) 22%, #dfe9f0);
   --banner-faint: rgba(238, 244, 248, 0.68);
@@ -1216,6 +1218,75 @@ html[data-theme="dark"] .score-save__note--error {
 }
 
 
+
+/* ---- between waves: the same card, and the same three lines ---- */
+
+.patriot__card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  border-radius: 1.4rem;
+  padding: 1.1rem 1.35rem 1.15rem;
+  backdrop-filter: blur(14px);
+  text-align: center;
+}
+
+.patriot__card-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.28rem 0.75rem 0.28rem 0.6rem;
+  border-radius: 999px;
+  background: var(--banner-chip-bg);
+  border: 1px solid var(--banner-chip-border);
+  font-size: 0.64rem;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--banner-chip-ink);
+}
+
+.patriot__card-eyebrow::before {
+  content: '';
+  width: 0.42rem;
+  height: 0.42rem;
+  border-radius: 50%;
+  background: var(--banner-dot);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--hero-accent) 35%, transparent);
+}
+
+.patriot__card .patriot__bonus {
+  margin: 0 !important;
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 6vw, 2.8rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  color: var(--banner-ink);
+}
+
+.patriot__card-sub {
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 650;
+  color: var(--banner-muted);
+}
+
+/*
+ * The three outcomes are told apart by the colour the card is washed in, so
+ * which one it is lands before the words do: the game's own rose for an
+ * ordinary clear, gold for a wave that cost nothing, green for one that bought
+ * a city back. Doubled class, because the shared rule above sets the same
+ * variable at the same specificity.
+ */
+.patriot__card.patriot__card--perfect {
+  --hero-accent: var(--accent-2);
+}
+
+.patriot__card.patriot__card--rebuilt {
+  --hero-accent: var(--accent);
+}
 
 /* ---- the rules sheet: the same card, opened from the pause panel ---- */
 
