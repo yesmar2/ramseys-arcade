@@ -1,7 +1,11 @@
 import { getPersonalBest } from '../../lib/personalBest'
 import { sfx } from '../../lib/sound'
 
-export type Phase = 'menu' | 'playing' | 'waveClear' | 'gameover'
+/**
+ * `dying` is the last city going down: the sky plays on in slow motion for a
+ * moment, with nothing left to score, before the card.
+ */
+export type Phase = 'menu' | 'playing' | 'waveClear' | 'dying' | 'gameover'
 
 export type City = {
   id: number
@@ -16,7 +20,32 @@ export type Battery = {
   x: number
   ammo: number
   alive: boolean
+  /** 1 → 0 after a shot: the barrel's kick and the muzzle flash. */
+  kick?: number
 }
+
+/** A colour an effect is drawn in; the renderer turns it into the theme's shade. */
+export type Tone = 'gold' | 'red' | 'teal' | 'sky' | 'violet' | 'ink' | 'orange' | 'green' | 'pink' | 'hot'
+
+export type ParticleKind = 'spark' | 'debris' | 'smoke' | 'ember'
+
+export type Particle = {
+  x: number
+  y: number
+  vx: number
+  vy: number
+  /** 1 → 0. */
+  life: number
+  maxLife: number
+  /** Radius in stage pixels. */
+  size: number
+  kind: ParticleKind
+  tone: Tone
+  /** Hue override, for the Seeker's coloured charges. */
+  hue?: number
+}
+
+export type Banner = { text: string; sub: string; tone: Tone; life: number; maxLife: number }
 
 export type Incoming = {
   id: number
@@ -111,6 +140,11 @@ export type Blast = {
   aimed?: boolean
   /** Overrides the drawn colour. The Seeker ring sets one per blast. */
   hue?: number
+  /**
+   * The chain this blast belongs to: the shot that started it, and every
+   * blast its kills set off. Each kill in a chain pays more than the last.
+   */
+  chain?: number
 }
 
 export type Floater = {
@@ -119,6 +153,11 @@ export type Floater = {
   y: number
   text: string
   life: number
+  /** A smaller line under the text. */
+  sub?: string
+  tone?: Tone
+  /** Drawn larger, for the kills that matter. */
+  big?: boolean
 }
 
 export type Snapshot = {
@@ -187,6 +226,18 @@ export type GameState = {
   directStreak: number
   /** Best consecutive direct hits this run. */
   directStreakBest: number
+  /** Kills so far in each chain still on screen, by chain id. */
+  chains: Record<number, number>
+  /** Longest chain this run. */
+  chainBest: number
+  particles: Particle[]
+  banner: Banner | null
+  /** 1 → 0, how hard the screen is shaking. */
+  shake: number
+  /** Seconds since this state was made, menus included. Drives idle motion. */
+  time: number
+  /** Seconds of the fall left, before the card. */
+  dying: number
 }
 
 /** Design reference for the fixed 16:9 playfield. */
@@ -239,6 +290,8 @@ const POWER_MAX = 3
 const SLOW_TIME = 5
 const SLOW_RATE = 0.32
 const CITY_DRAW = 1.85
+/** How long the fall plays before the card. */
+const DYING_TIME = 1.8
 
 export function shieldRadius(scale: number) {
   return 38 * CITY_DRAW * scale
@@ -256,6 +309,12 @@ export const POWER_HUE: Record<PowerKind, number> = {
   shield: 172,
   slow: 198,
   burst: 272,
+}
+export const POWER_TONE: Record<PowerKind, Tone> = {
+  ammo: 'gold',
+  shield: 'teal',
+  slow: 'sky',
+  burst: 'violet',
 }
 
 function emptyPack(): PowerPack {
@@ -284,6 +343,7 @@ function layoutWorld(w: number, h: number) {
     x: xAt(slot),
     ammo: BATTERY_AMMO,
     alive: true,
+    kick: 0,
   }))
 
   const cities: City[] = [1, 2, 3, 5, 6, 7].map((slot, i) => ({
@@ -333,6 +393,13 @@ export function createInitialState(w = DESIGN_W, h = DESIGN_H): GameState {
     cleanStreak: 0,
     directStreak: 0,
     directStreakBest: 0,
+    chains: {},
+    chainBest: 0,
+    particles: [],
+    banner: null,
+    shake: 0,
+    time: 0,
+    dying: 0,
   }
 }
 
@@ -417,8 +484,135 @@ export function resizeState(state: GameState, w: number, h: number): GameState {
       vx: d.vx * k,
     })),
     floaters: state.floaters.map((f) => ({ ...f, x: f.x * sx, y: f.y * sy })),
+    particles: (state.particles ?? []).map((p) => ({
+      ...p,
+      x: p.x * sx,
+      y: p.y * sy,
+      vx: p.vx * k,
+      vy: p.vy * k,
+      size: p.size * k,
+    })),
     cursor: { x: state.cursor.x * sx, y: state.cursor.y * sy },
   }
+}
+
+// Effects ------------------------------------------------------------------------
+
+const MAX_PARTICLES = 420
+
+/** Scatter `count` particles from a point. Speeds and sizes are in design pixels. */
+function emit(
+  s: GameState,
+  kind: ParticleKind,
+  x: number,
+  y: number,
+  count: number,
+  speed: number,
+  size: number,
+  tone: Tone,
+  life: number,
+  opts: { up?: number; spread?: number; angle?: number; hue?: number } = {},
+) {
+  const scale = s.scale
+  const list = s.particles
+  for (let i = 0; i < count; i++) {
+    if (list.length >= MAX_PARTICLES) list.shift()
+    const a =
+      opts.angle != null
+        ? opts.angle + (Math.random() - 0.5) * (opts.spread ?? 0.8)
+        : Math.random() * Math.PI * 2
+    const v = speed * (0.35 + Math.random() * 0.65) * scale
+    list.push({
+      x,
+      y,
+      vx: Math.cos(a) * v,
+      vy: Math.sin(a) * v - (opts.up ?? 0) * scale,
+      life: 1,
+      maxLife: life * (0.6 + Math.random() * 0.7),
+      size: size * (0.6 + Math.random() * 0.8) * scale,
+      kind,
+      tone,
+      hue: opts.hue,
+    })
+  }
+}
+
+function banner(s: GameState, text: string, sub: string, tone: Tone, life = 2) {
+  s.banner = { text, sub, tone, life, maxLife: life }
+}
+
+/** Particles fall, drift and fade; the shake settles; barrels come back from their kick. */
+function updateEffects(s: GameState, dt: number) {
+  const particles: Particle[] = []
+  const g = 260 * s.scale
+  for (const p of s.particles ?? []) {
+    const life = p.life - dt / p.maxLife
+    if (life <= 0) continue
+    let { vx, vy } = p
+    if (p.kind === 'debris') {
+      vy += g * dt
+      vx *= Math.exp(-dt * 0.8)
+    } else if (p.kind === 'smoke') {
+      // Smoke slows, then rises and spreads.
+      vx *= Math.exp(-dt * 2.2)
+      vy = vy * Math.exp(-dt * 2.2) - 16 * s.scale * dt
+    } else if (p.kind === 'ember') {
+      vy -= 22 * s.scale * dt
+      vx += Math.sin((s.time + p.maxLife) * 5) * 10 * s.scale * dt
+    } else {
+      const drag = Math.exp(-dt * 3.2)
+      vx *= drag
+      vy = vy * drag + g * 0.25 * dt
+    }
+    let y = p.y + vy * dt
+    // Debris lands on the ground and stays put while it fades.
+    if (p.kind === 'debris' && y > s.groundY) {
+      y = s.groundY
+      vy = 0
+      vx *= 0.5
+    }
+    particles.push({ ...p, life, x: p.x + vx * dt, y, vx, vy })
+  }
+  s.particles = particles
+  s.shake = Math.max(0, (s.shake ?? 0) - dt * 2.4)
+  if (s.banner) {
+    const life = s.banner.life - dt
+    s.banner = life > 0 ? { ...s.banner, life } : null
+  }
+  if (s.batteries.some((b) => (b.kick ?? 0) > 0)) {
+    s.batteries = s.batteries.map((b) =>
+      (b.kick ?? 0) > 0 ? { ...b, kick: Math.max(0, (b.kick ?? 0) - dt * 4) } : b,
+    )
+  }
+}
+
+/** A missile coming apart: sparks in the blast's colour and a puff of smoke. */
+function killBurst(s: GameState, x: number, y: number, hue: number | undefined, big: boolean) {
+  emit(s, 'spark', x, y, big ? 14 : 8, big ? 230 : 170, 1.6, 'hot', 0.5, { hue })
+  emit(s, 'smoke', x, y, big ? 3 : 2, 30, 7, 'ink', 1.4)
+}
+
+/** A city or battery hit: a column of fire, debris, and smoke that stays a while. */
+function groundBurst(s: GameState, x: number, heavy: boolean) {
+  const y = s.groundY - 6 * s.scale
+  emit(s, 'debris', x, y, heavy ? 22 : 14, 170, 2.2, 'ink', 1.6, { angle: -Math.PI / 2, spread: 1.9, up: 60 })
+  emit(s, 'spark', x, y, heavy ? 20 : 12, 220, 1.8, 'hot', 0.6, { angle: -Math.PI / 2, spread: 2.4 })
+  emit(s, 'smoke', x, y - 8 * s.scale, heavy ? 8 : 5, 40, 11, 'ink', 2.4, { angle: -Math.PI / 2, spread: 1.4 })
+  emit(s, 'ember', x, y, heavy ? 10 : 6, 60, 1.3, 'orange', 2.2, { angle: -Math.PI / 2, spread: 1.6 })
+}
+
+const CHAIN_BANNER_AT = 5
+/** A chain's n-th kill is worth n times the first, up to this many times. */
+const CHAIN_MULT_MAX = 8
+
+function waveNote(wave: number) {
+  if (wave === 1) return 'Aim ahead of them — a blast has to be there when they arrive'
+  if (wave === DRONE_FROM_WAVE) return 'Shoot a drone to take what it carries'
+  if (wave === SPLIT_FROM_WAVE) return 'Violet missiles split halfway down'
+  if (wave === PLANE_FROM_WAVE) return 'Planes cross the sky, dropping more'
+  if (waveHasBomber(wave) && wave === BOMBER_FROM_WAVE) return 'A bomber: it takes several blasts'
+  if (waveHasBomber(wave)) return 'Bomber inbound'
+  return `${waveIncomingCount(wave)} incoming`
 }
 
 function splitterChance(wave: number) {
@@ -539,11 +733,14 @@ function beginWave(state: GameState, wave: number, w: number): GameState {
     ...state,
     phase: 'playing',
     wave,
+    banner: { text: `Wave ${wave}`, sub: waveNote(wave), tone: 'gold', life: 2.2, maxLife: 2.2 },
+    chains: {},
     cities: state.cities.map((c) => ({ ...c, shielded: false })),
     batteries: state.batteries.map((b) => ({
       ...b,
       alive: true,
       ammo: BATTERY_AMMO,
+      kick: 0,
     })),
     incoming: [],
     planes: waveHasPlane(wave) ? [makePlane(state, w, wave)] : [],
@@ -624,11 +821,26 @@ export function fire(
   }
 
   const batteries = state.batteries.map((b) =>
-    b.id === best.id ? { ...b, ammo: b.ammo - 1 } : b,
+    b.id === best.id ? { ...b, ammo: b.ammo - 1, kick: 1 } : b,
   )
 
   const burst = state.burstArmed
   const muzzleY = state.groundY - 18 * state.scale
+  // Smoke off the rail where it launched, blown back along the barrel.
+  const launch = Math.atan2(target.y - muzzleY, target.x - best.x)
+  const particles = [...(state.particles ?? [])]
+  emit(
+    { ...state, particles },
+    'smoke',
+    best.x,
+    muzzleY,
+    3,
+    38,
+    5,
+    'ink',
+    0.9,
+    { angle: launch + Math.PI, spread: 1.2 },
+  )
   const shot: Shot = {
     id: uid(),
     x0: best.x,
@@ -647,6 +859,7 @@ export function fire(
     batteries,
     burstArmed: false,
     shots: [...state.shots, shot],
+    particles,
   }
 }
 
@@ -1056,9 +1269,58 @@ function advanceAlong(
   }
 }
 
+/**
+ * The last city is gone. The sky plays on at a crawl — what was falling
+ * still falls, what was burning still burns — and nothing scores.
+ */
+function tickDying(state: GameState, dt: number): GameState {
+  const s = { ...state }
+  const scale = s.scale
+  s.dying = Math.max(0, s.dying - dt)
+  const slow = dt * 0.35
+  const incoming: Incoming[] = []
+  const blasts = [...s.blasts]
+  for (const m of s.incoming) {
+    const step = advanceAlong(m.x0, m.y0, m.x1, m.y1, m.x, m.y, m.speed, slow)
+    if (step.done) {
+      groundBurst(s, m.x1, false)
+      blasts.push({
+        id: uid(),
+        x: m.x1,
+        y: s.groundY - 6 * scale,
+        r: 4 * scale,
+        maxR: 34 * scale,
+        growing: true,
+        burst: false,
+        wait: 0,
+        growRate: 110,
+      })
+      continue
+    }
+    incoming.push({ ...m, x: step.x, y: step.y })
+  }
+  s.incoming = incoming
+  s.blasts = blasts
+    .map((b) => {
+      if ((b.wait ?? 0) > 0) return { ...b, wait: Math.max(0, (b.wait ?? 0) - slow) }
+      if (b.growing) {
+        const r = Math.max(b.r, 6 * scale) + (b.growRate ?? 120) * scale * slow
+        return r >= b.maxR ? { ...b, r: b.maxR, growing: false } : { ...b, r }
+      }
+      return { ...b, r: b.r - 70 * scale * slow }
+    })
+    .filter((b) => b.r > 2 * scale || (b.wait ?? 0) > 0)
+  s.planes = s.planes.map((p) => ({ ...p, x: p.x + p.vx * slow }))
+  s.bombers = s.bombers.map((b) => ({ ...b, x: b.x + b.vx * slow }))
+  s.drones = s.drones.map((d) => ({ ...d, x: d.x + d.vx * slow }))
+  if (s.dying <= 0) s.phase = 'gameover'
+  return s
+}
+
 export function tick(state: GameState, dt: number, w: number): GameState {
   const scale = state.scale
   let s = { ...state }
+  s.time = (s.time ?? 0) + dt
   s.flash = Math.max(0, s.flash - dt * 1.8)
   s.floaters = s.floaters
     .map((f) => ({
@@ -1067,6 +1329,9 @@ export function tick(state: GameState, dt: number, w: number): GameState {
       life: f.life - dt * 1.15,
     }))
     .filter((f) => f.life > 0)
+  s.particles ??= []
+  s.chains ??= {}
+  updateEffects(s, s.phase === 'dying' ? dt * 0.5 : dt)
 
   if (s.phase === 'menu') return s
 
@@ -1077,6 +1342,8 @@ export function tick(state: GameState, dt: number, w: number): GameState {
     }
     return s
   }
+
+  if (s.phase === 'dying') return tickDying(s, dt)
 
   if (s.phase === 'gameover') return s
 
@@ -1213,7 +1480,10 @@ export function tick(state: GameState, dt: number, w: number): GameState {
         wait: 0,
         growRate: 120,
         aimed: true,
+        // Every shot starts a chain of its own.
+        chain: uid(),
       })
+      emit(s, 'spark', shot.x1, shot.y1, 6, 140, 1.4, shot.burst ? 'violet' : 'gold', 0.35)
     } else {
       newShots.push({ ...shot, x: step.x, y: step.y })
     }
@@ -1251,6 +1521,8 @@ export function tick(state: GameState, dt: number, w: number): GameState {
   let flash = s.flash
   let directStreak = s.directStreak ?? 0
   let directStreakBest = s.directStreakBest ?? 0
+  const chains: Record<number, number> = { ...(s.chains ?? {}) }
+  let chainBest = s.chainBest ?? 0
   const hitPad = 4 * scale
   const directR = DIRECT_HIT_RADIUS * scale
 
@@ -1269,19 +1541,39 @@ export function tick(state: GameState, dt: number, w: number): GameState {
       const direct =
         hitBlast.aimed === true &&
         dist(m.x, m.y, hitBlast.x, hitBlast.y) <= directR
-      sfx('hit', direct ? 2 : 0)
+      // Where this kill falls in its chain: the n-th is worth n times the first.
+      const family = hitBlast.chain ?? (hitBlast.chain = uid())
+      const n = (chains[family] ?? 0) + 1
+      chains[family] = n
+      chainBest = Math.max(chainBest, n)
+      const mult = Math.min(CHAIN_MULT_MAX, n)
+      sfx('hit', Math.min(5, direct ? 2 + n - 1 : n - 1))
+      if (n >= 3) sfx('hop', Math.min(16, (n - 2) * 2))
+      killBurst(s, m.x, m.y, hitBlast.hue, direct || n >= 3)
+      if (n === CHAIN_BANNER_AT || (n > CHAIN_BANNER_AT && n % 5 === 0)) {
+        banner(s, 'Chain reaction', `${n} in one chain`, 'hot', 1.6)
+        sfx('perfect')
+        flash = Math.max(flash, 0.3)
+        s.shake = Math.max(s.shake ?? 0, 0.3)
+      }
       if (direct) {
         directStreak += 1
         directStreakBest = Math.max(directStreakBest, directStreak)
-        scoreAdd += SCORE_DIRECT
+        const points = SCORE_DIRECT + SCORE_SPLASH * (mult - 1)
+        scoreAdd += points
         newFloaters.push({
           id: uid(),
           x: m.x,
           y: m.y - 10 * scale,
-          text:
+          text: `DIRECT +${points}`,
+          sub:
             directStreak > 1
-              ? `DIRECT ×${directStreak} +100`
-              : 'DIRECT HIT +100',
+              ? `${directStreak} in a row`
+              : n > 1
+                ? `chain ×${n}`
+                : undefined,
+          tone: 'gold',
+          big: true,
           life: 1.15,
         })
         flash = Math.max(flash, 0.35)
@@ -1295,7 +1587,18 @@ export function tick(state: GameState, dt: number, w: number): GameState {
       } else {
         // Only splash from a perfect-linked blast keeps the streak.
         if (!hitBlast.fromPerfect) directStreak = 0
-        scoreAdd += SCORE_SPLASH
+        const points = SCORE_SPLASH * mult
+        scoreAdd += points
+        newFloaters.push({
+          id: uid(),
+          x: m.x,
+          y: m.y - 8 * scale,
+          text: `+${points}`,
+          sub: n > 1 ? `chain ×${n}` : undefined,
+          tone: n >= 3 ? 'hot' : 'gold',
+          big: n >= 3,
+          life: 0.95,
+        })
       }
 
       const chainPerfect = Boolean(direct || hitBlast.fromPerfect)
@@ -1315,6 +1618,7 @@ export function tick(state: GameState, dt: number, w: number): GameState {
         // A kill keeps the colour of whatever set it off, so a chain that
         // starts on the green charge stays green the whole way down.
         hue: hitBlast.hue,
+        chain: family,
       })
 
       if (hitBlast.burst) {
@@ -1340,6 +1644,7 @@ export function tick(state: GameState, dt: number, w: number): GameState {
             growRate: 78,
             fromPerfect: chainPerfect,
             hue: SEEKER_HUES[i % SEEKER_HUES.length],
+            chain: family,
           })
         }
       }
@@ -1370,8 +1675,10 @@ export function tick(state: GameState, dt: number, w: number): GameState {
           x: hit.x,
           y: hit.y - 8 * scale,
           text: 'BLOCKED',
+          tone: 'teal',
           life: 0.9,
         })
+        emit(s, 'spark', hit.x, hit.y, 10, 160, 1.4, 'teal', 0.5)
         extraBlasts.push({
           id: uid(),
           x: hit.x,
@@ -1403,11 +1710,20 @@ export function tick(state: GameState, dt: number, w: number): GameState {
           x: m.x1,
           y: s.groundY - 28 * scale,
           text: 'BLOCKED',
+          tone: 'teal',
           life: 0.9,
         })
+        emit(s, 'spark', m.x1, s.groundY - 20 * scale, 10, 160, 1.4, 'teal', 0.5)
       } else if (impact === 'hit') {
         sfx('hurt')
+        sfx('boom')
         flash = 0.55
+        groundBurst(s, m.x1, true)
+        s.shake = Math.max(s.shake ?? 0, 0.85)
+      } else {
+        // Open ground: a thump and a little dirt.
+        groundBurst(s, m.x1, false)
+        s.shake = Math.max(s.shake ?? 0, 0.18)
       }
       continue
     }
@@ -1442,6 +1758,7 @@ export function tick(state: GameState, dt: number, w: number): GameState {
         ),
       )
       flash = Math.max(flash, 0.18)
+      emit(s, 'spark', moved.x, moved.y, 10, 150, 1.4, 'violet', 0.5)
       continue
     }
 
@@ -1465,10 +1782,16 @@ export function tick(state: GameState, dt: number, w: number): GameState {
           id: uid(),
           x: plane.x,
           y: plane.y - 12 * scale,
-          text: 'PLANE +200',
+          text: `+${SCORE_PLANE}`,
+          sub: 'plane down',
+          tone: 'sky',
+          big: true,
           life: 1.2,
         })
+        killBurst(s, plane.x, plane.y, b.hue, true)
+        emit(s, 'debris', plane.x, plane.y, 10, 90, 2, 'ink', 1.8, { angle: Math.PI / 2, spread: 2 })
         flash = Math.max(flash, 0.4)
+        s.shake = Math.max(s.shake ?? 0, 0.3)
         break
       }
     }
@@ -1494,14 +1817,22 @@ export function tick(state: GameState, dt: number, w: number): GameState {
     }
     if (hp <= 0) {
       sfx('boom')
+      sfx('perfect')
       scoreAdd += SCORE_BOMBER
       newFloaters.push({
         id: uid(),
         x: bomber.x,
         y: bomber.y - 14 * scale,
-        text: `BOMBER +${SCORE_BOMBER}`,
+        text: `+${SCORE_BOMBER}`,
+        sub: 'bomber down',
+        tone: 'orange',
+        big: true,
         life: 1.3,
       })
+      killBurst(s, bomber.x, bomber.y, undefined, true)
+      emit(s, 'debris', bomber.x, bomber.y, 18, 120, 2.6, 'ink', 2, { angle: Math.PI / 2, spread: 2.2 })
+      emit(s, 'smoke', bomber.x, bomber.y, 6, 50, 12, 'ink', 2)
+      s.shake = Math.max(s.shake ?? 0, 0.55)
       s.blasts = [
         ...s.blasts,
         {
@@ -1522,6 +1853,8 @@ export function tick(state: GameState, dt: number, w: number): GameState {
     if (struck) {
       sfx('hit')
       flash = Math.max(flash, 0.22)
+      emit(s, 'spark', bomber.x, bomber.y, 10, 180, 1.6, 'hot', 0.45)
+      emit(s, 'smoke', bomber.x, bomber.y, 2, 30, 8, 'ink', 1.6)
     }
     const liveIds = new Set(s.blasts.map((b) => b.id))
     survivingBombers.push({
@@ -1548,8 +1881,11 @@ export function tick(state: GameState, dt: number, w: number): GameState {
           x: drone.x,
           y: drone.y - 12 * scale,
           text: held >= POWER_MAX ? 'FULL' : POWER_LABEL[drone.kind].toUpperCase(),
+          tone: POWER_TONE[drone.kind],
+          big: true,
           life: 1.15,
         })
+        emit(s, 'spark', drone.x, drone.y, 12, 160, 1.5, POWER_TONE[drone.kind], 0.55)
         flash = Math.max(flash, 0.28)
         break
       }
@@ -1565,12 +1901,27 @@ export function tick(state: GameState, dt: number, w: number): GameState {
   s.shieldT = cities.some((c) => c.alive && c.shielded) ? 1 : 0
   s.directStreak = directStreak
   s.directStreakBest = directStreakBest
+  s.chainBest = chainBest
+  // Forget chains whose blasts have all burnt out.
+  const liveChains = new Set(s.blasts.map((b) => b.chain))
+  for (const id of Object.keys(chains)) {
+    if (!liveChains.has(Number(id))) delete chains[Number(id)]
+  }
+  s.chains = chains
 
   const citiesLeft = s.cities.filter((c) => c.alive).length
   if (citiesLeft === 0) {
     const best = Math.max(s.best, s.score)
     sfx('die')
-    return { ...s, phase: 'gameover', best }
+    return {
+      ...s,
+      phase: 'dying',
+      dying: DYING_TIME,
+      best,
+      flash: 0.7,
+      shake: 1,
+      banner: { text: 'The last city is down', sub: `Wave ${s.wave}`, tone: 'red', life: DYING_TIME + 0.4, maxLife: DYING_TIME + 0.4 },
+    }
   }
 
   if (

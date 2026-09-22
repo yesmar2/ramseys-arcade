@@ -307,8 +307,11 @@ export function PatriotGame() {
     return () => window.removeEventListener('keydown', onKey)
   }, [saveOpen])
 
+  // The canvas draws its own sight while a wave is on, so the system one steps aside.
+  const aiming = ui.phase === 'playing' && !paused && !saveOpen && !needsRotate
+
   return (
-    <section className="patriot patriot--fullscreen">
+    <section className={`patriot patriot--fullscreen${aiming ? ' patriot--aiming' : ''}`}>
       <div className="game-play">
       <GameStage
         aspectWidth={STAGE_ASPECT.patriot.w}

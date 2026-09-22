@@ -3407,6 +3407,13 @@ a.game-hud__board {
   touch-action: none;
 }
 
+/* The canvas draws the sight during a wave, so a mouse's own cursor steps aside. */
+@media (pointer: fine) {
+  .patriot--aiming .patriot__play {
+    cursor: none;
+  }
+}
+
 .patriot__viewport {
   position: absolute;
   inset: 0;

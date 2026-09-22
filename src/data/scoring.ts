@@ -11,7 +11,8 @@ const SCORING: Record<string, ScoreRow[]> = {
   ],
   patriot: [
     { label: 'Splash hit', value: '+25' },
-    { label: 'Direct hit', value: '+100' },
+    { label: 'Chain', value: 'every kill sets off a blast of its own · the 2nd kill in a chain pays ×2, the 3rd ×3, up to ×8' },
+    { label: 'Direct hit', value: '+100, and +25 for each kill before it in the chain' },
     { label: 'City saved (wave clear)', value: '+100' },
     { label: 'Perfect wave', value: 'all 6 cities' },
     { label: 'Unused ammo (wave clear)', value: '+5 each' },
