@@ -124,7 +124,7 @@ const SCORING: Record<string, ScoreRow[]> = {
     { label: 'Chasers', value: 'asleep on the board ahead — they wake when you get close' },
     { label: 'The crested one', value: 'runs ahead to stand in your way, not at you' },
     { label: 'A line of three', value: 'sweeps one row and ignores you — find the gap' },
-    { label: 'Charms', value: 'freeze stops the chasers · bolt quickens the climb · seconds only' },
+    { label: 'Charm', value: 'freeze — every chaser stops for a few seconds' },
     { label: 'Fruit', value: '+300 rising to +2,000 — a few rows off your line, seconds only' },
     { label: 'Bare corridors', value: 'no crumbs — passage that costs you the streak' },
     { label: 'Lives', value: '1 — caught or drowned ends the run' },

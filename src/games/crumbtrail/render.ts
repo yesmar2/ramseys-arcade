@@ -261,10 +261,9 @@ function drawCrumbs(
  */
 /**
  * A charm, drawn as a ring with a mark rather than a fruit with a stem, so the
- * two offers on the board never read as the same thing. Freeze is the cold
- * blue-white of the frightened state it resembles; bolt takes the amber the
- * surge already uses for speed. Both blink out their last two seconds, for the
- * same reason the fruit does.
+ * two offers on the board never read as the same thing. Cold blue-white, after
+ * the frightened state it resembles, and it blinks out its last two seconds for
+ * the same reason the fruit does.
  */
 function drawCharm(
   ctx: CanvasRenderingContext2D,
@@ -281,7 +280,7 @@ function drawCharm(
 
   const pulse = 0.92 + Math.sin(state.time * 5) * 0.08
   const r = cell * 0.28 * pulse
-  const hue = charm.kind === 'freeze' ? 196 : 42
+  const hue = 196
   const flat = isFlatTheme()
 
   const glow = ctx.createRadialGradient(cx, cy, r * 0.2, cx, cy, r * 2.3)
@@ -307,18 +306,12 @@ function drawCharm(
   ctx.lineWidth = Math.max(1, cell * 0.05)
   ctx.lineCap = 'round'
   ctx.lineJoin = 'round'
+  // A frost star, three strokes through the middle.
   ctx.beginPath()
-  if (charm.kind === 'freeze') {
-    for (let i = 0; i < 3; i++) {
-      const a = (i * Math.PI) / 3
-      ctx.moveTo(cx - Math.cos(a) * r * 0.62, cy - Math.sin(a) * r * 0.62)
-      ctx.lineTo(cx + Math.cos(a) * r * 0.62, cy + Math.sin(a) * r * 0.62)
-    }
-  } else {
-    ctx.moveTo(cx + r * 0.26, cy - r * 0.62)
-    ctx.lineTo(cx - r * 0.24, cy + r * 0.06)
-    ctx.lineTo(cx + r * 0.1, cy + r * 0.06)
-    ctx.lineTo(cx - r * 0.26, cy + r * 0.66)
+  for (let i = 0; i < 3; i++) {
+    const a = (i * Math.PI) / 3
+    ctx.moveTo(cx - Math.cos(a) * r * 0.62, cy - Math.sin(a) * r * 0.62)
+    ctx.lineTo(cx + Math.cos(a) * r * 0.62, cy + Math.sin(a) * r * 0.62)
   }
   ctx.stroke()
   ctx.lineCap = 'butt'

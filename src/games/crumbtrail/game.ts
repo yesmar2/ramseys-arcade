@@ -74,7 +74,7 @@ export type Ghost = {
  * These are the rest of the sentence: brief, loud, and frequent enough that
  * something is always about to happen.
  */
-export type CharmKind = 'freeze' | 'bolt'
+export type CharmKind = 'freeze'
 
 export type Charm = {
   x: number
@@ -180,8 +180,6 @@ export type GameState = {
   charmTimer: number
   /** Seconds chasers stay stopped. */
   freeze: number
-  /** Seconds the climb stays quick. */
-  bolt: number
   /** Seconds until the next one is offered. */
   fruitTimer: number
   lastTile: Cell
@@ -341,16 +339,23 @@ const FRUIT_GAP_MAX = 24
 /** Rows above you it can land, and how far off your column it has to be. */
 const FRUIT_ROWS_AHEAD = [3, 8] as const
 
-/** Charms: rarer than crumbs, commoner than fruit, and never two at once. */
+/**
+ * Charms: rarer than crumbs, commoner than fruit, and never two at once.
+ *
+ * One kind, deliberately. A bolt that ran the climb half again faster shipped
+ * alongside this and came straight back out: you can already outrun the chasers
+ * and the tide, so it solved no constraint, and in a tight maze the only thing
+ * it reliably changed was how often you overshot a junction. A freeze changes
+ * what the board allows — routes open that were shut — which is the whole job.
+ *
+ * The kind is kept as a type rather than assumed away, so the second one can
+ * arrive the day it earns a place.
+ */
 const CHARM_GAP_MIN = 9
 const CHARM_GAP_MAX = 17
 const CHARM_LIFE = 7
-const CHARM_KINDS: CharmKind[] = ['freeze', 'bolt']
 /** Chasers stand still this long. */
 const FREEZE_TIME = 3.6
-/** And this long with the climb quickened. */
-const BOLT_TIME = 4.5
-const BOLT_MULT = 1.55
 const FRUIT_MIN_OFFSET = 2
 
 function loadBest() {
@@ -715,7 +720,7 @@ function offerCharm(state: GameState): boolean {
       y: y + 0.5,
       life: CHARM_LIFE,
       maxLife: CHARM_LIFE,
-      kind: CHARM_KINDS[Math.floor(Math.random() * CHARM_KINDS.length)],
+      kind: 'freeze',
     }
     return true
   }
@@ -859,7 +864,6 @@ function emptyState(view: { cols: number; rows: number }): GameState {
     charm: null,
     charmTimer: CHARM_GAP_MIN,
     freeze: 0,
-    bolt: 0,
     lastTile: { x: 0, y: 0 },
     trail: [],
     pops: [],
@@ -1318,7 +1322,7 @@ export function tick(state: GameState, dt: number): GameState {
     }
   }
   const surging = next.surgeTime > 0
-  movePlayer(next, PLAYER_SPEED * (surging ? SURGE_SPEED : 1) * (next.bolt > 0 ? BOLT_MULT : 1), dt)
+  movePlayer(next, PLAYER_SPEED * (surging ? SURGE_SPEED : 1), dt)
   eatAt(next)
 
   const climbed = worldRowAt(next, Math.floor(next.player.y)) - next.baseRow
@@ -1351,7 +1355,6 @@ export function tick(state: GameState, dt: number): GameState {
 
   // —— the offer ——
   next.freeze = Math.max(0, next.freeze - dt)
-  next.bolt = Math.max(0, next.bolt - dt)
 
   if (next.charm) {
     next.charm = { ...next.charm, life: next.charm.life - dt }
@@ -1360,14 +1363,8 @@ export function tick(state: GameState, dt: number): GameState {
       next.charm = null
       next.charmTimer = charmGap()
     } else if (dist2(next.charm.x, next.charm.y, next.player.x, next.player.y) <= 0.45 * 0.45) {
-      const kind = next.charm.kind
-      if (kind === 'freeze') {
-        next.freeze = FREEZE_TIME
-        addPop(next, next.charm.x, next.charm.y, 'FREEZE')
-      } else {
-        next.bolt = BOLT_TIME
-        addPop(next, next.charm.x, next.charm.y, 'BOLT')
-      }
+      next.freeze = FREEZE_TIME
+      addPop(next, next.charm.x, next.charm.y, 'FREEZE')
       sfx('good')
       haptic('boost')
       next.charm = null
