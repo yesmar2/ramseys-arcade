@@ -315,6 +315,25 @@ export function comboMultiplier(combo: number) {
   return 1 + 0.2 * (Math.min(combo, 11) - 1)
 }
 
+/**
+ * What a mouthful is worth, against the rest of the arcade.
+ *
+ * Points here scale with the level you have grown to, and the multipliers stack
+ * to thirty, so the raw numbers run away: a bot that plays badly passes a
+ * million inside a minute, which is fifty times what an elite Patriot run is
+ * worth. Scaled down, an excellent run lands near fifteen thousand and a board
+ * of games reads on one scale.
+ *
+ * It is only the display; the curve, the combos and the zones are untouched.
+ * Every award floors at 1, so the first small fish is still worth catching.
+ */
+const SCORE_SCALE = 0.01
+
+/** Points for one catch, scaled and never zero. */
+function award(raw: number) {
+  return Math.max(1, Math.round(raw * SCORE_SCALE))
+}
+
 function preyLevel(L: number) {
   const f = 0.3 + 0.7 * Math.pow(Math.random(), 0.7)
   return Math.max(1, Math.min(L, Math.round(L * f)))
@@ -1227,7 +1246,7 @@ function eat(s: GameState, f: Fish) {
     sfx('perfect')
   }
   const base = golden ? Math.max(300, p.level * 40) : f.level * 10
-  const points = Math.round(base * comboMultiplier(s.combo) * (s.frenzy ? 2 : 1) * zone.mult)
+  const points = award(base * comboMultiplier(s.combo) * (s.frenzy ? 2 : 1) * zone.mult)
   const growth = golden ? Math.max(3, Math.ceil(p.level * 0.12)) : Math.max(1, Math.round(f.level * GROWTH_RATE))
   const weight = Math.min(1, f.level / p.level)
   s.score += points
@@ -1324,7 +1343,7 @@ function explode(s: GameState, m: Mine) {
       s.combo = s.comboTimer > 0 ? s.combo + 1 : 1
       s.comboTimer = COMBO_WINDOW
       s.bestCombo = Math.max(s.bestCombo, s.combo)
-      const pts = Math.round(f.level * 5 * zone.mult * comboMultiplier(s.combo))
+      const pts = award(f.level * 5 * zone.mult * comboMultiplier(s.combo))
       s.score += pts
       s.floaters.push({ x: f.x, y: f.y, text: `+${pts.toLocaleString()}`, sub: 'Blast', life: 1, maxLife: 1.2, weight: 0.4, color: '#ffcf6a' })
     }
