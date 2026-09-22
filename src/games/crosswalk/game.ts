@@ -212,11 +212,15 @@ export const STALL_WARN = 1.4
  * flash for 1.9s, so the game's own warning told you to do the thing that cost
  * you the multiplier.
  *
- * 1.8s covers the common forced wait outright, which is the point of it: at
- * 1.2s a third of hazard crossings took the chain for reasons the player had no
- * say in. Past 1.8s it breaks cleanly.
+ * Widened to 1.8s once, to stop forced waits taking the chain: measured, a
+ * third of hazard crossings lock you out for longer than 1.2s. That mattered
+ * when the chain multiplied the score and an unlucky train cost real points.
+ *
+ * It buys nothing now the chain only feeds a record, and it cost legibility —
+ * you stop, you expect the chain to go, and it hangs on. Back to 1.2s, where a
+ * chain means you did not stop rather than you did not stop for very long.
  */
-const MOMENTUM_WINDOW = 1.8
+const MOMENTUM_WINDOW = 1.2
 
 /** Below this the chain is noise, so the readout stays quiet. */
 export const MOMENTUM_SHOW = 3
@@ -282,6 +286,42 @@ function maxRoadSpeed(d: number): number {
  * differ by at least this much for the gaps to drift past each other.
  */
 const LANE_SPEED_SPREAD = 0.36
+
+/**
+ * Push a lane's speed clear of the lane behind it when both run the same way.
+ *
+ * Roads did this to each other already, for the gameplay reason above. The
+ * visual reason was missed, and it bites hardest on a log.
+ *
+ * Where the board is wider than the screen — every phone — the view pans
+ * sideways to keep the hopper in frame. Riding a log, that means you are pinned
+ * to the middle of the screen while the world slides past. A car in the next
+ * row travelling at the log's speed is pinned too, and with the only big object
+ * nearby sitting perfectly still the eye takes *it* for the fixed thing and
+ * reads the whole board as moving instead of you. It is the same illusion as a
+ * train pulling out alongside yours.
+ *
+ * Rows generate in order, so a row can only see the one behind it — which is
+ * why both the road and the water builders call this rather than one of them
+ * doing it for both.
+ */
+function spreadFromPrev(
+  speed: number,
+  dir: -1 | 1,
+  prev: Row | undefined,
+  g: number,
+  lo: number,
+  hi: number,
+): number {
+  // Stone rows and grass have no motion to be confused with.
+  if (!prev || !prev.speed || prev.dir !== dir) return speed
+  const spread = LANE_SPEED_SPREAD * g
+  if (Math.abs(speed - prev.speed) >= spread) return speed
+  const push = speed >= prev.speed ? spread : -spread
+  let out = prev.speed + push
+  if (out > hi || out < lo) out = prev.speed - push
+  return Math.min(hi, Math.max(lo, out))
+}
 
 /** Weighted tier pick — the roll skews toward the faster tiers as difficulty climbs. */
 function pickTier(tiers: readonly number[], d: number, rand: () => number): number {
@@ -519,13 +559,9 @@ function makeRoadRow(row: number, cols: number, rand: () => number, prev?: Row):
     (1.3 + d * 0.6) * pickTier(ROAD_TIERS, d, rand) * (0.94 + rand() * 0.14)
   const speedCap = maxRoadSpeed(d)
   let speed = Math.min(speedCap, Math.max(MIN_ROAD_SPEED, speedBase)) * g
-  const spread = LANE_SPEED_SPREAD * g
-  if (prevRoad && prevRoad.dir === dir && Math.abs(speed - prevRoad.speed) < spread) {
-    const push = speed >= prevRoad.speed ? spread : -spread
-    speed = prevRoad.speed + push
-    if (speed > speedCap * g || speed < MIN_ROAD_SPEED * g) speed = prevRoad.speed - push
-    speed = Math.min(speedCap * g, Math.max(MIN_ROAD_SPEED * g, speed))
-  }
+  // Any moving row behind counts, not just another road: a log carrying you at
+  // this lane's speed is the case that actually looks wrong.
+  speed = spreadFromPrev(speed, dir, prev, g, MIN_ROAD_SPEED * g, speedCap * g)
   // Lorries get commoner with depth. Width is the one screw that does not feed
   // back into the gap rule, so it raises how much of the lane is metal without
   // touching how long the holes hold.
@@ -647,6 +683,8 @@ function makeWaterRow(
   prevIsStone: boolean,
   prevDir: -1 | 1 | 0 = 0,
   prevTrees: number[] = [],
+  /** The row behind, so a log can steer clear of traffic running alongside it. */
+  prev?: Row,
 ): Row {
   const rand = mulberry32(row * 1_048_583 ^ runSeed)
   const chunkRand = mulberry32(chunkStart * 1_048_583 ^ runSeed)
@@ -666,7 +704,11 @@ function makeWaterRow(
     dir = rand() < 0.5 ? 1 : -1
   }
   const g = gridScale(cols)
-  const speed = (0.9 + d * 0.62) * pickTier(LOG_TIERS, d, rand) * (0.94 + rand() * 0.14) * g
+  const base = (0.9 + d * 0.62) * g
+  let speed = base * pickTier(LOG_TIERS, d, rand) * (0.94 + rand() * 0.14)
+  // Bounds are this row's own plausible range, so a nudge cannot push a log
+  // outside the pace the tier table was written for.
+  speed = spreadFromPrev(speed, dir, prev, g, base * LOG_TIERS[0] * 0.94, base * LOG_TIERS[LOG_TIERS.length - 1] * 1.08)
   const span = laneSpan(cols)
   const logScale = 1 + (gridScale(cols) - 1) * 0.12
   // Stagger neighbouring rows so log gaps don't line up into a dead end.
@@ -789,7 +831,7 @@ export function generateRow(
   if (prev?.kind === 'water') {
     const start = chunkStart(row, 'water', rows)
     if (row < start + chunkLength(start, runSeed, 2, d > 0.5 ? 4 : 3)) {
-      return makeWaterRow(row, cols, runSeed, start, prevIsStone, prevLogDir, prevTrees)
+      return makeWaterRow(row, cols, runSeed, start, prevIsStone, prevLogDir, prevTrees, prev)
     }
   }
 
@@ -809,7 +851,7 @@ export function generateRow(
 
   if (roll < grassChance) return makeGrassRow(cols, rand, d, prevRocks)
   if (roll < grassChance + waterChance) {
-    return makeWaterRow(row, cols, runSeed, row, prevIsStone, prevLogDir, prevTrees)
+    return makeWaterRow(row, cols, runSeed, row, prevIsStone, prevLogDir, prevTrees, prev)
   }
   if (roll < grassChance + waterChance + railChance) return makeRailRow(row, cols, runSeed)
   return makeRoadRow(row, cols, rand, prev)
