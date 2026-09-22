@@ -92,22 +92,6 @@ export type GameState = {
   row: number
   /** Smooth camera position (only moves up with the player). */
   cameraY: number
-  /**
-   * Column the view centres on, which is deliberately not the player's column.
-   *
-   * Locking the view to the hopper's exact position is what made riding a log
-   * look wrong. A log carries you at its own speed by definition, so a view
-   * pinned to you pins the log too: it sits dead still on screen while the
-   * whole board slides past, and the eye reads the board as the thing moving.
-   * Every static cue says otherwise, but the biggest object near you is the one
-   * that wins.
-   *
-   * So the view holds still until the hopper has drifted CAMERA_DEAD_ZONE
-   * columns off centre, which on a phone is most of the visible width. For the
-   * length of an ordinary ride the log visibly carries you across the screen,
-   * which is the truth of what is happening.
-   */
-  cameraX: number
   hop: HopAnim | null
   hopCooldown: number
   /** Buffered input so fast swipes during a hop aren't dropped. */
@@ -164,12 +148,6 @@ export const TARGET_VISIBLE_ROWS = 6
 export const MIN_COLS = 8
 /** Cap so a wide monitor can't open a runway of incoming cars. */
 export const MAX_COLS = 12
-/**
- * How far the hopper may drift from the middle before the view follows, in
- * columns. A phone shows about four columns, so this is most of the screen.
- */
-const CAMERA_DEAD_ZONE = 1.5
-
 /** Player sits this many rows from the bottom of the view once the camera is rolling. */
 export const PLAYER_VIEW_ROW = 2
 /** Die if you fall this many rows behind the camera. */
@@ -905,19 +883,6 @@ function playerCenter(state: GameState) {
   }
 }
 
-/**
- * Move the view only once the hopper has left the middle band.
- *
- * Inside the band nothing moves, so a log carrying you sideways reads as you
- * moving rather than the board. Past it the view follows exactly, which is what
- * keeps a long ride, or a run of sidesteps, from walking off the screen.
- */
-function followX(cameraX: number, playerCol: number): number {
-  if (playerCol > cameraX + CAMERA_DEAD_ZONE) return playerCol - CAMERA_DEAD_ZONE
-  if (playerCol < cameraX - CAMERA_DEAD_ZONE) return playerCol + CAMERA_DEAD_ZONE
-  return cameraX
-}
-
 function treesBlock(col: number, trees: number[]): boolean {
   const { left, right } = playerBox(col)
   return trees.some((t) => right > t && left < t + 1)
@@ -1135,7 +1100,6 @@ export function createInitialState(cols = COLS): GameState {
     col: Math.floor(cols / 2),
     row: 0,
     cameraY: 0,
-    cameraX: Math.floor(cols / 2),
     hop: null,
     hopCooldown: 0,
     queued: null,
@@ -1201,7 +1165,6 @@ export function jumpToRow(state: GameState, row: number): GameState {
     streakTimer: 99,
     bestChain: 0,
     cameraY: Math.max(0, target - PLAYER_VIEW_ROW),
-    cameraX: mid,
     rows: new Map(),
     coinPops: [],
     deathBits: [],
@@ -1294,7 +1257,6 @@ export function hop(state: GameState, dir: Dir): GameState {
 
   const pos = playerCenter(next)
   next.cameraY = Math.max(next.cameraY, pos.r - PLAYER_VIEW_ROW)
-  next.cameraX = followX(next.cameraX, pos.c)
   ensureRows(next, Math.floor(next.cameraY) - BACK_LIMIT - 2, Math.floor(next.cameraY) + ROW_BUFFER)
   return collectCoin(next)
 }
@@ -1382,7 +1344,6 @@ export function tick(state: GameState, dt: number): GameState {
 
   const pos = playerCenter(next)
   next.cameraY = Math.max(next.cameraY, pos.r - PLAYER_VIEW_ROW)
-  next.cameraX = followX(next.cameraX, pos.c)
   ensureRows(next, Math.floor(next.cameraY) - BACK_LIMIT - 2, Math.floor(next.cameraY) + ROW_BUFFER)
 
   for (const [rowIndex, row] of next.rows) {
