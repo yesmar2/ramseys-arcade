@@ -174,95 +174,54 @@
  * The leave and fullscreen buttons already float at the top corners, so the
  * band is padded to clear them rather than trying to lay them out.
  */
-.crumbtrail__header {
+/*
+ * A wash behind the readout rather than a bar across the top.
+ *
+ * Snake and Crosswalk float their score straight over the stage, and this game
+ * had a solid strip instead — a different thing in the same place. The maze
+ * runs close enough that plain text on it is hard to read, so the band stays,
+ * but at a fifth of the old opacity: enough to hold the numbers up, not enough
+ * to read as furniture. It fades out at the bottom so there is no line across
+ * the board.
+ */
+.crumbtrail__headerband {
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
   height: var(--crumbtrail-header);
-  z-index: 10;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding-left: max(2.85rem, calc(env(safe-area-inset-left, 0px) + 2.85rem));
-  padding-right: max(5.4rem, calc(env(safe-area-inset-right, 0px) + 5.4rem));
-  background: rgba(var(--surface-rgb), 0.86);
-  backdrop-filter: blur(10px);
-  border-bottom: 1px solid rgba(var(--ink-rgb), 0.08);
+  z-index: 7;
   pointer-events: none;
+  background: linear-gradient(
+    to bottom,
+    rgba(var(--surface-rgb), 0.62),
+    rgba(var(--surface-rgb), 0.34) 62%,
+    rgba(var(--surface-rgb), 0)
+  );
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
 }
 
-.crumbtrail__header--warn {
-  border-bottom-color: color-mix(in srgb, #e85d75 55%, transparent);
-  box-shadow: 0 1px 10px color-mix(in srgb, #e85d75 28%, transparent);
+.crumbtrail__headerband--warn {
+  background: linear-gradient(
+    to bottom,
+    color-mix(in srgb, #e85d75 26%, rgba(var(--surface-rgb), 0.62)),
+    rgba(var(--surface-rgb), 0.34) 62%,
+    rgba(var(--surface-rgb), 0)
+  );
 }
 
-.crumbtrail__score {
-  flex: 1 1 auto;
-  min-width: 0;
-  margin: 0;
-  text-align: center;
-  font-family: var(--font-display);
-  font-size: clamp(1.1rem, 4vw, 1.5rem);
-  font-weight: 600;
-  line-height: 1;
-  font-variant-numeric: tabular-nums;
-  color: var(--ink);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
 
-.crumbtrail__score--hot {
-  color: color-mix(in srgb, #f5b942 62%, var(--ink));
-}
 
-/* Distance leads the band; the streak answers it from the far side. */
-.crumbtrail__stat--lead {
-  flex: none;
-  min-width: 3.4rem;
-}
-
-.crumbtrail__stats {
-  flex: none;
-  min-width: 3.4rem;
-  justify-content: flex-end;
-  display: flex;
-  align-items: baseline;
-  gap: 0.5rem;
-}
-
-.crumbtrail__stat {
-  margin: 0;
-  display: flex;
-  align-items: baseline;
-  gap: 0.22rem;
-  font-family: var(--font-display);
-  line-height: 1;
-  white-space: nowrap;
-  color: var(--muted);
-}
-
-.crumbtrail__stat-value {
-  font-size: clamp(0.9rem, 3vw, 1.1rem);
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  color: var(--ink);
-}
-
-.crumbtrail__stat-label {
-  font-size: clamp(0.56rem, 1.9vw, 0.68rem);
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  opacity: 0.72;
-}
-
-.crumbtrail__stat--streak,
-.crumbtrail__stat--streak .crumbtrail__stat-value {
+/*
+ * The streak keeps its amber in the shared readout. Everything else about these
+ * figures — size, labels, where they sit — now comes from .play-stats, so the
+ * only thing left to say here is the colour this game gives a live streak.
+ */
+.crumbtrail .play-stats .play-stat:last-child .play-stat__value {
   color: color-mix(in srgb, #f5b942 76%, var(--ink));
 }
 
-.crumbtrail__stat--warn .crumbtrail__stat-value {
+.crumbtrail .play-stats .play-stat__value--urgent {
   color: #e85d75;
 }

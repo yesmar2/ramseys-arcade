@@ -283,7 +283,7 @@ export const SCORE_STREAK_THRESHOLDS: Record<string, number> = {
   simon: 10,
   spotter: 955_000,
   pellets: 2000,
-  crumbtrail: 2000,
+  crumbtrail: 10_000,
   bop: 25,
   putt: 2000,
 }

@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import '../../styles/crumbtrail.css'
 import { AdminWaveSkip } from '../../components/AdminWaveSkip'
-import { GamePlayChrome } from '../../components/GameHud'
+import { GamePlayChrome, PlayReadout, PlayReadoutScore } from '../../components/GameHud'
+import { PlayReadoutStats, PlayStat } from '../../components/PlayStats'
 import { GameStartCard } from '../../components/GameStartCard'
 import { PauseButton, GamePauseOverlay } from '../../components/PauseControls'
 import { ScoreSaveCard } from '../../components/ScoreSaveCard'
@@ -338,45 +339,34 @@ export function CrumbtrailGame() {
               <canvas ref={canvasRef} className="crumbtrail__viewport" />
             </div>
 
-            <header
-              className={`crumbtrail__header${ui.tide > 0.35 ? ' crumbtrail__header--warn' : ''}`}
-            >
-              {/*
-                * One life, so there is no life counter — which frees the slot
-                * the chomps were in. Distance and streak both get to stay on
-                * screen now instead of taking turns.
-                */}
-              <p className="crumbtrail__stat crumbtrail__stat--lead" aria-label="Rows climbed">
-                <span className="crumbtrail__stat-value">{inRun ? ui.depth : 0}</span>
-                <span className="crumbtrail__stat-label">rows</span>
-              </p>
+            {/* A band behind the readout, because the maze runs right up to it. */}
+            <div
+              className={`crumbtrail__headerband${ui.tide > 0.35 ? ' crumbtrail__headerband--warn' : ''}`}
+              aria-hidden="true"
+            />
 
-              <p
-                className={`crumbtrail__score${
-                  ui.phase === 'playing' && ui.score > previousBestRef.current
-                    ? ' crumbtrail__score--hot'
-                    : ''
-                }`}
+            {/*
+              * The same readout Snake and Crosswalk use, so a glance finds the
+              * score and the figures where it finds them everywhere else. One
+              * life, so there is no life counter to make room for.
+              */}
+            <PlayReadout>
+              <PlayReadoutScore
+                hot={ui.phase === 'playing' && ui.score > previousBestRef.current}
               >
                 {ui.score.toLocaleString()}
-              </p>
-
-              <div className="crumbtrail__stats">
-                {!inRun ? null : ui.tide > 0.35 ? (
-                  <p className="crumbtrail__stat crumbtrail__stat--warn">
-                    <span className="crumbtrail__stat-value">Climb!</span>
-                  </p>
-                ) : ui.crumbStreak >= 2 ? (
-                  <p
-                    className="crumbtrail__stat crumbtrail__stat--streak"
-                    aria-label="Crumbs in a row"
-                  >
-                    <span className="crumbtrail__stat-value">{ui.crumbStreak}</span>
-                    <span className="crumbtrail__stat-label">in a row</span>
-                  </p>
-                ) : null}
-              </div>
-            </header>
+              </PlayReadoutScore>
+              {inRun ? (
+                <PlayReadoutStats>
+                  <PlayStat label="Rows" value={ui.depth} />
+                  {ui.tide > 0.35 ? (
+                    <PlayStat label="Tide" value="Climb!" urgent />
+                  ) : ui.crumbStreak >= 2 ? (
+                    <PlayStat label="In a row" value={ui.crumbStreak} />
+                  ) : null}
+                </PlayReadoutStats>
+              ) : null}
+            </PlayReadout>
 
             <GamePlayChrome
               slug="crumbtrail"

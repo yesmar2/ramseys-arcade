@@ -238,7 +238,7 @@ const FOLLOW_FRAC = 0.36
  * Long enough to read a junction, double back a lane for a crumb, or wait out
  * a chaser; short enough that parking in a cleared pocket is not a plan.
  */
-const STALL_LIMIT = 4.5
+const STALL_LIMIT = 2.6
 /** Where the tide sits when it is not chasing you: just under the view. */
 const TIDE_REST_GAP = 1.5
 /** How fast it falls back once you have made ground. */
@@ -315,8 +315,8 @@ function followGap(state: GameState) {
 function tideSpeed(state: GameState) {
   const over = state.stall - STALL_LIMIT
   if (over <= 0) return 0
-  const ramp = Math.min(1, over / 2.5)
-  const top = 1.1 + Math.min(1.3, state.depth * 0.003)
+  const ramp = Math.min(1, over / 1.2)
+  const top = 1.7 + Math.min(1.3, state.depth * 0.003)
   return top * (0.35 + 0.65 * ramp)
 }
 
