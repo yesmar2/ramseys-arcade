@@ -8,10 +8,12 @@ export type LiveEvents = {
   mine: TournamentSummary[]
   /** Ids of everything you have joined, official fixtures included. */
   joinedIds: Set<string>
+  /** The weekly that finished most recently, podium and all: last week's result. */
+  lastWeekly: TournamentSummary | null
   loading: boolean
 }
 
-const EMPTY: LiveEvents = { official: [], mine: [], joinedIds: new Set(), loading: true }
+const EMPTY: LiveEvents = { official: [], mine: [], joinedIds: new Set(), lastWeekly: null, loading: true }
 
 /*
  * The official line and your own events sit at opposite ends of the home page
@@ -61,6 +63,11 @@ function load(playerName: string): Promise<Omit<LiveEvents, 'loading'>> {
           const rank = (t: TournamentSummary) => (t.cadence === 'daily' ? 0 : 1)
           return rank(a) - rank(b) || a.endsAt - b.endsAt
         }),
+      // The public list keeps recently finished fixtures, so last week's podium comes free.
+      lastWeekly:
+        all
+          .filter((t) => t.official && t.cadence === 'weekly' && t.status === 'ended' && (t.podium?.length ?? 0) > 0)
+          .sort((a, b) => b.endsAt - a.endsAt)[0] ?? null,
     }
   })
 
@@ -80,7 +87,7 @@ export function useLiveEvents(playerName: string): LiveEvents {
       })
       .catch(() => {
         if (!cancelled)
-          setState({ official: [], mine: [], joinedIds: new Set(), loading: false })
+          setState({ official: [], mine: [], joinedIds: new Set(), lastWeekly: null, loading: false })
       })
     return () => {
       cancelled = true

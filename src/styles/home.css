@@ -14,118 +14,6 @@
   gap: 1.6rem;
 }
 
-/*
- * Daily and weekly events: the recurring reason to open the app on a given
- * day. Each is a filled row carrying its game's artwork and a way in, tinted
- * from that game's accent so the block belongs to the same palette as the
- * tiles rather than being another white surface.
- */
-.home-evs {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  min-width: 0;
-}
-
-.home-evs__row {
-  display: flex;
-  align-items: center;
-  gap: 0.65rem;
-  padding: 0.5rem 0.6rem;
-  border-radius: 0.9rem;
-  background: color-mix(in srgb, var(--ev-accent, var(--accent)) 12%, var(--surface));
-  border: 1px solid color-mix(in srgb, var(--ev-accent, var(--accent)) 24%, transparent);
-  font-size: 0.79rem;
-  text-decoration: none;
-  color: inherit;
-  min-width: 0;
-}
-
-.home-evs__art {
-  --inline-thumb-size: 2.5rem;
-  flex: none;
-  display: block;
-  line-height: 0;
-}
-
-.home-evs__body {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.05rem;
-  flex: 1;
-  min-width: 0;
-}
-
-.home-evs__title {
-  display: flex;
-  align-items: baseline;
-  gap: 0.35rem;
-  max-width: 100%;
-  min-width: 0;
-}
-
-.home-evs__name {
-  flex: 0 1 auto;
-  min-width: 0;
-  font-size: 0.87rem;
-  font-weight: 750;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.home-evs__row:hover .home-evs__name {
-  color: var(--ev-accent, var(--accent));
-}
-
-/* You are in this fixture — it still belongs on the line. */
-.home-evs__in {
-  flex: none;
-  border-radius: 999px;
-  padding: 0.02rem 0.34rem;
-  background: color-mix(in srgb, var(--accent) 16%, transparent);
-  color: color-mix(in srgb, var(--accent) 80%, var(--ink));
-  font-size: 0.6rem;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
-.home-evs__clock {
-  flex: none;
-  font-weight: 650;
-  font-variant-numeric: tabular-nums;
-  color: var(--muted);
-  font-size: 0.74rem;
-}
-
-.home-evs__go {
-  display: inline-flex;
-  align-items: center;
-  flex: none;
-  margin-left: auto;
-  border-radius: 999px;
-  padding: 0.36rem 0.95rem;
-  background: var(--ev-accent, var(--accent));
-  color: #fff;
-  font-size: 0.78rem;
-  font-weight: 750;
-  white-space: nowrap;
-}
-
-.home-evs__all {
-  margin-top: 0.15rem;
-  font-size: 0.74rem;
-  font-weight: 750;
-  color: var(--muted);
-  text-decoration: none;
-}
-
-.home-evs__all:hover {
-  color: var(--accent);
-}
-
 /* ---------- your events: the events list's cards, under the grid ---------- */
 
 .home-events {
@@ -178,39 +66,6 @@
   color: var(--muted);
 }
 
-
-/* ---------- loading: the rail keeps its shape ---------- */
-
-.home-evs__row--skel {
-  --ev-accent: var(--muted);
-  pointer-events: none;
-}
-
-.home-evs__row--skel .home-evs__body {
-  gap: 0.4rem;
-}
-
-.home-evs__skel-art {
-  width: 2.5rem;
-  height: 2.5rem;
-  border-radius: 0.7rem;
-  background: rgba(var(--ink-rgb), 0.08);
-}
-
-.home-evs__all {
-  align-self: flex-end;
-  margin-top: 0.1rem;
-}
-
-/* The heading over the daily and weekly rows. */
-.home-evs__head {
-  margin: 0 0 0.1rem;
-  font-size: 0.7rem;
-  font-weight: 800;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
-  color: var(--muted);
-}
 
 /* ---------- the banner: one game, run big across the width ---------- */
 
@@ -519,172 +374,135 @@ html[data-theme="dark"] .home-banner {
   }
 }
 
-/* ---------- the pulse: what is true today, under the banner ---------- */
+/* ---------- section heads: On now and the boards ---------- */
 
-.home-pulse {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: 0.75rem;
-  align-items: stretch;
-}
-
-/* Signed out there is no standing card, and the events take the whole row. */
-.home-pulse > :only-child {
-  grid-column: 1 / -1;
-}
-
-.home-pulse__standing {
+.home-section__bar {
   display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 0.12rem;
-  min-width: 11rem;
-  padding: 0.7rem 1rem;
-  border-radius: 1rem;
-  background: color-mix(in srgb, var(--accent) 12%, var(--surface));
-  border: 1px solid color-mix(in srgb, var(--accent) 24%, transparent);
-  color: inherit;
-  text-decoration: none;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35rem 0.9rem;
 }
 
-.home-pulse__standing:hover .home-pulse__n,
-.home-pulse__standing:focus-visible .home-pulse__n {
+.home-section__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
+.home-section__count {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.home-section__more {
+  margin-left: auto;
+  font-size: 0.8rem;
+  font-weight: 750;
+  color: var(--muted);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.home-section__more:hover,
+.home-section__more:focus-visible {
   color: var(--accent);
 }
 
-/* A podium place colours the card in its metal instead of the site's accent. */
-.home-pulse__standing--gold {
-  --standing-tone: #e8b23c;
-}
+/* ---------- on now: the daily, the weekly, and last week's podium ---------- */
 
-.home-pulse__standing--silver {
-  --standing-tone: #b9c4cf;
-}
-
-.home-pulse__standing--bronze {
-  --standing-tone: #cd8b5c;
-}
-
-.home-pulse__standing--gold,
-.home-pulse__standing--silver,
-.home-pulse__standing--bronze {
-  background: color-mix(in srgb, var(--standing-tone) 14%, var(--surface));
-  border-color: color-mix(in srgb, var(--standing-tone) 38%, transparent);
-}
-
-/* Your face, your number, your points: the row that makes the card yours. */
-.home-pulse__me {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  min-width: 0;
-}
-
-.home-pulse__mark {
-  flex: none;
-}
-
-.home-pulse__figure {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-
-.home-pulse__tag {
-  overflow: hidden;
-  font-size: 0.7rem;
-  font-weight: 750;
-  letter-spacing: 0.04em;
-  color: var(--muted);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.home-pulse__pts {
-  margin-left: auto;
-  flex: none;
-  font-size: 0.72rem;
-  font-weight: 650;
-  color: var(--muted);
-  white-space: nowrap;
-}
-
-.home-pulse__pts b {
-  font-family: var(--font-display);
-  font-size: 0.95rem;
-  font-weight: 800;
-  font-variant-numeric: tabular-nums;
-  color: var(--ink);
-}
-
-.home-pulse__k {
-  font-size: 0.64rem;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--muted);
-}
-
-.home-pulse__v {
-  font-family: var(--font-display);
-  font-size: 1.5rem;
-  font-weight: 800;
-  letter-spacing: -0.03em;
-  line-height: 1.1;
-  font-variant-numeric: tabular-nums;
-  color: var(--ink);
-}
-
-.home-pulse__v .skel-line {
-  width: 4rem;
-}
-
-.home-pulse__n {
-  font-size: 0.74rem;
-  font-weight: 650;
-  color: var(--muted);
-}
-
-.home-pulse .home-evs {
-  flex-direction: row;
-  flex-wrap: wrap;
+/*
+ * Three cards under the banner, each tinted from its game the way the tiles
+ * are: a one-game event takes that game's colour, a mix takes the site's, and
+ * last week's result is gold. The whole card is the way in.
+ */
+.onnow {
+  display: grid;
   gap: 0.75rem;
 }
 
-.home-pulse .home-evs__head {
-  display: none;
+.onnow__grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.8rem;
 }
 
-.home-pulse .home-evs__row {
-  flex: 1 1 16rem;
-  padding: 0.6rem 0.75rem;
-}
-
-@media (max-width: 40rem) {
-  .home-pulse {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
-
-/* The soonest event you are in: its game's mark, its name, its clock, a way in. */
-.home-pulse__next {
+.onnow__grid > li {
   display: flex;
-  align-items: center;
-  gap: 0.7rem;
-  padding: 0.6rem 0.75rem;
-  border-radius: 1rem;
-  background: color-mix(in srgb, var(--ev-accent, var(--accent)) 12%, var(--surface));
-  border: 1px solid color-mix(in srgb, var(--ev-accent, var(--accent)) 26%, transparent);
+  min-width: 0;
+}
+
+.onnow-card {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-width: 0;
+  min-height: 10.5rem;
+  padding: 1rem 1.1rem;
+  border-radius: 1.1rem;
+  background: color-mix(in srgb, var(--ev-accent, var(--accent)) 10%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--ev-accent, var(--accent)) 24%, transparent);
   color: inherit;
   text-decoration: none;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
 }
 
-.home-pulse__next-art .inline-thumb {
-  --inline-thumb-size: 2.4rem;
-  --thumb-accent: var(--ev-accent, var(--accent));
+.onnow-card:hover,
+.onnow-card:focus-visible {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px color-mix(in srgb, var(--ev-accent, var(--accent)) 22%, transparent);
+  outline: none;
 }
 
-.home-pulse__next-body {
+.onnow-card--result {
+  --ev-accent: #e8b23c;
+}
+
+.onnow-card__head {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.onnow-card__art {
+  --inline-thumb-size: 2.75rem;
+  flex: none;
+  display: flex;
+  line-height: 0;
+}
+
+/* Several games overlap, fanned like cards in a hand. */
+.onnow-card__art--stack {
+  --inline-thumb-size: 2.35rem;
+}
+
+.onnow-card__art--stack .inline-thumb {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--ev-accent, var(--accent)) 10%, var(--surface));
+}
+
+.onnow-card__art--stack .inline-thumb + .inline-thumb {
+  margin-left: -0.75rem;
+}
+
+.onnow-card__art--trophy {
+  display: grid;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 0.8rem;
+  background: color-mix(in srgb, var(--ev-accent) 18%, var(--playfield));
+  border: 1px solid color-mix(in srgb, var(--ev-accent) 40%, transparent);
+  color: color-mix(in srgb, var(--ev-accent) 80%, var(--ink));
+}
+
+.onnow-card__titles {
   display: flex;
   flex-direction: column;
   gap: 0.1rem;
@@ -692,78 +510,486 @@ html[data-theme="dark"] .home-banner {
   min-width: 0;
 }
 
-.home-pulse__next-title {
+.onnow-card__title {
   font-family: var(--font-display);
-  font-size: 0.98rem;
+  font-size: 1.02rem;
   font-weight: 800;
   letter-spacing: -0.02em;
-  color: var(--ink);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.home-pulse__next-go {
+.onnow-card:hover .onnow-card__title,
+.onnow-card:focus-visible .onnow-card__title {
+  color: color-mix(in srgb, var(--ev-accent, var(--accent)) 70%, var(--ink));
+}
+
+.onnow-card__sub {
+  font-size: 0.78rem;
+  font-weight: 650;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.onnow-card__clock {
   flex: none;
-  padding: 0.35rem 0.8rem;
+  align-self: flex-start;
+  padding: 0.2rem 0.55rem;
   border-radius: 999px;
-  background: var(--ev-accent, var(--accent));
-  color: #fff;
-  font-size: 0.8rem;
+  background: rgba(var(--ink-rgb), 0.06);
+  font-size: 0.72rem;
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.onnow-card__line {
+  font-size: 0.86rem;
+  font-weight: 550;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.onnow-card__foot {
+  display: flex;
+  align-items: center;
+  margin-top: auto;
+}
+
+.onnow-card__go {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.2rem;
+  padding: 0 1.05rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ev-accent, var(--accent)) 22%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ev-accent, var(--accent)) 45%, transparent);
+  color: color-mix(in srgb, var(--ev-accent, var(--accent)) 62%, var(--ink));
+  font-size: 0.85rem;
   font-weight: 800;
 }
 
-.home-pulse__next:hover .home-pulse__next-go,
-.home-pulse__next:focus-visible .home-pulse__next-go {
-  filter: brightness(1.08);
+.onnow-card__more {
+  font-size: 0.8rem;
+  font-weight: 750;
+  color: var(--muted);
 }
 
-/*
- * Wide: the banner and the rail side by side, the rail's cards stacked to
- * the banner's height. Narrow: the same cards as a strip under the banner.
- */
-.home-top {
+.onnow-card:hover .onnow-card__more,
+.onnow-card:focus-visible .onnow-card__more {
+  color: var(--ink);
+}
+
+/* Last week's podium: three places in their metals, yours ringed. */
+.onnow-podium {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.onnow-podium__place {
+  --tone: var(--muted);
   display: flex;
   flex-direction: column;
-  gap: 1.35rem;
+  gap: 0.1rem;
+  min-width: 0;
+  padding: 0.5rem 0.6rem;
+  border-radius: 0.8rem;
+  background: color-mix(in srgb, var(--tone) 12%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--tone) 30%, transparent);
 }
 
-@media (min-width: 64rem) {
-  .home-top {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 21rem;
-    gap: 1rem;
-    align-items: stretch;
+.onnow-podium__place--gold {
+  --tone: #e8b23c;
+}
+
+.onnow-podium__place--silver {
+  --tone: #b9c4cf;
+}
+
+.onnow-podium__place--bronze {
+  --tone: #cd8b5c;
+}
+
+.onnow-podium__place--you {
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--accent) 60%, transparent);
+}
+
+.onnow-podium__rank {
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--tone) 72%, var(--ink));
+}
+
+.onnow-podium__name {
+  font-size: 0.9rem;
+  font-weight: 800;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.onnow-podium__pts {
+  font-size: 0.74rem;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+
+/* Loading: three cards of the same shape hold the row. */
+.onnow-card--skel {
+  --ev-accent: var(--muted);
+  justify-content: center;
+  pointer-events: none;
+}
+
+/* Narrower: the three cards become a row you swipe through. */
+@media (max-width: 56rem) {
+  .onnow__grid {
+    grid-template-columns: none;
+    grid-auto-flow: column;
+    grid-auto-columns: min(21rem, 84%);
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
   }
 
-  .home-top .home-pulse {
-    display: flex;
-    flex-direction: column;
-    justify-content: stretch;
-    gap: 0.6rem;
-    min-width: 0;
+  .onnow__grid::-webkit-scrollbar {
+    display: none;
   }
 
-  .home-top .home-pulse > * {
-    flex: 1 1 0;
-    min-width: 0;
+  .onnow__grid > li {
+    scroll-snap-align: start;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .onnow-card {
+    transition: none;
+  }
+}
+
+/* ---------- the boards at a glance: standings, house records, a record book ---------- */
+
+.hboards {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.hboards__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr) minmax(0, 1fr);
+  gap: 0.8rem;
+  align-items: stretch;
+}
+
+@media (max-width: 64rem) {
+  .hboards__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .home-top .home-pulse__standing {
-    min-width: 0;
+  .hb-panel--standings {
+    grid-column: 1 / -1;
   }
+}
 
-  .home-top .home-pulse .home-evs {
-    flex: 2 1 0;
-    flex-direction: column;
-    flex-wrap: nowrap;
-    gap: 0.6rem;
+@media (max-width: 42rem) {
+  .hboards__grid {
+    grid-template-columns: minmax(0, 1fr);
   }
+}
 
-  .home-top .home-pulse .home-evs__row {
-    flex: 1 1 0;
-    min-width: 0;
-  }
+.hb-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-width: 0;
+  padding: 1rem 1.1rem 1.1rem;
+  border-radius: 1.1rem;
+  background: var(--surface);
+  border: 1px solid rgba(var(--ink-rgb), 0.08);
+}
+
+.hb-panel__head {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-width: 0;
+}
+
+.hb-panel__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.hb-panel__art {
+  --inline-thumb-size: 2rem;
+  flex: none;
+  display: flex;
+  line-height: 0;
+}
+
+/* Standings: the top of the board, your row among them or under them. */
+.hb-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.hb-row {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-width: 0;
+  min-height: 2.75rem;
+  padding: 0 0.6rem;
+  border-radius: 0.8rem;
+}
+
+.hb-row--you {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+
+.hb-row--gap {
+  min-height: 1.1rem;
+  justify-content: center;
+  font-weight: 800;
+  color: var(--muted);
+}
+
+.hb-row__rank {
+  flex: none;
+  width: 1.3rem;
+  text-align: center;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+
+.hb-row__rank--gold {
+  color: color-mix(in srgb, #e8b23c 75%, var(--ink));
+}
+
+.hb-row__rank--silver {
+  color: color-mix(in srgb, #b9c4cf 70%, var(--ink));
+}
+
+.hb-row__rank--bronze {
+  color: color-mix(in srgb, #cd8b5c 75%, var(--ink));
+}
+
+.hb-row__mark {
+  --pmark: 2rem;
+}
+
+.hb-row__name {
+  min-width: 0;
+  font-weight: 750;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hb-row__you {
+  flex: none;
+  padding: 0.05rem 0.4rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  color: color-mix(in srgb, var(--accent) 80%, var(--ink));
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.hb-row__pts {
+  margin-left: auto;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.hb-row__pts small {
+  font-size: 0.7rem;
+  font-weight: 650;
+  color: var(--muted);
+}
+
+.hb-row--skel {
+  pointer-events: none;
+}
+
+/* How far to the next place up, and how far back the one below you is. */
+.hb-gaps {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
+  gap: 0.5rem;
+  margin-top: auto;
+}
+
+.hb-gap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  padding: 0.55rem 0.7rem;
+  border-radius: 0.8rem;
+  background: rgba(var(--ink-rgb), 0.05);
+}
+
+.hb-gap b {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.hb-gap span {
+  font-size: 0.76rem;
+  font-weight: 650;
+  color: var(--muted);
+}
+
+.hb-note,
+.hb-empty {
+  margin: auto 0 0;
+  padding: 0.6rem 0.75rem;
+  border-radius: 0.8rem;
+  background: rgba(var(--ink-rgb), 0.05);
+  font-size: 0.8rem;
+  font-weight: 600;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.hb-empty {
+  margin: 0;
+}
+
+/* House records: four plaques. */
+.hb-plaques {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.hb-plaque {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+  padding: 0.75rem 0.8rem;
+  border-radius: 0.9rem;
+  background: rgba(var(--ink-rgb), 0.05);
+}
+
+.hb-plaque__value {
+  font-family: var(--font-display);
+  font-size: 1.7rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.hb-plaque__value small {
+  margin-left: 0.05rem;
+  font-family: var(--font-body);
+  font-size: 0.74rem;
+  font-weight: 650;
+  letter-spacing: 0;
+  color: var(--muted);
+}
+
+.hb-plaque__label {
+  margin-top: 0.3rem;
+  font-size: 0.8rem;
+  font-weight: 750;
+}
+
+.hb-plaque__who {
+  margin-top: auto;
+  padding-top: 0.2rem;
+  font-size: 0.74rem;
+  font-weight: 750;
+  color: color-mix(in srgb, #e8b23c 70%, var(--ink));
+}
+
+.hb-plaque--skel {
+  min-height: 5.4rem;
+  justify-content: center;
+}
+
+/* One game's record book: a record per row, its holder on the right. */
+.hb-records {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.hb-record {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-width: 0;
+  min-height: 2.6rem;
+  border-bottom: 1px solid rgba(var(--ink-rgb), 0.07);
+}
+
+.hb-record:last-child {
+  border-bottom: 0;
+}
+
+.hb-record__label {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.84rem;
+  font-weight: 650;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hb-record__value {
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.hb-record__who {
+  width: 4.8rem;
+  text-align: right;
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hb-record--skel {
+  pointer-events: none;
 }
 
 /* ---------- the wall: every game, edge to edge ---------- */
