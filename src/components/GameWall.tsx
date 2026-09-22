@@ -7,12 +7,14 @@ import { usePlayerBests } from '../hooks/usePlayerBests'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { useDefaultPeriod } from '../lib/defaultPeriod'
 import { useDeviceType } from '../lib/device'
+import { hasGamePreview } from '../lib/gamePreviews'
 import { useGlobalRank } from '../lib/globalRank'
 import { heroSlug } from '../lib/homePicks'
 import { useRecentGames } from '../lib/lastPlayed'
 import { normalizePlayerName, type GlobalGamePlace } from '../lib/leaderboard'
 import { formatLeaderboardScore } from '../lib/leaderboardFormat'
 import { resolveGameAccent } from '../lib/theme'
+import { GamePreview } from './GamePreview'
 import { GameThumbArt } from './GameThumbArt'
 
 type Tab = 'all' | GameTag | 'new'
@@ -226,6 +228,7 @@ export function GameWall() {
             standing={byGame[game.slug] ?? null}
             top={leaders?.[game.slug] ?? null}
             daily={game.slug === dailySlug}
+            preview
           />
         ))}
       </ul>
@@ -241,6 +244,7 @@ export function WallTile({
   standing = null,
   top = null,
   daily,
+  preview = false,
 }: {
   game: Game
   index: number
@@ -252,6 +256,8 @@ export function WallTile({
   /** Who leads this game's board: shown where you have no numbers of your own. */
   top?: BoardLeader | null
   daily: boolean
+  /** Let a game that can play itself do so in the tile, over its thumb. */
+  preview?: boolean
 }) {
   const accent = resolveGameAccent(game.slug, game.accent)
   const style = {
@@ -290,6 +296,9 @@ export function WallTile({
           <span className="wall-tile__art" aria-hidden="true">
             <GameThumbArt slug={game.slug} accent={accent} />
           </span>
+          {preview && hasGamePreview(game.slug) ? (
+            <GamePreview slug={game.slug} className="wall-tile__preview" />
+          ) : null}
           {flag ? (
             <span className={`wall-tile__flag wall-tile__flag--${flag.kind}`}>{flag.label}</span>
           ) : null}

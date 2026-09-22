@@ -984,6 +984,26 @@ html[data-theme="dark"] .wall-tile__art .inline-thumb {
   transform: scale(1.06);
 }
 
+/*
+ * A game that can play itself fills the coloured part with the real thing,
+ * drawn by its own renderer. It sits over the thumb and fades in once its
+ * first frame is down, so a slow load or a failed one leaves the thumb
+ * showing; the name and its scrim stay on top.
+ */
+.wall-tile__preview {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  opacity: 0;
+  transition: opacity 0.45s ease;
+}
+
+.wall-tile__preview.game-preview--ready {
+  opacity: 1;
+}
+
 .wall-tile__name {
   position: absolute;
   left: 0.75rem;
@@ -1157,6 +1177,7 @@ html[data-theme="dark"] .wall-tile__flag--daily {
 @media (prefers-reduced-motion: reduce) {
   .wall-tile,
   .wall-tile__art .inline-thumb,
+  .wall-tile__preview,
   .home-banner__art > .inline-thumb {
     animation: none;
     transition: none;

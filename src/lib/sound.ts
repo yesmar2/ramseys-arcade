@@ -301,8 +301,24 @@ if (typeof document !== 'undefined') {
   document.addEventListener('visibilitychange', applyMusicGain)
 }
 
+/*
+ * A game playing itself in a home page preview runs the same code that makes
+ * noise in play. Anything it does inside `quietly` stays silent, without
+ * touching the player's own mute setting.
+ */
+let hushed = 0
+
+export function quietly<T>(run: () => T): T {
+  hushed += 1
+  try {
+    return run()
+  } finally {
+    hushed -= 1
+  }
+}
+
 export function sfx(name: SoundName, pitch = 0) {
-  if (muted) return
+  if (muted || hushed > 0) return
   const audio = getCtx()
   if (!audio || !master) return
   if (audio.state === 'suspended') void audio.resume()
