@@ -606,6 +606,16 @@ function drawChaser(
     ctx.quadraticCurveTo(x0, foot + (i % 2 === 0 ? 0.22 : -0.08) * r + wave, x1, foot - r * 0.1)
   }
   ctx.closePath()
+  /*
+   * Backed with the floor colour before the body goes on.
+   *
+   * The soft translucent fill is the house style and worth keeping, but over a
+   * carpet of crumbs it meant you read the dots straight through a chaser —
+   * which makes the one thing on the board that can kill you the one thing you
+   * can see past. The underlay keeps the tint and stops the floor showing.
+   */
+  ctx.fillStyle = skin.wallFill
+  ctx.fill()
   ctx.fillStyle = hsla(hue, sat, 58, softFillAlpha(0.22))
   ctx.fill()
   if (!flat) {

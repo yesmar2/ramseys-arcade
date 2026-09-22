@@ -126,7 +126,7 @@ const SCORING: Record<string, ScoreRow[]> = {
     { label: 'A line of three', value: 'sweeps one row and ignores you — find the gap' },
     { label: 'Charms', value: 'a few rows off your line, seconds only' },
     { label: 'Freeze', value: 'every chaser stops for a few seconds' },
-    { label: 'Laser', value: 'fires the way you face, down the corridor, for a few seconds' },
+    { label: 'Laser', value: 'a held beam the way you face, down the corridor, for a few seconds' },
     { label: 'Chaser cut down', value: '+200 / +400 / +800 / +1600 — the ladder climbs while it lasts' },
     { label: 'Sleepers', value: 'the beam leaves them be — it only takes what has woken' },
     { label: 'Fruit', value: '+300 rising to +2,000 — a few rows off your line, seconds only' },

@@ -60,6 +60,8 @@ export type Ghost = {
   hit: number
   /** 0..1 stir as it wakes, so the moment it comes alive is legible. */
   arrive: number
+  /** Seconds spent as eyes, so a pair that cannot reach the top still leaves. */
+  eatenAge: number
 }
 
 /**
@@ -192,8 +194,6 @@ export type GameState = {
   freeze: number
   /** Seconds the beam keeps firing. */
   laser: number
-  /** Seconds until the next shot. */
-  laserCooldown: number
   /** Chasers cut down since this laser was picked up — the ladder climbs. */
   laserHits: number
   beam: Beam | null
@@ -314,6 +314,17 @@ const TIDE_EBB = 3.2
 const WAKE_RANGE = 5
 
 /**
+ * How long a pair of eyes may take to leave before it is taken off anyway.
+ *
+ * They head for the top of the board, but the top of their column is often
+ * walled, so the field lands them on the nearest open tile below it — where
+ * they have arrived, and simply stop. Measured, a pair climbed from row 12.5 to
+ * 3.5 and then sat on 3.5 for good. A cull by height alone can never clear
+ * those, so time clears them instead.
+ */
+const EYES_MAX = 4
+
+/**
  * A line of chasers sweeping one row, side to side.
  *
  * The five personalities all answer the same question — where is the player —
@@ -396,15 +407,9 @@ const FREEZE_TIME = 3.6
  * reward the player already understands.
  */
 const LASER_TIME = 5.5
-/*
- * Short enough that the shots overlap the life of the one before, so it reads
- * as a beam you are holding rather than a gun you are firing. Kept as a repeat
- * rather than a true constant beam because the repeat is what the ladder counts
- * and what gives the thing a rhythm to aim along.
- */
-const LASER_INTERVAL = 0.24
 const LASER_RANGE = 9
-const BEAM_LIFE = 0.2
+/** How long the last shot lingers once the laser is spent. */
+const BEAM_LIFE = 0.14
 const FRUIT_MIN_OFFSET = 2
 
 function loadBest() {
@@ -707,6 +712,7 @@ function seedGhost(state: GameState, y: number): boolean {
     bob: Math.random() * Math.PI * 2,
     hit: 0,
     arrive: 0,
+    eatenAge: 0,
   })
   return true
 }
@@ -785,15 +791,26 @@ function offerCharm(state: GameState): boolean {
  * away the reading the whole game is built on.
  */
 function fireBeam(state: GameState) {
+  const v = VEC[state.player.dir]
   let x = Math.floor(state.player.x)
   let y = Math.floor(state.player.y)
   let len = 0
+  let hits = 0
 
   for (let i = 0; i < LASER_RANGE; i++) {
-    const next = stepTile(state, x, y, state.player.dir)
-    if (!next) break
-    x = next.x
-    y = next.y
+    /*
+     * Deliberately not stepTile, which wraps: the board is a cylinder and a
+     * chaser one tile off the left edge is one tile from the right one. The
+     * beam used to walk through that seam and cut down something on the far
+     * side of the screen while the line on screen ran off the edge — so a shot
+     * killed what you could not see and missed what you were pointing at.
+     */
+    const nx = x + v.x
+    const ny = y + v.y
+    if (nx < 0 || nx >= state.cols || ny < 0 || ny >= state.rows) break
+    if (!tileOpen(state, nx, ny)) break
+    x = nx
+    y = ny
     len += 1
     for (const ghost of state.ghosts) {
       if (ghost.mode === 'eaten' || ghost.mode === 'asleep') continue
@@ -804,6 +821,7 @@ function fireBeam(state: GameState) {
       ghost.hit = 1
       state.score += bonus
       addPop(state, ghost.x, ghost.y, `+${bonus}`)
+      hits += 1
     }
   }
 
@@ -814,7 +832,9 @@ function fireBeam(state: GameState) {
     len,
     life: BEAM_LIFE,
   }
-  if (len > 0) {
+  // Only a kill makes a noise: the beam is held down continuously now, and a
+  // whoosh every frame would be a siren.
+  if (hits > 0) {
     sfx('whoosh')
     haptic('hit')
   }
@@ -899,6 +919,7 @@ function seedTrain(state: GameState, y: number): boolean {
       bob: Math.random() * Math.PI * 2,
       hit: 0,
       arrive: 0,
+      eatenAge: 0,
     })
   }
   return true
@@ -958,7 +979,6 @@ function emptyState(view: { cols: number; rows: number }): GameState {
     charmTimer: CHARM_GAP_MIN,
     freeze: 0,
     laser: 0,
-    laserCooldown: 0,
     laserHits: 0,
     beam: null,
     lastTile: { x: 0, y: 0 },
@@ -1064,7 +1084,14 @@ export function triggerSurge(state: GameState): GameState {
 // —— Chasers ——————————————————————————————————————————————————
 
 function targetFor(state: GameState, ghost: Ghost): Cell {
-  if (ghost.mode === 'eaten') return { x: Math.floor(ghost.x), y: -4 }
+  /*
+   * Eyes head for the top of the board, on the board, so the distance field
+   * routes them round walls. They used to be sent to y = -4, which is off the
+   * board and so fell to the greedy fallback — and because the target's column
+   * was the ghost's own, there was no sideways pull at all: blocked above, they
+   * simply rocked between left and right in one spot forever.
+   */
+  if (ghost.mode === 'eaten') return { x: Math.floor(ghost.x), y: 0 }
   // Trains are steered in chooseGhostDir and never ask for a target.
   if (ghost.kind === 'train') return { x: Math.floor(ghost.x), y: Math.floor(ghost.y) }
   if (ghost.mode === 'scatter') return ghost.corner
@@ -1453,17 +1480,12 @@ export function tick(state: GameState, dt: number): GameState {
   // —— the offer ——
   next.freeze = Math.max(0, next.freeze - dt)
 
-  if (next.beam) {
-    const life = next.beam.life - dt
-    next.beam = life > 0 ? { ...next.beam, life } : null
-  }
   if (next.laser > 0) {
     next.laser = Math.max(0, next.laser - dt)
-    next.laserCooldown -= dt
-    if (next.laserCooldown <= 0) {
-      fireBeam(next)
-      next.laserCooldown = LASER_INTERVAL
-    }
+    fireBeam(next)
+  } else if (next.beam) {
+    const life = next.beam.life - dt
+    next.beam = life > 0 ? { ...next.beam, life } : null
   }
 
   if (next.charm) {
@@ -1478,7 +1500,6 @@ export function tick(state: GameState, dt: number): GameState {
         addPop(next, next.charm.x, next.charm.y, 'FREEZE')
       } else {
         next.laser = LASER_TIME
-        next.laserCooldown = 0
         next.laserHits = 0
         addPop(next, next.charm.x, next.charm.y, 'LASER')
       }
@@ -1554,6 +1575,7 @@ export function tick(state: GameState, dt: number): GameState {
     }
 
     ghost.arrive = Math.min(1, ghost.arrive + dt * 2)
+    if (ghost.mode === 'eaten') ghost.eatenAge += dt
     /*
      * A freeze stops the hunt, not the retreat: eyes already heading home keep
      * going, so a chaser you ate cannot be parked on the board by a charm you
@@ -1571,7 +1593,7 @@ export function tick(state: GameState, dt: number): GameState {
   // Eyes that made it out the top, and anything the tide took, are gone.
   const tideY = bufferRowOf(next, next.tide)
   next.ghosts = next.ghosts.filter((g) => {
-    if (g.mode === 'eaten' && g.y < 0.6) return false
+    if (g.mode === 'eaten' && (g.y < 0.6 || g.eatenAge > EYES_MAX)) return false
     return g.y < tideY + 0.5
   })
 
