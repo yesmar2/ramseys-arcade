@@ -261,6 +261,17 @@ const MIN_ROAD_SPEED = 0.75
 const MAX_ROAD_SPEED = 2.05
 
 /**
+ * The least time a hole may hold you, in seconds.
+ *
+ * This is the promise the gap maths has always been trying to keep — a lane is
+ * somewhere you can stand and wait, not a frame you have to hit. It was implied
+ * by a constant before, which meant any later tuning could quietly break it.
+ * Enforced here, so the knobs above can be turned without re-deriving whether a
+ * crossing is still fair.
+ */
+const MIN_HOLD_SEC = 1.05
+
+/**
  * The speed ceiling lifts in overtime. Without this the deep game barely moved:
  * lanes were already pinned at the cap by the time the first ramp finished, and
  * every other screw self-cancels — asking for more cars raises the minimum gap,
@@ -523,7 +534,11 @@ function makeRoadRow(row: number, cols: number, rand: () => number, prev?: Row):
     if (speed > speedCap * g || speed < MIN_ROAD_SPEED * g) speed = prevRoad.speed - push
     speed = Math.min(speedCap * g, Math.max(MIN_ROAD_SPEED * g, speed))
   }
-  const w = (rand() < 0.28 ? 2.0 : 1.4) * sizeScale(cols)
+  // Lorries get commoner with depth. Width is the one screw that does not feed
+  // back into the gap rule, so it raises how much of the lane is metal without
+  // touching how long the holes hold.
+  const wideChance = Math.min(0.62, 0.28 + d * 0.3)
+  const w = (rand() < wideChance ? 2.0 : 1.4) * sizeScale(cols)
   const span = laneSpan(cols)
   // Gaps are the whole game. Sized in seconds rather than tiles: every hole has
   // to hold you for over a second so a lane is somewhere you can wait, not just
@@ -531,10 +546,15 @@ function makeRoadRow(row: number, cols: number, rand: () => number, prev?: Row):
   // The speed-proportional part eases off in overtime. Left alone it hands the
   // difficulty straight back: a quicker lane demands a bigger minimum gap, so
   // fewer cars fit, so the hole you are aiming at ends up wider than it was.
-  // The fixed 1.15 is untouched — that is the part that guarantees any hole is
-  // somewhere you can stand rather than a frame you have to hit.
-  const hold = 1 - Math.min(0.32, d * 0.12 + Math.max(0, d - 1) * 0.15)
-  const minGap = (1.15 + (speed / g) * 1.35 * hold) * g
+  //
+  // This eased off far too gently. Because a lane fits floor(span / (car + gap))
+  // cars, a gap growing with speed was dropping the count from three to two, so
+  // measured occupancy FELL from 27% to 18% as the game got harder: the roads
+  // were emptying out while only the speed rose, and 82% of the time your column
+  // was simply clear. Steeper now, with MIN_HOLD_SEC below as the actual floor.
+  const hold = 1 - Math.min(0.62, d * 0.85 + Math.max(0, d - 1) * 0.4)
+  const wantGap = (1.15 + (speed / g) * 1.35 * hold) * g
+  const minGap = Math.max(wantGap, speed * MIN_HOLD_SEC)
   // Ask for a full lane and let the gap rule below thin it out — the guaranteed
   // hole is what keeps it fair, so a busy lane costs nothing.
   const want = 2 + Math.round(d * 2 + rand() * 1.6)
