@@ -74,7 +74,17 @@ export type Ghost = {
  * These are the rest of the sentence: brief, loud, and frequent enough that
  * something is always about to happen.
  */
-export type CharmKind = 'freeze'
+export type CharmKind = 'freeze' | 'laser'
+
+/** A shot, kept only long enough to draw it. */
+export type Beam = {
+  x: number
+  y: number
+  dir: Dir
+  /** Tiles it reached before a wall stopped it. */
+  len: number
+  life: number
+}
 
 export type Charm = {
   x: number
@@ -180,6 +190,13 @@ export type GameState = {
   charmTimer: number
   /** Seconds chasers stay stopped. */
   freeze: number
+  /** Seconds the beam keeps firing. */
+  laser: number
+  /** Seconds until the next shot. */
+  laserCooldown: number
+  /** Chasers cut down since this laser was picked up — the ladder climbs. */
+  laserHits: number
+  beam: Beam | null
   /** Seconds until the next one is offered. */
   fruitTimer: number
   lastTile: Cell
@@ -354,8 +371,27 @@ const FRUIT_ROWS_AHEAD = [3, 8] as const
 const CHARM_GAP_MIN = 9
 const CHARM_GAP_MAX = 17
 const CHARM_LIFE = 7
+const CHARM_KINDS: CharmKind[] = ['freeze', 'laser']
 /** Chasers stand still this long. */
 const FREEZE_TIME = 3.6
+
+/**
+ * The beam.
+ *
+ * Every other answer to a chaser here needs contact — a power crumb sends you
+ * after them, a surge barges through, a freeze waits them out. This one reaches
+ * down the corridor, which is the only thing on the board that acts at a
+ * distance, and pointed up it clears the way you were going anyway.
+ *
+ * It fires on a repeat rather than once, so there is a window to aim it, and it
+ * stops at the first wall: a corridor tool, not a button that wipes the screen.
+ * Chasers it cuts down pay the ladder they pay when eaten, because that is a
+ * reward the player already understands.
+ */
+const LASER_TIME = 3.8
+const LASER_INTERVAL = 0.42
+const LASER_RANGE = 9
+const BEAM_LIFE = 0.16
 const FRUIT_MIN_OFFSET = 2
 
 function loadBest() {
@@ -720,11 +756,55 @@ function offerCharm(state: GameState): boolean {
       y: y + 0.5,
       life: CHARM_LIFE,
       maxLife: CHARM_LIFE,
-      kind: 'freeze',
+      kind: CHARM_KINDS[Math.floor(Math.random() * CHARM_KINDS.length)],
     }
     return true
   }
   return false
+}
+
+/**
+ * Fire one shot along the corridor the player is facing.
+ *
+ * Walks tile by tile until a wall stops it, cutting down anything awake in the
+ * way. Sleepers are left alone: they have not entered the run yet, and a beam
+ * that clears the board ahead of you before you have met what is on it takes
+ * away the reading the whole game is built on.
+ */
+function fireBeam(state: GameState) {
+  let x = Math.floor(state.player.x)
+  let y = Math.floor(state.player.y)
+  let len = 0
+
+  for (let i = 0; i < LASER_RANGE; i++) {
+    const next = stepTile(state, x, y, state.player.dir)
+    if (!next) break
+    x = next.x
+    y = next.y
+    len += 1
+    for (const ghost of state.ghosts) {
+      if (ghost.mode === 'eaten' || ghost.mode === 'asleep') continue
+      if (Math.floor(ghost.x) !== x || Math.floor(ghost.y) !== y) continue
+      const bonus = SCORE_GHOST[Math.min(state.laserHits, SCORE_GHOST.length - 1)]
+      state.laserHits += 1
+      ghost.mode = 'eaten'
+      ghost.hit = 1
+      state.score += bonus
+      addPop(state, ghost.x, ghost.y, `+${bonus}`)
+    }
+  }
+
+  state.beam = {
+    x: Math.floor(state.player.x) + 0.5,
+    y: Math.floor(state.player.y) + 0.5,
+    dir: state.player.dir,
+    len,
+    life: BEAM_LIFE,
+  }
+  if (len > 0) {
+    sfx('whoosh')
+    haptic('hit')
+  }
 }
 
 function charmGap() {
@@ -864,6 +944,10 @@ function emptyState(view: { cols: number; rows: number }): GameState {
     charm: null,
     charmTimer: CHARM_GAP_MIN,
     freeze: 0,
+    laser: 0,
+    laserCooldown: 0,
+    laserHits: 0,
+    beam: null,
     lastTile: { x: 0, y: 0 },
     trail: [],
     pops: [],
@@ -1356,6 +1440,19 @@ export function tick(state: GameState, dt: number): GameState {
   // —— the offer ——
   next.freeze = Math.max(0, next.freeze - dt)
 
+  if (next.beam) {
+    const life = next.beam.life - dt
+    next.beam = life > 0 ? { ...next.beam, life } : null
+  }
+  if (next.laser > 0) {
+    next.laser = Math.max(0, next.laser - dt)
+    next.laserCooldown -= dt
+    if (next.laserCooldown <= 0) {
+      fireBeam(next)
+      next.laserCooldown = LASER_INTERVAL
+    }
+  }
+
   if (next.charm) {
     next.charm = { ...next.charm, life: next.charm.life - dt }
     const charmTideY = bufferRowOf(next, next.tide)
@@ -1363,8 +1460,15 @@ export function tick(state: GameState, dt: number): GameState {
       next.charm = null
       next.charmTimer = charmGap()
     } else if (dist2(next.charm.x, next.charm.y, next.player.x, next.player.y) <= 0.45 * 0.45) {
-      next.freeze = FREEZE_TIME
-      addPop(next, next.charm.x, next.charm.y, 'FREEZE')
+      if (next.charm.kind === 'freeze') {
+        next.freeze = FREEZE_TIME
+        addPop(next, next.charm.x, next.charm.y, 'FREEZE')
+      } else {
+        next.laser = LASER_TIME
+        next.laserCooldown = 0
+        next.laserHits = 0
+        addPop(next, next.charm.x, next.charm.y, 'LASER')
+      }
       sfx('good')
       haptic('boost')
       next.charm = null

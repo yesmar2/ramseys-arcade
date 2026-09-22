@@ -261,10 +261,49 @@ function drawCrumbs(
  */
 /**
  * A charm, drawn as a ring with a mark rather than a fruit with a stem, so the
- * two offers on the board never read as the same thing. Cold blue-white, after
- * the frightened state it resembles, and it blinks out its last two seconds for
- * the same reason the fruit does.
+ * two offers on the board never read as the same thing. Freeze is the cold
+ * blue-white of the state it causes; the laser is red, and wears the arrow it
+ * fires. Both blink out their last two seconds, like the fruit.
  */
+/**
+ * The shot itself, for the sixth of a second it exists.
+ *
+ * Drawn from the tile the player stood in, out to the wall that stopped it, so
+ * what it hit and how far it reached are both plain. Bright core over a wide
+ * soft pass, which is how the rest of the board draws anything hot.
+ */
+function drawBeam(
+  ctx: CanvasRenderingContext2D,
+  state: GameState,
+  layout: Layout,
+) {
+  const beam = state.beam
+  if (!beam || beam.len <= 0) return
+  const { cell, rowY } = layout
+  const fade = Math.max(0, beam.life / 0.16)
+  const v = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] }[beam.dir] as number[]
+  const x0 = beam.x * cell
+  const y0 = rowY(beam.y)
+  const x1 = (beam.x + v[0] * beam.len) * cell
+  const y1 = rowY(beam.y + v[1] * beam.len)
+
+  ctx.save()
+  ctx.lineCap = 'round'
+  ctx.strokeStyle = hsla(4, 85, 60, 0.28 * fade)
+  ctx.lineWidth = cell * 0.52
+  ctx.beginPath()
+  ctx.moveTo(x0, y0)
+  ctx.lineTo(x1, y1)
+  ctx.stroke()
+  ctx.strokeStyle = hsla(12, 95, 74, 0.95 * fade)
+  ctx.lineWidth = cell * 0.14
+  ctx.beginPath()
+  ctx.moveTo(x0, y0)
+  ctx.lineTo(x1, y1)
+  ctx.stroke()
+  ctx.restore()
+}
+
 function drawCharm(
   ctx: CanvasRenderingContext2D,
   state: GameState,
@@ -280,7 +319,7 @@ function drawCharm(
 
   const pulse = 0.92 + Math.sin(state.time * 5) * 0.08
   const r = cell * 0.28 * pulse
-  const hue = 196
+  const hue = charm.kind === 'freeze' ? 196 : 4
   const flat = isFlatTheme()
 
   const glow = ctx.createRadialGradient(cx, cy, r * 0.2, cx, cy, r * 2.3)
@@ -306,12 +345,21 @@ function drawCharm(
   ctx.lineWidth = Math.max(1, cell * 0.05)
   ctx.lineCap = 'round'
   ctx.lineJoin = 'round'
-  // A frost star, three strokes through the middle.
   ctx.beginPath()
-  for (let i = 0; i < 3; i++) {
-    const a = (i * Math.PI) / 3
-    ctx.moveTo(cx - Math.cos(a) * r * 0.62, cy - Math.sin(a) * r * 0.62)
-    ctx.lineTo(cx + Math.cos(a) * r * 0.62, cy + Math.sin(a) * r * 0.62)
+  if (charm.kind === 'freeze') {
+    // A frost star, three strokes through the middle.
+    for (let i = 0; i < 3; i++) {
+      const a = (i * Math.PI) / 3
+      ctx.moveTo(cx - Math.cos(a) * r * 0.62, cy - Math.sin(a) * r * 0.62)
+      ctx.lineTo(cx + Math.cos(a) * r * 0.62, cy + Math.sin(a) * r * 0.62)
+    }
+  } else {
+    // An arrow, pointing the way it goes.
+    ctx.moveTo(cx, cy + r * 0.6)
+    ctx.lineTo(cx, cy - r * 0.62)
+    ctx.moveTo(cx - r * 0.36, cy - r * 0.22)
+    ctx.lineTo(cx, cy - r * 0.66)
+    ctx.lineTo(cx + r * 0.36, cy - r * 0.22)
   }
   ctx.stroke()
   ctx.lineCap = 'butt'
@@ -726,6 +774,7 @@ export function renderGame(
   drawCrumbs(ctx, state, layout, skin)
   drawFruit(ctx, state, layout, skin)
   drawCharm(ctx, state, layout, skin)
+  drawBeam(ctx, state, layout)
 
   /*
    * Anything straddling the side seam is drawn twice, once on each edge.
