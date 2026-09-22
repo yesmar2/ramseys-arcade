@@ -56,6 +56,14 @@ export type CoinPop = {
   t: number
 }
 
+/** A landing, left on the ground where it happened: dust, or a ring on the water. */
+export type Puff = {
+  c: number
+  r: number
+  t: number
+  wet: boolean
+}
+
 export type Snapshot = {
   /** Furthest row reached. Distance is the score. */
   score: number
@@ -95,6 +103,8 @@ export type GameState = {
   /** Smooth camera position (only moves up with the player). */
   cameraY: number
   hop: HopAnim | null
+  /** The way the last hop went, or tried to go: where the hopper is looking. */
+  facing: Dir
   hopCooldown: number
   /** Buffered input so fast swipes during a hop aren't dropped. */
   queued: Dir | null
@@ -136,9 +146,15 @@ export type GameState = {
    * traffic. Only the ones taken in flight count.
    */
   nearMisses: number
+  /**
+   * Seconds left on the word that marks a squeeze the record counted. The ring
+   * shows every near miss; only this says which ones went in the book.
+   */
+  closeCall: number
   runCoins: number
   wallet: number
   coinPops: CoinPop[]
+  puffs: Puff[]
   deathBits: DeathBit[]
   shake: number
   rows: Map<number, Row>
@@ -246,13 +262,26 @@ const RESPAWN_INVULN = 0.5
 const LOG_SNAP = 0.7
 /** Target water between logs, in tiles. */
 const LOG_GAP = 1.05
-const CAR_HUES = [18, 348, 272, 198, 38, 128, 168]
+/**
+ * Traffic paint. Amber was one of these, the hopper's own colour and the
+ * coin's, so a car could wear the face of the thing you steer: indigo took its
+ * place. Only the value moved, so every lane still rolls the same numbers.
+ */
+const CAR_HUES = [18, 348, 272, 198, 236, 128, 168]
+/** Lorries are the long ones; the renderer gives them a cab and a trailer. */
+const LORRY_W = 2.0
+const CAR_W = 1.4
+/** How long a counted squeeze keeps its word on screen. */
+export const CLOSE_CALL_SHOW = 0.75
+/** How long a landing's dust, or its ring on the water, stays. */
+export const PUFF_LIFE = 0.36
 const LOG_HUE = 32
 /** Matches the circular hopper sprite. */
 const PLAYER_HALF = 0.26
 /** Cars collide on their drawn bounds; just a sliver of mercy. */
 const CAR_INSET = 0.02
-const BUMP = 0.12
+/** How long a hop blocked by a tree or the edge shoves back. */
+export const BUMP = 0.12
 const NEAR_MISS_GAP = 0.22
 
 /**
@@ -413,6 +442,11 @@ export function pickCols(viewWidth: number, viewHeight: number): number {
 /** Traffic wraps around this many tiles, so lanes tile seamlessly. */
 export function laneSpan(cols: number): number {
   return cols + LANE_PAD
+}
+
+/** A lorry rather than a car: the two lengths a road lane is built from. */
+export function isLorry(v: Vehicle, cols: number): boolean {
+  return v.w / sizeScale(cols) > (CAR_W + LORRY_W) / 2
 }
 
 function wrapX(x: number, span: number): number {
@@ -576,7 +610,7 @@ function makeRoadRow(row: number, cols: number, rand: () => number, prev?: Row):
   // back into the gap rule, so it raises how much of the lane is metal without
   // touching how long the holes hold.
   const wideChance = Math.min(0.62, 0.28 + d * 0.3)
-  const w = (rand() < wideChance ? 2.0 : 1.4) * sizeScale(cols)
+  const w = (rand() < wideChance ? LORRY_W : CAR_W) * sizeScale(cols)
   const span = laneSpan(cols)
   // Gaps are the whole game. Sized in seconds rather than tiles: every hole has
   // to hold you for over a second so a lane is somewhere you can wait, not just
@@ -1081,6 +1115,11 @@ function die(state: GameState, cause: DeathCause): GameState {
   }
 }
 
+function fadePuffs(puffs: Puff[], dt: number): Puff[] {
+  if (!puffs.length) return puffs
+  return puffs.map((p) => ({ ...p, t: p.t - dt })).filter((p) => p.t > 0)
+}
+
 function collectCoin(state: GameState): GameState {
   const row = state.rows.get(state.row)
   if (!row?.coins.length) return state
@@ -1111,6 +1150,7 @@ export function createInitialState(cols = COLS): GameState {
     row: 0,
     cameraY: 0,
     hop: null,
+    facing: 'up',
     hopCooldown: 0,
     queued: null,
     queuedAge: 0,
@@ -1132,9 +1172,11 @@ export function createInitialState(cols = COLS): GameState {
     nearMiss: 0,
     nearMissCooldown: 0,
     nearMisses: 0,
+    closeCall: 0,
     runCoins: 0,
     wallet: loadWallet(),
     coinPops: [],
+    puffs: [],
     deathBits: [],
     shake: 0,
     rows: new Map(),
@@ -1178,6 +1220,7 @@ export function jumpToRow(state: GameState, row: number): GameState {
     cameraY: Math.max(0, target - PLAYER_VIEW_ROW),
     rows: new Map(),
     coinPops: [],
+    puffs: [],
     deathBits: [],
     invuln: RESPAWN_INVULN,
   }
@@ -1219,7 +1262,8 @@ export function hop(state: GameState, dir: Dir): GameState {
   else if (dir === 'left') nc -= 1
   else nc += 1
 
-  const blocked = (): GameState => ({ ...state, queued: null, bump: BUMP })
+  // A blocked hop still turns the head: the bump is drawn toward what stopped it.
+  const blocked = (): GameState => ({ ...state, queued: null, bump: BUMP, facing: dir })
   if (nr < 0) return blocked()
 
   const span = laneSpan(state.cols)
@@ -1252,6 +1296,7 @@ export function hop(state: GameState, dir: Dir): GameState {
     bestChain: Math.max(state.bestChain, chain),
     streakTimer: progress ? 0 : state.streakTimer,
     hop: { fromC, fromR, toC: target, toR: nr, t: 0 },
+    facing: dir,
     hopCooldown: HOP_COOLDOWN,
     hopPulse: 0.12,
     queued: null,
@@ -1288,6 +1333,7 @@ export function tick(state: GameState, dt: number): GameState {
       deathFlash: Math.max(0, state.deathFlash - dt),
       hopPulse: Math.max(0, state.hopPulse - dt),
       shake: Math.max(0, state.shake - dt * 1.4),
+      puffs: fadePuffs(state.puffs, dt),
       deathBits: state.deathBits
         .map((b) => ({
           ...b,
@@ -1318,6 +1364,7 @@ export function tick(state: GameState, dt: number): GameState {
     milestone: Math.max(0, state.milestone - dt),
     nearMiss: Math.max(0, state.nearMiss - dt),
     nearMissCooldown: Math.max(0, state.nearMissCooldown - dt),
+    closeCall: Math.max(0, state.closeCall - dt),
     shake: Math.max(0, state.shake - dt),
     idleTimer: state.idleTimer + dt,
     streakTimer: state.streakTimer + dt,
@@ -1330,6 +1377,7 @@ export function tick(state: GameState, dt: number): GameState {
     coinPops: state.coinPops
       .map((p) => ({ ...p, t: p.t - dt }))
       .filter((p) => p.t > 0),
+    puffs: fadePuffs(state.puffs, dt),
     rows: new Map(state.rows),
   }
 
@@ -1339,6 +1387,9 @@ export function tick(state: GameState, dt: number): GameState {
       next.hop = null
       next.hopPulse = 0.32
       sfx('tap')
+      const ground = next.rows.get(next.row)
+      const wet = ground?.kind === 'water' && !onRock(next.col, ground)
+      next.puffs = [...next.puffs, { c: next.col, r: next.row, t: PUFF_LIFE, wet }].slice(-6)
     } else {
       next.hop = { ...next.hop, t }
     }
@@ -1423,6 +1474,7 @@ export function tick(state: GameState, dt: number): GameState {
           if (next.hop) {
             next.streakTimer = 0
             next.nearMisses += 1
+            next.closeCall = CLOSE_CALL_SHOW
             haptic('hit')
           }
           sfx('whoosh')
