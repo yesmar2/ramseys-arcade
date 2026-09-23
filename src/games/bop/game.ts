@@ -1,5 +1,5 @@
 import { getPersonalBest } from '../../lib/personalBest'
-import { sfx } from '../../lib/sound'
+import { sfx, type SoundName } from '../../lib/sound'
 
 /*
  * Bop: five controls on a console, and a voice that calls one at a time.
@@ -29,6 +29,19 @@ export const CONTROL_HUE: Record<Control, number> = {
   pull: 38,
   flick: 172,
   spin: 268,
+}
+
+/**
+ * The sound each control makes, so the game can be played by ear: the toy
+ * calls a control with its sound, and doing it makes a shorter one. They used
+ * to be one chime at five pitches, which only a trained ear tells apart.
+ */
+export const CONTROL_SOUND: Record<Control, SoundName> = {
+  bop: 'boing',
+  twist: 'ratchet',
+  pull: 'zip',
+  flick: 'click',
+  spin: 'whirr',
 }
 
 export type Snapshot = {
@@ -145,13 +158,9 @@ function nextCall(prev: Control | null): Control {
   return options[Math.floor(Math.random() * options.length)]!
 }
 
-function callIndex(control: Control) {
-  return CONTROLS.indexOf(control)
-}
-
 function makeCall(state: GameState): GameState {
   const call = nextCall(state.call)
-  sfx('pad', callIndex(call))
+  sfx(CONTROL_SOUND[call])
   return {
     ...state,
     phase: 'call',
@@ -305,6 +314,9 @@ export function controlAt(state: GameState, x: number, y: number): Control | nul
 export function act(state: GameState, control: Control): GameState {
   if (state.phase !== 'call' || !state.call) return state
 
+  // What you did makes its own sound, right or wrong.
+  sfx(CONTROL_SOUND[control], 1)
+
   if (control !== state.call) {
     sfx('miss')
     return {
@@ -332,8 +344,9 @@ export function act(state: GameState, control: Control): GameState {
     const life = POP_LIFE * 1.8
     pops.push({ control: 'bop', text: `${streak} in a row`, tone: 'streak', life, max: life })
     sfx('perfect')
-  } else {
-    sfx(quick ? 'good' : 'tap', callIndex(control))
+  } else if (quick) {
+    // A bright ping over the control's own sound for the quick point.
+    sfx('hit', 5)
   }
   return {
     ...state,

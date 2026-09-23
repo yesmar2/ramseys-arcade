@@ -65,5 +65,31 @@ export const playSoft: PlaySfx = (synth, name, pitch) => {
     case 'whoosh':
       tone(520.0, 0.28, 0.03, -220)
       break
+    case 'boing': {
+      const k = pitch >= 1 ? 0.7 : 1
+      tone(174.6, 0.36 * k, 0.07 * k, 230)
+      tone(349.2, 0.2 * k, 0.03 * k, 180, 0.03)
+      break
+    }
+    case 'ratchet': {
+      const teeth = pitch >= 1 ? 3 : 5
+      for (let i = 0; i < teeth; i++) tone(700 + i * 75, 0.05, 0.045, 0, i * 0.055, 'triangle')
+      break
+    }
+    case 'zip': {
+      const k = pitch >= 1 ? 0.7 : 1
+      tone(820.0, 0.27 * k, 0.05 * k, -560, 0, 'triangle')
+      break
+    }
+    case 'click':
+      tone(1300.0, 0.045, 0.06, 0, 0, 'triangle')
+      tone(650.0, 0.08, 0.035, -260, 0.02)
+      if (pitch < 1) tone(1100.0, 0.04, 0.035, 0, 0.11, 'triangle')
+      break
+    case 'whirr': {
+      const notes = pitch >= 1 ? 5 : 7
+      for (let i = 0; i < notes; i++) tone(392 + i * 33 + (i % 2) * 70, 0.07, 0.04, 0, i * 0.035)
+      break
+    }
   }
 }

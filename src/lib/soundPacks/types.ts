@@ -15,6 +15,16 @@ export type SoundName =
   | 'miss'
   | 'hop'
   | 'whoosh'
+  /*
+   * Five sounds you can tell apart with your eyes shut, one to each of Bop's
+   * controls: a spring, a ratchet, a zip, a switch and a wheel. Pitch 0 is
+   * the full sound, for the toy calling a control; 1 a shorter one, for doing it.
+   */
+  | 'boing'
+  | 'ratchet'
+  | 'zip'
+  | 'click'
+  | 'whirr'
 
 export const PENT = [261.6, 293.7, 329.6, 392.0, 440.0, 523.3] as const
 

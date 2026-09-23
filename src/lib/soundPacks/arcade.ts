@@ -71,5 +71,31 @@ export const playArcade: PlaySfx = (synth, name, pitch) => {
     case 'whoosh':
       tone(920.0, 0.1, 0.045, -520, 0, tri)
       break
+    case 'boing': {
+      const k = pitch >= 1 ? 0.7 : 1
+      tone(150.0, 0.22 * k, 0.08 * k, 330, 0, sq)
+      tone(300.0, 0.13 * k, 0.04 * k, 300, 0.03, tri)
+      break
+    }
+    case 'ratchet': {
+      const teeth = pitch >= 1 ? 3 : 5
+      for (let i = 0; i < teeth; i++) tone(700 + i * 95, 0.025, 0.06, 0, i * 0.04, sq)
+      break
+    }
+    case 'zip': {
+      const k = pitch >= 1 ? 0.7 : 1
+      tone(1200.0, 0.17 * k, 0.05 * k, -900, 0, 'sawtooth')
+      break
+    }
+    case 'click':
+      tone(2200.0, 0.022, 0.08, 0, 0, sq)
+      tone(620.0, 0.045, 0.05, 0, 0.012, tri)
+      if (pitch < 1) tone(1800.0, 0.02, 0.05, 0, 0.09, sq)
+      break
+    case 'whirr': {
+      const notes = pitch >= 1 ? 5 : 8
+      for (let i = 0; i < notes; i++) tone(500 + i * 50 + (i % 2) * 100, 0.04, 0.05, 0, i * 0.025, sq)
+      break
+    }
   }
 }
