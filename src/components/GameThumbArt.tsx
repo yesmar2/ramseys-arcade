@@ -242,9 +242,15 @@ function pelletsPacPath(cx: number, cy: number, r: number, open = 0.55) {
   return `M ${cx} ${cy} L ${lx} ${ly} A ${r} ${r} 0 1 1 ${ux} ${uy} Z`
 }
 
-/** The chomp, as it is drawn in play. */
+/** The chomp, as it is drawn in play: an eye over the mouth, and the next crumb in front of it. */
 function PelletsThumb({ accent }: { accent: string }) {
-  return <path d={pelletsPacPath(15.4, 16, 9.4)} {...mark(accent)} />
+  return (
+    <>
+      <path d={pelletsPacPath(14.2, 16, 9.4)} {...mark(accent)} />
+      <circle cx="15.5" cy="11.3" r="1.35" fill={accent} />
+      <circle cx="27.4" cy="16" r="1.6" fill={accent} opacity="0.9" />
+    </>
+  )
 }
 
 /** Same chomp as Pellets, turned to face the climb, on a crumb trail. */

@@ -112,6 +112,7 @@ const SCORING: Record<string, ScoreRow[]> = {
     { label: 'Blue chaser (1st / 2nd / 3rd / 4th)', value: '+200 / +400 / +800 / +1600' },
     { label: 'Surge (tap or space when charged)', value: 'double crumbs · bounce chasers' },
     { label: 'Surge bounce (1st / 2nd / 3rd / 4th)', value: '+150 / +300 / +600 / +1200' },
+    { label: 'Fruit', value: 'under the den twice a maze, for 9 seconds · 100, 200, 300, 500, 700, 1,000, then 1,500' },
     { label: 'Clear the maze', value: 'next level · curated maze, a bit tougher' },
     { label: 'Lives', value: '3' },
   ],

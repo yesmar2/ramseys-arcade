@@ -3861,6 +3861,20 @@ html[data-theme='dark'] .patriot__power {
   color: color-mix(in srgb, #f5b942 82%, var(--ink));
 }
 
+/* What the streak is paying, beside its length. */
+.pellets__mult {
+  margin-left: 0.3em;
+  font-size: 0.72em;
+  color: color-mix(in srgb, #f5b942 80%, var(--ink));
+}
+
+/* Three figures and a five-digit score do not fit across a phone; the level goes. */
+@media (max-width: 420px) {
+  .pellets .play-stats .play-stat:nth-child(3) {
+    display: none;
+  }
+}
+
 .pellets__surge {
   position: absolute;
   left: 50%;

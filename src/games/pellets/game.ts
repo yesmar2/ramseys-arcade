@@ -23,8 +23,37 @@ export type Ghost = {
   hit: number
 }
 
-export type Pop = { x: number; y: number; life: number; text: string }
+/** How a pop reads: a score, the streak paying more, a streak lost, a chaser eaten. */
+export type PopTone = 'ink' | 'streak' | 'lost' | 'ghost' | 'fruit'
+
+export type Pop = { x: number; y: number; life: number; maxLife: number; text: string; tone: PopTone }
 export type TrailDot = { x: number; y: number; life: number }
+/** A crumb just eaten: a ring opening out where it was. */
+export type Bite = { x: number; y: number; life: number; power: boolean }
+
+/** Debris and light, in tile units. */
+export type Bit = {
+  kind: 'spark' | 'shard'
+  x: number
+  y: number
+  vx: number
+  vy: number
+  life: number
+  maxLife: number
+  hue: number
+  size: number
+  angle: number
+  spin: number
+}
+
+export type Ring = { x: number; y: number; r0: number; r1: number; life: number; maxLife: number; hue: number }
+
+/**
+ * The bonus under the den. Classic Pac-Man puts one there twice a maze, and it
+ * is the only reason on the board to go back to the middle on purpose.
+ */
+export type FruitKind = 'cherry' | 'berry' | 'orange' | 'apple' | 'melon' | 'bell' | 'key'
+export type Fruit = { kind: FruitKind; x: number; y: number; life: number; maxLife: number; value: number }
 
 export type Snapshot = {
   score: number
@@ -37,6 +66,8 @@ export type Snapshot = {
   surgeTime: number
   crumbStreak: number
   crumbStreakBest: number
+  /** What the streak is paying right now. */
+  mult: number
 }
 
 export type GameState = {
@@ -52,6 +83,8 @@ export type GameState = {
   crumbs: boolean[][]
   power: boolean[][]
   crumbsLeft: number
+  /** Crumbs and power pips the maze started with, for when the fruit comes. */
+  crumbsTotal: number
   house: Maze['house']
   houseCenter: Cell
   ghostExit: Cell
@@ -76,11 +109,23 @@ export type GameState = {
   crumbStreakBest: number
   /** Tile the player was in last frame, so streaks only count new ground. */
   lastTile: Cell
+  /** Seconds of "Ready!" left: nothing moves, but a turn can be queued. */
+  ready: number
+  /** Seconds of the beat after eating a chaser, when the board holds still. */
+  freeze: number
+  fruit: Fruit | null
+  /** Fruit offered on this maze so far. */
+  fruitsShown: number
   trail: TrailDot[]
   pops: Pop[]
+  bites: Bite[]
+  bits: Bit[]
+  rings: Ring[]
+  shake: number
   deathAnim: number
   clearAnim: number
   invuln: number
+  /** Chomp phase. It only runs while the player is actually moving. */
   mouth: number
   time: number
 }
@@ -115,21 +160,67 @@ const FRIGHT_SPEED = 2.7
 const EATEN_SPEED = 9
 const SURGE_SPEED = 1.85
 
-const DEATH_TIME = 0.85
-const CLEAR_TIME = 1.4
-const RESPAWN_INVULN = 1.2
+export const DEATH_TIME = 1.25
+export const CLEAR_TIME = 2.1
+/** How long the walls flash when a maze is cleared, inside CLEAR_TIME. */
+export const CLEAR_FLASH = 1.3
+/** "Ready!" at the start of a maze, and after a life is lost. */
+export const READY_TIME = 1.6
+const READY_AGAIN = 1.2
+/** A short grace once play resumes, in case a chaser is already close. */
+const RESPAWN_INVULN = 0.5
+/** The beat the board holds when a chaser is eaten, so the moment lands. */
+const EAT_FREEZE = 0.32
 /** Crumbs needed to fill the surge meter. */
 const SURGE_CRUMBS = 26
 const SURGE_TIME = 1.7
-/** Clean crumbs per multiplier step, and the cap. */
+/** Clean crumbs per multiplier step up to x4. */
 const STREAK_STEP = 10
 const MAX_MULT = 4
+/**
+ * Past x4 the steps get longer, but they do not stop, the same as Crumbtrail.
+ * A streak of a hundred used to pay exactly what a streak of thirty did, so
+ * the route that kept it alive was being walked for nothing.
+ */
+const LATE_STEP = 30
+const MAX_MULT_LATE = 8
+/** Every hundred fresh crumbs in a row sends the whole board running. */
+const STREAK_LANDMARK = 100
+const SCORE_LANDMARK = 1000
+
+/**
+ * Fruit: offered when a third, and then two thirds, of the maze is eaten, for
+ * a little under ten seconds. Worth more on later mazes, but kept well short of
+ * the arcade's thousands, so a deep run cannot outpace what the boards accept.
+ */
+const FRUIT_AT = [0.3, 0.68] as const
+const FRUIT_LIFE = 9
+const FRUIT_LADDER: readonly { kind: FruitKind; value: number }[] = [
+  { kind: 'cherry', value: 100 },
+  { kind: 'berry', value: 200 },
+  { kind: 'orange', value: 300 },
+  { kind: 'apple', value: 500 },
+  { kind: 'melon', value: 700 },
+  { kind: 'bell', value: 1000 },
+  { kind: 'key', value: 1500 },
+]
 
 /** How far past a junction a late turn still counts — the "forgiving" feel. */
 const LATE_TURN = 0.34
 const CENTER_EPS = 0.001
 /** Steering input goes stale so you never get a surprise turn later. */
 const PENDING_TTL = 1.1
+
+/** The player's colour, the chasers', and the crumbs', as hues. */
+export const PLAYER_HUE = 24
+export const CRUMB_HUE = 42
+export const GHOST_HUE: Record<GhostKind, number> = {
+  blink: 356,
+  pink: 322,
+  inky: 188,
+  // Green, not the arcade's orange: orange is the player here.
+  clyde: 146,
+}
 
 function loadBest() {
   return getPersonalBest('pellets')
@@ -295,9 +386,12 @@ function applyMaze(state: GameState, maze: Maze) {
   for (const c of maze.crumbs) state.crumbs[c.y][c.x] = true
   for (const c of maze.power) state.power[c.y][c.x] = true
   state.crumbsLeft = maze.crumbs.length + maze.power.length
+  state.crumbsTotal = state.crumbsLeft
+  state.fruit = null
+  state.fruitsShown = 0
 }
 
-function resetActors(state: GameState, maze: Maze) {
+function resetActors(state: GameState, maze: Maze, ready: number) {
   state.player.x = maze.start.x + 0.5
   state.player.y = maze.start.y + 0.5
   state.player.dir = startDir(maze)
@@ -312,6 +406,8 @@ function resetActors(state: GameState, maze: Maze) {
   state.lastTile = { x: maze.start.x, y: maze.start.y }
   state.trail = []
   state.invuln = RESPAWN_INVULN
+  state.ready = ready
+  state.freeze = 0
   state.mode = 'scatter'
   state.modeTimer = scatterTime(state.level)
 }
@@ -330,6 +426,7 @@ function emptyState(maze: Maze): GameState {
     crumbs: [],
     power: [],
     crumbsLeft: 0,
+    crumbsTotal: 0,
     house: maze.house,
     houseCenter: maze.houseCenter,
     ghostExit: maze.ghostExit,
@@ -352,12 +449,20 @@ function emptyState(maze: Maze): GameState {
     crumbStreak: 0,
     crumbStreakBest: 0,
     lastTile: { x: maze.start.x, y: maze.start.y },
+    ready: 0,
+    freeze: 0,
+    fruit: null,
+    fruitsShown: 0,
     trail: [],
     pops: [],
+    bites: [],
+    bits: [],
+    rings: [],
+    shake: 0,
     deathAnim: 0,
     clearAnim: 0,
     invuln: 0,
-    mouth: 0,
+    mouth: 0.6,
     time: 0,
   } as GameState
   applyMaze(state, maze)
@@ -372,6 +477,7 @@ export function startGame(prev: GameState, _view?: { cols?: number; rows?: numbe
   const next = createInitialState()
   next.best = Math.max(prev.best, loadBest())
   next.phase = 'playing'
+  next.ready = READY_TIME
   next.invuln = RESPAWN_INVULN
   return next
 }
@@ -388,9 +494,12 @@ export function jumpToLevel(state: GameState, level: number): GameState {
     deathAnim: 0,
     clearAnim: 0,
     pops: [],
+    bites: [],
+    bits: [],
+    rings: [],
   }
   applyMaze(next, maze)
-  resetActors(next, maze)
+  resetActors(next, maze, READY_TIME)
   return next
 }
 
@@ -400,13 +509,15 @@ export function queueDir(state: GameState, dir: Dir): GameState {
 }
 
 export function surgeReady(state: GameState) {
-  return state.phase === 'playing' && state.surgeTime <= 0 && state.surge >= 1
+  return state.phase === 'playing' && state.ready <= 0 && state.surgeTime <= 0 && state.surge >= 1
 }
 
 export function triggerSurge(state: GameState): GameState {
   if (!surgeReady(state)) return state
   sfx('whoosh')
-  return { ...state, surge: 0, surgeTime: SURGE_TIME, surgeHits: 0 }
+  const next = { ...state, surge: 0, surgeTime: SURGE_TIME, surgeHits: 0, rings: state.rings.slice() }
+  next.rings.push({ x: state.player.x, y: state.player.y, r0: 0.3, r1: 1.6, life: 0.35, maxLife: 0.35, hue: CRUMB_HUE })
+  return next
 }
 
 /**
@@ -651,9 +762,11 @@ function canStepFrom(state: GameState, x: number, y: number, dir: Dir) {
   return stepTile(state, x, y, dir, false) !== null
 }
 
+/** Moves the player; returns how far it actually went, for the chomp. */
 function movePlayer(state: GameState, speed: number, dt: number) {
   const p = state.player
   let left = speed * dt
+  let moved = 0
   let guard = 0
 
   while (left > CENTER_EPS && guard++ < 12) {
@@ -705,23 +818,101 @@ function movePlayer(state: GameState, speed: number, dt: number) {
     advance(p, p.dir, step)
     wrapIfNeeded(state, p, p.dir)
     left -= step
+    moved += step
+  }
+  return moved
+}
+
+// —— Effects ———————————————————————————————————————————————————
+
+function rand(a: number, b: number) {
+  return a + Math.random() * (b - a)
+}
+
+function addPop(state: GameState, x: number, y: number, text: string, tone: PopTone = 'ink', life = 0.9) {
+  state.pops.push({ x, y, life, maxLife: life, text, tone })
+  if (state.pops.length > 12) state.pops.shift()
+}
+
+function addSparks(state: GameState, x: number, y: number, n: number, hue: number, speed = 4) {
+  for (let i = 0; i < n; i++) {
+    const a = Math.random() * Math.PI * 2
+    const v = speed * rand(0.35, 1)
+    const life = rand(0.25, 0.5)
+    state.bits.push({ kind: 'spark', x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life, maxLife: life, hue, size: rand(0.05, 0.09), angle: 0, spin: 0 })
   }
 }
 
-function addPop(state: GameState, x: number, y: number, text: string) {
-  state.pops.push({ x, y, life: 0.9, text })
-  if (state.pops.length > 12) state.pops.shift()
+function addShards(state: GameState, x: number, y: number, n: number, hue: number) {
+  for (let i = 0; i < n; i++) {
+    const a = Math.random() * Math.PI * 2
+    const v = rand(0.8, 2.6)
+    const life = rand(0.45, 0.8)
+    state.bits.push({ kind: 'shard', x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life, maxLife: life, hue, size: rand(0.12, 0.2), angle: Math.random() * Math.PI * 2, spin: rand(-10, 10) })
+  }
+}
+
+function addRing(state: GameState, x: number, y: number, r0: number, r1: number, life: number, hue: number) {
+  state.rings.push({ x, y, r0, r1, life, maxLife: life, hue })
+}
+
+const MAX_BITS = 260
+
+function tickEffects(state: GameState, dt: number) {
+  const bits: Bit[] = []
+  for (let i = Math.max(0, state.bits.length - MAX_BITS); i < state.bits.length; i++) {
+    const b = state.bits[i]!
+    const life = b.life - dt
+    if (life <= 0) continue
+    // Per second, not per frame, so a fast screen throws debris no shorter.
+    const drag = Math.pow(b.kind === 'spark' ? 0.03 : 0.2, dt)
+    const vx = b.vx * drag
+    const vy = b.vy * drag
+    bits.push({ ...b, life, vx, vy, x: b.x + vx * dt, y: b.y + vy * dt, angle: b.angle + b.spin * dt })
+  }
+  state.bits = bits
+  state.rings = state.rings.filter((r) => r.life > dt).map((r) => ({ ...r, life: r.life - dt }))
+  state.pops = state.pops.filter((p) => p.life > dt).map((p) => ({ ...p, life: p.life - dt }))
+  state.bites = state.bites.filter((b) => b.life > dt * 4).map((b) => ({ ...b, life: b.life - dt * 4 }))
+  state.trail = state.trail.filter((t) => t.life > dt * 2.4).map((t) => ({ ...t, life: t.life - dt * 2.4 }))
+  state.shake = Math.max(0, state.shake - dt * 2.6)
+  for (const g of state.ghosts) g.hit = Math.max(0, g.hit - dt * 2.5)
+}
+
+// —— Scoring ———————————————————————————————————————————————————
+
+export function streakMult(crumbStreak: number) {
+  const early = 1 + Math.floor(crumbStreak / STREAK_STEP)
+  if (early < MAX_MULT) return early
+  const over = crumbStreak - STREAK_STEP * (MAX_MULT - 1)
+  return Math.min(MAX_MULT_LATE, MAX_MULT + Math.floor(over / LATE_STEP))
 }
 
 function sendHome(state: GameState, ghost: Ghost, points: number) {
   ghost.mode = 'eaten'
   ghost.hit = 1
   state.score += points
-  addPop(state, ghost.x, ghost.y, `+${points}`)
+  addPop(state, ghost.x, ghost.y - 0.2, `+${points}`, 'ghost', 1)
+  addShards(state, ghost.x, ghost.y, 8, GHOST_HUE[ghost.kind])
+  addRing(state, ghost.x, ghost.y, 0.25, 1.3, 0.4, GHOST_HUE[ghost.kind])
+  state.shake = Math.min(1, state.shake + 0.3)
 }
 
-export function streakMult(crumbStreak: number) {
-  return Math.min(MAX_MULT, 1 + Math.floor(crumbStreak / STREAK_STEP))
+/** Every chaser on the board turns and runs. The power pip's job, and the landmark's. */
+function frighten(state: GameState, seconds: number) {
+  state.fright = seconds
+  state.frightEaten = 0
+  for (const g of state.ghosts) {
+    if (g.mode === 'eaten' || g.mode === 'den') continue
+    g.mode = 'frightened'
+    g.dir = OPPOSITE[g.dir]
+  }
+}
+
+/** A fruit on the tile is not cleared ground, so it must not break a streak. */
+function fruitAt(state: GameState, x: number, y: number) {
+  const fruit = state.fruit
+  return !!fruit && Math.floor(fruit.x) === x && Math.floor(fruit.y) === y
 }
 
 function eatAt(state: GameState) {
@@ -734,6 +925,7 @@ function eatAt(state: GameState) {
   if (state.crumbs[y][x]) {
     state.crumbs[y][x] = false
     state.crumbsLeft -= 1
+    const multBefore = streakMult(state.crumbStreak)
     state.crumbStreak += 1
     if (state.crumbStreak > state.crumbStreakBest) {
       state.crumbStreakBest = state.crumbStreak
@@ -742,8 +934,31 @@ function eatAt(state: GameState) {
     state.score += SCORE_CRUMB * mult
     if (state.surgeTime <= 0) state.surge = Math.min(1, state.surge + 1 / SURGE_CRUMBS)
     sfx('eat', Math.min(5, Math.floor(state.crumbStreak / 8)))
-  } else if (!state.power[y][x]) {
-    // Retracing picked-clean ground breaks the streak.
+    state.bites.push({ x: x + 0.5, y: y + 0.5, life: 1, power: false })
+    if (state.bites.length > 10) state.bites.shift()
+
+    // The streak starts paying more: say so where you are looking.
+    const multAfter = streakMult(state.crumbStreak)
+    if (multAfter > multBefore && state.crumbStreak % STREAK_LANDMARK !== 0) {
+      addPop(state, state.player.x, state.player.y - 0.8, `×${multAfter}`, 'streak')
+      sfx('hop', Math.min(12, multAfter * 2))
+    }
+
+    // Every hundredth fresh crumb in a row scatters the board.
+    if (state.crumbStreak % STREAK_LANDMARK === 0) {
+      state.score += SCORE_LANDMARK
+      frighten(state, FRIGHT_TIME)
+      addPop(state, x + 0.5, y - 0.3, `${state.crumbStreak} in a row!`, 'streak', 1.5)
+      addRing(state, x + 0.5, y + 0.5, 0.3, 3.2, 0.7, CRUMB_HUE)
+      sfx('wave')
+    }
+  } else if (!state.power[y][x] && !fruitAt(state, x, y)) {
+    // Retracing picked-clean ground breaks the streak — and says so, once it
+    // was worth something, or the rule is only ever found by watching a number.
+    if (streakMult(state.crumbStreak) >= 3) {
+      addPop(state, state.player.x, state.player.y - 0.8, 'streak lost', 'lost')
+      sfx('miss')
+    }
     state.crumbStreak = 0
   }
 
@@ -752,16 +967,50 @@ function eatAt(state: GameState) {
     state.crumbsLeft -= 1
     state.score += SCORE_POWER
     state.surge = Math.min(1, state.surge + 0.25)
-    state.fright = Math.max(FRIGHT_TIME * 0.5, FRIGHT_TIME - (state.level - 1) * 0.4)
-    state.frightEaten = 0
-    for (const g of state.ghosts) {
-      if (g.mode === 'eaten' || g.mode === 'den') continue
-      g.mode = 'frightened'
-      g.dir = OPPOSITE[g.dir]
-    }
+    frighten(state, Math.max(FRIGHT_TIME * 0.5, FRIGHT_TIME - (state.level - 1) * 0.4))
+    state.bites.push({ x: x + 0.5, y: y + 0.5, life: 1, power: true })
+    addRing(state, x + 0.5, y + 0.5, 0.3, 2.2, 0.55, CRUMB_HUE)
+    addSparks(state, x + 0.5, y + 0.5, 10, CRUMB_HUE, 5)
     sfx('wave')
   }
+
+  const fruit = state.fruit
+  if (fruit && Math.floor(fruit.x) === x && Math.floor(fruit.y) === y) {
+    state.score += fruit.value
+    addPop(state, fruit.x, fruit.y - 0.3, `+${fruit.value}`, 'fruit', 1.2)
+    addSparks(state, fruit.x, fruit.y, 12, 350, 4.5)
+    addRing(state, fruit.x, fruit.y, 0.3, 1.6, 0.45, CRUMB_HUE)
+    state.fruit = null
+    sfx('good')
+  }
 }
+
+/** The fruit for this maze, from the ladder, the top one repeating. */
+export function fruitFor(level: number) {
+  return FRUIT_LADDER[Math.min(FRUIT_LADDER.length - 1, Math.max(0, level - 1))]!
+}
+
+function offerFruit(state: GameState) {
+  if (state.fruit || state.fruitsShown >= FRUIT_AT.length) return
+  const eaten = 1 - state.crumbsLeft / Math.max(1, state.crumbsTotal)
+  if (eaten < FRUIT_AT[state.fruitsShown]!) return
+  const { kind, value } = fruitFor(state.level)
+  state.fruit = {
+    kind,
+    value,
+    x: state.start.x + 0.5,
+    y: state.start.y + 0.5,
+    life: FRUIT_LIFE,
+    maxLife: FRUIT_LIFE,
+  }
+  state.fruitsShown += 1
+  // Standing on its tile already counts as arriving.
+  if (Math.floor(state.player.x) === state.start.x && Math.floor(state.player.y) === state.start.y) {
+    state.lastTile = { x: -1, y: -1 }
+  }
+}
+
+// —— Tick ——————————————————————————————————————————————————————
 
 export function tick(state: GameState, dt: number): GameState {
   if (state.phase === 'menu' || state.phase === 'gameover') {
@@ -774,23 +1023,18 @@ export function tick(state: GameState, dt: number): GameState {
     power: state.power.map((row) => row.slice()),
     ghosts: state.ghosts.map((g) => ({ ...g })),
     player: { ...state.player },
-    trail: state.trail.slice(),
-    pops: state.pops.slice(),
-    mouth: state.mouth + dt * 11,
+    fruit: state.fruit ? { ...state.fruit } : null,
     time: state.time + dt,
-    invuln: Math.max(0, state.invuln - dt),
   }
-
-  next.pops = next.pops
-    .map((p) => ({ ...p, life: p.life - dt }))
-    .filter((p) => p.life > 0)
-  next.trail = next.trail
-    .map((t) => ({ ...t, life: t.life - dt * 2.4 }))
-    .filter((t) => t.life > 0)
-  for (const g of next.ghosts) g.hit = Math.max(0, g.hit - dt * 2.5)
+  tickEffects(next, dt)
 
   if (next.phase === 'dying') {
+    const before = next.deathAnim
     next.deathAnim -= dt
+    // Folded all the way shut: it goes in a puff.
+    if (before > DEATH_TIME * 0.28 && next.deathAnim <= DEATH_TIME * 0.28) {
+      addSparks(next, next.player.x, next.player.y, 14, PLAYER_HUE, 3.2)
+    }
     if (next.deathAnim <= 0) {
       next.lives -= 1
       if (next.lives <= 0) {
@@ -798,7 +1042,7 @@ export function tick(state: GameState, dt: number): GameState {
         next.best = Math.max(next.best, next.score, loadBest())
         sfx('die')
       } else {
-        resetActors(next, mazeViewOf(next))
+        resetActors(next, mazeViewOf(next), READY_AGAIN)
         next.phase = 'playing'
         next.deathAnim = 0
       }
@@ -813,13 +1057,28 @@ export function tick(state: GameState, dt: number): GameState {
       // Same level layout on every device — portrait is landscape rotated.
       const maze = buildLevelMaze(next.level)
       applyMaze(next, maze)
-      resetActors(next, maze)
+      resetActors(next, maze, READY_TIME)
       next.phase = 'playing'
       next.clearAnim = 0
       sfx('wave')
     }
     return next
   }
+
+  // "Ready!": the board waits, the chasers bob in place, a turn can be queued.
+  if (next.ready > 0) {
+    next.ready = Math.max(0, next.ready - dt)
+    for (const g of next.ghosts) g.bob += dt * 4
+    return next
+  }
+
+  // The beat after a chaser is eaten.
+  if (next.freeze > 0) {
+    next.freeze = Math.max(0, next.freeze - dt)
+    return next
+  }
+
+  next.invuln = Math.max(0, next.invuln - dt)
 
   if (next.surgeTime > 0) {
     next.surgeTime = Math.max(0, next.surgeTime - dt)
@@ -829,6 +1088,11 @@ export function tick(state: GameState, dt: number): GameState {
   if (next.player.pending) {
     next.player.pendingAge += dt
     if (next.player.pendingAge > PENDING_TTL) next.player.pending = null
+  }
+
+  if (next.fruit) {
+    next.fruit.life -= dt
+    if (next.fruit.life <= 0) next.fruit = null
   }
 
   // Chase / scatter cycle.
@@ -856,12 +1120,17 @@ export function tick(state: GameState, dt: number): GameState {
   }
 
   const surging = next.surgeTime > 0
-  movePlayer(next, PLAYER_SPEED * playerSpeedScale(next.level) * (surging ? SURGE_SPEED : 1), dt)
+  const moved = movePlayer(next, PLAYER_SPEED * playerSpeedScale(next.level) * (surging ? SURGE_SPEED : 1), dt)
+  // The mouth works while the player moves, and rests half open against a wall.
+  if (moved > 0) next.mouth += moved * 2.1
   eatAt(next)
+  offerFruit(next)
 
   if (next.crumbsLeft <= 0) {
     next.phase = 'clearing'
     next.clearAnim = CLEAR_TIME
+    next.fruit = null
+    next.fright = 0
     sfx('good')
     return next
   }
@@ -882,6 +1151,7 @@ export function tick(state: GameState, dt: number): GameState {
           ? FRIGHT_SPEED * frightSpeedScale(next.level)
           : GHOST_SPEED * chaserSpeedScale(next.level)
     moveGhost(next, ghost, speed, dt, cache)
+    ghost.bob += dt * 6
 
     if (ghost.mode === 'leaving') {
       const gx = Math.floor(ghost.x)
@@ -915,12 +1185,19 @@ export function tick(state: GameState, dt: number): GameState {
         const bonus = SCORE_GHOST[Math.min(next.frightEaten, SCORE_GHOST.length - 1)]
         next.frightEaten += 1
         sendHome(next, ghost, bonus)
+        next.freeze = EAT_FREEZE
         sfx('good')
         continue
       }
       next.phase = 'dying'
       next.deathAnim = DEATH_TIME
+      if (streakMult(next.crumbStreak) >= 3) {
+        addPop(next, next.player.x, next.player.y - 0.8, 'streak lost', 'lost')
+      }
       next.crumbStreak = 0
+      next.fruit = null
+      next.shake = Math.min(1, next.shake + 0.6)
+      addRing(next, next.player.x, next.player.y, 0.2, 1.4, 0.45, GHOST_HUE[ghost.kind])
       sfx('hurt')
       break
     }
@@ -957,5 +1234,6 @@ export function toSnapshot(state: GameState): Snapshot {
     surgeTime: state.surgeTime,
     crumbStreak: state.crumbStreak,
     crumbStreakBest: state.crumbStreakBest,
+    mult: streakMult(state.crumbStreak),
   }
 }

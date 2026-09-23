@@ -141,7 +141,7 @@ export const games: Game[] = [
     slug: 'pellets',
     tags: ['arcade'],
     description: 'Clear the maze. Bank a streak. Surge.',
-    how: 'Swipe or arrow keys to steer. Clear the maze: fresh crumbs build a streak, doubling back breaks it, and a full charge lets you Surge through the chasers. Three lives.',
+    how: 'Swipe or arrow keys to steer. Clear the maze: fresh crumbs build a streak that multiplies every crumb, doubling back over eaten ground breaks it, and a hundred in a row sends every chaser running. Power pips turn the chasers blue for eating, fruit turns up under the den twice a maze, and a full charge lets you Surge through them. Three lives.',
     accent: PALETTE.orange,
     playable: true,
   },

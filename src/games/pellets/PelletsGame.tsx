@@ -318,7 +318,22 @@ export function PelletsGame() {
               </PlayReadoutScore>
               {inRun ? (
                 <PlayReadoutStats>
-                  <PlayStat label="Lives" value={ui.lives} />
+                  <PlayStat label="Lives" value={ui.lives} urgent={ui.lives === 1} />
+                  {/*
+                    The streak and what it is paying: the number the game is
+                    about, so it is always there, and you watch it go back to
+                    nothing when you double back. The level comes last, and a
+                    narrow phone drops it — the Ready sign names every maze.
+                  */}
+                  <PlayStat
+                    label="Streak"
+                    value={
+                      <>
+                        {ui.crumbStreak}
+                        {ui.mult >= 2 ? <span className="pellets__mult">×{ui.mult}</span> : null}
+                      </>
+                    }
+                  />
                   <PlayStat label="Level" value={ui.level} />
                 </PlayReadoutStats>
               ) : null}
@@ -403,7 +418,7 @@ export function PelletsGame() {
                     gameSlug="pellets"
                     score={ui.score}
                     title="Caught"
-                    subtitle={`Level ${ui.level} · ${ui.score.toLocaleString()} points`}
+                    subtitle={`Level ${ui.level} · best streak ${ui.crumbStreakBest}`}
                     previousBest={Math.max(previousBestRef.current, apiBest)}
                     onDone={toMenu}
                   />
