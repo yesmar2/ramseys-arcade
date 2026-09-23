@@ -1,6 +1,5 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { fetchAuthConfig, signInWithGoogleIdToken } from '../lib/auth'
-import { isDarkTheme, THEME_EVENT } from '../lib/theme'
 
 type GoogleCredentialResponse = {
   credential?: string
@@ -61,6 +60,15 @@ function loadGisScript(): Promise<void> {
  */
 const LOAD_TIMEOUT_MS = 10_000
 
+/*
+ * Google draws its button 40px tall at the most. Scaled up evenly it stands as
+ * tall as the panel kit's buttons beside it (3.25rem), so it is drawn a little
+ * narrower than its slot and grows into it.
+ */
+const GOOGLE_HEIGHT = 40
+const BUTTON_HEIGHT = 52
+const SCALE = BUTTON_HEIGHT / GOOGLE_HEIGHT
+
 /** Resolved once per page — a theme change re-renders the button, not this. */
 let cachedClientId: string | null | undefined
 
@@ -109,20 +117,12 @@ export function GoogleSignInButton({
   const [state, setState] = useState<LoadState>('loading')
   const [busy, setBusy] = useState(false)
   const [attempt, setAttempt] = useState(0)
-  const [dark, setDark] = useState(() => isDarkTheme())
   const handlersRef = useRef({ onBusy, onError, onSignedIn })
   handlersRef.current = { onBusy, onError, onSignedIn }
 
   useEffect(() => {
-    const sync = () => setDark(isDarkTheme())
-    window.addEventListener(THEME_EVENT, sync)
-    return () => window.removeEventListener(THEME_EVENT, sync)
-  }, [])
-
-  useEffect(() => {
     let cancelled = false
-    // Re-rendering for a new theme keeps the button on screen; a retry from
-    // `failed` goes back to loading.
+    // A retry from `failed` goes back to loading.
     setState((prev) => (prev === 'ready' ? prev : 'loading'))
     ;(async () => {
       try {
@@ -169,18 +169,21 @@ export function GoogleSignInButton({
           cancel_on_tap_outside: true,
         })
         /*
-         * Fill the slot it was given. Google clamps this at 400, which is the
-         * only reason for a cap here — at 320 the button sat visibly short of
-         * the drawer's edge while everything beside it ran full width.
+         * Fill the slot it was given, once scaled. Google clamps the width at
+         * 400, which is the only reason for a cap here: at 320 the button sat
+         * visibly short of the drawer's edge while everything beside it ran
+         * full width. White on either theme, the button Google's own pages
+         * use, with its logo beside the words.
          */
-        const width = Math.min(400, Math.max(220, hostRef.current.clientWidth || 280))
+        const slot = hostRef.current.parentElement?.clientWidth || 280
+        const width = Math.min(400, Math.max(200, Math.floor(slot / SCALE)))
         window.google.accounts.id.renderButton(hostRef.current, {
-          theme: dark ? 'filled_black' : 'outline',
+          theme: 'outline',
           size: 'large',
-          text: 'continue_with',
+          text: 'signin_with',
           shape: 'pill',
           width,
-          logo_alignment: 'left',
+          logo_alignment: 'center',
         })
         setState('ready')
       } catch {
@@ -195,7 +198,7 @@ export function GoogleSignInButton({
     return () => {
       cancelled = true
     }
-  }, [attempt, dark])
+  }, [attempt])
 
   if (state === 'missing') return null
 
@@ -209,7 +212,11 @@ export function GoogleSignInButton({
     .join(' ')
 
   return (
-    <div className={className} aria-busy={busy || state === 'loading'}>
+    <div
+      className={className}
+      aria-busy={busy || state === 'loading'}
+      style={{ '--google-scale': SCALE } as CSSProperties}
+    >
       <div className="google-signin__host" ref={hostRef} />
 
       {state === 'loading' ? (

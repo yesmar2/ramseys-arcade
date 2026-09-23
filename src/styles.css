@@ -460,15 +460,27 @@ img {
 .google-signin {
   position: relative;
   width: 100%;
-  min-height: 2.5rem;
+  min-height: 3.25rem;
   display: flex;
+  align-items: center;
   justify-content: center;
+  /* Google's button grows into the slot; nothing of it spills past. */
+  overflow: clip;
+  overflow-clip-margin: 0.25rem;
 }
 
+/*
+ * Google draws the button 40px tall, a little narrower than the slot, and it
+ * is scaled up evenly from its centre to stand as tall as the panel kit's
+ * buttons (--google-scale, from GoogleSignInButton).
+ */
 .google-signin__host {
   display: flex;
   justify-content: center;
-  width: 100%;
+  width: max-content;
+  max-width: 100%;
+  transform: scale(var(--google-scale, 1));
+  transform-origin: center;
 }
 
 /* Dim the button, not the status sitting on top of it. */
@@ -497,12 +509,12 @@ img {
 }
 
 /*
- * A pill the size of Google's button. It fades in on a delay so a fast load
- * never flashes a placeholder — the wait it explains is the slow one.
+ * A pill the size of Google's button once scaled. It fades in on a delay so a
+ * fast load never flashes a placeholder — the wait it explains is the slow one.
  */
 .google-signin__skeleton {
-  width: min(20rem, 100%);
-  height: 2.5rem;
+  width: 100%;
+  height: 3.25rem;
   inset: 0 auto;
   border-radius: 999px;
   background: linear-gradient(
