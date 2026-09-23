@@ -795,14 +795,17 @@ html[data-theme="dark"] .home-banner {
   }
 }
 
-/* On a phone the strip keeps to one line: your place, and what the next one up costs. */
+/*
+ * On a phone the strip keeps to one line: your place across all games (still
+ * labelled, so it isn't taken for a place on the game above), and what the
+ * next one up costs.
+ */
 @media (max-width: 42rem) {
   .home-banner__standing {
     align-items: center;
-    gap: 0.4rem 1rem;
+    gap: 0.4rem 0.9rem;
   }
 
-  .home-banner__standing .home-banner__stat-k,
   .home-banner__stat--side,
   .home-banner__standing-link {
     display: none;

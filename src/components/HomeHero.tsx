@@ -63,6 +63,11 @@ function pts(n: number) {
   return `${n.toLocaleString()} ${n === 1 ? 'pt' : 'pts'}`
 }
 
+/** How far apart two players are on points; a tie says so rather than "by 0 pts". */
+function byOrLevel(gap: number) {
+  return gap > 0 ? `by ${pts(gap)}` : 'level on points'
+}
+
 const RUNG_PAGE = 25
 
 /*
@@ -463,9 +468,10 @@ export function HomeHero() {
         </div>
         {art}
         {standing.rank != null ? (
+          // Your place across every game, not on the game above it; the label says so, or a #14 overall reads as a place on this board.
           <div className="home-banner__strip home-banner__standing">
             <span className="home-banner__stat">
-              <span className="home-banner__stat-k">Your standing</span>
+              <span className="home-banner__stat-k">All games</span>
               <b className="home-banner__stat-rank">#{standing.rank}</b>
               <span className="home-banner__stat-v">
                 {periodWord} · {pts(standing.score)}
@@ -475,19 +481,25 @@ export function HomeHero() {
               <span className="home-banner__stat home-banner__stat--side">
                 <span className="home-banner__stat-k">Ahead</span>
                 <b>{ahead.name}</b>
-                <span className="home-banner__stat-v">by {pts(ahead.score - standing.score)}</span>
+                <span className="home-banner__stat-v">{byOrLevel(ahead.score - standing.score)}</span>
               </span>
             ) : null}
             {trailing ? (
               <span className="home-banner__stat home-banner__stat--side">
                 <span className="home-banner__stat-k">Behind</span>
                 <b>{trailing.name}</b>
-                <span className="home-banner__stat-v">by {pts(standing.score - trailing.score)}</span>
+                <span className="home-banner__stat-v">{byOrLevel(standing.score - trailing.score)}</span>
               </span>
             ) : null}
             {ahead ? (
               <span className="home-banner__stat home-banner__stat--next">
-                <b>{(ahead.score - standing.score).toLocaleString()}</b> to #{ahead.rank}
+                {ahead.score > standing.score ? (
+                  <>
+                    <b>{(ahead.score - standing.score).toLocaleString()}</b> to #{ahead.rank}
+                  </>
+                ) : (
+                  <>level with #{ahead.rank}</>
+                )}
               </span>
             ) : null}
             <a className="home-banner__standing-link" href={rankHref()}>
