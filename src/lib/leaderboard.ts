@@ -2,6 +2,7 @@ import { applyBoardScope, storedActiveGroup, withGroupFallback } from './groups'
 import { runIdFor } from './runSession'
 import type { DeviceType } from './device'
 import { getGame } from '../data/games'
+import type { ChallengeRunResult } from './challenges'
 import { detectDeviceType, DEVICE_LABELS, isDeviceType } from './device'
 
 export type { DeviceType }
@@ -624,10 +625,14 @@ export async function addLeaderboardScore(
   slug: string,
   name: string,
   score: number,
+  /** A friend's challenge the run was played against. */
+  opts: { challengeId?: string } = {},
 ): Promise<{
   entries: LeaderboardEntry[]
   /** The run just saved, as it now stands on the boards. */
   entry?: LeaderboardEntry
+  /** What came of the challenge, when the run was played against one. */
+  challenge?: ChallengeRunResult | null
   rank: number | null
   ranks?: Partial<Record<LeaderboardPeriod, number>>
   previousBestRanks?: Partial<Record<LeaderboardPeriod, number>>
@@ -648,6 +653,7 @@ export async function addLeaderboardScore(
   const data = await api<{
     entries: LeaderboardEntry[]
     entry?: LeaderboardEntry
+    challenge?: ChallengeRunResult | null
     rank: number | null
     ranks?: Partial<Record<LeaderboardPeriod, number>>
     previousBestRanks?: Partial<Record<LeaderboardPeriod, number>>
@@ -670,6 +676,7 @@ export async function addLeaderboardScore(
       device: detectDeviceType(),
       ...(token ? { token } : {}),
       ...(runId ? { runId } : {}),
+      ...(opts.challengeId ? { challengeId: opts.challengeId } : {}),
     }),
   })
 
@@ -680,6 +687,7 @@ export async function addLeaderboardScore(
   return {
     entries: data.entries,
     entry: data.entry,
+    challenge: data.challenge ?? null,
     rank: data.rank,
     ranks: data.ranks,
     previousBestRanks: data.previousBestRanks,

@@ -46,7 +46,8 @@ function ShareIcon({ copied }: { copied: boolean }) {
   )
 }
 
-function copyText(text: string): boolean {
+/** Copy text the old way first, which keeps working inside a user gesture on every browser. */
+export function copyText(text: string): boolean {
   try {
     const ta = document.createElement('textarea')
     ta.value = text

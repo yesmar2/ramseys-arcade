@@ -4,6 +4,14 @@ import { useAuth } from '../hooks/useAuth'
 import { useImpersonation } from '../hooks/useImpersonation'
 import { gameBoardHref, gameHref, leaderboardHref, navigate, recordsHref } from '../hooks/useHashRoute'
 import { linkCurrentNameToAccount } from '../lib/auth'
+import {
+  challengeMessage,
+  challengeOutcome,
+  createChallenge,
+  noteChallengeRun,
+  replyMessage,
+  useActiveChallenge,
+} from '../lib/challenges'
 import { useDefaultPeriod } from '../lib/defaultPeriod'
 import { gameAccentStyle } from '../lib/gameAccentStyle'
 import { scoreText, scoreUnit } from '../lib/gameBoard'
@@ -25,6 +33,8 @@ import {
   type RunAchievement,
 } from '../lib/runAchievements'
 import {
+  CHALLENGE_WON,
+  challengeReportLine,
   composeReport,
   readBookFacts,
   saveRunForReport,
@@ -34,6 +44,7 @@ import {
 } from '../lib/runReport'
 import { periodCopy } from '../lib/scoreboard'
 import { standingsTakeover } from '../lib/winTakeover'
+import { useChallengeShare } from './ChallengeShare'
 import { ReportSignIn, ReportWho, RunReport, TagSlots, type ReportAction, type ReportLink } from './RunReport'
 import { WinTakeover } from './WinTakeover'
 
@@ -93,6 +104,8 @@ export function ScoreSaveCard({ gameSlug, score, title, subtitle, previousBest, 
   const [takeoverDone, setTakeoverDone] = useState(false)
   const [savedAs, setSavedAs] = useState<string | null>(null)
   const [wouldPlace, setWouldPlace] = useState<number | null>(null)
+  const [sending, setSending] = useState(false)
+  const [sendError, setSendError] = useState<string | null>(null)
   const recordRef = useRef(previousBest ?? 0)
   const playRef = useRef<HTMLButtonElement>(null)
   const tagRef = useRef<HTMLInputElement>(null)
@@ -101,6 +114,14 @@ export function ScoreSaveCard({ gameSlug, score, title, subtitle, previousBest, 
 
   const game = getGame(gameSlug)?.name ?? gameSlug
   const copy = periodCopy(period)
+  // A friend's challenge this run was played against; your own played back is just a run.
+  const challenge = useActiveChallenge(gameSlug)
+  const facing =
+    challenge && normalizePlayerName(challenge.name) !== normalizePlayerName(getLastPlayerName()) ? challenge : null
+  const facingRef = useRef(facing)
+  facingRef.current = facing
+  const outcome = facing ? challengeOutcome(facing, score) : null
+  const [share, sharePanel] = useChallengeShare()
   const accentStyle = gameAccentStyle(gameSlug)
   const accent = String((accentStyle as Record<string, string>)['--celeb-accent'] ?? '#2eb8a0')
 
@@ -116,6 +137,8 @@ export function ScoreSaveCard({ gameSlug, score, title, subtitle, previousBest, 
 
     async function run() {
       if (authLoading) return
+      const against = facingRef.current
+      if (against && score > 0) noteChallengeRun(gameSlug, score)
       const name = normalizePlayerName(getLastPlayerName())
       if (name) {
         try {
@@ -154,6 +177,7 @@ export function ScoreSaveCard({ gameSlug, score, title, subtitle, previousBest, 
             board: null,
             overall: { before: null, after: null },
             books,
+            challenge: against ? { name: against.name, score: against.score, won: false, replyId: null } : null,
           }),
         )
         setPhase('saved')
@@ -169,7 +193,14 @@ export function ScoreSaveCard({ gameSlug, score, title, subtitle, previousBest, 
         return
       }
       setPhase('saving')
-      const facts = await saveRunForReport({ slug: gameSlug, name, score, period, priorBest: recordRef.current })
+      const facts = await saveRunForReport({
+        slug: gameSlug,
+        name,
+        score,
+        period,
+        priorBest: recordRef.current,
+        challengeId: against?.id,
+      })
       if (cancelled) return
       setSavedAs(facts.name)
       setFacts(facts)
@@ -211,7 +242,14 @@ export function ScoreSaveCard({ gameSlug, score, title, subtitle, previousBest, 
     setError(null)
     try {
       if (signedIn && !impersonation) await linkCurrentNameToAccount(name)
-      const facts = await saveRunForReport({ slug: gameSlug, name, score, period, priorBest: recordRef.current })
+      const facts = await saveRunForReport({
+        slug: gameSlug,
+        name,
+        score,
+        period,
+        priorBest: recordRef.current,
+        challengeId: facingRef.current?.id,
+      })
       setSavedAs(facts.name)
       setFacts(facts)
       setReport(composeReport(facts))
@@ -225,8 +263,11 @@ export function ScoreSaveCard({ gameSlug, score, title, subtitle, previousBest, 
 
   const pending = phase === 'checking' || phase === 'saving'
   const data = phase === 'saved' ? report : null
-  const tier = data?.tier ?? 'quiet'
-  const ribbon = data?.ribbon ?? null
+  // Before a save (signed out, no tag yet), a friend's challenge is still said: it's why they played.
+  const unsaved = phase === 'needAuth' || phase === 'needName'
+  const unsavedWin = unsaved && Boolean(outcome?.won)
+  const tier = data?.tier ?? (unsavedWin ? 'big' : 'quiet')
+  const ribbon = data?.ribbon ?? (unsavedWin ? CHALLENGE_WON : null)
   const figure = formatLeaderboardScore(gameSlug, score)
   const unit = scoreUnit(gameSlug, score)
   const place = wouldPlace
@@ -240,7 +281,12 @@ export function ScoreSaveCard({ gameSlug, score, title, subtitle, previousBest, 
     </>
   ) : null
 
-  const playAgain: ReportAction = { label: 'Play again', onClick: onDone, buttonRef: playRef }
+  // Short of a friend's challenge, the way on is another go at it.
+  const playAgain: ReportAction = {
+    label: outcome && !outcome.won ? 'Try again' : 'Play again',
+    onClick: onDone,
+    buttonRef: playRef,
+  }
   let primary = playAgain
   let secondary: ReportAction | null = null
   let block: ReactNode = null
@@ -251,9 +297,15 @@ export function ScoreSaveCard({ gameSlug, score, title, subtitle, previousBest, 
     block = (
       <ReportSignIn
         lead={
-          <>
-            Sign in and {scoreText(gameSlug, score)} goes on the boards. {winLead}
-          </>
+          facing && outcome?.won ? (
+            <>
+              Sign in and {facing.name} hears you won, and {scoreText(gameSlug, score)} goes on the boards. {winLead}
+            </>
+          ) : (
+            <>
+              Sign in and {scoreText(gameSlug, score)} goes on the boards. {winLead}
+            </>
+          )
         }
         error={error}
         onSignedIn={() => {
@@ -306,6 +358,46 @@ export function ScoreSaveCard({ gameSlug, score, title, subtitle, previousBest, 
     who = <ReportWho name={savedAs} avatarId={data?.avatarId} text={`Saved as ${savedAs}`} />
   }
 
+  // A saved run can go to a friend; one that beat a friend's goes straight back.
+  const runId = facts?.runId ?? null
+  const reply = facts?.challenge?.won ? facts.challenge : null
+  if (phase === 'saved' && signedIn && savedAs && runId && !(outcome && !outcome.won)) {
+    if (reply?.replyId && facing) {
+      const replyId = reply.replyId
+      secondary = {
+        label: 'Send it back',
+        icon: 'flag',
+        onClick: () =>
+          share({
+            game: gameSlug,
+            id: replyId,
+            score,
+            name: savedAs,
+            message: replyMessage(gameSlug, facing.score, score),
+            title: `Send it back to ${facing.name}`,
+          }),
+      }
+    } else {
+      secondary = {
+        label: sending ? 'Making the link…' : 'Challenge a friend',
+        shortLabel: sending ? 'Wait…' : 'Challenge',
+        icon: 'flag',
+        disabled: sending,
+        onClick: () => {
+          setSending(true)
+          setSendError(null)
+          createChallenge({ game: gameSlug, scoreId: runId, name: savedAs })
+            .then((made) =>
+              share({ game: gameSlug, id: made.id, score, name: savedAs, message: challengeMessage(gameSlug, score) }),
+            )
+            .catch(() => setSendError('Couldn’t make the challenge link. Try again in a moment.'))
+            .finally(() => setSending(false))
+        },
+      }
+    }
+    if (sendError) block = <p className="panel__error">{sendError}</p>
+  }
+
   if (phase === 'saved' || phase === 'assisted' || phase === 'error') {
     links = [{ label: `${game} board`, onClick: () => leavePlayTo(boardsHref(gameSlug, period)) }]
     if (gameHasRecords(gameSlug)) {
@@ -336,8 +428,16 @@ export function ScoreSaveCard({ gameSlug, score, title, subtitle, previousBest, 
         score={figure}
         unit={unit}
         sub={ribbon ? [title, subtitle].filter(Boolean).join(' · ') : (subtitle ?? null)}
-        scoreTone={data?.scoreTone ?? 'plain'}
-        lines={phase === 'needAuth' || phase === 'needName' || phase === 'assisted' || phase === 'error' ? [] : lines}
+        scoreTone={data?.scoreTone ?? (unsavedWin ? 'gold' : 'plain')}
+        lines={
+          unsaved
+            ? facing
+              ? [challengeReportLine(gameSlug, score, facing)]
+              : []
+            : phase === 'assisted' || phase === 'error'
+              ? []
+              : lines
+        }
         race={data?.race ?? null}
         primary={primary}
         secondary={secondary}
@@ -346,6 +446,7 @@ export function ScoreSaveCard({ gameSlug, score, title, subtitle, previousBest, 
       >
         {block}
       </RunReport>
+      {sharePanel}
       {takeover ? (
         <WinTakeover
           data={takeover}

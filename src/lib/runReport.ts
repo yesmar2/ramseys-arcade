@@ -37,7 +37,7 @@ import { submitScoreToJoinedTournaments } from './tournaments'
 
 export type ReportTier = 'quiet' | 'lit' | 'big'
 export type ReportTone = 'plain' | 'accent' | 'gold'
-export type ReportIcon = 'up' | 'crown' | 'book' | 'board' | 'target' | 'sum'
+export type ReportIcon = 'up' | 'crown' | 'book' | 'board' | 'target' | 'sum' | 'flag'
 
 export type ReportLine = {
   id: string
@@ -98,6 +98,10 @@ export type RunFacts = {
   board: { after: BoardPlayer[]; before: BoardPlayer[] } | null
   overall: { before: GlobalRankResult | null; after: GlobalRankResult | null }
   books: BookFact[]
+  /** The run's id on the boards, so it can go out as a challenge. */
+  runId?: string | null
+  /** A friend's challenge the run was played against, and how it went. */
+  challenge?: { name: string; score: number; won: boolean; replyId: string | null } | null
 }
 
 /** Runs read to count places: one page covers every run above all but the lowest scores. */
@@ -285,6 +289,29 @@ function bookLine(f: RunFacts, book: BookFact, i: number): ReportLine {
 
 const TONE_ORDER: Record<ReportTone, number> = { gold: 0, accent: 1, plain: 2 }
 
+/** A friend's challenge, as a line: beaten by how much, or how far short. */
+export function challengeReportLine(slug: string, score: number, challenge: { name: string; score: number }): ReportLine {
+  const won = score > challenge.score
+  const gap = Math.abs(score - challenge.score)
+  // A clock is "off" by its gap, as the record book says it, and slower reads as a plus.
+  const time = isTimeBoard(slug)
+  return {
+    id: 'challenge',
+    icon: 'flag',
+    label: `${challenge.name}’s challenge`,
+    detail: won
+      ? `beat ${figure(slug, challenge.score)} by ${gapText(slug, gap)}`
+      : gap > 0
+        ? `${gapText(slug, gap)} ${time ? 'off' : 'short of'} ${figure(slug, challenge.score)}`
+        : `level with ${figure(slug, challenge.score)}, and level doesn’t beat it`,
+    value: won ? 'Won' : gap > 0 ? (time ? `+${gapText(slug, gap)}` : `−${gap.toLocaleString()}`) : 'Level',
+    tone: won ? 'gold' : 'plain',
+  }
+}
+
+/** The heading a beaten challenge gets. */
+export const CHALLENGE_WON: ReportRibbon = { icon: 'flag', text: 'Challenge won', tone: 'gold' }
+
 export function composeReport(f: RunFacts): RunReportData {
   const copy = periodCopy(f.period)
   const me = normalizePlayerName(f.name)
@@ -302,7 +329,11 @@ export function composeReport(f: RunFacts): RunReportData {
     (f.priorAllTimeRank != null ? f.priorAllTimeRank > 1 : (f.board?.after.length ?? 0) >= 2)
   const bookTop = books.some((line) => line.tone === 'gold')
 
-  const lines: ReportLine[] = [bestLine(f)]
+  const challenge = f.challenge ?? null
+  const lines: ReportLine[] = []
+  // A friend's challenge is what the run was for, so it is said first.
+  if (challenge) lines.push(challengeReportLine(f.slug, f.score, challenge))
+  lines.push(bestLine(f))
   if (board) lines.push(board.line)
   if (highScore && f.period !== 'all') {
     lines.push({
@@ -325,7 +356,10 @@ export function composeReport(f: RunFacts): RunReportData {
 
   let tier: ReportTier = 'quiet'
   let ribbon: ReportRibbon | null = null
-  if (overall?.newTop) {
+  if (challenge?.won) {
+    tier = 'big'
+    ribbon = CHALLENGE_WON
+  } else if (overall?.newTop) {
     tier = 'big'
     ribbon = { icon: 'crown', text: 'Top of the standings', tone: 'gold' }
   } else if (highScore) {
@@ -367,7 +401,7 @@ export function composeReport(f: RunFacts): RunReportData {
   return {
     tier,
     ribbon,
-    scoreTone: highScore || board?.newTop ? 'gold' : isBest ? 'accent' : 'plain',
+    scoreTone: challenge?.won || highScore || board?.newTop ? 'gold' : isBest ? 'accent' : 'plain',
     lines: ordered,
     race,
     standingsTop: Boolean(overall?.newTop),
@@ -434,6 +468,8 @@ type SaveInput = {
   score: number
   period: LeaderboardPeriod
   priorBest: number
+  /** A friend's challenge this run was played against. */
+  challengeId?: string
 }
 
 /** Saves in flight or just done, so the same run asked twice is saved once. */
@@ -460,10 +496,10 @@ export function saveRunForReport(input: SaveInput): Promise<RunFacts> {
   return promise
 }
 
-async function saveAndRead({ slug, name, score, period, priorBest }: SaveInput): Promise<RunFacts> {
+async function saveAndRead({ slug, name, score, period, priorBest, challengeId }: SaveInput): Promise<RunFacts> {
   const me = normalizePlayerName(name)
   const priorOverall = await fetchGlobalRank(me, period).catch(() => null)
-  const saved = await addLeaderboardScore(slug, me, score)
+  const saved = await addLeaderboardScore(slug, me, score, { challengeId })
   for (const hit of saved.streakRecords ?? []) {
     if (
       shouldCelebrateRecordSubmit({ improved: hit.improved, rank: hit.rank, totalEntries: hit.totalEntries })
@@ -512,6 +548,17 @@ async function saveAndRead({ slug, name, score, period, priorBest }: SaveInput):
     board,
     overall: { before: priorOverall, after: overall },
     books,
+    runId: saved.entry?.id ?? null,
+    // Your own challenge played back is just a run.
+    challenge:
+      saved.challenge && saved.challenge.outcome !== 'own'
+        ? {
+            name: saved.challenge.name,
+            score: saved.challenge.score,
+            won: saved.challenge.outcome === 'won',
+            replyId: saved.challenge.replyId,
+          }
+        : null,
   }
 }
 

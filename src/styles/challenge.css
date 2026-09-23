@@ -1,0 +1,304 @@
+/*
+ * Challenges: a friend's score to beat, from the link to the end of the run.
+ * The start card names it, a chip under the score carries it through the run,
+ * the kit's panel sends one, and the landing page opens one.
+ */
+
+/* ---------- on the start card ---------- */
+
+.game-card__challenge {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.9rem 2.6rem 0.85rem;
+  border-radius: 1.1rem;
+  border: 1px solid color-mix(in srgb, var(--panel-accent) 40%, transparent);
+  background: color-mix(in srgb, var(--panel-accent) 14%, transparent);
+  text-align: center;
+}
+
+.game-card__challenger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.game-card__target {
+  font-size: 1rem;
+  color: var(--muted);
+}
+
+.game-card__target strong {
+  margin-right: 0.1rem;
+  font-family: var(--font-display);
+  font-size: 2.6rem;
+  line-height: 1;
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  font-variant-numeric: tabular-nums;
+  color: var(--panel-accent-ink);
+}
+
+.game-card__when {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.game-card__challenge-x {
+  position: absolute;
+  top: 0.4rem;
+  right: 0.4rem;
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.game-card__challenge-x svg {
+  width: 0.95rem;
+  height: 0.95rem;
+}
+
+.game-card__challenge-x:hover,
+.game-card__challenge-x:focus-visible {
+  background: rgba(var(--ink-rgb), 0.08);
+  color: var(--ink);
+}
+
+/* The start card lets taps through to the playfield; this one is its own. */
+.game-card--start .game-card__challenge-x {
+  pointer-events: auto;
+}
+
+/* ---------- under the score, during the run ---------- */
+
+.challenge-chip {
+  position: absolute;
+  top: calc(var(--readout-middle) + var(--score-size) / 2 + 0.5rem);
+  left: 50%;
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  height: 2.2rem;
+  padding: 0 0.85rem 0 0.35rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(10, 16, 22, 0.72);
+  color: #e9f0f4;
+  font-family: var(--font-display);
+  font-size: 0.85rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  pointer-events: none;
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+
+.challenge-chip__bar {
+  width: 4.5rem;
+  height: 0.375rem;
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.16);
+  overflow: hidden;
+}
+
+.challenge-chip__bar > span {
+  display: block;
+  height: 100%;
+  border-radius: 99px;
+  background: #f5b942;
+  transition: width 0.3s ease;
+}
+
+.challenge-chip__togo {
+  color: #f5b942;
+}
+
+.challenge-chip--passed {
+  border-color: transparent;
+  background: #f5b942;
+  color: #1a1204;
+  font-weight: 700;
+  animation: challenge-passed 0.5s cubic-bezier(0.2, 1.4, 0.4, 1) both;
+}
+
+.challenge-chip__tick {
+  width: 1rem;
+  height: 1rem;
+}
+
+@keyframes challenge-passed {
+  from {
+    transform: translateX(-50%) scale(0.85);
+  }
+}
+
+@media (max-width: 30rem) {
+  .challenge-chip {
+    height: 2rem;
+    font-size: 0.78rem;
+  }
+
+  .challenge-chip__bar {
+    width: 3rem;
+  }
+}
+
+/* ---------- sending one ---------- */
+
+.challenge-share__card {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 1rem;
+  border: 1px solid var(--panel-line);
+  background: #0b1117;
+}
+
+.challenge-share__message {
+  margin: 0;
+  padding: 0.75rem 0.9rem;
+  border-radius: 0.9rem;
+  background: var(--panel-fill);
+  font-size: 0.97rem;
+  line-height: 1.45;
+  color: var(--ink);
+}
+
+.challenge-share__link {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 3.25rem;
+  padding: 0 0.35rem 0 0.9rem;
+  border-radius: 1rem;
+  border: 1px solid rgba(var(--ink-rgb), 0.18);
+}
+
+.challenge-share__url {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: ui-monospace, 'DM Mono', monospace;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+/* Beside the address, even on a phone, where the kit's buttons go full width. */
+.challenge-share__copy {
+  flex: none;
+  width: auto;
+  min-height: 2.5rem;
+  padding: 0 1rem;
+  font-size: 0.9rem;
+}
+
+/* The report's own buttons: the flag before the word, and a shorter word where the row runs out. */
+.report__actions .panel__btn svg {
+  flex: none;
+  width: 1.05rem;
+  height: 1.05rem;
+}
+
+.report__label-short {
+  display: none;
+}
+
+@media (max-width: 26rem) {
+  .report__label-long {
+    display: none;
+  }
+
+  .report__label-short {
+    display: inline;
+  }
+}
+
+/* ---------- opening one ---------- */
+
+.challenge-landing {
+  --panel-accent: var(--celeb-accent, var(--accent));
+  --panel-on-accent: var(--hero-ink, #03211b);
+  --panel-line: rgba(var(--ink-rgb), 0.12);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  max-width: 34rem;
+  margin: 12vh auto;
+  padding: 2rem 1.5rem;
+  text-align: center;
+}
+
+.challenge-landing__kicker {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.75rem;
+  padding: 0 0.8rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--panel-accent) 16%, transparent);
+  color: color-mix(in srgb, var(--panel-accent) 65%, var(--ink));
+  font-size: 0.72rem;
+  font-weight: 650;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.challenge-landing__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(1.6rem, 5vw, 2.2rem);
+  line-height: 1.1;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--ink);
+  text-wrap: balance;
+}
+
+.challenge-landing__text {
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.challenge-landing__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.6rem;
+  margin-top: 0.5rem;
+}
+
+.challenge-landing__actions .panel__btn {
+  flex: none;
+}
+
+.challenge-landing__retry {
+  flex: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .challenge-chip--passed {
+    animation: none;
+  }
+
+  .challenge-chip__bar > span {
+    transition: none;
+  }
+}

@@ -57,7 +57,7 @@ export function NotificationList({ notes }: { notes: NotificationsState }) {
         <p className="notif-panel__empty">Loading…</p>
       ) : items.length === 0 ? (
         <p className="notif-panel__empty">
-          Nothing yet. Match clocks, record changes and friend requests land here.
+          Nothing yet. Match clocks, challenges, record changes and friend requests land here.
         </p>
       ) : (
         <ul className="notif-panel__list">

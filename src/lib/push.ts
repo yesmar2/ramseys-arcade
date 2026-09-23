@@ -1,11 +1,12 @@
 import { authHeaders } from './auth'
 
 /**
- * Opting a device in to bracket match alerts.
+ * Opting a device in to match and challenge alerts.
  *
  * Push is the only notification channel that can interrupt someone, so it
- * carries only the alerts that expire: your match opened, your match is about
- * to close. Everything else lives in the inbox.
+ * carries only two kinds: the alerts that expire (your match opened, your
+ * match is about to close) and a friend beating a challenge you sent them.
+ * Everything else lives in the inbox.
  */
 
 function resolveApiBase() {

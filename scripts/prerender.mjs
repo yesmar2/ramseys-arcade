@@ -1,4 +1,4 @@
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { createServer } from 'vite'
 
@@ -76,6 +76,7 @@ function robotsTxt() {
     'Disallow: /auth/',
     'Disallow: /dev/',
     'Disallow: /tournaments/',
+    'Disallow: /c/',
     '',
     `Sitemap: ${origin}/sitemap.xml`,
     '',
@@ -111,9 +112,41 @@ try {
     mkdirSync(dirname(file), { recursive: true })
     writeFileSync(file, pageHtml(meta, pageContent(route)))
   }
+  /*
+   * A challenge link, /c/<game>/<id>, is the same page for every id of a game
+   * (vercel.json points them all at it): what the link unfurls into in a chat.
+   * The app reads the id from the address and opens the challenge itself.
+   * Every game gets one, hidden ones too, since the rewrite has no fallback;
+   * a game without its challenge card unfurls into the site's own.
+   * Not in the sitemap: a link is somebody's, sent to somebody.
+   */
+  const { games } = await server.ssrLoadModule('/src/data/games.ts')
+  const { APP_NAME } = await server.ssrLoadModule('/src/lib/brand.ts')
+  let challengePages = 0
+  for (const game of games) {
+    const description = `A friend has a score for you to beat on ${game.name}. It plays right here in your browser, no account needed.`
+    const card = `/og/challenge/${game.slug}.png`
+    const meta = {
+      path: `/c/${game.slug}`,
+      title: `Can you beat it? A challenge on ${game.name} · ${APP_NAME}`,
+      description,
+      image: existsSync(join(DIST, card)) ? card : '/og.png',
+    }
+    const content = {
+      heading: `A challenge on ${game.name}`,
+      paragraphs: [description],
+      links: [{ href: `/games/${game.slug}/play`, label: `Play ${game.name}` }],
+    }
+    const file = outFile(meta.path)
+    mkdirSync(dirname(file), { recursive: true })
+    writeFileSync(file, pageHtml(meta, content))
+    challengePages++
+  }
   writeFileSync(join(DIST, 'robots.txt'), robotsTxt())
   writeFileSync(join(DIST, 'sitemap.xml'), sitemapXml(paths))
-  console.log(`prerendered ${paths.length} pages at ${origin}, plus robots.txt and sitemap.xml`)
+  console.log(
+    `prerendered ${paths.length} pages and ${challengePages} challenge pages at ${origin}, plus robots.txt and sitemap.xml`,
+  )
 } finally {
   await server.close()
 }

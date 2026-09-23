@@ -4,7 +4,8 @@ import { authHeaders } from './auth'
  * The inbox.
  *
  * Everything the arcade wants to tell you lands here. Only bracket match
- * clocks are ever also pushed to a device — see `push.ts`.
+ * clocks and a friend beating your challenge are ever also pushed to a
+ * device — see `push.ts`.
  */
 export type NotificationKind =
   | 'match-open'
@@ -15,6 +16,8 @@ export type NotificationKind =
   | 'friend-accepted'
   | 'trophy'
   | 'event-result'
+  | 'challenge-beaten'
+  | 'challenge-taken'
 
 export type AppNotification = {
   id: string
@@ -86,6 +89,8 @@ const ICONS: Record<NotificationKind, string> = {
   'friend-accepted': '🤝',
   trophy: '🏆',
   'event-result': '🎏',
+  'challenge-beaten': '🏁',
+  'challenge-taken': '🎯',
 }
 
 export function notificationIcon(kind: NotificationKind): string {

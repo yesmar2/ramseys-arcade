@@ -28,6 +28,7 @@ const ICON_PATHS: Record<ReportIcon, string> = {
   board: 'M4 20V10M10 20V4M16 20v-7M22 20H2',
   target: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8z',
   sum: 'M18 4H6l6 8-6 8h12',
+  flag: 'M4 21V4M4 4h13l-2 4 2 4H4',
 }
 
 export function ReportIconSvg({ icon }: { icon: ReportIcon }) {
@@ -49,11 +50,30 @@ export function ReportIconSvg({ icon }: { icon: ReportIcon }) {
 
 export type ReportAction = {
   label: string
+  /** What it says where the full words don't fit: a phone's row beside Play again. */
+  shortLabel?: string
+  icon?: ReportIcon
   onClick?: () => void
   /** A link out instead of a button. */
   href?: string
   disabled?: boolean
   buttonRef?: RefObject<HTMLButtonElement | null>
+}
+
+function ActionLabel({ action }: { action: ReportAction }) {
+  return (
+    <>
+      {action.icon ? <ReportIconSvg icon={action.icon} /> : null}
+      {action.shortLabel ? (
+        <>
+          <span className="report__label-long">{action.label}</span>
+          <span className="report__label-short">{action.shortLabel}</span>
+        </>
+      ) : (
+        action.label
+      )}
+    </>
+  )
 }
 
 export type ReportLink = { label: string; onClick: () => void }
@@ -84,7 +104,7 @@ function Action({ action, className }: { action: ReportAction; className: string
   if (action.href) {
     return (
       <a className={className} href={action.href}>
-        {action.label}
+        <ActionLabel action={action} />
       </a>
     )
   }
@@ -96,7 +116,7 @@ function Action({ action, className }: { action: ReportAction; className: string
       disabled={action.disabled}
       onClick={action.onClick}
     >
-      {action.label}
+      <ActionLabel action={action} />
     </button>
   )
 }

@@ -1,7 +1,9 @@
 import type { ReactNode } from 'react'
 import { getGame } from '../data/games'
 import { usePersonalBest } from '../hooks/usePersonalBest'
+import { useActiveChallenge } from '../lib/challenges'
 import { gameAccentStyle } from '../lib/gameAccentStyle'
+import { ChallengeTarget } from './ChallengeTarget'
 import { GamePanelBody } from './PauseControls'
 
 /**
@@ -29,6 +31,7 @@ export function GameStartCard({
 }) {
   const personalBest = usePersonalBest(slug)
   const blurb = getGame(slug)?.description
+  const challenge = useActiveChallenge(slug)
 
   return (
     <div className="game-card game-card--start" style={gameAccentStyle(slug)}>
@@ -36,9 +39,10 @@ export function GameStartCard({
         <h2 className="game-card__title game-card__title--big">{title}</h2>
         {blurb ? <p className="game-card__blurb">{blurb}</p> : null}
       </div>
+      <ChallengeTarget slug={slug} />
       <GamePanelBody slug={slug} personalBest={personalBest} extraMeta={extraMeta} tools={tools} />
       <button type="button" className="panel__btn game-card__start">
-        Start
+        {challenge ? 'Take it on' : 'Start'}
       </button>
     </div>
   )

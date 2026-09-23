@@ -45,6 +45,9 @@ const CreateTournamentPage = lazyPage(() =>
   import('./pages/CreateTournamentPage').then((m) => m.CreateTournamentPage),
 )
 const DevCelebratePage = lazyPage(() => import('./pages/DevCelebratePage').then((m) => m.DevCelebratePage))
+const ChallengeLandingPage = lazyPage(() =>
+  import('./pages/ChallengeLandingPage').then((m) => m.ChallengeLandingPage),
+)
 const GroupDetailPage = lazyPage(() => import('./pages/GroupsPage').then((m) => m.GroupDetailPage))
 const GroupsPage = lazyPage(() => import('./pages/GroupsPage').then((m) => m.GroupsPage))
 const PlusPage = lazyPage(() => import('./pages/PlusPage').then((m) => m.PlusPage))
@@ -230,7 +233,16 @@ function preloadPageFromHref(href: string) {
   if (hit) void hit.page.preload()
 }
 
+/** A friend's challenge link, `/c/<game>/<id>`, read from the address itself. */
+function challengeLink(): { slug: string; id: string } | null {
+  if (typeof window === 'undefined') return null
+  const match = /^\/c\/([^/]+)\/([^/]+)\/?$/.exec(window.location.pathname)
+  return match ? { slug: decodeURIComponent(match[1]!), id: decodeURIComponent(match[2]!) } : null
+}
+
 function Screen({ route }: { route: ReturnType<typeof useRoute> }) {
+  const challenge = challengeLink()
+  if (challenge) return <ChallengeLandingPage slug={challenge.slug} id={challenge.id} />
   if (route.name === 'groups') return <GroupsPage />
   if (route.name === 'group') {
     return <GroupDetailPage id={route.id} invite={route.invite} />

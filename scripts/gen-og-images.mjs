@@ -3,7 +3,8 @@ import { mkdirSync, readFileSync } from 'node:fs'
 import { createServer } from 'vite'
 
 /**
- * Share images (Open Graph, 1200×630): one for the site and one per game.
+ * Share images (Open Graph, 1200×630): one for the site, one per game, and one
+ * per game for a challenge link (`/c/<game>/<id>` unfurls into it).
  *
  * The in-app thumbs lean on `color-mix()` and theme variables, which nothing
  * outside a browser can rasterise, so these are drawn fresh: the game's
@@ -58,13 +59,13 @@ function wordmark(x, y, size) {
   return `<text x="${x}" y="${y}" font-family="${FONT}" font-size="${size}" font-weight="700" fill="${TEXT}">Sker<tspan fill="${TEAL}">mix</tspan></text>`
 }
 
-function frame(inner) {
+function frame(inner, glow = TEAL) {
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
   <defs>
     <radialGradient id="glow" cx="0.15" cy="0.25" r="0.85">
-      <stop offset="0" stop-color="${TEAL}" stop-opacity="0.32"/>
-      <stop offset="1" stop-color="${TEAL}" stop-opacity="0"/>
+      <stop offset="0" stop-color="${glow}" stop-opacity="0.32"/>
+      <stop offset="1" stop-color="${glow}" stop-opacity="0"/>
     </radialGradient>
   </defs>
   <rect width="${W}" height="${H}" fill="${INK}"/>
@@ -109,6 +110,23 @@ function gameCard(game) {
   <text x="454" y="560" font-family="${FONT}" font-size="40" font-weight="700" fill="${TEXT}">Sker<tspan fill="${TEAL}">mix</tspan><tspan dx="18" font-size="30" font-weight="400" fill="${MUTED}">· no ads, just play</tspan></text>`)
 }
 
+/**
+ * A challenge on one game: the same link for every challenge, so it says what
+ * is being asked and where, and the message sent with it carries the score.
+ */
+function challengeCard(game) {
+  return frame(
+    `
+  <rect x="96" y="165" width="300" height="300" rx="56" fill="${game.accent}"/>
+  <path d="M196 390 V240 M196 240 H306 L286 280 L306 320 H196" fill="none" stroke="${TEXT}" stroke-width="20" stroke-linecap="round" stroke-linejoin="round" opacity="0.96"/>
+  <text x="454" y="205" font-family="${FONT}" font-size="26" font-weight="700" letter-spacing="5" fill="${game.accent}">CHALLENGE</text>
+  ${lines(['Can you', 'beat it?'], 452, 300, 96, 96, TEXT, 700)}
+  ${lines([`A friend’s score to beat on ${game.name}`], 454, 470, 34, 0, MUTED)}
+  <text x="454" y="560" font-family="${FONT}" font-size="40" font-weight="700" fill="${TEXT}">Sker<tspan fill="${TEAL}">mix</tspan><tspan dx="18" font-size="30" font-weight="400" fill="${MUTED}">· plays in your browser</tspan></text>`,
+    game.accent,
+  )
+}
+
 async function render(svg, file) {
   await sharp(Buffer.from(svg)).png({ compressionLevel: 9 }).toFile(file)
   console.log('wrote', file)
@@ -121,13 +139,21 @@ const server = await createServer({
   appType: 'custom',
   server: { middlewareMode: true, hmr: false, watch: null },
 })
+// `npm run icons:og` draws them all; `node scripts/gen-og-images.mjs challenges` only the challenge cards.
+const only = process.argv[2]
 try {
   const { games } = await server.ssrLoadModule('/src/data/games.ts')
-  mkdirSync('public/og', { recursive: true })
-  await render(siteCard(), 'public/og.png')
+  mkdirSync('public/og/challenge', { recursive: true })
+  if (only !== 'challenges') {
+    await render(siteCard(), 'public/og.png')
+    for (const game of games) {
+      if (game.hidden) continue
+      await render(gameCard(game), `public/og/${game.slug}.png`)
+    }
+  }
   for (const game of games) {
     if (game.hidden) continue
-    await render(gameCard(game), `public/og/${game.slug}.png`)
+    await render(challengeCard(game), `public/og/challenge/${game.slug}.png`)
   }
 } finally {
   await server.close()

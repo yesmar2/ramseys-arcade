@@ -9,6 +9,7 @@ import {
   toggleFullscreen,
 } from '../lib/fullscreen'
 import { useTournamentPlay } from '../tournaments/TournamentPlayContext'
+import { ChallengeChip } from './ChallengeTarget'
 import { Panel, PanelHead } from './Panel'
 
 /** Plain playfield readouts (Asteroids-style): score left, secondary center. */
@@ -20,21 +21,38 @@ export function PlayReadout({ children }: { children: ReactNode }) {
   )
 }
 
+/**
+ * The readout's figure as a number, when it shows a plain count (1,240): what
+ * a friend's challenge measures the run by. A clock, a par or a word is not
+ * one, and gets no reading.
+ */
+function plainCount(children: ReactNode): number | null {
+  const text = typeof children === 'number' ? String(children) : typeof children === 'string' ? children : null
+  if (text == null || !/^\d{1,3}(,\d{3})*$|^\d+$/.test(text.trim())) return null
+  return Number(text.replace(/,/g, ''))
+}
+
 export function PlayReadoutScore({
   children,
   hot,
   className,
+  value,
 }: {
   children: ReactNode
   hot?: boolean
   className?: string
+  /** The run's score in the board's terms, when the figure shown is something else. */
+  value?: number
 }) {
   return (
-    <p
-      className={`play-readout__score${hot ? ' play-readout__score--hot' : ''}${className ? ` ${className}` : ''}`}
-    >
-      {children}
-    </p>
+    <>
+      <p
+        className={`play-readout__score${hot ? ' play-readout__score--hot' : ''}${className ? ` ${className}` : ''}`}
+      >
+        {children}
+      </p>
+      <ChallengeChip value={value ?? plainCount(children)} />
+    </>
   )
 }
 

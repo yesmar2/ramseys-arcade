@@ -72,10 +72,10 @@ export function PushToggle() {
     <div className="notif-push">
       <div className="notif-push__row">
         <span className="notif-push__text">
-          <span className="notif-push__label">Match alerts</span>
+          <span className="notif-push__label">Match and challenge alerts</span>
           <span className="notif-push__hint">
-            The only thing we&rsquo;ll buzz you about: a bracket match you could lose by
-            not showing up.
+            The only two things we&rsquo;ll buzz you about: a bracket match you could lose by
+            not showing up, and a friend beating your challenge.
           </span>
         </span>
         <button
