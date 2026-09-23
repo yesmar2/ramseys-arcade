@@ -160,11 +160,14 @@ function StackerThumb({ accent }: { accent: string }) {
 }
 
 /** The shape, and the dot where its centre is. */
+/** A plate balanced on a pin, seen from a little above. */
 function DeadCenterThumb({ accent }: { accent: string }) {
   return (
     <>
-      <path d="M16 5.5 L27.5 26.5 L4.5 26.5 Z" {...mark(accent, 0.3, 1.7)} />
-      <circle cx="16" cy="18.2" r="1.9" fill={accent} />
+      <path d="M15.9 12.3 V25" stroke={accent} strokeWidth="1.5" strokeLinecap="round" />
+      <circle cx="15.9" cy="26" r="2" fill={accent} />
+      <path d="M4.5 11.5 L20 6.5 L27.5 12.5 L12 18.5 Z" {...mark(accent, 0.3, 1.7)} />
+      <circle cx="15.9" cy="12.3" r="1.5" fill={accent} />
     </>
   )
 }

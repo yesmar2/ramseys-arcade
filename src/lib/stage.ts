@@ -25,8 +25,6 @@ export const STAGE_ASPECT = {
   /** Snake grid 21×15 landscape; portrait uses 15×21 (same board, rotated). */
   snake: { w: 7, h: 5 },
   pop: { w: 3, h: 4 },
-  /** Centroid 4×3 landscape; portrait uses 3×4 (same field, rotated). */
-  centroid: { w: 4, h: 3 },
   /** Asteroids 16×9 landscape; portrait uses 9×16 (same field, rotated). */
   asteroids: { w: 16, h: 9 },
   simon: { w: 1, h: 1 },

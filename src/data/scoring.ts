@@ -57,10 +57,13 @@ const SCORING: Record<string, ScoreRow[]> = {
     { label: 'Wrong pad', value: 'game over' },
   ],
   'centroid': [
-    { label: 'Closer to center', value: 'more points' },
-    { label: 'Dead-on', value: 'up to 1100' },
-    { label: 'Time left (if close)', value: 'small bonus' },
-    { label: 'Round', value: '10 shapes · 5s each' },
+    { label: 'Balanced', value: '+20, and up to +80 more the nearer the pin is to the balance point' },
+    { label: 'Dead center', value: '+30 · within 2% of the plate’s size' },
+    { label: 'Quick', value: 'up to +20 for time left on the clock' },
+    { label: 'Streak', value: '×1.04 for each plate balanced in a row, up to ×1.4 · ten in a row brings a pin back' },
+    { label: 'Pins', value: '3 to start, up to 5 · a plate that falls or isn’t pinned in time costs one' },
+    { label: 'The margin', value: '8.5% of the plate’s size at first, closing to 3%' },
+    { label: 'The clock', value: '7 seconds at first, down to 3' },
   ],
   crosswalk: [
     { label: 'Score', value: '+1 for every new row' },
