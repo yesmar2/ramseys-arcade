@@ -43,7 +43,10 @@ export function makeSim(): Sim<GameState> {
     step: (s, dt) => tick(s.phase === 'playing' ? drive(s) : s, dt),
     over: (s) => s.phase === 'gameover',
     render: (ctx, s, w, h) => renderGame(ctx, s, w, h),
-    warmup: 7,
+    // The tower doesn't depend on the screen's size, only how it's drawn does.
+    resize: (s) => s,
+    // The still: a tall tower five perfect drops in, the next slab sliding in.
+    poster: { seed: 6, at: 36 },
     hold: 1.6,
     // The game draws at fixed sizes, for a play area about 540px across; anything narrower shows it shrunk to fit.
     stage: (w) => Math.max(1, 540 / w),

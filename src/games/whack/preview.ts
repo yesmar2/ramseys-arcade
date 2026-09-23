@@ -107,8 +107,10 @@ export function makeSim(): Sim<GameState> {
     // the canvas clear on every side, so every bubble stays in view. The pilot's taps are worked out at the
     // screen's own size, where the field is the same, only smaller.
     zoom: 1.2,
-    // Open in the busy last third of the round, on two targets up at once or one up as another pops.
-    warmup: 31,
+    // The still: a gold bubble up beside one just burst.
+    poster: { seed: 4, at: 8 },
+    // Its renderer times its twinkles and pulses by the page's clock; the run's own keeps the still the same.
+    runClock: true,
     hold: 1.2,
   }
 }

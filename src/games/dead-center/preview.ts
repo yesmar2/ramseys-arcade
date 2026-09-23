@@ -70,6 +70,28 @@ function judge(shape: Shape): Point {
   }
 }
 
+/**
+ * The field as it stands, stretched to a new screen. The game lays each shape
+ * out as shares of its screen's width and height, so this is the shape it
+ * would have made there, and the moment on the screen stays the one it was.
+ */
+function stretch(s: GameState, w: number, h: number): GameState {
+  const kx = w / s.stageW
+  const ky = h / s.stageH
+  const at = (p: Point): Point => ({ x: p.x * kx, y: p.y * ky })
+  let shape: Shape | null = null
+  if (s.shape) {
+    const points = s.shape.points.map(at)
+    const c = shapeCentroid({ ...s.shape, points })
+    // Its size is how far its corners are from its centre, on average.
+    const size = points.reduce((sum, p) => sum + Math.hypot(p.x - c.x, p.y - c.y), 0) / points.length
+    shape = { ...s.shape, points, size }
+  }
+  const result = s.result && { ...s.result, guess: s.result.guess && at(s.result.guess), center: at(s.result.center) }
+  // Without a shape, the game's own resize only moves the scale and the screen's size along.
+  return { ...resizeState({ ...s, shape: null }, w, h), shape, result }
+}
+
 export function makeSim(): Sim<GameState> {
   // The round the pilot is on, how much longer it looks before it taps, and how long it takes in the reveal.
   let round = 0
@@ -80,8 +102,8 @@ export function makeSim(): Sim<GameState> {
     if (s.phase === 'playing' && s.shape) {
       if (round !== s.round) {
         round = s.round
-        // A look of 0.9 to 2 seconds is well inside the round's five, so the pilot is never too slow. With at least
-        // 1.3 seconds on the reveal after it, the first reveal is always up at 2.1 seconds, where the still is taken.
+        // A look of 0.9 to 2 seconds is well inside the round's five, so the pilot is never too slow, and it stays on
+        // each reveal long enough to take in both marks.
         look = 0.9 + Math.random() * 1.1
         linger = 1.3 + Math.random() * 0.6
       }
@@ -99,7 +121,6 @@ export function makeSim(): Sim<GameState> {
   }
 
   return {
-    // The shapes are laid out in the screen's own pixels, so a new size means a new run rather than a resize.
     start: (w, h) => {
       round = 0
       return startGame(resizeState(createInitialState(w, h), w, h))
@@ -109,8 +130,10 @@ export function makeSim(): Sim<GameState> {
     over: (s) => s.phase === 'gameover' || (s.phase === 'reveal' && s.round >= TOTAL_ROUNDS),
     // The field as the game draws it, minus any score floaters written over it for a player.
     render: (ctx, s, w, h) => renderGame(ctx, { ...s, scale: Math.max(s.scale, PHONE_SCALE), floaters: [] }, w, h),
-    // Open on the first shape's reveal, with the tap and the true centre both marked (see the look, above).
-    warmup: 2.1,
+    // The game's own resize lays a new shape out for the new screen; stretching keeps the one being played.
+    resize: stretch,
+    // The still: a gold shape with the tap landed dead on its centre, both marks as one.
+    poster: { seed: 6, at: 14 },
     hold: 2,
   }
 }

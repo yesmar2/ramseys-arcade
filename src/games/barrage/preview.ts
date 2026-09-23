@@ -434,8 +434,8 @@ export function makeSim(): Sim<GameState> {
     render: (ctx, s, w, h) => renderGame(ctx, screen(s), w, h),
     // The field is in its own units, so a new size only matters if it turns the board.
     resize: (s, w, h) => (s.layout.fieldH > 1 === h > w ? s : begin(w, h)),
-    // Late in the first volley's charge: most of the fleet still up, its lanes lit.
-    warmup: 4.2,
+    // The still: three lanes charging over the fleet, a shot on its way up, the supply ship crossing.
+    poster: { seed: 5, at: 8 },
     // The engine has already played the last cannon going up, or the line giving way.
     hold: 0.8,
   }

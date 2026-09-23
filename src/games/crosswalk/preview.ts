@@ -438,7 +438,10 @@ export function makeSim(): Sim<GameState> {
       m = freshPilot()
       return newRun(w, h)
     },
-    warmup: 5,
+    // The still: a river of logs and stones ahead with a coin on it, a road behind, the hopper between.
+    poster: { seed: 3, at: 36 },
+    // Its renderer times its twinkles and pulses by the page's clock; the run's own keeps the still the same.
+    runClock: true,
     hold: 0.7,
   }
 }

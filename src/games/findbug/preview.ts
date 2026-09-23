@@ -1,7 +1,7 @@
 import { isDarkTheme } from '../../lib/theme'
 import { runPreview, type Sim } from '../previewKit'
 import { homeCamera, type Field } from './camera'
-import { faceCentre, RED, WHITE, type Critter } from './critters'
+import { faceCentre } from './critters'
 import {
   createInitialState,
   DAZE_MS,
@@ -17,6 +17,7 @@ import {
 } from './game'
 import { edgeColour, paintScene, SceneView, type Overlays } from './render'
 import { faceHiddenBy, tapFindsTarget, type Scene } from './scenes'
+import { likeness } from './wanted'
 
 /*
  * Find the Bug playing itself, for its cabinet on the home page: the game's
@@ -77,8 +78,8 @@ const CARD = 0.7
 /**
  * The first scene's search, as [glide, rest] for each stop: the look it opens
  * on, one look on the way, catching sight of him, and him. Its times are
- * fixed so the still frame can be timed to land just after the view comes to
- * rest on him, before the tap.
+ * fixed, and the poster (below) is taken on the last of them, with the view at
+ * rest on him before the tap: change them and the poster wants picking again.
  */
 const FIRST: readonly (readonly [number, number])[] = [
   [0, 0.6],
@@ -86,9 +87,6 @@ const FIRST: readonly (readonly [number, number])[] = [
   [1.1, 0.4],
   [0.8, 1.1],
 ]
-
-/** A third of a second after the view settles on him in the first scene. */
-const STILL = CARD + FIRST.reduce((t, [glide, rest]) => t + glide + rest, 0) - FIRST[FIRST.length - 1][1] + 0.3
 
 /** Milliseconds a frame may spend painting a scene that is not painted yet. */
 const PAINT_MS = 8
@@ -118,20 +116,6 @@ function ease(t: number) {
 /** Seconds to drag the view `d` screens: longer for further, but far from in proportion. */
 function glideFor(d: number) {
   return clamp(0.7 + 0.55 * d, 0.75, 1.45)
-}
-
-/**
- * How much a critter looks like him, if it is built like him and wears his
- * red bobble hat or his red and white: the ones a searcher taps by mistake.
- * Zero for anybody else, a snail in his stripes included.
- */
-function likeness(c: Critter): number {
-  const l = c.look
-  if (l.species !== 'beetle' && l.species !== 'ant' && l.species !== 'bee' && l.species !== 'grasshopper') return 0
-  const hat = l.hat === 'bobble' && l.hatColour === RED
-  const shell = l.body === RED && l.trim === WHITE
-  if (!hat && !shell) return 0
-  return (hat ? 2 : 0) + (shell ? 2 : 0) + (l.pattern === 'stripes' ? 1 : 0) + (l.glasses === 'round' ? 1 : 0)
 }
 
 /**
@@ -204,21 +188,21 @@ function plan(scene: Scene, first: boolean, w: number, h: number): Stop[] {
   }
 
   // Now and then, a wrong tap on the way: somebody near the path who shares
-  // enough of his look, whose face shows, and who is far enough off that
-  // tapping him cannot count as a find.
+  // two of the wanted bug's three looks (shell, hat, glasses), whose face
+  // shows, and who is far enough off that tapping him cannot count as a find.
   if (!first && Math.random() < 0.5) {
     const len2 = dx * dx + dy * dy || 1
     let pick: { at: Point; along: number; tap: Point; score: number } | null = null
     for (const c of scene.critters) {
       if (c === bug || c.lift > 0) continue
-      const like = likeness(c)
-      if (like === 0) continue
+      const like = likeness(c.look, scene.wanted)
+      if (like < 2) continue
       const f = faceCentre(c)
       const along = clamp(((f.x - start.x) * dx + (f.y - start.y) * dy) / len2, 0, 1)
       if (along < 0.1 || along > 0.85) continue
       const off = apart(f, { x: start.x + dx * along, y: start.y + dy * along })
       if (off > 0.8) continue
-      const score = off - like * 0.08 + Math.random() * 0.3
+      const score = off - like * 0.16 + Math.random() * 0.3
       if (pick && score >= pick.score) continue
       const at = inside(f.x + rand(-0.12, 0.12) * vw, f.y + rand(-0.1, 0.1) * vh)
       if (seen(at) || tapFindsTarget(scene, f.x, f.y) || faceHiddenBy(c, scene.items).length > 0) continue
@@ -430,7 +414,8 @@ export function makeSim(): Sim<Run> {
       s.game = setAspect(s.game, h / w)
       return s
     },
-    warmup: STILL,
+    // The still: the picnic, with its watermelon, cupcake and critters everywhere.
+    poster: { seed: 3, at: 6 },
     hold: 1.2,
   }
 }

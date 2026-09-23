@@ -456,7 +456,8 @@ export function makeSim(): Sim<GameState> {
       m = freshPilot()
       return newRun(w, h)
     },
-    warmup: 6,
+    // The still: the climber mid-maze with three chasers about it and a trail of crumbs.
+    poster: { seed: 2, at: 32 },
     hold: 1,
   }
 }

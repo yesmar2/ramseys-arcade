@@ -1,4 +1,5 @@
 import { getLastPlayerName } from '../../lib/leaderboard'
+import { isQuiet } from '../../lib/quiet'
 
 /*
  * The fewest strokes a player has taken on each hole, kept on this device
@@ -32,8 +33,9 @@ export function loadHoleBests(): Record<string, number> {
   return mine && typeof mine === 'object' ? { ...mine } : {}
 }
 
-/** Keep `strokes` as the best on `hole` if it is one. Returns whether it was. */
+/** Keep `strokes` as the best on `hole` if it is one. Returns whether it was. A round played in a preview keeps nothing. */
 export function recordHoleBest(hole: string, strokes: number): boolean {
+  if (isQuiet()) return false
   const store = readStore()
   const name = who()
   const mine = store[name] ?? {}

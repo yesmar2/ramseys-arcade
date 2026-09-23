@@ -132,7 +132,8 @@ export function GamePreview({
       owed = 0
       raf = requestAnimationFrame(frame)
     }
-    // A frozen preview still redraws for a new theme or size.
+    // A frozen preview still redraws for a new theme or size, and once the page's fonts are in, in case its
+    // lettering was first drawn in a stand-in.
     const redraw = () => {
       if (!raf) draw(0)
     }
@@ -223,6 +224,7 @@ export function GamePreview({
     document.addEventListener('visibilitychange', resume)
     still.addEventListener('change', resume)
     window.addEventListener(THEME_EVENT, redraw)
+    document.fonts.addEventListener('loadingdone', redraw)
 
     return () => {
       cancelled = true
@@ -238,6 +240,7 @@ export function GamePreview({
       document.removeEventListener('visibilitychange', resume)
       still.removeEventListener('change', resume)
       window.removeEventListener(THEME_EVENT, redraw)
+      document.fonts.removeEventListener('loadingdone', redraw)
       if (raf) cancelAnimationFrame(raf)
     }
   }, [slug, autoplay])

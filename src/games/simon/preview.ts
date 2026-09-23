@@ -72,8 +72,8 @@ export function makeSim(): Sim<GameState> {
     // The pads sit in a square in the middle of a screen wider than it is tall. Take in a little less of the
     // field around them, so they fill the screen and a lit pad, which swells, still clears its edge.
     zoom: 1.2,
-    // Open as the fourth round's sequence plays, most often with one of its pads lit.
-    warmup: 9.1,
+    // The still: a sequence playing, its teal pad lit.
+    poster: { seed: 5, at: 11 },
     // Hold on the wrong pad, still lit.
     hold: 1.6,
   }

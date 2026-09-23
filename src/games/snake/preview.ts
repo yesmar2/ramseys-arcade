@@ -387,9 +387,8 @@ export function makeSim(): Sim<GameState> {
       fit(w, h)
       return s
     },
-    // Twelve seconds in, the snake has some length to it and a chain going,
-    // and the next level is often sketched on the lawn.
-    warmup: 12,
+    // The still: a long snake bent round the stones, fruit ringed, a golden apple and a mouse out.
+    poster: { seed: 2, at: 40 },
     hold: 1.2,
     // Read by the kit at every frame: the zoom for the screen it is drawing.
     get zoom() {

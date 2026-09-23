@@ -1,4 +1,4 @@
-import { quietly } from '../../lib/quiet'
+import { runPreview, type Sim } from '../previewKit'
 import {
   clearPointerDir,
   createInitialState,
@@ -34,7 +34,6 @@ type Pilot = {
   stuckFor: number
   escapeFor: number
   escapeAngle: number
-  overFor: number
 }
 
 const HUNTING = new Set(['alert', 'windup', 'lunge', 'strike'])
@@ -67,7 +66,6 @@ function freshPilot(): Pilot {
     stuckFor: 0,
     escapeFor: 0,
     escapeAngle: 0,
-    overFor: 0,
   }
 }
 
@@ -168,51 +166,25 @@ function pilot(s: GameState, m: Pilot, dt: number): GameState {
   return next
 }
 
-function step(s: GameState, m: Pilot, dt: number, w: number, h: number): GameState {
-  if (s.phase === 'playing') return tick(pilot(s, m, dt), dt)
-  if (s.phase === 'gameover') {
-    m.overFor += dt
-    if (m.overFor > 1.1) {
-      m.overFor = 0
-      return newRun(w, h)
-    }
-  }
-  return tick(s, dt)
-}
-
-export type Preview = {
-  /** Advance the run by `dt` seconds (0 just redraws) and draw it at `w`×`h` CSS pixels. */
-  paint(ctx: CanvasRenderingContext2D, w: number, h: number, dt: number): void
-}
-
-export function createPreview(): Preview {
-  let s: GameState | null = null
-  let size = ''
+export function makeSim(): Sim<GameState> {
   const m = freshPilot()
   return {
-    paint(ctx, w, h, dt) {
-      quietly(() => {
-        const key = `${w}x${h}`
-        if (!s) {
-          s = newRun(w, h)
-          size = key
-          // Open eight seconds into a run, once the water around the fish has filled in.
-          for (let i = 0; i < 240; i++) s = step(s, m, 1 / 30, w, h)
-        } else if (key !== size) {
-          size = key
-          s = sized(resizeState(s, w, h))
-        }
-        // Big steps would let the pilot skip past a lunge; split them.
-        let left = Math.min(dt, 0.25)
-        while (left > 0) {
-          const d = Math.min(left, 1 / 30)
-          s = step(s, m, d, w, h)
-          left -= d
-        }
-        // The world as the game draws it, minus what is written over it for a
-        // player: the how-to line, the combo count and the zone banners.
-        renderGame(ctx, { ...s, elapsed: Math.max(s.elapsed, 9.5), combo: 0, banners: [] }, w, h)
-      })
+    start: (w, h) => {
+      Object.assign(m, freshPilot())
+      return newRun(w, h)
     },
+    step: (s, dt) => tick(s.phase === 'playing' ? pilot(s, m, dt) : s, dt),
+    over: (s) => s.phase === 'gameover',
+    // The world as the game draws it, minus what is written over it for a
+    // player: the how-to line, the combo count and the zone banners.
+    render: (ctx, s, w, h) => renderGame(ctx, { ...s, elapsed: Math.max(s.elapsed, 9.5), combo: 0, banners: [] }, w, h),
+    resize: (s, w, h) => sized(resizeState(s, w, h)),
+    // The still: the fish mid-dash through a school, with a bigger hunter nearby.
+    poster: { seed: 3, at: 17 },
+    hold: 1.1,
   }
+}
+
+export function createPreview() {
+  return runPreview(makeSim())
 }

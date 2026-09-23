@@ -1365,7 +1365,15 @@ function paintGround(g: Ctx, hole: Hole, sk: Skin, ya: number, yb: number) {
 /* ---------- the strips ---------- */
 
 type Strip = { canvas: Layer; r0: number; px: number }
-let strips: { key: string; map: Map<number, Strip> } = { key: '', map: new Map() }
+type StripSet = { key: string; map: Map<number, Strip> }
+/**
+ * The strips painted for the last two holes, skins or scales drawn, the one
+ * drawn most lately first: a hole on a home page cabinet and the same hole on
+ * the banner above it are drawn at two scales, frame after frame, and one set
+ * would have each paint the other's away. They share TILE_BUDGET.
+ */
+let strips: StripSet[] = []
+const STRIP_SETS = 2
 
 function makeLayer(w: number, h: number): Layer | null {
   if (typeof OffscreenCanvas !== 'undefined') return new OffscreenCanvas(w, h)
@@ -1379,8 +1387,13 @@ function makeLayer(w: number, h: number): Layer | null {
 /** The painted strip `i` of a hole at `k` device pixels a unit, painting it if it is not already. */
 function stripFor(hole: Hole, sk: Skin, i: number, k: number): Strip | null {
   const key = `${hole.name}|${sk.key}|${k.toFixed(4)}`
-  if (strips.key !== key) strips = { key, map: new Map() }
-  const known = strips.map.get(i)
+  if (strips[0]?.key !== key) {
+    const kept = strips.findIndex((s) => s.key === key)
+    const set = kept >= 0 ? strips.splice(kept, 1)[0]! : { key, map: new Map<number, Strip>() }
+    strips = [set, ...strips].slice(0, STRIP_SETS)
+  }
+  const set = strips[0]!
+  const known = set.map.get(i)
   if (known) return known
   const r0 = Math.floor((i * TILE - BLEED) * k)
   const r1 = Math.ceil(((i + 1) * TILE + BLEED) * k)
@@ -1391,15 +1404,19 @@ function stripFor(hole: Hole, sk: Skin, i: number, k: number): Strip | null {
   g.setTransform(k, 0, 0, k, 0, -r0)
   paintGround(g, hole, sk, r0 / k, r1 / k)
   const strip: Strip = { canvas, r0, px: W * (r1 - r0) }
-  strips.map.set(i, strip)
+  set.map.set(i, strip)
   let total = 0
-  for (const s of strips.map.values()) total += s.px
-  while (total > TILE_BUDGET && strips.map.size > 1) {
+  for (const each of strips) for (const s of each.map.values()) total += s.px
+  // Over budget, the other set goes first, then this one's strips furthest from this one.
+  while (total > TILE_BUDGET && strips.length > 1) {
+    for (const s of strips.pop()!.map.values()) total -= s.px
+  }
+  while (total > TILE_BUDGET && set.map.size > 1) {
     let far = i
-    for (const j of strips.map.keys()) if (Math.abs(j - i) > Math.abs(far - i)) far = j
+    for (const j of set.map.keys()) if (Math.abs(j - i) > Math.abs(far - i)) far = j
     if (far === i) break
-    total -= strips.map.get(far)!.px
-    strips.map.delete(far)
+    total -= set.map.get(far)!.px
+    set.map.delete(far)
   }
   return strip
 }
@@ -2550,7 +2567,7 @@ export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, w: n
 
 /** The painted strips for a hole, dropped: for a test that wants to time the painting, or a theme change mid-hole. */
 export function forgetPaint() {
-  strips = { key: '', map: new Map() }
+  strips = []
 }
 
 /** The steps along the edge that each kind of rail sets its details at. */

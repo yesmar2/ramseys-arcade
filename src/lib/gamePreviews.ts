@@ -26,6 +26,7 @@ export const GAME_PREVIEWS: Record<string, () => Promise<{ createPreview(): Game
   patriot: () => import('../games/patriot/preview'),
   pellets: () => import('../games/pellets/preview'),
   pop: () => import('../games/whack/preview'),
+  putt: () => import('../games/putt/preview'),
   simon: () => import('../games/simon/preview'),
   snake: () => import('../games/snake/preview'),
   stacker: () => import('../games/stacker/preview'),

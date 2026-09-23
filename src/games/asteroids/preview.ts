@@ -559,8 +559,10 @@ export function makeSim(): Sim<GameState> {
       p.shipY = next.ship.y
       return next
     },
-    // Open a few seconds in, with rocks already broken and the ship at work.
-    warmup: 5,
+    // The still: half a minute into a run, the ship firing into a breaking rock, cratered rocks all round.
+    poster: { seed: 1, at: 32 },
+    // Its renderer times its twinkles and pulses by the page's clock; the run's own keeps the still the same.
+    runClock: true,
     // Long enough for the last ship to finish coming apart.
     hold: 1.6,
     zoom: ZOOM,

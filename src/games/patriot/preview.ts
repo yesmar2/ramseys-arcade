@@ -527,8 +527,8 @@ export function makeSim(): Sim<GameState> {
       p.camX *= kx
       return next
     },
-    // Open with the wave's first missiles well down the sky and the first shots going up.
-    warmup: 6,
+    // The still: a sky full of trails and planes, a blast going off over the whole skyline.
+    poster: { seed: 3, at: 9 },
     // The last city's fall plays out in the game itself; this is a moment on what it leaves.
     hold: 1.4,
     zoom: ZOOM,
