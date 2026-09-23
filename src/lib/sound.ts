@@ -7,6 +7,7 @@ import {
   type SoundName,
   type SoundPackId,
 } from './soundPacks'
+import { isQuiet } from './quiet'
 
 export type { SoundName, SoundPackId }
 export { SOUND_PACK_IDS, SOUND_PACK_LABELS }
@@ -301,24 +302,9 @@ if (typeof document !== 'undefined') {
   document.addEventListener('visibilitychange', applyMusicGain)
 }
 
-/*
- * A game playing itself in a home page preview runs the same code that makes
- * noise in play. Anything it does inside `quietly` stays silent, without
- * touching the player's own mute setting.
- */
-let hushed = 0
-
-export function quietly<T>(run: () => T): T {
-  hushed += 1
-  try {
-    return run()
-  } finally {
-    hushed -= 1
-  }
-}
-
 export function sfx(name: SoundName, pitch = 0) {
-  if (muted || hushed > 0) return
+  // A game playing itself in a preview makes no noise; see `quietly`.
+  if (muted || isQuiet()) return
   const audio = getCtx()
   if (!audio || !master) return
   if (audio.state === 'suspended') void audio.resume()

@@ -5,6 +5,9 @@ import { THEME_EVENT } from '../lib/theme'
 /** Frames a second for a preview: plenty for a tile, and half the work of a full game. */
 const FPS = 30
 
+/** The most a preview's opening may take in one turn before it gives the page back. */
+const WARM_SLICE_MS = 8
+
 /*
  * On a screen with no hover, the preview nearest the middle of the screen is
  * the one that plays, like a video in a feed. Every preview inside the middle
@@ -27,6 +30,37 @@ function pickCentred() {
     }
   }
   for (const c of inBand) c.play(c === best)
+}
+
+/*
+ * A wall of previews comes into view together, and each one's first frame
+ * means loading its game and playing a few seconds of it. They take turns in
+ * the browser's idle time, one at a time, so scrolling onto the wall never
+ * stalls for all of them at once.
+ */
+const turns: Array<() => void> = []
+let turning = false
+
+function inTurn(job: () => void) {
+  turns.push(job)
+  nextTurn()
+}
+
+function nextTurn() {
+  if (turning) return
+  const job = turns.shift()
+  if (!job) return
+  turning = true
+  const run = () => {
+    try {
+      job()
+    } finally {
+      turning = false
+      nextTurn()
+    }
+  }
+  if (typeof window.requestIdleCallback === 'function') window.requestIdleCallback(run, { timeout: 1000 })
+  else window.setTimeout(run, 30)
 }
 
 /**
@@ -52,6 +86,7 @@ export function GamePreview({ slug, className }: { slug: string; className?: str
 
     let cancelled = false
     let preview: GamePreviewRun | null = null
+    let loading = false
     let near = false
     let hovered = false
     let focused = false
@@ -101,14 +136,26 @@ export function GamePreview({ slug, className }: { slug: string; className?: str
     const nearby = new IntersectionObserver(
       (entries) => {
         near = entries.some((e) => e.isIntersecting)
-        if (near && !preview) {
+        if (near && !preview && !loading) {
+          loading = true
           load()
             .then((mod) => {
-              if (cancelled) return
-              preview = mod.createPreview()
-              draw(0)
-              setReady(true)
-              resume()
+              const run = mod.createPreview()
+              // The opening seconds are played a slice per turn, so no one turn runs long.
+              const job = () => {
+                if (cancelled) return
+                const w = canvas.clientWidth
+                const h = canvas.clientHeight
+                if (run.warm && w > 0 && h > 0 && !run.warm(w, h, WARM_SLICE_MS)) {
+                  inTurn(job)
+                  return
+                }
+                preview = run
+                draw(0)
+                setReady(true)
+                resume()
+              }
+              inTurn(job)
             })
             .catch(() => {
               /* no preview; the thumb underneath stays */

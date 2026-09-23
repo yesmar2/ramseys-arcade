@@ -1,6 +1,7 @@
 import { getPersonalBest } from '../../lib/personalBest'
 import { playHeader } from '../playHeader'
 import { haptic } from '../../lib/haptics'
+import { isQuiet } from '../../lib/quiet'
 import { sfx } from '../../lib/sound'
 
 export type Dir = 'up' | 'down' | 'left' | 'right'
@@ -475,6 +476,8 @@ export function loadWallet(): number {
 }
 
 function saveWallet(n: number) {
+  // Coins picked up by the home page preview playing itself are not the player's to bank.
+  if (isQuiet()) return
   try {
     localStorage.setItem(WALLET_KEY, String(Math.max(0, Math.floor(n))))
   } catch {

@@ -1,4 +1,4 @@
-import { quietly } from '../../lib/sound'
+import { quietly } from '../../lib/quiet'
 import {
   clearPointerDir,
   createInitialState,

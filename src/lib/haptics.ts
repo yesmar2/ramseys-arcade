@@ -13,6 +13,7 @@
  */
 
 import { detectDeviceType } from './device'
+import { isQuiet } from './quiet'
 
 const OFF_KEY = 'skermix-haptics-off'
 
@@ -80,7 +81,8 @@ export function setHapticsOff(next: boolean) {
  * ask for this on any input without knowing what it is running on.
  */
 export function haptic(name: HapticName) {
-  if (off || !hapticsSupported()) return
+  // A game playing itself in a preview never buzzes the phone; see `quietly`.
+  if (off || isQuiet() || !hapticsSupported()) return
   try {
     navigator.vibrate(PATTERNS[name] as number | number[])
   } catch {
