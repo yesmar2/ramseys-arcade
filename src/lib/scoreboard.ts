@@ -78,8 +78,8 @@ const MONTH_NAMES = [
 
 let zoneDate: Intl.DateTimeFormat | null = null
 
-/** Today where the boards keep time, as a UTC midnight to count calendar days from. */
-function boardToday(now: number): number {
+/** The day a moment falls on where the boards keep time, as a UTC midnight to count calendar days from. */
+export function boardToday(now: number): number {
   zoneDate ??= new Intl.DateTimeFormat('en-US', {
     timeZone: BOARD_TZ,
     year: 'numeric',

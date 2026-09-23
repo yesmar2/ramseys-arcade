@@ -62,10 +62,14 @@ export function recordBrief(record: RecordLike, score: number): string {
   return score.toLocaleString()
 }
 
-/** The difference between two results, in the record's terms: 2.5s, 1 day, 3. */
+/**
+ * The difference between two results, in the record's terms: 2.5s, 1 day, 3.
+ * Times are taken from the tenths on show, so 3:58.9 against 3:51.2 reads
+ * 7.7s, whatever the milliseconds underneath make it.
+ */
 export function recordGap(record: RecordLike, a: number, b: number): string {
+  if (record.unit === 'ms') return recordTime(Math.abs(Math.round(a / 100) - Math.round(b / 100)) * 100)
   const gap = Math.abs(a - b)
-  if (record.unit === 'ms') return recordTime(gap)
   const words = COUNT_WORDS[record.id]
   if (words) return `${gap.toLocaleString()} ${gap === 1 ? words[0] : words[1]}`
   return gap.toLocaleString()
@@ -121,6 +125,12 @@ export type RecordGroup = {
   records: RecordSummary[]
   /** A shorter label for a record inside its group: Wave 9, not Wave 9 clear. */
   short: (label: string) => string
+}
+
+/** A record's label among its neighbours, where they say the rest: Wave 9, not Wave 9 clear. */
+export function recordShortLabel(game: string, record: RecordLike & { label: string }): string {
+  const clock = recordKind(record) === 'clock' ? CLOCKS[game] : undefined
+  return clock ? clock.short(record.label) : record.label
 }
 
 /** A book's records in its three groups: streaks, best in a run, then the clock. */

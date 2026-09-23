@@ -60,6 +60,15 @@ export type RecordBoardResult = {
   you: YouEntry | null
   /** Players on this board, loaded or not. Absent on older API builds. */
   total?: number
+  /**
+   * Every run that broke the record, oldest first: the newest hundred. Sent
+   * with the first page only; absent from older API builds.
+   */
+  progression?: LeaderboardEntry[]
+  /** How many times it was broken in all, the first setting included. */
+  progressionTotal?: number
+  /** The asker's own best, each time it moved, oldest first. */
+  youProgression?: { score: number; at: number }[]
 }
 
 function resolveApiBase() {
@@ -398,6 +407,9 @@ export async function fetchRecordBoard(
     you: data.you ?? null,
     // An API that predates paging sends no total: what came back is all of it.
     total: data.total ?? (page?.offset ?? 0) + (data.entries?.length ?? 0),
+    progression: data.progression,
+    progressionTotal: data.progressionTotal,
+    youProgression: data.youProgression,
   }
 }
 
