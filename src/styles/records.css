@@ -792,8 +792,37 @@ html[data-theme="dark"] .rbk-book__value b {
 
 .rcd-chart__plot {
   --dot: 1.75rem;
+  --step: 2.9rem;
   position: absolute;
   inset: 3.6rem 7rem 2.8rem 1.75rem;
+}
+
+/*
+ * A narrow card's chart: smaller marks, and only the standing record's label
+ * and yours (RecordView draws no others). Its sizes are mirrored in
+ * RecordView's CHART_SIZES, which places the labels.
+ */
+.rcd-chart--compact {
+  height: 15.5rem;
+}
+
+.rcd-chart--compact .rcd-chart__plot {
+  --dot: 1.2rem;
+  --step: 2.5rem;
+  inset: 3rem 4.2rem 2.4rem 1rem;
+}
+
+.rcd-chart--compact .rcd-chart__label b {
+  font-size: 0.78rem;
+}
+
+.rcd-chart--compact .rcd-chart__label span {
+  font-size: 0.6rem;
+}
+
+.rcd-chart--compact .rcd-chart__axis {
+  left: calc(100% + 0.5rem);
+  font-size: 0.68rem;
 }
 
 .rcd-chart__grid {
@@ -882,13 +911,13 @@ html[data-theme="dark"] .rbk-book__value b {
   border-radius: 0.45rem;
   /* A chip of the card behind it, so a label stays legible where it crosses another step's mark. */
   background: color-mix(in srgb, var(--surface) 86%, transparent);
-  transform: translate(var(--lx), calc(var(--dot) / -2 - 0.3rem - var(--tier) * 2.3rem));
+  transform: translate(var(--lx), calc(var(--dot) / -2 - 0.3rem - var(--tier) * var(--step)));
   white-space: nowrap;
   pointer-events: none;
 }
 
 .rcd-chart__label--below {
-  transform: translate(var(--lx), calc(100% + var(--dot) / 2 + 0.3rem + var(--tier) * 2.3rem));
+  transform: translate(var(--lx), calc(100% + var(--dot) / 2 + 0.3rem + var(--tier) * var(--step)));
 }
 
 .rcd-chart__label--start {
@@ -1222,33 +1251,6 @@ html[data-theme="dark"] .rbk-book__value b {
 
   .rcd-story {
     padding: 1.2rem 1rem 1rem;
-  }
-
-  .rcd-chart {
-    height: 15.5rem;
-  }
-
-  .rcd-chart__plot {
-    --dot: 1.2rem;
-    inset: 3rem 4.2rem 2.4rem 1rem;
-  }
-
-  /* No room to name every step: the standing record and yours; the list below has the rest. */
-  .rcd-chart__label:not(.rcd-chart__label--key) {
-    display: none;
-  }
-
-  .rcd-chart__label b {
-    font-size: 0.78rem;
-  }
-
-  .rcd-chart__label span {
-    font-size: 0.6rem;
-  }
-
-  .rcd-chart__axis {
-    left: calc(100% + 0.5rem);
-    font-size: 0.68rem;
   }
 
   .rcd-row .gb-row__link {

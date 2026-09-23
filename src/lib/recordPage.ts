@@ -335,10 +335,6 @@ export type StoryDot = {
   key: string
   left: number
   bottom: number
-  /** The label goes under the dot, clear of the top edge or of a neighbour's label. */
-  below: boolean
-  /** How many labels out from the dot, when a neighbour's already sits on that side. */
-  tier: number
   name: string
   avatarId?: string
   value: string
@@ -422,33 +418,16 @@ export function recordStory(
     return segs
   }
 
-  // Labels go above a dot, below one near the top; a crowding neighbour sends one to the other side when
-  // there's room there (not into the dates along the bottom), else a tier further out on the same side.
-  const dots: StoryDot[] = []
-  progression.forEach((m, i) => {
-    const left = x(m.at)
-    const bottom = y(m.score)
-    let below = bottom > 72
-    let tier = 0
-    const prev = dots[dots.length - 1]
-    if (prev && left - prev.left < 9 && prev.below === below) {
-      const room = below ? bottom < 72 : bottom > 30
-      if (room) below = !below
-      else tier = prev.tier + 1
-    }
-    dots.push({
-      key: m.id,
-      left,
-      bottom,
-      below,
-      tier,
-      name: m.name,
-      avatarId: m.avatarId,
-      value: recordValue(record, m.score),
-      mine: Boolean(me) && m.name === me,
-      current: i === progression.length - 1,
-    })
-  })
+  const dots: StoryDot[] = progression.map((m, i) => ({
+    key: m.id,
+    left: x(m.at),
+    bottom: y(m.score),
+    name: m.name,
+    avatarId: m.avatarId,
+    value: recordValue(record, m.score),
+    mine: Boolean(me) && m.name === me,
+    current: i === progression.length - 1,
+  }))
 
   const rows: StoryRow[] = progression.map((m, i) => {
     const prev = progression[i - 1]
@@ -498,6 +477,91 @@ export function recordStory(
     rows: rows.reverse(),
     summary: progression.map((m) => `${m.name}, ${recordValue(record, m.score)}, on ${recordDay(m.at)}`).join('; '),
   }
+}
+
+/** Where a step's label sits: above or below its mark, and how many label-heights further out. */
+export type LabelSpot = { below: boolean; tier: number }
+
+/** The chart as drawn, in pixels: the plot, the room around it, and the sizes of what goes in it. */
+export type ChartMetrics = {
+  width: number
+  height: number
+  /** How far above the plot a label may reach. */
+  headroom: number
+  /** How far below it, before the dates along the bottom. */
+  footroom: number
+  mark: number
+  gap: number
+  step: number
+  labelHeight: number
+  /** Rough widths of a character of a label's value and of its name. */
+  valueChar: number
+  nameChar: number
+  pad: number
+}
+
+/**
+ * Where each shown step's label goes. The standing record's and the viewer's
+ * are placed first; each takes the first place, above or below its mark and
+ * then a tier further out, that stays in the chart and clears every mark and
+ * every label placed before it. Those two always get one, the least crowded if
+ * none is clear; any other step without clear room goes unlabelled, since the
+ * list under the chart names every step. A step with a neighbour above it at
+ * about the same moment labels below, and the neighbour above, so the two
+ * don't meet in the middle.
+ */
+export function placeStoryLabels(
+  dots: StoryDot[],
+  m: ChartMetrics,
+  shown: (dot: StoryDot) => boolean = () => true,
+): Map<string, LabelSpot> {
+  type Box = { x0: number; x1: number; y0: number; y1: number }
+  const margin = 5
+  const clash = (a: Box, b: Box) =>
+    a.x0 < b.x1 + margin && b.x0 < a.x1 + margin && a.y0 < b.y1 + margin && b.y0 < a.y1 + margin
+  const at = dots.map((d) => ({ cx: (d.left / 100) * m.width, cy: (d.bottom / 100) * m.height }))
+  const marks: Box[] = at.map(({ cx, cy }) => ({
+    x0: cx - m.mark / 2,
+    x1: cx + m.mark / 2,
+    y0: cy - m.mark / 2,
+    y1: cy + m.mark / 2,
+  }))
+  const placed: Box[] = []
+  const spots = new Map<string, LabelSpot>()
+  const key = (dot: StoryDot) => dot.current || dot.mine
+  const order = dots.map((dot, i) => ({ dot, i })).sort((a, b) => Number(key(b.dot)) - Number(key(a.dot)) || a.i - b.i)
+  order.forEach(({ dot, i }) => {
+    if (!shown(dot)) return
+    const { cx, cy } = at[i]
+    const width = Math.max(dot.value.length * m.valueChar, dot.name.length * m.nameChar) + m.pad
+    const x0 = dot.left < 10 ? cx - m.mark / 2 : dot.left > 90 ? cx + m.mark / 2 - width : cx - width / 2
+    const box = (below: boolean, tier: number): Box => {
+      const reach = m.mark / 2 + m.gap + tier * m.step
+      const y0 = below ? cy - reach - m.labelHeight : cy + reach
+      return { x0, x1: x0 + width, y0, y1: y0 + m.labelHeight }
+    }
+    const beside = at.filter((o, j) => j !== i && Math.abs(o.cx - cx) < width / 2 + m.mark)
+    const higher = beside.some((o) => o.cy > cy)
+    const lower = beside.some((o) => o.cy < cy)
+    const first = cy > m.height * 0.72 || (higher && !lower)
+    const tries = [0, 1, 2, 3]
+      .flatMap((tier) => [
+        { below: first, tier },
+        { below: !first, tier },
+      ])
+      .map((t) => ({ ...t, box: box(t.below, t.tier) }))
+      .filter((t) => t.box.y0 >= -m.footroom && t.box.y1 <= m.height + m.headroom)
+      .map((t) => ({
+        ...t,
+        hits: placed.filter((p) => clash(p, t.box)).length + marks.filter((k, j) => j !== i && clash(k, t.box)).length,
+      }))
+    const clear = tries.find((t) => t.hits === 0)
+    if (!clear && !key(dot)) return
+    const spot = clear ?? [...tries].sort((a, b) => a.hits - b.hits)[0] ?? { below: first, tier: 0, box: box(first, 0) }
+    placed.push(spot.box)
+    spots.set(dot.key, { below: spot.below, tier: spot.tier })
+  })
+  return spots
 }
 
 /* ---------- the field, and the book around it ---------- */

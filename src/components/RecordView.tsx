@@ -1,4 +1,4 @@
-import { Fragment, useState, type CSSProperties, type ReactNode } from 'react'
+import { Fragment, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from 'react'
 import { deviceRequirementLabel, gamePlayableOn, getGame } from '../data/games'
 import { useRecordPage } from '../hooks/useRecordPage'
 import { gamePlayHref, rankHref, recordHref, recordsHref, recordsIndexHref } from '../hooks/useHashRoute'
@@ -19,6 +19,7 @@ import { recordGap, recordShortLabel, recordValue } from '../lib/recordBook'
 import {
   nearbyRecords,
   onTheBoard,
+  placeStoryLabels,
   recordDay,
   recordField,
   recordHeadline,
@@ -432,7 +433,57 @@ function Seg({ seg, yours = false }: { seg: StorySeg; yours?: boolean }) {
   )
 }
 
+/*
+ * The chart's sizes, matching records.css: wide, and compact for a narrow card,
+ * where the marks shrink and only the standing record's label and yours are
+ * drawn (the list below names every step). Insets are top, right, bottom, left.
+ */
+const CHART_SIZES = {
+  wide: { height: 320, inset: [57.6, 112, 44.8, 28], mark: 28, step: 46.4, labelHeight: 42, valueChar: 9, nameChar: 8.6, pad: 12 },
+  compact: { height: 248, inset: [48, 67.2, 38.4, 16], mark: 19.2, step: 40, labelHeight: 34, valueChar: 7.8, nameChar: 7.4, pad: 11 },
+} as const
+
+/** Below this width the chart goes compact. */
+const COMPACT_CHART = 560
+
+/** An element's width, kept current as it resizes; null until it has one. */
+function useWidth(ref: RefObject<HTMLElement | null>): number | null {
+  const [width, setWidth] = useState<number | null>(null)
+  useLayoutEffect(() => {
+    const el = ref.current
+    if (!el) return
+    setWidth(el.getBoundingClientRect().width)
+    if (typeof ResizeObserver === 'undefined') return
+    const observer = new ResizeObserver(([entry]) => setWidth(entry.contentRect.width))
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [ref])
+  return width
+}
+
 function StoryCard({ story }: { story: RecordStory }) {
+  const chartRef = useRef<HTMLDivElement>(null)
+  const chartWidth = useWidth(chartRef) ?? 1000
+  const compact = chartWidth < COMPACT_CHART
+  const size = compact ? CHART_SIZES.compact : CHART_SIZES.wide
+  const [top, right, bottom, left] = size.inset
+  const spots = placeStoryLabels(
+    story.dots,
+    {
+      width: chartWidth - left - right,
+      height: size.height - top - bottom,
+      headroom: top - 6,
+      footroom: 12,
+      mark: size.mark,
+      gap: 4.8,
+      step: size.step,
+      labelHeight: size.labelHeight,
+      valueChar: size.valueChar,
+      nameChar: size.nameChar,
+      pad: size.pad,
+    },
+    compact ? (d) => d.current || d.mine : undefined,
+  )
   return (
     <section className="sb-card rcd-story" aria-labelledby="rcd-story-title">
       <div className="rcd-story__head">
@@ -442,7 +493,7 @@ function StoryCard({ story }: { story: RecordStory }) {
         <span className="rcd-story__chip">{story.chip}</span>
       </div>
       <p className="gb-card__sub rcd-story__sub">{story.sub}</p>
-      <div className="rcd-chart" aria-hidden="true">
+      <div ref={chartRef} className={`rcd-chart${compact ? ' rcd-chart--compact' : ''}`} aria-hidden="true">
         <div className="rcd-chart__plot">
           {story.flat ? (
             <span className="rcd-chart__grid" style={{ bottom: '50%' }} />
@@ -464,25 +515,30 @@ function StoryCard({ story }: { story: RecordStory }) {
           {story.segs.map((s) => (
             <Seg key={s.key} seg={s} />
           ))}
-          {story.dots.map((d) => (
-            <Fragment key={d.key}>
-              <span
-                className={`rcd-chart__dot${d.current ? ' rcd-chart__dot--now' : ''}`}
-                style={{ left: `${d.left}%`, bottom: `${d.bottom}%` }}
-              >
-                <PlayerMark name={d.name} avatarId={d.avatarId} className="rcd-chart__mark" />
-              </span>
-              <span
-                className={`rcd-chart__label${d.below ? ' rcd-chart__label--below' : ''}${d.mine ? ' rcd-chart__label--you' : ''}${
-                  d.current || d.mine ? ' rcd-chart__label--key' : ''
-                }${d.left < 10 ? ' rcd-chart__label--start' : d.left > 90 ? ' rcd-chart__label--end' : ''}`}
-                style={{ left: `${d.left}%`, bottom: `${d.bottom}%`, '--tier': d.tier } as CSSProperties}
-              >
-                <b>{d.value}</b>
-                <span>{d.name}</span>
-              </span>
-            </Fragment>
-          ))}
+          {story.dots.map((d) => {
+            const spot = spots.get(d.key)
+            return (
+              <Fragment key={d.key}>
+                <span
+                  className={`rcd-chart__dot${d.current ? ' rcd-chart__dot--now' : ''}`}
+                  style={{ left: `${d.left}%`, bottom: `${d.bottom}%` }}
+                >
+                  <PlayerMark name={d.name} avatarId={d.avatarId} className="rcd-chart__mark" />
+                </span>
+                {spot ? (
+                  <span
+                    className={`rcd-chart__label${spot.below ? ' rcd-chart__label--below' : ''}${d.mine ? ' rcd-chart__label--you' : ''}${
+                      d.left < 10 ? ' rcd-chart__label--start' : d.left > 90 ? ' rcd-chart__label--end' : ''
+                    }`}
+                    style={{ left: `${d.left}%`, bottom: `${d.bottom}%`, '--tier': spot.tier } as CSSProperties}
+                  >
+                    <b>{d.value}</b>
+                    <span>{d.name}</span>
+                  </span>
+                ) : null}
+              </Fragment>
+            )
+          })}
           <span className="rcd-chart__when">{recordDay(story.start)}</span>
           <span className="rcd-chart__when rcd-chart__when--end">Today</span>
         </div>
