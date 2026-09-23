@@ -1423,6 +1423,11 @@ html[data-theme='dark'] .pbest__flag--ten {
   border: 1px solid rgba(var(--ink-rgb), 0.08);
 }
 
+.pshelf__plinth--lit {
+  background: color-mix(in srgb, var(--tr-tone) 14%, var(--surface));
+  border-color: color-mix(in srgb, var(--tr-tone) 34%, transparent);
+}
+
 .pshelf__plinth--empty {
   border-style: dashed;
   border-color: rgba(var(--ink-rgb), 0.2);

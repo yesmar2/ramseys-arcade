@@ -1,3 +1,5 @@
+import '../styles/trophies.css'
+
 export type TrophyMarkProps = {
   count: number
   podium?: number
@@ -5,6 +7,7 @@ export type TrophyMarkProps = {
   className?: string
 }
 
+/** How many trophies a player has, beside their name: the trophies' own cup, small, and the count. */
 export function TrophyMark({
   count,
   podium = 0,
@@ -17,6 +20,7 @@ export function TrophyMark({
     podium > 0
       ? `${count} ${count === 1 ? 'trophy' : 'trophies'} · ${podium} podium`
       : `${count} ${count === 1 ? 'trophy' : 'trophies'}`
+  const px = size === 'sm' ? 13 : 15
 
   return (
     <span
@@ -24,14 +28,10 @@ export function TrophyMark({
       title={label}
       aria-label={label}
     >
-      <svg viewBox="0 0 16 18" width={size === 'sm' ? 12 : 14} height={size === 'sm' ? 14 : 16} aria-hidden="true">
-        <path
-          className="trophy-mark__cup"
-          d="M3.5 1.5h9v4.5c0 2.4-1.6 4.5-4 5.2-2.4-.7-4-2.8-4-5.2V1.5Z"
-        />
-        <path className="trophy-mark__handle" d="M3.5 2.8H2.2a1.4 1.4 0 0 0 0 2.8H3.5" />
-        <path className="trophy-mark__handle" d="M12.5 2.8h1.3a1.4 1.4 0 0 1 0 2.8h-1.3" />
-        <path className="trophy-mark__stem" d="M7 11.2h2v2.2H6.4l-.5 2.3h4.1l-.5-2.3H7z" />
+      <svg viewBox="4 4 40 40" width={px} height={px} aria-hidden="true">
+        <path className="trophy-mark__fill" d="M15 8h18v9a9 9 0 0 1-18 0Z" />
+        <path d="M15 11H9v3a6 6 0 0 0 6 6M33 11h6v3a6 6 0 0 1-6 6" />
+        <path d="M24 26v7M17 40h14M19 40l1.5-7h7l1.5 7" />
       </svg>
       <span className="trophy-mark__count">{count}</span>
     </span>

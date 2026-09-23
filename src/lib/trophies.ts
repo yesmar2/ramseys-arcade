@@ -10,6 +10,20 @@ export type TrophySummary = {
 
 export type TrophyCount = Pick<TrophySummary, 'total' | 'podium'>
 
+export type MetalTone = 'gold' | 'silver' | 'bronze'
+
+/** The colour a trophy is drawn in: its metal on a podium, else teal for a week's top ten and violet for a month's. */
+export type TrophyTone = MetalTone | 'week' | 'month'
+
+export function metalTone(rank: number): MetalTone {
+  return rank === 2 ? 'silver' : rank === 3 ? 'bronze' : 'gold'
+}
+
+export function trophyTone(period: TrophyPeriod, rank: number): TrophyTone {
+  if (period === 'event' || rank <= 3) return metalTone(rank)
+  return period === 'monthly' ? 'month' : 'week'
+}
+
 export type TrophyAward = {
   id: string
   period: TrophyPeriod

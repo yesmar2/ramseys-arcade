@@ -1,0 +1,125 @@
+/*
+ * Trophies: line art in the house style (an outline and a faint fill of the
+ * same colour), each in its tone. The tones are the arcade's metals, plus
+ * teal for a week's top ten and violet for a month's; the dark theme lifts
+ * them so they read on the dark surfaces.
+ */
+
+:root {
+  --tr-gold: #b8860b;
+  --tr-silver: #5f6f7c;
+  --tr-bronze: #b0632a;
+  --tr-week: #15806f;
+  --tr-month: #7a4fd0;
+}
+
+html[data-theme='dark'] {
+  --tr-gold: #f5c542;
+  --tr-silver: #c4d0d9;
+  --tr-bronze: #e0955c;
+  --tr-week: #45d3ba;
+  --tr-month: #b99cff;
+}
+
+.trophy-tone--gold {
+  --tr-tone: var(--tr-gold);
+}
+
+.trophy-tone--silver {
+  --tr-tone: var(--tr-silver);
+}
+
+.trophy-tone--bronze {
+  --tr-tone: var(--tr-bronze);
+}
+
+.trophy-tone--week {
+  --tr-tone: var(--tr-week);
+}
+
+.trophy-tone--month {
+  --tr-tone: var(--tr-month);
+}
+
+.trophy-art {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
+  color: var(--tr-tone, var(--tr-gold));
+}
+
+.trophy-art svg {
+  display: block;
+  overflow: visible;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.2px;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Small, a line has to be heavier to hold its shape. */
+.trophy-art--sm svg {
+  stroke-width: 3.4px;
+}
+
+.trophy-art__fill {
+  fill: currentColor;
+  fill-opacity: 0.2;
+}
+
+.trophy-art__fill--soft {
+  fill-opacity: 0.16;
+}
+
+.trophy-art__num {
+  fill: currentColor;
+  stroke: none;
+  font-family: var(--font-display);
+  font-weight: 800;
+}
+
+/* ---------- the count beside a name: a small cup and a number ---------- */
+
+.trophy-mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  flex: none;
+  color: var(--tr-gold);
+}
+
+.trophy-mark--sm {
+  gap: 0.14rem;
+}
+
+.trophy-mark svg {
+  display: block;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 4px;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.trophy-mark__fill {
+  fill: currentColor;
+  fill-opacity: 0.25;
+}
+
+.trophy-mark__count {
+  font-size: 0.68rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+
+.trophy-mark--sm .trophy-mark__count {
+  font-size: 0.62rem;
+}
+
+.lb-row__name .trophy-mark {
+  margin-left: 0.1rem;
+}

@@ -1,195 +1,123 @@
-export type MetalTone = 'gold' | 'silver' | 'bronze'
+import type { ReactNode } from 'react'
+import { metalTone, type MetalTone, type TrophyTone } from '../lib/trophies'
+import '../styles/trophies.css'
+
+/*
+ * The arcade's trophies, drawn the way the house draws its games: an outline
+ * with a faint fill of its own colour, on a 48 grid. An event's winner gets a
+ * cup; a month's podium a cup with its place on it; a week's podium a medal;
+ * the rest of a top ten a rosette with its place; and the all-time podium,
+ * which only the boards show, a star. Colour comes from the tone class
+ * (trophies.css), so each one follows the theme.
+ */
+
+export type { MetalTone }
 export type RibbonTone = 'weekly' | 'monthly'
 export type TrophyArtSize = 'sm' | 'md' | 'lg'
 
-const ART_SIZE: Record<TrophyArtSize, { width: number; height: number }> = {
-  sm: { width: 22, height: 25 },
-  md: { width: 36, height: 40 },
-  lg: { width: 64, height: 72 },
+const PX: Record<TrophyArtSize, number> = { sm: 26, md: 44, lg: 64 }
+
+const PLACE: Record<MetalTone, number> = { gold: 1, silver: 2, bronze: 3 }
+
+function Art({ tone, size, children }: { tone: TrophyTone; size: TrophyArtSize; children: ReactNode }) {
+  const px = PX[size]
+  return (
+    <span className={`trophy-art trophy-art--${size} trophy-tone--${tone}`} aria-hidden="true">
+      <svg viewBox="0 0 48 48" width={px} height={px} focusable="false">
+        {children}
+      </svg>
+    </span>
+  )
 }
 
-const COMPACT_MEDAL_SIZE: Record<'sm' | 'md', { width: number; height: number }> = {
-  sm: { width: 24, height: 26 },
-  md: { width: 36, height: 40 },
+/** A place written on a trophy; too small to read at list size, so left off there unless it is the trophy's main mark. */
+function Numeral({ n, x = 24, y, size }: { n: number; x?: number; y: number; size: number }) {
+  return (
+    <text className="trophy-art__num" x={x} y={y} textAnchor="middle" fontSize={size}>
+      {n}
+    </text>
+  )
 }
 
-const ALL_TIME_STAR_SIZE: Record<'sm' | 'md', { width: number; height: number }> = {
-  sm: { width: 26, height: 26 },
-  md: { width: 38, height: 38 },
+function CupShape({ place }: { place?: number }) {
+  return (
+    <>
+      <path className="trophy-art__fill" d="M15 8h18v9a9 9 0 0 1-18 0Z" />
+      <path d="M15 11H9v3a6 6 0 0 0 6 6M33 11h6v3a6 6 0 0 1-6 6" />
+      <path d="M24 26v7M17 40h14M19 40l1.5-7h7l1.5 7" />
+      {place ? <Numeral n={place} y={20.6} size={10.5} /> : null}
+    </>
+  )
 }
 
-const RIBBON_SIZE: Record<TrophyArtSize, { width: number; height: number }> = {
-  sm: { width: 14, height: 18 },
-  md: { width: 28, height: 36 },
-  lg: { width: 52, height: 66 },
+/** An event won: the whole cup, no place on it, because first is the only place an event gives one. */
+export function EventCup({ size = 'md' }: { size?: TrophyArtSize }) {
+  return (
+    <Art tone="gold" size={size}>
+      <CupShape />
+    </Art>
+  )
 }
 
-/** Honor ribbon for global #4–10 — weekly blue, monthly violet. */
+/** A month's podium: a cup in its metal, with its place on the bowl where there is room to read it. */
+export function MonthlyTrophyCup({ tone, size = 'md' }: { tone: MetalTone; size?: TrophyArtSize }) {
+  return (
+    <Art tone={tone} size={size}>
+      <CupShape place={size === 'sm' ? undefined : PLACE[tone]} />
+    </Art>
+  )
+}
+
+/** A week's podium: a medal on its strap. Small, the disc grows so its number still reads. */
+export function WeeklyMedal({ rank, size = 'md' }: { rank: number; size?: TrophyArtSize }) {
+  const tone = metalTone(rank)
+  return (
+    <Art tone={tone} size={size}>
+      {size === 'sm' ? (
+        <>
+          <path d="M16 3l5.5 11.5M32 3l-5.5 11.5" />
+          <circle className="trophy-art__fill" cx="24" cy="29" r="15" />
+          <Numeral n={rank} y={35.2} size={17} />
+        </>
+      ) : (
+        <>
+          <path d="M16 5l5 13M32 5l-5 13" />
+          <circle className="trophy-art__fill" cx="24" cy="29" r="12" />
+          <Numeral n={rank} y={33.6} size={13} />
+        </>
+      )}
+    </Art>
+  )
+}
+
+/** The rest of a top ten: a rosette with its place, teal for a week and violet for a month. */
 export function TopTenRibbon({
   tone = 'weekly',
-  size = 'lg',
+  size = 'md',
+  rank,
 }: {
   tone?: RibbonTone
   size?: TrophyArtSize
+  rank?: number
 }) {
-  const dim = RIBBON_SIZE[size]
   return (
-    <span
-      className={`trophy-art trophy-art--${size} trophy-case__ribbon trophy-case__ribbon--${tone}`}
-      aria-hidden="true"
-    >
-      <svg viewBox="0 0 28 36" width={dim.width} height={dim.height} focusable="false">
-        <path
-          className="trophy-case__ribbon-band"
-          d="M5 2h18c1.1 0 2 .9 2 2v7.5H3V4c0-1.1.9-2 2-2Z"
-        />
-        <path
-          className="trophy-case__ribbon-shine"
-          d="M7 3.2h6.5c.4 0 .7.4.55.75L12.2 9.2H6.4c-.35 0-.55-.4-.35-.7L7 3.2Z"
-        />
-        <path
-          className="trophy-case__ribbon-tail"
-          d="M5.2 11.5 9.6 33.2 14 22.8l4.4 10.4 4.4-21.7Z"
-        />
-        <path
-          className="trophy-case__ribbon-notch"
-          d="M14 22.8 9.6 33.2l4.4-4.2 4.4 4.2Z"
-        />
-      </svg>
-    </span>
+    <Art tone={tone === 'monthly' ? 'month' : 'week'} size={size}>
+      <circle className="trophy-art__fill trophy-art__fill--soft" cx="24" cy="19" r="12" />
+      <path d="M17 29l-4 14 6-3 3 5 2-13M31 29l4 14-6-3-3 5-2-13" />
+      {rank ? <Numeral n={rank} y={23.3} size={12} /> : null}
+    </Art>
   )
 }
 
-/** Monthly podium award — a cup. Shapes overlap so the silhouette reads as one piece. */
-export function MonthlyTrophyCup({
-  tone,
-  size = 'lg',
-}: {
-  tone: MetalTone
-  size?: TrophyArtSize
-}) {
-  const dim = ART_SIZE[size]
+/** The all-time podium, on the boards only: a star with its place. */
+export function AllTimeStar({ rank, size = 'sm' }: { rank: number; size?: Extract<TrophyArtSize, 'sm' | 'md'> }) {
   return (
-    <span
-      className={`trophy-art trophy-art--${size} trophy-case__cup trophy-case__cup--${tone}`}
-      aria-hidden="true"
-    >
-      <svg viewBox="0 0 64 72" width={dim.width} height={dim.height} focusable="false">
-        <path
-          className="trophy-case__cup-handle"
-          d="M16.8 16.5c-9 0-11.8 4.6-10 9.2 1.4 3.6 5.4 5.6 10.2 5.8"
-        />
-        <path
-          className="trophy-case__cup-handle"
-          d="M47.2 16.5c9 0 11.8 4.6 10 9.2-1.4 3.6-5.4 5.6-10.2 5.8"
-        />
-        <path
-          className="trophy-case__cup-bowl"
-          d="M16.8 12h30.4v3.8c0 10.2-6.1 18.4-13.7 20.6V42h-3v-5.6C22.9 34.2 16.8 26 16.8 15.8V12Z"
-        />
-        <path
-          className="trophy-case__cup-rim"
-          d="M14.5 8h35a1.6 1.6 0 0 1 1.6 1.6v3.2H12.9V9.6A1.6 1.6 0 0 1 14.5 8Z"
-        />
-        <path
-          className="trophy-case__cup-shine"
-          d="M21.5 14.6h9c.5 0 .85.5.66.96L28 24.4h-8.1c-.5 0-.84-.5-.66-.96L21.5 14.6Z"
-        />
-        <path className="trophy-case__cup-stem" d="M28.6 40h6.8v8h-6.8z" />
-        <path className="trophy-case__cup-knob" d="M25 46.4h14v3.6H25z" />
-        <path className="trophy-case__cup-cone" d="M26 49.2h12l4.5 8.4h-21z" />
-        <path className="trophy-case__cup-base" d="M20 56.4h24v4.4H20z" />
-        <path
-          className="trophy-case__cup-foot"
-          d="M16.4 59.8h31.2a1.6 1.6 0 0 1 1.6 1.6v3.8H14.8v-3.8a1.6 1.6 0 0 1 1.6-1.6Z"
-        />
-      </svg>
-    </span>
-  )
-}
-
-/** Weekly podium award — full neck-ribbon medal (lg) or disk-first badge (sm/md). */
-export function WeeklyMedal({
-  rank,
-  size = 'lg',
-}: {
-  rank: number
-  size?: TrophyArtSize
-}) {
-  const tone: MetalTone =
-    rank === 1 ? 'gold' : rank === 2 ? 'silver' : rank === 3 ? 'bronze' : 'gold'
-  const compact = size === 'sm' || size === 'md'
-  const dim = compact ? COMPACT_MEDAL_SIZE[size] : ART_SIZE[size]
-  return (
-    <span
-      className={`trophy-art trophy-art--${size} trophy-case__medal trophy-case__medal--${tone}`}
-      aria-hidden="true"
-    >
-      {compact ? (
-        <svg viewBox="0 0 40 44" width={dim.width} height={dim.height} focusable="false">
-          <path className="trophy-case__medal-strap" d="M12 2h7.5l-2 14H14Z" />
-          <path
-            className="trophy-case__medal-strap trophy-case__medal-strap--fold"
-            d="M20.5 2H28l-2 14h-5.5Z"
-          />
-          <path
-            className="trophy-case__medal-clasp"
-            d="M11 1h18a1.6 1.6 0 0 1 1.6 1.6V5H9.4V2.6A1.6 1.6 0 0 1 11 1Z"
-          />
-          <circle className="trophy-case__medal-disk" cx="20" cy="28" r="13.2" />
-          <circle className="trophy-case__medal-ring" cx="20" cy="28" r="9.8" />
-          <text className="trophy-case__medal-num" x="20" y="33.2" textAnchor="middle">
-            {rank}
-          </text>
-        </svg>
-      ) : (
-        <svg viewBox="0 0 64 72" width={dim.width} height={dim.height} focusable="false">
-          <path className="trophy-case__medal-strap" d="M23.5 5h17l-3.5 32h-10z" />
-          <path
-            className="trophy-case__medal-strap trophy-case__medal-strap--fold"
-            d="M32 5h8.5L37 37h-5z"
-          />
-          <path
-            className="trophy-case__medal-clasp"
-            d="M22 3h20a1.8 1.8 0 0 1 1.8 1.8v3.4H20.2V4.8A1.8 1.8 0 0 1 22 3Z"
-          />
-          <circle className="trophy-case__medal-disk" cx="32" cy="47.5" r="15.5" />
-          <circle className="trophy-case__medal-ring" cx="32" cy="47.5" r="11.8" />
-          <text className="trophy-case__medal-num" x="32" y="54.2" textAnchor="middle">
-            {rank}
-          </text>
-        </svg>
-      )}
-    </span>
-  )
-}
-
-/** All-time podium mark — a metal star (no ribbon), distinct from weekly medals. */
-export function AllTimeStar({
-  rank,
-  size = 'sm',
-}: {
-  rank: number
-  size?: Extract<TrophyArtSize, 'sm' | 'md'>
-}) {
-  const tone: MetalTone =
-    rank === 1 ? 'gold' : rank === 2 ? 'silver' : rank === 3 ? 'bronze' : 'gold'
-  const dim = ALL_TIME_STAR_SIZE[size]
-  return (
-    <span
-      className={`trophy-art trophy-art--${size} trophy-case__star trophy-case__star--${tone}`}
-      aria-hidden="true"
-    >
-      <svg viewBox="0 0 40 40" width={dim.width} height={dim.height} focusable="false">
-        <path
-          className="trophy-case__star-shape"
-          d="M20 3.2 24.6 14.4 36.5 15.2 27.4 23.4 30.2 35.2 20 28.8 9.8 35.2 12.6 23.4 3.5 15.2 15.4 14.4Z"
-        />
-        <circle className="trophy-case__star-core" cx="20" cy="21" r="7.2" />
-        <text className="trophy-case__star-num" x="20" y="24.6" textAnchor="middle">
-          {rank}
-        </text>
-      </svg>
-    </span>
+    <Art tone={metalTone(rank)} size={size}>
+      <path
+        className="trophy-art__fill"
+        d="M24 4l5.5 13.3 14.3.9-10.9 9.9 3.3 14.1L24 34.6l-12.2 7.6 3.3-14.1-10.9-9.9 14.3-.9Z"
+      />
+      <Numeral n={rank} y={size === 'sm' ? 31.2 : 29.6} size={size === 'sm' ? 16 : 11} />
+    </Art>
   )
 }

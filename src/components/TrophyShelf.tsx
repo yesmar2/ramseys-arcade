@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { tournamentCreateHref } from '../hooks/useHashRoute'
 import { ordinal } from '../lib/profileMath'
-import { summarizeTrophies, type TrophyAward } from '../lib/trophies'
+import { summarizeTrophies, trophyTone, type TrophyAward } from '../lib/trophies'
 import { medalKind } from './PodiumMedal'
-import { MonthlyTrophyCup, TopTenRibbon, WeeklyMedal } from './TrophyArt'
+import { EventCup, MonthlyTrophyCup, TopTenRibbon, WeeklyMedal } from './TrophyArt'
 
 /** Board trophies shown before "Show all": two shelves' worth on a wide screen. */
 const BOARD_SHOWN = 8
@@ -11,9 +11,9 @@ const BOARD_SHOWN = 8
 function TrophyIcon({ trophy }: { trophy: TrophyAward }) {
   const kind = medalKind(trophy.rank)
   // An event win is a cup: the whole thing, not a place on a board.
-  if (trophy.period === 'event') return <MonthlyTrophyCup tone="gold" size="md" />
-  if (trophy.period === 'monthly') return kind ? <MonthlyTrophyCup tone={kind} size="md" /> : <TopTenRibbon tone="monthly" size="md" />
-  return kind ? <WeeklyMedal rank={trophy.rank} size="md" /> : <TopTenRibbon tone="weekly" size="md" />
+  if (trophy.period === 'event') return <EventCup size="md" />
+  if (trophy.period === 'monthly') return kind ? <MonthlyTrophyCup tone={kind} size="md" /> : <TopTenRibbon tone="monthly" rank={trophy.rank} size="md" />
+  return kind ? <WeeklyMedal rank={trophy.rank} size="md" /> : <TopTenRibbon tone="weekly" rank={trophy.rank} size="md" />
 }
 
 /** When a trophy was for: a day for an event, the week's Monday, or the month. */
@@ -50,7 +50,8 @@ function Item({ trophy, wide }: { trophy: TrophyAward; wide?: boolean }) {
   const haul = trophyHaul(trophy)
   return (
     <li className={`pshelf__item${wide ? ' pshelf__item--wide' : ''}`}>
-      <span className="pshelf__plinth">
+      {/* The plinth takes the trophy's colour, so a shelf reads by its metals at a glance. */}
+      <span className={`pshelf__plinth pshelf__plinth--lit trophy-tone--${trophyTone(trophy.period, trophy.rank)}`}>
         <TrophyIcon trophy={trophy} />
       </span>
       <span className="pshelf__words">
@@ -118,7 +119,7 @@ export function TrophyShelf({
           <ul className="pshelf__ways">
             <li className="pshelf__way">
               <span className="pshelf__plinth pshelf__plinth--empty">
-                <MonthlyTrophyCup tone="gold" size="md" />
+                <EventCup size="md" />
               </span>
               <span className="pshelf__words">
                 <span className="pshelf__name">Win an event</span>
