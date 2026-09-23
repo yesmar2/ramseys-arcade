@@ -110,9 +110,13 @@ export function eventWinTakeover(detail: TournamentDetail, me: string): WinTakeo
   }
 
   if (detail.status !== 'ended') return null
+  // The server names the winner once it's over; without that, first place only
+  // counts if they played. Everyone who joined an event nobody played sits at
+  // nothing, in whatever order, and none of them won it.
+  if (detail.winner && normalizePlayerName(detail.winner) !== you) return null
   const table = standingsTable(detail, you)
   const mine = table[0]
-  if (!mine?.you) return null
+  if (!mine?.you || !mine.cells.some((cell) => cell.score != null)) return null
   const second = table[1] ?? null
   const points = detail.format === 'place-points'
   const single = detail.games.length === 1 ? detail.games[0]! : null
