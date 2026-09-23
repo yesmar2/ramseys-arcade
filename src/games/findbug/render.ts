@@ -635,7 +635,7 @@ function hexGlow(hex: string, alpha: number): string {
  * a scratch layer so the lights cut holes in the dark rather than painting
  * yellow over it.
  */
-function* paintLighting(ctx: Ctx, scene: Scene): Steps {
+function* paintLighting(ctx: Ctx, scene: Scene, crowd: boolean): Steps {
   if (scene.dusk <= 0) return
   // Light is all soft edges, so it is painted at a quarter of the size and
   // stretched over the scene: a sixteenth of the pixels for the same look.
@@ -651,7 +651,7 @@ function* paintLighting(ctx: Ctx, scene: Scene): Steps {
     s?.setTransform(m.a / 4, m.b / 4, m.c / 4, m.d / 4, m.e / 4, m.f / 4)
     return s
   }
-  const lights = [...scene.lights, ...lanternLights(scene)]
+  const lights = [...scene.lights, ...lanternLights(scene, crowd)]
 
   const dark = small()
   const warm = small()
@@ -685,8 +685,9 @@ function* paintLighting(ctx: Ctx, scene: Scene): Steps {
   ctx.restore()
 }
 
-function lanternLights(scene: Scene) {
+function lanternLights(scene: Scene, crowd: boolean) {
   const out: { x: number; y: number; r: number }[] = []
+  if (!crowd) return out
   for (const c of scene.critters) {
     if (c.look.held !== 'lantern') continue
     out.push({ x: c.x + (c.flip ? -1 : 1) * c.size * 0.35, y: c.y - c.size * (0.75 + c.lift), r: c.size * 1.5 })
@@ -697,8 +698,12 @@ function lanternLights(scene: Scene) {
 /**
  * Paint the scene in world units, one small piece per step, so the work can
  * be spread over several frames. The caller sets the transform.
+ *
+ * Without the crowd (`crowd` false) it is the place as it was before anybody
+ * came: the ground, the props, the lights, and none of the critters or the
+ * lanterns they carry.
  */
-export function* paintSteps(ctx: Ctx, scene: Scene, view?: WorldRect): Steps {
+export function* paintSteps(ctx: Ctx, scene: Scene, view?: WorldRect, crowd = true): Steps {
   switch (scene.kind) {
     case 'picnic':
       yield* paintPicnic(ctx, scene)
@@ -727,6 +732,7 @@ export function* paintSteps(ctx: Ctx, scene: Scene, view?: WorldRect): Steps {
   }
   yield
   for (const item of scene.items) {
+    if (item.critter && !crowd) continue
     if (view && !overlaps(itemBounds(item), view)) continue
     if (item.critter) drawCritter(ctx, item.critter)
     else if (item.prop) drawProp(ctx, item.prop)
@@ -734,7 +740,7 @@ export function* paintSteps(ctx: Ctx, scene: Scene, view?: WorldRect): Steps {
   }
   yield* paintGarlands(ctx, scene, view)
   yield
-  yield* paintLighting(ctx, scene)
+  yield* paintLighting(ctx, scene, crowd)
 }
 
 /** Paint the whole scene in one go. */
@@ -907,6 +913,13 @@ type Layer = {
 
 type Job = Layer & { steps: Steps; ctx: CanvasRenderingContext2D }
 
+/** The frost behind the cards is painted per scene, at the size and in the theme of the scene's base. */
+type FrostSpec = { scene: Scene; w: number; h: number; dusk: boolean }
+
+function frostLook(f: FrostSpec): string {
+  return `${f.w}x${f.h}:${f.dusk ? 'dusk' : 'day'}`
+}
+
 /**
  * A canvas to paint a layer into. Software backed on purpose: a scene is
  * thousands of small paths, which the CPU rasteriser gets through about twice
@@ -939,6 +952,9 @@ export class SceneView {
   private spare: HTMLCanvasElement | null = null
   private frost = document.createElement('canvas')
   private frostFor: Scene | null = null
+  private frostDone = ''
+  /** What the frost should be painted for: the scene, and the size and theme of its base. */
+  private frostWant: FrostSpec | null = null
   private lastCam: Camera | null = null
   private stillSince = 0
 
@@ -951,6 +967,7 @@ export class SceneView {
     const w = Math.max(1, Math.round(field.w * dpr))
     const h = Math.max(1, Math.round(field.h * dpr))
     const dusk = atDusk(scene)
+    this.frostWant = { scene, w, h, dusk }
     const b = this.base
     if (b && b.scene === scene && b.w === w && b.h === h && b.dusk === dusk) return
     const j = this.baseJob
@@ -1001,9 +1018,11 @@ export class SceneView {
   private pump(budgetMs: number) {
     const start = performance.now()
     while (performance.now() - start < budgetMs) {
-      // The frost is its own piece of work, in a frame of its own.
-      if (this.base && this.frostFor !== this.base.scene) {
-        this.paintFrost(this.base)
+      // The frost goes first, as a piece of work of its own: it is quick, and
+      // it is what shows behind the scene card while the rest is painted.
+      const want = this.frostWant
+      if (want && (want.scene !== this.frostFor || frostLook(want) !== this.frostDone)) {
+        this.paintFrost(want)
         continue
       }
       const job = this.baseJob ?? this.detailJob
@@ -1014,8 +1033,6 @@ export class SceneView {
       if (job === this.baseJob) {
         this.base = job
         this.baseJob = null
-        // Frost is made from the base, so a fresh base (new size, other theme) needs fresh frost.
-        this.frostFor = null
         return
       } else {
         if (this.detail) this.spare = this.detail.canvas
@@ -1026,24 +1043,32 @@ export class SceneView {
   }
 
   /**
-   * Frosted glass for behind the cards: the scene shrunk by halves, blurred,
-   * and stretched back out. Nobody can pick a Bug out of it, but it is still
-   * plainly the next place.
+   * Frosted glass for behind the cards: the place with nobody in it, painted
+   * at an eighth of the size, blurred, and stretched back out. It is plainly
+   * the next place, and there is nobody in it to find.
+   *
+   * It used to be the scene itself, blurred. The cards stop the clock, and
+   * the pause does, so a player could sit behind one for as long as they
+   * liked picking the wanted bug's colours out of the blur.
    */
-  private paintFrost(layer: Layer) {
-    const w = Math.max(1, Math.round(layer.w / 8))
-    const h = Math.max(1, Math.round(layer.h / 8))
+  private paintFrost(want: FrostSpec) {
+    const w = Math.max(1, Math.round(want.w / 8))
+    const h = Math.max(1, Math.round(want.h / 8))
     this.frost.width = w
     this.frost.height = h
     const f = this.frost.getContext('2d', { willReadFrequently: true })
     if (!f) return
-    f.imageSmoothingEnabled = true
-    f.imageSmoothingQuality = 'high'
-    f.drawImage(layer.canvas, 0, 0, w, h)
+    f.setTransform(w / want.scene.w, 0, 0, h / want.scene.h, 0, 0)
+    const steps = paintSteps(f, want.scene, undefined, false)
+    while (!steps.next().done) {
+      /* all of it: at this size it is quick */
+    }
+    f.setTransform(1, 0, 0, 1, 0, 0)
     const img = f.getImageData(0, 0, w, h)
     for (let pass = 0; pass < 3; pass++) boxBlur(img.data, w, h)
     f.putImageData(img, 0, 0)
-    this.frostFor = layer.scene
+    this.frostFor = want.scene
+    this.frostDone = frostLook(want)
   }
 
   /**

@@ -188,8 +188,9 @@ function plan(scene: Scene, first: boolean, w: number, h: number): Stop[] {
   }
 
   // Now and then, a wrong tap on the way: somebody near the path who shares
-  // two of the wanted bug's three looks (shell, hat, glasses), whose face
-  // shows, and who is far enough off that tapping him cannot count as a find.
+  // two or more of the wanted bug's four looks (shell, hat, glasses, what it
+  // holds), whose face shows, and who is far enough off that tapping him
+  // cannot count as a find.
   if (!first && Math.random() < 0.5) {
     const len2 = dx * dx + dy * dy || 1
     let pick: { at: Point; along: number; tap: Point; score: number } | null = null

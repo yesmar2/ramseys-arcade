@@ -5,7 +5,7 @@
  * market — laid out as a few big set pieces, groups of critters doing things
  * among them, and a crowd filling the rest. Then one critter becomes the Bug
  * and a handful of others become the reason he is hard to find: they share his
- * stripes, or his hat, or all of it bar one thing.
+ * stripes, or his hat, or what he holds, or all of it bar one thing.
  *
  * World units: every scene covers the same area whatever its shape, so a phone
  * held upright and a desktop both search the same amount of ground, with the
@@ -113,6 +113,8 @@ export type SceneSpec = {
   stripes: number
   /** Other critters in its hat. */
   hats: number
+  /** Other critters holding up what it holds. */
+  holding: number
   /** Share of the crowd in glasses like its. */
   glasses: number
   /** Whether he may stand half behind something. */
@@ -121,11 +123,11 @@ export type SceneSpec = {
 
 export function sceneSpec(index: number): SceneSpec {
   const specs: SceneSpec[] = [
-    { crowd: 120, size: 50, twins: 1, stripes: 6, hats: 5, glasses: 0.14, tuck: false },
-    { crowd: 150, size: 48, twins: 2, stripes: 8, hats: 7, glasses: 0.18, tuck: false },
-    { crowd: 175, size: 46, twins: 4, stripes: 10, hats: 9, glasses: 0.22, tuck: true },
-    { crowd: 200, size: 44, twins: 6, stripes: 12, hats: 11, glasses: 0.26, tuck: true },
-    { crowd: 225, size: 43, twins: 8, stripes: 14, hats: 13, glasses: 0.3, tuck: true },
+    { crowd: 120, size: 50, twins: 1, stripes: 6, hats: 5, holding: 5, glasses: 0.14, tuck: false },
+    { crowd: 150, size: 48, twins: 2, stripes: 8, hats: 7, holding: 7, glasses: 0.18, tuck: false },
+    { crowd: 175, size: 46, twins: 4, stripes: 10, hats: 9, holding: 9, glasses: 0.22, tuck: true },
+    { crowd: 200, size: 44, twins: 6, stripes: 12, hats: 11, holding: 11, glasses: 0.26, tuck: true },
+    { crowd: 225, size: 43, twins: 8, stripes: 14, hats: 13, holding: 13, glasses: 0.3, tuck: true },
   ]
   return specs[Math.max(0, Math.min(specs.length - 1, index))]
 }
@@ -1057,6 +1059,12 @@ const TRIMS = [WHITE, INK, ...SHELLS] as const
 /** A hat that differs from another by a detail: the pom-pom, the peak. */
 const NEAR_HAT: Partial<Record<Hat, Hat>> = { bobble: 'beanie', beanie: 'bobble', cap: 'beanie' }
 
+/** Things a look-alike may hold up in place of the wanted bug's. */
+const HELD_UP: readonly Held[] = ['balloon', 'flag', 'icecream', 'lollipop', 'drink']
+
+/** Something held that differs from another by its shape alone, at a size where shapes blur. */
+const NEAR_HELD: Partial<Record<Held, Held>> = { icecream: 'lollipop', lollipop: 'icecream', drink: 'icecream', flag: 'spade' }
+
 /** Anything from `list` but these. */
 function other<T>(rng: Rng, list: readonly T[], ...not: T[]): T {
   return pick(rng, list.filter((v) => !not.includes(v)))
@@ -1070,10 +1078,15 @@ function twinOf(rng: Rng, index: number, wanted: WantedBug): Look {
     (l) => ({ ...l, hatColour: other(rng, SHELLS, t.hatColour, t.hatTrim) }),
     (l) => ({ ...l, body: other(rng, SHELLS, t.body, t.trim) }),
     (l) => ({ ...l, hat: other(rng, ['cap', 'party', 'tophat', 'bobble', 'headphones'] as Hat[], t.hat, NEAR_HAT[t.hat] ?? t.hat) }),
+    (l) => ({ ...l, heldColour: other(rng, SHELLS, t.heldColour) }),
+    (l) => ({ ...l, held: other(rng, HELD_UP, t.held, NEAR_HELD[t.held] ?? t.held) }),
+    (l) => ({ ...l, held: 'none' }),
   ]
   const near = NEAR_HAT[t.hat]
+  const nearHeld = NEAR_HELD[t.held]
   const quiet: ((l: Look) => Look)[] = [
     ...(near ? [(l: Look): Look => ({ ...l, hat: near })] : []),
+    ...(nearHeld ? [(l: Look): Look => ({ ...l, held: nearHeld })] : []),
     (l) => ({ ...l, glasses: 'none' }),
     (l) => ({ ...l, glasses: t.glasses === 'round' ? 'shades' : 'round' }),
     (l) => ({ ...l, trim: other(rng, TRIMS, t.trim, t.body) }),
@@ -1099,6 +1112,14 @@ function hatStranger(rng: Rng, cast: Cast, wanted: WantedBug): Look {
   const t = wanted.look
   const base = randomLook(rng, cast)
   return { ...base, hat: t.hat, hatColour: t.hatColour, hatTrim: t.hatTrim, glasses: rng() < 0.4 ? t.glasses : base.glasses }
+}
+
+/** What it holds, held up by somebody else with arms to hold it, now and then in its glasses too. */
+function heldStranger(rng: Rng, cast: Cast, wanted: WantedBug): Look {
+  const t = wanted.look
+  const species = weighted(rng, [['beetle', 3], ['ant', 1], ['bee', 1], ['grasshopper', 1]] as [Species, number][])
+  const base = randomLook(rng, cast, species)
+  return { ...base, held: t.held, heldColour: t.heldColour, glasses: rng() < 0.3 ? t.glasses : base.glasses }
 }
 
 // ------------------------------------------------------------------- build
@@ -1194,6 +1215,15 @@ function critterOccluders(c: Critter): Rect[] {
   const [half, height] = spread[look.species] ?? [0.3, 0.86]
   const top = look.hat !== 'none' ? Math.max(height, 1.02) : height
   const boxes: Rect[] = [{ x0: c.x - half * s, y0: c.y - top * s - up, x1: c.x + half * s, y1: c.y - up }]
+  const held = heldBox(c)
+  if (held) boxes.push(held)
+  return boxes
+}
+
+/** The box round whatever a critter holds up, if anything. */
+function heldBox(c: Critter): Rect | null {
+  const s = c.size
+  const up = c.lift * s
   // Held things go up in the right hand, which is the left one when mirrored.
   const dir = c.flip ? -1 : 1
   const at = (x0: number, x1: number, y0: number, y1: number): Rect => {
@@ -1201,25 +1231,21 @@ function critterOccluders(c: Critter): Rect[] {
     const b = c.x + dir * x1 * s
     return { x0: Math.min(a, b), y0: c.y - y0 * s - up, x1: Math.max(a, b), y1: c.y - y1 * s - up }
   }
-  switch (look.held) {
+  switch (c.look.held) {
     case 'balloon':
-      boxes.push(at(0.22, 0.52, 1.28, 0.9))
-      break
+      return at(0.22, 0.52, 1.28, 0.9)
     case 'flag':
-      boxes.push(at(0.3, 0.6, 0.9, 0.7))
-      break
+      return at(0.3, 0.6, 0.9, 0.7)
     case 'crumb':
     case 'leaf':
     case 'plush':
-      boxes.push({ x0: c.x - 0.36 * s, y0: c.y - 1.1 * s - up, x1: c.x + 0.36 * s, y1: c.y - 0.84 * s - up })
-      break
+      return { x0: c.x - 0.36 * s, y0: c.y - 1.1 * s - up, x1: c.x + 0.36 * s, y1: c.y - 0.84 * s - up }
     case 'none':
     case 'tube':
-      break
+      return null
     default:
-      boxes.push(at(0.24, 0.46, 0.86, 0.45))
+      return at(0.24, 0.46, 0.86, 0.45)
   }
-  return boxes
 }
 
 /** The critter under a world point: whoever is painted last there wins. */
@@ -1382,6 +1408,37 @@ export function buildScene(
   target.mood = rng() < 0.7 ? 'smile' : 'open'
   target.facing = rng() < 0.6 ? 0 : 1
 
+  // What it holds up is one of the four things on the card, so it has to show
+  // as surely as the face does: held out on whichever side has no prop in
+  // front of it, and anybody standing in front of it steps out of the picture.
+  const t = target
+  const inFrontOfHeld = () => {
+    const box = heldBox(t)
+    if (!box) return { props: 0, critters: [] as Item[] }
+    let props = 0
+    const critters: Item[] = []
+    for (const it of items) {
+      if (it.critter === t || it.z <= t.z) continue
+      if (it.prop) {
+        if (propOccluders(it.prop).some((b) => boxesOverlap(box, b))) props++
+      } else if (critterOccluders(it.critter!).some((b) => boxesOverlap(box, b))) {
+        critters.push(it)
+      }
+    }
+    return { props, critters }
+  }
+  const asIs = inFrontOfHeld().props
+  if (asIs > 0) {
+    t.flip = !t.flip
+    if (inFrontOfHeld().props > asIs) t.flip = !t.flip
+  }
+  for (const b of inFrontOfHeld().critters) {
+    const i = items.indexOf(b)
+    if (i >= 0) items.splice(i, 1)
+    const j = L.critters.indexOf(b.critter!)
+    if (j >= 0) L.critters.splice(j, 1)
+  }
+
   // Now the look-alikes, taken from the crowd well away from him.
   // Flyers and carriers keep their looks: a snail in the air, or arms up round
   // a crumb that is no longer there, would give the game away for nothing.
@@ -1409,6 +1466,7 @@ export function buildScene(
   take(spec.twins, (c) => (bipeds(c) ? twinOf(rng, index, wanted) : null))
   take(spec.stripes, () => shellStranger(rng, cast, wanted))
   take(spec.hats, (c) => (c.look.species === 'snail' ? null : hatStranger(rng, cast, wanted)))
+  take(spec.holding, () => heldStranger(rng, cast, wanted))
   for (const c of L.critters) {
     if (c === target) continue
     const sp = c.look.species

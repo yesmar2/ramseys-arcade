@@ -76,7 +76,8 @@ function isLive(phase: Snapshot['phase']) {
 
 /**
  * The wanted bug, drawn into a small canvas: the whole of it for the scene
- * card, or just its head and hat for the badge by the clock.
+ * card, what it holds included, or just its head and hat for the badge by
+ * the clock.
  */
 function BugPortrait({ look, size, crop }: { look: Look; size: number; crop: 'full' | 'head' }) {
   const ref = useRef<HTMLCanvasElement>(null)
@@ -91,11 +92,16 @@ function BugPortrait({ look, size, crop }: { look: Look; size: number; crop: 'fu
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
     ctx.clearRect(0, 0, size, size)
     if (crop === 'head') {
-      // Head and hat fill the circle; the body drops out of the bottom.
+      // Head and hat fill the circle; the body drops out of the bottom, and
+      // whatever it holds stays on the card rather than crowding the face.
       const h = size * 1.55
-      drawPortrait(ctx, look, size / 2, size / 2 + h * 0.2, h, { pose: 'stand' })
+      drawPortrait(ctx, { ...look, held: 'none' }, size / 2, size / 2 + h * 0.2, h, { pose: 'stand' })
     } else {
-      drawPortrait(ctx, look, size / 2, size * 0.47, size * 0.9, { pose: 'wave', mood: 'open' })
+      // Feet near the bottom and the top of it all near the top: a hat, or a
+      // balloon on its string, which rises a good way over the hat.
+      const top = look.held === 'balloon' ? 1.36 : 1.04
+      const h = Math.min(size * 0.9, (size * 0.92) / top)
+      drawPortrait(ctx, look, size / 2, size * 0.95 - h * 0.52, h, { pose: 'wave', mood: 'open' })
     }
   }, [look, size, crop])
   return <canvas ref={ref} className="findbug__portrait" style={{ width: size, height: size }} aria-hidden="true" />
@@ -154,7 +160,7 @@ function WantedBadge({
 }
 
 /**
- * The wanted card: who to find this scene, and the three things that pick
+ * The wanted card: who to find this scene, and the four things that pick
  * them out. It stays up until it is tapped away, and the clock waits for it.
  * Called back up mid-scene (`again`), it is the same card, sending you back
  * to the search rather than into it.
@@ -187,13 +193,14 @@ function SceneCard({
         <li>{wanted.shell}</li>
         <li>{wanted.hat}</li>
         <li>{wanted.eyes}</li>
+        <li>{wanted.holds}</li>
       </ul>
       <p className="findbug__card-note">
         {again
           ? 'The clock waits while you look.'
           : first
-            ? 'Plenty of them have one or two of those. Only one has all three.'
-            : 'Plenty have one or two of those. Only one has all three.'}
+            ? 'Plenty of them have some of those. Only one has all four.'
+            : 'Plenty have some of those. Only one has all four.'}
       </p>
       {first ? (
         <p className="findbug__card-tip">
