@@ -134,26 +134,8 @@ export const WHITE = '#f2eadb'
 export const CREAM = '#f5dcab'
 export const NAVY = '#313779'
 
-/**
- * The Bug. Red and white stripes, a red bobble hat with a white band, round
- * glasses. Everything else in a scene may share any of that — lots of them
- * will — but nobody else has all of it.
- */
-export const THE_BUG: Look = {
-  species: 'beetle',
-  body: RED,
-  trim: WHITE,
-  pattern: 'stripes',
-  head: CREAM,
-  limb: NAVY,
-  hat: 'bobble',
-  hatColour: RED,
-  hatTrim: WHITE,
-  glasses: 'round',
-  scarf: null,
-  held: 'none',
-  heldColour: RED,
-}
+// Who a scene's bug is — the Bug in his red and white, or one of the others —
+// is in wanted.ts.
 
 // ------------------------------------------------------------------ helpers
 

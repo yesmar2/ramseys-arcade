@@ -17,9 +17,9 @@ import {
   CREAM,
   critterBounds,
   faceCentre,
+  INK,
   NAVY,
   RED,
-  THE_BUG,
   WHITE,
   type Critter,
   type Glasses,
@@ -32,6 +32,7 @@ import {
   type Species,
 } from './critters'
 import { isLowProp, propBounds, propOccluders, type Prop, type PropKind } from './props'
+import { CLASSIC, wearsAllOf, type WantedBug } from './wanted'
 
 export type SceneKind = 'picnic' | 'garden' | 'pond' | 'arcade' | 'night'
 
@@ -86,6 +87,8 @@ export type Scene = {
   items: Item[]
   critters: Critter[]
   target: Critter
+  /** Who the target is: the bug on the wanted card, whose look it wears. */
+  wanted: WantedBug
   garlands: Garland[]
   lights: Light[]
   /** How dark the night is, 0 in daylight. */
@@ -104,13 +107,13 @@ type Rng = () => number
 export type SceneSpec = {
   crowd: number
   size: number
-  /** Critters that share all of the Bug's look bar one thing. */
+  /** Critters that share all of the wanted bug's look bar one thing. */
   twins: number
-  /** Other critters in his red and white stripes. */
+  /** Other critters in its shell. */
   stripes: number
-  /** Other critters in his red bobble hat. */
+  /** Other critters in its hat. */
   hats: number
-  /** Share of the crowd in round glasses like his. */
+  /** Share of the crowd in glasses like its. */
   glasses: number
   /** Whether he may stand half behind something. */
   tuck: boolean
@@ -280,20 +283,6 @@ function randomLook(rng: Rng, cast: Cast, species?: Species): Look {
 
 function mixHead(rng: Rng, body: string): string {
   return rng() < 0.5 ? body : pick(rng, ['#b9403a', '#8b522e', '#d0763d'])
-}
-
-/** Every one of the Bug's features. Anybody else may have some of them, never all. */
-export function isTheBugsLook(look: Look): boolean {
-  return (
-    look.species === 'beetle' &&
-    look.pattern === 'stripes' &&
-    look.body === RED &&
-    look.trim === WHITE &&
-    look.hat === 'bobble' &&
-    look.hatColour === RED &&
-    look.hatTrim === WHITE &&
-    look.glasses === 'round'
-  )
 }
 
 // ------------------------------------------------------------------ layout
@@ -1061,38 +1050,55 @@ function buildNight(L: Layout, horizon: number): Built {
 
 // ------------------------------------------------------------------ decoys
 
-/** Look-alikes that match the Bug in everything but one thing. */
-function twinOf(rng: Rng, index: number): Look {
-  // The early scenes change something loud; the late ones something small.
-  const loud: ((l: Look) => Look)[] = [
-    (l) => ({ ...l, hatColour: pick(rng, ['#3d99d8', '#40a276', '#e6ac39', '#7d57d5']) }),
-    (l) => ({ ...l, body: pick(rng, ['#3d99d8', '#40a276', '#7d57d5']) }),
-    (l) => ({ ...l, hat: pick(rng, ['cap', 'party', 'tophat'] as Hat[]) }),
-  ]
-  const quiet: ((l: Look) => Look)[] = [
-    (l) => ({ ...l, hat: 'beanie' }),
-    (l) => ({ ...l, glasses: 'none' }),
-    (l) => ({ ...l, glasses: 'shades' }),
-    (l) => ({ ...l, trim: '#e6ac39' }),
-    (l) => ({ ...l, hatTrim: '#3d99d8' }),
-  ]
-  const pool = index < 2 ? loud : index < 3 ? [...loud, ...quiet] : quiet
-  return pick(rng, pool)({ ...THE_BUG })
+/** Colours a look-alike may be given in place of one of the wanted bug's. */
+const SHELLS = ['#3d99d8', '#40a276', '#e6ac39', '#7d57d5', '#e67732', '#e969a1', '#34aeb4', RED] as const
+const TRIMS = [WHITE, INK, ...SHELLS] as const
+
+/** A hat that differs from another by a detail: the pom-pom, the peak. */
+const NEAR_HAT: Partial<Record<Hat, Hat>> = { bobble: 'beanie', beanie: 'bobble', cap: 'beanie' }
+
+/** Anything from `list` but these. */
+function other<T>(rng: Rng, list: readonly T[], ...not: T[]): T {
+  return pick(rng, list.filter((v) => !not.includes(v)))
 }
 
-function stripedStranger(rng: Rng, cast: Cast): Look {
+/** Look-alikes that match the wanted bug in everything but one thing. */
+function twinOf(rng: Rng, index: number, wanted: WantedBug): Look {
+  const t = wanted.look
+  // The early scenes change something loud; the late ones something small.
+  const loud: ((l: Look) => Look)[] = [
+    (l) => ({ ...l, hatColour: other(rng, SHELLS, t.hatColour, t.hatTrim) }),
+    (l) => ({ ...l, body: other(rng, SHELLS, t.body, t.trim) }),
+    (l) => ({ ...l, hat: other(rng, ['cap', 'party', 'tophat', 'bobble', 'headphones'] as Hat[], t.hat, NEAR_HAT[t.hat] ?? t.hat) }),
+  ]
+  const near = NEAR_HAT[t.hat]
+  const quiet: ((l: Look) => Look)[] = [
+    ...(near ? [(l: Look): Look => ({ ...l, hat: near })] : []),
+    (l) => ({ ...l, glasses: 'none' }),
+    (l) => ({ ...l, glasses: t.glasses === 'round' ? 'shades' : 'round' }),
+    (l) => ({ ...l, trim: other(rng, TRIMS, t.trim, t.body) }),
+    (l) => ({ ...l, hatTrim: other(rng, TRIMS, t.hatTrim, t.hatColour) }),
+  ]
+  const pool = index < 2 ? loud : index < 3 ? [...loud, ...quiet] : quiet
+  return pick(rng, pool)({ ...t })
+}
+
+/** Its shell with somebody else's hat. */
+function shellStranger(rng: Rng, cast: Cast, wanted: WantedBug): Look {
+  const t = wanted.look
   const species = weighted(rng, [['beetle', 4], ['bee', 1], ['caterpillar', 1], ['snail', 1]] as [Species, number][])
   const base = randomLook(rng, cast, species)
   if (species === 'beetle') {
-    // His shell with somebody else's hat.
-    return { ...base, body: RED, trim: WHITE, pattern: 'stripes', hat: weighted(rng, HATS.filter(([h]) => h !== 'bobble')) }
+    return { ...base, body: t.body, trim: t.trim, pattern: t.pattern, hat: weighted(rng, HATS.filter(([h]) => h !== t.hat)) }
   }
-  return { ...base, body: RED, trim: WHITE }
+  return { ...base, body: t.body, trim: t.trim }
 }
 
-function hattedStranger(rng: Rng, cast: Cast): Look {
+/** Its hat on somebody else, often with its glasses too. */
+function hatStranger(rng: Rng, cast: Cast, wanted: WantedBug): Look {
+  const t = wanted.look
   const base = randomLook(rng, cast)
-  return { ...base, hat: 'bobble', hatColour: RED, hatTrim: WHITE, glasses: rng() < 0.4 ? 'round' : base.glasses }
+  return { ...base, hat: t.hat, hatColour: t.hatColour, hatTrim: t.hatTrim, glasses: rng() < 0.4 ? t.glasses : base.glasses }
 }
 
 // ------------------------------------------------------------------- build
@@ -1252,7 +1258,13 @@ export function tapFindsTarget(scene: Scene, x: number, y: number): boolean {
   return best === t && bestD < t.size * 0.55
 }
 
-export function buildScene(kind: SceneKind, index: number, seed: number, aspect: number): Scene {
+export function buildScene(
+  kind: SceneKind,
+  index: number,
+  seed: number,
+  aspect: number,
+  wanted: WantedBug = CLASSIC,
+): Scene {
   const rng = mulberry32(seed)
   const { w, h } = sceneSize(aspect)
   const spec = sceneSpec(index)
@@ -1364,7 +1376,7 @@ export function buildScene(kind: SceneKind, index: number, seed: number, aspect:
   }
   if (!target) target = candidates[0] ?? L.critters[0]
 
-  target.look = { ...THE_BUG }
+  target.look = { ...wanted.look }
   if (target.pose === 'carry' || target.pose === 'hold') target.pose = 'wave'
   if (target.pose === 'sit' && rng() < 0.5) target.pose = 'stand'
   target.mood = rng() < 0.7 ? 'smile' : 'open'
@@ -1394,16 +1406,16 @@ export function buildScene(kind: SceneKind, index: number, seed: number, aspect:
     }
   }
   const bipeds = (c: Critter) => c.look.species === 'beetle' || c.look.species === 'ant' || c.look.species === 'bee' || c.look.species === 'grasshopper'
-  take(spec.twins, (c) => (bipeds(c) ? twinOf(rng, index) : null))
-  take(spec.stripes, () => stripedStranger(rng, cast))
-  take(spec.hats, (c) => (c.look.species === 'snail' ? null : hattedStranger(rng, cast)))
+  take(spec.twins, (c) => (bipeds(c) ? twinOf(rng, index, wanted) : null))
+  take(spec.stripes, () => shellStranger(rng, cast, wanted))
+  take(spec.hats, (c) => (c.look.species === 'snail' ? null : hatStranger(rng, cast, wanted)))
   for (const c of L.critters) {
     if (c === target) continue
     const sp = c.look.species
     if (sp === 'snail' || sp === 'spider') continue
-    if (c.look.glasses === 'none' && rng() < spec.glasses) c.look = { ...c.look, glasses: 'round' }
+    if (c.look.glasses === 'none' && rng() < spec.glasses) c.look = { ...c.look, glasses: wanted.look.glasses }
     // Nobody else gets all of it.
-    if (isTheBugsLook(c.look)) c.look = { ...c.look, glasses: 'none' }
+    if (wearsAllOf(c.look, wanted)) c.look = { ...c.look, glasses: 'none' }
   }
 
   return {
@@ -1417,6 +1429,7 @@ export function buildScene(kind: SceneKind, index: number, seed: number, aspect:
     items,
     critters: L.critters,
     target,
+    wanted,
     garlands: built.garlands ?? [],
     lights: built.lights ?? [],
     dusk: built.dusk ?? 0,

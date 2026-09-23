@@ -15,6 +15,7 @@
 import { hashString, mulberry32 } from '../../lib/seededRandom'
 import { faceCentre } from './critters'
 import { buildScene, SCENE_NAMES, SCENE_ORDER, tapFindsTarget, type Scene, type SceneKind } from './scenes'
+import { wantedFor, type WantedBug } from './wanted'
 
 export type Phase = 'menu' | 'intro' | 'playing' | 'found' | 'timeout' | 'gameover'
 
@@ -28,9 +29,6 @@ export const HINT_WIDE_MS = 25_000
 export const HINT_NARROW_MS = 42_000
 /** How long a wrong tap leaves the scene dimmed and deaf. */
 export const DAZE_MS = 1_500
-/** Time on the scene card before the clock starts. The first one shows him for longer. */
-const INTRO_FIRST_MS = 2_600
-const INTRO_MS = 1_700
 /** The pause on a find, and on being shown where he was. */
 const FOUND_HOLD_MS = 1_350
 const TIMEOUT_HOLD_MS = 2_400
@@ -81,6 +79,8 @@ export type Snapshot = {
   hintLevel: 0 | 1 | 2
   lastTimeMs: number | null
   ready: boolean
+  /** Who this scene's bug is. */
+  wanted: WantedBug
 }
 
 function sceneSeed(seed: number, index: number): number {
@@ -110,9 +110,17 @@ function makeHints(scene: Scene, seed: number): [Hint, Hint] {
   ]
 }
 
+/**
+ * Each scene has a bug of its own to find, never the same one twice in a run,
+ * and the crowd is dressed around it.
+ */
+function sceneFor(runSeed: number, index: number, aspect: number): Scene {
+  return buildScene(SCENE_ORDER[index], index, sceneSeed(runSeed, index), aspect, wantedFor(runSeed, index))
+}
+
 function enterScene(state: GameState, index: number): GameState {
   const seed = sceneSeed(state.seed, index)
-  const scene = buildScene(SCENE_ORDER[index], index, seed, state.aspect)
+  const scene = sceneFor(state.seed, index, state.aspect)
   return {
     ...state,
     phase: 'intro',
@@ -133,7 +141,7 @@ function newSeed(): number {
 
 export function createInitialState(aspect: number): GameState {
   const seed = newSeed()
-  const scene = buildScene(SCENE_ORDER[0], 0, sceneSeed(seed, 0), aspect)
+  const scene = sceneFor(seed, 0, aspect)
   return {
     phase: 'menu',
     seed,
@@ -202,12 +210,11 @@ export function tick(prev: GameState, dtMs: number): GameState {
 
   switch (state.phase) {
     case 'intro': {
+      // The wanted card stays up until it is tapped away. The clock has not
+      // started, so a player may take as long as they like over who to find;
+      // it used to go by itself after a couple of seconds, which is not long
+      // enough to learn a new bug every scene.
       state.phaseMs += dtMs
-      const hold = state.index === 0 ? INTRO_FIRST_MS : INTRO_MS
-      if (state.phaseMs >= hold && state.ready) {
-        state.phase = 'playing'
-        state.phaseMs = 0
-      }
       return state
     }
     case 'playing': {
@@ -233,7 +240,7 @@ export function tick(prev: GameState, dtMs: number): GameState {
   }
 }
 
-/** Skip the rest of the scene card. The clock has not started, so nothing is lost. */
+/** Put the scene card away and start the clock, once the scene is painted. */
 export function skipIntro(prev: GameState): GameState {
   if (prev.phase !== 'intro' || !prev.ready) return prev
   return { ...prev, phase: 'playing', phaseMs: 0 }
@@ -287,6 +294,7 @@ export function toSnapshot(s: GameState): Snapshot {
     hintLevel: hintLevel(s),
     lastTimeMs: s.times.length ? s.times[s.times.length - 1] : null,
     ready: s.ready,
+    wanted: s.scene.wanted,
   }
 }
 

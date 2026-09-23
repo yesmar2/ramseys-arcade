@@ -34,7 +34,7 @@ import {
   type Camera,
   type Field,
 } from './camera'
-import { drawPortrait, faceCentre, THE_BUG } from './critters'
+import { drawPortrait, faceCentre, type Look } from './critters'
 import {
   createInitialState,
   DAZE_MS,
@@ -56,6 +56,7 @@ import {
 } from './game'
 import { SceneView, type Overlays } from './render'
 import { findbugBoardScore, formatFindbugMs } from './score'
+import { titleOf, type WantedBug } from './wanted'
 
 /** Past this, a press that wanders is a drag, not a tap. */
 const TAP_SLOP_TOUCH = 10
@@ -72,10 +73,10 @@ function isLive(phase: Snapshot['phase']) {
 }
 
 /**
- * The Bug, drawn into a small canvas: the whole of him for the scene card, or
- * just his head and hat for the badge by the clock.
+ * The wanted bug, drawn into a small canvas: the whole of it for the scene
+ * card, or just its head and hat for the badge by the clock.
  */
-function BugPortrait({ size, crop }: { size: number; crop: 'full' | 'head' }) {
+function BugPortrait({ look, size, crop }: { look: Look; size: number; crop: 'full' | 'head' }) {
   const ref = useRef<HTMLCanvasElement>(null)
   useEffect(() => {
     const canvas = ref.current
@@ -90,21 +91,21 @@ function BugPortrait({ size, crop }: { size: number; crop: 'full' | 'head' }) {
     if (crop === 'head') {
       // Head and hat fill the circle; the body drops out of the bottom.
       const h = size * 1.55
-      drawPortrait(ctx, THE_BUG, size / 2, size / 2 + h * 0.2, h, { pose: 'stand' })
+      drawPortrait(ctx, look, size / 2, size / 2 + h * 0.2, h, { pose: 'stand' })
     } else {
-      drawPortrait(ctx, THE_BUG, size / 2, size * 0.47, size * 0.9, { pose: 'wave', mood: 'open' })
+      drawPortrait(ctx, look, size / 2, size * 0.47, size * 0.9, { pose: 'wave', mood: 'open' })
     }
-  }, [size, crop])
+  }, [look, size, crop])
   return <canvas ref={ref} className="findbug__portrait" style={{ width: size, height: size }} aria-hidden="true" />
 }
 
-/** The Bug's face by the clock, ringed with what is left of the scene's minute. */
-function WantedBadge({ left, urgent }: { left: number; urgent: boolean }) {
+/** The wanted bug's face by the clock, ringed with what is left of the scene's minute. */
+function WantedBadge({ look, left, urgent }: { look: Look; left: number; urgent: boolean }) {
   const r = 19
   const c = 2 * Math.PI * r
   return (
     <div className={`findbug__badge${urgent ? ' findbug__badge--urgent' : ''}`} aria-hidden="true">
-      <BugPortrait size={34} crop="head" />
+      <BugPortrait look={look} size={34} crop="head" />
       <svg className="findbug__badge-ring" viewBox="0 0 44 44">
         <circle cx="22" cy="22" r={r} className="findbug__badge-track" />
         <circle
@@ -120,25 +121,42 @@ function WantedBadge({ left, urgent }: { left: number; urgent: boolean }) {
   )
 }
 
-function SceneCard({ index, name, ready }: { index: number; name: string; ready: boolean }) {
+/**
+ * The wanted card: who to find this scene, and the three things that pick
+ * them out. It stays up until it is tapped away, and the clock waits for it.
+ */
+function SceneCard({
+  index,
+  name,
+  wanted,
+  ready,
+}: {
+  index: number
+  name: string
+  wanted: WantedBug
+  ready: boolean
+}) {
   const first = index === 0
   const coarse = typeof window !== 'undefined' && window.matchMedia?.('(pointer: coarse)').matches
   return (
     <div className="game-pause-card findbug__card">
       <span className="findbug__card-kicker">
-        Scene {index + 1} of {ROUNDS}
+        Scene {index + 1} of {ROUNDS} · {name}
       </span>
-      <h2>{name}</h2>
+      <h2>Find {wanted.name}</h2>
       <div className="findbug__poster">
-        <BugPortrait size={first ? 118 : 92} crop="full" />
+        <BugPortrait look={wanted.look} size={first ? 118 : 104} crop="full" />
       </div>
-      <p className="findbug__card-line">Find the Bug</p>
-      {first ? (
-        <p className="findbug__card-note">
-          Red and white stripes, red bobble hat, round glasses. Plenty of them have one or two of those.
-          Only he has all three. {coarse ? 'Pinch to zoom.' : 'Scroll to zoom.'}
-        </p>
-      ) : null}
+      <ul className="findbug__traits">
+        <li>{wanted.shell}</li>
+        <li>{wanted.hat}</li>
+        <li>{wanted.eyes}</li>
+      </ul>
+      <p className="findbug__card-note">
+        {first
+          ? `Plenty of them have one or two of those. Only one has all three. ${coarse ? 'Pinch to zoom.' : 'Scroll to zoom.'}`
+          : 'Plenty have one or two of those. Only one has all three.'}
+      </p>
       <span className="game-start-card__cue">{ready ? 'Tap to go' : 'Setting the scene…'}</span>
     </div>
   )
@@ -225,7 +243,7 @@ export function FindBugGame() {
         if (s.phase === 'timeout') {
           camRef.current = homeCamera(s.scene.w, s.scene.h)
           setZoomed(false)
-          say('Time! There he was.', 'info', 2200)
+          say(`Time! There’s ${s.scene.wanted.name}.`, 'info', 2200)
         }
         lastPhase = s.phase
         setUi(toSnapshot(s))
@@ -402,11 +420,12 @@ export function FindBugGame() {
     const s = stateRef.current!
     const { state, result } = tapAt(s, x, y)
     stateRef.current = state
+    const name = s.scene.wanted.name
     if (result === 'found') {
       const took = state.times[state.times.length - 1] ?? 0
-      say(`Found him! ${formatFindbugMs(took)}`, 'good', 1500)
+      say(`Found ${name}! ${formatFindbugMs(took)}`, 'good', 1500)
     } else if (result === 'miss') {
-      say('Not him!', 'bad', 900)
+      say(`Not ${name}!`, 'bad', 900)
     }
     setUi(toSnapshot(state))
   }
@@ -685,7 +704,7 @@ export function FindBugGame() {
             <PlayReadout>
               <PlayReadoutScore className="findbug__clock">{formatFindbugMs(ui.runMs)}</PlayReadoutScore>
               <PlayReadoutStats>
-                <WantedBadge left={leftShare} urgent={urgent} />
+                <WantedBadge look={ui.wanted.look} left={leftShare} urgent={urgent} />
                 <PlayStat label="Scene" value={`${Math.min(ROUNDS, ui.index + 1)}/${ROUNDS}`} />
               </PlayReadoutStats>
             </PlayReadout>
@@ -697,7 +716,7 @@ export function FindBugGame() {
             ) : null}
 
             {ui.phase === 'playing' && ui.hintLevel > 0 && !paused ? (
-              <div className="findbug__hint-note">He’s in the circle</div>
+              <div className="findbug__hint-note">{titleOf(ui.wanted)}’s in the circle</div>
             ) : null}
 
             {zoomed && (ui.phase === 'playing' || ui.phase === 'found') && !paused ? (
@@ -728,7 +747,7 @@ export function FindBugGame() {
               />
               {ui.phase === 'menu' && !saveOpen && !paused && <GameStartCard title="Find the Bug" slug="findbug" />}
               {ui.phase === 'intro' && !paused ? (
-                <SceneCard index={ui.index} name={ui.sceneName} ready={ui.ready} />
+                <SceneCard index={ui.index} name={ui.sceneName} wanted={ui.wanted} ready={ui.ready} />
               ) : null}
               {ui.phase === 'gameover' &&
                 saveOpen &&
@@ -743,7 +762,7 @@ export function FindBugGame() {
                   <ScoreSaveCard
                     gameSlug="findbug"
                     score={finalScore}
-                    title={ui.found === ROUNDS ? 'Found him every time' : 'Run over'}
+                    title={ui.found === ROUNDS ? 'Found every one' : 'Run over'}
                     subtitle={`Found ${ui.found} of ${ROUNDS} · ${ui.misses} wrong tap${ui.misses === 1 ? '' : 's'}`}
                     previousBest={Math.max(previousBestRef.current, apiBest)}
                     onDone={toMenu}
