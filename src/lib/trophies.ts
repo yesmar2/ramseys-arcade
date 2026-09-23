@@ -134,6 +134,15 @@ export async function fetchTrophySummary(name: string): Promise<TrophySummary> {
   return inflightSummary
 }
 
+/** The latest awards, newest first: the board trophies as each week and month closes, and event wins. */
+export async function fetchRecentTrophies(limit = 20): Promise<TrophyAward[]> {
+  const params = new URLSearchParams({ limit: String(limit) })
+  const res = await fetch(`${API_BASE}/trophies/recent?${params}`)
+  if (!res.ok) return []
+  const body = (await res.json()) as { trophies?: TrophyAward[] }
+  return Array.isArray(body.trophies) ? body.trophies : []
+}
+
 export async function fetchTrophyCounts(
   names: string[],
 ): Promise<Record<string, TrophyCount>> {

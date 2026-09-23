@@ -572,6 +572,8 @@ export type GlobalBoardEntry = {
   score: number
   games: number
   avatarId?: string
+  /** The places behind the points; the rankings list sends them, a cached row may not have them. */
+  byGame?: Partial<Record<string, GlobalGamePlace>>
 }
 
 export type GlobalBoardResult = {

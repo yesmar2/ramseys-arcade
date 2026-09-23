@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { BoardEmpty, BoardMore, BoardSkeleton, PeriodSwitcher } from '../components/BoardChrome'
-import { BoardsGameIndex } from '../components/BoardsGameIndex'
+import { BoardsScoreboard } from '../components/BoardsScoreboard'
 import { EventArt } from '../components/EventCard'
 import { GlobalRankList } from '../components/GlobalRankList'
 import { PageBanner } from '../components/PageBanner'
@@ -14,14 +14,13 @@ import { usePagedBoard } from '../hooks/usePagedBoard'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { APP_NAME } from '../lib/brand'
 import {
+  coerceVisiblePeriod,
   fetchGlobalBoard,
   fetchGlobalRank,
-  fetchLeaderboardsSummary,
   getLastPlayerName,
   normalizePlayerName,
   PERIOD_LABELS,
   VISIBLE_LEADERBOARD_GAMES,
-  type GameBoardPreview,
   type GlobalBoardEntry,
   type GlobalBoardResult,
   type LeaderboardPeriod,
@@ -29,7 +28,6 @@ import {
 import { fetchTrophyCounts, type TrophyCount } from '../lib/trophies'
 
 const INITIAL_ROWS = 10
-const SUMMARY_ROWS = 3
 
 type LeaderboardsPageProps = {
   global?: boolean
@@ -51,7 +49,7 @@ function BoardsHubSwitcher({
         className={`seg__item${!global ? ' seg__item--active' : ''}`}
         href={leaderboardHref(period)}
       >
-        Top Scores
+        Boards
       </a>
       <a
         role="tab"
@@ -124,73 +122,11 @@ export function LeaderboardsPage({
   return <LeaderboardsOverview period={period} />
 }
 
+/** The boards page itself: the period's scoreboard, every board on it. */
 function LeaderboardsOverview({ period }: { period: LeaderboardPeriod }) {
-  const playerName = normalizePlayerName(usePlayerName())
-  const groupId = useActiveGroup()
-  const [summaries, setSummaries] = useState<GameBoardPreview[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    let cancelled = false
-    setLoading(true)
-    setError(null)
-    void (async () => {
-      try {
-        const rows = await fetchLeaderboardsSummary(period, SUMMARY_ROWS)
-        if (!cancelled) setSummaries(rows)
-      } catch (err) {
-        if (!cancelled) {
-          setSummaries([])
-          setError(err instanceof Error ? err.message : 'Failed to load')
-        }
-      } finally {
-        if (!cancelled) setLoading(false)
-      }
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [period, groupId])
-
   return (
-    <PageShell innerClassName="lb-page__inner lb-page__inner--events">
-      <div className="ev bx">
-        <BoardsHero global={false} period={period} players={null} />
-        <div className="bx__controls">
-          <BoardsHubSwitcher global={false} period={period} />
-        </div>
-
-        {error ? (
-          <BoardEmpty title="Couldn’t load scores" detail="Check your connection and try again." />
-        ) : (
-          <section
-            key={period}
-            className="evl"
-            aria-label={`${PERIOD_LABELS[period]} top scores`}
-          >
-            <div className="lst-block__head">
-              <h2 className="lst-block__title">Games</h2>
-              <p className="lst-block__note">{VISIBLE_LEADERBOARD_GAMES.length} boards</p>
-              <div className="lst-block__tools">
-                <PeriodSwitcher
-                  period={period}
-                  hrefFor={leaderboardHref}
-                  onSelect={(p) => {
-                    navigate(leaderboardHref(p))
-                  }}
-                />
-              </div>
-            </div>
-            <BoardsGameIndex
-              games={summaries}
-              loading={loading}
-              playerName={playerName}
-              period={period}
-            />
-          </section>
-        )}
-      </div>
+    <PageShell innerClassName="lb-page__inner">
+      <BoardsScoreboard period={coerceVisiblePeriod(period)} />
     </PageShell>
   )
 }
