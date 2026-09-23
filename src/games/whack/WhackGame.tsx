@@ -19,7 +19,6 @@ import {
   submitPopCenterStreak,
   shouldCelebrateRecordSubmit,
 } from '../../lib/records'
-import { STAGE_ASPECT } from '../../lib/stage'
 import { useTournamentPlay } from '../../tournaments/TournamentPlayContext'
 import {
   createInitialState,
@@ -35,6 +34,24 @@ import {
 } from './game'
 import { renderGame } from './render'
 import { beginRun } from '../../lib/runSession'
+
+/** A streak starts to be worth showing here; the bonus it pays is in every pop's number. */
+const STREAK_SHOW = 3
+
+/**
+ * Where the page's own score and buttons end, measured from the top of the
+ * play area, so the board can start below them. They move with the safe area
+ * on a notched phone, which the canvas has no other way to know.
+ */
+function measureTop(play: HTMLElement): number | undefined {
+  const top = play.getBoundingClientRect().top
+  let bottom = 0
+  play.querySelectorAll('.play-readout__score, .play-stats, .game-play-chrome').forEach((el) => {
+    const r = el.getBoundingClientRect()
+    if (r.height > 0 && r.bottom - top < play.clientHeight * 0.4) bottom = Math.max(bottom, r.bottom - top)
+  })
+  return bottom > 0 ? Math.round(bottom + 12) : undefined
+}
 
 export function WhackGame() {
   const tournament = useTournamentPlay()
@@ -69,9 +86,9 @@ export function WhackGame() {
       const parent = canvas?.parentElement
       const w = parent?.clientWidth || 0
       const h = parent?.clientHeight || 0
-      if (w > 0 && h > 0 && (w !== sizeRef.current.w || h !== sizeRef.current.h)) {
+      if (parent && w > 0 && h > 0 && (w !== sizeRef.current.w || h !== sizeRef.current.h)) {
         sizeRef.current = { w, h }
-        stateRef.current = setScale(stateRef.current, w, h)
+        stateRef.current = setScale(stateRef.current, w, h, measureTop(parent))
       }
 
       if (!pausedRef.current) {
@@ -236,10 +253,7 @@ export function WhackGame() {
   return (
     <section className="whack whack--fullscreen">
       <div className="game-play">
-        <GameStage
-          aspectWidth={STAGE_ASPECT.pop.w}
-          aspectHeight={STAGE_ASPECT.pop.h}
-        >
+        <GameStage aspectWidth={3} aspectHeight={4} fill>
           <div className="whack__play" onPointerDown={onPointerDown}>
             <canvas ref={canvasRef} className="whack__viewport" />
 
@@ -265,6 +279,9 @@ export function WhackGame() {
                   value={ui.phase === 'menu' ? 45 : ui.timeLeft}
                   urgent={ui.phase === 'playing' && ui.timeLeft <= 10}
                 />
+                {ui.phase === 'playing' && ui.streak >= STREAK_SHOW ? (
+                  <PlayStat label="Streak" value={ui.streak} />
+                ) : null}
               </PlayReadoutStats>
             </PlayReadout>
 

@@ -45,10 +45,11 @@ const SCORING: Record<string, ScoreRow[]> = {
   ],
   pop: [
     { label: 'Hit', value: '+10' },
-    { label: 'Center hit', value: '+30' },
+    { label: 'Center hit (the bright core)', value: '+30' },
     { label: 'Gold', value: '+25' },
     { label: 'Gold center', value: '+70' },
     { label: 'Streak bonus', value: '+5 each, cap +20' },
+    { label: 'A bubble let go', value: 'streak resets' },
     { label: 'Round', value: '45 seconds' },
   ],
   simon: [
