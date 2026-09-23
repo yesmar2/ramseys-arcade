@@ -110,10 +110,13 @@ function RecordRow({
   const holder = top ? normalizePlayerName(top.name) : ''
   const mine = Boolean(you) && holder === you
   const second = record.second
+  // A tie leaves the record with whoever set it first.
   const runner = !top
     ? 'Be the first to set it'
     : second
-      ? `by ${recordGap(record, second.score, top.score)} over ${normalizePlayerName(second.name)}`
+      ? second.score === top.score
+        ? `Tied with ${normalizePlayerName(second.name)}`
+        : `by ${recordGap(record, second.score, top.score)} over ${normalizePlayerName(second.name)}`
       : record.second === null
         ? 'Nobody else yet'
         : ''
@@ -122,7 +125,9 @@ function RecordRow({
     ? ''
     : standing.rank === 1
       ? 'Yours'
-      : `You #${standing.rank} · ${recordGap(record, standing.score, top.score)} off`
+      : standing.score === top.score
+        ? `You #${standing.rank} · tied`
+        : `You #${standing.rank} · ${recordGap(record, standing.score, top.score)} off`
   return (
     <li className={`rbk-rec${mine ? ' rbk-rec--you' : ''}${top ? '' : ' rbk-rec--empty'}`}>
       <a className="rbk-rec__link" href={recordHref(game, record.id, period)}>

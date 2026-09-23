@@ -243,7 +243,7 @@ export function bookLede(game: string, records: RecordSummary[]): string {
 export type ClosestRecord = {
   game: string
   record: RecordSummary
-  /** 2.5s off REESE, or 1 short of TJ’s 11 in a row. */
+  /** 2.5s off REESE, 1 short of TJ’s 11 in a row, or Tied with SAUL. */
   off: string
 }
 
@@ -261,9 +261,11 @@ export function closestToInk(books: { game: string; records: RecordSummary[] }[]
         record,
         share: shareOff(record, you.score, top.score),
         off:
-          record.unit === 'ms'
-            ? `${gap} off ${top.name}`
-            : `${gap} short of ${top.name}’s ${recordValue(record, top.score)}`,
+          you.score === top.score
+            ? `Tied with ${top.name}`
+            : record.unit === 'ms'
+              ? `${gap} off ${top.name}`
+              : `${gap} short of ${top.name}’s ${recordValue(record, top.score)}`,
       })
     }
   }
