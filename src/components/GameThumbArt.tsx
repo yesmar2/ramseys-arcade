@@ -432,6 +432,15 @@ const thumbBySlug: Record<string, (props: { accent: string }) => ReactNode> = {
   fireflies: FirefliesThumb,
 }
 
+/**
+ * Just the drawing, on its 32-unit stage, for placing inside another SVG: an
+ * avatar's game pin draws its game's thumb in one colour on the pin.
+ */
+export function GameThumbGlyph({ slug, color }: { slug: string; color: string }) {
+  const Thumb = thumbBySlug[slug]
+  return Thumb ? <Thumb accent={color} /> : <FallbackThumb accent={color} />
+}
+
 export function GameThumbArt({ slug, accent, className }: GameThumbArtProps) {
   const [, setArtTick] = useState(0)
   useEffect(() => {
