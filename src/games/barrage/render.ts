@@ -5,15 +5,18 @@ import {
   CHAIN_WINDOW,
   CLEAR_PAUSE,
   LINE_PAUSE,
+  MAX_MIRROR,
+  MIRROR_HUE,
+  SPARKS_PER_MIRROR,
   POWER_HUE,
   SPECIES_HUE,
   WAVE_BANNER,
   cannonRect,
-  carrierRadius,
   chainMult,
   dropRadius,
   emitterOf,
   enterProgress,
+  pullsAllowed,
   railY,
   roundsReady,
   shipX,
@@ -35,7 +38,10 @@ import {
  *
  * The fleet is the site's purples, the cannon is green, and red belongs to the
  * volley alone — a lit lane, a charging ship, a falling shot — so the one thing
- * that can end a life is the one thing in that colour.
+ * that can end a life is the one thing in that colour. A ship carrying a
+ * capsule wears its power's colour instead of the fleet's, with its mark on its
+ * hull, and the cannon wears what it has collected: side barrels for the fan,
+ * a lance for piercing rounds, vents for the fast trigger, a dome for mirrors.
  *
  * The canvas fills the shell, but the playfield keeps its shape so a run on a
  * phone and a run on a desktop are the same game — the shared leaderboard
@@ -548,7 +554,7 @@ function drawShip(g: Gfx, ship: Ship, frame: number) {
   const { ctx, p, s, dark, t } = g
   const L = s.layout
   const species = speciesFor(ship.row, L.rows)
-  const hue = SPECIES_HUE[species]
+  const hue = ship.cargo ? POWER_HUE[ship.cargo] : SPECIES_HUE[species]
   const sw = p.u(L.shipW)
   const sh = p.u(L.shipH)
   const c = ship.charging ? ship.charge : 0
@@ -560,6 +566,16 @@ function drawShip(g: Gfx, ship: Ship, frame: number) {
   const Y: N = (n) => cy + (n * sh) / 2
   const line = hsla(hue, 58, lineL(dark), 0.96)
   const lw = Math.max(1.2, sw * 0.042)
+
+  if (ship.cargo) {
+    // A slow pulse of its power's colour round it, so the eye finds it among the purples.
+    const pulse = 0.5 + 0.5 * Math.sin(t * 3.2 + ship.col * 1.7)
+    const aura = ctx.createRadialGradient(cx, Y(0.3), sw * 0.15, cx, Y(0.3), sw * 1.05)
+    aura.addColorStop(0, hsla(hue, 92, 60, (dark ? 0.2 : 0.17) + 0.1 * pulse))
+    aura.addColorStop(1, hsla(hue, 92, 60, 0))
+    ctx.fillStyle = aura
+    ctx.fillRect(cx - sw * 1.1, Y(0.3) - sw * 1.1, sw * 2.2, sw * 2.2)
+  }
 
   if (c > 0) {
     const glow = ctx.createRadialGradient(cx, Y(0.7), 0, cx, Y(0.7), sw * 0.95)
@@ -645,6 +661,12 @@ function drawShip(g: Gfx, ship: Ship, frame: number) {
   }
 
   drawEyes(g, ship, species, hue, X, Y, sw, line, c)
+
+  // The capsule it carries, held under its middle where its shots would come from.
+  if (ship.cargo) {
+    const bob = Math.sin(t * 4 + ship.col) * sh * 0.03
+    drawCapsule(g, ship.cargo, cx, Y(0.86) + bob, sw * 0.17)
+  }
 
   if (c > 0) {
     // Light gathering in the nozzle.
@@ -749,19 +771,13 @@ function drawGlyph(ctx: CanvasRenderingContext2D, kind: PowerKind, cx: number, c
       ctx.moveTo(cx, cy + rr * 0.5)
       ctx.lineTo(cx + rr * lean, cy - rr * 0.5)
     }
-  } else if (kind === 'slow') {
-    // An hourglass.
-    ctx.moveTo(cx - rr * 0.4, cy - rr * 0.5)
-    ctx.lineTo(cx + rr * 0.4, cy - rr * 0.5)
-    ctx.lineTo(cx - rr * 0.4, cy + rr * 0.5)
-    ctx.lineTo(cx + rr * 0.4, cy + rr * 0.5)
-    ctx.closePath()
   } else {
-    // A struck-through volley.
-    ctx.moveTo(cx - rr * 0.42, cy - rr * 0.42)
-    ctx.lineTo(cx + rr * 0.42, cy + rr * 0.42)
-    ctx.moveTo(cx + rr * 0.42, cy - rr * 0.42)
-    ctx.lineTo(cx - rr * 0.42, cy + rr * 0.42)
+    // Two chevrons climbing: shots coming faster.
+    for (const dy of [-0.26, 0.2]) {
+      ctx.moveTo(cx - rr * 0.4, cy + rr * (dy + 0.2))
+      ctx.lineTo(cx, cy + rr * (dy - 0.14))
+      ctx.lineTo(cx + rr * 0.4, cy + rr * (dy + 0.2))
+    }
   }
   ctx.stroke()
 }
@@ -788,64 +804,6 @@ function drawCapsule(g: Gfx, kind: PowerKind, cx: number, cy: number, rr: number
   ctx.stroke()
   ctx.lineWidth = Math.max(1.2, rr * 0.17)
   drawGlyph(ctx, kind, cx, cy, rr)
-}
-
-/**
- * The supply runner: a small saucer with its capsule slung underneath, so what
- * it is carrying is plain before you decide to turn your gun on it.
- */
-function drawCarrier(g: Gfx) {
-  const { ctx, p, s, dark, t } = g
-  const c = s.carrier
-  if (!c) return
-  const r = p.u(carrierRadius())
-  const cx = p.x(c.x)
-  const cy = p.y(c.y)
-  const hue = POWER_HUE[c.kind]
-  const line = hsla(hue, 55, lineL(dark), 0.96)
-  const swing = Math.sin(t * 3.2) * r * 0.14
-  const capX = cx + swing
-  const capY = cy + r * 0.92
-
-  ctx.strokeStyle = line
-  ctx.lineWidth = Math.max(1, r * 0.06)
-  ctx.beginPath()
-  ctx.moveTo(cx, cy + r * 0.2)
-  ctx.lineTo(capX, capY - r * 0.4)
-  ctx.stroke()
-  drawCapsule(g, c.kind, capX, capY, r * 0.4)
-
-  // Exhaust off the trailing side.
-  const back = -Math.sign(c.vx)
-  ctx.fillStyle = hsla(hue, 90, 64, 0.4 + 0.2 * Math.sin(t * 30))
-  ctx.beginPath()
-  ctx.moveTo(cx + back * r * 0.9, cy - r * 0.1)
-  ctx.lineTo(cx + back * r * (1.35 + 0.1 * Math.sin(t * 41)), cy)
-  ctx.lineTo(cx + back * r * 0.9, cy + r * 0.1)
-  ctx.closePath()
-  ctx.fill()
-
-  ctx.lineWidth = Math.max(1.2, r * 0.1)
-  ctx.lineJoin = 'round'
-  ctx.fillStyle = hsla(hue, 55, 62, dark ? 0.24 : 0.32)
-  ctx.beginPath()
-  ctx.ellipse(cx, cy - r * 0.16, r * 0.46, r * 0.4, 0, Math.PI, 0)
-  ctx.closePath()
-  ctx.fill()
-  ctx.strokeStyle = line
-  ctx.stroke()
-  ctx.beginPath()
-  ctx.ellipse(cx, cy, r, r * 0.3, 0, 0, TAU)
-  ctx.fill()
-  ctx.stroke()
-
-  const lit = Math.floor(t * 8) % 3
-  for (let i = 0; i < 3; i++) {
-    ctx.beginPath()
-    ctx.arc(cx + (i - 1) * r * 0.5, cy + r * 0.04, Math.max(1.2, r * 0.08), 0, TAU)
-    ctx.fillStyle = i === lit ? hsla(GOLD, 95, dark ? 68 : 52) : line
-    ctx.fill()
-  }
 }
 
 /** Falling capsules, each with a guide down to where it will reach the rail. */
@@ -883,13 +841,16 @@ function drawDrops(g: Gfx) {
 
 function drawShots(g: Gfx) {
   const { ctx, p, s, dark } = g
-  const slowed = s.buffSlow > 0
   ctx.lineCap = 'round'
   for (const shot of s.shots) {
+    if (shot.returned) {
+      drawReturned(g, shot.x, shot.y, shot.vx, shot.vy)
+      continue
+    }
     const size = shotSize(shot.hostile)
     if (!shot.hostile) {
-      // A green streak with a bright head; a piercing round runs amber.
-      const hue = shot.pierce ? POWER_HUE.pierce : CANNON_HUE
+      // A green streak with a bright head; the lance's round runs amber, the fan's side rounds orange.
+      const hue = shot.from === 'lance' ? POWER_HUE.pierce : shot.from === 'side' ? POWER_HUE.spread : CANNON_HUE
       const sp = Math.hypot(shot.vx, shot.vy) || 1
       const len = p.u(size.h) * 1.25
       const hx = p.x(shot.x)
@@ -940,14 +901,95 @@ function drawShots(g: Gfx) {
     ctx.ellipse(0, 0, rx, ry, 0, 0, TAU)
     ctx.fillStyle = hsla(HOT, 88, dark ? 60 : 54, 0.95)
     ctx.fill()
-    ctx.strokeStyle = slowed ? hsla(POWER_HUE.slow, 70, lineL(dark), 0.95) : hsla(HOT, 80, dark ? 76 : 38, 0.95)
-    ctx.lineWidth = Math.max(1, ry * (slowed ? 0.5 : 0.35))
+    ctx.strokeStyle = hsla(HOT, 80, dark ? 76 : 38, 0.95)
+    ctx.lineWidth = Math.max(1, ry * 0.35)
     ctx.stroke()
     ctx.fillStyle = 'rgba(255, 244, 236, 0.92)'
     ctx.beginPath()
     ctx.ellipse(rx * 0.2, 0, rx * 0.5, ry * 0.42, 0, 0, TAU)
     ctx.fill()
     ctx.restore()
+  }
+  ctx.lineCap = 'butt'
+}
+
+/**
+ * One of the fleet's own rounds going back up: still their red at the core, in
+ * a sheath of the mirror's teal, with a long bright wake, so it reads as theirs
+ * and as turned.
+ */
+function drawReturned(g: Gfx, x: number, y: number, vx: number, vy: number) {
+  const { ctx, p, dark, t } = g
+  const size = shotSize(true)
+  const cx = p.x(x)
+  const cy = p.y(y + size.h / 2)
+  const sp = Math.hypot(vx, vy) || 1
+  const ux = vx / sp
+  const uy = vy / sp
+  const len = p.u(size.h) * 2.6
+  const grad = ctx.createLinearGradient(cx, cy, cx - ux * len, cy - uy * len)
+  grad.addColorStop(0, hsla(MIRROR_HUE, 85, dark ? 66 : 50, 0.8))
+  grad.addColorStop(1, hsla(MIRROR_HUE, 85, 60, 0))
+  ctx.strokeStyle = grad
+  ctx.lineWidth = Math.max(3, p.u(size.w) * 1.4)
+  ctx.lineCap = 'round'
+  ctx.beginPath()
+  ctx.moveTo(cx, cy)
+  ctx.lineTo(cx - ux * len, cy - uy * len)
+  ctx.stroke()
+  const rx = p.u(size.h) / 2
+  const ry = p.u(size.w) / 2
+  ctx.save()
+  ctx.translate(cx, cy)
+  ctx.rotate(Math.atan2(vy, vx))
+  ctx.fillStyle = hsla(MIRROR_HUE, 90, 60, 0.28 + 0.1 * Math.sin(t * 30))
+  ctx.beginPath()
+  ctx.ellipse(0, 0, rx * 1.6, ry * 2.4, 0, 0, TAU)
+  ctx.fill()
+  ctx.beginPath()
+  ctx.ellipse(0, 0, rx, ry, 0, 0, TAU)
+  ctx.fillStyle = hsla(HOT, 88, dark ? 60 : 54, 0.95)
+  ctx.fill()
+  ctx.strokeStyle = hsla(MIRROR_HUE, 80, dark ? 74 : 40, 0.95)
+  ctx.lineWidth = Math.max(1, ry * 0.5)
+  ctx.stroke()
+  ctx.fillStyle = 'rgba(255, 250, 244, 0.95)'
+  ctx.beginPath()
+  ctx.ellipse(rx * 0.2, 0, rx * 0.5, ry * 0.42, 0, 0, TAU)
+  ctx.fill()
+  ctx.restore()
+}
+
+/** Charges on their way down to the cannon: teal motes with a tail, swinging in. */
+function drawSparks(g: Gfx) {
+  const { ctx, p, s, dark, t } = g
+  for (const sp of s.sparks) {
+    const x = p.x(sp.x)
+    const y = p.y(sp.y)
+    const r = Math.max(2, p.u(0.009))
+    const tail = 0.06
+    ctx.strokeStyle = hsla(MIRROR_HUE, 85, dark ? 66 : 48, 0.45)
+    ctx.lineWidth = r * 1.1
+    ctx.lineCap = 'round'
+    ctx.beginPath()
+    ctx.moveTo(x, y)
+    ctx.lineTo(x - p.u(sp.vx) * tail, y - p.u(sp.vy) * tail)
+    ctx.stroke()
+    const glow = ctx.createRadialGradient(x, y, 0, x, y, r * 3)
+    glow.addColorStop(0, hsla(MIRROR_HUE, 95, 64, 0.55))
+    glow.addColorStop(1, hsla(MIRROR_HUE, 95, 64, 0))
+    ctx.fillStyle = glow
+    ctx.beginPath()
+    ctx.arc(x, y, r * 3, 0, TAU)
+    ctx.fill()
+    ctx.fillStyle = hsla(MIRROR_HUE, 90, dark ? 72 : 52)
+    ctx.beginPath()
+    ctx.arc(x, y, r * (0.9 + 0.15 * Math.sin(t * 24 + sp.age * 7)), 0, TAU)
+    ctx.fill()
+    ctx.fillStyle = 'rgba(250, 255, 255, 0.9)'
+    ctx.beginPath()
+    ctx.arc(x, y, r * 0.42, 0, TAU)
+    ctx.fill()
   }
   ctx.lineCap = 'butt'
 }
@@ -1021,9 +1063,13 @@ function drawRings(g: Gfx) {
 // ------------------------------------------------------------------- cannon
 
 /**
- * The cannon: a sled on the rail, a turret, a barrel that kicks. The four
- * lights on the sled are the rounds it has ready — four in the air at once —
- * so an empty gun shows as one, not as a trigger that stopped working.
+ * The cannon: a sled on the rail, a turret, a barrel that kicks, and whatever
+ * it has collected on it. Side barrels in the fan's orange, a pair a level; the
+ * barrel drawn out into an amber lance for piercing rounds, a band a level;
+ * vents in the fast trigger's sky either side of the turret, one a level; and a
+ * teal dome over it all while it holds mirrors, a light on it for each. The
+ * lights on the sled are the pulls it has ready, so an empty gun shows as one,
+ * not as a trigger that stopped working.
  */
 function drawCannon(g: Gfx) {
   const { ctx, p, s, dark, t } = g
@@ -1038,6 +1084,7 @@ function drawCannon(g: Gfx) {
   const line = hsla(CANNON_HUE, 55, lineL(dark), 0.98)
   const fill = hsla(CANNON_HUE, 60, 58, dark ? 0.26 : 0.32)
   const lw = Math.max(1.4, W * 0.032)
+  const { spread, pierce, rapid } = s.power
 
   if (s.respawn > 0) {
     // Set down from above in a column of light.
@@ -1070,32 +1117,57 @@ function drawCannon(g: Gfx) {
   // Barrels, then the turret over their roots, then the sled over the turret's.
   const kick = s.kick * H * 0.14
   const bw = W * 0.12
-  const spread = s.buffSpread > 0
-  if (spread) {
+  for (let i = spread; i >= 1; i--) {
     for (const side of [-1, 1]) {
       ctx.save()
-      ctx.translate(side * W * 0.06, -H * 0.5)
-      ctx.rotate(side * 0.32)
+      ctx.translate(side * W * 0.05, -H * 0.5)
+      ctx.rotate(side * (0.16 + 0.17 * i))
       ctx.beginPath()
-      ctx.roundRect(-bw * 0.35, -H * 0.5 + kick, bw * 0.7, H * 0.5, bw * 0.2)
+      ctx.roundRect(-bw * 0.33, -H * 0.46 + kick, bw * 0.66, H * 0.48, bw * 0.2)
       ctx.fillStyle = hsla(POWER_HUE.spread, 70, 60, dark ? 0.3 : 0.4)
       ctx.fill()
       ctx.strokeStyle = hsla(POWER_HUE.spread, 60, lineL(dark), 0.95)
       ctx.stroke()
       ctx.restore()
     }
-    ctx.strokeStyle = line
   }
+  ctx.strokeStyle = line
+
+  // The main barrel, drawn out into a lance for piercing rounds.
+  const reach = H * (0.7 + 0.13 * pierce)
+  const top = -H * 0.4 - reach + kick
   ctx.beginPath()
-  ctx.roundRect(-bw / 2, -H * 1.1 + kick, bw, H * 0.7, bw * 0.25)
+  ctx.roundRect(-bw / 2, top, bw, reach, bw * 0.25)
   ctx.fillStyle = fill
   ctx.fill()
   ctx.stroke()
-  ctx.beginPath()
-  ctx.roundRect(-bw * 0.72, -H * 1.12 + kick, bw * 1.44, H * 0.12, bw * 0.2)
-  ctx.fillStyle = s.pierceLeft > 0 ? hsla(POWER_HUE.pierce, 90, 60, 0.9) : fill
-  ctx.fill()
-  ctx.stroke()
+  if (pierce > 0) {
+    const amber = hsla(POWER_HUE.pierce, 90, 60, 0.92)
+    const amberLine = hsla(POWER_HUE.pierce, 70, lineL(dark), 0.98)
+    ctx.strokeStyle = amberLine
+    for (let i = 0; i < pierce; i++) {
+      ctx.beginPath()
+      ctx.roundRect(-bw * 0.62, top + H * (0.2 + 0.15 * i), bw * 1.24, H * 0.07, bw * 0.15)
+      ctx.fillStyle = amber
+      ctx.fill()
+      ctx.stroke()
+    }
+    ctx.beginPath()
+    ctx.moveTo(-bw * 0.56, top + H * 0.04)
+    ctx.lineTo(0, top - H * 0.17)
+    ctx.lineTo(bw * 0.56, top + H * 0.04)
+    ctx.closePath()
+    ctx.fillStyle = amber
+    ctx.fill()
+    ctx.stroke()
+    ctx.strokeStyle = line
+  } else {
+    ctx.beginPath()
+    ctx.roundRect(-bw * 0.72, top - H * 0.02, bw * 1.44, H * 0.12, bw * 0.2)
+    ctx.fillStyle = fill
+    ctx.fill()
+    ctx.stroke()
+  }
 
   ctx.beginPath()
   ctx.ellipse(0, -H * 0.46, W * 0.27, H * 0.42, 0, Math.PI, 0)
@@ -1111,6 +1183,27 @@ function drawCannon(g: Gfx) {
   ctx.stroke()
   ctx.lineWidth = lw
 
+  // Vents either side of the turret for the fast trigger; they flare with each pull.
+  if (rapid > 0) {
+    const sky = hsla(POWER_HUE.rapid, 80, 62, (dark ? 0.35 : 0.45) + 0.45 * s.kick)
+    const skyLine = hsla(POWER_HUE.rapid, 62, lineL(dark), 0.96)
+    ctx.lineWidth = lw * 0.8
+    for (const side of [-1, 1]) {
+      for (let i = 0; i < rapid; i++) {
+        const vx = side * W * (0.3 + 0.075 * i)
+        const vh = H * (0.3 - 0.06 * i)
+        ctx.beginPath()
+        ctx.roundRect(vx - W * 0.024, -H * 0.5 - vh, W * 0.048, vh, W * 0.02)
+        ctx.fillStyle = sky
+        ctx.fill()
+        ctx.strokeStyle = skyLine
+        ctx.stroke()
+      }
+    }
+    ctx.lineWidth = lw
+    ctx.strokeStyle = line
+  }
+
   ctx.beginPath()
   ctx.moveTo(-W / 2, -H * 0.1)
   ctx.lineTo(-W * 0.4, -H * 0.5)
@@ -1124,20 +1217,70 @@ function drawCannon(g: Gfx) {
   ctx.fill()
   ctx.stroke()
 
-  // Rounds ready.
-  const ready = s.phase === 'menu' ? 4 : roundsReady(s)
-  const pip = Math.max(1.3, W * 0.034)
-  for (let i = 0; i < 4; i++) {
+  // Pulls ready: more lights on a faster trigger.
+  const allowed = pullsAllowed(s)
+  const ready = s.phase === 'menu' ? allowed : roundsReady(s)
+  const pip = Math.max(1.2, W * (allowed > 5 ? 0.027 : 0.034))
+  const gap = W * (allowed > 5 ? 0.1 : 0.13)
+  for (let i = 0; i < allowed; i++) {
     ctx.beginPath()
-    ctx.arc((i - 1.5) * W * 0.13, -H * 0.27, pip, 0, TAU)
+    ctx.arc((i - (allowed - 1) / 2) * gap, -H * 0.27, pip, 0, TAU)
     ctx.fillStyle = i < ready ? hsla(CANNON_HUE, 85, dark ? 68 : 42) : hsla(CANNON_HUE, 18, dark ? 40 : 70, 0.7)
     ctx.fill()
+  }
+
+  // Mirrors: a dome of teal light over the turret, and a light on it for each
+  // one; round it, the next one building, a third of the way for each shot stopped.
+  const building = s.mirror < MAX_MIRROR ? s.sparksHeld / SPARKS_PER_MIRROR : 0
+  const rx = W * 0.44
+  const ry = H * 1.02
+  const dy = -H * 0.34
+  if (building > 0) {
+    ctx.strokeStyle = hsla(MIRROR_HUE, 30, dark ? 40 : 78, 0.5)
+    ctx.lineWidth = lw * 0.9
+    ctx.beginPath()
+    ctx.ellipse(0, dy, rx * 1.14, ry * 1.1, 0, Math.PI, 0)
+    ctx.stroke()
+    ctx.strokeStyle = hsla(MIRROR_HUE, 88, dark ? 70 : 44, 0.95)
+    ctx.lineWidth = lw * 1.3
+    ctx.beginPath()
+    ctx.ellipse(0, dy, rx * 1.14, ry * 1.1, 0, Math.PI, Math.PI + Math.PI * building)
+    ctx.stroke()
+    ctx.strokeStyle = line
+    ctx.lineWidth = lw
+  }
+  if (s.mirror > 0 || s.mirrorFlash > 0) {
+    const flash = s.mirrorFlash
+    ctx.beginPath()
+    ctx.ellipse(0, dy, rx, ry, 0, Math.PI, 0)
+    ctx.fillStyle = hsla(MIRROR_HUE, 85, 62, (dark ? 0.07 : 0.09) + 0.3 * flash)
+    ctx.fill()
+    ctx.strokeStyle = hsla(MIRROR_HUE, 80, dark ? 70 : 44, (s.mirror > 0 ? 0.7 : 0) + 0.3 * flash)
+    ctx.lineWidth = lw * (1 + flash * 1.5)
+    ctx.stroke()
+    // A glint running over the dome.
+    const glint = Math.PI + frac(t * 0.45) * Math.PI
+    ctx.strokeStyle = hsla(MIRROR_HUE, 90, dark ? 86 : 60, 0.55 * (s.mirror > 0 ? 1 : flash))
+    ctx.lineWidth = lw * 1.2
+    ctx.beginPath()
+    ctx.ellipse(0, dy, rx, ry, 0, glint - 0.22, glint + 0.22)
+    ctx.stroke()
+    ctx.lineWidth = lw
+    const pipR = Math.max(1.5, W * 0.036)
+    for (let i = 0; i < MAX_MIRROR; i++) {
+      const a = Math.PI + (Math.PI * (i + 1)) / (MAX_MIRROR + 1)
+      ctx.beginPath()
+      ctx.arc(Math.cos(a) * rx, dy + Math.sin(a) * ry, pipR, 0, TAU)
+      ctx.fillStyle = i < s.mirror ? hsla(MIRROR_HUE, 90, dark ? 72 : 44) : hsla(MIRROR_HUE, 25, dark ? 34 : 80, 0.55)
+      ctx.fill()
+    }
+    ctx.strokeStyle = line
   }
 
   // Muzzle flash.
   if (s.kick > 0.5) {
     const k = (s.kick - 0.5) / 0.5
-    const my = -H * 1.14 + kick
+    const my = top - H * (pierce > 0 ? 0.2 : 0.04)
     const f = W * 0.16 * k
     ctx.fillStyle = hsla(CANNON_HUE, 95, dark ? 82 : 60, 0.9 * k)
     ctx.beginPath()
@@ -1204,12 +1347,12 @@ function drawFloaters(g: Gfx) {
       size = small * 1.25
       weight = 700
     } else if (f.tone === 'pickup') {
-      colour = hsla(CANNON_HUE, 70, dark ? 66 : 36)
+      colour = f.kind ? hsla(POWER_HUE[f.kind], 85, dark ? 64 : 40) : hsla(CANNON_HUE, 70, dark ? 66 : 36)
+      size = small * 1.2
+      weight = 800
+    } else if (f.tone === 'mirror') {
+      colour = hsla(MIRROR_HUE, 80, dark ? 66 : 36)
       size = small * 1.1
-      weight = 700
-    } else if (f.tone === 'jam') {
-      colour = hsla(POWER_HUE.jam, 75, dark ? 68 : 40)
-      size = small * 1.15
       weight = 700
     }
     haloText(ctx, f.text, p.x(f.x), p.y(f.y), size, colour, weight)
@@ -1219,7 +1362,8 @@ function drawFloaters(g: Gfx) {
 
 /** What a wave has in store that the last one didn't. */
 function waveNote(wave: number) {
-  if (wave === 1) return 'Lit ships fire next · hit one first to stop its shot'
+  if (wave === 1) return 'Break a glowing ship, catch what it drops'
+  if (wave === 2) return 'Stop three lit ships to build a mirror'
   if (wave === 3) return 'Plated ships from here · the lanes lean'
   if (wave === 5) return 'Three rounds down every lane'
   if (wave === 6) return 'Heavy plate: three hits to break'
@@ -1310,9 +1454,9 @@ export function renderGame(
     drawShip(g, ship, flying ? Math.floor(t * 8 + ship.col) % 2 : frame)
   }
 
-  drawCarrier(g)
   drawDrops(g)
   drawShots(g)
+  drawSparks(g)
   drawRings(g)
   drawBits(g)
   drawCannon(g)

@@ -3,8 +3,8 @@ import {
   LINE_PAUSE,
   WAVE_BANNER,
   cannonRect,
-  carrierRadius,
   createInitialState,
+  dropFall,
   dropRadius,
   emitterOf,
   enterProgress,
@@ -27,8 +27,8 @@ import { renderGame } from './render'
  * engine and renderer, and a pilot that plays the way a person does. It works
  * the front of the fleet from underneath, leading the march, and takes a lit
  * ship when there is time to stop it before it fires; otherwise it reads the
- * lanes and stands in a cold one. It brings the supply runner down when a gap
- * opens under it, and runs under what falls. It looks the field over a few
+ * lanes and stands in a cold one. It goes for the ships carrying capsules, and
+ * runs under what falls. It looks the field over a few
  * times a second rather than every frame, now and then misjudges where a
  * volley will come down, and once in a while doesn't see one coming at all,
  * more often as the waves get harder, so a run ends the way a person's does.
@@ -42,7 +42,7 @@ import { renderGame } from './render'
  */
 const RUN = 0.82
 const RISE = 1.5
-const FALL = 0.3
+const FALL = dropFall()
 const WALL = 0.028
 const ROUND_GAP = 0.11
 /** The room the pilot means to leave between the cannon and a round going past it: not much. */
@@ -92,32 +92,11 @@ function launchY(s: GameState) {
   return s.layout.cannonY - shotSize(false).h
 }
 
-/** Whether a round fired up at `x` now would get past every ship on its way. */
-function openAbove(s: GameState, x: number, pace: number): boolean {
-  const L = s.layout
-  const half = shotSize(false).w / 2 + 0.01
-  for (const ship of s.ships) {
-    if (!ship.alive) continue
-    const t = Math.max(0, (launchY(s) - shipY(s, ship) - L.shipH) / RISE)
-    const left = shipX(s, ship) + marched(s, pace, t)
-    if (x + half > left && x - half < left + L.shipW) return false
-  }
-  return true
-}
-
-/** Where the supply runner will be when a round fired now gets up to it. */
-function carrierAhead(s: GameState): number | null {
-  const k = s.carrier
-  if (!k) return null
-  const t = Math.max(0, (launchY(s) - k.y - carrierRadius() * 1.3) / RISE)
-  return k.x + k.vx * t
-}
-
 /**
  * Whether a round fired now would meet something: a ship at the front of its
- * column, or the runner through a gap. `slop` is how fussy the pilot is about
- * it this time: above zero it wants the round well inside the hull, below zero
- * it will take one that only might land.
+ * column. `slop` is how fussy the pilot is about it this time: above zero it
+ * wants the round well inside the hull, below zero it will take one that only
+ * might land.
  */
 function linedUp(s: GameState, pace: number, slop: number): boolean {
   const L = s.layout
@@ -128,8 +107,7 @@ function linedUp(s: GameState, pace: number, slop: number): boolean {
     const left = shipX(s, f) + marched(s, pace, t)
     if (x + half > left + slop && x - half < left + L.shipW - slop) return true
   }
-  const kx = carrierAhead(s)
-  return kx !== null && Math.abs(kx - x) < carrierRadius() - slop && openAbove(s, x, pace)
+  return false
 }
 
 /** Something the pilot could go for: where to stand for it and how much it wants it. */
@@ -172,20 +150,19 @@ function threats(s: GameState, r: Reading): Threat[] {
   const c = cannonRect(s)
   const top = c.y - c.h * 0.1
   const size = shotSize(true)
-  const rate = s.buffSlow > 0 ? 0.5 : 1
   const lean = s.volleySpread * (1 - r.bias)
 
   for (const shot of s.shots) {
     if (!shot.hostile) continue
-    const vy = shot.vy * rate
+    const vy = shot.vy
     const t = (top - shot.y - size.h) / vy
     if (t < -0.25) continue
-    const vx = shot.vx * (1 - r.bias) * rate
+    const vx = shot.vx * (1 - r.bias)
     out.push({ x: shot.x + r.misread + vx * Math.max(0, t), t, vx, pass: (c.h * 1.1) / vy })
   }
 
   // Rounds still to leave a nozzle, `after` seconds from now, from `x` and `y`.
-  const vy = r.fall * rate
+  const vy = r.fall
   const coming = (x: number, y: number, after: number) => {
     const drop = top - y - size.h * 0.5
     out.push({
@@ -204,8 +181,7 @@ function threats(s: GameState, r: Reading): Threat[] {
       coming(e.x + marched(s, r.pace, after), e.y, after)
     }
   }
-  // A jammed volley fizzles, so its lanes are nothing to stand clear of.
-  if (s.chargeLeft > 0 && !s.jamArmed) {
+  if (s.chargeLeft > 0) {
     for (const ship of s.ships) {
       if (!ship.alive || !ship.charging || ship.col === r.bet) continue
       const e = emitterOf(s, ship)
@@ -271,8 +247,8 @@ export function makeSim(): Sim<GameState> {
       const t = Math.max(0, (launchY(s) - bottom) / RISE)
       const x = shipX(s, f) + L.shipW / 2 + marched(s, pace, t)
       const gap = Math.abs(x - from)
-      // Near ones first, and the lowest, which reach the line first.
-      let value = 1 + bottom * 2 - gap * 1.4 - (f.hp - 1) * 0.2
+      // Near ones first, and the lowest, which reach the line first; a ship with a capsule before either.
+      let value = 1 + bottom * 2 - gap * 1.4 - (f.hp - 1) * 0.2 + (f.cargo ? 0.9 : 0)
       let defuse = false
       if (f.charging && !blind) {
         // Worth standing in its lane only if there is time to get there and break it before it fires.
@@ -289,19 +265,6 @@ export function makeSim(): Sim<GameState> {
         key: `${f.col}:${f.row}`,
         col: f.col,
         defuse,
-        exact: false,
-      })
-    }
-
-    // The runner, worth a detour when a round has a way up to it.
-    const kx = carrierAhead(s)
-    if (kx !== null && kx > lo && kx < hi && openAbove(s, kx, pace)) {
-      aims.push({
-        x: kx,
-        value: 2 - Math.abs(kx - from) * 1.4,
-        key: 'carrier',
-        col: -1,
-        defuse: false,
         exact: false,
       })
     }
@@ -434,8 +397,9 @@ export function makeSim(): Sim<GameState> {
     render: (ctx, s, w, h) => renderGame(ctx, screen(s), w, h),
     // The field is in its own units, so a new size only matters if it turns the board.
     resize: (s, w, h) => (s.layout.fieldH > 1 === h > w ? s : begin(w, h)),
-    // The still: three lanes charging over the fleet, a shot on its way up, the supply ship crossing.
-    poster: { seed: 5, at: 8 },
+    // The still: the cannon between two lit lanes with its first capsule on, a fan of rounds on its
+    // way up, and a ship still carrying one.
+    poster: { seed: 9, at: 3.77 },
     // The engine has already played the last cannon going up, or the line giving way.
     hold: 0.8,
   }

@@ -27,7 +27,10 @@ import { useTournamentPlay } from '../../tournaments/TournamentPlayContext'
 import {
   createInitialState,
   jumpToWave,
+  levelMark,
+  MIRROR_HUE,
   POWER_HUE,
+  POWER_KINDS,
   stageFor,
   POWER_LABEL,
   setFiring,
@@ -70,13 +73,14 @@ function holdKeyFor(e: KeyboardEvent): HoldKey | undefined {
   return BY_CODE[e.code] ?? BY_KEY[e.key] ?? BY_KEY[e.key?.toLowerCase()]
 }
 
-/** Active pickups, in the order they matter while you are reading a volley. */
+/** What the cannon has collected: each power at its level, and the mirrors it holds. */
 function activeBuffs(ui: Snapshot) {
-  const out: { kind: keyof typeof POWER_LABEL; note: string }[] = []
-  if (ui.jam) out.push({ kind: 'jam', note: 'next volley' })
-  if (ui.slow > 0) out.push({ kind: 'slow', note: `${Math.ceil(ui.slow)}s` })
-  if (ui.spread > 0) out.push({ kind: 'spread', note: `${Math.ceil(ui.spread)}s` })
-  if (ui.pierce > 0) out.push({ kind: 'pierce', note: `${ui.pierce}` })
+  const out: { key: string; label: string; hue: number; note: string }[] = []
+  for (const kind of POWER_KINDS) {
+    const level = ui[kind]
+    if (level > 0) out.push({ key: kind, label: POWER_LABEL[kind], hue: POWER_HUE[kind], note: levelMark(level) })
+  }
+  if (ui.mirror > 0) out.push({ key: 'mirror', label: 'Mirror', hue: MIRROR_HUE, note: `×${ui.mirror}` })
   return out
 }
 
@@ -402,11 +406,11 @@ export function BarrageGame() {
               <div className="barrage__buffs">
                 {activeBuffs(ui).map((buff) => (
                   <span
-                    key={buff.kind}
+                    key={buff.key}
                     className="barrage__buff"
-                    style={{ '--buff-hue': POWER_HUE[buff.kind] } as CSSProperties}
+                    style={{ '--buff-hue': buff.hue } as CSSProperties}
                   >
-                    {POWER_LABEL[buff.kind]}
+                    {buff.label}
                     <b>{buff.note}</b>
                   </span>
                 ))}
