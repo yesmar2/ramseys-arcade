@@ -1123,10 +1123,7 @@ export function TournamentDetailPage({ id, invite }: { id: string; invite?: stri
         <div className="evp-split">
           <div className="evp-split__main">
             {bracket ? (
-              <>
-                <EventBracket detail={detail} displayName={displayName} className="ev-card ev-card--bracket" />
-                <BracketWinCelebration detail={detail} displayName={displayName} />
-              </>
+              <EventBracket detail={detail} displayName={displayName} className="ev-card ev-card--bracket" />
             ) : multi ? (
               rows.length ? (
                 <>
@@ -1141,6 +1138,12 @@ export function TournamentDetailPage({ id, invite }: { id: string; invite?: stri
             ) : (
               <StandingsEmpty detail={detail} />
             )}
+            {/*
+             * The win moment, a portal shown once per win: a bracket's as its
+             * matches are won, any other event's once it has a winner, so
+             * nobody "wins" an event that ended with no runs in it.
+             */}
+            {bracket || eventWinner(detail) ? <BracketWinCelebration detail={detail} displayName={displayName} /> : null}
           </div>
 
           <aside className="evp-split__side" aria-label="About this event">
