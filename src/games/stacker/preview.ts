@@ -45,8 +45,8 @@ export function makeSim(): Sim<GameState> {
     render: (ctx, s, w, h) => renderGame(ctx, s, w, h),
     warmup: 7,
     hold: 1.6,
-    // The game draws at fixed sizes, for a canvas the size of a phone's play area.
-    stage: 2.5,
+    // The game draws at fixed sizes, for a play area about 540px across; anything narrower shows it shrunk to fit.
+    stage: (w) => Math.max(1, 540 / w),
   }
 }
 

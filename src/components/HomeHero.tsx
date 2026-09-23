@@ -5,6 +5,7 @@ import { useLiveEvents } from '../hooks/useLiveEvents'
 import { APP_NAME } from '../lib/brand'
 import { useDefaultPeriod } from '../lib/defaultPeriod'
 import { useDeviceType } from '../lib/device'
+import { hasGamePreview } from '../lib/gamePreviews'
 import { useGlobalRank } from '../lib/globalRank'
 import { cachedMyGroups, useActiveGroup } from '../lib/groups'
 import { heroSlug, newestSlug } from '../lib/homePicks'
@@ -18,6 +19,7 @@ import { usePlayerName } from '../hooks/usePlayerName'
 import { inkOn } from '../lib/color'
 import { preloadGamePage } from '../pages/gamePages'
 import { EventCountdown } from './EventCountdown'
+import { GamePreview } from './GamePreview'
 import { GameThumbArt } from './GameThumbArt'
 
 type HeroScores = {
@@ -400,9 +402,17 @@ export function HomeHero() {
       </a>
     </div>
   )
+  // The game on its screen, playing itself the way a cabinet by the door runs its demo; its thumb until it's ready.
   const art = (
     <a className="home-banner__art" href={gamePlayHref(slug)} tabIndex={-1} aria-hidden="true">
       <GameThumbArt slug={slug} accent={accent} />
+      {hasGamePreview(slug) ? (
+        <>
+          <GamePreview slug={slug} className="home-banner__screen" autoplay />
+          <span className="home-banner__fade" />
+          <span className="home-banner__start">Press start</span>
+        </>
+      ) : null}
     </a>
   )
 

@@ -28,17 +28,26 @@ export type Sim<S> = {
    * For a game that scales itself to its canvas and was laid out for a big
    * screen, whose pieces would be specks on a cabinet's: draw it this many
    * times the screen's size and show only part of the drawing, its middle or
-   * the part `focus` names.
+   * the part `focus` names. Give a function of the screen's size when the
+   * right amount depends on it (a cabinet's screen, the banner's).
    */
-  zoom?: number
+  zoom?: Scale
   /** Where to look in a zoomed drawing, in its own CSS pixels. */
   focus?(s: S, w: number, h: number): { x: number; y: number }
   /**
    * For a game that draws at fixed pixel sizes, laid out for a phone-sized
    * canvas: draw it on a canvas this many times the screen's size and shrink
-   * the whole drawing onto the screen.
+   * the whole drawing onto the screen. As with `zoom`, a function of the
+   * screen's size when that decides it.
    */
-  stage?: number
+  stage?: Scale
+}
+
+/** A multiple of the screen's size, fixed or worked out from the screen's width and height. */
+export type Scale = number | ((w: number, h: number) => number)
+
+function scaleAt(scale: Scale | undefined, w: number, h: number) {
+  return typeof scale === 'function' ? scale(w, h) : (scale ?? 1)
 }
 
 function density() {
@@ -100,8 +109,8 @@ export function runPreview<S>(sim: Sim<S>): GamePreviewRun {
 
   const draw = (ctx: CanvasRenderingContext2D, state: S, w: number, h: number) => {
     const dpr = density()
-    const zoom = sim.zoom ?? 1
-    const stage = sim.stage ?? 1
+    const zoom = scaleAt(sim.zoom, w, h)
+    const stage = scaleAt(sim.stage, w, h)
     if (zoom <= 1 && stage <= 1) {
       fit(ctx, w, h, dpr)
       sim.render(ctx, state, w, h)

@@ -58,6 +58,8 @@
   --banner-faint: var(--muted);
   --banner-hover: color-mix(in srgb, var(--hero-accent) 70%, var(--ink));
   --banner-accent-ink: color-mix(in srgb, var(--hero-accent) 62%, var(--ink));
+  /* The banner's own colour about halfway across, where its screen fades into the words. */
+  --banner-mid: color-mix(in srgb, var(--hero-accent) 24%, #ffffff);
   --banner-chip-bg: rgba(255, 255, 255, 0.72);
   --banner-chip-border: color-mix(in srgb, var(--hero-accent) 40%, transparent);
   --banner-chip-ink: color-mix(in srgb, var(--hero-accent) 65%, var(--ink));
@@ -94,6 +96,7 @@ html[data-theme="dark"] .home-banner {
   --banner-faint: rgba(238, 244, 248, 0.68);
   --banner-hover: color-mix(in srgb, var(--hero-accent) 45%, #fff);
   --banner-accent-ink: color-mix(in srgb, var(--hero-accent) 55%, #fff);
+  --banner-mid: color-mix(in srgb, var(--hero-accent) 34%, #0b1620);
   --banner-chip-bg: rgba(255, 255, 255, 0.12);
   --banner-chip-border: rgba(255, 255, 255, 0.16);
   --banner-chip-ink: #f4f8fb;
@@ -322,6 +325,79 @@ html[data-theme="dark"] .home-banner {
 
 .home-banner__art:hover > .inline-thumb {
   transform: translateY(-50%) rotate(-5deg) scale(1.03);
+}
+
+/*
+ * With a game that can play itself, the art side is its screen: the game
+ * running its demo across the whole side, faded into the banner's colour
+ * where it meets the words, and a Press start that breathes. The thumb card
+ * underneath shows until the first frame is down.
+ */
+.home-banner__screen {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  opacity: 0;
+  transition: opacity 0.6s ease;
+}
+
+.home-banner__screen.game-preview--ready {
+  opacity: 1;
+}
+
+.home-banner__fade {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 32%;
+  background: linear-gradient(90deg, var(--banner-mid), transparent);
+  opacity: 0;
+  transition: opacity 0.6s ease;
+  pointer-events: none;
+}
+
+.home-banner__start {
+  position: absolute;
+  left: 50%;
+  bottom: 1.1rem;
+  display: inline-flex;
+  align-items: center;
+  height: 1.9rem;
+  padding: 0 0.95rem;
+  border-radius: 999px;
+  background: rgba(10, 16, 22, 0.62);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #f4f8fb;
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  backdrop-filter: blur(6px);
+  transform: translateX(-50%);
+  opacity: 0;
+  transition: opacity 0.6s ease;
+  pointer-events: none;
+}
+
+.home-banner__screen.game-preview--ready ~ .home-banner__fade,
+.home-banner__screen.game-preview--ready ~ .home-banner__start {
+  opacity: 1;
+}
+
+.home-banner__screen.game-preview--ready ~ .home-banner__start {
+  animation: banner-breathe 2.4s ease-in-out infinite;
+}
+
+@keyframes banner-breathe {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
 }
 
 @media (max-width: 56rem) {
@@ -693,6 +769,36 @@ html[data-theme="dark"] .home-banner {
 
   .home-banner__strip {
     padding: 0.85rem 1.25rem;
+  }
+
+  /* On a phone the screen sits on top, sixteen by nine, and fades into the words under it. */
+  .home-banner .home-banner__art:has(.home-banner__screen) {
+    min-height: 0;
+    aspect-ratio: 16 / 9;
+    max-height: 15rem;
+  }
+
+  .home-banner__fade {
+    inset: auto 0 0;
+    width: auto;
+    height: 34%;
+    background: linear-gradient(0deg, var(--banner-mid), transparent);
+  }
+
+  .home-banner__start {
+    bottom: 0.8rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-banner__screen,
+  .home-banner__fade,
+  .home-banner__start {
+    transition: none;
+  }
+
+  .home-banner__screen.game-preview--ready ~ .home-banner__start {
+    animation: none;
   }
 }
 

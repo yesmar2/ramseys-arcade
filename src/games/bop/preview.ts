@@ -104,8 +104,8 @@ export function makeSim(): Sim<GameState> {
     // floors in pixels, set for a phone. On a cabinet's small screen those
     // floors make them outgrow the controls and run into each other, so it is
     // drawn half as big again and shrunk to fit, which brings them back in
-    // proportion.
-    stage: 1.5,
+    // proportion. A screen the size of the banner's needs none of that.
+    stage: (w) => Math.min(1.5, Math.max(1, 324 / w)),
   }
 }
 
