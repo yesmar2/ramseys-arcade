@@ -579,3 +579,316 @@ html[data-theme='light'] .tour-play__gate {
 .share-panel__apps > :last-child:nth-child(odd) {
   grid-column: 1 / -1;
 }
+
+/*
+ * ---------- in a game: the start and pause cards ----------
+ *
+ * The kit's panel, placed by the game on its own stage rather than floated
+ * over the page, so it never turns into a sheet. It wears the game's colour
+ * in a soft band at the top, on its edge and on its one filled button.
+ */
+
+.game-card {
+  --panel-accent: var(--celeb-accent, var(--accent));
+  --panel-on-accent: var(--hero-ink, #03211b);
+  --panel-accent-ink: color-mix(in srgb, var(--panel-accent) 62%, var(--ink));
+  --panel-line: rgba(var(--ink-rgb), 0.12);
+  --panel-fill: rgba(var(--ink-rgb), 0.05);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 1rem;
+  width: min(23rem, calc(100% - 1.5rem));
+  max-height: calc(100% - 1.5rem);
+  overflow-y: auto;
+  box-sizing: border-box;
+  padding: 1.5rem 1.4rem 1.35rem;
+  border-radius: 1.5rem;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--panel-accent) 14%, var(--surface)) 0%,
+    var(--surface) 45%
+  );
+  border: 1px solid color-mix(in srgb, var(--panel-accent) 34%, var(--panel-line));
+  box-shadow: 0 30px 70px -24px rgba(0, 0, 0, 0.6);
+  color: var(--ink);
+  text-align: center;
+  animation: panel-rise 0.2s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+html[data-theme='dark'] .game-card {
+  --panel-accent-ink: color-mix(in srgb, var(--panel-accent) 72%, #fff);
+}
+
+.game-card__head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.game-card__kicker {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.6rem;
+  padding: 0 0.7rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--panel-accent) 16%, transparent);
+  color: var(--panel-accent-ink);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.game-card__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.9rem;
+  line-height: 1;
+  font-weight: 750;
+  letter-spacing: -0.03em;
+  color: var(--ink);
+}
+
+.game-card__title--big {
+  font-size: clamp(2rem, 6vw, 2.5rem);
+}
+
+.game-card__blurb {
+  margin: 0;
+  font-size: 0.95rem;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+/* Your best and the record, side by side as figures. */
+.game-card .game-pause-meta {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(7rem, 1fr));
+  gap: 0.5rem;
+  width: auto;
+  padding: 0;
+  background: none;
+  border: 0;
+}
+
+.game-card .game-pause-meta__row {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 0.2rem;
+  padding: 0.7rem 0.9rem;
+  border-radius: 0.9rem;
+  background: var(--panel-fill);
+  text-align: left;
+}
+
+.game-card .game-pause-meta__row span {
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.game-card .game-pause-meta__row strong {
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Sound, the sound pack, the rules and the boards: round chips in a row. */
+.game-card .game-pause-actions {
+  justify-content: center;
+  gap: 0.45rem;
+}
+
+.game-card .game-sound-row {
+  align-self: center;
+}
+
+.game-card .game-pause-btn,
+.game-card .patriot__info {
+  width: 2.75rem;
+  height: 2.75rem;
+  margin: 0;
+  border-radius: 999px;
+  border: 1px solid var(--panel-line);
+  background: var(--panel-fill);
+  color: var(--muted);
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+.game-card .game-pause-btn:hover,
+.game-card .game-pause-btn:focus-visible,
+.game-card .patriot__info:hover,
+.game-card .patriot__info:focus-visible {
+  color: var(--ink);
+  border-color: rgba(var(--ink-rgb), 0.26);
+  outline: none;
+}
+
+.game-card .sound-pack-btn {
+  width: auto;
+  padding-inline: 0.85rem;
+}
+
+.game-card__start {
+  width: 100%;
+  margin-top: 0.1rem;
+}
+
+.game-card__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.game-card__actions .panel__btn {
+  width: 100%;
+}
+
+.game-card__hint {
+  margin: -0.3rem 0 0;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+@media (pointer: coarse), (max-width: 767px) {
+  .game-card__hint {
+    display: none;
+  }
+}
+
+/*
+ * The start card lets a tap through to the playfield, which starts the run.
+ * Its chips take the pointer back and keep their presses to themselves;
+ * Start takes it too, and passes it on.
+ */
+.game-card--start {
+  pointer-events: none;
+}
+
+.game-card--start .game-pause-actions,
+.game-card--start .admin-wave-skip,
+.game-card--start .game-card__start {
+  pointer-events: auto;
+}
+
+/* Paused: the game dimmed and softly blurred under the card. */
+.game-pause-overlay {
+  background: rgba(8, 14, 20, 0.55);
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+}
+
+html[data-theme='light'] .game-pause-overlay {
+  background: rgba(26, 43, 60, 0.3);
+}
+
+@media (max-height: 560px) {
+  .game-card {
+    gap: 0.7rem;
+    padding: 1.1rem 1.2rem 1rem;
+  }
+
+  .game-card__title--big {
+    font-size: 1.8rem;
+  }
+
+  .game-card__blurb {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .game-card {
+    animation: none;
+  }
+}
+
+/* ---------- between waves, and a notice that passes ---------- */
+
+.game-card__figure {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 2.6rem;
+  line-height: 1;
+  font-weight: 750;
+  letter-spacing: -0.035em;
+  font-variant-numeric: tabular-nums;
+  color: var(--panel-accent-ink);
+}
+
+.game-card--wave .game-card__figure {
+  font-size: 1.3rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--muted);
+}
+
+.game-card--wave {
+  pointer-events: auto;
+}
+
+.game-card__rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  text-align: left;
+}
+
+.game-card__row--good {
+  background: color-mix(in srgb, #3ecf8e 15%, transparent);
+}
+
+.game-card__row--good > span:first-child {
+  font-weight: 650;
+  color: color-mix(in srgb, #3ecf8e 70%, var(--ink));
+}
+
+.game-card__row--gold {
+  background: color-mix(in srgb, #f5b942 16%, transparent);
+}
+
+.game-card__row--gold > span:first-child,
+.game-card__row--gold strong {
+  font-weight: 650;
+  color: color-mix(in srgb, #f5b942 62%, var(--ink));
+}
+
+html[data-theme='dark'] .game-card__row--good > span:first-child {
+  color: color-mix(in srgb, #3ecf8e 80%, #fff);
+}
+
+html[data-theme='dark'] .game-card__row--gold > span:first-child,
+html[data-theme='dark'] .game-card__row--gold strong {
+  color: #f5b942;
+}
+
+/* A notice that closes on its own: a label, the figure, the breakdown. */
+.game-card--notice {
+  width: auto;
+  min-width: 14rem;
+  max-width: min(20rem, calc(100% - 1.5rem));
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1.2rem 1.6rem 1.15rem;
+  pointer-events: none;
+}
+
+.game-card--gold {
+  --panel-accent: #f5b942;
+}
+
+.game-card--good {
+  --panel-accent: #3ecf8e;
+}

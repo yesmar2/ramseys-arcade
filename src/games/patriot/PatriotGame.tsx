@@ -459,15 +459,13 @@ export function PatriotGame() {
             )}
             {ui.phase === 'waveClear' && !needsRotate && !paused && (
               <div
-                className={`patriot__card patriot__card--clear${ui.clearBonus?.perfect ? ' patriot__card--perfect' : ''}${ui.clearBonus?.rebuilt ? ' patriot__card--rebuilt' : ''}`}
+                className={`game-card game-card--notice${ui.clearBonus?.perfect ? ' game-card--gold' : ''}${ui.clearBonus?.rebuilt ? ' game-card--good' : ''}`}
                 style={gameAccentStyle('patriot')}
                 aria-hidden="true"
               >
-                <span className="patriot__card-eyebrow">
-                  {waveClearLabel(ui)}
-                </span>
-                <p className="patriot__bonus">+{waveClearTotal(ui)}</p>
-                <p className="patriot__card-sub">{waveClearDetail(ui)}</p>
+                <span className="game-card__kicker">{waveClearLabel(ui)}</span>
+                <p className="game-card__figure">+{waveClearTotal(ui)}</p>
+                <p className="game-card__blurb">{waveClearDetail(ui)}</p>
               </div>
             )}
             {ui.phase === 'gameover' && saveOpen && !needsRotate && (

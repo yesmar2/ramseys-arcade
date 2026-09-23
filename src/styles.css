@@ -1696,37 +1696,6 @@ a.game-hud__board {
   color: var(--muted);
 }
 
-.game-pause-card__hint {
-  font-size: 0.78rem !important;
-  font-weight: 650 !important;
-}
-
-@media (pointer: coarse), (max-width: 767px) {
-  .game-pause-card__hint {
-    display: none;
-  }
-}
-
-.game-pause-card__resume {
-  appearance: none;
-  border: 0;
-  margin: 0.15rem 0 0;
-  padding: 0.55rem 1.35rem;
-  border-radius: 999px;
-  background: var(--accent);
-  color: #fff;
-  font: inherit;
-  font-weight: 700;
-  font-size: 0.92rem;
-  cursor: pointer;
-}
-
-.game-pause-card__resume:hover,
-.game-pause-card__resume:focus-visible {
-  filter: brightness(1.05);
-  outline: none;
-}
-
 .game-pause-meta {
   display: flex;
   flex-direction: column;
@@ -2053,69 +2022,6 @@ a.game-hud__board {
   outline: 2px solid color-mix(in srgb, var(--accent) 65%, transparent);
   outline-offset: 2px;
   border-radius: 0.35rem;
-}
-
-.game-pause-card__nav {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 0.45rem;
-  width: 100%;
-  margin-top: 0.15rem;
-}
-
-.game-pause-card__nav .game-pause-card__resume {
-  margin: 0;
-  width: 100%;
-}
-
-.game-pause-card__leave {
-  appearance: none;
-  border: 1px solid rgba(var(--ink-rgb), 0.12);
-  margin: 0;
-  padding: 0.55rem 1.35rem;
-  border-radius: 999px;
-  background: transparent;
-  color: var(--ink);
-  font: inherit;
-  font-weight: 700;
-  font-size: 0.92rem;
-  cursor: pointer;
-}
-
-.game-pause-card__leave:hover,
-.game-pause-card__leave:focus-visible {
-  background: rgba(var(--ink-rgb), 0.05);
-  outline: none;
-}
-
-/*
- * Start screen. It is the pause panel — same chrome, same rows, same controls —
- * so the screen before a run and the screen when you stop one are one thing.
- *
- * It sits in a layer that ignores the pointer so a tap anywhere starts the
- * game. The controls take the pointer back; each one stops the press from
- * reaching the playfield underneath, so opening sound or the rules does not
- * also start a run.
- */
-.game-start-card {
-  pointer-events: none;
-}
-
-.game-start-card .game-pause-actions {
-  pointer-events: auto;
-}
-
-/* Admin stage picker, in the same slot the pause panel gives it. */
-.game-start-card .admin-wave-skip {
-  pointer-events: auto;
-}
-
-/* Visible on touch, unlike the pause card's keyboard hint. */
-.game-start-card__cue {
-  font-size: 0.78rem;
-  font-weight: 650;
-  color: var(--muted);
 }
 
 /* Plain playfield readouts: score center, secondary under it (no chips). */
@@ -2823,17 +2729,6 @@ html[data-theme='dark'] .patriot__power {
   }
 }
 
-/*
- * Between waves. Surface, radius and the three lines come from the shared
- * hero card in celebrate.css, the one the start, pause, leave and score cards
- * all wear; only what is particular to this card lives here.
- */
-.patriot__card--clear {
-  min-width: 14rem;
-  max-width: min(20rem, calc(100% - 2rem));
-  animation: patriot-clear-in 0.35s ease-out both;
-}
-
 @keyframes patriot-rotate-hint {
   0%,
   100% {
@@ -2844,20 +2739,8 @@ html[data-theme='dark'] .patriot__power {
   }
 }
 
-@keyframes patriot-clear-in {
-  from {
-    opacity: 0;
-    transform: translateY(10px) scale(0.96);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .patriot__rotate-icon,
-  .patriot__card--clear {
+  .patriot__rotate-icon {
     animation: none;
   }
 }
@@ -3712,135 +3595,11 @@ html[data-theme='dark'] .patriot__power {
   z-index: 9;
 }
 
-.asteroids__card {
-  padding: 1.15rem 1.35rem;
-  border-radius: var(--tile-radius);
-  background: rgba(var(--surface-rgb), 0.9);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(var(--ink-rgb), 0.08);
-  box-shadow: var(--shadow-soft);
-  text-align: center;
-  max-width: min(18.5rem, calc(100% - 2.5rem));
-}
-
-.asteroids__card h2 {
-  margin: 0 0 0.35rem;
-  font-family: var(--font-display);
-  font-size: clamp(1.4rem, 3vw, 1.85rem);
-  font-weight: 700;
-  color: var(--ink);
-}
-
-.asteroids__card > p {
-  margin: 0 0 0.55rem;
-  font-size: 0.95rem;
-  color: var(--muted);
-}
-
-.asteroids__card--clear {
-  pointer-events: auto;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.35rem;
-  padding: 1.25rem 1.4rem 1.2rem;
-}
-
-.asteroids__card--clear > span {
-  font-size: 0.8rem;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  color: #2eb87a;
-}
-
-.asteroids__life-bonus {
-  display: flex;
-  align-items: center;
-  gap: 0.65rem;
-  width: 100%;
-  margin-top: 0.25rem;
-  padding: 0.65rem 0.75rem;
-  border-radius: 0.85rem;
-  background: color-mix(in srgb, var(--accent) 14%, rgba(var(--surface-rgb), 0.95));
-  border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
-  animation: asteroids-life-pop 0.55s ease-out;
-}
-
-.asteroids__life-bonus__ship {
-  flex: none;
-  width: 1.35rem;
-  height: 1.6rem;
-  color: var(--accent);
-}
-
-.asteroids__life-bonus__copy {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.1rem;
-  text-align: left;
-}
-
-.asteroids__life-bonus__copy strong {
-  font-family: var(--font-display);
-  font-size: 1.05rem;
-  font-weight: 700;
-  line-height: 1.1;
-  color: var(--ink);
-}
-
-.asteroids__life-bonus__copy span {
-  font-size: 0.75rem !important;
-  font-weight: 650 !important;
-  letter-spacing: 0.01em !important;
-  color: var(--muted) !important;
-}
-
-@keyframes asteroids-life-pop {
-  0% {
-    opacity: 0;
-    transform: scale(0.92) translateY(0.35rem);
-  }
-  100% {
-    opacity: 1;
-    transform: scale(1) translateY(0);
-  }
-}
-
-.asteroids__wave-time {
-  margin: 0 !important;
-  font-family: var(--font-display);
-  font-size: clamp(1.8rem, 4vw, 2.4rem);
-  font-weight: 700;
-  color: var(--ink) !important;
-  line-height: 1.1;
-}
-
 .asteroids__record-note {
   margin-top: 0.15rem;
   font-size: 0.85rem;
   font-weight: 700;
   color: var(--accent);
-}
-
-.asteroids__next {
-  margin-top: 0.55rem;
-  pointer-events: auto;
-  padding: 0.7rem 1.45rem;
-  border: 0;
-  border-radius: 0.85rem;
-  background: var(--accent-sky);
-  color: #fff;
-  font-family: var(--font-body);
-  font-size: 1.05rem;
-  font-weight: 700;
-  cursor: pointer;
-  box-shadow: var(--shadow-soft);
-  touch-action: manipulation;
-}
-
-.asteroids__next:hover {
-  filter: brightness(1.05);
 }
 
 .asteroids__touch {

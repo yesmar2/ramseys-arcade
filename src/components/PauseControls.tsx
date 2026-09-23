@@ -70,28 +70,20 @@ export function PauseOverlay({
       aria-label="Paused"
       onPointerDown={(e) => {
         e.stopPropagation()
-        if (!(e.target as HTMLElement).closest('.game-pause-card')) {
+        if (!(e.target as HTMLElement).closest('.game-card')) {
           onResume()
         }
       }}
     >
-      <div
-        className="game-pause-card"
-        style={style}
-        onPointerDown={(e) => e.stopPropagation()}
-      >
+      <div className="game-card game-card--pause" style={style} onPointerDown={(e) => e.stopPropagation()}>
         {children ?? (
           <>
-            <h2>Paused</h2>
-            <p>Tap to resume</p>
+            <h2 className="game-card__title">Paused</h2>
+            <p className="game-card__blurb">Tap to resume</p>
           </>
         )}
         {children && showResume ? (
-          <button
-            type="button"
-            className="game-pause-card__resume"
-            onClick={onResume}
-          >
+          <button type="button" className="panel__btn" onClick={onResume}>
             Resume
           </button>
         ) : null}
@@ -135,7 +127,7 @@ export function GamePanelBody({
           </div>
         ) : null}
         <div className="game-pause-meta__row">
-          <span>All time</span>
+          <span>The record</span>
           <strong>{allTime > 0 ? formatLeaderboardScore(slug, allTime) : '—'}</strong>
         </div>
         {extraMeta}
@@ -240,7 +232,10 @@ export function GamePauseOverlay({
 
   return (
     <PauseOverlay paused={paused} onResume={onResume} showResume={false} style={gameAccentStyle(slug)}>
-      <h2>Paused</h2>
+      <div className="game-card__head">
+        <span className="game-card__kicker">{gameName}</span>
+        <h2 className="game-card__title">Paused</h2>
+      </div>
       <GamePanelBody
         slug={slug}
         personalBest={personalBest}
@@ -248,23 +243,19 @@ export function GamePauseOverlay({
         extraMeta={extraMeta}
         tools={tools}
       />
-      <div className="game-pause-card__nav">
-        <button
-          type="button"
-          className="game-pause-card__resume"
-          onClick={onResume}
-        >
+      <div className="game-card__actions">
+        <button type="button" className="panel__btn" onClick={onResume}>
           Resume
         </button>
         <button
           type="button"
-          className="game-pause-card__leave"
+          className="panel__btn panel__btn--ghost"
           onClick={() => window.dispatchEvent(new Event('arcade:leave-confirm'))}
         >
           {leaveLabel}
         </button>
       </div>
-      <p className="game-pause-card__hint">Esc / P to resume</p>
+      <p className="game-card__hint">Esc or P to resume</p>
     </PauseOverlay>
   )
 }

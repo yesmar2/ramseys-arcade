@@ -12,6 +12,7 @@ import {
 } from '../../components/ScoreSaveCard'
 import { TournamentScoreCard } from '../../components/TournamentScoreCard'
 import { useGamePause } from '../../hooks/useGamePause'
+import { gameAccentStyle } from '../../lib/gameAccentStyle'
 import { usePersonalBest } from '../../hooks/usePersonalBest'
 import { usePlayerName } from '../../hooks/usePlayerName'
 import { useDeviceType } from '../../lib/device'
@@ -631,38 +632,31 @@ export function AsteroidsGame() {
               }
             />
             {ui.phase === 'waveClear' && !saveOpen && !paused && !waveCeleb && (
-              <div className="asteroids__card asteroids__card--clear">
-                <h2>Wave {ui.lastWave} clear</h2>
-                <p className="asteroids__wave-time">{formatWaveTime(ui.lastWaveTime)}s</p>
-                <span>
-                  {ui.timeBonus > 0 ? `Time bonus +${ui.timeBonus}` : 'No time bonus'}
-                </span>
-                {ui.comboBest > 1 ? (
-                  <span>Best combo {ui.comboBest}</span>
-                ) : null}
-                {ui.lifeBonus ? (
-                  <div className="asteroids__life-bonus" aria-live="polite">
-                    <svg
-                      className="asteroids__life-bonus__ship"
-                      viewBox="0 0 16 20"
-                      aria-hidden="true"
-                    >
-                      <path
-                        d="M8 1.5 L14.5 17.5 L8 13.5 L1.5 17.5 Z"
-                        fill="currentColor"
-                      />
-                    </svg>
-                    <div className="asteroids__life-bonus__copy">
-                      <strong>Extra life</strong>
-                      <span>Awarded every 3 waves</span>
-                    </div>
+              <div className="game-card game-card--wave" style={gameAccentStyle('asteroids')}>
+                <div className="game-card__head">
+                  <span className="game-card__kicker">Asteroids</span>
+                  <h2 className="game-card__title">Wave {ui.lastWave} clear</h2>
+                  <p className="game-card__figure">{formatWaveTime(ui.lastWaveTime)}s</p>
+                </div>
+                <div className="game-card__rows">
+                  <div className="panel__row">
+                    <span>Time bonus</span>
+                    <strong>{ui.timeBonus > 0 ? `+${ui.timeBonus}` : 'None'}</strong>
                   </div>
-                ) : null}
-                <button
-                  type="button"
-                  className="asteroids__next"
-                  onPointerDown={continueWave}
-                >
+                  {ui.comboBest > 1 ? (
+                    <div className="panel__row">
+                      <span>Best combo</span>
+                      <strong>{ui.comboBest}</strong>
+                    </div>
+                  ) : null}
+                  {ui.lifeBonus ? (
+                    <div className="panel__row game-card__row--good" aria-live="polite">
+                      <span>Extra life</span>
+                      <strong>every 3 waves</strong>
+                    </div>
+                  ) : null}
+                </div>
+                <button type="button" className="panel__btn" onPointerDown={continueWave}>
                   Next wave
                 </button>
               </div>

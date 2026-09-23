@@ -1,13 +1,18 @@
 import type { ReactNode } from 'react'
+import { getGame } from '../data/games'
 import { usePersonalBest } from '../hooks/usePersonalBest'
 import { gameAccentStyle } from '../lib/gameAccentStyle'
 import { GamePanelBody } from './PauseControls'
 
 /**
- * The first screen of a game: the pause panel with the game's name at the top
- * and a start cue instead of the resume hint. Before this the two screens were
- * built separately and slowly drifted apart, which made stopping a run feel
- * like landing somewhere else. Same panel, two moments.
+ * The first screen of a game: the game's name and what it is, your best and
+ * the record, the sound and the rules, and Start. It is the pause card's
+ * twin (the same card in the panel kit, in the game's colour), so stopping
+ * a run lands where the run began.
+ *
+ * A tap anywhere starts the run, and so does Space or Enter. Start is a real
+ * button for the eye and the keyboard; it passes its press on to the
+ * playfield like any other tap, so it starts the run the same way.
  */
 export function GameStartCard({
   title,
@@ -23,17 +28,18 @@ export function GameStartCard({
   tools?: ReactNode
 }) {
   const personalBest = usePersonalBest(slug)
+  const blurb = getGame(slug)?.description
 
   return (
-    <div className="game-pause-card game-start-card" style={gameAccentStyle(slug)}>
-      <h2>{title}</h2>
-      <GamePanelBody
-        slug={slug}
-        personalBest={personalBest}
-        extraMeta={extraMeta}
-        tools={tools}
-      />
-      <span className="game-start-card__cue">Tap to start</span>
+    <div className="game-card game-card--start" style={gameAccentStyle(slug)}>
+      <div className="game-card__head">
+        <h2 className="game-card__title game-card__title--big">{title}</h2>
+        {blurb ? <p className="game-card__blurb">{blurb}</p> : null}
+      </div>
+      <GamePanelBody slug={slug} personalBest={personalBest} extraMeta={extraMeta} tools={tools} />
+      <button type="button" className="panel__btn game-card__start">
+        Start
+      </button>
     </div>
   )
 }
