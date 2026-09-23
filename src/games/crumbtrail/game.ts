@@ -124,6 +124,24 @@ export type PopTone = 'ink' | 'streak' | 'lost' | 'row'
 export type Pop = { x: number; y: number; life: number; maxLife: number; text: string; tone: PopTone }
 export type TrailDot = { x: number; y: number; life: number }
 
+/** Debris and light, in buffer tiles, so they ride the board down when it shifts. */
+export type Bit = {
+  kind: 'spark' | 'shard'
+  x: number
+  y: number
+  vx: number
+  vy: number
+  life: number
+  maxLife: number
+  hue: number
+  size: number
+  angle: number
+  spin: number
+}
+
+/** A shock ring, out fast and fading. */
+export type Ring = { x: number; y: number; r0: number; r1: number; life: number; maxLife: number; hue: number }
+
 export type Snapshot = {
   phase: Phase
   score: number
@@ -219,6 +237,11 @@ export type GameState = {
   /** Crumbs just eaten, each leaving a ring for a moment where it was. */
   bites: TrailDot[]
   pops: Pop[]
+  // Presentation only: nothing below changes what happens in a run.
+  bits: Bit[]
+  rings: Ring[]
+  /** 0–1 knock on the screen, decaying. */
+  shake: number
   deathAnim: number
   cause: DeathCause | null
   invuln: number
@@ -910,6 +933,7 @@ function fireBeam(state: GameState) {
     ghost.hit = 1
     state.score += bonus
     addPop(state, ghost.x, ghost.y, `+${bonus}`)
+    burstGhost(state, ghost)
     hits += 1
   }
 
@@ -958,6 +982,8 @@ function shiftDown(state: GameState) {
   for (const dot of state.trail) dot.y += 1
   for (const bite of state.bites) bite.y += 1
   for (const pop of state.pops) pop.y += 1
+  for (const bit of state.bits) bit.y += 1
+  for (const ring of state.rings) ring.y += 1
   if (state.fruit) state.fruit.y += 1
   if (state.charm) state.charm.y += 1
 
@@ -1075,10 +1101,13 @@ function emptyState(view: { cols: number; rows: number }): GameState {
     trail: [],
     bites: [],
     pops: [],
+    bits: [],
+    rings: [],
+    shake: 0,
     deathAnim: 0,
     cause: null,
     invuln: 0,
-    mouth: 0,
+    mouth: 0.6,
     time: 0,
   }
   fillBuffer(state)
@@ -1372,9 +1401,11 @@ function canStepFrom(state: GameState, x: number, y: number, dir: Dir) {
   return stepTile(state, x, y, dir) !== null
 }
 
+/** Moves the player; returns how far it actually went, for the chomp. */
 function movePlayer(state: GameState, speed: number, dt: number) {
   const p = state.player
   let left = speed * dt
+  let moved = 0
   let guard = 0
 
   while (left > CENTER_EPS && guard++ < 12) {
@@ -1417,7 +1448,9 @@ function movePlayer(state: GameState, speed: number, dt: number) {
     advance(p, p.dir, step)
     normalizeX(state, p)
     left -= step
+    moved += step
   }
+  return moved
 }
 
 function addPop(state: GameState, x: number, y: number, text: string, tone: PopTone = 'ink') {
@@ -1425,6 +1458,99 @@ function addPop(state: GameState, x: number, y: number, text: string, tone: PopT
   const life = tone === 'row' ? 1.5 : 0.9
   state.pops.push({ x, y, life, maxLife: life, text, tone })
   if (state.pops.length > 12) state.pops.shift()
+}
+
+// —— Effects: presentation only ————————————————————————————————
+
+/** Hues the effects borrow: the crumbs', the power pip's gold, the tide's rose. */
+const FX_GREEN = 152
+const FX_GOLD = 42
+const FX_TIDE = 350
+
+function rand(a: number, b: number) {
+  return a + Math.random() * (b - a)
+}
+
+function addSparks(state: GameState, x: number, y: number, n: number, hue: number, speed = 4, up = 0) {
+  for (let i = 0; i < n; i++) {
+    const a = Math.random() * Math.PI * 2
+    const v = speed * rand(0.35, 1)
+    const life = rand(0.25, 0.5)
+    state.bits.push({
+      kind: 'spark',
+      x,
+      y,
+      vx: Math.cos(a) * v,
+      vy: Math.sin(a) * v - up,
+      life,
+      maxLife: life,
+      hue,
+      size: rand(0.05, 0.09),
+      angle: 0,
+      spin: 0,
+    })
+  }
+}
+
+function addShards(state: GameState, x: number, y: number, n: number, hue: number) {
+  for (let i = 0; i < n; i++) {
+    const a = Math.random() * Math.PI * 2
+    const v = rand(0.8, 2.6)
+    const life = rand(0.45, 0.8)
+    state.bits.push({
+      kind: 'shard',
+      x,
+      y,
+      vx: Math.cos(a) * v,
+      vy: Math.sin(a) * v,
+      life,
+      maxLife: life,
+      hue,
+      size: rand(0.12, 0.2),
+      angle: Math.random() * Math.PI * 2,
+      spin: rand(-10, 10),
+    })
+  }
+}
+
+function addRing(state: GameState, x: number, y: number, r0: number, r1: number, life: number, hue: number) {
+  state.rings.push({ x, y, r0, r1, life, maxLife: life, hue })
+}
+
+/** Hue a chaser wears, for the debris it leaves. Mirrors the renderer's. */
+function ghostHue(kind: GhostKind) {
+  if (kind === 'train') return 42
+  if (kind === 'blink') return 355
+  if (kind === 'pink') return 320
+  if (kind === 'herd') return 262
+  if (kind === 'inky') return 190
+  return 28
+}
+
+/** A chaser taken off the board: pieces of it, a ring, a knock. */
+function burstGhost(state: GameState, ghost: Ghost) {
+  addShards(state, ghost.x, ghost.y, 8, ghostHue(ghost.kind))
+  addRing(state, ghost.x, ghost.y, 0.25, 1.3, 0.4, ghostHue(ghost.kind))
+  state.shake = Math.min(1, state.shake + 0.28)
+}
+
+const MAX_BITS = 260
+
+function tickEffects(state: GameState, dt: number) {
+  const bits: Bit[] = []
+  for (let i = Math.max(0, state.bits.length - MAX_BITS); i < state.bits.length; i++) {
+    const b = state.bits[i]!
+    const life = b.life - dt
+    if (life <= 0) continue
+    // Per second, not per frame, so a fast screen throws debris no shorter.
+    const drag = Math.pow(b.kind === 'spark' ? 0.03 : 0.2, dt)
+    const vx = b.vx * drag
+    const vy = b.vy * drag
+    bits.push({ ...b, life, vx, vy, x: b.x + vx * dt, y: b.y + vy * dt, angle: b.angle + b.spin * dt })
+  }
+  state.bits = bits
+  state.rings = state.rings.filter((r) => r.life > dt).map((r) => ({ ...r, life: r.life - dt }))
+  state.shake = Math.max(0, state.shake - dt * 2.6)
 }
 
 /** Nor is a charm — same reason as the fruit below. */
@@ -1474,6 +1600,7 @@ function eatAt(state: GameState) {
       state.score += SCORE_LANDMARK
       frighten(state)
       addPop(state, x + 0.5, y + 0.5, `${state.crumbStreak} IN A ROW!`, 'streak')
+      addRing(state, x + 0.5, y + 0.5, 0.3, 3.2, 0.7, FX_GOLD)
       sfx('wave')
       haptic('boost')
     }
@@ -1501,6 +1628,8 @@ function eatAt(state: GameState) {
     state.score += SCORE_POWER
     state.surge = Math.min(1, state.surge + 0.15)
     frighten(state)
+    addRing(state, x + 0.5, y + 0.5, 0.3, 2.2, 0.55, FX_GOLD)
+    addSparks(state, x + 0.5, y + 0.5, 10, FX_GOLD, 5)
     sfx('wave')
   }
 }
@@ -1529,6 +1658,13 @@ function loseLife(state: GameState, cause: DeathCause) {
   state.cause = cause
   state.crumbStreak = 0
   state.lives -= 1
+  if (cause === 'drowned') {
+    // Taken under: a splash off the surface.
+    addSparks(state, state.player.x, state.player.y + 0.2, 16, FX_TIDE, 3.4, 2.2)
+  } else {
+    addRing(state, state.player.x, state.player.y, 0.2, 1.4, 0.45, 355)
+  }
+  state.shake = Math.min(1, state.shake + 0.6)
   sfx('hurt')
   haptic('crash')
 }
@@ -1537,7 +1673,11 @@ function loseLife(state: GameState, cause: DeathCause) {
 
 export function tick(state: GameState, dt: number): GameState {
   if (state.phase === 'menu' || state.phase === 'gameover') {
-    return { ...state, time: state.time + dt }
+    // The chomper works away behind the start card; debris from the end of a
+    // run finishes flying under the score card.
+    const idle = { ...state, time: state.time + dt, mouth: state.phase === 'menu' ? state.mouth + dt * 4.5 : state.mouth }
+    tickEffects(idle, dt)
+    return idle
   }
 
   const next: GameState = {
@@ -1548,9 +1688,9 @@ export function tick(state: GameState, dt: number): GameState {
     bites: state.bites.map((b) => ({ ...b, life: b.life - dt * 4.5 })).filter((b) => b.life > 0),
     pops: state.pops.map((p) => ({ ...p, life: p.life - dt })).filter((p) => p.life > 0),
     time: state.time + dt,
-    mouth: state.mouth + dt * 13,
     invuln: Math.max(0, state.invuln - dt),
   }
+  tickEffects(next, dt)
 
   if (next.phase === 'dying') {
     next.deathAnim -= dt
@@ -1570,7 +1710,9 @@ export function tick(state: GameState, dt: number): GameState {
     }
   }
   const surging = next.surgeTime > 0
-  movePlayer(next, PLAYER_SPEED * (surging ? SURGE_SPEED : 1), dt)
+  const moved = movePlayer(next, PLAYER_SPEED * (surging ? SURGE_SPEED : 1), dt)
+  // The mouth works while you move, and rests where it stopped against a wall.
+  if (moved > 0) next.mouth += moved * 2.1
   eatAt(next)
 
   const climbed = worldRowAt(next, Math.floor(next.player.y)) - next.baseRow
@@ -1578,6 +1720,7 @@ export function tick(state: GameState, dt: number): GameState {
     const landmark = Math.floor(climbed / MILESTONE_ROWS) * MILESTONE_ROWS
     if (landmark > next.depth && landmark > 0) {
       addPop(next, next.player.x, next.player.y - 0.9, `ROW ${landmark}`, 'row')
+      addRing(next, next.player.x, next.player.y, 0.3, 2.6, 0.6, FX_GREEN)
       sfx('perfect')
     }
     next.score += (climbed - next.depth) * SCORE_ROW
@@ -1624,6 +1767,9 @@ export function tick(state: GameState, dt: number): GameState {
       next.charm = null
       next.charmTimer = charmGap()
     } else if (dist2(next.charm.x, next.charm.y, next.player.x, next.player.y) <= 0.45 * 0.45) {
+      const hue = next.charm.kind === 'freeze' ? 196 : 4
+      addRing(next, next.charm.x, next.charm.y, 0.3, 2, 0.5, hue)
+      addSparks(next, next.charm.x, next.charm.y, 10, hue, 4.5)
       if (next.charm.kind === 'freeze') {
         next.freeze = FREEZE_TIME
         addPop(next, next.charm.x, next.charm.y, 'FREEZE')
@@ -1654,6 +1800,8 @@ export function tick(state: GameState, dt: number): GameState {
     } else if (dist2(next.fruit.x, next.fruit.y, next.player.x, next.player.y) <= 0.45 * 0.45) {
       next.score += next.fruit.value
       addPop(next, next.fruit.x, next.fruit.y, `+${next.fruit.value}`)
+      addSparks(next, next.fruit.x, next.fruit.y, 12, 350, 4.5)
+      addRing(next, next.fruit.x, next.fruit.y, 0.3, 1.6, 0.45, FX_GOLD)
       sfx('good')
       next.fruit = null
       next.fruitTimer = fruitGap()
@@ -1739,6 +1887,7 @@ export function tick(state: GameState, dt: number): GameState {
       ghost.hit = 1
       next.score += bonus
       addPop(next, ghost.x, ghost.y, `+${bonus}`)
+      burstGhost(next, ghost)
       sfx('good')
       haptic('hit')
       continue
@@ -1751,6 +1900,7 @@ export function tick(state: GameState, dt: number): GameState {
       ghost.hit = 1
       next.score += bonus
       addPop(next, ghost.x, ghost.y, `+${bonus}`)
+      burstGhost(next, ghost)
       sfx('good')
       continue
     }

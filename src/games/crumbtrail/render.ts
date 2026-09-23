@@ -1,4 +1,5 @@
-import { isDarkTheme, isFlatTheme, playfieldColor, softFillAlpha } from '../../lib/theme'
+import { paintFruit, type FruitArt } from '../fruitArt'
+import { inkColor, isDarkTheme, playfieldColor } from '../../lib/theme'
 import {
   bufferRowOf,
   MILESTONE_ROWS,
@@ -11,14 +12,23 @@ import {
   type PopTone,
 } from './game'
 
-/** Gold crumbs — same family as Pellets and Snake food. */
 /*
- * Crumbs and the player. Green rather than the gold it shared with Pellets:
- * the chasers sit on 355, 320, 190 and 28 and fruit runs 292 to 348, so this
- * is the one wide arc of the wheel with nothing else in it — the two things
- * you track every second read clearly against everything that can kill you.
+ * Drawn the house way, and the same way as Pellets, whose maze this is with the
+ * exit taken out: walls as rounded tubes with a line inside them, solid crumbs,
+ * glossy power pips, and chasers with eyes that look where they are going.
+ *
+ * Crumbs and the player are green rather than Pellets' gold: the chasers sit on
+ * 355, 320, 262, 190 and 28 and fruit runs red, so green is the one wide arc of
+ * the wheel with nothing else in it — the two things you track every second
+ * read clearly against everything that can kill you. Gold is kept for power.
  */
+
 const ACCENT = 152
+const GOLD = 42
+const WALL_HUE = 234
+/** Frightened chasers: the sky blue, clear of the indigo walls. */
+const SCARED_HUE = 212
+const TIDE_HUE = 350
 /** The site's own face, at a weight it loads; a canvas can't read the CSS variable. */
 const FONT = '"Outfit", system-ui, sans-serif'
 const TAU = Math.PI * 2
@@ -28,71 +38,33 @@ const LOOK: Record<Dir, { x: number; y: number }> = {
   left: { x: -1, y: 0 },
   right: { x: 1, y: 0 },
 }
-
-type Skin = {
-  dark: boolean
-  wallFill: string
-  wallStroke: string
-  crumbFill: string
-  crumbStroke: string
-  ink: string
-  edge: string
-}
+/** Fruit by tier, lowest first: the same fruit Pellets offers. */
+const FRUIT_ART: FruitArt[] = ['cherry', 'berry', 'orange', 'apple', 'melon', 'bell', 'key']
 
 function hsla(hue: number, sat: number, light: number, alpha = 1) {
   return `hsla(${hue}, ${sat}%, ${light}%, ${alpha})`
 }
 
-function skinFor(dark: boolean): Skin {
-  const flat = isFlatTheme()
-  const crumbA = softFillAlpha(dark ? 0.22 : 0.2)
-  return dark
-    ? {
-        dark,
-        wallFill: '#152033',
-        wallStroke: '#6b8cff',
-        crumbFill: hsla(ACCENT, 58, 58, crumbA),
-        crumbStroke: flat ? 'transparent' : hsla(ACCENT, 58, 58, 0.9),
-        ink: '#e7eef3',
-        edge: 'rgba(232, 93, 117, 0.9)',
-      }
-    : {
-        dark,
-        wallFill: '#d9e4fb',
-        wallStroke: '#3d63e8',
-        crumbFill: hsla(ACCENT, 58, 58, crumbA),
-        crumbStroke: flat ? 'transparent' : hsla(ACCENT, 58, 42, 0.9),
-        ink: '#1a2b3c',
-        edge: 'rgba(200, 50, 80, 0.85)',
-      }
+/** Outline lightness: bright over the dark theme's ground, deeper over the light one. */
+const lineL = (dark: boolean) => (dark ? 66 : 42)
+
+function frac(v: number) {
+  return v - Math.floor(v)
 }
 
-function roundRect(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  w: number,
-  h: number,
-  r: number,
-) {
-  const radius = Math.max(0, Math.min(r, w / 2, h / 2))
-  ctx.beginPath()
-  ctx.moveTo(x + radius, y)
-  ctx.arcTo(x + w, y, x + w, y + h, radius)
-  ctx.arcTo(x + w, y + h, x, y + h, radius)
-  ctx.arcTo(x, y + h, x, y, radius)
-  ctx.arcTo(x, y, x + w, y, radius)
-  ctx.closePath()
+function clamp01(v: number) {
+  return Math.max(0, Math.min(1, v))
 }
 
 /**
  * A train is told apart by being a line of identical chasers sweeping together,
  * which no single chaser can look like — so rather than spend a hue the wheel
  * does not have, it reads as a different material: the same warm tone drained
- * of colour, like something built rather than something hunting.
+ * of colour, like something built rather than something hunting, with a visor
+ * where the eyes would be.
  */
 function chaserSat(kind: GhostKind) {
-  return kind === 'train' ? 20 : 56
+  return kind === 'train' ? 18 : 70
 }
 
 function chaserHue(kind: GhostKind) {
@@ -127,135 +99,287 @@ export function computeLayout(w: number, h: number, state: GameState): Layout {
   }
 }
 
-type Rect = { x: number; y: number; w: number; h: number }
+type Gfx = {
+  ctx: CanvasRenderingContext2D
+  s: GameState
+  dark: boolean
+  cell: number
+  w: number
+  h: number
+  t: number
+  /** Screen y of a buffer position, in tiles (a tile's centre is y + 0.5). */
+  Y: (y: number) => number
+}
+
+// ————————————————————————————————————————————————————————— sky
 
 /**
- * Wall tiles merged into as few rectangles as possible.
- *
- * Bands share their gap columns, so a two-row band is the same run of walls
- * twice over; merging them vertically is what turns a pair of thin bars into
- * one chunky block, which is the whole reason the maze reads as a maze.
+ * Two layers of stars that slide down as you climb, slower than the maze does,
+ * the far ones slowest. It is the only thing on screen that says how high up
+ * you are rather than what is in front of you.
  */
-function wallRects(state: GameState): Rect[] {
-  const { cols, rows } = state
-  const used: boolean[][] = Array.from({ length: rows }, () =>
-    new Array(cols).fill(false),
-  )
-  const out: Rect[] = []
+function drawSky(g: Gfx) {
+  const { ctx, s, dark, cell, w, h } = g
+  ctx.fillStyle = playfieldColor()
+  ctx.fillRect(0, 0, w, h)
 
-  for (let y = 0; y < rows; y++) {
-    let x = 0
-    while (x < cols) {
-      if (state.open[y][x] || used[y][x]) {
-        x += 1
-        continue
-      }
-      let x1 = x
-      while (x1 + 1 < cols && !state.open[y][x1 + 1] && !used[y][x1 + 1]) x1 += 1
-
-      let y1 = y
-      while (y1 + 1 < rows) {
-        let same = true
-        for (let c = x; c <= x1; c++) {
-          if (state.open[y1 + 1][c] || used[y1 + 1][c]) {
-            same = false
-            break
-          }
-        }
-        // Only merge a full-width match, or the block would grow teeth.
-        if (same && x > 0 && !state.open[y1 + 1][x - 1]) same = false
-        if (same && x1 < cols - 1 && !state.open[y1 + 1][x1 + 1]) same = false
-        if (!same) break
-        y1 += 1
-      }
-
-      for (let r = y; r <= y1; r++) {
-        for (let c = x; c <= x1; c++) used[r][c] = true
-      }
-      out.push({ x, y, w: x1 - x + 1, h: y1 - y + 1 })
-      x = x1 + 1
-    }
-  }
-  return out
-}
-
-function drawWalls(
-  ctx: CanvasRenderingContext2D,
-  state: GameState,
-  layout: Layout,
-  skin: Skin,
-) {
-  const { cell, rowY } = layout
-  const inset = cell * 0.12
-  const radius = cell * 0.36
-  const flat = isFlatTheme()
-  ctx.lineWidth = Math.max(1.2, cell * 0.07)
-  ctx.strokeStyle = skin.wallStroke
-  ctx.fillStyle = skin.wallFill
-
-  for (const rect of wallRects(state)) {
-    const x = rect.x * cell + inset
-    const y = rowY(rect.y) + inset
-    const w = rect.w * cell - inset * 2
-    const h = rect.h * cell - inset * 2
-    if (y > ctx.canvas.height || y + h < -cell) continue
-    roundRect(ctx, x, y, w, h, radius)
-    ctx.fill()
-    if (!flat) ctx.stroke()
-  }
-}
-
-function drawCrumbs(
-  ctx: CanvasRenderingContext2D,
-  state: GameState,
-  layout: Layout,
-  skin: Skin,
-) {
-  const { cell, rowY } = layout
-  const crumbR = Math.max(1.5, cell * 0.12)
-  const crumbLine = Math.max(1, cell * 0.045)
-  const flat = isFlatTheme()
-
-  ctx.fillStyle = skin.crumbFill
-  ctx.strokeStyle = skin.crumbStroke
-  ctx.lineWidth = crumbLine
-  for (let y = 0; y < state.rows; y++) {
-    const cy = rowY(y) + cell * 0.5
-    if (cy < -cell || cy > ctx.canvas.height + cell) continue
-    for (let x = 0; x < state.cols; x++) {
-      if (!state.crumbs[y][x]) continue
-      const cx = (x + 0.5) * cell
+  // Each layer goes down in three brightnesses, one path apiece: a hundred and
+  // fifty separate little fills cost more than the whole maze.
+  const climbed = s.camera * cell
+  ctx.fillStyle = inkColor()
+  for (const [layer, pace, density] of [
+    [0, 0.16, 9000],
+    [1, 0.38, 17000],
+  ] as const) {
+    const count = Math.round((w * h) / density)
+    for (let band = 0; band < 3; band++) {
       ctx.beginPath()
-      ctx.arc(cx, cy, crumbR, 0, Math.PI * 2)
+      for (let i = 1 + band; i <= count; i += 3) {
+        const a = frac(Math.sin(i * 12.9898 + layer * 7.13) * 43758.5453)
+        const b = frac(Math.sin(i * 78.233 + layer * 3.31) * 12345.6789)
+        const c = frac(Math.sin(i * 3.7137 + layer) * 9973.113)
+        const x = a * w
+        const y = (((b * h + climbed * pace) % h) + h) % h
+        const r = (0.4 + c * 0.9) * (layer ? 1.35 : 1)
+        ctx.moveTo(x + r, y)
+        ctx.arc(x, y, r, 0, TAU)
+      }
+      const k = (band + 0.5) / 3
+      ctx.globalAlpha = dark ? (0.05 + k * 0.13) * (layer ? 1.25 : 0.85) : (0.035 + k * 0.07) * (layer ? 1.2 : 0.9)
       ctx.fill()
-      if (!flat) ctx.stroke()
+    }
+  }
+  ctx.globalAlpha = 1
+}
+
+/**
+ * Every fiftieth row: a line across the board and its number, faint, so the
+ * climb has landmarks you can see coming.
+ */
+function drawMilestones(g: Gfx) {
+  const { ctx, s, dark, cell, w, h, Y } = g
+  ctx.save()
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  ctx.font = `700 ${Math.max(14, Math.round(cell * 1.5))}px ${FONT}`
+  for (let y = 0; y < s.rows; y++) {
+    const world = worldRowAt(s, y) - s.baseRow
+    if (world <= 0 || world % MILESTONE_ROWS !== 0) continue
+    const cy = Y(y + 0.5)
+    if (cy < -cell || cy > h + cell) continue
+    ctx.setLineDash([cell * 0.28, cell * 0.22])
+    ctx.strokeStyle = hsla(ACCENT, 60, dark ? 66 : 38, 0.22)
+    ctx.lineWidth = Math.max(1, cell * 0.035)
+    ctx.beginPath()
+    ctx.moveTo(0, cy)
+    ctx.lineTo(w, cy)
+    ctx.stroke()
+    ctx.setLineDash([])
+    ctx.fillStyle = dark ? 'rgba(231, 238, 243, 0.08)' : 'rgba(26, 43, 60, 0.08)'
+    ctx.fillText(String(world), w / 2, cy)
+  }
+  ctx.restore()
+}
+
+// ——————————————————————————————————————————————————————— walls
+
+type Pt = { x: number; y: number }
+
+/** Lane or off the buffer — both get an outline edge. */
+function openOrOutside(s: GameState, x: number, y: number) {
+  if (y < 0 || y >= s.rows || x < 0 || x >= s.cols) return true
+  return s.open[y][x]
+}
+
+/**
+ * The outline of every wall region as closed loops of corners, walked so the
+ * wall is always on the right. Where two regions only touch at a corner, the
+ * walk turns right first, which keeps it on the region it started round. The
+ * loops close along the buffer's top and bottom, which are off screen.
+ */
+function wallLoops(s: GameState): Pt[][] {
+  const W = s.cols + 1
+  const key = (x: number, y: number) => y * W + x
+  const edges = new Map<number, Pt[]>()
+  const add = (x0: number, y0: number, x1: number, y1: number) => {
+    const k = key(x0, y0)
+    const list = edges.get(k)
+    if (list) list.push({ x: x1, y: y1 })
+    else edges.set(k, [{ x: x1, y: y1 }])
+  }
+  for (let y = 0; y < s.rows; y++) {
+    for (let x = 0; x < s.cols; x++) {
+      if (s.open[y][x]) continue
+      if (openOrOutside(s, x, y - 1)) add(x, y, x + 1, y)
+      if (openOrOutside(s, x + 1, y)) add(x + 1, y, x + 1, y + 1)
+      if (openOrOutside(s, x, y + 1)) add(x + 1, y + 1, x, y + 1)
+      if (openOrOutside(s, x - 1, y)) add(x, y + 1, x, y)
     }
   }
 
-  const pulse = 0.88 + Math.sin(state.time * 6) * 0.12
-  for (let y = 0; y < state.rows; y++) {
-    const cy = rowY(y) + cell * 0.5
-    if (cy < -cell || cy > ctx.canvas.height + cell) continue
-    for (let x = 0; x < state.cols; x++) {
-      if (!state.power[y][x]) continue
+  const loops: Pt[][] = []
+  while (edges.size) {
+    const [k0, list0] = edges.entries().next().value as [number, Pt[]]
+    const x0 = k0 % W
+    const y0 = (k0 - x0) / W
+    const first = list0.pop()!
+    if (!list0.length) edges.delete(k0)
+    const loop: Pt[] = [{ x: x0, y: y0 }]
+    let px = x0
+    let py = y0
+    let cx = first.x
+    let cy = first.y
+    for (let guard = 0; guard < 100000 && !(cx === x0 && cy === y0); guard++) {
+      loop.push({ x: cx, y: cy })
+      const k = key(cx, cy)
+      const list = edges.get(k)
+      if (!list?.length) break
+      const dx = cx - px
+      const dy = cy - py
+      let pick = -1
+      for (const [ex, ey] of [
+        [-dy, dx],
+        [dx, dy],
+        [dy, -dx],
+      ]) {
+        pick = list.findIndex((q) => q.x - cx === ex && q.y - cy === ey)
+        if (pick >= 0) break
+      }
+      const nextPt = list.splice(Math.max(0, pick), 1)[0]!
+      if (!list.length) edges.delete(k)
+      px = cx
+      py = cy
+      cx = nextPt.x
+      cy = nextPt.y
+    }
+    const corners = loop.filter((v, i) => {
+      const a = loop[(i - 1 + loop.length) % loop.length]!
+      const b = loop[(i + 1) % loop.length]!
+      return (v.x - a.x) * (b.y - v.y) - (v.y - a.y) * (b.x - v.x) !== 0
+    })
+    if (corners.length >= 4) loops.push(corners)
+  }
+  return loops
+}
+
+/** Pull a loop in toward the wall by `d` tiles: every corner moves along both edges' normals. */
+function insetLoop(loop: Pt[], d: number): Pt[] {
+  const n = loop.length
+  return loop.map((v, i) => {
+    const a = loop[(i - 1 + n) % n]!
+    const b = loop[(i + 1) % n]!
+    const d1x = Math.sign(v.x - a.x)
+    const d1y = Math.sign(v.y - a.y)
+    const d2x = Math.sign(b.x - v.x)
+    const d2y = Math.sign(b.y - v.y)
+    return { x: v.x + (-d1y - d2y) * d, y: v.y + (d1x + d2x) * d }
+  })
+}
+
+function roundedLoop(path: Path2D, pts: Pt[], r: number) {
+  const n = pts.length
+  const last = pts[n - 1]!
+  const first = pts[0]!
+  path.moveTo((last.x + first.x) / 2, (last.y + first.y) / 2)
+  for (let i = 0; i < n; i++) {
+    const cur = pts[i]!
+    const nxt = pts[(i + 1) % n]!
+    const prv = pts[(i - 1 + n) % n]!
+    const rr = Math.min(
+      r,
+      Math.hypot(cur.x - prv.x, cur.y - prv.y) / 2,
+      Math.hypot(nxt.x - cur.x, nxt.y - cur.y) / 2,
+    )
+    path.arcTo(cur.x, cur.y, nxt.x, nxt.y, rr)
+  }
+  path.closePath()
+}
+
+type WallPaths = { key: string; outer: Path2D; inner: Path2D }
+let wallCache: WallPaths | null = null
+
+/**
+ * The walls as two paths in the buffer's own space — the tube and the line
+ * inside it — rebuilt only when the board shifts a row. The camera moves them
+ * with a translate, so the climb stays smooth between shifts.
+ */
+function wallPaths(g: Gfx): WallPaths {
+  const { s, cell } = g
+  const key = `${s.originRow}:${s.cols}x${s.rows}:${cell}:${s.seed}`
+  if (wallCache && wallCache.key === key) return wallCache
+  const outer = new Path2D()
+  const inner = new Path2D()
+  const toPx = (p: Pt) => ({ x: p.x * cell, y: p.y * cell })
+  for (const loop of wallLoops(s)) {
+    roundedLoop(outer, insetLoop(loop, 0.18).map(toPx), cell * 0.26)
+    roundedLoop(inner, insetLoop(loop, 0.32).map(toPx), cell * 0.14)
+  }
+  wallCache = { key, outer, inner }
+  return wallCache
+}
+
+function drawWalls(g: Gfx) {
+  const { ctx, dark, cell, Y } = g
+  const walls = wallPaths(g)
+  ctx.save()
+  ctx.translate(0, Y(0))
+  ctx.fillStyle = hsla(WALL_HUE, 70, 60, dark ? 0.13 : 0.14)
+  ctx.fill(walls.outer)
+  ctx.lineJoin = 'round'
+  ctx.strokeStyle = hsla(WALL_HUE, dark ? 85 : 66, dark ? 70 : 52, 0.95)
+  ctx.lineWidth = Math.max(1.5, cell * 0.07)
+  ctx.stroke(walls.outer)
+  ctx.strokeStyle = hsla(WALL_HUE, dark ? 85 : 66, dark ? 70 : 52, dark ? 0.36 : 0.32)
+  ctx.lineWidth = Math.max(1, cell * 0.035)
+  ctx.stroke(walls.inner)
+  ctx.restore()
+}
+
+// —————————————————————————————————————————————————————— crumbs
+
+function drawCrumbs(g: Gfx) {
+  const { ctx, s, dark, cell, h, Y, t } = g
+  const r = Math.max(1.4, cell * 0.095)
+  ctx.fillStyle = hsla(ACCENT, 72, dark ? 60 : 40)
+  ctx.beginPath()
+  for (let y = 0; y < s.rows; y++) {
+    const cy = Y(y + 0.5)
+    if (cy < -cell || cy > h + cell) continue
+    for (let x = 0; x < s.cols; x++) {
+      if (!s.crumbs[y][x]) continue
       const cx = (x + 0.5) * cell
-      const r = cell * 0.28 * pulse
-      const glow = ctx.createRadialGradient(cx, cy, 1, cx, cy, r * 2.1)
-      glow.addColorStop(0, 'rgba(245, 185, 66, 0.4)')
-      glow.addColorStop(1, 'rgba(245, 185, 66, 0)')
+      ctx.moveTo(cx + r, cy)
+      ctx.arc(cx, cy, r, 0, TAU)
+    }
+  }
+  ctx.fill()
+
+  const pulse = 0.88 + Math.sin(t * 6) * 0.12
+  for (let y = 0; y < s.rows; y++) {
+    const cy = Y(y + 0.5)
+    if (cy < -cell || cy > h + cell) continue
+    for (let x = 0; x < s.cols; x++) {
+      if (!s.power[y][x]) continue
+      const cx = (x + 0.5) * cell
+      const pr = cell * 0.25 * pulse
+      const glow = ctx.createRadialGradient(cx, cy, pr * 0.4, cx, cy, pr * 2.4)
+      glow.addColorStop(0, hsla(GOLD, 95, 60, dark ? 0.42 : 0.34))
+      glow.addColorStop(1, hsla(GOLD, 95, 60, 0))
       ctx.fillStyle = glow
       ctx.beginPath()
-      ctx.arc(cx, cy, r * 2.1, 0, Math.PI * 2)
+      ctx.arc(cx, cy, pr * 2.4, 0, TAU)
       ctx.fill()
       ctx.beginPath()
-      ctx.arc(cx, cy, r, 0, Math.PI * 2)
-      ctx.fillStyle = skin.crumbFill
+      ctx.arc(cx, cy, pr, 0, TAU)
+      ctx.fillStyle = hsla(GOLD, 92, dark ? 62 : 56, 0.9)
       ctx.fill()
-      if (!flat) {
-        ctx.strokeStyle = skin.crumbStroke
-        ctx.lineWidth = Math.max(1.1, cell * 0.055)
-        ctx.stroke()
-      }
+      ctx.strokeStyle = hsla(GOLD, 80, dark ? 78 : 38, 0.95)
+      ctx.lineWidth = Math.max(1.2, cell * 0.045)
+      ctx.stroke()
+      ctx.beginPath()
+      ctx.arc(cx - pr * 0.32, cy - pr * 0.34, pr * 0.24, 0, TAU)
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.7)'
+      ctx.fill()
     }
   }
 }
@@ -265,70 +389,146 @@ function drawCrumbs(
  * second each. At a crumb a tile it is a steady patter behind the chomp rather
  * than a burst, which is what eating the trail should feel like.
  */
-function drawBites(
-  ctx: CanvasRenderingContext2D,
-  state: GameState,
-  layout: Layout,
-  skin: Skin,
-) {
-  if (!state.bites.length) return
-  const { cell, rowY } = layout
-  const crumbR = Math.max(1.5, cell * 0.12)
-  ctx.save()
+function drawBites(g: Gfx) {
+  const { ctx, s, dark, cell, Y } = g
+  if (!s.bites.length) return
   ctx.lineWidth = Math.max(1, cell * 0.04)
-  for (const bite of state.bites) {
-    const t = 1 - bite.life
-    ctx.globalAlpha = Math.max(0, bite.life) * 0.8
-    ctx.strokeStyle = hsla(ACCENT, 62, skin.dark ? 66 : 40, 1)
+  ctx.strokeStyle = hsla(ACCENT, 70, dark ? 66 : 40)
+  for (const bite of s.bites) {
+    const k = 1 - bite.life
+    ctx.globalAlpha = Math.max(0, bite.life) * 0.75
     ctx.beginPath()
-    ctx.arc(bite.x * cell, rowY(bite.y), crumbR * (1.2 + t * 1.8), 0, TAU)
+    ctx.arc(bite.x * cell, Y(bite.y), cell * 0.095 * (1.2 + k * 1.8), 0, TAU)
     ctx.stroke()
   }
-  ctx.restore()
+  ctx.globalAlpha = 1
+}
+
+// ————————————————————————————————————————————————— fruit & charms
+
+/** A ring that empties as an offer's time runs out, so a clock reads as a clock. */
+function timerRing(g: Gfx, cx: number, cy: number, r: number, left: number, hue: number) {
+  const { ctx, dark, cell } = g
+  ctx.beginPath()
+  ctx.arc(cx, cy, r, -Math.PI / 2, -Math.PI / 2 + TAU * clamp01(left))
+  ctx.strokeStyle = hsla(hue, 85, dark ? 66 : 44, 0.8)
+  ctx.lineWidth = Math.max(1, cell * 0.05)
+  ctx.lineCap = 'round'
+  ctx.stroke()
+  ctx.lineCap = 'butt'
+}
+
+function glowAt(g: Gfx, cx: number, cy: number, r: number, hue: number, a: number) {
+  const { ctx } = g
+  const glow = ctx.createRadialGradient(cx, cy, r * 0.15, cx, cy, r)
+  glow.addColorStop(0, hsla(hue, 90, 62, a))
+  glow.addColorStop(1, hsla(hue, 90, 62, 0))
+  ctx.fillStyle = glow
+  ctx.beginPath()
+  ctx.arc(cx, cy, r, 0, TAU)
+  ctx.fill()
 }
 
 /**
- * The fruit.
- *
- * Deliberately not in the crumb family: crumbs are small gold dots you take by
- * the dozen without thinking, and this is one thing worth going out of your way
- * for, so it is bigger, rose rather than gold, and it breathes. The last two
- * seconds blink, because an offer you cannot see expiring is not an offer — it
- * is a prize that was taken away from you.
+ * The fruit: the same ones Pellets offers, a kind to each tier, so a better
+ * one is worth more at a glance. The last two seconds blink, because an offer
+ * you cannot see expiring is a prize that was taken away from you.
  */
+function drawFruit(g: Gfx) {
+  const { ctx, s, dark, cell, Y, t } = g
+  const fruit = s.fruit
+  if (!fruit) return
+  if (fruit.life < 2 && Math.floor(t * 7) % 2 === 0) return
+  const cx = fruit.x * cell
+  const cy = Y(fruit.y)
+  glowAt(g, cx, cy, cell * 0.8, GOLD, dark ? 0.3 : 0.26)
+  const kind = FRUIT_ART[Math.min(FRUIT_ART.length - 1, fruit.tier)]!
+  paintFruit(ctx, kind, cx, cy + Math.sin(t * 3) * cell * 0.04, cell * 0.4, dark)
+  timerRing(g, cx, cy, cell * 0.56, fruit.life / fruit.maxLife, GOLD)
+}
+
 /**
- * A charm, drawn as a ring with a mark rather than a fruit with a stem, so the
- * two offers on the board never read as the same thing. Freeze is the cold
- * blue-white of the state it causes; the laser is red, and wears the arrow it
- * fires. Both blink out their last two seconds, like the fruit.
+ * A charm, drawn as a ring with a mark rather than a fruit, so the two offers
+ * never read as the same thing. Freeze is a frost crystal in the cold blue of
+ * the state it causes; the laser is red and wears the bolt it fires.
  */
+function drawCharm(g: Gfx) {
+  const { ctx, s, dark, cell, Y, t } = g
+  const charm = s.charm
+  if (!charm) return
+  if (charm.life < 2 && Math.floor(t * 7) % 2 === 0) return
+  const cx = charm.x * cell
+  const cy = Y(charm.y)
+  const hue = charm.kind === 'freeze' ? 196 : 4
+  const r = cell * 0.3 * (0.94 + Math.sin(t * 5) * 0.06)
+  glowAt(g, cx, cy, r * 2.4, hue, dark ? 0.4 : 0.32)
+  ctx.beginPath()
+  ctx.arc(cx, cy, r, 0, TAU)
+  ctx.fillStyle = hsla(hue, 75, 58, dark ? 0.32 : 0.4)
+  ctx.fill()
+  ctx.strokeStyle = hsla(hue, 75, lineL(dark), 0.95)
+  ctx.lineWidth = Math.max(1.2, cell * 0.055)
+  ctx.stroke()
+
+  ctx.strokeStyle = hsla(hue, 70, dark ? 88 : 30, 0.95)
+  ctx.fillStyle = ctx.strokeStyle
+  ctx.lineWidth = Math.max(1, cell * 0.045)
+  ctx.lineCap = 'round'
+  ctx.lineJoin = 'round'
+  ctx.beginPath()
+  if (charm.kind === 'freeze') {
+    // Six spokes, each with a little fork near its tip, turning slowly.
+    const spin = t * 0.6
+    for (let i = 0; i < 6; i++) {
+      const a = spin + (i * Math.PI) / 3
+      const ex = cx + Math.cos(a) * r * 0.66
+      const ey = cy + Math.sin(a) * r * 0.66
+      ctx.moveTo(cx, cy)
+      ctx.lineTo(ex, ey)
+      const fx = cx + Math.cos(a) * r * 0.42
+      const fy = cy + Math.sin(a) * r * 0.42
+      for (const side of [-1, 1]) {
+        ctx.moveTo(fx, fy)
+        ctx.lineTo(fx + Math.cos(a + side * 0.7) * r * 0.2, fy + Math.sin(a + side * 0.7) * r * 0.2)
+      }
+    }
+    ctx.stroke()
+  } else {
+    // A bolt.
+    ctx.moveTo(cx + r * 0.12, cy - r * 0.62)
+    ctx.lineTo(cx - r * 0.28, cy + r * 0.06)
+    ctx.lineTo(cx + r * 0.06, cy + r * 0.06)
+    ctx.lineTo(cx - r * 0.14, cy + r * 0.62)
+    ctx.lineTo(cx + r * 0.32, cy - r * 0.1)
+    ctx.lineTo(cx - r * 0.02, cy - r * 0.1)
+    ctx.closePath()
+    ctx.fill()
+  }
+  ctx.lineCap = 'butt'
+  timerRing(g, cx, cy, r * 1.5, charm.life / charm.maxLife, hue)
+}
+
 /**
- * The shot itself, for the sixth of a second it exists.
- *
- * Drawn from the player to the face of the wall that stopped it, so what it hit
- * and how far it reached are both plain, and it stays put against them as the
- * player moves. Bright core over a wide
- * soft pass, which is how the rest of the board draws anything hot.
+ * The shot itself, for the sixth of a second it exists: from the player to the
+ * face of the wall that stopped it, bright core over a wide soft pass, with a
+ * flare where it lands.
  */
-function drawBeam(
-  ctx: CanvasRenderingContext2D,
-  state: GameState,
-  layout: Layout,
-) {
-  const beam = state.beam
+function drawBeam(g: Gfx) {
+  const { ctx, s, cell, Y, t } = g
+  const beam = s.beam
   if (!beam || beam.reach <= 0) return
-  const { cell, rowY } = layout
   const fade = Math.max(0, beam.life / 0.14)
-  const v = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] }[beam.dir] as number[]
+  const v = LOOK[beam.dir]
   const x0 = beam.x * cell
-  const y0 = rowY(beam.y)
-  const x1 = (beam.x + v[0] * beam.reach) * cell
-  const y1 = rowY(beam.y + v[1] * beam.reach)
+  const y0 = Y(beam.y)
+  const x1 = (beam.x + v.x * beam.reach) * cell
+  const y1 = Y(beam.y + v.y * beam.reach)
+  const flick = 0.85 + 0.15 * Math.sin(t * 60)
 
   ctx.save()
   ctx.lineCap = 'round'
-  ctx.strokeStyle = hsla(4, 85, 60, 0.28 * fade)
-  ctx.lineWidth = cell * 0.52
+  ctx.strokeStyle = hsla(4, 85, 60, 0.26 * fade)
+  ctx.lineWidth = cell * 0.56 * flick
   ctx.beginPath()
   ctx.moveTo(x0, y0)
   ctx.lineTo(x1, y1)
@@ -339,535 +539,523 @@ function drawBeam(
   ctx.moveTo(x0, y0)
   ctx.lineTo(x1, y1)
   ctx.stroke()
+  ctx.strokeStyle = `rgba(255, 244, 236, ${0.9 * fade})`
+  ctx.lineWidth = cell * 0.05
+  ctx.beginPath()
+  ctx.moveTo(x0, y0)
+  ctx.lineTo(x1, y1)
+  ctx.stroke()
   ctx.restore()
+  glowAt(g, x1, y1, cell * 0.5 * flick, 8, 0.6 * fade)
 }
 
-function drawCharm(
-  ctx: CanvasRenderingContext2D,
-  state: GameState,
-  layout: Layout,
-  skin: Skin,
-) {
-  const charm = state.charm
-  if (!charm) return
-  const { cell, rowY } = layout
-  const cx = charm.x * cell
-  const cy = rowY(charm.y)
-  if (charm.life < 2 && Math.floor(state.time * 7) % 2 === 0) return
+// —————————————————————————————————————————————————————— player
 
-  const pulse = 0.92 + Math.sin(state.time * 5) * 0.08
-  const r = cell * 0.28 * pulse
-  const hue = charm.kind === 'freeze' ? 196 : 4
-  const flat = isFlatTheme()
-
-  const glow = ctx.createRadialGradient(cx, cy, r * 0.2, cx, cy, r * 2.3)
-  glow.addColorStop(0, hsla(hue, 70, 62, 0.4))
-  glow.addColorStop(1, hsla(hue, 70, 62, 0))
-  ctx.fillStyle = glow
-  ctx.beginPath()
-  ctx.arc(cx, cy, r * 2.3, 0, Math.PI * 2)
-  ctx.fill()
-
-  ctx.beginPath()
-  ctx.arc(cx, cy, r, 0, Math.PI * 2)
-  ctx.fillStyle = hsla(hue, 70, 58, softFillAlpha(0.28))
-  ctx.fill()
-  if (!flat) {
-    ctx.strokeStyle = hsla(hue, 70, skin.dark ? 66 : 42, 0.95)
-    ctx.lineWidth = Math.max(1.2, cell * 0.06)
-    ctx.stroke()
-  }
-
-  // The mark: a star for a freeze, a bolt for the other.
-  ctx.strokeStyle = hsla(hue, 60, skin.dark ? 86 : 30, 0.95)
-  ctx.lineWidth = Math.max(1, cell * 0.05)
-  ctx.lineCap = 'round'
-  ctx.lineJoin = 'round'
-  ctx.beginPath()
-  if (charm.kind === 'freeze') {
-    // A frost star, three strokes through the middle.
-    for (let i = 0; i < 3; i++) {
-      const a = (i * Math.PI) / 3
-      ctx.moveTo(cx - Math.cos(a) * r * 0.62, cy - Math.sin(a) * r * 0.62)
-      ctx.lineTo(cx + Math.cos(a) * r * 0.62, cy + Math.sin(a) * r * 0.62)
-    }
-  } else {
-    // An arrow, pointing the way it goes.
-    ctx.moveTo(cx, cy + r * 0.6)
-    ctx.lineTo(cx, cy - r * 0.62)
-    ctx.moveTo(cx - r * 0.36, cy - r * 0.22)
-    ctx.lineTo(cx, cy - r * 0.66)
-    ctx.lineTo(cx + r * 0.36, cy - r * 0.22)
-  }
-  ctx.stroke()
-  ctx.lineCap = 'butt'
-
-  // The same emptying ring the fruit uses, so a clock reads as a clock.
-  const left = Math.max(0, charm.life / charm.maxLife)
-  ctx.strokeStyle = hsla(hue, 70, skin.dark ? 70 : 46, 0.75)
-  ctx.lineWidth = Math.max(1, cell * 0.05)
-  ctx.beginPath()
-  ctx.arc(cx, cy, r * 1.5, -Math.PI / 2, -Math.PI / 2 + left * Math.PI * 2)
-  ctx.stroke()
+function faceLocal(ctx: CanvasRenderingContext2D, dir: Dir) {
+  if (dir === 'left') ctx.scale(-1, 1)
+  else if (dir === 'up') ctx.rotate(-Math.PI / 2)
+  else if (dir === 'down') ctx.rotate(Math.PI / 2)
 }
 
-function drawFruit(
-  ctx: CanvasRenderingContext2D,
-  state: GameState,
-  layout: Layout,
-  skin: Skin,
-) {
-  const fruit = state.fruit
-  if (!fruit) return
-  const { cell, rowY } = layout
-  const cx = fruit.x * cell
-  const cy = rowY(fruit.y)
-  const going = fruit.life < 2
-  if (going && Math.floor(state.time * 7) % 2 === 0) return
+function drawPlayer(g: Gfx) {
+  const { ctx, s, dark, cell, Y } = g
+  const cx = s.player.x * cell
+  const cy = Y(s.player.y)
+  const surging = s.surgeTime > 0
+  const r = cell * (surging ? 0.44 : 0.4)
+  const line = hsla(ACCENT, 70, dark ? 66 : 34, 0.98)
+  const fill = hsla(ACCENT, 72, 55, dark ? 0.42 : 0.5)
+  const lw = Math.max(1.3, cell * 0.07)
 
-  const pulse = 0.9 + Math.sin(state.time * 4.5) * 0.1
-  const r = cell * 0.3 * pulse
-  const hue = 348 - fruit.tier * 14
-  const flat = isFlatTheme()
-
-  const glow = ctx.createRadialGradient(cx, cy, r * 0.2, cx, cy, r * 2.4)
-  glow.addColorStop(0, hsla(hue, 68, 60, 0.38))
-  glow.addColorStop(1, hsla(hue, 68, 60, 0))
-  ctx.fillStyle = glow
-  ctx.beginPath()
-  ctx.arc(cx, cy, r * 2.4, 0, Math.PI * 2)
-  ctx.fill()
-
-  // Stem, so it reads as fruit rather than as an oversized crumb.
-  ctx.strokeStyle = hsla(118, 42, skin.dark ? 58 : 38, 0.95)
-  ctx.lineWidth = Math.max(1.2, cell * 0.055)
-  ctx.lineCap = 'round'
-  ctx.beginPath()
-  ctx.moveTo(cx, cy - r * 0.75)
-  ctx.quadraticCurveTo(cx + r * 0.5, cy - r * 1.5, cx + r * 0.95, cy - r * 1.25)
-  ctx.stroke()
-  ctx.lineCap = 'butt'
-
-  ctx.beginPath()
-  ctx.arc(cx, cy, r, 0, Math.PI * 2)
-  ctx.fillStyle = hsla(hue, 68, 58, softFillAlpha(0.3))
-  ctx.fill()
-  if (!flat) {
-    ctx.strokeStyle = hsla(hue, 68, skin.dark ? 62 : 44, 0.95)
-    ctx.lineWidth = Math.max(1.2, cell * 0.06)
-    ctx.stroke()
-  }
-
-  // A ring that empties as the clock runs down.
-  const left = Math.max(0, fruit.life / fruit.maxLife)
-  ctx.beginPath()
-  ctx.arc(cx, cy, r * 1.55, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * left)
-  ctx.strokeStyle = hsla(hue, 68, skin.dark ? 66 : 46, 0.75)
-  ctx.lineWidth = Math.max(1, cell * 0.05)
-  ctx.stroke()
-}
-
-/** Faint row numbers every 50 rows, so the climb has landmarks. */
-function drawMilestones(
-  ctx: CanvasRenderingContext2D,
-  state: GameState,
-  layout: Layout,
-  skin: Skin,
-) {
-  const { cell, rowY } = layout
-  ctx.save()
-  ctx.textAlign = 'center'
-  ctx.textBaseline = 'middle'
-  ctx.font = `600 ${Math.max(14, Math.round(cell * 1.5))}px ${FONT}`
-  ctx.fillStyle = skin.dark ? 'rgba(231, 238, 243, 0.07)' : 'rgba(26, 43, 60, 0.07)'
-  for (let y = 0; y < state.rows; y++) {
-    const world = worldRowAt(state, y) - state.baseRow
-    if (world <= 0 || world % MILESTONE_ROWS !== 0) continue
-    const cy = rowY(y) + cell * 0.5
-    if (cy < -cell || cy > ctx.canvas.height + cell) continue
-    ctx.fillText(String(world), (state.cols * cell) / 2, cy)
-  }
-  ctx.restore()
-}
-
-function drawPlayer(
-  ctx: CanvasRenderingContext2D,
-  state: GameState,
-  layout: Layout,
-  skin: Skin,
-) {
-  const { cell, rowY } = layout
-  const cx = state.player.x * cell
-  const cy = rowY(state.player.y)
-  const surging = state.surgeTime > 0
-  const lineW = Math.max(1.2, cell * 0.07)
-  const r = cell * (surging ? 0.42 : 0.38)
-  const fill = hsla(ACCENT, 58, 58, softFillAlpha(surging ? 0.34 : 0.22))
-  const stroke = hsla(ACCENT, 58, skin.dark ? 58 : 42, 0.95)
-  const flat = isFlatTheme()
-
-  const faceLocal = (c: CanvasRenderingContext2D) => {
-    if (state.player.dir === 'left') c.scale(-1, 1)
-    else if (state.player.dir === 'up') c.rotate(-Math.PI / 2)
-    else if (state.player.dir === 'down') c.rotate(Math.PI / 2)
-  }
-
-  if (state.phase === 'dying') {
-    const t = 1 - Math.max(0, state.deathAnim) / 0.85
-    const open = Math.min(Math.PI - 0.05, t * Math.PI)
+  if (s.phase === 'dying') {
+    const k = clamp01(1 - s.deathAnim / 0.85)
     ctx.save()
-    ctx.translate(cx, cy)
-    faceLocal(ctx)
-    ctx.globalAlpha = Math.max(0, 1 - t * 0.85)
+    if (s.cause === 'drowned') {
+      // Taken under the surface.
+      ctx.globalAlpha = 1 - k
+      ctx.translate(cx, cy + k * cell * 0.6)
+      ctx.rotate(-Math.PI / 2)
+    } else {
+      ctx.translate(cx, cy)
+      ctx.rotate(-Math.PI / 2)
+    }
+    const open = s.cause === 'drowned' ? 0.5 : 0.2 + k * (Math.PI - 0.25)
     ctx.beginPath()
     ctx.moveTo(0, 0)
-    ctx.arc(0, 0, r * (1 - t * 0.2), open, Math.PI * 2 - open)
+    ctx.arc(0, 0, r * (1 - k * 0.2), open, TAU - open)
     ctx.closePath()
     ctx.fillStyle = fill
     ctx.fill()
-    if (!flat) {
-      ctx.strokeStyle = stroke
-      ctx.lineWidth = lineW
-      ctx.lineJoin = 'round'
-      ctx.stroke()
-    }
+    ctx.strokeStyle = line
+    ctx.lineWidth = lw
+    ctx.lineJoin = 'round'
+    ctx.stroke()
     ctx.restore()
-    ctx.globalAlpha = 1
     return
   }
 
-  for (const dot of state.trail) {
+  for (const dot of s.trail) {
     ctx.beginPath()
-    ctx.arc(dot.x * cell, rowY(dot.y), r * (0.4 + 0.45 * dot.life), 0, Math.PI * 2)
-    ctx.fillStyle = hsla(ACCENT, 58, 58, softFillAlpha(0.18) * dot.life)
+    ctx.arc(dot.x * cell, Y(dot.y), r * (0.35 + 0.5 * dot.life), 0, TAU)
+    ctx.fillStyle = hsla(GOLD, 92, 60, 0.2 * dot.life)
     ctx.fill()
-    if (!flat) {
-      ctx.strokeStyle = hsla(ACCENT, 58, 48, 0.55 * dot.life)
-      ctx.lineWidth = Math.max(1, lineW * 0.7)
-      ctx.stroke()
-    }
-  }
-
-  if (state.invuln > 0 && Math.floor(state.invuln * 12) % 2 === 0) {
-    ctx.globalAlpha = 0.4
   }
 
   // A little light of your own on the floor, so your eye finds you first in a busy maze.
-  const lamp = ctx.createRadialGradient(cx, cy, r * 0.5, cx, cy, r * 2.4)
-  lamp.addColorStop(0, hsla(ACCENT, 70, 58, skin.dark ? 0.2 : 0.16))
-  lamp.addColorStop(1, hsla(ACCENT, 70, 58, 0))
+  const lampHue = surging ? GOLD : ACCENT
+  const lamp = ctx.createRadialGradient(cx, cy, r * 0.5, cx, cy, r * (surging ? 3 : 2.4))
+  lamp.addColorStop(0, hsla(lampHue, 85, 58, dark ? 0.24 : 0.2))
+  lamp.addColorStop(1, hsla(lampHue, 85, 58, 0))
   ctx.fillStyle = lamp
   ctx.beginPath()
-  ctx.arc(cx, cy, r * 2.4, 0, TAU)
+  ctx.arc(cx, cy, r * 3, 0, TAU)
   ctx.fill()
 
-  if (surging) {
-    const glow = ctx.createRadialGradient(cx, cy, r * 0.3, cx, cy, r * 2)
-    glow.addColorStop(0, 'rgba(245, 185, 66, 0.35)')
-    glow.addColorStop(1, 'rgba(245, 185, 66, 0)')
-    ctx.fillStyle = glow
-    ctx.beginPath()
-    ctx.arc(cx, cy, r * 2, 0, Math.PI * 2)
-    ctx.fill()
-  }
+  if (s.invuln > 0 && Math.floor(s.invuln * 14) % 2 === 0) ctx.globalAlpha = 0.45
 
-  const chomp = 0.4 + 0.45 * (0.5 + 0.5 * Math.sin(state.mouth))
+  // The mouth works while you move and rests where it stopped.
+  const open = 0.08 + 0.62 * (0.5 - 0.5 * Math.cos(s.mouth * Math.PI))
   ctx.save()
   ctx.translate(cx, cy)
-  faceLocal(ctx)
+  faceLocal(ctx, s.player.dir)
   ctx.beginPath()
-  ctx.moveTo(0, 0)
-  ctx.arc(0, 0, r, chomp, Math.PI * 2 - chomp)
+  ctx.moveTo(-r * 0.12, 0)
+  ctx.arc(0, 0, r, open, TAU - open)
   ctx.closePath()
   ctx.fillStyle = fill
   ctx.fill()
-  if (!flat) {
-    ctx.strokeStyle = stroke
-    ctx.lineWidth = lineW
-    ctx.lineJoin = 'round'
-    ctx.stroke()
-  }
+  ctx.strokeStyle = line
+  ctx.lineWidth = lw
+  ctx.lineJoin = 'round'
+  ctx.stroke()
+  ctx.beginPath()
+  ctx.arc(0, 0, r * 0.7, Math.PI * 1.12, Math.PI * 1.42)
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.55)'
+  ctx.lineWidth = Math.max(1, lw * 0.8)
+  ctx.lineCap = 'round'
+  ctx.stroke()
+  ctx.lineCap = 'butt'
+  ctx.beginPath()
+  ctx.ellipse(r * 0.14, -r * 0.5, r * 0.12, r * 0.15, 0, 0, TAU)
+  ctx.fillStyle = dark ? '#16202b' : '#1a2b3c'
+  ctx.fill()
+  ctx.beginPath()
+  ctx.arc(r * 0.18, -r * 0.55, Math.max(0.6, r * 0.045), 0, TAU)
+  ctx.fillStyle = '#ffffff'
+  ctx.fill()
   ctx.restore()
   ctx.globalAlpha = 1
 }
 
+// ————————————————————————————————————————————————————— chasers
+
+function traceGhost(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number, step: number) {
+  const foot = cy + r * 0.9
+  ctx.beginPath()
+  ctx.moveTo(cx - r, foot - r * 0.1)
+  ctx.lineTo(cx - r, cy - r * 0.05)
+  ctx.arc(cx, cy - r * 0.05, r, Math.PI, 0)
+  ctx.lineTo(cx + r, foot - r * 0.1)
+  // Four feet along the hem that trade places as it goes.
+  for (let i = 0; i < 4; i++) {
+    const x0 = cx + r - (i * 2 * r) / 4
+    const x1 = cx + r - ((i + 1) * 2 * r) / 4
+    const down = (i + step) % 2 === 0
+    ctx.quadraticCurveTo((x0 + x1) / 2, foot + (down ? r * 0.28 : -r * 0.02), x1, foot - r * 0.1)
+  }
+  ctx.closePath()
+}
+
 /**
  * A chaser's eyes, which are how you read one: they look the way it is going,
- * so its next turn shows on its face before it takes it, and a train's sweep
- * reads from across the board. They open as it wakes, and they are all that is
- * left of one you have eaten, on its way home.
+ * so its next turn shows on its face before it takes it. They open as it
+ * wakes, and they are all that is left of one you have eaten, on its way home.
  */
-function drawEyes(
-  ctx: CanvasRenderingContext2D,
-  cx: number,
-  cy: number,
-  r: number,
-  dir: Dir,
-  open: number,
-  skin: Skin,
-  rim: string,
-) {
+function drawEyes(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number, dir: Dir, open: number, dark: boolean, rim: string) {
   const look = LOOK[dir]
-  const rx = r * 0.25
   const ry = r * 0.31 * Math.max(0.15, open)
   for (const side of [-1, 1]) {
     const ex = cx + side * r * 0.36 + look.x * r * 0.1
-    const ey = cy - r * 0.2 + look.y * r * 0.08
+    const ey = cy - r * 0.22 + look.y * r * 0.1
     ctx.beginPath()
-    ctx.ellipse(ex, ey, rx, ry, 0, 0, TAU)
-    ctx.fillStyle = skin.dark ? '#eef3f6' : '#ffffff'
+    ctx.ellipse(ex, ey, r * 0.25, ry, 0, 0, TAU)
+    ctx.fillStyle = dark ? '#eef3f7' : '#ffffff'
     ctx.fill()
     ctx.strokeStyle = rim
-    ctx.lineWidth = Math.max(0.9, r * 0.07)
+    ctx.lineWidth = Math.max(0.8, r * 0.07)
     ctx.stroke()
     if (open < 0.35) continue
     ctx.beginPath()
-    ctx.arc(ex + look.x * rx * 0.42, ey + look.y * ry * 0.42, Math.min(rx, ry) * 0.55, 0, TAU)
-    ctx.fillStyle = skin.dark ? '#0d1520' : '#1a2b3c'
+    ctx.arc(ex + look.x * r * 0.11, ey + look.y * r * 0.13, r * 0.13, 0, TAU)
+    ctx.fillStyle = '#23306e'
     ctx.fill()
   }
 }
 
-function drawChaser(
-  ctx: CanvasRenderingContext2D,
-  ghost: Ghost,
-  layout: Layout,
-  skin: Skin,
-  fright: number,
-  time: number,
-) {
-  const { cell, rowY } = layout
+/** Couplings between the cars of a train, drawn under them, so a line reads as one thing. */
+function drawCouplings(g: Gfx) {
+  const { ctx, s, dark, cell, Y } = g
+  const cars = s.ghosts.filter((gh) => gh.kind === 'train' && gh.mode !== 'eaten' && gh.mode !== 'frightened')
+  if (cars.length < 2) return
+  ctx.strokeStyle = hsla(42, 18, dark ? 58 : 44, 0.8)
+  ctx.lineWidth = Math.max(2, cell * 0.08)
+  ctx.lineCap = 'round'
+  for (const a of cars) {
+    for (const b of cars) {
+      if (b.x <= a.x || Math.abs(a.y - b.y) > 0.05 || b.x - a.x > 1.2) continue
+      // As faint as the cars it joins while they sleep.
+      ctx.globalAlpha = a.mode === 'asleep' ? 0.5 : 0.35 + 0.65 * a.arrive
+      const y = Y(a.y + 0.12)
+      ctx.beginPath()
+      ctx.moveTo(a.x * cell, y)
+      ctx.lineTo(b.x * cell, y)
+      ctx.stroke()
+    }
+  }
+  ctx.globalAlpha = 1
+  ctx.lineCap = 'butt'
+}
+
+function drawChaser(g: Gfx, ghost: Ghost) {
+  const { ctx, s, dark, cell, Y, t } = g
+  const asleep = ghost.mode === 'asleep'
   const cx = ghost.x * cell
-  const cy = rowY(ghost.y) + (ghost.mode === 'asleep' ? Math.sin(ghost.bob * 0.5) * cell * 0.05 : 0)
-  const lineW = Math.max(1.15, cell * 0.065)
-  const r = cell * 0.34
+  const cy = Y(ghost.y) + (asleep ? Math.sin(ghost.bob * 0.5) * cell * 0.05 : 0)
+  const r = cell * 0.38
+  const lw = Math.max(1.2, cell * 0.065)
   const scared = ghost.mode === 'frightened'
   const eaten = ghost.mode === 'eaten'
-  const asleep = ghost.mode === 'asleep'
-  const flash = scared && fright < 2 && Math.floor(time * 8) % 2 === 0
+  const flash = scared && s.fright < 2 && Math.floor(t * 8) % 2 === 0
 
   /*
    * A sleeper is drawn faint and still. It has to be unmistakably there —
    * seeing it coming is the entire point of seeding them ahead — while never
    * reading as something already chasing you.
    */
-  ctx.globalAlpha = asleep ? 0.42 : 0.35 + 0.65 * ghost.arrive
+  ctx.globalAlpha = asleep ? 0.5 : 0.35 + 0.65 * ghost.arrive
 
   if (eaten) {
     // Only the eyes are left, heading home — the way it has always been.
-    drawEyes(ctx, cx, cy, r, ghost.dir, 1, skin, hsla(chaserHue(ghost.kind), 50, skin.dark ? 62 : 42, 0.9))
+    drawEyes(ctx, cx, cy, r, ghost.dir, 1, dark, hsla(chaserHue(ghost.kind), 50, lineL(dark), 0.9))
     ctx.globalAlpha = 1
     return
   }
 
-  const hue = scared ? (flash ? 8 : 224) : chaserHue(ghost.kind)
-  const sat = scared ? (flash ? 70 : 55) : chaserSat(ghost.kind)
-  const flat = isFlatTheme()
+  const hue = scared ? SCARED_HUE : chaserHue(ghost.kind)
+  const sat = scared ? 80 : chaserSat(ghost.kind)
 
   if (ghost.hit > 0) {
-    ctx.fillStyle = `hsla(0, 0%, 100%, ${0.35 * ghost.hit})`
+    ctx.fillStyle = `rgba(255, 255, 255, ${0.35 * ghost.hit})`
     ctx.beginPath()
-    ctx.arc(cx, cy, r * (1.25 + ghost.hit * 0.4), 0, Math.PI * 2)
+    ctx.arc(cx, cy, r * (1.3 + ghost.hit * 0.5), 0, TAU)
     ctx.fill()
   }
 
-  const wave = asleep ? 0 : Math.sin(time * 5.5 + ghost.bob) * cell * 0.04
-  const foot = cy + r * 0.92
-  ctx.beginPath()
-  ctx.arc(cx, cy - r * 0.06, r, Math.PI, 0)
-  ctx.lineTo(cx + r, foot - r * 0.1)
-  for (let i = 0; i < 3; i++) {
-    const x0 = cx + r - ((i * 2 + 1) * r) / 3
-    const x1 = cx + r - ((i * 2 + 2) * r) / 3
-    ctx.quadraticCurveTo(x0, foot + (i % 2 === 0 ? 0.22 : -0.08) * r + wave, x1, foot - r * 0.1)
-  }
-  ctx.closePath()
   /*
-   * Backed with the floor colour before the body goes on.
-   *
-   * The soft translucent fill is the house style and worth keeping, but over a
-   * carpet of crumbs it meant you read the dots straight through a chaser —
-   * which makes the one thing on the board that can kill you the one thing you
-   * can see past. The underlay keeps the tint and stops the floor showing.
+   * The herder wears a crest, because colour had run out: it is told apart by
+   * outline rather than by hue, which reads at a glance, at speed, and to an
+   * eye that does not separate violet from blue. It points up on purpose: this
+   * is the one that runs ahead to stand in the way out. Drawn in every mode,
+   * frightened included, because that is when knowing which one it is matters.
    */
-  ctx.fillStyle = skin.wallFill
-  ctx.fill()
-  ctx.fillStyle = hsla(hue, sat, 58, softFillAlpha(0.22))
-  ctx.fill()
-  if (!flat) {
-    ctx.strokeStyle = hsla(hue, sat, skin.dark ? 62 : 40, 0.95)
-    ctx.lineWidth = lineW
+  if (ghost.kind === 'herd') {
+    ctx.beginPath()
+    ctx.moveTo(cx - r * 0.42, cy - r * 0.8)
+    ctx.lineTo(cx, cy - r * 1.5)
+    ctx.lineTo(cx + r * 0.42, cy - r * 0.8)
+    ctx.closePath()
+    ctx.fillStyle = hsla(hue, sat, dark ? 62 : 56, 0.9)
+    ctx.fill()
+    ctx.strokeStyle = hsla(hue, sat, lineL(dark), 0.95)
+    ctx.lineWidth = Math.max(1, lw * 0.8)
     ctx.lineJoin = 'round'
     ctx.stroke()
   }
 
-  /*
-   * The herder wears a crest, because colour had run out.
-   *
-   * Four chasers, green crumbs, blue walls and a blue frightened state already
-   * claim most of the wheel: the violet here sits 57 from frightened and 67
-   * from the wall stroke, which are the two closest things on the board and the
-   * two worst to mistake it for — frightened most of all, since that is the
-   * moment the answer decides whether you eat or die.
-   *
-   * So it is told apart by outline rather than by hue, which reads at a glance,
-   * at speed, and to an eye that does not separate violet from blue. It points
-   * up on purpose: this is the one that runs ahead to stand in the way out, and
-   * the mark may as well say so. Drawn in every mode, frightened included,
-   * because that is when knowing which one it is matters most.
-   */
-  if (ghost.kind === 'herd') {
-    ctx.beginPath()
-    ctx.moveTo(cx - r * 0.42, cy - r * 0.82)
-    ctx.lineTo(cx, cy - r * 1.46)
-    ctx.lineTo(cx + r * 0.42, cy - r * 0.82)
-    ctx.closePath()
-    ctx.fillStyle = hsla(hue, sat, skin.dark ? 62 : 46, 0.9)
-    ctx.fill()
-    if (!flat) {
-      ctx.strokeStyle = hsla(hue, sat, skin.dark ? 72 : 34, 0.95)
-      ctx.lineWidth = Math.max(1, lineW * 0.8)
-      ctx.lineJoin = 'round'
-      ctx.stroke()
-    }
-  }
+  const step = asleep ? 0 : Math.floor(ghost.bob * 1.4) % 2
+  traceGhost(ctx, cx, cy, r, step)
+  // Backed with the ground, so the crumbs underneath do not show through a
+  // chaser: the one thing that can kill you must not be the one you see past.
+  ctx.fillStyle = playfieldColor()
+  ctx.fill()
+  ctx.fillStyle = flash
+    ? dark
+      ? 'rgba(240, 244, 250, 0.85)'
+      : 'rgba(255, 255, 255, 0.95)'
+    : hsla(hue, sat, 60, scared ? (dark ? 0.55 : 0.6) : dark ? 0.34 : 0.4)
+  ctx.fill()
+  ctx.strokeStyle = flash ? hsla(356, 80, dark ? 66 : 50, 0.95) : hsla(hue, sat, lineL(dark), 0.95)
+  ctx.lineWidth = lw
+  ctx.lineJoin = 'round'
+  ctx.stroke()
 
   if (scared) {
-    // Pin eyes over the wobbly mouth: the face of a chaser that knows it is food.
-    ctx.fillStyle = flash ? hsla(8, 60, 30, 0.9) : hsla(210, 30, skin.dark ? 84 : 96, 0.95)
+    // Pin eyes and a wobbling mouth: the face of a chaser that knows it is food.
+    const ink = flash ? hsla(356, 80, 50) : '#ffffff'
+    ctx.fillStyle = ink
     for (const side of [-1, 1]) {
       ctx.beginPath()
-      ctx.arc(cx + side * r * 0.3, cy - r * 0.2, Math.max(1, r * 0.1), 0, TAU)
+      ctx.arc(cx + side * r * 0.3, cy - r * 0.22, Math.max(1, r * 0.11), 0, TAU)
       ctx.fill()
     }
-    ctx.strokeStyle = flash ? hsla(8, 60, 30, 0.9) : hsla(210, 30, 70, 0.9)
-    ctx.lineWidth = Math.max(1, cell * 0.045)
+    ctx.strokeStyle = ink
+    ctx.lineWidth = Math.max(1, r * 0.1)
     ctx.beginPath()
-    ctx.moveTo(cx - cell * 0.16, cy + cell * 0.1)
-    ctx.quadraticCurveTo(cx, cy + cell * 0.2, cx + cell * 0.16, cy + cell * 0.1)
+    for (let i = 0; i <= 6; i++) {
+      const x = cx - r * 0.54 + (i * r * 1.08) / 6
+      const y = cy + r * 0.28 + (i % 2 === 0 ? r * 0.08 : -r * 0.08)
+      if (i === 0) ctx.moveTo(x, y)
+      else ctx.lineTo(x, y)
+    }
     ctx.stroke()
-  } else if (!asleep) {
-    drawEyes(ctx, cx, cy, r, ghost.dir, 0.2 + 0.8 * ghost.arrive, skin, hsla(hue, sat, skin.dark ? 62 : 40, 0.95))
-  }
-
-  if (asleep) {
-    // Shut eyes — the one mark that says "not yet" at a glance.
-    ctx.strokeStyle = hsla(hue, sat, skin.dark ? 70 : 34, 0.85)
-    ctx.lineWidth = Math.max(1, cell * 0.05)
+  } else if (asleep) {
+    // Shut eyes, and the z's drifting off it: "not yet", at a glance.
+    ctx.strokeStyle = hsla(hue, sat, dark ? 72 : 34, 0.9)
+    ctx.lineWidth = Math.max(1, cell * 0.045)
     ctx.lineCap = 'round'
     for (const side of [-1, 1]) {
       ctx.beginPath()
-      ctx.moveTo(cx + side * cell * 0.13 - cell * 0.06, cy - cell * 0.03)
-      ctx.quadraticCurveTo(
-        cx + side * cell * 0.13,
-        cy + cell * 0.03,
-        cx + side * cell * 0.13 + cell * 0.06,
-        cy - cell * 0.03,
-      )
+      ctx.arc(cx + side * r * 0.34, cy - r * 0.24, r * 0.16, 0.15 * Math.PI, 0.85 * Math.PI)
       ctx.stroke()
     }
+    ctx.lineCap = 'butt'
+    ctx.font = `700 ${Math.max(9, Math.round(cell * 0.3))}px ${FONT}`
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.fillStyle = hsla(hue, sat, dark ? 76 : 36, 0.9)
+    for (let k = 0; k < 2; k++) {
+      const u = frac(t * 0.45 + ghost.id * 0.37 + k * 0.5)
+      ctx.globalAlpha = 0.5 * Math.sin(u * Math.PI)
+      ctx.fillText('z', cx + r * (0.6 + u * 0.5), cy - r * (1 + u * 1.1))
+    }
+  } else if (ghost.kind === 'train') {
+    // A visor with a light running along it, where a hunter would have eyes.
+    const vy = cy - r * 0.22
+    ctx.beginPath()
+    ctx.roundRect(cx - r * 0.62, vy - r * 0.17, r * 1.24, r * 0.34, r * 0.17)
+    ctx.fillStyle = dark ? '#161c24' : '#2a2f38'
+    ctx.fill()
+    const sweep = Math.sin(t * 3.2 + ghost.id) * r * 0.44
+    const dot = ctx.createRadialGradient(cx + sweep, vy, 0, cx + sweep, vy, r * 0.22)
+    dot.addColorStop(0, hsla(4, 95, 64, 1))
+    dot.addColorStop(1, hsla(4, 95, 60, 0))
+    ctx.fillStyle = dot
+    ctx.beginPath()
+    ctx.arc(cx + sweep, vy, r * 0.22, 0, TAU)
+    ctx.fill()
+  } else {
+    drawEyes(ctx, cx, cy, r, ghost.dir, 0.2 + 0.8 * ghost.arrive, dark, hsla(hue, sat, lineL(dark), 0.95))
+  }
+
+  // Frozen by the charm: in a block of ice until it wears off.
+  if (s.freeze > 0 && !asleep) {
+    const fade = Math.min(1, s.freeze / 0.5)
+    ctx.globalAlpha = fade
+    ctx.beginPath()
+    ctx.roundRect(cx - r * 1.18, cy - r * 1.22, r * 2.36, r * 2.4, r * 0.3)
+    ctx.fillStyle = dark ? 'rgba(180, 225, 255, 0.22)' : 'rgba(150, 210, 245, 0.3)'
+    ctx.fill()
+    ctx.strokeStyle = dark ? 'rgba(210, 240, 255, 0.85)' : 'rgba(70, 150, 200, 0.85)'
+    ctx.lineWidth = Math.max(1, cell * 0.04)
+    ctx.stroke()
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)'
+    ctx.lineCap = 'round'
+    ctx.beginPath()
+    ctx.moveTo(cx - r * 0.95, cy - r * 0.55)
+    ctx.lineTo(cx - r * 0.6, cy - r * 0.95)
+    ctx.moveTo(cx + r * 0.7, cy + r * 0.85)
+    ctx.lineTo(cx + r * 0.95, cy + r * 0.55)
+    ctx.stroke()
     ctx.lineCap = 'butt'
   }
   ctx.globalAlpha = 1
 }
+
+// ——————————————————————————————————————————————————————— debris
+
+function drawBits(g: Gfx) {
+  const { ctx, s, dark, cell, Y } = g
+  for (const b of s.bits) {
+    const a = clamp01(b.life / b.maxLife)
+    const x = b.x * cell
+    const y = Y(b.y)
+    if (b.kind === 'spark') {
+      ctx.globalAlpha = a
+      ctx.strokeStyle = hsla(b.hue, 90, dark ? 70 : 50)
+      ctx.lineWidth = Math.max(1.2, cell * b.size * 0.6)
+      ctx.lineCap = 'round'
+      ctx.beginPath()
+      ctx.moveTo(x, y)
+      ctx.lineTo(x - b.vx * cell * 0.035, y - b.vy * cell * 0.035)
+      ctx.stroke()
+      continue
+    }
+    const sz = cell * b.size
+    ctx.globalAlpha = Math.min(1, a * 1.6)
+    ctx.save()
+    ctx.translate(x, y)
+    ctx.rotate(b.angle)
+    ctx.beginPath()
+    ctx.moveTo(sz, 0)
+    ctx.lineTo(-sz * 0.6, sz * 0.72)
+    ctx.lineTo(-sz * 0.42, -sz * 0.62)
+    ctx.closePath()
+    ctx.fillStyle = hsla(b.hue, 70, 60, dark ? 0.35 : 0.4)
+    ctx.fill()
+    ctx.strokeStyle = hsla(b.hue, 70, lineL(dark), 0.95)
+    ctx.lineWidth = Math.max(1, sz * 0.18)
+    ctx.lineJoin = 'round'
+    ctx.stroke()
+    ctx.restore()
+  }
+  ctx.globalAlpha = 1
+  ctx.lineCap = 'butt'
+}
+
+function drawRings(g: Gfx) {
+  const { ctx, s, dark, cell, Y } = g
+  for (const r of s.rings) {
+    const k = 1 - r.life / r.maxLife
+    const ease = 1 - (1 - k) ** 3
+    ctx.globalAlpha = (1 - k) * 0.85
+    ctx.strokeStyle = hsla(r.hue, 85, dark ? 70 : 46)
+    ctx.lineWidth = Math.max(1, cell * 0.09 * (1 - k) + 0.5)
+    ctx.beginPath()
+    ctx.arc(r.x * cell, Y(r.y), Math.max(0.5, cell * (r.r0 + (r.r1 - r.r0) * ease)), 0, TAU)
+    ctx.stroke()
+  }
+  ctx.globalAlpha = 1
+}
+
+// ————————————————————————————————————————————————————————— tide
 
 /**
  * The tide.
  *
  * It lives just under the view while you are making ground, so most runs only
  * ever see the glow that warns it is about to move. Once it is climbing it has
- * to be unambiguous — a surface with a waterline, not a vignette — because the
- * only correct response to seeing it is to stop what you are doing and climb.
+ * to be unambiguous — a surface with a crest, bubbles, embers coming off it —
+ * because the only correct response to seeing it is to stop and climb.
  */
-function drawTide(
-  ctx: CanvasRenderingContext2D,
-  state: GameState,
-  layout: Layout,
-  w: number,
-  h: number,
-  skin: Skin,
-) {
-  const { cell, rowY } = layout
-  const surface = rowY(bufferRowOf(state, state.tide))
-  const heat = tidePressure(state)
-
+function drawTide(g: Gfx) {
+  const { ctx, s, dark, cell, w, h, Y, t } = g
+  const surface = Y(bufferRowOf(s, s.tide))
+  const heat = tidePressure(s)
   if (surface > h + cell && heat <= 0.01) return
 
   const top = Math.min(surface, h + cell)
-  const glow = ctx.createLinearGradient(0, top - cell * 3, 0, top)
-  glow.addColorStop(0, 'rgba(232, 93, 117, 0)')
-  glow.addColorStop(1, `rgba(232, 93, 117, ${0.1 + heat * 0.3})`)
+  const beat = heat > 0.5 ? 0.5 + 0.5 * Math.sin(t * (5 + heat * 6)) : 0
+  const glow = ctx.createLinearGradient(0, top - cell * 3.2, 0, top)
+  glow.addColorStop(0, hsla(TIDE_HUE, 80, 60, 0))
+  glow.addColorStop(1, hsla(TIDE_HUE, 80, 60, 0.08 + heat * 0.28 + beat * 0.08))
   ctx.fillStyle = glow
-  ctx.fillRect(0, top - cell * 3, w, cell * 3)
+  ctx.fillRect(0, top - cell * 3.2, w, cell * 3.2)
+
+  // Embers lifting off it while it is awake.
+  if (heat > 0.25) {
+    for (let i = 0; i < 14; i++) {
+      const u = frac(t * 0.7 + i * 0.137)
+      const x = frac(Math.sin(i * 91.7) * 311.3) * w + Math.sin(t * 2 + i) * cell * 0.2
+      ctx.globalAlpha = heat * (1 - u) * 0.8
+      ctx.fillStyle = hsla(TIDE_HUE + 10, 95, dark ? 66 : 56)
+      ctx.beginPath()
+      ctx.arc(x, top - u * cell * 2.4, Math.max(1, cell * 0.05 * (1 - u * 0.5)), 0, TAU)
+      ctx.fill()
+    }
+    ctx.globalAlpha = 1
+  }
 
   if (top >= h) return
 
-  ctx.fillStyle = skin.dark ? 'rgba(12, 6, 12, 0.88)' : 'rgba(60, 12, 24, 0.58)'
-  ctx.beginPath()
-  ctx.moveTo(0, h)
-  ctx.lineTo(0, top)
-  const teeth = Math.max(8, Math.round(state.cols * 1.5))
-  for (let i = 0; i <= teeth; i++) {
-    const x = (i / teeth) * w
-    const swell = Math.sin(i * 1.1 + state.time * 2.6) * cell * 0.1
-    ctx.lineTo(x, top + swell)
-  }
-  ctx.lineTo(w, h)
-  ctx.closePath()
-  ctx.fill()
+  const wave = (x: number) =>
+    top + Math.sin(x / (cell * 1.3) + t * 2.4) * cell * 0.09 + Math.sin(x / (cell * 3.1) - t * 1.4) * cell * 0.06
+  const path = new Path2D()
+  path.moveTo(0, h)
+  for (let x = 0; x <= w + cell * 0.25; x += cell * 0.25) path.lineTo(x, wave(x))
+  path.lineTo(w, h)
+  path.closePath()
 
-  ctx.strokeStyle = skin.edge
-  ctx.globalAlpha = 0.5 + heat * 0.5
-  ctx.lineWidth = Math.max(1.5, cell * 0.06)
-  ctx.stroke()
+  const body = ctx.createLinearGradient(0, top, 0, h)
+  body.addColorStop(0, dark ? hsla(TIDE_HUE, 70, 38, 0.94) : hsla(TIDE_HUE, 72, 62, 0.88))
+  body.addColorStop(1, dark ? hsla(TIDE_HUE - 6, 60, 12, 0.97) : hsla(TIDE_HUE - 6, 55, 38, 0.93))
+  ctx.fillStyle = body
+  ctx.fill(path)
+
+  // Bubbles rising through it.
+  ctx.save()
+  ctx.clip(path)
+  ctx.strokeStyle = dark ? 'rgba(255, 190, 205, 0.5)' : 'rgba(255, 235, 240, 0.7)'
+  ctx.lineWidth = Math.max(1, cell * 0.03)
+  for (let i = 0; i < 16; i++) {
+    const u = frac(t * 0.28 + i * 0.173)
+    const x = frac(Math.sin(i * 57.1) * 713.7) * w + Math.sin(t * 1.6 + i * 2) * cell * 0.15
+    const y = h - (h - top + cell) * u
+    ctx.globalAlpha = Math.sin(u * Math.PI)
+    ctx.beginPath()
+    ctx.arc(x, y, cell * (0.05 + 0.07 * frac(i * 0.61)), 0, TAU)
+    ctx.stroke()
+  }
+  ctx.restore()
   ctx.globalAlpha = 1
+
+  // The crest.
+  ctx.beginPath()
+  for (let x = 0; x <= w + cell * 0.25; x += cell * 0.25) {
+    if (x === 0) ctx.moveTo(x, wave(x))
+    else ctx.lineTo(x, wave(x))
+  }
+  ctx.strokeStyle = hsla(TIDE_HUE + 6, 90, dark ? 70 : 52, 0.65 + heat * 0.35)
+  ctx.lineWidth = Math.max(1.5, cell * 0.07)
+  ctx.lineJoin = 'round'
+  ctx.stroke()
 }
 
-function drawPops(
-  ctx: CanvasRenderingContext2D,
-  state: GameState,
-  layout: Layout,
-  skin: Skin,
-) {
-  if (!state.pops.length) return
-  const { cell, rowY } = layout
+// ————————————————————————————————————————————————————————— text
+
+const POP_SCALE: Record<PopTone, number> = { ink: 0.52, streak: 0.62, lost: 0.46, row: 0.78 }
+
+/** The streak keeps the amber the readout gives it; a lost one goes the tide's red. */
+function popColour(tone: PopTone, dark: boolean) {
+  switch (tone) {
+    case 'streak':
+      return hsla(40, 86, dark ? 66 : 38, 1)
+    case 'lost':
+      return hsla(350, 64, dark ? 72 : 44, 0.95)
+    case 'row':
+      return hsla(ACCENT, 70, dark ? 66 : 32, 1)
+    default:
+      return inkColor()
+  }
+}
+
+function drawPops(g: Gfx) {
+  const { ctx, s, dark, cell, Y } = g
+  if (!s.pops.length) return
   const field = playfieldColor()
   ctx.save()
   ctx.textAlign = 'center'
   ctx.textBaseline = 'middle'
   ctx.lineJoin = 'round'
-  for (const pop of state.pops) {
-    const t = 1 - pop.life / pop.maxLife
+  for (const pop of s.pops) {
+    const k = 1 - pop.life / pop.maxLife
     // Pops land big and settle, so the moment reads before the words do.
-    const land = t < 0.12 ? 1 + (0.12 - t) * 2.2 : 1
+    const land = k < 0.12 ? 1 + (0.12 - k) * 2.2 : 1
     const size = Math.max(11, Math.round(cell * POP_SCALE[pop.tone] * land))
-    ctx.font = `600 ${size}px ${FONT}`
+    ctx.font = `700 ${size}px ${FONT}`
     ctx.globalAlpha = Math.min(1, (pop.life / pop.maxLife) * 2.5)
     const x = pop.x * cell
-    const y = rowY(pop.y) - t * cell * (pop.tone === 'row' ? 0.5 : 0.9)
+    const y = Y(pop.y) - k * cell * (pop.tone === 'row' ? 0.5 : 0.9)
     // A halo of the floor behind the words, so they read over crumbs and walls alike.
     ctx.strokeStyle = field
     ctx.lineWidth = Math.max(3, size * 0.28)
     ctx.strokeText(pop.text, x, y)
-    ctx.fillStyle = popColour(pop.tone, skin)
+    ctx.fillStyle = popColour(pop.tone, dark)
     ctx.fillText(pop.text, x, y)
   }
   ctx.restore()
 }
 
-const POP_SCALE: Record<PopTone, number> = { ink: 0.52, streak: 0.62, lost: 0.46, row: 0.78 }
-
-/** The streak keeps the amber the readout gives it; a lost one goes the tide's red. */
-function popColour(tone: PopTone, skin: Skin) {
-  switch (tone) {
-    case 'streak':
-      return hsla(40, 86, skin.dark ? 66 : 38, 1)
-    case 'lost':
-      return hsla(350, 64, skin.dark ? 72 : 44, 0.95)
-    default:
-      return skin.ink
-  }
-}
+// ——————————————————————————————————————————————————————— render
 
 export function renderGame(
   ctx: CanvasRenderingContext2D,
@@ -881,22 +1069,39 @@ export function renderGame(
     ctx.canvas.height = Math.floor(h * dpr)
     ctx.canvas.style.width = `${w}px`
     ctx.canvas.style.height = `${h}px`
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+  }
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+
+  const layout = computeLayout(w, h, state)
+  const cell = layout.cell
+  const top = layout.rowY(0)
+  const g: Gfx = {
+    ctx,
+    s: state,
+    dark: isDarkTheme(),
+    cell,
+    w,
+    h,
+    t: state.time,
+    Y: (y) => top + y * cell,
   }
 
-  const skin = skinFor(isDarkTheme())
-  const layout = computeLayout(w, h, state)
+  drawSky(g)
 
-  ctx.fillStyle = playfieldColor()
-  ctx.fillRect(0, 0, w, h)
+  // The board knocks with a big moment; the sky behind it does not.
+  ctx.save()
+  if ((state.shake ?? 0) > 0.01) {
+    const m = state.shake * state.shake * cell * 0.3
+    ctx.translate((Math.random() - 0.5) * m, (Math.random() - 0.5) * m)
+  }
 
-  drawMilestones(ctx, state, layout, skin)
-  drawWalls(ctx, state, layout, skin)
-  drawCrumbs(ctx, state, layout, skin)
-  drawBites(ctx, state, layout, skin)
-  drawFruit(ctx, state, layout, skin)
-  drawCharm(ctx, state, layout, skin)
-  drawBeam(ctx, state, layout)
+  drawMilestones(g)
+  drawWalls(g)
+  drawCrumbs(g)
+  drawBites(g)
+  drawFruit(g)
+  drawCharm(g)
+  drawBeam(g)
 
   /*
    * Anything straddling the side seam is drawn twice, once on each edge.
@@ -904,24 +1109,24 @@ export function renderGame(
    * genuinely half off one side and half onto the other — one draw would
    * show it sliding off the board and reappearing a frame later.
    */
-  const span = state.cols * layout.cell
+  const span = state.cols * cell
   const seams = (x: number) => (x < 1 ? [0, span] : x > state.cols - 1 ? [0, -span] : [0])
-
-  for (const ghost of state.ghosts) {
-    for (const dx of seams(ghost.x)) {
+  const drawAt = (x: number, draw: () => void) => {
+    for (const dx of seams(x)) {
       ctx.save()
       ctx.translate(dx, 0)
-      drawChaser(ctx, ghost, layout, skin, state.fright, state.time)
+      draw()
       ctx.restore()
     }
   }
-  for (const dx of seams(state.player.x)) {
-    ctx.save()
-    ctx.translate(dx, 0)
-    drawPlayer(ctx, state, layout, skin)
-    ctx.restore()
-  }
-  drawPops(ctx, state, layout, skin)
-  drawTide(ctx, state, layout, w, h, skin)
 
+  drawCouplings(g)
+  for (const ghost of state.ghosts) drawAt(ghost.x, () => drawChaser(g, ghost))
+  drawAt(state.player.x, () => drawPlayer(g))
+  drawRings(g)
+  drawBits(g)
+  drawPops(g)
+  ctx.restore()
+
+  drawTide(g)
 }

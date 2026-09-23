@@ -260,6 +260,7 @@ function CrumbtrailThumb({ accent }: { accent: string }) {
       <circle cx="16" cy="5" r="2" fill={accent} opacity="0.9" />
       <g transform="translate(16 18) rotate(-90)">
         <path d={pelletsPacPath(0, 0, 8.6)} {...mark(accent)} />
+        <circle cx="1.2" cy="-4.3" r="1.25" fill={accent} />
       </g>
     </g>
   )
