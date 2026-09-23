@@ -32,7 +32,7 @@ import {
   type Species,
 } from './critters'
 import { isLowProp, propBounds, propOccluders, type Prop, type PropKind } from './props'
-import { CLASSIC, wearsAllOf, type WantedBug } from './wanted'
+import { CLASSIC, showsTrim, wearsAllOf, type WantedBug } from './wanted'
 
 export type SceneKind = 'picnic' | 'garden' | 'pond' | 'arcade' | 'night'
 
@@ -1089,20 +1089,35 @@ function twinOf(rng: Rng, index: number, wanted: WantedBug): Look {
     ...(nearHeld ? [(l: Look): Look => ({ ...l, held: nearHeld })] : []),
     (l) => ({ ...l, glasses: 'none' }),
     (l) => ({ ...l, glasses: t.glasses === 'round' ? 'shades' : 'round' }),
-    (l) => ({ ...l, trim: other(rng, TRIMS, t.trim, t.body) }),
+    // Only where a second colour is drawn: on an ant it would change nothing
+    // anybody could see, and the look-alike would pass for the wanted bug.
+    ...(showsTrim(t) ? [(l: Look): Look => ({ ...l, trim: other(rng, TRIMS, t.trim, t.body) })] : []),
     (l) => ({ ...l, hatTrim: other(rng, TRIMS, t.hatTrim, t.hatColour) }),
   ]
   const pool = index < 2 ? loud : index < 3 ? [...loud, ...quiet] : quiet
   return pick(rng, pool)({ ...t })
 }
 
-/** Its shell with somebody else's hat. */
+/**
+ * Its shell with somebody else's hat: mostly its own kind in its colours, down
+ * to the head and the legs so that only the things on the card tell them
+ * apart, and now and then another kind wearing the same colours.
+ */
 function shellStranger(rng: Rng, cast: Cast, wanted: WantedBug): Look {
   const t = wanted.look
-  const species = weighted(rng, [['beetle', 4], ['bee', 1], ['caterpillar', 1], ['snail', 1]] as [Species, number][])
+  const kin = t.species
+  const species = weighted(rng, [[kin, 4], [kin === 'bee' ? 'beetle' : 'bee', 1], ['caterpillar', 1], ['snail', 1]] as [Species, number][])
   const base = randomLook(rng, cast, species)
-  if (species === 'beetle') {
-    return { ...base, body: t.body, trim: t.trim, pattern: t.pattern, hat: weighted(rng, HATS.filter(([h]) => h !== t.hat)) }
+  if (species === kin) {
+    return {
+      ...base,
+      body: t.body,
+      trim: t.trim,
+      pattern: t.pattern,
+      head: t.head,
+      limb: t.limb,
+      hat: weighted(rng, HATS.filter(([h]) => h !== t.hat)),
+    }
   }
   return { ...base, body: t.body, trim: t.trim }
 }
@@ -1385,11 +1400,18 @@ export function buildScene(
   const shuffle = <T,>(list: T[]) => list.map((v) => ({ v, r: rng() })).sort((a, b) => a.r - b.r).map((e) => e.v)
   const order = [...(tucked.length && rng() < 0.7 ? shuffle(tucked) : []), ...shuffle(candidates)]
   const garlands = built.garlands ?? []
+  // What it will hold up needs a side to be held out on with no prop in front.
+  const heldFree = (c: Critter) =>
+    [c.flip, !c.flip].some((flip) => {
+      const box = heldBox({ ...c, flip, look: { ...c.look, held: wanted.look.held } })
+      return !box || !items.some((it) => it.z > c.z && it.prop && propOccluders(it.prop).some((b) => boxesOverlap(box, b)))
+    })
   let target: Critter | null = null
   for (const c of order) {
     if (garlandCrosses(faceBox(c), garlands, size)) continue
     const blocking = faceHiddenBy(c, items)
     if (blocking.some((b) => b.prop)) continue
+    if (!heldFree(c)) continue
     // Critters in front of his face step out of the picture.
     for (const b of blocking) {
       const i = items.indexOf(b)

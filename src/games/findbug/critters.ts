@@ -1379,6 +1379,11 @@ export function critterBounds(c: Critter): { x0: number; y0: number; x1: number;
   return { x0: c.x - halfW, y0: c.y - top, x1: c.x + halfW, y1: c.y + 0.06 * s }
 }
 
+/** A critter to pose for a portrait, feet at (x, y). */
+function sitter(look: Look, x: number, y: number, size: number, pose: Pose, mood: Mood): Critter {
+  return { id: -1, x, y, size, look, pose, facing: 0, flip: false, gazeX: 0, gazeY: 0.2, mood, lift: 0, z: 0 }
+}
+
 /** Draw a critter centred in a box, for the portrait on the wanted card. */
 export function drawPortrait(
   ctx: Ctx,
@@ -1388,19 +1393,67 @@ export function drawPortrait(
   height: number,
   opts: { pose?: Pose; mood?: Mood } = {},
 ) {
-  drawCritter(ctx, {
-    id: -1,
-    x: cx,
-    y: cy + height * 0.52,
-    size: height,
-    look,
-    pose: opts.pose ?? 'wave',
-    facing: 0,
-    flip: false,
-    gazeX: 0,
-    gazeY: 0.2,
-    mood: opts.mood ?? 'smile',
-    lift: 0,
-    z: 0,
-  })
+  drawCritter(ctx, sitter(look, cx, cy + height * 0.52, height, opts.pose ?? 'wave', opts.mood ?? 'smile'))
+}
+
+type Extent = { x0: number; x1: number; y0: number; y1: number }
+
+const extents = new Map<string, Extent>()
+
+/**
+ * How far a critter's drawing reaches from its feet, in its own heights,
+ * found by drawing it once off screen: a grasshopper's antennae, a
+ * butterfly's wings, a balloon on its string, whatever it is wearing.
+ */
+function extentOf(look: Look, pose: Pose, mood: Mood): Extent {
+  const key = JSON.stringify([look, pose, mood])
+  const known = extents.get(key)
+  if (known) return known
+  const unit = 100
+  const w = unit * 3
+  const h = unit * 3
+  const footX = w / 2
+  const footY = h * 0.72
+  let out: Extent = { x0: -0.5, x1: 0.5, y0: -1.1, y1: 0.06 }
+  const canvas = document.createElement('canvas')
+  canvas.width = w
+  canvas.height = h
+  const ctx = canvas.getContext('2d', { willReadFrequently: true })
+  if (ctx) {
+    drawCritter(ctx, sitter(look, footX, footY, unit, pose, mood))
+    const px = ctx.getImageData(0, 0, w, h).data
+    let minX = w
+    let maxX = -1
+    let minY = h
+    let maxY = -1
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        if (px[(y * w + x) * 4 + 3] < 24) continue
+        if (x < minX) minX = x
+        if (x > maxX) maxX = x
+        if (y < minY) minY = y
+        if (y > maxY) maxY = y
+      }
+    }
+    if (maxX >= 0) {
+      out = { x0: (minX - footX) / unit, x1: (maxX + 1 - footX) / unit, y0: (minY - footY) / unit, y1: (maxY + 1 - footY) / unit }
+    }
+  }
+  extents.set(key, out)
+  return out
+}
+
+/**
+ * Draw a critter as large as it will go in a square `size` across, all of it
+ * in view and centred on what it reaches out to rather than on its middle,
+ * so a balloon held out to one side does not push it off the edge. For the
+ * wanted card.
+ */
+export function drawPortraitFitted(ctx: Ctx, look: Look, size: number, opts: { pose?: Pose; mood?: Mood } = {}) {
+  const pose = opts.pose ?? 'wave'
+  const mood = opts.mood ?? 'smile'
+  const e = extentOf(look, pose, mood)
+  const room = size * 0.9
+  const k = Math.min(size * 0.9, room / (e.x1 - e.x0), room / (e.y1 - e.y0))
+  drawCritter(ctx, sitter(look, size / 2 - ((e.x0 + e.x1) / 2) * k, size / 2 - ((e.y0 + e.y1) / 2) * k, k, pose, mood))
 }

@@ -34,7 +34,7 @@ import {
   type Camera,
   type Field,
 } from './camera'
-import { drawPortrait, faceCentre, type Look } from './critters'
+import { drawPortrait, drawPortraitFitted, faceCentre, type Look } from './critters'
 import {
   closeCard,
   createInitialState,
@@ -97,11 +97,8 @@ function BugPortrait({ look, size, crop }: { look: Look; size: number; crop: 'fu
       const h = size * 1.55
       drawPortrait(ctx, { ...look, held: 'none' }, size / 2, size / 2 + h * 0.2, h, { pose: 'stand' })
     } else {
-      // Feet near the bottom and the top of it all near the top: a hat, or a
-      // balloon on its string, which rises a good way over the hat.
-      const top = look.held === 'balloon' ? 1.36 : 1.04
-      const h = Math.min(size * 0.9, (size * 0.92) / top)
-      drawPortrait(ctx, look, size / 2, size * 0.95 - h * 0.52, h, { pose: 'wave', mood: 'open' })
+      // All of it in view, however far it reaches: antennae, wings, a balloon.
+      drawPortraitFitted(ctx, look, size, { pose: 'wave', mood: 'open' })
     }
   }, [look, size, crop])
   return <canvas ref={ref} className="findbug__portrait" style={{ width: size, height: size }} aria-hidden="true" />
