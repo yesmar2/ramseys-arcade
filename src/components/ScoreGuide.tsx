@@ -1,6 +1,6 @@
-import { useEffect, useState, type CSSProperties } from 'react'
-import { createPortal } from 'react-dom'
+import { useId, useState, type CSSProperties } from 'react'
 import type { ScoreRow } from '../data/scoring'
+import { Panel, PanelHead } from './Panel'
 
 type HowToPlayContentProps = {
   how: string
@@ -36,63 +36,26 @@ export function HowToPlayContent({
 type ScoreGuideProps = {
   how: string
   rows?: ScoreRow[] | null
-  /** Colour tokens for the sheet, usually the game's accent. */
+  /** The game's name, over the title. */
+  game?: string
+  /** Colour tokens for the panel, usually the game's accent. */
   style?: CSSProperties
 }
 
-/** In-game How to play modal (pause / HUD info). */
-export function ScoreGuide({ how, rows, style }: ScoreGuideProps) {
+/** In-game How to play panel, opened from the start and pause cards. */
+export function ScoreGuide({ how, rows, game, style }: ScoreGuideProps) {
   const [open, setOpen] = useState(false)
+  const titleId = useId()
 
-  useEffect(() => {
-    if (!open) return
-    const onKey = (e: KeyboardEvent) => {
-      e.preventDefault()
-      e.stopImmediatePropagation()
-      if (e.key === 'Escape') setOpen(false)
-    }
-    window.addEventListener('keydown', onKey, true)
-    return () => window.removeEventListener('keydown', onKey, true)
-  }, [open])
-
-  const panel =
-    open && typeof document !== 'undefined'
-      ? createPortal(
-          <div
-            className="score-guide__backdrop"
-            onPointerDown={(e) => {
-              e.stopPropagation()
-              setOpen(false)
-            }}
-          >
-            <div
-              className="patriot__info-panel"
-              style={style}
-              role="dialog"
-              aria-label="How to play"
-              onPointerDown={(e) => e.stopPropagation()}
-            >
-              <div className="patriot__info-head">
-                <span className="patriot__label">How to play</span>
-                <button
-                  type="button"
-                  className="patriot__info-close"
-                  aria-label="Close how to play"
-                  onClick={() => setOpen(false)}
-                >
-                  ×
-                </button>
-              </div>
-              {/* Scrolls on its own so a long rulebook cannot push the
-                  close button, or its own last line, off the screen. */}
-              <div className="patriot__info-body">
-                <HowToPlayContent how={how} rows={rows} listClassName="patriot__info-list" />
-              </div>
-            </div>
-          </div>,
-          document.body,
-        )
-      : null
+  // The body scrolls on its own, so a long rulebook cannot push the close, or its own last line, off the screen.
+  const panel = open ? (
+    <Panel wide labelledBy={titleId} onClose={() => setOpen(false)} style={style}>
+      <PanelHead titleId={titleId} title="How to play" kicker={game} onClose={() => setOpen(false)} closeLabel="Close how to play" />
+      <div className="panel__body panel__body--last">
+        <HowToPlayContent how={how} rows={rows} listClassName="panel__list" />
+      </div>
+    </Panel>
+  ) : null
 
   return (
     <>

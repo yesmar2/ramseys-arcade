@@ -495,27 +495,40 @@ export function PatriotGame() {
       </div>
 
       {needsRotate && (
-        <div className="patriot__rotate" role="dialog" aria-label="Rotate your device">
-          <div className="patriot__rotate-card">
-            <div className="patriot__rotate-icon" aria-hidden="true">
-              ⟳
+        <div
+          className="patriot__rotate"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="patriot-rotate-title"
+          style={gameAccentStyle('patriot')}
+        >
+          <div className="panel patriot__rotate-panel">
+            <div className="panel__body patriot__rotate-body">
+              <span className="patriot__rotate-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <rect x="7" y="2.5" width="10" height="19" rx="2.2" fill="none" stroke="currentColor" strokeWidth="1.8" />
+                  <path d="M11 18.5h2" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                </svg>
+              </span>
+              <h2 id="patriot-rotate-title" className="panel__title">
+                Turn your phone
+              </h2>
+              <p className="panel__text">Patriot plays in landscape.</p>
             </div>
-            <h2>Turn your phone</h2>
-            <p>Patriot plays in landscape.</p>
             {/*
               A way back out. This panel covers the whole stage, back control
               included, so without it the only exit from a portrait phone was
               the browser's own gesture. Same leave flow the pause panel uses.
             */}
-            <button
-              type="button"
-              className="game-pause-card__leave patriot__rotate-leave"
-              onClick={() =>
-                window.dispatchEvent(new Event('arcade:leave-confirm'))
-              }
-            >
-              {tournament ? 'Back to event' : 'Leave Patriot'}
-            </button>
+            <div className="panel__actions">
+              <button
+                type="button"
+                className="panel__btn panel__btn--ghost"
+                onClick={() => window.dispatchEvent(new Event('arcade:leave-confirm'))}
+              >
+                {tournament ? 'Back to event' : 'Leave Patriot'}
+              </button>
+            </div>
           </div>
         </div>
       )}

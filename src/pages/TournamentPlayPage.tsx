@@ -204,16 +204,21 @@ export function TournamentPlayPage({
           ← Event
         </a>
         <div className="tour-play__gate">
-          <div className="game-pause-card tour-play__card" style={accentStyle}>
-            <p className="tour-play__eyebrow">Tournament</p>
-            <h1>{detail?.title ?? 'Tournament'}</h1>
-            <p>{loadError}</p>
-            <div className="tour-play__gate-actions">
-              <a className="score-save__btn" href={backHref}>
+          <section className="panel" aria-labelledby="tour-gate-title" style={accentStyle}>
+            <div className="panel__head">
+              <div className="panel__heading">
+                <span className="panel__kicker">{detail?.title ?? 'Event'}</span>
+                <h1 id="tour-gate-title" className="panel__title">
+                  {loadError}
+                </h1>
+              </div>
+            </div>
+            <div className="panel__actions">
+              <a className="panel__btn" href={backHref}>
                 Back to event
               </a>
             </div>
-          </div>
+          </section>
         </div>
       </main>
     )
@@ -226,46 +231,58 @@ export function TournamentPlayPage({
           ← Event
         </a>
         <div className="tour-play__gate">
-          <div className="game-pause-card tour-play__card" style={accentStyle}>
-          <p className="tour-play__eyebrow">Tournament</p>
-          <h1>{detail?.title}</h1>
-          <p className="tour-play__game">{game?.name ?? gameSlug}</p>
-
-          {!playerName && (
-            <label className="tour-play__name-field">
-              <span className="score-save__label">Name</span>
-              <input
-                className="score-save__input"
-                value={nameDraft}
-                maxLength={PLAYER_NAME_MAX}
-                placeholder="YOU"
-                onChange={(e) => setNameDraft(e.target.value.toUpperCase().slice(0, PLAYER_NAME_MAX))}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault()
-                    void joinWithName(nameDraft)
-                  }
-                }}
-              />
-            </label>
-          )}
-
-          {joinError && <p className="score-save__note score-save__note--error">{joinError}</p>}
-
-          <div className="tour-play__gate-actions">
-            <button
-              type="button"
-              className="score-save__btn"
-              disabled={joining || (!playerName && !nameDraft.trim())}
-              onClick={() => void joinWithName(playerName || nameDraft)}
-            >
-              {joining ? 'Joining…' : 'Join & play'}
-            </button>
-            <a className="tour-play__ghost" href={backHref}>
-              Back
-            </a>
-          </div>
-          </div>
+          <section className="panel" aria-labelledby="tour-gate-title" style={accentStyle}>
+            <div className="panel__head">
+              <div className="panel__heading">
+                <span className="panel__kicker">{game?.name ?? gameSlug}</span>
+                <h1 id="tour-gate-title" className="panel__title">
+                  Join {detail?.title ?? 'the event'}
+                </h1>
+              </div>
+            </div>
+            <div className="panel__body">
+              {detail?.blurb ? <p className="panel__text">{detail.blurb}</p> : null}
+              {playerName ? (
+                <div className="panel__row">
+                  <span>Gamer tag</span>
+                  <strong>{playerName}</strong>
+                </div>
+              ) : (
+                <label className="panel__field">
+                  <span className="panel__label">Gamer tag</span>
+                  <input
+                    className="panel__input"
+                    value={nameDraft}
+                    maxLength={PLAYER_NAME_MAX}
+                    placeholder="YOU"
+                    autoComplete="off"
+                    spellCheck={false}
+                    onChange={(e) => setNameDraft(e.target.value.toUpperCase().slice(0, PLAYER_NAME_MAX))}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault()
+                        void joinWithName(nameDraft)
+                      }
+                    }}
+                  />
+                </label>
+              )}
+              {joinError ? <p className="panel__error">{joinError}</p> : null}
+            </div>
+            <div className="panel__actions">
+              <a className="panel__btn panel__btn--ghost" href={backHref}>
+                Back
+              </a>
+              <button
+                type="button"
+                className="panel__btn"
+                disabled={joining || (!playerName && !nameDraft.trim())}
+                onClick={() => void joinWithName(playerName || nameDraft)}
+              >
+                {joining ? 'Joining…' : `Join and play ${game?.name ?? ''}`.trim()}
+              </button>
+            </div>
+          </section>
         </div>
       </main>
     )

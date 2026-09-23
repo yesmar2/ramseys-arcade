@@ -44,11 +44,12 @@ export function InstallPrompt() {
   }
 
   return (
-    <div className="install-prompt" role="dialog" aria-label={`Install ${APP_NAME}`}>
+    <div className="install-prompt" role="dialog" aria-labelledby="install-prompt-title">
+      <img className="install-prompt__icon" src="/pwa-192.png" alt="" width={48} height={48} />
       <div className="install-prompt__copy">
-        <strong>Install {APP_NAME}</strong>
+        <strong id="install-prompt-title">{APP_NAME} on your home screen</strong>
         {mode === 'android' ? (
-          <span>Add it to your home screen for quick play.</span>
+          <span>One tap to play, full screen, no browser bars.</span>
         ) : (
           <span>
             Tap Share, then <em>Add to Home Screen</em>.
@@ -57,16 +58,11 @@ export function InstallPrompt() {
       </div>
       <div className="install-prompt__actions">
         {mode === 'android' ? (
-          <button type="button" className="install-prompt__btn" onClick={onInstall}>
+          <button type="button" className="panel__btn" onClick={onInstall}>
             Install
           </button>
         ) : null}
-        <button
-          type="button"
-          className="install-prompt__dismiss"
-          aria-label="Dismiss"
-          onClick={onDismiss}
-        >
+        <button type="button" className="panel__btn panel__btn--ghost" onClick={onDismiss}>
           Not now
         </button>
       </div>

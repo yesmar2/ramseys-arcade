@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { createPortal } from 'react-dom'
 import { currentHref, gameHref, navigate, tournamentHref } from '../hooks/useHashRoute'
 import { gameAccentStyle } from '../lib/gameAccentStyle'
 import {
@@ -10,6 +9,7 @@ import {
   toggleFullscreen,
 } from '../lib/fullscreen'
 import { useTournamentPlay } from '../tournaments/TournamentPlayContext'
+import { Panel, PanelHead } from './Panel'
 
 /** Plain playfield readouts (Asteroids-style): score left, secondary center. */
 export function PlayReadout({ children }: { children: ReactNode }) {
@@ -199,6 +199,7 @@ function PlayLeaveButton({
   const pausedRef = useRef(paused)
   const hrefRef = useRef(href)
   const armedRef = useRef(true)
+  const stayRef = useRef<HTMLButtonElement>(null)
   inRunRef.current = inRun
   pausedRef.current = paused
   hrefRef.current = href
@@ -214,18 +215,6 @@ function PlayLeaveButton({
     window.addEventListener('arcade:leave-confirm', onAsk)
     return () => window.removeEventListener('arcade:leave-confirm', onAsk)
   }, [])
-
-  useEffect(() => {
-    if (!confirming) return
-    const onKey = (e: KeyboardEvent) => {
-      if (e.code !== 'Escape') return
-      e.preventDefault()
-      e.stopPropagation()
-      setConfirming(false)
-    }
-    window.addEventListener('keydown', onKey, true)
-    return () => window.removeEventListener('keydown', onKey, true)
-  }, [confirming])
 
   // Mobile / browser back behaves as the in-game back control does: pause a
   // live run, and leave only from the pause panel.
@@ -292,41 +281,36 @@ function PlayLeaveButton({
           />
         </svg>
       </button>
-      {confirming
-        ? createPortal(
-            <div
-              className="game-leave-overlay"
-              role="alertdialog"
-              aria-labelledby="game-leave-title"
-              aria-describedby="game-leave-copy"
-              onPointerDown={(e) => e.stopPropagation()}
-            >
-              <div className="game-leave-card" style={gameAccentStyle(slug)}>
-                <p id="game-leave-title">Leave this run?</p>
-                <p id="game-leave-copy" className="game-leave-card__copy">
-                  Your score won’t be saved.
-                </p>
-                <div className="game-leave-card__actions">
-                  <button
-                    type="button"
-                    className="game-leave-card__stay"
-                    onClick={() => setConfirming(false)}
-                  >
-                    Stay
-                  </button>
-                  <button
-                    type="button"
-                    className="game-leave-card__go"
-                    onClick={goNow}
-                  >
-                    Leave
-                  </button>
-                </div>
-              </div>
-            </div>,
-            document.body,
-          )
-        : null}
+      {confirming ? (
+        <Panel
+          alert
+          labelledBy="game-leave-title"
+          describedBy="game-leave-copy"
+          onClose={() => setConfirming(false)}
+          initialFocus={stayRef}
+          style={gameAccentStyle(slug)}
+        >
+          <PanelHead
+            titleId="game-leave-title"
+            title="Leave this run?"
+            onClose={() => setConfirming(false)}
+            closeLabel="Stay"
+          />
+          <div className="panel__body">
+            <p id="game-leave-copy" className="panel__text">
+              Your score won’t be saved.
+            </p>
+          </div>
+          <div className="panel__actions">
+            <button type="button" className="panel__btn panel__btn--ghost" onClick={goNow}>
+              Leave
+            </button>
+            <button ref={stayRef} type="button" className="panel__btn" onClick={() => setConfirming(false)}>
+              Stay
+            </button>
+          </div>
+        </Panel>
+      ) : null}
     </>
   )
 }

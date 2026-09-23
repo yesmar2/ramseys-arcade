@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react'
-import { createPortal } from 'react-dom'
 import { detectDeviceType } from '../lib/device'
+import { Panel, PanelHead } from './Panel'
 
 type ShareBoardButtonProps = {
   /** Clever line for share sheet / clipboard / Messages / email — not link-only. */
@@ -94,15 +94,6 @@ export function ShareBoardButton({ label, url, className = '', text }: ShareBoar
     }
   }, [])
 
-  useEffect(() => {
-    if (!open) return
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setOpen(false)
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [open])
-
   // Native listener so Android Chrome keeps the user-gesture for navigator.share.
   // (A second share() in a .catch() after a failed payload loses that gesture.)
   useEffect(() => {
@@ -167,87 +158,58 @@ export function ShareBoardButton({ label, url, className = '', text }: ShareBoar
         {text ? <span className="lb-share__text">{copied ? 'Copied' : text}</span> : null}
       </button>
 
-      {open && typeof document !== 'undefined'
-        ? createPortal(
-            <div
-              className="share-sheet__backdrop"
-              role="presentation"
-              onClick={() => setOpen(false)}
-            >
-              <div
-                className="share-sheet"
-                role="dialog"
-                aria-modal="true"
-                aria-labelledby={titleId}
-                onClick={(e) => e.stopPropagation()}
+      {open ? (
+        <Panel labelledBy={titleId} onClose={() => setOpen(false)}>
+          <PanelHead titleId={titleId} title="Share" onClose={() => setOpen(false)} />
+          <div className="panel__body">
+            <div className="share-panel__quote">
+              <p className="share-panel__label">{label}</p>
+              <p className="share-panel__url">{href}</p>
+            </div>
+            <p className="share-panel__hint">
+              Your device’s own share wasn’t there, so here are the usual places. Or copy the message and
+              link.
+            </p>
+            <div className="share-panel__apps">
+              <a className="panel__btn panel__btn--ghost" href={`sms:?&body=${encodedBody}`}>
+                Messages
+              </a>
+              <a className="panel__btn panel__btn--ghost" href={`mailto:?subject=${encodedLabel}&body=${encodedBody}`}>
+                Email
+              </a>
+              <a
+                className="panel__btn panel__btn--ghost"
+                href={`https://twitter.com/intent/tweet?text=${encodedLabel}&url=${encoded}`}
+                target="_blank"
+                rel="noreferrer"
               >
-                <div className="share-sheet__head">
-                  <h2 id={titleId} className="share-sheet__title">
-                    Share
-                  </h2>
-                  <button
-                    type="button"
-                    className="share-sheet__close"
-                    aria-label="Close"
-                    onClick={() => setOpen(false)}
-                  >
-                    ×
-                  </button>
-                </div>
-                <p className="share-sheet__label">{label}</p>
-                <p className="share-sheet__url">{href}</p>
-                <p className="share-sheet__hint">
-                  System share wasn’t available. Pick an app below, or copy the
-                  message and link.
-                </p>
-
-                <div className="share-sheet__actions">
-                  <a className="share-sheet__btn" href={`sms:?&body=${encodedBody}`}>
-                    Messages
-                  </a>
-                  <a
-                    className="share-sheet__btn"
-                    href={`mailto:?subject=${encodedLabel}&body=${encodedBody}`}
-                  >
-                    Email
-                  </a>
-                  <a
-                    className="share-sheet__btn"
-                    href={`https://twitter.com/intent/tweet?text=${encodedLabel}&url=${encoded}`}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    X / Twitter
-                  </a>
-                  <a
-                    className="share-sheet__btn"
-                    href={`https://www.facebook.com/sharer/sharer.php?u=${encoded}`}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    Facebook
-                  </a>
-                  <a
-                    className="share-sheet__btn"
-                    href={`https://www.reddit.com/submit?url=${encoded}&title=${encodedLabel}`}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    Reddit
-                  </a>
-                  <button
-                    type="button"
-                    className="share-sheet__btn share-sheet__btn--primary"
-                    onClick={() => doCopy(href)}
-                  >
-                    {copied ? 'Copied!' : 'Copy link'}
-                  </button>
-                </div>
-              </div>
-            </div>,
-            document.body,
-          )
-        : null}
+                X / Twitter
+              </a>
+              <a
+                className="panel__btn panel__btn--ghost"
+                href={`https://www.facebook.com/sharer/sharer.php?u=${encoded}`}
+                target="_blank"
+                rel="noreferrer"
+              >
+                Facebook
+              </a>
+              <a
+                className="panel__btn panel__btn--ghost"
+                href={`https://www.reddit.com/submit?url=${encoded}&title=${encodedLabel}`}
+                target="_blank"
+                rel="noreferrer"
+              >
+                Reddit
+              </a>
+            </div>
+          </div>
+          <div className="panel__actions">
+            <button type="button" className="panel__btn" onClick={() => doCopy(href)}>
+              {copied ? 'Copied' : 'Copy link'}
+            </button>
+          </div>
+        </Panel>
+      ) : null}
     </>
   )
 }

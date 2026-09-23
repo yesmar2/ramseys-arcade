@@ -1,5 +1,4 @@
-import { useEffect, useState, type CSSProperties } from 'react'
-import { createPortal } from 'react-dom'
+import { useId, useState, type CSSProperties } from 'react'
 import {
   AVATAR_COLORS,
   AVATAR_SHAPE_LABELS,
@@ -11,7 +10,9 @@ import {
   setLocalAvatarId,
   type Avatar,
 } from '../lib/avatars'
+import { inkOn } from '../lib/color'
 import { setPlayerAvatar } from '../lib/leaderboard'
+import { Panel, PanelHead } from './Panel'
 import { PlayerAvatar } from './PlayerAvatar'
 
 type AvatarStudioProps = {
@@ -32,14 +33,7 @@ export function AvatarStudio({ name, current, onSaved, onClose }: AvatarStudioPr
   const [draft, setDraft] = useState<Avatar>(() => resolveAvatar(current, name))
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [onClose])
+  const titleId = useId()
 
   const save = async () => {
     if (busy) return
@@ -65,30 +59,17 @@ export function AvatarStudio({ name, current, onSaved, onClose }: AvatarStudioPr
 
   const bodyHex = avatarColor(draft.body)
 
-  return createPortal(
-    <div
-      className="studio"
-      role="dialog"
-      aria-modal="true"
-      aria-label="Your avatar"
-      onPointerDown={(e) => {
-        if (e.target === e.currentTarget) onClose()
-      }}
+  // The panel wears the body colour being tried: its button, and the tint on the stage and the cast.
+  return (
+    <Panel
+      wide
+      labelledBy={titleId}
+      onClose={onClose}
+      scrimCloses={!busy}
+      style={{ '--studio-accent': bodyHex, '--celeb-accent': bodyHex, '--hero-ink': inkOn(bodyHex) } as CSSProperties}
     >
-      <section className="studio__card" style={{ '--studio-accent': bodyHex } as CSSProperties}>
-        <div className="studio__head">
-          <div>
-            <p className="ev-kicker studio__kicker">
-              <span className="ev-kicker__bit">Your avatar</span>
-              <span className="ev-kicker__bit">{name}</span>
-            </p>
-            <h2 className="studio__title">Make it yours</h2>
-          </div>
-          <button type="button" className="studio__close" aria-label="Close" onClick={onClose}>
-            ×
-          </button>
-        </div>
-
+      <PanelHead titleId={titleId} kicker={`Your avatar · ${name}`} title="Make it yours" onClose={onClose} />
+      <div className="panel__body">
         <div className="studio__stage">
           <PlayerAvatar avatar={draft} name={name} size="xl" title="Preview" />
           <button type="button" className="chips__item studio__random" onClick={() => setDraft(randomAvatar())}>
@@ -130,18 +111,17 @@ export function AvatarStudio({ name, current, onSaved, onClose }: AvatarStudioPr
         </div>
 
         {error ? <p className="ev-note ev-note--error">{error}</p> : null}
+      </div>
 
-        <div className="studio__actions">
-          <button type="button" className="hero__cta studio__save" disabled={busy} onClick={() => void save()}>
-            {busy ? 'Saving…' : 'Save avatar'}
-          </button>
-          <button type="button" className="hero__ghost" onClick={onClose} disabled={busy}>
-            Cancel
-          </button>
-        </div>
-      </section>
-    </div>,
-    document.body,
+      <div className="panel__actions">
+        <button type="button" className="panel__btn panel__btn--ghost" onClick={onClose} disabled={busy}>
+          Cancel
+        </button>
+        <button type="button" className="panel__btn" disabled={busy} onClick={() => void save()}>
+          {busy ? 'Saving…' : 'Save avatar'}
+        </button>
+      </div>
+    </Panel>
   )
 }
 

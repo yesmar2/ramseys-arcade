@@ -675,64 +675,6 @@ img {
   z-index: 5;
 }
 
-.tour-play__gate {
-  background: rgba(237, 247, 244, 0.92);
-}
-
-.tour-play__eyebrow {
-  margin: 0;
-  font-size: 0.75rem;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: var(--muted);
-}
-
-.tour-play__gate h1 {
-  margin: 0;
-  font-family: var(--font-display);
-  font-size: clamp(1.6rem, 4vw, 2.2rem);
-  font-weight: 700;
-  color: var(--ink);
-}
-
-.tour-play__game {
-  margin: 0;
-  font-family: var(--font-display);
-  font-size: 1.2rem;
-  font-weight: 700;
-  color: var(--accent);
-}
-
-.tour-play__gate p {
-  margin: 0;
-  max-width: 22rem;
-  font-weight: 600;
-  color: var(--muted);
-}
-
-.tour-play__gate-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.65rem;
-  justify-content: center;
-  margin-top: 0.5rem;
-}
-
-.tour-play__name-field {
-  width: min(100%, 14rem);
-  text-align: left;
-  margin-top: 0.25rem;
-}
-
-.tour-play__ghost {
-  display: inline-flex;
-  align-items: center;
-  padding: 0.7rem 0.9rem;
-  font-weight: 700;
-  color: var(--muted);
-}
-
 .tour-score {
   z-index: 20;
 }
@@ -1659,20 +1601,6 @@ a.game-hud__board {
   color: inherit;
 }
 
-.score-guide__backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 200;
-  display: grid;
-  place-items: center;
-  align-content: safe center;
-  background: rgba(var(--ink-rgb), 0.28);
-  padding: max(1rem, env(safe-area-inset-top)) max(1rem, env(safe-area-inset-right))
-    max(1rem, env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left));
-  overflow: auto;
-  box-sizing: border-box;
-}
-
 .how-to-play__copy {
   margin: 0 0 0.75rem;
   font-size: 0.92rem;
@@ -2159,81 +2087,6 @@ a.game-hud__board {
 .game-pause-card__leave:focus-visible {
   background: rgba(var(--ink-rgb), 0.05);
   outline: none;
-}
-
-.game-leave-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 90;
-  display: grid;
-  place-items: center;
-  padding: max(1rem, env(safe-area-inset-top)) max(1rem, env(safe-area-inset-right))
-    max(1rem, env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left));
-  background: rgba(var(--ink-rgb), 0.32);
-}
-
-.game-leave-card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.45rem;
-  width: min(18rem, 100%);
-  padding: 1.15rem 1.2rem 1.2rem;
-  border-radius: var(--tile-radius);
-  background: rgba(var(--surface-rgb), 0.96);
-  border: 1px solid rgba(var(--ink-rgb), 0.08);
-  box-shadow: var(--shadow-soft);
-  text-align: center;
-}
-
-.game-leave-card p {
-  margin: 0;
-  font-family: var(--font-display);
-  font-size: 1.35rem;
-  font-weight: 600;
-  color: var(--ink);
-}
-
-.game-leave-card__copy {
-  font-family: var(--font-body) !important;
-  font-size: 0.88rem !important;
-  font-weight: 650 !important;
-  color: var(--muted) !important;
-}
-
-.game-leave-card__actions {
-  display: flex;
-  gap: 0.5rem;
-  width: 100%;
-  margin-top: 0.45rem;
-}
-
-.game-leave-card__stay,
-.game-leave-card__go {
-  flex: 1;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 2.55rem;
-  padding: 0.45rem 0.7rem;
-  border-radius: 999px;
-  font: inherit;
-  font-weight: 700;
-  font-size: 0.92rem;
-  text-decoration: none;
-  cursor: pointer;
-}
-
-.game-leave-card__stay {
-  border: 1px solid rgba(var(--ink-rgb), 0.12);
-  background: transparent;
-  color: var(--ink);
-}
-
-.game-leave-card__go {
-  border: 0;
-  background: var(--accent);
-  color: #fff;
 }
 
 /*
@@ -2772,15 +2625,6 @@ a.game-hud__board {
   box-shadow: var(--shadow-soft);
 }
 
-.patriot__label {
-  display: block;
-  font-size: 0.7rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--muted);
-}
-
 .patriot__stat strong {
   font-family: var(--font-display);
   font-size: 1.35rem;
@@ -2816,119 +2660,13 @@ a.game-hud__board {
   padding: 1rem;
 }
 
-.patriot__info-panel {
-  position: relative;
-  top: auto;
-  right: auto;
-  z-index: 51;
-  /*
-   * Wide enough for two columns of rules. At 22rem the value column came to
-   * about 170px and nearly every line in it wrapped three deep; a phone is
-   * still held to the screen it has, so this only spends room where there is
-   * room to spend.
-   */
-  width: min(27rem, calc(100% - 2.5rem));
-  max-height: calc(100dvh - 2rem);
-  display: flex;
-  flex-direction: column;
-  padding: 0.85rem 0.95rem 0.95rem;
-  border-radius: var(--tile-radius);
-  background: rgba(var(--surface-rgb), 0.96);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(var(--ink-rgb), 0.08);
-  box-shadow: var(--shadow-soft);
-  pointer-events: auto;
-}
-
 /*
  * The rules scroll, the frame does not. Some games explain themselves at
  * length, and the panel is capped to the viewport — without this the tail of
  * a long explanation simply ran off the bottom of the screen.
  */
-.patriot__info-body {
-  min-height: 0;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  -webkit-overflow-scrolling: touch;
-}
-
-.patriot__info-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 0.55rem;
-  flex: none;
-}
-
-.patriot__info-close {
-  width: 1.6rem;
-  height: 1.6rem;
-  border: 0;
-  border-radius: 999px;
-  background: transparent;
-  color: var(--muted);
-  font-size: 1.2rem;
-  line-height: 1;
-  cursor: pointer;
-}
-
-.patriot__info-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-  min-height: 0;
-  /* Vertical only. A long rule used to push the panel sideways and hide half
-     its own value behind a horizontal scrollbar. */
-  overflow: hidden auto;
-  -webkit-overflow-scrolling: touch;
-}
-
-.patriot__info-list li {
-  /*
-   * Two columns, not a row pushed apart.
-   *
-   * Pushed apart with space-between, a value short enough to share the line sat
-   * hard right, one too long wrapped underneath and sat left, and a rule whose
-   * label ran long put it somewhere between the two — so no two values in the
-   * list began in the same place and each one had to be hunted for. A column
-   * holds them all in line and lets the long ones wrap inside it.
-   */
-  display: grid;
-  grid-template-columns: minmax(5.5rem, 0.85fr) minmax(0, 1.15fr);
-  gap: 0.15rem 0.85rem;
-  align-items: baseline;
-  padding: 0.45rem 0.55rem;
-  border-radius: 0.65rem;
-  background: rgba(var(--surface-rgb), 0.7);
-  border: 1px solid rgba(var(--ink-rgb), 0.05);
-}
-
-.patriot__info-list span {
-  min-width: 0;
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: var(--muted);
-}
-
-.patriot__info-list strong {
-  min-width: 0;
-  font-family: var(--font-display);
-  font-size: 1rem;
-  font-weight: 700;
-  color: var(--ink);
-  /* Left, with the column. Ragged right was what made the list hard to scan. */
-  text-align: left;
-}
 
 /* Too narrow for two columns: label over value, still all starting in line. */
-@media (max-width: 400px) {
-  .patriot__info-list li {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
 
 .patriot__overlay {
   position: absolute;
@@ -3442,14 +3180,6 @@ html[data-theme='dark'] .patriot__power {
     font-size: 0.85rem;
   }
 
-  .patriot__info-panel {
-    top: auto;
-    right: auto;
-    width: min(22rem, calc(100% - 1.5rem));
-    max-height: calc(100% - 2.7rem);
-    overflow: auto;
-    padding: 0.65rem 0.7rem 0.75rem;
-  }
 }
 
 .snake__overlay {
@@ -4772,126 +4502,6 @@ a.lb-share:visited {
 a.lb-share:visited:hover,
 a.lb-share:visited:focus-visible {
   color: var(--board-accent, var(--accent));
-}
-
-.share-sheet__backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 220;
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  background: rgba(var(--ink-rgb), 0.34);
-  padding: max(0.75rem, env(safe-area-inset-top)) max(0.75rem, env(safe-area-inset-right))
-    max(0.75rem, env(safe-area-inset-bottom)) max(0.75rem, env(safe-area-inset-left));
-  box-sizing: border-box;
-}
-
-.share-sheet {
-  width: min(100%, 26rem);
-  max-height: min(85vh, 34rem);
-  overflow: auto;
-  padding: 1rem 1rem 1.15rem;
-  border-radius: calc(var(--tile-radius) + 0.15rem) calc(var(--tile-radius) + 0.15rem) 1rem 1rem;
-  background: rgba(var(--surface-rgb), 0.98);
-  border: 1px solid rgba(var(--ink-rgb), 0.08);
-  box-shadow: var(--shadow-lift);
-  -webkit-overflow-scrolling: touch;
-}
-
-.share-sheet__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  margin-bottom: 0.55rem;
-}
-
-.share-sheet__title {
-  margin: 0;
-  font-family: var(--font-display);
-  font-size: 1.2rem;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-}
-
-.share-sheet__close {
-  width: 2.2rem;
-  height: 2.2rem;
-  border: 0;
-  border-radius: 999px;
-  background: rgba(var(--ink-rgb), 0.06);
-  color: var(--ink);
-  font-size: 1.35rem;
-  line-height: 1;
-  cursor: pointer;
-}
-
-.share-sheet__label {
-  margin: 0 0 0.25rem;
-  font-weight: 700;
-  color: var(--ink);
-}
-
-.share-sheet__url {
-  margin: 0 0 0.45rem;
-  font-size: 0.78rem;
-  font-weight: 600;
-  color: var(--muted);
-  word-break: break-all;
-}
-
-.share-sheet__hint {
-  margin: 0 0 0.85rem;
-  font-size: 0.82rem;
-  font-weight: 600;
-  line-height: 1.35;
-  color: var(--muted);
-}
-
-.share-sheet__actions {
-  display: grid;
-  gap: 0.4rem;
-}
-
-.share-sheet__btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 2.65rem;
-  padding: 0.55rem 0.9rem;
-  border-radius: 0.85rem;
-  border: 1px solid rgba(var(--ink-rgb), 0.08);
-  background: rgba(var(--surface-rgb), 0.92);
-  color: var(--ink);
-  font-family: var(--font-body);
-  font-size: 0.95rem;
-  font-weight: 700;
-  text-decoration: none;
-  cursor: pointer;
-  touch-action: manipulation;
-}
-
-.share-sheet__btn--primary {
-  background: var(--accent);
-  border-color: transparent;
-  color: #fff;
-}
-
-.share-sheet__btn:hover,
-.share-sheet__btn:focus-visible {
-  border-color: color-mix(in srgb, var(--accent) 40%, transparent);
-  outline: none;
-}
-
-@media (min-width: 640px) {
-  .share-sheet__backdrop {
-    align-items: center;
-  }
-
-  .share-sheet {
-    border-radius: calc(var(--tile-radius) + 0.15rem);
-  }
 }
 
 .lb-game-board__trailing {
@@ -8959,82 +8569,90 @@ a.lb-share:visited:focus-visible {
   }
 }
 
+/*
+ * The home screen tip: not a modal, a card from the panel kit (panel.css)
+ * floating in the corner, with the app's own icon. Above the phone tab bar,
+ * chrome.css lifts it clear.
+ */
 .install-prompt {
+  --panel-accent: var(--accent);
+  --panel-on-accent: #03211b;
+  --panel-fill: rgba(var(--ink-rgb), 0.05);
   position: fixed;
-  left: max(0.75rem, env(safe-area-inset-left));
-  right: max(0.75rem, env(safe-area-inset-right));
-  bottom: max(0.75rem, env(safe-area-inset-bottom));
+  right: max(1rem, env(safe-area-inset-right));
+  bottom: max(1rem, env(safe-area-inset-bottom));
   z-index: 40;
-  display: flex;
-  flex-wrap: wrap;
+  width: min(25rem, calc(100vw - 2rem));
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: 3rem minmax(0, 1fr);
   align-items: center;
-  gap: 0.75rem 1rem;
-  padding: 0.85rem 1rem;
-  border-radius: 14px;
-  background: rgba(var(--surface-rgb), 0.96);
-  border: 1px solid rgba(var(--ink-rgb), 0.1);
-  box-shadow: 0 12px 32px rgba(var(--ink-rgb), 0.16);
-  backdrop-filter: blur(12px);
+  gap: 0.9rem;
+  padding: 1.05rem 1.05rem 1.05rem 1.15rem;
+  border-radius: 1.5rem;
+  background: var(--surface);
+  border: 1px solid rgba(var(--ink-rgb), 0.12);
+  box-shadow: 0 24px 60px -20px rgba(0, 0, 0, 0.45);
+  color: var(--ink);
+  animation: panel-rise 0.24s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+.install-prompt__icon {
+  width: 3rem;
+  height: 3rem;
+  border-radius: 0.85rem;
 }
 
 .install-prompt__copy {
   display: flex;
   flex-direction: column;
-  gap: 0.15rem;
+  gap: 0.2rem;
   min-width: 0;
-  flex: 1 1 10rem;
-  color: var(--ink);
   font-size: 0.9rem;
+  line-height: 1.4;
 }
 
 .install-prompt__copy strong {
   font-family: var(--font-display);
-  font-size: 1rem;
-  font-weight: 600;
-  letter-spacing: -0.02em;
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: -0.015em;
 }
 
 .install-prompt__copy span {
-  color: rgba(var(--ink-rgb), 0.62);
+  color: var(--muted);
 }
 
 .install-prompt__copy em {
   font-style: normal;
-  font-weight: 600;
+  font-weight: 650;
   color: var(--ink);
 }
 
 .install-prompt__actions {
+  grid-column: 1 / -1;
   display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  margin-left: auto;
+  gap: 0.5rem;
 }
 
-.install-prompt__btn,
-.install-prompt__dismiss {
-  appearance: none;
-  margin: 0;
-  border-radius: 999px;
-  font: inherit;
-  font-size: 0.88rem;
-  font-weight: 600;
-  cursor: pointer;
-  touch-action: manipulation;
+.install-prompt__actions .panel__btn {
+  min-height: 2.75rem;
+  font-size: 0.95rem;
 }
 
-.install-prompt__btn {
-  padding: 0.45rem 0.95rem;
-  border: 0;
-  background: var(--accent);
-  color: #fff;
+@media (max-width: 40rem) {
+  .install-prompt {
+    left: max(0.75rem, env(safe-area-inset-left));
+    right: max(0.75rem, env(safe-area-inset-right));
+    bottom: max(0.75rem, env(safe-area-inset-bottom));
+    width: auto;
+  }
 }
 
-.install-prompt__dismiss {
-  padding: 0.45rem 0.75rem;
-  border: 1px solid rgba(var(--ink-rgb), 0.14);
-  background: transparent;
-  color: rgba(var(--ink-rgb), 0.7);
+@media (prefers-reduced-motion: reduce) {
+  .install-prompt {
+    animation: none;
+  }
 }
 
 /* Spotter — daily visual hunt */

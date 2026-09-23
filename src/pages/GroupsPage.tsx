@@ -5,6 +5,7 @@ import { PageShell } from '../components/PageShell'
 import { PlayerMark } from '../components/PlayerMark'
 import { InviteByTagForm } from '../components/InviteByTagForm'
 import { PendingInvitesStrip } from '../components/PendingInvitesStrip'
+import { useConfirm } from '../components/ConfirmPanel'
 import { ShareBoardButton } from '../components/ShareBoardButton'
 import { leaderboardHref, navigate, useRoute } from '../hooks/useHashRoute'
 import { useAuth } from '../hooks/useAuth'
@@ -386,6 +387,8 @@ export function GroupDetailPage({ id, invite }: { id: string; invite?: string })
 
   const storedInvite = invite ?? getGroupInvite(id) ?? undefined
   const accent = groupAccent(id)
+  // Questions about the group ask in a panel in its colour, not the browser's grey box.
+  const [ask, question] = useConfirm({ '--celeb-accent': accent, '--hero-ink': inkOn(accent) } as CSSProperties)
 
   const load = async (inviteCode?: string) => {
     const data = await fetchGroupDetail(id, inviteCode ?? storedInvite)
@@ -480,7 +483,14 @@ export function GroupDetailPage({ id, invite }: { id: string; invite?: string })
   }
 
   const onLeave = async () => {
-    if (busy || !window.confirm('Leave this group?')) return
+    if (busy) return
+    const yes = await ask({
+      title: 'Leave this group?',
+      body: 'Its board stops showing your runs, and you’ll need an invite to come back.',
+      confirm: 'Leave group',
+      destructive: true,
+    })
+    if (!yes) return
     setBusy(true)
     try {
       await leaveGroup(id)
@@ -493,7 +503,14 @@ export function GroupDetailPage({ id, invite }: { id: string; invite?: string })
   }
 
   const onDelete = async () => {
-    if (busy || !window.confirm('Delete this group for everyone?')) return
+    if (busy) return
+    const yes = await ask({
+      title: 'Delete this group for everyone?',
+      body: 'Its board, its invite links and its roster go for every member. There is no undo.',
+      confirm: 'Delete group',
+      destructive: true,
+    })
+    if (!yes) return
     setBusy(true)
     try {
       await deleteGroup(id)
@@ -533,7 +550,13 @@ export function GroupDetailPage({ id, invite }: { id: string; invite?: string })
   }
 
   const onRotate = async () => {
-    if (busy || !window.confirm('Old invite links will stop working. Rotate anyway?')) return
+    if (busy) return
+    const yes = await ask({
+      title: 'Make a new invite link?',
+      body: 'Old invite links will stop working.',
+      confirm: 'Make a new link',
+    })
+    if (!yes) return
     setBusy(true)
     try {
       const next = await rotateGroupInvite(id)
@@ -547,7 +570,14 @@ export function GroupDetailPage({ id, invite }: { id: string; invite?: string })
   }
 
   const onKick = async (name: string) => {
-    if (busy || !window.confirm(`Remove ${name} from the group?`)) return
+    if (busy) return
+    const yes = await ask({
+      title: `Remove ${name} from the group?`,
+      body: 'They come off its board, and need an invite to come back.',
+      confirm: 'Remove',
+      destructive: true,
+    })
+    if (!yes) return
     setBusy(true)
     try {
       const next = await kickGroupMember(id, name)
@@ -565,9 +595,11 @@ export function GroupDetailPage({ id, invite }: { id: string; invite?: string })
    */
   const onTransfer = async (name: string) => {
     if (busy) return
-    const ok = window.confirm(
-      `Make ${name} the host? They get the invite code and the roster controls, and you won’t be able to undo it yourself.`,
-    )
+    const ok = await ask({
+      title: `Make ${name} the host?`,
+      body: 'They get the invite code and the roster controls, and you won’t be able to undo it yourself.',
+      confirm: `Make ${name} host`,
+    })
     if (!ok) return
     setBusy(true)
     setNote(null)
@@ -905,6 +937,7 @@ export function GroupDetailPage({ id, invite }: { id: string; invite?: string })
             </button>
           </div>
         ) : null}
+        {question}
       </div>
     </PageShell>
   )

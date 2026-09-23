@@ -24,96 +24,7 @@
 
 /* ---------- the studio ---------- */
 
-.studio {
-  position: fixed;
-  inset: 0;
-  z-index: 90;
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  padding: max(1rem, env(safe-area-inset-top)) 0 0;
-  background: rgba(10, 16, 22, 0.55);
-  backdrop-filter: blur(8px);
-  animation: score-celeb-fade 0.25s ease both;
-}
-
-.studio__card {
-  --studio-accent: var(--accent);
-  position: relative;
-  isolation: isolate;
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  width: min(100%, 34rem);
-  max-height: calc(100dvh - 1rem);
-  overflow: auto;
-  padding: 1.1rem 1.15rem calc(1.2rem + env(safe-area-inset-bottom));
-  border-radius: 1.4rem 1.4rem 0 0;
-  background: linear-gradient(
-    135deg,
-    color-mix(in srgb, var(--studio-accent) 22%, var(--surface)) 0%,
-    color-mix(in srgb, var(--studio-accent) 8%, var(--surface)) 55%,
-    color-mix(in srgb, var(--studio-accent) 4%, var(--surface)) 100%
-  );
-  border: 1px solid color-mix(in srgb, var(--studio-accent) 30%, transparent);
-  border-bottom: 0;
-  box-shadow: 0 -18px 48px rgba(0, 0, 0, 0.3);
-  animation: score-celeb-pop 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
-  transition: background 0.25s ease, border-color 0.25s ease;
-}
-
-@media (min-width: 680px) {
-  .studio {
-    align-items: center;
-    padding: 1.5rem;
-  }
-
-  .studio__card {
-    border-radius: 1.4rem;
-    border-bottom: 1px solid color-mix(in srgb, var(--studio-accent) 30%, transparent);
-    max-height: calc(100dvh - 3rem);
-    padding: 1.2rem 1.35rem 1.3rem;
-  }
-}
-
-.studio__head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 0.75rem;
-}
-
-.studio__kicker {
-  margin: 0 0 0.15rem;
-}
-
-.studio__title {
-  margin: 0;
-  font-family: var(--font-display);
-  font-size: 1.45rem;
-  font-weight: 800;
-  letter-spacing: -0.03em;
-  line-height: 1.05;
-}
-
-.studio__close {
-  flex: none;
-  width: 2.2rem;
-  height: 2.2rem;
-  border-radius: 999px;
-  border: 1px solid rgba(var(--ink-rgb), 0.1);
-  background: rgba(var(--surface-rgb), 0.7);
-  color: var(--muted);
-  font-size: 1.3rem;
-  line-height: 1;
-  cursor: pointer;
-}
-
-.studio__close:hover,
-.studio__close:focus-visible {
-  color: var(--ink);
-  outline: none;
-}
+/* The shell is the panel kit's (panel.css); these are the studio's insides. */
 
 /* The preview: the character on its own tile, big. */
 .studio__stage {
@@ -239,23 +150,6 @@
   box-shadow:
     0 0 0 2px var(--surface),
     0 0 0 4px var(--swatch);
-}
-
-.studio__actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.5rem 0.6rem;
-  padding-top: 0.15rem;
-}
-
-.studio__save {
-  flex: 1 1 10rem;
-  --hero-accent: var(--studio-accent);
-}
-
-.studio__actions .hero__ghost {
-  --hero-accent: var(--studio-accent);
 }
 
 /* The mark on your own profile opens the studio. */

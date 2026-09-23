@@ -148,7 +148,7 @@ export function GamePanelBody({
           {/* Renders nothing where there is no motor to buzz. */}
           <HapticsToggle />
         </div>
-        {game?.how ? <ScoreGuide how={game.how} rows={scoring} style={gameAccentStyle(slug)} /> : null}
+        {game?.how ? <ScoreGuide how={game.how} rows={scoring} game={game.name} style={gameAccentStyle(slug)} /> : null}
         {board ? (
           <a
             className="game-pause-btn game-pause-board"

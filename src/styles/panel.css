@@ -1,0 +1,581 @@
+/*
+ * The panel kit: one way to float over the page.
+ *
+ * Every modal is the same panel — the page's surface, 24px corners, a hairline
+ * edge, the close in the top right corner — on a scrim that dims the page and
+ * blurs it a little. One filled button for what most people want (in a game
+ * it wears the game's colour, from gameAccentStyle's --celeb-accent), one
+ * outlined. On a phone the panel rises from the bottom edge as a sheet, with
+ * a handle and its buttons stacked, the filled one on top. It matches the
+ * site menu in chrome.css, which came first.
+ */
+
+.panel-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: grid;
+  place-items: center;
+  padding: 1.25rem;
+}
+
+.panel-scrim {
+  position: absolute;
+  inset: 0;
+  background: rgba(8, 14, 20, 0.62);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  animation: panel-fade 0.18s ease-out;
+}
+
+html[data-theme='light'] .panel-scrim {
+  background: rgba(26, 43, 60, 0.34);
+}
+
+.panel {
+  --panel-accent: var(--celeb-accent, var(--accent));
+  --panel-on-accent: var(--hero-ink, #03211b);
+  --panel-accent-ink: color-mix(in srgb, var(--panel-accent) 62%, var(--ink));
+  --panel-line: rgba(var(--ink-rgb), 0.12);
+  --panel-fill: rgba(var(--ink-rgb), 0.05);
+  --panel-danger: #c42b3c;
+  position: relative;
+  width: min(25rem, 100%);
+  max-height: calc(100dvh - 2.5rem);
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  border-radius: 1.5rem;
+  background: var(--surface);
+  border: 1px solid var(--panel-line);
+  box-shadow: 0 30px 80px -20px rgba(0, 0, 0, 0.5);
+  color: var(--ink);
+  overflow: hidden;
+  outline: none;
+  text-align: left;
+  animation: panel-rise 0.2s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+html[data-theme='dark'] .panel {
+  --panel-accent-ink: color-mix(in srgb, var(--panel-accent) 72%, #fff);
+  --panel-danger: #f07a8a;
+}
+
+.panel--wide {
+  width: min(35rem, 100%);
+}
+
+.panel__grab {
+  display: none;
+}
+
+.panel__head {
+  flex: none;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 1.35rem 1rem 0 1.5rem;
+}
+
+.panel__heading {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  min-width: 0;
+  padding-top: 0.35rem;
+}
+
+.panel__icon {
+  display: grid;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 0.9rem;
+  background: color-mix(in srgb, var(--panel-accent) 16%, transparent);
+  color: var(--panel-accent-ink);
+}
+
+.panel__icon svg {
+  width: 1.4rem;
+  height: 1.4rem;
+}
+
+.panel__kicker {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.6rem;
+  padding: 0 0.7rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--panel-accent) 16%, transparent);
+  color: var(--panel-accent-ink);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.panel__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  line-height: 1.2;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+
+.panel__close {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  margin-left: auto;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid rgba(var(--ink-rgb), 0.1);
+  background: rgba(var(--ink-rgb), 0.04);
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.panel__close:hover,
+.panel__close:focus-visible {
+  color: var(--ink);
+  border-color: rgba(var(--ink-rgb), 0.22);
+}
+
+.panel__close svg {
+  width: 1.1rem;
+  height: 1.1rem;
+}
+
+.panel__body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  min-height: 0;
+  padding: 0.9rem 1.5rem 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.panel__text {
+  margin: 0;
+  font-size: 0.97rem;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+/* A figure on a soft row: label left, value right. */
+.panel__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-height: 3rem;
+  padding: 0 1rem;
+  border-radius: 0.9rem;
+  background: var(--panel-fill);
+  font-size: 0.95rem;
+}
+
+.panel__row > span:first-child {
+  color: var(--muted);
+}
+
+.panel__row strong {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.panel__actions {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 1.25rem 1.5rem 1.5rem;
+}
+
+.panel__btn {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 3.25rem;
+  padding: 0 1.4rem;
+  border: 0;
+  border-radius: 999px;
+  background: var(--panel-accent);
+  color: var(--panel-on-accent);
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.1;
+  text-align: center;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  box-shadow: 0 10px 24px color-mix(in srgb, var(--panel-accent) 28%, transparent);
+  transition: transform 0.12s ease, filter 0.12s ease;
+}
+
+.panel__btn:hover:not(:disabled),
+.panel__btn:focus-visible:not(:disabled) {
+  filter: brightness(1.06);
+  transform: translateY(-1px);
+}
+
+.panel__btn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.panel__btn--ghost {
+  flex: none;
+  background: transparent;
+  border: 1px solid rgba(var(--ink-rgb), 0.18);
+  color: var(--ink);
+  font-weight: 600;
+  box-shadow: none;
+}
+
+.panel__btn--ghost:hover:not(:disabled),
+.panel__btn--ghost:focus-visible:not(:disabled) {
+  filter: none;
+  background: var(--panel-fill);
+}
+
+/* Outlined and red: the way out that loses something. */
+.panel__btn--danger {
+  color: var(--panel-danger);
+  border-color: color-mix(in srgb, var(--panel-danger) 45%, transparent);
+}
+
+/* Filled and red: the answer to a question about deleting something. */
+.panel__btn--destroy {
+  background: var(--panel-danger);
+  color: #fff;
+  box-shadow: none;
+}
+
+html[data-theme='dark'] .panel__btn--destroy {
+  color: #1a0508;
+}
+
+@keyframes panel-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes panel-rise {
+  from {
+    transform: translateY(0.75rem);
+    opacity: 0;
+  }
+}
+
+@keyframes panel-up {
+  from {
+    transform: translateY(2rem);
+    opacity: 0.4;
+  }
+}
+
+/* On a phone, a sheet from the bottom edge, over the tab bar. */
+@media (max-width: 40rem) {
+  .panel-layer {
+    place-items: end stretch;
+    padding: 0;
+  }
+
+  .panel,
+  .panel--wide {
+    width: 100%;
+    max-width: 36rem;
+    max-height: calc(100dvh - 2.4rem);
+    margin: 0 auto;
+    border-radius: 1.75rem 1.75rem 0 0;
+    border-bottom: 0;
+    animation-name: panel-up;
+    animation-duration: 0.24s;
+  }
+
+  .panel__grab {
+    display: block;
+    align-self: center;
+    flex: none;
+    width: 2.6rem;
+    height: 0.3rem;
+    margin-top: 0.6rem;
+    border-radius: 99px;
+    background: rgba(var(--ink-rgb), 0.18);
+  }
+
+  .panel__head {
+    padding-top: 0.7rem;
+  }
+
+  .panel__actions {
+    flex-direction: column-reverse;
+    align-items: stretch;
+    padding-bottom: calc(1.25rem + env(safe-area-inset-bottom));
+  }
+
+  .panel__btn,
+  .panel__btn--ghost {
+    flex: none;
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel-scrim {
+    animation: none;
+  }
+
+  .panel,
+  .panel--wide {
+    animation: panel-fade 0.15s ease-out;
+  }
+
+  .panel__btn {
+    transition: none;
+  }
+}
+
+/* ---------- inside a panel: how to play ---------- */
+
+.panel__body--last {
+  padding-bottom: 1.5rem;
+}
+
+.panel .how-to-play__copy {
+  margin: 0;
+  font-size: 0.97rem;
+  line-height: 1.55;
+  color: var(--muted);
+}
+
+.panel__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+/* Two columns that wrap: a short rule reads across, a long one folds under itself. */
+.panel__list li {
+  display: grid;
+  grid-template-columns: minmax(6.5rem, 0.8fr) minmax(0, 1.2fr);
+  align-items: baseline;
+  gap: 0.25rem 1rem;
+  min-height: 3rem;
+  padding: 0.75rem 1rem;
+  border-radius: 0.9rem;
+  background: var(--panel-fill);
+  font-size: 0.92rem;
+  line-height: 1.4;
+}
+
+.panel__list span {
+  font-weight: 650;
+  color: var(--ink);
+}
+
+.panel__list strong {
+  font-weight: 600;
+  color: var(--panel-accent-ink);
+}
+
+/* ---------- inside a panel: sharing ---------- */
+
+.share-panel__quote {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 0.9rem 1rem;
+  border-radius: 1rem;
+  background: var(--panel-fill);
+  border: 1px solid var(--panel-line);
+}
+
+.share-panel__label {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 650;
+  line-height: 1.4;
+  color: var(--ink);
+}
+
+.share-panel__url {
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: ui-monospace, 'DM Mono', monospace;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.share-panel__hint {
+  margin: 0;
+  font-size: 0.86rem;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.share-panel__apps {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.share-panel__apps .panel__btn {
+  min-height: 2.9rem;
+  padding: 0 0.8rem;
+  font-size: 0.93rem;
+}
+
+/* ---------- a game that wants the phone turned: Patriot, on a portrait phone ---------- */
+
+.patriot__rotate {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  padding: 1.5rem;
+  background: rgba(8, 14, 20, 0.72);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+
+.patriot__rotate .panel {
+  width: min(21rem, 100%);
+  border-radius: 1.5rem;
+  border-bottom: 1px solid var(--panel-line);
+  animation-name: panel-rise;
+}
+
+.patriot__rotate .panel__grab {
+  display: none;
+}
+
+.patriot__rotate-body {
+  align-items: center;
+  gap: 0.6rem;
+  padding-top: 1.75rem;
+  text-align: center;
+}
+
+.patriot__rotate-icon {
+  display: grid;
+  place-items: center;
+  width: 4rem;
+  height: 4rem;
+  margin-bottom: 0.4rem;
+  border-radius: 1.2rem;
+  background: color-mix(in srgb, var(--panel-accent) 16%, transparent);
+  color: var(--panel-accent-ink);
+}
+
+.patriot__rotate-icon svg {
+  width: 2rem;
+  height: 2rem;
+  animation: patriot-rotate-hint 2.4s ease-in-out infinite;
+}
+
+.patriot__rotate .panel__actions {
+  flex-direction: column;
+  align-items: stretch;
+  padding-bottom: calc(1.5rem + env(safe-area-inset-bottom));
+}
+
+.patriot__rotate .panel__btn {
+  width: 100%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .patriot__rotate-icon svg {
+    animation: none;
+    transform: rotate(-18deg);
+  }
+}
+
+/* ---------- typing in a panel: a gamer tag ---------- */
+
+.panel__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.panel__label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--panel-accent-ink);
+}
+
+.panel__input {
+  min-height: 3.25rem;
+  padding: 0 1rem;
+  border-radius: 0.9rem;
+  border: 1px solid rgba(var(--ink-rgb), 0.18);
+  background: var(--panel-fill);
+  color: var(--ink);
+  font-family: ui-monospace, 'DM Mono', monospace;
+  font-size: 1.15rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.panel__input::placeholder {
+  color: var(--muted);
+  opacity: 0.6;
+}
+
+.panel__input:focus {
+  outline: none;
+  border-color: var(--panel-accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--panel-accent) 28%, transparent);
+}
+
+.panel__error {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.45;
+  color: var(--panel-danger);
+}
+
+/* ---------- joining an event, on its game's stage ---------- */
+
+.tour-play__gate {
+  background: rgba(8, 14, 20, 0.62);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  padding: 1.25rem;
+}
+
+html[data-theme='light'] .tour-play__gate {
+  background: rgba(26, 43, 60, 0.3);
+}
+
+@media (max-width: 40rem) {
+  .tour-play__gate {
+    justify-content: flex-end;
+    padding: 0;
+  }
+}
+
+.share-panel__apps > :last-child:nth-child(odd) {
+  grid-column: 1 / -1;
+}
