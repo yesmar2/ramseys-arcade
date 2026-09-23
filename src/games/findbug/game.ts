@@ -10,6 +10,11 @@
  * moment while the clock keeps going — rather than by adding seconds nobody
  * spent. The leaderboard checks a claimed time against its own clock, and a
  * total padded with penalty seconds could claim more time than the run took.
+ *
+ * The wanted card can be called back up in the middle of a search, for anyone
+ * who has lost track of who they are after. The clock waits for it, as it does
+ * for the card before a scene, and it hides the scene while it is up, so the
+ * wait buys no looking.
  */
 
 import { hashString, mulberry32 } from '../../lib/seededRandom'
@@ -17,7 +22,8 @@ import { faceCentre } from './critters'
 import { buildScene, SCENE_NAMES, SCENE_ORDER, tapFindsTarget, type Scene, type SceneKind } from './scenes'
 import { wantedFor, type WantedBug } from './wanted'
 
-export type Phase = 'menu' | 'intro' | 'playing' | 'found' | 'timeout' | 'gameover'
+/** `recall` is the wanted card brought back up mid-scene. */
+export type Phase = 'menu' | 'intro' | 'playing' | 'recall' | 'found' | 'timeout' | 'gameover'
 
 export const ROUNDS = SCENE_ORDER.length
 
@@ -181,7 +187,7 @@ export function setAspect(prev: GameState, aspect: number): GameState {
 
 /** Total run time, in real milliseconds — the number the score inverts. */
 export function runMs(state: GameState): number {
-  const live = state.phase === 'playing' || state.phase === 'found' || state.phase === 'timeout'
+  const live = state.phase === 'playing' || state.phase === 'recall' || state.phase === 'found' || state.phase === 'timeout'
   return state.bankedMs + (live ? state.sceneMs : 0)
 }
 
@@ -228,6 +234,10 @@ export function tick(prev: GameState, dtMs: number): GameState {
       }
       return state
     }
+    case 'recall':
+      // The card is back up: the clock waits, and so does a daze, or the card
+      // would be a way to sit one out for nothing.
+      return state
     case 'found':
     case 'timeout': {
       state.phaseMs += dtMs
@@ -244,6 +254,16 @@ export function tick(prev: GameState, dtMs: number): GameState {
 export function skipIntro(prev: GameState): GameState {
   if (prev.phase !== 'intro' || !prev.ready) return prev
   return { ...prev, phase: 'playing', phaseMs: 0 }
+}
+
+/** Bring the wanted card back up, mid-search. */
+export function recallCard(prev: GameState): GameState {
+  return prev.phase === 'playing' ? { ...prev, phase: 'recall' } : prev
+}
+
+/** Put it away again, and the search carries on where it was left. */
+export function closeCard(prev: GameState): GameState {
+  return prev.phase === 'recall' ? { ...prev, phase: 'playing' } : prev
 }
 
 /** The scene is painted and can be shown. */

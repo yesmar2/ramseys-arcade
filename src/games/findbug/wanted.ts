@@ -7,9 +7,15 @@
  * around whoever it is — so there are always plenty of others in that shell,
  * that hat or those glasses, and none in all three.
  *
- * Each one is a shell (a colour and a pattern), a hat (a kind and a colour)
- * and glasses, picked so the three read at a glance at the size a critter is
- * drawn in the crowd, and so no two of them could be mistaken for each other.
+ * Each one is a shell (two colours and a pattern), a hat (a kind, a colour
+ * and a band) and glasses, picked so the three read at a glance at the size a
+ * critter is drawn in the crowd, and so no two of them could be mistaken for
+ * each other.
+ *
+ * The words on the card name every one of those details. In the later scenes
+ * a look-alike may get all of it right bar one small thing, the band on its
+ * hat as likely as anything, and the card used to say only "Red bobble hat":
+ * a bug in a red bobble hat with a yellow band matched every word of it.
  */
 
 import { hashString, mulberry32 } from '../../lib/seededRandom'
@@ -29,7 +35,7 @@ export type WantedBug = {
   /** As it reads in a sentence: "Find the Bug", "Found Skip!". */
   name: string
   look: Look
-  /** The three things that pick it out of a crowd, in words. */
+  /** The three things that pick it out of a crowd, in words, every detail named. */
   shell: string
   hat: string
   eyes: string
@@ -67,14 +73,14 @@ function bug(
 }
 
 export const WANTED: readonly WantedBug[] = [
-  bug('bug', 'the Bug', [RED, WHITE, 'stripes', 'Red and white stripes'], ['bobble', RED, WHITE, 'Red bobble hat'], 'round'),
-  bug('skip', 'Skip', [BLUE, YELLOW, 'spots', 'Blue with yellow spots'], ['cap', GREEN, WHITE, 'Green cap'], 'shades'),
-  bug('dotty', 'Dotty', [PURPLE, WHITE, 'dots', 'Purple with white dots'], ['beanie', YELLOW, PURPLE, 'Yellow beanie'], 'round'),
-  bug('pickle', 'Pickle', [GREEN, YELLOW, 'stripes', 'Green and yellow stripes'], ['tophat', BLACK, RED, 'Black top hat'], 'round'),
-  bug('tiger', 'Tiger', [ORANGE, INK, 'stripes', 'Orange and black stripes'], ['bobble', BLUE, WHITE, 'Blue bobble hat'], 'shades'),
-  bug('rosie', 'Rosie', [PINK, WHITE, 'spots', 'Pink with white spots'], ['party', TEAL, YELLOW, 'Teal party hat'], 'round'),
-  bug('ziggy', 'Ziggy', [TEAL, WHITE, 'stripes', 'Teal and white stripes'], ['headphones', PURPLE, WHITE, 'Purple headphones'], 'shades'),
-  bug('honey', 'Honey', [YELLOW, INK, 'spots', 'Yellow with black spots'], ['cap', RED, WHITE, 'Red cap'], 'round'),
+  bug('bug', 'the Bug', [RED, WHITE, 'stripes', 'Red and white stripes'], ['bobble', RED, WHITE, 'Red bobble hat, white band'], 'round'),
+  bug('skip', 'Skip', [BLUE, YELLOW, 'spots', 'Blue with yellow spots'], ['cap', GREEN, WHITE, 'Green cap, white peak'], 'shades'),
+  bug('dotty', 'Dotty', [PURPLE, WHITE, 'dots', 'Purple with white dots'], ['beanie', YELLOW, PURPLE, 'Yellow beanie, purple band'], 'round'),
+  bug('pickle', 'Pickle', [GREEN, YELLOW, 'stripes', 'Green and yellow stripes'], ['tophat', BLACK, RED, 'Black top hat, red band'], 'round'),
+  bug('tiger', 'Tiger', [ORANGE, INK, 'stripes', 'Orange and black stripes'], ['bobble', BLUE, WHITE, 'Blue bobble hat, white band'], 'shades'),
+  bug('rosie', 'Rosie', [PINK, WHITE, 'spots', 'Pink with white spots'], ['party', TEAL, YELLOW, 'Teal party hat, yellow stripes'], 'round'),
+  bug('ziggy', 'Ziggy', [TEAL, WHITE, 'stripes', 'Teal and white stripes'], ['headphones', PURPLE, WHITE, 'Purple headphones, white ear pads'], 'shades'),
+  bug('honey', 'Honey', [YELLOW, INK, 'spots', 'Yellow with black spots'], ['cap', RED, WHITE, 'Red cap, white peak'], 'round'),
 ]
 
 /** The original, for anything that wants a Bug without a run to pick one: the thumb, a harness. */

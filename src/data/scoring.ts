@@ -144,6 +144,7 @@ const SCORING: Record<string, ScoreRow[]> = {
   findbug: [
     { label: 'Scenes', value: '5 — busier, darker and with more look-alikes each one' },
     { label: 'Who to find', value: 'a new bug each scene, on a card that waits until you tap' },
+    { label: 'Forgot who', value: 'tap the face by the clock (or C) for the card again — the clock waits' },
     { label: 'Score', value: 'total time, fastest wins' },
     { label: 'Each scene', value: 'a minute — run out and the bug is shown, and the whole minute counts' },
     { label: 'Wrong tap', value: 'dazed for 1.5s while the clock keeps running' },

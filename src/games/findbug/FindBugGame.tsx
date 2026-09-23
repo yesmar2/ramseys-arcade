@@ -36,6 +36,7 @@ import {
 } from './camera'
 import { drawPortrait, faceCentre, type Look } from './critters'
 import {
+  closeCard,
   createInitialState,
   DAZE_MS,
   HINT_NARROW_MS,
@@ -43,6 +44,7 @@ import {
   hintLevel,
   markReady,
   MISS_MARK_MS,
+  recallCard,
   ROUNDS,
   SCENE_LIMIT_MS,
   setAspect,
@@ -69,7 +71,7 @@ type Pinch = { dist: number; midX: number; midY: number; cam: Camera }
 type Toast = { text: string; tone: 'good' | 'bad' | 'info'; id: number }
 
 function isLive(phase: Snapshot['phase']) {
-  return phase === 'intro' || phase === 'playing' || phase === 'found' || phase === 'timeout'
+  return phase === 'intro' || phase === 'playing' || phase === 'recall' || phase === 'found' || phase === 'timeout'
 }
 
 /**
@@ -99,14 +101,44 @@ function BugPortrait({ look, size, crop }: { look: Look; size: number; crop: 'fu
   return <canvas ref={ref} className="findbug__portrait" style={{ width: size, height: size }} aria-hidden="true" />
 }
 
-/** The wanted bug's face by the clock, ringed with what is left of the scene's minute. */
-function WantedBadge({ look, left, urgent }: { look: Look; left: number; urgent: boolean }) {
+/**
+ * The wanted bug's face by the clock, ringed with what is left of the scene's
+ * minute. It is also the way back to the wanted card: tap it mid-search to see
+ * who you are after again, and again to put the card away.
+ */
+function WantedBadge({
+  wanted,
+  left,
+  urgent,
+  onToggle,
+}: {
+  wanted: WantedBug
+  left: number
+  urgent: boolean
+  /** Null while there is no search to break off: before a scene starts, or once it is over. */
+  onToggle: (() => void) | null
+}) {
   const r = 19
   const c = 2 * Math.PI * r
   return (
-    <div className={`findbug__badge${urgent ? ' findbug__badge--urgent' : ''}`} aria-hidden="true">
-      <BugPortrait look={look} size={34} crop="head" />
-      <svg className="findbug__badge-ring" viewBox="0 0 44 44">
+    <button
+      type="button"
+      className={`findbug__badge${urgent ? ' findbug__badge--urgent' : ''}`}
+      aria-label={`Who to find: ${wanted.name}`}
+      title={onToggle ? 'Who to find (C)' : undefined}
+      disabled={!onToggle}
+      // The scene under the strip must not take this as a tap of its own.
+      onPointerDown={(e) => e.stopPropagation()}
+      onClick={(e) => {
+        e.stopPropagation()
+        // Left focused, the badge would take the next space for itself, and
+        // space is how a keyboard taps the scene.
+        if (e.detail > 0) e.currentTarget.blur()
+        onToggle?.()
+      }}
+    >
+      <BugPortrait look={wanted.look} size={34} crop="head" />
+      <svg className="findbug__badge-ring" viewBox="0 0 44 44" aria-hidden="true">
         <circle cx="22" cy="22" r={r} className="findbug__badge-track" />
         <circle
           cx="22"
@@ -117,26 +149,30 @@ function WantedBadge({ look, left, urgent }: { look: Look; left: number; urgent:
           strokeDashoffset={c * (1 - Math.max(0, Math.min(1, left)))}
         />
       </svg>
-    </div>
+    </button>
   )
 }
 
 /**
  * The wanted card: who to find this scene, and the three things that pick
  * them out. It stays up until it is tapped away, and the clock waits for it.
+ * Called back up mid-scene (`again`), it is the same card, sending you back
+ * to the search rather than into it.
  */
 function SceneCard({
   index,
   name,
   wanted,
   ready,
+  again,
 }: {
   index: number
   name: string
   wanted: WantedBug
   ready: boolean
+  again: boolean
 }) {
-  const first = index === 0
+  const first = index === 0 && !again
   const coarse = typeof window !== 'undefined' && window.matchMedia?.('(pointer: coarse)').matches
   return (
     <div className="game-pause-card findbug__card">
@@ -153,11 +189,20 @@ function SceneCard({
         <li>{wanted.eyes}</li>
       </ul>
       <p className="findbug__card-note">
-        {first
-          ? `Plenty of them have one or two of those. Only one has all three. ${coarse ? 'Pinch to zoom.' : 'Scroll to zoom.'}`
-          : 'Plenty have one or two of those. Only one has all three.'}
+        {again
+          ? 'The clock waits while you look.'
+          : first
+            ? 'Plenty of them have one or two of those. Only one has all three.'
+            : 'Plenty have one or two of those. Only one has all three.'}
       </p>
-      <span className="game-start-card__cue">{ready ? 'Tap to go' : 'Setting the scene…'}</span>
+      {first ? (
+        <p className="findbug__card-tip">
+          {coarse
+            ? 'Pinch to zoom. Forget who? Tap the face by the clock.'
+            : 'Scroll to zoom. Forget who? Click the face by the clock, or press C.'}
+        </p>
+      ) : null}
+      <span className="game-start-card__cue">{again ? 'Tap to keep looking' : ready ? 'Tap to go' : 'Setting the scene…'}</span>
     </div>
   )
 }
@@ -299,7 +344,7 @@ export function FindBugGame() {
     const overlaysFor = (s: GameState, now: number): Overlays => {
       const t = s.scene.target
       const face = faceCentre(t)
-      const cover = pausedRef.current || s.phase === 'menu' || s.phase === 'intro' || s.phase === 'gameover'
+      const cover = pausedRef.current || s.phase === 'menu' || s.phase === 'intro' || s.phase === 'recall' || s.phase === 'gameover'
       let veil: Overlays['veil'] = null
       let ring: Overlays['ring'] = null
       if (s.phase === 'playing') {
@@ -394,6 +439,16 @@ export function FindBugGame() {
 
   const syncZoomed = () => setZoomed(camRef.current.zoom > 1.01)
 
+  /** The wanted card back up mid-search, or put away again. */
+  const toggleCard = () => {
+    if (saveOpenRef.current || pausedRef.current) return
+    const s = stateRef.current!
+    const next = s.phase === 'recall' ? closeCard(s) : recallCard(s)
+    if (next === s) return
+    stateRef.current = next
+    setUi(toSnapshot(next))
+  }
+
   /** A tap on the canvas, in CSS px from its top left. */
   const handleTap = (sx: number, sy: number) => {
     if (saveOpenRef.current || pausedRef.current) return
@@ -403,8 +458,8 @@ export function FindBugGame() {
       restart()
       return
     }
-    if (s.phase === 'intro') {
-      stateRef.current = skipIntro(s)
+    if (s.phase === 'intro' || s.phase === 'recall') {
+      stateRef.current = s.phase === 'intro' ? skipIntro(s) : closeCard(s)
       setUi(toSnapshot(stateRef.current))
       return
     }
@@ -591,22 +646,31 @@ export function FindBugGame() {
   }
 
   // Keyboard: arrows steer a cursor round the scene, space or enter taps where
-  // it is, plus and minus zoom about it.
+  // it is, plus and minus zoom about it, and C brings the wanted card back.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (saveOpenRef.current || pausedRef.current) return
       const s = stateRef.current!
       const field = fieldRef.current
 
+      if (e.code === 'KeyC' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        if (s.phase !== 'playing' && s.phase !== 'recall') return
+        e.preventDefault()
+        toggleCard()
+        return
+      }
+
       if (e.code === 'Space' || e.code === 'Enter') {
+        // Tabbed to, the badge takes its own press.
+        if (e.target instanceof Element && e.target.closest('.findbug__badge')) return
         e.preventDefault()
         if (s.phase === 'menu') {
           if (performance.now() < startGrace.current) return
           restart()
           return
         }
-        if (s.phase === 'intro') {
-          stateRef.current = skipIntro(s)
+        if (s.phase === 'intro' || s.phase === 'recall') {
+          stateRef.current = s.phase === 'intro' ? skipIntro(s) : closeCard(s)
           setUi(toSnapshot(stateRef.current))
           return
         }
@@ -704,7 +768,12 @@ export function FindBugGame() {
             <PlayReadout>
               <PlayReadoutScore className="findbug__clock">{formatFindbugMs(ui.runMs)}</PlayReadoutScore>
               <PlayReadoutStats>
-                <WantedBadge look={ui.wanted.look} left={leftShare} urgent={urgent} />
+                <WantedBadge
+                  wanted={ui.wanted}
+                  left={leftShare}
+                  urgent={urgent}
+                  onToggle={ui.phase === 'playing' || ui.phase === 'recall' ? toggleCard : null}
+                />
                 <PlayStat label="Scene" value={`${Math.min(ROUNDS, ui.index + 1)}/${ROUNDS}`} />
               </PlayReadoutStats>
             </PlayReadout>
@@ -746,8 +815,14 @@ export function FindBugGame() {
                 onResume={resume}
               />
               {ui.phase === 'menu' && !saveOpen && !paused && <GameStartCard title="Find the Bug" slug="findbug" />}
-              {ui.phase === 'intro' && !paused ? (
-                <SceneCard index={ui.index} name={ui.sceneName} wanted={ui.wanted} ready={ui.ready} />
+              {(ui.phase === 'intro' || ui.phase === 'recall') && !paused ? (
+                <SceneCard
+                  index={ui.index}
+                  name={ui.sceneName}
+                  wanted={ui.wanted}
+                  ready={ui.ready}
+                  again={ui.phase === 'recall'}
+                />
               ) : null}
               {ui.phase === 'gameover' &&
                 saveOpen &&
