@@ -1,17 +1,7 @@
-import {
-  useEffect,
-  useRef,
-  useState,
-  type CSSProperties,
-  type PointerEvent as ReactPointerEvent,
-} from 'react'
+import { useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react'
 import '../../styles/barrage.css'
 import { haptic } from '../../lib/haptics'
-import {
-  GamePlayChrome,
-  PlayReadout,
-  PlayReadoutScore,
-} from '../../components/GameHud'
+import { GamePlayChrome, PlayReadout, PlayReadoutScore } from '../../components/GameHud'
 import { GameStage } from '../../components/GameStage'
 import { PlayReadoutStats, PlayStat } from '../../components/PlayStats'
 import { GameStartCard } from '../../components/GameStartCard'
@@ -25,36 +15,36 @@ import { getPersonalBest } from '../../lib/personalBest'
 import { clearRunAchievements } from '../../lib/runAchievements'
 import { useTournamentPlay } from '../../tournaments/TournamentPlayContext'
 import {
+  MAX_STOCK,
+  STAGE,
   createInitialState,
   jumpToWave,
-  levelMark,
-  MIRROR_HUE,
-  POWER_HUE,
-  POWER_KINDS,
-  stageFor,
-  POWER_LABEL,
-  setFiring,
+  setFocus,
   setMove,
   setSteer,
   startGame,
   tick,
   toSnapshot,
+  triggerBarrage,
   type GameState,
   type Snapshot,
 } from './game'
-import { fieldXAt, renderGame } from './render'
+import { fieldPointAt, renderGame } from './render'
 import { beginRun } from '../../lib/runSession'
 
-type HoldKey = 'left' | 'right' | 'fire'
+type HoldKey = 'left' | 'right' | 'up' | 'down' | 'slow'
 
 const BY_CODE: Record<string, HoldKey> = {
   ArrowLeft: 'left',
   KeyA: 'left',
   ArrowRight: 'right',
   KeyD: 'right',
-  Space: 'fire',
-  ArrowUp: 'fire',
-  KeyW: 'fire',
+  ArrowUp: 'up',
+  KeyW: 'up',
+  ArrowDown: 'down',
+  KeyS: 'down',
+  ShiftLeft: 'slow',
+  ShiftRight: 'slow',
 }
 
 /** Some hosts and layouts deliver no `code`, so fall back to `key`. */
@@ -63,42 +53,46 @@ const BY_KEY: Record<string, HoldKey> = {
   a: 'left',
   ArrowRight: 'right',
   d: 'right',
-  ' ': 'fire',
-  Spacebar: 'fire',
-  ArrowUp: 'fire',
-  w: 'fire',
+  ArrowUp: 'up',
+  w: 'up',
+  ArrowDown: 'down',
+  s: 'down',
+  Shift: 'slow',
 }
 
 function holdKeyFor(e: KeyboardEvent): HoldKey | undefined {
   return BY_CODE[e.code] ?? BY_KEY[e.key] ?? BY_KEY[e.key?.toLowerCase()]
 }
 
-/** What the cannon has collected: each power at its level, and the mirrors it holds. */
-function activeBuffs(ui: Snapshot) {
-  const out: { key: string; label: string; hue: number; note: string }[] = []
-  for (const kind of POWER_KINDS) {
-    const level = ui[kind]
-    if (level > 0) out.push({ key: kind, label: POWER_LABEL[kind], hue: POWER_HUE[kind], note: levelMark(level) })
-  }
-  if (ui.mirror > 0) out.push({ key: 'mirror', label: 'Mirror', hue: MIRROR_HUE, note: `×${ui.mirror}` })
-  return out
-}
-
 function isStartKey(e: KeyboardEvent): boolean {
   return e.code === 'Space' || e.code === 'Enter' || e.key === ' ' || e.key === 'Enter'
 }
 
+function isBarrageKey(e: KeyboardEvent): boolean {
+  return (
+    e.code === 'Space' ||
+    e.code === 'KeyX' ||
+    e.code === 'KeyZ' ||
+    e.code === 'KeyB' ||
+    e.key === ' ' ||
+    e.key === 'x' ||
+    e.key === 'z' ||
+    e.key === 'b'
+  )
+}
+
+/**
+ * A finger moves the ship by as much as the finger moves, from wherever it
+ * lands — never to where the finger is, so the ship is never under it. A touch
+ * gets a little more travel than a mouse, since a thumb has less room.
+ */
+const TOUCH_TRAVEL = 1.3
+const MOUSE_TRAVEL = 1
+
 export function BarrageGame() {
   const tournament = useTournamentPlay()
   const apiBest = usePersonalBest('barrage')
-  // Upright on a phone, on its side on a desktop. A run keeps the shape it
-  // started in; the menu adopts a new one straight away.
-  const [portrait, setPortrait] = useState(
-    () => typeof window === 'undefined' || window.innerHeight > window.innerWidth,
-  )
-  const portraitRef = useRef(portrait)
-  portraitRef.current = portrait
-  const stateRef = useRef<GameState>(createInitialState(portrait))
+  const stateRef = useRef<GameState>(createInitialState())
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [ui, setUi] = useState<Snapshot>(() => toSnapshot(stateRef.current))
   const [saveOpen, setSaveOpen] = useState(false)
@@ -111,50 +105,35 @@ export function BarrageGame() {
   const pausedRef = useRef(false)
   pausedRef.current = paused
 
-  /** Held inputs keyed by source, so a key and a thumb pad cannot fight. */
-  const heldRef = useRef<Record<HoldKey, Set<string>>>({
-    left: new Set(),
-    right: new Set(),
-    fire: new Set(),
-  })
+  const heldRef = useRef<Set<HoldKey>>(new Set())
 
-  const syncControls = () => {
+  const syncKeys = () => {
     const held = heldRef.current
-    const dir = (held.right.size > 0 ? 1 : 0) - (held.left.size > 0 ? 1 : 0)
-    stateRef.current = setFiring(setMove(stateRef.current, dir), held.fire.size > 0)
+    const x = (held.has('right') ? 1 : 0) - (held.has('left') ? 1 : 0)
+    const y = (held.has('down') ? 1 : 0) - (held.has('up') ? 1 : 0)
+    setMove(stateRef.current, x, y)
+    setFocus(stateRef.current, held.has('slow'))
   }
 
-  const press = (key: HoldKey, id: string) => {
-    heldRef.current[key].add(id)
-    syncControls()
-  }
+  /** The finger or pointer flying the ship: where it landed, and where the ship was then. */
+  const dragRef = useRef<{ id: number; fx: number; fy: number; sx: number; sy: number; travel: number } | null>(null)
 
-  const release = (key: HoldKey, id: string) => {
-    heldRef.current[key].delete(id)
-    syncControls()
-  }
-
-  /** The finger or pointer steering the cannon across the field, if any. */
-  const steerRef = useRef<number | null>(null)
-
-  const steerTo = (clientX: number) => {
+  const fieldPoint = (clientX: number, clientY: number) => {
     const canvas = canvasRef.current
-    if (!canvas) return
+    if (!canvas) return null
     const rect = canvas.getBoundingClientRect()
-    const portraitField = stateRef.current.layout.fieldH > 1
-    const x = fieldXAt(clientX - rect.left, rect.width, rect.height, portraitField)
-    stateRef.current = setSteer(stateRef.current, x)
+    return fieldPointAt(clientX - rect.left, clientY - rect.top, rect.width, rect.height)
   }
 
-  const endSteer = () => {
-    steerRef.current = null
-    stateRef.current = setSteer(stateRef.current, null)
+  const endDrag = () => {
+    dragRef.current = null
+    setSteer(stateRef.current, null)
   }
 
   const releaseAll = () => {
-    for (const key of ['left', 'right', 'fire'] as HoldKey[]) heldRef.current[key].clear()
-    endSteer()
-    syncControls()
+    heldRef.current.clear()
+    syncKeys()
+    endDrag()
   }
 
   const restart = (intoMenu = false) => {
@@ -164,21 +143,22 @@ export function BarrageGame() {
     clearRunAchievements()
     if (!intoMenu) beginRun('barrage')
     releaseAll()
-    stateRef.current = startGame(stateRef.current, portraitRef.current)
+    stateRef.current = startGame(stateRef.current)
     previousBestRef.current = getPersonalBest('barrage')
     startGrace.current = performance.now() + 220
-    // Same reset, stopped at the start card instead of in play.
-    if (intoMenu) stateRef.current = { ...stateRef.current, phase: 'menu' }
+    if (intoMenu) stateRef.current = createInitialState()
     setUi(toSnapshot(stateRef.current))
   }
 
-  /**
-   * Done with the run: back to the start card rather than into another one.
-   * That card is where the numbers a run just changed are shown, and dropping
-   * the player straight back into play skips past all of it. No run is opened,
-   * so nothing counts until they actually start one.
-   */
+  /** Done with the run: back to the start card rather than straight into another. */
   const toMenu = () => restart(true)
+
+  const barrage = () => {
+    const s = stateRef.current
+    if (s.phase !== 'playing' || s.stock < 1) return
+    triggerBarrage(s)
+    haptic('boost')
+  }
 
   useEffect(() => {
     let raf = 0
@@ -194,18 +174,20 @@ export function BarrageGame() {
       const w = parent?.clientWidth || 0
       const h = parent?.clientHeight || 0
 
-      if (!pausedRef.current) stateRef.current = tick(stateRef.current, dt)
+      if (!pausedRef.current) {
+        const before = stateRef.current.lives
+        stateRef.current = tick(stateRef.current, dt)
+        if (stateRef.current.lives < before) haptic(stateRef.current.lives > 0 ? 'hit' : 'crash')
+      }
 
       const snap = toSnapshot(stateRef.current)
-      if (snap.phase === 'gameover') {
-        if (offeredScore.current !== snap.score) {
-          offeredScore.current = snap.score
-          saveOpenRef.current = true
-          releaseAll()
-          setSaveOpen(true)
-          setUi(snap)
-          startGrace.current = performance.now() + 400
-        }
+      if (snap.phase === 'gameover' && offeredScore.current !== snap.score) {
+        offeredScore.current = snap.score
+        saveOpenRef.current = true
+        releaseAll()
+        setSaveOpen(true)
+        setUi(snap)
+        startGrace.current = performance.now() + 400
       }
 
       uiAcc += dt
@@ -215,7 +197,6 @@ export function BarrageGame() {
       }
 
       if (canvas && w > 0 && h > 0) {
-        // Drawn at the screen's own density, or a phone shows every outline soft.
         const dpr = Math.min(window.devicePixelRatio || 1, 2)
         const cw = Math.round(w * dpr)
         const ch = Math.round(h * dpr)
@@ -241,25 +222,7 @@ export function BarrageGame() {
     if (ui.phase === 'menu') previousBestRef.current = apiBest
   }, [apiBest, ui.phase])
 
-  useEffect(() => {
-    const sync = () => setPortrait(window.innerHeight > window.innerWidth)
-    sync()
-    window.addEventListener('resize', sync)
-    window.addEventListener('orientationchange', sync)
-    return () => {
-      window.removeEventListener('resize', sync)
-      window.removeEventListener('orientationchange', sync)
-    }
-  }, [])
-
-  useEffect(() => {
-    if (stateRef.current.phase !== 'menu') return
-    if (stateRef.current.layout.fieldH > 1 === portrait) return
-    stateRef.current = createInitialState(portrait)
-    setUi(toSnapshot(stateRef.current))
-  }, [portrait])
-
-  // Losing the tab mid-hold would otherwise leave the cannon driving itself.
+  // Losing the tab mid-hold would otherwise leave the ship flying itself.
   useEffect(() => {
     const drop = () => releaseAll()
     window.addEventListener('blur', drop)
@@ -273,9 +236,7 @@ export function BarrageGame() {
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
       if (saveOpenRef.current || pausedRef.current) return
-      const key = holdKeyFor(e)
       const s = stateRef.current
-
       if (s.phase === 'menu' || s.phase === 'gameover') {
         if (isStartKey(e)) {
           e.preventDefault()
@@ -284,18 +245,23 @@ export function BarrageGame() {
         }
         return
       }
+      if (isBarrageKey(e)) {
+        e.preventDefault()
+        if (!e.repeat) barrage()
+        return
+      }
+      const key = holdKeyFor(e)
       if (!key) return
       e.preventDefault()
-      if (e.repeat) return
-      press(key, 'key')
+      heldRef.current.add(key)
+      syncKeys()
     }
-
     const up = (e: KeyboardEvent) => {
       const key = holdKeyFor(e)
       if (!key) return
-      release(key, 'key')
+      heldRef.current.delete(key)
+      syncKeys()
     }
-
     window.addEventListener('keydown', down)
     window.addEventListener('keyup', up)
     return () => {
@@ -303,28 +269,6 @@ export function BarrageGame() {
       window.removeEventListener('keyup', up)
     }
   }, [])
-
-  const holdPad = (key: HoldKey) => ({
-    onPointerDown: (e: ReactPointerEvent<HTMLButtonElement>) => {
-      e.preventDefault()
-      e.stopPropagation()
-      try {
-        e.currentTarget.setPointerCapture(e.pointerId)
-      } catch {
-        /* capture is a nicety; the pad still works without it */
-      }
-      // Every pad, one place: an on-screen control gives the eye
-      // feedback and the hand none, which is the gap this closes.
-      haptic(key === 'fire' ? 'hit' : 'turn')
-      press(key, `pad:${e.pointerId}`)
-    },
-    onPointerUp: (e: ReactPointerEvent<HTMLButtonElement>) => release(key, `pad:${e.pointerId}`),
-    onPointerCancel: (e: ReactPointerEvent<HTMLButtonElement>) =>
-      release(key, `pad:${e.pointerId}`),
-    onLostPointerCapture: (e: ReactPointerEvent<HTMLButtonElement>) =>
-      release(key, `pad:${e.pointerId}`),
-    onContextMenu: (e: { preventDefault: () => void }) => e.preventDefault(),
-  })
 
   const onPlayPointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
     if (saveOpenRef.current || pausedRef.current) return
@@ -334,35 +278,49 @@ export function BarrageGame() {
       restart()
       return
     }
-    // Touching the field steers: the cannon runs to where the finger is, at
-    // its own speed, so a finger is no faster than the keys. The chrome's
-    // buttons sit on top of the field and are not part of it.
-    if (e.target !== canvasRef.current || steerRef.current !== null) return
-    steerRef.current = e.pointerId
+    // The chrome's buttons and the Barrage button sit over the field and are not part of it.
+    if (e.target !== canvasRef.current || dragRef.current !== null) return
+    const at = fieldPoint(e.clientX, e.clientY)
+    if (!at) return
+    dragRef.current = {
+      id: e.pointerId,
+      fx: at.x,
+      fy: at.y,
+      sx: s.ship.x,
+      sy: s.ship.y,
+      travel: e.pointerType === 'mouse' ? MOUSE_TRAVEL : TOUCH_TRAVEL,
+    }
     try {
       e.currentTarget.setPointerCapture(e.pointerId)
     } catch {
-      /* capture is a nicety; steering still follows moves over the field */
+      /* capture is a nicety; the drag still follows moves over the field */
     }
-    steerTo(e.clientX)
   }
 
   const onPlayPointerMove = (e: ReactPointerEvent<HTMLDivElement>) => {
-    if (e.pointerId === steerRef.current) steerTo(e.clientX)
+    const d = dragRef.current
+    if (!d || e.pointerId !== d.id) return
+    const at = fieldPoint(e.clientX, e.clientY)
+    if (!at) return
+    const want = { x: d.sx + (at.x - d.fx) * d.travel, y: d.sy + (at.y - d.fy) * d.travel }
+    setSteer(stateRef.current, want)
+    // A ship held against a wall: take the next move from where it is, so it comes off the wall at once.
+    const s = stateRef.current.ship
+    if (Math.abs(want.x - s.x) > 0.2 || Math.abs(want.y - s.y) > 0.2) {
+      dragRef.current = { ...d, fx: at.x, fy: at.y, sx: s.x, sy: s.y }
+    }
   }
 
   const onPlayPointerEnd = (e: ReactPointerEvent<HTMLDivElement>) => {
-    if (e.pointerId === steerRef.current) endSteer()
+    if (dragRef.current && e.pointerId === dragRef.current.id) endDrag()
   }
+
+  const barrageReady = ui.stock > 0 && ui.phase === 'playing'
 
   return (
     <section className={`barrage barrage--fullscreen${saveOpen ? ' barrage--saving' : ''}`}>
       <div className="game-play">
-        <GameStage
-          aspectWidth={stageFor(portrait).w}
-          aspectHeight={stageFor(portrait).h}
-          fill
-        >
+        <GameStage aspectWidth={STAGE.w} aspectHeight={STAGE.h} fill>
           <div
             className="barrage__play"
             onPointerDown={onPlayPointerDown}
@@ -373,49 +331,45 @@ export function BarrageGame() {
           >
             <canvas ref={canvasRef} className="barrage__viewport" />
 
-            <GamePlayChrome
-              slug="barrage"
-              inRun={() => stateRef.current.phase !== 'menu'}
-              paused={paused}
-            >
-              {pausable || paused ? (
-                <PauseButton paused={paused} onToggle={togglePause} />
-              ) : null}
+            <GamePlayChrome slug="barrage" inRun={() => stateRef.current.phase !== 'menu'} paused={paused}>
+              {pausable || paused ? <PauseButton paused={paused} onToggle={togglePause} /> : null}
             </GamePlayChrome>
 
             <PlayReadout>
               <PlayReadoutScore>{ui.score.toLocaleString()}</PlayReadoutScore>
               <PlayReadoutStats>
                 <PlayStat label="Wave" value={ui.wave} />
-                <PlayStat label="Lives" value={ui.lives} urgent={ui.lives === 1 && ui.phase !== 'menu'} />
-                {ui.chain >= 2 && ui.phase !== 'menu' ? (
-                  <PlayStat
-                    label="Chain"
-                    value={
-                      <>
-                        {ui.chain}
-                        {ui.mult >= 2 ? <span className="barrage__mult">×{ui.mult}</span> : null}
-                      </>
-                    }
-                  />
+                <PlayStat label="Ships" value={ui.lives} urgent={ui.lives === 1 && ui.phase !== 'menu'} />
+                {ui.phase !== 'menu' ? (
+                  <PlayStat label="Heat" value={<span className="barrage__heat">×{ui.heat.toFixed(1)}</span>} />
                 ) : null}
               </PlayReadoutStats>
             </PlayReadout>
 
-            {ui.phase !== 'menu' && !paused && activeBuffs(ui).length > 0 && (
-              <div className="barrage__buffs">
-                {activeBuffs(ui).map((buff) => (
-                  <span
-                    key={buff.key}
-                    className="barrage__buff"
-                    style={{ '--buff-hue': buff.hue } as CSSProperties}
-                  >
-                    {buff.label}
-                    <b>{buff.note}</b>
-                  </span>
-                ))}
-              </div>
-            )}
+            {ui.phase !== 'menu' && ui.phase !== 'gameover' && !paused ? (
+              <button
+                type="button"
+                className={`barrage__blast${barrageReady ? ' barrage__blast--ready' : ''}`}
+                aria-label={`Barrage, ${ui.stock} ready`}
+                onPointerDown={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  barrage()
+                }}
+                onContextMenu={(e) => e.preventDefault()}
+              >
+                <span className="barrage__blast-label">Barrage</span>
+                <span className="barrage__blast-pips" aria-hidden="true">
+                  {Array.from({ length: MAX_STOCK }, (_, i) => (
+                    <i
+                      key={i}
+                      className={i < ui.stock ? 'on' : i === ui.stock ? 'filling' : ''}
+                      style={i === ui.stock ? ({ '--fill': `${Math.round(ui.charge * 100)}%` } as CSSProperties) : undefined}
+                    />
+                  ))}
+                </span>
+              </button>
+            ) : null}
 
             <div className="barrage__overlay">
               <GamePauseOverlay
@@ -429,12 +383,12 @@ export function BarrageGame() {
                       unit="wave"
                       wave={ui.wave}
                       onSkipNext={() => {
-                        stateRef.current = jumpToWave(stateRef.current, ui.wave + 1)
+                        jumpToWave(stateRef.current, ui.wave + 1)
                         setUi(toSnapshot(stateRef.current))
                         resume()
                       }}
                       onJump={(wave) => {
-                        stateRef.current = jumpToWave(stateRef.current, wave)
+                        jumpToWave(stateRef.current, wave)
                         setUi(toSnapshot(stateRef.current))
                         resume()
                       }}
@@ -452,7 +406,7 @@ export function BarrageGame() {
                       unit="wave"
                       onJump={(wave) => {
                         restart()
-                        stateRef.current = jumpToWave(stateRef.current, wave)
+                        jumpToWave(stateRef.current, wave)
                         setUi(toSnapshot(stateRef.current))
                       }}
                     />
@@ -462,18 +416,13 @@ export function BarrageGame() {
               {ui.phase === 'gameover' &&
                 saveOpen &&
                 (tournament ? (
-                  <TournamentScoreCard
-                    tournamentId={tournament.tournamentId}
-                    gameSlug="barrage"
-                    score={ui.score}
-                    onDone={toMenu}
-                  />
+                  <TournamentScoreCard tournamentId={tournament.tournamentId} gameSlug="barrage" score={ui.score} onDone={toMenu} />
                 ) : (
                   <ScoreSaveCard
                     gameSlug="barrage"
                     score={ui.score}
-                    title={ui.endCause === 'line' ? 'Line broken' : 'Out of cannons'}
-                    subtitle={`Wave ${ui.wave} · best chain ${ui.bestChain} · ${ui.accuracy}% accuracy`}
+                    title="Out of ships"
+                    subtitle={`Wave ${ui.wave} · ${ui.grazes.toLocaleString()} grazes · heat ×${ui.bestHeat.toFixed(1)}`}
                     previousBest={Math.max(previousBestRef.current, apiBest)}
                     onDone={toMenu}
                   />
@@ -481,56 +430,6 @@ export function BarrageGame() {
             </div>
           </div>
         </GameStage>
-      </div>
-
-      {/*
-        Steering under the left thumb and the trigger under the right, so both
-        can be held at once. The fire pad used to sit between the arrows, which
-        took the same thumb off the move to shoot. Dragging on the field steers
-        as well.
-      */}
-      <div className="barrage__touch" aria-label="Cannon controls">
-        <div className="barrage__steer">
-          <button type="button" className="barrage__btn" aria-label="Move left" {...holdPad('left')}>
-            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-              <path
-                d="M15 5 L8 12 L15 19"
-                stroke="currentColor"
-                strokeWidth="2.1"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </button>
-          <button type="button" className="barrage__btn" aria-label="Move right" {...holdPad('right')}>
-            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-              <path
-                d="M9 5 L16 12 L9 19"
-                stroke="currentColor"
-                strokeWidth="2.1"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </button>
-        </div>
-        <button
-          type="button"
-          className="barrage__btn barrage__btn--fire"
-          aria-label="Fire"
-          {...holdPad('fire')}
-        >
-          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <path
-              d="M12 3 L12 21 M6 9 L12 3 L18 9"
-              stroke="currentColor"
-              strokeWidth="2.1"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-          <span>Fire</span>
-        </button>
       </div>
     </section>
   )

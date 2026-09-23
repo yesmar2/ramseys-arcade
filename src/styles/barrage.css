@@ -13,6 +13,8 @@
   position: absolute;
   inset: 0;
   touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 .barrage__viewport {
@@ -33,119 +35,83 @@
   z-index: 9;
 }
 
-/* Thumb pads: phones only. Desktop plays on the arrow keys and space. */
-.barrage__touch {
-  display: none;
-  flex: 0 0 auto;
-  width: 100%;
-  gap: 0.75rem;
-  padding: 0.55rem 0.75rem max(0.75rem, env(safe-area-inset-bottom));
-  background: color-mix(in srgb, var(--blob-sky) 55%, var(--surface));
-  border-top: 1px solid rgba(var(--ink-rgb), 0.06);
-  box-sizing: border-box;
+/* The multiplier, in the gold of everything a graze earns. */
+.barrage__heat {
+  color: color-mix(in srgb, #f5b942 78%, var(--ink));
 }
 
-/* Left thumb. */
-.barrage__steer {
-  flex: 1.25;
-  min-width: 0;
+/*
+ * The Barrage: under the right thumb on a phone, in the corner on a desktop,
+ * where Space, X, Z or B does the same. Gold and lit while one is ready, dim
+ * while it charges, with a pip for each ready and the next one filling.
+ */
+.barrage__blast {
+  position: absolute;
+  right: max(0.85rem, env(safe-area-inset-right, 0px));
+  bottom: max(0.95rem, env(safe-area-inset-bottom, 0px));
+  z-index: 10;
   display: flex;
-  gap: 0.5rem;
-}
-
-.barrage__btn {
-  flex: 1;
-  min-width: 0;
-  display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 0.4rem;
-  padding: 0.85rem 0;
-  border: 1px solid rgba(var(--ink-rgb), 0.12);
-  border-radius: 0.85rem;
-  background: var(--surface);
-  color: var(--ink);
+  gap: 0.35rem;
+  min-width: 5.4rem;
+  padding: 0.6rem 0.95rem 0.6rem;
+  border-radius: 1rem;
+  border: 1px solid color-mix(in srgb, #f5b942 30%, transparent);
+  background: color-mix(in srgb, #f5b942 6%, color-mix(in srgb, var(--surface) 72%, transparent));
+  color: color-mix(in srgb, #f5b942 50%, var(--ink));
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 0.7rem;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
   touch-action: none;
   -webkit-user-select: none;
   user-select: none;
   cursor: pointer;
+  opacity: 0.6;
+  transition:
+    opacity 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.08s ease;
 }
 
-.barrage__btn svg {
-  width: 1.6rem;
-  height: 1.6rem;
-}
-
-/* Right thumb: the cannon's own green, like the shots it sends up. */
-.barrage__btn--fire {
-  color: color-mix(in srgb, #3ecf8e 78%, var(--ink));
-  border-color: color-mix(in srgb, #3ecf8e 50%, transparent);
-  background: color-mix(in srgb, #3ecf8e 10%, var(--surface));
-  font-family: var(--font-display);
-  font-weight: 800;
-  font-size: 0.8rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.barrage__btn--fire svg {
-  width: 1.35rem;
-  height: 1.35rem;
-}
-
-/* What the chain is paying, beside its length. */
-.barrage__mult {
-  margin-left: 0.3em;
-  font-size: 0.72em;
+.barrage__blast--ready {
+  opacity: 1;
   color: color-mix(in srgb, #f5b942 80%, var(--ink));
+  border-color: color-mix(in srgb, #f5b942 65%, transparent);
+  background: color-mix(in srgb, #f5b942 16%, color-mix(in srgb, var(--surface) 72%, transparent));
+  box-shadow: 0 0 1.2rem color-mix(in srgb, #f5b942 30%, transparent);
 }
 
-.barrage__btn:active {
-  background: color-mix(in srgb, var(--ink) 10%, var(--surface));
+.barrage__blast:active {
+  transform: scale(0.94);
 }
 
-.barrage--saving .barrage__touch {
+.barrage__blast-pips {
+  display: flex;
+  gap: 0.45rem;
+}
+
+.barrage__blast-pips i {
+  width: 0.55rem;
+  height: 0.55rem;
+  transform: rotate(45deg);
+  border: 1.5px solid color-mix(in srgb, #f5b942 55%, transparent);
+  border-radius: 0.12rem;
+  background: transparent;
+}
+
+.barrage__blast-pips i.on {
+  background: #f5b942;
+  border-color: #f5b942;
+}
+
+.barrage__blast-pips i.filling {
+  background: linear-gradient(to top right, color-mix(in srgb, #f5b942 70%, transparent) var(--fill, 0%), transparent var(--fill, 0%));
+}
+
+.barrage--saving .barrage__blast {
   visibility: hidden;
   pointer-events: none;
-}
-
-@media (max-width: 900px), (pointer: coarse) {
-  .barrage__touch {
-    display: flex;
-  }
-}
-
-/* Active pickups — sits just above the cannon, out of the fleet's way. */
-.barrage__buffs {
-  position: absolute;
-  /* Bottom-left, clear of the cannon — it sits centred on the floor. */
-  left: max(0.6rem, env(safe-area-inset-left, 0px));
-  bottom: 0.6rem;
-  display: flex;
-  align-items: flex-start;
-  gap: 0.35rem;
-  flex-direction: column;
-  pointer-events: none;
-  z-index: 10;
-}
-
-.barrage__buff {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 0.3rem;
-  padding: 0.2rem 0.55rem;
-  border-radius: 999px;
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.01em;
-  /* Mixed toward the ink, so the label reads on either theme's ground. */
-  color: color-mix(in srgb, hsl(var(--buff-hue), 70%, 52%) 62%, var(--ink));
-  background: hsla(var(--buff-hue), 70%, 55%, 0.16);
-  border: 1px solid hsla(var(--buff-hue), 60%, 52%, 0.55);
-  white-space: nowrap;
-}
-
-.barrage__buff b {
-  font-weight: 600;
-  opacity: 0.75;
 }

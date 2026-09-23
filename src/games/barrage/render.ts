@@ -1,33 +1,18 @@
-import { mixColor, withAlpha } from '../../lib/color'
+import { withAlpha } from '../../lib/color'
 import { inkColor, isDarkTheme, playfieldColor } from '../../lib/theme'
 import {
-  CANNON_HUE,
-  CHAIN_WINDOW,
-  CLEAR_PAUSE,
-  LINE_PAUSE,
-  MAX_MIRROR,
-  MIRROR_HUE,
-  SPARKS_PER_MIRROR,
-  POWER_HUE,
-  SPECIES_HUE,
-  WAVE_BANNER,
-  cannonRect,
-  chainMult,
-  dropRadius,
-  emitterOf,
-  enterProgress,
-  pullsAllowed,
-  railY,
-  roundsReady,
-  shipX,
-  shipY,
-  shotSize,
-  speciesFor,
-  stageFor,
-  type Bit,
+  BANNER_TIME,
+  CORE_R,
+  FIELD_H,
+  GRAZE_R,
+  MAX_STOCK,
+  SHIP_W,
+  SPECIES,
+  bossReadout,
+  nozzleOf,
+  type Bullet,
+  type Enemy,
   type GameState,
-  type PowerKind,
-  type Ship,
   type Species,
 } from './game'
 
@@ -36,31 +21,28 @@ import {
  * colours, on the site's own ground. Outlines are brighter over the dark
  * theme's ground and deeper over the light one.
  *
- * The fleet is the site's purples, the cannon is green, and red belongs to the
- * volley alone — a lit lane, a charging ship, a falling shot — so the one thing
- * that can end a life is the one thing in that colour. A ship carrying a
- * capsule wears its power's colour instead of the fleet's, with its mark on its
- * hull, and the cannon wears what it has collected: side barrels for the fan,
- * a lance for piercing rounds, vents for the fast trigger, a dome for mirrors.
+ * The fleet keeps its faces — the octo, the crab, the squid — and the flagship
+ * is the squid grown huge, crowned. Bullets are drawn once per colour and size
+ * into little sprites and stamped, because a busy moment has hundreds of them.
+ * The ship is the one green thing, and its heart, the one part that can be hit,
+ * is a white dot that is always on top of everything.
  *
- * The canvas fills the shell, but the playfield keeps its shape so a run on a
- * phone and a run on a desktop are the same game — the shared leaderboard
- * depends on that. `Place` converts the game's width-normalised units into that
- * centred field.
+ * The field is one shape everywhere and sits in the middle of the canvas; what
+ * is left over either side or above and below is the same sky, dimmed.
  */
 
 const TAU = Math.PI * 2
 const FONT = 'Outfit, system-ui, sans-serif'
-/** The volley's red. */
-const HOT = 4
+const SHIP_HUE = 153
 const GOLD = 42
+const HOT = 4
 
 function hsla(h: number, s: number, l: number, a = 1) {
   return `hsla(${h}, ${s}%, ${l}%, ${a})`
 }
 
 /** Outline lightness: bright over the dark theme's ground, deeper over the light one. */
-const lineL = (dark: boolean) => (dark ? 64 : 42)
+const lineL = (dark: boolean) => (dark ? 66 : 40)
 
 function frac(v: number) {
   return v - Math.floor(v)
@@ -70,36 +52,29 @@ function clamp01(v: number) {
   return Math.max(0, Math.min(1, v))
 }
 
-type Place = {
-  /** Lengths in game units -> canvas px. */
-  u: (v: number) => number
-  x: (v: number) => number
-  y: (v: number) => number
+// ------------------------------------------------------------------- place
+
+export type Place = {
+  /** Pixels per field width. */
+  k: number
   ox: number
   oy: number
   fw: number
   fh: number
 }
 
-/**
- * Centred across, but sat on the bottom rather than centred down: spare height
- * goes above the fleet as sky, so the cannon stays down by the thumbs on a
- * phone instead of floating over a slab of empty ground.
- */
-function placement(w: number, h: number, portrait: boolean): Place {
-  const stage = stageFor(portrait)
-  const scale = Math.min(w / stage.w, h / stage.h)
-  const fw = scale * stage.w
-  const fh = scale * stage.h
-  const ox = (w - fw) / 2
-  const oy = h - fh
-  return { u: (v) => v * fw, x: (v) => ox + v * fw, y: (v) => oy + v * fw, ox, oy, fw, fh }
+/** Where the field sits in a canvas `w` by `h`: as big as fits, in the middle. */
+export function fieldPlace(w: number, h: number): Place {
+  const k = Math.max(1, Math.min(w, h / FIELD_H))
+  const fw = k
+  const fh = k * FIELD_H
+  return { k, ox: (w - fw) / 2, oy: (h - fh) / 2, fw, fh }
 }
 
-/** A point on the canvas, in the field's own units — for steering with a finger. */
-export function fieldXAt(px: number, w: number, h: number, portrait: boolean): number {
-  const p = placement(w, h, portrait)
-  return (px - p.ox) / p.fw
+/** A point on the canvas, in field units: for steering with a finger. */
+export function fieldPointAt(px: number, py: number, w: number, h: number) {
+  const p = fieldPlace(w, h)
+  return { x: (px - p.ox) / p.k, y: (py - p.oy) / p.k }
 }
 
 type Gfx = {
@@ -108,286 +83,203 @@ type Gfx = {
   s: GameState
   dark: boolean
   t: number
+  X: (v: number) => number
+  Y: (v: number) => number
+  U: (v: number) => number
+  /** Device pixels per CSS pixel: sprites are drawn at the screen's own density. */
+  dpr: number
 }
 
 // ------------------------------------------------------------------- ground
 
 /**
- * Two layers of stars sinking slowly past, the near ones a little faster, a
- * few of them breathing. Positions are hashed, so nothing jumps between frames.
+ * Stars streaming down past the field, the near ones faster, as if the ship
+ * were flying up through them; a few of them breathing. Positions are hashed,
+ * so nothing jumps between frames.
  */
-function drawStars(ctx: CanvasRenderingContext2D, w: number, h: number, dark: boolean, t: number) {
-  const count = Math.round((w * h) / 6500)
+function drawStars(ctx: CanvasRenderingContext2D, w: number, h: number, dark: boolean, t: number, k: number) {
+  const count = Math.round((w * h) / 5200)
   ctx.fillStyle = inkColor()
   for (let i = 1; i <= count; i++) {
     const a = frac(Math.sin(i * 12.9898) * 43758.5453)
     const b = frac(Math.sin(i * 78.233) * 12345.6789)
     const c = frac(Math.sin(i * 3.7137) * 9973.113)
-    const near = c > 0.72
-    const y = (b * h + t * (near ? 6 : 2.5)) % h
+    const speed = (0.02 + c * c * 0.16) * k
+    const y = (b * h + t * speed) % h
     const breathe = c > 0.9 ? 0.55 + 0.45 * Math.sin(t * (0.8 + c) + i) : 1
-    ctx.globalAlpha = (dark ? 0.06 + c * 0.16 : 0.04 + c * 0.09) * breathe
-    ctx.beginPath()
-    ctx.arc(a * w, y, 0.45 + c * 1.05, 0, TAU)
-    ctx.fill()
+    ctx.globalAlpha = (dark ? 0.07 + c * 0.2 : 0.05 + c * 0.1) * breathe
+    const r = 0.45 + c * 1.1
+    if (c > 0.8) {
+      // The nearest ones stretch a little with their speed.
+      ctx.fillRect(a * w - r * 0.5, y - r * 2.5, r, r * 5)
+    } else {
+      ctx.beginPath()
+      ctx.arc(a * w, y, r, 0, TAU)
+      ctx.fill()
+    }
   }
   ctx.globalAlpha = 1
 }
 
 /**
- * Settle the surround back rather than boxing the field in. A flat tint over
- * the play area draws a hard rectangle across the screen, which is the exact
- * letterboxed look this is meant to avoid; fading the margins inward reads as
- * depth instead of a border.
+ * Great soft clouds of the site's colours drifting down behind the field, so
+ * the sky is somewhere rather than nowhere. A flagship turns them its colour.
  */
-function drawSurround(ctx: CanvasRenderingContext2D, p: Place, w: number, h: number) {
-  const shade = withAlpha(playfieldColor(), 0.82)
-  const clear = withAlpha(playfieldColor(), 0)
+function drawNebula(g: Gfx, w: number, h: number) {
+  const { ctx, dark, t, p } = g
+  const boss = bossReadout(g.s)
+  const clouds = [
+    { hue: 262, x: 0.2, r: 0.7, speed: 0.012, seed: 0.1 },
+    { hue: 204, x: 0.85, r: 0.6, speed: 0.018, seed: 0.45 },
+    { hue: 334, x: 0.45, r: 0.8, speed: 0.009, seed: 0.8 },
+  ]
+  const span = h + p.k * 1.6
+  for (const c of clouds) {
+    const hue = boss ? boss.hue : c.hue
+    const cy = frac(c.seed + (t * c.speed * p.k) / span) * span - p.k * 0.8
+    const cx = p.ox + c.x * p.fw
+    const r = c.r * p.k
+    const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r)
+    grad.addColorStop(0, hsla(hue, 70, dark ? 55 : 65, dark ? 0.09 : 0.08))
+    grad.addColorStop(1, hsla(hue, 70, dark ? 55 : 65, 0))
+    ctx.fillStyle = grad
+    ctx.fillRect(cx - r, cy - r, r * 2, r * 2)
+  }
+  void w
+}
 
-  const band = (
-    x0: number,
-    y0: number,
-    x1: number,
-    y1: number,
-    rx: number,
-    ry: number,
-    rw: number,
-    rh: number,
-  ) => {
+/** Settle what is outside the field back, rather than boxing it in with bars. */
+function drawSurround(ctx: CanvasRenderingContext2D, p: Place, w: number, h: number, dark: boolean) {
+  const shade = withAlpha(playfieldColor(), 0.78)
+  const clear = withAlpha(playfieldColor(), 0)
+  const band = (x0: number, y0: number, x1: number, y1: number, rx: number, ry: number, rw: number, rh: number) => {
     const grad = ctx.createLinearGradient(x0, y0, x1, y1)
     grad.addColorStop(0, shade)
     grad.addColorStop(1, clear)
     ctx.fillStyle = grad
     ctx.fillRect(rx, ry, rw, rh)
   }
-
-  // Landscape shells leave side margins, portrait ones leave top and bottom.
-  if (p.ox > 0) {
+  if (p.ox > 1) {
     band(0, 0, p.ox, 0, 0, 0, p.ox, h)
     band(w, 0, w - p.ox, 0, p.ox + p.fw, 0, p.ox, h)
   }
-  if (p.oy > 0) {
+  if (p.oy > 1) {
     band(0, 0, 0, p.oy, 0, 0, w, p.oy)
     band(0, h, 0, h - p.oy, 0, p.oy + p.fh, w, p.oy)
   }
+  // The field's edge: a faint line, so it reads as a window rather than a fade.
+  if (p.ox > 1 || p.oy > 1) {
+    ctx.strokeStyle = withAlpha(inkColor(), dark ? 0.1 : 0.12)
+    ctx.lineWidth = 1
+    ctx.beginPath()
+    ctx.roundRect(p.ox + 0.5, p.oy + 0.5, p.fw - 1, p.fh - 1, Math.min(14, p.k * 0.03))
+    ctx.stroke()
+  }
 }
+
+// ------------------------------------------------------------------ bullets
 
 /**
- * The strip the cannon runs on: a rail with its sleepers. While a chain is
- * alive the rail burns gold from the middle out, and burns back in as its
- * clock runs down.
+ * Bullet sprites, drawn once per look, colour and size and stamped after. A
+ * glow, a body in its colour inside a clean outline, and a white heart; a
+ * grazed one wears a gold rim.
  */
-function drawGround(g: Gfx, w: number, h: number) {
-  const { ctx, p, s, dark } = g
-  const top = p.y(railY(s.layout))
-  const ink = inkColor()
-  ctx.fillStyle = mixColor(playfieldColor(), ink, dark ? 0.05 : 0.055)
-  ctx.fillRect(0, top, w, h - top + 40)
+const sprites = new Map<string, HTMLCanvasElement | OffscreenCanvas>()
 
-  ctx.strokeStyle = withAlpha(ink, dark ? 0.1 : 0.12)
-  ctx.lineWidth = Math.max(1, p.u(0.0024))
-  const tick = p.u(0.011)
-  ctx.beginPath()
-  for (let x = 0.0175; x < 1; x += 0.035) {
-    ctx.moveTo(p.x(x), top + ctx.lineWidth)
-    ctx.lineTo(p.x(x), top + tick)
+function makeCanvas(w: number, h: number): HTMLCanvasElement | OffscreenCanvas | null {
+  if (typeof OffscreenCanvas !== 'undefined') return new OffscreenCanvas(w, h)
+  if (typeof document !== 'undefined') {
+    const c = document.createElement('canvas')
+    c.width = w
+    c.height = h
+    return c
   }
-  ctx.stroke()
-
-  ctx.strokeStyle = withAlpha(ink, dark ? 0.24 : 0.26)
-  ctx.lineWidth = Math.max(1, p.u(0.003))
-  ctx.beginPath()
-  ctx.moveTo(0, top)
-  ctx.lineTo(w, top)
-  ctx.stroke()
-
-  if (s.chain >= 2 && (s.phase === 'playing' || s.phase === 'clearing')) {
-    const left = clamp01(s.chainT / CHAIN_WINDOW)
-    const mult = chainMult(s.chain)
-    const half = (p.fw / 2) * left
-    const mid = p.x(0.5)
-    const thick = Math.max(2, p.u(mult >= 2 ? 0.0042 : 0.003))
-    ctx.fillStyle = hsla(GOLD, 92, dark ? 60 : 48, mult >= 2 ? 0.9 : 0.6)
-    ctx.beginPath()
-    ctx.roundRect(mid - half, top - thick / 2, half * 2, thick, thick / 2)
-    ctx.fill()
-  }
+  return null
 }
 
-// --------------------------------------------------------------------- line
-
-/** How close the fleet's front is to the line, 0 at a wave's start ground to 1 on it. */
-function linePressure(s: GameState): number {
-  let low = -Infinity
-  for (const ship of s.ships) {
-    if (!ship.alive) continue
-    low = Math.max(low, shipY(s, ship) + s.layout.shipH)
+function bulletSprite(kind: Bullet['kind'], hue: number, rpx: number, dark: boolean, gold: boolean) {
+  const r = Math.max(2, Math.round(rpx * 2) / 2)
+  const key = `${kind}|${hue}|${r}|${dark ? 1 : 0}|${gold ? 1 : 0}`
+  const have = sprites.get(key)
+  if (have) return { img: have, r }
+  const pad = Math.ceil(r * 2.2 + 2)
+  const size = pad * 2
+  const c = makeCanvas(size, size)
+  if (!c) return null
+  const g = c.getContext('2d') as CanvasRenderingContext2D | null
+  if (!g) return null
+  g.translate(pad, pad)
+  const glowHue = gold ? GOLD : hue
+  const glow = g.createRadialGradient(0, 0, r * 0.4, 0, 0, r * 2.15)
+  glow.addColorStop(0, hsla(glowHue, 95, 62, dark ? 0.42 : 0.3))
+  glow.addColorStop(1, hsla(glowHue, 95, 62, 0))
+  g.fillStyle = glow
+  g.beginPath()
+  g.arc(0, 0, r * 2.15, 0, TAU)
+  g.fill()
+  const line = gold ? hsla(GOLD, 95, dark ? 70 : 44, 1) : hsla(hue, 78, lineL(dark), 1)
+  g.lineWidth = Math.max(1, r * (kind === 'big' ? 0.16 : 0.24))
+  g.strokeStyle = line
+  g.fillStyle = hsla(hue, 82, dark ? 60 : 58, 0.95)
+  g.beginPath()
+  if (kind === 'rice') g.ellipse(0, 0, r * 1.7, r * 0.78, 0, 0, TAU)
+  else if (kind === 'dart') {
+    g.moveTo(r * 1.9, 0)
+    g.lineTo(-r * 0.9, r * 0.8)
+    g.lineTo(-r * 0.5, 0)
+    g.lineTo(-r * 0.9, -r * 0.8)
+    g.closePath()
+  } else g.arc(0, 0, r, 0, TAU)
+  g.fill()
+  g.stroke()
+  if (kind === 'big') {
+    g.strokeStyle = hsla(hue, 85, dark ? 80 : 50, 0.8)
+    g.lineWidth = Math.max(1, r * 0.1)
+    g.beginPath()
+    g.arc(0, 0, r * 0.7, 0, TAU)
+    g.stroke()
   }
-  if (low === -Infinity) return 0
-  return clamp01(1 - (s.layout.holdLine - low) / s.layout.descent)
+  // The white heart.
+  g.fillStyle = 'rgba(255, 252, 247, 0.96)'
+  g.beginPath()
+  if (kind === 'rice') g.ellipse(r * 0.15, 0, r * 0.9, r * 0.36, 0, 0, TAU)
+  else if (kind === 'dart') g.ellipse(r * 0.3, 0, r * 0.7, r * 0.26, 0, 0, TAU)
+  else g.arc(0, 0, r * (kind === 'big' ? 0.42 : 0.5), 0, TAU)
+  g.fill()
+  sprites.set(key, c)
+  return { img: c, r }
 }
 
-/**
- * The line itself: a field strung between posts. Green while the fleet is far
- * off, amber as it comes down, red and beating when it is close. A volley's
- * shots pass straight through it — it is a line, not cover — and it flexes
- * where they do.
- */
-function drawLine(g: Gfx) {
-  const { ctx, p, s, dark, t } = g
-  const y = p.y(s.layout.holdLine)
-  const x0 = p.x(0)
-  const x1 = p.x(1)
-  const broken = s.endCause === 'line' && (s.phase === 'dying' || s.phase === 'gameover')
-  const pressure = broken ? 1 : linePressure(s)
-  const hue = pressure < 0.55 ? 150 - (110 * pressure) / 0.55 : 40 - (36 * (pressure - 0.55)) / 0.45
-  const beat = pressure > 0.5 ? 0.5 + 0.5 * Math.sin(t * (4 + pressure * 9)) : 0
-
-  if (broken) {
-    // What is left of it: stubs from each post, flickering out.
-    const fade = s.phase === 'dying' ? clamp01(s.dyingFor / LINE_PAUSE) : 0
-    ctx.strokeStyle = hsla(HOT, 80, lineL(dark), 0.25 + 0.6 * fade * (0.5 + 0.5 * Math.sin(t * 50)))
-    ctx.lineWidth = Math.max(1, p.u(0.003))
-    ctx.beginPath()
-    for (let i = 0; i <= 8; i++) {
-      const px = p.x(i / 8)
-      const stub = p.u(0.018) * (0.4 + 0.6 * frac(Math.sin(i * 91.7) * 311.3))
-      ctx.moveTo(px - stub, y)
-      ctx.lineTo(px + stub, y)
-    }
-    ctx.stroke()
-  } else {
-    // The field's glow, rising off the line.
-    const bandH = p.u(0.04)
-    const grad = ctx.createLinearGradient(0, y, 0, y - bandH)
-    grad.addColorStop(0, hsla(hue, 80, 58, (dark ? 0.1 : 0.12) + pressure * 0.12 + beat * 0.1))
-    grad.addColorStop(1, hsla(hue, 80, 58, 0))
-    ctx.fillStyle = grad
-    ctx.fillRect(x0, y - bandH, x1 - x0, bandH)
-
-    ctx.strokeStyle = hsla(hue, 70, lineL(dark), 0.5 + 0.3 * pressure)
-    ctx.lineWidth = Math.max(1, p.u(0.0026))
-    ctx.beginPath()
-    ctx.moveTo(x0, y)
-    ctx.lineTo(x1, y)
-    ctx.stroke()
-
-    // Current running along it.
-    ctx.save()
-    ctx.setLineDash([p.u(0.05), p.u(0.1)])
-    ctx.lineDashOffset = -t * p.u(0.09)
-    ctx.strokeStyle = hsla(hue, 85, dark ? 78 : 52, 0.45 + 0.35 * beat)
-    ctx.lineWidth = Math.max(1.2, p.u(0.0042))
-    ctx.beginPath()
-    ctx.moveTo(x0, y)
-    ctx.lineTo(x1, y)
-    ctx.stroke()
-    ctx.restore()
-
-    // Where the volley passed through.
-    for (const r of s.ripples) {
-      const k = 1 - r.life / 0.45
-      ctx.strokeStyle = hsla(hue, 80, dark ? 74 : 48, (1 - k) * 0.85)
-      ctx.lineWidth = Math.max(1, p.u(0.0025))
+function drawBullets(g: Gfx) {
+  const { ctx, s, dark, U, X, Y, t, dpr } = g
+  for (const b of s.bullets) {
+    const rpx = U(b.r) * (b.kind === 'rice' || b.kind === 'dart' ? 1.25 : 1.15)
+    if (b.wait > 0) {
+      // About to leave: a small flare where it will come from.
+      const k = clamp01(1 - b.wait / 0.4)
+      ctx.globalAlpha = 0.25 + 0.5 * k
+      ctx.fillStyle = hsla(b.hue, 90, dark ? 70 : 55, 1)
       ctx.beginPath()
-      ctx.ellipse(p.x(r.x), y, p.u(0.01 + 0.03 * k), p.u(0.003 + 0.007 * k), 0, 0, TAU)
-      ctx.stroke()
+      ctx.arc(X(b.x), Y(b.y), Math.max(1, rpx * 0.6 * k), 0, TAU)
+      ctx.fill()
+      ctx.globalAlpha = 1
+      continue
     }
-  }
-
-  // The posts.
-  const post = p.u(0.0075)
-  for (let i = 0; i <= 8; i++) {
-    const px = p.x(i / 8)
-    ctx.beginPath()
-    ctx.moveTo(px, y - post)
-    ctx.lineTo(px + post * 0.8, y)
-    ctx.lineTo(px, y + post)
-    ctx.lineTo(px - post * 0.8, y)
-    ctx.closePath()
-    ctx.fillStyle = hsla(broken ? HOT : hue, 70, dark ? 62 : 56, broken ? 0.5 : 0.85)
-    ctx.fill()
-    ctx.strokeStyle = hsla(broken ? HOT : hue, 60, lineL(dark), 0.95)
-    ctx.lineWidth = Math.max(1, p.u(0.002))
-    ctx.stroke()
-  }
-}
-
-// -------------------------------------------------------------------- lanes
-
-/**
- * The tell. Each lit ship drops a lane to the ground — leaning the way its
- * shots will — with marks running down it, and marks the spot on the rail it
- * will hit. Faint as the charge begins, hard and flickering just before it
- * fires, so how long is left reads without a number.
- */
-function drawLanes(g: Gfx) {
-  const { ctx, p, s, dark, t } = g
-  if (s.chargeLeft <= 0) return
-  const floor = railY(s.layout)
-
-  for (const ship of s.ships) {
-    if (!ship.alive || !ship.charging) continue
-    const c = ship.charge
-    const e = emitterOf(s, ship)
-    const landX = e.x + s.volleySpread * (floor - e.y)
-    const x0 = p.x(e.x)
-    const y0 = p.y(e.y)
-    const x1 = p.x(landX)
-    const y1 = p.y(floor)
-    const w0 = p.u(0.006)
-    const w1 = p.u(0.019)
-    const flicker = c > 0.72 ? 0.5 + 0.5 * Math.sin(t * 42) : 0
-
-    const grad = ctx.createLinearGradient(0, y0, 0, y1)
-    grad.addColorStop(0, hsla(HOT, 85, 58, 0.03 + c * 0.1))
-    grad.addColorStop(1, hsla(HOT, 85, 58, 0.07 + c * 0.17 + flicker * 0.06))
-    ctx.fillStyle = grad
-    ctx.beginPath()
-    ctx.moveTo(x0 - w0, y0)
-    ctx.lineTo(x0 + w0, y0)
-    ctx.lineTo(x1 + w1, y1)
-    ctx.lineTo(x1 - w1, y1)
-    ctx.closePath()
-    ctx.fill()
-
-    ctx.save()
-    ctx.setLineDash([p.u(0.014), p.u(0.012)])
-    ctx.lineDashOffset = -t * p.u(0.12)
-    ctx.strokeStyle = hsla(HOT, 82, dark ? 66 : 50, 0.18 + c * 0.55 + flicker * 0.2)
-    ctx.lineWidth = Math.max(1, p.u(0.0022))
-    ctx.beginPath()
-    ctx.moveTo(x0 - w0, y0)
-    ctx.lineTo(x1 - w1, y1)
-    ctx.moveTo(x0 + w0, y0)
-    ctx.lineTo(x1 + w1, y1)
-    ctx.stroke()
-    ctx.restore()
-
-    // Chevrons running down the lane.
-    ctx.strokeStyle = hsla(HOT, 85, dark ? 70 : 50, 1)
-    ctx.lineWidth = Math.max(1.2, p.u(0.003))
-    ctx.lineCap = 'round'
-    ctx.lineJoin = 'round'
-    for (let k = 0; k < 3; k++) {
-      const u = frac(t * 1.1 + k / 3)
-      const cx = x0 + (x1 - x0) * u
-      const cy = y0 + (y1 - y0) * u
-      const half = (w0 + (w1 - w0) * u) * 0.7
-      ctx.globalAlpha = (0.12 + c * 0.6) * Math.sin(u * Math.PI)
-      ctx.beginPath()
-      ctx.moveTo(cx - half, cy - half * 0.7)
-      ctx.lineTo(cx, cy + half * 0.3)
-      ctx.lineTo(cx + half, cy - half * 0.7)
-      ctx.stroke()
+    const sp = bulletSprite(b.kind, b.hue, rpx * dpr, dark, b.grazed)
+    if (!sp) continue
+    const size = sp.img.width / dpr
+    const x = X(b.x)
+    const y = Y(b.y)
+    if (b.kind === 'rice' || b.kind === 'dart') {
+      ctx.save()
+      ctx.translate(x, y)
+      ctx.rotate(Math.atan2(b.vy, b.vx))
+      ctx.drawImage(sp.img as CanvasImageSource, -size / 2, -size / 2, size, size)
+      ctx.restore()
+    } else {
+      const pulse = b.kind === 'big' ? 1 + 0.06 * Math.sin(t * 9 + b.x * 40) : 1
+      ctx.drawImage(sp.img as CanvasImageSource, x - (size * pulse) / 2, y - (size * pulse) / 2, size * pulse, size * pulse)
     }
-    ctx.globalAlpha = 1
-
-    // The mark on the rail.
-    ctx.fillStyle = hsla(HOT, 88, 58, 0.18 + c * 0.45 + flicker * 0.15)
-    ctx.beginPath()
-    ctx.ellipse(x1, y1, w1 * 1.5, Math.max(2, p.u(0.006)), 0, 0, TAU)
-    ctx.fill()
   }
 }
 
@@ -447,53 +339,35 @@ function traceOcto(ctx: CanvasRenderingContext2D, X: N, Y: N, frame: number) {
   ctx.closePath()
 }
 
-function traceBody(ctx: CanvasRenderingContext2D, species: Species, X: N, Y: N, frame: number) {
-  if (species === 'squid') traceSquid(ctx, X, Y)
-  else if (species === 'crab') traceCrab(ctx, X, Y)
-  else traceOcto(ctx, X, Y, frame)
-}
-
 /** Everything that hangs off the hull, stroked before it so its outline runs whole. */
-function drawLimbs(ctx: CanvasRenderingContext2D, species: Species, X: N, Y: N, frame: number) {
+function drawLimbs(ctx: CanvasRenderingContext2D, species: Species, X: N, Y: N, frame: number, sway = 0) {
   ctx.beginPath()
-  if (species === 'squid') {
-    // Side fins, then three tentacles that splay and tuck.
+  if (species === 'squid' || species === 'queen') {
     for (const side of [-1, 1]) {
       ctx.moveTo(X(0.7 * side), Y(-0.28))
       ctx.lineTo(X(0.98 * side), Y(0.18))
       ctx.lineTo(X(0.7 * side), Y(0.24))
     }
-    const tips = frame
-      ? [
-          [-0.5, 0.98],
-          [0, 0.9],
-          [0.5, 0.98],
-        ]
-      : [
-          [-0.74, 0.9],
-          [0, 1.02],
-          [0.74, 0.9],
-        ]
-    const roots = [-0.4, 0, 0.4]
-    for (let i = 0; i < 3; i++) {
-      const [tx, ty] = tips[i]!
-      const rx = roots[i]!
+    const count = species === 'queen' ? 5 : 3
+    for (let i = 0; i < count; i++) {
+      const u = i / (count - 1) - 0.5
+      const rx = u * 0.8
+      const phase = frame ? 1 : -1
+      const tx = u * 1.5 + Math.sin(sway + i * 1.3) * 0.12 * (species === 'queen' ? 1.5 : 1)
+      const ty = 0.95 + (i % 2 ? 0.08 : 0) * phase + (species === 'queen' ? 0.35 : 0)
       ctx.moveTo(X(rx), Y(0.46))
-      ctx.quadraticCurveTo(X(rx + (tx! - rx) * 0.2 + (frame ? 0.14 : -0.14)), Y(0.72), X(tx!), Y(ty!))
+      ctx.quadraticCurveTo(X(rx + (tx - rx) * 0.2 + phase * 0.14), Y(0.72), X(tx), Y(ty))
     }
   } else if (species === 'crab') {
     const up = frame ? -0.64 : -0.3
     for (const side of [-1, 1]) {
-      // Antenna.
       ctx.moveTo(X(0.22 * side), Y(-0.62))
       ctx.quadraticCurveTo(X(0.24 * side), Y(-0.9), X(0.42 * side), Y(-0.98))
-      // Arm and pincer.
       ctx.moveTo(X(0.6 * side), Y(0.08))
       ctx.quadraticCurveTo(X(1.0 * side), Y(0.08), X(0.9 * side), Y(up))
       ctx.lineTo(X(0.72 * side), Y(up - 0.3))
       ctx.moveTo(X(0.9 * side), Y(up))
       ctx.lineTo(X(1.04 * side), Y(up - 0.28))
-      // Leg.
       ctx.moveTo(X(0.3 * side), Y(0.54))
       ctx.lineTo(X((frame ? 0.48 : 0.34) * side), Y(0.96))
     }
@@ -503,20 +377,11 @@ function drawLimbs(ctx: CanvasRenderingContext2D, species: Species, X: N, Y: N, 
 
 type Plate = { w: number; base: number; outer: number; inner: number }
 
-/** The helmet's arch for each kind of hull, sized so it sits just proud of the top. */
 const HELMET: Record<Species, Plate> = {
   squid: { w: 0.6, base: -0.46, outer: -1.66, inner: -1.24 },
   crab: { w: 0.6, base: -0.5, outer: -1.18, inner: -0.8 },
   octo: { w: 0.66, base: -0.44, outer: -1.64, inner: -1.26 },
-}
-
-/** A point along the middle of the helmet's band, k from -1 (left end) to 1. */
-function helmetPoint(a: Plate, k: number) {
-  const u = (k + 1) / 2
-  const b = 2 * u * (1 - u)
-  const outer = a.base + b * (a.outer - a.base)
-  const inner = a.base + 0.1 + b * (a.inner - a.base - 0.1)
-  return { x: k * a.w * 0.86, y: (outer + inner) / 2 }
+  queen: { w: 0.6, base: -0.46, outer: -1.66, inner: -1.24 },
 }
 
 function traceHelmet(ctx: CanvasRenderingContext2D, X: N, Y: N, a: Plate) {
@@ -532,82 +397,52 @@ const EYES: Record<Species, { x: number; y: number; r: number }> = {
   squid: { x: 0.3, y: -0.2, r: 0.2 },
   crab: { x: 0.3, y: -0.14, r: 0.19 },
   octo: { x: 0.32, y: -0.3, r: 0.2 },
+  queen: { x: 0.3, y: -0.24, r: 0.18 },
 }
 
 function steel(hue: number, dark: boolean) {
   return hsla(hue, 16, dark ? 80 : 90, dark ? 0.42 : 0.9)
 }
 
-/** Which of the two gait frames the fleet is on. */
-function gaitFrame(s: GameState) {
-  if (s.phase === 'menu') return Math.floor(s.time * 2.2) % 2
-  return Math.floor(s.gait / 2) % 2
-}
-
-/**
- * One ship: limbs, hull, armour, eyes, nozzle. Armour is drawn from `hp`, not
- * the tier it started at, so what is left on the hull says how many hits are
- * left. The eyes follow the cannon; a ship winding up glows, its eyes go red,
- * and light gathers under it.
- */
-function drawShip(g: Gfx, ship: Ship, frame: number) {
-  const { ctx, p, s, dark, t } = g
-  const L = s.layout
-  const species = speciesFor(ship.row, L.rows)
-  const hue = ship.cargo ? POWER_HUE[ship.cargo] : SPECIES_HUE[species]
-  const sw = p.u(L.shipW)
-  const sh = p.u(L.shipH)
-  const c = ship.charging ? ship.charge : 0
-  let cx = p.x(shipX(s, ship)) + sw / 2
-  const cy = p.y(shipY(s, ship)) + sh / 2
-  if (ship.hurt > 0) cx += (Math.random() - 0.5) * sw * 0.07 * ship.hurt
-  if (c > 0.7) cx += (Math.random() - 0.5) * sw * 0.035
+/** A ship of the fleet: limbs, hull, a helmet if it is plated, eyes on the player's ship, a nozzle that glows as it fires. */
+function drawEnemy(g: Gfx, e: Enemy) {
+  const { ctx, dark, t, U, X: FX, Y: FY, s } = g
+  const spec = SPECIES[e.species]
+  const boss = e.species === 'queen' ? bossReadout(s) : null
+  const hue = boss ? boss.hue : spec.hue
+  const sw = U(spec.w)
+  const sh = U(spec.h)
+  let cx = FX(e.x)
+  const cy = FY(e.y)
+  if (e.hurt > 0.5 && e.species !== 'queen') cx += (Math.random() - 0.5) * sw * 0.05
   const X: N = (n) => cx + (n * sw) / 2
   const Y: N = (n) => cy + (n * sh) / 2
-  const line = hsla(hue, 58, lineL(dark), 0.96)
-  const lw = Math.max(1.2, sw * 0.042)
+  const line = hsla(hue, 60, lineL(dark), 0.97)
+  const lw = Math.max(1.2, sw * (e.species === 'queen' ? 0.018 : 0.042))
+  const frame = Math.floor(t * 4 + e.id * 0.7) % 2
+  const species = e.species
 
-  if (ship.cargo) {
-    // A slow pulse of its power's colour round it, so the eye finds it among the purples.
-    const pulse = 0.5 + 0.5 * Math.sin(t * 3.2 + ship.col * 1.7)
-    const aura = ctx.createRadialGradient(cx, Y(0.3), sw * 0.15, cx, Y(0.3), sw * 1.05)
-    aura.addColorStop(0, hsla(hue, 92, 60, (dark ? 0.2 : 0.17) + 0.1 * pulse))
-    aura.addColorStop(1, hsla(hue, 92, 60, 0))
-    ctx.fillStyle = aura
-    ctx.fillRect(cx - sw * 1.1, Y(0.3) - sw * 1.1, sw * 2.2, sw * 2.2)
-  }
-
-  if (c > 0) {
-    const glow = ctx.createRadialGradient(cx, Y(0.7), 0, cx, Y(0.7), sw * 0.95)
-    glow.addColorStop(0, hsla(HOT, 90, 60, 0.32 * c))
-    glow.addColorStop(1, hsla(HOT, 90, 60, 0))
+  if (species === 'queen') {
+    // A halo in the phase's colour, breathing.
+    const r = sw * 0.75
+    const glow = ctx.createRadialGradient(cx, cy, r * 0.2, cx, cy, r)
+    glow.addColorStop(0, hsla(hue, 90, 60, dark ? 0.2 : 0.14))
+    glow.addColorStop(1, hsla(hue, 90, 60, 0))
     ctx.fillStyle = glow
-    ctx.fillRect(cx - sw, Y(0.7) - sw, sw * 2, sw * 2)
+    ctx.fillRect(cx - r, cy - r, r * 2, r * 2)
   }
 
   ctx.lineCap = 'round'
   ctx.lineJoin = 'round'
   ctx.strokeStyle = line
   ctx.lineWidth = lw
-  drawLimbs(ctx, species, X, Y, frame)
+  drawLimbs(ctx, species, X, Y, frame, t * 2 + e.id)
   if (species === 'crab') {
     ctx.fillStyle = line
     for (const side of [-1, 1]) {
       ctx.beginPath()
       ctx.arc(X(0.42 * side), Y(-0.98), lw * 0.9, 0, TAU)
       ctx.fill()
-    }
-  }
-
-  // Pauldrons go under the hull, so its outline crosses their inner edge.
-  if (ship.hp >= 3) {
-    for (const side of [-1, 1]) {
-      const px = side < 0 ? X(-1.0) : X(0.62)
-      ctx.beginPath()
-      ctx.roundRect(px, Y(-0.38), (0.38 * sw) / 2, (0.7 * sh) / 2, sw * 0.05)
-      ctx.fillStyle = steel(hue, dark)
-      ctx.fill()
-      ctx.stroke()
     }
   }
 
@@ -622,106 +457,86 @@ function drawShip(g: Gfx, ship: Ship, frame: number) {
   ctx.fill()
   ctx.stroke()
 
-  traceBody(ctx, species, X, Y, frame)
-  ctx.fillStyle = hsla(hue, 62, 60, dark ? 0.24 : 0.3)
+  if (species === 'squid' || species === 'queen') traceSquid(ctx, X, Y)
+  else if (species === 'crab') traceCrab(ctx, X, Y)
+  else traceOcto(ctx, X, Y, frame)
+  ctx.fillStyle = hsla(hue, 62, 60, dark ? 0.26 : 0.32)
   ctx.fill()
-  if (ship.hurt > 0) {
-    ctx.fillStyle = `rgba(255, 255, 255, ${0.6 * ship.hurt})`
+  if (e.hurt > 0) {
+    // A flagship is under fire nearly all the time: its flash is a flicker, not a whiteout.
+    ctx.fillStyle = `rgba(255, 255, 255, ${(species === 'queen' ? 0.14 : 0.55) * e.hurt})`
     ctx.fill()
   }
   ctx.stroke()
-  if (c > 0) {
-    // The hull's outline beats red as the charge comes up.
-    ctx.strokeStyle = hsla(HOT, 85, dark ? 66 : 50, c * (0.55 + 0.45 * Math.sin(t * 20)))
-    ctx.stroke()
-    ctx.strokeStyle = line
-  }
 
-  if (ship.hp >= 2) {
+  if (e.plated) {
     const a = HELMET[species]
     traceHelmet(ctx, X, Y, a)
     ctx.fillStyle = steel(hue, dark)
     ctx.fill()
     ctx.stroke()
-    ctx.fillStyle = line
-    for (const k of [-0.55, 0, 0.55]) {
-      const r = helmetPoint(a, k)
-      ctx.beginPath()
-      ctx.arc(X(r.x), Y(r.y), Math.max(0.8, sw * 0.02), 0, TAU)
-      ctx.fill()
-    }
-  }
-  if (ship.hp >= 3) {
-    ctx.fillStyle = line
-    for (const side of [-1, 1]) {
-      ctx.beginPath()
-      ctx.arc(X(0.81 * side), Y(-0.02), Math.max(0.8, sw * 0.02), 0, TAU)
-      ctx.fill()
-    }
   }
 
-  drawEyes(g, ship, species, hue, X, Y, sw, line, c)
+  if (species === 'queen') drawCrown(g, X, Y, hue, lw)
+  drawEyes(g, e, species, hue, X, Y, sw, line)
 
-  // The capsule it carries, held under its middle where its shots would come from.
-  if (ship.cargo) {
-    const bob = Math.sin(t * 4 + ship.col) * sh * 0.03
-    drawCapsule(g, ship.cargo, cx, Y(0.86) + bob, sw * 0.17)
-  }
-
-  if (c > 0) {
-    // Light gathering in the nozzle.
-    const ox = X(0)
-    const oy = Y(0.84)
-    const r = sw * (0.035 + 0.075 * c)
-    const glow = ctx.createRadialGradient(ox, oy, 0, ox, oy, r * 2.6)
-    glow.addColorStop(0, hsla(HOT, 95, 70, 0.7 * c))
-    glow.addColorStop(1, hsla(HOT, 95, 60, 0))
+  if (e.flare > 0) {
+    // Light in the nozzle as it fires.
+    const n = nozzleOf(e)
+    const ox = FX(n.x)
+    const oy = FY(n.y)
+    const r = sw * (species === 'queen' ? 0.05 : 0.1) * e.flare
+    const glow = ctx.createRadialGradient(ox, oy, 0, ox, oy, r * 3)
+    glow.addColorStop(0, hsla(hue, 95, 72, 0.8 * e.flare))
+    glow.addColorStop(1, hsla(hue, 95, 62, 0))
     ctx.fillStyle = glow
     ctx.beginPath()
-    ctx.arc(ox, oy, r * 2.6, 0, TAU)
+    ctx.arc(ox, oy, r * 3, 0, TAU)
     ctx.fill()
-    ctx.fillStyle = hsla(HOT, 90, dark ? 64 : 56, 0.95)
-    ctx.beginPath()
-    ctx.arc(ox, oy, r, 0, TAU)
-    ctx.fill()
-    ctx.fillStyle = `rgba(255, 246, 238, ${0.5 + 0.5 * c})`
-    ctx.beginPath()
-    ctx.arc(ox, oy, r * 0.45, 0, TAU)
-    ctx.fill()
-    // Motes drawn in from around it.
-    ctx.fillStyle = hsla(HOT, 95, dark ? 72 : 55, 0.9)
-    for (let k = 0; k < 5; k++) {
-      const u = frac(t * 2.2 + k / 5)
-      const a = (k / 5) * TAU + t * 2.5
-      const d = sw * 0.6 * (1 - u)
-      ctx.globalAlpha = c * u
-      ctx.beginPath()
-      ctx.arc(ox + Math.cos(a) * d, oy + Math.sin(a) * d * 0.7, Math.max(0.8, sw * 0.022), 0, TAU)
-      ctx.fill()
-    }
-    ctx.globalAlpha = 1
   }
 }
 
-function drawEyes(
-  g: Gfx,
-  ship: Ship,
-  species: Species,
-  hue: number,
-  X: N,
-  Y: N,
-  sw: number,
-  line: string,
-  c: number,
-) {
+/** The flagship's crown: three gold points over the brow, a jewel in the middle one in the phase's colour. */
+function drawCrown(g: Gfx, X: N, Y: N, hue: number, lw: number) {
+  const { ctx, dark, t } = g
+  ctx.beginPath()
+  ctx.moveTo(X(-0.42), Y(-0.86))
+  ctx.lineTo(X(-0.48), Y(-1.32))
+  ctx.lineTo(X(-0.22), Y(-1.04))
+  ctx.lineTo(X(0), Y(-1.46))
+  ctx.lineTo(X(0.22), Y(-1.04))
+  ctx.lineTo(X(0.48), Y(-1.32))
+  ctx.lineTo(X(0.42), Y(-0.86))
+  ctx.quadraticCurveTo(X(0), Y(-0.98), X(-0.42), Y(-0.86))
+  ctx.closePath()
+  ctx.fillStyle = hsla(GOLD, 90, 60, dark ? 0.5 : 0.7)
+  ctx.fill()
+  ctx.strokeStyle = hsla(GOLD, 80, lineL(dark), 1)
+  ctx.lineWidth = lw
+  ctx.stroke()
+  const jx = X(0)
+  const jy = Y(-1.18)
+  const jr = Math.abs(X(0.07) - X(0))
+  ctx.fillStyle = hsla(hue, 90, dark ? 66 : 54, 0.8 + 0.2 * Math.sin(t * 4))
+  ctx.beginPath()
+  ctx.arc(jx, jy, jr, 0, TAU)
+  ctx.fill()
+  ctx.stroke()
+}
+
+function drawEyes(g: Gfx, e: Enemy, species: Species, hue: number, X: N, Y: N, sw: number, line: string) {
   const { ctx, s, dark, t } = g
   const eye = EYES[species]
   const r = (eye.r * sw) / 2
-  const hash = frac(Math.sin((ship.col + 1) * 12.9898 + (ship.row + 1) * 78.233) * 43758.5453)
-  const blink = frac((t + hash * 9) / 4.7) * 4.7 < 0.13 && c === 0
-  const squint = ship.hurt > 0.35
-  const look = clamp01(((s.cannonX - (shipX(s, ship) + s.layout.shipW / 2)) / 0.35 + 1) / 2) * 2 - 1
-
+  const blink = frac((t + e.id * 0.73) / 4.3) * 4.3 < 0.12
+  // Small ships wince when hit; the flagship stares it out.
+  const squint = e.hurt > 0.5 && species !== 'queen'
+  // Eyes on the player's ship.
+  const dx = s.ship.x - e.x
+  const dy = s.ship.y - e.y
+  const d = Math.hypot(dx, dy) || 1
+  const lx = (dx / d) * r * 0.38
+  const ly = (dy / d) * r * 0.3
   for (const side of [-1, 1]) {
     const ex = X(eye.x * side)
     const ey = Y(eye.y)
@@ -738,302 +553,304 @@ function drawEyes(
     ctx.arc(ex, ey, r, 0, TAU)
     ctx.fillStyle = dark ? '#eaf1f6' : '#ffffff'
     ctx.fill()
-    if (c > 0) {
-      ctx.fillStyle = hsla(HOT, 90, dark ? 64 : 58, 0.3 + 0.7 * c)
-      ctx.fill()
-    }
     ctx.strokeStyle = line
     ctx.lineWidth = Math.max(0.8, r * 0.3)
     ctx.stroke()
     ctx.beginPath()
-    ctx.arc(ex + look * r * 0.38, ey + r * 0.3, r * (c > 0 ? 0.36 : 0.5), 0, TAU)
-    ctx.fillStyle = c > 0 ? 'rgba(255, 248, 240, 0.95)' : hsla(hue, 40, dark ? 16 : 20)
+    ctx.arc(ex + lx, ey + ly, r * 0.5, 0, TAU)
+    ctx.fillStyle = e.flare > 0.3 ? hsla(HOT, 85, 50) : hsla(hue, 40, dark ? 16 : 20)
     ctx.fill()
   }
 }
 
-// ------------------------------------------------------------------ pickups
+// ---------------------------------------------------------------- the ship
 
-function drawGlyph(ctx: CanvasRenderingContext2D, kind: PowerKind, cx: number, cy: number, rr: number) {
-  ctx.lineCap = 'round'
+/**
+ * The player's ship: a little green craft with a canopy, swept wings and an
+ * engine that flickers, leaning into its turns. Its heart is drawn separately,
+ * after everything else, so it is never lost under a bullet.
+ */
+function drawShip(g: Gfx) {
+  const { ctx, s, dark, t, U, X, Y } = g
+  if (s.phase === 'gameover' || s.phase === 'dying' || s.phase === 'menu') return
+  const sh = s.ship
+  // Blinks while it can't be hit.
+  if (sh.shield > 0 && !s.blast && Math.floor(t * 14) % 2 === 0) ctx.globalAlpha = 0.45
+  const cx = X(sh.x)
+  const cy = Y(sh.y)
+  const w = U(SHIP_W)
+  const line = hsla(SHIP_HUE, 58, lineL(dark), 0.98)
+  const fill = hsla(SHIP_HUE, 62, 58, dark ? 0.3 : 0.36)
+  const lw = Math.max(1.3, w * 0.045)
+  ctx.save()
+  ctx.translate(cx, cy)
+  ctx.rotate(sh.lean * 0.12)
+  const bank = 1 - Math.abs(sh.lean) * 0.18
   ctx.lineJoin = 'round'
+  ctx.lineCap = 'round'
+
+  // The engine's flame, longer while it climbs.
+  const flick = 0.75 + 0.25 * Math.sin(t * 43) + 0.1 * Math.sin(t * 71)
+  const flame = w * (0.42 + 0.14 * flick)
+  const grad = ctx.createLinearGradient(0, w * 0.3, 0, w * 0.3 + flame)
+  grad.addColorStop(0, hsla(SHIP_HUE, 95, 70, 0.9))
+  grad.addColorStop(0.5, hsla(180, 95, 65, 0.5))
+  grad.addColorStop(1, hsla(200, 95, 65, 0))
+  ctx.fillStyle = grad
   ctx.beginPath()
-  if (kind === 'pierce') {
-    // An arrow driving up through the mark.
-    ctx.moveTo(cx, cy + rr * 0.5)
-    ctx.lineTo(cx, cy - rr * 0.52)
-    ctx.moveTo(cx - rr * 0.34, cy - rr * 0.18)
-    ctx.lineTo(cx, cy - rr * 0.54)
-    ctx.lineTo(cx + rr * 0.34, cy - rr * 0.18)
-  } else if (kind === 'spread') {
-    // Three diverging lines.
-    for (const lean of [-0.42, 0, 0.42]) {
-      ctx.moveTo(cx, cy + rr * 0.5)
-      ctx.lineTo(cx + rr * lean, cy - rr * 0.5)
-    }
-  } else {
-    // Two chevrons climbing: shots coming faster.
-    for (const dy of [-0.26, 0.2]) {
-      ctx.moveTo(cx - rr * 0.4, cy + rr * (dy + 0.2))
-      ctx.lineTo(cx, cy + rr * (dy - 0.14))
-      ctx.lineTo(cx + rr * 0.4, cy + rr * (dy + 0.2))
+  ctx.moveTo(-w * 0.1, w * 0.28)
+  ctx.quadraticCurveTo(0, w * 0.3 + flame * 1.1, w * 0.1, w * 0.28)
+  ctx.closePath()
+  ctx.fill()
+
+  // Wings.
+  ctx.strokeStyle = line
+  ctx.lineWidth = lw
+  ctx.fillStyle = fill
+  for (const side of [-1, 1]) {
+    ctx.beginPath()
+    ctx.moveTo(side * w * 0.1, -w * 0.05)
+    ctx.lineTo(side * w * 0.5 * bank, w * 0.2)
+    ctx.quadraticCurveTo(side * w * 0.52 * bank, w * 0.32, side * w * 0.36 * bank, w * 0.3)
+    ctx.lineTo(side * w * 0.1, w * 0.24)
+    ctx.closePath()
+    ctx.fill()
+    ctx.stroke()
+  }
+  // Hull: a rounded dart.
+  ctx.beginPath()
+  ctx.moveTo(0, -w * 0.56)
+  ctx.bezierCurveTo(w * 0.14, -w * 0.46, w * 0.19, -w * 0.1, w * 0.17, w * 0.18)
+  ctx.quadraticCurveTo(w * 0.15, w * 0.34, 0, w * 0.34)
+  ctx.quadraticCurveTo(-w * 0.15, w * 0.34, -w * 0.17, w * 0.18)
+  ctx.bezierCurveTo(-w * 0.19, -w * 0.1, -w * 0.14, -w * 0.46, 0, -w * 0.56)
+  ctx.closePath()
+  ctx.fill()
+  ctx.stroke()
+  // Canopy.
+  ctx.beginPath()
+  ctx.ellipse(0, -w * 0.2, w * 0.075, w * 0.14, 0, 0, TAU)
+  ctx.fillStyle = dark ? 'rgba(234, 241, 246, 0.35)' : 'rgba(255, 255, 255, 0.7)'
+  ctx.fill()
+  ctx.lineWidth = lw * 0.8
+  ctx.stroke()
+  ctx.restore()
+
+  // Wing guns, from the third power level: two small orbs either side.
+  if (s.power >= 3) {
+    for (const side of [-1, 1]) {
+      const ox = X(sh.x + side * 0.05)
+      const oy = Y(sh.y + 0.005 + Math.sin(t * 5 + side) * 0.004)
+      const r = U(0.011)
+      const glow = ctx.createRadialGradient(ox, oy, 0, ox, oy, r * 2.4)
+      glow.addColorStop(0, hsla(SHIP_HUE, 90, 65, 0.5))
+      glow.addColorStop(1, hsla(SHIP_HUE, 90, 65, 0))
+      ctx.fillStyle = glow
+      ctx.beginPath()
+      ctx.arc(ox, oy, r * 2.4, 0, TAU)
+      ctx.fill()
+      ctx.beginPath()
+      ctx.arc(ox, oy, r, 0, TAU)
+      ctx.fillStyle = fill
+      ctx.fill()
+      ctx.strokeStyle = line
+      ctx.lineWidth = lw * 0.8
+      ctx.stroke()
     }
   }
-  ctx.stroke()
+  ctx.globalAlpha = 1
 }
 
-/** A capsule: a soft glow, a rounded case in its colour, and a mark that does not rely on colour. */
-function drawCapsule(g: Gfx, kind: PowerKind, cx: number, cy: number, rr: number) {
-  const { ctx, dark } = g
-  const hue = POWER_HUE[kind]
-  const glow = ctx.createRadialGradient(cx, cy, 0, cx, cy, rr * 2.1)
-  glow.addColorStop(0, hsla(hue, 85, 60, dark ? 0.28 : 0.22))
-  glow.addColorStop(1, hsla(hue, 85, 60, 0))
+/** The heart: the only part that can be hit, on top of everything, with the graze circle round it while focused. */
+function drawCore(g: Gfx) {
+  const { ctx, s, dark, t, U, X, Y } = g
+  if (s.phase !== 'playing') return
+  const sh = s.ship
+  const cx = X(sh.x)
+  const cy = Y(sh.y)
+  const f = sh.focus
+  if (f > 0.05) {
+    ctx.save()
+    ctx.globalAlpha = f * 0.55
+    ctx.setLineDash([U(0.008), U(0.01)])
+    ctx.lineDashOffset = -t * U(0.03)
+    ctx.strokeStyle = hsla(GOLD, 80, dark ? 70 : 45, 0.8)
+    ctx.lineWidth = Math.max(1, U(0.0025))
+    ctx.beginPath()
+    ctx.arc(cx, cy, U(GRAZE_R), 0, TAU)
+    ctx.stroke()
+    ctx.restore()
+  }
+  const r = Math.max(2.2, U(CORE_R))
+  const glowR = r * (2.2 + s.grazeGlow * 1.6 + f * 0.6)
+  const glow = ctx.createRadialGradient(cx, cy, 0, cx, cy, glowR)
+  glow.addColorStop(0, s.grazeGlow > 0.1 ? hsla(GOLD, 95, 70, 0.8) : hsla(SHIP_HUE, 95, 70, 0.7))
+  glow.addColorStop(1, hsla(SHIP_HUE, 95, 70, 0))
   ctx.fillStyle = glow
   ctx.beginPath()
-  ctx.arc(cx, cy, rr * 2.1, 0, TAU)
+  ctx.arc(cx, cy, glowR, 0, TAU)
   ctx.fill()
-
-  const line = hsla(hue, 62, lineL(dark), 0.98)
   ctx.beginPath()
-  ctx.roundRect(cx - rr, cy - rr, rr * 2, rr * 2, rr * 0.45)
-  ctx.fillStyle = hsla(hue, 72, 60, dark ? 0.3 : 0.4)
+  ctx.arc(cx, cy, r, 0, TAU)
+  ctx.fillStyle = '#ffffff'
   ctx.fill()
-  ctx.strokeStyle = line
-  ctx.lineWidth = Math.max(1.2, rr * 0.15)
+  ctx.strokeStyle = hsla(SHIP_HUE, 70, dark ? 55 : 35, 1)
+  ctx.lineWidth = Math.max(1, r * 0.4)
   ctx.stroke()
-  ctx.lineWidth = Math.max(1.2, rr * 0.17)
-  drawGlyph(ctx, kind, cx, cy, rr)
-}
-
-/** Falling capsules, each with a guide down to where it will reach the rail. */
-function drawDrops(g: Gfx) {
-  const { ctx, p, s, dark, t } = g
-  const rr = p.u(dropRadius())
-  const floor = p.y(railY(s.layout))
-  for (const drop of s.drops) {
-    const cx = p.x(drop.x)
-    const cy = p.y(drop.y)
-    const hue = POWER_HUE[drop.kind]
-    // Blink out over the last second and a half rather than vanishing.
-    const alpha = drop.life < 1.5 ? 0.35 + 0.65 * Math.abs(Math.sin(drop.life * 9)) : 1
-    ctx.globalAlpha = alpha
-    ctx.save()
-    ctx.setLineDash([p.u(0.008), p.u(0.012)])
-    ctx.lineDashOffset = -t * p.u(0.04)
-    ctx.strokeStyle = hsla(hue, 70, lineL(dark), 0.35)
-    ctx.lineWidth = Math.max(1, p.u(0.002))
-    ctx.beginPath()
-    ctx.moveTo(cx, cy + rr * 1.3)
-    ctx.lineTo(cx, floor)
-    ctx.stroke()
-    ctx.restore()
-    ctx.fillStyle = hsla(hue, 75, 58, 0.35)
-    ctx.beginPath()
-    ctx.ellipse(cx, floor, rr * 1.1, Math.max(1.5, p.u(0.004)), 0, 0, TAU)
-    ctx.fill()
-    drawCapsule(g, drop.kind, cx, cy, rr)
-    ctx.globalAlpha = 1
-  }
-}
-
-// -------------------------------------------------------------------- shots
-
-function drawShots(g: Gfx) {
-  const { ctx, p, s, dark } = g
-  ctx.lineCap = 'round'
-  for (const shot of s.shots) {
-    if (shot.returned) {
-      drawReturned(g, shot.x, shot.y, shot.vx, shot.vy)
-      continue
-    }
-    const size = shotSize(shot.hostile)
-    if (!shot.hostile) {
-      // A green streak with a bright head; the lance's round runs amber, the fan's side rounds orange.
-      const hue = shot.from === 'lance' ? POWER_HUE.pierce : shot.from === 'side' ? POWER_HUE.spread : CANNON_HUE
-      const sp = Math.hypot(shot.vx, shot.vy) || 1
-      const len = p.u(size.h) * 1.25
-      const hx = p.x(shot.x)
-      const hy = p.y(shot.y)
-      const tx = hx - (shot.vx / sp) * len
-      const ty = hy - (shot.vy / sp) * len
-      ctx.strokeStyle = hsla(hue, 80, 60, dark ? 0.2 : 0.22)
-      ctx.lineWidth = Math.max(4, p.u(0.014))
-      ctx.beginPath()
-      ctx.moveTo(tx, ty)
-      ctx.lineTo(hx, hy)
-      ctx.stroke()
-      ctx.strokeStyle = hsla(hue, 78, dark ? 64 : 42, 0.95)
-      ctx.lineWidth = Math.max(2, p.u(size.w))
-      ctx.beginPath()
-      ctx.moveTo(tx, ty)
-      ctx.lineTo(hx, hy)
-      ctx.stroke()
-      ctx.fillStyle = hsla(hue, 90, dark ? 88 : 70)
-      ctx.beginPath()
-      ctx.arc(hx, hy, Math.max(1.4, p.u(size.w) * 0.7), 0, TAU)
-      ctx.fill()
-      continue
-    }
-
-    // A red bolt: a trail, a glow, a hot core.
-    const cx = p.x(shot.x)
-    const cy = p.y(shot.y + size.h / 2)
-    const ang = Math.atan2(shot.vy, shot.vx)
-    const rx = p.u(size.h) / 2
-    const ry = p.u(size.w) / 2
-    const sp = Math.hypot(shot.vx, shot.vy) || 1
-    for (let k = 1; k <= 3; k++) {
-      const back = rx * 0.9 * k
-      ctx.fillStyle = hsla(HOT, 90, 60, 0.16 / k)
-      ctx.beginPath()
-      ctx.arc(cx - (shot.vx / sp) * back, cy - (shot.vy / sp) * back, ry * (1.1 - k * 0.2), 0, TAU)
-      ctx.fill()
-    }
-    ctx.save()
-    ctx.translate(cx, cy)
-    ctx.rotate(ang)
-    ctx.fillStyle = hsla(HOT, 90, 60, 0.2)
-    ctx.beginPath()
-    ctx.ellipse(0, 0, rx * 1.5, ry * 2.2, 0, 0, TAU)
-    ctx.fill()
-    ctx.beginPath()
-    ctx.ellipse(0, 0, rx, ry, 0, 0, TAU)
-    ctx.fillStyle = hsla(HOT, 88, dark ? 60 : 54, 0.95)
-    ctx.fill()
-    ctx.strokeStyle = hsla(HOT, 80, dark ? 76 : 38, 0.95)
-    ctx.lineWidth = Math.max(1, ry * 0.35)
-    ctx.stroke()
-    ctx.fillStyle = 'rgba(255, 244, 236, 0.92)'
-    ctx.beginPath()
-    ctx.ellipse(rx * 0.2, 0, rx * 0.5, ry * 0.42, 0, 0, TAU)
-    ctx.fill()
-    ctx.restore()
-  }
-  ctx.lineCap = 'butt'
 }
 
 /**
- * One of the fleet's own rounds going back up: still their red at the core, in
- * a sheath of the mirror's teal, with a long bright wake, so it reads as theirs
- * and as turned.
+ * What the ship has in hand, right under it where the eye already is: a pip
+ * for each Barrage ready, and a thin bar filling toward the next.
  */
-function drawReturned(g: Gfx, x: number, y: number, vx: number, vy: number) {
-  const { ctx, p, dark, t } = g
-  const size = shotSize(true)
-  const cx = p.x(x)
-  const cy = p.y(y + size.h / 2)
-  const sp = Math.hypot(vx, vy) || 1
-  const ux = vx / sp
-  const uy = vy / sp
-  const len = p.u(size.h) * 2.6
-  const grad = ctx.createLinearGradient(cx, cy, cx - ux * len, cy - uy * len)
-  grad.addColorStop(0, hsla(MIRROR_HUE, 85, dark ? 66 : 50, 0.8))
-  grad.addColorStop(1, hsla(MIRROR_HUE, 85, 60, 0))
-  ctx.strokeStyle = grad
-  ctx.lineWidth = Math.max(3, p.u(size.w) * 1.4)
-  ctx.lineCap = 'round'
-  ctx.beginPath()
-  ctx.moveTo(cx, cy)
-  ctx.lineTo(cx - ux * len, cy - uy * len)
-  ctx.stroke()
-  const rx = p.u(size.h) / 2
-  const ry = p.u(size.w) / 2
-  ctx.save()
-  ctx.translate(cx, cy)
-  ctx.rotate(Math.atan2(vy, vx))
-  ctx.fillStyle = hsla(MIRROR_HUE, 90, 60, 0.28 + 0.1 * Math.sin(t * 30))
-  ctx.beginPath()
-  ctx.ellipse(0, 0, rx * 1.6, ry * 2.4, 0, 0, TAU)
-  ctx.fill()
-  ctx.beginPath()
-  ctx.ellipse(0, 0, rx, ry, 0, 0, TAU)
-  ctx.fillStyle = hsla(HOT, 88, dark ? 60 : 54, 0.95)
-  ctx.fill()
-  ctx.strokeStyle = hsla(MIRROR_HUE, 80, dark ? 74 : 40, 0.95)
-  ctx.lineWidth = Math.max(1, ry * 0.5)
-  ctx.stroke()
-  ctx.fillStyle = 'rgba(255, 250, 244, 0.95)'
-  ctx.beginPath()
-  ctx.ellipse(rx * 0.2, 0, rx * 0.5, ry * 0.42, 0, 0, TAU)
-  ctx.fill()
-  ctx.restore()
+function drawCharge(g: Gfx) {
+  const { ctx, s, dark, U, X, Y } = g
+  if (s.phase !== 'playing') return
+  const sh = s.ship
+  const y = Y(sh.y + 0.062)
+  const pip = Math.max(2, U(0.0075))
+  const gap = pip * 3
+  const x0 = X(sh.x) - ((MAX_STOCK - 1) * gap) / 2
+  for (let i = 0; i < MAX_STOCK; i++) {
+    const x = x0 + i * gap
+    ctx.beginPath()
+    ctx.moveTo(x, y - pip)
+    ctx.lineTo(x + pip, y)
+    ctx.lineTo(x, y + pip)
+    ctx.lineTo(x - pip, y)
+    ctx.closePath()
+    if (i < s.stock) {
+      ctx.fillStyle = hsla(GOLD, 95, dark ? 62 : 50, 0.95)
+      ctx.fill()
+    } else {
+      ctx.strokeStyle = hsla(GOLD, 40, dark ? 45 : 70, 0.7)
+      ctx.lineWidth = 1
+      ctx.stroke()
+      if (i === s.stock && s.charge > 0) {
+        // The one filling.
+        ctx.save()
+        ctx.clip()
+        ctx.fillStyle = hsla(GOLD, 95, dark ? 62 : 50, 0.8)
+        ctx.fillRect(x - pip, y + pip - pip * 2 * s.charge, pip * 2, pip * 2 * s.charge)
+        ctx.restore()
+      }
+    }
+  }
 }
 
-/** Charges on their way down to the cannon: teal motes with a tail, swinging in. */
-function drawSparks(g: Gfx) {
-  const { ctx, p, s, dark, t } = g
-  for (const sp of s.sparks) {
-    const x = p.x(sp.x)
-    const y = p.y(sp.y)
-    const r = Math.max(2, p.u(0.009))
-    const tail = 0.06
-    ctx.strokeStyle = hsla(MIRROR_HUE, 85, dark ? 66 : 48, 0.45)
-    ctx.lineWidth = r * 1.1
-    ctx.lineCap = 'round'
+// ------------------------------------------------------------ rounds, stars
+
+function drawBolts(g: Gfx) {
+  const { ctx, s, dark, U, X, Y } = g
+  ctx.lineCap = 'round'
+  for (const b of s.bolts) {
+    const x = X(b.x)
+    const y = Y(b.y)
+    const sp = Math.hypot(b.vx, b.vy) || 1
+    const len = U(b.needle ? 0.022 : 0.034)
+    const tx = x - (b.vx / sp) * len
+    const ty = y - (b.vy / sp) * len
+    ctx.strokeStyle = hsla(b.needle ? 170 : SHIP_HUE, 85, 62, dark ? 0.22 : 0.25)
+    ctx.lineWidth = Math.max(3, U(0.012))
     ctx.beginPath()
-    ctx.moveTo(x, y)
-    ctx.lineTo(x - p.u(sp.vx) * tail, y - p.u(sp.vy) * tail)
+    ctx.moveTo(tx, ty)
+    ctx.lineTo(x, y)
     ctx.stroke()
-    const glow = ctx.createRadialGradient(x, y, 0, x, y, r * 3)
-    glow.addColorStop(0, hsla(MIRROR_HUE, 95, 64, 0.55))
-    glow.addColorStop(1, hsla(MIRROR_HUE, 95, 64, 0))
-    ctx.fillStyle = glow
+    ctx.strokeStyle = hsla(b.needle ? 170 : SHIP_HUE, 80, dark ? 70 : 42, 0.95)
+    ctx.lineWidth = Math.max(1.4, U(b.needle ? 0.004 : 0.006))
     ctx.beginPath()
-    ctx.arc(x, y, r * 3, 0, TAU)
-    ctx.fill()
-    ctx.fillStyle = hsla(MIRROR_HUE, 90, dark ? 72 : 52)
-    ctx.beginPath()
-    ctx.arc(x, y, r * (0.9 + 0.15 * Math.sin(t * 24 + sp.age * 7)), 0, TAU)
-    ctx.fill()
-    ctx.fillStyle = 'rgba(250, 255, 255, 0.9)'
-    ctx.beginPath()
-    ctx.arc(x, y, r * 0.42, 0, TAU)
-    ctx.fill()
+    ctx.moveTo(tx, ty)
+    ctx.lineTo(x, y)
+    ctx.stroke()
   }
   ctx.lineCap = 'butt'
+}
+
+function drawStarShape(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, spin: number) {
+  ctx.beginPath()
+  for (let i = 0; i < 8; i++) {
+    const a = spin + (i / 8) * TAU
+    const rr = i % 2 ? r * 0.42 : r
+    const px = x + Math.cos(a) * rr
+    const py = y + Math.sin(a) * rr
+    if (i === 0) ctx.moveTo(px, py)
+    else ctx.lineTo(px, py)
+  }
+  ctx.closePath()
+}
+
+function drawStars2(g: Gfx) {
+  const { ctx, s, dark, t, U, X, Y } = g
+  for (const st of s.stars) {
+    const x = X(st.x)
+    const y = Y(st.y)
+    const r = U(st.gold ? 0.011 : 0.007)
+    ctx.fillStyle = st.gold ? hsla(GOLD, 95, dark ? 64 : 52, 0.95) : hsla(GOLD, 40, dark ? 88 : 60, 0.85)
+    drawStarShape(ctx, x, y, r, t * 5 + st.x * 30)
+    ctx.fill()
+    if (st.gold) {
+      ctx.strokeStyle = hsla(GOLD, 90, dark ? 78 : 40, 0.9)
+      ctx.lineWidth = 1
+      ctx.stroke()
+    }
+  }
+}
+
+/** The Barrage going out: a gold wave with a bright front and a warm wash behind it. */
+function drawBlast(g: Gfx) {
+  const { ctx, s, dark, U, X, Y } = g
+  const b = s.blast
+  if (!b) return
+  const x = X(b.x)
+  const y = Y(b.y)
+  const r = U(b.r)
+  const fade = clamp01(1 - b.r / 1.85)
+  const inner = Math.max(0, r - U(0.14))
+  const wash = ctx.createRadialGradient(x, y, inner, x, y, r)
+  wash.addColorStop(0, hsla(GOLD, 95, 62, 0))
+  wash.addColorStop(0.85, hsla(GOLD, 95, 62, (dark ? 0.2 : 0.16) * fade))
+  wash.addColorStop(1, hsla(GOLD, 95, 70, 0.4 * fade))
+  ctx.fillStyle = wash
+  ctx.beginPath()
+  ctx.arc(x, y, r, 0, TAU)
+  ctx.fill()
+  ctx.strokeStyle = hsla(GOLD, 95, dark ? 76 : 50, 0.9 * fade)
+  ctx.lineWidth = Math.max(2, U(0.008))
+  ctx.beginPath()
+  ctx.arc(x, y, r, 0, TAU)
+  ctx.stroke()
 }
 
 // ------------------------------------------------------------------- debris
 
-function bitHue(b: Bit, dark: boolean, light: number) {
-  if (b.hue < 0) return withAlpha(inkColor(), dark ? 0.85 : 0.7)
-  return hsla(b.hue, 85, light)
-}
-
 function drawBits(g: Gfx) {
-  const { ctx, p, s, dark } = g
+  const { ctx, s, dark, U, X, Y } = g
   for (const b of s.bits) {
     const a = clamp01(b.life / b.maxLife)
-    const x = p.x(b.x)
-    const y = p.y(b.y)
+    const x = X(b.x)
+    const y = Y(b.y)
     if (b.kind === 'spark') {
       ctx.globalAlpha = a
-      ctx.strokeStyle = bitHue(b, dark, dark ? 72 : 52)
-      ctx.lineWidth = Math.max(1.2, p.u(b.size) * 0.55)
+      ctx.strokeStyle = hsla(b.hue, 90, dark ? 72 : 52)
+      ctx.lineWidth = Math.max(1.2, U(b.size) * 0.55)
       ctx.lineCap = 'round'
       ctx.beginPath()
       ctx.moveTo(x, y)
-      ctx.lineTo(x - p.u(b.vx) * 0.035, y - p.u(b.vy) * 0.035)
+      ctx.lineTo(x - U(b.vx) * 0.035, y - U(b.vy) * 0.035)
       ctx.stroke()
       continue
     }
-    const sz = p.u(b.size)
+    const sz = U(b.size)
     ctx.globalAlpha = Math.min(1, a * 1.6)
     ctx.save()
     ctx.translate(x, y)
     ctx.rotate(b.angle)
     ctx.beginPath()
-    if (b.kind === 'plate') {
-      ctx.roundRect(-sz / 2, -sz * 0.22, sz, sz * 0.44, sz * 0.12)
-      ctx.fillStyle = steel(b.hue, dark)
-    } else {
-      ctx.moveTo(sz, 0)
-      ctx.lineTo(-sz * 0.6, sz * 0.72)
-      ctx.lineTo(-sz * 0.42, -sz * 0.62)
-      ctx.closePath()
-      ctx.fillStyle = hsla(b.hue, 60, 60, dark ? 0.3 : 0.36)
-    }
+    ctx.moveTo(sz, 0)
+    ctx.lineTo(-sz * 0.6, sz * 0.72)
+    ctx.lineTo(-sz * 0.42, -sz * 0.62)
+    ctx.closePath()
+    ctx.fillStyle = hsla(b.hue, 60, 60, dark ? 0.3 : 0.36)
     ctx.fill()
     ctx.strokeStyle = hsla(b.hue, 58, lineL(dark), 0.95)
     ctx.lineWidth = Math.max(1, sz * 0.14)
@@ -1046,274 +863,24 @@ function drawBits(g: Gfx) {
 }
 
 function drawRings(g: Gfx) {
-  const { ctx, p, s, dark } = g
+  const { ctx, s, dark, U, X, Y } = g
   for (const r of s.rings) {
     const k = 1 - r.life / r.maxLife
-    const ease = 1 - (1 - k) ** 3
+    const e = 1 - (1 - k) ** 3
     ctx.globalAlpha = (1 - k) * 0.85
-    ctx.strokeStyle = hsla(r.hue, 70, dark ? 70 : 46)
-    ctx.lineWidth = Math.max(1, p.u(0.006) * (1 - k) + 0.6)
+    ctx.strokeStyle = hsla(r.hue, 75, dark ? 70 : 46)
+    ctx.lineWidth = Math.max(1, U(r.width) * (1 - k) + 0.6)
     ctx.beginPath()
-    ctx.arc(p.x(r.x), p.y(r.y), Math.max(0.5, p.u(r.r0 + (r.r1 - r.r0) * ease)), 0, TAU)
+    ctx.arc(X(r.x), Y(r.y), Math.max(0.5, U(r.r0 + (r.r1 - r.r0) * e)), 0, TAU)
     ctx.stroke()
   }
   ctx.globalAlpha = 1
 }
 
-// ------------------------------------------------------------------- cannon
-
-/**
- * The cannon: a sled on the rail, a turret, a barrel that kicks, and whatever
- * it has collected on it. Side barrels in the fan's orange, a pair a level; the
- * barrel drawn out into an amber lance for piercing rounds, a band a level;
- * vents in the fast trigger's sky either side of the turret, one a level; and a
- * teal dome over it all while it holds mirrors, a light on it for each. The
- * lights on the sled are the pulls it has ready, so an empty gun shows as one,
- * not as a trigger that stopped working.
- */
-function drawCannon(g: Gfx) {
-  const { ctx, p, s, dark, t } = g
-  const gone = (s.phase === 'dying' || s.phase === 'gameover') && s.endCause !== 'line'
-  if (gone) return
-  const r = cannonRect(s)
-  const W = p.u(r.w)
-  const H = p.u(r.h)
-  const cx = p.x(s.cannonX)
-  const base = p.y(r.y + r.h)
-  const appear = 1 - s.respawn
-  const line = hsla(CANNON_HUE, 55, lineL(dark), 0.98)
-  const fill = hsla(CANNON_HUE, 60, 58, dark ? 0.26 : 0.32)
-  const lw = Math.max(1.4, W * 0.032)
-  const { spread, pierce, rapid } = s.power
-
-  if (s.respawn > 0) {
-    // Set down from above in a column of light.
-    const top = p.y(s.layout.holdLine)
-    const grad = ctx.createLinearGradient(0, top, 0, base)
-    grad.addColorStop(0, hsla(CANNON_HUE, 80, 60, 0))
-    grad.addColorStop(1, hsla(CANNON_HUE, 80, 60, 0.3 * s.respawn))
-    ctx.fillStyle = grad
-    ctx.fillRect(cx - W * 0.45, top, W * 0.9, base - top)
-  }
-
-  ctx.save()
-  ctx.globalAlpha = 0.25 + 0.75 * appear
-  ctx.translate(cx, base - (1 - appear) * H * 0.4)
-  ctx.rotate(s.lean * 0.07)
-  ctx.lineJoin = 'round'
-  ctx.lineCap = 'round'
-  ctx.lineWidth = lw
-  ctx.strokeStyle = line
-
-  // Hover pads under the sled.
-  const flick = 0.75 + 0.25 * Math.sin(t * 37)
-  ctx.fillStyle = hsla(CANNON_HUE, 85, 62, 0.32 * flick)
-  for (const side of [-1, 1]) {
-    ctx.beginPath()
-    ctx.ellipse(side * W * 0.3, -H * 0.02, W * 0.11, H * 0.07, 0, 0, TAU)
-    ctx.fill()
-  }
-
-  // Barrels, then the turret over their roots, then the sled over the turret's.
-  const kick = s.kick * H * 0.14
-  const bw = W * 0.12
-  for (let i = spread; i >= 1; i--) {
-    for (const side of [-1, 1]) {
-      ctx.save()
-      ctx.translate(side * W * 0.05, -H * 0.5)
-      ctx.rotate(side * (0.16 + 0.17 * i))
-      ctx.beginPath()
-      ctx.roundRect(-bw * 0.33, -H * 0.46 + kick, bw * 0.66, H * 0.48, bw * 0.2)
-      ctx.fillStyle = hsla(POWER_HUE.spread, 70, 60, dark ? 0.3 : 0.4)
-      ctx.fill()
-      ctx.strokeStyle = hsla(POWER_HUE.spread, 60, lineL(dark), 0.95)
-      ctx.stroke()
-      ctx.restore()
-    }
-  }
-  ctx.strokeStyle = line
-
-  // The main barrel, drawn out into a lance for piercing rounds.
-  const reach = H * (0.7 + 0.13 * pierce)
-  const top = -H * 0.4 - reach + kick
-  ctx.beginPath()
-  ctx.roundRect(-bw / 2, top, bw, reach, bw * 0.25)
-  ctx.fillStyle = fill
-  ctx.fill()
-  ctx.stroke()
-  if (pierce > 0) {
-    const amber = hsla(POWER_HUE.pierce, 90, 60, 0.92)
-    const amberLine = hsla(POWER_HUE.pierce, 70, lineL(dark), 0.98)
-    ctx.strokeStyle = amberLine
-    for (let i = 0; i < pierce; i++) {
-      ctx.beginPath()
-      ctx.roundRect(-bw * 0.62, top + H * (0.2 + 0.15 * i), bw * 1.24, H * 0.07, bw * 0.15)
-      ctx.fillStyle = amber
-      ctx.fill()
-      ctx.stroke()
-    }
-    ctx.beginPath()
-    ctx.moveTo(-bw * 0.56, top + H * 0.04)
-    ctx.lineTo(0, top - H * 0.17)
-    ctx.lineTo(bw * 0.56, top + H * 0.04)
-    ctx.closePath()
-    ctx.fillStyle = amber
-    ctx.fill()
-    ctx.stroke()
-    ctx.strokeStyle = line
-  } else {
-    ctx.beginPath()
-    ctx.roundRect(-bw * 0.72, top - H * 0.02, bw * 1.44, H * 0.12, bw * 0.2)
-    ctx.fillStyle = fill
-    ctx.fill()
-    ctx.stroke()
-  }
-
-  ctx.beginPath()
-  ctx.ellipse(0, -H * 0.46, W * 0.27, H * 0.42, 0, Math.PI, 0)
-  ctx.closePath()
-  ctx.fillStyle = fill
-  ctx.fill()
-  ctx.stroke()
-  ctx.beginPath()
-  ctx.arc(-W * 0.1, -H * 0.62, Math.max(1.4, W * 0.045), 0, TAU)
-  ctx.fillStyle = dark ? '#eaf1f6' : '#ffffff'
-  ctx.fill()
-  ctx.lineWidth = lw * 0.7
-  ctx.stroke()
-  ctx.lineWidth = lw
-
-  // Vents either side of the turret for the fast trigger; they flare with each pull.
-  if (rapid > 0) {
-    const sky = hsla(POWER_HUE.rapid, 80, 62, (dark ? 0.35 : 0.45) + 0.45 * s.kick)
-    const skyLine = hsla(POWER_HUE.rapid, 62, lineL(dark), 0.96)
-    ctx.lineWidth = lw * 0.8
-    for (const side of [-1, 1]) {
-      for (let i = 0; i < rapid; i++) {
-        const vx = side * W * (0.3 + 0.075 * i)
-        const vh = H * (0.3 - 0.06 * i)
-        ctx.beginPath()
-        ctx.roundRect(vx - W * 0.024, -H * 0.5 - vh, W * 0.048, vh, W * 0.02)
-        ctx.fillStyle = sky
-        ctx.fill()
-        ctx.strokeStyle = skyLine
-        ctx.stroke()
-      }
-    }
-    ctx.lineWidth = lw
-    ctx.strokeStyle = line
-  }
-
-  ctx.beginPath()
-  ctx.moveTo(-W / 2, -H * 0.1)
-  ctx.lineTo(-W * 0.4, -H * 0.5)
-  ctx.lineTo(W * 0.4, -H * 0.5)
-  ctx.lineTo(W / 2, -H * 0.1)
-  ctx.quadraticCurveTo(W / 2, 0, W * 0.42, 0)
-  ctx.lineTo(-W * 0.42, 0)
-  ctx.quadraticCurveTo(-W / 2, 0, -W / 2, -H * 0.1)
-  ctx.closePath()
-  ctx.fillStyle = fill
-  ctx.fill()
-  ctx.stroke()
-
-  // Pulls ready: more lights on a faster trigger.
-  const allowed = pullsAllowed(s)
-  const ready = s.phase === 'menu' ? allowed : roundsReady(s)
-  const pip = Math.max(1.2, W * (allowed > 5 ? 0.027 : 0.034))
-  const gap = W * (allowed > 5 ? 0.1 : 0.13)
-  for (let i = 0; i < allowed; i++) {
-    ctx.beginPath()
-    ctx.arc((i - (allowed - 1) / 2) * gap, -H * 0.27, pip, 0, TAU)
-    ctx.fillStyle = i < ready ? hsla(CANNON_HUE, 85, dark ? 68 : 42) : hsla(CANNON_HUE, 18, dark ? 40 : 70, 0.7)
-    ctx.fill()
-  }
-
-  // Mirrors: a dome of teal light over the turret, and a light on it for each
-  // one; round it, the next one building, a third of the way for each shot stopped.
-  const building = s.mirror < MAX_MIRROR ? s.sparksHeld / SPARKS_PER_MIRROR : 0
-  const rx = W * 0.44
-  const ry = H * 1.02
-  const dy = -H * 0.34
-  if (building > 0) {
-    ctx.strokeStyle = hsla(MIRROR_HUE, 30, dark ? 40 : 78, 0.5)
-    ctx.lineWidth = lw * 0.9
-    ctx.beginPath()
-    ctx.ellipse(0, dy, rx * 1.14, ry * 1.1, 0, Math.PI, 0)
-    ctx.stroke()
-    ctx.strokeStyle = hsla(MIRROR_HUE, 88, dark ? 70 : 44, 0.95)
-    ctx.lineWidth = lw * 1.3
-    ctx.beginPath()
-    ctx.ellipse(0, dy, rx * 1.14, ry * 1.1, 0, Math.PI, Math.PI + Math.PI * building)
-    ctx.stroke()
-    ctx.strokeStyle = line
-    ctx.lineWidth = lw
-  }
-  if (s.mirror > 0 || s.mirrorFlash > 0) {
-    const flash = s.mirrorFlash
-    ctx.beginPath()
-    ctx.ellipse(0, dy, rx, ry, 0, Math.PI, 0)
-    ctx.fillStyle = hsla(MIRROR_HUE, 85, 62, (dark ? 0.07 : 0.09) + 0.3 * flash)
-    ctx.fill()
-    ctx.strokeStyle = hsla(MIRROR_HUE, 80, dark ? 70 : 44, (s.mirror > 0 ? 0.7 : 0) + 0.3 * flash)
-    ctx.lineWidth = lw * (1 + flash * 1.5)
-    ctx.stroke()
-    // A glint running over the dome.
-    const glint = Math.PI + frac(t * 0.45) * Math.PI
-    ctx.strokeStyle = hsla(MIRROR_HUE, 90, dark ? 86 : 60, 0.55 * (s.mirror > 0 ? 1 : flash))
-    ctx.lineWidth = lw * 1.2
-    ctx.beginPath()
-    ctx.ellipse(0, dy, rx, ry, 0, glint - 0.22, glint + 0.22)
-    ctx.stroke()
-    ctx.lineWidth = lw
-    const pipR = Math.max(1.5, W * 0.036)
-    for (let i = 0; i < MAX_MIRROR; i++) {
-      const a = Math.PI + (Math.PI * (i + 1)) / (MAX_MIRROR + 1)
-      ctx.beginPath()
-      ctx.arc(Math.cos(a) * rx, dy + Math.sin(a) * ry, pipR, 0, TAU)
-      ctx.fillStyle = i < s.mirror ? hsla(MIRROR_HUE, 90, dark ? 72 : 44) : hsla(MIRROR_HUE, 25, dark ? 34 : 80, 0.55)
-      ctx.fill()
-    }
-    ctx.strokeStyle = line
-  }
-
-  // Muzzle flash.
-  if (s.kick > 0.5) {
-    const k = (s.kick - 0.5) / 0.5
-    const my = top - H * (pierce > 0 ? 0.2 : 0.04)
-    const f = W * 0.16 * k
-    ctx.fillStyle = hsla(CANNON_HUE, 95, dark ? 82 : 60, 0.9 * k)
-    ctx.beginPath()
-    ctx.moveTo(0, my - f * 1.6)
-    ctx.lineTo(f * 0.35, my - f * 0.3)
-    ctx.lineTo(f, my)
-    ctx.lineTo(f * 0.3, my + f * 0.2)
-    ctx.lineTo(-f * 0.3, my + f * 0.2)
-    ctx.lineTo(-f, my)
-    ctx.lineTo(-f * 0.35, my - f * 0.3)
-    ctx.closePath()
-    ctx.fill()
-  }
-  ctx.restore()
-
-  if (s.hitFlash > 0 && s.phase === 'playing') {
-    ctx.fillStyle = `rgba(255, 255, 255, ${s.hitFlash * 0.5})`
-    ctx.fillRect(cx - W / 2, base - H, W, H)
-  }
-}
-
 // --------------------------------------------------------------------- text
 
-/** Text on a halo of the ground behind it, so it reads over ships and stars alike. */
-function haloText(
-  ctx: CanvasRenderingContext2D,
-  text: string,
-  x: number,
-  y: number,
-  size: number,
-  colour: string,
-  weight = 600,
-) {
+/** Text on a halo of the ground behind it, so it reads over ships and bullets alike. */
+function haloText(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, size: number, colour: string, weight = 600) {
   ctx.font = `${weight} ${Math.round(size)}px ${FONT}`
   ctx.textAlign = 'center'
   ctx.textBaseline = 'middle'
@@ -1330,144 +897,137 @@ function haloText(
 }
 
 function drawFloaters(g: Gfx) {
-  const { ctx, p, s, dark } = g
-  const small = Math.max(11, p.u(0.017))
+  const { ctx, s, dark, U, X, Y } = g
+  const small = Math.max(10, U(0.03))
   for (const f of s.floaters) {
     const a = clamp01(f.life / f.maxLife)
     ctx.globalAlpha = Math.min(1, a * 1.8)
-    let colour = inkColor()
+    let colour = withAlpha(inkColor(), 0.8)
     let size = small
     let weight = 600
-    if (f.tone === 'defuse') {
-      colour = hsla(HOT, 85, dark ? 66 : 46)
-      size = small * 1.1
-      weight = 700
-    } else if (f.tone === 'chain') {
-      colour = hsla(GOLD, 92, dark ? 62 : 40)
+    if (f.tone === 'bonus') {
+      colour = hsla(GOLD, 92, dark ? 64 : 40)
       size = small * 1.25
-      weight = 700
-    } else if (f.tone === 'pickup') {
-      colour = f.kind ? hsla(POWER_HUE[f.kind], 85, dark ? 64 : 40) : hsla(CANNON_HUE, 70, dark ? 66 : 36)
-      size = small * 1.2
       weight = 800
-    } else if (f.tone === 'mirror') {
-      colour = hsla(MIRROR_HUE, 80, dark ? 66 : 36)
+    } else if (f.tone === 'warn') {
+      colour = hsla(HOT, 80, dark ? 66 : 46)
       size = small * 1.1
       weight = 700
     }
-    haloText(ctx, f.text, p.x(f.x), p.y(f.y), size, colour, weight)
+    haloText(ctx, f.text, X(f.x), Y(f.y), size, colour, weight)
   }
   ctx.globalAlpha = 1
 }
 
-/** What a wave has in store that the last one didn't. */
-function waveNote(wave: number) {
-  if (wave === 1) return 'Break a glowing ship, catch what it drops'
-  if (wave === 2) return 'Stop three lit ships to build a mirror'
-  if (wave === 3) return 'Plated ships from here · the lanes lean'
-  if (wave === 5) return 'Three rounds down every lane'
-  if (wave === 6) return 'Heavy plate: three hits to break'
-  return ''
+/** The flagship's bar across the top of the field: a segment a phase, the current one draining, its name and its clock. */
+function drawBossBar(g: Gfx) {
+  const { ctx, s, dark, U, X, Y } = g
+  const b = bossReadout(s)
+  if (!b) return
+  const x0 = X(0.06)
+  const x1 = X(0.94)
+  const y = Y(0.035)
+  const h = Math.max(4, U(0.011))
+  const gap = U(0.012)
+  const seg = (x1 - x0 - gap * (b.phases - 1)) / b.phases
+  ctx.globalAlpha = b.title
+  for (let i = 0; i < b.phases; i++) {
+    const sx = x0 + i * (seg + gap)
+    ctx.beginPath()
+    ctx.roundRect(sx, y, seg, h, h / 2)
+    ctx.fillStyle = withAlpha(inkColor(), dark ? 0.12 : 0.1)
+    ctx.fill()
+    const left = i < b.phase ? 0 : i > b.phase ? 1 : b.left
+    if (left > 0) {
+      ctx.beginPath()
+      ctx.roundRect(sx, y, seg * left, h, h / 2)
+      ctx.fillStyle = hsla(i === b.phase ? b.hue : 0, i === b.phase ? 80 : 0, dark ? 62 : 52, i === b.phase ? 0.95 : 0.35)
+      ctx.fill()
+    }
+  }
+  const size = Math.max(11, U(0.03))
+  ctx.font = `700 ${Math.round(size)}px ${FONT}`
+  ctx.textBaseline = 'top'
+  ctx.textAlign = 'left'
+  ctx.fillStyle = hsla(b.hue, 80, dark ? 70 : 40)
+  ctx.fillText(b.name, x0, y + h + U(0.008))
+  ctx.textAlign = 'right'
+  ctx.fillStyle = withAlpha(inkColor(), 0.7)
+  ctx.fillText(`${Math.ceil(b.time)}`, x1, y + h + U(0.008))
+  ctx.globalAlpha = 1
 }
 
-/** Where banners go: the open ground between the fleet's slots and the line. */
-function bannerY(s: GameState) {
-  const low = s.formY + s.layout.formH
-  return (low + s.layout.holdLine) / 2
-}
-
-function drawBanners(g: Gfx) {
-  const { ctx, p, s, dark } = g
-  const ink = inkColor()
-  const big = Math.max(26, p.u(0.062))
-  const note = Math.max(12, p.u(0.019))
-  const mid = p.x(0.5)
-  const y = p.y(bannerY(s))
-
-  if (s.phase === 'playing' && s.waveT < WAVE_BANNER) {
-    const t = s.waveT
-    const left = WAVE_BANNER - t
-    const alpha = t < 0.15 ? t / 0.15 : left < 0.45 ? left / 0.45 : 1
-    const grow = 1 + Math.max(0, 0.15 - t) * 0.8
-    ctx.globalAlpha = alpha
-    haloText(ctx, `Wave ${s.wave}`, mid, y - big * 0.3, big * grow, ink, 700)
-    const line = waveNote(s.wave)
-    if (line) haloText(ctx, line, mid, y + big * 0.55, note, ink)
-    ctx.globalAlpha = 1
-  }
-
-  if (s.phase === 'clearing' && s.clearBonus) {
-    const k = clamp01((CLEAR_PAUSE - s.clearingFor) / 0.2)
-    ctx.globalAlpha = Math.min(k, clamp01(s.clearingFor / 0.3))
-    haloText(ctx, `Wave ${s.wave} clear`, mid, y - big * 0.3, big * 0.9, ink, 700)
-    const gold = hsla(GOLD, 92, dark ? 62 : 40)
-    const bonus = s.clearBonus.clean
-      ? `+${s.clearBonus.clear}   +${s.clearBonus.clean} untouched`
-      : `+${s.clearBonus.clear}`
-    haloText(ctx, bonus, mid, y + big * 0.5, note * 1.15, gold, 700)
-    ctx.globalAlpha = 1
-  }
-
-  if (s.endCause === 'line' && s.phase === 'dying') {
-    // The fleet is sitting on the line now, so this goes in the sky it came from.
-    let top = s.layout.holdLine
-    for (const ship of s.ships) if (ship.alive) top = Math.min(top, shipY(s, ship))
-    ctx.globalAlpha = clamp01((LINE_PAUSE - s.dyingFor) / 0.25)
-    haloText(ctx, 'The line broke', mid, p.y(Math.max(0.14, top / 2 + 0.03)), big * 0.85, hsla(HOT, 85, dark ? 66 : 46), 700)
-    ctx.globalAlpha = 1
-  }
+function drawBanner(g: Gfx) {
+  const { ctx, s, dark, U, X, Y } = g
+  const b = s.banner
+  if (!b) return
+  const t = b.t
+  const left = BANNER_TIME - t
+  const alpha = t < 0.15 ? t / 0.15 : left < 0.45 ? left / 0.45 : 1
+  const big = Math.max(24, U(0.1))
+  const note = Math.max(12, U(0.036))
+  const y = Y(FIELD_H * 0.42)
+  ctx.globalAlpha = clamp01(alpha)
+  const grow = 1 + Math.max(0, 0.15 - t) * 0.8
+  const colour =
+    b.tone === 'boss' ? hsla(HOT, 80, dark ? 68 : 46) : b.tone === 'phase' ? hsla(GOLD, 92, dark ? 64 : 40) : inkColor()
+  haloText(ctx, b.text, X(0.5), y - big * 0.3, big * grow, colour, 800)
+  if (b.sub) haloText(ctx, b.sub, X(0.5), y + big * 0.55, note, b.tone === 'clear' ? hsla(GOLD, 92, dark ? 62 : 40) : inkColor(), 600)
+  ctx.globalAlpha = 1
 }
 
 // ------------------------------------------------------------------- render
 
-export function renderGame(
-  ctx: CanvasRenderingContext2D,
-  state: GameState,
-  w: number,
-  h: number,
-) {
-  const p = placement(w, h, state.layout.fieldH > 1)
+export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, w: number, h: number) {
+  const p = fieldPlace(w, h)
   const dark = isDarkTheme()
   const t = state.time
-  const g: Gfx = { ctx, p, s: state, dark, t }
+  const g: Gfx = {
+    ctx,
+    p,
+    s: state,
+    dark,
+    t,
+    X: (v) => p.ox + v * p.k,
+    Y: (v) => p.oy + v * p.k,
+    U: (v) => v * p.k,
+    dpr: Math.max(1, Math.abs(ctx.getTransform().a) || 1),
+  }
 
   ctx.fillStyle = playfieldColor()
   ctx.fillRect(0, 0, w, h)
-  drawStars(ctx, w, h, dark, t)
+  drawNebula(g, w, h)
+  drawStars(ctx, w, h, dark, t, p.k)
 
-  // The field shakes with a big hit; the sky behind it and the banners don't.
   ctx.save()
+  // The field shakes with a big hit; the sky behind it doesn't.
   if (state.shake > 0.01) {
-    const m = state.shake * state.shake * p.u(0.024)
+    const m = state.shake * state.shake * p.k * 0.02
     ctx.translate((Math.random() - 0.5) * m, (Math.random() - 0.5) * m)
   }
+  ctx.beginPath()
+  ctx.rect(p.ox, p.oy, p.fw, p.fh)
+  ctx.clip()
 
-  drawGround(g, w, h)
-  drawLanes(g)
-  drawLine(g)
-
-  const frame = gaitFrame(state)
-  for (const ship of state.ships) {
-    if (!ship.alive) continue
-    // Paddling hard on the way in, then in step with the march.
-    const flying = enterProgress(state, ship) < 1
-    drawShip(g, ship, flying ? Math.floor(t * 8 + ship.col) % 2 : frame)
-  }
-
-  drawDrops(g)
-  drawShots(g)
-  drawSparks(g)
+  for (const e of state.enemies) if (!e.gone) drawEnemy(g, e)
+  drawBolts(g)
+  drawShip(g)
+  drawBlast(g)
+  drawBullets(g)
+  drawStars2(g)
   drawRings(g)
   drawBits(g)
-  drawCannon(g)
+  drawCore(g)
+  drawCharge(g)
   drawFloaters(g)
+  drawBossBar(g)
   ctx.restore()
 
-  drawSurround(ctx, p, w, h)
-  drawBanners(g)
+  drawSurround(ctx, p, w, h, dark)
+  drawBanner(g)
 
-  if (state.hitFlash > 0) {
-    ctx.fillStyle = hsla(HOT, 80, 58, state.hitFlash * state.hitFlash * 0.14)
+  if (state.flash > 0) {
+    ctx.fillStyle = `rgba(255, 250, 240, ${state.flash * state.flash * (dark ? 0.22 : 0.3)})`
     ctx.fillRect(0, 0, w, h)
   }
 }
