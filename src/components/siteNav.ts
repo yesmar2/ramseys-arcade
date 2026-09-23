@@ -34,6 +34,13 @@ export const SITE_TABS: readonly SiteNavItem[] = [
   { href: recordsIndexHref(), label: 'Records', match: 'records' },
 ] as const
 
+/** Fired on window to open the header's menu from anywhere on the page: where signing in lives. */
+export const OPEN_MENU_EVENT = 'skermix:open-menu'
+
+export function openSiteMenu() {
+  window.dispatchEvent(new Event(OPEN_MENU_EVENT))
+}
+
 function under(path: string, section: string) {
   return path === section || path.startsWith(`${section}/`)
 }

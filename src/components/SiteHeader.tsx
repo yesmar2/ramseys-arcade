@@ -26,7 +26,7 @@ import { SiteMenu } from './SiteMenu'
 import { SiteScopeControl } from './SiteScopeControl'
 import { SiteSearch } from './SiteSearch'
 import { SiteTabs } from './SiteTabs'
-import { navActive, SITE_NAV_LINKS } from './siteNav'
+import { navActive, OPEN_MENU_EVENT, SITE_NAV_LINKS } from './siteNav'
 
 /**
  * The site's header, on every page but a game screen: one floating bar with
@@ -89,6 +89,16 @@ export function SiteHeader() {
     setMenuOpen(false)
     setInvitesOpen(false)
   }, [routeKey])
+
+  // A page can ask for the menu, to sign in from where the reason to is.
+  useEffect(() => {
+    const open = () => {
+      openerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
+      setMenuOpen(true)
+    }
+    window.addEventListener(OPEN_MENU_EVENT, open)
+    return () => window.removeEventListener(OPEN_MENU_EVENT, open)
+  }, [])
 
   useEffect(() => {
     if (!invitesOpen) return

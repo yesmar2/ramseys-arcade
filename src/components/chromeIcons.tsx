@@ -186,3 +186,64 @@ export function MedalIcon() {
     </Stroke>
   )
 }
+
+/* ---------- a game's page ---------- */
+
+/** Play: a solid triangle, the one filled icon, so it reads as the button it sits in. */
+export function PlayIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M8 5.5v13a1 1 0 0 0 1.5.9l10.2-6.5a1 1 0 0 0 0-1.8L9.5 4.6A1 1 0 0 0 8 5.5Z" fill="currentColor" />
+    </svg>
+  )
+}
+
+/** A streak: days or runs in a row. */
+export function FlameIcon() {
+  return (
+    <Stroke>
+      <path d="M12 21c-3.9 0-6.5-2.6-6.5-6.2 0-3.3 2.3-5.6 3.9-7.7.5 1.9 1.6 3 2.8 3.4-.3-2.7.8-5.5 3.1-7.5.4 3.4 4.2 5.6 4.2 11.6 0 3.8-3.2 6.4-7.5 6.4Z" />
+    </Stroke>
+  )
+}
+
+/** Against the clock. */
+export function TimerIcon() {
+  return (
+    <Stroke>
+      <circle cx="12" cy="13.5" r="7.5" />
+      <path d="M12 9.5v4l2.5 1.5" />
+      <path d="M9.5 2.5h5" />
+    </Stroke>
+  )
+}
+
+/** Something open: a board nobody is on yet, a record nobody holds. */
+export function SparkleIcon() {
+  return (
+    <Stroke>
+      <path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9Z" />
+    </Stroke>
+  )
+}
+
+/** A place still to fill. */
+export function PlusIcon() {
+  return (
+    <Stroke>
+      <path d="M12 5v14" />
+      <path d="M5 12h14" />
+    </Stroke>
+  )
+}
+
+/** A phone beside a desk: where a game plays. */
+export function DevicesIcon() {
+  return (
+    <Stroke>
+      <rect x="2.5" y="4" width="13" height="10" rx="1.6" />
+      <path d="M6 17.5h6" />
+      <rect x="17" y="9" width="4.5" height="11" rx="1.2" />
+    </Stroke>
+  )
+}

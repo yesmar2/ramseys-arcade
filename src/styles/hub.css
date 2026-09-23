@@ -1,149 +1,1417 @@
 /*
- * A game's page, laid out like the home page.
- *
- * The banner (home.css) with the game's own words in it, and beside it, in
- * the rail where the home page keeps the day's pulse, the game's standings:
- * the top five for the period at the banner's height, and a way to the full
- * board. A breadcrumb above says where you are. The shelf below is the
- * wall's tiles (home.css).
+ * A game's page (GameHubPage): its name and Play beside its screen, where it
+ * plays itself, and the period's board beside them; then where you stand, the
+ * record book and any event it is in; how to play; the games most like it.
+ * Everything wears the game's colour, --gh-accent, with --gh-ink on it.
  */
 
-.hub-rail {
+.gh-rail {
   display: flex;
   flex-direction: column;
-  gap: 1.35rem;
+  gap: 1rem;
   width: min(100% - 1.25rem, var(--max-width));
   margin: 0 auto;
-  padding-bottom: 2rem;
+  padding-bottom: 2.5rem;
 }
 
-.hub {
+.gh {
   display: flex;
   flex-direction: column;
-  gap: 1.35rem;
+  gap: 1rem;
 }
 
-/* ---------- where you are ---------- */
-
-/* ---------- the banner and the standings beside it ---------- */
-
-.hub-top {
-  display: flex;
-  flex-direction: column;
-  gap: 1.35rem;
-}
-
-.hub-banner .home-banner__art {
-  cursor: default;
-}
-
-/* A note in the banner where Play would be: coming soon, not on this device. */
-.hub__hint {
-  flex-basis: 100%;
+.gh-cap {
   margin: 0;
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: var(--banner-faint);
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
 }
 
-.hub-standings {
+.gh-more {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 0.86rem;
+  font-weight: 750;
+  color: color-mix(in srgb, var(--gh-accent) 70%, var(--ink));
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.gh-more:hover,
+.gh-more:focus-visible {
+  color: var(--ink);
+}
+
+.gh-more svg {
+  width: 0.95rem;
+  height: 0.95rem;
+}
+
+.gh-hot {
+  color: color-mix(in srgb, var(--gh-accent) 72%, var(--ink));
+  font-weight: 800;
+}
+
+.gh-card {
   display: flex;
   flex-direction: column;
-  gap: 0.6rem;
+  gap: 0.9rem;
   min-width: 0;
-  padding: 0.9rem 1rem 0.8rem;
-  border-radius: 1.25rem;
+  box-sizing: border-box;
+  padding: 1.3rem 1.3rem 1.2rem;
+  border-radius: 1.5rem;
   background: var(--surface);
-  border: 1px solid color-mix(in srgb, var(--board-accent, var(--accent)) 22%, rgba(var(--ink-rgb), 0.08));
+  border: 1px solid rgba(var(--ink-rgb), 0.09);
   box-shadow: var(--shadow-soft);
 }
 
-.hub-standings__head {
+.gh-card__head {
   display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
 }
 
-.hub-standings__title {
+.gh-card__title {
   display: flex;
   align-items: baseline;
   gap: 0.6rem;
   margin: 0;
   font-family: var(--font-display);
-  font-size: 1.05rem;
+  font-size: 1.3rem;
   font-weight: 800;
   letter-spacing: -0.02em;
 }
 
-.hub-standings__note {
-  font-family: var(--font-body);
-  font-size: 0.74rem;
+/* ---------- the top: the game and its board ---------- */
+
+.gh-top {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 25.5rem;
+  gap: 1rem;
+  align-items: stretch;
+}
+
+.gh-top--solo {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.gh-hero {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 25rem) minmax(0, 1fr);
+  gap: 1.4rem;
+  min-height: 32rem;
+  box-sizing: border-box;
+  padding: 1.6rem 1.5rem 1.6rem 2.4rem;
+  border-radius: 1.9rem;
+  background: color-mix(in srgb, var(--gh-accent) 20%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--gh-accent) 40%, transparent);
+  box-shadow: var(--shadow-soft);
+  overflow: hidden;
+}
+
+html[data-theme='light'] .gh-hero {
+  background: color-mix(in srgb, var(--gh-accent) 15%, var(--surface));
+}
+
+.gh-hero__text {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 1.25rem;
+  min-width: 0;
+}
+
+.gh-crumbs {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.gh-crumbs a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.gh-crumbs a:hover,
+.gh-crumbs a:focus-visible {
+  color: var(--ink);
+}
+
+.gh-crumbs [aria-current] {
+  color: var(--ink);
+}
+
+.gh-hero__main {
+  display: flex;
+  flex-direction: column;
+  gap: 1.05rem;
+}
+
+.gh-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin: 0;
+}
+
+.gh-tag {
+  display: inline-flex;
+  align-items: center;
+  height: 1.65rem;
+  padding: 0 0.7rem;
+  border-radius: 999px;
+  background: rgba(var(--ink-rgb), 0.07);
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.gh-tag--lead,
+.gh-tag--note {
+  background: color-mix(in srgb, var(--gh-accent) 16%, transparent);
+  color: color-mix(in srgb, var(--gh-accent) 70%, var(--ink));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--gh-accent) 42%, transparent);
+}
+
+.gh-hero__name {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(3rem, 6vw, 5.25rem);
+  font-weight: 800;
+  letter-spacing: -0.045em;
+  line-height: 0.92;
+  overflow-wrap: anywhere;
+}
+
+.gh-hero__blurb {
+  margin: 0;
+  font-size: clamp(1.1rem, 1.6vw, 1.38rem);
+  font-weight: 600;
+  line-height: 1.35;
+  text-wrap: balance;
+}
+
+.gh-hero__acts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+  margin-top: 0.3rem;
+}
+
+.gh-play {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  min-height: 3.6rem;
+  box-sizing: border-box;
+  padding: 0 1.6rem 0 1.3rem;
+  border-radius: 999px;
+  background: var(--gh-accent);
+  color: var(--gh-ink);
+  font-size: 1.18rem;
+  font-weight: 800;
+  text-decoration: none;
+  white-space: nowrap;
+  box-shadow: 0 10px 26px -8px color-mix(in srgb, var(--gh-accent) 70%, transparent);
+  transition: transform 0.15s ease, filter 0.15s ease;
+}
+
+.gh-play svg,
+.gh-float svg {
+  width: 1.2rem;
+  height: 1.2rem;
+  flex: none;
+}
+
+.gh-play:hover,
+.gh-play:focus-visible {
+  transform: translateY(-1px);
+  filter: brightness(1.05);
+}
+
+.gh-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 3.1rem;
+  box-sizing: border-box;
+  padding: 0 1.15rem;
+  border-radius: 999px;
+  border: 1px solid rgba(var(--ink-rgb), 0.16);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 1rem;
+  font-weight: 750;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.gh-ghost:hover,
+.gh-ghost:focus-visible {
+  border-color: color-mix(in srgb, var(--gh-accent) 55%, transparent);
+}
+
+.gh-hero .gh-share {
+  width: 3.1rem;
+  height: 3.1rem;
+  background: var(--surface);
+}
+
+.gh-hero__hint {
+  margin: 0;
+  font-size: 0.9rem;
   font-weight: 650;
+  color: var(--muted);
+}
+
+.gh-hero__where {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.gh-hero__where svg {
+  width: 1.05rem;
+  height: 1.05rem;
+  flex: none;
+}
+
+/* The screen: the game playing itself, the high score over it, Press start breathing in the corner. */
+.gh-screen {
+  position: relative;
+  align-self: center;
+  display: block;
+  width: 100%;
+  aspect-ratio: 10 / 7;
+  max-height: 29rem;
+  border-radius: 1.4rem;
+  overflow: hidden;
+  background: #0b1116;
+  box-shadow: 0 0 0 1px rgba(var(--ink-rgb), 0.16), 0 24px 50px -24px rgba(0, 0, 0, 0.7);
+}
+
+html[data-theme='light'] .gh-screen {
+  background: #dfeef6;
+}
+
+.gh-screen__thumb {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+}
+
+.gh-screen__thumb .inline-thumb {
+  --inline-thumb-size: 8.5rem;
+}
+
+.gh-screen__game {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  transition: opacity 0.6s ease;
+}
+
+.gh-screen__game.game-preview--ready {
+  opacity: 1;
+}
+
+.gh-screen__top {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.8rem 1rem 1.7rem;
+  background: linear-gradient(rgba(6, 12, 16, 0.74), transparent);
+  color: #e7eef3;
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  pointer-events: none;
+}
+
+html[data-theme='light'] .gh-screen__top {
+  background: linear-gradient(rgba(255, 255, 255, 0.88), transparent);
+  color: #1a2b3c;
+}
+
+.gh-screen__hi b {
+  margin-left: 0.45rem;
+  font-size: 1rem;
+  letter-spacing: 0.04em;
+  color: color-mix(in srgb, var(--gh-accent) 85%, #ffffff);
+}
+
+html[data-theme='light'] .gh-screen__hi b {
+  color: color-mix(in srgb, var(--gh-accent) 58%, #10281c);
+}
+
+.gh-screen__who {
+  letter-spacing: 0.08em;
+}
+
+.gh-screen__start {
+  position: absolute;
+  right: 0.8rem;
+  bottom: 0.8rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  height: 2rem;
+  padding: 0 0.9rem;
+  border-radius: 999px;
+  background: rgba(6, 12, 16, 0.78);
+  color: #e7eef3;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.gh-screen__start::before {
+  content: '';
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 50%;
+  background: var(--gh-accent);
+}
+
+.gh-screen__game.game-preview--ready ~ .gh-screen__start {
+  animation: gh-breathe 2.4s ease-in-out infinite;
+}
+
+@keyframes gh-breathe {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* ---------- the board beside it ---------- */
+
+.gh-board {
+  gap: 0.75rem;
+  padding: 1.2rem 0.9rem 0.9rem;
+}
+
+.gh-board__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.6rem;
+  padding: 0 0.45rem;
+}
+
+.gh-board__count {
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+  font-weight: 700;
   letter-spacing: 0;
   color: var(--muted);
 }
 
-.hub-standings__list {
-  flex: 1;
-  min-height: 0;
+.gh-seg {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: 0.2rem;
+  margin: 0 0.25rem;
+  padding: 0.2rem;
+  border-radius: 999px;
+  background: rgba(var(--ink-rgb), 0.05);
+  border: 1px solid rgba(var(--ink-rgb), 0.08);
 }
 
-.hub-standings__more {
-  align-self: flex-end;
+.gh-seg a {
+  display: grid;
+  place-items: center;
+  min-height: 2.1rem;
+  border-radius: 999px;
+  color: var(--muted);
   font-size: 0.8rem;
   font-weight: 750;
-  color: color-mix(in srgb, var(--board-accent, var(--accent)) 70%, var(--ink));
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.gh-seg a:hover,
+.gh-seg a:focus-visible {
+  color: var(--ink);
+}
+
+.gh-seg a[aria-current] {
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 1px 2px rgba(var(--shade-rgb), 0.16), inset 0 0 0 1px rgba(var(--ink-rgb), 0.08);
+}
+
+html[data-theme='dark'] .gh-seg a[aria-current] {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.gh-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.gh-row {
+  display: grid;
+  grid-template-columns: 1.7rem 1.9rem minmax(0, 1fr) auto 3.3rem;
+  align-items: center;
+  gap: 0.55rem;
+  min-height: 2.7rem;
+  padding: 0 0.55rem;
+  border-radius: 0.9rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.gh-row:hover {
+  background: rgba(var(--ink-rgb), 0.04);
+}
+
+.gh-rows .gh-row:not(:has(.gh-row__pays)) {
+  grid-template-columns: 1.7rem 1.9rem minmax(0, 1fr) auto;
+}
+
+.gh-row__place {
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: var(--muted);
+  text-align: center;
+}
+
+.gh-row--p1 .gh-row__place {
+  color: #d9a31a;
+}
+
+.gh-row--p2 .gh-row__place {
+  color: #9aa9b5;
+}
+
+.gh-row--p3 .gh-row__place {
+  color: #c77a3c;
+}
+
+.gh-row__name {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 0;
+  color: var(--ink);
+  font-size: 0.95rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
   text-decoration: none;
 }
 
-.hub-standings__more:hover,
-.hub-standings__more:focus-visible {
-  color: var(--board-accent, var(--accent));
-  outline: none;
+.gh-row__name > span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-@media (min-width: 64rem) {
-  .hub-top {
+.gh-row__name:hover > span:first-child,
+.gh-row__name:focus-visible > span:first-child {
+  text-decoration: underline;
+}
+
+.gh-row__you {
+  flex: none;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  background: var(--gh-accent);
+  color: var(--gh-ink);
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.gh-row__score {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  font-size: 1rem;
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+.gh-row__score small {
+  font-size: 0.68rem;
+  font-weight: 650;
+  color: var(--muted);
+}
+
+.gh-row__pays {
+  font-size: 0.76rem;
+  font-weight: 750;
+  color: var(--muted);
+  text-align: right;
+}
+
+.gh-row--you {
+  background: color-mix(in srgb, var(--gh-accent) 13%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--gh-accent) 40%, transparent);
+}
+
+.gh-row--you:hover {
+  background: color-mix(in srgb, var(--gh-accent) 17%, transparent);
+}
+
+/* Where a run from someone not on the board would go. */
+.gh-row--ghost {
+  display: flex;
+  gap: 0.6rem;
+  margin-top: 0.35rem;
+  border: 1px dashed color-mix(in srgb, var(--gh-accent) 45%, transparent);
+  color: color-mix(in srgb, var(--gh-accent) 70%, var(--ink));
+  font-size: 0.88rem;
+  font-weight: 750;
+}
+
+.gh-row--ghost:hover {
+  background: none;
+}
+
+.gh-row--ghost svg {
+  width: 1.05rem;
+  height: 1.05rem;
+  flex: none;
+}
+
+.gh-rows--skel .gh-row {
+  display: flex;
+}
+
+.gh-row__skel {
+  --skel-w: 100%;
+}
+
+.gh-gap {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  height: 1.6rem;
+  padding: 0 0.8rem;
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
+.gh-gap::before,
+.gh-gap::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: rgba(var(--ink-rgb), 0.09);
+}
+
+/* An empty period says so, and points at a wider board's best. */
+.gh-open {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.gh-open__note {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  margin: 0 0.25rem;
+  padding: 1.1rem;
+  border-radius: 1.2rem;
+  background: color-mix(in srgb, var(--gh-accent) 12%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--gh-accent) 38%, transparent);
+}
+
+.gh-open__mark {
+  display: grid;
+  place-items: center;
+  width: 2.6rem;
+  height: 2.6rem;
+  border-radius: 0.85rem;
+  background: var(--gh-accent);
+  color: var(--gh-ink);
+}
+
+.gh-open__mark svg {
+  width: 1.3rem;
+  height: 1.3rem;
+}
+
+.gh-open__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.gh-open__copy {
+  margin: 0;
+  font-size: 0.92rem;
+  font-weight: 600;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.gh-open__aim .gh-cap {
+  padding: 0 0.6rem 0.4rem;
+}
+
+/* ---------- the band: where you stand, the record book, the events ---------- */
+
+.gh-band {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr));
+  gap: 1rem;
+  align-items: stretch;
+}
+
+/* Alone in the band (a game with no record book or event running), the card runs in two columns: you on the left, what to do on the right. */
+@media (min-width: 48rem) {
+  .gh-band > .gh-stand:only-child {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 24rem;
-    gap: 1rem;
-    align-items: stretch;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-auto-flow: row dense;
+    align-items: center;
+    gap: 0.9rem 2.5rem;
+  }
+
+  .gh-band > .gh-stand:only-child > .gh-cap {
+    grid-column: 1 / -1;
+  }
+
+  .gh-band > .gh-stand:only-child > .gh-stand__lead,
+  .gh-band > .gh-stand:only-child > .gh-bar {
+    grid-column: 1;
+  }
+
+  .gh-band > .gh-stand:only-child > .gh-callout,
+  .gh-band > .gh-stand:only-child > .gh-aims,
+  .gh-band > .gh-stand:only-child > .gh-stand__signin {
+    grid-column: 2;
   }
 }
 
-/* ---------- the rest of the shelf, as wall tiles ---------- */
-
-.hub__more {
+.gh-stand__lead {
   display: flex;
   flex-direction: column;
+  gap: 0.35rem;
+}
+
+.gh-stand__lead--row {
+  flex-direction: row;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.gh-stand__big {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 3.3rem;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 1;
+}
+
+.gh-stand__big span {
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  color: var(--muted);
+}
+
+.gh-stand__big--words {
+  font-size: 2.2rem;
+  letter-spacing: -0.035em;
+  line-height: 1.05;
+}
+
+.gh-stand__sub {
+  margin: 0;
+  font-size: 0.88rem;
+  font-weight: 700;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.gh-stand__best {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.1rem;
+  text-align: right;
+}
+
+.gh-stand__best b {
+  font-family: var(--font-display);
+  font-size: 1.9rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.gh-stand__best span {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+/* Where the place sits along the whole board, with the share lines on it. */
+.gh-bar {
+  position: relative;
+  height: 3.9rem;
+  margin: 0.2rem 0.3rem 0;
+}
+
+.gh-bar__label {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.gh-bar__label--next {
+  color: var(--ink);
+  font-weight: 800;
+}
+
+.gh-bar__track {
+  position: absolute;
+  top: 1.7rem;
+  left: 0;
+  right: 0;
+  height: 0.6rem;
+  border-radius: 999px;
+  background: rgba(var(--ink-rgb), 0.08);
+  overflow: hidden;
+}
+
+.gh-bar__fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--gh-accent);
+}
+
+.gh-bar__line {
+  position: absolute;
+  top: 1.45rem;
+  width: 2px;
+  height: 1.1rem;
+  margin-left: -1px;
+  border-radius: 2px;
+  background: rgba(var(--ink-rgb), 0.22);
+}
+
+.gh-bar__line--next {
+  top: 1.25rem;
+  height: 1.5rem;
+  background: var(--ink);
+}
+
+.gh-bar__you {
+  position: absolute;
+  top: 1.3rem;
+  width: 1.4rem;
+  height: 1.4rem;
+  margin-left: -0.7rem;
+  box-sizing: border-box;
+  border-radius: 50%;
+  background: var(--surface);
+  box-shadow: 0 0 0 3px var(--gh-accent);
+}
+
+.gh-bar__end {
+  position: absolute;
+  top: 2.95rem;
+  left: 0;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.gh-bar__end--first {
+  left: auto;
+  right: 0;
+}
+
+.gh-callout {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.85rem 1rem;
+  border-radius: 1.1rem;
+  background: color-mix(in srgb, var(--gh-accent) 12%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--gh-accent) 38%, transparent);
+}
+
+.gh-callout__badge {
+  display: grid;
+  place-items: center;
+  flex: none;
+  min-width: 2.6rem;
+  height: 2.6rem;
+  box-sizing: border-box;
+  padding: 0 0.35rem;
+  border-radius: 0.85rem;
+  background: var(--gh-accent);
+  color: var(--gh-ink);
+  font-size: 0.92rem;
+  font-weight: 800;
+}
+
+.gh-callout p {
+  margin: 0;
+  font-size: 0.93rem;
+  font-weight: 650;
+  line-height: 1.4;
+}
+
+.gh-aims {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(6.5rem, 1fr));
   gap: 0.6rem;
 }
 
-.hub .wall__grid {
+.gh-aim {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.75rem 0.85rem;
+  border-radius: 1rem;
+  background: rgba(var(--ink-rgb), 0.05);
+}
+
+.gh-aim b {
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+
+.gh-aim span:last-child {
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.gh-stand__signin {
+  margin: 0;
+  font-size: 0.84rem;
+  font-weight: 650;
+  color: var(--muted);
+}
+
+.gh-stand__signin button {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-weight: 800;
+  color: color-mix(in srgb, var(--gh-accent) 70%, var(--ink));
+  cursor: pointer;
+}
+
+.gh-stand__skel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.gh-stand__skel .skel-line {
+  --skel-w: 100%;
+  height: 1.1rem;
+}
+
+/* The record book, from your side. */
+.gh-records {
+  padding: 1.3rem 0.8rem 0.8rem;
+}
+
+.gh-records .gh-card__head {
+  padding: 0 0.5rem;
+}
+
+.gh-rec-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.gh-rec {
+  display: grid;
+  grid-template-columns: 2.5rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem;
+  border-radius: 1rem;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.gh-rec:hover,
+.gh-rec:focus-visible {
+  background: rgba(var(--ink-rgb), 0.04);
+}
+
+.gh-rec__mark {
+  display: grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 0.8rem;
+  background: rgba(var(--ink-rgb), 0.06);
+  color: var(--muted);
+}
+
+.gh-rec__mark svg {
+  width: 1.2rem;
+  height: 1.2rem;
+}
+
+.gh-rec--hot .gh-rec__mark {
+  background: var(--gh-accent);
+  color: var(--gh-ink);
+}
+
+.gh-rec__text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.gh-rec__label {
+  font-size: 0.95rem;
+  font-weight: 800;
+}
+
+.gh-rec__note {
+  font-size: 0.8rem;
+  font-weight: 650;
+  line-height: 1.35;
+  color: var(--muted);
+}
+
+.gh-rec__value {
+  font-size: 1rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* The events it is in: each with its games, its clock, how it's won and a way in. */
+.gh-events {
+  gap: 1rem;
+}
+
+.gh-event {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  gap: 0.85rem;
+}
+
+.gh-event + .gh-event {
+  padding-top: 1rem;
+  border-top: 1px solid rgba(var(--ink-rgb), 0.08);
+}
+
+.gh-event__head {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.gh-event__art {
+  --ev-art-size: 3.1rem;
+  display: block;
+  flex: none;
+  width: 3.1rem;
+  height: 3.1rem;
+}
+
+.gh-event__text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.gh-event__title {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.gh-event__head:hover .gh-event__title,
+.gh-event__head:focus-visible .gh-event__title {
+  text-decoration: underline;
+}
+
+.gh-event__games {
+  font-size: 0.82rem;
+  font-weight: 650;
+  color: var(--muted);
+}
+
+.gh-event__clock {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.8rem 0.95rem;
+  border-radius: 1.1rem;
+  background: rgba(var(--ink-rgb), 0.05);
+}
+
+.gh-event__clock-mark {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 0.8rem;
+  background: var(--surface);
+  color: var(--muted);
+}
+
+.gh-event__clock-mark svg {
+  width: 1.2rem;
+  height: 1.2rem;
+}
+
+.gh-event__clock-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.05rem;
+}
+
+.gh-event__clock-text b {
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.gh-event__clock-text small {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.gh-event__how {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.gh-event__go {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: auto;
+  min-height: 2.9rem;
+  border-radius: 999px;
+  background: var(--event-accent, var(--gh-accent));
+  color: var(--event-ink, var(--gh-ink));
+  font-size: 0.95rem;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.gh-event__go:hover,
+.gh-event__go:focus-visible {
+  filter: brightness(1.06);
+}
+
+/* ---------- how to play ---------- */
+
+.gh-how {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr);
+  gap: 2.4rem;
+  padding: 1.7rem 1.9rem;
+}
+
+.gh-how--single {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.gh-how__play,
+.gh-how__score {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  min-width: 0;
+}
+
+.gh-how__text {
+  max-width: 40rem;
+  margin: 0;
+  font-size: 1.02rem;
+  font-weight: 550;
+  line-height: 1.6;
+  color: var(--muted);
+}
+
+.gh-rules {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.gh-rule {
+  display: grid;
+  grid-template-columns: minmax(7rem, 0.75fr) minmax(0, 1.5fr);
+  align-items: baseline;
+  gap: 1rem;
+  padding: 0.62rem 0;
+  border-top: 1px solid rgba(var(--ink-rgb), 0.08);
+}
+
+.gh-rule:first-child {
+  border-top: 0;
+}
+
+.gh-rule__label {
+  font-size: 0.95rem;
+  font-weight: 750;
+}
+
+.gh-rule__value {
+  font-size: 0.9rem;
+  font-weight: 650;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.gh-rule__value b {
+  color: color-mix(in srgb, var(--gh-accent) 75%, var(--ink));
+  font-weight: 800;
+}
+
+.gh-how__all {
+  align-self: flex-start;
+}
+
+/* ---------- the games most like it ---------- */
+
+.gh-shelf {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  margin-top: 0.4rem;
+}
+
+.gh-shelf__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0 0.25rem;
+}
+
+.gh-shelf__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.gh .gh-shelf__grid {
   grid-template-columns: repeat(6, minmax(0, 1fr));
 }
 
+/* ---------- Play, following along on a phone ---------- */
+
+.gh-float {
+  display: none;
+}
+
+/* ---------- narrower ---------- */
+
 @media (max-width: 72rem) {
-  .hub .wall__grid {
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 56rem) {
-  .hub .wall__grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 42rem) {
-  .hub .wall__grid {
+  .gh .gh-shelf__grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
-@media (max-width: 30rem) {
-  .hub .wall__grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+@media (max-width: 64rem) {
+  .gh-top {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
+/* The screen goes on top, and the words and Play under it. */
+@media (max-width: 56rem) {
+  .gh-hero {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1rem;
+    min-height: 0;
+    padding: 0.55rem 0.55rem 1.3rem;
+    border-radius: 1.75rem;
+  }
+
+  .gh-screen {
+    order: -1;
+    max-height: none;
+    border-radius: 1.3rem;
+  }
+
+  .gh-hero__text {
+    gap: 0.9rem;
+    padding: 0 0.7rem;
+  }
+
+  .gh-hero__main {
+    gap: 0.85rem;
+  }
+
+  .gh-hero__acts .gh-play {
+    flex: 1 1 100%;
+  }
+
+  .gh-hero__acts .gh-ghost {
+    flex: 1;
+  }
+
+  .gh-how {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1.4rem;
+    padding: 1.3rem 1.2rem;
+  }
+
+  .gh-rule {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.15rem;
+  }
+}
+
+/* A phone: the header's tab bar is along the bottom, and Play rides above it once the banner's is gone. */
+@media (max-width: 900px) {
+  .gh-float {
+    position: fixed;
+    left: 50%;
+    bottom: calc(5.8rem + env(safe-area-inset-bottom));
+    z-index: 70;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+    height: 3.2rem;
+    padding: 0 1.5rem 0 1.2rem;
+    border-radius: 999px;
+    background: var(--gh-accent);
+    color: var(--gh-ink);
+    font-size: 1.02rem;
+    font-weight: 800;
+    text-decoration: none;
+    white-space: nowrap;
+    /* A ring of the page round it, so it reads apart from whatever it passes over. */
+    box-shadow: 0 0 0 3px rgba(var(--surface-rgb), 0.92), 0 12px 28px -8px rgba(0, 0, 0, 0.45);
+    opacity: 0;
+    transform: translate(-50%, 1.5rem);
+    pointer-events: none;
+    transition: transform 0.22s ease, opacity 0.22s ease;
+  }
+
+  .gh-float--on {
+    opacity: 1;
+    transform: translate(-50%, 0);
+    pointer-events: auto;
+  }
+
+  body:has(.install-prompt) .gh-float {
+    bottom: calc(11.4rem + env(safe-area-inset-bottom));
+  }
+}
+
+@media (max-width: 40rem) {
+  .gh-stand__big {
+    font-size: 2.9rem;
+  }
+
+  .gh-stand__big--words {
+    font-size: 1.95rem;
+  }
+
+  /* The games most like it run in a line that scrolls, out to the screen's edges. */
+  .gh .gh-shelf__grid {
+    grid-auto-flow: column;
+    grid-auto-columns: 44%;
+    grid-template-columns: none;
+    gap: 0.65rem;
+    margin: 0 -0.625rem;
+    padding: 0 0.625rem 0.4rem;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+  }
+
+  .gh .gh-shelf__grid > li {
+    scroll-snap-align: start;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gh-float,
+  .gh-play {
+    transition: none;
+  }
+
+  .gh-screen__game.game-preview--ready ~ .gh-screen__start {
+    animation: none;
+  }
+}
