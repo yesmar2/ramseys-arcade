@@ -1,7 +1,6 @@
 import { GameWall } from '../components/GameWall'
 import { HomeBoards } from '../components/HomeBoards'
 import { HomeGroupsBand } from '../components/HomeGroupsBand'
-import { HomeYourEvents } from '../components/HomeYourEvents'
 import { HomeHero } from '../components/HomeHero'
 import { HomeOnNow } from '../components/HomeOnNow'
 import { HomeSpotterStrip } from '../components/HomeSpotterStrip'
@@ -27,7 +26,6 @@ export function HomePage() {
           <GameWall />
           <HomeBoards />
           <HomeSpotterStrip />
-          <HomeYourEvents />
           <HomeGroupsBand />
         </div>
       </PageShell>

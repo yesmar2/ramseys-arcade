@@ -3,21 +3,14 @@
  *
  * The game tiles are this page's own vocabulary: a pastel art panel floating
  * on the page gradient with a label underneath, no card. Around them the page
- * now speaks the same language as the rest of the site — the hero from
- * hero.css, and the events list's live cards for the events you are in — so
- * the front door matches the rooms behind it.
+ * speaks the same language as the rest of the site, so the front door matches
+ * the rooms behind it.
  */
 
 .home-rail {
   display: flex;
   flex-direction: column;
   gap: 1.6rem;
-}
-
-/* ---------- your events: the events list's cards, under the grid ---------- */
-
-.home-events {
-  gap: 0.7rem;
 }
 
 /* ---------- per-tile best ---------- */
@@ -1934,7 +1927,7 @@ html[data-theme="dark"] .wall-tile__art .inline-thumb {
   opacity: 1;
 }
 
-/* The badge sits on the glass; the high-score table, when it comes up, covers it. */
+/* The badge sits on the glass, over the game. */
 .wall-tile__flag {
   position: absolute;
   top: 0.5rem;
@@ -1992,127 +1985,6 @@ html[data-theme="dark"] .wall-tile__flag--weekly {
   border-radius: 50%;
   background: var(--flag-dot);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--flag-dot) 25%, transparent);
-}
-
-/*
- * The high-score table, over the screen. It comes up under a pointer or
- * keyboard focus, and otherwise for a few seconds in every sixteen, each
- * cabinet at its own point in the loop, so the wall takes turns showing its
- * tables. A cabinet whose game plays itself keeps the pointer for the game,
- * and puts the table away while it plays.
- */
-.wall-tile__scores {
-  position: absolute;
-  inset: 0;
-  z-index: 3;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 0.5rem;
-  padding: 0 1rem;
-  background: var(--wall-scrim);
-  opacity: 0;
-  animation: wall-attract 16s linear infinite;
-  pointer-events: none;
-}
-
-@keyframes wall-attract {
-  0%,
-  76% {
-    opacity: 0;
-  }
-  79%,
-  95% {
-    opacity: 1;
-  }
-  98%,
-  100% {
-    opacity: 0;
-  }
-}
-
-.wall-tile:not(.wall-tile--live):hover .wall-tile__scores,
-.wall-tile:not(.wall-tile--live):focus-visible .wall-tile__scores {
-  animation: none;
-  opacity: 1;
-}
-
-.wall-tile:has(.game-preview[data-playing]) .wall-tile__scores {
-  animation: none;
-  opacity: 0;
-}
-
-.wall-tile__scores-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 0.5rem;
-  font-size: 0.62rem;
-  font-weight: 800;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--wall-accent-ink);
-}
-
-.wall-tile__scores-head small {
-  font-size: 0.58rem;
-  font-weight: 750;
-  letter-spacing: 0.06em;
-  color: var(--muted);
-}
-
-.wall-tile__score {
-  display: flex;
-  align-items: baseline;
-  gap: 0.55rem;
-  min-width: 0;
-  font-size: 0.8rem;
-  font-weight: 700;
-  line-height: 1.15;
-  font-variant-numeric: tabular-nums;
-}
-
-.wall-tile__score-place {
-  flex: none;
-  width: 1.7rem;
-  font-size: 0.64rem;
-  font-weight: 800;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: var(--wall-accent-ink);
-}
-
-.wall-tile__score-name {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  letter-spacing: 0.02em;
-  color: var(--ink);
-}
-
-.wall-tile__score--you .wall-tile__score-name {
-  color: var(--wall-you-ink);
-}
-
-.wall-tile__score-value {
-  flex: none;
-  margin-left: auto;
-  font-weight: 800;
-  color: var(--ink);
-}
-
-.wall-tile__score-none {
-  font-size: 0.82rem;
-  font-weight: 800;
-  color: var(--ink);
-}
-
-.wall-tile__score-hint {
-  font-size: 0.74rem;
-  font-weight: 600;
-  line-height: 1.35;
-  color: var(--muted);
 }
 
 /* Under the screen: the name and what kind of game, the board's high score, and yours. */
@@ -2223,19 +2095,8 @@ html[data-theme="dark"] .wall-tile__flag--weekly {
   }
 
   .wall-tile__kind,
-  .wall-tile__roomy,
-  .wall-tile__score-place,
-  .wall-tile__scores-head small {
+  .wall-tile__roomy {
     display: none;
-  }
-
-  .wall-tile__scores {
-    gap: 0.3rem;
-    padding: 0 0.7rem;
-  }
-
-  .wall-tile__score {
-    font-size: 0.7rem;
   }
 
   .wall-tile__info {
@@ -2256,7 +2117,6 @@ html[data-theme="dark"] .wall-tile__flag--weekly {
   .wall-tile,
   .wall-tile__art .inline-thumb,
   .wall-tile__preview,
-  .wall-tile__scores,
   .home-banner__art > .inline-thumb {
     animation: none;
     transition: none;

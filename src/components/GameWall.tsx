@@ -150,7 +150,6 @@ function arrangeWall(list: Game[], lead: string | null, spanOf: (g: Game) => Spa
   return best.order
 }
 
-
 /** Still being tuned, or on its way: the games with a row of their own. */
 function isFresh(game: Game) {
   return Boolean(game.inDevelopment || game.comingSoon)
@@ -158,18 +157,14 @@ function isFresh(game: Game) {
 
 const ONE: Span = { w: 1, h: 1 }
 
-/** The places in a cabinet's high-score table. */
-const PLACES = ['1st', '2nd', '3rd']
-
 /**
  * The wall: every game as an arcade cabinet, in a grid that runs five across
  * on a desktop and two on a phone, and no two cabinets of one colour side by
  * side. The finished games stand on the floor; the ones still being tuned get
- * a row of their own under them. Each cabinet's screen carries the game's
- * mark and, every so often or under a pointer, its high-score table; under
- * the screen go the name, the board's high score and yours. The daily's game
- * and the weekly's wear a badge. Tabs along the top cut the wall by what kind
- * of game it is, and say how many of each there are.
+ * a row of their own under them. Each cabinet's screen shows its game, which
+ * plays when asked; under the screen go the name, the board's high score and
+ * yours. The daily's game and the weekly's wear a badge. Tabs along the top
+ * cut the wall by what kind of game it is, and say how many of each there are.
  */
 export function GameWall() {
   const device = useDeviceType()
@@ -178,7 +173,7 @@ export function GameWall() {
   const { official } = useLiveEvents(cleaned)
   const [tab, setTab] = useState<Tab>('all')
   // Your best on each game, where you stand on each board (from the rank the
-  // header already fetched), and the top three on each board.
+  // header already fetched), and who leads each board.
   const bests = usePlayerBests(cleaned, period)
   const { byGame } = useGlobalRank()
   const leaders = useBoardLeaders(period)
@@ -270,7 +265,7 @@ export function WallTile({
   best: number | null
   /** Your place on this game's board for the period, and how many are on it, when you are. */
   standing?: GlobalGamePlace | null
-  /** The board's top runs: the high score under the screen, and the table on it. */
+  /** Who leads the board: the high score under the screen. */
   top?: BoardLeader | null
   daily?: boolean
   weekly?: boolean
@@ -280,15 +275,12 @@ export function WallTile({
   preview?: boolean
 }) {
   const period = useDefaultPeriod()
-  const you = normalizePlayerName(usePlayerName())
   const accent = resolveGameAccent(game.slug, game.accent)
   const live = preview && hasGamePreview(game.slug)
   const style = {
     '--tile-accent': accent,
     animationDelay: `${Math.min(index, 12) * 0.04}s`,
   } as CSSProperties
-  // Every cabinet shows its table for a few seconds of a sixteen-second loop, each at its own point in it.
-  const attract = { animationDelay: `-${(((index * 7) % 15) * 1.07).toFixed(2)}s` } as CSSProperties
   const flag = game.comingSoon
     ? { label: 'Coming soon', kind: 'soon' }
     : daily
@@ -302,8 +294,7 @@ export function WallTile({
   const place = standing?.place ?? null
   const total = standing?.total ?? null
   const periodWord = PERIOD_LABELS[period].toLowerCase()
-  const rows = top ? (top.entries.length > 0 ? top.entries : [top.entry]) : []
-  const kind = (game.tags ?? []).map((tag) => TAG_LABELS[tag]).join(' · ') || 'Game'
+  const kind =(game.tags ?? []).map((tag) => TAG_LABELS[tag]).join(' · ') || 'Game'
   const label = [
     game.name,
     flag ? flag.label.toLowerCase() : null,
@@ -318,12 +309,7 @@ export function WallTile({
 
   return (
     <li className="wall__cell">
-      <a
-        className={`wall-tile${live ? ' wall-tile--live' : ''}`}
-        href={gameHref(game.slug)}
-        style={style}
-        aria-label={label}
-      >
+      <a className="wall-tile" href={gameHref(game.slug)} style={style} aria-label={label}>
         <span className="wall-tile__screen">
           <span className="wall-tile__art" aria-hidden="true">
             <GameThumbArt slug={game.slug} accent={accent} />
@@ -334,29 +320,6 @@ export function WallTile({
               {flag.label}
             </span>
           ) : null}
-          <span className="wall-tile__scores" style={attract} aria-hidden="true">
-            <span className="wall-tile__scores-head">
-              High scores
-              {top ? <small>{top.period === 'all' ? 'All time' : PERIOD_LABELS[top.period]}</small> : null}
-            </span>
-            {rows.length > 0 ? (
-              rows.map((e, i) => (
-                <span
-                  key={e.id}
-                  className={`wall-tile__score${you && e.name === you ? ' wall-tile__score--you' : ''}`}
-                >
-                  <span className="wall-tile__score-place">{PLACES[i]}</span>
-                  <span className="wall-tile__score-name">{e.name}</span>
-                  <span className="wall-tile__score-value">{fmt(e.score)}</span>
-                </span>
-              ))
-            ) : (
-              <>
-                <span className="wall-tile__score-none">No scores yet</span>
-                <span className="wall-tile__score-hint">The first run posted holds the record.</span>
-              </>
-            )}
-          </span>
         </span>
         <span className="wall-tile__info" aria-hidden="true">
           <span className="wall-tile__title">
