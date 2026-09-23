@@ -176,12 +176,13 @@ export function ChevronRightIcon() {
   )
 }
 
-export function TrophyIcon() {
+/** A medal on its ribbon: a place on the boards, where the events icon is the trophy. */
+export function MedalIcon() {
   return (
     <Stroke>
-      <path d="M8 21h8" />
-      <path d="M12 17v4" />
-      <path d="M7 4h10v5a5 5 0 0 1-10 0Z" />
+      <path d="M8 3l4 6.2L16 3" />
+      <circle cx="12" cy="15" r="5.6" />
+      <path d="M10.9 13.6l1.3-1v5" />
     </Stroke>
   )
 }

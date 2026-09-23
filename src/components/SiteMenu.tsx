@@ -17,12 +17,12 @@ import {
   EventsIcon,
   FriendIcon,
   GroupsIcon,
+  MedalIcon,
   MoonIcon,
   PencilIcon,
   SignOutIcon,
   StatsIcon,
   SunIcon,
-  TrophyIcon,
 } from './chromeIcons'
 import { DevImpersonateControl } from './DevImpersonateControl'
 import { NotificationList, type NotificationsState } from './NotificationBell'
@@ -170,7 +170,7 @@ export function SiteMenu({
   ) : signedIn ? (
     <div className="site-menu__card site-menu__card--pitch">
       <span className="site-menu__pitch-mark" aria-hidden="true">
-        <TrophyIcon />
+        <MedalIcon />
       </span>
       <span className="site-menu__pitch-title">Pick a gamer tag</span>
       <span className="site-menu__pitch-copy">Your tag is how the boards know your scores.</span>
@@ -178,7 +178,7 @@ export function SiteMenu({
   ) : (
     <div className="site-menu__card site-menu__card--pitch">
       <span className="site-menu__pitch-mark" aria-hidden="true">
-        <TrophyIcon />
+        <MedalIcon />
       </span>
       <span className="site-menu__pitch-title">Put your scores on the boards</span>
       <span className="site-menu__pitch-copy">
