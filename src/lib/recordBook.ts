@@ -93,7 +93,7 @@ type ClockBook = { title: string; sub: string; short: (label: string) => string 
 const CLOCKS: Partial<Record<string, ClockBook>> = {
   asteroids: {
     title: 'Wave clears',
-    sub: 'From the start of a run to each wave cleared.',
+    sub: 'How fast each wave has been cleared, timed from the wave’s start.',
     short: (label) => label.replace(/ clear$/, ''),
   },
   snake: {
