@@ -1,8 +1,5 @@
 import {
-  PAD_COLS,
-  PAD_COUNT,
   PAD_INNER,
-  PAD_ROWS,
   bubbleRadius,
   bubbleSpot,
   fieldRect,
@@ -95,24 +92,6 @@ function drawCountdown(ctx: CanvasRenderingContext2D, state: GameState, w: numbe
   ctx.textBaseline = 'middle'
   ctx.fillStyle = dark ? `rgba(231, 238, 243, ${0.12 - into * 0.05})` : `rgba(26, 43, 60, ${0.1 - into * 0.04})`
   ctx.fillText(String(n), f.x + f.w / 2, f.y + f.h / 2)
-  ctx.restore()
-}
-
-/** For a player with number keys, the ninths of the field they pick, marked faintly in the corners. */
-function drawKeyZones(ctx: CanvasRenderingContext2D, state: GameState, w: number, h: number, dark: boolean) {
-  const f = fieldRect(w, h, state.stageTop)
-  const cw = f.w / PAD_COLS
-  const ch = f.h / PAD_ROWS
-  ctx.save()
-  ctx.font = `500 ${Math.round(Math.max(10, Math.min(cw, ch) * 0.07))}px ${FONT}`
-  ctx.textAlign = 'left'
-  ctx.textBaseline = 'top'
-  ctx.fillStyle = dark ? 'rgba(231, 238, 243, 0.2)' : 'rgba(26, 43, 60, 0.22)'
-  for (let i = 0; i < PAD_COUNT; i++) {
-    const col = i % PAD_COLS
-    const row = Math.floor(i / PAD_COLS)
-    ctx.fillText(String(i + 1), f.x + col * cw + 6, f.y + row * ch + 6)
-  }
   ctx.restore()
 }
 
@@ -334,15 +313,6 @@ function drawFloaters(ctx: CanvasRenderingContext2D, state: GameState, w: number
   ctx.restore()
 }
 
-let keysQuery: MediaQueryList | null = null
-
-/** Number keys pick a ninth of the field; they are marked only for a player who has them. */
-function hasKeys() {
-  if (typeof matchMedia !== 'function') return false
-  keysQuery ??= matchMedia('(hover: hover) and (pointer: fine)')
-  return keysQuery.matches
-}
-
 export function renderGame(
   ctx: CanvasRenderingContext2D,
   state: GameState,
@@ -373,8 +343,9 @@ export function renderGame(
   }
   ctx.fill()
 
+  // The field is bare behind the bubbles: the ninths the number keys still pick
+  // were labelled here from the days of a grid of pads, and are not any more.
   drawField(ctx, state, w, h, dark)
-  if (state.phase === 'playing' && hasKeys()) drawKeyZones(ctx, state, w, h, dark)
   drawCountdown(ctx, state, w, h, dark)
 
   for (const pad of state.pads) {
