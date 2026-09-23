@@ -1,54 +1,40 @@
-import { useEffect, useState, type CSSProperties, type ReactNode } from 'react'
-import { BoardSkeleton } from '../components/BoardChrome'
-import { GameDeviceBadge } from '../components/GameDeviceBadge'
-import { GameThumbArt } from '../components/GameThumbArt'
+import { useEffect, useState, type CSSProperties, type MouseEvent } from 'react'
 import { FriendsCard } from '../components/FriendsPanel'
 import { PageBanner } from '../components/PageBanner'
 import { PageShell } from '../components/PageShell'
 import { PlayerAvatar } from '../components/PlayerAvatar'
-import { PodiumMedal, medalKind } from '../components/PodiumMedal'
+import { PlayerCard } from '../components/PlayerCard'
+import { ProfileBestBoard } from '../components/ProfileBestBoard'
+import { ProfileGames } from '../components/ProfileGames'
+import { ProfileRival } from '../components/ProfileRival'
 import { ShareBoardButton } from '../components/ShareBoardButton'
-import { TrophyCase } from '../components/TrophyCase'
-import { getGame, gamePlayableOn } from '../data/games'
-import {
-  gameBoardHref,
-  gamePlayHref,
-  globalRankingsHref,
-  navigate,
-  focusFromUrl,
-  rankHref,
-  statsHref,
-} from '../hooks/useHashRoute'
+import { TrophyShelf } from '../components/TrophyShelf'
+import { focusFromUrl, globalRankingsHref, rankHref, statsHref } from '../hooks/useHashRoute'
 import { useAuth } from '../hooks/useAuth'
 import { useImpersonation } from '../hooks/useImpersonation'
 import { refreshFriends } from '../hooks/useFriends'
 import { usePlayerName } from '../hooks/usePlayerName'
 import {
-  AVATARS_ENABLED,
-  AVATAR_EVENT,
-  avatarWashColor,
-  getLocalAvatarId,
-  resolveAvatar,
-} from '../lib/avatars'
+  EMPTY_RANK,
+  useGameBests,
+  usePeriodRanks,
+  useRankFor,
+  useScoresAt,
+} from '../hooks/useProfileBoards'
+import { AVATARS_ENABLED, AVATAR_EVENT, avatarWashColor, getLocalAvatarId, resolveAvatar } from '../lib/avatars'
 import { AvatarStudio } from '../components/AvatarStudio'
-import { gapToNextLabel } from '../lib/boardGap'
 import { APP_NAME } from '../lib/brand'
 import { useDefaultPeriod } from '../lib/defaultPeriod'
-import { useDeviceType } from '../lib/device'
 import { sendFriendRequest } from '../lib/friends'
 import { useGlobalRank, useGlobalRankLoading } from '../lib/globalRank'
-import { useActiveGroup } from '../lib/groups'
+import { cachedMyGroups, useActiveGroup } from '../lib/groups'
 import {
   ApiError,
-  fetchGlobalRank,
-  PERIOD_LABELS,
   VISIBLE_LEADERBOARD_GAMES,
-  VISIBLE_LEADERBOARD_PERIODS,
   normalizePlayerName,
-  type GlobalRankResult,
   type LeaderboardPeriod,
 } from '../lib/leaderboard'
-import { resolveGameAccent } from '../lib/theme'
+import { nextLine, periodWord, pointsWord, shareLines, talksInPlaces, toPass } from '../lib/profileMath'
 import { fetchTrophies, type TrophyAward } from '../lib/trophies'
 
 function AddFriendButton({ name }: { name: string }) {
@@ -78,34 +64,36 @@ function AddFriendButton({ name }: { name: string }) {
     <span className="pfh__friend">
       <button
         type="button"
-        className="home-banner__tool"
+        className="home-banner__cta"
         disabled={status === 'busy' || status === 'sent'}
         onClick={() => void send()}
         aria-label={status === 'sent' ? `Friend request sent to ${name}` : `Add ${name} as a friend`}
-        title={status === 'sent' ? 'Request sent' : 'Add friend'}
       >
-        {status === 'sent' ? 'Sent' : status === 'busy' ? '…' : 'Add friend'}
+        {status === 'sent' ? 'Request sent' : status === 'busy' ? '…' : 'Add friend'}
       </button>
       {error ? <span className="pfh__friend-error">{error}</span> : null}
     </span>
   )
 }
 
-type PeriodRanks = Partial<Record<LeaderboardPeriod, GlobalRankResult>>
-
-const empty: GlobalRankResult = {
-  rank: null,
-  score: 0,
-  totalPlayers: 0,
-  byGame: {},
-  nearby: [],
+/** Down to a part of the page, gliding unless motion is turned down, without touching the address. */
+function jumpTo(id: string) {
+  return (event: MouseEvent<HTMLAnchorElement>) => {
+    const target = document.getElementById(id)
+    if (!target) return
+    event.preventDefault()
+    const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    target.scrollIntoView({ behavior: still ? 'instant' : 'smooth', block: 'start' })
+  }
 }
 
-/** "this week" / "this month" / "all time", for mid-sentence use. */
-function periodPhrase(period: LeaderboardPeriod) {
-  return PERIOD_LABELS[period].toLowerCase()
-}
-
+/**
+ * A player's page: their card, their best board, their games, their trophies
+ * and whoever they're up against. Your own, or anyone's by name. Every part
+ * reads from the period picked on the card, and each works however high or
+ * low the player stands and however many are playing: the top ten are told in
+ * places, everyone else in points to the next share of the arcade.
+ */
 export function RankPage({
   player,
   period: periodFromRoute,
@@ -115,7 +103,6 @@ export function RankPage({
 }) {
   const globalPeriod = useDefaultPeriod()
   const period = periodFromRoute ?? globalPeriod
-  const device = useDeviceType()
   const { signedIn } = useAuth()
   const impersonation = useImpersonation()
   // Editing the avatar needs a session, or the dev impersonation which carries a claim token.
@@ -125,7 +112,6 @@ export function RankPage({
   const isSelf = !normalizePlayerName(player ?? '') || viewedName === myName
   const myRank = useGlobalRank()
   const myRankLoading = useGlobalRankLoading()
-  const [ranks, setRanks] = useState<PeriodRanks>({})
   const [trophies, setTrophies] = useState<TrophyAward[] | null>(null)
   const [studioOpen, setStudioOpen] = useState(false)
   const [avatarOverride, setAvatarOverride] = useState<string | null>(null)
@@ -162,28 +148,8 @@ export function RankPage({
   }, [viewedName])
   const groupId = useActiveGroup()
 
-  // Every period is on screen at once, so fetch the lot rather than the one
-  // the route happens to select.
-  useEffect(() => {
-    setRanks({})
-    if (!viewedName) return
-    let cancelled = false
-    void Promise.all(
-      VISIBLE_LEADERBOARD_PERIODS.map((p) =>
-        fetchGlobalRank(viewedName, p)
-          .then((data) => [p, data] as const)
-          .catch(() => [p, empty] as const),
-      ),
-    ).then((pairs) => {
-      if (!cancelled) setRanks(Object.fromEntries(pairs) as PeriodRanks)
-    })
-    return () => {
-      cancelled = true
-    }
-  }, [viewedName, groupId])
+  const ranks = usePeriodRanks(viewedName, groupId)
 
-  // Trophies are fetched here rather than in the case, so the hero can count
-  // them in its caption.
   useEffect(() => {
     if (!viewedName) {
       setTrophies([])
@@ -203,85 +169,86 @@ export function RankPage({
     }
   }, [viewedName])
 
-  // The cached self-rank paints the common case immediately; the fetch above
-  // then fills in the other tiles.
+  // The cached self-rank paints the common case immediately; the fetches then fill in the rest.
   const cachedSelf = isSelf && period === globalPeriod && !myRankLoading ? myRank : null
-  const data = ranks[period] ?? cachedSelf ?? empty
-  const { rank, score, byGame, nearby = [] } = data
-  const rankLoading = !ranks[period] && !cachedSelf
+  const data = ranks[period] ?? cachedSelf ?? EMPTY_RANK
+  const loading = !ranks[period] && !cachedSelf
+  const rank = data.rank
+  const field = data.totalPlayers
 
-  const rankedCount = VISIBLE_LEADERBOARD_GAMES.filter((slug) => Boolean(byGame[slug])).length
-  const totalGames = VISIBLE_LEADERBOARD_GAMES.length
+  // Below the top ten the card talks in points to the next share line, so it needs the points sitting on each.
+  const inShares = !loading && rank != null && !talksInPlaces(rank, field)
+  const linePlaces = inShares ? [1, ...shareLines(field).filter((l) => l.rank < rank!).map((l) => l.rank)] : []
+  const lineScores = useScoresAt(period, linePlaces, groupId)
 
-  const gap =
-    rank != null && rank > 0
-      ? gapToNextLabel({
-          youRank: rank,
-          youScore: score,
-          entries: nearby,
-          formatDelta: (n) => `${n} pt${n === 1 ? '' : 's'}`,
-        })
-      : null
+  // Every game ever placed on comes from the all-time rank; the best run on each, from its board.
+  const allTime = ranks.all ?? null
+  const everPlayed = allTime ? new Set(Object.keys(allTime.byGame)) : null
+  const bestSlugs = allTime
+    ? Object.keys(allTime.byGame).filter((slug) => (VISIBLE_LEADERBOARD_GAMES as readonly string[]).includes(slug))
+    : []
+  const loadedBests = useGameBests(viewedName, bestSlugs, groupId)
+  const bests = allTime ? loadedBests : null
 
-  const hrefFor = (p: LeaderboardPeriod) => rankHref(isSelf ? undefined : viewedName, p)
+  // Someone else's page measures the viewer against them.
+  const viewerData = useRankFor(!isSelf ? myName : '', period, groupId)
+
+  const groupName = groupId ? cachedMyGroups().find((g) => g.id === groupId)?.name : undefined
+  const where = groupName ? `in ${groupName}` : 'in the arcade'
+
   const shareUrl = rankHref(viewedName || undefined, period)
   const shareLabel =
     rank != null
       ? `${viewedName} is #${rank} on ${APP_NAME}. Respect… or revenge?`
       : `Stalk—er, scout—${viewedName} on ${APP_NAME}.`
 
-  /* ---------- hero caption ---------- */
+  // The character's colour washes the card, the way a game's page takes the game's.
+  const avatarId = avatarOverride ?? data.avatarId
+  const accent = AVATARS_ENABLED && viewedName ? avatarWashColor(resolveAvatar(avatarId, viewedName)) : undefined
+  const editable = isSelf && canEditAvatar && AVATARS_ENABLED
 
-  let standing: ReactNode = null
-  if (!rankLoading) {
+  const unplayed = everPlayed ? VISIBLE_LEADERBOARD_GAMES.some((slug) => !everPlayed.has(slug) && !data.byGame[slug]) : false
+  let primary: { label: string; target: string } | null = null
+  if (isSelf && !loading) {
     if (rank == null) {
-      standing = `Not ranked ${periodPhrase(period)} yet`
-    } else if (gap) {
-      standing = (
-        <>
-          {gap.before}
-          {gap.name ? (
-            <a className="hero__sub-link" href={rankHref(gap.name, period)}>
-              {gap.name}
-            </a>
-          ) : null}
-          {` ${periodPhrase(period)}`}
-        </>
-      )
+      primary = { label: 'Pick a game', target: unplayed ? 'quick' : 'games' }
+    } else if (inShares) {
+      const line = nextLine(rank, field)
+      const lineScore = line ? lineScores.scores[line.rank] : undefined
+      primary = {
+        label: lineScore != null ? `Find ${pointsWord(toPass(lineScore, data.score))}` : 'Find more points',
+        target: unplayed ? 'quick' : 'rival',
+      }
+    } else if (rank === 1) {
+      primary = { label: 'Stay on top', target: 'rival' }
     } else {
-      standing = `#${rank} ${periodPhrase(period)}`
+      primary = { label: 'Close the gap', target: 'rival' }
     }
   }
-  const games =
-    rankLoading || !viewedName
-      ? null
-      : rankedCount === 0
-        ? `No games ranked ${periodPhrase(period)}`
-        : `Ranked on ${rankedCount} of ${totalGames} games`
 
-  const trophyCount = trophies?.length ?? 0
-
-  /* ---------- by-game rows: ranked first, best place at the top ---------- */
-
-  const gameRows = VISIBLE_LEADERBOARD_GAMES.map((slug) => ({
-    slug,
-    game: getGame(slug),
-    row: byGame[slug] ?? null,
-  })).sort((a, b) => {
-    if (a.row && b.row) return a.row.place - b.row.place || b.row.points - a.row.points
-    if (a.row) return -1
-    if (b.row) return 1
-    return 0
-  })
-
-  // The banner takes its colour from the character on it, the way a game's page takes the game's.
-  const avatarId = avatarOverride ?? data.avatarId
-  const bannerAccent =
-    AVATARS_ENABLED && viewedName ? avatarWashColor(resolveAvatar(avatarId, viewedName)) : undefined
+  const actions = isSelf ? (
+    <>
+      {primary ? (
+        <a className="home-banner__cta" href={`#${primary.target}`} onClick={jumpTo(primary.target)}>
+          {primary.label}
+          <svg className="pcard__arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M5 12h14" />
+            <path d="M13 6l6 6-6 6" />
+          </svg>
+        </a>
+      ) : null}
+      <ShareBoardButton className="home-banner__ghost" text="Share profile" label={shareLabel} url={shareUrl} />
+    </>
+  ) : (
+    <>
+      {signedIn && myName ? <AddFriendButton name={viewedName} /> : null}
+      <ShareBoardButton className="home-banner__ghost" text="Share" label={shareLabel} url={shareUrl} />
+    </>
+  )
 
   return (
     <PageShell innerClassName="lb-page__inner lb-page__inner--events">
-      <div className="ev pf">
+      <div className="ev pf" style={accent ? ({ '--pf-accent': accent } as CSSProperties) : undefined}>
         {studioOpen && viewedName ? (
           <AvatarStudio
             name={viewedName}
@@ -294,118 +261,109 @@ export function RankPage({
           />
         ) : null}
         {viewedName ? (
-          <PageBanner
-            accent={bannerAccent}
-            ariaLabel={isSelf ? 'Your profile' : `${viewedName}'s profile`}
-            /* Someone else's profile has a way back to the rankings and the
-               tools in a bar; your own keeps Share in the actions row. */
-            back={isSelf ? undefined : { href: globalRankingsHref(period), label: 'Rankings' }}
-            tools={
-              isSelf ? undefined : (
-                <>
-                  {signedIn ? <AddFriendButton name={viewedName} /> : null}
-                  <ShareBoardButton label={shareLabel} url={shareUrl} />
-                </>
-              )
-            }
-            kicker={
-              <>
-                <span className="ev-kicker__bit">{isSelf ? 'Your profile' : 'Player'}</span>
-                {trophies === null ? (
-                  <span className="ev-kicker__bit" aria-hidden="true">
-                    <span className="skel-line" style={{ '--skel-w': '4.5rem' } as CSSProperties} />
+          <>
+            <PlayerCard
+              name={viewedName}
+              isSelf={isSelf}
+              period={period}
+              ranks={ranks}
+              data={data}
+              loading={loading}
+              where={where}
+              accent={accent}
+              art={
+                AVATARS_ENABLED ? (
+                  <PlayerAvatar avatarId={avatarId} name={viewedName} size="xl" />
+                ) : (
+                  <span className="home-banner__glyph">{viewedName.charAt(0).toUpperCase()}</span>
+                )
+              }
+              onArtClick={editable ? () => setStudioOpen(true) : undefined}
+              scores={lineScores}
+              trophies={trophies}
+              actions={actions}
+              backHref={isSelf ? undefined : globalRankingsHref(period)}
+              howHref={rankHref(isSelf ? undefined : viewedName, period)}
+            />
+
+            <ProfileBestBoard name={viewedName} isSelf={isSelf} viewer={isSelf ? '' : myName} bests={bests} groupId={groupId} />
+
+            {!loading ? (
+              <ProfileGames
+                name={viewedName}
+                isSelf={isSelf}
+                period={period}
+                byGame={data.byGame}
+                everPlayed={everPlayed}
+                bests={bests}
+                quickest={isSelf && (rank == null || !talksInPlaces(rank, field))}
+              />
+            ) : null}
+
+            <div className="pf-pair">
+              <TrophyShelf trophies={trophies} isSelf={isSelf} name={viewedName} />
+              {!loading ? (
+                <ProfileRival
+                  name={viewedName}
+                  isSelf={isSelf}
+                  period={period}
+                  data={data}
+                  viewer={isSelf ? '' : myName}
+                  viewerData={viewerData}
+                />
+              ) : null}
+            </div>
+
+            {isSelf ? (
+              <a className="rank-page__stats-link pf-stats" href={statsHref()}>
+                <span className="rank-page__stats-main">
+                  <span className="rank-page__stats-name">Your stats</span>
+                  <span className="rank-page__stats-sub">
+                    Streaks, trends, and the records you&rsquo;re closest to taking. Only you can see them.
                   </span>
-                ) : trophyCount > 0 ? (
-                  <span className="ev-kicker__bit">
-                    {trophyCount} {trophyCount === 1 ? 'trophy' : 'trophies'}
-                  </span>
-                ) : null}
-                {rankLoading ? (
-                  <span className="ev-kicker__bit" aria-hidden="true">
-                    <span className="skel-line" style={{ '--skel-w': '7rem' } as CSSProperties} />
-                  </span>
-                ) : data.totalPlayers > 0 ? (
-                  <span className="ev-kicker__bit">
-                    {data.totalPlayers} {data.totalPlayers === 1 ? 'player' : 'players'} ranked
-                  </span>
-                ) : null}
-              </>
-            }
-            title={viewedName}
-            blurb={
-              standing || games ? (
-                <>
-                  {standing}
-                  {standing && games ? ' · ' : null}
-                  {games}
-                </>
-              ) : undefined
-            }
-            actions={
-              isSelf ? (
-                <ShareBoardButton className="home-banner__ghost" text="Share" label={shareLabel} url={shareUrl} />
-              ) : undefined
-            }
-            figures={
-              <div className="pfh__ranks" role="tablist" aria-label="Period">
-                {VISIBLE_LEADERBOARD_PERIODS.map((p) => {
-                  const row = ranks[p] ?? (p === period ? cachedSelf : null)
-                  const active = p === period
-                  const unranked = Boolean(row) && row!.rank == null
-                  return (
-                    <a
-                      key={p}
-                      role="tab"
-                      aria-selected={active}
-                      className={`pfh__rank${active ? ' pfh__rank--on' : ''}${
-                        unranked ? ' pfh__rank--none' : ''
-                      }`}
-                      href={hrefFor(p)}
-                      onClick={(e) => {
-                        e.preventDefault()
-                        navigate(hrefFor(p))
-                      }}
-                    >
-                      <span className="pfh__rank-label">{PERIOD_LABELS[p]}</span>
-                      <span className="pfh__rank-value">
-                        {row ? (
-                          row.rank != null ? `#${row.rank}` : '—'
-                        ) : (
-                          <span className="skel-line pfh__rank-skel" aria-hidden="true" />
-                        )}
-                      </span>
-                      <span className="pfh__rank-sub">
-                        {row
-                          ? row.rank != null
-                            ? `${row.score} pt${row.score === 1 ? '' : 's'}`
-                            : 'Unranked'
-                          : ' '}
-                      </span>
-                    </a>
-                  )
-                })}
+                </span>
+                <span className="rank-page__stats-go" aria-hidden="true">
+                  →
+                </span>
+              </a>
+            ) : null}
+
+            {isSelf && signedIn ? <FriendsCard /> : null}
+
+            <details className="rank-page__how game-lobby__how-panel" id="rank-how">
+              <summary className="rank-page__how-summary">
+                <span className="rank-page__h" id="rank-how-heading">
+                  How ranks work
+                </span>
+              </summary>
+              <div className="rank-page__how-body">
+                <p className="how-to-play__copy">
+                  A rank adds up a player’s places on every game they{' '}
+                  {period === 'all' ? 'ever played' : `played ${periodWord(period)}`}. Each game pays by the share of
+                  its players they beat:
+                </p>
+                <ul className="game-lobby__scoring">
+                  <li>
+                    <span>1st of the field</span>
+                    <strong>~100 pts</strong>
+                  </li>
+                  <li>
+                    <span>Middle of the pack</span>
+                    <strong>~50 pts</strong>
+                  </li>
+                  <li>
+                    <span>Last of the field</span>
+                    <strong>~1 pt</strong>
+                  </li>
+                </ul>
+                <p className="how-to-play__copy">
+                  So points mean the same however many are playing, and every game played adds some. Climb any board
+                  to move up; a game not played yet is the quickest way. Every score is kept, so the boards run all
+                  the way down.
+                </p>
               </div>
-            }
-            art={
-              AVATARS_ENABLED ? (
-                <>
-                  <PlayerAvatar avatarId={avatarOverride ?? data.avatarId} name={viewedName} size="xl" />
-                  {isSelf && canEditAvatar ? (
-                    <span className="pfh__mark-edit" aria-hidden="true">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M12 20h9" />
-                        <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
-                      </svg>
-                    </span>
-                  ) : null}
-                </>
-              ) : (
-                <span className="home-banner__glyph">{viewedName.charAt(0).toUpperCase()}</span>
-              )
-            }
-            onArtClick={isSelf && canEditAvatar && AVATARS_ENABLED ? () => setStudioOpen(true) : undefined}
-            artLabel="Edit your avatar"
-          />
+            </details>
+          </>
         ) : (
           <PageBanner
             ariaLabel="Your profile"
@@ -415,152 +373,6 @@ export function RankPage({
             art={<span className="home-banner__glyph home-banner__glyph--faint">?</span>}
           />
         )}
-
-        <div className="split">
-          <aside className="split__side" aria-label="Your trophies, stats and friends">
-        {viewedName ? <TrophyCase trophies={trophies} isSelf={isSelf} /> : null}
-
-        {isSelf && viewedName ? (
-          <a className="rank-page__stats-link" href={statsHref()}>
-            <span className="rank-page__stats-main">
-              <span className="rank-page__stats-name">Your stats</span>
-              <span className="rank-page__stats-sub">
-                Streaks, trends, and the records you&rsquo;re closest to taking
-              </span>
-            </span>
-            <span className="rank-page__stats-go" aria-hidden="true">
-              →
-            </span>
-          </a>
-        ) : null}
-
-        {isSelf && viewedName && signedIn ? <FriendsCard /> : null}
-          </aside>
-          <div className="split__main">
-
-        {viewedName ? (
-          <section
-            className="ev-card pfg"
-            aria-label={isSelf ? 'Your standings by game' : `${viewedName}'s standings by game`}
-          >
-            <div className="ev-card__head">
-              <h2 className="ev-card__title">By game</h2>
-              <p className="ev-card__note">
-                {PERIOD_LABELS[period]}
-                {!rankLoading ? ` · ${rankedCount} of ${totalGames} ranked` : ''}
-              </p>
-            </div>
-
-            {rankLoading ? (
-              <div className="pfg__skel">
-                <BoardSkeleton rows={6} />
-              </div>
-            ) : (
-              <>
-                <ol className="pfg__list">
-                  {gameRows.map(({ slug, game, row }) => {
-                    const onDevice = game ? gamePlayableOn(game, device) : true
-                    const accent = resolveGameAccent(slug, game?.accent ?? '#4285f4')
-                    const name = game?.name ?? slug
-                    const medal = row ? medalKind(row.place) : null
-                    const href = row ? gameBoardHref(slug, period) : gamePlayHref(slug)
-                    const rowClass = [
-                      'pfg__row',
-                      row ? '' : 'pfg__row--empty',
-                      row && row.place <= 3 ? `pfg__row--${row.place}` : '',
-                      onDevice ? '' : 'pfg__row--dim',
-                    ]
-                      .filter(Boolean)
-                      .join(' ')
-                    return (
-                      <li key={slug} className={rowClass}>
-                        <a
-                          className="pfg__link"
-                          href={href}
-                          style={{ '--row-accent': accent } as CSSProperties}
-                          aria-label={
-                            row
-                              ? `${name}: place ${row.place}, ${row.points} points. Open ${periodPhrase(period)} board.`
-                              : `${name}: unranked. Play now.`
-                          }
-                        >
-                          <span className="pfg__place">
-                            {row ? (
-                              medal ? (
-                                <PodiumMedal kind={medal} period={period} size="sm" />
-                              ) : (
-                                `#${row.place}`
-                              )
-                            ) : (
-                              '—'
-                            )}
-                          </span>
-                          <span className="pfg__art">
-                            <GameThumbArt slug={slug} accent={accent} />
-                          </span>
-                          <span className="pfg__text">
-                            <span className="pfg__name">{name}</span>
-                            {game ? <GameDeviceBadge game={game} /> : null}
-                          </span>
-                          {row ? (
-                            <span className="pfg__pts">
-                              {row.points}
-                              <span className="pfg__pts-unit">pts</span>
-                            </span>
-                          ) : (
-                            <span className="pfg__go">Play</span>
-                          )}
-                        </a>
-                      </li>
-                    )
-                  })}
-                </ol>
-                <p className="pfg__total">
-                  <span>Total · {periodPhrase(period)}</span>
-                  <strong>{score > 0 ? `${score} pts` : '–'}</strong>
-                </p>
-              </>
-            )}
-          </section>
-        ) : null}
-
-        {isSelf && viewedName ? (
-          <details className="rank-page__how game-lobby__how-panel">
-            <summary className="rank-page__how-summary">
-              <span className="rank-page__h" id="rank-how-heading">
-                How it works
-              </span>
-            </summary>
-            <div className="rank-page__how-body">
-              <p className="how-to-play__copy">
-                Your global rank uses <strong>{periodPhrase(period)}</strong> placements among
-                everyone who posted on each game. Higher place earns more points on that
-                game’s field:
-              </p>
-              <ul className="game-lobby__scoring">
-                <li>
-                  <span>1st of the field</span>
-                  <strong>~100 pts</strong>
-                </li>
-                <li>
-                  <span>Middle of the pack</span>
-                  <strong>~50 pts</strong>
-                </li>
-                <li>
-                  <span>Last of the field</span>
-                  <strong>~1 pt</strong>
-                </li>
-              </ul>
-              <p className="how-to-play__copy">
-                Points from every game are added together. Climb any board to move up —
-                playing more games helps too. Every score is kept, so the boards run all
-                the way down.
-              </p>
-            </div>
-          </details>
-        ) : null}
-          </div>
-        </div>
       </div>
     </PageShell>
   )
