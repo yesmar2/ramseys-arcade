@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { AdminWaveSkip } from '../../components/AdminWaveSkip'
 import { GamePlayChrome, PlayReadout, PlayReadoutScore } from '../../components/GameHud'
 import { GameStage } from '../../components/GameStage'
+import { PlayReadoutStats, PlayStat } from '../../components/PlayStats'
 import { GameStartCard } from '../../components/GameStartCard'
 import { PauseButton, GamePauseOverlay } from '../../components/PauseControls'
 import { ScoreSaveCard } from '../../components/ScoreSaveCard'
@@ -207,6 +208,12 @@ export function StackerGame() {
           >
             {ui.score}
           </PlayReadoutScore>
+          {/* Perfects in a row, while there is a run of them: five grows the platform back. */}
+          {ui.status === 'playing' && ui.perfectStreak >= 2 ? (
+            <PlayReadoutStats>
+              <PlayStat label="Perfect" value={`×${ui.perfectStreak}`} />
+            </PlayReadoutStats>
+          ) : null}
         </PlayReadout>
 
         <div className="stacker__overlay">
