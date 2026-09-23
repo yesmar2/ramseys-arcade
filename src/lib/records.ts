@@ -44,6 +44,12 @@ export type RecordDef = {
 
 export type RecordSummary = RecordDef & {
   top: LeaderboardEntry | null
+  /** The best of the other players. Absent from older API builds. */
+  second?: LeaderboardEntry | null
+  /** Players on the record's board, one each. Absent from older API builds. */
+  players?: number
+  /** Where the player asked about stands; null when not on it, absent when nobody was asked about. */
+  you?: YouEntry | null
 }
 
 export type RecordBoardResult = {
@@ -351,9 +357,13 @@ export async function submitPatriotDirectStreak(
 export async function fetchGameRecords(
   game: string,
   period: LeaderboardPeriod = 'all',
+  /** Also say where this player stands on each record. */
+  name?: string,
 ): Promise<{ game: string; records: RecordSummary[] }> {
   return withGroupFallback(async () => {
     const params = applyBoardScope(new URLSearchParams({ period }))
+    const cleaned = normalizePlayerName(name ?? '')
+    if (cleaned) params.set('name', cleaned)
     const data = await api<{ game: string; records?: RecordSummary[] }>(
       `/records/${encodeURIComponent(game)}?${params.toString()}`,
     )

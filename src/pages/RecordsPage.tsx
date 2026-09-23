@@ -8,9 +8,9 @@ import {
 import { BoardSideRail } from '../components/BoardSideRail'
 import { EventArt } from '../components/EventCard'
 import { Footer } from '../components/Footer'
-import { GameRecordsPanel } from '../components/GameRecordsPanel'
 import { PageBanner } from '../components/PageBanner'
 import { PageShell } from '../components/PageShell'
+import { RecordBookView } from '../components/RecordBookView'
 import { SiteHeader } from '../components/SiteHeader'
 import { LeaderboardList } from '../components/LeaderboardList'
 import { ShareBoardButton } from '../components/ShareBoardButton'
@@ -31,16 +31,14 @@ import { APP_NAME } from '../lib/brand'
 import { groupBoardEmptyTitle, useActiveGroup } from '../lib/groups'
 import { resolveGameAccent } from '../lib/theme'
 import {
+  coerceVisiblePeriod,
   normalizePlayerName,
   PERIOD_LABELS,
   type LeaderboardEntry,
   type LeaderboardPeriod,
 } from '../lib/leaderboard'
-import {
-  fetchRecordBoard,
-  formatRecordScore,
-  type RecordBoardResult,
-} from '../lib/records'
+import { recordValue } from '../lib/recordBook'
+import { fetchRecordBoard, type RecordBoardResult } from '../lib/records'
 
 const INITIAL_ROWS = 10
 
@@ -85,6 +83,7 @@ export function RecordsPage({
   )
 }
 
+/** One game's record book: its records grouped, each with its holder, runner-up and your place. */
 function GameRecordBookPage({
   game,
   period,
@@ -92,14 +91,7 @@ function GameRecordBookPage({
   game: string
   period: LeaderboardPeriod
 }) {
-  const gameMeta = getGame(game)
-  const device = useDeviceType()
-  const accent = resolveGameAccent(game, gameMeta?.accent ?? '#2eb8a0')
-  const title = gameMeta?.name ?? game
-  const canPlay = gameMeta ? gamePlayableOn(gameMeta, device) : false
-  const deviceNote = gameMeta ? deviceRequirementLabel(gameMeta) : null
-
-  if (!gameMeta) {
+  if (!getGame(game)) {
     return (
       <PageShell>
         <p className="lb-empty">That game isn’t on the board.</p>
@@ -108,72 +100,8 @@ function GameRecordBookPage({
   }
 
   return (
-    <PageShell
-      innerClassName="lb-page__inner lb-page__inner--game-board"
-    >
-      <div className="page-stack" style={{ '--board-accent': accent } as CSSProperties}>
-        <PageBanner
-          size="compact"
-          accent={accent}
-          ariaLabel={`${title} record books`}
-          crumbs={[
-            { href: homeHref(), label: 'Games' },
-            { href: gameHref(game), label: title },
-            { label: 'Record books' },
-          ]}
-          kicker={
-            <>
-              <span className="ev-kicker__bit">Record books</span>
-              <span className="ev-kicker__bit">{PERIOD_LABELS[period]}</span>
-            </>
-          }
-          title={title}
-          blurb={`The specialty ledgers for ${title}: fastest clears, longest streaks, milestone times.`}
-          actions={
-            <>
-              {canPlay ? (
-                <a className="home-banner__cta" href={gamePlayHref(game)}>
-                  Play {title}
-                </a>
-              ) : null}
-              <ShareBoardButton
-                className="home-banner__ghost"
-                text="Share"
-                label={`${title} record books on ${APP_NAME} (${PERIOD_LABELS[period]}). Somebody's name is in ink.`}
-                url={recordsHref(game, period)}
-              />
-            </>
-          }
-          art={<EventArt games={[game]} />}
-        />
-        <div className="split">
-          <div className="split__main">
-            <GameRecordsPanel
-              game={game}
-              accent={accent}
-              period={period}
-              tools={
-                <PeriodSwitcher
-                  period={period}
-                  accent={accent}
-                  hrefFor={(p) => recordsHref(game, p)}
-                  onSelect={(p) => {
-                    navigate(recordsHref(game, p))
-                  }}
-                />
-              }
-            />
-            {!canPlay ? (
-              <p className="lb-device-note lb-device-note--footer" role="note">
-                {deviceNote}
-              </p>
-            ) : null}
-          </div>
-          <aside className="split__side" aria-label="More">
-            <BoardSideRail slug={game} accent={accent} period={period} canPlay={canPlay} mode="records" />
-          </aside>
-        </div>
-      </div>
+    <PageShell innerClassName="lb-page__inner">
+      <RecordBookView game={game} period={coerceVisiblePeriod(period)} />
     </PageShell>
   )
 }
@@ -322,7 +250,7 @@ function RecordBoardPage({
                 accent={accent}
                 shown={shown}
                 period={period}
-                formatScore={(score) => formatRecordScore(score, unit, recordId)}
+                formatScore={(score) => recordValue({ id: recordId, unit }, score)}
               />
             )}
 
