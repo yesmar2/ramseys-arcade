@@ -34,6 +34,9 @@ import {
 } from '../lib/tournaments'
 import { resolveGameAccent } from '../lib/theme'
 import { inkOn } from '../lib/color'
+import { fetchGroupDetail, type GroupPublic } from '../lib/groups'
+import { sendInvite } from '../lib/invites'
+import { getLastPlayerName, normalizePlayerName } from '../lib/leaderboard'
 import { openSiteMenu } from '../components/siteNav'
 import '../styles/evp.css'
 
@@ -180,6 +183,10 @@ export function CreateTournamentPage() {
   const [unlimitedAttempts, setUnlimitedAttempts] = useState(false)
   const [maxPlayers, setMaxPlayers] = useState(4)
   const [unlimitedPlayers, setUnlimitedPlayers] = useState(false)
+  /** Made from a group's page: its members are invited once the event exists. */
+  const groupId = useMemo(() => new URLSearchParams(window.location.search).get('group'), [])
+  const [forGroup, setForGroup] = useState<GroupPublic | null>(null)
+  const [inviting, setInviting] = useState(false)
   const [durationHours, setDurationHours] = useState(24)
   const [roundPlayHours, setRoundPlayHours] = useState(24)
   const [elimination, setElimination] = useState<Elimination>('single')
@@ -325,6 +332,40 @@ export function CreateTournamentPage() {
     })
   }
 
+  useEffect(() => {
+    if (!groupId || !account) return
+    let cancelled = false
+    fetchGroupDetail(groupId)
+      .then((g) => {
+        if (cancelled || !(g.isMember || g.isOwner)) return
+        setForGroup(g)
+        // Room for the whole group, as far as the plan allows: an event can't be unlimited.
+        setUnlimitedPlayers(false)
+        setMaxPlayers(Math.max(2, Math.min(g.memberCount, limits.maxDraw)))
+      })
+      .catch(() => {
+        /* Not a group we can see: the page is the plain one. */
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [groupId, account, limits.maxDraw])
+
+  /** Every member but you gets the invite; a tag nobody claimed can't be invited, and is counted. */
+  const inviteGroup = async (eventId: string, group: GroupPublic) => {
+    const me = normalizePlayerName(getLastPlayerName())
+    let missed = 0
+    for (const m of group.members) {
+      if (normalizePlayerName(m.name) === me) continue
+      try {
+        await sendInvite({ kind: 'tournament', targetId: eventId, toName: m.name })
+      } catch {
+        missed += 1
+      }
+    }
+    return missed
+  }
+
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault()
     if (busy || !account || games.length === 0) return
@@ -343,6 +384,10 @@ export function CreateTournamentPage() {
       }
       const created = await createTournament(input)
       if (created.inviteCode) rememberTournamentInvite(created.id, created.inviteCode)
+      if (forGroup) {
+        setInviting(true)
+        await inviteGroup(created.id, forGroup)
+      }
       navigate(tournamentHref(created.id, created.inviteCode ?? undefined))
     } catch (err) {
       // A plan refusal gets its own notice; everything else is a plain error.
@@ -404,8 +449,16 @@ export function CreateTournamentPage() {
             <span aria-hidden="true">›</span>
             <span aria-current="page">Make one</span>
           </nav>
-          <h1 className="evp-create__title">Make an event</h1>
-          <p className="evp-create__lede">Pick the games and the rules, then invite your people.</p>
+          <h1 className="evp-create__title">{forGroup ? `Make an event for ${forGroup.name}` : 'Make an event'}</h1>
+          <p className="evp-create__lede">
+            {forGroup
+              ? `Pick the games and the rules. Once it’s made, the other ${forGroup.memberCount - 1} in ${forGroup.name} get the invite${
+                  forGroup.memberCount > limits.maxDraw
+                    ? `, and the first ${limits.maxDraw} to join are in: that’s as many as an event holds on your plan`
+                    : ''
+                }.`
+              : 'Pick the games and the rules, then invite your people.'}
+          </p>
         </header>
 
         {waitingForAuth ? (
@@ -717,7 +770,11 @@ export function CreateTournamentPage() {
                 className="evp-btn evp-btn--big evp-create__submit"
                 disabled={busy || title.trim().length < 3 || games.length === 0}
               >
-                {busy ? 'Creating…' : `Create ${title.trim().length >= 3 ? title.trim() : 'the event'}`}
+                {inviting && forGroup
+                  ? `Inviting ${forGroup.name}…`
+                  : busy
+                    ? 'Creating…'
+                    : `Create ${title.trim().length >= 3 ? title.trim() : 'the event'}`}
               </button>
             </div>
 

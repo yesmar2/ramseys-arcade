@@ -164,12 +164,14 @@ export function SiteHeader() {
   }
 
   const path = currentPath()
-  // Events have boards of their own, so the site's boards control stays off their pages.
+  // Events and groups have boards of their own, so the site's boards control stays off their pages.
   const showScope =
     route.name !== 'tournaments' &&
     route.name !== 'tournament' &&
     route.name !== 'tournamentCreate' &&
-    route.name !== 'tournamentPlay'
+    route.name !== 'tournamentPlay' &&
+    route.name !== 'groups' &&
+    route.name !== 'group'
 
   const tagged = signedIn && Boolean(playerName)
   // Your own player card is where You leads, so You shows as the current place there.

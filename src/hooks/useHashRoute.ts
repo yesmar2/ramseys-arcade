@@ -175,8 +175,9 @@ export function tournamentsHref() {
   return '/tournaments'
 }
 
-export function tournamentCreateHref() {
-  return '/tournaments/create'
+/** Making an event; for a group, its members are invited once it is made. */
+export function tournamentCreateHref(groupId?: string) {
+  return groupId ? `/tournaments/create?group=${encodeURIComponent(groupId)}` : '/tournaments/create'
 }
 
 export function tournamentHref(id: string, invite?: string) {

@@ -1,20 +1,27 @@
-import { useEffect, useRef, useState, type CSSProperties, type FormEvent, type ReactNode } from 'react'
-import { BoardEmpty, BoardSkeleton } from '../components/BoardChrome'
-import { PageBanner } from '../components/PageBanner'
-import { PageShell } from '../components/PageShell'
-import { PlayerMark } from '../components/PlayerMark'
-import { InviteByTagForm } from '../components/InviteByTagForm'
-import { PendingInvitesStrip } from '../components/PendingInvitesStrip'
+import { useEffect, useState, type CSSProperties, type FormEvent } from 'react'
 import { useConfirm } from '../components/ConfirmPanel'
-import { ShareBoardButton } from '../components/ShareBoardButton'
-import { leaderboardHref, navigate, useRoute } from '../hooks/useHashRoute'
-import { useAuth } from '../hooks/useAuth'
-import { usePlayerName } from '../hooks/usePlayerName'
-import { APP_NAME } from '../lib/brand'
-import { ApiError, normalizePlayerName } from '../lib/leaderboard'
-import { inkOn } from '../lib/color'
 import {
-  appendGroupQuery,
+  GroupBanner,
+  GroupGate,
+  GroupHosting,
+  GroupInvite,
+  GroupLocked,
+  GroupMembers,
+  GroupRecords,
+  GroupStandings,
+  NewestRecords,
+} from '../components/GroupDetail'
+import { GroupCard, GroupsPitch, HowGroupsWork, LinkCard, StartGroupCard } from '../components/GroupsHome'
+import { PageShell } from '../components/PageShell'
+import { PendingInvitesStrip } from '../components/PendingInvitesStrip'
+import { openSiteMenu } from '../components/siteNav'
+import { navigate, useRoute } from '../hooks/useHashRoute'
+import { useAuth } from '../hooks/useAuth'
+import { useGroupBoard } from '../hooks/useGroupBoard'
+import { usePlayerName } from '../hooks/usePlayerName'
+import { inkOn } from '../lib/color'
+import { GROUP_LIMIT, groupAccent, groupStyle, leadLine, youLine, type GroupPeriod } from '../lib/groupPages'
+import {
   createGroup,
   deleteGroup,
   fetchGroupDetail,
@@ -23,7 +30,6 @@ import {
   groupsIndexHref,
   joinGroup,
   kickGroupMember,
-  transferGroup,
   leaveGroup,
   listMyGroups,
   rememberGroupInvite,
@@ -31,181 +37,21 @@ import {
   rotateGroupInvite,
   setActiveGroup,
   storedActiveGroup,
+  transferGroup,
   useActiveGroup,
-  type GroupMember,
   type GroupPublic,
 } from '../lib/groups'
-
-const GROUP_ACCENTS = ['#2eb8a0', '#e85d4c', '#5b7cfa', '#e2a12b', '#9b6bff'] as const
-const GROUP_LIMIT = 5
-const MEMBER_LIMIT = 20
-
-function groupAccent(id: string) {
-  let n = 0
-  for (const ch of id) n = (n + ch.charCodeAt(0)) % GROUP_ACCENTS.length
-  return GROUP_ACCENTS[n] ?? GROUP_ACCENTS[0]
-}
+import { ApiError, normalizePlayerName } from '../lib/leaderboard'
 
 function inviteUrl(id: string, code: string) {
   return `${window.location.origin}${groupHref(id, code)}`
 }
 
-function memberLabel(count: number) {
-  return `${count} member${count === 1 ? '' : 's'}`
-}
-
-function openBoards(id: string) {
-  setActiveGroup(id)
-  navigate(appendGroupQuery(leaderboardHref()))
-}
-
-/** Two heads, for the groups index hero. */
-function GroupsGlyph() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true" width="44" height="44">
-      <circle cx="9" cy="8.5" r="3.4" fill="currentColor" />
-      <circle cx="16.5" cy="9.5" r="2.6" fill="currentColor" opacity="0.65" />
-      <path
-        d="M3.2 18.6c.5-3.3 3-5.1 5.8-5.1s5.3 1.8 5.8 5.1c.1.5-.3.9-.8.9H4c-.5 0-.9-.4-.8-.9Z"
-        fill="currentColor"
-      />
-      <path
-        d="M15.4 19.5c-.1-1.9-.8-3.5-1.9-4.7.9-.5 1.9-.8 3-.8 2.3 0 4.2 1.5 4.6 4.6.1.5-.3.9-.8.9h-4.9Z"
-        fill="currentColor"
-        opacity="0.65"
-      />
-    </svg>
-  )
-}
-
-/** A stack of member marks, four deep, with the overflow as a count. */
-function GroupFaces({ members }: { members: GroupMember[] }) {
-  const shown = members.slice(0, 4)
-  const extra = members.length - shown.length
-  return (
-    <span className="grp__faces" aria-hidden="true">
-      {shown.map((member, index) => (
-        <PlayerMark
-          key={member.name}
-          name={member.name}
-          avatarId={member.avatarId}
-          className="grp__face"
-          style={{ zIndex: shown.length - index } as CSSProperties}
-        />
-      ))}
-      {shown.length === 0 ? <span className="pmark pmark--empty grp__face" /> : null}
-      {extra > 0 ? <span className="grp__face grp__face--more">+{extra}</span> : null}
-    </span>
-  )
-}
-
-/** The page opens on the site's banner; the body is whatever the state calls for. */
-function GroupsHero({
-  accent,
-  back,
-  tools,
-  mark,
-  kicker,
-  title,
-  sub,
-  actions,
-}: {
-  accent?: string
-  back?: boolean
-  tools?: ReactNode
-  /** What stands on the card: the two heads, a letter, a lock. */
-  mark: ReactNode
-  kicker: ReactNode
-  title: string
-  sub: string
-  actions?: ReactNode
-}) {
-  return (
-    <PageBanner
-      accent={accent}
-      ariaLabel={title}
-      back={back ? { href: groupsIndexHref(), label: 'Groups' } : undefined}
-      tools={tools}
-      kicker={kicker}
-      title={title}
-      blurb={sub}
-      actions={actions}
-      art={<span className="home-banner__glyph">{mark}</span>}
-    />
-  )
-}
-
-function CreateGroupForm({
-  name,
-  setName,
-  busy,
-  error,
-  onCreate,
-  onCancel,
-}: {
-  name: string
-  setName: (value: string) => void
-  busy: boolean
-  error: string | null
-  onCreate: (e: FormEvent) => void
-  onCancel?: () => void
-}) {
-  const inputRef = useRef<HTMLInputElement>(null)
-  const canSubmit = name.trim().length >= 2
-
-  useEffect(() => {
-    inputRef.current?.focus()
-  }, [])
-
-  return (
-    <form className="ev-form ev-form--inline" onSubmit={onCreate}>
-      <section className="ev-card">
-        <div className="ev-card__head">
-          <h2 className="ev-card__title">Create a group</h2>
-          <p className="ev-card__note">{name.length}/32</p>
-        </div>
-        <div className="ev-card__body">
-          <label className="ev-field">
-            <span className="visually-hidden">Group name</span>
-            <input
-              ref={inputRef}
-              className="ev-field__input"
-              value={name}
-              maxLength={32}
-              placeholder="Bland Family"
-              autoComplete="off"
-              onChange={(e) => setName(e.target.value)}
-            />
-          </label>
-          <p className="ev-field__hint">
-            Same boards, just your people. Share an invite link and filter weekly, monthly,
-            and all-time scores down to the roster.
-          </p>
-
-          <ul className="ev-facts">
-            <li>Filter any board to this roster</li>
-            <li>Up to {MEMBER_LIMIT} people per group</li>
-            <li>{GROUP_LIMIT} groups per account</li>
-          </ul>
-
-          {error ? <p className="ev-note ev-note--error">{error}</p> : null}
-
-          <div className="ev-form__actions">
-            <button type="submit" className="ev-join__btn" disabled={busy || !canSubmit}>
-              {busy ? 'Creating…' : 'Create group'}
-            </button>
-            {onCancel ? (
-              <button type="button" className="ev-form__cancel" onClick={onCancel}>
-                Not now
-              </button>
-            ) : null}
-          </div>
-        </div>
-      </section>
-    </form>
-  )
-}
-
+/**
+ * The groups page: each of your groups as a card with its month so far and
+ * its records, starting one, and opening one from a link. With no group yet,
+ * what a group is.
+ */
 export function GroupsPage() {
   const { account, loading: authLoading } = useAuth()
   const playerName = normalizePlayerName(usePlayerName())
@@ -215,17 +61,13 @@ export function GroupsPage() {
   const [error, setError] = useState<string | null>(null)
   const [name, setName] = useState('')
   const [busy, setBusy] = useState(false)
-  const [creating, setCreating] = useState(false)
 
   useEffect(() => {
     let cancelled = false
     setLoading(true)
     listMyGroups()
       .then((list) => {
-        if (!cancelled) {
-          setGroups(list)
-          if (list.length === 0 && account) setCreating(true)
-        }
+        if (!cancelled) setGroups(list)
       })
       .catch((err) => {
         if (!cancelled) setError(err instanceof Error ? err.message : 'Failed to load')
@@ -246,10 +88,9 @@ export function GroupsPage() {
     try {
       const group = await createGroup(name)
       if (group.inviteCode) rememberGroupInvite(group.id, group.inviteCode)
-      setActiveGroup(group.id)
       navigate(groupHref(group.id, group.inviteCode ?? undefined))
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not create group')
+      setError(err instanceof Error ? err.message : 'Could not start the group')
       setBusy(false)
     }
   }
@@ -258,109 +99,52 @@ export function GroupsPage() {
 
   return (
     <PageShell innerClassName="lb-page__inner lb-page__inner--events">
-      <div className="ev grp">
-        <GroupsHero
-          mark={<GroupsGlyph />}
-          kicker={
-            <>
-              <span className="ev-kicker__bit">Groups</span>
-              {!waiting && groups.length > 0 ? (
-                <span className="ev-kicker__bit">
-                  {groups.length} of {GROUP_LIMIT}
-                </span>
-              ) : null}
-            </>
-          }
-          title="Groups"
-          sub="Filter the boards to a roster — same scores, just your people."
-          actions={
-            account ? (
-              <button
-                type="button"
-                className={creating ? 'home-banner__ghost' : 'home-banner__cta'}
-                onClick={() => setCreating((open) => !open)}
-              >
-                {creating ? 'Close' : 'Create group'}
-              </button>
-            ) : (
-              <span className="home-banner__hint">Sign in from the header to create a group.</span>
-            )
-          }
-        />
+      <div className="grp">
+        <header className="grp-head">
+          <div>
+            <h1 className="grp-head__title">Groups</h1>
+            <p className="grp-head__lede">The same boards, with just your people on them.</p>
+          </div>
+          {groups.length ? (
+            <p className="grp-cap">
+              {groups.length} of {GROUP_LIMIT} groups
+            </p>
+          ) : null}
+        </header>
 
         {waiting ? (
-          <BoardSkeleton rows={3} />
+          <div className="grp-wait grp-wait--page" aria-busy="true" />
         ) : (
           <>
             <PendingInvitesStrip kind="group" />
-
-            <div className={`split${creating && account ? '' : ' split--solo'}`}>
-              <aside className="split__side">
-            {creating && account ? (
-              <CreateGroupForm
-                name={name}
-                setName={setName}
-                busy={busy}
-                error={error}
-                onCreate={(e) => void onCreate(e)}
-                onCancel={groups.length > 0 ? () => setCreating(false) : undefined}
-              />
-            ) : null}
-
-              </aside>
-              <div className="split__main">
-            {groups.length === 0 ? (
-              <BoardEmpty
-                title="No groups yet"
-                detail={
-                  account
-                    ? 'Name a group and send the invite link. Everyone keeps playing on the same boards.'
-                    : 'Sign in from the header to create a group and send an invite link.'
-                }
-              />
-            ) : (
-              <section className="lst-block" aria-label="Your groups">
-                <div className="lst-block__head">
-                  <h2 className="lst-block__title">Your groups</h2>
-                  <p className="lst-block__note">
-                    {groups.length} of {GROUP_LIMIT}
-                  </p>
-                </div>
-                <ol className="lst">
-                  {groups.map((group) => {
-                    const accent = groupAccent(group.id)
-                    const watching = group.id === activeId
-                    return (
-                      <li
-                        key={group.id}
-                        className={`lst__row${watching ? ' lst__row--you' : ''}`}
-                        style={{ '--event-accent': accent } as CSSProperties}
-                      >
-                        <div className="lst__main lst__main--norank">
-                          <GroupFaces members={group.members} />
-                          <span className="lst__text">
-                            <a className="lst__name" href={groupHref(group.id)}>
-                              <span className="lst__name-text">{group.name}</span>
-                              {watching ? <span className="lst__you">Watching</span> : null}
-                            </a>
-                            <span className="lst__sub">
-                              {memberLabel(group.memberCount)} · {group.isOwner ? 'Owner' : 'Member'}
-                            </span>
-                          </span>
-                          <button
-                            type="button"
-                            className="grp__boards"
-                            onClick={() => openBoards(group.id)}
-                          >
-                            Boards
-                          </button>
-                        </div>
-                      </li>
-                    )
-                  })}
-                </ol>
-              </section>
-            )}
+            <div className="grp-index">
+              <div className="grp-index__main">
+                {groups.length ? (
+                  groups.map((g) => (
+                    <GroupCard
+                      key={g.id}
+                      group={g}
+                      me={playerName}
+                      onBoards={g.id === activeId}
+                      onToggleBoards={() => setActiveGroup(g.id === activeId ? null : g.id)}
+                    />
+                  ))
+                ) : (
+                  <GroupsPitch />
+                )}
+              </div>
+              <div className="grp-index__side">
+                <StartGroupCard
+                  signedIn={Boolean(account)}
+                  full={groups.length >= GROUP_LIMIT}
+                  name={name}
+                  setName={setName}
+                  busy={busy}
+                  error={error}
+                  onCreate={(e) => void onCreate(e)}
+                />
+                <LinkCard onOpen={(id, invite) => navigate(groupHref(id, invite ?? undefined))} />
+                {groups.length ? <HowGroupsWork /> : null}
               </div>
             </div>
           </>
@@ -370,10 +154,16 @@ export function GroupsPage() {
   )
 }
 
+/**
+ * One group. Its members see its standings and its record on every game;
+ * its host also invites, renames, hands it over or deletes it; someone with
+ * an invite sees who is in and joins; someone without one types the code.
+ */
 export function GroupDetailPage({ id, invite }: { id: string; invite?: string }) {
   const route = useRoute()
   const { account } = useAuth()
   const playerName = normalizePlayerName(usePlayerName())
+  const activeId = useActiveGroup()
   const [group, setGroup] = useState<GroupPublic | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -382,18 +172,21 @@ export function GroupDetailPage({ id, invite }: { id: string; invite?: string })
   const [busy, setBusy] = useState(false)
   const [note, setNote] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
-  const [renameDraft, setRenameDraft] = useState('')
   const [renameNote, setRenameNote] = useState<string | null>(null)
+  const [period, setPeriod] = useState<GroupPeriod>('monthly')
 
   const storedInvite = invite ?? getGroupInvite(id) ?? undefined
   const accent = groupAccent(id)
   // Questions about the group ask in a panel in its colour, not the browser's grey box.
   const [ask, question] = useConfirm({ '--celeb-accent': accent, '--hero-ink': inkOn(accent) } as CSSProperties)
 
+  const inside = Boolean(group && (group.isMember || group.isOwner))
+  const board = useGroupBoard(group?.id ?? null, period, inside)
+  const month = useGroupBoard(group?.id ?? null, 'monthly', inside)
+
   const load = async (inviteCode?: string) => {
     const data = await fetchGroupDetail(id, inviteCode ?? storedInvite)
     setGroup(data)
-    setRenameDraft(data.name)
     setNeedsInvite(false)
     setError(null)
     if (data.inviteCode) rememberGroupInvite(id, data.inviteCode)
@@ -428,11 +221,11 @@ export function GroupDetailPage({ id, invite }: { id: string; invite?: string })
     if (busy) return
     const inviteCode = code.trim().toUpperCase()
     if (!inviteCode) {
-      setNote('Enter the invite code from your host.')
+      setNote('Ask the host for the invite link.')
       return
     }
     if (!playerName) {
-      setNote('Set your gamer tag in the header first.')
+      setNote('Pick a gamer tag in the menu first.')
       return
     }
     setBusy(true)
@@ -461,9 +254,9 @@ export function GroupDetailPage({ id, invite }: { id: string; invite?: string })
       window.history.replaceState(null, '', groupHref(id, code))
     } catch (err) {
       if (err instanceof ApiError && err.code === 'INVITE_REQUIRED') {
-        setNote('That invite code is not valid.')
+        setNote('That invite code isn’t right. Check it against the link.')
       } else {
-        setNote(err instanceof Error ? err.message : 'Could not open group')
+        setNote(err instanceof Error ? err.message : 'Could not open the group')
       }
     } finally {
       setBusy(false)
@@ -522,28 +315,27 @@ export function GroupDetailPage({ id, invite }: { id: string; invite?: string })
     }
   }
 
-  const onRename = async (e: FormEvent) => {
-    e.preventDefault()
-    if (busy || !group) return
-    const nextName = renameDraft.trim()
-    if (nextName.length < 2) {
-      setRenameNote('Name must be at least 2 characters.')
-      return
+  const onRename = async (nextName: string): Promise<boolean> => {
+    if (busy || !group) return false
+    const trimmed = nextName.trim()
+    if (trimmed.length < 2) {
+      setRenameNote('A name needs at least 2 characters.')
+      return false
     }
-    if (nextName === group.name) {
-      setRenameNote('That’s already the name.')
-      return
+    if (trimmed === group.name) {
+      setRenameNote(null)
+      return true
     }
     setBusy(true)
     setRenameNote(null)
     try {
-      const next = await renameGroup(id, nextName)
-      if (!next?.name) throw new Error('Could not rename')
+      const next = await renameGroup(id, trimmed)
       setGroup(next)
-      setRenameDraft(next.name)
       setRenameNote('Name saved.')
+      return true
     } catch (err) {
       setRenameNote(err instanceof Error ? err.message : 'Could not rename')
+      return false
     } finally {
       setBusy(false)
     }
@@ -563,7 +355,7 @@ export function GroupDetailPage({ id, invite }: { id: string; invite?: string })
       setGroup(next)
       if (next.inviteCode) rememberGroupInvite(id, next.inviteCode)
     } catch (err) {
-      setNote(err instanceof Error ? err.message : 'Could not rotate invite')
+      setNote(err instanceof Error ? err.message : 'Could not make a new link')
     } finally {
       setBusy(false)
     }
@@ -580,8 +372,7 @@ export function GroupDetailPage({ id, invite }: { id: string; invite?: string })
     if (!yes) return
     setBusy(true)
     try {
-      const next = await kickGroupMember(id, name)
-      setGroup(next)
+      setGroup(await kickGroupMember(id, name))
     } catch (err) {
       setNote(err instanceof Error ? err.message : 'Could not remove member')
     } finally {
@@ -597,15 +388,14 @@ export function GroupDetailPage({ id, invite }: { id: string; invite?: string })
     if (busy) return
     const ok = await ask({
       title: `Make ${name} the host?`,
-      body: 'They get the invite code and the roster controls, and you won’t be able to undo it yourself.',
+      body: 'They get the invite link and the roster controls, and you won’t be able to undo it yourself.',
       confirm: `Make ${name} host`,
     })
     if (!ok) return
     setBusy(true)
     setNote(null)
     try {
-      const next = await transferGroup(id, name)
-      setGroup(next)
+      setGroup(await transferGroup(id, name))
     } catch (err) {
       setNote(err instanceof Error ? err.message : 'Could not hand the group over')
     } finally {
@@ -613,25 +403,13 @@ export function GroupDetailPage({ id, invite }: { id: string; invite?: string })
     }
   }
 
-  const style = {
-    '--event-accent': accent,
-    '--event-ink': inkOn(accent),
-    '--board-accent': accent,
-  } as CSSProperties
+  const style = groupStyle(id)
 
   if (loading) {
     return (
       <PageShell innerClassName="lb-page__inner lb-page__inner--events">
-        <div className="ev grp" style={style}>
-          <GroupsHero
-            accent={accent}
-            back
-            mark={<span className="grp__mark-dots" />}
-            kicker={<span className="ev-kicker__bit">Group</span>}
-            title="Group"
-            sub="Loading the roster…"
-          />
-          <BoardSkeleton rows={4} />
+        <div className="grp" style={style}>
+          <div className="grp-wait grp-wait--page" aria-busy="true" />
         </div>
       </PageShell>
     )
@@ -640,51 +418,8 @@ export function GroupDetailPage({ id, invite }: { id: string; invite?: string })
   if (needsInvite) {
     return (
       <PageShell innerClassName="lb-page__inner lb-page__inner--events">
-        <div className="ev grp" style={style}>
-          <GroupsHero
-            accent={accent}
-            back
-            mark={<span className="grp__mark-lock">?</span>}
-            kicker={<span className="ev-kicker__bit">Private group</span>}
-            title="Invite only"
-            sub="Enter the code from your host to see the roster and join."
-          />
-          <section className="ev-card grp__gate" aria-label="Invite code">
-            <div className="ev-card__head">
-              <h2 className="ev-card__title">Invite code</h2>
-            </div>
-            <div className="ev-card__body">
-              <label className="ev-field">
-                <span className="visually-hidden">Invite code</span>
-                <input
-                  className="ev-field__input grp__code-input"
-                  value={inviteDraft}
-                  maxLength={16}
-                  placeholder="ABCD1234"
-                  autoComplete="off"
-                  spellCheck={false}
-                  onChange={(e) => setInviteDraft(e.target.value.toUpperCase())}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault()
-                      void submitInvite()
-                    }
-                  }}
-                />
-              </label>
-              {note ? <p className="ev-note ev-note--error">{note}</p> : null}
-              <div className="ev-form__actions">
-                <button
-                  type="button"
-                  className="ev-join__btn"
-                  disabled={busy || !inviteDraft.trim()}
-                  onClick={() => void submitInvite()}
-                >
-                  {busy ? 'Checking…' : 'Open group'}
-                </button>
-              </div>
-            </div>
-          </section>
+        <div className="grp" style={style}>
+          <GroupGate draft={inviteDraft} onDraft={setInviteDraft} busy={busy} note={note} onSubmit={() => void submitInvite()} />
         </div>
       </PageShell>
     )
@@ -693,250 +428,108 @@ export function GroupDetailPage({ id, invite }: { id: string; invite?: string })
   if (error || !group) {
     return (
       <PageShell innerClassName="lb-page__inner lb-page__inner--events">
-        <div className="ev grp" style={style}>
-          <GroupsHero
-            accent={accent}
-            back
-            mark={<span className="grp__mark-lock">!</span>}
-            kicker={<span className="ev-kicker__bit">Group</span>}
-            title="Not found"
-            sub={error ?? 'That invite may have been rotated.'}
-          />
+        <div className="grp" style={style}>
+          <section className="grp-banner grp-banner--plain">
+            <h1 className="grp-banner__title">Group not found</h1>
+            <p className="grp-copy">{error ?? 'Its invite link may have been replaced by a new one.'}</p>
+            <div className="grp-acts">
+              <a className="grp-btn grp-btn--ghost" href={groupsIndexHref()}>
+                Your groups
+              </a>
+            </div>
+          </section>
         </div>
       </PageShell>
     )
   }
 
-  const canInvite = group.isOwner && Boolean(group.inviteCode)
-  const roster = group.members
-  const ownerTag = normalizePlayerName(group.ownerName ?? '')
-  const isHost = (name: string) => {
-    const tag = normalizePlayerName(name)
-    // An older API sends no owner: better to label nobody than the wrong one.
-    if (ownerTag) return tag === ownerTag
-    return group.isOwner && Boolean(playerName) && tag === playerName
-  }
+  const viewer = group.isOwner ? 'host' : group.isMember ? 'member' : 'visitor'
+  const url = group.inviteCode ? inviteUrl(id, group.inviteCode) : null
+  const monthEntries = month.table?.entries ?? []
+  const join = playerName ? (
+    <button type="button" className="grp-btn" disabled={busy} onClick={() => void onJoin()}>
+      {busy ? 'Joining…' : `Join as ${playerName}`}
+    </button>
+  ) : (
+    <>
+      <button type="button" className="grp-btn" onClick={openSiteMenu}>
+        Pick a gamer tag to join
+      </button>
+      <span className="grp-hint">Your tag is in the menu. You don’t need an account.</span>
+    </>
+  )
+  const members = (
+    <GroupMembers
+      group={group}
+      me={playerName}
+      canManage={group.isOwner}
+      canLeave={group.isMember && !group.isOwner}
+      busy={busy}
+      onTransfer={(n) => void onTransfer(n)}
+      onKick={(n) => void onKick(n)}
+      onLeave={() => void onLeave()}
+    />
+  )
 
   return (
     <PageShell innerClassName="lb-page__inner lb-page__inner--events">
-      <div className="ev grp" style={style}>
-        <GroupsHero
-          accent={accent}
-          back
-          tools={
-            canInvite ? (
-              <ShareBoardButton
-                label={`Join ${group.name} on ${APP_NAME} and compare scores with the family.`}
-                url={inviteUrl(id, group.inviteCode!)}
-              />
-            ) : null
-          }
-          mark={group.name.trim().charAt(0).toUpperCase() || '?'}
-          kicker={
-            <>
-              <span className="ev-kicker__bit">Group</span>
-              <span className="ev-kicker__bit">{memberLabel(group.memberCount)}</span>
-              {group.isOwner ? (
-                <span className="ev-kicker__bit">You host</span>
-              ) : group.isMember ? (
-                <span className="ev-kicker__bit">You’re in</span>
-              ) : null}
-            </>
-          }
-          title={group.name}
-          sub="Same boards, filtered down to this roster."
-          actions={
-            <>
-              {group.isMember ? (
-                <button type="button" className="home-banner__cta" onClick={() => openBoards(group.id)}>
-                  View boards
-                </button>
-              ) : playerName ? (
-                <button
-                  type="button"
-                  className="home-banner__cta"
-                  disabled={busy || !(storedInvite || inviteDraft)}
-                  onClick={() => void onJoin()}
-                >
-                  {busy ? 'Joining…' : `Join as ${playerName}`}
-                </button>
-              ) : (
-                <span className="home-banner__hint">Set your gamer tag in the header to join.</span>
-              )}
-              {!group.isMember ? (
-                <button type="button" className="home-banner__ghost" onClick={() => openBoards(group.id)}>
-                  Peek at the boards
-                </button>
-              ) : null}
-            </>
-          }
+      <div className="grp" style={style}>
+        <GroupBanner
+          group={group}
+          viewer={viewer}
+          lead={month.table ? leadLine(monthEntries, 'monthly', playerName) : null}
+          you={month.table && playerName ? youLine(monthEntries, playerName, 'monthly', true) : null}
+          inviteUrl={url}
+          copied={copied}
+          onCopyInvite={() => void copyInvite()}
+          join={join}
+          onBoards={activeId === group.id}
+          onSetBoards={(on) => setActiveGroup(on ? group.id : null)}
         />
 
-        {note ? <p className="ev-note ev-note--error">{note}</p> : null}
+        {note ? <p className="grp-error">{note}</p> : null}
 
-        <div className={`grp__layout${canInvite ? ' grp__layout--two' : ''}`}>
-          {canInvite ? (
-            <section className="ev-card grp__invite" aria-label="Invite players">
-              <div className="ev-card__head">
-                <h2 className="ev-card__title">Invite players</h2>
-                <p className="ev-card__note">
-                  Code <span className="grp__code">{group.inviteCode}</span>
-                </p>
-              </div>
-              <div className="ev-card__body">
-                <div className="grp__invite-actions">
-                  <button type="button" className="hero__ghost" onClick={() => void copyInvite()}>
-                    {copied ? 'Copied!' : 'Copy invite link'}
-                  </button>
-                  <button
-                    type="button"
-                    className="ev-form__cancel"
-                    disabled={busy}
-                    onClick={() => void onRotate()}
-                  >
-                    New code
-                  </button>
-                </div>
-                <p className="ev-field__hint">
-                  Anyone with the link can join. Or invite a gamer tag — they’ll get a header
-                  badge and can accept from Home or Events.
-                </p>
-                <InviteByTagForm
-                  kind="group"
-                  targetId={id}
-                  disabled={busy}
-                  excludeNames={roster.map((m) => m.name)}
-                />
-              </div>
-            </section>
-          ) : null}
-
-          <section className="lst-block grp__roster" aria-label="Roster">
-            <div className="lst-block__head">
-              <h2 className="lst-block__title">Roster</h2>
-              <p className="lst-block__note">
-                {group.memberCount} of {MEMBER_LIMIT}
-              </p>
+        {inside ? (
+          <div className="grp-split">
+            <div className="grp-split__main">
+              <GroupStandings group={group} me={playerName} period={period} onPeriod={setPeriod} table={board.table} />
+              <GroupRecords group={group} me={playerName} records={board.records} />
             </div>
-            {roster.length === 0 ? (
-              <p className="ev-empty">No tags yet. Join to add yours to the roster.</p>
-            ) : (
-              <ol className="lst">
-                {roster.map((member, index) => {
-                  const you = Boolean(playerName && member.name === playerName)
-                  return (
-                    <li
-                      key={member.name}
-                      className={`lst__row${you ? ' lst__row--you' : ''}`}
-                      aria-current={you ? 'true' : undefined}
-                    >
-                      <div className="lst__main">
-                        <span className="lst__rank">{index + 1}</span>
-                        <PlayerMark
-                          name={member.name}
-                          avatarId={member.avatarId}
-                          className="lst__mark"
-                        />
-                        <span className="lst__text">
-                          <span className="lst__name">
-                            <span className="lst__name-text">{member.name}</span>
-                            {you ? <span className="lst__you">You</span> : null}
-                          </span>
-                          {/*
-                            * Who holds the group, not who turned up first.
-                            * These had been the same guess, which labelled
-                            * the earliest member Host while the invite
-                            * controls — correctly — stayed with the owner.
-                            */}
-                          <span className="lst__sub">{isHost(member.name) ? 'Host' : 'Member'}</span>
-                        </span>
-                        {group.isOwner && !you ? (
-                          <div className="grp__row-actions">
-                            <button
-                              type="button"
-                              className="ev-form__cancel grp__hand"
-                              disabled={busy}
-                              onClick={() => void onTransfer(member.name)}
-                            >
-                              Make host
-                            </button>
-                            <button
-                              type="button"
-                              className="ev-form__cancel grp__kick"
-                              disabled={busy}
-                              onClick={() => void onKick(member.name)}
-                            >
-                              Remove
-                            </button>
-                          </div>
-                        ) : null}
-                      </div>
-                    </li>
-                  )
-                })}
-              </ol>
-            )}
-          </section>
-        </div>
-
-        {group.isOwner ? (
-          <details className="ev-card grp__manage">
-            <summary className="ev-card__head grp__manage-summary">
-              <h2 className="ev-card__title">Manage group</h2>
-              <span className="ev-card__note">Rename · delete</span>
-            </summary>
-            <form className="ev-card__body ev-form" onSubmit={(e) => void onRename(e)}>
-              <label className="ev-field">
-                <span className="visually-hidden">Group name</span>
-                <input
-                  className="ev-field__input"
-                  value={renameDraft}
-                  maxLength={32}
-                  disabled={busy}
-                  onChange={(e) => {
-                    setRenameDraft(e.target.value)
-                    setRenameNote(null)
-                  }}
+            <aside className="grp-split__side" aria-label={`About ${group.name}`}>
+              {group.isOwner && url ? (
+                <GroupInvite
+                  group={group}
+                  inviteUrl={url}
+                  copied={copied}
+                  busy={busy}
+                  onCopy={() => void copyInvite()}
+                  onRotate={() => void onRotate()}
                 />
-              </label>
-              {renameNote ? (
-                <p
-                  className={`ev-note${renameNote === 'Name saved.' ? '' : ' ev-note--error'}`}
-                >
-                  {renameNote}
-                </p>
               ) : null}
-              <div className="ev-form__actions">
-                <button
-                  type="submit"
-                  className="ev-join__btn"
-                  disabled={busy || renameDraft.trim().length < 2}
-                >
-                  {busy ? 'Saving…' : 'Save name'}
-                </button>
-                <button
-                  type="button"
-                  className="ev-form__cancel grp__danger"
-                  disabled={busy}
-                  onClick={() => void onDelete()}
-                >
-                  Delete group
-                </button>
-              </div>
-            </form>
-          </details>
-        ) : group.isMember ? (
-          <div className="grp__leave">
-            <button
-              type="button"
-              className="ev-form__cancel grp__danger"
-              disabled={busy}
-              onClick={() => void onLeave()}
-            >
-              Leave group
-            </button>
+              <NewestRecords records={board.records} />
+              {members}
+              {group.isOwner ? (
+                <GroupHosting
+                  key={group.name}
+                  group={group}
+                  busy={busy}
+                  renameNote={renameNote}
+                  onRename={onRename}
+                  onDelete={() => void onDelete()}
+                />
+              ) : null}
+            </aside>
           </div>
-        ) : null}
+        ) : (
+          <div className="grp-split">
+            <div className="grp-split__main">
+              <GroupLocked group={group} />
+            </div>
+            <aside className="grp-split__side" aria-label={`Who’s in ${group.name}`}>
+              {members}
+            </aside>
+          </div>
+        )}
         {question}
       </div>
     </PageShell>
