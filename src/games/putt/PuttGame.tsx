@@ -34,7 +34,7 @@ import {
   type GameState,
   type Snapshot,
 } from './game'
-import { renderGame } from './render'
+import { renderGame, warmHole } from './render'
 import { beginRun } from '../../lib/runSession'
 
 const IN_RUN = new Set(['intro', 'aim', 'roll', 'splash', 'sunk'])
@@ -146,6 +146,20 @@ export function PuttGame() {
   useEffect(() => {
     if (ui.phase === 'menu') previousBestRef.current = apiBest
   }, [apiBest, ui.phase])
+
+  // The later holes' outlines and gardens take a moment to work out: do it a hole at a time while the
+  // first is being looked at, so none of them stalls on its first frame.
+  useEffect(() => {
+    let next = 1
+    let timer = 0
+    const warm = () => {
+      if (next >= COURSE.length) return
+      warmHole(COURSE[next++]!)
+      timer = window.setTimeout(warm, 300)
+    }
+    timer = window.setTimeout(warm, 1500)
+    return () => window.clearTimeout(timer)
+  }, [])
 
   // Dev only: lets a script read and drive the state for a play-test.
   useEffect(() => {

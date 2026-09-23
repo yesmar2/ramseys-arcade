@@ -1,11 +1,11 @@
 /*
  * The course, the same every round, so a score means the same thing to
- * everyone on the board. For now it is one hole, while its look and its
- * length are settled; the rest are built to match it.
+ * everyone on the board: five holes, each somewhere of its own.
  *
- * A hole is a place, not a diagram: a long green laid through a garden,
- * several parts to it, each with something of its own to get past or a way
- * to choose, so a good round is five or six strokes a hole.
+ * A hole is a place, not a diagram: a long green laid through a garden, a
+ * castle, a beach or a mountain, several parts to it, each with something of
+ * its own to get past or a way to choose, so a good round is five or six
+ * strokes a hole.
  *
  * A hole is painted. Its ground is a soft union of shapes — discs, ribbons
  * through a line of points, capsules, arcs — inside a box 100 units wide and
@@ -58,10 +58,27 @@ export type Boost = Rect & { dir: number }
  * anticlockwise on screen, up the right side and down the left — and
  * pressing it outward to the bank.
  */
-export type Slope = { shape: Shape; pull?: Vec; bowl?: number; repel?: number; spin?: number }
+export type Slope = {
+  shape: Shape
+  pull?: Vec
+  bowl?: number
+  /** Like a bowl, but without the drag that settles the ball: a floor that dishes toward its middle. */
+  dish?: number
+  repel?: number
+  spin?: number
+  /** How a hill is drawn: a slope, a flight of steps, or open ground a wind blows across. */
+  look?: 'hill' | 'steps' | 'wind'
+}
 
 /** A bare windmill blade: a bar `len` long turning about (x, y) at `speed` radians a second. */
 export type Spinner = { x: number; y: number; len: number; speed: number; phase: number }
+
+/**
+ * A gate: a wall from a to b, `t` half-thick, that is open for the first
+ * `open` share of every `period` seconds and shut the rest. Give it a
+ * drawbridge's period, phase and share and it opens as the bridge comes down.
+ */
+export type Gate = { a: Vec; b: Vec; t: number; period: number; open: number; phase?: number }
 
 /**
  * A windmill: a round tower `r` across the middle, standing in the fairway,
@@ -87,13 +104,17 @@ export type Mill = {
 export type Slider = { a: Vec; b: Vec; t: number; dx: number; dy: number; period: number; phase?: number }
 
 /** A pipe: a ball that rolls into `a` comes out at `b` heading along `out`. */
-export type Portal = { a: Vec; b: Vec; out: number }
+export type Portal = { a: Vec; b: Vec; out: number; look?: 'pipe' | 'cave' | 'drain' }
 
 /** The cup slides from its spot to `to` and back, once every `period` seconds. */
 export type CupPath = { to: Vec; period: number }
 
-/** A drawbridge: ground over the water for the first `down` share of each `period` seconds, gone the rest. */
-export type Drawbridge = { shape: Shape; period: number; down: number; phase?: number }
+/**
+ * A drawbridge: ground over the water for the first `down` share of each
+ * `period` seconds, gone the rest. A sandbar is the same thing drawn as the
+ * tide going out and coming back in.
+ */
+export type Drawbridge = { shape: Shape; period: number; down: number; phase?: number; look?: 'bridge' | 'sandbar' }
 
 /**
  * A ramp: a ball crossing it along `dir` at least `min` fast (or the usual
@@ -106,17 +127,62 @@ export type Ramp = Rect & { dir: number; len: number; min?: number }
  * the pen's edges and anything inside it. Your ball caroms off it, and it
  * caroms off yours.
  */
-export type Rover = { x: number; y: number; r: number; speed: number; heading: number; pen: Rect }
+export type Rover = { x: number; y: number; r: number; speed: number; heading: number; pen: Rect; look?: 'ball' | 'crab' }
 
 /** A mark on the ground: a chevron at (x, y) pointing along `dir`, a hint and nothing more. */
 export type Mark = { x: number; y: number; dir: number }
 
-/** What grows or stands around the green: set by hand where it matters, and the rest scattered. */
-export type Decor = { kind: 'tree' | 'blossom' | 'pine' | 'bush' | 'flowers' | 'stone' | 'lily' | 'reeds'; x: number; y: number; r: number }
+/** A boulder on the green, or something else round that stands there and stops the ball the same way. */
+export type Rock = Bumper & { look?: 'boulder' | 'planter' | 'sandcastle' | 'turret' }
+
+/** Where a hole is: what its rails are made of, the ground round it, and what grows there. */
+export type Theme = 'garden' | 'formal' | 'castle' | 'coast' | 'summit'
+
+/** What a hole's water looks like: a stream, a moat between stone walls, or the sea. */
+export type WaterLook = 'creek' | 'moat' | 'sea'
+
+/**
+ * What grows or stands around the green: set by hand where it matters, and
+ * the rest scattered. Most things are round, `r` across the middle; a wall
+ * or a bed also runs `len` along `angle`.
+ */
+export type Decor = {
+  kind:
+    | 'tree'
+    | 'blossom'
+    | 'pine'
+    | 'bush'
+    | 'flowers'
+    | 'stone'
+    | 'lily'
+    | 'reeds'
+    | 'topiary'
+    | 'cone'
+    | 'urn'
+    | 'bed'
+    | 'fountain'
+    | 'tower'
+    | 'keep'
+    | 'wall'
+    | 'palm'
+    | 'umbrella'
+    | 'shell'
+    | 'boat'
+    | 'lighthouse'
+    | 'snow'
+    | 'waterfall'
+  x: number
+  y: number
+  r: number
+  angle?: number
+  len?: number
+}
 
 export type Hole = {
   name: string
   par: number
+  theme: Theme
+  waterLook: WaterLook
   /** How long the hole is, in field units. */
   h: number
   tee: Vec
@@ -130,9 +196,13 @@ export type Hole = {
   walls: Wall[]
   bumpers: Bumper[]
   /** Boulders on the green: they stop the ball like a wall and do not give. */
-  rocks: Bumper[]
+  rocks: Rock[]
   sand: Shape[]
   water: Shape[]
+  /** Ground that falls away: a ball that rolls in is over the edge, a stroke and back. */
+  pits: Shape[]
+  /** Paving laid on the green: the same to roll on, only the look is stone. */
+  paving: Shape[]
   /** Ground laid over water. */
   bridges: Shape[]
   drawbridges: Drawbridge[]
@@ -141,6 +211,7 @@ export type Hole = {
   ramps: Ramp[]
   spinners: Spinner[]
   mills: Mill[]
+  gates: Gate[]
   sliders: Slider[]
   portals: Portal[]
   rovers: Rover[]
@@ -156,6 +227,8 @@ export const SPINNER_T = 1.5
 export const SAIL_T = 1.6
 /** Half of a traced edge wall's thickness. */
 export const EDGE_T = 0.9
+
+const BAR = 2.2
 
 export const UP = -Math.PI / 2
 export const DOWN = Math.PI / 2
@@ -173,12 +246,82 @@ function ramp(x: number, y: number, w: number, h: number, dir: number, len: numb
 }
 
 /** A hill: the ball is pushed along (px, py) — downhill — while on the shape. */
-function hill(shape: Shape, px: number, py: number): Slope {
-  return { shape, pull: { x: px, y: py } }
+function hill(shape: Shape, px: number, py: number, look?: Slope['look']): Slope {
+  return { shape, pull: { x: px, y: py }, look }
 }
 
-function decor(kind: Decor['kind'], x: number, y: number, r: number): Decor {
-  return { kind, x, y, r }
+/** A floor that dishes toward its middle this hard, with nothing to stop a ball sliding all the way in. */
+function dish(shape: Shape, strength: number): Slope {
+  return { shape, dish: strength }
+}
+
+/** A crown: the ball is pushed away from the shape's middle this hard, so a timid ball rolls off it. */
+function crown(shape: Shape, strength: number): Slope {
+  return { shape, repel: strength }
+}
+
+function decor(kind: Decor['kind'], x: number, y: number, r: number, angle?: number, len?: number): Decor {
+  return { kind, x, y, r, angle, len }
+}
+
+function rock(x: number, y: number, r: number, look?: Rock['look']): Rock {
+  return { x, y, r, look }
+}
+
+/** A plain bar of wall from (x1, y1) to (x2, y2), `t` half-thick. */
+function bar(x1: number, y1: number, x2: number, y2: number, t = BAR): Wall {
+  return { a: { x: x1, y: y1 }, b: { x: x2, y: y2 }, t }
+}
+
+/**
+ * A ring of wall round (x, y), radius R, `t` half-thick, open where `gaps`
+ * say: each an angle and how wide the opening is, in units.
+ */
+function ring(x: number, y: number, R: number, t: number, gaps: [number, number][]): Wall[] {
+  // An even count, so openings across from each other come out the same width.
+  const n = Math.max(16, Math.round(R) * 2)
+  const open = (a: number) =>
+    gaps.some(([g, w]) => {
+      const d = Math.abs((((a - g) % (Math.PI * 2)) + Math.PI * 3) % (Math.PI * 2) - Math.PI)
+      return d < w / 2 / R
+    })
+  const walls: Wall[] = []
+  for (let i = 0; i < n; i++) {
+    const a0 = (i / n) * Math.PI * 2
+    const a1 = ((i + 1) / n) * Math.PI * 2
+    if (open((a0 + a1) / 2)) continue
+    walls.push(bar(x + Math.cos(a0) * R, y + Math.sin(a0) * R, x + Math.cos(a1) * R, y + Math.sin(a1) * R, t))
+  }
+  return walls
+}
+
+/** A gate across from (x1, y1) to (x2, y2): open for the first `open` share of every `period` seconds. */
+function gate(x1: number, y1: number, x2: number, y2: number, period: number, open: number, phase = 0): Gate {
+  return { a: { x: x1, y: y1 }, b: { x: x2, y: y2 }, t: 1, period, open, phase }
+}
+
+/** A drawbridge over the water, hinged at its far end: down for the first `down` share of every `period` seconds. */
+function drawbridge(shape: Shape, period: number, down: number, look?: Drawbridge['look']): Drawbridge {
+  return { shape, period, down, look }
+}
+
+/** A pipe: in at (ax, ay), out at (bx, by) heading along `out`. */
+function pipe(ax: number, ay: number, bx: number, by: number, out: number, look?: Portal['look']): Portal {
+  return { a: { x: ax, y: ay }, b: { x: bx, y: by }, out, look }
+}
+
+/** A crab, scuttling side to side across its strip of beach at `speed`. */
+function crab(x: number, y: number, speed: number, heading: number, pen: Rect): Rover {
+  return { x, y, r: 2.3, speed, heading, pen, look: 'crab' }
+}
+
+/** A beam turning on a post at (x, y), `len` long, at `speed` radians a second. */
+function beam(x: number, y: number, len: number, speed: number, phase = 0): Spinner {
+  return { x, y, len, speed, phase }
+}
+
+function box(x: number, y: number, w: number, h: number): Rect {
+  return { x, y, w, h }
 }
 
 type Spec = Pick<Hole, 'name' | 'par' | 'h' | 'tee' | 'cup'> &
@@ -188,6 +331,8 @@ type Spec = Pick<Hole, 'name' | 'par' | 'h' | 'tee' | 'cup'> &
 function hole(spec: Spec): Hole {
   return {
     ...spec,
+    theme: spec.theme ?? 'garden',
+    waterLook: spec.waterLook ?? 'creek',
     green: spec.green ?? [rect(0, 0, FIELD_W, spec.h)],
     blend: spec.blend ?? 0,
     walls: spec.walls ?? [],
@@ -195,6 +340,8 @@ function hole(spec: Spec): Hole {
     rocks: spec.rocks ?? [],
     sand: spec.sand ?? [],
     water: spec.water ?? [],
+    pits: spec.pits ?? [],
+    paving: spec.paving ?? [],
     bridges: spec.bridges ?? [],
     drawbridges: spec.drawbridges ?? [],
     slopes: spec.slopes ?? [],
@@ -202,6 +349,7 @@ function hole(spec: Spec): Hole {
     ramps: spec.ramps ?? [],
     spinners: spec.spinners ?? [],
     mills: spec.mills ?? [],
+    gates: spec.gates ?? [],
     sliders: spec.sliders ?? [],
     portals: spec.portals ?? [],
     rovers: spec.rovers ?? [],
@@ -274,6 +422,248 @@ export const COURSE: Hole[] = [
       decor('flowers', 44, 372, 2.6),
       decor('stone', 58, 376, 1.8),
     ],
+  }),
+  /*
+   * Fountain Court. A formal garden laid out on one line. Off the tee up an
+   * avenue with three stone planters set across it in turn, so there is no
+   * straight way through. At its head a paved plaza that dishes down into
+   * a fountain: a ball crossing it bends toward the basin, and one that
+   * slows on it slides all the way in. Out of the plaza's far corners two
+   * walks run either side of a long pool: the west walk has a rill down
+   * its middle, a lane either side of it; the east walk has two more
+   * planters to get round. They meet at the top of the pool, and a flight
+   * of steps climbs to a terrace where the cup sits in the middle of a knot
+   * garden, two rings of clipped hedge with their gaps lined up side to side:
+   * get round to one side, and putt straight through both. Inside the inner
+   * ring the ground dishes gently down to the cup.
+   */
+  hole({
+    name: 'Fountain Court',
+    par: 7,
+    theme: 'formal',
+    h: 900,
+    tee: { x: 50, y: 866 },
+    cup: { x: 50, y: 150 },
+    blend: 8,
+    green: [
+      disc(50, 862, 14),
+      ribbon(15, [50, 862], [50, 760], [50, 596]),
+      disc(50, 560, 38),
+      ribbon(11, [27, 534], [18, 488], [18, 400], [24, 344]),
+      ribbon(11, [73, 534], [82, 488], [82, 400], [76, 344]),
+      ribbon(10, [24, 344], [50, 318], [76, 344]),
+      ribbon(11, [50, 318], [50, 196]),
+      disc(50, 150, 40),
+    ],
+    paving: [disc(50, 560, 38)],
+    water: [disc(50, 560, 9), ribbon(1.6, [18, 478], [18, 414]), rect(37, 370, 26, 118)],
+    slopes: [dish(disc(50, 560, 31), 38), hill(ribbon(11, [50, 300], [50, 214]), 0, 55, 'steps'), dish(disc(50, 150, 10), 24)],
+    rocks: [
+      rock(45, 790, 4.2, 'planter'),
+      rock(56, 748, 4.2, 'planter'),
+      rock(45, 706, 4.2, 'planter'),
+      rock(77, 472, 3.8, 'planter'),
+      rock(87, 424, 3.8, 'planter'),
+    ],
+    walls: [
+      ...ring(50, 150, 22, 1.1, [
+        [Math.PI, 14],
+        [0, 14],
+      ]),
+      ...ring(50, 150, 11.5, 1.1, [
+        [Math.PI, 10],
+        [0, 10],
+      ]),
+    ],
+    decor: [
+      decor('fountain', 50, 560, 9),
+      decor('bed', 22, 770, 3.4, DOWN, 70),
+      decor('bed', 78, 770, 3.4, DOWN, 70),
+      decor('urn', 33, 876, 1.9),
+      decor('urn', 67, 876, 1.9),
+      decor('urn', 36, 296, 1.9),
+      decor('urn', 64, 296, 1.9),
+      decor('bed', 50, 356, 2.6, 0, 20),
+    ],
+  }),
+  /*
+   * Castle Keep. Up a winding road to the moat, and over it by the
+   * drawbridge, which is down a little more than half the time: roll onto
+   * it while it is up and the moat has you. The portcullis in the gate
+   * behind it is up while the bridge is down. Or, at the far left of the
+   * bank and behind a boulder, a drain with a grate over it takes a ball
+   * under the walls, no waiting, and lets it out at the foot of the bailey
+   * rolling toward the quintain's side. Inside, the keep
+   * stands in the middle and the way on is round it, past the well on the
+   * left or past the quintain on the right, a beam that swings round on its
+   * post. They meet behind the keep, and a lane runs up through the inner
+   * wall, where a second portcullis keeps a time of its own, to the keep's
+   * garden, where a turret stands between the way in and the cup.
+   */
+  hole({
+    name: 'Castle Keep',
+    par: 7,
+    theme: 'castle',
+    waterLook: 'moat',
+    h: 920,
+    tee: { x: 50, y: 888 },
+    cup: { x: 50, y: 136 },
+    blend: 9,
+    green: [
+      disc(50, 884, 14),
+      ribbon(13, [50, 884], [46, 836], [32, 796], [30, 752], [42, 716], [50, 690]),
+      ribbon(20, [18, 678], [50, 674], [82, 678]),
+      ribbon(10, [10, 656], [90, 656]),
+      capsule(50, 666, 50, 596, 5.2),
+      ribbon(22, [28, 570], [50, 578], [72, 570]),
+      ribbon(11, [26, 556], [19, 490], [21, 410], [30, 356]),
+      ribbon(11, [74, 556], [81, 490], [79, 410], [70, 356]),
+      ribbon(11, [30, 356], [50, 336], [70, 356]),
+      ribbon(11, [50, 336], [50, 250], [50, 196]),
+      disc(50, 156, 34),
+    ],
+    water: [ribbon(8, [-12, 652], [30, 650], [70, 650], [112, 652]), disc(20, 470, 5.4)],
+    drawbridges: [drawbridge(capsule(50, 666, 50, 636, 5.2), 6, 0.55)],
+    gates: [gate(44.8, 608, 55.2, 608, 6, 0.55), gate(39.2, 300, 60.8, 300, 5, 0.5, 2.5)],
+    portals: [pipe(12, 670, 18, 574, RIGHT, 'drain')],
+    spinners: [beam(80, 470, 17, 1.5)],
+    rocks: [rock(50, 166, 7, 'turret'), rock(22, 667, 4.2)],
+    sand: [ribbon(4.5, [41, 804], [36, 776])],
+    decor: [
+      decor('keep', 50, 452, 13),
+      decor('wall', -2, 608, 4, 0, 36),
+      decor('wall', 66, 608, 4, 0, 36),
+      decor('tower', 37, 608, 6.2),
+      decor('tower', 63, 608, 6.2),
+      decor('wall', -1, 604, 3, UP, 500),
+      decor('wall', 101, 604, 3, UP, 500),
+      decor('wall', -2, 294, 3, 0, 40),
+      decor('wall', 62, 294, 3, 0, 40),
+      decor('tower', 39, 294, 4.6),
+      decor('tower', 61, 294, 4.6),
+      decor('wall', -2, 104, 4, 0, 104),
+      decor('tower', 2, 104, 7),
+      decor('tower', 98, 104, 7),
+      decor('tower', 2, 608, 7),
+      decor('tower', 98, 608, 7),
+    ],
+  }),
+  /*
+   * Lighthouse Point. Along a boardwalk by the sea, past a boulder and
+   * where the sea washes in, to a lagoon, and over it by the sandbar, which
+   * is dry while the tide is out and under when it comes back in, or by the
+   * pier out on the right, narrow, always there, and out of the way. Up the
+   * beach past two crabs scuttling back and forth across it and a sandcastle
+   * in the middle, then out along the point, the sea in coves along its left
+   * side, rock pools in the middle of it, and a wind off the sea that leans a
+   * rolling ball toward the coves, to a green at the foot of the lighthouse
+   * with a cove biting into it downwind.
+   */
+  hole({
+    name: 'Lighthouse Point',
+    par: 7,
+    theme: 'coast',
+    waterLook: 'sea',
+    h: 920,
+    tee: { x: 60, y: 886 },
+    cup: { x: 60, y: 116 },
+    blend: 9,
+    green: [
+      disc(60, 882, 14),
+      ribbon(13, [60, 882], [62, 820], [58, 760], [52, 716]),
+      ribbon(18, [30, 700], [56, 696], [84, 700]),
+      ribbon(10, [22, 670], [88, 670]),
+      capsule(46, 692, 46, 628, 6),
+      capsule(82, 696, 82, 626, 4.2),
+      ribbon(24, [44, 616], [60, 606], [82, 614]),
+      ribbon(24, [52, 600], [50, 520], [50, 452]),
+      ribbon(11.5, [50, 452], [64, 410], [68, 360], [54, 312], [46, 262], [56, 214], [62, 170], [60, 136]),
+      disc(60, 124, 30),
+    ],
+    water: [
+      ribbon(22, [-16, 940], [0, 850], [6, 770], [-4, 700], [-6, 600], [0, 480], [6, 380], [10, 300], [4, 200], [-8, 120], [-16, 60]),
+      ribbon(9, [-12, 660], [20, 658], [50, 660], [80, 662], [112, 658]),
+      ribbon(20, [118, 470], [108, 380], [104, 300], [110, 200], [118, 120]),
+      ribbon(22, [-16, 28], [50, 12], [116, 28]),
+      // The sea washing into the boardwalk.
+      disc(44, 792, 7),
+      // Coves biting into the point downwind, rock pools in the middle of it, and a cove biting
+      // into the green.
+      disc(51, 366, 8.5),
+      disc(33, 262, 8),
+      disc(59, 326, 4.2),
+      disc(55, 212, 4.2),
+      disc(33, 112, 8),
+    ],
+    drawbridges: [drawbridge(capsule(46, 692, 46, 628, 6), 7, 0.55, 'sandbar')],
+    bridges: [capsule(82, 696, 82, 626, 4.2)],
+    rovers: [crab(40, 560, 24, 0, box(27, 552, 48, 16)), crab(64, 494, 30, Math.PI, box(27, 486, 48, 16))],
+    rocks: [rock(50, 527, 5, 'sandcastle'), rock(66, 752, 3.4)],
+    slopes: [hill(ribbon(14, [58, 430], [68, 360], [54, 312], [46, 262], [56, 214]), -36, 0, 'wind'), hill(disc(60, 124, 31), -12, 0, 'wind')],
+    decor: [
+      decor('lighthouse', 24, 78, 9),
+      decor('boat', 8, 300, 5, -0.6),
+      decor('boat', 94, 250, 4.5, 2.3),
+      decor('boat', 30, 22, 5, 0.2),
+      decor('umbrella', 88, 574, 3.4),
+      decor('umbrella', 90, 508, 3.2),
+      decor('umbrella', 84, 780, 3.4),
+    ],
+  }),
+  /*
+   * The Summit. Up the mountainside by three switchbacks on a slope that
+   * leans every roll toward the valley, so each leg is aimed uphill of
+   * where it needs to go. At the top of them a ledge, and a drop right
+   * across the mountain. Two ways over, both of them skill: the ramp in the
+   * middle of the ledge, hit hard and straight, or the cave at its far left
+   * end, a small mouth to find, which comes out on the far side heading up
+   * the path. Up beside the falls, past two boulders, and a flight of steps
+   * to the summit, where the cup sits on the crown of the peak and anything
+   * short of dying in it rolls off.
+   */
+  hole({
+    name: 'The Summit',
+    par: 7,
+    theme: 'summit',
+    h: 960,
+    tee: { x: 46, y: 928 },
+    cup: { x: 50, y: 120 },
+    blend: 9,
+    green: [
+      disc(46, 924, 14),
+      ribbon(
+        12.5,
+        [46, 924],
+        [60, 902],
+        [76, 870],
+        [80, 842],
+        [66, 822],
+        [40, 806],
+        [22, 782],
+        [20, 754],
+        [34, 734],
+        [62, 716],
+        [78, 692],
+        [76, 662],
+        [62, 640],
+        [58, 614],
+      ),
+      ribbon(14, [22, 612], [50, 606], [80, 612]),
+      // The ledge and the far side both run on over the edge, so a ball that is not stopped goes down.
+      ribbon(8, [18, 589], [30, 588], [70, 592], [84, 589]),
+      ribbon(18, [26, 550], [50, 544], [74, 550]),
+      ribbon(8, [18, 566], [30, 565], [70, 569], [84, 566]),
+      ribbon(12, [50, 540], [42, 480], [34, 424], [40, 372], [54, 332]),
+      ribbon(12, [54, 332], [58, 270], [50, 210], [50, 170]),
+      disc(50, 128, 36),
+    ],
+    pits: [ribbon(9, [-12, 580], [30, 576], [70, 580], [112, 574])],
+    water: [ribbon(4, [112, 300], [94, 340], [92, 420], [93, 500], [92, 552], [88, 572]), ribbon(12, [-16, 960], [4, 930], [10, 890])],
+    ramps: [ramp(44, 600, 12, 10, UP, 58, 115)],
+    portals: [pipe(14, 604, 34, 538, -Math.PI / 3, 'cave')],
+    slopes: [hill(rect(0, 630, 100, 310), 0, 16), hill(ribbon(12, [58, 300], [50, 214]), 0, 50, 'steps'), crown(disc(50, 120, 13), 22)],
+    rocks: [rock(40, 452, 4), rock(46, 396, 3.6)],
+    decor: [decor('waterfall', 88, 566, 4, DOWN)],
   }),
 ]
 

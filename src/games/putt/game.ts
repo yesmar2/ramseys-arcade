@@ -11,6 +11,7 @@ import {
   SPINNER_T,
   UP,
   type Drawbridge,
+  type Gate,
   type Hole,
   type Mill,
   type Rect,
@@ -88,6 +89,17 @@ const BOOST_ACCEL = 240
 const BOWL_DRAG = 2.5
 /** A spinning floor presses the ball outward this share as hard as it carries it round. */
 const SPIN_OUT = 0.7
+/**
+ * A gentle slope holds a slow ball: under this pull, a ball slower than
+ * STICK_SPEED stays put rather than creeping to the nearest rail, so a hole
+ * can lean without every ball ending at the bottom of it. It lets go of a
+ * ball gradually, from STICK_FULL down, so a slowing ball comes to rest
+ * rather than being carried along a rail at a crawl. A steeper slope sends
+ * it back down whatever its speed.
+ */
+const STICK_PULL = 40
+const STICK_SPEED = 7
+const STICK_FULL = 20
 /** A ball has to be going this fast to take off from a ramp, unless the ramp asks for more; slower, it rolls over it. */
 const RAMP_MIN = 60
 /** And it has to be heading up the ramp: within this much of straight (the cosine of about 35°). */
@@ -98,7 +110,7 @@ const LAND_KEEP = 0.85
 export const BRIDGE_SWING = 0.35
 const TOP_SPEED = 320
 /** A ball slower than this within the cup drops; faster, it skips across. */
-const CUP_CAPTURE_SPEED = 85
+const CUP_CAPTURE_SPEED = 65
 const CUP_PULL = 1.7
 /** The intro flies the length of the hole, cup to tee, in this long. */
 const INTRO_TIME = 2.6
@@ -220,6 +232,8 @@ const TRACE_CELL = 1
 const TRACE_TOL = 0.12
 /** The walls are filed by the square of the ground they could touch a ball in, this many units a side. */
 const WALL_CELL = 6
+/** How far from a wall's line its square reaches: a ball, or a rover up to this big, less half a unit. */
+const FILE_REACH = 3.2
 const WALL_MARGIN = 10
 type Traced = { edges: Vec[][]; walls: Wall[]; cols: number; cells: Wall[][] }
 const traced = new WeakMap<Hole, Traced>()
@@ -240,7 +254,7 @@ function trace(hole: Hole): Traced {
   const rows = Math.ceil((hole.h + WALL_MARGIN * 2) / WALL_CELL)
   const cells: Wall[][] = Array.from({ length: cols * rows }, () => [])
   for (const wall of walls) {
-    const reach = wall.t + BALL_R + 0.5
+    const reach = wall.t + FILE_REACH
     const c0 = Math.max(0, Math.floor((Math.min(wall.a.x, wall.b.x) - reach + WALL_MARGIN) / WALL_CELL))
     const c1 = Math.min(cols - 1, Math.floor((Math.max(wall.a.x, wall.b.x) + reach + WALL_MARGIN) / WALL_CELL))
     const r0 = Math.max(0, Math.floor((Math.min(wall.a.y, wall.b.y) - reach + WALL_MARGIN) / WALL_CELL))
@@ -373,12 +387,29 @@ export function cupAt(hole: Hole, clock: number): Vec {
  * taking BRIDGE_SWING. The ball can cross above a half.
  */
 export function bridgeLevel(db: Drawbridge, clock: number) {
-  const t = clock + (db.phase ?? 0)
-  const u = ((t % db.period) + db.period) % db.period
-  const downFor = db.period * db.down
+  return swing(db.period, db.down, db.phase ?? 0, clock)
+}
+
+/** How open a gate is, 0 shut to 1 open, on the same swing as a drawbridge: it is open above a half. */
+export function gateLevel(g: Gate, clock: number) {
+  return swing(g.period, g.open, g.phase ?? 0, clock)
+}
+
+/** Something that comes and goes on a cycle: in over BRIDGE_SWING at the start, out again after its share. */
+function swing(period: number, share: number, phase: number, clock: number) {
+  const t = clock + phase
+  const u = ((t % period) + period) % period
+  const inFor = period * share
   const coming = Math.min(1, u / BRIDGE_SWING)
-  const going = Math.min(1, Math.max(0, (u - downFor) / BRIDGE_SWING))
+  const going = Math.min(1, Math.max(0, (u - inFor) / BRIDGE_SWING))
   return Math.max(0, coming - going)
+}
+
+/** The gates that are shut at a moment, as walls. */
+export function shutGates(hole: Hole, clock: number): Wall[] {
+  const out: Wall[] = []
+  for (const g of hole.gates) if (gateLevel(g, clock) < 0.5) out.push({ a: g.a, b: g.b, t: g.t })
+  return out
 }
 
 /** Where a slider is along its run, 0 to 1, and how fast it is going. */
@@ -804,6 +835,8 @@ type StepOut = {
   landed: boolean
   /** Landed off the ground altogether. */
   oob: boolean
+  /** Rolled over the edge into a drop. */
+  pit: boolean
 }
 
 /**
@@ -863,6 +896,7 @@ function step(ball: Ball, hole: Hole, rovers: RoverState[], flight: Flight, dt: 
     launched: false,
     landed: false,
     oob: false,
+    pit: false,
   }
 
   // In the air: a straight line at a steady speed over whatever is below, until the flight runs out.
@@ -902,8 +936,21 @@ function step(ball: Ball, hole: Hole, rovers: RoverState[], flight: Flight, dt: 
     if (!inside(sl.shape, ball)) continue
     out.slope = true
     if (sl.pull) {
-      ball.vx += sl.pull.x * dt
-      ball.vy += sl.pull.y * dt
+      const speed = Math.hypot(ball.vx, ball.vy)
+      const share =
+        Math.hypot(sl.pull.x, sl.pull.y) > STICK_PULL
+          ? 1
+          : Math.min(1, Math.max(0, (speed - STICK_SPEED) / (STICK_FULL - STICK_SPEED)))
+      ball.vx += sl.pull.x * share * dt
+      ball.vy += sl.pull.y * share * dt
+    }
+    if (sl.dish) {
+      const c = pivotOf(sl.shape)
+      const dx = c.x - ball.x
+      const dy = c.y - ball.y
+      const d = Math.hypot(dx, dy) || 1
+      ball.vx += (dx / d) * sl.dish * dt
+      ball.vy += (dy / d) * sl.dish * dt
     }
     if (sl.bowl) {
       const c = centreOf(sl.shape)
@@ -977,11 +1024,9 @@ function step(ball: Ball, hole: Hole, rovers: RoverState[], flight: Flight, dt: 
   for (const sp of hole.spinners) {
     if (bounceSpinner(ball, sp, clock, WALL_BOUNCE)) out.wall = true
   }
-  for (const m of hole.mills) {
-    for (const gate of millGates(m, clock)) {
-      const p = closestOnWall(gate, ball)
-      if (bounce(ball, p.x, p.y, gate.t + BALL_R, DOOR_BOUNCE)?.reflected) out.wall = true
-    }
+  for (const gate of [...hole.mills.flatMap((m) => millGates(m, clock)), ...shutGates(hole, clock)]) {
+    const p = closestOnWall(gate, ball)
+    if (bounce(ball, p.x, p.y, gate.t + BALL_R, DOOR_BOUNCE)?.reflected) out.wall = true
   }
   for (const sl of hole.sliders) {
     if (bounceSlider(ball, sl, clock, WALL_BOUNCE)) out.wall = true
@@ -1009,8 +1054,19 @@ function step(ball: Ball, hole: Hole, rovers: RoverState[], flight: Flight, dt: 
     out.piped = true
     break
   }
+  // The rails have the last word: nothing that moves, not a blade, a bar, a door or a rover, pushes a
+  // ball through one. A ball caught between them stays on its side and the thing passes over it.
+  for (const wall of wallsNear(hole, ball)) {
+    if (passesFlap(wall, ball.vx, ball.vy)) continue
+    const p = closestOnWall(wall, ball)
+    bounce(ball, p.x, p.y, wall.t + BALL_R, WALL_BOUNCE)
+  }
   if (!dryAt(hole, ball, clock)) {
     out.water = true
+    return out
+  }
+  if (hole.pits.length && inAny(hole.pits, ball) && !inAny(hole.bridges, ball)) {
+    out.pit = true
     return out
   }
 
@@ -1146,10 +1202,14 @@ export function tick(state: GameState, dt: number): GameState {
     case 'aim': {
       // A blade or a bar sweeping through a resting ball, or a door shutting on it, nudges it along.
       const hole = currentHole(s)
-      if (!hole.spinners.length && !hole.sliders.length && !hole.mills.length) return s
+      if (!hole.spinners.length && !hole.sliders.length && !hole.mills.length && !hole.gates.length) return s
       const ball = { ...s.ball }
       let moved = false
-      const movers = [...hole.spinners.map((sp) => spinnerWall(sp, s.clock)), ...hole.mills.flatMap((m) => millGates(m, s.clock))]
+      const movers = [
+        ...hole.spinners.map((sp) => spinnerWall(sp, s.clock)),
+        ...hole.mills.flatMap((m) => millGates(m, s.clock)),
+        ...shutGates(hole, s.clock),
+      ]
       for (const w of movers) {
         const p = closestOnWall(w, ball)
         if (bounce(ball, p.x, p.y, w.t + BALL_R + 0.2, 0)) moved = true
@@ -1160,6 +1220,11 @@ export function tick(state: GameState, dt: number): GameState {
         if (bounce(ball, p.x, p.y, w.t + BALL_R + 0.2, 0)) moved = true
       }
       if (!moved) return s
+      // And the rails have the last word here too.
+      for (const wall of wallsNear(hole, ball)) {
+        const p = closestOnWall(wall, ball)
+        bounce(ball, p.x, p.y, wall.t + BALL_R, 0)
+      }
       ball.vx = 0
       ball.vy = 0
       return { ...s, ball }
@@ -1218,6 +1283,7 @@ export function tick(state: GameState, dt: number): GameState {
         }
         if (out.oob) return penalty(carried, 'Out of bounds', 'OUT')
         if (out.water) return penalty(carried, 'Splash', 'SPLASH')
+        if (out.pit) return penalty(carried, 'Over the edge', 'DROP')
         if (flight.air > 0) continue
         const cup = cupAt(hole, now)
         const d = Math.hypot(cup.x - ball.x, cup.y - ball.y)
@@ -1290,7 +1356,7 @@ function moveRovers(s: GameState, dt: number): RoverState[] {
       b.y = pen.y + pen.h - spec.r
       b.vy = -Math.abs(b.vy)
     }
-    for (const wall of wallsOf(hole)) {
+    for (const wall of spec.r <= FILE_REACH - 0.5 ? wallsNear(hole, b) : wallsOf(hole)) {
       const p = closestOnWall(wall, b)
       bounce(b, p.x, p.y, wall.t + spec.r, 1)
     }
@@ -1339,6 +1405,7 @@ export function aimTrace(state: GameState, angle: number, maxLen: number): Vec {
   const moving = [
     ...hole.spinners.map((sp) => spinnerWall(sp, state.clock)),
     ...hole.mills.flatMap((m) => millGates(m, state.clock)),
+    ...shutGates(hole, state.clock),
     ...hole.sliders.map((sl) => sliderWall(sl, state.clock)),
   ]
   const dx = Math.cos(angle)

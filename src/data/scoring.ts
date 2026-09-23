@@ -151,12 +151,12 @@ const SCORING: Record<string, ScoreRow[]> = {
   ],
   putt: [
     { label: 'Each hole', value: '(par + 2 − strokes) × 100' },
-    { label: 'On a par 5', value: 'eagle 400 · birdie 300 · par 200 · bogey 100' },
+    { label: 'On a par 7', value: 'eagle 400 · birdie 300 · par 200 · bogey 100' },
     { label: 'Ace', value: '+200 on top' },
     { label: 'Water', value: '+1 stroke, back to where you shot from' },
-    { label: 'Off the ground', value: 'the same: a ramp that lands you nowhere' },
-    { label: 'Windmill', value: 'a sail across a door shuts it · time the run through' },
-    { label: 'Round', value: 'one hole for now, par 7 · play until it drops' },
+    { label: 'Off the ground', value: 'the same: over an edge, or a ramp that lands you nowhere' },
+    { label: 'Things that keep time', value: 'windmill doors, a drawbridge, two portcullises, the tide' },
+    { label: 'Round', value: '5 holes, par 35 · play until it drops' },
   ],
   bop: [
     { label: 'Right control', value: '+1' },

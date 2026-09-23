@@ -1,7 +1,7 @@
 import { PALETTE, type Swatch } from '../../data/games'
 import { hashString, mulberry32 } from '../../lib/seededRandom'
 import { inkColor, isDarkTheme, playfieldColor } from '../../lib/theme'
-import type { Decor, Hole } from './course'
+import type { Decor, Hole, Theme } from './course'
 import { unionSdf, type Vec } from './terrain'
 
 /*
@@ -199,68 +199,317 @@ export function skin(): Skin {
   return cached
 }
 
+/* ---------- places ---------- */
+
+/** The ground round a course, and what its rails are made of: the part of the look that changes from hole to hole. */
+export type Place = {
+  rough: RGB
+  roughHi: RGB
+  roughLo: RGB
+  /** What the ground round the course is: grass with tufts, raked gravel, sand, or high meadow and rock. */
+  grain: 'grass' | 'gravel' | 'sand' | 'alpine'
+  rail: RGB
+  railLit: RGB
+  railLine: string
+  railStyle: 'timber' | 'hedge' | 'stone' | 'boardwalk' | 'rock'
+  /** How far the rail stands out past the edge of the green. */
+  railW: number
+}
+
+const places = new Map<string, Place>()
+
+export function placeOf(sk: Skin, theme: Theme): Place {
+  const key = `${sk.key}|${theme}`
+  const known = places.get(key)
+  if (known) return known
+  const { dark, field: f } = sk
+  const tone = (swatch: Swatch, s: number, l: number) => hslRgb(hueOf(swatch), s, l)
+  const G = tone('green', 0.64, 0.58)
+  const black: RGB = [0, 0, 0]
+  const white: RGB = [255, 255, 255]
+  let place: Place
+  switch (theme) {
+    case 'formal': {
+      // Raked gravel between clipped hedges.
+      const gravel = tone('amber', 0.18, dark ? 0.6 : 0.62)
+      const rough = dark ? mix(mix(f, [4, 10, 14], 0.15), gravel, 0.16) : mix(f, gravel, 0.34)
+      place = {
+        rough,
+        roughHi: dark ? mix(rough, white, 0.1) : mix(rough, white, 0.45),
+        roughLo: dark ? mix(rough, black, 0.35) : mix(rough, [90, 70, 40], 0.16),
+        grain: 'gravel',
+        rail: dark ? mix(f, G, 0.24) : mix(mix(f, G, 0.8), [20, 90, 60], 0.12),
+        railLit: dark ? mix(f, G, 0.36) : mix(f, G, 0.6),
+        railLine: sk.line('green', 0.9),
+        railStyle: 'hedge',
+        railW: 2.9,
+      }
+      break
+    }
+    case 'castle': {
+      const rough = dark ? mix(mix(f, [4, 10, 14], 0.26), G, 0.08) : mix(mix(f, G, 0.22), [90, 110, 120], 0.12)
+      place = {
+        rough,
+        roughHi: dark ? mix(rough, G, 0.1) : mix(rough, white, 0.4),
+        roughLo: dark ? mix(rough, black, 0.35) : mix(rough, [10, 60, 50], 0.14),
+        grain: 'grass',
+        rail: sk.stone,
+        railLit: sk.stoneLit,
+        railLine: sk.stoneLine,
+        railStyle: 'stone',
+        railW: 2.6,
+      }
+      break
+    }
+    case 'coast': {
+      const beach = tone('amber', 0.55, 0.66)
+      const rough = dark ? mix(mix(f, [4, 10, 14], 0.1), beach, 0.2) : mix(f, beach, 0.34)
+      const drift = tone('amber', 0.22, 0.6)
+      place = {
+        rough,
+        roughHi: dark ? mix(rough, white, 0.1) : mix(rough, white, 0.5),
+        roughLo: dark ? mix(rough, black, 0.3) : mix(rough, [150, 110, 50], 0.2),
+        grain: 'sand',
+        rail: dark ? mix(f, drift, 0.42) : mix(f, drift, 0.52),
+        railLit: dark ? mix(f, drift, 0.6) : mix(f, drift, 0.3),
+        railLine: sk.line('amber', 0.9, 30),
+        railStyle: 'boardwalk',
+        railW: 2.3,
+      }
+      break
+    }
+    case 'summit': {
+      const T = tone('teal', 0.5, 0.56)
+      const rough = dark ? mix(mix(f, [4, 10, 14], 0.22), T, 0.1) : mix(mix(f, T, 0.2), [100, 120, 120], 0.08)
+      const rock = mix(tone('sky', 0.1, dark ? 0.6 : 0.52), tone('amber', 0.3, 0.55), 0.25)
+      place = {
+        rough,
+        roughHi: dark ? mix(rough, T, 0.14) : mix(rough, white, 0.42),
+        roughLo: dark ? mix(rough, black, 0.35) : mix(rough, [20, 70, 70], 0.14),
+        grain: 'alpine',
+        rail: dark ? mix(f, rock, 0.42) : mix(f, rock, 0.46),
+        railLit: dark ? mix(f, rock, 0.6) : mix(f, rock, 0.26),
+        railLine: hsla(hueOf('sky'), 12, dark ? 64 : 42, 0.9),
+        railStyle: 'rock',
+        railW: 2.6,
+      }
+      break
+    }
+    default:
+      place = {
+        rough: sk.rough,
+        roughHi: sk.roughHi,
+        roughLo: sk.roughLo,
+        grain: 'grass',
+        rail: sk.rail,
+        railLit: sk.railLit,
+        railLine: sk.railLine,
+        railStyle: 'timber',
+        railW: 2.3,
+      }
+  }
+  places.set(key, place)
+  return place
+}
+
 /* ---------- the garden ---------- */
 
 /** Something that grows or stands round the course, with a seed of its own for its details. */
 export type Prop = Decor & { seed: number }
 
-const TREES: ReadonlySet<Decor['kind']> = new Set(['tree', 'blossom', 'pine'])
+/** The big things with a crown, that crowd each other and everything under them. */
+const TREES: ReadonlySet<Decor['kind']> = new Set(['tree', 'blossom', 'pine', 'palm'])
+
+/** Things that lie flat on the ground, drawn before anything that stands. */
+const FLAT: ReadonlySet<Decor['kind']> = new Set(['snow', 'bed', 'shell', 'flowers', 'lily', 'reeds'])
+
+/** Which trees grow where, as shares that add to one. */
+const WOODS: Record<Theme, [Decor['kind'], number][]> = {
+  garden: [
+    ['tree', 0.58],
+    ['pine', 0.24],
+    ['blossom', 0.18],
+  ],
+  formal: [
+    ['tree', 0.62],
+    ['blossom', 0.38],
+  ],
+  castle: [
+    ['pine', 0.5],
+    ['tree', 0.42],
+    ['blossom', 0.08],
+  ],
+  coast: [['palm', 1]],
+  summit: [
+    ['pine', 0.82],
+    ['tree', 0.18],
+  ],
+}
+
+/** What fills the strip along the rails, by share. */
+const VERGE: Record<Theme, [Decor['kind'], number][]> = {
+  garden: [
+    ['bush', 0.34],
+    ['flowers', 0.48],
+    ['stone', 0.18],
+  ],
+  formal: [
+    ['flowers', 0.6],
+    ['urn', 0.4],
+  ],
+  castle: [
+    ['bush', 0.4],
+    ['stone', 0.36],
+    ['flowers', 0.24],
+  ],
+  coast: [
+    ['shell', 0.34],
+    ['stone', 0.3],
+    ['reeds', 0.36],
+  ],
+  summit: [
+    ['stone', 0.52],
+    ['bush', 0.24],
+    ['flowers', 0.24],
+  ],
+}
+
+function pick(table: [Decor['kind'], number][], u: number): Decor['kind'] {
+  let acc = 0
+  for (const [kind, share] of table) {
+    acc += share
+    if (u < acc) return kind
+  }
+  return table[table.length - 1]![0]
+}
 
 const gardens = new WeakMap<Hole, Prop[]>()
 
 /**
  * The garden round a hole: what was placed by hand, then trees wherever
- * there is room for one, bushes and flowers along the rails, stones, and
- * lilies and reeds in and along the water. Seeded by the hole's name, so it
- * is the same every visit, and worked out once.
+ * there is room for one, whatever grows along the rails, and lilies and
+ * reeds in and along the water. A formal garden has its hedges' rhythm: a
+ * cone and a clipped ball in turn all along the rails. Up a mountain the
+ * snow lies in the high ground. Seeded by the hole's name, so it is the same
+ * every visit, and worked out once. `edges` is the traced edge of the green.
  */
-export function gardenOf(hole: Hole): Prop[] {
+export function gardenOf(hole: Hole, edges: readonly Vec[][]): Prop[] {
   const known = gardens.get(hole)
   if (known) return known
   const rnd = mulberry32(hashString(`garden:${hole.name}`))
   const props: Prop[] = hole.decor.map((d) => ({ ...d, seed: rnd() }))
+  const theme = hole.theme
   const course = (p: Vec) => unionSdf(hole.green, p, hole.blend)
   const water = (p: Vec) => (hole.water.length ? unionSdf(hole.water, p) : Infinity)
+  const pit = (p: Vec) => (hole.pits.length ? unionSdf(hole.pits, p) : Infinity)
   const clearOfMills = (p: Vec, r: number) => hole.mills.every((m) => Math.hypot(p.x - m.x, p.y - m.y) > m.reach + r + 1.5)
+  // Anything big placed by hand (a tower, a keep, a lighthouse, a wall, a bed) keeps the scatter off it. A
+  // wall runs from its point; a bed is centred on it.
+  const big = hole.decor.filter((d) => !TREES.has(d.kind) && (d.r >= 4 || d.len !== undefined))
+  const clearOfBig = (p: Vec, r: number) =>
+    big.every((d) => {
+      if (d.len !== undefined) {
+        const a = d.angle ?? 0
+        const len = d.len
+        const ux = Math.cos(a)
+        const uy = Math.sin(a)
+        const x0 = d.kind === 'wall' ? d.x : d.x - (ux * len) / 2
+        const y0 = d.kind === 'wall' ? d.y : d.y - (uy * len) / 2
+        const along = Math.max(0, Math.min(len, (p.x - x0) * ux + (p.y - y0) * uy))
+        return Math.hypot(p.x - (x0 + ux * along), p.y - (y0 + uy * along)) > d.r + r + 1
+      }
+      return Math.hypot(p.x - d.x, p.y - d.y) > d.r + r + 1.5
+    })
   const crowded = (p: Vec, r: number, k: number) =>
     props.some((q) => TREES.has(q.kind) && Math.hypot(q.x - p.x, q.y - p.y) < (q.r + r) * k)
+  const near = (p: Vec, r: number) => props.some((q) => !TREES.has(q.kind) && Math.hypot(q.x - p.x, q.y - p.y) < q.r + r + 1)
+  const dry = (p: Vec, r: number) => water(p) > r * 0.55 && pit(p) > r + 1
 
-  // Trees, wherever one fits clear of the rails and the water.
-  const cell = 12
+  // Up a mountain, snow lies in the high ground first, and everything else grows round it.
+  if (theme === 'summit') {
+    for (let i = 0; i < 70; i++) {
+      const p = { x: -6 + rnd() * 112, y: rnd() * hole.h * 0.4 }
+      const r = 3.5 + rnd() * 5
+      if (course(p) < r * 0.6 + 3 || !dry(p, r) || !clearOfBig(p, r)) continue
+      if (props.some((q) => q.kind === 'snow' && Math.hypot(q.x - p.x, q.y - p.y) < (q.r + r) * 0.9)) continue
+      props.push({ kind: 'snow', x: p.x, y: p.y, r, seed: rnd() })
+    }
+  }
+
+  // A formal garden's rhythm: a cone and a clipped ball in turn, a set distance out from the rails.
+  if (theme === 'formal') {
+    let k = 0
+    for (const line of edges) {
+      let run = 0
+      for (let i = 1; i < line.length; i++) {
+        const a = line[i - 1]!
+        const b = line[i]!
+        const seg = Math.hypot(b.x - a.x, b.y - a.y)
+        if (seg < 1e-6) continue
+        const tx = (b.x - a.x) / seg
+        const ty = (b.y - a.y) / seg
+        for (let u = (10 - run) % 10; u < seg; u += 10) {
+          const c = { x: a.x + tx * u, y: a.y + ty * u }
+          let n = { x: -ty, y: tx }
+          if (course({ x: c.x + n.x * 2, y: c.y + n.y * 2 }) < 0) n = { x: ty, y: -tx }
+          const cone = k++ % 2 === 0
+          const r = cone ? 2.3 : 2.7
+          const p = { x: c.x + n.x * 6.6, y: c.y + n.y * 6.6 }
+          if (course(p) < r + 3.2 || !dry(p, r) || !clearOfMills(p, r) || !clearOfBig(p, r)) continue
+          if (near(p, r)) continue
+          props.push({ kind: cone ? 'cone' : 'topiary', x: p.x, y: p.y, r, seed: rnd() })
+        }
+        run = (run + seg) % 10
+      }
+    }
+  }
+
+  // Trees, wherever one fits clear of the rails, the water and the drops.
+  const woods = WOODS[theme]
+  const cell = theme === 'coast' ? 15 : theme === 'formal' ? 14 : 12
   for (let gy = -6; gy < hole.h + 6; gy += cell) {
     for (let gx = -10; gx < 110; gx += cell) {
       const p = { x: gx + rnd() * cell, y: gy + rnd() * cell }
       const r = 6.5 + rnd() * 5
-      if (course(p) < r + 3) continue
-      if (water(p) < r * 0.55) continue
-      if (!clearOfMills(p, r)) continue
+      if (course(p) < r + 3 || !dry(p, r) || !clearOfMills(p, r) || !clearOfBig(p, r)) continue
       if (crowded(p, r, 0.82)) continue
-      const u = rnd()
-      props.push({ kind: u < 0.58 ? 'tree' : u < 0.82 ? 'pine' : 'blossom', x: p.x, y: p.y, r, seed: rnd() })
+      if (props.some((q) => !TREES.has(q.kind) && q.kind !== 'snow' && Math.hypot(q.x - p.x, q.y - p.y) < q.r + r * 0.8)) continue
+      props.push({ kind: pick(woods, rnd()), x: p.x, y: p.y, r, seed: rnd() })
     }
   }
-  // Bushes and flowers in the strip along the rails that the trees leave.
+  // Whatever grows or lies along the rails, in the strip the trees leave.
+  const verge = VERGE[theme]
   for (let i = 0; i < hole.h * 0.9; i++) {
     const p = { x: -4 + rnd() * 108, y: rnd() * hole.h }
     const d = course(p)
     if (d < 4 || d > 13) continue
-    if (water(p) < 2.5 || !clearOfMills(p, 2)) continue
+    if (!dry(p, 2.5) || water(p) < 2.5 || !clearOfMills(p, 2) || !clearOfBig(p, 2)) continue
     if (crowded(p, 2.5, 0.95)) continue
-    if (props.some((q) => !TREES.has(q.kind) && Math.hypot(q.x - p.x, q.y - p.y) < q.r + 3.2)) continue
-    const u = rnd()
-    if (u < 0.34) props.push({ kind: 'bush', x: p.x, y: p.y, r: 2.4 + rnd() * 2, seed: rnd() })
-    else if (u < 0.82) props.push({ kind: 'flowers', x: p.x, y: p.y, r: 2.2 + rnd() * 1.6, seed: rnd() })
-    else props.push({ kind: 'stone', x: p.x, y: p.y, r: 1.3 + rnd() * 1.3, seed: rnd() })
+    if (props.some((q) => !TREES.has(q.kind) && q.kind !== 'snow' && Math.hypot(q.x - p.x, q.y - p.y) < q.r + 3.2)) continue
+    const kind = pick(verge, rnd())
+    const r =
+      kind === 'bush'
+        ? 2.4 + rnd() * 2
+        : kind === 'stone'
+          ? 1.3 + rnd() * (theme === 'summit' ? 2.6 : 1.3)
+          : kind === 'urn'
+            ? 1.8
+            : kind === 'shell'
+              ? 0.9 + rnd() * 0.5
+              : 2.2 + rnd() * 1.6
+    props.push({ kind, x: p.x, y: p.y, r, seed: rnd() })
   }
-  // Lilies out on the water, and reeds along its banks, off the course.
-  for (let i = 0; i < hole.h * 1.2 && hole.water.length; i++) {
+  // Lilies out on the water and reeds along its banks, off the course; not on the sea.
+  for (let i = 0; i < hole.h * 1.2 && hole.water.length && hole.waterLook !== 'sea'; i++) {
     const p = { x: -2 + rnd() * 104, y: rnd() * hole.h }
     const w = water(p)
     if (w < -2.4 && w > -9 && course(p) > 4 && rnd() < 0.5) {
       if (props.some((q) => q.kind === 'lily' && Math.hypot(q.x - p.x, q.y - p.y) < q.r + 3)) continue
+      if (!clearOfBig(p, 1.5)) continue
       props.push({ kind: 'lily', x: p.x, y: p.y, r: 1.4 + rnd() * 1.1, seed: rnd() })
     } else if (w > -0.6 && w < 1.2 && course(p) > 5) {
       if (props.some((q) => q.kind === 'reeds' && Math.hypot(q.x - p.x, q.y - p.y) < 5)) continue
+      if (!clearOfBig(p, 2)) continue
       props.push({ kind: 'reeds', x: p.x, y: p.y, r: 2 + rnd() * 1.2, seed: rnd() })
     }
   }
@@ -268,6 +517,11 @@ export function gardenOf(hole: Hole): Prop[] {
   props.sort((a, b) => a.y - b.y)
   gardens.set(hole, props)
   return props
+}
+
+/** Whether a prop lies flat on the ground, to be drawn before anything standing. */
+export function isFlat(p: Prop) {
+  return FLAT.has(p.kind)
 }
 
 export function isTree(p: Prop) {
