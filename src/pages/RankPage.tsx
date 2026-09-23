@@ -4,6 +4,7 @@ import { PageBanner } from '../components/PageBanner'
 import { PageShell } from '../components/PageShell'
 import { PlayerAvatar } from '../components/PlayerAvatar'
 import { PlayerCard } from '../components/PlayerCard'
+import { ProfileViews } from '../components/ProfileViews'
 import { ProfileBestBoard } from '../components/ProfileBestBoard'
 import { ProfileGames } from '../components/ProfileGames'
 import { ProfileRival } from '../components/ProfileRival'
@@ -13,6 +14,7 @@ import { focusFromUrl, globalRankingsHref, rankHref, statsHref } from '../hooks/
 import { useAuth } from '../hooks/useAuth'
 import { useImpersonation } from '../hooks/useImpersonation'
 import { refreshFriends } from '../hooks/useFriends'
+import { useMyStats } from '../hooks/useMyStats'
 import { usePlayerName } from '../hooks/usePlayerName'
 import {
   EMPTY_RANK,
@@ -23,6 +25,7 @@ import {
 } from '../hooks/useProfileBoards'
 import { AVATARS_ENABLED, AVATAR_EVENT, avatarWashColor, getLocalAvatarId, resolveAvatar } from '../lib/avatars'
 import { AvatarStudio } from '../components/AvatarStudio'
+import { FlameIcon, StatsIcon } from '../components/chromeIcons'
 import { APP_NAME } from '../lib/brand'
 import { useDefaultPeriod } from '../lib/defaultPeriod'
 import { sendFriendRequest } from '../lib/friends'
@@ -193,6 +196,18 @@ export function RankPage({
   // Someone else's page measures the viewer against them.
   const viewerData = useRankFor(!isSelf ? myName : '', period, groupId)
 
+  // Your own card leads to your stats with your streak, when you have one.
+  const mine = useMyStats(period, isSelf && signedIn)
+  const streak = mine.data?.stats?.streak.current ?? 0
+  const statsLink =
+    isSelf && signedIn ? (
+      <a className="pcard__fact pcard__stats" href={statsHref()}>
+        {streak > 0 ? <FlameIcon /> : <StatsIcon />}
+        {streak > 0 ? `${streak}-day streak` : 'Your stats'}
+        <span aria-hidden="true">›</span>
+      </a>
+    ) : null
+
   const groupName = groupId ? cachedMyGroups().find((g) => g.id === groupId)?.name : undefined
   const where = groupName ? `in ${groupName}` : 'in the arcade'
 
@@ -262,6 +277,7 @@ export function RankPage({
         ) : null}
         {viewedName ? (
           <>
+            {isSelf ? <ProfileViews on="card" /> : null}
             <PlayerCard
               name={viewedName}
               isSelf={isSelf}
@@ -284,6 +300,7 @@ export function RankPage({
               actions={actions}
               backHref={isSelf ? undefined : globalRankingsHref(period)}
               howHref={rankHref(isSelf ? undefined : viewedName, period)}
+              extra={statsLink}
             />
 
             <ProfileBestBoard name={viewedName} isSelf={isSelf} viewer={isSelf ? '' : myName} bests={bests} groupId={groupId} />
@@ -297,6 +314,7 @@ export function RankPage({
                 everPlayed={everPlayed}
                 bests={bests}
                 quickest={isSelf && (rank == null || !talksInPlaces(rank, field))}
+                progressHref={isSelf && signedIn ? `${statsHref()}#stats-games` : undefined}
               />
             ) : null}
 
@@ -313,20 +331,6 @@ export function RankPage({
                 />
               ) : null}
             </div>
-
-            {isSelf ? (
-              <a className="rank-page__stats-link pf-stats" href={statsHref()}>
-                <span className="rank-page__stats-main">
-                  <span className="rank-page__stats-name">Your stats</span>
-                  <span className="rank-page__stats-sub">
-                    Streaks, trends, and the records you&rsquo;re closest to taking. Only you can see them.
-                  </span>
-                </span>
-                <span className="rank-page__stats-go" aria-hidden="true">
-                  →
-                </span>
-              </a>
-            ) : null}
 
             {isSelf && signedIn ? <FriendsCard /> : null}
 

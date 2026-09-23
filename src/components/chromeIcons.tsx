@@ -227,6 +227,29 @@ export function SparkleIcon() {
   )
 }
 
+/** A player card: a face and two lines, the profile's public side. */
+export function CardIcon() {
+  return (
+    <Stroke>
+      <rect x="3" y="5" width="18" height="14" rx="3" />
+      <circle cx="9" cy="11" r="2.2" />
+      <path d="M6 16c.5-1.6 1.6-2.4 3-2.4s2.5.8 3 2.4" />
+      <path d="M14.5 10h4" />
+      <path d="M14.5 13.5h3" />
+    </Stroke>
+  )
+}
+
+/** Only you: the profile's private side. */
+export function LockIcon() {
+  return (
+    <Stroke>
+      <rect x="5" y="11" width="14" height="9" rx="2" />
+      <path d="M8 11V8a4 4 0 0 1 8 0v3" />
+    </Stroke>
+  )
+}
+
 /** A place still to fill. */
 export function PlusIcon() {
   return (

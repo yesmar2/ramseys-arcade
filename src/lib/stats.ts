@@ -71,9 +71,13 @@ function resolveApiBase() {
 
 const API_BASE = resolveApiBase()
 
-export async function fetchMyStats(period?: string): Promise<StatsResponse> {
-  const qs = period && period !== 'all' ? `?period=${encodeURIComponent(period)}` : ''
-  const res = await fetch(`${API_BASE}/stats/me${qs}`, { headers: { ...authHeaders() } })
+/** Your stats for a period, for one of your tags (the API answers with your first when it isn't yours). */
+export async function fetchMyStats(period?: string, name?: string): Promise<StatsResponse> {
+  const params = new URLSearchParams()
+  if (period && period !== 'all') params.set('period', period)
+  if (name) params.set('name', name)
+  const qs = params.toString()
+  const res = await fetch(`${API_BASE}/stats/me${qs ? `?${qs}` : ''}`, { headers: { ...authHeaders() } })
   if (!res.ok) throw new Error(`Request failed (${res.status})`)
   return (await res.json()) as StatsResponse
 }

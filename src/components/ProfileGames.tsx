@@ -135,6 +135,7 @@ export function ProfileGames({
   everPlayed,
   bests,
   quickest,
+  progressHref,
 }: {
   name: string
   isSelf: boolean
@@ -146,6 +147,8 @@ export function ProfileGames({
   bests: Record<string, GameBest> | null
   /** Tell the unplayed games as the player's quickest points, as it is for anyone outside the top ten. */
   quickest: boolean
+  /** On your own card: your stats, where each game's progress is. */
+  progressHref?: string
 }) {
   const device = useDeviceType()
   const word = periodWord(period)
@@ -169,6 +172,11 @@ export function ProfileGames({
           {earlier.length > 0 ? `, ${earlier.length} played before` : ''}
           {shown.length > 0 ? ' · the best run on each, all time' : ''}
         </span>
+        {progressHref && shown.length > 0 ? (
+          <a className="pgames__progress" href={progressHref}>
+            Your progress on each ›
+          </a>
+        ) : null}
         <a className="pgames__all" href={leaderboardHref(period)}>
           All boards ›
         </a>

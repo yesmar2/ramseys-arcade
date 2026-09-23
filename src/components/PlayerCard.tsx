@@ -279,6 +279,7 @@ export function PlayerCard({
   actions,
   backHref,
   howHref,
+  extra,
 }: {
   name: string
   isSelf: boolean
@@ -299,6 +300,8 @@ export function PlayerCard({
   /** Someone else's card has a way back to the rankings. */
   backHref?: string
   howHref: string
+  /** One more fact along the card's foot: on your own, the way to your stats. */
+  extra?: ReactNode
 }) {
   const style = accent
     ? ({ '--hero-accent': accent, '--hero-ink': inkOn(accent), '--tile-accent': accent } as CSSProperties)
@@ -449,6 +452,7 @@ export function PlayerCard({
             </>
           )}
         </span>
+        {extra}
         {!loading && rank != null && !inPlaces && data.totalPlayers > rank ? (
           <span className="pcard__fact">
             Ahead of <b>{(data.totalPlayers - rank).toLocaleString()}</b> players {word}

@@ -1,0 +1,946 @@
+/*
+ * Your profile's two sides and your stats (ProfileViews, StatsPage, StatsView):
+ * the switch between the player card and your stats, the card's ways into
+ * them, and the stats themselves. Everything wears your own colour, --you on
+ * the stats page and --pf-accent on the card, the way the card already does.
+ */
+
+/* ---------- the switch: Player card | Stats ---------- */
+
+.pviews {
+  --pv-accent: var(--you, var(--pf-accent, var(--accent)));
+  display: inline-grid;
+  grid-auto-flow: column;
+  gap: 0.25rem;
+  align-self: flex-start;
+  padding: 0.25rem;
+  border-radius: 999px;
+  background: rgba(var(--ink-rgb), 0.05);
+  border: 1px solid rgba(var(--ink-rgb), 0.08);
+}
+
+.pviews__view {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  min-height: 2.75rem;
+  padding: 0 1.1rem;
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 0.95rem;
+  font-weight: 800;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.pviews__view:hover,
+.pviews__view:focus-visible {
+  color: var(--ink);
+  outline: none;
+}
+
+.pviews__view svg {
+  width: 1.15rem;
+  height: 1.15rem;
+  flex: none;
+}
+
+.pviews__view--on {
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 1px 2px rgba(var(--shade-rgb), 0.18), inset 0 0 0 1px rgba(var(--ink-rgb), 0.08);
+}
+
+html[data-theme='dark'] .pviews__view--on {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.pviews__only {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  height: 1.35rem;
+  padding: 0 0.5rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--pv-accent) 15%, transparent);
+  color: color-mix(in srgb, var(--pv-accent) 72%, var(--ink));
+  font-size: 0.7rem;
+  font-weight: 800;
+}
+
+.pviews__only svg {
+  width: 0.75rem;
+  height: 0.75rem;
+}
+
+/* ---------- the card's ways into your stats ---------- */
+
+/* Its baseline is its words', so it sits on the line with the other facts. */
+.pcard__stats {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.35rem;
+  padding: 0.25rem 0.7rem 0.25rem 0.55rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--banner-ink, var(--ink)) 9%, transparent);
+  color: var(--banner-ink, var(--ink));
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.pcard__stats:hover,
+.pcard__stats:focus-visible {
+  background: color-mix(in srgb, var(--banner-ink, var(--ink)) 15%, transparent);
+  outline: none;
+}
+
+.pcard__stats svg {
+  align-self: center;
+  width: 1rem;
+  height: 1rem;
+  flex: none;
+}
+
+.pgames__progress {
+  margin-left: auto;
+  font-size: 0.88rem;
+  font-weight: 750;
+  color: var(--pf-accent-ink, var(--ink));
+  text-decoration: none;
+}
+
+.pgames__progress:hover,
+.pgames__progress:focus-visible {
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+  outline: none;
+}
+
+.pgames__progress + .pgames__all {
+  margin-left: 0;
+}
+
+/* ---------- the stats page ---------- */
+
+.sv {
+  --you: var(--accent);
+  --you-ink: color-mix(in srgb, var(--you) 72%, var(--ink));
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+html[data-theme='dark'] .sv {
+  --you-ink: color-mix(in srgb, var(--you) 78%, #ffffff);
+}
+
+.sv-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem 1rem;
+}
+
+.sv-cap {
+  margin: 0;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.sv-cap--you {
+  color: var(--you-ink);
+}
+
+.sv-note {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.sv-more {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  font-size: 0.86rem;
+  font-weight: 750;
+  color: var(--you-ink);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.sv-more:hover,
+.sv-more:focus-visible {
+  color: var(--ink);
+  outline: none;
+}
+
+.sv-more svg {
+  width: 0.95rem;
+  height: 0.95rem;
+}
+
+.sv-seg {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: 0.2rem;
+  padding: 0.2rem;
+  border-radius: 999px;
+  background: rgba(var(--ink-rgb), 0.05);
+  border: 1px solid rgba(var(--ink-rgb), 0.08);
+}
+
+.sv-seg > button {
+  min-height: 2.2rem;
+  padding: 0 0.9rem;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 750;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.sv-seg > button:hover,
+.sv-seg > button:focus-visible {
+  color: var(--ink);
+  outline: none;
+}
+
+.sv-seg > button[aria-pressed='true'] {
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 1px 2px rgba(var(--shade-rgb), 0.16), inset 0 0 0 1px rgba(var(--ink-rgb), 0.08);
+}
+
+html[data-theme='dark'] .sv-seg > button[aria-pressed='true'] {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.sv-card {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 1.4rem 1.5rem;
+  border-radius: 1.5rem;
+  background: var(--surface);
+  border: 1px solid rgba(var(--ink-rgb), 0.09);
+  box-shadow: var(--shadow-soft);
+}
+
+.sv-card__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.8rem;
+}
+
+.sv-card__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.sv-empty {
+  margin: 0;
+  font-size: 0.92rem;
+  font-weight: 600;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+/* The period in numbers, and the streak. */
+.sv-hero {
+  display: flex;
+  align-items: center;
+  gap: 1.75rem;
+  padding: 1.6rem 1.6rem 1.6rem 1.9rem;
+  border-radius: 1.9rem;
+  background: color-mix(in srgb, var(--you) 20%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--you) 42%, transparent);
+  box-shadow: var(--shadow-soft);
+}
+
+html[data-theme='light'] .sv-hero {
+  background: color-mix(in srgb, var(--you) 15%, var(--surface));
+}
+
+.sv-hero__main {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.sv-hero__art {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 6.25rem;
+  height: 6.25rem;
+  border-radius: 1.9rem;
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--you) 42%, transparent);
+}
+
+.sv-hero__text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.sv-hero__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(2.1rem, 4.4vw, 3.5rem);
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  text-wrap: balance;
+}
+
+.sv-hero__sub {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 650;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.sv-streak {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  flex: none;
+  width: 22.5rem;
+  box-sizing: border-box;
+  padding: 1.25rem 1.35rem;
+  border-radius: 1.4rem;
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px rgba(var(--ink-rgb), 0.09);
+}
+
+.sv-streak__head {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+}
+
+.sv-streak__mark {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 3.25rem;
+  height: 3.25rem;
+  border-radius: 1rem;
+  background: var(--you);
+  color: var(--you-on, #0b1a26);
+}
+
+.sv-streak__mark svg {
+  width: 1.6rem;
+  height: 1.6rem;
+}
+
+.sv-streak__big {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.9rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+
+.sv-streak__best {
+  margin: 0.2rem 0 0;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.sv-streak__now {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+  margin: 0;
+  font-size: 0.92rem;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.sv-streak__now--done::before {
+  content: '✓';
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 1.35rem;
+  height: 1.35rem;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--you) 16%, transparent);
+  color: var(--you-ink);
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.sv-pair {
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr);
+  gap: 1rem;
+  align-items: stretch;
+}
+
+/* Every day you played: one grid, a column a week, the day names in the first. */
+.sv-cal__grid {
+  display: grid;
+  grid-auto-flow: column;
+  grid-template-columns: auto repeat(18, minmax(0, 1fr));
+  grid-template-rows: 1.2rem repeat(7, auto);
+  gap: 0.32rem;
+  max-width: 46rem;
+}
+
+.sv-cal__label {
+  align-self: center;
+  padding-right: 0.35rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.sv-cal__month {
+  overflow: visible;
+  font-size: 0.7rem;
+  font-weight: 750;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.sv-cal__day {
+  aspect-ratio: 1;
+  border-radius: 24%;
+  background: rgba(var(--ink-rgb), 0.07);
+}
+
+.sv-cal__day--on {
+  background: var(--you);
+}
+
+.sv-cal__day--today {
+  box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--you-ink);
+}
+
+.sv-cal__day--future {
+  background: none;
+  box-shadow: inset 0 0 0 1px rgba(var(--ink-rgb), 0.08);
+}
+
+.sv-cal__span--narrow {
+  display: none;
+}
+
+.sv-facts {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.8rem;
+  margin: auto 0 0;
+  padding: 0.9rem 0 0;
+  border-top: 1px solid rgba(var(--ink-rgb), 0.08);
+}
+
+.sv-facts li {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.sv-facts b {
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  font-weight: 800;
+}
+
+.sv-facts span {
+  font-size: 0.8rem;
+  font-weight: 650;
+  color: var(--muted);
+}
+
+/* Records within reach. */
+.sv-recs {
+  padding: 1.4rem 1rem 0.9rem;
+}
+
+.sv-recs .sv-card__head {
+  padding: 0 0.5rem;
+}
+
+.sv-recs__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.sv-rec {
+  display: grid;
+  grid-template-columns: 2.5rem minmax(0, 1fr);
+  align-items: center;
+  gap: 0.8rem;
+  padding: 0.65rem 0.55rem;
+  border-radius: 1rem;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.sv-rec:hover,
+.sv-rec:focus-visible {
+  background: rgba(var(--ink-rgb), 0.04);
+  outline: none;
+}
+
+.sv-rec__art .inline-thumb,
+.sv-game__art .inline-thumb {
+  --inline-thumb-size: 2.5rem;
+}
+
+.sv-rec__text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.sv-rec__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+.sv-rec__label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.92rem;
+  font-weight: 800;
+}
+
+.sv-rec__game {
+  flex: none;
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.sv-rec__bar {
+  display: block;
+  height: 0.5rem;
+  border-radius: 999px;
+  background: rgba(var(--ink-rgb), 0.07);
+  overflow: hidden;
+}
+
+.sv-rec__bar span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--g);
+}
+
+.sv-rec__nums {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.6rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.sv-rec__nums b {
+  color: var(--ink);
+}
+
+/* Your games. */
+.sv-games {
+  padding: 1.4rem 1rem 1rem;
+  scroll-margin-top: calc(var(--header-h, 5rem) + 1rem);
+}
+
+.sv-games__bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0 0.5rem;
+}
+
+.sv-games__title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.3rem 0.7rem;
+}
+
+.sv-games__cols,
+.sv-game {
+  display: grid;
+  grid-template-columns: 2.75rem minmax(0, 1.25fr) 7.5rem minmax(0, 1fr) minmax(0, 20rem) 5.5rem 3.5rem;
+  align-items: center;
+  gap: 1rem;
+}
+
+.sv-games__cols {
+  padding: 0 0.9rem 0.2rem;
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.sv-games__axis {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  white-space: nowrap;
+}
+
+.sv-games__num {
+  text-align: right;
+}
+
+.sv-games__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.sv-game {
+  padding: 0.7rem 0.9rem;
+  border-radius: 1.1rem;
+  color: var(--ink);
+  text-decoration: none;
+  font-variant-numeric: tabular-nums;
+}
+
+.sv-game:hover,
+.sv-game:focus-visible {
+  background: rgba(var(--ink-rgb), 0.04);
+  outline: none;
+}
+
+.sv-game__art .inline-thumb {
+  --inline-thumb-size: 2.75rem;
+}
+
+.sv-game__name,
+.sv-game__best,
+.sv-game__num {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.sv-game__name b,
+.sv-game__best b,
+.sv-game__num b {
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.sv-game__name span,
+.sv-game__best span,
+.sv-game__num span {
+  font-size: 0.76rem;
+  font-weight: 650;
+  color: var(--muted);
+}
+
+.sv-game__num {
+  align-items: flex-end;
+}
+
+.sv-place {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.sv-place b {
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--ink);
+}
+
+.sv-place--p1 b {
+  color: #d9a31a;
+}
+
+.sv-place--p2 b {
+  color: #9aa9b5;
+}
+
+.sv-place--p3 b {
+  color: #c77a3c;
+}
+
+.sv-bars {
+  position: relative;
+  display: block;
+  height: 2.5rem;
+  border-bottom: 1px solid rgba(var(--ink-rgb), 0.1);
+}
+
+.sv-bars__bar {
+  position: absolute;
+  bottom: 0;
+  min-width: 3px;
+  border-radius: 3px 3px 1px 1px;
+  background: color-mix(in srgb, var(--g) 42%, rgba(var(--ink-rgb), 0.12));
+}
+
+.sv-bars__bar--best {
+  background: var(--g);
+}
+
+.sv-bars__today {
+  position: absolute;
+  top: -0.3rem;
+  bottom: -0.25rem;
+  width: 0;
+  border-left: 1px dashed rgba(var(--ink-rgb), 0.25);
+}
+
+/* Signed out, no tag yet, or a failed load. */
+.sv-invite {
+  align-items: flex-start;
+  gap: 0.8rem;
+  padding: 2rem;
+}
+
+.sv-invite__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.8rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.sv-invite__copy {
+  max-width: 36rem;
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.sv-invite__go {
+  min-height: 2.9rem;
+  padding: 0 1.4rem;
+  border: 0;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #03211b;
+  font: inherit;
+  font-size: 0.98rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.sv-loading {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.sv-loading > span {
+  display: block;
+  border-radius: 1.6rem;
+  background: linear-gradient(90deg, rgba(var(--ink-rgb), 0.05), rgba(var(--ink-rgb), 0.1), rgba(var(--ink-rgb), 0.05));
+  background-size: 200% 100%;
+  animation: lb-skel-shine 1.15s ease-in-out infinite;
+}
+
+.sv-loading__hero {
+  height: 11rem;
+}
+
+.sv-loading__card {
+  height: 16rem;
+}
+
+/* ---------- narrower ---------- */
+
+@media (max-width: 72rem) {
+  .sv-games__cols,
+  .sv-game {
+    grid-template-columns: 2.75rem minmax(0, 1.2fr) 6.5rem minmax(0, 1fr) minmax(0, 14rem) 5rem 3rem;
+    gap: 0.8rem;
+  }
+}
+
+@media (max-width: 64rem) {
+  .sv-pair {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .sv-hero {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .sv-streak {
+    width: auto;
+  }
+}
+
+/* A phone: each game on two lines, the calendar's last twelve weeks, the switch full width. */
+@media (max-width: 48rem) {
+  .sv-games__cols {
+    display: none;
+  }
+
+  .sv-game {
+    grid-template-columns: 2.75rem minmax(0, 1fr) 4.75rem 3rem;
+    grid-template-areas:
+      'art name place place'
+      '. bars bars bars'
+      '. best avg runs';
+    gap: 0.5rem 0.8rem;
+    padding: 0.8rem 0.5rem;
+  }
+
+  .sv-game__art {
+    grid-area: art;
+  }
+
+  .sv-game__name {
+    grid-area: name;
+  }
+
+  .sv-place {
+    grid-area: place;
+    justify-self: end;
+  }
+
+  .sv-bars {
+    grid-area: bars;
+    height: 1.9rem;
+  }
+
+  .sv-game__best {
+    grid-area: best;
+  }
+
+  .sv-game__best span,
+  .sv-game__num span {
+    white-space: nowrap;
+  }
+
+  .sv-game__num:nth-last-child(2) {
+    grid-area: avg;
+  }
+
+  .sv-game__num:last-child {
+    grid-area: runs;
+  }
+
+  .sv-game__best b,
+  .sv-game__num b {
+    font-size: 0.86rem;
+  }
+}
+
+@media (max-width: 40rem) {
+  .pviews {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-self: stretch;
+  }
+
+  .pviews__only-text {
+    display: none;
+  }
+
+  .sv-top .pviews,
+  .sv-top .sv-seg {
+    flex: 1 1 100%;
+  }
+
+  .sv-hero {
+    gap: 1.1rem;
+    padding: 1.1rem 1rem;
+    border-radius: 1.6rem;
+  }
+
+  .sv-hero__main {
+    gap: 1rem;
+  }
+
+  .sv-hero__art {
+    width: 4rem;
+    height: 4rem;
+    border-radius: 1.2rem;
+  }
+
+  .sv-card {
+    padding: 1.1rem 1rem;
+  }
+
+  .sv-cal__grid {
+    grid-template-columns: auto repeat(12, minmax(0, 1fr));
+    gap: 0.26rem;
+  }
+
+  .sv-cal__old {
+    display: none;
+  }
+
+  .sv-cal__span--wide {
+    display: none;
+  }
+
+  .sv-cal__span--narrow {
+    display: inline;
+  }
+
+  .sv-facts b {
+    font-size: 1.02rem;
+  }
+
+  .sv-recs,
+  .sv-games {
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sv-loading > span {
+    animation: none;
+  }
+}
