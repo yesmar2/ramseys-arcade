@@ -102,6 +102,8 @@ const SCORE_UNTOUCHED = 100
  */
 const SCORE_PHASE = 1000
 const SCORE_FLAGSHIP = 3000
+/** The shortest gap between two hit sounds: a steady tick under the guns rather than a buzz. */
+const PLINK_GAP = 0.065
 /** Seconds of the wave-clear pause, and how long a banner holds. */
 const CLEAR_PAUSE = 2.2
 export const BANNER_TIME = 2.4
@@ -365,6 +367,8 @@ export type GameState = {
   /** Grazes in quick succession, for the rising tick. */
   grazeRun: number
   grazeRunT: number
+  /** Seconds until a hit may make a sound again. */
+  plinkIn: number
 }
 
 export type Snapshot = {
@@ -963,6 +967,7 @@ export function createInitialState(): GameState {
     grazeGlow: 0,
     grazeRun: 0,
     grazeRunT: 0,
+    plinkIn: 0,
   }
   menuScene(state)
   return state
@@ -1155,6 +1160,7 @@ function tickEffects(state: GameState, dt: number) {
   state.grazeGlow = Math.max(0, state.grazeGlow - dt * 5)
   state.grazeRunT -= dt
   if (state.grazeRunT <= 0) state.grazeRun = 0
+  state.plinkIn -= dt
   if (state.banner) {
     state.banner.t += dt
     if (state.banner.t > BANNER_TIME) state.banner = null
@@ -1362,11 +1368,22 @@ function damageEnemy(state: GameState, e: Enemy, dmg: number) {
   if (e.gone) return
   e.hp -= dmg
   e.hurt = 1
+  if (e.hp > 0) plink(state, e)
   if (e.species === 'queen') {
     if (e.hp <= 0) endBossPhase(state, e, true)
     return
   }
   if (e.hp <= 0) killEnemy(state, e)
+}
+
+/**
+ * A hit that hasn't broken it: a tick, higher the nearer it is to breaking, so
+ * a crab under fire climbs toward the pop. Never more often than PLINK_GAP.
+ */
+function plink(state: GameState, e: Enemy) {
+  if (state.plinkIn > 0) return
+  state.plinkIn = PLINK_GAP
+  sfx('plink', Math.round((1 - e.hp / e.maxHp) * 8))
 }
 
 function endBossPhase(state: GameState, queen: Enemy, broken: boolean) {

@@ -25,6 +25,12 @@ export type SoundName =
   | 'zip'
   | 'click'
   | 'whirr'
+  /*
+   * A round landing on something that doesn't break yet: short and quiet,
+   * because it comes many times a second, and higher the nearer the thing is
+   * to breaking — pitch 0 for a first hit, up to 8 for the last before it goes.
+   */
+  | 'plink'
 
 export const PENT = [261.6, 293.7, 329.6, 392.0, 440.0, 523.3] as const
 

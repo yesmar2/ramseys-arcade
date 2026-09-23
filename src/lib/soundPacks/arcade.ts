@@ -92,6 +92,11 @@ export const playArcade: PlaySfx = (synth, name, pitch) => {
       tone(620.0, 0.045, 0.05, 0, 0.012, tri)
       if (pitch < 1) tone(1800.0, 0.02, 0.05, 0, 0.09, sq)
       break
+    case 'plink': {
+      const freq = 1046.5 * Math.pow(2, (Math.max(0, Math.min(8, pitch)) * 2) / 12)
+      tone(freq, 0.035, 0.035, -freq * 0.3, 0, sq)
+      break
+    }
     case 'whirr': {
       const notes = pitch >= 1 ? 5 : 8
       for (let i = 0; i < notes; i++) tone(500 + i * 50 + (i % 2) * 100, 0.04, 0.05, 0, i * 0.025, sq)

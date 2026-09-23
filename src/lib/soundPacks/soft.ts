@@ -86,6 +86,11 @@ export const playSoft: PlaySfx = (synth, name, pitch) => {
       tone(650.0, 0.08, 0.035, -260, 0.02)
       if (pitch < 1) tone(1100.0, 0.04, 0.035, 0, 0.11, 'triangle')
       break
+    case 'plink': {
+      const freq = 659.3 * Math.pow(2, (Math.max(0, Math.min(8, pitch)) * 2) / 12)
+      tone(freq, 0.07, 0.028, -freq * 0.15)
+      break
+    }
     case 'whirr': {
       const notes = pitch >= 1 ? 5 : 7
       for (let i = 0; i < notes; i++) tone(392 + i * 33 + (i % 2) * 70, 0.07, 0.04, 0, i * 0.035)

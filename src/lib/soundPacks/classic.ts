@@ -93,6 +93,12 @@ export const playClassic: PlaySfx = (synth, name, pitch) => {
       if (pitch < 1) tone(1500.0, 0.025, 0.05, 0, 0.1, 'square')
       break
     }
+    case 'plink': {
+      // A bright tick with a quick fall, climbing a whole tone a step.
+      const freq = 880 * Math.pow(2, (Math.max(0, Math.min(8, pitch)) * 2) / 12)
+      tone(freq, 0.05, 0.04, -freq * 0.25, 0, 'triangle')
+      break
+    }
     case 'whirr': {
       // A wheel spun: a fast trill winding up.
       const notes = pitch >= 1 ? 5 : 8
