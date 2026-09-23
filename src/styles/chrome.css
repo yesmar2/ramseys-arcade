@@ -92,9 +92,14 @@
   gap: 0.55rem;
 }
 
+/*
+ * Search starts as narrow as its words allow and grows into what's left, up
+ * to its full width, so the chips keep their words while it has room to give.
+ */
 .site-bar .site-search {
-  flex: 0 1 18.5rem;
+  flex: 1 1 16.75rem;
   min-width: 12rem;
+  max-width: 18.5rem;
   margin-left: 0;
 }
 
@@ -1081,7 +1086,7 @@ html[data-theme='dark'] .site-menu__sounds .chips__item--active {
 
 /* ---------- narrower than a wide desk: search folds into its button ---------- */
 
-@media (max-width: 1279px) {
+@media (max-width: 1339px) {
   .site-bar .site-search {
     position: static;
     flex: none;
