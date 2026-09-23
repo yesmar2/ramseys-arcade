@@ -110,6 +110,261 @@ function hashCell(ix: number, iy: number) {
   return n - Math.floor(n)
 }
 
+/*
+ * Light in the dark.
+ *
+ * Below the twilight nothing is lit by the sun, and what you see is what makes
+ * its own light, the way Pandora's forest is at night: fish glow at the edges
+ * and along their bellies, the reef's rim and its growth shine, jellies burn,
+ * spores drift up out of the abyss, and the plankton the water is full of
+ * flares wherever you swim through it and fades behind you. None of it is in
+ * the shallows, which keep the sun; it comes on through the twilight and is
+ * full by the midnight zone.
+ *
+ * All of it is drawn from the depth, the time and fixed noise, never from
+ * `Math.random`, so a replayed run looks the same every time.
+ */
+function biolumeAt(y: number) {
+  const t = Math.max(0, Math.min(1, (darknessAt(y) - 0.06) / 0.42))
+  return t * t * (3 - 2 * t)
+}
+
+/** The colours the water's own life glows in: mostly cyan, some violet and blue, a little pink. */
+const PLANKTON = ['#6ff4ff', '#6ff4ff', '#6ff4ff', '#8ef7d4', '#a98bff', '#7fb2ff', '#ff8ad8']
+
+/**
+ * Where the player has just been, kept per run so the plankton behind them can
+ * still be glowing. Keyed by the run's seed: the home page's cabinet draws its
+ * own run through this same renderer.
+ */
+type Wake = { x: number; y: number; t: number }[]
+const wakes = new Map<number, Wake>()
+const WAKE_LIFE = 1.5
+
+function wakeFor(s: GameState): Wake {
+  let wake = wakes.get(s.seed)
+  if (!wake) {
+    if (wakes.size > 4) wakes.clear()
+    wake = []
+    wakes.set(s.seed, wake)
+  }
+  const p = s.player
+  const last = wake[wake.length - 1]
+  if (last && (last.t > s.time || s.phase === 'menu')) wake.length = 0
+  if (s.phase === 'playing' && (!last || Math.hypot(p.x - last.x, p.y - last.y) > 8 || s.time - last.t > 0.12)) {
+    wake.push({ x: p.x, y: p.y, t: s.time })
+  }
+  while (wake.length && s.time - wake[0]!.t > WAKE_LIFE) wake.shift()
+  return wake
+}
+
+/**
+ * The water's plankton: a field of tiny lights that sits still in the world,
+ * each one breathing on its own clock, and flaring as you pass. A second,
+ * fainter field further back drifts slower, for depth.
+ */
+function drawPlankton(ctx: CanvasRenderingContext2D, v: View, s: GameState, lum: number, wake: Wake, glows: Glow[]) {
+  if (lum < 0.02) return
+  const reach = 70 + radiusForLevel(s.player.level) * 1.6
+  // Only lights near the wake need to measure themselves against it.
+  const box = wakeBox(wake, reach)
+  const layers = [
+    { p: 0.6, cell: 95, size: 0.9, alpha: 0.4, reacts: false },
+    { p: 1, cell: 70, size: 1.25, alpha: 0.55, reacts: true },
+  ]
+  // Zoomed out, most of the field is left undrawn, so the screen holds about as
+  // many lights as it does up close; which ones go is fixed, so none flicker.
+  const keep = Math.min(1, (v.ppu / 0.8) ** 2)
+  const dots: Dots = new Map()
+  for (const layer of layers) {
+    const lcx = v.cx * layer.p
+    const lcy = v.cy * layer.p
+    const cell = layer.cell
+    const x0 = Math.floor((lcx - v.halfW) / cell) - 1
+    const x1 = Math.ceil((lcx + v.halfW) / cell) + 1
+    const y0 = Math.floor((lcy - v.halfH) / cell) - 1
+    const y1 = Math.ceil((lcy + v.halfH) / cell) + 1
+    for (let iy = y0; iy <= y1; iy++) {
+      for (let ix = x0; ix <= x1; ix++) {
+        const h2 = hashCell(ix * 3 - 11, iy * 5 + 23)
+        if (h2 > keep) continue
+        const h1 = hashCell(ix + 91, iy - 57)
+        const drift = s.time * (0.25 + h1 * 0.3) + h2 * 10
+        const wx = ix * cell + h1 * cell + Math.sin(drift) * cell * 0.12
+        const wy = iy * cell + h2 * cell + Math.cos(drift * 0.8) * cell * 0.1
+        const X = (wx - lcx) * v.ppu + v.w / 2
+        const Y = (wy - lcy) * v.ppu + v.h / 2
+        if (X < -10 || X > v.w + 10 || Y < -10 || Y > v.h + 10) continue
+        let lit = 0
+        if (layer.reacts && wx > box.x0 && wx < box.x1 && wy > box.y0 && wy < box.y1) {
+          for (let i = wake.length - 1; i >= 0; i -= 2) {
+            const w = wake[i]!
+            const dx = wx - w.x
+            const dy = wy - w.y
+            if (dx > reach || dx < -reach || dy > reach || dy < -reach) continue
+            const d = Math.sqrt(dx * dx + dy * dy)
+            if (d < reach) lit = Math.max(lit, (1 - d / reach) * (1 - (s.time - w.t) / WAKE_LIFE))
+          }
+        }
+        const breathe = 0.35 + 0.65 * (0.5 + 0.5 * Math.sin(s.time * (0.5 + h2 * 0.9) + h1 * 40))
+        const color = PLANKTON[Math.floor(h1 * 97) % PLANKTON.length]!
+        const a = Math.min(1, lum * (layer.alpha * breathe + lit * 1.2))
+        if (a < 0.03) continue
+        const R = Math.max(0.7, layer.size * Math.min(1.6, Math.max(0.7, v.ppu)) * (1 + lit * 1.4))
+        addDot(dots, color, a, X, Y, R)
+        if (lit > 0.25) glows.push({ x: X, y: Y, r: R * 7, color, strength: lit * lum * 0.8 })
+      }
+    }
+  }
+  fillDots(ctx, dots)
+  drawWake(ctx, v, s, lum, wake, glows)
+}
+
+/** The ground within `reach` of anywhere the wake has been. */
+function wakeBox(wake: Wake, reach: number) {
+  let x0 = Infinity
+  let x1 = -Infinity
+  let y0 = Infinity
+  let y1 = -Infinity
+  for (const w of wake) {
+    x0 = Math.min(x0, w.x)
+    x1 = Math.max(x1, w.x)
+    y0 = Math.min(y0, w.y)
+    y1 = Math.max(y1, w.y)
+  }
+  return { x0: x0 - reach, x1: x1 + reach, y0: y0 - reach, y1: y1 + reach }
+}
+
+/**
+ * The trail you leave: the plankton too fine to see until it is disturbed,
+ * flaring along your path and fading behind you, the way the forest floor
+ * lights under a footstep on Pandora. Only the ground the wake covers is
+ * looked at, so a long swim costs no more than a short one.
+ */
+function drawWake(ctx: CanvasRenderingContext2D, v: View, s: GameState, lum: number, wake: Wake, glows: Glow[]) {
+  if (wake.length < 2 || lum < 0.05) return
+  const reach = 34 + radiusForLevel(s.player.level) * 0.75
+  const cell = Math.max(12, reach / 5)
+  const box = wakeBox(wake, reach)
+  const x0 = Math.floor(box.x0 / cell)
+  const x1 = Math.ceil(box.x1 / cell)
+  const y0 = Math.floor(box.y0 / cell)
+  const y1 = Math.ceil(box.y1 / cell)
+  // The newest stretch, right behind the tail, is too close to the fish to read as wake.
+  const fresh = s.time - 0.08
+  let lights = 0
+  const dots: Dots = new Map()
+  for (let iy = y0; iy <= y1; iy++) {
+    for (let ix = x0; ix <= x1; ix++) {
+      const h1 = hashCell(ix * 13 + 7, iy * 17 - 29)
+      const h2 = hashCell(ix - 401, iy + 211)
+      const wx = ix * cell + h1 * cell
+      const wy = iy * cell + h2 * cell
+      let lit = 0
+      for (let i = 0; i < wake.length; i++) {
+        const w = wake[i]!
+        const dx = wx - w.x
+        const dy = wy - w.y
+        if (dx >= reach || dx <= -reach || dy >= reach || dy <= -reach || w.t > fresh) continue
+        const d = Math.sqrt(dx * dx + dy * dy)
+        if (d >= reach) continue
+        lit = Math.max(lit, (1 - d / reach) * (1 - (s.time - w.t) / WAKE_LIFE))
+      }
+      if (lit < 0.06) continue
+      const X = sx(v, wx)
+      const Y = sy(v, wy)
+      if (X < -10 || X > v.w + 10 || Y < -10 || Y > v.h + 10) continue
+      // Each grain flickers as it settles, and stirs a little in the water.
+      const flicker = 0.6 + 0.4 * Math.sin(s.time * 11 + h1 * 60)
+      const a = Math.min(1, lum * lit * 1.5 * flicker)
+      const color = PLANKTON[Math.floor(h2 * 89) % PLANKTON.length]!
+      const R = Math.max(0.8, (0.8 + lit * 1.6) * Math.min(1.5, Math.max(0.7, v.ppu)))
+      addDot(dots, color, a, X, Y, R)
+      if (lit > 0.4 && lights < 36) {
+        glows.push({ x: X, y: Y, r: R * 6, color, strength: a * 0.9 })
+        lights++
+      }
+    }
+  }
+  fillDots(ctx, dots)
+}
+
+/** Spores that drift up out of the abyss, swaying as they rise. */
+function drawSpores(ctx: CanvasRenderingContext2D, v: View, s: GameState, lum: number, glows: Glow[]) {
+  const deep = Math.max(0, Math.min(1, (darknessAt(v.cy) - 0.4) / 0.3))
+  if (deep * lum < 0.02) return
+  const cell = 220
+  const period = 26
+  const x0 = Math.floor((v.cx - v.halfW) / cell) - 1
+  const x1 = Math.ceil((v.cx + v.halfW) / cell) + 1
+  const y0 = Math.floor((v.cy - v.halfH) / cell) - 1
+  const y1 = Math.ceil((v.cy + v.halfH) / cell) + 1
+  for (let iy = y0; iy <= y1; iy++) {
+    for (let ix = x0; ix <= x1; ix++) {
+      const h = hashCell(ix * 7 + 5, iy * 11 - 3)
+      if (h > 0.42) continue
+      // Each rises a whole cell over its period, then starts again at the bottom.
+      const rise = ((s.time / period + h * 13) % 1) * cell
+      const wx = ix * cell + hashCell(ix, iy + 70) * cell + Math.sin(s.time * 0.9 + h * 30) * 18
+      const wy = iy * cell + cell - rise
+      const X = sx(v, wx)
+      const Y = sy(v, wy)
+      if (X < -20 || X > v.w + 20 || Y < -20 || Y > v.h + 20) continue
+      const edge = Math.min(1, rise / (cell * 0.15), (cell - rise) / (cell * 0.15))
+      const a = deep * lum * edge * (0.55 + 0.45 * Math.sin(s.time * 3 + h * 50))
+      const R = Math.max(1.2, 2.2 * Math.min(1.5, v.ppu))
+      const color = h < 0.15 ? '#f6ffd9' : h < 0.3 ? '#b8fff4' : '#e3c6ff'
+      ctx.globalAlpha = Math.min(1, a)
+      ctx.fillStyle = color
+      ctx.beginPath()
+      ctx.arc(X, Y, R, 0, Math.PI * 2)
+      ctx.fill()
+      glows.push({ x: X, y: Y, r: R * 6.5, color, strength: a })
+    }
+  }
+  ctx.globalAlpha = 1
+}
+
+/**
+ * Sun through the surface: slow, soft shafts that fade as the water deepens.
+ * They stand in the world a little behind the fish, so swimming sideways
+ * slides past them rather than dragging them along.
+ */
+function drawSunRays(ctx: CanvasRenderingContext2D, v: View, s: GameState, dark: boolean) {
+  const surface = sy(v, 0)
+  const reach = 950 * v.ppu
+  if (surface + reach < 0) return
+  const top = Math.max(-20, surface)
+  const spacing = 240
+  const lcx = v.cx * 0.35
+  const k0 = Math.floor((lcx - v.halfW) / spacing) - 2
+  const k1 = Math.ceil((lcx + v.halfW) / spacing) + 2
+  ctx.save()
+  ctx.globalCompositeOperation = dark ? 'lighter' : 'source-over'
+  for (let k = k0; k <= k1; k++) {
+    const h = hashCell(k, 404)
+    if (h > 0.72) continue
+    const phase = s.time * 0.1 + h * 20
+    const wx = k * spacing + h * spacing * 0.6 + Math.sin(phase) * 26
+    const baseX = (wx - lcx) * v.ppu + v.w / 2
+    const width = (26 + 44 * h) * v.ppu * (0.8 + 0.2 * Math.sin(phase * 1.3))
+    const slant = 190 * v.ppu
+    const strength = (dark ? 0.055 : 0.16) * (0.55 + 0.45 * Math.sin(s.time * 0.33 + h * 31))
+    const grad = ctx.createLinearGradient(0, top, 0, surface + reach)
+    grad.addColorStop(0, `rgba(214, 250, 255, ${strength})`)
+    grad.addColorStop(1, 'rgba(214, 250, 255, 0)')
+    ctx.fillStyle = grad
+    ctx.beginPath()
+    ctx.moveTo(baseX - width / 2, top)
+    ctx.lineTo(baseX + width / 2, top)
+    ctx.lineTo(baseX + width * 1.7 + slant, surface + reach)
+    ctx.lineTo(baseX - width * 1.7 + slant, surface + reach)
+    ctx.closePath()
+    ctx.fill()
+  }
+  ctx.restore()
+}
+
 function drawSnow(ctx: CanvasRenderingContext2D, v: View, s: GameState, color: string, alphaScale: number) {
   const layers = [
     { p: 0.55, cell: 160, size: 1.1, alpha: 0.14 },
@@ -124,7 +379,10 @@ function drawSnow(ctx: CanvasRenderingContext2D, v: View, s: GameState, color: s
     const x1 = Math.ceil((lcx + v.halfW) / cell) + 1
     const y0 = Math.floor((lcy - v.halfH) / cell) - 1
     const y1 = Math.ceil((lcy + v.halfH) / cell) + 1
-    const alpha = layer.alpha * alphaScale
+    const r = Math.max(0.6, layer.size * Math.max(0.6, v.ppu))
+    // Flakes are filled together, a path for each of four brightnesses,
+    // rather than hundreds of fills a frame.
+    const shades: number[][] = [[], [], [], []]
     for (let iy = y0; iy <= y1; iy++) {
       for (let ix = x0; ix <= x1; ix++) {
         const h1 = hashCell(ix, iy)
@@ -134,11 +392,19 @@ function drawSnow(ctx: CanvasRenderingContext2D, v: View, s: GameState, color: s
         const X = (lx - lcx) * v.ppu + v.w / 2
         const Y = (ly - lcy) * v.ppu + v.h / 2
         if (Y < sy(v, 0)) continue
-        ctx.globalAlpha = alpha * (0.4 + 0.6 * hashCell(ix * 3, iy * 7))
-        ctx.beginPath()
-        ctx.arc(X, Y, Math.max(0.6, layer.size * Math.max(0.6, v.ppu)), 0, Math.PI * 2)
-        ctx.fill()
+        shades[Math.min(3, Math.floor(hashCell(ix * 3, iy * 7) * 4))]!.push(X, Y)
       }
+    }
+    for (let k = 0; k < 4; k++) {
+      const flakes = shades[k]!
+      if (!flakes.length) continue
+      ctx.globalAlpha = layer.alpha * alphaScale * (0.4 + 0.6 * ((k + 0.5) / 4))
+      ctx.beginPath()
+      for (let i = 0; i < flakes.length; i += 2) {
+        ctx.moveTo(flakes[i]! + r, flakes[i + 1]!)
+        ctx.arc(flakes[i]!, flakes[i + 1]!, r, 0, Math.PI * 2)
+      }
+      ctx.fill()
     }
   }
   ctx.globalAlpha = 1
@@ -281,6 +547,7 @@ function drawOneFish(
       alarm,
       puff: f.puff,
       time: s.time,
+      biolume: biolumeAt(f.y),
     },
     f.seed,
     local,
@@ -374,6 +641,8 @@ function drawPlayer(ctx: CanvasRenderingContext2D, v: View, s: GameState, glows:
       alarm: 0,
       puff: 0,
       time: s.time,
+      // You light up a touch sooner than the rest, so you are never the one thing unlit.
+      biolume: Math.min(1, biolumeAt(p.y) * 1.15),
     },
     7,
     local,
@@ -487,30 +756,90 @@ function drawDarkness(ctx: CanvasRenderingContext2D, v: View, s: GameState) {
   const inner = Math.min(v.w, v.h) * (0.6 - dark * 0.26)
   const outer = Math.hypot(v.w, v.h) * 0.62
   const grad = ctx.createRadialGradient(focus.x, focus.y, inner, focus.x, focus.y, outer)
-  grad.addColorStop(0, 'rgba(1, 5, 12, 0)')
-  grad.addColorStop(1, `rgba(1, 5, 12, ${0.8 * dark})`)
+  // A night blue rather than black, so the dark itself has a colour.
+  grad.addColorStop(0, 'rgba(3, 5, 20, 0)')
+  grad.addColorStop(1, `rgba(3, 5, 20, ${0.8 * dark})`)
   ctx.fillStyle = grad
   ctx.fillRect(0, 0, v.w, v.h)
 }
 
-function drawGlows(ctx: CanvasRenderingContext2D, glows: Glow[], boost: number) {
+const glowSprites = new Map<string, HTMLCanvasElement>()
+
+/**
+ * One soft light, painted once per colour and stamped wherever it's wanted,
+ * which is far cheaper than a gradient each. Looked up by the colour as
+ * written, so a frame builds no strings to find them.
+ */
+function glowSprite(color: string) {
+  let sprite = glowSprites.get(color)
+  if (!sprite) {
+    const c = toRgb(color)
+    sprite = document.createElement('canvas')
+    sprite.width = 64
+    sprite.height = 64
+    const g = sprite.getContext('2d')!
+    const grad = g.createRadialGradient(32, 32, 0, 32, 32, 32)
+    grad.addColorStop(0, css(c, 0.55))
+    grad.addColorStop(0.35, css(c, 0.22))
+    grad.addColorStop(1, css(c, 0))
+    g.fillStyle = grad
+    g.fillRect(0, 0, 64, 64)
+    if (glowSprites.size > 160) glowSprites.clear()
+    glowSprites.set(color, sprite)
+  }
+  return sprite
+}
+
+/** Light added over everything else, up to `cap` of them; ones too faint or small to see are skipped. */
+function drawGlows(ctx: CanvasRenderingContext2D, glows: Glow[], boost: number, cap: number) {
   if (!glows.length) return
   ctx.save()
   ctx.globalCompositeOperation = 'lighter'
-  const n = Math.min(glows.length, 110)
+  const n = Math.min(glows.length, cap)
   for (let i = 0; i < n; i++) {
-    const g = glows[i]!
-    if (g.r < 1 || g.strength <= 0.01) continue
-    const c = toRgb(g.color)
-    const a = Math.min(1, g.strength * boost)
-    const grad = ctx.createRadialGradient(g.x, g.y, 0, g.x, g.y, g.r)
-    grad.addColorStop(0, css(c, 0.55 * a))
-    grad.addColorStop(0.35, css(c, 0.22 * a))
-    grad.addColorStop(1, css(c, 0))
-    ctx.fillStyle = grad
-    ctx.fillRect(g.x - g.r, g.y - g.r, g.r * 2, g.r * 2)
+    const glow = glows[i]!
+    const alpha = Math.min(1, glow.strength * boost)
+    if (glow.r < 2 || alpha < 0.03) continue
+    ctx.globalAlpha = alpha
+    ctx.drawImage(glowSprite(glow.color), glow.x - glow.r, glow.y - glow.r, glow.r * 2, glow.r * 2)
   }
   ctx.restore()
+}
+
+/**
+ * Dots of light batched by colour and brightness, one fill for each pair
+ * instead of one for every dot, since the deep puts hundreds on screen: per
+ * colour, the dots at each of six brightness steps, as x, y, r triples.
+ */
+type Dots = Map<string, number[][]>
+
+function addDot(dots: Dots, color: string, alpha: number, x: number, y: number, r: number) {
+  const level = Math.min(6, Math.round(alpha * 6))
+  if (level <= 0) return
+  let levels = dots.get(color)
+  if (!levels) {
+    levels = [[], [], [], [], [], [], []]
+    dots.set(color, levels)
+  }
+  levels[level]!.push(x, y, r)
+}
+
+function fillDots(ctx: CanvasRenderingContext2D, dots: Dots) {
+  for (const [color, levels] of dots) {
+    ctx.fillStyle = color
+    for (let level = 1; level <= 6; level++) {
+      const list = levels[level]!
+      if (!list.length) continue
+      ctx.globalAlpha = level / 6
+      ctx.beginPath()
+      for (let i = 0; i < list.length; i += 3) {
+        ctx.moveTo(list[i]! + list[i + 2]!, list[i + 1]!)
+        ctx.arc(list[i]!, list[i + 1]!, list[i + 2]!, 0, Math.PI * 2)
+      }
+      ctx.fill()
+    }
+  }
+  ctx.globalAlpha = 1
 }
 
 function compact(n: number) {
@@ -719,6 +1048,7 @@ function paintFor(art: FishArt, depth: number, tint: number, fill: number): Fish
     pupil: '#16202a',
     mouth: '#16202a',
     teeth: '#f4f8fa',
+    glow: hsla(hue, 92, 74),
   }
   if (paintCache.size > 800) paintCache.clear()
   paintCache.set(key, made)
@@ -775,7 +1105,7 @@ function drawOcean(ctx: CanvasRenderingContext2D, v: View, s: GameState) {
   ctx.stroke()
 }
 
-function drawRock(ctx: CanvasRenderingContext2D, v: View, rock: Rock, time: number, glows: Glow[]) {
+function drawRock(ctx: CanvasRenderingContext2D, v: View, rock: Rock, time: number, glows: Glow[], ambient: Glow[]) {
   const X = sx(v, rock.x)
   const Y = sy(v, rock.y)
   const R = rock.r * v.ppu
@@ -808,7 +1138,8 @@ function drawRock(ctx: CanvasRenderingContext2D, v: View, rock: Rock, time: numb
   }
 
   rockPath(ctx, X, Y, R, shape)
-  ctx.fillStyle = css(mixRgb(under, hslToRgb(hue, 0.22, 0.58), 0.26))
+  // Deep rock is a dark shape for its own light to show against, not a pale one.
+  ctx.fillStyle = css(mixRgb(under, hslToRgb(hue, 0.22, 0.58), 0.26 * (1 - biolumeAt(rock.y) * 0.65)))
   ctx.fill()
   ctx.strokeStyle = hsla(hue, 30, lineL, 0.9)
   ctx.lineWidth = lw
@@ -914,7 +1245,139 @@ function drawRock(ctx: CanvasRenderingContext2D, v: View, rock: Rock, time: numb
       glows.push({ x: px, y: py - size * 0.5, r: size * 2.2, color: PALETTE[swatch], strength: 0.5 * pulse })
     }
   }
+  drawReefLight(ctx, rock, X, Y, R, shape, lw, time, ambient)
   ctx.restore()
+}
+
+/** The glowing growth on a deep reef: cyan and mint in the midnight zone, violet and pink below. */
+const MOSS_MIDNIGHT = ['#6ff4ff', '#8ef7d4', '#7fb2ff']
+const MOSS_ABYSS = ['#ff8ad8', '#c7a4ff', '#6ff4ff']
+
+/**
+ * A reef in the dark, lit by what grows on it: its rim glowing, patches of
+ * moss breathing light on its face, and on the big rock of a formation, a few
+ * anemones whose bulbs pulse, with a curled frond or two in the abyss like the
+ * spiral plants of Pandora's forest floor. Its own random stream, so the reef's
+ * shape and its coral are exactly what they were.
+ */
+function drawReefLight(
+  ctx: CanvasRenderingContext2D,
+  rock: Rock,
+  X: number,
+  Y: number,
+  R: number,
+  shape: number[],
+  lw: number,
+  time: number,
+  glows: Glow[],
+) {
+  const lum = biolumeAt(rock.y)
+  if (lum < 0.03) return
+  const g = mulberry32(rock.seed ^ 0x3c6ef372)
+  const abyss = rock.zone === 'abyss'
+  const moss = abyss ? MOSS_ABYSS : MOSS_MIDNIGHT
+  const rimHue = swatchHue(abyss ? 'violet' : rock.zone === 'midnight' ? 'sky' : 'teal')
+
+  ctx.save()
+  ctx.globalCompositeOperation = 'lighter'
+  rockPath(ctx, X, Y, R, shape)
+  ctx.strokeStyle = hsla(rimHue, 90, 70, 0.12 * lum)
+  ctx.lineWidth = lw * 4.5
+  ctx.stroke()
+  ctx.strokeStyle = hsla(rimHue, 90, 76, 0.28 * lum)
+  ctx.lineWidth = lw * 1.4
+  ctx.stroke()
+  ctx.restore()
+
+  // Moss, in patches over the face: a few specks to a patch, never more than a
+  // few pixels each, so a boulder is speckled with light rather than spotted.
+  const patches = rock.main ? 8 : 3
+  for (let i = 0; i < patches; i++) {
+    const a = g() * Math.PI * 2
+    const d = Math.sqrt(g()) * R * 0.72
+    const px = X + Math.cos(a) * d
+    const py = Y + Math.sin(a) * d * 0.9
+    const color = moss[Math.floor(g() * moss.length)]!
+    const pulse = 0.5 + 0.5 * Math.sin(time * (0.7 + g() * 0.8) + i * 2.3)
+    const specks = 2 + Math.floor(g() * 3)
+    const spread = Math.min(14, Math.max(4, R * 0.05))
+    ctx.fillStyle = color
+    ctx.globalAlpha = Math.min(1, lum * (0.45 + 0.55 * pulse))
+    ctx.beginPath()
+    for (let k = 0; k < specks; k++) {
+      const r = Math.min(3.2, Math.max(0.9, R * (0.006 + g() * 0.008)))
+      const mx = px + (g() - 0.5) * spread
+      const my = py + (g() - 0.5) * spread
+      ctx.moveTo(mx + r, my)
+      ctx.arc(mx, my, r, 0, Math.PI * 2)
+    }
+    ctx.fill()
+    // Every other patch on a big rock gets a halo; the small ones glow by their rim alone.
+    if (rock.main && i % 2 === 0) glows.push({ x: px, y: py, r: spread * 1.8, color, strength: 0.5 * lum * pulse })
+  }
+  ctx.globalAlpha = 1
+
+  if (!rock.main || (rock.zone !== 'midnight' && !abyss)) return
+
+  // Anemones along the top: a stalk swaying, a bulb pulsing at its tip.
+  const stalks = 3 + Math.floor(g() * 3)
+  ctx.lineCap = 'round'
+  for (let i = 0; i < stalks; i++) {
+    const a = -Math.PI / 2 + (g() - 0.5) * 1.9
+    const bx = X + Math.cos(a) * R * 0.86
+    const by = Y + Math.sin(a) * R * 0.82
+    const len = R * (0.16 + g() * 0.2)
+    const sway = Math.sin(time * 1.1 + i * 1.7 + rock.seed * 0.0007) * len * 0.22
+    const tx = bx + Math.cos(a) * len * 0.35 + sway
+    const ty = by - len
+    const color = moss[Math.floor(g() * moss.length)]!
+    const pulse = 0.5 + 0.5 * Math.sin(time * 2 + i * 1.3 + g() * 6)
+    ctx.globalAlpha = 0.55 * lum
+    ctx.strokeStyle = color
+    ctx.lineWidth = Math.max(1.1, len * 0.07)
+    ctx.beginPath()
+    ctx.moveTo(bx, by)
+    ctx.quadraticCurveTo(bx + sway * 0.2, by - len * 0.6, tx, ty)
+    ctx.stroke()
+    const bulb = Math.max(1.8, len * 0.13)
+    ctx.globalAlpha = Math.min(1, lum * (0.6 + 0.4 * pulse))
+    ctx.fillStyle = color
+    ctx.beginPath()
+    ctx.arc(tx, ty, bulb, 0, Math.PI * 2)
+    ctx.fill()
+    glows.push({ x: tx, y: ty, r: bulb * 7, color, strength: (0.5 + 0.45 * pulse) * lum })
+  }
+
+  if (abyss) {
+    // A frond curled into a spiral, glowing along its curl.
+    const fronds = 1 + Math.floor(g() * 2)
+    for (let i = 0; i < fronds; i++) {
+      const a = -Math.PI / 2 + (g() - 0.5) * 1.4
+      const bx = X + Math.cos(a) * R * 0.84
+      const by = Y + Math.sin(a) * R * 0.8
+      const size = R * (0.16 + g() * 0.1)
+      const color = moss[Math.floor(g() * moss.length)]!
+      const lean = Math.sin(time * 0.6 + i * 2 + rock.seed * 0.0005) * size * 0.1
+      const cx = bx + lean
+      const cy = by - size * 1.25
+      ctx.globalAlpha = 0.65 * lum
+      ctx.strokeStyle = color
+      ctx.lineWidth = Math.max(1.2, size * 0.08)
+      ctx.beginPath()
+      ctx.moveTo(bx, by)
+      ctx.quadraticCurveTo(bx - size * 0.15, by - size * 0.6, cx + size * 0.5, cy)
+      for (let k = 0; k <= 26; k++) {
+        const t = k / 26
+        const ang = t * Math.PI * 3.2
+        const rr = size * 0.5 * (1 - t * 0.85)
+        ctx.lineTo(cx + Math.cos(ang) * rr, cy - Math.sin(ang) * rr)
+      }
+      ctx.stroke()
+      const pulse = 0.5 + 0.5 * Math.sin(time * 1.4 + i * 2.7)
+      glows.push({ x: cx, y: cy, r: size * 1.6, color, strength: (0.45 + 0.35 * pulse) * lum })
+    }
+  }
+  ctx.globalAlpha = 1
 }
 
 function drawJelly(ctx: CanvasRenderingContext2D, v: View, j: Jelly, time: number, glows: Glow[], deep: number) {
@@ -982,8 +1445,30 @@ function drawJelly(ctx: CanvasRenderingContext2D, v: View, j: Jelly, time: numbe
     ctx.arc(X + Math.cos(a) * rx * 0.42, Y - ry * 0.25 + Math.sin(a) * ry * 0.2, R * 0.11, 0, Math.PI * 2)
     ctx.stroke()
   }
+
+  // In the dark the bell's edge burns, and the long tentacles end in points of light.
+  const lum = biolumeAt(j.y)
+  if (lum > 0.02) {
+    const light = hsla(j.hue, 92, 76)
+    ctx.globalCompositeOperation = 'lighter'
+    ctx.globalAlpha = j.fade * 0.32 * lum
+    ctx.strokeStyle = light
+    ctx.lineWidth = Math.max(2.5, R * 0.22)
+    ctx.beginPath()
+    ctx.ellipse(X, Y, rx, ry, 0, Math.PI, 0)
+    ctx.stroke()
+    ctx.globalCompositeOperation = 'source-over'
+    for (let i = 0; i < 7; i++) {
+      const t0 = (i / 6 - 0.5) * 1.6
+      const len = R * (2.1 + (i % 3) * 0.35)
+      const tx = X + t0 * rx * 0.8 + Math.sin(time * 2.4 + i * 1.3 + 5) * R * 0.16
+      const ty = Y + len
+      const pulse = 0.5 + 0.5 * Math.sin(time * 3 + i * 1.9)
+      glows.push({ x: tx, y: ty, r: R * 0.55, color: light, strength: (0.35 + 0.35 * pulse) * lum * j.fade })
+    }
+  }
   ctx.restore()
-  glows.push({ x: X, y: Y - ry * 0.2, r: R * 2.4, color: `hsl(${j.hue}, 85%, 72%)`, strength: (0.25 + 0.6 * deep) * j.fade })
+  glows.push({ x: X, y: Y - ry * 0.2, r: R * 2.4, color: `hsl(${j.hue}, 85%, 72%)`, strength: (0.25 + 0.6 * deep + 0.3 * lum) * j.fade })
 }
 
 function drawMine(ctx: CanvasRenderingContext2D, v: View, m: Mine, time: number, glows: Glow[]) {
@@ -1387,15 +1872,23 @@ export function renderGame(ctx: CanvasRenderingContext2D, s: GameState, w: numbe
   }
   const sk = skinAt(v.cy)
   const glows: Glow[] = []
+  // The water's and the reef's light, kept apart so however much of it there
+  // is, it never crowds out the light of anything you can meet.
+  const ambient: Glow[] = []
   const badges: Badge[] = []
   const deep = darknessAt(v.cy)
+  const lum = biolumeAt(v.cy)
 
   drawOcean(ctx, v, s)
-  drawSnow(ctx, v, s, sk.ink, 0.5)
+  drawSunRays(ctx, v, s, sk.dark)
+  // Marine snow gives way to the plankton's own light as the water darkens.
+  drawSnow(ctx, v, s, sk.ink, 0.5 * (1 - lum * 0.75))
+  drawPlankton(ctx, v, s, lum, wakeFor(s), ambient)
+  drawSpores(ctx, v, s, lum, ambient)
 
   const diag = Math.hypot(v.halfW, v.halfH)
   for (const rock of rocksNear(s.seed, v.cx, v.cy, diag + 200)) {
-    if (onScreen(v, rock.x, rock.y, rock.r * ppu * 1.6)) drawRock(ctx, v, rock, s.time, glows)
+    if (onScreen(v, rock.x, rock.y, rock.r * ppu * 1.6)) drawRock(ctx, v, rock, s.time, glows, ambient)
   }
   for (const m of s.mines) if (onScreen(v, m.x, m.y, m.r * ppu * 8)) drawMine(ctx, v, m, s.time, glows)
   for (const j of s.jellies) if (onScreen(v, j.x, j.y, j.r * ppu * 3)) drawJelly(ctx, v, j, s.time, glows, deep)
@@ -1421,7 +1914,9 @@ export function renderGame(ctx: CanvasRenderingContext2D, s: GameState, w: numbe
   drawBlasts(ctx, v, s, glows)
   drawDarkness(ctx, v, s)
   // Added light is lost on pale water; don't let it wash the shallows out.
-  drawGlows(ctx, glows, (0.45 + deep * 0.75) * (sk.dark ? 1 : 0.6))
+  const boost = (0.45 + deep * 0.75) * (sk.dark ? 1 : 0.6)
+  drawGlows(ctx, ambient, boost, 140)
+  drawGlows(ctx, glows, boost, 180)
   drawBadges(ctx, badges)
   drawAlerts(ctx, v, s)
   drawFloaters(ctx, v, s, sk)

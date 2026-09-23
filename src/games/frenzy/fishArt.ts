@@ -33,6 +33,11 @@ export type FishPose = {
   puff: number
   /** Seconds, for lures and shimmer. */
   time: number
+  /**
+   * 0..1: how much the fish lights itself, rising with depth. Down where the
+   * sun never reaches, everything that lives makes its own light.
+   */
+  biolume?: number
 }
 
 /**
@@ -51,6 +56,8 @@ export type FishPaint = {
   pupil: string
   mouth: string
   teeth: string
+  /** The light it makes in the dark: a bright shade of its own colour. */
+  glow?: string
 }
 
 const U = [0, 0.1, 0.3, 0.55, 0.8, 1] as const
@@ -528,6 +535,70 @@ function drawTiny(ctx: CanvasRenderingContext2D, art: FishArt, paint: FishPaint,
   ctx.fill()
   ctx.stroke()
   if (glows && art.lure) glows.push({ x: L * 0.55, y: -H * 0.9, r: H * 1.4, color: art.lure, strength: 0.8 })
+  // Far off in the dark, a fish is a spark of its own colour.
+  const lum = pose.biolume ?? 0
+  if (glows && lum > 0.05) glows.push({ x: 0, y: 0, r: Math.max(6, L * 1.4), color: art.glow ?? paint.glow ?? paint.line, strength: 0.45 * lum })
+}
+
+/**
+ * The light a fish makes in deep water: its outline again as a wide, faint
+ * band of added light, so the edge glows the way a creature on Pandora's
+ * night floor does; a row of lights along the belly, twinkling out of step;
+ * and eyes that catch the light, red in a hunter that has seen you.
+ */
+function drawBiolume(
+  ctx: CanvasRenderingContext2D,
+  art: FishArt,
+  paint: FishPaint,
+  L: number,
+  H: number,
+  pose: FishPose,
+  seed: number,
+  lineW: number,
+  glows: Glow[] | null,
+) {
+  const lum = pose.biolume ?? 0
+  if (lum <= 0.02) return
+  const color = art.glow ?? paint.glow ?? paint.line
+
+  ctx.save()
+  ctx.globalCompositeOperation = 'lighter'
+  const base = ctx.globalAlpha
+  ctx.globalAlpha = base * 0.42 * lum
+  bodyPath(ctx, H)
+  ctx.lineWidth = lineW * 2.2
+  ctx.strokeStyle = color
+  ctx.stroke()
+
+  if (art.pattern !== 'photophores' && L >= 22 && lum > 0.12) {
+    const n = L > 90 ? 7 : 5
+    const r = Math.max(0.9, H * 0.038)
+    ctx.fillStyle = color
+    for (let i = 0; i < n; i++) {
+      const u = 0.22 + (i / (n - 1)) * 0.5
+      const half = (thickness(art.profile, u, pose.puff) * H) / 2
+      const x = L / 2 - u * L
+      const y = spineAt(u) + half * 0.6
+      const twinkle = 0.55 + 0.45 * Math.sin(pose.time * 2.3 + i * 1.7 + seed * 0.37)
+      ctx.globalAlpha = base * Math.min(1, lum * 1.3) * twinkle
+      ctx.beginPath()
+      ctx.arc(x, y, r, 0, Math.PI * 2)
+      ctx.fill()
+      // Only a big fish's lights are big enough to need a halo; smaller ones carry them on the dots.
+      if (glows && L >= 70 && i % 2 === 1) glows.push({ x, y, r: r * 6, color, strength: 0.45 * lum * twinkle })
+    }
+  }
+  ctx.restore()
+
+  // A hunter's red eyes are a warning, so they shine at any size worth drawing.
+  const hunting = pose.alarm > 0.3
+  if (glows && lum > 0.1 && L >= (hunting ? 26 : 40)) {
+    const eu = art.mouth === 'jaws' ? 0.21 : 0.14
+    const ex = L / 2 - eu * L
+    const ey = spineAt(eu) - H * (art.mouth === 'jaws' ? 0.22 : 0.1)
+    const er = Math.max(1.3, H * art.eye)
+    glows.push({ x: ex, y: ey, r: er * (hunting ? 4.5 : 3), color: hunting ? '#ff4a3d' : '#e8fbff', strength: (hunting ? 0.9 : 0.35) * lum })
+  }
 }
 
 /** Draw one fish; bioluminescent bits are pushed to `glows` in the fish's own frame. */
@@ -638,6 +709,8 @@ export function drawFish(
   ctx.lineWidth = lineW
   ctx.strokeStyle = outline
   ctx.stroke()
+
+  drawBiolume(ctx, art, paint, L, H, pose, seed, lineW, glows)
 
   if (pose.puff > 0.3) {
     ctx.beginPath()
