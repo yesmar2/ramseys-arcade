@@ -413,6 +413,8 @@ export function AsteroidsGame() {
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
+      // The score card's tag field and buttons, and the pause screen, get their keys to themselves.
+      if (saveOpenRef.current || pausedRef.current) return
       // Prefer e.code; also accept e.key for ArrowLeft (some layouts/hosts)
       const fromCode = KEY_MAP[e.code]
       const fromKey =
