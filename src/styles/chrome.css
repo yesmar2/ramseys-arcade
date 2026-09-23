@@ -1,0 +1,1398 @@
+/*
+ * The site's chrome: the header bar, the boards control, your chip, your menu
+ * and, on a phone, the tab bar along the bottom (SiteHeader, SiteScopeControl,
+ * SiteMenu, SiteTabs). The bell and the invites button keep their own rules in
+ * styles.css.
+ */
+
+/* ---------- the bar ---------- */
+
+.site-chrome {
+  position: relative;
+  z-index: 30;
+  width: min(100% - 1.25rem, var(--max-width));
+}
+
+.site-bar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  min-height: 3.9rem;
+  box-sizing: border-box;
+  padding: 0.45rem 0.5rem 0.45rem 1.3rem;
+  border-radius: 999px;
+  background: rgba(var(--surface-rgb), 0.82);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  border: 1px solid rgba(var(--ink-rgb), 0.08);
+  box-shadow: var(--shadow-soft);
+}
+
+.site-bar__brand {
+  flex: none;
+  margin-right: 0.2rem;
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.site-bar__brand span {
+  color: var(--accent);
+}
+
+/*
+ * The links keep their size; when the bar runs short, the end gives way: the
+ * boards chip clips a long group name and your chip a long tag. The widths
+ * below hide words before it comes to that.
+ */
+.site-bar__links {
+  display: flex;
+  align-items: center;
+  gap: 0.1rem;
+  flex: none;
+}
+
+.site-bar__link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.5rem;
+  padding: 0 0.8rem;
+  border-radius: 999px;
+  font-size: 0.93rem;
+  font-weight: 700;
+  color: var(--muted);
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.site-bar__link:hover,
+.site-bar__link:focus-visible {
+  color: var(--ink);
+  background: rgba(var(--ink-rgb), 0.05);
+  outline: none;
+}
+
+.site-bar__link--on {
+  color: var(--ink);
+  background: rgba(var(--ink-rgb), 0.07);
+  box-shadow: inset 0 0 0 1px rgba(var(--ink-rgb), 0.08);
+}
+
+.site-bar__end {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.55rem;
+}
+
+.site-bar .site-search {
+  flex: 0 1 18.5rem;
+  min-width: 12rem;
+  margin-left: 0;
+}
+
+.site-bar .site-search__form {
+  width: 100%;
+  min-height: 2.6rem;
+  box-sizing: border-box;
+}
+
+.site-bar__you {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.site-bar .notif-bell {
+  min-width: 2.6rem;
+  min-height: 2.6rem;
+}
+
+/* ---------- what the boards show ---------- */
+
+/* It gives way faster than your chip: a group's name clips before your tag does. */
+.site-scope {
+  position: relative;
+  flex: 0 3 auto;
+  min-width: 0;
+}
+
+.site-scope__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  max-width: 100%;
+  box-sizing: border-box;
+  min-height: 2.6rem;
+  padding: 0 0.85rem 0 0.8rem;
+  border-radius: 999px;
+  border: 1px solid rgba(var(--ink-rgb), 0.09);
+  background: rgba(var(--ink-rgb), 0.045);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.site-scope__btn:hover,
+.site-scope__btn:focus-visible,
+.site-scope__btn[aria-expanded='true'] {
+  border-color: rgba(var(--ink-rgb), 0.18);
+  outline: none;
+}
+
+.site-scope__btn[aria-expanded='true'] {
+  background: rgba(var(--ink-rgb), 0.08);
+}
+
+.site-scope__mark,
+.site-scope__chev {
+  display: grid;
+  place-items: center;
+  flex: none;
+}
+
+.site-scope__period {
+  flex: none;
+}
+
+.site-scope__mark {
+  color: color-mix(in srgb, var(--accent) 75%, var(--ink));
+}
+
+.site-scope__mark svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.site-scope__chev {
+  color: var(--muted);
+}
+
+.site-scope__chev svg {
+  width: 0.65rem;
+  height: 0.65rem;
+}
+
+.site-scope__among {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 9rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--muted);
+  font-weight: 650;
+}
+
+.site-scope__btn--group .site-scope__among {
+  color: color-mix(in srgb, var(--accent) 70%, var(--ink));
+  font-weight: 750;
+}
+
+.site-scope__skel {
+  --skel-w: 4rem;
+}
+
+.site-scope__pop {
+  position: absolute;
+  top: calc(100% + 0.6rem);
+  right: 0;
+  z-index: 70;
+  width: 21rem;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  padding: 1.1rem;
+  border-radius: 1.3rem;
+  background: var(--surface);
+  border: 1px solid rgba(var(--ink-rgb), 0.14);
+  box-shadow: var(--shadow-lift);
+}
+
+.site-scope__cap {
+  margin: 0;
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.site-scope__cap:not(:first-child) {
+  margin-top: 0.3rem;
+}
+
+.site-scope__groups {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.site-scope__option,
+.site-scope__add {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  min-height: 3rem;
+  box-sizing: border-box;
+  padding: 0.35rem 0.7rem;
+  border-radius: 0.9rem;
+  border: 1px solid transparent;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.site-scope__option:hover,
+.site-scope__option:focus-visible {
+  background: rgba(var(--ink-rgb), 0.05);
+  outline: none;
+}
+
+.site-scope__option[aria-pressed='true'] {
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.site-scope__option-mark {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.65rem;
+  background: rgba(var(--ink-rgb), 0.06);
+  color: color-mix(in srgb, var(--accent) 70%, var(--ink));
+  font-family: var(--font-display);
+  font-weight: 800;
+}
+
+.site-scope__option-mark svg {
+  width: 1.05rem;
+  height: 1.05rem;
+}
+
+.site-scope__option-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.05rem;
+}
+
+.site-scope__option-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.92rem;
+  font-weight: 800;
+}
+
+.site-scope__option-sub {
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.site-scope__check {
+  display: grid;
+  color: color-mix(in srgb, var(--accent) 75%, var(--ink));
+}
+
+.site-scope__check svg {
+  width: 1.1rem;
+  height: 1.1rem;
+}
+
+.site-scope__add {
+  border: 1px dashed rgba(var(--ink-rgb), 0.2);
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-wrap: pretty;
+}
+
+.site-scope__add:hover,
+.site-scope__add:focus-visible {
+  border-style: solid;
+  color: var(--ink);
+  outline: none;
+}
+
+.site-scope__note {
+  margin: 0;
+  font-size: 0.76rem;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--muted);
+}
+
+/* A segmented choice: the period here, the theme and sounds in the menu. */
+.site-seg {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: 0.2rem;
+  padding: 0.22rem;
+  border-radius: 999px;
+  background: rgba(var(--ink-rgb), 0.05);
+  border: 1px solid rgba(var(--ink-rgb), 0.08);
+}
+
+.site-seg > button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  min-height: 2.3rem;
+  margin: 0;
+  padding: 0 0.6rem;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  box-shadow: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.site-seg > button:hover,
+.site-seg > button:focus-visible {
+  color: var(--ink);
+  outline: none;
+}
+
+.site-seg > button[aria-pressed='true'] {
+  background: var(--surface);
+  color: var(--ink);
+  cursor: default;
+  box-shadow: 0 1px 2px rgba(var(--shade-rgb), 0.16), inset 0 0 0 1px rgba(var(--ink-rgb), 0.08);
+}
+
+html[data-theme='dark'] .site-seg > button[aria-pressed='true'] {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.site-seg svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+/* ---------- you ---------- */
+
+.site-you {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-width: 0;
+  max-width: 15rem;
+  min-height: 2.85rem;
+  box-sizing: border-box;
+  padding: 0.2rem 0.85rem 0.2rem 0.22rem;
+  border-radius: 999px;
+  border: 1px solid rgba(var(--ink-rgb), 0.1);
+  background: color-mix(in srgb, var(--accent) 10%, var(--surface));
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+
+.site-you:hover,
+.site-you:focus-visible,
+.site-you--open,
+.site-you--here {
+  border-color: color-mix(in srgb, var(--accent) 50%, transparent);
+  outline: none;
+}
+
+.site-you__mark {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 2.35rem;
+  height: 2.35rem;
+  border-radius: 50%;
+  overflow: hidden;
+  background: rgba(var(--ink-rgb), 0.07);
+  font-family: var(--font-display);
+  font-weight: 800;
+}
+
+.site-you__mark .player-avatar {
+  width: 1.8rem;
+  height: 1.8rem;
+}
+
+.site-you__name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.92rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.site-you__rank {
+  flex: none;
+  padding: 0.12rem 0.45rem;
+  border-radius: 999px;
+  background: rgba(var(--ink-rgb), 0.08);
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.site-you__skel {
+  --skel-w: 1.6rem;
+}
+
+.site-you__act {
+  flex: none;
+  padding: 0.1rem 0.35rem;
+  border-radius: 999px;
+  background: #c2453c;
+  color: #fff;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.site-you__dot {
+  position: absolute;
+  top: 0.15rem;
+  left: 2rem;
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 50%;
+  background: #ff6b5b;
+  box-shadow: 0 0 0 2px var(--surface);
+}
+
+/* News the bell or the invites button already shows; the dot says it only where those fold away. */
+.site-you__dot--folded {
+  display: none;
+}
+
+.site-signin {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2.75rem;
+  padding: 0 1.1rem 0 0.9rem;
+  border: 0;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #03211b;
+  font: inherit;
+  font-size: 0.92rem;
+  font-weight: 800;
+  white-space: nowrap;
+  cursor: pointer;
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--accent) 32%, transparent);
+  transition: transform 0.15s ease, filter 0.15s ease;
+}
+
+.site-signin:hover,
+.site-signin:focus-visible {
+  transform: translateY(-1px);
+  filter: brightness(1.06);
+}
+
+.site-signin svg {
+  width: 1.15rem;
+  height: 1.15rem;
+}
+
+.site-signin--tag {
+  background: color-mix(in srgb, var(--accent) 16%, var(--surface));
+  color: var(--ink);
+  box-shadow: none;
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
+}
+
+/* Google's button is a frame from another page; one colour scheme on both sides keeps it free of a white box. */
+.google-signin__host {
+  color-scheme: light;
+}
+
+/* ---------- your menu ---------- */
+
+.site-menu {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+}
+
+.site-menu__scrim {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: rgba(8, 14, 20, 0.45);
+  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px);
+  cursor: pointer;
+  animation: site-menu-fade 0.2s ease-out;
+}
+
+html[data-theme='light'] .site-menu__scrim {
+  background: rgba(26, 43, 60, 0.28);
+}
+
+.site-menu__panel {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  bottom: 0.75rem;
+  width: min(26rem, calc(100vw - 1.5rem));
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  border-radius: 1.6rem;
+  background: var(--surface);
+  border: 1px solid rgba(var(--ink-rgb), 0.12);
+  box-shadow: 0 30px 80px -20px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+  animation: site-menu-in 0.24s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+@keyframes site-menu-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes site-menu-in {
+  from {
+    transform: translateX(1.5rem);
+    opacity: 0.6;
+  }
+}
+
+@keyframes site-menu-up {
+  from {
+    transform: translateY(2rem);
+    opacity: 0.5;
+  }
+}
+
+.site-menu__grab {
+  display: none;
+}
+
+.site-menu__top {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.9rem 0.9rem 0.4rem 1.35rem;
+}
+
+.site-menu__cap {
+  margin: 0;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.site-menu__close {
+  display: grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid rgba(var(--ink-rgb), 0.1);
+  background: rgba(var(--ink-rgb), 0.04);
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.site-menu__close:hover,
+.site-menu__close:focus-visible {
+  color: var(--ink);
+  border-color: rgba(var(--ink-rgb), 0.2);
+}
+
+.site-menu__close svg {
+  width: 1.1rem;
+  height: 1.1rem;
+}
+
+.site-menu__body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  padding: 0.35rem 1rem calc(1rem + env(safe-area-inset-bottom));
+}
+
+/* You, as a small player card. */
+.site-menu__card {
+  --card-accent: var(--accent);
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  padding: 1.05rem;
+  border-radius: 1.25rem;
+  background: linear-gradient(
+    150deg,
+    color-mix(in srgb, var(--card-accent) 26%, var(--surface)),
+    color-mix(in srgb, var(--card-accent) 10%, var(--surface))
+  );
+  border: 1px solid color-mix(in srgb, var(--card-accent) 38%, transparent);
+}
+
+.site-menu__card-head {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+}
+
+.site-menu__card-mark {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 4rem;
+  height: 4rem;
+  border-radius: 1.2rem;
+  background: linear-gradient(
+    160deg,
+    color-mix(in srgb, var(--card-accent) 40%, var(--surface)),
+    color-mix(in srgb, var(--card-accent) 20%, var(--surface))
+  );
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--card-accent) 50%, transparent);
+}
+
+.site-menu__card-mark .player-avatar {
+  width: 3rem;
+  height: 3rem;
+}
+
+.site-menu__card-glyph {
+  font-family: var(--font-display);
+  font-size: 1.8rem;
+  font-weight: 800;
+}
+
+.site-menu__card-text {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.site-menu__card-name {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-family: var(--font-display);
+  font-size: 1.55rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+  overflow-wrap: anywhere;
+}
+
+.site-menu__card-edit {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 1.9rem;
+  height: 1.9rem;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(var(--ink-rgb), 0.07);
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.site-menu__card-edit:hover,
+.site-menu__card-edit:focus-visible {
+  color: var(--ink);
+  background: rgba(var(--ink-rgb), 0.12);
+}
+
+.site-menu__card-edit svg {
+  width: 0.85rem;
+  height: 0.85rem;
+}
+
+.site-menu__card-line {
+  font-size: 0.86rem;
+  font-weight: 750;
+  color: color-mix(in srgb, var(--card-accent) 60%, var(--ink));
+}
+
+.site-menu__card-facts {
+  font-size: 0.78rem;
+  font-weight: 650;
+  color: var(--muted);
+}
+
+.site-menu__card-acts {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.site-menu__card-cta,
+.site-menu__card-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  min-height: 2.7rem;
+  border-radius: 999px;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 800;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.site-menu__card-cta {
+  flex: 1;
+  padding: 0 1rem;
+  background: var(--card-accent);
+  color: var(--card-ink, #16060a);
+}
+
+.site-menu__card-cta:hover,
+.site-menu__card-cta:focus-visible {
+  filter: brightness(1.06);
+}
+
+.site-menu__card-ghost {
+  padding: 0 0.95rem;
+  border: 1px solid rgba(var(--ink-rgb), 0.16);
+  background: var(--surface);
+  color: var(--ink);
+  font-weight: 750;
+}
+
+.site-menu__card-ghost svg {
+  width: 0.95rem;
+  height: 0.95rem;
+}
+
+.site-menu__card--pitch {
+  gap: 0.55rem;
+}
+
+.site-menu__pitch-mark {
+  display: grid;
+  place-items: center;
+  width: 2.9rem;
+  height: 2.9rem;
+  margin-bottom: 0.2rem;
+  border-radius: 0.9rem;
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+  color: color-mix(in srgb, var(--accent) 75%, var(--ink));
+}
+
+.site-menu__pitch-mark svg {
+  width: 1.45rem;
+  height: 1.45rem;
+}
+
+.site-menu__pitch-title {
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+
+.site-menu__pitch-copy {
+  font-size: 0.88rem;
+  font-weight: 600;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.site-menu__signin {
+  margin-top: 0.45rem;
+}
+
+/* Where to go, and what's yours. */
+.site-menu__rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.site-menu__row {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  min-height: 3.3rem;
+  box-sizing: border-box;
+  padding: 0.35rem 0.6rem;
+  border: 0;
+  border-radius: 0.95rem;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.site-menu__row:hover,
+.site-menu__row:focus-visible {
+  background: rgba(var(--ink-rgb), 0.05);
+  outline: none;
+}
+
+.site-menu__rows--plain .site-menu__row {
+  cursor: default;
+}
+
+.site-menu__rows--plain .site-menu__row:hover {
+  background: none;
+}
+
+.site-menu__row-mark {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 2.3rem;
+  height: 2.3rem;
+  border-radius: 0.75rem;
+  background: rgba(var(--ink-rgb), 0.06);
+  color: var(--muted);
+}
+
+.site-menu__row-mark svg {
+  width: 1.15rem;
+  height: 1.15rem;
+}
+
+.site-menu__row-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.05rem;
+}
+
+.site-menu__row-label {
+  font-size: 0.95rem;
+  font-weight: 800;
+}
+
+.site-menu__row-sub {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.site-menu__row-value {
+  font-size: 0.85rem;
+  font-weight: 750;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.site-menu__badge {
+  flex: none;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, #ff6b5b 18%, transparent);
+  color: color-mix(in srgb, #ff6b5b 75%, var(--ink));
+  font-size: 0.72rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.site-menu__row-go {
+  display: grid;
+  color: var(--muted);
+  transition: transform 0.15s ease;
+}
+
+.site-menu__row-go svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.site-menu__row-go--open {
+  transform: rotate(90deg);
+}
+
+.site-menu__inbox {
+  margin: 0.2rem 0 0.4rem;
+  border-radius: 1rem;
+  border: 1px solid rgba(var(--ink-rgb), 0.08);
+  background: rgba(var(--ink-rgb), 0.03);
+  overflow: hidden;
+}
+
+.site-menu__inbox .notif-panel__empty {
+  padding-top: 0.8rem;
+}
+
+.site-menu__inbox .notif-panel__list {
+  max-height: 18rem;
+}
+
+.site-menu__invites {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.site-menu .player-badge-wrap--embedded-empty {
+  display: none;
+}
+
+/* The theme and the sounds, as controls you can see all of. */
+.site-menu__settings {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid rgba(var(--ink-rgb), 0.08);
+}
+
+.site-menu__setting {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.site-menu__seg {
+  width: min(15.5rem, 64%);
+  box-sizing: border-box;
+}
+
+.site-menu__sounds.chips {
+  display: grid;
+  flex-wrap: nowrap;
+  gap: 0.2rem;
+  padding: 0.22rem;
+}
+
+.site-menu__sounds .chips__item--active {
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 1px 2px rgba(var(--shade-rgb), 0.16), inset 0 0 0 1px rgba(var(--ink-rgb), 0.08);
+}
+
+html[data-theme='dark'] .site-menu__sounds .chips__item--active {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.site-menu__signout {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-height: 2.6rem;
+  padding: 0 0.8rem;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.site-menu__signout:hover,
+.site-menu__signout:focus-visible {
+  color: var(--ink);
+  background: rgba(var(--ink-rgb), 0.05);
+}
+
+.site-menu__signout svg {
+  width: 1.05rem;
+  height: 1.05rem;
+}
+
+.site-menu__foot {
+  margin-top: auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 1.1rem;
+  padding: 0.8rem 0.4rem 0;
+  border-top: 1px solid rgba(var(--ink-rgb), 0.08);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.site-menu__foot a {
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.site-menu__foot a:hover,
+.site-menu__foot a:focus-visible {
+  color: var(--ink);
+}
+
+/* ---------- the phone's tab bar ---------- */
+
+.site-tabs {
+  display: none;
+}
+
+/* ---------- narrower than a wide desk: search folds into its button ---------- */
+
+@media (max-width: 1279px) {
+  .site-bar .site-search {
+    position: static;
+    flex: none;
+    min-width: 0;
+    margin-left: 0;
+  }
+
+  .site-bar .site-search__toggle {
+    display: grid;
+    place-items: center;
+    width: 2.6rem;
+    height: 2.6rem;
+    padding: 0;
+    border-radius: 999px;
+    border: 1px solid rgba(var(--ink-rgb), 0.09);
+    background: rgba(var(--ink-rgb), 0.045);
+    color: var(--ink);
+    cursor: pointer;
+  }
+
+  .site-bar .site-search__toggle svg {
+    width: 1.1rem;
+    height: 1.1rem;
+  }
+
+  .site-bar .site-search__form {
+    display: none;
+  }
+
+  /* Open, the field drops under the bar at its right end, and the results under the field. */
+  .site-bar .site-search--open .site-search__form {
+    display: flex;
+    position: absolute;
+    top: calc(100% + 0.5rem);
+    left: auto;
+    right: 0;
+    width: min(26rem, 100%);
+    z-index: 60;
+    background: var(--surface);
+    box-shadow: var(--shadow-lift);
+  }
+
+  .site-bar .site-search__results {
+    top: calc(100% + 3.8rem);
+    left: auto;
+    right: 0;
+    width: min(26rem, 100%);
+  }
+}
+
+/* ---------- a narrow desk or a tablet on its side: the chips drop their words, the bell goes in the menu ---------- */
+
+@media (min-width: 901px) and (max-width: 1180px) {
+  .site-bar__you > .site-header__notifs,
+  .site-bar__you > .site-header__invites {
+    display: none;
+  }
+
+  .site-you__dot--folded {
+    display: block;
+  }
+
+  .site-scope__btn:not(.site-scope__btn--group) .site-scope__among {
+    display: none;
+  }
+
+  .site-scope__among {
+    max-width: 6rem;
+  }
+
+  .site-you__name {
+    display: none;
+  }
+
+  /* With no name to clip, your chip keeps its size and the boards chip gives way. */
+  .site-bar__you {
+    flex: none;
+  }
+
+  .site-you {
+    padding-right: 0.6rem;
+  }
+
+  .site-you:not(:has(.site-you__rank, .site-you__skel)) {
+    padding-right: 0.22rem;
+  }
+}
+
+@media (min-width: 901px) and (max-width: 940px) {
+  .site-bar {
+    gap: 0.5rem;
+    padding-left: 1rem;
+  }
+
+  .site-bar__link {
+    padding: 0 0.55rem;
+    font-size: 0.87rem;
+  }
+}
+
+/*
+ * ---------- a phone, or a tablet held upright: one row up top, the tab bar along the bottom ----------
+ * Five links, the boards chip and you stop fitting on one row under about 900px,
+ * which is also where touch takes over (an iPad upright is 820), so the places
+ * move to the thumb.
+ */
+
+@media (max-width: 900px) {
+  .site-chrome {
+    width: calc(100% - 1rem);
+  }
+
+  .site-bar {
+    gap: 0.45rem;
+    min-height: 3.5rem;
+    padding: 0.35rem 0.4rem 0.35rem 1rem;
+  }
+
+  .site-bar__brand {
+    font-size: 1.4rem;
+  }
+
+  .site-bar__links,
+  .site-bar__you {
+    display: none;
+  }
+
+  .site-bar__end {
+    gap: 0.4rem;
+  }
+
+  .site-scope {
+    order: 1;
+    position: static;
+  }
+
+  .site-bar .site-search {
+    order: 2;
+  }
+
+  /* The bar is narrow enough here that the field takes its whole width. */
+  .site-bar .site-search--open .site-search__form,
+  .site-bar .site-search__results {
+    left: 0;
+    right: 0;
+    width: auto;
+  }
+
+  .site-scope__btn {
+    padding: 0 0.7rem;
+    font-size: 0.84rem;
+  }
+
+  .site-scope__among {
+    display: none;
+  }
+
+  .site-scope__btn--group .site-scope__among {
+    display: block;
+    max-width: 5.5rem;
+  }
+
+  .site-scope__pop {
+    left: 0;
+    right: 0;
+    width: auto;
+    top: calc(100% + 0.5rem);
+  }
+
+  .site-tabs {
+    position: fixed;
+    left: max(0.5rem, env(safe-area-inset-left));
+    right: max(0.5rem, env(safe-area-inset-right));
+    bottom: calc(0.55rem + env(safe-area-inset-bottom));
+    z-index: 85;
+    /* A phone's width; on a tablet it floats in the middle as a dock. */
+    max-width: 30rem;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    align-items: center;
+    gap: 0.1rem;
+    height: 4.2rem;
+    box-sizing: border-box;
+    padding: 0 0.35rem;
+    border-radius: 1.6rem;
+    background: rgba(var(--surface-rgb), 0.88);
+    -webkit-backdrop-filter: blur(16px);
+    backdrop-filter: blur(16px);
+    border: 1px solid rgba(var(--ink-rgb), 0.09);
+    box-shadow: 0 12px 30px -10px rgba(0, 0, 0, 0.35);
+  }
+
+  .site-tabs__tab {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.2rem;
+    height: 3.6rem;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 1.1rem;
+    background: none;
+    color: var(--muted);
+    font: inherit;
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    text-decoration: none;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .site-tabs__tab:focus-visible {
+    outline: 2px solid color-mix(in srgb, var(--accent) 60%, transparent);
+    outline-offset: -2px;
+  }
+
+  .site-tabs__icon {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: 2.9rem;
+    height: 1.85rem;
+    border-radius: 999px;
+    transition: background 0.15s ease;
+  }
+
+  .site-tabs__icon svg {
+    width: 1.35rem;
+    height: 1.35rem;
+  }
+
+  .site-tabs__tab--on {
+    color: color-mix(in srgb, var(--accent) 80%, var(--ink));
+  }
+
+  .site-tabs__tab--on .site-tabs__icon {
+    background: color-mix(in srgb, var(--accent) 18%, transparent);
+  }
+
+  .site-tabs__avatar.player-avatar {
+    width: 1.75rem;
+    height: 1.75rem;
+  }
+
+  .site-tabs__dot {
+    position: absolute;
+    top: -0.05rem;
+    right: 0.45rem;
+    width: 0.6rem;
+    height: 0.6rem;
+    border-radius: 50%;
+    background: #ff6b5b;
+    box-shadow: 0 0 0 2px var(--surface);
+  }
+
+  /* Room at the foot of every page for the bar, and things pinned to the bottom lift above it. */
+  body:has(> .site-tabs) {
+    padding-bottom: calc(5.4rem + env(safe-area-inset-bottom));
+  }
+
+  body:has(> .site-tabs) .install-prompt,
+  body:has(> .site-tabs) .arcade-attendant {
+    bottom: calc(5.6rem + env(safe-area-inset-bottom));
+  }
+
+  /* Your menu rises as a sheet, with the tab bar still under your thumb. */
+  .site-menu__panel {
+    top: 2.4rem;
+    right: 0;
+    left: 0;
+    bottom: 0;
+    width: auto;
+    max-width: 36rem;
+    margin: 0 auto;
+    border-radius: 1.6rem 1.6rem 0 0;
+    border-bottom: 0;
+    animation-name: site-menu-up;
+  }
+
+  .site-menu__grab {
+    display: block;
+    align-self: center;
+    flex: none;
+    width: 2.6rem;
+    height: 0.3rem;
+    margin-top: 0.55rem;
+    border-radius: 99px;
+    background: rgba(var(--ink-rgb), 0.18);
+  }
+
+  .site-menu__top {
+    padding-top: 0.4rem;
+  }
+
+  .site-menu__body {
+    padding-bottom: calc(6rem + env(safe-area-inset-bottom));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .site-menu__scrim,
+  .site-menu__panel {
+    animation: none;
+  }
+
+  .site-signin,
+  .site-menu__row-go {
+    transition: none;
+  }
+}

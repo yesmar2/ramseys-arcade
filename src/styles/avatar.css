@@ -297,8 +297,3 @@
   width: 0.9rem;
   height: 0.9rem;
 }
-
-/* The drawer's profile row shows your character on its tile. */
-.site-drawer__profile-mark .player-avatar {
-  --avatar-size: 2.2rem;
-}

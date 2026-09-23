@@ -1,66 +1,58 @@
-import { useEffect, useId, useRef, useState, type CSSProperties } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useAuth } from '../hooks/useAuth'
-import { usePlayerName } from '../hooks/usePlayerName'
-import { currentPath, homeHref, rankHref, useRoute } from '../hooks/useHashRoute'
-import { APP_NAME_ACCENT, APP_NAME_LEAD } from '../lib/brand'
-import { logoutAccount } from '../lib/auth'
-import { useGlobalRank, useGlobalRankLoading } from '../lib/globalRank'
-import { AVATAR_EVENT, AVATARS_ENABLED, getLocalAvatarId } from '../lib/avatars'
-import { PlayerAvatar } from './PlayerAvatar'
-import { currentTheme, setTheme as chooseTheme, THEME_EVENT, themeLabel, type Theme } from '../lib/theme'
-import { normalizePlayerName } from '../lib/leaderboard'
-import { useTrophySummary } from '../hooks/useTrophySummary'
-import { NotificationBell } from './NotificationBell'
 import { useFriends } from '../hooks/useFriends'
 import { useImpersonation } from '../hooks/useImpersonation'
-import { useDefaultPeriod } from '../lib/defaultPeriod'
-import { groupsIndexHref } from '../lib/groups'
-import { PERIOD_LABELS } from '../lib/leaderboard'
-import { DevImpersonateControl } from './DevImpersonateControl'
-import { PendingInvitesStrip } from './PendingInvitesStrip'
-import { PlayerBadge, type PlayerBadgeHandle } from './PlayerBadge'
-import { SiteGroupControl } from './SiteGroupControl'
-import { SiteSearch } from './SiteSearch'
-import { SitePeriodControl } from './SitePeriodControl'
-import { SoundPackSelect } from './SoundPackSelect'
-import { TrophyMark } from './TrophyMark'
+import { useNotifications } from '../hooks/useNotifications'
 import { usePendingInvites } from '../hooks/usePendingInvites'
+import { usePlayerName } from '../hooks/usePlayerName'
+import { useTrophySummary } from '../hooks/useTrophySummary'
+import { currentPath, homeHref, useRoute } from '../hooks/useHashRoute'
+import { logoutAccount } from '../lib/auth'
+import { AVATAR_EVENT, AVATARS_ENABLED, getLocalAvatarId } from '../lib/avatars'
+import { APP_NAME_ACCENT, APP_NAME_LEAD } from '../lib/brand'
+import { useDefaultPeriod } from '../lib/defaultPeriod'
+import { useGlobalRank, useGlobalRankLoading } from '../lib/globalRank'
+import { cachedMyGroups, useActiveGroup } from '../lib/groups'
+import { normalizePlayerName } from '../lib/leaderboard'
+import { currentTheme, THEME_EVENT, type Theme } from '../lib/theme'
+import { AvatarStudio } from './AvatarStudio'
+import { UserIcon } from './chromeIcons'
+import { NotificationBell } from './NotificationBell'
+import { PendingInvitesStrip } from './PendingInvitesStrip'
+import { PlayerAvatar } from './PlayerAvatar'
+import type { PlayerBadgeHandle } from './PlayerBadge'
+import { SiteMenu } from './SiteMenu'
+import { SiteScopeControl } from './SiteScopeControl'
+import { SiteSearch } from './SiteSearch'
+import { SiteTabs } from './SiteTabs'
 import { navActive, SITE_NAV_LINKS } from './siteNav'
 
-function UserIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <circle cx="12" cy="8.2" r="3.1" fill="none" stroke="currentColor" strokeWidth="1.8" />
-      <path
-        d="M6.2 18.6c.7-3.2 3-4.8 5.8-4.8s5.1 1.6 5.8 4.8"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-      />
-    </svg>
-  )
-}
-
-/** The themes, in the order the picker shows them. */
-const THEME_CHOICES: Theme[] = ['light', 'dark']
-
-/** Site-wide navigation — use this on every page (home, leaderboards, game hub, etc.). */
+/**
+ * The site's header, on every page but a game screen: one floating bar with
+ * the name, the places, search, what the boards show, and you. You opens your
+ * menu. On a phone the bar keeps only the name, the boards and search, and the
+ * places and You move to a tab bar along the bottom.
+ */
 export function SiteHeader() {
   const route = useRoute()
-  const hashKey = JSON.stringify(route)
+  const routeKey = JSON.stringify(route)
   const { signedIn } = useAuth()
-  const { rank, avatarId: rankAvatarId } = useGlobalRank()
+  const impersonation = useImpersonation()
+  const { rank, score, avatarId: rankAvatarId } = useGlobalRank()
   const rankLoading = useGlobalRankLoading()
   const playerName = normalizePlayerName(usePlayerName())
-  const impersonation = useImpersonation()
   const trophySummary = useTrophySummary(signedIn ? playerName : '')
   const { count: inviteCount } = usePendingInvites()
   const friendsState = useFriends()
   const friendRequests = friendsState.incoming.length
+  const notes = useNotifications(signedIn)
+  const period = useDefaultPeriod()
+  const groupId = useActiveGroup()
+  // Editing the avatar needs a session, or the dev impersonation which carries a claim token.
+  const canEditAvatar = (signedIn || Boolean(impersonation)) && AVATARS_ENABLED && Boolean(playerName)
 
-  // The drawer draws your mark: what you saved on this device wins until the API catches up.
+  // Your mark: what you saved on this device wins until the API catches up.
   const [localAvatarId, setLocalAvatar] = useState<string | null>(() => getLocalAvatarId(playerName))
   useEffect(() => {
     setLocalAvatar(getLocalAvatarId(playerName))
@@ -71,30 +63,32 @@ export function SiteHeader() {
     window.addEventListener(AVATAR_EVENT, onChange)
     return () => window.removeEventListener(AVATAR_EVENT, onChange)
   }, [playerName])
-  const defaultPeriod = useDefaultPeriod()
-  const [accountOpen, setAccountOpen] = useState(false)
+  const avatarId = localAvatarId ?? rankAvatarId
+
+  const [menuOpen, setMenuOpen] = useState(false)
   const [invitesOpen, setInvitesOpen] = useState(false)
-  const [theme, setTheme] = useState<Theme>(() =>
-    typeof document === 'undefined' ? 'light' : currentTheme(),
-  )
+  const [studioOpen, setStudioOpen] = useState(false)
+  const [signingOut, setSigningOut] = useState(false)
+  const [theme, setThemeState] = useState<Theme>(() => (typeof document === 'undefined' ? 'light' : currentTheme()))
   const invitesRef = useRef<HTMLDivElement>(null)
-  const accountDrawerRef = useRef<HTMLDivElement>(null)
-  const youBtnRef = useRef<HTMLButtonElement>(null)
+  const panelRef = useRef<HTMLDivElement>(null)
   const badgeRef = useRef<PlayerBadgeHandle>(null)
-  const [authBusy, setAuthBusy] = useState(false)
-  const accountTitleId = useId()
-  const accountDrawerId = 'site-account-drawer'
+  // Whatever opened the menu (the chip, or the tab bar's You) gets focus back when it closes.
+  const openerRef = useRef<HTMLElement | null>(null)
+  const menuTitleId = useId()
+  const menuId = 'site-menu'
 
   useEffect(() => {
-    const sync = () => setTheme(currentTheme())
+    const sync = () => setThemeState(currentTheme())
     window.addEventListener(THEME_EVENT, sync)
     return () => window.removeEventListener(THEME_EVENT, sync)
   }, [])
 
+  // Going somewhere closes whatever the header had open.
   useEffect(() => {
-    setAccountOpen(false)
+    setMenuOpen(false)
     setInvitesOpen(false)
-  }, [hashKey])
+  }, [routeKey])
 
   useEffect(() => {
     if (!invitesOpen) return
@@ -113,368 +107,238 @@ export function SiteHeader() {
   }, [invitesOpen])
 
   useEffect(() => {
-    if (!accountOpen) return
+    if (!menuOpen) return
     const prevOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setAccountOpen(false)
+      if (e.key === 'Escape') {
+        setMenuOpen(false)
+        return
+      }
+      // Tab goes round the menu rather than out to the page under it.
+      const panel = panelRef.current
+      if (e.key !== 'Tab' || !panel) return
+      const stops = [
+        ...panel.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        ),
+      ].filter((el) => el.getClientRects().length > 0)
+      if (stops.length === 0) return
+      const first = stops[0]
+      const last = stops[stops.length - 1]
+      const active = document.activeElement
+      if (!panel.contains(active)) {
+        e.preventDefault()
+        first.focus()
+      } else if (e.shiftKey && active === first) {
+        e.preventDefault()
+        last.focus()
+      } else if (!e.shiftKey && active === last) {
+        e.preventDefault()
+        first.focus()
+      }
     }
     window.addEventListener('keydown', onKey)
-    const focusable = accountDrawerRef.current?.querySelector<HTMLElement>(
-      'a[href], button:not([disabled]), input:not([disabled])',
-    )
-    focusable?.focus()
-    // The chip that opened the drawer gets focus back when it closes.
-    const opener = youBtnRef.current
+    panelRef.current?.querySelector<HTMLElement>('.site-menu__close')?.focus()
+    const opener = openerRef.current
     return () => {
       document.body.style.overflow = prevOverflow
       window.removeEventListener('keydown', onKey)
       opener?.focus()
     }
-  }, [accountOpen])
+  }, [menuOpen])
+
+  const toggleMenu = () => {
+    if (!menuOpen) openerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
+    setMenuOpen((open) => !open)
+  }
 
   const path = currentPath()
-  const showBoardFilters =
+  // Events have boards of their own, so the site's boards control stays off their pages.
+  const showScope =
     route.name !== 'tournaments' &&
     route.name !== 'tournament' &&
     route.name !== 'tournamentCreate' &&
     route.name !== 'tournamentPlay'
 
-  const linkClass = (match: (typeof SITE_NAV_LINKS)[number]['match'], base: string) =>
-    `${base}${navActive(match, path) ? ` ${base}--active` : ''}`
+  const tagged = signedIn && Boolean(playerName)
+  // Your own player card is where You leads, so You shows as the current place there.
+  const onOwnCard =
+    tagged && route.name === 'rank' && (!route.player || normalizePlayerName(route.player) === playerName)
+  const groupName = groupId ? cachedMyGroups().find((g) => g.id === groupId)?.name : undefined
+  const where = groupName ? `in ${groupName}` : 'in the arcade'
+  const alert = notes.unread > 0 || friendRequests > 0 || inviteCount > 0
 
-  const youTitle = signedIn
-    ? playerName
-      ? impersonation
-        ? `Account · Acting as ${playerName}`
-        : rankLoading
-          ? trophySummary.total > 0
-            ? `Account · ${playerName} · Loading rank · ${trophySummary.total} trophies`
-            : `Account · ${playerName} · Loading rank`
-          : rank != null
-            ? trophySummary.total > 0
-              ? `Account · ${playerName} · #${rank} · ${trophySummary.total} trophies`
-              : `Account · ${playerName} · #${rank}`
-            : trophySummary.total > 0
-              ? `Account · ${playerName} · No rank yet · ${trophySummary.total} trophies`
-              : `Account · ${playerName} · No rank yet`
-      : 'Account · Set gamer tag'
-    : 'Account'
-
-  const showUserChip = signedIn && Boolean(playerName)
-
-  const goRows = (
-    <>
-      {SITE_NAV_LINKS.map((item) => (
-        <a
-          key={item.href}
-          className={linkClass(item.match, 'site-drawer__row')}
-          href={item.href}
-          aria-current={navActive(item.match, path) ? 'page' : undefined}
-          onClick={() => setAccountOpen(false)}
-        >
-          <span className="site-drawer__row-label">{item.label}</span>
-          <span className="site-drawer__row-chev" aria-hidden="true">
-            ›
-          </span>
-        </a>
-      ))}
-    </>
-  )
-
-  const standingText = `${
-    rank != null ? `#${rank} ${PERIOD_LABELS[defaultPeriod].toLowerCase()}` : 'No rank yet'
-  }${
-    trophySummary.total > 0
-      ? ` · ${trophySummary.total} ${trophySummary.total === 1 ? 'trophy' : 'trophies'}`
-      : ''
-  }`
-  const profileLabel = rankLoading
-    ? 'View profile · loading rank'
-    : rank != null
-      ? `View profile · global rank ${rank}`
-      : 'View profile · no rank yet'
+  const youLabel = !signedIn
+    ? 'Menu: sign in, theme and sounds'
+    : !playerName
+      ? 'Your menu: pick a gamer tag'
+      : impersonation
+        ? `Your menu, acting as ${playerName}`
+        : `Your menu: ${playerName}${rank != null ? `, number ${rank}` : ''}${alert ? ', something new' : ''}`
 
   return (
     <div className="site-chrome">
-      <nav className="site-header" aria-label="Site">
-        <div className="site-header__start">
-          <a className="site-header__brand" href={homeHref()}>
-            {APP_NAME_LEAD}
-            <span>{APP_NAME_ACCENT}</span>
-          </a>
-          <div className="site-header__links" aria-label="Primary">
-            {SITE_NAV_LINKS.map((item) => (
+      <nav className="site-bar" aria-label="Site">
+        <a className="site-bar__brand" href={homeHref()}>
+          {APP_NAME_LEAD}
+          <span>{APP_NAME_ACCENT}</span>
+        </a>
+        <div className="site-bar__links">
+          {SITE_NAV_LINKS.map((item) => {
+            const on = navActive(item.match, path)
+            return (
               <a
                 key={item.href}
-                className={linkClass(item.match, 'site-header__link')}
+                className={`site-bar__link${on ? ' site-bar__link--on' : ''}`}
                 href={item.href}
-                aria-current={navActive(item.match, path) ? 'page' : undefined}
+                aria-current={on ? 'page' : undefined}
               >
                 {item.label}
               </a>
-            ))}
-          </div>
-          <SiteSearch />
+            )
+          })}
         </div>
 
-        <div className="site-header__identity">
-          <NotificationBell enabled={signedIn} />
+        <div className="site-bar__end">
+          <SiteSearch />
+          {showScope ? <SiteScopeControl /> : null}
 
-          {inviteCount > 0 ? (
-            <div className="site-header__invites" ref={invitesRef}>
+          <div className="site-bar__you">
+            {signedIn ? <NotificationBell notes={notes} /> : null}
+
+            {inviteCount > 0 ? (
+              <div className="site-header__invites" ref={invitesRef}>
+                <button
+                  type="button"
+                  className="site-header__invite-btn"
+                  aria-label={`${inviteCount} pending invite${inviteCount === 1 ? '' : 's'}`}
+                  aria-expanded={invitesOpen}
+                  aria-haspopup="dialog"
+                  onClick={() => setInvitesOpen((open) => !open)}
+                >
+                  <span className="site-header__invite-count">{inviteCount}</span>
+                </button>
+                {invitesOpen ? (
+                  <div className="site-header__invite-panel" role="dialog" aria-label="Pending invites">
+                    <PendingInvitesStrip compact />
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+
+            {tagged ? (
               <button
                 type="button"
-                className="site-header__invite-btn"
-                aria-label={`${inviteCount} pending invite${inviteCount === 1 ? '' : 's'}`}
-                aria-expanded={invitesOpen}
+                className={`site-you${menuOpen ? ' site-you--open' : ''}${onOwnCard ? ' site-you--here' : ''}${impersonation ? ' site-you--acting' : ''}`}
+                aria-label={youLabel}
+                title={youLabel}
+                aria-expanded={menuOpen}
+                aria-controls={menuId}
                 aria-haspopup="dialog"
-                onClick={() => setInvitesOpen((open) => !open)}
+                onClick={toggleMenu}
               >
-                <span className="site-header__invite-count">{inviteCount}</span>
-              </button>
-              {invitesOpen ? (
-                <div
-                  className="site-header__invite-panel"
-                  role="dialog"
-                  aria-label="Pending invites"
-                >
-                  <PendingInvitesStrip compact />
-                </div>
-              ) : null}
-            </div>
-          ) : null}
-
-          <button
-            ref={youBtnRef}
-            type="button"
-            className={`site-header__you${accountOpen ? ' site-header__you--open' : ''}${!showUserChip ? ' site-header__you--icon' : ''}${impersonation ? ' site-header__you--impersonating' : ''}`}
-            aria-label={youTitle}
-            title={youTitle}
-            aria-expanded={accountOpen}
-            aria-controls={accountDrawerId}
-            aria-haspopup="dialog"
-            onClick={() => setAccountOpen((open) => !open)}
-          >
-            {showUserChip ? (
-              <>
-                {rankLoading ? (
-                  <span
-                    className="site-header__you-rank site-header__you-rank--loading"
-                    aria-label="Loading rank"
-                  >
-                    <span className="skel-line site-header__rank-skel" aria-hidden="true" />
-                  </span>
-                ) : rank != null ? (
-                  <span className="site-header__you-rank">#{rank}</span>
-                ) : null}
+                <span className="site-you__mark">
+                  {AVATARS_ENABLED ? (
+                    <PlayerAvatar avatarId={avatarId} name={playerName} size="md" />
+                  ) : (
+                    playerName.charAt(0)
+                  )}
+                </span>
                 {impersonation ? (
-                  <span className="site-header__you-act" aria-hidden="true">
+                  <span className="site-you__act" aria-hidden="true">
                     AS
                   </span>
                 ) : null}
-                <span className="site-header__you-name">{playerName}</span>
-                {trophySummary.total > 0 ? (
-                  <TrophyMark
-                    count={trophySummary.total}
-                    podium={trophySummary.podium}
-                    size="sm"
-                    className="site-header__you-trophy"
+                <span className="site-you__name">{playerName}</span>
+                {rankLoading ? (
+                  <span className="skel-line site-you__skel" aria-hidden="true" />
+                ) : rank != null ? (
+                  <span className="site-you__rank">#{rank}</span>
+                ) : null}
+                {alert ? (
+                  <span
+                    className={`site-you__dot${friendRequests > 0 ? '' : ' site-you__dot--folded'}`}
+                    aria-hidden="true"
                   />
                 ) : null}
-              </>
+              </button>
             ) : (
-              <UserIcon />
+              <button
+                type="button"
+                className={`site-signin${signedIn ? ' site-signin--tag' : ''}${menuOpen ? ' site-signin--open' : ''}`}
+                aria-label={youLabel}
+                aria-expanded={menuOpen}
+                aria-controls={menuId}
+                aria-haspopup="dialog"
+                onClick={toggleMenu}
+              >
+                <UserIcon />
+                {signedIn ? 'Pick a tag' : 'Sign in'}
+              </button>
             )}
-            {friendRequests > 0 ? (
-              <span
-                className="site-header__you-dot"
-                aria-label={`${friendRequests} friend ${friendRequests === 1 ? 'request' : 'requests'}`}
-              />
-            ) : null}
-          </button>
+          </div>
         </div>
       </nav>
 
-      {showBoardFilters ? (
-        <div className="site-scopes" aria-label="Board filters">
-          <SitePeriodControl variant="header" />
-          <SiteGroupControl variant="header" />
-        </div>
+      {menuOpen ? (
+        <SiteMenu
+          id={menuId}
+          titleId={menuTitleId}
+          panelRef={panelRef}
+          onClose={() => setMenuOpen(false)}
+          signedIn={signedIn}
+          name={playerName}
+          impersonating={Boolean(impersonation)}
+          avatarId={avatarId}
+          standing={{ loading: rankLoading, rank, score, period, where }}
+          trophies={trophySummary}
+          friends={friendsState.loaded ? friendsState.friends.length : null}
+          friendRequests={friendRequests}
+          invites={inviteCount}
+          notes={notes}
+          theme={theme}
+          badgeRef={badgeRef}
+          onEditTag={() => badgeRef.current?.openTagEdit()}
+          onEditAvatar={
+            canEditAvatar
+              ? () => {
+                  setMenuOpen(false)
+                  setStudioOpen(true)
+                }
+              : undefined
+          }
+          onSignOut={() => {
+            setSigningOut(true)
+            void logoutAccount().finally(() => setSigningOut(false))
+          }}
+          signingOut={signingOut}
+        />
       ) : null}
 
-      {accountOpen && typeof document !== 'undefined'
+      <SiteTabs
+        menuId={menuId}
+        menuOpen={menuOpen}
+        onMenu={toggleMenu}
+        name={tagged ? playerName : ''}
+        avatarId={avatarId}
+        here={onOwnCard}
+        alert={alert}
+        youLabel={youLabel}
+      />
+
+      {/* The bar's blur would hold a full-screen overlay inside it, so the studio goes to the page's body. */}
+      {studioOpen && playerName && typeof document !== 'undefined'
         ? createPortal(
-            <div className="site-drawer site-drawer--account" role="presentation">
-              <button
-                type="button"
-                className="site-drawer__scrim"
-                aria-label="Close menu"
-                onClick={() => setAccountOpen(false)}
-              />
-              <div
-                id={accountDrawerId}
-                ref={accountDrawerRef}
-                className="site-drawer__panel"
-                role="dialog"
-                aria-modal="true"
-                aria-labelledby={accountTitleId}
-              >
-                {/* You, as a hero: the mark, the tag, where you stand. The whole thing goes to the profile. */}
-                <div className="site-drawer__hero">
-                  <button
-                    type="button"
-                    className="site-drawer__close"
-                    aria-label="Close menu"
-                    onClick={() => setAccountOpen(false)}
-                  >
-                    ✕
-                  </button>
-                  {signedIn && playerName ? (
-                    <>
-                      <a
-                        className="site-drawer__hero-id"
-                        href={rankHref()}
-                        onClick={() => setAccountOpen(false)}
-                        aria-label={profileLabel}
-                      >
-                        <span
-                          className={`site-drawer__hero-mark${AVATARS_ENABLED ? ' site-drawer__hero-mark--avatar' : ''}`}
-                          aria-hidden="true"
-                        >
-                          {AVATARS_ENABLED ? (
-                            <PlayerAvatar
-                              avatarId={localAvatarId ?? rankAvatarId}
-                              name={playerName}
-                              size="xl"
-                            />
-                          ) : (
-                            playerName.charAt(0)
-                          )}
-                        </span>
-                        <span id={accountTitleId} className="site-drawer__hero-name">
-                          {playerName}
-                        </span>
-                        <span className="site-drawer__hero-meta">
-                          {rankLoading ? <span className="skel-line" aria-hidden="true" /> : standingText}
-                        </span>
-                      </a>
-                      <div className="site-drawer__hero-actions">
-                        <a
-                          className="site-drawer__ghost"
-                          href={rankHref()}
-                          onClick={() => setAccountOpen(false)}
-                        >
-                          Profile
-                        </a>
-                        <button
-                          type="button"
-                          className="site-drawer__ghost"
-                          onClick={() => badgeRef.current?.openTagEdit()}
-                        >
-                          Edit tag
-                        </button>
-                      </div>
-                    </>
-                  ) : (
-                    <div className="site-drawer__hero-text">
-                      <h2 id={accountTitleId} className="site-drawer__hero-name">
-                        {signedIn ? 'Pick a gamer tag' : 'Sign in'}
-                      </h2>
-                      <p className="site-drawer__hero-meta">
-                        {signedIn
-                          ? 'A tag saves your scores and puts you on the boards.'
-                          : 'Save scores and keep your tag across devices.'}
-                      </p>
-                    </div>
-                  )}
-                </div>
-
-                {/* The tag form, the sign-in button, and any error: only there when there is something to show. */}
-                <section className="site-drawer__section" aria-label="Account">
-                  <PlayerBadge ref={badgeRef} embedded showSettings={false} />
-                </section>
-
-                {/* Where to go. On wide screens the header carries these, so the rows only show on phones. */}
-                <nav className="site-drawer__rows site-drawer__rows--go" aria-label="Primary">
-                  {goRows}
-                </nav>
-
-                {signedIn ? (
-                  <nav className="site-drawer__rows" aria-label="Yours">
-                    {/* The profile is long, and friends live near the bottom. */}
-                    <a
-                      className="site-drawer__row"
-                      href={rankHref(undefined, undefined, 'friends')}
-                      onClick={() => setAccountOpen(false)}
-                    >
-                      <span className="site-drawer__row-label">Friends</span>
-                      <span className="site-drawer__row-value">
-                        {friendsState.loaded ? friendsState.friends.length : ''}
-                        {friendRequests > 0 ? (
-                          <span className="site-drawer__badge">
-                            {friendRequests} {friendRequests === 1 ? 'request' : 'requests'}
-                          </span>
-                        ) : null}
-                      </span>
-                      <span className="site-drawer__row-chev" aria-hidden="true">
-                        ›
-                      </span>
-                    </a>
-                    <a
-                      className="site-drawer__row"
-                      href={groupsIndexHref()}
-                      onClick={() => setAccountOpen(false)}
-                    >
-                      <span className="site-drawer__row-label">Groups</span>
-                      <span className="site-drawer__row-chev" aria-hidden="true">
-                        ›
-                      </span>
-                    </a>
-                  </nav>
-                ) : null}
-
-                {/* Settings as controls you can see all of, not rows that cycle. */}
-                <section className="site-drawer__settings" aria-label="Settings">
-                  <h3 className="site-drawer__section-title">Theme</h3>
-                  <div
-                    className="seg"
-                    role="group"
-                    aria-label="Theme"
-                    style={{ '--seg-count': THEME_CHOICES.length } as CSSProperties}
-                  >
-                    {THEME_CHOICES.map((choice) => (
-                      <button
-                        key={choice}
-                        type="button"
-                        className={`seg__item${theme === choice ? ' seg__item--active' : ''}`}
-                        aria-pressed={theme === choice}
-                        onClick={() => chooseTheme(choice)}
-                      >
-                        {themeLabel(choice)}
-                      </button>
-                    ))}
-                  </div>
-                  <h3 className="site-drawer__section-title">Sounds</h3>
-                  <SoundPackSelect variant="chips" />
-                  <DevImpersonateControl variant="drawer" />
-                </section>
-
-                {signedIn ? (
-                  <button
-                    type="button"
-                    className="site-drawer__signout"
-                    disabled={authBusy}
-                    onClick={() => {
-                      setAuthBusy(true)
-                      void logoutAccount().finally(() => setAuthBusy(false))
-                    }}
-                  >
-                    Sign out
-                  </button>
-                ) : null}
-              </div>
-            </div>,
+            <AvatarStudio
+              name={playerName}
+              current={avatarId}
+              onSaved={(id) => {
+                setLocalAvatar(id)
+                setStudioOpen(false)
+              }}
+              onClose={() => setStudioOpen(false)}
+            />,
             document.body,
           )
         : null}

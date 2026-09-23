@@ -2,7 +2,6 @@ import {
   currentPath,
   homeHref,
   leaderboardHref,
-  rankHref,
   recordsIndexHref,
   tournamentsHref,
 } from '../hooks/useHashRoute'
@@ -15,7 +14,7 @@ export type SiteNavItem = {
   match: 'games' | 'boards' | 'records' | 'events' | 'groups' | 'you'
 }
 
-/** Primary destinations — desktop links + drawer (Global lives under Boards). Games first: it is the shelf. */
+/** Primary destinations — the desktop header's links (Global lives under Boards). Games first: it is the shelf. */
 export const SITE_NAV_LINKS: readonly SiteNavItem[] = [
   { href: homeHref(), label: 'Games', match: 'games' },
   { href: leaderboardHref(), label: 'Boards', match: 'boards' },
@@ -24,12 +23,16 @@ export const SITE_NAV_LINKS: readonly SiteNavItem[] = [
   { href: groupsIndexHref(), label: 'Groups', match: 'groups' },
 ] as const
 
-/** Drawer Profile link — header chip opens the account drawer instead. */
-export const SITE_DRAWER_YOU: SiteNavItem = {
-  href: rankHref(),
-  label: 'Profile',
-  match: 'you',
-}
+/**
+ * The phone's tab bar, before You: the same places with shorter names. Groups
+ * are yours, so on a phone they live in the You menu instead.
+ */
+export const SITE_TABS: readonly SiteNavItem[] = [
+  { href: homeHref(), label: 'Games', match: 'games' },
+  { href: leaderboardHref(), label: 'Boards', match: 'boards' },
+  { href: tournamentsHref(), label: 'Events', match: 'events' },
+  { href: recordsIndexHref(), label: 'Records', match: 'records' },
+] as const
 
 function under(path: string, section: string) {
   return path === section || path.startsWith(`${section}/`)

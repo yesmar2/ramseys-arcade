@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useNotifications } from '../hooks/useNotifications'
+import type { useNotifications } from '../hooks/useNotifications'
 import {
   formatNotificationTime,
   isUrgent,
@@ -45,15 +45,42 @@ function NotificationRow({ item }: { item: AppNotification }) {
   )
 }
 
+/** The inbox as the header keeps it: one poll, shared by the bell, the menu and the phone's tab bar. */
+export type NotificationsState = ReturnType<typeof useNotifications>
+
+/** The inbox's contents: what came in, newest first, and whether to be told when the phone is locked. */
+export function NotificationList({ notes }: { notes: NotificationsState }) {
+  const { items, loading } = notes
+  return (
+    <>
+      {loading && items.length === 0 ? (
+        <p className="notif-panel__empty">Loading…</p>
+      ) : items.length === 0 ? (
+        <p className="notif-panel__empty">
+          Nothing yet. Match clocks, record changes and friend requests land here.
+        </p>
+      ) : (
+        <ul className="notif-panel__list">
+          {items.map((item) => (
+            <NotificationRow key={item.id} item={item} />
+          ))}
+        </ul>
+      )}
+
+      <PushToggle />
+    </>
+  )
+}
+
 /**
  * The inbox, in the header.
  *
  * Opening the panel marks everything read — the badge is there to say "there
  * is something new", not to be a task list the player has to clear.
  */
-export function NotificationBell({ enabled }: { enabled: boolean }) {
+export function NotificationBell({ notes }: { notes: NotificationsState }) {
   const [open, setOpen] = useState(false)
-  const { items, unread, loading, markAllRead } = useNotifications(enabled)
+  const { unread, markAllRead } = notes
   const wrapRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
@@ -71,8 +98,6 @@ export function NotificationBell({ enabled }: { enabled: boolean }) {
       document.removeEventListener('keydown', onKey)
     }
   }, [open])
-
-  if (!enabled) return null
 
   const label = unread > 0 ? `Notifications, ${unread} unread` : 'Notifications'
 
@@ -108,22 +133,7 @@ export function NotificationBell({ enabled }: { enabled: boolean }) {
           <header className="notif-panel__head">
             <h2 className="notif-panel__title">Notifications</h2>
           </header>
-
-          {loading && items.length === 0 ? (
-            <p className="notif-panel__empty">Loading…</p>
-          ) : items.length === 0 ? (
-            <p className="notif-panel__empty">
-              Nothing yet. Match clocks, record changes and friend requests land here.
-            </p>
-          ) : (
-            <ul className="notif-panel__list">
-              {items.map((item) => (
-                <NotificationRow key={item.id} item={item} />
-              ))}
-            </ul>
-          )}
-
-          <PushToggle />
+          <NotificationList notes={notes} />
         </div>
       ) : null}
     </div>
