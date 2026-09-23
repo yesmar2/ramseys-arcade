@@ -55,6 +55,7 @@ const UNITS: Record<string, [string, string]> = {
   crosswalk: ['row', 'rows'],
   stacker: ['block', 'blocks'],
   simon: ['round', 'rounds'],
+  fireflies: ['note', 'notes'],
 }
 
 function gameName(slug: string): string {

@@ -164,6 +164,7 @@ const UNITS: Record<string, [string, string]> = {
   crosswalk: ['row', 'rows'],
   stacker: ['block', 'blocks'],
   simon: ['round', 'rounds'],
+  fireflies: ['note', 'notes'],
 }
 
 /** A score in the game's own unit: 432 rows, 1 block, 13,110 pts, 12.4s. */

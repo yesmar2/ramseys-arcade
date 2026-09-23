@@ -301,6 +301,7 @@ export const SCORE_STREAK_THRESHOLDS: Record<string, number> = {
   crumbtrail: 10_000,
   bop: 25,
   putt: 2000,
+  fireflies: 30,
 }
 
 export type RecordSubmitOutcome = {
@@ -796,6 +797,7 @@ export const GAMES_WITH_RECORDS = [
   'spotter',
   'pellets',
   'crumbtrail',
+  'fireflies',
 ] as const
 export type RecordGame = (typeof GAMES_WITH_RECORDS)[number]
 

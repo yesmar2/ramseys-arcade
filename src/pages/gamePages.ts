@@ -14,12 +14,12 @@ export const GAME_PAGES: Record<string, LazyPage<object>> = {
   crosswalk: lazyPage(() => import('./CrosswalkPage').then((m) => m.CrosswalkPage)),
   crumbtrail: lazyPage(() => import('./CrumbtrailPage').then((m) => m.CrumbtrailPage)),
   findbug: lazyPage(() => import('./FindBugPage').then((m) => m.FindBugPage)),
+  fireflies: lazyPage(() => import('./FirefliesPage').then((m) => m.FirefliesPage)),
   frenzy: lazyPage(() => import('./FrenzyPage').then((m) => m.FrenzyPage)),
   patriot: lazyPage(() => import('./PatriotPage').then((m) => m.PatriotPage)),
   pellets: lazyPage(() => import('./PelletsPage').then((m) => m.PelletsPage)),
   pop: lazyPage(() => import('./WhackPage').then((m) => m.WhackPage)),
   putt: lazyPage(() => import('./PuttPage').then((m) => m.PuttPage)),
-  simon: lazyPage(() => import('./SimonPage').then((m) => m.SimonPage)),
   snake: lazyPage(() => import('./SnakePage').then((m) => m.SnakePage)),
   stacker: lazyPage(() => import('./StackerPage').then((m) => m.StackerPage)),
 }

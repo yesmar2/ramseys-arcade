@@ -125,6 +125,8 @@ export const games: Game[] = [
     how: 'Watch the pads light up, then tap the same pattern. Each round adds a step.',
     accent: PALETTE.violet,
     playable: true,
+    // Fireflies took its place; its scores stay on the books, and an event already running with it plays on.
+    hidden: true,
   },
   {
     name: 'Spotter',
@@ -202,6 +204,15 @@ export const games: Game[] = [
     accent: PALETTE.magenta,
     playable: true,
   },
+  {
+    name: 'Fireflies',
+    slug: 'fireflies',
+    tags: ['puzzle', 'quick'],
+    description: 'Fireflies sing a tune. Sing it back. One more note each time.',
+    how: 'Each firefly glows its own colour and sings its own note. Watch them play a tune, then tap the fireflies in the same order — on a keyboard, each one’s number, 1 to 6. The first tune is three notes and every one after is a note longer. Get one right and a lantern lights on the string across the sky. The fireflies drift as they hover, a fifth and a sixth fly in as the night goes on, and before some tunes two of them trade places, so remember which firefly sang, not where it was. One wrong firefly ends the night.',
+    accent: PALETTE.violet,
+    playable: true,
+  },
 ]
 
 export function getGame(slug: string) {
@@ -253,7 +264,7 @@ const HOME_ORDER: readonly string[] = [
   'asteroids',
   'crosswalk',
   'pop',
-  'simon',
+  'fireflies',
   'snake',
   'centroid',
   'patriot',

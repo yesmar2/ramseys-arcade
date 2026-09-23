@@ -206,6 +206,26 @@ function SimonThumb({ accent }: { accent: string }) {
   )
 }
 
+/** A firefly lit, wings out, with two more glowing further off. */
+function FirefliesThumb({ accent }: { accent: string }) {
+  return (
+    <>
+      <circle cx="16" cy="20.2" r="8.2" {...mark(accent, 0.12, 0.9)} strokeOpacity="0.55" />
+      <ellipse cx="11.6" cy="13.6" rx="4.6" ry="2.3" transform="rotate(-28 11.6 13.6)" {...mark(accent, 0.2, 1.2)} />
+      <ellipse cx="20.4" cy="13.6" rx="4.6" ry="2.3" transform="rotate(28 20.4 13.6)" {...mark(accent, 0.2, 1.2)} />
+      <g stroke={accent} strokeWidth="1.1" strokeLinecap="round" fill="none">
+        <path d="M15.1 9.6 Q14 7.2 12.4 6.6" />
+        <path d="M16.9 9.6 Q18 7.2 19.6 6.6" />
+      </g>
+      <ellipse cx="16" cy="14.6" rx="2.3" ry="3.4" {...mark(accent, 0.35, 1.3)} />
+      <circle cx="16" cy="10.4" r="1.7" fill={accent} />
+      <circle cx="16" cy="20.2" r="3.5" {...mark(accent, 0.85, 1.3)} />
+      <circle cx="6.2" cy="8.6" r="1.25" fill={accent} />
+      <circle cx="26" cy="25.4" r="1.05" fill={accent} />
+    </>
+  )
+}
+
 /** A grid of cells with the odd one out, under the glass. */
 function SpotterThumb({ accent }: { accent: string }) {
   const cells = Array.from({ length: 9 }, (_, i) => ({
@@ -406,6 +426,7 @@ const thumbBySlug: Record<string, (props: { accent: string }) => ReactNode> = {
   barrage: BarrageThumb,
   findbug: FindBugThumb,
   frenzy: FrenzyThumb,
+  fireflies: FirefliesThumb,
 }
 
 export function GameThumbArt({ slug, accent, className }: GameThumbArtProps) {

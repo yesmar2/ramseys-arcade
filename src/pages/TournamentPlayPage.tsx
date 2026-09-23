@@ -39,9 +39,11 @@ const TOURNAMENT_GAMES: Record<string, LazyPage<object>> = {
   bop: lazyPage(() => import('../games/bop/BopGame').then((m) => m.BopGame)),
   putt: lazyPage(() => import('../games/putt/PuttGame').then((m) => m.PuttGame)),
   findbug: lazyPage(() => import('../games/findbug/FindBugGame').then((m) => m.FindBugGame)),
+  fireflies: lazyPage(() => import('../games/fireflies/FirefliesGame').then((m) => m.FirefliesGame)),
   patriot: lazyPage(() => import('../games/patriot/PatriotGame').then((m) => m.PatriotGame)),
   pellets: lazyPage(() => import('../games/pellets/PelletsGame').then((m) => m.PelletsGame)),
   pop: lazyPage(() => import('../games/whack/WhackGame').then((m) => m.WhackGame)),
+  // Retired for Fireflies, but an event that was already running with it plays out.
   simon: lazyPage(() => import('../games/simon/SimonGame').then((m) => m.SimonGame)),
   snake: lazyPage(() => import('../games/snake/SnakeGame').then((m) => m.SnakeGame)),
   stacker: lazyPage(() => import('../games/stacker/StackerGame').then((m) => m.StackerGame)),

@@ -179,6 +179,15 @@ const SCORING: Record<string, ScoreRow[]> = {
     { label: 'Power', value: 'up after waves 2, 5 and 9 · a lost ship costs a level, won back a wave at a time' },
     { label: 'Ships', value: '3 to start, up to 6' },
   ],
+  fireflies: [
+    { label: 'Each note tapped back', value: '+1' },
+    { label: 'The tune', value: 'three notes to start, one more after every tune you get right' },
+    { label: 'A tune right', value: 'a lantern lights · eleven on the string' },
+    { label: 'Newcomers', value: 'a fifth firefly after the 2nd tune, a sixth after the 5th' },
+    { label: 'Trading places', value: 'from the 4th tune, two swap now and then, every tune from the 11th' },
+    { label: 'Keys', value: '1 to 6 — each firefly keeps its number wherever it flies' },
+    { label: 'Wrong firefly', value: 'the night is over' },
+  ],
   frenzy: [
     { label: 'Eat your level or below', value: '+10 × its number' },
     { label: 'Level up', value: 'its number ÷ 18, at least +1' },

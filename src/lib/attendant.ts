@@ -18,7 +18,7 @@ export const ATTENDANT_LINES = [
   'Coin slot’s metaphorical. Your free time isn’t. Go play.',
   'Asteroids called. They want their rocks back.',
   'Patriot tip: cities are emotional support objects. Protect them.',
-  'Simon remembers everything. I forget why I walked in here.',
+  'The fireflies remember every tune. I forget why I walked in here.',
   'Leaderboards lie less than I do. Barely.',
   'You’re early. Or late. In arcade time it’s the same thing.',
   'One more game is a scam I fully endorse.',

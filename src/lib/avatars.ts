@@ -64,7 +64,7 @@ export const AVATAR_COLORS = [
   { id: 'leaf', hex: '#3ecf8e' }, // Snake
   { id: 'cyan', hex: '#3ec8cf' }, // Find the Bug
   { id: 'sky', hex: '#4aa8e8' }, // Stacker, Centroid, Pop
-  { id: 'violet', hex: '#8a6ad4' }, // Simon
+  { id: 'violet', hex: '#8a6ad4' }, // Fireflies
   { id: 'indigo', hex: '#7a6cf0' }, // Spotter
   { id: 'rose', hex: '#e85d75' }, // Patriot, Barrage
   { id: 'gold', hex: '#f5b942' }, // Crosswalk, Pellets, Crumbtrail

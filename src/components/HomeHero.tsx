@@ -44,6 +44,7 @@ const UNITS: Record<string, [string, string]> = {
   crosswalk: ['row', 'rows'],
   stacker: ['block', 'blocks'],
   simon: ['round', 'rounds'],
+  fireflies: ['note', 'notes'],
 }
 
 /** A gap between two scores as a bare figure: 9, 1,250, 2.4s. */

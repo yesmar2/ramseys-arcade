@@ -33,6 +33,7 @@ export const LEADERBOARD_GAMES = [
   'bop',
   'putt',
   'frenzy',
+  'fireflies',
 ] as const
 export type LeaderboardGame = (typeof LEADERBOARD_GAMES)[number]
 
