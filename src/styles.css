@@ -675,10 +675,6 @@ img {
   z-index: 5;
 }
 
-.tour-score {
-  z-index: 20;
-}
-
 /* ?? Home: brand + games in one screen ?? */
 .home-stage {
   position: relative;
@@ -6088,18 +6084,6 @@ a.lb-share:visited:focus-visible {
 /* Tablet+: roomier stats beside the matched square. */
 
 /* Desktop: scrollable left column + sticky half-width leaderboard. */
-
-@keyframes rank-up-land {
-  0% {
-    transform: scale(1) translateY(0.35rem);
-  }
-  60% {
-    transform: scale(1.04) translateY(-0.1rem);
-  }
-  100% {
-    transform: scale(1) translateY(0);
-  }
-}
 
 @keyframes score-celeb-fade {
   from {

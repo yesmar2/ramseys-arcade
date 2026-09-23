@@ -1,12 +1,16 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import { useAuth } from '../hooks/useAuth'
 import { gameAccentStyle } from '../lib/gameAccentStyle'
 import { useImpersonation } from '../hooks/useImpersonation'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { getGame } from '../data/games'
-import { tournamentHref } from '../hooks/useHashRoute'
+import { navigate, tournamentHref } from '../hooks/useHashRoute'
 import { linkCurrentNameToAccount } from '../lib/auth'
-import { ApiError, getLastPlayerName, normalizePlayerName, PLAYER_NAME_MAX } from '../lib/leaderboard'
+import { scoreText, scoreUnit } from '../lib/gameBoard'
+import { ApiError, getLastPlayerName, normalizePlayerName } from '../lib/leaderboard'
+import { formatLeaderboardScore } from '../lib/leaderboardFormat'
+import type { ReportLine, ReportRibbon, ReportTier } from '../lib/runReport'
+import { ordinal } from '../lib/scoreboard'
 import {
   eventKind,
   getTournament,
@@ -15,51 +19,9 @@ import {
   submitTournamentScore,
   type TournamentDetail,
 } from '../lib/tournaments'
-import { medalKind, PodiumMedal } from './PodiumMedal'
-import {
-  bracketCelebrationPayload,
-  placementCelebrationPayload,
-  ScoreCelebration,
-  type CelebPayload,
-  type PlacementHit,
-} from './ScoreSaveCard'
-import { ScoreSignInPrompt } from './ScoreSignInPrompt'
+import { ReportSignIn, ReportWho, RunReport, TagSlots, type ReportAction } from './RunReport'
 import { markWinsSeen } from '../lib/seenWins'
 import { isRunAssisted } from '../lib/runAchievements'
-
-/** Best top-3 finish worth celebrating from this submission's fresh standings. */
-function findPlacementHit(
-  detail: TournamentDetail | null,
-  gameSlug: string,
-  name: string,
-): PlacementHit | null {
-  if (!detail) return null
-  const you = normalizePlayerName(name)
-  const standing = detail.standings.find((s) => normalizePlayerName(s.name) === you)
-  if (!standing) return null
-  const cell = standing.byGame[gameSlug]
-  if (detail.games.length > 1) {
-    const idx = detail.standings.findIndex((s) => s.playerId === standing.playerId)
-    const overallPlace = idx >= 0 ? idx + 1 : null
-    if (overallPlace != null && overallPlace <= 3) {
-      return {
-        place: overallPlace,
-        scope: 'overall',
-        label: detail.title,
-        score: detail.format === 'place-points' ? standing.totalPoints : null,
-      }
-    }
-  }
-  if (cell?.place != null && cell.place <= 3) {
-    return {
-      place: cell.place,
-      scope: 'game',
-      label: getGame(gameSlug)?.name ?? gameSlug,
-      score: cell.score,
-    }
-  }
-  return null
-}
 
 function attemptsLeftLabel(
   remaining: number | null,
@@ -67,10 +29,9 @@ function attemptsLeftLabel(
   exhausted: boolean,
   outcome: 'champion' | 'match' | null,
 ): string | null {
-  if (outcome === 'champion') return null
-  if (outcome === 'match') return null
-  if (exhausted || remaining === 0) return 'No attempts left'
-  if (max == null) return 'Unlimited attempts'
+  if (outcome) return null
+  if (exhausted || remaining === 0) return 'no attempts left'
+  if (max == null) return 'unlimited attempts'
   const left = remaining ?? max
   return `${left} attempt${left === 1 ? '' : 's'} left`
 }
@@ -81,20 +42,6 @@ type TournamentScoreCardProps = {
   score: number
   subtitle?: string
   onDone: () => void
-}
-
-function cleanName(raw: string) {
-  return normalizePlayerName(raw)
-}
-
-function PlaceValue({ place }: { place: number }) {
-  const medal = medalKind(place)
-  return (
-    <strong className="score-save__place-value">
-      {medal ? <PodiumMedal kind={medal} size="sm" /> : null}
-      {`#${place}`}
-    </strong>
-  )
 }
 
 type SubmitSnapshot = {
@@ -187,6 +134,101 @@ async function submitTournamentRun(
   return promise
 }
 
+/** What a posted run did in the event, as report lines, and how loud to be about it. */
+function eventReport(
+  snapshot: SubmitSnapshot,
+  gameSlug: string,
+  name: string,
+  score: number,
+  posted: boolean,
+): { tier: ReportTier; ribbon: ReportRibbon | null; lines: ReportLine[] } {
+  const { detail, improved, best } = snapshot
+  const game = getGame(gameSlug)?.name ?? gameSlug
+  const title = detail?.title?.trim() || 'the event'
+  const you = normalizePlayerName(name)
+  const standing = detail?.standings.find((s) => normalizePlayerName(s.name) === you)
+  const cell = standing?.byGame[gameSlug]
+  const isBracket = detail ? eventKind(detail) === 'bracket' : false
+  const overallPlace =
+    detail && standing && detail.games.length > 1
+      ? detail.standings.findIndex((s) => s.playerId === standing.playerId) + 1
+      : null
+  const lines: ReportLine[] = []
+
+  if (snapshot.youWonMatch) {
+    lines.push({
+      id: 'match',
+      icon: 'crown',
+      label: snapshot.youWonTournament ? 'The final' : 'Your match',
+      detail: snapshot.youWonTournament
+        ? 'Bracket complete'
+        : snapshot.matchOpponent
+          ? `beat ${snapshot.matchOpponent}, through to the next round`
+          : 'Through to the next round',
+      value: 'Won',
+      tone: 'gold',
+    })
+  }
+  if (posted) {
+    lines.push({
+      id: 'best',
+      icon: improved ? 'up' : 'target',
+      label: 'Your best here',
+      detail: improved ? 'A new best in this event' : best > score ? `${scoreText(gameSlug, best - score)} more to beat it` : 'Tied it',
+      value: formatLeaderboardScore(gameSlug, best),
+      tone: improved ? 'accent' : 'plain',
+    })
+  }
+  if (!isBracket && cell?.place != null) {
+    lines.push({
+      id: 'game',
+      icon: cell.place === 1 ? 'crown' : 'board',
+      label: detail && detail.games.length > 1 ? `${game} in this event` : 'In this event',
+      detail: cell.points > 0 ? `${cell.points.toLocaleString()} point${cell.points === 1 ? '' : 's'} toward the standings` : null,
+      value: `#${cell.place}`,
+      tone: cell.place === 1 ? 'gold' : cell.place <= 3 ? 'accent' : 'plain',
+    })
+  }
+  if (!isBracket && overallPlace) {
+    lines.push({
+      id: 'overall',
+      icon: overallPlace === 1 ? 'crown' : 'sum',
+      label: 'Overall',
+      detail:
+        detail?.format === 'place-points' && standing
+          ? `${standing.totalPoints.toLocaleString()} point${standing.totalPoints === 1 ? '' : 's'}`
+          : null,
+      value: `#${overallPlace}`,
+      tone: overallPlace === 1 ? 'gold' : overallPlace <= 3 ? 'accent' : 'plain',
+    })
+  }
+
+  // A bracket has no standings worth celebrating until it is decided: leading
+  // on score means nothing while your opponent has not played.
+  if (snapshot.youWonTournament) return { tier: 'big', ribbon: { icon: 'crown', text: 'Champion', tone: 'gold' }, lines }
+  if (snapshot.youWonMatch) {
+    return {
+      tier: 'big',
+      ribbon: { icon: 'crown', text: snapshot.matchOpponent ? `You beat ${snapshot.matchOpponent}` : 'Match won', tone: 'gold' },
+      lines,
+    }
+  }
+  if (!isBracket && posted) {
+    if (overallPlace === 1) return { tier: 'big', ribbon: { icon: 'crown', text: `1st in ${title}`, tone: 'gold' }, lines }
+    if (overallPlace && overallPlace <= 3) {
+      return { tier: 'lit', ribbon: { icon: 'up', text: `${ordinal(overallPlace)} in ${title}`, tone: 'accent' }, lines }
+    }
+    if (!overallPlace && cell?.place === 1) {
+      return { tier: 'big', ribbon: { icon: 'crown', text: `1st in ${title}`, tone: 'gold' }, lines }
+    }
+    if (cell?.place != null && cell.place <= 3) {
+      return { tier: 'lit', ribbon: { icon: 'up', text: `${ordinal(cell.place)} on ${game}`, tone: 'accent' }, lines }
+    }
+  }
+  if (improved && posted) return { tier: 'lit', ribbon: { icon: 'up', text: 'New best in the event', tone: 'accent' }, lines }
+  return { tier: 'quiet', ribbon: null, lines }
+}
+
 export function TournamentScoreCard({
   tournamentId,
   gameSlug,
@@ -205,25 +247,18 @@ export function TournamentScoreCard({
     () => (authLoading ? 'saving' : !canSaveScores ? 'needAuth' : knownName ? 'saving' : 'needName'),
   )
   const [error, setError] = useState<string | null>(null)
-  const [improved, setImproved] = useState(false)
-  const [best, setBest] = useState(score)
-  const [attemptsRemaining, setAttemptsRemaining] = useState<number | null>(null)
-  const [maxAttempts, setMaxAttempts] = useState<number | null>(null)
-  const [exhausted, setExhausted] = useState(false)
-  const [youWonMatch, setYouWonMatch] = useState(false)
-  const [youWonTournament, setYouWonTournament] = useState(false)
-  const [matchOpponent, setMatchOpponent] = useState<string | null>(null)
-  const [detail, setDetail] = useState<TournamentDetail | null>(null)
-  const [celeb, setCeleb] = useState<CelebPayload | null>(null)
-  const nameInputRef = useRef<HTMLInputElement>(null)
-  const celebratedRef = useRef(false)
+  const [snapshot, setSnapshot] = useState<SubmitSnapshot | null>(null)
+  const playRef = useRef<HTMLButtonElement>(null)
+  const tagRef = useRef<HTMLInputElement>(null)
+  const titleId = useId()
+  const tagId = useId()
 
   useEffect(() => {
     if (knownName && !name) setName(knownName)
   }, [knownName, name])
 
   useEffect(() => {
-    if (status === 'needName') nameInputRef.current?.focus()
+    if (status === 'needName') tagRef.current?.focus({ preventScroll: true })
   }, [status])
 
   useEffect(() => {
@@ -243,29 +278,19 @@ export function TournamentScoreCard({
     }
 
     let cancelled = false
-    celebratedRef.current = false
 
     async function run() {
       setStatus('saving')
       setError(null)
 
       try {
-        const snapshot = await submitTournamentRun(tournamentId, gameSlug, name, score)
+        const next = await submitTournamentRun(tournamentId, gameSlug, name, score)
         if (cancelled) return
-        setImproved(snapshot.improved)
-        setBest(snapshot.best)
-        setAttemptsRemaining(snapshot.attemptsRemaining)
-        setMaxAttempts(snapshot.maxAttempts)
-        setExhausted(snapshot.exhausted)
-        setYouWonMatch(snapshot.youWonMatch)
-        setYouWonTournament(snapshot.youWonTournament)
-        setMatchOpponent(snapshot.matchOpponent)
-        setDetail(snapshot.detail)
+        setSnapshot(next)
         setStatus('done')
-
-        if (!celebratedRef.current && (snapshot.youWonTournament || snapshot.youWonMatch)) {
-          celebratedRef.current = true
-          const mine = (snapshot.detail?.bracket?.matches ?? []).filter(
+        if (next.youWonTournament || next.youWonMatch) {
+          // Seen here, so the event page does not celebrate it again.
+          const mine = (next.detail?.bracket?.matches ?? []).filter(
             (m) =>
               m.winnerId &&
               m.players.some(
@@ -273,27 +298,6 @@ export function TournamentScoreCard({
               ),
           )
           markWinsSeen(tournamentId, mine.map((m) => m.id))
-          const payload = bracketCelebrationPayload({
-            champion: snapshot.youWonTournament,
-            matchWon: snapshot.youWonMatch,
-            opponent: snapshot.matchOpponent,
-            eventTitle: snapshot.detail?.title,
-          })
-          if (payload) setCeleb(payload)
-        } else if (
-          !celebratedRef.current &&
-          score > 0 &&
-          // A bracket has no standings worth celebrating until it is over:
-          // leading on score means nothing while your opponent has not played,
-          // and placing in a draw is decided by winning it, not by scoring.
-          (!snapshot.detail || eventKind(snapshot.detail) !== 'bracket')
-        ) {
-          const hit = findPlacementHit(snapshot.detail, gameSlug, name)
-          const payload = placementCelebrationPayload(hit)
-          if (payload) {
-            celebratedRef.current = true
-            setCeleb(payload)
-          }
         }
       } catch (err) {
         if (cancelled) return
@@ -302,8 +306,9 @@ export function TournamentScoreCard({
             ? err.code
             : (err as Error & { code?: string }).code
         if (code === 'AUTH_REQUIRED') {
+          // The sign-in's own words already say it.
           setStatus('needAuth')
-          setError('Sign in to submit this score.')
+          setError(null)
           return
         }
         if (code === 'NAME_TAKEN') {
@@ -315,13 +320,21 @@ export function TournamentScoreCard({
         }
         if (code === 'INVITE_REQUIRED') {
           setStatus('error')
-          setError('Could not submit — reopen the event from your invite link.')
+          setError('Could not submit. Reopen the event from your invite link.')
           return
         }
         if (code === 'ATTEMPTS_EXHAUSTED') {
-          setExhausted(true)
-          setAttemptsRemaining(0)
-          setMaxAttempts((prev) => prev ?? 1)
+          setSnapshot((prev) => ({
+            improved: false,
+            best: prev?.best ?? 0,
+            attemptsRemaining: 0,
+            maxAttempts: prev?.maxAttempts ?? 1,
+            exhausted: true,
+            youWonMatch: false,
+            youWonTournament: false,
+            matchOpponent: null,
+            detail: prev?.detail ?? null,
+          }))
           setStatus('done')
           setError(null)
           return
@@ -338,7 +351,7 @@ export function TournamentScoreCard({
   }, [tournamentId, gameSlug, score, name, authLoading, canSaveScores, knownName])
 
   const submitName = async () => {
-    const cleaned = cleanName(nameDraft)
+    const cleaned = normalizePlayerName(nameDraft)
     if (!cleaned) return
     if (!canSaveScores) {
       setStatus('needAuth')
@@ -357,183 +370,118 @@ export function TournamentScoreCard({
         setError('That gamer tag is taken. Pick another.')
       } else if (err instanceof ApiError && err.code === 'AUTH_REQUIRED') {
         setStatus('needAuth')
-        setError('Sign in to submit this score.')
+        setError(null)
       } else {
         setError(err instanceof Error ? err.message : 'Could not save gamer tag')
       }
     }
   }
 
-  const standing = detail?.standings.find(
-    (s) => normalizePlayerName(s.name) === normalizePlayerName(name),
-  )
-  const gameCell = standing?.byGame[gameSlug]
-  const overallPlace =
-    detail && standing
-      ? detail.standings.findIndex((s) => s.playerId === standing.playerId) + 1
-      : null
-  const isBracket = detail ? eventKind(detail) === 'bracket' : false
-  const outcome: 'champion' | 'match' | null = youWonTournament
-    ? 'champion'
-    : youWonMatch
-      ? 'match'
-      : null
-  const doneHeadline = (() => {
-    if (score <= 0) return 'No score this run'
-    if (youWonTournament) return 'You won the tournament'
-    if (youWonMatch) {
-      return matchOpponent ? `You beat ${matchOpponent}` : 'You won the match'
-    }
-    if (improved) return `New best · ${best}`
-    return `Best still ${best}`
-  })()
-
   const accentStyle = gameAccentStyle(gameSlug)
+  const accent = String((accentStyle as Record<string, string>)['--celeb-accent'] ?? '#2eb8a0')
+  const detail = snapshot?.detail ?? null
+  const eventName = detail?.title?.trim() || null
+  const eventTitle = eventName ?? 'Event'
+  const isBracket = detail ? eventKind(detail) === 'bracket' : false
+  const done = status === 'done' && snapshot
+  // A zero, or a run that used the stage jump, posts nothing and costs no attempt.
+  const posted = score > 0 && !isRunAssisted()
+  const outcome = done ? eventReport(snapshot, gameSlug, name, score, posted) : null
+  const ribbon = outcome?.ribbon ?? null
+  const standingsHref = tournamentHref(tournamentId)
 
+  let primary: ReportAction = { label: 'Play again', onClick: onDone, buttonRef: playRef }
+  let secondary: ReportAction | null = null
+  let block: ReactNode = null
+  let who: ReactNode = null
+  if (status === 'needAuth') {
+    block = (
+      <ReportSignIn
+        lead={<>Sign in to post {scoreText(gameSlug, score)} to {eventName ?? 'this event'}.</>}
+        error={error}
+        onSignedIn={() => {
+          setError(null)
+          if (knownName) setName(knownName)
+          else setStatus('needName')
+        }}
+      />
+    )
+    who = <ReportWho text="Not posted yet" />
+  } else if (status === 'needName') {
+    primary = {
+      label: 'Post score',
+      onClick: () => void submitName(),
+      disabled: !normalizePlayerName(nameDraft),
+    }
+    secondary = { label: 'Skip', onClick: onDone }
+    block = (
+      <TagSlots
+        id={tagId}
+        value={nameDraft}
+        onChange={setNameDraft}
+        onSubmit={() => void submitName()}
+        inputRef={tagRef}
+        error={error}
+        lead={eventName ? `Your tag goes on ${eventName}’s standings.` : 'Your tag goes on the event’s standings.'}
+      />
+    )
+    who = <ReportWho text="Signed in, no tag yet" />
+  } else if (status === 'error') {
+    block = <p className="panel__error">{error}</p>
+    who = <ReportWho text="Not posted" />
+  } else if (status === 'saving') {
+    who = <ReportWho name={name || null} text="Posting…" />
+  } else if (done) {
+    const left = attemptsLeftLabel(
+      snapshot.attemptsRemaining,
+      snapshot.maxAttempts,
+      snapshot.exhausted,
+      snapshot.youWonTournament ? 'champion' : snapshot.youWonMatch ? 'match' : null,
+    )
+    if (!posted) {
+      block = (
+        <p className="report__note">
+          {score > 0 ? 'Stage skip used, so this run wasn’t posted.' : 'No score this run, so nothing was posted.'}
+        </p>
+      )
+    }
+    const as = posted ? `Posted as ${name}` : 'Not posted'
+    who = <ReportWho name={posted ? name : null} text={left ? `${as}, ${left}` : as} />
+    if (snapshot.exhausted || snapshot.youWonMatch) {
+      primary = {
+        label: snapshot.youWonTournament || isBracket ? 'View bracket' : 'View standings',
+        href: standingsHref,
+      }
+    }
+  }
+
+  const links =
+    done && !snapshot.exhausted && !snapshot.youWonMatch
+      ? [{ label: 'Standings', onClick: () => navigate(standingsHref) }]
+      : []
+  const heading = ribbon?.text ?? eventTitle
   return (
-    <>
-      {celeb ? (
-        <ScoreCelebration payload={celeb} onDone={() => setCeleb(null)} style={accentStyle} />
-      ) : null}
-      <div className="score-save tour-score" style={accentStyle} onPointerDown={(e) => e.stopPropagation()}>
-        <div className="score-save__hero">
-          <span className="score-save__eyebrow">{detail?.title ?? 'Tournament'}</span>
-          <strong className="score-save__score">{score}</strong>
-          {subtitle && status !== 'saving' && (
-            <p className="score-save__sub">{subtitle}</p>
-          )}
-        </div>
-
-        {status === 'needAuth' && (
-          <>
-            <ScoreSignInPrompt
-              error={error}
-              onSignedIn={() => {
-                setError(null)
-                if (knownName) setName(knownName)
-                else setStatus('needName')
-              }}
-            />
-            <div className="score-save__actions">
-              <button type="button" className="score-save__btn score-save__btn--ghost" onClick={onDone}>
-                Skip
-              </button>
-            </div>
-          </>
-        )}
-
-        {status === 'needName' && (
-          <>
-            <label className="score-save__field">
-              <span className="score-save__label">Gamer tag</span>
-              <input
-                ref={nameInputRef}
-                className="score-save__input"
-                value={nameDraft}
-                maxLength={PLAYER_NAME_MAX}
-                placeholder="YOU"
-                autoComplete="off"
-                spellCheck={false}
-                onChange={(e) => setNameDraft(e.target.value.toUpperCase().slice(0, PLAYER_NAME_MAX))}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault()
-                    void submitName()
-                  }
-                }}
-              />
-            </label>
-            {error && status === 'needName' && (
-              <p className="score-save__note score-save__note--error">{error}</p>
-            )}
-            <div className="score-save__actions">
-              <button
-                type="button"
-                className="score-save__btn"
-                disabled={!cleanName(nameDraft)}
-                onClick={() => void submitName()}
-              >
-                Submit score
-              </button>
-              <button type="button" className="score-save__btn score-save__btn--ghost" onClick={onDone}>
-                Skip
-              </button>
-            </div>
-          </>
-        )}
-
-        {status === 'saving' && <p className="score-save__note">Submitting…</p>}
-
-        {status === 'error' && (
-          <>
-            <p className="score-save__note score-save__note--error">{error}</p>
-            <div className="score-save__actions">
-              <button type="button" className="score-save__btn" onClick={onDone}>
-                Play again
-              </button>
-            </div>
-          </>
-        )}
-
-        {status === 'done' && (
-          <>
-            <p className="score-save__as">{doneHeadline}</p>
-            {(() => {
-              const label = attemptsLeftLabel(
-                attemptsRemaining,
-                maxAttempts,
-                exhausted,
-                outcome,
-              )
-              return label ? <p className="score-save__note">{label}</p> : null
-            })()}
-            {youWonTournament ? (
-              <p className="score-save__note">Bracket complete.</p>
-            ) : youWonMatch ? (
-              <p className="score-save__note">You’re through to the next round.</p>
-            ) : null}
-            {!isBracket && (gameCell?.place != null || overallPlace != null) && (
-              <ul className="score-save__ranks" aria-label="Tournament standing">
-                {gameCell?.place != null && (
-                  <li>
-                    <span>This game</span>
-                    <PlaceValue place={gameCell.place} />
-                  </li>
-                )}
-                {gameCell && gameCell.points > 0 && (
-                  <li>
-                    <span>Points</span>
-                    <strong>+{gameCell.points}</strong>
-                  </li>
-                )}
-                {overallPlace != null && overallPlace > 0 && (
-                  <li>
-                    <span>Overall</span>
-                    <PlaceValue place={overallPlace} />
-                  </li>
-                )}
-              </ul>
-            )}
-            <div className="score-save__actions">
-              {exhausted || youWonMatch ? (
-                <a className="score-save__btn" href={tournamentHref(tournamentId)}>
-                  {youWonTournament || isBracket ? 'View bracket' : 'View standings'}
-                </a>
-              ) : (
-                <button type="button" className="score-save__btn" onClick={onDone}>
-                  Play again
-                </button>
-              )}
-            </div>
-          </>
-        )}
-
-        {!exhausted && !youWonMatch ? (
-          <div className="score-save__links">
-            <a href={tournamentHref(tournamentId)}>Standings</a>
-          </div>
-        ) : null}
-      </div>
-    </>
+    <RunReport
+      label={`${heading}, ${scoreText(gameSlug, score)}`}
+      titleId={titleId}
+      style={accentStyle}
+      accent={accent}
+      initialFocus={status === 'needName' ? tagRef : playRef}
+      onEscape={status === 'needName' || !done ? undefined : onDone}
+      tier={outcome?.tier ?? 'quiet'}
+      ribbon={ribbon}
+      eyebrow={eventTitle}
+      score={formatLeaderboardScore(gameSlug, score)}
+      unit={scoreUnit(gameSlug, score)}
+      sub={ribbon ? [eventTitle, subtitle].filter(Boolean).join(' · ') : (subtitle ?? null)}
+      scoreTone={ribbon?.tone === 'gold' ? 'gold' : ribbon ? 'accent' : 'plain'}
+      lines={status === 'saving' ? null : (outcome?.lines ?? [])}
+      primary={primary}
+      secondary={secondary}
+      who={who}
+      links={links}
+    >
+      {block}
+    </RunReport>
   )
 }

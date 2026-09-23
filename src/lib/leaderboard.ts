@@ -625,6 +625,8 @@ export async function addLeaderboardScore(
   score: number,
 ): Promise<{
   entries: LeaderboardEntry[]
+  /** The run just saved, as it now stands on the boards. */
+  entry?: LeaderboardEntry
   rank: number | null
   ranks?: Partial<Record<LeaderboardPeriod, number>>
   previousBestRanks?: Partial<Record<LeaderboardPeriod, number>>
@@ -644,6 +646,7 @@ export async function addLeaderboardScore(
   const runId = await runIdFor(slug)
   const data = await api<{
     entries: LeaderboardEntry[]
+    entry?: LeaderboardEntry
     rank: number | null
     ranks?: Partial<Record<LeaderboardPeriod, number>>
     previousBestRanks?: Partial<Record<LeaderboardPeriod, number>>
@@ -675,6 +678,7 @@ export async function addLeaderboardScore(
 
   return {
     entries: data.entries,
+    entry: data.entry,
     rank: data.rank,
     ranks: data.ranks,
     previousBestRanks: data.previousBestRanks,

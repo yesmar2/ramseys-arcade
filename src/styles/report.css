@@ -1,0 +1,735 @@
+/*
+ * The run report: the one card a run ends on (RunReport.tsx).
+ *
+ * It is a panel from the kit, wider, with a band at the top for the score. The
+ * band says how much the run earned: a faint wash of the game's colour for an
+ * ordinary run, a glow of it for a personal best or a top-ten place, a gold
+ * glow for the top of a board or a new record. Below it, the lines: a round
+ * icon, what it is, the detail in words and the figure on the right, in the
+ * game's colour or gold when they are what lit the card. Play again sits at
+ * the bottom and never moves. On a phone the panel is the kit's sheet.
+ */
+
+.report {
+  --report-gold: #f5b942;
+  --report-gold-ink: #9a6a06;
+  --report-gold-soft: color-mix(in srgb, var(--report-gold) 22%, transparent);
+  --report-accent-soft: color-mix(in srgb, var(--panel-accent) 18%, transparent);
+  width: min(27.5rem, 100%);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border-color: color-mix(in srgb, var(--panel-accent) 38%, var(--panel-line));
+  box-shadow:
+    0 30px 80px -20px rgba(0, 0, 0, 0.5),
+    0 24px 80px -24px color-mix(in srgb, var(--panel-accent) 30%, transparent);
+  transition: border-color 0.4s ease, box-shadow 0.4s ease;
+}
+
+html[data-theme='dark'] .report {
+  --report-gold-ink: var(--report-gold);
+  --report-gold-soft: color-mix(in srgb, var(--report-gold) 16%, transparent);
+  --report-accent-soft: color-mix(in srgb, var(--panel-accent) 15%, transparent);
+}
+
+.report--big {
+  border-color: color-mix(in srgb, var(--report-gold) 45%, var(--panel-line));
+  box-shadow:
+    0 30px 80px -20px rgba(0, 0, 0, 0.5),
+    0 24px 90px -20px color-mix(in srgb, var(--report-gold) 32%, transparent);
+}
+
+/* ---------- the band: kicker, score, how it ended ---------- */
+
+.report__head {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 1.6rem 1.75rem 1.35rem;
+  border-bottom: 1px solid var(--panel-line);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--panel-accent) 11%, transparent), transparent);
+  text-align: center;
+}
+
+.report--lit .report__head {
+  background:
+    radial-gradient(
+      26rem 14rem at 50% -2.5rem,
+      color-mix(in srgb, var(--panel-accent) 36%, transparent),
+      color-mix(in srgb, var(--panel-accent) 8%, transparent) 60%,
+      transparent
+    ),
+    var(--surface);
+}
+
+.report--big .report__head {
+  background:
+    radial-gradient(
+      26rem 15rem at 50% -2.5rem,
+      color-mix(in srgb, var(--report-gold) 42%, transparent),
+      color-mix(in srgb, var(--report-gold) 10%, transparent) 62%,
+      transparent
+    ),
+    var(--surface);
+}
+
+.report__eyebrow,
+.report__ribbon {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 1.75rem;
+  padding: 0 0.8rem;
+  border-radius: 999px;
+  background: var(--report-accent-soft);
+  color: var(--panel-accent-ink);
+  font-size: 0.72rem;
+  font-weight: 650;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.report__ribbon {
+  min-height: 2rem;
+  padding: 0 0.95rem 0 0.8rem;
+  font-size: 0.78rem;
+  animation: report-ribbon 0.4s cubic-bezier(0.2, 1.3, 0.4, 1) both;
+}
+
+.report__ribbon svg {
+  width: 0.95rem;
+  height: 0.95rem;
+  flex: none;
+}
+
+.report__ribbon--gold {
+  background: var(--report-gold-soft);
+  color: var(--report-gold-ink);
+}
+
+.report__score {
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.2rem 0.6rem;
+  font-family: var(--font-display);
+}
+
+.report__figure {
+  font-size: clamp(3.4rem, 14vw, 5rem);
+  line-height: 0.95;
+  font-weight: 700;
+  letter-spacing: -0.045em;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+.report__unit {
+  font-size: 1.25rem;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.report__score--accent .report__figure {
+  color: var(--panel-accent-ink);
+}
+
+.report__score--gold .report__figure {
+  color: var(--report-gold-ink);
+}
+
+/* A best or a first stamps in when the save lands. */
+.report--lit .report__figure,
+.report--big .report__figure {
+  animation: report-stamp 0.5s cubic-bezier(0.2, 1.5, 0.4, 1) both;
+}
+
+.report__sub {
+  margin: 0;
+  font-size: 0.95rem;
+  line-height: 1.4;
+  color: var(--muted);
+}
+
+/* ---------- the lines ---------- */
+
+.report__lines {
+  list-style: none;
+  margin: 0;
+  padding: 0.35rem 1.75rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.report__line {
+  display: grid;
+  grid-template-columns: 2.25rem minmax(0, 1fr) auto;
+  gap: 0.875rem;
+  align-items: center;
+  padding: 0.8rem 0;
+  text-align: left;
+  animation: report-fade 0.3s ease-out both;
+}
+
+.report__line + .report__line {
+  border-top: 1px solid var(--panel-line);
+}
+
+.report__lines--lit .report__line,
+.report__lines--big .report__line {
+  animation: report-line 0.42s cubic-bezier(0.2, 0.9, 0.3, 1) both;
+  animation-delay: calc(var(--i, 0) * 80ms + 140ms);
+}
+
+.report__line-icon {
+  display: grid;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 50%;
+  background: var(--panel-fill);
+  color: var(--muted);
+}
+
+.report__line-icon svg {
+  width: 1.1rem;
+  height: 1.1rem;
+}
+
+.report__line-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.report__line-label {
+  font-size: 0.95rem;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--ink);
+}
+
+.report__line-detail {
+  font-size: 0.82rem;
+  line-height: 1.35;
+  color: var(--muted);
+}
+
+.report__line-value {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+.report__line--accent .report__line-icon {
+  background: var(--report-accent-soft);
+  color: var(--panel-accent-ink);
+}
+
+.report__line--accent .report__line-value {
+  color: var(--panel-accent-ink);
+}
+
+.report__line--gold .report__line-icon {
+  background: var(--report-gold-soft);
+  color: var(--report-gold-ink);
+}
+
+.report__line--gold .report__line-value {
+  color: var(--report-gold-ink);
+}
+
+/* Saving: three quiet rows where the lines will land. */
+.report__line--ghost {
+  animation: none;
+}
+
+.report__ghost {
+  display: block;
+  height: 0.7rem;
+  border-radius: 99px;
+  background: var(--panel-fill);
+  animation: report-shimmer 1.3s ease-in-out infinite;
+}
+
+.report__ghost--label {
+  width: 45%;
+  height: 0.85rem;
+}
+
+.report__ghost--detail {
+  width: 72%;
+  margin-top: 0.3rem;
+}
+
+.report__ghost--value {
+  width: 2.4rem;
+  height: 1.1rem;
+}
+
+.report__line--ghost .report__line-icon {
+  animation: report-shimmer 1.3s ease-in-out infinite;
+}
+
+/* ---------- the race it won ---------- */
+
+.report__race {
+  margin: 0.15rem 1.75rem 0.35rem;
+  padding: 0.85rem 0.9rem 0.8rem;
+  border-radius: 1rem;
+  border: 1px solid var(--panel-line);
+  background: var(--panel-fill);
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  overflow: hidden;
+  text-align: left;
+}
+
+.report__race-title {
+  padding-left: 0.3rem;
+  font-size: 0.7rem;
+  font-weight: 650;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.report__race-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.report__race-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1.4rem auto minmax(0, 1fr) auto;
+  gap: 0.6rem;
+  align-items: center;
+  padding: 0.35rem 0.5rem;
+  border-radius: 0.65rem;
+  font-size: 0.95rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.report__race-row--mine {
+  z-index: 1;
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--panel-accent) 45%, transparent);
+}
+
+/* Your row comes up from where it stood; the rows it passed step down under it. */
+.report__race-row[style] {
+  animation: report-race 0.75s cubic-bezier(0.25, 0.9, 0.3, 1) 0.45s both;
+}
+
+.report__race-place {
+  font-weight: 650;
+  color: var(--muted);
+  text-align: center;
+}
+
+.report__race-row:first-child .report__race-place {
+  color: var(--report-gold-ink);
+}
+
+.report__race-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 650;
+  color: var(--ink);
+}
+
+.report__race-row--mine .report__race-name {
+  color: var(--panel-accent-ink);
+}
+
+.report__race-note {
+  margin-left: 0.5rem;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.report__race-score {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+/* ---------- what the moment asks ---------- */
+
+.report__block {
+  padding: 1.1rem 1.75rem 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.report__ask {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.85rem;
+  text-align: center;
+}
+
+.report__ask-text {
+  margin: 0;
+  font-size: 1.02rem;
+  line-height: 1.45;
+  color: var(--ink);
+  text-wrap: balance;
+}
+
+.report__win {
+  font-weight: 700;
+  color: var(--panel-accent-ink);
+}
+
+.report__win--gold {
+  color: var(--report-gold-ink);
+}
+
+.report__note {
+  margin: 0;
+  font-size: 0.92rem;
+  line-height: 1.45;
+  color: var(--muted);
+  text-align: center;
+}
+
+.report__block .panel__error {
+  text-align: center;
+}
+
+/* A tag in slots, the way a cabinet's high-score screen takes one. */
+.report__tag-label {
+  font-size: 0.72rem;
+  font-weight: 650;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--panel-accent-ink);
+  cursor: text;
+}
+
+.report__slots {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(var(--slots, 6), minmax(0, 2.5rem));
+  justify-content: center;
+  gap: 0.35rem;
+  width: 100%;
+}
+
+.report__slot {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 5 / 7;
+  border-radius: 0.7rem;
+  border: 1px dashed rgba(var(--ink-rgb), 0.24);
+  background: var(--panel-fill);
+  font-family: ui-monospace, 'DM Mono', monospace;
+  font-size: clamp(1.05rem, 4.6vw, 1.6rem);
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.report__slot--filled {
+  border: 1px solid color-mix(in srgb, var(--panel-accent) 45%, transparent);
+  background: var(--report-accent-soft);
+}
+
+.report__slot--caret {
+  border: 2px solid var(--panel-accent-ink);
+}
+
+.report__slot--caret:not(.report__slot--filled)::after {
+  content: '';
+  width: 2px;
+  height: 52%;
+  border-radius: 1px;
+  background: var(--panel-accent-ink);
+  animation: report-caret 1s steps(1) infinite;
+}
+
+/* The real input lies over the slots, unseen: taps and typing go to it. */
+.report__tag-input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  font-size: 16px;
+  cursor: text;
+}
+
+.report__tag-note {
+  margin: 0;
+  font-size: 0.85rem;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+/* ---------- Play again, and where the run went ---------- */
+
+.report__foot {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  padding: 1.15rem 1.75rem 1.5rem;
+}
+
+.report__actions {
+  display: flex;
+  gap: 0.6rem;
+}
+
+.report__actions .panel__btn {
+  flex: 1 1 auto;
+}
+
+.report__actions .panel__btn--ghost {
+  flex: none;
+}
+
+.report__meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.4rem 1rem;
+  min-height: 1.6rem;
+}
+
+.report__who {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.report__who .player-avatar {
+  flex: none;
+}
+
+.report__who-mark {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 1.45rem;
+  height: 1.45rem;
+  border-radius: 50%;
+  background: var(--panel-fill);
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.report__links {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1.1rem;
+}
+
+.report__link {
+  padding: 0.2rem 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 0.92rem;
+  font-weight: 500;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.report__link:hover,
+.report__link:focus-visible {
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  outline: none;
+}
+
+/* Over the scrim and under the card, once. */
+.report-confetti {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+/* The dev page lays the cards out side by side, not floating. */
+.report--static {
+  max-height: none;
+  animation: none;
+  box-shadow: 0 20px 50px -24px rgba(0, 0, 0, 0.45);
+}
+
+.dev-reports {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 27.5rem), 1fr));
+  gap: 2rem 1.5rem;
+  align-items: start;
+}
+
+.dev-reports__item {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+/* ---------- a phone: the kit's sheet ---------- */
+
+@media (max-width: 40rem) {
+  .report {
+    width: 100%;
+  }
+
+  .report .panel__grab {
+    position: absolute;
+    top: 0.55rem;
+    left: 50%;
+    z-index: 1;
+    margin: 0;
+    transform: translateX(-50%);
+  }
+
+  .report__head {
+    padding: 1.7rem 1.35rem 1.15rem;
+  }
+
+  .report__lines {
+    padding: 0.2rem 1.35rem;
+  }
+
+  .report__race {
+    margin-inline: 1.35rem;
+  }
+
+  .report__block {
+    padding-inline: 1.35rem;
+  }
+
+  .report__foot {
+    padding: 1rem 1.35rem calc(1.2rem + env(safe-area-inset-bottom));
+  }
+
+  .report__actions .panel__btn {
+    flex: 1 1 auto;
+    width: auto;
+  }
+
+  .report__actions .panel__btn--ghost {
+    flex: none;
+  }
+
+  .report__meta {
+    justify-content: center;
+  }
+
+  .report--static .panel__grab {
+    display: none;
+  }
+}
+
+@media (max-height: 640px) {
+  .report__head {
+    gap: 0.45rem;
+    padding-block: 1.1rem 0.9rem;
+  }
+
+  .report__figure {
+    font-size: 3.2rem;
+  }
+
+  .report__line {
+    padding-block: 0.6rem;
+  }
+}
+
+/* ---------- motion ---------- */
+
+@keyframes report-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes report-line {
+  from {
+    opacity: 0;
+    transform: translateY(0.5rem) scale(0.98);
+  }
+}
+
+@keyframes report-stamp {
+  0% {
+    opacity: 0;
+    transform: scale(1.35);
+  }
+  60% {
+    opacity: 1;
+  }
+}
+
+@keyframes report-ribbon {
+  from {
+    opacity: 0;
+    transform: translateY(-0.3rem) scale(0.9);
+  }
+}
+
+@keyframes report-race {
+  from {
+    transform: translateY(calc(var(--shift, 0) * (100% + 0.2rem)));
+  }
+}
+
+@keyframes report-shimmer {
+  50% {
+    opacity: 0.45;
+  }
+}
+
+@keyframes report-caret {
+  50% {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .report,
+  .report__ribbon,
+  .report__line,
+  .report__lines--lit .report__line,
+  .report__lines--big .report__line,
+  .report--lit .report__figure,
+  .report--big .report__figure,
+  .report__race-row[style],
+  .report__ghost,
+  .report__line--ghost .report__line-icon {
+    animation: none;
+    transition: none;
+  }
+}

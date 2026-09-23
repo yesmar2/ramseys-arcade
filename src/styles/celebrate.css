@@ -1,315 +1,15 @@
 /*
- * After a run: the score card in the game, the awards overlay, and the
- * rank-up reel.
- *
- * All three share the hero's surface — a soft tint of the game's accent
- * with a hairline edge — with small uppercase labels, display-weight
- * figures, a solid pill for the one thing to do next and quiet pills for
- * the rest. Keyframes live in styles.css.
+ * The awards overlay, for a bracket won away from the game (the end of a run
+ * is the run report, in report.css), and the banner's language that Find the
+ * Bug's scene card still wears. Keyframes live in styles.css.
  */
 
-.score-save,
-.score-celeb__shell {
+/*
+ * The colour, when the overlay was not handed a game's: set on the overlay
+ * itself, so an inline --celeb-accent there wins and the card inherits it.
+ */
+.score-celeb {
   --celeb-accent: var(--event-accent, var(--board-accent, var(--accent)));
-}
-
-/* ==========================================================================
-   The score card, inside the game
-   ========================================================================== */
-
-.score-save {
-  position: relative;
-  isolation: isolate;
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 0.9rem;
-  width: min(100% - 1.5rem, 22rem);
-  max-height: min(100%, calc(100dvh - 5.5rem));
-  overflow: auto;
-  padding: 1.35rem 1.25rem 1.2rem;
-  border-radius: 1.4rem;
-  background: linear-gradient(
-    135deg,
-    color-mix(in srgb, var(--celeb-accent) 22%, var(--surface)) 0%,
-    color-mix(in srgb, var(--celeb-accent) 8%, var(--surface)) 55%,
-    color-mix(in srgb, var(--celeb-accent) 4%, var(--surface)) 100%
-  );
-  border: 1px solid color-mix(in srgb, var(--celeb-accent) 30%, transparent);
-  box-shadow: 0 18px 40px rgba(var(--ink-rgb), 0.16);
-  pointer-events: auto;
-  text-align: center;
-  touch-action: manipulation;
-  user-select: text;
-}
-
-.score-save__hero {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.25rem;
-}
-
-.score-save__eyebrow {
-  font-size: 0.68rem;
-  font-weight: 800;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
-  color: var(--muted);
-}
-
-.score-save__score {
-  font-family: var(--font-display);
-  font-size: clamp(2.8rem, 10vw, 3.5rem);
-  font-weight: 800;
-  line-height: 0.95;
-  letter-spacing: -0.03em;
-  font-variant-numeric: tabular-nums;
-  color: var(--ink);
-}
-
-.score-save__pb {
-  margin: 0.15rem 0 0;
-  font-size: 0.82rem;
-  font-weight: 650;
-  color: var(--muted);
-}
-
-.score-save__pb--best {
-  color: color-mix(in srgb, var(--celeb-accent) 65%, var(--ink));
-}
-
-.score-save__gain {
-  font-family: var(--font-display);
-  font-size: 1.05rem;
-  font-weight: 800;
-  font-variant-numeric: tabular-nums;
-  color: color-mix(in srgb, var(--celeb-accent) 65%, var(--ink));
-}
-
-.score-save__sub {
-  margin: 0.1rem 0 0;
-  font-size: 0.84rem;
-  font-weight: 600;
-  color: var(--muted);
-}
-
-.score-save__as {
-  margin: 0;
-  font-family: var(--font-display);
-  font-size: 1.1rem;
-  font-weight: 750;
-  color: var(--ink);
-}
-
-.score-save__tag {
-  margin: 0;
-  padding: 0.3rem 0.7rem;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--celeb-accent) 14%, var(--surface));
-  border: 1px solid color-mix(in srgb, var(--celeb-accent) 40%, transparent);
-  font-size: 0.8rem;
-  font-weight: 750;
-  color: color-mix(in srgb, var(--celeb-accent) 65%, var(--ink));
-}
-
-/* Where the run landed: soft rows, label left, figure right. */
-.score-save__ranks {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-  width: 100%;
-}
-
-.score-save__ranks li {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 0.5rem 0.85rem;
-  border-radius: 0.85rem;
-  background: rgba(var(--surface-rgb), 0.55);
-  border: 1px solid rgba(var(--ink-rgb), 0.06);
-  font-size: 0.82rem;
-  font-weight: 650;
-  color: var(--muted);
-}
-
-.score-save__ranks strong {
-  font-family: var(--font-display);
-  font-size: 1.1rem;
-  font-weight: 800;
-  line-height: 1;
-  font-variant-numeric: tabular-nums;
-  color: var(--ink);
-}
-
-.score-save__place-value {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-}
-
-.score-save__note {
-  margin: 0;
-  font-size: 0.84rem;
-  font-weight: 650;
-  color: var(--muted);
-}
-
-.score-save__note--error {
-  color: #b42318;
-}
-
-.score-save__actions {
-  display: flex;
-  gap: 0.5rem;
-  width: 100%;
-  margin-top: 0.1rem;
-}
-
-.score-save__signin {
-  display: flex;
-  flex-direction: column;
-  gap: 0.65rem;
-  width: 100%;
-}
-
-.score-save__btn {
-  flex: 1;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 2.9rem;
-  padding: 0 1.4rem;
-  border: 0;
-  border-radius: 999px;
-  background: var(--celeb-accent);
-  color: #fff;
-  font-family: var(--font-display);
-  font-size: 1rem;
-  font-weight: 750;
-  text-decoration: none;
-  cursor: pointer;
-  touch-action: manipulation;
-  box-shadow: 0 10px 24px color-mix(in srgb, var(--celeb-accent) 32%, transparent);
-  transition: transform 0.12s ease, filter 0.12s ease;
-}
-
-.score-save__btn:hover:not(:disabled),
-.score-save__btn:focus-visible:not(:disabled) {
-  filter: brightness(1.06);
-  transform: translateY(-1px);
-  outline: none;
-}
-
-.score-save__btn:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-  filter: none;
-  transform: none;
-}
-
-.score-save__btn--ghost {
-  background: rgba(var(--surface-rgb), 0.5);
-  color: color-mix(in srgb, var(--celeb-accent) 65%, var(--ink));
-  border: 1px solid color-mix(in srgb, var(--celeb-accent) 40%, transparent);
-  box-shadow: none;
-}
-
-.score-save__btn--ghost:hover:not(:disabled),
-.score-save__btn--ghost:focus-visible:not(:disabled) {
-  background: color-mix(in srgb, var(--celeb-accent) 14%, var(--surface));
-  filter: none;
-}
-
-.score-save__links {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 0.3rem;
-}
-
-.score-save__links a,
-.score-save__text-link {
-  display: inline-flex;
-  align-items: center;
-  min-height: 1.85rem;
-  padding: 0.2rem 0.7rem;
-  border-radius: 999px;
-  border: 1px solid rgba(var(--ink-rgb), 0.08);
-  background: rgba(var(--surface-rgb), 0.5);
-  font: inherit;
-  font-size: 0.72rem;
-  font-weight: 750;
-  color: var(--muted);
-  text-decoration: none;
-  cursor: pointer;
-}
-
-.score-save__links a:hover,
-.score-save__links a:focus-visible,
-.score-save__text-link:hover,
-.score-save__text-link:focus-visible {
-  color: var(--ink);
-  border-color: rgba(var(--ink-rgb), 0.18);
-  outline: none;
-}
-
-.score-save__text-btn {
-  border: 0;
-  padding: 0;
-  background: transparent;
-  color: color-mix(in srgb, var(--celeb-accent) 65%, var(--ink));
-  font: inherit;
-  font-weight: 750;
-  cursor: pointer;
-  text-decoration: underline;
-  text-underline-offset: 2px;
-}
-
-.score-save__field {
-  width: 100%;
-  text-align: left;
-}
-
-.score-save__label {
-  display: block;
-  margin-bottom: 0.35rem;
-  font-size: 0.66rem;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--muted);
-}
-
-.score-save__input {
-  width: 100%;
-  min-height: 3rem;
-  padding: 0.55rem 1rem;
-  border-radius: 0.95rem;
-  border: 1px solid rgba(var(--ink-rgb), 0.12);
-  background: rgba(var(--surface-rgb), 0.7);
-  font-family: var(--font-display);
-  font-size: 1.3rem;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--ink);
-  outline: none;
-}
-
-.score-save__input:focus {
-  border-color: color-mix(in srgb, var(--celeb-accent) 55%, transparent);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--celeb-accent) 18%, transparent);
-}
-
-.tour-join__row .score-save__field {
-  flex: 1 1 8rem;
-  text-align: left;
 }
 
 /* ==========================================================================
@@ -568,130 +268,7 @@
   transform: none;
 }
 
-/* ==========================================================================
-   Rank up: the reel of places, landing on yours
-   ========================================================================== */
-
-.rank-up__shell {
-  gap: 0.85rem;
-}
-
-.rank-up__stage {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.55rem;
-  width: 100%;
-  margin: 0.15rem 0 0.35rem;
-}
-
-.rank-up__viewport {
-  --rank-up-row: 2.15rem;
-  position: relative;
-  width: min(100%, 12.5rem);
-  height: calc(var(--rank-up-row) * 5);
-  overflow: hidden;
-  mask-image: linear-gradient(
-    to bottom,
-    transparent 0%,
-    #000 22%,
-    #000 78%,
-    transparent 100%
-  );
-}
-
-.rank-up__focus {
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: calc(var(--rank-up-row) * 2);
-  height: var(--rank-up-row);
-  border-radius: 0.85rem;
-  background: color-mix(in srgb, var(--celeb-accent) 14%, var(--surface));
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--celeb-accent) 40%, transparent);
-  pointer-events: none;
-  z-index: 0;
-}
-
-.rank-up--settled .rank-up__focus {
-  animation: rank-up-land 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-.rank-up__reel {
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 0;
-  z-index: 1;
-  will-change: transform;
-  transform: translate3d(0, 0, 0);
-}
-
-.rank-up__rung {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: var(--rank-up-row);
-  font-family: var(--font-display);
-  font-size: 1.05rem;
-  font-weight: 750;
-  font-variant-numeric: tabular-nums;
-  color: color-mix(in srgb, var(--ink) 55%, transparent);
-}
-
-.rank-up__number {
-  margin: 0.15rem 0 0;
-  font-family: var(--font-display);
-  font-size: clamp(3rem, 14vw, 4.4rem);
-  font-weight: 800;
-  line-height: 0.95;
-  letter-spacing: -0.04em;
-  font-variant-numeric: tabular-nums;
-  color: var(--ink);
-  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), color 0.3s ease;
-}
-
-.rank-up--settled .rank-up__number {
-  color: color-mix(in srgb, var(--celeb-accent) 60%, var(--ink));
-  transform: translateY(-0.1rem) scale(1.04);
-}
-
-.rank-up__detail {
-  margin: 0;
-  font-family: var(--font-display);
-  font-size: 1.05rem;
-  font-weight: 750;
-  color: var(--ink);
-}
-
-.rank-up__from {
-  margin: 0;
-  font-size: 0.84rem;
-  font-weight: 650;
-  color: var(--muted);
-}
-
-.rank-up__from span {
-  font-variant-numeric: tabular-nums;
-  color: color-mix(in srgb, var(--ink) 70%, var(--muted));
-  text-decoration: line-through;
-  text-decoration-thickness: 1.5px;
-}
-
-/* ---------- flat / google ---------- */
-
-/* ---------- small screens, short screens, less motion ---------- */
-
-@media (max-height: 700px) {
-  .score-save {
-    gap: 0.7rem;
-    padding: 1.05rem 1.15rem 0.95rem;
-  }
-
-  .score-save__score {
-    font-size: clamp(2.15rem, 8vw, 3rem);
-  }
-}
+/* ---------- small screens, less motion ---------- */
 
 @media (max-width: 520px) {
   .score-celeb__shell {
@@ -741,35 +318,10 @@
   }
 }
 
-@media (max-width: 420px) {
-  .rank-up__viewport {
-    --rank-up-row: 1.95rem;
-    width: min(100%, 10.5rem);
-  }
-
-  .rank-up__rung {
-    font-size: 0.98rem;
-  }
-
-  .rank-up__number {
-    font-size: clamp(2.6rem, 18vw, 3.4rem);
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
   .score-celeb,
   .score-celeb__shell,
   .score-celeb__award {
-    animation: none;
-  }
-
-  .rank-up__reel {
-    transition: none;
-  }
-
-  .rank-up__number,
-  .rank-up--settled .rank-up__focus {
-    transition: none;
     animation: none;
   }
 }
@@ -777,14 +329,12 @@
 /* ==========================================================================
    The banner's language, on the cards a game shows
 
-   The start card, the pause card, the score card and the two celebrations
-   all wear the game's colour the way the banner does: a pale wash in Light
-   with the words in ink, the colour sunk into the night in Dark with the
-   words in white. The tokens mirror the banner's in home.css, keyed on
-   --celeb-accent, which each card sets from its game.
+   The awards overlay and Find the Bug's scene card wear the game's colour
+   the way the banner does: a pale wash in Light with the words in ink, the
+   colour sunk into the night in Dark with the words in white. The tokens
+   mirror the banner's in home.css, keyed on --celeb-accent.
    ========================================================================== */
 
-.score-save,
 .score-celeb__shell,
 .game-pause-card {
   --hero-accent: var(--celeb-accent, var(--accent));
@@ -808,7 +358,6 @@
   box-shadow: 0 18px 44px color-mix(in srgb, var(--hero-accent) 24%, rgba(0, 0, 0, 0.12));
 }
 
-html[data-theme="dark"] .score-save,
 html[data-theme="dark"] .score-celeb__shell,
 html[data-theme="dark"] .game-pause-card {
   --banner-ink: #fff;
@@ -832,7 +381,6 @@ html[data-theme="dark"] .game-pause-card {
 
 /* ---- the small line above: a pill with a dot, like the banner's kicker ---- */
 
-.score-save__eyebrow,
 .score-celeb__kicker {
   display: inline-flex;
   align-items: center;
@@ -849,7 +397,6 @@ html[data-theme="dark"] .game-pause-card {
   color: var(--banner-chip-ink);
 }
 
-.score-save__eyebrow::before,
 .score-celeb__kicker::before {
   content: '';
   width: 0.42rem;
@@ -859,94 +406,22 @@ html[data-theme="dark"] .game-pause-card {
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--hero-accent) 35%, transparent);
 }
 
-.score-save__hero {
-  gap: 0.45rem;
-}
-
 /* ---- words and figures take the banner's ink ---- */
 
-.score-save__score,
-.score-save__as,
-.score-save__ranks strong,
-.score-celeb__title,
-.rank-up__number {
+.score-celeb__title {
   color: var(--banner-ink);
 }
 
-.score-save__pb,
-.score-save__sub,
-.score-save__note,
-.score-save__label,
-.score-save__links a,
-.score-save__text-link,
 .score-celeb__award-label,
-.score-celeb__award-detail,
-.rank-up__detail,
-.rank-up__from {
+.score-celeb__award-detail {
   color: var(--banner-muted);
-}
-
-.score-save__ranks li {
-  background: var(--banner-chip-bg);
-  border-color: var(--banner-chip-border);
-  color: var(--banner-muted);
-}
-
-.score-save__pb--best,
-.score-save__gain,
-.score-save__text-btn {
-  color: var(--banner-hover);
-}
-
-.score-save__note--error {
-  color: #b42318;
-}
-
-html[data-theme="dark"] .score-save__note--error {
-  color: #ff9d94;
 }
 
 /* ---- one thing to press, and quiet chips for the rest ---- */
 
-.score-save__btn,
 .score-celeb__btn {
   color: var(--hero-ink, #fff);
   box-shadow: 0 8px 22px color-mix(in srgb, var(--hero-accent) 45%, transparent);
-}
-
-.score-save__btn--ghost,
-.score-save__tag,
-.score-save__links a,
-.score-save__text-link {
-  background: var(--banner-chip-bg);
-  border: 1px solid var(--banner-chip-border);
-  color: var(--banner-chip-ink);
-}
-
-.score-save__btn--ghost:hover:not(:disabled),
-.score-save__btn--ghost:focus-visible:not(:disabled),
-.score-save__links a:hover,
-.score-save__links a:focus-visible,
-.score-save__text-link:hover,
-.score-save__text-link:focus-visible {
-  background: var(--banner-chip-hover);
-  border-color: var(--banner-chip-border);
-  color: var(--banner-ink);
-}
-
-.score-save__input {
-  background: var(--banner-chip-bg);
-  border-color: var(--banner-chip-border);
-  color: var(--banner-ink);
-}
-
-.score-save__input::placeholder {
-  color: var(--banner-faint);
-}
-
-.score-save__input:focus {
-  border-color: color-mix(in srgb, var(--hero-accent) 70%, transparent);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--hero-accent) 28%, transparent);
 }
 
 /* ---- the awards: quiet tiles on the wash, each tinted by what it is ---- */

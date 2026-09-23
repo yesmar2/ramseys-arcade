@@ -65,6 +65,13 @@ function count(n: number, one: string, many = `${one}s`): string {
   return `${n.toLocaleString()} ${n === 1 ? one : many}`
 }
 
+/** What a score counts, to set beside the figure: rows, blocks, points; nothing for a time. */
+export function scoreUnit(slug: string, score: number): string {
+  if (isTimeBoard(slug)) return ''
+  const [one, many] = UNITS[slug] ?? ['point', 'points']
+  return score === 1 ? one : many
+}
+
 /** A gap between two scores in the game's own terms: 9 rows, 1 point, 0.4s. */
 export function gapText(slug: string, gap: number): string {
   if (isTimeBoard(slug)) return `${(gap / 1000).toFixed(1)}s`
@@ -73,7 +80,7 @@ export function gapText(slug: string, gap: number): string {
 }
 
 /** A score in the game's own terms, for a sentence: 49 rows, 1,000 points, 9.9s. */
-function scoreText(slug: string, score: number): string {
+export function scoreText(slug: string, score: number): string {
   if (isTimeBoard(slug)) return formatLeaderboardScore(slug, score)
   return gapText(slug, score)
 }

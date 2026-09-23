@@ -1,44 +1,45 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { useEffect, useId, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import { gameAccentStyle } from '../lib/gameAccentStyle'
+import { getGame } from '../data/games'
 import { useAuth } from '../hooks/useAuth'
 import { useImpersonation } from '../hooks/useImpersonation'
 import { gameBoardHref, gameHref, navigate, recordsHref } from '../hooks/useHashRoute'
 import { linkCurrentNameToAccount } from '../lib/auth'
+import { useDefaultPeriod } from '../lib/defaultPeriod'
+import { gameAccentStyle } from '../lib/gameAccentStyle'
+import { scoreText, scoreUnit } from '../lib/gameBoard'
 import {
-  addLeaderboardScore,
   ApiError,
-  fetchGlobalRank,
   fetchPlayerBests,
   getLastPlayerName,
   LEADERBOARD_GAMES,
   normalizePlayerName,
-  PERIOD_LABELS,
-  PLAYER_NAME_MAX,
-  VISIBLE_LEADERBOARD_PERIODS,
   type LeaderboardGame,
   type LeaderboardPeriod,
 } from '../lib/leaderboard'
-import { describePersonalBest, rememberPersonalBest } from '../lib/personalBest'
-import { submitScoreToJoinedTournaments } from '../lib/tournaments'
-import { refreshGlobalRank } from '../lib/globalRank'
-import { defaultPeriod, useDefaultPeriod } from '../lib/defaultPeriod'
-import { gameHasRecords, shouldCelebrateRecordSubmit } from '../lib/records'
+import { formatLeaderboardScore } from '../lib/leaderboardFormat'
+import { gameHasRecords } from '../lib/records'
 import {
   isRunAssisted,
-  peekRunAchievements,
-  pushRunAchievement,
   takeRunAchievements,
   whenRunAchievementsSettled,
   type RunAchievement,
 } from '../lib/runAchievements'
-import { formatLeaderboardScore, isTimeBoard } from '../lib/leaderboardFormat'
+import {
+  composeReport,
+  readBookFacts,
+  saveRunForReport,
+  wouldPlaceOnBoard,
+  type RunReportData,
+} from '../lib/runReport'
+import { periodCopy } from '../lib/scoreboard'
 import { medalKind, PodiumMedal } from './PodiumMedal'
-import { ScoreSignInPrompt } from './ScoreSignInPrompt'
+import { ReportSignIn, ReportWho, RunReport, TagSlots, type ReportAction, type ReportLink } from './RunReport'
 
 type ScoreSaveProps = {
   gameSlug: string
   score: number
+  /** The run's own words for how it ended: Ship down, Run over. */
   title: string
   subtitle?: string
   /** Best at the start of this run, before the engine saved a new record. */
@@ -46,35 +47,310 @@ type ScoreSaveProps = {
   onDone: () => void
 }
 
-type BoardHit = { period: LeaderboardPeriod; rank: number }
-type PersonalBestHit = { score: number; gain: number | null }
+type Phase = 'checking' | 'needAuth' | 'needName' | 'saving' | 'saved' | 'assisted' | 'error'
 
-/** Top-3 finish in a scores/place-points event, either for one game or the whole standings. */
-export type PlacementHit = {
-  place: number
-  scope: 'game' | 'overall'
-  /** Game name (scope: game) or event title (scope: overall). */
-  label: string
-  score?: number | null
+/** Where a failed save leaves the card, and what it says. */
+function afterFailure(err: unknown): { phase: Phase; error: string | null } {
+  // Signed out after all: the sign-in's own words already say it.
+  if (err instanceof ApiError && err.code === 'AUTH_REQUIRED') return { phase: 'needAuth', error: null }
+  if (err instanceof ApiError && err.code === 'NAME_TAKEN') {
+    return { phase: 'needName', error: 'That gamer tag is taken. Pick another.' }
+  }
+  return { phase: 'error', error: err instanceof Error ? err.message : 'Could not save score' }
 }
 
+/** Leave the play overlay and open an in-app route. */
+function leavePlayTo(href: string) {
+  navigate(href)
+}
+
+function boardsHref(gameSlug: string, period: LeaderboardPeriod) {
+  if ((LEADERBOARD_GAMES as readonly string[]).includes(gameSlug)) {
+    return gameBoardHref(gameSlug as LeaderboardGame, period)
+  }
+  return gameHref(gameSlug)
+}
+
+/**
+ * The end of a run: one report, saved and told in the same card.
+ *
+ * The card opens on the score at once, with Play again ready; the save goes
+ * on underneath and the lines fill in when it lands. Signed out, it says what
+ * the run would win and offers the sign-in; signed in without a tag, it takes
+ * one in slots. A run that used the admin stage jump is not saved at all.
+ */
+export function ScoreSaveCard({ gameSlug, score, title, subtitle, previousBest, onDone }: ScoreSaveProps) {
+  const { signedIn, loading: authLoading } = useAuth()
+  const impersonation = useImpersonation()
+  const canSaveScores = signedIn || Boolean(impersonation)
+  const period = useDefaultPeriod()
+  const [phase, setPhase] = useState<Phase>('checking')
+  const [error, setError] = useState<string | null>(null)
+  const [nameDraft, setNameDraft] = useState('')
+  const [report, setReport] = useState<RunReportData | null>(null)
+  const [savedAs, setSavedAs] = useState<string | null>(null)
+  const [wouldPlace, setWouldPlace] = useState<number | null>(null)
+  const recordRef = useRef(previousBest ?? 0)
+  const playRef = useRef<HTMLButtonElement>(null)
+  const tagRef = useRef<HTMLInputElement>(null)
+  const titleId = useId()
+  const tagId = useId()
+
+  const game = getGame(gameSlug)?.name ?? gameSlug
+  const copy = periodCopy(period)
+  const accentStyle = gameAccentStyle(gameSlug)
+  const accent = String((accentStyle as Record<string, string>)['--celeb-accent'] ?? '#2eb8a0')
+
+  useEffect(() => {
+    if (phase === 'needName') tagRef.current?.focus({ preventScroll: true })
+  }, [phase])
+
+  useEffect(() => {
+    let cancelled = false
+    setPhase('checking')
+    setError(null)
+    setReport(null)
+
+    async function run() {
+      if (authLoading) return
+      const name = normalizePlayerName(getLastPlayerName())
+      if (name) {
+        try {
+          const bests = await fetchPlayerBests(name)
+          if (cancelled) return
+          recordRef.current = bests[gameSlug] ?? 0
+        } catch {
+          /* keep this device's best */
+        }
+      }
+      if (cancelled) return
+
+      // Stage-jumped runs never reach a board or a record book: the score was
+      // not earned, and nor were the record-book wins queued along the way.
+      if (isRunAssisted()) {
+        takeRunAchievements()
+        setPhase('assisted')
+        return
+      }
+
+      if (score <= 0) {
+        // Nothing to save, but a record the run set still gets said.
+        await whenRunAchievementsSettled()
+        const hits: RunAchievement[] = takeRunAchievements()
+        const books = name && hits.length ? await readBookFacts(gameSlug, name, hits) : []
+        if (cancelled) return
+        setReport(
+          composeReport({
+            slug: gameSlug,
+            score,
+            name,
+            period,
+            priorBest: recordRef.current,
+            allTimeRank: null,
+            priorAllTimeRank: null,
+            board: null,
+            overall: { before: null, after: null },
+            books,
+          }),
+        )
+        setPhase('saved')
+        return
+      }
+
+      if (!canSaveScores) {
+        setPhase('needAuth')
+        return
+      }
+      if (!name) {
+        setPhase('needName')
+        return
+      }
+      setPhase('saving')
+      const facts = await saveRunForReport({ slug: gameSlug, name, score, period, priorBest: recordRef.current })
+      if (cancelled) return
+      setSavedAs(facts.name)
+      setReport(composeReport(facts))
+      setPhase('saved')
+    }
+
+    run().catch((err: unknown) => {
+      if (cancelled) return
+      const next = afterFailure(err)
+      setError(next.error)
+      setPhase(next.phase)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [gameSlug, score, period, authLoading, canSaveScores])
+
+  // Signed out or tagless: what the run would win, to lead the ask with.
+  useEffect(() => {
+    if (phase !== 'needAuth' && phase !== 'needName') return
+    let cancelled = false
+    void wouldPlaceOnBoard(gameSlug, period, score).then((place) => {
+      if (!cancelled) setWouldPlace(place)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [phase, gameSlug, period, score])
+
+  const submitName = async () => {
+    const name = normalizePlayerName(nameDraft)
+    if (!name || phase === 'saving') return
+    if (!canSaveScores) {
+      setPhase('needAuth')
+      return
+    }
+    setPhase('saving')
+    setError(null)
+    try {
+      if (signedIn && !impersonation) await linkCurrentNameToAccount(name)
+      const facts = await saveRunForReport({ slug: gameSlug, name, score, period, priorBest: recordRef.current })
+      setSavedAs(facts.name)
+      setReport(composeReport(facts))
+      setPhase('saved')
+    } catch (err) {
+      const next = afterFailure(err)
+      setError(next.error)
+      setPhase(next.phase)
+    }
+  }
+
+  const pending = phase === 'checking' || phase === 'saving'
+  const data = phase === 'saved' ? report : null
+  const tier = data?.tier ?? 'quiet'
+  const ribbon = data?.ribbon ?? null
+  const figure = formatLeaderboardScore(gameSlug, score)
+  const unit = scoreUnit(gameSlug, score)
+  const place = wouldPlace
+  const winLead = place ? (
+    <>
+      Right now that’s{' '}
+      <strong className={place === 1 ? 'report__win report__win--gold' : 'report__win'}>
+        #{place} on {game} {copy.phrase}
+      </strong>
+      .
+    </>
+  ) : null
+
+  const playAgain: ReportAction = { label: 'Play again', onClick: onDone, buttonRef: playRef }
+  let primary = playAgain
+  let secondary: ReportAction | null = null
+  let block: ReactNode = null
+  let who: ReactNode = null
+  let links: ReportLink[] = []
+
+  if (phase === 'needAuth') {
+    block = (
+      <ReportSignIn
+        lead={
+          <>
+            Sign in and {scoreText(gameSlug, score)} goes on the boards. {winLead}
+          </>
+        }
+        error={error}
+        onSignedIn={() => {
+          setError(null)
+          setPhase('checking')
+        }}
+      />
+    )
+    who = <ReportWho text="Not saved yet" />
+  } else if (phase === 'needName') {
+    primary = {
+      label: 'Save to the board',
+      onClick: () => void submitName(),
+      disabled: !normalizePlayerName(nameDraft),
+    }
+    secondary = { label: 'Skip', onClick: onDone }
+    block = (
+      <TagSlots
+        id={tagId}
+        value={nameDraft}
+        onChange={setNameDraft}
+        onSubmit={() => void submitName()}
+        inputRef={tagRef}
+        error={error}
+        lead={
+          place ? (
+            <>
+              {scoreText(gameSlug, score)} is{' '}
+              <strong className={place === 1 ? 'report__win report__win--gold' : 'report__win'}>
+                #{place} on {game} {copy.phrase}
+              </strong>
+              . Put your name on it.
+            </>
+          ) : (
+            'Put your name on the boards.'
+          )
+        }
+      />
+    )
+    who = <ReportWho text="Signed in, no tag yet" />
+  } else if (phase === 'assisted') {
+    block = <p className="report__note">Stage skip used, so this run wasn’t saved to the boards or the record books.</p>
+    who = <ReportWho text="Not saved" />
+  } else if (phase === 'error') {
+    block = <p className="panel__error">{error}</p>
+    who = <ReportWho text="Not saved" />
+  } else if (pending) {
+    who = <ReportWho name={getLastPlayerName() || null} text="Saving…" />
+  } else if (savedAs) {
+    who = <ReportWho name={savedAs} avatarId={data?.avatarId} text={`Saved as ${savedAs}`} />
+  }
+
+  if (phase === 'saved' || phase === 'assisted' || phase === 'error') {
+    links = [{ label: `${game} board`, onClick: () => leavePlayTo(boardsHref(gameSlug, period)) }]
+    if (gameHasRecords(gameSlug)) {
+      links.push({ label: 'Record book', onClick: () => leavePlayTo(recordsHref(gameSlug)) })
+    }
+  }
+
+  const lines = pending ? null : (data?.lines ?? [])
+  const heading = ribbon?.text ?? title
+  return (
+    <RunReport
+      label={`${heading}, ${scoreText(gameSlug, score)}`}
+      titleId={titleId}
+      style={accentStyle}
+      accent={accent}
+      initialFocus={phase === 'needName' ? tagRef : playRef}
+      // Esc goes back to the start card, except while a tag is being typed.
+      onEscape={phase === 'needName' ? undefined : onDone}
+      tier={tier}
+      ribbon={ribbon}
+      eyebrow={title}
+      score={figure}
+      unit={unit}
+      sub={ribbon ? [title, subtitle].filter(Boolean).join(' · ') : (subtitle ?? null)}
+      scoreTone={data?.scoreTone ?? 'plain'}
+      lines={phase === 'needAuth' || phase === 'needName' || phase === 'assisted' || phase === 'error' ? [] : lines}
+      race={data?.race ?? null}
+      primary={primary}
+      secondary={secondary}
+      who={who}
+      links={links}
+    >
+      {block}
+    </RunReport>
+  )
+}
+
+/* ==========================================================================
+   An event won away from the game: the bracket catch-up's overlay. The event
+   takeover replaces it next.
+   ========================================================================== */
+
 export type CelebPayload = {
-  boards: BoardHit[]
-  personalBest: PersonalBestHit | null
-  books: RunAchievement[]
   /** Bracket match / tournament wins (fireworks overlay). */
-  bracket?: {
+  bracket: {
     champion: boolean
     matchWon: boolean
     opponent?: string | null
     eventTitle?: string
   } | null
-  /** Top-3 event standing (non-bracket events). */
-  placement?: PlacementHit | null
-}
-
-export function booksCelebrationPayload(books: RunAchievement[]): CelebPayload {
-  return { boards: [], personalBest: null, books, bracket: null }
 }
 
 export function bracketCelebrationPayload(opts: {
@@ -85,9 +361,6 @@ export function bracketCelebrationPayload(opts: {
 }): CelebPayload | null {
   if (!opts.champion && !opts.matchWon) return null
   return {
-    boards: [],
-    personalBest: null,
-    books: [],
     bracket: {
       champion: opts.champion,
       matchWon: opts.matchWon,
@@ -95,232 +368,6 @@ export function bracketCelebrationPayload(opts: {
       eventTitle: opts.eventTitle,
     },
   }
-}
-
-export function placementCelebrationPayload(hit: PlacementHit | null): CelebPayload | null {
-  if (!hit || hit.place < 1 || hit.place > 3) return null
-  return { boards: [], personalBest: null, books: [], bracket: null, placement: hit }
-}
-
-export type RankClimb = {
-  from: number | null
-  to: number
-  gained: number | null
-}
-
-const PERIOD_ORDER: LeaderboardPeriod[] = ['all', 'monthly', 'weekly', 'daily']
-const TOP_TEN = 10
-
-function celebrationBoardHits(
-  ranks?: Partial<Record<LeaderboardPeriod, number>>,
-): BoardHit[] {
-  if (!ranks) return []
-  return PERIOD_ORDER.flatMap((period) => {
-    if (!VISIBLE_LEADERBOARD_PERIODS.includes(period)) return []
-    const rank = ranks[period]
-    return rank != null && rank >= 1 && rank <= TOP_TEN ? [{ period, rank }] : []
-  })
-}
-
-/** Places that did not earn a celebration — still useful on the game-over card. */
-function gameOverBoardHits(
-  ranks?: Partial<Record<LeaderboardPeriod, number>>,
-): BoardHit[] {
-  if (!ranks) return []
-  return PERIOD_ORDER.flatMap((period) => {
-    if (!VISIBLE_LEADERBOARD_PERIODS.includes(period)) return []
-    const rank = ranks[period]
-    if (rank == null || !(rank >= 1)) return []
-    if (rank <= TOP_TEN) return []
-    return [{ period, rank }]
-  })
-}
-
-/** Global ranking climb (lower place number is better). */
-export function pickGlobalRankClimb(
-  previous: number | null | undefined,
-  next: number | null | undefined,
-): RankClimb | null {
-  if (next == null || !(next >= 1)) return null
-  const from = previous != null && previous >= 1 ? previous : null
-  if (from != null && next >= from) return null
-  return {
-    from,
-    to: next,
-    gained: from != null ? from - next : null,
-  }
-}
-
-function buildCelebration(
-  score: number,
-  priorAllTime: number,
-  ranks?: Partial<Record<LeaderboardPeriod, number>>,
-): CelebPayload | null {
-  const boards = celebrationBoardHits(ranks)
-  const personalBest =
-    priorAllTime > 0 && score > priorAllTime
-      ? {
-          score,
-          gain: score - priorAllTime,
-        }
-      : null
-  const pendingBooks = peekRunAchievements()
-  if (!boards.length && !personalBest && !pendingBooks.length) return null
-  return { boards, personalBest, books: takeRunAchievements(), bracket: null }
-}
-
-function awardCards(payload: CelebPayload): {
-  id: string
-  kind: 'board' | 'best' | 'book' | 'tourney' | 'placement'
-  label: string
-  value: string
-  detail: string | null
-  featured: boolean
-  icon?: ReactNode
-  tone?: 'gold' | 'silver' | 'bronze'
-}[] {
-  const featuredId = (() => {
-    if (payload.bracket?.champion) return 'tourney-champ'
-    if (payload.bracket?.matchWon) return 'tourney-match'
-    if (payload.placement && payload.placement.place === 1) return 'placement'
-    const allTimeFirst = payload.boards.find((b) => b.period === 'all' && b.rank === 1)
-    if (allTimeFirst) return `board-${allTimeFirst.period}`
-    const anyFirst = payload.boards.find((b) => b.rank === 1)
-    if (anyFirst) return `board-${anyFirst.period}`
-    if (payload.personalBest) return 'best'
-    const bestBoard = payload.boards.reduce<BoardHit | null>((best, row) => {
-      if (!best || row.rank < best.rank) return row
-      return best
-    }, null)
-    if (bestBoard) return `board-${bestBoard.period}`
-    const bookFirst = payload.books.find((b) => b.rank === 1)
-    if (bookFirst) return `book-${payload.books.indexOf(bookFirst)}`
-    if (payload.books[0]) return 'book-0'
-    return null
-  })()
-
-  const bracketCards = (() => {
-    const b = payload.bracket
-    if (!b) return []
-    const cards: {
-      id: string
-      kind: 'tourney'
-      label: string
-      value: string
-      detail: string | null
-      featured: boolean
-    }[] = []
-    if (b.champion) {
-      cards.push({
-        id: 'tourney-champ',
-        kind: 'tourney',
-        label: b.eventTitle?.trim() || 'Tournament',
-        value: 'Champion',
-        detail: 'You won the bracket',
-        featured: featuredId === 'tourney-champ',
-      })
-    } else if (b.matchWon) {
-      cards.push({
-        id: 'tourney-match',
-        kind: 'tourney',
-        label: 'Match won',
-        value: 'Advance',
-        detail: b.opponent ? `beat ${b.opponent}` : 'On to the next round',
-        featured: featuredId === 'tourney-match',
-      })
-    }
-    return cards
-  })()
-
-  const placementCards = (() => {
-    const hit = payload.placement
-    if (!hit) return []
-    const kind = medalKind(hit.place)
-    if (!kind) return []
-    const place = hit.place === 1 ? '1st place' : hit.place === 2 ? '2nd place' : '3rd place'
-    return [
-      {
-        id: 'placement',
-        kind: 'placement' as const,
-        label: hit.label,
-        value: place,
-        detail: hit.score != null ? hit.score.toLocaleString() : null,
-        featured: featuredId === 'placement',
-        icon: <PodiumMedal kind={kind} size="md" />,
-        tone: kind,
-      },
-    ]
-  })()
-
-  const cards = [
-    ...bracketCards,
-    ...placementCards,
-    ...payload.boards.map((board) => ({
-      id: `board-${board.period}`,
-      kind: 'board' as const,
-      label: PERIOD_LABELS[board.period],
-      value: `#${board.rank}`,
-      detail: board.rank === 1 ? 'Top of the board' : 'Top 10',
-      featured: featuredId === `board-${board.period}`,
-    })),
-    ...(payload.personalBest
-      ? [
-          {
-            id: 'best',
-            kind: 'best' as const,
-            label: 'Personal best',
-            value: payload.personalBest.score.toLocaleString(),
-            detail:
-              payload.personalBest.gain != null
-                ? `+${payload.personalBest.gain}`
-                : null,
-            featured: featuredId === 'best',
-          },
-        ]
-      : []),
-    ...payload.books.map((book, i) => ({
-      id: `book-${i}`,
-      kind: 'book' as const,
-      label: book.label,
-      value: book.rank != null ? `#${book.rank}` : (book.value ?? 'New'),
-      detail:
-        book.rank != null && book.value
-          ? book.value
-          : book.rank === 1
-            ? 'New record'
-            : null,
-      featured: featuredId === `book-${i}`,
-    })),
-  ]
-
-  return cards
-}
-
-function RankChips({ ranks }: { ranks?: Partial<Record<LeaderboardPeriod, number>> }) {
-  const items = gameOverBoardHits(ranks)
-  if (!items.length) return null
-  return (
-    <ul className="score-save__ranks" aria-label="Leaderboard ranks">
-      {items.map(({ period, rank }) => (
-        <li key={period}>
-          <span>{PERIOD_LABELS[period]}</span>
-          <strong>#{rank}</strong>
-        </li>
-      ))}
-    </ul>
-  )
-}
-
-/** Leave the play overlay and open an in-app route. */
-function leavePlayTo(href: string) {
-  navigate(href)
-}
-
-function boardsHref(gameSlug: string) {
-  if ((LEADERBOARD_GAMES as readonly string[]).includes(gameSlug)) {
-    return gameBoardHref(gameSlug as LeaderboardGame, defaultPeriod())
-  }
-  return gameHref(gameSlug)
 }
 
 type Particle = {
@@ -468,8 +515,8 @@ export function ScoreCelebration({
   style?: CSSProperties
 }) {
   const [leaving, setLeaving] = useState(false)
-  const cards = awardCards(payload)
-  const count = cards.length
+  const b = payload.bracket
+  const medal = b?.champion ? medalKind(1) : null
 
   const close = () => {
     if (leaving) return
@@ -487,24 +534,23 @@ export function ScoreCelebration({
     >
       <FireworksCanvas />
       <div className="score-celeb__shell">
-        <div
-          className={`score-celeb__awards score-celeb__awards--${Math.min(count, 4)}`}
-          aria-label="Awards"
-        >
-          {cards.map((card, i) => (
-            <article
-              key={card.id}
-              className={`score-celeb__award score-celeb__award--${card.kind}${card.tone ? ` score-celeb__award--${card.tone}` : ''}${card.featured ? ' score-celeb__award--featured' : ''}`}
-              style={{ animationDelay: `${0.08 + i * 0.07}s` }}
-            >
-              {card.icon ? <span className="score-celeb__award-icon">{card.icon}</span> : null}
-              <span className="score-celeb__award-label">{card.label}</span>
-              <strong className="score-celeb__award-value">{card.value}</strong>
-              {card.detail ? (
-                <span className="score-celeb__award-detail">{card.detail}</span>
+        <div className="score-celeb__awards score-celeb__awards--1" aria-label="Awards">
+          {b ? (
+            <article className="score-celeb__award score-celeb__award--tourney score-celeb__award--featured">
+              {medal ? (
+                <span className="score-celeb__award-icon">
+                  <PodiumMedal kind={medal} size="md" />
+                </span>
               ) : null}
+              <span className="score-celeb__award-label">
+                {b.champion ? b.eventTitle?.trim() || 'Tournament' : 'Match won'}
+              </span>
+              <strong className="score-celeb__award-value">{b.champion ? 'Champion' : 'Advance'}</strong>
+              <span className="score-celeb__award-detail">
+                {b.champion ? 'You won the bracket' : b.opponent ? `beat ${b.opponent}` : 'On to the next round'}
+              </span>
             </article>
-          ))}
+          ) : null}
         </div>
         <button type="button" className="score-celeb__btn" onClick={close}>
           Continue
@@ -512,576 +558,5 @@ export function ScoreCelebration({
       </div>
     </div>,
     document.body,
-  )
-}
-
-function easeOutCubic(t: number) {
-  return 1 - (1 - t) ** 3
-}
-
-function prefersReducedMotion() {
-  return (
-    typeof window !== 'undefined' &&
-    window.matchMedia('(prefers-reduced-motion: reduce)').matches
-  )
-}
-
-export function RankUpCelebration({
-  climb,
-  onDone,
-  style,
-}: {
-  climb: RankClimb
-  onDone: () => void
-  /** The game's colour for the shell; see ScoreCelebration. */
-  style?: CSSProperties
-}) {
-  const period = useDefaultPeriod()
-  const [leaving, setLeaving] = useState(false)
-  const [settled, setSettled] = useState(false)
-  const reelRef = useRef<HTMLDivElement>(null)
-  const numberRef = useRef<HTMLElement>(null)
-  const startRank =
-    climb.from ?? Math.min(99, climb.to + Math.max(4, Math.min(18, climb.gained ?? 8)))
-  /** Keep the reel short so long climbs stay smooth. */
-  const scrollFrom = Math.min(startRank, climb.to + 24)
-  const steps = Math.max(1, scrollFrom - climb.to)
-  /** Pad so the first/last ranks can sit centered in the viewport. */
-  const pad = 2
-  const ranks = useMemo(() => {
-    const list: number[] = []
-    for (let r = scrollFrom + pad; r >= Math.max(1, climb.to - pad); r--) {
-      list.push(r)
-    }
-    return list
-  }, [climb.to, pad, scrollFrom])
-
-  useEffect(() => {
-    const reel = reelRef.current
-    const numberEl = numberRef.current
-    const viewport = reel?.parentElement
-    if (!reel || !numberEl || !viewport) return
-
-    const rowH = viewport.clientHeight / 5
-    const startIndex = ranks.indexOf(scrollFrom)
-    const endIndex = ranks.indexOf(climb.to)
-    if (startIndex < 0 || endIndex < 0 || !(rowH > 0)) {
-      numberEl.textContent = `#${climb.to}`
-      setSettled(true)
-      return
-    }
-
-    const offsetFor = (index: number) => (2 - index) * rowH
-
-    const apply = (index: number, rank: number) => {
-      reel.style.transform = `translate3d(0, ${offsetFor(index)}px, 0)`
-      numberEl.textContent = `#${rank}`
-    }
-
-    if (prefersReducedMotion() || steps <= 1) {
-      apply(endIndex, climb.to)
-      setSettled(true)
-      return
-    }
-
-    apply(startIndex, scrollFrom)
-    let raf = 0
-    const duration = Math.min(2200, Math.max(1100, 700 + steps * 90))
-    const t0 = performance.now()
-
-    const tick = (now: number) => {
-      const t = Math.min(1, (now - t0) / duration)
-      const eased = easeOutCubic(t)
-      const index = startIndex + (endIndex - startIndex) * eased
-      const rank = Math.round(scrollFrom + (climb.to - scrollFrom) * eased)
-      apply(index, Math.max(climb.to, Math.min(scrollFrom, rank)))
-      if (t < 1) {
-        raf = requestAnimationFrame(tick)
-        return
-      }
-      apply(endIndex, climb.to)
-      setSettled(true)
-    }
-
-    raf = requestAnimationFrame(tick)
-    return () => cancelAnimationFrame(raf)
-  }, [climb.to, ranks, scrollFrom, steps])
-
-  const close = () => {
-    if (leaving) return
-    setLeaving(true)
-    window.setTimeout(onDone, 320)
-  }
-
-  const detail =
-    climb.from == null
-      ? 'New global ranking'
-      : climb.gained != null && climb.gained > 0
-        ? `Up ${climb.gained} place${climb.gained === 1 ? '' : 's'}`
-        : 'New global ranking'
-
-  return createPortal(
-    <div
-      className={`score-celeb rank-up${leaving ? ' score-celeb--out' : ''}${settled ? ' rank-up--settled' : ''}`}
-      style={style}
-      role="dialog"
-      aria-label="Global rank up celebration"
-      onPointerDown={(e) => e.stopPropagation()}
-    >
-      <FireworksCanvas />
-      <div className="score-celeb__shell rank-up__shell">
-        <p className="score-celeb__kicker">
-          Global ranking · {PERIOD_LABELS[period]}
-        </p>
-        <h2 className="score-celeb__title">Rank up</h2>
-        <div className="rank-up__stage">
-          <div className="rank-up__viewport" aria-hidden="true">
-            <div className="rank-up__focus" />
-            <div ref={reelRef} className="rank-up__reel">
-              {ranks.map((rank) => (
-                <div key={rank} className="rank-up__rung">
-                  <span>#{rank}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-          <strong
-            ref={numberRef}
-            className="rank-up__number"
-            aria-live="polite"
-          >
-            #{scrollFrom}
-          </strong>
-          <p className="rank-up__detail">{detail}</p>
-          {climb.from != null ? (
-            <p className="rank-up__from">
-              From <span>#{climb.from}</span>
-            </p>
-          ) : null}
-        </div>
-        <button
-          type="button"
-          className="score-celeb__btn"
-          onClick={close}
-          disabled={!settled}
-        >
-          Continue
-        </button>
-      </div>
-    </div>,
-    document.body,
-  )
-}
-
-function cleanName(raw: string) {
-  return normalizePlayerName(raw)
-}
-
-type Phase = 'checking' | 'needAuth' | 'needName' | 'saving' | 'saved' | 'assisted' | 'error'
-
-export function ScoreSaveCard({
-  gameSlug,
-  score,
-  title,
-  subtitle,
-  previousBest,
-  onDone,
-}: ScoreSaveProps) {
-  const { signedIn, loading: authLoading } = useAuth()
-  const impersonation = useImpersonation()
-  const canSaveScores = signedIn || Boolean(impersonation)
-  const [phase, setPhase] = useState<Phase>('checking')
-  const [ranks, setRanks] = useState<Partial<Record<LeaderboardPeriod, number>>>()
-  const [error, setError] = useState<string | null>(null)
-  const [nameDraft, setNameDraft] = useState('')
-  const [rankClimb, setRankClimb] = useState<RankClimb | null>(null)
-  const [celeb, setCeleb] = useState<CelebPayload | null>(null)
-  const [celebPending, setCelebPending] = useState(false)
-  const nameInputRef = useRef<HTMLInputElement>(null)
-  const savedRef = useRef(false)
-  const celebShown = useRef(false)
-  const celebTimer = useRef(0)
-  const pendingAwards = useRef<CelebPayload | null>(null)
-  const recordRef = useRef(previousBest ?? 0)
-  const [record, setRecord] = useState(previousBest ?? 0)
-
-  const pb = describePersonalBest(score, record)
-  const isBestRun = pb?.kind === 'new'
-  // The card and its celebrations wear the game's colour, the way the banner does.
-  const accentStyle = gameAccentStyle(gameSlug)
-  const eyebrow =
-    phase === 'needAuth' || phase === 'needName'
-      ? isTimeBoard(gameSlug)
-        ? 'Your time'
-        : 'Board score'
-      : title
-  const subParts = [subtitle].filter(Boolean) as string[]
-  const pbLine = pb?.headline ?? pb?.detail
-
-  useEffect(() => {
-    if (phase === 'needName') nameInputRef.current?.focus()
-  }, [phase])
-
-  const openAwardCelebration = (payload: CelebPayload | null) => {
-    pendingAwards.current = null
-    if (!payload) {
-      celebShown.current = false
-      return
-    }
-    setCeleb(payload)
-  }
-
-  const openCelebration = (
-    allTime: number,
-    nextRanks?: Partial<Record<LeaderboardPeriod, number>>,
-    climb?: RankClimb | null,
-  ) => {
-    if (celebShown.current) return
-    celebShown.current = true
-    setCelebPending(true)
-    window.clearTimeout(celebTimer.current)
-    /* Brief settle so late record-book posts from this run can land. */
-    celebTimer.current = window.setTimeout(() => {
-      void (async () => {
-        await whenRunAchievementsSettled()
-        const payload = buildCelebration(score, allTime, nextRanks)
-        setCelebPending(false)
-        if (climb) {
-          pendingAwards.current = payload
-          setRankClimb(climb)
-          return
-        }
-        openAwardCelebration(payload)
-      })()
-    }, 400)
-  }
-
-  const finishRankClimb = () => {
-    setRankClimb(null)
-    openAwardCelebration(pendingAwards.current)
-  }
-
-  const saveAndCelebrate = async (name: string, isCancelled?: () => boolean) => {
-    let priorGlobalRank: number | null = null
-    try {
-      priorGlobalRank = (await fetchGlobalRank(name, defaultPeriod())).rank
-    } catch {
-      /* climb detection best-effort */
-    }
-    if (isCancelled?.()) return
-    const saved = await addLeaderboardScore(gameSlug, name, score)
-    for (const hit of saved.streakRecords ?? []) {
-      if (
-        shouldCelebrateRecordSubmit({
-          improved: hit.improved,
-          rank: hit.rank,
-          totalEntries: hit.totalEntries,
-        })
-      ) {
-        pushRunAchievement({
-          id: `${gameSlug}:${hit.recordId}`,
-          label: hit.label,
-          value:
-            hit.recordId === 'play-days-streak'
-              ? `${hit.value} day${hit.value === 1 ? '' : 's'}`
-              : `${hit.value}×`,
-          rank: hit.rank,
-        })
-      }
-    }
-    void submitScoreToJoinedTournaments(gameSlug, score).catch(() => {})
-    if (isCancelled?.()) return
-    rememberPersonalBest(gameSlug, Math.max(recordRef.current, score))
-    let nextGlobalRank: number | null = null
-    try {
-      nextGlobalRank = (await fetchGlobalRank(name, defaultPeriod())).rank
-    } catch {
-      /* ignore */
-    }
-    if (isCancelled?.()) return
-    void refreshGlobalRank()
-    setRanks(saved.ranks)
-    savedRef.current = true
-    setPhase('saved')
-    const climb = pickGlobalRankClimb(priorGlobalRank, nextGlobalRank)
-    openCelebration(recordRef.current, saved.ranks, climb)
-  }
-
-  useEffect(() => {
-    let cancelled = false
-    savedRef.current = false
-    celebShown.current = false
-    pendingAwards.current = null
-    window.clearTimeout(celebTimer.current)
-    setRankClimb(null)
-    setCeleb(null)
-    setCelebPending(false)
-    setPhase('checking')
-    setError(null)
-
-    async function run() {
-      try {
-        if (authLoading) return
-
-        const name = getLastPlayerName().trim().toUpperCase()
-        if (name) {
-          try {
-            const bests = await fetchPlayerBests(name)
-            if (cancelled) return
-            const allTime = bests[gameSlug] ?? 0
-            recordRef.current = allTime
-            setRecord(allTime)
-          } catch {
-            /* keep fallback from this device’s cache */
-          }
-        }
-        if (cancelled) return
-
-        /*
-         * Stage-jumped runs never reach a board or a record book: the score
-         * was not earned. Record-book wins queued earlier in the run go with
-         * it, since those stages were skipped too.
-         */
-        if (isRunAssisted()) {
-          takeRunAchievements()
-          setPhase('assisted')
-          return
-        }
-
-        if (score <= 0) {
-          const books = peekRunAchievements()
-          if (books.length) {
-            openCelebration(recordRef.current, undefined, null)
-          } else {
-            takeRunAchievements()
-          }
-          setPhase('saved')
-          return
-        }
-
-        if (!canSaveScores) {
-          setPhase('needAuth')
-          return
-        }
-
-        if (!name) {
-          setPhase('needName')
-          return
-        }
-
-        setPhase('saving')
-        await saveAndCelebrate(name, () => cancelled)
-      } catch (err) {
-        if (cancelled) return
-        if (err instanceof ApiError && err.code === 'AUTH_REQUIRED') {
-          setPhase('needAuth')
-          setError('Sign in to save this score.')
-          return
-        }
-        if (err instanceof ApiError && err.code === 'NAME_TAKEN') {
-          setPhase('needName')
-          setError('That gamer tag is taken. Pick another.')
-          return
-        }
-        setError(err instanceof Error ? err.message : 'Could not save score')
-        setPhase('error')
-      }
-    }
-
-    void run()
-    return () => {
-      cancelled = true
-      window.clearTimeout(celebTimer.current)
-    }
-  }, [gameSlug, score, authLoading, canSaveScores])
-
-  const submitName = async () => {
-    const name = cleanName(nameDraft)
-    if (!name || savedRef.current) return
-    if (!canSaveScores) {
-      setPhase('needAuth')
-      return
-    }
-    setPhase('saving')
-    setError(null)
-    try {
-      if (signedIn && !impersonation) {
-        await linkCurrentNameToAccount(name)
-      }
-      await saveAndCelebrate(name)
-    } catch (err) {
-      if (err instanceof ApiError && err.code === 'AUTH_REQUIRED') {
-        setError('Sign in to save this score.')
-        setPhase('needAuth')
-        return
-      }
-      if (err instanceof ApiError && err.code === 'NAME_TAKEN') {
-        setError('That gamer tag is taken. Pick another.')
-        setPhase('needName')
-        return
-      }
-      setError(err instanceof Error ? err.message : 'Could not save score')
-      setPhase('error')
-    }
-  }
-
-  const celebrating = Boolean(rankClimb) || Boolean(celeb) || celebPending
-  const pending = phase === 'checking' || phase === 'saving' || celebPending || authLoading
-  const showResults = !celebrating && !pending
-
-  return (
-    <>
-      {rankClimb ? (
-        <RankUpCelebration climb={rankClimb} onDone={finishRankClimb} style={accentStyle} />
-      ) : null}
-      {celeb && !rankClimb ? (
-        <ScoreCelebration payload={celeb} onDone={() => setCeleb(null)} style={accentStyle} />
-      ) : null}
-      {pending && !celeb && !rankClimb && (
-        <div className="score-save" style={accentStyle} onPointerDown={(e) => e.stopPropagation()}>
-          <p className="score-save__note">
-            {phase === 'checking'
-              ? 'Checking boards…'
-              : phase === 'saving'
-                ? 'Saving…'
-                : 'Nice run…'}
-          </p>
-        </div>
-      )}
-      {showResults && (
-    <div className="score-save" style={accentStyle} onPointerDown={(e) => e.stopPropagation()}>
-      <div className="score-save__hero">
-        <span className="score-save__eyebrow">{eyebrow}</span>
-        <strong className="score-save__score">
-          {formatLeaderboardScore(gameSlug, score)}
-        </strong>
-        {pbLine ? (
-          <p
-            className={`score-save__pb${isBestRun ? ' score-save__pb--best' : ''}`}
-          >
-            {pbLine}
-          </p>
-        ) : null}
-        {pb?.gain != null && (
-          <span className="score-save__gain">+{pb.gain}</span>
-        )}
-        {subParts.length > 0 && (
-          <p className="score-save__sub">{subParts.join(' · ')}</p>
-        )}
-      </div>
-
-      {(phase === 'saved' || phase === 'needName' || phase === 'needAuth') && (
-        <RankChips ranks={ranks} />
-      )}
-
-      {phase === 'needAuth' && (
-        <>
-          <ScoreSignInPrompt
-            error={error}
-            onSignedIn={() => {
-              setError(null)
-              setPhase('checking')
-            }}
-          />
-          <div className="score-save__actions">
-            <button type="button" className="score-save__btn score-save__btn--ghost" onClick={onDone}>
-              Skip
-            </button>
-          </div>
-        </>
-      )}
-
-      {phase === 'needName' && (
-        <>
-          <label className="score-save__field">
-            <span className="score-save__label">Gamer tag</span>
-            <input
-              ref={nameInputRef}
-              className="score-save__input"
-              value={nameDraft}
-              maxLength={PLAYER_NAME_MAX}
-              placeholder="YOU"
-              autoComplete="off"
-              spellCheck={false}
-              onChange={(e) => setNameDraft(e.target.value.toUpperCase().slice(0, PLAYER_NAME_MAX))}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault()
-                  void submitName()
-                }
-              }}
-            />
-          </label>
-          {error && <p className="score-save__note score-save__note--error">{error}</p>}
-          <div className="score-save__actions">
-            <button
-              type="button"
-              className="score-save__btn"
-              disabled={!cleanName(nameDraft)}
-              onClick={() => void submitName()}
-            >
-              Continue
-            </button>
-            <button type="button" className="score-save__btn score-save__btn--ghost" onClick={onDone}>
-              Skip
-            </button>
-          </div>
-        </>
-      )}
-
-      {phase === 'assisted' && (
-        <>
-          <p className="score-save__note">
-            Stage skip used — this run was not saved to the boards or record books.
-          </p>
-          <button type="button" className="score-save__btn" onClick={onDone}>
-            Play again
-          </button>
-        </>
-      )}
-
-      {phase === 'saved' && (
-        <>
-          <button type="button" className="score-save__btn" onClick={onDone}>
-            Play again
-          </button>
-          <div className="score-save__links">
-            <button
-              type="button"
-              className="score-save__text-link"
-              onClick={(e) => {
-                e.stopPropagation()
-                leavePlayTo(boardsHref(gameSlug))
-              }}
-            >
-              Boards
-            </button>
-            {gameHasRecords(gameSlug) ? (
-              <button
-                type="button"
-                className="score-save__text-link"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  leavePlayTo(recordsHref(gameSlug))
-                }}
-              >
-                Record Books
-              </button>
-            ) : null}
-          </div>
-        </>
-      )}
-
-      {phase === 'error' && (
-        <>
-          <p className="score-save__note score-save__note--error">{error}</p>
-          <button type="button" className="score-save__btn" onClick={onDone}>
-            Play again
-          </button>
-        </>
-      )}
-    </div>
-      )}
-    </>
   )
 }

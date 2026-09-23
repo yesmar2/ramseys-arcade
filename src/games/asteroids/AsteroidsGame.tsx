@@ -5,11 +5,7 @@ import { GameStage } from '../../components/GameStage'
 import { GameStartCard } from '../../components/GameStartCard'
 import { PauseButton, GamePauseOverlay } from '../../components/PauseControls'
 import { AdminWaveSkip } from '../../components/AdminWaveSkip'
-import {
-  ScoreCelebration,
-  ScoreSaveCard,
-  booksCelebrationPayload,
-} from '../../components/ScoreSaveCard'
+import { ScoreSaveCard } from '../../components/ScoreSaveCard'
 import { TournamentScoreCard } from '../../components/TournamentScoreCard'
 import { useGamePause } from '../../hooks/useGamePause'
 import { gameAccentStyle } from '../../lib/gameAccentStyle'
@@ -73,20 +69,6 @@ function emptyPressed(): Record<HoldKey, Set<string>> {
   }
 }
 
-function mergeWaveCelebrationHits(
-  pending: RunAchievement[] | null,
-  hits: RunAchievement[],
-): RunAchievement[] {
-  const byKey = new Map<string, RunAchievement>()
-  for (const hit of pending ?? []) {
-    byKey.set(hit.id ?? hit.label, hit)
-  }
-  for (const hit of hits) {
-    byKey.set(hit.id ?? hit.label, hit)
-  }
-  return [...byKey.values()]
-}
-
 function currentLayout() {
   return asteroidsLayout(typeof window !== 'undefined' && window.innerHeight > window.innerWidth)
 }
@@ -108,13 +90,10 @@ export function AsteroidsGame() {
   const saveOpenRef = useRef(false)
   const [ui, setUi] = useState<Snapshot>(() => toSnapshot(stateRef.current))
   const [saveOpen, setSaveOpen] = useState(false)
-  const [waveCeleb, setWaveCeleb] = useState<RunAchievement[] | null>(null)
-  const waveCelebRef = useRef(false)
-  waveCelebRef.current = Boolean(waveCeleb)
-  const waveCelebShownRef = useRef<string | null>(null)
-  const pendingWaveCelebRef = useRef<RunAchievement[] | null>(null)
+  /** Record-book places the wave just cleared won, as rows on its card. */
+  const [waveBooks, setWaveBooks] = useState<RunAchievement[] | null>(null)
+  const waveBooksShownRef = useRef<string | null>(null)
   const offeredScore = useRef<number | null>(null)
-  const waveRecordKey = useRef<string | null>(null)
   const comboRecordKey = useRef<string | null>(null)
   const previousBestRef = useRef(getPersonalBest('asteroids'))
   const startGrace = useRef(0)
@@ -127,23 +106,13 @@ export function AsteroidsGame() {
   pausedRef.current = paused
   saveOpenRef.current = saveOpen
 
-  const tryShowWaveCelebration = (hits: RunAchievement[], submitKey: string) => {
-    if (waveCelebShownRef.current === submitKey) return
-    waveCelebShownRef.current = submitKey
-    waveRecordKey.current = submitKey
-
-    const phase = stateRef.current.phase
-    if (phase === 'waveClear' && !waveCelebRef.current) {
-      setWaveCeleb(hits)
-      return
-    }
-
-    if (phase === 'playing' || phase === 'waveClear' || phase === 'gameover') {
-      pendingWaveCelebRef.current = mergeWaveCelebrationHits(
-        pendingWaveCelebRef.current,
-        hits,
-      )
-    }
+  const showWaveBooks = (hits: RunAchievement[], submitKey: string) => {
+    if (waveBooksShownRef.current === submitKey) return
+    waveBooksShownRef.current = submitKey
+    // The run report lists them at the end, with everything else the run won.
+    for (const hit of hits) pushRunAchievement(hit)
+    // On the wave's card while it is up; one that lands after it closed waits for the report.
+    if (stateRef.current.phase === 'waveClear') setWaveBooks(hits)
   }
 
   const syncControls = () => {
@@ -240,9 +209,7 @@ export function AsteroidsGame() {
 
   useEffect(() => {
     if (ui.phase !== 'waveClear' || tournament) {
-      if (ui.phase !== 'waveClear') {
-        waveRecordKey.current = null
-      }
+      if (ui.phase !== 'waveClear') setWaveBooks(null)
       return
     }
     const wave = ui.lastWave
@@ -260,7 +227,7 @@ export function AsteroidsGame() {
       if (ui.runComboBest >= 2) {
         comboRecordKey.current = `combo:${ui.runComboBest}`
       }
-      tryShowWaveCelebration(
+      showWaveBooks(
         hits.map((hit) => ({
           id: hit.id,
           label: hit.label,
@@ -278,24 +245,6 @@ export function AsteroidsGame() {
     playerName,
     tournament,
   ])
-
-  useEffect(() => {
-    if (ui.phase !== 'waveClear' || tournament || waveCeleb) return
-    const pending = pendingWaveCelebRef.current
-    if (!pending?.length) return
-    pendingWaveCelebRef.current = null
-    setWaveCeleb(pending)
-  }, [ui.phase, tournament, waveCeleb])
-
-  useEffect(() => {
-    if (ui.phase !== 'gameover' || tournament) return
-    const pending = pendingWaveCelebRef.current
-    if (!pending?.length) return
-    pendingWaveCelebRef.current = null
-    for (const hit of pending) {
-      pushRunAchievement(hit)
-    }
-  }, [ui.phase, tournament])
 
   useEffect(() => {
     if (ui.phase !== 'gameover' || tournament) return
@@ -337,13 +286,11 @@ export function AsteroidsGame() {
   const restart = (intoMenu = false) => {
     setSaveOpen(false)
     offeredScore.current = null
-    waveRecordKey.current = null
-    waveCelebShownRef.current = null
-    pendingWaveCelebRef.current = null
+    waveBooksShownRef.current = null
     comboRecordKey.current = null
     clearRunAchievements()
     if (!intoMenu) beginRun('asteroids')
-    setWaveCeleb(null)
+    setWaveBooks(null)
     clearPressed()
     const next = currentLayout()
     setAspect({ w: next.aspectW, h: next.aspectH })
@@ -478,7 +425,6 @@ export function AsteroidsGame() {
   const continueWave = (e?: { preventDefault?: () => void; stopPropagation?: () => void }) => {
     e?.preventDefault?.()
     e?.stopPropagation?.()
-    if (waveCelebRef.current) return
     if (stateRef.current.phase !== 'waveClear') return
     clearPressed()
     stateRef.current = beginNextWave(stateRef.current)
@@ -631,7 +577,7 @@ export function AsteroidsGame() {
                 ) : null
               }
             />
-            {ui.phase === 'waveClear' && !saveOpen && !paused && !waveCeleb && (
+            {ui.phase === 'waveClear' && !saveOpen && !paused && (
               <div className="game-card game-card--wave" style={gameAccentStyle('asteroids')}>
                 <div className="game-card__head">
                   <span className="game-card__kicker">Asteroids</span>
@@ -639,6 +585,14 @@ export function AsteroidsGame() {
                   <p className="game-card__figure">{formatWaveTime(ui.lastWaveTime)}s</p>
                 </div>
                 <div className="game-card__rows">
+                  {waveBooks?.map((hit) => (
+                    <div key={hit.id ?? hit.label} className="panel__row game-card__row--gold">
+                      <span>{hit.label}</span>
+                      <strong>
+                        {hit.rank === 1 ? 'New record' : hit.rank != null ? `#${hit.rank} in the book` : hit.value}
+                      </strong>
+                    </div>
+                  ))}
                   <div className="panel__row">
                     <span>Time bonus</span>
                     <strong>{ui.timeBonus > 0 ? `+${ui.timeBonus}` : 'None'}</strong>
@@ -661,12 +615,6 @@ export function AsteroidsGame() {
                 </button>
               </div>
             )}
-            {waveCeleb ? (
-              <ScoreCelebration
-                payload={booksCelebrationPayload(waveCeleb)}
-                onDone={() => setWaveCeleb(null)}
-              />
-            ) : null}
             {ui.phase === 'menu' && !saveOpen && !paused && (
               <GameStartCard
                 title="Asteroids"

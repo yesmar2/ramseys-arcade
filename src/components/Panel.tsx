@@ -36,6 +36,8 @@ type PanelProps = {
   /** Colour tokens, usually a game's from gameAccentStyle. */
   style?: CSSProperties
   className?: string
+  /** Drawn over the scrim and under the panel: a celebration's confetti. */
+  backdrop?: ReactNode
   children: ReactNode
 }
 
@@ -50,6 +52,7 @@ export function Panel({
   initialFocus,
   style,
   className,
+  backdrop,
   children,
 }: PanelProps) {
   const ref = useRef<HTMLDivElement>(null)
@@ -105,6 +108,7 @@ export function Panel({
         aria-hidden="true"
         onClick={scrimCloses ? () => onCloseRef.current() : undefined}
       />
+      {backdrop}
       <div
         ref={ref}
         className={`panel${wide ? ' panel--wide' : ''}${className ? ` ${className}` : ''}`}
