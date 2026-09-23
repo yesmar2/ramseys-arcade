@@ -163,7 +163,6 @@ export const games: Game[] = [
     how: 'Arrow keys or A and D move the cannon, space fires; on a phone, drag on the field or use the left pads to move, and hold Fire. The fleet fires in volleys: the ships about to shoot light up and their lanes show where the shots will land. Get into a cold lane, or destroy a lit ship before it fires to stop its shot. Kills in quick succession build a chain that multiplies your points. There is no cover, and a ship that reaches the line ends the run. Three lives.',
     accent: PALETTE.red,
     playable: true,
-    inDevelopment: true,
   },
   {
     name: 'Crumbtrail',
@@ -202,7 +201,6 @@ export const games: Game[] = [
     how: 'Move the cursor, or drag a finger, to swim — arrow keys or WASD work too. Click, tap or press Space to dash; a dash slips you past a bite. Green numbers are food: eat them to grow. Red numbers eat you, and they flash ! before they lunge. The deeper you swim, the more every bite pays — ×2, ×3, then ×5 — but the deep brings jellyfish that stun and mines that blow up everything near them. Eat in quick succession for a combo; eight in a row sets off a Frenzy. One life.',
     accent: PALETTE.magenta,
     playable: true,
-    inDevelopment: true,
   },
 ]
 
@@ -237,14 +235,28 @@ export function playableGames(device?: DeviceType) {
  * Anything left off holds its catalog position after these.
  */
 const HOME_ORDER: readonly string[] = [
-  'crosswalk',
-  'snake',
-  'asteroids',
-  'crumbtrail',
+  /*
+   * The best-looking first, so the wall opens on the games at their best.
+   *
+   * The wall keeps two tiles of one colour from sharing an edge at every width
+   * it lays out (GameWall), and three pairs share a colour: Crumbtrail and
+   * Snake, Stacker and Centroid, Barrage and Patriot. That needs the two of a
+   * pair seven places apart, so one of each opens the wall and its partner
+   * closes it. Any order that breaks this is reshuffled until it doesn't, and
+   * the reshuffle does not care which games were meant to lead.
+   */
+  'frenzy',
   'pellets',
-  'patriot',
+  'crumbtrail',
   'stacker',
+  'barrage',
+  'asteroids',
+  'crosswalk',
+  'pop',
+  'simon',
+  'snake',
   'centroid',
+  'patriot',
 ]
 
 /** Lower sorts earlier. Titles that are not finished go to the back. */

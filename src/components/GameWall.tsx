@@ -327,7 +327,7 @@ export function WallTile({
             <span className="wall-tile__kind">{kind}</span>
           </span>
           <span className="wall-tile__line">
-            <span className="wall-tile__tag">HI</span>
+            <span className="wall-tile__tag">HI SCORE</span>
             {top ? (
               <>
                 <b className="wall-tile__figure">{fmt(top.entry.score)}</b>
