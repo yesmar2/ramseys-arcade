@@ -1990,6 +1990,102 @@ html[data-theme="dark"] .wall-tile__flag--weekly {
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--flag-dot) 25%, transparent);
 }
 
+/*
+ * The high-score table, over the screen: up while a pointer rests on the
+ * scores under the name, over the game as it plays, and gone as it leaves.
+ */
+.wall-tile__scores {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0 1rem;
+  background: var(--wall-scrim);
+  opacity: 0;
+  transition: opacity 0.18s ease;
+  pointer-events: none;
+}
+
+.wall-tile:has(.wall-tile__lines:hover) .wall-tile__scores {
+  opacity: 1;
+}
+
+.wall-tile__scores-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--wall-accent-ink);
+}
+
+.wall-tile__scores-head small {
+  font-size: 0.58rem;
+  font-weight: 750;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+.wall-tile__score {
+  display: flex;
+  align-items: baseline;
+  gap: 0.55rem;
+  min-width: 0;
+  font-size: 0.8rem;
+  font-weight: 700;
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
+}
+
+.wall-tile__score-place {
+  flex: none;
+  width: 1.7rem;
+  font-size: 0.64rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--wall-accent-ink);
+}
+
+.wall-tile__score-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  letter-spacing: 0.02em;
+  color: var(--ink);
+}
+
+.wall-tile__score--you .wall-tile__score-name {
+  color: var(--wall-you-ink);
+}
+
+.wall-tile__score-value {
+  flex: none;
+  margin-left: auto;
+  font-weight: 800;
+  color: var(--ink);
+}
+
+.wall-tile__score-none {
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: var(--ink);
+}
+
+.wall-tile__score-hint {
+  font-size: 0.74rem;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--muted);
+}
+
 /* Under the screen: the name and what kind of game, the board's high score, and yours. */
 .wall-tile__info {
   display: grid;
@@ -2030,6 +2126,13 @@ html[data-theme="dark"] .wall-tile__flag--weekly {
   overflow: hidden;
   text-overflow: ellipsis;
   color: var(--muted);
+}
+
+/* The scores under the name, together: what a pointer rests on to bring the table up. */
+.wall-tile__lines {
+  display: grid;
+  gap: inherit;
+  min-width: 0;
 }
 
 .wall-tile__line {
@@ -2098,8 +2201,19 @@ html[data-theme="dark"] .wall-tile__flag--weekly {
   }
 
   .wall-tile__kind,
-  .wall-tile__roomy {
+  .wall-tile__roomy,
+  .wall-tile__score-place,
+  .wall-tile__scores-head small {
     display: none;
+  }
+
+  .wall-tile__scores {
+    gap: 0.3rem;
+    padding: 0 0.7rem;
+  }
+
+  .wall-tile__score {
+    font-size: 0.7rem;
   }
 
   .wall-tile__info {
@@ -2120,6 +2234,7 @@ html[data-theme="dark"] .wall-tile__flag--weekly {
   .wall-tile,
   .wall-tile__art .inline-thumb,
   .wall-tile__preview,
+  .wall-tile__scores,
   .home-banner__art > .inline-thumb {
     animation: none;
     transition: none;

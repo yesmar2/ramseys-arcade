@@ -157,6 +157,9 @@ function isFresh(game: Game) {
 
 const ONE: Span = { w: 1, h: 1 }
 
+/** The places in a cabinet's high-score table. */
+const PLACES = ['1st', '2nd', '3rd']
+
 /**
  * The wall: every game as an arcade cabinet, in a grid that runs five across
  * on a desktop and two on a phone, and no two cabinets of one colour side by
@@ -265,7 +268,7 @@ export function WallTile({
   best: number | null
   /** Your place on this game's board for the period, and how many are on it, when you are. */
   standing?: GlobalGamePlace | null
-  /** Who leads the board: the high score under the screen. */
+  /** The board's top runs: the high score under the screen, and the table over it. */
   top?: BoardLeader | null
   daily?: boolean
   weekly?: boolean
@@ -275,6 +278,7 @@ export function WallTile({
   preview?: boolean
 }) {
   const period = useDefaultPeriod()
+  const you = normalizePlayerName(usePlayerName())
   const accent = resolveGameAccent(game.slug, game.accent)
   const live = preview && hasGamePreview(game.slug)
   const style = {
@@ -294,7 +298,8 @@ export function WallTile({
   const place = standing?.place ?? null
   const total = standing?.total ?? null
   const periodWord = PERIOD_LABELS[period].toLowerCase()
-  const kind =(game.tags ?? []).map((tag) => TAG_LABELS[tag]).join(' · ') || 'Game'
+  const rows = top ? (top.entries.length > 0 ? top.entries : [top.entry]) : []
+  const kind = (game.tags ?? []).map((tag) => TAG_LABELS[tag]).join(' · ') || 'Game'
   const label = [
     game.name,
     flag ? flag.label.toLowerCase() : null,
@@ -320,40 +325,66 @@ export function WallTile({
               {flag.label}
             </span>
           ) : null}
+          <span className="wall-tile__scores" aria-hidden="true">
+            <span className="wall-tile__scores-head">
+              High scores
+              {top ? <small>{top.period === 'all' ? 'All time' : PERIOD_LABELS[top.period]}</small> : null}
+            </span>
+            {rows.length > 0 ? (
+              rows.map((e, i) => (
+                <span
+                  key={e.id}
+                  className={`wall-tile__score${you && e.name === you ? ' wall-tile__score--you' : ''}`}
+                >
+                  <span className="wall-tile__score-place">{PLACES[i]}</span>
+                  <span className="wall-tile__score-name">{e.name}</span>
+                  <span className="wall-tile__score-value">{fmt(e.score)}</span>
+                </span>
+              ))
+            ) : (
+              <>
+                <span className="wall-tile__score-none">No scores yet</span>
+                <span className="wall-tile__score-hint">The first run posted holds the record.</span>
+              </>
+            )}
+          </span>
         </span>
         <span className="wall-tile__info" aria-hidden="true">
           <span className="wall-tile__title">
             <span className="wall-tile__name">{game.name}</span>
             <span className="wall-tile__kind">{kind}</span>
           </span>
-          <span className="wall-tile__line">
-            <span className="wall-tile__tag">HI SCORE</span>
-            {top ? (
-              <>
-                <b className="wall-tile__figure">{fmt(top.entry.score)}</b>
-                <span className="wall-tile__who">{top.entry.name}</span>
-              </>
-            ) : (
-              <span>
-                open<span className="wall-tile__roomy">, first run takes it</span>
-              </span>
-            )}
-          </span>
-          {place || best ? (
+          {/* A pointer on the scores brings the board's table up over the screen. */}
+          <span className="wall-tile__lines">
             <span className="wall-tile__line">
-              <span className="wall-tile__tag wall-tile__tag--you">YOU</span>
-              <span className="wall-tile__mine">
-                {place ? (
-                  <>
-                    #{place}
-                    <span className="wall-tile__roomy"> {periodWord}</span>
-                  </>
-                ) : null}
-                {place && best ? ' · ' : null}
-                {best ? fmt(best) : null}
-              </span>
+              <span className="wall-tile__tag">HI SCORE</span>
+              {top ? (
+                <>
+                  <b className="wall-tile__figure">{fmt(top.entry.score)}</b>
+                  <span className="wall-tile__who">{top.entry.name}</span>
+                </>
+              ) : (
+                <span>
+                  open<span className="wall-tile__roomy">, first run takes it</span>
+                </span>
+              )}
             </span>
-          ) : null}
+            {place || best ? (
+              <span className="wall-tile__line">
+                <span className="wall-tile__tag wall-tile__tag--you">YOU</span>
+                <span className="wall-tile__mine">
+                  {place ? (
+                    <>
+                      #{place}
+                      <span className="wall-tile__roomy"> {periodWord}</span>
+                    </>
+                  ) : null}
+                  {place && best ? ' · ' : null}
+                  {best ? fmt(best) : null}
+                </span>
+              </span>
+            ) : null}
+          </span>
         </span>
       </a>
     </li>
