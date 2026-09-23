@@ -1,0 +1,546 @@
+/*
+ * The whole screen, once (WinTakeover.tsx): an event won, or first in the
+ * standings. A dark stage with a gold glow instead of the panel kit's scrim,
+ * the prize in gold, how it was won in a line and the games that won it on
+ * the left; the trophy over the podium on the right, second, first and third.
+ * On a phone it runs top to bottom: the trophy, the words, the podium, the
+ * buttons. It is still a panel underneath, with the kit's keyboard and focus.
+ */
+
+.win-layer {
+  padding: 0;
+}
+
+.win-layer .panel-scrim {
+  background:
+    radial-gradient(56rem 38rem at 66% 36%, rgba(245, 185, 66, 0.2), rgba(245, 185, 66, 0.04) 55%, transparent 75%),
+    #0a0f14;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  animation: win-fade 0.35s ease-out both;
+}
+
+html[data-theme='light'] .win-layer .panel-scrim {
+  background:
+    radial-gradient(56rem 38rem at 66% 36%, rgba(245, 185, 66, 0.3), rgba(245, 185, 66, 0.06) 55%, transparent 75%),
+    #f4f1e8;
+}
+
+.panel.win {
+  --win-gold: #f5b942;
+  --win-gold-ink: #f5b942;
+  --win-silver: #c4d0d9;
+  --win-bronze: #dc9a68;
+  --win-line: rgba(var(--ink-rgb), 0.12);
+  /* A page that scrolls, not the kit's column: the stage grows with what it holds. */
+  display: block;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  animation: win-fade 0.4s ease-out both;
+}
+
+html[data-theme='light'] .panel.win {
+  --win-gold-ink: #9a6a06;
+  --win-silver: #5f6f7c;
+  --win-bronze: #9c5427;
+}
+
+.panel.win .panel__grab {
+  display: none;
+}
+
+.win__close {
+  position: absolute;
+  top: max(1.25rem, env(safe-area-inset-top));
+  right: 1.5rem;
+  z-index: 2;
+  width: 3rem;
+  height: 3rem;
+  margin: 0;
+}
+
+.win__stage {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 100%;
+  max-width: 80rem;
+  margin: 0 auto;
+  padding: 4.5rem 4rem 3rem;
+  display: grid;
+  grid-template-columns: minmax(0, 35rem) minmax(0, 1fr);
+  grid-template-areas: 'text art';
+  align-items: center;
+  gap: 2.5rem 3rem;
+}
+
+.win__text {
+  grid-area: text;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1.35rem;
+  text-align: left;
+}
+
+.win__art {
+  grid-area: art;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.75rem;
+}
+
+.win__kicker {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.9rem;
+  padding: 0 0.9rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--win-gold) 16%, transparent);
+  color: var(--win-gold-ink);
+  font-size: 0.75rem;
+  font-weight: 650;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.win__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(2.6rem, 5.4vw, 4.5rem);
+  line-height: 1;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  color: var(--ink);
+  text-wrap: balance;
+}
+
+.win__prize {
+  color: var(--win-gold-ink);
+}
+
+.win__lede {
+  margin: 0;
+  max-width: 31rem;
+  font-size: 1.15rem;
+  line-height: 1.55;
+  color: var(--muted);
+}
+
+.win__rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.win__row {
+  display: grid;
+  grid-template-columns: 0.65rem minmax(0, 1fr) auto 3.5rem;
+  gap: 0.9rem;
+  align-items: center;
+  min-height: 3rem;
+  padding: 0 1.1rem;
+  border-radius: 0.9rem;
+  border: 1px solid var(--win-line);
+  background: rgba(var(--ink-rgb), 0.04);
+}
+
+.win__dot {
+  width: 0.65rem;
+  height: 0.65rem;
+  border-radius: 50%;
+}
+
+.win__row-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 500;
+  color: var(--ink);
+}
+
+.win__row-place,
+.win__row-value {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.win__row-place--gold {
+  color: var(--win-gold-ink);
+}
+
+.win__row-place--silver {
+  color: var(--win-silver);
+}
+
+.win__row-place--bronze {
+  color: var(--win-bronze);
+}
+
+.win__row-value {
+  color: var(--win-gold-ink);
+}
+
+.win__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 0.35rem;
+}
+
+.win__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 3.5rem;
+  padding: 0 1.9rem;
+  border: 0;
+  border-radius: 999px;
+  background: var(--win-gold);
+  color: #1a1204;
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 650;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  box-shadow: 0 12px 30px rgba(245, 185, 66, 0.3);
+  transition: transform 0.12s ease, filter 0.12s ease;
+}
+
+.win__btn:hover,
+.win__btn:focus-visible {
+  filter: brightness(1.06);
+  transform: translateY(-1px);
+}
+
+.win__btn--ghost {
+  background: transparent;
+  border: 1px solid rgba(var(--ink-rgb), 0.2);
+  color: var(--ink);
+  font-weight: 500;
+  box-shadow: none;
+}
+
+.win__btn--ghost:hover,
+.win__btn--ghost:focus-visible {
+  filter: none;
+  background: rgba(var(--ink-rgb), 0.06);
+}
+
+.win__note {
+  margin: 0;
+  font-size: 0.92rem;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.win__note a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.win__note a:hover,
+.win__note a:focus-visible {
+  color: var(--ink);
+}
+
+/* ---------- the trophy and the podium ---------- */
+
+.win__trophy {
+  flex: none;
+  width: min(14.5rem, 55%);
+  height: auto;
+  aspect-ratio: 230 / 250;
+  filter: drop-shadow(0 20px 40px rgba(245, 185, 66, 0.35));
+  animation: win-trophy 0.9s cubic-bezier(0.2, 1.3, 0.4, 1) 0.15s both;
+}
+
+.win__podium {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 0.9rem;
+  width: 100%;
+  max-width: 36rem;
+}
+
+.win__step {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.65rem;
+  animation: win-step 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.win__step--2 {
+  animation-delay: 0.3s;
+}
+
+.win__step--1 {
+  animation-delay: 0.45s;
+}
+
+.win__step--3 {
+  animation-delay: 0.6s;
+}
+
+.win__step .player-avatar {
+  --avatar-size: 4rem !important;
+}
+
+.win__step--1 .player-avatar {
+  --avatar-size: 5.25rem !important;
+  border-radius: 50%;
+  box-shadow: 0 0 0 3px var(--win-gold);
+}
+
+.win__step-name {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: ui-monospace, 'DM Mono', monospace;
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--ink);
+}
+
+.win__step--1 .win__step-name {
+  font-size: 1.2rem;
+}
+
+.win__step--mine .win__step-name {
+  color: color-mix(in srgb, var(--accent) 80%, var(--ink));
+}
+
+.win__block {
+  box-sizing: border-box;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  padding-top: 1rem;
+  border-radius: 1.1rem 1.1rem 0.4rem 0.4rem;
+  border: 1px solid rgba(var(--ink-rgb), 0.16);
+  background: rgba(var(--ink-rgb), 0.05);
+}
+
+.win__step--1 .win__block {
+  height: 13rem;
+  border-color: rgba(245, 185, 66, 0.5);
+  background: linear-gradient(180deg, rgba(245, 185, 66, 0.3), rgba(245, 185, 66, 0.08));
+}
+
+.win__step--2 .win__block {
+  height: 9.5rem;
+}
+
+.win__step--3 .win__block {
+  height: 7rem;
+}
+
+.win__block-place {
+  font-family: var(--font-display);
+  font-size: 1.9rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.win__step--1 .win__block-place {
+  color: var(--win-gold-ink);
+}
+
+.win__step--2 .win__block-place {
+  color: var(--win-silver);
+}
+
+.win__step--3 .win__block-place {
+  color: var(--win-bronze);
+}
+
+.win__block-value {
+  font-size: 0.95rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+
+/* ---------- a phone, or any narrow screen: top to bottom ---------- */
+
+@media (max-width: 48rem) {
+  .win__stage {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1rem;
+    padding: 4.25rem 1.35rem calc(1.5rem + env(safe-area-inset-bottom));
+    text-align: center;
+  }
+
+  .win__text,
+  .win__art {
+    display: contents;
+    text-align: center;
+  }
+
+  .win__stage > *,
+  .win__text > *,
+  .win__art > * {
+    flex-shrink: 0;
+  }
+
+  .win__trophy {
+    order: 1;
+    align-self: center;
+    width: 7.5rem;
+  }
+
+  .win__kicker {
+    order: 2;
+    align-self: center;
+    margin-top: 0.5rem;
+  }
+
+  .win__title {
+    order: 3;
+    font-size: clamp(2.2rem, 10vw, 2.75rem);
+  }
+
+  .win__lede {
+    order: 4;
+    align-self: center;
+    font-size: 1rem;
+    text-wrap: pretty;
+  }
+
+  .win__rows {
+    order: 5;
+    text-align: left;
+  }
+
+  .win__row {
+    min-height: 2.6rem;
+    padding: 0 0.9rem;
+  }
+
+  .win__podium {
+    order: 6;
+    align-self: center;
+    margin-top: auto;
+    padding-top: 1rem;
+    gap: 0.5rem;
+  }
+
+  .win__step .player-avatar {
+    --avatar-size: 2.75rem !important;
+  }
+
+  .win__step--1 .player-avatar {
+    --avatar-size: 3.5rem !important;
+  }
+
+  .win__step-name {
+    font-size: 0.85rem;
+  }
+
+  .win__step--1 .win__step-name {
+    font-size: 0.95rem;
+  }
+
+  .win__step--1 .win__block {
+    height: 8.5rem;
+  }
+
+  .win__step--2 .win__block {
+    height: 6rem;
+  }
+
+  .win__step--3 .win__block {
+    height: 4.5rem;
+  }
+
+  .win__block {
+    padding-top: 0.6rem;
+  }
+
+  .win__block-place {
+    font-size: 1.35rem;
+  }
+
+  .win__block-value {
+    font-size: 0.8rem;
+  }
+
+  .win__actions {
+    order: 7;
+    flex-direction: column;
+    margin-top: 0.5rem;
+  }
+
+  .win__btn {
+    width: 100%;
+  }
+
+  .win__note {
+    order: 8;
+  }
+}
+
+/* ---------- motion ---------- */
+
+@keyframes win-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes win-trophy {
+  from {
+    opacity: 0;
+    transform: translateY(1.5rem) scale(0.7) rotate(-6deg);
+  }
+}
+
+@keyframes win-step {
+  from {
+    opacity: 0;
+    transform: translateY(2rem);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .win-layer .panel-scrim,
+  .panel.win,
+  .win__trophy,
+  .win__step {
+    animation: none;
+  }
+
+  .win__btn {
+    transition: none;
+  }
+}

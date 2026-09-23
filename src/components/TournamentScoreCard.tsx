@@ -19,7 +19,9 @@ import {
   submitTournamentScore,
   type TournamentDetail,
 } from '../lib/tournaments'
+import { eventWinTakeover } from '../lib/winTakeover'
 import { ReportSignIn, ReportWho, RunReport, TagSlots, type ReportAction } from './RunReport'
+import { WinTakeover } from './WinTakeover'
 import { markWinsSeen } from '../lib/seenWins'
 import { isRunAssisted } from '../lib/runAchievements'
 
@@ -248,6 +250,7 @@ export function TournamentScoreCard({
   )
   const [error, setError] = useState<string | null>(null)
   const [snapshot, setSnapshot] = useState<SubmitSnapshot | null>(null)
+  const [takeoverDone, setTakeoverDone] = useState(false)
   const playRef = useRef<HTMLButtonElement>(null)
   const tagRef = useRef<HTMLInputElement>(null)
   const titleId = useId()
@@ -460,28 +463,42 @@ export function TournamentScoreCard({
       ? [{ label: 'Standings', onClick: () => navigate(standingsHref) }]
       : []
   const heading = ribbon?.text ?? eventTitle
+  // Winning the event takes the whole screen, once, with the report under it.
+  const takeover =
+    done && snapshot.youWonTournament && snapshot.detail && !takeoverDone
+      ? eventWinTakeover(snapshot.detail, name)
+      : null
   return (
-    <RunReport
-      label={`${heading}, ${scoreText(gameSlug, score)}`}
-      titleId={titleId}
-      style={accentStyle}
-      accent={accent}
-      initialFocus={status === 'needName' ? tagRef : playRef}
-      onEscape={status === 'needName' || !done ? undefined : onDone}
-      tier={outcome?.tier ?? 'quiet'}
-      ribbon={ribbon}
-      eyebrow={eventTitle}
-      score={formatLeaderboardScore(gameSlug, score)}
-      unit={scoreUnit(gameSlug, score)}
-      sub={ribbon ? [eventTitle, subtitle].filter(Boolean).join(' · ') : (subtitle ?? null)}
-      scoreTone={ribbon?.tone === 'gold' ? 'gold' : ribbon ? 'accent' : 'plain'}
-      lines={status === 'saving' ? null : (outcome?.lines ?? [])}
-      primary={primary}
-      secondary={secondary}
-      who={who}
-      links={links}
-    >
-      {block}
-    </RunReport>
+    <>
+      <RunReport
+        label={`${heading}, ${scoreText(gameSlug, score)}`}
+        titleId={titleId}
+        style={accentStyle}
+        accent={accent}
+        initialFocus={status === 'needName' ? tagRef : playRef}
+        onEscape={status === 'needName' || !done ? undefined : onDone}
+        tier={outcome?.tier ?? 'quiet'}
+        ribbon={ribbon}
+        eyebrow={eventTitle}
+        score={formatLeaderboardScore(gameSlug, score)}
+        unit={scoreUnit(gameSlug, score)}
+        sub={ribbon ? [eventTitle, subtitle].filter(Boolean).join(' · ') : (subtitle ?? null)}
+        scoreTone={ribbon?.tone === 'gold' ? 'gold' : ribbon ? 'accent' : 'plain'}
+        lines={status === 'saving' ? null : (outcome?.lines ?? [])}
+        primary={primary}
+        secondary={secondary}
+        who={who}
+        links={links}
+      >
+        {block}
+      </RunReport>
+      {takeover ? (
+        <WinTakeover
+          data={takeover}
+          primary={{ label: 'See the final standings', href: standingsHref }}
+          onClose={() => setTakeoverDone(true)}
+        />
+      ) : null}
+    </>
   )
 }

@@ -70,6 +70,8 @@ export type RunReportData = {
   scoreTone: ReportTone
   lines: ReportLine[]
   race: ReportRace | null
+  /** Took first in the period's standings from somebody: the whole screen, before the report. */
+  standingsTop: boolean
   avatarId?: string
 }
 
@@ -368,6 +370,7 @@ export function composeReport(f: RunFacts): RunReportData {
     scoreTone: highScore || board?.newTop ? 'gold' : isBest ? 'accent' : 'plain',
     lines: ordered,
     race,
+    standingsTop: Boolean(overall?.newTop),
     avatarId: f.overall.after?.avatarId,
   }
 }

@@ -1,9 +1,8 @@
-import { useEffect, useId, useRef, useState, type CSSProperties, type ReactNode } from 'react'
-import { createPortal } from 'react-dom'
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import { getGame } from '../data/games'
 import { useAuth } from '../hooks/useAuth'
 import { useImpersonation } from '../hooks/useImpersonation'
-import { gameBoardHref, gameHref, navigate, recordsHref } from '../hooks/useHashRoute'
+import { gameBoardHref, gameHref, leaderboardHref, navigate, recordsHref } from '../hooks/useHashRoute'
 import { linkCurrentNameToAccount } from '../lib/auth'
 import { useDefaultPeriod } from '../lib/defaultPeriod'
 import { gameAccentStyle } from '../lib/gameAccentStyle'
@@ -30,11 +29,13 @@ import {
   readBookFacts,
   saveRunForReport,
   wouldPlaceOnBoard,
+  type RunFacts,
   type RunReportData,
 } from '../lib/runReport'
 import { periodCopy } from '../lib/scoreboard'
-import { medalKind, PodiumMedal } from './PodiumMedal'
+import { standingsTakeover } from '../lib/winTakeover'
 import { ReportSignIn, ReportWho, RunReport, TagSlots, type ReportAction, type ReportLink } from './RunReport'
+import { WinTakeover } from './WinTakeover'
 
 type ScoreSaveProps = {
   gameSlug: string
@@ -88,6 +89,8 @@ export function ScoreSaveCard({ gameSlug, score, title, subtitle, previousBest, 
   const [error, setError] = useState<string | null>(null)
   const [nameDraft, setNameDraft] = useState('')
   const [report, setReport] = useState<RunReportData | null>(null)
+  const [facts, setFacts] = useState<RunFacts | null>(null)
+  const [takeoverDone, setTakeoverDone] = useState(false)
   const [savedAs, setSavedAs] = useState<string | null>(null)
   const [wouldPlace, setWouldPlace] = useState<number | null>(null)
   const recordRef = useRef(previousBest ?? 0)
@@ -169,6 +172,7 @@ export function ScoreSaveCard({ gameSlug, score, title, subtitle, previousBest, 
       const facts = await saveRunForReport({ slug: gameSlug, name, score, period, priorBest: recordRef.current })
       if (cancelled) return
       setSavedAs(facts.name)
+      setFacts(facts)
       setReport(composeReport(facts))
       setPhase('saved')
     }
@@ -209,6 +213,7 @@ export function ScoreSaveCard({ gameSlug, score, title, subtitle, previousBest, 
       if (signedIn && !impersonation) await linkCurrentNameToAccount(name)
       const facts = await saveRunForReport({ slug: gameSlug, name, score, period, priorBest: recordRef.current })
       setSavedAs(facts.name)
+      setFacts(facts)
       setReport(composeReport(facts))
       setPhase('saved')
     } catch (err) {
@@ -310,253 +315,44 @@ export function ScoreSaveCard({ gameSlug, score, title, subtitle, previousBest, 
 
   const lines = pending ? null : (data?.lines ?? [])
   const heading = ribbon?.text ?? title
+  // First in the standings takes the whole screen, once, with the report under it.
+  const takeover =
+    data?.standingsTop && facts?.overall.after && !takeoverDone
+      ? standingsTakeover(facts.overall.after, facts.name, period)
+      : null
   return (
-    <RunReport
-      label={`${heading}, ${scoreText(gameSlug, score)}`}
-      titleId={titleId}
-      style={accentStyle}
-      accent={accent}
-      initialFocus={phase === 'needName' ? tagRef : playRef}
-      // Esc goes back to the start card, except while a tag is being typed.
-      onEscape={phase === 'needName' ? undefined : onDone}
-      tier={tier}
-      ribbon={ribbon}
-      eyebrow={title}
-      score={figure}
-      unit={unit}
-      sub={ribbon ? [title, subtitle].filter(Boolean).join(' · ') : (subtitle ?? null)}
-      scoreTone={data?.scoreTone ?? 'plain'}
-      lines={phase === 'needAuth' || phase === 'needName' || phase === 'assisted' || phase === 'error' ? [] : lines}
-      race={data?.race ?? null}
-      primary={primary}
-      secondary={secondary}
-      who={who}
-      links={links}
-    >
-      {block}
-    </RunReport>
-  )
-}
-
-/* ==========================================================================
-   An event won away from the game: the bracket catch-up's overlay. The event
-   takeover replaces it next.
-   ========================================================================== */
-
-export type CelebPayload = {
-  /** Bracket match / tournament wins (fireworks overlay). */
-  bracket: {
-    champion: boolean
-    matchWon: boolean
-    opponent?: string | null
-    eventTitle?: string
-  } | null
-}
-
-export function bracketCelebrationPayload(opts: {
-  champion: boolean
-  matchWon: boolean
-  opponent?: string | null
-  eventTitle?: string
-}): CelebPayload | null {
-  if (!opts.champion && !opts.matchWon) return null
-  return {
-    bracket: {
-      champion: opts.champion,
-      matchWon: opts.matchWon,
-      opponent: opts.opponent ?? null,
-      eventTitle: opts.eventTitle,
-    },
-  }
-}
-
-type Particle = {
-  x: number
-  y: number
-  vx: number
-  vy: number
-  life: number
-  maxLife: number
-  color: string
-  size: number
-}
-
-type Burst = { x: number; y: number; at: number; color: string }
-
-const FIREWORK_COLORS = ['#4aa8e8', '#2eb8a0', '#f5b942', '#e85d75', '#7ab8e8', '#3ecf8e']
-
-function FireworksCanvas() {
-  const canvasRef = useRef<HTMLCanvasElement>(null)
-
-  useEffect(() => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
-
-    let raf = 0
-    let running = true
-    const particles: Particle[] = []
-    const start = performance.now()
-    const bursts: Burst[] = [
-      { x: 0.22, y: 0.28, at: 80, color: FIREWORK_COLORS[0] },
-      { x: 0.78, y: 0.24, at: 220, color: FIREWORK_COLORS[2] },
-      { x: 0.5, y: 0.2, at: 380, color: FIREWORK_COLORS[1] },
-      { x: 0.18, y: 0.55, at: 520, color: FIREWORK_COLORS[3] },
-      { x: 0.82, y: 0.5, at: 680, color: FIREWORK_COLORS[4] },
-      { x: 0.35, y: 0.32, at: 900, color: FIREWORK_COLORS[5] },
-      { x: 0.65, y: 0.3, at: 1050, color: FIREWORK_COLORS[2] },
-      { x: 0.5, y: 0.42, at: 1280, color: FIREWORK_COLORS[0] },
-    ]
-    const launched = new Set<number>()
-
-    const resize = () => {
-      const dpr = Math.min(window.devicePixelRatio || 1, 2)
-      canvas.width = Math.floor(window.innerWidth * dpr)
-      canvas.height = Math.floor(window.innerHeight * dpr)
-      canvas.style.width = `${window.innerWidth}px`
-      canvas.style.height = `${window.innerHeight}px`
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-    }
-    resize()
-    window.addEventListener('resize', resize)
-
-    const spawnBurst = (bx: number, by: number, color: string) => {
-      const count = 42 + Math.floor(Math.random() * 18)
-      for (let i = 0; i < count; i++) {
-        const angle = (Math.PI * 2 * i) / count + Math.random() * 0.2
-        const speed = 2.2 + Math.random() * 4.8
-        particles.push({
-          x: bx,
-          y: by,
-          vx: Math.cos(angle) * speed,
-          vy: Math.sin(angle) * speed,
-          life: 1,
-          maxLife: 0.7 + Math.random() * 0.7,
-          color,
-          size: 2 + Math.random() * 2.8,
-        })
-      }
-      for (let i = 0; i < 16; i++) {
-        const angle = Math.random() * Math.PI * 2
-        const speed = 1 + Math.random() * 2.2
-        particles.push({
-          x: bx,
-          y: by,
-          vx: Math.cos(angle) * speed,
-          vy: Math.sin(angle) * speed,
-          life: 1,
-          maxLife: 0.45 + Math.random() * 0.35,
-          color: '#fff8e8',
-          size: 1.2 + Math.random() * 1.5,
-        })
-      }
-    }
-
-    let last = performance.now()
-    const frame = (now: number) => {
-      if (!running) return
-      const dt = Math.min(0.033, (now - last) / 1000)
-      last = now
-      const elapsed = now - start
-      const w = window.innerWidth
-      const h = window.innerHeight
-
-      bursts.forEach((b, i) => {
-        if (!launched.has(i) && elapsed >= b.at) {
-          launched.add(i)
-          spawnBurst(b.x * w, b.y * h, b.color)
-        }
-      })
-
-      ctx.clearRect(0, 0, w, h)
-      for (let i = particles.length - 1; i >= 0; i--) {
-        const p = particles[i]
-        p.life -= dt / p.maxLife
-        if (p.life <= 0) {
-          particles.splice(i, 1)
-          continue
-        }
-        p.vy += 18 * dt
-        p.vx *= 0.992
-        p.vy *= 0.992
-        p.x += p.vx * 60 * dt
-        p.y += p.vy * 60 * dt
-        const alpha = Math.max(0, p.life)
-        ctx.beginPath()
-        ctx.fillStyle = p.color
-        ctx.globalAlpha = alpha * alpha
-        ctx.arc(p.x, p.y, p.size * (0.6 + 0.4 * alpha), 0, Math.PI * 2)
-        ctx.fill()
-      }
-      ctx.globalAlpha = 1
-      raf = requestAnimationFrame(frame)
-    }
-    raf = requestAnimationFrame(frame)
-
-    return () => {
-      running = false
-      cancelAnimationFrame(raf)
-      window.removeEventListener('resize', resize)
-    }
-  }, [])
-
-  return <canvas ref={canvasRef} className="score-celeb__fireworks" aria-hidden="true" />
-}
-
-export function ScoreCelebration({
-  payload,
-  onDone,
-  style,
-}: {
-  payload: CelebPayload
-  onDone: () => void
-  /** The game's colour for the shell; the overlay portals out of the game's tree and cannot inherit it. */
-  style?: CSSProperties
-}) {
-  const [leaving, setLeaving] = useState(false)
-  const b = payload.bracket
-  const medal = b?.champion ? medalKind(1) : null
-
-  const close = () => {
-    if (leaving) return
-    setLeaving(true)
-    window.setTimeout(onDone, 320)
-  }
-
-  return createPortal(
-    <div
-      className={`score-celeb${leaving ? ' score-celeb--out' : ''}`}
-      style={style}
-      role="dialog"
-      aria-label="Run celebration"
-      onPointerDown={(e) => e.stopPropagation()}
-    >
-      <FireworksCanvas />
-      <div className="score-celeb__shell">
-        <div className="score-celeb__awards score-celeb__awards--1" aria-label="Awards">
-          {b ? (
-            <article className="score-celeb__award score-celeb__award--tourney score-celeb__award--featured">
-              {medal ? (
-                <span className="score-celeb__award-icon">
-                  <PodiumMedal kind={medal} size="md" />
-                </span>
-              ) : null}
-              <span className="score-celeb__award-label">
-                {b.champion ? b.eventTitle?.trim() || 'Tournament' : 'Match won'}
-              </span>
-              <strong className="score-celeb__award-value">{b.champion ? 'Champion' : 'Advance'}</strong>
-              <span className="score-celeb__award-detail">
-                {b.champion ? 'You won the bracket' : b.opponent ? `beat ${b.opponent}` : 'On to the next round'}
-              </span>
-            </article>
-          ) : null}
-        </div>
-        <button type="button" className="score-celeb__btn" onClick={close}>
-          Continue
-        </button>
-      </div>
-    </div>,
-    document.body,
+    <>
+      <RunReport
+        label={`${heading}, ${scoreText(gameSlug, score)}`}
+        titleId={titleId}
+        style={accentStyle}
+        accent={accent}
+        initialFocus={phase === 'needName' ? tagRef : playRef}
+        // Esc goes back to the start card, except while a tag is being typed.
+        onEscape={phase === 'needName' ? undefined : onDone}
+        tier={tier}
+        ribbon={ribbon}
+        eyebrow={title}
+        score={figure}
+        unit={unit}
+        sub={ribbon ? [title, subtitle].filter(Boolean).join(' · ') : (subtitle ?? null)}
+        scoreTone={data?.scoreTone ?? 'plain'}
+        lines={phase === 'needAuth' || phase === 'needName' || phase === 'assisted' || phase === 'error' ? [] : lines}
+        race={data?.race ?? null}
+        primary={primary}
+        secondary={secondary}
+        who={who}
+        links={links}
+      >
+        {block}
+      </RunReport>
+      {takeover ? (
+        <WinTakeover
+          data={takeover}
+          primary={{ label: 'See the standings', href: leaderboardHref(period) }}
+          onClose={() => setTakeoverDone(true)}
+        />
+      ) : null}
+    </>
   )
 }

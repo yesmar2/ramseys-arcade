@@ -8,11 +8,13 @@ import {
   TagSlots,
   type RunReportBodyProps,
 } from '../components/RunReport'
-import { bracketCelebrationPayload, ScoreCelebration } from '../components/ScoreSaveCard'
+import { WinTakeover } from '../components/WinTakeover'
 import { gameAccentStyle } from '../lib/gameAccentStyle'
 import { playersFromRuns } from '../lib/gameBoard'
 import type { GlobalRankResult, LeaderboardEntry } from '../lib/leaderboard'
 import { composeReport, type RunFacts } from '../lib/runReport'
+import type { TournamentDetail } from '../lib/tournaments'
+import { eventWinTakeover, standingsTakeover, type WinTakeoverData } from '../lib/winTakeover'
 
 /**
  * Dev only (`/dev/celebrate`): the end of a run with made-up runs, so the
@@ -75,6 +77,100 @@ function facts(score: number, extra: Partial<RunFacts>): RunFacts {
     books: [],
     ...extra,
   }
+}
+
+/* ---------- the whole-screen wins ---------- */
+
+const DAY = 86_400_000
+
+function standingRow(name: string, points: [number, number, number], places: [number, number, number]) {
+  const games = ['simon', 'findbug', 'crumbtrail']
+  return {
+    playerId: `p-${name}`,
+    name,
+    totalPoints: points.reduce((a, b) => a + b, 0),
+    gamesPlayed: 3,
+    byGame: Object.fromEntries(
+      games.map((slug, i) => [slug, { score: 1000 - places[i]! * 10, place: places[i]!, points: points[i]! }]),
+    ),
+  }
+}
+
+const TRIPLE = {
+  id: 'dev-triple',
+  title: 'Weekly Triple',
+  blurb: '',
+  games: ['simon', 'findbug', 'crumbtrail'],
+  startsAt: NOW - 8 * DAY,
+  endsAt: NOW - DAY,
+  official: true,
+  format: 'place-points',
+  kind: 'scores',
+  status: 'ended',
+  playerCount: 38,
+  players: [],
+  placePoints: {},
+  standings: [
+    standingRow('VERA', [9, 8, 10], [3, 4, 1]),
+    standingRow('IVY', [10, 6, 8], [1, 6, 4]),
+    standingRow('HAWK', [7, 10, 6], [5, 1, 6]),
+    standingRow('CHEF', [8, 9, 5], [4, 2, 8]),
+  ],
+} as unknown as TournamentDetail
+
+const BRACKET = {
+  id: 'dev-bracket',
+  title: 'Friday Bracket',
+  blurb: '',
+  games: ['snake'],
+  startsAt: NOW - 3 * DAY,
+  endsAt: NOW,
+  official: false,
+  format: 'open',
+  kind: 'bracket',
+  status: 'ended',
+  playerCount: 8,
+  players: Array.from({ length: 8 }, (_, i) => ({ id: `b${i}`, name: `P${i}`, joinedAt: NOW })),
+  placePoints: {},
+  standings: [],
+  bracket: {
+    matches: [
+      {
+        id: 'final',
+        round: 3,
+        slot: 0,
+        winnerId: 'v',
+        players: [
+          { id: 'v', name: 'VERA' },
+          { id: 'r', name: 'REESE' },
+        ],
+      },
+    ],
+  },
+} as unknown as TournamentDetail
+
+const TOP: GlobalRankResult = {
+  rank: 1,
+  score: 924,
+  totalPlayers: 41,
+  byGame: {
+    crosswalk: { place: 1, points: 100 },
+    asteroids: { place: 2, points: 96 },
+    snake: { place: 4, points: 88 },
+  },
+  nearby: [
+    { name: 'VERA', rank: 1, score: 924 },
+    { name: 'DAD', rank: 2, score: 910 },
+    { name: 'IVY', rank: 3, score: 862 },
+  ],
+}
+
+function wins(): { key: string; label: string; data: WinTakeoverData | null; primary: string }[] {
+  return [
+    { key: 'triple', label: 'Event won · Weekly Triple', data: eventWinTakeover(TRIPLE, 'VERA'), primary: 'See the final standings' },
+    { key: 'bracket', label: 'Bracket champion', data: eventWinTakeover(BRACKET, 'VERA'), primary: 'See the final standings' },
+    { key: 'standings', label: 'First in the standings', data: standingsTakeover(TOP, 'VERA', 'monthly'), primary: 'See the standings' },
+  ]
 }
 
 type Sample = {
@@ -196,8 +292,9 @@ function samples(tag: ReactNode, signIn: ReactNode): Sample[] {
 }
 
 export function DevCelebratePage() {
-  const [open, setOpen] = useState<string | null>(null)
-  const [champ, setChamp] = useState(false)
+  // ?open=top or ?win=triple opens one on load, for a screenshot of the first paint.
+  const [open, setOpen] = useState<string | null>(() => new URLSearchParams(window.location.search).get('open'))
+  const [win, setWin] = useState<string | null>(() => new URLSearchParams(window.location.search).get('win'))
   const [tag, setTag] = useState('VERA')
   const tagId = useId()
   const style = gameAccentStyle('crosswalk')
@@ -251,15 +348,17 @@ export function DevCelebratePage() {
           </div>
         </section>
 
-        <section className="lst-block" aria-label="Event win">
+        <section className="lst-block" aria-label="The whole screen">
           <div className="lst-block__head">
-            <h2 className="lst-block__title">Event win</h2>
-            <p className="lst-block__note">the bracket catch-up</p>
+            <h2 className="lst-block__title">The whole screen</h2>
+            <p className="lst-block__note">an event won, or first in the standings</p>
           </div>
-          <div className="hero__actions" style={{ flexDirection: 'row' }}>
-            <button type="button" className="hero__ghost" onClick={() => setChamp(true)}>
-              Champion
-            </button>
+          <div className="hero__actions" style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
+            {wins().map((w) => (
+              <button key={w.key} type="button" className="hero__ghost" onClick={() => setWin(w.key)}>
+                {w.label}
+              </button>
+            ))}
           </div>
         </section>
 
@@ -274,12 +373,17 @@ export function DevCelebratePage() {
             {...opened.body}
           />
         ) : null}
-        {champ ? (
-          <ScoreCelebration
-            payload={bracketCelebrationPayload({ champion: true, matchWon: true, opponent: 'REESE', eventTitle: 'Friday Bracket' })!}
-            onDone={() => setChamp(false)}
-          />
-        ) : null}
+        {(() => {
+          const shown = wins().find((w) => w.key === win)
+          if (!shown?.data) return null
+          return (
+            <WinTakeover
+              data={shown.data}
+              primary={{ label: shown.primary, onClick: () => setWin(null) }}
+              onClose={() => setWin(null)}
+            />
+          )
+        })()}
       </div>
     </PageShell>
   )

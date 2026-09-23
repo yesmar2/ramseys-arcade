@@ -19,6 +19,27 @@ import { createPortal } from 'react-dom'
 const FOCUSABLE =
   'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
 
+/** Panels open now, the newest last: only the top one answers Esc and Tab. */
+const openPanels: symbol[] = []
+
+/*
+ * The page stops scrolling while any panel is open, and gets back what it had
+ * when the last one closes, whatever order they close in.
+ */
+let scrollLocks = 0
+let scrollBefore = ''
+
+function lockScroll() {
+  if (scrollLocks++ === 0) {
+    scrollBefore = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+  }
+}
+
+function unlockScroll() {
+  if (--scrollLocks === 0) document.body.style.overflow = scrollBefore
+}
+
 type PanelProps = {
   onClose: () => void
   /** The id of the panel's title, or a label when it has none to show. */
@@ -36,6 +57,8 @@ type PanelProps = {
   /** Colour tokens, usually a game's from gameAccentStyle. */
   style?: CSSProperties
   className?: string
+  /** For a panel that is the whole screen: the layer drops its gutter. */
+  layerClassName?: string
   /** Drawn over the scrim and under the panel: a celebration's confetti. */
   backdrop?: ReactNode
   children: ReactNode
@@ -52,21 +75,29 @@ export function Panel({
   initialFocus,
   style,
   className,
+  layerClassName,
   backdrop,
   children,
 }: PanelProps) {
   const ref = useRef<HTMLDivElement>(null)
   const onCloseRef = useRef(onClose)
   onCloseRef.current = onClose
+  // Read once, when the panel opens; a panel that later wants focus elsewhere moves it itself.
+  const initialFocusRef = useRef(initialFocus)
+  initialFocusRef.current = initialFocus
 
   useEffect(() => {
     const root = ref.current
+    const me = Symbol('panel')
+    openPanels.push(me)
     const before = document.activeElement instanceof HTMLElement ? document.activeElement : null
-    const first = initialFocus?.current ?? root?.querySelector<HTMLElement>(FOCUSABLE) ?? root
+    const first = initialFocusRef.current?.current ?? root?.querySelector<HTMLElement>(FOCUSABLE) ?? root
     first?.focus({ preventScroll: true })
 
-    // Esc and Tab are the panel's own, taken before anything else sees them.
+    // Esc and Tab are the panel's own, taken before anything else sees them;
+    // with one panel over another, the one on top.
     const onKey = (e: KeyboardEvent) => {
+      if (openPanels[openPanels.length - 1] !== me) return
       if (e.key === 'Escape') {
         e.preventDefault()
         e.stopPropagation()
@@ -90,19 +121,19 @@ export function Panel({
     window.addEventListener('keydown', onKey, true)
     document.addEventListener('keydown', hush)
 
-    const overflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
+    lockScroll()
     return () => {
+      openPanels.splice(openPanels.indexOf(me), 1)
       window.removeEventListener('keydown', onKey, true)
       document.removeEventListener('keydown', hush)
-      document.body.style.overflow = overflow
+      unlockScroll()
       if (before?.isConnected) before.focus({ preventScroll: true })
     }
-  }, [initialFocus])
+  }, [])
 
   if (typeof document === 'undefined') return null
   return createPortal(
-    <div className="panel-layer" onPointerDown={(e) => e.stopPropagation()}>
+    <div className={`panel-layer${layerClassName ? ` ${layerClassName}` : ''}`} onPointerDown={(e) => e.stopPropagation()}>
       <div
         className="panel-scrim"
         aria-hidden="true"
