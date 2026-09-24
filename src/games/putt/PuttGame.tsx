@@ -9,7 +9,9 @@ import { ScoreSaveCard } from '../../components/ScoreSaveCard'
 import { TournamentScoreCard } from '../../components/TournamentScoreCard'
 import { useGamePause } from '../../hooks/useGamePause'
 import { usePersonalBest } from '../../hooks/usePersonalBest'
+import { haptic } from '../../lib/haptics'
 import { getPersonalBest } from '../../lib/personalBest'
+import { sfx } from '../../lib/sound'
 import { useTournamentPlay } from '../../tournaments/TournamentPlayContext'
 import {
   cancelAim,
@@ -57,9 +59,12 @@ function roundLabel(toPar: number, bests: number) {
 }
 
 /**
- * The field fills the screen, portrait or landscape. Press anywhere and
- * pull back: the ball goes the other way, harder the further the pull, and
- * letting go shoots. A pull that comes back to nothing is a change of mind.
+ * The field fills the screen, portrait or landscape. It plays like a
+ * slingshot: take hold of the ball and pull back, and the ball comes back
+ * under the finger on its bands, a tick for each quarter of the draw; let go
+ * and it snaps forward, harder the further the pull. A press anywhere else
+ * pulls the same way, for a ball hard against the edge of the screen. A pull
+ * that comes back to nothing is a change of mind.
  * Keyboard: left and right turn the aim, hold Space to charge, release to
  * shoot, Escape to think again. A press on the map looks along the hole. A
  * plain tap starts a round from the title; a finished round waits for its
@@ -74,7 +79,15 @@ export function PuttGame() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const sizeRef = useRef({ w: 540, h: 720 })
   /** A press on the field pulls a shot back; a press on the map looks along the hole. */
-  const pressRef = useRef<{ id: number; x: number; y: number; moved: boolean; kind: 'pull' | 'look' } | null>(null)
+  const pressRef = useRef<{
+    id: number
+    x: number
+    y: number
+    moved: boolean
+    kind: 'pull' | 'look'
+    /** The quarters of a full draw this pull has reached, for a tick at each. */
+    notch: number
+  } | null>(null)
   const keysRef = useRef({ left: false, right: false, up: false, down: false, charge: false })
   const [ui, setUi] = useState<Snapshot>(() => toSnapshot(stateRef.current))
   const [saveOpen, setSaveOpen] = useState(false)
@@ -236,7 +249,7 @@ export function PuttGame() {
     const m = mapLayout(f, currentHole(s).h, s.mapSide)
     const kind = onMap(m, x, y) ? 'look' : 'pull'
     if (kind === 'look') stateRef.current = lookAt(s, mapFieldY(m, f, x, y))
-    pressRef.current = { id: e.pointerId, x, y, moved: false, kind }
+    pressRef.current = { id: e.pointerId, x, y, moved: false, kind, notch: 0 }
     try {
       e.currentTarget.setPointerCapture(e.pointerId)
     } catch {
@@ -262,6 +275,13 @@ export function PuttGame() {
     press.moved = true
     const pull = toFieldDelta(f, dx, dy)
     stateRef.current = setDragAim(s, pull.x, pull.y)
+    // The band tightens: a tick at each quarter of the full draw, the first time the pull reaches it.
+    const notch = Math.floor(stateRef.current.power * 4 + 1e-6)
+    if (notch > press.notch) {
+      press.notch = notch
+      sfx('click', 1)
+      haptic('turn')
+    }
   }
 
   const onPointerUp = (e: ReactPointerEvent<HTMLElement>) => {

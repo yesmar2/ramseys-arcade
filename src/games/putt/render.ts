@@ -1607,6 +1607,10 @@ function drawMillTop(g: Ctx, sk: Skin, m: Mill, clock: number, ballUnder: boolea
 
 /** The ball's recent path, for the streak behind a fast one. Kept here: it is only for looking at. */
 let trail: Vec[] = []
+/** Where the ball was drawn back to as the last shot was let go, for the streak as it snaps through. */
+let pulledFrom: Vec | null = null
+/** How long that streak shows. */
+const SNAP_TIME = 0.12
 
 /**
  * A drawbridge, as far down as it is: planks out from its hinge at the far
@@ -2236,7 +2240,10 @@ export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, w: n
   const millsInView = hole.mills.filter((m) => m.y + m.reach + 8 > ya && m.y - m.reach - 8 < yb)
   for (const m of millsInView) drawSailShadows(ctx, sk, m, state.clock)
 
-  // ---- aim: dots the way the shot will go, longer and redder the harder the pull, and the pull behind the ball.
+  // ---- aim: a slingshot. Pulled back, the ball rides the pull on two bands from pegs either side of
+  // where it sits, and dots run ahead the way it will go, longer and redder the harder the pull. At
+  // rest, a ring breathes round the ball: take hold here.
+  let shown: Vec = state.ball
   if (state.phase === 'aim') {
     const live = state.aiming !== 'none'
     const power = live ? state.power : 0
@@ -2246,49 +2253,96 @@ export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, w: n
     const dx = end.x - b.x
     const dy = end.y - b.y
     const dist = Math.hypot(dx, dy)
+    const ux = Math.cos(state.aim)
+    const uy = Math.sin(state.aim)
     ctx.save()
     if (live) {
+      const hue = 48 - power * 44
       const grad = ctx.createLinearGradient(b.x, b.y, end.x, end.y)
       grad.addColorStop(0, 'hsla(48, 92%, 60%, 0.95)')
-      grad.addColorStop(1, 'hsla(4, 82%, 58%, 0.98)')
+      grad.addColorStop(1, `hsla(${hue}, 84%, 58%, 0.98)`)
       ctx.fillStyle = grad
-      for (let d = 3.2; d < dist - 0.5; d += 2.2) {
+      for (let d = BALL_R + 1.6; d < dist - 2.2; d += 2.2) {
         const t = d / Math.max(1, dist)
         ctx.beginPath()
-        ctx.arc(b.x + (dx / dist) * d, b.y + (dy / dist) * d, 0.42 + 0.3 * t, 0, Math.PI * 2)
+        ctx.arc(b.x + ux * d, b.y + uy * d, 0.42 + 0.3 * t, 0, Math.PI * 2)
         ctx.fill()
       }
-      ctx.beginPath()
-      ctx.arc(end.x, end.y, 1.15, 0, Math.PI * 2)
-      ctx.fillStyle = 'hsla(4, 82%, 58%, 0.98)'
-      ctx.fill()
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)'
-      ctx.lineWidth = 0.3
-      ctx.stroke()
-      const back = Math.atan2(dy, dx) + Math.PI
-      const pull = power * MAX_DRAG * 0.5
-      ctx.strokeStyle = `hsla(${48 - power * 44}, 85%, 58%, 0.4)`
-      ctx.lineWidth = 1.3
-      ctx.lineCap = 'round'
-      ctx.beginPath()
-      ctx.moveTo(b.x + Math.cos(back) * (BALL_R + 0.6), b.y + Math.sin(back) * (BALL_R + 0.6))
-      ctx.lineTo(b.x + Math.cos(back) * (BALL_R + 0.6 + pull), b.y + Math.sin(back) * (BALL_R + 0.6 + pull))
-      ctx.stroke()
-    } else if (dist > 0.5) {
-      ctx.fillStyle = ink(sk, 0.55)
-      for (let d = 3.2; d < dist - 2.5; d += 2.2) {
+      if (dist > BALL_R + 3) {
         ctx.beginPath()
-        ctx.arc(b.x + (dx / dist) * d, b.y + (dy / dist) * d, 0.36, 0, Math.PI * 2)
+        ctx.moveTo(end.x + ux * 1.3, end.y + uy * 1.3)
+        ctx.lineTo(end.x - ux * 1.5 - uy * 1.5, end.y - uy * 1.5 + ux * 1.5)
+        ctx.lineTo(end.x - ux * 1.5 + uy * 1.5, end.y - uy * 1.5 - ux * 1.5)
+        ctx.closePath()
+        ctx.fillStyle = `hsla(${hue}, 84%, 58%, 0.98)`
+        ctx.fill()
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)'
+        ctx.lineWidth = 0.25
+        ctx.stroke()
+      }
+      // The ball comes back with the pull, as far as the finger has gone, to the full draw.
+      const pull = power * MAX_DRAG
+      shown = { x: b.x - ux * pull, y: b.y - uy * pull }
+      pulledFrom = shown
+      // Where it sits, and will fly from: a ring between the pegs.
+      ctx.strokeStyle = ink(sk, 0.35)
+      ctx.lineWidth = 0.25
+      ctx.beginPath()
+      ctx.arc(b.x, b.y, BALL_R, 0, Math.PI * 2)
+      ctx.stroke()
+      // The bands, thinner and redder the further they stretch, and the pouch round the back of the ball.
+      const px = -uy
+      const py = ux
+      const fork = BALL_R + 1.5
+      const cup = BALL_R + 0.45
+      ctx.strokeStyle = `hsla(${8 - power * 6}, ${62 + power * 20}%, ${sk.dark ? 54 : 42}%, 0.95)`
+      ctx.lineWidth = Math.max(0.35, 0.95 - power * 0.5)
+      for (const side of [1, -1]) {
+        ctx.beginPath()
+        ctx.moveTo(b.x + px * fork * side, b.y + py * fork * side)
+        ctx.lineTo(shown.x + px * cup * side, shown.y + py * cup * side)
+        ctx.stroke()
+      }
+      ctx.lineWidth = Math.max(0.5, 1.1 - power * 0.4)
+      const back = state.aim + Math.PI
+      ctx.beginPath()
+      ctx.arc(shown.x, shown.y, cup, back - Math.PI / 2, back + Math.PI / 2)
+      ctx.stroke()
+      // The pegs: the fork the bands are tied to.
+      for (const side of [1, -1]) {
+        ctx.beginPath()
+        ctx.arc(b.x + px * fork * side, b.y + py * fork * side, 0.8, 0, Math.PI * 2)
+        ctx.fillStyle = sk.dark ? 'rgba(214, 184, 140, 0.95)' : 'rgba(120, 84, 48, 0.95)'
+        ctx.fill()
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.35)'
+        ctx.lineWidth = 0.2
+        ctx.stroke()
+      }
+    } else {
+      pulledFrom = null
+      if (dist > 0.5) {
+        ctx.fillStyle = ink(sk, 0.55)
+        for (let d = 3.2; d < dist - 2.5; d += 2.2) {
+          ctx.beginPath()
+          ctx.arc(b.x + (dx / dist) * d, b.y + (dy / dist) * d, 0.36, 0, Math.PI * 2)
+          ctx.fill()
+        }
+        const a = Math.atan2(dy, dx)
+        const tip = { x: b.x + Math.cos(a) * Math.min(dist, 8), y: b.y + Math.sin(a) * Math.min(dist, 8) }
+        ctx.beginPath()
+        ctx.moveTo(tip.x + Math.cos(a) * 1.8, tip.y + Math.sin(a) * 1.8)
+        ctx.lineTo(tip.x + Math.cos(a + 2.4) * 1.5, tip.y + Math.sin(a + 2.4) * 1.5)
+        ctx.lineTo(tip.x + Math.cos(a - 2.4) * 1.5, tip.y + Math.sin(a - 2.4) * 1.5)
+        ctx.closePath()
         ctx.fill()
       }
-      const a = Math.atan2(dy, dx)
-      const tip = { x: b.x + Math.cos(a) * Math.min(dist, 8), y: b.y + Math.sin(a) * Math.min(dist, 8) }
+      // A ring breathing round the ball: take hold here.
+      const breathe = 0.5 + 0.5 * Math.sin(state.clock * 3.2)
+      ctx.strokeStyle = ink(sk, 0.2 + 0.25 * breathe)
+      ctx.lineWidth = 0.3
       ctx.beginPath()
-      ctx.moveTo(tip.x + Math.cos(a) * 1.8, tip.y + Math.sin(a) * 1.8)
-      ctx.lineTo(tip.x + Math.cos(a + 2.4) * 1.5, tip.y + Math.sin(a + 2.4) * 1.5)
-      ctx.lineTo(tip.x + Math.cos(a - 2.4) * 1.5, tip.y + Math.sin(a - 2.4) * 1.5)
-      ctx.closePath()
-      ctx.fill()
+      ctx.arc(b.x, b.y, BALL_R + 1.5 + breathe * 0.9, 0, Math.PI * 2)
+      ctx.stroke()
     }
     ctx.restore()
   }
@@ -2305,7 +2359,19 @@ export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, w: n
   }
   const under = millOver(hole, state.ball)
   if (inPlay) {
-    const b = state.ball
+    const b = shown
+    // Let go: for a moment, a streak from where the ball was drawn back to where it has got to.
+    if (state.phase === 'roll' && pulledFrom && state.t < SNAP_TIME) {
+      const a = 1 - state.t / SNAP_TIME
+      ctx.strokeStyle = `rgba(255, 255, 255, ${0.5 * a})`
+      ctx.lineWidth = BALL_R * 1.5 * a
+      ctx.beginPath()
+      ctx.moveTo(pulledFrom.x, pulledFrom.y)
+      ctx.lineTo(b.x, b.y)
+      ctx.stroke()
+    } else if (state.phase !== 'aim') {
+      pulledFrom = null
+    }
     if (trail.length > 1 && speed > 45) {
       const strength = Math.min(1, (speed - 45) / 120)
       for (let i = 1; i < trail.length; i++) {

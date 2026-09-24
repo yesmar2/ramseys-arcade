@@ -26,9 +26,11 @@ import { centreOf, contours, inAny, inside, inUnion, pivotOf } from './terrain'
 /*
  * Putt: mini golf on long holes, none of them the usual kind.
  *
- * Pull back from the ball and let go: the further the pull, the harder the
- * shot, and the guide grows with the pull to say how hard. A short pull is a
- * real shot. The ball rolls on physics — it sheds a share of its speed every
+ * A slingshot: take hold of the ball (or press anywhere) and pull back, and
+ * the ball comes back with the finger on its bands while dots run ahead the
+ * way it will go; let go and it snaps forward. The further the pull, the
+ * harder the shot, and the last of a full pull carries much further. The
+ * ball rolls on physics — it sheds a share of its speed every
  * frame, so it leaves fast and settles softly — off rails at any angle,
  * through sand that drags and water that costs a stroke, under windmills
  * whose sails shut their doors, past sliders and one-way flaps, up hills and
@@ -57,8 +59,15 @@ export const MIN_POWER = 0.08
 const KEY_CHARGE = 1.4
 /** How far the aim guide reaches, in field units. */
 export const AIM_STUB = 14
-/** Full power sends a ball about this far on the green before it stops. */
-const FULL_DISTANCE = 290
+/** Full power sends a ball about this far on the green before it stops: most of a screen's length and more. */
+export const FULL_DISTANCE = 420
+/**
+ * Up most of the pull a shot carries in straight proportion to it, the way
+ * it always has, about this far a whole pull's worth; the last of the pull
+ * carries a good deal further, up to FULL_DISTANCE. So a putt, a nudge off a
+ * rail or a layup short of water feels as it did, and a big pull really goes.
+ */
+const EVEN_DISTANCE = 290
 /**
  * A rolling ball keeps this share of its speed each frame, at sixty a
  * second: it leaves fast and eases out in a long soft tail instead of
@@ -108,7 +117,8 @@ const RAMP_SQUARE = 0.82
 const LAND_KEEP = 0.85
 /** A drawbridge takes this long to come down or go up. */
 export const BRIDGE_SWING = 0.35
-const TOP_SPEED = 320
+/** Nothing rolls faster than this, however it was sped up: a fifth over the hardest shot. */
+const TOP_SPEED = MAX_SPEED * 1.2
 /** A ball slower than this within the cup drops; faster, it skips across. */
 const CUP_CAPTURE_SPEED = 65
 const CUP_PULL = 1.7
@@ -625,9 +635,34 @@ export function keyAim(state: GameState, turn: number, charging: boolean, dt: nu
   return { ...state, aim, aiming: 'key', chargeT, power: chargeAt(chargeT), look }
 }
 
-/** The release speed for a pull of `power`: in straight proportion, so twice the pull carries twice as far. */
+/** How far a pull of `power` carries on the flat green before it stops. */
+export function shotDistance(power: number) {
+  const p = Math.max(0, Math.min(1, power))
+  return EVEN_DISTANCE * p + (FULL_DISTANCE - EVEN_DISTANCE) * p * p * p * p
+}
+
+/** The pull that carries `distance` on the flat green: for a pilot that knows where it wants the ball. */
+export function powerForDistance(distance: number) {
+  if (distance <= 0) return 0
+  if (distance >= FULL_DISTANCE) return 1
+  let lo = 0
+  let hi = 1
+  for (let i = 0; i < 30; i++) {
+    const mid = (lo + hi) / 2
+    if (shotDistance(mid) < distance) lo = mid
+    else hi = mid
+  }
+  return (lo + hi) / 2
+}
+
+/** The pull that sends the ball off at `speed`: for a ramp that wants it going that fast. */
+export function powerForSpeed(speed: number) {
+  return powerForDistance(speed / FADE_GREEN)
+}
+
+/** The release speed for a pull of `power`. */
 function launchSpeed(power: number) {
-  return MAX_SPEED * power
+  return shotDistance(power) * FADE_GREEN
 }
 
 /** The window start for lining up a shot: the ball a little below the middle of the view. */
@@ -708,7 +743,9 @@ export function shoot(state: GameState, shank = 0): GameState {
   if (state.power < MIN_POWER) return cancelAim(state)
   const speed = launchSpeed(Math.min(1, state.power))
   const angle = state.aim + shank
-  sfx('whoosh')
+  // The band snaps, and a hard shot whooshes off it.
+  sfx('zip', state.power < 0.5 ? 1 : 0)
+  if (state.power >= 0.5) sfx('whoosh')
   return {
     ...state,
     phase: 'roll',

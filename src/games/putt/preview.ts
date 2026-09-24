@@ -11,6 +11,8 @@ import {
   mapLayout,
   MAX_DRAG,
   onGround,
+  powerForDistance,
+  powerForSpeed,
   resizeState,
   setDragAim,
   shoot,
@@ -30,9 +32,11 @@ import { inAny, inside } from './terrain'
  * person does. It knows how far each spot on a hole is from the cup, the way
  * a ball can go, and it lines a shot up by trying it: while it studies the
  * lie it plays a few dozen shots out, from the moment it means to let go,
- * and picks the one that leaves it nearest the cup. Then it pulls back and
- * lets go with a person's wobble in the pull, and the ball does whatever the
- * game says. After the fifth hole, a new round starts.
+ * and picks the one that leaves it nearest the cup, and that still does
+ * with a touch either way on it, as a person steers clear of a shot that
+ * only works dead on. Then it pulls back and lets go with a person's wobble
+ * in the pull, and the ball does whatever the game says. After the fifth
+ * hole, a new round starts.
  */
 
 /** Field units across the screen's short side: the ball big enough to follow, and room to see where it's going. */
@@ -42,8 +46,6 @@ const ACROSS = 68
 const CELL = 2
 /** Rows of the map drawn up each step, from the moment a hole comes up; its fly-over is time enough for all of them. */
 const ROWS_PER_STEP = 12
-/** Full power sends a ball about this far on the green before it stops. */
-const FULL_DISTANCE = 290
 /** A try is played out this many steps at most; a ball still rolling by then is judged where it is. */
 const TRY_STEPS = 240
 /** Steps of tries played out in one step of the game, at most: a few milliseconds' work however long the shots roll. */
@@ -367,6 +369,8 @@ type Plan = {
   from: GameState
   tries: Shot[]
   tried: { shot: Shot; score: number }[]
+  /** The two best first tries, once it has looked round them: each is followed in `tried` by its four neighbours. */
+  pair: Shot[]
   /** The try being played out, carried over from step to step. */
   trying: { shot: Shot; game: GameState; steps: number } | null
   refined: boolean
@@ -386,9 +390,6 @@ function wobble() {
 }
 
 const MARKS = [12, 30, 60, 100, 150]
-
-/** The game's release speed at full pull, for a ramp that wants the ball going a given speed. */
-const TOP_RELEASE = FULL_DISTANCE * -Math.log(0.985) * 60
 
 function clampPower(p: number) {
   return Math.min(1, Math.max(0.1, p))
@@ -411,7 +412,7 @@ function firstTries(ways: Ways, from: GameState): { tries: Shot[]; look: Vec } {
     const angle = Math.atan2(p.y - b.y, p.x - b.x)
     // As hard as the flat would need, and a good deal harder, for a way that climbs.
     for (const turn of [0, -0.08, 0.08]) {
-      for (const k of [1, 1.45]) tries.push({ angle: angle + turn, power: clampPower((d / FULL_DISTANCE) * k) })
+      for (const k of [1, 1.45]) tries.push({ angle: angle + turn, power: clampPower(powerForDistance(d * k)) })
     }
   }
   const way = points.find((p) => Math.hypot(p.x - b.x, p.y - b.y) >= 3)
@@ -422,14 +423,19 @@ function firstTries(ways: Ways, from: GameState): { tries: Shot[]; look: Vec } {
   for (const rp of hole.ramps) {
     const near = b.x > rp.x - 8 && b.x < rp.x + rp.w + 8 && b.y > rp.y - 8 && b.y < rp.y + rp.h + 8
     if (!near) continue
-    for (const k of [1.12, 1.3, 1.55]) tries.push({ angle: rp.dir, power: clampPower(((rp.min ?? 60) * k) / TOP_RELEASE) })
+    // Straight up it, and, from a ball off to one side of it, angled in at its middle, if that is still near enough straight to take off.
+    const into = Math.atan2(rp.y + rp.h / 2 - b.y, rp.x + rp.w / 2 - b.x)
+    const angles = Math.cos(into - rp.dir) > 0.86 ? [rp.dir, into] : [rp.dir]
+    for (const angle of angles) {
+      for (const k of [1.12, 1.3, 1.55]) tries.push({ angle, power: clampPower(powerForSpeed((rp.min ?? 60) * k)) })
+    }
   }
   const cup = hole.cup
   const toCup = Math.hypot(cup.x - b.x, cup.y - b.y)
   if (toCup < 80 && farAt(ways, b) < 100) {
     const angle = Math.atan2(cup.y - b.y, cup.x - b.x)
     for (const turn of [0, -0.03, 0.03]) {
-      for (const k of [1, 1.2, 1.45]) tries.push({ angle: angle + turn, power: clampPower((toCup / FULL_DISTANCE) * k) })
+      for (const k of [1, 1.2, 1.45]) tries.push({ angle: angle + turn, power: clampPower(powerForDistance(toCup * k)) })
     }
   }
   return { tries, look: points[Math.min(1, points.length - 1)] ?? b }
@@ -437,21 +443,24 @@ function firstTries(ways: Ways, from: GameState): { tries: Shot[]; look: Vec } {
 
 const REFINES = 8
 
+const NEIGHBOURS = [
+  [-0.035, 1],
+  [0.035, 1],
+  [0, 0.94],
+  [0, 1.06],
+] as const
+
 /** Around the two best so far, a touch either way and a touch harder and softer. */
-function refineTries(tried: Plan['tried']): Shot[] {
-  const best = [...tried].sort((a, b) => a.score - b.score).slice(0, 2)
-  const out: Shot[] = []
-  for (const { shot } of best) {
-    for (const [turn, k] of [
-      [-0.035, 1],
-      [0.035, 1],
-      [0, 0.94],
-      [0, 1.06],
-    ] as const) {
-      out.push({ angle: shot.angle + turn, power: clampPower(shot.power * k) })
-    }
+function refineTries(tried: Plan['tried']): { pair: Shot[]; tries: Shot[] } {
+  const pair = [...tried]
+    .sort((a, b) => a.score - b.score)
+    .slice(0, 2)
+    .map((t) => t.shot)
+  const tries: Shot[] = []
+  for (const shot of pair) {
+    for (const [turn, k] of NEIGHBOURS) tries.push({ angle: shot.angle + turn, power: clampPower(shot.power * k) })
   }
-  return out.slice(0, REFINES)
+  return { pair, tries: tries.slice(0, REFINES) }
 }
 
 /** How a played-out try left things: how far from the cup, the way round, and far below zero for in. */
@@ -469,7 +478,9 @@ function study(p: Plan, ways: Ways, dt: number, budget: number) {
       if (!next) {
         if (p.refined) return
         p.refined = true
-        p.tries.push(...refineTries(p.tried))
+        const round = refineTries(p.tried)
+        p.pair = round.pair
+        p.tries.push(...round.tries)
         continue
       }
       p.trying = { shot: next, game: shoot({ ...p.from, aim: next.angle, power: next.power, aiming: 'drag' }), steps: 0 }
@@ -503,13 +514,25 @@ export function makeSim(): Sim<Run> {
     let from = g
     for (let n = 0; n < left; n++) from = tick(from, dt)
     const { tries, look } = firstTries(ways, from)
-    return { hole: g.holeIndex, stroke: g.strokes, left, pull, from, tries, tried: [], trying: null, refined: false, shot: null, look }
+    return { hole: g.holeIndex, stroke: g.strokes, left, pull, from, tries, tried: [], pair: [], trying: null, refined: false, shot: null, look }
   }
 
   const choose = (p: Plan, ways: Ways) => {
-    const best = p.tried.reduce((a, b) => (b.score < a.score ? b : a), p.tried[0] ?? { shot: p.tries[0]!, score: 0 })
+    let best = p.tried.reduce((a, b) => (b.score < a.score ? b : a), p.tried[0] ?? { shot: p.tries[0]!, score: 0 })
     // Close in, a person takes more care.
     const careful = best.score < 20 || farAt(ways, p.from.ball) < 30
+    // Further out, of the two best, the one whose worst with a touch either way on it is least bad: a
+    // carry over water that only works dead on loses to a shot that lands well whatever the hand does.
+    const firsts = p.tried.length - p.pair.length * NEIGHBOURS.length
+    if (!careful && p.pair.length === 2 && firsts >= 0 && p.tried.length === p.tries.length) {
+      const worst = p.pair.map((shot, i) => {
+        const own = p.tried.find((t) => t.shot === shot)?.score ?? Infinity
+        const round = p.tried.slice(firsts + i * NEIGHBOURS.length, firsts + (i + 1) * NEIGHBOURS.length)
+        return { shot, score: own, worst: Math.max(own, ...round.map((t) => t.score)) }
+      })
+      const safer = worst[0]!.worst <= worst[1]!.worst ? worst[0]! : worst[1]!
+      best = { shot: safer.shot, score: safer.score }
+    }
     const power = clampPower(best.shot.power * (1 + wobble() * (careful ? 0.02 : 0.035)))
     p.shot = { angle: best.shot.angle, power, shank: wobble() * (careful ? 0.012 : 0.02) }
   }
@@ -607,8 +630,8 @@ export function makeSim(): Sim<Run> {
       const fr = framing(run, zw, zh)
       return { x: fr.x, y: fr.y }
     },
-    // The still: the ball waiting at the windmill's door on Mill Creek, the sails turning over it.
-    poster: { seed: 2, at: 17 },
+    // The still: past the windmill on Mill Creek, the ball drawn back on the slingshot, the dots running up the hole.
+    poster: { seed: 1, at: 17.967 },
     hold: 2,
   }
 }
