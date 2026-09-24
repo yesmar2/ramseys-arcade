@@ -1,6 +1,6 @@
 import type { CSSProperties, ReactNode } from 'react'
 import { getGame } from '../data/games'
-import { scoringFor } from '../data/scoring'
+import { howToPlayFor } from '../data/howToPlay'
 import { gameAccentStyle } from '../lib/gameAccentStyle'
 import { gameBoardHref, recordsHref } from '../hooks/useHashRoute'
 import { useBoardRecord } from '../hooks/useBoardRecord'
@@ -113,7 +113,6 @@ export function GamePanelBody({
   tools?: ReactNode
 }) {
   const allTime = useBoardRecord(slug)
-  const scoring = scoringFor(slug)
   const board = isBoardGame(slug)
   const hasRecords = gameHasRecords(slug)
   const game = getGame(slug)
@@ -142,7 +141,7 @@ export function GamePanelBody({
           {/* Renders nothing where there is no motor to buzz. */}
           <HapticsToggle />
         </div>
-        {game?.how ? <ScoreGuide how={game.how} rows={scoring} game={game.name} style={gameAccentStyle(slug)} /> : null}
+        {game && howToPlayFor(slug) ? <ScoreGuide slug={slug} game={game.name} style={gameAccentStyle(slug)} /> : null}
         {board ? (
           <a
             className="game-pause-btn game-pause-board"

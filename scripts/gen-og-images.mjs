@@ -100,9 +100,9 @@ function siteCard() {
   )}`)
 }
 
-function gameCard(game) {
+function gameCard(game, goal) {
   const blurb = wrap(game.description, 30, 2)
-  const how = wrap(game.how, 46, 2)
+  const how = wrap(goal, 46, 2)
   const howY = 330 + blurb.length * 50
   return frame(`
   <rect x="96" y="165" width="300" height="300" rx="56" fill="${game.accent}"/>
@@ -146,12 +146,13 @@ const server = await createServer({
 const only = process.argv[2]
 try {
   const { games } = await server.ssrLoadModule('/src/data/games.ts')
+  const { howToPlayFor } = await server.ssrLoadModule('/src/data/howToPlay.ts')
   mkdirSync('public/og/challenge', { recursive: true })
   if (only !== 'challenges') {
     await render(siteCard(), 'public/og.png')
     for (const game of games) {
       if (game.hidden) continue
-      await render(gameCard(game), `public/og/${game.slug}.png`)
+      await render(gameCard(game, howToPlayFor(game.slug)?.goal ?? ''), `public/og/${game.slug}.png`)
     }
   }
   for (const game of games) {

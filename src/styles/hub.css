@@ -1176,74 +1176,11 @@ html[data-theme='dark'] .gh-seg a[aria-current] {
   filter: brightness(1.06);
 }
 
-/* ---------- how to play ---------- */
+/* ---------- how to play (its parts are in howto.css) ---------- */
 
 .gh-how {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr);
-  gap: 2.4rem;
+  gap: 1.1rem;
   padding: 1.7rem 1.9rem;
-}
-
-.gh-how--single {
-  grid-template-columns: minmax(0, 1fr);
-}
-
-.gh-how__play,
-.gh-how__score {
-  display: flex;
-  flex-direction: column;
-  gap: 0.9rem;
-  min-width: 0;
-}
-
-.gh-how__text {
-  max-width: 40rem;
-  margin: 0;
-  font-size: 1.02rem;
-  font-weight: 550;
-  line-height: 1.6;
-  color: var(--muted);
-}
-
-.gh-rules {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-.gh-rule {
-  display: grid;
-  grid-template-columns: minmax(7rem, 0.75fr) minmax(0, 1.5fr);
-  align-items: baseline;
-  gap: 1rem;
-  padding: 0.62rem 0;
-  border-top: 1px solid rgba(var(--ink-rgb), 0.08);
-}
-
-.gh-rule:first-child {
-  border-top: 0;
-}
-
-.gh-rule__label {
-  font-size: 0.95rem;
-  font-weight: 750;
-}
-
-.gh-rule__value {
-  font-size: 0.9rem;
-  font-weight: 650;
-  line-height: 1.45;
-  color: var(--muted);
-}
-
-.gh-rule__value b {
-  color: color-mix(in srgb, var(--gh-accent) 75%, var(--ink));
-  font-weight: 800;
-}
-
-.gh-how__all {
-  align-self: flex-start;
 }
 
 /* ---------- the games most like it ---------- */
@@ -1329,14 +1266,7 @@ html[data-theme='dark'] .gh-seg a[aria-current] {
   }
 
   .gh-how {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 1.4rem;
     padding: 1.3rem 1.2rem;
-  }
-
-  .gh-rule {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 0.15rem;
   }
 }
 

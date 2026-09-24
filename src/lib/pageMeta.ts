@@ -1,4 +1,5 @@
 import { games, getGame, type Game } from '../data/games'
+import { howToPlayFor, howToPlaySentences } from '../data/howToPlay'
 import {
   aboutHref,
   gameHref,
@@ -73,8 +74,16 @@ export function clipDescription(text: string, max = 160): string {
   return `${cut.slice(0, wordEnd > 0 ? wordEnd : max).replace(/[,;:—-]+$/, '')}…`
 }
 
+/** The game's goal, unless its description already says it (Putt's opens with it). */
+function goalBeyond(game: Game): string | null {
+  const goal = howToPlayFor(game.slug)?.goal
+  if (!goal) return null
+  const bare = goal.replace(/[.!]+$/, '').toLowerCase()
+  return game.description.toLowerCase().includes(bare) ? null : goal
+}
+
 export function gameDescription(game: Game): string {
-  return clipDescription(`${game.description} ${game.how}`)
+  return clipDescription(`${game.description} ${goalBeyond(game) ?? ''}`)
 }
 
 /** Share image for a game; the site's own for anything that has none. */
@@ -194,7 +203,9 @@ export function pageContent(route: Route): PageContent {
     case 'gamePlay': {
       const game = getGame(route.slug)
       if (!game || game.hidden) break
-      return { heading, paragraphs: [game.description, game.how], links: gameContentLinks(game) }
+      const [goal, ...rules] = howToPlaySentences(game.slug)
+      const paragraphs = [game.description, ...(goal && goalBeyond(game) ? [goal] : []), ...rules]
+      return { heading, paragraphs, links: gameContentLinks(game) }
     }
     case 'gameLeaderboard':
     case 'records': {

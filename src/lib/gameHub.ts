@@ -215,20 +215,3 @@ export function moreLike(game: Game, shelf: Game[], count = 6): Game[] {
   const shared = (g: Game) => (g.tags ?? []).filter((t) => tags.has(t)).length
   return [...others].sort((a, b) => shared(b) - shared(a)).slice(0, count)
 }
-
-/* ---------- scoring rows ---------- */
-
-/** A scoring value in pieces, with its numbers (+10, ×2, 1.75×) apart so they can be bold. */
-export function scoreBits(value: string): { text: string; strong: boolean }[] {
-  const bits: { text: string; strong: boolean }[] = []
-  const re = /[+−-]\d[\d,.]*|×\d[\d,.]*|\d[\d,.]*×/g
-  let last = 0
-  for (const m of value.matchAll(re)) {
-    const at = m.index ?? 0
-    if (at > last) bits.push({ text: value.slice(last, at), strong: false })
-    bits.push({ text: m[0], strong: true })
-    last = at + m[0].length
-  }
-  if (last < value.length) bits.push({ text: value.slice(last), strong: false })
-  return bits
-}
