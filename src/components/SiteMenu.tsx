@@ -321,7 +321,7 @@ export function SiteMenu({
             </div>
             <div className="site-menu__setting">
               <span className="site-menu__cap">Music</span>
-              <MusicToggle variant="seg" className="site-seg site-menu__seg" />
+              <MusicToggle variant="seg" className="site-menu__seg" />
             </div>
             <DevImpersonateControl variant="drawer" />
           </section>

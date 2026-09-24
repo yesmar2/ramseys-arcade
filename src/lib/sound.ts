@@ -19,6 +19,9 @@ export { SOUND_PACK_IDS, SOUND_PACK_LABELS }
 
 const MUTE_KEY = 'skermix-mute'
 const MUSIC_KEY = 'skermix-music-on'
+const MUSIC_VOLUME_KEY = 'skermix-music-volume'
+/** Where the music slider starts: a notch under the level the music was made at. */
+const DEFAULT_MUSIC_VOLUME = 0.8
 /*
  * Not the old skermix-sfx-pack: the sets changed under it (Arcade and Soft
  * gave way to Neon and Toybox), so everyone starts on the new default rather
@@ -45,9 +48,13 @@ let sfxBus: GainNode | null = null
 let classicIn: GainNode | null = null
 let musicBus: GainNode | null = null
 let fx: Fx | null = null
+/** The music's own ways into the room and the echo, so its tails follow its volume. */
+let musicVerb: GainNode | null = null
+let musicEcho: GainNode | null = null
 
 let muted = readMuted()
 let musicOn = readMusicOn()
+let musicVolume = readMusicVolume()
 let soundPack: SoundPackId = readSoundPack()
 /** The game on screen, whose music should be playing. */
 let musicSlug: string | null = null
@@ -76,6 +83,16 @@ function readMusicOn() {
     return localStorage.getItem(MUSIC_KEY) !== '0'
   } catch {
     return true
+  }
+}
+
+function readMusicVolume() {
+  try {
+    const raw = localStorage.getItem(MUSIC_VOLUME_KEY)
+    const n = raw == null ? Number.NaN : Number(raw)
+    return Number.isFinite(n) && n > 0 ? Math.min(1, n) : DEFAULT_MUSIC_VOLUME
+  } catch {
+    return DEFAULT_MUSIC_VOLUME
   }
 }
 
@@ -158,12 +175,20 @@ function getCtx() {
     const music = audio.createGain()
     music.gain.value = musicLevel()
     music.connect(mute)
+    const toVerb = audio.createGain()
+    toVerb.gain.value = musicLevel()
+    toVerb.connect(verb)
+    const toEcho = audio.createGain()
+    toEcho.gain.value = musicLevel()
+    toEcho.connect(echo)
 
     ctx = audio
     master = mute
     sfxBus = effects
     classicIn = classic
     musicBus = music
+    musicVerb = toVerb
+    musicEcho = toEcho
     fx = { verb, echo }
   }
   return ctx
@@ -171,12 +196,15 @@ function getCtx() {
 
 function musicLevel() {
   if (!musicOn || (typeof document !== 'undefined' && document.hidden)) return 0
-  return 1
+  // The slider moves loudness, not gain: a little way down is a little quieter,
+  // and halfway is about 12 dB down rather than 6.
+  return musicVolume * musicVolume
 }
 
 function applyMusicGain() {
-  if (!ctx || !musicBus) return
-  musicBus.gain.setTargetAtTime(musicLevel(), ctx.currentTime, 0.08)
+  if (!ctx) return
+  const level = musicLevel()
+  for (const node of [musicBus, musicVerb, musicEcho]) node?.gain.setTargetAtTime(level, ctx.currentTime, 0.08)
 }
 
 /**
@@ -191,9 +219,9 @@ function syncMusic() {
     return
   }
   if (playing?.track === track) return
-  if (!ctx || ctx.state !== 'running' || !musicBus || !fx) return
+  if (!ctx || ctx.state !== 'running' || !musicBus || !musicVerb || !musicEcho) return
   playing?.stop()
-  playing = startTrack(ctx, track, musicBus, fx)
+  playing = startTrack(ctx, track, musicBus, { verb: musicVerb, echo: musicEcho })
 }
 
 export function unlockSound() {
@@ -262,6 +290,37 @@ export function setMusicOn(next: boolean) {
   applyMusicGain()
   if (next && muted) setMuted(false)
   else unlockSound()
+}
+
+/** How loud the music is when it's on, 0 to 1, as the slider shows it. */
+export function getMusicVolume() {
+  return musicVolume
+}
+
+/**
+ * Set the music's loudness from a slider. Down to nothing turns it off and
+ * keeps the last real level for the note button to come back to; up from off
+ * turns it on, and unmutes, since a slider nobody could hear would be broken.
+ */
+export function setMusicVolume(next: number) {
+  const v = Math.max(0, Math.min(1, next))
+  if (v < 0.01) {
+    if (musicOn) setMusicOn(false)
+    return
+  }
+  musicVolume = v
+  try {
+    localStorage.setItem(MUSIC_VOLUME_KEY, String(v))
+  } catch {
+    /* ignore */
+  }
+  if (!musicOn) {
+    setMusicOn(true)
+    return
+  }
+  window.dispatchEvent(new Event(MUSIC_EVENT))
+  applyMusicGain()
+  if (muted) setMuted(false)
 }
 
 /** A game is on screen: play its music, now or on the first tap. */

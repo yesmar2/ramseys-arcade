@@ -1663,6 +1663,88 @@ a.game-hud__board {
   text-transform: uppercase;
 }
 
+/* Music: the note turns it off and on, the slider sets how loud. */
+.music-level {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.music-level__slider {
+  flex: 1 1 5.5rem;
+  width: 5.5rem;
+  min-width: 3.5rem;
+  height: 1.4rem;
+  margin: 0;
+  accent-color: var(--panel-accent, var(--accent));
+  cursor: pointer;
+}
+
+/* In the menu: a row as wide as the theme and sound choices above it. */
+.music-level--menu {
+  display: flex;
+  padding: 0.22rem 0.75rem 0.22rem 0.22rem;
+  border-radius: 999px;
+  background: rgba(var(--ink-rgb), 0.05);
+  border: 1px solid rgba(var(--ink-rgb), 0.08);
+}
+
+.music-level__note {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 2.3rem;
+  height: 2.3rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 1px 2px rgba(var(--shade-rgb), 0.16), inset 0 0 0 1px rgba(var(--ink-rgb), 0.08);
+  cursor: pointer;
+}
+
+html[data-theme='dark'] .music-level__note {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.music-level__note[aria-pressed='false'] {
+  background: none;
+  box-shadow: none;
+  color: var(--muted);
+}
+
+.music-level__note .game-pause-btn__icon {
+  width: 1.1rem;
+  height: 1.1rem;
+}
+
+.music-level__value {
+  flex: none;
+  min-width: 2.4rem;
+  text-align: right;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* In the player drawer: the row holds the controls rather than being one. */
+.music-level--drawer,
+.music-level--drawer:hover {
+  background: transparent;
+  cursor: default;
+}
+
+.music-level__controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex: 0 1 62%;
+  min-width: 0;
+}
+
 .game-pause-overlay {
   position: absolute;
   inset: 0;
