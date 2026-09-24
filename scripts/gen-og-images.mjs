@@ -152,7 +152,10 @@ try {
     await render(siteCard(), 'public/og.png')
     for (const game of games) {
       if (game.hidden) continue
-      await render(gameCard(game, howToPlayFor(game.slug)?.goal ?? ''), `public/og/${game.slug}.png`)
+      // The goal under the blurb, unless the blurb already says it (Putt's opens with it).
+      const goal = howToPlayFor(game.slug)?.goal ?? ''
+      const said = game.description.toLowerCase().includes(goal.replace(/[.!]+$/, '').toLowerCase())
+      await render(gameCard(game, said ? '' : goal), `public/og/${game.slug}.png`)
     }
   }
   for (const game of games) {
