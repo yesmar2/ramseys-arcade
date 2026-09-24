@@ -198,7 +198,7 @@ function eventReport(
     lines.push({
       id: 'overall',
       icon: overallPlace === 1 ? 'crown' : 'sum',
-      label: 'Overall',
+      label: 'All games in this event',
       detail:
         detail?.format === 'place-points' && standing
           ? `${standing.totalPoints.toLocaleString()} point${standing.totalPoints === 1 ? '' : 's'}`

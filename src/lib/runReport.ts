@@ -128,9 +128,13 @@ function pointsText(points: number): string {
   return `${points.toLocaleString()} point${points === 1 ? '' : 's'}`
 }
 
-/** "this month", or "all time" read as a place: Crosswalk this month, Crosswalk all time. */
+/** A board and its period read as a place: Crosswalk this month, All games, all time. */
+function scopeLabel(board: string, copy: PeriodCopy): string {
+  return copy.noun ? `${board} ${copy.phrase}` : `${board}, all time`
+}
+
 function boardLabel(slug: string, copy: PeriodCopy): string {
-  return `${gameName(slug)} ${copy.phrase}`
+  return scopeLabel(gameName(slug), copy)
 }
 
 /* ---------- the lines ---------- */
@@ -243,7 +247,9 @@ function overallLine(f: RunFacts, copy: PeriodCopy): { line: ReportLine; newTop:
   const near = after.nearby ?? []
   const above = near.find((n) => n.rank === rank - 1)
   const below = near.find((n) => n.rank === rank + 1)
-  const label = copy.noun ? `Overall ${copy.phrase}` : 'Overall, all time'
+  // Every game's points added up, and named for it: beside the game's own line,
+  // "Overall" read as one more place on this game.
+  const label = scopeLabel('All games', copy)
   const line = (detail: string, tone: ReportTone, icon: ReportIcon, newTop = false) => ({
     line: { id: 'overall', icon, label, detail, value: `#${rank}`, tone },
     newTop,
