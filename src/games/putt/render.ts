@@ -596,6 +596,26 @@ function paintSlope(g: Ctx, sk: Skin, sl: Slope, loops: Vec[][]) {
         }
       }
     }
+  } else if (sl.repel && sl.shape.kind === 'arc') {
+    // A hilltop: the slope darker the further down it, ringed like a contour map.
+    const sh = sl.shape
+    const top = sh.R - sh.r
+    const foot = sh.R + sh.r
+    const grad = g.createRadialGradient(sh.x, sh.y, top, sh.x, sh.y, foot)
+    grad.addColorStop(0, css(sk.greenHi, sk.dark ? 0.32 : 0.42))
+    grad.addColorStop(0.45, css(sk.greenHi, 0))
+    grad.addColorStop(1, css(sk.greenLo, sk.dark ? 0.62 : 0.5))
+    g.fillStyle = grad
+    g.fillRect(b.x0 - 1, b.y0 - 1, b.x1 - b.x0 + 2, b.y1 - b.y0 + 2)
+    g.strokeStyle = ink(sk, sk.dark ? 0.16 : 0.13)
+    g.lineWidth = 0.3
+    g.setLineDash([1.4, 1.4])
+    for (const k of [0.33, 0.66]) {
+      g.beginPath()
+      g.arc(sh.x, sh.y, top + (foot - top) * k, 0, Math.PI * 2)
+      g.stroke()
+    }
+    g.setLineDash([])
   } else if (sl.dish || sl.bowl || sl.repel) {
     const crown = !!sl.repel
     const grad = g.createRadialGradient(cx, cy, 0, cx, cy, R)
@@ -624,6 +644,25 @@ function paintSlope(g: Ctx, sk: Skin, sl: Slope, loops: Vec[][]) {
     g.fillRect(b.x0 - 1, b.y0 - 1, b.x1 - b.x0 + 2, b.y1 - b.y0 + 2)
   }
   g.restore()
+  // A hilltop's flat top, lit, with its lip drawn so the edge of it can be read from below.
+  if (sl.repel && sl.shape.kind === 'arc') {
+    const sh = sl.shape
+    const top = sh.R - sh.r
+    g.fillStyle = css(sk.greenHi, sk.dark ? 0.16 : 0.24)
+    g.beginPath()
+    g.arc(sh.x, sh.y, top, 0, Math.PI * 2)
+    g.fill()
+    g.strokeStyle = css(sk.greenLo, 0.55)
+    g.lineWidth = 0.9
+    g.beginPath()
+    g.arc(sh.x, sh.y, top + 0.55, 0, Math.PI * 2)
+    g.stroke()
+    g.strokeStyle = css(sk.greenHi, 0.85)
+    g.lineWidth = 0.45
+    g.beginPath()
+    g.arc(sh.x, sh.y, top, 0, Math.PI * 2)
+    g.stroke()
+  }
 }
 
 /** A footbridge over the water: planks across, a railing either side, and its shadow on the water. */

@@ -252,6 +252,16 @@ function hill(shape: Shape, px: number, py: number, look?: Slope['look']): Slope
   return { shape, pull: { x: px, y: py }, look }
 }
 
+/**
+ * A hilltop round (x, y): flat for `top` out from the middle, then a slope
+ * falling away all round out to `foot`, pushing a ball this hard downhill.
+ * Short, a ball rolls back down; long, it runs over the top and off the far
+ * side; only one that arrives just so stays on the top.
+ */
+function hilltop(x: number, y: number, top: number, foot: number, strength: number): Slope {
+  return { shape: arc(x, y, (top + foot) / 2, 0, Math.PI * 2, (foot - top) / 2), repel: strength }
+}
+
 /** A floor that dishes toward its middle this hard, with nothing to stop a ball sliding all the way in. */
 function dish(shape: Shape, strength: number): Slope {
   return { shape, dish: strength }
@@ -632,8 +642,10 @@ export const COURSE: Hole[] = [
    * middle of the ledge, hit hard enough and straight, or the cave at its far
    * left end, a small mouth to find, which comes out on the far side heading
    * up the path. Up beside the falls, past two boulders, and a flight of steps
-   * to the summit: a flat top, the cup in the middle of it, where a ball that
-   * gets up the steps stays.
+   * to the summit, a broad flat top with a mound in the middle, and the cup
+   * on the mound's own flat top: short, and the ball rolls back down; long,
+   * and it runs over the top and down the far side. Only a ball that arrives
+   * just so stays up there.
    */
   hole({
     name: 'The Summit',
@@ -669,13 +681,14 @@ export const COURSE: Hole[] = [
       ribbon(8, [18, 566], [30, 565], [70, 569], [84, 566]),
       ribbon(12, [50, 540], [42, 480], [34, 424], [40, 372], [54, 332]),
       ribbon(12, [54, 332], [58, 270], [50, 210], [50, 170]),
-      disc(50, 128, 36),
+      // The summit: nearly the width of the mountain, flat round a mound in its middle.
+      disc(50, 124, 47),
     ],
     pits: [ribbon(9, [-12, 580], [30, 576], [70, 580], [112, 574])],
     water: [ribbon(4, [112, 300], [94, 340], [92, 420], [93, 500], [92, 552], [88, 572]), ribbon(12, [-16, 960], [4, 930], [10, 890])],
     ramps: [ramp(44, 600, 12, 10, UP, 58, 115)],
     portals: [pipe(14, 604, 34, 538, -Math.PI / 3, 'cave')],
-    slopes: [hill(rect(0, 630, 100, 310), 0, 16), hill(ribbon(12, [58, 300], [50, 214]), 0, 50, 'steps')],
+    slopes: [hill(rect(0, 630, 100, 310), 0, 16), hill(ribbon(12, [58, 300], [50, 214]), 0, 50, 'steps'), hilltop(50, 120, 15, 32, 50)],
     rocks: [rock(40, 452, 4), rock(46, 396, 3.6)],
     decor: [decor('waterfall', 88, 566, 4, DOWN)],
   }),
