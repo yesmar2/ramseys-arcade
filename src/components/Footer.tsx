@@ -14,9 +14,10 @@ import {
   tournamentsHref,
   gameHref,
 } from '../hooks/useHashRoute'
-import { APP_NAME, APP_NAME_ACCENT, APP_NAME_LEAD, CONTACT_EMAIL } from '../lib/brand'
+import { APP_NAME, CONTACT_EMAIL } from '../lib/brand'
 import { groupsIndexHref } from '../lib/groups'
 import { PERIOD_LABELS } from '../lib/leaderboard'
+import { BrandMark } from './BrandMark'
 
 /**
  * The footer, with weight: the brand and its promise on the left, then a
@@ -31,9 +32,8 @@ export function Footer() {
     <footer className="site-footer">
       <div className="site-footer__inner">
         <div className="site-footer__brand">
-          <a className="site-footer__logo" href={homeHref()}>
-            {APP_NAME_LEAD}
-            <span>{APP_NAME_ACCENT}</span>
+          <a className="site-footer__logo" href={homeHref()} aria-label={APP_NAME}>
+            <BrandMark />
           </a>
           <p className="site-footer__tag">No ads. No install. Free to play.</p>
           <p className="site-footer__lead">Original games that load fast and stay out of your way.</p>

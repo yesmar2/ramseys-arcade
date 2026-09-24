@@ -5718,17 +5718,11 @@ a.lb-share:visited:focus-visible {
 }
 
 .site-footer__logo {
-  font-family: var(--font-display);
-  font-weight: 600;
+  display: flex;
   font-size: 1.5rem;
-  letter-spacing: -0.03em;
   color: var(--ink);
   text-decoration: none;
   align-self: flex-start;
-}
-
-.site-footer__logo span {
-  color: var(--accent);
 }
 
 .site-footer__tag {

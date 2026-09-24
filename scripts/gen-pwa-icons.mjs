@@ -1,24 +1,26 @@
 import sharp from 'sharp'
-import { readFileSync, writeFileSync } from 'node:fs'
+import { writeFileSync } from 'node:fs'
+import { BADGE_SVG, iconSvg } from './brand-art.mjs'
 
-const svg = readFileSync('public/favicon.svg')
+/**
+ * The icons: the favicon a browser tab shows, the ones a phone or a computer
+ * puts on its home screen, and the notification badge. All drawn in
+ * scripts/brand-art.mjs; `npm run icons:pwa` after changing it.
+ */
 
-await sharp(svg).resize(192, 192).png().toFile('public/pwa-192.png')
-await sharp(svg).resize(512, 512).png().toFile('public/pwa-512.png')
-await sharp(svg).resize(180, 180).png().toFile('public/apple-touch-icon.png')
+/** @param {string} svg @param {number} size @param {string} file */
+async function png(svg, size, file) {
+  // Drawn at 600dpi (533px for the 64-unit icon), then brought down, so no size is scaled up.
+  await sharp(Buffer.from(svg), { density: 600 }).resize(size, size).png({ compressionLevel: 9 }).toFile(file)
+}
 
-// Maskable: full-bleed teal with the mark inset in the safe zone.
-const mark = readFileSync('public/favicon.svg', 'utf8')
-  .replace(/<svg[^>]*>/, '')
-  .replace('</svg>', '')
-const maskable = `<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
-  <rect width="512" height="512" fill="#2eb8a0"/>
-  <g transform="translate(96 96) scale(10)">
-    ${mark}
-  </g>
-</svg>`
-writeFileSync('public/pwa-maskable.svg', maskable)
-await sharp(Buffer.from(maskable)).resize(512, 512).png().toFile('public/pwa-maskable-512.png')
+writeFileSync('public/favicon.svg', iconSvg({ small: true }))
+await png(iconSvg(), 192, 'public/pwa-192.png')
+await png(iconSvg(), 512, 'public/pwa-512.png')
+// A phone cuts its own corners, and anything left clear behind them would show as black.
+await png(iconSvg({ bleed: true }), 180, 'public/apple-touch-icon.png')
+// Maskable: the blip and its rings already sit inside the safe circle, 40% of the width from the centre.
+await png(iconSvg({ bleed: true }), 512, 'public/pwa-maskable-512.png')
+await png(BADGE_SVG, 96, 'public/badge-96.png')
 
-console.log('Wrote pwa-192, pwa-512, apple-touch-icon, pwa-maskable-512')
+console.log('Wrote favicon.svg, pwa-192, pwa-512, apple-touch-icon, pwa-maskable-512, badge-96')

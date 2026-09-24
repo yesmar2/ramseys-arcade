@@ -44,13 +44,15 @@ export default defineConfig(({ mode }) => {
           'pwa-192.png',
           'pwa-512.png',
           'pwa-maskable-512.png',
+          'badge-96.png',
         ],
         manifest: {
-          name: 'Skermix',
-          short_name: 'Skermix',
+          name: 'Blipka',
+          short_name: 'Blipka',
           description: 'Simple games, no ads, just play.',
           theme_color: '#2eb8a0',
-          background_color: '#edf7f4',
+          // The dark page the arcade opens on, so the launch screen doesn't flash light first.
+          background_color: '#0c1218',
           display: 'standalone',
           orientation: 'any',
           start_url: '/',

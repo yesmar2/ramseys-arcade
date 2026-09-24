@@ -1,6 +1,7 @@
 import sharp from 'sharp'
-import { mkdirSync, readFileSync } from 'node:fs'
+import { mkdirSync } from 'node:fs'
 import { createServer } from 'vite'
+import { icon, wordmark, WORDMARK_DEFS } from './brand-art.mjs'
 
 /**
  * Share images (Open Graph, 1200×630): one for the site, one per game, and one
@@ -54,10 +55,14 @@ function lines(items, x, y, size, gap, fill, weight = 400) {
     .join('\n  ')
 }
 
-/** "Sker" + "mix": accent on the second half, as in the header. */
-function wordmark(x, y, size) {
-  return `<text x="${x}" y="${y}" font-family="${FONT}" font-size="${size}" font-weight="700" fill="${TEXT}">Sker<tspan fill="${TEAL}">mix</tspan></text>`
+/** The wordmark along the foot of a card, and after it, smaller, what the card is about. */
+function signoff(tail) {
+  const mark = wordmark(456, 560, 40, TEXT)
+  return `${mark.markup}
+  <text x="${mark.end + 18}" y="560" font-family="${FONT}" font-size="30" fill="${MUTED}">${esc(tail)}</text>`
 }
+
+const ICON = icon()
 
 function frame(inner, glow = TEAL) {
   return `<?xml version="1.0" encoding="UTF-8"?>
@@ -67,6 +72,8 @@ function frame(inner, glow = TEAL) {
       <stop offset="0" stop-color="${glow}" stop-opacity="0.32"/>
       <stop offset="1" stop-color="${glow}" stop-opacity="0"/>
     </radialGradient>
+    ${ICON.defs}
+    ${WORDMARK_DEFS}
   </defs>
   <rect width="${W}" height="${H}" fill="${INK}"/>
   <rect width="${W}" height="${H}" fill="url(#glow)"/>
@@ -74,14 +81,10 @@ function frame(inner, glow = TEAL) {
 </svg>`
 }
 
-const mark = readFileSync('public/favicon.svg', 'utf8')
-  .replace(/<svg[^>]*>/, '')
-  .replace('</svg>', '')
-
 function siteCard() {
   return frame(`
-  <g transform="translate(96 160) scale(6)">${mark}</g>
-  ${wordmark(340, 290, 150)}
+  <g transform="translate(96 160) scale(3)">${ICON.body}</g>
+  ${wordmark(348, 290, 150, TEXT).markup}
   ${lines(['Simple games, no ads, just play.'], 346, 370, 46, 0, MUTED)}
   ${lines(
     wrap(
@@ -107,7 +110,7 @@ function gameCard(game) {
   ${lines([game.name], 452, 258, 88, 0, TEXT, 700)}
   ${lines(blurb, 454, 336, 40, 50, TEXT)}
   ${lines(how, 454, howY, 30, 40, MUTED)}
-  <text x="454" y="560" font-family="${FONT}" font-size="40" font-weight="700" fill="${TEXT}">Sker<tspan fill="${TEAL}">mix</tspan><tspan dx="18" font-size="30" font-weight="400" fill="${MUTED}">· no ads, just play</tspan></text>`)
+  ${signoff('· no ads, just play')}`)
 }
 
 /**
@@ -122,7 +125,7 @@ function challengeCard(game) {
   <text x="454" y="205" font-family="${FONT}" font-size="26" font-weight="700" letter-spacing="5" fill="${game.accent}">CHALLENGE</text>
   ${lines(['Can you', 'beat it?'], 452, 300, 96, 96, TEXT, 700)}
   ${lines([`A friend’s score to beat on ${game.name}`], 454, 470, 34, 0, MUTED)}
-  <text x="454" y="560" font-family="${FONT}" font-size="40" font-weight="700" fill="${TEXT}">Sker<tspan fill="${TEAL}">mix</tspan><tspan dx="18" font-size="30" font-weight="400" fill="${MUTED}">· plays in your browser</tspan></text>`,
+  ${signoff('· plays in your browser')}`,
     game.accent,
   )
 }

@@ -79,7 +79,7 @@ export default async function handler(req, res) {
   let html = template
   if (challenge) {
     const words = challengeWords(challenge, games[challenge.game])
-    const brand = /<meta\s+property="og:site_name"\s+content="([^"]*)"/.exec(template)?.[1] || 'Skermix'
+    const brand = /<meta\s+property="og:site_name"\s+content="([^"]*)"/.exec(template)?.[1] || 'Blipka'
     const url = `${origin}/c/${challenge.game}/${challenge.id}`
     const image = `${origin}/api/challenge-card?game=${encodeURIComponent(challenge.game)}&id=${challenge.id}`
     html = stamp(html, /(<title>)[^<]*(<\/title>)/, esc(`${words.title} · ${brand}`))

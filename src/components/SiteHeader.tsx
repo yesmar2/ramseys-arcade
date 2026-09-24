@@ -10,13 +10,14 @@ import { useTrophySummary } from '../hooks/useTrophySummary'
 import { currentPath, homeHref, useRoute } from '../hooks/useHashRoute'
 import { logoutAccount } from '../lib/auth'
 import { AVATAR_EVENT, AVATARS_ENABLED, getLocalAvatarId } from '../lib/avatars'
-import { APP_NAME_ACCENT, APP_NAME_LEAD } from '../lib/brand'
+import { APP_NAME } from '../lib/brand'
 import { useDefaultPeriod } from '../lib/defaultPeriod'
 import { useGlobalRank, useGlobalRankLoading } from '../lib/globalRank'
 import { cachedMyGroups, useActiveGroup } from '../lib/groups'
 import { normalizePlayerName } from '../lib/leaderboard'
 import { currentTheme, THEME_EVENT, type Theme } from '../lib/theme'
 import { AvatarStudio, type AvatarWear } from './AvatarStudio'
+import { BrandMark } from './BrandMark'
 import { UserIcon } from './chromeIcons'
 import { NotificationBell } from './NotificationBell'
 import { PendingInvitesStrip } from './PendingInvitesStrip'
@@ -202,9 +203,8 @@ export function SiteHeader() {
   return (
     <div className="site-chrome">
       <nav className="site-bar" aria-label="Site">
-        <a className="site-bar__brand" href={homeHref()}>
-          {APP_NAME_LEAD}
-          <span>{APP_NAME_ACCENT}</span>
+        <a className="site-bar__brand" href={homeHref()} aria-label={APP_NAME}>
+          <BrandMark />
         </a>
         <div className="site-bar__links">
           {SITE_NAV_LINKS.map((item) => {

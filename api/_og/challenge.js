@@ -7,6 +7,8 @@
  * chat app waits a few seconds for a preview, not for a server to wake.
  */
 
+import { WORDMARK } from './wordmark.js'
+
 /**
  * @typedef {{ id: string, game: string, name: string, score: number, createdAt: number, replyTo: string | null }} Challenge
  * @typedef {{ name: string, accent: string, unit: [string, string] | null, clock: 'tenths' | 'seconds' | null, base: number }} GameInfo
@@ -171,6 +173,51 @@ function lift(hex) {
 /** The column the words sit in, right of the tile: from x 454 to a 46px margin. */
 const COLUMN = 700
 
+/** Where the line along the foot of the card sits: the wordmark and what follows it. */
+const FOOT = 552
+
+/**
+ * The wordmark, `size` pixels to the em, in a box whose foot is its baseline,
+ * so it lines up with the words after it; `lift` is that box's height. The p
+ * hangs out below it.
+ * @param {number} size
+ */
+function wordmark(size) {
+  const { letters, blip, box, shine } = WORDMARK
+  const s = size / 1000
+  const reach = blip.r * shine.dark.reach
+  // The top of the blip's glow, which rises past the letters.
+  const top = Math.min(box.y, blip.cy - reach)
+  const bottom = box.y + box.height
+  const lift = -top * s
+  const element = h(
+    'div',
+    { style: { display: 'flex', position: 'relative', width: box.width * s, height: lift } },
+    h(
+      'svg',
+      {
+        width: box.width * s,
+        height: (bottom - top) * s,
+        viewBox: `${box.x} ${top} ${box.width} ${bottom - top}`,
+        style: { position: 'absolute', left: 0, top: 0 },
+      },
+      h(
+        'defs',
+        {},
+        h(
+          'radialGradient',
+          { id: 'glow' },
+          ...shine.dark.stops.map(([offset, opacity]) => h('stop', { offset, stopColor: shine.dark.glow, stopOpacity: opacity })),
+        ),
+      ),
+      h('path', { d: letters, fill: TEXT }),
+      h('circle', { cx: blip.cx, cy: blip.cy, r: reach, fill: 'url(#glow)' }),
+      h('circle', { cx: blip.cx, cy: blip.cy, r: blip.r, fill: shine.dark.core }),
+    ),
+  )
+  return { element, lift }
+}
+
 /**
  * The card a challenge link unfurls into: whose challenge, the score to beat
  * and on what. Without a challenge (unknown, or the API didn't answer), the
@@ -181,6 +228,7 @@ const COLUMN = 700
 export function challengeCard(challenge, info) {
   const accent = info?.accent && /^#[0-9a-f]{6}$/i.test(info.accent) ? info.accent : TEAL
   const text = (/** @type {Record<string, unknown>} */ style, /** @type {string} */ words) => h('div', { style: { display: 'flex', ...style } }, words)
+  const mark = wordmark(40)
 
   let column
   if (challenge) {
@@ -232,9 +280,8 @@ export function challengeCard(challenge, info) {
     h('div', { style: { position: 'absolute', left: 454, top: 170, width: COLUMN, display: 'flex', flexDirection: 'column' } }, ...column),
     h(
       'div',
-      { style: { position: 'absolute', left: 454, top: 512, display: 'flex', alignItems: 'baseline' } },
-      h('span', { style: { fontSize: 40, fontWeight: 700 } }, 'Sker'),
-      h('span', { style: { fontSize: 40, fontWeight: 700, color: TEAL } }, 'mix'),
+      { style: { position: 'absolute', left: 456, top: FOOT - mark.lift, display: 'flex', alignItems: 'baseline' } },
+      mark.element,
       h('span', { style: { marginLeft: 18, fontSize: 30, color: MUTED } }, '· plays in your browser'),
     ),
   )

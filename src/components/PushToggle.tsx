@@ -1,4 +1,5 @@
 import { useEffect, useId, useState } from 'react'
+import { APP_NAME } from '../lib/brand'
 import {
   disablePush,
   enablePush,
@@ -10,7 +11,7 @@ import {
 } from '../lib/push'
 
 const REASONS: Record<string, string> = {
-  'home-screen': 'On iPhone, add Skermix to your home screen first. Safari only allows alerts there.',
+  'home-screen': `On iPhone, add ${APP_NAME} to your home screen first. Safari only allows alerts there.`,
   denied: 'Your browser is blocking notifications. Allow them in site settings, then try again.',
   unavailable: 'Push is not set up on this server yet.',
   unsupported: 'This browser cannot do push notifications.',

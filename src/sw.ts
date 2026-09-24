@@ -6,6 +6,7 @@ import {
   precacheAndRoute,
 } from 'workbox-precaching'
 import { NavigationRoute, registerRoute } from 'workbox-routing'
+import { APP_NAME } from './lib/brand'
 
 /**
  * Custom service worker.
@@ -45,12 +46,13 @@ self.addEventListener('push', (event) => {
     payload = { title: event.data.text() }
   }
 
-  const title = payload.title?.trim() || 'Skermix'
+  const title = payload.title?.trim() || APP_NAME
   event.waitUntil(
     self.registration.showNotification(title, {
       body: payload.body || undefined,
       icon: '/pwa-192.png',
-      badge: '/pwa-192.png',
+      // Android draws the badge from its shape alone: the blip and its ring, not the square around them.
+      badge: '/badge-96.png',
       // Collapse repeats of the same alert rather than stacking them; a tag by
       // kind alone let a second match's alert replace the first.
       tag: payload.tag ?? payload.kind ?? 'skermix',

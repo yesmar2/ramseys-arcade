@@ -1,7 +1,1 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
-  <rect width="32" height="32" rx="8" fill="#2eb8a0"/>
-  <rect x="7" y="10" width="5" height="5" rx="1.2" fill="#fff"/>
-  <rect x="14" y="10" width="5" height="5" rx="1.2" fill="#f5b942"/>
-  <rect x="21" y="10" width="4" height="12" rx="1.2" fill="#4aa8e8"/>
-  <rect x="7" y="17" width="12" height="5" rx="1.2" fill="#fff" opacity="0.85"/>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><defs><radialGradient id="icon-ground" cx="50%" cy="30%" r="80%"><stop offset="0" stop-color="#18332e"/><stop offset="1" stop-color="#091211"/></radialGradient><radialGradient id="icon-glow" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#8dfbe0"/><stop offset="0.3" stop-color="#3ee0b0" stop-opacity="0.55"/><stop offset="1" stop-color="#3ee0b0" stop-opacity="0"/></radialGradient></defs><rect width="64" height="64" rx="15" fill="url(#icon-ground)"/><circle cx="32" cy="32" r="18" fill="none" stroke="#3ee0b0" stroke-opacity="0.55" stroke-width="5"/><circle cx="32" cy="32" r="16" fill="url(#icon-glow)"/><circle cx="32" cy="32" r="10" fill="#d5fff3"/></svg>
