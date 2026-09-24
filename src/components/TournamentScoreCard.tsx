@@ -158,7 +158,7 @@ function eventReport(
   const isBracket = detail ? eventKind(detail) === 'bracket' : false
   const overallPlace =
     detail && standing && detail.games.length > 1
-      ? detail.standings.findIndex((s) => s.playerId === standing.playerId) + 1
+      ? (standing.place ?? detail.standings.findIndex((s) => s.playerId === standing.playerId) + 1)
       : null
   const lines: ReportLine[] = []
 

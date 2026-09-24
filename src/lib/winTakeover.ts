@@ -93,7 +93,7 @@ export function eventWinTakeover(detail: TournamentDetail, me: string): WinTakeo
     const final = finalBracketMatch(detail.bracket?.matches ?? [])
     if (!final?.winnerId || !wonBy(final, you)) return null
     const opponent = final.players.find((p) => p && normalizePlayerName(p.name) !== you)?.name ?? null
-    const count = detail.players.length || detail.playerCount
+    const count = detail.playerCount || detail.players.length
     return {
       kicker: words.kicker,
       lead: words.lead,

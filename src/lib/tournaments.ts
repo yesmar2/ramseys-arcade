@@ -300,6 +300,8 @@ export type StandingRow = {
   name: string
   totalPoints: number
   gamesPlayed: number
+  /** Where the row stands in the whole field: a big event's page carries only some rows. */
+  place?: number
   avatarId?: string
   byGame: Record<
     string,
@@ -375,8 +377,21 @@ export function isDoubleElim(
 }
 
 export type TournamentDetail = TournamentSummary & {
+  /** The roster; for an event past a hundred players, only the viewer's own seat. */
   players: { id: string; name: string; joinedAt: number }[]
+  /**
+   * The standings; past a hundred players, the top hundred, then the viewer
+   * and the player the lesson is about if they are further down.
+   */
   standings: StandingRow[]
+  /** Rows in the whole standings: every player, played or not. */
+  standingsTotal?: number
+  /** How many scored on each game, counted over the whole field. */
+  fieldByGame?: Record<string, number>
+  /** Who topped each game, ties and all, counted over the whole field. */
+  gameBests?: { game: string; names: string[]; score: number | null }[]
+  /** How many scored on every game. */
+  playedAll?: number
   placePoints: Record<string, number>
   bracket?: PublicBracket | null
   playerStatus?: TournamentPlayerStatus | null
@@ -765,6 +780,9 @@ export async function getTournament(
   if (opts?.game) params.set('game', opts.game)
   const invite = opts?.invite ?? getTournamentInvite(id)
   if (invite) params.set('invite', invite)
+  // The seat this device holds, so a big event's page still carries it under an old tag.
+  const playerId = getTournamentPlayerId(id)
+  if (playerId) params.set('playerId', playerId)
   const qs = params.toString()
   return api(`/tournaments/${encodeURIComponent(id)}${qs ? `?${qs}` : ''}`)
 }

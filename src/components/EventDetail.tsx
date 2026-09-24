@@ -9,6 +9,7 @@ import {
   gameName,
   ordinal,
   scoringSteps,
+  standingsCount,
   type SkipLesson,
   type TableRow,
 } from '../lib/eventPages'
@@ -123,9 +124,14 @@ export function StandingsTable({
 }) {
   const usePoints = detail.format === 'place-points'
   const ended = detail.status === 'ended'
-  const shown = limit ? rows.slice(0, limit) : rows
+  const total = standingsCount(detail)
+  // The unbroken run from first place: everything on a small event's page, the top hundred on a big one's.
+  const run = rows.findIndex((r, i) => i > 0 && r.gap)
+  const top = run === -1 ? rows : rows.slice(0, run)
+  const shown = limit ? top.slice(0, limit) : top
   const mine = rows.find((r) => r.you)
   const extra = mine && !shown.includes(mine) ? mine : null
+  const below = total - top.length
   const cols = { '--games': detail.games.length } as CSSProperties
   return (
     <section className="evp-card evp-table" aria-labelledby="evp-table-title">
@@ -133,7 +139,7 @@ export function StandingsTable({
         <h2 id="evp-table-title" className="evp-card__title">
           {ended ? 'Final standings' : 'Standings'}
           <span className="evp-card__count">
-            {rows.length} {rows.length === 1 ? 'player' : 'players'}
+            {total.toLocaleString()} {total === 1 ? 'player' : 'players'}
           </span>
         </h2>
       </div>
@@ -153,15 +159,24 @@ export function StandingsTable({
         ))}
         {extra ? <StandingsRow row={extra} usePoints={usePoints} cols={cols} gap /> : null}
       </ol>
-      {limit && rows.length > shown.length ? (
+      {limit && top.length > shown.length ? (
         <details className="evp-table__all">
-          <summary>All {rows.length} players</summary>
+          <summary>{below > 0 ? `The top ${top.length}` : `All ${total.toLocaleString()} players`}</summary>
           <ol className="evp-table__rows">
-            {rows.slice(shown.length).map((row) => (
+            {top.slice(shown.length).map((row) => (
               <StandingsRow key={row.name} row={row} usePoints={usePoints} cols={cols} />
             ))}
           </ol>
+          {below > 0 ? (
+            <p className="evp-card__copy">
+              {below.toLocaleString()} more {below === 1 ? 'player' : 'players'} below them.
+            </p>
+          ) : null}
         </details>
+      ) : below > 0 ? (
+        <p className="evp-card__copy">
+          {below.toLocaleString()} more {below === 1 ? 'player' : 'players'} below them.
+        </p>
       ) : null}
     </section>
   )

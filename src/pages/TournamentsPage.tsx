@@ -23,7 +23,7 @@ import {
   WeeklyHero,
 } from '../components/EventsHome'
 import { InviteByTagForm } from '../components/InviteByTagForm'
-import { ListRow } from '../components/ListRow'
+import { ListRow, ListSplit } from '../components/ListRow'
 import { PageBanner } from '../components/PageBanner'
 import { PageShell } from '../components/PageShell'
 import { PendingInvitesStrip } from '../components/PendingInvitesStrip'
@@ -53,6 +53,7 @@ import {
   playedAll,
   resultLines,
   skipLesson,
+  standingsCount,
   standingsTable,
 } from '../lib/eventPages'
 import { listEventInvites, type PublicInvite } from '../lib/invites'
@@ -126,14 +127,13 @@ function yourStandingPlace(detail: TournamentDetail, displayName: string): numbe
   if (!youName) return null
 
   if (detail.games.length === 1) {
-    const idx = scoredStandings(detail).findIndex(
-      ({ row }) => normalizePlayerName(row.name) === youName,
-    )
-    return idx >= 0 ? idx + 1 : null
+    const scored = scoredStandings(detail)
+    const idx = scored.findIndex(({ row }) => normalizePlayerName(row.name) === youName)
+    return idx >= 0 ? (scored[idx]!.row.place ?? idx + 1) : null
   }
 
   const idx = detail.standings.findIndex((row) => normalizePlayerName(row.name) === youName)
-  return idx >= 0 ? idx + 1 : null
+  return idx >= 0 ? (detail.standings[idx]!.place ?? idx + 1) : null
 }
 
 /** The current player's headline number, formatted the way the board shows it. */
@@ -683,33 +683,56 @@ function inviteAge(at: number): string {
 function SingleStandings({ detail, displayName }: { detail: TournamentDetail; displayName: string }) {
   const ended = detail.status === 'ended'
   const youName = normalizePlayerName(displayName)
-  const rows = useMemo(() => scoredStandings(detail), [detail])
+  const rows = useMemo(
+    () => scoredStandings(detail).map((entry, index) => ({ ...entry, rank: entry.row.place ?? index + 1 })),
+    [detail],
+  )
+  const game = detail.games[0]
+  const count = (game ? detail.fieldByGame?.[game] : undefined) ?? rows.length
+  // The unbroken run from first: every row on a small event's page, the top hundred on a big one's.
+  const top = rows.filter((entry, index) => entry.rank === index + 1)
+  const mine = youName ? rows.find((entry) => normalizePlayerName(entry.row.name) === youName) : undefined
+  const pinned = mine && !top.includes(mine) ? mine : null
+  const below = count - top.length - (pinned ? 1 : 0)
+  const item = ({ row, score, rank }: (typeof rows)[number], pin = false) => {
+    const name = normalizePlayerName(row.name)
+    return (
+      <ListRow
+        key={`${row.playerId}${pin ? '-pin' : ''}`}
+        rank={rank}
+        name={name}
+        href={rankHref(name)}
+        avatarId={row.avatarId}
+        score={score.toLocaleString()}
+        mine={Boolean(youName) && name === youName}
+        pinned={pin}
+      />
+    )
+  }
   return (
     <section className="evp-card evp-single" aria-labelledby="evp-single-title">
       <div className="evp-card__head">
         <h2 id="evp-single-title" className="evp-card__title">
           {ended ? 'Final scores' : 'Leaders'}
           <span className="evp-card__count">
-            {rows.length} {rows.length === 1 ? 'player' : 'players'}
+            {count.toLocaleString()} {count === 1 ? 'player' : 'players'}
           </span>
         </h2>
       </div>
       <ol className="lst">
-        {rows.map(({ row, score }, index) => {
-          const name = normalizePlayerName(row.name)
-          return (
-            <ListRow
-              key={row.playerId}
-              rank={index + 1}
-              name={name}
-              href={rankHref(name)}
-              avatarId={row.avatarId}
-              score={score.toLocaleString()}
-              mine={Boolean(youName) && name === youName}
-            />
-          )
-        })}
+        {pinned ? (
+          <>
+            {item(pinned, true)}
+            <ListSplit>Top {top.length}</ListSplit>
+          </>
+        ) : null}
+        {top.map((entry) => item(entry))}
       </ol>
+      {below > 0 ? (
+        <p className="evp-card__copy">
+          {below.toLocaleString()} more {below === 1 ? 'player' : 'players'} below them.
+        </p>
+      ) : null}
     </section>
   )
 }
@@ -1078,9 +1101,9 @@ export function TournamentDetailPage({ id, invite }: { id: string; invite?: stri
     const ownLesson = ended ? skipLesson(detail) : null
     const priorLesson = !ended && previous ? skipLesson(previous) : null
     const lesson = ownLesson
-      ? { lesson: ownLesson, all: playedAll(detail), field: detail.standings.length }
+      ? { lesson: ownLesson, all: playedAll(detail), field: standingsCount(detail) }
       : priorLesson && previous
-        ? { lesson: priorLesson, all: playedAll(previous), field: previous.standings.length }
+        ? { lesson: priorLesson, all: playedAll(previous), field: standingsCount(previous) }
         : null
     const next = ended
       ? (live.official.find((t) => t.id !== detail.id && t.cadence != null && t.cadence === detail.cadence) ?? null)
@@ -1165,7 +1188,7 @@ export function TournamentDetailPage({ id, invite }: { id: string; invite?: stri
                   disabled={busy}
                   excludeNames={detail.players.map((p) => p.name)}
                 />
-                <SentInvites tournamentId={id} roster={detail.players.length} />
+                <SentInvites tournamentId={id} roster={detail.playerCount} />
               </section>
             ) : null}
             {filling ? <EventRoster detail={detail} displayName={displayName} /> : null}

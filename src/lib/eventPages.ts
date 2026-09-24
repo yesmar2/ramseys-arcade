@@ -144,13 +144,21 @@ export type TableRow = {
   total: number
   cells: StandingCell[]
   you: boolean
+  /** Places are missing just above it: a big event's page skips from its top hundred to you. */
+  gap: boolean
+}
+
+/** Every player in the standings, however many rows the page carries. */
+export function standingsCount(detail: TournamentDetail): number {
+  return detail.standingsTotal ?? detail.standings.length
 }
 
 /**
  * The standings as a table: a row a player, a column a game. Points events
  * total the points; the others total the scores. Places follow the server's
  * order, which settles a tie (the higher best score first), so the table
- * agrees with the podium and the trophy.
+ * agrees with the podium and the trophy; a big event's page carries its top
+ * hundred and you, each with its place in the whole field.
  */
 export function standingsTable(detail: TournamentDetail, me: string): TableRow[] {
   const points = detail.format === 'place-points'
@@ -161,13 +169,18 @@ export function standingsTable(detail: TournamentDetail, me: string): TableRow[]
       ? row.totalPoints
       : detail.games.reduce((sum, g) => sum + (row.byGame[g]?.score ?? 0), 0),
   }))
+  let last = 0
   return rows.map(({ row, total }, i) => {
+    const place = row.place ?? i + 1
+    const gap = place > last + 1
+    last = place
     return {
-      place: i + 1,
+      place,
       name: normalizePlayerName(row.name),
       avatarId: row.avatarId,
       total,
       you: Boolean(you) && normalizePlayerName(row.name) === you,
+      gap,
       cells: detail.games.map((slug) => {
         const cell = row.byGame[slug]
         const played = cell?.score != null
@@ -177,8 +190,9 @@ export function standingsTable(detail: TournamentDetail, me: string): TableRow[]
   })
 }
 
-/** How many played each game, for "1st of 33". */
+/** How many played each game, for "1st of 33": the server's count of the whole field when it sends one. */
 export function fieldByGame(detail: TournamentDetail): Record<string, number> {
+  if (detail.fieldByGame) return detail.fieldByGame
   const out: Record<string, number> = {}
   for (const slug of detail.games) {
     out[slug] = detail.standings.filter((r) => r.byGame[slug]?.score != null).length
@@ -192,6 +206,10 @@ export type GameBest = { slug: string; names: string[]; score: number | null; fi
 export function gameBests(detail: TournamentDetail): GameBest[] {
   const fields = fieldByGame(detail)
   return detail.games.map((slug) => {
+    const counted = detail.gameBests?.find((b) => b.game === slug)
+    if (counted) {
+      return { slug, names: counted.names.map(normalizePlayerName), score: counted.score, field: fields[slug] ?? 0 }
+    }
     const top = detail.standings.filter((r) => r.byGame[slug]?.score != null && r.byGame[slug]?.place === 1)
     return {
       slug,
@@ -222,7 +240,8 @@ export type SkipLesson = {
  * behind someone who placed on them all.
  */
 export function skipLesson(detail: TournamentDetail): SkipLesson | null {
-  if (detail.format !== 'place-points' || detail.games.length < 2 || detail.standings.length < 4) return null
+  // A big event's page carries the lesson's row even when it is past the top hundred.
+  if (detail.format !== 'place-points' || detail.games.length < 2 || standingsCount(detail) < 4) return null
   const table = standingsTable(detail, '')
   const winner = table[0]
   if (!winner || winner.cells.some((c) => c.place == null)) return null
@@ -240,8 +259,9 @@ export function skipLesson(detail: TournamentDetail): SkipLesson | null {
   }
 }
 
-/** How many players placed on every game. */
+/** How many players placed on every game: the server's count of the whole field when it sends one. */
 export function playedAll(detail: TournamentDetail): number {
+  if (detail.playedAll != null) return detail.playedAll
   return detail.standings.filter((r: StandingRow) => detail.games.every((g) => r.byGame[g]?.score != null)).length
 }
 
