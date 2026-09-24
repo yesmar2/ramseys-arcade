@@ -25,17 +25,22 @@ function stamp(html, pattern, value) {
   return html.replace(pattern, (_, before, after) => `${before}${value}${after}`)
 }
 
+/** Marks this function's own reads, so one that ever came back here ends at once instead of looping. */
+const OWN_READ = 'x-challenge-page-read'
+
 /**
  * The page to start from: the game's challenge page, or the site's shell for
- * a game the build doesn't know.
+ * a game the build doesn't know. Read as /c/<game>/, which the static page
+ * answers, or for an unknown game the site's catch-all; the /c/<game>/<id>
+ * rewrite that brings links here never matches it.
  * @param {string} origin
  * @param {string} game
  */
 async function readTemplate(origin, game) {
-  const paths = SLUG.test(game) ? [`/c/${game}/index.html`, '/index.html'] : ['/index.html']
+  const paths = SLUG.test(game) ? [`/c/${game}/`, '/index.html'] : ['/index.html']
   for (const path of paths) {
     try {
-      const res = await fetch(`${origin}${path}`)
+      const res = await fetch(`${origin}${path}`, { headers: { [OWN_READ]: '1' } })
       if (res.ok) return await res.text()
     } catch {
       /* try the next */
@@ -49,6 +54,11 @@ async function readTemplate(origin, game) {
  * @param {import('node:http').ServerResponse} res
  */
 export default async function handler(req, res) {
+  if (req.headers[OWN_READ]) {
+    res.statusCode = 508
+    res.end()
+    return
+  }
   const query = queryOf(req)
   const game = (query.get('game') ?? '').toLowerCase()
   const origin = originOf(req)

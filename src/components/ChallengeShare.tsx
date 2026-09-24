@@ -72,6 +72,9 @@ function ChallengeSharePanel({ game, id, score, message, title, onClose }: Chall
   const encodedMessage = encodeURIComponent(message)
   const encodedBody = encodeURIComponent(withLink)
   const nativeShare = typeof navigator.share === 'function'
+  // The card drawn for this challenge (api/challenge-card.js); failing that, the game's own, then the site's.
+  // Showing it here also draws it once, so a friend's chat finds it ready.
+  const cards = [`/api/challenge-card?game=${encodeURIComponent(game)}&id=${encodeURIComponent(id)}`, `/og/challenge/${game}.png`, '/og.png']
 
   return (
     <Panel labelledBy={titleId} onClose={onClose} style={gameAccentStyle(game)} className="challenge-share">
@@ -84,13 +87,13 @@ function ChallengeSharePanel({ game, id, score, message, title, onClose }: Chall
       <div className="panel__body panel__body--last">
         <img
           className="challenge-share__card"
-          src={`/og/challenge/${game}.png`}
+          src={cards[0]}
           alt={`The card the link shows: a challenge on ${name}`}
           width={1200}
           height={630}
-          // A game newer than its challenge card unfurls into the site's own card (scripts/prerender.mjs).
           onError={(e) => {
-            if (!e.currentTarget.src.endsWith('/og.png')) e.currentTarget.src = '/og.png'
+            const next = cards[cards.indexOf(e.currentTarget.getAttribute('src') ?? '') + 1]
+            if (next) e.currentTarget.src = next
           }}
         />
         <p className="challenge-share__message">{message}</p>
