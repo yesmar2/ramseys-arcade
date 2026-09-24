@@ -423,7 +423,13 @@ export function HomeHero() {
     const { you, above, below } = rung
     const gap = above ? above.score - you.score : 0
     const target = above ? (above.rank === 1 ? `the ${game.name} record` : `#${above.rank} on ${game.name}`) : ''
-    const behind = below ? `${below.name} is ${gapText(slug, you.score - below.score)} behind you` : null
+    // Level with the player under you is a tie you got to first, not "0 behind".
+    const belowGap = below ? you.score - below.score : 0
+    const behind = below
+      ? belowGap > 0
+        ? `${below.name} is ${gapText(slug, belowGap)} behind you`
+        : `${below.name} is tied with you`
+      : null
     const kicker = above ? (above.rank === 1 ? 'Your next record' : 'Your next place') : 'Your record'
     const group = groupId ? cachedMyGroups().find((g) => g.id === groupId)?.name : undefined
     const ahead = standing.rank != null ? standing.nearby?.find((n) => n.rank === standing.rank! - 1) : undefined
@@ -435,7 +441,10 @@ export function HomeHero() {
     } else if (above) {
       body = `You’re #${you.rank} with ${fmt(you.score)}, tied with ${above.name}, who got there first.${behind ? ` ${behind}.` : ''}`
     } else if (below) {
-      body = `Your ${fmt(you.score)} leads ${below.name} by ${gapText(slug, you.score - below.score)}.`
+      body =
+        belowGap > 0
+          ? `Your ${fmt(you.score)} leads ${below.name} by ${gapText(slug, belowGap)}.`
+          : `Your ${fmt(you.score)} is tied with ${below.name}, and you got there first.`
     } else {
       body = `Your ${fmt(you.score)} tops the board.`
     }
