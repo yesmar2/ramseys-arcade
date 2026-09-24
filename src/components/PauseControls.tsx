@@ -4,6 +4,7 @@ import { howToPlayFor } from '../data/howToPlay'
 import { gameAccentStyle } from '../lib/gameAccentStyle'
 import { gameBoardHref, recordsHref } from '../hooks/useHashRoute'
 import { useBoardRecord } from '../hooks/useBoardRecord'
+import { fitCardToSpace } from '../lib/cardFit'
 import { LEADERBOARD_GAMES, type LeaderboardGame } from '../lib/leaderboard'
 import { formatLeaderboardScore } from '../lib/leaderboardFormat'
 import { gameHasRecords } from '../lib/records'
@@ -76,7 +77,12 @@ export function PauseOverlay({
         }
       }}
     >
-      <div className="game-card game-card--pause" style={style} onPointerDown={(e) => e.stopPropagation()}>
+      <div
+        ref={fitCardToSpace}
+        className="game-card game-card--pause"
+        style={style}
+        onPointerDown={(e) => e.stopPropagation()}
+      >
         {children ?? (
           <>
             <h2 className="game-card__title">Paused</h2>

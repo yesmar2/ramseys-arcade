@@ -615,10 +615,83 @@ html[data-theme='light'] .tour-play__gate {
   color: var(--ink);
   text-align: center;
   animation: panel-rise 0.2s cubic-bezier(0.2, 0.7, 0.2, 1);
+  overscroll-behavior: contain;
 }
 
 html[data-theme='dark'] .game-card {
   --panel-accent-ink: color-mix(in srgb, var(--panel-accent) 72%, #fff);
+}
+
+/*
+ * When a card must scroll: a slim bar with no arrows, set in from the edge
+ * and clear of the rounded corners, rather than the system's own.
+ */
+.game-card::-webkit-scrollbar {
+  width: 10px;
+}
+
+.game-card::-webkit-scrollbar-track {
+  margin-block: 1.2rem;
+  background: transparent;
+}
+
+.game-card::-webkit-scrollbar-thumb {
+  border: 3px solid transparent;
+  border-radius: 999px;
+  background: rgba(var(--ink-rgb), 0.24) padding-box;
+}
+
+.game-card::-webkit-scrollbar-button {
+  display: none;
+}
+
+/* Firefox has no such bar to style: its own thin one, in the same colour. */
+@supports not selector(::-webkit-scrollbar) {
+  .game-card {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(var(--ink-rgb), 0.24) transparent;
+  }
+}
+
+/*
+ * A card taller than its game's space tightens before it scrolls (lib/cardFit
+ * sets data-fit): step 1 has less air and smaller figures, step 2 leaves the
+ * blurb out as well. The buttons keep their size, so they stay easy to hit.
+ */
+.game-card[data-fit='1'],
+.game-card[data-fit='2'] {
+  gap: 0.7rem;
+  padding: 1.1rem 1.2rem 1rem;
+}
+
+.game-card[data-fit='1'] .game-card__head,
+.game-card[data-fit='2'] .game-card__head {
+  gap: 0.35rem;
+}
+
+.game-card[data-fit='1'] .game-card__title--big,
+.game-card[data-fit='2'] .game-card__title--big {
+  font-size: 1.85rem;
+}
+
+.game-card[data-fit='1'] .game-pause-meta__row,
+.game-card[data-fit='2'] .game-pause-meta__row {
+  padding: 0.5rem 0.8rem;
+}
+
+.game-card[data-fit='1'] .game-pause-meta__row strong,
+.game-card[data-fit='2'] .game-pause-meta__row strong {
+  font-size: 1.2rem;
+}
+
+.game-card[data-fit='1'] .admin-wave-skip,
+.game-card[data-fit='2'] .admin-wave-skip {
+  margin: 0;
+  padding: 0.5rem 0.6rem;
+}
+
+.game-card[data-fit='2'] .game-card__blurb {
+  display: none;
 }
 
 .game-card__head {
@@ -797,17 +870,18 @@ html[data-theme='light'] .game-pause-overlay {
   background: rgba(26, 43, 60, 0.3);
 }
 
+/* Cards that don't fit themselves (a wave's, a notice's) still tighten on a short screen. */
 @media (max-height: 560px) {
-  .game-card {
+  .game-card:not([data-fit]) {
     gap: 0.7rem;
     padding: 1.1rem 1.2rem 1rem;
   }
 
-  .game-card__title--big {
+  .game-card:not([data-fit]) .game-card__title--big {
     font-size: 1.8rem;
   }
 
-  .game-card__blurb {
+  .game-card:not([data-fit]) .game-card__blurb {
     display: none;
   }
 }

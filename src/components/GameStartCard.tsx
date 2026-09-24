@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { getGame } from '../data/games'
 import { usePersonalBest } from '../hooks/usePersonalBest'
+import { fitCardToSpace } from '../lib/cardFit'
 import { useActiveChallenge } from '../lib/challenges'
 import { gameAccentStyle } from '../lib/gameAccentStyle'
 import { ChallengeTarget } from './ChallengeTarget'
@@ -34,7 +35,7 @@ export function GameStartCard({
   const challenge = useActiveChallenge(slug)
 
   return (
-    <div className="game-card game-card--start" style={gameAccentStyle(slug)}>
+    <div ref={fitCardToSpace} className="game-card game-card--start" style={gameAccentStyle(slug)}>
       <div className="game-card__head">
         <h2 className="game-card__title game-card__title--big">{title}</h2>
         {blurb ? <p className="game-card__blurb">{blurb}</p> : null}
