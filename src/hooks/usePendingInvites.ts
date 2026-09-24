@@ -11,6 +11,8 @@ import { useAuth } from './useAuth'
 import { usePlayerName } from './usePlayerName'
 
 const POLL_MS = 45_000
+/** Invites this fresh are shown as they are: a new page doesn't ask again. */
+const FRESH_MS = 30_000
 const EVENT = 'arcade-pending-invites'
 
 type Store = {
@@ -66,13 +68,10 @@ async function refresh(playerName: string, signedIn: boolean, force = false) {
     return
   }
 
-  if (
-    !force &&
-    snapshot.key === key &&
-    Date.now() - snapshot.lastFetchedAt < 8_000 &&
-    inFlight
-  ) {
-    return inFlight
+  if (!force && snapshot.key === key) {
+    if (inFlight) return inFlight
+    // Asked moments ago: every page mounts the header again, and it needn't ask again.
+    if (Date.now() - snapshot.lastFetchedAt < FRESH_MS) return
   }
 
   patch({ key, playerName: name, loading: true })
