@@ -9,7 +9,9 @@ import {
   termsHref,
   tournamentsHref,
 } from '../hooks/useHashRoute'
+import { AUTH_EVENT, getSessionToken } from './auth'
 import { groupsIndexHref } from './groups'
+import { api } from './leaderboard'
 import { hashString, mulberry32 } from './seededRandom'
 
 /*
@@ -21,7 +23,8 @@ import { hashString, mulberry32 } from './seededRandom'
  * roughly where; a hint names the page. Catching one says what that corner of
  * the site is for, and fills in a collection of all twelve.
  *
- * Finds are kept on this device.
+ * Finds are kept on the device, and signed in, by the API too, so they
+ * follow the player and today can say how many caught its bug.
  */
 
 const TZ = 'America/New_York'
@@ -332,6 +335,15 @@ function readLog(): HuntLog {
   return { found: {} }
 }
 
+function saveLog(next: HuntLog) {
+  log = next
+  try {
+    localStorage.setItem(STORE_KEY, JSON.stringify(next))
+  } catch {
+    // Kept for this visit, anyway.
+  }
+}
+
 let log: HuntLog | null = null
 
 export function huntLog(): HuntLog {
@@ -339,17 +351,108 @@ export function huntLog(): HuntLog {
   return log
 }
 
+/* -------------------------------------------------------- the server --- */
+
+/*
+ * Signed in, finds are kept by the API too: they follow the player to any
+ * device, and the finds this device made before signing in go up to join
+ * them. Anyone can see how many caught today's bug; a player learns where
+ * their find came in.
+ */
+
+type ServerFind = HuntFind & { day: string }
+type ServerHunt = { day: string; count: number; you?: { finds: ServerFind[]; place: number | null } }
+
+export type HuntServer = {
+  /** How many players caught this day's bug, once the API has said. */
+  count: number | null
+  /** Where your find came in today: 1 for the first. */
+  place: number | null
+  /** The day those are for. */
+  day: string | null
+}
+
+let server: HuntServer = { count: null, place: null, day: null }
+
+/** Everything the page shows, as one value that changes when any of it does. */
+export type HuntSnapshot = { log: HuntLog; server: HuntServer }
+
+let snapshot: HuntSnapshot | null = null
+
+export function huntSnapshot(): HuntSnapshot {
+  if (!snapshot || snapshot.log !== huntLog() || snapshot.server !== server) snapshot = { log: huntLog(), server }
+  return snapshot
+}
+
+function emit() {
+  window.dispatchEvent(new Event(HUNT_EVENT))
+}
+
+/** Take what the API said: the count, your place, and any finds from your other devices. */
+function apply(reply: ServerHunt) {
+  const place = reply.you ? reply.you.place : null
+  server = { count: reply.count, place, day: reply.day }
+  if (reply.you) {
+    const found = { ...huntLog().found }
+    let added = false
+    for (const f of reply.you.finds) {
+      if (found[f.day]) continue
+      found[f.day] = { bug: f.bug, spot: f.spot, at: f.at }
+      added = true
+    }
+    if (added) saveLog({ found })
+  }
+  emit()
+}
+
+const SYNC_EVERY_MS = 60_000
+let syncedAt = 0
+let syncing: Promise<void> | null = null
+
+/**
+ * Ask the API how today stands, and signed in, send up the finds it doesn't
+ * have yet. Pages call this freely: it goes out once a minute at most.
+ */
+export function syncHunt(force = false): Promise<void> {
+  if (syncing) return syncing
+  if (!force && Date.now() - syncedAt < SYNC_EVERY_MS) return Promise.resolve()
+  syncedAt = Date.now()
+  syncing = (async () => {
+    try {
+      const reply = await api<ServerHunt>('/hunt')
+      apply(reply)
+      if (!reply.you) return
+      const kept = new Set(reply.you.finds.map((f) => f.day))
+      const missing = Object.entries(huntLog().found)
+        .filter(([day]) => !kept.has(day))
+        .map(([day, f]) => ({ day, bug: f.bug, spot: f.spot, at: f.at }))
+        .slice(-400)
+      if (missing.length) apply(await api<ServerHunt>('/hunt/finds', { method: 'POST', body: JSON.stringify({ finds: missing }) }))
+    } catch {
+      // The hunt runs without the API; it catches up next time.
+    }
+  })().finally(() => {
+    syncing = null
+  })
+  return syncing
+}
+
 /** Record today's find. False when it was already caught today. */
 export function recordFind(pick: HuntPick, now = Date.now()): boolean {
   const current = huntLog()
   if (current.found[pick.day]) return false
-  log = { found: { ...current.found, [pick.day]: { bug: pick.bug.id, spot: pick.spot.id, at: now } } }
-  try {
-    localStorage.setItem(STORE_KEY, JSON.stringify(log))
-  } catch {
-    // Kept for this visit, anyway.
+  saveLog({ found: { ...current.found, [pick.day]: { bug: pick.bug.id, spot: pick.spot.id, at: now } } })
+  emit()
+  if (getSessionToken()) {
+    const find = { day: pick.day, bug: pick.bug.id, spot: pick.spot.id }
+    void api<ServerHunt>('/hunt/finds', { method: 'POST', body: JSON.stringify({ finds: [find] }) })
+      .then(apply)
+      .catch(() => {
+        // Sent again with the backlog next time.
+      })
+  } else {
+    void syncHunt(true)
   }
-  window.dispatchEvent(new Event(HUNT_EVENT))
   return true
 }
 
@@ -377,17 +480,24 @@ export function huntStats(day = huntDay(), current = huntLog()): HuntStats {
   }
 }
 
-/** Listen for finds made in this tab or another one. */
+/** Listen for finds made in this tab or another one, and for what the API says. */
 export function subscribeHunt(onChange: () => void): () => void {
   const onStorage = (e: StorageEvent) => {
     if (e.key !== STORE_KEY) return
     log = readLog()
     onChange()
   }
+  // Signing in or out: the finds to show, and whose, have changed.
+  const onAuth = () => {
+    server = { count: server.count, place: null, day: server.day }
+    void syncHunt(true)
+  }
   window.addEventListener(HUNT_EVENT, onChange)
   window.addEventListener('storage', onStorage)
+  window.addEventListener(AUTH_EVENT, onAuth)
   return () => {
     window.removeEventListener(HUNT_EVENT, onChange)
     window.removeEventListener('storage', onStorage)
+    window.removeEventListener(AUTH_EVENT, onAuth)
   }
 }

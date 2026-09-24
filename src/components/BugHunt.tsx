@@ -6,16 +6,20 @@ import {
   capitalName,
   openBugHunt,
   huntDay,
-  huntLog,
   huntPick,
+  huntSnapshot,
   huntStats,
   msUntilNextBug,
   recordFind,
   subscribeHunt,
+  syncHunt,
   type HuntPick,
   type HuntPose,
+  type HuntServer,
   type HuntStats,
 } from '../lib/bugHunt'
+import { ordinal } from '../lib/profileMath'
+import { getSessionToken } from '../lib/auth'
 import { THEME_EVENT } from '../lib/theme'
 import { Panel, PanelHead } from './Panel'
 import { openSiteMenu } from './siteNav'
@@ -92,11 +96,12 @@ export function BugPortrait({
 
 /* ------------------------------------------------------------ the hunt --- */
 
-/** Today's pick and your finds, kept current: a find anywhere, and midnight on the boards' clock. */
-function useHunt(): { pick: HuntPick; stats: HuntStats; msLeft: number } {
-  const log = useSyncExternalStore(subscribeHunt, huntLog, huntLog)
+/** Today's pick and your finds, kept current: a find anywhere, what the API says, and midnight on the boards' clock. */
+function useHunt(): { pick: HuntPick; stats: HuntStats; server: HuntServer | null; msLeft: number } {
+  const snap = useSyncExternalStore(subscribeHunt, huntSnapshot, huntSnapshot)
   const [now, setNow] = useState(() => Date.now())
   useEffect(() => {
+    void syncHunt()
     const tick = () => setNow(Date.now())
     const id = window.setInterval(tick, 30_000)
     document.addEventListener('visibilitychange', tick)
@@ -106,7 +111,19 @@ function useHunt(): { pick: HuntPick; stats: HuntStats; msLeft: number } {
     }
   }, [])
   const day = huntDay(now)
-  return { pick: huntPick(day), stats: huntStats(day, log), msLeft: msUntilNextBug(now) }
+  const server = snap.server.day === day ? snap.server : null
+  return { pick: huntPick(day), stats: huntStats(day, snap.log), server, msLeft: msUntilNextBug(now) }
+}
+
+/** How many have caught today's bug, in a line: "Nobody has caught Buzz yet today." */
+function countWords(server: HuntServer | null, name: string, stats: HuntStats): string | null {
+  if (!server || server.count == null) return null
+  if (stats.foundToday && server.place != null) {
+    return server.place === 1 ? `You were the first to catch ${name} today.` : `You were ${ordinal(server.place)} to catch ${name} today.`
+  }
+  const n = server.count
+  if (n === 0) return `Nobody has caught ${name} yet today.`
+  return `${n.toLocaleString('en-US')} ${n === 1 ? 'player has' : 'players have'} caught ${name} so far today.`
 }
 
 function nextBugWords(ms: number): string {
@@ -239,8 +256,9 @@ function Hint({ pick, onGo }: { pick: HuntPick; onGo: () => void }) {
 
 /** The front page's line on today's hunt: who's loose, the clue, and a hint. */
 export function BugHuntStrip() {
-  const { pick, stats, msLeft } = useHunt()
+  const { pick, stats, server, msLeft } = useHunt()
   const name = capitalName(pick.bug)
+  const count = countWords(server, pick.bug.name, stats)
   return (
     <section className={`hunt-strip${stats.foundToday ? ' hunt-strip--found' : ''}`} aria-label="Daily bug hunt">
       <button type="button" className="hunt-strip__mark" onClick={openBugHunt} aria-label="Your bugs">
@@ -251,12 +269,15 @@ export function BugHuntStrip() {
         {stats.foundToday ? (
           <>
             <p className="hunt-strip__title">You caught {pick.bug.name} today</p>
-            <p className="hunt-strip__clue">The next one gets loose in {nextBugWords(msLeft)}.</p>
+            <p className="hunt-strip__clue">
+              {count ? `${count} ` : ''}The next one gets loose in {nextBugWords(msLeft)}.
+            </p>
           </>
         ) : (
           <>
             <p className="hunt-strip__title">{name} got loose on the site</p>
             <p className="hunt-strip__clue">“{pick.spot.clue}”</p>
+            {count ? <p className="hunt-strip__count">{count}</p> : null}
           </>
         )}
       </div>
@@ -304,7 +325,8 @@ export function BugHuntMenuRow({ onOpen }: { onOpen: () => void }) {
 /* ------------------------------------------------------------ panels --- */
 
 function HuntPanel({ onClose }: { onClose: () => void }) {
-  const { pick, stats, msLeft } = useHunt()
+  const { pick, stats, server, msLeft } = useHunt()
+  const count = countWords(server, pick.bug.name, stats)
   const titleId = useId()
   const name = capitalName(pick.bug)
   return (
@@ -324,6 +346,7 @@ function HuntPanel({ onClose }: { onClose: () => void }) {
                 <p className="hunt-wanted__line">
                   {name} was hiding {pick.spot.where}.
                 </p>
+                {count ? <p className="hunt-wanted__small">{count}</p> : null}
                 <p className="hunt-wanted__small">The next bug gets loose in {nextBugWords(msLeft)}.</p>
               </>
             ) : (
@@ -332,6 +355,7 @@ function HuntPanel({ onClose }: { onClose: () => void }) {
                   {name} is hiding somewhere on the site today. Find {pick.bug.name} and tap to catch.
                 </p>
                 <p className="hunt-wanted__clue">“{pick.spot.clue}”</p>
+                {count ? <p className="hunt-wanted__small">{count}</p> : null}
                 <div className="hunt-wanted__acts">
                   <Hint pick={pick} onGo={onClose} />
                 </div>
@@ -342,7 +366,8 @@ function HuntPanel({ onClose }: { onClose: () => void }) {
         <Stats stats={stats} />
         <Collection stats={stats} today={pick.bug.id} />
         <p className="hunt-panel__foot">
-          A new bug gets loose every day at midnight Eastern, somewhere else. Your finds are kept on this device.
+          A new bug gets loose every day at midnight Eastern, somewhere else.{' '}
+          {getSessionToken() ? 'Your finds are kept with your account.' : 'Sign in and your finds follow you to any device.'}
         </p>
       </div>
       <div className="panel__actions">
@@ -355,7 +380,8 @@ function HuntPanel({ onClose }: { onClose: () => void }) {
 }
 
 function FoundPanel({ onClose }: { onClose: () => void }) {
-  const { pick, stats, msLeft } = useHunt()
+  const { pick, stats, server, msLeft } = useHunt()
+  const signedIn = Boolean(getSessionToken())
   const titleId = useId()
   const name = capitalName(pick.bug)
   const first = stats.total === 1
@@ -374,6 +400,19 @@ function FoundPanel({ onClose }: { onClose: () => void }) {
             <p className="hunt-wanted__lesson">{pick.spot.lesson}</p>
           </div>
         </div>
+        {signedIn && server?.place != null ? (
+          <p className="hunt-panel__place">
+            {server.place === 1 ? 'You’re the first to find ' : `You’re the ${ordinal(server.place)} to find `}
+            {pick.bug.name} today{server.count && server.count > server.place ? `, out of ${server.count} so far` : ''}.
+          </p>
+        ) : !signedIn ? (
+          <p className="hunt-panel__place">
+            {server?.count
+              ? `${server.count} signed-in ${server.count === 1 ? 'player has' : 'players have'} found ${pick.bug.name} today. `
+              : ''}
+            Sign in and your finds count too, and follow you to any device.
+          </p>
+        ) : null}
         {first ? <p className="hunt-panel__note">Your first bug. There are twelve to catch.</p> : null}
         {all ? <p className="hunt-panel__note">All twelve caught. The hunt goes on: they keep getting loose.</p> : null}
         <Stats stats={stats} />

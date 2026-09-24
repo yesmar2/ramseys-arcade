@@ -234,6 +234,13 @@
   color: var(--muted);
 }
 
+.hunt-strip__count {
+  margin: 0.2rem 0 0;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: color-mix(in srgb, #e6ac39 70%, var(--ink));
+}
+
 .hunt-strip__side {
   flex: none;
   display: flex;
@@ -397,6 +404,13 @@
     transform: scale(0.4) rotate(-15deg);
     opacity: 0;
   }
+}
+
+.hunt-panel__place {
+  margin: 0.85rem 0 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  line-height: 1.4;
 }
 
 .hunt-panel__note {
