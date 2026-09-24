@@ -24,6 +24,7 @@ import { ReportSignIn, ReportWho, RunReport, TagSlots, type ReportAction } from 
 import { WinTakeover } from './WinTakeover'
 import { markWinsSeen } from '../lib/seenWins'
 import { isRunAssisted } from '../lib/runAchievements'
+import { runIdFor } from '../lib/runSession'
 
 function attemptsLeftLabel(
   remaining: number | null,
@@ -98,9 +99,11 @@ async function submitTournamentRun(
     return cached.promise
   }
 
+  // This run's, taken before the join goes out: Play again meanwhile opens the next.
+  const run = runIdFor(gameSlug)
   const promise = (async (): Promise<SubmitSnapshot> => {
     await joinTournament(tournamentId, name)
-    const result = await submitTournamentScore(tournamentId, name, gameSlug, score)
+    const result = await submitTournamentScore(tournamentId, name, gameSlug, score, run)
     const d = await getTournament(tournamentId, {
       playerName: name,
       game: gameSlug,

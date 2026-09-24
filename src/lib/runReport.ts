@@ -470,6 +470,8 @@ type SaveInput = {
   priorBest: number
   /** A friend's challenge this run was played against. */
   challengeId?: string
+  /** The run the score came from, asked for as it ended (see runIdFor). */
+  run: Promise<string | undefined>
 }
 
 /** Saves in flight or just done, so the same run asked twice is saved once. */
@@ -496,10 +498,10 @@ export function saveRunForReport(input: SaveInput): Promise<RunFacts> {
   return promise
 }
 
-async function saveAndRead({ slug, name, score, period, priorBest, challengeId }: SaveInput): Promise<RunFacts> {
+async function saveAndRead({ slug, name, score, period, priorBest, challengeId, run }: SaveInput): Promise<RunFacts> {
   const me = normalizePlayerName(name)
   const priorOverall = await fetchGlobalRank(me, period).catch(() => null)
-  const saved = await addLeaderboardScore(slug, me, score, { challengeId })
+  const saved = await addLeaderboardScore(slug, me, score, { challengeId, run })
   for (const hit of saved.streakRecords ?? []) {
     if (
       shouldCelebrateRecordSubmit({ improved: hit.improved, rank: hit.rank, totalEntries: hit.totalEntries })
@@ -512,7 +514,7 @@ async function saveAndRead({ slug, name, score, period, priorBest, challengeId }
       })
     }
   }
-  void submitScoreToJoinedTournaments(slug, score).catch(() => {})
+  void submitScoreToJoinedTournaments(slug, score, run).catch(() => {})
   rememberPersonalBest(slug, Math.max(priorBest, score))
   void refreshGlobalRank()
 

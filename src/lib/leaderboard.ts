@@ -625,8 +625,12 @@ export async function addLeaderboardScore(
   slug: string,
   name: string,
   score: number,
-  /** A friend's challenge the run was played against. */
-  opts: { challengeId?: string } = {},
+  opts: {
+    /** A friend's challenge the run was played against. */
+    challengeId?: string
+    /** The run the score came from, asked for as it ended (see runIdFor). */
+    run?: Promise<string | undefined>
+  } = {},
 ): Promise<{
   entries: LeaderboardEntry[]
   /** The run just saved, as it now stands on the boards. */
@@ -649,7 +653,7 @@ export async function addLeaderboardScore(
   const cleaned = normalizePlayerName(name) || 'PLAYER'
   const token = getClaimToken(cleaned)
   // Undefined when the run could not be opened; the score still saves.
-  const runId = await runIdFor(slug)
+  const runId = await (opts.run ?? runIdFor(slug))
   const data = await api<{
     entries: LeaderboardEntry[]
     entry?: LeaderboardEntry

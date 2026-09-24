@@ -15,11 +15,14 @@ import { api } from './leaderboard'
  * before any of this existed.
  */
 
-/** The unspent run for each game, waiting for that game's score. */
-const open = new Map<string, string>()
-
-/** In-flight opens, so a score arriving early still waits for its run id. */
-const opening = new Map<string, Promise<void>>()
+/**
+ * Each game's current run, as the id the server is handing back for it.
+ *
+ * Kept as the promise rather than the id, so that asking once is enough: what
+ * a score asked for when its run ended stays that run's, while the id is still
+ * on its way and after the next run has begun.
+ */
+const current = new Map<string, Promise<string | undefined>>()
 
 /**
  * A run has started.
@@ -28,36 +31,27 @@ const opening = new Map<string, Promise<void>>()
  * game must not wait on the network to begin.
  */
 export function beginRun(slug: string): void {
-  open.delete(slug)
-
-  const request = api<{ runId?: string }>('/runs/start', {
+  const run = api<{ runId?: string }>('/runs/start', {
     method: 'POST',
     body: JSON.stringify({ game: slug }),
   })
-    .then((res) => {
-      if (res?.runId) open.set(slug, res.runId)
-    })
-    .catch(() => {
-      /* Unopenable run: the score still saves, just unverified. */
-    })
-    .finally(() => {
-      if (opening.get(slug) === request) opening.delete(slug)
-    })
-
-  opening.set(slug, request)
+    .then((res) => res?.runId || undefined)
+    // Unopenable run: the score still saves, just unverified.
+    .catch(() => undefined)
+  current.set(slug, run)
 }
 
 /**
- * The run id to submit with this game's score, if there is one.
+ * The run this game is in now, for what it scores: its id, or undefined when
+ * the run could not be opened.
  *
- * Waits on an open still in flight — a game lasts seconds at least and the
- * request takes milliseconds, so this only ever matters for a run that ended
- * almost immediately.
+ * Ask as the run ends and keep the answer. A save can wait on the network for
+ * a second or two, and a player who presses Play again meanwhile has begun a
+ * run with an id of its own; a score sent with that one is measured against a
+ * clock that started a moment ago, and the server refuses it as too fast.
  */
-export async function runIdFor(slug: string): Promise<string | undefined> {
-  const pending = opening.get(slug)
-  if (pending) await pending
-  return open.get(slug)
+export function runIdFor(slug: string): Promise<string | undefined> {
+  return current.get(slug) ?? Promise.resolve(undefined)
 }
 
 /**
@@ -70,6 +64,5 @@ export async function runIdFor(slug: string): Promise<string | undefined> {
  * the id stays useful until {@link beginRun} replaces it.
  */
 export function endRun(slug: string): void {
-  open.delete(slug)
-  opening.delete(slug)
+  current.delete(slug)
 }

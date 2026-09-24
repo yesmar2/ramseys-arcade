@@ -42,6 +42,7 @@ import {
   type RunFacts,
   type RunReportData,
 } from '../lib/runReport'
+import { runIdFor } from '../lib/runSession'
 import { periodCopy } from '../lib/scoreboard'
 import { standingsTakeover } from '../lib/winTakeover'
 import { useChallengeShare } from './ChallengeShare'
@@ -107,6 +108,10 @@ export function ScoreSaveCard({ gameSlug, score, title, subtitle, previousBest, 
   const [sending, setSending] = useState(false)
   const [sendError, setSendError] = useState<string | null>(null)
   const recordRef = useRef(previousBest ?? 0)
+  /** Which pass of the save is the live one; an older pass bows out. */
+  const savePass = useRef(0)
+  /** The run this card is about, taken as it ended (see runIdFor). */
+  const runRef = useRef<Promise<string | undefined> | null>(null)
   const playRef = useRef<HTMLButtonElement>(null)
   const tagRef = useRef<HTMLInputElement>(null)
   const titleId = useId()
@@ -130,12 +135,19 @@ export function ScoreSaveCard({ gameSlug, score, title, subtitle, previousBest, 
   }, [phase])
 
   useEffect(() => {
-    let cancelled = false
+    const pass = ++savePass.current
+    // Off the screen, or handed to a newer pass: stop telling, not saving.
+    let closed = false
+    // This run's, taken as it ends. Play again begins the next run, and a save
+    // still waiting on the network must go out under this one.
+    const run = runIdFor(gameSlug)
+    runRef.current = run
+    const assisted = isRunAssisted()
     setPhase('checking')
     setError(null)
     setReport(null)
 
-    async function run() {
+    async function save() {
       if (authLoading) return
       const against = facingRef.current
       if (against && score > 0) noteChallengeRun(gameSlug, score)
@@ -143,28 +155,32 @@ export function ScoreSaveCard({ gameSlug, score, title, subtitle, previousBest, 
       if (name) {
         try {
           const bests = await fetchPlayerBests(name)
-          if (cancelled) return
           recordRef.current = bests[gameSlug] ?? 0
         } catch {
           /* keep this device's best */
         }
       }
-      if (cancelled) return
+      // A newer pass has the run: the score or the sign-in changed under this
+      // one. A card that only closed carries on, so Play again pressed at once
+      // doesn't cost the run its save.
+      if (savePass.current !== pass) return
 
       // Stage-jumped runs never reach a board or a record book: the score was
       // not earned, and nor were the record-book wins queued along the way.
-      if (isRunAssisted()) {
+      if (assisted) {
+        if (closed) return
         takeRunAchievements()
         setPhase('assisted')
         return
       }
 
       if (score <= 0) {
+        if (closed) return
         // Nothing to save, but a record the run set still gets said.
         await whenRunAchievementsSettled()
         const hits: RunAchievement[] = takeRunAchievements()
         const books = name && hits.length ? await readBookFacts(gameSlug, name, hits) : []
-        if (cancelled) return
+        if (closed) return
         setReport(
           composeReport({
             slug: gameSlug,
@@ -185,14 +201,14 @@ export function ScoreSaveCard({ gameSlug, score, title, subtitle, previousBest, 
       }
 
       if (!canSaveScores) {
-        setPhase('needAuth')
+        if (!closed) setPhase('needAuth')
         return
       }
       if (!name) {
-        setPhase('needName')
+        if (!closed) setPhase('needName')
         return
       }
-      setPhase('saving')
+      if (!closed) setPhase('saving')
       const facts = await saveRunForReport({
         slug: gameSlug,
         name,
@@ -200,22 +216,23 @@ export function ScoreSaveCard({ gameSlug, score, title, subtitle, previousBest, 
         period,
         priorBest: recordRef.current,
         challengeId: against?.id,
+        run,
       })
-      if (cancelled) return
+      if (closed) return
       setSavedAs(facts.name)
       setFacts(facts)
       setReport(composeReport(facts))
       setPhase('saved')
     }
 
-    run().catch((err: unknown) => {
-      if (cancelled) return
+    save().catch((err: unknown) => {
+      if (closed) return
       const next = afterFailure(err)
       setError(next.error)
       setPhase(next.phase)
     })
     return () => {
-      cancelled = true
+      closed = true
     }
   }, [gameSlug, score, period, authLoading, canSaveScores])
 
@@ -249,6 +266,7 @@ export function ScoreSaveCard({ gameSlug, score, title, subtitle, previousBest, 
         period,
         priorBest: recordRef.current,
         challengeId: facingRef.current?.id,
+        run: runRef.current ?? runIdFor(gameSlug),
       })
       setSavedAs(facts.name)
       setFacts(facts)

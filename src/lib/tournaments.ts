@@ -904,6 +904,8 @@ export async function submitTournamentScore(
   name: string,
   game: string,
   score: number,
+  /** The run the score came from, asked for as it ended (see runIdFor). */
+  run: Promise<string | undefined> = runIdFor(game),
 ): Promise<{
   improved: boolean
   best: number
@@ -918,7 +920,7 @@ export async function submitTournamentScore(
   const token = getClaimToken(cleaned)
   // Same run the board score came from — claimed per event, so one game can
   // score in every tournament it qualifies for, once each.
-  const runId = await runIdFor(game)
+  const runId = await run
   const data = await api<{
     improved: boolean
     best: number
@@ -946,7 +948,11 @@ export async function submitTournamentScore(
 }
 
 /** Submit this score to every active tournament the local player has joined that includes the game. */
-export async function submitScoreToJoinedTournaments(game: string, score: number) {
+export async function submitScoreToJoinedTournaments(
+  game: string,
+  score: number,
+  run: Promise<string | undefined> = runIdFor(game),
+) {
   const name = getLastPlayerName() || 'YOU'
   const joined = new Set(getJoinedTournamentIds())
   if (joined.size === 0) return []
@@ -962,7 +968,7 @@ export async function submitScoreToJoinedTournaments(game: string, score: number
   const results: { id: string; title: string; improved: boolean }[] = []
   for (const t of targets) {
     try {
-      const r = await submitTournamentScore(t.id, name, game, score)
+      const r = await submitTournamentScore(t.id, name, game, score, run)
       results.push({ id: t.id, title: t.title, improved: r.improved })
     } catch {
       /* skip */
