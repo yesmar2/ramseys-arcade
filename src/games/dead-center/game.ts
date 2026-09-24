@@ -187,7 +187,7 @@ export const LEAVE_TIME = 0.26
 
 /** The margin for a balance on the nth plate, in plate sizes: a fair eye's worth at first, tight later. */
 export function marginFor(n: number) {
-  return Math.max(0.028, 0.07 - 0.0016 * (n - 1))
+  return Math.max(0.03, 0.08 - 0.0017 * (n - 1))
 }
 
 /** Seconds to set the pin on the nth plate. */

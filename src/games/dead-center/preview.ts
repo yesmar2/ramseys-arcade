@@ -75,7 +75,7 @@ export function makeSim(): Sim<GameState> {
     // A cabinet's screen is small: closer in on the plate, leaving the clock under it out of the picture.
     zoom: 1.25,
     // The still: a teal plate with a weight on it, set down dead center on its pin, the gold ring going out.
-    poster: { seed: 42, at: 5.4 },
+    poster: { seed: 52, at: 4.6 },
     hold: 2,
   }
 }
