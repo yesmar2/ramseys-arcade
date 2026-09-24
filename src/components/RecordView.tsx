@@ -290,8 +290,8 @@ function YouCard({
         <p className="sb-kicker">Get in the book</p>
         <h2 className="sb-first__title">{onTheBoard(game, record)} and you’re on it.</h2>
         <p className="sb-first__text">
-          No account needed. Only your best counts, and the best of all is the record: your name beside it until
-          someone beats it.
+          Sign in to save your runs. Only your best counts, and the best of all is the record: your name beside it
+          until someone beats it.
         </p>
         <div className="sb-you__foot sb-you__foot--acts">
           <PlayLink game={game} />

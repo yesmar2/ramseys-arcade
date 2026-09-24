@@ -219,13 +219,13 @@ function RaceLine({ slug, name, rung }: { slug: string; name: string; rung: Rung
   )
 }
 
-type PromiseKind = 'ads' | 'install' | 'account' | 'devices'
+type PromiseKind = 'ads' | 'install' | 'free' | 'devices'
 
 /** What a stranger should know before anything else, long and, for a phone, short. */
 const PROMISES: { kind: PromiseKind; long: string; short: string | null }[] = [
   { kind: 'ads', long: 'No ads, ever', short: 'No ads' },
   { kind: 'install', long: 'Nothing to install', short: 'No install' },
-  { kind: 'account', long: 'No account needed', short: 'No account' },
+  { kind: 'free', long: 'Free to play', short: 'Free' },
   { kind: 'devices', long: 'Phone or desk', short: null },
 ]
 
@@ -247,11 +247,8 @@ function PromiseIcon({ kind }: { kind: PromiseKind }) {
         </>
       ) : kind === 'install' ? (
         <path d="M13 2L4 14h7l-1 8 9-12h-7l1-8z" />
-      ) : kind === 'account' ? (
-        <>
-          <circle cx="12" cy="8" r="4" />
-          <path d="M4 21c0-4 3.6-6.5 8-6.5s8 2.5 8 6.5" />
-        </>
+      ) : kind === 'free' ? (
+        <path d="M7 4.5v15l12.5-7.5z" />
       ) : (
         <>
           <rect x="2" y="4" width="14" height="10" rx="1.5" />

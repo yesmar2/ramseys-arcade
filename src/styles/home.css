@@ -821,7 +821,7 @@ html[data-theme="dark"] .home-banner {
     margin-left: auto;
   }
 
-  /* The promises shorten to three: no ads, no install, no account. */
+  /* The promises shorten to three: no ads, no install, free. */
   .home-banner__promises {
     justify-content: space-between;
     gap: 0.4rem 0.8rem;

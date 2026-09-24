@@ -50,7 +50,7 @@ export function GameHubHero({
   }, [canPlay])
 
   const tags = (game.tags ?? []).map((tag) => TAG_LABELS[tag])
-  const where = `${deviceRequirementLabel(game) ?? 'Phone or desk'} · No account needed`
+  const where = `${deviceRequirementLabel(game) ?? 'Phone or desk'} · Free to play`
   const kicker = game.comingSoon ? 'Coming soon' : game.inDevelopment ? 'New' : null
 
   return (

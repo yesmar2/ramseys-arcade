@@ -146,7 +146,7 @@ export function PlusPage() {
 
       <Table
         title="Playing"
-        blurb="Free for everyone, with or without an account."
+        blurb="Free for everyone. Playing needs no account; sign in to save your scores and join in."
         rows={PLAY}
       />
       <Table

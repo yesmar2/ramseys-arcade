@@ -105,11 +105,11 @@ export function GameHubStanding({
         )}
         {!signedIn ? (
           <p className="gh-stand__signin">
-            No account needed to play.{' '}
+            Playing needs no account.{' '}
             <button type="button" onClick={openSiteMenu}>
               Sign in
             </button>{' '}
-            to keep your tag on every device.
+            to put your runs on the board.
           </p>
         ) : null}
       </>

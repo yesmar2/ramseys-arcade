@@ -472,7 +472,7 @@ export function CreateTournamentPage() {
             </h2>
             <p className="evp-card__copy">
               Events you make are invite-only: top scores or a bracket, on the games you pick, for the people you invite by
-              tag. Signing in keeps them, and your tag, on every device.
+              tag. Signing in gives you a tag and keeps your events on every device.
             </p>
             <div className="evp-acts">
               <button type="button" className="evp-btn" onClick={openSiteMenu}>

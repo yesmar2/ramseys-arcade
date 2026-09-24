@@ -88,7 +88,7 @@ export function PrivacyPage() {
 
       <h2>Your choices</h2>
       <ul>
-        <li>Play as a guest without signing in</li>
+        <li>Play without signing in; nothing goes on the boards until you do</li>
         <li>Clear site data in your browser to remove local preferences</li>
         <li>Choose a different public player name before submitting scores</li>
         <li>Request account or score removal by contacting us</li>

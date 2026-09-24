@@ -35,7 +35,7 @@ export function Footer() {
             {APP_NAME_LEAD}
             <span>{APP_NAME_ACCENT}</span>
           </a>
-          <p className="site-footer__tag">No ads. No install. No account needed.</p>
+          <p className="site-footer__tag">No ads. No install. Free to play.</p>
           <p className="site-footer__lead">Original games that load fast and stay out of your way.</p>
         </div>
 

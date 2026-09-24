@@ -555,7 +555,7 @@ function EventBanner({
           </div>
         ) : null}
         {needsTag ? (
-          <p className="evp-banner__hint">No account needed: a tag is how the standings know your runs.</p>
+          <p className="evp-banner__hint">Sign in and pick a tag: it’s how the standings know your runs.</p>
         ) : null}
       </div>
       <BannerSide detail={detail} displayName={displayName} />

@@ -22,10 +22,10 @@ export function TermsPage() {
 
       <h2>Accounts and player names</h2>
       <ul>
-        <li>You may play as a guest with a player name stored on your device.</li>
+        <li>You may play without an account.</li>
         <li>
-          Optional sign-in (Google or email link) links your player name to an account across
-          devices.
+          Saving scores, picking a player name (gamer tag) and joining events need an account.
+          You sign in with Google.
         </li>
         <li>
           You are responsible for the player name you display. Do not impersonate others or

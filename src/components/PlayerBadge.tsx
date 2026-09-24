@@ -390,7 +390,7 @@ export const PlayerBadge = forwardRef<PlayerBadgeHandle, PlayerBadgeProps>(
           <>
             <p className="player-badge__panel-title player-badge__panel-title--sub">Sign in</p>
             <p className="player-badge__panel-blurb">
-              Sign in to save scores and keep your gamer tag across devices.
+              Sign in to pick a gamer tag and put your scores on the boards.
             </p>
           </>
         ) : null}

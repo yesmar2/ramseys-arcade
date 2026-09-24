@@ -367,8 +367,8 @@ function FirstVisitCard({ copy }: { copy: PeriodCopy }) {
       <p className="sb-kicker">Get on the board</p>
       <h2 className="sb-first__title">Your first run puts you on it.</h2>
       <p className="sb-first__text">
-        No account needed. Finish a run, put your name on it, and you’re on that game’s board. Every
-        board you place on pays up to 100 points toward {toward}.
+        Finish a run and sign in to save it, and you’re on that game’s board. Every board you place on
+        pays up to 100 points toward {toward}.
       </p>
       <div className="sb-you__foot sb-you__foot--acts">
         <a className="sb-cta" href="/">

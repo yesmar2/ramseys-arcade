@@ -321,7 +321,7 @@ function FirstVisit({ slug, copy }: { slug: LeaderboardGame; copy: PeriodCopy })
       <p className="sb-kicker">Get on the board</p>
       <h2 className="sb-first__title">Any run puts you on it.</h2>
       <p className="sb-first__text">
-        No account needed. Only your best run counts, and first place pays 100 points toward {toward}.
+        Sign in to save your runs. Only your best counts, and first place pays 100 points toward {toward}.
       </p>
       <div className="sb-you__foot sb-you__foot--acts">
         <PlayLink slug={slug} />

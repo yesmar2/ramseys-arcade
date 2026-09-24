@@ -182,7 +182,7 @@ export function SiteMenu({
       </span>
       <span className="site-menu__pitch-title">Put your scores on the boards</span>
       <span className="site-menu__pitch-copy">
-        Playing needs no account. Signing in gives you a gamer tag that follows you to every device.
+        Playing needs no account. Sign in to pick a gamer tag and put your scores on the boards.
       </span>
       <PlayerBadge ref={badgeRef} embedded showSettings={false} className="site-menu__signin" />
     </div>

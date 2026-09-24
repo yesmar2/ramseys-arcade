@@ -516,7 +516,7 @@ function movesFoot(copy: PeriodCopy, empties: number, standings: Standing[], you
   const needed = Math.floor(leader.score / 100) + 1
   if (empties >= needed) return `${firstRuns(needed)} and you’d ${lead}.`
   if (you) return `Your first run puts you on ${copy.noun ? `this ${copy.noun}’s` : 'the all-time'} standings.`
-  return 'No account needed to get on a board.'
+  return 'Any run you save puts you on a board.'
 }
 
 /* ---------- every board ---------- */

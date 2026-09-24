@@ -455,7 +455,7 @@ export function GroupDetailPage({ id, invite }: { id: string; invite?: string })
       <button type="button" className="grp-btn" onClick={openSiteMenu}>
         Pick a gamer tag to join
       </button>
-      <span className="grp-hint">Your tag is in the menu. You don’t need an account.</span>
+      <span className="grp-hint">Sign in from the menu and pick a tag.</span>
     </>
   )
   const members = (
