@@ -191,6 +191,11 @@ export type GameState = {
   buffSpread: number
   buffShield: number
   buffSlow: number
+  /**
+   * The wave's record, in words, for the "Wave N" banner: set by the page,
+   * which knows the record books; the engine only carries it.
+   */
+  waveRecordNote?: string
 }
 
 export const DESIGN_LONG = 960

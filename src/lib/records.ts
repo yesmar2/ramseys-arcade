@@ -334,14 +334,78 @@ export function shouldCelebrateRecordSubmit(
 function toRecordSubmitOutcome(result: {
   improved: boolean
   rank: number | null
+  ranks?: Partial<Record<LeaderboardPeriod, number>>
   totalEntries?: number | null
 }): RecordSubmitOutcome {
   return {
     improved: result.improved,
-    rank: result.rank,
+    /*
+     * A place in the book means the all-time book. A run that only beat the
+     * player's best for the day, week or month comes back with that period's
+     * place, and was being announced as "#2 in the book" when the player's
+     * place in the book hadn't moved. An API too old to send `ranks` keeps
+     * its one rank.
+     */
+    rank: result.ranks ? (result.ranks.all ?? null) : result.rank,
     totalEntries:
       typeof result.totalEntries === 'number' ? result.totalEntries : null,
   }
+}
+
+/** A look at a record book: its first places and the player's own, over everyone rather than a group. */
+export type BookGlance = {
+  /** The book's first places, best first. */
+  entries: LeaderboardEntry[]
+  you: YouEntry | null
+  /** Players in the book, looked at or not. */
+  total: number
+}
+
+/**
+ * The first places in a book and where this player stands in it, for a game
+ * to show what's to beat and to know the moment a run takes a place, without
+ * waiting on the save. Always the whole book, never a group's: a run's place
+ * is decided in the whole book.
+ */
+export async function fetchBookGlance(
+  game: string,
+  recordId: string,
+  name: string,
+  limit = 10,
+): Promise<BookGlance> {
+  const params = new URLSearchParams({ period: 'all', limit: String(limit) })
+  const cleaned = normalizePlayerName(name)
+  if (cleaned) params.set('name', cleaned)
+  const data = await api<{ entries?: LeaderboardEntry[]; you?: YouEntry | null; total?: number }>(
+    `/records/${encodeURIComponent(game)}/${encodeURIComponent(recordId)}?${params.toString()}`,
+  )
+  const entries = data.entries ?? []
+  return { entries, you: data.you ?? null, total: data.total ?? entries.length }
+}
+
+/**
+ * Where a result would go in a book, from a glance at it, placed the way the
+ * server places it: `improved` when it beats the player's own best there, and
+ * then the place it takes, ties going to whoever got there first. The place
+ * is null when it lands past the places looked at.
+ */
+export function placeInBook(
+  glance: BookGlance,
+  value: number,
+  direction: RecordDirection,
+  name: string,
+): { improved: boolean; rank: number | null } {
+  const me = normalizePlayerName(name)
+  const mine = (e: LeaderboardEntry) => normalizePlayerName(e.name) === me
+  const better = (a: number, b: number) => (direction === 'lower' ? a < b : a > b)
+  const own = glance.you ?? glance.entries.find(mine) ?? null
+  if (own && !better(value, own.score)) return { improved: false, rank: null }
+  const others = glance.entries.filter((e) => !mine(e))
+  const ahead = others.filter((e) => !better(value, e.score)).length
+  // Behind everyone looked at, with more past them: the place isn't known. A
+  // player already among them can only move up from where they were.
+  const known = glance.entries.some(mine) || ahead < others.length || glance.total <= glance.entries.length
+  return { improved: true, rank: known ? ahead + 1 : null }
 }
 
 /** Best-effort Patriot perfect-hit streak submit (run peak). */
@@ -539,11 +603,12 @@ export function submitAsteroidsWaveClearBooks(input: {
 
   const promise = (async (): Promise<RecordBookHit[]> => {
     const hits: RecordBookHit[] = []
-    const waveResult = await submitAsteroidsWaveTime(
-      input.wave,
-      input.seconds,
-      name,
-    )
+    const combo = Math.floor(input.combo)
+    // Both books at once: the wave's card is waiting on them.
+    const [waveResult, comboResult] = await Promise.all([
+      submitAsteroidsWaveTime(input.wave, input.seconds, name),
+      combo >= 2 ? submitAsteroidsHighestCombo(combo, name) : Promise.resolve(null),
+    ])
     if (shouldCelebrateRecordSubmit(waveResult)) {
       hits.push({
         id: `asteroids:wave-time-${input.wave}`,
@@ -552,17 +617,13 @@ export function submitAsteroidsWaveClearBooks(input: {
         rank: waveResult.rank,
       })
     }
-    const combo = Math.floor(input.combo)
-    if (combo >= 2) {
-      const comboResult = await submitAsteroidsHighestCombo(combo, name)
-      if (shouldCelebrateRecordSubmit(comboResult)) {
-        hits.push({
-          id: 'asteroids:highest-combo',
-          label: 'Highest combo',
-          value: `×${combo}`,
-          rank: comboResult.rank,
-        })
-      }
+    if (shouldCelebrateRecordSubmit(comboResult)) {
+      hits.push({
+        id: 'asteroids:highest-combo',
+        label: 'Highest combo',
+        value: `×${combo}`,
+        rank: comboResult.rank,
+      })
     }
     waveClearBookInflight.delete(key)
     // Only cache wins — empty results may be a failed request and should retry.

@@ -1,0 +1,98 @@
+/*
+ * The wave's record under the score, the way a friend's challenge sits there
+ * (challenge.css): whose it is, the time, and a gold bar running down with the
+ * wave's clock. Once the time has gone by it dims and stays.
+ */
+.asteroids-record {
+  position: absolute;
+  top: calc(var(--readout-middle) + var(--score-size) / 2 + 0.5rem);
+  left: 50%;
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  height: 2rem;
+  padding: 0 0.8rem 0 0.3rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, #f5b942 38%, transparent);
+  background: rgba(10, 16, 22, 0.66);
+  color: #e9f0f4;
+  font-family: var(--font-display);
+  font-size: 0.8rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  pointer-events: none;
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  transition:
+    opacity 0.4s ease,
+    border-color 0.4s ease;
+}
+
+.asteroids-record strong {
+  color: #f5b942;
+}
+
+/* A friend's challenge has the place under the score: the record goes under that. */
+.asteroids-record--low {
+  top: calc(var(--readout-middle) + var(--score-size) / 2 + 3rem);
+}
+
+.asteroids-record--open {
+  padding-left: 0.8rem;
+  color: #f5b942;
+}
+
+.asteroids-record--gone {
+  opacity: 0.5;
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.asteroids-record__bar {
+  width: 3.5rem;
+  height: 0.3rem;
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.16);
+  overflow: hidden;
+}
+
+.asteroids-record__bar > span {
+  display: block;
+  height: 100%;
+  border-radius: 99px;
+  background: #f5b942;
+  transition: width 0.1s linear;
+}
+
+@media (max-width: 30rem) {
+  .asteroids-record {
+    height: 1.85rem;
+    font-size: 0.74rem;
+  }
+
+  .asteroids-record__bar {
+    width: 2.6rem;
+  }
+}
+
+/* The wave's card, before the book has been looked at: it says it's looking. */
+.game-card__row--checking strong {
+  animation: asteroids-record-checking 0.9s ease-in-out infinite alternate;
+}
+
+@keyframes asteroids-record-checking {
+  from {
+    opacity: 0.35;
+  }
+  to {
+    opacity: 0.8;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .game-card__row--checking strong {
+    animation: none;
+    opacity: 0.6;
+  }
+}

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react'
+import '../../styles/asteroids-records.css'
 import { haptic } from '../../lib/haptics'
 import { GamePlayChrome, PlayReadout, PlayReadoutScore } from '../../components/GameHud'
 import { GameStage } from '../../components/GameStage'
@@ -14,15 +15,25 @@ import { usePlayerName } from '../../hooks/usePlayerName'
 import { useDeviceType } from '../../lib/device'
 import { getGame } from '../../data/games'
 import { getPersonalBest } from '../../lib/personalBest'
+import { PlayerAvatar } from '../../components/PlayerAvatar'
+import { useActiveChallenge } from '../../lib/challenges'
+import { normalizePlayerName } from '../../lib/leaderboard'
 import {
   clearRunAchievements,
+  isRunAssisted,
   pushRunAchievement,
-  type RunAchievement,
 } from '../../lib/runAchievements'
 import {
+  ASTEROIDS_HIGHEST_COMBO_ID,
+  asteroidsWaveTimeRecordId,
+  fetchBookGlance,
+  formatRecordMs,
+  placeInBook,
   submitAsteroidsHighestCombo,
   submitAsteroidsWaveClearBooks,
   shouldCelebrateRecordSubmit,
+  type BookGlance,
+  type RecordBookHit,
 } from '../../lib/records'
 import { useTournamentPlay } from '../../tournaments/TournamentPlayContext'
 import {
@@ -73,6 +84,140 @@ function currentLayout() {
   return asteroidsLayout(typeof window !== 'undefined' && window.innerHeight > window.innerWidth)
 }
 
+/*
+ * Every wave has a record book for the fastest clear, and the run has one for
+ * the highest combo. A wave's book is looked at before the wave begins, so
+ * the "Wave N" banner and a chip under the score can say what there is to
+ * beat, and the wave's card can say what the clear did in the book the
+ * moment it opens. Saving the clear then only confirms it, or corrects it if
+ * someone got in first. Before, the card waited on the save and a gold row
+ * appeared on it a moment later, or after it had closed, with nothing to say
+ * one was coming.
+ */
+
+/** A row on a wave's card for a record book: gold for a place won, plain for the record that stands. */
+type BookRow = { id: string; label: string; value: string; gold: boolean; checking?: boolean }
+
+const waveBook = (wave: number) => `asteroids:wave-time-${wave}`
+const COMBO_BOOK = 'asteroids:highest-combo'
+/** The places a glance covers, and so the places a card can call before the save answers. */
+const GLANCE_PLACES = 10
+
+function placeWords(rank: number | null) {
+  return rank === 1 ? 'New record' : rank != null ? `#${rank} in the book` : 'In the book'
+}
+
+function isMe(entryName: string, name: string) {
+  return normalizePlayerName(entryName) === normalizePlayerName(name)
+}
+
+/** The record that stands on a wave, as a plain row. */
+function standingRow(wave: number, glance: BookGlance, name: string): BookRow {
+  const top = glance.entries[0]
+  return {
+    id: waveBook(wave),
+    label: `Wave ${wave} record`,
+    value: top ? `${formatRecordMs(top.score)} · ${isMe(top.name, name) ? 'yours' : top.name}` : 'Nobody yet',
+    gold: false,
+  }
+}
+
+/** What a clear did in the books, called from the glances taken before the wave. */
+function predictedRows(
+  wave: number,
+  seconds: number,
+  combo: number,
+  glances: Map<string, BookGlance | null>,
+  name: string,
+): BookRow[] {
+  const rows: BookRow[] = []
+  const waveId = asteroidsWaveTimeRecordId(wave)
+  if (waveId) {
+    const glance = glances.get(waveId)
+    if (glance === undefined) {
+      rows.push({ id: waveBook(wave), label: `Fastest wave ${wave}`, value: 'Checking the book', gold: false, checking: true })
+    } else if (glance) {
+      const place = placeInBook(glance, Math.max(1, Math.round(seconds * 1000)), 'lower', name)
+      rows.push(
+        place.improved && place.rank != null && place.rank <= GLANCE_PLACES
+          ? { id: waveBook(wave), label: `Fastest wave ${wave}`, value: placeWords(place.rank), gold: true }
+          : standingRow(wave, glance, name),
+      )
+    }
+  }
+  const comboGlance = glances.get(ASTEROIDS_HIGHEST_COMBO_ID)
+  if (combo >= 2 && comboGlance) {
+    const place = placeInBook(comboGlance, combo, 'higher', name)
+    if (place.improved && place.rank != null && place.rank <= GLANCE_PLACES) {
+      rows.push({ id: COMBO_BOOK, label: `Highest combo ×${combo}`, value: placeWords(place.rank), gold: true })
+    }
+  }
+  return rows
+}
+
+/** The rows once the save has answered: its places, and otherwise the record that stands. */
+function settledRows(
+  wave: number,
+  combo: number,
+  hits: RecordBookHit[],
+  glances: Map<string, BookGlance | null>,
+  name: string,
+): BookRow[] {
+  const rows: BookRow[] = []
+  const waveHit = hits.find((h) => h.id === waveBook(wave))
+  const waveGlance = glances.get(asteroidsWaveTimeRecordId(wave) ?? '')
+  if (waveHit) rows.push({ id: waveBook(wave), label: `Fastest wave ${wave}`, value: placeWords(waveHit.rank), gold: true })
+  else if (waveGlance) rows.push(standingRow(wave, waveGlance, name))
+  const comboHit = hits.find((h) => h.id === COMBO_BOOK)
+  if (comboHit) {
+    rows.push({ id: COMBO_BOOK, label: `Highest combo ${comboHit.value ?? `×${combo}`}`, value: placeWords(comboHit.rank), gold: true })
+  }
+  return rows
+}
+
+/**
+ * Under the score while a wave is on: whose record it is and how long is left
+ * to beat it, the bar running down with the wave's clock. Once the time has
+ * gone by, it dims and stays, so the record is still there to read.
+ */
+function WaveRecordChip({
+  glance,
+  seconds,
+  name,
+  low,
+}: {
+  glance: BookGlance
+  seconds: number
+  name: string
+  /** A friend's challenge has the place under the score. */
+  low: boolean
+}) {
+  const top = glance.entries[0]
+  const place = `asteroids-record${low ? ' asteroids-record--low' : ''}`
+  if (!top) {
+    return (
+      <span className={`${place} asteroids-record--open`} aria-hidden="true">
+        No record yet: first clear sets it
+      </span>
+    )
+  }
+  const record = top.score / 1000
+  const left = record - seconds
+  return (
+    <span className={`${place}${left <= 0 ? ' asteroids-record--gone' : ''}`} aria-hidden="true">
+      <PlayerAvatar avatarId={top.avatarId} name={top.name} size="sm" />
+      <span>
+        {isMe(top.name, name) ? 'Your record' : top.name} <strong>{formatRecordMs(top.score)}</strong>
+      </span>
+      {left > 0 ? (
+        <span className="asteroids-record__bar">
+          <span style={{ width: `${Math.max(0, Math.min(1, left / record)) * 100}%` }} />
+        </span>
+      ) : null}
+    </span>
+  )
+}
+
 export function AsteroidsGame() {
   const tournament = useTournamentPlay()
   const device = useDeviceType()
@@ -90,9 +235,21 @@ export function AsteroidsGame() {
   const saveOpenRef = useRef(false)
   const [ui, setUi] = useState<Snapshot>(() => toSnapshot(stateRef.current))
   const [saveOpen, setSaveOpen] = useState(false)
-  /** Record-book places the wave just cleared won, as rows on its card. */
-  const [waveBooks, setWaveBooks] = useState<RunAchievement[] | null>(null)
-  const waveBooksShownRef = useRef<string | null>(null)
+  /** What the wave just cleared did in the record books, as rows on its card. */
+  const [bookRows, setBookRows] = useState<BookRow[]>([])
+  /** The rows each clear was called with, so a card that opens again says the same. */
+  const predictionsRef = useRef(new Map<string, BookRow[]>())
+  const booksReportedRef = useRef<string | null>(null)
+  /** This run's glances at the books, by record id: a glance, null when it couldn't be had, absent until it lands. */
+  const glancesRef = useRef(new Map<string, BookGlance | null>())
+  const glanceLoadsRef = useRef(new Set<string>())
+  const runEpochRef = useRef(0)
+  const [, setGlancesLanded] = useState(0)
+  const playerNameRef = useRef(playerName)
+  playerNameRef.current = playerName
+  const tournamentRef = useRef(tournament)
+  tournamentRef.current = tournament
+  const challenge = useActiveChallenge('asteroids')
   const offeredScore = useRef<number | null>(null)
   const comboRecordKey = useRef<string | null>(null)
   const previousBestRef = useRef(getPersonalBest('asteroids'))
@@ -106,13 +263,45 @@ export function AsteroidsGame() {
   pausedRef.current = paused
   saveOpenRef.current = saveOpen
 
-  const showWaveBooks = (hits: RunAchievement[], submitKey: string) => {
-    if (waveBooksShownRef.current === submitKey) return
-    waveBooksShownRef.current = submitKey
-    // The run report lists them at the end, with everything else the run won.
-    for (const hit of hits) pushRunAchievement(hit)
-    // On the wave's card while it is up; one that lands after it closed waits for the report.
-    if (stateRef.current.phase === 'waveClear') setWaveBooks(hits)
+  /** The run report lists the places a clear won at the end, with everything else the run won. */
+  const reportBooks = (hits: RecordBookHit[], submitKey: string) => {
+    if (booksReportedRef.current === submitKey) return
+    booksReportedRef.current = submitKey
+    for (const hit of hits) pushRunAchievement({ id: hit.id, label: hit.label, value: hit.value, rank: hit.rank })
+  }
+
+  /** Books that count for this run: not in an event, and not after an admin's wave skip. */
+  const booksCount = () => !tournamentRef.current && !isRunAssisted()
+
+  /** Look at a book once a run, in the background. */
+  const lookAtBook = (recordId: string | null) => {
+    if (!recordId) return
+    const epoch = runEpochRef.current
+    const key = `${epoch}:${recordId}`
+    if (glancesRef.current.has(recordId) || glanceLoadsRef.current.has(key)) return
+    glanceLoadsRef.current.add(key)
+    fetchBookGlance('asteroids', recordId, playerNameRef.current, GLANCE_PLACES)
+      .catch(() => null)
+      .then((glance) => {
+        glanceLoadsRef.current.delete(key)
+        // A run that has ended has no use for it; the next looks for itself.
+        if (epoch !== runEpochRef.current) return
+        glancesRef.current.set(recordId, glance)
+        setGlancesLanded((n) => n + 1)
+      })
+  }
+
+  /** The line under "Wave N" as it begins: the time to beat. */
+  const waveRecordNote = (wave: number) => {
+    if (!booksCount()) return ''
+    const id = asteroidsWaveTimeRecordId(wave)
+    const glance = id ? glancesRef.current.get(id) : null
+    if (!glance) return ''
+    const top = glance.entries[0]
+    if (!top) return 'No record yet: the first clear sets it'
+    return isMe(top.name, playerNameRef.current)
+      ? `Your record ${formatRecordMs(top.score)}`
+      : `Record ${formatRecordMs(top.score)} · ${top.name}`
   }
 
   const syncControls = () => {
@@ -175,6 +364,11 @@ export function AsteroidsGame() {
       }
 
       syncControls()
+      const s0 = stateRef.current
+      if (s0.phase === 'playing' && s0.waveIntro > 0) {
+        const note = waveRecordNote(s0.wave)
+        if ((s0.waveRecordNote ?? '') !== note) stateRef.current = { ...s0, waveRecordNote: note }
+      }
       if (!pausedRef.current) {
         stateRef.current = tick(stateRef.current, dt)
       }
@@ -207,36 +401,52 @@ export function AsteroidsGame() {
     if (ui.phase === 'menu') previousBestRef.current = apiBest
   }, [apiBest, ui.phase])
 
+  // The books for the wave under way and the one after, and the combo book: looked at before they're
+  // needed, the first ones while the start card is up.
   useEffect(() => {
-    if (ui.phase !== 'waveClear' || tournament) {
-      if (ui.phase !== 'waveClear') setWaveBooks(null)
+    if (ui.phase === 'gameover' || !booksCount()) return
+    lookAtBook(asteroidsWaveTimeRecordId(ui.wave))
+    lookAtBook(asteroidsWaveTimeRecordId(ui.wave + 1))
+    lookAtBook(ASTEROIDS_HIGHEST_COMBO_ID)
+  }, [ui.phase, ui.wave, tournament])
+
+  useEffect(() => {
+    if (ui.phase !== 'waveClear' || !booksCount()) {
+      if (ui.phase !== 'waveClear') setBookRows([])
       return
     }
     const wave = ui.lastWave
     const time = ui.lastWaveTime
+    const combo = ui.runComboBest
     const submitKey = `${wave}:${time.toFixed(3)}`
+    let rows = predictionsRef.current.get(submitKey)
+    if (!rows) {
+      rows = predictedRows(wave, time, combo, glancesRef.current, playerName)
+      predictionsRef.current.set(submitKey, rows)
+    }
+    setBookRows(rows)
 
+    let open = true
     void (async () => {
-      const hits = await submitAsteroidsWaveClearBooks({
-        wave,
-        seconds: time,
-        combo: ui.runComboBest,
-        name: playerName,
-      })
-      if (!hits.length) return
-      if (ui.runComboBest >= 2) {
-        comboRecordKey.current = `combo:${ui.runComboBest}`
+      const hits = await submitAsteroidsWaveClearBooks({ wave, seconds: time, combo, name: playerName })
+      // The combo went into its book with the clear; the end of the run needn't send it again.
+      if (combo >= 2) comboRecordKey.current = `combo:${combo}`
+      const comboGlance = glancesRef.current.get(ASTEROIDS_HIGHEST_COMBO_ID)
+      const comboHit = hits.find((h) => h.id === COMBO_BOOK)
+      if (comboHit && comboGlance) {
+        // The combo book has moved: a later clear with the same combo mustn't call it a place again.
+        const at = Date.now()
+        comboGlance.you = { ...(comboGlance.you ?? { id: `mine-${at}`, name: playerName }), score: combo, at, rank: comboHit.rank ?? 0 }
       }
-      showWaveBooks(
-        hits.map((hit) => ({
-          id: hit.id,
-          label: hit.label,
-          value: hit.value,
-          rank: hit.rank,
-        })),
-        submitKey,
-      )
+      if (hits.length) reportBooks(hits, submitKey)
+      // Still on this clear's card: settle its rows. Once it has closed, the places wait for the run report.
+      if (open && stateRef.current.phase === 'waveClear') {
+        setBookRows(settledRows(wave, combo, hits, glancesRef.current, playerName))
+      }
     })()
+    return () => {
+      open = false
+    }
   }, [
     ui.phase,
     ui.lastWave,
@@ -286,11 +496,18 @@ export function AsteroidsGame() {
   const restart = (intoMenu = false) => {
     setSaveOpen(false)
     offeredScore.current = null
-    waveBooksShownRef.current = null
+    booksReportedRef.current = null
     comboRecordKey.current = null
     clearRunAchievements()
     if (!intoMenu) beginRun('asteroids')
-    setWaveBooks(null)
+    setBookRows([])
+    // After a run, the books are looked at afresh: it may have moved them. From the start card, what was
+    // looked at while it was up is this run's.
+    if (stateRef.current.phase !== 'menu') {
+      runEpochRef.current += 1
+      glancesRef.current = new Map()
+    }
+    predictionsRef.current = new Map()
     clearPressed()
     const next = currentLayout()
     setAspect({ w: next.aspectW, h: next.aspectH })
@@ -474,6 +691,14 @@ export function AsteroidsGame() {
             >
               {ui.score}
             </PlayReadoutScore>
+            {ui.phase === 'playing' && !tournament && !isRunAssisted() && glancesRef.current.get(asteroidsWaveTimeRecordId(ui.wave) ?? '') ? (
+              <WaveRecordChip
+                glance={glancesRef.current.get(asteroidsWaveTimeRecordId(ui.wave) ?? '')!}
+                seconds={ui.time}
+                name={playerName}
+                low={challenge != null}
+              />
+            ) : null}
             {ui.lives > 0 ? (
               <div
                 className="play-readout__left asteroids__lives"
@@ -585,12 +810,13 @@ export function AsteroidsGame() {
                   <p className="game-card__figure">{formatWaveTime(ui.lastWaveTime)}s</p>
                 </div>
                 <div className="game-card__rows">
-                  {waveBooks?.map((hit) => (
-                    <div key={hit.id ?? hit.label} className="panel__row game-card__row--gold">
-                      <span>{hit.label}</span>
-                      <strong>
-                        {hit.rank === 1 ? 'New record' : hit.rank != null ? `#${hit.rank} in the book` : hit.value}
-                      </strong>
+                  {bookRows.map((row) => (
+                    <div
+                      key={row.id}
+                      className={`panel__row${row.gold ? ' game-card__row--gold' : ''}${row.checking ? ' game-card__row--checking' : ''}`}
+                    >
+                      <span>{row.label}</span>
+                      <strong>{row.value}</strong>
                     </div>
                   ))}
                   <div className="panel__row">

@@ -507,6 +507,12 @@ function drawWaveIntro(ctx: CanvasRenderingContext2D, state: GameState, w: numbe
   haloText(ctx, `Wave ${state.wave}`, w / 2, h * 0.32, 44 * scale * grow, inkColor(), 700)
   const note = waveNote(state.wave)
   if (note) haloText(ctx, note, w / 2, h * 0.32 + 38 * scale, 15 * scale, inkColor())
+  // The time to beat for this wave, so a record is something to go for rather than a surprise at the end.
+  const record = state.waveRecordNote
+  if (record) {
+    const y = h * 0.32 + (note ? 62 : 38) * scale
+    haloText(ctx, record, w / 2, y, 15 * scale, isDarkTheme() ? GOLD : GOLD_DEEP, 700)
+  }
   ctx.restore()
 }
 
