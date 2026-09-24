@@ -3,8 +3,10 @@ import { useAuth } from '../hooks/useAuth'
 import { gameAccentStyle } from '../lib/gameAccentStyle'
 import { useImpersonation } from '../hooks/useImpersonation'
 import { usePlayerName } from '../hooks/usePlayerName'
+import { useSaveWait } from '../hooks/useSaveWait'
 import { getGame } from '../data/games'
 import { navigate, tournamentHref } from '../hooks/useHashRoute'
+import { exitFullscreen } from '../lib/fullscreen'
 import { linkCurrentNameToAccount } from '../lib/auth'
 import { scoreText, scoreUnit } from '../lib/gameBoard'
 import { ApiError, getLastPlayerName, normalizePlayerName } from '../lib/leaderboard'
@@ -198,7 +200,7 @@ function eventReport(
     lines.push({
       id: 'overall',
       icon: overallPlace === 1 ? 'crown' : 'sum',
-      label: 'All games in this event',
+      label: 'Event standings',
       detail:
         detail?.format === 'place-points' && standing
           ? `${standing.totalPoints.toLocaleString()} point${standing.totalPoints === 1 ? '' : 's'}`
@@ -395,8 +397,16 @@ export function TournamentScoreCard({
   const outcome = done ? eventReport(snapshot, gameSlug, name, score, posted) : null
   const ribbon = outcome?.ribbon ?? null
   const standingsHref = tournamentHref(tournamentId)
+  // Play again waits on the post, for a while (useSaveWait): a press can't cut the run off before it's in.
+  const postWaitOver = useSaveWait(status === 'saving')
+  const holding = status === 'saving' && canSaveScores && !postWaitOver
 
-  let primary: ReportAction = { label: 'Play again', onClick: onDone, buttonRef: playRef }
+  let primary: ReportAction = {
+    label: holding ? 'Posting…' : 'Play again',
+    busy: holding,
+    onClick: onDone,
+    buttonRef: playRef,
+  }
   let secondary: ReportAction | null = null
   let block: ReactNode = null
   let who: ReactNode = null
@@ -492,6 +502,13 @@ export function TournamentScoreCard({
         secondary={secondary}
         who={who}
         links={links}
+        leave={{
+          label: 'Back to event',
+          onClick: () => {
+            void exitFullscreen()
+            navigate(standingsHref)
+          },
+        }}
       >
         {block}
       </RunReport>

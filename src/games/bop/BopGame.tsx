@@ -261,7 +261,13 @@ export function BopGame() {
             </PlayReadout>
           </div>
         </GameStage>
-        <div className="bop__overlay">
+        <div
+          className="bop__overlay"
+          // The start card sits beside the field, not in it: Start's press comes here and goes on to start the round.
+          onPointerDown={(e) => {
+            if (stateRef.current.phase === 'menu') onPointerDown(e)
+          }}
+        >
           {ui.phase === 'menu' && !saveOpen && (
             <GameStartCard title="Bop" slug="bop" />
           )}

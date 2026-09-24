@@ -29,7 +29,7 @@ import { submitScoreToJoinedTournaments } from './tournaments'
  * A run is saved, then the period's board is read back and set against itself
  * without the new run, which is how the report knows the names it passed. The
  * standings are read either side of the save for the overall place. From
- * those facts come the lines (your best, the board, overall, the record
+ * those facts come the lines (your best, the board, the standings, the record
  * books), each in a tone, and one of three tiers: quiet for an ordinary run,
  * lit for a personal best or a top-ten place, big for the top of a board or a
  * new record, which also gets the race it won and confetti.
@@ -128,7 +128,7 @@ function pointsText(points: number): string {
   return `${points.toLocaleString()} point${points === 1 ? '' : 's'}`
 }
 
-/** A board and its period read as a place: Crosswalk this month, All games, all time. */
+/** A board and its period read as a place: Crosswalk this month, Standings, all time. */
 function scopeLabel(board: string, copy: PeriodCopy): string {
   return copy.noun ? `${board} ${copy.phrase}` : `${board}, all time`
 }
@@ -243,13 +243,15 @@ function overallLine(f: RunFacts, copy: PeriodCopy): { line: ReportLine; newTop:
   const rank = after?.rank
   if (!after || !rank) return null
   const before = f.overall.before?.rank ?? null
-  const points = pointsText(after.score)
+  const points = `${pointsText(after.score)} across all games`
   const near = after.nearby ?? []
   const above = near.find((n) => n.rank === rank - 1)
   const below = near.find((n) => n.rank === rank + 1)
-  // Every game's points added up, and named for it: beside the game's own line,
-  // "Overall" read as one more place on this game.
-  const label = scopeLabel('All games', copy)
+  // Every game's points added up: the Standings, as the Boards page names that
+  // table, and the points say what it counts. Beside the game's own line,
+  // "Overall" read as one more place on this game, and "All games" as the list
+  // of games it names everywhere else on the site.
+  const label = scopeLabel('Standings', copy)
   const line = (detail: string, tone: ReportTone, icon: ReportIcon, newTop = false) => ({
     line: { id: 'overall', icon, label, detail, value: `#${rank}`, tone },
     newTop,

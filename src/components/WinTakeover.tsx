@@ -1,4 +1,5 @@
 import { useId, useRef } from 'react'
+import { useDeliberatePress } from '../hooks/useDeliberatePress'
 import type { WinPodium, WinTakeoverData } from '../lib/winTakeover'
 import { CloseIcon, Panel } from './Panel'
 import { PlayerAvatar } from './PlayerAvatar'
@@ -78,6 +79,8 @@ export function WinTakeover({
   const titleId = useId()
   const primaryRef = useRef<HTMLButtonElement & HTMLAnchorElement>(null)
   const carryRef = useRef<HTMLButtonElement>(null)
+  // It opens as a run ends: the run's last presses don't reach its buttons (useDeliberatePress).
+  const allow = useDeliberatePress()
 
   return (
     <Panel
@@ -89,7 +92,14 @@ export function WinTakeover({
       initialFocus={primary ? primaryRef : carryRef}
       backdrop={<ReportConfetti accent="#f5b942" />}
     >
-      <button type="button" className="panel__close win__close" aria-label="Close" onClick={onClose}>
+      <button
+        type="button"
+        className="panel__close win__close"
+        aria-label="Close"
+        onClick={(e) => {
+          if (allow(e)) onClose()
+        }}
+      >
         <CloseIcon />
       </button>
       <div className="win__stage">
@@ -130,15 +140,36 @@ export function WinTakeover({
           ) : null}
           <div className="win__actions">
             {primary?.href ? (
-              <a ref={primaryRef} className="win__btn" href={primary.href}>
+              <a
+                ref={primaryRef}
+                className="win__btn"
+                href={primary.href}
+                onClick={(e) => {
+                  if (!allow(e)) e.preventDefault()
+                }}
+              >
                 {primary.label}
               </a>
             ) : primary ? (
-              <button ref={primaryRef} type="button" className="win__btn" onClick={primary.onClick}>
+              <button
+                ref={primaryRef}
+                type="button"
+                className="win__btn"
+                onClick={(e) => {
+                  if (allow(e)) primary.onClick?.()
+                }}
+              >
                 {primary.label}
               </button>
             ) : null}
-            <button ref={carryRef} type="button" className="win__btn win__btn--ghost" onClick={onClose}>
+            <button
+              ref={carryRef}
+              type="button"
+              className="win__btn win__btn--ghost"
+              onClick={(e) => {
+                if (allow(e)) onClose()
+              }}
+            >
               Carry on
             </button>
           </div>

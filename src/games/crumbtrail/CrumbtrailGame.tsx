@@ -262,7 +262,9 @@ export function CrumbtrailGame() {
       if (e.code === 'Space' || e.code === 'Enter') {
         e.preventDefault()
         const s = stateRef.current
-        if (s.phase === 'menu' || s.phase === 'gameover') {
+        // A run that has ended waits for its report: only the start card starts another, or a press as it ends throws the score away.
+        if (s.phase === 'gameover') return
+        if (s.phase === 'menu') {
           restart()
           return
         }

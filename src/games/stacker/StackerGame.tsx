@@ -162,10 +162,12 @@ export function StackerGame() {
     setTimeout(() => { placedLock.current = false }, 140)
 
     const s = stateRef.current
-    if (s.phase === 'menu' || s.phase === 'gameover') {
+    if (s.phase === 'menu') {
       restart()
       return
     }
+    // A run that has ended waits for its report: only the start card starts another, or a press as it ends throws the score away.
+    if (s.phase === 'gameover') return
     if (performance.now() < startGrace.current) return
     stateRef.current = placeBlock(s)
     setUi(toSnapshot(stateRef.current))

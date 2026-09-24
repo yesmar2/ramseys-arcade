@@ -1,4 +1,13 @@
-import { useEffect, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from 'react'
+import {
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type MouseEvent as ReactMouseEvent,
+  type ReactNode,
+  type RefObject,
+} from 'react'
+import { useDeliberatePress } from '../hooks/useDeliberatePress'
 import { PLAYER_NAME_MAX } from '../lib/leaderboard'
 import type {
   ReportIcon,
@@ -15,7 +24,7 @@ import { PlayerAvatar } from './PlayerAvatar'
 /*
  * The run report: the one card a run ends on. The score under a kicker (the
  * run's own words, or a ribbon for what it won), then what it did in lines
- * (your best, the board, overall, the record books), the race when it took
+ * (your best, the board, the standings, the record books), the race when it took
  * first, whatever the moment asks (sign in, a tag), and Play again, which
  * never moves. It lights up as much as the run earned: quiet, lit in the
  * game's colour, or big in gold with confetti, once.
@@ -57,6 +66,8 @@ export type ReportAction = {
   /** A link out instead of a button. */
   href?: string
   disabled?: boolean
+  /** Waiting on something (the save): says so in its label and ignores presses, but keeps focus. */
+  busy?: boolean
   buttonRef?: RefObject<HTMLButtonElement | null>
 }
 
@@ -98,12 +109,28 @@ export type RunReportBodyProps = {
   /** Bottom left: whose name the run went under. */
   who?: ReactNode
   links?: ReportLink[]
+  /** Top left: out of the game altogether, where the play screen's own back control goes. */
+  leave?: ReportLink | null
 }
 
-function Action({ action, className }: { action: ReportAction; className: string }) {
+function Action({
+  action,
+  className,
+  allow,
+}: {
+  action: ReportAction
+  className: string
+  allow: (e: ReactMouseEvent) => boolean
+}) {
   if (action.href) {
     return (
-      <a className={className} href={action.href}>
+      <a
+        className={className}
+        href={action.href}
+        onClick={(e) => {
+          if (!allow(e)) e.preventDefault()
+        }}
+      >
         <ActionLabel action={action} />
       </a>
     )
@@ -112,9 +139,13 @@ function Action({ action, className }: { action: ReportAction; className: string
     <button
       ref={action.buttonRef}
       type="button"
-      className={className}
+      className={action.busy ? `${className} panel__btn--busy` : className}
       disabled={action.disabled}
-      onClick={action.onClick}
+      aria-disabled={action.busy || undefined}
+      onClick={(e) => {
+        if (action.busy || !allow(e)) return
+        action.onClick?.()
+      }}
     >
       <ActionLabel action={action} />
     </button>
@@ -214,10 +245,34 @@ export function RunReportBody({
   secondary,
   who,
   links,
+  leave,
 }: RunReportBodyProps) {
+  // A run's last presses don't reach the buttons (useDeliberatePress).
+  const allow = useDeliberatePress()
   return (
     <>
       <header className="report__head">
+        {leave ? (
+          <button
+            type="button"
+            className="report__leave"
+            onClick={(e) => {
+              if (allow(e)) leave.onClick()
+            }}
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <path
+                d="M14.5 5.5L8 12l6.5 6.5"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+            {leave.label}
+          </button>
+        ) : null}
         {ribbon ? (
           <span className={`report__ribbon report__ribbon--${ribbon.tone}`}>
             <ReportIconSvg icon={ribbon.icon} />
@@ -237,8 +292,8 @@ export function RunReportBody({
       {children ? <div className="report__block">{children}</div> : null}
       <div className="report__foot">
         <div className="report__actions">
-          <Action action={primary} className="panel__btn" />
-          {secondary ? <Action action={secondary} className="panel__btn panel__btn--ghost" /> : null}
+          <Action action={primary} className="panel__btn" allow={allow} />
+          {secondary ? <Action action={secondary} className="panel__btn panel__btn--ghost" allow={allow} /> : null}
         </div>
         {who || links?.length ? (
           <div className="report__meta">
@@ -246,7 +301,14 @@ export function RunReportBody({
             {links?.length ? (
               <span className="report__links">
                 {links.map((link) => (
-                  <button key={link.label} type="button" className="report__link" onClick={link.onClick}>
+                  <button
+                    key={link.label}
+                    type="button"
+                    className="report__link"
+                    onClick={(e) => {
+                      if (allow(e)) link.onClick()
+                    }}
+                  >
                     {link.label}
                   </button>
                 ))}

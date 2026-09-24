@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import { getGame } from '../data/games'
 import { useAuth } from '../hooks/useAuth'
 import { useImpersonation } from '../hooks/useImpersonation'
+import { useSaveWait } from '../hooks/useSaveWait'
 import { gameBoardHref, gameHref, leaderboardHref, navigate, recordsHref } from '../hooks/useHashRoute'
 import { linkCurrentNameToAccount } from '../lib/auth'
 import {
@@ -13,6 +14,7 @@ import {
   useActiveChallenge,
 } from '../lib/challenges'
 import { useDefaultPeriod } from '../lib/defaultPeriod'
+import { exitFullscreen } from '../lib/fullscreen'
 import { gameAccentStyle } from '../lib/gameAccentStyle'
 import { scoreText, scoreUnit } from '../lib/gameBoard'
 import {
@@ -72,8 +74,9 @@ function afterFailure(err: unknown): { phase: Phase; error: string | null } {
   return { phase: 'error', error: err instanceof Error ? err.message : 'Could not save score' }
 }
 
-/** Leave the play overlay and open an in-app route. */
+/** Leave the play overlay and open an in-app route, out of fullscreen as the play screen's back control does. */
 function leavePlayTo(href: string) {
+  void exitFullscreen()
   navigate(href)
 }
 
@@ -87,10 +90,11 @@ function boardsHref(gameSlug: string, period: LeaderboardPeriod) {
 /**
  * The end of a run: one report, saved and told in the same card.
  *
- * The card opens on the score at once, with Play again ready; the save goes
- * on underneath and the lines fill in when it lands. Signed out, it says what
- * the run would win and offers the sign-in; signed in without a tag, it takes
- * one in slots. A run that used the admin stage jump is not saved at all.
+ * The card opens on the score at once; the save goes on underneath, Play
+ * again waits for it (useSaveWait), and the lines fill in when it lands.
+ * Signed out, it says what the run would win and offers the sign-in; signed
+ * in without a tag, it takes one in slots. A run that used the admin stage
+ * jump is not saved at all. Leave, top left, goes to the game's page.
  */
 export function ScoreSaveCard({ gameSlug, score, title, subtitle, previousBest, onDone }: ScoreSaveProps) {
   const { signedIn, loading: authLoading } = useAuth()
@@ -280,6 +284,9 @@ export function ScoreSaveCard({ gameSlug, score, title, subtitle, previousBest, 
   }
 
   const pending = phase === 'checking' || phase === 'saving'
+  // Play again waits on the save, for a while; a run that isn't being saved doesn't wait.
+  const saveWaitOver = useSaveWait(pending)
+  const holding = pending && canSaveScores && !saveWaitOver
   const data = phase === 'saved' ? report : null
   // Before a save (signed out, no tag yet), a friend's challenge is still said: it's why they played.
   const unsaved = phase === 'needAuth' || phase === 'needName'
@@ -301,7 +308,8 @@ export function ScoreSaveCard({ gameSlug, score, title, subtitle, previousBest, 
 
   // Short of a friend's challenge, the way on is another go at it.
   const playAgain: ReportAction = {
-    label: outcome && !outcome.won ? 'Try again' : 'Play again',
+    label: holding ? 'Saving…' : outcome && !outcome.won ? 'Try again' : 'Play again',
+    busy: holding,
     onClick: onDone,
     buttonRef: playRef,
   }
@@ -371,7 +379,12 @@ export function ScoreSaveCard({ gameSlug, score, title, subtitle, previousBest, 
     block = <p className="panel__error">{error}</p>
     who = <ReportWho text="Not saved" />
   } else if (pending) {
-    who = <ReportWho name={getLastPlayerName() || null} text="Saving…" />
+    who = (
+      <ReportWho
+        name={getLastPlayerName() || null}
+        text={saveWaitOver ? 'Still saving. It finishes even if you play on.' : 'Saving…'}
+      />
+    )
   } else if (savedAs) {
     who = <ReportWho name={savedAs} avatarId={data?.avatarId} text={`Saved as ${savedAs}`} />
   }
@@ -461,6 +474,7 @@ export function ScoreSaveCard({ gameSlug, score, title, subtitle, previousBest, 
         secondary={secondary}
         who={who}
         links={links}
+        leave={{ label: 'Leave', onClick: () => leavePlayTo(gameHref(gameSlug)) }}
       >
         {block}
       </RunReport>

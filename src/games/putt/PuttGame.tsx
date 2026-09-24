@@ -62,7 +62,8 @@ function roundLabel(toPar: number, bests: number) {
  * letting go shoots. A pull that comes back to nothing is a change of mind.
  * Keyboard: left and right turn the aim, hold Space to charge, release to
  * shoot, Escape to think again. A press on the map looks along the hole. A
- * plain tap starts a round from the title or the score card. P or Escape
+ * plain tap starts a round from the title; a finished round waits for its
+ * score card. P or Escape
  * pauses; the pause menu carries the admin tools to skip a hole, which marks
  * the round assisted so its score stays off the boards.
  */
@@ -220,7 +221,8 @@ export function PuttGame() {
     if (saveOpen || pausedRef.current) return
     e.preventDefault()
     const s = stateRef.current
-    if (s.phase === 'menu' || s.phase === 'gameover') {
+    // A run that has ended waits for its report: only the start card starts another, or a press as it ends throws the score away.
+    if (s.phase === 'menu') {
       if (performance.now() < startGrace.current) return
       restart()
       return
@@ -300,7 +302,7 @@ export function PuttGame() {
       if (e.code === 'Space' || e.code === 'Enter') {
         e.preventDefault()
         if (e.repeat) return
-        if (s.phase === 'menu' || s.phase === 'gameover') {
+        if (s.phase === 'menu') {
           if (performance.now() >= startGrace.current) restart()
           return
         }
@@ -353,7 +355,13 @@ export function PuttGame() {
             </PlayReadout>
           </div>
         </GameStage>
-        <div className="putt__overlay">
+        <div
+          className="putt__overlay"
+          // The start card sits beside the field, not in it: Start's press comes here and goes on to start the round.
+          onPointerDown={(e) => {
+            if (stateRef.current.phase === 'menu') onPointerDown(e)
+          }}
+        >
           <GamePauseOverlay
             slug="putt"
             personalBest={inRun ? previousBestRef.current : apiBest}

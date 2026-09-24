@@ -598,7 +598,8 @@ export function AsteroidsGame() {
           e.preventDefault()
           const s = stateRef.current
           if (s.phase === 'waveClear') continueWave()
-          else if (s.phase === 'menu' || s.phase === 'gameover') restart()
+          // A run that has ended waits for its report: only the start card starts another, or a press as it ends throws the score away.
+          else if (s.phase === 'menu') restart()
         }
         return
       }
@@ -652,7 +653,7 @@ export function AsteroidsGame() {
     if (saveOpenRef.current || pausedRef.current) return
     e.preventDefault()
     const s = stateRef.current
-    if (s.phase === 'menu' || s.phase === 'gameover') {
+    if (s.phase === 'menu') {
       if (performance.now() < startGrace.current) return
       restart()
     }

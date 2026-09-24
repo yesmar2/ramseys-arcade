@@ -41,6 +41,7 @@ html[data-theme='dark'] .report {
 /* ---------- the band: kicker, score, how it ended ---------- */
 
 .report__head {
+  position: relative;
   flex: none;
   display: flex;
   flex-direction: column;
@@ -72,6 +73,49 @@ html[data-theme='dark'] .report {
       transparent
     ),
     var(--surface);
+}
+
+/* Out of the game altogether: top left, the way the play screen's own back control points, clear of Play again. */
+.report__leave {
+  position: absolute;
+  top: 0.7rem;
+  left: 0.7rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  min-height: 2.25rem;
+  padding: 0 0.85rem 0 0.45rem;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.report__leave svg {
+  flex: none;
+  width: 1.15rem;
+  height: 1.15rem;
+}
+
+.report__leave:hover,
+.report__leave:focus-visible {
+  background: rgba(var(--ink-rgb), 0.08);
+  color: var(--ink);
+}
+
+/* Play again while the run saves: it says so and waits, still in focus. */
+.panel__btn.panel__btn--busy {
+  opacity: 0.72;
+  cursor: progress;
+}
+
+.panel__btn.panel__btn--busy:hover {
+  filter: none;
+  transform: none;
 }
 
 .report__eyebrow,

@@ -389,7 +389,8 @@ export function SnakeGame() {
       if (e.code === 'Enter') {
         e.preventDefault()
         const s = stateRef.current
-        if (s.phase === 'menu' || s.phase === 'gameover') restart()
+        // A run that has ended waits for its report: only the start card starts another, or a press as it ends throws the score away.
+        if (s.phase === 'menu') restart()
       }
     }
     // Releasing is never gated on pause or the save card: a key let go while

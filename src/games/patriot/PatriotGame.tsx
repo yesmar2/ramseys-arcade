@@ -270,11 +270,12 @@ export function PatriotGame() {
     }, 90)
 
     const s = stateRef.current
-    if (s.phase === 'menu' || s.phase === 'gameover') {
+    if (s.phase === 'menu') {
       restart()
       return
     }
-    if (s.phase === 'waveClear') return
+    // A run that has ended waits for its report: only the start card starts another, or a press as it ends throws the score away.
+    if (s.phase === 'waveClear' || s.phase === 'gameover') return
     stateRef.current = fire(s)
     setUi(toSnapshot(stateRef.current))
   }

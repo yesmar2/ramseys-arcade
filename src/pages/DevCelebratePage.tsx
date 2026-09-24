@@ -275,7 +275,7 @@ function samples(tag: ReactNode, signIn: ReactNode): Sample[] {
     },
     {
       key: 'saving',
-      note: 'Saving: the score at once, the lines on their way, Play again ready.',
+      note: 'Saving: the score at once, the lines on their way, Play again waiting on the save.',
       body: {
         tier: 'quiet',
         ribbon: null,
@@ -285,6 +285,7 @@ function samples(tag: ReactNode, signIn: ReactNode): Sample[] {
         sub: 'Flattened by traffic',
         scoreTone: 'plain',
         lines: null,
+        primary: { label: 'Saving…', busy: true },
         who: <ReportWho name="VERA" text="Saving…" />,
       },
     },
@@ -336,7 +337,12 @@ export function DevCelebratePage() {
             {list.map((s) => (
               <figure key={s.key} className="dev-reports__item">
                 <div className={`panel report report--${s.body.tier} report--static`} style={style}>
-                  <RunReportBody titleId={`dev-${s.key}`} primary={{ label: 'Play again' }} {...s.body} />
+                  <RunReportBody
+                    titleId={`dev-${s.key}`}
+                    primary={{ label: 'Play again' }}
+                    leave={{ label: 'Leave', onClick: () => {} }}
+                    {...s.body}
+                  />
                 </div>
                 <figcaption>
                   <button type="button" className="hero__ghost" onClick={() => setOpen(s.key)}>
@@ -370,6 +376,7 @@ export function DevCelebratePage() {
             accent={accent}
             onEscape={() => setOpen(null)}
             primary={{ label: 'Play again', onClick: () => setOpen(null) }}
+            leave={{ label: 'Leave', onClick: () => setOpen(null) }}
             {...opened.body}
           />
         ) : null}

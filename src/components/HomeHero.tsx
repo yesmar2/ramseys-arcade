@@ -466,10 +466,11 @@ export function HomeHero() {
         </div>
         {art}
         {standing.rank != null ? (
-          // Your place across every game, not on the game above it; the label says so, or a #14 overall reads as a place on this board.
+          // Your place across every game, not on the game above it: the Standings, as the Boards page and the run
+          // report name it. A bare #14 reads as a place on this board, and "All games" as the list of games.
           <div className="home-banner__strip home-banner__standing">
             <span className="home-banner__stat">
-              <span className="home-banner__stat-k">All games</span>
+              <span className="home-banner__stat-k">Standings</span>
               <b className="home-banner__stat-rank">#{standing.rank}</b>
               <span className="home-banner__stat-v">
                 {periodWord} · {pts(standing.score)}

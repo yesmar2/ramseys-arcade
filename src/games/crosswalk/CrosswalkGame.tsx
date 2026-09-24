@@ -328,7 +328,8 @@ export function CrosswalkGame() {
       if (e.code === 'Space' || e.code === 'Enter') {
         e.preventDefault()
         const s = stateRef.current!
-        if (s.phase === 'menu' || s.phase === 'gameover') restart()
+        // A run that has ended waits for its report: only the start card starts another, or a press as it ends throws the score away.
+        if (s.phase === 'menu') restart()
       }
     }
     window.addEventListener('keydown', onKey)
