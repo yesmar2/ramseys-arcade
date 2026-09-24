@@ -16,10 +16,10 @@ import {
   createInitialState,
   FIRST_TUNE,
   MAX_FLIES,
+  pressKey,
   setScale,
   startGame,
   tapAt,
-  tapFly,
   tick,
   toSnapshot,
   type GameState,
@@ -44,7 +44,7 @@ function measureTop(play: HTMLElement): number | undefined {
 }
 
 function inRun(phase: Phase) {
-  return phase === 'intro' || phase === 'watch' || phase === 'input' || phase === 'win' || phase === 'fail'
+  return phase !== 'menu' && phase !== 'gameover'
 }
 
 export function FirefliesGame() {
@@ -165,20 +165,21 @@ export function FirefliesGame() {
         if (stateRef.current.phase === 'menu' && performance.now() >= startGrace.current) restart()
         return
       }
-      // Each firefly keeps its number wherever it flies: 1 to 6, on the digits or the keypad.
+      // 1 to 6, on the digits or the keypad: each firefly's own number, or its place's at the end of a Follow.
       const match = /^(?:Digit|Numpad)([1-6])$/.exec(e.code)
       if (!match) return
-      const id = Number(match[1]) - 1
-      if (id >= MAX_FLIES || stateRef.current.phase !== 'input') return
+      const n = Number(match[1]) - 1
+      const phase = stateRef.current.phase
+      if (n >= MAX_FLIES || (phase !== 'input' && phase !== 'catch' && phase !== 'pick')) return
       e.preventDefault()
-      stateRef.current = tapFly(stateRef.current, id)
+      stateRef.current = pressKey(stateRef.current, n)
       setUi(toSnapshot(stateRef.current))
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [])
 
-  const longest = ui.round > 0 ? FIRST_TUNE + ui.round - 1 : 0
+  const longest = ui.tunes > 0 ? FIRST_TUNE + ui.tunes - 1 : 0
 
   return (
     <section className="fireflies fireflies--fullscreen">
@@ -196,7 +197,8 @@ export function FirefliesGame() {
                 {ui.score}
               </PlayReadoutScore>
               <PlayReadoutStats>
-                <PlayStat label="Tune" value={ui.tune || FIRST_TUNE} />
+                <PlayStat label="Night" value={ui.night} />
+                <PlayStat label="Tune" value={ui.tune} />
               </PlayReadoutStats>
             </PlayReadout>
 
@@ -222,7 +224,7 @@ export function FirefliesGame() {
                     gameSlug="fireflies"
                     score={ui.score}
                     title="The tune slipped"
-                    subtitle={longest > 0 ? `Longest tune: ${longest} notes` : undefined}
+                    subtitle={longest > 0 ? `Night ${ui.night} · longest tune ${longest} notes` : undefined}
                     previousBest={Math.max(previousBestRef.current, apiBest)}
                     onDone={toMenu}
                   />

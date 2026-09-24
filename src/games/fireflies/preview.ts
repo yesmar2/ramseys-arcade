@@ -1,13 +1,15 @@
 import { runPreview, type Sim } from '../previewKit'
-import { createInitialState, flySpot, setScale, startGame, tapFly, tick, type GameState } from './game'
+import { catchFly, createInitialState, flySpot, pickFly, setScale, startGame, tapFly, tick, type GameState } from './game'
 import { renderGame } from './render'
 
 /*
  * Fireflies playing itself, for its cabinet on the home page: the game's own
- * engine and renderer, and a pilot that watches each tune through and taps it
- * back at a person's pace. Short tunes it always has; from seven notes on it
- * is more and more likely to lose its place in the back half of one, stop for
- * a beat, and tap the wrong firefly, which ends the night.
+ * engine and renderer, and a pilot that plays at a person's pace. It taps
+ * tunes back, always the short ones; from seven notes on it is more and more
+ * likely to lose its place in the back half of one, stop for a beat, and tap
+ * the wrong firefly, which ends the run. In a Catch it reaches for each lit
+ * firefly a moment late, so it misses some; in a Follow it mostly keeps its
+ * eye on the gold one.
  */
 
 /** The chance the pilot loses its place somewhere in a tune this long. */
@@ -33,13 +35,31 @@ function doubt() {
   return 0.25 + Math.random() * 0.3
 }
 
+/** How long a person takes to see a firefly light and reach it. */
+function reaction() {
+  return 0.3 + Math.random() * 0.45
+}
+
+/** A ring where the pilot's finger landed on a firefly. */
+function fingerOn(before: GameState, after: GameState, id: number): GameState {
+  const fly = before.flies.find((f) => f.id === id)
+  if (!fly) return after
+  const spot = flySpot(before, fly)
+  return { ...after, taps: [...after.taps, { x: spot.x + (Math.random() - 0.5) * 8, y: spot.y + (Math.random() - 0.5) * 8, t: before.time }] }
+}
+
 export function makeSim(): Sim<GameState> {
-  // The length of the tune being played back, the time to the next tap, and the note that will go wrong.
+  // A tune: its length, the time to the next tap, and the note that will go wrong.
   let length = 0
   let wait = 0
   let slip = -1
+  // A Catch: when the pilot will reach each lit firefly.
+  const reach = new Map<number, number>()
+  // A Follow: when it will tap, and whether it kept track.
+  let pickAt = -1
+  let keptTrack = true
 
-  const drive = (s: GameState, dt: number): GameState => {
+  const playTune = (s: GameState, dt: number): GameState => {
     if (length !== s.seq.length) {
       length = s.seq.length
       slip = pickSlip(length)
@@ -50,29 +70,62 @@ export function makeSim(): Sim<GameState> {
     const right = s.seq[s.inputIdx]!
     const n = s.flies.length
     const id = s.inputIdx === slip ? (right + 1 + Math.floor(Math.random() * (n - 1))) % n : right
-    const fly = s.flies.find((f) => f.id === id)
     const next = tapFly(s, id)
     wait = beat() + (next.inputIdx === slip ? doubt() : 0)
-    if (!fly) return next
-    // The finger that tapped: a ring where it landed.
-    const spot = flySpot(s, fly)
-    return { ...next, taps: [...next.taps, { x: spot.x + (Math.random() - 0.5) * 8, y: spot.y + (Math.random() - 0.5) * 8, t: s.time }] }
+    return fingerOn(s, next, id)
+  }
+
+  const playCatch = (s: GameState): GameState => {
+    for (const f of s.flies) {
+      if (f.open <= 0) {
+        reach.delete(f.id)
+        continue
+      }
+      const at = reach.get(f.id)
+      if (at === undefined) reach.set(f.id, s.time + reaction())
+      else if (s.time >= at) {
+        reach.delete(f.id)
+        return fingerOn(s, catchFly(s, f.id), f.id)
+      }
+    }
+    return s
+  }
+
+  const playPick = (s: GameState): GameState => {
+    if (pickAt < 0) {
+      pickAt = s.time + 0.5 + Math.random() * 0.5
+      keptTrack = Math.random() < 0.85
+    }
+    if (s.time < pickAt) return s
+    pickAt = -1
+    const others = s.flies.filter((f) => f.id !== s.target)
+    const id = keptTrack || !others.length ? s.target : others[Math.floor(Math.random() * others.length)]!.id
+    return fingerOn(s, pickFly(s, id), id)
+  }
+
+  const drive = (s: GameState, dt: number): GameState => {
+    if (s.phase === 'input') return playTune(s, dt)
+    if (s.phase === 'catch') return playCatch(s)
+    if (s.phase === 'pick') return playPick(s)
+    return s
   }
 
   return {
     start: (w, h) => {
       length = 0
+      pickAt = -1
+      reach.clear()
       return startGame(setScale(createInitialState(w, h), w, h, 0))
     },
-    step: (s, dt) => tick(s.phase === 'input' ? drive(s, dt) : s, dt),
+    step: (s, dt) => tick(drive(s, dt), dt),
     // Over from the slip itself: the hold plays it out, the red, the scatter, the lanterns going dark.
     over: (s) => s.phase === 'fail' || s.phase === 'gameover',
     // Nothing is written over the pond for a player; the score and the cards are the page's.
     render: (ctx, s, w, h) => renderGame(ctx, s, w, h, false),
     resize: (s, w, h) => setScale(s, w, h, 0),
-    // The still: a tune playing, a firefly lit over the water, lanterns already burning.
-    poster: { seed: 7, at: 30 },
-    // Long enough for the slip to play out before the next night starts.
+    // The still: a tune playing, a firefly lit over the water, three of the night's lanterns burning.
+    poster: { seed: 7, at: 24 },
+    // Long enough for the slip to play out before the next run starts.
     hold: 2.2,
   }
 }
