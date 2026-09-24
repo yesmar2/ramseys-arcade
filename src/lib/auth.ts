@@ -47,7 +47,7 @@ function resolveApiBase() {
   return fromEnv || 'http://localhost:8787'
 }
 
-const API_BASE = resolveApiBase()
+export const API_BASE = resolveApiBase()
 
 /** Bumps on every session write so in-flight /auth/me calls can be ignored. */
 let authGeneration = 0
