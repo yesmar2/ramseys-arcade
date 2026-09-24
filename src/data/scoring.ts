@@ -62,7 +62,7 @@ const SCORING: Record<string, ScoreRow[]> = {
     { label: 'Quick', value: 'up to +20 for time left on the clock' },
     { label: 'Streak', value: '×1.04 for each plate balanced in a row, up to ×1.4 · ten in a row brings a pin back' },
     { label: 'Pins', value: '3 to start, up to 5 · a plate that falls or isn’t pinned in time costs one' },
-    { label: 'The margin', value: '8.5% of the plate’s size at first, closing to 3%' },
+    { label: 'The margin', value: '7% of the plate’s size at first, closing to 2.8%' },
     { label: 'The clock', value: '7 seconds at first, down to 3' },
   ],
   crosswalk: [

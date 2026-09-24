@@ -14,7 +14,8 @@ import { sfx } from '../../lib/sound'
  * A run goes on until the pins run out: three to start, one lost with every
  * plate that falls or isn't pinned in time, one back for every ten balanced in
  * a row. As it goes the plates get trickier, the clock shorter and the margin
- * for a balance tighter.
+ * for a balance tighter. Every run deals its plates fresh: new shapes, new
+ * spots on the table, the colours in a new order.
  *
  * Everything is measured in the table's own units, so a phone and a desktop
  * get the same plates and margins: the plates live in a unit square, and a
@@ -31,11 +32,17 @@ export type Point = { x: number; y: number }
 
 export type Vec3 = { x: number; y: number; z: number }
 
-export type PlateKind = 'plain' | 'lopsided' | 'notched'
+export type PlateKind = 'plain' | 'lopsided' | 'notched' | 'elbow' | 'weighted'
+
+/** A brass weight fixed to a plate: a squat cylinder `r` in radius, as heavy as `mass` square units of plate; the bigger, the heavier. */
+export type Weight = { x: number; y: number; r: number; mass: number }
 
 export type Plate = {
   kind: PlateKind
   points: Point[]
+  /** Weights fixed on it, pulling its balance point toward them. */
+  weights: Weight[]
+  /** Its balance point, weights and all. */
   centroid: Point
   /** The square root of its area: what a miss is measured in. */
   size: number
@@ -130,6 +137,8 @@ export type GameState = {
   deadCenters: number
   /** Where a keyboard's crosshair is on the table, once one is in use; it stays put from plate to plate. */
   cursor: Point | null
+  /** This run's order of the plates' colours: shuffled, so no two runs look alike. */
+  palette: number[]
   floaters: Floater[]
   sparks: Spark[]
   /** 0–1 gold flash for a dead center, and a shake for a fall. */
@@ -176,9 +185,9 @@ const GRAVITY = 2.6
 /** How long a plate takes to leave the table. */
 export const LEAVE_TIME = 0.26
 
-/** The margin for a balance on the nth plate, in plate sizes: generous at first, tight later. */
+/** The margin for a balance on the nth plate, in plate sizes: a fair eye's worth at first, tight later. */
 export function marginFor(n: number) {
-  return Math.max(0.03, 0.085 - 0.0018 * (n - 1))
+  return Math.max(0.028, 0.07 - 0.0016 * (n - 1))
 }
 
 /** Seconds to set the pin on the nth plate. */
@@ -324,7 +333,7 @@ function reach(plate: Plate, from: Point, dir: Point) {
 /** The site's own colours for the plates, clear of the gold the balance point is marked in and the pin's red. */
 const PLATE_HUES = [204, 183, 153, 262, 289, 236, 334, 23] as const
 
-function convexHull(pts: Point[]): Point[] {
+export function convexHull(pts: Point[]): Point[] {
   const sorted = [...pts].sort((a, b) => a.x - b.x || a.y - b.y)
   const cross = (o: Point, a: Point, b: Point) => (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x)
   const lower: Point[] = []
@@ -347,8 +356,8 @@ function convexHull(pts: Point[]): Point[] {
  * where the eye puts the middle.
  */
 function convexPlate(corners: number, pull: number): Point[] {
-  const rx = rand(0.3, 0.42)
-  const ry = rand(0.22, 0.36)
+  const rx = rand(0.26, 0.44)
+  const ry = rand(0.17, 0.36)
   const rot = rand(0, Math.PI)
   const start = rand(0, Math.PI * 2)
   const pts: Point[] = []
@@ -386,6 +395,30 @@ function notchedPlate(): Point[] {
   return out
 }
 
+/**
+ * An L: two limbs set at a corner, a little off square, fat enough that its
+ * balance point, which sits toward the inside of the bend, is on the plate.
+ */
+function elbowPlate(): Point[] {
+  const w = rand(0.2, 0.26)
+  const a = rand(0.38, 0.54)
+  const b = rand(0.34, 0.5)
+  const shear = rand(-0.3, 0.3)
+  const rot = rand(0, Math.PI * 2)
+  const local: Point[] = [
+    { x: 0, y: 0 },
+    { x: a, y: 0 },
+    { x: a, y: w },
+    { x: w, y: w },
+    { x: w, y: b },
+    { x: 0, y: b },
+  ]
+  return local.map((p) => {
+    const x = p.x + shear * p.y
+    return { x: x * Math.cos(rot) - p.y * Math.sin(rot), y: x * Math.sin(rot) + p.y * Math.cos(rot) }
+  })
+}
+
 function box(pts: Point[]) {
   let x0 = Infinity
   let y0 = Infinity
@@ -400,14 +433,52 @@ function box(pts: Point[]) {
   return { x0, y0, x1, y1 }
 }
 
-/** Scaled to the size asked for (or less, to fit) and set in the middle of the table. */
+/** Scaled to the size asked for (or less, to fit), and set on the table a little off its middle, never twice in the same spot. */
 function placeOnTable(pts: Point[], target: number): Point[] {
   const size = Math.sqrt(polygonArea(pts)) || 1
   const b = box(pts)
   const k = Math.min(target / size, 0.84 / Math.max(1e-6, b.x1 - b.x0), 0.8 / Math.max(1e-6, b.y1 - b.y0))
   const cx = (b.x0 + b.x1) / 2
   const cy = (b.y0 + b.y1) / 2
-  return pts.map((p) => ({ x: 0.5 + (p.x - cx) * k, y: 0.5 + (p.y - cy) * k }))
+  const halfW = ((b.x1 - b.x0) * k) / 2
+  const halfH = ((b.y1 - b.y0) * k) / 2
+  // As far off the middle as there is room for, up to a little.
+  const mx = clamp(0.5 + rand(-0.08, 0.08), 0.08 + halfW, 0.92 - halfW)
+  const my = clamp(0.5 + rand(-0.07, 0.07), 0.1 + halfH, 0.9 - halfH)
+  return pts.map((p) => ({ x: mx + (p.x - cx) * k, y: my + (p.y - cy) * k }))
+}
+
+/** The balance point of a plate with weights on it: the plate's own, pulled toward each weight by how heavy it is. */
+export function balancePoint(points: Point[], weights: Weight[]): Point {
+  const area = polygonArea(points)
+  const c = polygonCentroid(points)
+  let m = area
+  let x = c.x * area
+  let y = c.y * area
+  for (const w of weights) {
+    m += w.mass
+    x += w.x * w.mass
+    y += w.y * w.mass
+  }
+  return { x: x / m, y: y / m }
+}
+
+/** `count` weights somewhere on the plate, well in from its edge and clear of each other, each as heavy as a good share of it: the bigger, the heavier. */
+function weightsFor(points: Point[], count: number): Weight[] | null {
+  const area = polygonArea(points)
+  const b = box(points)
+  const out: Weight[] = []
+  for (let k = 0; k < count; k++) {
+    for (let t = 0; t < 30; t++) {
+      const p = { x: rand(b.x0, b.x1), y: rand(b.y0, b.y1) }
+      const r = rand(0.038, 0.054)
+      if (!onPlate(points, p) || nearestOnEdge(points, p).d < r + 0.015) continue
+      if (out.some((w) => dist(w, p) < w.r + r + 0.04)) continue
+      out.push({ x: p.x, y: p.y, r, mass: area * 0.3 * (r / 0.054) ** 2 })
+      break
+    }
+  }
+  return out.length === count ? out : null
 }
 
 /**
@@ -420,40 +491,61 @@ export function deception(plate: Plate) {
 }
 
 /**
- * The nth plate. The first few are plain and fair. From the sixth, some are
- * lopsided enough that a pin in the middle of the plate's box wouldn't
- * balance, more of them as the run goes; from the twelfth, some have a bite
- * taken out.
+ * What the nth plate is. The first two are plain and fair, to learn on. From
+ * the third, more and more are lopsided, their balance point well away from
+ * the middle of their box; from the fourth some are Ls, whose balance point
+ * sits toward the inside of the bend; from the fifth some carry brass
+ * weights that pull it toward them; from the seventh some have a bite taken
+ * out. By the tenth nearly every plate is one to think about.
  */
-export function makePlate(n: number): Plate {
+function familyFor(n: number): PlateKind {
+  if (n <= 2) return 'plain'
+  const weighted = n >= 5 ? Math.min(0.26, 0.1 + (n - 5) * 0.02) : 0
+  const elbow = n >= 4 ? Math.min(0.18, 0.08 + (n - 4) * 0.012) : 0
+  const notched = n >= 7 ? Math.min(0.2, 0.08 + (n - 7) * 0.015) : 0
+  const r = Math.random()
+  if (r < weighted) return 'weighted'
+  if (r < weighted + elbow) return 'elbow'
+  if (r < weighted + elbow + notched) return 'notched'
+  return Math.random() < clamp((n - 2) / 8, 0, 0.85) ? 'lopsided' : 'plain'
+}
+
+/** The nth plate, in `hue`. */
+export function makePlate(n: number, hue: number = PLATE_HUES[n % PLATE_HUES.length]!): Plate {
   const margin = marginFor(n)
-  const deceive = Math.random() < clamp((n - 5) / 16, 0, 0.8)
-  const notchShare = n < 12 ? 0 : Math.min(0.45, 0.2 + (n - 12) * 0.015)
-  const want = deceive ? margin * 1.15 : 0
+  const kind = familyFor(n)
   let best: Plate | null = null
   let bestScore = -Infinity
-  for (let tries = 0; tries < 40; tries++) {
-    const notched = Math.random() < notchShare
-    const corners = Math.floor(rand(3, n <= 3 ? 6 : 8))
-    const raw = notched ? notchedPlate() : convexPlate(corners, deceive ? rand(0.35, 0.65) : rand(0.05, 0.25))
+  for (let tries = 0; tries < 50; tries++) {
+    const corners = Math.floor(rand(3, n <= 2 ? 6 : 8))
+    const raw =
+      kind === 'notched'
+        ? notchedPlate()
+        : kind === 'elbow'
+          ? elbowPlate()
+          : convexPlate(corners, kind === 'lopsided' ? rand(0.35, 0.65) : rand(0.05, 0.3))
     if (raw.length < 3) continue
-    const points = placeOnTable(raw, rand(0.5, 0.62))
+    const points = placeOnTable(raw, rand(0.46, 0.64))
     const area = polygonArea(points)
-    if (area < 0.13) continue
-    const centroid = polygonCentroid(points)
-    // The pin has to be able to go in at the balance point.
-    if (!onPlate(points, centroid) || nearestOnEdge(points, centroid).d < 0.07) continue
-    const plate: Plate = {
-      kind: notched ? 'notched' : deceive ? 'lopsided' : 'plain',
-      points,
-      centroid,
-      size: Math.sqrt(area),
-      hue: PLATE_HUES[(n * 3 + Math.floor(Math.random() * 3)) % PLATE_HUES.length]!,
+    if (area < 0.11) continue
+    let weights: Weight[] = []
+    if (kind === 'weighted') {
+      const placed = weightsFor(points, n >= 12 && Math.random() < 0.4 ? 2 : 1)
+      if (!placed) continue
+      weights = placed
     }
-    const d = deception(plate)
-    // A plain plate should be plainly fair; a lopsided one should fool a pin in the middle of its box.
-    if (deceive ? d >= want : d <= margin * 0.9) return plate
-    const score = deceive ? d : -d
+    const centroid = balancePoint(points, weights)
+    // The pin has to be able to go in at the balance point, clear of the edge and of any weight.
+    const room = kind === 'elbow' ? 0.05 : 0.07
+    if (!onPlate(points, centroid) || nearestOnEdge(points, centroid).d < room) continue
+    if (weights.some((w) => dist(w, centroid) < w.r + 0.035)) continue
+    const plate: Plate = { kind, points, weights, centroid, size: Math.sqrt(area), hue }
+    // A plain plate should be plainly fair; a lopsided one should fool a pin in the middle of its box; a
+    // weighted one should fool a pin that forgets the weights.
+    const fooled = kind === 'weighted' ? dist(centroid, polygonCentroid(points)) / plate.size : deception(plate)
+    const want = kind === 'plain' ? -margin * 0.9 : kind === 'lopsided' || kind === 'weighted' ? margin * 1.15 : 0
+    const score = kind === 'plain' ? -fooled : fooled
+    if (score >= want) return plate
     if (score > bestScore) {
       bestScore = score
       best = plate
@@ -461,8 +553,17 @@ export function makePlate(n: number): Plate {
   }
   if (best) return best
   const points = placeOnTable(convexPlate(4, 0.1), 0.55)
-  const centroid = polygonCentroid(points)
-  return { kind: 'plain', points, centroid, size: Math.sqrt(polygonArea(points)), hue: PLATE_HUES[0] }
+  return { kind: 'plain', points, weights: [], centroid: polygonCentroid(points), size: Math.sqrt(polygonArea(points)), hue }
+}
+
+/** The plates' colours in a new order. */
+function shuffledHues(): number[] {
+  const out: number[] = [...PLATE_HUES]
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[out[i], out[j]] = [out[j]!, out[i]!]
+  }
+  return out
 }
 
 // ------------------------------------------------------------------- state
@@ -477,7 +578,8 @@ function restingPose(plate: Plate, z: number): Pose {
 
 export function createInitialState(): GameState {
   // Behind the start card: a plate balanced on its pin, giving a little wobble now and then.
-  const plate = makePlate(4)
+  const palette = shuffledHues()
+  const plate = makePlate(4, palette[0])
   const dir = { x: 0.8, y: -0.6 }
   return {
     phase: 'menu',
@@ -511,6 +613,7 @@ export function createInitialState(): GameState {
     balanced: 0,
     deadCenters: 0,
     cursor: null,
+    palette,
     floaters: [],
     sparks: [],
     flash: 0,
@@ -544,7 +647,7 @@ function leavingOf(state: GameState, lift: boolean): Leaving | null {
 
 function bringPlate(state: GameState, n: number) {
   state.plateNo = n
-  state.plate = makePlate(n)
+  state.plate = makePlate(n, state.palette[(n - 1) % state.palette.length])
   state.appear = 0
   state.pose = restingPose(state.plate, hoverZ(state))
   state.clockMax = clockFor(n)
@@ -563,7 +666,7 @@ function bringPlate(state: GameState, n: number) {
   state.phase = 'aiming'
 }
 
-/** For testing: straight on to the nth plate of the run under way. */
+/** Straight on to the nth plate of the run under way: for testing, and for the cabinet's runs. */
 export function jumpToPlate(state: GameState, n: number): GameState {
   if (state.phase === 'menu' || state.phase === 'gameover') return state
   state.leaving = null

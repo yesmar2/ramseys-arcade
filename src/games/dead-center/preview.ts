@@ -1,6 +1,7 @@
 import { runPreview, type Sim } from '../previewKit'
 import {
   createInitialState,
+  jumpToPlate,
   onPlate,
   setPin,
   startGame,
@@ -17,7 +18,11 @@ import { renderGame } from './render'
  * so and pins it where it judges the balance point to be. Its eye is good, not
  * perfect: most plates balance, now and then one is dead on, and now and then
  * one is off far enough to tip over, which is the game's best moment to see.
+ * Its runs start a few plates in, where the plates stop being plain.
  */
+
+/** The plate the pilot's runs start on: the first that can be an L or carry a weight. */
+const FIRST_PLATE = 5
 
 /** How far off the balance point the pilot's pin lands, in plate sizes, for a plate with this margin. */
 function pickOff(margin: number): number {
@@ -59,7 +64,7 @@ export function makeSim(): Sim<GameState> {
   return {
     start: () => {
       plateNo = 0
-      return startGame(createInitialState())
+      return jumpToPlate(startGame(createInitialState()), FIRST_PLATE)
     },
     step: (s, dt) => tick(drive(s, dt), dt),
     over: (s) => s.phase === 'gameover',
@@ -69,8 +74,8 @@ export function makeSim(): Sim<GameState> {
     resize: (s) => s,
     // A cabinet's screen is small: closer in on the plate, leaving the clock under it out of the picture.
     zoom: 1.25,
-    // The still: a teal plate set down dead center on its pin, the gold ring going out.
-    poster: { seed: 7, at: 8.167 },
+    // The still: a teal plate with a weight on it, set down dead center on its pin, the gold ring going out.
+    poster: { seed: 42, at: 5.4 },
     hold: 2,
   }
 }

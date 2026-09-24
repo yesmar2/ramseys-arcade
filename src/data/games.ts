@@ -104,7 +104,7 @@ export const games: Game[] = [
     slug: 'centroid',
     tags: ['puzzle', 'quick'],
     description: 'Balance each plate on a pin. Find its true center, or watch it tip.',
-    how: 'A clear plate hovers over the table. Tap where you think its balance point is and it’s set down on a pin right there. Close enough and it balances, and the closer, the more it pays; off, and it tips toward where its balance point really was and falls, taking the pin with it. You have three pins, and every ten plates balanced in a row brings one back. The plates get trickier, the clock shorter and the margin tighter as you go. On a keyboard, the arrows move a crosshair and Space sets the pin.',
+    how: 'A clear plate hovers over the table. Tap where you think its balance point is and it’s set down on a pin right there. Close enough and it balances, and the closer, the more it pays; off, and it tips toward where its balance point really was and falls, taking the pin with it. You have three pins, and every ten plates balanced in a row brings one back. As you go the plates get trickier: lopsided ones, Ls, ones with a bite taken out, and ones carrying brass weights that pull the balance point their way — the bigger the weight, the harder it pulls. The clock gets shorter and the margin tighter too. On a keyboard, the arrows move a crosshair and Space sets the pin.',
     accent: PALETTE.sky,
     playable: true,
   },

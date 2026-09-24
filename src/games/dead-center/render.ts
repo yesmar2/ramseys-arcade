@@ -4,6 +4,7 @@ import {
   PIN_EVERY,
   PIN_H,
   THICK,
+  convexHull,
   poseWorld,
   type GameState,
   type Outcome,
@@ -268,6 +269,66 @@ function drawPlate(g: Gfx, plate: Plate, solid: Solid) {
   ctx.strokeStyle = hsla(hue, sat, lineL(dark))
   ctx.lineWidth = Math.max(1.2, v.k * 0.0045)
   ctx.stroke()
+  ctx.restore()
+}
+
+/** How tall a weight stands on the plate's face, in table units. */
+const WEIGHT_H = 0.02
+
+/**
+ * The weights fixed to a plate: squat bronze cylinders, darker than the gold
+ * that marks the balance point, each with a bevelled face and a screw in its
+ * middle, standing square to the plate's face as it tips. A bigger one is a
+ * heavier one.
+ */
+function drawWeights(g: Gfx, plate: Plate, pose: Pose, lift = 0, alpha = 1) {
+  if (!plate.weights.length || alpha <= 0.01) return
+  const { ctx, v, dark } = g
+  const tip = Math.sin(pose.tilt)
+  const normal = { x: pose.dir.x * tip, y: pose.dir.y * tip, z: Math.cos(pose.tilt) }
+  const at = (p: Point, h: number) => {
+    const q = onTop(pose, p, lift)
+    return project(v, { x: q.x + normal.x * h, y: q.y + normal.y * h, z: q.z + normal.z * h })
+  }
+  ctx.save()
+  ctx.globalAlpha = alpha
+  ctx.lineJoin = 'round'
+  for (const w of plate.weights) {
+    const ring = (h: number, r = w.r) => {
+      const pts: Point[] = []
+      for (let i = 0; i < 28; i++) {
+        const a = (i / 28) * TAU
+        pts.push(at({ x: w.x + Math.cos(a) * r, y: w.y + Math.sin(a) * r }, h))
+      }
+      return pts
+    }
+    const top = ring(WEIGHT_H)
+    // Its side, in shadowed bronze: everything between its foot and its face.
+    path(ctx, convexHull([...ring(0), ...top]))
+    ctx.fillStyle = hsla(27, 48, dark ? 22 : 30)
+    ctx.fill()
+    // Its face, lit from the top left, with a bevel inside the rim.
+    const c = at({ x: w.x, y: w.y }, WEIGHT_H)
+    const r = w.r * v.k
+    const face = ctx.createRadialGradient(c.x - r * 0.35, c.y - r * 0.4, r * 0.1, c.x, c.y, r)
+    face.addColorStop(0, hsla(38, 72, dark ? 72 : 76))
+    face.addColorStop(0.55, hsla(33, 60, dark ? 50 : 54))
+    face.addColorStop(1, hsla(28, 55, dark ? 36 : 40))
+    path(ctx, top)
+    ctx.fillStyle = face
+    ctx.fill()
+    ctx.strokeStyle = hsla(28, 55, dark ? 60 : 26)
+    ctx.lineWidth = Math.max(0.8, v.k * 0.003)
+    ctx.stroke()
+    path(ctx, ring(WEIGHT_H, w.r * 0.7))
+    ctx.strokeStyle = hsla(34, 60, dark ? 30 : 36, 0.55)
+    ctx.lineWidth = Math.max(0.6, v.k * 0.0022)
+    ctx.stroke()
+    ctx.fillStyle = hsla(28, 40, dark ? 20 : 24, 0.85)
+    ctx.beginPath()
+    ctx.arc(c.x, c.y, Math.max(1, v.k * 0.006), 0, TAU)
+    ctx.fill()
+  }
   ctx.restore()
 }
 
@@ -608,13 +669,15 @@ export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, w: n
 
   if (leaving && leavingSolid) {
     drawPlate(g, leaving.plate, leavingSolid)
+    const lift = leaving.lift ? clamp01(leaving.t / LEAVE_TIME) ** 2 * 0.35 : 0
+    drawWeights(g, leaving.plate, leaving.pose, lift, leavingSolid.alpha)
     if (leaving.outcome) {
-      const lift = leaving.lift ? clamp01(leaving.t / LEAVE_TIME) ** 2 * 0.35 : 0
       drawMarks(g, leaving.plate, leaving.pose, leaving.outcome, leaving.margin, 1, lift, leavingSolid.alpha)
     }
   }
   if (plate && solid) {
     drawPlate(g, plate, solid)
+    drawWeights(g, plate, s.pose, 0, solid.alpha)
     if (o) drawMarks(g, plate, s.pose, o, s.margin, revealOf(s))
   }
 
