@@ -31,7 +31,7 @@ export type NotificationMeta = {
   endsAt?: number
   eventId?: string
   matchId?: string
-  trophy?: { period: 'weekly' | 'monthly' | 'event'; rank: number }
+  trophy?: { period: 'weekly' | 'monthly' | 'event' | 'hunt'; rank: number }
   /** Flair the trophy unlocked. */
   ring?: string
   pin?: string

@@ -3,6 +3,7 @@ import {
   HUNT_BUGS,
   HUNT_CAUGHT_EVENT,
   HUNT_OPEN_EVENT,
+  SET_SIZE,
   capitalName,
   openBugHunt,
   huntDay,
@@ -21,8 +22,9 @@ import {
 import { ordinal } from '../lib/profileMath'
 import { getSessionToken } from '../lib/auth'
 import { THEME_EVENT } from '../lib/theme'
+import type { AvatarWear } from './AvatarStudio'
 import { Panel, PanelHead } from './Panel'
-import { openSiteMenu } from './siteNav'
+import { HuntSetJar } from './TrophyArt'
 import '../styles/bughunt.css'
 
 /*
@@ -112,7 +114,8 @@ function useHunt(): { pick: HuntPick; stats: HuntStats; server: HuntServer | nul
   }, [])
   const day = huntDay(now)
   const server = snap.server.day === day ? snap.server : null
-  return { pick: huntPick(day), stats: huntStats(day, snap.log), server, msLeft: msUntilNextBug(now) }
+  // The set is the month's, so the API's word on it holds past midnight until it next says.
+  return { pick: huntPick(day), stats: huntStats(day, snap.log, snap.server), server, msLeft: msUntilNextBug(now) }
 }
 
 /** How many have caught today's bug, in a line: "Nobody has caught Buzz yet today." */
@@ -191,37 +194,69 @@ export function HiddenBug({
 
 /* ---------------------------------------------------------- the bugs --- */
 
-function Collection({ stats, today }: { stats: HuntStats; today?: string }) {
+/**
+ * The month's set: a bug caught in colour, one still loose as its outline.
+ * Signed in, a bug this device caught that the API doesn't count, because it
+ * was caught signed out, keeps its colour in a dashed ring.
+ */
+function Collection({ stats, today, note = true }: { stats: HuntStats; today?: string; note?: boolean }) {
+  const { set } = stats
+  const titleId = useId()
+  const signedIn = Boolean(getSessionToken())
+  const uncounted = HUNT_BUGS.some((b) => set.caught.has(b.id) && !set.have.has(b.id))
   return (
-    <ul className="hunt-grid" aria-label={`${stats.caught.size} of ${HUNT_BUGS.length} bugs caught`}>
-      {HUNT_BUGS.map((bug) => {
-        const got = stats.caught.has(bug.id)
-        return (
-          <li key={bug.id} className={`hunt-grid__cell${got ? ' hunt-grid__cell--got' : ''}${bug.id === today ? ' hunt-grid__cell--today' : ''}`}>
-            <BugPortrait bugId={bug.id} size={52} silhouette={!got} className="hunt-grid__art" />
-            <span className="hunt-grid__name">{got ? capitalName(bug) : '?'}</span>
-          </li>
-        )
-      })}
-    </ul>
+    <section className="hunt-set" aria-labelledby={titleId}>
+      <div className="hunt-set__head">
+        <h3 className="hunt-set__title" id={titleId}>
+          {set.month}’s set
+        </h3>
+        <span className="hunt-set__count">
+          {set.have.size} of {SET_SIZE}
+        </span>
+      </div>
+      <p className="hunt-set__when">
+        {set.early ? `The hunt’s first set, from Sept 24 to ${set.ends}.` : `Until ${set.ends}. A new set starts on the 1st.`}
+      </p>
+      <ul className="hunt-grid">
+        {HUNT_BUGS.map((bug) => {
+          const got = set.have.has(bug.id)
+          const kept = !got && set.caught.has(bug.id)
+          const name = capitalName(bug)
+          const cls = `hunt-grid__cell${got ? ' hunt-grid__cell--got' : ''}${kept ? ' hunt-grid__cell--kept' : ''}${bug.id === today ? ' hunt-grid__cell--today' : ''}`
+          return (
+            <li key={bug.id} className={cls} title={kept ? `${name} was caught signed out, so it doesn’t count toward the set` : undefined}>
+              <BugPortrait bugId={bug.id} size={52} silhouette={!got && !kept} className="hunt-grid__art" />
+              <span className="hunt-grid__name">{got || kept ? name : '?'}</span>
+              <span className="visually-hidden">{got ? ', caught' : kept ? ', caught signed out, doesn’t count' : 'Not caught yet'}</span>
+            </li>
+          )
+        })}
+      </ul>
+      {!note ? null : !signedIn ? (
+        <p className="hunt-set__note">Sign in to put a full set on your shelf: only finds made signed in count toward it.</p>
+      ) : uncounted ? (
+        <p className="hunt-set__note">
+          Bugs in a dashed ring were caught signed out, so they don’t count. Every bug comes round two or three times
+          a month.
+        </p>
+      ) : null}
+    </section>
   )
 }
 
 function Stats({ stats }: { stats: HuntStats }) {
   const streak = streakWords(stats)
+  if (!streak && stats.total === 0) return null
   return (
     <p className="hunt-stats">
       {streak ? <span>{streak}</span> : null}
-      <span>
-        {stats.caught.size} of {HUNT_BUGS.length} caught
-      </span>
-      {stats.total > 0 ? <span>{stats.total === 1 ? '1 find' : `${stats.total} finds`}</span> : null}
+      {stats.total > 0 ? <span>{stats.total === 1 ? '1 find all time' : `${stats.total} finds all time`}</span> : null}
     </p>
   )
 }
 
-/** The hint: the page, and a way there. */
-function Hint({ pick, onGo }: { pick: HuntPick; onGo: () => void }) {
+/** The hint: the page it's on. Finding the way there is part of the hunt. */
+function Hint({ pick }: { pick: HuntPick }) {
   const [shown, setShown] = useState(false)
   if (!shown) {
     return (
@@ -230,28 +265,7 @@ function Hint({ pick, onGo }: { pick: HuntPick; onGo: () => void }) {
       </button>
     )
   }
-  const href = pick.spot.href()
-  return (
-    <span className="hunt-hint">
-      It’s somewhere in {pick.spot.page}.{' '}
-      {href ? (
-        <a href={href} onClick={onGo}>
-          Go look
-        </a>
-      ) : (
-        <button
-          type="button"
-          className="hunt-hint__open"
-          onClick={() => {
-            onGo()
-            openSiteMenu()
-          }}
-        >
-          Open the menu
-        </button>
-      )}
-    </span>
-  )
+  return <span className="hunt-hint">It’s somewhere {pick.spot.page}.</span>
 }
 
 /** The front page's line on today's hunt: who's loose, the clue, and a hint. */
@@ -282,9 +296,12 @@ export function BugHuntStrip() {
         )}
       </div>
       <div className="hunt-strip__side">
-        {stats.foundToday ? null : <Hint pick={pick} onGo={() => undefined} />}
+        {stats.foundToday ? null : <Hint pick={pick} />}
         <button type="button" className="hunt-btn" onClick={openBugHunt}>
-          Your bugs <span className="hunt-btn__count">{stats.caught.size}/{HUNT_BUGS.length}</span>
+          Your bugs{' '}
+          <span className="hunt-btn__count">
+            {stats.set.have.size}/{SET_SIZE}
+          </span>
         </button>
       </div>
     </section>
@@ -314,7 +331,7 @@ export function BugHuntMenuRow({ onOpen }: { onOpen: () => void }) {
         <span className="site-menu__row-label">Bug hunt</span>
         <span className="site-menu__row-sub">
           {stats.foundToday
-            ? `Caught ${pick.bug.name} today · ${stats.caught.size} of ${HUNT_BUGS.length}`
+            ? `Caught ${pick.bug.name} today · ${stats.set.have.size} of ${SET_SIZE} for ${stats.set.month}`
             : `${capitalName(pick.bug)} is loose somewhere on the site`}
         </span>
       </span>
@@ -357,7 +374,7 @@ function HuntPanel({ onClose }: { onClose: () => void }) {
                 <p className="hunt-wanted__clue">“{pick.spot.clue}”</p>
                 {count ? <p className="hunt-wanted__small">{count}</p> : null}
                 <div className="hunt-wanted__acts">
-                  <Hint pick={pick} onGo={onClose} />
+                  <Hint pick={pick} />
                 </div>
               </>
             )}
@@ -367,7 +384,9 @@ function HuntPanel({ onClose }: { onClose: () => void }) {
         <Collection stats={stats} today={pick.bug.id} />
         <p className="hunt-panel__foot">
           A new bug gets loose every day at midnight Eastern, somewhere else.{' '}
-          {getSessionToken() ? 'Your finds are kept with your account.' : 'Sign in and your finds follow you to any device.'}
+          {getSessionToken()
+            ? 'Catch all twelve in a month and the set goes on your shelf.'
+            : 'Sign in and your finds follow you to any device.'}
         </p>
       </div>
       <div className="panel__actions">
@@ -379,13 +398,50 @@ function HuntPanel({ onClose }: { onClose: () => void }) {
   )
 }
 
-function FoundPanel({ onClose }: { onClose: () => void }) {
+/** The find that completed a set: the trophy, and the pin with the first. */
+function FullSet({ stats, server, onClose, onWear }: { stats: HuntStats; server: HuntServer } & FoundProps) {
+  const done = server.completed
+  if (!done) return null
+  const month = stats.set.month
+  return (
+    <div className="hunt-full">
+      <span className="hunt-full__jar trophy-tone--hunt" aria-hidden="true">
+        <HuntSetJar size="md" />
+      </span>
+      <div className="hunt-full__text">
+        <p className="hunt-full__line">
+          That’s all twelve!{' '}
+          {done.shelved ? `${month}’s full set is on your shelf.` : `Pick a tag and ${month}’s full set goes on your shelf.`}
+        </p>
+        {done.pin ? <p className="hunt-full__small">It’s your first, so it comes with a pin: the bug net.</p> : null}
+        {done.pin && onWear ? (
+          <button
+            type="button"
+            className="hunt-btn hunt-full__wear"
+            onClick={() => {
+              onClose()
+              onWear({ pin: 'bugnet' })
+            }}
+          >
+            Wear the pin
+          </button>
+        ) : null}
+      </div>
+    </div>
+  )
+}
+
+type FoundProps = { onClose: () => void; onWear?: (wear: AvatarWear) => void }
+
+function FoundPanel({ onClose, onWear }: FoundProps) {
   const { pick, stats, server, msLeft } = useHunt()
   const signedIn = Boolean(getSessionToken())
   const titleId = useId()
   const name = capitalName(pick.bug)
-  const first = stats.total === 1
-  const all = stats.caught.size === HUNT_BUGS.length
+  // Signed in, the API says which find completed a set; signed out, this device does.
+  const done = signedIn && server?.completed?.day === pick.day && server.completed.key === stats.set.key ? server : null
+  const doneHere = !signedIn && stats.completedHere
+  const first = stats.total === 1 && !done && !doneHere
   return (
     <Panel onClose={onClose} labelledBy={titleId} className="hunt-panel hunt-panel--found">
       <PanelHead titleId={titleId} kicker="Daily bug hunt" title={`You found ${pick.bug.name}!`} onClose={onClose} />
@@ -413,10 +469,24 @@ function FoundPanel({ onClose }: { onClose: () => void }) {
             Sign in and your finds count too, and follow you to any device.
           </p>
         ) : null}
-        {first ? <p className="hunt-panel__note">Your first bug. There are twelve to catch.</p> : null}
-        {all ? <p className="hunt-panel__note">All twelve caught. The hunt goes on: they keep getting loose.</p> : null}
+        {done ? <FullSet stats={stats} server={done} onClose={onClose} onWear={onWear} /> : null}
+        {doneHere ? (
+          <div className="hunt-full">
+            <span className="hunt-full__jar trophy-tone--hunt" aria-hidden="true">
+              <HuntSetJar size="md" />
+            </span>
+            <div className="hunt-full__text">
+              <p className="hunt-full__line">That’s all twelve of {stats.set.month}’s bugs on this device!</p>
+              <p className="hunt-full__small">
+                A set goes on your shelf when it’s caught signed in. Sign in, and your next full set is a trophy.
+              </p>
+            </div>
+          </div>
+        ) : null}
+        {first ? <p className="hunt-panel__note">Your first bug. There are twelve in {stats.set.month}’s set.</p> : null}
         <Stats stats={stats} />
-        <Collection stats={stats} today={pick.bug.id} />
+        {/* A set just caught in full on this device has said its piece about signing in. */}
+        <Collection stats={stats} today={pick.bug.id} note={!doneHere} />
         <p className="hunt-panel__foot">The next bug gets loose in {nextBugWords(msLeft)}, somewhere else.</p>
       </div>
       <div className="panel__actions">
@@ -429,7 +499,7 @@ function FoundPanel({ onClose }: { onClose: () => void }) {
 }
 
 /** Mounted once, with the header: shows a find, and opens the hunt when asked. */
-export function BugHuntHost() {
+export function BugHuntHost({ onWear }: { onWear?: (wear: AvatarWear) => void }) {
   const [open, setOpen] = useState<'hunt' | 'found' | null>(null)
   useEffect(() => {
     const onOpen = () => setOpen('hunt')
@@ -443,5 +513,5 @@ export function BugHuntHost() {
   }, [])
   if (!open) return null
   const close = () => setOpen(null)
-  return open === 'found' ? <FoundPanel onClose={close} /> : <HuntPanel onClose={close} />
+  return open === 'found' ? <FoundPanel onClose={close} onWear={onWear} /> : <HuntPanel onClose={close} />
 }

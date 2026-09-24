@@ -60,6 +60,8 @@ export function flairNote(kind: 'ring' | 'pin', id: AvatarRing | AvatarPin, stat
       return `Your best: ${best ?? 0} ${best === 1 ? 'day' : 'days'}`
     case 'crown':
       return best != null ? `Your best month: ${ordinal(best)}` : 'No month in the top ten yet'
+    case 'bugnet':
+      return 'No full month of the bug hunt yet'
     default:
       return best != null ? `You're ${ordinal(best)} all time` : 'Not played yet'
   }

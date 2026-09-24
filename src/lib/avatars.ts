@@ -109,7 +109,7 @@ export const AVATAR_GAME_PINS = [
 ] as const
 
 /** Worn on the badge's edge, for what you've done. */
-export const AVATAR_PINS = ['welcome', 'games', 'streak', 'crown', ...AVATAR_GAME_PINS] as const
+export const AVATAR_PINS = ['welcome', 'games', 'streak', 'crown', 'bugnet', ...AVATAR_GAME_PINS] as const
 export type AvatarPin = (typeof AVATAR_PINS)[number]
 
 export function isGamePin(pin: string): boolean {
@@ -126,6 +126,8 @@ export function pinInfo(pin: AvatarPin): { label: string; rule: string } {
       return { label: 'Streak', rule: 'Play seven days in a row' }
     case 'crown':
       return { label: 'Crown', rule: 'Win a month in the arcade' }
+    case 'bugnet':
+      return { label: 'Bug net', rule: 'Catch all twelve bugs of a month’s bug hunt' }
     default: {
       const name = getGame(pin)?.name ?? pin
       return { label: name, rule: `Reach the all-time top ten on ${name}` }

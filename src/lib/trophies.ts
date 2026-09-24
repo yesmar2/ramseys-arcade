@@ -1,4 +1,5 @@
-export type TrophyPeriod = 'weekly' | 'monthly' | 'event'
+/** `hunt`: a month of the bug hunt caught in full (periodKey YYYYMM). */
+export type TrophyPeriod = 'weekly' | 'monthly' | 'event' | 'hunt'
 
 export type TrophySummary = {
   total: number
@@ -6,20 +7,23 @@ export type TrophySummary = {
   topTen: number
   /** Events won, which are podium finishes but not board placings. */
   events: number
+  /** Full months of the bug hunt. Absent from an API that predates them. */
+  sets?: number
 }
 
 export type TrophyCount = Pick<TrophySummary, 'total' | 'podium'>
 
 export type MetalTone = 'gold' | 'silver' | 'bronze'
 
-/** The colour a trophy is drawn in: its metal on a podium, else teal for a week's top ten and violet for a month's. */
-export type TrophyTone = MetalTone | 'week' | 'month'
+/** The colour a trophy is drawn in: its metal on a podium, else teal for a week's top ten, violet for a month's, and leaf green for a bug hunt set. */
+export type TrophyTone = MetalTone | 'week' | 'month' | 'hunt'
 
 export function metalTone(rank: number): MetalTone {
   return rank === 2 ? 'silver' : rank === 3 ? 'bronze' : 'gold'
 }
 
 export function trophyTone(period: TrophyPeriod, rank: number): TrophyTone {
+  if (period === 'hunt') return 'hunt'
   if (period === 'event' || rank <= 3) return metalTone(rank)
   return period === 'monthly' ? 'month' : 'week'
 }
@@ -87,6 +91,7 @@ export function formatTrophyPeriod(period: TrophyPeriod, periodKey: number) {
 
 export function trophyRankLabel(rank: number, period: TrophyPeriod = 'weekly') {
   if (period === 'event') return 'Won'
+  if (period === 'hunt') return 'Full set'
   if (rank === 1) return '#1 global'
   if (rank <= 3) return `#${rank} global`
   return `Top 10 · #${rank}`
@@ -96,12 +101,14 @@ export function summarizeTrophies(trophies: TrophyAward[]) {
   let podium = 0
   let topTen = 0
   let events = 0
+  let sets = 0
   for (const trophy of trophies) {
     if (trophy.period === 'event') events++
+    else if (trophy.period === 'hunt') sets++
     else if (trophy.rank <= 3) podium++
     else topTen++
   }
-  return { total: trophies.length, podium, topTen, events }
+  return { total: trophies.length, podium, topTen, events, sets }
 }
 
 export function sortTrophies(trophies: TrophyAward[]) {

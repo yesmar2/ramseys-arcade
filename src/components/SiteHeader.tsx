@@ -342,7 +342,7 @@ export function SiteHeader() {
       ) : null}
 
       {/* Today's bug hunt: a find, and the hunt when the strip or the menu asks for it. */}
-      <BugHuntHost />
+      <BugHuntHost onWear={wear} />
 
       <SiteTabs
         menuId={menuId}

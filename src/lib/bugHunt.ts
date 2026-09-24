@@ -1,18 +1,20 @@
-import {
-  aboutHref,
-  gameBoardHref,
-  gameHref,
-  homeHref,
-  leaderboardHref,
-  recordsHref,
-  recordsIndexHref,
-  termsHref,
-  tournamentsHref,
-} from '../hooks/useHashRoute'
 import { AUTH_EVENT, getSessionToken } from './auth'
-import { groupsIndexHref } from './groups'
+import {
+  HUNT_BUGS,
+  SET_SIZE,
+  bugForDay,
+  dayNumber,
+  setEnds,
+  setKeyFor,
+  setMonth,
+  setStartsEarly,
+  shuffled,
+  type HuntBug,
+} from './bugHuntPick'
 import { api } from './leaderboard'
-import { hashString, mulberry32 } from './seededRandom'
+import { hashString } from './seededRandom'
+
+export { HUNT_BUGS, SET_SIZE, setMonth, type HuntBug }
 
 /*
  * The daily bug hunt. Every day one of Find the Bug's wanted bugs gets loose
@@ -21,10 +23,14 @@ import { hashString, mulberry32 } from './seededRandom'
  * Everyone gets the same bug in the same spot, picked from the date on the
  * boards' clock, and a new one gets loose at midnight there. A clue says
  * roughly where; a hint names the page. Catching one says what that corner of
- * the site is for, and fills in a collection of all twelve.
+ * the site is for, and fills in the month's set of all twelve: the set empties
+ * on the 1st, and one caught in full puts a trophy on the player's shelf. The
+ * hint names the page but gives no link: finding the way there is the point.
  *
  * Finds are kept on the device, and signed in, by the API too, so they
- * follow the player and today can say how many caught its bug.
+ * follow the player and today can say how many caught its bug. Only the API
+ * decides what counts toward a set: a find it heard about on its own day, for
+ * that day's bug.
  */
 
 const TZ = 'America/New_York'
@@ -39,24 +45,6 @@ export function openBugHunt() {
   window.dispatchEvent(new Event(HUNT_OPEN_EVENT))
 }
 
-export type HuntBug = { id: string; name: string }
-
-/** The wanted bugs, by the ids findbug/wanted.ts draws them with. */
-export const HUNT_BUGS: readonly HuntBug[] = [
-  { id: 'bug', name: 'the Bug' },
-  { id: 'skip', name: 'Skip' },
-  { id: 'dotty', name: 'Dotty' },
-  { id: 'pickle', name: 'Pickle' },
-  { id: 'tiger', name: 'Tiger' },
-  { id: 'rosie', name: 'Rosie' },
-  { id: 'ziggy', name: 'Ziggy' },
-  { id: 'honey', name: 'Honey' },
-  { id: 'buzz', name: 'Buzz' },
-  { id: 'pip', name: 'Pip' },
-  { id: 'hopper', name: 'Hopper' },
-  { id: 'flutter', name: 'Flutter' },
-]
-
 /** A name at the start of a sentence: "The Bug", "Rosie". */
 export function capitalName(bug: HuntBug): string {
   return bug.name.charAt(0).toUpperCase() + bug.name.slice(1)
@@ -69,9 +57,8 @@ export type HuntSpot = {
   id: string
   /** The riddle. */
   clue: string
-  /** The hint: the page it's on, and a way there. The menu is opened rather than gone to. */
+  /** The hint: the page it's on, to end "It's somewhere…": "on the Boards". */
   page: string
-  href: () => string | null
   /** Once it's found: where it was, and what that corner of the site is for. */
   where: string
   lesson: string
@@ -84,160 +71,140 @@ export const HUNT_SPOTS: readonly HuntSpot[] = [
   {
     id: 'home-onnow',
     clue: 'Where the front page says what’s on today.',
-    page: 'the home page',
-    href: () => homeHref(),
+    page: 'on the home page',
     where: 'on the home page, perched on the On now heading',
     lesson: 'On now is today’s daily, this week’s weekly and last week’s winners. Join one and your runs count toward it.',
   },
   {
     id: 'home-games',
     clue: 'On the wall where every game stands in a row.',
-    page: 'the home page',
-    href: () => homeHref(),
+    page: 'on the home page',
     where: 'on the home page, up on the wall of games',
     lesson: 'The wall has every game in the arcade. The chips above it sort them into arcade, puzzle, quick play and sport.',
   },
   {
     id: 'home-records',
     clue: 'Peeking over the arcade’s best runs, on the front page.',
-    page: 'the home page',
-    href: () => homeHref(),
+    page: 'on the home page',
     where: 'on the home page, peeking over the house records',
     lesson: 'House records are the best run ever on each game. Beat one and your tag goes up there.',
   },
   {
     id: 'home-groups',
     clue: 'Near the bottom of the front page, where it asks you to bring your people.',
-    page: 'the home page',
-    href: () => homeHref(),
+    page: 'on the home page',
     where: 'at the bottom of the home page, by groups',
     lesson: 'A group is a board of just the people you play with: family, friends, the office.',
   },
   {
     id: 'footer',
-    clue: 'At the very bottom of a page, hanging off the line about games that load fast.',
-    page: 'the bottom of any page',
-    href: () => homeHref(),
+    clue: 'Where every page ends, hanging on by a thread.',
+    page: 'at the bottom of any page',
     where: 'at the bottom of the page, hanging off the footer',
     lesson: 'The footer is a map of the whole site: games, boards, events, and the small print.',
   },
   {
     id: 'menu',
-    clue: 'In your menu: top right, or the You tab on a phone.',
-    page: 'your menu',
-    href: () => null,
+    clue: 'Where your card, your friends and your sounds are kept.',
+    page: 'in your menu, top right (the You tab on a phone)',
     where: 'in your menu',
     lesson: 'Your menu has your player card, stats, friends and groups, and the theme, the sounds and the music.',
   },
   {
     id: 'boards',
     clue: 'Where the whole arcade is ranked, week by week.',
-    page: 'the Boards',
-    href: () => leaderboardHref(),
+    page: 'on the Boards',
     where: 'on the Boards',
     lesson: 'The boards rank everyone by points across every game. Switch to the month or all time at the top.',
   },
   {
     id: 'board-snake',
     clue: 'On the board for the game with the longest tail.',
-    page: 'Snake’s board',
-    href: () => gameBoardHref('snake'),
+    page: 'on Snake’s board',
     where: 'on Snake’s board',
     lesson: 'Every game has a board of its own: each player’s best run this week, this month and all time.',
   },
   {
     id: 'records',
     clue: 'Where the fastest and the most get written down.',
-    page: 'the Record books',
-    href: () => recordsIndexHref(),
+    page: 'in the Record books',
     where: 'in the Record books',
     lesson: 'Record books keep feats inside a game, like the fastest wave cleared or the longest chain.',
   },
   {
     id: 'book-asteroids',
     clue: 'In the book where every wave cleared is timed.',
-    page: 'Asteroids’ record book',
-    href: () => recordsHref('asteroids'),
+    page: 'in Asteroids’ record book',
     where: 'in Asteroids’ record book',
     lesson: 'Asteroids times every wave you clear, and each wave has a record of its own.',
   },
   {
     id: 'events',
     clue: 'Where friends race each other for a trophy.',
-    page: 'Events',
-    href: () => tournamentsHref(),
+    page: 'on the Events page',
     where: 'on the Events page',
     lesson: 'Events are tournaments: a daily, a weekly, and ones you make for friends. The winner’s cup stays on their shelf.',
   },
   {
     id: 'groups',
     clue: 'Where you’d make a board for just your crew.',
-    page: 'Groups',
-    href: () => groupsIndexHref(),
+    page: 'on the Groups page',
     where: 'on the Groups page',
     lesson: 'Make a group, share its link, and everyone in it gets boards of their own.',
   },
   {
     id: 'about',
     clue: 'Where the arcade says what it is, and what it isn’t.',
-    page: 'About',
-    href: () => aboutHref(),
+    page: 'on the About page',
     where: 'on the About page',
     lesson: 'Original games, no ads, no install: About is the whole idea in one page.',
   },
   {
     id: 'terms',
     clue: 'In the small print, next to the rule about betting.',
-    page: 'the Terms',
-    href: () => termsHref(),
+    page: 'in the Terms',
     where: 'in the Terms, by the rule about gambling',
     lesson: 'Nobody reads the small print, except you just now. Scores here are for glory only: no wagers, no prizes.',
   },
   {
     id: 'hub-findbug',
     clue: 'Back home, on its own game’s page.',
-    page: 'Find the Bug’s page',
-    href: () => gameHref('findbug'),
+    page: 'on Find the Bug’s page',
     where: 'back home, on Find the Bug’s page',
     lesson: 'Find the Bug is where these bugs live: spot the wanted one in a crowd, against the clock.',
   },
   {
     id: 'hub-fireflies',
     clue: 'On the page of the game where lanterns light the night.',
-    page: 'Fireflies’ page',
-    href: () => gameHref('fireflies'),
+    page: 'on Fireflies’ page',
     where: 'on Fireflies’ page',
     lesson: HUB_LESSON,
   },
   {
     id: 'hub-crosswalk',
     clue: 'On the page of the game where you hop across the road, forever.',
-    page: 'Crosswalk’s page',
-    href: () => gameHref('crosswalk'),
+    page: 'on Crosswalk’s page',
     where: 'on Crosswalk’s page',
     lesson: HUB_LESSON,
   },
   {
     id: 'hub-centroid',
     clue: 'On the page of the game where plates balance on a pin.',
-    page: 'Centroid’s page',
-    href: () => gameHref('centroid'),
+    page: 'on Centroid’s page',
     where: 'on Centroid’s page',
     lesson: HUB_LESSON,
   },
   {
     id: 'hub-frenzy',
     clue: 'On the page of the game where every fish has a number.',
-    page: 'Frenzy’s page',
-    href: () => gameHref('frenzy'),
+    page: 'on Frenzy’s page',
     where: 'on Frenzy’s page',
     lesson: HUB_LESSON,
   },
   {
     id: 'howto-putt',
     clue: 'In the instructions for the game with a hole at the end.',
-    page: 'Putt’s page',
-    href: () => gameHref('putt'),
+    page: 'on Putt’s page',
     where: 'in Putt’s how to play',
     lesson: 'Every game’s page ends with how to play: the goal, the controls, what scores, and what ends a run.',
   },
@@ -259,26 +226,10 @@ export function huntDay(now = Date.now()): string {
   return dayFormat.format(new Date(now))
 }
 
-/** Days since the hunt's calendar starts, so each day has a number. */
-function dayNumber(day: string): number {
-  const [y, m, d] = day.split('-').map(Number)
-  return Math.round((Date.UTC(y!, m! - 1, d!) - Date.UTC(2026, 0, 1)) / 86_400_000)
-}
-
 /** Until midnight on the boards' clock, when the next bug gets loose. */
 export function msUntilNextBug(now = Date.now()): number {
   const [h, m, s] = clockFormat.format(new Date(now)).split(':').map(Number)
   return Math.max(0, (24 * 3600 - (h! * 3600 + m! * 60 + s!)) * 1000)
-}
-
-function shuffled<T>(list: readonly T[], key: string): T[] {
-  const rand = mulberry32(hashString(key))
-  const out = [...list]
-  for (let i = out.length - 1; i > 0; i--) {
-    const j = Math.floor(rand() * (i + 1))
-    ;[out[i], out[j]] = [out[j]!, out[i]!]
-  }
-  return out
 }
 
 export type HuntPick = {
@@ -291,18 +242,17 @@ export type HuntPick = {
 
 /**
  * Today's bug and where it hides. The spots come round in a shuffled order,
- * every one before any comes again, and so do the bugs: a run of twelve days
- * meets all twelve.
+ * every one before any comes again. The bugs come round two or three times
+ * a month (bugHuntPick.ts), so one missed day never costs the set.
  */
 export function huntPick(day = huntDay()): HuntPick {
   const n = dayNumber(day)
   const spots = shuffled(HUNT_SPOTS, `spots:${Math.floor(n / HUNT_SPOTS.length)}`)
-  const bugs = shuffled(HUNT_BUGS, `bugs:${Math.floor(n / HUNT_BUGS.length)}`)
   const moods = ['smile', 'smile', 'sleepy', 'o'] as const
   return {
     day,
     spot: devSpot() ?? spots[((n % spots.length) + spots.length) % spots.length]!,
-    bug: bugs[((n % bugs.length) + bugs.length) % bugs.length]!,
+    bug: bugForDay(day),
     mood: moods[hashString(`mood:${day}`) % moods.length]!,
   }
 }
@@ -357,11 +307,18 @@ export function huntLog(): HuntLog {
  * Signed in, finds are kept by the API too: they follow the player to any
  * device, and the finds this device made before signing in go up to join
  * them. Anyone can see how many caught today's bug; a player learns where
- * their find came in.
+ * their find came in, which of the month's bugs count toward the set, and
+ * whether a find just completed it.
  */
 
-type ServerFind = HuntFind & { day: string }
-type ServerHunt = { day: string; count: number; you?: { finds: ServerFind[]; place: number | null } }
+type ServerFind = HuntFind & { day: string; counted?: boolean }
+type ServerCompleted = { key: string; shelved: boolean; pin: boolean }
+type ServerHunt = {
+  day: string
+  count: number
+  you?: { finds: ServerFind[]; place: number | null; set?: { key: string; bugs: string[] } }
+  completed?: ServerCompleted
+}
 
 export type HuntServer = {
   /** How many players caught this day's bug, once the API has said. */
@@ -370,9 +327,13 @@ export type HuntServer = {
   place: number | null
   /** The day those are for. */
   day: string | null
+  /** Signed in: the month's set as the API counts it. */
+  set: { key: string; bugs: ReadonlySet<string> } | null
+  /** The set a find made today completed, if one did: on the shelf, and with the pin if it's the first. */
+  completed: (ServerCompleted & { day: string }) | null
 }
 
-let server: HuntServer = { count: null, place: null, day: null }
+let server: HuntServer = { count: null, place: null, day: null, set: null, completed: null }
 
 /** Everything the page shows, as one value that changes when any of it does. */
 export type HuntSnapshot = { log: HuntLog; server: HuntServer }
@@ -388,10 +349,20 @@ function emit() {
   window.dispatchEvent(new Event(HUNT_EVENT))
 }
 
-/** Take what the API said: the count, your place, and any finds from your other devices. */
+/** Take what the API said: the count, your place and set, and any finds from your other devices. */
 function apply(reply: ServerHunt) {
-  const place = reply.you ? reply.you.place : null
-  server = { count: reply.count, place, day: reply.day }
+  const completed = reply.completed
+    ? { ...reply.completed, day: reply.day }
+    : server.completed?.day === reply.day
+      ? server.completed
+      : null
+  server = {
+    count: reply.count,
+    place: reply.you ? reply.you.place : null,
+    day: reply.day,
+    set: reply.you?.set ? { key: reply.you.set.key, bugs: new Set(reply.you.set.bugs) } : null,
+    completed,
+  }
   if (reply.you) {
     const found = { ...huntLog().found }
     let added = false
@@ -456,27 +427,78 @@ export function recordFind(pick: HuntPick, now = Date.now()): boolean {
   return true
 }
 
+/** The month's set, as the page shows it. */
+export type HuntSet = {
+  /** YYYY-MM. */
+  key: string
+  /** "October". */
+  month: string
+  /** Its last day: "Oct 31". */
+  ends: string
+  /** The first set, which started with the hunt a week before its month. */
+  early: boolean
+  /** The month's bugs caught on this device, or on the account's other devices. */
+  caught: ReadonlySet<string>
+  /** Signed in: the ones the API counts toward the set. Null signed out, or before it has said. */
+  counted: ReadonlySet<string> | null
+  /** Where the set stands: the counted ones signed in, this device's signed out. */
+  have: ReadonlySet<string>
+}
+
 export type HuntStats = {
   /** Today's bug is caught. */
   foundToday: boolean
   /** Days in a row, counting today if it's found, or up to yesterday while today's is still loose. */
   streak: number
+  /** Every find, all time. */
   total: number
-  /** Which of the twelve have been caught at least once. */
-  caught: ReadonlySet<string>
+  /** This month's. */
+  set: HuntSet
+  /**
+   * Today's find, if there is one, brought this device's set to all twelve.
+   * For a player signed out: signed in, the API's word on it is what counts.
+   */
+  completedHere: boolean
 }
 
-export function huntStats(day = huntDay(), current = huntLog()): HuntStats {
+function setBugs(current: HuntLog, key: string, except?: string): Set<string> {
+  return new Set(
+    Object.entries(current.found)
+      .filter(([day]) => day !== except && setKeyFor(day) === key)
+      .map(([, f]) => f.bug),
+  )
+}
+
+export function huntStats(day = huntDay(), current = huntLog(), from: HuntServer | null = null): HuntStats {
   const days = new Set(Object.keys(current.found).map(dayNumber))
   const today = dayNumber(day)
   const foundToday = days.has(today)
   let streak = 0
   for (let d = foundToday ? today : today - 1; days.has(d); d--) streak++
+  const key = setKeyFor(day)
+  const caught = setBugs(current, key)
+  const before = setBugs(current, key, day)
+  let counted: Set<string> | null = null
+  if (from?.set?.key === key) {
+    counted = new Set(from.set.bugs)
+    // Today's find reaches the API on its own day, so it counts: shown so while the reply is on its way.
+    const todays = current.found[day]
+    if (todays && todays.bug === bugForDay(day).id) counted.add(todays.bug)
+  }
   return {
     foundToday,
     streak,
     total: days.size,
-    caught: new Set(Object.values(current.found).map((f) => f.bug)),
+    set: {
+      key,
+      month: setMonth(key),
+      ends: setEnds(key),
+      early: setStartsEarly(key),
+      caught,
+      counted,
+      have: counted ?? caught,
+    },
+    completedHere: foundToday && before.size < SET_SIZE && caught.size === SET_SIZE,
   }
 }
 
@@ -489,7 +511,7 @@ export function subscribeHunt(onChange: () => void): () => void {
   }
   // Signing in or out: the finds to show, and whose, have changed.
   const onAuth = () => {
-    server = { count: server.count, place: null, day: server.day }
+    server = { count: server.count, place: null, day: server.day, set: null, completed: null }
     void syncHunt(true)
   }
   window.addEventListener(HUNT_EVENT, onChange)

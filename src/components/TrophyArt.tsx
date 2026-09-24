@@ -109,6 +109,18 @@ export function TopTenRibbon({
   )
 }
 
+/** A month of the bug hunt caught in full: all twelve, and a bug in a jar to show for it. */
+export function HuntSetJar({ size = 'md' }: { size?: TrophyArtSize }) {
+  return (
+    <Art tone="hunt" size={size}>
+      <rect x="15" y="5" width="18" height="6" rx="2" />
+      <path className="trophy-art__fill trophy-art__fill--soft" d="M17 11v2.6c-3.4 2-5.4 5.4-5.4 9.4v13a6 6 0 0 0 6 6h12.8a6 6 0 0 0 6-6V23c0-4-2-7.4-5.4-9.4V11" />
+      <circle className="trophy-art__fill" cx="24" cy="30.5" r="5.5" />
+      <path d="M24 25v11M21.6 25.6l-2.4-3.2M26.4 25.6l2.4-3.2" />
+    </Art>
+  )
+}
+
 /** The all-time podium, on the boards only: a star with its place. */
 export function AllTimeStar({ rank, size = 'sm' }: { rank: number; size?: Extract<TrophyArtSize, 'sm' | 'md'> }) {
   return (

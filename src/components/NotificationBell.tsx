@@ -18,7 +18,7 @@ import type { AvatarWear } from './AvatarStudio'
 import { GameThumbGlyph } from './GameThumbArt'
 import { PlayerAvatar } from './PlayerAvatar'
 import { PushToggle } from './PushToggle'
-import { EventCup, MonthlyTrophyCup, TopTenRibbon, WeeklyMedal } from './TrophyArt'
+import { EventCup, HuntSetJar, MonthlyTrophyCup, TopTenRibbon, WeeklyMedal } from './TrophyArt'
 import '../styles/inbox.css'
 
 export type { NotificationsState }
@@ -87,6 +87,13 @@ function GameCorner({ slug }: { slug: string }) {
 function TrophyTile({ trophy }: { trophy: NonNullable<AppNotification['meta']['trophy']> }) {
   const { period, rank } = trophy
   // The tile takes the trophy's colour, as the shelf's plinth does.
+  if (period === 'hunt') {
+    return (
+      <span className="inbox-face__tile inbox-face__tile--trophy trophy-tone--hunt">
+        <HuntSetJar size="sm" />
+      </span>
+    )
+  }
   const tone = period === 'event' ? 'gold' : rank <= 3 ? (['gold', 'silver', 'bronze'] as const)[rank - 1] : period === 'weekly' ? 'week' : 'month'
   const art =
     period === 'event' ? (
@@ -264,7 +271,8 @@ function Actions({
       break
     case 'trophy': {
       const wear: AvatarWear | null = isRing(ring) ? { ring } : isPin(pin) ? { pin } : null
-      const label = wear?.ring === 'laurel' ? 'Wear the laurel' : wear?.pin ? `Wear the ${wear.pin}` : 'Wear the ring'
+      const label =
+        wear?.ring === 'laurel' ? 'Wear the laurel' : wear?.pin === 'crown' ? 'Wear the crown' : wear?.pin ? 'Wear the pin' : 'Wear the ring'
       out = (
         <>
           {wear && onWear ? (
