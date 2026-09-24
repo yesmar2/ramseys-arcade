@@ -194,8 +194,34 @@ function getCtx() {
   return ctx
 }
 
+/**
+ * Nobody plays a game for two minutes without touching it. Past that the music
+ * stops, so a game screen left open somewhere, even one that swears it's shown
+ * and focused, doesn't play on for nobody; the next tap or key brings it back.
+ */
+const IDLE_MS = 2 * 60_000
+let lastInput = Date.now()
+let idle = false
+
+function noteInput() {
+  lastInput = Date.now()
+  if (!idle) return
+  idle = false
+  syncMusic()
+}
+
+/**
+ * Music only for a page someone is using: shown and focused. Hidden isn't
+ * enough on its own; a window left behind others, or a page in a background
+ * browser panel, can say it's visible and play on for nobody.
+ */
+function pageInUse() {
+  if (typeof document === 'undefined') return true
+  return !document.hidden && (typeof document.hasFocus !== 'function' || document.hasFocus())
+}
+
 function musicLevel() {
-  if (!musicOn || (typeof document !== 'undefined' && document.hidden)) return 0
+  if (!musicOn || !pageInUse()) return 0
   // The slider moves loudness, not gain: a little way down is a little quieter,
   // and halfway is about 12 dB down rather than 6.
   return musicVolume * musicVolume
@@ -212,7 +238,7 @@ function applyMusicGain() {
  * settings. It waits for the page's first tap: a browser won't play before one.
  */
 function syncMusic() {
-  const track = musicSlug && musicOn && !muted ? trackForGame(musicSlug) : null
+  const track = musicSlug && musicOn && !muted && !idle ? trackForGame(musicSlug) : null
   if (!track) {
     playing?.stop()
     playing = null
@@ -337,6 +363,16 @@ export function silenceMusic() {
 
 if (typeof document !== 'undefined') {
   document.addEventListener('visibilitychange', applyMusicGain)
+  window.addEventListener('blur', applyMusicGain)
+  window.addEventListener('focus', applyMusicGain)
+  for (const type of ['pointerdown', 'pointermove', 'keydown', 'wheel', 'touchstart']) {
+    window.addEventListener(type, noteInput, { capture: true, passive: true })
+  }
+  window.setInterval(() => {
+    if (idle || Date.now() - lastInput < IDLE_MS) return
+    idle = true
+    syncMusic()
+  }, 5000)
 }
 
 export function sfx(name: SoundName, pitch = 0) {
