@@ -118,7 +118,9 @@ export type Drawbridge = { shape: Shape; period: number; down: number; phase?: n
 
 /**
  * A ramp: a ball crossing it along `dir` at least `min` fast (or the usual
- * take-off speed) takes off and flies `len` units over whatever is there.
+ * take-off speed) takes off and flies over whatever is there, `len` units at
+ * a quarter over the take-off speed and further the faster it went, keeping a
+ * little of the angle it came in at.
  */
 export type Ramp = Rect & { dir: number; len: number; min?: number }
 
@@ -240,7 +242,7 @@ function mill(x: number, y: number, r: number, dir: number, speed: number, phase
   return { x, y, r, door: 3.6, dir, sails: 4, reach: r + 8, speed, phase }
 }
 
-/** A ramp: cross the box along `dir` at least `min` fast and the ball flies `len` units. */
+/** A ramp: cross the box along `dir` at least `min` fast and the ball flies about `len` units, further the faster. */
 function ramp(x: number, y: number, w: number, h: number, dir: number, len: number, min?: number): Ramp {
   return { x, y, w, h, dir, len, min }
 }
@@ -253,11 +255,6 @@ function hill(shape: Shape, px: number, py: number, look?: Slope['look']): Slope
 /** A floor that dishes toward its middle this hard, with nothing to stop a ball sliding all the way in. */
 function dish(shape: Shape, strength: number): Slope {
   return { shape, dish: strength }
-}
-
-/** A crown: the ball is pushed away from the shape's middle this hard, so a timid ball rolls off it. */
-function crown(shape: Shape, strength: number): Slope {
-  return { shape, repel: strength }
 }
 
 function decor(kind: Decor['kind'], x: number, y: number, r: number, angle?: number, len?: number): Decor {
@@ -278,8 +275,9 @@ function bar(x1: number, y1: number, x2: number, y2: number, t = BAR): Wall {
  * say: each an angle and how wide the opening is, in units.
  */
 function ring(x: number, y: number, R: number, t: number, gaps: [number, number][]): Wall[] {
-  // An even count, so openings across from each other come out the same width.
-  const n = Math.max(16, Math.round(R) * 2)
+  // An even count, so openings across from each other come out the same width, and fine enough that an
+  // opening comes out close to the width asked for.
+  const n = Math.max(24, Math.round(R) * 4)
   const open = (a: number) =>
     gaps.some(([g, w]) => {
       const d = Math.abs((((a - g) % (Math.PI * 2)) + Math.PI * 3) % (Math.PI * 2) - Math.PI)
@@ -366,10 +364,13 @@ export const COURSE: Hole[] = [
    * fairway bends into a meadow, sand in its middle and a creek along its
    * top. Two ways over. On the right a footbridge, narrow and railed, into
    * the long way round: up the right side and over the top of a horseshoe
-   * of green that circles a garden. On the left a ramp at the water's edge:
-   * hit it hard and straight and the ball flies the creek and the garden's
-   * foot and lands on the horseshoe's other leg, most of the long way saved;
-   * hit it soft or crooked and the creek has it. From the top of the
+   * of green that circles a garden. On the left a ramp at the water's edge,
+   * at the head of a pocket up the meadow's side: hit straight up it from the
+   * pocket, hard enough and no harder, and the ball flies the creek and the
+   * garden's foot and lands on the horseshoe's other leg, most of the long way
+   * saved. Not quite hard enough and it lands in the bunker at the foot of the
+   * leg; too hard and it flies off the top; crooked, off the side; too soft
+   * and the creek has it. From the top of the
    * horseshoe a neck winds up past two boulders to a two-tier green: the
    * cup is on the upper tier, behind a ridge that sends a timid putt back
    * down, with sand either side.
@@ -410,6 +411,8 @@ export const COURSE: Hole[] = [
     ],
     sand: [
       ribbon(5, [44, 576], [53, 571], [60, 563]),
+      // Where a jump that isn't quite right comes down.
+      ribbon(8, [22, 396], [22, 420]),
       ribbon(4.5, [83, 424], [84, 398]),
       ribbon(4.5, [21, 96], [23, 83], [29, 72]),
       ribbon(4.5, [69, 125], [77, 121], [83, 113]),
@@ -430,12 +433,13 @@ export const COURSE: Hole[] = [
    * a fountain: a ball crossing it bends toward the basin, and one that
    * slows on it slides all the way in. Out of the plaza's far corners two
    * walks run either side of a long pool: the west walk has a rill down
-   * its middle, a lane either side of it; the east walk has two more
+   * part of its middle, a lane either side of it; the east walk has two more
    * planters to get round. They meet at the top of the pool, and a flight
    * of steps climbs to a terrace where the cup sits in the middle of a knot
-   * garden, two rings of clipped hedge with their gaps lined up side to side:
-   * get round to one side, and putt straight through both. Inside the inner
-   * ring the ground dishes gently down to the cup.
+   * garden, two rings of clipped hedge with their gaps lined up, toward the
+   * steps and side to side: putt straight up through both from the head of
+   * the steps, or across from either side. Inside the inner ring the ground
+   * dishes gently down to the cup.
    */
   hole({
     name: 'Fountain Court',
@@ -456,7 +460,7 @@ export const COURSE: Hole[] = [
       disc(50, 150, 40),
     ],
     paving: [disc(50, 560, 38)],
-    water: [disc(50, 560, 9), ribbon(1.6, [18, 478], [18, 414]), rect(37, 370, 26, 118)],
+    water: [disc(50, 560, 9), ribbon(1.6, [18, 462], [18, 430]), rect(37, 370, 26, 118)],
     slopes: [dish(disc(50, 560, 31), 38), hill(ribbon(11, [50, 300], [50, 214]), 0, 55, 'steps'), dish(disc(50, 150, 10), 24)],
     rocks: [
       rock(45, 790, 4.2, 'planter'),
@@ -467,12 +471,14 @@ export const COURSE: Hole[] = [
     ],
     walls: [
       ...ring(50, 150, 22, 1.1, [
-        [Math.PI, 14],
-        [0, 14],
+        [Math.PI, 13],
+        [0, 13],
+        [DOWN, 16],
       ]),
       ...ring(50, 150, 11.5, 1.1, [
-        [Math.PI, 10],
-        [0, 10],
+        [Math.PI, 12],
+        [0, 12],
+        [DOWN, 10],
       ]),
     ],
     decor: [
@@ -498,7 +504,10 @@ export const COURSE: Hole[] = [
    * left or past the quintain on the right, a beam that swings round on its
    * post. They meet behind the keep, and a lane runs up through the inner
    * wall, where a second portcullis keeps a time of its own, to the keep's
-   * garden, where a turret stands between the way in and the cup.
+   * garden, where a turret stands between the way in and the cup. Past the
+   * well, before the paths meet, a narrow postern runs up the inside of the
+   * curtain wall, through the inner wall without a gate, and into the garden
+   * off to the turret's side, with nothing between it and the cup.
    */
   hole({
     name: 'Castle Keep',
@@ -520,6 +529,8 @@ export const COURSE: Hole[] = [
       ribbon(11, [74, 556], [81, 490], [79, 410], [70, 356]),
       ribbon(11, [30, 356], [50, 336], [70, 356]),
       ribbon(11, [50, 336], [50, 250], [50, 196]),
+      // The postern.
+      ribbon(6, [21, 410], [14, 362], [12, 300], [16, 236], [29, 190]),
       disc(50, 156, 34),
     ],
     water: [ribbon(8, [-12, 652], [30, 650], [70, 650], [112, 652]), disc(20, 470, 5.4)],
@@ -537,7 +548,11 @@ export const COURSE: Hole[] = [
       decor('tower', 63, 608, 6.2),
       decor('wall', -1, 604, 3, UP, 500),
       decor('wall', 101, 604, 3, UP, 500),
-      decor('wall', -2, 294, 3, 0, 40),
+      // The inner wall, with the postern's opening in it on the left.
+      decor('wall', -2, 294, 3, 0, 7),
+      decor('wall', 19, 294, 3, 0, 21),
+      decor('tower', 4, 294, 2.4),
+      decor('tower', 20, 294, 2.4),
       decor('wall', 62, 294, 3, 0, 40),
       decor('tower', 39, 294, 4.6),
       decor('tower', 61, 294, 4.6),
@@ -552,12 +567,12 @@ export const COURSE: Hole[] = [
    * Lighthouse Point. Along a boardwalk by the sea, past a boulder and
    * where the sea washes in, to a lagoon, and over it by the sandbar, which
    * is dry while the tide is out and under when it comes back in, or by the
-   * pier out on the right, narrow, always there, and out of the way. Up the
-   * beach past two crabs scuttling back and forth across it and a sandcastle
-   * in the middle, then out along the point, the sea in coves along its left
-   * side, rock pools in the middle of it, and a wind off the sea that leans a
-   * rolling ball toward the coves, to a green at the foot of the lighthouse
-   * with a cove biting into it downwind.
+   * pier out on the right, narrow and always there, which runs on as a
+   * boardwalk up the right of the beach, past everything on it, to the point.
+   * Up the beach past two crabs scuttling back and forth across it and a
+   * sandcastle in the middle, then out along the point, with a wind off the
+   * sea that leans a rolling ball toward a cove biting into its side, to a
+   * green at the foot of the lighthouse with a cove biting into it downwind.
    */
   hole({
     name: 'Lighthouse Point',
@@ -577,7 +592,9 @@ export const COURSE: Hole[] = [
       capsule(82, 696, 82, 626, 4.2),
       ribbon(24, [44, 616], [60, 606], [82, 614]),
       ribbon(24, [52, 600], [50, 520], [50, 452]),
-      ribbon(11.5, [50, 452], [64, 410], [68, 360], [54, 312], [46, 262], [56, 214], [62, 170], [60, 136]),
+      // The boardwalk, on from the pier, far enough off the beach to stay its own way.
+      ribbon(5, [82, 624], [90, 590], [92, 530], [90, 484], [80, 454], [64, 438]),
+      ribbon(13, [50, 452], [64, 410], [68, 360], [54, 312], [46, 262], [56, 214], [62, 170], [60, 136]),
       disc(60, 124, 30),
     ],
     water: [
@@ -587,26 +604,23 @@ export const COURSE: Hole[] = [
       ribbon(22, [-16, 28], [50, 12], [116, 28]),
       // The sea washing into the boardwalk.
       disc(44, 792, 7),
-      // Coves biting into the point downwind, rock pools in the middle of it, and a cove biting
-      // into the green.
-      disc(51, 366, 8.5),
-      disc(33, 262, 8),
-      disc(59, 326, 4.2),
-      disc(55, 212, 4.2),
-      disc(33, 112, 8),
+      // Coves off the point downwind, one biting into it, and one biting into the green.
+      disc(47, 366, 8.5),
+      disc(29, 262, 7),
+      disc(31, 112, 6),
     ],
     drawbridges: [drawbridge(capsule(46, 692, 46, 628, 6), 7, 0.55, 'sandbar')],
     bridges: [capsule(82, 696, 82, 626, 4.2)],
     rovers: [crab(40, 560, 24, 0, box(27, 552, 48, 16)), crab(64, 494, 30, Math.PI, box(27, 486, 48, 16))],
     rocks: [rock(50, 527, 5, 'sandcastle'), rock(66, 752, 3.4)],
-    slopes: [hill(ribbon(14, [58, 430], [68, 360], [54, 312], [46, 262], [56, 214]), -36, 0, 'wind'), hill(disc(60, 124, 31), -12, 0, 'wind')],
+    slopes: [hill(ribbon(17, [58, 430], [68, 360], [54, 312], [46, 262], [56, 214]), -36, 0, 'wind'), hill(disc(60, 124, 31), -12, 0, 'wind')],
     decor: [
       decor('lighthouse', 24, 78, 9),
       decor('boat', 8, 300, 5, -0.6),
       decor('boat', 94, 250, 4.5, 2.3),
       decor('boat', 30, 22, 5, 0.2),
-      decor('umbrella', 88, 574, 3.4),
-      decor('umbrella', 90, 508, 3.2),
+      decor('umbrella', 80, 566, 3.2),
+      decor('umbrella', 80, 506, 3),
       decor('umbrella', 84, 780, 3.4),
     ],
   }),
@@ -615,11 +629,11 @@ export const COURSE: Hole[] = [
    * leans every roll toward the valley, so each leg is aimed uphill of
    * where it needs to go. At the top of them a ledge, and a drop right
    * across the mountain. Two ways over, both of them skill: the ramp in the
-   * middle of the ledge, hit hard and straight, or the cave at its far left
-   * end, a small mouth to find, which comes out on the far side heading up
-   * the path. Up beside the falls, past two boulders, and a flight of steps
-   * to the summit, where the cup sits on the crown of the peak and anything
-   * short of dying in it rolls off.
+   * middle of the ledge, hit hard enough and straight, or the cave at its far
+   * left end, a small mouth to find, which comes out on the far side heading
+   * up the path. Up beside the falls, past two boulders, and a flight of steps
+   * to the summit: a flat top, the cup in the middle of it, where a ball that
+   * gets up the steps stays.
    */
   hole({
     name: 'The Summit',
@@ -661,7 +675,7 @@ export const COURSE: Hole[] = [
     water: [ribbon(4, [112, 300], [94, 340], [92, 420], [93, 500], [92, 552], [88, 572]), ribbon(12, [-16, 960], [4, 930], [10, 890])],
     ramps: [ramp(44, 600, 12, 10, UP, 58, 115)],
     portals: [pipe(14, 604, 34, 538, -Math.PI / 3, 'cave')],
-    slopes: [hill(rect(0, 630, 100, 310), 0, 16), hill(ribbon(12, [58, 300], [50, 214]), 0, 50, 'steps'), crown(disc(50, 120, 13), 22)],
+    slopes: [hill(rect(0, 630, 100, 310), 0, 16), hill(ribbon(12, [58, 300], [50, 214]), 0, 50, 'steps')],
     rocks: [rock(40, 452, 4), rock(46, 396, 3.6)],
     decor: [decor('waterfall', 88, 566, 4, DOWN)],
   }),

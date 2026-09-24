@@ -34,6 +34,7 @@ import {
   MAX_DRAG,
   millOver,
   onGround,
+  SAND_LIE,
   sliderWall,
   spinnerWall,
   underMap,
@@ -518,9 +519,12 @@ function paintSand(g: Ctx, sk: Skin, loops: Vec[][]) {
   g.stroke()
 }
 
+/** A hill bigger than this, in square units, is shaded without chevrons. */
+const BANK_AREA = 6000
+
 /**
- * A slope, drawn by what it is. A hill is shaded dark toward its foot with
- * faint chevrons running downhill; steps are treads with their risers'
+ * A slope, drawn by what it is. A hill is shaded dark toward its foot, and a
+ * small one has faint chevrons running downhill; steps are treads with their risers'
  * shadows; open ground a wind crosses is only tinted, its streaks are live.
  * A dish darkens toward its middle, a crown is lit on top and falls away
  * all round, a bowl is ringed toward its middle.
@@ -574,12 +578,13 @@ function paintSlope(g: Ctx, sk: Skin, sl: Slope, loops: Vec[][]) {
       grad.addColorStop(1, css(sk.greenLo, 0.42))
       g.fillStyle = grad
       g.fillRect(b.x0 - 1, b.y0 - 1, b.x1 - b.x0 + 2, b.y1 - b.y0 + 2)
-      // Chevrons pointing downhill, in rows across the slope.
+      // Chevrons pointing downhill, in rows across the slope, on a slope small enough to be a feature: a
+      // ridge, a bank. A whole mountainside is its shading alone, or it would be nothing but arrows.
       g.strokeStyle = ink(sk, sk.dark ? 0.22 : 0.2)
       g.lineWidth = 0.45
       g.lineCap = 'round'
       g.lineJoin = 'round'
-      for (let m = -across / 2 + 6; m < across / 2 - 3; m += 11) {
+      for (let m = -across / 2 + 6; along * across < BANK_AREA && m < across / 2 - 3; m += 11) {
         for (let k = -along / 2 + 3; k < along / 2 - 1; k += 6) {
           const x = cx + px * m + dx * k
           const y = cy + py * m + dy * k
@@ -2241,20 +2246,26 @@ export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, w: n
   for (const m of millsInView) drawSailShadows(ctx, sk, m, state.clock)
 
   // ---- aim: a slingshot. Pulled back, the ball rides the pull on two bands from pegs either side of
-  // where it sits, and dots run ahead the way it will go, longer and redder the harder the pull. At
-  // rest, a ring breathes round the ball: take hold here.
+  // where it sits, and dots run ahead the way it will go, longer and redder the harder the pull, through
+  // anything in the way, fainter past it. Out of sand they run shorter, as the shot will. At rest, a
+  // ring breathes round the ball: take hold here.
   let shown: Vec = state.ball
   if (state.phase === 'aim') {
     const live = state.aiming !== 'none'
     const power = live ? state.power : 0
-    const reach = live ? Math.max(AIM_STUB, power * GUIDE_REACH) : AIM_STUB
-    const end = aimTrace(state, state.aim, reach)
     const b = state.ball
-    const dx = end.x - b.x
-    const dy = end.y - b.y
-    const dist = Math.hypot(dx, dy)
+    const lie = inAny(hole.sand, b) ? SAND_LIE : 1
+    const reach = live ? Math.max(AIM_STUB, power * GUIDE_REACH * lie) : AIM_STUB
     const ux = Math.cos(state.aim)
     const uy = Math.sin(state.aim)
+    const end = { x: b.x + ux * reach, y: b.y + uy * reach }
+    const dx = end.x - b.x
+    const dy = end.y - b.y
+    const dist = reach
+    // How far the way is clear: past there the dots go on, fainter.
+    const stop = aimTrace(state, state.aim, reach)
+    const clear = Math.hypot(stop.x - b.x, stop.y - b.y) + 0.3
+    const faint = 0.4
     ctx.save()
     if (live) {
       const hue = 48 - power * 44
@@ -2264,11 +2275,13 @@ export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, w: n
       ctx.fillStyle = grad
       for (let d = BALL_R + 1.6; d < dist - 2.2; d += 2.2) {
         const t = d / Math.max(1, dist)
+        ctx.globalAlpha = d > clear ? faint : 1
         ctx.beginPath()
         ctx.arc(b.x + ux * d, b.y + uy * d, 0.42 + 0.3 * t, 0, Math.PI * 2)
         ctx.fill()
       }
       if (dist > BALL_R + 3) {
+        ctx.globalAlpha = dist > clear ? faint : 1
         ctx.beginPath()
         ctx.moveTo(end.x + ux * 1.3, end.y + uy * 1.3)
         ctx.lineTo(end.x - ux * 1.5 - uy * 1.5, end.y - uy * 1.5 + ux * 1.5)
@@ -2280,6 +2293,7 @@ export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, w: n
         ctx.lineWidth = 0.25
         ctx.stroke()
       }
+      ctx.globalAlpha = 1
       // The ball comes back with the pull, as far as the finger has gone, to the full draw.
       const pull = power * MAX_DRAG
       shown = { x: b.x - ux * pull, y: b.y - uy * pull }
@@ -2323,10 +2337,12 @@ export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, w: n
       if (dist > 0.5) {
         ctx.fillStyle = ink(sk, 0.55)
         for (let d = 3.2; d < dist - 2.5; d += 2.2) {
+          ctx.globalAlpha = d > clear ? faint : 1
           ctx.beginPath()
           ctx.arc(b.x + (dx / dist) * d, b.y + (dy / dist) * d, 0.36, 0, Math.PI * 2)
           ctx.fill()
         }
+        ctx.globalAlpha = 1
         const a = Math.atan2(dy, dx)
         const tip = { x: b.x + Math.cos(a) * Math.min(dist, 8), y: b.y + Math.sin(a) * Math.min(dist, 8) }
         ctx.beginPath()
@@ -2549,8 +2565,12 @@ export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, w: n
     const by = h - f.bottom / 2
     let cue = ''
     if (state.phase === 'aim') {
+      const sandy = inAny(hole.sand, state.ball)
       if (state.aiming !== 'none') {
-        cue = `${Math.round(state.power * 100)}%  ·  ${state.aiming === 'key' ? 'RELEASE TO SHOOT' : 'LET GO TO SHOOT'}`
+        const go = state.aiming === 'key' ? 'RELEASE TO SHOOT' : 'LET GO TO SHOOT'
+        cue = `${Math.round(state.power * 100)}%  ·  ${sandy ? 'IN THE SAND, IT COMES OUT SHORT' : go}`
+      } else if (sandy && !ballOff) {
+        cue = 'IN THE SAND  ·  A SHOT OUT OF IT COMES OUT SHORT'
       } else if (ballOff) {
         cue = 'LOOKING AHEAD  ·  PULL BACK FROM THE BALL AND THE VIEW COMES BACK'
       } else {

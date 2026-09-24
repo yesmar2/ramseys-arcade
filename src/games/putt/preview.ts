@@ -35,8 +35,9 @@ import { inAny, inside } from './terrain'
  * and picks the one that leaves it nearest the cup, and that still does
  * with a touch either way on it, as a person steers clear of a shot that
  * only works dead on. Then it pulls back and lets go with a person's wobble
- * in the pull, and the ball does whatever the game says. After the fifth
- * hole, a new round starts.
+ * in the pull, and the ball does whatever the game says. A shot that put it
+ * in the water it doesn't play the same way again from the same spot. After
+ * the fifth hole, a new round starts.
  */
 
 /** Field units across the screen's short side: the ball big enough to follow, and room to see where it's going. */
@@ -378,6 +379,8 @@ type Plan = {
   shot: (Shot & { shank: number }) | null
   /** Where it is looking: the way ahead, for its eye and for the screen. */
   look: Vec
+  /** What a try costs on top of where it ends: a shot that went in the water from here before is off the table. */
+  penalty: (shot: Shot) => number
 }
 
 function rand(a: number, b: number) {
@@ -488,7 +491,7 @@ function study(p: Plan, ways: Ways, dt: number, budget: number) {
     const t = p.trying
     for (; budget > 0 && t.steps < TRY_STEPS && t.game.phase === 'roll'; t.steps++, budget--) t.game = tick(t.game, dt)
     if (t.game.phase === 'roll' && t.steps < TRY_STEPS) return
-    p.tried.push({ shot: t.shot, score: judge(ways, p.from, t.game) })
+    p.tried.push({ shot: t.shot, score: judge(ways, p.from, t.game) + p.penalty(t.shot) })
     p.trying = null
     // However quickly a try ends, it counts for a step, so a run of them can't spin.
     budget -= 1
@@ -503,9 +506,25 @@ function turnToward(a: number, b: number, most: number) {
   return a + Math.max(-most, Math.min(most, d))
 }
 
+/** A shot as it was played, from where. */
+type Played = { hole: number; x: number; y: number; angle: number; power: number }
+
 export function makeSim(): Sim<Run> {
   let sv: Survey | null = null
   let plan: Plan | null = null
+  /** The last shot, and the shots this round that put the ball in the water or off the ground. */
+  let last: Played | null = null
+  let burnt: Played[] = []
+
+  /** Whether a shot from `from` is one that went wrong from there before. */
+  const wentWrong = (hole: number, from: Vec, shot: Shot) =>
+    burnt.some(
+      (b) =>
+        b.hole === hole &&
+        Math.hypot(b.x - from.x, b.y - from.y) < 2 &&
+        Math.abs(Math.atan2(Math.sin(b.angle - shot.angle), Math.cos(b.angle - shot.angle))) < 0.09 &&
+        Math.abs(b.power - shot.power) < b.power * 0.15,
+    )
 
   const newPlan = (g: GameState, ways: Ways, dt: number): Plan => {
     // It lets go after a look at the lie and a pull, so it works out how the game will stand by then.
@@ -514,20 +533,23 @@ export function makeSim(): Sim<Run> {
     let from = g
     for (let n = 0; n < left; n++) from = tick(from, dt)
     const { tries, look } = firstTries(ways, from)
-    return { hole: g.holeIndex, stroke: g.strokes, left, pull, from, tries, tried: [], pair: [], trying: null, refined: false, shot: null, look }
+    // It looked good in its head the last time too.
+    const penalty = (shot: Shot) => (wentWrong(g.holeIndex, from.ball, shot) ? 10_000 : 0)
+    return { hole: g.holeIndex, stroke: g.strokes, left, pull, from, tries, tried: [], pair: [], trying: null, refined: false, shot: null, look, penalty }
   }
 
   const choose = (p: Plan, ways: Ways) => {
-    let best = p.tried.reduce((a, b) => (b.score < a.score ? b : a), p.tried[0] ?? { shot: p.tries[0]!, score: 0 })
+    const tried = p.tried
+    let best = tried.reduce((a, b) => (b.score < a.score ? b : a), tried[0] ?? { shot: p.tries[0]!, score: 0 })
     // Close in, a person takes more care.
     const careful = best.score < 20 || farAt(ways, p.from.ball) < 30
     // Further out, of the two best, the one whose worst with a touch either way on it is least bad: a
     // carry over water that only works dead on loses to a shot that lands well whatever the hand does.
-    const firsts = p.tried.length - p.pair.length * NEIGHBOURS.length
-    if (!careful && p.pair.length === 2 && firsts >= 0 && p.tried.length === p.tries.length) {
+    const firsts = tried.length - p.pair.length * NEIGHBOURS.length
+    if (!careful && p.pair.length === 2 && firsts >= 0 && tried.length === p.tries.length) {
       const worst = p.pair.map((shot, i) => {
-        const own = p.tried.find((t) => t.shot === shot)?.score ?? Infinity
-        const round = p.tried.slice(firsts + i * NEIGHBOURS.length, firsts + (i + 1) * NEIGHBOURS.length)
+        const own = tried.find((t) => t.shot === shot)?.score ?? Infinity
+        const round = tried.slice(firsts + i * NEIGHBOURS.length, firsts + (i + 1) * NEIGHBOURS.length)
         return { shot, score: own, worst: Math.max(own, ...round.map((t) => t.score)) }
       })
       const safer = worst[0]!.worst <= worst[1]!.worst ? worst[0]! : worst[1]!
@@ -545,12 +567,18 @@ export function makeSim(): Sim<Run> {
       plan = null
       return g.holeIndex + 1 < COURSE.length ? jumpToHole(g, g.holeIndex + 1) : { ...g, phase: 'gameover', t: 0 }
     }
-    if (!plan || plan.hole !== g.holeIndex || plan.stroke !== g.strokes) plan = newPlan(g, ways, dt)
+    if (!plan || plan.hole !== g.holeIndex || plan.stroke !== g.strokes) {
+      // Back where the last shot was played from: it went in the water, or off the ground.
+      if (last && last.hole === g.holeIndex && Math.hypot(g.ball.x - last.x, g.ball.y - last.y) < 1.5) burnt.push(last)
+      last = null
+      plan = newPlan(g, ways, dt)
+    }
     const p = plan
     if (p.left === 0) {
       if (!p.shot) choose(p, ways)
       const s = p.shot!
       plan = null
+      last = { hole: g.holeIndex, x: g.ball.x, y: g.ball.y, angle: s.angle, power: s.power }
       const lined = setDragAim(g, -Math.cos(s.angle) * s.power * MAX_DRAG, -Math.sin(s.angle) * s.power * MAX_DRAG)
       return shoot(lined, s.shank)
     }
@@ -594,6 +622,8 @@ export function makeSim(): Sim<Run> {
     start: (w, h) => {
       sv = null
       plan = null
+      last = null
+      burnt = []
       const [zw, zh] = stageFor(w, h)
       const game = startGame(createInitialState(zw, zh))
       const f = fieldFrame(zw, zh, currentHole(game).h)

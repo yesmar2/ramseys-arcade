@@ -75,7 +75,9 @@ const EVEN_DISTANCE = 290
  * moment.
  */
 const FRICTION_GREEN = 0.985
-const FRICTION_SAND = 0.92
+const FRICTION_SAND = 0.89
+/** A shot played out of sand leaves at this share of the speed the pull would give it on the green. */
+export const SAND_LIE = 0.65
 /** The rate the green bleeds speed, per second, for working out distances. */
 const FADE_GREEN = -Math.log(FRICTION_GREEN) * 60
 /** The release speed at full pull: what carries FULL_DISTANCE against the fade. */
@@ -113,6 +115,16 @@ const STICK_FULL = 20
 const RAMP_MIN = 60
 /** And it has to be heading up the ramp: within this much of straight (the cosine of about 35°). */
 const RAMP_SQUARE = 0.82
+/**
+ * A ramp flies the ball its `len` at a quarter over its take-off speed, and
+ * further or shorter in proportion, within these shares of it; so a soft
+ * take-off falls short and a hard one flies long.
+ */
+const RAMP_REF = 1.25
+const RAMP_SHORTEST = 0.75
+const RAMP_LONGEST = 1.7
+/** The share of the angle it came in at, off straight up the ramp, that a ball keeps in the air. */
+const RAMP_KEEP_ANGLE = 0.25
 /** Landing keeps this share of the speed. */
 const LAND_KEEP = 0.85
 /** A drawbridge takes this long to come down or go up. */
@@ -741,7 +753,9 @@ export function mapFieldY(m: MapLayout, f: Frame, sx: number, sy: number) {
 export function shoot(state: GameState, shank = 0): GameState {
   if (state.phase !== 'aim') return state
   if (state.power < MIN_POWER) return cancelAim(state)
-  const speed = launchSpeed(Math.min(1, state.power))
+  // Out of sand the ball comes away heavy.
+  const lie = inAny(currentHole(state).sand, state.ball) ? SAND_LIE : 1
+  const speed = launchSpeed(Math.min(1, state.power)) * lie
   const angle = state.aim + shank
   // The band snaps, and a hard shot whooshes off it.
   sfx('zip', state.power < 0.5 ? 1 : 0)
@@ -1030,11 +1044,16 @@ function step(ball: Ball, hole: Hole, rovers: RoverState[], flight: Flight, dt: 
     const along = ball.vx * Math.cos(rp.dir) + ball.vy * Math.sin(rp.dir)
     const sp = Math.hypot(ball.vx, ball.vy)
     if (sp < (rp.min ?? RAMP_MIN) || along < sp * RAMP_SQUARE) continue
-    // The ramp throws the ball its own way, at the speed it arrived.
-    ball.vx = Math.cos(rp.dir) * sp
-    ball.vy = Math.sin(rp.dir) * sp
-    flight.air = rp.len
-    flight.max = rp.len
+    // The ramp throws the ball up its own way, keeping a little of the angle it came in at, at the speed it
+    // arrived, and as far as that speed carries it: hit just right, and it lands where it was meant to.
+    let off = Math.atan2(ball.vy, ball.vx) - rp.dir
+    off = Math.atan2(Math.sin(off), Math.cos(off))
+    const heading = rp.dir + off * RAMP_KEEP_ANGLE
+    ball.vx = Math.cos(heading) * sp
+    ball.vy = Math.sin(heading) * sp
+    const stretch = Math.min(RAMP_LONGEST, Math.max(RAMP_SHORTEST, sp / ((rp.min ?? RAMP_MIN) * RAMP_REF)))
+    flight.air = rp.len * stretch
+    flight.max = flight.air
     out.launched = true
     return out
   }
