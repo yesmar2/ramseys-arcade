@@ -24,8 +24,11 @@ import {
   StatsIcon,
   SunIcon,
 } from './chromeIcons'
+import type { AvatarWear } from './AvatarStudio'
 import { DevImpersonateControl } from './DevImpersonateControl'
-import { NotificationList, type NotificationsState } from './NotificationBell'
+import { Inbox, type NotificationsState } from './NotificationBell'
+import { useInboxLook } from '../hooks/useNotifications'
+import { inboxSummary } from '../lib/notifications'
 import { PendingInvitesStrip } from './PendingInvitesStrip'
 import { PlayerAvatar } from './PlayerAvatar'
 import { PlayerBadge, type PlayerBadgeHandle } from './PlayerBadge'
@@ -70,6 +73,7 @@ export function SiteMenu({
   badgeRef,
   onEditTag,
   onEditAvatar,
+  onWear,
   onSignOut,
   signingOut,
 }: {
@@ -93,10 +97,14 @@ export function SiteMenu({
   badgeRef: Ref<PlayerBadgeHandle>
   onEditTag: () => void
   onEditAvatar?: () => void
+  /** Put on flair a trophy in the inbox unlocked. */
+  onWear?: (wear: AvatarWear) => void
   onSignOut: () => void
   signingOut: boolean
 }) {
-  const [inboxOpen, setInboxOpen] = useState(false)
+  // The inbox opens in place of the menu, as a sheet of its own with a way back.
+  const [view, setView] = useState<'menu' | 'inbox'>('menu')
+  const isFresh = useInboxLook(notes, view === 'inbox')
   if (typeof document === 'undefined') return null
 
   const tagged = signedIn && Boolean(name)
@@ -108,11 +116,7 @@ export function SiteMenu({
     trophies.events > 0 ? `${trophies.events} ${trophies.events === 1 ? 'event' : 'events'} won` : null,
   ].filter(Boolean)
 
-  const openInbox = () => {
-    const next = !inboxOpen
-    setInboxOpen(next)
-    if (next) void notes.markAllRead()
-  }
+  const summary = inboxSummary(notes.items)
 
   const card = tagged ? (
     <div
@@ -206,6 +210,36 @@ export function SiteMenu({
     </li>
   )
 
+  if (view === 'inbox' && signedIn) {
+    const freshCount = notes.items.filter(isFresh).length
+    return createPortal(
+      <div className="site-menu" role="presentation">
+        <button type="button" className="site-menu__scrim" aria-label="Close menu" onClick={onClose} />
+        <div id={id} ref={panelRef} className="site-menu__panel" role="dialog" aria-modal="true" aria-labelledby={titleId}>
+          <span className="site-menu__grab" aria-hidden="true" />
+          <div className="site-menu__top site-menu__top--inbox">
+            <button type="button" className="site-menu__back" aria-label="Back to your menu" onClick={() => setView('menu')}>
+              <ChevronRightIcon />
+            </button>
+            <h2 id={titleId} className="site-menu__inbox-title">
+              Notifications
+            </h2>
+            {freshCount > 0 ? <span className="inbox__new">{freshCount} new</span> : null}
+            <button type="button" className="site-menu__close" aria-label="Close menu" onClick={onClose}>
+              <CloseIcon />
+            </button>
+          </div>
+          <div className="site-menu__body site-menu__body--inbox">
+            <div className="inbox inbox--sheet">
+              <Inbox notes={notes} isFresh={isFresh} onNavigate={onClose} onWear={onWear} />
+            </div>
+          </div>
+        </div>
+      </div>,
+      document.body,
+    )
+  }
+
   return createPortal(
     <div className="site-menu" role="presentation">
       <button type="button" className="site-menu__scrim" aria-label="Close menu" onClick={onClose} />
@@ -229,29 +263,30 @@ export function SiteMenu({
           {signedIn ? (
             <ul className="site-menu__rows" aria-label="Yours">
               <li>
-                <button
-                  type="button"
-                  className="site-menu__row"
-                  aria-expanded={inboxOpen}
-                  onClick={openInbox}
-                >
-                  <span className="site-menu__row-mark">
+                <button type="button" className="site-menu__row" onClick={() => setView('inbox')}>
+                  <span className="site-menu__row-mark site-menu__row-mark--bell">
                     <BellIcon />
+                    {notes.unread > 0 ? (
+                      <span className="site-menu__row-count">{notes.unread > 9 ? '9+' : notes.unread}</span>
+                    ) : null}
                   </span>
                   <span className="site-menu__row-text">
                     <span className="site-menu__row-label">Notifications</span>
-                    <span className="site-menu__row-sub">Friend requests, events and trophies</span>
+                    {summary ? (
+                      <>
+                        <span className={`site-menu__row-sub site-menu__row-lead${summary.hot ? ' site-menu__row-lead--hot' : ''}`}>
+                          {summary.lead}
+                        </span>
+                        {summary.rest ? <span className="site-menu__row-sub site-menu__row-lead">{summary.rest}</span> : null}
+                      </>
+                    ) : (
+                      <span className="site-menu__row-sub">Nothing new</span>
+                    )}
                   </span>
-                  {notes.unread > 0 ? <span className="site-menu__badge">{notes.unread > 9 ? '9+' : notes.unread} new</span> : null}
-                  <span className={`site-menu__row-go${inboxOpen ? ' site-menu__row-go--open' : ''}`}>
+                  <span className="site-menu__row-go">
                     <ChevronRightIcon />
                   </span>
                 </button>
-                {inboxOpen ? (
-                  <div className="site-menu__inbox">
-                    <NotificationList notes={notes} />
-                  </div>
-                ) : null}
               </li>
               {tagged ? row(<StatsIcon />, 'Your stats', 'Streaks and near records', statsHref()) : null}
               {row(

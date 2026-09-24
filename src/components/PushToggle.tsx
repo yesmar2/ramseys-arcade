@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useId, useState } from 'react'
 import {
   disablePush,
   enablePush,
@@ -10,7 +10,7 @@ import {
 } from '../lib/push'
 
 const REASONS: Record<string, string> = {
-  'home-screen': 'On iPhone, add Skermix to your home screen first — Safari only allows alerts there.',
+  'home-screen': 'On iPhone, add Skermix to your home screen first. Safari only allows alerts there.',
   denied: 'Your browser is blocking notifications. Allow them in site settings, then try again.',
   unavailable: 'Push is not set up on this server yet.',
   unsupported: 'This browser cannot do push notifications.',
@@ -22,14 +22,15 @@ const REASONS: Record<string, string> = {
 /**
  * The one opt-in, stated plainly.
  *
- * Every other notification in the arcade stays in the inbox above this, so the
- * promise here is narrow enough to keep: we will only ever buzz you about a
- * match you could lose by not showing up.
+ * Everything else in the arcade stays in the inbox above this, so the promise
+ * here is narrow enough to keep: a match you could lose by not playing, and a
+ * friend beating your challenge, never at night.
  */
 export function PushToggle() {
   const [status, setStatus] = useState<PushStatus | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const labelId = useId()
 
   useEffect(() => {
     let cancelled = false
@@ -69,31 +70,41 @@ export function PushToggle() {
   }
 
   return (
-    <div className="notif-push">
-      <div className="notif-push__row">
-        <span className="notif-push__text">
-          <span className="notif-push__label">Match and challenge alerts</span>
-          <span className="notif-push__hint">
-            The only two things we&rsquo;ll buzz you about: a bracket match you could lose by
-            not showing up, and a friend beating your challenge.
+    <div className="inbox-alerts">
+      <div className="inbox-alerts__row">
+        <span className="inbox-alerts__mark" aria-hidden="true">
+          <svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" focusable="false">
+            <path d="M10 2.4a4.6 4.6 0 0 0-4.6 4.6v2.6L4 12.3h12l-1.4-2.7V7A4.6 4.6 0 0 0 10 2.4Z" />
+            <path d="M8.2 14.2a1.9 1.9 0 0 0 3.6 0" />
+          </svg>
+        </span>
+        <span className="inbox-alerts__text">
+          <span className="inbox-alerts__label" id={labelId}>
+            Alerts on this device
+          </span>
+          <span className="inbox-alerts__hint">
+            A match you could lose by not playing, and a friend beating your challenge. Nothing between 10pm and
+            8am.
           </span>
         </span>
         <button
           type="button"
-          className={`notif-push__btn${on ? ' notif-push__btn--on' : ''}`}
+          role="switch"
+          className={`inbox-switch${on ? ' inbox-switch--on' : ''}`}
           disabled={busy || (!supported && !install)}
           onClick={() => void toggle()}
-          aria-pressed={on}
+          aria-checked={on}
+          aria-labelledby={labelId}
         >
-          {busy ? '…' : on ? 'On' : 'Turn on'}
+          <span className="inbox-switch__knob" />
         </button>
       </div>
       {install ? (
-        <p className="notif-push__note">{REASONS['home-screen']}</p>
+        <p className="inbox-alerts__note">{REASONS['home-screen']}</p>
       ) : blocked && !on ? (
-        <p className="notif-push__note">{REASONS.denied}</p>
+        <p className="inbox-alerts__note">{REASONS.denied}</p>
       ) : null}
-      {error ? <p className="notif-push__note notif-push__note--err">{error}</p> : null}
+      {error ? <p className="inbox-alerts__note inbox-alerts__note--err">{error}</p> : null}
     </div>
   )
 }

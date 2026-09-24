@@ -75,3 +75,34 @@ export function useNotifications(enabled: boolean) {
 
   return { items, unread, loading, refresh, markAllRead }
 }
+
+export type NotificationsState = ReturnType<typeof useNotifications>
+
+/**
+ * One look at the inbox, from opening it to closing it.
+ *
+ * Opening clears the badge straight away, but what was new when it opened
+ * stays marked until it closes, so the player can still see what came in.
+ * Anything that arrives while it's open is new too, and read once it closes.
+ */
+export function useInboxLook(notes: NotificationsState, open: boolean) {
+  const [fresh, setFresh] = useState<ReadonlySet<string>>(() => new Set())
+  const latest = useRef(notes)
+  latest.current = notes
+
+  // Whenever something unread is on screen: remember it as new, and read it.
+  useEffect(() => {
+    if (!open) return
+    const { items, unread, markAllRead } = latest.current
+    if (unread === 0) return
+    const ids = items.filter((n) => !n.readAt).map((n) => n.id)
+    setFresh((prev) => new Set([...prev, ...ids]))
+    void markAllRead()
+  }, [open, notes.unread])
+
+  useEffect(() => {
+    if (!open) setFresh(new Set())
+  }, [open])
+
+  return useCallback((n: AppNotification) => fresh.has(n.id), [fresh])
+}

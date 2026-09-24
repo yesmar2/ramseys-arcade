@@ -1,0 +1,583 @@
+/*
+ * The inbox: the header bell's panel on a wide screen, and a sheet of its own
+ * opened from the menu on a phone. What needs you sits on top in cards; what's
+ * new since you last looked keeps a dot until you close it; players show as
+ * their avatars with the game in the corner, trophies as the shelf's own art.
+ */
+
+.inbox {
+  --inbox-hot: #ff6b5b;
+  --inbox-hot-ink: #2a0a07;
+  --inbox-hot-text: color-mix(in srgb, #ff6b5b 85%, var(--ink));
+  --inbox-link: color-mix(in srgb, var(--accent) 80%, var(--ink));
+  color: var(--ink);
+}
+
+html[data-theme='light'] .inbox {
+  --inbox-hot-text: #c2362b;
+  --inbox-link: #127564;
+}
+
+/* ---------- the header's panel ---------- */
+
+.inbox--panel {
+  position: absolute;
+  top: calc(100% + 0.55rem);
+  right: 0;
+  z-index: 60;
+  width: min(27.5rem, calc(100vw - 1.5rem));
+  max-height: min(44rem, calc(100vh - 6.5rem));
+  display: flex;
+  flex-direction: column;
+  border-radius: 1.35rem;
+  border: 1px solid rgba(var(--ink-rgb), 0.14);
+  background: var(--surface);
+  box-shadow:
+    0 2px 6px rgba(0, 0, 0, 0.12),
+    0 30px 70px -24px rgba(0, 0, 0, 0.55);
+  overflow: hidden;
+}
+
+.inbox__head {
+  flex: none;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.05rem 1.25rem 0.2rem;
+}
+
+.inbox__title {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.inbox__new {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--inbox-link);
+  white-space: nowrap;
+}
+
+.inbox__scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-bottom: 0.5rem;
+}
+
+.inbox__cap {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0;
+  padding: 0.85rem 1.25rem 0.35rem;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.inbox__cap--hot {
+  color: var(--inbox-hot-text);
+}
+
+.inbox__cap--hot::before {
+  content: '';
+  width: 0.42rem;
+  height: 0.42rem;
+  border-radius: 50%;
+  background: var(--inbox-hot);
+}
+
+.inbox__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.inbox__empty {
+  margin: 0;
+  padding: 0.8rem 1.25rem 1.2rem;
+  font-size: 0.88rem;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+/* ---------- a row ---------- */
+
+.inbox-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: 2.75rem minmax(0, 1fr);
+  column-gap: 0.85rem;
+  padding: 0.75rem 1.25rem 0.85rem;
+}
+
+.inbox-row:hover {
+  background: rgba(var(--ink-rgb), 0.035);
+}
+
+/* Waiting on you: a card of its own until it's done. */
+.inbox-row--needs {
+  --row-ground: color-mix(in srgb, var(--ink) 5%, var(--surface));
+  margin: 0.25rem 0.75rem 0.5rem;
+  padding: 0.85rem 0.9rem;
+  border-radius: 1rem;
+  background: var(--row-ground);
+  border: 1px solid rgba(var(--ink-rgb), 0.09);
+}
+
+.inbox-row--needs:hover {
+  background: var(--row-ground);
+}
+
+.inbox-row--hot {
+  --row-ground: color-mix(in srgb, var(--inbox-hot) 11%, var(--surface));
+  border-color: color-mix(in srgb, var(--inbox-hot) 36%, transparent);
+}
+
+.inbox-row__dot {
+  position: absolute;
+  left: 0.45rem;
+  top: 1.85rem;
+  width: 0.44rem;
+  height: 0.44rem;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.inbox-row--needs .inbox-row__dot {
+  display: none;
+}
+
+.inbox-row__main {
+  min-width: 0;
+}
+
+.inbox-row__top {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+}
+
+.inbox-row__title {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font-size: 0.94rem;
+  font-weight: 700;
+  line-height: 1.3;
+  letter-spacing: -0.005em;
+  overflow-wrap: anywhere;
+}
+
+.inbox-row__title a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* The whole row follows its title's link; its buttons sit above that. */
+.inbox-row__title a::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+}
+
+.inbox-row__title a:focus-visible {
+  outline: none;
+}
+
+.inbox-row__title a:focus-visible::after {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.inbox-row__when {
+  flex: none;
+  font-size: 0.76rem;
+  line-height: 1.3rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.inbox-row__clock {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  height: 1.5rem;
+  padding: 0 0.55rem;
+  box-sizing: border-box;
+  border-radius: 999px;
+  border: 1px solid rgba(var(--ink-rgb), 0.14);
+  background: rgba(var(--ink-rgb), 0.05);
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.inbox-row--hot .inbox-row__clock {
+  border-color: color-mix(in srgb, var(--inbox-hot) 36%, transparent);
+  background: color-mix(in srgb, var(--inbox-hot) 12%, transparent);
+  color: var(--inbox-hot-text);
+}
+
+.inbox-row__body {
+  margin: 0.2rem 0 0;
+  font-size: 0.84rem;
+  line-height: 1.42;
+  color: var(--muted);
+}
+
+.inbox-row__acts {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.9rem;
+  margin-top: 0.6rem;
+}
+
+.inbox-row__error {
+  flex-basis: 100%;
+  font-size: 0.78rem;
+  color: var(--inbox-hot-text);
+}
+
+.inbox-act {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.1rem;
+  padding: 0 0.95rem;
+  box-sizing: border-box;
+  border-radius: 999px;
+  border: 1px solid rgba(var(--ink-rgb), 0.2);
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.84rem;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.inbox-act:hover,
+.inbox-act:focus-visible {
+  background: rgba(var(--ink-rgb), 0.06);
+}
+
+.inbox-act + .inbox-act {
+  margin-left: -0.4rem;
+}
+
+.inbox-act--go {
+  background: var(--accent);
+  border-color: transparent;
+  color: #03211b;
+}
+
+.inbox-act--go:hover,
+.inbox-act--go:focus-visible {
+  background: color-mix(in srgb, var(--accent) 86%, #fff);
+}
+
+.inbox-act--hot {
+  background: var(--inbox-hot);
+  border-color: transparent;
+  color: var(--inbox-hot-ink);
+}
+
+.inbox-act--hot:hover,
+.inbox-act--hot:focus-visible {
+  background: color-mix(in srgb, var(--inbox-hot) 86%, #fff);
+}
+
+.inbox-act:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.inbox-more {
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: var(--inbox-link);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.inbox-more:hover,
+.inbox-more:focus-visible {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* ---------- faces ---------- */
+
+.inbox-face {
+  position: relative;
+  width: 2.75rem;
+  height: 2.75rem;
+}
+
+.inbox-face > .player-avatar {
+  width: 2.75rem;
+  height: 2.75rem;
+}
+
+.inbox-face__corner {
+  position: absolute;
+  right: -0.35rem;
+  bottom: -0.3rem;
+  width: 1.35rem;
+  height: 1.35rem;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  box-shadow: 0 0 0 2.5px var(--row-ground, var(--surface));
+}
+
+.inbox-face__corner--brand {
+  background: var(--accent);
+  color: #03211b;
+}
+
+.inbox-face__corner--hot {
+  background: var(--inbox-hot);
+  color: var(--inbox-hot-ink);
+}
+
+.inbox-face__tile {
+  width: 2.75rem;
+  height: 2.75rem;
+  box-sizing: border-box;
+  display: grid;
+  place-items: center;
+  border-radius: 0.9rem;
+}
+
+.inbox-face__tile--trophy {
+  background: color-mix(in srgb, var(--tr-tone) 14%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--tr-tone) 34%, transparent);
+}
+
+.inbox-face__tile .trophy-art svg {
+  width: 1.75rem;
+  height: 1.75rem;
+}
+
+.inbox-face__tile--place {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 0.05rem;
+  padding-top: 0.3rem;
+  background: rgba(var(--ink-rgb), 0.06);
+  border: 1px solid rgba(var(--ink-rgb), 0.12);
+}
+
+.inbox-face__tile--place b {
+  font-size: 1.3rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.inbox-face__tile--place i {
+  font-style: normal;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.inbox-face__tile--plain {
+  background: rgba(var(--ink-rgb), 0.06);
+  border: 1px solid rgba(var(--ink-rgb), 0.1);
+  color: var(--muted);
+}
+
+.inbox-face__tile--plain .trophy-art {
+  color: var(--muted);
+}
+
+/* ---------- alerts on this device ---------- */
+
+.inbox-alerts {
+  flex: none;
+  padding: 0.85rem 1.25rem 1rem;
+  border-top: 1px solid rgba(var(--ink-rgb), 0.08);
+  background: rgba(var(--ink-rgb), 0.03);
+}
+
+.inbox-alerts__row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.inbox-alerts__mark {
+  flex: none;
+  width: 2.25rem;
+  height: 2.25rem;
+  display: grid;
+  place-items: center;
+  border-radius: 0.75rem;
+  background: rgba(var(--ink-rgb), 0.06);
+  color: var(--muted);
+}
+
+.inbox-alerts__text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.12rem;
+}
+
+.inbox-alerts__label {
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.inbox-alerts__hint {
+  font-size: 0.76rem;
+  line-height: 1.38;
+  color: var(--muted);
+}
+
+.inbox-alerts__note {
+  margin: 0.55rem 0 0;
+  font-size: 0.76rem;
+  line-height: 1.4;
+  color: var(--muted);
+}
+
+.inbox-alerts__note--err {
+  color: var(--inbox-hot-text);
+}
+
+.inbox-switch {
+  flex: none;
+  position: relative;
+  width: 2.9rem;
+  height: 1.75rem;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(var(--ink-rgb), 0.22);
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.inbox-switch__knob {
+  position: absolute;
+  top: 0.2rem;
+  left: 0.2rem;
+  width: 1.35rem;
+  height: 1.35rem;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  transition: transform 0.15s ease;
+}
+
+.inbox-switch--on {
+  background: var(--accent);
+}
+
+.inbox-switch--on .inbox-switch__knob {
+  transform: translateX(1.15rem);
+}
+
+.inbox-switch:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.inbox-switch:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.inbox-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* ---------- the bell ---------- */
+
+.notif-bell--open {
+  background: rgba(var(--ink-rgb), 0.08);
+  border-color: rgba(var(--ink-rgb), 0.2);
+  color: var(--ink);
+}
+
+/* ---------- the phone's sheet ---------- */
+
+.inbox--sheet .inbox__scroll {
+  overflow: visible;
+}
+
+.inbox--sheet .inbox-row {
+  padding-left: 1.1rem;
+  padding-right: 1.1rem;
+}
+
+.inbox--sheet .inbox-row--needs {
+  padding-left: 0.9rem;
+  padding-right: 0.9rem;
+}
+
+/* Thumb-sized: every button a finger can hit. */
+.inbox--sheet .inbox-act {
+  min-height: 2.75rem;
+  padding: 0 1.15rem;
+  font-size: 0.92rem;
+}
+
+.inbox--sheet .inbox-more {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.75rem;
+  font-size: 0.9rem;
+}
+
+.inbox--sheet .inbox-alerts {
+  margin: 0.5rem 0.75rem 0;
+  border: 1px solid rgba(var(--ink-rgb), 0.08);
+  border-radius: 1rem;
+}
+
+/*
+ * The bell is not the rightmost thing in the header, so an anchored panel
+ * hangs off the left edge on a narrow screen. Below this width it pins to the
+ * viewport instead.
+ */
+@media (max-width: 30rem) {
+  .inbox--panel {
+    position: fixed;
+    top: 4.4rem;
+    left: 0.6rem;
+    right: 0.6rem;
+    width: auto;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .inbox-switch,
+  .inbox-switch__knob {
+    transition: none;
+  }
+}

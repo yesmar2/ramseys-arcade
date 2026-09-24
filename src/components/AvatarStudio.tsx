@@ -28,10 +28,15 @@ import { LockIcon, SparkleIcon } from './chromeIcons'
 import { Panel, PanelHead } from './Panel'
 import { AvatarArt } from './PlayerAvatar'
 
+/** Flair to put on as the studio opens: what a trophy just unlocked. */
+export type AvatarWear = { ring?: AvatarRing; pin?: AvatarPin }
+
 type AvatarStudioProps = {
   name: string
   /** What is saved now, so the studio opens on it. */
   current?: string | null
+  /** Opens on the flair tab with this already on, ready to save. */
+  wear?: AvatarWear | null
   onSaved: (avatarId: string) => void
   onClose: () => void
 }
@@ -85,11 +90,13 @@ function Section({ title, aside, children }: { title: string; aside?: ReactNode;
  * what everyone will see; every choice is drawn in the colours picked so far,
  * and anything not yet earned can be tried on but not saved.
  */
-export function AvatarStudio({ name, current, onSaved, onClose }: AvatarStudioProps) {
+export function AvatarStudio({ name, current, wear, onSaved, onClose }: AvatarStudioProps) {
   const saved = useMemo(() => resolveAvatar(current, name), [current, name])
-  const [draft, setDraft] = useState<Avatar>(saved)
-  const [history, setHistory] = useState<Avatar[]>([])
-  const [tab, setTab] = useState<Tab>('mark')
+  const [draft, setDraft] = useState<Avatar>(() =>
+    wear ? { ...saved, ...(wear.ring ? { ring: wear.ring } : {}), ...(wear.pin ? { pin: wear.pin } : {}) } : saved,
+  )
+  const [history, setHistory] = useState<Avatar[]>(() => (wear ? [saved] : []))
+  const [tab, setTab] = useState<Tab>(wear ? 'flair' : 'mark')
   const [flair, setFlair] = useState<Flair | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -98,13 +105,14 @@ export function AvatarStudio({ name, current, onSaved, onClose }: AvatarStudioPr
 
   useEffect(() => {
     let live = true
-    void fetchFlair(name).then((f) => {
+    // Flair just unlocked may still be cached on the server as not earned yet.
+    void fetchFlair(name, Boolean(wear)).then((f) => {
       if (live) setFlair(f)
     })
     return () => {
       live = false
     }
-  }, [name])
+  }, [name, wear])
 
   const go = (next: Avatar) => {
     if (encodeAvatar(next) === encodeAvatar(draft)) return

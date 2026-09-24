@@ -84,7 +84,7 @@ export function TrophyShelf({
 
   if (trophies === null) {
     return (
-      <article className="pshelf pcard-panel" aria-busy="true" aria-label="Trophies">
+      <article className="pshelf pcard-panel" id="trophies" aria-busy="true" aria-label="Trophies">
         <div className="pshelf__head">
           <h2 className="pshelf__title">Trophy shelf</h2>
         </div>
@@ -105,7 +105,7 @@ export function TrophyShelf({
   ].filter(Boolean)
 
   return (
-    <article className="pshelf pcard-panel" aria-labelledby="pshelf-title">
+    <article className="pshelf pcard-panel" id="trophies" aria-labelledby="pshelf-title">
       <div className="pshelf__head">
         <h2 className="pshelf__title" id="pshelf-title">
           Trophy shelf

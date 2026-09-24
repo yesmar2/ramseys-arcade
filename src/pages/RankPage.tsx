@@ -120,15 +120,16 @@ export function RankPage({
   const [avatarOverride, setAvatarOverride] = useState<string | null>(null)
 
   /*
-   * Arriving from the drawer's Friends row, which asks for a section rather
-   * than the top of a long page. It waits for the card to exist — the profile
-   * fills in over a few requests, and friends are near the bottom of it.
+   * Arriving from the drawer's Friends row or a trophy in the inbox, which ask
+   * for a section rather than the top of a long page. It waits for the section
+   * to exist — the profile fills in over a few requests.
    */
+  const focus = focusFromUrl()
   useEffect(() => {
-    if (focusFromUrl() !== 'friends') return
+    if (focus !== 'friends' && focus !== 'trophies') return
     let tries = 0
     const id = window.setInterval(() => {
-      const card = document.getElementById('friends')
+      const card = document.getElementById(focus)
       if (card) {
         window.clearInterval(id)
         card.scrollIntoView({ behavior: 'smooth', block: 'start' })
@@ -137,7 +138,7 @@ export function RankPage({
       }
     }, 80)
     return () => window.clearInterval(id)
-  }, [])
+  }, [focus, viewedName])
 
   // A freshly saved avatar paints at once; the API's copy catches up on the next load.
   useEffect(() => {

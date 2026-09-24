@@ -16,7 +16,7 @@ import { useGlobalRank, useGlobalRankLoading } from '../lib/globalRank'
 import { cachedMyGroups, useActiveGroup } from '../lib/groups'
 import { normalizePlayerName } from '../lib/leaderboard'
 import { currentTheme, THEME_EVENT, type Theme } from '../lib/theme'
-import { AvatarStudio } from './AvatarStudio'
+import { AvatarStudio, type AvatarWear } from './AvatarStudio'
 import { UserIcon } from './chromeIcons'
 import { NotificationBell } from './NotificationBell'
 import { PendingInvitesStrip } from './PendingInvitesStrip'
@@ -68,6 +68,8 @@ export function SiteHeader() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [invitesOpen, setInvitesOpen] = useState(false)
   const [studioOpen, setStudioOpen] = useState(false)
+  // Flair a trophy just unlocked, when the studio was opened from the inbox to put it on.
+  const [studioWear, setStudioWear] = useState<AvatarWear | null>(null)
   const [signingOut, setSigningOut] = useState(false)
   const [theme, setThemeState] = useState<Theme>(() => (typeof document === 'undefined' ? 'light' : currentTheme()))
   const invitesRef = useRef<HTMLDivElement>(null)
@@ -163,6 +165,14 @@ export function SiteHeader() {
     setMenuOpen((open) => !open)
   }
 
+  const wear = canEditAvatar
+    ? (next: AvatarWear) => {
+        setMenuOpen(false)
+        setStudioWear(next)
+        setStudioOpen(true)
+      }
+    : undefined
+
   const path = currentPath()
   // Events and groups have boards of their own, so the site's boards control stays off their pages.
   const showScope =
@@ -217,7 +227,7 @@ export function SiteHeader() {
           {showScope ? <SiteScopeControl /> : null}
 
           <div className="site-bar__you">
-            {signedIn ? <NotificationBell notes={notes} /> : null}
+            {signedIn ? <NotificationBell notes={notes} onWear={wear} /> : null}
 
             {inviteCount > 0 ? (
               <div className="site-header__invites" ref={invitesRef}>
@@ -316,10 +326,12 @@ export function SiteHeader() {
             canEditAvatar
               ? () => {
                   setMenuOpen(false)
+                  setStudioWear(null)
                   setStudioOpen(true)
                 }
               : undefined
           }
+          onWear={wear}
           onSignOut={() => {
             setSigningOut(true)
             void logoutAccount().finally(() => setSigningOut(false))
@@ -345,6 +357,7 @@ export function SiteHeader() {
             <AvatarStudio
               name={playerName}
               current={avatarId}
+              wear={studioWear}
               onSaved={(id) => {
                 setLocalAvatar(id)
                 setStudioOpen(false)

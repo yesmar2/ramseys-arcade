@@ -107,7 +107,7 @@ export function rankHref(
   player?: string,
   period: LeaderboardPeriod = defaultPeriod(),
   /** Land on a section rather than the top — the profile is a long page. */
-  focus?: 'friends',
+  focus?: 'friends' | 'trophies',
 ) {
   const cleaned = player?.trim().toUpperCase().slice(0, 12)
   const base = cleaned

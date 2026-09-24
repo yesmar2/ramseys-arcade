@@ -32,6 +32,8 @@ type PushBody = {
   body?: string
   href?: string
   kind?: string
+  /** One per alert: the same match again replaces its card, a different one gets its own. */
+  tag?: string
 }
 
 self.addEventListener('push', (event) => {
@@ -49,8 +51,9 @@ self.addEventListener('push', (event) => {
       body: payload.body || undefined,
       icon: '/pwa-192.png',
       badge: '/pwa-192.png',
-      // Collapse repeats of the same match rather than stacking them.
-      tag: payload.kind ?? 'skermix',
+      // Collapse repeats of the same alert rather than stacking them; a tag by
+      // kind alone let a second match's alert replace the first.
+      tag: payload.tag ?? payload.kind ?? 'skermix',
       // Shipped everywhere push is, but not yet in TS's NotificationOptions.
       renotify: true,
       data: { href: payload.href ?? '/' },

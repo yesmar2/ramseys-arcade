@@ -961,24 +961,90 @@ html[data-theme='light'] .site-menu__scrim {
   height: 1rem;
 }
 
-.site-menu__row-go--open {
-  transform: rotate(90deg);
+/* Notifications: the bell carries the count, and the line says what's waiting. */
+.site-menu__row-mark--bell {
+  position: relative;
+  color: var(--ink);
 }
 
-.site-menu__inbox {
-  margin: 0.2rem 0 0.4rem;
-  border-radius: 1rem;
-  border: 1px solid rgba(var(--ink-rgb), 0.08);
-  background: rgba(var(--ink-rgb), 0.03);
+.site-menu__row-count {
+  position: absolute;
+  top: -0.3rem;
+  right: -0.35rem;
+  min-width: 1.15rem;
+  height: 1.15rem;
+  padding: 0 0.28rem;
+  box-sizing: border-box;
+  border-radius: 999px;
+  background: #ff6b5b;
+  color: #2a0a07;
+  box-shadow: 0 0 0 2px var(--surface);
+  font-size: 0.66rem;
+  font-weight: 800;
+  line-height: 1.15rem;
+  text-align: center;
+}
+
+.site-menu__row-lead {
   overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.site-menu__inbox .notif-panel__empty {
-  padding-top: 0.8rem;
+.site-menu__row-lead--hot {
+  color: color-mix(in srgb, #ff6b5b 82%, var(--ink));
 }
 
-.site-menu__inbox .notif-panel__list {
-  max-height: 18rem;
+html[data-theme='light'] .site-menu__row-lead--hot {
+  color: #c2362b;
+}
+
+/* The inbox, opened from the menu: the same sheet, with a way back. */
+.site-menu__top--inbox {
+  justify-content: flex-start;
+  gap: 0.35rem;
+  padding-left: 0.6rem;
+}
+
+.site-menu__back {
+  display: grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.site-menu__back:hover,
+.site-menu__back:focus-visible {
+  background: rgba(var(--ink-rgb), 0.06);
+}
+
+.site-menu__back svg {
+  width: 1.2rem;
+  height: 1.2rem;
+  transform: rotate(180deg);
+}
+
+.site-menu__inbox-title {
+  flex: 1;
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.site-menu__top--inbox .inbox__new {
+  margin-right: 0.4rem;
+}
+
+.site-menu__body--inbox {
+  gap: 0;
+  padding: 0 0 env(safe-area-inset-bottom);
 }
 
 .site-menu__invites {
