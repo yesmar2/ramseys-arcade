@@ -9,6 +9,7 @@ import { howItWins, type TournamentSummary } from '../lib/tournaments'
 import { EventCountdown } from './EventCountdown'
 import { GameThumbArt } from './GameThumbArt'
 import { medalKind } from './PodiumMedal'
+import { HiddenBug } from './BugHunt'
 
 const PLACES = ['1st', '2nd', '3rd']
 
@@ -177,6 +178,7 @@ export function HomeOnNow() {
       <div className="home-section__bar">
         <h2 id="onnow-title" className="home-section__title">
           On now
+          <HiddenBug spot="home-onnow" />
         </h2>
         <a className="home-section__more" href={tournamentsHref()}>
           All events ›

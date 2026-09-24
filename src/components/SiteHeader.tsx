@@ -28,6 +28,7 @@ import { SiteScopeControl } from './SiteScopeControl'
 import { SiteSearch } from './SiteSearch'
 import { SiteTabs } from './SiteTabs'
 import { navActive, OPEN_MENU_EVENT, SITE_NAV_LINKS } from './siteNav'
+import { BugHuntHost } from './BugHunt'
 
 /**
  * The site's header, on every page but a game screen: one floating bar with
@@ -339,6 +340,9 @@ export function SiteHeader() {
           signingOut={signingOut}
         />
       ) : null}
+
+      {/* Today's bug hunt: a find, and the hunt when the strip or the menu asks for it. */}
+      <BugHuntHost />
 
       <SiteTabs
         menuId={menuId}

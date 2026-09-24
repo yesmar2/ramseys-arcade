@@ -19,6 +19,7 @@ import { resolveGameAccent } from '../lib/theme'
 import { GameThumbArt } from './GameThumbArt'
 import { PlayerMark } from './PlayerMark'
 import { medalKind } from './PodiumMedal'
+import { HiddenBug } from './BugHunt'
 
 /** A points figure that agrees with itself: 1 pt, 2 pts. */
 function pts(n: number) {
@@ -130,7 +131,10 @@ function HouseRecords({ boards }: { boards: SiteRecordBoard[] | null }) {
   return (
     <article className="hb-panel">
       <div className="hb-panel__head">
-        <h3 className="hb-panel__title">House records</h3>
+        <h3 className="hb-panel__title">
+          House records
+          <HiddenBug spot="home-records" pose="peek" />
+        </h3>
         <a className="home-section__more" href={siteRecordsHref()}>
           All ›
         </a>

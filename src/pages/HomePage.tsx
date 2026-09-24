@@ -7,6 +7,7 @@ import { HomeSpotterStrip } from '../components/HomeSpotterStrip'
 import { InstallPrompt } from '../components/InstallPrompt'
 import { PageShell } from '../components/PageShell'
 import { PendingInvitesStrip } from '../components/PendingInvitesStrip'
+import { BugHuntStrip } from '../components/BugHunt'
 
 /**
  * The front door, at the width of the screen: a banner for the one game to
@@ -21,6 +22,7 @@ export function HomePage() {
       <PageShell variant="home">
         <div className="home-rail">
           <HomeHero />
+          <BugHuntStrip />
           <PendingInvitesStrip />
           <HomeOnNow />
           <GameWall />

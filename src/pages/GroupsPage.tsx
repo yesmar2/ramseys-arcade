@@ -42,6 +42,7 @@ import {
   type GroupPublic,
 } from '../lib/groups'
 import { ApiError, normalizePlayerName } from '../lib/leaderboard'
+import { HiddenBug } from '../components/BugHunt'
 
 function inviteUrl(id: string, code: string) {
   return `${window.location.origin}${groupHref(id, code)}`
@@ -102,7 +103,10 @@ export function GroupsPage() {
       <div className="grp">
         <header className="grp-head">
           <div>
-            <h1 className="grp-head__title">Groups</h1>
+            <h1 className="grp-head__title">
+              Groups
+              <HiddenBug spot="groups" />
+            </h1>
             <p className="grp-head__lede">The same boards, with just your people on them.</p>
           </div>
           {groups.length ? (

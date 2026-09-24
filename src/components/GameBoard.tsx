@@ -41,6 +41,7 @@ import { GameThumbArt } from './GameThumbArt'
 import { LeaderboardList } from './LeaderboardList'
 import { PlayerMark } from './PlayerMark'
 import { ShareBoardButton } from './ShareBoardButton'
+import { HiddenBug } from './BugHunt'
 
 /*
  * One game's own board. The banner is the game at the scale of the page, its
@@ -192,6 +193,7 @@ function Banner({
             <>
               {head.name ? <span className="gb-title__lead">{head.name}</span> : null}
               {head.rest}
+              <HiddenBug spot={`board-${slug}`} pose="peek" />
             </>
           )}
         </h1>

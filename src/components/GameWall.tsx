@@ -15,6 +15,7 @@ import { numberWord } from '../lib/numberWord'
 import { resolveGameAccent } from '../lib/theme'
 import { GamePreview } from './GamePreview'
 import { GameThumbArt } from './GameThumbArt'
+import { HiddenBug } from './BugHunt'
 
 type Tab = 'all' | GameTag | 'new'
 
@@ -209,6 +210,7 @@ export function GameWall() {
       <div className="wall__bar">
         <h2 id="games-heading" className="wall__title">
           Games
+          <HiddenBug spot="home-games" />
         </h2>
         <span className="wall__count">{shown.length} on the floor</span>
         <div className="chips wall__tabs" role="tablist" aria-label="Kind of game">

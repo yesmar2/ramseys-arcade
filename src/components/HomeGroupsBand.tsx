@@ -4,6 +4,7 @@ import { tournamentCreateHref } from '../hooks/useHashRoute'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { cachedMyGroups, groupHref, groupsIndexHref, listMyGroups, type GroupPublic } from '../lib/groups'
 import { normalizePlayerName } from '../lib/leaderboard'
+import { HiddenBug } from './BugHunt'
 
 /*
  * An eight-player draw, drawn as the path one player takes to the cup: the
@@ -96,6 +97,7 @@ export function HomeGroupsBand() {
         <p className="gband__kicker">Groups and events</p>
         <h2 id="gband-title" className="gband__title">
           Your own board, for your own people.
+          <HiddenBug spot="home-groups" />
         </h2>
         {mine.length > 0 ? (
           <>

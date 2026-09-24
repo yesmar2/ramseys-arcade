@@ -11,6 +11,7 @@ import { DevicesIcon, PlayIcon } from './chromeIcons'
 import { GamePreview } from './GamePreview'
 import { GameThumbArt } from './GameThumbArt'
 import { ShareBoardButton } from './ShareBoardButton'
+import { HiddenBug } from './BugHunt'
 
 /**
  * The top of a game's page: its name and a way to play, beside its screen,
@@ -74,6 +75,7 @@ export function GameHubHero({
           ) : null}
           <h1 id="gh-title" className="gh-hero__name">
             {game.name}
+            <HiddenBug spot={`hub-${game.slug}`} />
           </h1>
           <p className="gh-hero__blurb">{game.description}</p>
           <div className="gh-hero__acts">

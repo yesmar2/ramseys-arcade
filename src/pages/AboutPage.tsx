@@ -8,6 +8,7 @@ import {
   termsHref,
   tournamentsHref,
 } from '../hooks/useHashRoute'
+import { HiddenBug } from '../components/BugHunt'
 
 const HIGHLIGHTS = [
   {
@@ -44,7 +45,10 @@ export function AboutPage() {
       <ul className="home-about__highlights">
         {HIGHLIGHTS.map((item) => (
           <li key={item.title} className="home-about__highlight">
-            <h3 className="home-about__highlight-title">{item.title}</h3>
+            <h3 className="home-about__highlight-title">
+              {item.title}
+              {item.title === 'No ads' ? <HiddenBug spot="about" /> : null}
+            </h3>
             <p className="home-about__highlight-body">{item.body}</p>
           </li>
         ))}

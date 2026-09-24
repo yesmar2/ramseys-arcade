@@ -24,6 +24,7 @@ import { EventArt, eventAccent } from './EventCard'
 import { EventScreen } from './EventScreen'
 import { PlayerAvatar } from './PlayerAvatar'
 import { openSiteMenu } from './siteNav'
+import { HiddenBug } from './BugHunt'
 
 /* The events page's pieces: this week's Triple up top, today's daily, last week's winner, your own, how it all works, and what has finished. */
 
@@ -159,6 +160,7 @@ export function WeeklyHero({ t, joined }: { t: TournamentSummary; joined: boolea
         </p>
         <h1 id="evp-weekly-title" className="evp-hero__title">
           {gameList(t.games)}
+          <HiddenBug spot="events" pose="peek" />
         </h1>
         <p className="evp-hero__lede">
           Place on all {t.games.length === 3 ? 'three' : t.games.length} by Sunday night. Every place pays points, 1st the

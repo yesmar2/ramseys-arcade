@@ -34,6 +34,7 @@ import { PlayerAvatar } from './PlayerAvatar'
 import { PlayerBadge, type PlayerBadgeHandle } from './PlayerBadge'
 import { MusicToggle } from './MusicToggle'
 import { SoundPackSelect } from './SoundPackSelect'
+import { BugHuntMenuRow, HiddenBug } from './BugHunt'
 
 /** The themes, in the order the picker shows them. */
 const THEME_CHOICES: Theme[] = ['light', 'dark']
@@ -248,6 +249,7 @@ export function SiteMenu({
         <div className="site-menu__top">
           <h2 id={titleId} className="site-menu__cap">
             {tagged ? 'Your menu' : 'Menu'}
+            <HiddenBug spot="menu" onCaught={onClose} />
           </h2>
           <button type="button" className="site-menu__close" aria-label="Close menu" onClick={onClose}>
             <CloseIcon />
@@ -330,6 +332,12 @@ export function SiteMenu({
               </li>
             </ul>
           )}
+
+          <ul className="site-menu__rows" aria-label="Bug hunt">
+            <li>
+              <BugHuntMenuRow onOpen={onClose} />
+            </li>
+          </ul>
 
           {invites > 0 ? (
             <section className="site-menu__invites" aria-label="Invites">

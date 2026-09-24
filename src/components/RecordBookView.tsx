@@ -33,6 +33,7 @@ import { GamePreview } from './GamePreview'
 import { GameThumbArt } from './GameThumbArt'
 import { PlayerMark } from './PlayerMark'
 import { ShareBoardButton } from './ShareBoardButton'
+import { HiddenBug } from './BugHunt'
 
 /*
  * One game's record book: its banner, with the game playing on the screen and
@@ -193,6 +194,7 @@ export function RecordBookView({ game, period }: { game: string; period: Leaderb
               <>
                 {head.name ? <span className="gb-title__lead">{head.name}</span> : null}
                 {head.rest}
+                <HiddenBug spot={`book-${game}`} pose="hang" />
               </>
             )}
           </h1>

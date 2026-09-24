@@ -33,6 +33,7 @@ import { resolveGameAccent } from '../lib/theme'
 import { BoardEmpty } from './BoardChrome'
 import { GameThumbArt } from './GameThumbArt'
 import { PlayerMark } from './PlayerMark'
+import { HiddenBug } from './BugHunt'
 
 /*
  * The boards page: one scoreboard for the period instead of two tabs. The
@@ -738,6 +739,7 @@ export function BoardsScoreboard({ period }: { period: LeaderboardPeriod }) {
               <>
                 {head.name ? <span className="sb-title__lead">{head.name}</span> : null}
                 {head.rest}
+                <HiddenBug spot="boards" />
               </>
             )}
           </h1>
