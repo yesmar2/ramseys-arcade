@@ -76,7 +76,6 @@ function robotsTxt() {
     'Disallow: /auth/',
     'Disallow: /dev/',
     'Disallow: /tournaments/',
-    'Disallow: /c/',
     '',
     `Sitemap: ${origin}/sitemap.xml`,
     '',
@@ -113,17 +112,39 @@ try {
     writeFileSync(file, pageHtml(meta, pageContent(route)))
   }
   /*
-   * A challenge link, /c/<game>/<id>, is the same page for every id of a game
-   * (vercel.json points them all at it): what the link unfurls into in a chat.
-   * The app reads the id from the address and opens the challenge itself.
-   * Every game gets one, hidden ones too, since the rewrite has no fallback;
-   * a game without its challenge card unfurls into the site's own.
-   * Not in the sitemap: a link is somebody's, sent to somebody.
+   * A challenge link, /c/<game>/<id>, starts from its game's page here:
+   * api/challenge-page.js rewrites its tags for the one challenge, and falls
+   * back to it as it is when the API can't be reached. The app reads the id
+   * from the address and opens the challenge itself. Every game gets one,
+   * hidden ones too; a game without its challenge card unfurls into the
+   * site's own. Kept out of search by a noindex tag, not robots.txt: chat
+   * apps that honour robots.txt (X, LinkedIn) would then show no preview.
+   * Not in the sitemap either: a link is somebody's, sent to somebody.
    */
   const { games } = await server.ssrLoadModule('/src/data/games.ts')
   const { APP_NAME } = await server.ssrLoadModule('/src/lib/brand.ts')
+  const { scoreUnit } = await server.ssrLoadModule('/src/lib/gameBoard.ts')
+  const { isTimeBoard } = await server.ssrLoadModule('/src/lib/leaderboardFormat.ts')
+  const { FINDBUG_SCORE_BASE } = await server.ssrLoadModule('/src/games/findbug/score.ts')
+  const { SPOTTER_SCORE_BASE } = await server.ssrLoadModule('/src/games/spotter/score.ts')
+  // The boards that keep a time, as each one prints it (leaderboardFormat.ts).
+  const CLOCKS = {
+    findbug: { clock: 'tenths', base: FINDBUG_SCORE_BASE },
+    spotter: { clock: 'seconds', base: SPOTTER_SCORE_BASE },
+  }
+  /** What the challenge functions need to word and colour a game's card. */
+  const cardGames = {}
   let challengePages = 0
   for (const game of games) {
+    const time = isTimeBoard(game.slug)
+    if (time && !CLOCKS[game.slug]) console.warn(`prerender: no clock for ${game.slug}; its challenge cards count points`)
+    cardGames[game.slug] = {
+      name: game.name,
+      accent: game.accent,
+      unit: time ? null : [scoreUnit(game.slug, 1), scoreUnit(game.slug, 2)],
+      clock: CLOCKS[game.slug]?.clock ?? null,
+      base: CLOCKS[game.slug]?.base ?? 0,
+    }
     const description = `A friend has a score for you to beat on ${game.name}. It plays right here in your browser, no account needed.`
     const card = `/og/challenge/${game.slug}.png`
     const meta = {
@@ -139,9 +160,11 @@ try {
     }
     const file = outFile(meta.path)
     mkdirSync(dirname(file), { recursive: true })
-    writeFileSync(file, pageHtml(meta, content))
+    writeFileSync(file, pageHtml(meta, content).replace('</head>', '  <meta name="robots" content="noindex" />\n  </head>'))
     challengePages++
   }
+  mkdirSync(join(DIST, 'og/challenge'), { recursive: true })
+  writeFileSync(join(DIST, 'og/challenge/games.json'), JSON.stringify(cardGames))
   writeFileSync(join(DIST, 'robots.txt'), robotsTxt())
   writeFileSync(join(DIST, 'sitemap.xml'), sitemapXml(paths))
   console.log(
