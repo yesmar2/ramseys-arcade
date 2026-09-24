@@ -129,13 +129,13 @@ export type RecordRow = {
   /** The number beside it: yours, the record's, or Open. */
   value: string
   note: string
-  /** The one worth pointing at first: a record you are level with, or one nobody holds. */
+  /** The one worth pointing at first: a record you are tied with, or one nobody holds. */
   hot: boolean
 }
 
 /**
  * The records to show on a game's page. For a player in the book: the ones
- * level with the holder (one more run takes them), the ones they hold, the
+ * tied with the holder (one more run takes them), the ones they hold, the
  * nearest, and one nobody has set. For anyone else: the unset ones, then the
  * book's best.
  */
@@ -168,7 +168,7 @@ export function recordRows(records: RecordSummary[], me: string, limit = 4): { r
         tied.push({
           record: r,
           value: recordBrief(r, you.score),
-          note: `Level with ${r.top.name}, who got there first. One better and it’s yours.`,
+          note: `Tied with ${r.top.name}, who got there first. One better and it’s yours.`,
           hot: true,
         })
       }

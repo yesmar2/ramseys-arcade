@@ -104,7 +104,7 @@ export function boardHeadline(
   if (first && second) {
     const gap = first.best.score - second.best.score
     if (gap > 0) return { name: first.name, rest: ` leads ${game} by ${gapText(slug, gap)}.` }
-    return { name: '', rest: `${first.name} and ${second.name} are level at the top of ${game}.` }
+    return { name: '', rest: `${first.name} and ${second.name} are tied at the top of ${game}.` }
   }
   if (first) return { name: first.name, rest: `’s alone on ${game}${copy.noun ? ` ${copy.phrase}` : ''}.` }
   return { name: '', rest: `Nobody’s played ${game} ${copy.noun ? copy.phrase : 'yet'}.` }
@@ -160,7 +160,7 @@ export function boardYouStats(slug: string, you: BoardYou): Stat[] {
   const versus = (other: BoardPlayer, gap: number, side: string): Stat =>
     gap > 0
       ? { value: isTimeBoard(slug) ? gapText(slug, gap) : gap.toLocaleString(), label: `${gapUnit(slug, gap)}${side} ${other.name}` }
-      : { value: 'Level', label: `with ${other.name}` }
+      : { value: 'Tied', label: `with ${other.name}` }
   if (you.above) stats.push(versus(you.above, you.above.best.score - you.player.best.score, 'behind'))
   if (you.below) stats.push(versus(you.below, you.player.best.score - you.below.best.score, 'ahead of'))
   return stats

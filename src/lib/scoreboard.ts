@@ -308,7 +308,7 @@ export function headline(
   const gap = first.score - second.score
   if (gap <= 0) {
     const where = copy.noun ? ` of the ${copy.noun}` : ''
-    return { name: '', rest: `${first.name} and ${second.name} are level at the top${where}.` }
+    return { name: '', rest: `${first.name} and ${second.name} are tied at the top${where}.` }
   }
   return {
     name: first.name,
@@ -348,14 +348,20 @@ export function lede(
 
 /* ---------- you ---------- */
 
-/** Where you stand against the players either side of you. */
+/**
+ * Where you stand against the players either side of you. Each gap says it is
+ * points, and a tie says "Tied": the two sit side by side, and a bare word
+ * beside a bare number read as one thing ("Level 8").
+ */
 export function youStats(you: YouStanding, standings: Standing[]): Stat[] {
   if (you.rank == null) return []
   const rank = you.rank
   const around: { rank: number; name: string; score: number }[] = [...you.nearby, ...standings]
   const at = (r: number) => around.find((e) => e.rank === r && e.name !== you.name)
   const versus = (other: { name: string; score: number }, gap: number, side: string): Stat =>
-    gap > 0 ? { value: gap.toLocaleString(), label: `${side} ${other.name}` } : { value: 'Level', label: `with ${other.name}` }
+    gap > 0
+      ? { value: gap.toLocaleString(), label: `${gap === 1 ? 'point' : 'points'} ${side} ${other.name}` }
+      : { value: 'Tied', label: `on points with ${other.name}` }
   const stats: Stat[] = []
   const above = rank > 1 ? at(rank - 1) : undefined
   const below = at(rank + 1)
@@ -493,12 +499,12 @@ function movesFoot(copy: PeriodCopy, empties: number, standings: Standing[], you
       const second = around.find((e) => e.rank === 2 && e.name !== you.name)
       if (!second) return `You’re the only one on the boards${copy.noun ? ` ${copy.phrase}` : ''}.`
       const margin = you.score - second.score
-      return margin > 0 ? `You ${lead} by ${count(margin, 'point')}.` : `You’re level with ${second.name} at the top.`
+      return margin > 0 ? `You ${lead} by ${count(margin, 'point')}.` : `You’re tied with ${second.name} at the top.`
     }
     const above = around.find((e) => e.rank === rank - 1 && e.name !== you.name)
     if (!above) return ''
     const gap = above.score - you.score
-    if (gap <= 0) return `You’re level on points with ${above.name}.`
+    if (gap <= 0) return `You’re tied on points with ${above.name}.`
     // Passing means more points than theirs, so a gap of exactly 300 takes four.
     const needed = Math.floor(gap / 100) + 1
     if (empties >= needed) return `${firstRuns(needed)} would put you past ${above.name}.`

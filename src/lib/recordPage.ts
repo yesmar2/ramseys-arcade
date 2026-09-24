@@ -236,7 +236,7 @@ export function recordStanding(
     const callout = !next
       ? `${capital(recordBeat(record, top.score))} takes the record.`
       : next.score === you.score
-        ? `Level with ${next.name}, who got there first. ${capital(recordBeat(record, next.score))} passes them.`
+        ? `Tied with ${next.name}, who got there first. ${capital(recordBeat(record, next.score))} passes them.`
         : rank === 2
           ? `${capital(recordBeat(record, top.score))} takes the record from ${top.name}.`
           : `${capital(recordBeat(record, next.score))} passes ${next.name} for ${ordinal(rank - 1)}.`

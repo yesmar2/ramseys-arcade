@@ -95,7 +95,7 @@ export function ProfileRival({
 
   const gap = them.score - you.score
   const relation =
-    gap > 0 ? `${gap.toLocaleString()} ahead of ${youWord}` : gap < 0 ? `${(-gap).toLocaleString()} behind ${youWord}` : `level with ${youWord}`
+    gap > 0 ? `${gap.toLocaleString()} ahead of ${youWord}` : gap < 0 ? `${(-gap).toLocaleString()} behind ${youWord}` : `tied with ${youWord}`
   const sub = visiting
     ? `You’re #${you.rank.toLocaleString()} ${word} · ${pts(you.score)}`
     : `#${them.rank.toLocaleString()} ${word} · ${pts(them.score)} · ${relation}`
@@ -132,7 +132,7 @@ export function ProfileRival({
     }
   }
   if (data.rank === 1 && isSelf) {
-    pass = gap < 0 ? `Your lead is ${pts(-gap)}.` : `${them.name} is level with you on points.`
+    pass = gap < 0 ? `Your lead is ${pts(-gap)}.` : `${them.name} is tied with you on points.`
   }
 
   const startWith = missing.slugs[0]

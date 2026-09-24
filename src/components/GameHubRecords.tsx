@@ -5,7 +5,7 @@ import type { RecordSummary } from '../lib/records'
 import { ChevronRightIcon, EventsIcon, FlameIcon, SparkleIcon, TimerIcon } from './chromeIcons'
 
 /**
- * The game's record book, from the viewer's side: the records they are level
+ * The game's record book, from the viewer's side: the records they are tied
  * with (one better takes them), the ones they hold, the nearest, and one that
  * nobody has set. Someone not in the book sees the unset ones and the best.
  */

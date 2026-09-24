@@ -103,9 +103,9 @@ export function leadLine(entries: GlobalBoardEntry[], period: GroupPeriod, me = 
     return isMe(first) ? `You’re the only one on the table ${where}.` : `${first.name} is the only one on the table ${where}.`
   }
   const gap = first.score - second.score
-  if (isMe(first)) return gap === 0 ? `You lead ${when}, level with ${second.name}.` : `You lead ${when} by ${gap} over ${second.name}.`
+  if (isMe(first)) return gap === 0 ? `You lead ${when}, tied with ${second.name}.` : `You lead ${when} by ${gap} over ${second.name}.`
   const over = isMe(second) ? 'you' : second.name
-  return gap === 0 ? `${first.name} leads ${when}, level with ${over}.` : `${first.name} leads ${when} by ${gap} over ${over}.`
+  return gap === 0 ? `${first.name} leads ${when}, tied with ${over}.` : `${first.name} leads ${when} by ${gap} over ${over}.`
 }
 
 /**
@@ -127,7 +127,7 @@ export function youLine(entries: GlobalBoardEntry[], me: string, period: GroupPe
   }
   const above = entries[i - 1]!
   const gap = above.score - mine.score
-  return gap === 0 ? `You’re ${ordinal(mine.rank)}, level with ${above.name}.` : `You’re ${ordinal(mine.rank)}, ${gap} behind ${above.name}.`
+  return gap === 0 ? `You’re ${ordinal(mine.rank)}, tied with ${above.name}.` : `You’re ${ordinal(mine.rank)}, ${gap} behind ${above.name}.`
 }
 
 export function ordinal(n: number): string {

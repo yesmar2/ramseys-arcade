@@ -213,11 +213,11 @@ function standing({
     const parts: string[] = [from]
     if (above) {
       const gap = above.score - data.score
-      parts.push(gap > 0 ? `${gap.toLocaleString()} behind ${above.name}` : `level with ${above.name}`)
+      parts.push(gap > 0 ? `${gap.toLocaleString()} behind ${above.name}` : `tied with ${above.name}`)
     }
     if (below) {
       const lead = data.score - below.score
-      parts.push(lead > 0 ? `${lead.toLocaleString()} ahead of ${below.name}` : `level with ${below.name}`)
+      parts.push(lead > 0 ? `${lead.toLocaleString()} ahead of ${below.name}` : `tied with ${below.name}`)
     }
     return {
       head: (

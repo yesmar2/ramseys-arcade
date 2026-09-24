@@ -134,7 +134,7 @@ export function eventWinTakeover(detail: TournamentDetail, me: string): WinTakeo
     margin =
       gap > 0
         ? `, ${points ? gap.toLocaleString() : single ? gapText(single, gap) : gap.toLocaleString()} ahead of ${second.name}`
-        : `, level with ${second.name} and ahead on the tie-break`
+        : `, tied with ${second.name} and ahead on the tie-break`
   }
 
   const rows: WinRow[] =

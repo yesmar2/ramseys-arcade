@@ -66,7 +66,7 @@ function pts(n: number) {
 
 /** How far apart two players are on points; a tie says so rather than "by 0 pts". */
 function byOrLevel(gap: number) {
-  return gap > 0 ? `by ${pts(gap)}` : 'level on points'
+  return gap > 0 ? `by ${pts(gap)}` : 'tied on points'
 }
 
 const RUNG_PAGE = 25
@@ -436,7 +436,7 @@ export function HomeHero() {
     if (above && gap > 0) {
       body = `You’re #${you.rank} with ${fmt(you.score)}. ${above.name} holds ${above.rank === 1 ? 'it' : `#${above.rank}`} at ${fmt(above.score)}${behind ? `, and ${behind}` : ''}.`
     } else if (above) {
-      body = `You’re #${you.rank} with ${fmt(you.score)}, level with ${above.name}, who got there first.${behind ? ` ${behind}.` : ''}`
+      body = `You’re #${you.rank} with ${fmt(you.score)}, tied with ${above.name}, who got there first.${behind ? ` ${behind}.` : ''}`
     } else if (below) {
       body = `Your ${fmt(you.score)} leads ${below.name} by ${gapText(slug, you.score - below.score)}.`
     } else {
@@ -458,7 +458,7 @@ export function HomeHero() {
                 <span className="home-banner__gap">{gapText(slug, gap)}</span> from {target}.
               </>
             ) : above ? (
-              <>Level with {target}.</>
+              <>Tied with {target}.</>
             ) : (
               <>You hold the {game.name} record.</>
             )}
@@ -499,7 +499,7 @@ export function HomeHero() {
                     <b>{(ahead.score - standing.score).toLocaleString()}</b> to #{ahead.rank}
                   </>
                 ) : (
-                  <>level with #{ahead.rank}</>
+                  <>tied with #{ahead.rank}</>
                 )}
               </span>
             ) : null}

@@ -208,7 +208,7 @@ function boardLine(f: RunFacts, copy: PeriodCopy): BoardRead | null {
   const climbed = before == null || place < before
   const behind = (other: BoardPlayer) => {
     const gap = other.best.score - mine.best.score
-    return gap > 0 ? `${gapText(slug, gap)} behind ${other.name}` : `level with ${other.name}`
+    return gap > 0 ? `${gapText(slug, gap)} behind ${other.name}` : `tied with ${other.name}`
   }
   const read = (detail: string | null, tone: ReportTone, icon: ReportIcon = 'board', newTop = false): BoardRead => ({
     line: { id: 'board', icon, label, detail, value: `#${place}`, tone },
@@ -257,7 +257,7 @@ function overallLine(f: RunFacts, copy: PeriodCopy): { line: ReportLine; newTop:
   if (rank < before) return line(`${points}, up ${before - rank}`, 'accent', 'up')
   if (above) {
     const gap = above.score - after.score
-    return line(gap > 0 ? `${points}, ${gap.toLocaleString()} behind ${above.name}` : `${points}, level with ${above.name}`, 'plain', 'sum')
+    return line(gap > 0 ? `${points}, ${gap.toLocaleString()} behind ${above.name}` : `${points}, tied with ${above.name}`, 'plain', 'sum')
   }
   return line(points, 'plain', 'sum')
 }
@@ -303,8 +303,8 @@ export function challengeReportLine(slug: string, score: number, challenge: { na
       ? `beat ${figure(slug, challenge.score)} by ${gapText(slug, gap)}`
       : gap > 0
         ? `${gapText(slug, gap)} ${time ? 'off' : 'short of'} ${figure(slug, challenge.score)}`
-        : `level with ${figure(slug, challenge.score)}, and level doesn’t beat it`,
-    value: won ? 'Won' : gap > 0 ? (time ? `+${gapText(slug, gap)}` : `−${gap.toLocaleString()}`) : 'Level',
+        : `tied with ${figure(slug, challenge.score)}, and a tie doesn’t beat it`,
+    value: won ? 'Won' : gap > 0 ? (time ? `+${gapText(slug, gap)}` : `−${gap.toLocaleString()}`) : 'Tied',
     tone: won ? 'gold' : 'plain',
   }
 }
