@@ -1,19 +1,8 @@
-import { useEffect, useState } from 'react'
-import {
-  acquireMusic,
-  isMuted,
-  releaseMusic,
-  setMuted,
-  unlockSound,
-} from '../lib/sound'
+import { useState } from 'react'
+import { isMuted, setMuted, unlockSound } from '../lib/sound'
 
 export function SoundToggle({ className = '' }: { className?: string } = {}) {
   const [mute, setMute] = useState(isMuted)
-
-  useEffect(() => {
-    acquireMusic()
-    return () => releaseMusic()
-  }, [])
 
   return (
     <div

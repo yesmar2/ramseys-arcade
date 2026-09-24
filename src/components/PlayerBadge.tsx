@@ -22,6 +22,7 @@ import { currentTheme, THEME_EVENT, toggleTheme, themeLabel, type Theme } from '
 import { DevImpersonateControl } from './DevImpersonateControl'
 import { GoogleSignInButton } from './GoogleSignInButton'
 import { PlayerAvatar } from './PlayerAvatar'
+import { MusicToggle } from './MusicToggle'
 import { SoundPackSelect } from './SoundPackSelect'
 
 type PlayerBadgeProps = {
@@ -422,6 +423,7 @@ export const PlayerBadge = forwardRef<PlayerBadgeHandle, PlayerBadgeProps>(
             <span className="site-drawer__pref-value">{themeLabel(theme)}</span>
           </button>
           <SoundPackSelect variant="drawer" />
+          <MusicToggle variant="drawer" />
         </div>
         <DevImpersonateControl variant="drawer" />
       </div>

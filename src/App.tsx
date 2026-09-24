@@ -15,7 +15,7 @@ import {
 } from './lib/leaderboard'
 import { refreshGlobalRank } from './lib/globalRank'
 import { refreshPersonalBests } from './lib/personalBest'
-import { silenceMusic, unlockSound } from './lib/sound'
+import { playMusicFor, silenceMusic, unlockSound } from './lib/sound'
 import { rememberPlayed } from './lib/lastPlayed'
 import { isImpersonating } from './lib/impersonate'
 import { pruneOrphanTournamentIds } from './lib/tournaments'
@@ -176,9 +176,12 @@ function App() {
     }
   }, [])
 
+  // Each game plays its own music the whole time it's on screen, in an event too.
+  const musicSlug = route.name === 'gamePlay' ? route.slug : route.name === 'tournamentPlay' ? route.game : null
   useEffect(() => {
-    if (!onGameScreen) silenceMusic()
-  }, [onGameScreen])
+    if (musicSlug) playMusicFor(musicSlug)
+    else silenceMusic()
+  }, [musicSlug])
 
   return (
     <Suspense fallback={<RouteFallback game={onGameScreen} />}>

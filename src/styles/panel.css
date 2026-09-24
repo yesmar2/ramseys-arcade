@@ -709,8 +709,11 @@ html[data-theme='dark'] .game-card {
   gap: 0.45rem;
 }
 
+/* Sound on a line of its own (mute, music, the set, vibration); the rules and boards on the next. */
 .game-card .game-sound-row {
   align-self: center;
+  flex-basis: 100%;
+  justify-content: center;
 }
 
 .game-card .game-pause-btn,

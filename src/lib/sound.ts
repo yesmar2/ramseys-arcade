@@ -1,46 +1,57 @@
 import {
   createSynth,
+  DEFAULT_SOUND_PACK,
   isSoundPackId,
+  PACK_TRIM,
   SOUND_PACK_IDS,
   SOUND_PACK_LABELS,
   SOUND_PACKS,
   type SoundName,
   type SoundPackId,
 } from './soundPacks'
+import { roomImpulse, type Fx } from './soundPacks/voices'
+import { startTrack, type Playing } from './music'
+import { trackForGame } from './musicTracks'
 import { isQuiet } from './quiet'
 
 export type { SoundName, SoundPackId }
 export { SOUND_PACK_IDS, SOUND_PACK_LABELS }
 
 const MUTE_KEY = 'skermix-mute'
-const MUSIC_KEY = 'skermix-music'
-const PACK_KEY = 'skermix-sfx-pack'
+const MUSIC_KEY = 'skermix-music-on'
+/*
+ * Not the old skermix-sfx-pack: the sets changed under it (Arcade and Soft
+ * gave way to Neon and Toybox), so everyone starts on the new default rather
+ * than on whatever they last cycled to.
+ */
+const PACK_KEY = 'skermix-sound-set'
 export const SOUND_PACK_EVENT = 'arcade-sfx-pack'
+export const MUSIC_EVENT = 'arcade-music'
 const LEGACY_MUTE_KEYS = ['fordriva-mute', 'acralia-mute', 'archivade-mute'] as const
-const LEGACY_MUSIC_KEYS = ['fordriva-music', 'acralia-music', 'archivade-music'] as const
-const LEGACY_PACK_KEYS = ['fordriva-sfx-pack'] as const
-const MASTER_GAIN = 0.22
-const MUSIC_GAIN = 0.07
-const MUSIC_STEP = 1.28
-const MUSIC_LOOP = [
-  261.6, 0, 329.6, 0,
-  392.0, 0, 329.6, 0,
-  293.7, 0, 329.6, 0,
-  261.6, 0, 196.0, 0,
-]
+
+/** The whole mix, after the limiter. */
+const LEVEL = 0.8
+/**
+ * Classic keeps the gain and the dulling filter it always had, then comes up
+ * to where the other sets sit, so switching sets never means touching the volume.
+ */
+const CLASSIC_GAIN = 0.22
+const CLASSIC_LIFT = 10.65
 
 let ctx: AudioContext | null = null
+/** Everything passes through here: 0 when muted. */
 let master: GainNode | null = null
-let musicGain: GainNode | null = null
+let sfxBus: GainNode | null = null
+let classicIn: GainNode | null = null
+let musicBus: GainNode | null = null
+let fx: Fx | null = null
+
 let muted = readMuted()
-let musicVol = readMusicVol()
+let musicOn = readMusicOn()
 let soundPack: SoundPackId = readSoundPack()
-let musicHolders = 0
-let musicWanted = false
-let musicTimer: number | null = null
-let nextNoteTime = 0
-let loopStep = 0
-let padNodes: AudioNode[] = []
+/** The game on screen, whose music should be playing. */
+let musicSlug: string | null = null
+let playing: Playing | null = null
 
 function readMuted() {
   try {
@@ -60,46 +71,28 @@ function readMuted() {
   }
 }
 
-function readMusicVol() {
+function readMusicOn() {
   try {
-    let raw = localStorage.getItem(MUSIC_KEY)
-    if (raw == null) {
-      for (const key of LEGACY_MUSIC_KEYS) {
-        raw = localStorage.getItem(key)
-        if (raw != null) {
-          localStorage.setItem(MUSIC_KEY, raw)
-          break
-        }
-      }
-    }
-    if (raw == null) return 0.55
-    const n = Number(raw)
-    if (!Number.isFinite(n)) return 0.55
-    return Math.min(1, Math.max(0, n))
+    return localStorage.getItem(MUSIC_KEY) !== '0'
   } catch {
-    return 0.55
+    return true
   }
 }
 
 function readSoundPack(): SoundPackId {
   try {
-    let raw = localStorage.getItem(PACK_KEY)
-    if (!raw || !isSoundPackId(raw)) {
-      for (const key of LEGACY_PACK_KEYS) {
-        raw = localStorage.getItem(key)
-        if (raw && isSoundPackId(raw)) {
-          localStorage.setItem(PACK_KEY, raw)
-          break
-        }
-      }
-    }
+    const raw = localStorage.getItem(PACK_KEY)
     if (raw && isSoundPackId(raw)) return raw
   } catch {
     /* ignore */
   }
-  return 'classic'
+  return DEFAULT_SOUND_PACK
 }
 
+/**
+ * The mixing desk, built on first use: sound effects, music, a shared room and
+ * echo, all into one limiter so a pile of explosions can't clip.
+ */
 function getCtx() {
   if (typeof window === 'undefined') return null
   if (!ctx) {
@@ -107,48 +100,111 @@ function getCtx() {
       window.AudioContext ||
       (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
     if (!AC) return null
-    ctx = new AC()
-    master = ctx.createGain()
-    master.gain.value = muted ? 0 : MASTER_GAIN
-    const filter = ctx.createBiquadFilter()
-    filter.type = 'lowpass'
-    filter.frequency.value = 1800
-    filter.Q.value = 0.4
-    musicGain = ctx.createGain()
-    musicGain.gain.value = musicLevel()
-    musicGain.connect(master)
-    master.connect(filter)
-    filter.connect(ctx.destination)
+    const audio = new AC()
+
+    const mute = audio.createGain()
+    mute.gain.value = muted ? 0 : 1
+    const limiter = audio.createDynamicsCompressor()
+    limiter.threshold.value = -8
+    limiter.knee.value = 4
+    limiter.ratio.value = 12
+    limiter.attack.value = 0.002
+    limiter.release.value = 0.16
+    const level = audio.createGain()
+    level.gain.value = LEVEL
+    mute.connect(limiter)
+    limiter.connect(level)
+    level.connect(audio.destination)
+
+    const effects = audio.createGain()
+    effects.connect(mute)
+
+    const classic = audio.createGain()
+    classic.gain.value = CLASSIC_GAIN
+    const dull = audio.createBiquadFilter()
+    dull.type = 'lowpass'
+    dull.frequency.value = 1800
+    dull.Q.value = 0.4
+    const lift = audio.createGain()
+    lift.gain.value = CLASSIC_LIFT
+    classic.connect(dull)
+    dull.connect(lift)
+    lift.connect(effects)
+
+    const verb = audio.createConvolver()
+    verb.buffer = roomImpulse(audio)
+    const verbOut = audio.createGain()
+    verbOut.gain.value = 0.8
+    verb.connect(verbOut)
+    verbOut.connect(mute)
+
+    const echo = audio.createGain()
+    const delay = audio.createDelay(1)
+    delay.delayTime.value = 0.27
+    const damp = audio.createBiquadFilter()
+    damp.type = 'lowpass'
+    damp.frequency.value = 2400
+    const feedback = audio.createGain()
+    feedback.gain.value = 0.34
+    const echoOut = audio.createGain()
+    echoOut.gain.value = 0.7
+    echo.connect(delay)
+    delay.connect(damp)
+    damp.connect(feedback)
+    feedback.connect(delay)
+    damp.connect(echoOut)
+    echoOut.connect(mute)
+
+    const music = audio.createGain()
+    music.gain.value = musicLevel()
+    music.connect(mute)
+
+    ctx = audio
+    master = mute
+    sfxBus = effects
+    classicIn = classic
+    musicBus = music
+    fx = { verb, echo }
   }
   return ctx
 }
 
 function musicLevel() {
-  if (muted || (typeof document !== 'undefined' && document.hidden)) return 0
-  return MUSIC_GAIN * musicVol
+  if (!musicOn || (typeof document !== 'undefined' && document.hidden)) return 0
+  return 1
 }
 
 function applyMusicGain() {
-  if (!ctx || !musicGain) return
-  musicGain.gain.setTargetAtTime(musicLevel(), ctx.currentTime, 0.06)
+  if (!ctx || !musicBus) return
+  musicBus.gain.setTargetAtTime(musicLevel(), ctx.currentTime, 0.08)
+}
+
+/**
+ * Start, change or stop the music to match the game on screen and the
+ * settings. It waits for the page's first tap: a browser won't play before one.
+ */
+function syncMusic() {
+  const track = musicSlug && musicOn && !muted ? trackForGame(musicSlug) : null
+  if (!track) {
+    playing?.stop()
+    playing = null
+    return
+  }
+  if (playing?.track === track) return
+  if (!ctx || ctx.state !== 'running' || !musicBus || !fx) return
+  playing?.stop()
+  playing = startTrack(ctx, track, musicBus, fx)
 }
 
 export function unlockSound() {
   const audio = getCtx()
   if (!audio) return
-  const go = () => {
-    if (musicWanted && musicHolders > 0) runMusic()
-  }
-  if (audio.state === 'suspended') void audio.resume().then(go)
-  else go()
+  if (audio.state === 'suspended') void audio.resume().then(syncMusic)
+  else syncMusic()
 }
 
 export function isMuted() {
   return muted
-}
-
-export function getMusicVolume() {
-  return musicVol
 }
 
 export function getSoundPack(): SoundPackId {
@@ -167,7 +223,7 @@ export function setSoundPack(next: SoundPackId) {
   unlockSound()
 }
 
-/** Cycle Classic → Arcade → Soft → Classic. Returns the new pack. */
+/** Step to the next set, in the order the pickers show them. Returns the new one. */
 export function cycleSoundPack(): SoundPackId {
   const i = SOUND_PACK_IDS.indexOf(soundPack)
   const next = SOUND_PACK_IDS[(i + 1) % SOUND_PACK_IDS.length]!
@@ -184,118 +240,40 @@ export function setMuted(next: boolean) {
   }
   const audio = getCtx()
   if (audio && master) {
-    master.gain.setTargetAtTime(next ? 0 : MASTER_GAIN, audio.currentTime, 0.03)
+    master.gain.setTargetAtTime(next ? 0 : 1, audio.currentTime, 0.03)
   }
-  applyMusicGain()
-  if (!next) unlockSound()
-}
-
-export function setMusicVolume(next: number) {
-  musicVol = Math.min(1, Math.max(0, next))
-  try {
-    localStorage.setItem(MUSIC_KEY, String(musicVol))
-  } catch {
-    /* ignore */
-  }
-  applyMusicGain()
-  if (musicVol > 0 && muted) setMuted(false)
+  if (next) syncMusic()
   else unlockSound()
 }
 
-export function acquireMusic() {
-  musicHolders += 1
-  musicWanted = true
-  unlockSound()
+export function isMusicOn() {
+  return musicOn
 }
 
-export function releaseMusic() {
-  musicHolders = Math.max(0, musicHolders - 1)
-  if (musicHolders > 0) return
-  silenceMusic()
-}
-
-/** Stop background music immediately, even if a holder leaked. */
-export function silenceMusic() {
-  musicHolders = 0
-  musicWanted = false
-  if (musicTimer != null) {
-    window.clearTimeout(musicTimer)
-    musicTimer = null
+/** Music on or off. Turning it on while everything is muted unmutes, or it would do nothing. */
+export function setMusicOn(next: boolean) {
+  musicOn = next
+  try {
+    localStorage.setItem(MUSIC_KEY, next ? '1' : '0')
+  } catch {
+    /* ignore */
   }
-  stopPad()
-  if (ctx && musicGain) {
-    musicGain.gain.cancelScheduledValues(ctx.currentTime)
-    musicGain.gain.setValueAtTime(0, ctx.currentTime)
-  }
-}
-
-function runMusic() {
-  const audio = getCtx()
-  if (!audio || !musicWanted || audio.state === 'suspended') return
-  if (musicTimer == null) {
-    nextNoteTime = audio.currentTime + 0.08
-    loopStep = 0
-    startPad(audio)
-    scheduleMusic()
-  }
+  window.dispatchEvent(new Event(MUSIC_EVENT))
   applyMusicGain()
+  if (next && muted) setMuted(false)
+  else unlockSound()
 }
 
-function scheduleMusic() {
-  const audio = ctx
-  if (!audio || !musicWanted) return
-  while (nextNoteTime < audio.currentTime + 0.24) {
-    const freq = MUSIC_LOOP[loopStep % MUSIC_LOOP.length]
-    if (freq) musicNote(audio, freq, nextNoteTime)
-    nextNoteTime += MUSIC_STEP
-    loopStep += 1
-  }
-  musicTimer = window.setTimeout(scheduleMusic, 100)
+/** A game is on screen: play its music, now or on the first tap. */
+export function playMusicFor(slug: string) {
+  musicSlug = slug
+  syncMusic()
 }
 
-function musicNote(audio: AudioContext, freq: number, when: number) {
-  if (!musicGain) return
-  const dur = 1.7
-  const osc = audio.createOscillator()
-  const g = audio.createGain()
-  osc.type = 'sine'
-  osc.frequency.setValueAtTime(freq, when)
-  g.gain.setValueAtTime(0.0001, when)
-  g.gain.exponentialRampToValueAtTime(0.22, when + 0.06)
-  g.gain.exponentialRampToValueAtTime(0.0001, when + dur)
-  osc.connect(g)
-  g.connect(musicGain)
-  osc.start(when)
-  osc.stop(when + dur + 0.05)
-}
-
-function startPad(audio: AudioContext) {
-  if (!musicGain || padNodes.length) return
-  const make = (freq: number, gain: number) => {
-    const osc = audio.createOscillator()
-    const g = audio.createGain()
-    osc.type = 'sine'
-    osc.frequency.value = freq
-    g.gain.value = gain
-    osc.connect(g)
-    g.connect(musicGain as GainNode)
-    osc.start()
-    padNodes.push(osc, g)
-  }
-  make(130.8, 0.16)
-  make(196.0, 0.09)
-}
-
-function stopPad() {
-  for (const node of padNodes) {
-    try {
-      if (node instanceof OscillatorNode) node.stop()
-      node.disconnect()
-    } catch {
-      /* already stopped */
-    }
-  }
-  padNodes = []
+/** Off a game screen: the music fades out. */
+export function silenceMusic() {
+  musicSlug = null
+  syncMusic()
 }
 
 if (typeof document !== 'undefined') {
@@ -306,8 +284,10 @@ export function sfx(name: SoundName, pitch = 0) {
   // A game playing itself in a preview makes no noise; see `quietly`.
   if (muted || isQuiet()) return
   const audio = getCtx()
-  if (!audio || !master) return
+  if (!audio || !sfxBus || !classicIn || !fx) return
   if (audio.state === 'suspended') void audio.resume()
-  const play = SOUND_PACKS[soundPack] ?? SOUND_PACKS.classic
-  play(createSynth(audio, master), name, pitch)
+  const play = SOUND_PACKS[soundPack] ?? SOUND_PACKS[DEFAULT_SOUND_PACK]
+  // Classic plays through its old filter and knows nothing of the room or echo.
+  if (soundPack === 'classic') play(createSynth(audio, classicIn), name, pitch)
+  else play(createSynth(audio, sfxBus, fx, PACK_TRIM[soundPack]), name, pitch)
 }

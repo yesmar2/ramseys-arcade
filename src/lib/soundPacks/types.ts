@@ -1,3 +1,5 @@
+import { makeVoices, type FmOptions, type Fx, type NoiseOptions, type ToneOptions } from './voices'
+
 export type SoundName =
   | 'place'
   | 'perfect'
@@ -52,11 +54,26 @@ export type Synth = {
     delay?: number,
     type?: OscillatorType,
   ) => void
+  /*
+   * The richer voices Neon and Toybox are made of, all timed from the moment
+   * the sound was asked for (see voices.ts).
+   */
+  osc: (freq: number, dur: number, gain: number, o?: ToneOptions) => void
+  fm: (freq: number, dur: number, gain: number, o?: FmOptions) => void
+  noise: (dur: number, gain: number, o?: NoiseOptions) => void
+  /** Nudged by up to ±amt, so a sound heard many times running isn't a machine gun. */
+  vary: (x: number, amt?: number) => number
+  /** A pan somewhere within ±width. */
+  spread: (width: number) => number
 }
 
 export type PlaySfx = (synth: Synth, name: SoundName, pitch: number) => void
 
-export function createSynth(audio: AudioContext, master: GainNode): Synth {
+/**
+ * One sound's voices, into `master`. `fx` is the shared room and echo, and
+ * `trim` scales the richer voices so each set plays as loud as the others.
+ */
+export function createSynth(audio: AudioContext, master: GainNode, fx: Fx | null = null, trim = 1): Synth {
   const tone = (
     freq: number,
     dur: number,
@@ -74,6 +91,8 @@ export function createSynth(audio: AudioContext, master: GainNode): Synth {
     if (slide) {
       osc.frequency.exponentialRampToValueAtTime(Math.max(60, freq + slide), t + dur)
     }
+    // Silent before its start, not at the default of 1, or a late voice clicks.
+    g.gain.value = 0.0001
     g.gain.setValueAtTime(0.0001, t)
     g.gain.exponentialRampToValueAtTime(gain, t + attack)
     g.gain.exponentialRampToValueAtTime(0.0001, t + dur)
@@ -94,7 +113,20 @@ export function createSynth(audio: AudioContext, master: GainNode): Synth {
     tone(freq * 2, dur * 0.85, gain * 0.18, 0, delay, type)
   }
 
-  return { audio, master, tone, chime }
+  const voices = makeVoices(audio, master, fx, trim)
+  const base = audio.currentTime + 0.005
+
+  return {
+    audio,
+    master,
+    tone,
+    chime,
+    osc: (freq, dur, gain, o = {}) => voices.toneAt(base + (o.delay ?? 0), freq, dur, gain, o),
+    fm: (freq, dur, gain, o = {}) => voices.fmAt(base + (o.delay ?? 0), freq, dur, gain, o),
+    noise: (dur, gain, o = {}) => voices.noiseAt(base + (o.delay ?? 0), dur, gain, o),
+    vary: (x, amt = 0.015) => x * (1 + (Math.random() * 2 - 1) * amt),
+    spread: (width) => (Math.random() * 2 - 1) * width,
+  }
 }
 
 export function pentNote(pitch: number) {

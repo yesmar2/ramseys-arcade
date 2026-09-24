@@ -29,6 +29,7 @@ import { NotificationList, type NotificationsState } from './NotificationBell'
 import { PendingInvitesStrip } from './PendingInvitesStrip'
 import { PlayerAvatar } from './PlayerAvatar'
 import { PlayerBadge, type PlayerBadgeHandle } from './PlayerBadge'
+import { MusicToggle } from './MusicToggle'
 import { SoundPackSelect } from './SoundPackSelect'
 
 /** The themes, in the order the picker shows them. */
@@ -317,6 +318,10 @@ export function SiteMenu({
             <div className="site-menu__setting">
               <span className="site-menu__cap">Sounds</span>
               <SoundPackSelect variant="chips" className="site-seg site-menu__seg site-menu__sounds" />
+            </div>
+            <div className="site-menu__setting">
+              <span className="site-menu__cap">Music</span>
+              <MusicToggle variant="seg" className="site-seg site-menu__seg" />
             </div>
             <DevImpersonateControl variant="drawer" />
           </section>
