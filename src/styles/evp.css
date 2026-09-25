@@ -1739,18 +1739,21 @@ a.evp-result:focus-visible {
     height: 1.9rem;
   }
 
+  /* Each game's score over its place, narrow enough for three in a row; the points are in the total. */
   .evp-cell {
-    flex-direction: row;
-    align-items: baseline;
-    gap: 0.25rem;
+    align-items: flex-start;
   }
 
   .evp-cell b {
+    font-size: 0.86rem;
+  }
+
+  .evp-cell__pts {
     display: none;
   }
 
   .evp-cell small {
-    font-size: 0.76rem;
+    font-size: 0.72rem;
   }
 
   .evp-how-all {

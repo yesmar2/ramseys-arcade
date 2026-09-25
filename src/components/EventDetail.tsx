@@ -59,6 +59,11 @@ export function EventGames({ games }: { games: GameCardState[] }) {
   )
 }
 
+/*
+ * What a player scored on a game, where it placed them and, in a points
+ * event, what that place paid. A points event used to show only the points,
+ * so nobody could see what anyone had actually scored.
+ */
 function Cell({ slug, place, points, score, usePoints }: { slug: string; place: number | null; points: number; score: number | null; usePoints: boolean }) {
   if (place == null) {
     return (
@@ -69,10 +74,19 @@ function Cell({ slug, place, points, score, usePoints }: { slug: string; place: 
   }
   return (
     <span className={`evp-cell${place === 1 ? ' evp-cell--won' : ''}`}>
-      <b>{usePoints ? points : formatLeaderboardScore(slug, score ?? 0)}</b>
-      <small>{ordinal(place)}</small>
+      <b>{formatLeaderboardScore(slug, score ?? 0)}</b>
+      <small>
+        {ordinal(place)}
+        {usePoints ? <span className="evp-cell__pts"> · {points} pts</span> : null}
+      </small>
     </span>
   )
+}
+
+function cellTitle(cell: TableRow['cells'][number], usePoints: boolean): string {
+  if (cell.place == null) return `${gameName(cell.slug)}: skipped`
+  const scored = `${gameName(cell.slug)}: ${formatLeaderboardScore(cell.slug, cell.score ?? 0)}, ${ordinal(cell.place)}`
+  return usePoints ? `${scored}, ${cell.points} ${cell.points === 1 ? 'point' : 'points'}` : scored
 }
 
 function StandingsRow({ row, usePoints, cols, gap = false }: { row: TableRow; usePoints: boolean; cols: CSSProperties; gap?: boolean }) {
@@ -93,7 +107,7 @@ function StandingsRow({ row, usePoints, cols, gap = false }: { row: TableRow; us
         {row.you ? <span className="evp-you">You</span> : null}
       </a>
       {row.cells.map((cell) => (
-        <span key={cell.slug} className="evp-table__cell" title={`${gameName(cell.slug)}: ${cell.place == null ? 'skipped' : ordinal(cell.place)}`}>
+        <span key={cell.slug} className="evp-table__cell" title={cellTitle(cell, usePoints)}>
           <span className="evp-table__cell-game" aria-hidden="true">
             <GameThumbArt slug={cell.slug} accent={gameAccent(cell.slug)} />
           </span>
