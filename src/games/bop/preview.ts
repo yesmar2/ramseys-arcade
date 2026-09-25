@@ -82,7 +82,7 @@ export function makeSim(): Sim<GameState> {
     // The run itself has no size; only where the toy is drawn does, and that is worked out as it is drawn.
     resize: (s) => s,
     // The still: the toy calling Bop it, its clock full round the rim.
-    poster: { seed: 1, at: 30 },
+    poster: { seed: 1, at: 21.53 },
     // Its renderer times its twinkles and pulses by the page's clock; the run's own keeps the still the same.
     runClock: true,
     // Long enough to read the ending on the toy: which control it wanted, and which was pressed.

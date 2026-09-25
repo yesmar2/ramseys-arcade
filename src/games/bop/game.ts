@@ -102,9 +102,18 @@ export type GameState = {
   stageTop: number
 }
 
-const FIRST_WINDOW = 2.2
-const MIN_WINDOW = 0.62
-const SHRINK = 0.955
+/*
+ * The window a call gives you: roomy at first, a little less after every
+ * right answer, and never below a floor. It was 2.2 s, 4.5% less a call and
+ * no less than 0.62 s, and a phone, where reading a call and dragging to it
+ * takes half a second or more, met that floor as a wall about 25 calls in,
+ * however well it played. Measured on a model of a phone player, this moves
+ * the usual run from 36 to about 49 and the best from 44 to about 70, and the
+ * floor still ends every run in the end.
+ */
+const FIRST_WINDOW = 2.4
+const MIN_WINDOW = 0.75
+const SHRINK = 0.965
 const GAP = 0.32
 export const PRESS_LIFE = 0.34
 /** Answering in this fraction of the window earns the quick point. */
