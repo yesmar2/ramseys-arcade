@@ -33,6 +33,7 @@ import {
 
 export type Route =
   | { name: 'home' }
+  /** `global` is an old /leaderboards/global link; its URL becomes the standings' own (`standingsHref`). */
   | { name: 'leaderboards'; global?: boolean; period?: LeaderboardPeriod }
   | { name: 'gameLeaderboard'; game: LeaderboardGame; period?: LeaderboardPeriod }
   | { name: 'recordsIndex' }
@@ -99,8 +100,9 @@ export function gameBoardHref(
   return `/leaderboards/${encodeURIComponent(game)}/${period}`
 }
 
-export function globalRankingsHref(period: LeaderboardPeriod = defaultPeriod()) {
-  return `/leaderboards/global/${period}`
+/** The Boards page, scrolled to its standings: every player, ranked across all games. */
+export function standingsHref(period: LeaderboardPeriod = defaultPeriod()) {
+  return `${leaderboardHref(period)}?focus=standings`
 }
 
 export function rankHref(
@@ -120,6 +122,21 @@ export function rankHref(
 export function focusFromUrl(): string | null {
   if (typeof window === 'undefined') return null
   return new URLSearchParams(window.location.search).get('focus')
+}
+
+/**
+ * A canonical href that still asks for the section the current URL does.
+ * Only the page reads `?focus=`, so the route knows nothing of it, and
+ * tidying the URL into its canonical form must not drop it before the page
+ * has had a look.
+ */
+function keepFocus(href: string): string {
+  const focus = focusFromUrl()
+  if (!focus) return href
+  const [path, qs] = href.split('?')
+  const params = new URLSearchParams(qs)
+  params.delete('focus')
+  return `${path}?${new URLSearchParams([['focus', focus], ...params])}`
 }
 
 /** Game hub / lobby. Optional records tab: `/games/{slug}/records`. */
@@ -334,7 +351,7 @@ export function hrefForRoute(
     case 'gameLeaderboard':
       return appendGroupQuery(gameBoardHref(route.game, period))
     case 'leaderboards':
-      if (route.global) return appendGroupQuery(globalRankingsHref(period))
+      if (route.global) return appendGroupQuery(standingsHref(period))
       return appendGroupQuery(leaderboardHref(period))
     case 'rank':
       return appendGroupQuery(rankHref(route.player, period))
@@ -578,7 +595,8 @@ export function useRoute(): Route {
       if (groupParams.has('group')) {
         setActiveGroup(parseGroupQuery(window.location.search))
       }
-      const canonical = hrefForRoute(next, p ?? defaultPeriod())
+      const href = hrefForRoute(next, p ?? defaultPeriod())
+      const canonical = href && keepFocus(href)
       if (canonical && normalizeHref(currentHref()) !== normalizeHref(canonical)) {
         window.history.replaceState(window.history.state, '', canonical)
         next = currentRoute()
@@ -598,10 +616,12 @@ export function useRoute(): Route {
   }, [])
 
   useEffect(() => {
+    // The period is set on every route change, changed or not. Only a real
+    // change moves the URL, and that leaves any section it asked for behind.
     const syncPeriodUrl = () => {
       const period = defaultPeriod()
       const next = hrefForRoute(currentRoute(), period)
-      if (next && normalizeHref(currentHref()) !== normalizeHref(next)) {
+      if (next && normalizeHref(currentHref()) !== normalizeHref(keepFocus(next))) {
         navigate(next)
       }
     }

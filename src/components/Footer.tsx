@@ -1,13 +1,13 @@
 import { games } from '../data/games'
 import {
   aboutHref,
-  globalRankingsHref,
   homeHref,
   leaderboardHref,
   plusHref,
   privacyHref,
   rankHref,
   recordsIndexHref,
+  standingsHref,
   statsHref,
   termsHref,
   tournamentCreateHref,
@@ -67,7 +67,7 @@ export function Footer() {
                 <a href={leaderboardHref('all')}>{PERIOD_LABELS.all}</a>
               </li>
               <li>
-                <a href={globalRankingsHref()}>Global rankings</a>
+                <a href={standingsHref()}>Standings</a>
               </li>
               <li>
                 <a href={recordsIndexHref()}>Record books</a>

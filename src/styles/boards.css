@@ -1,27 +1,10 @@
 /*
- * The boards page, the rankings, and the per-game record list.
+ * The boards page and each game's board.
  *
- * The boards page is its own scoreboard (`.sb`, at the foot of this file).
- * The rankings and the lists reuse the shared hero and the event standings
- * rows (`.ev-row`); what is here for them is only the glue: the controls
- * under the hero, and the record-book rows.
+ * Both are one scoreboard (`.sb`): the period's race, its standings across
+ * every game and every board's top three, then one game's own board inside
+ * the same frame (`.sb.gb`).
  */
-
-.bx {
-  gap: 1rem;
-}
-
-/* Which board, then which period — stacked tight under the hero. */
-.bx__controls {
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-}
-
-.bx__controls .seg {
-  margin: 0;
-}
-
 
 /* ---------- split: a board in a main column, the way onward in a side rail ---------- */
 
@@ -254,9 +237,10 @@ html[data-theme="dark"] .sb {
   color: var(--sb-gold-ink);
 }
 
-/* The standings: the top ten, a bar each for how far their points reach. */
+/* The standings: the top ten, a bar each for how far their points reach, and everyone else a press at a time. */
 .sb-standings {
   padding: 1.35rem 1.35rem 1.1rem;
+  scroll-margin-top: calc(var(--header-h) + 1.5rem);
 }
 
 .sb-standings__head {
@@ -273,8 +257,28 @@ html[data-theme="dark"] .sb {
   font-variant-numeric: tabular-nums;
 }
 
-.sb-standings__head .sb-link {
-  margin-left: auto;
+.sb-standings__foot {
+  display: flex;
+  justify-content: center;
+  margin-top: 0.8rem;
+}
+
+.sb-standings__more {
+  background: transparent;
+  font: inherit;
+  font-size: 0.92rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.sb-standings__more:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* Only a phone hides the sixth to tenth, so only a phone needs the button when nobody is left to fetch. */
+.sb-standings__more--phone {
+  display: none;
 }
 
 .sb-rows {
@@ -1300,6 +1304,10 @@ a.sb-board__link:hover .sb-board__go {
 
   .sb-row--deep {
     display: none;
+  }
+
+  .sb-standings__more--phone {
+    display: inline-flex;
   }
 
   .sb-you__card,

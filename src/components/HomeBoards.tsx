@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { getGame, isGameHidden } from '../data/games'
-import { globalRankingsHref, recordsHref, siteRecordsHref } from '../hooks/useHashRoute'
+import { recordsHref, siteRecordsHref, standingsHref } from '../hooks/useHashRoute'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { useDefaultPeriod } from '../lib/defaultPeriod'
 import { useGlobalRank, useGlobalRankLoading } from '../lib/globalRank'
@@ -72,7 +72,7 @@ function Standings({
     <article className="hb-panel hb-panel--standings" data-hunt="home-standings">
       <div className="hb-panel__head">
         <h3 className="hb-panel__title">Standings</h3>
-        <a className="home-section__more" href={globalRankingsHref(period)}>
+        <a className="home-section__more" href={standingsHref(period)}>
           Full board ›
         </a>
       </div>

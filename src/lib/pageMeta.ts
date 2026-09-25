@@ -139,7 +139,6 @@ export function publicRoutes(): Route[] {
     { name: 'plus' },
     { name: 'tournaments' },
     { name: 'leaderboards' },
-    { name: 'leaderboards', global: true },
     { name: 'recordsIndex' },
     { name: 'siteRecords' },
     { name: 'privacy' },
@@ -262,18 +261,10 @@ export function pageMeta(route: Route): PageMeta {
       }
     // Boards carry the period in the URL; the page is known by the URL without one.
     case 'leaderboards':
-      if (route.global) {
-        return {
-          ...site,
-          title: titled('Global rankings'),
-          description: `Every player on ${APP_NAME}, ranked across all games. Daily, weekly, monthly and all-time.`,
-          path: '/leaderboards/global',
-        }
-      }
       return {
         ...site,
         title: titled('Leaderboards'),
-        description: `Top scores for every ${APP_NAME} game. Daily, weekly, monthly and all-time boards, plus global rankings.`,
+        description: `Top scores for every ${APP_NAME} game, and the standings across all of them. Daily, weekly, monthly and all-time.`,
         path: '/leaderboards',
       }
     case 'gameLeaderboard': {

@@ -11,8 +11,6 @@ export type TrophySummary = {
   sets?: number
 }
 
-export type TrophyCount = Pick<TrophySummary, 'total' | 'podium'>
-
 export type MetalTone = 'gold' | 'silver' | 'bronze'
 
 /** The colour a trophy is drawn in: its metal on a podium, else teal for a week's top ten, violet for a month's, and leaf green for a bug hunt set. */
@@ -162,16 +160,4 @@ export async function fetchRecentTrophies(limit = 20): Promise<TrophyAward[]> {
   if (!res.ok) return []
   const body = (await res.json()) as { trophies?: TrophyAward[] }
   return Array.isArray(body.trophies) ? body.trophies : []
-}
-
-export async function fetchTrophyCounts(
-  names: string[],
-): Promise<Record<string, TrophyCount>> {
-  const cleaned = [...new Set(names.map((n) => n.trim().toUpperCase()).filter(Boolean))]
-  if (!cleaned.length) return {}
-  const params = new URLSearchParams({ names: cleaned.join(',') })
-  const res = await fetch(`${API_BASE}/trophies/counts?${params}`)
-  if (!res.ok) return {}
-  const body = (await res.json()) as { counts?: Record<string, TrophyCount> }
-  return body.counts ?? {}
 }

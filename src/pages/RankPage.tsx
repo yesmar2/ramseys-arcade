@@ -10,7 +10,7 @@ import { ProfileGames } from '../components/ProfileGames'
 import { ProfileRival } from '../components/ProfileRival'
 import { ShareBoardButton } from '../components/ShareBoardButton'
 import { TrophyShelf } from '../components/TrophyShelf'
-import { focusFromUrl, globalRankingsHref, rankHref, statsHref } from '../hooks/useHashRoute'
+import { focusFromUrl, rankHref, standingsHref, statsHref } from '../hooks/useHashRoute'
 import { useAuth } from '../hooks/useAuth'
 import { useImpersonation } from '../hooks/useImpersonation'
 import { refreshFriends } from '../hooks/useFriends'
@@ -299,7 +299,7 @@ export function RankPage({
               scores={lineScores}
               trophies={trophies}
               actions={actions}
-              backHref={isSelf ? undefined : globalRankingsHref(period)}
+              backHref={isSelf ? undefined : standingsHref(period)}
               howHref={rankHref(isSelf ? undefined : viewedName, period)}
               extra={statsLink}
             />

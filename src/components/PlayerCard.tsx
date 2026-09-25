@@ -297,7 +297,7 @@ export function PlayerCard({
   scores: { scores: Record<number, number>; ready: boolean }
   trophies: TrophyAward[] | null
   actions: ReactNode
-  /** Someone else's card has a way back to the rankings. */
+  /** Someone else's card has a way back to the standings. */
   backHref?: string
   howHref: string
   /** One more fact along the card's foot: on your own, the way to your stats. */
@@ -364,7 +364,7 @@ export function PlayerCard({
             {backHref ? (
               <a className="pcard__back" href={backHref}>
                 <BackChevronIcon size={16} />
-                Rankings
+                Standings
               </a>
             ) : null}
             <p className="home-banner__kicker">{isSelf ? 'Your player card' : 'Player card'}</p>

@@ -20,7 +20,7 @@ const HIGHLIGHTS = [
   },
   {
     title: 'Leaderboards',
-    body: 'Daily, weekly, monthly, and all-time boards — plus global rankings and record books.',
+    body: 'Daily, weekly, monthly, and all-time boards — plus standings across all games, and record books.',
   },
   {
     title: 'Play anywhere',

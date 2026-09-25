@@ -23,8 +23,7 @@ export type ListRowProps = {
 }
 
 /**
- * One row of a long list — a score board, the rankings, an event's
- * standings. A soft card per row: the place as a number, the player's mark
+ * One row of a long list — a score board, an event's standings. A soft card per row: the place as a number, the player's mark
  * with a medal pinned to it for the top three, the name and a caption, the
  * score on the right.
  */

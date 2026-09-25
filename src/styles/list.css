@@ -445,11 +445,6 @@ a.lst__name:focus-visible .lst__name-text {
   color: var(--muted);
 }
 
-.lst-block__tools {
-  display: flex;
-  margin-left: auto;
-}
-
 .lst-block > .lst {
   padding: 0;
 }
@@ -468,61 +463,6 @@ a.lst__name:focus-visible .lst__name-text {
 .lst-block > .lb-device-note--footer {
   margin: 0;
   padding: 0 0.25rem;
-}
-
-/* Show the rest: a quiet pill under the rows. */
-.lst__more {
-  align-self: center;
-  min-height: 2.3rem;
-  margin: 0.1rem 0 0;
-  padding: 0 1.15rem;
-  border: 1px solid color-mix(in srgb, var(--event-accent, var(--accent)) 40%, transparent);
-  border-radius: 999px;
-  background: rgba(var(--surface-rgb), 0.5);
-  color: color-mix(in srgb, var(--event-accent, var(--accent)) 65%, var(--ink));
-  font: inherit;
-  font-size: 0.82rem;
-  font-weight: 750;
-  cursor: pointer;
-}
-
-.lst__more:hover,
-.lst__more:focus-visible {
-  background: color-mix(in srgb, var(--event-accent, var(--accent)) 14%, var(--surface));
-  outline: none;
-}
-
-.lst__more[disabled] {
-  opacity: 0.6;
-  cursor: default;
-}
-
-/* The foot of a board that keeps going: the reveal, and how deep it runs. */
-.lst__foot {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.4rem;
-  margin-top: 0.1rem;
-}
-
-/*
- * Reaching this is what asks for the next rows, so it has to be in the flow
- * with a little height of its own — a zero-height marker can be skipped over
- * by a fast scroll before the observer ever sees it.
- */
-.lst__sentinel {
-  display: block;
-  width: 100%;
-  height: 1px;
-}
-
-.lst__count {
-  margin: 0;
-  font-size: 0.74rem;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  color: var(--muted);
 }
 
 /* Rows without a place, e.g. a game's record books. */

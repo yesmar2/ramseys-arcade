@@ -1,11 +1,19 @@
-import type { CSSProperties } from 'react'
+import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { getGame } from '../data/games'
 import { useScoreboard } from '../hooks/useScoreboard'
-import { gameBoardHref, gamePlayHref, globalRankingsHref, leaderboardHref, rankHref } from '../hooks/useHashRoute'
+import {
+  focusFromUrl,
+  gameBoardHref,
+  gamePlayHref,
+  leaderboardHref,
+  rankHref,
+  ROUTE_EVENT,
+} from '../hooks/useHashRoute'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { inkOn } from '../lib/color'
 import { cachedMyGroups, useActiveGroup } from '../lib/groups'
 import {
+  fetchGlobalBoard,
   normalizePlayerName,
   PERIOD_LABELS,
   VISIBLE_LEADERBOARD_PERIODS,
@@ -27,6 +35,7 @@ import {
   type BoardTop,
   type PeriodCopy,
   type Stat,
+  type Standing,
   type YouStanding,
 } from '../lib/scoreboard'
 import { resolveGameAccent } from '../lib/theme'
@@ -182,6 +191,14 @@ function OpenRow({ rank }: { rank: number }) {
   )
 }
 
+/** Players added to the standings each time Show more is pressed. */
+const MORE_STANDINGS = 25
+
+/**
+ * The standings: the top ten, and everyone below them a press at a time, in
+ * place. There used to be a Rankings page for the rest; this is it now, so a
+ * link that asks for the standings (`?focus=standings`) lands here, opened.
+ */
 function Standings({
   period,
   copy,
@@ -194,13 +211,53 @@ function Standings({
   you: string
 }) {
   const { standings, totalPlayers, last, loading } = data
+  const ref = useRef<HTMLDivElement>(null)
+  const [more, setMore] = useState<Standing[]>([])
+  const [loadingMore, setLoadingMore] = useState(false)
+  // A phone shows the top five until asked for more; a link to the standings is asking.
+  const [opened, setOpened] = useState(() => focusFromUrl() === 'standings')
+
+  // A new period or group is a new list.
+  useEffect(() => {
+    setMore([])
+  }, [standings])
+
+  // Brought into view once they're in, and again whenever a link asks while the page is open.
+  useEffect(() => {
+    if (loading) return
+    const focus = () => {
+      if (focusFromUrl() !== 'standings') return
+      setOpened(true)
+      ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+    focus()
+    window.addEventListener(ROUTE_EVENT, focus)
+    return () => window.removeEventListener(ROUTE_EVENT, focus)
+  }, [loading])
+
+  const rows = [...standings, ...more]
+  const left = Math.max(0, totalPlayers - rows.length)
+  const showMore = async () => {
+    setOpened(true)
+    if (loadingMore || left === 0) return
+    setLoadingMore(true)
+    try {
+      const page = await fetchGlobalBoard(MORE_STANDINGS, period, rows.length)
+      const have = new Set(rows.map((row) => row.name))
+      setMore((prev) => [...prev, ...page.entries.filter((row) => !have.has(row.name))])
+    } catch {
+      // The button stays; another press tries again.
+    } finally {
+      setLoadingMore(false)
+    }
+  }
+
   const leaderScore = standings[0]?.score ?? 0
   const standing = data.you
-  const below =
-    standing && standing.rank != null && standing.rank > standings.length ? standing : null
+  const below = standing && standing.rank != null && standing.rank > rows.length ? standing : null
   const lastTop = last?.[0]?.score ?? 0
   return (
-    <div className="sb-card sb-standings">
+    <div ref={ref} id="standings" className="sb-card sb-standings">
       <div className="sb-standings__head">
         <h2 className="sb-card__title">Standings</h2>
         {!loading ? (
@@ -208,9 +265,6 @@ function Standings({
             {totalPlayers.toLocaleString()} {totalPlayers === 1 ? 'player' : 'players'}
           </span>
         ) : null}
-        <a className="sb-link" href={globalRankingsHref(period)}>
-          All players <ChevronIcon />
-        </a>
       </div>
       {loading ? (
         <ol className="sb-rows" aria-busy="true">
@@ -228,18 +282,18 @@ function Standings({
         </ol>
       ) : (
         <ol className="sb-rows">
-          {standings.map((row) => (
+          {rows.map((row) => (
             <StandingRow
               key={row.name}
               row={row}
               leaderScore={leaderScore}
               you={you}
               period={period}
-              deep={row.rank > 5}
+              deep={!opened && row.rank > 5}
             />
           ))}
-          {Array.from({ length: Math.max(0, 3 - standings.length) }, (_, i) => (
-            <OpenRow key={`open-${i}`} rank={standings.length + i + 1} />
+          {Array.from({ length: Math.max(0, 3 - rows.length) }, (_, i) => (
+            <OpenRow key={`open-${i}`} rank={rows.length + i + 1} />
           ))}
           {below ? (
             <>
@@ -262,6 +316,19 @@ function Standings({
           ) : null}
         </ol>
       )}
+      {!loading && (left > 0 || (!opened && rows.length > 5)) ? (
+        <div className="sb-standings__foot">
+          {/* With nobody left to fetch, it is only a phone's hidden sixth to tenth still to show. */}
+          <button
+            type="button"
+            className={`sb-ghost sb-standings__more${left > 0 ? '' : ' sb-standings__more--phone'}`}
+            onClick={() => void showMore()}
+            disabled={loadingMore}
+          >
+            {loadingMore ? 'Loading…' : 'Show more'}
+          </button>
+        </div>
+      ) : null}
       {last && copy.last ? (
         <div className="sb-last">
           <div className="sb-last__head">
