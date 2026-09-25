@@ -1,6 +1,8 @@
 import {
   CORE_R,
   FIELD_H,
+  MAX_STOCK,
+  SHIP_TOP,
   SPECIES,
   setSteer,
   shipBounds,
@@ -17,7 +19,8 @@ import {
  * close the bullets would come to the ship's heart on the way there, against
  * where it would like to be: under the ship it is shooting at, low in the
  * field, off the walls. It moves its finger no faster than a hand does, grazes
- * when that is safe, and lets its Barrage go when every way out looks bad.
+ * when that is safe, goes under a falling pip while it has room in hand, and
+ * lets its Barrage go when every way out looks bad.
  *
  * Now and then it doesn't see something — more often the worse it is — so it
  * loses ships the way a person does, and a run ends.
@@ -68,8 +71,21 @@ export function makePilot(options: PilotOptions = { skill: 0.7 }): Pilot {
     lastBarrage = -10
   }
 
-  /** Where it would like to be: under what it is shooting at, low, and off the walls. */
+  /** Where it would like to be: under a pip it can catch, else under what it is shooting at, low, and off the walls. */
   const preference = (s: GameState) => {
+    if (s.stock < MAX_STOCK) {
+      let pip: P | null = null
+      let near = 0.55
+      for (const p of s.pips) {
+        const d = Math.hypot(p.x - s.ship.x, p.y - s.ship.y)
+        if (p.y > SHIP_TOP - 0.15 && d < near) {
+          near = d
+          pip = p
+        }
+      }
+      // Just under it, so it falls in.
+      if (pip) return { x: pip.x, y: pip.y + 0.05 }
+    }
     let target: P | null = null
     let best = Infinity
     for (const e of s.enemies) {

@@ -9,7 +9,9 @@ import { sfx } from '../../lib/sound'
  * so the game is threading that dot through the curtain.
  *
  * A bullet that brushes past the dot without touching it is grazed: it turns
- * gold, it warms the score's multiplier, and it charges your own Barrage. Let
+ * gold, it warms the score's multiplier, and it charges your own Barrage; now
+ * and then a broken ship lets go of a pip, a gold diamond that charges a third
+ * of one, drifting down until the graze circle catches it. Let
  * the Barrage go and a wave rolls out from the ship that turns every bullet it
  * meets into a star for you — the gold ones worth far more — and hammers every
  * ship it passes. So the most dangerous moment to let it go is also the most
@@ -81,6 +83,25 @@ const WAVE_SHIELD = 1.35
 /** What the wave does to a ship it passes, and to a flagship's phase. */
 const WAVE_DAMAGE = 28
 const WAVE_BOSS_SHARE = 0.08
+
+/**
+ * Pips: once in a while a broken ship lets go of a gold diamond worth a third
+ * of a Barrage, which drifts down through the curtain for a few seconds until
+ * the graze circle catches it or it fades. One comes due every twenty seconds
+ * or so of play, and the next ship broken lets it go; the clock waits while
+ * three Barrages are already in hand, and a flagship's phase broken always
+ * lets one go.
+ */
+const PIP_CHARGE = 1 / 3
+/** Seconds of play before the first pip is due, and between the ones after it. */
+const PIP_FIRST = 10
+const PIP_EVERY = [16, 24] as const
+/** A pip's size to catch and to draw, how fast it falls, and how long it lasts; it blinks for the last of it. */
+export const PIP_R = 0.016
+const PIP_FALL = 0.19
+const PIP_GRAVITY = 0.6
+export const PIP_LIFE = 4.8
+export const PIP_BLINK = 1.2
 
 // -------------------------------------------------------------------- score
 
@@ -162,6 +183,16 @@ export type Star = {
   worth: number
   gold: boolean
   age: number
+}
+
+/** A pip a broken ship let go of: a third of a Barrage, falling. */
+export type Pip = {
+  x: number
+  y: number
+  vx: number
+  vy: number
+  age: number
+  id: number
 }
 
 // ------------------------------------------------------------------ enemies
@@ -326,6 +357,11 @@ export type GameState = {
   bullets: Bullet[]
   bolts: Bolt[]
   stars: Star[]
+  pips: Pip[]
+  /** Seconds of play until a pip is due; the next ship broken after that lets it go. */
+  pipIn: number
+  pipsDropped: number
+  pipsCaught: number
   ship: {
     x: number
     y: number
@@ -945,6 +981,10 @@ export function createInitialState(): GameState {
     bullets: [],
     bolts: [],
     stars: [],
+    pips: [],
+    pipIn: PIP_FIRST,
+    pipsDropped: 0,
+    pipsCaught: 0,
     ship: { ...SHIP_START, lean: 0, focus: 0, shield: 0, fireIn: 0, needleIn: 0 },
     power: 1,
     powerEarned: 1,
@@ -1049,6 +1089,7 @@ export function jumpToWave(state: GameState, wave: number): GameState {
   state.bullets = []
   state.bolts = []
   state.stars = []
+  state.pips = []
   state.boss = null
   state.blast = null
   state.powerEarned = powerFor(w - 1)
@@ -1366,6 +1407,11 @@ function killEnemy(state: GameState, e: Enemy) {
   state.shake = Math.min(1, state.shake + (e.species === 'squid' ? 0.2 : e.species === 'crab' ? 0.1 : 0.04))
   sfx('hit', Math.min(5, Math.floor(state.heat)))
   e.gone = true
+  // A pip that's due comes out of it.
+  if (state.pipIn <= 0 && state.stock < MAX_STOCK) {
+    state.pipIn = rand(PIP_EVERY[0], PIP_EVERY[1])
+    dropPip(state, e.x, e.y)
+  }
 }
 
 function damageEnemy(state: GameState, e: Enemy, dmg: number) {
@@ -1398,6 +1444,7 @@ function endBossPhase(state: GameState, queen: Enemy, broken: boolean) {
     const gained = SCORE_PHASE * Math.min(3, boss.number)
     state.score += gained
     addFloater(state, queen.x, queen.y + 0.12, `${phase.name} broken +${gained}`, 'bonus', 1.6)
+    if (state.stock < MAX_STOCK) dropPip(state, queen.x, queen.y + 0.06)
   } else {
     addFloater(state, queen.x, queen.y + 0.12, `${phase.name} over`, 'warn', 1.4)
   }
@@ -1559,6 +1606,54 @@ function advanceStars(state: GameState, dt: number) {
   }
   state.stars = kept
   if (got > 0 && Math.random() < 0.3) sfx('hop', Math.min(16, 6 + gold))
+}
+
+/** A pip pops out of the wreck; the first of a run says what it is. */
+function dropPip(state: GameState, x: number, y: number) {
+  state.pips.push({ x, y, vx: rand(-0.12, 0.12), vy: -0.2, age: 0, id: state.nextId++ })
+  addRing(state, x, y, 0.006, 0.06, 0.35, AMBER, 0.005)
+  // Kept in from the walls, so the whole line fits on the field.
+  if (state.pipsDropped === 0) addFloater(state, clamp(x, 0.35, 0.65), y + 0.06, 'Catch it to charge your Barrage', 'bonus', 2.2)
+  state.pipsDropped += 1
+}
+
+/** Pips fall, swaying a little, and the graze circle catches any it reaches while the ship is up. */
+function advancePips(state: GameState, dt: number) {
+  const s = state.ship
+  const up = state.phase === 'playing'
+  // The next one's clock runs while there's room in hand for it.
+  if (up && state.stock < MAX_STOCK) state.pipIn -= dt
+  const reach = GRAZE_R + PIP_R
+  const kept: Pip[] = []
+  for (const p of state.pips) {
+    p.age += dt
+    if (p.age >= PIP_LIFE) {
+      addSparks(state, p.x, p.y, 5, AMBER, 0.25)
+      continue
+    }
+    p.vy = Math.min(PIP_FALL, p.vy + PIP_GRAVITY * dt)
+    p.vx *= Math.pow(0.3, dt)
+    p.x = clamp(p.x + (p.vx + Math.sin(p.age * 2.4 + p.id) * 0.025) * dt, 0.03, 0.97)
+    p.y += p.vy * dt
+    if (up && Math.hypot(p.x - s.x, p.y - s.y) < reach) {
+      catchPip(state, p)
+      continue
+    }
+    if (p.y < FIELD_H + 0.04) kept.push(p)
+  }
+  state.pips = kept
+}
+
+function catchPip(state: GameState, p: Pip) {
+  state.pipsCaught += 1
+  const before = state.stock
+  addCharge(state, PIP_CHARGE)
+  // Taken in: sparks where it was, and a gold ring out of the ship.
+  addSparks(state, p.x, p.y, 10, AMBER, 0.5)
+  addRing(state, state.ship.x, state.ship.y, 0.02, 0.1, 0.4, AMBER, 0.006)
+  state.grazeGlow = 1
+  // A Barrage it completes sounds its own chime.
+  if (state.stock === before) sfx('eat')
 }
 
 // ------------------------------------------------------------------- moving
@@ -1802,6 +1897,7 @@ export function tick(state: GameState, dt: number): GameState {
     advanceEnemies(state, dt)
     advanceBullets(state, dt)
     advanceStars(state, dt)
+    advancePips(state, dt)
     if (state.dyingFor > 0) return state
     if (state.lives <= 0) {
       state.phase = 'gameover'
@@ -1827,6 +1923,7 @@ export function tick(state: GameState, dt: number): GameState {
     state.clearing -= dt
     advanceBolts(state, dt)
     advanceStars(state, dt)
+    advancePips(state, dt)
     advanceBlast(state, dt)
     if (state.clearing <= 0) beginWave(state, state.wave + 1)
     return state
@@ -1847,6 +1944,7 @@ export function tick(state: GameState, dt: number): GameState {
   if (state.phase !== 'playing') return state
   advanceBlast(state, dt)
   advanceStars(state, dt)
+  advancePips(state, dt)
 
   state.idle += dt
   if (state.idle > HEAT_IDLE) state.heat = Math.max(1, state.heat - HEAT_COOL * dt)

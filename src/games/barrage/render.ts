@@ -5,6 +5,9 @@ import {
   CORE_R,
   FIELD_H,
   GRAZE_R,
+  PIP_BLINK,
+  PIP_LIFE,
+  PIP_R,
   MAX_STOCK,
   SHIP_W,
   SPECIES,
@@ -661,7 +664,11 @@ function drawShip(g: Gfx) {
   ctx.globalAlpha = 1
 }
 
-/** The heart: the only part that can be hit, on top of everything, with the graze circle round it while focused. */
+/**
+ * The heart: the only part that can be hit, on top of everything, with the
+ * graze circle round it while focused, and as a pip comes near, since the
+ * circle is what catches one.
+ */
 function drawCore(g: Gfx) {
   const { ctx, s, dark, t, U, X, Y } = g
   if (s.phase !== 'playing') return
@@ -669,9 +676,12 @@ function drawCore(g: Gfx) {
   const cx = X(sh.x)
   const cy = Y(sh.y)
   const f = sh.focus
-  if (f > 0.05) {
+  let near = 0
+  for (const p of s.pips) near = Math.max(near, 1 - clamp01((Math.hypot(p.x - sh.x, p.y - sh.y) - GRAZE_R - PIP_R) / 0.2))
+  const ring = Math.max(f, near)
+  if (ring > 0.05) {
     ctx.save()
-    ctx.globalAlpha = f * 0.55
+    ctx.globalAlpha = ring * 0.55
     ctx.setLineDash([U(0.008), U(0.01)])
     ctx.lineDashOffset = -t * U(0.03)
     ctx.strokeStyle = hsla(GOLD, 80, dark ? 70 : 45, 0.8)
@@ -794,6 +804,50 @@ function drawStars2(g: Gfx) {
       ctx.stroke()
     }
   }
+}
+
+/**
+ * Pips: gold diamonds like the ones under the ship that count its Barrages,
+ * turning as they fall, with a warm glow round each so it shows through the
+ * curtain, and blinking as they are about to fade.
+ */
+function drawPips(g: Gfx) {
+  const { ctx, s, dark, t, U, X, Y } = g
+  for (const p of s.pips) {
+    const going = PIP_LIFE - p.age < PIP_BLINK && Math.floor(t * 10) % 2 === 0
+    ctx.globalAlpha = going ? 0.3 : 1
+    const x = X(p.x)
+    const y = Y(p.y)
+    const r = U(PIP_R)
+    const pulse = 1 + 0.1 * Math.sin(t * 7 + p.id)
+    const glow = ctx.createRadialGradient(x, y, 0, x, y, r * 3.4)
+    glow.addColorStop(0, hsla(GOLD, 95, 64, dark ? 0.5 : 0.4))
+    glow.addColorStop(1, hsla(GOLD, 95, 64, 0))
+    ctx.fillStyle = glow
+    ctx.beginPath()
+    ctx.arc(x, y, r * 3.4, 0, TAU)
+    ctx.fill()
+    // Turning about its long axis: narrower edge-on, full face-on, never so thin it looks like a dart.
+    const hw = r * (0.5 + 0.5 * Math.abs(Math.cos(t * 3 + p.id))) * pulse
+    const hh = r * 1.3 * pulse
+    ctx.beginPath()
+    ctx.moveTo(x, y - hh)
+    ctx.lineTo(x + hw, y)
+    ctx.lineTo(x, y + hh)
+    ctx.lineTo(x - hw, y)
+    ctx.closePath()
+    ctx.fillStyle = hsla(GOLD, 95, dark ? 62 : 52, 0.98)
+    ctx.fill()
+    ctx.strokeStyle = hsla(GOLD, 90, dark ? 84 : 32, 0.95)
+    ctx.lineWidth = Math.max(1, U(0.0024))
+    ctx.lineJoin = 'round'
+    ctx.stroke()
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.85)'
+    ctx.beginPath()
+    ctx.arc(x - hw * 0.22, y - hh * 0.32, Math.max(0.8, r * 0.17), 0, TAU)
+    ctx.fill()
+  }
+  ctx.globalAlpha = 1
 }
 
 /** The Barrage going out: a gold wave with a bright front and a warm wash behind it. */
@@ -1015,6 +1069,7 @@ export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, w: n
   drawBlast(g)
   drawBullets(g)
   drawStars2(g)
+  drawPips(g)
   drawRings(g)
   drawBits(g)
   drawCore(g)

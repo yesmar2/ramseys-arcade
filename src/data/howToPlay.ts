@@ -181,7 +181,7 @@ export const HOW_TO_PLAY: Record<string, HowToPlay> = {
       { what: 'Wave cleared', pts: '100 × the wave' },
     ],
     ends: 'All your ships are lost.',
-    tip: 'Only the white dot at your ship’s heart can be hit.',
+    tip: 'Only the white dot at your ship’s heart can be hit. Catch the gold diamonds ships drop: each is a third of a Barrage.',
   },
   crumbtrail: {
     goal: 'Climb the endless maze.',
