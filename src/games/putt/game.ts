@@ -27,9 +27,9 @@ import { centreOf, contours, inAny, inside, inUnion, pivotOf, smoothLine } from 
 /*
  * Putt: mini golf on long holes, none of them the usual kind.
  *
- * A slingshot: take hold of the ball (or press anywhere) and pull back, and
- * the ball comes back with the finger on its bands while dots run ahead the
- * way it will go; let go and it snaps forward. The further the pull, the
+ * A putter: take hold of the ball (or press anywhere) and pull back, and a
+ * putter draws back behind it, square to the way it will go, further the
+ * further the pull; let go and it swings through. The further the pull, the
  * harder the shot, and the last of a full pull carries much further. The
  * ball rolls on physics — it sheds a share of its speed every
  * frame, so it leaves fast and settles softly — off rails at any angle,
@@ -52,14 +52,10 @@ export const ACE_BONUS = 200
 
 /** Pulling back this far, in field units, is full power: under a third of the width, so a flick is a real shot. */
 export const MAX_DRAG = 30
-/** The aim guide reaches this far at full pull. It shows the power, not where the ball will stop. */
-export const GUIDE_REACH = MAX_DRAG * 1.6
 /** A pull shorter than this share of full is a change of mind, not a shot. */
 export const MIN_POWER = 0.08
 /** Holding space runs the charge up and back down over this many seconds. */
 const KEY_CHARGE = 1.4
-/** How far the aim guide reaches, in field units. */
-export const AIM_STUB = 14
 /** Full power sends a ball about this far on the green before it stops: most of a screen's length and more. */
 export const FULL_DISTANCE = 420
 /**
@@ -807,8 +803,8 @@ export function shoot(state: GameState, shank = 0): GameState {
   const lie = inAny(currentHole(state).sand, state.ball) ? SAND_LIE : 1
   const speed = launchSpeed(Math.min(1, state.power)) * lie
   const angle = state.aim + shank
-  // The band snaps, and a hard shot whooshes off it.
-  sfx('zip', state.power < 0.5 ? 1 : 0)
+  // The putter knocks it away, and a hard shot whooshes off.
+  sfx('tap', 0)
   if (state.power >= 0.5) sfx('whoosh')
   return {
     ...state,
@@ -1613,41 +1609,6 @@ function advance(s: GameState): GameState {
     return { ...s, phase: 'gameover', best, t: 0 }
   }
   return beginHole(s, s.holeIndex + 1)
-}
-
-/** Where a shot from the ball along `angle` first meets something within `maxLen`, for the aim guide. */
-export function aimTrace(state: GameState, angle: number, maxLen: number): Vec {
-  const hole = currentHole(state)
-  const moving = [
-    ...hole.spinners.map((sp) => spinnerWall(sp, state.clock)),
-    ...hole.mills.flatMap((m) => millGates(m, state.clock)),
-    ...shutGates(hole, state.clock),
-    ...hole.sliders.map((sl) => sliderWall(sl, state.clock)),
-  ]
-  const dx = Math.cos(angle)
-  const dy = Math.sin(angle)
-  const stepLen = 0.6
-  let x = state.ball.x
-  let y = state.ball.y
-  for (let len = 0; len < maxLen; len += stepLen) {
-    const nx = x + dx * stepLen
-    const ny = y + dy * stepLen
-    for (const wall of wallsNear(hole, { x: nx, y: ny })) {
-      if (passesFlap(wall, dx, dy)) continue
-      const p = closestOnWall(wall, { x: nx, y: ny })
-      if (Math.hypot(nx - p.x, ny - p.y) < wall.t + BALL_R) return { x, y }
-    }
-    for (const wall of moving) {
-      const p = closestOnWall(wall, { x: nx, y: ny })
-      if (Math.hypot(nx - p.x, ny - p.y) < wall.t + BALL_R) return { x, y }
-    }
-    for (const b of [...hole.bumpers, ...hole.rocks]) {
-      if (Math.hypot(nx - b.x, ny - b.y) < b.r + BALL_R) return { x, y }
-    }
-    x = nx
-    y = ny
-  }
-  return { x, y }
 }
 
 export function toSnapshot(s: GameState): Snapshot {
