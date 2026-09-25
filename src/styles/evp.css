@@ -1522,15 +1522,21 @@ a.evp-result:focus-visible {
   margin: 0;
 }
 
-/* The host's say over who invites: just them, or everyone in the event. */
+/*
+ * The host's say over who invites: just them, or everyone in the event. The
+ * card has no padding of its own, so this carries the same sides as the head
+ * and the form around it.
+ */
 .evp-who-invites {
   display: grid;
-  gap: 0.4rem;
-  margin: 0 0 0.9rem;
+  gap: 0.45rem;
+  margin: 0;
+  padding: 0.35rem 1.3rem 1rem;
 }
 
 .evp-who-invites__note {
-  margin: 0 0 0.8rem;
+  margin: 0;
+  padding: 0.2rem 1.3rem 0.9rem;
   font-size: 0.86rem;
   color: var(--muted);
 }

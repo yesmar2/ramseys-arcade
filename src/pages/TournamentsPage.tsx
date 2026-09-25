@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { BracketWinCelebration } from '../components/BracketWinCelebration'
 import { EventBracket } from '../components/EventBracket'
 import { EventArt, EventKicker, EventLiveCard, eventAccent, eventPhase } from '../components/EventCard'
@@ -608,7 +608,7 @@ function SentInvites({ tournamentId, roster }: { tournamentId: string; roster: n
         {invites.map((invite) => (
           <li key={invite.id} className="ev-people__row ev-people__row--pending">
             <span className="pmark" aria-hidden="true">
-              <PlayerAvatar name={invite.toName} size="sm" />
+              <PlayerAvatar name={invite.toName} avatarId={invite.toAvatarId} size="sm" />
             </span>
             <span className="ev-people__name">{invite.toName}</span>
             <span className="ev-people__note">{inviteAge(invite.createdAt)}</span>
@@ -648,7 +648,7 @@ function EventRoster({ detail, displayName }: { detail: TournamentDetail; displa
           {seated.map((p) => (
             <li key={p.id} className="ev-people__row">
               <span className="pmark" aria-hidden="true">
-                <PlayerAvatar name={p.name} size="sm" />
+                <PlayerAvatar name={p.name} avatarId={p.avatarId} size="sm" />
               </span>
               <span className="ev-people__name">{p.name}</span>
               {normalizePlayerName(p.name) === you ? (
@@ -912,6 +912,7 @@ function PlainHeader({ title }: { title: string }) {
 export function TournamentDetailPage({ id, invite }: { id: string; invite?: string }) {
   const route = useRoute()
   const playerName = usePlayerName()
+  const { account, loading: authLoading } = useAuth()
   const [detail, setDetail] = useState<TournamentDetail | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -982,6 +983,31 @@ export function TournamentDetailPage({ id, invite }: { id: string; invite?: stri
       cancelled = true
     }
   }, [id, invite, route])
+
+  /*
+   * Signing in, out or as someone else changes what this page may show: the
+   * host's tools, the invite code, your seat. Read it again for whoever is here
+   * now, in place, so nobody else's view lingers.
+   */
+  const viewer = authLoading ? null : `${account?.id ?? ''}|${displayName}`
+  const lastViewer = useRef<string | null>(null)
+  useEffect(() => {
+    if (viewer == null) return
+    const before = lastViewer.current
+    lastViewer.current = viewer
+    if (before == null || before === viewer) return
+    let cancelled = false
+    loadDetail(storedInvite).catch((err: unknown) => {
+      if (cancelled) return
+      if (err instanceof ApiError && err.code === 'INVITE_REQUIRED') {
+        setDetail(null)
+        setNeedsInvite(true)
+      }
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [viewer])
 
   useEffect(() => {
     if (!detail) return

@@ -19,6 +19,8 @@ export type PublicInvite = {
   targetName: string
   fromName: string | null
   toName: string
+  /** The invitee's badge, on an event's list of who's been asked. */
+  toAvatarId?: string
   status: InviteStatus
   createdAt: number
   expiresAt: number

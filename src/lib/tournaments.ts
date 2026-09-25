@@ -378,7 +378,7 @@ export function isDoubleElim(
 
 export type TournamentDetail = TournamentSummary & {
   /** The roster; for an event past a hundred players, only the viewer's own seat. */
-  players: { id: string; name: string; joinedAt: number }[]
+  players: { id: string; name: string; joinedAt: number; avatarId?: string }[]
   /**
    * The standings; past a hundred players, the top hundred, then the viewer
    * and the player the lesson is about if they are further down.
