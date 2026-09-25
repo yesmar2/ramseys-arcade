@@ -320,6 +320,11 @@ html[data-theme="dark"] .home-banner {
   transform: translateY(-50%) rotate(-5deg) scale(1.03);
 }
 
+/* A mark may hang over the card's edge; a picture is clipped to its corners. */
+.home-banner__art > .inline-thumb:has(> .game-art) {
+  overflow: hidden;
+}
+
 /*
  * With a game that can play itself, the art side is its screen: the game
  * running its demo across the whole side, faded into the banner's colour
@@ -1851,7 +1856,7 @@ html[data-theme="dark"] .wall-tile:focus-visible {
   outline-color: rgba(255, 255, 255, 0.7);
 }
 
-/* The screen: the game's colour behind glass, its mark in the middle. */
+/* The screen: the game's picture behind glass (or, for a game with none yet, its mark on its colour). */
 .wall-tile__screen {
   position: relative;
   aspect-ratio: 4 / 3;
@@ -1884,6 +1889,12 @@ html[data-theme="dark"] .wall-tile__screen::after {
   justify-content: center;
 }
 
+.wall-tile__art > .game-art {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
 .wall-tile__art .inline-thumb {
   width: auto;
   height: 64%;
@@ -1913,8 +1924,9 @@ html[data-theme="dark"] .wall-tile__art .inline-thumb {
 
 /*
  * A game that can play itself fills the screen with the real thing, drawn by
- * its own renderer. It sits over the thumb and fades in once its first frame
- * is down, so a slow load or a failed one leaves the thumb showing.
+ * its own renderer, while a pointer is over the cabinet or it has focus. It
+ * fades in over the picture as it starts and out as it stops, so the picture
+ * is what a cabinet shows at rest, and all a touch screen ever shows.
  */
 .wall-tile__preview {
   position: absolute;
@@ -1923,10 +1935,10 @@ html[data-theme="dark"] .wall-tile__art .inline-thumb {
   height: 100%;
   display: block;
   opacity: 0;
-  transition: opacity 0.45s ease;
+  transition: opacity 0.3s ease;
 }
 
-.wall-tile__preview.game-preview--ready {
+.wall-tile__preview.game-preview--playing {
   opacity: 1;
 }
 
@@ -2625,6 +2637,10 @@ html[data-theme="dark"] .home-banner__hint--error {
   border: 0;
   box-shadow: none;
   overflow: visible;
+}
+
+.home-banner__card .ev-art--solo .inline-thumb:has(> .game-art) {
+  overflow: hidden;
 }
 
 .home-banner__card .ev-art--solo .game-thumb__svg {

@@ -71,18 +71,23 @@ function nextTurn() {
  * it has keyboard focus, or, on a touch screen, while it is the tile nearest
  * the middle of the screen. Letting go freezes it where it is. The banner's
  * (`autoplay`) plays on its own, the way the one cabinet by an arcade's door
- * runs its demo. None plays off screen, in a hidden tab, or with reduced
- * motion.
+ * runs its demo. A cabinet's (`hoverOnly`) is for a pointer that can hover:
+ * it plays under one or with keyboard focus, and a touch screen never loads
+ * it, so the cabinet keeps its picture. None plays off screen, in a hidden
+ * tab, or with reduced motion.
  */
 export function GamePreview({
   slug,
   className,
   autoplay = false,
+  hoverOnly = false,
 }: {
   slug: string
   className?: string
   /** Play whenever it is on screen, rather than only when asked. */
   autoplay?: boolean
+  /** Play only under a pointer or with focus, and not at all on a touch screen. */
+  hoverOnly?: boolean
 }) {
   const ref = useRef<HTMLCanvasElement>(null)
   const [ready, setReady] = useState(false)
@@ -107,6 +112,7 @@ export function GamePreview({
     let owed = 0
     const still = window.matchMedia('(prefers-reduced-motion: reduce)')
     const hoverable = window.matchMedia('(hover: hover) and (pointer: fine)')
+    if (hoverOnly && !hoverable.matches) return
 
     const draw = (dt: number) => {
       const w = canvas.clientWidth
@@ -115,7 +121,7 @@ export function GamePreview({
     }
     const moving = () =>
       Boolean(preview) && (autoplay || hovered || focused || centred) && near && !document.hidden && !still.matches
-    // Marked on the canvas while it plays, for a tile that shows its logo until then (lib/look.ts).
+    // Marked on the canvas while it plays, for a cabinet that shows its picture until then.
     const playing = (on: boolean) => canvas.classList.toggle('game-preview--playing', on)
     const frame = (now: number) => {
       raf = 0
@@ -223,7 +229,7 @@ export function GamePreview({
       { rootMargin: '-35% 0px -35% 0px' },
     )
     // One that plays on its own has no need to take a turn in the middle of the screen, nor to hold a tile's back.
-    if (!autoplay) band.observe(host)
+    if (!autoplay && !hoverOnly) band.observe(host)
 
     const ro = new ResizeObserver(redraw)
     ro.observe(canvas)
@@ -249,7 +255,7 @@ export function GamePreview({
       document.fonts.removeEventListener('loadingdone', redraw)
       if (raf) cancelAnimationFrame(raf)
     }
-  }, [slug, autoplay])
+  }, [slug, autoplay, hoverOnly])
 
   return (
     <canvas

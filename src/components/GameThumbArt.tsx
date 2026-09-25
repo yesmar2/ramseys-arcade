@@ -1,13 +1,14 @@
 import { useEffect, useState, type CSSProperties, type ReactNode } from 'react'
 import { patriotCityRects } from '../games/patriot/cityArt'
-import { lookIsNew } from '../lib/look'
 import { resolveGameAccent, THEME_EVENT } from '../lib/theme'
-import { NextLogo } from './gameLogos'
+import { GameArt } from './GameArt'
 
 type GameThumbArtProps = {
   slug: string
   accent?: string
   className?: string
+  /** A 4:3 tile shows the game's whole picture; a square one, its middle. */
+  shape?: 'icon' | 'card'
 }
 
 function ThumbSvg({ children }: { children: ReactNode }) {
@@ -25,7 +26,10 @@ function ThumbSvg({ children }: { children: ReactNode }) {
 }
 
 /*
- * The house style for a thumb: one silhouette in the game's own colour, drawn
+ * A game's picture (GameArt) is what shows wherever a game does. These marks
+ * stay for what a picture can't do: an avatar's game pin draws one in a
+ * single colour (GameThumbGlyph), and a game with no picture yet shows its
+ * mark. The house style for a mark: one silhouette in the game's own colour, drawn
  * as an outline with a faint fill of the same colour. Crumbtrail was always
  * drawn this way, and it was the one thumb that sat well on a deep tile of
  * its colour: the outline carries the shape, so the ground can be as deep or
@@ -443,7 +447,7 @@ export function GameThumbGlyph({ slug, color }: { slug: string; color: string })
   return Thumb ? <Thumb accent={color} /> : <FallbackThumb accent={color} />
 }
 
-export function GameThumbArt({ slug, accent, className }: GameThumbArtProps) {
+export function GameThumbArt({ slug, accent, className, shape = 'icon' }: GameThumbArtProps) {
   const [, setArtTick] = useState(0)
   useEffect(() => {
     const sync = () => setArtTick((n) => n + 1)
@@ -462,7 +466,7 @@ export function GameThumbArt({ slug, accent, className }: GameThumbArtProps) {
       aria-hidden="true"
       style={style}
     >
-      <ThumbSvg>{lookIsNew() ? <NextLogo slug={slug} accent={resolved} fallback={thumb} /> : thumb}</ThumbSvg>
+      <GameArt slug={slug} shape={shape} fallback={<ThumbSvg>{thumb}</ThumbSvg>} />
     </span>
   )
 }

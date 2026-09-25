@@ -23,9 +23,7 @@ import { bootRouter } from './hooks/useHashRoute'
 import { bootTheme } from './lib/theme'
 import { bootPwaInstall } from './lib/pwaInstall'
 import { bootFeedSync } from './lib/feedSync'
-import { bootLook } from './lib/look'
 
-bootLook()
 bootRouter()
 bootTheme()
 bootPwaInstall()

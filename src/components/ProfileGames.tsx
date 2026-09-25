@@ -12,6 +12,7 @@ import {
 } from '../lib/leaderboard'
 import { ordinal, periodWord, scoreWithUnit } from '../lib/profileMath'
 import { resolveGameAccent } from '../lib/theme'
+import { GameArt } from './GameArt'
 import { GamePreview } from './GamePreview'
 import { GameThumbArt } from './GameThumbArt'
 
@@ -67,9 +68,9 @@ function Cabinet({
       >
         <span className="wall-tile__screen">
           <span className="wall-tile__art" aria-hidden="true">
-            <GameThumbArt slug={game.slug} accent={accent} />
+            <GameArt slug={game.slug} shape="card" fallback={<GameThumbArt slug={game.slug} accent={accent} />} />
           </span>
-          {hasGamePreview(game.slug) ? <GamePreview slug={game.slug} className="wall-tile__preview" /> : null}
+          {hasGamePreview(game.slug) ? <GamePreview slug={game.slug} className="wall-tile__preview" hoverOnly /> : null}
           {flag ? (
             <span className={`pbest__flag pbest__flag--${flag.tone} pgame__flag`} aria-hidden="true">
               {flag.text}

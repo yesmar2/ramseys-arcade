@@ -52,7 +52,7 @@ export function GameTile({
               : game.name
         }
       >
-        <GameThumbArt slug={game.slug} accent={accent} />
+        <GameThumbArt slug={game.slug} accent={accent} shape="card" />
         <h3 className="game-tile__title">{game.name}</h3>
         {game.inDevelopment ? (
           <span className="game-tile__status">In development</span>

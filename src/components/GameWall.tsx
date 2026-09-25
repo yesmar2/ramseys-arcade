@@ -13,6 +13,7 @@ import { normalizePlayerName, PERIOD_LABELS, type GlobalGamePlace } from '../lib
 import { formatLeaderboardScore } from '../lib/leaderboardFormat'
 import { numberWord } from '../lib/numberWord'
 import { resolveGameAccent } from '../lib/theme'
+import { GameArt } from './GameArt'
 import { GamePreview } from './GamePreview'
 import { GameThumbArt } from './GameThumbArt'
 
@@ -323,9 +324,9 @@ export function WallTile({
       <a className="wall-tile" href={gameHref(game.slug)} style={style} aria-label={label}>
         <span className="wall-tile__screen">
           <span className="wall-tile__art" aria-hidden="true">
-            <GameThumbArt slug={game.slug} accent={accent} />
+            <GameArt slug={game.slug} shape="card" fallback={<GameThumbArt slug={game.slug} accent={accent} />} />
           </span>
-          {live ? <GamePreview slug={game.slug} className="wall-tile__preview" /> : null}
+          {live ? <GamePreview slug={game.slug} className="wall-tile__preview" hoverOnly /> : null}
           {flag ? (
             <span className={`wall-tile__flag wall-tile__flag--${flag.kind}`} aria-hidden="true">
               {flag.label}

@@ -4780,6 +4780,13 @@ a.lb-share:visited:focus-visible {
   height: 78%;
 }
 
+/* A game's picture (GameArt) fills its tile edge to edge, clipped to the tile's corners. */
+.inline-thumb > .game-art {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
 .lb-picker__main {
   min-width: 0;
   display: flex;

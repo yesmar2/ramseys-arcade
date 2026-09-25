@@ -8,6 +8,7 @@ import type { LeaderboardGame } from '../lib/leaderboard'
 import { formatLeaderboardScore } from '../lib/leaderboardFormat'
 import { bestBoard, nextRunLine, ordinal, scoreWithUnit } from '../lib/profileMath'
 import { resolveGameAccent } from '../lib/theme'
+import { GameArt } from './GameArt'
 import { GamePreview } from './GamePreview'
 import { GameThumbArt } from './GameThumbArt'
 import { PlayerAvatar } from './PlayerAvatar'
@@ -121,9 +122,9 @@ export function ProfileBestBoard({
     <section className="pbest" style={style} aria-labelledby="pbest-title">
       <a className="pbest__screen" href={gamePlayHref(best.slug)} tabIndex={-1} aria-hidden="true">
         <span className="wall-tile__art">
-          <GameThumbArt slug={best.slug} accent={accent} />
+          <GameArt slug={best.slug} shape="card" fallback={<GameThumbArt slug={best.slug} accent={accent} />} />
         </span>
-        {hasGamePreview(best.slug) ? <GamePreview slug={best.slug} className="wall-tile__preview" /> : null}
+        {hasGamePreview(best.slug) ? <GamePreview slug={best.slug} className="wall-tile__preview" hoverOnly /> : null}
         <span className={`pbest__flag pbest__flag--${flag.tone}`}>{flag.text}</span>
       </a>
       <div className="pbest__text">
