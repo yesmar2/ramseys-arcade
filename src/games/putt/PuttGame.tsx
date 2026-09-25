@@ -60,10 +60,10 @@ function roundLabel(toPar: number, bests: number) {
 }
 
 /**
- * The field fills the screen, portrait or landscape. It plays like a putt:
- * take hold of the ball and pull back, and a putter draws back behind it, a
- * tick for each quarter of the draw; let go and it swings through, harder
- * the further the pull. A press anywhere else
+ * The field fills the screen, portrait or landscape. Take hold of the ball
+ * and pull back, and the white round it stretches toward the finger, a tick
+ * for each quarter of the draw; let go and it snaps back and the ball goes
+ * the other way, harder the further the pull. A press anywhere else
  * pulls the same way, for a ball hard against the edge of the screen. A pull
  * that comes back to nothing is a change of mind.
  * Keyboard: left and right turn the aim, hold Space to charge, release to
@@ -277,7 +277,7 @@ export function PuttGame() {
     press.moved = true
     const pull = toFieldDelta(f, dx, dy)
     stateRef.current = setDragAim(s, pull.x, pull.y)
-    // The putter draws back: a tick at each quarter of the full draw, the first time the pull reaches it.
+    // The pin stretches: a tick at each quarter of the full draw, the first time the pull reaches it.
     const notch = Math.floor(stateRef.current.power * 4 + 1e-6)
     if (notch > press.notch) {
       press.notch = notch

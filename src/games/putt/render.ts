@@ -1855,125 +1855,66 @@ function drawMillTop(g: Ctx, sk: Skin, m: Mill, clock: number, ballUnder: boolea
 
 /** The ball's recent path, for the streak behind a fast one. Kept here: it is only for looking at. */
 let trail: Vec[] = []
-/** How long the putter takes to swing through once the shot is let go. */
-const SWING_TIME = 0.16
+/** How long the pin takes to snap back once the shot is let go. */
+const SNAP_BACK = 0.16
+/** The pin's head: the white round the ball sits in. */
+const PIN_R = BALL_R + 2
+/** How far past its head the pin's tail stretches at full pull. */
+const PIN_STRETCH = 16
 
-/** How far back the putter draws at full pull. */
-const BACKSWING = 11
-
-/** How far the putter's face stands back from the ball for a pull of `power`. */
-function putterGap(power: number) {
-  return 0.45 + power * BACKSWING
+/** How far the pin's tip stands from the ball's middle for a pull of `power`. */
+function pinReach(power: number) {
+  return PIN_R + 0.6 + power * PIN_STRETCH
 }
 
 /**
- * A putter, seen from above: a steel blade behind the ball, square to the
- * way it will go, with a sight line down its top that warms from gold to red
- * the harder the pull, and the shaft running from its heel to a grip off to
- * the side where the player stands. `gap` is how far its face stands back
- * from the ball.
+ * The pin: a white drop the ball sits in, its tail stretched back the way
+ * the pull goes, further the harder, so the shot goes the other way. Its
+ * sides leave the round head along its tangents and draw in toward the tip,
+ * like something pulled. `reach` is how far the tip stands from the ball's
+ * middle; at the head's radius or less it is a plain round. `grow` scales
+ * the head, for its breathing at rest.
  */
-function drawPutter(g: Ctx, sk: Skin, ball: Vec, aim: number, gap: number, alpha: number) {
-  const ux = Math.cos(aim)
-  const uy = Math.sin(aim)
-  // Across the line, toward the player: a right-hander stands with the hole off their left shoulder.
-  const sx = uy
-  const sy = -ux
-  const half = 4.3
-  const depth = 2.4
-  const face = BALL_R + gap
-  const fx = ball.x - ux * face
-  const fy = ball.y - uy * face
-  const mx = fx - ux * depth * 0.5
-  const my = fy - uy * depth * 0.5
-  const heel = { x: mx + sx * (half - 1), y: my + sy * (half - 1) }
-  // The hands stay nearly still while the head swings back, so the shaft leans back as it draws.
-  const lean = Math.max(-4, Math.min(gap, BACKSWING + 1)) * 0.3
-  const grip = { x: ball.x + sx * 16 - ux * (BALL_R + 2 + lean), y: ball.y + sy * 16 - uy * (BALL_R + 2 + lean) }
-  const neck = { x: heel.x + (grip.x - heel.x) * 0.56, y: heel.y + (grip.y - heel.y) * 0.56 }
-  const power = Math.max(0, Math.min(1, (gap - 0.45) / BACKSWING))
-  const hue = 48 - power * 42
-  const blade = (ox: number, oy: number) => {
-    g.save()
-    g.translate(mx + ox, my + oy)
-    g.rotate(aim)
+function drawPin(g: Ctx, sk: Skin, ball: Vec, aim: number, reach: number, alpha: number, grow = 1) {
+  const R = PIN_R * grow
+  const bx = -Math.cos(aim)
+  const by = -Math.sin(aim)
+  const outline = () => {
     g.beginPath()
-    g.roundRect(-depth / 2, -half, depth, half * 2, 1)
-    g.restore()
+    if (reach <= R * 1.03) {
+      g.arc(ball.x, ball.y, R, 0, Math.PI * 2)
+      return
+    }
+    const base = Math.atan2(by, bx)
+    const a = Math.acos(R / reach)
+    const tip = { x: ball.x + bx * reach, y: ball.y + by * reach }
+    const at = (ang: number) => ({ x: ball.x + Math.cos(ang) * R, y: ball.y + Math.sin(ang) * R })
+    const p1 = at(base + a)
+    const p2 = at(base - a)
+    // Near the tip, drawn in toward the line down its middle.
+    const pinch = (p: Vec) => {
+      const q = { x: tip.x + (p.x - tip.x) * 0.32, y: tip.y + (p.y - tip.y) * 0.32 }
+      const along = (q.x - ball.x) * bx + (q.y - ball.y) * by
+      return { x: q.x + (ball.x + bx * along - q.x) * 0.35, y: q.y + (ball.y + by * along - q.y) * 0.35 }
+    }
+    g.arc(ball.x, ball.y, R, base + a, base - a + Math.PI * 2)
+    const c2 = pinch(p2)
+    g.bezierCurveTo(p2.x + (tip.x - p2.x) * 0.4, p2.y + (tip.y - p2.y) * 0.4, c2.x, c2.y, tip.x, tip.y)
+    const c1 = pinch(p1)
+    g.bezierCurveTo(c1.x, c1.y, p1.x + (tip.x - p1.x) * 0.4, p1.y + (tip.y - p1.y) * 0.4, p1.x, p1.y)
+    g.closePath()
   }
   g.save()
   g.globalAlpha = alpha
-  g.lineCap = 'round'
-  g.lineJoin = 'round'
-  // A glow on the grass under the head, gold to red, that builds the harder the pull.
-  if (power > 0.02) {
-    const glow = g.createRadialGradient(mx, my, 0, mx, my, half * 1.5)
-    glow.addColorStop(0, `hsla(${hue}, 95%, 60%, ${0.5 * power})`)
-    glow.addColorStop(1, `hsla(${hue}, 95%, 60%, 0)`)
-    g.fillStyle = glow
-    g.beginPath()
-    g.arc(mx, my, half * 1.5, 0, Math.PI * 2)
+  castShadow(g, 0.9, 0.5, sk.shadow, () => {
+    outline()
     g.fill()
-  }
-  // Its shadow on the grass, away from the light.
-  const sh = 1.4
-  g.strokeStyle = 'rgba(0, 0, 0, 0.26)'
-  g.lineWidth = 1.2
-  g.beginPath()
-  g.moveTo(heel.x + LIGHT.x * sh, heel.y + LIGHT.y * sh)
-  g.lineTo(grip.x + LIGHT.x * sh * 2, grip.y + LIGHT.y * sh * 2)
-  g.stroke()
-  blade(LIGHT.x * sh, LIGHT.y * sh)
-  g.fillStyle = 'rgba(0, 0, 0, 0.26)'
+  })
+  outline()
+  g.fillStyle = 'rgba(255, 255, 255, 0.97)'
   g.fill()
-  // The shaft, steel, then the grip.
-  g.strokeStyle = 'rgba(20, 26, 34, 0.7)'
-  g.lineWidth = 1.2
-  g.beginPath()
-  g.moveTo(heel.x, heel.y)
-  g.lineTo(neck.x, neck.y)
-  g.stroke()
-  g.strokeStyle = sk.dark ? 'rgba(206, 214, 224, 1)' : 'rgba(176, 186, 198, 1)'
-  g.lineWidth = 0.72
-  g.stroke()
-  g.strokeStyle = 'rgba(12, 14, 18, 0.85)'
-  g.lineWidth = 2.3
-  g.beginPath()
-  g.moveTo(neck.x, neck.y)
-  g.lineTo(grip.x, grip.y)
-  g.stroke()
-  g.strokeStyle = sk.dark ? 'rgba(58, 62, 72, 1)' : 'rgba(44, 48, 56, 1)'
-  g.lineWidth = 1.75
-  g.stroke()
-  g.strokeStyle = 'rgba(255, 255, 255, 0.16)'
-  g.lineWidth = 0.45
-  g.beginPath()
-  g.moveTo(neck.x - uy * 0.25, neck.y + ux * 0.25)
-  g.lineTo(grip.x - uy * 0.25, grip.y + ux * 0.25)
-  g.stroke()
-  // The blade: steel, lit from the upper left.
-  blade(0, 0)
-  const lit = g.createLinearGradient(mx - LIGHT.x * 3, my - LIGHT.y * 3, mx + LIGHT.x * 3, my + LIGHT.y * 3)
-  lit.addColorStop(0, 'rgba(246, 249, 252, 1)')
-  lit.addColorStop(1, 'rgba(150, 162, 176, 1)')
-  g.fillStyle = lit
-  g.fill()
-  g.strokeStyle = 'rgba(20, 26, 34, 0.8)'
-  g.lineWidth = 0.28
-  g.stroke()
-  // The face, a darker edge toward the ball.
-  g.strokeStyle = 'rgba(40, 48, 60, 0.9)'
-  g.lineWidth = 0.5
-  g.beginPath()
-  g.moveTo(fx + sx * (half - 0.6), fy + sy * (half - 0.6))
-  g.lineTo(fx - sx * (half - 0.6), fy - sy * (half - 0.6))
-  g.stroke()
-  // The sight line down its top, warmer the harder the pull.
-  g.strokeStyle = `hsla(${hue}, 92%, ${58 - power * 6}%, 1)`
-  g.lineWidth = 0.65
-  g.beginPath()
-  g.moveTo(fx - ux * 0.35, fy - uy * 0.35)
-  g.lineTo(fx - ux * (depth - 0.35), fy - uy * (depth - 0.35))
+  g.strokeStyle = sk.dark ? 'rgba(255, 255, 255, 0.35)' : 'rgba(20, 30, 40, 0.18)'
+  g.lineWidth = 0.22
   g.stroke()
   g.restore()
 }
@@ -2606,21 +2547,14 @@ export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, w: n
   const millsInView = hole.mills.filter((m) => m.y + m.reach + 8 > ya && m.y - m.reach - 8 < yb)
   for (const m of millsInView) drawSailShadows(ctx, sk, m, state.clock)
 
-  // ---- aim: a putter. Pulled back, a putter stands behind the ball, square to the way it will go, and
-  // draws back from it the further the pull goes; let go, it swings through where the ball sat. At rest a
-  // ring breathes round the ball: take hold here. Turned from the keys, the putter shows which way it faces.
+  // ---- aim: the pin. The ball sits in a white round; pulled back, its tail stretches toward the finger,
+  // the further the harder, and swings round with it, and the shot goes the other way. At rest the round
+  // breathes: take hold here. Turned from the keys, a short tail shows which way the shot faces.
   if (state.phase === 'aim') {
     const b = state.ball
-    const live = state.aiming !== 'none'
-    if (live || Math.abs(state.aim - UP) > 1e-6) drawPutter(ctx, sk, b, state.aim, putterGap(live ? state.power : 0), 1)
-    if (!live) {
-      const breathe = 0.5 + 0.5 * Math.sin(state.clock * 3.2)
-      ctx.strokeStyle = ink(sk, 0.2 + 0.25 * breathe)
-      ctx.lineWidth = 0.3
-      ctx.beginPath()
-      ctx.arc(b.x, b.y, BALL_R + 1.5 + breathe * 0.9, 0, Math.PI * 2)
-      ctx.stroke()
-    }
+    if (state.aiming !== 'none') drawPin(ctx, sk, b, state.aim, pinReach(state.power), 1)
+    else if (Math.abs(state.aim - UP) > 1e-6) drawPin(ctx, sk, b, state.aim, pinReach(0) + 2.5, 1)
+    else drawPin(ctx, sk, b, state.aim, 0, 0.9, 1 + 0.07 * Math.sin(state.clock * 3.2))
   }
 
   // ---- the ball. A fast one leaves a streak; in the air it rises off its shadow.
@@ -2637,11 +2571,11 @@ export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, w: n
   if (inPlay && state.transit) drawTransit(ctx, sk, state, hole)
   else if (inPlay) {
     const b = state.ball
-    // Just let go: the putter swings on through where the ball sat, and fades.
-    if (state.phase === 'roll' && state.t < SWING_TIME) {
-      const k = state.t / SWING_TIME
-      const e = Math.sqrt(k)
-      drawPutter(ctx, sk, state.strokeStart, state.aim, putterGap(state.power) * (1 - e) - 3.5 * e, 1 - k * k)
+    // Just let go: the pin snaps back where the ball sat, and fades.
+    if (state.phase === 'roll' && state.t < SNAP_BACK) {
+      const k = state.t / SNAP_BACK
+      const reach = PIN_R + (pinReach(state.power) - PIN_R) * (1 - k) ** 3
+      drawPin(ctx, sk, state.strokeStart, state.aim, reach, 1 - k)
     }
     if (trail.length > 1 && speed > 45) {
       const strength = Math.min(1, (speed - 45) / 120)
@@ -2666,6 +2600,14 @@ export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, w: n
     ctx.ellipse(sx, sy, BALL_R * state.drop * (1 - lift * 0.2), BALL_R * state.drop * 0.85 * (1 - lift * 0.2), 0, 0, Math.PI * 2)
     ctx.fill()
     paintBall(ctx, b.x, b.y, r, state.inSand)
+    // Sitting in the white pin, it takes a dark ring to stand out.
+    if (state.phase === 'aim') {
+      ctx.strokeStyle = 'rgba(20, 26, 34, 0.9)'
+      ctx.lineWidth = 0.5
+      ctx.beginPath()
+      ctx.arc(b.x, b.y, r + 0.15, 0, Math.PI * 2)
+      ctx.stroke()
+    }
   }
 
   // ---- windmills over the ball: the roof it runs under, and the sails

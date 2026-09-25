@@ -27,9 +27,9 @@ import { centreOf, contours, inAny, inside, inUnion, pivotOf, smoothLine } from 
 /*
  * Putt: mini golf on long holes, none of them the usual kind.
  *
- * A putter: take hold of the ball (or press anywhere) and pull back, and a
- * putter draws back behind it, square to the way it will go, further the
- * further the pull; let go and it swings through. The further the pull, the
+ * A pull: take hold of the ball (or press anywhere) and pull back, and the
+ * white round the ball sits in stretches back toward the finger; let go and
+ * it snaps back and the ball goes the other way. The further the pull, the
  * harder the shot, and the last of a full pull carries much further. The
  * ball rolls on physics — it sheds a share of its speed every
  * frame, so it leaves fast and settles softly — off rails at any angle,
@@ -803,8 +803,8 @@ export function shoot(state: GameState, shank = 0): GameState {
   const lie = inAny(currentHole(state).sand, state.ball) ? SAND_LIE : 1
   const speed = launchSpeed(Math.min(1, state.power)) * lie
   const angle = state.aim + shank
-  // The putter knocks it away, and a hard shot whooshes off.
-  sfx('tap', 0)
+  // The pin snaps back, and a hard shot whooshes off it.
+  sfx('zip', state.power < 0.5 ? 1 : 0)
   if (state.power >= 0.5) sfx('whoosh')
   return {
     ...state,
