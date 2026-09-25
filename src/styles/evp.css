@@ -1522,6 +1522,19 @@ a.evp-result:focus-visible {
   margin: 0;
 }
 
+/* The host's say over who invites: just them, or everyone in the event. */
+.evp-who-invites {
+  display: grid;
+  gap: 0.4rem;
+  margin: 0 0 0.9rem;
+}
+
+.evp-who-invites__note {
+  margin: 0 0 0.8rem;
+  font-size: 0.86rem;
+  color: var(--muted);
+}
+
 .evp .ev-card__title,
 .evp .ev-card--bracket .event-detail__section-title {
   font-family: var(--font-display);

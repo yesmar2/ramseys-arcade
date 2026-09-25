@@ -131,7 +131,7 @@ export function GroupBanner({
           <span aria-hidden="true">›</span>
           <span aria-current="page">{group.name}</span>
         </nav>
-        {viewer === 'host' && inviteUrl ? (
+        {inviteUrl ? (
           <ShareBoardButton
             className="grp-share"
             label={`Join ${group.name} on ${APP_NAME}: the same boards, with just us on them.`}
@@ -577,7 +577,11 @@ export function GroupMembers({
 
 /* ---------- the host's tools ---------- */
 
-/** The host's invite: the link to send, its code, a fresh code, and invites by gamer tag. */
+/**
+ * The invite: the link to send, its code, and invites by gamer tag. The host
+ * also chooses who can invite and can make a fresh code; anyone else sees it
+ * once the host has let everyone invite.
+ */
 export function GroupInvite({
   group,
   inviteUrl,
@@ -585,6 +589,7 @@ export function GroupInvite({
   busy,
   onCopy,
   onRotate,
+  onMembersInvite,
 }: {
   group: GroupPublic
   inviteUrl: string
@@ -592,8 +597,10 @@ export function GroupInvite({
   busy: boolean
   onCopy: () => void
   onRotate: () => void
+  onMembersInvite: (on: boolean) => void
 }) {
   const seats = Math.max(0, MEMBER_LIMIT - group.memberCount)
+  const host = group.isOwner
   return (
     <section className="grp-card grp-side grp-invite" aria-labelledby="grp-invite-title">
       <div className="grp-card__head">
@@ -602,6 +609,21 @@ export function GroupInvite({
         </h2>
         <span className="grp-sub">{seats === 0 ? 'Full' : `${seats} ${seats === 1 ? 'seat' : 'seats'} left`}</span>
       </div>
+      {host ? (
+        <div className="grp-invite__who">
+          <span className="grp-cap">Who can invite</span>
+          <div className="grp-seg" role="group" aria-label="Who can invite">
+            <button type="button" aria-pressed={!group.membersInvite} disabled={busy} onClick={() => onMembersInvite(false)}>
+              Just me
+            </button>
+            <button type="button" aria-pressed={Boolean(group.membersInvite)} disabled={busy} onClick={() => onMembersInvite(true)}>
+              Everyone in it
+            </button>
+          </div>
+        </div>
+      ) : (
+        <p className="grp-fine">The host has let everyone in the group invite.</p>
+      )}
       <div className="grp-invite__link">
         <LinkIcon />
         <span className="grp-invite__url">{inviteUrl.replace(/^https?:\/\//, '')}</span>
@@ -610,10 +632,15 @@ export function GroupInvite({
         </button>
       </div>
       <p className="grp-fine">
-        Code <b className="grp-invite__code">{group.inviteCode}</b> ·{' '}
-        <button type="button" className="grp-quiet-link grp-quiet-link--inline" disabled={busy} onClick={onRotate}>
-          Make a new code
-        </button>
+        Code <b className="grp-invite__code">{group.inviteCode}</b>
+        {host ? (
+          <>
+            {' '}·{' '}
+            <button type="button" className="grp-quiet-link grp-quiet-link--inline" disabled={busy} onClick={onRotate}>
+              Make a new code
+            </button>
+          </>
+        ) : null}
       </p>
       <InviteByTagForm kind="group" targetId={group.id} disabled={busy} excludeNames={group.members.map((m) => m.name)} />
     </section>

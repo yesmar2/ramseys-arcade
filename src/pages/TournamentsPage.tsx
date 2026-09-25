@@ -78,6 +78,7 @@ import {
   matchOpponent,
   rememberTournamentInvite,
   seatsLeft,
+  setTournamentMembersInvite,
   syncJoinedTournamentRosters,
   yourOpenMatch,
   type StandingRow,
@@ -1065,6 +1066,21 @@ export function TournamentDetailPage({ id, invite }: { id: string; invite?: stri
     }
   }
 
+  /** The host lets everyone in the event invite, or keeps it to themselves. */
+  const onMembersInvite = async (on: boolean) => {
+    if (busy) return
+    setBusy(true)
+    setJoinNote(null)
+    try {
+      await setTournamentMembersInvite(id, on)
+      await loadDetail()
+    } catch (err) {
+      setJoinNote(err instanceof Error ? err.message : 'Couldn’t change who can invite')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   const submitInvite = async () => {
     const code = inviteDraft.trim().toUpperCase()
     if (!code) return
@@ -1111,15 +1127,16 @@ export function TournamentDetailPage({ id, invite }: { id: string; invite?: stri
     const next = ended
       ? (live.official.find((t) => t.id !== detail.id && t.cadence != null && t.cadence === detail.cadence) ?? null)
       : null
-    const hostInvites = detail.isHost && invitesOpen
+    // The host, and every player once the host has let them; the API sends the code to just those.
+    const canInvite = invitesOpen && Boolean(detail.isHost || detail.canInvite)
     /*
      * Who can hand the event out. Anyone, for an open event. A private one only
-     * lets in someone holding its code, which only the host has: from anyone
-     * else, a share was an invite that ended at "enter the code from your host".
+     * lets in someone holding its code: from anyone without it, a share was an
+     * invite that ended at "enter the code from your host".
      */
     const shareUrl = !detail.private
       ? `${window.location.origin}${tournamentHref(detail.id)}`
-      : hostInvites && inviteLink
+      : canInvite && inviteLink
         ? inviteLink
         : null
     const filling = bracket && !detail.bracket?.lockedAt
@@ -1149,7 +1166,7 @@ export function TournamentDetailPage({ id, invite }: { id: string; invite?: stri
           joinNote={joinNote}
           onJoin={() => void onJoin()}
           shareUrl={shareUrl}
-          copyInvite={hostInvites ? () => void copyInviteLink() : null}
+          copyInvite={canInvite ? () => void copyInviteLink() : null}
           copiedInvite={copiedInvite}
         />
 
@@ -1184,7 +1201,7 @@ export function TournamentDetailPage({ id, invite }: { id: string; invite?: stri
 
           <aside className="evp-split__side" aria-label="About this event">
             {games.length === 1 ? <EventGames games={games} /> : null}
-            {hostInvites ? (
+            {canInvite ? (
               <section className="ev-card evp-side-card" aria-label="Invite players">
                 <div className="ev-card__head">
                   <h2 className="ev-card__title">Invite players</h2>
@@ -1195,6 +1212,31 @@ export function TournamentDetailPage({ id, invite }: { id: string; invite?: stri
                     })()}
                   </p>
                 </div>
+                {detail.isHost ? (
+                  <div className="evp-who-invites">
+                    <span className="evp-cap">Who can invite</span>
+                    <div className="site-seg" role="group" aria-label="Who can invite">
+                      <button
+                        type="button"
+                        aria-pressed={!detail.membersInvite}
+                        disabled={busy}
+                        onClick={() => void onMembersInvite(false)}
+                      >
+                        Just me
+                      </button>
+                      <button
+                        type="button"
+                        aria-pressed={Boolean(detail.membersInvite)}
+                        disabled={busy}
+                        onClick={() => void onMembersInvite(true)}
+                      >
+                        Everyone in it
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="evp-who-invites__note">The host has let everyone in the event invite.</p>
+                )}
                 <InviteByTagForm
                   kind="tournament"
                   targetId={id}

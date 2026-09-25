@@ -36,6 +36,7 @@ import {
   renameGroup,
   rotateGroupInvite,
   setActiveGroup,
+  setGroupMembersInvite,
   storedActiveGroup,
   transferGroup,
   useActiveGroup,
@@ -361,6 +362,19 @@ export function GroupDetailPage({ id, invite }: { id: string; invite?: string })
     }
   }
 
+  /** The host lets everyone in the group invite, or keeps it to themselves. */
+  const onMembersInvite = async (on: boolean) => {
+    if (busy) return
+    setBusy(true)
+    try {
+      setGroup(await setGroupMembersInvite(id, on))
+    } catch (err) {
+      setNote(err instanceof Error ? err.message : 'Couldn’t change who can invite')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   const onKick = async (name: string) => {
     if (busy) return
     const yes = await ask({
@@ -496,7 +510,8 @@ export function GroupDetailPage({ id, invite }: { id: string; invite?: string })
               <GroupRecords group={group} me={playerName} records={board.records} />
             </div>
             <aside className="grp-split__side" aria-label={`About ${group.name}`}>
-              {group.isOwner && url ? (
+              {/* The host's card, and everyone's once the host lets them: the API only sends the code to those. */}
+              {url ? (
                 <GroupInvite
                   group={group}
                   inviteUrl={url}
@@ -504,6 +519,7 @@ export function GroupDetailPage({ id, invite }: { id: string; invite?: string })
                   busy={busy}
                   onCopy={() => void copyInvite()}
                   onRotate={() => void onRotate()}
+                  onMembersInvite={(on) => void onMembersInvite(on)}
                 />
               ) : null}
               <NewestRecords records={board.records} />

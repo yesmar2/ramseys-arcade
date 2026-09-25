@@ -1253,6 +1253,16 @@ html[data-theme='dark'] .grp-menu__danger {
   border-color: color-mix(in srgb, var(--g) 34%, transparent);
 }
 
+/* The host's say over who invites: just them, or everyone in the group. */
+.grp-invite__who {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.grp-invite__who .grp-seg {
+  justify-self: stretch;
+}
+
 .grp-invite__link {
   display: flex;
   align-items: center;

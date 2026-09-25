@@ -395,8 +395,13 @@ export type TournamentDetail = TournamentSummary & {
   placePoints: Record<string, number>
   bracket?: PublicBracket | null
   playerStatus?: TournamentPlayerStatus | null
+  /** Set for whoever may hand it out, while seats are open: the host, and every player once they're let. */
   inviteCode?: string | null
   isHost?: boolean
+  /** The host has let everyone holding a seat invite. */
+  membersInvite?: boolean
+  /** This viewer may invite. Absent on older API builds, where only the host could. */
+  canInvite?: boolean
 }
 
 export type CreateTournamentInput = {
@@ -809,6 +814,15 @@ export async function renameTournamentPlayer(
       body: JSON.stringify({ from, to, ...tokens }),
     },
   )
+}
+
+/** The host lets everyone holding a seat invite, or takes it back. */
+export async function setTournamentMembersInvite(id: string, on: boolean): Promise<TournamentDetail> {
+  const data = await api<{ tournament: TournamentDetail }>(`/tournaments/${encodeURIComponent(id)}/members-invite`, {
+    method: 'POST',
+    body: JSON.stringify({ on }),
+  })
+  return data.tournament
 }
 
 export async function joinTournament(

@@ -25,7 +25,12 @@ export type GroupPublic = {
   isMember: boolean
   /** Tag of the member who holds the group. Absent on older API builds. */
   ownerName?: string | null
+  /** Set for whoever may hand it out: the host, and everyone in it once they're let. */
   inviteCode: string | null
+  /** The host has let everyone in the group invite. */
+  membersInvite?: boolean
+  /** This viewer may invite. Absent on older API builds, where only the host could. */
+  canInvite?: boolean
 }
 
 export function storedActiveGroup(): string | null {
@@ -280,6 +285,15 @@ export async function transferGroup(id: string, name: string): Promise<GroupPubl
     `/groups/${encodeURIComponent(id)}/transfer`,
     { method: 'POST', body: JSON.stringify({ name: name.trim().toUpperCase() }) },
   )
+  return data.group
+}
+
+/** The host lets everyone in the group invite, or takes it back. */
+export async function setGroupMembersInvite(id: string, on: boolean): Promise<GroupPublic> {
+  const data = await api<{ group: GroupPublic }>(`/groups/${encodeURIComponent(id)}/members-invite`, {
+    method: 'POST',
+    body: JSON.stringify({ on }),
+  })
   return data.group
 }
 
