@@ -2917,3 +2917,317 @@ html[data-theme="dark"] .home-banner__hint--error {
 
 
 
+
+/* ---------- the lighter phone home ---------- */
+
+/* The newest games' own row says they're new above a phone, so their badge waits for a phone. */
+@media (min-width: 36.01rem) {
+  .home-rail .wall__grid--fresh .wall-tile__flag--new {
+    display: none;
+  }
+}
+
+/*
+ * On a phone the home page keeps to what a glance takes in. It ran six
+ * screens, and the games began below the first; now (HomePage sets the order)
+ * a shorter banner with one way to play, the games straight under it three
+ * across, what's on as two slim rows, the bug hunt on a line, the top three
+ * of the standings with the house records, and groups as a title and a
+ * button. Explanations the rest of the site gives once go; anything about the
+ * player stays. Scoped to the home page: other pages share these parts.
+ */
+@media (max-width: 36rem) {
+  .home-rail {
+    gap: 1.1rem;
+  }
+
+  /* The banner: a shorter screen, the name, the scores on a line, one button. */
+  .home-rail .home-banner .home-banner__art:has(.home-banner__screen) {
+    aspect-ratio: 12 / 5;
+  }
+
+  .home-rail .home-banner__art {
+    min-height: 7.5rem;
+  }
+
+  .home-rail .home-banner__art > .inline-thumb {
+    width: 7rem;
+  }
+
+  .home-rail .home-banner__text {
+    gap: 0.6rem;
+    padding: 0.9rem 1rem 1.05rem;
+  }
+
+  .home-rail .home-banner__name {
+    font-size: 2rem;
+  }
+
+  .home-rail .home-banner__goal {
+    font-size: 1.65rem;
+  }
+
+  .home-rail .home-banner__blurb,
+  .home-rail .home-banner__ghost,
+  .home-rail .home-banner__daily,
+  .home-rail .home-banner__promises {
+    display: none;
+  }
+
+  .home-rail .home-banner__acts {
+    order: 2;
+    width: 100%;
+    margin-top: 0.15rem;
+  }
+
+  .home-rail .home-banner__cta {
+    flex: 1;
+    justify-content: center;
+    min-height: 3rem;
+  }
+
+  .home-rail .home-banner__figures {
+    flex-direction: column;
+    gap: 0.15rem;
+    margin: 0;
+  }
+
+  .home-rail .home-banner__figure {
+    display: flex;
+    align-items: baseline;
+    gap: 0.45rem;
+  }
+
+  .home-rail .home-banner__figure dd {
+    font-size: 1.05rem;
+  }
+
+  /* The games, three across: the screen, the name and one number under it. */
+  .home-rail .wall__grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.75rem 0.5rem;
+  }
+
+  /* The newest run on from the floor, a New badge on each in place of their heading. */
+  .home-rail .wall__sub {
+    display: none;
+  }
+
+  .home-rail .wall__sub + .wall__grid {
+    margin-top: -0.15rem;
+  }
+
+  .home-rail .wall__tab-n {
+    display: none;
+  }
+
+  .home-rail .wall-tile {
+    padding: 0.3rem;
+    border-radius: 0.9rem;
+  }
+
+  .home-rail .wall-tile__screen {
+    border-radius: 0.6rem;
+  }
+
+  .home-rail .wall-tile__flag {
+    top: 0.3rem;
+    left: 0.3rem;
+    padding: 0.12rem 0.4rem;
+    font-size: 0.5rem;
+    letter-spacing: 0.06em;
+  }
+
+  .home-rail .wall-tile__info {
+    gap: 0.15rem;
+    padding: 0.4rem 0.15rem 0.1rem;
+  }
+
+  .home-rail .wall-tile__name {
+    font-size: 0.84rem;
+  }
+
+  .home-rail .wall-tile__line {
+    gap: 0.3rem;
+    font-size: 0.72rem;
+  }
+
+  /* The high score alone, in the game's colour: no label, no holder. */
+  .home-rail .wall-tile__line:first-child .wall-tile__tag,
+  .home-rail .wall-tile__who {
+    display: none;
+  }
+
+  .home-rail .wall-tile__line:first-child .wall-tile__figure {
+    color: var(--wall-accent-ink);
+  }
+
+  /* What's on: the daily and the weekly as slim rows, the way in beside each. */
+  .home-rail .onnow__grid {
+    grid-auto-flow: row;
+    grid-auto-columns: auto;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.5rem;
+    overflow: visible;
+    scroll-snap-type: none;
+  }
+
+  /* Last week's podium is on the Events page. */
+  .home-rail .onnow__grid > li:has(> .onnow-card--result),
+  .home-rail .onnow[aria-busy='true'] .onnow__grid > li:nth-child(3) {
+    display: none;
+  }
+
+  .home-rail .onnow-card {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      'art titles go'
+      'art clock go'
+      'line line line';
+    align-items: center;
+    gap: 0 0.75rem;
+    min-height: 0;
+    padding: 0.65rem 0.8rem;
+  }
+
+  .home-rail .onnow-card--skel {
+    display: flex;
+    min-height: 4rem;
+  }
+
+  .home-rail .onnow-card__head,
+  .home-rail .onnow-card__foot {
+    display: contents;
+  }
+
+  .home-rail .onnow-card__art {
+    grid-area: art;
+  }
+
+  .home-rail .onnow-card__titles {
+    grid-area: titles;
+  }
+
+  .home-rail .onnow-card__sub--rule {
+    display: none;
+  }
+
+  .home-rail .onnow-card__clock {
+    grid-area: clock;
+    justify-self: start;
+    padding: 0;
+    background: none;
+    font-size: 0.74rem;
+  }
+
+  .home-rail .onnow-card__go {
+    grid-area: go;
+  }
+
+  .home-rail .onnow-card__line {
+    grid-area: line;
+    display: none;
+  }
+
+  .home-rail .onnow-card__line--you {
+    display: block;
+    margin-top: 0.45rem;
+    font-size: 0.8rem;
+  }
+
+  /* The bug hunt on a line: who's loose, and your bugs. */
+  .home-rail .hunt-strip {
+    flex-wrap: nowrap;
+    gap: 0.75rem;
+    padding: 0.5rem 0.75rem 0.5rem 0.5rem;
+  }
+
+  .home-rail .hunt-strip__mark {
+    width: 2.8rem;
+    height: 2.8rem;
+    border-radius: 0.8rem;
+  }
+
+  .home-rail .hunt-strip__art {
+    width: 2.5rem;
+    height: 2.5rem;
+  }
+
+  .home-rail .hunt-strip__title {
+    font-size: 0.95rem;
+  }
+
+  .home-rail .hunt-strip__clue,
+  .home-rail .hunt-strip__count {
+    display: none;
+  }
+
+  .home-rail .hunt-strip__side {
+    width: auto;
+    padding-left: 0;
+  }
+
+  .home-rail .hunt-btn {
+    min-height: 2.25rem;
+    padding: 0 0.8rem;
+    font-size: 0.8rem;
+  }
+
+  /* The boards: the top three of the standings, you under them, and the house records. */
+  .home-rail .hb-rows > .hb-row:nth-child(n + 4):not(.hb-row--you):not(.hb-row--gap),
+  .home-rail .hb-note,
+  .home-rail .hb-panel--book {
+    display: none;
+  }
+
+  .home-rail .hb-plaque {
+    padding: 0.6rem 0.7rem;
+  }
+
+  .home-rail .hb-plaque__value {
+    font-size: 1.35rem;
+  }
+
+  .home-rail .hb-plaque__label {
+    margin-top: 0.15rem;
+  }
+
+  /* Groups: the title and the way in. */
+  .home-rail .gband {
+    padding: 0.95rem 1rem;
+  }
+
+  .home-rail .gband__text {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.6rem 0.9rem;
+  }
+
+  .home-rail .gband__kicker,
+  .home-rail .gband__lead,
+  .home-rail .gband__ghost {
+    display: none;
+  }
+
+  .home-rail .gband__title {
+    flex: 1 1 11rem;
+    font-size: 1.1rem;
+  }
+
+  .home-rail .gband__groups {
+    order: 1;
+    flex-basis: 100%;
+  }
+
+  .home-rail .gband__acts {
+    margin-top: 0;
+  }
+
+  .home-rail .gband__cta {
+    min-height: 2.6rem;
+    padding: 0 1.1rem;
+    font-size: 0.88rem;
+  }
+}

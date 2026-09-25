@@ -57,6 +57,8 @@ function RunningCard({
   const points = mine?.yourPoints ?? null
   const sub = t.games.length > 1 ? gameNames(t) : howItWins(t)
   const players = t.playerCount
+  // A line about you stays on a phone, where the card is a slim row; the others go (home.css).
+  const aboutYou = Boolean(joined || champion)
   let line: string
   if (joined && place) {
     const onPoints = points != null && t.format === 'place-points' ? `, on ${pts(points)}` : ''
@@ -79,7 +81,7 @@ function RunningCard({
         <EventArt t={t} />
         <span className="onnow-card__titles">
           <span className="onnow-card__title">{t.title}</span>
-          <span className="onnow-card__sub">{sub}</span>
+          <span className={`onnow-card__sub${t.games.length > 1 ? '' : ' onnow-card__sub--rule'}`}>{sub}</span>
         </span>
         <EventCountdown
           endsAt={t.endsAt}
@@ -87,7 +89,7 @@ function RunningCard({
           className="onnow-card__clock"
         />
       </span>
-      <span className="onnow-card__line">{line}</span>
+      <span className={`onnow-card__line${aboutYou ? ' onnow-card__line--you' : ''}`}>{line}</span>
       <span className="onnow-card__foot">
         <span className="onnow-card__go">{joined ? 'Open' : 'Join'}</span>
       </span>

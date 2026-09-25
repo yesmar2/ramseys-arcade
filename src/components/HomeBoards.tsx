@@ -168,7 +168,7 @@ function RecordBook({ slug, records }: { slug: string; records: RecordSummary[] 
   const set = (records ?? []).filter((r) => r.top).slice(0, 5)
   if (records != null && set.length === 0) return null
   return (
-    <article className="hb-panel">
+    <article className="hb-panel hb-panel--book">
       <div className="hb-panel__head">
         <span className="hb-panel__art" aria-hidden="true">
           <GameThumbArt slug={slug} accent={accent} />

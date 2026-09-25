@@ -162,9 +162,10 @@ const PLACES = ['1st', '2nd', '3rd']
 
 /**
  * The wall: every game as an arcade cabinet, in a grid that runs five across
- * on a desktop and two on a phone, and no two cabinets of one colour side by
+ * on a desktop and three on a phone, and no two cabinets of one colour side by
  * side. The finished games stand on the floor; the ones still being tuned get
- * a row of their own under them. Each cabinet's screen shows its game, which
+ * a row of their own under them, which on a phone runs on from the floor with
+ * a New badge on each instead of a heading. Each cabinet's screen shows its game, which
  * plays when asked; under the screen go the name, the board's high score and
  * yours. The daily's game and the weekly's wear a badge. Tabs along the top
  * cut the wall by what kind of game it is, and say how many of each there are.
@@ -199,7 +200,8 @@ export function GameWall() {
       top={leaders?.[game.slug] ?? null}
       daily={game.slug === dailySlug}
       weekly={weekly.has(game.slug)}
-      newFlag={false}
+      // Their own row's heading says so on a wider screen, which hides the badge (home.css).
+      newFlag={isFresh(game)}
       preview
       hunt={index === 0 ? 'home-wall' : undefined}
     />
@@ -245,7 +247,7 @@ export function GameWall() {
                   : `The ${numberWord(fresh.length)} newest, still being tuned.`}
             </p>
           </div>
-          <ul className="wall__grid">{fresh.map((g, i) => cabinet(g, floor.length + i))}</ul>
+          <ul className="wall__grid wall__grid--fresh">{fresh.map((g, i) => cabinet(g, floor.length + i))}</ul>
         </>
       ) : null}
     </section>
