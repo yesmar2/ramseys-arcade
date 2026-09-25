@@ -729,6 +729,15 @@ export function mapLayout(f: Frame, len: number, side: MapSide = 'near') {
 
 export type MapLayout = ReturnType<typeof mapLayout>
 
+/**
+ * Whether a hole has its map at all: only when it runs well on past what the
+ * window shows. A short hole, all or nearly all of it in view, has nothing to
+ * look ahead to, and the map would only hide a corner of it.
+ */
+export function showsMap(f: Frame) {
+  return f.len > f.vis * 1.08
+}
+
 /** Whether a screen point sits under the map, with a little room around it. */
 export function underMap(m: MapLayout, sx: number, sy: number, room = 14) {
   return sx > m.x - room && sx < m.x + m.w + room && sy > m.y - room && sy < m.y + m.h + room
@@ -1107,7 +1116,7 @@ function step(ball: Ball, hole: Hole, rovers: RoverState[], flight: Flight, dt: 
   })
   for (const pipe of hole.portals) {
     if (Math.hypot(ball.x - pipe.a.x, ball.y - pipe.a.y) >= PORTAL_R) continue
-    const v = Math.max(70, Math.hypot(ball.vx, ball.vy))
+    const v = pipe.speed ?? Math.max(70, Math.hypot(ball.vx, ball.vy))
     ball.x = pipe.b.x + Math.cos(pipe.out) * (PORTAL_R + BALL_R)
     ball.y = pipe.b.y + Math.sin(pipe.out) * (PORTAL_R + BALL_R)
     ball.vx = Math.cos(pipe.out) * v

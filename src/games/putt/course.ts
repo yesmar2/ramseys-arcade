@@ -1,12 +1,12 @@
 /*
  * The course, the same every round, so a score means the same thing to
- * everyone on the board: a short hole to start, then five long ones, each
+ * everyone on the board: two short holes to start, then five long ones, each
  * somewhere of its own.
  *
  * A long hole is a place, not a diagram: a green laid through a garden, a
  * castle, a beach or a mountain, several parts to it, each with something of
  * its own to get past or a way to choose, so a good round is five or six
- * strokes a hole. The short one fits on one screen, one thing to play past.
+ * strokes a hole. The short ones fit on one screen, one thing to play past.
  *
  * A hole is painted. Its ground is a soft union of shapes — discs, ribbons
  * through a line of points, capsules, arcs — inside a box 100 units wide and
@@ -104,8 +104,13 @@ export type Mill = {
 /** A slider: a bar `t` thick from a to b that slides by (dx, dy) and back, once every `period` seconds. */
 export type Slider = { a: Vec; b: Vec; t: number; dx: number; dy: number; period: number; phase?: number }
 
-/** A pipe: a ball that rolls into `a` comes out at `b` heading along `out`. */
-export type Portal = { a: Vec; b: Vec; out: number; look?: 'pipe' | 'cave' | 'drain' }
+/**
+ * A pipe: a ball that rolls into `a` comes out at `b` heading along `out`,
+ * as fast as it went in and never slower than a good roll, or at `speed` when
+ * a pipe only lets it drop out. A `tint` paints both of its ends the one
+ * colour, so where there are several you can see which comes out where.
+ */
+export type Portal = { a: Vec; b: Vec; out: number; look?: 'pipe' | 'cave' | 'drain'; tint?: string; speed?: number }
 
 /** The cup slides from its spot to `to` and back, once every `period` seconds. */
 export type CupPath = { to: Vec; period: number }
@@ -328,8 +333,17 @@ function drawbridge(shape: Shape, period: number, down: number, look?: Drawbridg
 }
 
 /** A pipe: in at (ax, ay), out at (bx, by) heading along `out`. */
-function pipe(ax: number, ay: number, bx: number, by: number, out: number, look?: Portal['look']): Portal {
-  return { a: { x: ax, y: ay }, b: { x: bx, y: by }, out, look }
+function pipe(
+  ax: number,
+  ay: number,
+  bx: number,
+  by: number,
+  out: number,
+  look?: Portal['look'],
+  tint?: string,
+  speed?: number,
+): Portal {
+  return { a: { x: ax, y: ay }, b: { x: bx, y: by }, out, look, tint, speed }
 }
 
 /** A crab, scuttling side to side across its strip of beach at `speed`. */
@@ -418,6 +432,53 @@ export const COURSE: Hole[] = [
       decor('flowers', 79, 150, 2.6),
       decor('bush', 16, 64, 3.2),
       decor('blossom', 87, 62, 5.5),
+    ],
+  }),
+  /*
+   * Three Pipes, another short one, and a bank shot. The tee sits at the foot
+   * of a lane up the right-hand side; across its head a wall set at a slant
+   * turns the ball left along a gallery, and at the gallery's far end three
+   * pipes open in the floor, one above another. Which one the ball finds
+   * depends on how it came off the wall. Blue, in the middle, is where a shot
+   * straight up the lane goes: it lets the ball out at the green's far corner
+   * for a putt. Gold, the bottom one, takes a shot a touch right of straight,
+   * and nothing else finds it: it lets the ball out on the green rolling at
+   * the cup, and one that came in gently drops. Red, the top one, catches a
+   * shot pulled left, and the ceiling's bounce along with it, and sends the
+   * ball back down the lane toward the tee. Nothing else reaches the green.
+   */
+  hole({
+    name: 'Three Pipes',
+    par: 2,
+    h: 190,
+    tee: { x: 80, y: 170 },
+    cup: { x: 50, y: 34 },
+    blend: 9,
+    green: [
+      // The green, up top, on its own: the pipes are the only way on.
+      ribbon(24, [30, 40], [70, 40]),
+      // The gallery, and the lane up the right to it.
+      ribbon(17, [23, 105], [73, 105]),
+      ribbon(14, [80, 105], [80, 166]),
+      disc(80, 168, 13),
+    ],
+    // The wall across the corner, the only way into the gallery. Off it, each degree of aim right of
+    // straight up arrives two units lower at the far end; left of about 3° the ball meets the ceiling
+    // first and comes down again, so the top pipe gathers every shot pulled left.
+    walls: [bar(68.5, 88, 94, 113.5)],
+    portals: [
+      // Red only lets the ball drop out, by the tee, so it is back where it started however hard it went in.
+      pipe(16, 91.5, 70, 160, DOWN, 'pipe', '#d9534f', 22),
+      pipe(16, 100.5, 84, 24, LEFT, 'pipe', '#3f8fd8'),
+      pipe(16, 109.5, 26, 54, Math.atan2(34 - 54, 50 - 26), 'pipe', '#e8b53a'),
+    ],
+    decor: [
+      decor('flowers', 88, 94, 2.4),
+      decor('bush', 16, 140, 3.4),
+      decor('flowers', 40, 150, 3),
+      decor('blossom', 30, 78, 5),
+      decor('bush', 72, 76, 3),
+      decor('flowers', 55, 80, 2.4),
     ],
   }),
   /*

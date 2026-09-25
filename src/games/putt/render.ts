@@ -35,6 +35,7 @@ import {
   millOver,
   onGround,
   SAND_LIE,
+  showsMap,
   sliderWall,
   spinnerWall,
   underMap,
@@ -1225,11 +1226,12 @@ function paintPortals(g: Ctx, sk: Skin, place: Place, hole: Hole) {
           g.stroke()
         }
       } else {
+        // A pipe's rim: stone, or painted when there are pipes to tell apart.
         g.beginPath()
-        g.arc(p.x, p.y, r + 1, 0, Math.PI * 2)
-        g.fillStyle = css(sk.stone)
+        g.arc(p.x, p.y, r + (pipe.tint ? 1.4 : 1), 0, Math.PI * 2)
+        g.fillStyle = pipe.tint ?? css(sk.stone)
         g.fill()
-        g.strokeStyle = sk.stoneLine
+        g.strokeStyle = pipe.tint ? 'rgba(0, 0, 0, 0.35)' : sk.stoneLine
         g.lineWidth = 0.26
         g.stroke()
       }
@@ -1265,7 +1267,7 @@ function paintPortals(g: Ctx, sk: Skin, place: Place, hole: Hole) {
         const dy = Math.sin(pipe.out)
         const tx = p.x + dx * (r + 3.4)
         const ty = p.y + dy * (r + 3.4)
-        g.fillStyle = ink(sk, 0.5)
+        g.fillStyle = pipe.tint ?? ink(sk, 0.5)
         g.beginPath()
         g.moveTo(tx, ty)
         g.lineTo(tx - dx * 2.2 - dy * 1.7, ty - dy * 2.2 + dx * 1.7)
@@ -2560,7 +2562,7 @@ export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, w: n
   ctx.restore()
 
   // ---- the map, in its corner
-  if (state.phase !== 'menu') drawMap(ctx, state, hole, f, sk, dpr, cam)
+  if (state.phase !== 'menu' && showsMap(f)) drawMap(ctx, state, hole, f, sk, dpr, cam)
 
   // ---- the band above: hole, par and strokes
   if (state.phase !== 'menu') {
@@ -2613,7 +2615,7 @@ export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, w: n
       } else if (ballOff) {
         cue = 'LOOKING AHEAD  ·  PULL BACK FROM THE BALL AND THE VIEW COMES BACK'
       } else {
-        cue = 'PULL BACK FROM THE BALL, LET GO TO SHOOT  ·  MAP OR SCROLL TO LOOK'
+        cue = showsMap(f) ? 'PULL BACK FROM THE BALL, LET GO TO SHOOT  ·  MAP OR SCROLL TO LOOK' : 'PULL BACK FROM THE BALL, LET GO TO SHOOT'
       }
     } else if (state.phase === 'intro') {
       cue = hole.name.toUpperCase()

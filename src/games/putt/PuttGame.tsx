@@ -29,6 +29,7 @@ import {
   resizeState,
   setDragAim,
   shoot,
+  showsMap,
   startGame,
   tick,
   toFieldDelta,
@@ -244,10 +245,10 @@ export function PuttGame() {
     const rect = e.currentTarget.getBoundingClientRect()
     const x = e.clientX - rect.left
     const y = e.clientY - rect.top
-    // On the map, the press looks along the hole instead of pulling a shot.
+    // On the map, the press looks along the hole instead of pulling a shot. A short hole has no map.
     const f = fieldFrame(rect.width, rect.height, currentHole(s).h)
     const m = mapLayout(f, currentHole(s).h, s.mapSide)
-    const kind = onMap(m, x, y) ? 'look' : 'pull'
+    const kind = showsMap(f) && onMap(m, x, y) ? 'look' : 'pull'
     if (kind === 'look') stateRef.current = lookAt(s, mapFieldY(m, f, x, y))
     pressRef.current = { id: e.pointerId, x, y, moved: false, kind, notch: 0 }
     try {
