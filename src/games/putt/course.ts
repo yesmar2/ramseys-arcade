@@ -1,11 +1,12 @@
 /*
  * The course, the same every round, so a score means the same thing to
- * everyone on the board: five holes, each somewhere of its own.
+ * everyone on the board: a short hole to start, then five long ones, each
+ * somewhere of its own.
  *
- * A hole is a place, not a diagram: a long green laid through a garden, a
+ * A long hole is a place, not a diagram: a green laid through a garden, a
  * castle, a beach or a mountain, several parts to it, each with something of
  * its own to get past or a way to choose, so a good round is five or six
- * strokes a hole.
+ * strokes a hole. The short one fits on one screen, one thing to play past.
  *
  * A hole is painted. Its ground is a soft union of shapes — discs, ribbons
  * through a line of points, capsules, arcs — inside a box 100 units wide and
@@ -367,6 +368,44 @@ function hole(spec: Spec): Hole {
 }
 
 export const COURSE: Hole[] = [
+  /*
+   * Lily Pond, a short one to start: the whole hole on one screen, the cup
+   * in sight from the tee. A walled pond lies across the middle, lilies on
+   * it, and a ramp at its near edge: hit it hard enough and the ball jumps
+   * the water and lands on the green, most times a putt from the cup and now
+   * and then rolling in; too soft and it rolls up the ramp, off the pond's
+   * wall and back, with nothing lost but the stroke; too hard and it runs
+   * through into the bunker behind the flag. Or go round the pond either
+   * side, the safe way, and putt from there.
+   */
+  hole({
+    name: 'Lily Pond',
+    par: 2,
+    h: 190,
+    tee: { x: 50, y: 170 },
+    cup: { x: 57.5, y: 40 },
+    blend: 9,
+    green: [
+      disc(50, 166, 13),
+      ribbon(14, [50, 166], [50, 140]),
+      // A ring of ground round the pond, walled off from the water, so a ball that doesn't take off comes back.
+      arc(50, 108, 22, 0, Math.PI * 2, 10),
+      ribbon(14, [50, 76], [50, 62]),
+      disc(52, 42, 27),
+    ],
+    water: [disc(50, 108, 11.5)],
+    ramps: [ramp(44, 122, 12, 8, UP, 46, 70)],
+    sand: [ribbon(4.5, [36, 22], [52, 18], [68, 22])],
+    decor: [
+      decor('lily', 45, 105, 2.4),
+      decor('lily', 56, 112, 2),
+      decor('reeds', 61, 100, 2.2),
+      decor('flowers', 22, 152, 3),
+      decor('flowers', 79, 148, 2.6),
+      decor('bush', 17, 66, 3.2),
+      decor('blossom', 86, 64, 5.5),
+    ],
+  }),
   /*
    * Mill Creek. Off the tee straight at a windmill standing across the
    * fairway: the only way on is the tunnel under it, and a sail across a

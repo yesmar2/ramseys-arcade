@@ -660,8 +660,8 @@ export function makeSim(): Sim<Run> {
       const fr = framing(run, zw, zh)
       return { x: fr.x, y: fr.y }
     },
-    // The still: past the windmill on Mill Creek, the ball drawn back on the slingshot, the dots running up the hole.
-    poster: { seed: 1, at: 17.967 },
+    // The still: the ball in the air off the ramp on Lily Pond, over the water (it goes on into the cup).
+    poster: { seed: 1, at: 5.15 },
     hold: 2,
   }
 }

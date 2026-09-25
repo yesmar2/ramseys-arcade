@@ -173,7 +173,7 @@ export const games: Game[] = [
     name: 'Putt',
     slug: 'putt',
     tags: ['sport'],
-    description: 'Five long holes of mini golf, each in a place of its own. Draw the ball back like a slingshot, let go, and find the line.',
+    description: 'Six holes of mini golf: a quick one over a lily pond, then five long ones, each in a place of its own. Draw the ball back like a slingshot, let go, and find the line.',
     accent: PALETTE.green,
     playable: true,
     inDevelopment: true,
