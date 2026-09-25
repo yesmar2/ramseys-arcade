@@ -302,7 +302,8 @@ export async function fetchAuthMe(): Promise<{
       return null
     }
     applyOwnedNames(data.names ?? [], data.account.id)
-    return { account: data.account, names: data.names ?? [] }
+    // The plan's limits too: without them every account, Plus or not, got the free ones.
+    return { account: data.account, names: data.names ?? [], limits: data.limits }
   } catch (err) {
     if (err instanceof ApiError && err.status === 401) {
       // Only clear if this request's token is still the active one.

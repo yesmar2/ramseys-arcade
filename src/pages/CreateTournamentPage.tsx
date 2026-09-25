@@ -207,6 +207,8 @@ export function CreateTournamentPage() {
   const planDiverged =
     new Set(roundGames.map((r) => r.join('+'))).size > 1 ||
     roundGames.some((r) => r.length > 1)
+  /** The one game a bracket is played on, while every round is that game alone. */
+  const bracketGame = isBracket && !planDiverged ? (roundGames[0]?.[0] ?? games[0] ?? null) : null
 
   /*
    * The round count follows the roster size, so the plan is resized whenever
@@ -320,9 +322,19 @@ export function CreateTournamentPage() {
     if (next === 'double') setMaxPlayers((n) => snapToDoubleElimSize(n))
   }
 
+  /** One round of a bracket moved to another game. */
+  const swapRoundGame = (index: number, slug: EventGame) => {
+    setRoundGames((prev) => prev.map((cur, i) => (i === index ? [slug] : cur)))
+  }
+
   const toggleGame = (slug: EventGame) => {
+    if (isBracket) {
+      // The whole draw on this game: every round of it, whatever the plan was.
+      setGames([slug])
+      setRoundGames((prev) => prev.map(() => [slug]))
+      return
+    }
     setGames((prev) => {
-      if (isBracket) return [slug]
       if (prev.includes(slug)) {
         if (prev.length === 1) return prev
         return prev.filter((g) => g !== slug)
@@ -557,12 +569,41 @@ export function CreateTournamentPage() {
                 'Which games?',
                 <>
                   {/*
-                    * A bracket picks a game per round rather than one for the draw.
-                    * Leaving every row on the same game is the old behaviour, so
-                    * "same game the whole way" needs no separate mode — it is just
-                    * the plan you get if you change nothing.
+                    * A bracket is played on the game picked here, every round
+                    * of it. On Plus a round can be moved to another game below,
+                    * or given a second to make it a series: "the same game the
+                    * whole way" needs no mode of its own, it is the plan you get
+                    * if you change nothing. The grid used to be hidden for a
+                    * bracket, which left a free host no way to pick its game.
                     */}
-                  {isBracket ? (
+                  <div className="ev-games">
+                    {EVENT_GAMES.map((slug) => {
+                      const g = getGame(slug)
+                      const gameAccent = resolveGameAccent(slug, g?.accent ?? accent)
+                      const picked = isBracket ? bracketGame === slug : games.includes(slug)
+                      const atCap = !isBracket && games.length >= 5 && !picked
+                      return (
+                        <button
+                          key={slug}
+                          type="button"
+                          className={`ev-game${picked ? ' ev-game--on' : ''}`}
+                          style={{ '--game-accent': gameAccent } as CSSProperties}
+                          aria-pressed={picked}
+                          disabled={atCap}
+                          onClick={() => toggleGame(slug)}
+                        >
+                          <GameThumbArt slug={slug} accent={gameAccent} />
+                          <span className="ev-game__name">{g?.name ?? slug}</span>
+                          {picked ? (
+                            <span className="ev-game__check" aria-hidden="true">
+                              ✓
+                            </span>
+                          ) : null}
+                        </button>
+                      )
+                    })}
+                  </div>
+                  {isBracket && limits.multiGameRounds ? (
                     <>
                       {planDiverged ? (
                         <button
@@ -577,35 +618,49 @@ export function CreateTournamentPage() {
                           Use round 1’s games for every round
                         </button>
                       ) : null}
-                      {limits.multiGameRounds ? null : (
-                        <p className="ev-field__hint ev-rounds__locked">
-                          Every round plays the same game.
-                          <PlusBadge /> a different game each round.
-                        </p>
-                      )}
                       <ol className="ev-rounds">
                         {roundGames.map((round, i) => {
+                          const label = bracketRoundLabel(i + 1, rounds)
                           const spare = EVENT_GAMES.filter((g) => !round.includes(g))
+                          const only = round.length === 1 ? round[0] : null
+                          const onlyAccent = only ? resolveGameAccent(only, getGame(only)?.accent ?? accent) : accent
                           return (
                             <li className="ev-round" key={i}>
-                              <span className="ev-round__name">{bracketRoundLabel(i + 1, rounds)}</span>
+                              <span className="ev-round__name">{label}</span>
                               <span className="ev-round__picks">
-                                {round.map((slug) => {
-                                  const g = getGame(slug)
-                                  const chipAccent = resolveGameAccent(slug, g?.accent ?? accent)
-                                  return (
-                                    <span
-                                      key={slug}
-                                      className="ev-pick"
-                                      style={{ '--game-accent': chipAccent } as CSSProperties}
+                                {only ? (
+                                  // A round of one game: the chip is the control that changes it.
+                                  <label className="ev-pick" style={{ '--game-accent': onlyAccent } as CSSProperties}>
+                                    <GameThumbArt slug={only} accent={onlyAccent} />
+                                    <span className="visually-hidden">Game for {label}</span>
+                                    <select
+                                      className="ev-pick__select"
+                                      value={only}
+                                      onChange={(e) => swapRoundGame(i, e.target.value as EventGame)}
                                     >
-                                      <GameThumbArt slug={slug} accent={chipAccent} />
-                                      <span className="ev-pick__name">{g?.name ?? slug}</span>
-                                      {round.length > 1 ? (
+                                      {EVENT_GAMES.map((option) => (
+                                        <option key={option} value={option}>
+                                          {getGame(option)?.name ?? option}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </label>
+                                ) : (
+                                  round.map((slug) => {
+                                    const g = getGame(slug)
+                                    const chipAccent = resolveGameAccent(slug, g?.accent ?? accent)
+                                    return (
+                                      <span
+                                        key={slug}
+                                        className="ev-pick"
+                                        style={{ '--game-accent': chipAccent } as CSSProperties}
+                                      >
+                                        <GameThumbArt slug={slug} accent={chipAccent} />
+                                        <span className="ev-pick__name">{g?.name ?? slug}</span>
                                         <button
                                           type="button"
                                           className="ev-pick__drop"
-                                          aria-label={`Remove ${g?.name ?? slug} from ${bracketRoundLabel(i + 1, rounds)}`}
+                                          aria-label={`Remove ${g?.name ?? slug} from ${label}`}
                                           onClick={() =>
                                             setRoundGames((prev) =>
                                               prev.map((cur, idx) => (idx === i ? cur.filter((x) => x !== slug) : cur)),
@@ -614,15 +669,13 @@ export function CreateTournamentPage() {
                                         >
                                           ×
                                         </button>
-                                      ) : null}
-                                    </span>
-                                  )
-                                })}
-                                {limits.multiGameRounds && spare.length ? (
+                                      </span>
+                                    )
+                                  })
+                                )}
+                                {spare.length ? (
                                   <label className="ev-round__add">
-                                    <span className="visually-hidden">
-                                      Add a game to {bracketRoundLabel(i + 1, rounds)}
-                                    </span>
+                                    <span className="visually-hidden">Add a game to {label}</span>
                                     <select
                                       className="ev-round__select"
                                       value=""
@@ -649,44 +702,23 @@ export function CreateTournamentPage() {
                         })}
                       </ol>
                     </>
+                  ) : null}
+                  {isBracket && !limits.multiGameRounds ? (
+                    <p className="ev-field__hint ev-rounds__locked">
+                      Every match is played on this game.
+                      <PlusBadge /> a different game each round.
+                    </p>
                   ) : (
-                    <div className="ev-games">
-                      {EVENT_GAMES.map((slug) => {
-                        const g = getGame(slug)
-                        const gameAccent = resolveGameAccent(slug, g?.accent ?? accent)
-                        const picked = games.includes(slug)
-                        const atCap = !isBracket && games.length >= 5 && !picked
-                        return (
-                          <button
-                            key={slug}
-                            type="button"
-                            className={`ev-game${picked ? ' ev-game--on' : ''}`}
-                            style={{ '--game-accent': gameAccent } as CSSProperties}
-                            aria-pressed={picked}
-                            disabled={atCap}
-                            onClick={() => toggleGame(slug)}
-                          >
-                            <GameThumbArt slug={slug} accent={gameAccent} />
-                            <span className="ev-game__name">{g?.name ?? slug}</span>
-                            {picked ? (
-                              <span className="ev-game__check" aria-hidden="true">
-                                ✓
-                              </span>
-                            ) : null}
-                          </button>
-                        )
-                      })}
-                    </div>
+                    <p className="ev-field__hint">
+                      {isBracket
+                        ? planDiverged
+                          ? 'Each round is played on its own games. A round with more than one is a series: win the most of them to take the match. In a double-elim draw the losers round matches the winners round of the same number.'
+                          : 'Every match is played on this game. Change a round below, or add a second game to it, to mix it up.'
+                        : games.length > 1
+                          ? 'Places on each game pay points, and the highest total wins.'
+                          : 'Pick more than one and places on each pay points across them all.'}
+                    </p>
                   )}
-                  <p className="ev-field__hint">
-                    {isBracket
-                      ? planDiverged
-                        ? 'Each round is played on its own games. A round with more than one is a series: win the most of them to take the match. In a double-elim draw the losers round matches the winners round of the same number.'
-                        : 'Every match is played on this game. Change a round, or add a second, to mix it up.'
-                      : games.length > 1
-                        ? 'Places on each game pay points, and the highest total wins.'
-                        : 'Pick more than one and places on each pay points across them all.'}
-                  </p>
                 </>,
                 isBracket ? `${rounds} round${rounds === 1 ? '' : 's'}` : `${games.length} picked · up to 5`,
               )}
