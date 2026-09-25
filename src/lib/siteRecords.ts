@@ -26,6 +26,8 @@ export type SiteRecordEntry = {
   value: number
   /** Day key (YYYYMMDD) where the record is about a single day. */
   at: number | null
+  /** The player's avatar, from an API that sends it. */
+  avatarId?: string
 }
 
 export type SiteRecordBoard = {

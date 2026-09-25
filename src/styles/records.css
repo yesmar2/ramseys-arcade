@@ -1259,3 +1259,185 @@ html[data-theme="dark"] .rbk-book__value b {
     transition: none;
   }
 }
+
+/* ---------- the house book (/records/site) ---------- */
+
+/* The banner's art: a wall of cabinets for the whole arcade, tilted like the books' own cover, under the marquee. */
+.hbk-art__wall {
+  position: absolute;
+  top: 50%;
+  right: 2rem;
+  display: grid;
+  grid-template-columns: repeat(2, auto);
+  gap: 0.9rem;
+  transform: translateY(-46%) rotate(-8deg);
+  transition: transform 0.25s ease;
+}
+
+.hbk-art:hover .hbk-art__wall {
+  transform: translateY(-46%) rotate(-5deg) scale(1.02);
+}
+
+.hbk-art__thumb.inline-thumb {
+  --inline-thumb-size: clamp(6.5rem, 12vw, 9.5rem);
+  background: linear-gradient(160deg, var(--banner-card-a), var(--banner-card-b));
+  border-color: var(--banner-card-border);
+  box-shadow: var(--banner-card-shadow);
+}
+
+.hbk-art__thumb .game-thumb__svg {
+  width: 74%;
+  height: 74%;
+  filter: var(--banner-mark-shadow);
+}
+
+/* Each record's top ten, under the tables. */
+.hbk-tops {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.hbk-tops__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(1.3rem, 2.2vw, 1.6rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.hbk-tops__sub {
+  margin: 0.25rem 0 0;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.hbk-tops__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 21rem), 1fr));
+  gap: 1rem;
+}
+
+.hbk-top {
+  padding: 1.15rem 1.2rem 1rem;
+  /* The table's rows jump here; a little room keeps the title clear of the top of the screen. */
+  scroll-margin-top: 1rem;
+}
+
+.hbk-top:target {
+  border-color: color-mix(in srgb, var(--gb-accent) 55%, transparent);
+}
+
+.hbk-top__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.12rem;
+  font-weight: 800;
+}
+
+.hbk-top__sub {
+  margin: 0.25rem 0 0.65rem;
+  font-size: 0.84rem;
+  line-height: 1.4;
+  color: var(--muted);
+}
+
+.hbk-top__note {
+  margin: 0.55rem 0 0;
+  font-size: 0.84rem;
+  color: var(--muted);
+}
+
+.hbk-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.hbk-row + .hbk-row {
+  border-top: 1px solid rgba(var(--ink-rgb), 0.07);
+}
+
+.hbk-row__link {
+  display: grid;
+  grid-template-columns: 2.5rem 2rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.6rem;
+  min-height: 2.9rem;
+  padding: 0.3rem 0.35rem;
+  border-radius: 0.6rem;
+  color: inherit;
+  text-decoration: none;
+}
+
+.hbk-row__link:hover,
+.hbk-row__link:focus-visible {
+  background: rgba(var(--ink-rgb), 0.05);
+}
+
+.hbk-row__ord {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.hbk-row--gold .hbk-row__ord {
+  color: var(--tr-gold);
+}
+
+.hbk-row--silver .hbk-row__ord {
+  color: var(--tr-silver);
+}
+
+.hbk-row--bronze .hbk-row__ord {
+  color: var(--tr-bronze);
+}
+
+.hbk-row__mark {
+  width: 2rem;
+  height: 2rem;
+}
+
+.hbk-row__who {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.hbk-row__name {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+  font-weight: 750;
+}
+
+.hbk-row__name > span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hbk-row__when {
+  font-size: 0.74rem;
+  color: var(--muted);
+}
+
+.hbk-row__value {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.hbk-row--you .hbk-row__link {
+  background: color-mix(in srgb, var(--gb-accent) 13%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hbk-art__wall {
+    transition: none;
+  }
+}
