@@ -32,7 +32,7 @@ export function makeSim(): Sim<GameState> {
     render: (ctx, s, w, h) => renderGame(ctx, screen(s), w, h),
     // The world is one shape at any size, so a new size changes nothing.
     resize: (s) => s,
-    // The still: a squid dropping walls with a gap in each, an octo's ring and a red orb among them, the ship threading through.
+    // The still: walls with a gap in each and an octo's orbs among them, the ship threading through with a bullet in its graze ring.
     poster: { seed: 21, at: 18.7 },
     // The engine has already played the last ship going up.
     hold: 1.2,

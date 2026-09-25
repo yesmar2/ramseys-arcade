@@ -36,8 +36,12 @@ export const FIELD_H = STAGE.h / STAGE.w
 
 /** The one part of the ship that can be hit. */
 export const CORE_R = 0.0075
-/** A bullet passing this close to the core without touching it is grazed. */
-export const GRAZE_R = 0.05
+/**
+ * A bullet passing this close to the core without touching it is grazed: out
+ * to about a wing's length past the wingtips, so a player keeping a sensible
+ * gap from the curtain still charges a Barrage now and then.
+ */
+export const GRAZE_R = 0.07
 /** How far the ship reaches, for drawing it and for ramming. */
 export const SHIP_W = 0.076
 const KEY_SPEED = 0.74

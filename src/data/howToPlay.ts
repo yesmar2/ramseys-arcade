@@ -176,7 +176,7 @@ export const HOW_TO_PLAY: Record<string, HowToPlay> = {
     auto: 'Your ship fires by itself.',
     scores: [
       { what: 'Ship broken', pts: '7 to 100 × heat' },
-      { what: 'Bullet grazed', pts: '+3 × heat' },
+      { what: 'Bullet grazed', pts: '+3 × heat', sub: 'and it charges your Barrage' },
       { what: 'Barrage', pts: '1 a bullet', sub: '5 if grazed, × heat' },
       { what: 'Wave cleared', pts: '100 × the wave' },
     ],

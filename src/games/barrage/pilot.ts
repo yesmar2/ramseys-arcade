@@ -1,7 +1,6 @@
 import {
   CORE_R,
   FIELD_H,
-  GRAZE_R,
   SPECIES,
   setSteer,
   shipBounds,
@@ -38,6 +37,12 @@ export type Pilot = {
 const LOOK = [0.05, 0.11, 0.18, 0.26, 0.35, 0.45] as const
 /** How close to the ship's heart a bullet may come before the pilot minds, in field widths. */
 const COMFORT = 0.022
+/**
+ * How close it goes looking for a graze: its own nerve, not the size of the
+ * game's graze circle, so a wider circle gives it more grazes without drawing it
+ * deeper into the curtain.
+ */
+const GRAZE_NERVE = 0.035
 
 type P = { x: number; y: number }
 
@@ -97,7 +102,7 @@ export function makePilot(options: PilotOptions = { skill: 0.7 }): Pilot {
         const by = b.y + b.vy * tt
         const gap = Math.hypot(bx - px, by - py) - (CORE_R + b.r * 0.72)
         if (gap < COMFORT) cost += ((COMFORT - gap) * 900) / (1 + t * 2.5)
-        else if (!b.grazed && gap < GRAZE_R * 0.7) grazes += 1
+        else if (!b.grazed && gap < GRAZE_NERVE) grazes += 1
       }
     }
     // Ramming a ship is as bad as a bullet.
