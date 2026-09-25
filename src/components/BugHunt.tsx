@@ -1,9 +1,12 @@
 import { useEffect, useId, useRef, useState, useSyncExternalStore, type MouseEvent } from 'react'
 import { createPortal } from 'react-dom'
+import { navigate } from '../hooks/useHashRoute'
 import {
+  HUNT_ANCHORS,
   HUNT_BUGS,
   HUNT_CAUGHT_EVENT,
   HUNT_OPEN_EVENT,
+  HUNT_TEST_CAUGHT_EVENT,
   SET_SIZE,
   capitalName,
   openBugHunt,
@@ -11,16 +14,21 @@ import {
   huntPick,
   huntSnapshot,
   huntStats,
+  huntTestHref,
   huntWhere,
   isHuntPose,
+  keepHuntTestAddress,
   msUntilNextBug,
   recordFind,
+  setHuntTest,
   subscribeHunt,
   syncHunt,
+  type HuntAnchor,
   type HuntPick,
   type HuntPose,
   type HuntServer,
   type HuntStats,
+  type HuntTest,
 } from '../lib/bugHunt'
 import { ordinal } from '../lib/profileMath'
 import { getSessionToken } from '../lib/auth'
@@ -103,7 +111,16 @@ export function BugPortrait({
 /* ------------------------------------------------------------ the hunt --- */
 
 /** Today's pick and your finds, kept current: a find anywhere, what the API says, and midnight on the boards' clock. */
-function useHunt(): { pick: HuntPick; stats: HuntStats; server: HuntServer | null; msLeft: number; now: number } {
+function useHunt(): {
+  pick: HuntPick
+  stats: HuntStats
+  server: HuntServer | null
+  msLeft: number
+  now: number
+  /** The finds on show are known: signed out, or the account's heard from. */
+  ready: boolean
+  test: HuntTest | null
+} {
   const snap = useSyncExternalStore(subscribeHunt, huntSnapshot, huntSnapshot)
   const [now, setNow] = useState(() => Date.now())
   useEffect(() => {
@@ -119,7 +136,15 @@ function useHunt(): { pick: HuntPick; stats: HuntStats; server: HuntServer | nul
   const day = huntDay(now)
   const server = snap.server.day === day ? snap.server : null
   // The set is the month's, so the API's word on it holds past midnight until it next says.
-  return { pick: huntPick(day), stats: huntStats(day, snap.log, snap.server), server, msLeft: msUntilNextBug(now), now }
+  return {
+    pick: huntPick(day),
+    stats: huntStats(day, snap.log, snap.server),
+    server,
+    msLeft: msUntilNextBug(now),
+    now,
+    ready: snap.ready,
+    test: snap.test,
+  }
 }
 
 /** How many have caught today's bug, in a line: "Nobody has caught Buzz yet today." */
@@ -295,20 +320,24 @@ function peekBox(p: Placed, at: number): PeekBox {
  * and a tap catches it.
  */
 function HuntLayer() {
-  const { pick, stats } = useHunt()
+  const { pick, stats, ready, test } = useHunt()
+  // In test mode, a stand-in wherever the test puts it; otherwise today's bug, where today put it.
+  const place: HuntPick = test ? { ...pick, anchor: test.anchor, pose: test.pose, at: test.at } : pick
+  const key = test ? `${test.anchor.id}:${test.pose}:${test.at}` : pick.day
   const [phase, setPhase] = useState<'hiding' | 'caught' | 'gone'>('hiding')
-  const [day, setDay] = useState(pick.day)
-  // A new day, a new bug to hide.
-  if (day !== pick.day) {
-    setDay(pick.day)
+  const [shownKey, setShownKey] = useState(key)
+  // A new day, or a new test: a bug to hide again.
+  if (shownKey !== key) {
+    setShownKey(key)
     setPhase('hiding')
   }
-  const out = phase === 'caught' || (phase === 'hiding' && !stats.foundToday)
-  const placed = useHidingPlace(pick, out)
+  // Signed in, today's bug waits until the account's finds are known, so one already caught never shows.
+  const out = test ? phase !== 'gone' : ready && (phase === 'caught' || (phase === 'hiding' && !stats.foundToday))
+  const placed = useHidingPlace(place, out)
   if (!placed || !out) return null
 
   const name = capitalName(pick.bug)
-  const box = peekBox(placed, pick.at)
+  const box = peekBox(placed, place.at)
   const caught = phase === 'caught'
   const catchIt = (e: MouseEvent) => {
     e.preventDefault()
@@ -318,8 +347,14 @@ function HuntLayer() {
     const still = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
     window.setTimeout(
       () => {
-        recordFind(pick)
         setPhase('gone')
+        if (test) {
+          // A test catch records nothing; back the stand-in comes, to look at again.
+          window.dispatchEvent(new Event(HUNT_TEST_CAUGHT_EVENT))
+          window.setTimeout(() => setPhase('hiding'), 1200)
+          return
+        }
+        recordFind(pick)
         window.dispatchEvent(new CustomEvent(HUNT_CAUGHT_EVENT, { detail: { pose: placed.pose } }))
       },
       still ? 0 : 500,
@@ -329,6 +364,7 @@ function HuntLayer() {
     <button
       type="button"
       className={`hunt-peek${caught ? ' hunt-peek--caught' : ''}`}
+      data-pose={placed.pose}
       style={{
         left: box.left - REACH,
         top: box.top - REACH,
@@ -355,6 +391,183 @@ function HuntLayer() {
       </span>
     </button>,
     huntLayer(),
+  )
+}
+
+/* ------------------------------------------------------------ test mode --- */
+
+/** The poses laid out the way they point: round the corners, and over each edge. */
+const POSE_PAD: readonly (HuntPose | null)[] = ['top-left', 'top', 'top-right', 'left', null, 'right', 'bottom-left', 'bottom', 'bottom-right']
+const POSE_ARROWS: Record<HuntPose, string> = {
+  'top-left': '↖',
+  top: '↑',
+  'top-right': '↗',
+  left: '←',
+  right: '→',
+  'bottom-left': '↙',
+  bottom: '↓',
+  'bottom-right': '↘',
+}
+
+function capitalized(words: string): string {
+  return words.charAt(0).toUpperCase() + words.slice(1)
+}
+
+/** A hiding place in a line, for the test bar's list: "Snake’s page · How to play". */
+function placeLine(anchor: HuntAnchor): string {
+  return `${capitalized(anchor.page.replace(/^(on|in) /, ''))} · ${anchor.thing}`
+}
+
+/**
+ * Test mode's bar, there only with `?hunt=` in the address: which hiding
+ * place the stand-in bug is behind, a list of all of them, which way it
+ * peeks out and how far along the edge, and steps through them. Nothing done
+ * here counts, and none of it says where today's real bug is.
+ */
+function HuntTestBar({ test }: { test: HuntTest }) {
+  const [note, setNote] = useState<string | null>(null)
+  const [open, setOpen] = useState(true)
+  // The stand-in as drawn: whether it's on the page yet, and which way it really peeks out.
+  const [drawn, setDrawn] = useState<HuntPose | null>(null)
+  useEffect(() => {
+    const onCaught = () => setNote('Caught! A test catch doesn’t count, and back it comes.')
+    window.addEventListener(HUNT_TEST_CAUGHT_EVENT, onCaught)
+    return () => window.removeEventListener(HUNT_TEST_CAUGHT_EVENT, onCaught)
+  }, [])
+  useEffect(() => {
+    if (!note) return
+    const id = window.setTimeout(() => setNote(null), 2400)
+    return () => window.clearTimeout(id)
+  }, [note])
+  // Its page may still be loading, and a side with no room gives way to the top or the bottom.
+  useEffect(() => {
+    const look = () => {
+      const pose = document.querySelector('.hunt-peek')?.getAttribute('data-pose')
+      setDrawn(isHuntPose(pose) ? pose : null)
+      keepHuntTestAddress()
+    }
+    look()
+    const id = window.setInterval(look, 400)
+    return () => window.clearInterval(id)
+  }, [])
+
+  const count = HUNT_ANCHORS.length
+  const index = HUNT_ANCHORS.indexOf(test.anchor)
+  // Off to the place's page if it's elsewhere, then the address says what's on test, so it can be shared.
+  // A page may add a period to its address (/games/putt/weekly): that's still the place's page.
+  const go = (next: HuntTest) => {
+    const path = window.location.pathname
+    const here = path === next.anchor.href || path.startsWith(`${next.anchor.href}/`)
+    if (!here) navigate(huntTestHref(next))
+    setHuntTest(next)
+  }
+  const step = (by: number) => go({ ...test, anchor: HUNT_ANCHORS[(index + by + count) % count]! })
+  const random = () => {
+    const poses = POSE_PAD.filter((p): p is HuntPose => p !== null)
+    go({
+      anchor: HUNT_ANCHORS[Math.floor(Math.random() * count)]!,
+      pose: poses[Math.floor(Math.random() * poses.length)]!,
+      at: Math.round(15 + Math.random() * 70) / 100,
+    })
+  }
+  return (
+    <div className="hunt-test" role="region" aria-label="Bug hunt test">
+      <div className="hunt-test__head">
+        <span className="hunt-test__kicker">Bug hunt test</span>
+        <span className="hunt-test__count">
+          {index + 1} of {count}
+        </span>
+        <button type="button" className="hunt-test__btn hunt-test__btn--icon" aria-label="Previous place" onClick={() => step(-1)}>
+          {'‹'}
+        </button>
+        <button type="button" className="hunt-test__btn hunt-test__btn--icon" aria-label="Next place" onClick={() => step(1)}>
+          {'›'}
+        </button>
+        <button
+          type="button"
+          className="hunt-test__btn hunt-test__btn--icon"
+          aria-expanded={open}
+          aria-label={open ? 'Fold the test bar' : 'Open the test bar'}
+          onClick={() => setOpen((v) => !v)}
+        >
+          {open ? '▴' : '▾'}
+        </button>
+        <button type="button" className="hunt-test__btn" onClick={() => setHuntTest(null)}>
+          Exit
+        </button>
+      </div>
+      {open ? (
+        <>
+          <select
+            className="hunt-test__pick"
+            aria-label="Hiding place"
+            value={test.anchor.id}
+            onChange={(e) => {
+              const anchor = HUNT_ANCHORS.find((a) => a.id === e.target.value)
+              if (anchor) go({ ...test, anchor })
+            }}
+          >
+            {HUNT_ANCHORS.map((a) => (
+              <option key={a.id} value={a.id}>
+                {placeLine(a)}
+              </option>
+            ))}
+          </select>
+          <div className="hunt-test__row">
+            <div className="hunt-test__pad" role="group" aria-label="Which way it peeks out">
+              {POSE_PAD.map((p, i) =>
+                p ? (
+                  <button
+                    key={p}
+                    type="button"
+                    className="hunt-test__arrow"
+                    aria-pressed={p === test.pose}
+                    aria-label={p}
+                    onClick={() => go({ ...test, pose: p })}
+                  >
+                    {POSE_ARROWS[p]}
+                  </button>
+                ) : (
+                  <span key={i} className="hunt-test__hub" aria-hidden="true" />
+                ),
+              )}
+            </div>
+            <div className="hunt-test__side">
+              <label className="hunt-test__along">
+                <span>Along the edge</span>
+                <input
+                  type="range"
+                  min={10}
+                  max={90}
+                  step={5}
+                  value={Math.round(test.at * 100)}
+                  onChange={(e) => go({ ...test, at: Number(e.target.value) / 100 })}
+                />
+              </label>
+              <div className="hunt-test__steps">
+                <button type="button" className="hunt-test__btn" onClick={random}>
+                  Random
+                </button>
+                <button
+                  type="button"
+                  className="hunt-test__btn hunt-test__btn--go"
+                  disabled={!drawn}
+                  onClick={() => document.querySelector('.hunt-peek')?.scrollIntoView({ block: 'center', behavior: 'smooth' })}
+                >
+                  {drawn ? 'Show me' : 'Looking…'}
+                </button>
+              </div>
+            </div>
+          </div>
+          <p className="hunt-test__note" aria-live="polite">
+            {note ??
+              `${capitalized(huntWhere(test.anchor, drawn ?? test.pose))}.${
+                drawn && drawn !== test.pose ? ' No room that way here, so it peeks out the nearest way that fits.' : ''
+              }`}
+          </p>
+        </>
+      ) : null}
+    </div>
   )
 }
 
@@ -650,6 +863,7 @@ function FoundPanel({ onClose, onWear, pose }: FoundProps & { pose: HuntPose | n
 
 /** Mounted once, with the header: keeps today's bug out on every page, shows a find, and opens the hunt when asked. */
 export function BugHuntHost({ onWear }: { onWear?: (wear: AvatarWear) => void }) {
+  const { test } = useSyncExternalStore(subscribeHunt, huntSnapshot, huntSnapshot)
   const [open, setOpen] = useState<'hunt' | 'found' | null>(null)
   const [pose, setPose] = useState<HuntPose | null>(null)
   useEffect(() => {
@@ -670,6 +884,7 @@ export function BugHuntHost({ onWear }: { onWear?: (wear: AvatarWear) => void })
   return (
     <>
       <HuntLayer />
+      {test ? <HuntTestBar test={test} /> : null}
       {open === 'found' ? (
         <FoundPanel onClose={close} onWear={onWear} pose={pose} />
       ) : open === 'hunt' ? (

@@ -1,5 +1,16 @@
 import { games } from '../data/games'
+import {
+  aboutHref,
+  gameBoardHref,
+  gameHref,
+  homeHref,
+  leaderboardHref,
+  recordsHref,
+  recordsIndexHref,
+  tournamentsHref,
+} from '../hooks/useHashRoute'
 import { AUTH_EVENT, getSessionToken } from './auth'
+import { groupsIndexHref } from './groups'
 import {
   HUNT_BUGS,
   SET_SIZE,
@@ -12,7 +23,7 @@ import {
   shuffled,
   type HuntBug,
 } from './bugHuntPick'
-import { api, LEADERBOARD_GAMES } from './leaderboard'
+import { api, LEADERBOARD_GAMES, type LeaderboardGame } from './leaderboard'
 import { GAMES_WITH_RECORDS } from './records'
 import { hashString } from './seededRandom'
 
@@ -71,6 +82,8 @@ export function isHuntPose(value: string | null | undefined): value is HuntPose 
  */
 export type HuntAnchor = {
   id: string
+  /** The page it's on. */
+  href: string
   /** The page, to say where it was: "on Snake’s page". */
   page: string
   /** What it hid behind: "How to play". */
@@ -89,7 +102,17 @@ const BOOK_LESSON = 'Record books keep feats inside a game, like the fastest wav
 const ABOUT_LESSON = 'Original games, no ads, no install: About is the whole idea in one page.'
 const GROUPS_LESSON = 'Make a group, share its link, and everyone in it gets boards of their own.'
 
-const SITE_ANCHORS: HuntAnchor[] = [
+/** A site page's address, from its hiding places' ids. */
+function sitePage(id: string): string {
+  if (id.startsWith('boards-')) return leaderboardHref('weekly')
+  if (id.startsWith('records-')) return recordsIndexHref()
+  if (id.startsWith('events-')) return tournamentsHref()
+  if (id.startsWith('groups-')) return groupsIndexHref()
+  if (id.startsWith('about-')) return aboutHref()
+  return homeHref()
+}
+
+const SITE_ANCHORS: HuntAnchor[] = ([
   {
     id: 'home-hero',
     page: 'on the home page',
@@ -159,7 +182,7 @@ const SITE_ANCHORS: HuntAnchor[] = [
     lesson: 'Got an invite link? Paste it there and the group opens.',
   },
   { id: 'about-highlights', page: 'on the About page', thing: 'the first of its promises', lesson: ABOUT_LESSON },
-]
+] satisfies Omit<HuntAnchor, 'href'>[]).map((a) => ({ ...a, href: sitePage(a.id) }))
 
 /** Each game's page, its board and its record book: the panels on them the bug can hide behind. */
 function gameAnchors(): HuntAnchor[] {
@@ -170,16 +193,19 @@ function gameAnchors(): HuntAnchor[] {
     if (game.hidden) continue
     const { slug } = game
     const page = `on ${possessive(game.name)} page`
+    const href = gameHref(slug)
     out.push(
-      { id: `g-hero-${slug}`, page, thing: 'the panel at the top', lesson: GAME_PAGE_LESSON },
+      { id: `g-hero-${slug}`, href, page, thing: 'the panel at the top', lesson: GAME_PAGE_LESSON },
       {
         id: `g-screen-${slug}`,
+        href,
         page,
         thing: 'the game’s screen',
         lesson: 'The screen on a game’s page plays a little of the game. Tap it to play the real thing.',
       },
       {
         id: `g-howto-${slug}`,
+        href,
         page,
         thing: 'How to play',
         lesson: 'Every game’s page ends with how to play: the goal, the controls, what scores, what ends a run, and a tip.',
@@ -187,25 +213,34 @@ function gameAnchors(): HuntAnchor[] {
     )
     if (boards.includes(slug)) {
       const board = `on ${possessive(game.name)} board`
+      const boardHref = gameBoardHref(slug as LeaderboardGame, 'weekly')
       out.push(
         {
           id: `g-board-${slug}`,
+          href,
           page,
           thing: 'its board',
           lesson: 'Every game’s page has its board on it: the best runs this week, this month or all time.',
         },
         {
           id: `g-stand-${slug}`,
+          href,
           page,
           thing: 'the card about where you stand',
           lesson: 'Every game’s page says where you stand on its board, or where a first run would land.',
         },
-        { id: `b-head-${slug}`, page: board, thing: 'the panel at the top', lesson: BOARD_LESSON },
-        { id: `b-board-${slug}`, page: board, thing: 'the table', lesson: BOARD_LESSON },
+        { id: `b-head-${slug}`, href: boardHref, page: board, thing: 'the panel at the top', lesson: BOARD_LESSON },
+        { id: `b-board-${slug}`, href: boardHref, page: board, thing: 'the table', lesson: BOARD_LESSON },
       )
     }
     if (books.includes(slug)) {
-      out.push({ id: `r-head-${slug}`, page: `in ${possessive(game.name)} record book`, thing: 'the panel at the top', lesson: BOOK_LESSON })
+      out.push({
+        id: `r-head-${slug}`,
+        href: recordsHref(slug),
+        page: `in ${possessive(game.name)} record book`,
+        thing: 'the panel at the top',
+        lesson: BOOK_LESSON,
+      })
     }
   }
   return out
@@ -273,73 +308,138 @@ export function huntPick(day = huntDay()): HuntPick {
   const count = HUNT_ANCHORS.length
   const order = shuffled(HUNT_ANCHORS, `anchors:${Math.floor(n / count)}`)
   const moods = ['smile', 'smile', 'sleepy', 'o'] as const
-  const dev = devPlace()
   return {
     day,
     bug: bugForDay(day),
-    anchor: dev.anchor ?? order[((n % count) + count) % count]!,
-    pose: dev.pose ?? POSES[hashString(`pose:${day}`) % POSES.length]!,
+    anchor: order[((n % count) + count) % count]!,
+    pose: POSES[hashString(`pose:${day}`) % POSES.length]!,
     at: 0.15 + (hashString(`at:${day}`) % 71) / 100,
     mood: moods[hashString(`mood:${day}`) % moods.length]!,
   }
 }
 
-/**
- * On a dev server, `localStorage['skermix-bug-hunt-spot']` hides today's bug
- * behind any anchor, and `['skermix-bug-hunt-pose']` says which way it pokes out.
- */
-function devPlace(): { anchor: HuntAnchor | null; pose: HuntPose | null } {
-  if (!import.meta.env.DEV) return { anchor: null, pose: null }
-  try {
-    const id = localStorage.getItem('skermix-bug-hunt-spot')
-    const pose = localStorage.getItem('skermix-bug-hunt-pose')
-    return { anchor: HUNT_ANCHORS.find((a) => a.id === id) ?? null, pose: isHuntPose(pose) ? pose : null }
-  } catch {
-    return { anchor: null, pose: null }
-  }
-}
-
 /* ---------------------------------------------------------- your finds --- */
+
+/*
+ * Finds are kept apart by whose they are. Signed out, they're this device's:
+ * kept here, and handed to the next account that signs in on it, which is
+ * how a find made before signing in joins the player's own. Signed in,
+ * they're the account's: the API keeps them, and this device remembers only
+ * the account's last word, under the account. So a different player signing
+ * in on the same device never sees them, and never sends them up as theirs.
+ */
 
 export type HuntFind = { bug: string; spot: string; at: number }
 
+/** A find this device made signed out. `legacy`: kept from before finds were kept apart, so it's never sent up. */
+type DeviceFind = HuntFind & { legacy?: boolean }
+type DeviceLog = { v: 2; found: Record<string, DeviceFind> }
 type HuntLog = { found: Record<string, HuntFind> }
 
-function readLog(): HuntLog {
+/** The account's finds: the API's last word, and any made here that it hasn't answered for yet. */
+type AccountLog = { owner: number; found: Record<string, HuntFind>; pending: Record<string, HuntFind>; heard: boolean }
+
+const ACCOUNT_KEY = 'skermix-bug-hunt-account'
+
+function readDeviceLog(): DeviceLog {
   try {
     const raw = localStorage.getItem(STORE_KEY)
-    const parsed = raw ? (JSON.parse(raw) as Partial<HuntLog>) : null
-    if (parsed && typeof parsed.found === 'object' && parsed.found) return { found: parsed.found }
+    const parsed = raw ? (JSON.parse(raw) as { v?: number; found?: Record<string, DeviceFind> }) : null
+    if (parsed && typeof parsed.found === 'object' && parsed.found) {
+      if (parsed.v === 2) return { v: 2, found: parsed.found }
+      // From before finds were kept apart: it may hold an account's finds, so none of it is ever sent up.
+      const found: Record<string, DeviceFind> = {}
+      for (const [day, f] of Object.entries(parsed.found)) found[day] = { ...f, legacy: true }
+      const migrated: DeviceLog = { v: 2, found }
+      writeJson(STORE_KEY, migrated)
+      return migrated
+    }
   } catch {
     // Private windows and full storage: the hunt still runs, it just forgets.
   }
-  return { found: {} }
+  return { v: 2, found: {} }
 }
 
-function saveLog(next: HuntLog) {
-  log = next
+function writeJson(key: string, value: unknown) {
   try {
-    localStorage.setItem(STORE_KEY, JSON.stringify(next))
+    localStorage.setItem(key, JSON.stringify(value))
   } catch {
     // Kept for this visit, anyway.
   }
 }
 
-let log: HuntLog | null = null
+let device: DeviceLog | null = null
+
+function deviceLog(): DeviceLog {
+  if (!device) device = readDeviceLog()
+  return device
+}
+
+function saveDevice(next: DeviceLog) {
+  device = next
+  writeJson(STORE_KEY, next)
+}
+
+let account: AccountLog | null = null
+
+/** Which account a session is, without keeping its token twice. */
+function ownerOf(token: string): number {
+  return hashString(`hunt:${token}`)
+}
+
+/** The finds of the account signed in now: in memory, or what this device last heard for it, or nothing yet. */
+function accountLog(token: string): AccountLog {
+  const owner = ownerOf(token)
+  if (account?.owner === owner) return account
+  account = { owner, found: {}, pending: {}, heard: false }
+  try {
+    const raw = localStorage.getItem(ACCOUNT_KEY)
+    const saved = raw ? (JSON.parse(raw) as Partial<AccountLog>) : null
+    if (saved?.owner === owner && saved.found) account = { owner, found: saved.found, pending: saved.pending ?? {}, heard: true }
+  } catch {
+    // Heard from the API instead.
+  }
+  return account
+}
+
+function saveAccount(next: AccountLog) {
+  account = next
+  writeJson(ACCOUNT_KEY, { owner: next.owner, found: next.found, pending: next.pending })
+}
+
+/** The finds on show: the account's signed in, this device's signed out. `ready` once it's known which. */
+type HuntView = { owner: number | null; log: HuntLog; ready: boolean }
+
+let view: HuntView | null = null
+
+function refresh() {
+  const token = getSessionToken()
+  if (token) {
+    const mine = accountLog(token)
+    view = { owner: mine.owner, log: { found: { ...mine.found, ...mine.pending } }, ready: mine.heard }
+  } else {
+    view = { owner: null, log: { found: deviceLog().found }, ready: true }
+  }
+}
+
+function currentView(): HuntView {
+  const token = getSessionToken()
+  const owner = token ? ownerOf(token) : null
+  if (!view || view.owner !== owner) refresh()
+  return view!
+}
 
 export function huntLog(): HuntLog {
-  if (!log) log = readLog()
-  return log
+  return currentView().log
 }
 
 /* -------------------------------------------------------- the server --- */
 
 /*
- * Signed in, finds are kept by the API too: they follow the player to any
- * device, and the finds this device made before signing in go up to join
- * them. Anyone can see how many caught today's bug; a player learns where
- * their find came in, which of the month's bugs count toward the set, and
- * whether a find just completed it.
+ * Signed in, finds are kept by the API: they follow the player to any device.
+ * Anyone can see how many caught today's bug; a player learns where their
+ * find came in, which of the month's bugs count toward the set, and whether a
+ * find just completed it.
  */
 
 type ServerFind = HuntFind & { day: string; counted?: boolean }
@@ -367,12 +467,16 @@ export type HuntServer = {
 let server: HuntServer = { count: null, place: null, day: null, set: null, completed: null }
 
 /** Everything the page shows, as one value that changes when any of it does. */
-export type HuntSnapshot = { log: HuntLog; server: HuntServer }
+export type HuntSnapshot = { log: HuntLog; ready: boolean; server: HuntServer; test: HuntTest | null }
 
 let snapshot: HuntSnapshot | null = null
 
 export function huntSnapshot(): HuntSnapshot {
-  if (!snapshot || snapshot.log !== huntLog() || snapshot.server !== server) snapshot = { log: huntLog(), server }
+  const { log, ready } = currentView()
+  const test = huntTest()
+  if (!snapshot || snapshot.log !== log || snapshot.ready !== ready || snapshot.server !== server || snapshot.test !== test) {
+    snapshot = { log, ready, server, test }
+  }
   return snapshot
 }
 
@@ -380,30 +484,34 @@ function emit() {
   window.dispatchEvent(new Event(HUNT_EVENT))
 }
 
-/** Take what the API said: the count, your place and set, and any finds from your other devices. */
-function apply(reply: ServerHunt) {
-  const completed = reply.completed
+/**
+ * Take what the API said: the count, and signed in, your place, your set and
+ * your finds from any device. A reply to a session that has since signed out,
+ * or been swapped for another, says nothing about whoever is here now.
+ */
+function apply(reply: ServerHunt, token: string | null) {
+  const same = token === getSessionToken()
+  const you = same ? reply.you : undefined
+  const completed = same && reply.completed
     ? { ...reply.completed, day: reply.day }
     : server.completed?.day === reply.day
       ? server.completed
       : null
   server = {
     count: reply.count,
-    place: reply.you ? reply.you.place : null,
+    place: you ? you.place : same ? null : server.place,
     day: reply.day,
-    set: reply.you?.set ? { key: reply.you.set.key, bugs: new Set(reply.you.set.bugs) } : null,
+    set: you?.set ? { key: you.set.key, bugs: new Set(you.set.bugs) } : same ? null : server.set,
     completed,
   }
-  if (reply.you) {
-    const found = { ...huntLog().found }
-    let added = false
-    for (const f of reply.you.finds) {
-      if (found[f.day]) continue
-      found[f.day] = { bug: f.bug, spot: f.spot, at: f.at }
-      added = true
-    }
-    if (added) saveLog({ found })
+  if (you && token) {
+    const mine = accountLog(token)
+    const found: Record<string, HuntFind> = {}
+    for (const f of you.finds) found[f.day] = { bug: f.bug, spot: f.spot, at: f.at }
+    const pending = Object.fromEntries(Object.entries(mine.pending).filter(([day]) => !found[day]))
+    saveAccount({ owner: mine.owner, found, pending, heard: true })
   }
+  refresh()
   emit()
 }
 
@@ -412,24 +520,37 @@ let syncedAt = 0
 let syncing: Promise<void> | null = null
 
 /**
- * Ask the API how today stands, and signed in, send up the finds it doesn't
- * have yet. Pages call this freely: it goes out once a minute at most.
+ * Ask the API how today stands. Signed in, send up what the account doesn't
+ * have yet: its own finds it hasn't answered for, and the ones this device
+ * made signed out, which are the account's from now on. Pages call this
+ * freely: it goes out once a minute at most.
  */
 export function syncHunt(force = false): Promise<void> {
   if (syncing) return syncing
   if (!force && Date.now() - syncedAt < SYNC_EVERY_MS) return Promise.resolve()
   syncedAt = Date.now()
   syncing = (async () => {
+    const token = getSessionToken()
     try {
       const reply = await api<ServerHunt>('/hunt')
-      apply(reply)
-      if (!reply.you) return
+      apply(reply, token)
+      if (!reply.you || !token || token !== getSessionToken()) return
       const kept = new Set(reply.you.finds.map((f) => f.day))
-      const missing = Object.entries(huntLog().found)
-        .filter(([day]) => !kept.has(day))
-        .map(([day, f]) => ({ day, bug: f.bug, spot: f.spot, at: f.at }))
-        .slice(-400)
-      if (missing.length) apply(await api<ServerHunt>('/hunt/finds', { method: 'POST', body: JSON.stringify({ finds: missing }) }))
+      const handed = Object.entries(deviceLog().found).filter(([, f]) => !f.legacy)
+      const send = new Map<string, HuntFind>()
+      for (const [day, f] of [...handed, ...Object.entries(accountLog(token).pending)]) {
+        if (!kept.has(day) && !send.has(day)) send.set(day, f)
+      }
+      if (send.size) {
+        const finds = [...send].slice(-400).map(([day, f]) => ({ day, bug: f.bug, spot: f.spot, at: f.at }))
+        apply(await api<ServerHunt>('/hunt/finds', { method: 'POST', body: JSON.stringify({ finds }) }), token)
+      }
+      // Handed over: the device keeps only what it never sends.
+      if (handed.length) {
+        saveDevice({ v: 2, found: Object.fromEntries(Object.entries(deviceLog().found).filter(([, f]) => f.legacy)) })
+        refresh()
+        emit()
+      }
     } catch {
       // The hunt runs without the API; it catches up next time.
     }
@@ -439,20 +560,27 @@ export function syncHunt(force = false): Promise<void> {
   return syncing
 }
 
-/** Record today's find. False when it was already caught today. */
+/** Record today's find, for whoever is here: the account signed in, or this device. False when it was already caught today. */
 export function recordFind(pick: HuntPick, now = Date.now()): boolean {
-  const current = huntLog()
-  if (current.found[pick.day]) return false
-  saveLog({ found: { ...current.found, [pick.day]: { bug: pick.bug.id, spot: pick.anchor.id, at: now } } })
-  emit()
-  if (getSessionToken()) {
-    const find = { day: pick.day, bug: pick.bug.id, spot: pick.anchor.id }
-    void api<ServerHunt>('/hunt/finds', { method: 'POST', body: JSON.stringify({ finds: [find] }) })
-      .then(apply)
+  if (huntLog().found[pick.day]) return false
+  const find: HuntFind = { bug: pick.bug.id, spot: pick.anchor.id, at: now }
+  const token = getSessionToken()
+  if (token) {
+    const mine = accountLog(token)
+    saveAccount({ ...mine, pending: { ...mine.pending, [pick.day]: find } })
+    refresh()
+    emit()
+    const body = JSON.stringify({ finds: [{ day: pick.day, bug: find.bug, spot: find.spot }] })
+    void api<ServerHunt>('/hunt/finds', { method: 'POST', body })
+      .then((reply) => apply(reply, token))
       .catch(() => {
-        // Sent again with the backlog next time.
+        // Sent again with the next sync.
       })
   } else {
+    const mine = deviceLog()
+    saveDevice({ v: 2, found: { ...mine.found, [pick.day]: find } })
+    refresh()
+    emit()
     void syncHunt(true)
   }
   return true
@@ -533,16 +661,20 @@ export function huntStats(day = huntDay(), current = huntLog(), from: HuntServer
   }
 }
 
-/** Listen for finds made in this tab or another one, and for what the API says. */
+/** Listen for finds made in this tab or another one, for what the API says, and for signing in or out. */
 export function subscribeHunt(onChange: () => void): () => void {
   const onStorage = (e: StorageEvent) => {
-    if (e.key !== STORE_KEY) return
-    log = readLog()
+    if (e.key === STORE_KEY) device = null
+    else if (e.key === ACCOUNT_KEY) account = null
+    else return
+    refresh()
     onChange()
   }
-  // Signing in or out: the finds to show, and whose, have changed.
+  // Signing in or out: whose finds show has changed, and the API has a different answer.
   const onAuth = () => {
     server = { count: server.count, place: null, day: server.day, set: null, completed: null }
+    refresh()
+    onChange()
     void syncHunt(true)
   }
   window.addEventListener(HUNT_EVENT, onChange)
@@ -552,5 +684,80 @@ export function subscribeHunt(onChange: () => void): () => void {
     window.removeEventListener(HUNT_EVENT, onChange)
     window.removeEventListener('storage', onStorage)
     window.removeEventListener(AUTH_EVENT, onAuth)
+  }
+}
+
+/* ------------------------------------------------------------- testing --- */
+
+/*
+ * Test mode, for looking at the hiding places: `?hunt=<place>` on any page,
+ * or `<place>:<pose>` or `<place>:<pose>:<how far along, 0.1 to 0.9>`, puts a
+ * stand-in bug there. It never counts: catching it records nothing, and
+ * today's real bug stays out of sight while it's on. It shows nothing about
+ * where today's bug is.
+ */
+
+export type HuntTest = { anchor: HuntAnchor; pose: HuntPose; at: number }
+
+/** A stand-in was caught: the test bar says so, and it comes back to be looked at again. */
+export const HUNT_TEST_CAUGHT_EVENT = 'skermix-bug-hunt-test-caught'
+
+let test: HuntTest | null | undefined
+
+function readTest(): HuntTest | null {
+  try {
+    const raw = new URLSearchParams(window.location.search).get('hunt')
+    if (!raw) return null
+    const [id, pose, at] = raw.split(':')
+    const anchor = HUNT_ANCHORS.find((a) => a.id === id)
+    if (!anchor) return null
+    const along = Number(at)
+    return {
+      anchor,
+      pose: isHuntPose(pose) ? pose : 'top',
+      at: at && Number.isFinite(along) ? Math.min(0.9, Math.max(0.1, along)) : 0.5,
+    }
+  } catch {
+    return null
+  }
+}
+
+/** Test mode's stand-in, if it's on: read from the address the first time it's asked for. */
+export function huntTest(): HuntTest | null {
+  if (test === undefined) test = readTest()
+  return test
+}
+
+function testParam(next: HuntTest): string {
+  return `${next.anchor.id}:${next.pose}:${next.at.toFixed(2)}`
+}
+
+/** The address of a stand-in: its hiding place's page, with it there. */
+export function huntTestHref(next: HuntTest): string {
+  return `${next.anchor.href}?hunt=${testParam(next)}`
+}
+
+/** Change the stand-in, or leave test mode with null. The address follows along, so a test can be shared. */
+export function setHuntTest(next: HuntTest | null) {
+  test = next
+  keepHuntTestAddress(true)
+  emit()
+}
+
+/**
+ * Put the test back in the address if a page's own tidying took it out, so
+ * a reload or a copied link opens the same test. `force` also takes it out
+ * once test mode is off.
+ */
+export function keepHuntTestAddress(force = false) {
+  try {
+    const url = new URL(window.location.href)
+    const want = test ? testParam(test) : null
+    if (url.searchParams.get('hunt') === want || (!want && !force)) return
+    if (want) url.searchParams.set('hunt', want)
+    else url.searchParams.delete('hunt')
+    window.history.replaceState(window.history.state, '', url)
+  } catch {
+    // The address is only a convenience.
   }
 }
