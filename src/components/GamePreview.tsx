@@ -115,9 +115,14 @@ export function GamePreview({
     }
     const moving = () =>
       Boolean(preview) && (autoplay || hovered || focused || centred) && near && !document.hidden && !still.matches
+    // Marked on the canvas while it plays, for a tile that shows its logo until then (lib/look.ts).
+    const playing = (on: boolean) => canvas.classList.toggle('game-preview--playing', on)
     const frame = (now: number) => {
       raf = 0
-      if (!moving()) return
+      if (!moving()) {
+        playing(false)
+        return
+      }
       owed += last ? Math.min(0.25, (now - last) / 1000) : 0
       last = now
       if (owed >= 1 / FPS) {
@@ -130,6 +135,7 @@ export function GamePreview({
       if (raf || !moving()) return
       last = 0
       owed = 0
+      playing(true)
       raf = requestAnimationFrame(frame)
     }
     // A frozen preview still redraws for a new theme or size, and once the page's fonts are in, in case its

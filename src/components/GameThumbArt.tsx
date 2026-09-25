@@ -1,6 +1,8 @@
 import { useEffect, useState, type CSSProperties, type ReactNode } from 'react'
 import { patriotCityRects } from '../games/patriot/cityArt'
+import { lookIsNew } from '../lib/look'
 import { resolveGameAccent, THEME_EVENT } from '../lib/theme'
+import { NextLogo } from './gameLogos'
 
 type GameThumbArtProps = {
   slug: string
@@ -451,6 +453,7 @@ export function GameThumbArt({ slug, accent, className }: GameThumbArtProps) {
 
   const resolved = resolveGameAccent(slug, accent ?? '#4285F4')
   const Thumb = thumbBySlug[slug]
+  const thumb = Thumb ? <Thumb accent={resolved} /> : <FallbackThumb accent={resolved} />
   const style = { '--thumb-accent': resolved } as CSSProperties
 
   return (
@@ -459,9 +462,7 @@ export function GameThumbArt({ slug, accent, className }: GameThumbArtProps) {
       aria-hidden="true"
       style={style}
     >
-      <ThumbSvg>
-        {Thumb ? <Thumb accent={resolved} /> : <FallbackThumb accent={resolved} />}
-      </ThumbSvg>
+      <ThumbSvg>{lookIsNew() ? <NextLogo slug={slug} accent={resolved} fallback={thumb} /> : thumb}</ThumbSvg>
     </span>
   )
 }
