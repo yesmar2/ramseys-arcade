@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, useState, useSyncExternalStore, type MouseEvent } from 'react'
+import { createPortal } from 'react-dom'
 import {
   HUNT_BUGS,
   HUNT_CAUGHT_EVENT,
@@ -7,10 +8,11 @@ import {
   capitalName,
   openBugHunt,
   huntDay,
-  huntHints,
   huntPick,
   huntSnapshot,
   huntStats,
+  huntWhere,
+  isHuntPose,
   msUntilNextBug,
   recordFind,
   subscribeHunt,
@@ -29,9 +31,10 @@ import { HuntSetJar } from './TrophyArt'
 import '../styles/bughunt.css'
 
 /*
- * The daily bug hunt, on the page: the bug itself wherever today's spot is,
- * the strip on the home page with today's clue, and the panels for a find
- * and for the hunt so far. See lib/bugHunt.ts for how the day is picked.
+ * The daily bug hunt, on the page: the bug itself, poking out from behind
+ * whatever it hides behind today, the strip on the home page, and the panels
+ * for a find and for the hunt so far. See lib/bugHunt.ts for how the day and
+ * the hiding place are picked.
  */
 
 type PortraitPose = 'sit' | 'wave' | 'stand' | 'cheer'
@@ -142,28 +145,172 @@ function streakWords(stats: HuntStats): string | null {
   return null
 }
 
+/* ------------------------------------------------------ the bug itself --- */
+
+/** The bug's size, in CSS pixels. Past an edge, only its head and a waving hand show. */
+const BUG_SIZE = 48
+/** How much of it pokes out past an edge. */
+const SHOWN = 0.58
+/** How far it leans out past a corner. */
+const LEAN = 0.14
+/** The tap that catches it reaches this far past what shows. */
+const REACH = 7
+
 /**
- * Today's bug, if today's spot is here. It sits, hangs or peeks in the
- * words around it, small and faded, twitches once in a long while, and is
- * caught with a tap.
+ * The layer the bug is drawn in, made once at the end of the app: over the
+ * page, under the header and its dropdowns, and under the menu, the tab bar
+ * and panels, which open over the whole app.
  */
-export function HiddenBug({
-  spot,
-  pose = 'perch',
-  onCaught,
-}: {
-  spot: string
-  pose?: HuntPose
-  /** Called as the find is shown: the menu closes, for one. */
-  onCaught?: () => void
-}) {
+let layerEl: HTMLDivElement | null = null
+function huntLayer(): HTMLDivElement {
+  if (!layerEl || !layerEl.isConnected) {
+    layerEl = document.createElement('div')
+    layerEl.className = 'hunt-layer'
+    ;(document.getElementById('root') ?? document.body).appendChild(layerEl)
+  }
+  return layerEl
+}
+
+/** The hiding place, in the layer's coordinates, and which way the bug pokes out of it. */
+type Placed = { x: number; y: number; w: number; h: number; round: number; pose: HuntPose }
+
+/** A side with no room before the screen's edge, as on a phone, gives way to the top or the bottom. */
+function fitPose(pose: HuntPose, r: DOMRect): HuntPose {
+  const room = BUG_SIZE * SHOWN
+  const narrow = (pose.includes('left') && r.left < room) || (pose.includes('right') && window.innerWidth - r.right < room)
+  if (!narrow) return pose
+  return pose.startsWith('bottom') ? 'bottom' : 'top'
+}
+
+/**
+ * Today's hiding place, when it's on this page: found by its `data-hunt`
+ * mark and measured every frame, so the bug stays put as the page loads,
+ * scrolls and reflows around it.
+ */
+function useHidingPlace(pick: HuntPick, active: boolean): Placed | null {
+  const [placed, setPlaced] = useState<Placed | null>(null)
+  const { anchor, pose } = pick
+  useEffect(() => {
+    if (!active) return
+    let frame = 0
+    let ticks = 0
+    let el: Element | null = null
+    let round = 0
+    let last = ''
+    const tick = () => {
+      // Pages come and go, and so do their parts: look for the mark again now and then.
+      if (ticks++ % 12 === 0 || (el && !el.isConnected)) {
+        const found = document.querySelector(`[data-hunt="${anchor.id}"]`)
+        if (found !== el) {
+          el = found
+          round = el ? parseFloat(getComputedStyle(el).borderTopLeftRadius) || 0 : 0
+        }
+      }
+      let next: Placed | null = null
+      if (el) {
+        const r = el.getBoundingClientRect()
+        if (r.width > 0 && r.height > 0) {
+          const o = huntLayer().getBoundingClientRect()
+          next = { x: r.left - o.left, y: r.top - o.top, w: r.width, h: r.height, round, pose: fitPose(pose, r) }
+        }
+      }
+      const key = next ? `${[next.x, next.y, next.w, next.h].map((v) => Math.round(v * 2)).join()}${next.pose}` : ''
+      if (key !== last) {
+        last = key
+        setPlaced(next)
+      }
+      frame = requestAnimationFrame(tick)
+    }
+    frame = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(frame)
+  }, [anchor.id, pose, active])
+  return active ? placed : null
+}
+
+type PeekBox = {
+  /** What shows, in the layer's coordinates. */
+  left: number
+  top: number
+  width: number
+  height: number
+  /** Round a corner, the quarter over the panel is cut away. */
+  clip?: string
+  /** The bug, turned to face out, inside what shows. */
+  turn: number
+  bugLeft: number
+  bugTop: number
+}
+
+/** What of the bug shows past its hiding place, and how it's turned. */
+function peekBox(p: Placed, at: number): PeekBox {
+  const size = BUG_SIZE
+  const shown = size * SHOWN
+  switch (p.pose) {
+    case 'top':
+      return { left: p.x + at * p.w - size / 2, top: p.y - shown, width: size, height: shown, turn: 0, bugLeft: 0, bugTop: 0 }
+    case 'bottom':
+      return { left: p.x + at * p.w - size / 2, top: p.y + p.h, width: size, height: shown, turn: 180, bugLeft: 0, bugTop: shown - size }
+    case 'left':
+      return { left: p.x - shown, top: p.y + at * p.h - size / 2, width: shown, height: size, turn: -90, bugLeft: 0, bugTop: 0 }
+    case 'right':
+      return { left: p.x + p.w, top: p.y + at * p.h - size / 2, width: shown, height: size, turn: 90, bugLeft: shown - size, bugTop: 0 }
+    default: {
+      const top = p.pose.startsWith('top')
+      const left = p.pose.endsWith('left')
+      // Where a rounded corner actually turns, and the bug leaning out past it.
+      const inset = p.round * 0.29
+      const lean = size * LEAN
+      const cx = left ? p.x + inset : p.x + p.w - inset
+      const cy = top ? p.y + inset : p.y + p.h - inset
+      const bx = cx - size / 2 + (left ? -lean : lean)
+      const by = cy - size / 2 + (top ? -lean : lean)
+      const qx = cx - bx
+      const qy = cy - by
+      const s = size
+      const corner: [number, number][] = top
+        ? left
+          ? [[0, 0], [s, 0], [s, qy], [qx, qy], [qx, s], [0, s]]
+          : [[0, 0], [s, 0], [s, s], [qx, s], [qx, qy], [0, qy]]
+        : left
+          ? [[0, 0], [qx, 0], [qx, qy], [s, qy], [s, s], [0, s]]
+          : [[qx, 0], [s, 0], [s, s], [0, s], [0, qy], [qx, qy]]
+      return {
+        left: bx,
+        top: by,
+        width: s,
+        height: s,
+        clip: `polygon(${corner.map(([a, b]) => `${a.toFixed(1)}px ${b.toFixed(1)}px`).join(', ')})`,
+        turn: top ? (left ? -45 : 45) : left ? -135 : 135,
+        bugLeft: 0,
+        bugTop: 0,
+      }
+    }
+  }
+}
+
+/**
+ * Today's bug, when its hiding place is on this page. It's drawn in a layer
+ * of its own, poking out from behind the panel it hides behind: only what's
+ * past the panel's edge shows. Every so often it ducks and comes back up,
+ * and a tap catches it.
+ */
+function HuntLayer() {
   const { pick, stats } = useHunt()
   const [phase, setPhase] = useState<'hiding' | 'caught' | 'gone'>('hiding')
-  if (pick.spot.id !== spot || phase === 'gone' || (stats.foundToday && phase === 'hiding')) return null
+  const [day, setDay] = useState(pick.day)
+  // A new day, a new bug to hide.
+  if (day !== pick.day) {
+    setDay(pick.day)
+    setPhase('hiding')
+  }
+  const out = phase === 'caught' || (phase === 'hiding' && !stats.foundToday)
+  const placed = useHidingPlace(pick, out)
+  if (!placed || !out) return null
 
   const name = capitalName(pick.bug)
+  const box = peekBox(placed, pick.at)
+  const caught = phase === 'caught'
   const catchIt = (e: MouseEvent) => {
-    // It may be sitting inside a link: the catch is the only thing a tap on it does.
     e.preventDefault()
     e.stopPropagation()
     if (phase !== 'hiding') return
@@ -173,24 +320,41 @@ export function HiddenBug({
       () => {
         recordFind(pick)
         setPhase('gone')
-        onCaught?.()
-        window.dispatchEvent(new Event(HUNT_CAUGHT_EVENT))
+        window.dispatchEvent(new CustomEvent(HUNT_CAUGHT_EVENT, { detail: { pose: placed.pose } }))
       },
-      still ? 0 : 450,
+      still ? 0 : 500,
     )
   }
-  const portraitPose: PortraitPose = phase === 'caught' ? 'cheer' : pose === 'peek' ? 'wave' : pose === 'hang' ? 'stand' : 'sit'
-  return (
-    <span className={`hunt-spot hunt-spot--${pose}`}>
-      <button
-        type="button"
-        className={`hunt-bug${phase === 'caught' ? ' hunt-bug--caught' : ''}`}
-        onClick={catchIt}
-        aria-label={`${name} is hiding here. Catch!`}
-      >
-        <BugPortrait bugId={pick.bug.id} size={72} pose={portraitPose} mood={phase === 'caught' ? 'open' : pick.mood} className="hunt-bug__art" />
-      </button>
-    </span>
+  return createPortal(
+    <button
+      type="button"
+      className={`hunt-peek${caught ? ' hunt-peek--caught' : ''}`}
+      style={{
+        left: box.left - REACH,
+        top: box.top - REACH,
+        width: box.width + REACH * 2,
+        height: box.height + REACH * 2,
+        padding: REACH,
+      }}
+      onClick={catchIt}
+      aria-label={`${name} is hiding here. Catch!`}
+    >
+      <span className="hunt-peek__window" style={caught ? undefined : { clipPath: box.clip }}>
+        <span
+          className="hunt-peek__turn"
+          style={{ left: box.bugLeft, top: box.bugTop, width: BUG_SIZE, height: BUG_SIZE, transform: `rotate(${box.turn}deg)` }}
+        >
+          <BugPortrait
+            bugId={pick.bug.id}
+            size={BUG_SIZE}
+            pose={caught ? 'cheer' : 'wave'}
+            mood={caught ? 'open' : pick.mood}
+            className="hunt-peek__bug"
+          />
+        </span>
+      </span>
+    </button>,
+    huntLayer(),
   )
 }
 
@@ -257,34 +421,9 @@ function Stats({ stats }: { stats: HuntStats }) {
   )
 }
 
-/**
- * The hints, as the day gives them out: nothing but the riddle until noon on
- * the boards' clock, then the page, and from six, where on it. None links
- * there: finding the way is part of the hunt.
- */
-function Hint({ pick, now }: { pick: HuntPick; now: number }) {
-  const [open, setOpen] = useState(false)
-  const hints = huntHints(pick.spot, now)
-  const next = hints.nextIn != null ? clockWords(hints.nextIn) : null
-  if (hints.shown.length === 0) return <span className="hunt-hint">First hint in {next}.</span>
-  if (!open) {
-    return (
-      <button type="button" className="hunt-btn hunt-btn--ghost" onClick={() => setOpen(true)}>
-        {hints.shown.length === 1 ? 'Hint' : 'Hints'}
-      </button>
-    )
-  }
-  return (
-    <span className="hunt-hint">
-      {hints.shown.join(' ')}
-      {next ? ` Another hint in ${next}.` : ''}
-    </span>
-  )
-}
-
 /** The front page's line on today's hunt: who's loose, the clue, and a hint. */
 export function BugHuntStrip() {
-  const { pick, stats, server, msLeft, now } = useHunt()
+  const { pick, stats, server, msLeft } = useHunt()
   const name = capitalName(pick.bug)
   const count = countWords(server, pick.bug.name, stats)
   return (
@@ -304,13 +443,12 @@ export function BugHuntStrip() {
         ) : (
           <>
             <p className="hunt-strip__title">{name} got loose on the site</p>
-            <p className="hunt-strip__clue">“{pick.spot.clue}”</p>
+            <p className="hunt-strip__clue">It could be on any page, with just its head poking out from behind something.</p>
             {count ? <p className="hunt-strip__count">{count}</p> : null}
           </>
         )}
       </div>
       <div className="hunt-strip__side">
-        {stats.foundToday ? null : <Hint pick={pick} now={now} />}
         <button type="button" className="hunt-btn" onClick={openBugHunt}>
           Your bugs{' '}
           <span className="hunt-btn__count">
@@ -356,7 +494,7 @@ export function BugHuntMenuRow({ onOpen }: { onOpen: () => void }) {
 /* ------------------------------------------------------------ panels --- */
 
 function HuntPanel({ onClose }: { onClose: () => void }) {
-  const { pick, stats, server, msLeft, now } = useHunt()
+  const { pick, stats, server, msLeft } = useHunt()
   const count = countWords(server, pick.bug.name, stats)
   const titleId = useId()
   const name = capitalName(pick.bug)
@@ -375,7 +513,7 @@ function HuntPanel({ onClose }: { onClose: () => void }) {
             {stats.foundToday ? (
               <>
                 <p className="hunt-wanted__line">
-                  {name} was hiding {pick.spot.where}.
+                  {name} was hiding {huntWhere(pick.anchor, pick.pose)}.
                 </p>
                 {count ? <p className="hunt-wanted__small">{count}</p> : null}
                 <p className="hunt-wanted__small">The next bug gets loose in {clockWords(msLeft)}.</p>
@@ -383,13 +521,11 @@ function HuntPanel({ onClose }: { onClose: () => void }) {
             ) : (
               <>
                 <p className="hunt-wanted__line">
-                  {name} is hiding somewhere on the site today. Find {pick.bug.name} and tap to catch.
+                  {name} is hiding somewhere on the site today. It could be on any page, with just its head poking out
+                  from behind something, or round a corner.
                 </p>
-                <p className="hunt-wanted__clue">“{pick.spot.clue}”</p>
+                <p className="hunt-wanted__small">Find it and tap it to catch it.</p>
                 {count ? <p className="hunt-wanted__small">{count}</p> : null}
-                <div className="hunt-wanted__acts">
-                  <Hint pick={pick} now={now} />
-                </div>
               </>
             )}
           </div>
@@ -397,8 +533,7 @@ function HuntPanel({ onClose }: { onClose: () => void }) {
         <Stats stats={stats} />
         <Collection stats={stats} today={pick.bug.id} />
         <p className="hunt-panel__foot">
-          A new bug gets loose every day at midnight Eastern, somewhere else. At noon a hint names the page, and at six
-          another says where on it.{' '}
+          A new bug gets loose every day at midnight Eastern, somewhere else.{' '}
           {getSessionToken()
             ? 'Catch all twelve in a month and the set goes on your shelf.'
             : 'Sign in and your finds follow you to any device.'}
@@ -448,7 +583,7 @@ function FullSet({ stats, server, onClose, onWear }: { stats: HuntStats; server:
 
 type FoundProps = { onClose: () => void; onWear?: (wear: AvatarWear) => void }
 
-function FoundPanel({ onClose, onWear }: FoundProps) {
+function FoundPanel({ onClose, onWear, pose }: FoundProps & { pose: HuntPose | null }) {
   const { pick, stats, server, msLeft } = useHunt()
   const signedIn = Boolean(getSessionToken())
   const titleId = useId()
@@ -466,9 +601,9 @@ function FoundPanel({ onClose, onWear }: FoundProps) {
           <BugPortrait bugId={pick.bug.id} size={112} pose="cheer" mood="open" className="hunt-wanted__art" />
           <div className="hunt-wanted__text">
             <p className="hunt-wanted__line">
-              {name} was hiding {pick.spot.where}.
+              {name} was hiding {huntWhere(pick.anchor, pose ?? pick.pose)}.
             </p>
-            <p className="hunt-wanted__lesson">{pick.spot.lesson}</p>
+            <p className="hunt-wanted__lesson">{pick.anchor.lesson}</p>
           </div>
         </div>
         {signedIn && server?.place != null ? (
@@ -513,12 +648,17 @@ function FoundPanel({ onClose, onWear }: FoundProps) {
   )
 }
 
-/** Mounted once, with the header: shows a find, and opens the hunt when asked. */
+/** Mounted once, with the header: keeps today's bug out on every page, shows a find, and opens the hunt when asked. */
 export function BugHuntHost({ onWear }: { onWear?: (wear: AvatarWear) => void }) {
   const [open, setOpen] = useState<'hunt' | 'found' | null>(null)
+  const [pose, setPose] = useState<HuntPose | null>(null)
   useEffect(() => {
     const onOpen = () => setOpen('hunt')
-    const onCaught = () => setOpen('found')
+    const onCaught = (e: Event) => {
+      const caught = (e as CustomEvent<{ pose?: string }>).detail?.pose
+      setPose(isHuntPose(caught) ? caught : null)
+      setOpen('found')
+    }
     window.addEventListener(HUNT_OPEN_EVENT, onOpen)
     window.addEventListener(HUNT_CAUGHT_EVENT, onCaught)
     return () => {
@@ -526,7 +666,15 @@ export function BugHuntHost({ onWear }: { onWear?: (wear: AvatarWear) => void })
       window.removeEventListener(HUNT_CAUGHT_EVENT, onCaught)
     }
   }, [])
-  if (!open) return null
   const close = () => setOpen(null)
-  return open === 'found' ? <FoundPanel onClose={close} onWear={onWear} /> : <HuntPanel onClose={close} />
+  return (
+    <>
+      <HuntLayer />
+      {open === 'found' ? (
+        <FoundPanel onClose={close} onWear={onWear} pose={pose} />
+      ) : open === 'hunt' ? (
+        <HuntPanel onClose={close} />
+      ) : null}
+    </>
+  )
 }

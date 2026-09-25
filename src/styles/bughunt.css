@@ -1,160 +1,93 @@
 /*
- * The daily bug hunt: the bug in its spot, the strip on the home page, and
- * the panels for a find and for the hunt so far.
+ * The daily bug hunt: the bug poking out from behind something, the strip on
+ * the home page, and the panels for a find and for the hunt so far.
  */
 
-/* ---------- the bug in its spot ---------- */
+/* ---------- the bug, poking out from behind something ---------- */
 
-/*
- * The bug is small and faded wherever it hides, about the height of the
- * words around it, so it takes a proper look to spot. A pointer passing over
- * wakes it up, and the tap that catches it reaches a little past it.
- */
-.hunt-spot {
-  --hunt-size: 1.25rem;
-  position: relative;
-  display: inline-block;
-  line-height: 0;
-  font-style: normal;
-  letter-spacing: 0;
-  text-transform: none;
+/* Its own layer over the page: under the header, and under anything that opens over the page. */
+.hunt-layer {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 0;
+  height: 0;
+  z-index: 20;
 }
 
-.hunt-bug {
-  position: relative;
+/* What shows of the bug, and a little more, for the tap that catches it. */
+.hunt-peek {
+  position: absolute;
   display: block;
-  width: var(--hunt-size);
-  height: var(--hunt-size);
   margin: 0;
-  padding: 0;
   border: 0;
-  border-radius: 50%;
   background: none;
   color: inherit;
   cursor: pointer;
-  line-height: 0;
-  transform-origin: 50% 88%;
-  opacity: 0.7;
-  filter: saturate(0.55);
-  transition:
-    opacity 0.2s ease,
-    filter 0.2s ease;
-  /* Still nearly all the time; once in a long while a twitch, for an eye that's already looking. */
-  animation: hunt-twitch 20s ease-in-out 6s infinite;
   -webkit-tap-highlight-color: transparent;
 }
 
-.hunt-bug::after {
-  content: '';
-  position: absolute;
-  inset: -0.4rem;
-  border-radius: 50%;
+.hunt-peek:focus-visible {
+  outline: 2px dashed var(--accent);
+  outline-offset: -2px;
+  border-radius: 10px;
 }
 
-.hunt-bug__art {
+/* Only what's past the panel's edge shows: the rest is behind it. */
+.hunt-peek__window {
+  position: relative;
   display: block;
   width: 100%;
   height: 100%;
+  overflow: hidden;
 }
 
-.hunt-bug:hover {
-  opacity: 1;
-  filter: none;
+.hunt-peek__turn {
+  position: absolute;
+  display: block;
+}
+
+.hunt-peek__bug {
+  display: block;
+  width: 100%;
+  height: 100%;
+  transform-origin: 50% 56%;
+  /* Still nearly all the time; every so often it ducks behind and comes back up. */
+  animation: hunt-duck 9s ease-in-out 2.5s infinite;
+}
+
+.hunt-peek:hover .hunt-peek__bug {
   animation: hunt-jitter 0.45s ease-in-out infinite;
 }
 
-.hunt-bug:focus-visible {
-  opacity: 1;
-  filter: none;
-  outline: 2px dashed var(--accent);
-  outline-offset: 2px;
-}
-
-/* On a line: sitting just after the words, feet on the baseline. */
-.hunt-spot--perch {
-  margin-left: 0.2em;
-  vertical-align: calc(var(--hunt-size) * -0.1);
-}
-
-/* Hanging upside down on a thread, from the end of a line. */
-.hunt-spot--hang {
-  width: 0;
-  height: 1em;
-  vertical-align: top;
-}
-
-.hunt-spot--hang::before {
-  content: '';
-  position: absolute;
-  top: 0.95em;
-  left: calc(0.15em + var(--hunt-size) / 2);
-  width: 1px;
-  height: 0.5em;
-  background: currentColor;
-  opacity: 0.4;
-}
-
-.hunt-spot--hang .hunt-bug {
-  position: absolute;
-  top: 1.35em;
-  left: 0.15em;
-  rotate: 180deg;
-  /* Turned about its middle, it stays under the line; it swings from there too. */
-  transform-origin: 50% 50%;
-}
-
-/* Peeking up from behind the line: only a head and a waving hand show. */
-.hunt-spot--peek {
-  width: var(--hunt-size);
-  height: calc(var(--hunt-size) * 0.52);
-  margin-left: 0.15em;
-  overflow: hidden;
-  vertical-align: baseline;
-}
-
-.hunt-spot--peek .hunt-bug {
-  animation-name: hunt-peek;
-  animation-duration: 20s;
-}
-
-.hunt-bug--caught,
-.hunt-bug--caught:hover {
-  opacity: 1;
-  filter: none;
-  animation: hunt-caught 0.45s cubic-bezier(0.2, 0.8, 0.3, 1.3) forwards;
+/* Caught: out it comes, all of it, and off it goes. */
+.hunt-peek--caught {
   pointer-events: none;
 }
 
-.hunt-spot--peek:has(.hunt-bug--caught) {
+.hunt-peek--caught .hunt-peek__window {
   overflow: visible;
 }
 
-@keyframes hunt-twitch {
-  0%,
-  92%,
-  100% {
-    transform: none;
-  }
-  93.5% {
-    transform: rotate(-7deg);
-  }
-  95.5% {
-    transform: rotate(6deg);
-  }
-  97.5% {
-    transform: rotate(-3deg);
-  }
+.hunt-peek--caught .hunt-peek__bug,
+.hunt-peek--caught:hover .hunt-peek__bug {
+  animation: hunt-caught 0.5s cubic-bezier(0.2, 0.8, 0.3, 1.3) forwards;
 }
 
-@keyframes hunt-peek {
+@keyframes hunt-duck {
   0%,
   88%,
   100% {
-    transform: translateY(8%);
+    transform: none;
   }
-  91%,
-  97% {
-    transform: translateY(-6%) rotate(-6deg);
+  91% {
+    transform: translateY(24%);
+  }
+  95% {
+    transform: translateY(-4%) rotate(-6deg);
+  }
+  98% {
+    transform: rotate(4deg);
   }
 }
 
@@ -297,25 +230,6 @@
   font-variant-numeric: tabular-nums;
 }
 
-.hunt-hint {
-  font-size: 0.88rem;
-  line-height: 1.4;
-  color: var(--muted);
-}
-
-.hunt-hint a,
-.hunt-hint__open {
-  padding: 0;
-  border: 0;
-  background: none;
-  font: inherit;
-  font-weight: 700;
-  color: color-mix(in srgb, var(--accent) 80%, var(--ink));
-  text-decoration: underline;
-  text-underline-offset: 3px;
-  cursor: pointer;
-}
-
 @media (max-width: 40rem) {
   .hunt-strip {
     flex-wrap: wrap;
@@ -334,6 +248,11 @@
 .hunt-panel__body {
   display: flex;
   flex-direction: column;
+}
+
+/* A short screen scrolls the panel; nothing in it gets squeezed and cut off. */
+.hunt-panel__body > * {
+  flex-shrink: 0;
 }
 
 /* Who's loose, as the game's wanted card shows them. */
@@ -368,22 +287,12 @@
   line-height: 1.4;
 }
 
-.hunt-wanted__clue {
-  margin: 0.4rem 0 0;
-  font-size: 0.98rem;
-  line-height: 1.4;
-}
-
 .hunt-wanted__lesson,
 .hunt-wanted__small {
   margin: 0.4rem 0 0;
   font-size: 0.9rem;
   line-height: 1.45;
   color: var(--muted);
-}
-
-.hunt-wanted__acts {
-  margin-top: 0.6rem;
 }
 
 /* A find: the bug jumps out of a burst of rays. */
@@ -607,15 +516,15 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .hunt-bug,
-  .hunt-bug:hover,
-  .hunt-spot--peek .hunt-bug,
+  .hunt-peek__bug,
+  .hunt-peek:hover .hunt-peek__bug,
   .hunt-burst,
   .hunt-panel--found .hunt-wanted__art {
     animation: none;
   }
 
-  .hunt-bug--caught {
+  .hunt-peek--caught .hunt-peek__bug,
+  .hunt-peek--caught:hover .hunt-peek__bug {
     animation: none;
     opacity: 0;
   }

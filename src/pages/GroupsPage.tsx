@@ -102,9 +102,7 @@ export function GroupsPage() {
       <div className="grp">
         <header className="grp-head">
           <div>
-            <h1 className="grp-head__title">
-              Groups
-            </h1>
+            <h1 className="grp-head__title">Groups</h1>
             <p className="grp-head__lede">The same boards, with just your people on them.</p>
           </div>
           {groups.length ? (

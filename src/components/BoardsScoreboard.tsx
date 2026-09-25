@@ -33,7 +33,6 @@ import { resolveGameAccent } from '../lib/theme'
 import { BoardEmpty } from './BoardChrome'
 import { GameThumbArt } from './GameThumbArt'
 import { PlayerMark } from './PlayerMark'
-import { HiddenBug } from './BugHunt'
 
 /*
  * The boards page: one scoreboard for the period instead of two tabs. The
@@ -320,7 +319,7 @@ function YouCard({
   const stats = ranked ? youStats(standing, data.standings) : lastStats(copy, data.last, standing.name)
   const played = Object.keys(standing.byGame).length
   return (
-    <div className="sb-card sb-you__card">
+    <div className="sb-card sb-you__card" data-hunt="boards-you">
       <div className="sb-you__top">
         <PlayerMark name={standing.name} avatarId={standing.avatarId} className="sb-you__mark" />
         <span className="sb-you__kicker">
@@ -364,7 +363,7 @@ function YouCard({
 function FirstVisitCard({ copy }: { copy: PeriodCopy }) {
   const toward = copy.noun ? `this ${copy.noun}’s standings` : 'the all-time standings'
   return (
-    <div className="sb-card sb-you__card sb-first">
+    <div className="sb-card sb-you__card sb-first" data-hunt="boards-you">
       <p className="sb-kicker">Get on the board</p>
       <h2 className="sb-first__title">Your first run puts you on it.</h2>
       <p className="sb-first__text">
@@ -392,11 +391,8 @@ function Moves({
 }) {
   const { rows, foot } = moves(copy, data.boards, data.standings, data.you)
   return (
-    <div className="sb-card sb-moves">
-      <h2 className="sb-card__title">
-        {data.you ? 'Where your next points are' : 'Easiest points right now'}
-        <HiddenBug spot="boards" pose="peek" />
-      </h2>
+    <div className="sb-card sb-moves" data-hunt="boards-moves">
+      <h2 className="sb-card__title">{data.you ? 'Where your next points are' : 'Easiest points right now'}</h2>
       <ul className="sb-moves__list">
         {rows.map((m) => (
           <li key={m.amount + m.what} className="sb-move">

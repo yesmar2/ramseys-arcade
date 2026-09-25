@@ -4,7 +4,6 @@ import { tournamentCreateHref } from '../hooks/useHashRoute'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { cachedMyGroups, groupHref, groupsIndexHref, listMyGroups, type GroupPublic } from '../lib/groups'
 import { normalizePlayerName } from '../lib/leaderboard'
-import { HiddenBug } from './BugHunt'
 
 /*
  * An eight-player draw, drawn as the path one player takes to the cup: the
@@ -92,7 +91,7 @@ export function HomeGroupsBand() {
   const mine = signedIn ? groups.slice(0, 3) : []
 
   return (
-    <section className="gband" aria-labelledby="gband-title">
+    <section className="gband" aria-labelledby="gband-title" data-hunt="home-groups">
       <div className="gband__text">
         <p className="gband__kicker">Groups and events</p>
         <h2 id="gband-title" className="gband__title">
@@ -103,7 +102,6 @@ export function HomeGroupsBand() {
             <p className="gband__lead">
               Your groups keep a board where only your people count. Run an event for one of them: best
               score, place points or a bracket.
-              <HiddenBug spot="home-groups" />
             </p>
             <ul className="gband__groups">
               {mine.map((g) => (
@@ -122,7 +120,6 @@ export function HomeGroupsBand() {
           <p className="gband__lead">
             Start a group for the family, the office or the group chat: the same games, on a board where
             only your people count. Then run an event with best score, place points or a bracket.
-            <HiddenBug spot="home-groups" />
           </p>
         )}
         <div className="gband__acts">

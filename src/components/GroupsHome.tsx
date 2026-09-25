@@ -21,7 +21,6 @@ import { getGame } from '../data/games'
 import { GameThumbArt } from './GameThumbArt'
 import { PlayerAvatar } from './PlayerAvatar'
 import { openSiteMenu } from './siteNav'
-import { HiddenBug } from './BugHunt'
 
 /* The groups page's pieces: each of your groups as a card, starting one, opening one from a code, and what a group is. */
 
@@ -299,7 +298,7 @@ export function StartGroupCard({
     if (focusOnMount) input.current?.focus()
   }, [focusOnMount])
   return (
-    <section className="grp-card grp-side" aria-labelledby="grp-start">
+    <section className="grp-card grp-side" aria-labelledby="grp-start" data-hunt="groups-start">
       <div className="grp-side__head">
         <span className="grp-side__mark">
           <PlusIcon />
@@ -349,7 +348,7 @@ export function LinkCard({ onOpen }: { onOpen: (id: string, invite: string | nul
   const input = useRef<HTMLInputElement>(null)
   const [error, setError] = useState<string | null>(null)
   return (
-    <section className="grp-card grp-side" aria-labelledby="grp-link">
+    <section className="grp-card grp-side" aria-labelledby="grp-link" data-hunt="groups-link">
       <div className="grp-side__head">
         <span className="grp-side__mark grp-side__mark--code">
           <TicketIcon />
@@ -387,10 +386,7 @@ export function LinkCard({ onOpen }: { onOpen: (id: string, invite: string | nul
         </button>
       </form>
       {error ? <p className="grp-error">{error}</p> : null}
-      <p className="grp-fine">
-        Following the link opens the group by itself. You need a gamer tag to join, not an account.
-        <HiddenBug spot="groups" />
-      </p>
+      <p className="grp-fine">Following the link opens the group by itself. You need a gamer tag to join, not an account.</p>
     </section>
   )
 }

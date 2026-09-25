@@ -24,7 +24,6 @@ import { EventArt, eventAccent } from './EventCard'
 import { EventScreen } from './EventScreen'
 import { PlayerAvatar } from './PlayerAvatar'
 import { openSiteMenu } from './siteNav'
-import { HiddenBug } from './BugHunt'
 
 /* The events page's pieces: this week's Triple up top, today's daily, last week's winner, your own, how it all works, and what has finished. */
 
@@ -405,22 +404,19 @@ const HOW: [() => ReactNode, string, string][] = [
 
 export function HowEventsWork() {
   return (
-    <section className="evp-card evp-how-all" aria-labelledby="evp-how-all-title">
+    <section className="evp-card evp-how-all" aria-labelledby="evp-how-all-title" data-hunt="events-how">
       <h2 id="evp-how-all-title" className="evp-card__title">
         How events work
       </h2>
       <ul className="evp-how-all__list">
-        {HOW.map(([IconFor, title, text], i) => (
+        {HOW.map(([IconFor, title, text]) => (
           <li key={title}>
             <span className="evp-how-all__mark" aria-hidden="true">
               <IconFor />
             </span>
             <span className="evp-how-all__text">
               <b>{title}</b>
-              <span>
-                {text}
-                {i === HOW.length - 1 ? <HiddenBug spot="events" /> : null}
-              </span>
+              <span>{text}</span>
             </span>
           </li>
         ))}

@@ -1,7 +1,6 @@
 import { APP_NAME } from '../lib/brand'
 import { LegalContact, LegalDocument } from '../components/LegalDocument'
 import { privacyHref } from '../hooks/useHashRoute'
-import { HiddenBug } from '../components/BugHunt'
 
 const UPDATED = 'September 4, 2026'
 
@@ -69,7 +68,6 @@ export function TermsPage() {
       <p>
         The Service does not offer real-money wagering, prizes with cash value, or gambling.
         Scores and rankings have no monetary value.
-        <HiddenBug spot="terms" />
       </p>
 
       <h2>Disclaimers</h2>

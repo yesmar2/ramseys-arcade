@@ -8,7 +8,6 @@ import {
   termsHref,
   tournamentsHref,
 } from '../hooks/useHashRoute'
-import { HiddenBug } from '../components/BugHunt'
 
 const HIGHLIGHTS = [
   {
@@ -43,8 +42,8 @@ export function AboutPage() {
       <section className="home-about" aria-label={`About ${APP_NAME}`}>
 
       <ul className="home-about__highlights">
-        {HIGHLIGHTS.map((item) => (
-          <li key={item.title} className="home-about__highlight">
+        {HIGHLIGHTS.map((item, i) => (
+          <li key={item.title} className="home-about__highlight" data-hunt={i === 0 ? 'about-highlights' : undefined}>
             <h3 className="home-about__highlight-title">{item.title}</h3>
             <p className="home-about__highlight-body">{item.body}</p>
           </li>
@@ -57,7 +56,6 @@ export function AboutPage() {
           We wanted a place that feels like walking up to a good arcade cabinet: one game in
           front of you, a score to chase, and nothing else competing for attention. {APP_NAME}{' '}
           keeps the focus on play — not feeds, loot boxes, or clutter.
-          <HiddenBug spot="about" />
         </p>
 
         <h3 className="home-about__subtitle">Rank up and compete</h3>

@@ -11,7 +11,6 @@ import { DevicesIcon, PlayIcon } from './chromeIcons'
 import { GamePreview } from './GamePreview'
 import { GameThumbArt } from './GameThumbArt'
 import { ShareBoardButton } from './ShareBoardButton'
-import { HiddenBug } from './BugHunt'
 
 /**
  * The top of a game's page: its name and a way to play, beside its screen,
@@ -55,13 +54,12 @@ export function GameHubHero({
   const kicker = game.comingSoon ? 'Coming soon' : game.inDevelopment ? 'New' : null
 
   return (
-    <section className="gh-hero" aria-labelledby="gh-title">
+    <section className="gh-hero" aria-labelledby="gh-title" data-hunt={`g-hero-${game.slug}`}>
       <div className="gh-hero__text">
         <nav className="gh-crumbs" aria-label="Breadcrumb">
           <a href={homeHref()}>Games</a>
           <span aria-hidden="true">›</span>
           <span aria-current="page">{game.name}</span>
-          <HiddenBug spot={`crumbs-${game.slug}`} />
         </nav>
         <div className="gh-hero__main">
           {tags.length > 0 || kicker ? (
@@ -109,12 +107,17 @@ export function GameHubHero({
         <p className="gh-hero__where">
           <DevicesIcon />
           {where}
-          <HiddenBug spot={`where-${game.slug}`} />
         </p>
       </div>
 
       {/* The game on its screen: its thumb until the first frame is down. */}
-      <a className="gh-screen" href={canPlay ? playHref : gameHref(game.slug)} tabIndex={-1} aria-hidden="true">
+      <a
+        className="gh-screen"
+        href={canPlay ? playHref : gameHref(game.slug)}
+        tabIndex={-1}
+        aria-hidden="true"
+        data-hunt={`g-screen-${game.slug}`}
+      >
         <span className="gh-screen__thumb">
           <GameThumbArt slug={game.slug} accent={accent} />
         </span>

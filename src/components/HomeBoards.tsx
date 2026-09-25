@@ -19,7 +19,6 @@ import { resolveGameAccent } from '../lib/theme'
 import { GameThumbArt } from './GameThumbArt'
 import { PlayerMark } from './PlayerMark'
 import { medalKind } from './PodiumMedal'
-import { HiddenBug } from './BugHunt'
 
 /** A points figure that agrees with itself: 1 pt, 2 pts. */
 function pts(n: number) {
@@ -70,12 +69,9 @@ function Standings({
   }
 
   return (
-    <article className="hb-panel hb-panel--standings">
+    <article className="hb-panel hb-panel--standings" data-hunt="home-standings">
       <div className="hb-panel__head">
-        <h3 className="hb-panel__title">
-          Standings
-          <HiddenBug spot="home-standings" />
-        </h3>
+        <h3 className="hb-panel__title">Standings</h3>
         <a className="home-section__more" href={globalRankingsHref(period)}>
           Full board ›
         </a>
@@ -132,7 +128,7 @@ function Standings({
 
 function HouseRecords({ boards }: { boards: SiteRecordBoard[] | null }) {
   return (
-    <article className="hb-panel">
+    <article className="hb-panel" data-hunt="home-records">
       <div className="hb-panel__head">
         <h3 className="hb-panel__title">House records</h3>
         <a className="home-section__more" href={siteRecordsHref()}>
@@ -148,7 +144,7 @@ function HouseRecords({ boards }: { boards: SiteRecordBoard[] | null }) {
             ))
           : PLAQUES.map((id) => boards.find((b) => b.id === id))
               .filter((board): board is SiteRecordBoard => Boolean(board))
-              .map((board, i, all) => {
+              .map((board) => {
                 const top = board.entries[0] ?? null
                 return (
                   <li key={board.id} className="hb-plaque">
@@ -156,10 +152,7 @@ function HouseRecords({ boards }: { boards: SiteRecordBoard[] | null }) {
                       {top ? top.value.toLocaleString() : '—'}
                       {top ? <small> {siteRecordUnitWord(top.value, board.unit)}</small> : null}
                     </span>
-                    <span className="hb-plaque__label">
-                      {board.label}
-                      {i === all.length - 1 ? <HiddenBug spot="home-records" pose="peek" /> : null}
-                    </span>
+                    <span className="hb-plaque__label">{board.label}</span>
                     <span className="hb-plaque__who">{top ? top.name : 'Nobody yet'}</span>
                   </li>
                 )

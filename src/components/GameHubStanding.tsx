@@ -117,7 +117,7 @@ export function GameHubStanding({
   }
 
   return (
-    <section className="gh-card gh-stand" aria-labelledby="gh-stand-title">
+    <section className="gh-card gh-stand" aria-labelledby="gh-stand-title" data-hunt={`g-stand-${slug}`}>
       <h2 id="gh-stand-title" className="gh-cap">
         {title}
       </h2>

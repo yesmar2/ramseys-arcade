@@ -34,7 +34,7 @@ import { PlayerAvatar } from './PlayerAvatar'
 import { PlayerBadge, type PlayerBadgeHandle } from './PlayerBadge'
 import { MusicToggle } from './MusicToggle'
 import { SoundPackSelect } from './SoundPackSelect'
-import { BugHuntMenuRow, HiddenBug } from './BugHunt'
+import { BugHuntMenuRow } from './BugHunt'
 
 /** The themes, in the order the picker shows them. */
 const THEME_CHOICES: Theme[] = ['light', 'dark']
@@ -362,10 +362,7 @@ export function SiteMenu({
               <SoundPackSelect variant="chips" className="site-seg site-menu__seg site-menu__sounds" />
             </div>
             <div className="site-menu__setting">
-              <span className="site-menu__cap">
-                Music
-                <HiddenBug spot="menu" onCaught={onClose} />
-              </span>
+              <span className="site-menu__cap">Music</span>
               <MusicToggle variant="seg" className="site-menu__seg" />
             </div>
             <DevImpersonateControl variant="drawer" />

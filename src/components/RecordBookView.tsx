@@ -33,7 +33,6 @@ import { GamePreview } from './GamePreview'
 import { GameThumbArt } from './GameThumbArt'
 import { PlayerMark } from './PlayerMark'
 import { ShareBoardButton } from './ShareBoardButton'
-import { HiddenBug } from './BugHunt'
 
 /*
  * One game's record book: its banner, with the game playing on the screen and
@@ -173,7 +172,7 @@ export function RecordBookView({ game, period }: { game: string; period: Leaderb
 
   return (
     <div className="sb gb rbk" style={{ '--gb-accent': accent, '--gb-accent-ink': inkOn(accent) } as CSSProperties}>
-      <section className="home-banner gb-banner" style={style} aria-labelledby="rbk-book-title">
+      <section className="home-banner gb-banner" style={style} aria-labelledby="rbk-book-title" data-hunt={`r-head-${game}`}>
         <div className="home-banner__text gb-banner__text">
           <nav className="gb-crumb" aria-label="Breadcrumb">
             <a href={recordsIndexHref()}>
@@ -307,7 +306,7 @@ export function RecordBookView({ game, period }: { game: string; period: Leaderb
       ) : !records.length ? (
         <BoardEmpty title={groupBoardEmptyTitle('No records yet')} />
       ) : (
-        groups.map((group, gi) => (
+        groups.map((group) => (
           <section key={group.kind} className="sb-card rbk-group" aria-labelledby={`rbk-${group.kind}`}>
             <div className="rbk-group__head">
               <h2 id={`rbk-${group.kind}`} className="rbk-group__title">
@@ -317,10 +316,7 @@ export function RecordBookView({ game, period }: { game: string; period: Leaderb
                 {group.records.length} {group.records.length === 1 ? 'record' : 'records'}
               </span>
             </div>
-            <p className="rbk-group__sub">
-              {group.sub}
-              {gi === groups.length - 1 ? <HiddenBug spot={`book-${game}`} /> : null}
-            </p>
+            <p className="rbk-group__sub">{group.sub}</p>
             <div className="rbk-group__cols" aria-hidden="true">
               <span>Record</span>
               <span>Best</span>

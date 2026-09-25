@@ -184,7 +184,7 @@ export function HomeOnNow() {
       </div>
       <ul className="onnow__grid">
         {daily ? (
-          <li>
+          <li data-hunt="home-onnow">
             <RunningCard t={daily} mine={mineById(daily.id)} joined={joinedIds.has(daily.id)} champion={false} />
           </li>
         ) : null}

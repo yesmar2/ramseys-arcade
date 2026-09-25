@@ -15,7 +15,6 @@ import { numberWord } from '../lib/numberWord'
 import { resolveGameAccent } from '../lib/theme'
 import { GamePreview } from './GamePreview'
 import { GameThumbArt } from './GameThumbArt'
-import { HiddenBug } from './BugHunt'
 
 type Tab = 'all' | GameTag | 'new'
 
@@ -202,6 +201,7 @@ export function GameWall() {
       weekly={weekly.has(game.slug)}
       newFlag={false}
       preview
+      hunt={index === 0 ? 'home-wall' : undefined}
     />
   )
 
@@ -211,10 +211,7 @@ export function GameWall() {
         <h2 id="games-heading" className="wall__title">
           Games
         </h2>
-        <span className="wall__count">
-          {shown.length} on the floor
-          <HiddenBug spot="home-games" />
-        </span>
+        <span className="wall__count">{shown.length} on the floor</span>
         <div className="chips wall__tabs" role="tablist" aria-label="Kind of game">
           {TABS.map((t) => {
             const count = all.filter((g) => inTab(g, t.id)).length
@@ -265,6 +262,7 @@ export function WallTile({
   weekly = false,
   newFlag = true,
   preview = false,
+  hunt,
 }: {
   game: Game
   index: number
@@ -278,6 +276,8 @@ export function WallTile({
   weekly?: boolean
   /** Badge a game still being tuned as new; off where its row already says so. */
   newFlag?: boolean
+  /** Marks the tile as somewhere the bug hunt's bug can hide. */
+  hunt?: string
   /** Let a game that can play itself do so on the screen, over its thumb. */
   preview?: boolean
 }) {
@@ -317,7 +317,7 @@ export function WallTile({
     .join(', ')
 
   return (
-    <li className="wall__cell">
+    <li className="wall__cell" data-hunt={hunt}>
       <a className="wall-tile" href={gameHref(game.slug)} style={style} aria-label={label}>
         <span className="wall-tile__screen">
           <span className="wall-tile__art" aria-hidden="true">

@@ -1,5 +1,4 @@
 import { useEffect, useState, type CSSProperties } from 'react'
-import { HiddenBug } from '../components/BugHunt'
 import { ChevronRightIcon } from '../components/chromeIcons'
 import { GameHubBoard } from '../components/GameHubBoard'
 import { GameHubEvents } from '../components/GameHubEvents'
@@ -143,7 +142,6 @@ export function GameHubPage({ slug, board: boardFromRoute }: GameHubPageProps) {
             <div className="gh-shelf__head">
               <h2 id="gh-shelf-title" className="gh-shelf__title">
                 More like {game.name}
-                <HiddenBug spot={`shelf-${game.slug}`} pose="peek" />
               </h2>
               <a className="gh-more" href={`${homeHref()}#games`}>
                 All {shelf.length} games

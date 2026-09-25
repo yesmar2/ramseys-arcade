@@ -12,7 +12,6 @@ import { formatLeaderboardScore } from '../lib/leaderboardFormat'
 import { BoardEmpty } from './BoardChrome'
 import { ChevronRightIcon, PlusIcon, SparkleIcon } from './chromeIcons'
 import { PlayerAvatar } from './PlayerAvatar'
-import { HiddenBug } from './BugHunt'
 
 /** Rows at the top of the board before it skips down to you, and the rows it shows when it doesn't. */
 const TOP_ROWS = 5
@@ -67,14 +66,13 @@ export function GameHubBoard({
   const skipped = around.length ? around[0].place - top.length - 1 : players.length - top.length
 
   return (
-    <section className="gh-card gh-board" aria-labelledby="gh-board-title">
+    <section className="gh-card gh-board" aria-labelledby="gh-board-title" data-hunt={`g-board-${slug}`}>
       <div className="gh-board__head">
         <h2 id="gh-board-title" className="gh-card__title">
           {periodLabel}
           {!loading && !error ? (
             <span className="gh-board__count">
               {players.length === 0 ? 'no players yet' : `${players.length} ${players.length === 1 ? 'player' : 'players'}`}
-              <HiddenBug spot={`count-${slug}`} pose="peek" />
             </span>
           ) : null}
         </h2>

@@ -450,7 +450,7 @@ export function HomeHero() {
     }
 
     return (
-      <section className="home-banner home-banner--rung" style={style} aria-label={kicker}>
+      <section className="home-banner home-banner--rung" style={style} aria-label={kicker} data-hunt="home-hero">
         <div className="home-banner__text">
           <div className="home-banner__kicker-row">
             <p className="home-banner__kicker">{kicker}</p>
@@ -523,7 +523,7 @@ export function HomeHero() {
     const count = numberWord(homeGames(device).length)
     const daily = official.find((t) => t.cadence === 'daily') ?? null
     return (
-      <section className="home-banner home-banner--welcome" style={style} aria-label="Welcome">
+      <section className="home-banner home-banner--welcome" style={style} aria-label="Welcome" data-hunt="home-hero">
         <div className="home-banner__text">
           <p className="home-banner__kicker">Free browser arcade</p>
           <h2 className="home-banner__goal home-banner__goal--pitch">
@@ -570,7 +570,7 @@ export function HomeHero() {
   const kicker = lastPlayed ? 'Jump back in' : isNew ? 'New in the arcade' : 'Today’s pick'
 
   return (
-    <section className="home-banner" style={style} aria-label="Play">
+    <section className="home-banner" style={style} aria-label="Play" data-hunt="home-hero">
       <div className="home-banner__text">
         <p className="home-banner__kicker">{kicker}</p>
         <h2 className="home-banner__name">

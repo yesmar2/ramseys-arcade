@@ -22,7 +22,6 @@ import { resolveGameAccent } from '../lib/theme'
 import { BoardEmpty } from './BoardChrome'
 import { GameThumbArt } from './GameThumbArt'
 import { PlayerMark } from './PlayerMark'
-import { HiddenBug } from './BugHunt'
 
 /*
  * The record books' front page: who holds the most records, the ones you hold
@@ -271,12 +270,12 @@ export function RecordBooksIndex() {
           </div>
         </div>
         <ul className="rbk-books">
-          {data.books.map(({ game, records }) => {
+          {data.books.map(({ game, records }, i) => {
             const accent = accentOf(game)
             const cover = coverRecord(records)
             const yours = records.filter((r) => me && r.top && normalizePlayerName(r.top.name) === me).length
             return (
-              <li key={game}>
+              <li key={game} data-hunt={i === 0 ? 'records-books' : undefined}>
                 <a
                   className="rbk-book"
                   href={recordsHref(game)}
@@ -307,12 +306,9 @@ export function RecordBooksIndex() {
       </section>
 
       <section className="rbk-pair" aria-label="Latest records and the house book">
-        <div className="sb-card rbk-card">
+        <div className="sb-card rbk-card" data-hunt="records-latest">
           <h2 className="rbk-card__big">Latest in ink</h2>
-          <p className="rbk-card__sub">
-            The newest names in the books.
-            <HiddenBug spot="records" />
-          </p>
+          <p className="rbk-card__sub">The newest names in the books.</p>
           <ul className="rbk-latest">
             {latest.map((entry) => (
               <li key={`${entry.name}-${entry.game}-${entry.at}`}>

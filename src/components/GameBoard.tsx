@@ -41,7 +41,6 @@ import { GameThumbArt } from './GameThumbArt'
 import { LeaderboardList } from './LeaderboardList'
 import { PlayerMark } from './PlayerMark'
 import { ShareBoardButton } from './ShareBoardButton'
-import { HiddenBug } from './BugHunt'
 
 /*
  * One game's own board. The banner is the game at the scale of the page, its
@@ -172,7 +171,7 @@ function Banner({
   const closes = periodCopy(period, Date.now(), true).closes
   const style = { '--hero-accent': accent, '--hero-ink': inkOn(accent), '--tile-accent': accent } as CSSProperties
   return (
-    <section className="home-banner gb-banner" style={style} aria-labelledby="gb-title">
+    <section className="home-banner gb-banner" style={style} aria-labelledby="gb-title" data-hunt={`b-head-${slug}`}>
       <div className="home-banner__text gb-banner__text">
         <nav className="gb-crumb" aria-label="Breadcrumb">
           <a href={leaderboardHref(period)}>
@@ -543,7 +542,7 @@ function Board({
   const left = length - shown
   const game = getGame(slug)!
   return (
-    <section className="sb-card gb-board" aria-labelledby="gb-board-title">
+    <section className="sb-card gb-board" aria-labelledby="gb-board-title" data-hunt={`b-board-${slug}`}>
       <div className="gb-board__head">
         <h2 id="gb-board-title" className="gb-board__title">
           The board
@@ -575,7 +574,6 @@ function Board({
         {byPlayer
           ? 'One row per player, at their best run. Their place is what pays.'
           : 'Every run on the board, best first. A player can hold several of these.'}
-        <HiddenBug spot={`board-${slug}`} />
       </p>
       {data.loading ? (
         <BoardSkeleton rows={FIRST_ROWS} />

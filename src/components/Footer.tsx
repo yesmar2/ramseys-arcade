@@ -18,7 +18,6 @@ import { APP_NAME, CONTACT_EMAIL } from '../lib/brand'
 import { groupsIndexHref } from '../lib/groups'
 import { PERIOD_LABELS } from '../lib/leaderboard'
 import { BrandMark } from './BrandMark'
-import { HiddenBug } from './BugHunt'
 
 /**
  * The footer, with weight: the brand and its promise on the left, then a
@@ -37,9 +36,7 @@ export function Footer() {
             <BrandMark />
           </a>
           <p className="site-footer__tag">No ads. No install. Free to play.</p>
-          <p className="site-footer__lead">
-            Original games that load fast and stay out of your way.
-          </p>
+          <p className="site-footer__lead">Original games that load fast and stay out of your way.</p>
         </div>
 
         <nav className="site-footer__cols" aria-label="Site map">
@@ -137,10 +134,7 @@ export function Footer() {
         <p>
           © {year} {APP_NAME}
         </p>
-        <p>
-          Made to be played on a phone or a desk, in a browser, for free.
-          <HiddenBug spot="footer" />
-        </p>
+        <p>Made to be played on a phone or a desk, in a browser, for free.</p>
       </div>
     </footer>
   )
