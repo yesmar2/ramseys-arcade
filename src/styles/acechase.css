@@ -1,0 +1,531 @@
+/*
+ * Ace Chase: the hole fills the screen in 3D. Under the score, the hole's card with its name and the
+ * camera's set views; at the foot, the last few tries and the dials. Both are the site's glass panels,
+ * and both step aside (still taking their room, so the camera's framing doesn't jump) while the camera
+ * is showing something: the title, a flyover, a bullseye.
+ */
+
+.acechase--fullscreen {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  --ace-accent: var(--celeb-accent, var(--accent));
+  --ace-on-accent: var(--hero-ink, #03211b);
+  --ace-glass: rgba(var(--surface-rgb), 0.88);
+  --ace-line: rgba(var(--ink-rgb), 0.12);
+  --ace-fill: rgba(var(--ink-rgb), 0.06);
+}
+
+.acechase .game-play {
+  position: relative;
+}
+
+.acechase__play {
+  position: absolute;
+  inset: 0;
+  touch-action: none;
+}
+
+.acechase__holder {
+  position: absolute;
+  inset: 0;
+}
+
+.acechase__viewport {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  cursor: grab;
+}
+
+.acechase__viewport:active {
+  cursor: grabbing;
+}
+
+.acechase--cinema .acechase__viewport {
+  cursor: pointer;
+}
+
+/* The score and its figures sit over sky or grass: give them a surface to read on. */
+.acechase .play-readout__score,
+.acechase .play-stats {
+  text-shadow:
+    0 1px 0 rgba(var(--surface-rgb), 0.9),
+    0 0 14px rgba(var(--surface-rgb), 0.75);
+}
+
+.acechase__hud {
+  position: absolute;
+  inset: 0;
+  z-index: 9;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 0.6rem;
+  padding: calc(var(--readout-middle) + 1.35rem) max(0.85rem, env(safe-area-inset-right, 0px))
+    max(0.75rem, env(safe-area-inset-bottom, 0px)) max(0.85rem, env(safe-area-inset-left, 0px));
+  pointer-events: none;
+  transition: opacity 0.35s ease;
+}
+
+.acechase--cinema .acechase__hud {
+  opacity: 0;
+}
+
+.acechase__hud > * > * {
+  pointer-events: auto;
+}
+
+.acechase--cinema .acechase__hud * {
+  pointer-events: none !important;
+}
+
+.acechase__card,
+.acechase__dock,
+.acechase__log span,
+.acechase__toast,
+.acechase__banner,
+.acechase__holed {
+  background: var(--ace-glass);
+  border: 1px solid var(--ace-line);
+  box-shadow: var(--shadow-soft);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+}
+
+.acechase__card {
+  align-self: flex-start;
+  display: grid;
+  gap: 0.35rem;
+  width: min(27rem, 100%);
+  box-sizing: border-box;
+  padding: 0.7rem 0.75rem 0.75rem 1rem;
+  border-radius: 1.5rem;
+  pointer-events: auto;
+}
+
+.acechase__card-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem 0.6rem;
+}
+
+.acechase__name {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(1.1rem, 4.2vw, 1.35rem);
+  font-weight: 750;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  color: var(--ink);
+}
+
+.acechase__views {
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 999px;
+  background: var(--ace-fill);
+}
+
+.acechase__views button {
+  min-height: 2.1rem;
+  padding: 0 0.8rem;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: rgba(var(--ink-rgb), 0.66);
+  font: 600 0.8rem/1 var(--font-display);
+  cursor: pointer;
+}
+
+.acechase__views button:hover:not(:disabled) {
+  color: var(--ink);
+}
+
+.acechase__views button[aria-pressed='true'] {
+  background: var(--ace-accent);
+  color: var(--ace-on-accent);
+}
+
+.acechase__views button:disabled {
+  cursor: default;
+}
+
+.acechase__note {
+  margin: 0;
+  max-width: 44ch;
+  font-size: 0.86rem;
+  line-height: 1.4;
+  color: rgba(var(--ink-rgb), 0.68);
+}
+
+.acechase__bottom {
+  display: grid;
+  justify-items: center;
+  gap: 0.5rem;
+}
+
+.acechase__log {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.35rem;
+  max-width: 46rem;
+}
+
+.acechase__log span {
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: 0.45rem 0.8rem;
+  border-radius: 999px;
+  font: 500 0.8rem/1.25 var(--font-display);
+  font-variant-numeric: tabular-nums;
+  color: rgba(var(--ink-rgb), 0.68);
+  text-align: center;
+}
+
+.acechase__log b {
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.acechase__log .is-last {
+  color: var(--ink);
+  border-color: color-mix(in srgb, var(--ace-accent) 60%, transparent);
+}
+
+.acechase__log .is-bull {
+  background: var(--ace-accent);
+  border-color: var(--ace-accent);
+  color: var(--ace-on-accent);
+}
+
+.acechase__log .is-bull b {
+  color: var(--ace-on-accent);
+}
+
+.acechase__dock {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 0.75rem;
+  width: min(46rem, 100%);
+  box-sizing: border-box;
+  padding: 0.75rem;
+  border-radius: 1.5rem;
+}
+
+.acechase__dial {
+  flex: 1 1 13rem;
+  display: grid;
+  grid-template-columns: 3rem 1fr 3rem;
+  align-items: center;
+  column-gap: 0.4rem;
+}
+
+.acechase__dial label {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0 0.35rem 0.35rem;
+  font-family: var(--font-display);
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(var(--ink-rgb), 0.62);
+}
+
+.acechase__dial label small {
+  font-size: 0.74rem;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.acechase__step {
+  width: 3rem;
+  height: 3rem;
+  border-radius: 50%;
+  border: 1px solid var(--ace-line);
+  background: var(--ace-fill);
+  color: var(--ink);
+  font: 500 1.55rem/1 var(--font-display);
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+}
+
+.acechase__step:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--ace-accent) 55%, transparent);
+}
+
+.acechase__step:active:not(:disabled) {
+  background: color-mix(in srgb, var(--ace-accent) 24%, transparent);
+}
+
+.acechase__dial input {
+  width: 100%;
+  min-width: 0;
+  height: 3rem;
+  box-sizing: border-box;
+  border: 1px solid var(--ace-line);
+  border-radius: 1rem;
+  background: var(--ace-fill);
+  color: var(--ink);
+  font: 650 1.5rem/1 var(--font-display);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.acechase__step:disabled,
+.acechase__dial input:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.acechase__putt {
+  flex: 1 1 8rem;
+  min-height: 3.25rem;
+  padding: 0 1.2rem;
+  border: 0;
+  border-radius: 999px;
+  background: var(--ace-accent);
+  color: var(--ace-on-accent);
+  font: 700 1.1rem/1 var(--font-display);
+  cursor: pointer;
+  touch-action: manipulation;
+  box-shadow: 0 10px 24px color-mix(in srgb, var(--ace-accent) 28%, transparent);
+  transition:
+    transform 0.12s ease,
+    filter 0.12s ease;
+}
+
+.acechase__putt:hover:not(:disabled) {
+  filter: brightness(1.06);
+  transform: translateY(-1px);
+}
+
+.acechase__putt.is-skip {
+  background: transparent;
+  color: var(--ink);
+  border: 1px solid rgba(var(--ink-rgb), 0.2);
+  box-shadow: none;
+  font-weight: 600;
+}
+
+.acechase__putt:disabled {
+  background: var(--ace-fill);
+  color: rgba(var(--ink-rgb), 0.5);
+  box-shadow: none;
+  cursor: default;
+}
+
+.acechase button:focus-visible,
+.acechase input:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--ace-accent) 70%, transparent);
+  outline-offset: 2px;
+}
+
+/* A try's result, a hint, the flyover's title and a bullseye: over the view, never over the dials. */
+.acechase__toast {
+  position: absolute;
+  left: 50%;
+  top: 38%;
+  z-index: 11;
+  transform: translate(-50%, -50%);
+  width: max-content;
+  max-width: calc(100% - 2.5rem);
+  box-sizing: border-box;
+  padding: 0.65rem 1.1rem;
+  border-radius: 999px;
+  font: 600 0.98rem/1.3 var(--font-display);
+  color: var(--ink);
+  text-align: center;
+  pointer-events: none;
+  animation: acechase-in 0.2s ease-out;
+}
+
+.acechase__toast--hint {
+  font-weight: 500;
+  font-size: 0.9rem;
+}
+
+.acechase__banner,
+.acechase__holed {
+  position: absolute;
+  left: 50%;
+  z-index: 11;
+  transform: translateX(-50%);
+  display: grid;
+  justify-items: center;
+  gap: 0.3rem;
+  width: max-content;
+  max-width: calc(100% - 2.5rem);
+  box-sizing: border-box;
+  padding: 0.8rem 1.3rem;
+  border-radius: 1.5rem;
+  text-align: center;
+  pointer-events: none;
+  animation: acechase-in 0.25s ease-out;
+}
+
+.acechase__banner {
+  bottom: max(1.75rem, calc(env(safe-area-inset-bottom, 0px) + 1rem));
+}
+
+.acechase__banner strong,
+.acechase__holed strong {
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+
+.acechase__banner span,
+.acechase__holed span {
+  font-size: 0.82rem;
+  color: rgba(var(--ink-rgb), 0.68);
+}
+
+/* Above the bull the camera circles, not over it. */
+.acechase__holed {
+  top: 15%;
+  padding: 1rem 1.6rem;
+}
+
+.acechase__holed strong {
+  font-size: clamp(1.8rem, 7vw, 2.4rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: color-mix(in srgb, var(--ace-accent) 60%, var(--ink));
+}
+
+.acechase__holed span {
+  font-size: 1rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+@keyframes acechase-in {
+  from {
+    opacity: 0;
+    translate: 0 8px;
+  }
+}
+
+.acechase__nogl {
+  position: absolute;
+  inset: 0;
+  z-index: 12;
+  display: grid;
+  place-items: center;
+  padding: 2rem;
+  text-align: center;
+  color: var(--ink);
+  background: var(--playfield);
+}
+
+.acechase__overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4.75rem 0.85rem max(1rem, env(safe-area-inset-bottom));
+  overflow: auto;
+  pointer-events: none;
+  z-index: 45;
+}
+
+/* A phone: the card full width, the two dials stacked beside a tall Putt, two tries in the log. */
+@media (max-width: 560px) {
+  .acechase__card {
+    width: 100%;
+  }
+
+  .acechase__note {
+    font-size: 0.82rem;
+  }
+
+  .acechase__log span:nth-last-child(n + 3) {
+    display: none;
+  }
+
+  .acechase__dock {
+    display: grid;
+    grid-template-columns: 1fr 5.4rem;
+    grid-template-areas:
+      'power putt'
+      'angle putt';
+    gap: 0.5rem 0.6rem;
+    padding: 0.65rem;
+  }
+
+  #acechase-power-dial {
+    grid-area: power;
+  }
+
+  #acechase-angle-dial {
+    grid-area: angle;
+  }
+
+  .acechase__putt {
+    grid-area: putt;
+    align-self: stretch;
+    padding: 0 0.5rem;
+    border-radius: 1.5rem;
+    white-space: normal;
+    line-height: 1.15;
+  }
+
+  .acechase__dial {
+    grid-template-columns: 2.75rem 1fr 2.75rem;
+  }
+
+  .acechase__dial label {
+    padding-bottom: 0.25rem;
+  }
+
+  .acechase__dial label small {
+    display: none;
+  }
+
+  .acechase__step {
+    width: 2.75rem;
+    height: 2.75rem;
+    font-size: 1.4rem;
+  }
+
+  .acechase__dial input {
+    height: 2.75rem;
+    font-size: 1.3rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .acechase__hud {
+    transition: none;
+  }
+
+  .acechase__toast,
+  .acechase__banner,
+  .acechase__holed {
+    animation: none;
+  }
+}

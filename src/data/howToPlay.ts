@@ -255,6 +255,17 @@ export const HOW_TO_PLAY: Record<string, HowToPlay> = {
     ends: 'One wrong note in a tune.',
     tip: 'A lost Catch or Follow only leaves its lantern dark.',
   },
+  acechase: {
+    goal: 'Stop the ball on the bullseye, in as few tries as you can.',
+    controls: [
+      { does: 'Set the shot', touch: 'Tap − and +, or type', keys: '↑ ↓ power · ← → angle' },
+      { does: 'Putt', touch: 'Tap Putt', keys: 'Space' },
+      { does: 'Look around', touch: 'Drag · pinch · two fingers', keys: 'Drag · scroll · right-drag' },
+    ],
+    scores: [{ what: 'Each hole', pts: '1000 ÷ tries', sub: 'first try 1000 · two 500 · five 200' }],
+    ends: 'After three holes.',
+    tip: 'The targets move every round. Each miss says how far off it was.',
+  },
 }
 
 export function howToPlayFor(slug: string): HowToPlay | null {

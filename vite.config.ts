@@ -80,8 +80,9 @@ export default defineConfig(({ mode }) => {
         },
         // Routing, cleanup and claim now live in src/sw.ts.
         injectManifest: {
-          // Share images are for link unfurlers, not the offline shell.
-          globIgnores: ['**/node_modules/**/*', 'og.png', 'og/**'],
+          // Share images are for link unfurlers, not the offline shell. Ace Chase carries a 3D engine (about a
+          // fifth of everything else put together), so it downloads when someone opens it, not with the app.
+          globIgnores: ['**/node_modules/**/*', 'og.png', 'og/**', 'assets/AceChaseGame-*'],
           globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2,webmanifest}'],
         },
         /*

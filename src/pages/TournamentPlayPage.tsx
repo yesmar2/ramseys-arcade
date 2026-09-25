@@ -34,6 +34,7 @@ import { TournamentPlayProvider } from '../tournaments/TournamentPlayContext'
  * time the gate opens the game is usually already here.
  */
 const TOURNAMENT_GAMES: Record<string, LazyPage<object>> = {
+  acechase: lazyPage(() => import('../games/acechase/AceChaseGame').then((m) => m.AceChaseGame)),
   asteroids: lazyPage(() => import('../games/asteroids/AsteroidsGame').then((m) => m.AsteroidsGame)),
   barrage: lazyPage(() => import('../games/barrage/BarrageGame').then((m) => m.BarrageGame)),
   centroid: lazyPage(() => import('../games/dead-center/DeadCenterGame').then((m) => m.DeadCenterGame)),

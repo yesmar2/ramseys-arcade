@@ -799,6 +799,68 @@ function Putt({ id }: { id: Id }) {
   )
 }
 
+/**
+ * Down the lane at dusk from behind the ball: the green between its rails, the bullseye at the far end
+ * under its teal beacon, and the gold line of the last try curling up to it.
+ */
+function AceChase({ id }: { id: Id }) {
+  const left = 'M8.5 31 C10.5 25 14.2 21 15.4 17.6 C16.2 15.4 16.5 13.8 16.9 11.8'
+  const right = 'M31.5 31 C29.5 25 26.6 21 25.4 17.6 C24.4 15 23.6 13.6 23.1 11.8'
+  const lane = `${left} L23.1 11.8 C23.6 13.6 24.4 15 25.4 17.6 C26.6 21 29.5 25 31.5 31 Z`
+  return (
+    <>
+      <defs>
+        <linearGradient id={id('sky')} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#0d1a2b" />
+          <stop offset="1" stopColor="#4a5a6e" />
+        </linearGradient>
+        <radialGradient id={id('sun')} cx="0.5" cy="0.5" r="0.5">
+          <stop offset="0" stopColor="#f29a5a" stopOpacity="0.75" />
+          <stop offset="1" stopColor="#f29a5a" stopOpacity="0" />
+        </radialGradient>
+        <linearGradient id={id('beam')} x1="0" y1="1" x2="0" y2="0">
+          <stop offset="0" stopColor="#5fe3c9" stopOpacity="0.85" />
+          <stop offset="1" stopColor="#5fe3c9" stopOpacity="0" />
+        </linearGradient>
+        <pattern id={id('mow')} width="40" height="2.4" patternUnits="userSpaceOnUse">
+          <rect width="40" height="2.4" fill="#2f8a47" />
+          <rect width="40" height="1.2" fill="#29793f" />
+        </pattern>
+      </defs>
+      <rect x="-1" y="-1" width="42" height="14" fill={`url(#${id('sky')})`} />
+      <ellipse cx="6" cy="11.6" rx="11" ry="5" fill={`url(#${id('sun')})`} />
+      <path d="M-1 12.6 C4 9.6 9 10.8 13 11.6 C17 9.8 23 10 27 11.4 C31 9.4 37 9.8 41 11.8 V31 H-1 Z" fill="#1b2e22" />
+      {[
+        [3.5, 11.2, 2.4],
+        [9, 10.6, 2],
+        [30.5, 10.4, 2.3],
+        [36.5, 11, 2.6],
+      ].map(([x, y, r]) => (
+        <circle key={`${x}-${y}`} cx={x} cy={y} r={r} fill="#14241a" />
+      ))}
+      <path d={lane} fill={`url(#${id('mow')})`} />
+      <path d={left} {...line('#6b4a2e', 1.3)} />
+      <path d={right} {...line('#6b4a2e', 1.3)} />
+      <path d={left} {...line('#eee9dd', 0.55)} />
+      <path d={right} {...line('#eee9dd', 0.55)} />
+      <path d="M17.6 20.6 C19.4 20.1 21.6 20.2 23.2 20.8" {...line('#3ca057', 0.9, 0.55)} />
+      <path d="M17.1 16.4 C18.8 16 21.4 16 22.9 16.5" {...line('#3ca057', 0.7, 0.5)} />
+      <ellipse cx="20" cy="13.9" rx="3.3" ry="1.15" fill="#22364a" stroke="#f7f5ee" strokeWidth="0.18" />
+      <ellipse cx="20" cy="13.9" rx="2.05" ry="0.72" fill="#f7f5ee" />
+      <ellipse cx="20" cy="13.9" rx="0.95" ry="0.34" fill="#2eb8a0" stroke="#22364a" strokeWidth="0.1" />
+      <path d="M19.35 13.9 L19.75 1 H20.25 L20.65 13.9 Z" fill={`url(#${id('beam')})`} />
+      <ellipse cx="20" cy="13.9" rx="0.24" ry="0.1" fill="#fff" />
+      <path d="M20.2 24.4 C24.8 21.8 16.4 19.4 19.4 16.2 C19.9 15.3 20.2 14.8 20.1 14.2" {...line('#f5b942', 0.42)} />
+      <path d="M19.8 24.4 C15.8 21.2 23.8 18.4 21.2 15.4" {...line('#f3f6ee', 0.3, 0.4)} />
+      <ellipse cx="20.5" cy="26.4" rx="1.6" ry="0.55" fill="#000" opacity="0.3" />
+      <circle cx="15.8" cy="26.2" r="0.55" fill="#2eb8a0" />
+      <circle cx="24.2" cy="26.2" r="0.55" fill="#2eb8a0" />
+      <circle cx="20" cy="25.3" r="1.45" fill="#f7f8fa" stroke={hsl(210, 20, 26, 0.6)} strokeWidth="0.22" />
+      <path d="M18.62 25.05 C19.5 25.55 20.5 25.55 21.38 25.05" {...line('#2eb8a0', 0.34)} />
+    </>
+  )
+}
+
 /** A fish; its mouth at +x. */
 function Fish({ x, y, scale, flip = false, body, fin, glow }: { x: number; y: number; scale: number; flip?: boolean; body: [number, number, number]; fin?: [number, number, number]; glow?: boolean }) {
   const [h, s, l] = body
@@ -946,6 +1008,7 @@ const SCENES: Record<string, Scene> = {
   putt: Putt,
   frenzy: Frenzy,
   fireflies: Fireflies,
+  acechase: AceChase,
 }
 
 /**

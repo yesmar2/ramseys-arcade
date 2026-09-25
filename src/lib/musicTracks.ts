@@ -408,6 +408,7 @@ const GAME_MUSIC: Record<string, TrackId> = {
   stacker: 'paper',
   centroid: 'paper',
   putt: 'paper',
+  acechase: 'paper',
   findbug: 'paper',
   spotter: 'paper',
   // A tune to sing back wants no other melody over it: only the pond.

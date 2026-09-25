@@ -7,6 +7,7 @@ import { lazyPage, type LazyPage } from '../lib/lazyPage'
  * lands on a game that is already here.
  */
 export const GAME_PAGES: Record<string, LazyPage<object>> = {
+  acechase: lazyPage(() => import('./AceChasePage').then((m) => m.AceChasePage)),
   asteroids: lazyPage(() => import('./AsteroidsPage').then((m) => m.AsteroidsPage)),
   barrage: lazyPage(() => import('./BarragePage').then((m) => m.BarragePage)),
   bop: lazyPage(() => import('./BopPage').then((m) => m.BopPage)),
