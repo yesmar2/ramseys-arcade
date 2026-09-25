@@ -1107,18 +1107,6 @@ html[data-theme="dark"] .rbk-book__value b {
   justify-content: flex-end;
 }
 
-.rcd-field__dot--record {
-  z-index: 1;
-  width: 0.8rem;
-  height: 0.8rem;
-  margin-left: -0.4rem;
-  background: var(--sb-gold);
-}
-
-.rcd-field__record {
-  color: var(--sb-gold-ink);
-}
-
 /* ---------- the book around it ---------- */
 
 .rcd-near__rows {

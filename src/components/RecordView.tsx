@@ -21,7 +21,6 @@ import {
   onTheBoard,
   placeStoryLabels,
   recordDay,
-  recordField,
   recordHeadline,
   recordLede,
   recordStanding,
@@ -679,30 +678,6 @@ function Board({
 
 /* ---------- beside it ---------- */
 
-function FieldCard({ record, entries, you }: { record: RecordDef; entries: LeaderboardEntry[]; you: string }) {
-  const field = recordField(record, entries, you)
-  return (
-    <div className="sb-card gb-field">
-      <h2 className="sb-card__title">Where everyone’s best lands</h2>
-      <p className="gb-card__sub">{field.sub}</p>
-      <div className="gb-field__plot" aria-hidden="true">
-        <span className="gb-field__axis" />
-        {field.dots.map((d) => (
-          <span
-            key={d.key}
-            className={`gb-field__dot${d.mine ? ' gb-field__dot--you' : d.top ? ' rcd-field__dot--record' : ''}`}
-            style={{ left: `${d.left}%`, top: `${0.5 + d.row * 0.45}rem` }}
-          />
-        ))}
-      </div>
-      <div className="gb-field__ends" aria-hidden="true">
-        <span>{field.low}</span>
-        <span className="rcd-field__record">{field.high}</span>
-      </div>
-    </div>
-  )
-}
-
 function NearbyCard({
   game,
   recordId,
@@ -849,7 +824,6 @@ export function RecordView({ game, recordId, period }: { game: string; recordId:
         />
         {!data.loading && record ? (
           <aside className="gb-side" aria-label="More about this record">
-            {entries.length >= 3 ? <FieldCard record={record} entries={entries} you={you} /> : null}
             <NearbyCard game={game} recordId={recordId} period={period} record={record} book={data.book} you={you} />
           </aside>
         ) : null}

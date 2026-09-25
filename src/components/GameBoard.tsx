@@ -11,7 +11,6 @@ import {
   boardHeadline,
   boardLede,
   boardYouStats,
-  fieldStrip,
   offBoardLines,
   playersFromRuns,
   priceList,
@@ -47,8 +46,7 @@ import { ShareBoardButton } from './ShareBoardButton'
  * demo playing on the screen, with who leads it and by how much. Then where
  * you stand on it and your runs, and the board itself: one row per player at
  * their best run, with what their place pays, and every run a tap away. Beside
- * it, what a run is worth here, where everyone's best lands, and the way on to
- * the other boards.
+ * it, what a run is worth here and the way on to the other boards.
  */
 
 const MEDALS = ['gold', 'silver', 'bronze'] as const
@@ -411,38 +409,6 @@ function PriceCard({ slug, copy, players }: { slug: string; copy: PeriodCopy; pl
   )
 }
 
-function FieldCard({ slug, players, you }: { slug: string; players: BoardPlayer[]; you: string }) {
-  const strip = fieldStrip(players, you)
-  return (
-    <div className="sb-card gb-field">
-      <h2 className="sb-card__title">Where everyone’s best lands</h2>
-      <p className="gb-card__sub">
-        {players.length.toLocaleString()} players, from {formatLeaderboardScore(slug, strip.low.best.score)} to{' '}
-        {formatLeaderboardScore(slug, strip.high.best.score)}
-      </p>
-      <div className="gb-field__plot" aria-hidden="true">
-        <span className="gb-field__axis" />
-        {strip.marks.map((m) => (
-          <span key={m.label} className="gb-field__mark" style={{ left: `${m.left}%` }}>
-            <span>{m.label}</span>
-          </span>
-        ))}
-        {strip.dots.map((d) => (
-          <span
-            key={d.name}
-            className={`gb-field__dot${d.mine ? ' gb-field__dot--you' : ''}`}
-            style={{ left: `${d.left}%`, top: `${0.5 + d.row * 0.45}rem` }}
-          />
-        ))}
-      </div>
-      <div className="gb-field__ends" aria-hidden="true">
-        <span>{formatLeaderboardScore(slug, strip.low.best.score)}</span>
-        <span>{formatLeaderboardScore(slug, strip.high.best.score)}</span>
-      </div>
-    </div>
-  )
-}
-
 function OtherBoards({ others, period }: { others: ReturnType<typeof useGameBoard>['others']; period: LeaderboardPeriod }) {
   if (!others.length) return null
   // Yours first, by place; then the ones with runs; then the rest, in the catalog's order.
@@ -682,7 +648,6 @@ export function GameBoard({ slug, period }: { slug: LeaderboardGame; period: Lea
         {!data.loading ? (
           <aside className="gb-side" aria-label="More about this board">
             {standing ? <PriceCard slug={slug} copy={copy} players={players} /> : null}
-            {players.length >= 3 ? <FieldCard slug={slug} players={players} you={you} /> : null}
             <OtherBoards others={data.others} period={period} />
           </aside>
         ) : null}

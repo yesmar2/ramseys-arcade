@@ -1389,8 +1389,8 @@ a.sb-board__link:hover .sb-board__go {
 /* ==========================================================================
    One game's board, inside the same scoreboard (`.sb.gb`): the game's own
    banner, your place and your runs, the board by player with what each place
-   pays, and beside it what a run is worth here, where everyone's best lands,
-   and the other boards. `--gb-accent` is the game's colour.
+   pays, and beside it what a run is worth here and the other boards.
+   `--gb-accent` is the game's colour.
    ========================================================================== */
 
 .sb.gb {
@@ -1583,7 +1583,6 @@ a.sb-board__link:hover .sb-board__go {
 
 .gb-runs,
 .gb-price,
-.gb-field,
 .gb-more {
   padding: 1.5rem 1.6rem;
 }
@@ -1734,73 +1733,6 @@ a.sb-board__link:hover .sb-board__go {
   font-size: 1.35rem;
   font-weight: 800;
   color: var(--sb-brand-ink);
-  font-variant-numeric: tabular-nums;
-}
-
-/* ---------- where everyone's best lands ---------- */
-
-.gb-field__plot {
-  position: relative;
-  height: 4.2rem;
-  margin-top: 1.2rem;
-}
-
-.gb-field__axis {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0.4rem;
-  height: 2px;
-  border-radius: 2px;
-  background: var(--sb-line-2);
-}
-
-.gb-field__mark {
-  position: absolute;
-  top: 0;
-  bottom: 0.4rem;
-  border-left: 1.5px dashed var(--sb-line-2);
-}
-
-.gb-field__mark span {
-  position: absolute;
-  left: 0.3rem;
-  top: -0.15rem;
-  font-size: 0.62rem;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  white-space: nowrap;
-  color: var(--muted);
-}
-
-.gb-field__dot {
-  position: absolute;
-  width: 0.55rem;
-  height: 0.55rem;
-  margin-left: -0.275rem;
-  border-radius: 50%;
-  background: color-mix(in srgb, var(--gb-accent) 70%, transparent);
-}
-
-.gb-field__dot--you {
-  z-index: 1;
-  width: 0.9rem;
-  height: 0.9rem;
-  margin-left: -0.45rem;
-  background: var(--accent);
-  box-shadow:
-    0 0 0 3px var(--surface),
-    0 0 0 4.5px var(--accent);
-}
-
-.gb-field__ends {
-  display: flex;
-  justify-content: space-between;
-  margin-top: 0.4rem;
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: var(--muted);
   font-variant-numeric: tabular-nums;
 }
 
@@ -2180,7 +2112,6 @@ a.sb-board__link:hover .sb-board__go {
 
   .gb-runs,
   .gb-price,
-  .gb-field,
   .gb-more {
     padding: 1.2rem 1.1rem;
   }

@@ -564,29 +564,7 @@ export function placeStoryLabels(
   return spots
 }
 
-/* ---------- the field, and the book around it ---------- */
-
-/** Everyone's best on a line, better to the right, stacked where they crowd. */
-export function recordField(record: Rec, entries: LeaderboardEntry[], me: string) {
-  const scores = entries.map((e) => e.score)
-  const lower = record.direction === 'lower'
-  const best = lower ? Math.min(...scores) : Math.max(...scores)
-  const worst = lower ? Math.max(...scores) : Math.min(...scores)
-  const range = Math.abs(worst - best) || 1
-  const placed: number[] = []
-  const dots = entries.map((e, i) => {
-    const left = 2 + (Math.abs(e.score - worst) / range) * 96
-    const row = Math.min(3, placed.filter((p) => Math.abs(p - left) < 2.2).length)
-    placed.push(left)
-    return { key: e.id, left, row, mine: Boolean(me) && e.name === me, top: i === 0 }
-  })
-  return {
-    dots,
-    low: recordValue(record, worst),
-    high: recordValue(record, best),
-    sub: `From ${recordValue(record, worst)} to the record, ${recordValue(record, best)}. Better is to the right.`,
-  }
-}
+/* ---------- the book around it ---------- */
 
 const GROUP_ORDER: Record<RecordKind, number> = { streaks: 0, run: 1, clock: 2 }
 

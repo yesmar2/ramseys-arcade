@@ -235,24 +235,7 @@ export function priceList(slug: string, players: BoardPlayer[]): PriceRow[] {
   return rows
 }
 
-/* ---------- charts ---------- */
-
-/** Everyone's best along one line, lowest to highest, with the top ten and halfway marked. */
-export function fieldStrip(players: BoardPlayer[], me: string) {
-  const scores = players.map((p) => p.best.score)
-  const low = Math.min(...scores)
-  const high = Math.max(...scores)
-  const at = (score: number) => (high > low ? ((score - low) / (high - low)) * 100 : 50)
-  const marks: { label: string; left: number }[] = []
-  if (players.length >= 10) marks.push({ label: 'Top ten', left: at(players[9].best.score) })
-  if (players.length >= 6) marks.push({ label: 'Halfway', left: at(players[Math.ceil(players.length / 2) - 1].best.score) })
-  return {
-    low: players[players.length - 1],
-    high: players[0],
-    dots: players.map((p, i) => ({ name: p.name, left: at(p.best.score), row: i % 4, mine: Boolean(me) && p.name === me })),
-    marks,
-  }
-}
+/* ---------- your runs, charted ---------- */
 
 /** Most runs a chart shows: the latest ones, oldest first. */
 const CHART_RUNS = 12
