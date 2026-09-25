@@ -1,11 +1,14 @@
 import {
   useEffect,
   useMemo,
+  useRef,
   useState,
   type CSSProperties,
   type Dispatch,
   type FormEvent,
+  type KeyboardEvent as ReactKeyboardEvent,
   type ReactNode,
+  type RefObject,
   type SetStateAction,
 } from 'react'
 import { EventArtBox } from '../components/EventsHome'
@@ -174,6 +177,109 @@ function LimitField({
   )
 }
 
+function Chevron() {
+  return (
+    <svg className="ev-pick__chev" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
+      <path d="M2.5 4.5 6 8l3.5-3.5" />
+    </svg>
+  )
+}
+
+/**
+ * The games a round can be moved to, or given as a second: game art and
+ * names in a panel under the round, in place of the browser's own list,
+ * which no styling reaches. Arrow keys move through it; Escape, a pick or a
+ * click anywhere else closes it.
+ */
+function RoundGameMenu({
+  label,
+  options,
+  current,
+  within,
+  onPick,
+  onClose,
+}: {
+  label: string
+  options: readonly EventGame[]
+  current: EventGame | null
+  /** The round's row: a click inside it isn't a click away. */
+  within: RefObject<HTMLLIElement | null>
+  onPick: (slug: EventGame) => void
+  onClose: (refocus: boolean) => void
+}) {
+  const ref = useRef<HTMLDivElement>(null)
+  // The latest close, so the page re-rendering doesn't send focus back into the menu.
+  const close = useRef(onClose)
+  useEffect(() => {
+    close.current = onClose
+  })
+
+  useEffect(() => {
+    const menu = ref.current
+    const start = menu?.querySelector<HTMLButtonElement>('[aria-checked="true"]') ?? menu?.querySelector<HTMLButtonElement>('button')
+    start?.focus()
+    const onPointer = (e: PointerEvent) => {
+      if (!within.current?.contains(e.target as Node)) close.current(false)
+    }
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return
+      e.preventDefault()
+      close.current(true)
+    }
+    window.addEventListener('pointerdown', onPointer)
+    window.addEventListener('keydown', onKey)
+    return () => {
+      window.removeEventListener('pointerdown', onPointer)
+      window.removeEventListener('keydown', onKey)
+    }
+  }, [within])
+
+  const move = (e: ReactKeyboardEvent<HTMLDivElement>) => {
+    const menu = ref.current
+    if (!menu) return
+    const items = [...menu.querySelectorAll<HTMLButtonElement>('button')]
+    const at = items.indexOf(document.activeElement as HTMLButtonElement)
+    const across = getComputedStyle(menu).gridTemplateColumns.split(' ').filter(Boolean).length || 1
+    const step: Record<string, number> = { ArrowRight: 1, ArrowLeft: -1, ArrowDown: across, ArrowUp: -across }
+    let next: number
+    if (e.key in step) next = at + step[e.key]!
+    else if (e.key === 'Home') next = 0
+    else if (e.key === 'End') next = items.length - 1
+    else return
+    e.preventDefault()
+    items[Math.max(0, Math.min(items.length - 1, next))]?.focus()
+  }
+
+  return (
+    <div className="ev-gamemenu" role="menu" aria-label={label} ref={ref} onKeyDown={move}>
+      {options.map((slug) => {
+        const g = getGame(slug)
+        const gameAccent = resolveGameAccent(slug, g?.accent ?? '#2eb8a0')
+        const on = slug === current
+        return (
+          <button
+            key={slug}
+            type="button"
+            role="menuitemradio"
+            aria-checked={on}
+            className={`ev-gamemenu__opt${on ? ' ev-gamemenu__opt--on' : ''}`}
+            style={{ '--game-accent': gameAccent } as CSSProperties}
+            onClick={() => onPick(slug)}
+          >
+            <GameThumbArt slug={slug} accent={gameAccent} />
+            <span className="ev-gamemenu__name">{g?.name ?? slug}</span>
+            {on ? (
+              <span className="ev-gamemenu__check" aria-hidden="true">
+                ✓
+              </span>
+            ) : null}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
 export function CreateTournamentPage() {
   const { account, limits, loading: authLoading } = useAuth()
   const [kind, setKind] = useState<TournamentKind>('scores')
@@ -196,6 +302,9 @@ export function CreateTournamentPage() {
    * through — which is what every bracket did before this existed.
    */
   const [roundGames, setRoundGames] = useState<EventGame[][]>([])
+  /** The round whose game menu is open: to move it to another game, or to add one. */
+  const [roundMenu, setRoundMenu] = useState<{ round: number; mode: 'swap' | 'add' } | null>(null)
+  const roundMenuRow = useRef<HTMLLIElement>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [planError, setPlanError] = useState<unknown>(null)
@@ -322,9 +431,30 @@ export function CreateTournamentPage() {
     if (next === 'double') setMaxPlayers((n) => snapToDoubleElimSize(n))
   }
 
-  /** One round of a bracket moved to another game. */
-  const swapRoundGame = (index: number, slug: EventGame) => {
-    setRoundGames((prev) => prev.map((cur, i) => (i === index ? [slug] : cur)))
+  const closeRoundMenu = (refocus: boolean) => {
+    const was = roundMenu
+    setRoundMenu(null)
+    if (!refocus || !was) return
+    // Back to the control that opened it, or the round's other one if a pick changed which it has.
+    setTimeout(() => {
+      const row = document.querySelector<HTMLElement>(`[data-round="${was.round}"]`)
+      const back =
+        row?.querySelector<HTMLButtonElement>(`[data-round-menu="${was.mode}"]`) ??
+        row?.querySelector<HTMLButtonElement>('[data-round-menu]')
+      back?.focus()
+    }, 0)
+  }
+
+  /** A pick from a round's menu: the round moved to that game, or given it as another. */
+  const pickRoundGame = (index: number, mode: 'swap' | 'add', slug: EventGame) => {
+    setRoundGames((prev) =>
+      prev.map((cur, i) => {
+        if (i !== index) return cur
+        if (mode === 'swap') return [slug]
+        return cur.includes(slug) ? cur : [...cur, slug]
+      }),
+    )
+    closeRoundMenu(true)
   }
 
   const toggleGame = (slug: EventGame) => {
@@ -624,27 +754,34 @@ export function CreateTournamentPage() {
                           const spare = EVENT_GAMES.filter((g) => !round.includes(g))
                           const only = round.length === 1 ? round[0] : null
                           const onlyAccent = only ? resolveGameAccent(only, getGame(only)?.accent ?? accent) : accent
+                          const open = roundMenu?.round === i ? roundMenu.mode : null
+                          const toggle = (mode: 'swap' | 'add') =>
+                            setRoundMenu((was) => (was?.round === i && was.mode === mode ? null : { round: i, mode }))
                           return (
-                            <li className="ev-round" key={i}>
+                            <li
+                              className={`ev-round${open ? ' ev-round--menu' : ''}`}
+                              key={i}
+                              data-round={i}
+                              ref={open ? roundMenuRow : undefined}
+                            >
                               <span className="ev-round__name">{label}</span>
                               <span className="ev-round__picks">
                                 {only ? (
-                                  // A round of one game: the chip is the control that changes it.
-                                  <label className="ev-pick" style={{ '--game-accent': onlyAccent } as CSSProperties}>
+                                  // A round of one game: its chip opens the menu that changes it.
+                                  <button
+                                    type="button"
+                                    className="ev-pick ev-pick--menu"
+                                    style={{ '--game-accent': onlyAccent } as CSSProperties}
+                                    data-round-menu="swap"
+                                    aria-haspopup="menu"
+                                    aria-expanded={open === 'swap'}
+                                    aria-label={`${label}: ${getGame(only)?.name ?? only}. Change the game`}
+                                    onClick={() => toggle('swap')}
+                                  >
                                     <GameThumbArt slug={only} accent={onlyAccent} />
-                                    <span className="visually-hidden">Game for {label}</span>
-                                    <select
-                                      className="ev-pick__select"
-                                      value={only}
-                                      onChange={(e) => swapRoundGame(i, e.target.value as EventGame)}
-                                    >
-                                      {EVENT_GAMES.map((option) => (
-                                        <option key={option} value={option}>
-                                          {getGame(option)?.name ?? option}
-                                        </option>
-                                      ))}
-                                    </select>
-                                  </label>
+                                    <span className="ev-pick__name">{getGame(only)?.name ?? only}</span>
+                                    <Chevron />
+                                  </button>
                                 ) : (
                                   round.map((slug) => {
                                     const g = getGame(slug)
@@ -674,29 +811,29 @@ export function CreateTournamentPage() {
                                   })
                                 )}
                                 {spare.length ? (
-                                  <label className="ev-round__add">
-                                    <span className="visually-hidden">Add a game to {label}</span>
-                                    <select
-                                      className="ev-round__select"
-                                      value=""
-                                      onChange={(e) => {
-                                        const next = e.target.value as EventGame
-                                        if (!next) return
-                                        setRoundGames((prev) =>
-                                          prev.map((cur, idx) => (idx === i && !cur.includes(next) ? [...cur, next] : cur)),
-                                        )
-                                      }}
-                                    >
-                                      <option value="">+ Add</option>
-                                      {spare.map((option) => (
-                                        <option key={option} value={option}>
-                                          {getGame(option)?.name ?? option}
-                                        </option>
-                                      ))}
-                                    </select>
-                                  </label>
+                                  <button
+                                    type="button"
+                                    className="ev-round__addbtn"
+                                    data-round-menu="add"
+                                    aria-haspopup="menu"
+                                    aria-expanded={open === 'add'}
+                                    aria-label={`Add a game to ${label}`}
+                                    onClick={() => toggle('add')}
+                                  >
+                                    + Add
+                                  </button>
                                 ) : null}
                               </span>
+                              {open ? (
+                                <RoundGameMenu
+                                  label={open === 'swap' ? `Game for ${label}` : `Add a game to ${label}`}
+                                  options={open === 'swap' ? EVENT_GAMES : spare}
+                                  current={open === 'swap' ? only : null}
+                                  within={roundMenuRow}
+                                  onPick={(slug) => pickRoundGame(i, open, slug)}
+                                  onClose={closeRoundMenu}
+                                />
+                              ) : null}
                             </li>
                           )
                         })}

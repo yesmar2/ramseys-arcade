@@ -760,6 +760,7 @@
 }
 
 .ev-round {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 0.6rem;
@@ -814,29 +815,124 @@
   background: rgba(var(--ink-rgb), 0.2);
 }
 
-/* A round of one game: its chip is the menu that moves the round to another. */
-.ev-pick__select {
+/* A round of one game: its chip is the button that opens the round's menu. */
+.ev-pick--menu {
   appearance: none;
   margin: 0;
-  padding: 0 0.95rem 0 0;
+  padding-right: 0.5rem;
   border: 0;
-  background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'><path d='M3 4.5L6 8l3-3.5' fill='none' stroke='%23888' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/></svg>")
-    no-repeat right 0.05rem center / 0.62rem;
   color: var(--ink);
-  font: inherit;
+  font-family: inherit;
+  line-height: inherit;
   cursor: pointer;
 }
 
-.ev-pick__select:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-  border-radius: 0.3rem;
+.ev-pick--menu:hover,
+.ev-pick--menu[aria-expanded='true'] {
+  background: color-mix(in srgb, var(--game-accent) 26%, transparent);
 }
 
-.ev-round__art {
+.ev-pick--menu:focus-visible,
+.ev-round__addbtn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.ev-pick__chev {
   flex: none;
-  --inline-thumb-size: 1.8rem;
-  line-height: 0;
+  width: 0.62rem;
+  height: 0.62rem;
+  color: var(--muted);
+}
+
+/* + Add: a dashed pill beside the round's chips, opening the same menu. */
+.ev-round__addbtn {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  margin: 0;
+  padding: 0.18rem 0.65rem;
+  border-radius: 999px;
+  border: 1px dashed rgba(var(--ink-rgb), 0.26);
+  background: transparent;
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 0.76rem;
+  font-weight: 750;
+  line-height: 1.2rem;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.ev-round__addbtn:hover,
+.ev-round__addbtn[aria-expanded='true'] {
+  color: var(--ink);
+  border-color: rgba(var(--ink-rgb), 0.5);
+}
+
+/* The round's menu: every game it can take, with its art, under the row and as wide as it. */
+.ev-gamemenu {
+  position: absolute;
+  top: calc(100% + 0.35rem);
+  left: 0;
+  right: 0;
+  z-index: 60;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(8.5rem, 1fr));
+  gap: 0.25rem;
+  padding: 0.45rem;
+  border-radius: 1rem;
+  background: var(--surface);
+  border: 1px solid rgba(var(--ink-rgb), 0.14);
+  box-shadow: var(--shadow-lift);
+}
+
+.ev-gamemenu__opt {
+  --inline-thumb-size: 1.6rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2.5rem;
+  margin: 0;
+  padding: 0.3rem 0.55rem;
+  border-radius: 0.7rem;
+  border: 1px solid transparent;
+  background: none;
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 0.84rem;
+  font-weight: 750;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ev-gamemenu__opt:hover,
+.ev-gamemenu__opt:focus-visible {
+  background: color-mix(in srgb, var(--game-accent) 12%, transparent);
+  outline: none;
+}
+
+.ev-gamemenu__opt:focus-visible {
+  border-color: color-mix(in srgb, var(--game-accent) 60%, transparent);
+}
+
+.ev-gamemenu__opt--on {
+  border-color: color-mix(in srgb, var(--game-accent) 45%, transparent);
+  background: color-mix(in srgb, var(--game-accent) 16%, transparent);
+}
+
+.ev-gamemenu__name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ev-gamemenu__check {
+  flex: none;
+  color: color-mix(in srgb, var(--game-accent) 70%, var(--ink));
+  font-weight: 800;
 }
 
 .ev-round__name {
@@ -847,31 +943,6 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-.ev-round__pick {
-  flex: none;
-}
-
-.ev-round__select {
-  appearance: none;
-  padding: 0.3rem 1.6rem 0.3rem 0.6rem;
-  border-radius: 0.55rem;
-  border: 1px solid rgba(var(--ink-rgb), 0.12);
-  background:
-    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'><path d='M3 4.5L6 8l3-3.5' fill='none' stroke='%23888' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/></svg>")
-      no-repeat right 0.45rem center / 0.7rem,
-    rgba(var(--surface-rgb), 0.9);
-  color: var(--ink);
-  font: inherit;
-  font-size: 0.82rem;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.ev-round__select:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 1px;
 }
 
 .ev-games {
