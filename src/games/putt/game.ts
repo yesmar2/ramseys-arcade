@@ -1136,7 +1136,7 @@ function step(ball: Ball, hole: Hole, rovers: RoverState[], flight: Flight, dt: 
     if (sl.pull) {
       const speed = Math.hypot(ball.vx, ball.vy)
       const share =
-        Math.hypot(sl.pull.x, sl.pull.y) > STICK_PULL
+        sl.slick || Math.hypot(sl.pull.x, sl.pull.y) > STICK_PULL
           ? 1
           : Math.min(1, Math.max(0, (speed - STICK_SPEED) / (STICK_FULL - STICK_SPEED)))
       ball.vx += sl.pull.x * share * dt

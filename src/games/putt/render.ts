@@ -577,9 +577,16 @@ function paintSlope(g: Ctx, sk: Skin, sl: Slope, loops: Vec[][]) {
       g.fillRect(b.x0 - 1, b.y0 - 1, b.x1 - b.x0 + 2, b.y1 - b.y0 + 2)
     } else {
       const grad = g.createLinearGradient(cx - dx * along * 0.5, cy - dy * along * 0.5, cx + dx * along * 0.5, cy + dy * along * 0.5)
-      grad.addColorStop(0, css(sk.greenHi, 0.34))
-      grad.addColorStop(0.5, css(sk.greenHi, 0))
-      grad.addColorStop(1, css(sk.greenLo, 0.42))
+      if (look === 'ramp') {
+        // One even tilt, in shade, fading out at its foot where it meets the flat, so no edge shows there.
+        grad.addColorStop(0, css(sk.greenLo, 0.26))
+        grad.addColorStop(0.65, css(sk.greenLo, 0.18))
+        grad.addColorStop(1, css(sk.greenLo, 0))
+      } else {
+        grad.addColorStop(0, css(sk.greenHi, 0.34))
+        grad.addColorStop(0.5, css(sk.greenHi, 0))
+        grad.addColorStop(1, css(sk.greenLo, 0.42))
+      }
       g.fillStyle = grad
       g.fillRect(b.x0 - 1, b.y0 - 1, b.x1 - b.x0 + 2, b.y1 - b.y0 + 2)
       // Chevrons pointing downhill, in rows across the slope, on a slope small enough to be a feature: a

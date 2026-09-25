@@ -67,8 +67,13 @@ export type Slope = {
   dish?: number
   repel?: number
   spin?: number
-  /** How a hill is drawn: a slope, a flight of steps, or open ground a wind blows across. */
-  look?: 'hill' | 'steps' | 'wind'
+  /** A hill no ball settles on, however gentle: it runs on down rather than coming to rest partway. */
+  slick?: boolean
+  /**
+   * How a hill is drawn: a slope, a flight of steps, open ground a wind blows
+   * across, or a ramp, one even tilt that fades out where it meets the flat.
+   */
+  look?: 'hill' | 'steps' | 'wind' | 'ramp'
 }
 
 /** A bare windmill blade: a bar `len` long turning about (x, y) at `speed` radians a second. */
@@ -471,8 +476,9 @@ export const COURSE: Hole[] = [
    * else: its pipe crosses the garden and comes up in the round green beside
    * the cup, pointing at it, and the ball drops. Red, the top one, catches a
    * shot pulled left and much of the ceiling's bounce; its pipe runs down the
-   * garden and round to the tee. A ball that finds none of them comes back
-   * off the end wall. The pipes are the only way up to the terrace.
+   * garden and round to the tee. The gallery runs downhill, so a ball that
+   * finds none of them rolls back out of it to the lane. The pipes are the
+   * only way up to the terrace.
    */
   hole({
     name: 'Three Pipes',
@@ -493,6 +499,9 @@ export const COURSE: Hole[] = [
       disc(74, 276, 15),
     ],
     paving: [rect(12, 165, 12, 32)],
+    // The gallery runs gently downhill to the lane, and no ball settles on it: one that finds no pipe, or stops
+    // short of them, rolls back out, and the next shot is off the wall again.
+    slopes: [{ ...hill(rect(12, 165, 44.6, 32), 18, 0, 'ramp'), slick: true }],
     // Behind the cup, for a bank shot that comes in too hard.
     sand: [ribbon(3, [87, 16], [90.5, 25], [87, 34])],
     // Off the wall, a shot from 5° left of straight up to 5° right arrives at the far end about 180 + 2.4
