@@ -471,7 +471,8 @@ function EventBanner({
   busy: boolean
   joinNote: string | null
   onJoin: () => void
-  shareUrl: string
+  /** Null where a shared link would let nobody in. */
+  shareUrl: string | null
   copyInvite: (() => void) | null
   copiedInvite: boolean
 }) {
@@ -500,11 +501,13 @@ function EventBanner({
               {copiedInvite ? 'Copied' : 'Copy invite'}
             </button>
           ) : null}
-          <ShareBoardButton
-            className="evp-share"
-            label={`You're invited: ${detail.title} on ${APP_NAME}. Don't ghost the lobby.`}
-            url={shareUrl}
-          />
+          {shareUrl ? (
+            <ShareBoardButton
+              className="evp-share"
+              label={`You're invited: ${detail.title} on ${APP_NAME}. Don't ghost the lobby.`}
+              url={shareUrl}
+            />
+          ) : null}
         </span>
       </div>
       <div className="evp-banner__main">
@@ -1109,6 +1112,16 @@ export function TournamentDetailPage({ id, invite }: { id: string; invite?: stri
       ? (live.official.find((t) => t.id !== detail.id && t.cadence != null && t.cadence === detail.cadence) ?? null)
       : null
     const hostInvites = detail.isHost && invitesOpen
+    /*
+     * Who can hand the event out. Anyone, for an open event. A private one only
+     * lets in someone holding its code, which only the host has: from anyone
+     * else, a share was an invite that ended at "enter the code from your host".
+     */
+    const shareUrl = !detail.private
+      ? `${window.location.origin}${tournamentHref(detail.id)}`
+      : hostInvites && inviteLink
+        ? inviteLink
+        : null
     const filling = bracket && !detail.bracket?.lockedAt
 
     body = (
@@ -1135,7 +1148,7 @@ export function TournamentDetailPage({ id, invite }: { id: string; invite?: stri
           busy={busy}
           joinNote={joinNote}
           onJoin={() => void onJoin()}
-          shareUrl={invitesOpen && inviteLink ? inviteLink : `${window.location.origin}${tournamentHref(detail.id)}`}
+          shareUrl={shareUrl}
           copyInvite={hostInvites ? () => void copyInviteLink() : null}
           copiedInvite={copiedInvite}
         />
