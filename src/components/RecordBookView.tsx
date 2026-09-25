@@ -194,7 +194,6 @@ export function RecordBookView({ game, period }: { game: string; period: Leaderb
               <>
                 {head.name ? <span className="gb-title__lead">{head.name}</span> : null}
                 {head.rest}
-                <HiddenBug spot={`book-${game}`} pose="hang" />
               </>
             )}
           </h1>
@@ -308,7 +307,7 @@ export function RecordBookView({ game, period }: { game: string; period: Leaderb
       ) : !records.length ? (
         <BoardEmpty title={groupBoardEmptyTitle('No records yet')} />
       ) : (
-        groups.map((group) => (
+        groups.map((group, gi) => (
           <section key={group.kind} className="sb-card rbk-group" aria-labelledby={`rbk-${group.kind}`}>
             <div className="rbk-group__head">
               <h2 id={`rbk-${group.kind}`} className="rbk-group__title">
@@ -318,7 +317,10 @@ export function RecordBookView({ game, period }: { game: string; period: Leaderb
                 {group.records.length} {group.records.length === 1 ? 'record' : 'records'}
               </span>
             </div>
-            <p className="rbk-group__sub">{group.sub}</p>
+            <p className="rbk-group__sub">
+              {group.sub}
+              {gi === groups.length - 1 ? <HiddenBug spot={`book-${game}`} /> : null}
+            </p>
             <div className="rbk-group__cols" aria-hidden="true">
               <span>Record</span>
               <span>Best</span>

@@ -193,7 +193,6 @@ function Banner({
             <>
               {head.name ? <span className="gb-title__lead">{head.name}</span> : null}
               {head.rest}
-              <HiddenBug spot={`board-${slug}`} pose="peek" />
             </>
           )}
         </h1>
@@ -576,6 +575,7 @@ function Board({
         {byPlayer
           ? 'One row per player, at their best run. Their place is what pays.'
           : 'Every run on the board, best first. A player can hold several of these.'}
+        <HiddenBug spot={`board-${slug}`} />
       </p>
       {data.loading ? (
         <BoardSkeleton rows={FIRST_ROWS} />

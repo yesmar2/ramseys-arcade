@@ -39,7 +39,6 @@ export function Footer() {
           <p className="site-footer__tag">No ads. No install. Free to play.</p>
           <p className="site-footer__lead">
             Original games that load fast and stay out of your way.
-            <HiddenBug spot="footer" pose="hang" />
           </p>
         </div>
 
@@ -138,7 +137,10 @@ export function Footer() {
         <p>
           © {year} {APP_NAME}
         </p>
-        <p>Made to be played on a phone or a desk, in a browser, for free.</p>
+        <p>
+          Made to be played on a phone or a desk, in a browser, for free.
+          <HiddenBug spot="footer" />
+        </p>
       </div>
     </footer>
   )

@@ -137,7 +137,6 @@ export function RecordBooksIndex() {
               <>
                 {head.name ? <span className="sb-title__lead">{head.name}</span> : null}
                 {head.rest}
-                <HiddenBug spot="records" />
               </>
             )}
           </h1>
@@ -310,7 +309,10 @@ export function RecordBooksIndex() {
       <section className="rbk-pair" aria-label="Latest records and the house book">
         <div className="sb-card rbk-card">
           <h2 className="rbk-card__big">Latest in ink</h2>
-          <p className="rbk-card__sub">The newest names in the books.</p>
+          <p className="rbk-card__sub">
+            The newest names in the books.
+            <HiddenBug spot="records" />
+          </p>
           <ul className="rbk-latest">
             {latest.map((entry) => (
               <li key={`${entry.name}-${entry.game}-${entry.at}`}>

@@ -6,12 +6,12 @@
 /* ---------- the bug in its spot ---------- */
 
 /*
- * The bug is the same small size wherever it hides: beside a big title it's
- * no taller than a lowercase letter, so it takes a look to spot. The tap that
- * catches it reaches a little past it.
+ * The bug is small and faded wherever it hides, about the height of the
+ * words around it, so it takes a proper look to spot. A pointer passing over
+ * wakes it up, and the tap that catches it reaches a little past it.
  */
 .hunt-spot {
-  --hunt-size: 1.5rem;
+  --hunt-size: 1.25rem;
   position: relative;
   display: inline-block;
   line-height: 0;
@@ -34,8 +34,13 @@
   cursor: pointer;
   line-height: 0;
   transform-origin: 50% 88%;
-  /* Still most of the time; now and then a twitch, for an eye that's looking. */
-  animation: hunt-twitch 12s ease-in-out 4s infinite;
+  opacity: 0.7;
+  filter: saturate(0.55);
+  transition:
+    opacity 0.2s ease,
+    filter 0.2s ease;
+  /* Still nearly all the time; once in a long while a twitch, for an eye that's already looking. */
+  animation: hunt-twitch 20s ease-in-out 6s infinite;
   -webkit-tap-highlight-color: transparent;
 }
 
@@ -53,10 +58,14 @@
 }
 
 .hunt-bug:hover {
+  opacity: 1;
+  filter: none;
   animation: hunt-jitter 0.45s ease-in-out infinite;
 }
 
 .hunt-bug:focus-visible {
+  opacity: 1;
+  filter: none;
   outline: 2px dashed var(--accent);
   outline-offset: 2px;
 }
@@ -105,11 +114,13 @@
 
 .hunt-spot--peek .hunt-bug {
   animation-name: hunt-peek;
-  animation-duration: 10s;
+  animation-duration: 20s;
 }
 
 .hunt-bug--caught,
 .hunt-bug--caught:hover {
+  opacity: 1;
+  filter: none;
   animation: hunt-caught 0.45s cubic-bezier(0.2, 0.8, 0.3, 1.3) forwards;
   pointer-events: none;
 }

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { howToPlayFor } from '../data/howToPlay'
 import '../styles/howto.css'
 
@@ -25,7 +25,16 @@ function useTouchOnly(): boolean {
  * phone shows each control's touch gesture alone; anything with a keyboard
  * shows the key beside it.
  */
-export function HowToPlay({ slug }: { slug: string }) {
+export function HowToPlay({
+  slug,
+  tipEnd,
+  endsEnd,
+}: {
+  slug: string
+  /** Set at the end of the tip and of when a run ends: the game's page hides the day's bug there some days. */
+  tipEnd?: ReactNode
+  endsEnd?: ReactNode
+}) {
   const how = howToPlayFor(slug)
   const touchOnly = useTouchOnly()
   if (!how) return null
@@ -65,11 +74,15 @@ export function HowToPlay({ slug }: { slug: string }) {
       <div className="htp__end">
         <section className="htp__part">
           <h3 className="htp__label">Ends when</h3>
-          <p className="htp__ends">{how.ends}</p>
+          <p className="htp__ends">
+            {how.ends}
+            {endsEnd}
+          </p>
         </section>
         {how.tip ? (
           <p className="htp__tip">
             <b>Tip</b> {how.tip}
+            {tipEnd}
           </p>
         ) : null}
       </div>

@@ -45,10 +45,7 @@ export function AboutPage() {
       <ul className="home-about__highlights">
         {HIGHLIGHTS.map((item) => (
           <li key={item.title} className="home-about__highlight">
-            <h3 className="home-about__highlight-title">
-              {item.title}
-              {item.title === 'No ads' ? <HiddenBug spot="about" /> : null}
-            </h3>
+            <h3 className="home-about__highlight-title">{item.title}</h3>
             <p className="home-about__highlight-body">{item.body}</p>
           </li>
         ))}
@@ -60,6 +57,7 @@ export function AboutPage() {
           We wanted a place that feels like walking up to a good arcade cabinet: one game in
           front of you, a score to chase, and nothing else competing for attention. {APP_NAME}{' '}
           keeps the focus on play — not feeds, loot boxes, or clutter.
+          <HiddenBug spot="about" />
         </p>
 
         <h3 className="home-about__subtitle">Rank up and compete</h3>

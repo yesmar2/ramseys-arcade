@@ -18,14 +18,15 @@ export { HUNT_BUGS, SET_SIZE, setMonth, type HuntBug }
 
 /*
  * The daily bug hunt. Every day one of Find the Bug's wanted bugs gets loose
- * on the site and hides somewhere on it: perched on a heading, peeking over a
- * panel, hanging off the footer, tucked into the menu or the small print.
- * Everyone gets the same bug in the same spot, picked from the date on the
- * boards' clock, and a new one gets loose at midnight there. A clue says
- * roughly where; a hint names the page. Catching one says what that corner of
- * the site is for, and fills in the month's set of all twelve: the set empties
- * on the 1st, and one caught in full puts a trophy on the player's shelf. The
- * hint names the page but gives no link: finding the way there is the point.
+ * on the site and hides somewhere in it: in the small print, by a count, at
+ * the end of a line nobody reads, small and faded so it takes a look. Everyone
+ * gets the same bug in the same spot, picked from the date on the boards'
+ * clock, and a new one gets loose at midnight there. Until noon there's only a
+ * riddle; then a hint names the page, and at six another says where on it.
+ * Neither links there: finding the way is the point. Catching one says what
+ * that corner of the site is for, and fills in the month's set of all twelve:
+ * the set empties on the 1st, and one caught in full puts a trophy on the
+ * player's shelf.
  *
  * Finds are kept on the device, and signed in, by the API too, so they
  * follow the player and today can say how many caught its bug. Only the API
@@ -55,158 +56,186 @@ export type HuntPose = 'perch' | 'hang' | 'peek'
 
 export type HuntSpot = {
   id: string
-  /** The riddle. */
+  /** The riddle: all there is to go on until noon. */
   clue: string
-  /** The hint: the page it's on, to end "It's somewhere…": "on the Boards". */
+  /** The first hint, from noon: the page, to end "It's…": "on the Boards". */
   page: string
+  /** The second, from six: where on the page to look. */
+  place: string
   /** Once it's found: where it was, and what that corner of the site is for. */
   where: string
   lesson: string
 }
 
-const HUB_LESSON =
-  'Every game has a page of its own: its board, its record book, the events it’s in and how to play.'
+const HOW_TO_LESSON =
+  'Every game’s page ends with how to play: the goal, the controls, what scores, what ends a run, and a tip.'
 
+/*
+ * The spots, in a fixed order: the day's spot is picked by its place in this
+ * list, so a spot is moved or reworded where it stands, never reordered. None
+ * sits on a page's title. Each hides in the body of its page, in words that
+ * render for everyone, signed out included.
+ */
 export const HUNT_SPOTS: readonly HuntSpot[] = [
   {
-    id: 'home-onnow',
-    clue: 'Where the front page says what’s on today.',
+    id: 'home-standings',
+    clue: 'It went to see who’s winning, without leaving the front door.',
     page: 'on the home page',
-    where: 'on the home page, perched on the On now heading',
-    lesson: 'On now is today’s daily, this week’s weekly and last week’s winners. Join one and your runs count toward it.',
+    place: 'Look by the Standings.',
+    where: 'on the home page, by the week’s standings',
+    lesson: 'Standings add up everyone’s points across all the games. Every game’s board pays points by place.',
   },
   {
     id: 'home-games',
-    clue: 'On the wall where every game stands in a row.',
+    clue: 'It’s down on the floor with every game in the place.',
     page: 'on the home page',
-    where: 'on the home page, up on the wall of games',
+    place: 'Look beside the count of games on the floor.',
+    where: 'on the home page, down on the floor with the games',
     lesson: 'The wall has every game in the arcade. The chips above it sort them into arcade, puzzle, quick play and sport.',
   },
   {
     id: 'home-records',
-    clue: 'Peeking over the arcade’s best runs, on the front page.',
+    clue: 'It wants a house record of its own.',
     page: 'on the home page',
-    where: 'on the home page, peeking over the house records',
-    lesson: 'House records are the best run ever on each game. Beat one and your tag goes up there.',
+    place: 'Look along the house records.',
+    where: 'on the home page, among the house records',
+    lesson: 'House records are the arcade’s own: the longest streak, the most days played, the busiest day. Beat one and your tag goes up there.',
   },
   {
     id: 'home-groups',
-    clue: 'Near the bottom of the front page, where it asks you to bring your people.',
+    clue: 'It read the pitch for a board of your own people.',
     page: 'on the home page',
-    where: 'at the bottom of the home page, by groups',
+    place: 'Look at the end of the words about groups, near the bottom.',
+    where: 'near the bottom of the home page, at the end of the words about groups',
     lesson: 'A group is a board of just the people you play with: family, friends, the office.',
   },
   {
     id: 'footer',
-    clue: 'Where every page ends, hanging on by a thread.',
+    clue: 'It always reads to the very last word.',
     page: 'at the bottom of any page',
-    where: 'at the bottom of the page, hanging off the footer',
+    place: 'Look after the very last line.',
+    where: 'at the very bottom of the page, after the last line',
     lesson: 'The footer is a map of the whole site: games, boards, events, and the small print.',
   },
   {
     id: 'menu',
-    clue: 'Where your card, your friends and your sounds are kept.',
+    clue: 'It came for the music, and stayed where you’d turn it off.',
     page: 'in your menu, top right (the You tab on a phone)',
-    where: 'in your menu',
+    place: 'Look by the Music setting.',
+    where: 'in your menu, by the music',
     lesson: 'Your menu has your player card, stats, friends and groups, and the theme, the sounds and the music.',
   },
   {
     id: 'boards',
-    clue: 'Where the whole arcade is ranked, week by week.',
+    clue: 'It’s hunting for the easiest points going.',
     page: 'on the Boards',
-    where: 'on the Boards',
-    lesson: 'The boards rank everyone by points across every game. Switch to the month or all time at the top.',
+    place: 'Look at the card about where the next points are.',
+    where: 'on the Boards, by where the next points are',
+    lesson: 'The boards rank everyone by points across every game, and point out where the next points come easiest.',
   },
   {
     id: 'board-snake',
-    clue: 'On the board for the game with the longest tail.',
+    clue: 'On the longest tail’s board, it only counts its best run.',
     page: 'on Snake’s board',
-    where: 'on Snake’s board',
+    place: 'Look at the small print above the table.',
+    where: 'on Snake’s board, in the small print above the table',
     lesson: 'Every game has a board of its own: each player’s best run this week, this month and all time.',
   },
   {
     id: 'records',
-    clue: 'Where the fastest and the most get written down.',
+    clue: 'It wants its name in ink.',
     page: 'in the Record books',
-    where: 'in the Record books',
+    place: 'Look by the newest names.',
+    where: 'in the Record books, by the newest names in ink',
     lesson: 'Record books keep feats inside a game, like the fastest wave cleared or the longest chain.',
   },
   {
     id: 'book-asteroids',
-    clue: 'In the book where every wave cleared is timed.',
+    clue: 'It skipped to the last chapter of the book about rocks.',
     page: 'in Asteroids’ record book',
-    where: 'in Asteroids’ record book',
+    place: 'Look at the last group of records.',
+    where: 'in Asteroids’ record book, by its last group of records',
     lesson: 'Asteroids times every wave you clear, and each wave has a record of its own.',
   },
   {
     id: 'events',
-    clue: 'Where friends race each other for a trophy.',
+    clue: 'It read up on how to win a trophy with friends.',
     page: 'on the Events page',
-    where: 'on the Events page',
+    place: 'Look at how events work, by the trophies.',
+    where: 'on the Events page, by how the trophies work',
     lesson: 'Events are tournaments: a daily, a weekly, and ones you make for friends. The winner’s cup stays on their shelf.',
   },
   {
     id: 'groups',
-    clue: 'Where you’d make a board for just your crew.',
+    clue: 'It’s waiting on an invite that never came.',
     page: 'on the Groups page',
-    where: 'on the Groups page',
+    place: 'Look at the small print about invite links.',
+    where: 'on the Groups page, by the small print about invite links',
     lesson: 'Make a group, share its link, and everyone in it gets boards of their own.',
   },
   {
     id: 'about',
-    clue: 'Where the arcade says what it is, and what it isn’t.',
+    clue: 'It snuck in with the clutter the arcade says it keeps out.',
     page: 'on the About page',
-    where: 'on the About page',
+    place: 'Look at the end of the idea.',
+    where: 'on the About page, among the clutter',
     lesson: 'Original games, no ads, no install: About is the whole idea in one page.',
   },
   {
     id: 'terms',
-    clue: 'In the small print, next to the rule about betting.',
+    clue: 'It bet that nobody reads the small print.',
     page: 'in the Terms',
-    where: 'in the Terms, by the rule about gambling',
+    place: 'Look under the rule about gambling.',
+    where: 'in the Terms, under the rule about gambling',
     lesson: 'Nobody reads the small print, except you just now. Scores here are for glory only: no wagers, no prizes.',
   },
   {
-    id: 'hub-findbug',
-    clue: 'Back home, on its own game’s page.',
+    id: 'where-findbug',
+    clue: 'It went back home to the crowd it came from.',
     page: 'on Find the Bug’s page',
-    where: 'back home, on Find the Bug’s page',
+    place: 'Look at the line that says where you can play.',
+    where: 'back home on Find the Bug’s page, by where you can play',
     lesson: 'Find the Bug is where these bugs live: spot the wanted one in a crowd, against the clock.',
   },
   {
-    id: 'hub-fireflies',
-    clue: 'On the page of the game where lanterns light the night.',
+    id: 'tip-fireflies',
+    clue: 'It has a tip for anyone who sings tunes back.',
     page: 'on Fireflies’ page',
-    where: 'on Fireflies’ page',
-    lesson: HUB_LESSON,
+    place: 'Look at the tip in How to play.',
+    where: 'on Fireflies’ page, by the tip in How to play',
+    lesson: HOW_TO_LESSON,
   },
   {
-    id: 'hub-crosswalk',
-    clue: 'On the page of the game where you hop across the road, forever.',
+    id: 'count-crosswalk',
+    clue: 'It’s counting everyone who keeps crossing the road.',
     page: 'on Crosswalk’s page',
-    where: 'on Crosswalk’s page',
-    lesson: HUB_LESSON,
+    place: 'Look at the board, by how many are playing.',
+    where: 'on Crosswalk’s page, by the count of players on its board',
+    lesson: 'Every game’s page has its board on it: this week’s best runs, and where a first run would land.',
   },
   {
-    id: 'hub-centroid',
-    clue: 'On the page of the game where plates balance on a pin.',
+    id: 'crumbs-centroid',
+    clue: 'It left a trail of crumbs from the game of plates on a pin.',
     page: 'on Centroid’s page',
-    where: 'on Centroid’s page',
-    lesson: HUB_LESSON,
+    place: 'Look at the very top, on the trail back to the games.',
+    where: 'on Centroid’s page, at the end of the trail of crumbs',
+    lesson: 'The trail at the top of a page says where you are. Tap Games on it to go back to the wall.',
   },
   {
-    id: 'hub-frenzy',
-    clue: 'On the page of the game where every fish has a number.',
+    id: 'shelf-frenzy',
+    clue: 'It liked the fish with numbers so much, it wants more like them.',
     page: 'on Frenzy’s page',
-    where: 'on Frenzy’s page',
-    lesson: HUB_LESSON,
+    place: 'Look near the bottom, where more games are suggested.',
+    where: 'at the bottom of Frenzy’s page, by more games like it',
+    lesson: 'The bottom of every game’s page suggests more games like it.',
   },
   {
-    id: 'howto-putt',
-    clue: 'In the instructions for the game with a hole at the end.',
+    id: 'ends-putt',
+    clue: 'It knows how the mini golf ends.',
     page: 'on Putt’s page',
-    where: 'in Putt’s how to play',
-    lesson: 'Every game’s page ends with how to play: the goal, the controls, what scores, and what ends a run.',
+    place: 'Look in How to play, at when a round ends.',
+    where: 'on Putt’s page, where How to play says a round ends',
+    lesson: HOW_TO_LESSON,
   },
 ]
 
@@ -226,10 +255,44 @@ export function huntDay(now = Date.now()): string {
   return dayFormat.format(new Date(now))
 }
 
+/** How far into the day on the boards' clock. */
+function sinceMidnight(now: number): number {
+  const [h, m, s] = clockFormat.format(new Date(now)).split(':').map(Number)
+  return (h! * 3600 + m! * 60 + s!) * 1000
+}
+
 /** Until midnight on the boards' clock, when the next bug gets loose. */
 export function msUntilNextBug(now = Date.now()): number {
-  const [h, m, s] = clockFormat.format(new Date(now)).split(':').map(Number)
-  return Math.max(0, (24 * 3600 - (h! * 3600 + m! * 60 + s!)) * 1000)
+  return Math.max(0, 24 * 3_600_000 - sinceMidnight(now))
+}
+
+/** When each hint comes out, in hours on the boards' clock: the page at noon, where on it at six. */
+const HINT_HOURS = [12, 18] as const
+
+export type HuntHints = {
+  /** The hints out so far: none in the morning, then the page, then where on it. */
+  shown: string[]
+  /** Until the next one comes out; null once they're all out. */
+  nextIn: number | null
+}
+
+export function huntHints(spot: HuntSpot, now = Date.now()): HuntHints {
+  const into = sinceMidnight(now)
+  const all = [`It’s ${spot.page}.`, spot.place]
+  const out = devHints() ?? HINT_HOURS.filter((hour) => into >= hour * 3_600_000).length
+  const next = HINT_HOURS[out]
+  return { shown: all.slice(0, out), nextIn: next == null ? null : next * 3_600_000 - into }
+}
+
+/** On a dev server, `localStorage['skermix-bug-hunt-hints']` (0, 1 or 2) says how many hints are out, to look at them. */
+function devHints(): number | null {
+  if (!import.meta.env.DEV) return null
+  try {
+    const n = Number(localStorage.getItem('skermix-bug-hunt-hints') ?? '')
+    return localStorage.getItem('skermix-bug-hunt-hints') != null && n >= 0 && n <= 2 ? n : null
+  } catch {
+    return null
+  }
 }
 
 export type HuntPick = {

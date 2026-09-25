@@ -65,13 +65,11 @@ export function TermsPage() {
         here are original to this project.
       </p>
 
-      <h2>
-        No gambling
-        <HiddenBug spot="terms" />
-      </h2>
+      <h2>No gambling</h2>
       <p>
         The Service does not offer real-money wagering, prizes with cash value, or gambling.
         Scores and rankings have no monetary value.
+        <HiddenBug spot="terms" />
       </p>
 
       <h2>Disclaimers</h2>

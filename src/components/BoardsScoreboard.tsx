@@ -393,7 +393,10 @@ function Moves({
   const { rows, foot } = moves(copy, data.boards, data.standings, data.you)
   return (
     <div className="sb-card sb-moves">
-      <h2 className="sb-card__title">{data.you ? 'Where your next points are' : 'Easiest points right now'}</h2>
+      <h2 className="sb-card__title">
+        {data.you ? 'Where your next points are' : 'Easiest points right now'}
+        <HiddenBug spot="boards" pose="peek" />
+      </h2>
       <ul className="sb-moves__list">
         {rows.map((m) => (
           <li key={m.amount + m.what} className="sb-move">
@@ -739,7 +742,6 @@ export function BoardsScoreboard({ period }: { period: LeaderboardPeriod }) {
               <>
                 {head.name ? <span className="sb-title__lead">{head.name}</span> : null}
                 {head.rest}
-                <HiddenBug spot="boards" />
               </>
             )}
           </h1>

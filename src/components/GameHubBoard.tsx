@@ -12,6 +12,7 @@ import { formatLeaderboardScore } from '../lib/leaderboardFormat'
 import { BoardEmpty } from './BoardChrome'
 import { ChevronRightIcon, PlusIcon, SparkleIcon } from './chromeIcons'
 import { PlayerAvatar } from './PlayerAvatar'
+import { HiddenBug } from './BugHunt'
 
 /** Rows at the top of the board before it skips down to you, and the rows it shows when it doesn't. */
 const TOP_ROWS = 5
@@ -73,6 +74,7 @@ export function GameHubBoard({
           {!loading && !error ? (
             <span className="gh-board__count">
               {players.length === 0 ? 'no players yet' : `${players.length} ${players.length === 1 ? 'player' : 'players'}`}
+              <HiddenBug spot={`count-${slug}`} pose="peek" />
             </span>
           ) : null}
         </h2>

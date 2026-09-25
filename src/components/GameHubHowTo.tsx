@@ -10,9 +10,12 @@ export function GameHubHowTo({ game }: { game: Game }) {
     <section className="gh-card gh-how" aria-labelledby="gh-how-title">
       <h2 id="gh-how-title" className="gh-card__title">
         How to play
-        <HiddenBug spot={`howto-${game.slug}`} pose="hang" />
       </h2>
-      <HowToPlay slug={game.slug} />
+      <HowToPlay
+        slug={game.slug}
+        tipEnd={<HiddenBug spot={`tip-${game.slug}`} />}
+        endsEnd={<HiddenBug spot={`ends-${game.slug}`} />}
+      />
     </section>
   )
 }

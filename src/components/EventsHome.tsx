@@ -160,7 +160,6 @@ export function WeeklyHero({ t, joined }: { t: TournamentSummary; joined: boolea
         </p>
         <h1 id="evp-weekly-title" className="evp-hero__title">
           {gameList(t.games)}
-          <HiddenBug spot="events" pose="peek" />
         </h1>
         <p className="evp-hero__lede">
           Place on all {t.games.length === 3 ? 'three' : t.games.length} by Sunday night. Every place pays points, 1st the
@@ -411,14 +410,17 @@ export function HowEventsWork() {
         How events work
       </h2>
       <ul className="evp-how-all__list">
-        {HOW.map(([IconFor, title, text]) => (
+        {HOW.map(([IconFor, title, text], i) => (
           <li key={title}>
             <span className="evp-how-all__mark" aria-hidden="true">
               <IconFor />
             </span>
             <span className="evp-how-all__text">
               <b>{title}</b>
-              <span>{text}</span>
+              <span>
+                {text}
+                {i === HOW.length - 1 ? <HiddenBug spot="events" /> : null}
+              </span>
             </span>
           </li>
         ))}

@@ -7,6 +7,7 @@ import {
   capitalName,
   openBugHunt,
   huntDay,
+  huntHints,
   huntPick,
   huntSnapshot,
   huntStats,
@@ -99,7 +100,7 @@ export function BugPortrait({
 /* ------------------------------------------------------------ the hunt --- */
 
 /** Today's pick and your finds, kept current: a find anywhere, what the API says, and midnight on the boards' clock. */
-function useHunt(): { pick: HuntPick; stats: HuntStats; server: HuntServer | null; msLeft: number } {
+function useHunt(): { pick: HuntPick; stats: HuntStats; server: HuntServer | null; msLeft: number; now: number } {
   const snap = useSyncExternalStore(subscribeHunt, huntSnapshot, huntSnapshot)
   const [now, setNow] = useState(() => Date.now())
   useEffect(() => {
@@ -115,7 +116,7 @@ function useHunt(): { pick: HuntPick; stats: HuntStats; server: HuntServer | nul
   const day = huntDay(now)
   const server = snap.server.day === day ? snap.server : null
   // The set is the month's, so the API's word on it holds past midnight until it next says.
-  return { pick: huntPick(day), stats: huntStats(day, snap.log, snap.server), server, msLeft: msUntilNextBug(now) }
+  return { pick: huntPick(day), stats: huntStats(day, snap.log, snap.server), server, msLeft: msUntilNextBug(now), now }
 }
 
 /** How many have caught today's bug, in a line: "Nobody has caught Buzz yet today." */
@@ -129,7 +130,7 @@ function countWords(server: HuntServer | null, name: string, stats: HuntStats): 
   return `${n.toLocaleString('en-US')} ${n === 1 ? 'player has' : 'players have'} caught ${name} so far today.`
 }
 
-function nextBugWords(ms: number): string {
+function clockWords(ms: number): string {
   const mins = Math.max(1, Math.ceil(ms / 60_000))
   if (mins < 60) return `${mins}m`
   return `${Math.floor(mins / 60)}h ${String(mins % 60).padStart(2, '0')}m`
@@ -143,7 +144,8 @@ function streakWords(stats: HuntStats): string | null {
 
 /**
  * Today's bug, if today's spot is here. It sits, hangs or peeks in the
- * words around it, twitches now and then, and is caught with a tap.
+ * words around it, small and faded, twitches once in a long while, and is
+ * caught with a tap.
  */
 export function HiddenBug({
   spot,
@@ -255,22 +257,34 @@ function Stats({ stats }: { stats: HuntStats }) {
   )
 }
 
-/** The hint: the page it's on. Finding the way there is part of the hunt. */
-function Hint({ pick }: { pick: HuntPick }) {
-  const [shown, setShown] = useState(false)
-  if (!shown) {
+/**
+ * The hints, as the day gives them out: nothing but the riddle until noon on
+ * the boards' clock, then the page, and from six, where on it. None links
+ * there: finding the way is part of the hunt.
+ */
+function Hint({ pick, now }: { pick: HuntPick; now: number }) {
+  const [open, setOpen] = useState(false)
+  const hints = huntHints(pick.spot, now)
+  const next = hints.nextIn != null ? clockWords(hints.nextIn) : null
+  if (hints.shown.length === 0) return <span className="hunt-hint">First hint in {next}.</span>
+  if (!open) {
     return (
-      <button type="button" className="hunt-btn hunt-btn--ghost" onClick={() => setShown(true)}>
-        Hint
+      <button type="button" className="hunt-btn hunt-btn--ghost" onClick={() => setOpen(true)}>
+        {hints.shown.length === 1 ? 'Hint' : 'Hints'}
       </button>
     )
   }
-  return <span className="hunt-hint">It’s somewhere {pick.spot.page}.</span>
+  return (
+    <span className="hunt-hint">
+      {hints.shown.join(' ')}
+      {next ? ` Another hint in ${next}.` : ''}
+    </span>
+  )
 }
 
 /** The front page's line on today's hunt: who's loose, the clue, and a hint. */
 export function BugHuntStrip() {
-  const { pick, stats, server, msLeft } = useHunt()
+  const { pick, stats, server, msLeft, now } = useHunt()
   const name = capitalName(pick.bug)
   const count = countWords(server, pick.bug.name, stats)
   return (
@@ -284,7 +298,7 @@ export function BugHuntStrip() {
           <>
             <p className="hunt-strip__title">You caught {pick.bug.name} today</p>
             <p className="hunt-strip__clue">
-              {count ? `${count} ` : ''}The next one gets loose in {nextBugWords(msLeft)}.
+              {count ? `${count} ` : ''}The next one gets loose in {clockWords(msLeft)}.
             </p>
           </>
         ) : (
@@ -296,7 +310,7 @@ export function BugHuntStrip() {
         )}
       </div>
       <div className="hunt-strip__side">
-        {stats.foundToday ? null : <Hint pick={pick} />}
+        {stats.foundToday ? null : <Hint pick={pick} now={now} />}
         <button type="button" className="hunt-btn" onClick={openBugHunt}>
           Your bugs{' '}
           <span className="hunt-btn__count">
@@ -342,7 +356,7 @@ export function BugHuntMenuRow({ onOpen }: { onOpen: () => void }) {
 /* ------------------------------------------------------------ panels --- */
 
 function HuntPanel({ onClose }: { onClose: () => void }) {
-  const { pick, stats, server, msLeft } = useHunt()
+  const { pick, stats, server, msLeft, now } = useHunt()
   const count = countWords(server, pick.bug.name, stats)
   const titleId = useId()
   const name = capitalName(pick.bug)
@@ -364,7 +378,7 @@ function HuntPanel({ onClose }: { onClose: () => void }) {
                   {name} was hiding {pick.spot.where}.
                 </p>
                 {count ? <p className="hunt-wanted__small">{count}</p> : null}
-                <p className="hunt-wanted__small">The next bug gets loose in {nextBugWords(msLeft)}.</p>
+                <p className="hunt-wanted__small">The next bug gets loose in {clockWords(msLeft)}.</p>
               </>
             ) : (
               <>
@@ -374,7 +388,7 @@ function HuntPanel({ onClose }: { onClose: () => void }) {
                 <p className="hunt-wanted__clue">“{pick.spot.clue}”</p>
                 {count ? <p className="hunt-wanted__small">{count}</p> : null}
                 <div className="hunt-wanted__acts">
-                  <Hint pick={pick} />
+                  <Hint pick={pick} now={now} />
                 </div>
               </>
             )}
@@ -383,7 +397,8 @@ function HuntPanel({ onClose }: { onClose: () => void }) {
         <Stats stats={stats} />
         <Collection stats={stats} today={pick.bug.id} />
         <p className="hunt-panel__foot">
-          A new bug gets loose every day at midnight Eastern, somewhere else.{' '}
+          A new bug gets loose every day at midnight Eastern, somewhere else. At noon a hint names the page, and at six
+          another says where on it.{' '}
           {getSessionToken()
             ? 'Catch all twelve in a month and the set goes on your shelf.'
             : 'Sign in and your finds follow you to any device.'}
@@ -487,7 +502,7 @@ function FoundPanel({ onClose, onWear }: FoundProps) {
         <Stats stats={stats} />
         {/* A set just caught in full on this device has said its piece about signing in. */}
         <Collection stats={stats} today={pick.bug.id} note={!doneHere} />
-        <p className="hunt-panel__foot">The next bug gets loose in {nextBugWords(msLeft)}, somewhere else.</p>
+        <p className="hunt-panel__foot">The next bug gets loose in {clockWords(msLeft)}, somewhere else.</p>
       </div>
       <div className="panel__actions">
         <button type="button" className="panel__btn" onClick={onClose}>

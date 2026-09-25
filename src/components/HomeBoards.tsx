@@ -72,7 +72,10 @@ function Standings({
   return (
     <article className="hb-panel hb-panel--standings">
       <div className="hb-panel__head">
-        <h3 className="hb-panel__title">Standings</h3>
+        <h3 className="hb-panel__title">
+          Standings
+          <HiddenBug spot="home-standings" />
+        </h3>
         <a className="home-section__more" href={globalRankingsHref(period)}>
           Full board ›
         </a>
@@ -131,10 +134,7 @@ function HouseRecords({ boards }: { boards: SiteRecordBoard[] | null }) {
   return (
     <article className="hb-panel">
       <div className="hb-panel__head">
-        <h3 className="hb-panel__title">
-          House records
-          <HiddenBug spot="home-records" pose="peek" />
-        </h3>
+        <h3 className="hb-panel__title">House records</h3>
         <a className="home-section__more" href={siteRecordsHref()}>
           All ›
         </a>
@@ -148,7 +148,7 @@ function HouseRecords({ boards }: { boards: SiteRecordBoard[] | null }) {
             ))
           : PLAQUES.map((id) => boards.find((b) => b.id === id))
               .filter((board): board is SiteRecordBoard => Boolean(board))
-              .map((board) => {
+              .map((board, i, all) => {
                 const top = board.entries[0] ?? null
                 return (
                   <li key={board.id} className="hb-plaque">
@@ -156,7 +156,10 @@ function HouseRecords({ boards }: { boards: SiteRecordBoard[] | null }) {
                       {top ? top.value.toLocaleString() : '—'}
                       {top ? <small> {siteRecordUnitWord(top.value, board.unit)}</small> : null}
                     </span>
-                    <span className="hb-plaque__label">{board.label}</span>
+                    <span className="hb-plaque__label">
+                      {board.label}
+                      {i === all.length - 1 ? <HiddenBug spot="home-records" pose="peek" /> : null}
+                    </span>
                     <span className="hb-plaque__who">{top ? top.name : 'Nobody yet'}</span>
                   </li>
                 )

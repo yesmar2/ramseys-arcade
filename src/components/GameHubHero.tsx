@@ -61,6 +61,7 @@ export function GameHubHero({
           <a href={homeHref()}>Games</a>
           <span aria-hidden="true">›</span>
           <span aria-current="page">{game.name}</span>
+          <HiddenBug spot={`crumbs-${game.slug}`} />
         </nav>
         <div className="gh-hero__main">
           {tags.length > 0 || kicker ? (
@@ -75,7 +76,6 @@ export function GameHubHero({
           ) : null}
           <h1 id="gh-title" className="gh-hero__name">
             {game.name}
-            <HiddenBug spot={`hub-${game.slug}`} />
           </h1>
           <p className="gh-hero__blurb">{game.description}</p>
           <div className="gh-hero__acts">
@@ -109,6 +109,7 @@ export function GameHubHero({
         <p className="gh-hero__where">
           <DevicesIcon />
           {where}
+          <HiddenBug spot={`where-${game.slug}`} />
         </p>
       </div>
 

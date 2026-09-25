@@ -210,9 +210,11 @@ export function GameWall() {
       <div className="wall__bar">
         <h2 id="games-heading" className="wall__title">
           Games
-          <HiddenBug spot="home-games" />
         </h2>
-        <span className="wall__count">{shown.length} on the floor</span>
+        <span className="wall__count">
+          {shown.length} on the floor
+          <HiddenBug spot="home-games" />
+        </span>
         <div className="chips wall__tabs" role="tablist" aria-label="Kind of game">
           {TABS.map((t) => {
             const count = all.filter((g) => inTab(g, t.id)).length

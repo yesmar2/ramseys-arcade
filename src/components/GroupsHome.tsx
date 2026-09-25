@@ -21,6 +21,7 @@ import { getGame } from '../data/games'
 import { GameThumbArt } from './GameThumbArt'
 import { PlayerAvatar } from './PlayerAvatar'
 import { openSiteMenu } from './siteNav'
+import { HiddenBug } from './BugHunt'
 
 /* The groups page's pieces: each of your groups as a card, starting one, opening one from a code, and what a group is. */
 
@@ -386,7 +387,10 @@ export function LinkCard({ onOpen }: { onOpen: (id: string, invite: string | nul
         </button>
       </form>
       {error ? <p className="grp-error">{error}</p> : null}
-      <p className="grp-fine">Following the link opens the group by itself. You need a gamer tag to join, not an account.</p>
+      <p className="grp-fine">
+        Following the link opens the group by itself. You need a gamer tag to join, not an account.
+        <HiddenBug spot="groups" />
+      </p>
     </section>
   )
 }
