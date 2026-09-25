@@ -14,6 +14,7 @@ import {
   type Gate,
   type Hole,
   type Mill,
+  type Portal,
   type Rect,
   type Slider,
   type Spinner,
@@ -21,7 +22,7 @@ import {
   type Wall,
 } from './course'
 import { loadHoleBests, recordHoleBest } from './holeBests'
-import { centreOf, contours, inAny, inside, inUnion, pivotOf } from './terrain'
+import { centreOf, contours, inAny, inside, inUnion, pivotOf, smoothLine } from './terrain'
 
 /*
  * Putt: mini golf on long holes, none of them the usual kind.
@@ -127,6 +128,16 @@ const RAMP_LONGEST = 1.7
 const RAMP_KEEP_ANGLE = 0.25
 /** Landing keeps this share of the speed. */
 const LAND_KEEP = 0.85
+/**
+ * A ball down a pipe: a moment sinking into the mouth, then along the pipe at
+ * PIPE_SPEED, the run taking between the two times however long the pipe is,
+ * then a moment coming out of the far end.
+ */
+const PIPE_SINK = 0.18
+const PIPE_POP = 0.14
+const PIPE_SPEED = 120
+const PIPE_RUN_MIN = 0.35
+const PIPE_RUN_MAX = 1.3
 /** A drawbridge takes this long to come down or go up. */
 export const BRIDGE_SWING = 0.35
 /** Nothing rolls faster than this, however it was sped up: a fifth over the hardest shot. */
@@ -154,6 +165,12 @@ export type Ball = { x: number; y: number; vx: number; vy: number }
 
 /** A rover on the move, and how long until its flash can go again. */
 export type RoverState = { x: number; y: number; vx: number; vy: number; cool: number }
+
+/**
+ * A ball down a pipe: which pipe, how long it has been in, how long the run
+ * along it takes, how fast it comes out, and where it was when it dropped.
+ */
+export type Transit = { pipe: number; t: number; run: number; speed: number; from: Vec }
 
 export type HoleResult = {
   strokes: number
@@ -209,6 +226,8 @@ export type GameState = {
   airMax: number
   /** The share of its speed the ball keeps when this flight comes down: its ramp's, or LAND_KEEP. */
   airKeep: number
+  /** Down a pipe; null the rest of the time. */
+  transit: Transit | null
   /** Ball scale while dropping into the cup. */
   drop: number
   /** Flash timers per bumper and per wall (kickers), for the renderer. */
@@ -482,6 +501,7 @@ export function createInitialState(w = 540, h = 720): GameState {
     air: 0,
     airMax: 0,
     airKeep: LAND_KEEP,
+    transit: null,
     drop: 1,
     bumperFlash: first.bumpers.map(() => 0),
     wallFlash: wallsOf(first).map(() => 0),
@@ -582,6 +602,7 @@ function beginHole(state: GameState, index: number): GameState {
     air: 0,
     airMax: 0,
     airKeep: LAND_KEEP,
+    transit: null,
     drop: 1,
     bumperFlash: hole.bumpers.map(() => 0),
     wallFlash: wallsOf(hole).map(() => 0),
@@ -884,6 +905,100 @@ function bounceSlider(ball: Ball, sl: Slider, clock: number, restitution: number
 /** A flight off a ramp: how far is left, how far it was, and the share of its speed the ball keeps coming down. */
 type Flight = { air: number; max: number; keep: number }
 
+/** How wide a pipe's mouth is. */
+export function mouthR(pipe: Portal) {
+  return pipe.r ?? PORTAL_R
+}
+
+const routes = new WeakMap<Portal, Vec[]>()
+
+/** A pipe end to end: from its mouth, round a smooth curve through the points it is laid through, to its far end. */
+export function pipeRoute(pipe: Portal): Vec[] {
+  let route = routes.get(pipe)
+  if (!route) {
+    route = pipe.path?.length ? smoothLine([pipe.a, ...pipe.path, pipe.b], 1.2) : [pipe.a, pipe.b]
+    routes.set(pipe, route)
+  }
+  return route
+}
+
+function routeLength(route: readonly Vec[]) {
+  let len = 0
+  for (let i = 1; i < route.length; i++) len += Math.hypot(route[i]!.x - route[i - 1]!.x, route[i]!.y - route[i - 1]!.y)
+  return len
+}
+
+/** The point `u` of the way along a route: 0 its start, 1 its end. */
+export function alongRoute(route: readonly Vec[], u: number): Vec {
+  let left = Math.max(0, Math.min(1, u)) * routeLength(route)
+  for (let i = 1; i < route.length; i++) {
+    const a = route[i - 1]!
+    const b = route[i]!
+    const seg = Math.hypot(b.x - a.x, b.y - a.y)
+    if (left <= seg || i === route.length - 1) {
+      const k = seg > 0 ? Math.min(1, left / seg) : 1
+      return { x: a.x + (b.x - a.x) * k, y: a.y + (b.y - a.y) * k }
+    }
+    left -= seg
+  }
+  return route[route.length - 1]!
+}
+
+/** How long a ball takes to run the length of a pipe. */
+function pipeRunTime(pipe: Portal) {
+  return Math.max(PIPE_RUN_MIN, Math.min(PIPE_RUN_MAX, routeLength(pipeRoute(pipe)) / PIPE_SPEED))
+}
+
+/**
+ * A ball down a pipe, for drawing it: which pipe, where the ball is, and what
+ * it is doing — sinking into the mouth, running along, or coming out of the
+ * far end — with `k` how far through that it is, 0 to 1.
+ */
+export function transitView(s: GameState): { pipe: Portal; at: Vec; stage: 'sink' | 'run' | 'pop'; k: number } | null {
+  const tr = s.transit
+  const pipe = tr ? currentHole(s).portals[tr.pipe] : undefined
+  if (!tr || !pipe) return null
+  if (tr.t < PIPE_SINK) {
+    // Drawn in from where it dropped to the middle of the mouth, gathering pace.
+    const k = tr.t / PIPE_SINK
+    const e = k * k
+    return { pipe, at: { x: tr.from.x + (pipe.a.x - tr.from.x) * e, y: tr.from.y + (pipe.a.y - tr.from.y) * e }, stage: 'sink', k }
+  }
+  const along = tr.t - PIPE_SINK
+  if (along < tr.run) return { pipe, at: alongRoute(pipeRoute(pipe), along / tr.run), stage: 'run', k: along / tr.run }
+  // Out of the far end and clear of its rim, where it rolls on from.
+  const k = Math.min(1, (along - tr.run) / PIPE_POP)
+  const d = (mouthR(pipe) + BALL_R) * k
+  return { pipe, at: { x: pipe.b.x + Math.cos(pipe.out) * d, y: pipe.b.y + Math.sin(pipe.out) * d }, stage: 'pop', k }
+}
+
+/** A ball down a pipe, a frame on: into the mouth, along the pipe, and out the far end heading the pipe's way. */
+function downPipe(s: GameState, hole: Hole, dt: number): GameState {
+  const tr = s.transit!
+  const pipe = hole.portals[tr.pipe]
+  if (!pipe) return { ...s, transit: null }
+  const t = tr.t + dt
+  if (t < PIPE_SINK + tr.run + PIPE_POP) {
+    if (tr.t < PIPE_SINK && t >= PIPE_SINK) sfx('whoosh', 5)
+    const next: GameState = { ...s, transit: { ...tr, t } }
+    const view = transitView(next)
+    return view ? { ...next, ball: { x: view.at.x, y: view.at.y, vx: 0, vy: 0 } } : next
+  }
+  sfx('tap', 3)
+  const r = mouthR(pipe)
+  return {
+    ...s,
+    transit: null,
+    restT: 0,
+    ball: {
+      x: pipe.b.x + Math.cos(pipe.out) * (r + BALL_R),
+      y: pipe.b.y + Math.sin(pipe.out) * (r + BALL_R),
+      vx: Math.cos(pipe.out) * tr.speed,
+      vy: Math.sin(pipe.out) * tr.speed,
+    },
+  }
+}
+
 type StepOut = {
   wall: boolean
   kicked: boolean
@@ -894,7 +1009,9 @@ type StepOut = {
   slope: boolean
   spin: boolean
   water: boolean
-  piped: boolean
+  /** Dropped into this pipe, -1 for none, to come out at `pipeSpeed`. */
+  pipe: number
+  pipeSpeed: number
   launched: boolean
   landed: boolean
   /** Landed off the ground altogether. */
@@ -956,7 +1073,8 @@ function step(ball: Ball, hole: Hole, rovers: RoverState[], flight: Flight, dt: 
     slope: false,
     spin: false,
     water: false,
-    piped: false,
+    pipe: -1,
+    pipeSpeed: 0,
     launched: false,
     landed: false,
     oob: false,
@@ -1114,15 +1232,13 @@ function step(ball: Ball, hole: Hole, rovers: RoverState[], flight: Flight, dt: 
     rv.cool = 0.35
     out.rovers.push(i)
   })
-  for (const pipe of hole.portals) {
-    if (Math.hypot(ball.x - pipe.a.x, ball.y - pipe.a.y) >= PORTAL_R) continue
-    const v = pipe.speed ?? Math.max(70, Math.hypot(ball.vx, ball.vy))
-    ball.x = pipe.b.x + Math.cos(pipe.out) * (PORTAL_R + BALL_R)
-    ball.y = pipe.b.y + Math.sin(pipe.out) * (PORTAL_R + BALL_R)
-    ball.vx = Math.cos(pipe.out) * v
-    ball.vy = Math.sin(pipe.out) * v
-    out.piped = true
-    break
+  // Over a pipe's mouth, it drops in: the roll takes it from there, down the pipe and out the far end.
+  for (let i = 0; i < hole.portals.length; i++) {
+    const pipe = hole.portals[i]!
+    if (Math.hypot(ball.x - pipe.a.x, ball.y - pipe.a.y) >= mouthR(pipe)) continue
+    out.pipe = i
+    out.pipeSpeed = pipe.speed ?? Math.max(70, Math.hypot(ball.vx, ball.vy))
+    return out
   }
   // The rails have the last word: nothing that moves, not a blade, a bar, a door or a rover, pushes a
   // ball through one. A ball caught between them stays on its side and the thing passes over it.
@@ -1211,6 +1327,7 @@ function penalty(state: GameState, title: string, word: string): GameState {
     strokes: state.strokes + 1,
     ball: { x: state.strokeStart.x, y: state.strokeStart.y, vx: 0, vy: 0 },
     air: 0,
+    transit: null,
     aiming: 'none',
     power: 0,
     inSand: false,
@@ -1234,6 +1351,7 @@ function readyToAim(s: GameState): GameState {
     power: 0,
     restT: 0,
     air: 0,
+    transit: null,
   }
 }
 
@@ -1302,6 +1420,7 @@ export function tick(state: GameState, dt: number): GameState {
 
     case 'roll': {
       const hole = currentHole(s)
+      if (s.transit) return downPipe(s, hole, dt)
       const ball = { ...s.ball }
       const flight: Flight = { air: s.air, max: s.airMax, keep: s.airKeep }
       const sub = dt / SUBSTEPS
@@ -1316,7 +1435,6 @@ export function tick(state: GameState, dt: number): GameState {
       let spin = false
       let popped = false
       let kicked = false
-      let piped = false
       let struck = false
       let launched = false
       let landed = false
@@ -1334,7 +1452,6 @@ export function tick(state: GameState, dt: number): GameState {
         }
         if (out.wall) hitWall = true
         if (out.kicked) kicked = true
-        if (out.piped) piped = true
         if (out.launched) launched = true
         if (out.landed) landed = true
         sand = out.sand
@@ -1352,6 +1469,16 @@ export function tick(state: GameState, dt: number): GameState {
           rovers,
           roverFlash,
         }
+        if (out.pipe >= 0) {
+          // Down it goes: the pipe has it from here.
+          const pipe = hole.portals[out.pipe]!
+          sfx('tap', 1)
+          return {
+            ...carried,
+            ball: { x: ball.x, y: ball.y, vx: 0, vy: 0 },
+            transit: { pipe: out.pipe, t: 0, run: pipeRunTime(pipe), speed: out.pipeSpeed, from: { x: ball.x, y: ball.y } },
+          }
+        }
         if (out.oob) return penalty(carried, 'Out of bounds', 'OUT')
         if (out.water) return penalty(carried, 'Splash', 'SPLASH')
         if (out.pit) return penalty(carried, 'Over the edge', 'DROP')
@@ -1367,7 +1494,6 @@ export function tick(state: GameState, dt: number): GameState {
       else if (popped) sfx('hit')
       else if (launched) sfx('whoosh', 3)
       else if (kicked) sfx('pad', 3)
-      else if (piped) sfx('whoosh', 5)
       else if (landed) sfx('tap', 1)
       else if (hitWall) sfx('tap', 2)
       s.ball = ball

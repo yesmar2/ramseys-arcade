@@ -24,7 +24,7 @@
  * knock it about.
  */
 
-import { arc, capsule, disc, rect, ribbon, spiral, type Shape, type Vec } from './terrain'
+import { arc, capsule, disc, poly, rect, ribbon, spiral, type Shape, type Vec } from './terrain'
 
 export { arc, capsule, disc, rect, ribbon, spiral, type Shape, type Vec }
 
@@ -105,12 +105,24 @@ export type Mill = {
 export type Slider = { a: Vec; b: Vec; t: number; dx: number; dy: number; period: number; phase?: number }
 
 /**
- * A pipe: a ball that rolls into `a` comes out at `b` heading along `out`,
- * as fast as it went in and never slower than a good roll, or at `speed` when
- * a pipe only lets it drop out. A `tint` paints both of its ends the one
- * colour, so where there are several you can see which comes out where.
+ * A pipe: a ball that rolls into `a` drops in, runs along it and comes out at
+ * `b` heading along `out`, as fast as it went in and never slower than a good
+ * roll, or at `speed` when a pipe only lets it drop out. `r` is how wide its
+ * mouth is. With a `path` the pipe is laid across the ground through those
+ * points, and the ball can be seen running along it; without one it runs out
+ * of sight. A `tint` paints the pipe one colour end to end, so where there
+ * are several you can see which comes out where.
  */
-export type Portal = { a: Vec; b: Vec; out: number; look?: 'pipe' | 'cave' | 'drain'; tint?: string; speed?: number }
+export type Portal = {
+  a: Vec
+  b: Vec
+  out: number
+  look?: 'pipe' | 'cave' | 'drain'
+  tint?: string
+  speed?: number
+  r?: number
+  path?: Vec[]
+}
 
 /** The cup slides from its spot to `to` and back, once every `period` seconds. */
 export type CupPath = { to: Vec; period: number }
@@ -332,7 +344,7 @@ function drawbridge(shape: Shape, period: number, down: number, look?: Drawbridg
   return { shape, period, down, look }
 }
 
-/** A pipe: in at (ax, ay), out at (bx, by) heading along `out`. */
+/** A pipe: in at (ax, ay), out at (bx, by) heading along `out`; its colour, mouth, run and so on in `more`. */
 function pipe(
   ax: number,
   ay: number,
@@ -340,10 +352,14 @@ function pipe(
   by: number,
   out: number,
   look?: Portal['look'],
-  tint?: string,
-  speed?: number,
+  more: Pick<Portal, 'tint' | 'speed' | 'r' | 'path'> = {},
 ): Portal {
-  return { a: { x: ax, y: ay }, b: { x: bx, y: by }, out, look, tint, speed }
+  return { a: { x: ax, y: ay }, b: { x: bx, y: by }, out, look, ...more }
+}
+
+/** Points for a pipe's run, from pairs. */
+function run(...pts: [number, number][]): Vec[] {
+  return pts.map(([x, y]) => ({ x, y }))
 }
 
 /** A crab, scuttling side to side across its strip of beach at `speed`. */
@@ -435,50 +451,78 @@ export const COURSE: Hole[] = [
     ],
   }),
   /*
-   * Three Pipes, another short one, and a bank shot. The tee sits at the foot
-   * of a lane up the right-hand side; across its head a wall set at a slant
-   * turns the ball left along a gallery, and at the gallery's far end three
-   * pipes open in the floor, one above another. Which one the ball finds
-   * depends on how it came off the wall. Blue, in the middle, is where a shot
-   * straight up the lane goes: it lets the ball out at the green's far corner
-   * for a putt. Gold, the bottom one, takes a shot a touch right of straight,
-   * and nothing else finds it: it lets the ball out on the green rolling at
-   * the cup, and one that came in gently drops. Red, the top one, catches a
-   * shot pulled left, and the ceiling's bounce along with it, and sends the
-   * ball back down the lane toward the tee. Nothing else reaches the green.
+   * Three Pipes, another short one, and a bank shot, in an old garden's
+   * waterworks. The tee sits at the foot of a lane up the right-hand side;
+   * the lane's head is cut across by a wall at a slant, which turns the ball
+   * left along a gallery, and in the paved floor at the gallery's far end
+   * three pipes open, one above another, small enough to miss. Which one the
+   * ball finds depends on how it came off the wall. Blue, in the middle, is
+   * where a shot straight up the lane goes: its pipe climbs the garden to the
+   * foot of the long terrace above and lets the ball out there, the whole
+   * length of the terrace from the cup. Gold, the bottom one, takes a shot a
+   * touch right of straight and little else: its pipe climbs the garden's
+   * far side and comes up out of the terrace's side not far from the cup,
+   * pointing at it, and a ball that went in gently drops; one that went in
+   * hard runs on into the bunker behind. Red, the top one, catches a shot
+   * pulled left and much of the ceiling's bounce; its pipe runs down the
+   * garden and round to the tee. A ball that finds none of them comes back
+   * off the end wall. The pipes are the only way up to the terrace.
    */
   hole({
     name: 'Three Pipes',
     par: 2,
-    h: 190,
-    tee: { x: 80, y: 170 },
-    cup: { x: 50, y: 34 },
+    h: 300,
+    tee: { x: 74, y: 276 },
+    cup: { x: 48, y: 20 },
     blend: 9,
     green: [
-      // The green, up top, on its own: the pipes are the only way on.
-      ribbon(24, [30, 40], [70, 40]),
-      // The gallery, and the lane up the right to it.
-      ribbon(17, [23, 105], [73, 105]),
-      ribbon(14, [80, 105], [80, 166]),
-      disc(80, 168, 13),
+      // The terrace, up top, on its own: long, with the cup at its head.
+      ribbon(20, [50, 28], [47, 68], [51, 106]),
+      // The lane and the gallery, one channel with its corner cut across at a slant: the wall there, the
+      // gallery's ceiling and the square end wall run dead straight, so a ball comes off them true.
+      poly([12, 165], [56.6, 165], [87, 195.4], [87, 276], [61, 276], [61, 214.6], [43.4, 197], [12, 197]),
+      // The tee.
+      disc(74, 276, 15),
     ],
-    // The wall across the corner, the only way into the gallery. Off it, each degree of aim right of
-    // straight up arrives two units lower at the far end; left of about 3° the ball meets the ceiling
-    // first and comes down again, so the top pipe gathers every shot pulled left.
-    walls: [bar(68.5, 88, 94, 113.5)],
+    paving: [rect(12, 165, 12, 32)],
+    sand: [ribbon(3, [49.5, 12.5], [53, 14.2], [56.5, 16.5])],
+    // Off the wall, a shot from 5° left of straight up to 5° right arrives at the far end about 180 + 2.4
+    // a degree down it; further left, the ball meets the ceiling first and comes back down.
     portals: [
       // Red only lets the ball drop out, by the tee, so it is back where it started however hard it went in.
-      pipe(16, 91.5, 70, 160, DOWN, 'pipe', '#d9534f', 22),
-      pipe(16, 100.5, 84, 24, LEFT, 'pipe', '#3f8fd8'),
-      pipe(16, 109.5, 26, 54, Math.atan2(34 - 54, 50 - 26), 'pipe', '#e8b53a'),
+      pipe(17, 170.5, 66, 280, -1.22, 'pipe', {
+        tint: '#d9534f',
+        speed: 22,
+        r: 2.6,
+        path: run([13, 184], [8, 196], [6, 210], [6, 276], [11, 288], [24, 292], [50, 292], [60, 287]),
+      }),
+      // Blue only lets the ball drop out too, at the terrace's foot, so it is the terrace's length from the cup
+      // however it went in.
+      pipe(17, 180.1, 51, 118, UP, 'pipe', {
+        tint: '#3f8fd8',
+        speed: 14,
+        r: 2.6,
+        path: run([30, 174], [42, 162], [50, 150], [54, 138], [52, 128]),
+      }),
+      // Gold comes up out of the terrace's side, pointing at the cup, near enough that only a ball that went in
+      // gently is slow enough to drop; its line meets the rail behind the cup aslant, so one that runs past
+      // isn't sent straight back in.
+      pipe(17, 191.2, 36, 36, Math.atan2(20 - 36, 48 - 36), 'pipe', {
+        tint: '#e8b53a',
+        r: 2.6,
+        path: run([24, 162], [20, 146], [16, 120], [14, 80], [16, 56], [22, 44], [29, 38]),
+      }),
     ],
+    // The fountain's basin, off the course: nothing rolls in it.
+    water: [disc(84, 140, 6.5)],
     decor: [
-      decor('flowers', 88, 94, 2.4),
-      decor('bush', 16, 140, 3.4),
-      decor('flowers', 40, 150, 3),
-      decor('blossom', 30, 78, 5),
-      decor('bush', 72, 76, 3),
-      decor('flowers', 55, 80, 2.4),
+      decor('fountain', 84, 140, 6.5),
+      decor('bed', 34, 246, 3, DOWN, 36),
+      decor('blossom', 88, 70, 5),
+      decor('flowers', 36, 150, 2.6),
+      decor('flowers', 92, 108, 2.4),
+      decor('bush', 48, 216, 3.2),
+      decor('flowers', 52, 278, 2.8),
     ],
   }),
   /*

@@ -3,13 +3,13 @@ import { castShadow, LIGHT, loopsPath, spotRandom, type Ctx } from './brush'
 import {
   EDGE_T,
   FIELD_W,
-  PORTAL_R,
   SAIL_T,
   SPINNER_T,
   type Drawbridge,
   type Gate,
   type Hole,
   type Mill,
+  type Portal,
   type Ramp,
   type Rock,
   type Shape,
@@ -33,19 +33,22 @@ import {
   mapLayout,
   MAX_DRAG,
   millOver,
+  mouthR,
   onGround,
+  pipeRoute,
   SAND_LIE,
   showsMap,
   sliderWall,
   spinnerWall,
+  transitView,
   underMap,
   type Frame,
   type GameState,
   type RoverState,
 } from './game'
-import { css, gardenOf, isFlat, mix, placeOf, skin, type Place, type RGB, type Skin } from './paint'
+import { css, gardenOf, hexRgb, isFlat, mix, placeOf, skin, type Place, type RGB, type Skin } from './paint'
 import { drawLiveProp, isLive, paintProp, paintPropShadow } from './scenery'
-import { boundsOf, contours, inAny } from './terrain'
+import { boundsOf, contours, inAny, unionSdf } from './terrain'
 
 /*
  * Putt, drawn. Each hole is a green laid through a place — a garden, a
@@ -1208,7 +1211,7 @@ function paintPortals(g: Ctx, sk: Skin, place: Place, hole: Hole) {
       [pipe.a, false],
       [pipe.b, true],
     ] as const) {
-      const r = PORTAL_R
+      const r = mouthR(pipe)
       if (look === 'cave') {
         // A mouth in the rock: stones round a dark hole.
         const rnd = mulberry32(Math.round(p.x * 7 + p.y * 3))
@@ -1275,6 +1278,98 @@ function paintPortals(g: Ctx, sk: Skin, place: Place, hole: Hole) {
         g.closePath()
         g.fill()
       }
+    }
+  }
+}
+
+/** Half a laid pipe's width: a ball fits inside with a little to spare. */
+const PIPE_W = 2.1
+
+/** A pipe's colours: its paint, or the place's stone where it has none, lit and in shade. */
+function pipeTones(sk: Skin, pipe: Portal) {
+  const base: RGB = pipe.tint ? hexRgb(pipe.tint) : sk.stone
+  return {
+    body: css(base),
+    line: css(mix(base, BLACK, 0.5)),
+    shade: css(mix(base, BLACK, 0.2)),
+    lit: css(mix(base, WHITE, 0.5)),
+    band: css(mix(base, BLACK, 0.3)),
+  }
+}
+
+/**
+ * A pipe's line moved off to one side of it: toward the side away from the
+ * light for a positive `by`, toward the light for a negative one, the more
+ * so the more squarely that side faces it.
+ */
+function besideRoute(route: readonly Vec[], by: number): Vec[] {
+  const len = Math.hypot(LIGHT.x, LIGHT.y)
+  const lx = LIGHT.x / len
+  const ly = LIGHT.y / len
+  return route.map((p, i) => {
+    const a = route[Math.max(0, i - 1)]!
+    const b = route[Math.min(route.length - 1, i + 1)]!
+    const d = Math.hypot(b.x - a.x, b.y - a.y) || 1
+    const nx = -(b.y - a.y) / d
+    const ny = (b.x - a.x) / d
+    const face = nx * lx + ny * ly
+    return { x: p.x + nx * by * face, y: p.y + ny * by * face }
+  })
+}
+
+function strokeLine(g: Ctx, line: readonly Vec[], style: string, width: number) {
+  g.beginPath()
+  line.forEach((p, i) => (i === 0 ? g.moveTo(p.x, p.y) : g.lineTo(p.x, p.y)))
+  g.strokeStyle = style
+  g.lineWidth = width
+  g.stroke()
+}
+
+/**
+ * The pipes laid across the ground: a painted tube from mouth to far end,
+ * rounded by the light, banded where its lengths join, with its shadow on
+ * the grass. Laid before the rails and the green, so where a pipe runs under
+ * the course the course covers it, and it is seen coming out from under the
+ * rail and going back under.
+ */
+function paintPipes(g: Ctx, sk: Skin, hole: Hole, near: (y0: number, y1: number) => boolean) {
+  for (const pipe of hole.portals) {
+    if (!pipe.path?.length) continue
+    const route = pipeRoute(pipe)
+    let y0 = Infinity
+    let y1 = -Infinity
+    for (const p of route) {
+      y0 = Math.min(y0, p.y)
+      y1 = Math.max(y1, p.y)
+    }
+    if (!near(y0 - PIPE_W - 3, y1 + PIPE_W + 3)) continue
+    const tone = pipeTones(sk, pipe)
+    castShadow(g, 1.1, 0.8, sk.shadow, () => strokeLine(g, route, '#000', PIPE_W * 2))
+    strokeLine(g, route, tone.line, PIPE_W * 2 + 0.6)
+    strokeLine(g, route, tone.body, PIPE_W * 2)
+    strokeLine(g, besideRoute(route, PIPE_W * 0.55), tone.shade, PIPE_W * 0.9)
+    strokeLine(g, besideRoute(route, -PIPE_W * 0.42), tone.lit, PIPE_W * 0.5)
+    // A band round it every so often, where two lengths are joined.
+    let run = 0
+    let next = 7
+    for (let i = 1; i < route.length; i++) {
+      const a = route[i - 1]!
+      const b = route[i]!
+      const seg = Math.hypot(b.x - a.x, b.y - a.y)
+      while (seg > 0 && run + seg >= next) {
+        const k = (next - run) / seg
+        const x = a.x + (b.x - a.x) * k
+        const y = a.y + (b.y - a.y) * k
+        const tx = (b.x - a.x) / seg
+        const ty = (b.y - a.y) / seg
+        const reach = PIPE_W + 0.45
+        g.lineCap = 'butt'
+        strokeLine(g, [{ x: x - ty * reach, y: y + tx * reach }, { x: x + ty * reach, y: y - tx * reach }], tone.line, 1.35)
+        strokeLine(g, [{ x: x - ty * reach * 0.94, y: y + tx * reach * 0.94 }, { x: x + ty * reach * 0.94, y: y - tx * reach * 0.94 }], tone.band, 0.8)
+        g.lineCap = 'round'
+        next += 12
+      }
+      run += seg
     }
   }
 }
@@ -1354,6 +1449,7 @@ function paintGround(g: Ctx, hole: Hole, sk: Skin, ya: number, yb: number) {
   for (const p of garden) {
     if (isFlat(p) && p.kind !== 'lily' && p.kind !== 'reeds' && near(p.y - reach(p), p.y + reach(p))) paintProp(g, sk, p)
   }
+  paintPipes(g, sk, hole, near)
   for (const p of garden) if (near(p.y - reach(p) - 10, p.y + reach(p) + 10)) paintPropShadow(g, sk, p)
 
   paintRails(g, sk, place, hole, edges, ya, yb)
@@ -1406,6 +1502,109 @@ function paintGround(g: Ctx, hole: Hole, sk: Skin, ya: number, yb: number) {
     if (isFlat(p)) continue
     if (near(p.y - reach(p), p.y + reach(p))) paintProp(g, sk, p)
   }
+}
+
+/** The ball itself: white, lit from the upper left, a little sandy when it sits in sand. */
+function paintBall(g: Ctx, x: number, y: number, r: number, sandy = false) {
+  const grad = g.createRadialGradient(x - r * 0.38, y - r * 0.42, r * 0.08, x, y, r)
+  grad.addColorStop(0, 'rgba(255, 255, 255, 1)')
+  grad.addColorStop(0.62, sandy ? 'rgba(240, 232, 216, 1)' : 'rgba(238, 242, 246, 1)')
+  grad.addColorStop(1, sandy ? 'rgba(190, 178, 158, 1)' : 'rgba(178, 188, 200, 1)')
+  g.fillStyle = grad
+  g.beginPath()
+  g.arc(x, y, r, 0, Math.PI * 2)
+  g.fill()
+  g.strokeStyle = 'rgba(16, 24, 32, 0.55)'
+  g.lineWidth = 0.28
+  g.stroke()
+}
+
+/**
+ * A ball down a pipe. It rolls to the middle of the mouth and drops away,
+ * smaller and darker; along a pipe laid over the ground it is a bulge
+ * running up the pipe, seen wherever the pipe is out in the open and hidden
+ * where it runs under the course; then it rises out of the far end and
+ * rolls clear of the rim.
+ */
+function drawTransit(g: Ctx, sk: Skin, state: GameState, hole: Hole) {
+  const view = transitView(state)
+  if (!view) return
+  const { pipe, at, stage, k } = view
+  if (stage === 'sink') {
+    g.save()
+    g.globalAlpha = 1 - 0.75 * k
+    paintBall(g, at.x, at.y, BALL_R * (1 - 0.55 * k))
+    g.restore()
+    return
+  }
+  if (stage === 'pop') {
+    const e = 1 - (1 - k) * (1 - k)
+    g.save()
+    g.globalAlpha = 0.35 + 0.65 * e
+    g.fillStyle = 'rgba(0, 0, 0, 0.3)'
+    g.beginPath()
+    g.ellipse(at.x + LIGHT.x * 0.6, at.y + LIGHT.y * 0.6, BALL_R * e, BALL_R * 0.85 * e, 0, 0, Math.PI * 2)
+    g.fill()
+    paintBall(g, at.x, at.y, BALL_R * (0.45 + 0.55 * e))
+    g.restore()
+    return
+  }
+  if (!pipe.path?.length) return
+  // Out in the open past the rail it shows; under the rail and the course it doesn't.
+  const railW = placeOf(sk, hole.theme).railW
+  const seen = (p: Vec) => Math.max(0, Math.min(1, (unionSdf(hole.green, p, hole.blend) - railW - 0.3) / 1.4))
+  const tone = pipeTones(sk, pipe)
+  const route = pipeRoute(pipe)
+  // A fading wake behind it, then the bulge.
+  for (let i = 3; i >= 1; i--) {
+    const p = alongPath(route, k - i * 0.018)
+    const a = seen(p) * (0.4 - i * 0.1)
+    if (a <= 0) continue
+    g.globalAlpha = a
+    g.fillStyle = tone.lit
+    g.beginPath()
+    g.arc(p.x, p.y, PIPE_W * (1 - i * 0.12), 0, Math.PI * 2)
+    g.fill()
+  }
+  const a = seen(at)
+  if (a > 0) {
+    g.globalAlpha = a
+    g.beginPath()
+    g.arc(at.x, at.y, PIPE_W + 0.75, 0, Math.PI * 2)
+    g.fillStyle = tone.body
+    g.fill()
+    g.strokeStyle = tone.line
+    g.lineWidth = 0.32
+    g.stroke()
+    g.beginPath()
+    g.arc(at.x + 0.5, at.y + 0.6, PIPE_W * 0.75, 0, Math.PI * 2)
+    g.fillStyle = tone.shade
+    g.fill()
+    g.beginPath()
+    g.arc(at.x - 0.75, at.y - 0.85, PIPE_W * 0.42, 0, Math.PI * 2)
+    g.fillStyle = tone.lit
+    g.fill()
+    g.beginPath()
+    g.arc(at.x - 0.95, at.y - 1.05, 0.38, 0, Math.PI * 2)
+    g.fillStyle = sk.dark ? 'rgba(255, 255, 255, 0.75)' : 'rgba(255, 255, 255, 0.95)'
+    g.fill()
+  }
+  g.globalAlpha = 1
+}
+
+/** The point `u` of the way along a drawn line, by length. */
+function alongPath(line: readonly Vec[], u: number): Vec {
+  let total = 0
+  for (let i = 1; i < line.length; i++) total += Math.hypot(line[i]!.x - line[i - 1]!.x, line[i]!.y - line[i - 1]!.y)
+  let left = Math.max(0, Math.min(1, u)) * total
+  for (let i = 1; i < line.length; i++) {
+    const a = line[i - 1]!
+    const b = line[i]!
+    const seg = Math.hypot(b.x - a.x, b.y - a.y)
+    if (left <= seg) return seg > 0 ? { x: a.x + ((b.x - a.x) * left) / seg, y: a.y + ((b.y - a.y) * left) / seg } : a
+    left -= seg
+  }
+  return line[line.length - 1]!
 }
 
 /* ---------- the strips ---------- */
@@ -2407,7 +2606,7 @@ export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, w: n
   // ---- the ball. A fast one leaves a streak; in the air it rises off its shadow.
   const inPlay = state.phase !== 'menu' && state.phase !== 'gameover' && state.drop > 0
   const speed = Math.hypot(state.ball.vx, state.ball.vy)
-  if (state.phase === 'roll' && state.air === 0) {
+  if (state.phase === 'roll' && state.air === 0 && !state.transit) {
     const lastPt = trail[trail.length - 1]
     if (!lastPt || Math.hypot(lastPt.x - state.ball.x, lastPt.y - state.ball.y) > 0.6) trail.push({ x: state.ball.x, y: state.ball.y })
     if (trail.length > 9) trail = trail.slice(-9)
@@ -2415,7 +2614,8 @@ export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, w: n
     trail = []
   }
   const under = millOver(hole, state.ball)
-  if (inPlay) {
+  if (inPlay && state.transit) drawTransit(ctx, sk, state, hole)
+  else if (inPlay) {
     const b = shown
     // Let go: for a moment, a streak from where the ball was drawn back to where it has got to.
     if (state.phase === 'roll' && pulledFrom && state.t < SNAP_TIME) {
@@ -2451,17 +2651,7 @@ export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, w: n
     ctx.beginPath()
     ctx.ellipse(sx, sy, BALL_R * state.drop * (1 - lift * 0.2), BALL_R * state.drop * 0.85 * (1 - lift * 0.2), 0, 0, Math.PI * 2)
     ctx.fill()
-    const grad = ctx.createRadialGradient(b.x - r * 0.38, b.y - r * 0.42, r * 0.08, b.x, b.y, r)
-    grad.addColorStop(0, 'rgba(255, 255, 255, 1)')
-    grad.addColorStop(0.62, state.inSand ? 'rgba(240, 232, 216, 1)' : 'rgba(238, 242, 246, 1)')
-    grad.addColorStop(1, state.inSand ? 'rgba(190, 178, 158, 1)' : 'rgba(178, 188, 200, 1)')
-    ctx.fillStyle = grad
-    ctx.beginPath()
-    ctx.arc(b.x, b.y, r, 0, Math.PI * 2)
-    ctx.fill()
-    ctx.strokeStyle = 'rgba(16, 24, 32, 0.55)'
-    ctx.lineWidth = 0.28
-    ctx.stroke()
+    paintBall(ctx, b.x, b.y, r, state.inSand)
   }
 
   // ---- windmills over the ball: the roof it runs under, and the sails

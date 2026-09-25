@@ -2,7 +2,7 @@ import { PALETTE, type Swatch } from '../../data/games'
 import { hashString, mulberry32 } from '../../lib/seededRandom'
 import { inkColor, isDarkTheme, playfieldColor } from '../../lib/theme'
 import type { Decor, Hole, Theme } from './course'
-import { unionSdf, type Vec } from './terrain'
+import { smoothLine, unionSdf, type Vec } from './terrain'
 
 /*
  * The colours a hole is painted in, and the garden it sits in. Everything is
@@ -22,7 +22,7 @@ export function mix(a: RGB, b: RGB, t: number): RGB {
   return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t]
 }
 
-function hexRgb(hex: string): RGB {
+export function hexRgb(hex: string): RGB {
   const clean = hex.replace('#', '')
   if (clean.length !== 6) return [18, 28, 36]
   const n = Number.parseInt(clean, 16)
@@ -420,6 +420,20 @@ export function gardenOf(hole: Hole, edges: readonly Vec[][]): Prop[] {
       }
       return Math.hypot(p.x - d.x, p.y - d.y) > d.r + r + 1.5
     })
+  // Pipes laid across the ground keep everything off them, so nothing stands over a ball running along one.
+  const runs = hole.portals.filter((pipe) => pipe.path?.length).map((pipe) => smoothLine([pipe.a, ...pipe.path!, pipe.b], 2))
+  const clearOfPipes = (p: Vec, r: number) =>
+    runs.every((line) => {
+      for (let i = 1; i < line.length; i++) {
+        const a = line[i - 1]!
+        const b = line[i]!
+        const dx = b.x - a.x
+        const dy = b.y - a.y
+        const k = Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / (dx * dx + dy * dy || 1)))
+        if (Math.hypot(p.x - a.x - dx * k, p.y - a.y - dy * k) < r + 3) return false
+      }
+      return true
+    })
   const crowded = (p: Vec, r: number, k: number) =>
     props.some((q) => TREES.has(q.kind) && Math.hypot(q.x - p.x, q.y - p.y) < (q.r + r) * k)
   const near = (p: Vec, r: number) => props.some((q) => !TREES.has(q.kind) && Math.hypot(q.x - p.x, q.y - p.y) < q.r + r + 1)
@@ -455,7 +469,7 @@ export function gardenOf(hole: Hole, edges: readonly Vec[][]): Prop[] {
           const cone = k++ % 2 === 0
           const r = cone ? 2.3 : 2.7
           const p = { x: c.x + n.x * 6.6, y: c.y + n.y * 6.6 }
-          if (course(p) < r + 3.2 || !dry(p, r) || !clearOfMills(p, r) || !clearOfBig(p, r)) continue
+          if (course(p) < r + 3.2 || !dry(p, r) || !clearOfMills(p, r) || !clearOfBig(p, r) || !clearOfPipes(p, r)) continue
           if (near(p, r)) continue
           props.push({ kind: cone ? 'cone' : 'topiary', x: p.x, y: p.y, r, seed: rnd() })
         }
@@ -471,7 +485,7 @@ export function gardenOf(hole: Hole, edges: readonly Vec[][]): Prop[] {
     for (let gx = -10; gx < 110; gx += cell) {
       const p = { x: gx + rnd() * cell, y: gy + rnd() * cell }
       const r = 6.5 + rnd() * 5
-      if (course(p) < r + 3 || !dry(p, r) || !clearOfMills(p, r) || !clearOfBig(p, r)) continue
+      if (course(p) < r + 3 || !dry(p, r) || !clearOfMills(p, r) || !clearOfBig(p, r) || !clearOfPipes(p, r * 0.95)) continue
       if (crowded(p, r, 0.82)) continue
       if (props.some((q) => !TREES.has(q.kind) && q.kind !== 'snow' && Math.hypot(q.x - p.x, q.y - p.y) < q.r + r * 0.8)) continue
       props.push({ kind: pick(woods, rnd()), x: p.x, y: p.y, r, seed: rnd() })
@@ -483,7 +497,7 @@ export function gardenOf(hole: Hole, edges: readonly Vec[][]): Prop[] {
     const p = { x: -4 + rnd() * 108, y: rnd() * hole.h }
     const d = course(p)
     if (d < 4 || d > 13) continue
-    if (!dry(p, 2.5) || water(p) < 2.5 || !clearOfMills(p, 2) || !clearOfBig(p, 2)) continue
+    if (!dry(p, 2.5) || water(p) < 2.5 || !clearOfMills(p, 2) || !clearOfBig(p, 2) || !clearOfPipes(p, 2)) continue
     if (crowded(p, 2.5, 0.95)) continue
     if (props.some((q) => !TREES.has(q.kind) && q.kind !== 'snow' && Math.hypot(q.x - p.x, q.y - p.y) < q.r + 3.2)) continue
     const kind = pick(verge, rnd())
