@@ -8,6 +8,12 @@
  * icon, what it is, the detail in words and the figure on the right, in the
  * game's colour or gold when they are what lit the card. Play again sits at
  * the bottom and never moves. On a phone the panel is the kit's sheet.
+ *
+ * When it's taller than the screen, only the middle scrolls: the band stays
+ * on top and Play again at the bottom, and the scrollbar runs down the
+ * straight edge between them. The whole card scrolled, once, and the
+ * browser's bar ran down the round corners of it; and the race, which clips
+ * its rows, was squeezed down to its title to make room.
  */
 
 .report {
@@ -16,8 +22,6 @@
   --report-gold-soft: color-mix(in srgb, var(--report-gold) 22%, transparent);
   --report-accent-soft: color-mix(in srgb, var(--panel-accent) 18%, transparent);
   width: min(27.5rem, 100%);
-  overflow-y: auto;
-  overscroll-behavior: contain;
   border-color: color-mix(in srgb, var(--panel-accent) 38%, var(--panel-line));
   box-shadow:
     0 30px 80px -20px rgba(0, 0, 0, 0.5),
@@ -196,6 +200,51 @@ html[data-theme='dark'] .report {
   font-size: 0.95rem;
   line-height: 1.4;
   color: var(--muted);
+}
+
+/*
+ * The middle, between the band and Play again: it takes what height is left
+ * and scrolls in it, with a shadow at an edge there's more past (the local
+ * backgrounds cover the shadows at the ends) and the game card's slim bar.
+ */
+.report__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background:
+    linear-gradient(var(--surface) 35%, transparent) top / 100% 1.6rem no-repeat local,
+    linear-gradient(transparent, var(--surface) 65%) bottom / 100% 1.6rem no-repeat local,
+    radial-gradient(farthest-side at 50% 0, rgba(var(--shade-rgb), 0.28), transparent) top / 100% 0.7rem no-repeat,
+    radial-gradient(farthest-side at 50% 100%, rgba(var(--shade-rgb), 0.28), transparent) bottom / 100% 0.7rem
+      no-repeat;
+}
+
+/* The game card's bar (panel.css): slim, no arrows, clear of the lines above and below. */
+.report__body::-webkit-scrollbar {
+  width: 10px;
+}
+
+.report__body::-webkit-scrollbar-track {
+  margin-block: 0.4rem;
+  background: transparent;
+}
+
+.report__body::-webkit-scrollbar-thumb {
+  border: 3px solid transparent;
+  border-radius: 999px;
+  background: rgba(var(--ink-rgb), 0.24) padding-box;
+}
+
+.report__body::-webkit-scrollbar-button {
+  display: none;
+}
+
+@supports not selector(::-webkit-scrollbar) {
+  .report__body {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(var(--ink-rgb), 0.24) transparent;
+  }
 }
 
 /* ---------- the lines ---------- */
@@ -538,6 +587,7 @@ html[data-theme='dark'] .report {
   flex-direction: column;
   gap: 0.9rem;
   padding: 1.15rem 1.75rem 1.5rem;
+  border-top: 1px solid var(--panel-line);
 }
 
 .report__actions {
@@ -694,6 +744,20 @@ html[data-theme='dark'] .report {
 
   .report--static .panel__grab {
     display: none;
+  }
+}
+
+/* A screen too short for the band and Play again together: the whole card scrolls, as a last resort. */
+@media (max-height: 30rem) {
+  .report {
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  .report__body {
+    flex: none;
+    overflow: visible;
+    background: none;
   }
 }
 

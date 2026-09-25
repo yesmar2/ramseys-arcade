@@ -287,9 +287,12 @@ export function RunReportBody({
         </h2>
         {sub ? <p className="report__sub">{sub}</p> : null}
       </header>
-      {lines === null ? <LinesLoading /> : lines.length ? <Lines lines={lines} tier={tier} /> : null}
-      {race ? <Race race={race} /> : null}
-      {children ? <div className="report__block">{children}</div> : null}
+      {/* The score's band stays on top and Play again at the bottom; only what's between scrolls, when it must. */}
+      <div className="report__body">
+        {lines === null ? <LinesLoading /> : lines.length ? <Lines lines={lines} tier={tier} /> : null}
+        {race ? <Race race={race} /> : null}
+        {children ? <div className="report__block">{children}</div> : null}
+      </div>
       <div className="report__foot">
         <div className="report__actions">
           <Action action={primary} className="panel__btn" allow={allow} />
