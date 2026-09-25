@@ -121,9 +121,12 @@ export type Drawbridge = { shape: Shape; period: number; down: number; phase?: n
  * A ramp: a ball crossing it along `dir` at least `min` fast (or the usual
  * take-off speed) takes off and flies over whatever is there, `len` units at
  * a quarter over the take-off speed and further the faster it went, keeping a
- * little of the angle it came in at.
+ * little of the angle it came in at. `longest` is how many times `len` the
+ * hardest take-off can fly, where a ramp wants a full-blooded hit to overshoot;
+ * `keep` is the share of its speed the ball keeps coming down, less where it
+ * lands on soft ground and checks up.
  */
-export type Ramp = Rect & { dir: number; len: number; min?: number }
+export type Ramp = Rect & { dir: number; len: number; min?: number; longest?: number; keep?: number }
 
 /**
  * A rover: a loose ball that bounces around its pen at a steady speed, off
@@ -244,8 +247,18 @@ function mill(x: number, y: number, r: number, dir: number, speed: number, phase
 }
 
 /** A ramp: cross the box along `dir` at least `min` fast and the ball flies about `len` units, further the faster. */
-function ramp(x: number, y: number, w: number, h: number, dir: number, len: number, min?: number): Ramp {
-  return { x, y, w, h, dir, len, min }
+function ramp(
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  dir: number,
+  len: number,
+  min?: number,
+  longest?: number,
+  keep?: number,
+): Ramp {
+  return { x, y, w, h, dir, len, min, longest, keep }
 }
 
 /** A hill: the ball is pushed along (px, py) — downhill — while on the shape. */
@@ -370,40 +383,41 @@ function hole(spec: Spec): Hole {
 export const COURSE: Hole[] = [
   /*
    * Lily Pond, a short one to start: the whole hole on one screen, the cup
-   * in sight from the tee. A walled pond lies across the middle, lilies on
-   * it, and a ramp at its near edge: hit it hard enough and the ball jumps
-   * the water and lands on the green, most times a putt from the cup and now
-   * and then rolling in; too soft and it rolls up the ramp, off the pond's
-   * wall and back, with nothing lost but the stroke; too hard and it runs
-   * through into the bunker behind the flag. Or go round the pond either
-   * side, the safe way, and putt from there.
+   * in sight from the tee. A long pond lies across the middle, lilies on it,
+   * and a ramp at its near edge: the jump has to be judged. Too soft and the
+   * ball rolls up the ramp into the water, or takes off and comes down in
+   * it; right, and it lands on the green, most times a putt from the cup and
+   * now and then rolling in; firm, and it runs on into the bunker behind the
+   * flag; a full pull flies the whole hole and is out of bounds. Or go round
+   * the pond either side, the safe way, and putt from there.
    */
   hole({
     name: 'Lily Pond',
     par: 2,
     h: 190,
-    tee: { x: 50, y: 170 },
-    cup: { x: 57.5, y: 40 },
+    tee: { x: 50, y: 172 },
+    cup: { x: 54, y: 38 },
     blend: 9,
     green: [
-      disc(50, 166, 13),
-      ribbon(14, [50, 166], [50, 140]),
-      // A ring of ground round the pond, walled off from the water, so a ball that doesn't take off comes back.
-      arc(50, 108, 22, 0, Math.PI * 2, 10),
-      ribbon(14, [50, 76], [50, 62]),
-      disc(52, 42, 27),
+      disc(50, 168, 13),
+      ribbon(14, [50, 168], [50, 146]),
+      // Round the pond: the ground runs on under it, so a ball that comes down short is in.
+      capsule(50, 94, 50, 116, 30),
+      disc(52, 40, 26),
     ],
-    water: [disc(50, 108, 11.5)],
-    ramps: [ramp(44, 122, 12, 8, UP, 46, 70)],
-    sand: [ribbon(4.5, [36, 22], [52, 18], [68, 22])],
+    water: [capsule(50, 94, 50, 112, 12)],
+    ramps: [ramp(44, 128, 12, 8, UP, 48, 90, 4, 0.15)],
+    // Deep enough that a jump that lands running doesn't come back off the rail and all the way down into the pond.
+    sand: [ribbon(7.5, [30, 25], [52, 20], [74, 25])],
     decor: [
-      decor('lily', 45, 105, 2.4),
-      decor('lily', 56, 112, 2),
-      decor('reeds', 61, 100, 2.2),
-      decor('flowers', 22, 152, 3),
-      decor('flowers', 79, 148, 2.6),
-      decor('bush', 17, 66, 3.2),
-      decor('blossom', 86, 64, 5.5),
+      decor('lily', 45, 100, 2.4),
+      decor('lily', 55, 110, 2),
+      decor('lily', 47, 88, 1.8),
+      decor('reeds', 61, 92, 2.2),
+      decor('flowers', 22, 154, 3),
+      decor('flowers', 79, 150, 2.6),
+      decor('bush', 16, 64, 3.2),
+      decor('blossom', 87, 62, 5.5),
     ],
   }),
   /*

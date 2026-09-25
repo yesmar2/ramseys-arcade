@@ -37,7 +37,7 @@ import { inAny, inside } from './terrain'
  * only works dead on. Then it pulls back and lets go with a person's wobble
  * in the pull, and the ball does whatever the game says. A shot that put it
  * in the water it doesn't play the same way again from the same spot. After
- * the fifth hole, a new round starts.
+ * the last hole, a new round starts.
  */
 
 /** Field units across the screen's short side: the ball big enough to follow, and room to see where it's going. */
@@ -661,7 +661,7 @@ export function makeSim(): Sim<Run> {
       return { x: fr.x, y: fr.y }
     },
     // The still: the ball in the air off the ramp on Lily Pond, over the water (it goes on into the cup).
-    poster: { seed: 1, at: 5.15 },
+    poster: { seed: 1, at: 4.92 },
     hold: 2,
   }
 }

@@ -207,6 +207,8 @@ export type GameState = {
   /** Off a ramp: how far the ball still has to fly, and how far the flight was. Zero on the ground. */
   air: number
   airMax: number
+  /** The share of its speed the ball keeps when this flight comes down: its ramp's, or LAND_KEEP. */
+  airKeep: number
   /** Ball scale while dropping into the cup. */
   drop: number
   /** Flash timers per bumper and per wall (kickers), for the renderer. */
@@ -479,6 +481,7 @@ export function createInitialState(w = 540, h = 720): GameState {
     onPad: false,
     air: 0,
     airMax: 0,
+    airKeep: LAND_KEEP,
     drop: 1,
     bumperFlash: first.bumpers.map(() => 0),
     wallFlash: wallsOf(first).map(() => 0),
@@ -578,6 +581,7 @@ function beginHole(state: GameState, index: number): GameState {
     onPad: false,
     air: 0,
     airMax: 0,
+    airKeep: LAND_KEEP,
     drop: 1,
     bumperFlash: hole.bumpers.map(() => 0),
     wallFlash: wallsOf(hole).map(() => 0),
@@ -868,8 +872,8 @@ function bounceSlider(ball: Ball, sl: Slider, clock: number, restitution: number
   return bounceMoving(ball, sliderWall(sl, clock), vx, vy, restitution)
 }
 
-/** A flight off a ramp: how far is left, and how far it was. */
-type Flight = { air: number; max: number }
+/** A flight off a ramp: how far is left, how far it was, and the share of its speed the ball keeps coming down. */
+type Flight = { air: number; max: number; keep: number }
 
 type StepOut = {
   wall: boolean
@@ -958,8 +962,8 @@ function step(ball: Ball, hole: Hole, rovers: RoverState[], flight: Flight, dt: 
     flight.air -= dist
     if (flight.air > 0 && dist > 0) return out
     flight.air = 0
-    ball.vx *= LAND_KEEP
-    ball.vy *= LAND_KEEP
+    ball.vx *= flight.keep
+    ball.vy *= flight.keep
     out.landed = true
     if (!onGround(hole, ball)) out.oob = true
     return out
@@ -1051,9 +1055,10 @@ function step(ball: Ball, hole: Hole, rovers: RoverState[], flight: Flight, dt: 
     const heading = rp.dir + off * RAMP_KEEP_ANGLE
     ball.vx = Math.cos(heading) * sp
     ball.vy = Math.sin(heading) * sp
-    const stretch = Math.min(RAMP_LONGEST, Math.max(RAMP_SHORTEST, sp / ((rp.min ?? RAMP_MIN) * RAMP_REF)))
+    const stretch = Math.min(rp.longest ?? RAMP_LONGEST, Math.max(RAMP_SHORTEST, sp / ((rp.min ?? RAMP_MIN) * RAMP_REF)))
     flight.air = rp.len * stretch
     flight.max = flight.air
+    flight.keep = rp.keep ?? LAND_KEEP
     out.launched = true
     return out
   }
@@ -1289,7 +1294,7 @@ export function tick(state: GameState, dt: number): GameState {
     case 'roll': {
       const hole = currentHole(s)
       const ball = { ...s.ball }
-      const flight: Flight = { air: s.air, max: s.airMax }
+      const flight: Flight = { air: s.air, max: s.airMax, keep: s.airKeep }
       const sub = dt / SUBSTEPS
       const bumperFlash = [...s.bumperFlash]
       const wallFlash = [...s.wallFlash]
@@ -1332,6 +1337,7 @@ export function tick(state: GameState, dt: number): GameState {
           ball,
           air: flight.air,
           airMax: flight.max,
+          airKeep: flight.keep,
           bumperFlash,
           wallFlash,
           rovers,
@@ -1358,6 +1364,7 @@ export function tick(state: GameState, dt: number): GameState {
       s.ball = ball
       s.air = flight.air
       s.airMax = flight.max
+      s.airKeep = flight.keep
       s.inSand = sand
       s.onPad = pad
       s.bumperFlash = bumperFlash
