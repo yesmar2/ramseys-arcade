@@ -45,13 +45,14 @@ html[data-theme='dark'] .report {
 /* ---------- the band: kicker, score, how it ended ---------- */
 
 .report__head {
+  --report-pad-x: 1.75rem;
   position: relative;
   flex: none;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 0.6rem;
-  padding: 1.6rem 1.75rem 1.35rem;
+  padding: 1.6rem var(--report-pad-x) 1.35rem;
   border-bottom: 1px solid var(--panel-line);
   background: linear-gradient(180deg, color-mix(in srgb, var(--panel-accent) 11%, transparent), transparent);
   text-align: center;
@@ -79,11 +80,15 @@ html[data-theme='dark'] .report {
     var(--surface);
 }
 
-/* Out of the game altogether: top left, the way the play screen's own back control points, clear of Play again. */
+/*
+ * Out of the game altogether: top left, the way the play screen's own back
+ * control points, clear of Play again. It has a row of its own above the
+ * kicker: side by side, a long ribbon ("1st in daily · Barrage") ran into
+ * "Back to event" on a card this narrow.
+ */
 .report__leave {
-  position: absolute;
-  top: 0.7rem;
-  left: 0.7rem;
+  align-self: flex-start;
+  margin: 0 0 -0.25rem calc(0.7rem - var(--report-pad-x));
   display: inline-flex;
   align-items: center;
   gap: 0.15rem;
@@ -97,6 +102,11 @@ html[data-theme='dark'] .report {
   font-size: 0.88rem;
   font-weight: 600;
   cursor: pointer;
+}
+
+/* The way out's row takes the place of the band's top padding. */
+.report__head.report__head--leave {
+  padding-top: 0.7rem;
 }
 
 .report__leave svg {
@@ -710,7 +720,8 @@ html[data-theme='dark'] .report {
   }
 
   .report__head {
-    padding: 1.7rem 1.35rem 1.15rem;
+    --report-pad-x: 1.35rem;
+    padding: 1.7rem var(--report-pad-x) 1.15rem;
   }
 
   .report__lines {

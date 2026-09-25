@@ -251,7 +251,7 @@ export function RunReportBody({
   const allow = useDeliberatePress()
   return (
     <>
-      <header className="report__head">
+      <header className={`report__head${leave ? ' report__head--leave' : ''}`}>
         {leave ? (
           <button
             type="button"

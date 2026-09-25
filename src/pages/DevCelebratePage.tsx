@@ -340,7 +340,7 @@ export function DevCelebratePage() {
                   <RunReportBody
                     titleId={`dev-${s.key}`}
                     primary={{ label: 'Play again' }}
-                    leave={{ label: 'Leave', onClick: () => {} }}
+                    leave={{ label: 'Back to event', onClick: () => {} }}
                     {...s.body}
                   />
                 </div>
