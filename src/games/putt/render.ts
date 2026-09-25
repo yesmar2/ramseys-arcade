@@ -31,13 +31,13 @@ import {
   gateLevel,
   GUIDE_REACH,
   mapLayout,
+  mapShown,
   MAX_DRAG,
   millOver,
   mouthR,
   onGround,
   pipeRoute,
   SAND_LIE,
-  showsMap,
   sliderWall,
   spinnerWall,
   transitView,
@@ -2752,7 +2752,7 @@ export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, w: n
   ctx.restore()
 
   // ---- the map, in its corner
-  if (state.phase !== 'menu' && showsMap(f)) drawMap(ctx, state, hole, f, sk, dpr, cam)
+  if (state.phase !== 'menu' && mapShown(f, state.mapSide)) drawMap(ctx, state, hole, f, sk, dpr, cam)
 
   // ---- the band above: hole, par and strokes
   if (state.phase !== 'menu') {
@@ -2805,7 +2805,7 @@ export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, w: n
       } else if (ballOff) {
         cue = 'LOOKING AHEAD  ·  PULL BACK FROM THE BALL AND THE VIEW COMES BACK'
       } else {
-        cue = showsMap(f) ? 'PULL BACK FROM THE BALL, LET GO TO SHOOT  ·  MAP OR SCROLL TO LOOK' : 'PULL BACK FROM THE BALL, LET GO TO SHOOT'
+        cue = mapShown(f, state.mapSide) ? 'PULL BACK FROM THE BALL, LET GO TO SHOOT  ·  MAP OR SCROLL TO LOOK' : 'PULL BACK FROM THE BALL, LET GO TO SHOOT'
       }
     } else if (state.phase === 'intro') {
       cue = hole.name.toUpperCase()

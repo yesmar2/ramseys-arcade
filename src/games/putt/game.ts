@@ -722,8 +722,11 @@ export function lookAt(state: GameState, y: number): GameState {
   return { ...state, look: camFor(f, y) }
 }
 
-/** Which corner at the cup end the map takes: the usual one, or the other when the ball is under it. */
-export type MapSide = 'near' | 'far'
+/**
+ * Which corner at the cup end the map takes: the usual one, or the other when
+ * the ball is under it; or none, stepped aside while the cup is in view.
+ */
+export type MapSide = 'near' | 'far' | 'none'
 
 /**
  * Where the map sits on screen: a corner of the window at the cup end, a
@@ -759,16 +762,29 @@ export function showsMap(f: Frame) {
   return f.len > f.vis * 1.08
 }
 
+/** Whether the map is up: on a hole long enough to have one, unless it has stepped aside. */
+export function mapShown(f: Frame, side: MapSide) {
+  return showsMap(f) && side !== 'none'
+}
+
 /** Whether a screen point sits under the map, with a little room around it. */
 export function underMap(m: MapLayout, sx: number, sy: number, room = 14) {
   return sx > m.x - room && sx < m.x + m.w + room && sy > m.y - room && sy < m.y + m.h + room
 }
 
-/** The corner for the next shot: away from wherever the ball has come to rest. */
+/**
+ * The corner for the next shot: away from wherever the ball has come to rest.
+ * With the cup in view from there, there is nothing left to look ahead to,
+ * and the map stands aside rather than hide the green.
+ */
 function mapSideFor(s: GameState): MapSide {
   const hole = currentHole(s)
   const f = fieldFrame(s.stageW, s.stageH, hole.h)
-  const p = toScreen(f, aimCam(f, s.ball.y), s.ball)
+  const cam = aimCam(f, s.ball.y)
+  const cup = toScreen(f, cam, cupAt(hole, s.clock))
+  const edge = 12
+  if (cup.x > f.x + edge && cup.x < f.x + f.w - edge && cup.y > f.y + edge && cup.y < f.y + f.h - edge) return 'none'
+  const p = toScreen(f, cam, s.ball)
   return underMap(mapLayout(f, hole.h, 'near'), p.x, p.y) ? 'far' : 'near'
 }
 
@@ -1232,10 +1248,12 @@ function step(ball: Ball, hole: Hole, rovers: RoverState[], flight: Flight, dt: 
     rv.cool = 0.35
     out.rovers.push(i)
   })
-  // Over a pipe's mouth, it drops in: the roll takes it from there, down the pipe and out the far end.
+  // Over a pipe's mouth, it drops in, unless it is going too fast and runs over it: the roll takes it from
+  // there, down the pipe and out the far end.
   for (let i = 0; i < hole.portals.length; i++) {
     const pipe = hole.portals[i]!
     if (Math.hypot(ball.x - pipe.a.x, ball.y - pipe.a.y) >= mouthR(pipe)) continue
+    if (pipe.fastest !== undefined && Math.hypot(ball.vx, ball.vy) > pipe.fastest) continue
     out.pipe = i
     out.pipeSpeed = pipe.speed ?? Math.max(70, Math.hypot(ball.vx, ball.vy))
     return out
