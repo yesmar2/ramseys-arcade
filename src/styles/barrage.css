@@ -115,3 +115,20 @@
   visibility: hidden;
   pointer-events: none;
 }
+
+/* On a touch screen, the way to let a Barrage go without reaching down here for the button. */
+.barrage__blast-hint {
+  display: none;
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 0.58rem;
+  letter-spacing: 0.02em;
+  text-transform: none;
+  opacity: 0.8;
+}
+
+@media (hover: none) and (pointer: coarse) {
+  .barrage__blast-hint {
+    display: block;
+  }
+}

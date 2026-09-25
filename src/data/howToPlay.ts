@@ -171,7 +171,7 @@ export const HOW_TO_PLAY: Record<string, HowToPlay> = {
     goal: 'Dodge the bullets. Break the ships.',
     controls: [
       { does: 'Fly (Shift to slow)', touch: 'Drag', keys: 'Arrows' },
-      { does: 'Let a Barrage go', touch: 'Button', keys: 'Space' },
+      { does: 'Let a Barrage go', touch: 'Double-tap · 2nd finger', keys: 'Space' },
     ],
     auto: 'Your ship fires by itself.',
     scores: [

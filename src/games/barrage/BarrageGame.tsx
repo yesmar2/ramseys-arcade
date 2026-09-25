@@ -89,6 +89,17 @@ function isBarrageKey(e: KeyboardEvent): boolean {
 const TOUCH_TRAVEL = 1.3
 const MOUSE_TRAVEL = 1
 
+/**
+ * On a touch screen the Barrage goes without reaching for its button, which
+ * sits where a thumb flies the ship: a second finger down anywhere while one
+ * flies it, or a tap straight after a tap, for a thumb flying on its own. A
+ * tap is a touch let go within TAP_MS that moved less than TAP_SLOP field
+ * widths.
+ */
+const TAP_MS = 250
+const TAP_SLOP = 0.025
+const DOUBLE_TAP_MS = 320
+
 export function BarrageGame() {
   const tournament = useTournamentPlay()
   const apiBest = usePersonalBest('barrage')
@@ -115,8 +126,24 @@ export function BarrageGame() {
     setFocus(stateRef.current, held.has('slow'))
   }
 
-  /** The finger or pointer flying the ship: where it landed, and where the ship was then. */
-  const dragRef = useRef<{ id: number; fx: number; fy: number; sx: number; sy: number; travel: number } | null>(null)
+  /**
+   * The finger or pointer flying the ship: where it landed, and where the ship
+   * was then; when it landed, whether it has moved yet, and whether it let a
+   * Barrage go, which keeps it from counting as a tap.
+   */
+  const dragRef = useRef<{
+    id: number
+    fx: number
+    fy: number
+    sx: number
+    sy: number
+    travel: number
+    t0: number
+    moved: boolean
+    fired: boolean
+  } | null>(null)
+  /** When the last tap on the field let go, for a double tap. */
+  const lastTapRef = useRef(0)
 
   const fieldPoint = (clientX: number, clientY: number) => {
     const canvas = canvasRef.current
@@ -279,16 +306,30 @@ export function BarrageGame() {
       return
     }
     // The chrome's buttons and the Barrage button sit over the field and are not part of it.
-    if (e.target !== canvasRef.current || dragRef.current !== null) return
+    if (e.target !== canvasRef.current) return
+    const touch = e.pointerType !== 'mouse'
+    if (dragRef.current !== null) {
+      // A second finger down while one flies the ship lets the Barrage go.
+      if (touch && e.pointerId !== dragRef.current.id) barrage()
+      return
+    }
     const at = fieldPoint(e.clientX, e.clientY)
     if (!at) return
+    const now = performance.now()
+    // So does a tap straight after a tap; this touch goes on to fly the ship as any other does.
+    const fired = touch && now - lastTapRef.current < DOUBLE_TAP_MS
+    lastTapRef.current = 0
+    if (fired) barrage()
     dragRef.current = {
       id: e.pointerId,
       fx: at.x,
       fy: at.y,
       sx: s.ship.x,
       sy: s.ship.y,
-      travel: e.pointerType === 'mouse' ? MOUSE_TRAVEL : TOUCH_TRAVEL,
+      travel: touch ? TOUCH_TRAVEL : MOUSE_TRAVEL,
+      t0: now,
+      moved: false,
+      fired,
     }
     try {
       e.currentTarget.setPointerCapture(e.pointerId)
@@ -302,6 +343,7 @@ export function BarrageGame() {
     if (!d || e.pointerId !== d.id) return
     const at = fieldPoint(e.clientX, e.clientY)
     if (!at) return
+    if (!d.moved && Math.hypot(at.x - d.fx, at.y - d.fy) > TAP_SLOP) d.moved = true
     const want = { x: d.sx + (at.x - d.fx) * d.travel, y: d.sy + (at.y - d.fy) * d.travel }
     setSteer(stateRef.current, want)
     // A ship held against a wall: take the next move from where it is, so it comes off the wall at once.
@@ -312,7 +354,13 @@ export function BarrageGame() {
   }
 
   const onPlayPointerEnd = (e: ReactPointerEvent<HTMLDivElement>) => {
-    if (dragRef.current && e.pointerId === dragRef.current.id) endDrag()
+    const d = dragRef.current
+    if (!d || e.pointerId !== d.id) return
+    // A quick touch that didn't move is a tap, and one that let a Barrage go isn't.
+    const now = performance.now()
+    const tap = e.type === 'pointerup' && e.pointerType !== 'mouse' && !d.moved && !d.fired && now - d.t0 < TAP_MS
+    lastTapRef.current = tap ? now : 0
+    endDrag()
   }
 
   const barrageReady = ui.stock > 0 && ui.phase === 'playing'
@@ -367,6 +415,9 @@ export function BarrageGame() {
                       style={i === ui.stock ? ({ '--fill': `${Math.round(ui.charge * 100)}%` } as CSSProperties) : undefined}
                     />
                   ))}
+                </span>
+                <span className="barrage__blast-hint" aria-hidden="true">
+                  or double-tap
                 </span>
               </button>
             ) : null}
