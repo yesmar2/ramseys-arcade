@@ -97,6 +97,12 @@ const SunIcon = () => (
     <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
   </Icon>
 )
+const OneIcon = () => (
+  <Icon>
+    <circle cx="12" cy="12" r="8.5" />
+    <path d="M10.4 9.2l2-1.4v8.4" />
+  </Icon>
+)
 const ThreeIcon = () => (
   <Icon>
     <rect x="3" y="4" width="5" height="16" rx="1.5" />
@@ -236,6 +242,48 @@ export function DailyCard({ t }: { t: TournamentSummary }) {
         </span>
         <a className="evp-btn evp-btn--small" href={tournamentPlayHref(t.id, slug)}>
           Play {gameName(slug)}
+        </a>
+      </div>
+    </section>
+  )
+}
+
+/** Today's One Shot: its game on a screen, one try each, the clock, and who leads. */
+export function OneShotCard({ t }: { t: TournamentSummary }) {
+  const slug = t.games[0] ?? ''
+  const leader = t.podium?.[0]
+  // Placed means the try is taken: the standings are where to go next.
+  const placed = t.yourPlace != null
+  const href = placed ? tournamentHref(t.id) : tournamentPlayHref(t.id, slug)
+  return (
+    <section className="evp-card evp-daily evp-oneshot" style={accentStyle(t.games)} aria-labelledby="evp-oneshot-title">
+      <div className="evp-daily__screen">
+        <EventScreen slug={slug} href={href} label={placed ? `The One Shot’s standings` : `Take your One Shot at ${gameName(slug)}`} />
+        <span className="evp-tag evp-tag--today">
+          <span className="evp-dot" aria-hidden="true" />
+          One try
+        </span>
+      </div>
+      <div className="evp-daily__text">
+        <h2 id="evp-oneshot-title" className="evp-card__title">
+          {t.title}
+        </h2>
+        <p className="evp-card__copy">
+          One try each, and it counts the moment you start.{' '}
+          {placed
+            ? `Yours placed ${ordinal(t.yourPlace!)}.`
+            : leader
+              ? `${leader.name} leads${leader.score != null ? ` with ${leader.score.toLocaleString()}` : ''}.`
+              : 'Nobody has taken theirs yet.'}
+        </p>
+      </div>
+      <div className="evp-daily__foot">
+        <span className="evp-meta">
+          <ClockIcon />
+          {formatEventCountdown(t.endsAt)}
+        </span>
+        <a className="evp-btn evp-btn--small" href={href}>
+          {placed ? 'Standings' : 'Take your shot'}
         </a>
       </div>
     </section>
@@ -397,6 +445,7 @@ function ownStatus(t: TournamentSummary): string {
 
 const HOW: [() => ReactNode, string, string][] = [
   [SunIcon, 'The daily', 'One game, all day. The best score by midnight takes it.'],
+  [OneIcon, 'The One Shot', 'Another game, one try each, all day. It counts the moment you start.'],
   [ThreeIcon, 'The Weekly Triple', 'Three games, Monday to Sunday. Every place pays points, and the total wins.'],
   [LockIcon, 'Your own', 'Invite only. Top scores or a bracket, for an hour or a week.'],
   [MedalIcon, 'Trophies', 'Win any event and its trophy goes on your player card.'],

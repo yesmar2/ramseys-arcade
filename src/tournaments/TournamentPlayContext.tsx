@@ -9,6 +9,8 @@ export type TournamentPlayInfo = {
   maxAttempts: number | null
   attemptsRemaining: number | null
   canPlay: boolean
+  /** The event spends a try the moment its run starts. */
+  triesAtStart: boolean
 }
 
 const TournamentPlayContext = createContext<TournamentPlayInfo | null>(null)

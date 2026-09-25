@@ -3,7 +3,7 @@ import { runIdFor } from './runSession'
 import { getClaimToken, getLastPlayerName, normalizePlayerName, rememberClaimToken, ApiError } from './leaderboard'
 
 export type TournamentStatus = 'upcoming' | 'active' | 'ended'
-export type TournamentCadence = 'daily' | 'weekly'
+export type TournamentCadence = 'daily' | 'weekly' | 'oneshot'
 export type TournamentFormat =
   | 'open'
   | 'place-points'
@@ -292,7 +292,20 @@ export function joinedRosterLabel(
 export function cadenceLabel(cadence: TournamentCadence | null | undefined): string | null {
   if (cadence === 'daily') return 'Daily'
   if (cadence === 'weekly') return 'Weekly'
+  if (cadence === 'oneshot') return 'One Shot'
   return null
+}
+
+/**
+ * Whether an event spends a try the moment its run starts, as the API's
+ * triesCountAtStart does: any event with a set number of tries, bar a
+ * bracket. Its runs are opened through the event (startTournamentTry), and a
+ * run begun anywhere else can't post to it.
+ */
+export function triesCountAtStart(t: Pick<TournamentSummary, 'kind' | 'format' | 'rules'>): boolean {
+  if (t.kind === 'bracket') return false
+  const max = t.rules?.maxAttempts ?? 0
+  return max > 0 && (t.format === 'single-run' || t.format === 'attempt-limited' || t.format === 'place-points')
 }
 
 export type StandingRow = {
@@ -979,6 +992,39 @@ export async function submitTournamentScore(
   return data
 }
 
+/**
+ * A try begins, in an event that counts its tries as they start: the server
+ * spends one and opens the run it's played in. The run's id comes back, and
+ * it is the only run whose score can fill the try.
+ */
+export async function startTournamentTry(
+  id: string,
+  name: string,
+  game: string,
+): Promise<{ runId: string; attempt: number; attemptsUsed: number; attemptsRemaining: number; maxAttempts: number }> {
+  const cleaned = normalizePlayerName(name)
+  const token = getClaimToken(cleaned)
+  const data = await api<{
+    runId: string
+    attempt: number
+    attemptsUsed: number
+    attemptsRemaining: number
+    maxAttempts: number
+    token?: string
+  }>(`/tournaments/${id}/attempts`, {
+    method: 'POST',
+    body: JSON.stringify({
+      name: cleaned,
+      game,
+      ...(token ? { token } : {}),
+      ...tournamentAccessQuery(id),
+    }),
+  })
+  rememberJoinedTournament(id)
+  if (data.token) rememberClaimToken(cleaned, data.token)
+  return data
+}
+
 /** Submit this score to every active tournament the local player has joined that includes the game. */
 export async function submitScoreToJoinedTournaments(
   game: string,
@@ -996,7 +1042,8 @@ export async function submitScoreToJoinedTournaments(
     return []
   }
 
-  const targets = active.filter((t) => joined.has(t.id))
+  // An event that spends a try as its run starts takes only runs begun from its own page.
+  const targets = active.filter((t) => joined.has(t.id) && !triesCountAtStart(t))
   const results: { id: string; title: string; improved: boolean }[] = []
   for (const t of targets) {
     try {

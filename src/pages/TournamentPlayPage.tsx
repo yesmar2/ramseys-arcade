@@ -1,4 +1,5 @@
 import { Suspense, useEffect, useState } from 'react'
+import { openRunsThrough } from '../lib/runSession'
 import { DeviceUnavailable } from '../components/DeviceUnavailable'
 import { gameAccentStyle } from '../lib/gameAccentStyle'
 import { lazyPage, type LazyPage } from '../lib/lazyPage'
@@ -13,7 +14,9 @@ import {
   isPlayerInTournament,
   joinTournament,
   rememberTournamentInvite,
+  startTournamentTry,
   syncJoinedTournamentRosters,
+  triesCountAtStart,
   type TournamentDetail,
 } from '../lib/tournaments'
 import { tournamentHref } from '../hooks/useHashRoute'
@@ -67,6 +70,8 @@ export function TournamentPlayPage({
   const [ready, setReady] = useState(false)
   const [joining, setJoining] = useState(false)
   const [nameDraft, setNameDraft] = useState('')
+  /** Tries left, as the last try to start left them. */
+  const [triesLeft, setTriesLeft] = useState<number | null>(null)
 
   const game = getGame(gameSlug)
   const Game = TOURNAMENT_GAMES[gameSlug]
@@ -161,6 +166,24 @@ export function TournamentPlayPage({
     }
   }, [tournamentId, gameSlug, playerName, invite])
 
+  /*
+   * In an event that spends a try as its run starts, this page's runs begin
+   * through the event: each time the game starts a run, a try is spent and
+   * the run it's played in is opened with it.
+   */
+  const tryName = normalizePlayerName(playerName)
+  const countsAtStart = Boolean(ready && detail && triesCountAtStart(detail))
+  useEffect(() => {
+    if (!countsAtStart || !tryName) return
+    openRunsThrough(gameSlug, () =>
+      startTournamentTry(tournamentId, tryName, gameSlug).then((r) => {
+        setTriesLeft(r.attemptsRemaining)
+        return r
+      }),
+    )
+    return () => openRunsThrough(gameSlug, null)
+  }, [countsAtStart, tryName, tournamentId, gameSlug])
+
   const joinWithName = async (rawName: string) => {
     const name = normalizePlayerName(rawName)
     if (!name || joining) return
@@ -171,7 +194,13 @@ export function TournamentPlayPage({
         await rememberPlayerName(name)
       }
       const result = await joinTournament(tournamentId, name)
-      setDetail(result.tournament)
+      // Read again as this player, for the tries they have (a join's detail doesn't say).
+      const mine = await getTournament(tournamentId, {
+        playerName: name,
+        game: gameSlug,
+        invite: invite ?? getTournamentInvite(tournamentId) ?? undefined,
+      }).catch(() => null)
+      setDetail(mine ?? result.tournament)
       setReady(true)
     } catch (err) {
       if (err instanceof ApiError && err.code === 'NAME_TAKEN') {
@@ -298,9 +327,13 @@ export function TournamentPlayPage({
         gameSlug,
         status: detail.status,
         format: detail.formatLabel,
-        maxAttempts: detail.playerStatus?.maxAttempts ?? null,
-        attemptsRemaining: detail.playerStatus?.attemptsRemaining ?? null,
+        maxAttempts: detail.playerStatus?.maxAttempts ?? (countsAtStart ? (detail.rules.maxAttempts ?? null) : null),
+        attemptsRemaining:
+          triesLeft ??
+          detail.playerStatus?.attemptsRemaining ??
+          (countsAtStart ? (detail.rules.maxAttempts ?? null) : null),
         canPlay: detail.playerStatus?.canPlay ?? detail.kind !== 'bracket',
+        triesAtStart: countsAtStart,
       }}
     >
       <main className="game-page game-page--fullscreen tour-play">

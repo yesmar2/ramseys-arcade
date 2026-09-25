@@ -18,6 +18,7 @@ import {
   DailyCard,
   HowEventsWork,
   LastWeekCard,
+  OneShotCard,
   OwnEventsCard,
   ResultsList,
   WeeklyHero,
@@ -846,7 +847,7 @@ export function TournamentsPage() {
               <PageBanner
                 ariaLabel="Events"
                 title="Events"
-                blurb="A daily game, a Weekly Triple, and events you make for your friends. Join one, post a score, and see where you land."
+                blurb="A daily game, a One Shot, a Weekly Triple, and events you make for your friends. Join one, post a score, and see where you land."
                 actions={
                   account ? (
                     <a className="home-banner__cta" href={tournamentCreateHref()}>
@@ -862,6 +863,7 @@ export function TournamentsPage() {
 
             <div className="evp-trio">
               {lineup.daily ? <DailyCard t={lineup.daily} /> : null}
+              {lineup.oneShot ? <OneShotCard t={lineup.oneShot} /> : null}
               {lineup.lastWeekly ? (
                 <LastWeekCard t={lineup.lastWeekly} detail={lastDetail} lesson={lesson} me={me} />
               ) : null}

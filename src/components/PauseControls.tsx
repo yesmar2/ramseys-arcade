@@ -122,6 +122,9 @@ export function GamePanelBody({
   const board = isBoardGame(slug)
   const hasRecords = gameHasRecords(slug)
   const game = getGame(slug)
+  // In an event with a set number of tries: how many are left, and when one counts.
+  const tournament = useTournamentPlay()
+  const tries = tournament && tournament.maxAttempts != null ? tournament : null
 
   return (
     <>
@@ -137,7 +140,16 @@ export function GamePanelBody({
           <strong>{allTime > 0 ? formatLeaderboardScore(slug, allTime) : '—'}</strong>
         </div>
         {extraMeta}
+        {tries ? (
+          <div className="game-pause-meta__row">
+            <span>Tries left</span>
+            <strong>
+              {tries.attemptsRemaining ?? tries.maxAttempts} of {tries.maxAttempts}
+            </strong>
+          </div>
+        ) : null}
       </div>
+      {tries?.triesAtStart ? <p className="game-card__hint">A try counts the moment you start it.</p> : null}
       {tools}
       <div className="game-pause-actions">
         <div className="game-sound-row">

@@ -4,6 +4,7 @@ import { formatLeaderboardScore } from './leaderboardFormat'
 import {
   eventKind,
   isDoubleElim,
+  triesCountAtStart,
   type StandingRow,
   type TournamentDetail,
   type TournamentSummary,
@@ -44,6 +45,8 @@ export type EventsLineup = {
   weekly: TournamentSummary | null
   /** The official daily that is on now. */
   daily: TournamentSummary | null
+  /** Today's One Shot: one try each at a game of its own. */
+  oneShot: TournamentSummary | null
   /** The official weekly that finished last, when anyone played it. */
   lastWeekly: TournamentSummary | null
   /** Everything else still running: other official events, and open ones people made. */
@@ -57,14 +60,16 @@ export function eventsLineup(list: TournamentSummary[]): EventsLineup {
   const live = list.filter(running)
   const weekly = live.find((t) => t.official && t.cadence === 'weekly') ?? null
   const daily = live.find((t) => t.official && t.cadence === 'daily') ?? null
+  const oneShot = live.find((t) => t.official && t.cadence === 'oneshot') ?? null
   const ended = list.filter((t) => t.status === 'ended').sort((a, b) => b.endsAt - a.endsAt)
   const lastWeekly =
     ended.find((t) => t.official && t.cadence === 'weekly' && (t.podium?.length ?? 0) > 0) ?? null
   return {
     weekly,
     daily,
+    oneShot,
     lastWeekly,
-    others: live.filter((t) => t !== weekly && t !== daily).sort((a, b) => a.endsAt - b.endsAt),
+    others: live.filter((t) => t !== weekly && t !== daily && t !== oneShot).sort((a, b) => a.endsAt - b.endsAt),
     ended,
   }
 }
@@ -270,12 +275,17 @@ export function scoringSteps(detail: TournamentDetail): string[] {
   const top = detail.placePoints?.top ?? 10
   const last = detail.placePoints?.last ?? 1
   const tries = detail.rules.maxAttempts
+  const atStart = triesCountAtStart(detail)
   const triesLine =
     tries == null || tries === 0
       ? 'Play as often as you like; your best run is the one that counts.'
       : tries === 1
-        ? 'You get one run on each game, so make it count.'
-        : `You get ${tries} tries on each game, and the best one counts.`
+        ? atStart
+          ? 'You get one run on each game, and it counts the moment you start it.'
+          : 'You get one run on each game, so make it count.'
+        : atStart
+          ? `You get ${tries} tries on each game. A try is used the moment it starts, and your best counts.`
+          : `You get ${tries} tries on each game, and the best one counts.`
   if (eventKind(detail) === 'bracket') {
     const hours = detail.rules.roundPlayHours
     const span = !hours
@@ -310,6 +320,10 @@ export function scoringSteps(detail: TournamentDetail): string[] {
   return [
     triesLine,
     detail.games.length > 1 ? 'Your scores on the games add up to your total.' : 'The best score when it ends wins.',
-    detail.cadence === 'daily' ? 'It closes at midnight, and the winner takes the day’s trophy.' : 'The winner takes a trophy for their player card.',
+    detail.cadence === 'daily'
+      ? 'It closes at midnight, and the winner takes the day’s trophy.'
+      : detail.cadence === 'oneshot'
+        ? 'It closes at midnight, and the best try takes the day’s trophy.'
+        : 'The winner takes a trophy for their player card.',
   ]
 }

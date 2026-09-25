@@ -25,16 +25,33 @@ import { api } from './leaderboard'
 const current = new Map<string, Promise<string | undefined>>()
 
 /**
+ * Where a game's runs are opened instead of the plain run start, while one is
+ * being played in an event that spends a try as its run starts: through the
+ * event, which spends the try and opens the run together. Set by the event's
+ * play page while it is up, for its one game, and cleared as it goes.
+ */
+let opener: { slug: string; open: () => Promise<{ runId?: string } | undefined> } | null = null
+
+export function openRunsThrough(slug: string, open: (() => Promise<{ runId?: string } | undefined>) | null): void {
+  opener = open ? { slug, open } : null
+}
+
+/**
  * A run has started.
  *
  * Fire and forget: called from the same place a game resets itself, and a
  * game must not wait on the network to begin.
  */
 export function beginRun(slug: string): void {
-  const run = api<{ runId?: string }>('/runs/start', {
-    method: 'POST',
-    body: JSON.stringify({ game: slug }),
-  })
+  const through = opener && opener.slug === slug ? opener.open : null
+  const run = (
+    through
+      ? through()
+      : api<{ runId?: string }>('/runs/start', {
+          method: 'POST',
+          body: JSON.stringify({ game: slug }),
+        })
+  )
     .then((res) => res?.runId || undefined)
     // Unopenable run: the score still saves, just unverified.
     .catch(() => undefined)

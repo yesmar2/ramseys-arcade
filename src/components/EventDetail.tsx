@@ -351,7 +351,13 @@ export function NextEventCard({ t }: { t: TournamentSummary }) {
     <a className="evp-card evp-next evp-wash" href={tournamentHref(t.id)} style={{ '--e': accent, '--e-ink': inkOn(accent) } as CSSProperties}>
       <p className="evp-kick evp-kick--live">
         <span className="evp-dot" aria-hidden="true" />
-        {t.cadence === 'weekly' ? 'This week’s Triple is on' : t.cadence === 'daily' ? 'Today’s daily is on' : 'On now'}
+        {t.cadence === 'weekly'
+          ? 'This week’s Triple is on'
+          : t.cadence === 'daily'
+            ? 'Today’s daily is on'
+            : t.cadence === 'oneshot'
+              ? 'Today’s One Shot is on'
+              : 'On now'}
       </p>
       <span className="evp-next__row">
         <EventArtBox games={t.games} size="2.6rem" />

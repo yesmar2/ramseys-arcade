@@ -19,6 +19,7 @@ import {
   getTournamentInvite,
   joinTournament,
   submitTournamentScore,
+  triesCountAtStart,
   type TournamentDetail,
 } from '../lib/tournaments'
 import { eventWinTakeover } from '../lib/winTakeover'
@@ -35,10 +36,10 @@ function attemptsLeftLabel(
   outcome: 'champion' | 'match' | null,
 ): string | null {
   if (outcome) return null
-  if (exhausted || remaining === 0) return 'no attempts left'
-  if (max == null) return 'unlimited attempts'
+  if (exhausted || remaining === 0) return 'no tries left'
+  if (max == null) return 'unlimited tries'
   const left = remaining ?? max
-  return `${left} attempt${left === 1 ? '' : 's'} left`
+  return `${left} ${left === 1 ? 'try' : 'tries'} left`
 }
 
 type TournamentScoreCardProps = {
@@ -74,7 +75,7 @@ async function submitTournamentRun(
   score: number,
 ): Promise<SubmitSnapshot> {
   // A stage-jumped run is not a real attempt; report it like a zero so it
-  // neither posts a score nor burns one of the player's tries.
+  // posts no score. (Where tries count as they start, its try is already spent.)
   if (score <= 0 || isRunAssisted()) {
     const d = await getTournament(tournamentId, {
       playerName: name,
@@ -331,6 +332,11 @@ export function TournamentScoreCard({
           setError('Could not submit. Reopen the event from your invite link.')
           return
         }
+        if (code === 'TRY_NOT_STARTED') {
+          setStatus('error')
+          setError('This run didn’t start as a try in the event, so it can’t post here.')
+          return
+        }
         if (code === 'ATTEMPTS_EXHAUSTED') {
           setSnapshot((prev) => ({
             improved: false,
@@ -392,8 +398,9 @@ export function TournamentScoreCard({
   const eventTitle = eventName ?? 'Event'
   const isBracket = detail ? eventKind(detail) === 'bracket' : false
   const done = status === 'done' && snapshot
-  // A zero, or a run that used the stage jump, posts nothing and costs no attempt.
+  // A zero, or a run that used the stage jump, posts nothing; it costs a try only where tries count as they start.
   const posted = score > 0 && !isRunAssisted()
+  const spentTry = detail ? triesCountAtStart(detail) : false
   const outcome = done ? eventReport(snapshot, gameSlug, name, score, posted) : null
   const ribbon = outcome?.ribbon ?? null
   const standingsHref = tournamentHref(tournamentId)
@@ -457,7 +464,11 @@ export function TournamentScoreCard({
     if (!posted) {
       block = (
         <p className="report__note">
-          {score > 0 ? 'Stage skip used, so this run wasn’t posted.' : 'No score this run, so nothing was posted.'}
+          {score > 0
+            ? 'Stage skip used, so this run wasn’t posted.'
+            : spentTry
+              ? 'No score this run, so nothing was posted. The try still counts.'
+              : 'No score this run, so nothing was posted.'}
         </p>
       )
     }
