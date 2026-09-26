@@ -1,4 +1,4 @@
-import { APP_NAME } from '../lib/brand'
+import { APP_NAME, SITE_LINE } from '../lib/brand'
 import { PageBanner } from '../components/PageBanner'
 import { PageShell } from '../components/PageShell'
 import {
@@ -37,7 +37,7 @@ export function AboutPage() {
         crumbs={[{ href: homeHref(), label: 'Home' }, { label: 'About' }]}
         kicker="About"
         title={`About ${APP_NAME}`}
-        blurb={`${APP_NAME} is a small browser arcade built for quick sessions and high scores. Tap a game and play instantly, no account needed. Sign in to put your scores on the boards and see how you stack up.`}
+        blurb={`${SITE_LINE} Tap a game and play instantly, no account needed. Sign in to put your scores on the boards and see how you stack up.`}
       />
       <section className="home-about" aria-label={`About ${APP_NAME}`}>
 

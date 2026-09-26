@@ -49,7 +49,8 @@ export default defineConfig(({ mode }) => {
         manifest: {
           name: 'Blipka',
           short_name: 'Blipka',
-          description: 'Simple games, no ads, just play.',
+          // The line the arcade goes by (lib/brand.ts's SITE_LINE), without the name the app already has.
+          description: 'The arcade with no ads, and a new Daily every day.',
           theme_color: '#2eb8a0',
           // The dark page the arcade opens on, so the launch screen doesn't flash light first.
           background_color: '#0c1218',

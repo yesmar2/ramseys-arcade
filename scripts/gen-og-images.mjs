@@ -81,23 +81,13 @@ function frame(inner, glow = TEAL) {
 </svg>`
 }
 
+/** The site's own card: the mark, the name, and the line it goes by (lib/brand.ts's SITE_LINE). */
 function siteCard() {
   return frame(`
   <g transform="translate(96 160) scale(3)">${ICON.body}</g>
   ${wordmark(348, 290, 150, TEXT).markup}
-  ${lines(['Simple games, no ads, just play.'], 346, 370, 46, 0, MUTED)}
-  ${lines(
-    wrap(
-      'Free browser games with nothing to install. Leaderboards, record books, and events with friends.',
-      54,
-      3,
-    ),
-    346,
-    440,
-    30,
-    42,
-    MUTED,
-  )}`)
+  ${lines(['The arcade with no ads,', 'and a new Daily every day.'], 346, 372, 46, 58, TEXT)}
+  ${lines(['Quick original games that start in a tap, on a phone or at a desk.'], 346, 496, 28, 0, MUTED)}`)
 }
 
 function gameCard(game, goal) {
@@ -142,13 +132,15 @@ const server = await createServer({
   appType: 'custom',
   server: { middlewareMode: true, hmr: false, watch: null },
 })
-// `npm run icons:og` draws them all; `node scripts/gen-og-images.mjs challenges` only the challenge cards.
+// `npm run icons:og` draws them all; `node scripts/gen-og-images.mjs challenges` only the challenge cards, `site` only the site's.
 const only = process.argv[2]
 try {
   const { games } = await server.ssrLoadModule('/src/data/games.ts')
   const { howToPlayFor } = await server.ssrLoadModule('/src/data/howToPlay.ts')
   mkdirSync('public/og/challenge', { recursive: true })
-  if (only !== 'challenges') {
+  if (only === 'site') {
+    await render(siteCard(), 'public/og.png')
+  } else if (only !== 'challenges') {
     await render(siteCard(), 'public/og.png')
     for (const game of games) {
       if (game.hidden) continue
@@ -158,7 +150,7 @@ try {
       await render(gameCard(game, said ? '' : goal), `public/og/${game.slug}.png`)
     }
   }
-  for (const game of games) {
+  for (const game of only === 'site' ? [] : games) {
     if (game.hidden) continue
     await render(challengeCard(game), `public/og/challenge/${game.slug}.png`)
   }

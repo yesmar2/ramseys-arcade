@@ -20,7 +20,7 @@ import {
   tournamentsHref,
   type Route,
 } from '../hooks/useHashRoute'
-import { APP_NAME } from './brand'
+import { APP_NAME, SITE_LINE } from './brand'
 import { groupHref, groupsIndexHref } from './groups'
 import { LEADERBOARD_GAMES, type LeaderboardGame } from './leaderboard'
 import { gameHasRecords } from './records'
@@ -44,8 +44,7 @@ export type PageMeta = {
 
 export const SITE_TAGLINE = 'Simple games, no ads, just play'
 
-export const SITE_DESCRIPTION =
-  'Free browser games with no ads and nothing to install. Snake, Asteroids, Crosswalk and more, with daily, weekly and all-time leaderboards, record books, and events to play with friends.'
+export const SITE_DESCRIPTION = `${SITE_LINE} Quick original games that start in a tap, on a phone or at a desk, with leaderboards, record books and events to play with friends.`
 
 export const DEFAULT_IMAGE = '/og.png'
 
@@ -252,7 +251,7 @@ export function pageMeta(route: Route): PageMeta {
       return {
         ...site,
         title: titled(`About ${APP_NAME}`),
-        description: `${APP_NAME} is a small browser arcade built for quick sessions and high scores. Original games inspired by the classics, no ads, no install, and leaderboards that reset daily.`,
+        description: `${SITE_LINE} Original games inspired by the classics that start in a tap, nothing to install, and leaderboards that reset daily.`,
         path: aboutHref(),
       }
     case 'plus':

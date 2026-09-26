@@ -7,6 +7,14 @@
  */
 export const APP_NAME = 'Blipka'
 
+/**
+ * The one line the arcade goes by: what it is, and a reason to come back
+ * tomorrow. Where a line has to say what Blipka is on its own (search results,
+ * link previews, the About page, the site's share card, the installed app).
+ * The headline over it stays "Simple games. No ads. Just play."
+ */
+export const SITE_LINE = `${APP_NAME}: the arcade with no ads, and a new Daily every day.`
+
 /** Public site host used in legal copy. */
 export const SITE_HOST = 'blipka.com'
 
