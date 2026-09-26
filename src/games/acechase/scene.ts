@@ -1030,6 +1030,7 @@ export class AceScene {
     const f2 = new THREE.Color(place.ground.stripes[1])
     const rock = new THREE.Color(place.ground.steep)
     const c = new THREE.Color()
+    const relief = h.def.relief ?? 1
     for (let i = 0; i < pos.count; i++) {
       const x = pos.getX(i)
       const z = pos.getZ(i)
@@ -1041,7 +1042,10 @@ export class AceScene {
         const [gx, gz] = slope(h, x, z)
         const steep = Math.hypot(gx, gz)
         c.copy(Math.floor((z + 100) / 0.75) % 2 ? f1 : f2)
-        c.offsetHSL(0, 0, Math.max(-0.06, Math.min(0.05, y * 0.05)))
+        c.offsetHSL(0, 0, Math.max(-0.06 * relief, Math.min(0.05 * relief, y * 0.05 * relief)))
+        // A hole that asks for more relief shades its slopes too, as a map does, lit from the day's sun
+        // (behind the tee, to the left): the humps read at dusk as well as by day.
+        if (relief > 1) c.offsetHSL(0, 0, Math.max(-0.12, Math.min(0.12, (relief - 1) * 0.12 * (0.72 * gx - 0.69 * gz))))
         if (steep > 0.9) c.lerp(rock, Math.min(1, (steep - 0.9) / 0.8))
       } else {
         pos.setY(i, base)
@@ -1197,7 +1201,19 @@ export class AceScene {
       mesh.receiveShadow = receive
       course.add(mesh)
     }
+    let stone: THREE.MeshStandardMaterial | null = null
     for (const k of h.bumpers) {
+      if (k.rock) {
+        // A boulder, low and lumpy, about as wide as what the ball meets.
+        stone ??= new THREE.MeshStandardMaterial({ color: 0x9a9d96, roughness: 0.92, flatShading: true })
+        const rock = new THREE.Mesh(new THREE.IcosahedronGeometry(1, 1), stone)
+        rock.scale.set(k.r * 1.12, k.r * 0.8, k.r * 1.05)
+        rock.rotation.y = (k.x * 7.1 + k.z * 3.3) % (Math.PI * 2)
+        rock.position.set(k.x, h.height(k.x, k.z) + k.r * 0.25, k.z)
+        rock.castShadow = rock.receiveShadow = true
+        course.add(rock)
+        continue
+      }
       const post = new THREE.Mesh(new THREE.CylinderGeometry(k.r, k.r, 0.3, 36), rubber)
       post.position.set(k.x, h.height(k.x, k.z) + 0.12, k.z)
       post.castShadow = true

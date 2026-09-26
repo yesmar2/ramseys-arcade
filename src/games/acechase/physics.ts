@@ -70,7 +70,14 @@ export type Wall = {
   z1: number
 }
 
-export type Bumper = { x: number; z: number; r: number; e?: number }
+export type Bumper = {
+  x: number
+  z: number
+  r: number
+  e?: number
+  /** A boulder rather than a post: drawn as one, and named in the misses ("off a rock"). */
+  rock?: boolean
+}
 
 export type WallDef = Omit<Wall, 'x0' | 'x1' | 'z0' | 'z1'>
 
@@ -100,6 +107,8 @@ export type HoleDef = {
   walls?: readonly WallDef[]
   bumpers?: readonly Bumper[]
   style?: Style
+  /** How plainly the green's colour shows its heights, lighter up and darker down: 1 unless said. */
+  relief?: number
   lost?: Lost
   /** How hard the ball is pulled down (m/s², the Earth's unless said) and how much the ground drags on it. */
   gravity?: number
@@ -156,7 +165,7 @@ export type Ball = {
   still?: number
   /** Posts it has struck hard: counted for the misses ("off a post"), not played with. */
   posts?: number
-  /** The last named wall it struck hard, for the misses. */
+  /** The last named wall, or rock, it struck, for the misses. */
   struck?: string
 }
 
@@ -623,7 +632,10 @@ export function step(hole: Hole, b: Ball): Ball {
     if (vn < 0) {
       b.vx -= (1 + (k.e ?? WALL_E)) * vn * nx
       b.vz -= (1 + (k.e ?? WALL_E)) * vn * nz
-      if (-vn > 0.3) {
+      if (k.rock) {
+        if (-vn > 0.3) b.hits++
+        if (-vn > 0.05) b.struck = 'a rock'
+      } else if (-vn > 0.3) {
         b.hits++
         b.posts = (b.posts ?? 0) + 1
       }
