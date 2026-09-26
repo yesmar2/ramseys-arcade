@@ -2,7 +2,7 @@ import { APP_NAME, SITE_HOST } from '../lib/brand'
 import { LegalContact, LegalDocument } from '../components/LegalDocument'
 import { termsHref } from '../hooks/useHashRoute'
 
-const UPDATED = 'September 4, 2026'
+const UPDATED = 'September 26, 2026'
 
 export function PrivacyPage() {
   return (
@@ -33,6 +33,11 @@ export function PrivacyPage() {
         <li>
           <strong>Technical data.</strong> Our hosting providers may log standard request
           information (IP address, browser type, timestamps) for security and reliability.
+        </li>
+        <li>
+          <strong>Visit counts.</strong> We count page visits with Vercel Web Analytics, which
+          uses no cookies and does not identify you. It sees the page’s address without anything
+          after the “?”, your browser and device type, and your country.
         </li>
       </ul>
 
@@ -68,6 +73,9 @@ export function PrivacyPage() {
         <li>
           <strong>Hosting</strong> — the site and API are hosted on third-party infrastructure
           (for example Vercel and Render) that process traffic on our behalf.
+        </li>
+        <li>
+          <strong>Vercel Web Analytics</strong> — counts page visits without cookies.
         </li>
       </ul>
 

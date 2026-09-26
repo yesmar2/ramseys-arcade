@@ -71,6 +71,8 @@ function afterFailure(err: unknown): { phase: Phase; error: string | null } {
   if (err instanceof ApiError && err.code === 'NAME_TAKEN') {
     return { phase: 'needName', error: 'That gamer tag is taken. Pick another.' }
   }
+  // A word no tag may carry: back to the tag, with the API's words.
+  if (err instanceof ApiError && err.code === 'NAME_NOT_ALLOWED') return { phase: 'needName', error: err.message }
   return { phase: 'error', error: err instanceof Error ? err.message : 'Could not save score' }
 }
 

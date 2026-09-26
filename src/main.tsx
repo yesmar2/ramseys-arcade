@@ -23,11 +23,13 @@ import { bootRouter } from './hooks/useHashRoute'
 import { bootTheme } from './lib/theme'
 import { bootPwaInstall } from './lib/pwaInstall'
 import { bootFeedSync } from './lib/feedSync'
+import { bootAnalytics } from './lib/analytics'
 
 bootRouter()
 bootTheme()
 bootPwaInstall()
 bootFeedSync()
+bootAnalytics()
 
 /*
  * Pages and games load as their own chunks (App.tsx). A release renames

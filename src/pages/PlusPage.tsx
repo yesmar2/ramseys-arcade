@@ -22,15 +22,15 @@ type Row = {
 
 const PLAY: Row[] = [
   { label: 'Every game', free: true, plus: true },
-  { label: 'Daily, weekly, monthly and all-time boards', free: true, plus: true },
+  { label: 'Weekly, monthly and all-time boards', free: true, plus: true },
   { label: 'Record books', free: true, plus: true },
-  { label: 'Global ranking and trophies', free: true, plus: true },
+  { label: 'Standings and trophies', free: true, plus: true },
   { label: 'Friends', free: true, plus: true },
   { label: 'Match alerts', free: true, plus: true },
   {
     label: 'Your stats',
-    free: 'Totals and streak',
-    plus: 'The whole history',
+    free: true,
+    plus: true,
     note: 'Per-game rank, percentile and trend, every day you have played, and the records you are closest to taking.',
   },
   {
@@ -122,7 +122,7 @@ export function PlusPage() {
         crumbs={[{ href: homeHref(), label: 'Home' }, { label: 'Plus' }]}
         kicker={`${APP_NAME} Plus`}
         title="Playing is free. Always."
-        blurb="Every game, every leaderboard and every record board is free, and joining somebody’s tournament is free however big it is. Plus is for the person running them — bigger draws, more events at once, and the formats that make a real competition."
+        blurb="Every game, every board and every record book is free, and joining somebody’s event is free however big it is. Plus is for the person running them: bigger events, more of them at once, and the formats that make a real competition."
         actions={
           isPlus ? (
             <span className="plus-hero__have">You&rsquo;re on Plus</span>

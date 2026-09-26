@@ -13,6 +13,7 @@
     "icons:og": "node scripts/gen-og-images.mjs"
   },
   "dependencies": {
+    "@vercel/analytics": "^2.0.1",
     "@vercel/og": "^0.8.6",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
