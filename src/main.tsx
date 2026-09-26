@@ -39,20 +39,51 @@ bootAnalytics()
  * them, so a tab opened before it that then opens a page it has not loaded
  * yet asks for a chunk that is gone. One reload picks up the new shell; the
  * timestamp keeps a broken deploy from reloading forever.
+ *
+ * Right after a release the new service worker may still be installing, and
+ * until it takes over a reload gets the old shell again, which fails the same
+ * way (the 3D games' chunks are never in the old worker's cache). So the
+ * reload waits for it, up to eight seconds. The failed import goes on to the
+ * error screen meanwhile, as the "dynamically imported module" error that
+ * errorReports leaves out.
  */
-window.addEventListener('vite:preloadError', (event) => {
+window.addEventListener('vite:preloadError', () => {
   const key = 'skermix-chunk-reload'
   let last = 0
   try {
     last = Number(sessionStorage.getItem(key) ?? 0)
-    sessionStorage.setItem(key, String(Date.now()))
   } catch {
     /* storage may be off; reload once anyway */
   }
-  if (Date.now() - last < 10_000) return
-  event.preventDefault()
-  window.location.reload()
+  if (Date.now() - last < 30_000) return
+  try {
+    sessionStorage.setItem(key, String(Date.now()))
+  } catch {
+    /* as above */
+  }
+  void newShellReady(8000).then(() => window.location.reload())
 })
+
+/** Resolves once a release's service worker, if one is on its way, has taken over (or `ms` have passed). */
+async function newShellReady(ms: number) {
+  try {
+    const registration = await navigator.serviceWorker?.getRegistration()
+    if (!registration) return
+    await registration.update().catch(() => {})
+    const incoming = registration.installing ?? registration.waiting
+    if (!incoming) return
+    await new Promise<void>((done) => {
+      const timer = window.setTimeout(done, ms)
+      incoming.addEventListener('statechange', () => {
+        if (incoming.state !== 'activated' && incoming.state !== 'redundant') return
+        window.clearTimeout(timer)
+        done()
+      })
+    })
+  } catch {
+    /* no worker to wait for: a plain reload */
+  }
+}
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
