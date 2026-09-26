@@ -214,7 +214,7 @@ export const games: Game[] = [
     name: 'Hot Lap',
     slug: 'hotlap',
     tags: ['sport', 'quick'],
-    description: 'One lap against the clock, in 3D, in a racer with wings. Brake before the corners, get back on the gas, and beat the blue car.',
+    description: 'One lap against the clock, in 3D, in a concept racer lit in orange. Brake before the corners, get back on the gas, and beat the blue car.',
     accent: PALETTE.orange,
     playable: true,
     inDevelopment: true,

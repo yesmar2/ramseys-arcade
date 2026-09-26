@@ -489,14 +489,21 @@ export function HotLapGame() {
   // Dev only: read the lap, or let the pace driver take the wheel, for a play-test.
   useEffect(() => {
     if (!import.meta.env.DEV) return
-    const w = window as unknown as { __hotlap?: () => Game; __hotlapAuto?: (on?: boolean) => void; __hotlapStart?: () => void }
+    const w = window as unknown as {
+      __hotlap?: () => Game
+      __hotlapScene?: () => HotLapScene | null
+      __hotlapAuto?: (on?: boolean) => void
+      __hotlapStart?: () => void
+    }
     w.__hotlap = () => gameRef.current!
+    w.__hotlapScene = () => sceneRef.current
     w.__hotlapAuto = (on = true) => {
       autopilot.current = on ? botDriver(hotlapCourse().track) : null
     }
     w.__hotlapStart = () => start()
     return () => {
       delete w.__hotlap
+      delete w.__hotlapScene
       delete w.__hotlapAuto
       delete w.__hotlapStart
     }

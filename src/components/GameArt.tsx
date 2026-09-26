@@ -1081,23 +1081,28 @@ function AceChase({ id }: { id: Id }) {
   )
 }
 
-/** Hot Lap's racer from behind, as the chase camera sees it: its wheels on the road at (x, y). */
-function RacerBack({ x, y, s, paint, ghost = false }: { x: number; y: number; s: number; paint: string; ghost?: boolean }) {
+/**
+ * Hot Lap's racer from behind, as the chase camera sees it, its wheels on the road at (x, y): a pearl
+ * body over wide haunches, a smoked-glass canopy with a white spine, and orange light along the haunches
+ * and round the tail. The ghost is the same car in blue, seen through.
+ */
+function RacerBack({ x, y, s, ghost = false }: { x: number; y: number; s: number; ghost?: boolean }) {
+  const body = ghost ? '#4aa8e8' : '#efebe5'
+  const light = ghost ? '#bfe6ff' : '#ff6a1a'
   return (
     <g transform={`translate(${x} ${y}) scale(${s})`} opacity={ghost ? 0.55 : 1}>
       <ellipse cx="0" cy="0.15" rx="7.6" ry="0.85" fill="#000" opacity="0.3" />
-      <rect x="-7" y="-4.3" width="2.8" height="4.3" rx="0.9" fill="#121417" />
-      <rect x="4.2" y="-4.3" width="2.8" height="4.3" rx="0.9" fill="#121417" />
-      <path d="M-5.6 -0.7 L5.6 -0.7 L6.2 -3.2 Q6 -4.7 4.4 -5.1 Q0 -6.2 -4.4 -5.1 Q-6 -4.7 -6.2 -3.2 Z" fill={paint} />
-      <path d="M-4.3 -0.7 L4.3 -0.7 L3.7 -1.9 L-3.7 -1.9 Z" fill="#1c2630" />
-      <rect x="-4.7" y="-3.15" width="9.4" height="0.5" rx="0.25" fill={ghost ? paint : '#ff8a80'} />
-      <ellipse cx="0" cy="-5.25" rx="2.2" ry="1.05" fill="#0a1520" />
-      {ghost ? null : <path d="M-0.85 -6 V-3.6 M0.85 -6 V-3.6" {...line('#f7f9fc', 0.34)} />}
-      <path d="M-2.2 -5 L-1.9 -7.3 M2.2 -5 L1.9 -7.3" {...line('#1c2630', 0.36)} />
-      <rect x="-6.4" y="-7.9" width="12.8" height="0.85" rx="0.3" fill="#1c2630" />
-      <rect x="-6.2" y="-8" width="12.4" height="0.2" rx="0.1" fill={ghost ? paint : '#8ff2df'} />
-      <rect x="-6.7" y="-8.5" width="0.55" height="2.3" rx="0.2" fill={paint} />
-      <rect x="6.15" y="-8.5" width="0.55" height="2.3" rx="0.2" fill={paint} />
+      <rect x="-6.9" y="-3.5" width="2.1" height="3.5" rx="0.8" fill="#14171b" />
+      <rect x="4.8" y="-3.5" width="2.1" height="3.5" rx="0.8" fill="#14171b" />
+      <path d="M-6.75 -2.9 V-0.7 M6.75 -2.9 V-0.7" {...line(light, 0.34)} />
+      <path d="M-7.2 -2.5 Q-7.6 -5.2 -5.4 -6 Q0 -6.9 5.4 -6 Q7.6 -5.2 7.2 -2.5 Q6.2 -1.5 4.4 -1.3 L-4.4 -1.3 Q-6.2 -1.5 -7.2 -2.5 Z" fill={body} />
+      <path d="M-7.2 -2.5 Q-6.2 -1.5 -4.4 -1.3 L4.4 -1.3 Q6.2 -1.5 7.2 -2.5 Q6.8 -3.3 5.6 -3.4 L-5.6 -3.4 Q-6.8 -3.3 -7.2 -2.5 Z" fill={ghost ? '#2f7fc0' : '#aca79f'} opacity="0.6" />
+      <path d="M-4.4 -1.3 L4.4 -1.3 L3.8 -0.5 L-3.8 -0.5 Z" fill="#161b21" />
+      <path d="M-6.6 -3.1 Q0 -2.4 6.6 -3.1" {...line(light, 0.42)} />
+      <path d="M-6.1 -3.7 Q-5.9 -5.3 -3.6 -5.9 M6.1 -3.7 Q5.9 -5.3 3.6 -5.9" {...line(light, 0.26)} />
+      <path d="M-2.9 -5.95 Q-2.6 -8.4 0 -8.6 Q2.6 -8.4 2.9 -5.95 Z" fill={ghost ? body : '#0d1620'} />
+      <path d="M0 -8.6 V-6.1" {...line(ghost ? body : '#f1ede7', 0.36)} />
+      {ghost ? null : <path d="M-1.9 -7.8 Q-1 -8.25 -0.3 -8.32" {...line('#ffffff', 0.18, 0.55)} />}
     </g>
   )
 }
@@ -1142,10 +1147,10 @@ function HotLap({ id }: { id: Id }) {
       <rect x="15.2" y="9.4" width="3.8" height="1" rx="0.12" fill="#f2813a" />
       <path d="M15.7 9.9 H17.4" {...line('#1a2b3c', 0.22)} />
       <circle cx="18.5" cy="9.72" r="0.11" fill="#2eb8a0" />
-      <RacerBack x={18.2} y={17.3} s={0.34} paint="#4aa8e8" ghost />
-      <Glow id={id} name="glow" cx={20} cy={27.4} r={8} colour="#2eb8a0" strength={0.5} />
-      <Glow id={id} name="tail" cx={20} cy={24.5} r={3.4} colour="#e8564f" strength={0.45} />
-      <RacerBack x={20} y={27.4} s={1} paint="#f2813a" />
+      <RacerBack x={18.2} y={17.3} s={0.34} ghost />
+      <Glow id={id} name="glow" cx={20} cy={27.4} r={8} colour="#ff6a1a" strength={0.5} />
+      <Glow id={id} name="tail" cx={20} cy={24.5} r={3.4} colour="#ff6a1a" strength={0.4} />
+      <RacerBack x={20} y={27.4} s={1} />
     </>
   )
 }

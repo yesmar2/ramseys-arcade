@@ -3,6 +3,7 @@
  * the camera that follows. The simulation's (x, y) is the ground plane, drawn on three's x and −z.
  */
 import * as THREE from 'three'
+import { buildCar, WHEEL_RADIUS, WHEELS, type CarModel } from './car'
 import type { GhostPose } from './lap'
 import { CAR, HALF_WIDTH as TW, nearest, type Run, type Track } from './sim'
 
@@ -18,8 +19,6 @@ export type SceneFrame = {
   /** The card stands at the right of a wide screen: the showroom keeps the car to its left. */
   cardAside: boolean
 }
-
-type CarModel = { group: THREE.Group; body: THREE.Group; wheels: THREE.Mesh[]; steer: THREE.Group[]; see: THREE.Material[] }
 
 const W = (x: number, y: number, h = 0) => new THREE.Vector3(x, h, -y)
 
@@ -42,13 +41,6 @@ const GHOST_SEE = 0.36
 const GHOST_OVERLAP = 0.2
 /** Past 1,400 stripes of rubber the oldest go. */
 const SKIDS = 1400
-/** Each wheel as [forward, left] of the car's middle, front pair first. */
-const WHEEL_AT: [number, number][] = [
-  [1.45, 0.95],
-  [1.45, -0.95],
-  [-1.4, 0.95],
-  [-1.4, -0.95],
-]
 
 export class HotLapScene {
   private readonly renderer: THREE.WebGLRenderer
@@ -89,9 +81,10 @@ export class HotLapScene {
     this.buildTyreWalls()
     this.buildTrees()
     this.buildReflections()
-    const decal = this.buildDecal()
-    this.car = this.makeCar('#f2813a', false, decal)
-    this.ghostCar = this.makeCar('#4aa8e8', true, decal)
+    const paint = this.paint.bind(this)
+    this.car = buildCar(paint, false)
+    this.ghostCar = buildCar(paint, true)
+    this.scene.add(this.car.group, this.ghostCar.group)
     this.buildSkids()
 
     // Signs are painted before the display face may have arrived; paint them again once it has.
@@ -415,212 +408,82 @@ export class HotLapScene {
     }
   }
 
-  /** What the paint reflects: the sky over the grass, with the sun in it. Only the car's materials use it. */
-  private buildReflections() {
-    const sky = this.paint(512, 256, (g, w, h) => {
-      const up = g.createLinearGradient(0, 0, 0, h / 2)
-      up.addColorStop(0, '#3f8fd6')
-      up.addColorStop(1, '#e2f4fb')
-      g.fillStyle = up
-      g.fillRect(0, 0, w, h / 2)
-      const down = g.createLinearGradient(0, h / 2, 0, h)
-      down.addColorStop(0, '#86b47a')
-      down.addColorStop(1, '#2c4a2a')
-      g.fillStyle = down
-      g.fillRect(0, h / 2, w, h / 2)
-      const sun = g.createRadialGradient(w * 0.3, h * 0.2, 1, w * 0.3, h * 0.2, 46)
-      sun.addColorStop(0, 'rgba(255,253,240,1)')
-      sun.addColorStop(1, 'rgba(255,253,240,0)')
-      g.fillStyle = sun
-      g.fillRect(0, 0, w, h / 2)
-    })
-    sky.mapping = THREE.EquirectangularReflectionMapping
-    const pmrem = new THREE.PMREMGenerator(this.renderer)
-    this.scene.environment = pmrem.fromEquirectangular(sky).texture
-    pmrem.dispose()
-  }
-
-  /** Blipka's name for each side of the car: the lowercase mark with its teal dot on the i. */
-  private buildDecal() {
-    return this.paint(
-      512,
-      128,
-      (g, w) => {
-        g.clearRect(0, 0, w, 128)
-        g.font = `700 92px ${FONT}`
-        g.textBaseline = 'alphabetic'
-        g.textAlign = 'left'
-        const x0 = (w - g.measureText('blipka').width) / 2
-        g.fillStyle = '#ffffff'
-        g.fillText('blipka', x0, 96)
-        g.fillStyle = '#2eb8a0'
-        g.beginPath()
-        g.arc(x0 + g.measureText('bl').width + g.measureText('i').width / 2, 30, 11, 0, Math.PI * 2)
-        g.fill()
-      },
-      true,
-    )
-  }
-
-  /* ---------- the car, and its ghost ---------- */
-
   /*
-   * A prototype racer: a low wedge that narrows to its nose, a bubble canopy, wheel arches standing proud
-   * of the body, a splitter under the nose, a two-element wing on swept pylons, a fin down its spine, and
-   * light strips front and back. Hot Lap's orange in clear-coated paint, graphite aero, twin white
-   * stripes, lights in Blipka's teal, gold on the wheels. The ghost is the same car in sky blue, seen through.
+   * What the paint reflects: the sky, the grass at the horizon and the dark road under the car, which
+   * give the pearl its shape, and above them the sun and soft light panels like a studio's. It's worked
+   * out in floating point with the sun and the panels several times brighter than the sky, as real
+   * lights are, so the clear coat shows them as bright streaks. Only the car's materials use it.
    */
-  private makeCar(color: string, ghost: boolean, decal: THREE.Texture): CarModel {
-    const group = new THREE.Group()
-    const body = new THREE.Group()
-    group.add(body)
-    const see: THREE.Material[] = []
-    const mat = (c: string, extra: THREE.MeshStandardMaterialParameters = {}) => {
-      const m = new THREE.MeshStandardMaterial({
-        color: c,
-        roughness: 0.4,
-        metalness: 0.15,
-        ...extra,
-        // Seen through, and a hair behind your car where the two meet, so it never tints yours.
-        ...(ghost ? { transparent: true, opacity: GHOST_SEE, depthWrite: false, polygonOffset: true, polygonOffsetFactor: 4, polygonOffsetUnits: 4 } : {}),
-      })
-      if (ghost) see.push(m)
-      return m
+  private buildReflections() {
+    const w = 512
+    const h = 256
+    const sky = document.createElement('canvas')
+    sky.width = w
+    sky.height = h
+    const g = sky.getContext('2d', { willReadFrequently: true })!
+    const up = g.createLinearGradient(0, 0, 0, h / 2)
+    up.addColorStop(0, '#3f8fd6')
+    up.addColorStop(1, '#e2f4fb')
+    g.fillStyle = up
+    g.fillRect(0, 0, w, h / 2)
+    const down = g.createLinearGradient(0, h / 2, 0, h)
+    down.addColorStop(0, '#7d9c70')
+    down.addColorStop(0.12, '#3c4a3a')
+    down.addColorStop(0.4, '#23272c')
+    down.addColorStop(1, '#141619')
+    g.fillStyle = down
+    g.fillRect(0, h / 2, w, h / 2)
+    // Where the lights are, drawn on a canvas of their own: how much brighter than the sky each pixel is.
+    const lights = document.createElement('canvas')
+    lights.width = w
+    lights.height = h
+    const l = lights.getContext('2d', { willReadFrequently: true })!
+    const panel = (x: number, y: number, pw: number, ph: number, alpha: number) => {
+      const band = l.createLinearGradient(0, y, 0, y + ph)
+      band.addColorStop(0, 'rgba(255,255,255,0)')
+      band.addColorStop(0.5, `rgba(255,255,255,${alpha})`)
+      band.addColorStop(1, 'rgba(255,255,255,0)')
+      l.fillStyle = band
+      l.fillRect(x, y, pw, ph)
     }
-    const skin = ghost
-      ? mat(color)
-      : new THREE.MeshPhysicalMaterial({ color, roughness: 0.45, metalness: 0.04, clearcoat: 0.8, clearcoatRoughness: 0.06, envMapIntensity: 0.6 })
-    const graphite = mat('#1c2630', { roughness: 0.5, metalness: 0.35 })
-    const white = mat('#f7f9fc', { roughness: 0.3 })
-    const glass = mat('#0a1520', { roughness: 0.05, metalness: 0.3 })
-    const teal = mat('#8ff2df', { emissive: '#2eb8a0', emissiveIntensity: ghost ? 0.5 : 2.2 })
-    const tail = mat('#ff8a80', { emissive: '#e8564f', emissiveIntensity: ghost ? 0.5 : 1.8 })
-    const add = (geo: THREE.BufferGeometry, m: THREE.Material, x: number, y: number, z: number, parent: THREE.Object3D = body) => {
-      const mesh = new THREE.Mesh(geo, m)
-      mesh.position.set(x, y, z)
-      parent.add(mesh)
-      return mesh
+    panel(0, h * 0.12, w, h * 0.06, 1)
+    panel(w * 0.16, h * 0.26, w * 0.18, h * 0.07, 1)
+    panel(w * 0.6, h * 0.26, w * 0.18, h * 0.07, 1)
+    panel(w * 0.4, h * 0.04, w * 0.22, h * 0.05, 0.9)
+    const sun = l.createRadialGradient(w * 0.3, h * 0.2, 1, w * 0.3, h * 0.2, 18)
+    sun.addColorStop(0, 'rgba(255,255,255,1)')
+    sun.addColorStop(1, 'rgba(255,255,255,0)')
+    l.fillStyle = sun
+    l.fillRect(0, 0, w, h / 2)
+    const base = g.getImageData(0, 0, w, h).data
+    const glow = l.getImageData(0, 0, w, h).data
+    const linear = (v: number) => {
+      const c = v / 255
+      return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4
     }
-    const box = (w: number, h: number, d: number) => new THREE.BoxGeometry(w, h, d)
-    const round = new THREE.SphereGeometry(1, 24, 16)
-    const ball = () => round
-
-    add(bodyGeometry(), skin, 0, 0, 0)
-    // Wheel arches, standing proud of the body.
-    for (const s of [1, -1]) {
-      add(ball(), skin, 1.45, 0.42, 0.86 * s).scale.set(0.74, 0.36, 0.3)
-      add(ball(), skin, -1.4, 0.46, 0.88 * s).scale.set(0.84, 0.42, 0.34)
-    }
-    add(ball(), glass, -0.15, 0.7, 0).scale.set(1.25, 0.36, 0.56)
-    add(finGeometry(), skin, 0, 0.7, 0)
-    // A scoop over the cockpit, and a mirror on a stalk each side of it.
-    add(box(0.55, 0.1, 0.26), graphite, -0.8, 1.04, 0)
-    for (const s of [1, -1]) {
-      add(box(0.04, 0.14, 0.04), graphite, 0.55, 0.72, 0.74 * s)
-      add(ball(), skin, 0.55, 0.82, 0.76 * s).scale.set(0.13, 0.06, 0.1)
-    }
-    // Twin stripes over the hood and the engine cover (either side of the fin), and vents in the hood.
-    if (!ghost) {
-      for (const s of [1, -1]) {
-        add(box(0.7, 0.012, 0.12), white, 1.55, 0.512, 0.2 * s).rotation.z = -0.104
-        add(box(0.55, 0.012, 0.12), white, -1.78, 0.81, 0.2 * s).rotation.z = -0.093
-        add(box(0.35, 0.012, 0.16), graphite, 1.25, 0.545, 0.46 * s).rotation.z = -0.12
+    // Half floats, which every WebGL 2 device can filter (full floats need an extension phones lack).
+    // A canvas's rows run down from the top; a data texture's run up from the bottom.
+    const data = new Uint16Array(w * h * 4)
+    const one = THREE.DataUtils.toHalfFloat(1)
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const from = ((h - 1 - y) * w + x) * 4
+        const to = (y * w + x) * 4
+        const bright = (glow[from + 3]! / 255) * 7
+        for (let c = 0; c < 3; c++) data[to + c] = THREE.DataUtils.toHalfFloat(linear(base[from + c]!) + bright)
+        data[to + 3] = one
       }
     }
-    // Splitter and its end plates under the nose.
-    add(box(0.55, 0.04, 2.0), graphite, 2.12, 0.13, 0)
-    for (const s of [1, -1]) add(box(0.5, 0.2, 0.04), graphite, 2.12, 0.2, 1.0 * s)
-    // The wing: a graphite main plane, a steeper flap behind it lit along its edge, body-colour end plates, swept pylons.
-    add(box(0.6, 0.05, 2.05), graphite, -2.18, 1.24, 0).rotation.z = 0.1
-    add(box(0.3, 0.04, 2.05), graphite, -2.48, 1.32, 0).rotation.z = 0.35
-    add(box(0.025, 0.025, 1.98), teal, -2.62, 1.37, 0)
-    for (const s of [1, -1]) {
-      add(box(0.9, 0.5, 0.04), skin, -2.3, 1.14, 1.04 * s)
-      add(box(0.14, 0.52, 0.05), graphite, -2.05, 0.96, 0.35 * s).rotation.z = -0.3
-    }
-    // Skirts, an intake ahead of each rear arch, and the diffuser's fins.
-    for (const s of [1, -1]) {
-      add(box(2.6, 0.08, 0.06), graphite, 0, 0.16, 0.99 * s)
-      add(box(0.3, 0.2, 0.04), graphite, -0.45, 0.44, 0.975 * s)
-    }
-    for (const z of [-0.5, 0, 0.5]) add(box(0.4, 0.2, 0.03), graphite, -2.25, 0.25, z)
-    // Blipka's name on each side, between the arches.
-    if (!ghost) {
-      const plate = new THREE.MeshBasicMaterial({ map: decal, transparent: true, depthWrite: false })
-      for (const s of [1, -1]) {
-        const side = add(new THREE.PlaneGeometry(0.9, 0.225), plate, 0.25, 0.4, 0.968 * s)
-        if (s < 0) side.rotation.y = Math.PI
-      }
-    }
-    // Lights: a bar across the nose with two slim eyes; a bar across the tail with a fin of light at each
-    // corner (set just proud of the bodywork, which the bevel grows by 5 cm); a line down each side.
-    add(box(0.03, 0.045, 1.05), teal, 2.36, 0.3, 0)
-    for (const s of [1, -1]) add(box(0.22, 0.05, 0.28), teal, 2.02, 0.46, 0.5 * s).rotation.y = 0.35 * s
-    add(box(0.03, 0.07, 1.5), tail, -2.47, 0.62, 0)
-    for (const s of [1, -1]) add(box(0.03, 0.24, 0.07), tail, -2.46, 0.6, 0.76 * s)
-    for (const s of [1, -1]) add(box(1.7, 0.025, 0.02), teal, 0.2, 0.26, 1.0 * s)
-
-    // Wheels, with graphite aero covers whose gold stripe shows them turn.
-    const wheelGeo = new THREE.CylinderGeometry(0.4, 0.4, 0.34, 20)
-    wheelGeo.rotateX(Math.PI / 2)
-    const coverGeo = new THREE.CylinderGeometry(0.3, 0.3, 0.02, 20)
-    coverGeo.rotateX(Math.PI / 2)
-    const tyre = mat('#121417', { roughness: 0.9, metalness: 0 })
-    const cover = mat('#1c2630', { roughness: 0.3, metalness: 0.6 })
-    const gold = mat('#f5b942', { roughness: 0.35, metalness: 0.4 })
-    const wheels: THREE.Mesh[] = []
-    const steer: THREE.Group[] = []
-    for (const [x, z, front] of [
-      [1.45, 0.95, true],
-      [1.45, -0.95, true],
-      [-1.4, 0.95, false],
-      [-1.4, -0.95, false],
-    ] as const) {
-      const pivot = new THREE.Group()
-      pivot.position.set(x, 0.4, z)
-      group.add(pivot)
-      const wheel = new THREE.Mesh(wheelGeo, tyre)
-      pivot.add(wheel)
-      const out = Math.sign(z)
-      const disc = new THREE.Mesh(coverGeo, cover)
-      disc.position.z = out * 0.175
-      wheel.add(disc)
-      const stripe = new THREE.Mesh(box(0.5, 0.06, 0.02), gold)
-      stripe.position.z = out * 0.188
-      wheel.add(stripe)
-      wheels.push(wheel)
-      if (front) steer.push(pivot)
-    }
-    if (!ghost) {
-      // A soft teal glow on the road under the car, and a shadow.
-      const glow = this.paint(128, 64, (g, w, h) => {
-        const grad = g.createRadialGradient(w / 2, h / 2, 2, w / 2, h / 2, w / 2)
-        grad.addColorStop(0, 'rgba(46,184,160,0.55)')
-        grad.addColorStop(1, 'rgba(46,184,160,0)')
-        g.fillStyle = grad
-        g.fillRect(0, 0, w, h)
-      })
-      const under = new THREE.Mesh(
-        new THREE.PlaneGeometry(4.6, 2.4),
-        new THREE.MeshBasicMaterial({ map: glow, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }),
-      )
-      under.rotation.x = -Math.PI / 2
-      under.position.y = 0.06
-      group.add(under)
-      const shadow = this.paint(128, 64, (g, w, h) => {
-        const grad = g.createRadialGradient(w / 2, h / 2, 4, w / 2, h / 2, w / 2)
-        grad.addColorStop(0, 'rgba(0,0,0,0.5)')
-        grad.addColorStop(1, 'rgba(0,0,0,0)')
-        g.fillStyle = grad
-        g.fillRect(0, 0, w, h)
-      })
-      const blob = new THREE.Mesh(new THREE.PlaneGeometry(5.6, 3), new THREE.MeshBasicMaterial({ map: shadow, transparent: true, depthWrite: false }))
-      blob.rotation.x = -Math.PI / 2
-      blob.position.y = 0.05
-      group.add(blob)
-    }
-    this.scene.add(group)
-    return { group, body, wheels, steer, see }
+    const env = new THREE.DataTexture(data, w, h, THREE.RGBAFormat, THREE.HalfFloatType)
+    env.mapping = THREE.EquirectangularReflectionMapping
+    env.colorSpace = THREE.LinearSRGBColorSpace
+    env.magFilter = THREE.LinearFilter
+    env.minFilter = THREE.LinearFilter
+    env.needsUpdate = true
+    const pmrem = new THREE.PMREMGenerator(this.renderer)
+    this.scene.environment = pmrem.fromEquirectangular(env).texture
+    pmrem.dispose()
+    env.dispose()
   }
 
   /* ---------- skid marks ---------- */
@@ -652,7 +515,7 @@ export class HotLapScene {
     const c = Math.cos(run.h)
     const s = Math.sin(run.h)
     let laid = false
-    WHEEL_AT.forEach(([f, l], w) => {
+    WHEELS.forEach(([f, l], w) => {
       const front = w < 2
       const marking = !run.onGrass && (braking || run.work > (front ? 1.2 : 1.02))
       const x = run.x + f * c - l * s
@@ -731,7 +594,7 @@ export class HotLapScene {
     const pitch = Math.max(-0.04, Math.min(0.04, run.ax * 0.003))
     car.body.rotation.x += (roll - car.body.rotation.x) * Math.min(1, dt * 8)
     car.body.rotation.z += (pitch - car.body.rotation.z) * Math.min(1, dt * 8)
-    for (const w of car.wheels) w.rotation.z -= (run.u * dt) / 0.4
+    for (const w of car.wheels) w.rotation.z -= (run.u * dt) / WHEEL_RADIUS
     for (const p of car.steer) p.rotation.y = run.steer * 1.6
   }
 
@@ -818,52 +681,4 @@ export class HotLapScene {
     this.renderer.dispose()
     this.renderer.forceContextLoss()
   }
-}
-
-/* The body: a side profile pushed out to the car's width, rounded at its edges and narrowed toward the nose. */
-function bodyGeometry() {
-  const side = new THREE.Shape()
-  side.moveTo(2.36, 0.2)
-  side.quadraticCurveTo(2.3, 0.36, 1.9, 0.42)
-  side.quadraticCurveTo(1.0, 0.5, 0.55, 0.6)
-  side.lineTo(-0.9, 0.66)
-  side.quadraticCurveTo(-1.6, 0.74, -2.1, 0.78)
-  side.lineTo(-2.38, 0.72)
-  side.lineTo(-2.4, 0.42)
-  side.quadraticCurveTo(-2.3, 0.22, -2.05, 0.18)
-  side.lineTo(2.1, 0.14)
-  side.quadraticCurveTo(2.3, 0.14, 2.36, 0.2)
-  const width = 1.7
-  // The bevel rounds the edges; it also grows the outline by its size, so it's kept slim.
-  const geo = new THREE.ExtrudeGeometry(side, {
-    depth: width,
-    bevelEnabled: true,
-    bevelThickness: 0.1,
-    bevelSize: 0.05,
-    bevelSegments: 4,
-    curveSegments: 14,
-  })
-  geo.translate(0, 0, -width / 2)
-  // Seen from above, the nose narrows to a point and the tail a little.
-  const pos = geo.attributes.position!
-  for (let i = 0; i < pos.count; i++) {
-    const x = pos.getX(i)
-    let squeeze = 1
-    if (x > 0.6) squeeze = 1 - 0.4 * ((x - 0.6) / 1.76) ** 2
-    else if (x < -1.6) squeeze = 1 - 0.14 * ((-1.6 - x) / 0.8)
-    pos.setZ(i, pos.getZ(i) * squeeze)
-  }
-  geo.computeVertexNormals()
-  return geo
-}
-
-function finGeometry() {
-  const fin = new THREE.Shape()
-  fin.moveTo(-0.5, 0)
-  fin.lineTo(-2.2, 0)
-  fin.lineTo(-2.2, 0.44)
-  fin.quadraticCurveTo(-1.3, 0.2, -0.5, 0)
-  const geo = new THREE.ExtrudeGeometry(fin, { depth: 0.035, bevelEnabled: false })
-  geo.translate(0, 0, -0.0175)
-  return geo
 }

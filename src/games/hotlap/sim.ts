@@ -12,7 +12,7 @@ const G = 9.81
 /*
  * A rear-wheel-drive prototype racer, reckoned per kilogram, so forces are accelerations. Each axle's
  * tyres grip up to a limit and then slide; weight moves forward when you brake and back when you
- * accelerate; and its wings and floor press it onto the road harder the faster it goes (downforce), so
+ * accelerate; and its body and floor press it onto the road harder the faster it goes (downforce), so
  * it grips best at speed, as a Le Mans car does.
  */
 export const CAR = {
@@ -29,7 +29,7 @@ export const CAR = {
   power: 120, // W per kg at the rear wheels
   brake: 1.9, // g the pedal asks for; the tyres decide how much of it you get (ABS)
   brakeFront: 0.64, // share of the braking at the front
-  drag: 0.00034, // air, × speed², m/s² (the wings cost a little speed)
+  drag: 0.00034, // air, × speed², m/s² (the downforce costs a little speed)
   rolling: 0.25, // m/s²
   engineBrake: 0.7, // m/s² at the rear wheels off the gas
   steerMax: 0.6, // rad of lock at a crawl
@@ -40,7 +40,7 @@ export const CAR = {
 }
 export const WHEELBASE = CAR.a + CAR.b
 
-/** m/s² the tyres are pressed down with at this speed: gravity and the wings. */
+/** m/s² the tyres are pressed down with at this speed: gravity and the downforce. */
 export function load(u: number) {
   return G + CAR.downforce * u * u
 }
@@ -457,7 +457,7 @@ export function stepRun(run: Run, input: Controls, track: Track): Run {
 
 /* ---------- a driver who knows the way ---------- */
 
-/** The speed the middle of the road can be driven at each metre, braking as the tyres (and wings) allow. */
+/** The speed the middle of the road can be driven at each metre, braking as the tyres (and the downforce) allow. */
 export function speedPlan(track: Track, margin = 0.86) {
   const { n } = track
   const v = new Float64Array(n)
