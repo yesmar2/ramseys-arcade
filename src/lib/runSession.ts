@@ -1,3 +1,4 @@
+import { noteRunBegun } from './engagement'
 import { api } from './leaderboard'
 
 /**
@@ -43,6 +44,7 @@ export function openRunsThrough(slug: string, open: (() => Promise<{ runId?: str
  * game must not wait on the network to begin.
  */
 export function beginRun(slug: string): void {
+  noteRunBegun()
   const through = opener && opener.slug === slug ? opener.open : null
   const run = (
     through

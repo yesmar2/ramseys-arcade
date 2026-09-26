@@ -9,6 +9,9 @@ import { InstallPrompt } from '../components/InstallPrompt'
 import { PageShell } from '../components/PageShell'
 import { PendingInvitesStrip } from '../components/PendingInvitesStrip'
 import { BugHuntStrip } from '../components/BugHunt'
+import { usePlayerName } from '../hooks/usePlayerName'
+import { useRecentGames } from '../lib/lastPlayed'
+import { normalizePlayerName } from '../lib/leaderboard'
 
 /** A phone, where the home page runs lighter (the rules in home.css under the same width). */
 const PHONE = '(max-width: 36rem)'
@@ -35,6 +38,11 @@ type Part = 'hero' | 'hunt' | 'invites' | 'onnow' | 'wall' | 'boards' | 'spotter
  * was. The order is the page's own, not only how it looks, so a screen reader
  * hears it the way it's seen; each part keeps its key, so turning a phone
  * sideways moves the parts rather than starting them again.
+ *
+ * A first visit (no tag, nothing played on this device, as the banner has it)
+ * gets the phone's order at any width: the games right after the banner, and
+ * what's on and the bug hunt, which only mean something once you've played,
+ * after them.
  */
 const WIDE: Part[] = ['hero', 'hunt', 'invites', 'onnow', 'wall', 'boards', 'spotter', 'groups']
 const NARROW: Part[] = ['hero', 'invites', 'wall', 'onnow', 'hunt', 'boards', 'spotter', 'groups']
@@ -48,6 +56,9 @@ const NARROW: Part[] = ['hero', 'invites', 'wall', 'onnow', 'hunt', 'boards', 's
  */
 export function HomePage() {
   const phone = usePhone()
+  const name = normalizePlayerName(usePlayerName())
+  const recent = useRecentGames()
+  const firstVisit = !name && recent.length === 0
   const parts: Record<Part, ReactElement> = {
     hero: <HomeHero key="hero" />,
     hunt: <BugHuntStrip key="hunt" />,
@@ -61,7 +72,7 @@ export function HomePage() {
   return (
     <>
       <PageShell variant="home">
-        <div className="home-rail">{(phone ? NARROW : WIDE).map((part) => parts[part])}</div>
+        <div className="home-rail">{(phone || firstVisit ? NARROW : WIDE).map((part) => parts[part])}</div>
       </PageShell>
       <InstallPrompt />
     </>

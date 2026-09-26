@@ -9,6 +9,7 @@ import {
   wasInstallDismissed,
 } from '../lib/pwaInstall'
 import { APP_NAME } from '../lib/brand'
+import { useSettled } from '../lib/engagement'
 
 type Mode = 'hidden' | 'android' | 'ios'
 
@@ -19,9 +20,15 @@ function resolveMode(): Mode {
   return 'hidden'
 }
 
-/** Bottom install tip when the browser allows Add to Home Screen / install. */
+/**
+ * Bottom install tip when the browser allows Add to Home Screen / install,
+ * once this device has played a few runs or come back another day: asking a
+ * first visit to install the arcade, before it has played anything, only
+ * covers the games it came for.
+ */
 export function InstallPrompt() {
   const [mode, setMode] = useState<Mode>(() => resolveMode())
+  const settled = useSettled()
 
   useEffect(() => {
     const sync = () => setMode(resolveMode())
@@ -29,7 +36,7 @@ export function InstallPrompt() {
     return subscribePwaInstall(sync)
   }, [])
 
-  if (mode === 'hidden') return null
+  if (mode === 'hidden' || !settled) return null
 
   const onDismiss = () => {
     dismissInstallPrompt()

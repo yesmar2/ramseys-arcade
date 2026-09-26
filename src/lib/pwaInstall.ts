@@ -1,3 +1,5 @@
+import { noteVisit } from './engagement'
+
 const DISMISS_KEY = 'skermix-pwa-install-dismissed'
 const LEGACY_DISMISS_KEYS = [
   'fordriva-pwa-install-dismissed',
@@ -19,6 +21,8 @@ function notify() {
 /** Call once at app boot so we don't miss the browser event. */
 export function bootPwaInstall() {
   if (typeof window === 'undefined') return
+  // The day this device first came: the prompt waits for a second day, or a few runs (lib/engagement).
+  noteVisit()
   window.addEventListener('beforeinstallprompt', ((e: Event) => {
     e.preventDefault()
     deferred = e as BeforeInstallPromptEvent
