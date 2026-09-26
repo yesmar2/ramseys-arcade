@@ -113,6 +113,13 @@ export type GameState = {
  */
 const FIRST_WINDOW = 2.4
 const MIN_WINDOW = 0.75
+/*
+ * The very first call of a run waits longer: a first-timer is still finding
+ * the five controls, and at 2.4 s the first call ran out before they'd found
+ * the one it named, so the run ended before it began. From the second call on
+ * the windows run exactly as before.
+ */
+const OPENING_WINDOW = 5
 const SHRINK = 0.965
 const GAP = 0.32
 export const PRESS_LIFE = 0.34
@@ -136,7 +143,7 @@ export function createInitialState(w = 540, h = 540): GameState {
     streak: 0,
     call: null,
     timer: 0,
-    window: FIRST_WINDOW,
+    window: OPENING_WINDOW,
     gap: 0,
     pressed: null,
     pressLife: 0,
@@ -364,7 +371,7 @@ export function act(state: GameState, control: Control): GameState {
     call: state.call,
     timer: 0,
     gap: GAP,
-    window: Math.max(MIN_WINDOW, state.window * SHRINK),
+    window: Math.max(MIN_WINDOW, Math.min(state.window, FIRST_WINDOW) * SHRINK),
     pressed: control,
     pressLife: PRESS_LIFE,
     lastGain: gained,

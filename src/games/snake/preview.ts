@@ -356,7 +356,8 @@ export function makeSim(): Sim<GameState> {
       chasing = false
       chasedFor = 0
       fit(w, h)
-      return startGame(createInitialState())
+      // The pilot drives straight off: a cabinet's snake shouldn't sit waiting for a swipe.
+      return startGame(createInitialState(), { waitForMove: false })
     },
     step: (s, dt, w, h) => {
       fit(w, h)

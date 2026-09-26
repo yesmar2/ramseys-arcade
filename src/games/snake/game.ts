@@ -133,6 +133,13 @@ export type GameState = {
   /** Corner points of the path the head has travelled, newest first. */
   trail: Cell[]
   dir: Dir
+  /**
+   * A run's opening: the snake holds still, and the clock with it, until the
+   * first move (any way but straight back into itself, even the way it faces).
+   * It used to set off at once, and from the middle of the board it reached a
+   * wall in under two seconds, before a first-timer had worked out what to do.
+   */
+  waiting: boolean
   /** Turn to take at the next cell center. */
   pendingDir: Dir | null
   /** One extra turn queued behind pendingDir. */
@@ -648,6 +655,7 @@ export function createInitialState(
     head,
     trail,
     dir,
+    waiting: false,
     pendingDir: null,
     bufferedDir: null,
     lineBreak: false,
@@ -689,13 +697,14 @@ export function createInitialState(
   return base
 }
 
-export function startGame(prev: GameState): GameState {
+export function startGame(prev: GameState, { waitForMove = true }: { waitForMove?: boolean } = {}): GameState {
   const next = createInitialState(prev.cols, prev.rows)
   return {
     ...next,
     best: Math.max(prev.best, loadBest()),
     time: prev.time,
     phase: 'playing',
+    waiting: waitForMove,
   }
 }
 
@@ -755,6 +764,12 @@ function canTurn(from: Dir, next: Dir) {
  */
 export function queueDir(state: GameState, next: Dir): GameState {
   if (state.phase !== 'playing' && state.phase !== 'menu') return state
+
+  if (state.waiting) {
+    // The first move sets it off: the way it faces, or a turn, which fires on the centre it sits on.
+    if (next === OPPOSITE[state.dir]) return state
+    return { ...state, waiting: false, pendingDir: next === state.dir ? null : next, bufferedDir: null }
+  }
 
   if (!state.pendingDir) {
     if (!canTurn(state.dir, next)) return state
@@ -1372,6 +1387,8 @@ export function tick(state: GameState, dt: number): GameState {
     return s
   }
   if (s.phase !== 'playing') return s
+  // Waiting for the first move: nothing moves, and no clock runs.
+  if (s.waiting) return s
 
   s.elapsed += dt
   s.levelAge += dt

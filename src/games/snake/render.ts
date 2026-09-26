@@ -962,15 +962,22 @@ function isTouch() {
   return coarse
 }
 
-/** The first seconds of a run: how to steer, and what the ring means. */
+/**
+ * The first seconds of a run: how to set off while the snake waits for its
+ * first move, then how to steer and what the ring means.
+ */
 function drawHint(ctx: CanvasRenderingContext2D, sk: Skin, v: View, s: GameState) {
   if (s.phase !== 'playing' || s.eaten >= 3 || s.elapsed > 9) return
-  const fadeIn = clamp01(s.elapsed / 0.4)
+  const fadeIn = s.waiting ? 1 : clamp01(s.elapsed / 0.4)
   const fadeOut = s.eaten >= 2 || s.elapsed > 8 ? 0.6 : 1
-  const lines = [
-    isTouch() ? 'Swipe or tap the turn buttons · hold ⚡ to boost' : 'Arrow keys to turn · hold Space to boost',
-    'Reach each fruit before its ring closes to build a chain',
-  ]
+  const lines = s.waiting
+    ? isTouch()
+      ? ['Swipe any way to set off', 'Then swipe, or tap the turn buttons, to steer']
+      : ['Press an arrow key to set off', 'Then the arrow keys steer · hold Space to boost']
+    : [
+        isTouch() ? 'Swipe or tap the turn buttons · hold ⚡ to boost' : 'Arrow keys to turn · hold Space to boost',
+        'Reach each fruit before its ring closes to build a chain',
+      ]
   const big = Math.round(Math.max(12, Math.min(15, v.gridW * 0.034)))
   const small = Math.round(big * 0.86)
   ctx.save()

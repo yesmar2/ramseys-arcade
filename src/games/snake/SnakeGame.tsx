@@ -289,6 +289,11 @@ export function SnakeGame() {
     setUi(toSnapshot(stateRef.current))
   }
 
+  /** The snake waits for its first move; the record clock (fastest to a length) starts when it sets off. */
+  const setOff = (before: GameState, after: GameState) => {
+    if (before.waiting && !after.waiting) runStartRef.current = performance.now()
+  }
+
   const turn = (dir: Dir) => {
     if (saveOpen || pausedRef.current) return
     const s = stateRef.current
@@ -303,6 +308,7 @@ export function SnakeGame() {
     // Only when the turn was taken. A reversal the engine refuses must not
     // buzz, or the hand is told something happened that did not.
     if (next !== s) haptic('turn')
+    setOff(s, next)
     stateRef.current = next
   }
 
@@ -318,6 +324,7 @@ export function SnakeGame() {
     if (s.phase !== 'playing') return
     const next = queueTurn(s, side)
     if (next !== s) haptic('turn')
+    setOff(s, next)
     stateRef.current = next
   }
 

@@ -632,6 +632,60 @@ function revealOf(s: GameState) {
   return clamp01((s.settleT - 0.08) / 0.35)
 }
 
+let coarse: boolean | null = null
+function isTouch() {
+  if (coarse === null) {
+    coarse = typeof window !== 'undefined' && window.matchMedia?.('(pointer: coarse)').matches === true
+  }
+  return coarse
+}
+
+/**
+ * The first plate of a run: what to do with it. Nothing on the table said,
+ * and a first-timer watched the clock run out on a plate they didn't know to
+ * tap. Under the clock where there's room (a phone), over it where there isn't.
+ */
+function drawHint(g: Gfx, s: GameState, w: number, h: number) {
+  if (s.phase !== 'aiming' || s.plateNo > 1) return
+  const { ctx, v, dark } = g
+  const alpha = clamp01((s.appear - 0.5) / 0.4)
+  if (alpha <= 0) return
+  const lines = isTouch()
+    ? ['Tap where the plate would balance', 'Its true center, weights and all, before the clock runs out']
+    : ['Click where the plate would balance', 'Or the arrow keys, then Space, before the clock runs out']
+  const big = Math.round(Math.max(13, Math.min(16, w * 0.036)))
+  const small = Math.round(big * 0.84)
+  ctx.save()
+  ctx.globalAlpha = alpha
+  ctx.font = `600 ${big}px ${FONT}`
+  const w1 = ctx.measureText(lines[0]!).width
+  ctx.font = `600 ${small}px ${FONT}`
+  const w2 = ctx.measureText(lines[1]!).width
+  const cw = Math.min(w - 20, Math.max(w1, w2) + 32)
+  const ch = big * 3.4
+  const clockY = v.oy + 0.905 * v.k
+  const y = h - clockY - 16 >= ch + 14 ? clockY + 18 : clockY - ch - 18
+  const x = w / 2 - cw / 2
+  ctx.fillStyle = dark ? 'rgba(24, 36, 46, 0.86)' : 'rgba(255, 255, 255, 0.9)'
+  ctx.beginPath()
+  ctx.roundRect(x, y, cw, ch, 14)
+  ctx.fill()
+  ctx.strokeStyle = inkColor()
+  ctx.globalAlpha = alpha * 0.1
+  ctx.lineWidth = 1
+  ctx.stroke()
+  ctx.globalAlpha = alpha
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  ctx.fillStyle = inkColor()
+  ctx.font = `600 ${big}px ${FONT}`
+  ctx.fillText(lines[0]!, w / 2, y + ch * 0.34, cw - 16)
+  ctx.globalAlpha = alpha * 0.72
+  ctx.font = `600 ${small}px ${FONT}`
+  ctx.fillText(lines[1]!, w / 2, y + ch * 0.7, cw - 16)
+  ctx.restore()
+}
+
 export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, w: number, h: number) {
   const dark = isDarkTheme()
   const dpr = ctx.getTransform().a || 1
@@ -686,4 +740,5 @@ export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, w: n
   drawFloaters(g, s)
   drawClock(g, s)
   drawCursor(g, s)
+  drawHint(g, s, w, h)
 }
