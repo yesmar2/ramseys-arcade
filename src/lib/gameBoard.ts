@@ -1,6 +1,6 @@
 import { getGame } from '../data/games'
 import { normalizePlayerName, type LeaderboardEntry } from './leaderboard'
-import { formatLeaderboardScore, isTimeBoard } from './leaderboardFormat'
+import { formatLeaderboardScore, formatTimeGap, isTimeBoard } from './leaderboardFormat'
 import { numberWord } from './numberWord'
 import { ordinal, type PeriodCopy, type Stat } from './scoreboard'
 
@@ -75,7 +75,7 @@ export function scoreUnit(slug: string, score: number): string {
 
 /** A gap between two scores in the game's own terms: 9 rows, 1 point, 0.4s. */
 export function gapText(slug: string, gap: number): string {
-  if (isTimeBoard(slug)) return `${(gap / 1000).toFixed(1)}s`
+  if (isTimeBoard(slug)) return formatTimeGap(slug, gap)
   const [one, many] = UNITS[slug] ?? ['point', 'points']
   return count(gap, one, many)
 }

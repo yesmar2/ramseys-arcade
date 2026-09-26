@@ -267,6 +267,22 @@ export const HOW_TO_PLAY: Record<string, HowToPlay> = {
     ends: 'After three holes.',
     tip: 'The targets move every round. Each miss says how far off it was.',
   },
+  hotlap: {
+    goal: 'Drive one lap as fast as you can.',
+    controls: [
+      { does: 'Gas', touch: 'Gas, right thumb', keys: '↑ or W' },
+      { does: 'Brake', touch: 'Brake, right thumb', keys: '↓, S or Space' },
+      { does: 'Steer', touch: '◀ ▶, left thumb', keys: '← → or A D' },
+      { does: 'Start the lap again', touch: '↻', keys: 'R' },
+    ],
+    scores: [
+      { what: 'Your score', pts: 'lap time', sub: 'fastest wins' },
+      { what: 'Medals', pts: 'gold under 50s', sub: 'silver 53.5s · bronze 58s' },
+      { what: 'A cut across the grass', pts: 'no time', sub: 'the lap can’t count' },
+    ],
+    ends: 'At the line, one lap from the start.',
+    tip: 'Brake in a straight line before a corner, then squeeze back on the gas as it opens out. The blue car is the lap to beat.',
+  },
 }
 
 export function howToPlayFor(slug: string): HowToPlay | null {

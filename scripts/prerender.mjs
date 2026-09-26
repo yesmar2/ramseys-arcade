@@ -128,10 +128,12 @@ try {
   const { isTimeBoard } = await server.ssrLoadModule('/src/lib/leaderboardFormat.ts')
   const { FINDBUG_SCORE_BASE } = await server.ssrLoadModule('/src/games/findbug/score.ts')
   const { SPOTTER_SCORE_BASE } = await server.ssrLoadModule('/src/games/spotter/score.ts')
+  const { HOTLAP_SCORE_BASE } = await server.ssrLoadModule('/src/games/hotlap/score.ts')
   // The boards that keep a time, as each one prints it (leaderboardFormat.ts).
   const CLOCKS = {
     findbug: { clock: 'tenths', base: FINDBUG_SCORE_BASE },
     spotter: { clock: 'seconds', base: SPOTTER_SCORE_BASE },
+    hotlap: { clock: 'hundredths', base: HOTLAP_SCORE_BASE },
   }
   /** What the challenge functions need to word and colour a game's card. */
   const cardGames = {}

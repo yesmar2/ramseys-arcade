@@ -11,7 +11,7 @@ import { cachedMyGroups, useActiveGroup } from '../lib/groups'
 import { heroSlug, newestSlug } from '../lib/homePicks'
 import { useRecentGames } from '../lib/lastPlayed'
 import { getLeaderboard, normalizePlayerName, PERIOD_LABELS } from '../lib/leaderboard'
-import { formatLeaderboardScore, isTimeBoard } from '../lib/leaderboardFormat'
+import { formatLeaderboardScore, formatTimeGap, isTimeBoard } from '../lib/leaderboardFormat'
 import { numberWord } from '../lib/numberWord'
 import { resolveGameAccent } from '../lib/theme'
 import { howItWins, type TournamentSummary } from '../lib/tournaments'
@@ -49,7 +49,7 @@ const UNITS: Record<string, [string, string]> = {
 
 /** A gap between two scores as a bare figure: 9, 1,250, 2.4s. */
 function gapFigure(slug: string, gap: number): string {
-  return isTimeBoard(slug) ? `${(gap / 1000).toFixed(1)}s` : gap.toLocaleString()
+  return isTimeBoard(slug) ? formatTimeGap(slug, gap) : gap.toLocaleString()
 }
 
 /** A gap in the game's own unit: 9 rows, 1 point, 2.4s. */

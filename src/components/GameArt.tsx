@@ -1081,6 +1081,75 @@ function AceChase({ id }: { id: Id }) {
   )
 }
 
+/** Hot Lap's racer from behind, as the chase camera sees it: its wheels on the road at (x, y). */
+function RacerBack({ x, y, s, paint, ghost = false }: { x: number; y: number; s: number; paint: string; ghost?: boolean }) {
+  return (
+    <g transform={`translate(${x} ${y}) scale(${s})`} opacity={ghost ? 0.55 : 1}>
+      <ellipse cx="0" cy="0.15" rx="7.6" ry="0.85" fill="#000" opacity="0.3" />
+      <rect x="-7" y="-4.3" width="2.8" height="4.3" rx="0.9" fill="#121417" />
+      <rect x="4.2" y="-4.3" width="2.8" height="4.3" rx="0.9" fill="#121417" />
+      <path d="M-5.6 -0.7 L5.6 -0.7 L6.2 -3.2 Q6 -4.7 4.4 -5.1 Q0 -6.2 -4.4 -5.1 Q-6 -4.7 -6.2 -3.2 Z" fill={paint} />
+      <path d="M-4.3 -0.7 L4.3 -0.7 L3.7 -1.9 L-3.7 -1.9 Z" fill="#1c2630" />
+      <rect x="-4.7" y="-3.15" width="9.4" height="0.5" rx="0.25" fill={ghost ? paint : '#ff8a80'} />
+      <ellipse cx="0" cy="-5.25" rx="2.2" ry="1.05" fill="#0a1520" />
+      {ghost ? null : <path d="M-0.85 -6 V-3.6 M0.85 -6 V-3.6" {...line('#f7f9fc', 0.34)} />}
+      <path d="M-2.2 -5 L-1.9 -7.3 M2.2 -5 L1.9 -7.3" {...line('#1c2630', 0.36)} />
+      <rect x="-6.4" y="-7.9" width="12.8" height="0.85" rx="0.3" fill="#1c2630" />
+      <rect x="-6.2" y="-8" width="12.4" height="0.2" rx="0.1" fill={ghost ? paint : '#8ff2df'} />
+      <rect x="-6.7" y="-8.5" width="0.55" height="2.3" rx="0.2" fill={paint} />
+      <rect x="6.15" y="-8.5" width="0.55" height="2.3" rx="0.2" fill={paint} />
+    </g>
+  )
+}
+
+function HotLap({ id }: { id: Id }) {
+  // The road from under the car, bending left into the distance.
+  const left = 'M2.5 31 C9 24 14.4 18 16.2 12.6'
+  const right = 'M17.8 12.6 C21.8 17.4 31 24 37.5 31'
+  return (
+    <>
+      <defs>
+        <linearGradient id={id('sky')} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#4f9fe0" />
+          <stop offset="1" stopColor="#cbe9f7" />
+        </linearGradient>
+        <pattern id={id('mow')} width="3" height="40" patternUnits="userSpaceOnUse" patternTransform="rotate(-24)">
+          <rect width="3" height="40" fill="#5fb257" />
+          <rect width="1.5" height="40" fill="#6bbd62" />
+        </pattern>
+      </defs>
+      <rect x="-1" y="-1" width="42" height="14" fill={`url(#${id('sky')})`} />
+      <path d="M-1 13 C3 10.6 8 11.2 11 12 C15 10 20 10.6 24 11.8 C28 10.2 34 10.4 41 12.2 V14 H-1 Z" fill="#86b6a4" />
+      <rect x="-1" y="12.6" width="42" height="19" fill={`url(#${id('mow')})`} />
+      {[
+        [2.5, 12.9, 1.3],
+        [6.2, 13.2, 1.6],
+        [9, 12.8, 1.1],
+        [27.5, 12.9, 1.2],
+        [31, 13.3, 1.7],
+        [35.4, 12.9, 1.3],
+        [38.4, 13.4, 1.5],
+      ].map(([x, y, s]) => (
+        <path key={`${x}-${y}`} d={`M${x! - s!} ${y} L${x} ${y! - s! * 2.6} L${x! + s!} ${y} Z`} fill="#2f7a44" />
+      ))}
+      <path d={`${left} L17.8 12.6 C21.8 17.4 31 24 37.5 31 Z`} fill="#464a52" />
+      <path d="M11 31 C14 24.5 16.2 18 17 12.6 L17.2 12.6 C18 18 21.5 24.5 25.5 31 Z" fill="#3e4249" opacity="0.6" />
+      <path d={left} {...line('#f6f4ee', 1.3)} />
+      <path d={left} {...line('#e2362f', 1.3)} strokeDasharray="1.1 1.1" strokeLinecap="butt" />
+      <path d={right} {...line('#f2f1ea', 0.4)} />
+      <path d="M4.4 31 C10.4 24.4 15.2 18.2 16.6 12.6" {...line('#f2f1ea', 0.35, 0.9)} />
+      <path d="M15.5 12.8 V9.8 M18.7 12.8 V9.8" {...line('#2b313a', 0.3)} />
+      <rect x="15.2" y="9.4" width="3.8" height="1" rx="0.12" fill="#f2813a" />
+      <path d="M15.7 9.9 H17.4" {...line('#1a2b3c', 0.22)} />
+      <circle cx="18.5" cy="9.72" r="0.11" fill="#2eb8a0" />
+      <RacerBack x={18.2} y={17.3} s={0.34} paint="#4aa8e8" ghost />
+      <Glow id={id} name="glow" cx={20} cy={27.4} r={8} colour="#2eb8a0" strength={0.5} />
+      <Glow id={id} name="tail" cx={20} cy={24.5} r={3.4} colour="#e8564f" strength={0.45} />
+      <RacerBack x={20} y={27.4} s={1} paint="#f2813a" />
+    </>
+  )
+}
+
 /** A fish; its mouth at +x. */
 function Fish({ x, y, scale, flip = false, body, fin, glow }: { x: number; y: number; scale: number; flip?: boolean; body: [number, number, number]; fin?: [number, number, number]; glow?: boolean }) {
   const [h, s, l] = body
@@ -1229,6 +1298,7 @@ const SCENES: Record<string, Scene> = {
   frenzy: Frenzy,
   fireflies: Fireflies,
   acechase: AceChase,
+  hotlap: HotLap,
 }
 
 /**

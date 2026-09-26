@@ -210,6 +210,15 @@ export const games: Game[] = [
     playable: true,
     inDevelopment: true,
   },
+  {
+    name: 'Hot Lap',
+    slug: 'hotlap',
+    tags: ['sport', 'quick'],
+    description: 'One lap against the clock, in 3D, in a racer with wings. Brake before the corners, get back on the gas, and beat the blue car.',
+    accent: PALETTE.orange,
+    playable: true,
+    inDevelopment: true,
+  },
 ]
 
 export function getGame(slug: string) {

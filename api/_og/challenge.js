@@ -11,7 +11,7 @@ import { WORDMARK } from './wordmark.js'
 
 /**
  * @typedef {{ id: string, game: string, name: string, score: number, createdAt: number, replyTo: string | null }} Challenge
- * @typedef {{ name: string, accent: string, unit: [string, string] | null, clock: 'tenths' | 'seconds' | null, base: number }} GameInfo
+ * @typedef {{ name: string, accent: string, unit: [string, string] | null, clock: 'tenths' | 'hundredths' | 'seconds' | null, base: number }} GameInfo
  * @typedef {{ headers: Record<string, string | string[] | undefined>, url?: string }} Req
  */
 
@@ -89,7 +89,7 @@ export function readGames(origin) {
 }
 
 /**
- * A score as the board shows it: 447, 14,310, 47.5s.
+ * A score as the board shows it: 447, 14,310, 47.5s, or a lap's 53.36s.
  * @param {GameInfo | undefined} info
  * @param {number} score
  */
@@ -99,6 +99,12 @@ export function figure(info, score) {
     if (info.clock === 'seconds') {
       const total = Math.round(ms / 1000)
       return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`
+    }
+    if (info.clock === 'hundredths') {
+      const total = Math.round(ms / 10) / 100
+      const m = Math.floor(total / 60)
+      const s = total - m * 60
+      return m > 0 ? `${m}:${s.toFixed(2).padStart(5, '0')}` : `${s.toFixed(2)}s`
     }
     const total = ms / 1000
     const m = Math.floor(total / 60)

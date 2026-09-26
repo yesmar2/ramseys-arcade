@@ -1,0 +1,414 @@
+/*
+ * Hot Lap: the track fills the screen in 3D, seen from behind the car. Over it, the site's play readout
+ * (the lap clock, your best and the sectors), a map of the circuit under the chrome, the speed at the
+ * foot, the start lights, and on a touch screen the steering and pedals under each thumb. Before a lap
+ * the camera shows the car off; the start card stands clear of it.
+ */
+
+.hotlap--fullscreen {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  --hotlap-good: #23a66c;
+  --hotlap-bad: #d9453d;
+  --hotlap-gold: #e0a52c;
+  --hotlap-silver: #9aa8b6;
+  --hotlap-bronze: #cf7f4a;
+  --hotlap-ghost: #4aa8e8;
+  --hotlap-accent: var(--celeb-accent, var(--accent));
+}
+
+html[data-theme='dark'] .hotlap--fullscreen {
+  --hotlap-good: #3ecf8e;
+  --hotlap-bad: #f07a8a;
+  --hotlap-gold: #f5b942;
+  --hotlap-silver: #d3dbe6;
+  --hotlap-bronze: #e39a5f;
+}
+
+.hotlap .game-play {
+  position: relative;
+}
+
+.hotlap__play {
+  position: absolute;
+  inset: 0;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.hotlap__holder {
+  position: absolute;
+  inset: 0;
+}
+
+.hotlap__view {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.hotlap--showroom .hotlap__view {
+  cursor: pointer;
+}
+
+/* Before a lap the card has the corner the map would take. */
+.hotlap--showroom .hotlap__map {
+  display: none;
+}
+
+/* The clock and its figures sit over sky and track: give them a surface to read on. */
+.hotlap .play-readout__score,
+.hotlap .play-stats,
+.hotlap__speed {
+  text-shadow:
+    0 1px 0 rgba(var(--surface-rgb), 0.9),
+    0 0 14px rgba(var(--surface-rgb), 0.75);
+}
+
+/* Ahead of the ghost at this point of the lap, the clock goes green. */
+.hotlap .hotlap__clock.is-ahead {
+  color: var(--hotlap-good);
+}
+
+.hotlap__delta--good {
+  color: var(--hotlap-good);
+}
+
+.hotlap__delta--bad {
+  color: var(--hotlap-bad);
+}
+
+/* ---------- the map, the speed, the lights ---------- */
+
+.hotlap__map {
+  position: absolute;
+  top: calc(var(--readout-middle) + 1.6rem);
+  right: max(0.6rem, env(safe-area-inset-right, 0px));
+  z-index: 9;
+  width: 150px;
+  height: 96px;
+  box-sizing: border-box;
+  border: 1px solid rgba(var(--ink-rgb), 0.12);
+  border-radius: 1.1rem;
+  background: rgba(var(--surface-rgb), 0.72);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  pointer-events: none;
+}
+
+.hotlap__speed {
+  position: absolute;
+  left: 50%;
+  bottom: max(1rem, env(safe-area-inset-bottom, 0px));
+  z-index: 9;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1rem;
+  pointer-events: none;
+  color: var(--ink);
+  font-family: var(--font-display);
+}
+
+.hotlap__speed b {
+  min-width: 2.2ch;
+  font-size: 2.2rem;
+  font-weight: 700;
+  line-height: 1;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.hotlap__speed span {
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(var(--ink-rgb), 0.62);
+}
+
+.hotlap__lights {
+  position: absolute;
+  top: 30%;
+  left: 50%;
+  z-index: 10;
+  transform: translate(-50%, -50%);
+  display: flex;
+  gap: 12px;
+  padding: 12px 16px;
+  border: 1px solid rgba(var(--ink-rgb), 0.12);
+  border-radius: 999px;
+  background: rgba(var(--surface-rgb), 0.86);
+  box-shadow: 0 16px 40px -16px rgba(0, 0, 0, 0.45);
+  pointer-events: none;
+}
+
+.hotlap__lights i {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: rgba(var(--ink-rgb), 0.14);
+}
+
+.hotlap__lights i.is-on {
+  background: #e8564f;
+  box-shadow: 0 0 18px #e8564f;
+}
+
+.hotlap__lights.is-go i {
+  background: #3ecf8e;
+  box-shadow: 0 0 18px #3ecf8e;
+}
+
+.hotlap__toast {
+  position: absolute;
+  top: calc(var(--readout-middle) + 2.4rem);
+  left: 50%;
+  z-index: 11;
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: min(26rem, calc(100% - 2rem));
+  box-sizing: border-box;
+  padding: 0.7rem 1rem;
+  border: 1px solid rgba(var(--ink-rgb), 0.12);
+  border-radius: 1.1rem;
+  background: var(--surface);
+  box-shadow: 0 16px 40px -16px rgba(0, 0, 0, 0.45);
+  color: var(--ink);
+  font-size: 0.92rem;
+  font-weight: 600;
+  line-height: 1.4;
+  text-align: center;
+  pointer-events: none;
+  animation: hotlap-in 0.18s ease-out;
+}
+
+@keyframes hotlap-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -6px);
+  }
+}
+
+.hotlap__nogl {
+  position: absolute;
+  inset: 0;
+  z-index: 12;
+  display: grid;
+  place-items: center;
+  padding: 2rem;
+  text-align: center;
+  color: var(--ink);
+  background: var(--playfield, var(--bg));
+}
+
+/* ---------- touch: steering under the left thumb, pedals under the right ---------- */
+
+.hotlap__pad {
+  position: absolute;
+  inset: auto 0 0 0;
+  z-index: 9;
+  height: 46%;
+  pointer-events: none;
+}
+
+.hotlap__zone {
+  position: absolute;
+  bottom: 0;
+  width: 50%;
+  height: 100%;
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  box-sizing: border-box;
+  padding: 0 16px max(20px, calc(env(safe-area-inset-bottom, 0px) + 12px));
+  pointer-events: auto;
+  touch-action: none;
+}
+
+.hotlap__zone--steer {
+  left: 0;
+  padding-left: max(16px, calc(env(safe-area-inset-left, 0px) + 8px));
+}
+
+.hotlap__zone--pedals {
+  right: 0;
+  justify-content: flex-end;
+  padding-right: max(16px, calc(env(safe-area-inset-right, 0px) + 8px));
+}
+
+.hotlap__btn {
+  display: grid;
+  place-items: center;
+  width: 74px;
+  height: 74px;
+  border: 1px solid rgba(var(--ink-rgb), 0.18);
+  border-radius: 999px;
+  background: rgba(var(--surface-rgb), 0.55);
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  transition:
+    transform 0.06s ease,
+    background 0.06s ease;
+}
+
+.hotlap__btn svg {
+  width: 28px;
+  height: 28px;
+}
+
+.hotlap__btn--gas {
+  height: 100px;
+  border-radius: 1.6rem;
+  border-color: color-mix(in srgb, var(--hotlap-accent) 55%, transparent);
+  background: color-mix(in srgb, var(--hotlap-accent) 38%, rgba(var(--surface-rgb), 0.5));
+}
+
+.hotlap__btn--brake {
+  border-radius: 1.6rem;
+  border-color: color-mix(in srgb, var(--hotlap-bad) 45%, transparent);
+  background: color-mix(in srgb, var(--hotlap-bad) 22%, rgba(var(--surface-rgb), 0.5));
+}
+
+.hotlap__btn.is-on {
+  transform: scale(0.94);
+  background: rgba(var(--surface-rgb), 0.9);
+}
+
+.hotlap--touch .hotlap__speed {
+  bottom: max(128px, calc(env(safe-area-inset-bottom, 0px) + 120px));
+}
+
+/* ---------- the cards ---------- */
+
+.hotlap__overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 45;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4.75rem 0.85rem max(1rem, env(safe-area-inset-bottom));
+  overflow: auto;
+  pointer-events: none;
+}
+
+/* Before a lap the car is shown off: on a phone the card sits low and the car above it. */
+.hotlap--showroom .hotlap__overlay {
+  align-items: flex-end;
+  padding-bottom: max(1.25rem, env(safe-area-inset-bottom));
+}
+
+/* On a wide screen the cards stand at the right, like a game's menu, and the car has the left. */
+@media (min-width: 900px) and (min-aspect-ratio: 4/3) {
+  .hotlap__overlay,
+  .hotlap--showroom .hotlap__overlay {
+    align-items: center;
+    justify-content: flex-end;
+    padding-right: max(2.5rem, env(safe-area-inset-right, 0px));
+  }
+}
+
+/* The medal times, as chips across the card. */
+.hotlap-medals {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.4rem;
+}
+
+.hotlap-medal {
+  --c: var(--hotlap-gold);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 2rem;
+  padding: 0 0.75rem 0 0.5rem;
+  border: 1px solid rgba(var(--ink-rgb), 0.12);
+  border-radius: 999px;
+  background: rgba(var(--ink-rgb), 0.05);
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.hotlap-medal--silver {
+  --c: var(--hotlap-silver);
+}
+
+.hotlap-medal--bronze {
+  --c: var(--hotlap-bronze);
+}
+
+.hotlap-medal--ghost {
+  --c: var(--hotlap-ghost);
+}
+
+.hotlap-medal i {
+  width: 0.8rem;
+  height: 0.8rem;
+  border-radius: 50%;
+  background: var(--c);
+}
+
+.hotlap-medal b {
+  font-weight: 700;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.hotlap-medal.is-won {
+  border-color: color-mix(in srgb, var(--c) 70%, transparent);
+  background: color-mix(in srgb, var(--c) 18%, transparent);
+  color: var(--ink);
+}
+
+.game-card[data-fit='2'] .hotlap-medals {
+  gap: 0.3rem;
+}
+
+/* ---------- a phone ---------- */
+
+@media (max-width: 560px) {
+  .hotlap__map {
+    width: 110px;
+    height: 72px;
+  }
+
+  .hotlap-medals {
+    gap: 0.3rem;
+  }
+
+  .hotlap-medal {
+    padding: 0 0.55rem 0 0.4rem;
+    font-size: 0.72rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hotlap__toast {
+    animation: none;
+  }
+
+  .hotlap__btn {
+    transition: none;
+  }
+}

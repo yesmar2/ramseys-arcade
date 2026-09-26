@@ -44,6 +44,7 @@ const TOURNAMENT_GAMES: Record<string, LazyPage<object>> = {
   putt: lazyPage(() => import('../games/putt/PuttGame').then((m) => m.PuttGame)),
   findbug: lazyPage(() => import('../games/findbug/FindBugGame').then((m) => m.FindBugGame)),
   fireflies: lazyPage(() => import('../games/fireflies/FirefliesGame').then((m) => m.FirefliesGame)),
+  hotlap: lazyPage(() => import('../games/hotlap/HotLapGame').then((m) => m.HotLapGame)),
   patriot: lazyPage(() => import('../games/patriot/PatriotGame').then((m) => m.PatriotGame)),
   pellets: lazyPage(() => import('../games/pellets/PelletsGame').then((m) => m.PelletsGame)),
   pop: lazyPage(() => import('../games/whack/WhackGame').then((m) => m.WhackGame)),

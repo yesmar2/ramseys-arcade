@@ -81,9 +81,10 @@ export default defineConfig(({ mode }) => {
         },
         // Routing, cleanup and claim now live in src/sw.ts.
         injectManifest: {
-          // Share images are for link unfurlers, not the offline shell. Ace Chase carries a 3D engine (about a
-          // fifth of everything else put together), so it downloads when someone opens it, not with the app.
-          globIgnores: ['**/node_modules/**/*', 'og.png', 'og/**', 'assets/AceChaseGame-*'],
+          // Share images are for link unfurlers, not the offline shell. Ace Chase and Hot Lap are drawn with a
+          // 3D engine (about a fifth of everything else put together, and its own chunk now two games share),
+          // so each downloads when someone opens it, not with the app.
+          globIgnores: ['**/node_modules/**/*', 'og.png', 'og/**', 'assets/AceChaseGame-*', 'assets/HotLapGame-*', 'assets/three.module-*'],
           globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2,webmanifest}'],
         },
         /*

@@ -375,6 +375,19 @@ if (typeof document !== 'undefined') {
   }, 5000)
 }
 
+/**
+ * For a sound that runs all the time rather than in notes (Hot Lap's engine and tyres): the mixing
+ * desk's context and its sound-effects bus, so the mute switch and the limiter hold for it as for the
+ * rest. Null where there's no audio, and in a preview playing itself (see `quietly`).
+ */
+export function soundOut(): { audio: AudioContext; out: AudioNode } | null {
+  if (isQuiet()) return null
+  const audio = getCtx()
+  if (!audio || !sfxBus) return null
+  if (audio.state === 'suspended') void audio.resume()
+  return { audio, out: sfxBus }
+}
+
 export function sfx(name: SoundName, pitch = 0) {
   // A game playing itself in a preview makes no noise; see `quietly`.
   if (muted || isQuiet()) return
