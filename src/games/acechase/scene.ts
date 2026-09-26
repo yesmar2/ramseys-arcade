@@ -12,8 +12,9 @@
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js'
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 import { isDarkTheme, THEME_EVENT } from '../../lib/theme'
-import { INTRO_TIME, type GameState, type Phase, type PathPoint } from './game'
+import { introTime, type GameState, type Phase, type PathPoint } from './game'
 import { BALL_R, BULL_R, RINGS, WALL_H, WALL_T, onGreen, slope, type Hole, type Style, type Wall } from './physics'
 
 export type View = 'tee' | 'target' | 'top'
@@ -401,6 +402,8 @@ export class AceScene {
     this.meadow = new THREE.Mesh(new THREE.PlaneGeometry(400, 400), new THREE.MeshStandardMaterial({ map: this.tex.meadow, roughness: 1, color: 0x5c8f47 }))
     this.meadow.rotation.x = -Math.PI / 2
     this.meadow.receiveShadow = true
+    // A laid hole's hillside is dressed in the same grass, and cleared away with the hole: the grass stays.
+    this.meadow.material.userData.shared = true
     scene.add(this.meadow)
     const rand = seeded(7)
     for (let i = 0; i < 14; i++) {
@@ -698,11 +701,15 @@ export class AceScene {
       const mesh = m as THREE.Mesh
       mesh.geometry?.dispose()
       const mats = mesh.material
-      for (const mat of Array.isArray(mats) ? mats : mats ? [mats] : []) mat.dispose()
+      for (const mat of Array.isArray(mats) ? mats : mats ? [mats] : []) if (!mat.userData.shared) mat.dispose()
     })
   }
 
-  private plantTrees(b: Bounds, base: number) {
+  /**
+   * The wood round the course. On a laid hole the trees stand on its hillside, `ground`, and among its
+   * bends as well as round them, wherever `clear` says they're out of the way.
+   */
+  private plantTrees(b: Bounds, base: number, laid?: { ground: (x: number, z: number) => number; clear: (x: number, z: number) => boolean }) {
     const rand = seeded(29)
     const m = new THREE.Matrix4()
     const q = new THREE.Quaternion()
@@ -715,16 +722,17 @@ export class AceScene {
       tries++
       const x = b.x0 - 26 + rand() * (b.x1 - b.x0 + 52)
       const z = b.z0 - 26 + rand() * (b.z1 - b.z0 + 52)
-      if (Math.max(b.x0 - x, x - b.x1, b.z0 - z, z - b.z1) < 3.2) continue
+      if (laid ? !laid.clear(x, z) : Math.max(b.x0 - x, x - b.x1, b.z0 - z, z - b.z1) < 3.2) continue
+      const y = laid ? laid.ground(x, z) : base
       const s = 0.9 + rand() * 1.1
       q.identity()
-      m.compose(new THREE.Vector3(x, base + 0.8 * s, z), q, new THREE.Vector3(s, s, s))
+      m.compose(new THREE.Vector3(x, y + 0.8 * s, z), q, new THREE.Vector3(s, s, s))
       this.trunks.setMatrixAt(placed, m)
       const cs = s * (1.2 + rand() * 0.6)
       q.setFromAxisAngle(yAxis, rand() * 6)
       // On the Moon the same shapes, squat and half buried, are boulders.
-      if (rocks) m.compose(new THREE.Vector3(x, base + cs * 0.15, z), q, new THREE.Vector3(cs, cs * (0.45 + rand() * 0.25), cs * (0.8 + rand() * 0.4)))
-      else m.compose(new THREE.Vector3(x, base + 1.6 * s + cs * 0.8, z), q, new THREE.Vector3(cs, cs * (1.1 + rand() * 0.3), cs))
+      if (rocks) m.compose(new THREE.Vector3(x, y + cs * 0.15, z), q, new THREE.Vector3(cs, cs * (0.45 + rand() * 0.25), cs * (0.8 + rand() * 0.4)))
+      else m.compose(new THREE.Vector3(x, y + 1.6 * s + cs * 0.8, z), q, new THREE.Vector3(cs, cs * (1.1 + rand() * 0.3), cs))
       this.crowns.setMatrixAt(placed, m)
       this.crownShades.push([rand(), rand(), rand()])
       placed++
@@ -796,25 +804,205 @@ export class AceScene {
     return { body: geo(pos, uv), cap: geo(cap), bank: bank.length ? geo(bank, bankUv) : null }
   }
 
-  private buildHole(h: Hole) {
-    if (this.course) {
-      this.scene.remove(this.course)
-      this.disposeObject(this.course)
+  /**
+   * A laid hole winds down a hill: ground that follows the course a little below its lane, falling away to
+   * the meadow round it over 40 m or so, in the meadow's own grass. Gives back how high that ground is,
+   * for the trees, and where a tree would be out of the way.
+   */
+  private laidHillside(h: Hole, b: Bounds, base: number, course: THREE.Group) {
+    const path = h.def.path!
+    const floor = base - 0.08
+    const ground = (x: number, z: number) => {
+      let weights = 0
+      let sum = 0
+      let near = Infinity
+      let under = Infinity
+      for (const p of path) {
+        const d2 = (x - p[0]) ** 2 + (z - p[2]) ** 2
+        const w = Math.exp(-d2 / 50)
+        weights += w
+        sum += w * p[1]
+        if (d2 < near) near = d2
+        if (d2 < 49) under = Math.min(under, p[1])
+      }
+      const level = weights > 1e-12 ? sum / weights - 0.45 : floor
+      const u = Math.max(0, Math.min(1, (Math.sqrt(near) - 7) / 38))
+      // Never above the lane where it runs near: the lane sits on the hill, not in it.
+      return Math.min(level + (floor - level) * u * u * (3 - 2 * u), under - 0.45)
     }
-    const course = new THREE.Group()
-    const place = (this.place = PLACES[h.style])
-    const b = boundsOf(h)
-    this.bounds = b
-    let lowest = Infinity
-    for (let x = b.x0; x <= b.x1; x += 0.3)
-      for (let z = b.z0; z <= b.z1; z += 0.3) if (onGreen(h, x, z)) lowest = Math.min(lowest, h.height(x, z))
-    const base = Math.min(lowest - 0.3, (h.water ?? 0) - 0.3)
-    this.meadow.position.set((b.x0 + b.x1) / 2, base - 0.01, (b.z0 + b.z1) / 2)
-    this.hills.position.set((b.x0 + b.x1) / 2, base, (b.z0 + b.z1) / 2)
-    this.plantTrees(b, base)
+    const M = 45
+    const step = 1.5
+    const x0 = b.x0 - M
+    const z0 = b.z0 - M
+    const nx = Math.ceil((b.x1 - b.x0 + 2 * M) / step)
+    const nz = Math.ceil((b.z1 - b.z0 + 2 * M) / step)
+    const pos = new Float32Array((nx + 1) * (nz + 1) * 3)
+    const uv = new Float32Array((nx + 1) * (nz + 1) * 2)
+    for (let j = 0; j <= nz; j++)
+      for (let i = 0; i <= nx; i++) {
+        const k = j * (nx + 1) + i
+        const x = x0 + i * step
+        const z = z0 + j * step
+        pos[k * 3] = x
+        pos[k * 3 + 1] = ground(x, z)
+        pos[k * 3 + 2] = z
+        // The meadow's grass at the meadow's size: its texture repeats 140 times over its 400 m.
+        uv[k * 2] = x / 400
+        uv[k * 2 + 1] = -z / 400
+      }
+    const index: number[] = []
+    for (let j = 0; j < nz; j++)
+      for (let i = 0; i < nx; i++) {
+        const a = j * (nx + 1) + i
+        const c = a + nx + 1
+        index.push(a, c, a + 1, a + 1, c, c + 1)
+      }
+    const geo = new THREE.BufferGeometry()
+    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3))
+    geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2))
+    geo.setIndex(index)
+    geo.computeVertexNormals()
+    const hill = new THREE.Mesh(geo, this.meadow.material)
+    hill.receiveShadow = true
+    course.add(hill)
+    const clear = (x: number, z: number) => {
+      let near = Infinity
+      for (const p of path) near = Math.min(near, (x - p[0]) ** 2 + (z - p[2]) ** 2)
+      return near > 5.5 * 5.5
+    }
+    return { ground, clear }
+  }
 
-    // The green: a fine grid over the hole, on the height map where it is green; mown in stripes across
-    // the way you play it, darker in the hollows, rock where it is sheer.
+  /**
+   * A laid hole's green: a fine grid over its lane alone (the lane is a thin thing in a big box), mown in
+   * stripes across the way the course runs, lighter where it's banked up and darker where it's hollowed.
+   */
+  private laidGreen(h: Hole, b: Bounds, place: Place): THREE.BufferGeometry {
+    const cell = 0.1
+    const X0 = b.x0 - 0.3
+    const Z0 = b.z0 - 0.3
+    const nx = Math.ceil((b.x1 - b.x0 + 0.6) / cell)
+    const nz = Math.ceil((b.z1 - b.z0 + 0.6) / cell)
+    // Which cells are on the green, a row at a time.
+    const inside = new Uint8Array(nx * nz)
+    const g = h.green
+    for (let j = 0; j < nz; j++) {
+      const z = Z0 + (j + 0.5) * cell
+      const xs: number[] = []
+      for (let i = 0, k = g.length - 1; i < g.length; k = i++) {
+        const [xi, zi] = g[i]!
+        const [xk, zk] = g[k]!
+        if (zi > z !== zk > z) xs.push(xi + ((z - zi) * (xk - xi)) / (zk - zi))
+      }
+      xs.sort((p, q) => p - q)
+      for (let k = 0; k + 1 < xs.length; k += 2) {
+        const from = Math.max(0, Math.ceil((xs[k]! - X0) / cell - 0.5))
+        const to = Math.min(nx - 1, Math.floor((xs[k + 1]! - X0) / cell - 0.5))
+        for (let i = from; i <= to; i++) inside[j * nx + i] = 1
+      }
+    }
+    const onRow = new Uint8Array((nx + 1) * (nz + 1))
+    for (let j = 0; j <= nz; j++) {
+      const z = Z0 + j * cell
+      const xs: number[] = []
+      for (let i = 0, k = g.length - 1; i < g.length; k = i++) {
+        const [xi, zi] = g[i]!
+        const [xk, zk] = g[k]!
+        if (zi > z !== zk > z) xs.push(xi + ((z - zi) * (xk - xi)) / (zk - zi))
+      }
+      xs.sort((p, q) => p - q)
+      for (let k = 0; k + 1 < xs.length; k += 2) {
+        const from = Math.max(0, Math.ceil((xs[k]! - X0) / cell))
+        const to = Math.min(nx, Math.floor((xs[k + 1]! - X0) / cell))
+        for (let i = from; i <= to; i++) onRow[j * (nx + 1) + i] = 1
+      }
+    }
+    const where = h.def.where!
+    const path = h.def.path!
+    // The line's points are evenly spaced along it, so a point's place along it finds the nearest.
+    let run = 0
+    for (let i = 1; i < path.length; i++) run += Math.hypot(path[i]![0] - path[i - 1]![0], path[i]![2] - path[i - 1]![2])
+    const spacing = run / Math.max(1, path.length - 1)
+    const f1 = new THREE.Color(place.ground.stripes[0])
+    const f2 = new THREE.Color(place.ground.stripes[1])
+    const c = new THREE.Color()
+    const at = new Int32Array((nx + 1) * (nz + 1)).fill(-1)
+    const pos: number[] = []
+    const col: number[] = []
+    const uv: number[] = []
+    const inGreen: number[] = []
+    /** The nearest point of the green's edge: points just off the green are pulled onto it. */
+    const toEdge = (x: number, z: number): [number, number] => {
+      let best = Infinity
+      let px = x
+      let pz = z
+      for (let i = 0, k = g.length - 1; i < g.length; k = i++) {
+        const [ax, az] = g[k]!
+        const [bx, bz] = g[i]!
+        const dx = bx - ax
+        const dz = bz - az
+        const t = Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / (dx * dx + dz * dz || 1)))
+        const qx = ax + dx * t
+        const qz = az + dz * t
+        const d2 = (x - qx) ** 2 + (z - qz) ** 2
+        if (d2 < best) {
+          best = d2
+          px = qx
+          pz = qz
+        }
+      }
+      return [px, pz]
+    }
+    const vert = (i: number, j: number) => {
+      const k = j * (nx + 1) + i
+      if (at[k]! < 0) {
+        // Off the green, the point goes to its edge, so the green ends on the line under the rail rather
+        // than in steps of the grid, which show on a steep bank.
+        const [x, z] = onRow[k] ? [X0 + i * cell, Z0 + j * cell] : toEdge(X0 + i * cell, Z0 + j * cell)
+        const y = h.height(x, z)
+        at[k] = pos.length / 3
+        pos.push(x, y, z)
+        uv.push(x * 1.3, z * 1.3)
+        inGreen.push(1)
+        const along = where(x, z).s
+        const centre = path[Math.max(0, Math.min(path.length - 1, Math.round(along / spacing)))]![1]
+        c.copy(Math.floor(along / 0.75) % 2 ? f1 : f2)
+        // Lighter up the banks, darker down in the hollows: as the grass on the round's holes, by height.
+        const k2 = 1 + Math.max(-0.12, Math.min(0.1, (y - centre) * 0.1))
+        col.push(c.r * k2, c.g * k2, c.b * k2)
+      }
+      return at[k]!
+    }
+    const index: number[] = []
+    for (let j = 0; j < nz; j++)
+      for (let i = 0; i < nx; i++) {
+        // Cells on the green and next to it; the next ones' outer corners are pulled onto the edge.
+        let near = false
+        for (let dj = -1; dj <= 1 && !near; dj++)
+          for (let di = -1; di <= 1 && !near; di++) {
+            const ii = i + di
+            const jj = j + dj
+            if (ii >= 0 && ii < nx && jj >= 0 && jj < nz && inside[jj * nx + ii]) near = true
+          }
+        if (!near) continue
+        const a = vert(i, j)
+        const r = vert(i + 1, j)
+        const d = vert(i, j + 1)
+        const e = vert(i + 1, j + 1)
+        index.push(a, d, r, r, d, e)
+      }
+    const geo = new THREE.BufferGeometry()
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3))
+    geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2))
+    geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3))
+    geo.setAttribute('inGreen', new THREE.Float32BufferAttribute(inGreen, 1))
+    geo.setIndex(index)
+    geo.computeVertexNormals()
+    return geo
+  }
+
+  /** The green on the round's holes: a fine grid over the whole box, on the height map where it is green. */
+  private boxGreen(h: Hole, b: Bounds, base: number, place: Place): THREE.BufferGeometry {
     const pad = 0.6
     const X0 = b.x0 - pad
     const Z0 = b.z0 - pad
@@ -856,6 +1044,31 @@ export class AceScene {
     geo.setAttribute('color', new THREE.BufferAttribute(col, 3))
     geo.setAttribute('inGreen', new THREE.BufferAttribute(inGreen, 1))
     geo.computeVertexNormals()
+    return geo
+  }
+
+  private buildHole(h: Hole) {
+    if (this.course) {
+      this.scene.remove(this.course)
+      this.disposeObject(this.course)
+    }
+    const course = new THREE.Group()
+    const place = (this.place = PLACES[h.style])
+    const b = boundsOf(h)
+    this.bounds = b
+    let lowest = Infinity
+    if (h.def.path) for (const p of h.def.path) lowest = Math.min(lowest, p[1] - 0.2)
+    else
+      for (let x = b.x0; x <= b.x1; x += 0.3)
+        for (let z = b.z0; z <= b.z1; z += 0.3) if (onGreen(h, x, z)) lowest = Math.min(lowest, h.height(x, z))
+    const base = Math.min(lowest - 0.3, (h.water ?? 0) - 0.3)
+    this.meadow.position.set((b.x0 + b.x1) / 2, base - 0.01, (b.z0 + b.z1) / 2)
+    this.hills.position.set((b.x0 + b.x1) / 2, base, (b.z0 + b.z1) / 2)
+    this.plantTrees(b, base, h.def.path ? this.laidHillside(h, b, base, course) : undefined)
+
+    // The green: a fine grid over the hole, on the height map where it is green; mown in stripes across
+    // the way you play it, darker in the hollows, rock where it is sheer.
+    const geo = h.def.path ? this.laidGreen(h, b, place) : this.boxGreen(h, b, base, place)
     const felt = new THREE.MeshStandardMaterial({ vertexColors: true, map: this.tex.felt, roughness: place.ground.roughness })
     const uniforms: Record<string, THREE.IUniform> = {
       target: { value: new THREE.Vector2(h.target.x, h.target.z) },
@@ -951,19 +1164,28 @@ export class AceScene {
     const cushion = new THREE.MeshStandardMaterial({ map: this.tex.pad, color: place.cushion, roughness: 0.9, side: THREE.DoubleSide })
     const cushionTop = new THREE.MeshStandardMaterial({ color: 0xf4f8fb, roughness: 0.8, side: THREE.DoubleSide })
     const earth = new THREE.MeshStandardMaterial({ map: place.bank.soil ? this.tex.soil : null, color: place.bank.tint, roughness: 1, side: THREE.DoubleSide })
+    // All the rails of a kind in one mesh: a laid hole has hundreds.
+    const pieces = new Map<THREE.Material, { geos: THREE.BufferGeometry[]; cast: boolean; receive: boolean }>()
+    const add = (mat: THREE.Material, geo: THREE.BufferGeometry, cast: boolean, receive: boolean) => {
+      const list = pieces.get(mat)
+      if (list) list.geos.push(geo)
+      else pieces.set(mat, { geos: [geo], cast, receive })
+    }
     for (const w of h.walls) {
       if (Math.hypot(w.bx - w.ax, w.bz - w.az) < 1e-6) continue
       const g = this.railGeometry(h, w, base)
-      const body = new THREE.Mesh(g.body, w.soft ? cushion : w.rubber ? rubber : timber)
-      body.castShadow = body.receiveShadow = true
-      const cap = new THREE.Mesh(g.cap, w.soft ? cushionTop : w.rubber ? rubberTop : capWood)
-      cap.castShadow = true
-      course.add(body, cap)
-      if (g.bank) {
-        const bank = new THREE.Mesh(g.bank, earth)
-        bank.receiveShadow = true
-        course.add(bank)
-      }
+      add(w.soft ? cushion : w.rubber ? rubber : timber, g.body, true, true)
+      add(w.soft ? cushionTop : w.rubber ? rubberTop : capWood, g.cap, true, false)
+      if (g.bank) add(earth, g.bank, false, true)
+    }
+    for (const [mat, { geos, cast, receive }] of pieces) {
+      const merged = mergeGeometries(geos)
+      geos.forEach((geo) => geo.dispose())
+      if (!merged) continue
+      const mesh = new THREE.Mesh(merged, mat)
+      mesh.castShadow = cast
+      mesh.receiveShadow = receive
+      course.add(mesh)
     }
     for (const k of h.bumpers) {
       const post = new THREE.Mesh(new THREE.CylinderGeometry(k.r, k.r, 0.3, 36), rubber)
@@ -1163,6 +1385,23 @@ export class AceScene {
     const tgt = this.targetPoint(h)
     const mid = new THREE.Vector3((b.x0 + b.x1) / 2, 0, (b.z0 + b.z1) / 2)
     const k = this.camera.aspect < 0.8 ? 1.7 : 1
+    const path = h.def.path
+    if (path) {
+      // In over the target, then pulled back along the course to the tee, looking the way the ball goes.
+      const back = [...path].reverse()
+      const pos = [tgt.clone().add(new THREE.Vector3(-2.5, 6, -6).multiplyScalar(k))]
+      const look = [tgt.clone()]
+      for (let i = 5; i < back.length - 5; i += 5) {
+        const p = back[i]!
+        const q = back[Math.max(0, i - 7)]!
+        pos.push(new THREE.Vector3(p[0], p[1] + 7.5 * k, p[2]))
+        look.push(new THREE.Vector3(q[0], q[1], q[2]))
+      }
+      pos.push(tee.pos.clone().add(new THREE.Vector3(0, 3, 5)), tee.pos.clone())
+      look.push(tee.target.clone(), tee.target.clone())
+      this.fly = { pos: new THREE.CatmullRomCurve3(pos), look: new THREE.CatmullRomCurve3(look) }
+      return
+    }
     this.fly = {
       pos: new THREE.CatmullRomCurve3([
         tgt.clone().add(new THREE.Vector3(-2.5, 6, -6).multiplyScalar(k)),
@@ -1321,7 +1560,7 @@ export class AceScene {
       }
       case 'intro':
         if (this.fly) {
-          const e = ease(Math.min(1, state.phaseTime / INTRO_TIME))
+          const e = ease(Math.min(1, state.phaseTime / introTime(state.hole)))
           this.camera.position.copy(this.fly.pos.getPointAt(e))
           this.controls.target.copy(this.fly.look.getPointAt(e))
           this.camera.lookAt(this.controls.target)

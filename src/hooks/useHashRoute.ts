@@ -47,8 +47,11 @@ export type Route =
   | { name: 'tournament'; id: string; invite?: string }
   | { name: 'tournamentPlay'; id: string; game: string; invite?: string }
   | { name: 'game'; slug: string; board?: 'scores' | 'records'; period?: LeaderboardPeriod }
-  /** `daily`: the game's hole of the day, where it has one (Ace Chase's Today's Hole). */
-  | { name: 'gamePlay'; slug: string; daily?: boolean }
+  /**
+   * `daily`: the game's hole of the day, where it has one (Ace Chase's Today's Hole). `hole`: a hole on
+   * trial, `?hole=<key>` on the play page (Ace Chase's), which nothing links to.
+   */
+  | { name: 'gamePlay'; slug: string; daily?: boolean; hole?: string }
   | { name: 'authVerify'; token: string }
   | { name: 'about' }
   | { name: 'plus' }
@@ -378,7 +381,8 @@ export function hrefForRoute(
       }
       return appendGroupQuery(gameHubHref(route.slug, period))
     case 'gamePlay':
-      return route.daily ? gameDailyHref(route.slug) : gamePlayHref(route.slug)
+      if (route.daily) return gameDailyHref(route.slug)
+      return route.hole ? `${gamePlayHref(route.slug)}?hole=${encodeURIComponent(route.hole)}` : gamePlayHref(route.slug)
     case 'tournamentPlay':
       return tournamentPlayHref(route.id, route.game, route.invite)
     case 'groups':
@@ -551,9 +555,11 @@ export function parseUrl(pathname: string, search: string): Route {
 
   const gamePlayMatch = /^games\/([^/]+)\/play$/.exec(path)
   if (gamePlayMatch) {
+    const hole = new URLSearchParams(search).get('hole')?.trim()
     return {
       name: 'gamePlay',
       slug: canonicalGameSlug(decodeURIComponent(gamePlayMatch[1])),
+      ...(hole ? { hole } : {}),
     }
   }
 

@@ -34,6 +34,9 @@ export type Phase = 'menu' | 'intro' | 'aim' | 'roll' | 'missed' | 'return' | 'h
 
 /** The flyover at the start of each hole, unless it's skipped. */
 export const INTRO_TIME = 6
+/** A laid hole's flyover follows its line, and takes longer. */
+export const LAID_INTRO_TIME = 9
+export const introTime = (hole: Hole) => (hole.def.path ? LAID_INTRO_TIME : INTRO_TIME)
 /** A miss is shown this long before the ball goes back to the tee, and the hop back takes this long. */
 const MISSED_TIME = 1.4
 export const RETURN_TIME = 0.6
@@ -61,8 +64,8 @@ export type Shot = {
   end: ShotEnd
 }
 
-/** A round of the three holes, or Today's Hole. */
-export type Mode = 'round' | 'daily'
+/** A round of the three holes, Today's Hole, or a hole on trial (nothing kept). */
+export type Mode = 'round' | 'daily' | 'test'
 
 export type HoleResult = { tries: number; points: number }
 
@@ -138,13 +141,13 @@ function atHole(state: GameState, index: number): GameState {
   }
 }
 
-/** A round waiting at its start card: the three holes, or with `daily`, today's one. */
-export function createInitialState(random: () => number = Math.random, daily?: HoleDef): GameState {
-  const defs = daily ? [daily] : HOLE_DEFS
-  const spots = daily ? [daily.spots[0]!] : pickSpots(random)
+/** A round waiting at its start card: the three holes, or with `one`, that hole alone (today's, or one on trial). */
+export function createInitialState(random: () => number = Math.random, one?: HoleDef, mode: Mode = one ? 'daily' : 'round'): GameState {
+  const defs = one ? [one] : HOLE_DEFS
+  const spots = one ? [one.spots[0]!] : pickSpots(random)
   const hole = makeHole(defs[0]!, spots[0]!)
   return {
-    mode: daily ? 'daily' : 'round',
+    mode,
     defs,
     practice: false,
     phase: 'menu',
@@ -180,7 +183,7 @@ export type Resume = { tries: number; shots: readonly Shot[]; ghosts: readonly (
  * carries on from `resume`: the tries already spent, the log and the last paths, and the dials as left.
  */
 export function startGame(state: GameState, random: () => number = Math.random, resume?: Resume | null, practice = false): GameState {
-  const spots = state.mode === 'daily' ? state.spots : pickSpots(random)
+  const spots = state.mode === 'round' ? pickSpots(random) : state.spots
   const fresh = atHole({ ...state, spots, results: [], score: 0, power: START_POWER, angle: START_ANGLE, practice }, 0)
   const carried = resume && !practice ? { tries: resume.tries, shots: resume.shots, ghosts: resume.ghosts, power: resume.power, angle: resume.angle } : {}
   return { ...fresh, ...carried, phase: 'intro', phaseTime: 0 }
@@ -250,13 +253,13 @@ function stepShot(s: GameState, loud: boolean) {
 const LOST_IN: Record<Lost, string> = { water: 'the water', ice: 'the open water', crater: 'the crater' }
 
 /**
- * Which way a ball lies from the target, as the player sees it from the tee: short or past (every hole
- * ends in a lane running away from the tee), and left or right. Nothing said for under a quarter metre.
+ * Which way a ball lies from the target: short or past, `along` the way the hole is played to it, and
+ * left or right, `side`ways as the ball was travelling there. Nothing said for under a quarter metre.
  */
-function which(dx: number, dz: number): string {
-  const along = dz > 0.25 ? 'short' : dz < -0.25 ? 'past' : ''
-  const side = Math.abs(dx) < 0.25 ? '' : `${Math.abs(dx) < 0.8 ? 'a little ' : ''}${dx < 0 ? 'left' : 'right'}`
-  return [along, side].filter(Boolean).join(', ')
+function which(side: number, along: number): string {
+  const a = along < -0.25 ? 'short' : along > 0.25 ? 'past' : ''
+  const b = Math.abs(side) < 0.25 ? '' : `${Math.abs(side) < 0.8 ? 'a little ' : ''}${side < 0 ? 'left' : 'right'}`
+  return [a, b].filter(Boolean).join(', ')
 }
 
 /** Where a miss ended, in words that say which way to adjust. */
@@ -269,11 +272,18 @@ export function describe(s: Pick<GameState, 'ball' | 'hole' | 'closest' | 'lande
   const dx = b.x - h.target.x
   const dz = b.z - h.target.z
   const d = Math.hypot(dx, dz)
-  const way = which(dx, dz)
+  // Every other hole ends in a lane running away from the tee; a laid one winds, so it goes by its line.
+  const at = h.def.where?.(b.x, b.z)
+  const goal = h.def.where?.(h.target.x, h.target.z)
+  const line = at && goal ? { along: at.s - goal.s, side: at.d - goal.d, part: at.part } : null
+  const way = line ? which(line.side, line.along) : which(dx, -dz)
   if (d < RINGS[1]) return `inner ring, ${d.toFixed(2)} m ${way || 'off'}`
   if (d < RINGS[2]) return `outer ring, ${d.toFixed(1)} m ${way || 'off'}`
   if (s.closest < RINGS[1]) return `ran over the target, stopped ${d.toFixed(1)} m ${way || 'past'}`
   if (Math.hypot(b.x - h.tee.x, b.z - h.tee.z) < 1.5) return 'rolled back to the tee'
+  if (line && Math.abs(line.along) > 3) {
+    return `stopped ${line.part ? `in ${line.part}, ` : ''}${Math.abs(line.along).toFixed(0)} m ${line.along < 0 ? 'short' : 'past'}`
+  }
   return `${d.toFixed(1)} m ${way || 'from the target'}`
 }
 
@@ -339,7 +349,7 @@ export function tick(state: GameState, dt: number): GameState {
   let s: GameState = { ...state, phaseTime: state.phaseTime + dt }
   switch (s.phase) {
     case 'intro':
-      if (s.phaseTime >= INTRO_TIME) s = { ...s, phase: 'aim', phaseTime: 0 }
+      if (s.phaseTime >= introTime(s.hole)) s = { ...s, phase: 'aim', phaseTime: 0 }
       break
     case 'roll': {
       s.ball = { ...s.ball }

@@ -70,7 +70,10 @@ export type Wall = {
 
 export type Bumper = { x: number; z: number; r: number; e?: number }
 
-type WallDef = Omit<Wall, 'x0' | 'x1' | 'z0' | 'z1'>
+export type WallDef = Omit<Wall, 'x0' | 'x1' | 'z0' | 'z1'>
+
+/** Where a point lies on a course (see ./course): `s` metres along it, `d` across it (+ right), and the part it's in. */
+export type Where = { s: number; d: number; part?: string }
 
 export type HoleDef = {
   name: string
@@ -92,6 +95,17 @@ export type HoleDef = {
   /** How hard the ball is pulled down (m/s², the Earth's unless said) and how much the ground drags on it. */
   gravity?: number
   friction?: number
+  /**
+   * A hole laid like a road (./course), which plays a little differently: its rails are ones a ball
+   * glides along, a glancing touch turning it without slowing it, as round a bend (elsewhere every touch
+   * takes a little off, which stops a ball pressed along a rail within a second); a ball that comes to a
+   * stop leaning on a post or a rail, on ground too steep to rest on, has stopped; and the faint creases
+   * where its pieces meet don't throw the ball in the air.
+   */
+  laid?: boolean
+  /** A laid hole's line, for the camera, and where a ball is along it, for the misses. */
+  path?: readonly (readonly [number, number, number])[]
+  where?: (x: number, z: number) => Where
 }
 
 export type Hole = {
@@ -112,6 +126,7 @@ export type Hole = {
   /** Gravity and the rolling drag, resolved. */
   g: number
   mu: number
+  laid: boolean
 }
 
 export type Ball = {
@@ -128,6 +143,8 @@ export type Ball = {
   hits: number
   /** Steps spent in the air. */
   flew: number
+  /** Seconds it has sat all but still (counted on laid holes, see `step`). */
+  still?: number
 }
 
 export const gauss = (x: number, z: number, x0: number, z0: number, s: number) =>
@@ -375,6 +392,7 @@ export function makeHole(def: HoleDef, target: Spot): Hole {
     lost: def.lost ?? 'water',
     g: def.gravity ?? G,
     mu: def.friction ?? FRICTION,
+    laid: def.laid ?? false,
   }
 }
 
@@ -478,7 +496,7 @@ export function step(hole: Hole, b: Ball): Ball {
     const floor = ground(hole, b.x, b.z, true) + BALL_R
     // Where the ground falls away faster than the ball would fall, it leaves it.
     const fly = b.y + b.vy * DT - 0.5 * G * DT * DT
-    if (fly > floor + 1e-4) {
+    if (fly > floor + (hole.laid ? 0.002 : 1e-4)) {
       b.air = true
       b.y = fly
       b.vy -= G * DT
@@ -551,8 +569,10 @@ export function step(hole: Hole, b: Ball): Ball {
       const e = w.e ?? WALL_E
       b.vx -= (1 + e) * vn * nx
       b.vz -= (1 + e) * vn * nz
-      b.vx *= 0.97
-      b.vz *= 0.97
+      if (!hole.laid || -vn > 0.3) {
+        b.vx *= 0.97
+        b.vz *= 0.97
+      }
       if (-vn > 0.3) b.hits++
     }
   }
@@ -581,7 +601,10 @@ export function step(hole: Hole, b: Ball): Ball {
   const sp = Math.hypot(b.vx, b.vy, b.vz)
   const [gx, gz] = slope(hole, b.x, b.z)
   const pull = ROLL * G * Math.hypot(gx, gz)
-  if ((sp < 0.012 && pull <= drag) || b.t > MAX_TIME) {
+  // A course runs downhill steeper than a ball can rest on, so a ball can come to a stop against a post
+  // or a rail it's leaning on: sat there half a second, it has stopped.
+  if (hole.laid) b.still = sp < 0.012 ? (b.still ?? 0) + DT : 0
+  if ((sp < 0.012 && pull <= drag) || (b.still ?? 0) > 0.5 || b.t > MAX_TIME) {
     // At rest: on the bull, that's the hole done.
     b.done = Math.hypot(b.x - hole.target.x, b.z - hole.target.z) < BULL_R ? 'bull' : 'rest'
   }
