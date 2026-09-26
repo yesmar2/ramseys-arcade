@@ -47,6 +47,13 @@ export type Game = {
   inDevelopment?: boolean
   /** Hidden from home, boards, and nav — code kept for later. */
   hidden?: boolean
+  /**
+   * On deck: finished, and held back to be released after launch, one at a
+   * time. Listed nowhere (see isListedGame), but its own pages still play, by
+   * address and in an event already running with it. Take the flag off the day
+   * it's released, and take it off the API's ON_DECK_GAMES with it.
+   */
+  onDeck?: boolean
   /** If set, the game is only offered on these devices. */
   devices?: DeviceType[]
 }
@@ -59,6 +66,7 @@ export const games: Game[] = [
     description: 'Spin, thrust, clear the rocks. Chain hits for more.',
     accent: PALETTE.indigo,
     playable: true,
+    onDeck: true,
   },
   {
     name: 'Patriot',
@@ -67,6 +75,7 @@ export const games: Game[] = [
     description: 'Defend the cities. Aim. Fire. Survive the wave.',
     accent: PALETTE.red,
     playable: true,
+    onDeck: true,
   },
   {
     name: 'Snake',
@@ -99,6 +108,7 @@ export const games: Game[] = [
     description: 'Balance each plate on a pin. Find its true center, or watch it tip.',
     accent: PALETTE.sky,
     playable: true,
+    onDeck: true,
   },
   {
     name: 'Pop',
@@ -159,6 +169,7 @@ export const games: Game[] = [
     description: 'Pellets with no way out. Climb forever. Don’t settle in.',
     accent: PALETTE.green,
     playable: true,
+    onDeck: true,
   },
   {
     name: 'Bop',
@@ -168,6 +179,7 @@ export const games: Game[] = [
     accent: PALETTE.pink,
     playable: true,
     inDevelopment: true,
+    onDeck: true,
   },
   {
     name: 'Putt',
@@ -202,6 +214,7 @@ export const games: Game[] = [
     accent: PALETTE.teal,
     playable: true,
     inDevelopment: true,
+    onDeck: true,
   },
 ]
 
@@ -211,6 +224,21 @@ export function getGame(slug: string) {
 
 export function isGameHidden(slug: string) {
   return getGame(slug)?.hidden === true
+}
+
+/**
+ * Whether a game shows anywhere a visitor browses: the home wall, search, the
+ * boards, the record books, the sitemap, new events. A hidden game (retired)
+ * doesn't, and nor does one on deck (held back for a release), though an
+ * on-deck game's own pages still play.
+ */
+export function isListedGame(game: Pick<Game, 'hidden' | 'onDeck'>): boolean {
+  return !game.hidden && !game.onDeck
+}
+
+export function isGameListed(slug: string): boolean {
+  const game = getGame(slug)
+  return Boolean(game && isListedGame(game))
 }
 
 export function isGameInDevelopment(slug: string) {
@@ -272,7 +300,7 @@ function homeRank(game: Game): number {
 export function homeGames(device: DeviceType) {
   return games
     .filter(
-      (g) => !g.hidden && (g.comingSoon || g.inDevelopment || gamePlayableOn(g, device)),
+      (g) => isListedGame(g) && (g.comingSoon || g.inDevelopment || gamePlayableOn(g, device)),
     )
     .sort((a, b) => homeRank(a) - homeRank(b))
 }

@@ -1,5 +1,5 @@
 import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from 'react'
-import { games, TAG_LABELS, type Game } from '../data/games'
+import { games, isListedGame, TAG_LABELS, type Game } from '../data/games'
 import { gameHref, navigate, rankHref, tournamentHref } from '../hooks/useHashRoute'
 import { usePlayerName } from '../hooks/usePlayerName'
 import {
@@ -131,7 +131,7 @@ export function SiteSearch() {
     if (!query) return []
     const out: Hit[] = []
     for (const g of games) {
-      if (g.hidden) continue
+      if (!isListedGame(g)) continue
       if (!g.name.toLowerCase().includes(query) && !g.slug.includes(query)) continue
       const tag = g.tags?.[0]
       out.push({

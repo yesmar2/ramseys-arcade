@@ -1,4 +1,4 @@
-import { getGame } from '../data/games'
+import { getGame, isGameListed } from '../data/games'
 import { normalizePlayerName } from './leaderboard'
 import { numberWord } from './numberWord'
 import { GAMES_WITH_RECORDS, type RecordGame, type RecordSummary } from './records'
@@ -12,10 +12,8 @@ import { GAMES_WITH_RECORDS, type RecordGame, type RecordSummary } from './recor
 
 type RecordLike = { id: string; unit: 'ms' | 'count' }
 
-/** The books on show: every game with records, less the hidden ones. */
-export const VISIBLE_RECORD_GAMES: readonly RecordGame[] = GAMES_WITH_RECORDS.filter(
-  (g) => !getGame(g)?.hidden,
-)
+/** The books on show: every game with records, less the hidden and on-deck ones. */
+export const VISIBLE_RECORD_GAMES: readonly RecordGame[] = GAMES_WITH_RECORDS.filter((g) => isGameListed(g))
 
 function gameName(slug: string): string {
   return getGame(slug)?.name ?? slug

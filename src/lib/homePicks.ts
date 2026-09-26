@@ -1,4 +1,4 @@
-import { gamePlayableOn, games, type Game } from '../data/games'
+import { gamePlayableOn, games, isListedGame, type Game } from '../data/games'
 import type { DeviceType } from './device'
 
 /**
@@ -14,7 +14,7 @@ export function playableHomeGames(device: DeviceType): Game[] {
   // Catalog order, not shelf order — `newestSlug` below takes the last entry,
   // and that only means "newest" while the list is the append-only one.
   return games.filter(
-    (g) => !g.hidden && !g.comingSoon && !g.inDevelopment && gamePlayableOn(g, device),
+    (g) => isListedGame(g) && !g.comingSoon && !g.inDevelopment && gamePlayableOn(g, device),
   )
 }
 
@@ -26,7 +26,7 @@ export function playableHomeGames(device: DeviceType): Game[] {
  * title "new in the arcade" because of it is simply wrong.
  */
 export function newestSlug(device: DeviceType): string | null {
-  const newest = games.filter((g) => !g.hidden && !g.comingSoon).at(-1)?.slug ?? null
+  const newest = games.filter((g) => isListedGame(g) && !g.comingSoon).at(-1)?.slug ?? null
   if (!newest) return null
   return playableHomeGames(device).some((g) => g.slug === newest) ? newest : null
 }

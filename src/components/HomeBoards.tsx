@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { getGame, isGameHidden } from '../data/games'
+import { getGame, isGameListed } from '../data/games'
 import { recordsHref, siteRecordsHref, standingsHref } from '../hooks/useHashRoute'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { useDefaultPeriod } from '../lib/defaultPeriod'
@@ -30,7 +30,7 @@ const PLAQUES: SiteRecordId[] = ['day-streak', 'days-played', 'runs-in-a-day', '
 
 /** One game's record book a day, so the front page walks through all of them. */
 function spotlightGame(): string | null {
-  return dailyPick(GAMES_WITH_RECORDS.filter((slug) => !isGameHidden(slug)))
+  return dailyPick(GAMES_WITH_RECORDS.filter((slug) => isGameListed(slug)))
 }
 
 function Standings({

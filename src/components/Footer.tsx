@@ -1,4 +1,4 @@
-import { games } from '../data/games'
+import { games, isListedGame } from '../data/games'
 import {
   aboutHref,
   homeHref,
@@ -26,7 +26,7 @@ import { BrandMark } from './BrandMark'
  */
 export function Footer() {
   const year = new Date().getFullYear()
-  const shelf = games.filter((g) => !g.hidden && !g.comingSoon).slice(0, 6)
+  const shelf = games.filter((g) => isListedGame(g) && !g.comingSoon).slice(0, 6)
 
   return (
     <footer className="site-footer">

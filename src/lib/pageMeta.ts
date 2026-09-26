@@ -1,4 +1,4 @@
-import { games, getGame, type Game } from '../data/games'
+import { games, getGame, isListedGame, type Game } from '../data/games'
 import { howToPlayFor, howToPlaySentences } from '../data/howToPlay'
 import {
   aboutHref,
@@ -140,7 +140,7 @@ function gameRecordsPath(slug: string) {
 }
 
 function visibleGames() {
-  return games.filter((game) => !game.hidden)
+  return games.filter((game) => isListedGame(game))
 }
 
 /**

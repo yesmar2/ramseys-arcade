@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react'
-import { getGame } from '../data/games'
+import { getGame, isGameListed } from '../data/games'
 import { inkOn } from './color'
 import {
   api,
@@ -139,7 +139,7 @@ export function ordinal(n: number): string {
 /** Games a player is first on in the group, for the table's little marks. */
 export function gamesLed(entry: GlobalBoardEntry): string[] {
   return Object.entries(entry.byGame ?? {})
-    .filter(([slug, place]) => place?.place === 1 && !getGame(slug)?.hidden)
+    .filter(([slug, place]) => place?.place === 1 && isGameListed(slug))
     .map(([slug]) => slug)
 }
 

@@ -27,7 +27,7 @@ import {
   bracketRoundLabel,
   createTournament,
   DOUBLE_ELIM_SIZES,
-  EVENT_GAMES,
+  LISTED_EVENT_GAMES,
   rememberTournamentInvite,
   snapToDoubleElimSize,
   type CreateTournamentInput,
@@ -707,7 +707,7 @@ export function CreateTournamentPage() {
                     * bracket, which left a free host no way to pick its game.
                     */}
                   <div className="ev-games">
-                    {EVENT_GAMES.map((slug) => {
+                    {LISTED_EVENT_GAMES.map((slug) => {
                       const g = getGame(slug)
                       const gameAccent = resolveGameAccent(slug, g?.accent ?? accent)
                       const picked = isBracket ? bracketGame === slug : games.includes(slug)
@@ -751,7 +751,7 @@ export function CreateTournamentPage() {
                       <ol className="ev-rounds">
                         {roundGames.map((round, i) => {
                           const label = bracketRoundLabel(i + 1, rounds)
-                          const spare = EVENT_GAMES.filter((g) => !round.includes(g))
+                          const spare = LISTED_EVENT_GAMES.filter((g) => !round.includes(g))
                           const only = round.length === 1 ? round[0] : null
                           const onlyAccent = only ? resolveGameAccent(only, getGame(only)?.accent ?? accent) : accent
                           const open = roundMenu?.round === i ? roundMenu.mode : null
@@ -827,7 +827,7 @@ export function CreateTournamentPage() {
                               {open ? (
                                 <RoundGameMenu
                                   label={open === 'swap' ? `Game for ${label}` : `Add a game to ${label}`}
-                                  options={open === 'swap' ? EVENT_GAMES : spare}
+                                  options={open === 'swap' ? LISTED_EVENT_GAMES : spare}
                                   current={open === 'swap' ? only : null}
                                   within={roundMenuRow}
                                   onPick={(slug) => pickRoundGame(i, open, slug)}

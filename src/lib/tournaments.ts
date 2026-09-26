@@ -1,3 +1,4 @@
+import { isGameListed } from '../data/games'
 import { isImpersonating } from './impersonate'
 import { runIdFor } from './runSession'
 import { getClaimToken, getLastPlayerName, normalizePlayerName, rememberClaimToken, ApiError } from './leaderboard'
@@ -110,6 +111,9 @@ export const EVENT_GAMES = [
   'fireflies',
 ] as const
 export type EventGame = (typeof EVENT_GAMES)[number]
+
+/** The games a new event can be made with: the event games, less any hidden or on deck. */
+export const LISTED_EVENT_GAMES: EventGame[] = EVENT_GAMES.filter((g) => isGameListed(g))
 
 export const FORMAT_LABELS: Record<TournamentFormat, string> = {
   open: 'Open · Best score',

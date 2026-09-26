@@ -1,4 +1,4 @@
-import { games } from '../data/games'
+import { games, isListedGame } from '../data/games'
 import {
   aboutHref,
   gameBoardHref,
@@ -190,7 +190,7 @@ function gameAnchors(): HuntAnchor[] {
   const boards: readonly string[] = LEADERBOARD_GAMES
   const books: readonly string[] = GAMES_WITH_RECORDS
   for (const game of games) {
-    if (game.hidden) continue
+    if (!isListedGame(game)) continue
     const { slug } = game
     const page = `on ${possessive(game.name)} page`
     const href = gameHref(slug)

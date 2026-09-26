@@ -1,7 +1,7 @@
 import { applyBoardScope, storedActiveGroup, withGroupFallback } from './groups'
 import { runIdFor } from './runSession'
 import type { DeviceType } from './device'
-import { getGame } from '../data/games'
+import { isGameListed } from '../data/games'
 import type { ChallengeRunResult } from './challenges'
 import { detectDeviceType, DEVICE_LABELS, isDeviceType } from './device'
 
@@ -39,10 +39,8 @@ export const LEADERBOARD_GAMES = [
 ] as const
 export type LeaderboardGame = (typeof LEADERBOARD_GAMES)[number]
 
-/** Leaderboard games shown in boards UI (excludes hidden titles). */
-export const VISIBLE_LEADERBOARD_GAMES = LEADERBOARD_GAMES.filter(
-  (slug) => !getGame(slug)?.hidden,
-)
+/** Leaderboard games shown in boards UI (not hidden or on deck; their boards still take scores). */
+export const VISIBLE_LEADERBOARD_GAMES = LEADERBOARD_GAMES.filter((slug) => isGameListed(slug))
 
 export const LEADERBOARD_PERIODS = ['daily', 'weekly', 'monthly', 'all'] as const
 export type LeaderboardPeriod = (typeof LEADERBOARD_PERIODS)[number]
