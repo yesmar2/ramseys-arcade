@@ -15,7 +15,7 @@ import { WORDMARK } from './wordmark.js'
  * @typedef {{ headers: Record<string, string | string[] | undefined>, url?: string }} Req
  */
 
-const API = (process.env.VITE_API_URL || 'https://ramseys-arcade-api.onrender.com').replace(/\/$/, '')
+export const API = (process.env.VITE_API_URL || 'https://ramseys-arcade-api.onrender.com').replace(/\/$/, '')
 
 /** How long a link preview waits on the arcade's server before settling for the game's card. */
 const WAIT_MS = 3000
@@ -35,7 +35,7 @@ export function queryOf(req) {
 }
 
 /** @param {string} url */
-async function fetchWithin(url) {
+export async function fetchWithin(url) {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), WAIT_MS)
   try {
@@ -140,10 +140,10 @@ export function challengeWords(challenge, info) {
 /* ---------- the card ---------- */
 
 // The static cards' colours and flag (scripts/gen-og-images.mjs), so the two look like one set.
-const INK = '#0f1c1a'
-const TEAL = '#2eb8a0'
-const TEXT = '#f4faf8'
-const MUTED = '#a9c4be'
+export const INK = '#0f1c1a'
+export const TEAL = '#2eb8a0'
+export const TEXT = '#f4faf8'
+export const MUTED = '#a9c4be'
 const FLAG = 'M196 390 V240 M196 240 H306 L286 280 L306 320 H196'
 
 /**
@@ -153,28 +153,28 @@ const FLAG = 'M196 390 V240 M196 240 H306 L286 280 L306 320 H196'
  * @param {...unknown} children
  * @returns {any}
  */
-function h(type, props, ...children) {
+export function h(type, props, ...children) {
   return { type, props: { ...props, children: children.length > 1 ? children : children[0] } }
 }
 
 /** @param {string} hex @param {number} alpha */
-function rgba(hex, alpha) {
+export function rgba(hex, alpha) {
   const n = parseInt(hex.slice(1), 16)
   return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${alpha})`
 }
 
 /** @param {string} hex A shade toward white, for a figure that has to read on the dark ground. */
-function lift(hex) {
+export function lift(hex) {
   const n = parseInt(hex.slice(1), 16)
   const up = (/** @type {number} */ c) => Math.round(c + (255 - c) * 0.12)
   return `rgb(${up((n >> 16) & 255)}, ${up((n >> 8) & 255)}, ${up(n & 255)})`
 }
 
 /** The column the words sit in, right of the tile: from x 454 to a 46px margin. */
-const COLUMN = 700
+export const COLUMN = 700
 
 /** Where the line along the foot of the card sits: the wordmark and what follows it. */
-const FOOT = 552
+export const FOOT = 552
 
 /**
  * The wordmark, `size` pixels to the em, in a box whose foot is its baseline,
@@ -182,7 +182,7 @@ const FOOT = 552
  * hangs out below it.
  * @param {number} size
  */
-function wordmark(size) {
+export function wordmark(size) {
   const { letters, blip, box, shine } = WORDMARK
   const s = size / 1000
   const reach = blip.r * shine.dark.reach

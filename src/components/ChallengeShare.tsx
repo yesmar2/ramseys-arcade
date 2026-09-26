@@ -8,12 +8,27 @@ import { Panel, PanelHead } from './Panel'
 import { copyText } from './ShareBoardButton'
 
 /*
- * Sending a challenge on its way. On a phone or a tablet the device's own
- * share sheet opens, which is where people's chats are. On a computer, or
- * when the sheet can't open (it needs the tap that asked for it, and a slow
- * network can outlast that), the kit's panel: the card the link unfurls into,
- * the words that go with it, Copy link, and the usual places.
+ * Sending a link on its way: a challenge, or where you stand in an event. On
+ * a phone or a tablet the device's own share sheet opens, which is where
+ * people's chats are. On a computer, or when the sheet can't open (it needs
+ * the tap that asked for it, and a slow network can outlast that), the kit's
+ * panel: the card the link unfurls into, the words that go with it, Copy
+ * link, and the usual places.
  */
+
+export type LinkShareInput = {
+  /** The game whose colours the panel wears. */
+  game: string
+  url: string
+  /** The words that go out with the link. */
+  message: string
+  /** The card the link unfurls into, then what to show if it can't be drawn. */
+  cards: string[]
+  /** What the card shows, for anyone who can't see it. */
+  cardAlt: string
+  title: string
+  kicker: string
+}
 
 export type ChallengeShareInput = {
   game: string
@@ -26,13 +41,12 @@ export type ChallengeShareInput = {
   title?: string
 }
 
-export function useChallengeShare(): [(input: ChallengeShareInput) => void, ReactNode] {
-  const [open, setOpen] = useState<ChallengeShareInput | null>(null)
+export function useLinkShare(): [(input: LinkShareInput) => void, ReactNode] {
+  const [open, setOpen] = useState<LinkShareInput | null>(null)
 
-  const share = (input: ChallengeShareInput) => {
-    const url = challengeUrl(input.game, input.id)
+  const share = (input: LinkShareInput) => {
     if (typeof navigator.share === 'function' && detectDeviceType() !== 'desktop') {
-      navigator.share({ title: input.message, text: input.message, url }).catch((err: unknown) => {
+      navigator.share({ title: input.message, text: input.message, url: input.url }).catch((err: unknown) => {
         if (err instanceof DOMException && err.name === 'AbortError') return
         setOpen(input)
       })
@@ -41,14 +55,30 @@ export function useChallengeShare(): [(input: ChallengeShareInput) => void, Reac
     setOpen(input)
   }
 
-  const panel = open ? <ChallengeSharePanel {...open} onClose={() => setOpen(null)} /> : null
+  const panel = open ? <LinkSharePanel {...open} onClose={() => setOpen(null)} /> : null
   return [share, panel]
 }
 
-function ChallengeSharePanel({ game, id, score, message, title, onClose }: ChallengeShareInput & { onClose: () => void }) {
+export function useChallengeShare(): [(input: ChallengeShareInput) => void, ReactNode] {
+  const [share, panel] = useLinkShare()
+  const shareChallenge = ({ game, id, score, message, title }: ChallengeShareInput) => {
+    const name = getGame(game)?.name ?? game
+    share({
+      game,
+      url: challengeUrl(game, id),
+      message,
+      // The card drawn for this challenge (api/challenge-card.js); failing that, the game's own, then the site's.
+      cards: [`/api/challenge-card?game=${encodeURIComponent(game)}&id=${encodeURIComponent(id)}`, `/og/challenge/${game}.png`, '/og.png'],
+      cardAlt: `The card the link shows: a challenge on ${name}`,
+      title: title ?? 'Challenge a friend',
+      kicker: `${name} · ${scoreText(game, score)}`,
+    })
+  }
+  return [shareChallenge, panel]
+}
+
+function LinkSharePanel({ game, url, message, cards, cardAlt, title, kicker, onClose }: LinkShareInput & { onClose: () => void }) {
   const titleId = useId()
-  const url = challengeUrl(game, id)
-  const name = getGame(game)?.name ?? game
   const [copied, setCopied] = useState(false)
   const timer = useRef(0)
   const withLink = `${message}\n${url}`
@@ -72,23 +102,16 @@ function ChallengeSharePanel({ game, id, score, message, title, onClose }: Chall
   const encodedMessage = encodeURIComponent(message)
   const encodedBody = encodeURIComponent(withLink)
   const nativeShare = typeof navigator.share === 'function'
-  // The card drawn for this challenge (api/challenge-card.js); failing that, the game's own, then the site's.
-  // Showing it here also draws it once, so a friend's chat finds it ready.
-  const cards = [`/api/challenge-card?game=${encodeURIComponent(game)}&id=${encodeURIComponent(id)}`, `/og/challenge/${game}.png`, '/og.png']
 
   return (
     <Panel labelledBy={titleId} onClose={onClose} style={gameAccentStyle(game)} className="challenge-share">
-      <PanelHead
-        titleId={titleId}
-        title={title ?? 'Challenge a friend'}
-        kicker={`${name} · ${scoreText(game, score)}`}
-        onClose={onClose}
-      />
+      <PanelHead titleId={titleId} title={title} kicker={kicker} onClose={onClose} />
       <div className="panel__body panel__body--last">
+        {/* Showing the card here also draws it once, so a friend's chat finds it ready. */}
         <img
           className="challenge-share__card"
           src={cards[0]}
-          alt={`The card the link shows: a challenge on ${name}`}
+          alt={cardAlt}
           width={1200}
           height={630}
           onError={(e) => {

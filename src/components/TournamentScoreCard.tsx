@@ -24,10 +24,12 @@ import {
 } from '../lib/tournaments'
 import { eventWinTakeover } from '../lib/winTakeover'
 import { ReportSignIn, ReportWho, RunReport, TagSlots, type ReportAction } from './RunReport'
+import { useLinkShare } from './ChallengeShare'
 import { WinTakeover } from './WinTakeover'
 import { markWinsSeen } from '../lib/seenWins'
 import { isRunAssisted } from '../lib/runAchievements'
 import { runIdFor } from '../lib/runSession'
+import { canShareEvent, eventShareCard, eventShareMessage, eventShareUrl } from '../lib/eventShare'
 
 function attemptsLeftLabel(
   remaining: number | null,
@@ -261,6 +263,7 @@ export function TournamentScoreCard({
   const tagRef = useRef<HTMLInputElement>(null)
   const titleId = useId()
   const tagId = useId()
+  const [shareLink, sharePanel] = useLinkShare()
 
   useEffect(() => {
     if (knownName && !name) setName(knownName)
@@ -480,6 +483,23 @@ export function TournamentScoreCard({
         href: standingsHref,
       }
     }
+    // Where this puts you, as a link that unfurls into your place: for a public event of scores, once you're on it.
+    const message = posted && snapshot.detail && canShareEvent(snapshot.detail) ? eventShareMessage(snapshot.detail, gameSlug, name) : null
+    if (message) {
+      secondary = {
+        label: 'Share',
+        onClick: () =>
+          shareLink({
+            game: gameSlug,
+            url: eventShareUrl(tournamentId, name),
+            message,
+            cards: [eventShareCard(tournamentId, name), '/og.png'],
+            cardAlt: `The card the link shows: where you stand on ${eventTitle}`,
+            title: 'Share where you stand',
+            kicker: `${eventTitle} · ${scoreText(gameSlug, score)}`,
+          }),
+      }
+    }
   }
 
   const links =
@@ -530,6 +550,7 @@ export function TournamentScoreCard({
           onClose={() => setTakeoverDone(true)}
         />
       ) : null}
+      {sharePanel}
     </>
   )
 }
