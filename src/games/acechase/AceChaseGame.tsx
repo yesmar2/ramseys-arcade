@@ -8,12 +8,26 @@ import { GamePauseOverlay, PauseButton } from '../../components/PauseControls'
 import { PlayReadoutStats, PlayStat } from '../../components/PlayStats'
 import { ScoreSaveCard } from '../../components/ScoreSaveCard'
 import { TournamentScoreCard } from '../../components/TournamentScoreCard'
+import { gameHref, navigate } from '../../hooks/useHashRoute'
 import { useGamePause } from '../../hooks/useGamePause'
 import { usePersonalBest } from '../../hooks/usePersonalBest'
 import { gameAccentStyle } from '../../lib/gameAccentStyle'
 import { haptic } from '../../lib/haptics'
 import { getPersonalBest } from '../../lib/personalBest'
 import { clearRunAchievements } from '../../lib/runAchievements'
+import {
+  dailyServer,
+  dayProgress,
+  patternOf,
+  recordSolved,
+  saveProgress,
+  subscribeDaily,
+  syncDaily,
+  todaysHole,
+  type DailyServer,
+  type DayProgress,
+  type TodaysHole,
+} from '../../lib/dailyHole'
 import { beginRun } from '../../lib/runSession'
 import { sfx } from '../../lib/sound'
 import { useTournamentPlay } from '../../tournaments/TournamentPlayContext'
@@ -35,6 +49,7 @@ import {
   type Phase,
   type Snapshot,
 } from './game'
+import { DailyResultCard, DailyStartCard } from './DailyCards'
 import { AceScene, type View } from './scene'
 
 const SLUG = 'acechase'
@@ -175,6 +190,22 @@ function Dial({
   )
 }
 
+/** Keep where today's play stands, and a bullseye as the day's result. */
+function keepDay(today: TodaysHole, s: GameState) {
+  const before = dayProgress(today.day)
+  saveProgress(today.day, {
+    tries: s.tries,
+    shots: [...s.shots],
+    ghosts: s.ghosts.map((g) => [...g]),
+    power: s.power,
+    angle: s.angle,
+    solved: before?.solved,
+    sent: before?.sent,
+  })
+  const last = s.shots[s.shots.length - 1]
+  if (last?.bull && !before?.solved) recordSolved(today.day, { tries: s.tries, at: Date.now(), pattern: patternOf(s.shots) })
+}
+
 /**
  * Ace Chase: a 3D trick-shot course, played with numbers. Set the power and the angle, putt, and see
  * where it stops; the misses say how far off, and the next try is yours to adjust. The ball has to come
@@ -184,16 +215,30 @@ function Dial({
  * Keys: ↑ ↓ power (Shift for 5), ← → angle (Shift for 1°), Space or Enter to putt, and again to see how
  * a putt ends without watching it all. A plain tap starts a round from the title, and skips a hole's
  * flyover; a finished round waits for its score card. P or Escape pauses.
+ *
+ * With `daily`, the same page plays Today's Hole: one hole, the same for everyone that day. Every try is
+ * kept on the device as it's played, so leaving and coming back carries on the count, and the first
+ * bullseye is the day's result (lib/dailyHole.ts keeps it, and sends it up signed in). After that the
+ * hole can be played again for practice, which counts for nothing.
  */
-export function AceChaseGame() {
+export function AceChaseGame({ daily = false }: { daily?: boolean }) {
   const tournament = useTournamentPlay()
   const apiBest = usePersonalBest(SLUG)
-  const stateRef = useRef<GameState>(createInitialState())
+  /** Today's Hole, for the whole visit: a visit that runs past midnight keeps the hole it started on. */
+  const todayRef = useRef<TodaysHole | null>(null)
+  if (daily && !todayRef.current) todayRef.current = todaysHole()
+  const today = todayRef.current
+  const stateRef = useRef<GameState | null>(null)
+  if (!stateRef.current) stateRef.current = createInitialState(Math.random, today?.def)
+  const [progress, setProgress] = useState<DayProgress | null>(() => (today ? dayProgress(today.day) : null))
+  const [server, setServer] = useState<DailyServer | null>(() => dailyServer())
+  /** How many of today's shots are kept on the device. */
+  const keptShots = useRef(0)
   const holderRef = useRef<HTMLDivElement>(null)
   const sceneRef = useRef<AceScene | null>(null)
   const cardRef = useRef<HTMLDivElement>(null)
   const dockRef = useRef<HTMLDivElement>(null)
-  const [ui, setUi] = useState<Snapshot>(() => toSnapshot(stateRef.current))
+  const [ui, setUi] = useState<Snapshot>(() => toSnapshot(stateRef.current!))
   const [view, setView] = useState<View | null>('tee')
   const [noGl, setNoGl] = useState(false)
   const [hint, setHint] = useState(false)
@@ -249,11 +294,17 @@ export function AceChaseGame() {
       })
 
       if (!pausedRef.current) {
-        const before = stateRef.current
+        const before = stateRef.current!
         stateRef.current = tick(before, dt)
         if (before.phase !== 'holed' && stateRef.current.phase === 'holed') haptic('hit')
       }
-      const s = stateRef.current
+      const s = stateRef.current!
+      // Today's tries are kept the moment each one ends, however it ended: a skip, a bullseye, a miss.
+      const hole = todayRef.current
+      if (hole && s.mode === 'daily' && !s.practice && s.shots.length > keptShots.current) {
+        keptShots.current = s.shots.length
+        keepDay(hole, s)
+      }
       // Open the score card the moment the round ends, so a stray tap can't start another first.
       if (s.phase === 'gameover' && offeredScore.current !== s.score) {
         offeredScore.current = s.score
@@ -283,6 +334,18 @@ export function AceChaseGame() {
     if (ui.phase === 'menu') previousBestRef.current = apiBest
   }, [apiBest, ui.phase])
 
+  // Today's Hole: what this device has done at it, and what the API says about everyone's day.
+  useEffect(() => {
+    if (!today) return
+    const update = () => {
+      setProgress(dayProgress(today.day))
+      setServer(dailyServer())
+    }
+    const off = subscribeDaily(update)
+    void syncDaily(true)
+    return off
+  }, [today])
+
   // Once, the first time the camera is handed over: how to look round.
   useEffect(() => {
     if (ui.phase !== 'aim' || toldHowToLook.current) return
@@ -302,18 +365,18 @@ export function AceChaseGame() {
       __acechaseSkip?: () => void
       __acechaseTick?: (seconds: number) => void
     }
-    w.__acechase = () => stateRef.current
+    w.__acechase = () => stateRef.current!
     w.__acechaseScene = () => sceneRef.current
     w.__acechasePutt = (power, angle, instant = true) => {
-      let s = skipIntro(stateRef.current)
+      let s = skipIntro(stateRef.current!)
       s = putt(setAngle(setPower(s, power), angle))
       stateRef.current = instant ? fastForward(s) : s
     }
     w.__acechaseSkip = () => {
-      stateRef.current = skipIntro(stateRef.current)
+      stateRef.current = skipIntro(stateRef.current!)
     }
     w.__acechaseTick = (seconds) => {
-      for (let t = 0; t < seconds; t += 0.05) stateRef.current = tick(stateRef.current, 0.05)
+      for (let t = 0; t < seconds; t += 0.05) stateRef.current = tick(stateRef.current!, 0.05)
     }
     return () => {
       delete w.__acechase
@@ -324,20 +387,27 @@ export function AceChaseGame() {
     }
   }, [])
 
-  const refresh = () => setUi(toSnapshot(stateRef.current))
+  const refresh = () => setUi(toSnapshot(stateRef.current!))
 
-  const restart = (intoMenu = false) => {
+  const restart = (intoMenu = false, practice = false) => {
     saveOpenRef.current = false
     setSaveOpen(false)
     offeredScore.current = null
     previousBestRef.current = getPersonalBest(SLUG)
     startGrace.current = performance.now() + 260
     if (intoMenu) {
-      stateRef.current = createInitialState()
+      stateRef.current = createInitialState(Math.random, today?.def)
+    } else if (today) {
+      // Today's Hole carries on from where the device left it; once it's done, it's practice.
+      const p = dayProgress(today.day)
+      const again = practice || Boolean(p?.solved)
+      const resume = p && !again ? { tries: p.tries, shots: p.shots, ghosts: p.ghosts, power: p.power, angle: p.angle } : null
+      stateRef.current = startGame(stateRef.current!, Math.random, resume, again)
+      keptShots.current = stateRef.current.shots.length
     } else {
       clearRunAchievements()
       beginRun(SLUG)
-      stateRef.current = startGame(stateRef.current)
+      stateRef.current = startGame(stateRef.current!)
     }
     setView('tee')
     refresh()
@@ -351,12 +421,12 @@ export function AceChaseGame() {
 
   /** Admin and testing: the round in hand moved to a hole. */
   const goToHole = (index: number) => {
-    stateRef.current = jumpToHole(stateRef.current, index)
+    stateRef.current = jumpToHole(stateRef.current!, index)
     refresh()
   }
 
   const change = (f: (s: GameState) => GameState) => {
-    const before = stateRef.current
+    const before = stateRef.current!
     const after = f(before)
     if (after === before) return
     stateRef.current = after
@@ -366,7 +436,7 @@ export function AceChaseGame() {
   const dialsLive = ui.phase === 'aim' && !paused && !saveOpen
   /** The dials turn only at the tee, between shots. */
   const dial = (f: (s: GameState) => GameState) => {
-    if (stateRef.current.phase !== 'aim' || pausedRef.current || saveOpenRef.current) return
+    if (stateRef.current!.phase !== 'aim' || pausedRef.current || saveOpenRef.current) return
     const before = stateRef.current
     change(f)
     if (stateRef.current !== before) sfx('click', 1)
@@ -375,23 +445,26 @@ export function AceChaseGame() {
   const stepAngle = (steps: number) => dial((s) => setAngle(s, s.angle + steps * 0.1))
   const shoot = () => {
     if (pausedRef.current || saveOpenRef.current) return
-    const s = stateRef.current
+    const s = stateRef.current!
     if (s.phase === 'roll') change(fastForward)
     else if (s.phase === 'aim') change(putt)
   }
   const pickView = (v: View) => {
-    if (stateRef.current.phase !== 'aim') return
+    if (stateRef.current!.phase !== 'aim') return
     sceneRef.current?.setView(v)
     setView(v)
   }
 
+  /** Today's Hole is done: only its card's buttons play it again, a stray tap doesn't. */
+  const dailyDone = () => Boolean(today && dayProgress(today.day)?.solved)
+
   const onPointerDown = (e: ReactPointerEvent<HTMLElement>) => {
     if (saveOpenRef.current || pausedRef.current) return
-    const s = stateRef.current
+    const s = stateRef.current!
     // Only the title starts a round from a tap; the end of one waits for its score card.
     if (s.phase === 'menu') {
       e.preventDefault()
-      if (performance.now() >= startGrace.current) restart()
+      if (performance.now() >= startGrace.current && !dailyDone()) restart()
       return
     }
     if (s.phase === 'intro') change(skipIntro)
@@ -401,14 +474,14 @@ export function AceChaseGame() {
     const onKey = (e: KeyboardEvent) => {
       if (saveOpenRef.current || pausedRef.current) return
       if (e.target instanceof HTMLInputElement) return
-      const s = stateRef.current
+      const s = stateRef.current!
       if (e.code === 'Space' || e.code === 'Enter') {
         // A focused button does its own thing with these.
-        if (e.target instanceof HTMLButtonElement && s.phase !== 'menu') return
+        if (e.target instanceof HTMLButtonElement && (s.phase !== 'menu' || today)) return
         e.preventDefault()
         if (e.repeat) return
         if (s.phase === 'menu') {
-          if (performance.now() >= startGrace.current) restart()
+          if (performance.now() >= startGrace.current && !dailyDone()) restart()
         } else if (s.phase === 'intro') change(skipIntro)
         else shoot()
         return
@@ -437,17 +510,27 @@ export function AceChaseGame() {
           <div className="acechase__play" onPointerDown={onPointerDown}>
             <div ref={holderRef} className="acechase__holder" />
 
-            <GamePlayChrome slug={SLUG} inRun={() => IN_RUN.has(stateRef.current.phase)} paused={paused}>
+            <GamePlayChrome slug={SLUG} inRun={() => IN_RUN.has(stateRef.current!.phase)} paused={paused}>
               {pausable || paused ? <PauseButton paused={paused} onToggle={togglePause} /> : null}
             </GamePlayChrome>
 
-            <PlayReadout>
-              <PlayReadoutScore hot={inRun && ui.score > previousBestRef.current}>{ui.score}</PlayReadoutScore>
-              <PlayReadoutStats>
-                <PlayStat label="Hole" value={`${ui.holeIndex + 1}/${HOLES}`} />
-                <PlayStat label="Tries" value={ui.tries} />
-              </PlayReadoutStats>
-            </PlayReadout>
+            {today ? (
+              <PlayReadout>
+                <PlayReadoutScore>{ui.tries}</PlayReadoutScore>
+                <PlayReadoutStats>
+                  <PlayStat label={ui.practice ? 'Practice' : 'Today'} value={`#${today.n}`} />
+                  <PlayStat label="Tries" value={ui.tries} />
+                </PlayReadoutStats>
+              </PlayReadout>
+            ) : (
+              <PlayReadout>
+                <PlayReadoutScore hot={inRun && ui.score > previousBestRef.current}>{ui.score}</PlayReadoutScore>
+                <PlayReadoutStats>
+                  <PlayStat label="Hole" value={`${ui.holeIndex + 1}/${HOLES}`} />
+                  <PlayStat label="Tries" value={ui.tries} />
+                </PlayReadoutStats>
+              </PlayReadout>
+            )}
 
             <div className="acechase__hud" aria-hidden={cinema}>
               <div className="acechase__card" ref={cardRef} onPointerDown={(e) => e.stopPropagation()}>
@@ -519,7 +602,7 @@ export function AceChaseGame() {
               <div className="acechase__banner">
                 <strong>{ui.holeName}</strong>
                 <span>
-                  Hole {ui.holeIndex + 1} of {HOLES} · {touch ? 'tap' : 'click'} to skip
+                  {today ? `Today’s Hole #${today.n}` : `Hole ${ui.holeIndex + 1} of ${HOLES}`} · {touch ? 'tap' : 'click'} to skip
                 </span>
               </div>
             ) : null}
@@ -527,7 +610,7 @@ export function AceChaseGame() {
             {ui.phase === 'holed' && last?.bull ? (
               <div className="acechase__holed" role="status">
                 <strong>Bullseye!</strong>
-                <span>{holedLabel(last.n)}</span>
+                <span>{today ? (ui.practice ? 'Practice: it doesn’t count' : `In ${last.n} ${last.n === 1 ? 'try' : 'tries'}`) : holedLabel(last.n)}</span>
               </div>
             ) : null}
 
@@ -544,12 +627,12 @@ export function AceChaseGame() {
                 paused={paused}
                 onResume={resume}
                 tools={
-                  inRun ? (
+                  inRun && !today ? (
                     <AdminWaveSkip
                       unit="hole"
                       wave={ui.holeIndex + 1}
                       onSkipNext={() => {
-                        goToHole(stateRef.current.holeIndex + 1)
+                        goToHole(stateRef.current!.holeIndex + 1)
                         resume()
                       }}
                       onJump={(hole) => {
@@ -560,7 +643,10 @@ export function AceChaseGame() {
                   ) : null
                 }
               />
-              {ui.phase === 'menu' && !saveOpen && !paused && !noGl ? (
+              {today && ui.phase === 'menu' && !saveOpen && !paused && !noGl ? (
+                <DailyStartCard hole={today} progress={progress} server={server} onStart={() => restart()} onPractice={() => restart(false, true)} />
+              ) : null}
+              {!today && ui.phase === 'menu' && !saveOpen && !paused && !noGl ? (
                 <GameStartCard
                   title="Ace Chase"
                   slug={SLUG}
@@ -576,7 +662,17 @@ export function AceChaseGame() {
                   }
                 />
               ) : null}
-              {ui.phase === 'gameover' && saveOpen ? (
+              {today && ui.phase === 'gameover' && saveOpen ? (
+                <DailyResultCard
+                  hole={today}
+                  progress={progress}
+                  server={server}
+                  practice={ui.practice}
+                  onPractice={() => restart(false, true)}
+                  onLeave={() => navigate(gameHref(SLUG))}
+                />
+              ) : null}
+              {!today && ui.phase === 'gameover' && saveOpen ? (
                 tournament ? (
                   <TournamentScoreCard tournamentId={tournament.tournamentId} gameSlug={SLUG} score={ui.score} onDone={toMenu} />
                 ) : (

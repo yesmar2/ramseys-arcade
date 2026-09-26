@@ -47,7 +47,8 @@ export type Route =
   | { name: 'tournament'; id: string; invite?: string }
   | { name: 'tournamentPlay'; id: string; game: string; invite?: string }
   | { name: 'game'; slug: string; board?: 'scores' | 'records'; period?: LeaderboardPeriod }
-  | { name: 'gamePlay'; slug: string }
+  /** `daily`: the game's hole of the day, where it has one (Ace Chase's Today's Hole). */
+  | { name: 'gamePlay'; slug: string; daily?: boolean }
   | { name: 'authVerify'; token: string }
   | { name: 'about' }
   | { name: 'plus' }
@@ -156,6 +157,11 @@ export function gameHubHref(
 
 export function gamePlayHref(slug: string) {
   return `/games/${encodeURIComponent(slug)}/play`
+}
+
+/** A game's hole of the day: Ace Chase's Today's Hole. */
+export function gameDailyHref(slug: string) {
+  return `/games/${encodeURIComponent(slug)}/daily`
 }
 
 /** Site-wide record books catalog. */
@@ -366,7 +372,7 @@ export function hrefForRoute(
       }
       return appendGroupQuery(gameHubHref(route.slug, period))
     case 'gamePlay':
-      return gamePlayHref(route.slug)
+      return route.daily ? gameDailyHref(route.slug) : gamePlayHref(route.slug)
     case 'tournamentPlay':
       return tournamentPlayHref(route.id, route.game, route.invite)
     case 'groups':
@@ -548,6 +554,9 @@ export function parseUrl(pathname: string, search: string): Route {
   if (gameMatch) {
     const slug = canonicalGameSlug(decodeURIComponent(gameMatch[1]))
     const segment = gameMatch[2] ? decodeURIComponent(gameMatch[2]) : undefined
+    if (segment === 'daily') {
+      return { name: 'gamePlay', slug, daily: true }
+    }
     if (segment === 'records') {
       return { name: 'game', slug, board: 'records' }
     }

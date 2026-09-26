@@ -30,7 +30,7 @@ export function preloadGamePage(slug: string) {
   void GAME_PAGES[slug]?.preload()
 }
 
-const PLAY_HREF = /^\/games\/([^/?#]+)\/play(?:[/?#]|$)/
+const PLAY_HREF = /^\/games\/([^/?#]+)\/(?:play|daily)(?:[/?#]|$)/
 const EVENT_PLAY_HREF = /^\/tournaments\/[^/?#]+\/play\/([^/?#]+)/
 
 /** Warm the game a link leads to, when it is a Play link. */

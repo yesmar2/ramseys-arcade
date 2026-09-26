@@ -14,7 +14,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js'
 import { isDarkTheme, THEME_EVENT } from '../../lib/theme'
 import { INTRO_TIME, type GameState, type Phase, type PathPoint } from './game'
-import { BALL_R, BULL_R, RINGS, WALL_H, WALL_T, onGreen, slope, type Hole, type Wall } from './physics'
+import { BALL_R, BULL_R, RINGS, WALL_H, WALL_T, onGreen, slope, type Hole, type Style, type Wall } from './physics'
 
 export type View = 'tee' | 'target' | 'top'
 /** The clear part of the screen between the panels, in CSS pixels from the top of the canvas. */
@@ -84,7 +84,134 @@ const LOOKS: Record<'day' | 'dusk', Look> = {
   },
 }
 
-const TEAL = 0x2eb8a0
+/** An ice rink under a winter sky: white with the blue of evening in the dark theme. */
+const ICE: Record<'day' | 'dusk', Look> = {
+  day: {
+    top: 0x7fb7e3,
+    horizon: 0xeef5fa,
+    glow: 0xffffff,
+    disc: 1,
+    sunColor: 0xfff7ee,
+    sunPower: 2.2,
+    sunDir: [-0.35, 0.7, 0.55],
+    hemiSky: 0xeaf4ff,
+    hemiGround: 0xb9c9d6,
+    hemiPower: 1.1,
+    exposure: 1,
+    meadow: 0xf1f5f8,
+    water: 0x1c4a70,
+    hill: [0.58, 0.16, 0.86],
+    trees: [0.38, 0.12, 0.8],
+    glowBull: 0.18,
+    beam: 0.28,
+    env: 0.9,
+  },
+  dusk: {
+    top: 0x121a3a,
+    horizon: 0x7b76a6,
+    glow: 0xff9eb0,
+    disc: 0.8,
+    sunColor: 0xffc2c8,
+    sunPower: 1.5,
+    sunDir: [-0.6, 0.25, 0.75],
+    hemiSky: 0x7b8fc4,
+    hemiGround: 0x2a3050,
+    hemiPower: 0.75,
+    exposure: 1,
+    meadow: 0x9aa6c8,
+    water: 0x13304f,
+    hill: [0.64, 0.2, 0.55],
+    trees: [0.6, 0.1, 0.58],
+    glowBull: 0.9,
+    beam: 0.5,
+    env: 0.35,
+  },
+}
+
+/** The Moon: a black sky whatever the site's theme, a hard white sun, and long shadows. */
+const MOON: Look = {
+  top: 0x020309,
+  horizon: 0x0a0e18,
+  glow: 0x000000,
+  disc: 1.3,
+  sunColor: 0xffffff,
+  sunPower: 3.2,
+  sunDir: [-0.55, 0.45, 0.7],
+  hemiSky: 0x9aa6c8,
+  hemiGround: 0x1a1a1f,
+  hemiPower: 0.3,
+  exposure: 1.05,
+  meadow: 0x5b5d61,
+  water: 0x000000,
+  hill: [0.6, 0.03, 0.34],
+  trees: [0.6, 0.03, 0.44],
+  glowBull: 1,
+  beam: 0.5,
+  env: 0.35,
+}
+
+/** Everything about a place that isn't the light: its ground, rails, target and surroundings. */
+type Place = {
+  day: Look
+  dusk: Look
+  /** The playing surface: its stripes, where it is sheer, and the ground off it. */
+  ground: { stripes: [number, number]; steep: number; off: number; roughness: number }
+  /** The rails: timber or a colour, metal or not, and the colour of their cap. */
+  rails: { body: number | 'wood'; metal: boolean; cap: number; capGlow: number }
+  /** The banks the course stands on: the earth texture tinted, or a plain colour. */
+  bank: { tint: number; soil: boolean }
+  /** The mat at the tee. */
+  mat: number
+  cushion: number
+  /** The target's colours: the bull, the ring round it, the outer ring, and the lines between. */
+  target: { bull: number; ring: number; outer: number; line: number }
+  props: 'trees' | 'rocks'
+  /** Stars and the Earth in the sky, and no haze. */
+  space: boolean
+}
+
+const PLACES: Record<Style, Place> = {
+  garden: {
+    day: LOOKS.day,
+    dusk: LOOKS.dusk,
+    ground: { stripes: [0x3f9f55, 0x359149], steep: 0x857462, off: 0x4b7d3d, roughness: 0.95 },
+    rails: { body: 'wood', metal: false, cap: 0xf2eee4, capGlow: 0 },
+    bank: { tint: 0xffffff, soil: true },
+    mat: 0x2c7a40,
+    cushion: 0xffffff,
+    target: { bull: 0x2eb8a0, ring: 0xf7f5ee, outer: 0x22364a, line: 0x22364a },
+    props: 'trees',
+    space: false,
+  },
+  // A curling sheet: pale ice, white boards capped in blue, and the house for a target.
+  ice: {
+    day: ICE.day,
+    dusk: ICE.dusk,
+    ground: { stripes: [0xe3f0f9, 0xd8e8f4], steep: 0xbfd3e3, off: 0xe9f0f6, roughness: 0.32 },
+    rails: { body: 0xf3f6f9, metal: false, cap: 0x2b6cb0, capGlow: 0 },
+    bank: { tint: 0xe1ebf3, soil: false },
+    // The rubber hack a curler pushes off from.
+    mat: 0x2b3440,
+    cushion: 0xffffff,
+    target: { bull: 0xd6333a, ring: 0xf8f8f6, outer: 0x2f68c7, line: 0x1a2b3c },
+    props: 'trees',
+    space: false,
+  },
+  moon: {
+    day: MOON,
+    dusk: MOON,
+    ground: { stripes: [0x9c9ea2, 0x95979b], steep: 0x6f7176, off: 0x57595d, roughness: 1 },
+    rails: { body: 0x8d96a1, metal: true, cap: 0x2eb8a0, capGlow: 0.35 },
+    // Grey dust all the way down: no earth under the Moon's courses.
+    bank: { tint: 0x74777c, soil: false },
+    mat: 0x454a52,
+    cushion: 0x9aa8bf,
+    target: { bull: 0x2eb8a0, ring: 0xe8edf2, outer: 0x22364a, line: 0x22364a },
+    props: 'rocks',
+    space: true,
+  },
+}
+
 const GOLD = 0xf5b942
 const CHALK = 0xf3f6ee
 const TREES = 150
@@ -134,6 +261,9 @@ export class AceScene {
   private readonly dots: THREE.InstancedMesh<THREE.CircleGeometry, THREE.MeshBasicMaterial>
   private readonly tip: THREE.Mesh<THREE.ConeGeometry, THREE.MeshBasicMaterial>
   private look: Look = LOOKS.dusk
+  private place: Place = PLACES.garden
+  private readonly stars: THREE.Points<THREE.BufferGeometry, THREE.PointsMaterial>
+  private readonly earth: THREE.Sprite
   private readonly themeWatch: MutationObserver
 
   private course: THREE.Group | null = null
@@ -231,6 +361,27 @@ export class AceScene {
     )
     this.sky.renderOrder = -1
     scene.add(this.sky)
+
+    // For the Moon: stars, and the Earth hanging over the far end. They ride with the sky, round the camera.
+    const starRand = seeded(3)
+    const starPos: number[] = []
+    for (let i = 0; i < 1400; i++) {
+      const u = starRand() * 2 - 1
+      const a = starRand() * Math.PI * 2
+      const r = Math.sqrt(1 - u * u)
+      if (u < -0.05) continue
+      starPos.push(Math.cos(a) * r * 280, u * 280, Math.sin(a) * r * 280)
+    }
+    const starGeo = new THREE.BufferGeometry()
+    starGeo.setAttribute('position', new THREE.Float32BufferAttribute(starPos, 3))
+    this.stars = new THREE.Points(starGeo, new THREE.PointsMaterial({ color: 0xffffff, size: 1.6, sizeAttenuation: false, fog: false, transparent: true, opacity: 0.85 }))
+    this.stars.visible = false
+    this.sky.add(this.stars)
+    this.earth = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.paintEarth(), fog: false, depthWrite: false }))
+    this.earth.scale.set(34, 34, 1)
+    this.earth.position.set(0.35, 0.34, -0.87).normalize().multiplyScalar(250)
+    this.earth.visible = false
+    this.sky.add(this.earth)
 
     this.hemi = new THREE.HemisphereLight(0xdcefff, 0x3c5a38, 0.95)
     scene.add(this.hemi)
@@ -445,6 +596,53 @@ export class AceScene {
     return { felt, meadow, wood, soil, pad, ripple, ball, dimple, beam }
   }
 
+  /** The Earth from the Moon: blue sea, a little land, white cloud, lit from one side. */
+  private paintEarth() {
+    const rand = seeded(41)
+    return this.paint(
+      256,
+      256,
+      (g, w, h) => {
+        const c = w / 2
+        const glow = g.createRadialGradient(c, c, w * 0.36, c, c, w * 0.5)
+        glow.addColorStop(0, 'rgba(120, 170, 255, 0.35)')
+        glow.addColorStop(1, 'rgba(120, 170, 255, 0)')
+        g.fillStyle = glow
+        g.fillRect(0, 0, w, h)
+        g.save()
+        g.beginPath()
+        g.arc(c, c, w * 0.37, 0, Math.PI * 2)
+        g.clip()
+        g.fillStyle = '#2f6fc7'
+        g.fillRect(0, 0, w, h)
+        for (let i = 0; i < 9; i++) {
+          g.fillStyle = i % 3 === 0 ? '#c9b27a' : '#4f9a57'
+          g.beginPath()
+          g.ellipse(c + (rand() - 0.5) * w * 0.6, c + (rand() - 0.5) * w * 0.6, 8 + rand() * 26, 6 + rand() * 18, rand() * 3, 0, Math.PI * 2)
+          g.fill()
+        }
+        g.strokeStyle = 'rgba(255, 255, 255, 0.8)'
+        g.lineCap = 'round'
+        for (let i = 0; i < 14; i++) {
+          g.lineWidth = 3 + rand() * 6
+          g.beginPath()
+          const x = c + (rand() - 0.5) * w * 0.7
+          const y = c + (rand() - 0.5) * w * 0.7
+          g.moveTo(x, y)
+          g.quadraticCurveTo(x + 20 * rand(), y - 10, x + 30 + rand() * 30, y + (rand() - 0.5) * 16)
+          g.stroke()
+        }
+        // Night on the side away from the sun.
+        const shade = g.createLinearGradient(c - w * 0.37, 0, c + w * 0.37, 0)
+        shade.addColorStop(0, 'rgba(0, 0, 10, 0.8)')
+        shade.addColorStop(0.55, 'rgba(0, 0, 10, 0)')
+        g.fillStyle = shade
+        g.fillRect(0, 0, w, h)
+        g.restore()
+      },
+    )
+  }
+
   // ---------- day and dusk ----------
 
   private tintTrees() {
@@ -455,7 +653,10 @@ export class AceScene {
   }
 
   private applyLook() {
-    const look = (this.look = isDarkTheme() ? LOOKS.dusk : LOOKS.day)
+    const place = this.place
+    const look = (this.look = isDarkTheme() ? place.dusk : place.day)
+    this.stars.visible = this.earth.visible = place.space
+    this.trunks.visible = place.props === 'trees'
     const u = this.sky.material.uniforms
     ;(u.top!.value as THREE.Color).set(look.top)
     ;(u.horizon!.value as THREE.Color).set(look.horizon)
@@ -469,7 +670,11 @@ export class AceScene {
     this.hemi.groundColor.set(look.hemiGround)
     this.hemi.intensity = look.hemiPower
     this.renderer.toneMappingExposure = look.exposure
-    ;(this.scene.fog as THREE.Fog).color.set(look.horizon)
+    const fog = this.scene.fog as THREE.Fog
+    fog.color.set(look.horizon)
+    // No air on the Moon: nothing fades with distance.
+    fog.near = place.space ? 500 : 45
+    fog.far = place.space ? 1500 : 150
     this.meadow.material.color.set(look.meadow)
     this.hillMats.forEach((m) => m.color.setHSL(look.hill[0] + (m.userData.shade as number) * 0.04, look.hill[1], look.hill[2] + (m.userData.shade as number) * 0.06))
     this.tintTrees()
@@ -505,6 +710,7 @@ export class AceScene {
     let placed = 0
     let tries = 0
     this.crownShades = []
+    const rocks = this.place.props === 'rocks'
     while (placed < TREES && tries < 5000) {
       tries++
       const x = b.x0 - 26 + rand() * (b.x1 - b.x0 + 52)
@@ -516,7 +722,9 @@ export class AceScene {
       this.trunks.setMatrixAt(placed, m)
       const cs = s * (1.2 + rand() * 0.6)
       q.setFromAxisAngle(yAxis, rand() * 6)
-      m.compose(new THREE.Vector3(x, base + 1.6 * s + cs * 0.8, z), q, new THREE.Vector3(cs, cs * (1.1 + rand() * 0.3), cs))
+      // On the Moon the same shapes, squat and half buried, are boulders.
+      if (rocks) m.compose(new THREE.Vector3(x, base + cs * 0.15, z), q, new THREE.Vector3(cs, cs * (0.45 + rand() * 0.25), cs * (0.8 + rand() * 0.4)))
+      else m.compose(new THREE.Vector3(x, base + 1.6 * s + cs * 0.8, z), q, new THREE.Vector3(cs, cs * (1.1 + rand() * 0.3), cs))
       this.crowns.setMatrixAt(placed, m)
       this.crownShades.push([rand(), rand(), rand()])
       placed++
@@ -594,6 +802,7 @@ export class AceScene {
       this.disposeObject(this.course)
     }
     const course = new THREE.Group()
+    const place = (this.place = PLACES[h.style])
     const b = boundsOf(h)
     this.bounds = b
     let lowest = Infinity
@@ -619,9 +828,9 @@ export class AceScene {
     const uv = geo.attributes.uv!
     const col = new Float32Array(pos.count * 3)
     const inGreen = new Float32Array(pos.count)
-    const f1 = new THREE.Color(0x3f9f55)
-    const f2 = new THREE.Color(0x359149)
-    const rock = new THREE.Color(0x857462)
+    const f1 = new THREE.Color(place.ground.stripes[0])
+    const f2 = new THREE.Color(place.ground.stripes[1])
+    const rock = new THREE.Color(place.ground.steep)
     const c = new THREE.Color()
     for (let i = 0; i < pos.count; i++) {
       const x = pos.getX(i)
@@ -638,7 +847,7 @@ export class AceScene {
         if (steep > 0.9) c.lerp(rock, Math.min(1, (steep - 0.9) / 0.8))
       } else {
         pos.setY(i, base)
-        c.set(0x4b7d3d)
+        c.set(place.ground.off)
       }
       col[i * 3] = c.r
       col[i * 3 + 1] = c.g
@@ -647,13 +856,14 @@ export class AceScene {
     geo.setAttribute('color', new THREE.BufferAttribute(col, 3))
     geo.setAttribute('inGreen', new THREE.BufferAttribute(inGreen, 1))
     geo.computeVertexNormals()
-    const felt = new THREE.MeshStandardMaterial({ vertexColors: true, map: this.tex.felt, roughness: 0.95 })
+    const felt = new THREE.MeshStandardMaterial({ vertexColors: true, map: this.tex.felt, roughness: place.ground.roughness })
     const uniforms: Record<string, THREE.IUniform> = {
       target: { value: new THREE.Vector2(h.target.x, h.target.z) },
       rings: { value: new THREE.Vector3(...RINGS) },
-      accent: { value: new THREE.Color(TEAL) },
-      paint: { value: new THREE.Color(0xf7f5ee) },
-      edge: { value: new THREE.Color(0x22364a) },
+      accent: { value: new THREE.Color(place.target.bull) },
+      paint: { value: new THREE.Color(place.target.ring) },
+      outer: { value: new THREE.Color(place.target.outer) },
+      edge: { value: new THREE.Color(place.target.line) },
       glow: { value: this.look.glowBull },
       flash: { value: 0 },
       time: { value: 0 },
@@ -670,7 +880,7 @@ export class AceScene {
       sh.fragmentShader = sh.fragmentShader
         .replace(
           '#include <common>',
-          '#include <common>\nvarying vec3 vWorld;\nvarying float vIn;\nuniform vec2 target; uniform vec3 rings; uniform vec3 accent; uniform vec3 paint; uniform vec3 edge; uniform float glow; uniform float flash; uniform float time;\nfloat ringLine(float d, float r, float w) { return 1.0 - smoothstep(0.0, w, abs(d - r)); }',
+          '#include <common>\nvarying vec3 vWorld;\nvarying float vIn;\nuniform vec2 target; uniform vec3 rings; uniform vec3 accent; uniform vec3 paint; uniform vec3 outer; uniform vec3 edge; uniform float glow; uniform float flash; uniform float time;\nfloat ringLine(float d, float r, float w) { return 1.0 - smoothstep(0.0, w, abs(d - r)); }',
         )
         .replace(
           '#include <color_fragment>',
@@ -679,7 +889,7 @@ export class AceScene {
           float td = distance(vWorld.xz, target);
           float blip = 1.0 - smoothstep(0.075, 0.095, td);
           if (td < rings.z + 0.03 && vIn > 0.999) {
-            vec3 rc = td < rings.x ? accent : (td < rings.y ? paint : edge);
+            vec3 rc = td < rings.x ? accent : (td < rings.y ? paint : outer);
             rc = mix(rc, edge, ringLine(td, rings.x, 0.02) * 0.8);
             rc = mix(rc, paint, 1.0 - smoothstep(0.0, 0.02, abs(td - rings.z + 0.03)));
             rc = mix(rc, vec3(1.0), blip);
@@ -706,7 +916,7 @@ export class AceScene {
     this.beacon = new THREE.Mesh(
       beam,
       new THREE.MeshBasicMaterial({
-        color: TEAL,
+        color: place.target.bull,
         alphaMap: this.tex.beam,
         transparent: true,
         opacity: this.look.beam,
@@ -720,13 +930,27 @@ export class AceScene {
     course.add(this.beacon)
 
     // Rails: timber, capped in white; the rubber banks black with a gold top; the cushions quilted blue.
-    const timber = new THREE.MeshStandardMaterial({ map: this.tex.wood, roughness: 0.78, side: THREE.DoubleSide })
-    const capWood = new THREE.MeshStandardMaterial({ color: 0xf2eee4, roughness: 0.6, side: THREE.DoubleSide })
+    const timber =
+      place.rails.body === 'wood'
+        ? new THREE.MeshStandardMaterial({ map: this.tex.wood, roughness: 0.78, side: THREE.DoubleSide })
+        : new THREE.MeshStandardMaterial({
+            color: place.rails.body,
+            roughness: place.rails.metal ? 0.35 : 0.5,
+            metalness: place.rails.metal ? 0.75 : 0,
+            side: THREE.DoubleSide,
+          })
+    const capWood = new THREE.MeshStandardMaterial({
+      color: place.rails.cap,
+      emissive: place.rails.cap,
+      emissiveIntensity: place.rails.capGlow,
+      roughness: 0.6,
+      side: THREE.DoubleSide,
+    })
     const rubber = new THREE.MeshStandardMaterial({ color: 0x1f2124, roughness: 0.35, side: THREE.DoubleSide })
     const rubberTop = new THREE.MeshStandardMaterial({ color: GOLD, roughness: 0.45, side: THREE.DoubleSide })
-    const cushion = new THREE.MeshStandardMaterial({ map: this.tex.pad, roughness: 0.9, side: THREE.DoubleSide })
+    const cushion = new THREE.MeshStandardMaterial({ map: this.tex.pad, color: place.cushion, roughness: 0.9, side: THREE.DoubleSide })
     const cushionTop = new THREE.MeshStandardMaterial({ color: 0xf4f8fb, roughness: 0.8, side: THREE.DoubleSide })
-    const earth = new THREE.MeshStandardMaterial({ map: this.tex.soil, roughness: 1, side: THREE.DoubleSide })
+    const earth = new THREE.MeshStandardMaterial({ map: place.bank.soil ? this.tex.soil : null, color: place.bank.tint, roughness: 1, side: THREE.DoubleSide })
     for (const w of h.walls) {
       if (Math.hypot(w.bx - w.ax, w.bz - w.az) < 1e-6) continue
       const g = this.railGeometry(h, w, base)
@@ -750,7 +974,8 @@ export class AceScene {
 
     // Water, only where the ground is under it.
     this.water = null
-    if (h.water !== undefined) {
+    // A crater on the Moon is only a deep hole: nothing in it to draw.
+    if (h.water !== undefined && h.lost !== 'crater') {
       const wet = { x0: Infinity, x1: -Infinity, z0: Infinity, z1: -Infinity }
       for (let x = b.x0; x <= b.x1; x += 0.1)
         for (let z = b.z0; z <= b.z1; z += 0.1)
@@ -782,13 +1007,13 @@ export class AceScene {
 
     // The tee: a mat and two markers.
     const ty = h.height(h.tee.x, h.tee.z)
-    const mat = new THREE.Mesh(new THREE.PlaneGeometry(1.1, 0.9), new THREE.MeshStandardMaterial({ color: 0x2c7a40, roughness: 1 }))
+    const mat = new THREE.Mesh(new THREE.PlaneGeometry(1.1, 0.9), new THREE.MeshStandardMaterial({ color: place.mat, roughness: 1 }))
     mat.rotation.x = -Math.PI / 2
     mat.position.set(h.tee.x, ty + 0.004, h.tee.z)
     mat.receiveShadow = true
     course.add(mat)
     for (const side of [-1, 1]) {
-      const mk = new THREE.Mesh(new THREE.SphereGeometry(0.06, 16, 10), new THREE.MeshStandardMaterial({ color: TEAL, roughness: 0.4 }))
+      const mk = new THREE.Mesh(new THREE.SphereGeometry(0.06, 16, 10), new THREE.MeshStandardMaterial({ color: place.target.bull, roughness: 0.4 }))
       mk.position.set(h.tee.x + side * 0.55, ty + 0.05, h.tee.z)
       mk.castShadow = true
       course.add(mk)

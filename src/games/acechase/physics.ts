@@ -46,6 +46,11 @@ export type Pt = readonly [number, number]
 /** Where a target sits; on some holes the ground it sits on is raised or lowered by `lift` as well. */
 export type Spot = { readonly x: number; readonly z: number; readonly lift?: number }
 
+/** Where a hole is: a garden on a summer's day, an ice rink, or the Moon. It sets the look and the feel. */
+export type Style = 'garden' | 'ice' | 'moon'
+/** What losing the ball is: into the water, through a hole in the ice, or down into a crater. */
+export type Lost = 'water' | 'ice' | 'crater'
+
 export type Wall = {
   ax: number
   az: number
@@ -82,6 +87,11 @@ export type HoleDef = {
   /** Rails standing on the green, as well as the ones round its edge. */
   walls?: readonly WallDef[]
   bumpers?: readonly Bumper[]
+  style?: Style
+  lost?: Lost
+  /** How hard the ball is pulled down (m/s², the Earth's unless said) and how much the ground drags on it. */
+  gravity?: number
+  friction?: number
 }
 
 export type Hole = {
@@ -97,6 +107,11 @@ export type Hole = {
   /** Every edge is a rail, so a rolling ball can never leave the green. */
   walled: boolean
   height: (x: number, z: number) => number
+  style: Style
+  lost: Lost
+  /** Gravity and the rolling drag, resolved. */
+  g: number
+  mu: number
 }
 
 export type Ball = {
@@ -115,17 +130,17 @@ export type Ball = {
   flew: number
 }
 
-const gauss = (x: number, z: number, x0: number, z0: number, s: number) =>
+export const gauss = (x: number, z: number, x0: number, z0: number, s: number) =>
   Math.exp(-((x - x0) ** 2 + (z - z0) ** 2) / (2 * s * s))
-const band = (v: number, v0: number, s: number) => Math.exp(-((v - v0) ** 2) / (2 * s * s))
-const dish = (x: number, z: number, t: Spot) => DISH_D * gauss(x, z, t.x, t.z, DISH_S)
-const smooth = (e0: number, e1: number, v: number) => {
+export const band = (v: number, v0: number, s: number) => Math.exp(-((v - v0) ** 2) / (2 * s * s))
+export const dish = (x: number, z: number, t: Spot) => DISH_D * gauss(x, z, t.x, t.z, DISH_S)
+export const smooth = (e0: number, e1: number, v: number) => {
   const k = Math.max(0, Math.min(1, (v - e0) / (e1 - e0)))
   return k * k * (3 - 2 * k)
 }
 
 /** Round the corners of a polygon: `r` along each edge from each corner, in `n` steps. */
-function rounded(pts: readonly Pt[], r: number, n = 6): Pt[] {
+export function rounded(pts: readonly Pt[], r: number, n = 6): Pt[] {
   const out: Pt[] = []
   for (let i = 0; i < pts.length; i++) {
     const p = pts[(i + pts.length - 1) % pts.length]!
@@ -356,6 +371,10 @@ export function makeHole(def: HoleDef, target: Spot): Hole {
     bumpers: def.bumpers ?? [],
     walled: true,
     height: (x, z) => def.height(x, z, target),
+    style: def.style ?? 'garden',
+    lost: def.lost ?? 'water',
+    g: def.gravity ?? G,
+    mu: def.friction ?? FRICTION,
   }
 }
 
@@ -427,7 +446,8 @@ function normalAt(hole: Hole, x: number, z: number): [number, number, number] {
  */
 export function step(hole: Hole, b: Ball): Ball {
   if (b.done) return b
-  const drag = FRICTION * G
+  const G = hole.g
+  const drag = hole.mu * G
   if (!b.air) {
     const [nx, ny, nz] = normalAt(hole, b.x, b.z)
     // Gravity along the ground, as a rolling ball feels it, and the rolling drag.
@@ -561,7 +581,7 @@ export function step(hole: Hole, b: Ball): Ball {
   const sp = Math.hypot(b.vx, b.vy, b.vz)
   const [gx, gz] = slope(hole, b.x, b.z)
   const pull = ROLL * G * Math.hypot(gx, gz)
-  if ((sp < 0.012 && pull <= FRICTION * G) || b.t > MAX_TIME) {
+  if ((sp < 0.012 && pull <= drag) || b.t > MAX_TIME) {
     // At rest: on the bull, that's the hole done.
     b.done = Math.hypot(b.x - hole.target.x, b.z - hole.target.z) < BULL_R ? 'bull' : 'rest'
   }

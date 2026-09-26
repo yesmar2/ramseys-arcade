@@ -396,9 +396,10 @@ a.evp-screen:focus-visible .evp-screen__play {
 
 /* ---------- the list: today, last week, your own ---------- */
 
+/* Three across at most: today's three (the daily, the One Shot, Today's Hole), then last week and your own. */
 .evp-trio {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(max(18rem, calc((100% - 2rem) / 3)), 1fr));
   gap: 1rem;
   align-items: stretch;
 }
@@ -2057,4 +2058,18 @@ a.evp-result:focus-visible {
   .evp-btn {
     transition: none;
   }
+}
+
+/* ---------- Today's Hole: Ace Chase's daily, drawn from above ---------- */
+
+.thc-plan {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+html:not([data-theme='light']) .thc-plan {
+  filter: brightness(0.86) saturate(0.95);
 }

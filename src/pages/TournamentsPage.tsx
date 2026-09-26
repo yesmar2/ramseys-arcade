@@ -30,6 +30,7 @@ import { PageShell } from '../components/PageShell'
 import { PendingInvitesStrip } from '../components/PendingInvitesStrip'
 import { PlayerAvatar } from '../components/PlayerAvatar'
 import { ShareBoardButton } from '../components/ShareBoardButton'
+import { TodaysHoleCard } from '../components/TodaysHoleCard'
 import { openSiteMenu } from '../components/siteNav'
 import { getGame } from '../data/games'
 import { useAuth } from '../hooks/useAuth'
@@ -864,6 +865,7 @@ export function TournamentsPage() {
             <div className="evp-trio">
               {lineup.daily ? <DailyCard t={lineup.daily} /> : null}
               {lineup.oneShot ? <OneShotCard t={lineup.oneShot} /> : null}
+              <TodaysHoleCard />
               {lineup.lastWeekly ? (
                 <LastWeekCard t={lineup.lastWeekly} detail={lastDetail} lesson={lesson} me={me} />
               ) : null}

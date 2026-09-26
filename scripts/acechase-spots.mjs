@@ -26,7 +26,6 @@ const CANDIDATES = [
 ]
 const POWER = [30, 100]
 const COARSE = { power: 1, angle: 0.3 }
-const FINE = { power: 0.5, angle: 0.1 }
 
 if (isMainThread) {
   const args = process.argv.slice(2)
@@ -83,70 +82,10 @@ if (isMainThread) {
   }
 } else {
   const physics = await import(workerData.physics)
-  const { HOLE_DEFS, makeHole, simulate } = physics
+  const { windowsFor } = await import('./acechase-windows.mjs')
   parentPort.on('message', ({ hole, spot, angles }) => {
-    const h = makeHole(HOLE_DEFS[hole], spot)
-    const bull = new Map()
-    const key = (p, a) => `${p}|${a}`
-    const tryShot = (p, a) => {
-      const k = key(p, a)
-      if (!bull.has(k)) bull.set(k, simulate(h, p, a).done === 'bull')
-      return bull.get(k)
-    }
-    // Tenths of a degree as integers, so the grid never drifts.
-    const A0 = Math.round(angles[0] * 10)
-    const A1 = Math.round(angles[1] * 10)
-    const hits = []
-    for (let p = POWER[0]; p <= POWER[1]; p += COARSE.power)
-      for (let a = A0; a <= A1; a += Math.round(COARSE.angle * 10)) if (tryShot(p, a / 10)) hits.push([p, a])
-    // Every dial setting round each coarse hit, and on out from any fine hit until the window closes.
-    const queue = []
-    for (const [p, a] of hits)
-      for (let dp = -2; dp <= 2; dp++) for (let da = -5; da <= 5; da++) queue.push([p + dp * FINE.power, a + da])
-    const seen = new Set()
-    while (queue.length) {
-      const [p, a] = queue.pop()
-      if (p < POWER[0] || p > POWER[1] || a < A0 || a > A1) continue
-      const k = key(p, a / 10)
-      if (seen.has(k)) continue
-      seen.add(k)
-      if (tryShot(p, a / 10)) {
-        queue.push([p + FINE.power, a], [p - FINE.power, a], [p, a + 1], [p, a - 1])
-      }
-    }
-    // Windows: bull settings that touch, a half of power or a tenth of a degree apart.
-    const cells = [...seen].filter((k) => bull.get(k)).map((k) => k.split('|').map(Number))
-    const at = new Map(cells.map(([p, a]) => [key(p, Math.round(a * 10)), [p, Math.round(a * 10)]]))
-    const done = new Set()
-    const windows = []
-    for (const [k, start] of at) {
-      if (done.has(k)) continue
-      const stack = [start]
-      done.add(k)
-      const w = { cells: 0, p0: Infinity, p1: -Infinity, a0: Infinity, a1: -Infinity }
-      while (stack.length) {
-        const [p, a] = stack.pop()
-        w.cells++
-        w.p0 = Math.min(w.p0, p)
-        w.p1 = Math.max(w.p1, p)
-        w.a0 = Math.min(w.a0, a / 10)
-        w.a1 = Math.max(w.a1, a / 10)
-        for (const [q, b] of [
-          [p + FINE.power, a],
-          [p - FINE.power, a],
-          [p, a + 1],
-          [p, a - 1],
-        ]) {
-          const kk = key(q, b)
-          if (at.has(kk) && !done.has(kk)) {
-            done.add(kk)
-            stack.push([q, b])
-          }
-        }
-      }
-      windows.push(w)
-    }
-    windows.sort((x, y) => y.cells - x.cells)
-    parentPort.postMessage({ hole, spot, cells: cells.length, windows: windows.slice(0, 3) })
+    const h = physics.makeHole(physics.HOLE_DEFS[hole], spot)
+    const found = windowsFor(physics.simulate, h, { power: POWER, angles, coarse: COARSE })
+    parentPort.postMessage({ hole, spot, cells: found.cells, windows: found.windows })
   })
 }

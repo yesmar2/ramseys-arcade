@@ -1,4 +1,4 @@
-import { useEffect, useState, type CSSProperties } from 'react'
+import { Suspense, useEffect, useState, type CSSProperties } from 'react'
 import { ChevronRightIcon } from '../components/chromeIcons'
 import { GameHubBoard } from '../components/GameHubBoard'
 import { GameHubEvents } from '../components/GameHubEvents'
@@ -21,10 +21,14 @@ import { useDeviceType } from '../lib/device'
 import { moreLike } from '../lib/gameHub'
 import { useGlobalRank } from '../lib/globalRank'
 import { useActiveGroup } from '../lib/groups'
+import { lazyPage } from '../lib/lazyPage'
 import { LEADERBOARD_GAMES, normalizePlayerName, type LeaderboardGame } from '../lib/leaderboard'
 import { gameHasRecords } from '../lib/records'
 import { resolveGameAccent, THEME_EVENT } from '../lib/theme'
 import { preloadGamePage } from './gamePages'
+
+/** Ace Chase's Today's Hole, in a chunk of its own, since only its page shows it here. */
+const TodaysHoleCard = lazyPage(() => import('../components/TodaysHoleCard').then((m) => m.TodaysHoleCard))
 
 function isBoardGame(slug: string): slug is LeaderboardGame {
   return (LEADERBOARD_GAMES as readonly string[]).includes(slug)
@@ -121,6 +125,11 @@ export function GameHubPage({ slug, board: boardFromRoute }: GameHubPageProps) {
         </div>
 
         <div className="gh-band">
+          {game.slug === 'acechase' ? (
+            <Suspense fallback={null}>
+              <TodaysHoleCard />
+            </Suspense>
+          ) : null}
           {boardSlug ? (
             <GameHubStanding
               slug={boardSlug}

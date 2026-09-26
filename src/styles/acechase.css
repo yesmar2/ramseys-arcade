@@ -529,3 +529,118 @@
     animation: none;
   }
 }
+
+/* Today's Hole's cards: the panel kit's game card, taking the pointer, with the day's marks and spread. */
+.acechase-daily {
+  pointer-events: auto;
+}
+
+.acechase-daily__rules {
+  margin: 0;
+  font-size: 0.85rem;
+  line-height: 1.45;
+  color: var(--muted);
+  text-align: center;
+}
+
+/* One mark a try, the colours of the share line: off the rings, outer, inner, lost, and the bull. */
+.acechase-daily__pattern {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 5px;
+}
+
+.acechase-daily__mark {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: rgba(var(--ink-rgb), 0.16);
+  box-shadow: inset 0 0 0 1px rgba(var(--ink-rgb), 0.18);
+}
+
+.acechase-daily__mark--o {
+  background: #4aa8e8;
+}
+
+.acechase-daily__mark--i {
+  background: #3ecf8e;
+}
+
+.acechase-daily__mark--l {
+  background: #1f5577;
+}
+
+.acechase-daily__mark--b {
+  background: radial-gradient(circle, #fff 0 18%, var(--panel-accent) 20% 44%, #f7f5ee 46% 66%, #22364a 68%);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--panel-accent) 35%, transparent);
+}
+
+.acechase-daily__mark--more {
+  width: auto;
+  background: none;
+  box-shadow: none;
+  color: var(--muted);
+  font-size: 0.75rem;
+  line-height: 14px;
+}
+
+.acechase-daily__spread {
+  display: grid;
+  grid-template-columns: repeat(10, 1fr);
+  gap: 4px;
+}
+
+.acechase-daily__bar {
+  display: grid;
+  justify-items: center;
+  gap: 3px;
+}
+
+.acechase-daily__track {
+  display: flex;
+  align-items: flex-end;
+  width: 100%;
+  height: 52px;
+}
+
+.acechase-daily__fill {
+  width: 100%;
+  border-radius: 4px 4px 2px 2px;
+  background: rgba(var(--ink-rgb), 0.16);
+}
+
+.acechase-daily__bar.is-mine .acechase-daily__fill {
+  background: var(--panel-accent);
+}
+
+.acechase-daily__tries {
+  font-size: 0.66rem;
+  font-weight: 700;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.acechase-daily__bar.is-mine .acechase-daily__tries {
+  color: var(--ink);
+}
+
+.acechase-daily__signin {
+  display: grid;
+  justify-items: center;
+  gap: 0.55rem;
+  text-align: center;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.acechase-daily__signin p {
+  margin: 0;
+}
+
+/* The next hole's countdown shows everywhere, a phone included: it's the day's rhythm, not a keyboard hint. */
+.game-card__hint.acechase-daily__next {
+  display: block;
+  margin: 0;
+  text-align: center;
+}

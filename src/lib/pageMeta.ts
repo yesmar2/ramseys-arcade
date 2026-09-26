@@ -2,6 +2,7 @@ import { games, getGame, type Game } from '../data/games'
 import { howToPlayFor, howToPlaySentences } from '../data/howToPlay'
 import {
   aboutHref,
+  gameDailyHref,
   gameHref,
   gamePlayHref,
   homeHref,
@@ -106,6 +107,20 @@ function gameMeta(slug: string, path: string, verb?: string): PageMeta {
   }
 }
 
+/** The games with a hole, or a puzzle, of the day at /games/<slug>/daily. */
+const DAILY_GAMES: ReadonlySet<string> = new Set(['acechase'])
+
+const DAILY_DESCRIPTION =
+  'A new Ace Chase hole every day, the same for everyone. Every try counts, and your first bullseye is your result. Share it without giving it away.'
+
+function dailyMeta(slug: string): PageMeta {
+  return {
+    ...gameMeta(slug, gameDailyHref(slug)),
+    title: titled(`Today’s Hole · ${gameName(slug)}`),
+    description: DAILY_DESCRIPTION,
+  }
+}
+
 function gameName(slug: string) {
   return getGame(slug)?.name ?? 'Game'
 }
@@ -147,6 +162,7 @@ export function publicRoutes(): Route[] {
   for (const game of visibleGames()) {
     routes.push({ name: 'game', slug: game.slug })
     if (game.playable) routes.push({ name: 'gamePlay', slug: game.slug })
+    if (game.playable && DAILY_GAMES.has(game.slug)) routes.push({ name: 'gamePlay', slug: game.slug, daily: true })
     if (isBoardGame(game.slug)) routes.push({ name: 'gameLeaderboard', game: game.slug })
     if (gameHasRecords(game.slug)) routes.push({ name: 'records', game: game.slug })
   }
@@ -202,6 +218,9 @@ export function pageContent(route: Route): PageContent {
     case 'gamePlay': {
       const game = getGame(route.slug)
       if (!game || game.hidden) break
+      if (route.name === 'gamePlay' && route.daily) {
+        return { heading, paragraphs: [meta.description, game.description], links: gameContentLinks(game) }
+      }
       const [goal, ...rules] = howToPlaySentences(game.slug)
       const paragraphs = [game.description, ...(goal && goalBeyond(game) ? [goal] : []), ...rules]
       return { heading, paragraphs, links: gameContentLinks(game) }
@@ -327,6 +346,7 @@ export function pageMeta(route: Route): PageMeta {
     case 'game':
       return gameMeta(route.slug, gameHref(route.slug))
     case 'gamePlay':
+      if (route.daily && DAILY_GAMES.has(route.slug)) return dailyMeta(route.slug)
       return gameMeta(route.slug, gamePlayHref(route.slug), 'Play')
     case 'authVerify':
       return { ...site, title: titled('Signing in'), path: homeHref(), noindex: true }

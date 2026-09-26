@@ -8,6 +8,9 @@
  * afresh, so last round's numbers are only a start. The ball is played out by ./physics, a fixed step
  * at a time, so the same numbers always do the same thing.
  *
+ * Today's Hole (./daily) plays the same way on one hole, the same for everyone that day. Its tries carry
+ * on from where the player left them, and the first bullseye is the day's result.
+ *
  * The state is plain data. The scene (./scene) draws it and flies the camera; the page (AceChaseGame)
  * turns presses into the calls below.
  */
@@ -22,6 +25,8 @@ import {
   step,
   type Ball,
   type Hole,
+  type HoleDef,
+  type Lost,
   type Spot,
 } from './physics'
 
@@ -43,6 +48,9 @@ export const START_ANGLE = 0
 
 export type PathPoint = readonly [number, number, number]
 
+/** Where a try ended: on the bull, in the rings, off them, or lost. */
+export type ShotEnd = 'bull' | 'inner' | 'outer' | 'off' | 'lost'
+
 export type Shot = {
   n: number
   power: number
@@ -50,11 +58,20 @@ export type Shot = {
   /** Where it ended, in words. */
   what: string
   bull: boolean
+  end: ShotEnd
 }
+
+/** A round of the three holes, or Today's Hole. */
+export type Mode = 'round' | 'daily'
 
 export type HoleResult = { tries: number; points: number }
 
 export type GameState = {
+  mode: Mode
+  /** The holes this round plays, in order. */
+  defs: readonly HoleDef[]
+  /** Today's Hole played again once it's done: nothing it does counts. */
+  practice: boolean
   phase: Phase
   /** Seconds in this phase. */
   phaseTime: number
@@ -102,7 +119,7 @@ function teeBall(hole: Hole): Ball {
 let keys = 0
 
 function atHole(state: GameState, index: number): GameState {
-  const hole = makeHole(HOLE_DEFS[index]!, state.spots[index]!)
+  const hole = makeHole(state.defs[index]!, state.spots[index]!)
   return {
     ...state,
     holeIndex: index,
@@ -121,10 +138,15 @@ function atHole(state: GameState, index: number): GameState {
   }
 }
 
-export function createInitialState(random: () => number = Math.random): GameState {
-  const spots = pickSpots(random)
-  const hole = makeHole(HOLE_DEFS[0]!, spots[0]!)
+/** A round waiting at its start card: the three holes, or with `daily`, today's one. */
+export function createInitialState(random: () => number = Math.random, daily?: HoleDef): GameState {
+  const defs = daily ? [daily] : HOLE_DEFS
+  const spots = daily ? [daily.spots[0]!] : pickSpots(random)
+  const hole = makeHole(defs[0]!, spots[0]!)
   return {
+    mode: daily ? 'daily' : 'round',
+    defs,
+    practice: false,
     phase: 'menu',
     phaseTime: 0,
     holeIndex: 0,
@@ -150,10 +172,18 @@ export function createInitialState(random: () => number = Math.random): GameStat
   }
 }
 
-/** A new round: fresh targets, the first hole, and its flyover. */
-export function startGame(state: GameState, random: () => number = Math.random): GameState {
-  const fresh = atHole({ ...state, spots: pickSpots(random), results: [], score: 0, power: START_POWER, angle: START_ANGLE }, 0)
-  return { ...fresh, phase: 'intro', phaseTime: 0 }
+/** Where a day's play left off, to carry on from. */
+export type Resume = { tries: number; shots: readonly Shot[]; ghosts: readonly (readonly PathPoint[])[]; power: number; angle: number }
+
+/**
+ * A new round: fresh targets, the first hole, and its flyover. Today's Hole keeps its one target, and
+ * carries on from `resume`: the tries already spent, the log and the last paths, and the dials as left.
+ */
+export function startGame(state: GameState, random: () => number = Math.random, resume?: Resume | null, practice = false): GameState {
+  const spots = state.mode === 'daily' ? state.spots : pickSpots(random)
+  const fresh = atHole({ ...state, spots, results: [], score: 0, power: START_POWER, angle: START_ANGLE, practice }, 0)
+  const carried = resume && !practice ? { tries: resume.tries, shots: resume.shots, ghosts: resume.ghosts, power: resume.power, angle: resume.angle } : {}
+  return { ...fresh, ...carried, phase: 'intro', phaseTime: 0 }
 }
 
 /** The flyover has been seen enough: straight to the tee. */
@@ -217,18 +247,43 @@ function stepShot(s: GameState, loud: boolean) {
   if (Math.round(b.t / DT) % 6 === 0) s.path.push([b.x, b.y, b.z])
 }
 
+const LOST_IN: Record<Lost, string> = { water: 'the water', ice: 'the open water', crater: 'the crater' }
+
+/**
+ * Which way a ball lies from the target, as the player sees it from the tee: short or past (every hole
+ * ends in a lane running away from the tee), and left or right. Nothing said for under a quarter metre.
+ */
+function which(dx: number, dz: number): string {
+  const along = dz > 0.25 ? 'short' : dz < -0.25 ? 'past' : ''
+  const side = Math.abs(dx) < 0.25 ? '' : `${Math.abs(dx) < 0.8 ? 'a little ' : ''}${dx < 0 ? 'left' : 'right'}`
+  return [along, side].filter(Boolean).join(', ')
+}
+
 /** Where a miss ended, in words that say which way to adjust. */
 export function describe(s: Pick<GameState, 'ball' | 'hole' | 'closest' | 'landed'>): string {
   const b = s.ball
   const h = s.hole
-  if (b.done === 'splash') return s.landed ? `rolled back into the water from ${s.closest.toFixed(1)} m short` : 'in the water'
-  if (b.done === 'out') return 'off the course'
-  const d = Math.hypot(b.x - h.target.x, b.z - h.target.z)
-  if (d < RINGS[1]) return `inner ring, ${d.toFixed(2)} m off`
-  if (d < RINGS[2]) return `outer ring, ${d.toFixed(1)} m off`
-  if (s.closest < RINGS[1]) return `ran over the target, stopped ${d.toFixed(1)} m past`
+  const lost = LOST_IN[h.lost]
+  if (b.done === 'splash') return s.landed ? `rolled back into ${lost} from ${s.closest.toFixed(1)} m short` : `into ${lost}`
+  if (b.done === 'out') return 'flew off the course'
+  const dx = b.x - h.target.x
+  const dz = b.z - h.target.z
+  const d = Math.hypot(dx, dz)
+  const way = which(dx, dz)
+  if (d < RINGS[1]) return `inner ring, ${d.toFixed(2)} m ${way || 'off'}`
+  if (d < RINGS[2]) return `outer ring, ${d.toFixed(1)} m ${way || 'off'}`
+  if (s.closest < RINGS[1]) return `ran over the target, stopped ${d.toFixed(1)} m ${way || 'past'}`
   if (Math.hypot(b.x - h.tee.x, b.z - h.tee.z) < 1.5) return 'rolled back to the tee'
-  return `${d.toFixed(1)} m from the target`
+  return `${d.toFixed(1)} m ${way || 'from the target'}`
+}
+
+/** Where a try ended, for the day's pattern: on the bull, in the rings, off them, or lost. */
+function endOf(s: Pick<GameState, 'ball' | 'hole'>): ShotEnd {
+  const b = s.ball
+  if (b.done === 'bull') return 'bull'
+  if (b.done === 'splash' || b.done === 'out') return 'lost'
+  const d = Math.hypot(b.x - s.hole.target.x, b.z - s.hole.target.z)
+  return d < RINGS[1] ? 'inner' : d < RINGS[2] ? 'outer' : 'off'
 }
 
 /** The shot in play has stopped, or gone: a bullseye, or a try to learn from. */
@@ -247,7 +302,7 @@ function finishShot(s: GameState): GameState {
       ghosts,
       results: [...s.results, { tries: s.tries, points }],
       score: s.score + points,
-      shots: [...s.shots, { n: s.tries, power: s.power, angle: s.angle, what: 'Bullseye!', bull: true }],
+      shots: [...s.shots, { n: s.tries, power: s.power, angle: s.angle, what: 'Bullseye!', bull: true, end: 'bull' }],
       bulls: s.bulls + 1,
     }
   }
@@ -258,7 +313,7 @@ function finishShot(s: GameState): GameState {
     phaseTime: 0,
     path,
     ghosts,
-    shots: [...s.shots, { n: s.tries, power: s.power, angle: s.angle, what: describe(s), bull: false }],
+    shots: [...s.shots, { n: s.tries, power: s.power, angle: s.angle, what: describe(s), bull: false, end: endOf(s) }],
   }
 }
 
@@ -272,7 +327,7 @@ export function fastForward(state: GameState): GameState {
 
 /** Admin and testing: a fresh round, or the round in hand, moved to a hole. The caller marks the run assisted. */
 export function jumpToHole(state: GameState, index: number): GameState {
-  if (index < 0 || index >= HOLES) return state
+  if (index < 0 || index >= state.defs.length) return state
   // Holes skipped over score nothing, but still count in the round's list.
   const results = [...state.results]
   while (results.length < index) results.push({ tries: 0, points: 0 })
@@ -318,7 +373,7 @@ export function tick(state: GameState, dt: number): GameState {
     case 'holed':
       if (s.phaseTime >= HOLED_TIME) {
         s =
-          s.holeIndex + 1 < HOLES
+          s.holeIndex + 1 < s.defs.length
             ? { ...atHole(s, s.holeIndex + 1), phase: 'intro', phaseTime: 0 }
             : { ...s, phase: 'gameover', phaseTime: 0 }
       }
@@ -329,6 +384,10 @@ export function tick(state: GameState, dt: number): GameState {
 
 /** What the page needs to draw its panels, a few times a second. */
 export type Snapshot = {
+  mode: Mode
+  practice: boolean
+  /** How many holes this round has. */
+  holes: number
   phase: Phase
   phaseTime: number
   score: number
@@ -344,6 +403,9 @@ export type Snapshot = {
 
 export function toSnapshot(s: GameState): Snapshot {
   return {
+    mode: s.mode,
+    practice: s.practice,
+    holes: s.defs.length,
     phase: s.phase,
     phaseTime: s.phaseTime,
     score: s.score,
