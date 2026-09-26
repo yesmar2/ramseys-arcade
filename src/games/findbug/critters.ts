@@ -62,7 +62,8 @@ export type Glasses = 'none' | 'round' | 'shades'
 /**
  * Things a critter can have in its hands. One-handed ones are raised in the
  * right hand; `crumb`, `leaf` and `plush` are carried over the head with both.
- * `tube` is a swim ring worn round the middle.
+ * `tube` is a swim ring worn round the middle, on the sand; out in the water a
+ * critter floats in a `ring` instead.
  */
 export type Held =
   | 'none'
@@ -120,6 +121,12 @@ export type Critter = {
   mood: Mood
   /** Height above the ground for anything flying, in critter heights. */
   lift: number
+  /**
+   * A swim ring, in its colour, for a critter out in the water. It floats at
+   * his hips with the water over his legs, low enough for all of his shell to
+   * show above it, so a swimmer can be the Bug.
+   */
+  ring?: string
   /**
    * Draw-order key. Normally the feet; a critter standing on something takes
    * that thing's key plus a little, so it is drawn on top of what it stands on.
@@ -833,6 +840,60 @@ function drawTube(ctx: Ctx, cy: number, look: Look) {
   ink(ctx, O * 0.9)
 }
 
+/** Where a swimmer's ring floats, just above his feet, and its size. */
+const RING = { y: -0.05, rx: 0.4, ry: 0.13 }
+
+/**
+ * Half of a swimmer's ring: the back half before he is drawn, the front half
+ * over his hips. His shell comes down into the hole between them, so all of
+ * it shows, where a `tube` round his middle would cover its lower half.
+ */
+function drawRing(ctx: Ctx, colour: string, half: 'back' | 'front') {
+  const { y, rx, ry } = RING
+  const irx = rx * 0.55
+  const iry = ry * 0.4
+  // Angles run clockwise from the right, so the front half is 0 to π.
+  const a0 = half === 'front' ? 0 : Math.PI
+  const a1 = a0 + Math.PI
+  ctx.beginPath()
+  ctx.ellipse(0, y, rx, ry, 0, a0, a1, false)
+  ctx.ellipse(0, y, irx, iry, 0, a1, a0, true)
+  ctx.closePath()
+  ctx.fillStyle = colour
+  ctx.fill()
+  // Candy stripes on every other eighth, as on the tube.
+  ctx.beginPath()
+  for (let k = half === 'front' ? 0 : 4; k < (half === 'front' ? 4 : 8); k += 2) {
+    const s0 = (k / 8) * TAU
+    const s1 = ((k + 1) / 8) * TAU
+    ctx.moveTo(rx * Math.cos(s0), y + ry * Math.sin(s0))
+    ctx.ellipse(0, y, rx, ry, 0, s0, s1, false)
+    ctx.lineTo(irx * Math.cos(s1), y + iry * Math.sin(s1))
+    ctx.ellipse(0, y, irx, iry, 0, s1, s0, true)
+    ctx.closePath()
+  }
+  ctx.fillStyle = WHITE
+  ctx.fill()
+  // Only the rims are outlined; the ends where the halves meet would be seams.
+  ctx.beginPath()
+  ctx.ellipse(0, y, rx, ry, 0, a0, a1, false)
+  ctx.moveTo(irx * Math.cos(a0), y + iry * Math.sin(a0))
+  ctx.ellipse(0, y, irx, iry, 0, a0, a1, false)
+  ink(ctx, O * 0.9)
+}
+
+/** The water round a ring: its shadow on the surface, and a ripple. */
+function ringRipple(ctx: Ctx) {
+  const { y, rx, ry } = RING
+  ctx.fillStyle = 'rgba(22, 26, 28, 0.16)'
+  ellipsePath(ctx, 0.03, y + 0.05, rx * 1.02, ry * 1.1)
+  ctx.fill()
+  ellipsePath(ctx, 0, y + 0.03, rx * 1.3, ry * 1.45)
+  ctx.lineWidth = O * 0.8
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)'
+  ctx.stroke()
+}
+
 // ------------------------------------------------------------------- arms
 
 type Arms = { left: [Pt, Pt]; right: [Pt, Pt] }
@@ -1028,6 +1089,8 @@ function drawBiped(ctx: Ctx, c: Critter, facing: number) {
     neckY = -0.46
   }
 
+  if (c.ring) drawRing(ctx, c.ring, 'back')
+
   // Wings sit behind everything else.
   if (sp === 'bee') {
     ctx.beginPath()
@@ -1078,7 +1141,8 @@ function drawBiped(ctx: Ctx, c: Critter, facing: number) {
   if (sp === 'beetle' || sp === 'bee') drawBackArms(ctx, c, 0.25, -0.27, armW * 0.85)
   if (sp === 'ant') drawBackArms(ctx, c, 0.09, -0.4, armW * 0.9)
 
-  drawLegs(ctx, c, hipX, sp === 'ant' ? -0.12 : -0.1, armW)
+  // A swimmer's legs are under the water.
+  if (!c.ring) drawLegs(ctx, c, hipX, sp === 'ant' ? -0.12 : -0.1, armW)
 
   if (sp === 'beetle') {
     beetleShell(ctx, look, 0, -0.27, 0.29, 0.26)
@@ -1126,7 +1190,8 @@ function drawBiped(ctx: Ctx, c: Critter, facing: number) {
     fillInk(ctx, look.limb)
   }
 
-  if (look.held === 'tube') drawTube(ctx, -0.2, look)
+  if (c.ring) drawRing(ctx, c.ring, 'front')
+  else if (look.held === 'tube') drawTube(ctx, -0.2, look)
   if (look.scarf) drawScarf(ctx, neckY, look.scarf)
 
   const hands = drawUpperArms(ctx, c, { head, shoulderX, shoulderY, armW })
@@ -1320,7 +1385,8 @@ export function drawCritter(ctx: Ctx, c: Critter) {
   // How many device pixels tall this critter is, to decide on fine detail.
   const m = ctx.getTransform()
   fine = Math.hypot(m.b, m.d) > 64
-  groundShadow(ctx, c)
+  if (c.ring) ringRipple(ctx)
+  else groundShadow(ctx, c)
   if (c.lift > 0) ctx.translate(0, -c.lift)
   const facing = c.facing
 
@@ -1374,9 +1440,10 @@ export function critterBounds(c: Critter): { x0: number; y0: number; x1: number;
   const s = c.size
   const sp = c.look.species
   const wide = sp === 'snail' || sp === 'caterpillar' || sp === 'spider' || sp === 'butterfly'
-  const halfW = (wide ? 0.62 : 0.46) * s
+  // A ring's ripple spreads wider than anybody's arms, and further down.
+  const halfW = Math.max(wide ? 0.62 : 0.46, c.ring ? 0.54 : 0) * s
   const top = (c.look.held === 'balloon' ? 1.45 : 1.15) * s + c.lift * s
-  return { x0: c.x - halfW, y0: c.y - top, x1: c.x + halfW, y1: c.y + 0.06 * s }
+  return { x0: c.x - halfW, y0: c.y - top, x1: c.x + halfW, y1: c.y + (c.ring ? 0.18 : 0.06) * s }
 }
 
 /** A critter to pose for a portrait, feet at (x, y). */

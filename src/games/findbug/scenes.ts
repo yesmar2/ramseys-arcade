@@ -405,6 +405,7 @@ class Layout {
       lift: opts.lift ?? 0,
       z: opts.z ?? y,
     }
+    if (opts.ring) critter.ring = opts.ring
     this.critters.push(critter)
     if (critter.lift === 0) {
       const k = this.key(Math.floor(x / this.cell), Math.floor(y / this.cell))
@@ -1270,8 +1271,10 @@ export function critterAt(scene: Scene, x: number, y: number): Critter | null {
     if (!c) continue
     const s = c.size
     const top = c.y - (0.9 + c.lift) * s
-    const bottom = c.y - c.lift * s
-    if (x > c.x - 0.36 * s && x < c.x + 0.36 * s && y > top && y < bottom) return c
+    // A swimmer's ring is his too, out to its rim.
+    const bottom = c.y - c.lift * s + (c.ring ? 0.08 * s : 0)
+    const half = (c.ring ? 0.4 : 0.36) * s
+    if (x > c.x - half && x < c.x + half && y > top && y < bottom) return c
   }
   return null
 }
@@ -1340,9 +1343,10 @@ export function buildScene(
   else if (kind === 'arcade') built = buildArcade(L, wall)
   else built = buildNight(L, horizon)
 
-  // Swimmers in the pond: rings round their middles, in water nobody walks on.
-  // The water is most of the picture, so it takes a good share of the crowd,
-  // or the beach packs solid and the pond sits empty.
+  // Swimmers in the pond, floating in rings in water nobody walks on. The
+  // water is most of the picture, so it takes a good share of the crowd, or
+  // the beach packs solid and the pond sits empty. They hold things up like
+  // anybody else, and any of them can be the Bug or dressed like him.
   if (kind === 'pond' && shoreY) {
     const sy = shoreY
     let land = 0
@@ -1357,7 +1361,8 @@ export function buildScene(
       if (L.critters.some((c) => Math.hypot(c.x - x, (c.y - y) * 1.2) < size * 0.8)) continue
       if ((built.ground.kind === 'pond' ? built.ground.pads : []).some((p) => Math.hypot(p.x - x, (p.y - y) * 1.6) < p.r + size * 0.4)) continue
       const look = randomLook(rng, cast, rng() < 0.7 ? 'beetle' : 'ant')
-      L.addCritter(x, y, { ...look, held: 'tube', heldColour: rng() < 0.5 ? RED : pick(rng, BRIGHT) }, { pose: 'wave' })
+      const ring = rng() < 0.5 ? RED : pick(rng, BRIGHT)
+      L.addCritter(x, y, look.held === 'tube' ? { ...look, held: 'none' } : look, { pose: 'wave', ring })
       swimmers++
     }
   }
@@ -1378,7 +1383,7 @@ export function buildScene(
   // Pick his spot: a grounded biped, clear of the edges, face in view.
   const margin = size * 0.9
   const candidates = L.critters.filter((c) => {
-    if (c.lift > 0 || c.look.held === 'tube') return false
+    if (c.lift > 0) return false
     const sp = c.look.species
     if (sp !== 'beetle' && sp !== 'ant' && sp !== 'bee' && sp !== 'grasshopper') return false
     if (c.x < margin || c.x > w - margin || c.y < size * 1.4 || c.y > h - size * 0.15) return false
@@ -1469,17 +1474,18 @@ export function buildScene(
       c !== target &&
       c.lift === 0 &&
       c.pose !== 'carry' &&
-      c.look.held !== 'tube' &&
       Math.hypot(c.x - target!.x, c.y - target!.y) > size * 2.5,
   )
   const shuffled = shuffle(others)
   let at = 0
+  // A swimmer stays something with a middle to float a ring round.
+  const floats = (look: Look) => look.species !== 'snail' && look.species !== 'caterpillar' && look.species !== 'spider' && look.species !== 'worm'
   const take = (n: number, make: (c: Critter) => Look | null) => {
     let done = 0
     while (done < n && at < shuffled.length) {
       const c = shuffled[at++]
       const look = make(c)
-      if (!look) continue
+      if (!look || (c.ring && !floats(look))) continue
       c.look = look
       done++
     }
