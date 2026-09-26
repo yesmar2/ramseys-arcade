@@ -9,12 +9,14 @@ import {
   fetchAdminWhoami,
   fetchBans,
   fetchClientErrors,
+  fetchFeedback,
   fetchOpenFlags,
   liftBan,
   settleFlag,
   useIsAdmin,
   type AdminBan,
   type AdminClientError,
+  type AdminFeedback,
   type AdminFlag,
 } from '../lib/admin'
 import { ApiError } from '../lib/leaderboard'
@@ -89,6 +91,7 @@ export function AdminPage() {
       <div className="adm">
         {gate === 'ready' ? (
           <>
+            <FeedbackCard />
             <ErrorsCard />
             <FlagsCard />
             <BansCard />
@@ -140,6 +143,42 @@ function CardHead({ title, count, onRefresh }: { title: string; count: number | 
         Refresh
       </button>
     </div>
+  )
+}
+
+function FeedbackCard() {
+  const { items, error, refresh } = useList<AdminFeedback>(fetchFeedback)
+  return (
+    <section className="adm-card" aria-labelledby="adm-feedback">
+      <CardHead title="Feedback" count={items?.length ?? null} onRefresh={refresh} />
+      <p className="adm-card__sub" id="adm-feedback">
+        What players sent from Tell us (Send feedback in the menu, Suggest a game and Something broke in the footer), the latest first.
+      </p>
+      {error ? <p className="adm-fail">{error}</p> : null}
+      {items && !items.length ? <p className="adm-note">Nothing yet.</p> : null}
+      {items?.length ? (
+        <ul className="adm-list">
+          {items.map((f) => (
+            <li key={f.id} className="adm-row">
+              <div className="adm-row__main">
+                <b className="adm-row__title">{f.message}</b>
+                <span className="adm-row__sub">
+                  {f.kind === 'problem' ? 'Something broke' : 'Idea'} · {ago(f.createdAt)}
+                  {f.name ? ` · ${f.name}` : f.accountId ? ' · signed in' : ' · not signed in'}
+                  {f.path ? ` · ${f.path}` : ''}
+                </span>
+                {f.userAgent ? (
+                  <details className="adm-row__more">
+                    <summary>Browser</summary>
+                    <p className="adm-row__sub">{f.userAgent}</p>
+                  </details>
+                ) : null}
+              </div>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </section>
   )
 }
 

@@ -45,6 +45,11 @@ export function PrivacyPage() {
           your browser type and the site’s version. It doesn’t include your name or account. We
           keep these for 30 days to fix problems.
         </li>
+        <li>
+          <strong>Feedback.</strong> If you send us an idea or tell us something broke, we keep what
+          you wrote, the page you sent it from and your browser type, with your account and player
+          name if you’re signed in.
+        </li>
       </ul>
 
       <h2>How we use information</h2>

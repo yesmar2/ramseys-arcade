@@ -4,6 +4,7 @@ import { aboutHref, adminHref, privacyHref, rankHref, statsHref, termsHref } fro
 import { useIsAdmin } from '../lib/admin'
 import { AVATARS_ENABLED, avatarWashColor, resolveAvatar } from '../lib/avatars'
 import { APP_NAME } from '../lib/brand'
+import { openFeedback } from '../lib/feedback'
 import { inkOn } from '../lib/color'
 import { groupsIndexHref } from '../lib/groups'
 import { ordinal, periodWord, pts } from '../lib/profileMath'
@@ -387,6 +388,16 @@ export function SiteMenu({
             <a href={termsHref()} onClick={onClose}>
               Terms
             </a>
+            <button
+              type="button"
+              className="feedback-link"
+              onClick={() => {
+                onClose()
+                openFeedback('idea')
+              }}
+            >
+              Send feedback
+            </button>
             {isAdmin ? (
               <a href={adminHref()} onClick={onClose}>
                 Admin

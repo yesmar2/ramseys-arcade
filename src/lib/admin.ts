@@ -37,6 +37,17 @@ export type AdminClientError = {
   lastAt: number
 }
 
+export type AdminFeedback = {
+  id: string
+  kind: 'idea' | 'problem'
+  message: string
+  path: string | null
+  accountId: string | null
+  name: string | null
+  userAgent: string | null
+  createdAt: number
+}
+
 export type AdminFlag = {
   id: string
   scoreId: string
@@ -61,6 +72,10 @@ export function fetchAdminWhoami() {
 
 export async function fetchClientErrors() {
   return (await api<{ errors: AdminClientError[] }>('/admin/client-errors?limit=100')).errors
+}
+
+export async function fetchFeedback() {
+  return (await api<{ feedback: AdminFeedback[] }>('/admin/feedback?limit=100')).feedback
 }
 
 export async function fetchOpenFlags() {

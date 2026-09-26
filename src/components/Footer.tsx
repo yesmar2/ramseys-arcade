@@ -1,4 +1,5 @@
 import { games, isListedGame } from '../data/games'
+import { openFeedback } from '../lib/feedback'
 import {
   aboutHref,
   homeHref,
@@ -119,6 +120,16 @@ export function Footer() {
               </li>
               <li>
                 <a href={termsHref()}>Terms</a>
+              </li>
+              <li>
+                <button type="button" className="feedback-link" onClick={() => openFeedback('idea')}>
+                  Suggest a game
+                </button>
+              </li>
+              <li>
+                <button type="button" className="feedback-link" onClick={() => openFeedback('problem')}>
+                  Something broke
+                </button>
               </li>
               {CONTACT_EMAIL ? (
                 <li>

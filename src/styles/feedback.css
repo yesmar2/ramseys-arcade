@@ -1,0 +1,110 @@
+/* The Tell us panel (components/FeedbackPanel.tsx), and the links that open it. */
+
+.feedback__kinds {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.35rem;
+  padding: 0.3rem;
+  border-radius: 1.1rem;
+  background: var(--panel-fill);
+  border: 1px solid rgba(var(--ink-rgb), 0.1);
+}
+
+.feedback__kind {
+  min-height: 2.75rem;
+  padding: 0 0.6rem;
+  border: 0;
+  border-radius: 0.85rem;
+  background: none;
+  color: var(--muted);
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.feedback__kind:hover {
+  color: var(--ink);
+}
+
+.feedback__kind[aria-checked='true'] {
+  background: var(--panel-accent);
+  color: var(--panel-on-accent);
+}
+
+.feedback__kind:focus-visible {
+  outline: 2px solid var(--panel-accent);
+  outline-offset: 2px;
+}
+
+.feedback__text {
+  width: 100%;
+  min-height: 8.5rem;
+  padding: 0.85rem 1rem;
+  border-radius: 0.9rem;
+  border: 1px solid rgba(var(--ink-rgb), 0.18);
+  background: var(--panel-fill);
+  color: var(--ink);
+  font: inherit;
+  font-size: 1rem;
+  line-height: 1.45;
+  resize: vertical;
+  box-sizing: border-box;
+}
+
+.feedback__text::placeholder {
+  color: var(--muted);
+  opacity: 0.75;
+}
+
+.feedback__text:focus {
+  outline: none;
+  border-color: var(--panel-accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--panel-accent) 28%, transparent);
+}
+
+.feedback__note {
+  margin: 0;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.feedback__done {
+  margin: 0;
+  font-size: 1.02rem;
+  line-height: 1.5;
+}
+
+/* The links that open it: buttons that read as the links beside them. */
+.site-menu__foot .feedback-link,
+.site-footer__list .feedback-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.site-menu__foot .feedback-link {
+  color: var(--muted);
+}
+
+.site-menu__foot .feedback-link:hover,
+.site-menu__foot .feedback-link:focus-visible {
+  color: var(--ink);
+}
+
+.site-footer__list .feedback-link {
+  font-size: 0.9rem;
+  font-weight: 650;
+  color: color-mix(in srgb, var(--ink) 78%, var(--muted));
+}
+
+.site-footer__list .feedback-link:hover,
+.site-footer__list .feedback-link:focus-visible {
+  color: var(--accent);
+  outline: none;
+}
