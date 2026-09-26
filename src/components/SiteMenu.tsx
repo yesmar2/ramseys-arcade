@@ -1,6 +1,7 @@
 import { useState, type CSSProperties, type ReactNode, type Ref } from 'react'
 import { createPortal } from 'react-dom'
-import { aboutHref, privacyHref, rankHref, statsHref, termsHref } from '../hooks/useHashRoute'
+import { aboutHref, adminHref, privacyHref, rankHref, statsHref, termsHref } from '../hooks/useHashRoute'
+import { useIsAdmin } from '../lib/admin'
 import { AVATARS_ENABLED, avatarWashColor, resolveAvatar } from '../lib/avatars'
 import { APP_NAME } from '../lib/brand'
 import { inkOn } from '../lib/color'
@@ -106,6 +107,7 @@ export function SiteMenu({
   // The inbox opens in place of the menu, as a sheet of its own with a way back.
   const [view, setView] = useState<'menu' | 'inbox'>('menu')
   const isFresh = useInboxLook(notes, view === 'inbox')
+  const isAdmin = useIsAdmin()
   if (typeof document === 'undefined') return null
 
   const tagged = signedIn && Boolean(name)
@@ -385,6 +387,11 @@ export function SiteMenu({
             <a href={termsHref()} onClick={onClose}>
               Terms
             </a>
+            {isAdmin ? (
+              <a href={adminHref()} onClick={onClose}>
+                Admin
+              </a>
+            ) : null}
           </nav>
         </div>
       </div>

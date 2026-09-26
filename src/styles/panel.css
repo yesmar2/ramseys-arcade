@@ -969,3 +969,21 @@ html[data-theme='dark'] .game-card__row--gold strong {
 .game-card--good {
   --panel-accent: #3ecf8e;
 }
+
+/* The page the site falls back to when it throws while drawing (SiteErrorBoundary). */
+.site-broken {
+  min-height: 100dvh;
+  box-sizing: border-box;
+  display: grid;
+  place-items: center;
+  padding: 1.5rem 1rem;
+  background: var(--bg);
+}
+
+/* A sheet from the bottom on phones, as every panel is there. */
+@media (max-width: 40rem) {
+  .site-broken {
+    place-items: end stretch;
+    padding: 0;
+  }
+}

@@ -39,6 +39,12 @@ export function PrivacyPage() {
           uses no cookies and does not identify you. It sees the page’s address without anything
           after the “?”, your browser and device type, and your country.
         </li>
+        <li>
+          <strong>Error reports.</strong> When something on the site breaks, your browser tells our
+          server what went wrong: the error, the page’s address without anything after the “?”,
+          your browser type and the site’s version. It doesn’t include your name or account. We
+          keep these for 30 days to fix problems.
+        </li>
       </ul>
 
       <h2>How we use information</h2>

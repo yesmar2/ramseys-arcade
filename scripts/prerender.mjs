@@ -73,6 +73,7 @@ function robotsTxt() {
     'Disallow: /rank',
     'Disallow: /groups',
     'Disallow: /stats',
+    'Disallow: /admin',
     'Disallow: /auth/',
     'Disallow: /dev/',
     'Disallow: /tournaments/',

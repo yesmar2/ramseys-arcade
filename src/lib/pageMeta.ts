@@ -2,6 +2,7 @@ import { games, getGame, type Game } from '../data/games'
 import { howToPlayFor, howToPlaySentences } from '../data/howToPlay'
 import {
   aboutHref,
+  adminHref,
   gameDailyHref,
   gameHref,
   gamePlayHref,
@@ -259,9 +260,11 @@ export function pageMeta(route: Route): PageMeta {
         ...site,
         title: titled('Plus'),
         description:
-          'Playing is free, always. Plus is for whoever runs the events: bigger draws, more events at once, double elimination, and a different game each round. $3 a month.',
+          'Playing is free, always. Plus is for whoever runs the events: bigger events, more of them at once, double elimination, and a different game each round. $3 a month.',
         path: plusHref(),
       }
+    case 'admin':
+      return { ...site, title: titled('Admin'), path: adminHref(), noindex: true }
     case 'stats':
       return { ...site, title: titled('Your stats'), path: statsHref(), noindex: true }
     case 'privacy':

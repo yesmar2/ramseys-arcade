@@ -51,6 +51,7 @@ const ChallengeLandingPage = lazyPage(() =>
 const GroupDetailPage = lazyPage(() => import('./pages/GroupsPage').then((m) => m.GroupDetailPage))
 const GroupsPage = lazyPage(() => import('./pages/GroupsPage').then((m) => m.GroupsPage))
 const PlusPage = lazyPage(() => import('./pages/PlusPage').then((m) => m.PlusPage))
+const AdminPage = lazyPage(() => import('./pages/AdminPage').then((m) => m.AdminPage))
 const PrivacyPage = lazyPage(() => import('./pages/PrivacyPage').then((m) => m.PrivacyPage))
 const RankPage = lazyPage(() => import('./pages/RankPage').then((m) => m.RankPage))
 const StatsPage = lazyPage(() => import('./pages/StatsPage').then((m) => m.StatsPage))
@@ -254,6 +255,7 @@ function Screen({ route }: { route: ReturnType<typeof useRoute> }) {
   if (route.name === 'home') return <HomePage />
   if (route.name === 'about') return <AboutPage />
   if (route.name === 'plus') return <PlusPage />
+  if (route.name === 'admin') return <AdminPage />
   if (route.name === 'stats') return <StatsPage />
   if (route.name === 'devCelebrate') return <DevCelebratePage />
   if (route.name === 'privacy') return <PrivacyPage />

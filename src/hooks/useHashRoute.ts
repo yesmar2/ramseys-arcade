@@ -52,6 +52,7 @@ export type Route =
   | { name: 'authVerify'; token: string }
   | { name: 'about' }
   | { name: 'plus' }
+  | { name: 'admin' }
   | { name: 'stats' }
   | { name: 'privacy' }
   | { name: 'terms' }
@@ -188,6 +189,11 @@ export function aboutHref() {
 
 export function plusHref() {
   return '/plus'
+}
+
+/** Site errors, flagged scores and bans, for admins. */
+export function adminHref() {
+  return '/admin'
 }
 
 export function statsHref() {
@@ -425,6 +431,7 @@ export function parseUrl(pathname: string, search: string): Route {
   if (!path) return { name: 'home' }
   if (path === 'about') return { name: 'about' }
   if (path === 'plus') return { name: 'plus' }
+  if (path === 'admin') return { name: 'admin' }
   if (path === 'stats') return { name: 'stats' }
   if (path === 'privacy') return { name: 'privacy' }
   if (path === 'terms') return { name: 'terms' }

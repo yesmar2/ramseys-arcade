@@ -24,7 +24,10 @@ import { bootTheme } from './lib/theme'
 import { bootPwaInstall } from './lib/pwaInstall'
 import { bootFeedSync } from './lib/feedSync'
 import { bootAnalytics } from './lib/analytics'
+import { bootErrorReports } from './lib/errorReports'
+import { SiteErrorBoundary } from './components/SiteErrorBoundary'
 
+bootErrorReports()
 bootRouter()
 bootTheme()
 bootPwaInstall()
@@ -53,6 +56,8 @@ window.addEventListener('vite:preloadError', (event) => {
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
+    <SiteErrorBoundary>
+      <App />
+    </SiteErrorBoundary>
   </StrictMode>,
 )
