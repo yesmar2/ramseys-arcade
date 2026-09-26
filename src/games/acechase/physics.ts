@@ -91,6 +91,11 @@ export type HoleDef = {
   soft?: (x: number, z: number) => boolean
   /** Which rails round the edge are rubber, by where their middle is, and how springy (see Wall.e). */
   rubber?: (x: number, z: number) => number | undefined
+  /**
+   * A name for the plain rails round the edge ("the rail"), on a hole where a ball only meets one if its
+   * aim is out: then the misses say so, as they do for a post or a named wall.
+   */
+  rail?: string
   /** Rails standing on the green, as well as the ones round its edge. */
   walls?: readonly WallDef[]
   bumpers?: readonly Bumper[]
@@ -372,7 +377,7 @@ function railsFor(def: HoleDef): Wall[] {
       bx: b[0],
       bz: b[1],
       edge: true,
-      ...(soft ? { soft: true, e: SOFT_E } : rubber !== undefined ? { rubber: true, e: rubber } : {}),
+      ...(soft ? { soft: true, e: SOFT_E } : rubber !== undefined ? { rubber: true, e: rubber } : def.rail ? { name: def.rail } : {}),
     })
   }
   const reach = BALL_R + WALL_T + 0.02
@@ -511,6 +516,12 @@ export function step(hole: Hole, b: Ball): Ball {
     b.vz -= vn * nz
     b.x += b.vx * DT
     b.z += b.vz * DT
+    // On a laid hole a ball can roll into water down a bank, not only drop into it: it's lost either way.
+    if (hole.laid && hole.water !== undefined && hole.height(b.x, b.z) + BALL_R < hole.water + BALL_R * 0.4) {
+      b.t += DT
+      b.done = 'splash'
+      return b
+    }
     const floor = ground(hole, b.x, b.z, true) + BALL_R
     // Where the ground falls away faster than the ball would fall, it leaves it.
     const fly = b.y + b.vy * DT - 0.5 * G * DT * DT
@@ -591,10 +602,10 @@ export function step(hole: Hole, b: Ball): Ball {
         b.vx *= 0.97
         b.vz *= 0.97
       }
-      if (-vn > 0.3) {
-        b.hits++
-        if (w.name) b.struck = w.name
-      }
+      if (-vn > 0.3) b.hits++
+      // Named for the misses however softly it came at it: a slow ball drifting on to a rail was aimed
+      // out just as a fast one was.
+      if (w.name && -vn > 0.05) b.struck = w.name
     }
   }
   for (const k of hole.bumpers) {

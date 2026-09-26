@@ -281,7 +281,13 @@ function placeOf(s: Pick<GameState, 'ball' | 'hole' | 'closest' | 'landed'>): st
   const b = s.ball
   const h = s.hole
   const lost = LOST_IN[h.lost]
-  if (b.done === 'splash') return s.landed ? `rolled back into ${lost} from ${s.closest.toFixed(1)} m short` : `into ${lost}`
+  if (b.done === 'splash') {
+    // On a laid hole, into the water past the target is too hard, and it says so.
+    const at = h.def.where?.(b.x, b.z)
+    const goal = h.def.where?.(h.target.x, h.target.z)
+    if (at && goal && at.s > goal.s) return `ran past the target, into ${lost}`
+    return s.landed ? `rolled back into ${lost} from ${s.closest.toFixed(1)} m short` : `into ${lost}`
+  }
   if (b.done === 'out') return 'flew off the course'
   const dx = b.x - h.target.x
   const dz = b.z - h.target.z
@@ -296,7 +302,9 @@ function placeOf(s: Pick<GameState, 'ball' | 'hole' | 'closest' | 'landed'>): st
   if (s.closest < RINGS[1]) return `ran over the target, stopped ${d.toFixed(1)} m ${way || 'past'}`
   if (Math.hypot(b.x - h.tee.x, b.z - h.tee.z) < 1.5) return 'rolled back to the tee'
   if (line && Math.abs(line.along) > 3) {
-    return `stopped ${line.part ? `in ${line.part}, ` : ''}${Math.abs(line.along).toFixed(0)} m ${line.along < 0 ? 'short' : 'past'}`
+    // In a part ("in the posts"), unless its name says how ("on the climb").
+    const part = line.part ? `${/^(in|on|at) /.test(line.part) ? line.part : `in ${line.part}`}, ` : ''
+    return `stopped ${part}${Math.abs(line.along).toFixed(0)} m ${line.along < 0 ? 'short' : 'past'}`
   }
   return `${d.toFixed(1)} m ${way || 'from the target'}`
 }

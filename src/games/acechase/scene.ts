@@ -865,10 +865,20 @@ export class AceScene {
     const hill = new THREE.Mesh(geo, this.meadow.material)
     hill.receiveShadow = true
     course.add(hill)
+    // Nor in the way of the view from the tee to wherever the target may be, so it can be seen from the tee
+    // across the inside of a corner.
+    const tee = h.def.tee
+    const inView = (x: number, z: number) =>
+      h.def.spots.some((t) => {
+        const dx = t.x - tee.x
+        const dz = t.z - tee.z
+        const k = Math.max(0, Math.min(1, ((x - tee.x) * dx + (z - tee.z) * dz) / (dx * dx + dz * dz)))
+        return (x - tee.x - k * dx) ** 2 + (z - tee.z - k * dz) ** 2 < 4 * 4
+      })
     const clear = (x: number, z: number) => {
       let near = Infinity
       for (const p of path) near = Math.min(near, (x - p[0]) ** 2 + (z - p[2]) ** 2)
-      return near > 5.5 * 5.5
+      return near > 5.5 * 5.5 && !inView(x, z)
     }
     return { ground, clear }
   }

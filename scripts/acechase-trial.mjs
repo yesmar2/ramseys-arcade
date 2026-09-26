@@ -3,7 +3,7 @@
 //   node scripts/acechase-trial.mjs short map [a0 a1 da p0 p1 dp]   where shots end, power down, angle across
 //   node scripts/acechase-trial.mjs short line <angle> [p0 p1 dp]    one angle up a run of powers, in detail
 //   node scripts/acechase-trial.mjs short check [p0 p1 a0 a1]        the bullseye windows at each target spot
-//   node scripts/acechase-trial.mjs short learn [angle]              tries for a player following the misses, from about `angle`
+//   node scripts/acechase-trial.mjs short learn [angle] [rough]      tries for a player following the misses, from about `angle`
 //
 // Any of the round's holes works too, as round:0, round:1 or round:2 (at each of its spots), to compare.
 //
@@ -16,7 +16,9 @@
 // `learn` plays the hole as a thoughtful player would, from the game's opening dials (60, 0°) and a few
 // others: after a miss it moves the power by the metres short or past and the angle by the metres left or
 // right, each scaled by what its last change of that dial did to the ball, and after a post it tries the
-// angle either side. A hole a player can learn by following the misses takes a handful of tries.
+// angle either side. A hole a player can learn by following the misses takes a handful of tries. With
+// `rough`, the player is more like a person: it knows which way each dial goes, but not how far, and moves
+// a power a metre and half a degree a metre across, however the last change went.
 import { windowsFor } from './acechase-windows.mjs'
 
 const physics = await import(new URL('../src/games/acechase/physics.ts', import.meta.url))
@@ -42,7 +44,7 @@ function missOf(h, r) {
 }
 
 /** A player following the misses from (p, a): the tries to a bullseye, or Infinity after `cap`. */
-function learn(h, p, a, cap = 30) {
+function learn(h, p, a, cap = 30, rough = false) {
   const step = (v, q) => Math.round(v / q) * q
   let last = null
   let aroundPosts = 0
@@ -58,6 +60,8 @@ function learn(h, p, a, cap = 30) {
       // Back towards the last angle that got through, or else round the posts either side.
       a = clear ? step((a + clear.a) / 2, 0.1) : turns[aroundPosts++ % turns.length]
       if (clear && Math.abs(a - clear.a) < 0.15) a = clear.a
+      // Past the target, whatever it met on the way, it was too hard as well.
+      if (m.along > 0.25) p = Math.max(5, step(p - Math.min(10, m.along), 0.5))
       last = null
       continue
     }
@@ -70,6 +74,10 @@ function learn(h, p, a, cap = 30) {
     if (last && last.a !== a && Math.abs(m.side - last.side) > 0.02) perAngle = (m.side - last.side) / (a - last.a)
     if (!(perPower > 0.05 && perPower < 20)) perPower = 1
     if (!(Math.abs(perAngle) > 0.01 && Math.abs(perAngle) < 5)) perAngle = -0.5
+    if (rough) {
+      perPower = 1
+      perAngle = Math.sign(perAngle) * 2
+    }
     const next = {
       p: Math.max(5, Math.min(100, step(p - Math.max(-10, Math.min(10, m.along / perPower)), 0.5))),
       a: Math.max(-60, Math.min(60, step(a - Math.max(-3, Math.min(3, m.side / perAngle)), 0.1))),
@@ -143,7 +151,7 @@ if (mode === 'map') {
   ]
   const all = []
   for (const h of holes) {
-    const tries = starts.map(([p, a]) => learn(h, p, a))
+    const tries = starts.map(([p, a]) => learn(h, p, a, 30, rest[1] === 'rough'))
     all.push(...tries)
     console.log(`target (${h.target.x.toFixed(1)}, ${h.target.z.toFixed(1)}): ${tries.map((t) => (t === Infinity ? '30+' : t)).join(' ')}`)
   }

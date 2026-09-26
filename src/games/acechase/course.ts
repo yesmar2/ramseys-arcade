@@ -10,10 +10,11 @@
  *
  * Imports only ./physics, so a script can run it with plain Node.
  */
-import { ROLL, dish, type HoleDef, type Pt, type Spot, type Style, type WallDef, type Where } from './physics.ts'
+import { ROLL, dish, type HoleDef, type Lost, type Pt, type Spot, type Style, type WallDef, type Where } from './physics.ts'
 
 /** One piece of the line: a straight so long, a bend of a radius through so many degrees (+ right,
- * − left), or a sharp corner turned on the spot. Each can be named, for the misses. */
+ * − left), or a sharp corner turned on the spot. Each can be named, for the misses: a ball stops "in the
+ * posts", or, when a name starts with its own word, "on the climb". */
 export type Piece =
   | { line: number; name?: string }
   | { arc: number; turn: number; name?: string }
@@ -398,12 +399,23 @@ export type Laid = {
   /** Rubbers set right across sharp corners (by the corner's number from the tee), and how springy. */
   rubbers?: readonly { corner: number; e: number }[]
   ends?: { tee?: number; far?: number }
+  /**
+   * Whether the target sits in a shallow dish, which draws a ball that stops near it onto the bull. Unless
+   * said it does; without one, a ball stops exactly where its putt sends it.
+   */
+  dish?: boolean
+  /** Water filling anything below this height, and what losing a ball in it is called. */
+  water?: number
+  lost?: Lost
+  /** A name for the rails, on a hole where a ball meets one only if its aim is out (see HoleDef.rail). */
+  rail?: string
 }
 
 /**
  * A hole laid along `line`. The ground is its height along the line, leaning into each bend (the slope
  * that turns a ball at the bend's pace round it, eased in and out) and hollowed across, with a dish at the
- * target; the rails glide, and a rubber right across a sharp corner turns every ball that comes at it.
+ * target unless it's said not to have one; the rails glide, and a rubber right across a sharp corner turns
+ * every ball that comes at it.
  */
 export function laid(line: Course, spec: Laid): HoleDef {
   const G = 9.81
@@ -424,12 +436,16 @@ export function laid(line: Course, spec: Laid): HoleDef {
     tee: line.point(spec.tee),
     height: (x, z, t) => {
       const { s, d } = line.local(x, z)
-      return spec.rise(s) - lean(s) * d + spec.hollow(s, line.curve(s, spec.ease)) * d * d - dish(x, z, t)
+      const ground = spec.rise(s) - lean(s) * d + spec.hollow(s, line.curve(s, spec.ease)) * d * d
+      return spec.dish === false ? ground : ground - dish(x, z, t)
     },
     spots: spec.spots.map((p) => line.point(p.s, p.d ?? 0)),
     soft: (x, z) => line.local(x, z).s > spec.cushion,
     walls,
     bumpers: (spec.posts ?? []).map((p) => ({ ...line.point(p.s, p.d), r: p.r ?? 0.15, e: p.e ?? 0.5 })),
+    water: spec.water,
+    lost: spec.lost,
+    rail: spec.rail,
     laid: true,
     path: line.path(spec.rise, 1.5),
     where: whereOn(line),
