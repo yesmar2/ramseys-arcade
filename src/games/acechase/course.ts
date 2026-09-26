@@ -10,7 +10,7 @@
  *
  * Imports only ./physics, so a script can run it with plain Node.
  */
-import type { HoleDef, Pt, Where } from './physics.ts'
+import { ROLL, dish, type HoleDef, type Pt, type Spot, type Style, type WallDef, type Where } from './physics.ts'
 
 /** One piece of the line: a straight so long, a bend of a radius through so many degrees (+ right,
  * − left), or a sharp corner turned on the spot. Each can be named, for the misses. */
@@ -62,6 +62,10 @@ export type Course = {
   cornerBank(index: number, half: number, leg: number): { outer: Pt; a: Pt; b: Pt }
   /** Points along the line every `step` m, at the height `y(s)`: for the camera. */
   path(y: (s: number) => number, step?: number): [number, number, number][]
+  /** The point `d` to the right of the line, `s` along it. */
+  point(s: number, d?: number): Spot
+  /** How far along the line each sharp corner is. */
+  corners: readonly number[]
 }
 
 /** Where a piece is `t` metres along it. */
@@ -309,7 +313,14 @@ export function course(start: { x: number; z: number }, pieces: readonly Piece[]
     return out
   }
 
-  return { length, at, local, curve, part, outline, cornerBank, path }
+  const point = (s: number, d = 0): Spot => {
+    const p = at(s)
+    const [rx, rz] = rightOf(p.phi)
+    return { x: p.x + rx * d, z: p.z + rz * d }
+  }
+  const corners = segs.filter((g) => g.kind === 'corner').map((g) => g.s0)
+
+  return { length, at, local, curve, part, outline, cornerBank, path, point, corners }
 }
 
 /**
@@ -358,5 +369,69 @@ export function whereOn(c: Course): NonNullable<HoleDef['where']> {
   return (x: number, z: number): Where => {
     const p = c.local(x, z)
     return { s: p.s, d: p.d, part: c.part(p.s) }
+  }
+}
+
+/** A hole laid along a course: everything it needs besides the line. */
+export type Laid = {
+  name: string
+  note: string
+  style?: Style
+  /** How far along the line the tee is. */
+  tee: number
+  /** The lane, `half(s)` either side of the line. */
+  half: (s: number) => number
+  /** The ground along the line: its height `s` along. */
+  rise: (s: number) => number
+  /** The pace each bend is banked for, in metres a second, the first bend first. */
+  paces: readonly number[]
+  /** How deep the lane is hollowed across, `s` along, where the line turns at `k` (height per metre across, squared). */
+  hollow: (s: number, k: number) => number
+  /** Over how many metres either side of its ends a bend's lean comes and goes. */
+  ease: number
+  /** Where the target may be, along the line and across it. */
+  spots: readonly { s: number; d?: number }[]
+  /** Past here along the line, the rail across the far end is a cushion. */
+  cushion: number
+  /** Posts standing on the lane, along it and across it. */
+  posts?: readonly { s: number; d: number; r?: number; e?: number }[]
+  /** Rubbers set right across sharp corners (by the corner's number from the tee), and how springy. */
+  rubbers?: readonly { corner: number; e: number }[]
+  ends?: { tee?: number; far?: number }
+}
+
+/**
+ * A hole laid along `line`. The ground is its height along the line, leaning into each bend (the slope
+ * that turns a ball at the bend's pace round it, eased in and out) and hollowed across, with a dish at the
+ * target; the rails glide, and a rubber right across a sharp corner turns every ball that comes at it.
+ */
+export function laid(line: Course, spec: Laid): HoleDef {
+  const G = 9.81
+  const pace = (i: number) => spec.paces[i] ?? spec.paces[spec.paces.length - 1] ?? 0
+  const lean = (s: number) => line.curve(s, spec.ease, (i) => pace(i) ** 2) / (ROLL * G)
+  const walls: WallDef[] = (spec.rubbers ?? []).map(({ corner, e }) => {
+    const at = line.corners[corner]
+    if (at === undefined) throw new Error(`no corner ${corner}`)
+    const w = spec.half(at)
+    const c = line.cornerBank(corner, w, 2 * w)
+    return { ax: c.a[0], az: c.a[1], bx: c.b[0], bz: c.b[1], e, rubber: true }
+  })
+  return {
+    name: spec.name,
+    note: spec.note,
+    style: spec.style,
+    green: line.outline(spec.half, spec.ends),
+    tee: line.point(spec.tee),
+    height: (x, z, t) => {
+      const { s, d } = line.local(x, z)
+      return spec.rise(s) - lean(s) * d + spec.hollow(s, line.curve(s, spec.ease)) * d * d - dish(x, z, t)
+    },
+    spots: spec.spots.map((p) => line.point(p.s, p.d ?? 0)),
+    soft: (x, z) => line.local(x, z).s > spec.cushion,
+    walls,
+    bumpers: (spec.posts ?? []).map((p) => ({ ...line.point(p.s, p.d), r: p.r ?? 0.15, e: p.e ?? 0.5 })),
+    laid: true,
+    path: line.path(spec.rise, 1.5),
+    where: whereOn(line),
   }
 }

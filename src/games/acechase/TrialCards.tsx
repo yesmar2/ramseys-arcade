@@ -33,8 +33,7 @@ export function TrialStartCard({ def, onStart }: { def: HoleDef; onStart: () => 
         <p className="game-card__blurb">{def.note}</p>
       </div>
       <p className="acechase-daily__rules">
-        One putt a try, as many tries as it takes. It&rsquo;s a long way round, so a putt takes a while to play out: Skip
-        ahead shows where it ends. Nothing here is kept.
+        One putt a try, as many tries as it takes; Skip ahead shows where a putt ends. Nothing here is kept.
       </p>
       <div className="game-card__actions">
         <button type="button" className="panel__btn" onClick={onStart}>

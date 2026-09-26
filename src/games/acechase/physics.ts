@@ -145,6 +145,8 @@ export type Ball = {
   flew: number
   /** Seconds it has sat all but still (counted on laid holes, see `step`). */
   still?: number
+  /** Posts it has struck hard: counted for the misses ("off a post"), not played with. */
+  posts?: number
 }
 
 export const gauss = (x: number, z: number, x0: number, z0: number, s: number) =>
@@ -591,7 +593,10 @@ export function step(hole: Hole, b: Ball): Ball {
     if (vn < 0) {
       b.vx -= (1 + (k.e ?? WALL_E)) * vn * nx
       b.vz -= (1 + (k.e ?? WALL_E)) * vn * nz
-      if (-vn > 0.3) b.hits++
+      if (-vn > 0.3) {
+        b.hits++
+        b.posts = (b.posts ?? 0) + 1
+      }
     }
   }
   if (b.air) {
@@ -620,5 +625,5 @@ export function simulate(hole: Hole, power: number, angle: number) {
     const dc = Math.hypot(b.x - hole.target.x, b.z - hole.target.z)
     if (!b.air && dc < near) near = dc
   }
-  return { done: b.done, x: b.x, z: b.z, t: b.t, hits: b.hits, flew: b.flew, near, miss: Math.hypot(b.x - hole.target.x, b.z - hole.target.z) }
+  return { done: b.done, x: b.x, z: b.z, t: b.t, hits: b.hits, posts: b.posts ?? 0, flew: b.flew, near, miss: Math.hypot(b.x - hole.target.x, b.z - hole.target.z) }
 }

@@ -262,8 +262,13 @@ function which(side: number, along: number): string {
   return [a, b].filter(Boolean).join(', ')
 }
 
-/** Where a miss ended, in words that say which way to adjust. */
+/** Where a miss ended, in words that say which way to adjust; and first, if it struck a post, that it did. */
 export function describe(s: Pick<GameState, 'ball' | 'hole' | 'closest' | 'landed'>): string {
+  const where = placeOf(s)
+  return s.ball.posts ? `off a post: ${where}` : where
+}
+
+function placeOf(s: Pick<GameState, 'ball' | 'hole' | 'closest' | 'landed'>): string {
   const b = s.ball
   const h = s.hole
   const lost = LOST_IN[h.lost]

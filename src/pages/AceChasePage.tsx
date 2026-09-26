@@ -1,5 +1,5 @@
 import { AceChaseGame } from '../games/acechase/AceChaseGame'
-import { TEST_HOLES } from '../games/acechase/longWay'
+import { TEST_HOLES } from '../games/acechase/trialHoles'
 import { useRoute } from '../hooks/useHashRoute'
 
 /**

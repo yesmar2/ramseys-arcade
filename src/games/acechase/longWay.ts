@@ -12,11 +12,14 @@
  * of into the rail; and the rails are ones a ball glides along. The pocket climbs, to stop a ball off
  * the rubber on the target.
  *
+ * Ramsey found it too long and too winding (2026-09-26): every shot plays out too differently to know
+ * how to adjust. The Short Way Round (./shortWay) meets it halfway.
+ *
  * It's laid with ./course, like a road. Imports only ./course and ./physics, so a script can run it
  * with plain Node.
  */
-import { course, profile, whereOn } from './course.ts'
-import { ROLL, dish, smooth, type HoleDef, type Spot } from './physics.ts'
+import { course, laid, profile } from './course.ts'
+import { smooth, type HoleDef } from './physics.ts'
 
 const line = course({ x: 0, z: 30 }, [
   { line: 18, name: 'the posts' },
@@ -43,87 +46,56 @@ const END = line.length
 const TEE = 1.5
 const PATCH = [4.5, 13.5] as const
 
-/** The lane: 1.6 m either side, wider round the posts, and wider down the pocket, for the target's rings. */
-const half = (s: number) =>
-  1.6 +
-  0.7 * smooth(PATCH[0] - 1.5, PATCH[0], s) * (1 - smooth(PATCH[1], BEND, s)) +
-  0.2 * smooth(CORNER + 2, CORNER + 4, s)
-
-/**
- * Down the hill at 9 in a hundred on the straights and 8.5 round the bends, just under the 9.8 a rolling
- * ball keeps its pace on, so it arrives at each bend at much the pace it was hit; level round the
- * corner; then up the pocket to a level top with the target on it and a dip behind: too soft stops on
- * the climb, too hard runs on past into the dip.
- */
-const rise = profile([
-  [0, 8.43],
-  [3, 8.43],
-  [BEND, 7.08],
-  [STRAIGHT, 6.28],
-  [HAIRPIN, 5.56],
-  [LONG, 4.09],
-  [LAST_BEND, 3.01],
-  [LAST, 1.54],
-  [CORNER - 2, 1],
-  [CORNER + 2, 1],
-  [CORNER + 7, 1.24],
-  [END - 1.4, 1.24],
-  [END, 1.12],
-])
-
-/** The pace each bend is banked for, in metres a second: a ball that makes the pocket comes round them at about these. */
-const PACES = [5, 4.9, 4.6]
-/** How far the lane leans across the bends at `s`: the slope that turns a ball at the bend's pace round it. */
-const EASE = 1.5
-const lean = (s: number) => line.curve(s, EASE, (i) => PACES[i]! ** 2) / (ROLL * 9.81)
-/** How deep the lane is hollowed across: a little down the straights, a bobsled run round the bends. */
-const hollow = (s: number, k: number) => {
-  const through = 0.08 + 0.42 * Math.abs(k) * 5.5
-  // Flat through the posts, so a ball's line through them is straight, and round the corner; a shallow
-  // trough down the pocket.
-  const flat = 1 - smooth(PATCH[1], PATCH[1] + 2, s)
-  const corner = smooth(CORNER - 3, CORNER - 1.7, s) * (1 - smooth(CORNER + 1.7, CORNER + 3, s))
-  const pocket = smooth(CORNER + 1.7, CORNER + 3, s)
-  return through * (1 - flat) * (1 - corner) * (1 - pocket) + 0.05 * pocket
-}
-
-const spot = (s: number, d = 0): Spot => {
-  const p = line.at(s)
-  return { x: p.x + Math.cos(p.phi) * d, z: p.z + Math.sin(p.phi) * d }
-}
-
-// The rubber: a mirror right across the corner, turning every ball that comes down the last straight into the pocket.
-const corner = line.cornerBank(0, half(CORNER), 2 * half(CORNER))
-
-export const LONG_WAY_ROUND: HoleDef = {
+export const LONG_WAY_ROUND: HoleDef = laid(line, {
   name: 'The Long Way Round',
   note: 'Through the posts, then down the hill the long way: round the bend and the hairpin, down the long straight, round the last bend, and off the rubber into the pocket.',
-  green: line.outline(half, { tee: 1.2, far: 0.5 }),
-  tee: spot(TEE),
-  height: (x, z, t) => {
-    const { s, d } = line.local(x, z)
-    const k = line.curve(s, EASE)
-    return rise(s) - lean(s) * d + hollow(s, k) * d * d - dish(x, z, t)
+  tee: TEE,
+  // 1.6 m either side, wider round the posts, and wider down the pocket, for the target's rings.
+  half: (s) =>
+    1.6 + 0.7 * smooth(PATCH[0] - 1.5, PATCH[0], s) * (1 - smooth(PATCH[1], BEND, s)) + 0.2 * smooth(CORNER + 2, CORNER + 4, s),
+  // Down the hill at 9 in a hundred on the straights and 8.5 round the bends, just under the 9.8 a
+  // rolling ball keeps its pace on; level round the corner; then up the pocket to a level top with the
+  // target on it and a dip behind: too soft stops on the climb, too hard runs on past into the dip.
+  rise: profile([
+    [0, 8.43],
+    [3, 8.43],
+    [BEND, 7.08],
+    [STRAIGHT, 6.28],
+    [HAIRPIN, 5.56],
+    [LONG, 4.09],
+    [LAST_BEND, 3.01],
+    [LAST, 1.54],
+    [CORNER - 2, 1],
+    [CORNER + 2, 1],
+    [CORNER + 7, 1.24],
+    [END - 1.4, 1.24],
+    [END, 1.12],
+  ]),
+  // The pace a ball that makes the pocket comes round each bend at.
+  paces: [5, 4.9, 4.6],
+  // A little down the straights, a bobsled run round the bends; flat through the posts, so a ball's line
+  // through them is straight, and round the corner; a shallow trough down the pocket.
+  hollow: (s, k) => {
+    const through = 0.08 + 0.42 * Math.abs(k) * 5.5
+    const flat = 1 - smooth(PATCH[1], PATCH[1] + 2, s)
+    const corner = smooth(CORNER - 3, CORNER - 1.7, s) * (1 - smooth(CORNER + 1.7, CORNER + 3, s))
+    const pocket = smooth(CORNER + 1.7, CORNER + 3, s)
+    return through * (1 - flat) * (1 - corner) * (1 - pocket) + 0.05 * pocket
   },
-  spots: [spot(CORNER + 8.2)],
-  soft: (x, z) => line.local(x, z).s > END - 0.8,
-  walls: [{ ax: corner.a[0], az: corner.a[1], bx: corner.b[0], bz: corner.b[1], e: 0.95, rubber: true }],
-  // The posts, in rows of one, two and three: straight at the first is no good, and too wide meets the
-  // second; between the two, 2.4° to 4.7° either way, there's a line either side of the middle.
-  bumpers: (
-    [
-      [TEE + 6, 0],
-      [TEE + 8.5, -0.95],
-      [TEE + 8.5, 0.95],
-      [TEE + 11, -1.9],
-      [TEE + 11, 0],
-      [TEE + 11, 1.9],
-    ] as const
-  ).map(([s, d]) => ({ ...spot(s, d), r: 0.15, e: 0.5 })),
-  laid: true,
-  path: line.path(rise, 1.5),
-  where: whereOn(line),
-}
-
-/** Holes to try out before they go in a round: /games/acechase/play?hole=<key>. */
-export const TEST_HOLES: Record<string, HoleDef> = { long: LONG_WAY_ROUND }
+  ease: 1.5,
+  spots: [{ s: CORNER + 8.2 }],
+  cushion: END - 0.8,
+  // Rows of one, two and three: straight at the first is no good, and too wide meets the second; between
+  // the two, 2.4° to 4.7° either way, there's a line either side of the middle.
+  posts: [
+    { s: TEE + 6, d: 0 },
+    { s: TEE + 8.5, d: -0.95 },
+    { s: TEE + 8.5, d: 0.95 },
+    { s: TEE + 11, d: -1.9 },
+    { s: TEE + 11, d: 0 },
+    { s: TEE + 11, d: 1.9 },
+  ],
+  // A mirror right across the corner, turning every ball that comes down the last straight into the pocket.
+  rubbers: [{ corner: 0, e: 0.95 }],
+  ends: { tee: 1.2, far: 0.5 },
+})
