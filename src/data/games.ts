@@ -66,7 +66,6 @@ export const games: Game[] = [
     description: 'Spin, thrust, clear the rocks. Chain hits for more.',
     accent: PALETTE.indigo,
     playable: true,
-    onDeck: true,
   },
   {
     name: 'Patriot',
@@ -75,7 +74,6 @@ export const games: Game[] = [
     description: 'Defend the cities. Aim. Fire. Survive the wave.',
     accent: PALETTE.red,
     playable: true,
-    onDeck: true,
   },
   {
     name: 'Snake',
@@ -108,7 +106,6 @@ export const games: Game[] = [
     description: 'Balance each plate on a pin. Find its true center, or watch it tip.',
     accent: PALETTE.sky,
     playable: true,
-    onDeck: true,
   },
   {
     name: 'Pop',
@@ -169,7 +166,6 @@ export const games: Game[] = [
     description: 'Pellets with no way out. Climb forever. Don’t settle in.',
     accent: PALETTE.green,
     playable: true,
-    onDeck: true,
   },
   {
     name: 'Bop',
@@ -179,7 +175,6 @@ export const games: Game[] = [
     accent: PALETTE.pink,
     playable: true,
     inDevelopment: true,
-    onDeck: true,
   },
   {
     name: 'Putt',
@@ -214,7 +209,6 @@ export const games: Game[] = [
     accent: PALETTE.teal,
     playable: true,
     inDevelopment: true,
-    onDeck: true,
   },
 ]
 
