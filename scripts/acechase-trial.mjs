@@ -2,12 +2,13 @@
 //
 //   node scripts/acechase-trial.mjs short map [a0 a1 da p0 p1 dp]   where shots end, power down, angle across
 //   node scripts/acechase-trial.mjs short line <angle> [p0 p1 dp]    one angle up a run of powers, in detail
-//   node scripts/acechase-trial.mjs short check                      the bullseye windows, as the spot checker finds them
-//   node scripts/acechase-trial.mjs short learn                      how many tries a player following the misses takes
+//   node scripts/acechase-trial.mjs short check [p0 p1 a0 a1]        the bullseye windows at each target spot
+//   node scripts/acechase-trial.mjs short learn [angle]              tries for a player following the misses, from about `angle`
 //
 // Any of the round's holes works too, as round:0, round:1 or round:2 (at each of its spots), to compare.
 //
 // The map marks each shot by how far along the hole it stopped, in tens of metres (0 to 9, + past 100),
+// or on a hole with no line (an open green), how far from the target, in metres (+ for 10 or more);
 // @ for a bullseye, o for the rings and x for lost. A hole a player can learn has broad blocks that climb
 // as the power goes up; speckle means a shot is decided by some small touch on the way, which no amount
 // of following the misses will find. `line` shows what touched the ball, where, and how hard.
@@ -35,8 +36,8 @@ const num = (i, fallback) => (rest[i] === undefined ? fallback : Number(rest[i])
 function missOf(h, r) {
   const at = where(r.x, r.z)
   const goal = where(h.target.x, h.target.z)
-  // Off a post (the miss says so): the angle's what needs changing.
-  const blocked = r.posts > 0
+  // Off a post or a named wall (the miss says so): the angle's what needs changing.
+  const blocked = r.posts > 0 || Boolean(r.struck)
   return { along: at.s - goal.s, side: at.d - goal.d, blocked }
 }
 
@@ -45,6 +46,8 @@ function learn(h, p, a, cap = 30) {
   const step = (v, q) => Math.round(v / q) * q
   let last = null
   let aroundPosts = 0
+  /** The last dials that got past whatever blocked the way. */
+  let clear = null
   // Round the posts as a person would: a little either side, then further out.
   const turns = [1.5, -1.5, 3, -3, 4.5, -4.5, 6, -6, 2, -2, 4, -4]
   for (let tries = 1; tries <= cap; tries++) {
@@ -52,10 +55,13 @@ function learn(h, p, a, cap = 30) {
     if (r.done === 'bull') return tries
     const m = missOf(h, r)
     if (m.blocked) {
-      a = turns[aroundPosts++ % turns.length]
+      // Back towards the last angle that got through, or else round the posts either side.
+      a = clear ? step((a + clear.a) / 2, 0.1) : turns[aroundPosts++ % turns.length]
+      if (clear && Math.abs(a - clear.a) < 0.15) a = clear.a
       last = null
       continue
     }
+    clear = { p, a }
     // Each dial by the metres its miss says, at what its last change was worth: a metre a unit of power,
     // and half a metre the wrong way a degree, to begin with, until the ball says otherwise.
     let perPower = 1
@@ -88,8 +94,9 @@ if (mode === 'map') {
     for (let a = a0; a <= a1 + 1e-9; a += da) {
       const r = physics.simulate(hole, p, a)
       if (r.done === 'bull') bulls++
-      const tens = Math.floor(where(r.x, r.z).s / 10)
-      row += r.done === 'bull' ? '@' : r.miss < physics.RINGS[2] ? 'o' : r.done === 'splash' || r.done === 'out' ? 'x' : tens > 9 ? '+' : String(Math.max(0, tens))
+      // Along a laid hole, tens of metres; on an open green, metres from the target.
+      const mark = def.where ? Math.floor(where(r.x, r.z).s / 10) : Math.floor(r.miss)
+      row += r.done === 'bull' ? '@' : r.miss < physics.RINGS[2] ? 'o' : r.done === 'splash' || r.done === 'out' ? 'x' : mark > 9 ? '+' : String(Math.max(0, mark))
     }
     console.log(row)
   }
@@ -114,19 +121,25 @@ if (mode === 'map') {
     )
   }
 } else if (mode === 'check') {
-  const t0 = Date.now()
-  const r = windowsFor(physics.simulate, hole, { power: [num(0, 30), num(1, 80)], angles: [num(2, -12), num(3, 12)], coarse: { power: 1, angle: 0.3 } })
-  console.log(JSON.stringify({ cells: r.cells, windows: r.windows, secs: Math.round((Date.now() - t0) / 1000) }, null, 1))
+  for (const h of holes) {
+    const t0 = Date.now()
+    const r = windowsFor(physics.simulate, h, { power: [num(0, 30), num(1, 80)], angles: [num(2, -12), num(3, 12)], coarse: { power: 1, angle: 0.3 } })
+    const w = r.windows[0]
+    const best = w ? `best ${w.cells} (power ${w.p0}–${w.p1}, ${w.a0}° to ${w.a1}°)` : 'no window'
+    console.log(`target (${h.target.x}, ${h.target.z}): ${r.cells} bullseye settings, ${best}; next ${r.windows.slice(1).map((x) => x.cells).join(', ') || 'none'}  ${Math.round((Date.now() - t0) / 1000)}s`)
+  }
 } else if (mode === 'learn') {
+  // From the opening power, and about the angle a player would first try (0, unless the hole says bank left).
+  const aim = num(0, 0)
   const starts = [
-    [60, 0],
-    [40, 0],
-    [80, 0],
-    [60, 4],
-    [60, -4],
-    [50, 2],
-    [70, -2],
-    [45, 6],
+    [60, aim],
+    [40, aim],
+    [80, aim],
+    [60, aim + 4],
+    [60, aim - 4],
+    [50, aim + 2],
+    [70, aim - 2],
+    [45, aim + 6],
   ]
   const all = []
   for (const h of holes) {

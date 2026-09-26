@@ -109,6 +109,9 @@ export type GameState = {
   bulls: number
 }
 
+/** A target for a hole, from the spots it offers. */
+const pickOne = (def: HoleDef, random: () => number) => def.spots[Math.floor(random() * def.spots.length)] ?? def.spots[0]!
+
 /** A target for each hole, from the spots it offers. */
 export function pickSpots(random: () => number = Math.random): Spot[] {
   return HOLE_DEFS.map((def) => def.spots[Math.floor(random() * def.spots.length)] ?? def.spots[0]!)
@@ -144,7 +147,7 @@ function atHole(state: GameState, index: number): GameState {
 /** A round waiting at its start card: the three holes, or with `one`, that hole alone (today's, or one on trial). */
 export function createInitialState(random: () => number = Math.random, one?: HoleDef, mode: Mode = one ? 'daily' : 'round'): GameState {
   const defs = one ? [one] : HOLE_DEFS
-  const spots = one ? [one.spots[0]!] : pickSpots(random)
+  const spots = one ? [mode === 'test' ? pickOne(one, random) : one.spots[0]!] : pickSpots(random)
   const hole = makeHole(defs[0]!, spots[0]!)
   return {
     mode,
@@ -179,11 +182,12 @@ export function createInitialState(random: () => number = Math.random, one?: Hol
 export type Resume = { tries: number; shots: readonly Shot[]; ghosts: readonly (readonly PathPoint[])[]; power: number; angle: number }
 
 /**
- * A new round: fresh targets, the first hole, and its flyover. Today's Hole keeps its one target, and
- * carries on from `resume`: the tries already spent, the log and the last paths, and the dials as left.
+ * A new round: fresh targets, the first hole, and its flyover. A hole on trial picks a fresh target too;
+ * Today's Hole keeps its one target, and carries on from `resume`: the tries already spent, the log and
+ * the last paths, and the dials as left.
  */
 export function startGame(state: GameState, random: () => number = Math.random, resume?: Resume | null, practice = false): GameState {
-  const spots = state.mode === 'round' ? pickSpots(random) : state.spots
+  const spots = state.mode === 'round' ? pickSpots(random) : state.mode === 'test' ? [pickOne(state.defs[0]!, random)] : state.spots
   const fresh = atHole({ ...state, spots, results: [], score: 0, power: START_POWER, angle: START_ANGLE, practice }, 0)
   const carried = resume && !practice ? { tries: resume.tries, shots: resume.shots, ghosts: resume.ghosts, power: resume.power, angle: resume.angle } : {}
   return { ...fresh, ...carried, phase: 'intro', phaseTime: 0 }
@@ -262,10 +266,15 @@ function which(side: number, along: number): string {
   return [a, b].filter(Boolean).join(', ')
 }
 
-/** Where a miss ended, in words that say which way to adjust; and first, if it struck a post, that it did. */
+/**
+ * Where a miss ended, in words that say which way to adjust; and first, if it struck a post or a named
+ * wall, that it did, since then it's the angle to change rather than the power.
+ */
 export function describe(s: Pick<GameState, 'ball' | 'hole' | 'closest' | 'landed'>): string {
   const where = placeOf(s)
-  return s.ball.posts ? `off a post: ${where}` : where
+  if (s.ball.posts) return `off a post: ${where}`
+  if (s.ball.struck) return `off ${s.ball.struck}: ${where}`
+  return where
 }
 
 function placeOf(s: Pick<GameState, 'ball' | 'hole' | 'closest' | 'landed'>): string {

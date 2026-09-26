@@ -62,6 +62,8 @@ export type Wall = {
   edge?: boolean
   rubber?: boolean
   soft?: boolean
+  /** A wall with a name ("the wall") is named in the misses when a ball strikes it: "off the wall". */
+  name?: string
   x0: number
   x1: number
   z0: number
@@ -87,6 +89,8 @@ export type HoleDef = {
   water?: number
   /** Which rails round the edge are cushions, by where their middle is. */
   soft?: (x: number, z: number) => boolean
+  /** Which rails round the edge are rubber, by where their middle is, and how springy (see Wall.e). */
+  rubber?: (x: number, z: number) => number | undefined
   /** Rails standing on the green, as well as the ones round its edge. */
   walls?: readonly WallDef[]
   bumpers?: readonly Bumper[]
@@ -147,6 +151,8 @@ export type Ball = {
   still?: number
   /** Posts it has struck hard: counted for the misses ("off a post"), not played with. */
   posts?: number
+  /** The last named wall it struck hard, for the misses. */
+  struck?: string
 }
 
 export const gauss = (x: number, z: number, x0: number, z0: number, s: number) =>
@@ -356,8 +362,18 @@ function railsFor(def: HoleDef): Wall[] {
   for (let i = 0; i < g.length; i++) {
     const a = g[i]!
     const b = g[(i + 1) % g.length]!
-    const soft = def.soft?.((a[0] + b[0]) / 2, (a[1] + b[1]) / 2)
-    defs.push({ ax: a[0], az: a[1], bx: b[0], bz: b[1], edge: true, ...(soft ? { soft: true, e: SOFT_E } : {}) })
+    const mx = (a[0] + b[0]) / 2
+    const mz = (a[1] + b[1]) / 2
+    const soft = def.soft?.(mx, mz)
+    const rubber = soft ? undefined : def.rubber?.(mx, mz)
+    defs.push({
+      ax: a[0],
+      az: a[1],
+      bx: b[0],
+      bz: b[1],
+      edge: true,
+      ...(soft ? { soft: true, e: SOFT_E } : rubber !== undefined ? { rubber: true, e: rubber } : {}),
+    })
   }
   const reach = BALL_R + WALL_T + 0.02
   return defs.map((w) => ({
@@ -575,7 +591,10 @@ export function step(hole: Hole, b: Ball): Ball {
         b.vx *= 0.97
         b.vz *= 0.97
       }
-      if (-vn > 0.3) b.hits++
+      if (-vn > 0.3) {
+        b.hits++
+        if (w.name) b.struck = w.name
+      }
     }
   }
   for (const k of hole.bumpers) {
@@ -625,5 +644,5 @@ export function simulate(hole: Hole, power: number, angle: number) {
     const dc = Math.hypot(b.x - hole.target.x, b.z - hole.target.z)
     if (!b.air && dc < near) near = dc
   }
-  return { done: b.done, x: b.x, z: b.z, t: b.t, hits: b.hits, posts: b.posts ?? 0, flew: b.flew, near, miss: Math.hypot(b.x - hole.target.x, b.z - hole.target.z) }
+  return { done: b.done, x: b.x, z: b.z, t: b.t, hits: b.hits, posts: b.posts ?? 0, struck: b.struck, flew: b.flew, near, miss: Math.hypot(b.x - hole.target.x, b.z - hole.target.z) }
 }
