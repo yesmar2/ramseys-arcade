@@ -64,6 +64,15 @@ const VIEWS: readonly [View, string][] = [
   ['top', 'Above'],
 ]
 const touchScreen = () => typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches
+/** Whether the slopes show while aiming: the player's choice, kept on the device. */
+const SLOPES_KEY = 'skermix-acechase-slopes'
+const slopesChosen = () => {
+  try {
+    return localStorage.getItem(SLOPES_KEY) === '1'
+  } catch {
+    return false
+  }
+}
 
 const signed = (v: number) => (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v).toFixed(1)
 const readNumber = (s: string) => parseFloat(s.replace('−', '-').replace('+', ''))
@@ -245,6 +254,7 @@ export function AceChaseGame({ daily = false, test }: { daily?: boolean; test?: 
   const dockRef = useRef<HTMLDivElement>(null)
   const [ui, setUi] = useState<Snapshot>(() => toSnapshot(stateRef.current!))
   const [view, setView] = useState<View | null>('tee')
+  const [slopes, setSlopes] = useState(slopesChosen)
   const [noGl, setNoGl] = useState(false)
   const [hint, setHint] = useState(false)
   const [saveOpen, setSaveOpen] = useState(false)
@@ -267,7 +277,10 @@ export function AceChaseGame({ daily = false, test }: { daily?: boolean; test?: 
     // A canvas of the scene's own: when it goes, its GL context goes with it, and a remount starts clean.
     const canvas = document.createElement('canvas')
     canvas.className = 'acechase__viewport'
-    canvas.setAttribute('aria-label', 'The hole, in 3D. Drag to look around; right-drag or two fingers to move; scroll or pinch to zoom.')
+    canvas.setAttribute(
+      'aria-label',
+      'The hole, in 3D. Drag to look around; right-drag or two fingers to move; scroll or pinch to zoom; double-tap or double-click a spot to look closer.',
+    )
     holder.append(canvas)
     let scene: AceScene
     try {
@@ -334,6 +347,10 @@ export function AceChaseGame({ daily = false, test }: { daily?: boolean; test?: 
       sceneRef.current = null
     }
   }, [])
+
+  useEffect(() => {
+    if (sceneRef.current) sceneRef.current.showSlopes = slopes
+  }, [slopes])
 
   useEffect(() => {
     if (ui.phase === 'menu') previousBestRef.current = apiBest
@@ -461,6 +478,15 @@ export function AceChaseGame({ daily = false, test }: { daily?: boolean; test?: 
     sceneRef.current?.setView(v)
     setView(v)
   }
+  const toggleSlopes = () => {
+    const next = !slopes
+    setSlopes(next)
+    try {
+      localStorage.setItem(SLOPES_KEY, next ? '1' : '0')
+    } catch {
+      /* kept for this visit only */
+    }
+  }
 
   /** Today's Hole is done: only its card's buttons play it again, a stray tap doesn't. */
   const dailyDone = () => Boolean(today && dayProgress(today.day)?.solved)
@@ -557,6 +583,15 @@ export function AceChaseGame({ daily = false, test }: { daily?: boolean; test?: 
                         {label}
                       </button>
                     ))}
+                    <span className="acechase__views-gap" aria-hidden="true" />
+                    <button
+                      type="button"
+                      aria-pressed={slopes}
+                      title="Show which way the green runs: dots flow downhill, faster where it's steeper"
+                      onClick={toggleSlopes}
+                    >
+                      Slopes
+                    </button>
                   </div>
                 </div>
                 {ui.tries === 0 ? <p className="acechase__note">{ui.holeNote}</p> : null}
@@ -609,7 +644,9 @@ export function AceChaseGame({ daily = false, test }: { daily?: boolean; test?: 
               </div>
             ) : hint && ui.phase === 'aim' ? (
               <div className="acechase__toast acechase__toast--hint" role="status">
-                {touch ? 'Drag to look around · pinch to zoom · two fingers to move' : 'Drag to look around · scroll to zoom · right-drag to move'}
+                {touch
+                  ? 'Drag to look around · pinch to zoom · two fingers to move · double-tap a spot to look closer'
+                  : 'Drag to look around · scroll to zoom · right-drag to move · double-click a spot to look closer'}
               </div>
             ) : null}
 

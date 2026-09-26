@@ -220,6 +220,12 @@ const TREES = 150
 const MENU_OUT = 0.62
 const MENU_UP = 0.72
 const DOTS = 30
+/** The arrows that show the slopes: at most this many, on ground at least this steep (rise per metre), running
+ * downhill at this many metres a second per unit of slope, and never faster than the last. */
+const FLOW = 600
+const SLOPE_SEEN = 0.008
+const FLOW_PACE = 9
+const FLOW_TOP = 1.4
 
 /** A plain seeded generator, so the trees stand in the same places every time a hole is laid. */
 function seeded(seed: number) {
@@ -251,7 +257,7 @@ export class AceScene {
   private readonly sun: THREE.DirectionalLight
   private readonly sunDir = new THREE.Vector3(0, 1, 0)
   private readonly textures: THREE.Texture[] = []
-  private readonly tex: Record<'felt' | 'meadow' | 'wood' | 'soil' | 'pad' | 'ripple' | 'ball' | 'dimple' | 'beam', THREE.CanvasTexture>
+  private readonly tex: Record<'felt' | 'meadow' | 'wood' | 'soil' | 'pad' | 'ripple' | 'ball' | 'dimple' | 'beam' | 'spot', THREE.CanvasTexture>
   private readonly meadow: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshStandardMaterial>
   private readonly hills = new THREE.Group()
   private readonly hillMats: THREE.MeshStandardMaterial[] = []
@@ -288,6 +294,15 @@ export class AceScene {
 
   /** The set view showing, or null once the camera has been moved by hand. */
   view: View | null = 'tee'
+  /** Whether the green's slopes show while aiming, as dots running downhill (the game's Slopes button). */
+  showSlopes = false
+  private flow: {
+    marks: THREE.InstancedMesh<THREE.ShapeGeometry, THREE.MeshBasicMaterial>
+    x: Float32Array
+    z: Float32Array
+    age: Float32Array
+    life: Float32Array
+  } | null = null
   /** Called when a drag, pinch or scroll takes the camera off a set view. */
   onUserMove: (() => void) | null = null
   private readonly glide = {
@@ -340,6 +355,28 @@ export class AceScene {
       this.onUserMove?.()
     })
     this.controls = controls
+    // A double tap (or double click) on the green takes the camera in to look round that spot.
+    let down: { x: number; y: number; t: number } | null = null
+    let tap: { x: number; y: number; t: number } | null = null
+    const { signal } = this.listening
+    canvas.addEventListener('pointerdown', (e) => (down = e.isPrimary ? { x: e.clientX, y: e.clientY, t: performance.now() } : null), { signal })
+    canvas.addEventListener(
+      'pointerup',
+      (e) => {
+        const t = performance.now()
+        const d = down
+        down = null
+        if (!e.isPrimary || !d || t - d.t > 300 || Math.hypot(e.clientX - d.x, e.clientY - d.y) > 10) {
+          tap = null
+          return
+        }
+        if (tap && t - tap.t < 380 && Math.hypot(e.clientX - tap.x, e.clientY - tap.y) < 32) {
+          tap = null
+          this.lookRound(e.clientX, e.clientY, canvas)
+        } else tap = { x: e.clientX, y: e.clientY, t }
+      },
+      { signal },
+    )
 
     this.sky = new THREE.Mesh(
       new THREE.SphereGeometry(300, 32, 16),
@@ -451,6 +488,7 @@ export class AceScene {
   }
 
   private readonly onTheme = () => this.applyLook()
+  private readonly listening = new AbortController()
 
   // ---------- textures, drawn here ----------
 
@@ -596,7 +634,16 @@ export class AceScene {
       },
       false,
     )
-    return { felt, meadow, wood, soil, pad, ripple, ball, dimple, beam }
+    // A soft round spot, for the dots that show the slopes.
+    const spot = this.paint(64, 64, (g, w, h) => {
+      const grad = g.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w / 2)
+      grad.addColorStop(0, 'rgba(255,255,255,1)')
+      grad.addColorStop(0.45, 'rgba(255,255,255,0.9)')
+      grad.addColorStop(1, 'rgba(255,255,255,0)')
+      g.fillStyle = grad
+      g.fillRect(0, 0, w, h)
+    })
+    return { felt, meadow, wood, soil, pad, ripple, ball, dimple, beam, spot }
   }
 
   /** The Earth from the Moon: blue sea, a little land, white cloud, lit from one side. */
@@ -1296,7 +1343,149 @@ export class AceScene {
 
     this.scene.add(course)
     this.course = course
+    this.buildFlow(h, course)
     this.applyLook()
+  }
+
+  // ---------- the slopes, drawn as arrows running downhill ----------
+
+  private buildFlow(h: Hole, course: THREE.Group) {
+    const b = this.bounds
+    const n = Math.round(Math.min(FLOW, Math.max(150, (b.x1 - b.x0) * (b.z1 - b.z0))))
+    // A chevron lying on the green, pointing the way it runs downhill (−z, till it's turned).
+    const w = 0.16
+    const l = 0.13
+    const t = 0.07
+    const shape = new THREE.Shape([
+      new THREE.Vector2(0, 0),
+      new THREE.Vector2(w, -l),
+      new THREE.Vector2(w, -l - t),
+      new THREE.Vector2(0, -t),
+      new THREE.Vector2(-w, -l - t),
+      new THREE.Vector2(-w, -l),
+    ])
+    const geo = new THREE.ShapeGeometry(shape)
+    geo.rotateX(-Math.PI / 2)
+    const marks = new THREE.InstancedMesh(
+      geo,
+      new THREE.MeshBasicMaterial({ color: h.style === 'ice' ? 0x1f3f66 : 0xffffff, transparent: true, opacity: 0.82, depthWrite: false }),
+      n,
+    )
+    marks.instanceMatrix.setUsage(THREE.DynamicDrawUsage)
+    marks.frustumCulled = false
+    marks.visible = false
+    marks.renderOrder = 1
+    course.add(marks)
+    this.flow = { marks, x: new Float32Array(n), z: new Float32Array(n), age: new Float32Array(n), life: new Float32Array(n) }
+    for (let i = 0; i < n; i++) this.spawnFlow(h, i, true)
+  }
+
+  /** Arrow `i` somewhere new on the green where it slopes; `midway` starts it part way through its life. */
+  private spawnFlow(h: Hole, i: number, midway = false) {
+    const f = this.flow!
+    const b = this.bounds
+    for (let tries = 0; tries < 24; tries++) {
+      const x = b.x0 + Math.random() * (b.x1 - b.x0)
+      const z = b.z0 + Math.random() * (b.z1 - b.z0)
+      if (!onGreen(h, x, z)) continue
+      const [gx, gz] = slope(h, x, z)
+      if (Math.hypot(gx, gz) < SLOPE_SEEN) continue
+      f.x[i] = x
+      f.z[i] = z
+      f.life[i] = 1.8 + Math.random() * 1.8
+      f.age[i] = midway ? Math.random() * f.life[i]! : 0
+      return
+    }
+    // Nowhere sloping found this time: it sits out a moment and tries again.
+    f.x[i] = NaN
+    f.life[i] = 0.4
+    f.age[i] = 0
+  }
+
+  /**
+   * On with the arrows, while aiming with the slopes shown: each points and drifts the way the ground falls,
+   * faster and bigger where it's steeper, and grows in and shrinks away as it goes.
+   */
+  private drawFlow(state: GameState, dt: number) {
+    const f = this.flow
+    if (!f) return
+    const show = this.showSlopes && state.phase === 'aim'
+    f.marks.visible = show
+    if (!show) return
+    const h = state.hole
+    const step = Math.min(dt, 0.05)
+    const m = this.m4
+    const q = this.spin
+    for (let i = 0; i < f.x.length; i++) {
+      f.age[i]! += step
+      if (f.age[i]! > f.life[i]!) this.spawnFlow(h, i)
+      let x = f.x[i]!
+      let z = f.z[i]!
+      const [gx, gz] = Number.isNaN(x) ? [0, 0] : slope(h, x, z)
+      const s = Math.hypot(gx, gz)
+      if (s > 1e-4) {
+        const v = (Math.min(FLOW_TOP, s * FLOW_PACE) * step) / s
+        x -= gx * v
+        z -= gz * v
+      }
+      if (Number.isNaN(x) || s <= 1e-4 || !onGreen(h, x, z)) {
+        if (!Number.isNaN(x)) f.age[i] = f.life[i]!
+        m.makeScale(0, 0, 0)
+        f.marks.setMatrixAt(i, m)
+        continue
+      }
+      f.x[i] = x
+      f.z[i] = z
+      const k = f.age[i]! / f.life[i]!
+      const size = Math.min(1, k * 4, (1 - k) * 3) * (0.7 + 0.3 * Math.min(1, s / 0.06))
+      q.setFromAxisAngle(this.up, Math.atan2(gx, gz))
+      m.compose(this.tmp.set(x, h.height(x, z) + 0.035, z), q, this.tmp2.set(size, size, size))
+      f.marks.setMatrixAt(i, m)
+    }
+    f.marks.instanceMatrix.needsUpdate = true
+  }
+
+  /** Glide in to look round the spot of green under the screen point (x, y), from the way the camera looks now. */
+  private lookRound(clientX: number, clientY: number, canvas: HTMLCanvasElement) {
+    const h = this.hole
+    if (!h || !this.controls.enabled) return
+    const r = canvas.getBoundingClientRect()
+    const ray = new THREE.Raycaster()
+    ray.setFromCamera(new THREE.Vector2(((clientX - r.left) / r.width) * 2 - 1, -((clientY - r.top) / r.height) * 2 + 1), this.camera)
+    const at = (t: number) => ray.ray.origin.clone().addScaledVector(ray.ray.direction, t)
+    const under = (p: THREE.Vector3) => onGreen(h, p.x, p.z) && p.y <= h.height(p.x, p.z)
+    // Down the ray to the first point on the green, then close in on it.
+    let lo = 0
+    let hi = -1
+    for (let t = 0.2; t < 160; t += 0.1) {
+      if (under(at(t))) {
+        hi = t
+        break
+      }
+      lo = t
+    }
+    if (hi < 0) return
+    for (let i = 0; i < 20; i++) {
+      const mid = (lo + hi) / 2
+      if (under(at(mid))) hi = mid
+      else lo = mid
+    }
+    const spot = at(hi)
+    spot.y = h.height(spot.x, spot.z)
+    const back = this.camera.position.clone().sub(this.controls.target)
+    const dist = Math.min(7, Math.max(3.5, back.length()))
+    const g = this.glide
+    g.from.copy(this.camera.position)
+    g.fromT.copy(this.controls.target)
+    g.toT.copy(spot)
+    g.to.copy(spot).addScaledVector(back.normalize(), dist)
+    g.k = this.still ? 1 : 0
+    if (g.k === 1) {
+      this.camera.position.copy(g.to)
+      this.controls.target.copy(g.toT)
+    }
+    this.view = null
+    this.onUserMove?.()
   }
 
   // ---------- ghosts: the last few tries' paths ----------
@@ -1576,6 +1765,7 @@ export class AceScene {
       this.tex.ripple.offset.y = now * 0.013
     }
     this.drawAim(state)
+    this.drawFlow(state, dt)
 
     switch (state.phase) {
       case 'menu': {
@@ -1655,6 +1845,7 @@ export class AceScene {
 
   dispose() {
     this.themeWatch.disconnect()
+    this.listening.abort()
     window.removeEventListener(THEME_EVENT, this.onTheme)
     this.controls.dispose()
     this.disposeObject(this.scene)

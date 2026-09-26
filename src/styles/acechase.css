@@ -161,6 +161,14 @@
   cursor: default;
 }
 
+/* Between the set views and the Slopes switch. */
+.acechase__views-gap {
+  flex: none;
+  width: 1px;
+  margin: 0.45rem 0.15rem;
+  background: rgba(var(--ink-rgb), 0.18);
+}
+
 .acechase__note {
   margin: 0;
   max-width: 44ch;

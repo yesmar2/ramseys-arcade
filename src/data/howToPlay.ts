@@ -261,6 +261,7 @@ export const HOW_TO_PLAY: Record<string, HowToPlay> = {
       { does: 'Set the shot', touch: 'Tap − and +, or type', keys: '↑ ↓ power · ← → angle' },
       { does: 'Putt', touch: 'Tap Putt', keys: 'Space' },
       { does: 'Look around', touch: 'Drag · pinch · two fingers', keys: 'Drag · scroll · right-drag' },
+      { does: 'Read the green', touch: 'Double-tap a spot · Slopes', keys: 'Double-click a spot · Slopes' },
     ],
     scores: [{ what: 'Each hole', pts: '1000 ÷ tries', sub: 'first try 1000 · two 500 · five 200' }],
     ends: 'After three holes.',
