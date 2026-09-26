@@ -66,6 +66,8 @@ const PALETTES: Record<Style, Palette> = {
 }
 
 const GOLD = 0xf5b942
+/** A rock's grey, as the scene draws its boulders. */
+const STONE = 0x9a9d96
 
 const css = (hex: number, alpha = 1) =>
   `rgba(${(hex >> 16) & 255}, ${(hex >> 8) & 255}, ${hex & 255}, ${alpha})`
@@ -334,9 +336,11 @@ export function drawHolePlan(canvas: HTMLCanvasElement, def: HoleDef, spot: Spot
   const g = def.green
   const rails: Rail[] = g.map((a, i) => {
     const b = g[(i + 1) % g.length]!
-    return def.soft?.((a[0] + b[0]) / 2, (a[1] + b[1]) / 2)
-      ? { a, b, body: css(pal.cushion), cap: css(pal.cushion), wide: 0.34 }
-      : { a, b, body: css(pal.rail), cap: css(pal.cap), wide: 0.24 }
+    const mx = (a[0] + b[0]) / 2
+    const mz = (a[1] + b[1]) / 2
+    if (def.soft?.(mx, mz)) return { a, b, body: css(pal.cushion), cap: css(pal.cushion), wide: 0.34 }
+    if (def.rubber?.(mx, mz) !== undefined) return { a, b, body: css(pal.rubber), cap: css(GOLD), wide: 0.24 }
+    return { a, b, body: css(pal.rail), cap: css(pal.cap), wide: 0.24 }
   })
   for (const w of def.walls ?? []) {
     rails.push({
@@ -354,7 +358,8 @@ export function drawHolePlan(canvas: HTMLCanvasElement, def: HoleDef, spot: Spot
     ctx.beginPath()
     ctx.arc(px + view.s * 0.08, py + view.s * 0.1, p.r * view.s, 0, Math.PI * 2)
     ctx.fill()
-    ctx.fillStyle = css(pal.rubber)
+    // A post is black rubber; a rock, grey stone.
+    ctx.fillStyle = css(p.rock ? STONE : pal.rubber)
     ctx.beginPath()
     ctx.arc(px, py, p.r * view.s, 0, Math.PI * 2)
     ctx.fill()

@@ -1,4 +1,4 @@
-import { dailyHoleDef, dailyNumber, plannedPick, type DailyPick } from '../games/acechase/daily'
+import { dailyHoleDef, dailyNumber, plannedStyle, type DailyPick } from '../games/acechase/daily'
 import { DAILY_PLAN } from '../games/acechase/dailyPlan'
 import type { PathPoint, Shot, ShotEnd } from '../games/acechase/game'
 import type { HoleDef, Style } from '../games/acechase/physics'
@@ -45,7 +45,7 @@ export type TodaysHole = { day: string; n: number; pick: DailyPick; def: HoleDef
  */
 export function todaysHole(day = dailyDay()): TodaysHole {
   const n = Math.max(1, dailyNumber(day))
-  const pick = DAILY_PLAN[n - 1] ?? DAILY_PLAN[(n - 1) % DAILY_PLAN.length] ?? { ...plannedPick(n), k: 0 }
+  const pick = DAILY_PLAN[n - 1] ?? DAILY_PLAN[(n - 1) % DAILY_PLAN.length] ?? { style: plannedStyle(n), k: 0 }
   return { day, n, pick, def: dailyHoleDef(pick, day) }
 }
 

@@ -1,365 +1,218 @@
 /**
  * Ace Chase: Today's Hole. A new hole every day, the same for everyone, built from the date.
  *
- * A hole is one of six kinds (rollers, a leap, a switchback, a tilted lane, a summit, a lane of posts) in
- * one of three places, and the place changes how it plays as well as how it looks:
- * - a garden, on grass;
- * - an ice rink, where the ball slides more than twice as far and the target is a curling house;
- * - the Moon, where gravity is a sixth of the Earth's, so the ball floats off every crest.
- * Which kind and where comes from a weekly shuffle; the hole's measurements come from a generator seeded
- * with the date. Not every hole a generator makes is a good one, so each day's is checked before it goes
- * out (scripts/acechase-daily.mjs plays every power and angle, and keeps a hole only if it has a way in
- * a player can find by following the misses, and doesn't give it away), and the checked choice is kept
- * in dailyPlan.ts.
+ * Every day's hole is a big open green walled all round, in the spirit of Bumps and Banks (./bumpsBanks):
+ * a hill that bends a putt off whichever side it passes and smaller humps about it, a far end that leans
+ * so a putt breaks as it dies, rocks and a log in the way, and a stretch of wall that steps in at an angle
+ * as a rubber bank to play off. Where it all is, how big, and which way the far end leans come from a
+ * generator seeded with the date, and so does the place, which changes how it plays as well as how it
+ * looks:
+ * - a garden, a quick green;
+ * - an ice rink, where the ball slides further still and the target is a curling house;
+ * - the Moon, where a slope pulls a sixth as hard, so its ground is built steeper, and the ball floats off
+ *   every crest.
+ * Not every green the generator makes is a good one, so each day's is checked before it goes out
+ * (scripts/acechase-daily.mjs plays every power and angle, and keeps a green only if its target has a way
+ * in a player can find, and doesn't give it away), and the checked choice is kept in dailyPlan.ts.
  *
  * Imports only other files that import nothing, so the checker can run this with plain Node.
  */
 import { hashString, mulberry32 } from '../../lib/seededRandom.ts'
-import {
-  DISH_D,
-  DISH_S,
-  band,
-  gauss,
-  smooth,
-  type Bumper,
-  type HoleDef,
-  type Lost,
-  type Pt,
-  type Spot,
-  type Style,
-} from './physics.ts'
+import { gauss, rounded, smooth, type Bumper, type HoleDef, type Pt, type Spot, type Style, type WallDef } from './physics.ts'
 
-export type Family = 'rollers' | 'leap' | 'switchback' | 'tilt' | 'summit' | 'posts'
-export const FAMILIES: readonly Family[] = ['rollers', 'leap', 'switchback', 'tilt', 'summit', 'posts']
 export const STYLES: readonly Style[] = ['garden', 'ice', 'moon']
 
-/**
- * Kinds that don't work in a place. On the Moon a leap either sails past the landing or drops into the
- * crater, with hardly a setting between; on ice a switchback's rubber banks never let the ball settle.
- */
-const NOT_HERE: Record<Style, readonly Family[]> = { garden: [], ice: ['switchback'], moon: ['leap'] }
-
-/** The kinds a place has, in the order a day falls back through them. */
-export function kindsFor(style: Style): readonly Family[] {
-  return FAMILIES.filter((f) => !NOT_HERE[style].includes(f))
-}
-
-/** A day's hole: what kind, where, and which of the generator's tries at it. */
-export type DailyPick = { family: Family; style: Style; k: number }
+/** A day's hole: where, and which of the generator's tries at it. */
+export type DailyPick = { style: Style; k: number }
 
 /** The first day of Today's Hole: #1. */
 export const DAILY_EPOCH = '2026-09-25'
 
-/** How each place feels: its pull (m/s²) and its drag. On the Moon the ground is rough, to make up. */
+/**
+ * How each place feels: its pull (m/s²) and its drag. The garden is a quick green; on ice the ball slides
+ * further still; on the Moon the ground is rough, to make up for the little pull.
+ */
 export const FEEL: Record<Style, { gravity: number; friction: number }> = {
-  garden: { gravity: 9.81, friction: 0.07 },
-  ice: { gravity: 9.81, friction: 0.03 },
+  garden: { gravity: 9.81, friction: 0.055 },
+  ice: { gravity: 9.81, friction: 0.035 },
   moon: { gravity: 1.62, friction: 0.22 },
 }
 
 /**
- * The ground round a target, scaled for each place. The dish pulls a slow ball in only where its slope
- * beats the drag, so on ice (a third of the drag) it is shallower, or it would pull balls in from
- * metres away; and what keeps a ball in the trough is its depth against gravity, so on the Moon the
- * rise, the trough and the dish are all deeper: a crater.
+ * How the ground is shaped in each place: how tall its humps are against the garden's, how steeply its
+ * far end leans, and how plainly the green's colour shows it all (HoleDef.relief). A slope on the Moon
+ * pulls a sixth as hard, so there it's all built steeper; on ice a ball can't come to rest on more than
+ * 1.4 × its drag (5 in a hundred), so the lean there is gentler.
  */
-const SHAPE: Record<Style, { dish: number; setting: number }> = {
-  garden: { dish: 1, setting: 1 },
-  ice: { dish: 0.45, setting: 1 },
-  moon: { dish: 3, setting: 3 },
+const GROUND: Record<Style, { humps: number; lean: readonly [number, number]; relief: number }> = {
+  garden: { humps: 1, lean: [0.025, 0.045], relief: 4 },
+  ice: { humps: 1, lean: [0.012, 0.022], relief: 4 },
+  moon: { humps: 2.4, lean: [0.07, 0.12], relief: 1.8 },
 }
 
 type Rand = () => number
 const between = (r: Rand, a: number, b: number) => a + r() * (b - a)
-const sign = (r: Rand) => (r() < 0.5 ? -1 : 1)
+const sign = (r: Rand): -1 | 1 => (r() < 0.5 ? -1 : 1)
 const pick = <T>(r: Rand, list: readonly T[]): T => list[Math.floor(r() * list.length)]!
 
-type Wall = { ax: number; az: number; bx: number; bz: number; e?: number; rubber?: boolean }
+/** How far (x, z) is from the segment a–b. */
+function toSegment(x: number, z: number, a: Pt, b: Pt): number {
+  const dx = b[0] - a[0]
+  const dz = b[1] - a[1]
+  const k = Math.max(0, Math.min(1, ((x - a[0]) * dx + (z - a[1]) * dz) / (dx * dx + dz * dz || 1)))
+  return Math.hypot(x - a[0] - k * dx, z - a[1] - k * dz)
+}
 
-/** What a kind of hole builds: its outline, tee and target, its ground, and what stands on it. */
-type Parts = {
+/** A day's green before it's a HoleDef: its outline, tee and target, its ground, and what stands on it. */
+type Green = {
   green: Pt[]
   tee: Spot
   target: Spot
-  height: (x: number, z: number, t: Spot) => number
-  /** Where the far end is: the rails beyond it are a cushion. */
   zEnd: number
-  walls?: Wall[]
-  bumpers?: Bumper[]
-  water?: number
-  lost?: Lost
+  height: (x: number, z: number) => number
+  walls: WallDef[]
+  bumpers: Bumper[]
+  /** The rubber bank: the stretch of wall that steps in. */
+  bank: { a: Pt; b: Pt; side: -1 | 1 }
+  /** Which way the far end falls, for the note: the way down, x across and z along. */
+  falls: { x: number; z: number }
+  gate: boolean
 }
 
-/* ------------------------------------------------------------ shapes --- */
+const TEE_END = 15
+const TEE_Z = 13.5
 
-/** Round some of a polygon's corners, by index, as physics' `rounded` rounds them all. */
-function roundCorners(pts: readonly Pt[], which: readonly number[], r: number, steps = 6): Pt[] {
-  const out: Pt[] = []
-  const at = new Set(which)
-  for (let i = 0; i < pts.length; i++) {
-    const c = pts[i]!
-    if (!at.has(i)) {
-      out.push(c)
-      continue
-    }
-    const p = pts[(i + pts.length - 1) % pts.length]!
-    const q = pts[(i + 1) % pts.length]!
-    const l1 = Math.hypot(c[0] - p[0], c[1] - p[1])
-    const l2 = Math.hypot(q[0] - c[0], q[1] - c[1])
-    const k = Math.min(r, l1 / 2, l2 / 2)
-    const a = [c[0] + ((p[0] - c[0]) * k) / l1, c[1] + ((p[1] - c[1]) * k) / l1]
-    const b = [c[0] + ((q[0] - c[0]) * k) / l2, c[1] + ((q[1] - c[1]) * k) / l2]
-    for (let j = 0; j <= steps; j++) {
-      const t = j / steps
-      const u = 1 - t
-      out.push([u * u * a[0]! + 2 * u * t * c[0] + t * t * b[0]!, u * u * a[1]! + 2 * u * t * c[1] + t * t * b[1]!])
-    }
+/** Where a side of the green steps in: from `from` along to `to`, by `inset`. */
+type Step = { from: number; to: number; inset: number } | null
+
+/** A day's green, from the generator's numbers. */
+function buildGreen(r: Rand, style: Style): Green {
+  const ground = GROUND[style]
+  const half = between(r, 6, 8)
+  const zEnd = -between(r, 12.5, 16.5)
+  // One side steps in at an angle as the rubber bank; the other sometimes steps in too, as plain wall.
+  const bankSide = sign(r)
+  const step = (on: boolean): Step => {
+    if (!on) return null
+    const from = between(r, -2, 2.5)
+    return { from, to: from - between(r, 4.5, 7), inset: between(r, 1.5, 2.5) }
   }
-  return out
-}
+  const right = step(bankSide === 1 || r() < 0.45)
+  const left = step(bankSide === -1 || r() < 0.45)
+  // Never narrower than 8.5 m at the top.
+  const squeeze = Math.min(1, (2 * half - 8.5) / ((right?.inset ?? 0) + (left?.inset ?? 0) || 1))
+  if (right) right.inset *= squeeze
+  if (left) left.inset *= squeeze
+  const inAt = (s: Step, z: number) => (s ? s.inset * smooth(s.from, s.to, z) : 0)
+  const rightAt = (z: number) => half - inAt(right, z)
+  const leftAt = (z: number) => -half + inAt(left, z)
 
-/** A lane down the hole: its middle at x = mid(z), `half` either side, from the tee end to the far end. */
-function laneOutline(mid: (z: number) => number, half: number, zTop: number, zEnd: number): Pt[] {
-  const n = Math.max(8, Math.ceil((zTop - zEnd) / 1.25))
-  const left: Pt[] = []
-  const right: Pt[] = []
-  for (let i = 0; i <= n; i++) {
-    const z = zTop - ((zTop - zEnd) * i) / n
-    left.push([mid(z) - half, z])
-    right.push([mid(z) + half, z])
-  }
-  // Only the four corners at the ends are rounded: every vertex a rail, and few of them, keeps a putt quick to play out.
-  return roundCorners([...left, ...right.reverse()], [0, n, n + 1, 2 * n + 1], 1.2)
-}
-
-/** The target's dish, in a place. */
-function dishIn(style: Style) {
-  const depth = DISH_D * SHAPE[style].dish
-  return (x: number, z: number, t: Spot) => depth * gauss(x, z, t.x, t.z, DISH_S)
-}
-
-/** The ground round a target: a low rise to sit it on, a trough behind to take what runs past, and the dish. */
-function setting(style: Style, rise: number, trough: number) {
-  const k = SHAPE[style].setting
-  const dish = dishIn(style)
-  return (x: number, z: number, t: Spot) => k * (rise * band(z, t.z, 1.2) - trough * smooth(t.z - 1, t.z - 2.6, z)) - dish(x, z, t)
-}
-
-/** A gentle bank at the tee end, so nothing rolls back past the tee. */
-const teeBank = (z: number) => 0.12 * smooth(10, 16, z)
-
-/** A lane's middle line: straight, one bend, or an S. */
-function laneMiddle(r: Rand, shapes: readonly ('straight' | 'bend' | 's')[]): (z: number) => number {
-  const shape = pick(r, shapes)
-  const a1 = sign(r) * between(r, 1.3, 2.7)
-  const a2 = -a1 * between(r, 0.6, 1.15)
-  if (shape === 'straight') return () => 0
-  if (shape === 'bend') return (z) => a1 * smooth(6, -5, z)
-  return (z) => a1 * smooth(10, 2, z) + a2 * smooth(0, -8, z)
-}
-
-/* ----------------------------------------------------------- the kinds --- */
-
-/** Humps down a winding lane. */
-function rollers(r: Rand, style: Style): Parts {
-  const half = between(r, 2.0, 2.45)
-  const mid = laneMiddle(r, ['s', 's', 'bend', 'straight'])
-  const zEnd = -between(r, 15, 16.8)
-  const tz = zEnd + between(r, 3, 4.2)
-  const tx = mid(tz) + between(r, -0.8, 0.8)
-  const scale = style === 'moon' ? 1.4 : style === 'ice' ? 0.8 : 1
-  const count = 2 + Math.floor(r() * 3)
-  const humps = Array.from({ length: count }, (_, i) => ({
-    z: 9 - (16 * (i + between(r, 0.25, 0.75))) / count,
-    h: between(r, 0.14, 0.34) * scale,
-    s: between(r, 0.8, 1.3),
-  }))
-  const around = setting(style, 0.15, 0.1)
-  return {
-    green: laneOutline(mid, half, 15, zEnd),
-    tee: { x: mid(13.5), z: 13.5 },
-    target: { x: tx, z: tz },
-    zEnd,
-    height: (x, z, t) => {
-      let h = teeBank(z)
-      for (const k of humps) h += k.h * band(z, k.z, k.s)
-      return h + around(x, z, t)
-    },
-  }
-}
-
-/** Up a ramp and over a gap (water, open water in the ice, or a crater), onto a landing, and up to the target. */
-function leap(r: Rand, style: Style): Parts {
-  const half = between(r, 1.9, 2.3)
-  const bend = r() < 0.4 ? sign(r) * between(r, 0.8, 1.8) : 0
-  const mid = (z: number) => bend * smooth(12, 5, z)
-  const lip = between(r, 0.6, 2.4)
-  const ramp = between(r, 0.45, 0.8)
-  const gap = style === 'moon' ? between(r, 2.8, 4) : style === 'ice' ? between(r, 2, 2.8) : between(r, 2.4, 3.4)
-  const far = lip - gap
-  // Every jump comes down on the level: a landing longer than a jump that makes it across goes.
-  const landing = style === 'moon' ? 7 : 5
-  const climbFrom = far - landing
-  const climbTo = climbFrom - between(r, 3.5, 4.5)
-  const climb = style === 'moon' ? between(r, 0.4, 1.4) : style === 'ice' ? between(r, 1, 2) : between(r, 0.6, 2.1)
-  const tz = climbTo - between(r, 0.8, 2.2)
-  const zEnd = Math.min(tz - 3.4, -15.5)
-  const floor = style === 'moon' ? -3 : -1.35
-  const around = setting(style, 0, 0.3)
-  return {
-    green: laneOutline(mid, half, 15, zEnd),
-    tee: { x: mid(13.5), z: 13.5 },
-    target: { x: mid(tz) + between(r, -0.9, 0.9), z: tz },
-    zEnd,
-    water: style === 'moon' ? -2.4 : -0.95,
-    lost: style === 'moon' ? 'crater' : style === 'ice' ? 'ice' : 'water',
-    height: (x, z, t) => {
-      if (z > lip) return ramp * smooth(lip + 2.8, lip, z) ** 1.6 + teeBank(z)
-      if (z > far) return floor
-      return -0.3 + climb * smooth(climbFrom, climbTo, z) + around(x, z, t)
-    },
-  }
-}
-
-/** A Z: up the first lane, across the middle, up the last; rubber banks at the corners. */
-function switchback(r: Rand, style: Style): Parts {
-  const w1 = between(r, 2.3, 2.9)
-  const xa = -between(r, 3.9, 4.4)
-  const xb = xa + w1
-  const zc = -between(r, 1.6, 3)
-  const wm = between(r, 2.3, 2.9)
-  const w3 = between(r, 2.3, 2.9)
-  const xd = between(r, 3.8, 4.5)
-  const xc = xd - w3
-  const zEnd = -between(r, 15.5, 17)
-  const cut1 = 1.4
-  const cut2 = 1.6
-  const climb1 = between(r, 0.1, 0.35) * (style === 'moon' ? 1.5 : 1)
-  const hump2 = between(r, 0.12, 0.26)
-  const xh = between(r, xb + 0.6, xc - 0.6)
-  const saddle = between(r, 0.14, 0.3)
-  const zs = between(r, zEnd + 6, zc - wm - 3)
-  const tz = zEnd + between(r, 2.8, 4.2)
-  const tx = between(r, xc + 0.9, xd - 0.9)
-  const inLane1 = (x: number) => smooth(xb + 0.3, xb - 0.3, x)
-  const inMid = (z: number) => smooth(zc + 0.3, zc - 0.3, z) * smooth(zc - wm - 0.3, zc - wm + 0.3, z)
-  const inLane3 = (x: number) => smooth(xc - 0.3, xc + 0.3, x)
-  const around = setting(style, 0.14, 0.1)
-  const height = (x: number, z: number, t: Spot) =>
-    climb1 * smooth(13, zc, z) * inLane1(x) +
-    hump2 * band(x, xh, 0.55) * inMid(z) +
-    saddle * band(z, zs, 0.9) * inLane3(x) +
-    around(x, z, t)
-  const green: Pt[] = [
-    [xa, 14.4],
-    [xb, 14.4],
-    [xb, zc],
-    [xd, zc],
-    [xd, zEnd],
-    [xc, zEnd],
-    [xc, zc - wm],
-    [xa + cut1, zc - wm],
-    [xa, zc - wm + cut1],
+  const pts: Pt[] = [
+    [-half, TEE_END],
+    [half, TEE_END],
   ]
-  const walls: Wall[] = [
-    { ax: xa, az: zc - wm + cut1, bx: xa + cut1, bz: zc - wm, e: 0.9, rubber: true },
-    { ax: xd - cut2, az: zc, bx: xd, bz: zc - cut2, e: 0.9, rubber: true },
-  ]
-  const parts: Parts = { green, tee: { x: (xa + xb) / 2, z: 13 }, target: { x: tx, z: tz }, zEnd, height, walls }
-  // Half the time it turns the other way.
-  return r() < 0.5 ? mirror(parts) : parts
-}
-
-/** A lane that leans: aim up the slope and let it curve down to the target. */
-function tilt(r: Rand, style: Style): Parts {
-  const half = between(r, 2.3, 2.8)
-  const bend = r() < 0.5 ? sign(r) * between(r, 0.8, 2) : 0
-  const mid = (z: number) => bend * smooth(8, -4, z)
-  const lean = style === 'moon' ? 1.6 : style === 'ice' ? 0.6 : 1
-  const k1 = sign(r) * between(r, 0.03, 0.06) * lean
-  const k2 = r() < 0.6 ? -k1 * between(r, 0.6, 1.2) : 0
-  const hump = r() < 0.5 ? { z: between(r, -2, 6), h: between(r, 0.12, 0.25), s: between(r, 0.8, 1.2) } : null
-  const zEnd = -between(r, 15, 16.8)
-  const tz = zEnd + between(r, 3, 4.2)
-  // On the high side of the last lean, so the ball has to be sent up and brought down.
-  const last = k2 !== 0 ? k2 : k1
-  const tx = mid(tz) + (last > 0 ? 1 : -1) * between(r, 0.5, 1.2)
-  const win = (z: number, a: number, b: number) => smooth(a + 1, a - 1, z) * smooth(b - 1, b + 1, z)
-  const around = setting(style, 0.12, 0.1)
-  return {
-    green: laneOutline(mid, half, 15, zEnd),
-    tee: { x: mid(13.5), z: 13.5 },
-    target: { x: tx, z: tz },
-    zEnd,
-    height: (x, z, t) =>
-      teeBank(z) +
-      (x - mid(z)) * (k1 * win(z, 11, 0) + k2 * win(z, 0, tz - 1)) +
-      (hump ? hump.h * band(z, hump.z, hump.s) : 0) +
-      around(x, z, t),
+  if (right) pts.push([half, right.from], [half - right.inset, right.to])
+  pts.push([rightAt(zEnd), zEnd], [leftAt(zEnd), zEnd])
+  if (left) pts.push([-half + left.inset, left.to], [-half, left.from])
+  const s = bankSide === 1 ? right! : left!
+  const bank: Green['bank'] = {
+    a: [bankSide * half, s.from],
+    b: [bankSide * (half - s.inset), s.to],
+    side: bankSide,
   }
-}
 
-/** The target on top of a hill: too soft and it rolls back down, too hard and it goes over the top. */
-function summit(r: Rand, style: Style): Parts {
-  const half = between(r, 2.1, 2.6)
-  const mid = laneMiddle(r, ['straight', 'straight', 'bend'])
-  const tz = -between(r, 10.5, 13)
-  const high = style === 'moon' ? between(r, 0.8, 1.6) : style === 'ice' ? between(r, 0.3, 0.6) : between(r, 0.5, 0.9)
-  const spread = between(r, 1.6, 2.4)
-  const zEnd = tz - between(r, 4.6, 5.6)
-  const pre = r() < 0.5 ? { z: between(r, 2, 7), h: between(r, 0.1, 0.22), s: between(r, 0.8, 1.2) } : null
-  const dish = dishIn(style)
-  return {
-    green: laneOutline(mid, half, 15, zEnd),
-    tee: { x: mid(13.5), z: 13.5 },
-    target: { x: mid(tz) + between(r, -0.8, 0.8), z: tz },
-    zEnd,
-    height: (x, z, t) => teeBank(z) + (pre ? pre.h * band(z, pre.z, pre.s) : 0) + high * band(z, t.z, spread) - dish(x, z, t),
+  const tee = { x: between(r, -1.5, 1.5), z: TEE_Z }
+
+  // The hill, somewhere in the middle, and one to three smaller humps clear of it and of the tee.
+  const hill = { x: between(r, -half * 0.3, half * 0.3), z: between(r, 0, 5), h: between(r, 0.45, 0.7) * ground.humps, s: between(r, 1.9, 2.6) }
+  const humps: { x: number; z: number; h: number; s: number }[] = []
+  const count = 1 + Math.floor(r() * 3)
+  for (let tries = 0; humps.length < count && tries < 60; tries++) {
+    const z = between(r, -4, 9)
+    const x = between(r, leftAt(z) + 1.5, rightAt(z) - 1.5)
+    const sd = between(r, 1, 1.6)
+    if (Math.hypot(x - hill.x, z - hill.z) < hill.s + sd + 0.8) continue
+    if (humps.some((h) => Math.hypot(x - h.x, z - h.z) < h.s + sd + 0.8)) continue
+    if (Math.hypot(x - tee.x, z - tee.z) < 4.5) continue
+    humps.push({ x, z, h: between(r, 0.18, 0.34) * ground.humps, s: sd })
   }
-}
+  // The far end leans, across the green and a little along it at most, so what reaches the far end doesn't
+  // roll all the way back down to the target: `up` is the way it rises.
+  const lean = between(r, ground.lean[0], ground.lean[1])
+  const phi = (sign(r) * between(r, 70, 110) * Math.PI) / 180
+  const up = { x: Math.sin(phi), z: -Math.cos(phi) }
+  const leanFrom = between(r, -3, -1)
+  const height = (x: number, z: number) => {
+    let h = hill.h * gauss(x, z, hill.x, hill.z, hill.s)
+    for (const k of humps) h += k.h * gauss(x, z, k.x, k.z, k.s)
+    return h + lean * (up.x * x + up.z * (z - leanFrom)) * smooth(leanFrom, leanFrom - 4, z)
+  }
 
-/** A wide lane with posts in the way: find the gap, or bank it off one. */
-function posts(r: Rand, style: Style): Parts {
-  const half = between(r, 2.6, 3.1)
-  const mid = laneMiddle(r, ['straight', 'bend'])
-  const zEnd = -between(r, 15, 16.8)
-  const tz = zEnd + between(r, 3, 4.2)
-  const count = 2 + Math.floor(r() * 3)
+  // The log, across the far end, left, middle or right of it, and turned a little.
+  const logZ = between(r, -6.5, -3.5)
+  const len = between(r, 3.5, 5.2)
+  const lo = leftAt(logZ) + 1.6 + len / 2
+  const hi = rightAt(logZ) - 1.6 - len / 2
+  const logX = lo < hi ? between(r, lo, hi) : (lo + hi) / 2
+  const turn = between(r, -0.3, 0.3)
+  const logA: Pt = [logX - (Math.cos(turn) * len) / 2, logZ - (Math.sin(turn) * len) / 2]
+  const logB: Pt = [logX + (Math.cos(turn) * len) / 2, logZ + (Math.sin(turn) * len) / 2]
+  const walls: WallDef[] = [{ ax: logA[0], az: logA[1], bx: logB[0], bz: logB[1], name: 'the log' }]
+
+  // Rocks: a pair either side of the way up from the tee, or two or three about the middle.
   const bumpers: Bumper[] = []
-  for (let tries = 0; bumpers.length < count && tries < 80; tries++) {
-    const z = between(r, -8, 6)
-    const radius = between(r, 0.28, 0.45)
-    const x = mid(z) + between(r, -1.3, 1.3)
-    if (Math.abs(x - mid(z)) > half - radius - 0.6) continue
-    if (bumpers.some((b) => Math.hypot(b.x - x, b.z - z) < 1.6)) continue
-    bumpers.push({ x, z, r: radius, e: 0.8 })
+  const gate = r() < 0.5
+  if (gate) {
+    const z = between(r, 6, 8.5)
+    const w = between(r, 2.4, 3.6)
+    for (const side of [-1, 1]) {
+      const rz = z + between(r, -0.8, 0.8)
+      const rx = Math.max(leftAt(rz) + 1.2, Math.min(rightAt(rz) - 1.2, tee.x + side * w + between(r, -0.4, 0.4)))
+      bumpers.push({ x: rx, z: rz, r: between(r, 0.4, 0.55), rock: true })
+    }
+  } else {
+    const n = 2 + Math.floor(r() * 2)
+    for (let tries = 0; bumpers.length < n && tries < 60; tries++) {
+      const z = between(r, -2.5, 8.5)
+      const x = between(r, leftAt(z) + 1.4, rightAt(z) - 1.4)
+      const rad = between(r, 0.4, 0.55)
+      if (Math.hypot(x - tee.x, z - tee.z) < 4) continue
+      if (bumpers.some((b) => Math.hypot(b.x - x, b.z - z) < 2.6)) continue
+      if (toSegment(x, z, logA, logB) < 1.6) continue
+      bumpers.push({ x, z, r: rad, rock: true })
+    }
   }
-  const hump = r() < 0.4 ? { z: between(r, -4, 8), h: between(r, 0.1, 0.22) * (style === 'moon' ? 1.4 : 1), s: 1 } : null
-  const around = setting(style, 0.14, 0.1)
+
+  // The target: beyond the log, clear of it and of the rocks, where a ball can come to rest.
+  const rest = 1.4 * FEEL[style].friction
+  const slopeAt = (x: number, z: number) => {
+    const e = 0.01
+    return Math.hypot(height(x + e, z) - height(x - e, z), height(x, z + e) - height(x, z - e)) / (2 * e)
+  }
+  let target: Spot = { x: (leftAt(zEnd + 3) + rightAt(zEnd + 3)) / 2, z: zEnd + 3 }
+  for (let tries = 0; tries < 80; tries++) {
+    const z = between(r, zEnd + 2.2, Math.min(logZ - 2, -7))
+    const x = between(r, leftAt(z) + 1.3, rightAt(z) - 1.3)
+    if (toSegment(x, z, logA, logB) < 1.4) continue
+    if (bumpers.some((b) => Math.hypot(b.x - x, b.z - z) < 1.8)) continue
+    if (slopeAt(x, z) > 0.6 * rest) continue
+    target = { x, z }
+    break
+  }
+
   return {
-    green: laneOutline(mid, half, 15, zEnd),
-    tee: { x: mid(13.5), z: 13.5 },
-    target: { x: mid(tz) + between(r, -0.8, 0.8), z: tz },
+    green: rounded(pts, 1),
+    tee,
+    target,
     zEnd,
+    height,
+    walls,
     bumpers,
-    height: (x, z, t) => teeBank(z) + (hump ? hump.h * band(z, hump.z, hump.s) : 0) + around(x, z, t),
+    bank,
+    falls: { x: -up.x, z: -up.z },
+    gate,
   }
 }
-
-/** The same hole turned the other way: right for left. */
-function mirror(p: Parts): Parts {
-  return {
-    ...p,
-    green: p.green.map(([x, z]) => [-x, z] as Pt).reverse(),
-    tee: { x: -p.tee.x, z: p.tee.z },
-    target: { x: -p.target.x, z: p.target.z },
-    height: (x, z, t) => p.height(-x, z, { ...t, x: -t.x }),
-    walls: p.walls?.map((w) => ({ ...w, ax: -w.ax, bx: -w.bx })),
-    bumpers: p.bumpers?.map((b) => ({ ...b, x: -b.x })),
-  }
-}
-
-const BUILD: Record<Family, (r: Rand, style: Style) => Parts> = { rollers, leap, switchback, tilt, summit, posts }
 
 /* ------------------------------------------------------ names and words --- */
 
@@ -369,32 +222,27 @@ const PLACE_WORDS: Record<Style, readonly string[]> = {
   moon: ['Crater', 'Lunar', 'Moonbeam', 'Tranquility', 'Orbit', 'Selene', 'Stardust', 'Apollo'],
 }
 
-const KIND_WORDS: Record<Family, readonly string[]> = {
-  rollers: ['Rollers', 'Ripple', 'Tumble', 'Humps'],
-  leap: ['Leap', 'Jump', 'Gap', 'Vault'],
-  switchback: ['Switchback', 'Zigzag', 'Dogleg'],
-  tilt: ['Tilt', 'Camber', 'Lean', 'Slant'],
-  summit: ['Summit', 'Peak', 'Hilltop', 'Knoll'],
-  posts: ['Posts', 'Pinball', 'Slalom', 'Pins'],
-}
-
-const KIND_NOTES: Record<Family, string> = {
-  rollers: 'Humps down a winding lane. Carry the ball over them all, and not so hard it runs through the target.',
-  leap: 'Up the ramp and over the gap, then up to the target. Too soft and it drops in; too hard and it runs on past.',
-  switchback: 'Two corners with rubber banks. Find the angle that bounces it round both, then the power to stop it.',
-  tilt: 'The lane leans. Aim up the slope and let it curve down to the target.',
-  summit: 'The target is on top of the hill. Too soft and it rolls back down; too hard and it goes over the top.',
-  posts: 'Posts stand in the way. Find the gap between them, or bank it off one.',
+const GREEN_WORDS: Record<Style, readonly string[]> = {
+  garden: ['Green', 'Commons', 'Lawn', 'Park', 'Glade', 'Knolls'],
+  ice: ['Rink', 'Pond', 'Sheet', 'Floe', 'Flats'],
+  moon: ['Basin', 'Mare', 'Plain', 'Highlands', 'Uplands'],
 }
 
 const PLACE_NOTES: Record<Style, string> = {
   garden: '',
-  ice: ' On the ice it slides more than twice as far.',
-  moon: ' On the Moon it floats off every crest.',
+  ice: ' On the ice it slides further still.',
+  moon: ' On the Moon the ball floats off every crest.',
 }
 
-/** What the gap is called in the note, where there is one. */
-const GAP_WORDS: Record<Style, string> = { garden: 'the pond', ice: 'the open water', moon: 'the crater' }
+/** What the note says: what's in the way, where the bank is, and which way the far end falls. */
+function noteFor(p: Green, style: Style): string {
+  const across = Math.abs(p.falls.x) >= Math.abs(p.falls.z)
+  const way = across ? (p.falls.x < 0 ? 'to the left' : 'to the right') : p.falls.z > 0 ? 'towards you' : 'away from you'
+  const also = across && Math.abs(p.falls.z) > 0.3 ? (p.falls.z > 0 ? ' and a little towards you' : ' and a little away') : ''
+  const rocks = p.gate ? 'between the rocks or round them' : 'round the rocks'
+  const bank = p.bank.side === 1 ? 'right' : 'left'
+  return `Curve it off the humps, ${rocks}, and past the log: the rubber on the ${bank} can bank it in. The far end falls ${way}${also}.${PLACE_NOTES[style]}`
+}
 
 /* --------------------------------------------------------------- the day --- */
 
@@ -417,57 +265,35 @@ function shuffled<T>(list: readonly T[], key: string): T[] {
   return out
 }
 
-/**
- * The kind and place a day starts from, before checking: a week has three gardens, two rinks and two
- * Moon days in a shuffled order, and the six kinds come round in a shuffle of their own, skipping a kind
- * the place doesn't have and the kind the day before had.
- */
-export function plannedPick(n: number): Omit<DailyPick, 'k'> {
-  let before: Family | null = null
-  let choice: Omit<DailyPick, 'k'> = { family: 'rollers', style: 'garden' }
-  for (let d = 1; d <= n; d++) {
-    choice = startingPick(d, before)
-    before = choice.family
-  }
-  return choice
-}
-
-function startingPick(n: number, avoid: Family | null): Omit<DailyPick, 'k'> {
+/** Where a day is, before checking: a week has five gardens, a rink and a Moon day, in a shuffled order. */
+export function plannedStyle(n: number): Style {
   const week = Math.floor((n - 1) / 7)
-  const style = shuffled(['garden', 'garden', 'garden', 'ice', 'ice', 'moon', 'moon'] as const, `acechase:places:${week}`)[(n - 1) % 7]!
-  const round = Math.floor((n - 1) / FAMILIES.length)
-  const order = shuffled(FAMILIES, `acechase:kinds:${round}`)
-  const start = (n - 1) % FAMILIES.length
-  for (let i = 0; i < order.length; i++) {
-    const family = order[(start + i) % order.length]!
-    if (family !== avoid && !NOT_HERE[style].includes(family)) return { family, style }
-  }
-  return { family: 'rollers', style }
+  return shuffled(['garden', 'garden', 'garden', 'garden', 'garden', 'ice', 'moon'] as const, `acechase:places:${week}`)[(n - 1) % 7]!
 }
 
 /** A day's hole, built: the same numbers make the same hole on any device. */
 export function dailyHoleDef(choice: DailyPick, day: string): HoleDef {
-  const r = mulberry32(hashString(`acechase:${day}:${choice.family}:${choice.style}:${choice.k}`))
-  const p = BUILD[choice.family](r, choice.style)
+  const r = mulberry32(hashString(`acechase:green:${day}:${choice.style}:${choice.k}`))
+  const p = buildGreen(r, choice.style)
   const words = mulberry32(hashString(`acechase:name:${day}`))
-  const name = `${pick(words, PLACE_WORDS[choice.style])} ${pick(words, KIND_WORDS[choice.family])}`
-  const note = (KIND_NOTES[choice.family] + PLACE_NOTES[choice.style]).replace('the gap', GAP_WORDS[choice.style])
-  const zEnd = p.zEnd
+  const name = `${pick(words, PLACE_WORDS[choice.style])} ${pick(words, GREEN_WORDS[choice.style])}`
+  const { zEnd, bank } = p
   return {
     name,
-    note,
+    note: noteFor(p, choice.style),
     green: p.green,
     tee: p.tee,
-    height: p.height,
+    height: (x, z) => p.height(x, z),
     spots: [p.target],
-    water: p.water,
-    lost: p.lost,
     walls: p.walls,
     bumpers: p.bumpers,
-    // The far end is a cushion, so a shot hit too hard stays in the trough rather than coming back.
+    // The far end is a cushion, so a putt too hard stays up there rather than coming back at the target.
     soft: (_x, z) => z < zEnd + 0.6,
+    rubber: (x, z) => (toSegment(x, z, bank.a, bank.b) < 0.25 ? 0.9 : undefined),
     style: choice.style,
     gravity: FEEL[choice.style].gravity,
     friction: FEEL[choice.style].friction,
+    laid: true,
+    relief: GROUND[choice.style].relief,
   }
 }
