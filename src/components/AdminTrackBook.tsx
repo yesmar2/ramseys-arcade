@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { decodeCourse } from '../games/hotlap/courses'
+import { decodeCourse, hillKindOf, type HillKind } from '../games/hotlap/courses'
 import { dayOfTrack, dayWords, shapeOf, trackDay } from '../games/hotlap/daily'
 import { DAILY_TRACKS, type PlannedTrack } from '../games/hotlap/dailyPlan'
 import { LANDMARKS } from '../games/hotlap/landmarks'
@@ -10,8 +10,9 @@ import '../styles/adminBooks.css'
 
 /*
  * The admin's Track Book: every day of Hot Lap's track of the day that's planned (dailyPlan.ts), drawn from
- * above, with its pace car's lap, its length and its corners. Any of them can be test-driven ahead of its
- * day: a test drive's laps go on no board.
+ * above, with its pace car's lap, its length, and its corners or, on a hilly track, its kind of hills, its
+ * climb and its heights round the lap. Any of them can be test-driven ahead of its day: a test drive's laps
+ * go on no board.
  */
 
 const SLUG = 'hotlap'
@@ -27,9 +28,13 @@ type BookTrack = {
   plan: TrackPlanShape
   /** A real circuit's layout (landmarks.ts). */
   landmark: boolean
+  /** What its tag says: its kind of hills, or that it's a real circuit's layout. */
+  tag: string | null
   /** On a hilly track: how far it climbs from its lowest to its highest, in metres, and its heights round the lap. */
   hills: { climb: number; profile: string } | null
 }
+
+const HILL_WORDS: Record<HillKind, string> = { rolling: 'Rolling', hilly: 'Hilly', big: 'Big hills' }
 
 const monthFormat = new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' })
 const monthShort = new Intl.DateTimeFormat('en-US', { month: 'short', timeZone: 'UTC' })
@@ -64,6 +69,8 @@ function bookTrack(entry: PlannedTrack, i: number): BookTrack {
   const n = i + 1
   const shape = shapeOf(entry)
   const track = buildTrack(decodeCourse(entry.course), shape)
+  const landmark = Object.values(LANDMARKS).some((l) => l.course === entry.course)
+  const kind = entry.hills && !landmark ? hillKindOf(entry.course) : null
   return {
     n,
     day: dayOfTrack(n),
@@ -72,7 +79,8 @@ function bookTrack(entry: PlannedTrack, i: number): BookTrack {
     km: track.length / 1000,
     corners: track.corners.length,
     plan: trackPlan(track),
-    landmark: Object.values(LANDMARKS).some((l) => l.course === entry.course),
+    landmark,
+    tag: entry.hills ? (landmark ? 'Real hills' : kind ? HILL_WORDS[kind] : 'Hills') : landmark ? 'Landmark' : null,
     hills: track.z ? profileOf(track.z) : null,
   }
 }
@@ -214,9 +222,7 @@ function TrackTile({ track, today }: { track: BookTrack; today: string }) {
       <div className="tb-tile__map">
         <TrackMap track={track} />
         <span className="tb-tag">{isToday ? `Today · #${track.n}` : `#${track.n}`}</span>
-        {track.landmark || track.hills ? (
-          <span className="tb-tag tb-tag--hills">{track.landmark ? 'Landmark' : 'Hills'}</span>
-        ) : null}
+        {track.tag ? <span className="tb-tag tb-tag--hills">{track.tag}</span> : null}
       </div>
       {track.hills ? (
         <svg className="tb-profile" viewBox="0 0 100 20" preserveAspectRatio="none" aria-hidden="true">

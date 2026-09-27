@@ -160,6 +160,14 @@ export type HillKind = 'rolling' | 'hilly' | 'big'
 
 /** How steep each kind gets at its steepest: rise per metre. */
 const STEEPEST: Record<HillKind, number> = { rolling: 0.05, hilly: 0.09, big: 0.13 }
+
+/** A made track's kind of hills from the first draw for its line (hillyCourse), or null for one that stays flat. */
+const kindOfDraw = (draw: number): HillKind | null => (draw < 0.15 ? null : draw < 0.45 ? 'rolling' : draw < 0.8 ? 'hilly' : 'big')
+
+/** The kind of hills a made track's line asks for (hillyCourse), without making them: for saying what a track is. */
+export function hillKindOf(course: string): HillKind | null {
+  return kindOfDraw(mulberry32(hashString(`hills:${course}`))())
+}
 const KNOTS = 32
 
 /**
@@ -178,9 +186,8 @@ const KNOTS = 32
  */
 export function hillyCourse(course: string): { hills: string; kind: HillKind; check: CourseCheck & { ok: true } } | null {
   const rand = mulberry32(hashString(`hills:${course}`))
-  const draw = rand()
-  if (draw < 0.15) return null
-  const kind: HillKind = draw < 0.45 ? 'rolling' : draw < 0.8 ? 'hilly' : 'big'
+  const kind = kindOfDraw(rand())
+  if (!kind) return null
   const pieces = decodeCourse(course)
   const flat = buildTrack(pieces)
   const { n, s, length } = flat
