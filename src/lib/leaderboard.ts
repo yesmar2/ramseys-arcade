@@ -633,6 +633,8 @@ export async function addLeaderboardScore(
     run?: Promise<string | undefined>
     /** Prize tickets the run picked up on the way (Crosswalk's), paid with it. */
     pickups?: number
+    /** Hot Lap: the day's blue car, in milliseconds, which its ticket ladder goes by. */
+    pace?: number
   } = {},
 ): Promise<{
   entries: LeaderboardEntry[]
@@ -688,6 +690,7 @@ export async function addLeaderboardScore(
       ...(runId ? { runId } : {}),
       ...(opts.challengeId ? { challengeId: opts.challengeId } : {}),
       ...(opts.pickups ? { pickups: Math.floor(opts.pickups) } : {}),
+      ...(opts.pace ? { pace: Math.round(opts.pace) } : {}),
     }),
   })
 

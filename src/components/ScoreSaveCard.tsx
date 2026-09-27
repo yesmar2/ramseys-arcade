@@ -62,6 +62,8 @@ type ScoreSaveProps = {
   previousBest?: number
   /** Prize tickets the run picked up on the way (Crosswalk's), paid with the save. */
   pickups?: number
+  /** Hot Lap: the day's blue car, in milliseconds, which its ticket ladder goes by. */
+  pace?: number
   onDone: () => void
 }
 
@@ -101,7 +103,7 @@ function boardsHref(gameSlug: string, period: LeaderboardPeriod) {
  * in without a tag, it takes one in slots. A run that used the admin stage
  * jump is not saved at all. Leave, top left, goes to the game's page.
  */
-export function ScoreSaveCard({ gameSlug, score, title, subtitle, previousBest, pickups, onDone }: ScoreSaveProps) {
+export function ScoreSaveCard({ gameSlug, score, title, subtitle, previousBest, pickups, pace, onDone }: ScoreSaveProps) {
   const { signedIn, loading: authLoading } = useAuth()
   const impersonation = useImpersonation()
   const canSaveScores = signedIn || Boolean(impersonation)
@@ -126,6 +128,8 @@ export function ScoreSaveCard({ gameSlug, score, title, subtitle, previousBest, 
   // Read when the save goes out; the run's count doesn't change once it's over.
   const pickupsRef = useRef(pickups)
   pickupsRef.current = pickups
+  const paceRef = useRef(pace)
+  paceRef.current = pace
   const titleId = useId()
   const tagId = useId()
 
@@ -231,6 +235,7 @@ export function ScoreSaveCard({ gameSlug, score, title, subtitle, previousBest, 
         challengeId: against?.id,
         run,
         pickups: pickupsRef.current,
+        pace: paceRef.current,
       })
       if (closed) return
       setSavedAs(facts.name)
@@ -282,6 +287,7 @@ export function ScoreSaveCard({ gameSlug, score, title, subtitle, previousBest, 
         challengeId: facingRef.current?.id,
         run: runRef.current ?? runIdFor(gameSlug),
         pickups: pickupsRef.current,
+        pace: paceRef.current,
       })
       setSavedAs(facts.name)
       setFacts(facts)

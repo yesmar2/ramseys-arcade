@@ -1,7 +1,9 @@
-import { getGame, isDailyGame } from '../../data/games'
+import { getGame } from '../../data/games'
 import { prizeById } from '../../data/prizes'
 import { prizesHref } from '../../hooks/useHashRoute'
-import { useTickets, type RunTickets } from '../../lib/tickets'
+import { scoreText } from '../../lib/gameBoard'
+import { formatLeaderboardScore, isTimeBoard } from '../../lib/leaderboardFormat'
+import { useTickets, type LadderStep, type RunTickets } from '../../lib/tickets'
 import { TicketGlyph, TicketStub } from './Ticket'
 
 /*
@@ -10,20 +12,25 @@ import { TicketGlyph, TicketStub } from './Ticket'
  * saved for. Signed out, the same place says a saved run pays them.
  */
 
+/** A step as the ladder says it: a daily's in words, the rest by the score it takes. */
+function stepWords(step: LadderStep, game: string): string {
+  return step.label ?? `${scoreText(game, step.at)} or better`
+}
+
+/** The next step up, to aim for: Hot Lap's with the time it takes. */
+function nextWords(next: LadderStep, game: string): string {
+  if (!next.label) return `${next.tickets} at ${scoreText(game, next.at)}`
+  return `${next.tickets} for ${next.label}${isTimeBoard(game) ? ` (${formatLeaderboardScore(game, next.at)})` : ''}`
+}
+
 function why(paid: RunTickets, game: string): string {
   const parts: string[] = []
   for (const line of paid.lines) {
     switch (line.reason) {
       case 'run': {
-        // A daily game's board is the day's; everyone else's is the week's.
-        const board = isDailyGame(game) ? 'today’s' : 'this week’s'
-        parts.push(
-          paid.field <= 1
-            ? `${line.amount} for the first run on ${board} board`
-            : paid.place === 1
-              ? `${line.amount} for the best run on ${board} board`
-              : `${line.amount} for beating ${paid.beat}% of ${board} runs`,
-        )
+        const what = paid.reached ? stepWords(paid.reached, game) : (paid.baseLabel ?? 'the run')
+        // A daily pays its best step of the day once: a climb is paid the difference.
+        parts.push(paid.paidBefore > 0 ? `${line.amount} more for ${what}, ${paid.step} today` : `${line.amount} for ${what}`)
         break
       }
       case 'best':
@@ -43,6 +50,7 @@ function why(paid: RunTickets, game: string): string {
     }
   }
   if (paid.capped > 0) parts.push('today’s run tickets are all in')
+  else if (paid.next) parts.push(`next: ${nextWords(paid.next, game)}`)
   return parts.join(' · ')
 }
 
@@ -54,12 +62,17 @@ export function RunTicketsLine({ paid, game }: { paid: RunTickets; game: string 
   const total = Math.max(balance, paid.balance)
   const toGo = goal ? Math.max(0, goal.price - total) : 0
   if (paid.earned <= 0) {
+    // A daily's best step of the day is paid once; a run that didn't climb one pays nothing more.
+    const said =
+      paid.capped > 0 || paid.paidBefore <= 0
+        ? 'Today’s run tickets are all in. Tomorrow’s runs pay again.'
+        : `Your best today already paid ${paid.paidBefore}.${paid.next ? ` Next: ${nextWords(paid.next, game)}.` : ' That’s the top step.'}`
     return (
       <div className="run-tix run-tix--dim">
         <TicketStub label="0" dim width={78} />
         <div className="run-tix__body">
-          <span className="run-tix__n">No tickets this time</span>
-          <span className="run-tix__why">Today’s run tickets are all in. Tomorrow’s runs pay again.</span>
+          <span className="run-tix__n">No new tickets</span>
+          <span className="run-tix__why">{said}</span>
         </div>
       </div>
     )

@@ -485,6 +485,8 @@ type SaveInput = {
   run: Promise<string | undefined>
   /** Prize tickets the run picked up on the way (Crosswalk's). */
   pickups?: number
+  /** Hot Lap: the day's blue car, in milliseconds. */
+  pace?: number
 }
 
 /** Saves in flight or just done, so the same run asked twice is saved once. */
@@ -511,10 +513,10 @@ export function saveRunForReport(input: SaveInput): Promise<RunFacts> {
   return promise
 }
 
-async function saveAndRead({ slug, name, score, period, priorBest, challengeId, run, pickups }: SaveInput): Promise<RunFacts> {
+async function saveAndRead({ slug, name, score, period, priorBest, challengeId, run, pickups, pace }: SaveInput): Promise<RunFacts> {
   const me = normalizePlayerName(name)
   const priorOverall = await fetchGlobalRank(me, period).catch(() => null)
-  const saved = await addLeaderboardScore(slug, me, score, { challengeId, run, pickups })
+  const saved = await addLeaderboardScore(slug, me, score, { challengeId, run, pickups, pace })
   noteTicketsPaid(saved.tickets)
   for (const hit of saved.streakRecords ?? []) {
     if (

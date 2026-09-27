@@ -774,6 +774,7 @@ function HotLapDay({
                     title="Lap complete"
                     subtitle={`${course.name} · sectors ${lap.splits.map((at, k) => (at - (k === 0 ? 0 : lap.splits[k - 1]!)).toFixed(2)).join(' · ')}`}
                     previousBest={Math.max(previousBestRef.current, apiBest)}
+                    pace={Math.round(pace.time * 1000)}
                     onDone={toMenu}
                   />
                 )

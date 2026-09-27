@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react'
+import { isDailyGame } from '../data/games'
 import { howToPlayFor } from '../data/howToPlay'
+import { scoreText } from '../lib/gameBoard'
+import { useTicketLadder } from '../lib/tickets'
 import '../styles/howto.css'
 
 const TOUCH_ONLY = '(hover: none) and (pointer: coarse)'
@@ -25,6 +28,37 @@ function useTouchOnly(): boolean {
  * phone shows each control's touch gesture alone; anything with a keyboard
  * shows the key beside it.
  */
+/** What a run pays in tickets, step by step: the game's ladder, from the API. */
+function TicketsPart({ slug }: { slug: string }) {
+  const ladder = useTicketLadder(slug)
+  if (!ladder) return null
+  const up = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
+  const rows = [
+    { what: ladder.baseLabel ? up(ladder.baseLabel) : 'Any run', tickets: ladder.base },
+    ...ladder.steps.map((step) => ({ what: step.label ? up(step.label) : `${scoreText(slug, step.at)} or better`, tickets: step.tickets })),
+  ]
+  return (
+    <section className="htp__part">
+      <h3 className="htp__label">Tickets</h3>
+      <ul className="htp__rows">
+        {rows.map((row) => (
+          <li key={row.what} className="htp__row htp__row--score">
+            <span className="htp__what">{row.what}</span>
+            <span className="htp__pts">
+              <b>{row.tickets}</b>
+            </span>
+          </li>
+        ))}
+      </ul>
+      <p className="htp__note">
+        {isDailyGame(slug)
+          ? 'Your best step of the day is paid once, as you reach it. With three or more playing, the day’s top three get 10, 6 and 3 more after midnight.'
+          : 'Every saved run pays, up to 200 tickets a day. A new best pays 5 more.'}
+      </p>
+    </section>
+  )
+}
+
 export function HowToPlay({ slug }: { slug: string }) {
   const how = howToPlayFor(slug)
   const touchOnly = useTouchOnly()
@@ -62,6 +96,7 @@ export function HowToPlay({ slug }: { slug: string }) {
           ))}
         </ul>
       </section>
+      <TicketsPart slug={slug} />
       <div className="htp__end">
         <section className="htp__part">
           <h3 className="htp__label">Ends when</h3>

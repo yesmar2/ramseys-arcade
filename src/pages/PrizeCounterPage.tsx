@@ -22,7 +22,7 @@ import '../styles/counter.css'
  */
 
 const EARN: { icon: string; amount: string; what: string }[] = [
-  { icon: 'play', amount: '1–10', what: 'every saved run' },
+  { icon: 'play', amount: '1–15', what: 'every saved run, by its score' },
   { icon: 'up', amount: '+5', what: 'a new best' },
   { icon: 'calendar', amount: '+10', what: 'the Daily' },
   { icon: 'flame', amount: '+5', what: 'a day on a streak' },
@@ -316,8 +316,9 @@ export function PrizeCounterPage() {
             Fair pay
           </span>
           <p>
-            A run pays 1 to 10 by how many of the week’s runs it beats, yours among them, 5 more for a new best, and one for each ticket picked up
-            in Crosswalk. Runs pay up to 200 a day; the rest comes on top.
+            A run pays by the score it reaches, like an arcade machine: 1 ticket, then 3, 5, 7 and 10 at the scores each game’s How to play
+            shows. Today’s Hole and Today’s Track pay your best of the day once, up to 15, and each day’s top three get 10, 6 and 3 more after
+            midnight. A new best pays 5 more, and Crosswalk one for each ticket picked up. Runs pay up to 200 a day; the rest comes on top.
           </p>
         </div>
       </section>

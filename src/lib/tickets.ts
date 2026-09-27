@@ -11,18 +11,28 @@ import { api } from './leaderboard'
  */
 
 /** Why tickets came in or went out, as the API names it. */
-export type TicketReason = 'run' | 'best' | 'pickup' | 'first' | 'streak' | 'daily' | 'hunt' | 'grant' | 'trade'
+export type TicketReason = 'run' | 'best' | 'pickup' | 'first' | 'streak' | 'daily' | 'hunt' | 'top' | 'grant' | 'trade'
+
+/** A step on a game's ticket ladder: the board score that reaches it, what it pays, and how a daily says it. */
+export type LadderStep = { at: number; tickets: number; label?: string }
+
+/** What a run of a game pays below the first step, and the steps, lowest first (the API's ticketLadders.ts). */
+export type TicketLadder = { base: number; baseLabel?: string; steps: LadderStep[] }
 
 /** What a saved run paid, from the save's answer. */
 export type RunTickets = {
   earned: number
   lines: { reason: TicketReason; amount: number }[]
   balance: number
-  /** The share of the week's other runs this one beat, 0–100 (a daily game's: the day's). */
-  beat: number
-  /** Where the run placed among the week's runs, 1 for the best, and how many runs there are, this one among them. */
-  place: number
-  field: number
+  /** The step of its game's ladder the run reached, or null below the first, and the next one up. */
+  reached: LadderStep | null
+  next: LadderStep | null
+  /** What a run below the first step pays, and how a daily says it. */
+  base: number
+  baseLabel?: string
+  /** What the run's step is worth. A daily pays it once a day: what its runs already had today goes off it. */
+  step: number
+  paidBefore: number
   /** Tickets the day's cap held back. */
   capped: number
   /** Run tickets left today before the cap. */
@@ -134,6 +144,70 @@ export function useTickets(): Store {
     void refreshTickets()
   }, [signedIn])
   return snap
+}
+
+/* ------------------------------------------------------------ ladders --- */
+
+const LADDERS_KEY = 'skermix-ticket-ladders'
+const LADDERS_EVENT = 'arcade-ticket-ladders'
+/** The API draws them again once a day; a few hours on this device is fresh enough. */
+const LADDERS_FRESH_MS = 6 * 3600_000
+
+type LaddersCopy = { at: number; ladders: Record<string, TicketLadder> }
+
+let ladders: LaddersCopy | null = null
+let laddersRead = false
+let askingLadders: Promise<void> | null = null
+
+function laddersNow(): LaddersCopy | null {
+  if (!laddersRead) {
+    laddersRead = true
+    try {
+      const raw = localStorage.getItem(LADDERS_KEY)
+      const parsed = raw ? (JSON.parse(raw) as Partial<LaddersCopy>) : null
+      if (parsed && typeof parsed.at === 'number' && parsed.ladders && typeof parsed.ladders === 'object') {
+        ladders = { at: parsed.at, ladders: parsed.ladders }
+      }
+    } catch {
+      // Asked for again below.
+    }
+  }
+  return ladders
+}
+
+function askLadders() {
+  if (askingLadders) return
+  askingLadders = api<{ ladders: Record<string, TicketLadder> }>('/tickets/ladders')
+    .then((reply) => {
+      ladders = { at: Date.now(), ladders: reply.ladders }
+      try {
+        localStorage.setItem(LADDERS_KEY, JSON.stringify(ladders))
+      } catch {
+        // Kept for this visit.
+      }
+      window.dispatchEvent(new Event(LADDERS_EVENT))
+    })
+    .catch(() => {
+      // How to play goes without its tickets until the next ask.
+    })
+    .finally(() => {
+      askingLadders = null
+    })
+}
+
+function subscribeLadders(onChange: () => void) {
+  window.addEventListener(LADDERS_EVENT, onChange)
+  return () => window.removeEventListener(LADDERS_EVENT, onChange)
+}
+
+/** What a run of this game pays, step by step, as the API has it: kept on the device, asked for again every few hours. */
+export function useTicketLadder(slug: string): TicketLadder | null {
+  const copy = useSyncExternalStore(subscribeLadders, laddersNow, () => null)
+  useEffect(() => {
+    const now = laddersNow()
+    if (!now || Date.now() - now.at > LADDERS_FRESH_MS) askLadders()
+  }, [])
+  return copy?.ladders[slug] ?? null
 }
 
 /** How a count of tickets reads: 1,284 tickets, 1 ticket. */
