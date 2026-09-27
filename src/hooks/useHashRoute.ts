@@ -56,7 +56,7 @@ export type Route =
   | { name: 'authVerify'; token: string }
   | { name: 'about' }
   | { name: 'plus' }
-  /** `section`: one of the admin's books of what the daily games have planned. */
+  /** `section`: one of the admin's tabs past the overview: a daily game's book, or the trophies. */
   | { name: 'admin'; section?: AdminSection }
   | { name: 'stats' }
   | { name: 'prizes' }
@@ -64,9 +64,9 @@ export type Route =
   | { name: 'terms' }
   | { name: 'devCelebrate' }
 
-/** The admin's books: Ace Chase's planned holes, Hot Lap's planned tracks. */
-export type AdminSection = 'holes' | 'tracks'
-const ADMIN_SECTIONS: readonly AdminSection[] = ['holes', 'tracks']
+/** The admin's tabs past the overview: Ace Chase's planned holes, Hot Lap's planned tracks, and every trophy and egg. */
+export type AdminSection = 'holes' | 'tracks' | 'trophies'
+const ADMIN_SECTIONS: readonly AdminSection[] = ['holes', 'tracks', 'trophies']
 
 /** Fired after in-app navigation has changed the URL. */
 export const ROUTE_EVENT = 'skermix:route'
@@ -196,7 +196,7 @@ export function plusHref() {
   return '/plus'
 }
 
-/** Site errors, flagged scores and bans, for admins; with `section`, one of their books of what's planned. */
+/** Site errors, flagged scores and bans, for admins; with `section`, one of the admin's other tabs. */
 export function adminHref(section?: AdminSection) {
   return section ? `/admin/${section}` : '/admin'
 }

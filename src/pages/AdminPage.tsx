@@ -1,5 +1,5 @@
 import { Suspense, useCallback, useEffect, useState, type CSSProperties, type FormEvent } from 'react'
-import { AdminSecrets } from '../components/AdminSecrets'
+import { AdminTrophies } from '../components/AdminTrophies'
 import { PageBanner } from '../components/PageBanner'
 import { PageShell } from '../components/PageShell'
 import { getGame } from '../data/games'
@@ -52,12 +52,19 @@ const SECTIONS: { section?: AdminSection; label: string; title: string; blurb: s
     title: 'Track Book',
     blurb: 'Every planned day of Hot Lap’s Today’s Track, to test drive ahead of its day.',
   },
+  {
+    section: 'trophies',
+    label: 'Trophies',
+    title: 'Trophies and easter eggs',
+    blurb: 'Everything a player can win or find, and exactly what earns it: the trophies, the secret ones, the easter eggs, and the rings and pins.',
+  },
 ]
 
 /*
  * The admin's page: what players sent, what broke in their browsers, scores
  * that looked wrong on the way in, tickets, and banned tags; and, a tab each,
- * the daily games' books of what's planned (/admin/holes, /admin/tracks). It
+ * the daily games' books of what's planned (/admin/holes, /admin/tracks) and
+ * every trophy, secret, easter egg and bit of flair there is (/admin/trophies). It
  * opens for the emails in the API's ADMIN_EMAILS (Render): the API is asked,
  * and it's the API that answers every card.
  */
@@ -146,10 +153,11 @@ export function AdminPage({ section }: { section?: AdminSection }) {
               <Suspense fallback={<p className="adm-note">Opening the Track Book…</p>}>
                 <AdminTrackBook />
               </Suspense>
+            ) : section === 'trophies' ? (
+              <AdminTrophies />
             ) : (
               <>
                 <DailyGamesCard />
-                <AdminSecrets />
                 <FeedbackCard />
                 <ErrorsCard />
                 <FlagsCard />

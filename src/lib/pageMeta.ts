@@ -262,7 +262,15 @@ export function pageMeta(route: Route): PageMeta {
     case 'admin':
       return {
         ...site,
-        title: titled(route.section === 'holes' ? 'Hole Book' : route.section === 'tracks' ? 'Track Book' : 'Admin'),
+        title: titled(
+          route.section === 'holes'
+            ? 'Hole Book'
+            : route.section === 'tracks'
+              ? 'Track Book'
+              : route.section === 'trophies'
+                ? 'Trophies'
+                : 'Admin',
+        ),
         path: adminHref(route.section),
         noindex: true,
       }
