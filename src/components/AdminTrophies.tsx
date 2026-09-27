@@ -90,9 +90,9 @@ const EGGS: { key: string; name: string; how: string; does: string; clue: string
   {
     key: 'konami',
     name: 'The cheat code: 8-bit mode',
-    how: 'On any page, ↑ ↑ ↓ ↓ ← → ← → then B A on a keyboard; on a phone, swipe up, up, down, down, left, right, left, right, then tap twice.',
+    how: 'On any page but a game’s screen, ↑ ↑ ↓ ↓ ← → ← → then B A on a keyboard; on a phone, just swipe up, up, down, down, left, right, left, right.',
     does: 'Turns the whole site 8-bit: a pixel font, square corners and faint scan lines, with a Turn off button in the corner. The device remembers it; the code again turns it off.',
-    clue: 'The code is scratched faintly into the footer of every page, under “Original games that load fast…”, like a tip written on an arcade cabinet.',
+    clue: 'The code is scratched, small and very faint, into the footer of every page, under “Original games that load fast…”, like a tip written on an arcade cabinet. Phones see it without the B A.',
     secret: 'Up Up Down Down',
   },
   {

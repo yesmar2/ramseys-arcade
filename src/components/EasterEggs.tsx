@@ -12,8 +12,9 @@ import '../styles/eggs.css'
  * The site's easter eggs, on every page (lib/eggs.ts), and the pop-up that says a secret was found
  * (lib/secrets.ts), wherever it was found: a run, a bug, a day's hole or an egg.
  *
- * - The old cheat code, ↑↑↓↓←→←→ then B A on a keyboard, or the same swipes then two taps on a phone,
- *   turns the arcade 8-bit, and back. Its clue is scratched faintly into the footer.
+ * - The old cheat code, ↑↑↓↓←→←→ then B A on a keyboard, or just the same swipes on a phone (it has no B
+ *   or A to press), turns the arcade 8-bit, and back. Its clue is scratched very faintly into the footer,
+ *   without the B A on a phone. A game's own arrows and swipes don't count.
  * - Seven quick taps on the logo make it blip. Its clue: till a device has done it, the logo's blip
  *   sends out two rings now and then, as if it wants a tap.
  * - Words (lib/eggWords.ts), searched or typed anywhere: a barrel roll spins the page, and old game cheats
@@ -27,10 +28,11 @@ const WORD_AGAIN_MS = 2500
 const REPLY_MS = 3600
 const GOD_MODE_MS = 10_000
 
-type Token = 'up' | 'down' | 'left' | 'right' | 'b' | 'a' | 'tap'
+type Token = 'up' | 'down' | 'left' | 'right' | 'b' | 'a'
 
+/** The code on a keyboard, and on a phone: the same arrows as swipes, since a phone has no B or A. */
 const KEYS: readonly Token[] = ['up', 'up', 'down', 'down', 'left', 'right', 'left', 'right', 'b', 'a']
-const SWIPES: readonly Token[] = ['up', 'up', 'down', 'down', 'left', 'right', 'left', 'right', 'tap', 'tap']
+const SWIPES: readonly Token[] = ['up', 'up', 'down', 'down', 'left', 'right', 'left', 'right']
 
 const KEY_TOKENS: Record<string, Token> = {
   ArrowUp: 'up',
@@ -55,6 +57,9 @@ function typing(target: EventTarget | null): boolean {
   const el = target as HTMLElement | null
   return Boolean(el && (el.isContentEditable || el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT'))
 }
+
+/** A game's screen (it has no header), where arrows, swipes and letters are the game's. */
+const onGameScreen = () => !document.querySelector('.site-bar__brand')
 
 const endsWith = (seen: readonly Token[], code: readonly Token[]) =>
   seen.length >= code.length && code.every((t, i) => seen[seen.length - code.length + i] === t)
@@ -145,7 +150,7 @@ export function EasterEggs() {
   useEffect(() => {
     let letters = ''
     const onKey = (e: KeyboardEvent) => {
-      if (e.metaKey || e.ctrlKey || e.altKey || typing(e.target)) return
+      if (e.metaKey || e.ctrlKey || e.altKey || typing(e.target) || onGameScreen()) return
       if (!/^[a-z]$/i.test(e.key)) return
       letters = (letters + e.key.toLowerCase()).slice(-EGG_LETTERS_KEPT)
       const word = eggWordTyped(letters)
@@ -166,23 +171,26 @@ export function EasterEggs() {
     return () => window.removeEventListener(EIGHT_BIT_EVENT, sync)
   }, [])
 
-  // The cheat code, by keys or by swipes.
+  // The cheat code, by keys or by swipes, anywhere but a game's screen.
   useEffect(() => {
-    let seen: Token[] = []
-    const push = (token: Token) => {
-      seen = [...seen, token].slice(-KEYS.length)
-      if (endsWith(seen, KEYS) || endsWith(seen, SWIPES)) {
-        seen = []
-        const on = !isEightBit()
-        setEightBit(on)
-        if (on) void reportEgg('konami')
-      }
+    let keys: Token[] = []
+    let swipes: Token[] = []
+    const found = () => {
+      keys = []
+      swipes = []
+      const on = !isEightBit()
+      setEightBit(on)
+      if (on) void reportEgg('konami')
     }
     const onKey = (e: KeyboardEvent) => {
-      if (e.metaKey || e.ctrlKey || e.altKey || typing(e.target)) return
+      if (e.metaKey || e.ctrlKey || e.altKey || typing(e.target) || onGameScreen()) return
       const token = KEY_TOKENS[e.key]
-      if (token) push(token)
-      else seen = []
+      if (!token) {
+        keys = []
+        return
+      }
+      keys = [...keys, token].slice(-KEYS.length)
+      if (endsWith(keys, KEYS)) found()
     }
     let start: { x: number; y: number; at: number } | null = null
     const onTouchStart = (e: TouchEvent) => {
@@ -196,10 +204,10 @@ export function EasterEggs() {
       const dy = t.clientY - start.y
       const ms = e.timeStamp - start.at
       start = null
-      if (ms > 700) return
-      const far = Math.max(Math.abs(dx), Math.abs(dy))
-      if (far < 12 && ms < 350) push('tap')
-      else if (far >= 40) push(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : dy > 0 ? 'down' : 'up')
+      if (ms > 700 || Math.max(Math.abs(dx), Math.abs(dy)) < 40 || onGameScreen()) return
+      const way: Token = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : dy > 0 ? 'down' : 'up'
+      swipes = [...swipes, way].slice(-SWIPES.length)
+      if (endsWith(swipes, SWIPES)) found()
     }
     window.addEventListener('keydown', onKey)
     window.addEventListener('touchstart', onTouchStart, { passive: true })

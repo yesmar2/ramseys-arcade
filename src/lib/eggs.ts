@@ -4,8 +4,8 @@ import { announceSecrets, SECRETS, type SecretFound } from './secrets'
 /*
  * The site's easter eggs (components/EasterEggs.tsx), each hiding a secret trophy (lib/secrets.ts), kept on
  * the player's shelf when they're signed in, and each with a clue:
- * - The old cheat code, ↑↑↓↓←→←→BA (or on a phone the same swipes and two taps), turns the arcade 8-bit.
- *   Its clue is scratched faintly into the footer.
+ * - The old cheat code, ↑↑↓↓←→←→BA (or on a phone just the swipes), turns the arcade 8-bit. Its clue is
+ *   scratched very faintly into the footer, without the BA on a phone.
  * - Seven quick taps on the logo make it blip. Till a device has done it, the logo pings now and then.
  * - "do a barrel roll" in the search spins the page (lib/eggWords.ts). A search that finds nothing says so.
  * - Old game cheats, typed or searched, answer back (lib/eggWords.ts). The code on the wall hints at them,

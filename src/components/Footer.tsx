@@ -41,7 +41,7 @@ export function Footer() {
           <p className="site-footer__lead">Original games that load fast and stay out of your way.</p>
           {/* The cheat code, scratched in like a tip on an arcade cabinet: the clue to an easter egg (EasterEggs.tsx). */}
           <p className="site-footer__scratch" aria-hidden="true">
-            ↑↑↓↓←→←→BA
+            ↑↑↓↓←→←→<span className="site-footer__scratch-keys">BA</span>
           </p>
         </div>
 
