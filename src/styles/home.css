@@ -889,9 +889,10 @@ html[data-theme="dark"] .home-banner {
 /* ---------- on now: the daily, the weekly, and last week's podium ---------- */
 
 /*
- * Three cards under the banner, each tinted from its game the way the tiles
- * are: a one-game event takes that game's colour, a mix takes the site's, and
- * last week's result is gold. The whole card is the way in.
+ * Three cards under the banner, or four with Today's Track, each tinted from
+ * its game the way the tiles are: a one-game event takes that game's colour, a
+ * mix takes the site's, and last week's result is gold. The whole card is the
+ * way in.
  */
 .onnow {
   display: grid;
@@ -905,6 +906,21 @@ html[data-theme="dark"] .home-banner {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.8rem;
+}
+
+.onnow__grid--four {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+/* Four, where four across would be tight: two rows of two. */
+@media (min-width: 56.01rem) and (max-width: 88rem) {
+  .onnow__grid--four {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .onnow__grid--four .onnow-card {
+    min-height: 8.5rem;
+  }
 }
 
 .onnow__grid > li {

@@ -85,21 +85,23 @@ export function GameHubBoard({
         </a>
       </div>
 
-      <nav className="gh-seg" aria-label="Period" hidden={daily}>
-        {VISIBLE_LEADERBOARD_PERIODS.map((p) => (
-          <a
-            key={p}
-            href={gameHubHref(slug, p)}
-            aria-current={p === period ? 'true' : undefined}
-            onClick={(e) => {
-              e.preventDefault()
-              applySitePeriod(p, route)
-            }}
-          >
-            {PERIOD_LABELS[p]}
-          </a>
-        ))}
-      </nav>
+      {daily ? null : (
+        <nav className="gh-seg" aria-label="Period">
+          {VISIBLE_LEADERBOARD_PERIODS.map((p) => (
+            <a
+              key={p}
+              href={gameHubHref(slug, p)}
+              aria-current={p === period ? 'true' : undefined}
+              onClick={(e) => {
+                e.preventDefault()
+                applySitePeriod(p, route)
+              }}
+            >
+              {PERIOD_LABELS[p]}
+            </a>
+          ))}
+        </nav>
+      )}
 
       {loading ? (
         <ol className="gh-rows gh-rows--skel" aria-hidden="true">

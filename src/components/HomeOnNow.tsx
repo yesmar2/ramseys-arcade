@@ -1,8 +1,9 @@
-import type { CSSProperties } from 'react'
-import { getGame } from '../data/games'
+import { Suspense, type CSSProperties } from 'react'
+import { getGame, isGameListed } from '../data/games'
 import { tournamentHref, tournamentsHref } from '../hooks/useHashRoute'
 import { useLiveEvents } from '../hooks/useLiveEvents'
 import { usePlayerName } from '../hooks/usePlayerName'
+import { lazyPage } from '../lib/lazyPage'
 import { normalizePlayerName } from '../lib/leaderboard'
 import { resolveGameAccent } from '../lib/theme'
 import { howItWins, type TournamentSummary } from '../lib/tournaments'
@@ -11,6 +12,9 @@ import { GameThumbArt } from './GameThumbArt'
 import { medalKind } from './PodiumMedal'
 
 const PLACES = ['1st', '2nd', '3rd']
+
+/** Hot Lap's track of the day, in a chunk of its own with the plan it comes from. */
+const TodaysTrackOnNow = lazyPage(() => import('./TodaysTrackCard').then((m) => m.TodaysTrackOnNow))
 
 function pts(n: number) {
   return `${n} ${n === 1 ? 'pt' : 'pts'}`
@@ -136,12 +140,22 @@ function ResultCard({ t, you }: { t: TournamentSummary; you: string }) {
   )
 }
 
+/** A card's shape while what goes in it loads. */
+function SkeletonCard() {
+  return (
+    <span className="onnow-card onnow-card--skel">
+      <span className="skel-line" style={{ '--skel-w': '9rem' } as CSSProperties} />
+      <span className="skel-line" style={{ '--skel-w': '13rem' } as CSSProperties} />
+    </span>
+  )
+}
+
 /**
- * On now, under the banner: today's daily, this week's weekly and how last
- * week's finished. There is nearly always a daily and a weekly running, and
- * last week's podium stays up until the next one ends, so the row reads full on
- * a quiet day as on a busy one. While the events load, three cards of the
- * same shape hold the space.
+ * On now, under the banner: today's daily, Hot Lap's track of the day, this
+ * week's weekly and how last week's finished. There is nearly always a daily
+ * and a weekly running, and last week's podium stays up until the next one
+ * ends, so the row reads full on a quiet day as on a busy one. While the
+ * events load, cards of the same shape hold the space.
  */
 export function HomeOnNow() {
   const name = normalizePlayerName(usePlayerName())
@@ -149,6 +163,7 @@ export function HomeOnNow() {
   const daily = official.find((t) => t.cadence === 'daily') ?? null
   const weekly = official.find((t) => t.cadence === 'weekly') ?? null
   const mineById = (id: string) => mine.find((t) => t.id === id) ?? null
+  const track = isGameListed('hotlap')
 
   if (loading) {
     return (
@@ -158,13 +173,10 @@ export function HomeOnNow() {
             On now
           </h2>
         </div>
-        <ul className="onnow__grid" aria-hidden="true">
-          {[0, 1, 2].map((i) => (
+        <ul className={`onnow__grid${track ? ' onnow__grid--four' : ''}`} aria-hidden="true">
+          {(track ? [0, 1, 2, 3] : [0, 1, 2]).map((i) => (
             <li key={i}>
-              <span className="onnow-card onnow-card--skel">
-                <span className="skel-line" style={{ '--skel-w': '9rem' } as CSSProperties} />
-                <span className="skel-line" style={{ '--skel-w': '13rem' } as CSSProperties} />
-              </span>
+              <SkeletonCard />
             </li>
           ))}
         </ul>
@@ -172,7 +184,8 @@ export function HomeOnNow() {
     )
   }
 
-  if (!daily && !weekly && !lastWeekly) return null
+  if (!daily && !weekly && !lastWeekly && !track) return null
+  const count = [daily, weekly, lastWeekly].filter(Boolean).length + (track ? 1 : 0)
 
   return (
     <section className="onnow" aria-labelledby="onnow-title">
@@ -184,10 +197,17 @@ export function HomeOnNow() {
           All events ›
         </a>
       </div>
-      <ul className="onnow__grid">
+      <ul className={`onnow__grid${count === 4 ? ' onnow__grid--four' : ''}`}>
         {daily ? (
           <li data-hunt="home-onnow">
             <RunningCard t={daily} mine={mineById(daily.id)} joined={joinedIds.has(daily.id)} champion={false} />
+          </li>
+        ) : null}
+        {track ? (
+          <li>
+            <Suspense fallback={<SkeletonCard />}>
+              <TodaysTrackOnNow />
+            </Suspense>
           </li>
         ) : null}
         {weekly ? (

@@ -29,6 +29,8 @@ import { preloadGamePage } from './gamePages'
 
 /** Ace Chase's Today's Hole, in a chunk of its own, since only its page shows it here. */
 const TodaysHoleCard = lazyPage(() => import('../components/TodaysHoleCard').then((m) => m.TodaysHoleCard))
+/** Hot Lap's Today's Track, the same way. */
+const TodaysTrackCard = lazyPage(() => import('../components/TodaysTrackCard').then((m) => m.TodaysTrackCard))
 
 function isBoardGame(slug: string): slug is LeaderboardGame {
   return (LEADERBOARD_GAMES as readonly string[]).includes(slug)
@@ -129,6 +131,11 @@ export function GameHubPage({ slug, board: boardFromRoute }: GameHubPageProps) {
           {game.slug === 'acechase' ? (
             <Suspense fallback={null}>
               <TodaysHoleCard />
+            </Suspense>
+          ) : null}
+          {game.slug === 'hotlap' ? (
+            <Suspense fallback={null}>
+              <TodaysTrackCard />
             </Suspense>
           ) : null}
           {boardSlug ? (

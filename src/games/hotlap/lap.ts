@@ -58,6 +58,19 @@ export function keepLap(day: string, lap: GhostLap) {
   }
 }
 
+/** A test drive's best lap of each track, kept only while the tab is open: a track driven ahead of its day. */
+const testLaps = new Map<string, GhostLap>()
+
+/** Your best lap of a day's track: on this device, or in a test drive, in this tab. */
+export function bestLapOf(day: string, test: boolean): GhostLap | null {
+  return test ? (testLaps.get(day) ?? null) : keptLap(day)
+}
+
+export function keepBestLap(day: string, test: boolean, lap: GhostLap) {
+  if (test) testLaps.set(day, lap)
+  else keepLap(day, lap)
+}
+
 /** A day's track, built, and its pace car's lap: a driver that keeps to the middle of the road. */
 export type Course = DailyTrack & { track: Track; paceLap: GhostLap }
 

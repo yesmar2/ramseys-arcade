@@ -109,12 +109,15 @@ export function GamePanelBody({
   slug,
   personalBest,
   hideBest = false,
+  hideRecord = false,
   extraMeta,
   tools,
 }: {
   slug: string
   personalBest: number
   hideBest?: boolean
+  /** Leaves out the board's best too, where the run isn't on it (a Hot Lap test drive). */
+  hideRecord?: boolean
   extraMeta?: ReactNode
   tools?: ReactNode
 }) {
@@ -137,10 +140,12 @@ export function GamePanelBody({
             <strong>{personalBest > 0 ? formatLeaderboardScore(slug, personalBest) : '—'}</strong>
           </div>
         ) : null}
-        <div className="game-pause-meta__row">
-          <span>{daily ? 'Today’s best' : 'The record'}</span>
-          <strong>{allTime > 0 ? formatLeaderboardScore(slug, allTime) : '—'}</strong>
-        </div>
+        {!hideRecord ? (
+          <div className="game-pause-meta__row">
+            <span>{daily ? 'Today’s best' : 'The record'}</span>
+            <strong>{allTime > 0 ? formatLeaderboardScore(slug, allTime) : '—'}</strong>
+          </div>
+        ) : null}
         {extraMeta}
         {tries ? (
           <div className="game-pause-meta__row">
@@ -232,6 +237,7 @@ export function GamePauseOverlay({
   slug,
   personalBest,
   hideBest = false,
+  hideRecord = false,
   paused,
   onResume,
   extraMeta,
@@ -240,6 +246,7 @@ export function GamePauseOverlay({
   slug: string
   personalBest: number
   hideBest?: boolean
+  hideRecord?: boolean
   paused: boolean
   onResume: () => void
   extraMeta?: ReactNode
@@ -261,6 +268,7 @@ export function GamePauseOverlay({
         slug={slug}
         personalBest={personalBest}
         hideBest={hideBest}
+        hideRecord={hideRecord}
         extraMeta={extraMeta}
         tools={tools}
       />

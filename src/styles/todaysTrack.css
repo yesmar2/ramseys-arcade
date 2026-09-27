@@ -1,0 +1,51 @@
+/* Today's Track (TodaysTrackCard.tsx): Hot Lap's track of the day from above, on its grass. */
+.evp-screen.ttc__screen {
+  background: linear-gradient(160deg, #8cc463 0%, #5f9a45 100%);
+}
+
+html:not([data-theme='light']) .evp-screen.ttc__screen {
+  background: linear-gradient(160deg, #3f7134 0%, #28502a 100%);
+}
+
+.ttc-plan {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.ttc-plan__edge,
+.ttc-plan__road {
+  fill: none;
+  stroke-linejoin: round;
+}
+
+.ttc-plan__edge {
+  stroke: #f4f6f1;
+}
+
+.ttc-plan__road {
+  stroke: #474d55;
+}
+
+html:not([data-theme='light']) .ttc-plan__edge {
+  stroke: rgba(236, 241, 236, 0.82);
+}
+
+html:not([data-theme='light']) .ttc-plan__road {
+  stroke: #30353b;
+}
+
+.ttc-plan__start {
+  stroke: #fff;
+}
+
+.ttc-plan__car {
+  fill: #f2813a;
+}
+
+a.evp-screen.ttc__screen:hover .ttc-plan__car,
+a.evp-screen.ttc__screen:focus-visible .ttc-plan__car {
+  fill: #ff9a4d;
+}

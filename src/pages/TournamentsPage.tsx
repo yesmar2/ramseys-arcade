@@ -31,8 +31,9 @@ import { PendingInvitesStrip } from '../components/PendingInvitesStrip'
 import { PlayerAvatar } from '../components/PlayerAvatar'
 import { ShareBoardButton } from '../components/ShareBoardButton'
 import { TodaysHoleCard } from '../components/TodaysHoleCard'
+import { TodaysTrackCard } from '../components/TodaysTrackCard'
 import { openSiteMenu } from '../components/siteNav'
-import { getGame } from '../data/games'
+import { getGame, isGameListed } from '../data/games'
 import { useAuth } from '../hooks/useAuth'
 import { useLiveEvents } from '../hooks/useLiveEvents'
 import { usePlayerName } from '../hooks/usePlayerName'
@@ -866,6 +867,7 @@ export function TournamentsPage() {
               {lineup.daily ? <DailyCard t={lineup.daily} /> : null}
               {lineup.oneShot ? <OneShotCard t={lineup.oneShot} /> : null}
               <TodaysHoleCard />
+              {isGameListed('hotlap') ? <TodaysTrackCard /> : null}
               {lineup.lastWeekly ? (
                 <LastWeekCard t={lineup.lastWeekly} detail={lastDetail} lesson={lesson} me={me} />
               ) : null}

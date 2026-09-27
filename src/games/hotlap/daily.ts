@@ -26,11 +26,43 @@ export function msUntilNextTrack(now = Date.now()): number {
   return Math.max(0, (24 * 3600 - (h! * 3600 + m! * 60 + s!)) * 1000)
 }
 
+/** When the next track comes, to the second: the same all day, for a countdown to hold on to. */
+export function nextTrackAt(now = Date.now()): number {
+  return Math.round((now + msUntilNextTrack(now)) / 1000) * 1000
+}
+
 /** A day's number: 1 on the first day. */
 export function trackNumber(day: string): number {
   const [y, m, d] = day.split('-').map(Number)
   const [y0, m0, d0] = FIRST_DAY.split('-').map(Number)
   return Math.round((Date.UTC(y!, m! - 1, d!) - Date.UTC(y0!, m0! - 1, d0!)) / 86_400_000) + 1
+}
+
+/** The day of a track's number: the first day's is 1. */
+export function dayOfTrack(n: number): string {
+  const [y0, m0, d0] = FIRST_DAY.split('-').map(Number)
+  return new Date(Date.UTC(y0!, m0! - 1, d0! + n - 1)).toISOString().slice(0, 10)
+}
+
+/** How many days are planned, from the first. */
+export const PLANNED_TRACKS = DAILY_TRACKS.length
+
+/** "Sat, Oct 10": a track's day, in words. */
+export function dayWords(day: string): string {
+  const [y, m, d] = day.split('-').map(Number)
+  return new Date(Date.UTC(y!, m! - 1, d!)).toLocaleDateString('en-US', { timeZone: 'UTC', weekday: 'short', month: 'short', day: 'numeric' })
+}
+
+/**
+ * The day a test drive asks for, `?track=` a track's number (1 to the plan's end) or its day
+ * (YYYY-MM-DD); null for anything else.
+ */
+export function testDriveDay(asked: string | undefined): string | null {
+  if (!asked) return null
+  const day = /^\d{4}-\d{2}-\d{2}$/.test(asked) ? asked : /^\d{1,4}$/.test(asked) ? dayOfTrack(Number(asked)) : null
+  if (!day) return null
+  const n = trackNumber(day)
+  return n >= 1 && n <= PLANNED_TRACKS && dayOfTrack(n) === day ? day : null
 }
 
 export type DailyTrack = {
