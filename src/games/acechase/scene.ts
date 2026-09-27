@@ -15,7 +15,7 @@ import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 import { isDarkTheme, THEME_EVENT } from '../../lib/theme'
 import { introTime, type GameState, type Phase, type PathPoint } from './game'
-import { BALL_R, BULL_R, RINGS, WALL_H, WALL_T, onGreen, slope, type Hole, type Style, type Wall } from './physics'
+import { BALL_R, BULL_R, RINGS, WALL_H, WALL_T, onGreen, slope, type Hole, type Spot, type Style, type Wall } from './physics'
 
 export type View = 'tee' | 'target' | 'top'
 /** The clear part of the screen between the panels, in CSS pixels from the top of the canvas. */
@@ -214,6 +214,8 @@ const PLACES: Record<Style, Place> = {
 }
 
 const GOLD = 0xf5b942
+/** A bunker's sand. */
+const SAND_COLOUR = 0xdcc38e
 const CHALK = 0xf3f6ee
 const TREES = 150
 /** Behind the start card the camera circles the hole this far out and this high, in hole lengths: over the trees. */
@@ -754,9 +756,10 @@ export class AceScene {
 
   /**
    * The wood round the course. On a laid hole the trees stand on its hillside, `ground`, and among its
-   * bends as well as round them, wherever `clear` says they're out of the way.
+   * bends as well as round them, wherever `clear` says they're out of the way. None stands by the camera
+   * behind the tee, `tee`, where one would fill the view up the hole.
    */
-  private plantTrees(b: Bounds, base: number, laid?: { ground: (x: number, z: number) => number; clear: (x: number, z: number) => boolean }) {
+  private plantTrees(b: Bounds, base: number, tee: Spot, laid?: { ground: (x: number, z: number) => number; clear: (x: number, z: number) => boolean }) {
     const rand = seeded(29)
     const m = new THREE.Matrix4()
     const q = new THREE.Quaternion()
@@ -765,11 +768,12 @@ export class AceScene {
     let tries = 0
     this.crownShades = []
     const rocks = this.place.props === 'rocks'
+    const byCamera = (x: number, z: number) => Math.abs(x - tee.x) < 10 && z > tee.z - 1 && z < tee.z + 18
     while (placed < TREES && tries < 5000) {
       tries++
       const x = b.x0 - 26 + rand() * (b.x1 - b.x0 + 52)
       const z = b.z0 - 26 + rand() * (b.z1 - b.z0 + 52)
-      if (laid ? !laid.clear(x, z) : Math.max(b.x0 - x, x - b.x1, b.z0 - z, z - b.z1) < 3.2) continue
+      if ((laid ? !laid.clear(x, z) : Math.max(b.x0 - x, x - b.x1, b.z0 - z, z - b.z1) < 3.2) || byCamera(x, z)) continue
       const y = laid ? laid.ground(x, z) : base
       const s = 0.9 + rand() * 1.1
       q.identity()
@@ -1094,6 +1098,8 @@ export class AceScene {
         // (behind the tee, to the left): the humps read at dusk as well as by day.
         if (relief > 1) c.offsetHSL(0, 0, Math.max(-0.12, Math.min(0.12, (relief - 1) * 0.12 * (0.72 * gx - 0.69 * gz))))
         if (steep > 0.9) c.lerp(rock, Math.min(1, (steep - 0.9) / 0.8))
+        // A bunker: sand, a little grainy.
+        if (h.def.sand?.(x, z)) c.set(SAND_COLOUR).offsetHSL(0, 0, (((Math.sin(x * 12.99 + z * 78.23) * 43758.5) % 1) - 0.5) * 0.05)
       } else {
         pos.setY(i, base)
         c.set(place.ground.off)
@@ -1125,7 +1131,7 @@ export class AceScene {
     const base = Math.min(lowest - 0.3, (h.water ?? 0) - 0.3)
     this.meadow.position.set((b.x0 + b.x1) / 2, base - 0.01, (b.z0 + b.z1) / 2)
     this.hills.position.set((b.x0 + b.x1) / 2, base, (b.z0 + b.z1) / 2)
-    this.plantTrees(b, base, h.def.path ? this.laidHillside(h, b, base, course) : undefined)
+    this.plantTrees(b, base, h.tee, h.def.path ? this.laidHillside(h, b, base, course) : undefined)
 
     // The green: a fine grid over the hole, on the height map where it is green; mown in stripes across
     // the way you play it, darker in the hollows, rock where it is sheer.

@@ -272,6 +272,7 @@ function which(side: number, along: number): string {
  */
 export function describe(s: Pick<GameState, 'ball' | 'hole' | 'closest' | 'landed'>): string {
   const where = placeOf(s)
+  if (s.ball.done === 'rest' && s.hole.def.sand?.(s.ball.x, s.ball.z)) return `in the sand: ${where}`
   if (s.ball.posts) return `off a post: ${where}`
   if (s.ball.struck) return `off ${s.ball.struck}: ${where}`
   return where

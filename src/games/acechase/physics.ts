@@ -30,6 +30,8 @@ export const MAX_SPEED = 10.5
 export const WALL_E = 0.62
 /** A cushion: the padded back stop behind some targets, which takes nearly all the pace off a ball. */
 export const SOFT_E = 0.12
+/** How many times harder sand drags on a ball than the green does. */
+export const SAND = 4
 export const WALL_H = 0.26
 export const WALL_T = 0.08
 export const LAND_E = 0.32
@@ -109,6 +111,8 @@ export type HoleDef = {
   style?: Style
   /** How plainly the green's colour shows its heights, lighter up and darker down: 1 unless said. */
   relief?: number
+  /** Where the green is sand, a bunker, which drags on a ball SAND times as hard. */
+  sand?: (x: number, z: number) => boolean
   lost?: Lost
   /** How hard the ball is pulled down (m/s², the Earth's unless said) and how much the ground drags on it. */
   gravity?: number
@@ -145,6 +149,7 @@ export type Hole = {
   g: number
   mu: number
   laid: boolean
+  sand?: (x: number, z: number) => boolean
 }
 
 export type Ball = {
@@ -425,6 +430,7 @@ export function makeHole(def: HoleDef, target: Spot): Hole {
     g: def.gravity ?? G,
     mu: def.friction ?? FRICTION,
     laid: def.laid ?? false,
+    sand: def.sand,
   }
 }
 
@@ -497,7 +503,7 @@ function normalAt(hole: Hole, x: number, z: number): [number, number, number] {
 export function step(hole: Hole, b: Ball): Ball {
   if (b.done) return b
   const G = hole.g
-  const drag = hole.mu * G
+  const drag = hole.mu * G * (hole.sand?.(b.x, b.z) ? SAND : 1)
   if (!b.air) {
     const [nx, ny, nz] = normalAt(hole, b.x, b.z)
     // Gravity along the ground, as a rolling ball feels it, and the rolling drag.

@@ -3,184 +3,184 @@
 import type { DailyPick } from './daily.ts'
 
 export const DAILY_PLAN: readonly DailyPick[] = [
-  { style: 'garden', k: 2 }, // #1 2026-09-25 Primrose Green: 47 in all, best 33 at 63–64, -23.4..-21.9°
-  { style: 'garden', k: 2 }, // #2 2026-09-26 Primrose Lawn: 33 in all, best 11 at 56.5–57, 31.0..31.7°
-  { style: 'ice', k: 1 }, // #3 2026-09-27 Blizzard Pond: 11 in all, best 11 at 45–45, 28.7..29.7°
-  { style: 'garden', k: 0 }, // #4 2026-09-28 Foxglove Knolls: 45 in all, best 20 at 50.5–51.5, 10.7..11.9°
-  { style: 'moon', k: 2 }, // #5 2026-09-29 Orbit Mare: 22 in all, best 13 at 39–39.5, -19.2..-18.3°
-  { style: 'garden', k: 0 }, // #6 2026-09-30 Bramble Lawn: 17 in all, best 13 at 48.5–49, 10.2..11.1°
-  { style: 'garden', k: 2 }, // #7 2026-10-01 Meadow Glade: 62 in all, best 19 at 50–50.5, -20.4..-19.4°
-  { style: 'garden', k: 0 }, // #8 2026-10-02 Clover Green: 27 in all, best 20 at 69–69.5, -35.4..-34.5°
-  { style: 'ice', k: 0 }, // #9 2026-10-03 Hailstone Floe: 35 in all, best 19 at 41.5–42, -31.2..-29.9°
-  { style: 'moon', k: 0 }, // #10 2026-10-04 Lunar Highlands: 109 in all, best 39 at 38.5–39.5, -8.7..-5.7°
-  { style: 'garden', k: 2 }, // #11 2026-10-05 Foxglove Green: 15 in all, best 15 at 54–54.5, 14.6..15.5°
-  { style: 'garden', k: 0 }, // #12 2026-10-06 Orchard Commons: 40 in all, best 19 at 50.5–52.5, 10.6..11.6°
-  { style: 'garden', k: 0 }, // #13 2026-10-07 Hollyhock Lawn: 50 in all, best 48 at 50.5–51, 7.1..10.2°
-  { style: 'garden', k: 1 }, // #14 2026-10-08 Hollyhock Commons: 32 in all, best 32 at 54–54.5, 8.4..11.2°
-  { style: 'garden', k: 1 }, // #15 2026-10-09 Primrose Knolls: 53 in all, best 24 at 53.5–54.5, 28.3..30.3°
-  { style: 'moon', k: 1 }, // #16 2026-10-10 Tranquility Mare: 46 in all, best 45 at 49.5–50, 37.3..40.9°
-  { style: 'garden', k: 1 }, // #17 2026-10-11 Primrose Knolls: 43 in all, best 31 at 74–76, -22.6..-21.5°
-  { style: 'ice', k: 0 }, // #18 2026-10-12 Hailstone Rink: 97 in all, best 41 at 43.5–43.5, -5.6..-1.6°
-  { style: 'garden', k: 1 }, // #19 2026-10-13 Hollyhock Commons: 25 in all, best 15 at 51–51.5, -19.1..-18.0°
-  { style: 'garden', k: 0 }, // #20 2026-10-14 Clover Green: 61 in all, best 35 at 62–62.5, -13.9..-11.8°
-  { style: 'garden', k: 0 }, // #21 2026-10-15 Orchard Green: 25 in all, best 15 at 54.5–55, 9.6..10.5°
-  { style: 'garden', k: 0 }, // #22 2026-10-16 Hollyhock Green: 23 in all, best 23 at 53–53, 19.2..21.4°
-  { style: 'garden', k: 0 }, // #23 2026-10-17 Clover Glade: 48 in all, best 27 at 55.5–56, 33.3..35.5°
-  { style: 'garden', k: 7 }, // #24 2026-10-18 Bramble Lawn: 85 in all, best 48 at 56–56.5, -33.7..-30.4°
-  { style: 'garden', k: 2 }, // #25 2026-10-19 Clover Commons: 15 in all, best 15 at 51.5–52, 11.1..11.9°
-  { style: 'garden', k: 4 }, // #26 2026-10-20 Willow Lawn: 14 in all, best 14 at 56–56.5, 24.7..25.5°
-  { style: 'moon', k: 2 }, // #27 2026-10-21 Apollo Basin: 32 in all, best 21 at 42–42, -3.2..-1.2°
-  { style: 'ice', k: 0 }, // #28 2026-10-22 Frost Floe: 56 in all, best 40 at 47.5–48.5, 35.0..38.7°
-  { style: 'garden', k: 10 }, // #29 2026-10-23 Hollyhock Glade: 30 in all, best 21 at 50.5–51, 15.9..17.4°
-  { style: 'moon', k: 4 }, // #30 2026-10-24 Tranquility Uplands: 21 in all, best 13 at 49.5–50, 23.0..23.8°
-  { style: 'garden', k: 7 }, // #31 2026-10-25 Primrose Glade: 41 in all, best 19 at 48.5–49.5, 9.1..10.5°
-  { style: 'ice', k: 1 }, // #32 2026-10-26 Frost Sheet: 27 in all, best 20 at 43–43.5, -14.0..-12.8°
-  { style: 'garden', k: 1 }, // #33 2026-10-27 Foxglove Knolls: 43 in all, best 24 at 59–59, -35.8..-33.5°
-  { style: 'garden', k: 0 }, // #34 2026-10-28 Hollyhock Lawn: 13 in all, best 13 at 52.5–53, 11.8..12.7°
-  { style: 'garden', k: 1 }, // #35 2026-10-29 Bramble Knolls: 20 in all, best 15 at 81–84, 11.8..12.1°
-  { style: 'garden', k: 0 }, // #36 2026-10-30 Hollyhock Knolls: 27 in all, best 17 at 52–52, 3.6..5.2°
-  { style: 'garden', k: 0 }, // #37 2026-10-31 Foxglove Glade: 48 in all, best 38 at 49.5–50, 9.1..11.9°
-  { style: 'garden', k: 0 }, // #38 2026-11-01 Foxglove Knolls: 53 in all, best 32 at 55–56, -38.5..-36.6°
-  { style: 'moon', k: 0 }, // #39 2026-11-02 Stardust Mare: 32 in all, best 18 at 76.5–78, -14.7..-14.3°
-  { style: 'garden', k: 0 }, // #40 2026-11-03 Clover Park: 51 in all, best 50 at 48.5–49.5, 19.4..21.9°
-  { style: 'ice', k: 0 }, // #41 2026-11-04 Glacier Sheet: 46 in all, best 26 at 44–44.5, 23.5..24.8°
-  { style: 'garden', k: 0 }, // #42 2026-11-05 Meadow Park: 66 in all, best 42 at 50–50.5, -7.3..-4.2°
-  { style: 'garden', k: 3 }, // #43 2026-11-06 Hollyhock Lawn: 18 in all, best 18 at 54–54.5, 4.3..5.3°
-  { style: 'garden', k: 2 }, // #44 2026-11-07 Primrose Commons: 37 in all, best 35 at 54.5–55, 9.5..12.2°
-  { style: 'ice', k: 1 }, // #45 2026-11-08 Glacier Rink: 18 in all, best 12 at 59.5–60, -18.0..-17.4°
-  { style: 'moon', k: 0 }, // #46 2026-11-09 Selene Mare: 40 in all, best 35 at 42.5–43.5, -22.5..-19.9°
-  { style: 'garden', k: 0 }, // #47 2026-11-10 Orchard Glade: 24 in all, best 14 at 55.5–56.5, -24.7..-23.9°
-  { style: 'garden', k: 1 }, // #48 2026-11-11 Primrose Glade: 95 in all, best 48 at 56.5–57.5, 25.1..29.2°
-  { style: 'garden', k: 0 }, // #49 2026-11-12 Willow Knolls: 29 in all, best 29 at 55.5–56, -9.7..-7.9°
-  { style: 'moon', k: 3 }, // #50 2026-11-13 Crater Mare: 59 in all, best 23 at 43–43, -20.3..-18.1°
-  { style: 'garden', k: 1 }, // #51 2026-11-14 Primrose Green: 39 in all, best 32 at 54–55, 10.3..12.0°
-  { style: 'garden', k: 1 }, // #52 2026-11-15 Clover Lawn: 39 in all, best 30 at 48.5–49, 2.8..5.4°
-  { style: 'ice', k: 0 }, // #53 2026-11-16 Blizzard Pond: 59 in all, best 19 at 75.5–78.5, 12.7..13.0°
-  { style: 'garden', k: 0 }, // #54 2026-11-17 Clover Commons: 34 in all, best 34 at 54.5–55.5, -9.6..-7.5°
-  { style: 'garden', k: 1 }, // #55 2026-11-18 Bramble Knolls: 62 in all, best 41 at 53–53.5, 19.6..22.7°
-  { style: 'garden', k: 2 }, // #56 2026-11-19 Willow Park: 22 in all, best 13 at 53–53, -38.7..-37.5°
-  { style: 'moon', k: 1 }, // #57 2026-11-20 Crater Mare: 23 in all, best 19 at 50–50, 40.4..42.2°
-  { style: 'garden', k: 0 }, // #58 2026-11-21 Hollyhock Knolls: 41 in all, best 25 at 58–58.5, -12.9..-11.1°
-  { style: 'garden', k: 2 }, // #59 2026-11-22 Meadow Lawn: 25 in all, best 19 at 61–62, -38.6..-37.8°
-  { style: 'garden', k: 1 }, // #60 2026-11-23 Orchard Glade: 22 in all, best 21 at 52.5–53.5, -8.2..-7.1°
-  { style: 'ice', k: 1 }, // #61 2026-11-24 Glacier Pond: 21 in all, best 13 at 42.5–43, 11.3..12.2°
-  { style: 'garden', k: 5 }, // #62 2026-11-25 Bramble Lawn: 84 in all, best 45 at 55.5–57, -16.2..-14.1°
-  { style: 'garden', k: 2 }, // #63 2026-11-26 Clover Knolls: 20 in all, best 18 at 54–54.5, -28.9..-28.0°
-  { style: 'garden', k: 1 }, // #64 2026-11-27 Bramble Green: 50 in all, best 25 at 53.5–54.5, 37.1..38.2°
-  { style: 'garden', k: 0 }, // #65 2026-11-28 Foxglove Glade: 43 in all, best 43 at 51.5–52.5, 16.4..18.7°
-  { style: 'garden', k: 2 }, // #66 2026-11-29 Orchard Knolls: 38 in all, best 19 at 53.5–54, -15.8..-14.9°
-  { style: 'ice', k: 0 }, // #67 2026-11-30 Glacier Floe: 84 in all, best 50 at 45.5–46.5, 39.8..43.3°
-  { style: 'garden', k: 2 }, // #68 2026-12-01 Clover Park: 54 in all, best 42 at 58–59, 19.1..20.8°
-  { style: 'moon', k: 0 }, // #69 2026-12-02 Selene Highlands: 88 in all, best 34 at 47.5–48.5, 38.1..40.2°
-  { style: 'garden', k: 2 }, // #70 2026-12-03 Meadow Knolls: 45 in all, best 23 at 65–66.5, 15.7..16.8°
-  { style: 'garden', k: 2 }, // #71 2026-12-04 Willow Glade: 36 in all, best 25 at 52.5–53, 8.0..9.3°
-  { style: 'ice', k: 0 }, // #72 2026-12-05 Snowdrift Pond: 71 in all, best 49 at 45.5–46.5, -37.5..-32.9°
-  { style: 'garden', k: 0 }, // #73 2026-12-06 Meadow Glade: 37 in all, best 36 at 48.5–49.5, -3.2..-0.5°
-  { style: 'moon', k: 6 }, // #74 2026-12-07 Stardust Highlands: 102 in all, best 27 at 45.5–46.5, 39.1..40.7°
-  { style: 'garden', k: 0 }, // #75 2026-12-08 Orchard Lawn: 48 in all, best 32 at 58.5–60, 42.9..45.0°
-  { style: 'garden', k: 0 }, // #76 2026-12-09 Foxglove Green: 32 in all, best 23 at 59.5–60.5, -42.0..-41.1°
-  { style: 'garden', k: 6 }, // #77 2026-12-10 Bramble Park: 25 in all, best 10 at 57–57.5, 28.6..29.4°
-  { style: 'moon', k: 0 }, // #78 2026-12-11 Moonbeam Uplands: 36 in all, best 15 at 59–60, 28.5..29.0°
-  { style: 'ice', k: 2 }, // #79 2026-12-12 Glacier Sheet: 65 in all, best 23 at 44.5–45, 13.2..15.0°
-  { style: 'garden', k: 0 }, // #80 2026-12-13 Foxglove Green: 31 in all, best 27 at 59–59.5, -37.0..-34.8°
-  { style: 'garden', k: 2 }, // #81 2026-12-14 Clover Park: 13 in all, best 11 at 52.5–53.5, 9.5..10.1°
-  { style: 'garden', k: 0 }, // #82 2026-12-15 Orchard Lawn: 17 in all, best 16 at 54.5–55.5, 43.3..43.9°
-  { style: 'garden', k: 2 }, // #83 2026-12-16 Clover Park: 54 in all, best 39 at 53.5–54, -34.5..-32.5°
-  { style: 'garden', k: 1 }, // #84 2026-12-17 Meadow Glade: 50 in all, best 40 at 50.5–51, 7.9..10.1°
-  { style: 'ice', k: 1 }, // #85 2026-12-18 Snowdrift Floe: 36 in all, best 25 at 45–45.5, -21.0..-19.0°
-  { style: 'garden', k: 2 }, // #86 2026-12-19 Meadow Glade: 11 in all, best 11 at 52.5–53, 6.1..6.9°
-  { style: 'moon', k: 5 }, // #87 2026-12-20 Moonbeam Basin: 26 in all, best 25 at 40–41, -17.6..-16.2°
-  { style: 'garden', k: 6 }, // #88 2026-12-21 Clover Green: 30 in all, best 29 at 63.5–65, -13.4..-12.1°
-  { style: 'garden', k: 4 }, // #89 2026-12-22 Bramble Lawn: 55 in all, best 19 at 52.5–53.5, -21.6..-20.6°
-  { style: 'garden', k: 1 }, // #90 2026-12-23 Foxglove Park: 30 in all, best 20 at 52.5–53, 17.7..18.7°
-  { style: 'garden', k: 0 }, // #91 2026-12-24 Orchard Knolls: 62 in all, best 34 at 56.5–57.5, -22.2..-20.5°
-  { style: 'garden', k: 2 }, // #92 2026-12-25 Hollyhock Glade: 45 in all, best 29 at 56.5–57, 40.5..42.6°
-  { style: 'garden', k: 0 }, // #93 2026-12-26 Hollyhock Glade: 34 in all, best 26 at 54–55, -12.8..-11.2°
-  { style: 'moon', k: 1 }, // #94 2026-12-27 Tranquility Plain: 18 in all, best 15 at 45.5–46, -23.5..-22.7°
-  { style: 'garden', k: 0 }, // #95 2026-12-28 Bramble Commons: 46 in all, best 39 at 47.5–48, -4.0..-1.2°
-  { style: 'ice', k: 0 }, // #96 2026-12-29 Glacier Flats: 48 in all, best 31 at 41–41.5, 29.7..31.5°
-  { style: 'garden', k: 0 }, // #97 2026-12-30 Foxglove Green: 49 in all, best 21 at 57–57, -38.2..-36.2°
-  { style: 'garden', k: 0 }, // #98 2026-12-31 Orchard Park: 53 in all, best 48 at 61.5–63.5, -31.9..-30.5°
-  { style: 'moon', k: 2 }, // #99 2027-01-01 Orbit Uplands: 40 in all, best 32 at 44–44.5, 33.5..35.5°
-  { style: 'garden', k: 0 }, // #100 2027-01-02 Foxglove Commons: 17 in all, best 11 at 49–49.5, 0.2..1.0°
-  { style: 'garden', k: 3 }, // #101 2027-01-03 Orchard Glade: 20 in all, best 18 at 52–53, -5.8..-4.6°
-  { style: 'garden', k: 1 }, // #102 2027-01-04 Clover Glade: 25 in all, best 15 at 60.5–63, 42.5..42.8°
-  { style: 'garden', k: 3 }, // #103 2027-01-05 Willow Lawn: 84 in all, best 49 at 55–56.5, -36.6..-34.5°
-  { style: 'ice', k: 0 }, // #104 2027-01-06 Frost Flats: 116 in all, best 20 at 51–51.5, -29.2..-28.1°
-  { style: 'garden', k: 0 }, // #105 2027-01-07 Clover Park: 22 in all, best 15 at 84–84.5, 19.5..20.2°
-  { style: 'garden', k: 0 }, // #106 2027-01-08 Primrose Park: 27 in all, best 14 at 57.5–58, 26.7..27.6°
-  { style: 'garden', k: 1 }, // #107 2027-01-09 Willow Commons: 50 in all, best 19 at 48.5–49.5, 17.7..18.4°
-  { style: 'garden', k: 0 }, // #108 2027-01-10 Bramble Commons: 28 in all, best 27 at 53.5–54, -30.1..-28.8°
-  { style: 'garden', k: 1 }, // #109 2027-01-11 Willow Glade: 69 in all, best 27 at 55.5–56, -23.5..-21.3°
-  { style: 'ice', k: 5 }, // #110 2027-01-12 Frost Flats: 112 in all, best 47 at 40.5–41.5, 1.9..5.3°
-  { style: 'moon', k: 2 }, // #111 2027-01-13 Apollo Uplands: 50 in all, best 21 at 42–42, 15.1..17.1°
-  { style: 'garden', k: 0 }, // #112 2027-01-14 Foxglove Knolls: 24 in all, best 12 at 60.5–61, -17.9..-17.2°
-  { style: 'garden', k: 0 }, // #113 2027-01-15 Clover Glade: 17 in all, best 17 at 53–53, 10.2..11.8°
-  { style: 'garden', k: 0 }, // #114 2027-01-16 Willow Commons: 34 in all, best 28 at 50–50.5, -7.6..-5.9°
-  { style: 'garden', k: 0 }, // #115 2027-01-17 Primrose Green: 36 in all, best 31 at 53.5–54.5, -23.8..-22.5°
-  { style: 'garden', k: 0 }, // #116 2027-01-18 Clover Glade: 23 in all, best 15 at 50–50.5, -0.5..0.7°
-  { style: 'moon', k: 1 }, // #117 2027-01-19 Lunar Mare: 34 in all, best 18 at 66–68, -17.2..-16.9°
-  { style: 'garden', k: 3 }, // #118 2027-01-20 Bramble Green: 105 in all, best 36 at 63–63.5, 15.3..17.3°
-  { style: 'ice', k: 4 }, // #119 2027-01-21 Glacier Sheet: 16 in all, best 16 at 47–47.5, 21.8..23.2°
-  { style: 'garden', k: 1 }, // #120 2027-01-22 Primrose Knolls: 46 in all, best 45 at 52.5–53.5, 11.0..13.4°
-  { style: 'garden', k: 0 }, // #121 2027-01-23 Orchard Knolls: 98 in all, best 33 at 54.5–55, 34.9..37.5°
-  { style: 'moon', k: 1 }, // #122 2027-01-24 Stardust Plain: 41 in all, best 23 at 42.5–43, -14.1..-12.8°
-  { style: 'garden', k: 1 }, // #123 2027-01-25 Willow Knolls: 33 in all, best 31 at 58.5–59, -39.6..-37.7°
-  { style: 'garden', k: 0 }, // #124 2027-01-26 Orchard Knolls: 47 in all, best 23 at 59.5–60.5, 40.5..41.6°
-  { style: 'ice', k: 7 }, // #125 2027-01-27 Blizzard Floe: 14 in all, best 13 at 43–43, -5.0..-3.8°
-  { style: 'garden', k: 2 }, // #126 2027-01-28 Meadow Glade: 62 in all, best 27 at 54.5–55.5, 29.7..31.0°
-  { style: 'garden', k: 4 }, // #127 2027-01-29 Clover Knolls: 31 in all, best 15 at 58–59, -43.3..-42.6°
-  { style: 'moon', k: 2 }, // #128 2027-01-30 Apollo Uplands: 52 in all, best 27 at 42–42.5, 14.8..17.3°
-  { style: 'garden', k: 2 }, // #129 2027-01-31 Bramble Lawn: 58 in all, best 25 at 50.5–52, 37.6..38.7°
-  { style: 'garden', k: 1 }, // #130 2027-02-01 Hollyhock Commons: 46 in all, best 36 at 59–60.5, -38.3..-35.4°
-  { style: 'ice', k: 0 }, // #131 2027-02-02 Frost Floe: 44 in all, best 11 at 45–45.5, 33.5..34.3°
-  { style: 'garden', k: 1 }, // #132 2027-02-03 Primrose Lawn: 25 in all, best 15 at 52–52.5, 11.3..12.1°
-  { style: 'garden', k: 3 }, // #133 2027-02-04 Bramble Lawn: 21 in all, best 12 at 53–54, -21.4..-20.8°
-  { style: 'garden', k: 1 }, // #134 2027-02-05 Clover Park: 74 in all, best 29 at 50–50.5, -15.5..-13.7°
-  { style: 'moon', k: 0 }, // #135 2027-02-06 Crater Highlands: 28 in all, best 13 at 40.5–41, 6.7..7.4°
-  { style: 'ice', k: 0 }, // #136 2027-02-07 Icicle Floe: 55 in all, best 31 at 61–63, 14.8..16.4°
-  { style: 'garden', k: 1 }, // #137 2027-02-08 Bramble Glade: 93 in all, best 48 at 53.5–55.5, -40.5..-36.8°
-  { style: 'garden', k: 1 }, // #138 2027-02-09 Orchard Green: 33 in all, best 19 at 59–59.5, -34.1..-33.2°
-  { style: 'garden', k: 2 }, // #139 2027-02-10 Bramble Knolls: 21 in all, best 13 at 50–50, 20.9..22.1°
-  { style: 'garden', k: 2 }, // #140 2027-02-11 Primrose Glade: 36 in all, best 34 at 55–55.5, -5.0..-3.1°
-  { style: 'moon', k: 1 }, // #141 2027-02-12 Orbit Plain: 14 in all, best 12 at 41–41.5, 1.8..2.6°
-  { style: 'garden', k: 6 }, // #142 2027-02-13 Bramble Lawn: 50 in all, best 22 at 56.5–57, -29.3..-27.6°
-  { style: 'ice', k: 0 }, // #143 2027-02-14 Hailstone Floe: 93 in all, best 42 at 39.5–40, 14.1..18.1°
-  { style: 'garden', k: 2 }, // #144 2027-02-15 Bramble Commons: 13 in all, best 12 at 49–49.5, -6.5..-5.6°
-  { style: 'garden', k: 1 }, // #145 2027-02-16 Meadow Lawn: 26 in all, best 14 at 52–52, -6.0..-4.7°
-  { style: 'garden', k: 1 }, // #146 2027-02-17 Hollyhock Glade: 22 in all, best 21 at 59–59.5, -37.0..-35.4°
-  { style: 'garden', k: 1 }, // #147 2027-02-18 Primrose Green: 24 in all, best 24 at 57.5–58, -29.8..-28.5°
-  { style: 'garden', k: 4 }, // #148 2027-02-19 Primrose Green: 48 in all, best 27 at 55.5–56, -35.4..-33.6°
-  { style: 'garden', k: 4 }, // #149 2027-02-20 Clover Green: 34 in all, best 18 at 80.5–82, -32.3..-31.9°
-  { style: 'garden', k: 7 }, // #150 2027-02-21 Orchard Lawn: 33 in all, best 13 at 47–47.5, 9.1..9.9°
-  { style: 'ice', k: 1 }, // #151 2027-02-22 Tundra Flats: 42 in all, best 23 at 51–51.5, -8.5..-7.2°
-  { style: 'moon', k: 1 }, // #152 2027-02-23 Moonbeam Basin: 15 in all, best 14 at 42–42, -18.0..-16.7°
-  { style: 'garden', k: 0 }, // #153 2027-02-24 Orchard Glade: 30 in all, best 20 at 53.5–54, 17.1..18.3°
-  { style: 'garden', k: 0 }, // #154 2027-02-25 Primrose Green: 37 in all, best 29 at 54.5–55.5, 5.9..7.3°
-  { style: 'garden', k: 0 }, // #155 2027-02-26 Bramble Lawn: 33 in all, best 16 at 67–69.5, 12.6..13.2°
-  { style: 'garden', k: 0 }, // #156 2027-02-27 Primrose Commons: 95 in all, best 28 at 84.5–87.5, -24.1..-23.6°
-  { style: 'garden', k: 2 }, // #157 2027-02-28 Orchard Park: 33 in all, best 31 at 54–54.5, 15.7..17.5°
-  { style: 'ice', k: 0 }, // #158 2027-03-01 Snowdrift Flats: 42 in all, best 42 at 58.5–60, 13.0..14.3°
-  { style: 'moon', k: 0 }, // #159 2027-03-02 Tranquility Highlands: 63 in all, best 44 at 42.5–43.5, -8.6..-6.1°
-  { style: 'garden', k: 5 }, // #160 2027-03-03 Primrose Lawn: 47 in all, best 13 at 61–62.5, -18.7..-18.3°
-  { style: 'garden', k: 0 }, // #161 2027-03-04 Meadow Commons: 110 in all, best 47 at 60–61, -33.3..-30.0°
-  { style: 'garden', k: 2 }, // #162 2027-03-05 Foxglove Knolls: 49 in all, best 38 at 54.5–55, -21.0..-18.6°
-  { style: 'moon', k: 1 }, // #163 2027-03-06 Tranquility Basin: 39 in all, best 37 at 47.5–48, 26.8..28.8°
-  { style: 'ice', k: 0 }, // #164 2027-03-07 Hailstone Rink: 18 in all, best 17 at 49–49, 36.2..37.8°
-  { style: 'garden', k: 1 }, // #165 2027-03-08 Orchard Glade: 87 in all, best 31 at 70–70.5, -30.9..-28.4°
-  { style: 'garden', k: 0 }, // #166 2027-03-09 Bramble Knolls: 23 in all, best 16 at 54–54.5, 14.6..15.5°
-  { style: 'garden', k: 0 }, // #167 2027-03-10 Foxglove Glade: 79 in all, best 44 at 50.5–51, -0.2..4.0°
-  { style: 'garden', k: 0 }, // #168 2027-03-11 Meadow Green: 21 in all, best 10 at 48–48.5, 5.9..6.6°
-  { style: 'garden', k: 0 }, // #169 2027-03-12 Primrose Glade: 47 in all, best 22 at 74.5–76.5, 18.6..19.3°
-  { style: 'moon', k: 0 }, // #170 2027-03-13 Apollo Basin: 58 in all, best 34 at 39.5–40, 10.8..13.6°
-  { style: 'garden', k: 0 }, // #171 2027-03-14 Willow Glade: 39 in all, best 31 at 55–55.5, 19.7..22.6°
-  { style: 'garden', k: 1 }, // #172 2027-03-15 Primrose Glade: 56 in all, best 46 at 53.5–54, 9.8..12.7°
-  { style: 'garden', k: 0 }, // #173 2027-03-16 Foxglove Commons: 55 in all, best 15 at 55.5–55.5, -27.2..-25.8°
-  { style: 'garden', k: 1 }, // #174 2027-03-17 Foxglove Knolls: 32 in all, best 32 at 65.5–66, 29.4..31.9°
-  { style: 'ice', k: 6 }, // #175 2027-03-18 Frost Pond: 25 in all, best 22 at 41.5–42, -28.6..-26.7°
-  { style: 'garden', k: 5 }, // #176 2027-03-19 Hollyhock Park: 62 in all, best 28 at 58–59, 33.6..35.4°
-  { style: 'garden', k: 1 }, // #177 2027-03-20 Willow Commons: 31 in all, best 19 at 56–56.5, 25.2..26.2°
-  { style: 'ice', k: 2 }, // #178 2027-03-21 Frost Floe: 51 in all, best 35 at 47–47.5, 42.5..45.0°
-  { style: 'garden', k: 0 }, // #179 2027-03-22 Meadow Knolls: 63 in all, best 28 at 58–59, -37.5..-35.4°
-  { style: 'garden', k: 4 }, // #180 2027-03-23 Clover Glade: 19 in all, best 19 at 52–52.5, -5.5..-4.3°
+  { kind: 'dogleg', style: 'garden', k: 2 }, // #1 2026-09-25 Primrose Dogleg: 42 in all, best 33 at 69–70, -45.3..-43.7°
+  { kind: 'terrace', style: 'garden', k: 3 }, // #2 2026-09-26 Primrose Steps: 48 in all, best 30 at 67.5–69, 35.9..37.5°
+  { kind: 'bumps', style: 'ice', k: 7 }, // #3 2026-09-27 Blizzard Bumps: 36 in all, best 23 at 55.5–56.5, 58.5..60.0°
+  { kind: 'mesa', style: 'garden', k: 4 }, // #4 2026-09-28 Foxglove Butte: 13 in all, best 13 at 65–65.5, -49.9..-49.0°
+  { kind: 'neck', style: 'garden', k: 8 }, // #5 2026-09-29 Orchard Neck: 44 in all, best 20 at 47.5–48.5, -4.4..-3.5°
+  { kind: 'bunkers', style: 'garden', k: 3 }, // #6 2026-09-30 Bramble Sands: 45 in all, best 18 at 51–51.5, 19.4..20.3°
+  { kind: 'pinball', style: 'garden', k: 0 }, // #7 2026-10-01 Meadow Flipper: 65 in all, best 32 at 70.5–72, 52.9..54.4°
+  { kind: 'terrace', style: 'garden', k: 8 }, // #8 2026-10-02 Clover Terrace: 34 in all, best 20 at 62.5–63, 34.3..35.6°
+  { kind: 'pond', style: 'ice', k: 2 }, // #9 2026-10-03 Hailstone Lagoon: 42 in all, best 29 at 38–38.5, -30.4..-28.6°
+  { kind: 'mesa', style: 'moon', k: 2 }, // #10 2026-10-04 Lunar Plateau: 82 in all, best 27 at 51–51.5, -49.8..-48.2°
+  { kind: 'pinball', style: 'garden', k: 0 }, // #11 2026-10-05 Foxglove Pinball: 31 in all, best 28 at 50.5–51, -7.5..-5.3°
+  { kind: 'bunkers', style: 'garden', k: 1 }, // #12 2026-10-06 Orchard Bunkers: 80 in all, best 24 at 56.5–57.5, 10.5..12.6°
+  { kind: 'terrace', style: 'garden', k: 3 }, // #13 2026-10-07 Hollyhock Steps: 64 in all, best 29 at 56.5–57, -5.8..-3.7°
+  { kind: 'gates', style: 'garden', k: 9 }, // #14 2026-10-08 Hollyhock Gates: 44 in all, best 22 at 55–55.5, 31.5..32.8°
+  { kind: 'pond', style: 'garden', k: 2 }, // #15 2026-10-09 Primrose Waters: 33 in all, best 16 at 57.5–58, -44.4..-43.4°
+  { kind: 'neck', style: 'moon', k: 0 }, // #16 2026-10-10 Tranquility Narrows: 37 in all, best 35 at 38–38.5, 11.8..14.0°
+  { kind: 'mesa', style: 'garden', k: 8 }, // #17 2026-10-11 Primrose Butte: 20 in all, best 17 at 60–60.5, -18.2..-17.2°
+  { kind: 'gates', style: 'ice', k: 3 }, // #18 2026-10-12 Hailstone Gates: 21 in all, best 12 at 44–44, 28.0..29.1°
+  { kind: 'terrace', style: 'garden', k: 0 }, // #19 2026-10-13 Hollyhock Steps: 63 in all, best 25 at 58–58, -22.1..-19.7°
+  { kind: 'mesa', style: 'garden', k: 1 }, // #20 2026-10-14 Clover Mesa: 90 in all, best 38 at 63–64, -43.2..-41.1°
+  { kind: 'bumps', style: 'garden', k: 3 }, // #21 2026-10-15 Orchard Knolls: 59 in all, best 38 at 60–62, -51.8..-48.6°
+  { kind: 'bunkers', style: 'garden', k: 3 }, // #22 2026-10-16 Hollyhock Bunkers: 55 in all, best 20 at 48.5–49, 25.0..26.0°
+  { kind: 'pond', style: 'garden', k: 6 }, // #23 2026-10-17 Clover Lagoon: 67 in all, best 36 at 70–72.5, -60.0..-58.9°
+  { kind: 'dogleg', style: 'garden', k: 0 }, // #24 2026-10-18 Bramble Elbow: 95 in all, best 37 at 80–81, 10.0..11.3°
+  { kind: 'bumps', style: 'garden', k: 14 }, // #25 2026-10-19 Clover Bumps: 42 in all, best 17 at 81.5–84, 9.5..9.9°
+  { kind: 'pinball', style: 'garden', k: 1 }, // #26 2026-10-20 Willow Bumpers: 70 in all, best 38 at 63.5–65, 49.7..51.3°
+  { kind: 'gates', style: 'moon', k: 0 }, // #27 2026-10-21 Apollo Gates: 28 in all, best 28 at 41–41.5, 12.2..14.3°
+  { kind: 'dogleg', style: 'garden', k: 9 }, // #28 2026-10-22 Meadow Bend: 66 in all, best 19 at 76–77, 54.0..54.8°
+  { kind: 'mesa', style: 'garden', k: 0 }, // #29 2026-10-23 Hollyhock Butte: 90 in all, best 33 at 68.5–69.5, -57.0..-55.2°
+  { kind: 'pinball', style: 'moon', k: 0 }, // #30 2026-10-24 Tranquility Flipper: 79 in all, best 33 at 39–39.5, -11.2..-8.9°
+  { kind: 'bunkers', style: 'garden', k: 2 }, // #31 2026-10-25 Primrose Dunes: 38 in all, best 20 at 56–56.5, -1.2..0.5°
+  { kind: 'terrace', style: 'ice', k: 6 }, // #32 2026-10-26 Frost Steps: 50 in all, best 18 at 85.5–88, 10.3..10.6°
+  { kind: 'bumps', style: 'garden', k: 3 }, // #33 2026-10-27 Foxglove Humps: 19 in all, best 17 at 54.5–55.5, 40.0..40.6°
+  { kind: 'neck', style: 'garden', k: 2 }, // #34 2026-10-28 Hollyhock Neck: 25 in all, best 17 at 46–46.5, 4.6..5.6°
+  { kind: 'gates', style: 'garden', k: 0 }, // #35 2026-10-29 Bramble Portcullis: 26 in all, best 25 at 58–58.5, -38.6..-36.7°
+  { kind: 'pond', style: 'garden', k: 7 }, // #36 2026-10-30 Hollyhock Waters: 29 in all, best 29 at 73–75, -57.1..-56.0°
+  { kind: 'neck', style: 'garden', k: 3 }, // #37 2026-10-31 Foxglove Hourglass: 17 in all, best 14 at 50–50.5, -2.1..-1.1°
+  { kind: 'pinball', style: 'garden', k: 0 }, // #38 2026-11-01 Foxglove Flipper: 41 in all, best 34 at 51–52.5, 34.8..36.8°
+  { kind: 'gates', style: 'moon', k: 1 }, // #39 2026-11-02 Stardust Wall: 14 in all, best 14 at 43–43, 28.4..29.7°
+  { kind: 'terrace', style: 'garden', k: 3 }, // #40 2026-11-03 Clover Tiers: 86 in all, best 27 at 57–57.5, -23.4..-21.9°
+  { kind: 'mesa', style: 'garden', k: 17 }, // #41 2026-11-04 Willow Plateau: 51 in all, best 24 at 61.5–62.5, 35.4..36.7°
+  { kind: 'bunkers', style: 'garden', k: 2 }, // #42 2026-11-05 Meadow Traps: 61 in all, best 26 at 55.5–56.5, -9.3..-8.0°
+  { kind: 'bumps', style: 'garden', k: 0 }, // #43 2026-11-06 Hollyhock Bumps: 47 in all, best 36 at 74–75, -22.1..-20.6°
+  { kind: 'mesa', style: 'garden', k: 1 }, // #44 2026-11-07 Primrose Tabletop: 74 in all, best 31 at 60.5–61, 19.8..21.7°
+  { kind: 'pond', style: 'garden', k: 10 }, // #45 2026-11-08 Willow Pond: 74 in all, best 38 at 53–54, -32.4..-30.8°
+  { kind: 'gates', style: 'moon', k: 2 }, // #46 2026-11-09 Selene Gates: 31 in all, best 24 at 44–44, -34.1..-31.8°
+  { kind: 'pond', style: 'garden', k: 2 }, // #47 2026-11-10 Orchard Lagoon: 20 in all, best 20 at 50.5–51, 21.9..23.3°
+  { kind: 'gates', style: 'garden', k: 1 }, // #48 2026-11-11 Primrose Gaps: 32 in all, best 32 at 48.5–49, -5.7..-3.9°
+  { kind: 'dogleg', style: 'garden', k: 8 }, // #49 2026-11-12 Willow Bend: 75 in all, best 29 at 75–75.5, -43.7..-41.7°
+  { kind: 'neck', style: 'garden', k: 11 }, // #50 2026-11-13 Meadow Neck: 25 in all, best 19 at 47.5–48, 9.5..10.7°
+  { kind: 'mesa', style: 'garden', k: 8 }, // #51 2026-11-14 Primrose Mesa: 74 in all, best 24 at 65.5–66, -55.4..-53.9°
+  { kind: 'pinball', style: 'garden', k: 0 }, // #52 2026-11-15 Clover Bumpers: 21 in all, best 19 at 50–50.5, -2.9..-1.4°
+  { kind: 'mesa', style: 'ice', k: 2 }, // #53 2026-11-16 Blizzard Tabletop: 38 in all, best 23 at 52–52.5, 11.5..13.4°
+  { kind: 'bumps', style: 'garden', k: 0 }, // #54 2026-11-17 Clover Bumps: 72 in all, best 30 at 60.5–61, -46.1..-43.5°
+  { kind: 'gates', style: 'garden', k: 0 }, // #55 2026-11-18 Bramble Portcullis: 39 in all, best 22 at 73.5–75.5, -59.8..-59.2°
+  { kind: 'terrace', style: 'garden', k: 0 }, // #56 2026-11-19 Willow Tiers: 49 in all, best 29 at 62.5–63.5, -38.1..-36.6°
+  { kind: 'dogleg', style: 'garden', k: 11 }, // #57 2026-11-20 Meadow Elbow: 70 in all, best 17 at 73.5–74, 50.8..52.3°
+  { kind: 'mesa', style: 'garden', k: 0 }, // #58 2026-11-21 Hollyhock Butte: 63 in all, best 19 at 71–71.5, -58.0..-57.0°
+  { kind: 'bunkers', style: 'garden', k: 2 }, // #59 2026-11-22 Meadow Sands: 55 in all, best 24 at 57–58, -36.4..-35.0°
+  { kind: 'gates', style: 'garden', k: 16 }, // #60 2026-11-23 Orchard Portcullis: 27 in all, best 25 at 51–51, -2.5..-0.1°
+  { kind: 'neck', style: 'ice', k: 4 }, // #61 2026-11-24 Glacier Neck: 43 in all, best 37 at 41–41, 8.2..11.8°
+  { kind: 'pinball', style: 'garden', k: 5 }, // #62 2026-11-25 Bramble Bumpers: 64 in all, best 24 at 81–83.5, 56.6..58.2°
+  { kind: 'pond', style: 'garden', k: 7 }, // #63 2026-11-26 Clover Waters: 24 in all, best 15 at 59.5–61.5, -32.6..-31.8°
+  { kind: 'neck', style: 'garden', k: 3 }, // #64 2026-11-27 Bramble Narrows: 25 in all, best 13 at 61.5–62, 7.6..8.3°
+  { kind: 'dogleg', style: 'garden', k: 3 }, // #65 2026-11-28 Foxglove Corner: 81 in all, best 23 at 64–65, 16.8..18.0°
+  { kind: 'bumps', style: 'garden', k: 3 }, // #66 2026-11-29 Orchard Humps: 22 in all, best 19 at 61.5–63, -18.3..-17.7°
+  { kind: 'mesa', style: 'ice', k: 0 }, // #67 2026-11-30 Glacier Plateau: 40 in all, best 18 at 49–49.5, 39.2..40.6°
+  { kind: 'terrace', style: 'garden', k: 8 }, // #68 2026-12-01 Clover Tiers: 82 in all, best 28 at 73.5–74.5, 17.5..19.0°
+  { kind: 'pond', style: 'moon', k: 4 }, // #69 2026-12-02 Selene Lagoon: 24 in all, best 14 at 47–47.5, 48.9..49.6°
+  { kind: 'terrace', style: 'garden', k: 4 }, // #70 2026-12-03 Meadow Ledge: 12 in all, best 12 at 59–59, -24.2..-23.1°
+  { kind: 'pinball', style: 'garden', k: 1 }, // #71 2026-12-04 Willow Flipper: 81 in all, best 35 at 52–52.5, 17.6..20.0°
+  { kind: 'neck', style: 'ice', k: 7 }, // #72 2026-12-05 Snowdrift Neck: 19 in all, best 19 at 78–80, -8.5..-8.0°
+  { kind: 'pond', style: 'garden', k: 0 }, // #73 2026-12-06 Meadow Lagoon: 28 in all, best 25 at 55–55, -23.6..-21.2°
+  { kind: 'pinball', style: 'moon', k: 0 }, // #74 2026-12-07 Stardust Flipper: 70 in all, best 36 at 52–53.5, -51.3..-49.7°
+  { kind: 'mesa', style: 'garden', k: 8 }, // #75 2026-12-08 Orchard Tabletop: 69 in all, best 26 at 63.5–64, 40.2..41.8°
+  { kind: 'terrace', style: 'garden', k: 1 }, // #76 2026-12-09 Foxglove Terrace: 79 in all, best 34 at 59–60.5, 36.1..38.0°
+  { kind: 'mesa', style: 'garden', k: 0 }, // #77 2026-12-10 Bramble Plateau: 62 in all, best 17 at 68–68.5, 53.2..54.2°
+  { kind: 'neck', style: 'garden', k: 12 }, // #78 2026-12-11 Clover Squeeze: 21 in all, best 21 at 49–49, -6.8..-4.8°
+  { kind: 'terrace', style: 'garden', k: 17 }, // #79 2026-12-12 Willow Steps: 19 in all, best 16 at 56–56.5, -7.0..-5.7°
+  { kind: 'bumps', style: 'garden', k: 2 }, // #80 2026-12-13 Foxglove Knolls: 30 in all, best 18 at 53–53, 12.7..14.4°
+  { kind: 'bunkers', style: 'garden', k: 1 }, // #81 2026-12-14 Clover Traps: 59 in all, best 32 at 66–67, -19.6..-17.9°
+  { kind: 'mesa', style: 'garden', k: 3 }, // #82 2026-12-15 Orchard Tabletop: 66 in all, best 32 at 68–69, -54.0..-52.3°
+  { kind: 'bumps', style: 'garden', k: 10 }, // #83 2026-12-16 Clover Hillocks: 34 in all, best 18 at 56–56.5, 29.5..30.9°
+  { kind: 'mesa', style: 'garden', k: 9 }, // #84 2026-12-17 Meadow Plateau: 78 in all, best 29 at 64–65, 23.1..24.7°
+  { kind: 'pinball', style: 'ice', k: 7 }, // #85 2026-12-18 Snowdrift Flipper: 90 in all, best 27 at 64.5–66, -57.9..-56.4°
+  { kind: 'bumps', style: 'garden', k: 0 }, // #86 2026-12-19 Meadow Humps: 40 in all, best 39 at 64–66, 43.2..45.2°
+  { kind: 'gates', style: 'moon', k: 0 }, // #87 2026-12-20 Moonbeam Gates: 30 in all, best 15 at 60–61, -52.2..-51.4°
+  { kind: 'pond', style: 'garden', k: 2 }, // #88 2026-12-21 Clover Pond: 35 in all, best 25 at 62.5–63, -42.3..-40.0°
+  { kind: 'terrace', style: 'garden', k: 4 }, // #89 2026-12-22 Bramble Steps: 20 in all, best 13 at 56–56, 8.6..9.8°
+  { kind: 'mesa', style: 'garden', k: 6 }, // #90 2026-12-23 Foxglove Plateau: 58 in all, best 38 at 56.5–57, -24.6..-22.5°
+  { kind: 'bumps', style: 'garden', k: 3 }, // #91 2026-12-24 Orchard Humps: 48 in all, best 31 at 58.5–59, 16.8..19.1°
+  { kind: 'bunkers', style: 'garden', k: 1 }, // #92 2026-12-25 Hollyhock Dunes: 53 in all, best 25 at 62.5–63.5, 28.2..30.1°
+  { kind: 'dogleg', style: 'garden', k: 5 }, // #93 2026-12-26 Hollyhock Bend: 28 in all, best 28 at 70.5–71.5, 47.8..48.8°
+  { kind: 'pinball', style: 'moon', k: 1 }, // #94 2026-12-27 Tranquility Bumpers: 55 in all, best 33 at 46.5–47.5, 38.8..40.3°
+  { kind: 'terrace', style: 'garden', k: 0 }, // #95 2026-12-28 Bramble Steps: 38 in all, best 15 at 72.5–73.5, 52.0..52.8°
+  { kind: 'gates', style: 'garden', k: 13 }, // #96 2026-12-29 Willow Portcullis: 36 in all, best 35 at 73–74.5, 50.3..51.7°
+  { kind: 'terrace', style: 'garden', k: 8 }, // #97 2026-12-30 Foxglove Terrace: 83 in all, best 30 at 71.5–74.5, -53.2..-52.5°
+  { kind: 'mesa', style: 'garden', k: 1 }, // #98 2026-12-31 Orchard Plateau: 62 in all, best 26 at 61–61.5, 38.8..40.5°
+  { kind: 'neck', style: 'moon', k: 2 }, // #99 2027-01-01 Orbit Squeeze: 39 in all, best 16 at 77–79, -53.3..-52.9°
+  { kind: 'mesa', style: 'garden', k: 20 }, // #100 2027-01-02 Foxglove Tabletop: 27 in all, best 18 at 65.5–66, -47.2..-46.2°
+  { kind: 'pinball', style: 'garden', k: 4 }, // #101 2027-01-03 Orchard Arcade: 41 in all, best 32 at 53.5–54.5, 31.2..32.9°
+  { kind: 'pond', style: 'garden', k: 1 }, // #102 2027-01-04 Clover Waters: 61 in all, best 32 at 48–49, -27.4..-25.8°
+  { kind: 'mesa', style: 'garden', k: 0 }, // #103 2027-01-05 Willow Tabletop: 86 in all, best 30 at 61.5–62, -39.6..-37.7°
+  { kind: 'bumps', style: 'ice', k: 1 }, // #104 2027-01-06 Frost Humps: 60 in all, best 32 at 54.5–55.5, 50.5..52.3°
+  { kind: 'dogleg', style: 'garden', k: 0 }, // #105 2027-01-07 Clover Corner: 18 in all, best 18 at 77–80, -10.2..-9.8°
+  { kind: 'bunkers', style: 'garden', k: 0 }, // #106 2027-01-08 Primrose Traps: 92 in all, best 36 at 65.5–66.5, 54.8..57.8°
+  { kind: 'gates', style: 'garden', k: 2 }, // #107 2027-01-09 Willow Wall: 44 in all, best 16 at 50–50.5, 4.4..5.6°
+  { kind: 'neck', style: 'garden', k: 0 }, // #108 2027-01-10 Bramble Narrows: 43 in all, best 13 at 78.5–79, -58.0..-57.3°
+  { kind: 'terrace', style: 'garden', k: 5 }, // #109 2027-01-11 Willow Ledge: 76 in all, best 26 at 62–63, 34.2..35.2°
+  { kind: 'mesa', style: 'garden', k: 16 }, // #110 2027-01-12 Meadow Butte: 89 in all, best 31 at 66–67, 45.5..47.1°
+  { kind: 'gates', style: 'moon', k: 1 }, // #111 2027-01-13 Apollo Portcullis: 56 in all, best 20 at 48.5–49, 37.1..38.3°
+  { kind: 'mesa', style: 'garden', k: 0 }, // #112 2027-01-14 Foxglove Butte: 47 in all, best 18 at 60.5–61, -29.2..-28.1°
+  { kind: 'bumps', style: 'garden', k: 1 }, // #113 2027-01-15 Clover Humps: 39 in all, best 16 at 54–54.5, 29.6..30.3°
+  { kind: 'neck', style: 'garden', k: 4 }, // #114 2027-01-16 Willow Neck: 25 in all, best 23 at 69.5–71, -49.4..-48.4°
+  { kind: 'bumps', style: 'garden', k: 10 }, // #115 2027-01-17 Primrose Knolls: 35 in all, best 23 at 49.5–50, -5.1..-3.6°
+  { kind: 'pond', style: 'garden', k: 0 }, // #116 2027-01-18 Clover Lagoon: 46 in all, best 28 at 60.5–61.5, -48.8..-47.4°
+  { kind: 'pinball', style: 'moon', k: 5 }, // #117 2027-01-19 Lunar Bumpers: 78 in all, best 39 at 48–49, -44.1..-41.7°
+  { kind: 'pond', style: 'garden', k: 1 }, // #118 2027-01-20 Bramble Pond: 46 in all, best 21 at 51.5–52, 19.0..20.6°
+  { kind: 'mesa', style: 'ice', k: 3 }, // #119 2027-01-21 Glacier Plateau: 59 in all, best 27 at 72–72.5, 22.2..23.6°
+  { kind: 'neck', style: 'garden', k: 6 }, // #120 2027-01-22 Primrose Squeeze: 23 in all, best 16 at 46–47, -0.5..0.4°
+  { kind: 'gates', style: 'garden', k: 0 }, // #121 2027-01-23 Orchard Portcullis: 18 in all, best 16 at 46.5–47.5, 11.2..12.4°
+  { kind: 'dogleg', style: 'moon', k: 5 }, // #122 2027-01-24 Stardust Elbow: 42 in all, best 19 at 52–52.5, -11.3..-10.1°
+  { kind: 'terrace', style: 'garden', k: 1 }, // #123 2027-01-25 Willow Ledge: 36 in all, best 28 at 66–67.5, -40.7..-39.4°
+  { kind: 'bunkers', style: 'garden', k: 4 }, // #124 2027-01-26 Orchard Dunes: 22 in all, best 12 at 62.5–63, 4.8..5.6°
+  { kind: 'bumps', style: 'ice', k: 6 }, // #125 2027-01-27 Blizzard Hillocks: 64 in all, best 27 at 47–48.5, 10.7..12.6°
+  { kind: 'pinball', style: 'garden', k: 0 }, // #126 2027-01-28 Meadow Arcade: 37 in all, best 27 at 55–55.5, 25.7..27.9°
+  { kind: 'pond', style: 'garden', k: 0 }, // #127 2027-01-29 Clover Waters: 22 in all, best 12 at 51–51.5, 27.5..28.2°
+  { kind: 'gates', style: 'moon', k: 2 }, // #128 2027-01-30 Apollo Portcullis: 39 in all, best 27 at 45.5–46.5, 34.5..36.2°
+  { kind: 'dogleg', style: 'garden', k: 0 }, // #129 2027-01-31 Bramble Elbow: 46 in all, best 24 at 69.5–70.5, 46.5..47.7°
+  { kind: 'bunkers', style: 'garden', k: 2 }, // #130 2027-02-01 Hollyhock Sands: 99 in all, best 29 at 58–58, -13.4..-10.6°
+  { kind: 'neck', style: 'garden', k: 12 }, // #131 2027-02-02 Meadow Squeeze: 59 in all, best 18 at 73–74.5, -59.9..-59.1°
+  { kind: 'pinball', style: 'garden', k: 1 }, // #132 2027-02-03 Primrose Bumpers: 69 in all, best 16 at 59–59, 38.9..40.4°
+  { kind: 'terrace', style: 'garden', k: 0 }, // #133 2027-02-04 Bramble Steps: 31 in all, best 14 at 50–50.5, -1.7..-0.8°
+  { kind: 'mesa', style: 'garden', k: 3 }, // #134 2027-02-05 Clover Plateau: 25 in all, best 21 at 62.5–63.5, -41.7..-40.6°
+  { kind: 'bumps', style: 'moon', k: 1 }, // #135 2027-02-06 Crater Hillocks: 85 in all, best 34 at 44.5–45, 19.0..20.8°
+  { kind: 'neck', style: 'ice', k: 2 }, // #136 2027-02-07 Icicle Hourglass: 12 in all, best 12 at 38.5–39, 17.3..17.9°
+  { kind: 'bunkers', style: 'garden', k: 1 }, // #137 2027-02-08 Bramble Dunes: 43 in all, best 14 at 61–61.5, -25.1..-24.3°
+  { kind: 'gates', style: 'garden', k: 5 }, // #138 2027-02-09 Orchard Gates: 43 in all, best 26 at 61.5–62.5, -46.9..-45.7°
+  { kind: 'dogleg', style: 'garden', k: 5 }, // #139 2027-02-10 Bramble Bend: 63 in all, best 28 at 76–77, 31.4..33.0°
+  { kind: 'mesa', style: 'garden', k: 0 }, // #140 2027-02-11 Primrose Butte: 66 in all, best 37 at 70–71, -56.2..-54.2°
+  { kind: 'bumps', style: 'moon', k: 7 }, // #141 2027-02-12 Orbit Bumps: 46 in all, best 19 at 44–44.5, -31.2..-30.2°
+  { kind: 'pond', style: 'garden', k: 0 }, // #142 2027-02-13 Bramble Pool: 34 in all, best 23 at 54–54, -37.7..-35.5°
+  { kind: 'terrace', style: 'ice', k: 0 }, // #143 2027-02-14 Hailstone Tiers: 60 in all, best 21 at 48–48.5, 30.8..32.3°
+  { kind: 'pinball', style: 'garden', k: 3 }, // #144 2027-02-15 Bramble Bumpers: 39 in all, best 22 at 80.5–82, 52.2..53.3°
+  { kind: 'dogleg', style: 'garden', k: 3 }, // #145 2027-02-16 Meadow Elbow: 90 in all, best 30 at 60–60.5, -9.0..-6.8°
+  { kind: 'terrace', style: 'garden', k: 2 }, // #146 2027-02-17 Hollyhock Ledge: 52 in all, best 22 at 69.5–70, -55.8..-53.9°
+  { kind: 'bunkers', style: 'garden', k: 2 }, // #147 2027-02-18 Primrose Bunkers: 49 in all, best 25 at 82.5–84.5, 52.1..54.0°
+  { kind: 'pinball', style: 'garden', k: 6 }, // #148 2027-02-19 Primrose Pinball: 45 in all, best 22 at 77–79, 55.6..56.8°
+  { kind: 'pond', style: 'garden', k: 0 }, // #149 2027-02-20 Clover Pond: 73 in all, best 35 at 53.5–54.5, -35.1..-33.6°
+  { kind: 'mesa', style: 'garden', k: 2 }, // #150 2027-02-21 Orchard Tabletop: 49 in all, best 35 at 59–60, -43.3..-41.6°
+  { kind: 'gates', style: 'garden', k: 10 }, // #151 2027-02-22 Primrose Portcullis: 39 in all, best 33 at 55–56.5, 43.8..45.7°
+  { kind: 'neck', style: 'garden', k: 13 }, // #152 2027-02-23 Clover Narrows: 39 in all, best 23 at 80–81.5, 50.0..50.6°
+  { kind: 'bumps', style: 'garden', k: 3 }, // #153 2027-02-24 Orchard Humps: 52 in all, best 40 at 53.5–54, -29.5..-26.5°
+  { kind: 'terrace', style: 'garden', k: 8 }, // #154 2027-02-25 Primrose Terrace: 76 in all, best 21 at 59–59.5, 4.4..5.8°
+  { kind: 'mesa', style: 'garden', k: 0 }, // #155 2027-02-26 Bramble Tabletop: 47 in all, best 18 at 77.5–78.5, 11.0..11.6°
+  { kind: 'pinball', style: 'garden', k: 2 }, // #156 2027-02-27 Primrose Pinball: 27 in all, best 25 at 76–77.5, -55.7..-54.5°
+  { kind: 'neck', style: 'garden', k: 0 }, // #157 2027-02-28 Orchard Hourglass: 24 in all, best 24 at 47–47.5, -16.0..-14.4°
+  { kind: 'bumps', style: 'ice', k: 4 }, // #158 2027-03-01 Snowdrift Humps: 21 in all, best 13 at 43.5–43.5, -8.7..-7.5°
+  { kind: 'pond', style: 'moon', k: 4 }, // #159 2027-03-02 Tranquility Lagoon: 35 in all, best 35 at 42.5–43, 24.4..27.1°
+  { kind: 'dogleg', style: 'garden', k: 2 }, // #160 2027-03-03 Primrose Elbow: 82 in all, best 29 at 66–66.5, 7.2..9.6°
+  { kind: 'terrace', style: 'garden', k: 1 }, // #161 2027-03-04 Meadow Terrace: 60 in all, best 15 at 78.5–79.5, 18.9..19.8°
+  { kind: 'gates', style: 'garden', k: 6 }, // #162 2027-03-05 Foxglove Portcullis: 14 in all, best 14 at 57–57.5, -27.0..-25.9°
+  { kind: 'pond', style: 'moon', k: 1 }, // #163 2027-03-06 Tranquility Pond: 33 in all, best 17 at 44.5–45, 43.4..44.4°
+  { kind: 'mesa', style: 'ice', k: 2 }, // #164 2027-03-07 Hailstone Mesa: 27 in all, best 27 at 47.5–48, 18.9..20.4°
+  { kind: 'bumps', style: 'garden', k: 9 }, // #165 2027-03-08 Orchard Hillocks: 67 in all, best 25 at 54–54.5, 18.5..19.8°
+  { kind: 'pinball', style: 'garden', k: 0 }, // #166 2027-03-09 Bramble Flipper: 74 in all, best 35 at 74–75.5, 50.6..52.7°
+  { kind: 'bumps', style: 'garden', k: 3 }, // #167 2027-03-10 Foxglove Humps: 30 in all, best 12 at 86.5–88, 58.8..59.4°
+  { kind: 'dogleg', style: 'garden', k: 0 }, // #168 2027-03-11 Meadow Dogleg: 68 in all, best 22 at 78–79.5, -13.1..-12.5°
+  { kind: 'gates', style: 'garden', k: 2 }, // #169 2027-03-12 Primrose Gaps: 30 in all, best 16 at 47–47.5, -0.2..1.2°
+  { kind: 'terrace', style: 'moon', k: 2 }, // #170 2027-03-13 Apollo Terrace: 88 in all, best 37 at 52–53, -44.4..-42.1°
+  { kind: 'bunkers', style: 'garden', k: 1 }, // #171 2027-03-14 Willow Dunes: 37 in all, best 16 at 78.5–79, 52.7..53.6°
+  { kind: 'pond', style: 'garden', k: 2 }, // #172 2027-03-15 Primrose Lagoon: 33 in all, best 33 at 50–51.5, -23.8..-21.6°
+  { kind: 'bumps', style: 'garden', k: 5 }, // #173 2027-03-16 Foxglove Knolls: 26 in all, best 17 at 58–60, 15.9..16.3°
+  { kind: 'bunkers', style: 'garden', k: 1 }, // #174 2027-03-17 Foxglove Dunes: 93 in all, best 20 at 59–59, 18.8..20.7°
+  { kind: 'terrace', style: 'ice', k: 0 }, // #175 2027-03-18 Frost Steps: 35 in all, best 19 at 46–46, -7.9..-6.1°
+  { kind: 'mesa', style: 'garden', k: 0 }, // #176 2027-03-19 Hollyhock Plateau: 56 in all, best 29 at 62.5–63, -26.7..-24.6°
+  { kind: 'neck', style: 'garden', k: 2 }, // #177 2027-03-20 Willow Neck: 39 in all, best 18 at 46.5–47, -14.0..-12.8°
+  { kind: 'gates', style: 'ice', k: 5 }, // #178 2027-03-21 Frost Portcullis: 46 in all, best 30 at 46.5–47, -41.5..-39.5°
+  { kind: 'dogleg', style: 'garden', k: 5 }, // #179 2027-03-22 Meadow Bend: 55 in all, best 18 at 68–68, -15.5..-13.8°
+  { kind: 'pinball', style: 'garden', k: 4 }, // #180 2027-03-23 Clover Flipper: 15 in all, best 14 at 70.5–71, 28.6..29.5°
 ]

@@ -68,6 +68,8 @@ const PALETTES: Record<Style, Palette> = {
 const GOLD = 0xf5b942
 /** A rock's grey, as the scene draws its boulders. */
 const STONE = 0x9a9d96
+/** A bunker's sand, as the scene draws it. */
+const SAND_RGB = [0xdc, 0xc3, 0x8e]
 
 const css = (hex: number, alpha = 1) =>
   `rgba(${(hex >> 16) & 255}, ${(hex >> 8) & 255}, ${hex & 255}, ${alpha})`
@@ -217,6 +219,7 @@ function shadeGreen(def: HoleDef, spot: Spot, pal: Palette): HTMLCanvasElement {
     for (let i = 0; i < cols; i++) {
       const at = j * cols + i
       const y = h[at]!
+      const x = v0 + j * step
       const z = -(u0 + i * step)
       // Slopes along x and z, from the samples either side.
       const gx = (h[Math.min(rows - 1, j + 1) * cols + i]! - h[Math.max(0, j - 1) * cols + i]!) / (2 * step)
@@ -224,6 +227,8 @@ function shadeGreen(def: HoleDef, spot: Spot, pal: Palette): HTMLCanvasElement {
       let c: number[]
       if (def.water != null && y < def.water) {
         c = lost.map((v) => v * (1 + Math.max(-0.25, (y - def.water!) * 0.12)))
+      } else if (def.sand?.(x, z)) {
+        c = SAND_RGB
       } else {
         c = Math.floor((z + 100) / 0.75) % 2 ? stripeA : stripeB
         const steep = Math.hypot(gx, gz)
