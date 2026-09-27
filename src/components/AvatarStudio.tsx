@@ -1,6 +1,6 @@
 import { useEffect, useId, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
 import { fetchFlair, flairNote, type Flair } from '../lib/avatarFlair'
-import { FINISH_IDS, PRIZE_KINDS, PRIZES, prizeById, type PrizeKind } from '../data/prizes'
+import { FINISH_IDS, plateTier, PRIZE_KINDS, PRIZES, prizeById, type PrizeKind } from '../data/prizes'
 import { prizesHref } from '../hooks/useHashRoute'
 import {
   AVATAR_COLORS,
@@ -36,7 +36,8 @@ import { LockIcon, SparkleIcon } from './chromeIcons'
 import { Panel, PanelHead } from './Panel'
 import { AvatarArt } from './PlayerAvatar'
 import { PlayerName } from './PlayerName'
-import { CardBackdrop, NeonSign, PrizeArt } from './prizes/PrizeArt'
+import { CardBackdrop, PrizeArt } from './prizes/PrizeArt'
+import { SignArt } from './prizes/SignArt'
 
 /** Flair to put on as the studio opens: what a trophy just unlocked. */
 export type AvatarWear = { ring?: AvatarRing; pin?: AvatarPin }
@@ -90,11 +91,11 @@ function CardPreview({ avatar, name }: { avatar: Avatar; name: string }) {
       <span className="studio__card-text">
         <span className="studio__card-kicker">Your player card</span>
         {sign ? (
-          <NeonSign name={name} width={150} wires={false} />
+          <SignArt sign={sign} name={name} width={150} wires={false} />
         ) : (
           <PlayerName className="studio__card-name" name={name} style={wornPrize(avatar, 'name')} />
         )}
-        {title ? <span className="prize-plate">{title.name}</span> : <span className="studio__card-none">No title</span>}
+        {title ? <span className={`prize-plate prize-plate--${plateTier(title)}`}>{title.name}</span> : <span className="studio__card-none">No title</span>}
         {confetti ? <span className="studio__card-note">{confetti.name} confetti when you win</span> : null}
       </span>
     </div>

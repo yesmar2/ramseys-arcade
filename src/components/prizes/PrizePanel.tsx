@@ -1,5 +1,5 @@
-import { useId, useState, type CSSProperties } from 'react'
-import { PRIZE_KINDS, PRIZES, prizeById, TICKETS_A_DAY, type Prize } from '../../data/prizes'
+import { useEffect, useId, useRef, useState, type CSSProperties } from 'react'
+import { plateTier, PRIZE_KINDS, PRIZES, prizeById, TICKETS_A_DAY, type Prize } from '../../data/prizes'
 import { useAuth } from '../../hooks/useAuth'
 import {
   avatarWashColor,
@@ -18,7 +18,8 @@ import { AvatarArt, PlayerAvatar } from '../PlayerAvatar'
 import { PlayerName } from '../PlayerName'
 import { ReportConfetti } from '../RunReport'
 import { openSiteMenu } from '../siteNav'
-import { CardBackdrop, NeonSign, PrizeArt } from './PrizeArt'
+import { CardBackdrop, PrizeArt } from './PrizeArt'
+import { SignArt } from './SignArt'
 import { TicketGlyph } from './Ticket'
 
 /*
@@ -74,11 +75,11 @@ export function PlayerCardMini({ avatar, name, line }: { avatar: Avatar; name: s
       <span className="prize-card__text">
         <span className="prize-card__kicker">Player card</span>
         {sign ? (
-          <NeonSign name={name} width={190} wires={false} />
+          <SignArt sign={sign} name={name} width={190} wires={false} />
         ) : (
           <PlayerName className="prize-card__name" name={name} style={wornPrize(avatar, 'name')} />
         )}
-        {title ? <span className="prize-plate">{title.name}</span> : null}
+        {title ? <span className={`prize-plate prize-plate--${plateTier(title)}`}>{title.name}</span> : null}
         {line ? <span className="prize-card__line">{line}</span> : null}
       </span>
     </div>
@@ -120,6 +121,16 @@ export function PrizePanel({
   const tryOn = wearPrize(avatar, prize.kind, prize.id)
   const shownView = views.includes(view) ? view : views[0]
   const siblings = PRIZES.filter((p) => p.kind === prize.kind)
+  // A long list (there are two dozen titles) scrolls in its own box, kept on the one picked.
+  const variantsRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const box = variantsRef.current
+    const on = box?.querySelector<HTMLElement>('[aria-pressed="true"]')
+    if (!box || !on) return
+    // The box is positioned, so a button's offsetTop is already measured from it.
+    const top = on.offsetTop
+    if (top < box.scrollTop || top + on.offsetHeight > box.scrollTop + box.clientHeight) box.scrollTop = top - 8
+  }, [prize.id])
   const standingLine = standing.rank != null ? `#${standing.rank} in the standings · ${standing.score.toLocaleString()} pts` : undefined
 
   const pick = (id: string) => {
@@ -280,7 +291,7 @@ export function PrizePanel({
 
         <div className="prize-info">
           {siblings.length > 1 ? (
-            <div className="prize-variants" role="group" aria-label={PRIZE_KINDS[prize.kind].many}>
+            <div ref={variantsRef} className="prize-variants" role="group" aria-label={PRIZE_KINDS[prize.kind].many}>
               {siblings.map((p) => {
                 const mine = tickets.owned.includes(p.id)
                 return (

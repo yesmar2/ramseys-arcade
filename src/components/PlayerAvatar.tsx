@@ -32,8 +32,9 @@ const INK = '#10202c'
  * up at board size. A ring goes around the badge and a pin on its edge, both
  * earned, both in their own colours so they mean the same thing on everyone.
  *
- * A finish from the prize counter (Glitter, Starfield, Neon, Holo) is the
- * badge's own surface, inside its edge, so it never reads as a ring or a pin.
+ * A finish from the prize counter (Glitter, Starfield, 8-bit, Neon, Lava,
+ * Holo, Aurora) is the badge's own surface, inside its edge, so it never reads
+ * as a ring or a pin.
  * Its gradients and glow need ids, made per avatar so any number can share a
  * page.
  */
@@ -46,6 +47,12 @@ function finishRim(badge: AvatarBadge): string {
       return 'rgba(255,255,255,0.3)'
     case 'neon':
       return 'rgba(255,255,255,0.12)'
+    case 'lava':
+      return 'rgba(255,138,61,0.35)'
+    case 'aurora':
+      return 'rgba(126,240,196,0.3)'
+    case 'pixels':
+      return 'rgba(10,16,24,0.35)'
     case 'paper':
       return 'rgba(18,28,38,0.14)'
     default:
@@ -103,7 +110,12 @@ function monoInks(avatar: Avatar): { pattern: string; letter: string; line: stri
       return { pattern: '', letter: mixColor(body, '#ffffff', 0.3), line: '#ff6fb5' }
     case 'starfield':
       return { pattern: '', letter: mixColor(body, '#ffffff', 0.25), line }
+    case 'lava':
+      return { pattern: '', letter: '#fff0dc', line: '#ff8a3d' }
+    case 'aurora':
+      return { pattern: '', letter: '#eafff6', line: '#3ee08f' }
     case 'glitter':
+    case 'pixels':
       return { pattern: '', letter: inkOn(body, INK), line }
     default:
       return { pattern: mixColor(body, NAVY, 0.2), letter: inkOn(body, INK), line }
@@ -154,10 +166,131 @@ const STARS: [number, number, number][] = [
   [45, 33, 0.4],
 ]
 
+/*
+ * 8-bit: the disc in squares, ten across, shaded in four steps like a ball in
+ * an old console game, lit from the top left. One path per step.
+ */
+const PIXEL = (27.6 * 2) / 10
+const PIXEL_PATHS: string[] = (() => {
+  const steps = ['', '', '', '']
+  for (let row = 0; row < 10; row++) {
+    for (let col = 0; col < 10; col++) {
+      const x = 4.4 + col * PIXEL
+      const y = 6.4 + row * PIXEL
+      const dx = (x + PIXEL / 2 - 32) / 27.6
+      const dy = (y + PIXEL / 2 - 34) / 27.6
+      const r = Math.hypot(dx, dy)
+      if (r > 1.1) continue
+      const z = Math.sqrt(Math.max(0, 1 - Math.min(1, r) ** 2))
+      const lit = -0.5 * dx - 0.62 * dy + 0.6 * z
+      const step = lit > 0.66 ? 0 : lit > 0.38 ? 1 : lit > 0.06 ? 2 : 3
+      steps[step] += `M${x.toFixed(2)} ${y.toFixed(2)}h${PIXEL.toFixed(2)}v${PIXEL.toFixed(2)}h${(-PIXEL).toFixed(2)}Z`
+    }
+  }
+  return steps
+})()
+
+/** Lava: cracks through a dark crust, and the molten rock showing in them. */
+const LAVA_CRACKS =
+  'M8 31L14 28L19 31L24 26L31 28L37 33L43 30L49 33L56 30M24 26L22 19L26 13M43 30L46 22L52 19M37 33L35 41L39 47L36 55M35 41L28 44L21 42L15 47M21 42L17 36L10 38M39 47L46 50L52 45'
+const LAVA_POOLS: [number, number, number][] = [
+  [24, 26, 1.7],
+  [37, 33, 1.5],
+  [35, 41, 1.3],
+  [21, 42, 1.2],
+]
+
+/** Aurora: curtains of light over a night sky, each a soft band with a bright line in it. */
+const AURORA_BANDS: { d: string; colour: string }[] = [
+  { d: 'M2 30C12 20 20 32 30 24S48 12 62 22', colour: '#3ee08f' },
+  { d: 'M2 40C14 32 22 42 34 35S50 26 62 33', colour: '#2fe3cf' },
+  { d: 'M2 20C10 14 22 22 32 15S50 8 62 12', colour: '#a178ff' },
+]
+const AURORA_STARS: [number, number, number][] = [
+  [16, 12, 0.6],
+  [44, 11, 0.7],
+  [52, 46, 0.6],
+  [12, 50, 0.7],
+  [30, 55, 0.5],
+  [26, 9, 0.45],
+]
+
 /** A finish's surface: the disc in it, and what lies over the disc before the face. */
 function FinishSurface({ avatar, uid }: { avatar: Avatar; uid: string }) {
   const body = avatarColor(avatar.body)
   switch (avatar.badge) {
+    case 'pixels': {
+      const steps = [mixColor(body, '#ffffff', 0.42), mixColor(body, '#ffffff', 0.16), body, mixColor(body, NAVY, 0.32)]
+      return (
+        <>
+          <defs>
+            <clipPath id={`${uid}disc`}>
+              <path d={BADGE_ART.disc} />
+            </clipPath>
+          </defs>
+          <g clipPath={`url(#${uid}disc)`}>
+            {PIXEL_PATHS.map((d, i) => (
+              <path key={i} d={d} fill={steps[i]} />
+            ))}
+            <rect x={4.4 + 3 * PIXEL} y={6.4 + 2 * PIXEL} width={PIXEL} height={PIXEL} fill="#fff" opacity="0.85" />
+          </g>
+        </>
+      )
+    }
+    case 'lava':
+      return (
+        <>
+          <defs>
+            <radialGradient id={`${uid}crust`} cx="0.45" cy="0.5" r="0.7">
+              <stop offset="0" stopColor="#4a1f14" />
+              <stop offset="1" stopColor="#1a0c09" />
+            </radialGradient>
+            <clipPath id={`${uid}disc`}>
+              <path d={BADGE_ART.disc} />
+            </clipPath>
+          </defs>
+          <path d={BADGE_ART.disc} fill={`url(#${uid}crust)`} />
+          <g clipPath={`url(#${uid}disc)`} fill="none" strokeLinecap="round" strokeLinejoin="round">
+            <path d={LAVA_CRACKS} stroke="rgba(255,90,31,0.35)" strokeWidth="3.6" />
+            <path d={LAVA_CRACKS} stroke="#ff6a24" strokeWidth="1.5" />
+            <path d={LAVA_CRACKS} stroke="#ffd08a" strokeWidth="0.5" />
+          </g>
+          {LAVA_POOLS.map(([x, y, r]) => (
+            <g key={`${x}-${y}`}>
+              <circle cx={x} cy={y} r={r * 1.7} fill="rgba(255,90,31,0.3)" />
+              <circle cx={x} cy={y} r={r} fill="#ff8a3d" />
+              <circle cx={x} cy={y} r={r * 0.45} fill="#ffe0a6" />
+            </g>
+          ))}
+        </>
+      )
+    case 'aurora':
+      return (
+        <>
+          <defs>
+            <linearGradient id={`${uid}sky`} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stopColor="#10244a" />
+              <stop offset="1" stopColor="#060d1a" />
+            </linearGradient>
+            <clipPath id={`${uid}disc`}>
+              <path d={BADGE_ART.disc} />
+            </clipPath>
+          </defs>
+          <path d={BADGE_ART.disc} fill={`url(#${uid}sky)`} />
+          <g clipPath={`url(#${uid}disc)`} fill="none" strokeLinecap="round">
+            {AURORA_BANDS.map((b) => (
+              <g key={b.colour}>
+                <path d={b.d} stroke={b.colour} strokeWidth="10" opacity="0.18" />
+                <path d={b.d} stroke={b.colour} strokeWidth="4.5" opacity="0.32" />
+                <path d={b.d} stroke={mixColor(b.colour, '#ffffff', 0.45)} strokeWidth="1.1" opacity="0.8" />
+              </g>
+            ))}
+          </g>
+          {AURORA_STARS.map(([x, y, r]) => (
+            <circle key={`${x}-${y}`} cx={x} cy={y} r={r} fill="#fff" opacity="0.85" />
+          ))}
+        </>
+      )
     case 'holo':
       return (
         <>

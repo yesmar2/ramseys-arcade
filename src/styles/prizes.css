@@ -57,6 +57,48 @@ html[data-theme='dark'] .pname--neon {
     0 0 16px rgba(255, 95, 162, 0.7);
 }
 
+/* Retro: a bright face on a chunky shadow stepped down and right, like an 80s logo. */
+.pname--retro {
+  color: #d6337f;
+  text-shadow:
+    1px 1px 0 #1f5a92,
+    2px 2px 0 #1f5a92;
+}
+
+html[data-theme='dark'] .pname--retro {
+  color: #ffe07a;
+  text-shadow:
+    1px 1px 0 #ff5fa2,
+    2px 2px 0 #ff5fa2;
+}
+
+/* Glitch: the tag with its red and blue slipped out either side. */
+.pname--glitch {
+  text-shadow:
+    -1.5px 0 rgba(230, 30, 80, 0.75),
+    1.5px 0 rgba(0, 170, 230, 0.75);
+}
+
+html[data-theme='dark'] .pname--glitch {
+  color: #f4f7fb;
+  text-shadow:
+    -1.5px 0 rgba(255, 61, 110, 0.9),
+    1.5px 0 rgba(47, 216, 255, 0.9);
+}
+
+/* Ember: red-hot from the bottom up, and on the dark boards it glows. */
+.pname--ember {
+  background: linear-gradient(180deg, #e0701f, #c2261a);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+html[data-theme='dark'] .pname--ember {
+  background-image: linear-gradient(180deg, #ffe08a, #ff8a3d 55%, #ff3d1f);
+  filter: drop-shadow(0 0 4px rgba(255, 90, 31, 0.55));
+}
+
 /* ---------- a title, on its plate ---------- */
 
 .prize-plate {
@@ -75,6 +117,52 @@ html[data-theme='dark'] .pname--neon {
   letter-spacing: 0.14em;
   text-transform: uppercase;
   white-space: nowrap;
+}
+
+/* From 300 tickets a title comes on a glossy enamel plate, like a pin. */
+.prize-plate--enamel {
+  border-radius: 999px;
+  background: linear-gradient(180deg, #3a86c8, #1f5a92);
+  border: 2px solid #a9d6f5;
+  color: #fff;
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 255, 0.3),
+    0 1px 0 rgba(0, 0, 0, 0.25);
+}
+
+/* From 900 it's in lights: a dark plate lit pink, with a row of bulbs top and bottom. */
+.prize-plate--lit {
+  position: relative;
+  min-height: 2.15rem;
+  padding: 0 1rem;
+  border-radius: 0.7rem;
+  background: #170b1c;
+  border-color: #ff5fa2;
+  color: #fff4fa;
+  text-shadow:
+    0 0 4px #ff5fa2,
+    0 0 10px rgba(255, 95, 162, 0.7);
+  box-shadow:
+    0 0 12px rgba(255, 95, 162, 0.45),
+    inset 0 0 9px rgba(255, 95, 162, 0.28);
+}
+
+.prize-plate--lit::before,
+.prize-plate--lit::after {
+  content: '';
+  position: absolute;
+  left: 0.5rem;
+  right: 0.5rem;
+  height: 4px;
+  background: radial-gradient(circle, #fff6dc 0 1.3px, transparent 1.8px) 0 0 / 10px 4px repeat-x;
+}
+
+.prize-plate--lit::before {
+  top: 2px;
+}
+
+.prize-plate--lit::after {
+  bottom: 2px;
 }
 
 /* ---------- the header's ticket chip ---------- */

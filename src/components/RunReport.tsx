@@ -399,10 +399,42 @@ function starShape(ctx: CanvasRenderingContext2D, r: number) {
   ctx.closePath()
 }
 
+function heartShape(ctx: CanvasRenderingContext2D, r: number) {
+  ctx.beginPath()
+  ctx.moveTo(0, r * 0.72)
+  ctx.bezierCurveTo(-r * 0.24, r * 0.52, -r * 1.12, -r * 0.08, -r * 1.12, -r * 0.68)
+  ctx.bezierCurveTo(-r * 1.12, -r * 1.28, -r * 0.32, -r * 1.48, 0, -r * 0.88)
+  ctx.bezierCurveTo(r * 0.32, -r * 1.48, r * 1.12, -r * 1.28, r * 1.12, -r * 0.68)
+  ctx.bezierCurveTo(r * 1.12, -r * 0.08, r * 0.24, r * 0.52, 0, r * 0.72)
+  ctx.closePath()
+}
+
 const KIND_COLOURS: Record<string, string[]> = {
   'cf-stars': ['#f5b942', '#ffd36e', '#2fe3cf', '#ff7ac1', '#7fc8ff'],
   'cf-bubbles': ['#7fc8ff', '#2fe3cf', '#b3d7ff', '#e9f6ff'],
   'cf-tickets': ['#ff8552', '#ffa477', '#ff7a45', '#ffc2a6'],
+  'cf-hearts': ['#ff5f7a', '#ff7ac1', '#e24139', '#ffb3c7'],
+  'cf-pixels': ['#2fe3cf', '#ff4fa8', '#ffd23f', '#6c8cff', '#b86bff', '#45d36b'],
+  'cf-fireworks': ['#ff5fa2', '#2fe3cf', '#ffd36e', '#7fc8ff', '#ff8552', '#b86bff'],
+}
+
+/** Fireworks: bursts of sparks here and there over the top of the screen, one after another. */
+function fireworkSparks(w: number, h: number, colors: string[]): Piece[] {
+  const pieces: Piece[] = []
+  const bursts = w < 640 ? 4 : 6
+  for (let b = 0; b < bursts; b++) {
+    const cx = w * (0.14 + Math.random() * 0.72)
+    const cy = h * (0.12 + Math.random() * 0.34)
+    const color = colors[b % colors.length]!
+    const delay = b * 170 + Math.random() * 120
+    const sparks = w < 640 ? 22 : 30
+    for (let i = 0; i < sparks; i++) {
+      const a = (i / sparks) * Math.PI * 2 + Math.random() * 0.2
+      const speed = 2.6 + Math.random() * 2.8
+      pieces.push({ x: cx, y: cy, vx: Math.cos(a) * speed, vy: Math.sin(a) * speed, spin: 0, angle: 0, w: 2.2, h: 0, color, delay })
+    }
+  }
+  return pieces
 }
 
 function reducedMotion() {
@@ -412,7 +444,8 @@ function reducedMotion() {
 /**
  * One burst from either side of the card, in the game's colours and the gold,
  * then gone. A player who wears confetti from the prize counter gets theirs
- * instead: stars, bubbles or a shower of tickets. `kind` shows one on
+ * instead: stars, bubbles, hearts, pixels, a shower of tickets, or fireworks
+ * going off over the top of the screen. `kind` shows one on
  * purpose (the counter trying one on); left out, it's the player's own.
  */
 export function ReportConfetti({ accent, kind }: { accent: string; kind?: string | null }) {
@@ -431,8 +464,9 @@ export function ReportConfetti({ accent, kind }: { accent: string; kind?: string
     canvas.height = Math.floor(h * dpr)
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
 
-    const pieces: Piece[] = []
-    const count = w < 640 ? 70 : 110
+    const fireworks = style === 'cf-fireworks'
+    const pieces: Piece[] = fireworks ? fireworkSparks(w, h, colors) : []
+    const count = fireworks ? 0 : w < 640 ? 70 : 110
     for (let i = 0; i < count; i++) {
       const side = i % 2 ? 1 : -1
       const x = w / 2 + side * (w * 0.12 + Math.random() * w * 0.2)
@@ -462,6 +496,29 @@ export function ReportConfetti({ accent, kind }: { accent: string; kind?: string
       const fade = Math.max(0, Math.min(1, (life - t) / 700))
       for (const p of pieces) {
         if (t < p.delay) continue
+        if (fireworks) {
+          // A spark slows, droops and fades as it goes, with a short tail behind it.
+          p.vy += 0.045 * dt
+          p.vx *= 0.972
+          p.vy *= 0.972
+          p.x += p.vx * dt
+          p.y += p.vy * dt
+          const age = Math.min(1, (t - p.delay) / 1500)
+          ctx.globalAlpha = fade * (1 - age * 0.75)
+          ctx.strokeStyle = p.color
+          ctx.lineWidth = 2
+          ctx.lineCap = 'round'
+          ctx.beginPath()
+          ctx.moveTo(p.x - p.vx * 3, p.y - p.vy * 3)
+          ctx.lineTo(p.x, p.y)
+          ctx.stroke()
+          ctx.fillStyle = '#fff'
+          ctx.beginPath()
+          ctx.arc(p.x, p.y, p.w * (1 - age * 0.5), 0, Math.PI * 2)
+          ctx.fill()
+          ctx.globalAlpha = 1
+          continue
+        }
         p.vy += 0.22 * dt
         p.vx *= 0.985
         p.vy *= 0.99
@@ -471,6 +528,14 @@ export function ReportConfetti({ accent, kind }: { accent: string; kind?: string
         ctx.save()
         ctx.globalAlpha = fade
         ctx.translate(p.x, p.y)
+        if (style === 'cf-pixels') {
+          // Pixels stay square to the screen, like the old games drew them.
+          ctx.fillStyle = p.color
+          const size = Math.round(p.w)
+          ctx.fillRect(-size / 2, -size / 2, size, size)
+          ctx.restore()
+          continue
+        }
         ctx.rotate(p.angle)
         if (style === 'cf-bubbles') {
           // Bubbles float rather than tumble: a ring, a wash and a glint.
@@ -492,6 +557,9 @@ export function ReportConfetti({ accent, kind }: { accent: string; kind?: string
           ctx.fillStyle = p.color
           if (style === 'cf-stars') {
             starShape(ctx, p.h * 0.62)
+            ctx.fill()
+          } else if (style === 'cf-hearts') {
+            heartShape(ctx, p.h * 0.55)
             ctx.fill()
           } else if (style === 'cf-tickets') {
             ticketShape(ctx, p.h * 1.3, p.h * 0.72)

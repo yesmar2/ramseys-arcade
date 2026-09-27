@@ -1,10 +1,11 @@
 import { useMemo, useState, type CSSProperties } from 'react'
 import { PageShell } from '../components/PageShell'
-import { LedCounter, NeonSign, PrizeArt } from '../components/prizes/PrizeArt'
+import { LedCounter, PrizeArt } from '../components/prizes/PrizeArt'
+import { SignArt } from '../components/prizes/SignArt'
 import { TicketGlyph } from '../components/prizes/Ticket'
 import { PrizePanel } from '../components/prizes/PrizePanel'
 import { openSiteMenu } from '../components/siteNav'
-import { PRIZE_KINDS, PRIZES, prizeById, SHELVES, TICKETS_A_DAY, type Prize, type PrizeKind } from '../data/prizes'
+import { PRIZE_KINDS, PRIZES, prizeById, SHELVES, SIGNS, TICKETS_A_DAY, type Prize, type PrizeKind } from '../data/prizes'
 import { useAuth } from '../hooks/useAuth'
 import { useMyAvatarId } from '../hooks/useMyAvatarId'
 import { usePlayerName } from '../hooks/usePlayerName'
@@ -16,9 +17,10 @@ import '../styles/counter.css'
 
 /**
  * The prize counter: where tickets trade for looks. Every prize stands in the
- * case wearing your own badge or tag, with its price on a paper tag; the top
- * prize, your tag in neon, hangs on the wall above. Pick one to try it on and
- * trade for it. Nothing here changes a score, and tickets can't be bought.
+ * case wearing your own badge or tag, with its price on a paper tag; the
+ * signs, your tag in lights, hang on the wall above, dearest at the top. Pick
+ * one to try it on and trade for it. Nothing here changes a score, and
+ * tickets can't be bought.
  */
 
 const EARN: { icon: string; amount: string; what: string }[] = [
@@ -72,7 +74,6 @@ export function PrizeCounterPage() {
   const [filter, setFilter] = useState<Filter>('all')
   const [openId, setOpenId] = useState<string | null>(null)
   const goal = prizeById(tickets.goal)
-  const sign = prizeById('sign')!
   const balance = signedIn ? tickets.balance : 0
   const shown = PRIZES.filter((p) => p.kind !== 'sign' && (filter === 'all' || p.kind === filter))
   const ownedCount = PRIZES.filter((p) => owned.has(p.id)).length
@@ -136,8 +137,8 @@ export function PrizeCounterPage() {
     )
   }
 
-  const signTo = Math.max(0, sign.price - balance)
   const open = prizeById(openId)
+  const wall = [...SIGNS].reverse()
 
   return (
     <PageShell innerClassName="lb-page__inner counter-page">
@@ -154,8 +155,8 @@ export function PrizeCounterPage() {
               <em>Pick a prize.</em>
             </h1>
             <p className="counter-lede">
-              Every game you play pays out tickets. Trade them here for looks that show on the boards: badge finishes, name styles, card themes, confetti
-              and titles. Earned by playing, never bought.
+              Every game you play pays out tickets. Trade them here for looks that show on the boards: badge finishes, name styles, card themes, confetti,
+              titles, and signs that put your tag in lights. Earned by playing, never bought.
             </p>
             {signedIn ? (
               <div className="counter-hero__row">
@@ -209,35 +210,39 @@ export function PrizeCounterPage() {
           </div>
           <div className="counter-wall">
             <span className="counter-wall__cap">Top of the wall</span>
-            <button type="button" className="counter-wall__sign" onClick={() => setOpenId(sign.id)} aria-label={`${sign.name}: ${sign.price.toLocaleString()} tickets`}>
-              <NeonSign name={tag} width={380} />
-            </button>
-            <div className="counter-wall__row">
-              <span className="counter-wall__txt">
-                <span className="counter-wall__name">{sign.name}</span>
-                <span className="counter-wall__line">{sign.blurb}</span>
-              </span>
-              {owned.has(sign.id) ? (
-                <span className="counter-stamp">
-                  <Icon name="check" size={14} />
-                  Yours
-                </span>
-              ) : (
-                <span className="counter-tag counter-tag--wall">
-                  <TicketGlyph size={17} />
-                  {sign.price.toLocaleString()}
-                </span>
-              )}
-            </div>
-            {signedIn && !owned.has(sign.id) ? (
-              <div className="counter-wall__meter">
-                <span>{Math.floor((100 * Math.min(balance, sign.price)) / sign.price)}% of the way</span>
-                <span className="tix-meter" aria-hidden="true">
-                  <i style={{ width: `${Math.min(100, (100 * balance) / sign.price)}%` }} />
-                </span>
-                <span>{signTo.toLocaleString()} to go</span>
-              </div>
-            ) : null}
+            <ul className="counter-wall__signs" aria-label="Signs">
+              {wall.map((s) => {
+                const mine = owned.has(s.id)
+                const toGo = signedIn && !mine ? s.price - balance : 0
+                return (
+                  <li key={s.id} className="counter-wall__item">
+                    <button
+                      type="button"
+                      className="counter-wall__sign"
+                      onClick={() => setOpenId(s.id)}
+                      aria-label={`${s.name}, sign. ${mine ? (isWearing(avatar, s.id) ? 'Yours, and you’re wearing it' : 'Yours') : `${s.price.toLocaleString()} tickets`}`}
+                    >
+                      <SignArt sign={s.id} name={tag} width={220} />
+                    </button>
+                    <div className="counter-wall__row">
+                      <span className="counter-wall__name">{s.name}</span>
+                      {mine ? (
+                        <span className="counter-stamp">
+                          <Icon name="check" size={14} />
+                          {isWearing(avatar, s.id) ? 'Wearing' : 'Yours'}
+                        </span>
+                      ) : (
+                        <span className={`counter-tag counter-tag--wall${goal?.id === s.id ? ' counter-tag--goal' : ''}`}>
+                          <TicketGlyph size={15} />
+                          {s.price.toLocaleString()}
+                        </span>
+                      )}
+                    </div>
+                    {toGo > 0 ? <span className="counter-wall__note">{toGo.toLocaleString()} to go</span> : null}
+                  </li>
+                )
+              })}
+            </ul>
           </div>
         </div>
         <ul className="counter-band" aria-label="What pays tickets">

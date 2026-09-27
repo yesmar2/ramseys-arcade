@@ -1,8 +1,9 @@
 import type { CSSProperties, MouseEvent, ReactNode } from 'react'
-import { prizeById } from '../data/prizes'
+import { plateTier, prizeById } from '../data/prizes'
 import { parseAvatar, wornPrize } from '../lib/avatars'
 import { PlayerName } from './PlayerName'
-import { CardBackdrop, NeonSign } from './prizes/PrizeArt'
+import { CardBackdrop } from './prizes/PrizeArt'
+import { SignArt } from './prizes/SignArt'
 import { navigate, rankHref } from '../hooks/useHashRoute'
 import { neighboursOf, type PeriodRanks } from '../hooks/useProfileBoards'
 import { inkOn } from '../lib/color'
@@ -465,14 +466,14 @@ export function PlayerCard({
           </div>
           {sign ? (
             <h1 className="pcard__name pcard__name--sign" aria-label={name}>
-              <NeonSign name={name} width={340} wires={false} />
+              <SignArt sign={sign} name={name} width={340} wires={false} />
             </h1>
           ) : (
             <h1 className="pcard__name">
               <PlayerName name={name} style={wornPrize(look, 'name')} />
             </h1>
           )}
-          {title ? <span className="prize-plate pcard__title">{title.name}</span> : null}
+          {title ? <span className={`prize-plate prize-plate--${plateTier(title)} pcard__title`}>{title.name}</span> : null}
           <p className="pcard__head">{said ? said.head : <Skel w="16ch" />}</p>
           <p className="pcard__sub">{said ? said.sub : <Skel w="24ch" />}</p>
           {!loading && rank != null ? (

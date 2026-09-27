@@ -81,7 +81,7 @@ export const PATTERN_LABELS: Record<AvatarPattern, string> = {
 }
 
 /** The four anyone can wear, then the prize counter's finishes (data/prizes.ts), which only their owner can. */
-export const AVATAR_BADGES = ['bold', 'deep', 'night', 'paper', 'glitter', 'starfield', 'neon', 'holo'] as const
+export const AVATAR_BADGES = ['bold', 'deep', 'night', 'paper', 'glitter', 'starfield', 'pixels', 'neon', 'lava', 'holo', 'aurora'] as const
 export type AvatarBadge = (typeof AVATAR_BADGES)[number]
 
 export const BADGE_LABELS: Record<AvatarBadge, string> = {
@@ -91,8 +91,11 @@ export const BADGE_LABELS: Record<AvatarBadge, string> = {
   paper: 'Paper',
   glitter: 'Glitter',
   starfield: 'Starfield',
+  pixels: '8-bit',
   neon: 'Neon',
+  lava: 'Lava',
   holo: 'Holo',
+  aurora: 'Aurora',
 }
 
 /** The badges anyone can wear; the rest are finishes from the prize counter. */

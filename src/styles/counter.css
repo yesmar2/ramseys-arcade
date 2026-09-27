@@ -237,19 +237,17 @@ button.counter-goal:focus-visible {
   color: var(--muted);
 }
 
-/* The wall the top prize hangs on: dark in both themes, like a real one. */
+/* The wall the signs hang on, two by two, dearest at the top: dark in both themes, like a real one. */
 .counter-wall {
   position: relative;
   display: flex;
   flex-direction: column;
-  align-items: center;
   justify-content: flex-end;
-  gap: 0.9rem;
   min-width: 0;
-  padding: 2.6rem 1.6rem 1.4rem;
+  padding: 2.5rem 1.2rem 1.2rem;
   border-radius: 1.4rem;
   background:
-    radial-gradient(ellipse 70% 55% at 50% 38%, rgba(255, 95, 162, 0.18), transparent 70%),
+    radial-gradient(ellipse 70% 55% at 50% 38%, rgba(255, 95, 162, 0.16), transparent 70%),
     #0d1319;
   border: 1px solid rgba(231, 238, 243, 0.1);
   color: #e7eef3;
@@ -266,58 +264,63 @@ button.counter-goal:focus-visible {
   color: #9bb0be;
 }
 
+.counter-wall__signs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem 1.1rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.counter-wall__item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
 .counter-wall__sign {
   display: block;
-  max-width: 100%;
+  width: 100%;
   padding: 0;
   border: 0;
   background: none;
   cursor: pointer;
+  transition: transform 0.15s ease;
+}
+
+.counter-wall__sign:hover,
+.counter-wall__sign:focus-visible {
+  transform: translateY(-2px);
 }
 
 .counter-wall__sign svg {
-  max-width: 100%;
+  width: 100%;
   height: auto;
 }
 
 .counter-wall__row {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  justify-content: space-between;
+  gap: 0.6rem;
   width: 100%;
-}
-
-.counter-wall__txt {
-  display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
-  flex: 1 1 auto;
-  min-width: 0;
 }
 
 .counter-wall__name {
-  font-size: 1.15rem;
+  min-width: 0;
+  overflow: hidden;
+  font-size: 0.95rem;
   font-weight: 800;
-}
-
-.counter-wall__line {
-  font-size: 0.9rem;
-  color: #9bb0be;
-}
-
-.counter-wall__meter {
-  display: flex;
-  align-items: center;
-  gap: 0.7rem;
-  width: 100%;
-  font-size: 0.82rem;
-  font-weight: 700;
-  color: #9bb0be;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.counter-wall .tix-meter {
-  background: rgba(231, 238, 243, 0.1);
+.counter-wall__note {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #9bb0be;
 }
 
 /* What pays, along the hero's foot. */
@@ -1068,9 +1071,16 @@ button.counter-goal:focus-visible {
 }
 
 .prize-variants {
+  position: relative;
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(5rem, 1fr));
   gap: 0.45rem;
+  /* Two dozen titles would push the price and the trade off the panel. */
+  max-height: min(17.5rem, 42vh);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 0.1rem 0.25rem 0.1rem 0.1rem;
+  scrollbar-width: thin;
 }
 
 .prize-variant {
@@ -1245,7 +1255,11 @@ button.counter-goal:focus-visible {
   }
 
   .counter-wall {
-    padding: 2.4rem 1rem 1.1rem;
+    padding: 2.4rem 0.9rem 1rem;
+  }
+
+  .counter-wall__signs {
+    gap: 0.9rem 0.8rem;
   }
 
   .counter-band {

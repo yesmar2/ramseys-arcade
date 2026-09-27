@@ -1,15 +1,17 @@
 import { useId, type ReactNode } from 'react'
-import { prizeById, type Prize } from '../../data/prizes'
+import { plateTier, prizeById, type Prize } from '../../data/prizes'
 import { wearPrize, type Avatar } from '../../lib/avatars'
 import { AvatarArt } from '../PlayerAvatar'
 import { askForPixelFont } from '../../lib/nameStyle'
-import { sparkle, ticketPath } from '../../lib/prizeArt'
+import { SHELF_SCALE, SIGN_W, signHeight, ticketPath } from '../../lib/prizeArt'
+import { ThemeDrawing } from './CardThemes'
+import { SignDrawing } from './SignArt'
 
 /*
- * What the prize counter draws: the ticket, the counter's LED readout, the
- * neon sign, the card themes, and each prize standing on its shelf, worn by
- * the player looking at it (their own badge, their own tag). The drawings
- * follow the counter's design canvas.
+ * What the prize counter draws: the ticket, the counter's LED readout, and
+ * each prize standing on its shelf, worn by the player looking at it (their
+ * own badge, their own tag). The signs are in SignArt.tsx and the card themes
+ * in CardThemes.tsx. The drawings follow the counter's design canvas.
  */
 
 const FONT = 'Outfit, system-ui, sans-serif'
@@ -126,149 +128,6 @@ export function LedCounter({ value, digits = 5, width = 200 }: { value: number; 
   )
 }
 
-/* ---------- the neon sign ---------- */
-
-/** A tag in lit pink tubes on a dark board, hung from two wires. */
-export function NeonSign({ name, width = 400, wires = true }: { name: string; width?: number; wires?: boolean }) {
-  const id = useSvgId('neon')
-  const tag = name.trim().toUpperCase() || 'YOU'
-  // Sized to the board, however long the tag.
-  const size = Math.min(100, 300 / (tag.length * 0.66 + 0.2))
-  const top = wires ? 40 : 4
-  const h = wires ? 214 : 178
-  return (
-    <svg viewBox={`0 0 440 ${h}`} width={width} height={(width * h) / 440} role="img" aria-label={`${tag} in neon`} style={{ display: 'block', overflow: 'visible' }}>
-      <defs>
-        <filter id={`${id}l`} x="-40%" y="-60%" width="180%" height="220%">
-          <feGaussianBlur stdDeviation="6" result="b" />
-          <feMerge>
-            <feMergeNode in="b" />
-            <feMergeNode in="b" />
-            <feMergeNode in="SourceGraphic" />
-          </feMerge>
-        </filter>
-        <filter id={`${id}s`} x="-60%" y="-60%" width="220%" height="220%">
-          <feGaussianBlur stdDeviation="2.4" result="b" />
-          <feMerge>
-            <feMergeNode in="b" />
-            <feMergeNode in="SourceGraphic" />
-          </feMerge>
-        </filter>
-      </defs>
-      {wires ? <path d="M128 0 L156 42 M312 0 L284 42" stroke="rgba(231,238,243,0.35)" strokeWidth="1.5" /> : null}
-      <rect x="28" y={top} width="384" height="162" rx="22" fill="#120b16" stroke="rgba(255,111,181,0.28)" strokeWidth="1.5" />
-      {[48, 392].map((x) => (
-        <g key={x}>
-          <circle cx={x} cy={top + 20} r="3" fill="#3a2a3e" />
-          <circle cx={x} cy={top + 142} r="3" fill="#3a2a3e" />
-        </g>
-      ))}
-      <text x="220" y={top + 106} textAnchor="middle" dominantBaseline="alphabetic" fontFamily={FONT} fontWeight={800} fontSize={size} letterSpacing={size * 0.08} fill="none" stroke="#ff5fa2" strokeWidth="7" filter={`url(#${id}l)`} opacity="0.9">
-        {tag}
-      </text>
-      <text x="220" y={top + 106} textAnchor="middle" fontFamily={FONT} fontWeight={800} fontSize={size} letterSpacing={size * 0.08} fill="none" stroke="#ffd6ea" strokeWidth="2.2">
-        {tag}
-      </text>
-      <path d={`M116 ${top + 132} H324`} stroke="#3ee0c8" strokeWidth="5" strokeLinecap="round" filter={`url(#${id}l)`} />
-      <path d={`M116 ${top + 132} H324`} stroke="#cffff5" strokeWidth="1.6" strokeLinecap="round" />
-      <path d={sparkle(362, top + 38, 12)} fill="#3ee0c8" filter={`url(#${id}s)`} />
-      <path d={sparkle(362, top + 38, 5)} fill="#e9fffb" />
-    </svg>
-  )
-}
-
-/* ---------- card themes ---------- */
-
-const CARPET_COLOURS = ['#ff4fa8', '#2fe3cf', '#ffd23f', '#6c8cff', '#b86bff']
-
-/** The old arcade carpet: neon squiggles, bolts, rings and triangles on deep purple. */
-function Carpet({ w, h, s, seed }: { w: number; h: number; s: number; seed: number }) {
-  const rnd = seeded(seed)
-  const bits: ReactNode[] = []
-  const step = 26 * s
-  let row = 0
-  for (let y = step / 3; y < h + step / 2; y += step * 0.86, row++) {
-    for (let x = (row % 2 ? step / 2 : 0) + step / 4; x < w + step / 2; x += step) {
-      const kind = Math.floor(rnd() * 5)
-      const c = CARPET_COLOURS[Math.floor(rnd() * CARPET_COLOURS.length)]!
-      const rot = Math.floor(rnd() * 360)
-      const cx = x + (rnd() - 0.5) * step * 0.4
-      const cy = y + (rnd() - 0.5) * step * 0.4
-      const key = `${row}-${Math.round(x)}`
-      const at = `translate(${cx.toFixed(1)} ${cy.toFixed(1)}) rotate(${rot})`
-      const line = { fill: 'none', stroke: c, strokeWidth: 2.2 * s, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const }
-      if (kind === 0) bits.push(<path key={key} transform={at} d={`M${-9 * s} 0q${3 * s} ${-5 * s} ${6 * s} 0t${6 * s} 0t${6 * s} 0`} {...line} />)
-      else if (kind === 1) bits.push(<path key={key} transform={at} d={`M${-7 * s} ${-4 * s}L${-1 * s} ${-1.2 * s}L${-3 * s} ${2 * s}L${7 * s} ${4.5 * s}`} {...line} />)
-      else if (kind === 2) bits.push(<circle key={key} transform={at} r={4.4 * s} {...line} />)
-      else if (kind === 3) bits.push(<path key={key} transform={at} d={`M0 ${-5 * s}L${5 * s} ${4 * s}L${-5 * s} ${4 * s}Z`} {...line} />)
-      else
-        bits.push(
-          <g key={key} transform={at}>
-            <circle r={1.2 * s} fill="#fff" opacity="0.8" />
-            <circle cx={5 * s} cy={2 * s} r={1.1 * s} fill={c} />
-            <circle cx={-4 * s} cy={3.5 * s} r={s} fill={c} />
-          </g>,
-        )
-    }
-  }
-  return (
-    <>
-      <rect width={w} height={h} fill="#170c2e" />
-      {bits}
-    </>
-  )
-}
-
-/** A Frenzy fish, its mouth at +x. */
-function Fish({ x, y, scale, hue, flip = false, glow = false }: { x: number; y: number; scale: number; hue: number; flip?: boolean; glow?: boolean }) {
-  const stroke = `hsl(${hue} 80% 64%)`
-  const wash = `hsl(${hue} 80% 64% / ${glow ? 0.5 : 0.34})`
-  const fin = { fill: wash, stroke, strokeWidth: 1, strokeLinejoin: 'round' as const }
-  return (
-    <g transform={`translate(${x} ${y}) scale(${flip ? -scale : scale} ${scale})`}>
-      <path d="M-7.2 0 L-12.6 -5 Q-10.8 0 -12.6 5 Z" {...fin} />
-      <path d="M-3.8 -5.2 L-0.8 -9.6 L2.8 -6.5 Z" {...fin} />
-      <path
-        d="M8.6 -1.4 C7.4 -6.2 -0.6 -7.4 -5 -4.6 C-7 -3.3 -8.4 -1.4 -8.4 0 C-8.4 1.4 -7 3.3 -5 4.6 C-0.6 7.4 7.4 6.2 8.6 1.4 L5.8 0 Z"
-        {...fin}
-        strokeWidth={1.1}
-      />
-      <circle cx="3.6" cy="-2.4" r="1.4" fill="#fff" />
-      <circle cx="3.9" cy="-2.3" r="0.7" fill="#1a2b3c" />
-    </g>
-  )
-}
-
-/** Frenzy's water behind the card: light coming down, fish, bubbles. */
-function Aquarium({ w, h, s, id }: { w: number; h: number; s: number; id: string }) {
-  return (
-    <>
-      <defs>
-        <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#1c5f80" />
-          <stop offset="1" stopColor="#0a2236" />
-        </linearGradient>
-      </defs>
-      <rect width={w} height={h} fill={`url(#${id})`} />
-      {[0.16, 0.44, 0.72].map((rx) => (
-        <path key={rx} d={`M${w * rx} 0 L${w * rx + 10 * s} 0 L${w * rx + 34 * s} ${h} L${w * rx + 16 * s} ${h} Z`} fill="#fff" opacity="0.06" />
-      ))}
-      <Fish x={w * 0.34} y={h * 0.4} scale={0.95 * s} hue={295} glow />
-      <Fish x={w * 0.74} y={h * 0.26} scale={0.7 * s} hue={205} flip />
-      <Fish x={w * 0.64} y={h * 0.62} scale={0.55 * s} hue={40} />
-      <Fish x={w * 0.14} y={h * 0.68} scale={0.5 * s} hue={175} flip />
-      {[
-        [0.52, 0.2, 1.6],
-        [0.55, 0.12, 1.1],
-        [0.9, 0.56, 1.4],
-        [0.24, 0.22, 1.2],
-      ].map(([bx, by, br]) => (
-        <circle key={`${bx}-${by}`} cx={w * bx!} cy={h * by!} r={br! * s * 1.4} fill="none" stroke="#fff" strokeWidth="0.7" opacity="0.45" />
-      ))}
-    </>
-  )
-}
-
 /** A card theme, filling a w × h box: for the player card, and small on the shelf. */
 export function CardBackdrop({ theme, width, height, scale = 1, className }: { theme: string; width: number; height: number; scale?: number; className?: string }) {
   const id = useSvgId('card')
@@ -280,7 +139,7 @@ export function CardBackdrop({ theme, width, height, scale = 1, className }: { t
         </clipPath>
       </defs>
       <g clipPath={`url(#${id}c)`}>
-        {theme === 'cd-aquarium' ? <Aquarium w={width} h={height} s={scale} id={`${id}a`} /> : <Carpet w={width} h={height} s={scale} seed={23} />}
+        <ThemeDrawing theme={theme} w={width} h={height} s={scale} id={id} />
       </g>
     </svg>
   )
@@ -338,6 +197,52 @@ function StyledTag({ style, name, x, y, size, id }: { style: string; name: strin
           {name}
         </text>
       )
+    case 'nm-retro':
+      return (
+        <>
+          <text {...at} x={x + 2.4} y={y + 2.4} fontFamily={FONT} fontWeight={800} fill="#ff5fa2">
+            {name}
+          </text>
+          <text {...at} fontFamily={FONT} fontWeight={800} fill="#ffe07a">
+            {name}
+          </text>
+        </>
+      )
+    case 'nm-glitch':
+      return (
+        <>
+          <text {...at} x={x - 1.6} fontFamily={FONT} fontWeight={800} fill="#ff3d6e" opacity="0.9">
+            {name}
+          </text>
+          <text {...at} x={x + 1.6} fontFamily={FONT} fontWeight={800} fill="#2fd8ff" opacity="0.9">
+            {name}
+          </text>
+          <text {...at} fontFamily={FONT} fontWeight={800} fill="#f4f7fb">
+            {name}
+          </text>
+        </>
+      )
+    case 'nm-ember':
+      return (
+        <>
+          <defs>
+            <linearGradient id={`${id}e`} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stopColor="#ffe08a" />
+              <stop offset="0.55" stopColor="#ff8a3d" />
+              <stop offset="1" stopColor="#ff3d1f" />
+            </linearGradient>
+            <filter id={`${id}g`} x="-30%" y="-60%" width="160%" height="220%">
+              <feGaussianBlur stdDeviation="2.6" />
+            </filter>
+          </defs>
+          <text {...at} fontFamily={FONT} fontWeight={800} fill="#ff5a1f" opacity="0.8" filter={`url(#${id}g)`}>
+            {name}
+          </text>
+          <text {...at} fontFamily={FONT} fontWeight={800} fill={`url(#${id}e)`}>
+            {name}
+          </text>
+        </>
+      )
     default:
       return (
         <text {...at} fontFamily={FONT} fontWeight={800} fill="none" stroke="#e7eef3" strokeWidth="1.2">
@@ -392,7 +297,9 @@ function ShelfArt({ prize, avatar, name }: { prize: Prize; avatar: Avatar; name:
             </clipPath>
           </defs>
           <g clipPath={`url(#${id}c)`}>
-            <g transform="translate(8 24)">{prize.id === 'cd-aquarium' ? <Aquarium w={144} h={90} s={0.9} id={`${id}a`} /> : <Carpet w={144} h={90} s={0.62} seed={11} />}</g>
+            <g transform="translate(8 24)">
+              <ThemeDrawing theme={prize.id} w={144} h={90} s={SHELF_SCALE[prize.id] ?? 0.6} id={`${id}t`} />
+            </g>
             <rect x="8" y="84" width="144" height="30" fill="rgba(8,12,18,0.6)" />
           </g>
           <rect x="8" y="24" width="144" height="90" rx="12" fill="none" stroke="rgba(255,255,255,0.22)" strokeWidth="1" />
@@ -409,59 +316,130 @@ function ShelfArt({ prize, avatar, name }: { prize: Prize; avatar: Avatar; name:
     case 'confetti':
       return <Popper kind={prize.id} id={id} />
     case 'title':
-      return (
-        <>
-          <Shadow rx={58} />
-          <path d="M48 126 L54 104 M112 126 L106 104" stroke="#2a3a48" strokeWidth="4" strokeLinecap="round" />
-          <rect x="8" y="62" width="144" height="44" rx="10" fill="#223140" stroke="#3c5062" strokeWidth="1.5" />
-          <rect x="13" y="67" width="134" height="34" rx="7" fill="none" stroke="rgba(231,238,243,0.12)" strokeWidth="1" />
-          <circle cx="17" cy="84" r="1.8" fill="#5d7285" />
-          <circle cx="143" cy="84" r="1.8" fill="#5d7285" />
-          <text x="80" y="88.5" textAnchor="middle" fontFamily={FONT} fontWeight={800} fontSize="12" letterSpacing="1.5" fill="#e7eef3">
-            {prize.name.toUpperCase()}
-          </text>
-        </>
-      )
+      return <TitleOnShelf prize={prize} id={id} />
     default:
       return (
-        <g transform="translate(4 16) scale(0.345)">
-          <NeonSignArt name={name} id={id} />
-        </g>
+        <svg x="4" y="16" width={SIGN_W * 0.345} height={signHeight(true) * 0.345} viewBox={`0 0 ${SIGN_W} ${signHeight(true)}`} overflow="visible">
+          <SignDrawing sign={prize.id} name={tag} id={id} wires />
+        </svg>
       )
   }
 }
 
-/** The neon sign's drawing inside another SVG (the shelf's), without its own svg element. */
-function NeonSignArt({ name, id }: { name: string; id: string }) {
-  const tag = shelfTag(name)
-  const size = Math.min(100, 300 / (tag.length * 0.66 + 0.2))
+/** A title's plate on its little stand: plain, enamel, or in lights, by what it cost. */
+function TitleOnShelf({ prize, id }: { prize: Prize; id: string }) {
+  const tier = plateTier(prize)
+  const text = prize.name.toUpperCase()
+  // As big as the plate allows: long titles come down a size or two.
+  const size = Math.min(12, 112 / (text.length * 0.78))
+  const words = (fill: string, extra?: object) => (
+    <text x="80" y={84 + size * 0.36} textAnchor="middle" fontFamily={FONT} fontWeight={800} fontSize={size} letterSpacing={size * 0.12} fill={fill} {...extra}>
+      {text}
+    </text>
+  )
+  const stand = <path d="M48 126 L54 104 M112 126 L106 104" stroke="#2a3a48" strokeWidth="4" strokeLinecap="round" />
+  if (tier === 'lit') {
+    const bulbs = [18, 34, 50, 66, 82, 98, 114, 130, 146]
+    return (
+      <>
+        <defs>
+          <filter id={`${id}g`} x="-20%" y="-60%" width="140%" height="220%">
+            <feGaussianBlur stdDeviation="2.2" result="b" />
+            <feMerge>
+              <feMergeNode in="b" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+        </defs>
+        <Shadow rx={58} />
+        {stand}
+        <rect x="6" y="58" width="148" height="52" rx="12" fill="#170b1c" stroke="#ff5fa2" strokeWidth="1.6" filter={`url(#${id}g)`} />
+        <rect x="6" y="58" width="148" height="52" rx="12" fill="#170b1c" />
+        {bulbs.map((x) => (
+          <g key={x}>
+            <circle cx={x} cy="63.5" r="1.9" fill="#fff6dc" />
+            <circle cx={x} cy="104.5" r="1.9" fill="#fff6dc" />
+          </g>
+        ))}
+        {words('#ff5fa2', { filter: `url(#${id}g)`, opacity: 0.85 })}
+        {words('#fff4fa')}
+      </>
+    )
+  }
+  if (tier === 'enamel') {
+    return (
+      <>
+        <defs>
+          <linearGradient id={`${id}e`} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stopColor="#3a86c8" />
+            <stop offset="1" stopColor="#1f5a92" />
+          </linearGradient>
+        </defs>
+        <Shadow rx={58} />
+        {stand}
+        <rect x="8" y="62" width="144" height="44" rx="22" fill={`url(#${id}e)`} stroke="#a9d6f5" strokeWidth="2" />
+        <path d="M24 66.5 H136" stroke="#fff" strokeWidth="2.4" strokeLinecap="round" opacity="0.28" />
+        {words('#ffffff')}
+      </>
+    )
+  }
   return (
     <>
-      <defs>
-        <filter id={`${id}n`} x="-40%" y="-60%" width="180%" height="220%">
-          <feGaussianBlur stdDeviation="6" result="b" />
-          <feMerge>
-            <feMergeNode in="b" />
-            <feMergeNode in="SourceGraphic" />
-          </feMerge>
-        </filter>
-      </defs>
-      <path d="M128 0 L156 42 M312 0 L284 42" stroke="rgba(231,238,243,0.35)" strokeWidth="3" />
-      <rect x="28" y="40" width="384" height="162" rx="22" fill="#120b16" stroke="rgba(255,111,181,0.28)" strokeWidth="3" />
-      <text x="220" y="146" textAnchor="middle" fontFamily={FONT} fontWeight={800} fontSize={size} letterSpacing={size * 0.08} fill="none" stroke="#ff5fa2" strokeWidth="8" filter={`url(#${id}n)`}>
-        {tag}
-      </text>
-      <text x="220" y="146" textAnchor="middle" fontFamily={FONT} fontWeight={800} fontSize={size} letterSpacing={size * 0.08} fill="none" stroke="#ffd6ea" strokeWidth="3">
-        {tag}
-      </text>
-      <path d="M116 172 H324" stroke="#3ee0c8" strokeWidth="6" strokeLinecap="round" filter={`url(#${id}n)`} />
+      <Shadow rx={58} />
+      {stand}
+      <rect x="8" y="62" width="144" height="44" rx="10" fill="#223140" stroke="#3c5062" strokeWidth="1.5" />
+      <rect x="13" y="67" width="134" height="34" rx="7" fill="none" stroke="rgba(231,238,243,0.12)" strokeWidth="1" />
+      <circle cx="17" cy="84" r="1.8" fill="#5d7285" />
+      <circle cx="143" cy="84" r="1.8" fill="#5d7285" />
+      {words('#e7eef3')}
     </>
   )
 }
 
-/** A party popper going off in its confetti: stars, bubbles or tickets. */
+/** A heart around (0, 0), a unit tall. */
+const HEART = 'M0 0.36C-0.12 0.26-0.56-0.04-0.56-0.34C-0.56-0.64-0.16-0.74 0-0.44C0.16-0.74 0.56-0.64 0.56-0.34C0.56-0.04 0.12 0.26 0 0.36Z'
+
+/** Fireworks bursting over the shelf: rays out from a point, each with a spark at its end. */
+function Fireworks() {
+  const bursts: [number, number, number, string][] = [
+    [102, 40, 30, '#ff5fa2'],
+    [56, 30, 20, '#2fe3cf'],
+    [124, 84, 16, '#ffd36e'],
+  ]
+  return (
+    <>
+      <Shadow rx={20} />
+      <path d="M80 124 Q84 90 100 46 M72 124 Q66 76 58 34" fill="none" stroke="rgba(255,230,190,0.35)" strokeWidth="1.6" strokeDasharray="2 4" strokeLinecap="round" />
+      {bursts.map(([cx, cy, r, c]) => (
+        <g key={cx}>
+          <circle cx={cx} cy={cy} r={r * 0.9} fill={c} opacity="0.1" />
+          {Array.from({ length: 12 }, (_, i) => {
+            const a = (i / 12) * Math.PI * 2
+            const x0 = cx + Math.cos(a) * r * 0.28
+            const y0 = cy + Math.sin(a) * r * 0.28
+            const x1 = cx + Math.cos(a) * r
+            const y1 = cy + Math.sin(a) * r
+            return (
+              <g key={i}>
+                <path d={`M${x0.toFixed(1)} ${y0.toFixed(1)}L${x1.toFixed(1)} ${y1.toFixed(1)}`} stroke={c} strokeWidth="1.8" strokeLinecap="round" />
+                <circle cx={x1 + Math.cos(a) * 3} cy={y1 + Math.sin(a) * 3} r="1.3" fill="#fff" />
+              </g>
+            )
+          })}
+          <circle cx={cx} cy={cy} r="2.2" fill="#fff" />
+        </g>
+      ))}
+    </>
+  )
+}
+
+const POPPER_SEEDS: Record<string, number> = { 'cf-tickets': 3, 'cf-stars': 9, 'cf-hearts': 14, 'cf-pixels': 5 }
+const PIXEL_COLOURS = ['#2fe3cf', '#ff4fa8', '#ffd23f', '#6c8cff', '#b86bff', '#45d36b']
+
+/** A party popper going off in its confetti: stars, bubbles, hearts, pixels or tickets. Fireworks go up on their own. */
 function Popper({ kind, id }: { kind: string; id: string }) {
-  const rnd = seeded(kind === 'cf-tickets' ? 3 : kind === 'cf-stars' ? 9 : 21)
+  if (kind === 'cf-fireworks') return <Fireworks />
+  const rnd = seeded(POPPER_SEEDS[kind] ?? 21)
   const bits: ReactNode[] = []
   for (let i = 0; i < 15; i++) {
     const a = ((-105 + rnd() * 110) * Math.PI) / 180
@@ -479,6 +457,14 @@ function Popper({ kind, id }: { kind: string; id: string }) {
     } else if (kind === 'cf-stars') {
       const c = ['#f5b942', '#2fe3cf', '#ff7ac1', '#7fc8ff'][Math.floor(rnd() * 4)]!
       bits.push(<path key={i} d={star5(x, y, 4 + rnd() * 3.5, rot)} fill={c} />)
+    } else if (kind === 'cf-hearts') {
+      const c = ['#ff5f7a', '#ff7ac1', '#e24139', '#ffb3c7'][Math.floor(rnd() * 4)]!
+      const size = 9 + rnd() * 6
+      bits.push(<path key={i} d={HEART} transform={`translate(${x.toFixed(1)} ${y.toFixed(1)}) rotate(${(rot % 60) - 30}) scale(${size.toFixed(1)})`} fill={c} />)
+    } else if (kind === 'cf-pixels') {
+      const c = PIXEL_COLOURS[Math.floor(rnd() * PIXEL_COLOURS.length)]!
+      const size = 4 + Math.floor(rnd() * 3) * 1.5
+      bits.push(<rect key={i} x={Math.round(x)} y={Math.round(y)} width={size} height={size} fill={c} />)
     } else {
       const c = ['#7fc8ff', '#2fe3cf', '#b3d7ff'][Math.floor(rnd() * 3)]!
       const r = 3.5 + rnd() * 5
