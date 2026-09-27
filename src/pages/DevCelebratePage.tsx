@@ -183,7 +183,7 @@ type Sample = {
 
 /** What each sample run paid in tickets, as a save would answer. */
 const SAMPLE_TICKETS: Partial<Record<string, RunTickets>> = {
-  quiet: { earned: 3, lines: [{ reason: 'run', amount: 3 }], balance: 1287, beat: 31, place: 7, field: 10, capped: 0, todayLeft: 180 },
+  quiet: { earned: 3, lines: [{ reason: 'run', amount: 3 }], balance: 1287, beat: 31, place: 30, field: 43, capped: 0, todayLeft: 180 },
   best: {
     earned: 17,
     lines: [
@@ -193,8 +193,8 @@ const SAMPLE_TICKETS: Partial<Record<string, RunTickets>> = {
     ],
     balance: 1301,
     beat: 88,
-    place: 2,
-    field: 9,
+    place: 6,
+    field: 43,
     capped: 0,
     todayLeft: 166,
   },
@@ -208,7 +208,7 @@ const SAMPLE_TICKETS: Partial<Record<string, RunTickets>> = {
     balance: 1321,
     beat: 100,
     place: 1,
-    field: 9,
+    field: 43,
     capped: 0,
     todayLeft: 146,
   },

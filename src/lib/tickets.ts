@@ -18,9 +18,9 @@ export type RunTickets = {
   earned: number
   lines: { reason: TicketReason; amount: number }[]
   balance: number
-  /** The share of the week's board the run beat, 1–100. */
+  /** The share of the week's other runs this one beat, 0–100 (a daily game's: the day's). */
   beat: number
-  /** Where the run placed among the week's players, and how many there are, the player among them. */
+  /** Where the run placed among the week's runs, 1 for the best, and how many runs there are, this one among them. */
   place: number
   field: number
   /** Tickets the day's cap held back. */

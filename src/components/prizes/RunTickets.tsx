@@ -1,4 +1,4 @@
-import { getGame } from '../../data/games'
+import { getGame, isDailyGame } from '../../data/games'
 import { prizeById } from '../../data/prizes'
 import { prizesHref } from '../../hooks/useHashRoute'
 import { useTickets, type RunTickets } from '../../lib/tickets'
@@ -15,14 +15,14 @@ function why(paid: RunTickets, game: string): string {
   for (const line of paid.lines) {
     switch (line.reason) {
       case 'run': {
-        const others = paid.field - 1
-        const beaten = paid.field - paid.place
+        // A daily game's board is the day's; everyone else's is the week's.
+        const board = isDailyGame(game) ? 'today’s' : 'this week’s'
         parts.push(
-          paid.place === 1
-            ? `${line.amount} for the top run this week`
-            : others > 0
-              ? `${line.amount} for beating ${Math.round((100 * beaten) / others)}% of this week’s players`
-              : `${line.amount} for the run`,
+          paid.field <= 1
+            ? `${line.amount} for the first run on ${board} board`
+            : paid.place === 1
+              ? `${line.amount} for the best run on ${board} board`
+              : `${line.amount} for beating ${paid.beat}% of ${board} runs`,
         )
         break
       }

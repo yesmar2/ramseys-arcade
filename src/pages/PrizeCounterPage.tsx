@@ -316,8 +316,8 @@ export function PrizeCounterPage() {
             Fair pay
           </span>
           <p>
-            A run pays 1 to 10 by how much of the week’s board it beats, 5 more for a new best, and one for each ticket picked up in Crosswalk. Runs
-            pay up to 200 a day; the rest comes on top.
+            A run pays 1 to 10 by how many of the week’s runs it beats, yours among them, 5 more for a new best, and one for each ticket picked up
+            in Crosswalk. Runs pay up to 200 a day; the rest comes on top.
           </p>
         </div>
       </section>
