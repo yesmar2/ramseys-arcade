@@ -304,7 +304,7 @@ export function WallTile({
   const fmt = (score: number) => formatLeaderboardScore(game.slug, score)
   const place = standing?.place ?? null
   const total = standing?.total ?? null
-  const periodWord = PERIOD_LABELS[period].toLowerCase()
+  const periodWord = PERIOD_LABELS[game.daily ? 'daily' : period].toLowerCase()
   const rows = top ? (top.entries.length > 0 ? top.entries : [top.entry]) : []
   const kind = (game.tags ?? []).map((tag) => TAG_LABELS[tag]).join(' · ') || 'Game'
   const label = [
@@ -335,7 +335,7 @@ export function WallTile({
           <span className="wall-tile__scores" aria-hidden="true">
             <span className="wall-tile__scores-head">
               High scores
-              {top ? <small>{top.period === 'all' ? 'All time' : PERIOD_LABELS[top.period]}</small> : null}
+              {top ? <small>{game.daily ? 'Today' : top.period === 'all' ? 'All time' : PERIOD_LABELS[top.period]}</small> : null}
             </span>
             {rows.length > 0 ? (
               rows.map((e, i) => (

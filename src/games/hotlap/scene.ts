@@ -4,6 +4,7 @@
  */
 import * as THREE from 'three'
 import { buildCar, WHEEL_RADIUS, WHEELS, type CarModel } from './car'
+import { bounds } from './courses'
 import type { GhostPose } from './lap'
 import { CAR, HALF_WIDTH as TW, nearest, type Run, type Track } from './sim'
 
@@ -47,6 +48,8 @@ export class HotLapScene {
   private readonly scene = new THREE.Scene()
   private readonly camera = new THREE.PerspectiveCamera(62, 1, 0.4, 4000)
   private readonly track: Track
+  /** The ground the track covers: the grounds, trees and hills are laid out round it. */
+  private readonly box: ReturnType<typeof bounds>
   private readonly textures: THREE.Texture[] = []
   private readonly lettered: [THREE.CanvasTexture, Paint][] = []
   private readonly car: CarModel
@@ -66,6 +69,7 @@ export class HotLapScene {
 
   constructor(canvas: HTMLCanvasElement, track: Track) {
     this.track = track
+    this.box = bounds(track)
     const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' })
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.75))
     renderer.outputColorSpace = THREE.SRGBColorSpace
@@ -150,7 +154,7 @@ export class HotLapScene {
     tex.repeat.set(4000 / 24, 4000 / 24)
     const ground = new THREE.Mesh(new THREE.PlaneGeometry(4000, 4000), new THREE.MeshLambertMaterial({ map: tex }))
     ground.rotation.x = -Math.PI / 2
-    ground.position.set(180, -0.02, -110)
+    ground.position.set(this.box.cx, -0.02, -this.box.cy)
     this.scene.add(ground)
   }
 
@@ -280,11 +284,11 @@ export class HotLapScene {
     sign.rotation.y = h - Math.PI / 2
     scene.add(sign)
 
-    // Rows of the arcade's colours stepping back on the outside of the straight.
+    // Rows of the arcade's colours stepping back on the outside of the straight, as long as it has room for.
     const rows = ['#e8564f', '#f5b942', '#3ec8cf', '#4aa8e8', '#8a6ad4']
-    const along = 190
-    const cx = track.x[i]! + Math.cos(h) * 110
-    const cy = track.y[i]! + Math.sin(h) * 110
+    const along = standLength(track)
+    const cx = track.x[i]! + Math.cos(h) * (20 + along / 2)
+    const cy = track.y[i]! + Math.sin(h) * (20 + along / 2)
     rows.forEach((col, r) => {
       const d = TW + 16 + r * 2.4
       const tier = new THREE.Mesh(new THREE.BoxGeometry(along, 1 + r * 1.1, 2.4), new THREE.MeshLambertMaterial({ color: col }))
@@ -298,55 +302,69 @@ export class HotLapScene {
     scene.add(roof)
   }
 
-  /** Braking boards before the hairpin: 150, 100, 50 metres to go. */
+  /**
+   * Braking boards before each slow corner that ends a long straight: 150, 100, 50 metres to go, on the
+   * outside. A board that would stand on another stretch of road is left out.
+   */
   private buildBoards() {
     const track = this.track
-    const hairpin = track.corners.find((c) => c.name === 'Hairpin')
-    if (!hairpin) return
+    const { n } = track
     const postMat = new THREE.MeshLambertMaterial({ color: '#8b939e' })
-    for (const to of [150, 100, 50]) {
-      const i = hairpin.from - to
-      const h = track.h[i]!
-      const side = -(TW + 4)
-      const tex = this.paint(
-        128,
-        96,
-        (g, w, hh) => {
-          g.fillStyle = '#ffffff'
-          g.fillRect(0, 0, w, hh)
-          g.strokeStyle = '#1b1f26'
-          g.lineWidth = 8
-          g.strokeRect(4, 4, w - 8, hh - 8)
-          g.fillStyle = '#1a2b3c'
-          g.font = `800 54px ${FONT}`
-          g.textAlign = 'center'
-          g.textBaseline = 'middle'
-          g.fillText(String(to), w / 2, hh / 2 + 3)
-        },
-        true,
-      )
-      const board = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 1.65), new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide }))
-      board.position.copy(W(track.x[i]! - Math.sin(h) * side, track.y[i]! + Math.cos(h) * side, 2.4))
-      board.rotation.y = h - Math.PI / 2
-      this.scene.add(board)
-      const post = new THREE.Mesh(new THREE.BoxGeometry(0.15, 1.6, 0.15), postMat)
-      post.position.copy(W(track.x[i]! - Math.sin(h) * side, track.y[i]! + Math.cos(h) * side, 0.8))
-      this.scene.add(post)
+    for (const c of track.corners) {
+      if (c.r > 40 || Math.abs(c.turn) < 60) continue
+      let straight = true
+      for (let j = 1; j <= 160 && straight; j++) straight = track.k[(((c.from - j) % n) + n) % n] === 0
+      if (!straight) continue
+      const side = -Math.sign(c.turn) * (TW + 4)
+      for (const to of [150, 100, 50]) {
+        const i = (((c.from - to) % n) + n) % n
+        const h = track.h[i]!
+        const bx = track.x[i]! - Math.sin(h) * side
+        const by = track.y[i]! + Math.cos(h) * side
+        if (offRoad(track, bx, by) < TW + 3) continue
+        const tex = this.paint(
+          128,
+          96,
+          (g, w, hh) => {
+            g.fillStyle = '#ffffff'
+            g.fillRect(0, 0, w, hh)
+            g.strokeStyle = '#1b1f26'
+            g.lineWidth = 8
+            g.strokeRect(4, 4, w - 8, hh - 8)
+            g.fillStyle = '#1a2b3c'
+            g.font = `800 54px ${FONT}`
+            g.textAlign = 'center'
+            g.textBaseline = 'middle'
+            g.fillText(String(to), w / 2, hh / 2 + 3)
+          },
+          true,
+        )
+        const board = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 1.65), new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide }))
+        board.position.copy(W(bx, by, 2.4))
+        board.rotation.y = h - Math.PI / 2
+        this.scene.add(board)
+        const post = new THREE.Mesh(new THREE.BoxGeometry(0.15, 1.6, 0.15), postMat)
+        post.position.copy(W(bx, by, 0.8))
+        this.scene.add(post)
+      }
     }
   }
 
-  /** Tyre walls where the fence is, on the outside of the slow corners that face open ground. */
+  /** Tyre walls where the fence is, on the outside of the slow corners, wherever they'd stand clear of the road. */
   private buildTyreWalls() {
     const track = this.track
     const spots: [number, number][] = []
     for (const c of track.corners) {
-      if (!['Hairpin', 'Top Turn', 'Chicane'].includes(c.name)) continue
+      if (c.r > 50) continue
       const outside = -Math.sign(c.turn) * (CAR.barrier - 1)
       for (let i = c.from - 10; i <= c.to + 10; i += 2) {
         const k = ((i % track.n) + track.n) % track.n
-        spots.push([track.x[k]! - Math.sin(track.h[k]!) * outside, track.y[k]! + Math.cos(track.h[k]!) * outside])
+        const x = track.x[k]! - Math.sin(track.h[k]!) * outside
+        const y = track.y[k]! + Math.cos(track.h[k]!) * outside
+        if (offRoad(track, x, y) >= TW + 6) spots.push([x, y])
       }
     }
+    if (!spots.length) return
     const walls = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.55, 0.55, 1.1, 10), new THREE.MeshLambertMaterial({ color: '#23262b' }), spots.length)
     const bands = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.57, 0.57, 0.3, 10), new THREE.MeshLambertMaterial({ color: '#f6f4ee' }), spots.length)
     const m = new THREE.Matrix4()
@@ -359,18 +377,30 @@ export class HotLapScene {
     this.scene.add(walls, bands)
   }
 
-  /** Trees well back from the road, and hills in the haze. */
+  /** Trees well back from the road and clear of the grandstand, over the ground round the track, and hills in the haze. */
   private buildTrees() {
     const track = this.track
+    const box = this.box
     const r = rng(29)
     const spots: [number, number, number, number][] = []
-    for (let tries = 0; tries < 2600 && spots.length < 420; tries++) {
-      const x = -420 + r() * 1100
-      const y = -320 + r() * 760
-      const near = nearest(track, x, y, -1)
-      const clear = Math.hypot(x - track.x[near.index]!, y - track.y[near.index]!)
-      if (clear < 46) continue
-      if (y < -8 && y > -60 && x > 60 && x < 300) continue
+    const x0 = box.minX - 320
+    const y0 = box.minY - 320
+    const w = box.width + 640
+    const d = box.height + 640
+    // About one tree to every 4,000 m² of the ground round the track, as the classic track had.
+    const want = Math.min(700, Math.round((w * d) / 3900))
+    const i0 = track.startIndex
+    const h0 = track.h[i0]!
+    const standEnd = 20 + standLength(track) + 25
+    for (let tries = 0; tries < want * 6 && spots.length < want; tries++) {
+      const x = x0 + r() * w
+      const y = y0 + r() * d
+      if (offRoad(track, x, y) < 46) continue
+      const dx = x - track.x[i0]!
+      const dy = y - track.y[i0]!
+      const ahead = dx * Math.cos(h0) + dy * Math.sin(h0)
+      const left = -dx * Math.sin(h0) + dy * Math.cos(h0)
+      if (ahead > -40 && ahead < standEnd && left < 0 && left > -(TW + 48)) continue
       spots.push([x, y, 0.7 + r() * 0.8, r()])
     }
     const trunks = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.35, 0.5, 3, 6), new THREE.MeshLambertMaterial({ color: '#6b4a32' }), spots.length)
@@ -399,11 +429,12 @@ export class HotLapScene {
 
     const hillMat = new THREE.MeshLambertMaterial({ color: '#86b6a4', fog: false })
     const hr = rng(41)
+    const ring = Math.max(box.width, box.height) / 2 + 900
     for (let k = 0; k < 34; k++) {
       const a = (k / 34) * Math.PI * 2 + hr() * 0.1
-      const d = 1300 + hr() * 350
+      const far = ring + hr() * 350
       const hill = new THREE.Mesh(new THREE.ConeGeometry(160 + hr() * 180, 70 + hr() * 120, 9), hillMat)
-      hill.position.set(180 + Math.cos(a) * d, 20, -110 + Math.sin(a) * d)
+      hill.position.set(box.cx + Math.cos(a) * far, 20, -box.cy + Math.sin(a) * far)
       this.scene.add(hill)
     }
   }
@@ -681,4 +712,15 @@ export class HotLapScene {
     this.renderer.dispose()
     this.renderer.forceContextLoss()
   }
+}
+
+/** How far a point is from the middle of the road, anywhere along the track. */
+function offRoad(track: Track, x: number, y: number) {
+  const near = nearest(track, x, y, -1)
+  return Math.hypot(x - track.x[near.index]!, y - track.y[near.index]!)
+}
+
+/** The grandstand's length: 190 m, or what the start straight has room for past the line and short of the braking. */
+function standLength(track: Track) {
+  return Math.max(80, Math.min(190, track.straights.A - 70 - 20 - 60))
 }

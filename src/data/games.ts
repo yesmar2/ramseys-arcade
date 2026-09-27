@@ -56,6 +56,12 @@ export type Game = {
   onDeck?: boolean
   /** If set, the game is only offered on these devices. */
   devices?: DeviceType[]
+  /**
+   * A daily: something new to play each day, the same for everyone, so its board is the day's. The API
+   * keeps such a game's board to today whatever the period (DAILY_GAMES there), and the site says so:
+   * "today" where other boards name their period.
+   */
+  daily?: boolean
 }
 
 export const games: Game[] = [
@@ -214,15 +220,21 @@ export const games: Game[] = [
     name: 'Hot Lap',
     slug: 'hotlap',
     tags: ['sport', 'quick'],
-    description: 'One lap against the clock, in 3D, in a concept racer lit in orange. Brake before the corners, get back on the gas, and beat the blue car.',
+    description: 'A new track every day, the same for everyone: one lap against the clock in 3D. Brake before the corners, get back on the gas, beat the blue car.',
     accent: PALETTE.orange,
     playable: true,
     inDevelopment: true,
+    daily: true,
   },
 ]
 
 export function getGame(slug: string) {
   return games.find((game) => game.slug === slug)
+}
+
+/** Whether a game's board is the day's: see Game.daily. */
+export function isDailyGame(slug: string) {
+  return getGame(slug)?.daily === true
 }
 
 export function isGameHidden(slug: string) {

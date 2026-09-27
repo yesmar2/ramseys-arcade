@@ -64,13 +64,14 @@ export function steerLock(u: number, catching = 0) {
 
 /* ---------- the track ---------- */
 
-type Piece = { straight: number | 'A' | 'B' } | { turn: number; r: number; name: string }
+/** A straight (metres, or 'A' and 'B', the two sized to close the loop) or a turn (degrees, left positive, on a radius). */
+export type Piece = { straight: number | 'A' | 'B' } | { turn: number; r: number; name: string }
 
 /*
  * Driven anticlockwise from the start line. A turn is degrees (left is positive) on a radius in metres;
  * the two lettered straights are sized so the loop closes on itself.
  */
-const PLAN: Piece[] = [
+export const CLASSIC: Piece[] = [
   { straight: 'A' },
   { turn: 180, r: 18, name: 'Hairpin' },
   { straight: 120 },
@@ -114,8 +115,8 @@ function arcMove(h: number, turn: number, r: number): [number, number] {
   return [sgn * r * (Math.sin(h + phi) - Math.sin(h)), sgn * r * (Math.cos(h) - Math.cos(h + phi))]
 }
 
-/** The loop as points a metre apart, with heading, curvature and distance. */
-export function buildTrack(plan: Piece[] = PLAN): Track {
+/** How long the two lettered straights must be for the loop to close: either may come out negative, when it can't. */
+export function closure(plan: Piece[]): { A: number; B: number } {
   // Headings at each piece, and where the fixed pieces take you.
   let h = 0
   let fx = 0
@@ -137,8 +138,12 @@ export function buildTrack(plan: Piece[] = PLAN): Track {
   const [ax, ay] = solveDir.A!
   const [bx, by] = solveDir.B!
   const det = ax * by - ay * bx
-  const lenA = (-fx * by + fy * bx) / det
-  const lenB = (-ax * fy + ay * fx) / det
+  return { A: (-fx * by + fy * bx) / det, B: (-ax * fy + ay * fx) / det }
+}
+
+/** The loop as points a metre apart, with heading, curvature and distance. */
+export function buildTrack(plan: Piece[] = CLASSIC): Track {
+  const { A: lenA, B: lenB } = closure(plan)
   if (!(lenA > 0 && lenB > 0)) throw new Error(`track does not close: A ${lenA} B ${lenB}`)
 
   const xs: number[] = []
@@ -148,7 +153,7 @@ export function buildTrack(plan: Piece[] = PLAN): Track {
   const corners: Corner[] = []
   let x = 0
   let y = 0
-  h = 0
+  let h = 0
   const push = (k: number) => {
     xs.push(x)
     ys.push(y)
@@ -512,11 +517,14 @@ export function botLap(track: Track, maxSeconds = 120) {
   const ghost: GhostPath = []
   let steps = 0
   let grass = 0
+  let bumps = 0
   while (!run.finished && run.time < maxSeconds) {
     if (steps % GHOST_EVERY === 0) ghost.push(run.x, run.y, run.h)
+    const before = run.bumped
     stepRun(run, drive(run), track)
     if (run.onGrass) grass += STEP
+    if (run.bumped > 0 && before === 0) bumps += 1
     steps += 1
   }
-  return { time: run.lapTime, splits: run.splits, ghost, grass, run }
+  return { time: run.lapTime, splits: run.splits, ghost, grass, bumps, run }
 }

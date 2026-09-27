@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
-import { getGame } from '../data/games'
+import { getGame, isDailyGame } from '../data/games'
 import { useAuth } from '../hooks/useAuth'
 import { useImpersonation } from '../hooks/useImpersonation'
 import { useSaveWait } from '../hooks/useSaveWait'
@@ -124,7 +124,8 @@ export function ScoreSaveCard({ gameSlug, score, title, subtitle, previousBest, 
   const tagId = useId()
 
   const game = getGame(gameSlug)?.name ?? gameSlug
-  const copy = periodCopy(period)
+  // A daily's board is the day's (the API keeps it so, whatever the period): its place is today's.
+  const copy = periodCopy(isDailyGame(gameSlug) ? 'daily' : period)
   // A friend's challenge this run was played against; your own played back is just a run.
   const challenge = useActiveChallenge(gameSlug)
   const facing =

@@ -16,9 +16,6 @@
   flex-direction: column;
   --hotlap-good: #23a66c;
   --hotlap-bad: #d9453d;
-  --hotlap-gold: #e0a52c;
-  --hotlap-silver: #9aa8b6;
-  --hotlap-bronze: #cf7f4a;
   --hotlap-ghost: #4aa8e8;
   --hotlap-accent: var(--celeb-accent, var(--accent));
 }
@@ -26,9 +23,6 @@
 html[data-theme='dark'] .hotlap--fullscreen {
   --hotlap-good: #3ecf8e;
   --hotlap-bad: #f07a8a;
-  --hotlap-gold: #f5b942;
-  --hotlap-silver: #d3dbe6;
-  --hotlap-bronze: #e39a5f;
 }
 
 .hotlap .game-play {
@@ -326,63 +320,9 @@ html[data-theme='dark'] .hotlap--fullscreen {
   }
 }
 
-/* The medal times, as chips across the card. */
-.hotlap-medals {
+/* Today's track, by name, across the card's figures. */
+.game-card .hotlap-track {
   grid-column: 1 / -1;
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 0.4rem;
-}
-
-.hotlap-medal {
-  --c: var(--hotlap-gold);
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  min-height: 2rem;
-  padding: 0 0.75rem 0 0.5rem;
-  border: 1px solid rgba(var(--ink-rgb), 0.12);
-  border-radius: 999px;
-  background: rgba(var(--ink-rgb), 0.05);
-  color: var(--muted);
-  font-size: 0.8rem;
-  font-weight: 600;
-}
-
-.hotlap-medal--silver {
-  --c: var(--hotlap-silver);
-}
-
-.hotlap-medal--bronze {
-  --c: var(--hotlap-bronze);
-}
-
-.hotlap-medal--ghost {
-  --c: var(--hotlap-ghost);
-}
-
-.hotlap-medal i {
-  width: 0.8rem;
-  height: 0.8rem;
-  border-radius: 50%;
-  background: var(--c);
-}
-
-.hotlap-medal b {
-  font-weight: 700;
-  color: var(--ink);
-  font-variant-numeric: tabular-nums;
-}
-
-.hotlap-medal.is-won {
-  border-color: color-mix(in srgb, var(--c) 70%, transparent);
-  background: color-mix(in srgb, var(--c) 18%, transparent);
-  color: var(--ink);
-}
-
-.game-card[data-fit='2'] .hotlap-medals {
-  gap: 0.3rem;
 }
 
 /* ---------- a phone ---------- */
@@ -393,14 +333,6 @@ html[data-theme='dark'] .hotlap--fullscreen {
     height: 72px;
   }
 
-  .hotlap-medals {
-    gap: 0.3rem;
-  }
-
-  .hotlap-medal {
-    padding: 0 0.55rem 0 0.4rem;
-    font-size: 0.72rem;
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -17,11 +17,12 @@ import { beginRun } from '../../lib/runSession'
 import { sfx } from '../../lib/sound'
 import { useTournamentPlay } from '../../tournaments/TournamentPlayContext'
 import { CarSound } from './audio'
-import { Ghost, hotlapCourse, keepLap, keptLap, MEDALS, medalFor, progressOf, type GhostLap } from './lap'
+import { msUntilNextTrack, trackDay, untilWords } from './daily'
+import { Ghost, hotlapCourse, keepLap, keptLap, progressOf, type Course, type GhostLap } from './lap'
 import { TrackMap } from './map'
 import { HotLapScene } from './scene'
 import { formatLap, hotlapBoardScore, hotlapMsFromBoardScore } from './score'
-import { botDriver, GHOST_EVERY, newRun, STEP, stepRun, type Controls, type Run } from './sim'
+import { botDriver, GHOST_EVERY, newRun, STEP, stepRun, type Controls, type Run, type Track } from './sim'
 
 const SLUG = 'hotlap'
 
@@ -59,6 +60,9 @@ const KEYS: Record<string, keyof Held> = {
 /** Everything a lap is, held outside React: the loop changes it 120 times a second. */
 type Game = {
   phase: Phase
+  /** The day, and its track. */
+  day: string
+  track: Track
   run: Run
   /** Seconds into the countdown, or since the line. */
   clock: number
@@ -103,8 +107,7 @@ function lightsFor(g: Game) {
 
 function aheadOf(g: Game): boolean | null {
   if (g.phase !== 'racing' || g.run.time < 1.5 || g.run.cut) return null
-  const { track } = hotlapCourse()
-  const at = g.ghost.timeAt(progressOf(track, g.run.dist, g.run.gate > 0))
+  const at = g.ghost.timeAt(progressOf(g.track, g.run.dist, g.run.gate > 0))
   return g.run.time < at
 }
 
@@ -119,10 +122,12 @@ function sectorFigure(k: number, splits: number[], chased: number[]) {
   return { text: `${d < 0 ? '−' : '+'}${Math.abs(d).toFixed(2)}`, tone: d <= 0 ? 'good' : 'bad' }
 }
 
-function freshGame(ghostLap: GhostLap): Game {
-  const { track } = hotlapCourse()
+function freshGame(course: Course, ghostLap: GhostLap): Game {
+  const { track } = course
   return {
     phase: 'menu',
+    day: course.day,
+    track,
     run: newRun(track),
     clock: 0,
     t: 0,
@@ -138,30 +143,39 @@ function freshGame(ghostLap: GhostLap): Game {
 const touchScreen = () =>
   typeof window !== 'undefined' && ((typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches) || 'ontouchstart' in window)
 
-/** The times to beat: the blue car's, then gold, silver and bronze, lit up to the one your best lap has. */
-function Targets({ ghost, best }: { ghost: number; best: number | null }) {
-  const won = medalFor(best)
+/** Today's track and its number, the blue car's lap of it, and when the next track comes. */
+function TrackTiles({ course, ghost }: { course: Course; ghost: number }) {
+  const [left, setLeft] = useState(() => msUntilNextTrack())
+  useEffect(() => {
+    const timer = window.setInterval(() => setLeft(msUntilNextTrack()), 20_000)
+    return () => window.clearInterval(timer)
+  }, [])
   return (
-    <div className="hotlap-medals" aria-label="Times to beat">
-      <span className="hotlap-medal hotlap-medal--ghost">
-        <i aria-hidden="true" />
-        Blue car
-        <b>{formatLap(ghost)}</b>
-      </span>
-      {MEDALS.map((m) => (
-        <span key={m.name} className={`hotlap-medal hotlap-medal--${m.name.toLowerCase()}${won && m.time >= won.time ? ' is-won' : ''}`}>
-          <i aria-hidden="true" />
-          {m.name}
-          <b>{`${Number(m.time.toFixed(2))}s`}</b>
-        </span>
-      ))}
-    </div>
+    <>
+      <div className="game-pause-meta__row hotlap-track">
+        <span>Today’s track · #{course.n}</span>
+        <strong>{course.name}</strong>
+      </div>
+      <div className="game-pause-meta__row">
+        <span>Blue car</span>
+        <strong>{formatLap(ghost)}</strong>
+      </div>
+      <div className="game-pause-meta__row">
+        <span>Next track</span>
+        <strong>{untilWords(left)}</strong>
+      </div>
+    </>
   )
 }
 
 /**
  * Hot Lap: one lap of a racing circuit against the clock, in 3D. Gas, brake and steering; the skill is
  * when to brake for a corner, how much of the road to use, and how soon to get back on the gas.
+ *
+ * It's a daily: a new track every day, the same for everyone (daily.ts), driven as often as you like,
+ * and the board is the day's (the API keeps Hot Lap's board to today's track, whatever the period).
+ * HotLapGame mounts it for today; when midnight has brought a new track by the next start, it asks for
+ * the new day with `onNewDay`, which mounts it again, with `notice` to say why when a lap was lost to it.
  *
  * The ghost is the lap to beat, driven alongside you the whole way: your best on this device, or before
  * you have one, the pace car's. It stays on the road all lap, fainter while it's right on top of you,
@@ -172,12 +186,13 @@ function Targets({ ghost, best }: { ghost: number; best: number | null }) {
  * screen: steer with the left thumb, pedals under the right. A lap is scored as its time: the board
  * keeps a million less the milliseconds (score.ts), so the fastest lap is the highest score.
  */
-export function HotLapGame() {
+function HotLapDay({ day, onNewDay, notice }: { day: string; onNewDay: (notice?: string) => void; notice?: string }) {
   const tournament = useTournamentPlay()
   const apiBest = usePersonalBest(SLUG)
-  const pace = hotlapCourse().pace
+  const course = hotlapCourse(day)
+  const pace = course.paceLap
   const gameRef = useRef<Game | null>(null)
-  if (!gameRef.current) gameRef.current = freshGame(keptLap() ?? pace)
+  if (!gameRef.current) gameRef.current = freshGame(course, keptLap(day) ?? pace)
   const [ui, setUi] = useState<Ui>(() => snapshot(gameRef.current!))
   const [saveOpen, setSaveOpen] = useState(false)
   const saveOpenRef = useRef(false)
@@ -217,14 +232,24 @@ export function HotLapGame() {
     setPads(NONE)
   }
 
+  /** Midnight has brought a new track: the page mounts the game again for it. */
+  const newDay = (why?: string) => {
+    if (trackDay() === day || devDay()) return false
+    onNewDay(why)
+    return true
+  }
+  const newDayRef = useRef(newDay)
+  newDayRef.current = newDay
+
   /** Lights, and a new lap: a new run for the boards, chasing the best lap there is. */
   const start = () => {
+    if (newDay()) return
     saveOpenRef.current = false
     setSaveOpen(false)
     clearRunAchievements()
     beginRun(SLUG)
     previousBestRef.current = getPersonalBest(SLUG)
-    const g = freshGame(keptLap() ?? pace)
+    const g = freshGame(course, keptLap(day) ?? pace)
     g.phase = 'countdown'
     gameRef.current = g
     sceneRef.current?.startLap()
@@ -235,9 +260,10 @@ export function HotLapGame() {
 
   /** Done with the lap: back to the start card, where what it changed shows. Nothing counts until the next one starts. */
   const toMenu = () => {
+    if (newDay()) return
     saveOpenRef.current = false
     setSaveOpen(false)
-    gameRef.current = freshGame(keptLap() ?? pace)
+    gameRef.current = freshGame(course, keptLap(day) ?? pace)
     previousBestRef.current = getPersonalBest(SLUG)
     startGrace.current = performance.now() + 300
     clearThumbs()
@@ -253,7 +279,7 @@ export function HotLapGame() {
   useEffect(() => {
     const holder = holderRef.current
     if (!holder) return
-    const { track } = hotlapCourse()
+    const { track } = gameRef.current!
     // A canvas of the scene's own: when it goes, its GL context goes with it, and a remount starts clean.
     const canvas = document.createElement('canvas')
     canvas.className = 'hotlap__view'
@@ -295,9 +321,9 @@ export function HotLapGame() {
     const finishLap = (g: Game) => {
       const run = g.run
       const time = run.lapTime!
-      const kept = keptLap()
+      const kept = keptLap(g.day)
       const improved = !kept || time < kept.time
-      if (improved) keepLap({ time, splits: [...run.splits], ghost: g.record })
+      if (improved) keepLap(g.day, { time, splits: [...run.splits], ghost: g.record })
       g.lap = { time, score: hotlapBoardScore(time), splits: [...run.splits], improved }
       sfx(improved ? 'perfect' : 'good')
       haptic('boost')
@@ -361,8 +387,10 @@ export function HotLapGame() {
       }
       if (live && g.phase === 'finished') {
         g.clock += dt
-        // The card opens by itself, so a stray press can't start another lap first.
+        // The card opens by itself, so a stray press can't start another lap first. A lap that midnight
+        // came in the middle of was on yesterday's track, and today's board is another track's: not saved.
         if (g.clock >= CARD_AFTER) {
+          if (newDayRef.current('Midnight came during that lap, so it was on yesterday’s track. Here’s today’s.')) return
           g.phase = 'gameover'
           saveOpenRef.current = true
           setSaveOpen(true)
@@ -479,6 +507,13 @@ export function HotLapGame() {
 
   useEffect(() => () => window.clearTimeout(toastTimer.current), [])
 
+  // Mounted again for a new day because a lap was lost to midnight: say so.
+  useEffect(() => {
+    if (notice) say(notice, 6)
+    // Once, on the mount the notice came with.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   useEffect(() => {
     const query = matchMedia(NARROW)
     const update = () => setNarrow(query.matches)
@@ -498,7 +533,7 @@ export function HotLapGame() {
     w.__hotlap = () => gameRef.current!
     w.__hotlapScene = () => sceneRef.current
     w.__hotlapAuto = (on = true) => {
-      autopilot.current = on ? botDriver(hotlapCourse().track) : null
+      autopilot.current = on ? botDriver(course.track) : null
     }
     w.__hotlapStart = () => start()
     return () => {
@@ -569,8 +604,7 @@ export function HotLapGame() {
   const bestText = best > 0 ? formatLap(hotlapMsFromBoardScore(best) / 1000) : '–'
   const showroom = ui.phase === 'menu'
   const lap = g.lap
-  const medal = lap ? medalFor(lap.time) : null
-  const extra = <Targets ghost={g.ghost.lap.time} best={best > 0 ? hotlapMsFromBoardScore(best) / 1000 : null} />
+  const extra = <TrackTiles course={course} ghost={g.ghost.lap.time} />
 
   return (
     <section
@@ -689,8 +723,8 @@ export function HotLapGame() {
                   <ScoreSaveCard
                     gameSlug={SLUG}
                     score={lap.score}
-                    title={medal ? `${medal.name} time` : 'Lap complete'}
-                    subtitle={`Sectors ${lap.splits.map((at, k) => (at - (k === 0 ? 0 : lap.splits[k - 1]!)).toFixed(2)).join(' · ')}`}
+                    title="Lap complete"
+                    subtitle={`${course.name} · sectors ${lap.splits.map((at, k) => (at - (k === 0 ? 0 : lap.splits[k - 1]!)).toFixed(2)).join(' · ')}`}
                     previousBest={Math.max(previousBestRef.current, apiBest)}
                     onDone={toMenu}
                   />
@@ -702,4 +736,21 @@ export function HotLapGame() {
       </div>
     </section>
   )
+}
+
+/** Dev only: localStorage `skermix-hotlap-dev-day` = YYYY-MM-DD plays that day's track, to look over the plan. */
+function devDay(): string | null {
+  if (!import.meta.env.DEV) return null
+  try {
+    const day = localStorage.getItem('skermix-hotlap-dev-day')
+    return day && /^\d{4}-\d{2}-\d{2}$/.test(day) ? day : null
+  } catch {
+    return null
+  }
+}
+
+/** Hot Lap on today's track, mounted again for the next when midnight brings it. */
+export function HotLapGame() {
+  const [today, setToday] = useState<{ day: string; notice?: string }>(() => ({ day: devDay() ?? trackDay() }))
+  return <HotLapDay key={today.day} day={today.day} notice={today.notice} onNewDay={(notice) => setToday({ day: trackDay(), notice })} />
 }

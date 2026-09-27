@@ -1,5 +1,5 @@
 import { useState, type CSSProperties } from 'react'
-import { deviceRequirementLabel, gamePlayableOn, getGame } from '../data/games'
+import { deviceRequirementLabel, gamePlayableOn, getGame, isDailyGame } from '../data/games'
 import { useGameBoard } from '../hooks/useGameBoard'
 import { gameBoardHref, gamePlayHref, leaderboardHref, rankHref, recordsHref } from '../hooks/useHashRoute'
 import { usePlayerName } from '../hooks/usePlayerName'
@@ -196,7 +196,7 @@ function Banner({
         <p className="home-banner__blurb gb-lede">
           {loading ? <span className="skel-line" style={{ '--skel-w': '20rem' } as CSSProperties} /> : boardLede(slug, copy, players, runs)}
         </p>
-        <PeriodTabs slug={slug} period={period} />
+        {isDailyGame(slug) ? null : <PeriodTabs slug={slug} period={period} />}
         <div className="home-banner__acts">
           {canPlay ? (
             <a className="home-banner__cta" href={gamePlayHref(slug)}>
@@ -591,7 +591,9 @@ function Board({
 
 /* ---------- the page ---------- */
 
-export function GameBoard({ slug, period }: { slug: LeaderboardGame; period: LeaderboardPeriod }) {
+export function GameBoard({ slug, period: asked }: { slug: LeaderboardGame; period: LeaderboardPeriod }) {
+  // A daily's board is the day's, whatever period was asked for (the API keeps it so).
+  const period: LeaderboardPeriod = isDailyGame(slug) ? 'daily' : asked
   const you = normalizePlayerName(usePlayerName())
   const groupId = useActiveGroup()
   const data = useGameBoard(slug, period, you, groupId)

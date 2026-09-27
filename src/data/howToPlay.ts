@@ -268,7 +268,7 @@ export const HOW_TO_PLAY: Record<string, HowToPlay> = {
     tip: 'The targets move every round. Each miss says how far off it was.',
   },
   hotlap: {
-    goal: 'Drive one lap as fast as you can.',
+    goal: 'The fastest lap of today’s track. A new one comes every day at midnight, New York time.',
     controls: [
       { does: 'Gas', touch: 'Gas, right thumb', keys: '↑ or W' },
       { does: 'Brake', touch: 'Brake, right thumb', keys: '↓, S or Space' },
@@ -276,12 +276,11 @@ export const HOW_TO_PLAY: Record<string, HowToPlay> = {
       { does: 'Start the lap again', touch: '↻', keys: 'R' },
     ],
     scores: [
-      { what: 'Your score', pts: 'lap time', sub: 'fastest wins' },
-      { what: 'Medals', pts: 'gold under 50s', sub: 'silver 53.5s · bronze 58s' },
+      { what: 'Your score', pts: 'your best lap today', sub: 'fastest wins the day' },
       { what: 'A cut across the grass', pts: 'no time', sub: 'the lap can’t count' },
     ],
-    ends: 'At the line, one lap from the start.',
-    tip: 'Brake in a straight line before a corner, then squeeze back on the gas as it opens out. The blue car is the lap to beat.',
+    ends: 'At the line, one lap from the start. Drive it as often as you like.',
+    tip: 'Brake in a straight line before a corner, then squeeze back on the gas as it opens out. The blue car is the lap to beat: your best today, or the pace car’s.',
   },
 }
 

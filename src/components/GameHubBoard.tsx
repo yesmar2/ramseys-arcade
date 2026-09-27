@@ -1,3 +1,4 @@
+import { isDailyGame } from '../data/games'
 import { applySitePeriod, gameBoardHref, gameHubHref, rankHref, useRoute } from '../hooks/useHashRoute'
 import type { HubBoard } from '../hooks/useGameHub'
 import type { BoardPlayer } from '../lib/gameBoard'
@@ -50,8 +51,10 @@ export function GameHubBoard({
   const route = useRoute()
   const { players, loading, error, aimAt } = board
   const mine = me ? players.find((p) => p.name === me) : undefined
-  const periodLabel = PERIOD_LABELS[period]
-  const open = OPEN_WORDS[period]
+  // A daily's board is the day's whatever the period, so it's called today's and has no periods to pick.
+  const daily = isDailyGame(slug)
+  const periodLabel = PERIOD_LABELS[daily ? 'daily' : period]
+  const open = OPEN_WORDS[daily ? 'daily' : period]
 
   // The top five, then, when you are further down, a gap and you between the players either side of you.
   // Otherwise the top eight, and you among them.
@@ -82,7 +85,7 @@ export function GameHubBoard({
         </a>
       </div>
 
-      <nav className="gh-seg" aria-label="Period">
+      <nav className="gh-seg" aria-label="Period" hidden={daily}>
         {VISIBLE_LEADERBOARD_PERIODS.map((p) => (
           <a
             key={p}

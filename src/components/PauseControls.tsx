@@ -122,6 +122,8 @@ export function GamePanelBody({
   const board = isBoardGame(slug)
   const hasRecords = gameHasRecords(slug)
   const game = getGame(slug)
+  // A daily's board is the day's: its best and its record are today's.
+  const daily = game?.daily === true
   // In an event with a set number of tries: how many are left, and when one counts.
   const tournament = useTournamentPlay()
   const tries = tournament && tournament.maxAttempts != null ? tournament : null
@@ -131,12 +133,12 @@ export function GamePanelBody({
       <div className="game-pause-meta">
         {!hideBest ? (
           <div className="game-pause-meta__row">
-            <span>Your best</span>
+            <span>{daily ? 'Your best today' : 'Your best'}</span>
             <strong>{personalBest > 0 ? formatLeaderboardScore(slug, personalBest) : '—'}</strong>
           </div>
         ) : null}
         <div className="game-pause-meta__row">
-          <span>The record</span>
+          <span>{daily ? 'Today’s best' : 'The record'}</span>
           <strong>{allTime > 0 ? formatLeaderboardScore(slug, allTime) : '—'}</strong>
         </div>
         {extraMeta}

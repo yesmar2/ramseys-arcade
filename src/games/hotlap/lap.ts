@@ -1,63 +1,78 @@
+import { dailyTrack, FIRST_DAY, type DailyTrack } from './daily'
 import { botLap, buildTrack, GHOST_RATE, lapDistance, nearest, type GhostPath, type Track } from './sim'
 
 /*
- * What a lap is measured against: the medal times, the pace car, and your own best lap, kept on the
- * device with where the car was all the way round so it can be driven again as the ghost.
+ * What a lap is measured against: the day's track, its pace car, and your own best lap on it, kept on
+ * the device with where the car was all the way round so it can be driven again as the ghost.
  */
-
-/*
- * Gold beats a driver cornering at the very limit down the middle of the road (51.1s), which takes
- * using the whole road; silver is about the pace car (53.4s); bronze is a tidy lap with a mistake in it.
- */
-export const MEDALS = [
-  { name: 'Gold', time: 50 },
-  { name: 'Silver', time: 53.5 },
-  { name: 'Bronze', time: 58 },
-] as const
-export type Medal = (typeof MEDALS)[number]
-
-export function medalFor(time: number | null | undefined): Medal | null {
-  return MEDALS.find((m) => time != null && time <= m.time) ?? null
-}
 
 /** A lap as the ghost drives it: its time, where each sector ended, and where the car was. */
 export type GhostLap = { time: number; splits: number[]; ghost: GhostPath }
 
-/* Not a score: the board keeps that. This is only the best lap's path, for its ghost, on this device. */
-const LAP_KEY = 'skermix-hotlap-lap'
+/*
+ * Not a score: the board keeps that. This is only each day's best lap and its path, for the ghost, on
+ * this device, and only the last few days: a day's lap is no use on another day's track.
+ */
+const LAPS_KEY = 'skermix-hotlap-laps'
+/** From before the tracks were daily: a lap of the classic track, which is the first day's. */
+const OLD_LAP_KEY = 'skermix-hotlap-lap'
+const KEEP_DAYS = 3
 
-export function keptLap(): GhostLap | null {
+function validLap(raw: Partial<GhostLap> | null | undefined): GhostLap | null {
+  if (!raw || typeof raw.time !== 'number' || !(raw.time > 20 && raw.time < 600)) return null
+  if (!Array.isArray(raw.splits) || raw.splits.length !== 3 || !raw.splits.every(Number.isFinite)) return null
+  if (!Array.isArray(raw.ghost) || raw.ghost.length < 30 || raw.ghost.length % 3 !== 0 || !raw.ghost.every(Number.isFinite)) return null
+  return { time: raw.time, splits: raw.splits, ghost: raw.ghost }
+}
+
+function readLaps(): Record<string, GhostLap> {
   try {
-    const raw = JSON.parse(localStorage.getItem(LAP_KEY) ?? 'null') as Partial<GhostLap> | null
-    if (!raw || typeof raw.time !== 'number' || !(raw.time > 20 && raw.time < 600)) return null
-    if (!Array.isArray(raw.splits) || raw.splits.length !== 3 || !raw.splits.every(Number.isFinite)) return null
-    if (!Array.isArray(raw.ghost) || raw.ghost.length < 30 || raw.ghost.length % 3 !== 0 || !raw.ghost.every(Number.isFinite)) return null
-    return { time: raw.time, splits: raw.splits, ghost: raw.ghost }
+    const parsed = JSON.parse(localStorage.getItem(LAPS_KEY) ?? 'null') as { days?: Record<string, Partial<GhostLap>> } | null
+    const days: Record<string, GhostLap> = {}
+    for (const [day, raw] of Object.entries(parsed?.days ?? {})) {
+      const lap = validLap(raw)
+      if (lap) days[day] = lap
+    }
+    // The classic track's lap, kept before the tracks were daily, is the first day's.
+    const old = validLap(JSON.parse(localStorage.getItem(OLD_LAP_KEY) ?? 'null') as Partial<GhostLap> | null)
+    if (old && !days[FIRST_DAY]) days[FIRST_DAY] = old
+    return days
   } catch {
-    return null
+    return {}
   }
 }
 
-export function keepLap(lap: GhostLap) {
+/** Your best lap of a day's track on this device, if you've driven it. */
+export function keptLap(day: string): GhostLap | null {
+  return readLaps()[day] ?? null
+}
+
+export function keepLap(day: string, lap: GhostLap) {
   try {
-    const ghost = lap.ghost.map((v) => Math.round(v * 100) / 100)
-    localStorage.setItem(LAP_KEY, JSON.stringify({ time: lap.time, splits: lap.splits, ghost }))
+    const days = { ...readLaps(), [day]: { time: lap.time, splits: lap.splits, ghost: lap.ghost.map((v) => Math.round(v * 100) / 100) } }
+    const keep = Object.keys(days).sort().slice(-KEEP_DAYS)
+    localStorage.setItem(LAPS_KEY, JSON.stringify({ days: Object.fromEntries(keep.map((d) => [d, days[d]])) }))
+    localStorage.removeItem(OLD_LAP_KEY)
   } catch {
     /* a private window keeps nothing; the lap still counts */
   }
 }
 
-let course: { track: Track; pace: GhostLap } | null = null
+/** A day's track, built, and its pace car's lap: a driver that keeps to the middle of the road. */
+export type Course = DailyTrack & { track: Track; paceLap: GhostLap }
 
-/**
- * The track, and the pace car's lap: a driver that keeps to the middle of the road. Its lap is the
- * ghost until you have one of your own. Worked out once, the first time the game opens.
- */
-export function hotlapCourse() {
+const courses = new Map<string, Course>()
+
+/** The day's track, worked out once a day: its pace car's lap is the ghost until you have one of your own. */
+export function hotlapCourse(day: string): Course {
+  let course = courses.get(day)
   if (!course) {
-    const track = buildTrack()
+    const daily = dailyTrack(day)
+    const track = buildTrack(daily.pieces)
     const bot = botLap(track)
-    course = { track, pace: { time: bot.time ?? 60, splits: bot.splits, ghost: bot.ghost } }
+    course = { ...daily, track, paceLap: { time: bot.time ?? daily.pace, splits: bot.splits, ghost: bot.ghost } }
+    if (courses.size > 2) courses.clear()
+    courses.set(day, course)
   }
   return course
 }

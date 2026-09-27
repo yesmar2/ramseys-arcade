@@ -22,7 +22,7 @@ import { moreLike } from '../lib/gameHub'
 import { useGlobalRank } from '../lib/globalRank'
 import { useActiveGroup } from '../lib/groups'
 import { lazyPage } from '../lib/lazyPage'
-import { LEADERBOARD_GAMES, normalizePlayerName, type LeaderboardGame } from '../lib/leaderboard'
+import { LEADERBOARD_GAMES, normalizePlayerName, type LeaderboardGame, type LeaderboardPeriod } from '../lib/leaderboard'
 import { gameHasRecords } from '../lib/records'
 import { resolveGameAccent, THEME_EVENT } from '../lib/theme'
 import { preloadGamePage } from './gamePages'
@@ -49,8 +49,9 @@ type GameHubPageProps = {
 export function GameHubPage({ slug, board: boardFromRoute }: GameHubPageProps) {
   const route = useRoute()
   const storedPeriod = useDefaultPeriod()
-  const period = periodFromRoute(route) ?? storedPeriod
   const game = getGame(slug)
+  // A daily's board is the day's whatever period is picked (the API keeps it so): its page says today.
+  const period: LeaderboardPeriod = game?.daily ? 'daily' : (periodFromRoute(route) ?? storedPeriod)
   const device = useDeviceType()
   const { signedIn } = useAuth()
   const playerName = normalizePlayerName(usePlayerName())
