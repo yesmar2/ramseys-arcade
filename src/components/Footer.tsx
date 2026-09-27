@@ -38,6 +38,10 @@ export function Footer() {
           </a>
           <p className="site-footer__tag">No ads. No install. Free to play.</p>
           <p className="site-footer__lead">Original games that load fast and stay out of your way.</p>
+          {/* The cheat code, scratched in like a tip on an arcade cabinet: the clue to an easter egg (EasterEggs.tsx). */}
+          <p className="site-footer__scratch" aria-hidden="true">
+            ↑↑↓↓←→←→BA
+          </p>
         </div>
 
         <nav className="site-footer__cols" aria-label="Site map">

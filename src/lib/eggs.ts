@@ -4,7 +4,8 @@ import { announceSecrets, SECRETS, type SecretFound } from './secrets'
 /*
  * The site's easter eggs (components/EasterEggs.tsx). The old cheat code, ↑↑↓↓←→←→BA (or on a phone the
  * same swipes and two taps), turns the arcade 8-bit; tapping the logo seven times makes it blip. Each
- * hides a secret trophy (lib/secrets.ts), kept on the player's shelf when they're signed in.
+ * hides a secret trophy (lib/secrets.ts), kept on the player's shelf when they're signed in. Each has a
+ * clue: the code is scratched faintly into the footer, and the logo pings now and then till it's blipped.
  */
 
 const EIGHT_BIT_KEY = 'skermix-eightbit'
@@ -48,6 +49,25 @@ export function setEightBit(on: boolean) {
   }
   applyEightBit(on)
   window.dispatchEvent(new Event(EIGHT_BIT_EVENT))
+}
+
+const BLIP_FOUND_KEY = 'skermix-blip-found'
+
+/** This device has made the logo blip, so it no longer needs the ping that hints at it. */
+export function blipFound(): boolean {
+  try {
+    return localStorage.getItem(BLIP_FOUND_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
+export function rememberBlip() {
+  try {
+    localStorage.setItem(BLIP_FOUND_KEY, '1')
+  } catch {
+    /* storage may be off; the logo just keeps pinging */
+  }
 }
 
 export type EggKey = 'konami' | 'blip'

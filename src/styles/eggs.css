@@ -1,6 +1,6 @@
 /*
- * The easter eggs (components/EasterEggs.tsx): the arcade in 8-bit, the logo's blip, and the pop-up for
- * a secret found (lib/secrets.ts).
+ * The easter eggs (components/EasterEggs.tsx): the arcade in 8-bit, the logo's blip, a clue to each, and
+ * the pop-up for a secret found (lib/secrets.ts).
  */
 
 /* ---------- 8-bit mode: a pixel face, square corners and a CRT's scan lines ---------- */
@@ -111,6 +111,61 @@ html[data-eightbit] body::after {
     opacity: 0;
     transform: scale(4.5);
   }
+}
+
+/* ---------- the blip's clue: now and then its dot sends out two rings, as if it wants a tap ---------- */
+
+.brand-mark__ping {
+  opacity: 0;
+  stroke-width: 1.6px;
+  vector-effect: non-scaling-stroke;
+  transform-box: fill-box;
+  transform-origin: center;
+  pointer-events: none;
+}
+
+.site-bar__brand.egg-ping .brand-mark__ping {
+  animation: brand-ping 1.6s ease-out both;
+}
+
+.site-bar__brand.egg-ping .brand-mark__ping:last-child {
+  animation-delay: 0.3s;
+}
+
+@keyframes brand-ping {
+  from {
+    opacity: 0.9;
+    transform: scale(1);
+  }
+
+  45% {
+    opacity: 0.55;
+  }
+
+  to {
+    opacity: 0;
+    transform: scale(5);
+  }
+}
+
+/* ---------- the cheat code's clue: scratched faintly into the footer, like a tip on a cabinet ---------- */
+
+.site-footer__scratch {
+  align-self: flex-start;
+  margin: 0.55rem 0 0 0.15rem;
+  font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 0.86rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  color: var(--muted);
+  opacity: 0.55;
+  transform: rotate(-3deg);
+  user-select: none;
+  transition: opacity 0.3s ease;
+}
+
+.site-footer__scratch:hover {
+  opacity: 0.8;
 }
 
 /* ---------- a secret found ---------- */
@@ -234,7 +289,8 @@ html[data-eightbit] body::after {
 @media (prefers-reduced-motion: reduce) {
   .secret-toast,
   .site-bar__brand.egg-wobble,
-  .site-bar__brand.egg-blip {
+  .site-bar__brand.egg-blip,
+  .site-bar__brand.egg-ping .brand-mark__ping {
     animation: none;
   }
 

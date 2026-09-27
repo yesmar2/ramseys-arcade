@@ -8,9 +8,10 @@ const { letters, blip, box, shine } = WORDMARK
  * the font-size around it, like the text it stands in for, and its letters
  * take the text colour. The blip is drawn for both themes and
  * styles/chrome.css shows the one that fits: wide glow on dark, close on
- * light. Decorative: the link around it carries the name.
+ * light. Decorative: the link around it carries the name. With `ping`, the
+ * blip also holds two rings it can send out now and then (EasterEggs.tsx).
  */
-export function BrandMark() {
+export function BrandMark({ ping = false }: { ping?: boolean }) {
   const id = `brand${useId().replace(/[^\w-]/g, '')}`
   return (
     <svg
@@ -35,6 +36,19 @@ export function BrandMark() {
         <g key={theme} className={`brand-mark__${theme}`}>
           <circle cx={blip.cx} cy={blip.cy} r={blip.r * shine[theme].reach} fill={`url(#${id}-${theme})`} />
           <circle cx={blip.cx} cy={blip.cy} r={blip.r} fill={shine[theme].core} />
+          {ping
+            ? [0, 1].map((ring) => (
+                <circle
+                  key={ring}
+                  className="brand-mark__ping"
+                  cx={blip.cx}
+                  cy={blip.cy}
+                  r={blip.r * 1.5}
+                  fill="none"
+                  stroke={shine[theme].glow}
+                />
+              ))
+            : null}
         </g>
       ))}
     </svg>

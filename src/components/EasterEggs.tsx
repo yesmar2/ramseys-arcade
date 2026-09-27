@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { rankHref } from '../hooks/useHashRoute'
-import { applyEightBit, EIGHT_BIT_EVENT, isEightBit, reportEgg, setEightBit } from '../lib/eggs'
+import { applyEightBit, blipFound, EIGHT_BIT_EVENT, isEightBit, rememberBlip, reportEgg, setEightBit } from '../lib/eggs'
 import { SECRET_EVENT, type SecretFound } from '../lib/secrets'
 import { SecretArt } from './TrophyArt'
 import '../styles/eggs.css'
@@ -10,8 +10,9 @@ import '../styles/eggs.css'
  * (lib/secrets.ts), wherever it was found: a run, a bug, a day's hole or an egg.
  *
  * - The old cheat code, ↑↑↓↓←→←→ then B A on a keyboard, or the same swipes then two taps on a phone,
- *   turns the arcade 8-bit, and back.
- * - Seven quick taps on the logo make it blip.
+ *   turns the arcade 8-bit, and back. Its clue is scratched faintly into the footer.
+ * - Seven quick taps on the logo make it blip. Its clue: till a device has done it, the logo's blip
+ *   sends out two rings now and then, as if it wants a tap.
  */
 
 type Token = 'up' | 'down' | 'left' | 'right' | 'b' | 'a' | 'tap'
@@ -33,6 +34,10 @@ const KEY_TOKENS: Record<string, Token> = {
 /** Taps on the logo, each within this of the one before, that count towards the blip. */
 const TAP_GAP_MS = 1200
 const TAPS_TO_BLIP = 7
+
+/** The logo's first ping comes this long after the site opens, then one every so often. */
+const PING_FIRST_MS = 6000
+const PING_GAP_MS: readonly [number, number] = [25_000, 45_000]
 
 function typing(target: EventTarget | null): boolean {
   const el = target as HTMLElement | null
@@ -116,12 +121,17 @@ export function EasterEggs() {
       brand.classList.add(cue)
       if (cue === 'egg-blip') {
         taps = 0
+        rememberBlip()
         void reportEgg('blip')
       }
     }
     const onEnd = (e: AnimationEvent) => {
+      const target = e.target as Element | null
       if (e.animationName === 'egg-wobble' || e.animationName === 'egg-blip-ring') {
-        ;(e.target as Element | null)?.closest?.('.site-bar__brand')?.classList.remove('egg-wobble', 'egg-blip')
+        target?.closest?.('.site-bar__brand')?.classList.remove('egg-wobble', 'egg-blip')
+      } else if (e.animationName === 'brand-ping' && !target?.nextElementSibling) {
+        // The second ring is the last to fade.
+        target?.closest?.('.site-bar__brand')?.classList.remove('egg-ping')
       }
     }
     document.addEventListener('click', onClick, true)
@@ -130,6 +140,25 @@ export function EasterEggs() {
       document.removeEventListener('click', onClick, true)
       document.removeEventListener('animationend', onEnd, true)
     }
+  }, [])
+
+  // The blip's clue: now and then, till this device has made it blip, the logo sends out two rings.
+  useEffect(() => {
+    if (blipFound() || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return
+    let id = 0
+    const ping = () => {
+      if (blipFound()) return
+      const brand = document.querySelector<HTMLElement>('.site-bar__brand')
+      // Not on a game's screen (it has no header), in a hidden tab, or while someone is tapping the logo.
+      if (brand && !document.hidden && !brand.matches('.egg-wobble, .egg-blip')) {
+        brand.classList.remove('egg-ping')
+        void brand.offsetWidth
+        brand.classList.add('egg-ping')
+      }
+      id = window.setTimeout(ping, PING_GAP_MS[0] + Math.random() * (PING_GAP_MS[1] - PING_GAP_MS[0]))
+    }
+    id = window.setTimeout(ping, PING_FIRST_MS)
+    return () => window.clearTimeout(id)
   }, [])
 
   // Secrets found, one pop-up at a time.

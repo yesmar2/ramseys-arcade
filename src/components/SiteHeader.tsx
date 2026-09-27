@@ -208,7 +208,7 @@ export function SiteHeader() {
     <div className="site-chrome">
       <nav className="site-bar" aria-label="Site">
         <a className="site-bar__brand" href={homeHref()} aria-label={APP_NAME}>
-          <BrandMark />
+          <BrandMark ping />
         </a>
         <div className="site-bar__links">
           {SITE_NAV_LINKS.map((item) => {

@@ -76,12 +76,13 @@ const SECRET_RULES: Record<SecretKey, string> = {
   blip: 'Doing the logo blip (see Easter eggs).',
 }
 
-const EGGS: { key: string; name: string; how: string; does: string; secret: string }[] = [
+const EGGS: { key: string; name: string; how: string; does: string; clue: string; secret: string }[] = [
   {
     key: 'konami',
     name: 'The cheat code: 8-bit mode',
     how: 'On any page, ↑ ↑ ↓ ↓ ← → ← → then B A on a keyboard; on a phone, swipe up, up, down, down, left, right, left, right, then tap twice.',
     does: 'Turns the whole site 8-bit: a pixel font, square corners and faint scan lines, with a Turn off button in the corner. The device remembers it; the code again turns it off.',
+    clue: 'The code is scratched faintly into the footer of every page, under “Original games that load fast…”, like a tip written on an arcade cabinet.',
     secret: 'Up Up Down Down',
   },
   {
@@ -89,6 +90,7 @@ const EGGS: { key: string; name: string; how: string; does: string; secret: stri
     name: 'The logo blip',
     how: 'Tap the Blipka logo at the top left seven times quickly, each within about a second of the last.',
     does: 'The logo wobbles from the third tap and blips on the seventh.',
+    clue: 'The dot on the logo’s i sends out two little rings now and then (6 seconds in, then every 25 to 45), as if it wants a tap. It stops once that device has made it blip, and never plays for anyone who has asked their device for less motion.',
     secret: 'Blip Blip',
   },
 ]
@@ -165,8 +167,8 @@ export function AdminTrophies() {
           </h2>
         </div>
         <p className="adm-card__sub">
-          Hidden things to do on the site. Each also finds a secret trophy the first time, signed in; signed out, it
-          still works, but nothing is kept.
+          Hidden things to do on the site, each with a quiet clue. Each also finds a secret trophy the first time,
+          signed in; signed out, it still works, but nothing is kept.
         </p>
         <ul className="adm-list">
           {EGGS.map((egg) => (
@@ -178,6 +180,9 @@ export function AdminTrophies() {
                 </span>
                 <span className="adm-row__sub">
                   <b>What it does:</b> {egg.does}
+                </span>
+                <span className="adm-row__sub">
+                  <b>Clue:</b> {egg.clue}
                 </span>
                 <span className="adm-row__sub">
                   <b>Secret trophy:</b> {egg.secret}
