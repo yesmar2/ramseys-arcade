@@ -4,19 +4,19 @@ import { ordinal } from '../lib/profileMath'
 import { summarizeTrophies, trophyTone, type TrophyAward } from '../lib/trophies'
 import { medalKind } from './PodiumMedal'
 import { secretByNumber, SECRETS } from '../lib/secrets'
-import { EventCup, HuntSetJar, MonthlyTrophyCup, SecretArt, SecretUnknown, TopTenRibbon, WeeklyMedal } from './TrophyArt'
+import { EventCup, HuntSetJar, MonthlyTrophyCup, SecretArt, SecretUnknown, TopTenRibbon, WeeklyMedal, type TrophyArtSize } from './TrophyArt'
 
-/** Board trophies shown before "Show all": two shelves' worth on a wide screen. */
-const BOARD_SHOWN = 8
+/** Board trophies shown before "Show all": three rows on a phone, two on a wide screen with your open place. */
+const BOARD_SHOWN = 9
 
-function TrophyIcon({ trophy }: { trophy: TrophyAward }) {
+function TrophyIcon({ trophy, size = 'md' }: { trophy: TrophyAward; size?: TrophyArtSize }) {
   const kind = medalKind(trophy.rank)
   // An event win is a cup: the whole thing, not a place on a board.
-  if (trophy.period === 'event') return <EventCup size="md" />
-  if (trophy.period === 'hunt') return <HuntSetJar size="md" />
-  if (trophy.period === 'secret') return <SecretArt n={trophy.periodKey} size="md" />
-  if (trophy.period === 'monthly') return kind ? <MonthlyTrophyCup tone={kind} size="md" /> : <TopTenRibbon tone="monthly" rank={trophy.rank} size="md" />
-  return kind ? <WeeklyMedal rank={trophy.rank} size="md" /> : <TopTenRibbon tone="weekly" rank={trophy.rank} size="md" />
+  if (trophy.period === 'event') return <EventCup size={size} />
+  if (trophy.period === 'hunt') return <HuntSetJar size={size} />
+  if (trophy.period === 'secret') return <SecretArt n={trophy.periodKey} size={size} />
+  if (trophy.period === 'monthly') return kind ? <MonthlyTrophyCup tone={kind} size={size} /> : <TopTenRibbon tone="monthly" rank={trophy.rank} size={size} />
+  return kind ? <WeeklyMedal rank={trophy.rank} size={size} /> : <TopTenRibbon tone="weekly" rank={trophy.rank} size={size} />
 }
 
 /** A set's month from its periodKey (YYYYMM): "October". */
@@ -54,7 +54,12 @@ function trophyHaul(t: TrophyAward): string | null {
   return t.games > 0 ? `${points} over ${t.games} ${t.games === 1 ? 'game' : 'games'}` : points
 }
 
-function Item({ trophy, wide }: { trophy: TrophyAward; wide?: boolean }) {
+/**
+ * A trophy standing on its shelf, lit in its own colour, with a label on the
+ * shelf's edge under it: what it was, and when. What it was won with is in the
+ * trophy's hover text, and read out.
+ */
+function Item({ trophy }: { trophy: TrophyAward }) {
   const isEvent = trophy.period === 'event'
   const isSet = trophy.period === 'hunt'
   const isSecret = trophy.period === 'secret'
@@ -66,19 +71,17 @@ function Item({ trophy, wide }: { trophy: TrophyAward; wide?: boolean }) {
         ? (secretByNumber(trophy.periodKey)?.name ?? 'A secret')
         : `${ordinal(trophy.rank)} of the ${trophy.period === 'monthly' ? 'month' : 'week'}`
   const when = trophyWhen(trophy)
+  const whenLine = isSecret ? `Found ${when}` : when
   const haul = trophyHaul(trophy)
   return (
-    <li className={`pshelf__item${wide ? ' pshelf__item--wide' : ''}`}>
-      {/* The plinth takes the trophy's colour, so a shelf reads by its metals at a glance. */}
-      <span className={`pshelf__plinth pshelf__plinth--lit trophy-tone--${trophyTone(trophy.period, trophy.rank)}`}>
-        <TrophyIcon trophy={trophy} />
+    <li className={`pshelf__item trophy-tone--${trophyTone(trophy.period, trophy.rank)}`} title={[title, whenLine, haul].filter(Boolean).join(' · ')}>
+      <span className="pshelf__stand">
+        <TrophyIcon trophy={trophy} size="lg" />
       </span>
-      <span className="pshelf__words">
+      <span className="pshelf__label">
         <span className="pshelf__name">{title}</span>
-        <span className="pshelf__when">
-          {isEvent ? `Event won · ${when}` : isSet ? `Bug hunt · ${when}` : isSecret ? `Found ${when}` : when}
-        </span>
-        {haul ? <span className="pshelf__haul">{haul}</span> : null}
+        <span className="pshelf__when">{whenLine}</span>
+        {haul ? <span className="pshelf__sr">{haul}</span> : null}
       </span>
     </li>
   )
@@ -208,9 +211,9 @@ export function TrophyShelf({
           {events.length > 0 ? (
             <div className="pshelf__shelf">
               <p className="pshelf__cap">Events won</p>
-              <ol className="pshelf__row pshelf__row--events">
+              <ol className="pshelf__row">
                 {events.map((t) => (
-                  <Item key={t.id} trophy={t} wide />
+                  <Item key={t.id} trophy={t} />
                 ))}
               </ol>
             </div>
@@ -218,9 +221,9 @@ export function TrophyShelf({
           {sets.length > 0 ? (
             <div className="pshelf__shelf">
               <p className="pshelf__cap">Bug hunt</p>
-              <ol className="pshelf__row pshelf__row--events">
+              <ol className="pshelf__row">
                 {sets.map((t) => (
-                  <Item key={t.id} trophy={t} wide />
+                  <Item key={t.id} trophy={t} />
                 ))}
               </ol>
             </div>
@@ -229,9 +232,9 @@ export function TrophyShelf({
             <div className="pshelf__shelf">
               <p className="pshelf__cap">Secrets</p>
               {secrets.length > 0 ? (
-                <ol className="pshelf__row pshelf__row--events">
+                <ol className="pshelf__row">
                   {secrets.map((t) => (
-                    <Item key={t.id} trophy={t} wide />
+                    <Item key={t.id} trophy={t} />
                   ))}
                 </ol>
               ) : null}
@@ -261,10 +264,12 @@ export function TrophyShelf({
                 ))}
                 {isSelf ? (
                   <li className="pshelf__item pshelf__item--open">
-                    <span className="pshelf__plinth pshelf__plinth--open" aria-hidden="true">
-                      +
+                    <span className="pshelf__stand">
+                      <span className="pshelf__ghost" aria-hidden="true">
+                        +
+                      </span>
                     </span>
-                    <span className="pshelf__words">
+                    <span className="pshelf__label">
                       <span className="pshelf__name">This week</span>
                       <span className="pshelf__when">Still open</span>
                     </span>
