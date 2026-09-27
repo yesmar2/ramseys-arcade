@@ -372,5 +372,8 @@ export function pageMeta(route: Route): PageMeta {
       return { ...site, title: titled('Signing in'), path: homeHref(), noindex: true }
     case 'devCelebrate':
       return { ...site, title: titled('Celebrate (dev)'), path: homeHref(), noindex: true }
+    // A place the site doesn't have: its Game Over screen, an easter egg.
+    case 'notFound':
+      return { ...site, title: titled(route.killScreen ? 'Level 256' : 'Game Over'), path: homeHref(), noindex: true }
   }
 }

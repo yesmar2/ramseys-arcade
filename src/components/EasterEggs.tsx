@@ -1,7 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { rankHref } from '../hooks/useHashRoute'
-import { applyEightBit, blipFound, EIGHT_BIT_EVENT, isEightBit, rememberBlip, reportEgg, setEightBit } from '../lib/eggs'
+import { applyEightBit, EIGHT_BIT_EVENT, eggDone, isEightBit, reportEgg, setEightBit } from '../lib/eggs'
+import { EGG_LETTERS_KEPT, EGG_WORD_EVENT, eggWordTyped, playEggWord, type EggWordSaid } from '../lib/eggWords'
 import { SECRET_EVENT, type SecretFound } from '../lib/secrets'
+import { sfx } from '../lib/sound'
+import { BlipSaver } from './BlipSaver'
 import { SecretArt } from './TrophyArt'
 import '../styles/eggs.css'
 
@@ -13,7 +16,16 @@ import '../styles/eggs.css'
  *   turns the arcade 8-bit, and back. Its clue is scratched faintly into the footer.
  * - Seven quick taps on the logo make it blip. Its clue: till a device has done it, the logo's blip
  *   sends out two rings now and then, as if it wants a tap.
+ * - Words (lib/eggWords.ts), searched or typed anywhere: a barrel roll spins the page, and old game cheats
+ *   answer back, iddqd with ten seconds of gold.
+ * - The screen saver, after a minute left alone (BlipSaver.tsx).
  */
+
+/** The same word again this soon is a double press, not a second go. */
+const WORD_AGAIN_MS = 2500
+/** How long a cheat's answer stays up, and god mode lasts. */
+const REPLY_MS = 3600
+const GOD_MODE_MS = 10_000
 
 type Token = 'up' | 'down' | 'left' | 'right' | 'b' | 'a' | 'tap'
 
@@ -47,9 +59,104 @@ function typing(target: EventTarget | null): boolean {
 const endsWith = (seen: readonly Token[], code: readonly Token[]) =>
   seen.length >= code.length && code.every((t, i) => seen[seen.length - code.length + i] === t)
 
+type WithViewTransition = Document & { startViewTransition?: (update: () => void) => { finished: Promise<void> } }
+
+/**
+ * The screen does a barrel roll: a picture of all of it turns once round (a view transition, styled in
+ * eggs.css), header and tab bar too, and hands back to the page. Without view transitions, the page's
+ * main part turns instead.
+ */
+function barrelRoll() {
+  const root = document.documentElement
+  if (root.classList.contains('egg-rolling')) return
+  if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return
+  const doc = document as WithViewTransition
+  if (doc.startViewTransition) {
+    root.classList.add('egg-rolling')
+    sfx('whoosh')
+    void doc
+      .startViewTransition(() => undefined)
+      .finished.catch(() => undefined)
+      .finally(() => root.classList.remove('egg-rolling'))
+    return
+  }
+  const main = document.querySelector<HTMLElement>('main')
+  if (!main) return
+  const box = main.getBoundingClientRect()
+  const middle = Math.min(Math.max(window.innerHeight / 2 - box.top, 0), box.height)
+  main.style.transformOrigin = `50% ${middle}px`
+  document.documentElement.classList.add('egg-rolling')
+  main.classList.add('egg-roll')
+  sfx('whoosh')
+  main.addEventListener(
+    'animationend',
+    () => {
+      main.classList.remove('egg-roll')
+      main.style.transformOrigin = ''
+      document.documentElement.classList.remove('egg-rolling')
+    },
+    { once: true },
+  )
+}
+
 export function EasterEggs() {
   const [eightBit, setOn] = useState(isEightBit)
   const [shown, setShown] = useState<SecretFound[]>([])
+  const [reply, setReply] = useState<{ text: string; key: number } | null>(null)
+  const [godMode, setGodMode] = useState(false)
+
+  // A word said: its effect, its answer, and its secret.
+  useEffect(() => {
+    let lastWord = ''
+    let lastAt = 0
+    let replyTimer = 0
+    let godTimer = 0
+    const onWord = (e: Event) => {
+      const said = (e as CustomEvent<EggWordSaid>).detail
+      if (!said) return
+      const { word } = said
+      const now = Date.now()
+      if (word.words === lastWord && now - lastAt < WORD_AGAIN_MS) return
+      lastWord = word.words
+      lastAt = now
+      if (word.effect === 'roll') barrelRoll()
+      else if (said.in === 'keys') {
+        setReply({ text: word.reply, key: now })
+        window.clearTimeout(replyTimer)
+        replyTimer = window.setTimeout(() => setReply(null), REPLY_MS)
+      }
+      if (word.effect === 'god') {
+        setGodMode(true)
+        sfx('perfect')
+        window.clearTimeout(godTimer)
+        godTimer = window.setTimeout(() => setGodMode(false), GOD_MODE_MS)
+      }
+      void reportEgg(word.egg)
+    }
+    window.addEventListener(EGG_WORD_EVENT, onWord)
+    return () => {
+      window.removeEventListener(EGG_WORD_EVENT, onWord)
+      window.clearTimeout(replyTimer)
+      window.clearTimeout(godTimer)
+    }
+  }, [])
+
+  // Letters typed anywhere nothing else is taking them, for the words.
+  useEffect(() => {
+    let letters = ''
+    const onKey = (e: KeyboardEvent) => {
+      if (e.metaKey || e.ctrlKey || e.altKey || typing(e.target)) return
+      if (!/^[a-z]$/i.test(e.key)) return
+      letters = (letters + e.key.toLowerCase()).slice(-EGG_LETTERS_KEPT)
+      const word = eggWordTyped(letters)
+      if (word) {
+        letters = ''
+        playEggWord(word, 'keys')
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
 
   // As this device last had it.
   useEffect(() => {
@@ -121,7 +228,6 @@ export function EasterEggs() {
       brand.classList.add(cue)
       if (cue === 'egg-blip') {
         taps = 0
-        rememberBlip()
         void reportEgg('blip')
       }
     }
@@ -144,10 +250,10 @@ export function EasterEggs() {
 
   // The blip's clue: now and then, till this device has made it blip, the logo sends out two rings.
   useEffect(() => {
-    if (blipFound() || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return
+    if (eggDone('blip') || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return
     let id = 0
     const ping = () => {
-      if (blipFound()) return
+      if (eggDone('blip')) return
       const brand = document.querySelector<HTMLElement>('.site-bar__brand')
       // Not on a game's screen (it has no header), in a hidden tab, or while someone is tapping the logo.
       if (brand && !document.hidden && !brand.matches('.egg-wobble, .egg-blip')) {
@@ -178,6 +284,13 @@ export function EasterEggs() {
           8-bit mode <span aria-hidden="true">·</span> <b>Turn off</b>
         </button>
       ) : null}
+      {reply ? (
+        <p key={reply.key} className="cheat-reply" role="status">
+          {reply.text}
+        </p>
+      ) : null}
+      {godMode ? <div className="god-mode" aria-hidden="true" /> : null}
+      <BlipSaver />
       {shown[0] ? <SecretToast key={shown[0].n} secret={shown[0]} onDone={() => setShown((list) => list.slice(1))} /> : null}
     </>
   )

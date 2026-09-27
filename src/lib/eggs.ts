@@ -2,10 +2,18 @@ import { api, ApiError } from './leaderboard'
 import { announceSecrets, SECRETS, type SecretFound } from './secrets'
 
 /*
- * The site's easter eggs (components/EasterEggs.tsx). The old cheat code, ↑↑↓↓←→←→BA (or on a phone the
- * same swipes and two taps), turns the arcade 8-bit; tapping the logo seven times makes it blip. Each
- * hides a secret trophy (lib/secrets.ts), kept on the player's shelf when they're signed in. Each has a
- * clue: the code is scratched faintly into the footer, and the logo pings now and then till it's blipped.
+ * The site's easter eggs (components/EasterEggs.tsx), each hiding a secret trophy (lib/secrets.ts), kept on
+ * the player's shelf when they're signed in, and each with a clue:
+ * - The old cheat code, ↑↑↓↓←→←→BA (or on a phone the same swipes and two taps), turns the arcade 8-bit.
+ *   Its clue is scratched faintly into the footer.
+ * - Seven quick taps on the logo make it blip. Till a device has done it, the logo pings now and then.
+ * - "do a barrel roll" in the search spins the page (lib/eggWords.ts). A search that finds nothing says so.
+ * - Old game cheats, typed or searched, answer back (lib/eggWords.ts). The code on the wall hints at them,
+ *   and so does a search that finds nothing, once the barrel roll is done.
+ * - Left alone for a minute, the site's screen saver bounces the blip round the screen, and it hits a
+ *   corner in the end (components/BlipSaver.tsx). It shows itself.
+ * - A page that isn't there is a Game Over screen with a coin slot (pages/GameOverPage.tsx). A faint
+ *   "Level 256" in the footer leads to one.
  */
 
 const EIGHT_BIT_KEY = 'skermix-eightbit'
@@ -14,6 +22,16 @@ export const EIGHT_BIT_EVENT = 'skermix:eightbit'
 
 /** The pixel face 8-bit mode sets everything in, fetched the first time it's needed. */
 const PIXEL_FONT = 'https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;500;600;700&display=swap'
+
+/** The pixel face, for 8-bit mode and the Game Over screen, fetched once. */
+export function loadPixelFont() {
+  if (document.querySelector('link[data-pixel-font]')) return
+  const link = document.createElement('link')
+  link.rel = 'stylesheet'
+  link.href = PIXEL_FONT
+  link.dataset.pixelFont = ''
+  document.head.append(link)
+}
 
 export function isEightBit(): boolean {
   try {
@@ -30,13 +48,7 @@ export function applyEightBit(on = isEightBit()) {
     delete root.dataset.eightbit
     return
   }
-  if (!document.querySelector('link[data-pixel-font]')) {
-    const link = document.createElement('link')
-    link.rel = 'stylesheet'
-    link.href = PIXEL_FONT
-    link.dataset.pixelFont = ''
-    document.head.append(link)
-  }
+  loadPixelFont()
   root.dataset.eightbit = ''
 }
 
@@ -51,37 +63,51 @@ export function setEightBit(on: boolean) {
   window.dispatchEvent(new Event(EIGHT_BIT_EVENT))
 }
 
-const BLIP_FOUND_KEY = 'skermix-blip-found'
+export type EggKey = 'konami' | 'blip' | 'barrelroll' | 'corner' | 'cheats' | 'continue'
 
-/** This device has made the logo blip, so it no longer needs the ping that hints at it. */
-export function blipFound(): boolean {
+/** Where a device remembers it found an egg (the blip's key is older than the rest). */
+function doneKey(key: EggKey) {
+  return key === 'blip' ? 'skermix-blip-found' : `skermix-egg-${key}`
+}
+
+/** This device has found the egg, so its clue can step aside. */
+export function eggDone(key: EggKey): boolean {
   try {
-    return localStorage.getItem(BLIP_FOUND_KEY) === '1'
+    return localStorage.getItem(doneKey(key)) === '1'
   } catch {
     return false
   }
 }
 
-export function rememberBlip() {
+function markEggDone(key: EggKey) {
   try {
-    localStorage.setItem(BLIP_FOUND_KEY, '1')
+    localStorage.setItem(doneKey(key), '1')
   } catch {
-    /* storage may be off; the logo just keeps pinging */
+    /* storage may be off; the clue just stays */
   }
 }
 
-export type EggKey = 'konami' | 'blip'
+/** Eggs the API has answered for this visit, and eggs the pop-up has told a signed-out player about. */
+const reported = new Set<EggKey>()
+const toldSignedOut = new Set<EggKey>()
 
 /**
  * An egg found. Its secret goes on the player's shelf if they're signed in and haven't found it before,
- * and the pop-up says so; signed out, the pop-up says what signing in would keep.
+ * and the pop-up says so; signed out, the pop-up says what signing in would keep, once a visit. Found
+ * again the same visit, signed in, it doesn't ask twice.
  */
 export async function reportEgg(key: EggKey): Promise<void> {
+  markEggDone(key)
+  if (reported.has(key)) return
+  reported.add(key)
   try {
     const { found } = await api<{ found: SecretFound | null }>('/secrets/found', { method: 'POST', body: JSON.stringify({ key }) })
     if (found) announceSecrets([found])
   } catch (err) {
-    if (!(err instanceof ApiError) || err.status !== 401) return
+    // Worth another go on the next find, signed in by then perhaps.
+    reported.delete(key)
+    if (!(err instanceof ApiError) || err.status !== 401 || toldSignedOut.has(key)) return
+    toldSignedOut.add(key)
     const secret = SECRETS.find((s) => s.key === key)
     if (secret) announceSecrets([{ ...secret, signedOut: true }])
   }

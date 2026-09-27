@@ -74,6 +74,16 @@ const SECRET_RULES: Record<SecretKey, string> = {
   holeinone: 'Today’s Hole solved with a bullseye on the first try.',
   konami: 'Doing the cheat code (see Easter eggs).',
   blip: 'Doing the logo blip (see Easter eggs).',
+  wish: 'A run saved at 11:11 on the player’s own clock, morning or night.',
+  dejavu:
+    'A saved score of 100 or more that’s the same as the player’s run just before it on the same game. Games scored in points only.',
+  round: 'A saved score of exactly 1,000, 10,000 or 100,000. Games scored in points only.',
+  marathon:
+    'Fifty saved runs in one day on the boards’ clock, New York time, any games. A solved Today’s Hole counts as one. Saves are capped at 40 in ten minutes, so it takes at least a quarter of an hour.',
+  barrelroll: 'Doing a barrel roll (see Easter eggs).',
+  corner: 'Watching the screen saver hit a corner (see Easter eggs).',
+  cheats: 'Trying an old game cheat (see Easter eggs).',
+  continue: 'Putting a coin in at Game Over (see Easter eggs).',
 }
 
 const EGGS: { key: string; name: string; how: string; does: string; clue: string; secret: string }[] = [
@@ -92,6 +102,38 @@ const EGGS: { key: string; name: string; how: string; does: string; clue: string
     does: 'The logo wobbles from the third tap and blips on the seventh.',
     clue: 'The dot on the logo’s i sends out two little rings now and then (6 seconds in, then every 25 to 45), as if it wants a tap. It stops once that device has made it blip, and never plays for anyone who has asked their device for less motion.',
     secret: 'Blip Blip',
+  },
+  {
+    key: 'barrelroll',
+    name: 'The barrel roll',
+    how: 'Search “do a barrel roll” (or just “barrel roll”). Typed anywhere on a keyboard without the spaces works too.',
+    does: 'The whole screen does a barrel roll, header and all, with a whoosh, and the search says “Wheee!”.',
+    clue: 'A search of three letters or more that finds nothing says “Try “do a barrel roll”.”, till that device has done it.',
+    secret: 'Barrel Roll',
+  },
+  {
+    key: 'corner',
+    name: 'The screen saver',
+    how: 'Leave any page with the site’s header alone for a minute: no taps, keys, scrolling or mouse. Not on a game’s screen, over an open dialog, while typing, or with less motion asked for. To see it now, add ?saver=now to any address, or ?saver=corner for a corner within seconds.',
+    does: 'The screen dims and the blip bounces round it like an old DVD player’s logo, a new colour at every wall. Its path is aimed to land exactly in a corner 16 to 36 seconds in (then every 40 to 75): a burst, “Perfect corner!”, and a chime. Anything touched brings the page back.',
+    clue: 'None needed: it shows itself to anyone who leaves the site open.',
+    secret: 'Perfect Corner',
+  },
+  {
+    key: 'cheats',
+    name: 'Old game cheats',
+    how: 'Search one, or type it anywhere on a keyboard: iddqd, idkfa, xyzzy, rosebud, motherlode, kaching, hesoyam, “show me the money” or “there is no cow level”.',
+    does: 'The arcade answers back. iddqd gives ten seconds of gold “god mode” round the screen; xyzzy says “Nothing happens.”; the money ones say “Nice try. Tickets are earned here.” Nothing is ever given.',
+    clue: 'The cheat code scratched into the footer says cheats are a thing here. Once the barrel roll is done, a search that finds nothing says “Cheats don’t work here. Mostly.”',
+    secret: 'Nice Try',
+  },
+  {
+    key: 'continue',
+    name: 'Game Over',
+    how: 'Go to any address the site has never had (a mistyped one, say), or /level/256. An address that starts with one of the site’s own sections (games, records, leaderboards and so on) still goes where it always did.',
+    does: 'An arcade Game Over screen counts CONTINUE? down from 9. Insert coin before it runs out and it says CONTINUE! and goes back to the arcade. /level/256 is Pac-Man’s last level: the right half of the screen is garbage.',
+    clue: 'A faint “Level 256” beside the © at the very bottom of every page.',
+    secret: 'Continue?',
   },
 ]
 
@@ -149,8 +191,9 @@ export function AdminTrophies() {
         </div>
         <p className="adm-card__sub">
           Nothing on the site says how to get these until someone has. Once a player finds one, their card and shelf
-          show it with the line in quotes, and their own card shows a question mark for each one left. Eight are found
-          by playing; the last two by the easter eggs. Each is found once an account.
+          show it with the line in quotes, and their own card shows a question mark for each one left. Twelve are
+          found by playing (1–8 and 11–14) and six by the easter eggs (9, 10 and 15–18). Each is found once an
+          account.
         </p>
         <ul className="adm-list">
           {secrets.map((t) => (

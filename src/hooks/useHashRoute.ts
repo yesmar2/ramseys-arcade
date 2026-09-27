@@ -63,6 +63,11 @@ export type Route =
   | { name: 'privacy' }
   | { name: 'terms' }
   | { name: 'devCelebrate' }
+  /**
+   * A place the site has never had: a Game Over screen with a coin slot, an easter egg (GameOverPage).
+   * `killScreen`: /level/256, the footer's door to it, drawn half broken like Pac-Man's last level.
+   */
+  | { name: 'notFound'; killScreen?: boolean }
 
 /** The admin's tabs past the overview: Ace Chase's planned holes, Hot Lap's planned tracks, and every trophy and egg. */
 export type AdminSection = 'holes' | 'tracks' | 'trophies'
@@ -595,7 +600,42 @@ export function parseUrl(pathname: string, search: string): Route {
     return { name: 'game', slug }
   }
 
+  // Game Over for a place the site has never had. Anything under one of its own sections still comes
+  // home, as it always has, so an old or mistyped link there never dead-ends.
+  if (path === LEVEL_256) return { name: 'notFound', killScreen: true }
+  if (!SITE_SECTIONS.has(path.split('/')[0]!.toLowerCase())) return { name: 'notFound' }
   return { name: 'home' }
+}
+
+/** The first part of every address the site has, or has had, or serves itself. */
+const SITE_SECTIONS: ReadonlySet<string> = new Set([
+  'about',
+  'admin',
+  'api',
+  'auth',
+  'c',
+  'dev',
+  'e',
+  'games',
+  'groups',
+  'index.html',
+  'leaderboards',
+  'og',
+  'plus',
+  'prizes',
+  'privacy',
+  'rank',
+  'records',
+  'stats',
+  'terms',
+  'tournaments',
+])
+
+/** Pac-Man's last level, the footer's door to the Game Over screen. */
+const LEVEL_256 = 'level/256'
+
+export function levelHref() {
+  return `/${LEVEL_256}`
 }
 
 /** The route the current URL means (after any legacy `#/…` fix-up). */

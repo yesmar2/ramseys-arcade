@@ -2,7 +2,7 @@
  * Secret trophies: odd things a player can do that nothing on the site mentions until they've done them.
  * The API finds them (its secrets.ts, which numbers them the same) when a run is saved, a bug caught or
  * a day's hole sent, and keeps each once an account as a trophy (period 'secret', periodKey its number).
- * Two are the site's easter eggs, which it reports itself (lib/eggs.ts). A reply that found one carries
+ * Six are the site's easter eggs, which it reports itself (lib/eggs.ts). A reply that found one carries
  * `secrets`; `announceSecrets` puts it on screen. The player's clock goes with what the site posts
  * (leaderboard.ts api), for Night Owl and Early Bird.
  */
@@ -18,6 +18,14 @@ export type SecretKey =
   | 'holeinone'
   | 'konami'
   | 'blip'
+  | 'wish'
+  | 'dejavu'
+  | 'round'
+  | 'marathon'
+  | 'barrelroll'
+  | 'corner'
+  | 'cheats'
+  | 'continue'
 
 export type Secret = { n: number; key: SecretKey; name: string; says: string }
 
@@ -32,6 +40,14 @@ export const SECRETS: readonly Secret[] = [
   { n: 8, key: 'holeinone', name: 'Hole in One', says: 'Today’s Hole on the very first try.' },
   { n: 9, key: 'konami', name: 'Up Up Down Down', says: 'Found the old cheat code.' },
   { n: 10, key: 'blip', name: 'Blip Blip', says: 'Tapped the blip until it tapped back.' },
+  { n: 11, key: 'wish', name: 'Make a Wish', says: 'Saved a run at 11:11.' },
+  { n: 12, key: 'dejavu', name: 'Déjà Vu', says: 'The same score twice in a row.' },
+  { n: 13, key: 'round', name: 'Round Number', says: 'A score of exactly 1,000, 10,000 or 100,000.' },
+  { n: 14, key: 'marathon', name: 'Marathon', says: 'Fifty runs in one day.' },
+  { n: 15, key: 'barrelroll', name: 'Barrel Roll', says: 'Asked the search for a barrel roll.' },
+  { n: 16, key: 'corner', name: 'Perfect Corner', says: 'Watched the bouncing blip hit the corner.' },
+  { n: 17, key: 'cheats', name: 'Nice Try', says: 'Tried an old cheat on the arcade.' },
+  { n: 18, key: 'continue', name: 'Continue?', says: 'Put a coin in at Game Over.' },
 ]
 
 export function secretByNumber(n: number): Secret | undefined {

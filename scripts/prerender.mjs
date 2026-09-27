@@ -77,6 +77,8 @@ function robotsTxt() {
     'Disallow: /auth/',
     'Disallow: /dev/',
     'Disallow: /tournaments/',
+    // The footer's door to the Game Over screen, an easter egg: not a page to list.
+    'Disallow: /level/',
     '',
     `Sitemap: ${origin}/sitemap.xml`,
     '',

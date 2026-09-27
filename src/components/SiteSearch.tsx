@@ -2,6 +2,8 @@ import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from 
 import { games, isListedGame, TAG_LABELS, type Game } from '../data/games'
 import { gameHref, navigate, rankHref, tournamentHref } from '../hooks/useHashRoute'
 import { usePlayerName } from '../hooks/usePlayerName'
+import { eggDone } from '../lib/eggs'
+import { eggWordFor, playEggWord } from '../lib/eggWords'
 import {
   checkNameAvailable,
   fetchGlobalBoard,
@@ -22,7 +24,16 @@ import { GameThumbArt } from './GameThumbArt'
  * puts the cursor in the field, the arrows walk the results, Enter opens
  * one, Escape clears. On a phone the field hides behind a button and drops
  * over the header when opened.
+ *
+ * It also hears a few words (lib/eggWords.ts), easter eggs: "do a barrel
+ * roll", and old game cheats. A search that finds nothing is where the clue
+ * to them is, till this device has found each.
  */
+
+/** Once a search has this many letters and finds nothing, it offers the eggs' clue. */
+const CLUE_AFTER = 3
+/** An egg word plays once it has sat unchanged this long, so a word on its way to a longer one doesn't. */
+const EGG_WORD_PAUSE_MS = 350
 
 type Hit =
   | { kind: 'game'; key: string; href: string; label: string; hint: string; game: Game }
@@ -199,6 +210,24 @@ export function SiteSearch() {
 
   const showResults = focused && query.length > 0
 
+  // An egg word, played once it sits.
+  const egg = useMemo(() => eggWordFor(q), [q])
+  useEffect(() => {
+    if (!egg) return
+    const timer = window.setTimeout(() => playEggWord(egg, 'search'), EGG_WORD_PAUSE_MS)
+    return () => window.clearTimeout(timer)
+  }, [egg])
+
+  // The clue a search that finds nothing gives: the barrel roll, then the cheats, till each is found.
+  const clue =
+    hits.length > 0 || egg || query.length < CLUE_AFTER
+      ? null
+      : !eggDone('barrelroll')
+        ? 'Try “do a barrel roll”.'
+        : !eggDone('cheats')
+          ? 'Cheats don’t work here. Mostly.'
+          : null
+
   // "/" anywhere on the page is the way in, as long as nothing else is taking keys.
   useEffect(() => {
     const onKey = (e: globalThis.KeyboardEvent) => {
@@ -307,10 +336,18 @@ export function SiteSearch() {
       </form>
       {showResults ? (
         <ul id={listId} className="site-search__results" role="listbox" aria-label="Results">
-          {hits.length === 0 ? (
-            <li className="site-search__empty" role="presentation">
-              Nothing called “{q.trim()}”.
+          {egg ? (
+            <li className="site-search__empty site-search__egg" role="presentation">
+              {egg.reply}
             </li>
+          ) : null}
+          {hits.length === 0 ? (
+            egg ? null : (
+              <li className="site-search__empty" role="presentation">
+                Nothing called “{q.trim()}”.
+                {clue ? <span className="site-search__clue">{clue}</span> : null}
+              </li>
+            )
           ) : (
             hits.map((hit, i) => (
               <li

@@ -14,6 +14,7 @@ import {
   tournamentCreateHref,
   tournamentsHref,
   gameHref,
+  levelHref,
 } from '../hooks/useHashRoute'
 import { APP_NAME, CONTACT_EMAIL } from '../lib/brand'
 import { groupsIndexHref } from '../lib/groups'
@@ -151,6 +152,10 @@ export function Footer() {
       <div className="site-footer__base">
         <p>
           © {year} {APP_NAME}
+          {/* A faint door to the Game Over screen, an easter egg (GameOverPage). */}
+          <a className="site-footer__level" href={levelHref()} rel="nofollow">
+            Level 256
+          </a>
         </p>
         <p>Made to be played on a phone or a desk, in a browser, for free.</p>
       </div>

@@ -220,6 +220,84 @@ const SECRET_ART: Record<number, ReactNode> = {
       <circle cx="24" cy="24" r="17" strokeDasharray="3.5 3.5" />
     </>
   ),
+  // Make a Wish: a shooting star, and a twinkle.
+  11: (
+    <>
+      <path className="trophy-art__fill" d="M31 8l2.35 5.76 6.21.46-4.76 4.02 1.49 6.04L31 21l-5.29 3.28 1.49-6.04-4.76-4.02 6.21-.46Z" />
+      <path d="M23.5 24.5 10 38M20 20l-7.5 7.5M28 28.5 20.5 36M11 8.5v4M9 10.5h4" />
+    </>
+  ),
+  // Déjà Vu: the same card, twice.
+  12: (
+    <>
+      <rect className="trophy-art__fill trophy-art__fill--soft" x="7" y="9" width="24" height="18" rx="3.5" />
+      <rect className="trophy-art__fill" x="17" y="21" width="24" height="18" rx="3.5" />
+      <path d="M12 15.5h9M12 20.5h8M22 27.5h9M22 32.5h8" />
+    </>
+  ),
+  // Round Number: a thousand, on the scoreboard.
+  13: (
+    <>
+      <rect className="trophy-art__fill trophy-art__fill--soft" x="3" y="12" width="42" height="24" rx="5" />
+      <path d="M9 19.5l2.6-2.2v13.2" />
+      <ellipse cx="19.5" cy="24" rx="2.9" ry="6.6" />
+      <ellipse cx="28.5" cy="24" rx="2.9" ry="6.6" />
+      <ellipse cx="37.5" cy="24" rx="2.9" ry="6.6" />
+    </>
+  ),
+  // Marathon: a race number, pinned on.
+  14: (
+    <>
+      <rect className="trophy-art__fill trophy-art__fill--soft" x="9" y="10" width="30" height="28" rx="3" />
+      <circle className="trophy-art__fill" cx="13.5" cy="14.5" r="1.3" />
+      <circle className="trophy-art__fill" cx="34.5" cy="14.5" r="1.3" />
+      <circle className="trophy-art__fill" cx="13.5" cy="33.5" r="1.3" />
+      <circle className="trophy-art__fill" cx="34.5" cy="33.5" r="1.3" />
+      <Numeral n={50} y={29.5} size={14} />
+    </>
+  ),
+  // Barrel Roll: the page, going round.
+  15: (
+    <>
+      <g transform="rotate(20 24 24)">
+        <rect className="trophy-art__fill" x="17" y="15" width="14" height="18" rx="2.5" />
+        <path d="M20.5 20.5h7M20.5 24.5h7M20.5 28.5h4.5" />
+      </g>
+      <path d="M29.8 8A17 17 0 1 1 11 13.1" />
+      <path d="M6.2 14.4 11 13.1l-.4 5" />
+    </>
+  ),
+  // Perfect Corner: the blip, bounced right into the screen's corner.
+  16: (
+    <>
+      <rect className="trophy-art__fill trophy-art__fill--soft" x="6" y="8" width="36" height="28" rx="3" />
+      <path d="M18 42h12M24 36v6" />
+      <path d="M8.5 24 17 32.5 34 15.5" strokeDasharray="2.5 3" />
+      <circle className="trophy-art__fill" cx="36.5" cy="13.5" r="3.2" />
+      <path d="M41 6.5l2.5-2.5M43 11.5h3M36.5 4.5v-3" />
+    </>
+  ),
+  // Nice Try: the old disguise, glasses, nose and all.
+  17: (
+    <>
+      <path d="M10 10.5q6-3.8 12 0M26 10.5q6-3.8 12 0" />
+      <circle className="trophy-art__fill trophy-art__fill--soft" cx="16.5" cy="19" r="6" />
+      <circle className="trophy-art__fill trophy-art__fill--soft" cx="31.5" cy="19" r="6" />
+      <path d="M22.5 19q1.5-1.6 3 0M10.5 18l-4-2.5M37.5 18l4-2.5" />
+      <path className="trophy-art__fill" d="M24 22.5 20.8 30.5a3.2 3.2 0 0 0 6.4 0Z" />
+      <path className="trophy-art__fill" d="M24 35.2C20 33.2 15.5 34.5 12.5 38.5 16.5 39.8 20.5 39.6 24 38.2 27.5 39.6 31.5 39.8 35.5 38.5 32.5 34.5 28 33.2 24 35.2Z" />
+    </>
+  ),
+  // Continue?: a coin, on its way into the slot.
+  18: (
+    <>
+      <circle className="trophy-art__fill" cx="24" cy="12" r="7" />
+      <circle cx="24" cy="12" r="3.6" />
+      <path d="M24 21v2.6" />
+      <rect className="trophy-art__fill trophy-art__fill--soft" x="8" y="26" width="32" height="17" rx="3.5" />
+      <rect className="trophy-art__fill" x="18" y="31" width="12" height="3.2" rx="1.6" />
+    </>
+  ),
 }
 
 /** A secret trophy: its own picture, in the secrets' rose. */

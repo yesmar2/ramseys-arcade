@@ -1,0 +1,230 @@
+/*
+ * The Game Over screen (pages/GameOverPage.tsx): an arcade monitor, dark in either theme, with its
+ * CONTINUE? countdown and a coin slot. On /level/256 its right half is garbage, as Pac-Man's was.
+ */
+
+.game-over {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  width: min(100% - 2rem, 40rem);
+  margin: 2rem auto 3rem;
+}
+
+.game-over__screen {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  box-sizing: border-box;
+  overflow: clip;
+  border: 10px solid #151b26;
+  border-radius: 1.6rem;
+  background: radial-gradient(ellipse at 50% 45%, #0e1624 0%, #05070c 75%);
+  box-shadow:
+    0 0 0 2px rgba(var(--ink-rgb), 0.1),
+    0 24px 60px -24px rgba(0, 0, 0, 0.6),
+    inset 0 0 60px rgba(0, 0, 0, 0.8);
+  color: #f6f6f6;
+  font-family: 'Pixelify Sans', ui-monospace, monospace;
+}
+
+/* A CRT's scan lines. */
+.game-over__screen::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(to bottom, rgba(0, 0, 0, 0.2) 0 1px, transparent 1px 3px);
+}
+
+.game-over__play {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  box-sizing: border-box;
+  padding: 1.2rem 1rem;
+  text-align: center;
+}
+
+.game-over__level {
+  margin: 0;
+  font-size: 0.85rem;
+  letter-spacing: 0.22em;
+  color: #5ce1e6;
+}
+
+.game-over__title {
+  margin: 0;
+  font-size: clamp(2rem, 8vw, 3.4rem);
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: 0.06em;
+  color: #ff5a5f;
+  text-shadow: 0 0 18px rgba(255, 90, 95, 0.55);
+}
+
+.game-over__title--go {
+  color: #3ee0b0;
+  text-shadow: 0 0 18px rgba(62, 224, 176, 0.6);
+  animation: game-over-flash 0.3s steps(2) 4;
+}
+
+@keyframes game-over-flash {
+  50% {
+    opacity: 0.25;
+  }
+}
+
+.game-over__continue {
+  margin: 0.5rem 0 0;
+  font-size: clamp(1.1rem, 4vw, 1.5rem);
+  letter-spacing: 0.1em;
+  color: #ffd166;
+}
+
+.game-over__count {
+  margin: 0;
+  font-size: clamp(2.6rem, 11vw, 4.4rem);
+  line-height: 1;
+  color: #fff;
+  animation: game-over-count 1s ease-out both;
+}
+
+@keyframes game-over-count {
+  from {
+    transform: scale(1.35);
+    opacity: 0.4;
+  }
+
+  30% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.game-over__coin {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.7rem;
+  margin-top: 0.5rem;
+  padding: 0.6rem 1.1rem 0.6rem 0.9rem;
+  border: 2px solid #ffd166;
+  border-radius: 0.6rem;
+  background: linear-gradient(#2a2f3a, #161a22);
+  color: #ffd166;
+  font: inherit;
+  font-size: 1rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor: pointer;
+  animation: game-over-beckon 1.2s ease-in-out infinite;
+}
+
+.game-over__coin:hover,
+.game-over__coin:focus-visible {
+  background: #ffd166;
+  color: #161a22;
+  outline: none;
+  animation: none;
+}
+
+@keyframes game-over-beckon {
+  50% {
+    box-shadow: 0 0 16px rgba(255, 209, 102, 0.5);
+  }
+}
+
+.game-over__slot {
+  width: 0.45rem;
+  height: 1.4rem;
+  border-radius: 0.3rem;
+  background: #000;
+  box-shadow:
+    inset 0 0 0 2px #4a4f5a,
+    0 0 0 3px rgba(255, 209, 102, 0.25);
+}
+
+.game-over__ready {
+  margin: 0.5rem 0 0;
+  letter-spacing: 0.12em;
+  color: #ffd166;
+  animation: game-over-flash 1s steps(2) infinite;
+}
+
+.game-over__home {
+  margin-top: 0.4rem;
+  color: #5ce1e6;
+  font-size: 0.95rem;
+}
+
+.game-over__note {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+  text-align: center;
+}
+
+/* ---------- /level/256: the right half is garbage ---------- */
+
+.game-over__screen--kill {
+  place-items: center start;
+}
+
+.game-over__screen--kill .game-over__play {
+  width: 50%;
+}
+
+.game-over__screen--kill .game-over__title {
+  font-size: clamp(1.5rem, 6vw, 2.6rem);
+}
+
+/* Half a phone's width still takes the coin slot on one line. */
+.game-over__screen--kill .game-over__coin {
+  gap: 0.5rem;
+  padding: 0.5rem 0.7rem 0.5rem 0.6rem;
+  font-size: clamp(0.78rem, 2.6vw, 1rem);
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+
+.game-over__garbage {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 50%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+  padding: 0.4rem 0.3rem;
+  box-sizing: border-box;
+  background: #05070c;
+  font-size: clamp(0.72rem, 2.6vw, 1.2rem);
+  line-height: 1;
+}
+
+.game-over__garbage-row {
+  display: flex;
+  justify-content: space-around;
+}
+
+.game-over__garbage-row span {
+  display: inline-block;
+  width: 1ch;
+  text-align: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .game-over__title--go,
+  .game-over__count,
+  .game-over__coin,
+  .game-over__ready {
+    animation: none;
+  }
+}

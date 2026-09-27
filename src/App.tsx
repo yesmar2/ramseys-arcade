@@ -46,6 +46,7 @@ const CreateTournamentPage = lazyPage(() =>
   import('./pages/CreateTournamentPage').then((m) => m.CreateTournamentPage),
 )
 const DevCelebratePage = lazyPage(() => import('./pages/DevCelebratePage').then((m) => m.DevCelebratePage))
+const GameOverPage = lazyPage(() => import('./pages/GameOverPage').then((m) => m.GameOverPage))
 const ChallengeLandingPage = lazyPage(() =>
   import('./pages/ChallengeLandingPage').then((m) => m.ChallengeLandingPage),
 )
@@ -265,6 +266,7 @@ function Screen({ route }: { route: ReturnType<typeof useRoute> }) {
   if (route.name === 'stats') return <StatsPage />
   if (route.name === 'prizes') return <PrizeCounterPage />
   if (route.name === 'devCelebrate') return <DevCelebratePage />
+  if (route.name === 'notFound') return <GameOverPage killScreen={route.killScreen} />
   if (route.name === 'privacy') return <PrivacyPage />
   if (route.name === 'terms') return <TermsPage />
   if (route.name === 'authVerify') return <AuthVerifyPage token={route.token} />
