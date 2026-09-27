@@ -320,3 +320,108 @@
     animation: none;
   }
 }
+
+/* ---------- Today's Wanted: the day's cards (DailyCards.tsx) ---------- */
+
+/* The overlay lets taps through to the scene; the day's cards keep theirs, and their buttons are the way on. */
+.findbug-daily {
+  pointer-events: auto;
+}
+
+.findbug-daily__rules {
+  margin: 0;
+  font-size: 0.85rem;
+  line-height: 1.45;
+  color: var(--muted);
+  text-align: center;
+}
+
+/* Who's wanted: five faces in a row, each with its name. */
+.findbug-daily__lineup {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.35rem;
+}
+
+.findbug-daily__lineup li {
+  display: grid;
+  justify-items: center;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.findbug-daily__face {
+  display: block;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--panel-accent) 14%, var(--surface, #fff));
+  box-shadow: inset 0 0 0 1px rgba(var(--ink-rgb), 0.1);
+}
+
+.findbug-daily__lineup span {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+/* A square a scene, with its time: the colours of the share line. */
+.findbug-daily__squares {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.3rem;
+}
+
+.findbug-daily__square {
+  display: grid;
+  place-items: center;
+  min-height: 1.9rem;
+  border-radius: 0.5rem;
+  font-size: 0.72rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: #102017;
+}
+
+.findbug-daily__square--clean {
+  background: #3dcf8d;
+}
+
+.findbug-daily__square--wide {
+  background: #f2c94c;
+}
+
+.findbug-daily__square--tight {
+  background: #f2994a;
+}
+
+.findbug-daily__square--miss {
+  background: #eb5757;
+  color: #fff;
+}
+
+.findbug-daily__archive {
+  justify-self: center;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.findbug-daily__archive:hover,
+.findbug-daily__archive:focus-visible {
+  color: var(--text);
+  text-decoration: underline;
+}
+
+/* The next day's countdown shows everywhere, a phone included: it's the day's rhythm, not a keyboard hint. */
+.game-card__hint.findbug-daily__next {
+  display: block;
+  margin: 0;
+  text-align: center;
+}

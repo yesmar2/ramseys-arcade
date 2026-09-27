@@ -152,10 +152,11 @@ export const games: Game[] = [
     name: 'Find the Bug',
     slug: 'findbug',
     tags: ['puzzle'],
-    description: 'Five crowded scenes. A new bug to find in each. Beat the clock.',
+    description: 'Five new crowded scenes every day, the same for everyone, with a bug wanted in each. Find them fast: your first run is your result.',
     accent: PALETTE.teal,
     playable: true,
     inDevelopment: true,
+    daily: true,
   },
   {
     name: 'Barrage',

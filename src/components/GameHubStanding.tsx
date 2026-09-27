@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import type { HubBoard } from '../hooks/useGameHub'
-import { gapText, wouldPlace, youOnBoard } from '../lib/gameBoard'
+import { gapText, whatPutsYouOn, wouldPlace, youOnBoard } from '../lib/gameBoard'
 import { anyRunPays, firstRunAims, standingOn, type Standing } from '../lib/gameHub'
 import type { LeaderboardGame, LeaderboardPeriod } from '../lib/leaderboard'
 import { formatLeaderboardScore } from '../lib/leaderboardFormat'
@@ -81,7 +81,7 @@ export function GameHubStanding({
           <p className="gh-stand__big gh-stand__big--words">Your first run</p>
           <p className="gh-stand__sub">
             {field
-              ? `${field} ${field === 1 ? 'player' : 'players'} ${when}. Any run puts you on the board, and every place pays points toward the ${NOUN[period] === 'board' ? 'all-time standings' : NOUN[period]}.`
+              ? `${field} ${field === 1 ? 'player' : 'players'} ${when}. ${whatPutsYouOn(slug)}, and every place pays points toward the ${NOUN[period] === 'board' ? 'all-time standings' : NOUN[period]}.`
               : `Nobody has played ${gameName} ${when === 'all time' ? 'yet' : when}. Whatever you score, you start in 1st.`}
           </p>
         </div>

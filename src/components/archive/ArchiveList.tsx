@@ -81,7 +81,7 @@ export function ArchiveList({ slug, items }: { slug: string; items: ArchiveItem[
   const days = useArchiveDays(slug, me)
   const byDay = useMemo(() => new Map((days ?? []).map((d) => [d.day, d])), [days])
   return (
-    <ul className="arch-grid">
+    <ul className={`arch-grid arch-grid--${slug}`}>
       {items.map((item) => (
         <DayCard key={item.day} slug={slug} item={item} result={byDay.get(item.day)} asked={days !== null} />
       ))}

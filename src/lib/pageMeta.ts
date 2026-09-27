@@ -108,18 +108,35 @@ function gameMeta(slug: string, path: string, verb?: string): PageMeta {
   }
 }
 
-/** The games whose play page is a hole of the day: Ace Chase is Today's Hole. */
-const HOLE_OF_THE_DAY: ReadonlySet<string> = new Set(['acechase'])
+/** The games whose play page is the day's own, by its name: Ace Chase is Today's Hole, Find the Bug Today's Wanted. */
+const PLAY_OF_THE_DAY: Readonly<Record<string, { title: string; description: string }>> = {
+  acechase: {
+    title: 'Today’s Hole',
+    description:
+      'A new Ace Chase hole every day, the same for everyone. Every try counts, and your first bullseye is your result. Share it without giving it away.',
+  },
+  findbug: {
+    title: 'Today’s Wanted',
+    description:
+      'Five new Find the Bug scenes every day, the same for everyone, with a bug wanted in each. Your first run is your result: find them fast, then share how it went.',
+  },
+}
 
-const DAILY_DESCRIPTION =
-  'A new Ace Chase hole every day, the same for everyone. Every try counts, and your first bullseye is your result. Share it without giving it away.'
-
-function dailyMeta(slug: string): PageMeta {
+function dailyMeta(slug: string): PageMeta | null {
+  const day = PLAY_OF_THE_DAY[slug]
+  if (!day) return null
   return {
     ...gameMeta(slug, gamePlayHref(slug), 'Play'),
-    title: titled(`Today’s Hole · ${gameName(slug)}`),
-    description: DAILY_DESCRIPTION,
+    title: titled(`${day.title} · ${gameName(slug)}`),
+    description: day.description,
   }
+}
+
+/** What each daily game's archive is called, and what it holds. */
+const ARCHIVE_META: Readonly<Record<string, { title: string; what: string }>> = {
+  acechase: { title: 'Past holes', what: 'hole' },
+  hotlap: { title: 'Past tracks', what: 'track' },
+  findbug: { title: 'Past days', what: 'five scenes' },
 }
 
 function gameName(slug: string) {
@@ -315,11 +332,11 @@ export function pageMeta(route: Route): PageMeta {
       }
     case 'gameArchive': {
       const meta = gameMeta(route.slug, gameArchiveHref(route.slug))
-      const what = route.slug === 'hotlap' ? 'track' : 'hole'
+      const words = ARCHIVE_META[route.slug] ?? { title: 'Past days', what: 'game' }
       return {
         ...meta,
-        title: titled(`Past ${what}s · ${gameName(route.slug)}`),
-        description: `Every day’s ${gameName(route.slug)} ${what} since the first, who did best on each, and each one to play again.`,
+        title: titled(`${words.title} · ${gameName(route.slug)}`),
+        description: `Every day’s ${gameName(route.slug)} ${words.what} since the first, who did best each day, and each day to play again.`,
       }
     }
     case 'gameLeaderboard': {
@@ -382,8 +399,7 @@ export function pageMeta(route: Route): PageMeta {
     case 'game':
       return gameMeta(route.slug, gameHref(route.slug))
     case 'gamePlay':
-      if (HOLE_OF_THE_DAY.has(route.slug)) return dailyMeta(route.slug)
-      return gameMeta(route.slug, gamePlayHref(route.slug), 'Play')
+      return dailyMeta(route.slug) ?? gameMeta(route.slug, gamePlayHref(route.slug), 'Play')
     case 'authVerify':
       return { ...site, title: titled('Signing in'), path: homeHref(), noindex: true }
     case 'devCelebrate':

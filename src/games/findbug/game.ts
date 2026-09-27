@@ -15,6 +15,11 @@
  * who has lost track of who they are after. The clock waits for it, as it does
  * for the card before a scene, and it hides the scene while it is up, so the
  * wait buys no looking.
+ *
+ * A run grows from its seed: the day's, for Today's Wanted (daily.ts), where
+ * everyone gets the same five scenes and bugs; a fresh one in an event. A run
+ * left halfway can be taken up again at the scene it was on (resumeGame), with
+ * the clock where it stopped.
  */
 
 import { hashString, mulberry32 } from '../../lib/seededRandom'
@@ -145,8 +150,7 @@ function newSeed(): number {
   return Math.floor(Math.random() * 0xffffffff) >>> 0
 }
 
-export function createInitialState(aspect: number): GameState {
-  const seed = newSeed()
+export function createInitialState(aspect: number, seed = newSeed()): GameState {
   const scene = sceneFor(seed, 0, aspect)
   return {
     phase: 'menu',
@@ -167,10 +171,10 @@ export function createInitialState(aspect: number): GameState {
   }
 }
 
-export function startGame(prev: GameState, aspect: number): GameState {
+export function startGame(prev: GameState, aspect: number, seed = newSeed()): GameState {
   const fresh: GameState = {
     ...prev,
-    seed: newSeed(),
+    seed,
     aspect,
     bankedMs: 0,
     found: 0,
@@ -178,6 +182,60 @@ export function startGame(prev: GameState, aspect: number): GameState {
     times: [],
   }
   return enterScene(fresh, 0)
+}
+
+/** Where a run had got to, enough to take it up again: see resumeGame. */
+export type Progress = {
+  /** The scene it was on; ROUNDS once the last one was over. */
+  index: number
+  /** The clock before that scene. */
+  bankedMs: number
+  /** And into it. */
+  sceneMs: number
+  found: number
+  misses: number
+  times: number[]
+}
+
+/**
+ * Where a run is now, to carry on from if it's left. A scene that's over
+ * (found, or shown after the minute) counts as the next one's start, with its
+ * time banked; before a run and after it there's nothing to carry on.
+ */
+export function progressOf(s: GameState): Progress | null {
+  const base = { found: s.found, misses: s.misses, times: s.times }
+  switch (s.phase) {
+    case 'intro':
+      return { ...base, index: s.index, bankedMs: s.bankedMs, sceneMs: 0 }
+    case 'playing':
+    case 'recall':
+      return { ...base, index: s.index, bankedMs: s.bankedMs, sceneMs: s.sceneMs }
+    case 'found':
+    case 'timeout':
+      return { ...base, index: s.index + 1, bankedMs: s.bankedMs + s.sceneMs, sceneMs: 0 }
+    default:
+      return null
+  }
+}
+
+/**
+ * A run taken up again where it was left: at the scene it was on, whose card
+ * comes up first as any scene's does, and whose clock carries on from where
+ * it stopped. One left after its last scene is simply over.
+ */
+export function resumeGame(prev: GameState, aspect: number, seed: number, at: Progress): GameState {
+  const fresh: GameState = {
+    ...prev,
+    seed,
+    aspect,
+    bankedMs: Math.max(0, at.bankedMs),
+    found: Math.max(0, Math.min(ROUNDS, at.found)),
+    misses: Math.max(0, at.misses),
+    times: at.times.slice(0, Math.min(ROUNDS, at.index)),
+  }
+  if (at.index >= ROUNDS) return { ...fresh, phase: 'gameover', index: ROUNDS - 1, sceneMs: 0, phaseMs: 0 }
+  const state = enterScene(fresh, Math.max(0, at.index))
+  return { ...state, sceneMs: Math.max(0, Math.min(SCENE_LIMIT_MS - 1, at.sceneMs)) }
 }
 
 /** Shape the canvas is now, for whichever scene gets built next. */

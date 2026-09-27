@@ -131,4 +131,9 @@
   .arch-card__title {
     font-size: 1rem;
   }
+
+  /* Narrow cards: who did best, and their time, on two lines rather than cut off. */
+  .arch-card__best {
+    white-space: normal;
+  }
 }

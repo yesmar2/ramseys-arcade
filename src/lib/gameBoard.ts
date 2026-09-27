@@ -122,7 +122,7 @@ export function boardLede(slug: string, copy: PeriodCopy, players: BoardPlayer[]
     const only = players[0]
     const soFar = only.runs === 1 ? 'One run so far' : `${capital(numberWord(only.runs))} runs so far`
     const score = formatLeaderboardScore(slug, only.best.score)
-    return `${soFar}, ${scoreText(slug, only.best.score)}. Any run puts you on the board, and beating ${score} takes first and all 100 points.`
+    return `${soFar}, ${scoreText(slug, only.best.score)}. ${whatPutsYouOn(slug)}, and beating ${score} takes first and all 100 points.`
   }
   return `The first run takes first place, and all 100 points toward ${toward}.`
 }
@@ -177,6 +177,16 @@ export function boardCallout(slug: string, you: BoardYou): string {
   return 'You hold first.'
 }
 
+/**
+ * What gets a player onto a game's board: any run, but on a daily that counts the day's first result
+ * only, that one (Find the Bug's first run, Ace Chase's first bullseye).
+ */
+export function whatPutsYouOn(slug: string): string {
+  if (slug === 'findbug') return 'Your first run of the day puts you on the board'
+  if (slug === 'acechase') return 'Your first bullseye of the day puts you on the board'
+  return 'Any run puts you on the board'
+}
+
 /** Where a best from outside this period would land on it, and what that place would pay. */
 export function wouldPlace(players: BoardPlayer[], best: number): { place: number; pays: number } {
   const place = players.filter((p) => p.best.score > best).length + 1
@@ -197,7 +207,7 @@ export function offBoardLines(
     const { place, pays } = wouldPlace(players, allTimeBest)
     line = `Your best, ${formatLeaderboardScore(slug, allTimeBest)}, would put you ${ordinal(place)}${when}, and pay ${pays} points.`
   } else {
-    line = `You haven’t played ${game}${copy.noun ? when : ' yet'}. Any run puts you on the board.`
+    line = `You haven’t played ${game}${copy.noun ? when : ' yet'}. ${whatPutsYouOn(slug)}.`
   }
   const field = players.length
   const halfway = field >= 6 ? players[Math.ceil(field / 2) - 1] : null

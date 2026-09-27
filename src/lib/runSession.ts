@@ -61,6 +61,16 @@ export function beginRun(slug: string): void {
 }
 
 /**
+ * Carry on a run begun before, under the id it was opened with: Find the Bug's
+ * first run of the day, left halfway and taken up again after a reload, so its
+ * score is measured from when it really began, and the API knows it for the
+ * day's first. Undefined when that run was never opened.
+ */
+export function resumeRun(slug: string, runId: string | undefined): void {
+  current.set(slug, Promise.resolve(runId))
+}
+
+/**
  * The run this game is in now, for what it scores: its id, or undefined when
  * the run could not be opened.
  *

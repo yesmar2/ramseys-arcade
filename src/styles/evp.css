@@ -566,6 +566,28 @@ a.evp-screen:focus-visible .evp-screen__play {
   align-self: flex-start;
 }
 
+/*
+ * Three across with a card left over (the daily event, One Shot, the three daily games and last week's,
+ * say): Run your own, always last, takes the whole row and lies along it, its parts side by side.
+ */
+@media (min-width: 64rem) {
+  .evp-trio > .evp-own:last-child:nth-child(3n + 1) {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1.2fr) minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0.9rem 1.8rem;
+  }
+
+  .evp-trio > .evp-own:last-child:nth-child(3n + 1) > .evp-btn {
+    align-self: center;
+  }
+
+  .evp-trio > .evp-own:last-child:nth-child(3n + 1) > .evp-own__yours {
+    grid-column: 1 / -1;
+  }
+}
+
 .evp-own__yours {
   display: flex;
   flex-direction: column;

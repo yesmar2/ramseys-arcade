@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { Suspense, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { BracketWinCelebration } from '../components/BracketWinCelebration'
 import { EventBracket } from '../components/EventBracket'
 import { EventArt, EventKicker, EventLiveCard, eventAccent, eventPhase } from '../components/EventCard'
@@ -60,6 +60,7 @@ import {
   standingsTable,
 } from '../lib/eventPages'
 import { listEventInvites, type PublicInvite } from '../lib/invites'
+import { lazyPage } from '../lib/lazyPage'
 import { ApiError, getLastPlayerName, normalizePlayerName } from '../lib/leaderboard'
 import {
   attemptsPerGameMax,
@@ -89,6 +90,9 @@ import {
   type TournamentSummary,
 } from '../lib/tournaments'
 import '../styles/evp.css'
+
+// Today's Wanted draws its bugs, so it comes in a chunk of its own rather than with the Events page.
+const TodaysWantedCard = lazyPage(() => import('../components/TodaysWantedCard').then((m) => m.TodaysWantedCard))
 
 async function fetchTournamentDetail(
   id: string,
@@ -868,6 +872,11 @@ export function TournamentsPage() {
               {lineup.oneShot ? <OneShotCard t={lineup.oneShot} /> : null}
               <TodaysHoleCard />
               {isGameListed('hotlap') ? <TodaysTrackCard /> : null}
+              {isGameListed('findbug') ? (
+                <Suspense fallback={null}>
+                  <TodaysWantedCard />
+                </Suspense>
+              ) : null}
               {lineup.lastWeekly ? (
                 <LastWeekCard t={lineup.lastWeekly} detail={lastDetail} lesson={lesson} me={me} />
               ) : null}

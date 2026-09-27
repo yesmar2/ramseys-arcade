@@ -1,5 +1,6 @@
 import {
   useEffect,
+  useMemo,
   useRef,
   useState,
   type PointerEvent as ReactPointerEvent,
@@ -17,10 +18,14 @@ import { GamePauseOverlay, PauseButton } from '../../components/PauseControls'
 import { ScoreSaveCard } from '../../components/ScoreSaveCard'
 import { TournamentScoreCard } from '../../components/TournamentScoreCard'
 import { useGamePause } from '../../hooks/useGamePause'
+import { gameArchiveHref, navigate } from '../../hooks/useHashRoute'
 import { usePersonalBest } from '../../hooks/usePersonalBest'
+import { usePlayerName } from '../../hooks/usePlayerName'
+import { noteRunBegun } from '../../lib/engagement'
+import { normalizePlayerName } from '../../lib/leaderboard'
 import { getPersonalBest } from '../../lib/personalBest'
 import { clearRunAchievements } from '../../lib/runAchievements'
-import { beginRun } from '../../lib/runSession'
+import { beginRun, resumeRun, runIdFor } from '../../lib/runSession'
 import { useTournamentPlay } from '../../tournaments/TournamentPlayContext'
 import {
   clampCamera,
@@ -34,7 +39,9 @@ import {
   type Camera,
   type Field,
 } from './camera'
-import { drawPortrait, drawPortraitFitted, faceCentre, type Look } from './critters'
+import { faceCentre } from './critters'
+import { bugDay, dayNumber, dayRun, daySeed, dayWanted, FIRST_DAY, isDay, subscribeBugDay, updateDayRun, type DayResult } from './daily'
+import { PastDayCard, PracticeCard, TodayCard } from './DailyCards'
 import {
   closeCard,
   createInitialState,
@@ -44,7 +51,9 @@ import {
   hintLevel,
   markReady,
   MISS_MARK_MS,
+  progressOf,
   recallCard,
+  resumeGame,
   ROUNDS,
   SCENE_LIMIT_MS,
   setAspect,
@@ -54,15 +63,26 @@ import {
   tick,
   toSnapshot,
   type GameState,
+  type Progress,
   type Snapshot,
 } from './game'
+import { BugPortrait } from './Portrait'
 import { SceneView, type Overlays } from './render'
 import { findbugBoardScore, formatFindbugMs } from './score'
+import { useTodayBoard } from './todayBoard'
 import { titleOf, type WantedBug } from './wanted'
+
+const SLUG = 'findbug'
 
 /** Past this, a press that wanders is a drag, not a tap. */
 const TAP_SLOP_TOUCH = 10
 const TAP_SLOP_MOUSE = 5
+
+/** How often a counted run's progress is kept on the device while it's played. */
+const KEEP_EVERY_MS = 1000
+
+/** A run from its very start. */
+const FROM_THE_START: Progress = { index: 0, bankedMs: 0, sceneMs: 0, found: 0, misses: 0, times: [] }
 
 type Pointer = { x: number; y: number; startX: number; startY: number; startedAt: number; moved: boolean; mouse: boolean }
 
@@ -70,38 +90,11 @@ type Pinch = { dist: number; midX: number; midY: number; cam: Camera }
 
 type Toast = { text: string; tone: 'good' | 'bad' | 'info'; id: number }
 
+/** How the run just over went, and what it was: the day's first (counted), practice, or an event's. */
+type Ended = { day: string | null; counted: boolean; result: DayResult }
+
 function isLive(phase: Snapshot['phase']) {
   return phase === 'intro' || phase === 'playing' || phase === 'recall' || phase === 'found' || phase === 'timeout'
-}
-
-/**
- * The wanted bug, drawn into a small canvas: the whole of it for the scene
- * card, what it holds included, or just its head and hat for the badge by
- * the clock.
- */
-function BugPortrait({ look, size, crop }: { look: Look; size: number; crop: 'full' | 'head' }) {
-  const ref = useRef<HTMLCanvasElement>(null)
-  useEffect(() => {
-    const canvas = ref.current
-    if (!canvas) return
-    const dpr = Math.min(3, window.devicePixelRatio || 1)
-    canvas.width = Math.round(size * dpr)
-    canvas.height = Math.round(size * dpr)
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-    ctx.clearRect(0, 0, size, size)
-    if (crop === 'head') {
-      // Head and hat fill the circle; the body drops out of the bottom, and
-      // whatever it holds stays on the card rather than crowding the face.
-      const h = size * 1.55
-      drawPortrait(ctx, { ...look, held: 'none' }, size / 2, size / 2 + h * 0.2, h, { pose: 'stand' })
-    } else {
-      // All of it in view, however far it reaches: antennae, wings, a balloon.
-      drawPortraitFitted(ctx, look, size, { pose: 'wave', mood: 'open' })
-    }
-  }, [look, size, crop])
-  return <canvas ref={ref} className="findbug__portrait" style={{ width: size, height: size }} aria-hidden="true" />
 }
 
 /**
@@ -168,14 +161,17 @@ function SceneCard({
   wanted,
   ready,
   again,
+  resumed,
 }: {
   index: number
   name: string
   wanted: WantedBug
   ready: boolean
   again: boolean
+  /** The day's run taken up again here, with this much on the clock. */
+  resumed: number | null
 }) {
-  const first = index === 0 && !again
+  const first = index === 0 && !again && resumed == null
   const coarse = typeof window !== 'undefined' && window.matchMedia?.('(pointer: coarse)').matches
   return (
     <div className="game-pause-card findbug__card">
@@ -195,9 +191,11 @@ function SceneCard({
       <p className="findbug__card-note">
         {again
           ? 'The clock waits while you look.'
-          : first
-            ? 'Plenty of them have some of those. Only one has all four.'
-            : 'Plenty have some of those. Only one has all four.'}
+          : resumed != null
+            ? `Carrying on at ${formatFindbugMs(resumed)}. The clock starts again when you go.`
+            : first
+              ? 'Plenty of them have some of those. Only one has all four.'
+              : 'Plenty have some of those. Only one has all four.'}
       </p>
       {first ? (
         <p className="findbug__card-tip">
@@ -211,15 +209,25 @@ function SceneCard({
   )
 }
 
-export function FindBugGame() {
+/**
+ * Find the Bug. On its own page it's Today's Wanted, the day's five scenes: the day's first run is the
+ * one that counts, kept on the device as it goes so it can be carried on if it's left, and after it the
+ * day plays again as practice. With `day`, a past day's scenes from the archive, all practice. In an
+ * event it's a run of its own, on a fresh seed, as it always was.
+ */
+export function FindBugGame({ day: askedDay }: { day?: string } = {}) {
   const tournament = useTournamentPlay()
-  const apiBest = usePersonalBest('findbug')
+  const apiBest = usePersonalBest(SLUG)
+  const [today, setToday] = useState(bugDay)
+  // A past day's scenes from the archive. Never one ahead of its day: to know where a day's bugs hide
+  // before it comes would be to know its first run's answers. Today's own, asked for by date, are just today's.
+  const pastDay = !tournament && isDay(askedDay) && askedDay >= FIRST_DAY && askedDay < today ? askedDay : null
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const playRef = useRef<HTMLDivElement>(null)
   const stateRef = useRef<GameState | null>(null)
   if (!stateRef.current) {
     const aspect = typeof window === 'undefined' ? 1.4 : fieldAspect(window.innerWidth, window.innerHeight)
-    stateRef.current = createInitialState(aspect)
+    stateRef.current = createInitialState(aspect, tournament ? undefined : daySeed(pastDay ?? today))
   }
   const camRef = useRef<Camera>(homeCamera(stateRef.current.scene.w, stateRef.current.scene.h))
   const viewRef = useRef<SceneView | null>(null)
@@ -235,12 +243,39 @@ export function FindBugGame() {
   const [saveOpen, setSaveOpen] = useState(false)
   const saveOpenRef = useRef(false)
   const offeredScore = useRef<number | null>(null)
-  const previousBestRef = useRef(getPersonalBest('findbug'))
+  const previousBestRef = useRef(getPersonalBest(SLUG))
   const startGrace = useRef(0)
+  /** The day whose first run is in play, kept on the device as it goes; null for practice and events. */
+  const countedDay = useRef<string | null>(null)
+  /** The day whose scenes are in play; null in an event. */
+  const playedDay = useRef<string | null>(null)
+  /** Taken up again after being left: the clock it came back with, for the first card to say. */
+  const [resumedAt, setResumedAt] = useState<number | null>(null)
+  const [ended, setEnded] = useState<Ended | null>(null)
+  /** A finished first run put on the board late, from the day's card: its score. */
+  const [lateSave, setLateSave] = useState<number | null>(null)
   const pausable = isLive(ui.phase) && !saveOpen
   const { paused, toggle: togglePause, resume } = useGamePause(pausable)
   const pausedRef = useRef(false)
   pausedRef.current = paused
+
+  // What this device did today, as it changes; and today's board.
+  const [todayRun, setTodayRun] = useState(() => (tournament ? null : dayRun(today)))
+  useEffect(() => {
+    if (tournament) return
+    const read = () => setTodayRun(dayRun(today))
+    read()
+    return subscribeBugDay(read)
+  }, [tournament, today])
+  const me = normalizePlayerName(usePlayerName())
+  const board = useTodayBoard(tournament || pastDay ? null : today, me, `${saveOpen}|${lateSave}`)
+  const wanted = useMemo(() => dayWanted(pastDay ?? today), [pastDay, today])
+
+  // Midnight on the boards' clock: a new day's scenes, from the next start.
+  useEffect(() => {
+    const t = window.setInterval(() => setToday(bugDay()), 30_000)
+    return () => window.clearInterval(t)
+  }, [])
 
   const say = (text: string, tone: Toast['tone'], ms = 1300) => {
     window.clearTimeout(toastTimer.current)
@@ -250,10 +285,19 @@ export function FindBugGame() {
 
   useEffect(() => () => window.clearTimeout(toastTimer.current), [])
 
+  /** Keep where the day's first run has got to, to carry it on from if it's left. */
+  const keepProgress = (s: GameState) => {
+    const day = countedDay.current
+    const at = progressOf(s)
+    if (!day || !at) return
+    updateDayRun(day, (run) => (run && !run.result ? { ...run, at } : run), true)
+  }
+
   useEffect(() => {
     let raf = 0
     let last = performance.now()
     let uiAcc = 0
+    let keptAt = 0
     let lastPhase = stateRef.current!.phase
     let lastScene = stateRef.current!.scene
     if (!viewRef.current) viewRef.current = new SceneView()
@@ -294,14 +338,26 @@ export function FindBugGame() {
           setZoomed(false)
           say(`Time! There’s ${s.scene.wanted.name}.`, 'info', 2200)
         }
+        if (s.phase === 'playing') setResumedAt(null)
         lastPhase = s.phase
+        keptAt = now
+        keepProgress(s)
         setUi(toSnapshot(s))
+      } else if (countedDay.current && isLive(s.phase) && now - keptAt > KEEP_EVERY_MS) {
+        keptAt = now
+        keepProgress(s)
       }
 
       if (s.phase === 'gameover') {
         const score = findbugBoardScore(s.bankedMs)
         if (offeredScore.current !== score) {
           offeredScore.current = score
+          const result: DayResult = { ms: s.bankedMs, found: s.found, misses: s.misses, times: s.times }
+          const counted = countedDay.current
+          // The day's result, kept before the save goes out: the save card may be closed at once.
+          if (counted) updateDayRun(counted, (run) => ({ startedAt: run?.startedAt ?? Date.now(), runId: run?.runId, result }))
+          setEnded({ day: playedDay.current, counted: Boolean(counted), result })
+          countedDay.current = null
           saveOpenRef.current = true
           setSaveOpen(true)
           setUi(toSnapshot(s))
@@ -383,6 +439,21 @@ export function FindBugGame() {
     return () => cancelAnimationFrame(raf)
   }, [])
 
+  // Leaving mid-run (the tab hidden, the page closed): keep exactly where the day's first run was.
+  useEffect(() => {
+    const keep = () => keepProgress(stateRef.current!)
+    const onVisibility = () => {
+      if (document.visibilityState === 'hidden') keep()
+    }
+    document.addEventListener('visibilitychange', onVisibility)
+    window.addEventListener('pagehide', keep)
+    return () => {
+      keep()
+      document.removeEventListener('visibilitychange', onVisibility)
+      window.removeEventListener('pagehide', keep)
+    }
+  }, [])
+
   useEffect(() => {
     if (ui.phase === 'menu') previousBestRef.current = apiBest
   }, [apiBest, ui.phase])
@@ -411,26 +482,69 @@ export function FindBugGame() {
     return stateRef.current!.aspect
   }
 
-  const restart = (intoMenu = false) => {
+  /** Put the last run's end away and show a new state: its card, its toast and the camera go with it. */
+  const settle = (s: GameState) => {
     saveOpenRef.current = false
     setSaveOpen(false)
+    setLateSave(null)
     offeredScore.current = null
     clearRunAchievements()
-    const aspect = currentAspect()
-    if (intoMenu) {
-      stateRef.current = createInitialState(aspect)
-    } else {
-      beginRun('findbug')
-      stateRef.current = startGame(stateRef.current!, aspect)
-    }
-    const s = stateRef.current
+    stateRef.current = s
     camRef.current = homeCamera(s.scene.w, s.scene.h)
     reticleRef.current = null
     setZoomed(false)
     setToast(null)
-    previousBestRef.current = getPersonalBest('findbug')
+    previousBestRef.current = getPersonalBest(SLUG)
     startGrace.current = performance.now() + 250
     setUi(toSnapshot(s))
+  }
+
+  /** An event's run: a fresh seed, opened on the API like any run. */
+  const startEventRun = () => {
+    countedDay.current = null
+    playedDay.current = null
+    setResumedAt(null)
+    beginRun(SLUG)
+    settle(startGame(stateRef.current!, currentAspect()))
+  }
+
+  /** A day's scenes played again, today's or a past one's: nothing opened on the API, nothing kept. */
+  const practise = (day: string) => {
+    countedDay.current = null
+    playedDay.current = day
+    setResumedAt(null)
+    noteRunBegun()
+    settle(startGame(stateRef.current!, currentAspect(), daySeed(day)))
+  }
+
+  /**
+   * Today's first run, the one that counts: opened on the API and kept on the device as it goes. One
+   * left halfway carries on under the id it was opened with, at the scene it was on.
+   */
+  const startToday = () => {
+    const day = bugDay()
+    if (day !== today) setToday(day)
+    const run = dayRun(day)
+    if (run?.result) {
+      practise(day)
+      return
+    }
+    countedDay.current = day
+    playedDay.current = day
+    if (run) {
+      resumeRun(SLUG, run.runId)
+      const at = run.at ?? FROM_THE_START
+      setResumedAt(at.bankedMs + at.sceneMs > 0 ? at.bankedMs + at.sceneMs : null)
+      settle(resumeGame(stateRef.current!, currentAspect(), daySeed(day), at))
+      return
+    }
+    setResumedAt(null)
+    beginRun(SLUG)
+    updateDayRun(day, () => ({ startedAt: Date.now(), at: FROM_THE_START }))
+    void runIdFor(SLUG).then((runId) => {
+      if (runId) updateDayRun(day, (r) => (r && !r.result ? { ...r, runId } : r), true)
+    })
+    settle(startGame(stateRef.current!, currentAspect(), daySeed(day)))
   }
 
   /**
@@ -439,7 +553,23 @@ export function FindBugGame() {
    * the player straight back into play skips past all of it. No run is opened,
    * so nothing counts until they actually start one.
    */
-  const toMenu = () => restart(true)
+  const toMenu = () => {
+    countedDay.current = null
+    setResumedAt(null)
+    settle(createInitialState(currentAspect(), tournament ? undefined : daySeed(pastDay ?? bugDay())))
+  }
+
+  /** A finished first run that isn't on the board (played signed out, or its save never landed): save it now. */
+  const saveLate = () => {
+    const run = dayRun(today)
+    if (!run?.result) return
+    resumeRun(SLUG, run.runId)
+    setLateSave(findbugBoardScore(run.result.ms))
+  }
+
+  /** What a tap on the start screen, or Space there, does: only an event's starts on it. The day's cards have buttons. */
+  const startFromMenu = useRef<() => void>(() => {})
+  startFromMenu.current = tournament ? startEventRun : () => {}
 
   const syncZoomed = () => setZoomed(camRef.current.zoom > 1.01)
 
@@ -459,7 +589,7 @@ export function FindBugGame() {
     const s = stateRef.current!
     if (s.phase === 'menu') {
       if (performance.now() < startGrace.current) return
-      restart()
+      startFromMenu.current()
       return
     }
     if (s.phase === 'intro' || s.phase === 'recall') {
@@ -665,12 +795,12 @@ export function FindBugGame() {
       }
 
       if (e.code === 'Space' || e.code === 'Enter') {
-        // Tabbed to, the badge takes its own press.
-        if (e.target instanceof Element && e.target.closest('.findbug__badge')) return
+        // Tabbed to, the badge takes its own press, and so do the day's cards' buttons.
+        if (e.target instanceof Element && e.target.closest('.findbug__badge, .findbug-daily')) return
         e.preventDefault()
         if (s.phase === 'menu') {
           if (performance.now() < startGrace.current) return
-          restart()
+          startFromMenu.current()
           return
         }
         if (s.phase === 'intro' || s.phase === 'recall') {
@@ -750,6 +880,9 @@ export function FindBugGame() {
   const finalScore = ui.phase === 'gameover' ? findbugBoardScore(s.bankedMs) : 0
   const urgent = ui.phase === 'playing' && ui.sceneLeftMs < 10_000
   const leftShare = ui.phase === 'menu' ? 1 : ui.sceneLeftMs / SCENE_LIMIT_MS
+  const menuUp = ui.phase === 'menu' && !saveOpen && lateSave == null && !paused
+  const endTitle = ui.found === ROUNDS ? 'Found every one' : 'Run over'
+  const endLine = `Found ${ui.found} of ${ROUNDS} · ${ui.misses} wrong tap${ui.misses === 1 ? '' : 's'}`
 
   return (
     <section className="findbug findbug--fullscreen">
@@ -765,7 +898,7 @@ export function FindBugGame() {
           >
             <canvas ref={canvasRef} className="findbug__viewport" />
 
-            <GamePlayChrome slug="findbug" inRun={() => isLive(stateRef.current!.phase)} paused={paused}>
+            <GamePlayChrome slug={SLUG} inRun={() => isLive(stateRef.current!.phase)} paused={paused}>
               {pausable || paused ? <PauseButton paused={paused} onToggle={togglePause} /> : null}
             </GamePlayChrome>
 
@@ -813,12 +946,28 @@ export function FindBugGame() {
 
             <div className="findbug__overlay">
               <GamePauseOverlay
-                slug="findbug"
+                slug={SLUG}
                 personalBest={isLive(ui.phase) ? previousBestRef.current : apiBest}
                 paused={paused}
                 onResume={resume}
               />
-              {ui.phase === 'menu' && !saveOpen && !paused && <GameStartCard title="Find the Bug" slug="findbug" />}
+              {menuUp ? (
+                tournament ? (
+                  <GameStartCard title="Find the Bug" slug={SLUG} />
+                ) : pastDay ? (
+                  <PastDayCard day={pastDay} wanted={wanted} onStart={() => practise(pastDay)} onLeave={() => navigate(gameArchiveHref(SLUG))} />
+                ) : (
+                  <TodayCard
+                    day={today}
+                    wanted={wanted}
+                    run={todayRun}
+                    board={board}
+                    onStart={startToday}
+                    onPractice={() => practise(today)}
+                    onSave={saveLate}
+                  />
+                )
+              ) : null}
               {(ui.phase === 'intro' || ui.phase === 'recall') && !paused ? (
                 <SceneCard
                   index={ui.index}
@@ -826,27 +975,42 @@ export function FindBugGame() {
                   wanted={ui.wanted}
                   ready={ui.ready}
                   again={ui.phase === 'recall'}
+                  resumed={ui.phase === 'intro' ? resumedAt : null}
                 />
               ) : null}
-              {ui.phase === 'gameover' &&
-                saveOpen &&
-                (tournament ? (
-                  <TournamentScoreCard
-                    tournamentId={tournament.tournamentId}
-                    gameSlug="findbug"
-                    score={finalScore}
-                    onDone={toMenu}
-                  />
-                ) : (
+              {ui.phase === 'gameover' && saveOpen ? (
+                tournament ? (
+                  <TournamentScoreCard tournamentId={tournament.tournamentId} gameSlug={SLUG} score={finalScore} onDone={toMenu} />
+                ) : ended?.counted ? (
                   <ScoreSaveCard
-                    gameSlug="findbug"
+                    gameSlug={SLUG}
                     score={finalScore}
-                    title={ui.found === ROUNDS ? 'Found every one' : 'Run over'}
-                    subtitle={`Found ${ui.found} of ${ROUNDS} · ${ui.misses} wrong tap${ui.misses === 1 ? '' : 's'}`}
+                    title={endTitle}
+                    subtitle={`Today’s Wanted #${dayNumber(ended.day ?? today)} · ${endLine}`}
                     previousBest={Math.max(previousBestRef.current, apiBest)}
                     onDone={toMenu}
                   />
-                ))}
+                ) : ended?.day ? (
+                  <PracticeCard
+                    day={ended.day}
+                    today={ended.day === today}
+                    run={ended.result}
+                    standing={todayRun?.result ?? null}
+                    onAgain={() => practise(ended.day!)}
+                    onLeave={() => (ended.day === today ? toMenu() : navigate(gameArchiveHref(SLUG)))}
+                  />
+                ) : null
+              ) : null}
+              {lateSave != null && ui.phase === 'menu' && todayRun?.result ? (
+                <ScoreSaveCard
+                  gameSlug={SLUG}
+                  score={lateSave}
+                  title="Today’s result"
+                  subtitle={`Today’s Wanted #${dayNumber(today)} · found ${todayRun.result.found ?? ROUNDS} of ${ROUNDS}`}
+                  previousBest={Math.max(previousBestRef.current, apiBest)}
+                  onDone={() => setLateSave(null)}
+                />
+              ) : null}
             </div>
           </div>
         </GameStage>

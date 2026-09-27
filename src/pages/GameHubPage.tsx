@@ -31,6 +31,8 @@ import { preloadGamePage } from './gamePages'
 const TodaysHoleCard = lazyPage(() => import('../components/TodaysHoleCard').then((m) => m.TodaysHoleCard))
 /** Hot Lap's Today's Track, the same way. */
 const TodaysTrackCard = lazyPage(() => import('../components/TodaysTrackCard').then((m) => m.TodaysTrackCard))
+/** Find the Bug's Today's Wanted, the same way. */
+const TodaysWantedCard = lazyPage(() => import('../components/TodaysWantedCard').then((m) => m.TodaysWantedCard))
 
 function isBoardGame(slug: string): slug is LeaderboardGame {
   return (LEADERBOARD_GAMES as readonly string[]).includes(slug)
@@ -136,6 +138,11 @@ export function GameHubPage({ slug, board: boardFromRoute }: GameHubPageProps) {
           {game.slug === 'hotlap' ? (
             <Suspense fallback={null}>
               <TodaysTrackCard />
+            </Suspense>
+          ) : null}
+          {game.slug === 'findbug' ? (
+            <Suspense fallback={null}>
+              <TodaysWantedCard />
             </Suspense>
           ) : null}
           {boardSlug ? (

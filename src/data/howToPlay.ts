@@ -155,7 +155,7 @@ export const HOW_TO_PLAY: Record<string, HowToPlay> = {
     tip: 'Doubling back over eaten ground resets the streak.',
   },
   findbug: {
-    goal: 'Find the bug on the card, five times, fast.',
+    goal: 'Find the bug on each card, in today’s five scenes, fast. New scenes come every day at midnight, New York time.',
     controls: [
       { does: 'Pick a bug', touch: 'Tap', keys: 'Arrows, then Space' },
       { does: 'Zoom and look around', touch: 'Pinch · drag', keys: '+ −' },
@@ -163,8 +163,9 @@ export const HOW_TO_PLAY: Record<string, HowToPlay> = {
     scores: [
       { what: 'Your score', pts: 'total time', sub: 'fastest wins' },
       { what: 'Wrong tap', pts: '1.5s dazed' },
+      { what: 'Not found', pts: 'the whole minute' },
     ],
-    ends: 'After the fifth bug.',
+    ends: 'After the fifth scene. Your first run of the day is your result; after that, play it again for practice.',
     tip: 'Only one bug matches all four clues: colours, hat, glasses and what it holds.',
   },
   barrage: {

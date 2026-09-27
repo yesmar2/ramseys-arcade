@@ -107,7 +107,10 @@ export function ScoreSaveCard({ gameSlug, score, title, subtitle, previousBest, 
   const { signedIn, loading: authLoading } = useAuth()
   const impersonation = useImpersonation()
   const canSaveScores = signedIn || Boolean(impersonation)
-  const period = useDefaultPeriod()
+  const defaultPeriod = useDefaultPeriod()
+  // A daily's board is the day's (the API keeps it so, whatever the period): its places are today's,
+  // in the report as on the card.
+  const period: LeaderboardPeriod = isDailyGame(gameSlug) ? 'daily' : defaultPeriod
   const [phase, setPhase] = useState<Phase>('checking')
   const [error, setError] = useState<string | null>(null)
   const [nameDraft, setNameDraft] = useState('')
@@ -134,8 +137,7 @@ export function ScoreSaveCard({ gameSlug, score, title, subtitle, previousBest, 
   const tagId = useId()
 
   const game = getGame(gameSlug)?.name ?? gameSlug
-  // A daily's board is the day's (the API keeps it so, whatever the period): its place is today's.
-  const copy = periodCopy(isDailyGame(gameSlug) ? 'daily' : period)
+  const copy = periodCopy(period)
   // A friend's challenge this run was played against; your own played back is just a run.
   const challenge = useActiveChallenge(gameSlug)
   const facing =

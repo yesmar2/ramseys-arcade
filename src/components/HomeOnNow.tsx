@@ -16,6 +16,7 @@ const PLACES = ['1st', '2nd', '3rd']
 /** Hot Lap's track of the day, in a chunk of its own with the plan it comes from. */
 const TodaysTrackOnNow = lazyPage(() => import('./TodaysTrackCard').then((m) => m.TodaysTrackOnNow))
 const TodaysHoleOnNow = lazyPage(() => import('./TodaysHoleCard').then((m) => m.TodaysHoleOnNow))
+const TodaysWantedOnNow = lazyPage(() => import('./TodaysWantedCard').then((m) => m.TodaysWantedOnNow))
 
 /** The row's layout for how many cards are in it: three across, four, or the day's three over the week's two. */
 function gridClass(count: number) {
@@ -157,8 +158,8 @@ function SkeletonCard() {
 }
 
 /**
- * On now, under the banner: today's daily, Hot Lap's track and Ace Chase's
- * hole of the day, this week's weekly and how last week's finished. There is nearly always a daily
+ * On now, under the banner: today's daily, Hot Lap's track, Ace Chase's hole
+ * and Find the Bug's wanted of the day, this week's weekly and how last week's finished. There is nearly always a daily
  * and a weekly running, and last week's podium stays up until the next one
  * ends, so the row reads full on a quiet day as on a busy one. While the
  * events load, cards of the same shape hold the space.
@@ -171,7 +172,8 @@ export function HomeOnNow() {
   const mineById = (id: string) => mine.find((t) => t.id === id) ?? null
   const track = isGameListed('hotlap')
   const hole = isGameListed('acechase')
-  const dailies = (track ? 1 : 0) + (hole ? 1 : 0)
+  const wanted = isGameListed('findbug')
+  const dailies = (track ? 1 : 0) + (hole ? 1 : 0) + (wanted ? 1 : 0)
 
   if (loading) {
     return (
@@ -222,6 +224,13 @@ export function HomeOnNow() {
           <li>
             <Suspense fallback={<SkeletonCard />}>
               <TodaysHoleOnNow />
+            </Suspense>
+          </li>
+        ) : null}
+        {wanted ? (
+          <li>
+            <Suspense fallback={<SkeletonCard />}>
+              <TodaysWantedOnNow />
             </Suspense>
           </li>
         ) : null}

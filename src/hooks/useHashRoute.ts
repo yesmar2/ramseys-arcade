@@ -50,9 +50,10 @@ export type Route =
   /**
    * `hole`: one of Ace Chase's days played as practice, `?hole=day:YYYY-MM-DD` on the play page, from the
    * archive or the admin's Hole Book. `track`: a test drive of one of Hot Lap's daily tracks,
-   * `?track=<number or day>`, from the archive or the admin's Track Book.
+   * `?track=<number or day>`, from the archive or the admin's Track Book. `day`: a past day of Find the
+   * Bug's Today's Wanted, `?day=YYYY-MM-DD`, played again from the archive.
    */
-  | { name: 'gamePlay'; slug: string; hole?: string; track?: string }
+  | { name: 'gamePlay'; slug: string; hole?: string; track?: string; day?: string }
   /** A daily game's archive: every day since its first, each playable again as practice. */
   | { name: 'gameArchive'; slug: string }
   | { name: 'authVerify'; token: string }
@@ -401,6 +402,7 @@ export function hrefForRoute(
       return appendGroupQuery(gameHubHref(route.slug, period))
     case 'gamePlay':
       if (route.track) return `${gamePlayHref(route.slug)}?track=${encodeURIComponent(route.track)}`
+      if (route.day) return `${gamePlayHref(route.slug)}?day=${encodeURIComponent(route.day)}`
       return route.hole ? `${gamePlayHref(route.slug)}?hole=${encodeURIComponent(route.hole)}` : gamePlayHref(route.slug)
     case 'tournamentPlay':
       return tournamentPlayHref(route.id, route.game, route.invite)
@@ -582,11 +584,13 @@ export function parseUrl(pathname: string, search: string): Route {
     const params = new URLSearchParams(search)
     const hole = params.get('hole')?.trim()
     const track = params.get('track')?.trim()
+    const day = params.get('day')?.trim()
     return {
       name: 'gamePlay',
       slug: canonicalGameSlug(decodeURIComponent(gamePlayMatch[1])),
       ...(hole ? { hole } : {}),
       ...(track ? { track } : {}),
+      ...(day ? { day } : {}),
     }
   }
 
