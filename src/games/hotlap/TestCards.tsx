@@ -1,9 +1,10 @@
 import { useEffect, useId, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
 import { GamePanelBody } from '../../components/PauseControls'
+import { TicketGlyph } from '../../components/prizes/Ticket'
 import { ReportSignIn, TagSlots } from '../../components/RunReport'
 import { useAuth } from '../../hooks/useAuth'
 import { useDeliberatePress } from '../../hooks/useDeliberatePress'
-import { gamePlayHref } from '../../hooks/useHashRoute'
+import { gamePlayHref, navigate, prizesHref } from '../../hooks/useHashRoute'
 import { usePlayerName } from '../../hooks/usePlayerName'
 import { useSaveWait } from '../../hooks/useSaveWait'
 import { linkCurrentNameToAccount } from '../../lib/auth'
@@ -25,6 +26,8 @@ import { formatLap, hotlapMsFromBoardScore } from './score'
  */
 
 const SLUG = 'hotlap'
+/** What taking a past track's record pays, once a track: the API's tickets.ts RECORD_TICKETS. */
+const RECORD_TICKETS = 15
 
 /** A track's test drive, by its number. */
 function testDriveHref(n: number) {
@@ -132,7 +135,7 @@ export function TestStartCard({
         <h2 className="game-card__title game-card__title--big">{course.name}</h2>
         <p className="game-card__blurb">
           {past
-            ? `${whenWords(course.day)}. Its board stays open: your best lap here goes on it for good. Points and tickets are for today’s track.`
+            ? `${whenWords(course.day)}. Its board stays open: your best lap here goes on it for good, and taking its record pays ${RECORD_TICKETS} tickets.`
             : `${whenWords(course.day)}. Laps here aren’t saved: they go on no board, and your best here is gone when you close the tab.`}
         </p>
       </div>
@@ -366,6 +369,24 @@ export function PastResultCard({
     )
   else if (save.phase === 'noTag') status = <LapTag />
   else if (save.phase === 'failed') status = <p className="panel__error">{save.error}</p>
+  // Taking a track's record pays, once a track.
+  const paid = result?.tickets?.earned ? (
+    <p className="hotlap-test__tix">
+      <TicketGlyph size={20} />
+      <span>
+        <b>+{result.tickets.earned} tickets</b> for the track record.{' '}
+        <a
+          href={prizesHref()}
+          onClick={(e) => {
+            e.preventDefault()
+            navigate(prizesHref())
+          }}
+        >
+          Prize counter ›
+        </a>
+      </span>
+    </p>
+  ) : null
 
   return (
     <div
@@ -391,6 +412,7 @@ export function PastResultCard({
         )}
       </div>
       {status}
+      {paid}
       <div className="game-card__actions">
         <button
           type="button"

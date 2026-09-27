@@ -10,8 +10,8 @@ import { api } from './leaderboard'
  * and nudged along by what a save or a trade answers.
  */
 
-/** Why tickets came in or went out, as the API names it. */
-export type TicketReason = 'run' | 'best' | 'pickup' | 'first' | 'streak' | 'daily' | 'hunt' | 'top' | 'grant' | 'trade'
+/** Why tickets came in or went out, as the API names it: a record is a past Hot Lap track's or Ace Chase hole's, taken. */
+export type TicketReason = 'run' | 'best' | 'pickup' | 'first' | 'streak' | 'daily' | 'hunt' | 'top' | 'record' | 'grant' | 'trade'
 
 /** A step on a game's ticket ladder: the board score that reaches it, what it pays, and how a daily says it. */
 export type LadderStep = { at: number; tickets: number; label?: string }

@@ -41,7 +41,8 @@ export function GameHubRecords({
         <ul className="gh-rec-list">
           {rows.map((row) => {
             const kind = recordKind(row.record)
-            const Icon = !row.record.top ? SparkleIcon : kind === 'streaks' ? FlameIcon : kind === 'clock' ? TimerIcon : EventsIcon
+            const timed = kind === 'clock' || (kind === 'course' && row.record.unit === 'ms')
+            const Icon = !row.record.top ? SparkleIcon : kind === 'streaks' ? FlameIcon : timed ? TimerIcon : EventsIcon
             return (
               <li key={row.record.id}>
                 <a className={`gh-rec${row.hot ? ' gh-rec--hot' : ''}`} href={recordHref(slug, row.record.id, 'all')}>

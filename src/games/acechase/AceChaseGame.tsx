@@ -7,8 +7,20 @@ import { PlayReadoutStats, PlayStat } from '../../components/PlayStats'
 import { gameArchiveHref, gameHref, navigate } from '../../hooks/useHashRoute'
 import { useGamePause } from '../../hooks/useGamePause'
 import { usePersonalBest } from '../../hooks/usePersonalBest'
+import { usePlayerName } from '../../hooks/usePlayerName'
 import { gameAccentStyle } from '../../lib/gameAccentStyle'
 import { haptic } from '../../lib/haptics'
+import { normalizePlayerName } from '../../lib/leaderboard'
+import {
+  markPastSolved,
+  pastProgress,
+  savePastProgress,
+  solvedHere,
+  subscribePastHoles,
+  syncPastHoles,
+  useHoleBoard,
+  type PastProgress,
+} from '../../lib/pastHoles'
 import {
   dailyDay,
   dailyServer,
@@ -39,6 +51,7 @@ import {
   type Snapshot,
 } from './game'
 import { DailyResultCard, DailyStartCard } from './DailyCards'
+import { PastResultCard, PastStartCard } from './PastCards'
 import { TrialResultCard, TrialStartCard } from './TrialCards'
 import { AceScene, type View } from './scene'
 
@@ -193,6 +206,26 @@ function keepDay(today: TodaysHole, s: GameState) {
   if (last?.bull && !before?.solved) recordSolved(today.day, { tries: s.tries, at: Date.now(), pattern: patternOf(s.shots) })
 }
 
+/** Keep where a past hole's play stands, and its first bullseye as its result (lib/pastHoles.ts). */
+function keepPast(hole: TodaysHole, s: GameState) {
+  const before = pastProgress(hole.day)
+  savePastProgress(hole.day, {
+    tries: s.tries,
+    shots: [...s.shots],
+    ghosts: s.ghosts.map((g) => [...g]),
+    power: s.power,
+    angle: s.angle,
+    ...(before?.solved ? { solved: before.solved, sent: before.sent } : {}),
+  })
+  const last = s.shots[s.shots.length - 1]
+  if (last?.bull && !before?.solved) markPastSolved(hole.day, { tries: s.tries, at: Date.now(), pattern: patternOf(s.shots) })
+}
+
+/** A past hole's play on this device, for its cards. */
+type PastPlay = { progress: PastProgress | null; solved: ReturnType<typeof solvedHere> }
+
+const pastPlayOf = (day: string): PastPlay => ({ progress: pastProgress(day), solved: solvedHere(day) })
+
 /**
  * Ace Chase: Today's Hole in 3D, played with numbers. Set the power and the angle, putt, and see where it
  * stops; the misses say how far off, and the next try is yours to adjust. The ball has to come to rest on
@@ -208,15 +241,30 @@ function keepDay(today: TodaysHole, s: GameState) {
  * a putt ends without watching it all. A tap skips the flyover. P or Escape pauses.
  *
  * With `ahead`, it plays that day's hole ahead of its day, on trial: nothing is kept, and a bullseye ends it.
+ * With `past`, a day's hole after its day, from the archive: the day's own target, every try kept on the
+ * device as on its day, and the first bullseye goes on the hole's own board (lib/pastHoles.ts), unless the
+ * player has a result on it already, when it's practice.
  */
-export function AceChaseGame({ ahead }: { ahead?: TodaysHole }) {
+export function AceChaseGame({ ahead, past }: { ahead?: TodaysHole; past?: TodaysHole }) {
   const apiBest = usePersonalBest(SLUG)
   /** Today's Hole, for the whole visit: a visit that runs past midnight keeps the hole it started on. */
   const todayRef = useRef<TodaysHole | null>(null)
-  if (!ahead && !todayRef.current) todayRef.current = todaysHole()
+  if (!ahead && !past && !todayRef.current) todayRef.current = todaysHole()
   const today = todayRef.current
+  /** A past hole, for the loop to keep its tries. */
+  const pastRef = useRef<TodaysHole | null>(past ?? null)
+  const [pastPlay, setPastPlay] = useState<PastPlay | null>(() => (past ? pastPlayOf(past.day) : null))
+  const playerName = normalizePlayerName(usePlayerName())
+  const [boardVersion, setBoardVersion] = useState(0)
+  const holeBoard = useHoleBoard(past ? past.day : null, playerName, boardVersion)
   const stateRef = useRef<GameState | null>(null)
-  const fresh = () => (today ? createInitialState(today.def, 'daily') : createInitialState(ahead!.def, 'test'))
+  // A past hole is played as its day had it, the day's one target; a trial picks a fresh one each go.
+  const fresh = () =>
+    today
+      ? createInitialState(today.def, 'daily')
+      : past
+        ? createInitialState(past.def, 'daily')
+        : createInitialState(ahead!.def, 'test')
   if (!stateRef.current) stateRef.current = fresh()
   const [progress, setProgress] = useState<DayProgress | null>(() => (today ? dayProgress(today.day) : null))
   const [server, setServer] = useState<DailyServer | null>(() => dailyServer())
@@ -298,6 +346,12 @@ export function AceChaseGame({ ahead }: { ahead?: TodaysHole }) {
         keptShots.current = s.shots.length
         keepDay(hole, s)
       }
+      // And a past hole's, the same way.
+      const pastHole = pastRef.current
+      if (pastHole && s.mode === 'daily' && !s.practice && s.shots.length > keptShots.current) {
+        keptShots.current = s.shots.length
+        keepPast(pastHole, s)
+      }
       // Open the result card the moment the hole's done, so a stray tap can't start another first.
       if (s.phase === 'gameover' && shownBull.current !== s.bulls) {
         shownBull.current = s.bulls
@@ -338,6 +392,15 @@ export function AceChaseGame({ ahead }: { ahead?: TodaysHole }) {
     void syncDaily(true)
     return off
   }, [today])
+
+  // A past hole: what this device has done at it, sent up if it's waiting on a sign-in.
+  useEffect(() => {
+    if (!past) return
+    const update = () => setPastPlay(pastPlayOf(past.day))
+    const off = subscribePastHoles(update)
+    void syncPastHoles().then(update)
+    return off
+  }, [past])
 
   // Once, the first time the camera is handed over: how to look round.
   useEffect(() => {
@@ -393,6 +456,13 @@ export function AceChaseGame({ ahead }: { ahead?: TodaysHole }) {
       const resume = p && !again ? { tries: p.tries, shots: p.shots, ghosts: p.ghosts, power: p.power, angle: p.angle } : null
       stateRef.current = startGame(stateRef.current!, Math.random, resume, again)
       keptShots.current = stateRef.current.shots.length
+    } else if (past) {
+      // A past hole carries on from where the device left it too; with a result on it already, it's practice.
+      const p = pastProgress(past.day)
+      const again = practice || pastDone()
+      const resume = p && !again ? { tries: p.tries, shots: p.shots, ghosts: p.ghosts, power: p.power, angle: p.angle } : null
+      stateRef.current = startGame(stateRef.current!, Math.random, resume, again)
+      keptShots.current = stateRef.current.shots.length
     } else {
       stateRef.current = startGame(stateRef.current!)
     }
@@ -439,8 +509,11 @@ export function AceChaseGame({ ahead }: { ahead?: TodaysHole }) {
     }
   }
 
-  /** Today's Hole is done: only its card's buttons play it again, a stray tap doesn't. */
-  const dailyDone = () => Boolean(today && dayProgress(today.day)?.solved)
+  /** A past hole has the player's result already: on this device, or on its board. */
+  const pastDone = () => Boolean(past && (solvedHere(past.day) || holeBoard?.you))
+
+  /** Today's Hole (or a past one) is done: only its card's buttons play it again, a stray tap doesn't. */
+  const dailyDone = () => Boolean(today && dayProgress(today.day)?.solved) || pastDone()
 
   const onPointerDown = (e: ReactPointerEvent<HTMLElement>) => {
     if (saveOpenRef.current || pausedRef.current) return
@@ -503,6 +576,8 @@ export function AceChaseGame({ ahead }: { ahead?: TodaysHole }) {
               <PlayReadoutStats>
                 {today ? (
                   <PlayStat label={ui.practice ? 'Practice' : 'Today'} value={`#${today.n}`} />
+                ) : past ? (
+                  <PlayStat label={ui.practice ? 'Practice' : 'Hole'} value={`#${past.n}`} />
                 ) : (
                   <PlayStat label="Trial" value={`#${ahead!.n}`} />
                 )}
@@ -591,7 +666,8 @@ export function AceChaseGame({ ahead }: { ahead?: TodaysHole }) {
               <div className="acechase__banner">
                 <strong>{ui.holeName}</strong>
                 <span>
-                  {today ? `Today’s Hole #${today.n}` : `Hole #${ahead!.n}, on trial`} · {touch ? 'tap' : 'click'} to skip
+                  {today ? `Today’s Hole #${today.n}` : past ? `Hole #${past.n}, from the archive` : `Hole #${ahead!.n}, on trial`} ·{' '}
+                  {touch ? 'tap' : 'click'} to skip
                 </span>
               </div>
             ) : null}
@@ -615,6 +691,28 @@ export function AceChaseGame({ ahead }: { ahead?: TodaysHole }) {
                 <DailyStartCard hole={today} progress={progress} server={server} onStart={() => restart()} onPractice={() => restart(true)} />
               ) : null}
               {ahead && ui.phase === 'menu' && !saveOpen && !paused && !noGl ? <TrialStartCard hole={ahead} onStart={() => restart()} /> : null}
+              {past && ui.phase === 'menu' && !saveOpen && !paused && !noGl ? (
+                <PastStartCard
+                  hole={past}
+                  progress={pastPlay?.progress ?? null}
+                  solved={pastPlay?.solved ?? null}
+                  board={holeBoard}
+                  onStart={() => restart()}
+                  onPractice={() => restart(true)}
+                />
+              ) : null}
+              {past && ui.phase === 'gameover' && saveOpen ? (
+                <PastResultCard
+                  hole={past}
+                  tries={last?.n ?? ui.tries}
+                  practice={ui.practice}
+                  solved={pastPlay?.progress?.solved ? { ...pastPlay.progress.solved, sent: pastPlay.progress.sent } : null}
+                  board={holeBoard}
+                  onSent={() => setBoardVersion((v) => v + 1)}
+                  onPractice={() => restart(true)}
+                  onLeave={() => navigate(gameArchiveHref(SLUG))}
+                />
+              ) : null}
               {today && ui.phase === 'gameover' && saveOpen ? (
                 <DailyResultCard
                   hole={today}

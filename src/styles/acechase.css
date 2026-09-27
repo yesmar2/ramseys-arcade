@@ -711,3 +711,11 @@
   margin: 0;
   text-align: center;
 }
+
+/* A past hole's result that took its record (PastCards.tsx). */
+.acechase-past__news {
+  margin: 0;
+  text-align: center;
+  font-weight: 800;
+  color: var(--panel-accent-ink);
+}

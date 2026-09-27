@@ -267,6 +267,7 @@ export const HOW_TO_PLAY: Record<string, HowToPlay> = {
     scores: [
       { what: 'Your score', pts: 'the tries your first bullseye took', sub: 'fewest wins the day' },
       { what: 'Every try', pts: 'counts', sub: 'even if you leave and come back' },
+      { what: 'A past hole you didn’t play', pts: 'its own board', sub: 'taking its record pays 15 tickets' },
     ],
     ends: 'At your first bullseye. After that, play it again for practice; that doesn’t count.',
     tip: 'Each miss says how far off it was. Double-tap the green, or turn on Slopes, to see which way it runs.',
@@ -282,7 +283,7 @@ export const HOW_TO_PLAY: Record<string, HowToPlay> = {
     scores: [
       { what: 'Your score', pts: 'your best lap today', sub: 'fastest wins the day' },
       { what: 'A cut across the grass', pts: 'no time', sub: 'the lap can’t count' },
-      { what: 'A lap of a past track', pts: 'its own board', sub: 'kept for good, not today’s' },
+      { what: 'A lap of a past track', pts: 'its own board', sub: 'taking its record pays 15 tickets' },
     ],
     ends: 'At the line, one lap from the start. Drive it as often as you like.',
     tip: 'Brake in a straight line before a corner, then squeeze back on the gas as it opens out. The blue car is the lap to beat: your best today, or the pace car’s.',

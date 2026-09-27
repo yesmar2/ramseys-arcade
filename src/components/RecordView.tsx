@@ -15,7 +15,7 @@ import {
   type LeaderboardEntry,
   type LeaderboardPeriod,
 } from '../lib/leaderboard'
-import { recordGap, recordShortLabel, recordValue } from '../lib/recordBook'
+import { coursePlayHref, lowerIsBetter, recordGap, recordShortLabel, recordValue } from '../lib/recordBook'
 import {
   nearbyRecords,
   onTheBoard,
@@ -114,13 +114,21 @@ function Stats({ stats }: { stats: Stat[] }) {
   )
 }
 
-function PlayLink({ game }: { game: string }) {
+/** Where a record is played: a daily's track or hole record on that track or hole (today's is the day's game), any other in the game. */
+function playTarget(game: string, name: string, record: { id: string } | null | undefined) {
+  const course = record ? coursePlayHref(game, record) : null
+  if (!course) return { href: gamePlayHref(game), label: `Play ${name}` }
+  return { href: course, label: game === 'hotlap' ? 'Drive this track' : 'Play this hole' }
+}
+
+function PlayLink({ game, record }: { game: string; record?: { id: string } | null }) {
   const device = useDeviceType()
   const meta = getGame(game)
   if (!meta || !gamePlayableOn(meta, device)) return null
+  const target = playTarget(game, meta.name, record)
   return (
-    <a className="gb-cta" href={gamePlayHref(game)}>
-      Play {meta.name}
+    <a className="gb-cta" href={target.href}>
+      {target.label}
     </a>
   )
 }
@@ -174,6 +182,7 @@ function Banner({
   const top = entries[0] ?? null
   const head = recordHeadline(top, period)
   const label = record?.label ?? ''
+  const play = playTarget(game, meta.name, record ?? { id: recordId })
   const style = { '--hero-accent': accent, '--hero-ink': inkOn(accent), '--tile-accent': accent } as CSSProperties
   return (
     <section className="home-banner gb-banner rcd-banner" style={style} aria-labelledby="rcd-title">
@@ -222,8 +231,8 @@ function Banner({
         <PeriodTabs game={game} recordId={recordId} period={period} />
         <div className="home-banner__acts">
           {canPlay ? (
-            <a className="home-banner__cta" href={gamePlayHref(game)}>
-              Play {meta.name}
+            <a className="home-banner__cta" href={play.href}>
+              {play.label}
             </a>
           ) : (
             <p className="gb-device" role="note">
@@ -246,7 +255,7 @@ function Banner({
           />
         </div>
       </div>
-      <a className="home-banner__art gb-banner__art" href={gamePlayHref(game)} tabIndex={-1} aria-hidden="true">
+      <a className="home-banner__art gb-banner__art" href={play.href} tabIndex={-1} aria-hidden="true">
         <GameThumbArt slug={game} accent={accent} />
         {hasGamePreview(game) ? (
           <>
@@ -294,7 +303,7 @@ function YouCard({
           until someone beats it.
         </p>
         <div className="sb-you__foot sb-you__foot--acts">
-          <PlayLink game={game} />
+          <PlayLink game={game} record={record} />
         </div>
       </div>
     )
@@ -324,7 +333,7 @@ function YouCard({
           </p>
         ) : null}
         <div className="sb-you__foot sb-you__foot--acts">
-          <PlayLink game={game} />
+          <PlayLink game={game} record={record} />
         </div>
       </div>
     )
@@ -617,7 +626,7 @@ function Board({
             {groupBoardEmptyTitle(`Nobody’s on it ${period === 'all' ? 'yet' : recordWhen(period)}.`)}
           </p>
           <p className="gb-board__empty-text">{onTheBoard(game, record)} and the record is yours.</p>
-          <PlayLink game={game} />
+          <PlayLink game={game} record={record} />
         </div>
       ) : (
         <>
@@ -638,7 +647,7 @@ function Board({
                   ? 'Record'
                   : e.score === top.score
                     ? 'Tied'
-                    : `${record.unit === 'ms' ? '+' : '−'}${recordGap(record, e.score, top.score)}`
+                    : `${lowerIsBetter(record) ? '+' : '−'}${recordGap(record, e.score, top.score)}`
               return (
                 <li key={e.id} className={`gb-row rcd-row${medal ? ` gb-row--${medal}` : ''}${mine ? ' gb-row--you' : ''}`}>
                   <a className="gb-row__link" href={rankHref(e.name, period)}>

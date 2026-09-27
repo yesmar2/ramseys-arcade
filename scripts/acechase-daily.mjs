@@ -16,8 +16,9 @@
 // last; `plan` does that unless told otherwise.
 //
 // What each day's check found goes in src/games/acechase/dailyChecks.ts beside the plan, for the admin's
-// Hole Book: how many bull settings in all, and its widest windows with a setting in each. Runs on every
-// core but one. Node 23.6+.
+// Hole Book: how many bull settings in all, and its widest windows with a setting in each. Writing the plan
+// also writes the API's src/courseNames.ts (course-names.mjs), each hole's name for its record books: commit
+// that in the API repo too (branch master). Runs on every core but one. Node 23.6+.
 import { Worker, isMainThread, parentPort } from 'node:worker_threads'
 import fs from 'node:fs'
 import os from 'node:os'
@@ -195,6 +196,8 @@ ${checks.slice(0, lines.length).join('\n')}
 `,
     )
     console.log(`wrote ${lines.length} days to ${PLAN.pathname}, and their checks (${played} greens played)`)
+    // The holes' names, for the API's record books.
+    await (await import('./course-names.mjs')).writeCourseNames()
   }
 
   if (mode === 'explore') {

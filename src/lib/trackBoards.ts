@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { detectDeviceType } from './device'
 import { api, getClaimToken, normalizePlayerName } from './leaderboard'
+import { noteTicketsPaid } from './tickets'
 
 /*
  * Track records (the API's trackLaps.ts). Every Hot Lap track keeps a board of its own for good. On its
@@ -42,6 +43,8 @@ export type TrackLapResult = {
   drivers: number
   record: { name: string; score: number }
   tookRecord: boolean
+  /** What taking the record paid, the first time this track's was taken: the API's RECORD_TICKETS. */
+  tickets?: { earned: number; balance: number }
 }
 
 const cleanName = (name: string) => normalizePlayerName(name)
@@ -121,7 +124,8 @@ export async function saveTrackLap(track: number, name: string, score: number, r
     method: 'POST',
     body: JSON.stringify({ name: cleaned, score, device: detectDeviceType(), runId, ...(token ? { token } : {}) }),
   })
-  // The archive's records are stale now.
+  // The archive's records are stale now, and taking a record pays: the header's count goes up with it.
   held.clear()
+  noteTicketsPaid(result.tickets)
   return result
 }

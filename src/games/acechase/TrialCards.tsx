@@ -3,9 +3,9 @@ import { gameAccentStyle } from '../../lib/gameAccentStyle'
 import { dailyDay, PLACE_NAME, type TodaysHole } from '../../lib/dailyHole'
 
 /*
- * A day's hole played as practice (/games/acechase/play?hole=day:YYYY-MM-DD): a past day's from the
- * archive, or one ahead of its day from the admin's Hole Book. The card it opens on, and the one a
- * bullseye brings up. Nothing about it is kept.
+ * A day's hole played ahead of its day, on trial (/games/acechase/play?hole=day:YYYY-MM-DD), from the
+ * admin's Hole Book: the card it opens on, and the one a bullseye brings up. Nothing about it is kept. A
+ * past day's hole plays on its own board instead (PastCards.tsx, lib/pastHoles.ts).
  */
 
 /** A past day's, from the archive, rather than one ahead of its day. */

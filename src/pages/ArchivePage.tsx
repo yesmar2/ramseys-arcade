@@ -20,11 +20,11 @@ const BugArchive = lazyPage(() => import('../components/archive/BugArchive').the
 const ARCHIVES: Record<string, { title: string; blurb: string }> = {
   acechase: {
     title: 'Past holes',
-    blurb: 'Every day’s hole since the first, and how it went. Play any of them again: here they’re practice, so they don’t count for boards, tickets or records.',
+    blurb: 'Every day’s hole since the first, and its record. Each hole keeps its board for good: if you didn’t play one on its day, your first bullseye on it goes on its board, and taking a hole’s record pays 15 tickets.',
   },
   hotlap: {
     title: 'Past tracks',
-    blurb: 'Every day’s track since the first, and its record. Each track keeps its board for good: drive any of them again and your best lap goes on it. Points and tickets are for today’s track.',
+    blurb: 'Every day’s track since the first, and its record. Each track keeps its board for good: drive any of them again and your best lap goes on it, and taking a track’s record pays 15 tickets.',
   },
   findbug: {
     title: 'Past days',

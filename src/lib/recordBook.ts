@@ -1,7 +1,9 @@
 import { getGame, isGameListed } from '../data/games'
+import { gamePlayHref } from '../hooks/useHashRoute'
 import { normalizePlayerName } from './leaderboard'
 import { numberWord } from './numberWord'
 import { GAMES_WITH_RECORDS, type RecordGame, type RecordSummary } from './records'
+import { boardToday } from './scoreboard'
 
 /*
  * The record books' arithmetic and words: what a record's number means (a
@@ -11,6 +13,60 @@ import { GAMES_WITH_RECORDS, type RecordGame, type RecordSummary } from './recor
  */
 
 type RecordLike = { id: string; unit: 'ms' | 'count' }
+
+/* ---------- a track's or a hole's record ---------- */
+
+/**
+ * The dailies' courses: each Hot Lap track keeps its fastest lap, and each Ace Chase hole its fewest tries,
+ * a record a track or hole (track-3, hole-12), named after it and kept for good from its day on.
+ */
+const COURSE_FIRST_DAY: Partial<Record<string, string>> = { hotlap: '2026-09-26', acechase: '2026-09-25' }
+
+/** Which track or hole a record is, or null for any other. */
+export function courseNumber(record: { id: string }): number | null {
+  const match = /^(?:track|hole)-(\d+)$/.exec(record.id)
+  return match ? Number(match[1]) : null
+}
+
+/** A track's or a hole's own record, rather than one of a run's. */
+export function isCourseRecord(record: { id: string }): boolean {
+  return courseNumber(record) != null
+}
+
+/** Whether less is better: a time, or a hole's tries. */
+export function lowerIsBetter(record: RecordLike): boolean {
+  return record.unit === 'ms' || record.id.startsWith('hole-')
+}
+
+/** A course's name alone, from its record's label: Seneca Glen, from #3 Seneca Glen. */
+export function courseName(record: { label: string }): string {
+  return record.label.replace(/^#\d+\s+/, '')
+}
+
+/** A lap to the hundredth, as Hot Lap's own boards print one: 45.18s, 1:29.78. */
+function lapTime(ms: number): string {
+  const hundredths = Math.round(Math.max(0, ms) / 10)
+  if (hundredths < 6000) return `${(hundredths / 100).toFixed(2)}s`
+  const minutes = Math.floor(hundredths / 6000)
+  return `${minutes}:${((hundredths - minutes * 6000) / 100).toFixed(2).padStart(5, '0')}`
+}
+
+const tries = (n: number) => `${n.toLocaleString()} ${n === 1 ? 'try' : 'tries'}`
+
+/**
+ * Where a course's record is played: today's track or hole is the day's game; one whose day has gone is
+ * played on its own (?track=, ?hole=), where a lap or result goes on its board and so into its record.
+ */
+export function coursePlayHref(game: string, record: { id: string }, now = Date.now()): string | null {
+  const n = courseNumber(record)
+  const first = COURSE_FIRST_DAY[game]
+  if (n == null || !first) return null
+  const [y, m, d] = first.split('-').map(Number)
+  const today = Math.round((boardToday(now) - Date.UTC(y!, m! - 1, d!)) / 86_400_000) + 1
+  if (n === today) return gamePlayHref(game)
+  if (game === 'hotlap') return `${gamePlayHref(game)}?track=${n}`
+  return `${gamePlayHref(game)}?hole=day:${new Date(Date.UTC(y!, m! - 1, d! + n - 1)).toISOString().slice(0, 10)}`
+}
 
 /** The books on show: every game with records, less the hidden and on-deck ones. */
 export const VISIBLE_RECORD_GAMES: readonly RecordGame[] = GAMES_WITH_RECORDS.filter((g) => isGameListed(g))
@@ -43,8 +99,10 @@ const COUNT_WORDS: Record<string, [string, string]> = {
   'chasers-eaten': ['chaser', 'chasers'],
 }
 
-/** A record's number in its own terms: 2:51.1, ×36, 19 days, 13 in a row, 33 tickets. */
+/** A record's number in its own terms: 2:51.1, ×36, 19 days, 13 in a row, 33 tickets, a lap's 45.18s, 2 tries. */
 export function recordValue(record: RecordLike, score: number): string {
+  if (record.id.startsWith('track-')) return lapTime(score)
+  if (record.id.startsWith('hole-')) return tries(score)
   if (record.unit === 'ms') return recordTime(score)
   if (record.id === 'highest-combo') return `×${score}`
   if (record.id === 'longest') return `length ${score}`
@@ -54,9 +112,9 @@ export function recordValue(record: RecordLike, score: number): string {
   return score.toLocaleString()
 }
 
-/** The number beside its own label, which already says what it counts: 46, not 46 in a row. */
+/** The number beside its own label, which already says what it counts: 46, not 46 in a row. A track or hole's label is its name, so its number says what it is. */
 export function recordBrief(record: RecordLike, score: number): string {
-  if (record.unit === 'ms' || record.id === 'highest-combo') return recordValue(record, score)
+  if (record.unit === 'ms' || record.id === 'highest-combo' || isCourseRecord(record)) return recordValue(record, score)
   return score.toLocaleString()
 }
 
@@ -66,6 +124,8 @@ export function recordBrief(record: RecordLike, score: number): string {
  * 7.7s, whatever the milliseconds underneath make it.
  */
 export function recordGap(record: RecordLike, a: number, b: number): string {
+  if (record.id.startsWith('track-')) return lapTime(Math.abs(Math.round(a / 10) - Math.round(b / 10)) * 10)
+  if (record.id.startsWith('hole-')) return tries(Math.abs(a - b))
   if (record.unit === 'ms') return recordTime(Math.abs(Math.round(a / 100) - Math.round(b / 100)) * 100)
   const gap = Math.abs(a - b)
   const words = COUNT_WORDS[record.id]
@@ -75,16 +135,20 @@ export function recordGap(record: RecordLike, a: number, b: number): string {
 
 /** How far a result is from the record, as a share of it, for putting the nearest first. */
 function shareOff(record: RecordLike, you: number, top: number): number {
-  const off = record.unit === 'ms' ? you - top : top - you
+  const off = lowerIsBetter(record) ? you - top : top - you
   return off / Math.max(1, Math.abs(top))
 }
 
 /* ---------- a book ---------- */
 
-export type RecordKind = 'streaks' | 'run' | 'clock'
+export type RecordKind = 'course' | 'streaks' | 'run' | 'clock'
 
-/** Streaks carry on across runs or within one; the clock is time to a milestone; the rest are the most in a run. */
+/**
+ * A track's or hole's own record is a course's; streaks carry on across runs or within one; the clock is
+ * time to a milestone; the rest are the most in a run.
+ */
 export function recordKind(record: RecordLike): RecordKind {
+  if (isCourseRecord(record)) return 'course'
   if (record.id.endsWith('streak')) return 'streaks'
   if (record.unit === 'ms') return 'clock'
   return 'run'
@@ -111,9 +175,22 @@ const CLOCKS: Partial<Record<string, ClockBook>> = {
 }
 
 const GROUPS: Record<RecordKind, { title: string; sub: string }> = {
+  course: { title: 'Course records', sub: 'The best on each one, from its day on.' },
   streaks: { title: 'Streaks', sub: 'Days played in a row, and strong runs in a row.' },
   run: { title: 'Best in a run', sub: 'The most anyone has managed in a single run.' },
   clock: { title: 'Against the clock', sub: 'The fastest times.' },
+}
+
+/** A daily's own courses: each track's fastest lap, or each hole's fewest tries. */
+const COURSES: Partial<Record<string, { title: string; sub: string }>> = {
+  hotlap: {
+    title: 'Track records',
+    sub: 'Each track’s fastest lap. Its board stays open after its day, so a record can fall any time.',
+  },
+  acechase: {
+    title: 'Hole records',
+    sub: 'Each hole’s fewest tries. A player’s first result on a hole is their only one, on its day or after.',
+  },
 }
 
 export type RecordGroup = {
@@ -131,18 +208,22 @@ export function recordShortLabel(game: string, record: RecordLike & { label: str
   return clock ? clock.short(record.label) : record.label
 }
 
-/** A book's records in its three groups: streaks, best in a run, then the clock. */
+/**
+ * A book's records in its groups: a daily's tracks or holes (the newest first), then streaks, best in a
+ * run, and the clock.
+ */
 export function recordGroups(game: string, records: RecordSummary[]): RecordGroup[] {
-  const order: RecordKind[] = ['streaks', 'run', 'clock']
+  const order: RecordKind[] = ['course', 'streaks', 'run', 'clock']
   return order
     .map((kind) => {
-      const clock = kind === 'clock' ? CLOCKS[game] : undefined
+      const named = kind === 'clock' ? CLOCKS[game] : kind === 'course' ? COURSES[game] : undefined
+      const mine = records.filter((r) => recordKind(r) === kind)
       return {
         kind,
-        title: clock?.title ?? GROUPS[kind].title,
-        sub: clock?.sub ?? GROUPS[kind].sub,
-        records: records.filter((r) => recordKind(r) === kind),
-        short: clock?.short ?? ((label: string) => label),
+        title: named?.title ?? GROUPS[kind].title,
+        sub: named?.sub ?? GROUPS[kind].sub,
+        records: kind === 'course' ? mine.sort((a, b) => (courseNumber(b) ?? 0) - (courseNumber(a) ?? 0)) : mine,
+        short: kind === 'clock' ? (CLOCKS[game]?.short ?? ((label: string) => label)) : (label: string) => label,
       }
     })
     .filter((group) => group.records.length > 0)
@@ -150,17 +231,21 @@ export function recordGroups(game: string, records: RecordSummary[]): RecordGrou
 
 /**
  * The record on a book's cover: the game's own before the streaks every book
- * has, and among times the hardest milestone.
+ * has, and among times the hardest milestone. A daily's is its newest track
+ * or hole with a name on it.
  */
 export function coverRecord(records: RecordSummary[]): RecordSummary | null {
   const held = records.filter((r) => r.top)
+  const courses = held
+    .filter((r) => recordKind(r) === 'course')
+    .sort((a, b) => (courseNumber(b) ?? 0) - (courseNumber(a) ?? 0))
   const runs = held.filter((r) => recordKind(r) === 'run')
   const own = held.filter(
     (r) => recordKind(r) === 'streaks' && r.id !== 'play-days-streak' && r.id !== 'threshold-streak',
   )
   const clocks = held.filter((r) => recordKind(r) === 'clock').reverse()
   const threshold = held.filter((r) => r.id === 'threshold-streak')
-  for (const pool of [runs, own, clocks, threshold, held]) {
+  for (const pool of [courses, runs, own, clocks, threshold, held]) {
     if (pool[0]) return pool[0]
   }
   return null
@@ -234,11 +319,12 @@ export function bookLede(game: string, records: RecordSummary[]): string {
   const held = records.filter((r) => r.top).length
   const kinds = recordGroups(game, records).map((g) => g.kind)
   const parts: Record<RecordKind, string> = {
+    course: game === 'hotlap' ? 'fastest lap of every track' : game === 'acechase' ? 'fewest tries at every hole' : 'best on every course',
     clock: (CLOCKS[game]?.title ?? 'fastest times').toLowerCase(),
     run: 'best single runs',
     streaks: 'longest streaks',
   }
-  const order: RecordKind[] = ['clock', 'run', 'streaks']
+  const order: RecordKind[] = ['course', 'clock', 'run', 'streaks']
   const named = order.filter((k) => kinds.includes(k)).map((k) => parts[k])
   const list = named.length > 1 ? `${named.slice(0, -1).join(', ')} and ${named[named.length - 1]}` : named[0]
   const written =
@@ -271,7 +357,7 @@ export function closestToInk(books: { game: string; records: RecordSummary[] }[]
         off:
           you.score === top.score
             ? `Tied with ${top.name}`
-            : record.unit === 'ms'
+            : lowerIsBetter(record)
               ? `${gap} off ${top.name}`
               : `${gap} short of ${top.name}’s ${recordValue(record, top.score)}`,
       })

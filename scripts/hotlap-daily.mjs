@@ -17,7 +17,8 @@
 // line, so the same line always gets the same hills.
 //
 // Every command that writes the plan also writes the API's src/hotlapPace.ts, each day's blue car, which
-// the API pays laps by (its ticketLadders.ts): commit that in the API repo too (branch master).
+// the API pays laps by (its ticketLadders.ts), and its src/courseNames.ts (course-names.mjs), each track's
+// name for the record books: commit both in the API repo too (branch master).
 import fs from 'node:fs'
 
 const COURSES = new URL('../src/games/hotlap/courses.ts', import.meta.url)
@@ -70,6 +71,8 @@ ${lines.join('\n')}
 `
   fs.writeFileSync(PLAN, text)
   writeApiPace(entries)
+  // The tracks' names, for the API's record books.
+  void import('./course-names.mjs').then((m) => m.writeCourseNames()).catch((err) => console.error('course names:', err))
 }
 
 /**

@@ -1,7 +1,7 @@
 import { getGame } from '../data/games'
 import { avatarWashColor, resolveAvatar } from './avatars'
 import type { LeaderboardEntry, LeaderboardPeriod, YouEntry } from './leaderboard'
-import { recordBrief, recordGap, recordKind, recordTime, recordValue, type RecordKind } from './recordBook'
+import { courseName, recordBrief, recordGap, recordKind, recordTime, recordValue, type RecordKind } from './recordBook'
 import type { RecordDef, RecordSummary } from './records'
 import { boardToday, ordinal, type Stat } from './scoreboard'
 
@@ -67,8 +67,10 @@ export function recordBetter(record: Rec, a: number, b: number): boolean {
   return record.direction === 'lower' ? a < b : a > b
 }
 
-/** What beats a result: under 3:51.2, or 13 in a row. */
+/** What beats a result: under 3:51.2, or 13 in a row, or a lap under 45.18s, or 2 tries or fewer. */
 export function recordBeat(record: Rec, score: number): string {
+  if (record.id.startsWith('track-')) return `under ${recordValue(record, score)}`
+  if (record.id.startsWith('hole-')) return score <= 1 ? 'an ace, to tie it' : `${recordValue(record, score - 1)} or fewer`
   return record.unit === 'ms' ? `under ${recordTime(score)}` : recordValue(record, score + 1)
 }
 
@@ -104,7 +106,11 @@ export function recordRule(game: string, record: Rec, period: LeaderboardPeriod,
   const kind = recordKind(record)
   let subject: string
   let qualifier = ''
-  if (kind === 'clock') {
+  if (kind === 'course') {
+    subject = record.id.startsWith('track-')
+      ? `The fastest lap of ${courseName(record)} anyone has driven`
+      : `The fewest tries anyone has needed at ${courseName(record)}`
+  } else if (kind === 'clock') {
     const verb = game === 'asteroids' ? 'cleared' : game === 'snake' ? 'grown to' : 'reached'
     subject = `The fastest anyone has ${verb} ${milestone(game, record.label)}`
     qualifier = game === 'asteroids' ? 'timed from the wave’s start' : 'timed from the start of the run'
@@ -125,6 +131,7 @@ export function recordRule(game: string, record: Rec, period: LeaderboardPeriod,
 /** What puts a player on a record's board at all: Clear wave 12 once. */
 export function onTheBoard(game: string, record: Rec): string {
   const kind = recordKind(record)
+  if (kind === 'course') return record.id.startsWith('track-') ? 'Drive a lap of it' : 'Hit the bullseye on it'
   if (kind === 'clock') return `${game === 'asteroids' ? 'Clear' : 'Reach'} ${milestone(game, record.label)} once`
   if (record.id === 'play-days-streak') return 'Play one day'
   if (record.id === 'threshold-streak' && threshold(record.label)) return `Score over ${threshold(record.label)} once`
@@ -566,17 +573,18 @@ export function placeStoryLabels(
 
 /* ---------- the book around it ---------- */
 
-const GROUP_ORDER: Record<RecordKind, number> = { streaks: 0, run: 1, clock: 2 }
+const GROUP_ORDER: Record<RecordKind, number> = { course: 0, streaks: 1, run: 2, clock: 3 }
 
 /**
- * The records beside this one in its book: its neighbours on the clock, or
- * the rest of its group, made up to five from the book's other records.
+ * The records beside this one in its book: its neighbours on the clock or
+ * among the tracks or holes, or the rest of its group, made up to five from
+ * the book's other records.
  */
 export function nearbyRecords(record: Rec, book: RecordSummary[]): RecordSummary[] {
   const kind = recordKind(record)
   const group = book.filter((r) => recordKind(r) === kind)
   const at = group.findIndex((r) => r.id === record.id)
-  let near = kind === 'clock' && at >= 0 ? group.slice(Math.max(0, at - 2), at + 3) : group
+  let near = (kind === 'clock' || kind === 'course') && at >= 0 ? group.slice(Math.max(0, at - 2), at + 3) : group
   if (near.length < 5) {
     const rest = book
       .filter((r) => !near.includes(r))
