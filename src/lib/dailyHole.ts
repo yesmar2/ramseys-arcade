@@ -1,4 +1,5 @@
 import { dailyHoleDef, dailyNumber, plannedPick, type DailyPick } from '../games/acechase/daily'
+import { announceSecrets, type SecretFound } from './secrets'
 import { DAILY_PLAN } from '../games/acechase/dailyPlan'
 import type { PathPoint, Shot, ShotEnd } from '../games/acechase/game'
 import type { HoleDef, Style } from '../games/acechase/physics'
@@ -241,10 +242,12 @@ export function syncDaily(force = false): Promise<void> {
 }
 
 async function sendResult(day: string, solved: DailySolved, token: string) {
-  const reply = await api<DailyServer>('/daily-hole/results', {
+  const reply = await api<DailyServer & { secrets?: SecretFound[] }>('/daily-hole/results', {
     method: 'POST',
     body: JSON.stringify({ day, tries: solved.tries, pattern: solved.pattern, device: detectDeviceType() }),
   })
+  // Hole in One, on the first try (lib/secrets.ts).
+  announceSecrets(reply.secrets)
   const p = dayProgress(day)
   if (p) saveProgress(day, { ...p, sent: true })
   if (reply.day === dailyDay()) apply(reply, token)

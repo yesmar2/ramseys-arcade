@@ -1,4 +1,5 @@
 import { Suspense, useEffect } from 'react'
+import { EasterEggs } from './components/EasterEggs'
 import { defaultPeriod } from './lib/defaultPeriod'
 import { Footer } from './components/Footer'
 import { PageShell } from './components/PageShell'
@@ -186,9 +187,12 @@ function App() {
   }, [musicSlug])
 
   return (
-    <Suspense fallback={<RouteFallback game={onGameScreen} />}>
-      <Screen route={route} />
-    </Suspense>
+    <>
+      <Suspense fallback={<RouteFallback game={onGameScreen} />}>
+        <Screen route={route} />
+      </Suspense>
+      <EasterEggs />
+    </>
   )
 }
 

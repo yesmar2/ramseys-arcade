@@ -27,7 +27,8 @@ import {
 } from '../lib/profileMath'
 import { metalTone, summarizeTrophies, trophyCase, trophyTone, type TrophyAward, type TrophyCaseKind } from '../lib/trophies'
 import { BackChevronIcon } from './PageBackLink'
-import { EventCup, HuntSetJar, MonthlyTrophyCup, TopTenRibbon, WeeklyMedal } from './TrophyArt'
+import { EventCup, HuntSetJar, MonthlyTrophyCup, SecretArt, SecretUnknown, TopTenRibbon, WeeklyMedal } from './TrophyArt'
+import { secretByNumber, SECRETS } from '../lib/secrets'
 
 function Skel({ w }: { w: string }) {
   return <span className="skel-line pcard__skel" style={{ '--skel-w': w } as CSSProperties} aria-hidden="true" />
@@ -173,6 +174,7 @@ function ShareBar({
 
 /** A kind of trophy as the case draws it, in the shelf's line art. */
 function CaseArt({ kind }: { kind: TrophyCaseKind }) {
+  if (kind.period === 'secret') return <SecretArt n={kind.secret ?? 0} size="md" />
   if (kind.period === 'event') return <EventCup size="md" />
   if (kind.period === 'hunt') return <HuntSetJar size="md" />
   const tone = kind.period === 'monthly' ? 'monthly' : 'weekly'
@@ -184,6 +186,10 @@ function CaseArt({ kind }: { kind: TrophyCaseKind }) {
 function caseWords(kind: TrophyCaseKind): string {
   const n = kind.count
   const times = n === 1 ? '' : n === 2 ? ', twice' : `, ${n} times`
+  if (kind.period === 'secret') {
+    const secret = secretByNumber(kind.secret ?? 0)
+    return secret ? `${secret.name}: ${secret.says}` : 'A secret'
+  }
   if (kind.period === 'event') return n === 1 ? 'An event won' : `${n} events won`
   if (kind.period === 'hunt') return n === 1 ? 'A full month of the bug hunt' : `${n} full months of the bug hunt`
   const span = kind.period === 'monthly' ? 'a month' : 'a week'
@@ -193,20 +199,25 @@ function caseWords(kind: TrophyCaseKind): string {
 
 /**
  * The trophy case along the foot of the card: every kind of trophy the player has won, a tile each in its
- * own colour with how many, the proudest first, and the way down to the shelf that has them all.
+ * own colour with how many, the proudest first, and the way down to the shelf that has them all. On your
+ * own card, a question mark for the secrets you haven't found (lib/secrets.ts).
  */
 function TrophyCase({
   trophies,
+  isSelf,
   href,
   onOpen,
 }: {
   trophies: TrophyAward[]
+  isSelf: boolean
   href: string
   onOpen: (e: MouseEvent<HTMLAnchorElement>) => void
 }) {
   const kinds = trophyCase(trophies)
-  if (!kinds.length) return null
+  const hidden = isSelf ? SECRETS.length - kinds.filter((k) => k.period === 'secret').length : 0
+  if (!kinds.length && hidden <= 0) return null
   const total = trophies.length
+  const hiddenWords = hidden === 1 ? 'A secret still hidden' : `${hidden} secrets still hidden`
   return (
     <div className="pcard-case">
       <span className="pcard-case__label">Trophy case</span>
@@ -225,9 +236,20 @@ function TrophyCase({
             </li>
           )
         })}
+        {hidden > 0 ? (
+          <li className="pcard-case__tile pcard-case__tile--hidden trophy-tone--hidden" title={hiddenWords}>
+            <SecretUnknown size="md" />
+            {hidden > 1 ? (
+              <span className="pcard-case__count" aria-hidden="true">
+                ×{hidden}
+              </span>
+            ) : null}
+            <span className="visually-hidden">{hiddenWords}</span>
+          </li>
+        ) : null}
       </ul>
       <a className="pcard-case__all" href={href} onClick={onOpen}>
-        {total === 1 ? 'See the trophy' : `See all ${total} trophies`} ›
+        {total === 0 ? 'See the shelf' : total === 1 ? 'See the trophy' : `See all ${total} trophies`} ›
       </a>
     </div>
   )
@@ -524,8 +546,8 @@ export function PlayerCard({
           })}
         </nav>
       </div>
-      {trophies?.length ? (
-        <TrophyCase trophies={trophies} href={rankHref(isSelf ? undefined : name, period, 'trophies')} onOpen={toShelf} />
+      {trophies && (trophies.length || isSelf) ? (
+        <TrophyCase trophies={trophies} isSelf={isSelf} href={rankHref(isSelf ? undefined : name, period, 'trophies')} onOpen={toShelf} />
       ) : null}
       <div className="home-banner__strip pcard__strip">
         <span className="pcard__fact">

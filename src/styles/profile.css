@@ -616,6 +616,13 @@ html[data-theme='dark'] .pf {
   border: 1px solid color-mix(in srgb, var(--tr-tone) 50%, transparent);
 }
 
+/* Your own secrets not found yet: an empty place with a question mark. */
+.pcard-case__tile--hidden {
+  background: none;
+  border-style: dashed;
+  border-color: color-mix(in srgb, var(--banner-ink) 30%, transparent);
+}
+
 /* The shelf's art, a little smaller than on the shelf. */
 .pcard-case__tile .trophy-art svg {
   width: 2.3rem;
@@ -1511,6 +1518,26 @@ html[data-theme='dark'] .pbest__flag--ten {
 .pshelf__plinth--lit {
   background: color-mix(in srgb, var(--tr-tone) 14%, var(--surface));
   border-color: color-mix(in srgb, var(--tr-tone) 34%, transparent);
+}
+
+/* The secrets you haven't found: a row of small empty places, and how many. */
+.pshelf__hidden {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem 0.9rem;
+}
+
+.pshelf__hidden-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.pshelf__plinth--small {
+  width: 2.6rem;
+  height: 2.6rem;
+  border-radius: 0.8rem;
 }
 
 .pshelf__plinth--empty {

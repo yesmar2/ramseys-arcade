@@ -1,8 +1,9 @@
 /*
  * Trophies: line art in the house style (an outline and a faint fill of the
  * same colour), each in its tone. The tones are the arcade's metals, plus
- * teal for a week's top ten, violet for a month's and leaf green for a bug
- * hunt set; the dark theme lifts them so they read on the dark surfaces.
+ * teal for a week's top ten, violet for a month's, leaf green for a bug
+ * hunt set and rose for a secret; the dark theme lifts them so they read on
+ * the dark surfaces. A secret not found yet is drawn in the muted ink.
  */
 
 :root {
@@ -12,6 +13,7 @@
   --tr-week: #15806f;
   --tr-month: #7a4fd0;
   --tr-hunt: #3f8a36;
+  --tr-secret: #c13b7f;
 }
 
 html[data-theme='dark'] {
@@ -21,6 +23,7 @@ html[data-theme='dark'] {
   --tr-week: #45d3ba;
   --tr-month: #b99cff;
   --tr-hunt: #86d77f;
+  --tr-secret: #ff8cc8;
 }
 
 .trophy-tone--gold {
@@ -45,6 +48,14 @@ html[data-theme='dark'] {
 
 .trophy-tone--hunt {
   --tr-tone: var(--tr-hunt);
+}
+
+.trophy-tone--secret {
+  --tr-tone: var(--tr-secret);
+}
+
+.trophy-tone--hidden {
+  --tr-tone: var(--muted);
 }
 
 .trophy-art {

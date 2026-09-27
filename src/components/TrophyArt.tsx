@@ -6,9 +6,10 @@ import '../styles/trophies.css'
  * The arcade's trophies, drawn the way the house draws its games: an outline
  * with a faint fill of its own colour, on a 48 grid. An event's winner gets a
  * cup; a month's podium a cup with its place on it; a week's podium a medal;
- * the rest of a top ten a rosette with its place; and the all-time podium,
- * which only the boards show, a star. Colour comes from the tone class
- * (trophies.css), so each one follows the theme.
+ * the rest of a top ten a rosette with its place; the all-time podium,
+ * which only the boards show, a star; and each secret (lib/secrets.ts) its
+ * own picture, with a question mark for one not found yet. Colour comes from
+ * the tone class (trophies.css), so each one follows the theme.
  */
 
 export type { MetalTone }
@@ -31,7 +32,7 @@ function Art({ tone, size, children }: { tone: TrophyTone; size: TrophyArtSize; 
 }
 
 /** A place written on a trophy; too small to read at list size, so left off there unless it is the trophy's main mark. */
-function Numeral({ n, x = 24, y, size }: { n: number; x?: number; y: number; size: number }) {
+function Numeral({ n, x = 24, y, size }: { n: number | string; x?: number; y: number; size: number }) {
   return (
     <text className="trophy-art__num" x={x} y={y} textAnchor="middle" fontSize={size}>
       {n}
@@ -130,6 +131,112 @@ export function AllTimeStar({ rank, size = 'sm' }: { rank: number; size?: Extrac
         d="M24 4l5.5 13.3 14.3.9-10.9 9.9 3.3 14.1L24 34.6l-12.2 7.6 3.3-14.1-10.9-9.9 14.3-.9Z"
       />
       <Numeral n={rank} y={size === 'sm' ? 31.2 : 29.6} size={size === 'sm' ? 16 : 11} />
+    </Art>
+  )
+}
+
+/** Each secret's picture, by its number (lib/secrets.ts). */
+const SECRET_ART: Record<number, ReactNode> = {
+  // Night Owl: an owl's face, ears up, eyes wide.
+  1: (
+    <>
+      <path className="trophy-art__fill trophy-art__fill--soft" d="M12 17 15 7l7 7h4l7-7 3 10v12a12 12 0 0 1-24 0Z" />
+      <circle className="trophy-art__fill" cx="19" cy="23" r="4.6" />
+      <circle className="trophy-art__fill" cx="29" cy="23" r="4.6" />
+      <path d="M22.4 29.5 24 32.6l1.6-3.1Z" />
+    </>
+  ),
+  // Early Bird: the sun coming up, and a bird out already.
+  2: (
+    <>
+      <path className="trophy-art__fill" d="M11 35a13 13 0 0 1 26 0" />
+      <path d="M6 35h36M24 17v-5M13 22.5l-3.4-3.4M35 22.5l3.4-3.4" />
+      <path d="M27.5 10.5q2-2.2 4 0q2-2.2 4 0" />
+    </>
+  ),
+  // Grand Tour: the whole world.
+  3: (
+    <>
+      <circle className="trophy-art__fill trophy-art__fill--soft" cx="24" cy="24" r="14" />
+      <path d="M24 10c-4.6 3.6-7 8.4-7 14s2.4 10.4 7 14c4.6-3.6 7-8.4 7-14s-2.4-10.4-7-14ZM10 24h28M12.4 17h23.2M12.4 31h23.2" />
+    </>
+  ),
+  // Palindrome: the same both ways.
+  4: (
+    <>
+      <path d="M11 17h24M30 12l5 5-5 5M37 31H13M18 26l-5 5 5 5" />
+      <circle className="trophy-art__fill" cx="24" cy="24" r="2.4" />
+    </>
+  ),
+  // Lucky Sevens: three of them in a row, and the handle.
+  5: (
+    <>
+      <rect className="trophy-art__fill trophy-art__fill--soft" x="6" y="13" width="31" height="22" rx="4" />
+      <Numeral n={7} x={13.5} y={29} size={11} />
+      <Numeral n={7} x={21.5} y={29} size={11} />
+      <Numeral n={7} x={29.5} y={29} size={11} />
+      <path d="M41 17v12M37 27h4" />
+      <circle className="trophy-art__fill" cx="41" cy="14.5" r="2.6" />
+    </>
+  ),
+  // Photo Finish: the chequered flag.
+  6: (
+    <>
+      <path d="M13 42V7" />
+      <path className="trophy-art__fill trophy-art__fill--soft" d="M13 8h24v17H13Z" />
+      <path className="trophy-art__fill" d="M13 8h6v5.7h-6ZM25 8h6v5.7h-6ZM19 13.7h6v5.6h-6ZM31 13.7h6v5.6h-6ZM13 19.3h6V25h-6ZM25 19.3h6V25h-6Z" />
+    </>
+  ),
+  // So Close: an arrow just off the middle.
+  7: (
+    <>
+      <circle className="trophy-art__fill trophy-art__fill--soft" cx="21" cy="27" r="14" />
+      <circle cx="21" cy="27" r="8.5" />
+      <circle className="trophy-art__fill" cx="21" cy="27" r="3" />
+      <path d="M25.5 23.5 40 9M34.5 9H40v5.5" />
+    </>
+  ),
+  // Hole in One: the flag, and the ball in the cup.
+  8: (
+    <>
+      <path d="M26 39V8" />
+      <path className="trophy-art__fill" d="M26 9l12 4.5L26 18Z" />
+      <ellipse className="trophy-art__fill trophy-art__fill--soft" cx="22" cy="39" rx="12" ry="3.6" />
+      <circle cx="20" cy="38" r="2.4" />
+    </>
+  ),
+  // Up Up Down Down: the pad the code goes in on.
+  9: (
+    <>
+      <path className="trophy-art__fill trophy-art__fill--soft" d="M19 8h10v11h11v10H29v11H19V29H8V19h11Z" />
+      <path d="M24 11.5l-2.4 3h4.8ZM24 36.5l-2.4-3h4.8ZM11.5 24l3-2.4v4.8ZM36.5 24l-3-2.4v4.8Z" />
+    </>
+  ),
+  // Blip Blip: the blip, and its rings.
+  10: (
+    <>
+      <circle className="trophy-art__fill" cx="24" cy="24" r="4.5" />
+      <circle cx="24" cy="24" r="10.5" />
+      <circle cx="24" cy="24" r="17" strokeDasharray="3.5 3.5" />
+    </>
+  ),
+}
+
+/** A secret trophy: its own picture, in the secrets' rose. */
+export function SecretArt({ n, size = 'md' }: { n: number; size?: TrophyArtSize }) {
+  return (
+    <Art tone="secret" size={size}>
+      {SECRET_ART[n] ?? <Numeral n="?" y={32} size={24} />}
+    </Art>
+  )
+}
+
+/** A secret not found yet: only a question mark. */
+export function SecretUnknown({ size = 'md' }: { size?: TrophyArtSize }) {
+  return (
+    <Art tone="hidden" size={size}>
+      <circle cx="24" cy="24" r="16" strokeDasharray="4 4" />
+      <Numeral n="?" y={32} size={24} />
     </Art>
   )
 }

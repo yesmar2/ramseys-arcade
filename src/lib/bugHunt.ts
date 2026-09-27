@@ -1,4 +1,5 @@
 import { games, isListedGame } from '../data/games'
+import { announceSecrets, type SecretFound } from './secrets'
 import { noteTicketsPaid } from './tickets'
 import {
   aboutHref,
@@ -452,6 +453,8 @@ type ServerHunt = {
   completed?: ServerCompleted
   /** Tickets the day's bug paid, when this find was the one that caught it. */
   tickets?: { earned: number; balance: number }
+  /** A secret the catch found (lib/secrets.ts): Early Bird. */
+  secrets?: SecretFound[]
 }
 
 export type HuntServer = {
@@ -496,7 +499,10 @@ function emit() {
  */
 function apply(reply: ServerHunt, token: string | null) {
   const same = token === getSessionToken()
-  if (same) noteTicketsPaid(reply.tickets)
+  if (same) {
+    noteTicketsPaid(reply.tickets)
+    announceSecrets(reply.secrets)
+  }
   const you = same ? reply.you : undefined
   const completed = same && reply.completed
     ? { ...reply.completed, day: reply.day }

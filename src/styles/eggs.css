@@ -1,0 +1,244 @@
+/*
+ * The easter eggs (components/EasterEggs.tsx): the arcade in 8-bit, the logo's blip, and the pop-up for
+ * a secret found (lib/secrets.ts).
+ */
+
+/* ---------- 8-bit mode: a pixel face, square corners and a CRT's scan lines ---------- */
+
+html[data-eightbit] {
+  --font-display: 'Pixelify Sans', ui-monospace, monospace;
+  --font-body: 'Pixelify Sans', ui-monospace, monospace;
+}
+
+html[data-eightbit] body {
+  font-family: var(--font-body);
+  -webkit-font-smoothing: none;
+}
+
+html[data-eightbit] *,
+html[data-eightbit] *::before,
+html[data-eightbit] *::after {
+  border-radius: 0 !important;
+}
+
+html[data-eightbit] body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 2147483000;
+  pointer-events: none;
+  background: repeating-linear-gradient(to bottom, rgba(0, 0, 0, 0.07) 0 1px, transparent 1px 3px);
+}
+
+.eightbit-off {
+  position: fixed;
+  left: max(1rem, env(safe-area-inset-left));
+  bottom: calc(1rem + env(safe-area-inset-bottom));
+  z-index: 90;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.55rem 0.9rem;
+  border: 2px solid var(--ink);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.85rem;
+  box-shadow: 4px 4px 0 var(--ink);
+  cursor: pointer;
+}
+
+.eightbit-off b {
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.eightbit-off:hover,
+.eightbit-off:focus-visible {
+  transform: translate(2px, 2px);
+  box-shadow: 2px 2px 0 var(--ink);
+  outline: none;
+}
+
+/* ---------- the logo: a wobble from the third tap, a blip on the seventh ---------- */
+
+.site-bar__brand.egg-wobble {
+  animation: egg-wobble 0.32s ease-in-out;
+}
+
+@keyframes egg-wobble {
+  25% {
+    transform: rotate(-4deg) scale(1.03);
+  }
+
+  75% {
+    transform: rotate(4deg) scale(1.03);
+  }
+}
+
+.site-bar__brand.egg-blip {
+  position: relative;
+  animation: egg-blip 0.6s cubic-bezier(0.3, 1.6, 0.5, 1);
+}
+
+.site-bar__brand.egg-blip::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 2.2rem;
+  height: 2.2rem;
+  margin: -1.1rem 0 0 -1.1rem;
+  border-radius: 50%;
+  border: 3px solid var(--accent);
+  pointer-events: none;
+  animation: egg-blip-ring 1.1s ease-out forwards;
+}
+
+@keyframes egg-blip {
+  40% {
+    transform: scale(1.18);
+  }
+}
+
+@keyframes egg-blip-ring {
+  from {
+    opacity: 0.9;
+    transform: scale(0.4);
+  }
+
+  to {
+    opacity: 0;
+    transform: scale(4.5);
+  }
+}
+
+/* ---------- a secret found ---------- */
+
+.secret-toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(1.25rem + env(safe-area-inset-bottom));
+  z-index: 95;
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  width: min(26rem, calc(100vw - 2rem));
+  box-sizing: border-box;
+  padding: 0.85rem 2.6rem 0.85rem 0.85rem;
+  border-radius: 1.2rem;
+  background: var(--surface);
+  border: 1px solid color-mix(in srgb, var(--tr-secret) 45%, transparent);
+  box-shadow:
+    0 0 0 4px color-mix(in srgb, var(--tr-secret) 14%, transparent),
+    0 18px 40px -14px rgba(0, 0, 0, 0.45);
+  transform: translateX(-50%);
+  animation: secret-in 0.45s cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+
+@keyframes secret-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 1.5rem) scale(0.96);
+  }
+}
+
+.secret-toast__tile {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 3.8rem;
+  height: 3.8rem;
+  border-radius: 1rem;
+  background: color-mix(in srgb, var(--tr-tone) 16%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--tr-tone) 40%, transparent);
+}
+
+.secret-toast__words {
+  display: grid;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.secret-toast__kicker {
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--tr-secret);
+}
+
+.secret-toast__name {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 800;
+  line-height: 1.15;
+  color: var(--ink);
+}
+
+.secret-toast__says {
+  font-size: 0.85rem;
+  line-height: 1.4;
+  color: var(--muted);
+}
+
+.secret-toast__link {
+  justify-self: start;
+  margin-top: 0.15rem;
+  font-size: 0.85rem;
+  font-weight: 750;
+  color: var(--tr-secret);
+  text-decoration: none;
+}
+
+.secret-toast__link:hover,
+.secret-toast__link:focus-visible {
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+.secret-toast__close {
+  position: absolute;
+  top: 0.45rem;
+  right: 0.5rem;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--muted);
+  font-size: 1.3rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.secret-toast__close:hover,
+.secret-toast__close:focus-visible {
+  background: rgba(var(--ink-rgb), 0.07);
+  color: var(--ink);
+  outline: none;
+}
+
+/* Clear of the phone's tab bar (chrome.css). */
+@media (max-width: 900px) {
+  .secret-toast {
+    bottom: calc(5.6rem + env(safe-area-inset-bottom));
+  }
+
+  .eightbit-off {
+    bottom: calc(5.6rem + env(safe-area-inset-bottom));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .secret-toast,
+  .site-bar__brand.egg-wobble,
+  .site-bar__brand.egg-blip {
+    animation: none;
+  }
+
+  .site-bar__brand.egg-blip::after {
+    animation-duration: 0.01s;
+  }
+}

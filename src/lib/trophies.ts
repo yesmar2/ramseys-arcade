@@ -1,5 +1,5 @@
-/** `hunt`: a month of the bug hunt caught in full (periodKey YYYYMM). */
-export type TrophyPeriod = 'weekly' | 'monthly' | 'event' | 'hunt'
+/** `hunt`: a month of the bug hunt caught in full (periodKey YYYYMM). `secret`: a secret trophy (lib/secrets.ts; periodKey its number). */
+export type TrophyPeriod = 'weekly' | 'monthly' | 'event' | 'hunt' | 'secret'
 
 export type TrophySummary = {
   total: number
@@ -9,12 +9,17 @@ export type TrophySummary = {
   events: number
   /** Full months of the bug hunt. Absent from an API that predates them. */
   sets?: number
+  /** Secret trophies found. Absent from an API that predates them. */
+  secrets?: number
 }
 
 export type MetalTone = 'gold' | 'silver' | 'bronze'
 
-/** The colour a trophy is drawn in: its metal on a podium, else teal for a week's top ten, violet for a month's, and leaf green for a bug hunt set. */
-export type TrophyTone = MetalTone | 'week' | 'month' | 'hunt'
+/**
+ * The colour a trophy is drawn in: its metal on a podium, else teal for a week's top ten, violet for a
+ * month's, leaf green for a bug hunt set and rose for a secret; `hidden`, a secret not found yet.
+ */
+export type TrophyTone = MetalTone | 'week' | 'month' | 'hunt' | 'secret' | 'hidden'
 
 export function metalTone(rank: number): MetalTone {
   return rank === 2 ? 'silver' : rank === 3 ? 'bronze' : 'gold'
@@ -22,6 +27,7 @@ export function metalTone(rank: number): MetalTone {
 
 export function trophyTone(period: TrophyPeriod, rank: number): TrophyTone {
   if (period === 'hunt') return 'hunt'
+  if (period === 'secret') return 'secret'
   if (period === 'event' || rank <= 3) return metalTone(rank)
   return period === 'monthly' ? 'month' : 'week'
 }
@@ -67,6 +73,8 @@ export function invalidateTrophySummaryCache(name?: string) {
 }
 
 export function formatTrophyPeriod(period: TrophyPeriod, periodKey: number) {
+  // A secret's key is its number, not a date.
+  if (period === 'secret') return 'A secret'
   if (period === 'event') {
     const y = Math.floor(periodKey / 10_000)
     const m = Math.floor((periodKey % 10_000) / 100)
@@ -90,6 +98,7 @@ export function formatTrophyPeriod(period: TrophyPeriod, periodKey: number) {
 export function trophyRankLabel(rank: number, period: TrophyPeriod = 'weekly') {
   if (period === 'event') return 'Won'
   if (period === 'hunt') return 'Full set'
+  if (period === 'secret') return 'Secret'
   if (rank === 1) return '#1 global'
   if (rank <= 3) return `#${rank} global`
   return `Top 10 · #${rank}`
@@ -100,18 +109,21 @@ export function summarizeTrophies(trophies: TrophyAward[]) {
   let topTen = 0
   let events = 0
   let sets = 0
+  let secrets = 0
   for (const trophy of trophies) {
     if (trophy.period === 'event') events++
     else if (trophy.period === 'hunt') sets++
+    else if (trophy.period === 'secret') secrets++
     else if (trophy.rank <= 3) podium++
     else topTen++
   }
-  return { total: trophies.length, podium, topTen, events, sets }
+  return { total: trophies.length, podium, topTen, events, sets, secrets }
 }
 
 /**
  * A kind of trophy in a player card's case, with how many of it they've won: event wins; a month's or a
- * week's first, second or third place; a full month of the bug hunt; and a month's or a week's top ten.
+ * week's first, second or third place; a full month of the bug hunt; each secret; and a month's or a
+ * week's top ten.
  */
 export type TrophyCaseKind = {
   key: string
@@ -119,12 +131,15 @@ export type TrophyCaseKind = {
   /** The place it's for: a podium kind's own, or the best of a top-ten kind's. */
   rank: number
   count: number
+  /** A secret's number (lib/secrets.ts): each secret is a kind of its own. */
+  secret?: number
 }
 
-/** Where each kind stands in the case, the proudest first: a win, then podiums, full sets, top tens. */
-function caseOrder(period: TrophyPeriod, rank: number): { key: string; order: number } {
+/** Where each kind stands in the case, the proudest first: a win, then podiums, full sets, secrets, top tens. */
+function caseOrder(period: TrophyPeriod, rank: number, periodKey: number): { key: string; order: number } {
   if (period === 'event') return { key: 'event', order: 0 }
   if (period === 'hunt') return { key: 'hunt', order: 7 }
+  if (period === 'secret') return { key: `secret-${periodKey}`, order: 7 + periodKey / 100 }
   if (period === 'monthly') return rank <= 3 ? { key: `month-${rank}`, order: rank } : { key: 'month-top', order: 8 }
   return rank <= 3 ? { key: `week-${rank}`, order: 3 + rank } : { key: 'week-top', order: 9 }
 }
@@ -133,12 +148,16 @@ function caseOrder(period: TrophyPeriod, rank: number): { key: string; order: nu
 export function trophyCase(trophies: TrophyAward[]): TrophyCaseKind[] {
   const kinds = new Map<string, { kind: TrophyCaseKind; order: number }>()
   for (const t of trophies) {
-    const { key, order } = caseOrder(t.period, t.rank)
+    const { key, order } = caseOrder(t.period, t.rank, t.periodKey)
     const had = kinds.get(key)
     if (had) {
       had.kind.count++
       had.kind.rank = Math.min(had.kind.rank, t.rank)
-    } else kinds.set(key, { kind: { key, period: t.period, rank: t.rank, count: 1 }, order })
+    } else {
+      const kind: TrophyCaseKind = { key, period: t.period, rank: t.rank, count: 1 }
+      if (t.period === 'secret') kind.secret = t.periodKey
+      kinds.set(key, { kind, order })
+    }
   }
   return [...kinds.values()].sort((a, b) => a.order - b.order).map((k) => k.kind)
 }

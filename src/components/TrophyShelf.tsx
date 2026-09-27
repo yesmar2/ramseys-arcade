@@ -3,7 +3,8 @@ import { tournamentCreateHref } from '../hooks/useHashRoute'
 import { ordinal } from '../lib/profileMath'
 import { summarizeTrophies, trophyTone, type TrophyAward } from '../lib/trophies'
 import { medalKind } from './PodiumMedal'
-import { EventCup, HuntSetJar, MonthlyTrophyCup, TopTenRibbon, WeeklyMedal } from './TrophyArt'
+import { secretByNumber, SECRETS } from '../lib/secrets'
+import { EventCup, HuntSetJar, MonthlyTrophyCup, SecretArt, SecretUnknown, TopTenRibbon, WeeklyMedal } from './TrophyArt'
 
 /** Board trophies shown before "Show all": two shelves' worth on a wide screen. */
 const BOARD_SHOWN = 8
@@ -13,6 +14,7 @@ function TrophyIcon({ trophy }: { trophy: TrophyAward }) {
   // An event win is a cup: the whole thing, not a place on a board.
   if (trophy.period === 'event') return <EventCup size="md" />
   if (trophy.period === 'hunt') return <HuntSetJar size="md" />
+  if (trophy.period === 'secret') return <SecretArt n={trophy.periodKey} size="md" />
   if (trophy.period === 'monthly') return kind ? <MonthlyTrophyCup tone={kind} size="md" /> : <TopTenRibbon tone="monthly" rank={trophy.rank} size="md" />
   return kind ? <WeeklyMedal rank={trophy.rank} size="md" /> : <TopTenRibbon tone="weekly" rank={trophy.rank} size="md" />
 }
@@ -24,9 +26,10 @@ function setMonthOf(periodKey: number): string {
   return new Date(y, m - 1, 1).toLocaleDateString('en-US', { month: 'long' })
 }
 
-/** When a trophy was for: a day for an event, the week's Monday, or the month. */
+/** When a trophy was for: a day for an event, the week's Monday, or the month; for a secret, the day it was found. */
 function trophyWhen(t: TrophyAward): string {
   try {
+    if (t.period === 'secret') return new Date(t.awardedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
     if (t.period === 'monthly' || t.period === 'hunt') {
       const y = Math.floor(t.periodKey / 100)
       const m = t.periodKey % 100
@@ -45,6 +48,7 @@ function trophyWhen(t: TrophyAward): string {
 /** What the trophy was won with: 583 pts over 6 games. A bracket is won on matches, not points, so it says nothing. */
 function trophyHaul(t: TrophyAward): string | null {
   if (t.period === 'hunt') return 'All twelve bugs'
+  if (t.period === 'secret') return secretByNumber(t.periodKey)?.says ?? null
   if (t.score <= 0) return null
   const points = `${t.score.toLocaleString()} ${t.score === 1 ? 'pt' : 'pts'}`
   return t.games > 0 ? `${points} over ${t.games} ${t.games === 1 ? 'game' : 'games'}` : points
@@ -53,11 +57,14 @@ function trophyHaul(t: TrophyAward): string | null {
 function Item({ trophy, wide }: { trophy: TrophyAward; wide?: boolean }) {
   const isEvent = trophy.period === 'event'
   const isSet = trophy.period === 'hunt'
+  const isSecret = trophy.period === 'secret'
   const title = isEvent
     ? (trophy.eventTitle ?? 'An event')
     : isSet
       ? `${setMonthOf(trophy.periodKey)}’s full set`
-      : `${ordinal(trophy.rank)} of the ${trophy.period === 'monthly' ? 'month' : 'week'}`
+      : isSecret
+        ? (secretByNumber(trophy.periodKey)?.name ?? 'A secret')
+        : `${ordinal(trophy.rank)} of the ${trophy.period === 'monthly' ? 'month' : 'week'}`
   const when = trophyWhen(trophy)
   const haul = trophyHaul(trophy)
   return (
@@ -68,7 +75,9 @@ function Item({ trophy, wide }: { trophy: TrophyAward; wide?: boolean }) {
       </span>
       <span className="pshelf__words">
         <span className="pshelf__name">{title}</span>
-        <span className="pshelf__when">{isEvent ? `Event won · ${when}` : isSet ? `Bug hunt · ${when}` : when}</span>
+        <span className="pshelf__when">
+          {isEvent ? `Event won · ${when}` : isSet ? `Bug hunt · ${when}` : isSecret ? `Found ${when}` : when}
+        </span>
         {haul ? <span className="pshelf__haul">{haul}</span> : null}
       </span>
     </li>
@@ -109,6 +118,8 @@ export function TrophyShelf({
   const newest = (a: TrophyAward, b: TrophyAward) => b.awardedAt - a.awardedAt || a.rank - b.rank
   const events = trophies.filter((t) => t.period === 'event').sort(newest)
   const sets = trophies.filter((t) => t.period === 'hunt').sort(newest)
+  const secrets = trophies.filter((t) => t.period === 'secret').sort(newest)
+  const hidden = isSelf ? SECRETS.filter((x) => !secrets.some((t) => t.periodKey === x.n)) : []
   const boards = trophies.filter((t) => t.period === 'weekly' || t.period === 'monthly').sort(newest)
   const shownBoards = showAll ? boards : boards.slice(0, BOARD_SHOWN)
   const s = summarizeTrophies(trophies)
@@ -117,6 +128,7 @@ export function TrophyShelf({
     s.podium > 0 ? `${s.podium} ${s.podium === 1 ? 'podium' : 'podiums'}` : null,
     s.topTen > 0 ? `${s.topTen} top ten` : null,
     s.sets ? `${s.sets} bug hunt ${s.sets === 1 ? 'set' : 'sets'}` : null,
+    s.secrets ? `${s.secrets} ${s.secrets === 1 ? 'secret' : 'secrets'}` : null,
   ].filter(Boolean)
 
   return (
@@ -165,6 +177,19 @@ export function TrophyShelf({
             </li>
             <li className="pshelf__way">
               <span className="pshelf__plinth pshelf__plinth--empty">
+                <SecretUnknown size="md" />
+              </span>
+              <span className="pshelf__words">
+                <span className="pshelf__name">Find a secret</span>
+                <span className="pshelf__when">
+                  {isSelf
+                    ? `${SECRETS.length} trophies are secret. Nobody says how to find them.`
+                    : 'Some trophies are secret, and nobody says how to find them.'}
+                </span>
+              </span>
+            </li>
+            <li className="pshelf__way">
+              <span className="pshelf__plinth pshelf__plinth--empty">
                 <TopTenRibbon tone="weekly" size="md" />
               </span>
               <span className="pshelf__words">
@@ -200,6 +225,33 @@ export function TrophyShelf({
               </ol>
             </div>
           ) : null}
+          {secrets.length > 0 || hidden.length > 0 ? (
+            <div className="pshelf__shelf">
+              <p className="pshelf__cap">Secrets</p>
+              {secrets.length > 0 ? (
+                <ol className="pshelf__row pshelf__row--events">
+                  {secrets.map((t) => (
+                    <Item key={t.id} trophy={t} wide />
+                  ))}
+                </ol>
+              ) : null}
+              {hidden.length > 0 ? (
+                <div className="pshelf__hidden">
+                  <span className="pshelf__hidden-row" aria-hidden="true">
+                    {hidden.map((x) => (
+                      <span key={x.n} className="pshelf__plinth pshelf__plinth--empty pshelf__plinth--small">
+                        <SecretUnknown size="sm" />
+                      </span>
+                    ))}
+                  </span>
+                  <span className="pshelf__when">
+                    {hidden.length === 1 ? 'One still hidden.' : `${hidden.length} still hidden.`} Nobody says how to find
+                    them.
+                  </span>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
           {boards.length > 0 || isSelf ? (
             <div className="pshelf__shelf pshelf__shelf--grow">
               <p className="pshelf__cap">Arcade top ten</p>
@@ -230,7 +282,7 @@ export function TrophyShelf({
       )}
       <p className="pshelf__foot">
         The arcade’s top ten each week and month get a trophy, and so does every event’s winner and every full month
-        of the bug hunt.
+        of the bug hunt. Some trophies are secret: nobody says how to get them.
       </p>
     </article>
   )

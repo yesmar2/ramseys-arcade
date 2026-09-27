@@ -1,4 +1,5 @@
 import { applyBoardScope, storedActiveGroup, withGroupFallback } from './groups'
+import { announceSecrets, type SecretFound } from './secrets'
 import type { RunTickets } from './tickets'
 import { runIdFor } from './runSession'
 import type { DeviceType } from './device'
@@ -158,6 +159,8 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
     headers: {
       'Content-Type': 'application/json',
       ...sessionHeader,
+      // The player's clock, for the time-of-day secrets (lib/secrets.ts): minutes behind UTC.
+      ...(init?.method === 'POST' ? { 'X-TZ-Offset': String(new Date().getTimezoneOffset()) } : {}),
       ...(init?.headers ?? {}),
     },
   })
@@ -680,6 +683,7 @@ export async function addLeaderboardScore(
     name?: string
     token?: string
     tickets?: RunTickets | null
+    secrets?: SecretFound[]
   }>(`/leaderboards/${slug}`, {
     method: 'POST',
     body: JSON.stringify({
@@ -697,6 +701,7 @@ export async function addLeaderboardScore(
   const finalName = (data.name ?? cleaned).toUpperCase()
   if (data.token) rememberClaimToken(finalName, data.token)
   setLocalPlayerName(finalName)
+  announceSecrets(data.secrets)
 
   return {
     entries: data.entries,

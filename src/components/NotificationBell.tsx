@@ -18,7 +18,7 @@ import type { AvatarWear } from './AvatarStudio'
 import { GameThumbGlyph } from './GameThumbArt'
 import { PlayerAvatar } from './PlayerAvatar'
 import { PushToggle } from './PushToggle'
-import { EventCup, HuntSetJar, MonthlyTrophyCup, TopTenRibbon, WeeklyMedal } from './TrophyArt'
+import { EventCup, HuntSetJar, MonthlyTrophyCup, SecretArt, TopTenRibbon, WeeklyMedal } from './TrophyArt'
 import '../styles/inbox.css'
 
 export type { NotificationsState }
@@ -87,6 +87,13 @@ function GameCorner({ slug }: { slug: string }) {
 function TrophyTile({ trophy }: { trophy: NonNullable<AppNotification['meta']['trophy']> }) {
   const { period, rank } = trophy
   // The tile takes the trophy's colour, as the shelf's plinth does.
+  if (period === 'secret') {
+    return (
+      <span className="inbox-face__tile inbox-face__tile--trophy trophy-tone--secret">
+        <SecretArt n={trophy.n ?? 0} size="sm" />
+      </span>
+    )
+  }
   if (period === 'hunt') {
     return (
       <span className="inbox-face__tile inbox-face__tile--trophy trophy-tone--hunt">
