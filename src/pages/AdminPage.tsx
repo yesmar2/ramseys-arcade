@@ -13,6 +13,7 @@ import {
   fetchOpenFlags,
   grantTickets,
   liftBan,
+  notAdminWords,
   settleFlag,
   type AdminBan,
   type AdminClientError,
@@ -53,6 +54,8 @@ function errorText(err: unknown, fallback: string) {
 export function AdminPage() {
   const { account, loading } = useAuth()
   const [gate, setGate] = useState<Gate>('checking')
+  // The code the API said no with, for the words under a closed page.
+  const [refusal, setRefusal] = useState<string>()
 
   useEffect(() => {
     if (loading) return
@@ -68,6 +71,7 @@ export function AdminPage() {
       })
       .catch((err) => {
         if (cancelled) return
+        setRefusal(err instanceof ApiError ? err.code : undefined)
         setGate(err instanceof ApiError && err.status === 404 ? 'notAdmin' : 'failed')
       })
     return () => {
@@ -101,7 +105,7 @@ export function AdminPage() {
                 : gate === 'signedOut'
                   ? 'Sign in with an admin account to use this page.'
                   : gate === 'notAdmin'
-                    ? `${account?.email ?? 'This account'} isn’t an admin. Admins are the emails in ADMIN_EMAILS on the API’s service on Render (Environment).`
+                    ? notAdminWords(refusal, account?.email)
                     : 'Couldn’t reach the API. Try again in a moment.'}
             </p>
           </section>
