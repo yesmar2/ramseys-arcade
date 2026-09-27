@@ -661,3 +661,123 @@ html[data-theme='dark'] .studio__letters button[aria-pressed='true'] {
     transition: none;
   }
 }
+
+/* ---------- the Prizes tab's preview: your player card, small (AvatarStudio CardPreview) ---------- */
+
+.studio__stage--card {
+  height: auto;
+  min-height: 17.5rem;
+  padding: 0.9rem 0.9rem 3.9rem;
+}
+
+.studio__card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  width: 100%;
+  min-height: 9.5rem;
+  padding: 0.9rem 1rem;
+  border-radius: 1.1rem;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background:
+    linear-gradient(120deg, color-mix(in srgb, var(--wash) 34%, transparent), color-mix(in srgb, var(--wash) 8%, transparent) 60%),
+    #17232d;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.22);
+  color: #f2f6f8;
+}
+
+.studio__card-theme {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.studio__card-shade {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.studio__card-shade--theme {
+  background: linear-gradient(90deg, rgba(12, 8, 24, 0.82) 0%, rgba(12, 8, 24, 0.5) 60%, rgba(12, 8, 24, 0.2) 100%);
+}
+
+.studio__card-badge {
+  position: relative;
+  flex: none;
+  width: 4.6rem;
+  height: 4.6rem;
+  filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.3));
+}
+
+.studio__card-text {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.studio__card-kicker {
+  font-size: 0.64rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #cfe0e8;
+}
+
+.studio__card-name {
+  max-width: 100%;
+  overflow: hidden;
+  font-family: var(--font-display);
+  font-size: 1.55rem;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.studio__card-none {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: rgba(231, 238, 243, 0.55);
+}
+
+.studio__card-note {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #c7d4dd;
+}
+
+@media (max-width: 60rem) {
+  .studio__stage--card {
+    min-height: 12.5rem;
+  }
+}
+
+/* A phone: the tools sit in the stage's top corners, so the card goes under them. */
+@media (max-width: 40rem) {
+  .studio__stage--card {
+    min-height: 0;
+    padding: 3.8rem 0.6rem 0.6rem;
+  }
+
+  .studio__card {
+    min-height: 7.4rem;
+    padding: 0.7rem 0.8rem;
+  }
+
+  .studio__card-badge {
+    width: 3.6rem;
+    height: 3.6rem;
+  }
+
+  .studio__card-name {
+    font-size: 1.25rem;
+  }
+}

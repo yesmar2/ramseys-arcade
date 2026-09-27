@@ -5,6 +5,7 @@ import { prizesHref } from '../hooks/useHashRoute'
 import {
   AVATAR_COLORS,
   AVATAR_EMBLEMS,
+  avatarWashColor,
   AVATAR_PATTERNS,
   AVATAR_PINS,
   AVATAR_RINGS,
@@ -35,7 +36,7 @@ import { LockIcon, SparkleIcon } from './chromeIcons'
 import { Panel, PanelHead } from './Panel'
 import { AvatarArt } from './PlayerAvatar'
 import { PlayerName } from './PlayerName'
-import { PrizeArt } from './prizes/PrizeArt'
+import { CardBackdrop, NeonSign, PrizeArt } from './prizes/PrizeArt'
 
 /** Flair to put on as the studio opens: what a trophy just unlocked. */
 export type AvatarWear = { ring?: AvatarRing; pin?: AvatarPin }
@@ -68,6 +69,35 @@ function Mark({ avatar, name, size, className }: { avatar: Avatar; name: string;
     <svg className={className} viewBox="0 0 64 64" width={size} height={size} aria-hidden="true" focusable="false">
       <AvatarArt avatar={avatar} name={name} />
     </svg>
+  )
+}
+
+/**
+ * The Prizes tab's preview: your player card, small, as what you wear dresses it. Its theme behind, your
+ * badge, your tag in its style (or the neon sign), and your title under it. Most of what the counter
+ * sells shows on the card rather than the badge, so the badge alone would show no change.
+ */
+function CardPreview({ avatar, name }: { avatar: Avatar; name: string }) {
+  const theme = wornPrize(avatar, 'card')
+  const title = prizeById(wornPrize(avatar, 'title'))
+  const sign = wornPrize(avatar, 'sign')
+  const confetti = prizeById(wornPrize(avatar, 'confetti'))
+  return (
+    <div className="studio__card" style={{ '--wash': avatarWashColor(avatar) } as CSSProperties}>
+      {theme ? <CardBackdrop className="studio__card-theme" theme={theme} width={320} height={190} /> : null}
+      <span className={`studio__card-shade${theme ? ' studio__card-shade--theme' : ''}`} aria-hidden="true" />
+      <Mark className="studio__card-badge" avatar={avatar} name={name} size={80} />
+      <span className="studio__card-text">
+        <span className="studio__card-kicker">Your player card</span>
+        {sign ? (
+          <NeonSign name={name} width={150} wires={false} />
+        ) : (
+          <PlayerName className="studio__card-name" name={name} style={wornPrize(avatar, 'name')} />
+        )}
+        {title ? <span className="prize-plate">{title.name}</span> : <span className="studio__card-none">No title</span>}
+        {confetti ? <span className="studio__card-note">{confetti.name} confetti when you win</span> : null}
+      </span>
+    </div>
   )
 }
 
@@ -280,7 +310,7 @@ export function AvatarStudio({ name, current, wear, onSaved, onClose }: AvatarSt
           <span className="studio__item-name">
             {prize?.kind === 'name' ? <PlayerName name={prize.name} style={prize.id} /> : (prize?.name ?? NONE_LABELS[kind])}
           </span>
-          <span className="studio__item-rule">{prize ? PRIZE_KINDS[kind].one : 'Nothing from the counter'}</span>
+          <span className="studio__item-rule">{prize ? prize.blurb : 'Nothing from the counter'}</span>
         </span>
       </button>
     )
@@ -309,8 +339,8 @@ export function AvatarStudio({ name, current, wear, onSaved, onClose }: AvatarSt
       <PanelHead titleId={titleId} kicker={`Your avatar · ${name}`} title="Make it yours" onClose={onClose} />
       <div className="panel__body studio__body">
         <div className="studio__side">
-          <div className="studio__stage">
-            <Mark className="studio__preview" avatar={draft} name={name} size={200} />
+          <div className={`studio__stage${tab === 'prizes' ? ' studio__stage--card' : ''}`}>
+            {tab === 'prizes' ? <CardPreview avatar={draft} name={name} /> : <Mark className="studio__preview" avatar={draft} name={name} size={200} />}
             <div className="studio__tools">
               <button type="button" className="studio__tool" onClick={() => go({ ...randomAvatar(draft), ...(draft.worn ? { worn: draft.worn } : {}) })}>
                 <DiceIcon />
@@ -501,7 +531,7 @@ export function AvatarStudio({ name, current, wear, onSaved, onClose }: AvatarSt
         ) : tab === 'prizes' ? (
           <p className="studio__note">
             <SparkleIcon />
-            <span>Prizes come from the prize counter, for tickets you earn by playing.</span>
+            <span>What you’ve traded tickets for at the prize counter, to put on. It shows on your player card and the boards.</span>
           </p>
         ) : (
           <p className="studio__note">
