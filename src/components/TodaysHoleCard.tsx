@@ -18,6 +18,8 @@ import {
   type TodaysHole,
 } from '../lib/dailyHole'
 import { ordinal } from '../lib/profileMath'
+import { EventCountdown } from './EventCountdown'
+import { GameThumbArt } from './GameThumbArt'
 import { resolveGameAccent } from '../lib/theme'
 import { formatEventCountdown } from '../lib/tournaments'
 import { PlayIcon } from './chromeIcons'
@@ -25,7 +27,8 @@ import '../styles/evp.css'
 
 /*
  * Today's Hole, off the course: the day's Ace Chase hole drawn from above, how everyone's doing at it,
- * and the way in. It sits with the daily events on the Events page, and on Ace Chase's own page.
+ * and the way in. It sits with the daily events on the Events page, and on Ace Chase's own page; a slim
+ * one is in the home page's On now, beside Today's Track.
  */
 
 const SLUG = 'acechase'
@@ -148,5 +151,38 @@ export function TodaysHoleCard() {
         )}
       </div>
     </section>
+  )
+}
+
+/** When the next hole comes, to the second: the same all day, for a countdown to hold on to. */
+function nextHoleAt(now = Date.now()) {
+  return Math.round((now + msUntilNextHole(now)) / 1000) * 1000
+}
+
+/** Today's Hole in the home page's On now: the hole's number and name, the clock, how the day stands. */
+export function TodaysHoleOnNow() {
+  const { hole, progress, server } = useTodaysHole()
+  const accent = resolveGameAccent(SLUG, getGame(SLUG)?.accent ?? '#2eb8a0')
+  const solved = progress?.solved
+  const tries = progress?.tries ?? 0
+  return (
+    <a className="onnow-card" href={gamePlayHref(SLUG)} style={{ '--ev-accent': accent } as CSSProperties}>
+      <span className="onnow-card__head">
+        <span className="onnow-card__art" aria-hidden="true">
+          <GameThumbArt slug={SLUG} accent={accent} />
+        </span>
+        <span className="onnow-card__titles">
+          <span className="onnow-card__title">Today&rsquo;s Hole #{hole.n}</span>
+          <span className="onnow-card__sub">Ace Chase · {hole.def.name}</span>
+        </span>
+        <EventCountdown endsAt={nextHoleAt()} className="onnow-card__clock" />
+      </span>
+      <span className={`onnow-card__line${solved ? ' onnow-card__line--you' : ''}`}>
+        {standing(progress, server) || 'A new hole every day, the same for everyone. The fewest tries tops the day.'}
+      </span>
+      <span className="onnow-card__foot">
+        <span className="onnow-card__go">{solved ? 'Play again' : tries > 0 ? 'Carry on' : 'Play'}</span>
+      </span>
+    </a>
   )
 }

@@ -923,6 +923,21 @@ html[data-theme="dark"] .home-banner {
   }
 }
 
+/* Five: the day's three (the Daily, Today's Track, Today's Hole) across the top, the week's two under them. */
+@media (min-width: 56.01rem) {
+  .onnow__grid--five {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+
+  .onnow__grid--five > li {
+    grid-column: span 2;
+  }
+
+  .onnow__grid--five > li:nth-child(n + 4) {
+    grid-column: span 3;
+  }
+}
+
 .onnow__grid > li {
   display: flex;
   min-width: 0;

@@ -15,6 +15,12 @@ const PLACES = ['1st', '2nd', '3rd']
 
 /** Hot Lap's track of the day, in a chunk of its own with the plan it comes from. */
 const TodaysTrackOnNow = lazyPage(() => import('./TodaysTrackCard').then((m) => m.TodaysTrackOnNow))
+const TodaysHoleOnNow = lazyPage(() => import('./TodaysHoleCard').then((m) => m.TodaysHoleOnNow))
+
+/** The row's layout for how many cards are in it: three across, four, or the day's three over the week's two. */
+function gridClass(count: number) {
+  return `onnow__grid${count === 4 ? ' onnow__grid--four' : count === 5 ? ' onnow__grid--five' : ''}`
+}
 
 function pts(n: number) {
   return `${n} ${n === 1 ? 'pt' : 'pts'}`
@@ -151,8 +157,8 @@ function SkeletonCard() {
 }
 
 /**
- * On now, under the banner: today's daily, Hot Lap's track of the day, this
- * week's weekly and how last week's finished. There is nearly always a daily
+ * On now, under the banner: today's daily, Hot Lap's track and Ace Chase's
+ * hole of the day, this week's weekly and how last week's finished. There is nearly always a daily
  * and a weekly running, and last week's podium stays up until the next one
  * ends, so the row reads full on a quiet day as on a busy one. While the
  * events load, cards of the same shape hold the space.
@@ -164,6 +170,8 @@ export function HomeOnNow() {
   const weekly = official.find((t) => t.cadence === 'weekly') ?? null
   const mineById = (id: string) => mine.find((t) => t.id === id) ?? null
   const track = isGameListed('hotlap')
+  const hole = isGameListed('acechase')
+  const dailies = (track ? 1 : 0) + (hole ? 1 : 0)
 
   if (loading) {
     return (
@@ -173,8 +181,8 @@ export function HomeOnNow() {
             On now
           </h2>
         </div>
-        <ul className={`onnow__grid${track ? ' onnow__grid--four' : ''}`} aria-hidden="true">
-          {(track ? [0, 1, 2, 3] : [0, 1, 2]).map((i) => (
+        <ul className={gridClass(3 + dailies)} aria-hidden="true">
+          {Array.from({ length: 3 + dailies }, (_, i) => i).map((i) => (
             <li key={i}>
               <SkeletonCard />
             </li>
@@ -184,8 +192,8 @@ export function HomeOnNow() {
     )
   }
 
-  if (!daily && !weekly && !lastWeekly && !track) return null
-  const count = [daily, weekly, lastWeekly].filter(Boolean).length + (track ? 1 : 0)
+  if (!daily && !weekly && !lastWeekly && !dailies) return null
+  const count = [daily, weekly, lastWeekly].filter(Boolean).length + dailies
 
   return (
     <section className="onnow" aria-labelledby="onnow-title">
@@ -197,7 +205,7 @@ export function HomeOnNow() {
           All events ›
         </a>
       </div>
-      <ul className={`onnow__grid${count === 4 ? ' onnow__grid--four' : ''}`}>
+      <ul className={gridClass(count)}>
         {daily ? (
           <li data-hunt="home-onnow">
             <RunningCard t={daily} mine={mineById(daily.id)} joined={joinedIds.has(daily.id)} champion={false} />
@@ -207,6 +215,13 @@ export function HomeOnNow() {
           <li>
             <Suspense fallback={<SkeletonCard />}>
               <TodaysTrackOnNow />
+            </Suspense>
+          </li>
+        ) : null}
+        {hole ? (
+          <li>
+            <Suspense fallback={<SkeletonCard />}>
+              <TodaysHoleOnNow />
             </Suspense>
           </li>
         ) : null}
