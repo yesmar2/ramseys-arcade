@@ -465,9 +465,11 @@ export type HuntServer = {
   set: { key: string; bugs: ReadonlySet<string> } | null
   /** The set a find made today completed, if one did: on the shelf, and with the pin if it's the first. */
   completed: (ServerCompleted & { day: string }) | null
+  /** What today's catch paid in tickets for the prize counter, and the tickets it left you with. */
+  tickets: { day: string; earned: number; balance: number } | null
 }
 
-let server: HuntServer = { count: null, place: null, day: null, set: null, completed: null }
+let server: HuntServer = { count: null, place: null, day: null, set: null, completed: null, tickets: null }
 
 /** Everything the page shows, as one value that changes when any of it does. */
 export type HuntSnapshot = { log: HuntLog; ready: boolean; server: HuntServer; test: HuntTest | null }
@@ -507,6 +509,13 @@ function apply(reply: ServerHunt, token: string | null) {
     day: reply.day,
     set: you?.set ? { key: you.set.key, bugs: new Set(you.set.bugs) } : same ? null : server.set,
     completed,
+    // Said once, by the reply to the catch; kept for the rest of its day.
+    tickets:
+      same && reply.tickets?.earned
+        ? { day: reply.day, earned: reply.tickets.earned, balance: reply.tickets.balance }
+        : server.tickets?.day === reply.day
+          ? server.tickets
+          : null,
   }
   if (you && token) {
     const mine = accountLog(token)
@@ -676,7 +685,7 @@ export function subscribeHunt(onChange: () => void): () => void {
   }
   // Signing in or out: whose finds show has changed, and the API has a different answer.
   const onAuth = () => {
-    server = { count: server.count, place: null, day: server.day, set: null, completed: null }
+    server = { count: server.count, place: null, day: server.day, set: null, completed: null, tickets: null }
     refresh()
     onChange()
     void syncHunt(true)

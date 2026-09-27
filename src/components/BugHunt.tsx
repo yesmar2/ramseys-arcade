@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState, useSyncExternalStore, type MouseEvent } from 'react'
 import { createPortal } from 'react-dom'
-import { navigate } from '../hooks/useHashRoute'
+import { navigate, prizesHref } from '../hooks/useHashRoute'
 import {
   HUNT_ANCHORS,
   HUNT_BUGS,
@@ -35,6 +35,7 @@ import { getSessionToken } from '../lib/auth'
 import { THEME_EVENT } from '../lib/theme'
 import type { AvatarWear } from './AvatarStudio'
 import { Panel, PanelHead } from './Panel'
+import { TicketGlyph } from './prizes/Ticket'
 import { HuntSetJar } from './TrophyArt'
 import '../styles/bughunt.css'
 
@@ -729,6 +730,9 @@ function HuntPanel({ onClose }: { onClose: () => void }) {
                   {name} was hiding {huntWhere(pick.anchor, pick.pose)}.
                 </p>
                 {count ? <p className="hunt-wanted__small">{count}</p> : null}
+                {server?.tickets?.day === pick.day ? (
+                  <p className="hunt-wanted__small">It paid you {server.tickets.earned} tickets for the prize counter.</p>
+                ) : null}
                 <p className="hunt-wanted__small">The next bug gets loose in {clockWords(msLeft)}.</p>
               </>
             ) : (
@@ -796,6 +800,28 @@ function FullSet({ stats, server, onClose, onWear }: { stats: HuntStats; server:
 
 type FoundProps = { onClose: () => void; onWear?: (wear: AvatarWear) => void }
 
+/** What today's catch paid for the prize counter, once the API has said. */
+function HuntTickets({ tickets, onGo }: { tickets: { earned: number; balance: number }; onGo?: () => void }) {
+  return (
+    <p className="hunt-tix">
+      <TicketGlyph size={22} />
+      <span>
+        <b>+{tickets.earned} tickets</b> for the catch. You have {tickets.balance.toLocaleString()} now.{' '}
+        <a
+          href={prizesHref()}
+          onClick={(e) => {
+            e.preventDefault()
+            onGo?.()
+            navigate(prizesHref())
+          }}
+        >
+          Prize counter ›
+        </a>
+      </span>
+    </p>
+  )
+}
+
 function FoundPanel({ onClose, onWear, pose }: FoundProps & { pose: HuntPose | null }) {
   const { pick, stats, server, msLeft } = useHunt()
   const signedIn = Boolean(getSessionToken())
@@ -829,9 +855,10 @@ function FoundPanel({ onClose, onWear, pose }: FoundProps & { pose: HuntPose | n
             {server?.count
               ? `${server.count} signed-in ${server.count === 1 ? 'player has' : 'players have'} found ${pick.bug.name} today. `
               : ''}
-            Sign in and your finds count too, and follow you to any device.
+            Sign in and your finds count too, each day’s pays tickets for the prize counter, and they follow you to any device.
           </p>
         ) : null}
+        {signedIn && server?.tickets?.day === pick.day ? <HuntTickets tickets={server.tickets} onGo={onClose} /> : null}
         {done ? <FullSet stats={stats} server={done} onClose={onClose} onWear={onWear} /> : null}
         {doneHere ? (
           <div className="hunt-full">
