@@ -4,9 +4,9 @@
  * scripts/hotlap-daily.mjs), so every device builds the same track from the same line. Past the end of
  * the plan, which runs months ahead, the days go round again rather than make one nobody checked.
  */
-import { decodeCourse } from './courses.ts'
-import { DAILY_TRACKS } from './dailyPlan.ts'
-import type { Piece } from './sim.ts'
+import { decodeCourse, decodeHills } from './courses.ts'
+import { DAILY_TRACKS, type PlannedTrack } from './dailyPlan.ts'
+import type { Piece, TrackShape } from './sim.ts'
 
 /** Day 1, the classic track. */
 export const FIRST_DAY = '2026-09-26'
@@ -70,14 +70,24 @@ export type DailyTrack = {
   n: number
   name: string
   pieces: Piece[]
+  /** How it lies on the map, and its hills, if it has any: a landmark's (landmarks.ts). */
+  shape: TrackShape
   /** The pace car's lap when the day was planned. */
   pace: number
+}
+
+/** A planned track's shape beyond its pieces. */
+export function shapeOf(entry: PlannedTrack): TrackShape {
+  return {
+    ...(entry.heading ? { heading: entry.heading } : {}),
+    ...(entry.hills ? { hills: decodeHills(entry.hills) } : {}),
+  }
 }
 
 export function dailyTrack(day = trackDay()): DailyTrack {
   const n = Math.max(1, trackNumber(day))
   const entry = DAILY_TRACKS[(n - 1) % DAILY_TRACKS.length]!
-  return { day, n, name: entry.name, pieces: decodeCourse(entry.course), pace: entry.pace }
+  return { day, n, name: entry.name, pieces: decodeCourse(entry.course), shape: shapeOf(entry), pace: entry.pace }
 }
 
 /** "3h 12m", "12m", "under a minute": how long until the next track. */

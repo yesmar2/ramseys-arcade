@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { getGame } from '../data/games'
 import { dailyTrack, nextTrackAt, trackDay } from '../games/hotlap/daily'
-import { buildTrack, HALF_WIDTH, type Piece } from '../games/hotlap/sim'
+import { buildTrack, HALF_WIDTH, type Piece, type TrackShape } from '../games/hotlap/sim'
 import { gamePlayHref } from '../hooks/useHashRoute'
 import { usePersonalBest } from '../hooks/usePersonalBest'
 import { usePlayerName } from '../hooks/usePlayerName'
@@ -97,9 +97,10 @@ function standingWords(board: TodayBoard | null): string {
 }
 
 /** The track from above: grass, the road with its white edges, and the start line. */
-function TrackPlan({ pieces }: { pieces: Piece[] }) {
+function TrackPlan({ pieces, shape }: { pieces: Piece[]; shape: TrackShape }) {
   const plan = useMemo(() => {
-    const track = buildTrack(pieces)
+    // Turned as it lies on the map; its hills don't show from above.
+    const track = buildTrack(pieces, { heading: shape.heading })
     let minX = Infinity
     let maxX = -Infinity
     let minY = Infinity
@@ -132,7 +133,7 @@ function TrackPlan({ pieces }: { pieces: Piece[] }) {
       start: { x1: sx - nx * half, y1: sy - ny * half, x2: sx + nx * half, y2: sy + ny * half },
       car: { x: sx - Math.cos(-h) * road * 1.1, y: sy - Math.sin(-h) * road * 1.1, r: road * 0.42 },
     }
-  }, [pieces])
+  }, [pieces, shape.heading])
   return (
     <svg className="ttc-plan" viewBox={plan.viewBox} preserveAspectRatio="xMidYMid meet" aria-hidden="true">
       <path className="ttc-plan__edge" d={plan.d} strokeWidth={plan.road * 1.3} />
@@ -156,7 +157,7 @@ export function TodaysTrackCard() {
     <section className="evp-card evp-daily ttc" style={style} aria-labelledby="ttc-title">
       <div className="evp-daily__screen">
         <a className="evp-screen ttc__screen" href={href} aria-label={`Race Today’s Track #${track.n}, ${track.name}`}>
-          <TrackPlan pieces={track.pieces} />
+          <TrackPlan pieces={track.pieces} shape={track.shape} />
           <span className="evp-screen__play" aria-hidden="true">
             <PlayIcon />
             Race

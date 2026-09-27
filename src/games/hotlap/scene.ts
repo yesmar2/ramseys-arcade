@@ -1,12 +1,14 @@
 /*
  * Hot Lap in 3D: the track and its grounds, the car and its ghost, the rubber a lap leaves behind, and
- * the camera that follows. The simulation's (x, y) is the ground plane, drawn on three's x and −z.
+ * the camera that follows. The simulation's (x, y) is the ground plane, drawn on three's x and −z; on a
+ * hilly track the road's heights lift it (three's y) and the ground rolls with it (terrain.ts).
  */
 import * as THREE from 'three'
 import { buildCar, WHEEL_RADIUS, WHEELS, type CarModel } from './car'
 import { bounds } from './courses'
 import type { GhostPose } from './lap'
 import { CAR, HALF_WIDTH as TW, nearest, type Run, type Track } from './sim'
+import { Terrain } from './terrain'
 
 /** What the scene draws this frame. */
 export type SceneFrame = {
@@ -50,6 +52,8 @@ export class HotLapScene {
   private readonly track: Track
   /** The ground the track covers: the grounds, trees and hills are laid out round it. */
   private readonly box: ReturnType<typeof bounds>
+  /** A hilly track's ground; a flat track's is a plain at height 0. */
+  private readonly terrain: Terrain | null
   private readonly textures: THREE.Texture[] = []
   private readonly lettered: [THREE.CanvasTexture, Paint][] = []
   private readonly car: CarModel
@@ -66,10 +70,18 @@ export class HotLapScene {
   private shake = 0
   private showroomAngle = -2.2
   private disposed = false
+  /** Where the ghost and the camera were last found on the track, to find them again quickly. */
+  private ghostNear = -1
+  private camNear = -1
+  private lookNear = -1
+  /** The camera's height and where it looks, eased so a bump in the road doesn't jolt them. */
+  private camY = 0
+  private lookY = 0
 
   constructor(canvas: HTMLCanvasElement, track: Track) {
     this.track = track
     this.box = bounds(track)
+    this.terrain = track.z ? new Terrain(track, this.box) : null
     const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' })
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.75))
     renderer.outputColorSpace = THREE.SRGBColorSpace
@@ -151,11 +163,45 @@ export class HotLapScene {
       }
     })
     tex.wrapS = tex.wrapT = THREE.RepeatWrapping
-    tex.repeat.set(4000 / 24, 4000 / 24)
-    const ground = new THREE.Mesh(new THREE.PlaneGeometry(4000, 4000), new THREE.MeshLambertMaterial({ map: tex }))
+    const grass = new THREE.MeshLambertMaterial({ map: tex })
+    // On a hilly track, the rolling ground round it; past that (and under a flat track), a plain.
+    if (this.terrain) this.scene.add(this.terrain.mesh(grass))
+    const plainTex = tex.clone()
+    plainTex.repeat.set(4000 / 24, 4000 / 24)
+    this.textures.push(plainTex)
+    const ground = new THREE.Mesh(new THREE.PlaneGeometry(4000, 4000), new THREE.MeshLambertMaterial({ map: plainTex }))
     ground.rotation.x = -Math.PI / 2
-    ground.position.set(this.box.cx, -0.02, -this.box.cy)
+    ground.position.set(this.box.cx, this.terrain ? this.terrain.base - 0.4 : -0.02, -this.box.cy)
     this.scene.add(ground)
+  }
+
+  /** The height of the middle of the road at a point of the track: 0 on a flat track. */
+  private roadZ(i: number) {
+    return this.track.z ? this.track.z[i]! : 0
+  }
+
+  /** The ground's height off the road. */
+  private groundZ(x: number, y: number) {
+    return this.terrain ? this.terrain.heightAt(x, y) : 0
+  }
+
+  /**
+   * Where a car stands: on the road, the road's height (it's level across); off it, easing down onto the
+   * grass over three metres. `index` and `side` are where it is on the track, as nearest() gives them.
+   */
+  private surfaceZ(x: number, y: number, index: number, side: number) {
+    if (!this.terrain) return 0
+    const road = this.roadZ(index)
+    const off = Math.abs(side) - (TW + 0.6)
+    if (off <= 0) return road
+    return road + (this.terrain.heightAt(x, y) - road) * Math.min(1, off / 3)
+  }
+
+  /** How a car pointing `heading` tips on the hill it's on: nose up (+) and leaning right (+), in radians. */
+  private tilt(index: number, heading: number) {
+    const grade = this.track.grade ? this.track.grade[index]! : 0
+    const across = this.track.h[index]! - heading
+    return { pitch: Math.atan(grade * Math.cos(across)), roll: Math.atan(grade * Math.sin(across)) }
   }
 
   /** A strip laid along the track between two offsets from its middle (left is positive). */
@@ -171,8 +217,9 @@ export class HotLapScene {
       const nx = -Math.sin(track.h[i]!)
       const ny = Math.cos(track.h[i]!)
       const along = from + j >= n ? track.s[i]! + track.length : from + j < 0 ? track.s[i]! - track.length : track.s[i]!
-      const a = W(track.x[i]! + nx * inner, track.y[i]! + ny * inner, lift)
-      const b = W(track.x[i]! + nx * outer, track.y[i]! + ny * outer, lift)
+      const up = this.roadZ(i) + lift
+      const a = W(track.x[i]! + nx * inner, track.y[i]! + ny * inner, up)
+      const b = W(track.x[i]! + nx * outer, track.y[i]! + ny * outer, up)
       pos.set([a.x, a.y, a.z, b.x, b.y, b.z], j * 6)
       uv.set([0, along / metresPerRepeat, 1, along / metresPerRepeat], j * 4)
       if (j < count - 1) {
@@ -247,14 +294,19 @@ export class HotLapScene {
     const h = track.h[i]!
     const nx = -Math.sin(h)
     const ny = Math.cos(h)
+    const lineZ = this.roadZ(i)
     const steel = new THREE.MeshLambertMaterial({ color: '#2b313a' })
     for (const side of [1, -1]) {
-      const post = new THREE.Mesh(new THREE.BoxGeometry(0.7, 8, 0.7), steel)
-      post.position.copy(W(track.x[i]! + nx * (TW + 2) * side, track.y[i]! + ny * (TW + 2) * side, 4))
+      const px = track.x[i]! + nx * (TW + 2) * side
+      const py = track.y[i]! + ny * (TW + 2) * side
+      // Down to the ground, wherever it is, and up to the beam.
+      const foot = Math.min(this.groundZ(px, py), lineZ)
+      const post = new THREE.Mesh(new THREE.BoxGeometry(0.7, lineZ + 8 - foot, 0.7), steel)
+      post.position.copy(W(px, py, (foot + lineZ + 8) / 2))
       scene.add(post)
     }
     const beam = new THREE.Mesh(new THREE.BoxGeometry(1, 1.6, 2 * TW + 5), steel)
-    beam.position.copy(W(track.x[i]!, track.y[i]!, 8))
+    beam.position.copy(W(track.x[i]!, track.y[i]!, lineZ + 8))
     beam.rotation.y = h
     scene.add(beam)
     // The gantry's banner in Hot Lap's orange, the site's dark ink on it, and Blipka's mark at the end.
@@ -280,25 +332,33 @@ export class HotLapScene {
       true,
     )
     const sign = new THREE.Mesh(new THREE.PlaneGeometry(2 * TW + 4, 1.5), new THREE.MeshBasicMaterial({ map: banner, side: THREE.DoubleSide }))
-    sign.position.copy(W(track.x[i]! - Math.cos(h) * 0.55, track.y[i]! - Math.sin(h) * 0.55, 8))
+    sign.position.copy(W(track.x[i]! - Math.cos(h) * 0.55, track.y[i]! - Math.sin(h) * 0.55, lineZ + 8))
     sign.rotation.y = h - Math.PI / 2
     scene.add(sign)
 
     // Rows of the arcade's colours stepping back on the outside of the straight, as long as it has room for.
+    // On a hill they step down it with the road.
     const rows = ['#e8564f', '#f5b942', '#3ec8cf', '#4aa8e8', '#8a6ad4']
     const along = standLength(track)
     const cx = track.x[i]! + Math.cos(h) * (20 + along / 2)
     const cy = track.y[i]! + Math.sin(h) * (20 + along / 2)
+    const out = standSide(track)
+    const from = this.groundZ(cx - Math.cos(h) * (along / 2) + out * nx * (TW + 20), cy - Math.sin(h) * (along / 2) + out * ny * (TW + 20))
+    const to = this.groundZ(cx + Math.cos(h) * (along / 2) + out * nx * (TW + 20), cy + Math.sin(h) * (along / 2) + out * ny * (TW + 20))
+    const standZ = (from + to) / 2
+    const lean = Math.atan2(to - from, along)
     rows.forEach((col, r) => {
       const d = TW + 16 + r * 2.4
       const tier = new THREE.Mesh(new THREE.BoxGeometry(along, 1 + r * 1.1, 2.4), new THREE.MeshLambertMaterial({ color: col }))
-      tier.position.copy(W(cx - nx * d, cy - ny * d, (1 + r * 1.1) / 2))
-      tier.rotation.y = h
+      tier.position.copy(W(cx + out * nx * d, cy + out * ny * d, standZ + (1 + r * 1.1) / 2 - (this.terrain ? 0.3 : 0)))
+      tier.rotation.order = 'YZX'
+      tier.rotation.set(0, h, lean)
       scene.add(tier)
     })
     const roof = new THREE.Mesh(new THREE.BoxGeometry(along + 6, 0.5, 15), new THREE.MeshLambertMaterial({ color: '#eef2f6' }))
-    roof.position.copy(W(cx - nx * (TW + 21), cy - ny * (TW + 21), 11))
-    roof.rotation.y = h
+    roof.position.copy(W(cx + out * nx * (TW + 21), cy + out * ny * (TW + 21), standZ + 11))
+    roof.rotation.order = 'YZX'
+    roof.rotation.set(0, h, lean)
     scene.add(roof)
   }
 
@@ -340,11 +400,12 @@ export class HotLapScene {
           true,
         )
         const board = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 1.65), new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide }))
-        board.position.copy(W(bx, by, 2.4))
+        const foot = this.groundZ(bx, by)
+        board.position.copy(W(bx, by, foot + 2.4))
         board.rotation.y = h - Math.PI / 2
         this.scene.add(board)
         const post = new THREE.Mesh(new THREE.BoxGeometry(0.15, 1.6, 0.15), postMat)
-        post.position.copy(W(bx, by, 0.8))
+        post.position.copy(W(bx, by, foot + 0.8))
         this.scene.add(post)
       }
     }
@@ -369,9 +430,10 @@ export class HotLapScene {
     const bands = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.57, 0.57, 0.3, 10), new THREE.MeshLambertMaterial({ color: '#f6f4ee' }), spots.length)
     const m = new THREE.Matrix4()
     spots.forEach(([x, y], k) => {
-      m.makeTranslation(x, 0.55, -y)
+      const foot = this.groundZ(x, y)
+      m.makeTranslation(x, foot + 0.55, -y)
       walls.setMatrixAt(k, m)
-      m.makeTranslation(x, 0.85, -y)
+      m.makeTranslation(x, foot + 0.85, -y)
       bands.setMatrixAt(k, m)
     })
     this.scene.add(walls, bands)
@@ -399,8 +461,8 @@ export class HotLapScene {
       const dx = x - track.x[i0]!
       const dy = y - track.y[i0]!
       const ahead = dx * Math.cos(h0) + dy * Math.sin(h0)
-      const left = -dx * Math.sin(h0) + dy * Math.cos(h0)
-      if (ahead > -40 && ahead < standEnd && left < 0 && left > -(TW + 48)) continue
+      const out = (-dx * Math.sin(h0) + dy * Math.cos(h0)) * standSide(track)
+      if (ahead > -40 && ahead < standEnd && out > 0 && out < TW + 48) continue
       spots.push([x, y, 0.7 + r() * 0.8, r()])
     }
     const trunks = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.35, 0.5, 3, 6), new THREE.MeshLambertMaterial({ color: '#6b4a32' }), spots.length)
@@ -413,7 +475,7 @@ export class HotLapScene {
     const q = new THREE.Quaternion()
     const scale = new THREE.Vector3()
     spots.forEach(([x, y, s], k) => {
-      m.compose(new THREE.Vector3(x, 1.5 * s, -y), q, scale.set(s, s, s))
+      m.compose(new THREE.Vector3(x, this.groundZ(x, y) + 1.5 * s - 0.2, -y), q, scale.set(s, s, s))
       trunks.setMatrixAt(k, m)
     })
     for (const [mesh, list] of [
@@ -421,7 +483,7 @@ export class HotLapScene {
       [leavesB, dark],
     ] as const) {
       list.forEach(([x, y, s], k) => {
-        m.compose(new THREE.Vector3(x, 7.5 * s, -y), q, scale.set(s, s, s))
+        m.compose(new THREE.Vector3(x, this.groundZ(x, y) + 7.5 * s - 0.2, -y), q, scale.set(s, s, s))
         mesh.setMatrixAt(k, m)
       })
     }
@@ -434,7 +496,7 @@ export class HotLapScene {
       const a = (k / 34) * Math.PI * 2 + hr() * 0.1
       const far = ring + hr() * 350
       const hill = new THREE.Mesh(new THREE.ConeGeometry(160 + hr() * 180, 70 + hr() * 120, 9), hillMat)
-      hill.position.set(box.cx + Math.cos(a) * far, 20, -box.cy + Math.sin(a) * far)
+      hill.position.set(box.cx + Math.cos(a) * far, (this.terrain?.base ?? 0) + 20, -box.cy + Math.sin(a) * far)
       this.scene.add(hill)
     }
   }
@@ -545,6 +607,13 @@ export class HotLapScene {
     const braking = run.abs && run.u > 6
     const c = Math.cos(run.h)
     const s = Math.sin(run.h)
+    // The road's height under the car, and how it climbs, so a mark lies on a hill as on the flat.
+    const i = run.index
+    const roadAt = this.roadZ(i)
+    const grade = this.track.grade ? this.track.grade[i]! : 0
+    const tx = Math.cos(this.track.h[i]!)
+    const ty = Math.sin(this.track.h[i]!)
+    const lift = (px: number, py: number) => roadAt + grade * ((px - run.x) * tx + (py - run.y) * ty) + 0.025
     let laid = false
     WHEELS.forEach(([f, l], w) => {
       const front = w < 2
@@ -572,7 +641,7 @@ export class HotLapScene {
         [x - nx, y - ny],
         [x + nx, y + ny],
       ]
-      corners.forEach(([px, py], k) => this.skidPos.set([px!, 0.025, -py!], this.skidNext * 18 + k * 3))
+      corners.forEach(([px, py], k) => this.skidPos.set([px!, lift(px!, py!), -py!], this.skidNext * 18 + k * 3))
       this.skidNext = (this.skidNext + 1) % SKIDS
       this.skidCount = Math.min(SKIDS, this.skidCount + 1)
       this.lastMark[w] = [x, y]
@@ -619,8 +688,11 @@ export class HotLapScene {
   /** The body leans out of corners and dips its nose under braking, as the weight moves: a racer's stiff springs, so not much. */
   private poseCar(run: Run, dt: number) {
     const car = this.car
-    car.group.position.set(run.x, 0, -run.y)
-    car.group.rotation.y = run.h
+    car.group.position.set(run.x, this.surfaceZ(run.x, run.y, run.index, run.side), -run.y)
+    // Standing on the hill: nose up a climb, leaning with the slope across it.
+    const hill = this.tilt(run.index, run.h)
+    car.group.rotation.order = 'YZX'
+    car.group.rotation.set(hill.roll, run.h, hill.pitch)
     const roll = Math.max(-0.055, Math.min(0.055, run.ay * 0.004))
     const pitch = Math.max(-0.04, Math.min(0.04, run.ax * 0.003))
     car.body.rotation.x += (roll - car.body.rotation.x) * Math.min(1, dt * 8)
@@ -637,8 +709,18 @@ export class HotLapScene {
     const ghost = this.ghostCar
     ghost.group.visible = pose != null
     if (!pose) return
-    ghost.group.position.set(pose.x, 0, -pose.y)
-    ghost.group.rotation.y = pose.h
+    let up = 0
+    if (this.terrain) {
+      const near = nearest(this.track, pose.x, pose.y, this.ghostNear)
+      this.ghostNear = near.index
+      up = this.surfaceZ(pose.x, pose.y, near.index, near.side)
+      const { pitch, roll } = this.tilt(near.index, pose.h)
+      ghost.group.rotation.order = 'YZX'
+      ghost.group.rotation.set(roll, pose.h, pitch)
+    } else {
+      ghost.group.rotation.y = pose.h
+    }
+    ghost.group.position.set(pose.x, up, -pose.y)
     if (!pose.done) for (const w of ghost.wheels) w.rotation.z -= dt * 12
     const apart = Math.hypot(pose.x - run.x, pose.y - run.y)
     const opacity = GHOST_OVERLAP + (GHOST_SEE - GHOST_OVERLAP) * Math.min(1, Math.max(0, (apart - 0.5) / 2.5))
@@ -653,6 +735,7 @@ export class HotLapScene {
   private frameCamera(f: SceneFrame, dt: number) {
     const { run } = f
     const camera = this.camera
+    const carZ = this.surfaceZ(run.x, run.y, run.index, run.side)
     if (f.showroom) {
       this.showroomAngle += dt * 0.22
       const portrait = camera.aspect < 1
@@ -660,12 +743,14 @@ export class HotLapScene {
       const away = portrait ? 10.5 : 8.2
       const cx = run.x + Math.cos(this.showroomAngle) * away
       const cz = -run.y + Math.sin(this.showroomAngle) * away
-      camera.position.set(cx, 2.8, cz)
+      // Level with the car, or above the ground where the camera is, if that's higher.
+      const cy = Math.max(carZ + 2.8, this.groundZ(cx, -cz) + 1.6)
+      camera.position.set(cx, cy, cz)
       // With the card at the right, look past the car's right and it sits at the left.
       const fx = (run.x - cx) / away
       const fz = (-run.y - cz) / away
       const side = aside ? 2.4 : 0
-      camera.lookAt(run.x - fz * side, portrait ? -4.1 : aside ? -0.6 : -2.8, -run.y + fx * side)
+      camera.lookAt(run.x - fz * side, carZ + (portrait ? -4.1 : aside ? -0.6 : -2.8), -run.y + fx * side)
       this.fov(62, 1)
       this.snap = true
       return
@@ -673,20 +758,43 @@ export class HotLapScene {
     const travel = run.h + (run.u > 3 ? Math.atan2(run.vy, run.u) * 0.35 : 0)
     if (this.snap) {
       this.camHeading = travel
-      this.snap = false
+      this.camNear = -1
+      this.lookNear = -1
     } else {
       const d = Math.atan2(Math.sin(travel - this.camHeading), Math.cos(travel - this.camHeading))
       this.camHeading += d * (1 - Math.exp(-dt * 5))
     }
     const fx = Math.cos(this.camHeading)
     const fz = -Math.sin(this.camHeading)
-    camera.position.set(run.x - fx * 7.8, 2.8, -run.y - fz * 7.8)
+    // On a hill, the camera stays 2.8 m over the road behind the car and looks at the road ahead of it,
+    // so a climb rises in front of you and a drop falls away. Eased, so bumps don't jolt it.
+    let camY = 2.8
+    let lookY = 1.2
+    if (this.terrain) {
+      const bx = run.x - fx * 7.8
+      const by = run.y + fz * 7.8
+      const back = nearest(this.track, bx, by, this.camNear < 0 ? run.index : this.camNear)
+      this.camNear = back.index
+      const ax = run.x + fx * 6
+      const ay = run.y - fz * 6
+      const ahead = nearest(this.track, ax, ay, this.lookNear < 0 ? run.index : this.lookNear)
+      this.lookNear = ahead.index
+      const wantCam = Math.max(this.surfaceZ(bx, by, back.index, back.side) + 2.8, carZ + 1.4)
+      const wantLook = this.surfaceZ(ax, ay, ahead.index, ahead.side) + 1.2
+      const ease = this.snap ? 1 : 1 - Math.exp(-dt * 7)
+      this.camY += (wantCam - this.camY) * ease
+      this.lookY += (wantLook - this.lookY) * ease
+      camY = this.camY
+      lookY = this.lookY
+    }
+    if (this.snap) this.snap = false
+    camera.position.set(run.x - fx * 7.8, camY, -run.y - fz * 7.8)
     if (this.shake > 0) {
       camera.position.x += (Math.random() - 0.5) * this.shake
       camera.position.y += (Math.random() - 0.5) * this.shake
       this.shake = Math.max(0, this.shake - dt * 2)
     }
-    camera.lookAt(run.x + fx * 6, 1.2, -run.y + fz * 6)
+    camera.lookAt(run.x + fx * 6, lookY, -run.y + fz * 6)
     const aspect = camera.aspect
     const base = aspect >= 1 ? 60 : Math.min(88, 60 + (1 - aspect) * 46)
     this.fov(base + Math.min(8, run.v * 0.16), Math.min(1, dt * 4))
@@ -723,4 +831,9 @@ function offRoad(track: Track, x: number, y: number) {
 /** The grandstand's length: 190 m, or what the start straight has room for past the line and short of the braking. */
 function standLength(track: Track) {
   return Math.max(80, Math.min(190, track.straights.A - 70 - 20 - 60))
+}
+
+/** Which side of the start straight the grandstand stands, the outside: right (−1), or left (+1) on a clockwise track. */
+function standSide(track: Track) {
+  return track.clockwise ? 1 : -1
 }

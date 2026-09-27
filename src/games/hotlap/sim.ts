@@ -93,6 +93,15 @@ const GATE_WINDOW = 15
 
 export type Corner = { name: string; from: number; to: number; turn: number; r: number }
 
+/** A height on the lap: how far round it from the start line (0 to 1) and metres above the line. */
+export type Hill = [number, number]
+
+/**
+ * How a track lies beyond its pieces: which way its start straight faces (degrees, 0 east, 90 north), so a
+ * track after a real circuit sits on the map as the circuit does, and its hills, if it has any.
+ */
+export type TrackShape = { heading?: number; hills?: Hill[] }
+
 export type Track = {
   n: number
   gates: number
@@ -107,6 +116,16 @@ export type Track = {
   startIndex: number
   gap: number
   straights: { A: number; B: number }
+  /** Driven clockwise, mostly right-handers: its outside is on the left. */
+  clockwise: boolean
+  /**
+   * On a hilly track: the height of the middle of the road at each point (metres above the start line),
+   * how steeply it climbs (rise per metre, the way round), and how it bends up into a dip (+) or over a
+   * crest (−), per metre. A flat track has none.
+   */
+  z?: Float64Array
+  grade?: Float64Array
+  crest?: Float64Array
 }
 
 function arcMove(h: number, turn: number, r: number): [number, number] {
@@ -141,8 +160,8 @@ export function closure(plan: Piece[]): { A: number; B: number } {
   return { A: (-fx * by + fy * bx) / det, B: (-ax * fy + ay * fx) / det }
 }
 
-/** The loop as points a metre apart, with heading, curvature and distance. */
-export function buildTrack(plan: Piece[] = CLASSIC): Track {
+/** The loop as points a metre apart, with heading, curvature and distance, and its hills if it has any. */
+export function buildTrack(plan: Piece[] = CLASSIC, shape: TrackShape = {}): Track {
   const { A: lenA, B: lenB } = closure(plan)
   if (!(lenA > 0 && lenB > 0)) throw new Error(`track does not close: A ${lenA} B ${lenB}`)
 
@@ -187,11 +206,25 @@ export function buildTrack(plan: Piece[] = CLASSIC): Track {
     }
   }
   const n = xs.length
+  const gap = Math.hypot(x - xs[0]!, y - ys[0]!)
+  // Turned to face the way the shape asks; the pieces are laid out facing east.
+  const turnTo = ((shape.heading ?? 0) * Math.PI) / 180
+  if (turnTo) {
+    const c = Math.cos(turnTo)
+    const sn = Math.sin(turnTo)
+    for (let i = 0; i < n; i++) {
+      const px = xs[i]!
+      const py = ys[i]!
+      xs[i] = px * c - py * sn
+      ys[i] = px * sn + py * c
+      hs[i] = hs[i]! + turnTo
+    }
+  }
   const s = new Float64Array(n)
   for (let i = 1; i < n; i++) s[i] = s[i - 1]! + Math.hypot(xs[i]! - xs[i - 1]!, ys[i]! - ys[i - 1]!)
   const length = s[n - 1]! + Math.hypot(xs[0]! - xs[n - 1]!, ys[0]! - ys[n - 1]!)
   const gates = Math.floor(length / GATE_EVERY) - 1
-  return {
+  const track: Track = {
     n,
     gates,
     sectorGates: [Math.round(gates / 3), Math.round((2 * gates) / 3)],
@@ -203,9 +236,65 @@ export function buildTrack(plan: Piece[] = CLASSIC): Track {
     length,
     corners,
     startIndex: Math.round(START_AT),
-    gap: Math.hypot(x - xs[0]!, y - ys[0]!),
+    gap,
     straights: { A: lenA, B: lenB },
+    clockwise: plan.reduce((sum, p) => sum + ('turn' in p ? p.turn : 0), 0) < 0,
   }
+  if (shape.hills && shape.hills.length >= 3) Object.assign(track, hillsAlong(track, shape.hills))
+  return track
+}
+
+/**
+ * A hilly track's heights, a smooth curve through its hills (a cubic through each pair, sloping as its
+ * neighbours do, round and round the lap), and from them how steep the road is and how it bends up or over.
+ */
+function hillsAlong(track: Track, hills: Hill[]) {
+  const { n, length, s } = track
+  const knots = hills.map(([f, z]) => [((f % 1) + 1) % 1, z] as const).sort((a, b) => a[0] - b[0])
+  const m = knots.length
+  const knot = (k: number) => {
+    const j = ((k % m) + m) % m
+    const lap = Math.floor(k / m)
+    return [knots[j]![0] + lap, knots[j]![1]] as const
+  }
+  const slope = (k: number) => {
+    const [f0, z0] = knot(k - 1)
+    const [f2, z2] = knot(k + 1)
+    return (z2 - z0) / (f2 - f0)
+  }
+  const z = new Float64Array(n)
+  for (let i = 0; i < n; i++) {
+    const f = lapDistance(track, i) / length
+    // The knot at or before f, then the curve on to the next.
+    let k = m - 1
+    while (k >= 0 && knots[k]![0] > f) k--
+    const [f0, z0] = knot(k)
+    const [f1, z1] = knot(k + 1)
+    const w = f1 - f0
+    const t = (f - f0) / w
+    const t2 = t * t
+    const t3 = t2 * t
+    z[i] = (2 * t3 - 3 * t2 + 1) * z0 + (t3 - 2 * t2 + t) * w * slope(k) + (-2 * t3 + 3 * t2) * z1 + (t3 - t2) * w * slope(k + 1)
+  }
+  const along = (i: number, j: number) => {
+    const d = s[((j % n) + n) % n]! - s[((i % n) + n) % n]!
+    return j > i ? (d > 0 ? d : d + length) : d < 0 ? d : d - length
+  }
+  const smooth = (a: Float64Array, w: number) => {
+    const out = new Float64Array(n)
+    for (let i = 0; i < n; i++) {
+      let sum = 0
+      for (let j = -w; j <= w; j++) sum += a[(i + j + n) % n]!
+      out[i] = sum / (2 * w + 1)
+    }
+    return out
+  }
+  const rise = new Float64Array(n)
+  for (let i = 0; i < n; i++) rise[i] = (z[(i + 3) % n]! - z[(i - 3 + n) % n]!) / along(i - 3, i + 3)
+  const grade = smooth(rise, 4)
+  const bend = new Float64Array(n)
+  for (let i = 0; i < n; i++) bend[i] = (grade[(i + 5) % n]! - grade[(i - 5 + n) % n]!) / along(i - 5, i + 5)
+  return { z, grade, crest: smooth(bend, 6) }
 }
 
 /** Distance along the lap from the start line, 0 up to the track's length. */
@@ -326,6 +415,21 @@ export function stepRun(run: Run, input: Controls, track: Track): Run {
   let over = 0
   let work = 0
   let abs = false
+  // A hill: gravity pulls the car down the slope, along it and across it as the car points, and the road
+  // presses up harder in a dip and falls away over a crest, so the tyres grip more or less.
+  let slopeX = 0
+  let slopeY = 0
+  let weight = G
+  if (track.grade && track.crest) {
+    const i = run.index
+    const grade = track.grade[i]!
+    const flat = 1 / Math.sqrt(1 + grade * grade)
+    const down = -G * grade * flat
+    const across = track.h[i]! - run.h
+    slopeX = down * Math.cos(across)
+    slopeY = down * Math.sin(across)
+    weight = Math.max(0.25 * G, G * flat + run.u * run.u * track.crest[i]!)
+  }
   for (let sub = 0; sub < SUBSTEPS; sub++) {
     let { u, vy, r } = run
     const beta = u > 2 ? Math.atan2(vy, u) : 0
@@ -337,10 +441,11 @@ export function stepRun(run: Run, input: Controls, track: Track): Run {
     const d = run.steer
 
     // Braking puts weight on the front tyres; accelerating puts it on the rear; speed presses both down.
-    const shift = (run.ax * CAR.height) / WHEELBASE
+    // (The tyres' own push moves it, not the hill's pull, which acts on the whole car at once.)
+    const shift = ((run.ax - slopeX) * CAR.height) / WHEELBASE
     const aero = CAR.downforce * u * u
-    const capF = mu * Math.max(0.2 * G, (G * CAR.b) / WHEELBASE - shift + aero * CAR.aeroFront)
-    const capR = mu * CAR.rearGrip * Math.max(0.2 * G, (G * CAR.a) / WHEELBASE + shift + aero * (1 - CAR.aeroFront))
+    const capF = mu * Math.max(0.2 * G, (weight * CAR.b) / WHEELBASE - shift + aero * CAR.aeroFront)
+    const capR = mu * CAR.rearGrip * Math.max(0.2 * G, (weight * CAR.a) / WHEELBASE + shift + aero * (1 - CAR.aeroFront))
 
     const along = Math.max(u, 4)
     const slipF = Math.atan2(vy + CAR.a * r, along) - d
@@ -372,9 +477,9 @@ export function stepRun(run: Run, input: Controls, track: Track): Run {
 
     const cd = Math.cos(d)
     const sd = Math.sin(d)
-    let ax = fxR + fxF * cd - fyF * sd - CAR.drag * u * u - (u > 0.1 ? CAR.rolling : 0)
+    let ax = fxR + fxF * cd - fyF * sd - CAR.drag * u * u - (u > 0.1 ? CAR.rolling : 0) + slopeX
     if (run.onGrass) ax -= 2 + Math.max(0, u - CAR.grassSlow) * 0.7
-    const ay = fyR + fyF * cd + fxF * sd
+    const ay = fyR + fyF * cd + fxF * sd + slopeY
     let spin = (CAR.a * (fyF * cd + fxF * sd) - CAR.b * fyR) / k2
 
     // Stability control: when the car turns faster than the wheel and the road allow, or slides
@@ -462,21 +567,31 @@ export function stepRun(run: Run, input: Controls, track: Track): Run {
 
 /* ---------- a driver who knows the way ---------- */
 
-/** The speed the middle of the road can be driven at each metre, braking as the tyres (and the downforce) allow. */
+/**
+ * The speed the middle of the road can be driven at each metre, braking as the tyres (and the downforce)
+ * allow. On a hill, a crest takes grip away and a dip gives it, and braking uphill stops the car sooner.
+ */
 export function speedPlan(track: Track, margin = 0.86) {
-  const { n } = track
+  const { n, grade, crest } = track
   const v = new Float64Array(n)
-  // Cornering: v² k = margin µ (g + downforce v²), so v² = margin µ g / (k − margin µ downforce).
-  const reach = margin * CAR.mu * CAR.downforce
   for (let i = 0; i < n; i++) {
     let k = 0
-    for (let j = -6; j <= 6; j++) k = Math.max(k, Math.abs(track.k[(i + j + n) % n]!))
+    let lift = 0
+    for (let j = -6; j <= 6; j++) {
+      const at = (i + j + n) % n
+      k = Math.max(k, Math.abs(track.k[at]!))
+      if (crest) lift = Math.min(lift, crest[at]!)
+    }
+    // Cornering: v² k = margin µ (g + (downforce + crest) v²), so v² = margin µ g / (k − margin µ (downforce + crest)).
+    const reach = margin * CAR.mu * (CAR.downforce + lift)
     v[i] = k > reach + 1e-5 ? Math.min(80, Math.sqrt((margin * CAR.mu * G) / (k - reach))) : 80
   }
   for (let pass = 0; pass < 2; pass++) {
     for (let i = n - 1; i >= 0; i--) {
       const next = v[(i + 1) % n]!
-      v[i] = Math.min(v[i]!, Math.sqrt(next * next + 2 * 0.78 * CAR.mu * load(next)))
+      const grip = 0.78 * CAR.mu * Math.max(0.3 * G, load(next) + (crest ? Math.min(0, crest[i]!) * next * next : 0))
+      const brake = Math.max(1, grip + (grade ? G * grade[i]! : 0))
+      v[i] = Math.min(v[i]!, Math.sqrt(next * next + 2 * brake))
     }
   }
   return v

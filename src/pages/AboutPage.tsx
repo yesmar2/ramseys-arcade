@@ -84,6 +84,14 @@ export function AboutPage() {
       </div>
 
       <p className="home-about__fine">
+        Hot Lap’s Seneca Glen follows a real circuit’s line, from map data ©{' '}
+        <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">
+          OpenStreetMap contributors
+        </a>{' '}
+        (ODbL), with heights from the US Geological Survey.
+      </p>
+
+      <p className="home-about__fine">
         <a href={privacyHref()}>Privacy</a>
         <span aria-hidden="true"> · </span>
         <a href={termsHref()}>Terms</a>

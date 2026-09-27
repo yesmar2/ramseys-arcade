@@ -81,7 +81,7 @@ export function hotlapCourse(day: string): Course {
   let course = courses.get(day)
   if (!course) {
     const daily = dailyTrack(day)
-    const track = buildTrack(daily.pieces)
+    const track = buildTrack(daily.pieces, daily.shape)
     const bot = botLap(track)
     course = { ...daily, track, paceLap: { time: bot.time ?? daily.pace, splits: bot.splits, ghost: bot.ghost } }
     if (courses.size > 2) courses.clear()

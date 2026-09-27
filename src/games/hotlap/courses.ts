@@ -11,7 +11,7 @@
  * pace car and a driver on the limit both get round cleanly in a sensible time.
  */
 import { hashString, mulberry32 } from '../../lib/seededRandom.ts'
-import { botDriver, botLap, buildTrack, closure, HALF_WIDTH, newRun, stepRun, type Piece, type Track } from './sim.ts'
+import { botDriver, botLap, buildTrack, closure, HALF_WIDTH, newRun, stepRun, type Hill, type Piece, type Track, type TrackShape } from './sim.ts'
 
 /* ---------- writing tracks down ---------- */
 
@@ -31,6 +31,21 @@ export function decodeCourse(line: string): Piece[] {
       corner += 1
       return { turn: Number(token.slice(0, slash)), r: Number(token.slice(slash + 1)), name: `Turn ${corner}` }
     })
+}
+
+/**
+ * A hilly track's heights, written out as `permille:metres` pairs: how far round the lap from the start
+ * line, in thousandths, and how high the road is there above the line. "0:0 250:-12.5 500:4 750:-3".
+ */
+export function decodeHills(line: string): Hill[] {
+  return line
+    .trim()
+    .split(/\s+/)
+    .map((pair): Hill => {
+      const [at, up] = pair.split(':')
+      return [Number(at) / 1000, Number(up)]
+    })
+    .filter(([at, up]) => Number.isFinite(at) && Number.isFinite(up))
 }
 
 /* ---------- making one from a seed ---------- */
@@ -183,13 +198,14 @@ export function clearance(track: Track, apart = 150, from = 0, to = track.n, eve
 }
 
 /**
- * How near, in metres, the rest of the track comes to the right of the start straight's first 250 m past
- * the line, where the grandstand stands.
+ * How near, in metres, the rest of the track comes to the outside of the start straight's first 250 m
+ * past the line, where the grandstand stands: its right, or its left on a clockwise track.
  */
 export function grandstandClearance(track: Track) {
   const { n, x, y, h, startIndex } = track
   const along = Math.cos(h[startIndex]!)
   const across = Math.sin(h[startIndex]!)
+  const outside = track.clockwise ? 1 : -1
   let least = Infinity
   for (let i = startIndex - 40; i < startIndex + 250; i += 4) {
     const k = ((i % n) + n) % n
@@ -198,8 +214,8 @@ export function grandstandClearance(track: Track) {
       if (Math.min(gap, n - gap) <= 260) continue
       const dx = x[j]! - x[k]!
       const dy = y[j]! - y[k]!
-      // Right of the straight: its left normal is (−sin, cos).
-      if (dx * -across + dy * along >= 0) continue
+      // On the outside: the straight's left normal is (−sin, cos).
+      if ((dx * -across + dy * along) * outside <= 0) continue
       least = Math.min(least, Math.hypot(dx, dy))
     }
   }
@@ -236,17 +252,22 @@ function driveLap(track: Track, margin: number) {
 
 export type CourseCheck = { ok: true; track: Track; pace: number; limit: number } | { ok: false; why: string }
 
-/** Whether a track is fit to race: see the top of the file. */
-export function checkCourse(pieces: Piece[]): CourseCheck {
+/**
+ * Whether a track is fit to race: see the top of the file. A landmark (a real circuit's layout, see
+ * landmarks.ts) may run longer than a made one: up to 2,600 m and a 100-second pace lap.
+ */
+export function checkCourse(pieces: Piece[], shape: TrackShape = {}, landmark = false): CourseCheck {
   let track: Track
   try {
-    track = buildTrack(pieces)
+    track = buildTrack(pieces, shape)
   } catch {
     return { ok: false, why: 'it does not close' }
   }
+  const longest = landmark ? 2600 : 2200
+  const slowest = landmark ? 100 : 68
   if (track.straights.A < 240) return { ok: false, why: `start straight ${track.straights.A.toFixed(0)} m` }
   if (track.straights.B < 30) return { ok: false, why: `B ${track.straights.B.toFixed(0)} m` }
-  if (track.length < 900 || track.length > 2200) return { ok: false, why: `length ${track.length.toFixed(0)} m` }
+  if (track.length < 900 || track.length > longest) return { ok: false, why: `length ${track.length.toFixed(0)} m` }
   const box = bounds(track)
   if (box.width > 1100 || box.height > 1100) return { ok: false, why: 'too spread out' }
   // Roads apart, with grass between them: a hairpin's two legs come this close by design (the classic's are 36 m).
@@ -258,7 +279,7 @@ export function checkCourse(pieces: Piece[]): CourseCheck {
   const pace = botLap(track)
   if (pace.time == null || pace.run.cut) return { ok: false, why: 'the pace car did not get round' }
   if (pace.bumps > 0 || pace.grass > 0.3) return { ok: false, why: 'the pace car went off' }
-  if (pace.time < 40 || pace.time > 68) return { ok: false, why: `pace lap ${pace.time.toFixed(1)}s` }
+  if (pace.time < 40 || pace.time > slowest) return { ok: false, why: `pace lap ${pace.time.toFixed(1)}s` }
   const limit = driveLap(track, 0.97)
   if (limit.time == null || limit.cut || limit.bumps > 0) return { ok: false, why: 'a driver on the limit did not get round' }
   return { ok: true, track, pace: pace.time, limit: limit.time }

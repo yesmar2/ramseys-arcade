@@ -3,16 +3,20 @@
 //   node scripts/hotlap-daily.mjs plan [days=180]          add days to the end of the plan until it has this many
 //   node scripts/hotlap-daily.mjs show YYYY-MM-DD           one day's track: its line, its checks, its pace lap
 //   node scripts/hotlap-daily.mjs sheet [from=1] [count=36] [file=hotlap-tracks.svg]   the tracks' outlines, to look over
+//   node scripts/hotlap-daily.mjs insert YYYY-MM-DD <landmark>   a landmark (landmarks.ts) on a day to come,
+//                                                                the days after it moving on one
 //
 // Day 1 (2026-09-26) is the classic track. Each later day's track is the first that passes courses.ts's
 // checks among seeds made from the day's number. Days already in the plan are never made again, even if
-// the generator changes: a day that's been played has to stay the track it was. So plan only ever adds.
+// the generator changes: a day that's been played has to stay the track it was. So plan only ever adds,
+// and insert only ever puts a landmark on a day that hasn't come yet.
 import fs from 'node:fs'
 
 const COURSES = new URL('../src/games/hotlap/courses.ts', import.meta.url)
 const SIM = new URL('../src/games/hotlap/sim.ts', import.meta.url)
 const PLAN = new URL('../src/games/hotlap/dailyPlan.ts', import.meta.url)
 const SEEDS = new URL('../src/lib/seededRandom.ts', import.meta.url)
+const LANDMARKS_FILE = new URL('../src/games/hotlap/landmarks.ts', import.meta.url)
 
 const C = await import(COURSES.href)
 const S = await import(SIM.href)
@@ -21,20 +25,30 @@ const { hashString } = await import(SEEDS.href)
 const FIRST_DAY = '2026-09-26'
 const round2 = (v) => Math.round(v * 100) / 100
 
-function readPlan() {
+async function readPlan() {
   if (!fs.existsSync(PLAN)) return []
-  const text = fs.readFileSync(PLAN, 'utf8')
-  const out = []
-  for (const m of text.matchAll(/\{ name: '([^']*)', course: '([^']*)', pace: ([\d.]+) \}/g)) out.push({ name: m[1], course: m[2], pace: Number(m[3]) })
-  return out
+  const { DAILY_TRACKS } = await import(PLAN.href)
+  return DAILY_TRACKS.map((e) => ({ ...e }))
 }
 
+/** A planned track's shape beyond its pieces: how it lies on the map, and its hills. */
+function shapeOf(e) {
+  return { ...(e.heading ? { heading: e.heading } : {}), ...(e.hills ? { hills: C.decodeHills(e.hills) } : {}) }
+}
+
+/** A landmark's is a real circuit's layout, which may run longer than a made track (courses.ts checkCourse). */
+const isLandmark = (e) => Boolean(e.heading || e.hills)
+
 function writePlan(entries) {
-  const lines = entries.map((e) => `  { name: '${e.name}', course: '${e.course}', pace: ${e.pace} },`)
+  const lines = entries.map(
+    (e) => `  { name: '${e.name}', course: '${e.course}', pace: ${e.pace}${e.heading ? `, heading: ${e.heading}` : ''}${e.hills ? `, hills: '${e.hills}'` : ''} },`,
+  )
   const text = `// Written by scripts/hotlap-daily.mjs: Hot Lap's track for each day from the first (${FIRST_DAY}), each
 // checked to close, keep clear of itself and give the pace car and a driver on the limit a clean lap.
 // Days are only ever added at the end, never made again: a day that's been played stays the track it was.
-export type PlannedTrack = { name: string; course: string; pace: number }
+// A landmark (landmarks.ts, a real circuit's layout) may be put on a day to come, and carries which way it
+// faces on the map and its hills.
+export type PlannedTrack = { name: string; course: string; pace: number; heading?: number; hills?: string }
 
 export const DAILY_TRACKS: PlannedTrack[] = [
 ${lines.join('\n')}
@@ -76,7 +90,7 @@ const [command = 'plan', ...args] = process.argv.slice(2)
 
 if (command === 'plan') {
   const days = Number(args[0] ?? 180)
-  const plan = readPlan()
+  const plan = await readPlan()
   const had = plan.length
   const names = new Set(plan.map((e) => e.name))
   for (let n = plan.length + 1; n <= days; n++) {
@@ -93,11 +107,11 @@ if (command === 'plan') {
 } else if (command === 'show') {
   const day = args[0] ?? new Date().toISOString().slice(0, 10)
   const n = numberOf(day)
-  const plan = readPlan()
+  const plan = await readPlan()
   const entry = plan[(n - 1) % plan.length]
   if (!entry) throw new Error('the plan is empty: run plan first')
   const pieces = C.decodeCourse(entry.course)
-  const check = C.checkCourse(pieces)
+  const check = C.checkCourse(pieces, shapeOf(entry), isLandmark(entry))
   console.log(`day ${n} (${day}): ${entry.name}`)
   console.log(`  ${entry.course}`)
   console.log(check.ok ? `  length ${check.track.length.toFixed(0)} m, pace ${check.pace.toFixed(2)}s, limit ${check.limit.toFixed(2)}s, start straight ${check.track.straights.A.toFixed(0)} m, clearance ${C.clearance(check.track).toFixed(0)} m` : `  fails: ${check.why}`)
@@ -105,7 +119,7 @@ if (command === 'plan') {
   const from = Number(args[0] ?? 1)
   const count = Number(args[1] ?? 36)
   const file = args[2] ?? 'hotlap-tracks.svg'
-  const plan = readPlan()
+  const plan = await readPlan()
   const cell = 200
   const cols = 6
   const rows = Math.ceil(count / cols)
@@ -114,7 +128,7 @@ if (command === 'plan') {
     const n = from + i
     const entry = plan[n - 1]
     if (!entry) break
-    const track = S.buildTrack(C.decodeCourse(entry.course))
+    const track = S.buildTrack(C.decodeCourse(entry.course), shapeOf(entry))
     const box = C.bounds(track)
     const scale = (cell - 40) / Math.max(box.width, box.height)
     const ox = (i % cols) * cell + cell / 2
@@ -130,6 +144,25 @@ if (command === 'plan') {
   parts.push('</svg>')
   fs.writeFileSync(file, parts.join('\n'))
   console.log(`wrote ${file}`)
+} else if (command === 'insert') {
+  const [day, key] = args
+  if (!day || !/^\d{4}-\d{2}-\d{2}$/.test(day) || !key) throw new Error('usage: insert YYYY-MM-DD <landmark>')
+  const { LANDMARKS } = await import(LANDMARKS_FILE.href)
+  const landmark = LANDMARKS[key]
+  if (!landmark) throw new Error(`no landmark "${key}": ${Object.keys(LANDMARKS).join(', ')}`)
+  // Only a day to come: today's track is being driven, and a played day stays the track it was.
+  const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
+  if (day <= today) throw new Error(`${day} has come already (it's ${today} in New York): pick a day after it`)
+  const plan = await readPlan()
+  if (plan.some((e) => e.name === landmark.name)) throw new Error(`${landmark.name} is in the plan already`)
+  const n = numberOf(day)
+  if (n < 2 || n > plan.length + 1) throw new Error(`day ${n} is outside the plan (1 to ${plan.length})`)
+  const entry = { name: landmark.name, course: landmark.course, heading: landmark.heading, hills: landmark.hills }
+  const check = C.checkCourse(C.decodeCourse(entry.course), shapeOf(entry), true)
+  if (!check.ok) throw new Error(`${landmark.name} fails its checks: ${check.why}`)
+  plan.splice(n - 1, 0, { ...entry, pace: round2(check.pace) })
+  writePlan(plan)
+  console.log(`day ${n} (${day}): ${landmark.name}, ${check.track.length.toFixed(0)} m, pace ${check.pace.toFixed(2)}s, limit ${check.limit.toFixed(2)}s; the days after it each move on one, to ${dayOf(plan.length)}`)
 } else {
-  console.log('usage: node scripts/hotlap-daily.mjs plan [days] | show YYYY-MM-DD | sheet [from] [count] [file]')
+  console.log('usage: node scripts/hotlap-daily.mjs plan [days] | show YYYY-MM-DD | sheet [from] [count] [file] | insert YYYY-MM-DD <landmark>')
 }
