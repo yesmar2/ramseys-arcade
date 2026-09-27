@@ -5,7 +5,8 @@ import { api } from './leaderboard'
  * The archive of a daily game's past days (ArchivePage): each day's hole or track, how many played it and
  * who did best, and your own result. The days themselves come from the game's own plan; this is what the
  * API says about them (GET /leaderboards/:game/days). A day played from the archive is practice, and
- * counts for nothing.
+ * counts for nothing, except a lap of a past Hot Lap track, which goes on the track's own board
+ * (trackBoards.ts).
  */
 
 /** A day of a daily game, as the API has it: its runs and players, its best run, and yours. */

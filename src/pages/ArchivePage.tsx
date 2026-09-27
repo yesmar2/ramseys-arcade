@@ -8,7 +8,8 @@ import '../styles/archive.css'
 
 /*
  * A daily game's archive, /games/<slug>/archive: every day since its first, newest first, each one
- * playable again as practice. Each game's list comes in a chunk of its own, with its plan.
+ * playable again as practice, except Hot Lap's tracks, which keep boards of their own for good (lib/
+ * trackBoards.ts). Each game's list comes in a chunk of its own, with its plan.
  */
 
 const HoleArchive = lazyPage(() => import('../components/archive/HoleArchive').then((m) => m.HoleArchive))
@@ -23,7 +24,7 @@ const ARCHIVES: Record<string, { title: string; blurb: string }> = {
   },
   hotlap: {
     title: 'Past tracks',
-    blurb: 'Every day’s track since the first, and who was fastest. Drive any of them again: here a lap is practice, so it doesn’t count for boards, tickets or records.',
+    blurb: 'Every day’s track since the first, and its record. Each track keeps its board for good: drive any of them again and your best lap goes on it. Points and tickets are for today’s track.',
   },
   findbug: {
     title: 'Past days',

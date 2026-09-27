@@ -7,23 +7,27 @@ import { GamePauseOverlay, PauseButton } from '../../components/PauseControls'
 import { PlayReadoutStats, PlayStat } from '../../components/PlayStats'
 import { ScoreSaveCard } from '../../components/ScoreSaveCard'
 import { TournamentScoreCard } from '../../components/TournamentScoreCard'
+import { useAuth } from '../../hooks/useAuth'
 import { useGamePause } from '../../hooks/useGamePause'
 import { usePersonalBest } from '../../hooks/usePersonalBest'
+import { usePlayerName } from '../../hooks/usePlayerName'
 import { gameAccentStyle } from '../../lib/gameAccentStyle'
 import { haptic } from '../../lib/haptics'
+import { normalizePlayerName } from '../../lib/leaderboard'
 import { getPersonalBest } from '../../lib/personalBest'
 import { clearRunAchievements } from '../../lib/runAchievements'
-import { beginRun } from '../../lib/runSession'
+import { beginRun, runIdFor } from '../../lib/runSession'
 import { sfx } from '../../lib/sound'
+import { useTrackBoard } from '../../lib/trackBoards'
 import { useTournamentPlay } from '../../tournaments/TournamentPlayContext'
 import { CarSound } from './audio'
-import { dayWords, msUntilNextTrack, trackDay, untilWords } from './daily'
+import { dayWords, msUntilNextTrack, trackDay, trackState, untilWords } from './daily'
 import { bestLapOf, Ghost, hotlapCourse, keepBestLap, progressOf, type Course, type GhostLap } from './lap'
 import { TrackMap } from './map'
 import { HotLapScene } from './scene'
 import { formatLap, hotlapBoardScore, hotlapMsFromBoardScore } from './score'
 import { botDriver, GHOST_EVERY, newRun, STEP, stepRun, type Controls, type Run, type Track } from './sim'
-import { TestResultCard, TestStartCard } from './TestCards'
+import { PastResultCard, TestResultCard, TestStartCard } from './TestCards'
 
 const SLUG = 'hotlap'
 
@@ -64,8 +68,10 @@ type Game = {
   /** The day, and its track. */
   day: string
   track: Track
-  /** A test drive (TestCards.tsx): its laps go on no board and are kept only in the tab. */
+  /** Another day's track (TestCards.tsx): its laps go on no day's board, and are kept only in the tab. */
   test: boolean
+  /** Of those, a track whose day has gone: its laps go on the track's own board (lib/trackBoards.ts). */
+  past: boolean
   run: Run
   /** Seconds into the countdown, or since the line. */
   clock: number
@@ -80,8 +86,8 @@ type Game = {
   steer: number
   /** The lap being chased: your best on this device, or the pace car's. */
   ghost: Ghost
-  /** The lap's result, once it's over. */
-  lap: { time: number; score: number; splits: number[]; improved: boolean } | null
+  /** The lap's result, once it's over, and on a past track, the run it was driven in, taken as it ended. */
+  lap: { time: number; score: number; splits: number[]; improved: boolean; run: Promise<string | undefined> | null } | null
 }
 
 type Ui = {
@@ -125,13 +131,14 @@ function sectorFigure(k: number, splits: number[], chased: number[]) {
   return { text: `${d < 0 ? '−' : '+'}${Math.abs(d).toFixed(2)}`, tone: d <= 0 ? 'good' : 'bad' }
 }
 
-function freshGame(course: Course, ghostLap: GhostLap, test: boolean): Game {
+function freshGame(course: Course, ghostLap: GhostLap, test: boolean, past: boolean): Game {
   const { track } = course
   return {
     phase: 'menu',
     day: course.day,
     track,
     test,
+    past,
     run: newRun(track),
     clock: 0,
     t: 0,
@@ -147,8 +154,8 @@ function freshGame(course: Course, ghostLap: GhostLap, test: boolean): Game {
 const touchScreen = () =>
   typeof window !== 'undefined' && ((typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches) || 'ontouchstart' in window)
 
-/** Today's track and its number, the blue car's lap of it, and when the next track comes (a test drive's day). */
-function TrackTiles({ course, ghost, test }: { course: Course; ghost: number; test: boolean }) {
+/** Today's track and its number, the blue car's lap of it, and when the next track comes (another day's track: its day). */
+function TrackTiles({ course, ghost, test, past }: { course: Course; ghost: number; test: boolean; past: boolean }) {
   const [left, setLeft] = useState(() => msUntilNextTrack())
   useEffect(() => {
     const timer = window.setInterval(() => setLeft(msUntilNextTrack()), 20_000)
@@ -158,7 +165,7 @@ function TrackTiles({ course, ghost, test }: { course: Course; ghost: number; te
     <>
       <div className="game-pause-meta__row hotlap-track">
         <span>
-          {test ? 'Test drive' : 'Today’s track'} · #{course.n}
+          {past ? 'Past track' : test ? 'Test drive' : 'Today’s track'} · #{course.n}
         </span>
         <strong>{course.name}</strong>
       </div>
@@ -190,8 +197,10 @@ function TrackTiles({ course, ghost, test }: { course: Course; ghost: number; te
  * HotLapGame mounts it for today; when midnight has brought a new track by the next start, it asks for
  * the new day with `onNewDay`, which mounts it again, with `notice` to say why when a lap was lost to it.
  *
- * With `test`, it's a test drive of the day's track, ahead of its day (TestCards.tsx): no run for the
- * boards, no score card, and your best lap is kept only in the tab; midnight changes nothing.
+ * With `test`, it's the day's track driven on another day (TestCards.tsx): no score card, your best lap
+ * is kept only in the tab, and midnight changes nothing. A track still to come is a test drive, on no
+ * board. One whose day has gone keeps a board of its own for good: a lap on it goes there, under a run
+ * of its own, and never on today's board.
  *
  * The ghost is the lap to beat, driven alongside you the whole way: your best on this device, or before
  * you have one, the pace car's. It stays on the road all lap, fainter while it's right on top of you,
@@ -217,8 +226,14 @@ function HotLapDay({
   const apiBest = usePersonalBest(SLUG)
   const course = hotlapCourse(day)
   const pace = course.paceLap
+  // A track whose day has gone, settled as it opens: its laps go on its own board.
+  const [past] = useState(() => test && trackState(course.n) === 'past')
+  const { signedIn } = useAuth()
+  const playerName = normalizePlayerName(usePlayerName())
+  const [boardVersion, setBoardVersion] = useState(0)
+  const board = useTrackBoard(past ? course.n : null, playerName, boardVersion)
   const gameRef = useRef<Game | null>(null)
-  if (!gameRef.current) gameRef.current = freshGame(course, bestLapOf(day, test) ?? pace, test)
+  if (!gameRef.current) gameRef.current = freshGame(course, bestLapOf(day, test) ?? pace, test, past)
   const [ui, setUi] = useState<Ui>(() => snapshot(gameRef.current!))
   const [saveOpen, setSaveOpen] = useState(false)
   const saveOpenRef = useRef(false)
@@ -276,8 +291,11 @@ function HotLapDay({
       clearRunAchievements()
       beginRun(SLUG)
       previousBestRef.current = getPersonalBest(SLUG)
+    } else if (past) {
+      // A past track's lap goes on its board, timed by the server as a day's is.
+      beginRun(SLUG)
     }
-    const g = freshGame(course, bestLapOf(day, test) ?? pace, test)
+    const g = freshGame(course, bestLapOf(day, test) ?? pace, test, past)
     g.phase = 'countdown'
     gameRef.current = g
     sceneRef.current?.startLap()
@@ -291,7 +309,7 @@ function HotLapDay({
     if (newDay()) return
     saveOpenRef.current = false
     setSaveOpen(false)
-    gameRef.current = freshGame(course, bestLapOf(day, test) ?? pace, test)
+    gameRef.current = freshGame(course, bestLapOf(day, test) ?? pace, test, past)
     previousBestRef.current = getPersonalBest(SLUG)
     startGrace.current = performance.now() + 300
     clearThumbs()
@@ -352,7 +370,7 @@ function HotLapDay({
       const kept = bestLapOf(g.day, g.test)
       const improved = !kept || time < kept.time
       if (improved) keepBestLap(g.day, g.test, { time, splits: [...run.splits], ghost: g.record })
-      g.lap = { time, score: hotlapBoardScore(time), splits: [...run.splits], improved }
+      g.lap = { time, score: hotlapBoardScore(time), splits: [...run.splits], improved, run: g.past ? runIdFor(SLUG) : null }
       sfx(improved ? 'perfect' : 'good')
       haptic('boost')
     }
@@ -628,13 +646,17 @@ function HotLapDay({
   const chased = g.ghost.lap.splits
   const sectors = [0, 1, 2].map((k) => sectorFigure(k, ui.splits, chased))
   const latest = Math.max(0, ui.splits.length - 1)
-  // Your best today on the board, or on a test drive, your best lap of the track in this tab.
+  // Your best today on the board; on another day's track, your best lap of it in this tab, or on a past
+  // track's board if that's faster.
   const best = Math.max(apiBest, 0)
-  const testBest = test ? bestLapOf(day, true) : null
-  const bestText = test ? (testBest ? formatLap(testBest.time) : '–') : best > 0 ? formatLap(hotlapMsFromBoardScore(best) / 1000) : '–'
+  const testBest = Math.min(
+    test ? (bestLapOf(day, true)?.time ?? Infinity) : Infinity,
+    past && board?.you ? hotlapMsFromBoardScore(board.you.score) / 1000 : Infinity,
+  )
+  const bestText = test ? (testBest < Infinity ? formatLap(testBest) : '–') : best > 0 ? formatLap(hotlapMsFromBoardScore(best) / 1000) : '–'
   const showroom = ui.phase === 'menu'
   const lap = g.lap
-  const extra = <TrackTiles course={course} ghost={g.ghost.lap.time} test={test} />
+  const extra = <TrackTiles course={course} ghost={g.ghost.lap.time} test={test} past={past} />
 
   return (
     <section
@@ -749,13 +771,25 @@ function HotLapDay({
               />
               {showroom && !saveOpen && !paused && !noGl ? (
                 test ? (
-                  <TestStartCard course={course} ghost={g.ghost.lap.time} />
+                  <TestStartCard course={course} ghost={g.ghost.lap.time} past={past ? { board, signedIn } : null} />
                 ) : (
                   <GameStartCard title="Hot Lap" slug={SLUG} extraMeta={extra} />
                 )
               ) : null}
               {ui.phase === 'gameover' && saveOpen && lap ? (
-                test ? (
+                past ? (
+                  <PastResultCard
+                    course={course}
+                    time={lap.time}
+                    score={lap.score}
+                    splits={lap.splits}
+                    run={lap.run}
+                    board={board}
+                    onSaved={() => setBoardVersion((v) => v + 1)}
+                    onAgain={start}
+                    onDone={toMenu}
+                  />
+                ) : test ? (
                   <TestResultCard
                     course={course}
                     time={lap.time}

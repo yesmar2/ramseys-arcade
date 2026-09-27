@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react'
 import { usePlayerName } from '../../hooks/usePlayerName'
-import { archiveDayWords, useArchiveDays, type ArchiveDay } from '../../lib/archive'
+import { archiveDayWords, useArchiveDays } from '../../lib/archive'
 import { normalizePlayerName } from '../../lib/leaderboard'
 import { formatLeaderboardScore } from '../../lib/leaderboardFormat'
+import { ordinal } from '../../lib/scoreboard'
 import { PlayerName } from '../PlayerName'
 
 /*
@@ -19,6 +20,19 @@ export type ArchiveItem = {
   today: boolean
   href: string
   build: () => { title: string; sub: string; art: ReactNode }
+  /** What its card says when nobody has a result on it, if not that nobody played that day. */
+  empty?: string
+}
+
+/**
+ * How a day went, as its card says it: the best result and how many played, and yours. With `record`,
+ * it's a Hot Lap track's record, which its board keeps for good (TrackArchive), and your place on it.
+ */
+export type ArchiveResult = {
+  top: { name: string; score: number; avatarId?: string }
+  players: number
+  you: { score: number; place?: number } | null
+  record?: boolean
 }
 
 /** Whether an element has come within a screen of the view: once it has, it stays true. */
@@ -42,7 +56,7 @@ function useNear<T extends Element>(): [RefObject<T | null>, boolean] {
   return [ref, near]
 }
 
-function DayCard({ slug, item, result, asked }: { slug: string; item: ArchiveItem; result: ArchiveDay | undefined; asked: boolean }) {
+function DayCard({ slug, item, result, asked }: { slug: string; item: ArchiveItem; result: ArchiveResult | undefined; asked: boolean }) {
   const [ref, near] = useNear<HTMLLIElement>()
   const shown = useMemo(() => (near ? item.build() : null), [near, item])
   const figure = (score: number) => formatLeaderboardScore(slug, score)
@@ -58,16 +72,22 @@ function DayCard({ slug, item, result, asked }: { slug: string; item: ArchiveIte
         <span className="arch-card__best">
           {result ? (
             <>
-              Best: <PlayerName name={result.top.name} avatarId={result.top.avatarId} /> · {figure(result.top.score)}
+              {result.record ? 'Record' : 'Best'}: <PlayerName name={result.top.name} avatarId={result.top.avatarId} /> ·{' '}
+              {figure(result.top.score)}
               {result.players > 1 ? ` · ${result.players} players` : ''}
             </>
           ) : asked ? (
-            item.today ? 'Nobody on the board yet today' : 'Nobody on the board that day'
+            (item.empty ?? (item.today ? 'Nobody on the board yet today' : 'Nobody on the board that day'))
           ) : (
             ' '
           )}
         </span>
-        {result?.you ? <span className="arch-card__you">You: {figure(result.you.score)}</span> : null}
+        {result?.you ? (
+          <span className="arch-card__you">
+            You: {figure(result.you.score)}
+            {result.you.place ? ` · ${ordinal(result.you.place)}` : ''}
+          </span>
+        ) : null}
       </div>
       <a className="arch-card__play" href={item.href}>
         {item.today ? 'Play today’s' : 'Play it again'}
@@ -76,15 +96,31 @@ function DayCard({ slug, item, result, asked }: { slug: string; item: ArchiveIte
   )
 }
 
+/** The grid of a game's days, with how each went; `asked` once the results have come, so none means nobody. */
+export function ArchiveGrid({
+  slug,
+  items,
+  results,
+  asked,
+}: {
+  slug: string
+  items: ArchiveItem[]
+  results: ReadonlyMap<string, ArchiveResult>
+  asked: boolean
+}) {
+  return (
+    <ul className={`arch-grid arch-grid--${slug}`}>
+      {items.map((item) => (
+        <DayCard key={item.day} slug={slug} item={item} result={results.get(item.day)} asked={asked} />
+      ))}
+    </ul>
+  )
+}
+
+/** A daily game's days, with each day's best and yours from its board. */
 export function ArchiveList({ slug, items }: { slug: string; items: ArchiveItem[] }) {
   const me = normalizePlayerName(usePlayerName())
   const days = useArchiveDays(slug, me)
   const byDay = useMemo(() => new Map((days ?? []).map((d) => [d.day, d])), [days])
-  return (
-    <ul className={`arch-grid arch-grid--${slug}`}>
-      {items.map((item) => (
-        <DayCard key={item.day} slug={slug} item={item} result={byDay.get(item.day)} asked={days !== null} />
-      ))}
-    </ul>
-  )
+  return <ArchiveGrid slug={slug} items={items} results={byDay} asked={days !== null} />
 }

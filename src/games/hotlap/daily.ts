@@ -47,6 +47,17 @@ export function dayOfTrack(n: number): string {
 /** How many days are planned, from the first. */
 export const PLANNED_TRACKS = DAILY_TRACKS.length
 
+/**
+ * Where a planned track stands today, as the API's trackLaps.ts has it: 'today' while it's the Daily (a
+ * lap goes on the day's board), 'past' once its day has come and gone (a lap goes on the track's own
+ * board, kept for good), 'ahead' before its day (a test drive, kept nowhere).
+ */
+export function trackState(n: number, now = Date.now()): 'past' | 'today' | 'ahead' {
+  const today = trackNumber(trackDay(now))
+  if (today >= 1 && ((today - 1) % PLANNED_TRACKS) + 1 === n) return 'today'
+  return n <= today ? 'past' : 'ahead'
+}
+
 /** "Sat, Oct 10": a track's day, in words. */
 export function dayWords(day: string): string {
   const [y, m, d] = day.split('-').map(Number)

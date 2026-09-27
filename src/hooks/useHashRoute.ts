@@ -54,7 +54,7 @@ export type Route =
    * Bug's Today's Wanted, `?day=YYYY-MM-DD`, played again from the archive.
    */
   | { name: 'gamePlay'; slug: string; hole?: string; track?: string; day?: string }
-  /** A daily game's archive: every day since its first, each playable again as practice. */
+  /** A daily game's archive: every day since its first, each playable again (as practice, but for Hot Lap's tracks' own boards). */
   | { name: 'gameArchive'; slug: string }
   | { name: 'authVerify'; token: string }
   | { name: 'about' }

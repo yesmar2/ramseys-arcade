@@ -282,6 +282,7 @@ export const HOW_TO_PLAY: Record<string, HowToPlay> = {
     scores: [
       { what: 'Your score', pts: 'your best lap today', sub: 'fastest wins the day' },
       { what: 'A cut across the grass', pts: 'no time', sub: 'the lap can’t count' },
+      { what: 'A lap of a past track', pts: 'its own board', sub: 'kept for good, not today’s' },
     ],
     ends: 'At the line, one lap from the start. Drive it as often as you like.',
     tip: 'Brake in a straight line before a corner, then squeeze back on the gas as it opens out. The blue car is the lap to beat: your best today, or the pace car’s.',

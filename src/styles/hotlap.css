@@ -359,6 +359,34 @@ html[data-theme='dark'] .hotlap--fullscreen {
   justify-self: end;
 }
 
+/* Two figures a line, and a past track's record across the card (TestCards.tsx Standing). */
+.game-card.hotlap-test .game-pause-meta {
+  grid-template-columns: 1fr 1fr;
+}
+
+.game-card .hotlap-test__wide {
+  grid-column: 1 / -1;
+}
+
+/* A past track's lap that took its record. */
+.hotlap-test__news {
+  margin: 0;
+  text-align: center;
+  font-weight: 800;
+  color: var(--panel-accent-ink);
+}
+
+/* Signed in with no tag yet: a tag puts the lap on the track's board. */
+.hotlap-test__tag {
+  display: grid;
+  justify-items: center;
+  gap: 0.6rem;
+}
+
+.hotlap-test__tag .report__ask {
+  width: 100%;
+}
+
 /* ---------- a phone ---------- */
 
 @media (max-width: 560px) {
