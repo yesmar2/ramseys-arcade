@@ -574,6 +574,86 @@ html[data-theme='dark'] .pf {
 }
 
 /*
+ * The trophy case along the foot of the card: a tile for each kind of trophy won, tinted to its own colour
+ * as the shelf's plinths are, with how many on a tag at its corner.
+ */
+.pcard-case {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.7rem 1.1rem;
+  padding: 0 2.2rem 1.35rem;
+}
+
+.pcard-case__label {
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--banner-faint);
+}
+
+.pcard-case__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pcard-case__tile {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 3.3rem;
+  height: 3.3rem;
+  box-sizing: border-box;
+  border-radius: 1rem;
+  background: color-mix(in srgb, var(--tr-tone) 22%, var(--banner-chip-bg));
+  border: 1px solid color-mix(in srgb, var(--tr-tone) 50%, transparent);
+}
+
+/* The shelf's art, a little smaller than on the shelf. */
+.pcard-case__tile .trophy-art svg {
+  width: 2.3rem;
+  height: 2.3rem;
+}
+
+.pcard-case__count {
+  position: absolute;
+  right: -0.45rem;
+  bottom: -0.4rem;
+  min-width: 1.35rem;
+  padding: 0 0.3rem;
+  box-sizing: border-box;
+  border-radius: 999px;
+  background: var(--banner-ink);
+  color: var(--banner-mid);
+  font-size: 0.68rem;
+  font-weight: 800;
+  line-height: 1.35rem;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.pcard-case__all {
+  font-size: 0.85rem;
+  font-weight: 750;
+  color: var(--banner-ink);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.pcard-case__all:hover,
+.pcard-case__all:focus-visible {
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+/*
  * The share bar: the whole board as one track, last place on the left. The
  * lit stretch is the share of the board behind the player; the ticks are the
  * share lines, the one ahead named with the points it would take.
@@ -1321,6 +1401,11 @@ html[data-theme='dark'] .pbest__flag--ten {
 
 /* ---------- the trophy shelf ---------- */
 
+/* Scrolled to from the card's trophy case and from a trophy in the inbox: clear of the header. */
+.pshelf {
+  scroll-margin-top: calc(var(--header-h) + 1.5rem);
+}
+
 .pshelf__head,
 .prival__head {
   display: flex;
@@ -1955,6 +2040,30 @@ html[data-theme='dark'] .pbest__flag--ten {
     gap: 0.35rem 1.1rem;
     padding: 0.8rem 1.1rem;
     font-size: 0.82rem;
+  }
+
+  .pcard-case {
+    gap: 0.6rem 0.9rem;
+    padding: 0 1.1rem 1.1rem;
+  }
+
+  .pcard-case__label {
+    flex-basis: 100%;
+  }
+
+  .pcard-case__row {
+    gap: 0.5rem;
+  }
+
+  .pcard-case__tile {
+    width: 2.75rem;
+    height: 2.75rem;
+    border-radius: 0.85rem;
+  }
+
+  .pcard-case__tile .trophy-art svg {
+    width: 1.95rem;
+    height: 1.95rem;
   }
 
   .pcard__strip .home-banner__standing-link {

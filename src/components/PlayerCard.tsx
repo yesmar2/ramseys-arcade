@@ -24,8 +24,9 @@ import {
   talksInPlaces,
   toPass,
 } from '../lib/profileMath'
-import { summarizeTrophies, type TrophyAward } from '../lib/trophies'
+import { metalTone, summarizeTrophies, trophyCase, trophyTone, type TrophyAward, type TrophyCaseKind } from '../lib/trophies'
 import { BackChevronIcon } from './PageBackLink'
+import { EventCup, HuntSetJar, MonthlyTrophyCup, TopTenRibbon, WeeklyMedal } from './TrophyArt'
 
 function Skel({ w }: { w: string }) {
   return <span className="skel-line pcard__skel" style={{ '--skel-w': w } as CSSProperties} aria-hidden="true" />
@@ -165,6 +166,68 @@ function ShareBar({
         {ahead > 0 ? ` · ahead of ${ahead.toLocaleString()}` : ''}
       </span>
       {top != null && me < 0.72 ? <span className="pcard-bar__top">#1 · {top.toLocaleString()}</span> : null}
+    </div>
+  )
+}
+
+/** A kind of trophy as the case draws it, in the shelf's line art. */
+function CaseArt({ kind }: { kind: TrophyCaseKind }) {
+  if (kind.period === 'event') return <EventCup size="md" />
+  if (kind.period === 'hunt') return <HuntSetJar size="md" />
+  const tone = kind.period === 'monthly' ? 'monthly' : 'weekly'
+  if (kind.rank > 3) return <TopTenRibbon tone={tone} rank={kind.rank} size="md" />
+  return kind.period === 'monthly' ? <MonthlyTrophyCup tone={metalTone(kind.rank)} size="md" /> : <WeeklyMedal rank={kind.rank} size="md" />
+}
+
+/** "1st of a month, twice": a kind of trophy, and how many of it, in words. */
+function caseWords(kind: TrophyCaseKind): string {
+  const n = kind.count
+  const times = n === 1 ? '' : n === 2 ? ', twice' : `, ${n} times`
+  if (kind.period === 'event') return n === 1 ? 'An event won' : `${n} events won`
+  if (kind.period === 'hunt') return n === 1 ? 'A full month of the bug hunt' : `${n} full months of the bug hunt`
+  const span = kind.period === 'monthly' ? 'a month' : 'a week'
+  if (kind.rank > 3) return `Top ten of ${span}${times}, best ${ordinal(kind.rank)}`
+  return `${ordinal(kind.rank)} of ${span}${times}`
+}
+
+/**
+ * The trophy case along the foot of the card: every kind of trophy the player has won, a tile each in its
+ * own colour with how many, the proudest first, and the way down to the shelf that has them all.
+ */
+function TrophyCase({
+  trophies,
+  href,
+  onOpen,
+}: {
+  trophies: TrophyAward[]
+  href: string
+  onOpen: (e: MouseEvent<HTMLAnchorElement>) => void
+}) {
+  const kinds = trophyCase(trophies)
+  if (!kinds.length) return null
+  const total = trophies.length
+  return (
+    <div className="pcard-case">
+      <span className="pcard-case__label">Trophy case</span>
+      <ul className="pcard-case__row">
+        {kinds.map((kind) => {
+          const words = caseWords(kind)
+          return (
+            <li key={kind.key} className={`pcard-case__tile trophy-tone--${trophyTone(kind.period, kind.rank)}`} title={words}>
+              <CaseArt kind={kind} />
+              {kind.count > 1 ? (
+                <span className="pcard-case__count" aria-hidden="true">
+                  ×{kind.count}
+                </span>
+              ) : null}
+              <span className="visually-hidden">{words}</span>
+            </li>
+          )
+        })}
+      </ul>
+      <a className="pcard-case__all" href={href} onClick={onOpen}>
+        {total === 1 ? 'See the trophy' : `See all ${total} trophies`} ›
+      </a>
     </div>
   )
 }
@@ -340,6 +403,14 @@ export function PlayerCard({
     const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches
     how.scrollIntoView({ behavior: still ? 'instant' : 'smooth', block: 'start' })
   }
+  // The shelf is further down the same page.
+  const toShelf = (e: MouseEvent<HTMLAnchorElement>) => {
+    const shelf = document.getElementById('trophies')
+    if (!shelf) return
+    e.preventDefault()
+    const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    shelf.scrollIntoView({ behavior: still ? 'instant' : 'smooth', block: 'start' })
+  }
 
   const tile = (
     <span className="pcard__tile">
@@ -452,6 +523,9 @@ export function PlayerCard({
           })}
         </nav>
       </div>
+      {trophies?.length ? (
+        <TrophyCase trophies={trophies} href={rankHref(isSelf ? undefined : name, period, 'trophies')} onOpen={toShelf} />
+      ) : null}
       <div className="home-banner__strip pcard__strip">
         <span className="pcard__fact">
           {loading ? (
@@ -462,23 +536,14 @@ export function PlayerCard({
             </>
           )}
         </span>
-        <span className="pcard__fact">
-          {!summary ? (
+        {/* Once there are trophies, the case above has them all. */}
+        {!summary ? (
+          <span className="pcard__fact">
             <Skel w="10ch" />
-          ) : summary.total === 0 ? (
-            'No trophies yet'
-          ) : (
-            <>
-              <b>{summary.total}</b> {summary.total === 1 ? 'trophy' : 'trophies'}
-              {summary.events > 0 ? (
-                <>
-                  {' '}
-                  · <b>{summary.events}</b> {summary.events === 1 ? 'event' : 'events'} won
-                </>
-              ) : null}
-            </>
-          )}
-        </span>
+          </span>
+        ) : summary.total === 0 ? (
+          <span className="pcard__fact">No trophies yet</span>
+        ) : null}
         {extra}
         {!loading && rank != null && !inPlaces && data.totalPlayers > rank ? (
           <span className="pcard__fact">

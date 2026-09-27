@@ -109,6 +109,40 @@ export function summarizeTrophies(trophies: TrophyAward[]) {
   return { total: trophies.length, podium, topTen, events, sets }
 }
 
+/**
+ * A kind of trophy in a player card's case, with how many of it they've won: event wins; a month's or a
+ * week's first, second or third place; a full month of the bug hunt; and a month's or a week's top ten.
+ */
+export type TrophyCaseKind = {
+  key: string
+  period: TrophyPeriod
+  /** The place it's for: a podium kind's own, or the best of a top-ten kind's. */
+  rank: number
+  count: number
+}
+
+/** Where each kind stands in the case, the proudest first: a win, then podiums, full sets, top tens. */
+function caseOrder(period: TrophyPeriod, rank: number): { key: string; order: number } {
+  if (period === 'event') return { key: 'event', order: 0 }
+  if (period === 'hunt') return { key: 'hunt', order: 7 }
+  if (period === 'monthly') return rank <= 3 ? { key: `month-${rank}`, order: rank } : { key: 'month-top', order: 8 }
+  return rank <= 3 ? { key: `week-${rank}`, order: 3 + rank } : { key: 'week-top', order: 9 }
+}
+
+/** A player's trophies as their card shows them: a kind each, the proudest first. */
+export function trophyCase(trophies: TrophyAward[]): TrophyCaseKind[] {
+  const kinds = new Map<string, { kind: TrophyCaseKind; order: number }>()
+  for (const t of trophies) {
+    const { key, order } = caseOrder(t.period, t.rank)
+    const had = kinds.get(key)
+    if (had) {
+      had.kind.count++
+      had.kind.rank = Math.min(had.kind.rank, t.rank)
+    } else kinds.set(key, { kind: { key, period: t.period, rank: t.rank, count: 1 }, order })
+  }
+  return [...kinds.values()].sort((a, b) => a.order - b.order).map((k) => k.kind)
+}
+
 export function sortTrophies(trophies: TrophyAward[]) {
   return [...trophies].sort(
     (a, b) => b.periodKey - a.periodKey || a.rank - b.rank,
