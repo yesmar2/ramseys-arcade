@@ -1448,10 +1448,6 @@ html[data-theme='dark'] .pbest__flag--ten {
   flex: 1;
 }
 
-.pshelf__shelf--wait {
-  min-height: 9rem;
-}
-
 /* An empty shelf takes the room it has and sets the ways onto it in the middle. */
 .pshelf__shelf--empty {
   justify-content: center;
@@ -1478,132 +1474,198 @@ html[data-theme='dark'] .pbest__flag--ten {
 }
 
 /*
- * A shelf: trophies stand in a row on a plank that runs its whole width, with
- * their labels on the plank's edge. Every row is the same height, so the plank
- * is drawn once a row as the row's background, however many rows there are.
+ * The cabinet: dark in both themes, like a real display case, so the trophies
+ * inside take the dark theme's brighter tones and its light words. Each trophy
+ * stands in a nook of its own, spotlit from above in its colour, with its name
+ * and when under it.
  */
-.pshelf__row {
-  --art: 4.9rem;
-  --plank: 0.75rem;
-  --label: 3.75rem;
-  --row: calc(var(--art) + var(--plank) + var(--label));
-  /* Lit from above: a pale top, a darker front, and the accent along its edge, as on the prize counter's shelves. */
-  --plank-top: #eef2f5;
-  --plank-front: #cfd8e0;
-  --plank-edge: color-mix(in srgb, var(--accent) 60%, transparent);
+.pshelf__cabinet {
+  --tr-gold: #f5c542;
+  --tr-silver: #c4d0d9;
+  --tr-bronze: #e0955c;
+  --tr-week: #45d3ba;
+  --tr-month: #b99cff;
+  --tr-hunt: #86d77f;
+  --tr-secret: #ff8cc8;
+  --muted: #9bb0be;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  padding: 1.1rem 1rem 1.25rem;
+  border-radius: 1.1rem;
+  background: linear-gradient(180deg, #101a22, #0c141a);
+  box-shadow:
+    inset 0 0 0 1px rgba(231, 238, 243, 0.06),
+    inset 0 1px 0 rgba(231, 238, 243, 0.05);
+  color: #e7eef3;
+}
+
+.pshelf__cabinet--wait {
+  min-height: 9rem;
+}
+
+.pshelf__sec-head {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 0 0.1rem 0.65rem;
+}
+
+.pshelf__sec-name,
+.pshelf__sec-count {
+  margin: 0;
+  font-size: 0.69rem;
+  font-weight: 800;
+  color: #9bb0be;
+  white-space: nowrap;
+}
+
+.pshelf__sec-name {
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.pshelf__sec-rule {
+  flex: 1;
+  height: 1px;
+  background: rgba(231, 238, 243, 0.09);
+}
+
+.pshelf__grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(6.8rem, 1fr));
-  grid-auto-rows: var(--row);
-  gap: 0;
+  grid-template-columns: repeat(auto-fill, minmax(6rem, 1fr));
+  gap: 0.9rem 0.6rem;
   margin: 0;
   padding: 0;
   list-style: none;
-  background: linear-gradient(
-      180deg,
-      transparent 0 var(--art),
-      var(--plank-top) var(--art) calc(var(--art) + 0.3rem),
-      var(--plank-front) calc(var(--art) + 0.3rem) calc(var(--art) + var(--plank) - 2px),
-      var(--plank-edge) calc(var(--art) + var(--plank) - 2px) calc(var(--art) + var(--plank)),
-      rgba(0, 0, 0, 0.22) calc(var(--art) + var(--plank)),
-      transparent calc(var(--art) + var(--plank) + 0.8rem)
-    )
-    0 0 / 100% var(--row) repeat-y;
 }
 
-html[data-theme='dark'] .pshelf__row {
-  --plank-top: #3a4d5e;
-  --plank-front: #243442;
-  --plank-edge: rgba(62, 224, 176, 0.55);
-}
-
-.pshelf__item {
-  display: grid;
-  grid-template-rows: var(--art) var(--plank) 1fr;
-  justify-items: center;
+.pshelf__cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
   min-width: 0;
   text-align: center;
 }
 
-/* Where a trophy stands: lit from below in its own colour, its shadow on the plank. */
-.pshelf__stand {
+.pshelf__niche {
   position: relative;
   display: flex;
   align-items: flex-end;
   justify-content: center;
   width: 100%;
-  padding-bottom: 0.1rem;
+  height: 6.25rem;
+  margin-bottom: 0.3rem;
+  box-sizing: border-box;
+  padding-bottom: 0.8rem;
+  border-radius: 0.9rem;
+  background:
+    radial-gradient(ellipse 72% 62% at 50% 0%, color-mix(in srgb, var(--tr-tone) 24%, transparent), transparent 72%),
+    linear-gradient(180deg, #0a1015, #121c25);
+  box-shadow:
+    inset 0 9px 18px rgba(0, 0, 0, 0.55),
+    inset 0 0 0 1px color-mix(in srgb, var(--tr-tone) 30%, transparent);
 }
 
-.pshelf__stand::before {
+/* The trophy's shadow on the nook's floor. */
+.pshelf__niche::after {
   content: '';
   position: absolute;
-  inset: 0.5rem 10% 0;
-  pointer-events: none;
-  background: radial-gradient(ellipse 58% 72% at 50% 100%, color-mix(in srgb, var(--tr-tone, var(--accent)) 36%, transparent), transparent 72%);
-}
-
-.pshelf__stand::after {
-  content: '';
-  position: absolute;
-  bottom: -0.15rem;
+  bottom: 0.55rem;
   left: 50%;
-  width: 2.9rem;
-  height: 0.55rem;
+  width: 3.1rem;
+  height: 0.5rem;
   transform: translateX(-50%);
   border-radius: 50%;
   pointer-events: none;
-  background: radial-gradient(closest-side, rgba(0, 0, 0, 0.32), transparent);
+  background: radial-gradient(closest-side, rgba(0, 0, 0, 0.6), transparent);
 }
 
-.pshelf__stand .trophy-art {
+.pshelf__niche .trophy-art {
   position: relative;
   z-index: 1;
 }
 
-.pshelf__label {
-  grid-row: 3;
-  display: flex;
-  flex-direction: column;
-  gap: 0.1rem;
-  width: 100%;
-  min-width: 0;
-  padding: 0.5rem 0.35rem 0;
-  box-sizing: border-box;
+/* This week's nook on your own shelf: empty, waiting. */
+.pshelf__niche--open {
+  align-items: center;
+  padding: 0;
+  background: none;
+  box-shadow: none;
+  border: 1.5px dashed rgba(231, 238, 243, 0.2);
+  font-size: 1.6rem;
+  font-weight: 500;
+  color: #9bb0be;
 }
 
-.pshelf__label .pshelf__name {
+.pshelf__niche--open::after {
+  display: none;
+}
+
+.pshelf__cell-name {
   display: -webkit-box;
   overflow: hidden;
-  font-size: 0.82rem;
+  font-size: 0.8rem;
+  font-weight: 800;
+  line-height: 1.2;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
 }
 
-.pshelf__label .pshelf__when {
+.pshelf__cell-when {
+  max-width: 100%;
   overflow: hidden;
-  font-size: 0.72rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #9bb0be;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-/* This week's place on your own shelf: an empty spot, waiting. */
-.pshelf__ghost {
-  display: grid;
-  place-items: center;
-  width: 3.3rem;
-  height: 3.7rem;
-  margin-bottom: 0.2rem;
-  box-sizing: border-box;
-  border: 1.5px dashed rgba(var(--ink-rgb), 0.26);
-  border-radius: 0.9rem 0.9rem 0.5rem 0.5rem;
-  font-size: 1.4rem;
-  font-weight: 500;
-  color: var(--muted);
+/* The secrets you haven't found: a row of small dark nooks, and how many. */
+.pshelf__minis {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  margin-top: 0.75rem;
 }
 
-.pshelf__item--open .pshelf__stand::before,
-.pshelf__item--open .pshelf__stand::after {
-  display: none;
+.pshelf__minis-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.pshelf__mini {
+  display: grid;
+  place-items: center;
+  width: 2.15rem;
+  height: 2.15rem;
+  border-radius: 0.55rem;
+  background: #0a1015;
+  box-shadow:
+    inset 0 3px 8px rgba(0, 0, 0, 0.55),
+    inset 0 0 0 1px rgba(231, 238, 243, 0.07);
+  opacity: 0.75;
+}
+
+.pshelf__minis-note {
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: #9bb0be;
+}
+
+.pshelf__cabinet .pshelf__more {
+  margin-top: 0.9rem;
+  border-color: rgba(231, 238, 243, 0.18);
+  color: #e7eef3;
+}
+
+.pshelf__cabinet .pshelf__more:hover,
+.pshelf__cabinet .pshelf__more:focus-visible {
+  background: rgba(231, 238, 243, 0.06);
 }
 
 /* What a trophy was won with, for screen readers; everyone else has the hover. */
@@ -1626,26 +1688,6 @@ html[data-theme='dark'] .pshelf__row {
   border-radius: 1.2rem;
   background: rgba(var(--ink-rgb), 0.05);
   border: 1px solid rgba(var(--ink-rgb), 0.08);
-}
-
-/* The secrets you haven't found: a row of small empty places, and how many. */
-.pshelf__hidden {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.6rem 0.9rem;
-}
-
-.pshelf__hidden-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
-}
-
-.pshelf__plinth--small {
-  width: 2.6rem;
-  height: 2.6rem;
-  border-radius: 0.8rem;
 }
 
 .pshelf__plinth--empty {

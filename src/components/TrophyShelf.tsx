@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { tournamentCreateHref } from '../hooks/useHashRoute'
 import { ordinal } from '../lib/profileMath'
 import { summarizeTrophies, trophyTone, type TrophyAward } from '../lib/trophies'
@@ -55,9 +55,9 @@ function trophyHaul(t: TrophyAward): string | null {
 }
 
 /**
- * A trophy standing on its shelf, lit in its own colour, with a label on the
- * shelf's edge under it: what it was, and when. What it was won with is in the
- * trophy's hover text, and read out.
+ * A trophy in its own lit nook of the cabinet, spotlit in its colour, with
+ * what it was and when under it. What it was won with is in the trophy's hover
+ * text, and read out.
  */
 function Item({ trophy }: { trophy: TrophyAward }) {
   const isEvent = trophy.period === 'event'
@@ -74,26 +74,40 @@ function Item({ trophy }: { trophy: TrophyAward }) {
   const whenLine = isSecret ? `Found ${when}` : when
   const haul = trophyHaul(trophy)
   return (
-    <li className={`pshelf__item trophy-tone--${trophyTone(trophy.period, trophy.rank)}`} title={[title, whenLine, haul].filter(Boolean).join(' · ')}>
-      <span className="pshelf__stand">
+    <li className="pshelf__cell" title={[title, whenLine, haul].filter(Boolean).join(' · ')}>
+      <span className={`pshelf__niche trophy-tone--${trophyTone(trophy.period, trophy.rank)}`}>
         <TrophyIcon trophy={trophy} size="lg" />
       </span>
-      <span className="pshelf__label">
-        <span className="pshelf__name">{title}</span>
-        <span className="pshelf__when">{whenLine}</span>
-        {haul ? <span className="pshelf__sr">{haul}</span> : null}
-      </span>
+      <span className="pshelf__cell-name">{title}</span>
+      <span className="pshelf__cell-when">{whenLine}</span>
+      {haul ? <span className="pshelf__sr">{haul}</span> : null}
     </li>
   )
 }
 
+/** One of the cabinet's shelves: its name and a count along a rule, then its nooks. */
+function Section({ name, count, children, after }: { name: string; count: string; children?: ReactNode; after?: ReactNode }) {
+  return (
+    <section className="pshelf__section" aria-label={name}>
+      <div className="pshelf__sec-head">
+        <h3 className="pshelf__sec-name">{name}</h3>
+        <span className="pshelf__sec-rule" aria-hidden="true" />
+        <span className="pshelf__sec-count">{count}</span>
+      </div>
+      {children ? <ol className="pshelf__grid">{children}</ol> : null}
+      {after}
+    </section>
+  )
+}
+
 /**
- * The trophy shelf: event wins on one shelf, full months of the bug hunt on
- * another, and top-ten finishes of a week or a month on a third, newest
- * first. Your own shelf keeps a place open for this week. With nothing on it
- * yet, it says how things get onto it; for most of the arcade that is winning
- * an event among friends or catching a month of bugs, since the top ten of
- * everyone is a small club.
+ * The trophy shelf: a dark display cabinet, each trophy lit in a nook of its
+ * own, with event wins on one shelf, full months of the bug hunt on another,
+ * secrets on a third and top-ten finishes of a week or a month on the last,
+ * newest first. Your own shelf keeps a nook open for this week, and shows how
+ * many secrets are still hidden. With nothing on it yet, it says how things
+ * get onto it; for most of the arcade that is winning an event among friends
+ * or catching a month of bugs, since the top ten of everyone is a small club.
  */
 export function TrophyShelf({
   trophies,
@@ -113,7 +127,7 @@ export function TrophyShelf({
         <div className="pshelf__head">
           <h2 className="pshelf__title">Trophy shelf</h2>
         </div>
-        <div className="pshelf__shelf pshelf__shelf--wait" aria-hidden="true" />
+        <div className="pshelf__cabinet pshelf__cabinet--wait" aria-hidden="true" />
       </article>
     )
   }
@@ -207,83 +221,72 @@ export function TrophyShelf({
           </ul>
         </div>
       ) : (
-        <>
+        <div className="pshelf__cabinet">
           {events.length > 0 ? (
-            <div className="pshelf__shelf">
-              <p className="pshelf__cap">Events won</p>
-              <ol className="pshelf__row">
-                {events.map((t) => (
-                  <Item key={t.id} trophy={t} />
-                ))}
-              </ol>
-            </div>
+            <Section name="Events won" count={String(events.length)}>
+              {events.map((t) => (
+                <Item key={t.id} trophy={t} />
+              ))}
+            </Section>
           ) : null}
           {sets.length > 0 ? (
-            <div className="pshelf__shelf">
-              <p className="pshelf__cap">Bug hunt</p>
-              <ol className="pshelf__row">
-                {sets.map((t) => (
-                  <Item key={t.id} trophy={t} />
-                ))}
-              </ol>
-            </div>
+            <Section name="Bug hunt" count={String(sets.length)}>
+              {sets.map((t) => (
+                <Item key={t.id} trophy={t} />
+              ))}
+            </Section>
           ) : null}
           {secrets.length > 0 || hidden.length > 0 ? (
-            <div className="pshelf__shelf">
-              <p className="pshelf__cap">Secrets</p>
-              {secrets.length > 0 ? (
-                <ol className="pshelf__row">
-                  {secrets.map((t) => (
-                    <Item key={t.id} trophy={t} />
-                  ))}
-                </ol>
-              ) : null}
-              {hidden.length > 0 ? (
-                <div className="pshelf__hidden">
-                  <span className="pshelf__hidden-row" aria-hidden="true">
-                    {hidden.map((x) => (
-                      <span key={x.n} className="pshelf__plinth pshelf__plinth--empty pshelf__plinth--small">
-                        <SecretUnknown size="sm" />
-                      </span>
-                    ))}
-                  </span>
-                  <span className="pshelf__when">
-                    {hidden.length === 1 ? 'One still hidden.' : `${hidden.length} still hidden.`} Nobody says how to find
-                    them.
-                  </span>
-                </div>
-              ) : null}
-            </div>
+            <Section
+              name="Secrets"
+              count={isSelf ? `${secrets.length} of ${SECRETS.length}` : String(secrets.length)}
+              after={
+                hidden.length > 0 ? (
+                  <div className="pshelf__minis">
+                    <span className="pshelf__minis-row" aria-hidden="true">
+                      {hidden.map((x) => (
+                        <span key={x.n} className="pshelf__mini">
+                          <SecretUnknown size="sm" />
+                        </span>
+                      ))}
+                    </span>
+                    <span className="pshelf__minis-note">
+                      {hidden.length === 1 ? 'One still hidden.' : `${hidden.length} still hidden.`} Nobody says how to find them.
+                    </span>
+                  </div>
+                ) : null
+              }
+            >
+              {secrets.length > 0 ? secrets.map((t) => <Item key={t.id} trophy={t} />) : null}
+            </Section>
           ) : null}
           {boards.length > 0 || isSelf ? (
-            <div className="pshelf__shelf pshelf__shelf--grow">
-              <p className="pshelf__cap">Arcade top ten</p>
-              <ol className="pshelf__row">
-                {shownBoards.map((t) => (
-                  <Item key={t.id} trophy={t} />
-                ))}
-                {isSelf ? (
-                  <li className="pshelf__item pshelf__item--open">
-                    <span className="pshelf__stand">
-                      <span className="pshelf__ghost" aria-hidden="true">
-                        +
-                      </span>
-                    </span>
-                    <span className="pshelf__label">
-                      <span className="pshelf__name">This week</span>
-                      <span className="pshelf__when">Still open</span>
-                    </span>
-                  </li>
-                ) : null}
-              </ol>
-              {boards.length > BOARD_SHOWN ? (
-                <button type="button" className="pshelf__more" onClick={() => setShowAll((v) => !v)}>
-                  {showAll ? 'Show fewer' : `Show all ${boards.length}`}
-                </button>
+            <Section
+              name="Arcade top ten"
+              count={String(boards.length)}
+              after={
+                boards.length > BOARD_SHOWN ? (
+                  <button type="button" className="pshelf__more" onClick={() => setShowAll((v) => !v)}>
+                    {showAll ? 'Show fewer' : `Show all ${boards.length}`}
+                  </button>
+                ) : null
+              }
+            >
+              {shownBoards.map((t) => (
+                <Item key={t.id} trophy={t} />
+              ))}
+              {isSelf ? (
+                <li className="pshelf__cell pshelf__cell--open">
+                  <span className="pshelf__niche pshelf__niche--open" aria-hidden="true">
+                    +
+                  </span>
+                  <span className="pshelf__cell-name">This week</span>
+                  <span className="pshelf__cell-when">Still open</span>
+                </li>
               ) : null}
-            </div>
+            </Section>
           ) : null}
-        </>
+        </div>
       )}
       <p className="pshelf__foot">
         The arcade’s top ten each week and month get a trophy, and so does every event’s winner and every full month
