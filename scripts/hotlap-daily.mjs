@@ -15,6 +15,9 @@
 // the generator changes: a day that's been played has to stay the track it was. So plan only ever adds,
 // and insert, hills and remake only ever change days that haven't come yet. A made day gets its hills from its
 // line, so the same line always gets the same hills.
+//
+// Every command that writes the plan also writes the API's src/hotlapPace.ts, each day's blue car, which
+// the API pays laps by (its ticketLadders.ts): commit that in the API repo too (branch master).
 import fs from 'node:fs'
 
 const COURSES = new URL('../src/games/hotlap/courses.ts', import.meta.url)
@@ -22,6 +25,8 @@ const SIM = new URL('../src/games/hotlap/sim.ts', import.meta.url)
 const PLAN = new URL('../src/games/hotlap/dailyPlan.ts', import.meta.url)
 const SEEDS = new URL('../src/lib/seededRandom.ts', import.meta.url)
 const LANDMARKS_FILE = new URL('../src/games/hotlap/landmarks.ts', import.meta.url)
+/** The API's copy of each day's blue car, which it pays laps by (its ticketLadders.ts): written with the plan. */
+const API_PACE = new URL('../../ramseys-arcade-api/src/hotlapPace.ts', import.meta.url)
 
 const C = await import(COURSES.href)
 const S = await import(SIM.href)
@@ -64,6 +69,34 @@ ${lines.join('\n')}
 ]
 `
   fs.writeFileSync(PLAN, text)
+  writeApiPace(entries)
+}
+
+/**
+ * The API pays a lap by the day's own blue car, from its copy of the plan's pace laps, in milliseconds by
+ * day (index = day number − 1): written whenever the plan is. A day's pace is the pace car's lap on it,
+ * the same lap the game drives as the blue car (lap.ts hotlapCourse), to the hundredth. Commit it in the
+ * API repo too (branch master), or the API pays by the old plan.
+ */
+function writeApiPace(entries) {
+  if (!fs.existsSync(new URL('.', API_PACE))) {
+    console.log('no API repo beside this one: its src/hotlapPace.ts was not written')
+    return
+  }
+  const rows = []
+  for (let i = 0; i < entries.length; i += 10) rows.push(`  ${entries.slice(i, i + 10).map((e) => Math.round(e.pace * 1000)).join(', ')},`)
+  const text = `// Written by the site's scripts/hotlap-daily.mjs from its src/games/hotlap/dailyPlan.ts: each planned day's
+// blue car (its pace car's lap), in milliseconds, from the first day on. Hot Lap's ticket ladder goes by it
+// (ticketLadders.ts), so a lap is paid by the day's own blue car, whatever the site sends. Past the last
+// planned day the days come round again, as the site's dailyTrack has them. Don't edit it by hand: the
+// script writes it again whenever the plan changes.
+export const HOTLAP_FIRST_DAY = '${FIRST_DAY}'
+
+export const HOTLAP_PACE_MS: readonly number[] = [
+${rows.join('\n')}
+]
+`
+  fs.writeFileSync(API_PACE, text)
 }
 
 function dayOf(n) {
