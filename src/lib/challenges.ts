@@ -2,7 +2,7 @@ import { useSyncExternalStore } from 'react'
 import { getGame } from '../data/games'
 import { scoreText } from './gameBoard'
 import { api, getClaimToken, normalizePlayerName } from './leaderboard'
-import { formatLeaderboardScore, isTimeBoard } from './leaderboardFormat'
+import { formatLeaderboardScore, isInvertedBoard } from './leaderboardFormat'
 
 /*
  * Challenges: one saved run, sent to a friend to beat.
@@ -170,7 +170,7 @@ export function challengeOutcome(challenge: { score: number }, score: number): {
 
 /** The line that goes out with a challenge. */
 export function challengeMessage(slug: string, score: number): string {
-  if (isTimeBoard(slug)) return `I did ${gameName(slug)} in ${scoreText(slug, score)}. Can you beat it?`
+  if (isInvertedBoard(slug)) return `I did ${gameName(slug)} in ${scoreText(slug, score)}. Can you beat it?`
   return `I got ${scoreText(slug, score)} on ${gameName(slug)}. Can you beat it?`
 }
 

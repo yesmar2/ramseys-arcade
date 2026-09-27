@@ -1,6 +1,6 @@
 import { getGame } from '../data/games'
 import { normalizePlayerName, type LeaderboardEntry } from './leaderboard'
-import { formatLeaderboardScore, formatTimeGap, isTimeBoard } from './leaderboardFormat'
+import { formatLeaderboardScore, formatTimeGap, isInvertedBoard, isTimeBoard } from './leaderboardFormat'
 import { numberWord } from './numberWord'
 import { ordinal, type PeriodCopy, type Stat } from './scoreboard'
 
@@ -56,6 +56,7 @@ const UNITS: Record<string, [string, string]> = {
   stacker: ['block', 'blocks'],
   simon: ['round', 'rounds'],
   fireflies: ['note', 'notes'],
+  acechase: ['try', 'tries'],
 }
 
 function gameName(slug: string): string {
@@ -66,9 +67,9 @@ function count(n: number, one: string, many = `${one}s`): string {
   return `${n.toLocaleString()} ${n === 1 ? one : many}`
 }
 
-/** What a score counts, to set beside the figure: rows, blocks, points; nothing for a time. */
+/** What a score counts, to set beside the figure: rows, blocks, points; nothing for a time or tries, which say it. */
 export function scoreUnit(slug: string, score: number): string {
-  if (isTimeBoard(slug)) return ''
+  if (isInvertedBoard(slug)) return ''
   const [one, many] = UNITS[slug] ?? ['point', 'points']
   return score === 1 ? one : many
 }
@@ -80,9 +81,9 @@ export function gapText(slug: string, gap: number): string {
   return count(gap, one, many)
 }
 
-/** A score in the game's own terms, for a sentence: 49 rows, 1,000 points, 9.9s. */
+/** A score in the game's own terms, for a sentence: 49 rows, 1,000 points, 9.9s, 3 tries. */
 export function scoreText(slug: string, score: number): string {
-  if (isTimeBoard(slug)) return formatLeaderboardScore(slug, score)
+  if (isInvertedBoard(slug)) return formatLeaderboardScore(slug, score)
   return gapText(slug, score)
 }
 
@@ -252,14 +253,15 @@ export function runsChart(slug: string, you: BoardYou, players: BoardPlayer[]) {
   if (you.above) lines.push({ label: `${ordinal(you.player.place - 1)} · ${formatLeaderboardScore(slug, you.above.best.score)}`, score: you.above.best.score })
   // First as well, when it is in reach and not the same score as the next place.
   const lead = players[0]
-  const inReach = (score: number) => isTimeBoard(slug) || score <= you.player.best.score * 1.6
+  const inReach = (score: number) => isInvertedBoard(slug) || score <= you.player.best.score * 1.6
   if (lead && you.player.place > 2 && inReach(lead.best.score) && lead.best.score !== you.above?.best.score) {
     lines.push({ label: `1st · ${formatLeaderboardScore(slug, lead.best.score)}`, score: lead.best.score })
   }
   const values = [...runs.map((r) => r.score), ...lines.map((l) => l.score)]
   const max = Math.max(...values)
   const min = Math.min(...values)
-  const floor = isTimeBoard(slug) ? Math.max(0, min - (max - min) * 0.6 - 1000) : 0
+  // A clock or a count of tries counts down to a floor under the worst run: a second, or a try, below it.
+  const floor = isInvertedBoard(slug) ? Math.max(0, min - (max - min) * 0.6 - (isTimeBoard(slug) ? 1000 : 1)) : 0
   const top = max + (max - floor) * 0.12
   const pct = (score: number) => ((score - floor) / (top - floor || 1)) * 100
   return {

@@ -1,9 +1,14 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useId, useState, type ReactNode } from 'react'
 import { GoogleSignInButton } from '../../components/GoogleSignInButton'
+import { TicketGlyph } from '../../components/prizes/Ticket'
+import { TagSlots } from '../../components/RunReport'
 import { copyText } from '../../components/ShareBoardButton'
 import { useAuth } from '../../hooks/useAuth'
+import { gamePlayHref, navigate, prizesHref } from '../../hooks/useHashRoute'
+import { linkCurrentNameToAccount } from '../../lib/auth'
 import { gameAccentStyle } from '../../lib/gameAccentStyle'
-import { PLACE_NAME, msUntilNextHole, shareText, type DailyServer, type DayProgress, type TodaysHole } from '../../lib/dailyHole'
+import { getLastPlayerName, normalizePlayerName } from '../../lib/leaderboard'
+import { PLACE_NAME, msUntilNextHole, shareText, syncDaily, type DailyServer, type DayProgress, type TodaysHole } from '../../lib/dailyHole'
 
 /*
  * Today's Hole's two cards, in the panel kit like every game's start and score cards: the one it opens
@@ -84,7 +89,7 @@ export function ShareButton({
 }) {
   const [copied, setCopied] = useState(false)
   const share = () => {
-    const url = `${window.location.origin}/games/acechase/daily`
+    const url = `${window.location.origin}${gamePlayHref(SLUG)}`
     const text = `${shareText(hole, tries, pattern)}\n${url}`
     const touch = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches
     if (touch && typeof navigator.share === 'function') {
@@ -133,6 +138,60 @@ function Everyone({ server }: { server: DailyServer | null }) {
   )
 }
 
+/** What the day's result paid for the prize counter. */
+function HoleTickets({ tickets }: { tickets: number }) {
+  return (
+    <p className="acechase-daily__tix">
+      <TicketGlyph size={20} />
+      <span>
+        <b>+{tickets} tickets</b> for today&rsquo;s result.{' '}
+        <a
+          href={prizesHref()}
+          onClick={(e) => {
+            e.preventDefault()
+            navigate(prizesHref())
+          }}
+        >
+          Prize counter ›
+        </a>
+      </span>
+    </p>
+  )
+}
+
+/**
+ * Signed in without a tag, the day's result is kept but isn't on the board: a tag puts it there. The API
+ * catches it up the next time it's asked, which syncDaily does straight after.
+ */
+function BoardTag() {
+  const id = useId()
+  const [draft, setDraft] = useState(() => getLastPlayerName())
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const name = normalizePlayerName(draft)
+  const submit = async () => {
+    if (!name || busy) return
+    setBusy(true)
+    setError(null)
+    try {
+      await linkCurrentNameToAccount(name)
+      await syncDaily(true)
+    } catch (err) {
+      setError(err instanceof Error && err.message ? err.message : 'That tag didn’t work. Try another.')
+    } finally {
+      setBusy(false)
+    }
+  }
+  return (
+    <div className="acechase-daily__tag">
+      <TagSlots id={id} value={draft} onChange={setDraft} onSubmit={() => void submit()} lead="Put your tag on it and it goes on today’s board." error={error} />
+      <button type="button" className="panel__btn" disabled={!name || busy} onClick={() => void submit()}>
+        {busy ? 'Saving…' : 'Put it on the board'}
+      </button>
+    </div>
+  )
+}
+
 /** The card Today's Hole opens on. */
 export function DailyStartCard({
   hole,
@@ -147,8 +206,10 @@ export function DailyStartCard({
   onStart: () => void
   onPractice: () => void
 }) {
+  const { signedIn } = useAuth()
   const solved = progress?.solved
   const tries = progress?.tries ?? 0
+  const you = server?.you
   return (
     <Card label={`Today's Hole #${hole.n}`}>
       <div className="game-card__head">
@@ -169,6 +230,8 @@ export function DailyStartCard({
         <Everyone server={server} />
       </div>
       {solved ? <Pattern pattern={solved.pattern} /> : null}
+      {solved && progress?.tickets ? <HoleTickets tickets={progress.tickets} /> : null}
+      {solved && signedIn && you?.tries != null && you.tag === null ? <BoardTag /> : null}
       <div className="game-card__actions">
         {solved ? (
           <>
@@ -238,9 +301,11 @@ export function DailyResultCard({
         ) : null}
       </div>
       {server && server.solved > 0 ? <Spread spread={server.spread} mine={solved.tries} /> : null}
+      {!practice && progress?.tickets ? <HoleTickets tickets={progress.tickets} /> : null}
+      {signedIn && you?.tries != null && you.tag === null ? <BoardTag /> : null}
       {!signedIn ? (
         <div className="acechase-daily__signin">
-          <p>Sign in to have today&rsquo;s result counted, and to keep a streak going.</p>
+          <p>Sign in to put today&rsquo;s result on the board, earn its tickets, and keep a streak going.</p>
           <GoogleSignInButton />
         </div>
       ) : null}

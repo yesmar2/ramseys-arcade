@@ -1,20 +1,14 @@
 import '../../styles/acechase.css'
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
-import { AdminWaveSkip } from '../../components/AdminWaveSkip'
 import { GamePlayChrome, PlayReadout, PlayReadoutScore } from '../../components/GameHud'
 import { GameStage } from '../../components/GameStage'
-import { GameStartCard } from '../../components/GameStartCard'
 import { GamePauseOverlay, PauseButton } from '../../components/PauseControls'
 import { PlayReadoutStats, PlayStat } from '../../components/PlayStats'
-import { ScoreSaveCard } from '../../components/ScoreSaveCard'
-import { TournamentScoreCard } from '../../components/TournamentScoreCard'
 import { gameHref, navigate } from '../../hooks/useHashRoute'
 import { useGamePause } from '../../hooks/useGamePause'
 import { usePersonalBest } from '../../hooks/usePersonalBest'
 import { gameAccentStyle } from '../../lib/gameAccentStyle'
 import { haptic } from '../../lib/haptics'
-import { getPersonalBest } from '../../lib/personalBest'
-import { clearRunAchievements } from '../../lib/runAchievements'
 import {
   dailyServer,
   dayProgress,
@@ -28,15 +22,10 @@ import {
   type DayProgress,
   type TodaysHole,
 } from '../../lib/dailyHole'
-import { beginRun } from '../../lib/runSession'
 import { sfx } from '../../lib/sound'
-import { useTournamentPlay } from '../../tournaments/TournamentPlayContext'
 import {
   createInitialState,
   fastForward,
-  HOLE_POINTS,
-  HOLES,
-  jumpToHole,
   putt,
   setAngle,
   setPower,
@@ -44,14 +33,12 @@ import {
   startGame,
   tick,
   toSnapshot,
-  totalTries,
   type GameState,
   type Phase,
   type Snapshot,
 } from './game'
 import { DailyResultCard, DailyStartCard } from './DailyCards'
 import { TrialResultCard, TrialStartCard } from './TrialCards'
-import type { HoleDef } from './physics'
 import { AceScene, type View } from './scene'
 
 const SLUG = 'acechase'
@@ -76,18 +63,6 @@ const slopesChosen = () => {
 
 const signed = (v: number) => (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v).toFixed(1)
 const readNumber = (s: string) => parseFloat(s.replace('−', '-').replace('+', ''))
-
-/** "9 tries: 3 · 4 · 2", hole by hole. */
-function roundLabel(results: Snapshot['results']) {
-  const n = totalTries(results)
-  return `${n} ${n === 1 ? 'try' : 'tries'}: ${results.map((r) => r.tries || '–').join(' · ')}`
-}
-
-/** A hole's points, said the way the card says them. */
-function holedLabel(tries: number) {
-  const points = Math.round(HOLE_POINTS / Math.max(1, tries))
-  return `+${points} · ${tries === 1 ? 'first try' : `${tries} tries`}`
-}
 
 /**
  * A stepper: tap for a fine step; hold and it runs, faster the longer it's held.
@@ -204,45 +179,43 @@ function Dial({
 /** Keep where today's play stands, and a bullseye as the day's result. */
 function keepDay(today: TodaysHole, s: GameState) {
   const before = dayProgress(today.day)
+  // What the day already has (its result, whether it's sent, what it paid) stays as it is.
   saveProgress(today.day, {
+    ...before,
     tries: s.tries,
     shots: [...s.shots],
     ghosts: s.ghosts.map((g) => [...g]),
     power: s.power,
     angle: s.angle,
-    solved: before?.solved,
-    sent: before?.sent,
   })
   const last = s.shots[s.shots.length - 1]
   if (last?.bull && !before?.solved) recordSolved(today.day, { tries: s.tries, at: Date.now(), pattern: patternOf(s.shots) })
 }
 
 /**
- * Ace Chase: a 3D trick-shot course, played with numbers. Set the power and the angle, putt, and see
- * where it stops; the misses say how far off, and the next try is yours to adjust. The ball has to come
- * to rest on the bull; a hole pays 1000 ÷ the tries it took.
+ * Ace Chase: Today's Hole in 3D, played with numbers. Set the power and the angle, putt, and see where it
+ * stops; the misses say how far off, and the next try is yours to adjust. The ball has to come to rest on
+ * the bull.
+ *
+ * Everyone plays the same hole that day. Every try is kept on the device as it's played, so leaving and
+ * coming back carries on the count, and the first bullseye is the day's result: lib/dailyHole.ts keeps
+ * it, and signed in sends it up, where the API puts it on Ace Chase's board. After that the hole can be
+ * played again for practice, which counts for nothing.
  *
  * The camera is yours between shots (drag, pinch, two fingers, or the Tee, Target and Above buttons).
  * Keys: ↑ ↓ power (Shift for 5), ← → angle (Shift for 1°), Space or Enter to putt, and again to see how
- * a putt ends without watching it all. A plain tap starts a round from the title, and skips a hole's
- * flyover; a finished round waits for its score card. P or Escape pauses.
+ * a putt ends without watching it all. A tap skips the flyover. P or Escape pauses.
  *
- * With `daily`, the same page plays Today's Hole: one hole, the same for everyone that day. Every try is
- * kept on the device as it's played, so leaving and coming back carries on the count, and the first
- * bullseye is the day's result (lib/dailyHole.ts keeps it, and sends it up signed in). After that the
- * hole can be played again for practice, which counts for nothing.
- *
- * With `test`, it plays that one hole on trial: nothing is kept, and a bullseye ends it.
+ * With `ahead`, it plays that day's hole ahead of its day, on trial: nothing is kept, and a bullseye ends it.
  */
-export function AceChaseGame({ daily = false, test }: { daily?: boolean; test?: HoleDef }) {
-  const tournament = useTournamentPlay()
+export function AceChaseGame({ ahead }: { ahead?: TodaysHole }) {
   const apiBest = usePersonalBest(SLUG)
   /** Today's Hole, for the whole visit: a visit that runs past midnight keeps the hole it started on. */
   const todayRef = useRef<TodaysHole | null>(null)
-  if (daily && !todayRef.current) todayRef.current = todaysHole()
+  if (!ahead && !todayRef.current) todayRef.current = todaysHole()
   const today = todayRef.current
   const stateRef = useRef<GameState | null>(null)
-  const fresh = () => createInitialState(Math.random, today?.def ?? test, today ? 'daily' : test ? 'test' : 'round')
+  const fresh = () => (today ? createInitialState(today.def, 'daily') : createInitialState(ahead!.def, 'test'))
   if (!stateRef.current) stateRef.current = fresh()
   const [progress, setProgress] = useState<DayProgress | null>(() => (today ? dayProgress(today.day) : null))
   const [server, setServer] = useState<DailyServer | null>(() => dailyServer())
@@ -257,10 +230,11 @@ export function AceChaseGame({ daily = false, test }: { daily?: boolean; test?: 
   const [slopes, setSlopes] = useState(slopesChosen)
   const [noGl, setNoGl] = useState(false)
   const [hint, setHint] = useState(false)
+  /** The result card is up: the day's bullseye, or a trial's. */
   const [saveOpen, setSaveOpen] = useState(false)
   const saveOpenRef = useRef(false)
-  const offeredScore = useRef<number | null>(null)
-  const previousBestRef = useRef(getPersonalBest(SLUG))
+  /** The bullseye whose card has been shown, so each brings it up once. */
+  const shownBull = useRef(-1)
   const startGrace = useRef(0)
   const toldHowToLook = useRef(false)
   const inRun = IN_RUN.has(ui.phase)
@@ -323,9 +297,9 @@ export function AceChaseGame({ daily = false, test }: { daily?: boolean; test?: 
         keptShots.current = s.shots.length
         keepDay(hole, s)
       }
-      // Open the score card the moment the round ends, so a stray tap can't start another first.
-      if (s.phase === 'gameover' && offeredScore.current !== s.score) {
-        offeredScore.current = s.score
+      // Open the result card the moment the hole's done, so a stray tap can't start another first.
+      if (s.phase === 'gameover' && shownBull.current !== s.bulls) {
+        shownBull.current = s.bulls
         saveOpenRef.current = true
         setSaveOpen(true)
         setUi(toSnapshot(s))
@@ -351,10 +325,6 @@ export function AceChaseGame({ daily = false, test }: { daily?: boolean; test?: 
   useEffect(() => {
     if (sceneRef.current) sceneRef.current.showSlopes = slopes
   }, [slopes])
-
-  useEffect(() => {
-    if (ui.phase === 'menu') previousBestRef.current = apiBest
-  }, [apiBest, ui.phase])
 
   // Today's Hole: what this device has done at it, and what the API says about everyone's day.
   useEffect(() => {
@@ -411,41 +381,21 @@ export function AceChaseGame({ daily = false, test }: { daily?: boolean; test?: 
 
   const refresh = () => setUi(toSnapshot(stateRef.current!))
 
-  const restart = (intoMenu = false, practice = false) => {
+  const restart = (practice = false) => {
     saveOpenRef.current = false
     setSaveOpen(false)
-    offeredScore.current = null
-    previousBestRef.current = getPersonalBest(SLUG)
     startGrace.current = performance.now() + 260
-    if (intoMenu) {
-      stateRef.current = fresh()
-    } else if (today) {
+    if (today) {
       // Today's Hole carries on from where the device left it; once it's done, it's practice.
       const p = dayProgress(today.day)
       const again = practice || Boolean(p?.solved)
       const resume = p && !again ? { tries: p.tries, shots: p.shots, ghosts: p.ghosts, power: p.power, angle: p.angle } : null
       stateRef.current = startGame(stateRef.current!, Math.random, resume, again)
       keptShots.current = stateRef.current.shots.length
-    } else if (test) {
-      stateRef.current = startGame(stateRef.current!)
     } else {
-      clearRunAchievements()
-      beginRun(SLUG)
       stateRef.current = startGame(stateRef.current!)
     }
     setView('tee')
-    refresh()
-  }
-
-  /**
-   * Done with the round: back to the start card rather than into another one. That card is where the
-   * numbers a round just changed are shown. No run is opened, so nothing counts until they start one.
-   */
-  const toMenu = () => restart(true)
-
-  /** Admin and testing: the round in hand moved to a hole. */
-  const goToHole = (index: number) => {
-    stateRef.current = jumpToHole(stateRef.current!, index)
     refresh()
   }
 
@@ -494,7 +444,7 @@ export function AceChaseGame({ daily = false, test }: { daily?: boolean; test?: 
   const onPointerDown = (e: ReactPointerEvent<HTMLElement>) => {
     if (saveOpenRef.current || pausedRef.current) return
     const s = stateRef.current!
-    // Only the title starts a round from a tap; the end of one waits for its score card.
+    // A tap at the start card starts the hole; the end of one waits for its card.
     if (s.phase === 'menu') {
       e.preventDefault()
       if (performance.now() >= startGrace.current && !dailyDone()) restart()
@@ -510,7 +460,7 @@ export function AceChaseGame({ daily = false, test }: { daily?: boolean; test?: 
       const s = stateRef.current!
       if (e.code === 'Space' || e.code === 'Enter') {
         // A focused button does its own thing with these.
-        if (e.target instanceof HTMLButtonElement && (s.phase !== 'menu' || today || test)) return
+        if (e.target instanceof HTMLButtonElement) return
         e.preventDefault()
         if (e.repeat) return
         if (s.phase === 'menu') {
@@ -547,31 +497,17 @@ export function AceChaseGame({ daily = false, test }: { daily?: boolean; test?: 
               {pausable || paused ? <PauseButton paused={paused} onToggle={togglePause} /> : null}
             </GamePlayChrome>
 
-            {today ? (
-              <PlayReadout>
-                <PlayReadoutScore>{ui.tries}</PlayReadoutScore>
-                <PlayReadoutStats>
+            <PlayReadout>
+              <PlayReadoutScore>{ui.tries}</PlayReadoutScore>
+              <PlayReadoutStats>
+                {today ? (
                   <PlayStat label={ui.practice ? 'Practice' : 'Today'} value={`#${today.n}`} />
-                  <PlayStat label="Tries" value={ui.tries} />
-                </PlayReadoutStats>
-              </PlayReadout>
-            ) : test ? (
-              <PlayReadout>
-                <PlayReadoutScore>{ui.tries}</PlayReadoutScore>
-                <PlayReadoutStats>
-                  <PlayStat label="Hole" value="Trial" />
-                  <PlayStat label="Tries" value={ui.tries} />
-                </PlayReadoutStats>
-              </PlayReadout>
-            ) : (
-              <PlayReadout>
-                <PlayReadoutScore hot={inRun && ui.score > previousBestRef.current}>{ui.score}</PlayReadoutScore>
-                <PlayReadoutStats>
-                  <PlayStat label="Hole" value={`${ui.holeIndex + 1}/${HOLES}`} />
-                  <PlayStat label="Tries" value={ui.tries} />
-                </PlayReadoutStats>
-              </PlayReadout>
-            )}
+                ) : (
+                  <PlayStat label="Trial" value={`#${ahead!.n}`} />
+                )}
+                <PlayStat label="Tries" value={ui.tries} />
+              </PlayReadoutStats>
+            </PlayReadout>
 
             <div className="acechase__hud" aria-hidden={cinema}>
               <div className="acechase__card" ref={cardRef} onPointerDown={(e) => e.stopPropagation()}>
@@ -654,7 +590,7 @@ export function AceChaseGame({ daily = false, test }: { daily?: boolean; test?: 
               <div className="acechase__banner">
                 <strong>{ui.holeName}</strong>
                 <span>
-                  {today ? `Today’s Hole #${today.n}` : test ? 'A hole on trial' : `Hole ${ui.holeIndex + 1} of ${HOLES}`} · {touch ? 'tap' : 'click'} to skip
+                  {today ? `Today’s Hole #${today.n}` : `Hole #${ahead!.n}, on trial`} · {touch ? 'tap' : 'click'} to skip
                 </span>
               </div>
             ) : null}
@@ -662,15 +598,7 @@ export function AceChaseGame({ daily = false, test }: { daily?: boolean; test?: 
             {ui.phase === 'holed' && last?.bull ? (
               <div className="acechase__holed" role="status">
                 <strong>Bullseye!</strong>
-                <span>
-                  {today
-                    ? ui.practice
-                      ? 'Practice: it doesn’t count'
-                      : `In ${last.n} ${last.n === 1 ? 'try' : 'tries'}`
-                    : test
-                      ? `In ${last.n} ${last.n === 1 ? 'try' : 'tries'}`
-                      : holedLabel(last.n)}
-                </span>
+                <span>{ui.practice ? 'Practice: it doesn’t count' : `In ${last.n} ${last.n === 1 ? 'try' : 'tries'}`}</span>
               </div>
             ) : null}
 
@@ -681,79 +609,23 @@ export function AceChaseGame({ daily = false, test }: { daily?: boolean; test?: 
             ) : null}
 
             <div className="acechase__overlay">
-              <GamePauseOverlay
-                slug={SLUG}
-                personalBest={inRun ? previousBestRef.current : apiBest}
-                paused={paused}
-                onResume={resume}
-                tools={
-                  inRun && !today && !test ? (
-                    <AdminWaveSkip
-                      unit="hole"
-                      wave={ui.holeIndex + 1}
-                      onSkipNext={() => {
-                        goToHole(stateRef.current!.holeIndex + 1)
-                        resume()
-                      }}
-                      onJump={(hole) => {
-                        goToHole(hole - 1)
-                        resume()
-                      }}
-                    />
-                  ) : null
-                }
-              />
+              <GamePauseOverlay slug={SLUG} personalBest={apiBest} paused={paused} onResume={resume} />
               {today && ui.phase === 'menu' && !saveOpen && !paused && !noGl ? (
-                <DailyStartCard hole={today} progress={progress} server={server} onStart={() => restart()} onPractice={() => restart(false, true)} />
+                <DailyStartCard hole={today} progress={progress} server={server} onStart={() => restart()} onPractice={() => restart(true)} />
               ) : null}
-              {test && ui.phase === 'menu' && !saveOpen && !paused && !noGl ? <TrialStartCard def={test} onStart={() => restart()} /> : null}
-              {!today && !test && ui.phase === 'menu' && !saveOpen && !paused && !noGl ? (
-                <GameStartCard
-                  title="Ace Chase"
-                  slug={SLUG}
-                  tools={
-                    <AdminWaveSkip
-                      mode="start"
-                      unit="hole"
-                      onJump={(hole) => {
-                        restart()
-                        goToHole(hole - 1)
-                      }}
-                    />
-                  }
-                />
-              ) : null}
+              {ahead && ui.phase === 'menu' && !saveOpen && !paused && !noGl ? <TrialStartCard hole={ahead} onStart={() => restart()} /> : null}
               {today && ui.phase === 'gameover' && saveOpen ? (
                 <DailyResultCard
                   hole={today}
                   progress={progress}
                   server={server}
                   practice={ui.practice}
-                  onPractice={() => restart(false, true)}
+                  onPractice={() => restart(true)}
                   onLeave={() => navigate(gameHref(SLUG))}
                 />
               ) : null}
-              {test && ui.phase === 'gameover' && saveOpen ? (
-                <TrialResultCard
-                  def={test}
-                  tries={last?.n ?? ui.tries}
-                  onAgain={() => restart()}
-                  onLeave={() => navigate(gameHref(SLUG))}
-                />
-              ) : null}
-              {!today && !test && ui.phase === 'gameover' && saveOpen ? (
-                tournament ? (
-                  <TournamentScoreCard tournamentId={tournament.tournamentId} gameSlug={SLUG} score={ui.score} onDone={toMenu} />
-                ) : (
-                  <ScoreSaveCard
-                    gameSlug={SLUG}
-                    score={ui.score}
-                    title="Round over"
-                    subtitle={roundLabel(ui.results)}
-                    previousBest={Math.max(previousBestRef.current, apiBest)}
-                    onDone={toMenu}
-                  />
-                )
+              {ahead && ui.phase === 'gameover' && saveOpen ? (
+                <TrialResultCard hole={ahead} tries={last?.n ?? ui.tries} onAgain={() => restart()} onLeave={() => navigate(gameHref(SLUG))} />
               ) : null}
             </div>
           </div>

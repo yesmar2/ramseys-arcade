@@ -1,26 +1,22 @@
 import { useMemo } from 'react'
 import { AceChaseGame } from '../games/acechase/AceChaseGame'
-import { TEST_HOLES } from '../games/acechase/trialHoles'
 import { useRoute } from '../hooks/useHashRoute'
 import { todaysHole } from '../lib/dailyHole'
 
 /**
- * Ace Chase's page: a round of its three holes; at /games/acechase/daily, Today's Hole; and with
- * ?hole=<key> on the play page, a hole on trial (see TEST_HOLES), or with ?hole=day:YYYY-MM-DD, any day's
- * Today's Hole played as a trial, to look ahead. Nothing links to either.
+ * Ace Chase's page: Today's Hole, the one hole everyone plays today. With ?hole=day:YYYY-MM-DD, a day's
+ * hole played ahead of its day, on trial, where nothing is kept: the admin's Hole Book links to those.
+ * (/games/acechase/daily, where Today's Hole was before it was all of Ace Chase, is this page too.)
  */
 export function AceChasePage() {
   const route = useRoute()
-  const daily = route.name === 'gamePlay' && route.daily === true
-  const key = route.name === 'gamePlay' && !daily ? route.hole : undefined
+  const key = route.name === 'gamePlay' ? route.hole : undefined
+  const day = key && /^day:\d{4}-\d{2}-\d{2}$/.test(key) ? key.slice(4) : null
   // One hole for the visit: the physics keeps each hole's rails by the hole.
-  const test = useMemo(() => {
-    const day = key && /^day:\d{4}-\d{2}-\d{2}$/.test(key) ? key.slice(4) : null
-    return day ? todaysHole(day).def : key ? TEST_HOLES[key] : undefined
-  }, [key])
+  const ahead = useMemo(() => (day ? todaysHole(day) : undefined), [day])
   return (
     <main className="game-page game-page--fullscreen">
-      <AceChaseGame key={daily ? 'daily' : test ? `test-${key}` : 'round'} daily={daily} test={test} />
+      <AceChaseGame key={ahead ? `ahead-${ahead.day}` : 'today'} ahead={ahead} />
     </main>
   )
 }

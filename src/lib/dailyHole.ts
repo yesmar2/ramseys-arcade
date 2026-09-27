@@ -3,7 +3,9 @@ import { DAILY_PLAN } from '../games/acechase/dailyPlan'
 import type { PathPoint, Shot, ShotEnd } from '../games/acechase/game'
 import type { HoleDef, Style } from '../games/acechase/physics'
 import { AUTH_EVENT, getSessionToken } from './auth'
+import { detectDeviceType } from './device'
 import { api } from './leaderboard'
+import { noteTicketsPaid } from './tickets'
 
 /*
  * Ace Chase's Today's Hole, for the site: which hole it is, what this device has done at it, and what the
@@ -12,8 +14,9 @@ import { api } from './leaderboard'
  * Everyone gets the same hole, picked from the date on the boards' clock, and a new one comes at midnight
  * there. Every try counts, whenever it's played that day: the device keeps them, so closing the page and
  * coming back carries on the count. The first bullseye is the day's result. Signed in, it goes to the API,
- * which keeps one result a day for each account, first one kept; signed out, the device keeps it and
- * hands it over when the player signs in that day.
+ * which keeps one result a day for each account, first one kept, and puts it on Ace Chase's board under
+ * the account's tag, paying its tickets (with no tag yet, as soon as there is one); signed out, the device
+ * keeps it and hands it over when the player signs in that day.
  */
 
 const TZ = 'America/New_York'
@@ -64,6 +67,8 @@ export type DayProgress = {
   solved?: DailySolved
   /** The API has the result. */
   sent?: boolean
+  /** What the result paid in tickets as it went on the board. */
+  tickets?: number
 }
 
 type Store = { v: 1; days: Record<string, DayProgress> }
@@ -172,7 +177,17 @@ export type DailyServer = {
   spread: number[]
   /** Fewest tries, and first to it. */
   top: DailyEntry[]
-  you?: { tries: number | null; place: number | null; streak: number }
+  you?: {
+    tries: number | null
+    place: number | null
+    streak: number
+    /** The tag today's result is under on Ace Chase's board; null until the account has one. */
+    tag?: string | null
+    /** Today's result is on the board. */
+    board?: boolean
+  }
+  /** What today's result paid as it went on the board, said once, by the reply that put it there. */
+  tickets?: { earned: number; balance: number }
 }
 
 let server: DailyServer | null = null
@@ -182,7 +197,14 @@ export function dailyServer(): DailyServer | null {
 }
 
 function apply(reply: DailyServer, token: string | null) {
-  server = token === getSessionToken() ? reply : { ...reply, you: undefined }
+  const mine = token === getSessionToken()
+  server = mine ? reply : { ...reply, you: undefined, tickets: undefined }
+  // The tickets are said once: the header's count, and the day's cards, keep them.
+  if (mine && reply.tickets?.earned) {
+    noteTicketsPaid(reply.tickets)
+    const p = dayProgress(reply.day)
+    if (p) saveProgress(reply.day, { ...p, tickets: (p.tickets ?? 0) + reply.tickets.earned })
+  }
   window.dispatchEvent(new Event(DAILY_EVENT))
 }
 
@@ -221,7 +243,7 @@ export function syncDaily(force = false): Promise<void> {
 async function sendResult(day: string, solved: DailySolved, token: string) {
   const reply = await api<DailyServer>('/daily-hole/results', {
     method: 'POST',
-    body: JSON.stringify({ day, tries: solved.tries, pattern: solved.pattern }),
+    body: JSON.stringify({ day, tries: solved.tries, pattern: solved.pattern, device: detectDeviceType() }),
   })
   const p = dayProgress(day)
   if (p) saveProgress(day, { ...p, sent: true })

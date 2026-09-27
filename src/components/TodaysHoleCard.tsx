@@ -2,7 +2,7 @@ import { useEffect, useMemo, useReducer, useRef, useState, type CSSProperties } 
 import { getGame } from '../data/games'
 import { ShareButton } from '../games/acechase/DailyCards'
 import { drawHolePlan } from '../games/acechase/holePlan'
-import { gameDailyHref } from '../hooks/useHashRoute'
+import { gamePlayHref } from '../hooks/useHashRoute'
 import { inkOn } from '../lib/color'
 import {
   PLACE_NAME,
@@ -105,7 +105,7 @@ function standing(progress: DayProgress | null, server: DailyServer | null): str
 /** Today's Hole as a card: the hole, how it's going, the clock to the next, and Play or Share. */
 export function TodaysHoleCard() {
   const { hole, progress, server } = useTodaysHole()
-  const href = gameDailyHref(SLUG)
+  const href = gamePlayHref(SLUG)
   const solved = progress?.solved
   const tries = progress?.tries ?? 0
   const accent = resolveGameAccent(SLUG, getGame(SLUG)?.accent ?? '#2eb8a0')

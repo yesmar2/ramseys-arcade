@@ -1,5 +1,5 @@
 import { PERIOD_LABELS, type GlobalGamePlace, type LeaderboardPeriod } from './leaderboard'
-import { formatLeaderboardScore, isTimeBoard } from './leaderboardFormat'
+import { formatLeaderboardScore, isInvertedBoard } from './leaderboardFormat'
 
 /*
  * The arithmetic behind a player's card. Global points are shares: each game
@@ -167,10 +167,10 @@ const UNITS: Record<string, [string, string]> = {
   fireflies: ['note', 'notes'],
 }
 
-/** A score in the game's own unit: 432 rows, 1 block, 13,110 pts, 12.4s. */
+/** A score in the game's own unit: 432 rows, 1 block, 13,110 pts, 12.4s, 3 tries. */
 export function scoreWithUnit(slug: string, score: number): string {
   const figure = formatLeaderboardScore(slug, score)
-  if (isTimeBoard(slug)) return figure
+  if (isInvertedBoard(slug)) return figure
   const [one, many] = UNITS[slug] ?? ['pt', 'pts']
   return `${figure} ${score === 1 ? one : many}`
 }

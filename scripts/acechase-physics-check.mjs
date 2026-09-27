@@ -9,7 +9,12 @@
 // within a couple of centimetres of RK4, turning (5/7)·g·slope·cosψ / speed² a metre, so more as it slows; off
 // a rail at the angle the formula gives; and over a hill, energy only ever going down, all of it to drag.
 const P = await import(new URL('../src/games/acechase/physics.ts', import.meta.url))
-const { TEST_HOLES } = await import(new URL('../src/games/acechase/trialHoles.ts', import.meta.url))
+const D = await import(new URL('../src/games/acechase/daily.ts', import.meta.url))
+const { DAILY_PLAN } = await import(new URL('../src/games/acechase/dailyPlan.ts', import.meta.url))
+// The first Bumps green in the plan, in a garden: humps to roll over, for the checks that want a hill.
+const bumpsAt = DAILY_PLAN.findIndex((p) => p.kind === 'bumps' && p.style === 'garden')
+const [ey, em, ed] = D.DAILY_EPOCH.split('-').map(Number)
+const BUMPS = D.dailyHoleDef(DAILY_PLAN[bumpsAt], new Date(Date.UTC(ey, em - 1, ed + bumpsAt)).toISOString().slice(0, 10))
 const g = P.G
 const mu = P.FRICTION
 const big = [[-200, 200], [200, 200], [200, -200], [-200, -200]]
@@ -101,10 +106,10 @@ for (const k of [0.09, 0.11]) {
     say(`off a ${rubber ? 'rubber (e 0.9)' : 'timber rail (e 0.62)'} at ${inAng.toFixed(1)}° from square: came off at ${outAng.toFixed(1)}°; formula ${want.toFixed(1)}°; speed into it ${Math.abs(before[1]).toFixed(2)} → back out ${Math.abs(after[1]).toFixed(2)} m/s (×${(Math.abs(after[1]) / Math.abs(before[1])).toFixed(3)})`)
   }
 }
-// 6. Over Bumps and Banks' hill: the model's energy (½v² + (5/7)g·h, per unit mass) only ever goes down,
+// 6. Over a Bumps green's humps: the model's energy (½v² + (5/7)g·h, per unit mass) only ever goes down,
 // and exactly as fast as the drag takes it.
 {
-  const def = TEST_HOLES.green
+  const def = BUMPS
   const h = P.makeHole(def, def.spots[0])
   const b = P.launch(h, 62, 0)
   let E0 = null, worstRise = 0, drag = 0, prev = null, steps = 0
@@ -125,8 +130,8 @@ for (const k of [0.09, 0.11]) {
 }
 // 7. The same putt twice is the same putt.
 {
-  const def = TEST_HOLES.green
-  const h = P.makeHole(def, def.spots[3])
+  const def = BUMPS
+  const h = P.makeHole(def, def.spots[0])
   const a = P.simulate(h, 61.5, 9.3)
   const b = P.simulate(h, 61.5, 9.3)
   say(`the same putt twice: ${a.x === b.x && a.z === b.z && a.t === b.t ? 'identical, to the last digit' : 'DIFFERENT'}`)

@@ -302,7 +302,6 @@ export const SCORE_STREAK_THRESHOLDS: Record<string, number> = {
   bop: 25,
   putt: 2000,
   fireflies: 60,
-  acechase: 1000,
 }
 
 export type RecordSubmitOutcome = {

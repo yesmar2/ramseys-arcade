@@ -2,9 +2,8 @@ import { Suspense, useCallback, useEffect, useState, type CSSProperties, type Fo
 import { PageBanner } from '../components/PageBanner'
 import { PageShell } from '../components/PageShell'
 import { getGame } from '../data/games'
-import { TEST_HOLES } from '../games/acechase/trialHoles'
 import { useAuth } from '../hooks/useAuth'
-import { adminHref, gameDailyHref, gamePlayHref, homeHref, type AdminSection } from '../hooks/useHashRoute'
+import { adminHref, gamePlayHref, homeHref, type AdminSection } from '../hooks/useHashRoute'
 import {
   banTag,
   fetchAdminWhoami,
@@ -230,15 +229,9 @@ function DailyGamesCard() {
       </div>
       <ul className="adm-links">
         <li>
-          <a href={gameDailyHref('acechase')}>Ace Chase · Today’s Hole</a>
-          <span>the real one, where your tries count</span>
+          <a href={gamePlayHref('acechase')}>Ace Chase · Today’s Hole</a>
+          <span>the real one, where your tries count; the Hole Book plays any day ahead</span>
         </li>
-        {Object.entries(TEST_HOLES).map(([key, def]) => (
-          <li key={key}>
-            <a href={`${gamePlayHref('acechase')}?hole=${key}`}>Ace Chase · {def.name}</a>
-            <span>a hole on trial</span>
-          </li>
-        ))}
         {HUNT_ANCHORS[0] ? (
           <li>
             <a href={huntTestHref({ anchor: HUNT_ANCHORS[0], pose: 'top', at: 0.5 })}>Bug hunt · test mode</a>

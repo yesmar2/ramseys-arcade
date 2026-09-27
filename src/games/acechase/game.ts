@@ -1,15 +1,10 @@
 /**
- * Ace Chase: a round of three holes. On each, set a power and an angle and putt from the tee, again and
- * again, until the ball comes to rest on the bull; then the next hole. A hole pays 1000 ÷ the tries it
- * took, so a bull at the first try is 1000, at the second 500, at the fifth 200. There is no limit on
- * tries.
+ * Ace Chase: Today's Hole (./daily), one hole a day, the same for everyone. Set a power and an angle and
+ * putt from the tee, again and again, until the ball comes to rest on the bull. There is no limit on
+ * tries; they carry on from where the player left them, and the first bullseye is the day's result.
  *
- * Every round the targets move: each hole's bull sits in one of the spots its definition lists, picked
- * afresh, so last round's numbers are only a start. The ball is played out by ./physics, a fixed step
- * at a time, so the same numbers always do the same thing.
- *
- * Today's Hole (./daily) plays the same way on one hole, the same for everyone that day. Its tries carry
- * on from where the player left them, and the first bullseye is the day's result.
+ * The ball is played out by ./physics, a fixed step at a time, so the same numbers always do the same
+ * thing. A day's hole can also be played ahead of its day, on trial, when nothing is kept.
  *
  * The state is plain data. The scene (./scene) draws it and flies the camera; the page (AceChaseGame)
  * turns presses into the calls below.
@@ -17,7 +12,6 @@
 import { sfx } from '../../lib/sound'
 import {
   DT,
-  HOLE_DEFS,
   MAX_ANGLE,
   RINGS,
   launch,
@@ -40,12 +34,9 @@ export const introTime = (hole: Hole) => (hole.def.path ? LAID_INTRO_TIME : INTR
 /** A miss is shown this long before the ball goes back to the tee, and the hop back takes this long. */
 const MISSED_TIME = 1.4
 export const RETURN_TIME = 0.6
-/** How long a bullseye is celebrated before the next hole. */
+/** How long a bullseye is celebrated before the day's result. */
 export const HOLED_TIME = 2.8
-/** What a hole pays: this, over the tries it took. */
-export const HOLE_POINTS = 1000
-export const HOLES = HOLE_DEFS.length
-/** The dials as a round starts. */
+/** The dials as a hole starts. */
 export const START_POWER = 60
 export const START_ANGLE = 0
 
@@ -64,30 +55,25 @@ export type Shot = {
   end: ShotEnd
 }
 
-/** A round of the three holes, Today's Hole, or a hole on trial (nothing kept). */
-export type Mode = 'round' | 'daily' | 'test'
-
-export type HoleResult = { tries: number; points: number }
+/** Today's Hole, or a day's hole played ahead of its day, on trial (nothing kept). */
+export type Mode = 'daily' | 'test'
 
 export type GameState = {
   mode: Mode
-  /** The holes this round plays, in order. */
-  defs: readonly HoleDef[]
+  /** The hole in play. */
+  def: HoleDef
   /** Today's Hole played again once it's done: nothing it does counts. */
   practice: boolean
   phase: Phase
   /** Seconds in this phase. */
   phaseTime: number
-  holeIndex: number
-  /** Where each hole's target is this round. */
-  spots: readonly Spot[]
+  /** Where its target is. */
+  spot: Spot
   hole: Hole
   power: number
   angle: number
-  /** Tries on this hole so far, the one in play included. */
+  /** Tries so far, the one in play included. */
   tries: number
-  results: readonly HoleResult[]
-  score: number
   ball: Ball
   /** The shot in play, as it goes; and the last three on this hole, oldest first. */
   path: PathPoint[]
@@ -112,11 +98,6 @@ export type GameState = {
 /** A target for a hole, from the spots it offers. */
 const pickOne = (def: HoleDef, random: () => number) => def.spots[Math.floor(random() * def.spots.length)] ?? def.spots[0]!
 
-/** A target for each hole, from the spots it offers. */
-export function pickSpots(random: () => number = Math.random): Spot[] {
-  return HOLE_DEFS.map((def) => def.spots[Math.floor(random() * def.spots.length)] ?? def.spots[0]!)
-}
-
 /** A ball sitting on the tee. */
 function teeBall(hole: Hole): Ball {
   return launch(hole, 0, 0)
@@ -124,11 +105,10 @@ function teeBall(hole: Hole): Ball {
 
 let keys = 0
 
-function atHole(state: GameState, index: number): GameState {
-  const hole = makeHole(state.defs[index]!, state.spots[index]!)
+function atHole(state: GameState): GameState {
+  const hole = makeHole(state.def, state.spot)
   return {
     ...state,
-    holeIndex: index,
     hole,
     tries: 0,
     ball: teeBall(hole),
@@ -144,25 +124,21 @@ function atHole(state: GameState, index: number): GameState {
   }
 }
 
-/** A round waiting at its start card: the three holes, or with `one`, that hole alone (today's, or one on trial). */
-export function createInitialState(random: () => number = Math.random, one?: HoleDef, mode: Mode = one ? 'daily' : 'round'): GameState {
-  const defs = one ? [one] : HOLE_DEFS
-  const spots = one ? [mode === 'test' ? pickOne(one, random) : one.spots[0]!] : pickSpots(random)
-  const hole = makeHole(defs[0]!, spots[0]!)
+/** A hole waiting at its start card: today's, or one on trial. */
+export function createInitialState(def: HoleDef, mode: Mode = 'daily', random: () => number = Math.random): GameState {
+  const spot = mode === 'test' ? pickOne(def, random) : def.spots[0]!
+  const hole = makeHole(def, spot)
   return {
     mode,
-    defs,
+    def,
     practice: false,
     phase: 'menu',
     phaseTime: 0,
-    holeIndex: 0,
-    spots,
+    spot,
     hole,
     power: START_POWER,
     angle: START_ANGLE,
     tries: 0,
-    results: [],
-    score: 0,
     ball: teeBall(hole),
     path: [],
     ghosts: [],
@@ -182,13 +158,13 @@ export function createInitialState(random: () => number = Math.random, one?: Hol
 export type Resume = { tries: number; shots: readonly Shot[]; ghosts: readonly (readonly PathPoint[])[]; power: number; angle: number }
 
 /**
- * A new round: fresh targets, the first hole, and its flyover. A hole on trial picks a fresh target too;
- * Today's Hole keeps its one target, and carries on from `resume`: the tries already spent, the log and
- * the last paths, and the dials as left.
+ * Off to the tee, after the flyover. A hole on trial picks a fresh target each time; Today's Hole keeps
+ * its one target, and carries on from `resume`: the tries already spent, the log and the last paths, and
+ * the dials as left.
  */
 export function startGame(state: GameState, random: () => number = Math.random, resume?: Resume | null, practice = false): GameState {
-  const spots = state.mode === 'round' ? pickSpots(random) : state.mode === 'test' ? [pickOne(state.defs[0]!, random)] : state.spots
-  const fresh = atHole({ ...state, spots, results: [], score: 0, power: START_POWER, angle: START_ANGLE, practice }, 0)
+  const spot = state.mode === 'test' ? pickOne(state.def, random) : state.spot
+  const fresh = atHole({ ...state, spot, power: START_POWER, angle: START_ANGLE, practice })
   const carried = resume && !practice ? { tries: resume.tries, shots: resume.shots, ghosts: resume.ghosts, power: resume.power, angle: resume.angle } : {}
   return { ...fresh, ...carried, phase: 'intro', phaseTime: 0 }
 }
@@ -325,7 +301,6 @@ function finishShot(s: GameState): GameState {
   const path = [...s.path, [b.x, b.y, b.z] as PathPoint]
   const ghosts = [...s.ghosts, path].slice(-3)
   if (b.done === 'bull') {
-    const points = Math.round(HOLE_POINTS / s.tries)
     sfx(s.tries === 1 ? 'perfect' : 'good')
     return {
       ...s,
@@ -333,8 +308,6 @@ function finishShot(s: GameState): GameState {
       phaseTime: 0,
       path,
       ghosts,
-      results: [...s.results, { tries: s.tries, points }],
-      score: s.score + points,
       shots: [...s.shots, { n: s.tries, power: s.power, angle: s.angle, what: 'Bullseye!', bull: true, end: 'bull' }],
       bulls: s.bulls + 1,
     }
@@ -356,15 +329,6 @@ export function fastForward(state: GameState): GameState {
   const s: GameState = { ...state, ball: { ...state.ball }, path: [...state.path] }
   while (!s.ball.done) stepShot(s, false)
   return finishShot(s)
-}
-
-/** Admin and testing: a fresh round, or the round in hand, moved to a hole. The caller marks the run assisted. */
-export function jumpToHole(state: GameState, index: number): GameState {
-  if (index < 0 || index >= state.defs.length) return state
-  // Holes skipped over score nothing, but still count in the round's list.
-  const results = [...state.results]
-  while (results.length < index) results.push({ tries: 0, points: 0 })
-  return { ...atHole({ ...state, results: results.slice(0, index) }, index), phase: 'intro', phaseTime: 0 }
 }
 
 export function tick(state: GameState, dt: number): GameState {
@@ -404,12 +368,7 @@ export function tick(state: GameState, dt: number): GameState {
       break
     }
     case 'holed':
-      if (s.phaseTime >= HOLED_TIME) {
-        s =
-          s.holeIndex + 1 < s.defs.length
-            ? { ...atHole(s, s.holeIndex + 1), phase: 'intro', phaseTime: 0 }
-            : { ...s, phase: 'gameover', phaseTime: 0 }
-      }
+      if (s.phaseTime >= HOLED_TIME) s = { ...s, phase: 'gameover', phaseTime: 0 }
       break
   }
   return s
@@ -419,41 +378,27 @@ export function tick(state: GameState, dt: number): GameState {
 export type Snapshot = {
   mode: Mode
   practice: boolean
-  /** How many holes this round has. */
-  holes: number
   phase: Phase
   phaseTime: number
-  score: number
-  holeIndex: number
   holeName: string
   holeNote: string
   tries: number
   power: number
   angle: number
   shots: readonly Shot[]
-  results: readonly HoleResult[]
 }
 
 export function toSnapshot(s: GameState): Snapshot {
   return {
     mode: s.mode,
     practice: s.practice,
-    holes: s.defs.length,
     phase: s.phase,
     phaseTime: s.phaseTime,
-    score: s.score,
-    holeIndex: s.holeIndex,
     holeName: s.hole.name,
     holeNote: s.hole.note,
     tries: s.tries,
     power: s.power,
     angle: s.angle,
     shots: s.shots,
-    results: s.results,
   }
-}
-
-/** The tries a round took, hole by hole. */
-export function totalTries(results: readonly HoleResult[]): number {
-  return results.reduce((sum, r) => sum + r.tries, 0)
 }

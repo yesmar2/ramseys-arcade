@@ -1,7 +1,7 @@
 /**
  * Ace Chase: Today's Hole. A new hole every day, the same for everyone, built from the date.
  *
- * Every day's hole is a big open green walled all round, in the spirit of Bumps and Banks (./bumpsBanks),
+ * Every day's hole is a big open green walled all round, in the spirit of Bumps and Banks (the trial green it grew from),
  * with humps that bend a putt and things in the way; and every day it's a different kind of thing:
  * - bumps: a hill and humps, a log across the far end, rocks, and a rubber bank (Bumps and Banks itself);
  * - pond: water in the way, to play round or along the edge of;

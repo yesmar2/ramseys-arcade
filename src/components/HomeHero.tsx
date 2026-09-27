@@ -45,6 +45,7 @@ const UNITS: Record<string, [string, string]> = {
   stacker: ['block', 'blocks'],
   simon: ['round', 'rounds'],
   fireflies: ['note', 'notes'],
+  acechase: ['try', 'tries'],
 }
 
 /** A gap between two scores as a bare figure: 9, 1,250, 2.4s. */

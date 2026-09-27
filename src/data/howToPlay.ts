@@ -256,16 +256,19 @@ export const HOW_TO_PLAY: Record<string, HowToPlay> = {
     tip: 'A lost Catch or Follow only leaves its lantern dark.',
   },
   acechase: {
-    goal: 'Stop the ball on the bullseye, in as few tries as you can.',
+    goal: 'Stop the ball on today’s bullseye in as few tries as you can. A new hole comes every day at midnight, New York time.',
     controls: [
       { does: 'Set the shot', touch: 'Tap − and +, or type', keys: '↑ ↓ power · ← → angle' },
       { does: 'Putt', touch: 'Tap Putt', keys: 'Space' },
       { does: 'Look around', touch: 'Drag · pinch · two fingers', keys: 'Drag · scroll · right-drag' },
       { does: 'Read the green', touch: 'Double-tap a spot · Slopes', keys: 'Double-click a spot · Slopes' },
     ],
-    scores: [{ what: 'Each hole', pts: '1000 ÷ tries', sub: 'first try 1000 · two 500 · five 200' }],
-    ends: 'After three holes.',
-    tip: 'The targets move every round. Each miss says how far off it was.',
+    scores: [
+      { what: 'Your score', pts: 'the tries your first bullseye took', sub: 'fewest wins the day' },
+      { what: 'Every try', pts: 'counts', sub: 'even if you leave and come back' },
+    ],
+    ends: 'At your first bullseye. After that, play it again for practice; that doesn’t count.',
+    tip: 'Each miss says how far off it was. Double-tap the green, or turn on Slopes, to see which way it runs.',
   },
   hotlap: {
     goal: 'The fastest lap of today’s track. A new one comes every day at midnight, New York time.',

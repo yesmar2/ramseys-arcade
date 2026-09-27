@@ -646,6 +646,50 @@
   margin: 0;
 }
 
+/* What the day's result paid for the prize counter. */
+.acechase-daily__tix {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  margin: 0;
+  padding: 0.55rem 0.8rem;
+  border-radius: 0.85rem;
+  border: 1px dashed color-mix(in srgb, var(--ticket, #ff8552) 50%, transparent);
+  background: color-mix(in srgb, var(--ticket, #ff8552) 8%, transparent);
+  font-size: 0.88rem;
+  line-height: 1.4;
+}
+
+.acechase-daily__tix svg {
+  flex: none;
+}
+
+.acechase-daily__tix b,
+.acechase-daily__tix a {
+  color: var(--ticket-text, #c2461d);
+}
+
+.acechase-daily__tix a {
+  font-weight: 800;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.acechase-daily__tix a:hover {
+  text-decoration: underline;
+}
+
+/* Signed in with no tag yet: a tag puts the day's result on the board. */
+.acechase-daily__tag {
+  display: grid;
+  justify-items: center;
+  gap: 0.6rem;
+}
+
+.acechase-daily__tag .report__ask {
+  width: 100%;
+}
+
 /* The next hole's countdown shows everywhere, a phone included: it's the day's rhythm, not a keyboard hint. */
 .game-card__hint.acechase-daily__next {
   display: block;

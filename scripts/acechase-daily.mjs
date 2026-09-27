@@ -30,7 +30,7 @@ const CHECKS = new URL('../src/games/acechase/dailyChecks.ts', import.meta.url)
 /**
  * What a day's hole has to be. A player finds a window by closing in on the power (the misses say short
  * or long) and on the angle (left or right), so what makes a hole hard is how narrow its window is in
- * power; how wide it is in angle matters less. Bumps and Banks (./bumpsBanks), the green these are
+ * power; how wide it is in angle matters less. Bumps and Banks (the trial green they grew from), the green these are
  * modelled on, has best windows of 7 to 37 settings and 15 to 56 in all.
  */
 const GOOD = {

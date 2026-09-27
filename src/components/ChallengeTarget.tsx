@@ -1,7 +1,7 @@
 import { challengeWhen, clearActiveChallenge, playingSlug, useActiveChallenge } from '../lib/challenges'
 import { scoreUnit } from '../lib/gameBoard'
 import { getLastPlayerName, normalizePlayerName } from '../lib/leaderboard'
-import { formatLeaderboardScore, isTimeBoard } from '../lib/leaderboardFormat'
+import { formatLeaderboardScore, isInvertedBoard } from '../lib/leaderboardFormat'
 import { PlayerAvatar } from './PlayerAvatar'
 
 /*
@@ -62,8 +62,8 @@ export function ChallengeChip({ value }: { value: number | null }) {
   const challenge = useActiveChallenge(slug)
   if (!slug || !challenge) return null
   const figure = formatLeaderboardScore(slug, challenge.score)
-  const time = isTimeBoard(slug)
-  const live = !time && value != null
+  // A clock or a count of tries isn't the readout's figure, so only the target shows.
+  const live = !isInvertedBoard(slug) && value != null
   const passed = live && value > challenge.score
   const share = live && challenge.score > 0 ? Math.max(0, Math.min(1, value / challenge.score)) : 0
   return (

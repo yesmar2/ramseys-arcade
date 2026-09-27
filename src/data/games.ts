@@ -211,10 +211,11 @@ export const games: Game[] = [
     name: 'Ace Chase',
     slug: 'acechase',
     tags: ['sport'],
-    description: 'Three trick-shot holes in 3D. Dial in the power and the angle, and stop the ball dead on the bullseye in as few tries as you can.',
+    description: 'A new hole every day, the same for everyone, in 3D. Dial in the power and the angle and stop the ball dead on the bullseye: every try counts, and your first bullseye is your result.',
     accent: PALETTE.teal,
     playable: true,
     inDevelopment: true,
+    daily: true,
   },
   {
     name: 'Hot Lap',

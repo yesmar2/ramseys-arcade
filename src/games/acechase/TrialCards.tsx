@@ -1,12 +1,19 @@
 import type { ReactNode } from 'react'
 import { gameAccentStyle } from '../../lib/gameAccentStyle'
-import type { HoleDef } from './physics'
+import { PLACE_NAME, type TodaysHole } from '../../lib/dailyHole'
 
 /*
- * A hole on trial's two cards (/games/acechase/play?hole=<key>): the one it opens on, and the one a
- * bullseye brings up. Nothing about a trial is kept, and nothing links to one; it's for trying a hole
- * out before it goes in a round.
+ * A day's hole on trial, ahead of its day (/games/acechase/play?hole=day:YYYY-MM-DD): the card it opens
+ * on, and the one a bullseye brings up. Nothing about a trial is kept; the admin's Hole Book links here,
+ * to try a day out before it comes.
  */
+
+const dayWords = new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', weekday: 'short', month: 'short', day: 'numeric' })
+
+/** "Hole #9 · Thu, Oct 3", for the day a trial is ahead of. */
+function kicker(hole: TodaysHole): string {
+  return `Hole #${hole.n} · ${dayWords.format(new Date(`${hole.day}T12:00:00Z`))} · on trial`
+}
 
 const SLUG = 'acechase'
 
@@ -24,16 +31,20 @@ function Card({ children, label }: { children: ReactNode; label: string }) {
   )
 }
 
-export function TrialStartCard({ def, onStart }: { def: HoleDef; onStart: () => void }) {
+export function TrialStartCard({ hole, onStart }: { hole: TodaysHole; onStart: () => void }) {
+  const def = hole.def
   return (
     <Card label={`${def.name}, on trial`}>
       <div className="game-card__head">
-        <span className="game-card__kicker">A hole on trial</span>
+        <span className="game-card__kicker">{kicker(hole)}</span>
         <h2 className="game-card__title game-card__title--big">{def.name}</h2>
-        <p className="game-card__blurb">{def.note}</p>
+        <p className="game-card__blurb">
+          On {PLACE_NAME[hole.pick.style]}. {def.note}
+        </p>
       </div>
       <p className="acechase-daily__rules">
-        One putt a try, as many tries as it takes; Skip ahead shows where a putt ends. Nothing here is kept.
+        This day&rsquo;s hole, ahead of its day. One putt a try, as many tries as it takes; Skip ahead shows where a
+        putt ends. Nothing here is kept.
       </p>
       <div className="game-card__actions">
         <button type="button" className="panel__btn" onClick={onStart}>
@@ -45,23 +56,23 @@ export function TrialStartCard({ def, onStart }: { def: HoleDef; onStart: () => 
 }
 
 export function TrialResultCard({
-  def,
+  hole,
   tries,
   onAgain,
   onLeave,
 }: {
-  def: HoleDef
+  hole: TodaysHole
   tries: number
   onAgain: () => void
   onLeave: () => void
 }) {
   const title = tries === 1 ? 'First try!' : `Bullseye in ${tries}`
   return (
-    <Card label={`${def.name}: ${title}`}>
+    <Card label={`${hole.def.name}: ${title}`}>
       <div className="game-card__head">
-        <span className="game-card__kicker">A hole on trial</span>
+        <span className="game-card__kicker">{kicker(hole)}</span>
         <h2 className="game-card__title game-card__title--big">{title}</h2>
-        <p className="game-card__blurb">{def.name}.</p>
+        <p className="game-card__blurb">{hole.def.name}.</p>
       </div>
       <div className="game-card__actions">
         <button type="button" className="panel__btn" onClick={onAgain}>

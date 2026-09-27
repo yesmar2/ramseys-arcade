@@ -52,7 +52,7 @@ export type Route =
    * trial, `?hole=<key>` on the play page (Ace Chase's), which only the admin page links to. `track`: a
    * test drive of one of Hot Lap's daily tracks, `?track=<number or day>`, from the admin's Track Book.
    */
-  | { name: 'gamePlay'; slug: string; daily?: boolean; hole?: string; track?: string }
+  | { name: 'gamePlay'; slug: string; hole?: string; track?: string }
   | { name: 'authVerify'; token: string }
   | { name: 'about' }
   | { name: 'plus' }
@@ -168,11 +168,6 @@ export function gameHubHref(
 
 export function gamePlayHref(slug: string) {
   return `/games/${encodeURIComponent(slug)}/play`
-}
-
-/** A game's hole of the day: Ace Chase's Today's Hole. */
-export function gameDailyHref(slug: string) {
-  return `/games/${encodeURIComponent(slug)}/daily`
 }
 
 /** Site-wide record books catalog. */
@@ -393,7 +388,6 @@ export function hrefForRoute(
       }
       return appendGroupQuery(gameHubHref(route.slug, period))
     case 'gamePlay':
-      if (route.daily) return gameDailyHref(route.slug)
       if (route.track) return `${gamePlayHref(route.slug)}?track=${encodeURIComponent(route.track)}`
       return route.hole ? `${gamePlayHref(route.slug)}?hole=${encodeURIComponent(route.hole)}` : gamePlayHref(route.slug)
     case 'tournamentPlay':
@@ -588,8 +582,9 @@ export function parseUrl(pathname: string, search: string): Route {
   if (gameMatch) {
     const slug = canonicalGameSlug(decodeURIComponent(gameMatch[1]))
     const segment = gameMatch[2] ? decodeURIComponent(gameMatch[2]) : undefined
+    // Where Today's Hole was before it was all of Ace Chase, and shared links still point: the play page.
     if (segment === 'daily') {
-      return { name: 'gamePlay', slug, daily: true }
+      return { name: 'gamePlay', slug }
     }
     if (segment === 'records') {
       return { name: 'game', slug, board: 'records' }
