@@ -1,7 +1,7 @@
 /*
- * The admin's tabs, its Daily games card, and the daily games' books (AdminHoleBook, AdminTrackBook):
- * every planned day of Ace Chase's Today's Hole and Hot Lap's Today's Track. Cards are the admin page's
- * own (.adm-card, admin.css); the switches are the site's (.seg, .chips).
+ * The admin's tabs, its Daily games and Secret trophies cards, and the daily games' books (AdminHoleBook,
+ * AdminTrackBook): every planned day of Ace Chase's Today's Hole and Hot Lap's Today's Track. Cards are the
+ * admin page's own (.adm-card, admin.css); the switches are the site's (.seg, .chips).
  */
 
 .adm-tabs.seg {
@@ -741,4 +741,41 @@ html[data-theme='dark'] .tb {
     animation: none;
     box-shadow: 0 0 0 3px color-mix(in srgb, var(--panel-accent) 60%, transparent);
   }
+}
+
+/* ---------- the secret trophies card (AdminSecrets) ---------- */
+
+.adm-row.adm-secret {
+  flex-direction: row;
+  justify-content: flex-start;
+  align-items: flex-start;
+  gap: 0.9rem;
+}
+
+.adm-secret__art {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 3.2rem;
+  height: 3.2rem;
+  border-radius: 0.9rem;
+  background: color-mix(in srgb, var(--tr-tone) 14%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--tr-tone) 34%, transparent);
+}
+
+.adm-secret__art .trophy-art svg {
+  width: 2.2rem;
+  height: 2.2rem;
+}
+
+.adm-secret__n {
+  font-size: 0.82rem;
+  font-weight: 650;
+  color: var(--muted);
+}
+
+.adm-secret__says {
+  font-size: 0.88rem;
+  font-style: italic;
+  color: var(--ink);
 }
