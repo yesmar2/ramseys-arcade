@@ -11,7 +11,20 @@
  * pace car and a driver on the limit both get round cleanly in a sensible time.
  */
 import { hashString, mulberry32 } from '../../lib/seededRandom.ts'
-import { botDriver, botLap, buildTrack, closure, HALF_WIDTH, newRun, stepRun, type Hill, type Piece, type Track, type TrackShape } from './sim.ts'
+import {
+  botDriver,
+  botLap,
+  buildTrack,
+  closure,
+  HALF_WIDTH,
+  newRun,
+  speedPlan,
+  stepRun,
+  type Hill,
+  type Piece,
+  type Track,
+  type TrackShape,
+} from './sim.ts'
 
 /* ---------- writing tracks down ---------- */
 
@@ -36,10 +49,15 @@ export function decodeCourse(line: string): Piece[] {
 /**
  * A hilly track's heights, written out as `permille:metres` pairs: how far round the lap from the start
  * line, in thousandths, and how high the road is there above the line. "0:0 250:-12.5 500:4 750:-3".
+ * Or, for heights evenly spaced round the lap from the line, just the heights after a tilde: "~0 4 -2 1".
  */
 export function decodeHills(line: string): Hill[] {
-  return line
-    .trim()
+  const text = line.trim()
+  if (text.startsWith('~')) {
+    const heights = text.slice(1).trim().split(/\s+/).map(Number)
+    return heights.map((up, j): Hill => [j / heights.length, up]).filter(([, up]) => Number.isFinite(up))
+  }
+  return text
     .split(/\s+/)
     .map((pair): Hill => {
       const [at, up] = pair.split(':')
@@ -132,6 +150,93 @@ export function generateCourse(seed: number): Piece[] | null {
     if (!best) continue
     pieces[best.at] = { straight: 'B' }
     return pieces
+  }
+  return null
+}
+
+/* ---------- hills for a made track ---------- */
+
+export type HillKind = 'rolling' | 'hilly' | 'big'
+
+/** How steep each kind gets at its steepest: rise per metre. */
+const STEEPEST: Record<HillKind, number> = { rolling: 0.05, hilly: 0.09, big: 0.13 }
+const KNOTS = 32
+
+/**
+ * Hills for a made track, decided by its line alone, so the same line always gets the same hills. About
+ * one track in seven stays flat; the rest roll gently (5% at the steepest), are hilly (9%) or big (13%).
+ *
+ * The land is five waves round the lap, the shorter ones nearly as tall as the long, a new set on each
+ * try, set down in 32 heights. Each is then made as big as its kind asks, or as its road allows if that's
+ * less: no crest so sharp for the speed the car carries over it that the car goes more than a third light,
+ * no dip pressing it down more than a whole g, no more than 20 m from the lowest point to the highest (the
+ * Glen, a real hill, has 22), and stretches of road that pass near each other at no more than a gentle
+ * bank's difference in height (0.4 m at 30 m apart, a quarter of the gap past that). The try that can be
+ * made biggest wins, if it's at least a third of what its kind asks. Then it's driven: the pace car and a
+ * driver on the limit must get round cleanly in a sensible time, easing the hills off a step at a time
+ * until they do. Null: this track stays flat.
+ */
+export function hillyCourse(course: string): { hills: string; kind: HillKind; check: CourseCheck & { ok: true } } | null {
+  const rand = mulberry32(hashString(`hills:${course}`))
+  const draw = rand()
+  if (draw < 0.15) return null
+  const kind: HillKind = draw < 0.45 ? 'rolling' : draw < 0.8 ? 'hilly' : 'big'
+  const pieces = decodeCourse(course)
+  const flat = buildTrack(pieces)
+  const { n, s, length } = flat
+  // What the car carries round, near enough: the pace car's plan, no faster than its top speed.
+  const speeds = speedPlan(flat)
+  const v2 = Array.from(speeds, (v) => Math.min(v, 52) ** 2)
+  // Stretches of road near each other but well apart along the lap.
+  const pairs: [number, number, number][] = []
+  for (let i = 0; i < n; i += 4) {
+    for (let j = i + 4; j < n; j += 4) {
+      const along = Math.min(s[j]! - s[i]!, length - (s[j]! - s[i]!))
+      if (along < 120) continue
+      const d = Math.hypot(flat.x[i]! - flat.x[j]!, flat.y[i]! - flat.y[j]!)
+      if (d < 100) pairs.push([i, j, Math.max(0.4, (d - 30) * 0.25)])
+    }
+  }
+
+  let best: { knots: Hill[]; scale: number; share: number } | null = null
+  for (let attempt = 0; attempt < 12; attempt++) {
+    const waves = [1, 2, 3, 4, 5].map((k) => ({ k, a: (0.35 + rand()) / k ** 0.8, p: rand() * Math.PI * 2 }))
+    const at = (f: number) => waves.reduce((z, w) => z + w.a * Math.sin(Math.PI * 2 * w.k * f + w.p), 0)
+    const z0 = at(0)
+    const knots: Hill[] = Array.from({ length: KNOTS }, (_, j) => [j / KNOTS, at(j / KNOTS) - z0])
+    const unit = buildTrack(pieces, { hills: knots })
+    const z = unit.z!
+    const grade = unit.grade!
+    const crest = unit.crest!
+    let steep = 0
+    let lightest = 0
+    let heaviest = 0
+    let lo = Infinity
+    let hi = -Infinity
+    for (let i = 0; i < n; i++) {
+      steep = Math.max(steep, Math.abs(grade[i]!))
+      lightest = Math.max(lightest, v2[i]! * -crest[i]!)
+      heaviest = Math.max(heaviest, v2[i]! * crest[i]!)
+      lo = Math.min(lo, z[i]!)
+      hi = Math.max(hi, z[i]!)
+    }
+    let near = Infinity
+    for (const [i, j, allowed] of pairs) {
+      const apart = Math.abs(z[i]! - z[j]!)
+      if (apart > 1e-6) near = Math.min(near, allowed / apart)
+    }
+    const byKind = STEEPEST[kind] / steep
+    const scale = Math.min(byKind, (0.35 * 9.81) / Math.max(lightest, 1e-9), 9.81 / Math.max(heaviest, 1e-9), 20 / (hi - lo), near)
+    const share = scale / byKind
+    if (!best || share > best.share) best = { knots, scale, share }
+    if (share >= 0.8) break
+  }
+  if (!best || best.share < 1 / 3) return null
+  const { knots, scale } = best
+  for (const ease of [1, 0.75, 0.5]) {
+    const hills = `~${knots.map(([, h]) => Math.round(h * scale * ease * 10) / 10).join(' ')}`
+    const check = checkCourse(pieces, { hills: decodeHills(hills) })
+    if (check.ok) return { hills, kind, check }
   }
   return null
 }

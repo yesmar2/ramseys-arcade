@@ -130,7 +130,11 @@ export class Terrain {
         let sum = 0
         let wsum = 0
         let least = Infinity
-        let nearestZ = 0
+        // And never above any road near it: in a dip, or inside a tight corner, the slopes round about would
+        // lift the ground over the road's edge. Each bit of road holds the ground a hand's width under it for
+        // 20 m round, past which it may climb away, a bank at most 3 in 5; where two roads at different
+        // heights pass close, the lower one holds the ground between them down, so it slopes up to the other.
+        let cap = Infinity
         const bx = Math.floor(px / BUCKET)
         const by = Math.floor(py / BUCKET)
         const span = Math.ceil(NEAR / BUCKET)
@@ -141,10 +145,8 @@ export class Terrain {
             for (const k of list) {
               const d2 = (sx[k]! - px) ** 2 + (sy[k]! - py) ** 2
               if (d2 > NEAR * NEAR) continue
-              if (d2 < least) {
-                least = d2
-                nearestZ = sz[k]!
-              }
+              least = Math.min(least, d2)
+              cap = Math.min(cap, sz[k]! - 0.15 + Math.max(0, Math.sqrt(d2) - (TW + 12)) * 0.6)
               const w = 1 / (d2 + 9) ** 2
               sum += w * sz[k]!
               wsum += w
@@ -155,10 +157,7 @@ export class Terrain {
           const d = Math.sqrt(least)
           // A hand's width below the road, so the road always shows, rising to meet the grass beside it.
           const road = sum / wsum - 0.15 * (1 - smoothstep(TW + 1, TW + 6, d))
-          h = road + (h - road) * smoothstep(TW + 4, NEAR, d)
-          // And never above the road beside it: in a dip, or inside a tight corner, the slopes round about
-          // would lift the ground over the road's edge. Past 20 m out it may climb away, a bank at most 3 in 5.
-          h = Math.min(h, nearestZ - 0.15 + Math.max(0, d - (TW + 12)) * 0.6)
+          h = Math.min(road + (h - road) * smoothstep(TW + 4, NEAR, d), cap)
         }
         this.heights[j * this.cols + i] = this.base + (h - this.base) * fall
       }

@@ -5,11 +5,14 @@
 //   node scripts/hotlap-daily.mjs sheet [from=1] [count=36] [file=hotlap-tracks.svg]   the tracks' outlines, to look over
 //   node scripts/hotlap-daily.mjs insert YYYY-MM-DD <landmark>   a landmark (landmarks.ts) on a day to come,
 //                                                                the days after it moving on one
+//   node scripts/hotlap-daily.mjs hills YYYY-MM-DD           hills (courses.ts hillyCourse) for the made tracks
+//                                                                from that day to come on, those that have none
 //
 // Day 1 (2026-09-26) is the classic track. Each later day's track is the first that passes courses.ts's
 // checks among seeds made from the day's number. Days already in the plan are never made again, even if
 // the generator changes: a day that's been played has to stay the track it was. So plan only ever adds,
-// and insert only ever puts a landmark on a day that hasn't come yet.
+// and insert and hills only ever change days that haven't come yet. A made day gets its hills from its
+// line, so the same line always gets the same hills.
 import fs from 'node:fs'
 
 const COURSES = new URL('../src/games/hotlap/courses.ts', import.meta.url)
@@ -37,7 +40,11 @@ function shapeOf(e) {
 }
 
 /** A landmark's is a real circuit's layout, which may run longer than a made track (courses.ts checkCourse). */
-const isLandmark = (e) => Boolean(e.heading || e.hills)
+const isLandmark = (e) => Boolean(e.heading)
+
+/** Today on the boards' clock: a day that has come can't change. */
+const todayInNewYork = () =>
+  new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
 
 function writePlan(entries) {
   const lines = entries.map(
@@ -81,7 +88,11 @@ function makeDay(n) {
     if (!pieces) continue
     const check = C.checkCourse(pieces)
     if (!check.ok) continue
-    return { seed, course: C.encodeCourse(pieces), pace: round2(check.pace), tries: k + 1 }
+    const course = C.encodeCourse(pieces)
+    // Its hills, if its line gives it any: a track that can't take them stays flat.
+    const hilly = C.hillyCourse(course)
+    if (hilly) return { seed, course, hills: hilly.hills, pace: round2(hilly.check.pace), tries: k + 1 }
+    return { seed, course, pace: round2(check.pace), tries: k + 1 }
   }
   throw new Error(`no track for day ${n} in 500 seeds`)
 }
@@ -99,7 +110,7 @@ if (command === 'plan') {
     let name = made.name ?? C.courseName(made.seed)
     for (let j = 1; names.has(name) && j < 1000; j++) name = C.courseName(made.seed + j)
     names.add(name)
-    plan.push({ name, course: made.course, pace: made.pace })
+    plan.push({ name, course: made.course, pace: made.pace, ...(made.hills ? { hills: made.hills } : {}) })
     if (n % 20 === 0 || n === days) console.log(`day ${n} (${dayOf(n)}): ${name}, pace ${made.pace}s, seed try ${made.tries}`)
   }
   writePlan(plan)
@@ -151,7 +162,7 @@ if (command === 'plan') {
   const landmark = LANDMARKS[key]
   if (!landmark) throw new Error(`no landmark "${key}": ${Object.keys(LANDMARKS).join(', ')}`)
   // Only a day to come: today's track is being driven, and a played day stays the track it was.
-  const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
+  const today = todayInNewYork()
   if (day <= today) throw new Error(`${day} has come already (it's ${today} in New York): pick a day after it`)
   const plan = await readPlan()
   if (plan.some((e) => e.name === landmark.name)) throw new Error(`${landmark.name} is in the plan already`)
@@ -163,6 +174,33 @@ if (command === 'plan') {
   plan.splice(n - 1, 0, { ...entry, pace: round2(check.pace) })
   writePlan(plan)
   console.log(`day ${n} (${day}): ${landmark.name}, ${check.track.length.toFixed(0)} m, pace ${check.pace.toFixed(2)}s, limit ${check.limit.toFixed(2)}s; the days after it each move on one, to ${dayOf(plan.length)}`)
+} else if (command === 'hills') {
+  const [day] = args
+  if (!day || !/^\d{4}-\d{2}-\d{2}$/.test(day)) throw new Error('usage: hills YYYY-MM-DD')
+  const today = todayInNewYork()
+  if (day <= today) throw new Error(`${day} has come already (it's ${today} in New York): pick a day after it`)
+  const plan = await readPlan()
+  const from = numberOf(day)
+  const kinds = { flat: 0, rolling: 0, hilly: 0, big: 0, kept: 0 }
+  for (let n = Math.max(2, from); n <= plan.length; n++) {
+    const entry = plan[n - 1]
+    // A landmark keeps its own heights, and a track that has hills keeps them.
+    if (isLandmark(entry) || entry.hills) {
+      kinds.kept++
+      continue
+    }
+    const hilly = C.hillyCourse(entry.course)
+    if (!hilly) {
+      kinds.flat++
+      continue
+    }
+    kinds[hilly.kind]++
+    entry.hills = hilly.hills
+    entry.pace = round2(hilly.check.pace)
+    if (n % 20 === 0) console.log(`day ${n} (${dayOf(n)}): ${entry.name}, ${hilly.kind}, pace ${entry.pace}s`)
+  }
+  writePlan(plan)
+  console.log(`from day ${from} (${day}): ${kinds.rolling} rolling, ${kinds.hilly} hilly, ${kinds.big} big, ${kinds.flat} flat; ${kinds.kept} kept as they were`)
 } else {
-  console.log('usage: node scripts/hotlap-daily.mjs plan [days] | show YYYY-MM-DD | sheet [from] [count] [file] | insert YYYY-MM-DD <landmark>')
+  console.log('usage: node scripts/hotlap-daily.mjs plan [days] | show YYYY-MM-DD | sheet [from] [count] [file] | insert YYYY-MM-DD <landmark> | hills YYYY-MM-DD')
 }
