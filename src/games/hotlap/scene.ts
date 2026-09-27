@@ -131,8 +131,9 @@ export class HotLapScene {
     return tex
   }
 
-  /** A dome from deep blue overhead to haze at the horizon, a sky light, and the sun. */
+  /** A dome from deep blue overhead to haze at the horizon, clouds low over the hills, a sky light, and the sun. */
   private buildSky(haze: THREE.Color) {
+    const box = this.box
     const geo = new THREE.SphereGeometry(3000, 32, 16)
     const top = new THREE.Color('#4f9fe0')
     const colors: number[] = []
@@ -142,24 +143,75 @@ export class HotLapScene {
       colors.push(c.r, c.g, c.b)
     }
     geo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3))
-    this.scene.add(new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.BackSide, fog: false, depthWrite: false })))
+    const dome = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.BackSide, fog: false, depthWrite: false }))
+    dome.position.set(box.cx, 0, -box.cy)
+    this.scene.add(dome)
     this.scene.add(new THREE.HemisphereLight(0xe4f3ff, 0x4d7a43, 1.15))
     const sun = new THREE.DirectionalLight(0xfff0d8, 1.9)
     sun.position.set(-320, 520, 180)
     this.scene.add(sun)
+
+    // Fair-weather clouds: soft white heaps, flat underneath, a little grey where they're thick.
+    const cloud = this.paint(256, 128, (g, w, h) => {
+      const r = rng(53)
+      for (let i = 0; i < 16; i++) {
+        const x = w * (0.18 + r() * 0.64)
+        const y = h * (0.42 + r() * 0.3) - Math.sin(((x / w) * Math.PI)) * h * 0.18
+        const rad = h * (0.18 + r() * 0.2)
+        const puff = g.createRadialGradient(x, y, 0, x, y, rad)
+        puff.addColorStop(0, 'rgba(255,255,255,0.95)')
+        puff.addColorStop(0.55, 'rgba(250,252,255,0.7)')
+        puff.addColorStop(1, 'rgba(250,252,255,0)')
+        g.fillStyle = puff
+        g.fillRect(x - rad, y - rad, rad * 2, rad * 2)
+      }
+      const shade = g.createLinearGradient(0, h * 0.45, 0, h)
+      shade.addColorStop(0, 'rgba(120,140,170,0)')
+      shade.addColorStop(1, 'rgba(120,140,170,0.35)')
+      g.globalCompositeOperation = 'source-atop'
+      g.fillStyle = shade
+      g.fillRect(0, 0, w, h)
+      g.globalCompositeOperation = 'source-over'
+    })
+    const cr = rng(59)
+    for (let k = 0; k < 16; k++) {
+      const a = cr() * Math.PI * 2
+      const up = (4 + cr() * 16) * (Math.PI / 180)
+      const far = 2500
+      const puff = new THREE.Sprite(new THREE.SpriteMaterial({ map: cloud, fog: false, depthWrite: false, transparent: true, opacity: 0.78 + cr() * 0.2 }))
+      const width = 560 + cr() * 620
+      puff.scale.set(width, width * (0.3 + cr() * 0.12), 1)
+      puff.position.set(box.cx + Math.cos(a) * Math.cos(up) * far, Math.sin(up) * far, -box.cy + Math.sin(a) * Math.cos(up) * far)
+      this.scene.add(puff)
+    }
   }
 
-  /** Grass, mown in stripes. */
+  /** Grass, mown in stripes, with clumps and blades so it isn't flat paint up close. */
   private buildGround() {
-    const tex = this.paint(64, 64, (g, w, h) => {
-      g.fillStyle = '#5fb257'
+    const tex = this.paint(256, 256, (g, w, h) => {
+      g.fillStyle = '#5aae52'
       g.fillRect(0, 0, w, h)
-      g.fillStyle = '#6bbd62'
+      g.fillStyle = '#67bb5e'
       g.fillRect(0, 0, w / 2, h)
       const r = rng(3)
-      for (let i = 0; i < 260; i++) {
-        g.fillStyle = r() > 0.5 ? 'rgba(40,90,40,0.18)' : 'rgba(170,220,140,0.14)'
-        g.fillRect(r() * w, r() * h, 1, 1)
+      // Clumps, lighter and darker, drawn across the edges too so the tiles meet without a seam.
+      for (let i = 0; i < 70; i++) {
+        const x = r() * w
+        const y = r() * h
+        const rad = 8 + r() * 20
+        const dark = r() > 0.5
+        for (const dx of [-w, 0, w])
+          for (const dy of [-h, 0, h]) {
+            const clump = g.createRadialGradient(x + dx, y + dy, 0, x + dx, y + dy, rad)
+            clump.addColorStop(0, dark ? 'rgba(36,88,38,0.16)' : 'rgba(170,220,130,0.12)')
+            clump.addColorStop(1, 'rgba(0,0,0,0)')
+            g.fillStyle = clump
+            g.fillRect(x + dx - rad, y + dy - rad, rad * 2, rad * 2)
+          }
+      }
+      for (let i = 0; i < 2600; i++) {
+        g.fillStyle = r() > 0.5 ? 'rgba(34,84,34,0.22)' : 'rgba(178,228,148,0.16)'
+        g.fillRect(r() * w, r() * h, 1, 1 + r() * 2)
       }
     })
     tex.wrapS = tex.wrapT = THREE.RepeatWrapping
@@ -237,20 +289,43 @@ export class HotLapScene {
     return mesh
   }
 
-  /** Speckled asphalt with white edges, and kerbs, red and white, round every corner. */
+  /**
+   * Asphalt with its grain, patches where it was laid at different times and rubber down the middle, white
+   * edges; kerbs, red and white, round every corner; gravel on the outside of the slow ones; and the fence.
+   */
   private buildRoad() {
     const track = this.track
-    const tarmac = this.paint(256, 256, (g, w, h) => {
-      g.fillStyle = '#464a52'
+    const tarmac = this.paint(512, 512, (g, w, h) => {
+      g.fillStyle = '#474b53'
       g.fillRect(0, 0, w, h)
       const r = rng(11)
-      for (let i = 0; i < 3200; i++) {
-        const v = 50 + Math.floor(r() * 46)
-        g.fillStyle = `rgba(${v},${v + 2},${v + 7},0.55)`
-        g.fillRect(r() * w, r() * h, 1.6, 1.6)
+      // Patches, faint, carried over the top and bottom so the road repeats without a seam.
+      for (let i = 0; i < 16; i++) {
+        const x = r() * w
+        const y = r() * h
+        const rad = 40 + r() * 90
+        const light = r() > 0.5
+        for (const dy of [-h, 0, h]) {
+          const patch = g.createRadialGradient(x, y + dy, 0, x, y + dy, rad)
+          patch.addColorStop(0, light ? 'rgba(120,124,132,0.1)' : 'rgba(22,24,28,0.12)')
+          patch.addColorStop(1, 'rgba(0,0,0,0)')
+          g.fillStyle = patch
+          g.fillRect(x - rad, y + dy - rad, rad * 2, rad * 2)
+        }
       }
-      g.fillStyle = 'rgba(30,32,36,0.35)'
-      g.fillRect(w * 0.3, 0, w * 0.4, h)
+      for (let i = 0; i < 16000; i++) {
+        const v = 42 + Math.floor(r() * 60)
+        g.fillStyle = `rgba(${v},${v + 2},${v + 7},0.5)`
+        const size = 1 + r() * 1.5
+        g.fillRect(r() * w, r() * h, size, size)
+      }
+      // Rubber laid down where the cars run, darkest in the middle.
+      const rubber = g.createLinearGradient(0, 0, w, 0)
+      rubber.addColorStop(0.14, 'rgba(22,24,28,0)')
+      rubber.addColorStop(0.5, 'rgba(22,24,28,0.36)')
+      rubber.addColorStop(0.86, 'rgba(22,24,28,0)')
+      g.fillStyle = rubber
+      g.fillRect(0, 0, w, h)
       g.fillStyle = '#f2f1ea'
       g.fillRect(w * 0.035, 0, w * 0.03, h)
       g.fillRect(w * 0.935, 0, w * 0.03, h)
@@ -270,6 +345,174 @@ export class HotLapScene {
     for (const c of track.corners) {
       this.strip(c.from - 8, c.to + 8, TW, TW + 1.4, 0.04, 4, kerb)
       this.strip(c.from - 8, c.to + 8, -TW - 1.4, -TW, 0.04, 4, kerb)
+    }
+    this.buildGravel()
+    this.buildFence()
+  }
+
+  /** Road points in buckets, to say quickly how far a spot on the grounds is from the nearest road. */
+  private roadBuckets: Map<number, number[]> | null = null
+
+  /** How far a spot is from the middle of the nearest road, looking no further than `within` metres. */
+  private roadDistance(x: number, y: number, within: number) {
+    const t = this.track
+    const cell = 32
+    if (!this.roadBuckets) {
+      const buckets = new Map<number, number[]>()
+      for (let i = 0; i < t.n; i++) {
+        const key = Math.floor(t.x[i]! / cell) * 100_003 + Math.floor(t.y[i]! / cell)
+        const list = buckets.get(key)
+        if (list) list.push(i)
+        else buckets.set(key, [i])
+      }
+      this.roadBuckets = buckets
+    }
+    const reach = Math.ceil(within / cell)
+    const bx = Math.floor(x / cell)
+    const by = Math.floor(y / cell)
+    let best = Infinity
+    for (let dx = -reach; dx <= reach; dx++)
+      for (let dy = -reach; dy <= reach; dy++) {
+        for (const i of this.roadBuckets.get((bx + dx) * 100_003 + (by + dy)) ?? []) {
+          const d = Math.hypot(x - t.x[i]!, y - t.y[i]!)
+          if (d < best) best = d
+        }
+      }
+    return best
+  }
+
+  /**
+   * The runs of the track, from `from` to `to` every `step` points, along which every offset given (left
+   * positive) is on this stretch's own grounds: no other stretch of road is nearer. Where roads come close,
+   * whatever would stand on the other's grounds is left out.
+   */
+  private clearRuns(from: number, to: number, step: number, offsets: number[]) {
+    const t = this.track
+    const runs: number[][] = []
+    let run: number[] = []
+    for (let j = from; j <= to; j += step) {
+      const i = ((j % t.n) + t.n) % t.n
+      const nx = -Math.sin(t.h[i]!)
+      const ny = Math.cos(t.h[i]!)
+      const clear = offsets.every((o) => this.roadDistance(t.x[i]! + nx * o, t.y[i]! + ny * o, Math.abs(o) + 2) >= Math.abs(o) - 1)
+      if (clear) run.push(j)
+      else {
+        if (run.length > 1) runs.push(run)
+        run = []
+      }
+    }
+    if (run.length > 1) runs.push(run)
+    return runs
+  }
+
+  /**
+   * A strip lying on the ground beside the road, between two offsets (left positive), `across` pieces
+   * wide so it follows the ground's shape; its texture repeats every `metres` both ways.
+   */
+  private groundStrip(rows: number[], inner: number, outer: number, across: number, lift: number, metres: number, material: THREE.Material) {
+    const t = this.track
+    const cols = across + 1
+    const pos = new Float32Array(rows.length * cols * 3)
+    const uv = new Float32Array(rows.length * cols * 2)
+    const index: number[] = []
+    rows.forEach((j, r) => {
+      const i = ((j % t.n) + t.n) % t.n
+      const nx = -Math.sin(t.h[i]!)
+      const ny = Math.cos(t.h[i]!)
+      const along = t.s[i]! + Math.floor(j / t.n) * t.length
+      for (let c = 0; c < cols; c++) {
+        const o = inner + ((outer - inner) * c) / across
+        const x = t.x[i]! + nx * o
+        const y = t.y[i]! + ny * o
+        pos.set([x, this.groundZ(x, y) + lift, -y], (r * cols + c) * 3)
+        uv.set([(o - inner) / metres, along / metres], (r * cols + c) * 2)
+        if (r > 0 && c > 0) {
+          const a = (r - 1) * cols + c - 1
+          const b = r * cols + c - 1
+          index.push(a, b, a + 1, a + 1, b, b + 1)
+        }
+      }
+    })
+    const geo = new THREE.BufferGeometry()
+    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3))
+    geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2))
+    geo.setIndex(index)
+    geo.computeVertexNormals()
+    this.scene.add(new THREE.Mesh(geo, material))
+  }
+
+  /** Gravel on the outside of every slow corner, from the kerb out, where a car that runs wide ends up. */
+  private buildGravel() {
+    const gravel = this.paint(128, 128, (g, w, h) => {
+      g.fillStyle = '#cdbd97'
+      g.fillRect(0, 0, w, h)
+      const r = rng(71)
+      for (let i = 0; i < 2600; i++) {
+        const v = r()
+        g.fillStyle = v > 0.66 ? 'rgba(245,236,212,0.7)' : v > 0.33 ? 'rgba(150,132,98,0.55)' : 'rgba(112,98,74,0.45)'
+        g.fillRect(r() * w, r() * h, 1 + r() * 1.5, 1 + r() * 1.5)
+      }
+    })
+    gravel.wrapS = gravel.wrapT = THREE.RepeatWrapping
+    const material = new THREE.MeshLambertMaterial({ map: gravel, side: THREE.DoubleSide })
+    const depth = 20
+    for (const c of this.track.corners) {
+      if (c.r > 50) continue
+      const side = -Math.sign(c.turn)
+      const inner = side * (TW + 1.4)
+      const outer = side * (TW + 1.4 + depth)
+      for (const run of this.clearRuns(c.from - 6, c.to + 14, 2, [inner, outer, (inner + outer) / 2])) {
+        this.groundStrip(run, inner, outer, 5, 0.09, 5, material)
+      }
+    }
+  }
+
+  /** The fence at the barrier, both sides, all the way round: a steel rail on posts, standing on the ground. */
+  private buildFence() {
+    const t = this.track
+    const steel = this.paint(128, 64, (g, w, h) => {
+      g.fillStyle = '#aeb6bf'
+      g.fillRect(0, 0, w, h)
+      for (const y of [0.16, 0.5]) {
+        g.fillStyle = '#d9dee4'
+        g.fillRect(0, h * y, w, h * 0.12)
+        g.fillStyle = '#7f8893'
+        g.fillRect(0, h * (y + 0.12), w, h * 0.06)
+      }
+      g.fillStyle = '#5d6570'
+      g.fillRect(0, 0, w * 0.06, h)
+      g.fillStyle = 'rgba(40,46,54,0.25)'
+      g.fillRect(0, h * 0.84, w, h * 0.16)
+    })
+    steel.wrapS = THREE.RepeatWrapping
+    const material = new THREE.MeshLambertMaterial({ map: steel, side: THREE.DoubleSide })
+    const height = 0.95
+    for (const side of [1, -1]) {
+      const o = side * CAR.barrier
+      for (const run of this.clearRuns(0, t.n, 3, [o])) {
+        const pos = new Float32Array(run.length * 6)
+        const uv = new Float32Array(run.length * 4)
+        const index: number[] = []
+        run.forEach((j, r) => {
+          const i = ((j % t.n) + t.n) % t.n
+          const x = t.x[i]! - Math.sin(t.h[i]!) * o
+          const y = t.y[i]! + Math.cos(t.h[i]!) * o
+          const foot = this.groundZ(x, y) - 0.1
+          const along = (t.s[i]! + Math.floor(j / t.n) * t.length) / 4
+          pos.set([x, foot, -y, x, foot + height, -y], r * 6)
+          uv.set([along, 0, along, 1], r * 4)
+          if (r > 0) {
+            const k = (r - 1) * 2
+            index.push(k, k + 2, k + 1, k + 1, k + 2, k + 3)
+          }
+        })
+        const geo = new THREE.BufferGeometry()
+        geo.setAttribute('position', new THREE.BufferAttribute(pos, 3))
+        geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2))
+        geo.setIndex(index)
+        geo.computeVertexNormals()
+        this.scene.add(new THREE.Mesh(geo, material))
+      }
     }
   }
 
@@ -335,10 +578,20 @@ export class HotLapScene {
     sign.position.copy(W(track.x[i]! - Math.cos(h) * 0.55, track.y[i]! - Math.sin(h) * 0.55, lineZ + 8))
     sign.rotation.y = h - Math.PI / 2
     scene.add(sign)
+    this.buildStand()
+  }
 
-    // Rows of the arcade's colours stepping back on the outside of the straight, as long as it has room for.
-    // On a hill they step down it with the road.
-    const rows = ['#e8564f', '#f5b942', '#3ec8cf', '#4aa8e8', '#8a6ad4']
+  /**
+   * The grandstand on the outside of the start straight, as long as the straight has room for: a crowd in
+   * the arcade's colours on a raked deck, walls of concrete, a roof on posts at the back, and the site's name
+   * along the front. On a hill it leans down it with the road.
+   */
+  private buildStand() {
+    const track = this.track
+    const i = track.startIndex
+    const h = track.h[i]!
+    const nx = -Math.sin(h)
+    const ny = Math.cos(h)
     const along = standLength(track)
     const cx = track.x[i]! + Math.cos(h) * (20 + along / 2)
     const cy = track.y[i]! + Math.sin(h) * (20 + along / 2)
@@ -347,19 +600,107 @@ export class HotLapScene {
     const to = this.groundZ(cx + Math.cos(h) * (along / 2) + out * nx * (TW + 20), cy + Math.sin(h) * (along / 2) + out * ny * (TW + 20))
     const standZ = (from + to) / 2
     const lean = Math.atan2(to - from, along)
-    rows.forEach((col, r) => {
-      const d = TW + 16 + r * 2.4
-      const tier = new THREE.Mesh(new THREE.BoxGeometry(along, 1 + r * 1.1, 2.4), new THREE.MeshLambertMaterial({ color: col }))
-      tier.position.copy(W(cx + out * nx * d, cy + out * ny * d, standZ + (1 + r * 1.1) / 2 - (this.terrain ? 0.3 : 0)))
-      tier.rotation.order = 'YZX'
-      tier.rotation.set(0, h, lean)
-      scene.add(tier)
+
+    // Built along x (the straight), up y, and out from the road along −z × the side it's on.
+    const stand = new THREE.Group()
+    stand.position.copy(W(cx, cy, standZ - (this.terrain ? 0.3 : 0)))
+    stand.rotation.order = 'YZX'
+    stand.rotation.set(0, h, lean)
+    const z = (d: number) => -out * d
+    const front = TW + 15
+    const deckFrom = front + 0.4
+    const deckTo = front + 13
+    const low = 1.7
+    const high = low + (deckTo - deckFrom) * 0.56
+
+    // Eight rows of seats, a person to most of them: shoulders in a shirt and a head, at the size they'd be.
+    const crowd = this.paint(1024, 128, (g, w, hh) => {
+      g.fillStyle = '#4a525e'
+      g.fillRect(0, 0, w, hh)
+      const r = rng(17)
+      // Mostly the dark and plain things people wear, with the arcade's colours dotted through.
+      const shirts = ['#2e3440', '#3b4a63', '#5a6270', '#1f2530', '#8b8f96', '#d9d7cf', '#4f7fb0', '#b85a55', '#c9a24f', '#4e9aa0', '#c4733f', '#7462a8']
+      const skin = ['#f1c7a3', '#d9a47c', '#a86f4c', '#6f4630']
+      for (let row = 0; row < 8; row++) {
+        const y = row * 16
+        g.fillStyle = '#343a44'
+        g.fillRect(0, y + 13, w, 3)
+        for (let x = 4 + r() * 6; x < w - 16; x += 17 + r() * 5) {
+          if (r() < 0.16) continue
+          g.fillStyle = shirts[Math.floor(r() * shirts.length)]!
+          g.fillRect(x, y + 7.5, 13, 6.5)
+          g.fillStyle = skin[Math.floor(r() * skin.length)]!
+          g.beginPath()
+          g.arc(x + 6.5, y + 5, 3.4, 0, Math.PI * 2)
+          g.fill()
+        }
+      }
     })
-    const roof = new THREE.Mesh(new THREE.BoxGeometry(along + 6, 0.5, 15), new THREE.MeshLambertMaterial({ color: '#eef2f6' }))
-    roof.position.copy(W(cx + out * nx * (TW + 21), cy + out * ny * (TW + 21), standZ + 11))
-    roof.rotation.order = 'YZX'
-    roof.rotation.set(0, h, lean)
-    scene.add(roof)
+    crowd.wrapS = THREE.RepeatWrapping
+    const deckGeo = new THREE.BufferGeometry()
+    deckGeo.setAttribute(
+      'position',
+      new THREE.Float32BufferAttribute([-along / 2, low, z(deckFrom), along / 2, low, z(deckFrom), -along / 2, high, z(deckTo), along / 2, high, z(deckTo)], 3),
+    )
+    deckGeo.setAttribute('uv', new THREE.Float32BufferAttribute([0, 0, along / 26, 0, 0, 1, along / 26, 1], 2))
+    deckGeo.setIndex([0, 1, 2, 2, 1, 3])
+    deckGeo.computeVertexNormals()
+    stand.add(new THREE.Mesh(deckGeo, new THREE.MeshLambertMaterial({ map: crowd, side: THREE.DoubleSide })))
+
+    const banner = this.paint(
+      1024,
+      64,
+      (g, w, hh) => {
+        g.fillStyle = '#1a2b3c'
+        g.fillRect(0, 0, w, hh)
+        g.textBaseline = 'middle'
+        for (let k = 0; k < 3; k++) {
+          const x = (k * w) / 3
+          g.fillStyle = '#f2813a'
+          g.fillRect(x, 0, 6, hh)
+          g.textAlign = 'left'
+          g.font = `800 34px ${FONT}`
+          g.fillText('HOT LAP', x + 28, hh / 2 + 2)
+          const gap = g.measureText('HOT LAP').width + 44
+          g.font = `700 30px ${FONT}`
+          g.fillStyle = '#f6f4ee'
+          g.fillText('blipka', x + gap, hh / 2 + 2)
+        }
+      },
+      true,
+    )
+    banner.wrapS = THREE.RepeatWrapping
+    banner.repeat.set(Math.max(1, Math.round(along / 48)), 1)
+    const wall = new THREE.Mesh(new THREE.PlaneGeometry(along, low), new THREE.MeshLambertMaterial({ map: banner, side: THREE.DoubleSide }))
+    wall.position.set(0, low / 2, z(front))
+    // Its face to the road, whichever side the stand is on, so the name reads the right way round.
+    wall.rotation.y = out > 0 ? 0 : Math.PI
+    stand.add(wall)
+
+    const concrete = new THREE.MeshLambertMaterial({ color: '#c8cdd4' })
+    const back = new THREE.Mesh(new THREE.BoxGeometry(along + 0.8, high + 1, 0.5), concrete)
+    back.position.set(0, (high + 1) / 2, z(deckTo + 0.25))
+    stand.add(back)
+    for (const end of [-1, 1]) {
+      const side = new THREE.Mesh(new THREE.BoxGeometry(0.5, high + 1, deckTo - front + 0.5), concrete)
+      side.position.set((end * (along + 0.3)) / 2, (high + 1) / 2, z((front + deckTo) / 2))
+      stand.add(side)
+    }
+    const roofY = high + 4
+    // White on top; underneath, the grey of its girders in shade, not the green the grass light would give it.
+    const roofTop = new THREE.MeshLambertMaterial({ color: '#eef2f6' })
+    const underneath = new THREE.MeshBasicMaterial({ color: '#8e97a3' })
+    const roof = new THREE.Mesh(new THREE.BoxGeometry(along + 6, 0.5, 16), [roofTop, roofTop, roofTop, underneath, roofTop, roofTop])
+    roof.position.set(0, roofY, z(front + 7.5))
+    stand.add(roof)
+    const posts = Math.max(2, Math.round(along / 26) + 1)
+    const steel = new THREE.MeshLambertMaterial({ color: '#2b313a' })
+    for (let k = 0; k < posts; k++) {
+      const post = new THREE.Mesh(new THREE.BoxGeometry(0.5, roofY - high, 0.5), steel)
+      post.position.set(-along / 2 + (along * k) / (posts - 1), (roofY + high) / 2, z(deckTo - 0.2))
+      stand.add(post)
+    }
+    this.scene.add(stand)
   }
 
   /**
@@ -439,7 +780,11 @@ export class HotLapScene {
     this.scene.add(walls, bands)
   }
 
-  /** Trees well back from the road and clear of the grandstand, over the ground round the track, and hills in the haze. */
+  /**
+   * Trees well back from the road and clear of the grandstand, over the ground round the track: pines and
+   * round-headed broadleaves, no two quite the same shade, each with its shadow on the ground. Then rolling
+   * hills in the haze, and mountains behind them.
+   */
   private buildTrees() {
     const track = this.track
     const box = this.box
@@ -465,40 +810,121 @@ export class HotLapScene {
       if (ahead > -40 && ahead < standEnd && out > 0 && out < TW + 48) continue
       spots.push([x, y, 0.7 + r() * 0.8, r()])
     }
-    const trunks = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.35, 0.5, 3, 6), new THREE.MeshLambertMaterial({ color: '#6b4a32' }), spots.length)
-    const light = spots.filter((s) => s[3] > 0.5)
-    const dark = spots.filter((s) => s[3] <= 0.5)
-    const cone = new THREE.ConeGeometry(3.2, 9, 7)
-    const leavesA = new THREE.InstancedMesh(cone, new THREE.MeshLambertMaterial({ color: '#3f8f46' }), light.length)
-    const leavesB = new THREE.InstancedMesh(cone, new THREE.MeshLambertMaterial({ color: '#2f7a44' }), dark.length)
+    const pines = spots.filter((s) => s[3] < 0.62)
+    const broad = spots.filter((s) => s[3] >= 0.62)
+
+    // A pine in three tiers, turned on a lathe; a broadleaf's head, faceted.
+    const pineGeo = new THREE.LatheGeometry(
+      [
+        [0, 2.2],
+        [3.4, 2.7],
+        [1.7, 5.3],
+        [2.8, 5.5],
+        [1.2, 8.3],
+        [2, 8.5],
+        [0, 11.8],
+      ].map(([rad, y]) => new THREE.Vector2(rad, y)),
+      7,
+    )
+    const headGeo = new THREE.IcosahedronGeometry(3.3, 0)
+    headGeo.scale(1, 0.86, 1)
+    const leaves = (count: number, geo: THREE.BufferGeometry) =>
+      new THREE.InstancedMesh(geo, new THREE.MeshLambertMaterial({ color: '#ffffff', flatShading: true }), count)
+    const pineMesh = leaves(pines.length, pineGeo)
+    const headMesh = leaves(broad.length, headGeo)
+    const trunks = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.3, 0.46, 3.4, 6), new THREE.MeshLambertMaterial({ color: '#6b4a32' }), spots.length)
+
+    // Each tree's shadow, a soft dark patch lying on the ground under it, pushed away from the sun.
+    const blob = this.paint(64, 64, (g, bw, bh) => {
+      const shade = g.createRadialGradient(bw / 2, bh / 2, 0, bw / 2, bh / 2, bw / 2)
+      shade.addColorStop(0, 'rgba(18,40,22,0.5)')
+      shade.addColorStop(0.6, 'rgba(18,40,22,0.26)')
+      shade.addColorStop(1, 'rgba(18,40,22,0)')
+      g.fillStyle = shade
+      g.fillRect(0, 0, bw, bh)
+    })
+    const shadowGeo = new THREE.PlaneGeometry(1, 1)
+    shadowGeo.rotateX(-Math.PI / 2)
+    const shadows = new THREE.InstancedMesh(
+      shadowGeo,
+      new THREE.MeshBasicMaterial({ map: blob, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }),
+      spots.length,
+    )
+    shadows.renderOrder = 1
+
     const m = new THREE.Matrix4()
     const q = new THREE.Quaternion()
+    const upright = new THREE.Quaternion()
     const scale = new THREE.Vector3()
-    spots.forEach(([x, y, s], k) => {
-      m.compose(new THREE.Vector3(x, this.groundZ(x, y) + 1.5 * s - 0.2, -y), q, scale.set(s, s, s))
+    const colour = new THREE.Color()
+    const upAxis = new THREE.Vector3(0, 1, 0)
+    const normal = new THREE.Vector3()
+    const pineCount = { n: 0 }
+    const headCount = { n: 0 }
+    spots.forEach(([x, y, s, kind], k) => {
+      const foot = this.groundZ(x, y)
+      const pine = kind < 0.62
+      q.setFromAxisAngle(upAxis, kind * 40)
+      m.compose(new THREE.Vector3(x, foot + 1.7 * s - 0.2, -y), upright, scale.set(s, pine ? s : s * 1.25, s))
       trunks.setMatrixAt(k, m)
+      if (pine) {
+        m.compose(new THREE.Vector3(x, foot - 0.2, -y), q, scale.set(s, s, s))
+        pineMesh.setMatrixAt(pineCount.n, m)
+        colour.setHSL(0.36 + (kind - 0.31) * 0.08, 0.42 + kind * 0.1, 0.25 + ((kind * 7.3) % 1) * 0.08)
+        pineMesh.setColorAt(pineCount.n++, colour)
+      } else {
+        m.compose(new THREE.Vector3(x, foot + 6.2 * s - 0.2, -y), q, scale.set(s, s, s))
+        headMesh.setMatrixAt(headCount.n, m)
+        colour.setHSL(0.26 + (kind - 0.62) * 0.2, 0.45 + (kind - 0.62) * 0.3, 0.33 + ((kind * 11.7) % 1) * 0.08)
+        headMesh.setColorAt(headCount.n++, colour)
+      }
+      // Lying on the slope it's on, as the ground's own normal has it.
+      const sx = x + 0.9 * s * 1.6
+      const sy = y + 0.5 * s * 1.6
+      const e = 1.5
+      const gx = (this.groundZ(sx + e, sy) - this.groundZ(sx - e, sy)) / (2 * e)
+      const gy = (this.groundZ(sx, sy + e) - this.groundZ(sx, sy - e)) / (2 * e)
+      normal.set(-gx, 1, gy).normalize()
+      q.setFromUnitVectors(upAxis, normal)
+      const spread = (pine ? 7 : 8.4) * s
+      m.compose(new THREE.Vector3(sx, this.groundZ(sx, sy) + 0.12, -sy), q, scale.set(spread, 1, spread))
+      shadows.setMatrixAt(k, m)
     })
-    for (const [mesh, list] of [
-      [leavesA, light],
-      [leavesB, dark],
-    ] as const) {
-      list.forEach(([x, y, s], k) => {
-        m.compose(new THREE.Vector3(x, this.groundZ(x, y) + 7.5 * s - 0.2, -y), q, scale.set(s, s, s))
-        mesh.setMatrixAt(k, m)
-      })
-    }
-    this.scene.add(trunks, leavesA, leavesB)
+    this.scene.add(shadows, trunks, pineMesh, headMesh)
 
-    const hillMat = new THREE.MeshLambertMaterial({ color: '#86b6a4', fog: false })
-    const hr = rng(41)
+    const base = this.terrain?.base ?? 0
     const ring = Math.max(box.width, box.height) / 2 + 900
+
+    // Rolling hills in the haze: domes, darker at the foot, paler up top, as far things are.
+    const domeGeo = new THREE.SphereGeometry(1, 22, 9, 0, Math.PI * 2, 0, Math.PI / 2)
+    shadeByHeight(domeGeo, '#5f8e79', '#a9cbbd')
+    const hills = new THREE.InstancedMesh(domeGeo, new THREE.MeshLambertMaterial({ vertexColors: true, fog: false }), 34)
+    const hr = rng(41)
     for (let k = 0; k < 34; k++) {
       const a = (k / 34) * Math.PI * 2 + hr() * 0.1
       const far = ring + hr() * 350
-      const hill = new THREE.Mesh(new THREE.ConeGeometry(160 + hr() * 180, 70 + hr() * 120, 9), hillMat)
-      hill.position.set(box.cx + Math.cos(a) * far, (this.terrain?.base ?? 0) + 20, -box.cy + Math.sin(a) * far)
-      this.scene.add(hill)
+      const radius = 180 + hr() * 220
+      q.setFromAxisAngle(upAxis, hr() * Math.PI)
+      m.compose(new THREE.Vector3(box.cx + Math.cos(a) * far, base - 6, -box.cy + Math.sin(a) * far), q, scale.set(radius, 60 + hr() * 110, radius * (0.6 + hr() * 0.5)))
+      hills.setMatrixAt(k, m)
     }
+    this.scene.add(hills)
+
+    // Mountains far behind them, low on the horizon, blue with distance and pale at the top.
+    const peakGeo = new THREE.ConeGeometry(1, 1, 7, 3)
+    peakGeo.translate(0, 0.5, 0)
+    shadeByHeight(peakGeo, '#a3b9c8', '#e8eff4')
+    const peaks = new THREE.InstancedMesh(peakGeo, new THREE.MeshLambertMaterial({ vertexColors: true, fog: false, flatShading: true }), 26)
+    const pr = rng(47)
+    for (let k = 0; k < 26; k++) {
+      const a = (k / 26) * Math.PI * 2 + pr() * 0.2
+      const far = ring + 800 + pr() * 450
+      const radius = 300 + pr() * 280
+      q.setFromAxisAngle(upAxis, pr() * Math.PI)
+      m.compose(new THREE.Vector3(box.cx + Math.cos(a) * far, base - 10, -box.cy + Math.sin(a) * far), q, scale.set(radius, 110 + pr() * 170, radius * (0.7 + pr() * 0.4)))
+      peaks.setMatrixAt(k, m)
+    }
+    this.scene.add(peaks)
   }
 
   /*
@@ -820,6 +1246,22 @@ export class HotLapScene {
     this.renderer.dispose()
     this.renderer.forceContextLoss()
   }
+}
+
+/** Colours a shape's points from `foot` at its lowest to `top` at its highest, for things seen far off. */
+function shadeByHeight(geo: THREE.BufferGeometry, foot: string, top: string) {
+  const position = geo.attributes.position!
+  geo.computeBoundingBox()
+  const lo = geo.boundingBox!.min.y
+  const hi = geo.boundingBox!.max.y
+  const a = new THREE.Color(foot)
+  const b = new THREE.Color(top)
+  const colours: number[] = []
+  for (let i = 0; i < position.count; i++) {
+    const c = a.clone().lerp(b, Math.pow((position.getY(i) - lo) / (hi - lo || 1), 0.8))
+    colours.push(c.r, c.g, c.b)
+  }
+  geo.setAttribute('color', new THREE.Float32BufferAttribute(colours, 3))
 }
 
 /** How far a point is from the middle of the road, anywhere along the track. */
