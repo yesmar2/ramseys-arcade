@@ -187,3 +187,8 @@ html[data-theme='dark'] .adm {
     gap: 0.6rem;
   }
 }
+
+.adm-input--count.panel__input {
+  flex: 0 1 7rem;
+  font-variant-numeric: tabular-nums;
+}

@@ -11,9 +11,9 @@ import {
   fetchClientErrors,
   fetchFeedback,
   fetchOpenFlags,
+  grantTickets,
   liftBan,
   settleFlag,
-  useIsAdmin,
   type AdminBan,
   type AdminClientError,
   type AdminFeedback,
@@ -21,16 +21,17 @@ import {
 } from '../lib/admin'
 import { ApiError } from '../lib/leaderboard'
 import { formatLeaderboardScore } from '../lib/leaderboardFormat'
+import { refreshTickets } from '../lib/tickets'
 import '../styles/admin.css'
 
 /*
- * The admin's page: what broke in players' browsers, scores that looked wrong
- * on the way in, and banned tags. The site shows it to the emails in
- * VITE_ADMIN_EMAILS (Vercel); the API answers only those in ADMIN_EMAILS
- * (Render), so both have to name the account.
+ * The admin's page: what players sent, what broke in their browsers, scores
+ * that looked wrong on the way in, tickets, and banned tags. It opens for the
+ * emails in the API's ADMIN_EMAILS (Render): the API is asked, and it's the
+ * API that answers every card.
  */
 
-type Gate = 'checking' | 'signedOut' | 'notAdmin' | 'apiRefused' | 'failed' | 'ready'
+type Gate = 'checking' | 'signedOut' | 'notAdmin' | 'failed' | 'ready'
 
 function ago(at: number) {
   const minutes = Math.round((Date.now() - at) / 60_000)
@@ -51,17 +52,12 @@ function errorText(err: unknown, fallback: string) {
 
 export function AdminPage() {
   const { account, loading } = useAuth()
-  const isAdmin = useIsAdmin()
   const [gate, setGate] = useState<Gate>('checking')
 
   useEffect(() => {
     if (loading) return
     if (!account) {
       setGate('signedOut')
-      return
-    }
-    if (!isAdmin) {
-      setGate('notAdmin')
       return
     }
     let cancelled = false
@@ -72,12 +68,12 @@ export function AdminPage() {
       })
       .catch((err) => {
         if (cancelled) return
-        setGate(err instanceof ApiError && err.status === 404 ? 'apiRefused' : 'failed')
+        setGate(err instanceof ApiError && err.status === 404 ? 'notAdmin' : 'failed')
       })
     return () => {
       cancelled = true
     }
-  }, [account, isAdmin, loading])
+  }, [account, loading])
 
   return (
     <PageShell innerClassName="lb-page__inner">
@@ -86,7 +82,7 @@ export function AdminPage() {
         crumbs={[{ href: homeHref(), label: 'Home' }, { label: 'Admin' }]}
         kicker="Admins only"
         title="Admin"
-        blurb="What broke in players’ browsers, scores that looked wrong on the way in, and banned tags."
+        blurb="What players sent, what broke in their browsers, scores that looked wrong on the way in, tickets, and banned tags."
       />
       <div className="adm">
         {gate === 'ready' ? (
@@ -94,6 +90,7 @@ export function AdminPage() {
             <FeedbackCard />
             <ErrorsCard />
             <FlagsCard />
+            <TicketsCard />
             <BansCard />
           </>
         ) : (
@@ -104,10 +101,8 @@ export function AdminPage() {
                 : gate === 'signedOut'
                   ? 'Sign in with an admin account to use this page.'
                   : gate === 'notAdmin'
-                    ? 'This account isn’t an admin. Admins are the emails in VITE_ADMIN_EMAILS on Vercel.'
-                    : gate === 'apiRefused'
-                      ? 'The API doesn’t know this account as an admin. Add its email to ADMIN_EMAILS on Render.'
-                      : 'Couldn’t reach the API. Try again in a moment.'}
+                    ? `${account?.email ?? 'This account'} isn’t an admin. Admins are the emails in ADMIN_EMAILS on the API’s service on Render (Environment).`
+                    : 'Couldn’t reach the API. Try again in a moment.'}
             </p>
           </section>
         )}
@@ -279,6 +274,74 @@ function FlagsCard() {
           ))}
         </ul>
       ) : null}
+    </section>
+  )
+}
+
+function TicketsCard() {
+  const [name, setName] = useState('')
+  const [amount, setAmount] = useState('500')
+  const [busy, setBusy] = useState(false)
+  const [done, setDone] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  const onGive = async (event: FormEvent) => {
+    event.preventDefault()
+    const tag = name.trim().toUpperCase()
+    const count = Math.floor(Number(amount))
+    if (!tag || !(count >= 1) || busy) return
+    setBusy(true)
+    setError(null)
+    setDone(null)
+    try {
+      const paid = await grantTickets(tag, count)
+      setDone(`${paid.name} got ${paid.earned.toLocaleString()} tickets and has ${paid.balance.toLocaleString()} now.`)
+      // They may be your own: the header's count reads them again.
+      void refreshTickets(true)
+    } catch (err) {
+      setError(
+        err instanceof ApiError && err.code === 'NO_ACCOUNT'
+          ? `${tag} has no account behind it: only a tag someone signed in with can hold tickets.`
+          : errorText(err, 'Couldn’t give those tickets'),
+      )
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <section className="adm-card" aria-labelledby="adm-tickets">
+      <div className="adm-card__head">
+        <h2 className="adm-card__title">Tickets</h2>
+      </div>
+      <p className="adm-card__sub" id="adm-tickets">
+        Give a tag’s account tickets for the prize counter: to try it out, or to put a payout right. They go in its ledger as a grant.
+      </p>
+      <form className="adm-form" onSubmit={(event) => void onGive(event)}>
+        <input
+          className="panel__input adm-input adm-input--tag"
+          value={name}
+          maxLength={12}
+          placeholder="TAG"
+          aria-label="Tag to give tickets to"
+          onChange={(event) => setName(event.target.value.toUpperCase())}
+        />
+        <input
+          className="panel__input adm-input adm-input--count"
+          value={amount}
+          inputMode="numeric"
+          type="number"
+          min={1}
+          max={50000}
+          aria-label="How many tickets"
+          onChange={(event) => setAmount(event.target.value)}
+        />
+        <button type="submit" className="panel__btn adm-small" disabled={busy || !name.trim() || !(Number(amount) >= 1)}>
+          {busy ? 'Giving…' : 'Give tickets'}
+        </button>
+      </form>
+      {done ? <p className="adm-note">{done}</p> : null}
+      {error ? <p className="adm-fail">{error}</p> : null}
     </section>
   )
 }
