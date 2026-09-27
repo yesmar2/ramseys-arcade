@@ -4,8 +4,9 @@
  * start straight so the loop closes on itself. Written out, a turn is `degrees/radius` (left positive), a
  * straight its metres: the classic track is "A 180/18 120 -90/60 B 90/45 140 -45/30 45/30 60 180/110".
  *
- * New tracks come from a seed. What a seed makes is decided with whole numbers only (degrees in steps of
- * 15, radii and straights in whole metres), so it's the same on every device. A track is only used once
+ * New tracks come from a seed, laid out the way real circuits are (generateCourse). What a seed makes is
+ * decided with whole numbers only (degrees in steps of 5, radii and straights in whole metres), so it's the
+ * same on every device. A track is only used once
  * the checks here pass it (scripts/hotlap-daily.mjs runs them and writes the day's tracks down in
  * dailyPlan.ts). The checks: it closes, a long enough start straight, it keeps clear of itself, and the
  * pace car and a driver on the limit both get round cleanly in a sensible time.
@@ -68,87 +69,196 @@ export function decodeHills(line: string): Hill[] {
 
 /* ---------- making one from a seed ---------- */
 
+type Feature = { kind: FeatureKind; turn: number; pieces: Piece[] }
+type FeatureKind = 'hairpin' | 'ninety' | 'sweeper' | 'double' | 'esses' | 'chicane' | 'busstop' | 'kink' | 'against' | 'closer'
+
+/** How often each kind of feature comes, after the first corner. */
+const FEATURE_WEIGHTS: [FeatureKind, number][] = [
+  ['sweeper', 16],
+  ['esses', 14],
+  ['ninety', 14],
+  ['against', 12],
+  ['double', 10],
+  ['kink', 9],
+  ['hairpin', 8],
+  ['chicane', 8],
+  ['busstop', 4],
+]
+/** The first corner, at the end of the start straight: somewhere to brake hard. */
+const FIRST_WEIGHTS: [FeatureKind, number][] = [
+  ['ninety', 45],
+  ['hairpin', 25],
+  ['chicane', 15],
+  ['double', 15],
+]
+/** At most this many of a kind on a lap. */
+const MOST: Partial<Record<FeatureKind, number>> = { hairpin: 2, busstop: 1, chicane: 2, esses: 2 }
+
 /**
- * A track from a seed, or null if the seed's tries all came out wrong (rare; the caller tries the next).
+ * A track from a seed, laid out the way a real circuit is, or null if the seed's tries all came out wrong
+ * (the caller tries the next).
  *
- * Six to nine corners, up to three of them right-handers, turning one full circle between them. One
- * corner, more often than not, is a hairpin or a long sweeper, and the rest share the turning out fifteen
- * degrees at a time. Tighter turns get tighter radii. Straights of 30 to 220 m come between corners, or
- * none, so some corners run straight into the next. Of the straights crossing the start straight's line
- * steeply enough to be sized with it, the one that gives the start straight a good length becomes 'B'.
- * Only the plan script makes tracks, so this may do its sums in floating point; the plan keeps the result.
+ * A lap is a run of features, as a real circuit's corners come. First, at the end of the start straight,
+ * somewhere to brake hard: a ninety, a hairpin, a chicane or a double apex. Then six to nine more of
+ *   - a hairpin, 150–185° on 16–28 m;
+ *   - a ninety, 75–105° on 24–50 m;
+ *   - a sweeper, 60–150° on 70–140 m, taken fast;
+ *   - a double apex, two corners the same way with a breath between them;
+ *   - esses, three corners one way, the other and back, running into each other (the Glen's Esses);
+ *   - a chicane, a quick flick one way and back on 15–26 m;
+ *   - a bus stop, a chicane doubled (the Glen's Inner Loop);
+ *   - a kink, 15–30° on a big radius, flat out;
+ *   - a corner against the lap, 40–100° the other way round (the Glen's turns 5 and 9);
+ * and one or two corners that turn it the rest of the way round, wherever they fall. A lap runs clockwise
+ * or anticlockwise, as the seed has it. Between features, a straight of 40 to 180 m, or a short link so
+ * they run into each other. Of the straights crossing the start straight's line steeply enough to be sized
+ * with it, the one that gives the start straight a good length becomes 'B', and a lap needs one more long
+ * straight besides the start straight, somewhere to go flat out. Everything is whole metres and 5° steps,
+ * and only the plan script makes tracks: the plan keeps what it made.
  */
 export function generateCourse(seed: number): Piece[] | null {
   const rand = mulberry32(seed)
   const int = (lo: number, hi: number) => lo + Math.floor(rand() * (hi - lo + 1))
+  const step = (lo: number, hi: number, by: number) => lo + by * int(0, Math.floor((hi - lo) / by))
   const chance = (p: number) => rand() < p
   const pick = <T>(xs: readonly T[]) => xs[Math.floor(rand() * xs.length)]!
-
-  for (let tries = 0; tries < 40; tries++) {
-    const corners = int(6, 9)
-    const rights = Math.min(3, int(0, 2) + (corners >= 8 ? 1 : 0))
-    const lefts = corners - rights
-    const rightTurns = Array.from({ length: rights }, () => -15 * int(2, 6))
-    const total = 360 - rightTurns.reduce((a, b) => a + b, 0)
-    if (total < 30 * lefts || total > 180 * lefts) continue
-    const leftTurns = Array.from({ length: lefts }, () => 30)
-    let left = total - 30 * lefts
-    // More often than not, one big corner: a hairpin or a sweeper.
-    if (chance(0.65)) {
-      const big = Math.min(120 + 15 * int(0, 2), left)
-      const i = int(0, lefts - 1)
-      leftTurns[i] = (leftTurns[i] ?? 30) + big
-      left -= big
+  const weighted = (table: [FeatureKind, number][]) => {
+    let r = rand() * table.reduce((sum, [, w]) => sum + w, 0)
+    for (const [kind, w] of table) if ((r -= w) < 0) return kind
+    return table[table.length - 1]![0]
+  }
+  const corner = (deg: number, r: number): Piece => ({ turn: deg, r, name: '' })
+  const link = (): Piece[] => {
+    const m = step(0, 20, 5)
+    return m > 0 ? [{ straight: m }] : []
+  }
+  /** A feature of a kind, on a lap turning `d` (+1 anticlockwise, −1 clockwise). */
+  const make = (kind: FeatureKind, d: number): Feature => {
+    const x = chance(0.5) ? 1 : -1
+    switch (kind) {
+      case 'hairpin': {
+        const a = step(150, 185, 5)
+        return { kind, turn: d * a, pieces: [corner(d * a, pick([16, 18, 20, 22, 25, 28]))] }
+      }
+      case 'ninety': {
+        const a = step(75, 105, 5)
+        return { kind, turn: d * a, pieces: [corner(d * a, int(24, 50))] }
+      }
+      case 'sweeper': {
+        const a = step(60, 150, 5)
+        return { kind, turn: d * a, pieces: [corner(d * a, step(70, 140, 5))] }
+      }
+      case 'double': {
+        const a1 = step(35, 80, 5)
+        const a2 = step(35, 80, 5)
+        const r1 = int(25, 60)
+        return { kind, turn: d * (a1 + a2), pieces: [corner(d * a1, r1), ...link(), corner(d * a2, Math.max(20, r1 + int(-20, 20)))] }
+      }
+      case 'esses': {
+        const a = step(30, 65, 5)
+        const b = step(30, 65, 5)
+        const c = step(30, 65, 5)
+        return {
+          kind,
+          turn: x * (a - b + c),
+          pieces: [corner(x * a, step(45, 110, 5)), ...link(), corner(-x * b, step(45, 110, 5)), ...link(), corner(x * c, step(45, 110, 5))],
+        }
+      }
+      case 'chicane': {
+        const a = step(40, 70, 5)
+        const r = int(15, 26)
+        return { kind, turn: 0, pieces: [corner(x * a, r), ...(chance(0.5) ? [] : [{ straight: step(5, 10, 5) }]), corner(-x * a, r)] }
+      }
+      case 'busstop': {
+        const a = step(30, 45, 5)
+        const r = int(18, 28)
+        return { kind, turn: 0, pieces: [corner(x * a, r), corner(-x * a, r), { straight: step(5, 15, 5) }, corner(-x * a, r), corner(x * a, r)] }
+      }
+      case 'kink': {
+        const a = step(15, 30, 5)
+        return { kind, turn: x * a, pieces: [corner(x * a, step(160, 300, 20))] }
+      }
+      case 'against': {
+        const a = step(40, 100, 5)
+        return { kind, turn: -d * a, pieces: [corner(-d * a, int(30, 80))] }
+      }
+      default:
+        throw new Error(`no feature ${kind}`)
     }
-    while (left > 0) {
-      const i = int(0, lefts - 1)
-      const turn = leftTurns[i] ?? 30
-      if (turn >= 180) continue
-      leftTurns[i] = turn + 15
-      left -= 15
-    }
-    // The right-handers go in among the left, never first.
-    const turns = [...leftTurns]
-    for (const r of rightTurns) turns.splice(int(1, turns.length), 0, r)
+  }
+  /** A corner the lap's way of `a` degrees, to bring it round: its radius as its angle suits. */
+  const closer = (a: number, d: number): Feature => {
+    const r = a >= 150 ? pick([18, 20, 22, 25, 28]) : a >= 110 ? int(28, 70) : chance(0.5) ? int(25, 50) : step(70, 140, 5)
+    return { kind: 'closer', turn: d * a, pieces: [corner(d * a, r)] }
+  }
 
+  for (let tries = 0; tries < 60; tries++) {
+    const d = chance(0.5) ? 1 : -1
+    const features: Feature[] = [make(weighted(FIRST_WEIGHTS), d)]
+    const want = int(7, 10)
+    for (let guard = 0; features.length < want && guard < 200; guard++) {
+      const kind = weighted(FEATURE_WEIGHTS)
+      const most = MOST[kind]
+      if (most != null && features.filter((f) => f.kind === kind).length >= most) continue
+      // Never two quick flicks back to back.
+      const before = features[features.length - 1]!.kind
+      if ((kind === 'chicane' || kind === 'busstop') && (before === 'chicane' || before === 'busstop')) continue
+      features.push(make(kind, d))
+    }
+    // Round the rest of the way with one or two corners the lap's way, wherever they fall after the first.
+    const rest = d * (d * 360 - features.reduce((sum, f) => sum + f.turn, 0))
+    if (rest < 40 || rest > 360) continue
+    const closers: Feature[] = []
+    if (rest <= 180) closers.push(closer(rest, d))
+    else {
+      const a1 = step(Math.max(40, rest - 180), Math.min(180, rest - 40), 5)
+      closers.push(closer(a1, d), closer(rest - a1, d))
+    }
+    for (const c of closers) features.splice(int(1, features.length), 0, c)
+    const turns = features.reduce((sum, f) => sum + f.pieces.filter((p) => 'turn' in p).length, 0)
+    if (turns < 9 || turns > 18) continue
+
+    // The start straight, then the features, with straights or links between them.
     const pieces: Piece[] = [{ straight: 'A' }]
     let heading = 0
     const straights: { at: number; heading: number }[] = []
-    turns.forEach((turn, k) => {
-      const a = Math.abs(turn)
-      const r =
-        a >= 150
-          ? chance(0.3)
-            ? 20 * int(3, 6)
-            : pick([16, 18, 20, 22, 25, 28])
-          : a >= 105
-            ? 5 * int(4, 14)
-            : a >= 60
-              ? 5 * int(5, 20)
-              : 5 * int(6, 28)
-      pieces.push({ turn, r, name: `Turn ${k + 1}` })
-      heading += turn
-      // After the last corner the road is back on the start straight's line: it just is the start straight.
-      if (k === turns.length - 1) return
-      if (chance(0.22)) return
+    features.forEach((f, k) => {
+      for (const p of f.pieces) {
+        pieces.push(p)
+        if ('turn' in p) heading += p.turn
+      }
+      if (k === features.length - 1) return
+      if (chance(0.35)) {
+        pieces.push(...link())
+        return
+      }
       straights.push({ at: pieces.length, heading })
-      pieces.push({ straight: 10 * int(3, 22) })
+      pieces.push({ straight: step(40, 180, 10) })
     })
     // 'B' has to cross the start straight's line at 45° or more, or the two can't be sized together well,
-    // and both have to come out long enough. Of those that do, the one nearest a 400 m start straight.
-    let best: { at: number; score: number } | null = null
-    for (const s of straights) {
-      const d = ((s.heading % 180) + 180) % 180
-      if (d < 45 || d > 135) continue
+    // and both have to come out long enough. Of those that do, the one nearest a 380 m start straight.
+    let best: { at: number; score: number; B: number } | null = null
+    for (const st of straights) {
+      const dir = ((st.heading % 180) + 180) % 180
+      if (dir < 45 || dir > 135) continue
       const trial = pieces.slice()
-      trial[s.at] = { straight: 'B' }
+      trial[st.at] = { straight: 'B' }
       const { A, B } = closure(trial)
-      if (!(A >= 260 && A <= 700 && B >= 30)) continue
-      const score = Math.abs(A - 400)
-      if (!best || score < best.score) best = { at: s.at, score }
+      if (!(A >= 260 && A <= 650 && B >= 30)) continue
+      const score = Math.abs(A - 380)
+      if (!best || score < best.score) best = { at: st.at, score, B }
     }
     if (!best) continue
-    pieces[best.at] = { straight: 'B' }
+    const chosen = best
+    // Somewhere besides the start straight to go flat out.
+    const longest = Math.max(
+      chosen.B,
+      ...straights.filter((st) => st.at !== chosen.at).map((st) => (pieces[st.at] as { straight: number }).straight),
+    )
+    if (longest < 150) continue
+    pieces[chosen.at] = { straight: 'B' }
+    let n = 0
+    for (const p of pieces) if ('turn' in p) p.name = `Turn ${++n}`
     return pieces
   }
   return null
@@ -181,8 +291,8 @@ const KNOTS = 32
  * Glen, a real hill, has 22), and stretches of road that pass near each other at no more than a gentle
  * bank's difference in height (0.4 m at 30 m apart, a quarter of the gap past that). The try that can be
  * made biggest wins, if it's at least a third of what its kind asks. Then it's driven: the pace car and a
- * driver on the limit must get round cleanly in a sensible time, easing the hills off a step at a time
- * until they do. Null: this track stays flat.
+ * driver on the limit must get round cleanly in a sensible time (up to 70 seconds, two more than a flat
+ * track), easing the hills off a step at a time until they do. Null: this track stays flat.
  */
 export function hillyCourse(course: string): { hills: string; kind: HillKind; check: CourseCheck & { ok: true } } | null {
   const rand = mulberry32(hashString(`hills:${course}`))
@@ -242,7 +352,8 @@ export function hillyCourse(course: string): { hills: string; kind: HillKind; ch
   const { knots, scale } = best
   for (const ease of [1, 0.75, 0.5]) {
     const hills = `~${knots.map(([, h]) => Math.round(h * scale * ease * 10) / 10).join(' ')}`
-    const check = checkCourse(pieces, { hills: decodeHills(hills) })
+    // Hills slow a lap a little: two seconds' more room than a flat track has.
+    const check = checkCourse(pieces, { hills: decodeHills(hills) }, false, 70)
     if (check.ok) return { hills, kind, check }
   }
   return null
@@ -366,9 +477,10 @@ export type CourseCheck = { ok: true; track: Track; pace: number; limit: number 
 
 /**
  * Whether a track is fit to race: see the top of the file. A landmark (a real circuit's layout, see
- * landmarks.ts) may run longer than a made one: up to 2,600 m and a 100-second pace lap.
+ * landmarks.ts) may run longer than a made one: up to 2,600 m and a 100-second pace lap. `slowest`, when
+ * given, is the pace lap's limit instead: a made track's hills may take it to 70 seconds (hillyCourse).
  */
-export function checkCourse(pieces: Piece[], shape: TrackShape = {}, landmark = false): CourseCheck {
+export function checkCourse(pieces: Piece[], shape: TrackShape = {}, landmark = false, slowest?: number): CourseCheck {
   let track: Track
   try {
     track = buildTrack(pieces, shape)
@@ -376,7 +488,7 @@ export function checkCourse(pieces: Piece[], shape: TrackShape = {}, landmark = 
     return { ok: false, why: 'it does not close' }
   }
   const longest = landmark ? 2600 : 2200
-  const slowest = landmark ? 100 : 68
+  const paceLimit = slowest ?? (landmark ? 100 : 68)
   if (track.straights.A < 240) return { ok: false, why: `start straight ${track.straights.A.toFixed(0)} m` }
   if (track.straights.B < 30) return { ok: false, why: `B ${track.straights.B.toFixed(0)} m` }
   if (track.length < 900 || track.length > longest) return { ok: false, why: `length ${track.length.toFixed(0)} m` }
@@ -391,7 +503,7 @@ export function checkCourse(pieces: Piece[], shape: TrackShape = {}, landmark = 
   const pace = botLap(track)
   if (pace.time == null || pace.run.cut) return { ok: false, why: 'the pace car did not get round' }
   if (pace.bumps > 0 || pace.grass > 0.3) return { ok: false, why: 'the pace car went off' }
-  if (pace.time < 40 || pace.time > slowest) return { ok: false, why: `pace lap ${pace.time.toFixed(1)}s` }
+  if (pace.time < 40 || pace.time > paceLimit) return { ok: false, why: `pace lap ${pace.time.toFixed(1)}s` }
   const limit = driveLap(track, 0.97)
   if (limit.time == null || limit.cut || limit.bumps > 0) return { ok: false, why: 'a driver on the limit did not get round' }
   return { ok: true, track, pace: pace.time, limit: limit.time }
