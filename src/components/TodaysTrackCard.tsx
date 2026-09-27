@@ -3,7 +3,7 @@ import { getGame } from '../data/games'
 import { dailyTrack, nextTrackAt, trackDay } from '../games/hotlap/daily'
 import { buildTrack, type Piece, type TrackShape } from '../games/hotlap/sim'
 import { trackPlan } from '../games/hotlap/trackPlan'
-import { gamePlayHref } from '../hooks/useHashRoute'
+import { gameArchiveHref, gamePlayHref } from '../hooks/useHashRoute'
 import { usePersonalBest } from '../hooks/usePersonalBest'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { inkOn } from '../lib/color'
@@ -149,6 +149,9 @@ export function TodaysTrackCard() {
           <ClockIcon />
           <EventCountdown endsAt={nextTrackAt()} />
         </span>
+        <a className="evp-daily__archive" href={gameArchiveHref(SLUG)}>
+          Past tracks
+        </a>
         <a className="evp-btn evp-btn--small" href={href}>
           {board?.you ? 'Beat your lap' : 'Race the track'}
         </a>

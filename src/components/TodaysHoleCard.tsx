@@ -2,7 +2,7 @@ import { useEffect, useMemo, useReducer, useRef, useState, type CSSProperties } 
 import { getGame } from '../data/games'
 import { ShareButton } from '../games/acechase/DailyCards'
 import { drawHolePlan } from '../games/acechase/holePlan'
-import { gamePlayHref } from '../hooks/useHashRoute'
+import { gameArchiveHref, gamePlayHref } from '../hooks/useHashRoute'
 import { inkOn } from '../lib/color'
 import {
   PLACE_NAME,
@@ -61,7 +61,7 @@ function useTodaysHole(): { hole: TodaysHole; progress: DayProgress | null; serv
 }
 
 /** The hole from above, redrawn when its box changes size. */
-function HolePlan({ hole }: { hole: TodaysHole }) {
+export function HolePlan({ hole }: { hole: TodaysHole }) {
   const ref = useRef<HTMLCanvasElement>(null)
   useEffect(() => {
     const canvas = ref.current
@@ -142,6 +142,9 @@ export function TodaysHoleCard() {
           <ClockIcon />
           {formatEventCountdown(Date.now() + msUntilNextHole())}
         </span>
+        <a className="evp-daily__archive" href={gameArchiveHref(SLUG)}>
+          Past holes
+        </a>
         {solved ? (
           <ShareButton hole={hole} tries={solved.tries} pattern={solved.pattern} className="evp-btn evp-btn--small" />
         ) : (

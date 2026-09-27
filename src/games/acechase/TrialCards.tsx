@@ -1,18 +1,21 @@
 import type { ReactNode } from 'react'
 import { gameAccentStyle } from '../../lib/gameAccentStyle'
-import { PLACE_NAME, type TodaysHole } from '../../lib/dailyHole'
+import { dailyDay, PLACE_NAME, type TodaysHole } from '../../lib/dailyHole'
 
 /*
- * A day's hole on trial, ahead of its day (/games/acechase/play?hole=day:YYYY-MM-DD): the card it opens
- * on, and the one a bullseye brings up. Nothing about a trial is kept; the admin's Hole Book links here,
- * to try a day out before it comes.
+ * A day's hole played as practice (/games/acechase/play?hole=day:YYYY-MM-DD): a past day's from the
+ * archive, or one ahead of its day from the admin's Hole Book. The card it opens on, and the one a
+ * bullseye brings up. Nothing about it is kept.
  */
+
+/** A past day's, from the archive, rather than one ahead of its day. */
+const isPast = (hole: TodaysHole) => hole.day < dailyDay()
 
 const dayWords = new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', weekday: 'short', month: 'short', day: 'numeric' })
 
-/** "Hole #9 · Thu, Oct 3", for the day a trial is ahead of. */
+/** "Hole #9 · Thu, Oct 3 · from the archive", for the day it was, or is to be. */
 function kicker(hole: TodaysHole): string {
-  return `Hole #${hole.n} · ${dayWords.format(new Date(`${hole.day}T12:00:00Z`))} · on trial`
+  return `Hole #${hole.n} · ${dayWords.format(new Date(`${hole.day}T12:00:00Z`))} · ${isPast(hole) ? 'from the archive' : 'on trial'}`
 }
 
 const SLUG = 'acechase'
@@ -43,8 +46,8 @@ export function TrialStartCard({ hole, onStart }: { hole: TodaysHole; onStart: (
         </p>
       </div>
       <p className="acechase-daily__rules">
-        This day&rsquo;s hole, ahead of its day. One putt a try, as many tries as it takes; Skip ahead shows where a
-        putt ends. Nothing here is kept.
+        {isPast(hole) ? 'A past day’s hole, to play again.' : 'This day’s hole, ahead of its day.'} One putt a try, as many
+        tries as it takes; Skip ahead shows where a putt ends. Nothing here is kept, so it counts for no board or tickets.
       </p>
       <div className="game-card__actions">
         <button type="button" className="panel__btn" onClick={onStart}>
@@ -79,7 +82,7 @@ export function TrialResultCard({
           Play it again
         </button>
         <button type="button" className="panel__btn panel__btn--ghost" onClick={onLeave}>
-          Back to Ace Chase
+          {isPast(hole) ? 'Back to the archive' : 'Back to Ace Chase'}
         </button>
       </div>
     </Card>

@@ -4,12 +4,13 @@ import { GamePlayChrome, PlayReadout, PlayReadoutScore } from '../../components/
 import { GameStage } from '../../components/GameStage'
 import { GamePauseOverlay, PauseButton } from '../../components/PauseControls'
 import { PlayReadoutStats, PlayStat } from '../../components/PlayStats'
-import { gameHref, navigate } from '../../hooks/useHashRoute'
+import { gameArchiveHref, gameHref, navigate } from '../../hooks/useHashRoute'
 import { useGamePause } from '../../hooks/useGamePause'
 import { usePersonalBest } from '../../hooks/usePersonalBest'
 import { gameAccentStyle } from '../../lib/gameAccentStyle'
 import { haptic } from '../../lib/haptics'
 import {
+  dailyDay,
   dailyServer,
   dayProgress,
   patternOf,
@@ -625,7 +626,12 @@ export function AceChaseGame({ ahead }: { ahead?: TodaysHole }) {
                 />
               ) : null}
               {ahead && ui.phase === 'gameover' && saveOpen ? (
-                <TrialResultCard hole={ahead} tries={last?.n ?? ui.tries} onAgain={() => restart()} onLeave={() => navigate(gameHref(SLUG))} />
+                <TrialResultCard
+                  hole={ahead}
+                  tries={last?.n ?? ui.tries}
+                  onAgain={() => restart()}
+                  onLeave={() => navigate(ahead.day < dailyDay() ? gameArchiveHref(SLUG) : gameHref(SLUG))}
+                />
               ) : null}
             </div>
           </div>

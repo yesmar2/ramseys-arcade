@@ -1,0 +1,134 @@
+/*
+ * A daily game's archive (ArchivePage): a grid of its days, each a card with its hole or track drawn, who
+ * did best, your result, and the way to play it again. Today's comes first, marked in the game's colour.
+ */
+
+.arch-grid {
+  list-style: none;
+  margin: 1.25rem 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(15.5rem, 1fr));
+  gap: 0.9rem;
+}
+
+.arch-grid[aria-busy='true'] {
+  min-height: 18rem;
+}
+
+.arch-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  padding: 0.75rem;
+  border-radius: 1.25rem;
+  background: var(--surface);
+  border: 1px solid rgba(var(--ink-rgb), 0.09);
+  box-shadow: var(--shadow-soft);
+  min-width: 0;
+}
+
+.arch-card--today {
+  border-color: color-mix(in srgb, var(--accent, #2eb8a0) 55%, transparent);
+}
+
+.arch-card__art {
+  position: relative;
+  display: block;
+  aspect-ratio: 16 / 10;
+  border-radius: 0.9rem;
+  overflow: hidden;
+  background: color-mix(in srgb, #3f8f46 22%, var(--surface));
+}
+
+.arch-card__art canvas,
+.arch-card__art svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.arch-card__text {
+  display: grid;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.arch-card__kicker {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.arch-card--today .arch-card__kicker {
+  color: var(--accent-ink, var(--text));
+}
+
+.arch-card__title {
+  font-size: 1.12rem;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.arch-card__sub,
+.arch-card__best {
+  font-size: 0.86rem;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.arch-card__best .pname {
+  color: var(--text);
+  font-weight: 700;
+}
+
+.arch-card__you {
+  font-size: 0.86rem;
+  font-weight: 800;
+}
+
+.arch-card__play {
+  margin-top: auto;
+  align-self: flex-start;
+  padding: 0.5rem 0.95rem;
+  border-radius: 999px;
+  font-size: 0.88rem;
+  font-weight: 800;
+  text-decoration: none;
+  color: var(--text);
+  background: rgba(var(--ink-rgb), 0.07);
+  border: 1px solid rgba(var(--ink-rgb), 0.12);
+}
+
+.arch-card__play:hover,
+.arch-card__play:focus-visible {
+  background: rgba(var(--ink-rgb), 0.12);
+}
+
+.arch-card--today .arch-card__play {
+  background: var(--accent, #2eb8a0);
+  border-color: transparent;
+  color: var(--accent-contrast, #0b1a17);
+}
+
+@media (max-width: 40rem) {
+  .arch-grid {
+    grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr));
+    gap: 0.6rem;
+  }
+
+  .arch-card {
+    padding: 0.55rem;
+    gap: 0.5rem;
+  }
+
+  .arch-card__title {
+    font-size: 1rem;
+  }
+}

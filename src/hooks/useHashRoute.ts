@@ -48,11 +48,13 @@ export type Route =
   | { name: 'tournamentPlay'; id: string; game: string; invite?: string }
   | { name: 'game'; slug: string; board?: 'scores' | 'records'; period?: LeaderboardPeriod }
   /**
-   * `daily`: the game's hole of the day, where it has one (Ace Chase's Today's Hole). `hole`: a hole on
-   * trial, `?hole=<key>` on the play page (Ace Chase's), which only the admin page links to. `track`: a
-   * test drive of one of Hot Lap's daily tracks, `?track=<number or day>`, from the admin's Track Book.
+   * `hole`: one of Ace Chase's days played as practice, `?hole=day:YYYY-MM-DD` on the play page, from the
+   * archive or the admin's Hole Book. `track`: a test drive of one of Hot Lap's daily tracks,
+   * `?track=<number or day>`, from the archive or the admin's Track Book.
    */
   | { name: 'gamePlay'; slug: string; hole?: string; track?: string }
+  /** A daily game's archive: every day since its first, each playable again as practice. */
+  | { name: 'gameArchive'; slug: string }
   | { name: 'authVerify'; token: string }
   | { name: 'about' }
   | { name: 'plus' }
@@ -169,6 +171,11 @@ export function gameHubHref(
   period: LeaderboardPeriod = defaultPeriod(),
 ) {
   return `/games/${encodeURIComponent(slug)}/${period}`
+}
+
+/** A daily game's archive of past days. */
+export function gameArchiveHref(slug: string) {
+  return `/games/${encodeURIComponent(slug)}/archive`
 }
 
 export function gamePlayHref(slug: string) {
@@ -590,6 +597,9 @@ export function parseUrl(pathname: string, search: string): Route {
     // Where Today's Hole was before it was all of Ace Chase, and shared links still point: the play page.
     if (segment === 'daily') {
       return { name: 'gamePlay', slug }
+    }
+    if (segment === 'archive') {
+      return { name: 'gameArchive', slug }
     }
     if (segment === 'records') {
       return { name: 'game', slug, board: 'records' }

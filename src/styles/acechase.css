@@ -690,6 +690,21 @@
   width: 100%;
 }
 
+/* The way to every past day's hole, under the countdown. */
+.acechase-daily__archive {
+  justify-self: center;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.acechase-daily__archive:hover,
+.acechase-daily__archive:focus-visible {
+  color: var(--text);
+  text-decoration: underline;
+}
+
 /* The next hole's countdown shows everywhere, a phone included: it's the day's rhythm, not a keyboard hint. */
 .game-card__hint.acechase-daily__next {
   display: block;

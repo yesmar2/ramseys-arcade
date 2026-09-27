@@ -3,6 +3,7 @@ import { howToPlayFor, howToPlaySentences } from '../data/howToPlay'
 import {
   aboutHref,
   adminHref,
+  gameArchiveHref,
   gameHref,
   gamePlayHref,
   homeHref,
@@ -163,6 +164,7 @@ export function publicRoutes(): Route[] {
   for (const game of visibleGames()) {
     routes.push({ name: 'game', slug: game.slug })
     if (game.playable) routes.push({ name: 'gamePlay', slug: game.slug })
+    if (game.playable && game.daily) routes.push({ name: 'gameArchive', slug: game.slug })
     if (isBoardGame(game.slug)) routes.push({ name: 'gameLeaderboard', game: game.slug })
     if (gameHasRecords(game.slug)) routes.push({ name: 'records', game: game.slug })
   }
@@ -225,6 +227,11 @@ export function pageContent(route: Route): PageContent {
     case 'gameLeaderboard':
     case 'records': {
       const game = getGame(route.game)
+      if (!game || game.hidden) break
+      return { heading, paragraphs: [meta.description], links: gameContentLinks(game) }
+    }
+    case 'gameArchive': {
+      const game = getGame(route.slug)
       if (!game || game.hidden) break
       return { heading, paragraphs: [meta.description], links: gameContentLinks(game) }
     }
@@ -306,6 +313,15 @@ export function pageMeta(route: Route): PageMeta {
         description: `Top scores for every ${APP_NAME} game, and the standings across all of them. Daily, weekly, monthly and all-time.`,
         path: '/leaderboards',
       }
+    case 'gameArchive': {
+      const meta = gameMeta(route.slug, gameArchiveHref(route.slug))
+      const what = route.slug === 'hotlap' ? 'track' : 'hole'
+      return {
+        ...meta,
+        title: titled(`Past ${what}s · ${gameName(route.slug)}`),
+        description: `Every day’s ${gameName(route.slug)} ${what} since the first, who did best on each, and each one to play again.`,
+      }
+    }
     case 'gameLeaderboard': {
       const meta = gameMeta(route.game, gameBoardPath(route.game))
       return {

@@ -4,7 +4,7 @@ import { TicketGlyph } from '../../components/prizes/Ticket'
 import { TagSlots } from '../../components/RunReport'
 import { copyText } from '../../components/ShareBoardButton'
 import { useAuth } from '../../hooks/useAuth'
-import { gamePlayHref, navigate, prizesHref } from '../../hooks/useHashRoute'
+import { gameArchiveHref, gamePlayHref, navigate, prizesHref } from '../../hooks/useHashRoute'
 import { linkCurrentNameToAccount } from '../../lib/auth'
 import { gameAccentStyle } from '../../lib/gameAccentStyle'
 import { getLastPlayerName, normalizePlayerName } from '../../lib/leaderboard'
@@ -247,6 +247,9 @@ export function DailyStartCard({
         )}
       </div>
       <NextHole />
+      <a className="acechase-daily__archive" href={gameArchiveHref(SLUG)}>
+        Past holes ›
+      </a>
     </Card>
   )
 }

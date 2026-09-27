@@ -454,6 +454,22 @@ a.evp-screen:focus-visible .evp-screen__play {
   padding: 0 0.3rem;
 }
 
+/* A daily game's way to its archive, quiet beside the button. */
+.evp-daily__archive {
+  margin-left: auto;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--muted);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.evp-daily__archive:hover,
+.evp-daily__archive:focus-visible {
+  color: var(--text);
+  text-decoration: underline;
+}
+
 .evp-last {
   display: flex;
   flex-direction: column;
