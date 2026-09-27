@@ -158,14 +158,14 @@ html[data-eightbit] body::after {
   font-weight: 700;
   letter-spacing: 0.14em;
   color: var(--muted);
-  opacity: 0.3;
+  opacity: 0.16;
   transform: rotate(-3deg);
   user-select: none;
   transition: opacity 0.3s ease;
 }
 
 .site-footer__scratch:hover {
-  opacity: 0.6;
+  opacity: 0.45;
 }
 
 /* A phone has no B or A to press: its code is the swipes alone. */
