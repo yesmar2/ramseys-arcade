@@ -49,19 +49,24 @@ export type Route =
   | { name: 'game'; slug: string; board?: 'scores' | 'records'; period?: LeaderboardPeriod }
   /**
    * `daily`: the game's hole of the day, where it has one (Ace Chase's Today's Hole). `hole`: a hole on
-   * trial, `?hole=<key>` on the play page (Ace Chase's), which nothing links to. `track`: a test drive of
-   * one of Hot Lap's daily tracks, `?track=<number or day>`, from its Track Book.
+   * trial, `?hole=<key>` on the play page (Ace Chase's), which only the admin page links to. `track`: a
+   * test drive of one of Hot Lap's daily tracks, `?track=<number or day>`, from the admin's Track Book.
    */
   | { name: 'gamePlay'; slug: string; daily?: boolean; hole?: string; track?: string }
   | { name: 'authVerify'; token: string }
   | { name: 'about' }
   | { name: 'plus' }
-  | { name: 'admin' }
+  /** `section`: one of the admin's books of what the daily games have planned. */
+  | { name: 'admin'; section?: AdminSection }
   | { name: 'stats' }
   | { name: 'prizes' }
   | { name: 'privacy' }
   | { name: 'terms' }
   | { name: 'devCelebrate' }
+
+/** The admin's books: Ace Chase's planned holes, Hot Lap's planned tracks. */
+export type AdminSection = 'holes' | 'tracks'
+const ADMIN_SECTIONS: readonly AdminSection[] = ['holes', 'tracks']
 
 /** Fired after in-app navigation has changed the URL. */
 export const ROUTE_EVENT = 'skermix:route'
@@ -196,9 +201,9 @@ export function plusHref() {
   return '/plus'
 }
 
-/** Site errors, flagged scores and bans, for admins. */
-export function adminHref() {
-  return '/admin'
+/** Site errors, flagged scores and bans, for admins; with `section`, one of their books of what's planned. */
+export function adminHref(section?: AdminSection) {
+  return section ? `/admin/${section}` : '/admin'
 }
 
 export function statsHref() {
@@ -444,6 +449,10 @@ export function parseUrl(pathname: string, search: string): Route {
   if (path === 'about') return { name: 'about' }
   if (path === 'plus') return { name: 'plus' }
   if (path === 'admin') return { name: 'admin' }
+  const adminMatch = /^admin\/([^/]+)$/.exec(path)
+  if (adminMatch && (ADMIN_SECTIONS as readonly string[]).includes(adminMatch[1]!)) {
+    return { name: 'admin', section: adminMatch[1] as AdminSection }
+  }
   if (path === 'stats') return { name: 'stats' }
   if (path === 'prizes') return { name: 'prizes' }
   if (path === 'privacy') return { name: 'privacy' }

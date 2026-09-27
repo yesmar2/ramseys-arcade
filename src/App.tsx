@@ -257,7 +257,7 @@ function Screen({ route }: { route: ReturnType<typeof useRoute> }) {
   if (route.name === 'home') return <HomePage />
   if (route.name === 'about') return <AboutPage />
   if (route.name === 'plus') return <PlusPage />
-  if (route.name === 'admin') return <AdminPage />
+  if (route.name === 'admin') return <AdminPage section={route.section} />
   if (route.name === 'stats') return <StatsPage />
   if (route.name === 'prizes') return <PrizeCounterPage />
   if (route.name === 'devCelebrate') return <DevCelebratePage />

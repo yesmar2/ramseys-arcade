@@ -43,6 +43,19 @@ export type Kind = 'bumps' | 'pond' | 'gates' | 'terrace' | 'dogleg' | 'mesa' | 
 export const KINDS: readonly Kind[] = ['bumps', 'pond', 'gates', 'terrace', 'dogleg', 'mesa', 'pinball', 'bunkers', 'neck']
 export const STYLES: readonly Style[] = ['garden', 'ice', 'moon']
 
+/** Each kind's name, for a list of them. */
+export const KIND_NAME: Record<Kind, string> = {
+  bumps: 'Bumps',
+  pond: 'Pond',
+  gates: 'Gates',
+  terrace: 'Terrace',
+  dogleg: 'Dogleg',
+  mesa: 'Mesa',
+  pinball: 'Pinball',
+  bunkers: 'Bunkers',
+  neck: 'Narrows',
+}
+
 /** Kinds that don't belong in a place: sand is a garden's. */
 const NOT_HERE: Record<Style, readonly Kind[]> = { garden: [], ice: ['bunkers'], moon: ['bunkers'] }
 

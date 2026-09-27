@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useState, type FormEvent } from 'react'
+import { Suspense, useCallback, useEffect, useState, type CSSProperties, type FormEvent } from 'react'
 import { PageBanner } from '../components/PageBanner'
 import { PageShell } from '../components/PageShell'
 import { getGame } from '../data/games'
+import { TEST_HOLES } from '../games/acechase/trialHoles'
 import { useAuth } from '../hooks/useAuth'
-import { homeHref } from '../hooks/useHashRoute'
+import { adminHref, gameDailyHref, gamePlayHref, homeHref, type AdminSection } from '../hooks/useHashRoute'
 import {
   banTag,
   fetchAdminWhoami,
@@ -20,16 +21,45 @@ import {
   type AdminFeedback,
   type AdminFlag,
 } from '../lib/admin'
+import { HUNT_ANCHORS, huntTestHref } from '../lib/bugHunt'
+import { lazyPage } from '../lib/lazyPage'
 import { ApiError } from '../lib/leaderboard'
 import { formatLeaderboardScore } from '../lib/leaderboardFormat'
 import { refreshTickets } from '../lib/tickets'
 import '../styles/admin.css'
+import '../styles/adminBooks.css'
+
+// The books draw every planned day, so each comes in a chunk of its own, when it's opened.
+const AdminHoleBook = lazyPage(() => import('../components/AdminHoleBook').then((m) => m.AdminHoleBook))
+const AdminTrackBook = lazyPage(() => import('../components/AdminTrackBook').then((m) => m.AdminTrackBook))
+
+const SECTIONS: { section?: AdminSection; label: string; title: string; blurb: string }[] = [
+  {
+    label: 'Overview',
+    title: 'Admin',
+    blurb:
+      'What players sent, what broke in their browsers, scores that looked wrong on the way in, tickets, banned tags, and what the daily games have planned.',
+  },
+  {
+    section: 'holes',
+    label: 'Hole Book',
+    title: 'Hole Book',
+    blurb: 'Every planned day of Ace Chase’s Today’s Hole: its green from above, how hard it is next to the rest, and the way in.',
+  },
+  {
+    section: 'tracks',
+    label: 'Track Book',
+    title: 'Track Book',
+    blurb: 'Every planned day of Hot Lap’s Today’s Track, to test drive ahead of its day.',
+  },
+]
 
 /*
  * The admin's page: what players sent, what broke in their browsers, scores
- * that looked wrong on the way in, tickets, and banned tags. It opens for the
- * emails in the API's ADMIN_EMAILS (Render): the API is asked, and it's the
- * API that answers every card.
+ * that looked wrong on the way in, tickets, and banned tags; and, a tab each,
+ * the daily games' books of what's planned (/admin/holes, /admin/tracks). It
+ * opens for the emails in the API's ADMIN_EMAILS (Render): the API is asked,
+ * and it's the API that answers every card.
  */
 
 type Gate = 'checking' | 'signedOut' | 'notAdmin' | 'failed' | 'ready'
@@ -51,11 +81,12 @@ function errorText(err: unknown, fallback: string) {
   return err instanceof Error && err.message ? err.message : fallback
 }
 
-export function AdminPage() {
+export function AdminPage({ section }: { section?: AdminSection }) {
   const { account, loading } = useAuth()
   const [gate, setGate] = useState<Gate>('checking')
   // The code the API said no with, for the words under a closed page.
   const [refusal, setRefusal] = useState<string>()
+  const here = SECTIONS.find((s) => s.section === section) ?? SECTIONS[0]!
 
   useEffect(() => {
     if (loading) return
@@ -83,19 +114,48 @@ export function AdminPage() {
     <PageShell innerClassName="lb-page__inner">
       <PageBanner
         size="compact"
-        crumbs={[{ href: homeHref(), label: 'Home' }, { label: 'Admin' }]}
+        crumbs={
+          section
+            ? [{ href: homeHref(), label: 'Home' }, { href: adminHref(), label: 'Admin' }, { label: here.title }]
+            : [{ href: homeHref(), label: 'Home' }, { label: 'Admin' }]
+        }
         kicker="Admins only"
-        title="Admin"
-        blurb="What players sent, what broke in their browsers, scores that looked wrong on the way in, tickets, and banned tags."
+        title={here.title}
+        blurb={here.blurb}
       />
       <div className="adm">
         {gate === 'ready' ? (
           <>
-            <FeedbackCard />
-            <ErrorsCard />
-            <FlagsCard />
-            <TicketsCard />
-            <BansCard />
+            <nav className="seg adm-tabs" aria-label="Admin" style={{ '--seg-count': SECTIONS.length } as CSSProperties}>
+              {SECTIONS.map((s) => (
+                <a
+                  key={s.label}
+                  className={`seg__item${s === here ? ' seg__item--active' : ''}`}
+                  href={adminHref(s.section)}
+                  aria-current={s === here ? 'page' : undefined}
+                >
+                  {s.label}
+                </a>
+              ))}
+            </nav>
+            {section === 'holes' ? (
+              <Suspense fallback={<p className="adm-note">Opening the Hole Book…</p>}>
+                <AdminHoleBook />
+              </Suspense>
+            ) : section === 'tracks' ? (
+              <Suspense fallback={<p className="adm-note">Opening the Track Book…</p>}>
+                <AdminTrackBook />
+              </Suspense>
+            ) : (
+              <>
+                <DailyGamesCard />
+                <FeedbackCard />
+                <ErrorsCard />
+                <FlagsCard />
+                <TicketsCard />
+                <BansCard />
+              </>
+            )}
           </>
         ) : (
           <section className="adm-card">
@@ -142,6 +202,51 @@ function CardHead({ title, count, onRefresh }: { title: string; count: number | 
         Refresh
       </button>
     </div>
+  )
+}
+
+/** The daily games' books, and the pages that try things out ahead of players. */
+function DailyGamesCard() {
+  return (
+    <section className="adm-card" aria-labelledby="adm-daily">
+      <div className="adm-card__head">
+        <h2 className="adm-card__title" id="adm-daily">
+          Daily games
+        </h2>
+      </div>
+      <p className="adm-card__sub">
+        What the daily games have planned, day by day, and pages to try things on. A hole on trial, a test drive and
+        the bug hunt’s test mode keep nothing.
+      </p>
+      <div className="adm-books">
+        <a className="adm-book" href={adminHref('holes')}>
+          <b>Hole Book</b>
+          <span>Ace Chase: every planned Today’s Hole, how hard it is, and the way in</span>
+        </a>
+        <a className="adm-book" href={adminHref('tracks')}>
+          <b>Track Book</b>
+          <span>Hot Lap: every planned Today’s Track, to test drive</span>
+        </a>
+      </div>
+      <ul className="adm-links">
+        <li>
+          <a href={gameDailyHref('acechase')}>Ace Chase · Today’s Hole</a>
+          <span>the real one, where your tries count</span>
+        </li>
+        {Object.entries(TEST_HOLES).map(([key, def]) => (
+          <li key={key}>
+            <a href={`${gamePlayHref('acechase')}?hole=${key}`}>Ace Chase · {def.name}</a>
+            <span>a hole on trial</span>
+          </li>
+        ))}
+        {HUNT_ANCHORS[0] ? (
+          <li>
+            <a href={huntTestHref({ anchor: HUNT_ANCHORS[0], pose: 'top', at: 0.5 })}>Bug hunt · test mode</a>
+            <span>step through every hiding place; a catch there doesn’t count</span>
+          </li>
+        ) : null}
+      </ul>
+    </section>
   )
 }
 

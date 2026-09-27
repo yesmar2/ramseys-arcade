@@ -5,7 +5,7 @@ import type { HoleDef } from './physics.ts'
 import { SHORT_WAY_ROUND } from './shortWay.ts'
 import { KING_OF_THE_HILL } from './summit.ts'
 
-/** Holes to try out before they go in a round: /games/acechase/play?hole=<key>. Nothing links to them. */
+/** Holes to try out before they go in a round: /games/acechase/play?hole=<key>. Only the admin page links to them. */
 export const TEST_HOLES: Record<string, HoleDef> = {
   long: LONG_WAY_ROUND,
   short: SHORT_WAY_ROUND,

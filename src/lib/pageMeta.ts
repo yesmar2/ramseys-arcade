@@ -265,7 +265,12 @@ export function pageMeta(route: Route): PageMeta {
         path: plusHref(),
       }
     case 'admin':
-      return { ...site, title: titled('Admin'), path: adminHref(), noindex: true }
+      return {
+        ...site,
+        title: titled(route.section === 'holes' ? 'Hole Book' : route.section === 'tracks' ? 'Track Book' : 'Admin'),
+        path: adminHref(route.section),
+        noindex: true,
+      }
     case 'stats':
       return { ...site, title: titled('Your stats'), path: statsHref(), noindex: true }
     case 'prizes':

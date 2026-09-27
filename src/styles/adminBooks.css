@@ -1,0 +1,744 @@
+/*
+ * The admin's tabs, its Daily games card, and the daily games' books (AdminHoleBook, AdminTrackBook):
+ * every planned day of Ace Chase's Today's Hole and Hot Lap's Today's Track. Cards are the admin page's
+ * own (.adm-card, admin.css); the switches are the site's (.seg, .chips).
+ */
+
+.adm-tabs.seg {
+  width: min(100%, 30rem);
+}
+
+/* ---------- the Daily games card ---------- */
+
+.adm-books {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.adm-book {
+  display: grid;
+  gap: 0.2rem;
+  padding: 0.9rem 1rem;
+  border-radius: 1rem;
+  border: 1px solid var(--panel-line);
+  background: var(--panel-fill);
+  color: var(--ink);
+  text-decoration: none;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.adm-book:hover,
+.adm-book:focus-visible {
+  border-color: color-mix(in srgb, var(--panel-accent) 55%, transparent);
+  background: color-mix(in srgb, var(--panel-accent) 8%, var(--surface));
+  outline: none;
+}
+
+.adm-book b {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+
+.adm-book span {
+  font-size: 0.85rem;
+  line-height: 1.4;
+  color: var(--muted);
+}
+
+.adm-links {
+  display: grid;
+  gap: 0.45rem;
+  margin: 1rem 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.9rem;
+}
+
+.adm-links li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.2rem 0.6rem;
+}
+
+.adm-links a {
+  font-weight: 750;
+  color: var(--panel-accent-ink);
+  text-underline-offset: 0.2em;
+}
+
+.adm-links span {
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+/* ---------- both books ---------- */
+
+.hb,
+.tb {
+  --hb-garden: #45a857;
+  --hb-ice: #58aee0;
+  --hb-moon: #8d88ad;
+  --hb-easier: #2f9e62;
+  --hb-middling: #c58b12;
+  --hb-harder: #d0563b;
+  display: grid;
+  gap: 1.1rem;
+  min-width: 0;
+}
+
+html[data-theme='dark'] .hb,
+html[data-theme='dark'] .tb {
+  --hb-easier: #5fcf8f;
+  --hb-middling: #e8b64a;
+  --hb-harder: #f08a6e;
+}
+
+.hb-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem 0.9rem;
+}
+
+.hb-count {
+  margin: 0 0 0 auto;
+  font-size: 0.85rem;
+  font-weight: 650;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.hb-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-self: start;
+  padding: 0.1rem 0.55rem;
+  border-radius: 999px;
+  background: var(--panel-accent);
+  color: var(--panel-on-accent);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.hb-dot {
+  display: inline-block;
+  flex: none;
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 50%;
+  background: var(--hb-garden);
+}
+
+.hb-dot--ice {
+  background: var(--hb-ice);
+}
+
+.hb-dot--moon {
+  background: var(--hb-moon);
+}
+
+/* ---------- the Hole Book ---------- */
+
+.hb-tally {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem 1.1rem;
+  margin: 0.9rem 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.hb-tally li {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.hb-tally b {
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.hb-season {
+  display: grid;
+  gap: 0.3rem;
+  margin-top: 1rem;
+  overflow-x: auto;
+}
+
+.hb-season__month {
+  display: grid;
+  grid-template-columns: 3.4rem minmax(0, 1fr);
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 26rem;
+}
+
+.hb-season__name {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.hb-season__days {
+  display: grid;
+  grid-template-columns: repeat(31, minmax(0, 1fr));
+  gap: 0.2rem;
+}
+
+.hb-day {
+  appearance: none;
+  aspect-ratio: 1;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0.2rem;
+  background: var(--hb-garden);
+  cursor: pointer;
+}
+
+.hb-day--ice {
+  background: var(--hb-ice);
+}
+
+.hb-day--moon {
+  background: var(--hb-moon);
+}
+
+.hb-day--past {
+  opacity: 0.3;
+}
+
+.hb-day--today {
+  box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--ink);
+}
+
+.hb-day:hover,
+.hb-day:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 1px;
+}
+
+.hb-season__key {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem 1rem;
+  margin: 0.4rem 0 0;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.hb-season__key > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.hb-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 19rem), 1fr));
+  gap: 0.9rem;
+}
+
+.hb-hole {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  min-width: 0;
+  padding: 0.8rem;
+  border-radius: 1.1rem;
+  background: var(--surface);
+  border: 1px solid var(--panel-line);
+  scroll-margin: 6rem;
+}
+
+.hb-hole--today {
+  border-color: var(--panel-accent);
+  box-shadow: 0 0 0 1px var(--panel-accent);
+}
+
+.hb-hole--flash {
+  animation: hb-flash 1.5s ease-out;
+}
+
+@keyframes hb-flash {
+  from {
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--panel-accent) 60%, transparent);
+  }
+}
+
+.hb-hole__top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem 0.6rem;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.hb-hole__n {
+  font-weight: 800;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.hb-hole__place {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-weight: 650;
+  color: var(--ink);
+}
+
+.hb-hole__kind {
+  margin-left: auto;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.hb-plan {
+  position: relative;
+  aspect-ratio: 16 / 9.4;
+  border-radius: 0.7rem;
+  overflow: hidden;
+  background: var(--panel-fill);
+}
+
+.hb-plan canvas {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.hb-hole__text {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.hb-hole__name {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.hb-hole__note {
+  margin: 0;
+  font-size: 0.85rem;
+  line-height: 1.45;
+  color: var(--muted);
+  text-wrap: pretty;
+}
+
+.hb-hole__foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.8rem;
+  margin-top: auto;
+  padding-top: 0.6rem;
+  border-top: 1px solid var(--panel-line);
+  font-size: 0.82rem;
+}
+
+.hb-grade {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.15rem 0.6rem 0.15rem 0.5rem;
+  border-radius: 999px;
+  background: var(--panel-fill);
+  font-weight: 800;
+}
+
+.hb-grade::before {
+  content: '';
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.hb-grade--easier {
+  color: var(--hb-easier);
+}
+
+.hb-grade--middling {
+  color: var(--hb-middling);
+}
+
+.hb-grade--harder {
+  color: var(--hb-harder);
+}
+
+.hb-ways {
+  color: var(--muted);
+}
+
+.hb-ways b {
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.hb-hole__acts {
+  display: inline-flex;
+  gap: 0.9rem;
+  margin-left: auto;
+}
+
+.hb-link {
+  appearance: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-weight: 750;
+  color: var(--panel-accent-ink);
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+  cursor: pointer;
+}
+
+.hb-link--go {
+  text-decoration: none;
+}
+
+.hb-link--go::after {
+  content: ' →';
+}
+
+.hb-answer {
+  margin: 0;
+  padding: 0.6rem 0.75rem;
+  border-radius: 0.7rem;
+  background: var(--panel-fill);
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+.hb-answer b {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- the Track Book ---------- */
+
+.tb {
+  --tb-grass-1: #88bf61;
+  --tb-grass-2: #5e9744;
+  --tb-asphalt: #454b52;
+  --tb-edge: #f7f9f5;
+  --tb-car: #f2813a;
+}
+
+html[data-theme='dark'] .tb {
+  --tb-grass-1: #3b6c32;
+  --tb-grass-2: #25472a;
+  --tb-asphalt: #2c3237;
+  --tb-edge: rgba(236, 241, 236, 0.85);
+}
+
+.tb-feature {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 1.2rem;
+  margin-top: 1rem;
+}
+
+.tb-feature .tb-map {
+  aspect-ratio: 16 / 10;
+  border-radius: 0.9rem;
+}
+
+.tb-feature__text {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.tb-feature__name {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(1.6rem, 3.6vw, 2.2rem);
+  font-weight: 800;
+  line-height: 1.05;
+}
+
+.tb-feature__facts {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.tb-feature__acts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.tb-feature__acts .panel__btn {
+  text-decoration: none;
+}
+
+.tb-feature__next {
+  margin: 0;
+  font-size: 0.88rem;
+  color: var(--muted);
+}
+
+.tb-feature__next a {
+  font-weight: 750;
+  color: var(--panel-accent-ink);
+}
+
+.tb-search.panel__input {
+  flex: 1 1 16rem;
+  max-width: 24rem;
+}
+
+.tb-month {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.tb-month__name {
+  display: flex;
+  align-items: baseline;
+  gap: 0.7rem;
+  margin: 0.4rem 0 0;
+  padding-bottom: 0.4rem;
+  border-bottom: 1px solid var(--panel-line);
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  font-weight: 800;
+}
+
+.tb-month__name span {
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.tb-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 13rem), 1fr));
+  align-items: start;
+  gap: 0.8rem;
+}
+
+.tb-tile {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  gap: 0.55rem;
+  min-width: 0;
+  padding: 0.5rem 0.5rem 0.75rem;
+  border-radius: 1rem;
+  background: var(--surface);
+  border: 1px solid var(--panel-line);
+  color: var(--ink);
+  text-decoration: none;
+  transition: border-color 0.15s ease, transform 0.15s ease;
+}
+
+.tb-tile:has(.tb-profile) {
+  grid-template-rows: auto auto 1fr;
+}
+
+.tb-tile:hover,
+.tb-tile:focus-visible {
+  border-color: color-mix(in srgb, var(--panel-accent) 55%, var(--panel-line));
+  transform: translateY(-2px);
+  outline: none;
+}
+
+.tb-tile--today {
+  border-color: var(--panel-accent);
+  box-shadow: 0 0 0 1px var(--panel-accent);
+}
+
+.tb-tile--past {
+  opacity: 0.6;
+}
+
+.tb-tile--landmark {
+  grid-column: span 2;
+}
+
+.tb-tile__map {
+  position: relative;
+}
+
+.tb-map {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  border-radius: 0.7rem;
+  background: linear-gradient(160deg, var(--tb-grass-1), var(--tb-grass-2));
+}
+
+.tb-tile--landmark .tb-map {
+  aspect-ratio: 16 / 9;
+}
+
+.tb-map__edge,
+.tb-map__road {
+  fill: none;
+  stroke-linejoin: round;
+}
+
+.tb-map__edge {
+  stroke: var(--tb-edge);
+}
+
+.tb-map__road {
+  stroke: var(--tb-asphalt);
+}
+
+.tb-map__start {
+  stroke: #fff;
+}
+
+.tb-map__car {
+  fill: var(--tb-car);
+}
+
+.tb-tag {
+  position: absolute;
+  top: 0.45rem;
+  left: 0.45rem;
+  padding: 0.05rem 0.5rem;
+  border-radius: 999px;
+  background: rgba(8, 12, 14, 0.74);
+  color: #eef2ee;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  font-variant-numeric: tabular-nums;
+}
+
+.tb-tile--today .tb-tag:first-of-type {
+  background: var(--panel-accent);
+  color: var(--panel-on-accent);
+}
+
+.tb-tag--hills {
+  left: auto;
+  right: 0.45rem;
+  background: var(--tb-car);
+  color: #1d0e04;
+}
+
+.tb-profile {
+  display: block;
+  width: 100%;
+  height: 2rem;
+  margin-top: -0.2rem;
+}
+
+.tb-profile path {
+  fill: color-mix(in srgb, var(--tb-car) 18%, transparent);
+  stroke: var(--tb-car);
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
+}
+
+.tb-tile__body {
+  display: grid;
+  align-content: start;
+  gap: 0.3rem;
+  padding: 0 0.3rem;
+}
+
+.tb-tile__date {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.tb-tile__name {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 800;
+  line-height: 1.15;
+}
+
+.tb-figs {
+  display: grid;
+  grid-template-columns: repeat(3, auto);
+  justify-content: start;
+  gap: 0.1rem 0.9rem;
+  margin: 0.15rem 0 0;
+}
+
+.tb-figs div {
+  display: grid;
+}
+
+.tb-figs dt {
+  font-size: 0.65rem;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.tb-figs dd {
+  margin: 0;
+  font-size: 0.88rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.tb-tile__go {
+  margin-top: 0.2rem;
+  font-size: 0.85rem;
+  font-weight: 750;
+  color: var(--panel-accent-ink);
+}
+
+@media (max-width: 40rem) {
+  .tb-feature {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .hb-count {
+    margin-left: 0;
+  }
+
+  .tb-tile--landmark {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tb-tile,
+  .adm-book {
+    transition: none;
+  }
+
+  .tb-tile:hover {
+    transform: none;
+  }
+
+  .hb-hole--flash {
+    animation: none;
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--panel-accent) 60%, transparent);
+  }
+}

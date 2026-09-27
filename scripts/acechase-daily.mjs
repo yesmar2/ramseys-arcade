@@ -9,20 +9,15 @@
 //   node scripts/acechase-daily.mjs plan [days=180]          plan the days after those already planned, up to `days`
 //   node scripts/acechase-daily.mjs plan --days=36,97         plan just those days afresh (before launch only)
 //   node scripts/acechase-daily.mjs plan [days] --fresh       plan every day afresh (before launch only)
-//   node scripts/acechase-daily.mjs recheck --report=<file>   check a plan (its --report) over the whole dial
 //   node scripts/acechase-daily.mjs explore [each=4] [place]  try every kind (in every place, or one), and say how they did
 //   node scripts/acechase-daily.mjs show YYYY-MM-DD           one day's hole, as planned, and its windows
 //
 // Once Today's Hole is live, a day already planned may have been played, so only ever add days after the
 // last; `plan` does that unless told otherwise.
 //
-// --report=<file> also writes what each day's check found, as JSON, keeping what it already holds for days
-// not played again. Runs on every core but one. Node 23.6+.
-//
-// `recheck` is for a plan checked over less than the whole dial (before 2026-09-27, angles of ±45° and
-// powers to 90): it plays each day's green at the settings that check left out, checks the whole dial
-// again wherever a bullseye turns up there (or a window ran up to the old edge), and plans a day afresh
-// if its green no longer passes.
+// What each day's check found goes in src/games/acechase/dailyChecks.ts beside the plan, for the admin's
+// Hole Book: how many bull settings in all, and its widest windows with a setting in each. Runs on every
+// core but one. Node 23.6+.
 import { Worker, isMainThread, parentPort } from 'node:worker_threads'
 import fs from 'node:fs'
 import os from 'node:os'
@@ -30,6 +25,7 @@ import os from 'node:os'
 const PHYSICS = new URL('../src/games/acechase/physics.ts', import.meta.url)
 const DAILY = new URL('../src/games/acechase/daily.ts', import.meta.url)
 const PLAN = new URL('../src/games/acechase/dailyPlan.ts', import.meta.url)
+const CHECKS = new URL('../src/games/acechase/dailyChecks.ts', import.meta.url)
 
 /**
  * What a day's hole has to be. A player finds a window by closing in on the power (the misses say short
@@ -54,15 +50,9 @@ const TRIES = 8
 /**
  * The whole dial: every angle it turns to (±60°, physics MAX_ANGLE), and every power from the least that
  * could reach the target (at 20 a ball rolls about 6 m on the rink, and no target is nearer the tee than 15 m).
+ * Until 2026-09-27 the check stopped at ±45° and power 90, and missed ways in as wide as 500 settings.
  */
 const SEARCH = { power: [20, 100], angles: [-60, 60], coarse: { power: 1, angle: 0.5 } }
-/** What the plans before 2026-09-27 were checked over, and the rest of the dial, in three bands, for `recheck`. */
-const OLD_SEARCH = { power: [20, 90], angles: [-45, 45] }
-const BANDS = [
-  { power: [20, 100], angles: [-60, -45.5], coarse: SEARCH.coarse },
-  { power: [20, 100], angles: [45.5, 60], coarse: SEARCH.coarse },
-  { power: [91, 100], angles: [-45, 45], coarse: SEARCH.coarse },
-]
 
 function judge(found) {
   const best = found.windows[0]
@@ -85,7 +75,6 @@ const win = (w) => (w ? `${w.cells} @ ${w.p0}–${w.p1}, ${w.a0.toFixed(1)}..${w
 if (isMainThread) {
   const args = process.argv.slice(2)
   const mode = args[0] ?? 'plan'
-  const report = args.find((a) => a.startsWith('--report='))?.slice(9)
   const daily = await import(DAILY)
   const workers = Math.max(1, os.cpus().length - 1)
   const t0 = Date.now()
@@ -169,8 +158,15 @@ if (isMainThread) {
     return `  { kind: '${r.pick.kind}', style: '${r.pick.style}', k: ${r.pick.k} }, // #${r.n} ${r.day} ${r.name}: ${r.found.cells} in all, best ${w.cells} at ${w.p0}–${w.p1}, ${w.a0.toFixed(1)}..${w.a1.toFixed(1)}°`
   }
 
-  /** dailyPlan.ts from the days' lines, and the report beside it if asked for, keeping its other days. */
-  function writePlan(lines, rows, played) {
+  /** A day's line in dailyChecks.ts: what its check found. */
+  const checkLine = (c) =>
+    `  { n: ${c.n}, cells: ${c.cells}, windows: [${c.windows.map((w) => `{ cells: ${w.cells}, p0: ${w.p0}, p1: ${w.p1}, a0: ${w.a0}, a1: ${w.a1}, sample: [${w.sample[0]}, ${w.sample[1]}] }`).join(', ')}] },`
+
+  /**
+   * dailyPlan.ts from the days' lines, and dailyChecks.ts beside it: the new days' checks, and what it
+   * already held for the others.
+   */
+  async function writePlan(lines, rows, played) {
     const text = `// Written by scripts/acechase-daily.mjs: each day's hole for Today's Hole, from its first day, checked to
 // have a way in a player can find and not to give it away. Rerun the script rather than editing by hand.
 import type { DailyPick } from './daily.ts'
@@ -180,11 +176,25 @@ ${lines.join('\n')}
 ]
 `
     fs.writeFileSync(PLAN, text)
-    console.log(`wrote ${lines.length} days to ${PLAN.pathname} (${played} greens played)`)
-    if (!report) return
-    const all = fs.existsSync(report) ? JSON.parse(fs.readFileSync(report, 'utf8')) : []
-    for (const r of rows) if (r) all[r.n - 1] = { n: r.n, day: r.day, pick: r.pick, name: r.name, note: r.note, found: r.found }
-    fs.writeFileSync(report, JSON.stringify(all.slice(0, lines.length), null, 1))
+    const checks = (fs.existsSync(CHECKS) ? (await import(CHECKS)).DAILY_CHECKS : []).map(checkLine)
+    for (const r of rows) if (r) checks[r.n - 1] = checkLine({ n: r.n, cells: r.found.cells, windows: r.found.windows })
+    fs.writeFileSync(
+      CHECKS,
+      `// Written by scripts/acechase-daily.mjs: what each planned day's check found, for the admin's Hole Book.
+// Every power and angle the dials make was played; a window is the settings that stop the ball on the bull
+// and touch one another (half a power or a tenth of a degree apart), the widest first, with one of them.
+
+/** A window: how many settings, the powers and angles they span, and one of them. */
+export type CheckWindow = { cells: number; p0: number; p1: number; a0: number; a1: number; sample: readonly [number, number] }
+/** What a day's check found: how many bull settings in all, and its widest windows (three at most). */
+export type DayCheck = { n: number; cells: number; windows: readonly CheckWindow[] }
+
+export const DAILY_CHECKS: readonly DayCheck[] = [
+${checks.slice(0, lines.length).join('\n')}
+]
+`,
+    )
+    console.log(`wrote ${lines.length} days to ${PLAN.pathname}, and their checks (${played} greens played)`)
   }
 
   if (mode === 'explore') {
@@ -222,41 +232,6 @@ ${lines.join('\n')}
     })
     p.add({ day, pick: choice })
     await p.done
-  } else if (mode === 'recheck') {
-    if (!report) throw new Error('recheck needs --report=<file>: the report of the plan it checks, which it rewrites')
-    const old = JSON.parse(fs.readFileSync(report, 'utf8'))
-    const rows = [...old]
-    const atOldEdge = (w) => w.a0 <= OLD_SEARCH.angles[0] + 0.05 || w.a1 >= OLD_SEARCH.angles[1] - 0.05 || w.p1 >= OLD_SEARCH.power[1] - 0.05
-    const again = new Set()
-    const replanned = new Set()
-    let banded = 0
-    let played = 0
-    const p = pool((res, add) => {
-      if (res.bands) {
-        banded++
-        // A bullseye the old check never tried, or a window that ran into its edge: check the whole dial.
-        if (res.found.cells > 0 || rows[res.n - 1].found.windows.some(atOldEdge)) {
-          again.add(res.n)
-          add({ n: res.n, day: res.day, pick: res.pick })
-        }
-      } else {
-        played++
-        const verdict = judge(res.found)
-        if (!verdict) rows[res.n - 1] = res
-        else {
-          if (!replanned.has(res.n)) console.error(`\n#${res.n} ${res.pick.kind} ${res.pick.style} k${res.pick.k} ${res.name}: ${verdict}`)
-          replanned.add(res.n)
-          add({ n: res.n, day: res.day, pick: nextPick(res.n, res.pick) ?? nothingGood(res.n) })
-        }
-      }
-      process.stderr.write(`\r${banded}/${old.length} days' bands played, ${again.size} checked again, ${replanned.size} planned afresh, ${played} greens, ${((Date.now() - t0) / 1000).toFixed(0)}s   `)
-    })
-    for (const r of old) p.add({ n: r.n, day: r.day, pick: r.pick, bands: true })
-    await p.done
-    process.stderr.write('\n')
-    console.log(`checked again: ${[...again].sort((a, b) => a - b).join(', ') || 'none'}`)
-    console.log(`planned afresh: ${[...replanned].sort((a, b) => a - b).join(', ') || 'none'}`)
-    writePlan(rows.map(lineFor), rows, banded + played)
   } else {
     const kept = args.includes('--fresh') ? [] : writtenPlan()
     const redo = new Set((args.find((a) => a.startsWith('--days='))?.slice(7).split(',') ?? []).map(Number))
@@ -270,46 +245,49 @@ ${lines.join('\n')}
     const chains = new Map(todo.map((n) => [n, { day: dayOf(daily.DAILY_EPOCH, n), picks: [{ ...daily.plannedPick(n), k: 0 }], results: [], done: false }]))
     let open = todo.length
     let tried = 0
-    const p = pool(
-      (res, add) => {
-        tried++
-        const c = chains.get(res.n)
-        if (c.done) return
-        c.results[res.pick.k] = res
-        for (let k = 0; k < c.picks.length && c.results[k]; k++)
-          if (!judge(c.results[k].found)) {
-            lines[res.n - 1] = lineFor(c.results[k])
-            rows[res.n - 1] = c.results[k]
-            c.done = true
-            open--
-            break
+    // With nothing to plan, only the files are written again (a pool with no jobs would never finish).
+    if (todo.length) {
+      const p = pool(
+        (res, add) => {
+          tried++
+          const c = chains.get(res.n)
+          if (c.done) return
+          c.results[res.pick.k] = res
+          for (let k = 0; k < c.picks.length && c.results[k]; k++)
+            if (!judge(c.results[k].found)) {
+              lines[res.n - 1] = lineFor(c.results[k])
+              rows[res.n - 1] = c.results[k]
+              c.done = true
+              open--
+              break
+            }
+          const ahead = Math.ceil(workers / Math.max(1, open))
+          for (const [n, d] of chains) {
+            if (d.done) continue
+            if (!d.picks.at(-1) && d.picks.filter(Boolean).length === d.results.filter(Boolean).length) nothingGood(n)
+            while (d.picks.at(-1) && d.picks.length - d.results.filter(Boolean).length < ahead) {
+              const next = nextPick(n, d.picks.at(-1))
+              d.picks.push(next)
+              if (next) add({ n, day: d.day, pick: next })
+            }
           }
-        const ahead = Math.ceil(workers / Math.max(1, open))
-        for (const [n, d] of chains) {
-          if (d.done) continue
-          if (!d.picks.at(-1) && d.picks.filter(Boolean).length === d.results.filter(Boolean).length) nothingGood(n)
-          while (d.picks.at(-1) && d.picks.length - d.results.filter(Boolean).length < ahead) {
-            const next = nextPick(n, d.picks.at(-1))
-            d.picks.push(next)
-            if (next) add({ n, day: d.day, pick: next })
-          }
+          process.stderr.write(`\r${todo.length - open}/${todo.length} days, ${tried} greens played, ${((Date.now() - t0) / 1000).toFixed(0)}s   `)
+        },
+        (job) => chains.get(job.n)?.done ?? false,
+      )
+      const ahead = Math.ceil(workers / todo.length)
+      for (const [n, c] of chains) {
+        p.add({ n, day: c.day, pick: c.picks[0] })
+        while (c.picks.length < ahead && c.picks.at(-1)) {
+          const next = nextPick(n, c.picks.at(-1))
+          c.picks.push(next)
+          if (next) p.add({ n, day: c.day, pick: next })
         }
-        process.stderr.write(`\r${todo.length - open}/${todo.length} days, ${tried} greens played, ${((Date.now() - t0) / 1000).toFixed(0)}s   `)
-      },
-      (job) => chains.get(job.n)?.done ?? false,
-    )
-    const ahead = Math.ceil(workers / Math.max(1, todo.length))
-    for (const [n, c] of chains) {
-      p.add({ n, day: c.day, pick: c.picks[0] })
-      while (c.picks.length < ahead && c.picks.at(-1)) {
-        const next = nextPick(n, c.picks.at(-1))
-        c.picks.push(next)
-        if (next) p.add({ n, day: c.day, pick: next })
       }
+      await p.done
+      process.stderr.write('\n')
     }
-    await p.done
-    process.stderr.write('\n')
-    writePlan(lines, rows, tried)
+    await writePlan(lines, rows, tried)
   }
 } else {
   const physics = await import(PHYSICS)
@@ -319,12 +297,7 @@ ${lines.join('\n')}
     const t = Date.now()
     const def = daily.dailyHoleDef(job.pick, job.day)
     const hole = physics.makeHole(def, def.spots[0])
-    let found
-    if (job.bands) {
-      // Only the settings the old check left out: how many bullseyes are there.
-      const parts = BANDS.map((band) => windowsFor(physics.simulate, hole, band))
-      found = { cells: parts.reduce((s, x) => s + x.cells, 0), windows: parts.flatMap((x) => x.windows).sort((a, b) => b.cells - a.cells) }
-    } else found = windowsFor(physics.simulate, hole, SEARCH)
+    const found = windowsFor(physics.simulate, hole, SEARCH)
     parentPort.postMessage({ ...job, name: def.name, note: def.note, found, secs: Math.round((Date.now() - t) / 1000) })
   })
 }
