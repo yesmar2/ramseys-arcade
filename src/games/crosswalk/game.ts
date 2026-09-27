@@ -1,7 +1,6 @@
 import { getPersonalBest } from '../../lib/personalBest'
 import { playHeader } from '../playHeader'
 import { haptic } from '../../lib/haptics'
-import { isQuiet } from '../../lib/quiet'
 import { sfx } from '../../lib/sound'
 
 export type Dir = 'up' | 'down' | 'left' | 'right'
@@ -22,8 +21,8 @@ export type Row = {
   trees: number[]
   /** Static stepping stones on a water row. A row has stones or logs, never both. */
   rocks: number[]
-  /** Coin columns — grass, stepping stones, and rarely a road. */
-  coins: number[]
+  /** Ticket columns — grass, stepping stones, and rarely a road. */
+  tickets: number[]
   vehicles: Vehicle[]
   /** Rail crossing cycle timer (seconds). */
   railTimer?: number
@@ -51,7 +50,7 @@ export type DeathBit = {
   size: number
 }
 
-export type CoinPop = {
+export type TicketPop = {
   c: number
   r: number
   t: number
@@ -74,10 +73,8 @@ export type Snapshot = {
   target: number
   beatBest: boolean
   cause: DeathCause | null
-  /** Coins grabbed this run. */
-  runCoins: number
-  /** Lifetime banked coins. */
-  wallet: number
+  /** Prize tickets picked up this run; they're paid into the player's account with the run. */
+  runTickets: number
   /** Cars squeezed past mid-hop this run. */
   nearMisses: number
   /** Rows broken in an unbroken chain right now. */
@@ -152,9 +149,8 @@ export type GameState = {
    * shows every near miss; only this says which ones went in the book.
    */
   closeCall: number
-  runCoins: number
-  wallet: number
-  coinPops: CoinPop[]
+  runTickets: number
+  ticketPops: TicketPop[]
   puffs: Puff[]
   deathBits: DeathBit[]
   shake: number
@@ -264,11 +260,13 @@ const LOG_SNAP = 0.7
 /** Target water between logs, in tiles. */
 const LOG_GAP = 1.05
 /**
- * Traffic paint. Amber was one of these, the hopper's own colour and the
- * coin's, so a car could wear the face of the thing you steer: indigo took its
- * place. Only the value moved, so every lane still rolls the same numbers.
+ * Traffic paint. Amber was one of these, the hopper's own colour, so a car
+ * could wear the face of the thing you steer: indigo took its place. Orange
+ * (18) went the same way when coins became prize tickets, which are that
+ * orange, and magenta took it. Only the values moved, so every lane still
+ * rolls the same numbers.
  */
-const CAR_HUES = [18, 348, 272, 198, 236, 128, 168]
+const CAR_HUES = [300, 348, 272, 198, 236, 128, 168]
 /** Lorries are the long ones; the renderer gives them a cab and a trailer. */
 const LORRY_W = 2.0
 const CAR_W = 1.4
@@ -455,36 +453,6 @@ function wrapX(x: number, span: number): number {
   return m < 0 ? m + span : m
 }
 
-const WALLET_KEY = 'crosswalk-wallet'
-const LEGACY_WALLET_KEY = 'stride-wallet'
-
-export function loadWallet(): number {
-  try {
-    let raw = localStorage.getItem(WALLET_KEY)
-    if (raw == null) {
-      raw = localStorage.getItem(LEGACY_WALLET_KEY)
-      if (raw != null) {
-        localStorage.setItem(WALLET_KEY, raw)
-        localStorage.removeItem(LEGACY_WALLET_KEY)
-      }
-    }
-    const n = Number(raw || '0')
-    return Number.isFinite(n) && n > 0 ? Math.floor(n) : 0
-  } catch {
-    return 0
-  }
-}
-
-function saveWallet(n: number) {
-  // Coins picked up by the home page preview playing itself are not the player's to bank.
-  if (isQuiet()) return
-  try {
-    localStorage.setItem(WALLET_KEY, String(Math.max(0, Math.floor(n))))
-  } catch {
-    /* ignore */
-  }
-}
-
 function loadBest() {
   return getPersonalBest('crosswalk')
 }
@@ -584,12 +552,12 @@ function makeGrassRow(
   for (let i = 0; i < want && pool.length; i++) {
     trees.push(pool.splice(Math.floor(rand() * pool.length), 1)[0])
   }
-  const coins: number[] = []
+  const tickets: number[] = []
   // Sparse pickups — chase-worthy, not carpeted.
   if (pool.length && rand() < 0.12) {
-    coins.push(pool[Math.floor(rand() * pool.length)])
+    tickets.push(pool[Math.floor(rand() * pool.length)])
   }
-  return { kind: 'grass', dir: 0, speed: 0, trees, rocks: [], coins, vehicles: [] }
+  return { kind: 'grass', dir: 0, speed: 0, trees, rocks: [], tickets, vehicles: [] }
 }
 
 function makeRoadRow(row: number, cols: number, rand: () => number, prev?: Row): Row {
@@ -635,10 +603,10 @@ function makeRoadRow(row: number, cols: number, rand: () => number, prev?: Row):
   const want = 2 + Math.round(d * 2 + rand() * 1.6)
   const count = laneCount(span, w, minGap, want)
   /*
-   * Coins in traffic.
+   * Tickets in traffic.
    *
-   * Every coin used to sit on grass or on a stone — on safe ground, by
-   * construction — so taking one cost nothing and "most coins" was really just
+   * Every ticket used to sit on grass or on a stone — on safe ground, by
+   * construction — so taking one cost nothing and "most tickets" was really just
    * a slower way of measuring distance. One in the road is a decision: it is
    * free if it happens to be in your column and a sidestep in live traffic if
    * it is not.
@@ -647,14 +615,14 @@ function makeRoadRow(row: number, cols: number, rand: () => number, prev?: Row):
    * now charges for, so this is the tail of the distribution rather than the
    * bulk of it.
    */
-  const coins: number[] = rand() < 0.02 ? [Math.floor(rand() * cols)] : []
+  const tickets: number[] = rand() < 0.02 ? [Math.floor(rand() * cols)] : []
   return {
     kind: 'road',
     dir,
     speed,
     trees: [],
     rocks: [],
-    coins,
+    tickets,
     vehicles: spawnLane(
       span,
       count,
@@ -707,9 +675,9 @@ function makeStoneRow(
     rocks.add(fallback)
   }
   const rockList = [...rocks].sort((a, b) => a - b)
-  const coins: number[] = []
+  const tickets: number[] = []
   if (rockList.length && rand() < 0.12) {
-    coins.push(rockList[Math.floor(rand() * rockList.length)])
+    tickets.push(rockList[Math.floor(rand() * rockList.length)])
   }
   return {
     kind: 'water',
@@ -717,7 +685,7 @@ function makeStoneRow(
     speed: 0,
     trees: [],
     rocks: rockList,
-    coins,
+    tickets,
     vehicles: [],
   }
 }
@@ -767,7 +735,7 @@ function makeWaterRow(
     speed,
     trees: [],
     rocks: [],
-    coins: [],
+    tickets: [],
     vehicles: spawnLogLane(span, logScale, rand, phase),
   }
 }
@@ -793,7 +761,7 @@ function makeRailRow(row: number, cols: number, runSeed: number): Row {
     railCool,
     trees: [],
     rocks: [],
-    coins: [],
+    tickets: [],
     vehicles: [{ x: dir > 0 ? -trainW - 6 : cols + 6, w: trainW, hue: 350 }],
   }
 }
@@ -851,7 +819,7 @@ export function generateRow(
         if (rand() < 0.2) trees.push(c)
       }
     }
-    return { kind: 'grass', dir: 0, speed: 0, trees, rocks: [], coins: [], vehicles: [] }
+    return { kind: 'grass', dir: 0, speed: 0, trees, rocks: [], tickets: [], vehicles: [] }
   }
 
   // Guarantee a breather after a stretch of hazards; the stretch grows with
@@ -1099,14 +1067,11 @@ function die(state: GameState, cause: DeathCause): GameState {
   haptic('crash')
 
   const best = Math.max(state.best, state.furthest, loadBest())
-  const wallet = state.wallet + state.runCoins
-  if (state.runCoins > 0) saveWallet(wallet)
 
   return {
     ...state,
     phase: 'dying',
     best,
-    wallet,
     cause,
     hop: null,
     queued: null,
@@ -1123,21 +1088,21 @@ function fadePuffs(puffs: Puff[], dt: number): Puff[] {
   return puffs.map((p) => ({ ...p, t: p.t - dt })).filter((p) => p.t > 0)
 }
 
-function collectCoin(state: GameState): GameState {
+function collectTicket(state: GameState): GameState {
   const row = state.rows.get(state.row)
-  if (!row?.coins.length) return state
+  if (!row?.tickets.length) return state
   const c = Math.round(state.col)
-  if (!row.coins.includes(c)) return state
-  const coins = row.coins.filter((x) => x !== c)
+  if (!row.tickets.includes(c)) return state
+  const tickets = row.tickets.filter((x) => x !== c)
   const rows = new Map(state.rows)
-  rows.set(state.row, { ...row, coins })
+  rows.set(state.row, { ...row, tickets })
   sfx('good')
   haptic('hit')
   return {
     ...state,
     rows,
-    runCoins: state.runCoins + 1,
-    coinPops: [...state.coinPops, { c, r: state.row, t: 0.42 }],
+    runTickets: state.runTickets + 1,
+    ticketPops: [...state.ticketPops, { c, r: state.row, t: 0.42 }],
   }
 }
 
@@ -1176,9 +1141,8 @@ export function createInitialState(cols = COLS): GameState {
     nearMissCooldown: 0,
     nearMisses: 0,
     closeCall: 0,
-    runCoins: 0,
-    wallet: loadWallet(),
-    coinPops: [],
+    runTickets: 0,
+    ticketPops: [],
     puffs: [],
     deathBits: [],
     shake: 0,
@@ -1201,7 +1165,7 @@ export function startGame(prev: GameState): GameState {
   }
 }
 
-/** Admin/testing: teleport forward to a row without awarding coins. */
+/** Admin/testing: teleport forward to a row without awarding tickets. */
 export function jumpToRow(state: GameState, row: number): GameState {
   if (state.phase !== 'playing') return state
   const target = Math.max(0, Math.floor(row) || 0)
@@ -1222,7 +1186,7 @@ export function jumpToRow(state: GameState, row: number): GameState {
     bestChain: 0,
     cameraY: Math.max(0, target - PLAYER_VIEW_ROW),
     rows: new Map(),
-    coinPops: [],
+    ticketPops: [],
     puffs: [],
     deathBits: [],
     invuln: RESPAWN_INVULN,
@@ -1317,7 +1281,7 @@ export function hop(state: GameState, dir: Dir): GameState {
   const pos = playerCenter(next)
   next.cameraY = Math.max(next.cameraY, pos.r - PLAYER_VIEW_ROW)
   ensureRows(next, Math.floor(next.cameraY) - BACK_LIMIT - 2, Math.floor(next.cameraY) + ROW_BUFFER)
-  return collectCoin(next)
+  return collectTicket(next)
 }
 
 export function tick(state: GameState, dt: number): GameState {
@@ -1377,7 +1341,7 @@ export function tick(state: GameState, dt: number): GameState {
     // tick down link by link was noise in exchange for nothing.
     streak: state.streakTimer + dt > MOMENTUM_WINDOW ? 0 : state.streak,
     queuedAge: state.queued ? state.queuedAge + dt : 0,
-    coinPops: state.coinPops
+    ticketPops: state.ticketPops
       .map((p) => ({ ...p, t: p.t - dt }))
       .filter((p) => p.t > 0),
     puffs: fadePuffs(state.puffs, dt),
@@ -1506,8 +1470,7 @@ export function toSnapshot(state: GameState): Snapshot {
     target: state.target,
     beatBest: state.beatBest,
     cause: state.cause,
-    runCoins: state.runCoins,
-    wallet: state.wallet,
+    runTickets: state.runTickets,
     nearMisses: state.nearMisses,
     chain: state.streak,
     bestChain: state.bestChain,

@@ -98,7 +98,7 @@ export const HOW_TO_PLAY: Record<string, HowToPlay> = {
       { what: 'Every new row', pts: '+1' },
     ],
     ends: 'Traffic, a train, the water, or 10 seconds without a new row.',
-    tip: 'Coins and chains are records of their own. They don’t add to your score.',
+    tip: 'Hop onto tickets to spend at the prize counter. They don’t add to your score.',
   },
   stacker: {
     goal: 'Stack as high as you can.',

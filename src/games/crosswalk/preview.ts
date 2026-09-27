@@ -23,7 +23,7 @@ import { renderGame } from './render'
  * logs and trains all run on the engine's own numbers, so it can see where each
  * will be a second or two from now; it hops when the lane ahead will be clear,
  * sidesteps to line up with a gap or a log, waits on the verge when it has to,
- * and takes a coin that is on the way. It pauses to look now and then on safe
+ * and takes a ticket that is on the way. It pauses to look now and then on safe
  * ground, and once in a while it misreads a road or a river, more often the
  * further it has come, which is how a run ends.
  */
@@ -255,7 +255,7 @@ type Node = {
   parent: number
   first: number
   hopAt: number
-  coins: number
+  tickets: number
   cost: number
 }
 
@@ -274,7 +274,7 @@ function plan(c: Ctx): { first: number; hopAt: number } {
   const horizon = c.stuck ? STUCK_HORIZON : HORIZON
   const reach = c.stuck ? s.cols : REACH
   const lowest = c.stuck ? floor : Math.max(floor, s.row - 1)
-  const nodes: Node[] = [{ k: 0, r: s.row, col: s.col, parent: -1, first: 0, hopAt: -1, coins: 0, cost: 0 }]
+  const nodes: Node[] = [{ k: 0, r: s.row, col: s.col, parent: -1, first: 0, hopAt: -1, tickets: 0, cost: 0 }]
   const buckets: number[][] = Array.from({ length: horizon + 1 }, () => [])
   buckets[0].push(0)
   // One visit to each place at each moment, whichever way it was reached first.
@@ -308,7 +308,7 @@ function plan(c: Ctx): { first: number; hopAt: number } {
         if (seen.has(key) || !hopSafe(c, n.r, n.col, to.r, to.col, t)) continue
         seen.add(key)
         const row = s.rows.get(to.r)
-        const coin = row && row.coins.includes(Math.round(to.col)) && to.r >= s.row ? 1 : 0
+        const ticket = row && row.tickets.includes(Math.round(to.col)) && to.r >= s.row ? 1 : 0
         add({
           k: land,
           r: to.r,
@@ -316,7 +316,7 @@ function plan(c: Ctx): { first: number; hopAt: number } {
           parent: i,
           first: k === 0 ? a : n.first,
           hopAt: n.hopAt === -1 ? k : n.hopAt,
-          coins: n.coins + coin,
+          tickets: n.tickets + ticket,
           cost: n.cost + DETOUR[dir],
         })
       }
@@ -343,7 +343,7 @@ function plan(c: Ctx): { first: number; hopAt: number } {
     const n = nodes[i]
     const t = n.k * TICK
     // The middle of the road is better than its edge.
-    const v = 10 * (n.r - s.row) + 2.5 * n.coins - 1.5 * t - n.cost - 0.35 * Math.abs(n.col - middle)
+    const v = 10 * (n.r - s.row) + 2.5 * n.tickets - 1.5 * t - n.cost - 0.35 * Math.abs(n.col - middle)
     if (alive[i] && v > best && settles(c, n.r, n.col, t) && !pocket(s, n.r, n.col)) {
       best = v
       choice = { first: n.first, hopAt: n.hopAt }
@@ -423,8 +423,8 @@ export function makeSim(): Sim<GameState> {
           target: 0,
           celebrate: 0,
           closeCall: 0,
-          coinPops: [],
-          runCoins: 0,
+          ticketPops: [],
+          runTickets: 0,
           // Once a run is over the game draws the hopper whole again under its score card; hold
           // on the end of the fall instead.
           ...(s.phase === 'gameover' ? { phase: 'dying' as const, deathAnim: 0 } : null),
@@ -438,7 +438,7 @@ export function makeSim(): Sim<GameState> {
       m = freshPilot()
       return newRun(w, h)
     },
-    // The still: a river of logs and stones ahead with a coin on it, a road behind, the hopper between.
+    // The still: a river of logs and stones ahead with a ticket on it, a road behind, the hopper between.
     poster: { seed: 3, at: 36 },
     // Its renderer times its twinkles and pulses by the page's clock; the run's own keeps the still the same.
     runClock: true,

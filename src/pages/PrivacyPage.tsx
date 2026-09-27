@@ -50,6 +50,11 @@ export function PrivacyPage() {
           you wrote, the page you sent it from and your browser type, with your account and player
           name if you’re signed in.
         </li>
+        <li>
+          <strong>Tickets and prizes.</strong> With your account we keep the tickets your saved runs
+          and other play have paid, what you’ve traded them for at the prize counter, and the prize
+          you’re saving for.
+        </li>
       </ul>
 
       <h2>How we use information</h2>

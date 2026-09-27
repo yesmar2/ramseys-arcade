@@ -58,6 +58,7 @@ export type Route =
   | { name: 'plus' }
   | { name: 'admin' }
   | { name: 'stats' }
+  | { name: 'prizes' }
   | { name: 'privacy' }
   | { name: 'terms' }
   | { name: 'devCelebrate' }
@@ -202,6 +203,11 @@ export function adminHref() {
 
 export function statsHref() {
   return '/stats'
+}
+
+/** The prize counter, where tickets trade for looks. */
+export function prizesHref() {
+  return '/prizes'
 }
 
 export function tournamentsHref() {
@@ -439,6 +445,7 @@ export function parseUrl(pathname: string, search: string): Route {
   if (path === 'plus') return { name: 'plus' }
   if (path === 'admin') return { name: 'admin' }
   if (path === 'stats') return { name: 'stats' }
+  if (path === 'prizes') return { name: 'prizes' }
   if (path === 'privacy') return { name: 'privacy' }
   if (path === 'terms') return { name: 'terms' }
   if (path === 'dev/celebrate' && import.meta.env.DEV) return { name: 'devCelebrate' }

@@ -302,6 +302,7 @@ export function RankPage({
               backHref={isSelf ? undefined : standingsHref(period)}
               howHref={rankHref(isSelf ? undefined : viewedName, period)}
               extra={statsLink}
+              avatarId={avatarId}
             />
 
             <ProfileBestBoard name={viewedName} isSelf={isSelf} viewer={isSelf ? '' : myName} bests={bests} groupId={groupId} />

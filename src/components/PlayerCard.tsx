@@ -1,4 +1,8 @@
 import type { CSSProperties, MouseEvent, ReactNode } from 'react'
+import { prizeById } from '../data/prizes'
+import { parseAvatar, wornPrize } from '../lib/avatars'
+import { PlayerName } from './PlayerName'
+import { CardBackdrop, NeonSign } from './prizes/PrizeArt'
 import { navigate, rankHref } from '../hooks/useHashRoute'
 import { neighboursOf, type PeriodRanks } from '../hooks/useProfileBoards'
 import { inkOn } from '../lib/color'
@@ -280,6 +284,7 @@ export function PlayerCard({
   backHref,
   howHref,
   extra,
+  avatarId,
 }: {
   name: string
   isSelf: boolean
@@ -302,10 +307,17 @@ export function PlayerCard({
   howHref: string
   /** One more fact along the card's foot: on your own, the way to your stats. */
   extra?: ReactNode
+  /** The player's avatar string, which carries what they wear from the prize counter: a card theme, a title, a name style, the neon sign. */
+  avatarId?: string | null
 }) {
   const style = accent
     ? ({ '--hero-accent': accent, '--hero-ink': inkOn(accent), '--tile-accent': accent } as CSSProperties)
     : undefined
+  // What they wear from the prize counter.
+  const look = parseAvatar(avatarId)
+  const theme = wornPrize(look, 'card')
+  const title = prizeById(wornPrize(look, 'title'))
+  const sign = wornPrize(look, 'sign')
   const word = periodWord(period)
   const said = loading
     ? null
@@ -345,10 +357,16 @@ export function PlayerCard({
 
   return (
     <section
-      className="home-banner pcard"
+      className={`home-banner pcard${theme ? ' pcard--themed' : ''}`}
       style={style}
       aria-label={isSelf ? 'Your player card' : `${name}'s player card`}
     >
+      {theme ? (
+        <>
+          <CardBackdrop className="pcard__theme" theme={theme} width={1600} height={720} scale={1.7} />
+          <span className="pcard__theme-shade" aria-hidden="true" />
+        </>
+      ) : null}
       <div className="pcard__main">
         {onArtClick ? (
           <button type="button" className="pcard__art pcard__art--btn" onClick={onArtClick} aria-label="Edit your avatar">
@@ -374,7 +392,16 @@ export function PlayerCard({
               </span>
             ) : null}
           </div>
-          <h1 className="pcard__name">{name}</h1>
+          {sign ? (
+            <h1 className="pcard__name pcard__name--sign" aria-label={name}>
+              <NeonSign name={name} width={340} wires={false} />
+            </h1>
+          ) : (
+            <h1 className="pcard__name">
+              <PlayerName name={name} style={wornPrize(look, 'name')} />
+            </h1>
+          )}
+          {title ? <span className="prize-plate pcard__title">{title.name}</span> : null}
           <p className="pcard__head">{said ? said.head : <Skel w="16ch" />}</p>
           <p className="pcard__sub">{said ? said.sub : <Skel w="24ch" />}</p>
           {!loading && rank != null ? (

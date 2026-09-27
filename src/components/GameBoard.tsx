@@ -40,6 +40,7 @@ import { GameThumbArt } from './GameThumbArt'
 import { LeaderboardList } from './LeaderboardList'
 import { PlayerMark } from './PlayerMark'
 import { ShareBoardButton } from './ShareBoardButton'
+import { PlayerName } from './PlayerName'
 
 /*
  * One game's own board. The banner is the game at the scale of the page, its
@@ -465,7 +466,7 @@ function PlayerRow({ slug, player, you, period }: { slug: string; player: BoardP
         <PlayerMark name={player.name} avatarId={player.best.avatarId} className="gb-row__mark" />
         <span className="gb-row__who">
           <span className="gb-row__name">
-            <span>{player.name}</span>
+            <PlayerName name={player.name} avatarId={player.best.avatarId} />
             {mine ? <span className="sb-row__you">You</span> : null}
           </span>
           <span className="gb-row__runs">

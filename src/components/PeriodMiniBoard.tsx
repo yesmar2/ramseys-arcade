@@ -10,6 +10,7 @@ import {
 } from '../lib/leaderboard'
 import { PlayerAvatar } from './PlayerAvatar'
 import { PodiumMedal, medalKind } from './PodiumMedal'
+import { PlayerName } from './PlayerName'
 
 const PODIUM_SLOTS = 3
 
@@ -79,7 +80,7 @@ export function PeriodMiniBoard({
               </span>
               <a className="lb-summary__player" href={rankHref(name, period)} title={name}>
                 <PlayerAvatar avatarId={entry.avatarId} name={name} size="sm" />
-                <span className="lb-summary__name">{name}</span>
+                <PlayerName className="lb-summary__name" name={name} avatarId={entry.avatarId} />
                 {isYou ? <span className="lb-summary__you">You</span> : null}
               </a>
               <span className="lb-summary__score">

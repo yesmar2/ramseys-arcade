@@ -19,6 +19,7 @@ import { resolveGameAccent } from '../lib/theme'
 import { GameThumbArt } from './GameThumbArt'
 import { PlayerMark } from './PlayerMark'
 import { medalKind } from './PodiumMedal'
+import { PlayerName } from './PlayerName'
 
 /** A points figure that agrees with itself: 1 pt, 2 pts. */
 function pts(n: number) {
@@ -59,7 +60,7 @@ function Standings({
       <li key={`${e.rank}-${e.name}`} className={`hb-row${e.name === you ? ' hb-row--you' : ''}`}>
         <span className={`hb-row__rank${medal ? ` hb-row__rank--${medal}` : ''}`}>{e.rank}</span>
         <PlayerMark name={e.name} avatarId={e.avatarId} className="hb-row__mark" />
-        <span className="hb-row__name">{e.name}</span>
+        <PlayerName className="hb-row__name" name={e.name} avatarId={e.avatarId} />
         {e.name === you ? <span className="hb-row__you">You</span> : null}
         <span className="hb-row__pts">
           {e.score.toLocaleString()} <small>{e.score === 1 ? 'pt' : 'pts'}</small>

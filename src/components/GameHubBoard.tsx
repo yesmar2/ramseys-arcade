@@ -13,6 +13,7 @@ import { formatLeaderboardScore } from '../lib/leaderboardFormat'
 import { BoardEmpty } from './BoardChrome'
 import { ChevronRightIcon, PlusIcon, SparkleIcon } from './chromeIcons'
 import { PlayerAvatar } from './PlayerAvatar'
+import { PlayerName } from './PlayerName'
 
 /** Rows at the top of the board before it skips down to you, and the rows it shows when it doesn't. */
 const TOP_ROWS = 5
@@ -178,7 +179,7 @@ function BoardRow({
       <span className="gh-row__place">{player.place}</span>
       <PlayerAvatar avatarId={player.best.avatarId} name={player.name} size="md" className="gh-row__avatar" />
       <a className="gh-row__name" href={rankHref(player.name)}>
-        <span>{player.name}</span>
+        <PlayerName name={player.name} avatarId={player.best.avatarId} />
         {you ? <span className="gh-row__you">You</span> : null}
       </a>
       <span className="gh-row__score">

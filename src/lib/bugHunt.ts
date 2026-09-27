@@ -1,4 +1,5 @@
 import { games, isListedGame } from '../data/games'
+import { noteTicketsPaid } from './tickets'
 import {
   aboutHref,
   gameBoardHref,
@@ -449,6 +450,8 @@ type ServerHunt = {
   count: number
   you?: { finds: ServerFind[]; place: number | null; set?: { key: string; bugs: string[] } }
   completed?: ServerCompleted
+  /** Tickets the day's bug paid, when this find was the one that caught it. */
+  tickets?: { earned: number; balance: number }
 }
 
 export type HuntServer = {
@@ -491,6 +494,7 @@ function emit() {
  */
 function apply(reply: ServerHunt, token: string | null) {
   const same = token === getSessionToken()
+  if (same) noteTicketsPaid(reply.tickets)
   const you = same ? reply.you : undefined
   const completed = same && reply.completed
     ? { ...reply.completed, day: reply.day }

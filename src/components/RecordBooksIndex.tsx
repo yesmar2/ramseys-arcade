@@ -22,6 +22,7 @@ import { resolveGameAccent } from '../lib/theme'
 import { BoardEmpty } from './BoardChrome'
 import { GameThumbArt } from './GameThumbArt'
 import { PlayerMark } from './PlayerMark'
+import { PlayerName } from './PlayerName'
 
 /*
  * The record books' front page: who holds the most records, the ones you hold
@@ -190,7 +191,7 @@ export function RecordBooksIndex() {
                       <span className="sb-row__ord">{ordinal(i + 1).toUpperCase()}</span>
                       <PlayerMark name={h.name} avatarId={avatars.get(h.name)} className="sb-row__mark" />
                       <span className="sb-row__who">
-                        <span className="sb-row__name">{h.name}</span>
+                        <PlayerName className="sb-row__name" name={h.name} avatarId={avatars.get(h.name)} />
                         <span className="sb-row__boards">
                           in {bookCount} {bookCount === 1 ? 'book' : 'books'}
                           {mineRow ? <span className="sb-row__you">You</span> : null}

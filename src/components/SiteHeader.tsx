@@ -30,6 +30,8 @@ import { SiteTabs } from './SiteTabs'
 import { navActive, OPEN_MENU_EVENT, SITE_NAV_LINKS } from './siteNav'
 import { BugHuntHost } from './BugHunt'
 import { FeedbackHost } from './FeedbackPanel'
+import { TicketChip } from './prizes/TicketChip'
+import { PlayerName } from './PlayerName'
 
 /**
  * The site's header, on every page but a game screen: one floating bar with
@@ -227,6 +229,7 @@ export function SiteHeader() {
         <div className="site-bar__end">
           <SiteSearch />
           {showScope ? <SiteScopeControl /> : null}
+          {tagged ? <TicketChip here={route.name === 'prizes'} /> : null}
 
           <div className="site-bar__you">
             {signedIn ? <NotificationBell notes={notes} onWear={wear} /> : null}
@@ -274,7 +277,7 @@ export function SiteHeader() {
                     AS
                   </span>
                 ) : null}
-                <span className="site-you__name">{playerName}</span>
+                <PlayerName className="site-you__name" name={playerName} avatarId={avatarId} />
                 {rankLoading ? (
                   <span className="skel-line site-you__skel" aria-hidden="true" />
                 ) : rank != null ? (

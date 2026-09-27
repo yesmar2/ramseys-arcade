@@ -1,5 +1,7 @@
 import { useId, useState, type CSSProperties, type ReactNode } from 'react'
 import { PageShell } from '../components/PageShell'
+import { RunTicketsLine, RunTicketsWaiting } from '../components/prizes/RunTickets'
+import type { RunTickets } from '../lib/tickets'
 import {
   ReportSignIn,
   ReportWho,
@@ -179,12 +181,47 @@ type Sample = {
   body: Omit<RunReportBodyProps, 'titleId' | 'primary'> & { primary?: RunReportBodyProps['primary'] }
 }
 
+/** What each sample run paid in tickets, as a save would answer. */
+const SAMPLE_TICKETS: Partial<Record<string, RunTickets>> = {
+  quiet: { earned: 3, lines: [{ reason: 'run', amount: 3 }], balance: 1287, beat: 31, place: 7, field: 10, capped: 0, todayLeft: 180 },
+  best: {
+    earned: 17,
+    lines: [
+      { reason: 'run', amount: 9 },
+      { reason: 'best', amount: 5 },
+      { reason: 'pickup', amount: 3 },
+    ],
+    balance: 1301,
+    beat: 88,
+    place: 2,
+    field: 9,
+    capped: 0,
+    todayLeft: 166,
+  },
+  top: {
+    earned: 20,
+    lines: [
+      { reason: 'run', amount: 10 },
+      { reason: 'best', amount: 5 },
+      { reason: 'pickup', amount: 5 },
+    ],
+    balance: 1321,
+    beat: 100,
+    place: 1,
+    field: 9,
+    capped: 0,
+    todayLeft: 146,
+  },
+}
+
 function reportSample(key: string, note: string, f: RunFacts, title: string, sub: string): Sample {
   const r = composeReport(f)
+  const paid = SAMPLE_TICKETS[key]
   return {
     key,
     note,
     body: {
+      tickets: paid ? <RunTicketsLine paid={paid} game="crosswalk" /> : null,
       tier: r.tier,
       ribbon: r.ribbon,
       eyebrow: title,
@@ -229,8 +266,8 @@ function samples(tag: ReactNode, signIn: ReactNode): Sample[] {
       facts(296, {
         books: [
           {
-            hit: { id: 'crosswalk:most-coins', label: 'Most coins in a run', value: '34', rank: 1 },
-            record: { id: 'most-coins', unit: 'count', label: 'Most coins in a run' } as never,
+            hit: { id: 'crosswalk:most-coins', label: 'Most tickets in a run', value: '34', rank: 1 },
+            record: { id: 'most-coins', unit: 'count', label: 'Most tickets in a run' } as never,
             holder: { id: 'r1', name: 'VERA', score: 34, at: NOW },
             previous: { id: 'r0', name: 'CHEF', score: 33, at: NOW - 86_400_000 },
           },
@@ -251,6 +288,7 @@ function samples(tag: ReactNode, signIn: ReactNode): Sample[] {
         sub: 'The train got you',
         scoreTone: 'plain',
         lines: [],
+        tickets: <RunTicketsWaiting />,
         children: signIn,
         who: <ReportWho text="Not saved yet" />,
       },

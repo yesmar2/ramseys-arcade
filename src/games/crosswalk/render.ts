@@ -96,7 +96,7 @@ function tileNoise(row: number, col: number, salt: number) {
 /**
  * The ground changes as you get deeper, so a long run has somewhere to arrive.
  *
- * Only the ground: grass, trees, water. Cars, logs, coins and the hopper keep
+ * Only the ground: grass, trees, water. Cars, logs, tickets and the hopper keep
  * their hues everywhere, because those are the things a player reads to stay
  * alive and a palette is not worth making a hazard harder to pick out.
  *
@@ -617,36 +617,81 @@ function drawHopper(
   drawEyes(ctx, { ...eyes, line: pose.blink ? stroke : ring, look: LOOK[pose.facing], closed: pose.blink })
 }
 
-function drawCoin(
+/** The prize ticket's orange, the one the prize counter pays out in. */
+const TICKET = 16
+
+/**
+ * A prize ticket: a short orange strip with a notch cut in each end, a dotted
+ * tear line and a star, rocking a little where it lies.
+ */
+function drawTicket(
   ctx: CanvasRenderingContext2D,
   cx: number,
   cy: number,
   size: number,
   dark: boolean,
   bob = 0,
-  /** Turn, in radians: the coin spins on its upright, never quite edge-on. */
-  spin = 0,
+  /** Where it is in its rock, in radians: it tips a little either way, never over. */
+  sway = 0,
 ) {
-  const r = size * 0.22
-  const y = cy - bob
-  const turn = 0.58 + 0.42 * Math.abs(Math.cos(spin))
+  const w = size * 0.5
+  const h = size * 0.3
+  const notch = h * 0.19
+  const corner = h * 0.16
+  const x = -w / 2
+  const y = -h / 2
+  ctx.save()
+  ctx.translate(cx, cy - bob)
+  ctx.rotate(Math.sin(sway) * 0.16)
   ctx.beginPath()
-  ctx.ellipse(cx, y, r * turn, r, 0, 0, TAU)
-  ctx.fillStyle = fill(48, 92, dark ? 58 : 54, 1)
+  ctx.moveTo(x + corner, y)
+  ctx.lineTo(x + w - corner, y)
+  ctx.arcTo(x + w, y, x + w, y + corner, corner)
+  ctx.lineTo(x + w, -notch)
+  ctx.arc(x + w, 0, notch, -Math.PI / 2, Math.PI / 2, true)
+  ctx.lineTo(x + w, y + h - corner)
+  ctx.arcTo(x + w, y + h, x + w - corner, y + h, corner)
+  ctx.lineTo(x + corner, y + h)
+  ctx.arcTo(x, y + h, x, y + h - corner, corner)
+  ctx.lineTo(x, notch)
+  ctx.arc(x, 0, notch, Math.PI / 2, -Math.PI / 2, true)
+  ctx.lineTo(x, y + corner)
+  ctx.arcTo(x, y, x + corner, y, corner)
+  ctx.closePath()
+  ctx.fillStyle = fill(TICKET, 100, dark ? 64 : 58, 1)
   ctx.fill()
-  ctx.strokeStyle = fill(42, 90, dark ? 42 : 38, 1)
-  ctx.lineWidth = Math.max(1.6, size * 0.05)
+  ctx.strokeStyle = fill(TICKET - 4, 82, dark ? 40 : 36, 1)
+  ctx.lineWidth = Math.max(1.4, size * 0.04)
   strokeOutlined(ctx)
-  // The rim, stamped just inside the edge.
+  // The tear line, a third of the way along.
   ctx.beginPath()
-  ctx.ellipse(cx, y, r * 0.62 * turn, r * 0.62, 0, 0, TAU)
-  ctx.strokeStyle = fill(42, 90, dark ? 42 : 38, 0.45)
-  ctx.lineWidth = Math.max(1, size * 0.026)
+  ctx.moveTo(x + w * 0.31, y + h * 0.2)
+  ctx.lineTo(x + w * 0.31, y + h * 0.8)
+  ctx.setLineDash([h * 0.1, h * 0.09])
+  ctx.strokeStyle = fill(TICKET - 4, 82, dark ? 30 : 28, 0.55)
+  ctx.lineWidth = Math.max(1, size * 0.022)
   ctx.stroke()
+  ctx.setLineDash([])
+  // A four-point star on the long end.
+  const sx = x + w * 0.65
+  const s = h * 0.27
   ctx.beginPath()
-  ctx.ellipse(cx - r * 0.25 * turn, y - r * 0.28, r * 0.28 * turn, r * 0.28, 0, 0, TAU)
-  ctx.fillStyle = dark ? 'rgba(255, 255, 255, 0.28)' : 'rgba(255, 255, 255, 0.55)'
+  ctx.moveTo(sx, -s)
+  ctx.quadraticCurveTo(sx, 0, sx + s, 0)
+  ctx.quadraticCurveTo(sx, 0, sx, s)
+  ctx.quadraticCurveTo(sx, 0, sx - s, 0)
+  ctx.quadraticCurveTo(sx, 0, sx, -s)
+  ctx.fillStyle = fill(TICKET - 4, 82, dark ? 30 : 28, 0.5)
   ctx.fill()
+  // Light along the top edge.
+  ctx.beginPath()
+  ctx.moveTo(x + corner + w * 0.04, y + h * 0.2)
+  ctx.lineTo(x + w * 0.52, y + h * 0.2)
+  ctx.strokeStyle = dark ? 'rgba(255, 255, 255, 0.3)' : 'rgba(255, 255, 255, 0.55)'
+  ctx.lineWidth = Math.max(1, size * 0.024)
+  ctx.lineCap = 'round'
+  ctx.stroke()
+  ctx.restore()
 }
 
 /** Brief shadow, then a fast Crossy-style snatch. */
@@ -903,7 +948,7 @@ function seasonAt(row: number) {
   return Math.floor((Math.max(0, row) + BIOME_BLEND / 2) / BIOME_ROWS) % BIOMES.length
 }
 
-/** Palette hues for meadow flowers. No yellows, so nothing on the grass looks like a coin. */
+/** Palette hues for meadow flowers. No yellows or oranges, so nothing on the grass looks like the hopper or a ticket. */
 const FLOWER_HUES = [330, 262, 205]
 
 /**
@@ -956,7 +1001,7 @@ function drawGrassDetail(
   ctx.stroke()
 
   for (let c = first; c <= last; c++) {
-    if (row.trees.includes(c) || row.coins.includes(c)) continue
+    if (row.trees.includes(c) || row.tickets.includes(c)) continue
     const n = tileNoise(worldRow, c, 40)
     const fx = ox + (c + 0.2 + tileNoise(worldRow, c, 41) * 0.6) * cell
     const fy = y + (0.25 + tileNoise(worldRow, c, 42) * 0.55) * cell
@@ -1212,8 +1257,8 @@ function drawRow(
   }
 
   const bob = Math.sin(time * 4.5 + worldRow) * cell * 0.04
-  for (const coinCol of row.coins) {
-    drawCoin(ctx, ox + (coinCol + 0.5) * cell, y + cell * 0.52, cell, dark, bob, time * 2.4 + coinCol + worldRow)
+  for (const ticketCol of row.tickets) {
+    drawTicket(ctx, ox + (ticketCol + 0.5) * cell, y + cell * 0.52, cell, dark, bob, time * 2.4 + ticketCol + worldRow)
   }
 }
 
@@ -1483,21 +1528,21 @@ export function renderGame(
     })
   }
 
-  for (const pop of state.coinPops) {
+  for (const pop of state.ticketPops) {
     const t = Math.max(0, pop.t / 0.42)
     const cx = ox + (pop.c + 0.5) * cell
     const rowY = rowScreenY(pop.r, cameraY, visibleRows, oy, cell)
     const cy = rowY + cell * 0.2 - (1 - t) * cell * 0.8
     ctx.save()
-    // A ring off the coin where it was, as the tally takes it.
+    // A ring off the ticket where it was, as the tally takes it.
     ctx.globalAlpha = t * 0.7
-    ctx.strokeStyle = fill(46, 92, dark ? 62 : 50, 1)
+    ctx.strokeStyle = fill(TICKET, 96, dark ? 64 : 52, 1)
     ctx.lineWidth = Math.max(1.5, cell * 0.04 * t)
     ctx.beginPath()
     ctx.arc(cx, rowY + cell * 0.52, cell * (0.22 + (1 - t) * 0.34), 0, TAU)
     ctx.stroke()
     ctx.globalAlpha = Math.min(1, t * 2.5)
-    boardText(ctx, '+1', cx, cy, Math.max(12, cell * 0.34 * landScale(1 - t)), fill(46, 90, dark ? 64 : 40, 1))
+    boardText(ctx, '+1', cx, cy, Math.max(12, cell * 0.34 * landScale(1 - t)), fill(TICKET, 94, dark ? 66 : 44, 1))
     ctx.restore()
   }
 
@@ -1561,8 +1606,9 @@ export function renderGame(
       Math.max(22, cell * 0.64 * landScale(deathT)),
       deathColour(state.cause, dark),
     )
-    if (state.runCoins > 0) {
-      boardText(ctx, `+${state.runCoins} coins`, w / 2, ty + cell * 0.45, Math.max(14, cell * 0.32), fill(40, 86, dark ? 66 : 40, 1))
+    if (state.runTickets > 0) {
+      const words = `+${state.runTickets} ${state.runTickets === 1 ? 'ticket' : 'tickets'}`
+      boardText(ctx, words, w / 2, ty + cell * 0.45, Math.max(14, cell * 0.32), fill(TICKET, 94, dark ? 66 : 44, 1))
     }
     ctx.restore()
   }

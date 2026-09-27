@@ -13,6 +13,7 @@ import {
   recordsIndexHref,
   siteRecordsHref,
   statsHref,
+  prizesHref,
   termsHref,
   tournamentCreateHref,
   tournamentHref,
@@ -156,6 +157,7 @@ export function publicRoutes(): Route[] {
     { name: 'leaderboards' },
     { name: 'recordsIndex' },
     { name: 'siteRecords' },
+    { name: 'prizes' },
     { name: 'privacy' },
     { name: 'terms' },
   ]
@@ -266,6 +268,14 @@ export function pageMeta(route: Route): PageMeta {
       return { ...site, title: titled('Admin'), path: adminHref(), noindex: true }
     case 'stats':
       return { ...site, title: titled('Your stats'), path: statsHref(), noindex: true }
+    case 'prizes':
+      return {
+        ...site,
+        title: titled('Prize counter'),
+        description:
+          'Every run pays tickets. Trade them at the prize counter for looks that show on the boards: badge finishes, name styles, card themes, confetti and titles. Earned by playing, never bought.',
+        path: prizesHref(),
+      }
     case 'privacy':
       return {
         ...site,

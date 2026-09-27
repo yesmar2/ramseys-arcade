@@ -9,7 +9,7 @@ import {
   rankHref,
   recordsIndexHref,
   standingsHref,
-  statsHref,
+  prizesHref, statsHref,
   termsHref,
   tournamentCreateHref,
   tournamentsHref,
@@ -99,6 +99,9 @@ export function Footer() {
               </li>
               <li>
                 <a href={statsHref()}>Stats</a>
+              </li>
+              <li>
+                <a href={prizesHref()}>Prize counter</a>
               </li>
               <li>
                 <a href={rankHref(undefined, undefined, 'friends')}>Friends</a>

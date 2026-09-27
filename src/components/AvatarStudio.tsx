@@ -1,7 +1,8 @@
 import { useEffect, useId, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
 import { fetchFlair, flairNote, type Flair } from '../lib/avatarFlair'
+import { FINISH_IDS, PRIZE_KINDS, PRIZES, prizeById, type PrizeKind } from '../data/prizes'
+import { prizesHref } from '../hooks/useHashRoute'
 import {
-  AVATAR_BADGES,
   AVATAR_COLORS,
   AVATAR_EMBLEMS,
   AVATAR_PATTERNS,
@@ -9,6 +10,8 @@ import {
   AVATAR_RINGS,
   BADGE_LABELS,
   EMBLEM_LABELS,
+  FREE_BADGES,
+  isFinishBadge,
   PATTERN_LABELS,
   RING_INFO,
   encodeAvatar,
@@ -17,16 +20,22 @@ import {
   randomAvatar,
   resolveAvatar,
   setLocalAvatarId,
+  wearPrize,
+  wornPrize,
   type Avatar,
+  type AvatarBadge,
   type AvatarPin,
   type AvatarRing,
 } from '../lib/avatars'
 import { inkOn } from '../lib/color'
 import { useGlobalRank } from '../lib/globalRank'
 import { setPlayerAvatar } from '../lib/leaderboard'
+import { useTickets } from '../lib/tickets'
 import { LockIcon, SparkleIcon } from './chromeIcons'
 import { Panel, PanelHead } from './Panel'
 import { AvatarArt } from './PlayerAvatar'
+import { PlayerName } from './PlayerName'
+import { PrizeArt } from './prizes/PrizeArt'
 
 /** Flair to put on as the studio opens: what a trophy just unlocked. */
 export type AvatarWear = { ring?: AvatarRing; pin?: AvatarPin }
@@ -41,7 +50,18 @@ type AvatarStudioProps = {
   onClose: () => void
 }
 
-type Tab = 'mark' | 'colour' | 'flair'
+type Tab = 'mark' | 'colour' | 'flair' | 'prizes'
+
+/** What the Prizes tab puts on, in its order: everything from the counter but a finish, which is a badge. */
+const WORN_KINDS: Exclude<PrizeKind, 'finish'>[] = ['name', 'title', 'card', 'confetti', 'sign']
+
+const NONE_LABELS: Record<Exclude<PrizeKind, 'finish'>, string> = {
+  name: 'Plain',
+  title: 'No title',
+  card: 'Your colour',
+  confetti: 'The usual',
+  sign: 'No sign',
+}
 
 function Mark({ avatar, name, size, className }: { avatar: Avatar; name: string; size: number; className?: string }) {
   return (
@@ -102,6 +122,8 @@ export function AvatarStudio({ name, current, wear, onSaved, onClose }: AvatarSt
   const [error, setError] = useState<string | null>(null)
   const titleId = useId()
   const standing = useGlobalRank()
+  const tickets = useTickets()
+  const owned = useMemo(() => new Set(tickets.owned), [tickets.owned])
 
   useEffect(() => {
     let live = true
@@ -139,9 +161,14 @@ export function AvatarStudio({ name, current, wear, onSaved, onClose }: AvatarSt
         ? { label: pinInfo(draft.pin).label, rule: pinInfo(draft.pin).rule, note: flairNote('pin', draft.pin, flair.pins.find((p) => p.id === draft.pin), false) }
         : null
   const earnedCount = flair ? flair.rings.filter((r) => r.earned).length + flair.pins.filter((p) => p.earned).length : null
+  // A finish from the prize counter can be tried on, but only worn once it's traded for.
+  const finishLocked = isFinishBadge(draft.badge) && !owned.has(draft.badge) && saved.badge !== draft.badge
+  const lockedFinish = finishLocked ? prizeById(draft.badge) : null
+  const blocked = Boolean(trying) || finishLocked
+  const prizeCount = PRIZES.filter((p) => p.kind !== 'finish' && owned.has(p.id)).length
 
   const save = async () => {
-    if (busy || trying) return
+    if (busy || blocked) return
     setBusy(true)
     setError(null)
     try {
@@ -154,7 +181,9 @@ export function AvatarStudio({ name, current, wear, onSaved, onClose }: AvatarSt
       setError(
         code === 'FLAIR_NOT_EARNED'
           ? 'That ring or pin isn’t yours yet.'
-          : status === 401 || status === 403 || status === 409
+          : code === 'PRIZE_NOT_OWNED'
+            ? 'That’s a prize from the counter you haven’t traded for yet.'
+            : status === 401 || status === 403 || status === 409
             ? 'Only the owner of this tag can change its avatar. Sign in first.'
             : err instanceof Error
               ? err.message
@@ -170,6 +199,7 @@ export function AvatarStudio({ name, current, wear, onSaved, onClose }: AvatarSt
     { id: 'mark', label: 'Mark' },
     { id: 'colour', label: 'Colours' },
     { id: 'flair', label: 'Flair', count: earnedCount },
+    { id: 'prizes', label: 'Prizes', count: prizeCount || null },
   ]
 
   const tile = (key: string, avatar: Avatar, label: string, on: boolean, pick: () => void, size = 56) => (
@@ -210,6 +240,52 @@ export function AvatarStudio({ name, current, wear, onSaved, onClose }: AvatarSt
     )
   }
 
+  // A badge finish: yours to pick if you've traded for it, otherwise tried on with its price and a lock.
+  const finishTile = (b: AvatarBadge) => {
+    const mine = owned.has(b) || saved.badge === b
+    const prize = prizeById(b)
+    return (
+      <button
+        key={b}
+        type="button"
+        className={`studio__tile${mine ? '' : ' studio__tile--locked'}`}
+        aria-pressed={draft.badge === b}
+        aria-label={mine ? BADGE_LABELS[b] : `${BADGE_LABELS[b]}, ${prize?.price.toLocaleString()} tickets at the prize counter`}
+        onClick={() => go({ ...draft, badge: b })}
+      >
+        <Mark avatar={{ ...base, badge: b }} name={name} size={56} />
+        <span>{mine ? BADGE_LABELS[b] : `${prize?.price.toLocaleString()}`}</span>
+        {mine ? null : (
+          <span className="studio__tile-lock" aria-hidden="true">
+            <LockIcon />
+          </span>
+        )}
+      </button>
+    )
+  }
+
+  // What the Prizes tab offers for one kind: none, then the ones you own.
+  const wornItem = (kind: Exclude<PrizeKind, 'finish'>, id: string | null) => {
+    const prize = id ? prizeById(id) : null
+    const on = wornPrize(draft, kind) === id
+    const preview = wearPrize({ ...base }, kind, id)
+    return (
+      <button key={`${kind}-${id ?? 'none'}`} type="button" className="studio__item" aria-pressed={on} onClick={() => go(wearPrize(draft, kind, id))}>
+        {prize ? (
+          <PrizeArt className="studio__item-art" prize={prize} avatar={preview} name={name} width={64} />
+        ) : (
+          <Mark className="studio__item-art" avatar={preview} name={name} size={52} />
+        )}
+        <span className="studio__item-text">
+          <span className="studio__item-name">
+            {prize?.kind === 'name' ? <PlayerName name={prize.name} style={prize.id} /> : (prize?.name ?? NONE_LABELS[kind])}
+          </span>
+          <span className="studio__item-rule">{prize ? PRIZE_KINDS[kind].one : 'Nothing from the counter'}</span>
+        </span>
+      </button>
+    )
+  }
+
   const swatches = (key: 'body' | 'detail', label: string) => (
     <div className="studio__swatches" role="radiogroup" aria-label={label}>
       {AVATAR_COLORS.map((c, i) => (
@@ -236,7 +312,7 @@ export function AvatarStudio({ name, current, wear, onSaved, onClose }: AvatarSt
           <div className="studio__stage">
             <Mark className="studio__preview" avatar={draft} name={name} size={200} />
             <div className="studio__tools">
-              <button type="button" className="studio__tool" onClick={() => go(randomAvatar(draft))}>
+              <button type="button" className="studio__tool" onClick={() => go({ ...randomAvatar(draft), ...(draft.worn ? { worn: draft.worn } : {}) })}>
                 <DiceIcon />
                 <span>Shuffle</span>
               </button>
@@ -251,7 +327,7 @@ export function AvatarStudio({ name, current, wear, onSaved, onClose }: AvatarSt
             <div className="studio__row">
               {standing.rank != null ? <span className="studio__row-rank">{standing.rank}</span> : null}
               <Mark avatar={draft} name={name} size={28} />
-              <span className="studio__row-name">{name}</span>
+              <PlayerName className="studio__row-name" name={name} style={wornPrize(draft, 'name')} />
               {standing.rank != null ? <span className="studio__row-pts">{standing.score.toLocaleString()} pts</span> : null}
             </div>
             <div className="studio__where-more">
@@ -342,10 +418,49 @@ export function AvatarStudio({ name, current, wear, onSaved, onClose }: AvatarSt
                 </Section>
                 <Section title="Badge" aside={<span className="studio__aside">The round it sits on</span>}>
                   <div className="studio__grid studio__grid--four">
-                    {AVATAR_BADGES.map((b) => tile(b, { ...base, badge: b }, BADGE_LABELS[b], draft.badge === b, () => go({ ...draft, badge: b })))}
+                    {FREE_BADGES.map((b) => tile(b, { ...base, badge: b }, BADGE_LABELS[b], draft.badge === b, () => go({ ...draft, badge: b })))}
                   </div>
                 </Section>
+                <Section
+                  title="Finishes"
+                  aside={
+                    <a className="studio__aside studio__aside--link" href={prizesHref()}>
+                      From the prize counter ›
+                    </a>
+                  }
+                >
+                  <div className="studio__grid studio__grid--four">{FINISH_IDS.map((b) => finishTile(b as AvatarBadge))}</div>
+                </Section>
               </>
+            ) : null}
+
+            {tab === 'prizes' ? (
+              prizeCount === 0 ? (
+                <div className="studio__prizes-empty">
+                  <p>
+                    Name styles, titles, card themes and confetti come from the prize counter, for the tickets every run pays. What you
+                    trade for goes on here.
+                  </p>
+                  <a className="panel__btn" href={prizesHref()}>
+                    Go to the prize counter
+                  </a>
+                </div>
+              ) : (
+                <>
+                  {WORN_KINDS.map((kind) => {
+                    const mine = PRIZES.filter((p) => p.kind === kind && owned.has(p.id))
+                    if (!mine.length) return null
+                    return (
+                      <Section key={kind} title={PRIZE_KINDS[kind].one}>
+                        <div className="studio__flair">{[null, ...mine.map((p) => p.id)].map((id) => wornItem(kind, id))}</div>
+                      </Section>
+                    )
+                  })}
+                  <a className="studio__aside studio__aside--link" href={prizesHref()}>
+                    More at the prize counter ›
+                  </a>
+                </>
+              )
             ) : null}
 
             {tab === 'flair' ? (
@@ -375,6 +490,19 @@ export function AvatarStudio({ name, current, wear, onSaved, onClose }: AvatarSt
               <b>Trying on {trying.label}.</b> {trying.rule} to wear it.{trying.note ? ` ${trying.note}.` : ''}
             </span>
           </p>
+        ) : lockedFinish ? (
+          <p className="studio__note studio__note--trying">
+            <LockIcon />
+            <span>
+              <b>Trying on {lockedFinish.name}.</b> Trade {lockedFinish.price.toLocaleString()} tickets for it at the{' '}
+              <a href={prizesHref()}>prize counter</a> to wear it.
+            </span>
+          </p>
+        ) : tab === 'prizes' ? (
+          <p className="studio__note">
+            <SparkleIcon />
+            <span>Prizes come from the prize counter, for tickets you earn by playing.</span>
+          </p>
         ) : (
           <p className="studio__note">
             <SparkleIcon />
@@ -384,8 +512,8 @@ export function AvatarStudio({ name, current, wear, onSaved, onClose }: AvatarSt
         <button type="button" className="panel__btn panel__btn--ghost" onClick={onClose} disabled={busy}>
           Cancel
         </button>
-        <button type="button" className="panel__btn" disabled={busy || !!trying} onClick={() => void save()}>
-          {busy ? 'Saving…' : trying ? 'Earn it to wear it' : 'Save avatar'}
+        <button type="button" className="panel__btn" disabled={busy || blocked} onClick={() => void save()}>
+          {busy ? 'Saving…' : trying ? 'Earn it to wear it' : finishLocked ? 'Trade for it to wear it' : 'Save avatar'}
         </button>
       </div>
     </Panel>

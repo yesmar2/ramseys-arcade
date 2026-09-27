@@ -37,13 +37,13 @@ export function recordTime(ms: number): string {
 /** What each count record counts, where the label alone doesn't say. */
 const COUNT_WORDS: Record<string, [string, string]> = {
   'play-days-streak': ['day', 'days'],
-  'most-coins': ['coin', 'coins'],
+  'most-coins': ['ticket', 'tickets'],
   'near-misses': ['close call', 'close calls'],
   'most-rows': ['row', 'rows'],
   'chasers-eaten': ['chaser', 'chasers'],
 }
 
-/** A record's number in its own terms: 2:51.1, ×36, 19 days, 13 in a row, 33 coins. */
+/** A record's number in its own terms: 2:51.1, ×36, 19 days, 13 in a row, 33 tickets. */
 export function recordValue(record: RecordLike, score: number): string {
   if (record.unit === 'ms') return recordTime(score)
   if (record.id === 'highest-combo') return `×${score}`

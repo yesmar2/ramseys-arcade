@@ -8,7 +8,8 @@ import {
   type RefObject,
 } from 'react'
 import { useDeliberatePress } from '../hooks/useDeliberatePress'
-import { PLAYER_NAME_MAX } from '../lib/leaderboard'
+import { getLocalAvatarId, wornPrizeOf } from '../lib/avatars'
+import { getLastPlayerName, PLAYER_NAME_MAX } from '../lib/leaderboard'
 import type {
   ReportIcon,
   ReportLine,
@@ -20,6 +21,7 @@ import type {
 import { GoogleSignInButton } from './GoogleSignInButton'
 import { Panel } from './Panel'
 import { PlayerAvatar } from './PlayerAvatar'
+import { PlayerName } from './PlayerName'
 
 /*
  * The run report: the one card a run ends on. The score under a kicker (the
@@ -102,6 +104,8 @@ export type RunReportBodyProps = {
   /** What the run did; null while it is still being worked out. */
   lines: ReportLine[] | null
   race?: ReportRace | null
+  /** The tickets the run paid, or that a saved run would. */
+  tickets?: ReactNode
   /** What this moment asks: signing in, a tag, a word about the save. */
   children?: ReactNode
   primary: ReportAction
@@ -217,7 +221,7 @@ function Race({ race }: { race: ReportRace }) {
               <span className="report__race-place">{row.place}</span>
               <PlayerAvatar avatarId={row.avatarId} name={row.name} size="sm" />
               <span className="report__race-name">
-                {row.name}
+                <PlayerName name={row.name} avatarId={row.avatarId} />
                 {row.note ? <span className="report__race-note">{row.note}</span> : null}
               </span>
               <span className="report__race-score">{row.score}</span>
@@ -240,6 +244,7 @@ export function RunReportBody({
   scoreTone,
   lines,
   race,
+  tickets,
   children,
   primary,
   secondary,
@@ -291,6 +296,7 @@ export function RunReportBody({
       <div className="report__body">
         {lines === null ? <LinesLoading /> : lines.length ? <Lines lines={lines} tier={tier} /> : null}
         {race ? <Race race={race} /> : null}
+        {tickets}
         {children ? <div className="report__block">{children}</div> : null}
       </div>
       <div className="report__foot">
@@ -355,19 +361,69 @@ type Piece = {
   delay: number
 }
 
+/** The confetti this device's player wears from the prize counter, if any. */
+function ownConfetti(): string | null {
+  const name = getLastPlayerName()
+  return name ? wornPrizeOf(getLocalAvatarId(name), 'confetti') : null
+}
+
+/** A ticket's outline around (0, 0), for the ticket shower. */
+function ticketShape(ctx: CanvasRenderingContext2D, w: number, h: number) {
+  const x = -w / 2
+  const y = -h / 2
+  const n = h * 0.2
+  const c = h * 0.16
+  ctx.beginPath()
+  ctx.moveTo(x + c, y)
+  ctx.lineTo(x + w - c, y)
+  ctx.arcTo(x + w, y, x + w, y + c, c)
+  ctx.lineTo(x + w, -n)
+  ctx.arc(x + w, 0, n, -Math.PI / 2, Math.PI / 2, true)
+  ctx.lineTo(x + w, y + h - c)
+  ctx.arcTo(x + w, y + h, x + w - c, y + h, c)
+  ctx.lineTo(x + c, y + h)
+  ctx.arcTo(x, y + h, x, y + h - c, c)
+  ctx.lineTo(x, n)
+  ctx.arc(x, 0, n, Math.PI / 2, -Math.PI / 2, true)
+  ctx.closePath()
+}
+
+function starShape(ctx: CanvasRenderingContext2D, r: number) {
+  ctx.beginPath()
+  for (let i = 0; i < 10; i++) {
+    const a = -Math.PI / 2 + (i * Math.PI) / 5
+    const rad = i % 2 === 0 ? r : r * 0.45
+    if (i === 0) ctx.moveTo(rad * Math.cos(a), rad * Math.sin(a))
+    else ctx.lineTo(rad * Math.cos(a), rad * Math.sin(a))
+  }
+  ctx.closePath()
+}
+
+const KIND_COLOURS: Record<string, string[]> = {
+  'cf-stars': ['#f5b942', '#ffd36e', '#2fe3cf', '#ff7ac1', '#7fc8ff'],
+  'cf-bubbles': ['#7fc8ff', '#2fe3cf', '#b3d7ff', '#e9f6ff'],
+  'cf-tickets': ['#ff8552', '#ffa477', '#ff7a45', '#ffc2a6'],
+}
+
 function reducedMotion() {
   return typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
 }
 
-/** One burst from either side of the card, in the game's colours and the gold, then gone. */
-export function ReportConfetti({ accent }: { accent: string }) {
+/**
+ * One burst from either side of the card, in the game's colours and the gold,
+ * then gone. A player who wears confetti from the prize counter gets theirs
+ * instead: stars, bubbles or a shower of tickets. `kind` shows one on
+ * purpose (the counter trying one on); left out, it's the player's own.
+ */
+export function ReportConfetti({ accent, kind }: { accent: string; kind?: string | null }) {
   const ref = useRef<HTMLCanvasElement>(null)
 
   useEffect(() => {
     const canvas = ref.current
     const ctx = canvas?.getContext('2d')
     if (!canvas || !ctx || reducedMotion()) return
-    const colors = [accent, '#f5b942', '#45d3ba', '#e85d75', '#7ab8e8', '#fff3cc']
+    const style = kind === undefined ? ownConfetti() : kind
+    const colors = (style && KIND_COLOURS[style]) || [accent, '#f5b942', '#45d3ba', '#e85d75', '#7ab8e8', '#fff3cc']
     const w = window.innerWidth
     const h = window.innerHeight
     const dpr = Math.min(window.devicePixelRatio || 1, 2)
@@ -416,10 +472,36 @@ export function ReportConfetti({ accent }: { accent: string }) {
         ctx.globalAlpha = fade
         ctx.translate(p.x, p.y)
         ctx.rotate(p.angle)
-        // A flat piece turning over: its width swings through zero.
-        ctx.scale(Math.cos(p.angle * 1.7), 1)
-        ctx.fillStyle = p.color
-        ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h)
+        if (style === 'cf-bubbles') {
+          // Bubbles float rather than tumble: a ring, a wash and a glint.
+          const r = p.w * 0.9
+          ctx.beginPath()
+          ctx.arc(0, 0, r, 0, Math.PI * 2)
+          ctx.fillStyle = `${p.color}33`
+          ctx.fill()
+          ctx.strokeStyle = p.color
+          ctx.lineWidth = 1.5
+          ctx.stroke()
+          ctx.beginPath()
+          ctx.arc(-r * 0.35, -r * 0.35, r * 0.22, 0, Math.PI * 2)
+          ctx.fillStyle = 'rgba(255,255,255,0.85)'
+          ctx.fill()
+        } else {
+          // A flat piece turning over: its width swings through zero.
+          ctx.scale(Math.cos(p.angle * 1.7), 1)
+          ctx.fillStyle = p.color
+          if (style === 'cf-stars') {
+            starShape(ctx, p.h * 0.62)
+            ctx.fill()
+          } else if (style === 'cf-tickets') {
+            ticketShape(ctx, p.h * 1.3, p.h * 0.72)
+            ctx.fill()
+            ctx.fillStyle = 'rgba(58,20,6,0.35)'
+            ctx.fillRect(-p.h * 0.28, -p.h * 0.22, 1.2, p.h * 0.44)
+          } else {
+            ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h)
+          }
+        }
         ctx.restore()
       }
       if (t < life) raf = requestAnimationFrame(frame)
@@ -427,7 +509,7 @@ export function ReportConfetti({ accent }: { accent: string }) {
     }
     raf = requestAnimationFrame(frame)
     return () => cancelAnimationFrame(raf)
-  }, [accent])
+  }, [accent, kind])
 
   return <canvas ref={ref} className="report-confetti" aria-hidden="true" />
 }

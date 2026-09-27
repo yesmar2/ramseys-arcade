@@ -1,6 +1,6 @@
 /*
  * A game playing itself in a home page preview runs the same code that plays
- * sounds, buzzes the phone and banks coins in a real run. Anything it does
+ * sounds and buzzes the phone in a real run. Anything it does
  * inside `quietly` stays silent and still and leaves the player's own things
  * alone: sound and haptics check `isQuiet` before they fire, and so does
  * anything a run would save. The player's own settings are never touched.

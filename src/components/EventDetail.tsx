@@ -23,6 +23,7 @@ import { EventScreen } from './EventScreen'
 import { ClockIcon, EventArtBox, TrophyIcon } from './EventsHome'
 import { GameThumbArt } from './GameThumbArt'
 import { PlayerAvatar } from './PlayerAvatar'
+import { PlayerName } from './PlayerName'
 
 /* One event's page, below its banner: the games to play, the standings, and what the event says about itself. */
 
@@ -103,7 +104,7 @@ function StandingsRow({ row, usePoints, cols, gap = false }: { row: TableRow; us
       <span className="evp-table__place">{row.place}</span>
       <a className="evp-table__who" href={rankHref(row.name)}>
         <PlayerAvatar name={row.name} avatarId={row.avatarId} size="md" />
-        <span className="evp-table__name">{row.name}</span>
+        <PlayerName className="evp-table__name" name={row.name} avatarId={row.avatarId} />
         {row.you ? <span className="evp-you">You</span> : null}
       </a>
       {row.cells.map((cell) => (

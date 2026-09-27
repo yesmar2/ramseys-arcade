@@ -42,6 +42,7 @@ import { resolveGameAccent } from '../lib/theme'
 import { BoardEmpty } from './BoardChrome'
 import { GameThumbArt } from './GameThumbArt'
 import { PlayerMark } from './PlayerMark'
+import { PlayerName } from './PlayerName'
 
 /*
  * The boards page: one scoreboard for the period instead of two tabs. The
@@ -156,7 +157,7 @@ function StandingRow({
         <span className="sb-row__ord">{ordinal(row.rank).toUpperCase()}</span>
         <PlayerMark name={row.name} avatarId={row.avatarId} className="sb-row__mark" />
         <span className="sb-row__who">
-          <span className="sb-row__name">{row.name}</span>
+          <PlayerName className="sb-row__name" name={row.name} avatarId={row.avatarId} />
           <span className="sb-row__boards">
             {row.games} {row.games === 1 ? 'board' : 'boards'}
             {mine ? <span className="sb-row__you">You</span> : null}

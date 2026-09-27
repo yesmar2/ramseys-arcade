@@ -5,18 +5,26 @@
  *
  * It travels as one short string, saved on the player's name claim:
  *
- *   a2:m:<letters>:<pattern>:<body>:<detail>:<badge>:<ring>:<pin>
- *   a2:e:<emblem>:<body>:<detail>:<badge>:<ring>:<pin>
+ *   a2:m:<letters>:<pattern>:<body>:<detail>:<badge>:<ring>:<pin>[:<worn>]
+ *   a2:e:<emblem>:<body>:<detail>:<badge>:<ring>:<pin>[:<worn>]
  *
  * A monogram saves how many letters of the tag it shows, not the letters, so
  * it follows the tag. Every tag has one even before its owner picks — its
  * monogram, coloured from the tag itself — so lists never show a hole.
  *
+ * What a player got at the prize counter rides along: a badge finish is the
+ * badge, and the other prizes they wear (a name style, a title, a card theme,
+ * confetti, the neon sign) are the last part, joined by dots. So every row
+ * that carries an avatar carries those with it. A prize this build doesn't
+ * know is passed over rather than losing the whole avatar.
+ *
  * Keep the codec in step with the API's `src/avatars.ts`, which also decides
- * which rings and pins a player has earned (`src/flair.ts`).
+ * which rings and pins a player has earned (`src/flair.ts`) and refuses a
+ * prize the account hasn't traded for.
  */
 
 import { getGame } from '../data/games'
+import { isWornPrizeId, prizeById, type PrizeKind } from '../data/prizes'
 
 export const AVATARS_ENABLED = true
 
@@ -72,10 +80,27 @@ export const PATTERN_LABELS: Record<AvatarPattern, string> = {
   half: 'Half',
 }
 
-export const AVATAR_BADGES = ['bold', 'deep', 'night', 'paper'] as const
+/** The four anyone can wear, then the prize counter's finishes (data/prizes.ts), which only their owner can. */
+export const AVATAR_BADGES = ['bold', 'deep', 'night', 'paper', 'glitter', 'starfield', 'neon', 'holo'] as const
 export type AvatarBadge = (typeof AVATAR_BADGES)[number]
 
-export const BADGE_LABELS: Record<AvatarBadge, string> = { bold: 'Bold', deep: 'Deep', night: 'Night', paper: 'Paper' }
+export const BADGE_LABELS: Record<AvatarBadge, string> = {
+  bold: 'Bold',
+  deep: 'Deep',
+  night: 'Night',
+  paper: 'Paper',
+  glitter: 'Glitter',
+  starfield: 'Starfield',
+  neon: 'Neon',
+  holo: 'Holo',
+}
+
+/** The badges anyone can wear; the rest are finishes from the prize counter. */
+export const FREE_BADGES: readonly AvatarBadge[] = ['bold', 'deep', 'night', 'paper']
+
+export function isFinishBadge(badge: AvatarBadge): boolean {
+  return !FREE_BADGES.includes(badge)
+}
 
 /** Worn around the badge, for how you've placed. */
 export const AVATAR_RINGS = ['bronze', 'silver', 'gold', 'record', 'laurel'] as const
@@ -167,6 +192,8 @@ type Common = {
   badge: AvatarBadge
   ring: AvatarRing | null
   pin: AvatarPin | null
+  /** Prizes worn besides a finish (data/prizes.ts), at most one of each kind. */
+  worn?: string[]
 }
 
 export type MonoAvatar = { kind: 'mono'; letters: 1 | 2; pattern: AvatarPattern } & Common
@@ -179,7 +206,8 @@ export type AvatarId = string
 const VERSION = 'a2'
 
 export function encodeAvatar(avatar: Avatar): AvatarId {
-  const tail = `${avatar.body}:${avatar.detail}:${avatar.badge}:${avatar.ring ?? 'none'}:${avatar.pin ?? 'none'}`
+  const worn = avatar.worn?.length ? `:${avatar.worn.join('.')}` : ''
+  const tail = `${avatar.body}:${avatar.detail}:${avatar.badge}:${avatar.ring ?? 'none'}:${avatar.pin ?? 'none'}${worn}`
   return avatar.kind === 'mono'
     ? `${VERSION}:m:${avatar.letters}:${avatar.pattern}:${tail}`
     : `${VERSION}:e:${avatar.emblem}:${tail}`
@@ -189,23 +217,40 @@ function oneOf<T extends string>(list: readonly T[], value: string | undefined):
   return value != null && (list as readonly string[]).includes(value) ? (value as T) : null
 }
 
+/** The worn part, keeping the prizes this build knows, the first of each kind. */
+function parseWorn(raw: string | undefined): string[] {
+  if (!raw) return []
+  const kinds = new Set<PrizeKind>()
+  const worn: string[] = []
+  for (const id of raw.split('.')) {
+    const prize = prizeById(id)
+    if (!prize || !isWornPrizeId(id) || kinds.has(prize.kind)) continue
+    kinds.add(prize.kind)
+    worn.push(id)
+  }
+  return worn
+}
+
 export function parseAvatar(value: unknown): Avatar | null {
   if (typeof value !== 'string') return null
   const parts = value.split(':')
   if (parts[0] !== VERSION) return null
   const mono = parts[1] === 'm'
   if (!mono && parts[1] !== 'e') return null
-  if (parts.length !== (mono ? 9 : 8)) return null
-  const [bodyRaw, detailRaw, badgeRaw, ringRaw, pinRaw] = parts.slice(mono ? 4 : 3)
+  const bare = mono ? 9 : 8
+  if (parts.length !== bare && parts.length !== bare + 1) return null
+  const [bodyRaw, detailRaw, badgeRaw, ringRaw, pinRaw, wornRaw] = parts.slice(mono ? 4 : 3)
   const inRange = (n: number) => Number.isInteger(n) && n >= 0 && n < AVATAR_COLORS.length
   const body = Number(bodyRaw)
   const detail = Number(detailRaw)
-  const badge = oneOf(AVATAR_BADGES, badgeRaw)
+  // A finish from a later build than this one shows as Bold, rather than losing the avatar.
+  const badge = oneOf(AVATAR_BADGES, badgeRaw) ?? (badgeRaw ? 'bold' : null)
   const ring = ringRaw === 'none' ? null : oneOf(AVATAR_RINGS, ringRaw)
   const pin = pinRaw === 'none' ? null : oneOf(AVATAR_PINS, pinRaw)
   if (!inRange(body) || !inRange(detail) || !badge) return null
   if ((ringRaw !== 'none' && !ring) || (pinRaw !== 'none' && !pin)) return null
-  const common = { body, detail, badge, ring, pin }
+  const worn = parseWorn(wornRaw)
+  const common = { body, detail, badge, ring, pin, ...(worn.length ? { worn } : {}) }
   if (mono) {
     const letters = parts[2] === '1' ? 1 : parts[2] === '2' ? 2 : null
     const pattern = oneOf(AVATAR_PATTERNS, parts[3])
@@ -219,6 +264,37 @@ export function parseAvatar(value: unknown): Avatar | null {
 
 export function isAvatarId(value: unknown): value is AvatarId {
   return parseAvatar(value) !== null
+}
+
+/** The prize of a kind an avatar wears (its name style, title, card theme, confetti or sign), or null. */
+export function wornPrize(avatar: Avatar | null | undefined, kind: Exclude<PrizeKind, 'finish'>): string | null {
+  return avatar?.worn?.find((id) => prizeById(id)?.kind === kind) ?? null
+}
+
+/** The same from a saved avatar string, for a row that carries one. */
+export function wornPrizeOf(avatarId: string | null | undefined, kind: Exclude<PrizeKind, 'finish'>): string | null {
+  return wornPrize(parseAvatar(avatarId), kind)
+}
+
+/** Whether an avatar has a prize on now: a finish as its badge, the rest in what it wears. */
+export function isWearing(avatar: Avatar, prizeId: string): boolean {
+  const prize = prizeById(prizeId)
+  if (!prize) return false
+  return prize.kind === 'finish' ? avatar.badge === prizeId : !!avatar.worn?.includes(prizeId)
+}
+
+/** An avatar with a prize put on, or with its kind taken off (null): a finish is the badge, back to Bold when it comes off. */
+export function wearPrize(avatar: Avatar, kind: PrizeKind, id: string | null): Avatar {
+  if (kind === 'finish') {
+    const badge = id ? oneOf(AVATAR_BADGES, id) : null
+    return { ...avatar, badge: badge ?? (isFinishBadge(avatar.badge) ? 'bold' : avatar.badge) }
+  }
+  const next: Avatar = { ...avatar }
+  const worn = (avatar.worn ?? []).filter((w) => prizeById(w)?.kind !== kind)
+  if (id) worn.push(id)
+  if (worn.length) next.worn = worn
+  else delete next.worn
+  return next
 }
 
 function hashName(name: string) {

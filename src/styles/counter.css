@@ -1,0 +1,1317 @@
+/*
+ * The prize counter (/prizes): the ticket readout and the neon sign up top,
+ * then the glass case, its shelves lit along the front, each prize standing
+ * with a paper price tag hung under it. The case stays a dark cabinet in both
+ * themes, the way the sign's wall does; the page around it follows the theme.
+ */
+
+.counter-page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.4rem;
+  padding-bottom: 2.5rem;
+}
+
+/* ---------- the hero: what tickets are, your count, the top prize ---------- */
+
+.counter-hero {
+  position: relative;
+  border-radius: 1.75rem;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--ticket) 32%, transparent);
+  background:
+    linear-gradient(100deg, color-mix(in srgb, var(--ticket) 26%, transparent) 0%, color-mix(in srgb, var(--ticket) 10%, transparent) 42%, transparent 75%),
+    var(--surface);
+  box-shadow: var(--shadow-soft);
+}
+
+.counter-hero__main {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+  gap: 2rem;
+  padding: 2.4rem 2.6rem 2rem;
+}
+
+.counter-hero__text {
+  display: flex;
+  flex-direction: column;
+  gap: 1.05rem;
+  min-width: 0;
+}
+
+.counter-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  align-self: flex-start;
+  min-height: 2.2rem;
+  padding: 0 1rem;
+  border-radius: 999px;
+  border: 1px solid rgba(var(--ink-rgb), 0.16);
+  background: rgba(var(--ink-rgb), 0.06);
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.counter-eyebrow i {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 50%;
+  background: var(--ticket);
+  box-shadow: 0 0 10px var(--ticket);
+}
+
+.counter-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(2.3rem, 5vw, 3.6rem);
+  font-weight: 800;
+  line-height: 1.02;
+  letter-spacing: -0.035em;
+}
+
+.counter-title em {
+  font-style: normal;
+  color: var(--ticket-text);
+}
+
+.counter-lede {
+  margin: 0;
+  max-width: 40rem;
+  font-size: 1.12rem;
+  line-height: 1.5;
+  color: color-mix(in srgb, var(--ink) 82%, transparent);
+}
+
+.counter-hero__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 0.9rem;
+  margin-top: 0.3rem;
+}
+
+.counter-led {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  min-height: 6.9rem;
+  padding: 0 1.25rem 0 0.9rem;
+  border-radius: 1.15rem;
+  background: #0a0706;
+  border: 1px solid rgba(255, 133, 82, 0.3);
+  box-shadow:
+    inset 0 2px 16px rgba(0, 0, 0, 0.9),
+    0 0 0 4px rgba(255, 133, 82, 0.06);
+}
+
+.counter-led__side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.counter-led__label {
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: #ff9a70;
+}
+
+.counter-led__today {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.6rem;
+  padding: 0 0.65rem;
+  border-radius: 999px;
+  background: rgba(255, 133, 82, 0.16);
+  color: #ffc2a6;
+  font-size: 0.8rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.counter-goal {
+  flex: 1 1 17rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.6rem;
+  min-height: 6.9rem;
+  margin: 0;
+  padding: 0.7rem 1.1rem;
+  border-radius: 1.15rem;
+  border: 1px solid rgba(var(--ink-rgb), 0.14);
+  background: rgba(var(--ink-rgb), 0.04);
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+button.counter-goal:hover,
+button.counter-goal:focus-visible {
+  border-color: color-mix(in srgb, var(--ticket) 60%, transparent);
+  outline: none;
+}
+
+.counter-goal--none {
+  cursor: default;
+  font-size: 0.92rem;
+  color: var(--muted);
+}
+
+.counter-goal__top {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.counter-goal__top svg {
+  flex: none;
+  margin: -0.4rem -0.2rem -0.2rem -0.4rem;
+}
+
+.counter-goal__txt {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.counter-goal__cap {
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.counter-goal__name {
+  font-size: 1.02rem;
+  font-weight: 800;
+}
+
+.counter-goal__name span {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.counter-goal .tix-meter {
+  flex: none;
+  height: 0.5rem;
+}
+
+.counter-goal__foot {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.6rem;
+  font-size: 0.86rem;
+  color: var(--muted);
+}
+
+.counter-goal__foot b {
+  color: var(--ink);
+}
+
+.counter-signin {
+  min-height: 3rem;
+  padding: 0 1.4rem;
+  border-radius: 999px;
+  border: 0;
+  background: var(--ticket);
+  color: var(--ticket-ink);
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 10px 24px -10px rgba(255, 133, 82, 0.8);
+}
+
+.counter-signin__note {
+  align-self: center;
+  max-width: 22rem;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+/* The wall the top prize hangs on: dark in both themes, like a real one. */
+.counter-wall {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.9rem;
+  min-width: 0;
+  padding: 2.6rem 1.6rem 1.4rem;
+  border-radius: 1.4rem;
+  background:
+    radial-gradient(ellipse 70% 55% at 50% 38%, rgba(255, 95, 162, 0.18), transparent 70%),
+    #0d1319;
+  border: 1px solid rgba(231, 238, 243, 0.1);
+  color: #e7eef3;
+}
+
+.counter-wall__cap {
+  position: absolute;
+  top: 1rem;
+  left: 1.25rem;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #9bb0be;
+}
+
+.counter-wall__sign {
+  display: block;
+  max-width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+.counter-wall__sign svg {
+  max-width: 100%;
+  height: auto;
+}
+
+.counter-wall__row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  width: 100%;
+}
+
+.counter-wall__txt {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.counter-wall__name {
+  font-size: 1.15rem;
+  font-weight: 800;
+}
+
+.counter-wall__line {
+  font-size: 0.9rem;
+  color: #9bb0be;
+}
+
+.counter-wall__meter {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  width: 100%;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #9bb0be;
+  white-space: nowrap;
+}
+
+.counter-wall .tix-meter {
+  background: rgba(231, 238, 243, 0.1);
+}
+
+/* What pays, along the hero's foot. */
+.counter-band {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem 1.6rem;
+  margin: 0;
+  padding: 1.05rem 2.6rem;
+  list-style: none;
+  border-top: 1px solid rgba(var(--ink-rgb), 0.1);
+  background: rgba(var(--ink-rgb), 0.03);
+}
+
+.counter-earn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: color-mix(in srgb, var(--ink) 80%, transparent);
+  white-space: nowrap;
+}
+
+.counter-earn svg {
+  color: var(--ticket-text);
+}
+
+.counter-earn b {
+  color: var(--ink);
+  font-weight: 800;
+}
+
+.counter-band__more {
+  margin-left: auto;
+}
+
+.counter-band__more a {
+  font-weight: 800;
+  color: var(--ink);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+/* ---------- the case ---------- */
+
+.counter-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem 1rem;
+  margin-top: 0.6rem;
+}
+
+.counter-head__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.75rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.counter-head__sub {
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.counter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-left: auto;
+}
+
+.counter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 2.5rem;
+  padding: 0 0.95rem;
+  border-radius: 999px;
+  border: 1px solid rgba(var(--ink-rgb), 0.14);
+  background: rgba(var(--ink-rgb), 0.03);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.counter-chip span {
+  color: var(--muted);
+}
+
+.counter-chip[aria-pressed='true'] {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 60%, transparent);
+}
+
+.counter-case {
+  --case-ink: #e7eef3;
+  --case-muted: #9bb0be;
+  --case-faint: #7d92a1;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 1.9rem;
+  padding: 1.6rem 1.8rem 1.8rem;
+  border-radius: 1.75rem;
+  overflow: hidden;
+  background: linear-gradient(180deg, #15212b 0%, #101921 100%);
+  border: 1px solid rgba(231, 238, 243, 0.16);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 30px 70px -40px rgba(0, 0, 0, 0.9);
+  color: var(--case-ink);
+}
+
+.counter-case__glass {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  background: linear-gradient(
+    115deg,
+    transparent 0%,
+    transparent 34%,
+    rgba(255, 255, 255, 0.04) 34%,
+    rgba(255, 255, 255, 0.04) 43%,
+    transparent 43%,
+    transparent 63%,
+    rgba(255, 255, 255, 0.025) 63%,
+    rgba(255, 255, 255, 0.025) 67%,
+    transparent 67%
+  );
+}
+
+.counter-shelf {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.counter-shelf__head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  padding: 0 0.4rem;
+}
+
+.counter-shelf__label {
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--case-muted);
+}
+
+.counter-shelf__range {
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: var(--case-muted);
+}
+
+.counter-shelf__count {
+  margin-left: auto;
+  font-size: 0.86rem;
+  color: var(--case-faint);
+}
+
+.counter-shelf__items {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10.5rem, 1fr));
+  column-gap: 0;
+  row-gap: 1.4rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.counter-shelf--top .counter-shelf__items {
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+}
+
+/* Pocket change has the most on it, and the smallest things. */
+.counter-shelf--low .counter-shelf__items {
+  grid-template-columns: repeat(auto-fit, minmax(8.3rem, 1fr));
+}
+
+.counter-item {
+  display: flex;
+  min-width: 0;
+}
+
+.counter-item__btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  padding: 0 0 0.3rem;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.counter-item__btn:focus-visible {
+  outline: 2px solid var(--ticket);
+  outline-offset: -2px;
+  border-radius: 0.8rem;
+}
+
+.counter-item__stage {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  width: 100%;
+  height: 9.2rem;
+}
+
+.counter-shelf--top .counter-item__stage {
+  height: 10.6rem;
+}
+
+.counter-item__spot {
+  position: absolute;
+  inset: 12% 0 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse 56% 64% at 50% 100%, var(--spot, rgba(231, 238, 243, 0.08)), transparent 72%);
+}
+
+.counter-item__art {
+  position: relative;
+  z-index: 1;
+  transition: transform 0.15s ease;
+}
+
+.counter-shelf--top .counter-item__art {
+  width: 11.5rem;
+  height: auto;
+}
+
+.counter-shelf--low .counter-item__art {
+  width: 8.4rem;
+  height: auto;
+}
+
+.counter-item__btn:hover .counter-item__art,
+.counter-item__btn:focus-visible .counter-item__art {
+  transform: translateY(-4px);
+}
+
+/* Each prize's own stretch of plank: side by side they make the shelf, lit along its front. */
+.counter-item__plank {
+  flex: none;
+  width: 100%;
+  height: 0.85rem;
+  background: linear-gradient(180deg, #2c3d4c 0%, #1d2a35 100%);
+  border-bottom: 2px solid rgba(62, 224, 176, 0.55);
+  box-shadow:
+    0 12px 20px -10px rgba(0, 0, 0, 0.8),
+    0 3px 12px rgba(46, 184, 160, 0.22);
+}
+
+.counter-item:first-child .counter-item__plank {
+  border-radius: 4px 0 0 4px;
+}
+
+.counter-item:last-child .counter-item__plank {
+  border-radius: 0 4px 4px 0;
+}
+
+.counter-item__hang {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  height: 3.7rem;
+  padding-top: 1.25rem;
+}
+
+/* The string from the shelf to the tag's hole. */
+.counter-item__hang::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 0;
+  width: 1.5px;
+  height: 1.55rem;
+  margin-left: -0.75px;
+  background: rgba(231, 238, 243, 0.4);
+}
+
+.counter-item__hang--yours {
+  padding-top: 1rem;
+}
+
+.counter-item__hang--yours::before {
+  display: none;
+}
+
+.counter-tag {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  height: 2.35rem;
+  padding: 0.6rem 0.8rem 0;
+  border-radius: 0.5rem;
+  background: var(--paper-tag);
+  color: var(--paper-tag-ink);
+  font-size: 1rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  transform: rotate(-3deg);
+  transform-origin: 50% 0;
+  box-shadow: 0 10px 18px -8px rgba(0, 0, 0, 0.75);
+}
+
+.counter-item:nth-child(even) .counter-tag {
+  transform: rotate(2.5deg);
+}
+
+/* The hole the string goes through. */
+.counter-tag::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 0.25rem;
+  width: 6px;
+  height: 6px;
+  margin-left: -3px;
+  border-radius: 50%;
+  background: #101820;
+  box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.6);
+}
+
+.counter-tag--short {
+  background: #cdc3b2;
+  color: #3d342b;
+}
+
+.counter-tag--goal {
+  box-shadow:
+    0 0 0 2.5px var(--ticket),
+    0 10px 18px -8px rgba(0, 0, 0, 0.75);
+}
+
+.counter-tag--wall {
+  flex: none;
+  padding-top: 0.3rem;
+  height: 2.2rem;
+}
+
+.counter-tag--wall::before {
+  display: none;
+}
+
+.counter-stamp {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  height: 2rem;
+  padding: 0 0.8rem;
+  border-radius: 999px;
+  background: rgba(46, 184, 160, 0.15);
+  border: 1px solid rgba(46, 184, 160, 0.5);
+  color: #45d3ba;
+  font-size: 0.9rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.counter-ribbon {
+  position: absolute;
+  top: 0.4rem;
+  left: 50%;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  height: 1.6rem;
+  padding: 0 0.7rem;
+  border-radius: 999px;
+  background: var(--ticket);
+  color: var(--ticket-ink);
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  transform: translateX(-50%);
+  box-shadow: 0 6px 16px -6px rgba(255, 133, 82, 0.7);
+}
+
+.counter-item__name {
+  margin-top: 0.15rem;
+  font-size: 1rem;
+  font-weight: 800;
+  text-align: center;
+}
+
+.counter-item__kind {
+  margin-top: 0.1rem;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--case-faint);
+}
+
+.counter-item__note {
+  min-height: 1.2rem;
+  margin-top: 0.25rem;
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: #ffb592;
+}
+
+/* ---------- how tickets work ---------- */
+
+.counter-rules {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1rem;
+  scroll-margin-top: 6rem;
+}
+
+.counter-rule {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 1.1rem 1.25rem;
+  border-radius: 1.1rem;
+  border: 1px solid rgba(var(--ink-rgb), 0.1);
+  background: rgba(var(--ink-rgb), 0.03);
+}
+
+.counter-rule__t {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 800;
+}
+
+.counter-rule__t svg {
+  color: var(--ticket-text);
+}
+
+.counter-rule p {
+  margin: 0;
+  font-size: 0.92rem;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+/* ---------- a prize, up close ---------- */
+
+.prize-panel__body {
+  display: grid;
+  grid-template-columns: minmax(0, 25rem) minmax(0, 1fr);
+  gap: 1.6rem;
+}
+
+.prize-stage-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  min-width: 0;
+}
+
+.prize-views {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: 0.25rem;
+  padding: 0.25rem;
+  border-radius: 999px;
+  border: 1px solid rgba(var(--ink-rgb), 0.1);
+  background: rgba(var(--ink-rgb), 0.05);
+}
+
+.prize-views__btn {
+  min-height: 2.4rem;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.prize-views__btn[aria-selected='true'] {
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: inset 0 0 0 1px rgba(var(--ink-rgb), 0.14);
+}
+
+.prize-stage {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 21rem;
+  padding: 1.2rem;
+  border-radius: 1.3rem;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse 60% 40% at 50% 92%, rgba(255, 133, 82, 0.22), transparent 70%),
+    radial-gradient(ellipse 70% 70% at 50% 40%, rgba(255, 255, 255, 0.05), transparent 70%),
+    #0f171e;
+  border: 1px solid rgba(231, 238, 243, 0.1);
+  color: #e7eef3;
+}
+
+.prize-stage__goal {
+  position: absolute;
+  top: 0.8rem;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px;
+  background: var(--ticket);
+  color: var(--ticket-ink);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.prize-stage__badge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.8rem;
+}
+
+.prize-stage__badge svg {
+  overflow: visible;
+}
+
+.prize-stage__tag {
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+}
+
+/* On the stage it's always dark, so a style reads as it does on the dark theme. */
+.prize-stage .pname--outline {
+  -webkit-text-stroke-color: #e7eef3;
+}
+
+.prize-stage .pname--neon {
+  color: #fff4fa;
+  text-shadow:
+    0 0 3px #ff5fa2,
+    0 0 9px #ff5fa2,
+    0 0 16px rgba(255, 95, 162, 0.7);
+}
+
+.prize-stage .pname--candy {
+  background-image: linear-gradient(90deg, #ff7ac1, #ffd36e 50%, #7fc8ff);
+}
+
+.prize-stage__confetti {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.prize-stage__burst {
+  min-height: 2.6rem;
+  padding: 0 1.2rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 133, 82, 0.6);
+  background: rgba(255, 133, 82, 0.14);
+  color: #ffd9c7;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.prize-board {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  width: 100%;
+  padding: 0.6rem;
+  border-radius: 1rem;
+  background: rgba(10, 16, 22, 0.55);
+  border: 1px solid rgba(231, 238, 243, 0.09);
+}
+
+.prize-board__row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 3.2rem;
+  padding: 0 0.8rem;
+  border-radius: 0.8rem;
+}
+
+.prize-board__row--me {
+  background: rgba(46, 184, 160, 0.1);
+  box-shadow: inset 0 0 0 1px rgba(46, 184, 160, 0.45);
+}
+
+.prize-board__row--ghost span,
+.prize-board__row--ghost i,
+.prize-board__row--ghost b {
+  display: block;
+  border-radius: 999px;
+  background: rgba(231, 238, 243, 0.08);
+}
+
+.prize-board__row--ghost span {
+  width: 1.2rem;
+  height: 0.8rem;
+}
+
+.prize-board__row--ghost i {
+  width: 2rem;
+  height: 2rem;
+}
+
+.prize-board__row--ghost b {
+  width: 40%;
+  height: 0.8rem;
+}
+
+.prize-board__rank {
+  width: 1.4rem;
+  text-align: center;
+  font-weight: 800;
+  color: #9bb0be;
+}
+
+.prize-board__name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+}
+
+.prize-board__pts {
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.prize-card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  width: 100%;
+  min-height: 14.75rem;
+  padding: 0 1.25rem;
+  border-radius: 1.2rem;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background:
+    linear-gradient(120deg, color-mix(in srgb, var(--wash) 34%, transparent), color-mix(in srgb, var(--wash) 8%, transparent) 60%),
+    #17232d;
+}
+
+.prize-card__theme {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.prize-card__shade {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.prize-card__shade--theme {
+  background: linear-gradient(90deg, rgba(12, 8, 24, 0.82) 0%, rgba(12, 8, 24, 0.5) 60%, rgba(12, 8, 24, 0.2) 100%);
+}
+
+.prize-card__tile {
+  position: relative;
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 7.2rem;
+  height: 7.2rem;
+  border-radius: 1.6rem;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+}
+
+.prize-card__tile svg {
+  overflow: visible;
+}
+
+.prize-card__text {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+.prize-card__kicker {
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #cfe0e8;
+}
+
+.prize-card__name {
+  font-family: var(--font-display);
+  font-size: 2.4rem;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+
+.prize-card__line {
+  font-size: 0.85rem;
+  color: #c7d4dd;
+}
+
+.prize-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  min-width: 0;
+}
+
+.prize-variants {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(5rem, 1fr));
+  gap: 0.45rem;
+}
+
+.prize-variant {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.5rem 0.25rem 0.45rem;
+  border-radius: 1rem;
+  border: 1px solid rgba(var(--ink-rgb), 0.12);
+  background: rgba(var(--ink-rgb), 0.03);
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
+}
+
+.prize-variant[aria-pressed='true'] {
+  border-color: var(--ticket);
+  background: color-mix(in srgb, var(--ticket) 10%, transparent);
+  box-shadow: inset 0 0 0 1px var(--ticket);
+}
+
+.prize-variant__name {
+  font-size: 0.8rem;
+  font-weight: 800;
+  text-align: center;
+  line-height: 1.15;
+}
+
+.prize-variant__price {
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.prize-info__blurb {
+  margin: 0;
+  font-size: 1.02rem;
+  line-height: 1.5;
+}
+
+.prize-info__price {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 0;
+  color: var(--muted);
+  font-size: 1.05rem;
+}
+
+.prize-info__price b {
+  font-family: var(--font-display);
+  font-size: 2.3rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.prize-info__price--yours {
+  color: var(--accent);
+  font-size: 1.4rem;
+  font-weight: 800;
+}
+
+.prize-info__status {
+  margin: 0;
+  font-size: 0.92rem;
+  color: var(--muted);
+}
+
+.prize-info__status--go {
+  color: var(--ticket-text);
+}
+
+.prize-info__status--ok {
+  color: var(--accent);
+}
+
+.prize-info__note {
+  margin: 0;
+  padding: 0.6rem 0.8rem;
+  border-radius: 0.8rem;
+  background: rgba(196, 43, 60, 0.1);
+  color: var(--panel-danger, #c42b3c);
+  font-weight: 700;
+}
+
+.prize-info__note--ok {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  color: var(--accent);
+}
+
+.prize-info__acts {
+  justify-content: flex-start;
+}
+
+.prize-info__acts .panel__btn svg {
+  display: block;
+}
+
+.prize-confirm {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  padding: 0.9rem 1rem;
+  border-radius: 1rem;
+  border: 1px solid color-mix(in srgb, var(--ticket) 45%, transparent);
+  background: color-mix(in srgb, var(--ticket) 8%, transparent);
+}
+
+.prize-confirm__q {
+  margin: 0;
+  font-weight: 800;
+}
+
+.prize-confirm__acts {
+  justify-content: flex-start;
+}
+
+.prize-info__fine {
+  margin: 0;
+  font-size: 0.84rem;
+  color: var(--muted);
+}
+
+/* ---------- narrower screens ---------- */
+
+@media (max-width: 1100px) {
+  .counter-hero__main {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .counter-rules {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .prize-panel__body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .prize-stage {
+    min-height: 16rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .counter-page {
+    gap: 1.1rem;
+  }
+
+  .counter-hero__main {
+    padding: 1.4rem 1.1rem 1.2rem;
+    gap: 1.2rem;
+  }
+
+  .counter-lede {
+    font-size: 1rem;
+  }
+
+  .counter-led {
+    flex: 1 1 auto;
+    min-height: 5.8rem;
+  }
+
+  .counter-led svg {
+    width: 10.5rem;
+    height: auto;
+  }
+
+  .counter-wall {
+    padding: 2.4rem 1rem 1.1rem;
+  }
+
+  .counter-band {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding: 0.85rem 1.1rem;
+    scrollbar-width: none;
+  }
+
+  .counter-band::-webkit-scrollbar {
+    display: none;
+  }
+
+  .counter-chips {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    margin: 0 -0.2rem;
+    padding: 0 0.2rem;
+    scrollbar-width: none;
+  }
+
+  .counter-chips::-webkit-scrollbar {
+    display: none;
+  }
+
+  .counter-chip {
+    flex: none;
+  }
+
+  .counter-case {
+    padding: 1.2rem 0 1.3rem 0.9rem;
+    border-radius: 1.4rem;
+  }
+
+  /* On a phone each shelf is a row to swipe along. */
+  .counter-shelf__items,
+  .counter-shelf--top .counter-shelf__items {
+    display: flex;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+  }
+
+  .counter-shelf__items::-webkit-scrollbar {
+    display: none;
+  }
+
+  .counter-item {
+    flex: 0 0 9.4rem;
+    scroll-snap-align: start;
+  }
+
+  .counter-shelf--top .counter-item {
+    flex-basis: 11rem;
+  }
+
+  .counter-shelf__head {
+    padding-right: 1rem;
+  }
+
+  .counter-rules {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* The prize's panel is wide enough for the stage and the prize side by side. */
+.panel.prize-panel {
+  width: min(58rem, 100%);
+}

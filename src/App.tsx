@@ -55,6 +55,7 @@ const AdminPage = lazyPage(() => import('./pages/AdminPage').then((m) => m.Admin
 const PrivacyPage = lazyPage(() => import('./pages/PrivacyPage').then((m) => m.PrivacyPage))
 const RankPage = lazyPage(() => import('./pages/RankPage').then((m) => m.RankPage))
 const StatsPage = lazyPage(() => import('./pages/StatsPage').then((m) => m.StatsPage))
+const PrizeCounterPage = lazyPage(() => import('./pages/PrizeCounterPage').then((m) => m.PrizeCounterPage))
 const TermsPage = lazyPage(() => import('./pages/TermsPage').then((m) => m.TermsPage))
 const TournamentDetailPage = lazyPage(() =>
   import('./pages/TournamentsPage').then((m) => m.TournamentDetailPage),
@@ -226,6 +227,7 @@ const PAGE_PRELOADS: { test: RegExp; page: { preload: () => Promise<void> } }[] 
   { test: /^\/groups(?:[/?#]|$)/, page: GroupsPage },
   { test: /^\/rank(?:[/?#]|$)/, page: RankPage },
   { test: /^\/stats(?:[/?#]|$)/, page: StatsPage },
+  { test: /^\/prizes(?:[/?#]|$)/, page: PrizeCounterPage },
   { test: /^\/plus(?:[/?#]|$)/, page: PlusPage },
   { test: /^\/about(?:[/?#]|$)/, page: AboutPage },
   { test: /^\/privacy(?:[/?#]|$)/, page: PrivacyPage },
@@ -257,6 +259,7 @@ function Screen({ route }: { route: ReturnType<typeof useRoute> }) {
   if (route.name === 'plus') return <PlusPage />
   if (route.name === 'admin') return <AdminPage />
   if (route.name === 'stats') return <StatsPage />
+  if (route.name === 'prizes') return <PrizeCounterPage />
   if (route.name === 'devCelebrate') return <DevCelebratePage />
   if (route.name === 'privacy') return <PrivacyPage />
   if (route.name === 'terms') return <TermsPage />

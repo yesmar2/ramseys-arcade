@@ -12,6 +12,7 @@ import { GameArt } from './GameArt'
 import { GamePreview } from './GamePreview'
 import { GameThumbArt } from './GameThumbArt'
 import { PlayerAvatar } from './PlayerAvatar'
+import { PlayerName } from './PlayerName'
 
 type Row =
   | { kind: 'run'; rank: number; name: string; score: number; avatarId?: string }
@@ -168,7 +169,7 @@ export function ProfileBestBoard({
                   <span className="pbest__rank">{row.rank.toLocaleString()}</span>
                   <PlayerAvatar avatarId={row.avatarId} name={row.name} size="sm" />
                   <a className="pbest__who" href={rankHref(row.name, 'all')}>
-                    {row.name}
+                    <PlayerName name={row.name} avatarId={row.avatarId} />
                     {row.rank === best.rank && row.name === name && isSelf ? <span className="pbest__you">You</span> : null}
                     {!isSelf && viewer && row.name === viewer ? <span className="pbest__you pbest__you--viewer">You</span> : null}
                   </a>

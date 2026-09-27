@@ -1,0 +1,377 @@
+/*
+ * Tickets and prizes wherever they show up outside the prize counter itself:
+ * a tag's name style on the boards, the header's ticket chip, the tickets a
+ * run paid on its report, and a title's plate. The counter page has its own
+ * sheet (counter.css).
+ */
+
+:root {
+  --ticket: #ff8552;
+  --ticket-deep: #e0602e;
+  --ticket-ink: #3a1406;
+  /* Ticket orange as text: dark enough to read on the light theme, lit on the dark. */
+  --ticket-text: #c2461d;
+  --paper-tag: #f3e9d6;
+  --paper-tag-ink: #23190f;
+}
+
+html[data-theme='dark'] {
+  --ticket-text: #ffab85;
+}
+
+/* ---------- name styles ---------- */
+
+.pname--outline {
+  color: transparent;
+  -webkit-text-stroke: 1.1px var(--ink);
+}
+
+.pname--pixel {
+  font-family: 'Silkscreen', ui-monospace, monospace;
+  font-weight: 400;
+  font-size: 0.9em;
+  letter-spacing: 0.04em;
+}
+
+.pname--candy {
+  background: linear-gradient(90deg, #e2458f, #d98f12 50%, #2f86c9);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+html[data-theme='dark'] .pname--candy {
+  background-image: linear-gradient(90deg, #ff7ac1, #ffd36e 50%, #7fc8ff);
+}
+
+.pname--neon {
+  color: #d6337f;
+  text-shadow: 0 0 6px rgba(255, 95, 162, 0.45);
+}
+
+html[data-theme='dark'] .pname--neon {
+  color: #fff4fa;
+  text-shadow:
+    0 0 3px #ff5fa2,
+    0 0 9px #ff5fa2,
+    0 0 16px rgba(255, 95, 162, 0.7);
+}
+
+/* ---------- a title, on its plate ---------- */
+
+.prize-plate {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 1.85rem;
+  padding: 0 0.8rem;
+  border-radius: 0.55rem;
+  background: #223140;
+  border: 1.5px solid #3c5062;
+  color: #e7eef3;
+  font-family: var(--font-display);
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+/* ---------- the header's ticket chip ---------- */
+
+.tix-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex: none;
+  min-height: 2.6rem;
+  box-sizing: border-box;
+  padding: 0 0.85rem 0 0.7rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--ticket) 42%, transparent);
+  background: color-mix(in srgb, var(--ticket) 11%, transparent);
+  color: var(--ink);
+  font-size: 0.9rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  text-decoration: none;
+  white-space: nowrap;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease;
+}
+
+.tix-chip:hover,
+.tix-chip:focus-visible {
+  border-color: color-mix(in srgb, var(--ticket) 75%, transparent);
+  outline: none;
+}
+
+.tix-chip--here {
+  background: color-mix(in srgb, var(--ticket) 20%, transparent);
+  border-color: color-mix(in srgb, var(--ticket) 75%, transparent);
+}
+
+.tix-chip svg {
+  display: block;
+  flex: none;
+}
+
+/* Where the header gets tight the count goes and the ticket stays; on a phone it lives in the menu. */
+@media (max-width: 1180px) {
+  .tix-chip {
+    padding: 0 0.6rem;
+  }
+
+  .tix-chip__n {
+    display: none;
+  }
+}
+
+@media (max-width: 900px) {
+  .site-bar .tix-chip {
+    display: none;
+  }
+}
+
+/* ---------- what a run paid, on its report ---------- */
+
+.run-tix {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  margin: 0.5rem var(--report-pad-x, 1.75rem) 0.4rem;
+  padding: 0.55rem 0.9rem 0.6rem 0.2rem;
+  border-radius: 1.05rem;
+  background: color-mix(in srgb, var(--ticket) 8%, transparent);
+  border: 1px dashed color-mix(in srgb, var(--ticket) 50%, transparent);
+  text-align: left;
+}
+
+.run-tix--dim {
+  background: rgba(var(--ink-rgb), 0.04);
+  border-color: rgba(var(--ink-rgb), 0.16);
+}
+
+.run-tix svg {
+  flex: none;
+}
+
+.run-tix__body {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.run-tix__top {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+}
+
+.run-tix__n {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--ticket-text);
+  white-space: nowrap;
+}
+
+.run-tix--dim .run-tix__n {
+  color: var(--ink);
+}
+
+.run-tix__total {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.88rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.run-tix__why {
+  font-size: 0.8rem;
+  line-height: 1.4;
+  color: var(--muted);
+}
+
+.run-tix__goal {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--ticket-text);
+  white-space: nowrap;
+  text-decoration: none;
+}
+
+.run-tix__goal:hover {
+  text-decoration: underline;
+}
+
+.tix-meter {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 3rem;
+  height: 0.4rem;
+  border-radius: 999px;
+  background: rgba(var(--ink-rgb), 0.1);
+  overflow: hidden;
+}
+
+.tix-meter > i {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #ff7440, #ffab85);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .run-tix {
+    animation: run-tix-in 0.45s cubic-bezier(0.2, 0.9, 0.25, 1.2) both;
+    animation-delay: 0.25s;
+  }
+
+  .run-tix:not(.run-tix--dim) > svg {
+    animation: run-tix-pop 0.6s cubic-bezier(0.2, 0.9, 0.25, 1.3) both;
+    animation-delay: 0.35s;
+  }
+}
+
+@keyframes run-tix-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.5rem);
+  }
+}
+
+@keyframes run-tix-pop {
+  from {
+    transform: translateY(0.4rem) rotate(-6deg) scale(0.8);
+  }
+}
+
+/* ---------- the avatar studio's prizes ---------- */
+
+.panel.studio .studio__tile--locked {
+  position: relative;
+}
+
+.panel.studio .studio__tile--locked svg:first-child {
+  opacity: 0.72;
+}
+
+.panel.studio .studio__tile--locked > span:not(.studio__tile-lock) {
+  color: var(--ticket-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.panel.studio .studio__tile-lock {
+  position: absolute;
+  top: 0.35rem;
+  right: 0.4rem;
+  width: 0.95rem;
+  height: 0.95rem;
+  color: var(--muted);
+}
+
+.panel.studio .studio__tile-lock svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.panel.studio .studio__aside--link {
+  color: var(--ticket-text);
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.panel.studio .studio__aside--link:hover {
+  text-decoration: underline;
+}
+
+.panel.studio .studio__prizes-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 1.2rem 0.2rem;
+}
+
+.panel.studio .studio__prizes-empty p {
+  margin: 0;
+  max-width: 30rem;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.panel.studio .studio__prizes-empty .panel__btn {
+  text-decoration: none;
+}
+
+/* ---------- the player card wearing its prizes ---------- */
+
+.pcard--themed {
+  --banner-ink: #f4f7fa;
+  --banner-muted: #d3dde4;
+  --banner-faint: #b8c7d2;
+  --banner-hover: #ffffff;
+  --banner-chip-bg: rgba(12, 18, 24, 0.55);
+  --banner-chip-ink: #f4f7fa;
+  --banner-chip-hover: rgba(12, 18, 24, 0.75);
+  position: relative;
+  overflow: hidden;
+}
+
+.pcard__theme {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.pcard__theme-shade {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(90deg, rgba(10, 8, 20, 0.86) 0%, rgba(10, 8, 20, 0.62) 55%, rgba(10, 8, 20, 0.38) 100%);
+}
+
+.pcard--themed > :not(.pcard__theme):not(.pcard__theme-shade) {
+  position: relative;
+  z-index: 1;
+}
+
+.pcard__name--sign {
+  line-height: 0;
+  margin-top: 0.4rem;
+}
+
+.pcard__name--sign svg {
+  max-width: 100%;
+  height: auto;
+}
+
+.pcard__title {
+  margin-top: 0.55rem;
+}
+
+@media (max-width: 640px) {
+  .pcard__name--sign svg {
+    width: 15rem;
+  }
+}
+
+/* The report's own phone padding (report.css). */
+@media (max-width: 40rem) {
+  .run-tix {
+    margin-inline: 1.35rem;
+  }
+}

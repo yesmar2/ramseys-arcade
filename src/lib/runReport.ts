@@ -1,4 +1,5 @@
 import { getGame } from '../data/games'
+import { noteTicketsPaid, type RunTickets } from './tickets'
 import { gapText, playersFromRuns, wouldPlace, type BoardPlayer } from './gameBoard'
 import { refreshGlobalRank } from './globalRank'
 import {
@@ -102,6 +103,8 @@ export type RunFacts = {
   runId?: string | null
   /** A friend's challenge the run was played against, and how it went. */
   challenge?: { name: string; score: number; won: boolean; replyId: string | null } | null
+  /** What the run paid in tickets; null when it paid none, undefined before it was saved. */
+  tickets?: RunTickets | null
 }
 
 /** Runs read to count places: one page covers every run above all but the lowest scores. */
@@ -480,6 +483,8 @@ type SaveInput = {
   challengeId?: string
   /** The run the score came from, asked for as it ended (see runIdFor). */
   run: Promise<string | undefined>
+  /** Prize tickets the run picked up on the way (Crosswalk's). */
+  pickups?: number
 }
 
 /** Saves in flight or just done, so the same run asked twice is saved once. */
@@ -506,10 +511,11 @@ export function saveRunForReport(input: SaveInput): Promise<RunFacts> {
   return promise
 }
 
-async function saveAndRead({ slug, name, score, period, priorBest, challengeId, run }: SaveInput): Promise<RunFacts> {
+async function saveAndRead({ slug, name, score, period, priorBest, challengeId, run, pickups }: SaveInput): Promise<RunFacts> {
   const me = normalizePlayerName(name)
   const priorOverall = await fetchGlobalRank(me, period).catch(() => null)
-  const saved = await addLeaderboardScore(slug, me, score, { challengeId, run })
+  const saved = await addLeaderboardScore(slug, me, score, { challengeId, run, pickups })
+  noteTicketsPaid(saved.tickets)
   for (const hit of saved.streakRecords ?? []) {
     if (
       shouldCelebrateRecordSubmit({ improved: hit.improved, rank: hit.rank, totalEntries: hit.totalEntries })
@@ -559,6 +565,7 @@ async function saveAndRead({ slug, name, score, period, priorBest, challengeId, 
     overall: { before: priorOverall, after: overall },
     books,
     runId: saved.entry?.id ?? null,
+    tickets: saved.tickets ?? null,
     // Your own challenge played back is just a run.
     challenge:
       saved.challenge && saved.challenge.outcome !== 'own'

@@ -198,7 +198,7 @@ export function parseCrosswalkRowFromRecordId(recordId: string): number | null {
 export function recordNavShortLabel(row: { id: string; label: string }): string {
   if (row.id === ASTEROIDS_HIGHEST_COMBO_ID) return 'Combo'
   if (row.id === PATRIOT_DIRECT_STREAK_ID) return 'Direct'
-  if (row.id === CROSSWALK_MOST_COINS_ID) return 'Coins'
+  if (row.id === CROSSWALK_MOST_COINS_ID) return 'Tickets'
   if (row.id === CROSSWALK_LONGEST_CHAIN_ID) return 'Chain'
   if (row.id === CROSSWALK_NEAR_MISSES_ID) return 'Calls'
   if (row.id === POP_CENTER_STREAK_ID) return 'Center'
@@ -674,12 +674,15 @@ export async function submitCrosswalkFastestRow(
   }
 }
 
-/** Best-effort most-coins submit (run total). */
-export async function submitCrosswalkMostCoins(
-  coins: number,
+/**
+ * Best-effort "Most tickets in a run" submit (the run's total). The book is
+ * still `most-coins` underneath, from when Crosswalk's pickups were coins.
+ */
+export async function submitCrosswalkMostTickets(
+  tickets: number,
   name: string,
 ): Promise<RecordSubmitOutcome | null> {
-  const value = Math.floor(coins)
+  const value = Math.floor(tickets)
   const cleaned = normalizePlayerName(name)
   if (!cleaned || !(value >= 1)) return null
   try {

@@ -1,4 +1,5 @@
 import { isGameListed } from '../data/games'
+import { noteTicketsPaid } from './tickets'
 import { isImpersonating } from './impersonate'
 import { runIdFor } from './runSession'
 import { getClaimToken, getLastPlayerName, normalizePlayerName, rememberClaimToken, ApiError } from './leaderboard'
@@ -964,6 +965,8 @@ export async function submitTournamentScore(
   youWonMatch?: boolean
   youWonTournament?: boolean
   matchOpponent?: string | null
+  /** Tickets the run paid here: a run in the day's Daily pays once a day. */
+  tickets?: { earned: number; balance: number } | null
 }> {
   const cleaned = normalizePlayerName(name)
   const token = getClaimToken(cleaned)
@@ -980,6 +983,7 @@ export async function submitTournamentScore(
     youWonTournament?: boolean
     matchOpponent?: string | null
     token?: string
+    tickets?: { earned: number; balance: number } | null
   }>(`/tournaments/${id}/scores`, {
     method: 'POST',
     body: JSON.stringify({
@@ -993,6 +997,7 @@ export async function submitTournamentScore(
   })
   rememberJoinedTournament(id)
   if (data.token) rememberClaimToken(cleaned, data.token)
+  noteTicketsPaid(data.tickets)
   return data
 }
 

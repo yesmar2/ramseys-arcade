@@ -1,4 +1,5 @@
 import { applyBoardScope, storedActiveGroup, withGroupFallback } from './groups'
+import type { RunTickets } from './tickets'
 import { runIdFor } from './runSession'
 import type { DeviceType } from './device'
 import { isGameListed } from '../data/games'
@@ -630,9 +631,13 @@ export async function addLeaderboardScore(
     challengeId?: string
     /** The run the score came from, asked for as it ended (see runIdFor). */
     run?: Promise<string | undefined>
+    /** Prize tickets the run picked up on the way (Crosswalk's), paid with it. */
+    pickups?: number
   } = {},
 ): Promise<{
   entries: LeaderboardEntry[]
+  /** What the run paid in tickets, when it was a timed run; null when it paid none. */
+  tickets?: RunTickets | null
   /** The run just saved, as it now stands on the boards. */
   entry?: LeaderboardEntry
   /** What came of the challenge, when the run was played against one. */
@@ -672,6 +677,7 @@ export async function addLeaderboardScore(
     }[]
     name?: string
     token?: string
+    tickets?: RunTickets | null
   }>(`/leaderboards/${slug}`, {
     method: 'POST',
     body: JSON.stringify({
@@ -681,6 +687,7 @@ export async function addLeaderboardScore(
       ...(token ? { token } : {}),
       ...(runId ? { runId } : {}),
       ...(opts.challengeId ? { challengeId: opts.challengeId } : {}),
+      ...(opts.pickups ? { pickups: Math.floor(opts.pickups) } : {}),
     }),
   })
 
@@ -690,6 +697,7 @@ export async function addLeaderboardScore(
 
   return {
     entries: data.entries,
+    tickets: data.tickets ?? null,
     entry: data.entry,
     challenge: data.challenge ?? null,
     rank: data.rank,

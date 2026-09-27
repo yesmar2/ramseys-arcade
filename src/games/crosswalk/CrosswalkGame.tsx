@@ -26,7 +26,7 @@ import {
   CROSSWALK_ROW_MILESTONE_MIN,
   CROSSWALK_ROW_MILESTONE_STEP,
   submitCrosswalkFastestRow,
-  submitCrosswalkMostCoins,
+  submitCrosswalkMostTickets,
   submitCrosswalkLongestChain,
   submitCrosswalkNearMisses,
   CROSSWALK_LONGEST_CHAIN_MIN,
@@ -78,7 +78,7 @@ export function CrosswalkGame() {
   const startGrace = useRef(0)
   const runStartRef = useRef<number | null>(null)
   const milestonesRef = useRef<Set<number>>(new Set())
-  const coinsRecordedRef = useRef(false)
+  const ticketsRecordedRef = useRef(false)
   const chainRecordedRef = useRef(false)
   const callsRecordedRef = useRef(false)
   const pausable = ui.phase === 'playing' && !saveOpen
@@ -192,21 +192,21 @@ export function CrosswalkGame() {
   useEffect(() => {
     if (tournament || !playerName) return
     if (ui.phase !== 'dying' && ui.phase !== 'gameover') return
-    if (coinsRecordedRef.current || ui.runCoins < 1) return
-    coinsRecordedRef.current = true
-    const coins = ui.runCoins
+    if (ticketsRecordedRef.current || ui.runTickets < 1) return
+    ticketsRecordedRef.current = true
+    const tickets = ui.runTickets
     void (async () => {
-      const result = await submitCrosswalkMostCoins(coins, playerName)
+      const result = await submitCrosswalkMostTickets(tickets, playerName)
       if (shouldCelebrateRecordSubmit(result)) {
         pushRunAchievement({
           id: 'crosswalk:most-coins',
-          label: 'Most coins in a run',
-          value: String(coins),
+          label: 'Most tickets in a run',
+          value: String(tickets),
           rank: result.rank,
         })
       }
     })()
-  }, [ui.phase, ui.runCoins, playerName, tournament])
+  }, [ui.phase, ui.runTickets, playerName, tournament])
 
   useEffect(() => {
     if (tournament || !playerName) return
@@ -257,7 +257,7 @@ export function CrosswalkGame() {
     startGrace.current = performance.now() + 220
     runStartRef.current = performance.now()
     milestonesRef.current = new Set()
-    coinsRecordedRef.current = false
+    ticketsRecordedRef.current = false
     chainRecordedRef.current = false
     callsRecordedRef.current = false
     // Same reset, stopped at the start card instead of in play.
@@ -278,13 +278,13 @@ export function CrosswalkGame() {
    *
    * Not for a blocked one — that bumps against a tree, and telling the hand it
    * moved when it did not is worse than saying nothing. Not for one that took a
-   * coin either: `collectCoin` buzzes for itself, and since `vibrate` replaces
+   * ticket either: `collectTicket` buzzes for itself, and since `vibrate` replaces
    * whatever is running, a tick fired afterwards would just erase it.
    */
   const hopFeedback = (before: GameState, after: GameState) => {
     const moved = after.row !== before.row || after.col !== before.col
-    const tookCoin = after.runCoins !== before.runCoins
-    if (moved && !tookCoin) haptic('turn')
+    const tookTicket = after.runTickets !== before.runTickets
+    if (moved && !tookTicket) haptic('turn')
   }
 
   const tryHop = (dir: Dir) => {
@@ -416,7 +416,7 @@ export function CrosswalkGame() {
                        here, and the marker on the road says it louder. */
                     <PlayStat label="Best" value={ui.target} urgent={ui.beatBest} />
                   ) : null}
-                  <PlayStat label="Coins" value={ui.runCoins} />
+                  <PlayStat label="Tickets" value={ui.runTickets} />
                   {/* Only once it means something — a chain of one or two is
                       just walking, and a readout that never rests is noise. */}
                   {ui.chain >= MOMENTUM_SHOW ? (
@@ -485,12 +485,11 @@ export function CrosswalkGame() {
                   <ScoreSaveCard
                     gameSlug="crosswalk"
                     score={ui.score}
+                    pickups={ui.runTickets}
                     title="Run over"
                     subtitle={
                       ui.cause
-                        ? `${DEATH_COPY[ui.cause]} · ${ui.score} ${ui.score === 1 ? 'row' : 'rows'}${
-                            ui.runCoins > 0 ? ` · +${ui.runCoins} coins` : ''
-                          }`
+                        ? `${DEATH_COPY[ui.cause]} · ${ui.score} ${ui.score === 1 ? 'row' : 'rows'}`
                         : `${ui.score} ${ui.score === 1 ? 'row' : 'rows'} forward`
                     }
                     previousBest={Math.max(previousBestRef.current, apiBest)}

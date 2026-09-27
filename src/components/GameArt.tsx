@@ -323,7 +323,7 @@ function Snake({ id }: { id: Id }) {
   )
 }
 
-/** The game's rows: the hopper on the grass, a bus down the road, logs and a coin on the river. */
+/** The game's rows: the hopper on the grass, a bus down the road, logs and a prize ticket on the river. */
 function Crosswalk({ id }: { id: Id }) {
   const tree = (cx: number, cy: number) => (
     <g key={`${cx}`}>
@@ -355,9 +355,18 @@ function Crosswalk({ id }: { id: Id }) {
       <path d="M7.4 4 H13 M8.6 5.5 H12" {...line(hsl(32, 56, 56), 0.25, 0.55)} />
       <rect x="26.6" y="2.4" width="14" height="4.6" rx="2.3" {...wash(32, 56, 56, 0.42, 0.5)} />
       <path d="M30 4 H36 M31 5.5 H38" {...line(hsl(32, 56, 56), 0.25, 0.55)} />
-      <Glow id={id} name="coin" cx={21.2} cy={4.7} r={2.4} colour="#f5c542" strength={0.4} />
-      <circle cx="21.2" cy="4.7" r="1.3" fill="#f5c542" stroke="#c9901f" strokeWidth="0.3" />
-      <circle cx="21.2" cy="4.7" r="0.8" {...line('#c9901f', 0.2, 0.5)} />
+      <Glow id={id} name="ticket" cx={21.2} cy={4.7} r={2.6} colour="#ff8552" strength={0.45} />
+      <g transform="rotate(-10 21.2 4.7)">
+        <path
+          d="M19.7 3.6 H22.7 A0.3 0.3 0 0 1 23 3.9 V4.34 A0.36 0.36 0 0 0 23 5.06 V5.5 A0.3 0.3 0 0 1 22.7 5.8 H19.7 A0.3 0.3 0 0 1 19.4 5.5 V5.06 A0.36 0.36 0 0 0 19.4 4.34 V3.9 A0.3 0.3 0 0 1 19.7 3.6 Z"
+          fill="#ff8552"
+          stroke="#c2461d"
+          strokeWidth="0.22"
+          strokeLinejoin="round"
+        />
+        <path d="M20.5 3.95 V5.45" {...line('#7a2a0c', 0.2, 0.5)} strokeDasharray="0.26 0.22" strokeLinecap="butt" />
+        <path d={sparkle(21.9, 4.7, 0.5)} fill="#7a2a0c" opacity="0.5" />
+      </g>
       <g>
         <rect x="14.2" y="10.4" width="2.4" height="0.9" rx="0.3" fill="#10151b" />
         <rect x="24" y="10.4" width="2.4" height="0.9" rx="0.3" fill="#10151b" />

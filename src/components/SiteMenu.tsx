@@ -1,6 +1,8 @@
 import { useState, type CSSProperties, type ReactNode, type Ref } from 'react'
+import { useTickets } from '../lib/tickets'
+import { TicketGlyph } from './prizes/Ticket'
 import { createPortal } from 'react-dom'
-import { aboutHref, adminHref, privacyHref, rankHref, statsHref, termsHref } from '../hooks/useHashRoute'
+import { aboutHref, adminHref, privacyHref, rankHref, prizesHref, statsHref, termsHref } from '../hooks/useHashRoute'
 import { useIsAdmin } from '../lib/admin'
 import { AVATARS_ENABLED, avatarWashColor, resolveAvatar } from '../lib/avatars'
 import { APP_NAME } from '../lib/brand'
@@ -109,6 +111,7 @@ export function SiteMenu({
   const [view, setView] = useState<'menu' | 'inbox'>('menu')
   const isFresh = useInboxLook(notes, view === 'inbox')
   const isAdmin = useIsAdmin()
+  const tickets = useTickets()
   if (typeof document === 'undefined') return null
 
   const tagged = signedIn && Boolean(name)
@@ -293,6 +296,15 @@ export function SiteMenu({
                 </button>
               </li>
               {tagged ? row(<StatsIcon />, 'Your stats', 'Streaks and near records', statsHref()) : null}
+              {tagged
+                ? row(
+                    <TicketGlyph size={20} />,
+                    'Prize counter',
+                    'Trade tickets for looks',
+                    prizesHref(),
+                    tickets.loaded ? tickets.balance.toLocaleString() : null,
+                  )
+                : null}
               {row(
                 <FriendIcon />,
                 'Friends',

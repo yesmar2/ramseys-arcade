@@ -89,7 +89,7 @@ function threshold(label: string): string {
 const RUN_SUBJECTS: Partial<Record<string, string>> = {
   'highest-combo': 'The biggest combo anyone has chained in a single run',
   longest: 'The longest anyone has grown in a single run',
-  'most-coins': 'The most coins anyone has picked up in a single run',
+  'most-coins': 'The most tickets anyone has picked up in a single run',
   'near-misses': 'The most close calls anyone has survived in a single run',
   'most-rows': 'The most rows anyone has climbed in a single run',
   'chasers-eaten': 'The most chasers anyone has eaten in a single run',

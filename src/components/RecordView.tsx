@@ -41,6 +41,7 @@ import { GamePreview } from './GamePreview'
 import { GameThumbArt } from './GameThumbArt'
 import { PlayerMark } from './PlayerMark'
 import { ShareBoardButton } from './ShareBoardButton'
+import { PlayerName } from './PlayerName'
 
 /*
  * One record. The banner is its game at the scale of the page, with the
@@ -557,7 +558,7 @@ function StoryCard({ story }: { story: RecordStory }) {
             <span className="rcd-moment__day">{recordDay(r.at)}</span>
             <span className="rcd-moment__who">
               <PlayerMark name={r.name} avatarId={r.avatarId} className="rcd-moment__mark" />
-              <span className="rcd-moment__name">{r.name}</span>
+              <PlayerName className="rcd-moment__name" name={r.name} avatarId={r.avatarId} />
               {r.current ? <span className="rcd-moment__now">Standing</span> : null}
             </span>
             <span className="rcd-moment__value">{r.value}</span>
@@ -645,7 +646,7 @@ function Board({
                     <PlayerMark name={e.name} avatarId={e.avatarId} className="gb-row__mark" />
                     <span className="gb-row__who">
                       <span className="gb-row__name">
-                        <span>{e.name}</span>
+                        <PlayerName name={e.name} avatarId={e.avatarId} />
                         {mine ? <span className="sb-row__you">You</span> : null}
                       </span>
                       <span className="gb-row__runs rcd-row__when">set {recordDay(e.at)}</span>

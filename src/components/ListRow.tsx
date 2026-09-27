@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import type { LeaderboardPeriod } from '../lib/leaderboard'
 import { PlayerMark } from './PlayerMark'
 import { PodiumMedal, medalKind } from './PodiumMedal'
+import { PlayerName } from './PlayerName'
 
 export type ListRowProps = {
   rank: number
@@ -68,12 +69,12 @@ export function ListRow({
       <span className="lst__text">
         {href ? (
           <a className="lst__name" href={href} title={name}>
-            <span className="lst__name-text">{name}</span>
+            <PlayerName className="lst__name-text" name={name} avatarId={avatarId} />
             {mine ? <span className="lst__you">You</span> : null}
           </a>
         ) : (
           <span className="lst__name" title={name}>
-            <span className="lst__name-text">{name}</span>
+            <PlayerName className="lst__name-text" name={name} avatarId={avatarId} />
             {mine ? <span className="lst__you">You</span> : null}
           </span>
         )}

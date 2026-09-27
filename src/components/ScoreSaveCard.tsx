@@ -48,6 +48,7 @@ import { runIdFor } from '../lib/runSession'
 import { periodCopy } from '../lib/scoreboard'
 import { standingsTakeover } from '../lib/winTakeover'
 import { useChallengeShare } from './ChallengeShare'
+import { RunTicketsLine, RunTicketsWaiting } from './prizes/RunTickets'
 import { ReportSignIn, ReportWho, RunReport, TagSlots, type ReportAction, type ReportLink } from './RunReport'
 import { WinTakeover } from './WinTakeover'
 
@@ -59,6 +60,8 @@ type ScoreSaveProps = {
   subtitle?: string
   /** Best at the start of this run, before the engine saved a new record. */
   previousBest?: number
+  /** Prize tickets the run picked up on the way (Crosswalk's), paid with the save. */
+  pickups?: number
   onDone: () => void
 }
 
@@ -98,7 +101,7 @@ function boardsHref(gameSlug: string, period: LeaderboardPeriod) {
  * in without a tag, it takes one in slots. A run that used the admin stage
  * jump is not saved at all. Leave, top left, goes to the game's page.
  */
-export function ScoreSaveCard({ gameSlug, score, title, subtitle, previousBest, onDone }: ScoreSaveProps) {
+export function ScoreSaveCard({ gameSlug, score, title, subtitle, previousBest, pickups, onDone }: ScoreSaveProps) {
   const { signedIn, loading: authLoading } = useAuth()
   const impersonation = useImpersonation()
   const canSaveScores = signedIn || Boolean(impersonation)
@@ -120,6 +123,9 @@ export function ScoreSaveCard({ gameSlug, score, title, subtitle, previousBest, 
   const runRef = useRef<Promise<string | undefined> | null>(null)
   const playRef = useRef<HTMLButtonElement>(null)
   const tagRef = useRef<HTMLInputElement>(null)
+  // Read when the save goes out; the run's count doesn't change once it's over.
+  const pickupsRef = useRef(pickups)
+  pickupsRef.current = pickups
   const titleId = useId()
   const tagId = useId()
 
@@ -224,6 +230,7 @@ export function ScoreSaveCard({ gameSlug, score, title, subtitle, previousBest, 
         priorBest: recordRef.current,
         challengeId: against?.id,
         run,
+        pickups: pickupsRef.current,
       })
       if (closed) return
       setSavedAs(facts.name)
@@ -274,6 +281,7 @@ export function ScoreSaveCard({ gameSlug, score, title, subtitle, previousBest, 
         priorBest: recordRef.current,
         challengeId: facingRef.current?.id,
         run: runRef.current ?? runIdFor(gameSlug),
+        pickups: pickupsRef.current,
       })
       setSavedAs(facts.name)
       setFacts(facts)
@@ -473,6 +481,13 @@ export function ScoreSaveCard({ gameSlug, score, title, subtitle, previousBest, 
               : lines
         }
         race={data?.race ?? null}
+        tickets={
+          phase === 'saved' && facts?.tickets ? (
+            <RunTicketsLine paid={facts.tickets} game={gameSlug} />
+          ) : unsaved && score > 0 ? (
+            <RunTicketsWaiting />
+          ) : null
+        }
         primary={primary}
         secondary={secondary}
         who={who}
