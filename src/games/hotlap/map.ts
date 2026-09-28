@@ -2,7 +2,7 @@ import type { Track } from './sim'
 
 /** Hot Lap's orange, and the ghost's sky blue. */
 const CAR = '#f2813a'
-const GHOST = '#4aa8e8'
+const GHOST = '#46e4ff'
 
 /**
  * The map in the corner: the track drawn once, in the theme's ink so it reads on a light tile and a dark

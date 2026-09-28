@@ -1091,73 +1091,78 @@ function AceChase({ id }: { id: Id }) {
 }
 
 /**
- * Hot Lap's racer from behind, as the chase camera sees it, its wheels on the road at (x, y): a pearl
- * body over wide haunches, a smoked-glass canopy with a white spine, and orange light along the haunches
- * and round the tail. The ghost is the same car in blue, seen through.
+ * Hot Lap's racer from behind, as the chase camera sees it, its wheels on the road at (x, y): a dark
+ * gunmetal body over wide haunches, a smoked-glass canopy on a dark spine, and orange light along the
+ * haunches and round the tail. The ghost is the same car drawn in cyan light, seen through, as the game
+ * draws it since its neon look (2026-09-28).
  */
 function RacerBack({ x, y, s, ghost = false }: { x: number; y: number; s: number; ghost?: boolean }) {
-  const body = ghost ? '#4aa8e8' : '#efebe5'
-  const light = ghost ? '#bfe6ff' : '#ff6a1a'
+  const body = ghost ? '#46e4ff' : '#262d36'
+  const light = ghost ? '#aaf6ff' : '#ff6a1a'
+  // The ghost is its outline, lit, over a faint body.
+  const outline = ghost ? { stroke: '#8ff8ff', strokeWidth: 0.34, strokeLinejoin: 'round' as const } : {}
+  const faint = ghost ? 0.2 : 1
   return (
-    <g transform={`translate(${x} ${y}) scale(${s})`} opacity={ghost ? 0.55 : 1}>
-      <ellipse cx="0" cy="0.15" rx="7.6" ry="0.85" fill="#000" opacity="0.3" />
-      <rect x="-6.9" y="-3.5" width="2.1" height="3.5" rx="0.8" fill="#14171b" />
-      <rect x="4.8" y="-3.5" width="2.1" height="3.5" rx="0.8" fill="#14171b" />
+    <g transform={`translate(${x} ${y}) scale(${s})`}>
+      {ghost ? null : <ellipse cx="0" cy="0.15" rx="7.6" ry="0.85" fill="#000" opacity="0.4" />}
+      <rect x="-6.9" y="-3.5" width="2.1" height="3.5" rx="0.8" fill={ghost ? body : '#0b0e12'} fillOpacity={faint} {...outline} />
+      <rect x="4.8" y="-3.5" width="2.1" height="3.5" rx="0.8" fill={ghost ? body : '#0b0e12'} fillOpacity={faint} {...outline} />
       <path d="M-6.75 -2.9 V-0.7 M6.75 -2.9 V-0.7" {...line(light, 0.34)} />
-      <path d="M-7.2 -2.5 Q-7.6 -5.2 -5.4 -6 Q0 -6.9 5.4 -6 Q7.6 -5.2 7.2 -2.5 Q6.2 -1.5 4.4 -1.3 L-4.4 -1.3 Q-6.2 -1.5 -7.2 -2.5 Z" fill={body} />
-      <path d="M-7.2 -2.5 Q-6.2 -1.5 -4.4 -1.3 L4.4 -1.3 Q6.2 -1.5 7.2 -2.5 Q6.8 -3.3 5.6 -3.4 L-5.6 -3.4 Q-6.8 -3.3 -7.2 -2.5 Z" fill={ghost ? '#2f7fc0' : '#aca79f'} opacity="0.6" />
-      <path d="M-4.4 -1.3 L4.4 -1.3 L3.8 -0.5 L-3.8 -0.5 Z" fill="#161b21" />
+      <path d="M-7.2 -2.5 Q-7.6 -5.2 -5.4 -6 Q0 -6.9 5.4 -6 Q7.6 -5.2 7.2 -2.5 Q6.2 -1.5 4.4 -1.3 L-4.4 -1.3 Q-6.2 -1.5 -7.2 -2.5 Z" fill={body} fillOpacity={faint} {...outline} />
+      {ghost ? null : <path d="M-6.4 -4.6 Q0 -5.9 6.4 -4.6" {...line('#5a6776', 0.3, 0.7)} />}
+      <path d="M-7.2 -2.5 Q-6.2 -1.5 -4.4 -1.3 L4.4 -1.3 Q6.2 -1.5 7.2 -2.5 Q6.8 -3.3 5.6 -3.4 L-5.6 -3.4 Q-6.8 -3.3 -7.2 -2.5 Z" fill={ghost ? '#2fb8d6' : '#10151b'} opacity={ghost ? 0.25 : 0.9} />
+      <path d="M-4.4 -1.3 L4.4 -1.3 L3.8 -0.5 L-3.8 -0.5 Z" fill="#0a0d11" fillOpacity={faint} />
       <path d="M-6.6 -3.1 Q0 -2.4 6.6 -3.1" {...line(light, 0.42)} />
       <path d="M-6.1 -3.7 Q-5.9 -5.3 -3.6 -5.9 M6.1 -3.7 Q5.9 -5.3 3.6 -5.9" {...line(light, 0.26)} />
-      <path d="M-2.9 -5.95 Q-2.6 -8.4 0 -8.6 Q2.6 -8.4 2.9 -5.95 Z" fill={ghost ? body : '#0d1620'} />
-      <path d="M0 -8.6 V-6.1" {...line(ghost ? body : '#f1ede7', 0.36)} />
-      {ghost ? null : <path d="M-1.9 -7.8 Q-1 -8.25 -0.3 -8.32" {...line('#ffffff', 0.18, 0.55)} />}
+      <path d="M-2.9 -5.95 Q-2.6 -8.4 0 -8.6 Q2.6 -8.4 2.9 -5.95 Z" fill={ghost ? body : '#0d1620'} fillOpacity={faint} {...outline} />
+      <path d="M0 -8.6 V-6.1" {...line(ghost ? '#8ff8ff' : '#3a434e', 0.36)} />
+      {ghost ? null : <path d="M-1.9 -7.8 Q-1 -8.25 -0.3 -8.32" {...line('#9fdfff', 0.18, 0.5)} />}
     </g>
   )
 }
 
 function HotLap({ id }: { id: Id }) {
-  // The road from under the car, bending left into the distance.
+  // The road from under the car, bending left into the distance, in the game's dark world drawn in light:
+  // black ground ruled in cyan, the road's edges lit, an orange rail, and hills far off in lines.
   const left = 'M2.5 31 C9 24 14.4 18 16.2 12.6'
   const right = 'M17.8 12.6 C21.8 17.4 31 24 37.5 31'
+  const grid = '#14c8ec'
+  const edge = '#3ff0ff'
   return (
     <>
       <defs>
         <linearGradient id={id('sky')} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#4f9fe0" />
-          <stop offset="1" stopColor="#cbe9f7" />
+          <stop offset="0" stopColor="#010308" />
+          <stop offset="0.72" stopColor="#03101c" />
+          <stop offset="1" stopColor="#0b3a4d" />
         </linearGradient>
-        <pattern id={id('mow')} width="3" height="40" patternUnits="userSpaceOnUse" patternTransform="rotate(-24)">
-          <rect width="3" height="40" fill="#5fb257" />
-          <rect width="1.5" height="40" fill="#6bbd62" />
-        </pattern>
       </defs>
       <rect x="-1" y="-1" width="42" height="14" fill={`url(#${id('sky')})`} />
-      <path d="M-1 13 C3 10.6 8 11.2 11 12 C15 10 20 10.6 24 11.8 C28 10.2 34 10.4 41 12.2 V14 H-1 Z" fill="#86b6a4" />
-      <rect x="-1" y="12.6" width="42" height="19" fill={`url(#${id('mow')})`} />
-      {[
-        [2.5, 12.9, 1.3],
-        [6.2, 13.2, 1.6],
-        [9, 12.8, 1.1],
-        [27.5, 12.9, 1.2],
-        [31, 13.3, 1.7],
-        [35.4, 12.9, 1.3],
-        [38.4, 13.4, 1.5],
-      ].map(([x, y, s]) => (
-        <path key={`${x}-${y}`} d={`M${x! - s!} ${y} L${x} ${y! - s! * 2.6} L${x! + s!} ${y} Z`} fill="#2f7a44" />
+      <path d="M-1 12.9 C1.5 8.8 7.5 8.6 10.6 12.6 M8.6 12.6 C11.4 9.9 16.4 9.7 19.4 12.6 M23.4 12.6 C26.2 9 32.4 8.8 35.4 12.6 M32.6 12.6 C35 10.5 39 10.3 41 12.1" {...line('#0f7fa0', 0.24, 0.85)} />
+      <path d="M-1 11.2 C2 10 7 10.1 9.6 11.6 M25 11.4 C28 10 33 10 36 11.5" {...line('#0f7fa0', 0.16, 0.6)} />
+      <path d="M3.2 12.6 L6.4 7.6 L9.6 12.6 M27.6 12.6 L31.4 6.8 L35.2 12.6" {...line('#0f7fa0', 0.22, 0.75)} />
+      <rect x="-1" y="12.6" width="42" height="19" fill="#01040a" />
+      {[13, 13.5, 14.2, 15.2, 16.6, 18.6, 21.6, 26].map((y) => (
+        <path key={y} d={`M-1 ${y} H41`} {...line(grid, 0.16, 0.6)} />
       ))}
-      <path d={`${left} L17.8 12.6 C21.8 17.4 31 24 37.5 31 Z`} fill="#464a52" />
-      <path d="M11 31 C14 24.5 16.2 18 17 12.6 L17.2 12.6 C18 18 21.5 24.5 25.5 31 Z" fill="#3e4249" opacity="0.6" />
-      <path d={left} {...line('#f6f4ee', 1.3)} />
-      <path d={left} {...line('#e2362f', 1.3)} strokeDasharray="1.1 1.1" strokeLinecap="butt" />
-      <path d={right} {...line('#f2f1ea', 0.4)} />
-      <path d="M4.4 31 C10.4 24.4 15.2 18.2 16.6 12.6" {...line('#f2f1ea', 0.35, 0.9)} />
-      <path d="M15.5 12.8 V9.8 M18.7 12.8 V9.8" {...line('#2b313a', 0.3)} />
-      <rect x="15.2" y="9.4" width="3.8" height="1" rx="0.12" fill="#f2813a" />
-      <path d="M15.7 9.9 H17.4" {...line('#1a2b3c', 0.22)} />
+      {[-34, -20, -8, 2, 12, 22, 32, 42, 54, 68].map((x) => (
+        <path key={x} d={`M17 12.6 L${x} 31`} {...line(grid, 0.16, 0.6)} />
+      ))}
+      <path d="M-1 12.65 H41" {...line('#16d8ff', 0.28, 0.7)} />
+      <path d="M-1 13.35 C10 13.15 28 13.15 41 13.45" {...line('#ff8b2e', 0.28)} />
+      <path d={`${left} L17.8 12.6 C21.8 17.4 31 24 37.5 31 Z`} fill="#04070c" />
+      <path d="M11 31 C14 24.5 16.2 18 17 12.6" {...line(grid, 0.12, 0.35)} strokeDasharray="1.4 1.4" />
+      <path d={left} {...line(edge, 1.7, 0.22)} />
+      <path d={right} {...line(edge, 1.7, 0.22)} />
+      <path d={left} {...line('#062a36', 1.2)} />
+      <path d={left} {...line(edge, 1.2)} strokeDasharray="1.1 1.1" strokeLinecap="butt" />
+      <path d={right} {...line(edge, 0.45)} />
+      <path d="M15.5 12.8 V9.8 M18.7 12.8 V9.8" {...line('#ff8b2e', 0.26)} />
+      <rect x="15.2" y="9.4" width="3.8" height="1" rx="0.12" fill="#05080d" stroke="#ff8b2e" strokeWidth="0.16" />
+      <path d="M15.7 9.9 H17.4" {...line('#ff8b2e', 0.22)} />
       <circle cx="18.5" cy="9.72" r="0.11" fill="#2eb8a0" />
       <RacerBack x={18.2} y={17.3} s={0.34} ghost />
-      <Glow id={id} name="glow" cx={20} cy={27.4} r={8} colour="#ff6a1a" strength={0.5} />
+      <Glow id={id} name="glow" cx={20} cy={27.4} r={8} colour="#ff6a1a" strength={0.55} />
       <Glow id={id} name="tail" cx={20} cy={24.5} r={3.4} colour="#ff6a1a" strength={0.4} />
       <RacerBack x={20} y={27.4} s={1} />
     </>

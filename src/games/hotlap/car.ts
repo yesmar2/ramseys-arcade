@@ -1,12 +1,14 @@
 /*
- * Hot Lap's car: a concept racer after the one Ramsey picked (2026-09-26). It has a long pearl-white
- * body that flows like a pebble, closed like an egg at both ends. High crowns over the wheels and a
- * low hood run between them, with a big smoked-glass canopy framed in white. A dark scoop sweeps
- * along each side. Orange light runs along the fender crests, the scoop, the nose and the tail, and
- * the wheels are orange turbines that glow.
+ * Hot Lap's car: a concept racer after the one Ramsey picked (2026-09-26). It has a long body that flows
+ * like a pebble, closed like an egg at both ends, in dark gunmetal under a clear coat since the world went
+ * dark (the neon look, 2026-09-28; it was pearl white). High crowns over the wheels and a low hood run
+ * between them, with a big smoked-glass canopy in a dark frame. A darker scoop sweeps along each side.
+ * Orange light runs along the fender crests, the scoop, the nose and the tail, and the wheels are orange
+ * turbines that glow.
  *
  * The body is one surface built section by section, x forward, y up, z across, so the scene can pose
- * it like any other model. The ghost is the same car, seen through, in its own colour.
+ * it like any other model. The ghost is the same car, seen through, in cyan, and outlined in lines of
+ * light so it reads sharp rather than as a blur.
  */
 import * as THREE from 'three'
 
@@ -19,6 +21,8 @@ export type CarModel = {
   steer: THREE.Group[]
   /** The ghost's materials, whose opacity the scene sets. */
   see: THREE.Material[]
+  /** The ghost's outlines, whose opacity the scene sets too. */
+  lines: THREE.Material[]
 }
 
 export const WHEEL_RADIUS = 0.4
@@ -228,8 +232,8 @@ function onBody(x: number, theta: number, lift: number) {
 function bodyGeometry() {
   const stations = 220
   const around = 144
-  const pearl = new THREE.Color('#ebe7e1')
-  const dark = new THREE.Color('#161b21')
+  const pearl = new THREE.Color('#262d36')
+  const dark = new THREE.Color('#0b0e12')
   const pos = new Float32Array((stations + 1) * around * 3)
   const col = new Float32Array((stations + 1) * around * 3)
   const index: number[] = []
@@ -469,7 +473,7 @@ type Paint = (w: number, h: number, draw: (g: CanvasRenderingContext2D, w: numbe
  * The car, or with `ghost` its ghost: the same shape seen through in `ghostColor`. `paint` makes the
  * scene's canvas textures (the glows, the shadow, the name), so the scene can let them go with it.
  */
-export function buildCar(paint: Paint, ghost: boolean, ghostColor = '#4aa8e8'): CarModel {
+export function buildCar(paint: Paint, ghost: boolean, ghostColor = '#46e4ff'): CarModel {
   const { body: bodyGeo, canopy: canopyGeo, lights, vanes } = shared()
   const group = new THREE.Group()
   const body = new THREE.Group()
@@ -482,24 +486,30 @@ export function buildCar(paint: Paint, ghost: boolean, ghostColor = '#4aa8e8'): 
     if (ghost) see.push(m)
     return m
   }
-  const glow = ghost ? '#8fd0ff' : '#ff5a0a'
+  const glow = ghost ? '#aaf6ff' : '#ff5a0a'
 
-  // Pearl white under a clear coat; the scoops, arches and floor darken it where the body says so.
+  // Dark gunmetal under a clear coat, so the night's glow and the light panels run along it; the scoops,
+  // arches and floor darker still where the body says so.
   const skin = ghost
     ? std({ color: ghostColor, roughness: 0.3, metalness: 0.2 })
     : new THREE.MeshPhysicalMaterial({
         color: '#ffffff',
         vertexColors: true,
-        roughness: 0.25,
-        metalness: 0.08,
+        roughness: 0.3,
+        metalness: 0.45,
         clearcoat: 1,
         clearcoatRoughness: 0.05,
-        envMapIntensity: 0.75,
-        iridescence: 0.12,
-        iridescenceIOR: 1.35,
-        iridescenceThicknessRange: [120, 380],
+        envMapIntensity: 1,
       })
   body.add(new THREE.Mesh(bodyGeo, skin))
+  // The ghost's outline: lines of light where its shape turns, the canopy's too, over its faint body.
+  const lines: THREE.Material[] = []
+  const outline = ghost ? new THREE.LineBasicMaterial({ color: '#8ff8ff', transparent: true, opacity: 0.9, depthWrite: false }) : null
+  if (outline) {
+    lines.push(outline)
+    body.add(new THREE.LineSegments(new THREE.EdgesGeometry(bodyGeo, 28), outline))
+    body.add(new THREE.LineSegments(new THREE.EdgesGeometry(canopyGeo, 28), outline))
+  }
 
   // Smoked glass, reflecting the sky.
   const glass = ghost
@@ -521,7 +531,7 @@ export function buildCar(paint: Paint, ghost: boolean, ghostColor = '#4aa8e8'): 
   // The light lines: a core lit from within (dark under the light, so the orange stays deep) and a soft halo.
   const core = std({ color: ghost ? ghostColor : '#2a1004', emissive: glow, emissiveIntensity: ghost ? 0.9 : 1.25, roughness: 0.4 })
   const halo = new THREE.MeshBasicMaterial({
-    color: ghost ? '#6fbcf2' : '#ff5a0a',
+    color: ghost ? '#6fe9ff' : '#ff5a0a',
     transparent: true,
     opacity: ghost ? 0.12 : 0.32,
     blending: THREE.AdditiveBlending,
@@ -533,8 +543,8 @@ export function buildCar(paint: Paint, ghost: boolean, ghostColor = '#4aa8e8'): 
   }
 
   if (!ghost) {
-    // The canopy's white frame: a spine over the top and a hoop behind the seats.
-    const frame = new THREE.MeshPhysicalMaterial({ color: '#f1ede7', roughness: 0.25, metalness: 0.15, clearcoat: 1, clearcoatRoughness: 0.05 })
+    // The canopy's frame, dark like the body: a spine over the top and a hoop behind the seats.
+    const frame = new THREE.MeshPhysicalMaterial({ color: '#1b2129', roughness: 0.3, metalness: 0.45, clearcoat: 1, clearcoatRoughness: 0.05 })
     const spine: THREE.Vector3[] = []
     for (let k = 0; k <= 30; k++) spine.push(canopyPoint(1.1 - (2.7 * k) / 30, Math.PI / 2, 0.012))
     body.add(new THREE.Mesh(tube(spine, 0.045), frame))
@@ -593,7 +603,7 @@ export function buildCar(paint: Paint, ghost: boolean, ghostColor = '#4aa8e8'): 
   const well = std({ color: ghost ? ghostColor : '#0c1014', roughness: 0.5, metalness: 0.3 })
   const vane = std({ color: ghost ? ghostColor : '#3a1606', emissive: glow, emissiveIntensity: ghost ? 0.5 : 0.7, roughness: 0.35, metalness: 0.5 })
   const rimRing = std({ color: ghost ? ghostColor : '#2a1004', emissive: glow, emissiveIntensity: ghost ? 0.8 : 1.4, roughness: 0.3 })
-  const hub = std({ color: ghost ? ghostColor : '#f1ede7', roughness: 0.25, metalness: 0.3 })
+  const hub = std({ color: ghost ? ghostColor : '#1b2129', roughness: 0.25, metalness: 0.45 })
   const discGeo = new THREE.CircleGeometry(0.34, 36)
   const ringGeo = new THREE.TorusGeometry(0.345, 0.022, 8, 48)
   const innerGeo = new THREE.TorusGeometry(0.115, 0.016, 8, 32)
@@ -623,6 +633,7 @@ export function buildCar(paint: Paint, ghost: boolean, ghostColor = '#4aa8e8'): 
     const wheel = new THREE.Group()
     pivot.add(wheel)
     wheel.add(new THREE.Mesh(tyreGeo, tyre))
+    if (outline) wheel.add(new THREE.LineSegments(new THREE.EdgesGeometry(tyreGeo, 28), outline))
     const out = Math.sign(z)
     const face = new THREE.Group()
     face.position.z = out * (WHEEL_WIDTH / 2)
@@ -683,5 +694,5 @@ export function buildCar(paint: Paint, ghost: boolean, ghostColor = '#4aa8e8'): 
     blob.position.y = 0.05
     group.add(blob)
   }
-  return { group, body, wheels, steer, see }
+  return { group, body, wheels, steer, see, lines }
 }

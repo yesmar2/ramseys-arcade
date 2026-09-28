@@ -13,16 +13,19 @@ import '../../styles/todaysTrack.css'
 
 const SLUG = 'hotlap'
 
-/** A track from above, as Today's Track draws it: grass, the road with its white edges, and the start. */
+/** A track from above, as Today's Track draws it: on the dark ground, the road between edges of light, and the start. */
 function TrackThumb({ pieces, shape }: { pieces: Piece[]; shape: TrackShape }) {
   const plan = useMemo(() => trackPlan(buildTrack(pieces, { heading: shape.heading })), [pieces, shape.heading])
   return (
-    <svg className="ttc-plan" viewBox={plan.viewBox} preserveAspectRatio="xMidYMid meet" aria-hidden="true">
-      <path className="ttc-plan__edge" d={plan.d} strokeWidth={plan.road * 1.3} />
-      <path className="ttc-plan__road" d={plan.d} strokeWidth={plan.road} />
-      <line className="ttc-plan__start" {...plan.start} strokeWidth={plan.road * 0.4} />
-      <circle className="ttc-plan__car" cx={plan.car.x} cy={plan.car.y} r={plan.car.r} />
-    </svg>
+    <span className="ttc-art">
+      <svg className="ttc-plan" viewBox={plan.viewBox} preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+        <path className="ttc-plan__glow" d={plan.d} strokeWidth={plan.road * 2.4} />
+        <path className="ttc-plan__edge" d={plan.d} strokeWidth={plan.road * 1.3} />
+        <path className="ttc-plan__road" d={plan.d} strokeWidth={plan.road} />
+        <line className="ttc-plan__start" {...plan.start} strokeWidth={plan.road * 0.4} />
+        <circle className="ttc-plan__car" cx={plan.car.x} cy={plan.car.y} r={plan.car.r} />
+      </svg>
+    </span>
   )
 }
 

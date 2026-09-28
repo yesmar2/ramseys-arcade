@@ -108,16 +108,23 @@ function dayWords(day) {
   return new Date(`${day}T12:00:00Z`).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' })
 }
 
-/** The track from above on its grass, as Today's Track draws it in the dark, in a picture's box. */
+/**
+ * The track from above as Today's Track draws it, in a picture's box: as the game looks since its neon look
+ * (2026-09-28), dark ground ruled in faint cyan with a glow low down, the road dark between edges of light.
+ */
 function trackSvg(plan, { picW, picH }) {
   const pad = 14
   return (
     `<svg xmlns="http://www.w3.org/2000/svg" width="${picW}" height="${picH}" viewBox="0 0 ${picW} ${picH}">` +
-    `<defs><linearGradient id="grass" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#3f7134"/><stop offset="1" stop-color="#28502a"/></linearGradient></defs>` +
-    `<rect width="${picW}" height="${picH}" fill="url(#grass)"/>` +
+    `<defs><pattern id="grid" width="16" height="16" patternUnits="userSpaceOnUse"><path d="M16 0H0V16" fill="none" stroke="rgba(20,200,236,0.16)" stroke-width="1"/></pattern>` +
+    `<radialGradient id="glow" cx="0.5" cy="1.15" r="0.9"><stop offset="0" stop-color="#16d8ff" stop-opacity="0.22"/><stop offset="1" stop-color="#16d8ff" stop-opacity="0"/></radialGradient></defs>` +
+    `<rect width="${picW}" height="${picH}" fill="#01040a"/>` +
+    `<rect width="${picW}" height="${picH}" fill="url(#grid)"/>` +
+    `<rect width="${picW}" height="${picH}" fill="url(#glow)"/>` +
     `<svg x="${pad}" y="${pad}" width="${picW - pad * 2}" height="${picH - pad * 2}" viewBox="${plan.viewBox}" preserveAspectRatio="xMidYMid meet">` +
-    `<path d="${plan.d}" fill="none" stroke="rgba(236, 241, 236, 0.82)" stroke-width="${plan.road * 1.3}" stroke-linejoin="round"/>` +
-    `<path d="${plan.d}" fill="none" stroke="#30353b" stroke-width="${plan.road}" stroke-linejoin="round"/>` +
+    `<path d="${plan.d}" fill="none" stroke="rgba(63,240,255,0.22)" stroke-width="${plan.road * 2.4}" stroke-linejoin="round"/>` +
+    `<path d="${plan.d}" fill="none" stroke="#3ff0ff" stroke-width="${plan.road * 1.3}" stroke-linejoin="round"/>` +
+    `<path d="${plan.d}" fill="none" stroke="#04070c" stroke-width="${plan.road}" stroke-linejoin="round"/>` +
     `<line x1="${plan.start.x1}" y1="${plan.start.y1}" x2="${plan.start.x2}" y2="${plan.start.y2}" stroke="#ffffff" stroke-width="${plan.road * 0.4}"/>` +
     `<circle cx="${plan.car.x}" cy="${plan.car.y}" r="${plan.car.r}" fill="${TRACK_ACCENT}"/>` +
     `</svg></svg>`

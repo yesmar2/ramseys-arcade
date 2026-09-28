@@ -97,12 +97,13 @@ function standingWords(board: TodayBoard | null): string {
   return 'Nobody has set a time yet: the first lap sets the bar.'
 }
 
-/** The track from above: grass, the road with its white edges, and the start line. */
+/** The track from above, as the game looks: the road dark between edges of light, the start line, and the car. */
 function TrackPlan({ pieces, shape }: { pieces: Piece[]; shape: TrackShape }) {
   // Turned as it lies on the map; its hills don't show from above.
   const plan = useMemo(() => trackPlan(buildTrack(pieces, { heading: shape.heading })), [pieces, shape.heading])
   return (
     <svg className="ttc-plan" viewBox={plan.viewBox} preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+      <path className="ttc-plan__glow" d={plan.d} strokeWidth={plan.road * 2.4} />
       <path className="ttc-plan__edge" d={plan.d} strokeWidth={plan.road * 1.3} />
       <path className="ttc-plan__road" d={plan.d} strokeWidth={plan.road} />
       <line className="ttc-plan__start" {...plan.start} strokeWidth={plan.road * 0.4} />

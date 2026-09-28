@@ -2,6 +2,8 @@
  * Hot Lap in 3D: the track and its grounds, the car and its ghost, the rubber a lap leaves behind, and
  * the camera that follows. The simulation's (x, y) is the ground plane, drawn on three's x and −z; on a
  * hilly track the road's heights lift it (three's y) and the ground rolls with it (terrain.ts).
+ *
+ * The look is a dark world drawn in light (NEON, below), as Ramsey picked it from three on 2026-09-28.
  */
 import * as THREE from 'three'
 import { buildCar, WHEEL_RADIUS, WHEELS, type CarModel } from './car'
@@ -49,6 +51,31 @@ const SKIDS = 1400
 /** How far a bank drops from the road's edge (and leans out), deep enough for any gap the ground leaves. */
 const BANK_DROP = 2.5
 
+/**
+ * The look, "A · Grid" of the three Ramsey was shown (2026-09-28): black ground ruled in cyan light, the
+ * road's edges lit, orange rails at the fence, hills far off drawn in lines, and the car dark under its own
+ * orange light. Nearly everything is unlit colour, cheaper to draw than the daylight world it replaced; the
+ * glow round a line is a soft strip laid over it, not a bloom pass, so phones keep their speed.
+ */
+const NEON = {
+  night: '#010308',
+  high: '#03101c',
+  horizon: '#0b3a4d',
+  haze: '#16d8ff',
+  fog: '#020812',
+  ground: '#01040a',
+  grid: '#14c8ec',
+  road: '#04070c',
+  centre: 'rgba(20, 200, 236, 0.18)',
+  edge: '#3ff0ff',
+  kerbDark: '#062a36',
+  rail: '#ff8b2e',
+  hills: '#0f7fa0',
+  steel: '#0b0f15',
+} as const
+/** A line of the ground's grid every 8 m. */
+const GRID_EVERY = 8
+
 export class HotLapScene {
   private readonly renderer: THREE.WebGLRenderer
   private readonly scene = new THREE.Scene()
@@ -84,8 +111,10 @@ export class HotLapScene {
   /** The camera's height and where it looks, eased so a bump in the road doesn't jolt them. */
   private camY = 0
   private lookY = 0
-  /** The grass, for the banks down from the road's edges on a hilly track. */
+  /** The ground, for the banks down from the road's edges on a hilly track. */
   private bankGrass: THREE.Material | null = null
+  /** The soft falloff every glow strip shares. */
+  private glowTex: THREE.CanvasTexture | null = null
 
   constructor(canvas: HTMLCanvasElement, track: Track) {
     this.track = track
@@ -96,15 +125,13 @@ export class HotLapScene {
     renderer.outputColorSpace = THREE.SRGBColorSpace
     this.renderer = renderer
 
-    const haze = new THREE.Color('#cbe9f7')
-    this.scene.fog = new THREE.Fog(haze, 240, 1100)
-    this.buildSky(haze)
+    this.scene.fog = new THREE.Fog(NEON.fog, 90, 1000)
+    this.buildSky()
     this.buildGround()
     this.buildRoad()
     this.buildStart()
     this.buildBoards()
-    this.buildTyreWalls()
-    this.buildTrees()
+    this.buildHorizon()
     this.buildReflections()
     const paint = this.paint.bind(this)
     this.car = buildCar(paint, false)
@@ -140,103 +167,86 @@ export class HotLapScene {
     return tex
   }
 
-  /** A dome from deep blue overhead to haze at the horizon, clouds low over the hills, a sky light, and the sun. */
-  private buildSky(haze: THREE.Color) {
+  /** The night: a dome dark overhead and glowing low at the horizon, a faint sky light, and a pale moon's light. */
+  private buildSky() {
     const box = this.box
-    const geo = new THREE.SphereGeometry(3000, 32, 16)
-    const top = new THREE.Color('#4f9fe0')
+    const geo = new THREE.SphereGeometry(3000, 32, 48)
+    const glow = new THREE.Color(NEON.haze)
+    const low = new THREE.Color(NEON.horizon)
+    const high = new THREE.Color(NEON.high)
+    const night = new THREE.Color(NEON.night)
     const colors: number[] = []
     for (let i = 0; i < geo.attributes.position!.count; i++) {
       const up = Math.max(0, geo.attributes.position!.getY(i) / 3000)
-      const c = haze.clone().lerp(top, Math.pow(up, 0.55))
+      // A band of light at the horizon, then up through deep blue into the dark within a few degrees.
+      const c =
+        up < 0.03
+          ? glow.clone().lerp(low, up / 0.03)
+          : up < 0.12
+            ? low.clone().lerp(high, (up - 0.03) / 0.09)
+            : up < 0.45
+              ? high.clone().lerp(night, (up - 0.12) / 0.33)
+              : night.clone()
       colors.push(c.r, c.g, c.b)
     }
     geo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3))
     const dome = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.BackSide, fog: false, depthWrite: false }))
     dome.position.set(box.cx, 0, -box.cy)
     this.scene.add(dome)
-    this.scene.add(new THREE.HemisphereLight(0xe4f3ff, 0x4d7a43, 1.15))
-    const sun = new THREE.DirectionalLight(0xfff0d8, 1.9)
-    sun.position.set(-320, 520, 180)
-    this.scene.add(sun)
-
-    // Fair-weather clouds: soft white heaps, flat underneath, a little grey where they're thick.
-    const cloud = this.paint(256, 128, (g, w, h) => {
-      const r = rng(53)
-      for (let i = 0; i < 16; i++) {
-        const x = w * (0.18 + r() * 0.64)
-        const y = h * (0.42 + r() * 0.3) - Math.sin(((x / w) * Math.PI)) * h * 0.18
-        const rad = h * (0.18 + r() * 0.2)
-        const puff = g.createRadialGradient(x, y, 0, x, y, rad)
-        puff.addColorStop(0, 'rgba(255,255,255,0.95)')
-        puff.addColorStop(0.55, 'rgba(250,252,255,0.7)')
-        puff.addColorStop(1, 'rgba(250,252,255,0)')
-        g.fillStyle = puff
-        g.fillRect(x - rad, y - rad, rad * 2, rad * 2)
-      }
-      const shade = g.createLinearGradient(0, h * 0.45, 0, h)
-      shade.addColorStop(0, 'rgba(120,140,170,0)')
-      shade.addColorStop(1, 'rgba(120,140,170,0.35)')
-      g.globalCompositeOperation = 'source-atop'
-      g.fillStyle = shade
-      g.fillRect(0, 0, w, h)
-      g.globalCompositeOperation = 'source-over'
-    })
-    const cr = rng(59)
-    for (let k = 0; k < 16; k++) {
-      const a = cr() * Math.PI * 2
-      const up = (4 + cr() * 16) * (Math.PI / 180)
-      const far = 2500
-      const puff = new THREE.Sprite(new THREE.SpriteMaterial({ map: cloud, fog: false, depthWrite: false, transparent: true, opacity: 0.78 + cr() * 0.2 }))
-      const width = 560 + cr() * 620
-      puff.scale.set(width, width * (0.3 + cr() * 0.12), 1)
-      puff.position.set(box.cx + Math.cos(a) * Math.cos(up) * far, Math.sin(up) * far, -box.cy + Math.sin(a) * Math.cos(up) * far)
-      this.scene.add(puff)
-    }
+    this.scene.add(new THREE.HemisphereLight(0x9fdfff, 0x020a12, 0.35))
+    const moon = new THREE.DirectionalLight(0xbfe9ff, 0.55)
+    moon.position.set(-320, 520, 180)
+    this.scene.add(moon)
   }
 
-  /** Grass, mown in stripes, with clumps and blades so it isn't flat paint up close. */
+  /** The ground: black, ruled in lines of light every 8 m, over its own hills and out across the plain. */
   private buildGround() {
+    // A line down two edges of a tile, half at each side of the seam, so tiles meet in whole lines with their glow.
     const tex = this.paint(256, 256, (g, w, h) => {
-      g.fillStyle = '#5aae52'
+      g.fillStyle = NEON.ground
       g.fillRect(0, 0, w, h)
-      g.fillStyle = '#67bb5e'
-      g.fillRect(0, 0, w / 2, h)
-      const r = rng(3)
-      // Clumps, lighter and darker, drawn across the edges too so the tiles meet without a seam.
-      for (let i = 0; i < 70; i++) {
-        const x = r() * w
-        const y = r() * h
-        const rad = 8 + r() * 20
-        const dark = r() > 0.5
-        for (const dx of [-w, 0, w])
-          for (const dy of [-h, 0, h]) {
-            const clump = g.createRadialGradient(x + dx, y + dy, 0, x + dx, y + dy, rad)
-            clump.addColorStop(0, dark ? 'rgba(36,88,38,0.16)' : 'rgba(170,220,130,0.12)')
-            clump.addColorStop(1, 'rgba(0,0,0,0)')
-            g.fillStyle = clump
-            g.fillRect(x + dx - rad, y + dy - rad, rad * 2, rad * 2)
-          }
+      g.shadowColor = NEON.grid
+      g.shadowBlur = 10
+      g.strokeStyle = NEON.grid
+      g.lineWidth = 3
+      g.beginPath()
+      for (const at of [0, h]) {
+        g.moveTo(0, at)
+        g.lineTo(w, at)
       }
-      for (let i = 0; i < 2600; i++) {
-        g.fillStyle = r() > 0.5 ? 'rgba(34,84,34,0.22)' : 'rgba(178,228,148,0.16)'
-        g.fillRect(r() * w, r() * h, 1, 1 + r() * 2)
+      for (const at of [0, w]) {
+        g.moveTo(at, 0)
+        g.lineTo(at, h)
       }
+      g.stroke()
     })
     tex.wrapS = tex.wrapT = THREE.RepeatWrapping
-    const grass = new THREE.MeshLambertMaterial({ map: tex })
-    // On a hilly track, the rolling ground round it; past that (and under a flat track), a plain.
+    // The ground's own texture runs 24 m a tile (terrain.ts, and the banks): a line every 8 m of it.
+    tex.repeat.set(24 / GRID_EVERY, 24 / GRID_EVERY)
     if (this.terrain) {
-      this.scene.add(this.terrain.mesh(grass))
-      this.bankGrass = new THREE.MeshLambertMaterial({ map: tex, side: THREE.DoubleSide })
+      this.scene.add(this.terrain.mesh(new THREE.MeshBasicMaterial({ map: tex })))
+      this.bankGrass = new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide })
     }
     const plainTex = tex.clone()
-    plainTex.repeat.set(4000 / 24, 4000 / 24)
+    plainTex.repeat.set(4000 / GRID_EVERY, 4000 / GRID_EVERY)
     this.textures.push(plainTex)
-    const ground = new THREE.Mesh(new THREE.PlaneGeometry(4000, 4000), new THREE.MeshLambertMaterial({ map: plainTex }))
-    ground.rotation.x = -Math.PI / 2
-    ground.position.set(this.box.cx, this.terrain ? this.terrain.base - 0.4 : -0.02, -this.box.cy)
-    this.scene.add(ground)
+    const plain = new THREE.Mesh(new THREE.PlaneGeometry(4000, 4000), new THREE.MeshBasicMaterial({ map: plainTex }))
+    plain.rotation.x = -Math.PI / 2
+    plain.position.set(this.box.cx, this.terrain ? this.terrain.base - 0.4 : -0.02, -this.box.cy)
+    this.scene.add(plain)
+  }
+
+  /** A soft glow for a line of light: a strip bright down its middle and fading to nothing at both sides, added on. */
+  private glowMaterial(color: string) {
+    this.glowTex ??= this.paint(128, 4, (g, w, h) => {
+      const across = g.createLinearGradient(0, 0, w, 0)
+      across.addColorStop(0, 'rgba(255,255,255,0)')
+      across.addColorStop(0.5, 'rgba(255,255,255,0.55)')
+      across.addColorStop(1, 'rgba(255,255,255,0)')
+      g.fillStyle = across
+      g.fillRect(0, 0, w, h)
+    })
+    return new THREE.MeshBasicMaterial({ map: this.glowTex, color, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide })
   }
 
   /** The height of the middle of the road at a point of the track: 0 on a flat track. */
@@ -317,67 +327,44 @@ export class HotLapScene {
   }
 
   /**
-   * Asphalt with its grain, patches where it was laid at different times and rubber down the middle, white
-   * edges; kerbs, red and white, round every corner; gravel on the outside of the slow ones; and the fence.
+   * The road: dark, a faint dashed line down its middle, and a line of light down each edge with its glow;
+   * kerbs in light round every corner; banks of the ground's grid down from the edges on a hill; and at the
+   * fence, a rail of orange light.
    */
   private buildRoad() {
     const track = this.track
-    const tarmac = this.paint(512, 512, (g, w, h) => {
-      g.fillStyle = '#474b53'
+    const surface = this.paint(64, 512, (g, w, h) => {
+      g.fillStyle = NEON.road
       g.fillRect(0, 0, w, h)
-      const r = rng(11)
-      // Patches, faint, carried over the top and bottom so the road repeats without a seam.
-      for (let i = 0; i < 16; i++) {
-        const x = r() * w
-        const y = r() * h
-        const rad = 40 + r() * 90
-        const light = r() > 0.5
-        for (const dy of [-h, 0, h]) {
-          const patch = g.createRadialGradient(x, y + dy, 0, x, y + dy, rad)
-          patch.addColorStop(0, light ? 'rgba(120,124,132,0.1)' : 'rgba(22,24,28,0.12)')
-          patch.addColorStop(1, 'rgba(0,0,0,0)')
-          g.fillStyle = patch
-          g.fillRect(x - rad, y + dy - rad, rad * 2, rad * 2)
-        }
-      }
-      for (let i = 0; i < 16000; i++) {
-        const v = 42 + Math.floor(r() * 60)
-        g.fillStyle = `rgba(${v},${v + 2},${v + 7},0.5)`
-        const size = 1 + r() * 1.5
-        g.fillRect(r() * w, r() * h, size, size)
-      }
-      // Rubber laid down where the cars run, darkest in the middle.
-      const rubber = g.createLinearGradient(0, 0, w, 0)
-      rubber.addColorStop(0.14, 'rgba(22,24,28,0)')
-      rubber.addColorStop(0.5, 'rgba(22,24,28,0.36)')
-      rubber.addColorStop(0.86, 'rgba(22,24,28,0)')
-      g.fillStyle = rubber
-      g.fillRect(0, 0, w, h)
-      g.fillStyle = '#f2f1ea'
-      g.fillRect(w * 0.035, 0, w * 0.03, h)
-      g.fillRect(w * 0.935, 0, w * 0.03, h)
+      g.fillStyle = NEON.centre
+      g.fillRect(w / 2 - 0.5, 0, 1, h * 0.45)
     })
-    tarmac.wrapT = THREE.RepeatWrapping
-    this.strip(0, track.n, -TW, TW, 0.01, 14, new THREE.MeshLambertMaterial({ map: tarmac, side: THREE.DoubleSide }))
+    surface.wrapT = THREE.RepeatWrapping
+    this.strip(0, track.n, -TW, TW, 0.01, 12, new THREE.MeshBasicMaterial({ map: surface, side: THREE.DoubleSide }))
+    const edge = new THREE.MeshBasicMaterial({ color: NEON.edge, side: THREE.DoubleSide })
+    this.strip(0, track.n, TW - 0.42, TW - 0.12, 0.03, 12, edge)
+    this.strip(0, track.n, -TW + 0.12, -TW + 0.42, 0.03, 12, edge)
+    const glow = this.glowMaterial(NEON.edge)
+    this.strip(0, track.n, TW - 1.9, TW + 1.3, 0.035, 12, glow)
+    this.strip(0, track.n, -TW - 1.3, -TW + 1.9, 0.035, 12, glow)
     this.bank(0, track.n, TW)
     this.bank(0, track.n, -TW)
 
     const kerbTex = this.paint(8, 64, (g, w, h) => {
-      g.fillStyle = '#e2362f'
+      g.fillStyle = NEON.edge
       g.fillRect(0, 0, w, h / 2)
-      g.fillStyle = '#f6f4ee'
+      g.fillStyle = NEON.kerbDark
       g.fillRect(0, h / 2, w, h / 2)
     })
     kerbTex.wrapT = THREE.RepeatWrapping
     kerbTex.magFilter = THREE.NearestFilter
-    const kerb = new THREE.MeshLambertMaterial({ map: kerbTex, side: THREE.DoubleSide })
+    const kerb = new THREE.MeshBasicMaterial({ map: kerbTex, side: THREE.DoubleSide })
     for (const c of track.corners) {
       this.strip(c.from - 8, c.to + 8, TW, TW + 1.4, 0.04, 4, kerb)
       this.strip(c.from - 8, c.to + 8, -TW - 1.4, -TW, 0.04, 4, kerb)
       this.bank(c.from - 8, c.to + 8, TW + 1.4)
       this.bank(c.from - 8, c.to + 8, -TW - 1.4)
     }
-    this.buildGravel()
     this.buildFence()
   }
 
@@ -437,43 +424,7 @@ export class HotLapScene {
   }
 
   /**
-   * A strip lying on the ground beside the road, between two offsets (left positive), `across` pieces
-   * wide so it follows the ground's shape; its texture repeats every `metres` both ways.
-   */
-  private groundStrip(rows: number[], inner: number, outer: number, across: number, lift: number, metres: number, material: THREE.Material) {
-    const t = this.track
-    const cols = across + 1
-    const pos = new Float32Array(rows.length * cols * 3)
-    const uv = new Float32Array(rows.length * cols * 2)
-    const index: number[] = []
-    rows.forEach((j, r) => {
-      const i = ((j % t.n) + t.n) % t.n
-      const nx = -Math.sin(t.h[i]!)
-      const ny = Math.cos(t.h[i]!)
-      const along = t.s[i]! + Math.floor(j / t.n) * t.length
-      for (let c = 0; c < cols; c++) {
-        const o = inner + ((outer - inner) * c) / across
-        const x = t.x[i]! + nx * o
-        const y = t.y[i]! + ny * o
-        pos.set([x, this.groundZ(x, y) + lift, -y], (r * cols + c) * 3)
-        uv.set([(o - inner) / metres, along / metres], (r * cols + c) * 2)
-        if (r > 0 && c > 0) {
-          const a = (r - 1) * cols + c - 1
-          const b = r * cols + c - 1
-          index.push(a, b, a + 1, a + 1, b, b + 1)
-        }
-      }
-    })
-    const geo = new THREE.BufferGeometry()
-    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3))
-    geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2))
-    geo.setIndex(index)
-    geo.computeVertexNormals()
-    this.scene.add(new THREE.Mesh(geo, material))
-  }
-
-  /**
-   * On a hilly track, a bank of grass down from an edge of the road (or of a kerb, left positive), leaning
+   * On a hilly track, a bank of the ground down from an edge of the road (or of a kerb, left positive), leaning
    * out at 45° into the ground. The ground is a grid of heights 8 m apart, which can't follow the road metre
    * by metre: where it falls away from the edge, the bank shows and the road sits on it rather than over a
    * gap; wherever the ground is up to the edge, it hides the bank.
@@ -512,82 +463,46 @@ export class HotLapScene {
     this.scene.add(new THREE.Mesh(geo, material))
   }
 
-  /** Gravel on the outside of every slow corner, from the kerb out, where a car that runs wide ends up. */
-  private buildGravel() {
-    const gravel = this.paint(128, 128, (g, w, h) => {
-      g.fillStyle = '#cdbd97'
-      g.fillRect(0, 0, w, h)
-      const r = rng(71)
-      for (let i = 0; i < 2600; i++) {
-        const v = r()
-        g.fillStyle = v > 0.66 ? 'rgba(245,236,212,0.7)' : v > 0.33 ? 'rgba(150,132,98,0.55)' : 'rgba(112,98,74,0.45)'
-        g.fillRect(r() * w, r() * h, 1 + r() * 1.5, 1 + r() * 1.5)
-      }
-    })
-    gravel.wrapS = gravel.wrapT = THREE.RepeatWrapping
-    const material = new THREE.MeshLambertMaterial({ map: gravel, side: THREE.DoubleSide })
-    const depth = 20
-    for (const c of this.track.corners) {
-      if (c.r > 50) continue
-      const side = -Math.sign(c.turn)
-      const inner = side * (TW + 1.4)
-      const outer = side * (TW + 1.4 + depth)
-      for (const run of this.clearRuns(c.from - 6, c.to + 14, 2, [inner, outer, (inner + outer) / 2])) {
-        this.groundStrip(run, inner, outer, 5, 0.09, 5, material)
-      }
-    }
-  }
-
-  /** The fence at the barrier, both sides, all the way round: a steel rail on posts, standing on the ground. */
+  /** The fence at the barrier, both sides, all the way round: a rail of orange light standing on the ground, and its glow. */
   private buildFence() {
     const t = this.track
-    const steel = this.paint(128, 64, (g, w, h) => {
-      g.fillStyle = '#aeb6bf'
-      g.fillRect(0, 0, w, h)
-      for (const y of [0.16, 0.5]) {
-        g.fillStyle = '#d9dee4'
-        g.fillRect(0, h * y, w, h * 0.12)
-        g.fillStyle = '#7f8893'
-        g.fillRect(0, h * (y + 0.12), w, h * 0.06)
-      }
-      g.fillStyle = '#5d6570'
-      g.fillRect(0, 0, w * 0.06, h)
-      g.fillStyle = 'rgba(40,46,54,0.25)'
-      g.fillRect(0, h * 0.84, w, h * 0.16)
-    })
-    steel.wrapS = THREE.RepeatWrapping
-    const material = new THREE.MeshLambertMaterial({ map: steel, side: THREE.DoubleSide })
-    const height = 0.95
+    const rail = new THREE.MeshBasicMaterial({ color: NEON.rail, side: THREE.DoubleSide })
+    const glow = this.glowMaterial(NEON.rail)
     for (const side of [1, -1]) {
       const o = side * CAR.barrier
       for (const run of this.clearRuns(0, t.n, 3, [o])) {
-        const pos = new Float32Array(run.length * 6)
-        const uv = new Float32Array(run.length * 4)
-        const index: number[] = []
-        run.forEach((j, r) => {
-          const i = ((j % t.n) + t.n) % t.n
-          const x = t.x[i]! - Math.sin(t.h[i]!) * o
-          const y = t.y[i]! + Math.cos(t.h[i]!) * o
-          const foot = this.groundZ(x, y) - 0.1
-          const along = (t.s[i]! + Math.floor(j / t.n) * t.length) / 4
-          pos.set([x, foot, -y, x, foot + height, -y], r * 6)
-          uv.set([along, 0, along, 1], r * 4)
-          if (r > 0) {
-            const k = (r - 1) * 2
-            index.push(k, k + 2, k + 1, k + 1, k + 2, k + 3)
-          }
-        })
-        const geo = new THREE.BufferGeometry()
-        geo.setAttribute('position', new THREE.BufferAttribute(pos, 3))
-        geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2))
-        geo.setIndex(index)
-        geo.computeVertexNormals()
-        this.scene.add(new THREE.Mesh(geo, material))
+        // The rail, and a taller glow round it whose falloff runs up it (the glow's u, bottom to top).
+        for (const [material, low, high] of [
+          [rail, 0.62, 0.78],
+          [glow, 0.25, 1.15],
+        ] as const) {
+          const pos = new Float32Array(run.length * 6)
+          const uv = new Float32Array(run.length * 4)
+          const index: number[] = []
+          run.forEach((j, r) => {
+            const i = ((j % t.n) + t.n) % t.n
+            const x = t.x[i]! - Math.sin(t.h[i]!) * o
+            const y = t.y[i]! + Math.cos(t.h[i]!) * o
+            const foot = this.groundZ(x, y)
+            const along = (t.s[i]! + Math.floor(j / t.n) * t.length) / 4
+            pos.set([x, foot + low, -y, x, foot + high, -y], r * 6)
+            uv.set([0, along, 1, along], r * 4)
+            if (r > 0) {
+              const k = (r - 1) * 2
+              index.push(k, k + 2, k + 1, k + 1, k + 2, k + 3)
+            }
+          })
+          const geo = new THREE.BufferGeometry()
+          geo.setAttribute('position', new THREE.BufferAttribute(pos, 3))
+          geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2))
+          geo.setIndex(index)
+          this.scene.add(new THREE.Mesh(geo, material))
+        }
       }
     }
   }
 
-  /** The start line, the gantry over it, and a grandstand beside the straight. */
+  /** The start line, and the gantry over it. */
   private buildStart() {
     const track = this.track
     const scene = this.scene
@@ -609,32 +524,46 @@ export class HotLapScene {
     const nx = -Math.sin(h)
     const ny = Math.cos(h)
     const lineZ = this.roadZ(i)
-    const steel = new THREE.MeshLambertMaterial({ color: '#2b313a' })
+    // Dark steel, its edges drawn in orange light.
+    const steel = new THREE.MeshBasicMaterial({ color: NEON.steel })
+    const edges = new THREE.LineBasicMaterial({ color: NEON.rail })
+    const girder = (geo: THREE.BufferGeometry) => {
+      const mesh = new THREE.Mesh(geo, steel)
+      mesh.add(new THREE.LineSegments(new THREE.EdgesGeometry(geo), edges))
+      return mesh
+    }
     for (const side of [1, -1]) {
       const px = track.x[i]! + nx * (TW + 2) * side
       const py = track.y[i]! + ny * (TW + 2) * side
       // Down to the ground, wherever it is, and up to the beam.
       const foot = Math.min(this.groundZ(px, py), lineZ)
-      const post = new THREE.Mesh(new THREE.BoxGeometry(0.7, lineZ + 8 - foot, 0.7), steel)
+      const post = girder(new THREE.BoxGeometry(0.7, lineZ + 8 - foot, 0.7))
       post.position.copy(W(px, py, (foot + lineZ + 8) / 2))
       scene.add(post)
     }
-    const beam = new THREE.Mesh(new THREE.BoxGeometry(1, 1.6, 2 * TW + 5), steel)
+    const beam = girder(new THREE.BoxGeometry(1, 1.6, 2 * TW + 5))
     beam.position.copy(W(track.x[i]!, track.y[i]!, lineZ + 8))
     beam.rotation.y = h
     scene.add(beam)
-    // The gantry's banner in Hot Lap's orange, the site's dark ink on it, and Blipka's mark at the end.
+    // The gantry's banner, dark, with Hot Lap lit in its orange, Blipka's name in light, and its mark's dot.
     const banner = this.paint(
       512,
       96,
       (g, w, hh) => {
-        g.fillStyle = '#f2813a'
+        g.fillStyle = '#05080d'
         g.fillRect(0, 0, w, hh)
-        g.fillStyle = '#1a2b3c'
+        g.shadowColor = NEON.rail
+        g.shadowBlur = 14
+        g.strokeStyle = NEON.rail
+        g.lineWidth = 4
+        g.strokeRect(4, 4, w - 8, hh - 8)
+        g.fillStyle = NEON.rail
         g.font = `800 60px ${FONT}`
         g.textAlign = 'center'
         g.textBaseline = 'middle'
         g.fillText('Hot Lap', w / 2 - 30, hh / 2 + 2)
+        g.shadowColor = NEON.edge
+        g.fillStyle = NEON.edge
         g.font = `700 26px ${FONT}`
         g.textAlign = 'right'
         g.fillText('blipka', w - 22, hh / 2 + 2)
@@ -649,139 +578,17 @@ export class HotLapScene {
     sign.position.copy(W(track.x[i]! - Math.cos(h) * 0.55, track.y[i]! - Math.sin(h) * 0.55, lineZ + 8))
     sign.rotation.y = h - Math.PI / 2
     scene.add(sign)
-    this.buildStand()
-  }
-
-  /**
-   * The grandstand on the outside of the start straight, as long as the straight has room for: a crowd in
-   * the arcade's colours on a raked deck, walls of concrete, a roof on posts at the back, and the site's name
-   * along the front. On a hill it leans down it with the road.
-   */
-  private buildStand() {
-    const track = this.track
-    const i = track.startIndex
-    const h = track.h[i]!
-    const nx = -Math.sin(h)
-    const ny = Math.cos(h)
-    const along = standLength(track)
-    const cx = track.x[i]! + Math.cos(h) * (20 + along / 2)
-    const cy = track.y[i]! + Math.sin(h) * (20 + along / 2)
-    const out = standSide(track)
-    const from = this.groundZ(cx - Math.cos(h) * (along / 2) + out * nx * (TW + 20), cy - Math.sin(h) * (along / 2) + out * ny * (TW + 20))
-    const to = this.groundZ(cx + Math.cos(h) * (along / 2) + out * nx * (TW + 20), cy + Math.sin(h) * (along / 2) + out * ny * (TW + 20))
-    const standZ = (from + to) / 2
-    const lean = Math.atan2(to - from, along)
-
-    // Built along x (the straight), up y, and out from the road along −z × the side it's on.
-    const stand = new THREE.Group()
-    stand.position.copy(W(cx, cy, standZ - (this.terrain ? 0.3 : 0)))
-    stand.rotation.order = 'YZX'
-    stand.rotation.set(0, h, lean)
-    const z = (d: number) => -out * d
-    const front = TW + 15
-    const deckFrom = front + 0.4
-    const deckTo = front + 13
-    const low = 1.7
-    const high = low + (deckTo - deckFrom) * 0.56
-
-    // Eight rows of seats, a person to most of them: shoulders in a shirt and a head, at the size they'd be.
-    const crowd = this.paint(1024, 128, (g, w, hh) => {
-      g.fillStyle = '#4a525e'
-      g.fillRect(0, 0, w, hh)
-      const r = rng(17)
-      // Mostly the dark and plain things people wear, with the arcade's colours dotted through.
-      const shirts = ['#2e3440', '#3b4a63', '#5a6270', '#1f2530', '#8b8f96', '#d9d7cf', '#4f7fb0', '#b85a55', '#c9a24f', '#4e9aa0', '#c4733f', '#7462a8']
-      const skin = ['#f1c7a3', '#d9a47c', '#a86f4c', '#6f4630']
-      for (let row = 0; row < 8; row++) {
-        const y = row * 16
-        g.fillStyle = '#343a44'
-        g.fillRect(0, y + 13, w, 3)
-        for (let x = 4 + r() * 6; x < w - 16; x += 17 + r() * 5) {
-          if (r() < 0.16) continue
-          g.fillStyle = shirts[Math.floor(r() * shirts.length)]!
-          g.fillRect(x, y + 7.5, 13, 6.5)
-          g.fillStyle = skin[Math.floor(r() * skin.length)]!
-          g.beginPath()
-          g.arc(x + 6.5, y + 5, 3.4, 0, Math.PI * 2)
-          g.fill()
-        }
-      }
-    })
-    crowd.wrapS = THREE.RepeatWrapping
-    const deckGeo = new THREE.BufferGeometry()
-    deckGeo.setAttribute(
-      'position',
-      new THREE.Float32BufferAttribute([-along / 2, low, z(deckFrom), along / 2, low, z(deckFrom), -along / 2, high, z(deckTo), along / 2, high, z(deckTo)], 3),
-    )
-    deckGeo.setAttribute('uv', new THREE.Float32BufferAttribute([0, 0, along / 26, 0, 0, 1, along / 26, 1], 2))
-    deckGeo.setIndex([0, 1, 2, 2, 1, 3])
-    deckGeo.computeVertexNormals()
-    stand.add(new THREE.Mesh(deckGeo, new THREE.MeshLambertMaterial({ map: crowd, side: THREE.DoubleSide })))
-
-    const banner = this.paint(
-      1024,
-      64,
-      (g, w, hh) => {
-        g.fillStyle = '#1a2b3c'
-        g.fillRect(0, 0, w, hh)
-        g.textBaseline = 'middle'
-        for (let k = 0; k < 3; k++) {
-          const x = (k * w) / 3
-          g.fillStyle = '#f2813a'
-          g.fillRect(x, 0, 6, hh)
-          g.textAlign = 'left'
-          g.font = `800 34px ${FONT}`
-          g.fillText('HOT LAP', x + 28, hh / 2 + 2)
-          const gap = g.measureText('HOT LAP').width + 44
-          g.font = `700 30px ${FONT}`
-          g.fillStyle = '#f6f4ee'
-          g.fillText('blipka', x + gap, hh / 2 + 2)
-        }
-      },
-      true,
-    )
-    banner.wrapS = THREE.RepeatWrapping
-    banner.repeat.set(Math.max(1, Math.round(along / 48)), 1)
-    const wall = new THREE.Mesh(new THREE.PlaneGeometry(along, low), new THREE.MeshLambertMaterial({ map: banner, side: THREE.DoubleSide }))
-    wall.position.set(0, low / 2, z(front))
-    // Its face to the road, whichever side the stand is on, so the name reads the right way round.
-    wall.rotation.y = out > 0 ? 0 : Math.PI
-    stand.add(wall)
-
-    const concrete = new THREE.MeshLambertMaterial({ color: '#c8cdd4' })
-    const back = new THREE.Mesh(new THREE.BoxGeometry(along + 0.8, high + 1, 0.5), concrete)
-    back.position.set(0, (high + 1) / 2, z(deckTo + 0.25))
-    stand.add(back)
-    for (const end of [-1, 1]) {
-      const side = new THREE.Mesh(new THREE.BoxGeometry(0.5, high + 1, deckTo - front + 0.5), concrete)
-      side.position.set((end * (along + 0.3)) / 2, (high + 1) / 2, z((front + deckTo) / 2))
-      stand.add(side)
-    }
-    const roofY = high + 4
-    // White on top; underneath, the grey of its girders in shade, not the green the grass light would give it.
-    const roofTop = new THREE.MeshLambertMaterial({ color: '#eef2f6' })
-    const underneath = new THREE.MeshBasicMaterial({ color: '#8e97a3' })
-    const roof = new THREE.Mesh(new THREE.BoxGeometry(along + 6, 0.5, 16), [roofTop, roofTop, roofTop, underneath, roofTop, roofTop])
-    roof.position.set(0, roofY, z(front + 7.5))
-    stand.add(roof)
-    const posts = Math.max(2, Math.round(along / 26) + 1)
-    const steel = new THREE.MeshLambertMaterial({ color: '#2b313a' })
-    for (let k = 0; k < posts; k++) {
-      const post = new THREE.Mesh(new THREE.BoxGeometry(0.5, roofY - high, 0.5), steel)
-      post.position.set(-along / 2 + (along * k) / (posts - 1), (roofY + high) / 2, z(deckTo - 0.2))
-      stand.add(post)
-    }
-    this.scene.add(stand)
   }
 
   /**
    * Braking boards before each slow corner that ends a long straight: 150, 100, 50 metres to go, on the
-   * outside. A board that would stand on another stretch of road is left out.
+   * outside, dark with their number and frame in light. A board that would stand on another stretch of
+   * road is left out.
    */
   private buildBoards() {
     const track = this.track
     const { n } = track
-    const postMat = new THREE.MeshLambertMaterial({ color: '#8b939e' })
+    const postMat = new THREE.MeshBasicMaterial({ color: NEON.steel })
     for (const c of track.corners) {
       if (c.r > 40 || Math.abs(c.turn) < 60) continue
       let straight = true
@@ -798,12 +605,14 @@ export class HotLapScene {
           128,
           96,
           (g, w, hh) => {
-            g.fillStyle = '#ffffff'
+            g.fillStyle = '#03070c'
             g.fillRect(0, 0, w, hh)
-            g.strokeStyle = '#1b1f26'
-            g.lineWidth = 8
-            g.strokeRect(4, 4, w - 8, hh - 8)
-            g.fillStyle = '#1a2b3c'
+            g.shadowColor = NEON.edge
+            g.shadowBlur = 8
+            g.strokeStyle = NEON.edge
+            g.lineWidth = 5
+            g.strokeRect(6, 6, w - 12, hh - 12)
+            g.fillStyle = '#e9fcff'
             g.font = `800 54px ${FONT}`
             g.textAlign = 'center'
             g.textBaseline = 'middle'
@@ -823,153 +632,20 @@ export class HotLapScene {
     }
   }
 
-  /** Tyre walls where the fence is, on the outside of the slow corners, wherever they'd stand clear of the road. */
-  private buildTyreWalls() {
-    const track = this.track
-    const spots: [number, number][] = []
-    for (const c of track.corners) {
-      if (c.r > 50) continue
-      const outside = -Math.sign(c.turn) * (CAR.barrier - 1)
-      for (let i = c.from - 10; i <= c.to + 10; i += 2) {
-        const k = ((i % track.n) + track.n) % track.n
-        const x = track.x[k]! - Math.sin(track.h[k]!) * outside
-        const y = track.y[k]! + Math.cos(track.h[k]!) * outside
-        if (offRoad(track, x, y) >= TW + 6) spots.push([x, y])
-      }
-    }
-    if (!spots.length) return
-    const walls = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.55, 0.55, 1.1, 10), new THREE.MeshLambertMaterial({ color: '#23262b' }), spots.length)
-    const bands = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.57, 0.57, 0.3, 10), new THREE.MeshLambertMaterial({ color: '#f6f4ee' }), spots.length)
-    const m = new THREE.Matrix4()
-    spots.forEach(([x, y], k) => {
-      const foot = this.groundZ(x, y)
-      m.makeTranslation(x, foot + 0.55, -y)
-      walls.setMatrixAt(k, m)
-      m.makeTranslation(x, foot + 0.85, -y)
-      bands.setMatrixAt(k, m)
-    })
-    this.scene.add(walls, bands)
-  }
-
-  /**
-   * Trees well back from the road and clear of the grandstand, over the ground round the track: pines and
-   * round-headed broadleaves, no two quite the same shade, each with its shadow on the ground. Then rolling
-   * hills in the haze, and mountains behind them.
-   */
-  private buildTrees() {
-    const track = this.track
+  /** Far off all round, hills and mountains drawn in lines of light. */
+  private buildHorizon() {
     const box = this.box
-    const r = rng(29)
-    const spots: [number, number, number, number][] = []
-    const x0 = box.minX - 320
-    const y0 = box.minY - 320
-    const w = box.width + 640
-    const d = box.height + 640
-    // About one tree to every 4,000 m² of the ground round the track, as the classic track had.
-    const want = Math.min(700, Math.round((w * d) / 3900))
-    const i0 = track.startIndex
-    const h0 = track.h[i0]!
-    const standEnd = 20 + standLength(track) + 25
-    for (let tries = 0; tries < want * 6 && spots.length < want; tries++) {
-      const x = x0 + r() * w
-      const y = y0 + r() * d
-      if (offRoad(track, x, y) < 46) continue
-      const dx = x - track.x[i0]!
-      const dy = y - track.y[i0]!
-      const ahead = dx * Math.cos(h0) + dy * Math.sin(h0)
-      const out = (-dx * Math.sin(h0) + dy * Math.cos(h0)) * standSide(track)
-      if (ahead > -40 && ahead < standEnd && out > 0 && out < TW + 48) continue
-      spots.push([x, y, 0.7 + r() * 0.8, r()])
-    }
-    const pines = spots.filter((s) => s[3] < 0.62)
-    const broad = spots.filter((s) => s[3] >= 0.62)
-
-    // A pine in three tiers, turned on a lathe; a broadleaf's head, faceted.
-    const pineGeo = new THREE.LatheGeometry(
-      [
-        [0, 2.2],
-        [3.4, 2.7],
-        [1.7, 5.3],
-        [2.8, 5.5],
-        [1.2, 8.3],
-        [2, 8.5],
-        [0, 11.8],
-      ].map(([rad, y]) => new THREE.Vector2(rad, y)),
-      7,
-    )
-    const headGeo = new THREE.IcosahedronGeometry(3.3, 0)
-    headGeo.scale(1, 0.86, 1)
-    const leaves = (count: number, geo: THREE.BufferGeometry) =>
-      new THREE.InstancedMesh(geo, new THREE.MeshLambertMaterial({ color: '#ffffff', flatShading: true }), count)
-    const pineMesh = leaves(pines.length, pineGeo)
-    const headMesh = leaves(broad.length, headGeo)
-    const trunks = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.3, 0.46, 3.4, 6), new THREE.MeshLambertMaterial({ color: '#6b4a32' }), spots.length)
-
-    // Each tree's shadow, a soft dark patch lying on the ground under it, pushed away from the sun.
-    const blob = this.paint(64, 64, (g, bw, bh) => {
-      const shade = g.createRadialGradient(bw / 2, bh / 2, 0, bw / 2, bh / 2, bw / 2)
-      shade.addColorStop(0, 'rgba(18,40,22,0.5)')
-      shade.addColorStop(0.6, 'rgba(18,40,22,0.26)')
-      shade.addColorStop(1, 'rgba(18,40,22,0)')
-      g.fillStyle = shade
-      g.fillRect(0, 0, bw, bh)
-    })
-    const shadowGeo = new THREE.PlaneGeometry(1, 1)
-    shadowGeo.rotateX(-Math.PI / 2)
-    const shadows = new THREE.InstancedMesh(
-      shadowGeo,
-      new THREE.MeshBasicMaterial({ map: blob, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }),
-      spots.length,
-    )
-    shadows.renderOrder = 1
-
-    const m = new THREE.Matrix4()
-    const q = new THREE.Quaternion()
-    const upright = new THREE.Quaternion()
-    const scale = new THREE.Vector3()
-    const colour = new THREE.Color()
-    const upAxis = new THREE.Vector3(0, 1, 0)
-    const normal = new THREE.Vector3()
-    const pineCount = { n: 0 }
-    const headCount = { n: 0 }
-    spots.forEach(([x, y, s, kind], k) => {
-      const foot = this.groundZ(x, y)
-      const pine = kind < 0.62
-      q.setFromAxisAngle(upAxis, kind * 40)
-      m.compose(new THREE.Vector3(x, foot + 1.7 * s - 0.2, -y), upright, scale.set(s, pine ? s : s * 1.25, s))
-      trunks.setMatrixAt(k, m)
-      if (pine) {
-        m.compose(new THREE.Vector3(x, foot - 0.2, -y), q, scale.set(s, s, s))
-        pineMesh.setMatrixAt(pineCount.n, m)
-        colour.setHSL(0.36 + (kind - 0.31) * 0.08, 0.42 + kind * 0.1, 0.25 + ((kind * 7.3) % 1) * 0.08)
-        pineMesh.setColorAt(pineCount.n++, colour)
-      } else {
-        m.compose(new THREE.Vector3(x, foot + 6.2 * s - 0.2, -y), q, scale.set(s, s, s))
-        headMesh.setMatrixAt(headCount.n, m)
-        colour.setHSL(0.26 + (kind - 0.62) * 0.2, 0.45 + (kind - 0.62) * 0.3, 0.33 + ((kind * 11.7) % 1) * 0.08)
-        headMesh.setColorAt(headCount.n++, colour)
-      }
-      // Lying on the slope it's on, as the ground's own normal has it.
-      const sx = x + 0.9 * s * 1.6
-      const sy = y + 0.5 * s * 1.6
-      const e = 1.5
-      const gx = (this.groundZ(sx + e, sy) - this.groundZ(sx - e, sy)) / (2 * e)
-      const gy = (this.groundZ(sx, sy + e) - this.groundZ(sx, sy - e)) / (2 * e)
-      normal.set(-gx, 1, gy).normalize()
-      q.setFromUnitVectors(upAxis, normal)
-      const spread = (pine ? 7 : 8.4) * s
-      m.compose(new THREE.Vector3(sx, this.groundZ(sx, sy) + 0.12, -sy), q, scale.set(spread, 1, spread))
-      shadows.setMatrixAt(k, m)
-    })
-    this.scene.add(shadows, trunks, pineMesh, headMesh)
-
     const base = this.terrain?.base ?? 0
     const ring = Math.max(box.width, box.height) / 2 + 900
+    // In the night's fog, as far things are: the nearest clear, the rest fading into the dark.
+    const lines = new THREE.MeshBasicMaterial({ color: NEON.hills, wireframe: true, transparent: true, opacity: 0.55 })
+    const m = new THREE.Matrix4()
+    const q = new THREE.Quaternion()
+    const scale = new THREE.Vector3()
+    const upAxis = new THREE.Vector3(0, 1, 0)
 
-    // Rolling hills in the haze: domes, darker at the foot, paler up top, as far things are.
-    const domeGeo = new THREE.SphereGeometry(1, 22, 9, 0, Math.PI * 2, 0, Math.PI / 2)
-    shadeByHeight(domeGeo, '#5f8e79', '#a9cbbd')
-    const hills = new THREE.InstancedMesh(domeGeo, new THREE.MeshLambertMaterial({ vertexColors: true, fog: false }), 34)
+    // Rolling hills: domes.
+    const hills = new THREE.InstancedMesh(new THREE.SphereGeometry(1, 22, 9, 0, Math.PI * 2, 0, Math.PI / 2), lines, 34)
     const hr = rng(41)
     for (let k = 0; k < 34; k++) {
       const a = (k / 34) * Math.PI * 2 + hr() * 0.1
@@ -981,11 +657,10 @@ export class HotLapScene {
     }
     this.scene.add(hills)
 
-    // Mountains far behind them, low on the horizon, blue with distance and pale at the top.
+    // Mountains far behind them.
     const peakGeo = new THREE.ConeGeometry(1, 1, 7, 3)
     peakGeo.translate(0, 0.5, 0)
-    shadeByHeight(peakGeo, '#a3b9c8', '#e8eff4')
-    const peaks = new THREE.InstancedMesh(peakGeo, new THREE.MeshLambertMaterial({ vertexColors: true, fog: false, flatShading: true }), 26)
+    const peaks = new THREE.InstancedMesh(peakGeo, lines, 26)
     const pr = rng(47)
     for (let k = 0; k < 26; k++) {
       const a = (k / 26) * Math.PI * 2 + pr() * 0.2
@@ -999,10 +674,10 @@ export class HotLapScene {
   }
 
   /*
-   * What the paint reflects: the sky, the grass at the horizon and the dark road under the car, which
-   * give the pearl its shape, and above them the sun and soft light panels like a studio's. It's worked
-   * out in floating point with the sun and the panels several times brighter than the sky, as real
-   * lights are, so the clear coat shows them as bright streaks. Only the car's materials use it.
+   * What the paint reflects: the night sky, the glow at its horizon and the dark ground under the car,
+   * which give the body its shape, and above them a moon and soft light panels like a studio's. It's
+   * worked out in floating point with the moon and the panels several times brighter than the sky, as
+   * real lights are, so the clear coat shows them as bright streaks. Only the car's materials use it.
    */
   private buildReflections() {
     const w = 512
@@ -1012,15 +687,16 @@ export class HotLapScene {
     sky.height = h
     const g = sky.getContext('2d', { willReadFrequently: true })!
     const up = g.createLinearGradient(0, 0, 0, h / 2)
-    up.addColorStop(0, '#3f8fd6')
-    up.addColorStop(1, '#e2f4fb')
+    up.addColorStop(0, NEON.night)
+    up.addColorStop(0.7, NEON.high)
+    up.addColorStop(0.94, NEON.horizon)
+    up.addColorStop(1, NEON.haze)
     g.fillStyle = up
     g.fillRect(0, 0, w, h / 2)
     const down = g.createLinearGradient(0, h / 2, 0, h)
-    down.addColorStop(0, '#7d9c70')
-    down.addColorStop(0.12, '#3c4a3a')
-    down.addColorStop(0.4, '#23272c')
-    down.addColorStop(1, '#141619')
+    down.addColorStop(0, NEON.horizon)
+    down.addColorStop(0.1, NEON.fog)
+    down.addColorStop(1, '#010206')
     g.fillStyle = down
     g.fillRect(0, h / 2, w, h / 2)
     // Where the lights are, drawn on a canvas of their own: how much brighter than the sky each pixel is.
@@ -1085,9 +761,9 @@ export class HotLapScene {
     const mesh = new THREE.Mesh(
       this.skidGeo,
       new THREE.MeshBasicMaterial({
-        color: 0x16171a,
+        color: 0x1d3440,
         transparent: true,
-        opacity: 0.42,
+        opacity: 0.5,
         depthWrite: false,
         side: THREE.DoubleSide,
         polygonOffset: true,
@@ -1222,6 +898,8 @@ export class HotLapScene {
     const apart = Math.hypot(pose.x - run.x, pose.y - run.y)
     const opacity = GHOST_OVERLAP + (GHOST_SEE - GHOST_OVERLAP) * Math.min(1, Math.max(0, (apart - 0.5) / 2.5))
     for (const m of ghost.see) m.opacity = opacity
+    // Its lines of light stay crisp, fading with it as it comes alongside.
+    for (const m of ghost.lines) m.opacity = Math.min(1, opacity * 2.6)
     // Its name fades as it comes alongside, so it never sits in front of your own car.
     if (this.ghostTag) (this.ghostTag.material as THREE.SpriteMaterial).opacity = 0.95 * Math.min(1, Math.max(0, (apart - 4) / 6))
   }
@@ -1376,34 +1054,8 @@ export class HotLapScene {
   }
 }
 
-/** Colours a shape's points from `foot` at its lowest to `top` at its highest, for things seen far off. */
-function shadeByHeight(geo: THREE.BufferGeometry, foot: string, top: string) {
-  const position = geo.attributes.position!
-  geo.computeBoundingBox()
-  const lo = geo.boundingBox!.min.y
-  const hi = geo.boundingBox!.max.y
-  const a = new THREE.Color(foot)
-  const b = new THREE.Color(top)
-  const colours: number[] = []
-  for (let i = 0; i < position.count; i++) {
-    const c = a.clone().lerp(b, Math.pow((position.getY(i) - lo) / (hi - lo || 1), 0.8))
-    colours.push(c.r, c.g, c.b)
-  }
-  geo.setAttribute('color', new THREE.Float32BufferAttribute(colours, 3))
-}
-
 /** How far a point is from the middle of the road, anywhere along the track. */
 function offRoad(track: Track, x: number, y: number) {
   const near = nearest(track, x, y, -1)
   return Math.hypot(x - track.x[near.index]!, y - track.y[near.index]!)
-}
-
-/** The grandstand's length: 190 m, or what the start straight has room for past the line and short of the braking. */
-function standLength(track: Track) {
-  return Math.max(80, Math.min(190, track.straights.A - 70 - 20 - 60))
-}
-
-/** Which side of the start straight the grandstand stands, the outside: right (−1), or left (+1) on a clockwise track. */
-function standSide(track: Track) {
-  return track.clockwise ? 1 : -1
 }

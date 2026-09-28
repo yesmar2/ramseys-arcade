@@ -1,10 +1,26 @@
-/* Today's Track (TodaysTrackCard.tsx): Hot Lap's track of the day from above, on its grass. */
-.evp-screen.ttc__screen {
-  background: linear-gradient(160deg, #8cc463 0%, #5f9a45 100%);
+/*
+ * Hot Lap's track from above: Today's Track (TodaysTrackCard.tsx) and the archive's tracks (TrackArchive.tsx).
+ * Drawn as the game looks since 2026-09-28: dark ground ruled in faint cyan with the horizon's glow low down,
+ * the road dark between edges of light, and the car in its orange. The same in either theme, as the game is.
+ */
+.evp-screen.ttc__screen,
+.ttc-art {
+  background-color: #01040a;
+  background-image:
+    radial-gradient(120% 80% at 50% 115%, rgba(22, 216, 255, 0.2), transparent 62%),
+    linear-gradient(rgba(20, 200, 236, 0.14) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(20, 200, 236, 0.14) 1px, transparent 1px);
+  background-size:
+    auto,
+    16px 16px,
+    16px 16px;
 }
 
-html:not([data-theme='light']) .evp-screen.ttc__screen {
-  background: linear-gradient(160deg, #3f7134 0%, #28502a 100%);
+/* In the archive, filling its card's picture box over the box's own colour. */
+.ttc-art {
+  position: absolute;
+  inset: 0;
+  display: block;
 }
 
 .ttc-plan {
@@ -15,26 +31,24 @@ html:not([data-theme='light']) .evp-screen.ttc__screen {
   height: 100%;
 }
 
+.ttc-plan__glow,
 .ttc-plan__edge,
 .ttc-plan__road {
   fill: none;
   stroke-linejoin: round;
 }
 
+/* A soft glow round the edges, then the edges in light, then the road over them. */
+.ttc-plan__glow {
+  stroke: rgba(63, 240, 255, 0.22);
+}
+
 .ttc-plan__edge {
-  stroke: #f4f6f1;
+  stroke: #3ff0ff;
 }
 
 .ttc-plan__road {
-  stroke: #474d55;
-}
-
-html:not([data-theme='light']) .ttc-plan__edge {
-  stroke: rgba(236, 241, 236, 0.82);
-}
-
-html:not([data-theme='light']) .ttc-plan__road {
-  stroke: #30353b;
+  stroke: #04070c;
 }
 
 .ttc-plan__start {
@@ -42,10 +56,10 @@ html:not([data-theme='light']) .ttc-plan__road {
 }
 
 .ttc-plan__car {
-  fill: #f2813a;
+  fill: #ff8b2e;
 }
 
 a.evp-screen.ttc__screen:hover .ttc-plan__car,
 a.evp-screen.ttc__screen:focus-visible .ttc-plan__car {
-  fill: #ff9a4d;
+  fill: #ffa55a;
 }
