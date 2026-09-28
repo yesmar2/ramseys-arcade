@@ -110,7 +110,7 @@ export function TopTenRibbon({
   )
 }
 
-/** A month of the bug hunt caught in full: all twelve, and a bug in a jar to show for it. */
+/** A month of the bug hunt caught in full: all ten, and a bug in a jar to show for it. */
 export function HuntSetJar({ size = 'md' }: { size?: TrophyArtSize }) {
   return (
     <Art tone="hunt" size={size}>

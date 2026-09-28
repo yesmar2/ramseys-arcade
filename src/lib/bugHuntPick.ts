@@ -9,13 +9,15 @@ import { hashString, mulberry32 } from './seededRandom'
 
 export type HuntBug = { id: string; name: string }
 
-/** The wanted bugs, by the ids findbug/wanted.ts draws them with. The order is part of the pick. */
+/**
+ * The bugs in the hunt, by the ids findbug/wanted.ts draws them with: ten of Find the Bug's twelve. The
+ * order is part of the pick, and the API's (bugHunt.ts) is the same. Pickle and Tiger stay in Find the Bug
+ * only (2026-09-28): peeking out, a top hat and a bobble hat read most like the others'.
+ */
 export const HUNT_BUGS: readonly HuntBug[] = [
   { id: 'bug', name: 'the Bug' },
   { id: 'skip', name: 'Skip' },
   { id: 'dotty', name: 'Dotty' },
-  { id: 'pickle', name: 'Pickle' },
-  { id: 'tiger', name: 'Tiger' },
   { id: 'rosie', name: 'Rosie' },
   { id: 'ziggy', name: 'Ziggy' },
   { id: 'honey', name: 'Honey' },
@@ -26,6 +28,13 @@ export const HUNT_BUGS: readonly HuntBug[] = [
 ]
 
 export const SET_SIZE = HUNT_BUGS.length
+
+const HUNT_IDS: ReadonlySet<string> = new Set(HUNT_BUGS.map((b) => b.id))
+
+/** Whether a bug is in the hunt now: one caught while there were twelve (Pickle, Tiger) isn't. */
+export function isHuntBug(id: string): boolean {
+  return HUNT_IDS.has(id)
+}
 
 /** From this day each month's bugs come round in shuffles of their own. */
 const MONTHLY_FROM = '2026-10-01'
@@ -50,10 +59,11 @@ export function dayNumber(day: string): number {
 
 /**
  * The day's bug. From October, each month starts the rotation afresh: days
- * 1 to 12 are one shuffle of the twelve, 13 to 24 another, and the rest of
- * the month part of a third, so every bug comes round two or three times a
- * month and one missed day never costs the set. Before that, the running
- * shuffle the hunt launched with, so September stays as it was.
+ * 1 to 10 are one shuffle of the ten, 11 to 20 another, 21 to 30 a third,
+ * and a 31st the start of a fourth, so every bug comes round three times a
+ * month (twice for two of them in February) and one missed day never costs
+ * the set. Before that, the running
+ * shuffle the hunt launched with, ten days at a time since it went to ten.
  */
 export function bugForDay(day: string): HuntBug {
   if (day >= MONTHLY_FROM) {

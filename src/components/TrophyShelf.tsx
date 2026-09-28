@@ -3,6 +3,8 @@ import { tournamentCreateHref } from '../hooks/useHashRoute'
 import { ordinal } from '../lib/profileMath'
 import { summarizeTrophies, trophyTone, type TrophyAward } from '../lib/trophies'
 import { medalKind } from './PodiumMedal'
+import { SET_SIZE } from '../lib/bugHuntPick'
+import { numberWord } from '../lib/numberWord'
 import { secretByNumber, SECRETS } from '../lib/secrets'
 import { EventCup, HuntSetJar, MonthlyTrophyCup, SecretArt, SecretUnknown, TopTenRibbon, WeeklyMedal, type TrophyArtSize } from './TrophyArt'
 
@@ -50,7 +52,7 @@ function trophyWhen(t: TrophyAward): string {
  * nothing. A secret says how it was found only on your own shelf: on anyone else's it stays a secret.
  */
 function trophyHaul(t: TrophyAward, isSelf: boolean): string | null {
-  if (t.period === 'hunt') return 'All twelve bugs'
+  if (t.period === 'hunt') return `All ${numberWord(SET_SIZE)} bugs`
   if (t.period === 'secret') return isSelf ? (secretByNumber(t.periodKey)?.says ?? null) : 'Nobody says how to find it'
   if (t.score <= 0) return null
   const points = `${t.score.toLocaleString()} ${t.score === 1 ? 'pt' : 'pts'}`
@@ -190,7 +192,7 @@ export function TrophyShelf({
                 <span className="pshelf__name">Catch every bug</span>
                 <span className="pshelf__when">
                   {isSelf
-                    ? 'A bug hides somewhere on the site every day. Catch all twelve in a month.'
+                    ? `A bug hides somewhere on the site every day. Catch all ${numberWord(SET_SIZE)} in a month.`
                     : `A full month of the daily bug hunt goes on the shelf.`}
                 </span>
               </span>

@@ -18,6 +18,7 @@ import {
   SET_SIZE,
   bugForDay,
   dayNumber,
+  isHuntBug,
   setEnds,
   setKeyFor,
   setMonth,
@@ -39,7 +40,7 @@ export { HUNT_BUGS, SET_SIZE, setMonth, type HuntBug }
  * learning it on the way. Everyone gets the same bug in the same place,
  * picked from the date on the boards' clock, and a new one gets loose at
  * midnight there. Catching one says what that corner of the site is for, and
- * fills in the month's set of all twelve: the set empties on the 1st, and one
+ * fills in the month's set of all ten: the set empties on the 1st, and one
  * caught in full puts a trophy on the player's shelf.
  *
  * Finds are kept on the device, and signed in, by the API too, so they
@@ -302,7 +303,7 @@ export type HuntPick = {
 }
 
 /**
- * Today's bug and where it hides. The bugs come round two or three times a
+ * Today's bug and where it hides. Each bug comes round about three times a
  * month (bugHuntPick.ts), so one missed day never costs the set.
  */
 export function huntPick(day = huntDay()): HuntPick {
@@ -331,7 +332,8 @@ export function huntPick(day = huntDay()): HuntPick {
  * in on the same device never sees them, and never sends them up as theirs.
  */
 
-export type HuntFind = { bug: string; spot: string; at: number }
+/** `counted`: what the API said of an account's find, whether it counts toward its month's set. */
+export type HuntFind = { bug: string; spot: string; at: number; counted?: boolean }
 
 /** A find this device made signed out. `legacy`: kept from before finds were kept apart, so it's never sent up. */
 type DeviceFind = HuntFind & { legacy?: boolean }
@@ -526,7 +528,7 @@ function apply(reply: ServerHunt, token: string | null) {
   if (you && token) {
     const mine = accountLog(token)
     const found: Record<string, HuntFind> = {}
-    for (const f of you.finds) found[f.day] = { bug: f.bug, spot: f.spot, at: f.at }
+    for (const f of you.finds) found[f.day] = { bug: f.bug, spot: f.spot, at: f.at, counted: f.counted }
     const pending = Object.fromEntries(Object.entries(mine.pending).filter(([day]) => !found[day]))
     saveAccount({ owner: mine.owner, found, pending, heard: true })
   }
@@ -633,16 +635,22 @@ export type HuntStats = {
   /** This month's. */
   set: HuntSet
   /**
-   * Today's find, if there is one, brought this device's set to all twelve.
+   * Today's catch was a bug already in the month's set, so it didn't add to it: the API's set signed in,
+   * this device's signed out.
+   */
+  repeat: boolean
+  /**
+   * Today's find, if there is one, brought this device's set to all ten.
    * For a player signed out: signed in, the API's word on it is what counts.
    */
   completedHere: boolean
 }
 
-function setBugs(current: HuntLog, key: string, except?: string): Set<string> {
+/** A set's bugs from a log's finds, but a day's, and only bugs still in the hunt. `counted`: only those the API counts. */
+function setBugs(current: HuntLog, key: string, except?: string, counted = false): Set<string> {
   return new Set(
     Object.entries(current.found)
-      .filter(([day]) => day !== except && setKeyFor(day) === key)
+      .filter(([day, f]) => day !== except && setKeyFor(day) === key && isHuntBug(f.bug) && (!counted || f.counted === true))
       .map(([, f]) => f.bug),
   )
 }
@@ -656,11 +664,11 @@ export function huntStats(day = huntDay(), current = huntLog(), from: HuntServer
   const key = setKeyFor(day)
   const caught = setBugs(current, key)
   const before = setBugs(current, key, day)
+  const todays = current.found[day]
   let counted: Set<string> | null = null
   if (from?.set?.key === key) {
-    counted = new Set(from.set.bugs)
+    counted = new Set([...from.set.bugs].filter(isHuntBug))
     // Today's find reaches the API on its own day, so it counts: shown so while the reply is on its way.
-    const todays = current.found[day]
     if (todays && todays.bug === bugForDay(day).id) counted.add(todays.bug)
   }
   return {
@@ -676,6 +684,7 @@ export function huntStats(day = huntDay(), current = huntLog(), from: HuntServer
       counted,
       have: counted ?? caught,
     },
+    repeat: Boolean(todays) && (counted ? setBugs(current, key, day, true) : before).has(todays!.bug),
     completedHere: foundToday && before.size < SET_SIZE && caught.size === SET_SIZE,
   }
 }

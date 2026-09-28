@@ -30,6 +30,7 @@ import {
   type HuntStats,
   type HuntTest,
 } from '../lib/bugHunt'
+import { numberWord } from '../lib/numberWord'
 import { ordinal } from '../lib/profileMath'
 import { getSessionToken } from '../lib/auth'
 import { THEME_EVENT } from '../lib/theme'
@@ -616,8 +617,8 @@ function Collection({ stats, today, note = true }: { stats: HuntStats; today?: s
         <p className="hunt-set__note">Sign in to put a full set on your shelf: only finds made signed in count toward it.</p>
       ) : uncounted ? (
         <p className="hunt-set__note">
-          Bugs in a dashed ring were caught signed out, so they don’t count. Every bug comes round two or three times
-          a month.
+          Bugs in a dashed ring were caught signed out, so they don’t count. Every bug comes round about three
+          times a month.
         </p>
       ) : null}
     </section>
@@ -730,6 +731,11 @@ function HuntPanel({ onClose }: { onClose: () => void }) {
                   {name} was hiding {huntWhere(pick.anchor, pick.pose)}.
                 </p>
                 {count ? <p className="hunt-wanted__small">{count}</p> : null}
+                {stats.repeat ? (
+                  <p className="hunt-wanted__small">
+                    {name} was already in your {stats.set.month} set, so today’s catch didn’t add to it.
+                  </p>
+                ) : null}
                 {server?.tickets?.day === pick.day ? (
                   <p className="hunt-wanted__small">It paid you {server.tickets.earned} tickets for the prize counter.</p>
                 ) : null}
@@ -752,7 +758,7 @@ function HuntPanel({ onClose }: { onClose: () => void }) {
         <p className="hunt-panel__foot">
           A new bug gets loose every day at midnight Eastern, somewhere else.{' '}
           {getSessionToken()
-            ? 'Catch all twelve in a month and the set goes on your shelf.'
+            ? `Catch all ${numberWord(SET_SIZE)} in a month and the set goes on your shelf. Each comes round about three times.`
             : 'Sign in and your finds follow you to any device.'}
         </p>
       </div>
@@ -762,6 +768,22 @@ function HuntPanel({ onClose }: { onClose: () => void }) {
         </button>
       </div>
     </Panel>
+  )
+}
+
+/**
+ * A catch of a bug already in the month's set: it counts for the day (and pays its tickets) but doesn't
+ * add to the set, and without this the count just sat still with nothing to say why.
+ */
+function RepeatNote({ name, stats }: { name: string; stats: HuntStats }) {
+  const have = stats.set.have.size
+  const left = SET_SIZE - have
+  const word = numberWord(left)
+  return (
+    <p className="hunt-panel__note">
+      {name} was already in your {stats.set.month} set, so it stays at {have} of {SET_SIZE}.{' '}
+      {left > 0 ? `${word.charAt(0).toUpperCase()}${word.slice(1)} still to catch, and each comes round again.` : 'The set is full.'}
+    </p>
   )
 }
 
@@ -777,7 +799,7 @@ function FullSet({ stats, server, onClose, onWear }: { stats: HuntStats; server:
       </span>
       <div className="hunt-full__text">
         <p className="hunt-full__line">
-          That’s all twelve!{' '}
+          That’s all {numberWord(SET_SIZE)}!{' '}
           {done.shelved ? `${month}’s full set is on your shelf.` : `Pick a tag and ${month}’s full set goes on your shelf.`}
         </p>
         {done.pin ? <p className="hunt-full__small">It’s your first, so it comes with a pin: the bug net.</p> : null}
@@ -866,14 +888,21 @@ function FoundPanel({ onClose, onWear, pose }: FoundProps & { pose: HuntPose | n
               <HuntSetJar size="md" />
             </span>
             <div className="hunt-full__text">
-              <p className="hunt-full__line">That’s all twelve of {stats.set.month}’s bugs on this device!</p>
+              <p className="hunt-full__line">
+                That’s all {numberWord(SET_SIZE)} of {stats.set.month}’s bugs on this device!
+              </p>
               <p className="hunt-full__small">
                 A set goes on your shelf when it’s caught signed in. Sign in, and your next full set is a trophy.
               </p>
             </div>
           </div>
         ) : null}
-        {first ? <p className="hunt-panel__note">Your first bug. There are twelve in {stats.set.month}’s set.</p> : null}
+        {first ? (
+          <p className="hunt-panel__note">
+            Your first bug. There are {numberWord(SET_SIZE)} in {stats.set.month}’s set.
+          </p>
+        ) : null}
+        {stats.repeat ? <RepeatNote name={name} stats={stats} /> : null}
         <Stats stats={stats} />
         {/* A set just caught in full on this device has said its piece about signing in. */}
         <Collection stats={stats} today={pick.bug.id} note={!doneHere} />

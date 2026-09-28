@@ -172,7 +172,7 @@ export function pinInfo(pin: AvatarPin): { label: string; rule: string } {
     case 'crown':
       return { label: 'Crown', rule: 'Win a month in the arcade' }
     case 'bugnet':
-      return { label: 'Bug net', rule: 'Catch all twelve bugs of a month’s bug hunt' }
+      return { label: 'Bug net', rule: 'Catch all ten bugs of a month’s bug hunt' }
     default: {
       const name = getGame(pin)?.name ?? pin
       return { label: name, rule: `Reach the all-time top ten on ${name}` }

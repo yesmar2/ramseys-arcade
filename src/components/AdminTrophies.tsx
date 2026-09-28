@@ -56,7 +56,7 @@ const TROPHIES: Thing[] = [
     art: <HuntSetJar size="md" />,
     tone: 'hunt',
     name: 'Bug hunt set',
-    how: 'All twelve of a month’s daily bugs caught, each on its own day. The first set also unlocks the bug net pin.',
+    how: 'All ten of a month’s daily bugs caught, each on its own day. The first set also unlocks the bug net pin.',
   },
 ]
 
