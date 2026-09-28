@@ -57,9 +57,10 @@ export type Game = {
   /** If set, the game is only offered on these devices. */
   devices?: DeviceType[]
   /**
-   * A daily: something new to play each day, the same for everyone, so its board is the day's. The API
-   * keeps such a game's board to today whatever the period (DAILY_GAMES there), and the site says so:
-   * "today" where other boards name their period.
+   * A daily: something new to play each day, the same for everyone, so a run is weighed only against its
+   * day's. Its board for today is the day's runs; for a week, a month or all time, the API adds up what
+   * each day's board paid by place (DAILY_GAMES and dayPointsBoard there), and the site prints those in
+   * points (leaderboardFormat isDayPointsBoard). Anything that wants a daily's best run reads today's board.
    */
   daily?: boolean
 }

@@ -3,7 +3,7 @@ import { announceSecrets, type SecretFound } from './secrets'
 import type { RunTickets } from './tickets'
 import { runIdFor } from './runSession'
 import type { DeviceType } from './device'
-import { isGameListed } from '../data/games'
+import { isDailyGame, isGameListed } from '../data/games'
 import type { ChallengeRunResult } from './challenges'
 import { detectDeviceType, DEVICE_LABELS, isDeviceType } from './device'
 
@@ -511,7 +511,8 @@ export async function getLeaderboard(
 }
 
 export async function fetchTopScore(slug: string): Promise<number> {
-  const { entries } = await getLeaderboard(slug, 'all')
+  // A daily's best run is today's: its all-time board is day points, not a run (leaderboardFormat isDayPointsBoard).
+  const { entries } = await getLeaderboard(slug, isDailyGame(slug) ? 'daily' : 'all')
   return entries[0]?.score ?? 0
 }
 

@@ -1,3 +1,4 @@
+import { isDailyGame } from '../data/games'
 import { fetchPlayerBests, getLastPlayerName } from './leaderboard'
 
 export type PersonalBestKind = 'first' | 'new' | 'tie' | 'short'
@@ -54,7 +55,13 @@ export async function refreshPersonalBests() {
       return
     }
     try {
-      const bests = await fetchPlayerBests(name)
+      // A daily's best is today's: its all-time board is day points, not a run (leaderboardFormat isDayPointsBoard).
+      const [bests, today] = await Promise.all([fetchPlayerBests(name), fetchPlayerBests(name, 'daily')])
+      for (const slug of new Set([...Object.keys(bests), ...Object.keys(today)])) {
+        if (!isDailyGame(slug)) continue
+        if (today[slug]) bests[slug] = today[slug]
+        else delete bests[slug]
+      }
       cachedName = name
       cachedBests = bests
       emit()

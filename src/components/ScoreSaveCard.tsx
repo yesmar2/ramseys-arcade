@@ -173,7 +173,8 @@ export function ScoreSaveCard({ gameSlug, score, title, subtitle, previousBest, 
       const name = normalizePlayerName(getLastPlayerName())
       if (name) {
         try {
-          const bests = await fetchPlayerBests(name)
+          // A daily's best is today's, on the day's board this run goes on.
+          const bests = await fetchPlayerBests(name, isDailyGame(gameSlug) ? 'daily' : 'all')
           recordRef.current = bests[gameSlug] ?? 0
         } catch {
           /* keep this device's best */

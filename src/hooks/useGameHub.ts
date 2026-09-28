@@ -67,14 +67,16 @@ export function useHubBoard(
       try {
         const { runs, you } = await allRuns(slug, period, me)
         const players = playersFromRuns(runs)
+        // A daily's other days were other tracks, holes and scenes: nothing there to measure today by.
+        const daily = isDailyGame(slug)
         let allTimeBest: number | null = null
-        if (me && !you && period !== 'all') {
+        if (me && !you && period !== 'all' && !daily) {
           allTimeBest = await getLeaderboard(slug, 'all', me, { limit: 1 })
             .then((b) => b.you?.score ?? null)
             .catch(() => null)
         }
         let aimAt: HubBoard['aimAt'] = null
-        if (players.length === 0 && period !== 'all') {
+        if (players.length === 0 && period !== 'all' && !daily) {
           // Nobody on it yet: the month's best to aim at, or all time's when the month is empty too.
           const widths: LeaderboardPeriod[] = ['daily', 'weekly', 'monthly', 'all']
           for (const wider of widths.slice(widths.indexOf(period) + 1)) {
