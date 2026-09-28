@@ -12,6 +12,7 @@ import {
   boardLede,
   boardYouStats,
   offBoardLines,
+  oneRunBoard,
   playersFromRuns,
   priceList,
   runsChart,
@@ -265,7 +266,19 @@ function Banner({
 
 /* ---------- you ---------- */
 
-function YouOnBoard({ slug, copy, you, avatarId }: { slug: string; copy: PeriodCopy; you: BoardYou; avatarId?: string }) {
+function YouOnBoard({
+  slug,
+  period,
+  copy,
+  you,
+  avatarId,
+}: {
+  slug: string
+  period: LeaderboardPeriod
+  copy: PeriodCopy
+  you: BoardYou
+  avatarId?: string
+}) {
   const count = you.runs.length
   return (
     <div className="sb-card sb-you__card">
@@ -287,7 +300,7 @@ function YouOnBoard({ slug, copy, you, avatarId }: { slug: string; copy: PeriodC
         <Stats stats={boardYouStats(slug, you)} />
         <p className="gb-callout">
           <ArrowIcon />
-          <span>{boardCallout(slug, you)}</span>
+          <span>{boardCallout(slug, you, period)}</span>
         </p>
       </div>
     </div>
@@ -815,7 +828,7 @@ export function GameBoard({ slug, period }: { slug: LeaderboardGame; period: Lea
         <section className="sb-you gb-you" aria-label="Your place on this board">
           {standing ? (
             <>
-              <YouOnBoard slug={slug} copy={copy} you={standing} avatarId={data.youRun?.avatarId} />
+              <YouOnBoard slug={slug} period={period} copy={copy} you={standing} avatarId={data.youRun?.avatarId} />
               <RunsCard slug={slug} copy={copy} you={standing} players={players} />
             </>
           ) : (
@@ -835,7 +848,8 @@ export function GameBoard({ slug, period }: { slug: LeaderboardGame; period: Lea
         <Board key={`${slug}-${period}`} slug={slug} period={period} copy={copy} data={data} players={players} you={you} />
         {!data.loading ? (
           <aside className="gb-side" aria-label="More about this board">
-            {standing ? <PriceCard slug={slug} copy={copy} players={players} /> : null}
+            {/* Once your run is on a board that takes one a player, no score on it is yours to beat. */}
+            {standing && !oneRunBoard(slug, period) ? <PriceCard slug={slug} copy={copy} players={players} /> : null}
             <OtherBoards others={data.others} period={period} />
           </aside>
         ) : null}

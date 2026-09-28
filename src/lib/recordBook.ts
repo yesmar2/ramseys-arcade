@@ -63,6 +63,14 @@ function lapTime(ms: number): string {
 
 const tries = (n: number) => `${n.toLocaleString()} ${n === 1 ? 'try' : 'tries'}`
 
+/** The number of today's track, hole or day on the boards' clock, or null for a game without courses. */
+export function courseToday(game: string, now = Date.now()): number | null {
+  const first = COURSE_FIRST_DAY[game]
+  if (!first) return null
+  const [y, m, d] = first.split('-').map(Number)
+  return Math.round((boardToday(now) - Date.UTC(y!, m! - 1, d!)) / 86_400_000) + 1
+}
+
 /**
  * Where a course's record is played: today's track or hole is the day's game; one whose day has gone is
  * played on its own (?track=, ?hole=), where a lap or result goes on its board and so into its record; a
@@ -71,9 +79,9 @@ const tries = (n: number) => `${n.toLocaleString()} ${n === 1 ? 'try' : 'tries'}
 export function coursePlayHref(game: string, record: { id: string }, now = Date.now()): string | null {
   const n = courseNumber(record)
   const first = COURSE_FIRST_DAY[game]
-  if (n == null || !first) return null
+  const today = courseToday(game, now)
+  if (n == null || !first || today == null) return null
   const [y, m, d] = first.split('-').map(Number)
-  const today = Math.round((boardToday(now) - Date.UTC(y!, m! - 1, d!)) / 86_400_000) + 1
   if (n === today) return gamePlayHref(game)
   if (game === 'hotlap') return `${gamePlayHref(game)}?track=${n}`
   const day = new Date(Date.UTC(y!, m! - 1, d! + n - 1)).toISOString().slice(0, 10)

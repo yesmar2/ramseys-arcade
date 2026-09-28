@@ -1,5 +1,5 @@
 import { getGame } from '../data/games'
-import { normalizePlayerName, type LeaderboardEntry } from './leaderboard'
+import { normalizePlayerName, type LeaderboardEntry, type LeaderboardPeriod } from './leaderboard'
 import {
   formatLeaderboardScore,
   formatPercentGap,
@@ -191,10 +191,11 @@ export function boardYouStats(slug: string, you: BoardYou): Stat[] {
   return stats
 }
 
-/** The one thing to do next on this board. */
-export function boardCallout(slug: string, you: BoardYou): string {
+/** The one thing to do next on this board: on one that takes a run a player (oneRunBoard), that yours is in. */
+export function boardCallout(slug: string, you: BoardYou, period: LeaderboardPeriod): string {
   const { player, above, below, field } = you
   if (above) {
+    if (oneRunBoard(slug, period)) return dayRunIn(slug)
     return `Beat ${formatLeaderboardScore(slug, above.best.score)} for ${ordinal(player.place - 1)}, and it pays ${placePoints(player.place - 1, field)}.`
   }
   if (below) return `You hold first. ${below.name} is ${gapBetween(slug, player.best.score, below.best.score)} back.`
@@ -202,14 +203,38 @@ export function boardCallout(slug: string, you: BoardYou): string {
 }
 
 /**
+ * Dailies whose day's result is the day's first, so once it's in no later run moves it: Find the Bug's
+ * first run and Half Full's first pour (the API's FIRST_RUN_DAILIES, firstRun.ts), and Ace Chase's first
+ * bullseye (the API's dailyHole.ts keeps an account's first result a day, and holes.ts its first on a hole
+ * after its day). Hot Lap's day is its best lap, so another lap can always move you.
+ */
+export const FIRST_RUN_DAILIES: ReadonlySet<string> = new Set(['findbug', 'acechase', 'halffull'])
+
+/** What a first-run daily calls its day's result: a run, a bullseye, a pour. */
+export function firstRunWord(slug: string): string {
+  return slug === 'acechase' ? 'bullseye' : slug === 'halffull' ? 'pour' : 'run'
+}
+
+/**
  * What gets a player onto a game's board: any run, but on a daily that counts the day's first result
  * only, that one (Find the Bug's first run, Ace Chase's first bullseye, Half Full's first pour).
  */
 export function whatPutsYouOn(slug: string): string {
-  if (slug === 'findbug') return 'Your first run of the day puts you on the board'
-  if (slug === 'acechase') return 'Your first bullseye of the day puts you on the board'
-  if (slug === 'halffull') return 'Your first pour of the day puts you on the board'
+  if (FIRST_RUN_DAILIES.has(slug)) return `Your first ${firstRunWord(slug)} of the day puts you on the board`
   return 'Any run puts you on the board'
+}
+
+/**
+ * Whether a board takes one run a player, so once theirs is on it no run moves them: today's, on a
+ * first-run daily. Its week, month and all time are day points, which the next day's run adds to.
+ */
+export function oneRunBoard(slug: string, period: LeaderboardPeriod): boolean {
+  return period === 'daily' && FIRST_RUN_DAILIES.has(slug)
+}
+
+/** What a player whose run is in on a one-run board is told, in place of a score to beat. */
+export function dayRunIn(slug: string): string {
+  return `That’s your ${firstRunWord(slug)} for today. A new board at midnight, New York time.`
 }
 
 /** Where a best from outside this period would land on it, and what that place would pay. */

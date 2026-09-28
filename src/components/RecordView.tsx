@@ -6,6 +6,7 @@ import { usePlayerName } from '../hooks/usePlayerName'
 import { APP_NAME } from '../lib/brand'
 import { inkOn } from '../lib/color'
 import { useDeviceType } from '../lib/device'
+import { firstRunWord } from '../lib/gameBoard'
 import { hasGamePreview } from '../lib/gamePreviews'
 import { cachedMyGroups, groupBoardEmptyTitle, useActiveGroup } from '../lib/groups'
 import {
@@ -23,10 +24,12 @@ import {
   recordDay,
   recordHeadline,
   recordLede,
+  recordShut,
   recordStanding,
   recordStory,
   recordTakes,
   recordWhen,
+  type RecordShut,
   type RecordStanding,
   type RecordStory,
   type RecordTake,
@@ -174,6 +177,7 @@ function Banner({
   entries,
   loading,
   group,
+  shut,
 }: {
   game: string
   recordId: string
@@ -182,6 +186,7 @@ function Banner({
   entries: LeaderboardEntry[]
   loading: boolean
   group?: string
+  shut: RecordShut | null
 }) {
   const device = useDeviceType()
   const meta = getGame(game)!
@@ -233,7 +238,7 @@ function Banner({
           {loading || !record ? (
             <span className="skel-line" style={{ '--skel-w': '20rem' } as CSSProperties} />
           ) : (
-            recordLede(game, record, period, entries)
+            recordLede(game, record, period, entries, shut)
           )}
         </p>
         <PeriodTabs game={game} recordId={recordId} period={period} />
@@ -256,7 +261,7 @@ function Banner({
             text="Share"
             label={
               top && record
-                ? `${record.label} in ${meta.name}: ${top.name}’s ${recordValue(record, top.score)}. Beat it on ${APP_NAME}.`
+                ? `${record.label} in ${meta.name}: ${top.name}’s ${recordValue(record, top.score)}${shut === 'over' ? `, set for good on ${APP_NAME}.` : `. Beat it on ${APP_NAME}.`}`
                 : `${label || 'A record'} in ${meta.name} on ${APP_NAME}. Nobody has set it yet.`
             }
             url={recordHref(game, recordId, period)}
@@ -293,6 +298,7 @@ function YouCard({
   standing,
   name,
   avatarId,
+  shut,
 }: {
   game: string
   period: LeaderboardPeriod
@@ -300,7 +306,20 @@ function YouCard({
   standing: RecordStanding | null
   name: string
   avatarId?: string
+  shut: RecordShut | null
 }) {
+  if (!standing && shut === 'over') {
+    return (
+      <div className="sb-card sb-you__card sb-first">
+        <p className="sb-kicker">Its day is over</p>
+        <h2 className="sb-first__title">This record is final.</h2>
+        <p className="sb-first__text">A replay of the day is practice. Sign in and play today’s for a record of your own.</p>
+        <div className="sb-you__foot sb-you__foot--acts">
+          <PlayLink game={game} record={record} />
+        </div>
+      </div>
+    )
+  }
   if (!standing) {
     return (
       <div className="sb-card sb-you__card sb-first">
@@ -373,10 +392,10 @@ function YouCard({
   )
 }
 
-function TakesCard({ takes, sub }: { takes: RecordTake[]; sub: string }) {
+function TakesCard({ takes, sub, title }: { takes: RecordTake[]; sub: string; title: string }) {
   return (
     <div className="sb-card gb-price rcd-takes">
-      <h2 className="sb-card__title">What it takes</h2>
+      <h2 className="sb-card__title">{title}</h2>
       <p className="gb-card__sub">{sub}</p>
       <ul className="gb-price__rows">
         {takes.map((t) => (
@@ -787,14 +806,16 @@ export function RecordView({ game, recordId, period }: { game: string; recordId:
     )
   }
 
+  // A day's record that no run can move for you now: its day over, or your one result on it in.
+  const shut = record ? recordShut(game, record, Boolean(data.you || data.allTimeYou)) : null
   const standing =
     record && you
-      ? recordStanding(game, record, period, { entries, total, you: data.you, progression: data.progression }, you, data.allTimeYou)
+      ? recordStanding(game, record, period, { entries, total, you: data.you, progression: data.progression }, you, data.allTimeYou, shut)
       : null
   const story = record ? recordStory(record, data.progression, data.youProgression, period, you) : null
   const when = period === 'all' ? '' : ` ${recordWhen(period)}`
   const takesSub = total
-    ? `${total.toLocaleString()} ${total === 1 ? 'player' : 'players'} on it${when}. Only each player’s best counts.`
+    ? `${total.toLocaleString()} ${total === 1 ? 'player' : 'players'} on it${when}. ${shut ? `Each player’s first ${firstRunWord(game)} is the one that counts.` : 'Only each player’s best counts.'}`
     : `Nobody is on it ${period === 'all' ? 'yet' : recordWhen(period)}.`
 
   return (
@@ -807,6 +828,7 @@ export function RecordView({ game, recordId, period }: { game: string; recordId:
         entries={entries}
         loading={data.loading}
         group={group}
+        shut={shut}
       />
 
       {!data.loading && record ? (
@@ -818,11 +840,16 @@ export function RecordView({ game, recordId, period }: { game: string; recordId:
             standing={standing}
             name={you}
             avatarId={data.you?.avatarId}
+            shut={shut}
           />
           {standing?.mode === 'held' ? (
             <ClosestCard record={record} entries={entries} />
           ) : (
-            <TakesCard takes={recordTakes(game, record, entries, data.you?.rank ?? null)} sub={takesSub} />
+            <TakesCard
+              title={shut ? 'Where it stands' : 'What it takes'}
+              takes={recordTakes(game, record, entries, data.you?.rank ?? null, shut)}
+              sub={takesSub}
+            />
           )}
         </section>
       ) : null}

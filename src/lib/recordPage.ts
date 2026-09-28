@@ -1,7 +1,18 @@
 import { getGame } from '../data/games'
 import { avatarWashColor, resolveAvatar } from './avatars'
+import { FIRST_RUN_DAILIES, firstRunWord } from './gameBoard'
 import type { LeaderboardEntry, LeaderboardPeriod, YouEntry } from './leaderboard'
-import { courseName, recordBrief, recordGap, recordKind, recordTime, recordValue, type RecordKind } from './recordBook'
+import {
+  courseName,
+  courseNumber,
+  courseToday,
+  recordBrief,
+  recordGap,
+  recordKind,
+  recordTime,
+  recordValue,
+  type RecordKind,
+} from './recordBook'
 import type { RecordDef, RecordSummary } from './records'
 import { boardToday, ordinal, type Stat } from './scoreboard'
 
@@ -149,6 +160,36 @@ export function onTheBoard(game: string, record: Rec): string {
   return 'Finish a run'
 }
 
+/**
+ * A record no run can move for the viewer now. A Find the Bug or Half Full day's record takes each player's
+ * first run of that day and nothing after it, so once its day is over it's shut for everyone ('over'), and
+ * on its day for a player whose run is in ('today'). An Ace Chase hole's takes an account's first result on
+ * it, on its day or from the archive after (the API's holes.ts), so it's shut only for a player who has
+ * one ('today' on its day, 'in' after). Hot Lap's tracks take any lap on any day, so they never shut.
+ */
+export type RecordShut = 'today' | 'in' | 'over'
+
+/** Whether this record is shut for the viewer, `onIt` saying whether they have a result on it at all. */
+export function recordShut(game: string, record: Rec, onIt: boolean, now = Date.now()): RecordShut | null {
+  const n = courseNumber(record)
+  const today = courseToday(game, now)
+  if (!FIRST_RUN_DAILIES.has(game) || n == null || today == null) return null
+  if (n < today && game !== 'acechase') return 'over'
+  if (!onIt) return null
+  return n === today ? 'today' : 'in'
+}
+
+/** What comes at midnight on each first-run daily. */
+const NEXT_DAY: Partial<Record<string, string>> = { findbug: 'New scenes', acechase: 'A new hole', halffull: 'New glasses' }
+
+/** What a shut record says in place of a score to beat. */
+export function shutLine(game: string, shut: RecordShut): string {
+  const word = firstRunWord(game)
+  if (shut === 'today') return `That’s your ${word} for today. ${NEXT_DAY[game] ?? 'A new day'} at midnight, New York time.`
+  if (shut === 'in') return `That’s your ${word} on this hole, and only the first counts.`
+  return 'Its day is over, so this record is final: a replay of the day is practice.'
+}
+
 /* ---------- the banner ---------- */
 
 /** Whose name is on it and for how long, with the name apart so it can wear the gold. */
@@ -165,9 +206,16 @@ export function recordHeadline(
   }
 }
 
-/** The line under it: what the record is and what it leads by, or how to take an empty one. */
-export function recordLede(game: string, record: Rec, period: LeaderboardPeriod, entries: LeaderboardEntry[]): string {
+/** The line under it: what the record is and what it leads by, or how to take an empty one while it can be. */
+export function recordLede(
+  game: string,
+  record: Rec,
+  period: LeaderboardPeriod,
+  entries: LeaderboardEntry[],
+  shut: RecordShut | null = null,
+): string {
   const [top, second] = entries
+  if (!top && shut === 'over') return shutLine(game, shut)
   if (!top) {
     const clock =
       recordKind(record) !== 'clock'
@@ -208,7 +256,8 @@ function stints(progression: LeaderboardEntry[]): { name: string; from: number; 
 
 /**
  * Where the viewer stands on a record: holding it, on its board, or not on it
- * yet, with the numbers and the next thing to aim at.
+ * yet, with the numbers and the next thing to aim at; on a shut one (recordShut),
+ * why there's nothing left to aim at.
  */
 export function recordStanding(
   game: string,
@@ -217,6 +266,7 @@ export function recordStanding(
   board: { entries: LeaderboardEntry[]; total: number; you: YouEntry | null; progression: LeaderboardEntry[] },
   me: string,
   allTimeYou: YouEntry | null,
+  shut: RecordShut | null = null,
   now = Date.now(),
 ): RecordStanding {
   const { entries, total, you, progression } = board
@@ -249,13 +299,15 @@ export function recordStanding(
       )
     }
     if (below) stats.push({ value: recordGap(record, below.score, you.score), label: `ahead of ${below.name}` })
-    const callout = !next
-      ? `${capital(recordBeat(record, top.score))} takes the record.`
-      : next.score === you.score
-        ? `Tied with ${next.name}, who got there first. ${capital(recordBeat(record, next.score))} passes them.`
-        : rank === 2
-          ? `${capital(recordBeat(record, top.score))} takes the record from ${top.name}.`
-          : `${capital(recordBeat(record, next.score))} passes ${next.name} for ${ordinal(rank - 1)}.`
+    const callout = shut
+      ? shutLine(game, shut)
+      : !next
+        ? `${capital(recordBeat(record, top.score))} takes the record.`
+        : next.score === you.score
+          ? `Tied with ${next.name}, who got there first. ${capital(recordBeat(record, next.score))} passes them.`
+          : rank === 2
+            ? `${capital(recordBeat(record, top.score))} takes the record from ${top.name}.`
+            : `${capital(recordBeat(record, next.score))} passes ${next.name} for ${ordinal(rank - 1)}.`
     // Held it once and lost it: the last stretch, and who took it.
     const mine = stints(progression).filter((s) => s.name === me && s.taker)
     const lost = mine[mine.length - 1]
@@ -273,11 +325,14 @@ export function recordStanding(
     }
   }
   const when = period === 'all' ? '' : ` ${recordWhen(period)}`
+  // Shut, there's no getting on it: just who is.
+  const join = (then: string) => (shut ? '' : ` ${onTheBoard(game, record)} and ${then}.`)
   const line = total
-    ? `${total.toLocaleString()} ${total === 1 ? 'player is' : 'players are'} on it${when}. ${onTheBoard(game, record)} and you’re one of them.`
-    : `Nobody is on it ${soFar(period)}. ${onTheBoard(game, record)} and the record is yours.`
-  const callout =
-    entries.length >= 3
+    ? `${total.toLocaleString()} ${total === 1 ? 'player is' : 'players are'} on it${when}.${join('you’re one of them')}`
+    : `Nobody is on it ${soFar(period)}.${join('the record is yours')}`
+  const callout = shut
+    ? shutLine(game, shut)
+    : entries.length >= 3
       ? `${capital(recordBeat(record, entries[2].score))} makes the podium; ${recordBeat(record, top.score)} takes the record.`
       : top
         ? `${capital(recordBeat(record, top.score))} takes the record from ${top.name}.`
@@ -292,25 +347,35 @@ export function recordStanding(
 
 export type RecordTake = { what: string; beat: string; who: string; done: boolean }
 
-/** What each rung takes: the record, the podium, the top half, and getting on at all, ticked where the viewer is. */
-export function recordTakes(game: string, record: Rec, entries: LeaderboardEntry[], rank: number | null): RecordTake[] {
+/**
+ * What each rung takes: the record, the podium, the top half, and getting on at all, ticked where the viewer is.
+ * On a shut record (recordShut) no run takes one, so each is where it stands: its number and who holds it.
+ */
+export function recordTakes(
+  game: string,
+  record: Rec,
+  entries: LeaderboardEntry[],
+  rank: number | null,
+  shut: RecordShut | null = null,
+): RecordTake[] {
   const takes: RecordTake[] = []
   const at = rank ? `you’re ${ordinal(rank)}` : ''
+  const mark = (score: number) => (shut ? recordValue(record, score) : capital(recordBeat(record, score)))
   const [top] = entries
   if (top) {
     takes.push({
-      what: 'Take the record',
-      beat: capital(recordBeat(record, top.score)),
-      who: rank === 1 ? 'it’s yours' : `from ${top.name}`,
+      what: shut ? 'The record' : 'Take the record',
+      beat: mark(top.score),
+      who: rank === 1 ? 'it’s yours' : shut ? top.name : `from ${top.name}`,
       done: rank === 1,
     })
   }
   if (entries.length >= 3) {
     const done = Boolean(rank && rank <= 3)
     takes.push({
-      what: 'Make the podium',
-      beat: capital(recordBeat(record, entries[2].score)),
-      who: done ? at : `past ${entries[2].name}, now 3rd`,
+      what: shut ? 'The podium' : 'Make the podium',
+      beat: mark(entries[2].score),
+      who: done ? at : shut ? `${entries[2].name}, 3rd` : `past ${entries[2].name}, now 3rd`,
       done,
     })
   }
@@ -319,17 +384,20 @@ export function recordTakes(game: string, record: Rec, entries: LeaderboardEntry
     const done = Boolean(rank && rank <= half)
     takes.push({
       what: 'The top half',
-      beat: capital(recordBeat(record, entries[half - 1].score)),
-      who: done ? at : `past ${entries[half - 1].name}, now ${ordinal(half)}`,
+      beat: mark(entries[half - 1].score),
+      who: done ? at : shut ? `${entries[half - 1].name}, ${ordinal(half)}` : `past ${entries[half - 1].name}, now ${ordinal(half)}`,
       done,
     })
   }
-  takes.push({
-    what: 'Get on it',
-    beat: onTheBoard(game, record),
-    who: rank ? 'you’re on it' : 'one result, any result',
-    done: Boolean(rank),
-  })
+  // Shut, there's no getting on it, so the rung is only there to tick.
+  if (!shut || rank) {
+    takes.push({
+      what: shut ? 'On it' : 'Get on it',
+      beat: onTheBoard(game, record),
+      who: rank ? 'you’re on it' : 'one result, any result',
+      done: Boolean(rank),
+    })
+  }
   return takes
 }
 

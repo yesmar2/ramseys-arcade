@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import type { HubBoard } from '../hooks/useGameHub'
-import { gapBetween, whatPutsYouOn, wouldPlace, youOnBoard } from '../lib/gameBoard'
+import { dayRunIn, gapBetween, oneRunBoard, whatPutsYouOn, wouldPlace, youOnBoard } from '../lib/gameBoard'
 import { anyRunPays, firstRunAims, standingOn, type Standing } from '../lib/gameHub'
 import type { LeaderboardGame, LeaderboardPeriod } from '../lib/leaderboard'
 import { formatLeaderboardScore } from '../lib/leaderboardFormat'
@@ -47,7 +47,7 @@ export function GameHubStanding({
       </div>
     )
   } else if (you) {
-    body = <OnBoard slug={slug} standing={standingOn(board.players, you)} when={when} />
+    body = <OnBoard slug={slug} standing={standingOn(board.players, you, oneRunBoard(slug, period))} when={when} />
   } else if (me && board.allTimeBest != null && board.allTimeBest > 0) {
     const best = board.allTimeBest
     const landing = wouldPlace(board.players, best)
@@ -128,7 +128,7 @@ export function GameHubStanding({
 
 function OnBoard({ slug, standing, when }: { slug: LeaderboardGame; standing: Standing; when: string }) {
   const fmt = (score: number) => formatLeaderboardScore(slug, score)
-  const { place, field, pays, best, runs, bar, lines, next, chaser } = standing
+  const { place, field, pays, best, runs, bar, lines, next, chaser, settled } = standing
   const nextLabel = next?.line ?? null
   // Name the line being chased; the top ten as well, when it is far enough along not to collide.
   const target = lines.find((l) => l.label === nextLabel)
@@ -194,6 +194,8 @@ function OnBoard({ slug, standing, when }: { slug: LeaderboardGame; standing: St
           ) : null}
           .
         </Callout>
+      ) : settled && place > 1 ? (
+        <Callout badge={ordinal(place)}>{dayRunIn(slug)}</Callout>
       ) : (
         <Callout badge="1st">
           You hold 1st{chaser ? `, and ${chaser.name} is ${gapBetween(slug, best, chaser.score)} back` : ''}.

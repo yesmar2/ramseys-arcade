@@ -2,6 +2,7 @@ import type { Game } from '../data/games'
 import { placePoints, type BoardPlayer, type BoardYou } from './gameBoard'
 import { barPosition, nextLine, shareLines, talksInPlaces } from './profileMath'
 import { closestToInk, coverRecord, recordBrief, recordGap } from './recordBook'
+import { recordShut } from './recordPage'
 import type { RecordSummary } from './records'
 
 /*
@@ -51,22 +52,25 @@ export type Standing = {
   bar: number
   /** The share lines to mark on the bar, where the board is big enough for them. */
   lines: { label: string; rank: number; at: number }[]
-  /** The run that moves them next; none for the player in first. */
+  /** The run that moves them next; none for the player in first, or once their run is in on a one-run board. */
   next: Step | null
   /** For the player in first: who is next, and how far back. */
   chaser: { name: string; gap: number; score: number } | null
+  /** The board takes one run a player (gameBoard oneRunBoard) and theirs is in, so no run moves them now. */
+  settled: boolean
 }
 
 /**
  * Where a player on the board stands and what to chase. In the top ten, or on
  * a small board, that is the place above; further down it is the next share
  * line (the top half, 25%, 10%), which means the same on a board of any size.
+ * On a board that takes one run a player, theirs is it: nothing to chase.
  */
-export function standingOn(players: BoardPlayer[], you: BoardYou): Standing {
+export function standingOn(players: BoardPlayer[], you: BoardYou, oneRun = false): Standing {
   const { player, field, above, below } = you
   const lines = shareLines(field).map((l) => ({ label: l.label, rank: l.rank, at: barPosition(l.rank, field) }))
   let next: Step | null = null
-  if (above) {
+  if (above && !oneRun) {
     if (talksInPlaces(player.place, field)) {
       next = stepFor(players, you, above.best.score, player.place - 1 === 10 ? 'Top ten' : null)
     } else {
@@ -85,6 +89,7 @@ export function standingOn(players: BoardPlayer[], you: BoardYou): Standing {
     lines,
     next,
     chaser: !above && below ? { name: below.name, gap: player.best.score - below.best.score, score: below.best.score } : null,
+    settled: oneRun,
   }
 }
 
@@ -135,14 +140,15 @@ export type RecordRow = {
 
 /**
  * The records to show on a game's page. For a player in the book: the ones
- * tied with the holder (one more run takes them), the ones they hold, the
- * nearest, and one nobody has set. For anyone else: the unset ones, then the
- * book's best.
+ * tied with the holder (one more run takes them, unless the record is shut:
+ * recordPage recordShut), the ones they hold, the nearest, and one nobody has
+ * set. For anyone else: the unset ones, then the book's best. A day's record
+ * nobody set on its day stays unset for good, so it isn't one to point at.
  */
 export function recordRows(records: RecordSummary[], me: string, limit = 4): { rows: RecordRow[]; yours: boolean } {
   const yours = Boolean(me) && records.some((r) => r.you)
   const open = records
-    .filter((r) => !r.top)
+    .filter((r) => !r.top && recordShut(r.game, r, false) !== 'over')
     .map((record) => ({
       record,
       value: 'Open',
@@ -165,11 +171,12 @@ export function recordRows(records: RecordSummary[], me: string, limit = 4): { r
           : 'Yours'
         held.push({ record: r, value: recordBrief(r, you.score), note, hot: false })
       } else if (you.score === r.top.score) {
+        const shut = recordShut(r.game, r, true)
         tied.push({
           record: r,
           value: recordBrief(r, you.score),
-          note: `Tied with ${r.top.name}, who got there first. One better and it’s yours.`,
-          hot: true,
+          note: `Tied with ${r.top.name}, who got there first.${shut ? '' : ' One better and it’s yours.'}`,
+          hot: !shut,
         })
       }
     }
@@ -181,7 +188,7 @@ export function recordRows(records: RecordSummary[], me: string, limit = 4): { r
         note: `${ordinalOf(record.you!.rank)}${record.players ? ` of ${record.players}` : ''} · ${off}`,
         hot: false,
       }))
-    const firstOpen = open.slice(0, 1).map((row) => ({ ...row, hot: tied.length === 0 }))
+    const firstOpen = open.slice(0, 1).map((row) => ({ ...row, hot: !tied.some((t) => t.hot) }))
     const rows = [...tied, ...held, ...near.slice(0, 1), ...firstOpen, ...near.slice(1), ...open.slice(1)]
     return { rows: rows.slice(0, limit), yours }
   }
