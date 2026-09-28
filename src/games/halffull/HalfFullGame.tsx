@@ -52,15 +52,18 @@ import {
   type Phase,
   type PourResult,
 } from './game'
+import { absVolume, levelForAbsVol } from './glasses'
 import { glassOwner, guestFor, guestName } from './looks'
-import { dayPlan, ROUNDS, type DayPlan } from './plan'
-import { dragSpan, renderHalfFull, type View } from './render'
+import { dayPlan, ROUNDS, splitLevelB, type DayPlan } from './plan'
+import { dragSpan, renderHalfFull, splitDragSpan, splitGlassAt, splitLevels, type View } from './render'
 import { formatOff, formatPercent, formatPoints, markFor } from './score'
 
 /*
  * Half Full: fill four glasses exactly half full, by what they hold, then share a jug fairly between
  * two friends. A drag anywhere pours (up fills, down takes back), the nudges and the arrow keys do
- * the last little bit, and "That's half" locks it. Then the glass is tipped into a measuring jug.
+ * the last little bit, and "That's half" locks it. Then the glass is tipped into a measuring jug. On
+ * the split, a drag up on a glass pours into it, as it would on any other, and one sideways pours
+ * toward the glass it goes toward.
  *
  * The day's first run is its result and is kept on the device as it goes; after it, or on a past
  * day, the glasses pour again as practice.
@@ -145,7 +148,20 @@ export function HalfFullGame({ testDay = null }: { testDay?: string | null }) {
   const stamped = useRef(-1)
   const shownAt = useRef(0)
   const soundAt = useRef(0)
-  const drag = useRef<{ id: number; x: number; y: number } | null>(null)
+  /**
+   * A drag under way: the round it began in, where it began and last was, and on the split which glass it
+   * began on and which way it goes (up and down or sideways, decided once it has gone a few pixels).
+   */
+  const drag = useRef<{
+    id: number
+    round: number
+    x: number
+    y: number
+    sx: number
+    sy: number
+    glass: 'a' | 'b'
+    axis: 'x' | 'y' | null
+  } | null>(null)
   const fontRef = useRef('system-ui, sans-serif')
   /** The counted run this page is playing, by when it began: a lock is kept only onto that run. */
   const runId = useRef<number | null>(null)
@@ -335,6 +351,8 @@ export function HalfFullGame({ testDay = null }: { testDay?: string | null }) {
       settle()
       if (s.phase !== lastPhase) {
         if (s.phase === 'shown' && lastPhase === 'tip' && s.tipT >= 2.6) shownAt.current = now
+        // A pour locked by the clock ends any drag with it.
+        if (s.phase !== 'pour') drag.current = null
         lastPhase = s.phase
         uiAcc = 1
       }
@@ -437,7 +455,13 @@ export function HalfFullGame({ testDay = null }: { testDay?: string | null }) {
     }
     if (s.phase !== 'pour' || drag.current) return
     e.preventDefault()
-    drag.current = { id: e.pointerId, x: e.clientX, y: e.clientY }
+    let glass: 'a' | 'b' = 'a'
+    const play = playRef.current
+    if (isSplitRound(s.round) && play) {
+      const rect = play.getBoundingClientRect()
+      glass = splitGlassAt(s, viewOf(rect.width, rect.height, 0), e.clientX - rect.left)
+    }
+    drag.current = { id: e.pointerId, round: s.round, x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, glass, axis: null }
     try {
       e.currentTarget.setPointerCapture(e.pointerId)
     } catch {
@@ -449,6 +473,11 @@ export function HalfFullGame({ testDay = null }: { testDay?: string | null }) {
     const d = drag.current
     const s = stateRef.current
     if (!d || d.id !== e.pointerId) return
+    // A finger still down from an earlier glass doesn't pour into this one.
+    if (d.round !== s.round) {
+      drag.current = null
+      return
+    }
     // A mouse that lost its button-up (a context menu took it) is only hovering.
     if (e.pointerType === 'mouse' && e.buttons === 0) {
       drag.current = null
@@ -458,12 +487,32 @@ export function HalfFullGame({ testDay = null }: { testDay?: string | null }) {
     const play = playRef.current
     if (!play) return
     const rect = play.getBoundingClientRect()
-    const span = dragSpan(s, viewOf(rect.width, rect.height, 0))
+    const view = viewOf(rect.width, rect.height, 0)
+    const span = dragSpan(s, view)
     if (isSplitRound(s.round)) {
-      // Toward a glass pours into it.
-      const range = s.plan.split.hi - s.plan.split.lo
-      const toRightIsA = s.plan.looks.tallLeft ? -1 : 1
-      moveLevel(s, ((e.clientX - d.x) / span) * range * toRightIsA)
+      const sp = s.plan.split
+      // Up and down or sideways, whichever the drag set out as: a wobble the other way pours nothing.
+      if (!d.axis) {
+        const tx = e.clientX - d.sx
+        const ty = e.clientY - d.sy
+        if (tx * tx + ty * ty < 64) return
+        d.axis = Math.abs(tx) > Math.abs(ty) ? 'x' : 'y'
+      }
+      const range = sp.hi - sp.lo
+      if (d.axis === 'y') {
+        // Up on a glass pours into it, as on the others, and down takes from it: that glass's drink
+        // follows the finger evenly, and the other glass gives or takes what it gains or loses. It moves on
+        // from where the level is now, so a nudge or a key while the finger's down stays.
+        const [lo, hi] = splitLevels(s, d.glass)
+        const from = d.glass === 'a' ? s.levelF : splitLevelB(sp, s.levelF)
+        const to = Math.min(hi, Math.max(lo, from + ((d.y - e.clientY) / splitDragSpan(s, view, d.glass)) * (hi - lo)))
+        const target = d.glass === 'a' ? to : levelForAbsVol(sp.A, sp.sizeA, sp.J - absVolume(sp.B, sp.sizeB, to))
+        moveLevel(s, target - s.levelF)
+      } else {
+        // Sideways pours toward the glass the drag goes toward.
+        const toRightIsA = s.plan.looks.tallLeft ? -1 : 1
+        moveLevel(s, ((e.clientX - d.x) / span) * range * toRightIsA)
+      }
     } else {
       moveLevel(s, ((d.y - e.clientY) / span) * 1000)
     }
@@ -512,7 +561,7 @@ export function HalfFullGame({ testDay = null }: { testDay?: string | null }) {
 
             {ui.phase === 'pour' && !ui.moved ? (
               <p className={`halffull__hint${split ? ' halffull__hint--split' : ''}`} aria-hidden="true">
-                {split ? 'Drag sideways to pour from one to the other' : ui.round === 0 ? 'Drag up to pour' : 'Drag up to pour · down to take back'}
+                {split ? 'Drag up on a glass to pour into it' : ui.round === 0 ? 'Drag up to pour' : 'Drag up to pour · down to take back'}
               </p>
             ) : null}
 

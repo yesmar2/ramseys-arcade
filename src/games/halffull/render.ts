@@ -954,26 +954,77 @@ function placePair(s: GameState, sc: Scene, x0: number, x1: number, y0: number, 
   return { a, b, left, gapX: mid - total / 2 + lw + gap / 2 }
 }
 
+/** The split's two glasses as they stand to be poured, with the gap between them where the guests stand. */
+function splitPair(s: GameState, v: View, sc: Scene): Pair {
+  return placePair(s, sc, 8, v.w - 8, sc.box.y0, sc.guestSize * 0.72 * 1.05)
+}
+
+/** How far right a round's glasses still are as they slide in from the right, in px. */
+function slideIn(s: GameState, v: View): number {
+  return s.phase === 'pour' ? (1 - easeOut(phaseOf(s.roundT, 0, 0.45))) * v.w * 0.7 : 0
+}
+
+/**
+ * Juice going from one glass to the other while it's shared: an arc from the giving glass's near rim,
+ * over the guests to just above the other's mouth, then straight down into its drink.
+ */
+function drawShareStream(ctx: Ctx, from: Placed, to: Placed, toLevel: number, width: number, liquid: Liquid) {
+  const dir = to.cx > from.cx ? 1 : -1
+  const sx = from.cx + dir * rimR(from) * 0.75
+  const sy = from.yb - from.H - E * rimR(from)
+  // In through the mouth, and onto the drink even where the glass narrows to a point.
+  const ex = to.cx - dir * Math.min(rimR(to) * 0.3, to.R * 0.2, radiusPx(to, toLevel) * 0.6)
+  const ey = levelY(to, toLevel)
+  const mouth = to.yb - to.H - E * rimR(to) - 4
+  // A quadratic only gets halfway to its control point, so the control goes twice as high as the arc should.
+  const top = Math.min(sy, mouth) - 2 * Math.max(20, Math.abs(ex - sx) * 0.22)
+  const cx = (sx + ex) / 2
+  ctx.save()
+  ctx.lineCap = 'round'
+  ctx.lineJoin = 'round'
+  ctx.beginPath()
+  ctx.moveTo(sx, sy)
+  ctx.quadraticCurveTo(cx, top, ex, mouth)
+  ctx.lineTo(ex, ey)
+  ctx.lineWidth = width + 2.4
+  ctx.strokeStyle = liquid.shade
+  ctx.stroke()
+  ctx.lineWidth = width
+  ctx.strokeStyle = liquid.body
+  ctx.stroke()
+  ctx.restore()
+}
+
 function drawSplitRound(ctx: Ctx, s: GameState, v: View, sc: Scene) {
   const sp = s.plan.split
   const liquid = liquidFor(s.plan, s.round)
   const guestA = guestFor(s.plan, 4)
   const guestB = guestFor(s.plan, 5)
   const guestK = sc.guestSize * 0.72
-  const pair = placePair(s, sc, 8, v.w - 8, sc.box.y0, guestK * 1.05)
+  const pair = splitPair(s, v, sc)
   // −1: the tall glass (A) stands on the left.
   const aSide = pair.left === 'a' ? -1 : 1
 
   if (s.phase === 'pour') {
-    const dx = (1 - easeOut(phaseOf(s.roundT, 0, 0.45))) * v.w * 0.7
+    const dx = slideIn(s, v)
     const a = { ...pair.a, cx: pair.a.cx + dx }
     const b = { ...pair.b, cx: pair.b.cx + dx }
     // The two guests stand between the glasses, each by their own.
     const gx = pair.gapX + dx
     drawGuest(ctx, guestA.look, gx + aSide * guestK * 0.27, sc.counterY, guestK, 'smile', 'stand', aSide * 0.8)
     drawGuest(ctx, guestB.look, gx - aSide * guestK * 0.27, sc.counterY, guestK, 'smile', 'stand', -aSide * 0.8)
-    drawGlass(ctx, a, s.level, liquid, v)
-    drawGlass(ctx, b, splitLevelB(sp, s.level), liquid, v)
+    const levelB = splitLevelB(sp, s.level)
+    // While the juice moves, it's seen going: an arc from the one losing it into the one gaining it. It
+    // stays a moment after each step, so creeping the level shows a steady trickle, not a flicker.
+    const flowing = Math.abs(s.flow) > 25 || (s.lastStep !== 0 && s.roundT - s.lastMoveT < 0.15)
+    const width = clamp(2 + Math.abs(s.flow) / 130, 2, 9)
+    const intoA = Math.abs(s.flow) > 1 ? s.flow > 0 : s.lastStep > 0
+    drawGlass(ctx, a, s.level, liquid, v, {
+      between: flowing && intoA ? () => drawShareStream(ctx, b, a, s.level, width, liquid) : undefined,
+    })
+    drawGlass(ctx, b, levelB, liquid, v, {
+      between: flowing && !intoA ? () => drawShareStream(ctx, a, b, levelB, width, liquid) : undefined,
+    })
     return
   }
 
@@ -1065,19 +1116,39 @@ export function renderHalfFull(ctx: Ctx, s: GameState, v: View) {
   else drawHalfRound(ctx, s, v, sc)
 }
 
-/** Where the lock's hint finger should point on a first ever pour: the glass's middle. */
-export function glassMiddle(s: GameState, v: View): { x: number; y: number } | null {
-  if (s.phase !== 'pour' || isSplitRound(s.round)) return null
-  const sc = sceneFor(v)
-  const p = pourPlaced(s, v, sc)
-  return { x: p.cx, y: p.yb - p.H * 0.45 }
+/**
+ * How far a drag goes to move the level across its whole range, in px: a glass from empty to the brim
+ * (for the split, see splitDragSpan; a sideways drag goes by the tall glass).
+ */
+export function dragSpan(s: GameState, v: View): number {
+  if (isSplitRound(s.round)) return splitDragSpan(s, v, 'a')
+  const p = pourPlaced(s, v, sceneFor(v))
+  return Math.max(p.H * 1.25, v.h * 0.42, 260)
 }
 
-/** How far a drag has to go to fill the round's glass from empty to the brim, in px. */
-export function dragSpan(s: GameState, v: View): number {
-  const sc = sceneFor(v)
-  if (isSplitRound(s.round)) return Math.max(220, v.w * 0.8)
-  const p = pourPlaced(s, v, sc)
-  return Math.max(p.H * 1.25, v.h * 0.42, 260)
+/** The span of levels a split glass goes through as the juice goes all one way and all the other. */
+export function splitLevels(s: GameState, glass: 'a' | 'b'): [number, number] {
+  const sp = s.plan.split
+  return glass === 'a' ? [sp.lo, sp.hi] : [splitLevelB(sp, sp.hi), splitLevelB(sp, sp.lo)]
+}
+
+/**
+ * How far a drag up on one of the split's glasses goes to take it through all its levels, in px. The
+ * split's glasses stand side by side, so on a phone they're drawn small: the drink follows the finger at
+ * about 0.6 of its speed there (a glass in the other rounds, drawn bigger, about 0.7), and at the other
+ * rounds' 0.8 on a bigger screen. A floor keeps a small glass from being too touchy to judge.
+ */
+export function splitDragSpan(s: GameState, v: View, glass: 'a' | 'b'): number {
+  const pair = splitPair(s, v, sceneFor(v))
+  const [lo, hi] = splitLevels(s, glass)
+  const travel = ((hi - lo) / LEVELS) * (glass === 'a' ? pair.a.H : pair.b.H)
+  return Math.max(1.25 * travel, clamp(1.6 * travel, 120, v.h * 0.42))
+}
+
+/** Which of the split's glasses is on the side of the counter at x, as they're drawn: the tall one (a) or the wide one (b). */
+export function splitGlassAt(s: GameState, v: View, x: number): 'a' | 'b' {
+  const pair = splitPair(s, v, sceneFor(v))
+  if (x < pair.gapX + slideIn(s, v)) return pair.left
+  return pair.left === 'a' ? 'b' : 'a'
 }
 

@@ -51,6 +51,8 @@ export type GameState = {
   roundT: number
   /** roundT at the level's last change. */
   lastMoveT: number
+  /** Which way the level last went: 1 up, −1 down (the split's: into the tall glass, or out of it). */
+  lastStep: number
   /** How fast the level is moving, smoothed, in levels a second (+ filling). */
   flow: number
   /** Level change since the last tick, for `flow`. */
@@ -86,6 +88,7 @@ export function createState(plan: DayPlan, practice = false): GameState {
     levelF: 0,
     roundT: 0,
     lastMoveT: -1,
+    lastStep: 0,
     flow: 0,
     pending: 0,
     results: [],
@@ -100,6 +103,7 @@ function beginRound(s: GameState) {
   s.levelF = start
   s.roundT = 0
   s.lastMoveT = -1
+  s.lastStep = 0
   s.flow = 0
   s.pending = 0
   s.tipT = 0
@@ -133,6 +137,7 @@ export function moveLevel(s: GameState, delta: number) {
   const next = Math.round(s.levelF)
   if (next !== s.level) {
     s.pending += next - s.level
+    s.lastStep = next > s.level ? 1 : -1
     s.level = next
     s.lastMoveT = s.roundT
   }

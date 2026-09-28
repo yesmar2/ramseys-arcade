@@ -292,7 +292,7 @@ export const HOW_TO_PLAY: Record<string, HowToPlay> = {
     goal: 'Fill each of today’s glasses exactly half full: by what it holds, not how tall it is. New glasses every day at midnight, New York time.',
     controls: [
       { does: 'Pour · take back', touch: 'Drag up or down · ▲ ▼', keys: '↑ ↓ (Shift for a hair)' },
-      { does: 'Share the last glass', touch: 'Drag sideways · ◀ ▶', keys: '← →' },
+      { does: 'Share the last glass', touch: 'Drag up on a glass, or sideways · ◀ ▶', keys: '← →' },
       { does: 'Done', touch: 'That’s half · That’s fair', keys: 'Enter or Space' },
     ],
     scores: [
