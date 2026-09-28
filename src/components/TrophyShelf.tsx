@@ -45,10 +45,13 @@ function trophyWhen(t: TrophyAward): string {
   }
 }
 
-/** What the trophy was won with: 583 pts over 6 games. A bracket is won on matches, not points, so it says nothing. */
-function trophyHaul(t: TrophyAward): string | null {
+/**
+ * What the trophy was won with: 583 pts over 6 games. A bracket is won on matches, not points, so it says
+ * nothing. A secret says how it was found only on your own shelf: on anyone else's it stays a secret.
+ */
+function trophyHaul(t: TrophyAward, isSelf: boolean): string | null {
   if (t.period === 'hunt') return 'All twelve bugs'
-  if (t.period === 'secret') return secretByNumber(t.periodKey)?.says ?? null
+  if (t.period === 'secret') return isSelf ? (secretByNumber(t.periodKey)?.says ?? null) : 'Nobody says how to find it'
   if (t.score <= 0) return null
   const points = `${t.score.toLocaleString()} ${t.score === 1 ? 'pt' : 'pts'}`
   return t.games > 0 ? `${points} over ${t.games} ${t.games === 1 ? 'game' : 'games'}` : points
@@ -59,7 +62,7 @@ function trophyHaul(t: TrophyAward): string | null {
  * what it was and when under it. What it was won with is in the trophy's hover
  * text, and read out.
  */
-function Item({ trophy }: { trophy: TrophyAward }) {
+function Item({ trophy, isSelf }: { trophy: TrophyAward; isSelf: boolean }) {
   const isEvent = trophy.period === 'event'
   const isSet = trophy.period === 'hunt'
   const isSecret = trophy.period === 'secret'
@@ -72,7 +75,7 @@ function Item({ trophy }: { trophy: TrophyAward }) {
         : `${ordinal(trophy.rank)} of the ${trophy.period === 'monthly' ? 'month' : 'week'}`
   const when = trophyWhen(trophy)
   const whenLine = isSecret ? `Found ${when}` : when
-  const haul = trophyHaul(trophy)
+  const haul = trophyHaul(trophy, isSelf)
   return (
     <li className="pshelf__cell" title={[title, whenLine, haul].filter(Boolean).join(' · ')}>
       <span className={`pshelf__niche trophy-tone--${trophyTone(trophy.period, trophy.rank)}`}>
@@ -225,14 +228,14 @@ export function TrophyShelf({
           {events.length > 0 ? (
             <Section name="Events won" count={String(events.length)}>
               {events.map((t) => (
-                <Item key={t.id} trophy={t} />
+                <Item key={t.id} trophy={t} isSelf={isSelf} />
               ))}
             </Section>
           ) : null}
           {sets.length > 0 ? (
             <Section name="Bug hunt" count={String(sets.length)}>
               {sets.map((t) => (
-                <Item key={t.id} trophy={t} />
+                <Item key={t.id} trophy={t} isSelf={isSelf} />
               ))}
             </Section>
           ) : null}
@@ -257,7 +260,7 @@ export function TrophyShelf({
                 ) : null
               }
             >
-              {secrets.length > 0 ? secrets.map((t) => <Item key={t.id} trophy={t} />) : null}
+              {secrets.length > 0 ? secrets.map((t) => <Item key={t.id} trophy={t} isSelf={isSelf} />) : null}
             </Section>
           ) : null}
           {boards.length > 0 || isSelf ? (
@@ -273,7 +276,7 @@ export function TrophyShelf({
               }
             >
               {shownBoards.map((t) => (
-                <Item key={t.id} trophy={t} />
+                <Item key={t.id} trophy={t} isSelf={isSelf} />
               ))}
               {isSelf ? (
                 <li className="pshelf__cell pshelf__cell--open">

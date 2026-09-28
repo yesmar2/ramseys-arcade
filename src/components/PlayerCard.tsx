@@ -182,13 +182,17 @@ function CaseArt({ kind }: { kind: TrophyCaseKind }) {
   return kind.period === 'monthly' ? <MonthlyTrophyCup tone={metalTone(kind.rank)} size="md" /> : <WeeklyMedal rank={kind.rank} size="md" />
 }
 
-/** "1st of a month, twice": a kind of trophy, and how many of it, in words. */
-function caseWords(kind: TrophyCaseKind): string {
+/**
+ * "1st of a month, twice": a kind of trophy, and how many of it, in words. A secret says how it was found
+ * only on your own card: on anyone else's it stays a secret.
+ */
+function caseWords(kind: TrophyCaseKind, isSelf: boolean): string {
   const n = kind.count
   const times = n === 1 ? '' : n === 2 ? ', twice' : `, ${n} times`
   if (kind.period === 'secret') {
     const secret = secretByNumber(kind.secret ?? 0)
-    return secret ? `${secret.name}: ${secret.says}` : 'A secret'
+    if (!secret) return 'A secret'
+    return isSelf ? `${secret.name}: ${secret.says}` : `${secret.name}: a secret. Nobody says how to find it.`
   }
   if (kind.period === 'event') return n === 1 ? 'An event won' : `${n} events won`
   if (kind.period === 'hunt') return n === 1 ? 'A full month of the bug hunt' : `${n} full months of the bug hunt`
@@ -223,7 +227,7 @@ function TrophyCase({
       <span className="pcard-case__label">Trophy case</span>
       <ul className="pcard-case__row">
         {kinds.map((kind) => {
-          const words = caseWords(kind)
+          const words = caseWords(kind, isSelf)
           return (
             <li key={kind.key} className={`pcard-case__tile trophy-tone--${trophyTone(kind.period, kind.rank)}`} title={words}>
               <CaseArt kind={kind} />
