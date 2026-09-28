@@ -200,11 +200,13 @@ export function AdminTrophies() {
           </h2>
         </div>
         <p className="adm-card__sub">
-          Today’s ticket, on the home page: a streak day is one with all three of the day’s dailies done (Today’s Hole
-          solved, a lap on Today’s Track saved, and Today’s Wanted’s first run saved), on the boards’ New York day. The
-          Daily, the One Shot and the bug hunt are bonus punches and don’t count. Signed-in players with a tag see the
-          streak in the header too. Each reward comes once an account, however often a streak breaks, with a note in
-          the inbox.
+          Today’s ticket, on the home page: a streak day is one with any three of the day’s live dailies done (Today’s
+          Hole solved, a lap on Today’s Track saved, Today’s Wanted’s first run saved, and, from the day Half Full’s
+          Today’s Pour joins the ticket, its first pour saved), on the boards’ New York day. Until Today’s Pour joins,
+          that’s all three. With more than three live, doing every one is a Full ticket: a gold mark in the week and
+          “Full” on the header chip, with no reward of its own. The Daily, the One Shot and the bug hunt are bonus
+          punches and don’t count. Signed-in players with a tag see the streak in the header too. Each reward comes
+          once an account, however often a streak breaks, with a note in the inbox.
         </p>
         <ul className="adm-list">
           {TODAY_MILESTONES.map((m) => (

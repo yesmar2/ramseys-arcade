@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
-import { goToToday, subscribeToday, todayHref, todayServer, type TodayServer } from '../lib/today'
+import { dayMarks, goToToday, liveDailies, subscribeToday, todayHref, todayRule, todayServer, type TodayServer } from '../lib/today'
 import '../styles/today.css'
 
 /*
- * The Today set in the header (lib/today.ts): the streak and how much of today's ticket is punched, one
- * tap from the card on the home page, from anywhere. Signed in with a tag only: a streak is kept by an
- * account.
+ * The Today set in the header (lib/today.ts): the streak and how today's ticket stands, one tap from the
+ * card on the home page, from anywhere. It counts up to the dailies that keep the streak ("2/3"), shows
+ * them all punched once the day is kept ("3/3"), and says "Full" when more than three are live and every
+ * one is. Signed in with a tag only: a streak is kept by an account.
  */
 
 export const FlameIcon = () => (
@@ -15,22 +16,38 @@ export const FlameIcon = () => (
   </svg>
 )
 
+/** A Full ticket's star, on the chip and in the week. */
+export const StarIcon = () => (
+  <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+    <path d="M12 3.2l2.6 5.5 6 .8-4.4 4.1 1.1 5.9L12 16.6l-5.3 2.9 1.1-5.9L3.4 9.5l6-.8z" />
+  </svg>
+)
+
 export function TodayChip() {
   const [state, setState] = useState<TodayServer | null>(todayServer)
   useEffect(() => subscribeToday(() => setState(todayServer())), [])
   if (!state) return null
-  const done = Object.values(state.done).filter(Boolean).length
+  // Only today's live dailies count: an API from before Today's Pour has no word on it.
+  const live = liveDailies(state.day, state)
+  const rule = todayRule(live.length)
+  const done = live.filter((d) => state.done[d.key]).length
+  const marks = dayMarks(done, rule)
+  const full = state.full ?? marks.full
   const streak = state.streak.current
-  const all = done === 3
-  const label = `Today: ${done} of 3 done${streak > 0 ? `, streak ${streak} ${streak === 1 ? 'day' : 'days'}` : ''}`
+  const count = full ? 'Full' : marks.kept ? `${rule.need}/${rule.need}` : `${done}/${rule.need}`
+  const said = full ? 'a Full ticket' : `${marks.kept ? rule.need : done} of ${rule.need} done`
+  const label = `Today: ${said}${streak > 0 ? `, streak ${streak} ${streak === 1 ? 'day' : 'days'}` : ''}`
   return (
-    <a className={`today-chip${all ? ' today-chip--all' : ''}`} href={todayHref()} onClick={goToToday} aria-label={label}>
-      <FlameIcon />
+    <a
+      className={`today-chip${full ? ' today-chip--full' : marks.kept ? ' today-chip--all' : ''}`}
+      href={todayHref()}
+      onClick={goToToday}
+      aria-label={label}
+    >
+      {full ? <StarIcon /> : <FlameIcon />}
       <span className="today-chip__word">Today</span>
       {streak > 0 ? <span className="today-chip__day">Day {streak}</span> : null}
-      <span className="today-chip__count">
-        {done}/3
-      </span>
+      <span className="today-chip__count">{count}</span>
     </a>
   )
 }

@@ -158,13 +158,18 @@ export function keptResults(plan: DayPlan, run: DayRun | null): PourResult[] {
 
 /* ---------- passing it on ---------- */
 
-/** The day's result to send on: no glass named, no level shown, only how it went. */
+/**
+ * The day's result to send on: no glass named, no level shown, only how it went. From the day Today's Pour
+ * joins today's ticket (TODAY_FROM), the link is the day's own, /today/<day>, as the other dailies send: it
+ * unfurls into the day's card (scripts/today-cards.mjs) and opens at today's ticket. Before, it's the game's.
+ */
 export function shareText(plan: DayPlan, results: readonly PourResult[], origin: string): string {
   const sum = summarize(results)
+  const link = TODAY_FROM != null && plan.day >= TODAY_FROM ? `${origin}/today/${plan.day}` : `${origin}/games/halffull/play`
   return [
     `Half Full ${dayTag(plan.day)} · ${weekdayShort(plan.day)} · ${plan.label} 🥛`,
     `${sum.scoreText} ${sum.tier}`,
     `${sum.marks.join('')} · Team Half-${sum.team}`,
-    `${sum.story} ${origin}/games/halffull/play`,
+    `${sum.story} ${link}`,
   ].join('\n')
 }

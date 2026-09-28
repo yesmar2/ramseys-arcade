@@ -1,3 +1,5 @@
+import { isGameListed } from '../data/games'
+import { TODAY_FROM } from '../games/halffull/daily'
 import { API_BASE, authHeaders } from './auth'
 
 /**
@@ -33,6 +35,9 @@ export type TopicInfo = {
   offWarning?: string
 }
 
+/** Today's Pour is on the ticket (lib/today.ts), so its "beat you" notes come under the same topic. */
+const POUR_ON_TICKET = TODAY_FROM != null && isGameListed('halffull')
+
 export const TOPIC_GROUPS: readonly { title: string; topics: readonly TopicInfo[] }[] = [
   {
     title: 'Today',
@@ -42,11 +47,17 @@ export const TOPIC_GROUPS: readonly { title: string; topics: readonly TopicInfo[
         label: 'A friend beats your lap',
         hint: 'On Today’s Track, while there’s still time to take it back.',
       },
-      {
-        topic: 'today-beaten',
-        label: 'A friend beats you on the hole or the Wanted',
-        hint: 'Today’s Hole and Today’s Wanted count once a day, so this is just to know.',
-      },
+      POUR_ON_TICKET
+        ? {
+            topic: 'today-beaten',
+            label: 'A friend beats you on the hole, the Wanted or the pour',
+            hint: 'Today’s Hole, Today’s Wanted and Today’s Pour count once a day, so this is just to know.',
+          }
+        : {
+            topic: 'today-beaten',
+            label: 'A friend beats you on the hole or the Wanted',
+            hint: 'Today’s Hole and Today’s Wanted count once a day, so this is just to know.',
+          },
     ],
   },
   {

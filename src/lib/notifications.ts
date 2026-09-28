@@ -17,7 +17,7 @@ export type NotificationKind =
   | 'event-result'
   | 'challenge-beaten'
   | 'challenge-taken'
-  /** A friend beat your result on one of today's three (the API's todayBeaten.ts). */
+  /** A friend beat your result on one of today's dailies (the API's todayBeaten.ts). */
   | 'today-beaten'
 
 /** Who and what a notification is about, for drawing its row. Every field is optional. */

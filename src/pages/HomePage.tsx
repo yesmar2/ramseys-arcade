@@ -43,7 +43,7 @@ type Part = 'hero' | 'today' | 'hunt' | 'invites' | 'onnow' | 'wall' | 'boards' 
  * hears it the way it's seen; each part keeps its key, so turning a phone
  * sideways moves the parts rather than starting them again.
  *
- * Today's ticket, the day's three dailies and the streak, comes straight
+ * Today's ticket, the day's dailies and the streak, comes straight
  * after the banner for anyone who has played, phone or not.
  *
  * A first visit (no tag, nothing played on this device, as the banner has it)
