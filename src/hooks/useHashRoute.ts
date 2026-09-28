@@ -141,8 +141,14 @@ export function rankHref(
 /** Section the current URL asks to be scrolled to, if any. */
 export function focusFromUrl(): string | null {
   if (typeof window === 'undefined') return null
-  return new URLSearchParams(window.location.search).get('focus')
+  const asked = new URLSearchParams(window.location.search).get('focus')
+  if (asked) return asked
+  // A day's share link, /today/<day>: the home page, opened at today's ticket.
+  return TODAY_PATH.test(window.location.pathname.replace(/^\/+/, '').replace(/\/+$/, '')) ? 'today' : null
 }
+
+/** A day's share link (api/today-page.js unfurls it): /today, or /today/YYYY-MM-DD. */
+const TODAY_PATH = /^today(?:\/\d{4}-\d{2}-\d{2})?$/
 
 /**
  * A canonical href that still asks for the section the current URL does.
@@ -454,6 +460,8 @@ export function parseUrl(pathname: string, search: string): Route {
   const path = pathname.replace(/^\/+/, '').replace(/\/+$/, '')
   const invite = new URLSearchParams(search).get('invite')?.trim().toUpperCase() || undefined
   if (!path) return { name: 'home' }
+  // A day's share link is the home page, at today's ticket (focusFromUrl): whatever day it was sent on.
+  if (TODAY_PATH.test(path)) return { name: 'home' }
   if (path === 'about') return { name: 'about' }
   if (path === 'plus') return { name: 'plus' }
   if (path === 'admin') return { name: 'admin' }
@@ -642,6 +650,7 @@ const SITE_SECTIONS: ReadonlySet<string> = new Set([
   'records',
   'stats',
   'terms',
+  'today',
   'tournaments',
 ])
 
