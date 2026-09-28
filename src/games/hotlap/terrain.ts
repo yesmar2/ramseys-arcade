@@ -32,14 +32,26 @@ export class Terrain {
 
   constructor(track: Track, box: { minX: number; maxX: number; minY: number; maxY: number }) {
     const z = track.z!
-    // The road, every 2 m, in buckets to find what's near a point quickly.
+    // The road, every 2 m, with the way it runs there, in buckets to find what's near a point quickly.
     const sx: number[] = []
     const sy: number[] = []
     const sz: number[] = []
+    const cx: number[] = []
+    const cy: number[] = []
     for (let i = 0; i < track.n; i += 2) {
       sx.push(track.x[i]!)
       sy.push(track.y[i]!)
       sz.push(z[i]!)
+      cx.push(Math.cos(track.h[i]!))
+      cy.push(Math.sin(track.h[i]!))
+    }
+    /** The road's height abreast of a point, between the sample nearest it and the next one along. */
+    const footZ = (k: number, px: number, py: number) => {
+      const m = sx.length
+      const along = (px - sx[k]!) * cx[k]! + (py - sy[k]!) * cy[k]!
+      const j = along >= 0 ? (k + 1) % m : (k - 1 + m) % m
+      const gap = Math.hypot(sx[j]! - sx[k]!, sy[j]! - sy[k]!) || 1
+      return sz[k]! + (sz[j]! - sz[k]!) * Math.min(1, Math.abs(along) / gap)
     }
     const buckets = new Map<number, number[]>()
     const key = (bx: number, by: number) => bx * 100_003 + by
@@ -130,10 +142,14 @@ export class Terrain {
         let sum = 0
         let wsum = 0
         let least = Infinity
+        let nearestK = -1
         // And never above any road near it: in a dip, or inside a tight corner, the slopes round about would
-        // lift the ground over the road's edge. Each bit of road holds the ground a hand's width under it for
-        // 20 m round, past which it may climb away, a bank at most 3 in 5; where two roads at different
-        // heights pass close, the lower one holds the ground between them down, so it slopes up to the other.
+        // lift the ground over the road's edge. Each bit of road holds the ground a hand's width under it
+        // abreast of it, out to 20 m from its middle, past which it may climb away, a bank at most 3 in 5;
+        // where two roads at different heights pass close, the lower one holds the ground between them down,
+        // so it slopes up to the other. Along the road the ground may climb as steeply, from a metre on: so
+        // on a hill, the road further down it doesn't hold the ground under this bit of road down to its own
+        // height, which left the road floating over the grass all the way down a long slope.
         let cap = Infinity
         const bx = Math.floor(px / BUCKET)
         const by = Math.floor(py / BUCKET)
@@ -143,10 +159,17 @@ export class Terrain {
             const list = buckets.get(key(bx + di, by + dj))
             if (!list) continue
             for (const k of list) {
-              const d2 = (sx[k]! - px) ** 2 + (sy[k]! - py) ** 2
+              const dx = px - sx[k]!
+              const dy = py - sy[k]!
+              const d2 = dx * dx + dy * dy
               if (d2 > NEAR * NEAR) continue
-              least = Math.min(least, d2)
-              cap = Math.min(cap, sz[k]! - 0.15 + Math.max(0, Math.sqrt(d2) - (TW + 12)) * 0.6)
+              if (d2 < least) {
+                least = d2
+                nearestK = k
+              }
+              const along = Math.abs(dx * cx[k]! + dy * cy[k]!)
+              const across = Math.abs(dy * cx[k]! - dx * cy[k]!)
+              cap = Math.min(cap, sz[k]! - 0.15 + (Math.max(0, across - (TW + 12)) + Math.max(0, along - 1.2)) * 0.6)
               const w = 1 / (d2 + 9) ** 2
               sum += w * sz[k]!
               wsum += w
@@ -155,8 +178,12 @@ export class Terrain {
         }
         if (wsum > 0) {
           const d = Math.sqrt(least)
-          // A hand's width below the road, so the road always shows, rising to meet the grass beside it.
-          const road = sum / wsum - 0.15 * (1 - smoothstep(TW + 1, TW + 6, d))
+          // By the road, its height abreast of the point, so the grass meets its edge over a crest or in a dip
+          // as on the flat; further off, the heights of all the road round about, so the ground between two
+          // stretches of road rolls from one to the other. A hand's width below the road, so the road always
+          // shows, rising to meet the grass beside it.
+          const foot = footZ(nearestK, px, py)
+          const road = foot + (sum / wsum - foot) * smoothstep(TW + 2, TW + 20, d) - 0.15 * (1 - smoothstep(TW + 1, TW + 6, d))
           h = Math.min(road + (h - road) * smoothstep(TW + 4, NEAR, d), cap)
         }
         this.heights[j * this.cols + i] = this.base + (h - this.base) * fall

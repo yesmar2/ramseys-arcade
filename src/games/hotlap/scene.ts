@@ -44,6 +44,8 @@ const GHOST_SEE = 0.36
 const GHOST_OVERLAP = 0.2
 /** Past 1,400 stripes of rubber the oldest go. */
 const SKIDS = 1400
+/** How far a bank drops from the road's edge (and leans out), deep enough for any gap the ground leaves. */
+const BANK_DROP = 2.5
 
 export class HotLapScene {
   private readonly renderer: THREE.WebGLRenderer
@@ -77,6 +79,8 @@ export class HotLapScene {
   /** The camera's height and where it looks, eased so a bump in the road doesn't jolt them. */
   private camY = 0
   private lookY = 0
+  /** The grass, for the banks down from the road's edges on a hilly track. */
+  private bankGrass: THREE.Material | null = null
 
   constructor(canvas: HTMLCanvasElement, track: Track) {
     this.track = track
@@ -217,7 +221,10 @@ export class HotLapScene {
     tex.wrapS = tex.wrapT = THREE.RepeatWrapping
     const grass = new THREE.MeshLambertMaterial({ map: tex })
     // On a hilly track, the rolling ground round it; past that (and under a flat track), a plain.
-    if (this.terrain) this.scene.add(this.terrain.mesh(grass))
+    if (this.terrain) {
+      this.scene.add(this.terrain.mesh(grass))
+      this.bankGrass = new THREE.MeshLambertMaterial({ map: tex, side: THREE.DoubleSide })
+    }
     const plainTex = tex.clone()
     plainTex.repeat.set(4000 / 24, 4000 / 24)
     this.textures.push(plainTex)
@@ -232,6 +239,21 @@ export class HotLapScene {
     return this.track.z ? this.track.z[i]! : 0
   }
 
+  /**
+   * The road's height and how steeply it climbs, abreast of a spot near point `index` of the track: between
+   * that point and the next one along, a metre apart. A car goes up a hill smoothly, rather than a step at
+   * each point, which on a steep one shook it.
+   */
+  private roadAt(x: number, y: number, index: number) {
+    const t = this.track
+    if (!t.z || !t.grade) return { z: 0, grade: 0 }
+    const along = (x - t.x[index]!) * Math.cos(t.h[index]!) + (y - t.y[index]!) * Math.sin(t.h[index]!)
+    const j = along >= 0 ? (index + 1) % t.n : (index - 1 + t.n) % t.n
+    const gap = Math.hypot(t.x[j]! - t.x[index]!, t.y[j]! - t.y[index]!) || 1
+    const f = Math.min(1, Math.abs(along) / gap)
+    return { z: t.z[index]! + (t.z[j]! - t.z[index]!) * f, grade: t.grade[index]! + (t.grade[j]! - t.grade[index]!) * f }
+  }
+
   /** The ground's height off the road. */
   private groundZ(x: number, y: number) {
     return this.terrain ? this.terrain.heightAt(x, y) : 0
@@ -243,15 +265,15 @@ export class HotLapScene {
    */
   private surfaceZ(x: number, y: number, index: number, side: number) {
     if (!this.terrain) return 0
-    const road = this.roadZ(index)
+    const road = this.roadAt(x, y, index).z
     const off = Math.abs(side) - (TW + 0.6)
     if (off <= 0) return road
     return road + (this.terrain.heightAt(x, y) - road) * Math.min(1, off / 3)
   }
 
-  /** How a car pointing `heading` tips on the hill it's on: nose up (+) and leaning right (+), in radians. */
-  private tilt(index: number, heading: number) {
-    const grade = this.track.grade ? this.track.grade[index]! : 0
+  /** How a car at a spot, pointing `heading`, tips on the hill it's on: nose up (+) and leaning right (+), in radians. */
+  private tilt(x: number, y: number, index: number, heading: number) {
+    const grade = this.roadAt(x, y, index).grade
     const across = this.track.h[index]! - heading
     return { pitch: Math.atan(grade * Math.cos(across)), roll: Math.atan(grade * Math.sin(across)) }
   }
@@ -332,6 +354,8 @@ export class HotLapScene {
     })
     tarmac.wrapT = THREE.RepeatWrapping
     this.strip(0, track.n, -TW, TW, 0.01, 14, new THREE.MeshLambertMaterial({ map: tarmac, side: THREE.DoubleSide }))
+    this.bank(0, track.n, TW)
+    this.bank(0, track.n, -TW)
 
     const kerbTex = this.paint(8, 64, (g, w, h) => {
       g.fillStyle = '#e2362f'
@@ -345,6 +369,8 @@ export class HotLapScene {
     for (const c of track.corners) {
       this.strip(c.from - 8, c.to + 8, TW, TW + 1.4, 0.04, 4, kerb)
       this.strip(c.from - 8, c.to + 8, -TW - 1.4, -TW, 0.04, 4, kerb)
+      this.bank(c.from - 8, c.to + 8, TW + 1.4)
+      this.bank(c.from - 8, c.to + 8, -TW - 1.4)
     }
     this.buildGravel()
     this.buildFence()
@@ -433,6 +459,46 @@ export class HotLapScene {
         }
       }
     })
+    const geo = new THREE.BufferGeometry()
+    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3))
+    geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2))
+    geo.setIndex(index)
+    geo.computeVertexNormals()
+    this.scene.add(new THREE.Mesh(geo, material))
+  }
+
+  /**
+   * On a hilly track, a bank of grass down from an edge of the road (or of a kerb, left positive), leaning
+   * out at 45° into the ground. The ground is a grid of heights 8 m apart, which can't follow the road metre
+   * by metre: where it falls away from the edge, the bank shows and the road sits on it rather than over a
+   * gap; wherever the ground is up to the edge, it hides the bank.
+   */
+  private bank(from: number, to: number, edge: number) {
+    const material = this.bankGrass
+    if (!material) return
+    const t = this.track
+    const out = Math.sign(edge) * BANK_DROP
+    const count = to - from + 1
+    const pos = new Float32Array(count * 6)
+    const uv = new Float32Array(count * 4)
+    const index: number[] = []
+    for (let j = 0; j < count; j++) {
+      const i = (((from + j) % t.n) + t.n) % t.n
+      const nx = -Math.sin(t.h[i]!)
+      const ny = Math.cos(t.h[i]!)
+      const top = this.roadZ(i)
+      const ax = t.x[i]! + nx * edge
+      const ay = t.y[i]! + ny * edge
+      const bx = ax + nx * out
+      const by = ay + ny * out
+      pos.set([ax, top, -ay, bx, top - BANK_DROP, -by], j * 6)
+      // The ground's own texture, laid the same way (24 m a tile, from above), so the two meet unseen.
+      uv.set([ax / 24, ay / 24, bx / 24, by / 24], j * 4)
+      if (j < count - 1) {
+        const k = j * 2
+        index.push(k, k + 2, k + 1, k + 1, k + 2, k + 3)
+      }
+    }
     const geo = new THREE.BufferGeometry()
     geo.setAttribute('position', new THREE.BufferAttribute(pos, 3))
     geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2))
@@ -1035,11 +1101,10 @@ export class HotLapScene {
     const s = Math.sin(run.h)
     // The road's height under the car, and how it climbs, so a mark lies on a hill as on the flat.
     const i = run.index
-    const roadAt = this.roadZ(i)
-    const grade = this.track.grade ? this.track.grade[i]! : 0
+    const under = this.roadAt(run.x, run.y, i)
     const tx = Math.cos(this.track.h[i]!)
     const ty = Math.sin(this.track.h[i]!)
-    const lift = (px: number, py: number) => roadAt + grade * ((px - run.x) * tx + (py - run.y) * ty) + 0.025
+    const lift = (px: number, py: number) => under.z + under.grade * ((px - run.x) * tx + (py - run.y) * ty) + 0.025
     let laid = false
     WHEELS.forEach(([f, l], w) => {
       const front = w < 2
@@ -1116,7 +1181,7 @@ export class HotLapScene {
     const car = this.car
     car.group.position.set(run.x, this.surfaceZ(run.x, run.y, run.index, run.side), -run.y)
     // Standing on the hill: nose up a climb, leaning with the slope across it.
-    const hill = this.tilt(run.index, run.h)
+    const hill = this.tilt(run.x, run.y, run.index, run.h)
     car.group.rotation.order = 'YZX'
     car.group.rotation.set(hill.roll, run.h, hill.pitch)
     const roll = Math.max(-0.055, Math.min(0.055, run.ay * 0.004))
@@ -1140,7 +1205,7 @@ export class HotLapScene {
       const near = nearest(this.track, pose.x, pose.y, this.ghostNear)
       this.ghostNear = near.index
       up = this.surfaceZ(pose.x, pose.y, near.index, near.side)
-      const { pitch, roll } = this.tilt(near.index, pose.h)
+      const { pitch, roll } = this.tilt(pose.x, pose.y, near.index, pose.h)
       ghost.group.rotation.order = 'YZX'
       ghost.group.rotation.set(roll, pose.h, pitch)
     } else {

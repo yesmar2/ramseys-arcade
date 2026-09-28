@@ -22,12 +22,13 @@ import { sfx } from '../../lib/sound'
 import { useTrackBoard } from '../../lib/trackBoards'
 import { useTournamentPlay } from '../../tournaments/TournamentPlayContext'
 import { CarSound } from './audio'
+import { fetchBoardGhost, sendBoardGhost, type BoardGhost } from './boardGhost'
 import { dayWords, msUntilNextTrack, trackDay, trackState, untilWords } from './daily'
 import { bestLapOf, Ghost, hotlapCourse, keepBestLap, progressOf, type Course, type GhostLap } from './lap'
 import { TrackMap } from './map'
 import { HotLapScene } from './scene'
 import { formatLap, hotlapBoardScore, hotlapMsFromBoardScore } from './score'
-import { botDriver, GHOST_EVERY, newRun, STEP, stepRun, type Controls, type Run, type Track } from './sim'
+import { botDriver, GHOST_EVERY, newRun, STEP, stepRun, type Controls, type GhostPath, type Run, type Track } from './sim'
 import { PastResultCard, TestResultCard, TestStartCard } from './TestCards'
 
 const SLUG = 'hotlap'
@@ -85,11 +86,29 @@ type Game = {
   record: number[]
   /** The wheel, eased toward what the keys or thumbs ask. */
   steer: number
-  /** The lap being chased: your best on this device, or the pace car's. */
+  /** The lap being chased: the board's fastest, your best on this device, or the pace car's. */
   ghost: Ghost
-  /** The lap's result, once it's over, and on a past track, the run it was driven in, taken as it ended. */
-  lap: { time: number; score: number; splits: number[]; improved: boolean; run: Promise<string | undefined> | null } | null
+  /** Whose lap the ghost is. */
+  chasing: Chasing
+  /**
+   * The lap's result, once it's over: on a past track, the run it was driven in, taken as it ended; and
+   * where the car went, for its ghost on the board if it's the fastest there.
+   */
+  lap: {
+    time: number
+    score: number
+    splits: number[]
+    improved: boolean
+    run: Promise<string | undefined> | null
+    path: GhostPath
+  } | null
 }
+
+/** Whose lap the ghost drives: the board's fastest, under their tag; your own best; or the blue car's. */
+type Chasing = { who: 'rival'; name: string } | { who: 'you' } | { who: 'pace' }
+
+/** The lap to chase, and whose it is. */
+type Chase = { lap: GhostLap; chasing: Chasing }
 
 type Ui = {
   phase: Phase
@@ -132,7 +151,7 @@ function sectorFigure(k: number, splits: number[], chased: number[]) {
   return { text: `${d < 0 ? '−' : '+'}${Math.abs(d).toFixed(2)}`, tone: d <= 0 ? 'good' : 'bad' }
 }
 
-function freshGame(course: Course, ghostLap: GhostLap, test: boolean, past: boolean): Game {
+function freshGame(course: Course, chase: Chase, test: boolean, past: boolean): Game {
   const { track } = course
   return {
     phase: 'menu',
@@ -147,7 +166,8 @@ function freshGame(course: Course, ghostLap: GhostLap, test: boolean, past: bool
     steps: 0,
     record: [],
     steer: 0,
-    ghost: new Ghost(track, ghostLap),
+    ghost: new Ghost(track, chase.lap),
+    chasing: chase.chasing,
     lap: null,
   }
 }
@@ -170,8 +190,11 @@ function lapShareLine(course: Course, time: number, pace: number): string {
   ].join('\n')
 }
 
-/** Today's track and its number, the blue car's lap of it, and when the next track comes (another day's track: its day). */
-function TrackTiles({ course, ghost, test, past }: { course: Course; ghost: number; test: boolean; past: boolean }) {
+/**
+ * Today's track and its number, the lap its ghost drives (the board's fastest, your best or the blue car's),
+ * and when the next track comes (another day's track: its day).
+ */
+function TrackTiles({ course, ghost, chasing, test, past }: { course: Course; ghost: number; chasing: Chasing; test: boolean; past: boolean }) {
   const [left, setLeft] = useState(() => msUntilNextTrack())
   useEffect(() => {
     const timer = window.setInterval(() => setLeft(msUntilNextTrack()), 20_000)
@@ -186,7 +209,7 @@ function TrackTiles({ course, ghost, test, past }: { course: Course; ghost: numb
         <strong>{course.name}</strong>
       </div>
       <div className="game-pause-meta__row">
-        <span>Blue car</span>
+        <span>{chasing.who === 'rival' ? `Ghost · ${chasing.name}` : chasing.who === 'you' ? 'Ghost · Your best' : 'Blue car'}</span>
         <strong>{formatLap(ghost)}</strong>
       </div>
       {test ? (
@@ -218,9 +241,10 @@ function TrackTiles({ course, ghost, test, past }: { course: Course; ghost: numb
  * board. One whose day has gone keeps a board of its own for good: a lap on it goes there, under a run
  * of its own, and never on today's board.
  *
- * The ghost is the lap to beat, driven alongside you the whole way: your best on this device, or before
- * you have one, the pace car's. It stays on the road all lap, fainter while it's right on top of you,
- * and waits where it finished if it gets there first. A cut across the grass skips a gate and the lap
+ * The ghost is the lap to beat, driven alongside you the whole way: the board's fastest (today's #1, or
+ * a past track's record holder: boardGhost.ts), unless your own best on this device is faster; before
+ * either, the blue car's. It stays on the road all lap, fainter while it's right on top of you, and waits
+ * where it finished if it gets there first. A cut across the grass skips a gate and the lap
  * can't count; R or the restart button starts another.
  *
  * Keys: ↑ or W gas, ↓, S or Space brake, ← → or A D steer, R restart, P or Escape pause. On a touch
@@ -248,8 +272,24 @@ function HotLapDay({
   const playerName = normalizePlayerName(usePlayerName())
   const [boardVersion, setBoardVersion] = useState(0)
   const board = useTrackBoard(past ? course.n : null, playerName, boardVersion)
+  // Today's track and a past one have boards, and so a #1 whose ghost to race; a track still to come has neither.
+  const onBoard = !test || past
+  const topRef = useRef<BoardGhost | null>(null)
+  const nameRef = useRef(playerName)
+  nameRef.current = playerName
+
+  /** The lap to beat: the board's fastest, unless your own best here is faster; before either, the blue car's. */
+  const chase = (): Chase => {
+    const mine = bestLapOf(day, test)
+    const top = topRef.current
+    if (top && (!mine || top.lap.time < mine.time)) {
+      return { lap: top.lap, chasing: top.name === nameRef.current ? { who: 'you' } : { who: 'rival', name: top.name } }
+    }
+    return mine ? { lap: mine, chasing: { who: 'you' } } : { lap: pace, chasing: { who: 'pace' } }
+  }
+
   const gameRef = useRef<Game | null>(null)
-  if (!gameRef.current) gameRef.current = freshGame(course, bestLapOf(day, test) ?? pace, test, past)
+  if (!gameRef.current) gameRef.current = freshGame(course, chase(), test, past)
   const [ui, setUi] = useState<Ui>(() => snapshot(gameRef.current!))
   const [saveOpen, setSaveOpen] = useState(false)
   const saveOpenRef = useRef(false)
@@ -311,7 +351,7 @@ function HotLapDay({
       // A past track's lap goes on its board, timed by the server as a day's is.
       beginRun(SLUG)
     }
-    const g = freshGame(course, bestLapOf(day, test) ?? pace, test, past)
+    const g = freshGame(course, chase(), test, past)
     g.phase = 'countdown'
     gameRef.current = g
     sceneRef.current?.startLap()
@@ -325,7 +365,7 @@ function HotLapDay({
     if (newDay()) return
     saveOpenRef.current = false
     setSaveOpen(false)
-    gameRef.current = freshGame(course, bestLapOf(day, test) ?? pace, test, past)
+    gameRef.current = freshGame(course, chase(), test, past)
     previousBestRef.current = getPersonalBest(SLUG)
     startGrace.current = performance.now() + 300
     clearThumbs()
@@ -337,6 +377,60 @@ function HotLapDay({
     if (!IN_RUN.has(gameRef.current!.phase) || pausedRef.current || saveOpenRef.current) return
     start()
   }
+
+  /** The board's fastest lap, as it's known: at the start card, the ghost to race changes to it at once. */
+  const takeTop = (top: BoardGhost | null) => {
+    topRef.current = top
+    const g = gameRef.current!
+    if (g.phase !== 'menu') return
+    gameRef.current = freshGame(course, chase(), test, past)
+    setUi(snapshot(gameRef.current))
+  }
+  const takeTopRef = useRef(takeTop)
+  takeTopRef.current = takeTop
+
+  /**
+   * A lap saved on the board sends where the car went, if it's faster than the ghost there is: the API
+   * keeps it if it's the board's fastest (the tag's lap on the board is at least that fast), and then it's
+   * everyone's ghost, yours included from your next lap.
+   */
+  const sendGhost = (lap: { time: number; score: number; splits: number[]; path: GhostPath }, name: string) => {
+    if (!onBoard || !signedIn || !name) return
+    const top = topRef.current
+    if (top && top.lap.time <= lap.time) return
+    void sendBoardGhost(course.n, name, { score: lap.score, splits: lap.splits, path: lap.path }).then(async (kept) => {
+      if (!kept) return
+      const fresh = await fetchBoardGhost(course.n, true)
+      if (fresh) takeTopRef.current(fresh)
+    })
+  }
+  const sendGhostRef = useRef(sendGhost)
+  sendGhostRef.current = sendGhost
+
+  // The board's fastest lap, for the ghost: asked for as the track opens.
+  const [topAsked, setTopAsked] = useState(false)
+  useEffect(() => {
+    if (!onBoard) return
+    let live = true
+    void fetchBoardGhost(course.n).then((top) => {
+      if (!live) return
+      if (top) takeTopRef.current(top)
+      setTopAsked(true)
+    })
+    return () => {
+      live = false
+    }
+  }, [onBoard, course.n])
+
+  // Then your best here on this device, if it's faster than that: the API keeps it only if it's on the board
+  // under your tag. So a lap saved before laps kept their ghosts, or on a card closed too soon, still gets there.
+  const offered = useRef(false)
+  useEffect(() => {
+    if (!topAsked || !signedIn || !playerName || offered.current) return
+    offered.current = true
+    const mine = bestLapOf(day, test)
+    if (mine) sendGhostRef.current({ time: mine.time, score: hotlapBoardScore(mine.time), splits: mine.splits, path: mine.ghost }, playerName)
+  }, [topAsked, signedIn, playerName, day, test])
 
   useEffect(() => {
     const holder = holderRef.current
@@ -386,7 +480,7 @@ function HotLapDay({
       const kept = bestLapOf(g.day, g.test)
       const improved = !kept || time < kept.time
       if (improved) keepBestLap(g.day, g.test, { time, splits: [...run.splits], ghost: g.record })
-      g.lap = { time, score: hotlapBoardScore(time), splits: [...run.splits], improved, run: g.past ? runIdFor(SLUG) : null }
+      g.lap = { time, score: hotlapBoardScore(time), splits: [...run.splits], improved, run: g.past ? runIdFor(SLUG) : null, path: g.record }
       sfx(improved ? 'perfect' : 'good')
       haptic('boost')
     }
@@ -672,7 +766,7 @@ function HotLapDay({
   const bestText = test ? (testBest < Infinity ? formatLap(testBest) : '–') : best > 0 ? formatLap(hotlapMsFromBoardScore(best) / 1000) : '–'
   const showroom = ui.phase === 'menu'
   const lap = g.lap
-  const extra = <TrackTiles course={course} ghost={g.ghost.lap.time} test={test} past={past} />
+  const extra = <TrackTiles course={course} ghost={g.ghost.lap.time} chasing={g.chasing} test={test} past={past} />
 
   return (
     <section
@@ -801,7 +895,10 @@ function HotLapDay({
                     splits={lap.splits}
                     run={lap.run}
                     board={board}
-                    onSaved={() => setBoardVersion((v) => v + 1)}
+                    onSaved={(result) => {
+                      setBoardVersion((v) => v + 1)
+                      sendGhost(lap, result.name)
+                    }}
                     onAgain={start}
                     onDone={toMenu}
                   />
@@ -826,6 +923,7 @@ function HotLapDay({
                     previousBest={Math.max(previousBestRef.current, apiBest)}
                     pace={Math.round(pace.time * 1000)}
                     shareLine={lapShareLine(course, lap.time, pace.time)}
+                    onSettled={() => sendGhost(lap, playerName)}
                     onDone={toMenu}
                   />
                 )
