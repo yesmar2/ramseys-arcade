@@ -50,6 +50,7 @@ import { standingsTakeover } from '../lib/winTakeover'
 import { useChallengeShare } from './ChallengeShare'
 import { RunTicketsLine, RunTicketsWaiting } from './prizes/RunTickets'
 import { ReportSignIn, ReportWho, RunReport, TagSlots, type ReportAction, type ReportLink } from './RunReport'
+import { copyText } from './ShareBoardButton'
 import { WinTakeover } from './WinTakeover'
 
 type ScoreSaveProps = {
@@ -64,6 +65,8 @@ type ScoreSaveProps = {
   pickups?: number
   /** Hot Lap: the day's blue car, in milliseconds, which its ticket ladder goes by. */
   pace?: number
+  /** A daily's run to send on, its day's link included (Hot Lap's lap): a Share link under the report. */
+  shareLine?: string
   onDone: () => void
 }
 
@@ -103,7 +106,7 @@ function boardsHref(gameSlug: string, period: LeaderboardPeriod) {
  * in without a tag, it takes one in slots. A run that used the admin stage
  * jump is not saved at all. Leave, top left, goes to the game's page.
  */
-export function ScoreSaveCard({ gameSlug, score, title, subtitle, previousBest, pickups, pace, onDone }: ScoreSaveProps) {
+export function ScoreSaveCard({ gameSlug, score, title, subtitle, previousBest, pickups, pace, shareLine, onDone }: ScoreSaveProps) {
   const { signedIn, loading: authLoading } = useAuth()
   const impersonation = useImpersonation()
   const canSaveScores = signedIn || Boolean(impersonation)
@@ -121,6 +124,7 @@ export function ScoreSaveCard({ gameSlug, score, title, subtitle, previousBest, 
   const [wouldPlace, setWouldPlace] = useState<number | null>(null)
   const [sending, setSending] = useState(false)
   const [sendError, setSendError] = useState<string | null>(null)
+  const [copied, setCopied] = useState(false)
   const recordRef = useRef(previousBest ?? 0)
   /** Which pass of the save is the live one; an older pass bows out. */
   const savePass = useRef(0)
@@ -454,6 +458,24 @@ export function ScoreSaveCard({ gameSlug, score, title, subtitle, previousBest, 
     if (gameHasRecords(gameSlug)) {
       links.push({ label: 'Record book', onClick: () => leavePlayTo(recordsHref(gameSlug)) })
     }
+  }
+  // A daily's run goes on whether it's saved or not, as the other dailies' cards send theirs:
+  // the phone's own share sheet, or copied to paste anywhere.
+  if (shareLine) {
+    const sendOn = () => {
+      const touch = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches
+      if (touch && typeof navigator.share === 'function') {
+        navigator.share({ text: shareLine }).catch(() => {})
+        return
+      }
+      const done = () => {
+        setCopied(true)
+        window.setTimeout(() => setCopied(false), 2000)
+      }
+      if (navigator.clipboard?.writeText) navigator.clipboard.writeText(shareLine).then(done, () => copyText(shareLine) && done())
+      else if (copyText(shareLine)) done()
+    }
+    links = [{ label: copied ? 'Copied' : 'Share', onClick: sendOn }, ...links]
   }
 
   const lines = pending ? null : (data?.lines ?? [])

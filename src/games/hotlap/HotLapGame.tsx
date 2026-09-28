@@ -9,6 +9,7 @@ import { ScoreSaveCard } from '../../components/ScoreSaveCard'
 import { TournamentScoreCard } from '../../components/TournamentScoreCard'
 import { useAuth } from '../../hooks/useAuth'
 import { useGamePause } from '../../hooks/useGamePause'
+import { todayShareHref } from '../../hooks/useHashRoute'
 import { usePersonalBest } from '../../hooks/usePersonalBest'
 import { usePlayerName } from '../../hooks/usePlayerName'
 import { gameAccentStyle } from '../../lib/gameAccentStyle'
@@ -153,6 +154,21 @@ function freshGame(course: Course, ghostLap: GhostLap, test: boolean, past: bool
 
 const touchScreen = () =>
   typeof window !== 'undefined' && ((typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches) || 'ontouchstart' in window)
+
+/**
+ * A lap to send on, as Ace Chase's and Find the Bug's days go: the day's track, the lap against the
+ * day's blue car, and the day's link, which unfurls into the day's card and opens at today's ticket.
+ */
+function lapShareLine(course: Course, time: number, pace: number): string {
+  const gap = Math.abs(time - pace)
+  const against =
+    gap < 0.005 ? 'tied with the blue car' : time < pace ? `beat the blue car by ${gap.toFixed(2)}s` : `${gap.toFixed(2)}s off the blue car`
+  return [
+    `Hot Lap · Today’s Track #${course.n} 🏎️`,
+    `${course.name}: ${formatLap(time)}, ${against}`,
+    `${window.location.origin}${todayShareHref(course.day)}`,
+  ].join('\n')
+}
 
 /** Today's track and its number, the blue car's lap of it, and when the next track comes (another day's track: its day). */
 function TrackTiles({ course, ghost, test, past }: { course: Course; ghost: number; test: boolean; past: boolean }) {
@@ -809,6 +825,7 @@ function HotLapDay({
                     subtitle={`${course.name} · sectors ${lap.splits.map((at, k) => (at - (k === 0 ? 0 : lap.splits[k - 1]!)).toFixed(2)).join(' · ')}`}
                     previousBest={Math.max(previousBestRef.current, apiBest)}
                     pace={Math.round(pace.time * 1000)}
+                    shareLine={lapShareLine(course, lap.time, pace.time)}
                     onDone={toMenu}
                   />
                 )
