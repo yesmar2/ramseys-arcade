@@ -1,15 +1,16 @@
 import { isGameListed } from '../data/games'
 import { TODAY_FROM } from '../games/halffull/daily'
-import { currentRoute, homeHref, navigate, ROUTE_EVENT } from '../hooks/useHashRoute'
+import { ROUTE_EVENT } from '../hooks/useHashRoute'
 import { sessionFingerprint, subscribeAccountId } from './auth'
 import { api, ApiError, type LeaderboardGame } from './leaderboard'
 import { formatLeaderboardScore } from './leaderboardFormat'
 
 /*
- * The Today set: the day's dailies on one punch card (components/TodayCard.tsx, on the home page), and a
- * streak of days kept, shown in the header too (components/TodayChip.tsx). The dailies are Ace Chase's
- * Today's Hole, Hot Lap's Today's Track and Find the Bug's Today's Wanted, and Half Full's Today's Pour
- * from the day it joins (TODAY_DAILIES). Any three of a day's live dailies keep the streak; with more
+ * The Today set: the day's dailies on one punch card (components/TodayCard.tsx, on the Today page at
+ * /today, pages/TodayPage.tsx, with a row of it on the home page, TodayRow.tsx), and a streak of days
+ * kept, shown in the header too (components/TodayChip.tsx, the way to the page). The dailies are Ace
+ * Chase's Today's Hole, Hot Lap's Today's Track and Find the Bug's Today's Wanted, and Half Full's Today's
+ * Pour from the day it joins (TODAY_DAILIES). Any three of a day's live dailies keep the streak; with more
  * than three live, punching every one is a Full ticket. The Daily, the One Shot and the bug hunt are
  * bonus punches that don't count.
  *
@@ -66,6 +67,16 @@ export type TodayServer = {
   streak: { current: number; best: number }
   /** The last seven days, oldest first, ending today: kept, and a Full ticket (left out by an older API). */
   week: { day: string; kept: boolean; full?: boolean }[]
+  /**
+   * The last five weeks (35 days), oldest first, ending today, as `week` has them: the Today page's
+   * calendar. An older API leaves them out, and the calendar shows the week's seven.
+   */
+  days?: { day: string; kept: boolean; full: boolean }[]
+  /**
+   * The first day the Today set could be kept, YYYY-MM-DD: the calendar leaves the days before it blank.
+   * An older API leaves it out.
+   */
+  since?: string
   /*
    * Today's rule, as the API has it: the live dailies, how many keep the streak, how many are live, and
    * whether today is a Full ticket. An older API leaves them out; todayRule works them out instead.
@@ -186,24 +197,6 @@ export function subscribeToday(onChange: () => void): () => void {
       window.clearTimeout(nudgeTimer)
     }
   }
-}
-
-/** Where the card is on the home page, as an anchor and in the address (?focus=today). */
-export const TODAY_ANCHOR = 'today'
-
-export function todayHref() {
-  return `${homeHref()}?focus=${TODAY_ANCHOR}`
-}
-
-/** Bring the card into view on the home page, or go there and have it brought into view. */
-export function goToToday(e?: { preventDefault(): void }) {
-  const card = currentRoute().name === 'home' ? document.getElementById(TODAY_ANCHOR) : null
-  e?.preventDefault()
-  if (!card) {
-    navigate(todayHref())
-    return
-  }
-  card.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' })
 }
 
 /** The milestone a streak is heading for next, or null past the last. */

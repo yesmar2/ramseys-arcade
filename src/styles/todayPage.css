@@ -1,0 +1,543 @@
+/*
+ * The Today page (pages/TodayPage.tsx): the day up top, today's ticket (today.css) with your friends' day
+ * under it, and beside it on a wide screen your days, the streak's rewards and the day's share. Narrower,
+ * those three go under the ticket, side by side while they fit, and one under another on a phone.
+ */
+
+.today-page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.4rem;
+  padding-bottom: 2.5rem;
+}
+
+/*
+ * On a phone the ticket's notches reach past the screen's edge. The home page's stage used to clip them;
+ * here the page does, across only, so nothing scrolls sideways.
+ */
+.lb-page:has(> .today-page) {
+  overflow-x: clip;
+}
+
+/* ---------- the day, and where it stands ---------- */
+
+.today-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1.2rem 2rem;
+  box-sizing: border-box;
+  padding: 1.8rem 2.1rem;
+  border-radius: 1.75rem;
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+  background: color-mix(in srgb, var(--accent) 7%, var(--surface));
+  box-shadow: var(--shadow-soft);
+}
+
+.today-head__text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.55rem;
+  flex: 1 1 24rem;
+  min-width: 0;
+}
+
+.today-head__kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-height: 2rem;
+  padding: 0 0.9rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.today-head__kicker i {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 8px var(--accent);
+}
+
+.today-head__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 4vw, 2.9rem);
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: -0.035em;
+}
+
+.today-head__line {
+  margin: 0;
+  max-width: 40rem;
+  font-size: 1.05rem;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.today-head__side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.9rem;
+  flex: none;
+}
+
+.today-head__streak {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+}
+
+.today-head__flame {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 3.3rem;
+  height: 3.3rem;
+  box-sizing: border-box;
+  border-radius: 1rem;
+  border: 1px solid color-mix(in srgb, var(--ticket, #ff8552) 40%, transparent);
+  background: color-mix(in srgb, var(--ticket, #ff8552) 14%, transparent);
+  color: var(--ticket, #ff8552);
+}
+
+.today-head__flame svg {
+  width: 1.7rem;
+  height: 1.7rem;
+}
+
+.today-head__flame--full {
+  border-color: var(--today-full);
+  background: color-mix(in srgb, var(--today-full) 16%, transparent);
+  color: var(--today-full);
+}
+
+.today-head__streak-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.today-head__streak-text b {
+  font-family: var(--font-display);
+  font-size: 1.8rem;
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.today-head__streak-text span {
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.today-head__signin {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2.75rem;
+  box-sizing: border-box;
+  padding: 0 1.2rem 0 0.95rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--ticket, #ff8552) 55%, transparent);
+  background: color-mix(in srgb, var(--ticket, #ff8552) 12%, transparent);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.today-head__signin:hover,
+.today-head__signin:focus-visible {
+  border-color: var(--ticket, #ff8552);
+  outline: none;
+}
+
+.today-head__signin svg {
+  width: 1.15rem;
+  height: 1.15rem;
+  color: var(--ticket, #ff8552);
+}
+
+.today-head__progress {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.today-head__bar {
+  display: flex;
+  gap: 0.3rem;
+  width: 11rem;
+}
+
+.today-head__seg {
+  flex: 1;
+  height: 0.55rem;
+  border-radius: 999px;
+  background: rgba(var(--ink-rgb), 0.12);
+}
+
+.today-head__seg--on {
+  background: var(--ticket, #ff8552);
+}
+
+.today-head__bar--full .today-head__seg--on {
+  background: var(--today-full);
+}
+
+/* ---------- the ticket, and beside it ---------- */
+
+.today-page__grid {
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+}
+
+.today-page__main {
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+  min-width: 0;
+}
+
+/* Under the ticket: side by side while they fit. */
+.today-page__side {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr));
+  gap: 1.2rem;
+  align-items: start;
+}
+
+/* Wide enough for the ticket's four across and a column beside it. */
+@media (min-width: 84rem) {
+  .today-page__grid--side {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 21rem;
+    align-items: start;
+  }
+
+  .today-page__grid--side .today-page__side {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* ---------- your days: five weeks, Monday first ---------- */
+
+.today-days,
+.today-send,
+.today-invite {
+  box-sizing: border-box;
+  padding: 1.3rem 1.4rem;
+  border-radius: 1.4rem;
+  background: var(--surface);
+  border: 1px solid rgba(var(--ink-rgb), 0.08);
+}
+
+.today-days,
+.today-send {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+
+.today-days h2,
+.today-send h2,
+.today-invite h2 {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 800;
+}
+
+.today-days__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.3rem 1rem;
+}
+
+.today-days__range {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.today-days__names,
+.today-days__grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 0.35rem 0.25rem;
+}
+
+.today-days__names span {
+  text-align: center;
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: var(--muted);
+}
+
+.today-days__grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.today-days__day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.today-days__mark {
+  display: grid;
+  place-items: center;
+  width: 1.9rem;
+  height: 1.9rem;
+  box-sizing: border-box;
+  border-radius: 50%;
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: var(--ticket-text, #c2461d);
+}
+
+.today-days__mark svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.today-days__day--missed .today-days__mark {
+  border: 2px solid rgba(var(--ink-rgb), 0.12);
+}
+
+.today-days__day--kept .today-days__mark {
+  background: var(--ticket, #ff8552);
+  color: var(--ticket-ink, #3a1406);
+}
+
+.today-days__day--full .today-days__mark {
+  background: var(--today-full);
+  color: var(--ticket-ink, #3a1406);
+  box-shadow:
+    0 0 0 2px var(--surface),
+    0 0 0 3.5px var(--today-full);
+}
+
+.today-days__day--full .today-days__mark svg {
+  width: 0.85rem;
+  height: 0.85rem;
+}
+
+.today-days__day--open .today-days__mark {
+  border: 2px dashed var(--ticket, #ff8552);
+}
+
+.today-days__n {
+  max-width: 100%;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--muted);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Days that weren't there to keep, before the Today set began or still to come: only the date, faint. */
+.today-days__day--before .today-days__n,
+.today-days__day--after .today-days__n,
+.today-days__day--unknown .today-days__n {
+  opacity: 0.45;
+}
+
+.today-days__day--open .today-days__n {
+  color: var(--ticket-text, #c2461d);
+  font-weight: 800;
+}
+
+.today-days__key {
+  margin-top: 0.1rem;
+}
+
+/* ---------- your day, to send ---------- */
+
+.today-send__text {
+  margin: 0;
+  padding: 0.85rem 1rem;
+  border-radius: 1rem;
+  background: rgba(var(--ink-rgb), 0.04);
+  border: 1px dashed rgba(var(--ink-rgb), 0.2);
+  font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 0.8rem;
+  line-height: 1.6;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+.today-send__share {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 2.9rem;
+  box-sizing: border-box;
+  padding: 0 1.2rem;
+  border-radius: 999px;
+  border: none;
+  background: var(--ticket, #ff8552);
+  color: var(--ticket-ink, #3a1406);
+  font: inherit;
+  font-size: 0.98rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.today-send__share:hover,
+.today-send__share:focus-visible {
+  background: var(--ticket-deep, #e0602e);
+  outline: none;
+}
+
+.today-send__share svg {
+  width: 1.05rem;
+  height: 1.05rem;
+}
+
+.today-send__none {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+/* ---------- signed out: what an account keeps ---------- */
+
+.today-invite {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem 1.5rem;
+}
+
+.today-invite__text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  flex: 1 1 20rem;
+  min-width: 0;
+}
+
+.today-invite p {
+  margin: 0;
+  max-width: 44rem;
+  font-size: 0.92rem;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.today-invite__go {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.9rem;
+  box-sizing: border-box;
+  padding: 0 1.6rem;
+  border-radius: 999px;
+  border: none;
+  background: var(--ticket, #ff8552);
+  color: var(--ticket-ink, #3a1406);
+  font: inherit;
+  font-size: 0.98rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.today-invite__go:hover,
+.today-invite__go:focus-visible {
+  background: var(--ticket-deep, #e0602e);
+  outline: none;
+}
+
+/* ---------- a phone: everything one under another ---------- */
+
+@media (max-width: 48rem) {
+  .today-page {
+    gap: 1rem;
+  }
+
+  .today-head {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.9rem;
+    padding: 1.2rem 1.1rem;
+    border-radius: 1.4rem;
+  }
+
+  .today-head__text {
+    flex: none;
+    gap: 0.45rem;
+  }
+
+  .today-head__title {
+    font-size: 1.75rem;
+  }
+
+  .today-head__line {
+    font-size: 0.95rem;
+  }
+
+  .today-head__side {
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+
+  .today-head__flame {
+    width: 2.6rem;
+    height: 2.6rem;
+    border-radius: 0.85rem;
+  }
+
+  .today-head__flame svg {
+    width: 1.35rem;
+    height: 1.35rem;
+  }
+
+  .today-head__streak-text b {
+    font-size: 1.3rem;
+  }
+
+  .today-page__grid,
+  .today-page__main {
+    gap: 1rem;
+  }
+
+  .today-page__side {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1rem;
+  }
+
+  .today-days,
+  .today-send,
+  .today-invite {
+    padding: 1rem 1.1rem;
+  }
+
+  .today-invite__go {
+    width: 100%;
+  }
+}

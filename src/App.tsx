@@ -59,6 +59,8 @@ const PrivacyPage = lazyPage(() => import('./pages/PrivacyPage').then((m) => m.P
 const RankPage = lazyPage(() => import('./pages/RankPage').then((m) => m.RankPage))
 const StatsPage = lazyPage(() => import('./pages/StatsPage').then((m) => m.StatsPage))
 const PrizeCounterPage = lazyPage(() => import('./pages/PrizeCounterPage').then((m) => m.PrizeCounterPage))
+/** The Today page, in a chunk of its own with the dailies' plans. */
+const TodayPage = lazyPage(() => import('./pages/TodayPage').then((m) => m.TodayPage))
 const NotificationSettingsPage = lazyPage(() =>
   import('./pages/NotificationSettingsPage').then((m) => m.NotificationSettingsPage),
 )
@@ -237,6 +239,7 @@ const PAGE_PRELOADS: { test: RegExp; page: { preload: () => Promise<void> } }[] 
   { test: /^\/rank(?:[/?#]|$)/, page: RankPage },
   { test: /^\/stats(?:[/?#]|$)/, page: StatsPage },
   { test: /^\/prizes(?:[/?#]|$)/, page: PrizeCounterPage },
+  { test: /^\/today(?:[/?#]|$)/, page: TodayPage },
   { test: /^\/settings(?:[/?#]|$)/, page: NotificationSettingsPage },
   { test: /^\/games\/[^/?#]+\/archive(?:[/?#]|$)/, page: ArchivePage },
   { test: /^\/plus(?:[/?#]|$)/, page: PlusPage },
@@ -271,6 +274,7 @@ function Screen({ route }: { route: ReturnType<typeof useRoute> }) {
   if (route.name === 'admin') return <AdminPage section={route.section} />
   if (route.name === 'stats') return <StatsPage />
   if (route.name === 'prizes') return <PrizeCounterPage />
+  if (route.name === 'today') return <TodayPage />
   if (route.name === 'notificationSettings') return <NotificationSettingsPage />
   if (route.name === 'devCelebrate') return <DevCelebratePage />
   if (route.name === 'notFound') return <GameOverPage killScreen={route.killScreen} />

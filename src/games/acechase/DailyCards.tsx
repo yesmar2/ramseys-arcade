@@ -104,7 +104,7 @@ export function ShareButton({
 }) {
   const [copied, setCopied] = useState(false)
   const share = () => {
-    // The day's own link, which unfurls into the day's card and opens at today's ticket.
+    // The day's own link, which unfurls into the day's card and opens the Today page.
     const url = `${window.location.origin}${todayShareHref(hole.day)}`
     const text = `${shareText(hole, tries, pattern)}\n${url}`
     const touch = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches

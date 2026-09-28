@@ -200,7 +200,7 @@ export function AdminTrophies() {
           </h2>
         </div>
         <p className="adm-card__sub">
-          Today’s ticket, on the home page: a streak day is one with any three of the day’s live dailies done (Today’s
+          Today’s ticket, on the Today page: a streak day is one with any three of the day’s live dailies done (Today’s
           Hole solved, a lap on Today’s Track saved, Today’s Wanted’s first run saved, Today’s Pour’s first pour
           saved), on the boards’ New York day. Before Today’s Pour joined, on 28 September 2026, that was all three.
           Doing all four is a Full ticket: a gold mark in the week and “Full” on the header chip, with no reward of

@@ -10,7 +10,7 @@ import { OUTFIT } from '../api/_og/fonts.js'
  * A day's share link, /today/<day>, and the card it unfurls into.
  *
  * Every daily's Share sends that day's link. Its page is the site's shell with the day's title, words and
- * card stamped in (the app opens it at today's ticket, useHashRoute.ts), and its card is a picture of the
+ * card stamped in (the app opens the Today page, useHashRoute.ts), and its card is a picture of the
  * day: the hole drawn from above, the track, and the five bugs wanted, the same for everyone that day, and
  * from the day Today's Pour joins the ticket, the day's glasses, empty. Both are made here, at build, for
  * the days either side of it (a link is sent the day it's played, and unfurled then), so a link costs

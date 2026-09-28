@@ -14,8 +14,8 @@ import { useRecentGames } from '../lib/lastPlayed'
 import { lazyPage } from '../lib/lazyPage'
 import { normalizePlayerName } from '../lib/leaderboard'
 
-/** Today's ticket (lib/today.ts), in a chunk of its own with the dailies' plans. */
-const TodayCard = lazyPage(() => import('../components/TodayCard').then((m) => m.TodayCard))
+/** Today's row (lib/today.ts), the way to the Today page, in a chunk of its own with the dailies' plans. */
+const TodayRow = lazyPage(() => import('../components/TodayRow').then((m) => m.TodayRow))
 
 /** A phone, where the home page runs lighter (the rules in home.css under the same width). */
 const PHONE = '(max-width: 36rem)'
@@ -43,13 +43,14 @@ type Part = 'hero' | 'today' | 'hunt' | 'invites' | 'onnow' | 'wall' | 'boards' 
  * hears it the way it's seen; each part keeps its key, so turning a phone
  * sideways moves the parts rather than starting them again.
  *
- * Today's ticket, the day's dailies and the streak, comes straight
- * after the banner for anyone who has played, phone or not.
+ * Today's row, the day's dailies and the streak with the way to the Today
+ * page (where the ticket, your days, the rewards and your friends are), comes
+ * straight after the banner for anyone who has played, phone or not.
  *
  * A first visit (no tag, nothing played on this device, as the banner has it)
- * gets the games right after the banner at any width, and today's ticket,
- * what's on and the bug hunt, which only mean something once you've played,
- * after them.
+ * gets the games right after the banner at any width, and today's row, what's
+ * on and the bug hunt, which only mean something once you've played, after
+ * them.
  */
 const WIDE: Part[] = ['hero', 'today', 'hunt', 'invites', 'onnow', 'wall', 'boards', 'spotter', 'groups']
 const NARROW: Part[] = ['hero', 'today', 'invites', 'wall', 'onnow', 'hunt', 'boards', 'spotter', 'groups']
@@ -71,7 +72,7 @@ export function HomePage() {
     hero: <HomeHero key="hero" />,
     today: (
       <Suspense key="today" fallback={null}>
-        <TodayCard />
+        <TodayRow />
       </Suspense>
     ),
     hunt: <BugHuntStrip key="hunt" />,

@@ -64,6 +64,8 @@ export type Route =
   | { name: 'admin'; section?: AdminSection }
   | { name: 'stats' }
   | { name: 'prizes' }
+  /** The Today set's page: today's ticket, your days, the streak's rewards and your friends' day. */
+  | { name: 'today' }
   | { name: 'notificationSettings' }
   | { name: 'privacy' }
   | { name: 'terms' }
@@ -143,17 +145,25 @@ export function rankHref(
 /** Section the current URL asks to be scrolled to, if any. */
 export function focusFromUrl(): string | null {
   if (typeof window === 'undefined') return null
-  const asked = new URLSearchParams(window.location.search).get('focus')
-  if (asked) return asked
-  // A day's share link, /today/<day>: the home page, opened at today's ticket.
-  return TODAY_PATH.test(window.location.pathname.replace(/^\/+/, '').replace(/\/+$/, '')) ? 'today' : null
+  return new URLSearchParams(window.location.search).get('focus')
 }
 
 /**
- * A day's share link: /today, or /today/YYYY-MM-DD, which the build gives a page of its own that unfurls
- * into the day's card (scripts/today-cards.mjs).
+ * The Today page, /today. A day's share link, /today/YYYY-MM-DD, which the build gives a page of its own
+ * that unfurls into the day's card (scripts/today-cards.mjs), opens it too.
  */
 const TODAY_PATH = /^today(?:\/\d{4}-\d{2}-\d{2})?$/
+
+/**
+ * Where the home page's `?focus=today` pointed when today's ticket was on it: the Today page now. Inbox
+ * notes and pushes already sent still link there.
+ */
+const TODAY_FOCUS = 'today'
+
+/** The Today page: today's ticket, your days, the streak's rewards and your friends' day. */
+export function todayHref() {
+  return '/today'
+}
 
 /** The link a daily's Share sends: the day's own, so it unfurls into that day's card. */
 export function todayShareHref(day: string) {
@@ -164,11 +174,12 @@ export function todayShareHref(day: string) {
  * A canonical href that still asks for the section the current URL does.
  * Only the page reads `?focus=`, so the route knows nothing of it, and
  * tidying the URL into its canonical form must not drop it before the page
- * has had a look.
+ * has had a look. The one exception is `?focus=today`: that's the Today
+ * page itself, whose address has nothing to keep.
  */
 function keepFocus(href: string): string {
   const focus = focusFromUrl()
-  if (!focus) return href
+  if (!focus || focus === TODAY_FOCUS) return href
   const [path, qs] = href.split('?')
   const params = new URLSearchParams(qs)
   params.delete('focus')
@@ -431,6 +442,9 @@ export function hrefForRoute(
       return groupsIndexHref()
     case 'group':
       return groupHref(route.id, route.invite)
+    // A day's share link and the home page's old ?focus=today both open the Today page, and say so.
+    case 'today':
+      return todayHref()
     default:
       return null
   }
@@ -477,9 +491,9 @@ export function applySiteGroup(groupId: string | null, route: Route = currentRou
 export function parseUrl(pathname: string, search: string): Route {
   const path = pathname.replace(/^\/+/, '').replace(/\/+$/, '')
   const invite = new URLSearchParams(search).get('invite')?.trim().toUpperCase() || undefined
-  if (!path) return { name: 'home' }
-  // A day's share link is the home page, at today's ticket (focusFromUrl): whatever day it was sent on.
-  if (TODAY_PATH.test(path)) return { name: 'home' }
+  if (!path) return new URLSearchParams(search).get('focus') === TODAY_FOCUS ? { name: 'today' } : { name: 'home' }
+  // A day's share link is the Today page, today's: whatever day it was sent on.
+  if (TODAY_PATH.test(path)) return { name: 'today' }
   if (path === 'about') return { name: 'about' }
   if (path === 'plus') return { name: 'plus' }
   if (path === 'admin') return { name: 'admin' }

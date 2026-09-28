@@ -191,7 +191,7 @@ const touchScreen = () =>
 
 /**
  * A lap to send on, as Ace Chase's and Find the Bug's days go: the day's track, the lap against the
- * day's blue car, and the day's link, which unfurls into the day's card and opens at today's ticket.
+ * day's blue car, and the day's link, which unfurls into the day's card and opens the Today page.
  */
 function lapShareLine(course: Course, time: number, pace: number): string {
   const gap = Math.abs(time - pace)

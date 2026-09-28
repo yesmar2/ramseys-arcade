@@ -9,8 +9,9 @@ import { PlayerAvatar } from './PlayerAvatar'
 import { FlameIcon } from './TodayChip'
 
 /*
- * The rivals under today's ticket (lib/today.ts): your friends, or one of your groups, on the day's live
- * dailies, with their result on each and their streak. The best on each is marked, and yours stands out.
+ * The rivals under today's ticket, on the Today page (lib/today.ts): your friends, or one of your groups, on
+ * the day's live dailies, with their result on each and their streak. The best on each is marked, and yours
+ * stands out.
  * A wider screen has a table, one row a player and a column a daily; a phone has a card a player, their
  * results in a row of small pictures under the name. With nobody to race yet, it says how to get someone.
  */
@@ -56,7 +57,7 @@ export function TodayRivals({
   return (
     <section className="today-rivals" aria-labelledby="today-rivals-title">
       <div className="today-rivals__head">
-        <h3 id="today-rivals-title">{title}</h3>
+        <h2 id="today-rivals-title">{title}</h2>
         {data.groups.length ? (
           <div className="today-rivals__scopes" role="group" aria-label="Whose day to show">
             <button type="button" className="today-rivals__scope" aria-pressed={!group} onClick={() => onPick(null)}>

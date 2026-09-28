@@ -1,56 +1,19 @@
 import { useEffect, useReducer, useState, type CSSProperties } from 'react'
 import { getGame } from '../data/games'
-import {
-  bugDay,
-  DAY_SCENES,
-  dayNumber as wantedNumber,
-  dayRun,
-  sceneMark,
-  subscribeBugDay,
-  wantedNames,
-  dayWanted,
-} from '../games/findbug/daily'
-import { findbugBoardScore, formatFindbugMs } from '../games/findbug/score'
-import { dayDone as pourDone, dayRun as pourRun, dayTag as pourTag, pourDay, subscribePourDay } from '../games/halffull/daily'
-import { dayPlan, ROUNDS } from '../games/halffull/plan'
-import { glassNames } from '../games/halffull/planSvg'
-import { formatBoard, judgeLevels, markFor, tierFor } from '../games/halffull/score'
-import { dailyTrack, trackDay } from '../games/hotlap/daily'
-import { keptLap } from '../games/hotlap/lap'
-import { formatLap } from '../games/hotlap/score'
-import { useAccountId } from '../hooks/useAccountId'
-import { useAuth } from '../hooks/useAuth'
-import { focusFromUrl, gameBoardHref, gamePlayHref, tournamentHref } from '../hooks/useHashRoute'
+import { gameBoardHref, gamePlayHref, tournamentHref } from '../hooks/useHashRoute'
 import { useLiveEvents } from '../hooks/useLiveEvents'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { capitalName, huntDay, huntPick, huntStats, openBugHunt, subscribeHunt } from '../lib/bugHunt'
-import { dailyDay, dayProgress, subscribeDaily, syncDaily, todaysHole } from '../lib/dailyHole'
-import type { Viewer } from '../lib/deviceRuns'
-import { formatLeaderboardScore } from '../lib/leaderboardFormat'
 import { normalizePlayerName } from '../lib/leaderboard'
 import { numberWord } from '../lib/numberWord'
 import { ordinal } from '../lib/profileMath'
 import {
-  dayMarks,
-  daysToGo,
-  fetchRivals,
-  liveDailies,
   rivalResult,
-  rivalsScope,
   rivalStanding,
   rivalWords,
-  setRivalsScope,
-  subscribeToday,
-  TODAY_ANCHOR,
   TODAY_KEEP,
-  TODAY_MILESTONES,
-  todayRule,
-  todayServer,
-  todayShareText,
-  type TodayDaily,
   type TodayKey,
   type TodayRivals as Rivals,
-  type TodayServer,
 } from '../lib/today'
 import type { TournamentSummary } from '../lib/tournaments'
 import { resolveGameAccent } from '../lib/theme'
@@ -58,19 +21,19 @@ import { BugPortrait } from './BugHunt'
 import { GameArt } from './GameArt'
 import { GameThumbArt } from './GameThumbArt'
 import { FlameIcon, StarIcon } from './TodayChip'
-import { TodayRivals } from './TodayRivals'
+import { dayParts, shortDate, streakLine, todayShareUrl, WEEKDAY_NAMES, type Punch, type Ticket } from './todayPunches'
 import '../styles/today.css'
 
 /*
- * Today's ticket, on the home page (lib/today.ts): the day's live dailies as punches, all across on a
- * desktop, and on a phone a strip with one of them shown big (the next to play, or the one picked), the
- * streak on its stub with the week under
- * it, the day's share, the bonus punches (the Daily, the One Shot and the bug hunt, which don't count),
- * and the streak's rewards. What this device has done punches at once; the streak is the API's, for a
- * signed-in account. It comes in a chunk of its own, with the dailies' plans.
+ * Today's ticket, on the Today page (lib/today.ts, pages/TodayPage.tsx): the day's live dailies as punches,
+ * all across on a desktop, and on a phone a strip with one of them shown big (the next to play, or the one
+ * picked), the streak on its stub with the week under it, the day's share, and the bonus punches (the
+ * Daily, the One Shot and the bug hunt, which don't count). What this device has done punches at once;
+ * the streak is the API's, for a signed-in account. The punches themselves are todayPunches.ts's, which
+ * the home page's Today row draws from too.
  */
 
-const CheckIcon = () => (
+export const CheckIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
     <path d="M5 12.5l4.2 4.2L19 7" />
   </svg>
@@ -87,208 +50,8 @@ const ShareIcon = () => (
     <path d="M5 12v6.5A2.5 2.5 0 0 0 7.5 21h9a2.5 2.5 0 0 0 2.5-2.5V12" />
   </svg>
 )
-const GiftIcon = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <rect x="4" y="9" width="16" height="11.5" rx="2" />
-    <path d="M4 13h16M12 9v11.5" />
-    <path d="M12 9c-1.5-3.5-5.5-4-5.5-1.5S10 9 12 9zM12 9c1.5-3.5 5.5-4 5.5-1.5S14 9 12 9z" />
-  </svg>
-)
-const LockIcon = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <rect x="5" y="11" width="14" height="9.5" rx="2.2" />
-    <path d="M8.5 11V8a3.5 3.5 0 0 1 7 0v3" />
-  </svg>
-)
-
-type Punch = {
-  key: TodayKey
-  slug: TodayDaily['slug']
-  /** The short name a phone's punch shows: Hole, Track, Bugs, Pour. */
-  label: string
-  kicker: string
-  game: string
-  /** The day's own: the hole's name, the track's, the bugs wanted, the glasses. */
-  title: string
-  done: boolean
-  /** Your result, in words, once there is one. */
-  mine: string | null
-  /** The result on the punch itself, short: "3 tries", "58.41s", "91.2%". */
-  short: string | null
-  /** Left halfway, and where to carry on from ("Carry on, glass 3 of 5"); null if not started. */
-  carry: string | null
-  /** The day's line for the share. */
-  share: string | null
-  go: string
-  /** In its first week on the ticket. */
-  fresh: boolean
-}
-
-/** A daily's punch, apart from what every punch has from TODAY_DAILIES (its key, game and label, and whether it's new). */
-type PunchDay = Omit<Punch, 'key' | 'slug' | 'label' | 'game' | 'fresh'>
 
 const WEEKDAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S']
-const WEEKDAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
-/** How long a daily is new on the ticket, in days. */
-const FRESH_DAYS = 7
-
-function dayParts(day: string): { weekday: number; date: Date } {
-  const [y, m, d] = day.split('-').map(Number)
-  const date = new Date(Date.UTC(y!, (m ?? 1) - 1, d ?? 1))
-  return { weekday: date.getUTCDay(), date }
-}
-
-function longDate(day: string): string {
-  return dayParts(day).date.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', timeZone: 'UTC' })
-}
-
-function daysBetween(from: string, to: string): number {
-  return Math.round((dayParts(to).date.getTime() - dayParts(from).date.getTime()) / 86_400_000)
-}
-
-const triesWords = (n: number) => `${n} ${n === 1 ? 'try' : 'tries'}`
-
-/*
- * Each daily's punch, for the viewer (lib/deviceRuns.ts). The account's own results (the API's) come
- * first. What this device did counts only when it's the viewer's own run: the device may hold another
- * player's, or a run played signed out that only its game can take up, and neither is ever shown as the
- * viewer's. Their own run adds to their result (each square, or a punch before the API has it), and only
- * their own half-played run says Carry on.
- */
-
-function holePunch(day: string, server: TodayServer | null, viewer: Viewer): PunchDay {
-  const hole = todaysHole(day)
-  // The viewer's own run on this device only (lib/dailyHole.ts): never another account's, nor, signed in, one played signed out.
-  const progress = dayProgress(day, viewer)
-  const tries = server?.results.hole?.tries ?? progress?.solved?.tries ?? null
-  const done = tries != null || Boolean(server?.done.hole)
-  const tried = done ? 0 : (progress?.tries ?? 0)
-  return {
-    kicker: `Today’s Hole #${hole.n}`,
-    title: hole.def.name,
-    done,
-    mine: tries != null ? (tries === 1 ? 'Bullseye, first try' : `Bullseye in ${tries}`) : done ? 'Done' : null,
-    short: tries != null ? triesWords(tries) : null,
-    carry: tried > 0 ? `Carry on, ${triesWords(tried)} in` : null,
-    share: tries != null ? `${hole.def.name} in ${tries}` : null,
-    go: 'Play the hole',
-  }
-}
-
-function trackPunch(server: TodayServer | null, viewer: Viewer): PunchDay {
-  const tday = trackDay()
-  const track = dailyTrack(tday)
-  const serverLap = server?.results.track?.score ?? null
-  // The viewer's own best lap on this device (never another player's, nor one driven signed out while they're signed in).
-  const lapTime = keptLap(tday, viewer)?.time ?? null
-  const lapWords = serverLap != null ? formatLeaderboardScore('hotlap', serverLap) : lapTime != null ? formatLap(lapTime) : null
-  const done = lapWords != null || Boolean(server?.done.track)
-  return {
-    kicker: `Today’s Track #${track.n}`,
-    title: track.name,
-    done,
-    mine: lapWords ? `${lapWords} lap` : done ? 'Done' : null,
-    short: lapWords,
-    carry: null,
-    share: lapWords ? `${track.name} ${lapWords}` : null,
-    go: 'Race the track',
-  }
-}
-
-function wantedPunch(server: TodayServer | null, viewer: Viewer): PunchDay {
-  const bday = bugDay()
-  const serverRun = server?.results.wanted?.score ?? null
-  const device = dayRun(bday, viewer)
-  const deviceRun = device?.result ?? null
-  // The device's run tells more (what was found, each scene's square), when it's the same run as the API's.
-  const run = deviceRun && (serverRun == null || findbugBoardScore(deviceRun.ms) === serverRun) ? deviceRun : null
-  const runTime = serverRun != null ? formatLeaderboardScore('findbug', serverRun) : run ? formatFindbugMs(run.ms) : null
-  const found = run?.found
-  const wanted = dayWanted(bday)
-  const marks = run?.times?.length ? `${run.times.map(sceneMark).join('')} ` : ''
-  const done = runTime != null || Boolean(server?.done.wanted)
-  // A run begun here and left before its end.
-  const started = !done && device != null && deviceRun == null
-  const at = started ? device?.at : undefined
-  return {
-    kicker: `Today’s Wanted #${wantedNumber(bday)}`,
-    title: wantedNames(wanted),
-    done,
-    mine: runTime ? `${runTime}${found != null ? ` · found ${found} of ${wanted.length}` : ''}` : done ? 'Done' : null,
-    short: runTime,
-    carry: started ? (at ? `Carry on, scene ${Math.min(DAY_SCENES, at.index + 1)} of ${DAY_SCENES}` : 'Carry on') : null,
-    share: runTime ? `${marks}${runTime}` : null,
-    go: 'Find them',
-  }
-}
-
-function pourPunch(server: TodayServer | null, viewer: Viewer): PunchDay {
-  const pday = pourDay()
-  // Its title names the day's glasses, so the day's plan is built (once a page) whenever the pour is on the ticket.
-  const plan = dayPlan(pday)
-  const serverPour = server?.results.pour?.score ?? null
-  // The viewer's own pour here, if any: never another account's, nor one poured signed out (only the game takes that up).
-  const run = pourRun(pday, viewer)
-  const levels = run?.levels ?? []
-  const judged = levels.length >= ROUNDS ? judgeLevels(plan, levels.slice(0, ROUNDS)) : null
-  // The device's pours tell more (each glass's square, the tier), when they're the same pour as the API's.
-  const same = judged && (serverPour == null || judged.board === serverPour) ? judged : null
-  const score = serverPour ?? same?.board ?? run?.board ?? null
-  const done = score != null || Boolean(server?.done.pour) || pourDone(run)
-  return {
-    kicker: `Today’s Pour ${pourTag(pday)}`,
-    title: glassNames(plan),
-    done,
-    mine: score != null ? `${formatBoard(score)}${same ? `, ${tierFor(same.day)}` : ''}` : done ? 'Done' : null,
-    short: score != null ? formatBoard(score) : null,
-    carry: !done && levels.length > 0 ? `Carry on, glass ${Math.min(ROUNDS, levels.length + 1)} of ${ROUNDS}` : null,
-    share: score != null ? `${same ? `${same.scores.map(markFor).join('')} ` : ''}${formatBoard(score)}` : null,
-    go: 'Pour',
-  }
-}
-
-function punchDay(key: TodayKey, day: string, server: TodayServer | null, viewer: Viewer): PunchDay {
-  if (key === 'hole') return holePunch(day, server, viewer)
-  if (key === 'track') return trackPunch(server, viewer)
-  if (key === 'wanted') return wantedPunch(server, viewer)
-  return pourPunch(server, viewer)
-}
-
-/**
- * The day's live dailies, as this device and the API have them for the viewer, kept fresh and rolled over
- * at midnight.
- */
-function useTicket(viewer: Viewer): { day: string; punches: Punch[]; server: TodayServer | null; live: TodayDaily[] } {
-  const [, refresh] = useReducer((n: number) => n + 1, 0)
-  const [day, setDay] = useState(dailyDay)
-  useEffect(() => subscribeDaily(refresh), [])
-  useEffect(() => subscribeBugDay(refresh), [])
-  useEffect(() => subscribePourDay(refresh), [])
-  useEffect(() => subscribeToday(refresh), [])
-  useEffect(() => {
-    void syncDaily()
-  }, [day])
-  useEffect(() => {
-    const t = window.setInterval(() => {
-      setDay(dailyDay())
-      refresh()
-    }, 30_000)
-    return () => window.clearInterval(t)
-  }, [])
-
-  const raw = todayServer()
-  const server = raw?.day === day ? raw : null
-  const live = liveDailies(day, server)
-  const punches = live.map((d) => ({
-    key: d.key,
-    slug: d.slug,
-    label: d.label,
-    game: getGame(d.slug)?.name ?? d.label,
-    fresh: d.from ? daysBetween(d.from, day) < FRESH_DAYS : false,
-    ...punchDay(d.key, day, server, viewer),
-  }))
-  return { day, punches, server, live }
-}
 
 /** The bug hunt, for its bonus punch: who's loose today, and whether you've caught it. */
 function useHuntPunch(): { name: string; bugId: string; found: boolean } {
@@ -296,42 +59,6 @@ function useHuntPunch(): { name: string; bugId: string; found: boolean } {
   useEffect(() => subscribeHunt(refresh), [])
   const pick = huntPick(huntDay())
   return { name: capitalName(pick.bug), bugId: pick.bug.id, found: huntStats().foundToday }
-}
-
-/**
- * Friends', or a group's, day on the dailies: asked again when the player's own day moves, when the tab
- * comes back, when another account signs in, and every two minutes. The pick of friends or a group is
- * this device's.
- */
-function useRivals(signedIn: boolean, viewer: Viewer): { data: Rivals | null; group: string | null; pick: (group: string | null) => void } {
-  const [group, setGroup] = useState<string | null>(rivalsScope)
-  // The table, with the account it was asked for: another account's is never shown, even while theirs is asked.
-  const [held, setHeld] = useState<{ for: Viewer; data: Rivals | null }>({ for: null, data: null })
-  const [tick, bump] = useReducer((n: number) => n + 1, 0)
-  useEffect(() => subscribeToday(bump), [])
-  useEffect(() => {
-    const t = window.setInterval(bump, 120_000)
-    return () => window.clearInterval(t)
-  }, [])
-  useEffect(() => {
-    if (!signedIn) {
-      setHeld({ for: viewer, data: null })
-      return
-    }
-    let cancelled = false
-    void fetchRivals(group, tick > 0).then((next) => {
-      if (!cancelled) setHeld({ for: viewer, data: next })
-    })
-    return () => {
-      cancelled = true
-    }
-  }, [signedIn, viewer, group, tick])
-  const data = held.for === viewer ? held.data : null
-  const pick = (next: string | null) => {
-    setRivalsScope(next)
-    setGroup(next)
-  }
-  return { data, group: data?.scope.kind === 'group' ? data.scope.id : null, pick }
 }
 
 /** A punch's line on the rivals: where you stand among them, or who leads while you haven't. */
@@ -391,16 +118,15 @@ function BonusPunches() {
 }
 
 /** The share: the phone's share sheet where there is one, else copied. */
-function ShareDay({ text, day, all, className }: { text: string; day: string; all: boolean; className: string }) {
+export function ShareDay({ text, day, all, className }: { text: string; day: string; all: boolean; className: string }) {
   const [copied, setCopied] = useState(false)
   useEffect(() => {
     if (!copied) return
     const t = window.setTimeout(() => setCopied(false), 2200)
     return () => window.clearTimeout(t)
   }, [copied])
-  // The day's own page: it lands on today's ticket, and unfurls with the day's card.
-  const url = `${window.location.origin}/today/${day}`
   const share = async () => {
+    const url = todayShareUrl(day)
     const touch = window.matchMedia('(hover: none) and (pointer: coarse)').matches
     if (touch && navigator.share) {
       try {
@@ -422,45 +148,6 @@ function ShareDay({ text, day, all, className }: { text: string; day: string; al
       <ShareIcon />
       {copied ? 'Copied' : all ? 'Share your day' : 'Share so far'}
     </button>
-  )
-}
-
-const capital = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
-
-/** What the streak needs next, from the streak before today: the day kept, then (with more than three live) a Full ticket. */
-function streakLine(before: number, done: number, rule: { need: number; count: number }): string {
-  const n = before + 1
-  if (done < rule.need) {
-    const left = rule.need - done
-    return left === 1 ? `One more to make it ${n}` : `${capital(numberWord(left))} to go to make it ${n}`
-  }
-  if (rule.count > TODAY_KEEP && done < rule.count) return `Kept. ${capital(numberWord(rule.count - done))} more for a Full ticket`
-  return `Back tomorrow for Day ${n + 1}`
-}
-
-function Rewards({ current, best }: { current: number; best: number }) {
-  const next = TODAY_MILESTONES.find((m) => m.day > best)
-  return (
-    <section className="today-rewards" aria-labelledby="today-rewards-title">
-      <div className="today-rewards__head">
-        <h3 id="today-rewards-title">Streak rewards</h3>
-        <p>Looks for your badge, never score. Only a streak earns them.</p>
-      </div>
-      <ol className="today-rewards__list">
-        {TODAY_MILESTONES.map((m) => {
-          const got = best >= m.day
-          const isNext = m === next
-          return (
-            <li key={m.day} className={`today-reward${got ? ' today-reward--got' : isNext ? ' today-reward--next' : ''}`}>
-              <span className="today-reward__mark">{got ? <CheckIcon /> : isNext ? <GiftIcon /> : <LockIcon />}</span>
-              <b className="today-reward__day">Day {m.day}</b>
-              <span className="today-reward__prize">{m.prize}</span>
-              {isNext ? <span className="today-reward__togo">{daysToGo(m.day - current)}</span> : null}
-            </li>
-          )
-        })}
-      </ol>
-    </section>
   )
 }
 
@@ -543,58 +230,36 @@ function Featured({ punch, then, rival }: { punch: Punch; then: Punch | null; ri
   )
 }
 
-export function TodayCard() {
-  const { signedIn } = useAuth()
-  // Who's looking: each punch is theirs, and never another account's that played on this device.
-  const viewer = useAccountId()
-  const { day, punches, server, live } = useTicket(viewer)
-  const rivals = useRivals(signedIn, viewer)
+/**
+ * The ticket, for the viewer the page drew it for (todayPunches.ts's useTicket), with each punch's line on
+ * the rivals the page asked for.
+ */
+export function TodayCard({ ticket, rivals, signedIn }: { ticket: Ticket; rivals: Rivals | null; signedIn: boolean }) {
+  const { day, punches, server, done: doneN, total, all, rule, marks, current, left } = ticket
   // The punch the player picked to see big; until then, the first still to do.
   const [picked, setPicked] = useState<TodayKey | null>(null)
   // Said aloud only when the player picks a punch, never when the panel changes on its own.
   const [said, setSaid] = useState('')
-  const doneN = punches.filter((p) => p.done).length
-  const total = punches.length
-  const all = total > 0 && doneN === total
-  const rule = todayRule(total)
-  const marks = dayMarks(doneN, rule)
-  // The API counts today once it's in; until then this device's punches say where today stands.
-  const streak = server?.streak ?? { current: 0, best: 0 }
-  const before = server?.week.at(-1)?.kept ? streak.current - 1 : streak.current
-  const current = before + (marks.kept ? 1 : 0)
   const week = server?.week ?? []
   const todayIndex = dayParts(day).weekday
-  const left = Math.max(0, rule.need - doneN)
   const more = rule.count > TODAY_KEEP
-
-  // Asked for by address (the header's chip): brought into view once it's drawn.
-  useEffect(() => {
-    if (focusFromUrl() !== TODAY_ANCHOR) return
-    const t = window.setTimeout(() => document.getElementById(TODAY_ANCHOR)?.scrollIntoView({ block: 'start' }), 60)
-    return () => window.clearTimeout(t)
-  }, [])
 
   const featured = punches.find((p) => p.key === picked) ?? punches.find((p) => !p.done) ?? punches[0]
   if (!featured) return null
   // For one still to do, the next still to do after it, round the ticket.
   const at = punches.indexOf(featured)
   const then = featured.done ? null : ([...punches.slice(at + 1), ...punches.slice(0, at)].find((p) => !p.done) ?? null)
-  const shareText = todayShareText({
-    day,
-    lines: punches.map((p) => ({ key: p.key, text: p.share })),
-    streak: current,
-    full: marks.full,
-  })
+  const shareText = ticket.shareText
 
   return (
-    <section className="today" id={TODAY_ANCHOR} aria-labelledby="today-title">
+    <section className="today" aria-labelledby="today-title">
       <div className="today-card">
         <div className="today-card__stub">
           <span className="today-card__notch today-card__notch--a" aria-hidden="true" />
           <span className="today-card__notch today-card__notch--b" aria-hidden="true" />
           <div className="today-card__stub-top">
             <span className="today-card__label">Your streak</span>
-            <span className="today-card__date-short">{dayParts(day).date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' })}</span>
+            <span className="today-card__date-short">{shortDate(day)}</span>
           </div>
           {signedIn ? (
             <>
@@ -602,7 +267,7 @@ export function TodayCard() {
                 <span className="today-card__streak-n">{current}</span>
                 <FlameIcon />
                 <span className="today-card__streak-line">
-                  {current === 1 ? 'day' : 'days'} in a row. {streakLine(before, doneN, rule)}.
+                  {current === 1 ? 'day' : 'days'} in a row. {streakLine(ticket)}.
                 </span>
               </div>
               <ol className="today-week" aria-label="The last seven days">
@@ -611,11 +276,13 @@ export function TodayCard() {
                   const full = Boolean(d.full) || (isToday && marks.full)
                   const kept = d.kept || (isToday && marks.kept)
                   const weekday = (todayIndex - (week.length - 1 - i) + 7) % 7
+                  // Before the Today set began there was nothing to keep: blank, as the Today page's calendar has it.
+                  const before = !isToday && Boolean(server?.since) && d.day < server!.since!
                   return (
                     <li
                       key={d.day}
-                      className={`today-week__day${full ? ' today-week__day--full' : kept ? ' today-week__day--kept' : ''}${isToday && !kept ? ' today-week__day--today' : ''}`}
-                      aria-label={`${WEEKDAY_NAMES[weekday]}: ${full ? 'Full ticket' : kept ? 'kept' : isToday ? `${left} to go` : 'missed'}`}
+                      className={`today-week__day${full ? ' today-week__day--full' : kept ? ' today-week__day--kept' : ''}${isToday && !kept ? ' today-week__day--today' : ''}${before ? ' today-week__day--before' : ''}`}
+                      aria-label={`${WEEKDAY_NAMES[weekday]}: ${before ? 'before the Today set began' : full ? 'Full ticket' : kept ? 'kept' : isToday ? `${left} to go` : 'missed'}`}
                     >
                       <span className="today-week__mark" aria-hidden="true">
                         {full ? <StarIcon /> : kept ? <CheckIcon /> : isToday ? left : null}
@@ -654,8 +321,9 @@ export function TodayCard() {
               <h2 id="today-title" className="today-card__title">
                 Today’s ticket
               </h2>
+              {/* The page's own heading names the day. */}
               <p className="today-card__date">
-                {longDate(day)} · {doneN} of {total} done
+                {doneN} of {total} done
               </p>
             </div>
             <span className="today-card__progress">
@@ -663,7 +331,7 @@ export function TodayCard() {
             </span>
             {doneN > 0 ? <ShareDay text={shareText} day={day} all={all} className="today-card__share" /> : null}
           </div>
-          <PunchRow punches={punches} rival={(key) => rivalLine(rivals.data, key)} />
+          <PunchRow punches={punches} rival={(key) => rivalLine(rivals, key)} />
           <ul
             className={`today-card__punches${total > 4 ? ' today-card__punches--many' : ''}`}
             style={{ '--n': total } as CSSProperties}
@@ -701,13 +369,11 @@ export function TodayCard() {
           <span className="today-card__said" aria-live="polite">
             {said}
           </span>
-          <Featured punch={featured} then={then} rival={rivalLine(rivals.data, featured.key)} />
+          <Featured punch={featured} then={then} rival={rivalLine(rivals, featured.key)} />
           {doneN > 0 ? <ShareDay text={shareText} day={day} all={all} className="today-card__share today-card__share--foot" /> : null}
           <BonusPunches />
         </div>
       </div>
-      {signedIn ? <TodayRivals data={rivals.data} dailies={live} group={rivals.group} onPick={rivals.pick} /> : null}
-      {signedIn ? <Rewards current={current} best={Math.max(streak.best, current)} /> : null}
     </section>
   )
 }

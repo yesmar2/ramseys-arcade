@@ -162,7 +162,7 @@ const ONE: Span = { w: 1, h: 1 }
 const PLACES = ['1st', '2nd', '3rd']
 
 /**
- * The wall: every game but the dailies (they're on today's ticket, above it)
+ * The wall: every game but the dailies (they're on today's row, above it)
  * as an arcade cabinet, in a grid that runs five across on a desktop and three
  * on a phone, and no two cabinets of one colour side by side. The finished
  * games stand on the floor; the ones still being tuned get a row of their own

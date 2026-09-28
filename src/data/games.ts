@@ -335,7 +335,7 @@ export function homeGames(device: DeviceType) {
 
 /**
  * The games on the home page's wall, and on each game page's shelf: every one but the dailies, which have
- * a place of their own, today's ticket above the wall.
+ * a place of their own: today's row above the wall, and the Today page it leads to.
  */
 export function wallGames(device: DeviceType) {
   return homeGames(device).filter((g) => !g.daily)

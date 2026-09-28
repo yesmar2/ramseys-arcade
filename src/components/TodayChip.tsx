@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react'
-import { dayMarks, goToToday, liveDailies, subscribeToday, todayHref, todayRule, todayServer, type TodayServer } from '../lib/today'
+import { todayHref } from '../hooks/useHashRoute'
+import { dayMarks, liveDailies, subscribeToday, todayRule, todayServer, type TodayServer } from '../lib/today'
 import '../styles/today.css'
 
 /*
- * The Today set in the header (lib/today.ts): the streak and how today's ticket stands, one tap from the
- * card on the home page, from anywhere. It counts up to the dailies that keep the streak ("2/3"), shows
- * them all punched once the day is kept ("3/3"), and says "Full" when more than three are live and every
- * one is. Signed in with a tag only: a streak is kept by an account.
+ * The Today set in the header (lib/today.ts): the streak and how today's ticket stands, and the way to the
+ * Today page from anywhere, marked as where you are while you're on it. It counts up to the dailies that
+ * keep the streak ("2/3"), shows them all punched once the day is kept ("3/3"), and says "Full" when more
+ * than three are live and every one is. Signed in with a tag only: a streak is kept by an account.
  */
 
 export const FlameIcon = () => (
@@ -23,7 +24,7 @@ export const StarIcon = () => (
   </svg>
 )
 
-export function TodayChip() {
+export function TodayChip({ here }: { here: boolean }) {
   const [state, setState] = useState<TodayServer | null>(todayServer)
   useEffect(() => subscribeToday(() => setState(todayServer())), [])
   if (!state) return null
@@ -39,9 +40,9 @@ export function TodayChip() {
   const label = `Today: ${said}${streak > 0 ? `, streak ${streak} ${streak === 1 ? 'day' : 'days'}` : ''}`
   return (
     <a
-      className={`today-chip${full ? ' today-chip--full' : marks.kept ? ' today-chip--all' : ''}`}
+      className={`today-chip${full ? ' today-chip--full' : marks.kept ? ' today-chip--all' : ''}${here ? ' today-chip--here' : ''}`}
       href={todayHref()}
-      onClick={goToToday}
+      aria-current={here ? 'page' : undefined}
       aria-label={label}
     >
       {full ? <StarIcon /> : <FlameIcon />}

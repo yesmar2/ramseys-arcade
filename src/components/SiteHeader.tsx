@@ -180,8 +180,9 @@ export function SiteHeader() {
     : undefined
 
   const path = currentPath()
-  // Events and groups have boards of their own, so the site's boards control stays off their pages.
+  // Events and groups have boards of their own, and the Today page's are the day's, so the site's boards control stays off their pages.
   const showScope =
+    route.name !== 'today' &&
     route.name !== 'tournaments' &&
     route.name !== 'tournament' &&
     route.name !== 'tournamentCreate' &&
@@ -228,7 +229,7 @@ export function SiteHeader() {
         </div>
 
         <div className="site-bar__end">
-          {tagged ? <TodayChip /> : null}
+          {tagged ? <TodayChip here={route.name === 'today'} /> : null}
           <SiteSearch />
           {showScope ? <SiteScopeControl /> : null}
           {tagged ? <TicketChip here={route.name === 'prizes'} /> : null}

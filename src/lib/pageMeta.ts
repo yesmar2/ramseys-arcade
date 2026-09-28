@@ -16,6 +16,7 @@ import {
   notificationSettingsHref,
   prizesHref,
   termsHref,
+  todayHref,
   tournamentCreateHref,
   tournamentHref,
   tournamentPlayHref,
@@ -185,6 +186,7 @@ export function publicRoutes(): Route[] {
     { name: 'recordsIndex' },
     { name: 'siteRecords' },
     { name: 'prizes' },
+    { name: 'today' },
     { name: 'privacy' },
     { name: 'terms' },
   ]
@@ -262,6 +264,18 @@ export function pageContent(route: Route): PageContent {
       if (!game || game.hidden) break
       return { heading, paragraphs: [meta.description], links: gameContentLinks(game) }
     }
+    // The day's dailies, each a way in.
+    case 'today':
+      return {
+        heading,
+        paragraphs: [meta.description],
+        links: [
+          ...visibleGames()
+            .filter((game) => game.daily && game.playable)
+            .map((game) => ({ href: gamePlayHref(game.slug), label: `Play ${game.name}` })),
+          ...siteLinks(),
+        ],
+      }
     case 'leaderboards':
     case 'recordsIndex':
     case 'siteRecords':
@@ -321,6 +335,14 @@ export function pageMeta(route: Route): PageMeta {
         description:
           'Every run pays tickets. Trade them at the prize counter for looks that show on the boards: badge finishes, name styles, card themes, confetti and titles. Earned by playing, never bought.',
         path: prizesHref(),
+      }
+    case 'today':
+      return {
+        ...site,
+        title: titled('Today'),
+        description:
+          'The day’s dailies, new every day and the same for everyone: a hole, a lap, five bugs wanted and five glasses to pour. Play any three to keep your streak going.',
+        path: todayHref(),
       }
     case 'privacy':
       return {

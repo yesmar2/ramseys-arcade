@@ -154,8 +154,8 @@ function SkeletonCard() {
 /**
  * On now, on the home page: today's daily, this week's weekly and how last
  * week's finished. The day's dailies (Today's Hole, Track and Wanted, and
- * Today's Pour once it joins) are punches on today's ticket above it
- * (TodayCard). There is nearly always a daily and a weekly running, and
+ * Today's Pour once it joins) are punches on today's row above it
+ * (TodayRow). There is nearly always a daily and a weekly running, and
  * last week's podium stays up until the next one ends, so the row reads full
  * on a quiet day as on a busy one. While the events load, cards of the same
  * shape hold the space.
