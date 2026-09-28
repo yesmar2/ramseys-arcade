@@ -1,10 +1,11 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import { getGame, isDailyGame } from '../data/games'
+import { useAccountId } from '../hooks/useAccountId'
 import { useAuth } from '../hooks/useAuth'
 import { useImpersonation } from '../hooks/useImpersonation'
 import { useSaveWait } from '../hooks/useSaveWait'
 import { gameBoardHref, gameHref, leaderboardHref, navigate, recordsHref } from '../hooks/useHashRoute'
-import { linkCurrentNameToAccount } from '../lib/auth'
+import { currentAccountId, linkCurrentNameToAccount, recallAccountTag } from '../lib/auth'
 import {
   challengeMessage,
   challengeOutcome,
@@ -70,12 +71,20 @@ type ScoreSaveProps = {
   pours?: SavedPours
   /** A daily's run to send on, its day's link included (Hot Lap's lap): a Share link under the report. */
   shareLine?: string
+  /**
+   * A daily's run kept on this device: whose it is (lib/deviceRuns.ts). Left out, the run is saved under
+   * whoever is signed in, as every other game's. null, it was played signed out, and whoever signs in
+   * saves it as theirs. An account's id, it's saved only while that account is signed in.
+   */
+  owner?: string | null
   onDone: () => void
   /** Once the save has an answer, saved or not, even after the card has closed: a board to read again. */
   onSettled?: () => void
+  /** Once the run is saved (not when the save fails), even after the card has closed: it's the saver's now. */
+  onSaved?: () => void
 }
 
-type Phase = 'checking' | 'needAuth' | 'needName' | 'saving' | 'saved' | 'assisted' | 'error'
+type Phase = 'checking' | 'needAuth' | 'needName' | 'saving' | 'saved' | 'assisted' | 'error' | 'otherAccount'
 
 /** Where a failed save leaves the card, and what it says. */
 function afterFailure(err: unknown): { phase: Phase; error: string | null } {
@@ -87,6 +96,11 @@ function afterFailure(err: unknown): { phase: Phase; error: string | null } {
   // A word no tag may carry: back to the tag, with the API's words.
   if (err instanceof ApiError && err.code === 'NAME_NOT_ALLOWED') return { phase: 'needName', error: err.message }
   return { phase: 'error', error: err instanceof Error ? err.message : 'Could not save score' }
+}
+
+/** Whether a run stamped `owner` may be saved now: any run but another account's, which waits for that account. */
+function ownerSignedIn(owner: string | null | undefined): boolean {
+  return typeof owner !== 'string' || currentAccountId() === owner
 }
 
 /** Leave the play overlay and open an in-app route, out of fullscreen as the play screen's back control does. */
@@ -111,10 +125,13 @@ function boardsHref(gameSlug: string, period: LeaderboardPeriod) {
  * in without a tag, it takes one in slots. A run that used the admin stage
  * jump is not saved at all. Leave, top left, goes to the game's page.
  */
-export function ScoreSaveCard({ gameSlug, score, title, subtitle, previousBest, pickups, pace, pours, shareLine, onDone, onSettled }: ScoreSaveProps) {
+export function ScoreSaveCard({ gameSlug, score, title, subtitle, previousBest, pickups, pace, pours, shareLine, owner, onDone, onSettled, onSaved }: ScoreSaveProps) {
   const { signedIn, loading: authLoading } = useAuth()
   const impersonation = useImpersonation()
   const canSaveScores = signedIn || Boolean(impersonation)
+  const accountId = useAccountId()
+  // Another account's run is saved only once that account is signed in, and looked at again whenever that changes.
+  const ownerIn = typeof owner !== 'string' || accountId === owner
   const defaultPeriod = useDefaultPeriod()
   // A daily's board is the day's (the API keeps it so, whatever the period): its places are today's,
   // in the report as on the card.
@@ -146,6 +163,13 @@ export function ScoreSaveCard({ gameSlug, score, title, subtitle, previousBest, 
   poursRef.current = pours
   const settledRef = useRef(onSettled)
   settledRef.current = onSettled
+  const savedRef = useRef(onSaved)
+  savedRef.current = onSaved
+  // Read as the save goes out: a run taken up by whoever saved it may be handed back stamped as theirs.
+  const ownerRef = useRef(owner)
+  ownerRef.current = owner
+  // A daily's run that has saved (one with an owner): it never goes out again, under anyone.
+  const landedRef = useRef(false)
   const titleId = useId()
   const tagId = useId()
 
@@ -167,6 +191,8 @@ export function ScoreSaveCard({ gameSlug, score, title, subtitle, previousBest, 
   }, [phase])
 
   useEffect(() => {
+    // Saved already: a later sign-in or switch leaves its report up and sends nothing.
+    if (ownerRef.current !== undefined && landedRef.current) return
     const pass = ++savePass.current
     // Off the screen, or handed to a newer pass: stop telling, not saving.
     let closed = false
@@ -181,6 +207,11 @@ export function ScoreSaveCard({ gameSlug, score, title, subtitle, previousBest, 
 
     async function save() {
       if (authLoading) return
+      // Signed in as someone else: this run waits for its own player. Signed out, it asks for a sign-in below.
+      if (canSaveScores && !ownerSignedIn(ownerRef.current)) {
+        if (!closed) setPhase('otherAccount')
+        return
+      }
       const against = facingRef.current
       if (against && score > 0) noteChallengeRun(gameSlug, score)
       const name = normalizePlayerName(getLastPlayerName())
@@ -241,6 +272,11 @@ export function ScoreSaveCard({ gameSlug, score, title, subtitle, previousBest, 
         if (!closed) setPhase('needName')
         return
       }
+      // Asked again as it goes out: another tab may have signed in as someone else meanwhile.
+      if (!ownerSignedIn(ownerRef.current)) {
+        if (!closed) setPhase('otherAccount')
+        return
+      }
       if (!closed) setPhase('saving')
       const facts = await saveRunForReport({
         slug: gameSlug,
@@ -254,7 +290,9 @@ export function ScoreSaveCard({ gameSlug, score, title, subtitle, previousBest, 
         pace: paceRef.current,
         pours: poursRef.current,
       })
+      landedRef.current = true
       settledRef.current?.()
+      savedRef.current?.()
       if (closed) return
       setSavedAs(facts.name)
       setFacts(facts)
@@ -272,7 +310,7 @@ export function ScoreSaveCard({ gameSlug, score, title, subtitle, previousBest, 
     return () => {
       closed = true
     }
-  }, [gameSlug, score, period, authLoading, canSaveScores])
+  }, [gameSlug, score, period, authLoading, canSaveScores, ownerIn])
 
   // Signed out or tagless: what the run would win, to lead the ask with.
   useEffect(() => {
@@ -293,10 +331,18 @@ export function ScoreSaveCard({ gameSlug, score, title, subtitle, previousBest, 
       setPhase('needAuth')
       return
     }
+    if (!ownerSignedIn(ownerRef.current)) {
+      setPhase('otherAccount')
+      return
+    }
     setPhase('saving')
     setError(null)
     try {
       if (signedIn && !impersonation) await linkCurrentNameToAccount(name)
+      if (!ownerSignedIn(ownerRef.current)) {
+        setPhase('otherAccount')
+        return
+      }
       const facts = await saveRunForReport({
         slug: gameSlug,
         name,
@@ -309,7 +355,9 @@ export function ScoreSaveCard({ gameSlug, score, title, subtitle, previousBest, 
         pace: paceRef.current,
         pours: poursRef.current,
       })
+      landedRef.current = true
       settledRef.current?.()
+      savedRef.current?.()
       setSavedAs(facts.name)
       setFacts(facts)
       setReport(composeReport(facts))
@@ -410,6 +458,17 @@ export function ScoreSaveCard({ gameSlug, score, title, subtitle, previousBest, 
       />
     )
     who = <ReportWho text="Signed in, no tag yet" />
+  } else if (phase === 'otherAccount') {
+    // Played under another account on this device: it goes on the board as theirs, once they're back.
+    const tag = typeof owner === 'string' ? recallAccountTag(owner) : ''
+    block = (
+      <p className="report__note">
+        {tag
+          ? `Played as ${tag}. Sign in as ${tag} to put it on the board.`
+          : 'Played as another account. Sign in as that account to put it on the board.'}
+      </p>
+    )
+    who = <ReportWho text="Not saved yet" />
   } else if (phase === 'assisted') {
     block = <p className="report__note">Stage skip used, so this run wasn’t saved to the boards or the record books.</p>
     who = <ReportWho text="Not saved" />

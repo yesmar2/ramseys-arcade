@@ -1,19 +1,34 @@
-import { useEffect, useId, useState, type ReactNode } from 'react'
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import { GoogleSignInButton } from '../../components/GoogleSignInButton'
 import { TicketGlyph } from '../../components/prizes/Ticket'
 import { TagSlots } from '../../components/RunReport'
 import { copyText } from '../../components/ShareBoardButton'
+import { useAccountId } from '../../hooks/useAccountId'
 import { useAuth } from '../../hooks/useAuth'
 import { gameArchiveHref, navigate, prizesHref, todayShareHref } from '../../hooks/useHashRoute'
-import { linkCurrentNameToAccount } from '../../lib/auth'
+import { linkCurrentNameToAccount, recallAccountTag } from '../../lib/auth'
+import { ownKey, SIGNED_OUT } from '../../lib/deviceRuns'
 import { gameAccentStyle } from '../../lib/gameAccentStyle'
 import { getLastPlayerName, normalizePlayerName } from '../../lib/leaderboard'
-import { PLACE_NAME, msUntilNextHole, shareText, syncDaily, type DailyServer, type DayProgress, type TodaysHole } from '../../lib/dailyHole'
+import {
+  PLACE_NAME,
+  claimDay,
+  dayResult,
+  msUntilNextHole,
+  shareText,
+  syncDaily,
+  type DailyServer,
+  type DayProgress,
+  type TodaysHole,
+} from '../../lib/dailyHole'
 
 /*
  * Today's Hole's two cards, in the panel kit like every game's start and score cards: the one it opens
  * on, and the one a bullseye brings up. Their buttons are the only way on; a tap elsewhere on them does
  * nothing, since there's more than one thing to do.
+ *
+ * What they show as yours is only ever your own (lib/deviceRuns.ts): your run on this device, and your
+ * result on the board. A run played signed out here is offered to take up, and nothing else is.
  */
 
 const SLUG = 'acechase'
@@ -193,24 +208,62 @@ function BoardTag() {
   )
 }
 
+/** A run played as another account on this device, which waits for that account to sign in here again. */
+export function PlayedAs({ owner, signedIn }: { owner: string | null; signedIn: boolean }) {
+  const tag = owner ? recallAccountTag(owner) : ''
+  return (
+    <div className="acechase-daily__signin">
+      <p>{tag ? `Played as ${tag}. Sign in as ${tag} to put it on the board.` : 'Played as another account. Sign in as that account to put it on the board.'}</p>
+      {signedIn ? null : <GoogleSignInButton />}
+    </div>
+  )
+}
+
+const triesWords = (n: number) => `${n} ${n === 1 ? 'try' : 'tries'}`
+
 /** The card Today's Hole opens on. */
 export function DailyStartCard({
   hole,
   progress,
+  claim,
   server,
   onStart,
+  onTakeUp,
   onPractice,
 }: {
   hole: TodaysHole
+  /** The player's own run today on this device (lib/deviceRuns.ts). */
   progress: DayProgress | null
+  /** A run today from signed out on this device, which the account signed in may take up. */
+  claim: DayProgress | null
   server: DailyServer | null
   onStart: () => void
+  /** Carry on the run from signed out, as theirs. */
+  onTakeUp: () => void
   onPractice: () => void
 }) {
   const { signedIn } = useAuth()
-  const solved = progress?.solved
+  const viewer = useAccountId()
+  const [putting, setPutting] = useState(false)
+  const [putError, setPutError] = useState<string | null>(null)
+  const you = server?.day === hole.day ? server.you : undefined
+  // Their result: on the board from wherever they played, or their own bullseye here.
+  const result = dayResult(progress, you)
   const tries = progress?.tries ?? 0
-  const you = server?.you
+  // Played signed out here, which the account signed in can make theirs while they've no result or run of their own.
+  const open = !result && !progress ? claim : null
+  const putOnBoard = async () => {
+    if (putting) return
+    setPutting(true)
+    setPutError(null)
+    try {
+      if (!(await claimDay(hole.day))) setPutError('It can’t go on the board as yours: you have a result today already.')
+    } catch (err) {
+      setPutError(err instanceof Error && err.message ? err.message : 'That result didn’t go on the board. Try again.')
+    } finally {
+      setPutting(false)
+    }
+  }
   return (
     <Card label={`Today's Hole #${hole.n}`}>
       <div className="game-card__head">
@@ -226,23 +279,53 @@ export function DailyStartCard({
       <div className="game-pause-meta">
         <div className="game-pause-meta__row">
           <span>You</span>
-          <strong>{solved ? `Bullseye in ${solved.tries}` : tries > 0 ? `${tries} ${tries === 1 ? 'try' : 'tries'} so far` : 'Not played yet'}</strong>
+          <strong>{result ? `Bullseye in ${result.tries}` : tries > 0 ? `${triesWords(tries)} so far` : 'Not played yet'}</strong>
         </div>
+        {open ? (
+          <div className="game-pause-meta__row">
+            <span>Played signed out</span>
+            <strong>{open.solved ? `Bullseye in ${open.solved.tries}` : `${triesWords(open.tries)} so far`}</strong>
+          </div>
+        ) : null}
         <Everyone server={server} />
       </div>
-      {solved ? <Pattern pattern={solved.pattern} /> : null}
-      {solved && progress?.tickets ? <HoleTickets tickets={progress.tickets} /> : null}
-      {solved && signedIn && you?.tries != null && you.tag === null ? <BoardTag /> : null}
+      {result?.pattern ? <Pattern pattern={result.pattern} /> : null}
+      {result?.pattern && progress?.tickets ? <HoleTickets tickets={progress.tickets} /> : null}
+      {result && signedIn && you?.tries != null && you.tag === null ? <BoardTag /> : null}
+      {open ? (
+        <p className="game-card__hint">
+          {open.solved
+            ? 'Someone got it here signed out. Put it on today’s board as yours, or play your own.'
+            : 'Someone played it here signed out. Carry it on as yours, or start your own.'}
+        </p>
+      ) : null}
+      {putError ? <p className="panel__error">{putError}</p> : null}
       <div className="game-card__actions">
-        {solved ? (
+        {result ? (
           <>
-            <ShareButton hole={hole} tries={solved.tries} pattern={solved.pattern} />
-            <button type="button" className="panel__btn panel__btn--ghost" onClick={onPractice}>
+            {result.pattern ? <ShareButton hole={hole} tries={result.tries} pattern={result.pattern} /> : null}
+            <button type="button" className={`panel__btn${result.pattern ? ' panel__btn--ghost' : ''}`} onClick={onPractice}>
               Play it again · doesn&rsquo;t count
             </button>
           </>
+        ) : open ? (
+          <>
+            {open.solved ? (
+              <button type="button" className="panel__btn" disabled={putting} onClick={() => void putOnBoard()}>
+                {putting ? 'Saving…' : 'Put it on today’s board'}
+              </button>
+            ) : (
+              <button type="button" className="panel__btn" onClick={onTakeUp}>
+                Carry it on
+              </button>
+            )}
+            <button type="button" className="panel__btn panel__btn--ghost" onClick={onStart}>
+              {open.solved ? 'Play your own' : 'Start your own'}
+            </button>
+          </>
         ) : (
-          <button type="button" className="panel__btn" onClick={onStart}>
+          // A counted run is its player's, so it waits until the account signed in is known.
+          <button type="button" className="panel__btn" disabled={viewer === undefined} onClick={onStart}>
             {tries > 0 ? 'Carry on' : 'Start'}
           </button>
         )}
@@ -255,39 +338,84 @@ export function DailyStartCard({
   )
 }
 
-/** The card a bullseye brings up: the day's result, where it came in, and passing it on. */
+/**
+ * The card a bullseye brings up: the day's result, where it came in, and passing it on. A counted run's
+ * result is its own player's (lib/deviceRuns.ts): played signed out, it goes on the board as whoever signs
+ * in with this card up, as a save card's would; played as another account, it waits for that account.
+ */
 export function DailyResultCard({
   hole,
   progress,
+  own,
   server,
   practice,
+  owner,
+  onTakenUp,
   onPractice,
   onLeave,
 }: {
   hole: TodaysHole
+  /** The counted run that has just ended, as its player has it. */
   progress: DayProgress | null
+  /** The player's own run today, for a practice run's result to stand beside. */
+  own: DayProgress | null
   server: DailyServer | null
   practice: boolean
+  /** Whose the counted run is: its stamp (lib/deviceRuns.ts); null for practice. */
+  owner: string | null
+  /** A run from signed out went on the board as the account signed in: it's theirs now. */
+  onTakenUp: (account: string) => void
   onPractice: () => void
   onLeave: () => void
 }) {
   const { signedIn } = useAuth()
+  const viewer = useAccountId()
+  const [taking, setTaking] = useState<'sending' | 'refused' | 'failed' | null>(null)
+  const takenRef = useRef(onTakenUp)
+  takenRef.current = onTakenUp
+  // Played signed out, and someone signed in with the card up: it's theirs, unless they have a result already.
+  const takeUp = !practice && owner === SIGNED_OUT && typeof viewer === 'string' ? viewer : null
+  useEffect(() => {
+    if (!takeUp) return
+    let live = true
+    setTaking('sending')
+    claimDay(hole.day).then(
+      (went) => {
+        if (!live) return
+        setTaking(went ? null : 'refused')
+        if (went) takenRef.current(takeUp)
+      },
+      () => {
+        if (live) setTaking('failed')
+      },
+    )
+    return () => {
+      live = false
+    }
+  }, [takeUp, hole.day])
+  const you = server?.day === hole.day ? server.you : undefined
+  // What the card is about: the counted run's bullseye, or for practice, the player's result it stands
+  // beside (from the board, or their own bullseye here).
   const solved = progress?.solved
-  if (!solved) return null
-  const you = server?.you
-  const title = practice ? 'That one didn’t count' : solved.tries === 1 ? 'First try!' : `Bullseye in ${solved.tries}`
+  const shown = practice ? dayResult(own, you) : solved ? { tries: solved.tries, pattern: solved.pattern } : null
+  if (!practice && !shown) return null
+  // The run is the player's own (or practice, beside their own result): its place and streak are theirs.
+  const mine = practice || owner === ownKey(viewer)
+  // Played as an account that isn't the one signed in now, or signed out now (once that's known).
+  const theirs = !practice && owner != null && owner !== SIGNED_OUT && viewer !== undefined && owner !== viewer
+  const title = practice ? 'That one didn’t count' : shown?.tries === 1 ? 'First try!' : `Bullseye in ${shown?.tries}`
   return (
     <Card label={`Today's Hole #${hole.n}: ${title}`}>
       <div className="game-card__head">
         <span className="game-card__kicker">Today&rsquo;s Hole #{hole.n}</span>
         <h2 className="game-card__title game-card__title--big">{title}</h2>
         <p className="game-card__blurb">
-          {practice ? `Your result today stands: bullseye in ${solved.tries}.` : `${hole.def.name}, on ${PLACE_NAME[hole.pick.style]}.`}
+          {practice && shown ? `Your result today stands: bullseye in ${shown.tries}.` : `${hole.def.name}, on ${PLACE_NAME[hole.pick.style]}.`}
         </p>
       </div>
-      <Pattern pattern={solved.pattern} />
+      {shown?.pattern ? <Pattern pattern={shown.pattern} /> : null}
       <div className="game-pause-meta">
-        {you?.place != null && server ? (
+        {mine && you?.place != null && server ? (
           <div className="game-pause-meta__row">
             <span>Today</span>
             <strong>
@@ -297,24 +425,32 @@ export function DailyResultCard({
         ) : (
           <Everyone server={server} />
         )}
-        {you && you.streak > 1 ? (
+        {mine && you && you.streak > 1 ? (
           <div className="game-pause-meta__row">
             <span>Streak</span>
             <strong>{you.streak} days in a row</strong>
           </div>
         ) : null}
       </div>
-      {server && server.solved > 0 ? <Spread spread={server.spread} mine={solved.tries} /> : null}
-      {!practice && progress?.tickets ? <HoleTickets tickets={progress.tickets} /> : null}
-      {signedIn && you?.tries != null && you.tag === null ? <BoardTag /> : null}
-      {!signedIn ? (
+      {server && server.solved > 0 ? <Spread spread={server.spread} mine={shown?.tries ?? null} /> : null}
+      {!practice && mine && progress?.tickets ? <HoleTickets tickets={progress.tickets} /> : null}
+      {mine && signedIn && you?.tries != null && you.tag === null ? <BoardTag /> : null}
+      {theirs ? <PlayedAs owner={owner} signedIn={signedIn} /> : null}
+      {takeUp && taking === 'sending' ? <p className="game-card__hint">Putting it on today&rsquo;s board…</p> : null}
+      {takeUp && taking === 'refused' ? (
+        <p className="game-card__hint">
+          {you?.tries != null ? `Your result today stands: bullseye in ${you.tries}. This one, played signed out, stays off the board.` : 'This one, played signed out, stays off the board.'}
+        </p>
+      ) : null}
+      {takeUp && taking === 'failed' ? <p className="panel__error">That result didn&rsquo;t go on the board. Put it on from the start card.</p> : null}
+      {mine && !signedIn ? (
         <div className="acechase-daily__signin">
           <p>Sign in to put today&rsquo;s result on the board, earn its tickets, and keep a streak going.</p>
           <GoogleSignInButton />
         </div>
       ) : null}
       <div className="game-card__actions">
-        <ShareButton hole={hole} tries={solved.tries} pattern={solved.pattern} />
+        {shown?.pattern ? <ShareButton hole={hole} tries={shown.tries} pattern={shown.pattern} /> : null}
         <button type="button" className="panel__btn panel__btn--ghost" onClick={onPractice}>
           Play it again · doesn&rsquo;t count
         </button>

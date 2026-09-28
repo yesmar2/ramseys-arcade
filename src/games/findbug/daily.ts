@@ -1,4 +1,6 @@
+import { claimableRun, ownKey, ownRun, SIGNED_OUT, subscribeViewer, type OwnedRuns, type Viewer } from '../../lib/deviceRuns'
 import { hashString } from '../../lib/seededRandom'
+import { findbugBoardScore, findbugMsFromBoardScore } from './score'
 import { wantedFor, type WantedBug } from './wanted'
 
 /*
@@ -10,7 +12,9 @@ import { wantedFor, type WantedBug } from './wanted'
  *
  * This device keeps each day's run: when it began, the id the API opened it under, how far it had got
  * and how it came out. A first run left halfway, the tab closed or the phone rung, carries on from the
- * scene it was on, with the clock where it stopped.
+ * scene it was on, with the clock where it stopped. Each run is its player's (lib/deviceRuns.ts): a day
+ * keeps one run for each account that played it here, and one played signed out, and each is only ever
+ * shown and saved as its own player's.
  */
 
 const TZ = 'America/New_York'
@@ -19,7 +23,14 @@ export const FIRST_DAY = '2026-09-27'
 /** Scenes a day (the game's ROUNDS, kept here so the cards needn't load the scenes). */
 export const DAY_SCENES = 5
 
-const STORE_KEY = 'skermix-findbug-daily'
+/** Each day's runs, by whose they are. */
+const STORE_KEY = 'skermix-findbug-daily-2'
+/**
+ * Each day's one run, kept before runs had players: read, never written. A tab still on an older bundle
+ * (served for a load or two after a release) keeps writing its runs here, where this one's don't reach.
+ */
+const LEGACY_KEY = 'skermix-findbug-daily'
+/** Said when a day's run changes (lib/today.ts listens for it too). */
 const EVENT = 'skermix-findbug-daily'
 /** Days kept on the device: long enough for any archive card to say how yours went. */
 const KEEP_DAYS = 120
@@ -109,17 +120,24 @@ export type DayRun = {
   result?: DayResult
 }
 
-type Store = Record<string, DayRun>
+/** Each day's runs, by the stamp of whose they are (lib/deviceRuns.ts). */
+type Store = Record<string, OwnedRuns<DayRun>>
 
-function readStore(): Store {
+/** Each day's one unstamped run, from before runs had players. */
+type LegacyStore = Record<string, DayRun>
+
+function readKey<T>(key: string): Record<string, T> {
   try {
-    const raw = localStorage.getItem(STORE_KEY)
+    const raw = localStorage.getItem(key)
     const parsed: unknown = raw ? JSON.parse(raw) : null
-    return parsed && typeof parsed === 'object' ? (parsed as Store) : {}
+    return parsed && typeof parsed === 'object' ? (parsed as Record<string, T>) : {}
   } catch {
     return {}
   }
 }
+
+const readStore = (): Store => readKey<OwnedRuns<DayRun>>(STORE_KEY)
+const readLegacy = (): LegacyStore => readKey<DayRun>(LEGACY_KEY)
 
 function writeStore(store: Store, quiet: boolean) {
   const days = Object.keys(store).sort()
@@ -132,38 +150,135 @@ function writeStore(store: Store, quiet: boolean) {
   if (!quiet && typeof window !== 'undefined') window.dispatchEvent(new Event(EVENT))
 }
 
-/** What this device did on a day. */
-export function dayRun(day: string): DayRun | null {
-  return readStore()[day] ?? null
+/**
+ * What the viewer did on a day on this device: their own run (lib/deviceRuns.ts). Never another
+ * account's, nor one played signed out while they're signed in (only the game offers that one, to take
+ * up); nothing while who's signed in isn't known.
+ */
+export function dayRun(day: string, viewer: Viewer): DayRun | null {
+  return ownRun(readStore()[day], readLegacy()[day], viewer)
 }
 
 /**
- * Change what this device keeps for a day. `quiet` for a run's progress, kept every second as it's
- * played, which nothing on the page needs to hear about.
+ * Whose a day's run the game offers is: the viewer's own; their own kept before runs had players (signed
+ * out only, and never put on a board from here); or one played signed out on this device, which the
+ * signed-in viewer may take up.
  */
-export function updateDayRun(day: string, change: (run: DayRun | null) => DayRun | null, quiet = false) {
+export type RunHold = 'own' | 'legacy' | 'claimable'
+
+/** A day's run as the game offers it to the viewer, and whose it is. */
+export type OfferedRun = { run: DayRun; hold: RunHold }
+
+/**
+ * The day's run the game offers the viewer: their own, else (signed in) one played signed out here that
+ * they may take up. Nothing while who's signed in isn't known.
+ */
+export function offeredRun(day: string, viewer: Viewer): OfferedRun | null {
+  const key = ownKey(viewer)
+  if (key === undefined) return null
+  const runs = readStore()[day]
+  const own = runs?.[key]
+  if (own) return { run: own, hold: 'own' }
+  const legacy = key === SIGNED_OUT ? readLegacy()[day] : undefined
+  if (legacy) return { run: legacy, hold: 'legacy' }
+  const spare = claimableRun(runs, viewer)
+  return spare ? { run: spare, hold: 'claimable' } : null
+}
+
+/**
+ * Change the run a day keeps for one owner (a stamp: an account's id, or SIGNED_OUT), and no one else's.
+ * `quiet` for a run's progress, kept every second as it's played, which nothing on the page needs to hear
+ * about.
+ */
+export function updateDayRun(day: string, owner: string, change: (run: DayRun | null) => DayRun | null, quiet = false) {
   const store = readStore()
-  const next = change(store[day] ?? null)
-  if (next) store[day] = next
+  const runs = { ...store[day] }
+  const next = change(runs[owner] ?? null)
+  if (next) runs[owner] = next
+  else delete runs[owner]
+  if (Object.keys(runs).length) store[day] = runs
   else delete store[day]
   writeStore(store, quiet)
 }
 
-/** The board already has a result today from this account, played on another device: it's the day's. */
-export function adoptBoardResult(day: string, ms: number, at: number) {
-  updateDayRun(day, (run) => (run?.result ? run : { startedAt: run?.startedAt ?? at, result: { ms } }))
+/**
+ * The run the viewer carries on is theirs from now on, kept under their own stamp: one played signed out
+ * goes to the account that takes it up, and one kept before runs had players becomes the signed-out run.
+ * The run, as it's kept now; null when there's none to carry on.
+ */
+export function takeUpRun(day: string, viewer: Viewer): DayRun | null {
+  const key = ownKey(viewer)
+  if (key === undefined) return null
+  const store = readStore()
+  const runs = { ...store[day] }
+  const own = runs[key]
+  if (own) return own
+  const from = key === SIGNED_OUT ? readLegacy()[day] : runs[SIGNED_OUT]
+  if (!from) return null
+  runs[key] = from
+  if (key !== SIGNED_OUT) delete runs[SIGNED_OUT]
+  store[day] = runs
+  writeStore(store, false)
+  return from
 }
 
-/** Called when a day's run changes, here or in another tab. */
+/**
+ * A run played signed out, saved under an account: it's that account's now. `startedAt` says which run,
+ * so one that's moved on since isn't taken. The board holds this one for the account, so it stands in for
+ * any of theirs left here unfinished.
+ */
+export function restampRun(day: string, startedAt: number, account: Viewer) {
+  if (typeof account !== 'string') return
+  const store = readStore()
+  const runs = { ...store[day] }
+  const run = runs[SIGNED_OUT]
+  if (!run || run.startedAt !== startedAt) return
+  runs[account] = run
+  delete runs[SIGNED_OUT]
+  store[day] = runs
+  writeStore(store, false)
+}
+
+/**
+ * The board already has a result today for this account (`score`, on the board's scale): it's the day's
+ * here too, for the account alone. A run on this device that came out exactly as the board has it is
+ * theirs, whole, with what it found and each scene's time: one played signed out and saved under the
+ * account, or one kept before runs had players. Otherwise it's the board's time alone (played on another
+ * device). A result of the account's own already here stands.
+ */
+export function adoptBoardResult(day: string, account: string, score: number, at: number) {
+  const store = readStore()
+  const runs = { ...store[day] }
+  const own = runs[account]
+  if (own?.result) return
+  const same = (run: DayRun | undefined) => run?.result != null && findbugBoardScore(run.result.ms) === score
+  const signedOut = runs[SIGNED_OUT]
+  const legacy = readLegacy()[day]
+  if (same(signedOut)) {
+    runs[account] = signedOut
+    delete runs[SIGNED_OUT]
+  } else if (same(legacy)) {
+    runs[account] = legacy
+  } else {
+    runs[account] = { startedAt: own?.startedAt ?? at, result: { ms: findbugMsFromBoardScore(score) } }
+  }
+  store[day] = runs
+  writeStore(store, false)
+}
+
+/** Called when a day's run changes, here or in another tab, and when whose runs are the viewer's does. */
 export function subscribeBugDay(onChange: () => void): () => void {
   const onStorage = (e: StorageEvent) => {
-    if (e.key === STORE_KEY) onChange()
+    // The old key too: a tab still on an older bundle keeps its runs there.
+    if (e.key === STORE_KEY || e.key === LEGACY_KEY) onChange()
   }
   window.addEventListener(EVENT, onChange)
   window.addEventListener('storage', onStorage)
+  const stopViewer = subscribeViewer(onChange)
   return () => {
     window.removeEventListener(EVENT, onChange)
     window.removeEventListener('storage', onStorage)
+    stopViewer()
   }
 }
 

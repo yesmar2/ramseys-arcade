@@ -3,6 +3,7 @@ import { dayNumber, dayRun, FIRST_DAY, pourDay } from '../../games/halffull/dail
 import { dayPlan, ROUNDS, type DayPlan } from '../../games/halffull/plan'
 import { glassNames, pourPlan } from '../../games/halffull/planSvg'
 import { judgeLevels, markFor } from '../../games/halffull/score'
+import { useAccountId } from '../../hooks/useAccountId'
 import { gamePlayHref } from '../../hooks/useHashRoute'
 import { dayBefore } from '../../lib/archive'
 import { ArchiveList, type ArchiveItem } from './ArchiveList'
@@ -24,10 +25,12 @@ function PourGlasses({ plan }: { plan: DayPlan }) {
 
 /**
  * Half Full's archive: every day's Today's Pour from the first, today's at the top. A past one pours again
- * as practice. What this device poured on a day shows as its squares, one a glass.
+ * as practice. What you poured on a day on this device shows as its squares, one a glass: your own pours
+ * only (lib/deviceRuns.ts), drawn again for whoever signs in.
  */
 export function PourArchive() {
   const today = pourDay()
+  const viewer = useAccountId()
   const items = useMemo(() => {
     const out: ArchiveItem[] = []
     for (let day = today; day >= FIRST_DAY; day = dayBefore(day)) {
@@ -39,7 +42,7 @@ export function PourArchive() {
         // A day's glasses are built only as its card comes near: a day can try a good many sets.
         build: () => {
           const plan = dayPlan(day)
-          const levels = dayRun(day)?.levels ?? []
+          const levels = dayRun(day, viewer)?.levels ?? []
           const mine = levels.length >= ROUNDS ? judgeLevels(plan, levels.slice(0, ROUNDS)) : null
           return {
             title: glassNames(plan),
@@ -50,6 +53,6 @@ export function PourArchive() {
       })
     }
     return out
-  }, [today])
+  }, [today, viewer])
   return <ArchiveList slug={SLUG} items={items} />
 }

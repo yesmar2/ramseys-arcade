@@ -7,11 +7,14 @@ import { GamePauseOverlay, PauseButton } from '../../components/PauseControls'
 import { PlayReadoutStats, PlayStat } from '../../components/PlayStats'
 import { ScoreSaveCard } from '../../components/ScoreSaveCard'
 import { TournamentScoreCard } from '../../components/TournamentScoreCard'
+import { useAccountId } from '../../hooks/useAccountId'
 import { useAuth } from '../../hooks/useAuth'
 import { useGamePause } from '../../hooks/useGamePause'
 import { todayShareHref } from '../../hooks/useHashRoute'
 import { usePersonalBest } from '../../hooks/usePersonalBest'
 import { usePlayerName } from '../../hooks/usePlayerName'
+import { currentAccountId } from '../../lib/auth'
+import { ownerAccount, ownerOf, SIGNED_OUT, type Viewer } from '../../lib/deviceRuns'
 import { gameAccentStyle } from '../../lib/gameAccentStyle'
 import { haptic } from '../../lib/haptics'
 import { normalizePlayerName } from '../../lib/leaderboard'
@@ -24,7 +27,7 @@ import { useTournamentPlay } from '../../tournaments/TournamentPlayContext'
 import { CarSound } from './audio'
 import { fetchBoardGhost, sendBoardGhost, type BoardGhost } from './boardGhost'
 import { dayWords, msUntilNextTrack, trackDay, trackState, untilWords } from './daily'
-import { bestLapOf, Ghost, hotlapCourse, keepBestLap, progressOf, type Course, type GhostLap } from './lap'
+import { bestLapOf, claimLap, Ghost, hotlapCourse, keepBestLap, progressOf, type Course, type GhostLap } from './lap'
 import { TrackMap } from './map'
 import { HotLapScene } from './scene'
 import { formatLap, hotlapBoardScore, hotlapMsFromBoardScore } from './score'
@@ -74,6 +77,11 @@ type Game = {
   test: boolean
   /** Of those, a track whose day has gone: its laps go on the track's own board (lib/trackBoards.ts). */
   past: boolean
+  /**
+   * Whose lap it is (lib/deviceRuns.ts): the account signed in as it started, or SIGNED_OUT; none at the
+   * start card. It's kept as their best and saved as theirs alone, whoever signs in meanwhile.
+   */
+  owner: string | undefined
   run: Run
   /** Seconds into the countdown, or since the line. */
   clock: number
@@ -159,6 +167,7 @@ function freshGame(course: Course, chase: Chase, test: boolean, past: boolean): 
     track,
     test,
     past,
+    owner: undefined,
     run: newRun(track),
     clock: 0,
     t: 0,
@@ -269,6 +278,7 @@ function HotLapDay({
   // A track whose day has gone, settled as it opens: its laps go on its own board.
   const [past] = useState(() => test && trackState(course.n) === 'past')
   const { signedIn } = useAuth()
+  const viewer = useAccountId()
   const playerName = normalizePlayerName(usePlayerName())
   const [boardVersion, setBoardVersion] = useState(0)
   const board = useTrackBoard(past ? course.n : null, playerName, boardVersion)
@@ -278,9 +288,12 @@ function HotLapDay({
   const nameRef = useRef(playerName)
   nameRef.current = playerName
 
-  /** The lap to beat: the board's fastest, unless your own best here is faster; before either, the blue car's. */
+  /**
+   * The lap to beat: the board's fastest, unless your own best here is faster; before either, the blue
+   * car's. Your own is the one of whoever is signed in now: another player's lap on this device isn't yours.
+   */
   const chase = (): Chase => {
-    const mine = bestLapOf(day, test)
+    const mine = bestLapOf(day, test, currentAccountId())
     const top = topRef.current
     if (top && (!mine || top.lap.time < mine.time)) {
       return { lap: top.lap, chasing: top.name === nameRef.current ? { who: 'you' } : { who: 'rival', name: top.name } }
@@ -338,9 +351,18 @@ function HotLapDay({
   const newDayRef = useRef(newDay)
   newDayRef.current = newDay
 
-  /** Lights, and a new lap: a new run for the boards (not a test drive's), chasing the best lap there is. */
+  /**
+   * Lights, and a new lap: a new run for the boards (not a test drive's), chasing the best lap there is.
+   * The lap is whoever's signed in as it starts, so it waits the moment it takes to know who that is (a
+   * session from before laps had owners, until the API says).
+   */
   const start = () => {
     if (newDay()) return
+    const owner = ownerOf(currentAccountId())
+    if (owner === undefined) {
+      say('Still signing you in. Try again in a moment.')
+      return
+    }
     saveOpenRef.current = false
     setSaveOpen(false)
     if (!test) {
@@ -353,6 +375,7 @@ function HotLapDay({
     }
     const g = freshGame(course, chase(), test, past)
     g.phase = 'countdown'
+    g.owner = owner
     gameRef.current = g
     sceneRef.current?.startLap()
     soundRef.current?.wake()
@@ -378,16 +401,30 @@ function HotLapDay({
     start()
   }
 
-  /** The board's fastest lap, as it's known: at the start card, the ghost to race changes to it at once. */
-  const takeTop = (top: BoardGhost | null) => {
-    topRef.current = top
-    const g = gameRef.current!
-    if (g.phase !== 'menu') return
+  /** At the start card, the lap to beat worked out again: it changes at once. Mid-lap, the lap keeps the ghost it began with. */
+  const rechase = () => {
+    if (gameRef.current!.phase !== 'menu') return
     gameRef.current = freshGame(course, chase(), test, past)
     setUi(snapshot(gameRef.current))
   }
+  const rechaseRef = useRef(rechase)
+  rechaseRef.current = rechase
+
+  /** The board's fastest lap, as it's known: at the start card, the ghost to race changes to it at once. */
+  const takeTop = (top: BoardGhost | null) => {
+    topRef.current = top
+    rechase()
+  }
   const takeTopRef = useRef(takeTop)
   takeTopRef.current = takeTop
+
+  // Signed in, out, or as someone else: at the start card, the ghost is the new driver's to beat.
+  const chasedFor = useRef(viewer)
+  useEffect(() => {
+    if (chasedFor.current === viewer) return
+    chasedFor.current = viewer
+    rechaseRef.current()
+  }, [viewer])
 
   /**
    * A lap saved on the board sends where the car went, if it's faster than the ghost there is: the API
@@ -407,6 +444,17 @@ function HotLapDay({
   const sendGhostRef = useRef(sendGhost)
   sendGhostRef.current = sendGhost
 
+  /**
+   * A lap driven signed out, put on the board by whoever signed in on its card: it's theirs from now on,
+   * their best here if it's faster than the one they had (lap.ts claimLap), and theirs if the card asks again.
+   */
+  const claimSaved = (g: Game) => {
+    const id = currentAccountId()
+    if (g.owner !== SIGNED_OUT || !g.lap || typeof id !== 'string') return
+    claimLap(g.day, g.test, id, { time: g.lap.time, splits: g.lap.splits, ghost: g.lap.path })
+    g.owner = id
+  }
+
   // The board's fastest lap, for the ghost: asked for as the track opens.
   const [topAsked, setTopAsked] = useState(false)
   useEffect(() => {
@@ -424,13 +472,14 @@ function HotLapDay({
 
   // Then your best here on this device, if it's faster than that: the API keeps it only if it's on the board
   // under your tag. So a lap saved before laps kept their ghosts, or on a card closed too soon, still gets there.
-  const offered = useRef(false)
+  // Only your account's own lap goes, once for each account signed in here: never one driven signed out, or another's.
+  const offered = useRef<string | null>(null)
   useEffect(() => {
-    if (!topAsked || !signedIn || !playerName || offered.current) return
-    offered.current = true
-    const mine = bestLapOf(day, test)
+    if (!topAsked || !signedIn || typeof viewer !== 'string' || !playerName || offered.current === viewer) return
+    offered.current = viewer
+    const mine = bestLapOf(day, test, viewer)
     if (mine) sendGhostRef.current({ time: mine.time, score: hotlapBoardScore(mine.time), splits: mine.splits, path: mine.ghost }, playerName)
-  }, [topAsked, signedIn, playerName, day, test])
+  }, [topAsked, signedIn, viewer, playerName, day, test])
 
   useEffect(() => {
     const holder = holderRef.current
@@ -477,9 +526,10 @@ function HotLapDay({
     const finishLap = (g: Game) => {
       const run = g.run
       const time = run.lapTime!
-      const kept = bestLapOf(g.day, g.test)
+      // Against the best of whoever drove it, and kept as theirs: someone else signed in meanwhile has theirs.
+      const kept = g.owner === undefined ? null : bestLapOf(g.day, g.test, ownerAccount(g.owner))
       const improved = !kept || time < kept.time
-      if (improved) keepBestLap(g.day, g.test, { time, splits: [...run.splits], ghost: g.record })
+      if (improved && g.owner !== undefined) keepBestLap(g.day, g.test, g.owner, { time, splits: [...run.splits], ghost: g.record })
       g.lap = { time, score: hotlapBoardScore(time), splits: [...run.splits], improved, run: g.past ? runIdFor(SLUG) : null, path: g.record }
       sfx(improved ? 'perfect' : 'good')
       haptic('boost')
@@ -756,16 +806,20 @@ function HotLapDay({
   const chased = g.ghost.lap.splits
   const sectors = [0, 1, 2].map((k) => sectorFigure(k, ui.splits, chased))
   const latest = Math.max(0, ui.splits.length - 1)
+  // Whose laps these are: the lap's driver once it's under way, whoever else signs in meanwhile.
+  const driver: Viewer = g.owner === undefined ? viewer : ownerAccount(g.owner)
   // Your best today on the board; on another day's track, your best lap of it in this tab, or on a past
   // track's board if that's faster.
   const best = Math.max(apiBest, 0)
   const testBest = Math.min(
-    test ? (bestLapOf(day, true)?.time ?? Infinity) : Infinity,
+    test ? (bestLapOf(day, true, driver)?.time ?? Infinity) : Infinity,
     past && board?.you ? hotlapMsFromBoardScore(board.you.score) / 1000 : Infinity,
   )
   const bestText = test ? (testBest < Infinity ? formatLap(testBest) : '–') : best > 0 ? formatLap(hotlapMsFromBoardScore(best) / 1000) : '–'
   const showroom = ui.phase === 'menu'
   const lap = g.lap
+  // Whose the lap is, for its card: an account's lap waits for that account; one driven signed out goes to whoever signs in.
+  const lapOwner = g.owner === undefined ? undefined : ownerAccount(g.owner)
   const extra = <TrackTiles course={course} ghost={g.ghost.lap.time} chasing={g.chasing} test={test} past={past} />
 
   return (
@@ -895,7 +949,9 @@ function HotLapDay({
                     splits={lap.splits}
                     run={lap.run}
                     board={board}
+                    owner={lapOwner}
                     onSaved={(result) => {
+                      claimSaved(g)
                       setBoardVersion((v) => v + 1)
                       sendGhost(lap, result.name)
                     }}
@@ -907,7 +963,7 @@ function HotLapDay({
                     course={course}
                     time={lap.time}
                     splits={lap.splits}
-                    best={bestLapOf(day, true)?.time ?? lap.time}
+                    best={bestLapOf(day, true, driver)?.time ?? lap.time}
                     improved={lap.improved}
                     onAgain={start}
                     onDone={toMenu}
@@ -923,7 +979,9 @@ function HotLapDay({
                     previousBest={Math.max(previousBestRef.current, apiBest)}
                     pace={Math.round(pace.time * 1000)}
                     shareLine={lapShareLine(course, lap.time, pace.time)}
+                    owner={lapOwner}
                     onSettled={() => sendGhost(lap, playerName)}
+                    onSaved={() => claimSaved(g)}
                     onDone={toMenu}
                   />
                 )

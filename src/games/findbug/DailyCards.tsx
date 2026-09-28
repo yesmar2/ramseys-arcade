@@ -11,8 +11,10 @@ import {
   msUntilNextDay,
   sceneMark,
   shareText,
+  type DayProgress,
   type DayResult,
   type DayRun,
+  type RunHold,
 } from './daily'
 import { BugPortrait } from './Portrait'
 import { formatFindbugBoardScore, formatFindbugMs } from './score'
@@ -146,21 +148,39 @@ function resultWords(result: DayResult): string {
   return `${formatFindbugMs(result.ms)}${found}`
 }
 
-/** The card the day opens on: who's wanted and Start; Carry on for a run left halfway; how the day went once it's done. */
+/** How far a run left halfway had got. */
+function soFarWords(at: DayProgress): string {
+  return `Scene ${Math.min(DAY_SCENES, at.index + 1)} of ${DAY_SCENES} · ${formatFindbugMs(at.bankedMs + at.sceneMs)} so far`
+}
+
+/**
+ * The card the day opens on: who's wanted and Start; Carry on for a run left halfway; how the day went
+ * once it's done. Signed in beside a run played signed out on this device, that run is offered to take up
+ * (Carry on, or put it on the board) if it was theirs, and their own first run if it wasn't.
+ */
 export function TodayCard({
   day,
   wanted,
   run,
+  hold,
+  waiting,
   board,
   onStart,
+  onStartOwn,
   onPractice,
   onSave,
 }: {
   day: string
   wanted: readonly WantedBug[]
   run: DayRun | null
+  /** Whose `run` is (daily.ts's offeredRun). */
+  hold: RunHold
+  /** Who's signed in isn't known yet: nothing starts until it is. */
+  waiting: boolean
   board: TodayBoard | null
   onStart: () => void
+  /** Their own first run, beside one played signed out here that wasn't theirs. */
+  onStartOwn: () => void
   onPractice: () => void
   /** Put a finished first run on the board, when it isn't: it was played signed out, or its save didn't land. */
   onSave: () => void
@@ -169,15 +189,65 @@ export function TodayCard({
   const result = run?.result
   const at = !result ? run?.at : undefined
   const started = Boolean(run && !result)
-  const offBoard = result && board && !board.you && result.found != null
+  const claimable = Boolean(run) && hold === 'claimable'
+  // One kept before runs had players can't be told apart from someone else's, so it isn't saved from here.
+  const offBoard = result && board && !board.you && result.found != null && hold !== 'legacy'
+  const head = (
+    <div className="game-card__head">
+      <span className="game-card__kicker">
+        Today&rsquo;s Wanted #{n} · {archiveDayWords(day)}
+      </span>
+      <h2 className="game-card__title game-card__title--big">Find the Bug</h2>
+    </div>
+  )
+  const foot = (
+    <>
+      <NextDay />
+      <a className="findbug-daily__archive" href={gameArchiveHref(SLUG)}>
+        Past days ›
+      </a>
+    </>
+  )
+  if (claimable) {
+    // Played here signed out: not shown as theirs, nor shared, until they take it up.
+    return (
+      <Card label={`Today's Wanted #${n}`}>
+        {head}
+        <WantedLineup wanted={wanted} />
+        <p className="findbug-daily__rules">
+          {result
+            ? 'Today’s first run was played on this device while signed out. If it was you, put it on today’s board. If not, your own first run is still to play.'
+            : 'A first run was begun on this device while signed out and left halfway. If it was you, carry it on. If not, your own first run is still to play.'}
+        </p>
+        <div className="game-pause-meta">
+          <Row label="Signed out">{result ? resultWords(result) : at ? soFarWords(at) : 'Started'}</Row>
+          {todayWords(board) ? <Row label="Today">{todayWords(board)}</Row> : null}
+        </div>
+        {result?.times ? <SceneSquares times={result.times} /> : null}
+        <div className="game-card__actions">
+          {result ? (
+            offBoard ? (
+              <button type="button" className="panel__btn" onClick={onSave}>
+                Put it on today&rsquo;s board
+              </button>
+            ) : null
+          ) : (
+            // Never focused first: the day's usual Enter mustn't take up someone else's run.
+            <button type="button" className="panel__btn" onClick={onStart}>
+              Carry on
+            </button>
+          )}
+          <button type="button" className={result && !offBoard ? 'panel__btn' : 'panel__btn panel__btn--ghost'} onClick={onStartOwn}>
+            Start your own
+          </button>
+        </div>
+        {foot}
+      </Card>
+    )
+  }
   return (
     <Card label={`Today's Wanted #${n}`}>
-      <div className="game-card__head">
-        <span className="game-card__kicker">
-          Today&rsquo;s Wanted #{n} · {archiveDayWords(day)}
-        </span>
-        <h2 className="game-card__title game-card__title--big">Find the Bug</h2>
-      </div>
+      {head}
       <WantedLineup wanted={wanted} />
       <p className="findbug-daily__rules">
         {started
@@ -188,7 +258,7 @@ export function TodayCard({
       </p>
       <div className="game-pause-meta">
         <Row label="You">
-          {result ? resultWords(result) : at ? `Scene ${Math.min(DAY_SCENES, at.index + 1)} of ${DAY_SCENES} · ${formatFindbugMs(at.bankedMs + at.sceneMs)} so far` : started ? 'Started' : 'Not played yet'}
+          {waiting ? 'Checking who’s signed in…' : result ? resultWords(result) : at ? soFarWords(at) : started ? 'Started' : 'Not played yet'}
         </Row>
         {todayWords(board) ? <Row label="Today">{todayWords(board)}</Row> : null}
       </div>
@@ -207,15 +277,13 @@ export function TodayCard({
             </button>
           </>
         ) : (
-          <button type="button" className="panel__btn" onClick={onStart} autoFocus>
+          // Nothing starts until it's known whose run it'll be.
+          <button type="button" className="panel__btn" onClick={onStart} disabled={waiting} autoFocus>
             {started ? 'Carry on' : 'Start'}
           </button>
         )}
       </div>
-      <NextDay />
-      <a className="findbug-daily__archive" href={gameArchiveHref(SLUG)}>
-        Past days ›
-      </a>
+      {foot}
     </Card>
   )
 }

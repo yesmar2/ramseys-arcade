@@ -1,3 +1,4 @@
+import { ownKey, ownRun, SIGNED_OUT, type OwnedRuns, type Viewer } from '../../lib/deviceRuns'
 import { dailyTrack, FIRST_DAY, type DailyTrack } from './daily'
 import { botLap, buildTrack, GHOST_RATE, lapDistance, nearest, type GhostPath, type Track } from './sim'
 
@@ -12,11 +13,25 @@ export type GhostLap = { time: number; splits: number[]; ghost: GhostPath }
 /*
  * Not a score: the board keeps that. This is only each day's best lap and its path, for the ghost, on
  * this device, and only the last few days: a day's lap is no use on another day's track.
+ *
+ * Each player who drives here has a best lap of their own (lib/deviceRuns.ts): a lap is kept under whoever
+ * was signed in as it started, or signed out, so one player's lap is never another's ghost, nor on their
+ * ticket, and never kept over theirs.
  */
-const LAPS_KEY = 'skermix-hotlap-laps'
+const LAPS_KEY = 'skermix-hotlap-owned-laps'
+/**
+ * Laps kept before they had owners: read, never written again (a page still on an older bundle can
+ * write it for a load or two). Nobody can say whose they are, so they're yours only signed out.
+ */
+const UNOWNED_LAPS_KEY = 'skermix-hotlap-laps'
 /** From before the tracks were daily: a lap of the classic track, which is the first day's. */
 const OLD_LAP_KEY = 'skermix-hotlap-lap'
 const KEEP_DAYS = 3
+/** A lap and its path come to some 50 KB: a day keeps the laps of this many players, dropping the one kept longest ago. */
+const KEEP_OWNERS = 4
+
+/** A lap as the device keeps it, with when it was kept: a day with too many drops the one kept longest ago. */
+type KeptLap = GhostLap & { at: number }
 
 function validLap(raw: Partial<GhostLap> | null | undefined): GhostLap | null {
   if (!raw || typeof raw.time !== 'number' || !(raw.time > 20 && raw.time < 600)) return null
@@ -25,50 +40,120 @@ function validLap(raw: Partial<GhostLap> | null | undefined): GhostLap | null {
   return { time: raw.time, splits: raw.splits, ghost: raw.ghost }
 }
 
-function readLaps(): Record<string, GhostLap> {
+/** Each day's best laps on this device, by whose they are: an account's id, or SIGNED_OUT. */
+function readLaps(): Record<string, OwnedRuns<KeptLap>> {
   try {
-    const parsed = JSON.parse(localStorage.getItem(LAPS_KEY) ?? 'null') as { days?: Record<string, Partial<GhostLap>> } | null
-    const days: Record<string, GhostLap> = {}
-    for (const [day, raw] of Object.entries(parsed?.days ?? {})) {
-      const lap = validLap(raw)
-      if (lap) days[day] = lap
+    const parsed = JSON.parse(localStorage.getItem(LAPS_KEY) ?? 'null') as {
+      days?: Record<string, Record<string, Partial<KeptLap>> | null>
+    } | null
+    const days: Record<string, OwnedRuns<KeptLap>> = {}
+    for (const [day, laps] of Object.entries(parsed?.days ?? {})) {
+      for (const [owner, raw] of Object.entries(laps ?? {})) {
+        const lap = validLap(raw)
+        if (lap) days[day] = { ...days[day], [owner]: { ...lap, at: typeof raw.at === 'number' ? raw.at : 0 } }
+      }
     }
-    // The classic track's lap, kept before the tracks were daily, is the first day's.
-    const old = validLap(JSON.parse(localStorage.getItem(OLD_LAP_KEY) ?? 'null') as Partial<GhostLap> | null)
-    if (old && !days[FIRST_DAY]) days[FIRST_DAY] = old
     return days
   } catch {
     return {}
   }
 }
 
-/** Your best lap of a day's track on this device, if you've driven it. */
-export function keptLap(day: string): GhostLap | null {
-  return readLaps()[day] ?? null
+/** A day's lap kept before laps had owners, if there is one. */
+function unownedLap(day: string): GhostLap | null {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(UNOWNED_LAPS_KEY) ?? 'null') as { days?: Record<string, Partial<GhostLap>> } | null
+    const lap = validLap(parsed?.days?.[day])
+    if (lap || day !== FIRST_DAY) return lap
+    // The classic track's lap, kept before the tracks were daily, is the first day's.
+    return validLap(JSON.parse(localStorage.getItem(OLD_LAP_KEY) ?? 'null') as Partial<GhostLap> | null)
+  } catch {
+    return null
+  }
 }
 
-export function keepLap(day: string, lap: GhostLap) {
+/** A day's laps written back, KEEP_OWNERS of them at most, and only the last KEEP_DAYS days. */
+function writeLaps(days: Record<string, OwnedRuns<KeptLap>>, day: string, laps: OwnedRuns<KeptLap>) {
+  const newest = Object.entries(laps)
+    .filter((entry): entry is [string, KeptLap] => entry[1] != null)
+    .sort((a, b) => b[1].at - a[1].at)
+    .slice(0, KEEP_OWNERS)
+  const all = { ...days, [day]: Object.fromEntries(newest) }
+  const keep = Object.keys(all).sort().slice(-KEEP_DAYS)
+  localStorage.setItem(LAPS_KEY, JSON.stringify({ days: Object.fromEntries(keep.map((d) => [d, all[d]])) }))
+}
+
+const toKeep = (lap: GhostLap): KeptLap => ({
+  time: lap.time,
+  splits: lap.splits,
+  ghost: lap.ghost.map((v) => Math.round(v * 100) / 100),
+  at: Date.now(),
+})
+
+/** Whether a kept lap is this lap: the same time to the sector. */
+const sameLap = (kept: GhostLap | null | undefined, lap: GhostLap) =>
+  kept != null && kept.time === lap.time && kept.splits.every((at, k) => at === lap.splits[k])
+
+/**
+ * Your best lap of a day's track on this device, if you've driven it: the viewer's own (lib/deviceRuns.ts),
+ * never another player's. Nothing while the account signed in isn't known yet.
+ */
+export function keptLap(day: string, viewer: Viewer): GhostLap | null {
+  const own = ownKey(viewer)
+  if (own === undefined) return null
+  // The laps from before owners are read only for the one viewer they can be: signed out.
+  return ownRun(readLaps()[day], own === SIGNED_OUT ? unownedLap(day) : null, viewer)
+}
+
+/** A lap kept as `owner`'s best of the day (an account's id, or SIGNED_OUT), over theirs alone. */
+function keepLap(day: string, owner: string, lap: GhostLap) {
   try {
-    const days = { ...readLaps(), [day]: { time: lap.time, splits: lap.splits, ghost: lap.ghost.map((v) => Math.round(v * 100) / 100) } }
-    const keep = Object.keys(days).sort().slice(-KEEP_DAYS)
-    localStorage.setItem(LAPS_KEY, JSON.stringify({ days: Object.fromEntries(keep.map((d) => [d, days[d]])) }))
-    localStorage.removeItem(OLD_LAP_KEY)
+    const days = readLaps()
+    writeLaps(days, day, { ...days[day], [owner]: toKeep(lap) })
   } catch {
     /* a private window keeps nothing; the lap still counts */
   }
 }
 
-/** A test drive's best lap of each track, kept only while the tab is open: a track driven ahead of its day. */
+/** A test drive's best lap of each track, by whose it is, kept only while the tab is open: a track driven off its day. */
 const testLaps = new Map<string, GhostLap>()
+const testKey = (owner: string, day: string) => `${owner}|${day}`
 
-/** Your best lap of a day's track: on this device, or in a test drive, in this tab. */
-export function bestLapOf(day: string, test: boolean): GhostLap | null {
-  return test ? (testLaps.get(day) ?? null) : keptLap(day)
+/** The viewer's best lap of a day's track: on this device, or in a test drive, in this tab. */
+export function bestLapOf(day: string, test: boolean, viewer: Viewer): GhostLap | null {
+  if (!test) return keptLap(day, viewer)
+  const own = ownKey(viewer)
+  return own === undefined ? null : (testLaps.get(testKey(own, day)) ?? null)
 }
 
-export function keepBestLap(day: string, test: boolean, lap: GhostLap) {
-  if (test) testLaps.set(day, lap)
-  else keepLap(day, lap)
+/** A lap kept as the best of whoever drove it: `owner`, the account signed in as it started, or SIGNED_OUT. */
+export function keepBestLap(day: string, test: boolean, owner: string, lap: GhostLap) {
+  if (test) testLaps.set(testKey(owner, day), lap)
+  else keepLap(day, owner, lap)
+}
+
+/**
+ * A lap driven signed out, then put on the board by the account signed in on its card: it's that
+ * account's from now on. It's their best here if it's faster than the one they had, and the signed-out
+ * lap it was is theirs no longer.
+ */
+export function claimLap(day: string, test: boolean, accountId: string, lap: GhostLap) {
+  if (test) {
+    const mine = testLaps.get(testKey(accountId, day))
+    if (!mine || lap.time < mine.time) testLaps.set(testKey(accountId, day), lap)
+    if (sameLap(testLaps.get(testKey(SIGNED_OUT, day)), lap)) testLaps.delete(testKey(SIGNED_OUT, day))
+    return
+  }
+  try {
+    const days = readLaps()
+    const laps = { ...days[day] }
+    const mine = laps[accountId]
+    if (!mine || lap.time < mine.time) laps[accountId] = toKeep(lap)
+    if (sameLap(laps[SIGNED_OUT], lap)) delete laps[SIGNED_OUT]
+    writeLaps(days, day, laps)
+  } catch {
+    /* a private window keeps nothing; the lap is on the board */
+  }
 }
 
 /** A day's track, built, and its pace car's lap: a driver that keeps to the middle of the road. */

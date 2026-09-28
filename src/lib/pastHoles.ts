@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import type { PathPoint, Shot } from '../games/acechase/game'
-import { AUTH_EVENT, getSessionToken } from './auth'
+import { currentAccountId, getSessionToken } from './auth'
 import { dayProgress, type DailySolved } from './dailyHole'
+import { claimableRun, ownerAccount, ownRun, SIGNED_OUT, subscribeViewer, type OwnedRuns, type Viewer } from './deviceRuns'
 import { detectDeviceType } from './device'
 import { api, getClaimToken, getLastPlayerName, normalizePlayerName } from './leaderboard'
 import { noteTicketsPaid } from './tickets'
@@ -12,14 +13,20 @@ import { noteTicketsPaid } from './tickets'
  * it, a player with no result on it yet can play it for one, as on its day: every try counts, whenever it's
  * played, and the first bullseye is the result. This device keeps the tries, so leaving and coming back
  * carries on the count, and tries from the hole's own day carry on too. Signed in, the result goes on the
- * hole's board under the device's tag; signed out, it's kept here until a sign-in sends it. A player with a
- * result on the hole already, from its day or since, plays it again as practice.
+ * hole's board under the device's tag; signed out, it's kept here, and whoever signs in can put it on the
+ * board from the hole. A player with a result on the hole already, from its day or since, plays it again
+ * as practice.
+ *
+ * As on Today's Hole, each run here is its player's (lib/deviceRuns.ts), one a hole for each: another
+ * player on the same device never sees, carries on or sends one that isn't theirs.
  */
 
 const SLUG = 'acechase'
-const STORE_KEY = 'skermix-acechase-holes'
+const STORE_KEY = 'skermix-acechase-past-holes'
+/** Where the device kept past holes before runs had owners: read, never written. */
+const LEGACY_KEY = 'skermix-acechase-holes'
 export const PAST_HOLE_EVENT = 'skermix-acechase-holes'
-/** Holes kept on this device, the most lately played. */
+/** Runs kept on this device, the most lately played. */
 const KEEP = 40
 
 /** Where a past hole's play stands on this device. */
@@ -37,66 +44,137 @@ export type PastProgress = {
   touched: number
 }
 
-type Store = { v: 1; holes: Record<string, PastProgress> }
+/** Each hole's runs, by owner (lib/deviceRuns.ts). */
+type Store = { v: 1; holes: Record<string, OwnedRuns<PastProgress>> }
 
-let store: Store | null = null
-
-function current(): Store {
-  if (store) return store
+/** Null when storage can't be read at all, so this visit's own copy stands in. */
+function readStore(): Store | null {
   try {
     const parsed = JSON.parse(localStorage.getItem(STORE_KEY) ?? 'null') as Partial<Store> | null
-    if (parsed?.v === 1 && parsed.holes && typeof parsed.holes === 'object') store = { v: 1, holes: parsed.holes }
+    if (parsed?.v === 1 && parsed.holes && typeof parsed.holes === 'object') return { v: 1, holes: parsed.holes }
+    return { v: 1, holes: {} }
   } catch {
     // A private window or full storage: the tries are kept for this visit.
+    return null
   }
-  store ??= { v: 1, holes: {} }
+}
+
+/** The holes as the device kept them before runs had owners: one run a hole, whoever played it. */
+function readLegacy(): Record<string, PastProgress> {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(LEGACY_KEY) ?? 'null') as { v?: number; holes?: Record<string, PastProgress> } | null
+    if (parsed?.v === 1 && parsed.holes && typeof parsed.holes === 'object') return parsed.holes
+  } catch {
+    // Nothing kept from before, then.
+  }
+  return {}
+}
+
+let store: Store | null = null
+let legacy: Record<string, PastProgress> | null = null
+/** Storage didn't take the last write, so this visit's copy is the one to build on. */
+let unkept = false
+
+function current(): Store {
+  store ??= readStore() ?? { v: 1, holes: {} }
   return store
+}
+
+function legacyHoles(): Record<string, PastProgress> {
+  legacy ??= readLegacy()
+  return legacy
 }
 
 function writeStore(next: Store) {
   store = next
   try {
     localStorage.setItem(STORE_KEY, JSON.stringify(next))
+    unkept = false
   } catch {
     // Kept in memory for this visit.
+    unkept = true
   }
   window.dispatchEvent(new Event(PAST_HOLE_EVENT))
 }
 
+/** The run a hole keeps under one stamp, exactly: an account's id, or SIGNED_OUT. */
+function keptRun(day: string, owner: string): PastProgress | null {
+  return current().holes[day]?.[owner] ?? null
+}
+
 /**
- * A past hole's play on this device: what's been played since its day, or else the tries from its own day,
- * which carry on. Null if it hasn't been played here.
+ * The viewer's own play at a past hole on this device (lib/deviceRuns.ts): what they've played since its
+ * day, or else their tries from its own day, which carry on. Null if they haven't played it here, and
+ * while the account signed in isn't known yet.
  */
-export function pastProgress(day: string): PastProgress | null {
-  const kept = current().holes[day]
+export function pastProgress(day: string, viewer: Viewer): PastProgress | null {
+  const kept = ownRun(current().holes[day], legacyHoles()[day], viewer)
   if (kept) return kept
-  const onItsDay = dayProgress(day)
+  const onItsDay = dayProgress(day, viewer)
   if (!onItsDay || onItsDay.tries <= 0 || onItsDay.solved) return null
   return { tries: onItsDay.tries, shots: onItsDay.shots, ghosts: [], power: onItsDay.power, angle: onItsDay.angle, touched: 0 }
 }
 
-/** Whether this device has a result on a hole: from its day, or since. */
-export function solvedHere(day: string): DailySolved | null {
-  return dayProgress(day)?.solved ?? current().holes[day]?.solved ?? null
+/** A past hole's play from signed out on this device, which the account signed in may take up at the hole. */
+export function claimablePast(day: string, viewer: Viewer): PastProgress | null {
+  return claimableRun(current().holes[day], viewer)
+}
+
+/** Whether the viewer has a result on a hole on this device: from its day, or since. */
+export function solvedHere(day: string, viewer: Viewer): DailySolved | null {
+  return dayProgress(day, viewer)?.solved ?? ownRun(current().holes[day], legacyHoles()[day], viewer)?.solved ?? null
 }
 
 const round2 = (v: number) => Math.round(v * 100) / 100
 
-/** Keep where a past hole's play stands: the latest KEEP holes, and only the last few paths, to the centimetre. */
-export function savePastProgress(day: string, progress: Omit<PastProgress, 'touched'>) {
-  const holes = { ...current().holes, [day]: { ...progress, touched: Date.now() } }
-  const keep = Object.entries(holes)
-    .sort((a, b) => b[1].touched - a[1].touched)
-    .slice(0, KEEP)
-  const next: Record<string, PastProgress> = {}
-  for (const [d, p] of keep) {
+/** Change a hole's runs, and keep the latest KEEP runs: only the last few paths of each, to the centimetre. */
+function keepRuns(day: string, change: (runs: OwnedRuns<PastProgress>) => OwnedRuns<PastProgress>) {
+  // Read afresh: another tab may have kept another player's run since this one last looked.
+  if (!unkept) store = readStore() ?? store
+  const holes = { ...current().holes, [day]: change({ ...current().holes[day] }) }
+  const runs: [string, string, PastProgress][] = []
+  for (const [d, byOwner] of Object.entries(holes)) {
+    for (const [owner, p] of Object.entries(byOwner)) if (p) runs.push([d, owner, p])
+  }
+  runs.sort((a, b) => b[2].touched - a[2].touched)
+  const next: Store['holes'] = {}
+  for (const [d, owner, p] of runs.slice(0, KEEP)) {
     next[d] = {
-      ...p,
-      shots: p.shots.slice(-30),
-      ghosts: p.ghosts.slice(-3).map((g) => g.map(([x, y, z]) => [round2(x), round2(y), round2(z)] as PathPoint)),
+      ...next[d],
+      [owner]: {
+        ...p,
+        shots: p.shots.slice(-30),
+        ghosts: p.ghosts.slice(-3).map((g) => g.map(([x, y, z]) => [round2(x), round2(y), round2(z)] as PathPoint)),
+      },
     }
   }
   writeStore({ v: 1, holes: next })
+}
+
+/** Keep where a past hole's play stands, under the stamp its run began with (lib/deviceRuns.ts). */
+export function savePastProgress(day: string, owner: string, progress: Omit<PastProgress, 'touched'>) {
+  keepRuns(day, (runs) => ({ ...runs, [owner]: { ...progress, touched: Date.now() } }))
+}
+
+/** Stamp a hole's run with another owner: the account that took it up. Whatever that account had there, it's this now. */
+function restamp(day: string, from: string, to: string, run: PastProgress) {
+  keepRuns(day, (runs) => {
+    const next = { ...runs, [to]: run }
+    if (from !== to) delete next[from]
+    return next
+  })
+}
+
+/**
+ * Carry on a half-played past hole from signed out as the account signed in (its Carry on, at the hole):
+ * it's theirs from here on. Only while they have no play of their own there.
+ */
+export function takeUpPast(day: string): boolean {
+  const account = currentAccountId()
+  const run = keptRun(day, SIGNED_OUT)
+  if (typeof account !== 'string' || !run || run.solved || pastProgress(day, account)) return false
+  restamp(day, SIGNED_OUT, account, run)
+  return true
 }
 
 /* ------------------------------------------------------------ the API --- */
@@ -196,19 +274,29 @@ export function useHoleRecords(name: string): HoleRecordRow[] | null {
   return held.get(who)?.rows ?? null
 }
 
-/** What the API said about each hole's result this visit, for its card. */
+/** What the API said about each hole's result this visit, for its card: by the account it was sent as, and the hole. */
 const answers = new Map<string, PastHoleResult>()
 
-export function pastHoleAnswer(day: string): PastHoleResult | null {
-  return answers.get(day) ?? null
+/** What the API said this visit about the viewer's result on a hole. */
+export function pastHoleAnswer(day: string, viewer: Viewer): PastHoleResult | null {
+  return typeof viewer === 'string' ? (answers.get(`${viewer}:${day}`) ?? null) : null
 }
 
 /** Results on their way, so asking twice sends once. */
 const sending = new Map<string, Promise<PastHoleResult | null>>()
 
-/** Send a past hole's result, under the tag this device plays as. Null when there's no tag or no sign-in yet. */
-export function sendPastResult(day: string, solved: DailySolved): Promise<PastHoleResult | null> {
-  const going = sending.get(day)
+/**
+ * Send a past hole's result as the account signed in, under the tag this device plays as: its own run
+ * (stamped `owner`), or one played signed out that it's taking up (the hole's result card, up as they
+ * sign in, or its "Put it on the hole's board"), which is stamped as theirs once it's on the board.
+ * Another account's run waits for that account. Null when there's no tag, no sign-in yet, or the run
+ * isn't this account's to send.
+ */
+export function sendPastResult(day: string, owner: string, solved: DailySolved): Promise<PastHoleResult | null> {
+  const account = currentAccountId()
+  if (typeof account !== 'string' || (owner !== account && owner !== SIGNED_OUT)) return Promise.resolve(null)
+  const key = `${account}:${day}`
+  const going = sending.get(key)
   if (going) return going
   const name = normalizePlayerName(getLastPlayerName())
   if (!name || !getSessionToken()) return Promise.resolve(null)
@@ -218,56 +306,68 @@ export function sendPastResult(day: string, solved: DailySolved): Promise<PastHo
     body: JSON.stringify({ name, tries: solved.tries, pattern: solved.pattern, device: detectDeviceType(), ...(token ? { token } : {}) }),
   })
     .then((reply) => {
-      answers.set(day, reply)
+      answers.set(key, reply)
       held.clear()
       noteTicketsPaid(reply.tickets)
-      const p = current().holes[day]
-      if (p) savePastProgress(day, { ...p, sent: true })
+      const p = keptRun(day, owner)
+      // Only the same run. One taken up is theirs once it's on the board: with a result there already,
+      // it stays as it was played.
+      if (p?.solved?.at === solved.at && (owner === account || reply.kept)) restamp(day, owner, account, { ...p, sent: true })
       else window.dispatchEvent(new Event(PAST_HOLE_EVENT))
       return reply
     })
-    .finally(() => sending.delete(day))
-  sending.set(day, send)
+    .finally(() => sending.delete(key))
+  sending.set(key, send)
   return send
 }
 
-/** A past hole's first bullseye, kept here for its card to send: the first one only, and none after one on its day. */
-export function markPastSolved(day: string, solved: DailySolved): void {
-  const p = current().holes[day]
-  if (!p || p.solved || dayProgress(day)?.solved) return
-  savePastProgress(day, { ...p, solved, sent: false })
+/**
+ * A past hole's first bullseye, kept on its run's owner's play for its card to send: the first one only,
+ * and none after one of theirs on its day.
+ */
+export function markPastSolved(day: string, owner: string, solved: DailySolved): void {
+  const p = keptRun(day, owner)
+  if (!p || p.solved || dayProgress(day, ownerAccount(owner))?.solved) return
+  savePastProgress(day, owner, { ...p, solved, sent: false })
 }
 
-/** Send any past hole's result this device has and the API hasn't: after a sign-in, or on coming back. */
+/**
+ * Send any past hole's result of the account signed in that this device has and the API hasn't: after a
+ * sign-in, or on coming back. Only its own runs: one played signed out goes only from its hole.
+ */
 export async function syncPastHoles(): Promise<void> {
-  if (!getSessionToken()) return
-  for (const [day, p] of Object.entries(current().holes)) {
-    if (!p.solved || p.sent) continue
+  const account = currentAccountId()
+  if (typeof account !== 'string' || !getSessionToken()) return
+  for (const [day, runs] of Object.entries(current().holes)) {
+    const p = runs[account]
+    if (!p?.solved || p.sent || currentAccountId() !== account) continue
     try {
-      await sendPastResult(day, p.solved)
+      await sendPastResult(day, account, p.solved)
     } catch {
       // It catches up next time.
     }
   }
 }
 
-/** Listen for changes here or in another tab, and for signing in (which sends what's waiting). */
+/** Listen for changes here or in another tab, and for signing in, out, or as someone else (which sends what's theirs). */
 export function subscribePastHoles(onChange: () => void): () => void {
   const onStorage = (e: StorageEvent) => {
-    if (e.key !== STORE_KEY) return
+    // A storage cleared all at once names no key.
+    if (e.key != null && e.key !== STORE_KEY && e.key !== LEGACY_KEY) return
     store = null
+    legacy = null
     onChange()
   }
-  const onAuth = () => {
+  const onViewer = () => {
     onChange()
     void syncPastHoles().then(onChange)
   }
   window.addEventListener(PAST_HOLE_EVENT, onChange)
   window.addEventListener('storage', onStorage)
-  window.addEventListener(AUTH_EVENT, onAuth)
+  const stopViewer = subscribeViewer(onViewer)
   return () => {
     window.removeEventListener(PAST_HOLE_EVENT, onChange)
     window.removeEventListener('storage', onStorage)
-    window.removeEventListener(AUTH_EVENT, onAuth)
+    stopViewer()
   }
 }

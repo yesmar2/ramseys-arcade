@@ -17,10 +17,13 @@ import { GameStartCard } from '../../components/GameStartCard'
 import { GamePauseOverlay, PauseButton } from '../../components/PauseControls'
 import { ScoreSaveCard } from '../../components/ScoreSaveCard'
 import { TournamentScoreCard } from '../../components/TournamentScoreCard'
+import { useAccountId } from '../../hooks/useAccountId'
 import { useGamePause } from '../../hooks/useGamePause'
 import { gameArchiveHref, navigate } from '../../hooks/useHashRoute'
 import { usePersonalBest } from '../../hooks/usePersonalBest'
 import { usePlayerName } from '../../hooks/usePlayerName'
+import { currentAccountId } from '../../lib/auth'
+import { ownerAccount, ownerOf, ownKey, SIGNED_OUT } from '../../lib/deviceRuns'
 import { noteRunBegun } from '../../lib/engagement'
 import { normalizePlayerName } from '../../lib/leaderboard'
 import { getPersonalBest } from '../../lib/personalBest'
@@ -40,7 +43,20 @@ import {
   type Field,
 } from './camera'
 import { faceCentre } from './critters'
-import { bugDay, dayNumber, dayRun, daySeed, dayWanted, FIRST_DAY, isDay, subscribeBugDay, updateDayRun, type DayResult } from './daily'
+import {
+  bugDay,
+  dayNumber,
+  daySeed,
+  dayWanted,
+  FIRST_DAY,
+  isDay,
+  offeredRun,
+  restampRun,
+  subscribeBugDay,
+  takeUpRun,
+  updateDayRun,
+  type DayResult,
+} from './daily'
 import { PastDayCard, PracticeCard, TodayCard } from './DailyCards'
 import {
   closeCard,
@@ -90,8 +106,17 @@ type Pinch = { dist: number; midX: number; midY: number; cam: Camera }
 
 type Toast = { text: string; tone: 'good' | 'bad' | 'info'; id: number }
 
-/** How the run just over went, and what it was: the day's first (counted), practice, or an event's. */
-type Ended = { day: string | null; counted: boolean; result: DayResult }
+/** Whose the day's first run in play is, kept as it began: the stamp it's kept under (lib/deviceRuns.ts), and when it began. */
+type Counted = { owner: string; startedAt: number }
+
+/**
+ * How the run just over went, and what it was: the day's first (counted), practice, or an event's. A
+ * counted one says whose it is, whoever has signed in or out since it began.
+ */
+type Ended = { day: string | null; counted: Counted | null; result: DayResult }
+
+/** A finished first run put on the board late, from the day's card: whose it is, its score and what it found. */
+type LateSave = Counted & { score: number; found: number }
 
 function isLive(phase: Snapshot['phase']) {
   return phase === 'intro' || phase === 'playing' || phase === 'recall' || phase === 'found' || phase === 'timeout'
@@ -247,28 +272,34 @@ export function FindBugGame({ day: askedDay }: { day?: string } = {}) {
   const startGrace = useRef(0)
   /** The day whose first run is in play, kept on the device as it goes; null for practice and events. */
   const countedDay = useRef<string | null>(null)
+  /** Whose that run is: whoever was signed in as it began, and it's kept as theirs whoever signs in meanwhile. */
+  const countedRun = useRef<Counted | null>(null)
   /** The day whose scenes are in play; null in an event. */
   const playedDay = useRef<string | null>(null)
   /** Taken up again after being left: the clock it came back with, for the first card to say. */
   const [resumedAt, setResumedAt] = useState<number | null>(null)
   const [ended, setEnded] = useState<Ended | null>(null)
-  /** A finished first run put on the board late, from the day's card: its score. */
-  const [lateSave, setLateSave] = useState<number | null>(null)
+  const [lateSave, setLateSave] = useState<LateSave | null>(null)
   const pausable = isLive(ui.phase) && !saveOpen
   const { paused, toggle: togglePause, resume } = useGamePause(pausable)
   const pausedRef = useRef(false)
   pausedRef.current = paused
 
-  // What this device did today, as it changes; and today's board.
-  const [todayRun, setTodayRun] = useState(() => (tournament ? null : dayRun(today)))
+  // What this device did today, for whoever's signed in: their own run, or one played signed out here that
+  // they may take up; as it changes, and as they sign in or out. And today's board.
+  const viewer = useAccountId()
+  const [heldRun, setHeldRun] = useState(() => ({ for: viewer, day: today, run: tournament ? null : offeredRun(today, viewer) }))
   useEffect(() => {
     if (tournament) return
-    const read = () => setTodayRun(dayRun(today))
+    const read = () => setHeldRun({ for: viewer, day: today, run: offeredRun(today, viewer) })
     read()
     return subscribeBugDay(read)
-  }, [tournament, today])
+  }, [tournament, today, viewer])
+  // Read at once for someone just signed in or out, before the effect above catches up: another
+  // account's run is never shown, even for a moment.
+  const todayRun = tournament ? null : heldRun.for === viewer && heldRun.day === today ? heldRun.run : offeredRun(today, viewer)
   const me = normalizePlayerName(usePlayerName())
-  const board = useTodayBoard(tournament || pastDay ? null : today, me, `${saveOpen}|${lateSave}`)
+  const board = useTodayBoard(tournament || pastDay ? null : today, me, `${saveOpen}|${lateSave?.startedAt ?? ''}`)
   const wanted = useMemo(() => dayWanted(pastDay ?? today), [pastDay, today])
 
   // Midnight on the boards' clock: a new day's scenes, from the next start.
@@ -285,12 +316,13 @@ export function FindBugGame({ day: askedDay }: { day?: string } = {}) {
 
   useEffect(() => () => window.clearTimeout(toastTimer.current), [])
 
-  /** Keep where the day's first run has got to, to carry it on from if it's left. */
+  /** Keep where the day's first run has got to, to carry it on from if it's left: as its player's, whoever's signed in now. */
   const keepProgress = (s: GameState) => {
     const day = countedDay.current
+    const counted = countedRun.current
     const at = progressOf(s)
-    if (!day || !at) return
-    updateDayRun(day, (run) => (run && !run.result ? { ...run, at } : run), true)
+    if (!day || !counted || !at) return
+    updateDayRun(day, counted.owner, (run) => (run && !run.result && run.startedAt === counted.startedAt ? { ...run, at } : run), true)
   }
 
   useEffect(() => {
@@ -353,11 +385,18 @@ export function FindBugGame({ day: askedDay }: { day?: string } = {}) {
         if (offeredScore.current !== score) {
           offeredScore.current = score
           const result: DayResult = { ms: s.bankedMs, found: s.found, misses: s.misses, times: s.times }
-          const counted = countedDay.current
-          // The day's result, kept before the save goes out: the save card may be closed at once.
-          if (counted) updateDayRun(counted, (run) => ({ startedAt: run?.startedAt ?? Date.now(), runId: run?.runId, result }))
-          setEnded({ day: playedDay.current, counted: Boolean(counted), result })
+          const day = countedDay.current
+          const counted = day ? countedRun.current : null
+          // The day's result, kept before the save goes out (the save card may be closed at once), as its
+          // player's: never over another run of theirs.
+          if (day && counted) {
+            updateDayRun(day, counted.owner, (run) =>
+              run && run.startedAt !== counted.startedAt ? run : { startedAt: counted.startedAt, runId: run?.runId, result },
+            )
+          }
+          setEnded({ day: playedDay.current, counted, result })
           countedDay.current = null
+          countedRun.current = null
           saveOpenRef.current = true
           setSaveOpen(true)
           setUi(toSnapshot(s))
@@ -502,6 +541,7 @@ export function FindBugGame({ day: askedDay }: { day?: string } = {}) {
   /** An event's run: a fresh seed, opened on the API like any run. */
   const startEventRun = () => {
     countedDay.current = null
+    countedRun.current = null
     playedDay.current = null
     setResumedAt(null)
     beginRun(SLUG)
@@ -511,6 +551,7 @@ export function FindBugGame({ day: askedDay }: { day?: string } = {}) {
   /** A day's scenes played again, today's or a past one's: nothing opened on the API, nothing kept. */
   const practise = (day: string) => {
     countedDay.current = null
+    countedRun.current = null
     playedDay.current = day
     setResumedAt(null)
     noteRunBegun()
@@ -518,13 +559,21 @@ export function FindBugGame({ day: askedDay }: { day?: string } = {}) {
   }
 
   /**
-   * Today's first run, the one that counts: opened on the API and kept on the device as it goes. One
-   * left halfway carries on under the id it was opened with, at the scene it was on.
+   * Today's first run, the one that counts: opened on the API and kept on the device as it goes, as the
+   * run of whoever's signed in as it begins. One left halfway carries on under the id it was opened with,
+   * at the scene it was on; signed in, one left halfway signed out here is carried on as the account's.
+   * With `own`, beside a run played signed out here, the account's own first run instead, that one left
+   * as it is.
    */
-  const startToday = () => {
+  const startToday = (own = false) => {
     const day = bugDay()
     if (day !== today) setToday(day)
-    const run = dayRun(day)
+    const viewer = currentAccountId()
+    const owner = ownerOf(viewer)
+    // Who's signed in isn't known yet: a run begun now couldn't be kept as anyone's.
+    if (owner === undefined) return
+    const offered = offeredRun(day, viewer)
+    const run = offered && !(own && offered.hold === 'claimable') ? offered.run : null
     if (run?.result) {
       practise(day)
       return
@@ -532,17 +581,22 @@ export function FindBugGame({ day: askedDay }: { day?: string } = {}) {
     countedDay.current = day
     playedDay.current = day
     if (run) {
-      resumeRun(SLUG, run.runId)
-      const at = run.at ?? FROM_THE_START
+      // Carried on, it's this player's own from here on.
+      const taken = takeUpRun(day, viewer) ?? run
+      countedRun.current = { owner, startedAt: taken.startedAt }
+      resumeRun(SLUG, taken.runId)
+      const at = taken.at ?? FROM_THE_START
       setResumedAt(at.bankedMs + at.sceneMs > 0 ? at.bankedMs + at.sceneMs : null)
       settle(resumeGame(stateRef.current!, currentAspect(), daySeed(day), at))
       return
     }
     setResumedAt(null)
     beginRun(SLUG)
-    updateDayRun(day, () => ({ startedAt: Date.now(), at: FROM_THE_START }))
+    const startedAt = Date.now()
+    countedRun.current = { owner, startedAt }
+    updateDayRun(day, owner, () => ({ startedAt, at: FROM_THE_START }))
     void runIdFor(SLUG).then((runId) => {
-      if (runId) updateDayRun(day, (r) => (r && !r.result ? { ...r, runId } : r), true)
+      if (runId) updateDayRun(day, owner, (r) => (r && !r.result && r.startedAt === startedAt ? { ...r, runId } : r), true)
     })
     settle(startGame(stateRef.current!, currentAspect(), daySeed(day)))
   }
@@ -555,17 +609,39 @@ export function FindBugGame({ day: askedDay }: { day?: string } = {}) {
    */
   const toMenu = () => {
     countedDay.current = null
+    countedRun.current = null
     setResumedAt(null)
     settle(createInitialState(currentAspect(), tournament ? undefined : daySeed(pastDay ?? bugDay())))
   }
 
-  /** A finished first run that isn't on the board (played signed out, or its save never landed): save it now. */
+  /**
+   * A finished first run that isn't on the board (played signed out, or its save never landed): save it
+   * now. The player's own, or one played signed out here that the signed-in player takes up; never one
+   * kept before runs had players.
+   */
   const saveLate = () => {
-    const run = dayRun(today)
-    if (!run?.result) return
-    resumeRun(SLUG, run.runId)
-    setLateSave(findbugBoardScore(run.result.ms))
+    const viewer = currentAccountId()
+    const offered = offeredRun(today, viewer)
+    const owner = offered?.hold === 'own' ? ownKey(viewer) : offered?.hold === 'claimable' ? SIGNED_OUT : undefined
+    if (!offered?.run.result || owner === undefined) return
+    resumeRun(SLUG, offered.run.runId)
+    const { result, startedAt } = offered.run
+    setLateSave({ owner, startedAt, score: findbugBoardScore(result.ms), found: result.found ?? ROUNDS })
   }
+
+  /** Saved under an account, a run played signed out is that account's from now on. */
+  const savedAs = (day: string | null, counted: Counted) => () => {
+    if (day && counted.owner === SIGNED_OUT) restampRun(day, counted.startedAt, currentAccountId())
+  }
+
+  // The late save goes with the run it's for: once that isn't the one on the day's card (someone else
+  // signed in, say), there's nothing to save from here. While who's signed in isn't known, it waits.
+  const lateGone =
+    lateSave != null && viewer !== undefined && !(todayRun?.run.result && todayRun.run.startedAt === lateSave.startedAt)
+  useEffect(() => {
+    if (lateGone) setLateSave(null)
+  }, [lateGone])
+  const lateUp = lateSave != null && !lateGone
 
   /** What a tap on the start screen, or Space there, does: only an event's starts on it. The day's cards have buttons. */
   const startFromMenu = useRef<() => void>(() => {})
@@ -880,7 +956,7 @@ export function FindBugGame({ day: askedDay }: { day?: string } = {}) {
   const finalScore = ui.phase === 'gameover' ? findbugBoardScore(s.bankedMs) : 0
   const urgent = ui.phase === 'playing' && ui.sceneLeftMs < 10_000
   const leftShare = ui.phase === 'menu' ? 1 : ui.sceneLeftMs / SCENE_LIMIT_MS
-  const menuUp = ui.phase === 'menu' && !saveOpen && lateSave == null && !paused
+  const menuUp = ui.phase === 'menu' && !saveOpen && !lateUp && !paused
   const endTitle = ui.found === ROUNDS ? 'Found every one' : 'Run over'
   const endLine = `Found ${ui.found} of ${ROUNDS} · ${ui.misses} wrong tap${ui.misses === 1 ? '' : 's'}`
 
@@ -960,9 +1036,12 @@ export function FindBugGame({ day: askedDay }: { day?: string } = {}) {
                   <TodayCard
                     day={today}
                     wanted={wanted}
-                    run={todayRun}
+                    run={todayRun?.run ?? null}
+                    hold={todayRun?.hold ?? 'own'}
+                    waiting={viewer === undefined}
                     board={board}
-                    onStart={startToday}
+                    onStart={() => startToday()}
+                    onStartOwn={() => startToday(true)}
                     onPractice={() => practise(today)}
                     onSave={saveLate}
                   />
@@ -988,27 +1067,31 @@ export function FindBugGame({ day: askedDay }: { day?: string } = {}) {
                     title={endTitle}
                     subtitle={`Today’s Wanted #${dayNumber(ended.day ?? today)} · ${endLine}`}
                     previousBest={Math.max(previousBestRef.current, apiBest)}
+                    owner={ownerAccount(ended.counted.owner)}
                     onDone={toMenu}
+                    onSaved={savedAs(ended.day, ended.counted)}
                   />
                 ) : ended?.day ? (
                   <PracticeCard
                     day={ended.day}
                     today={ended.day === today}
                     run={ended.result}
-                    standing={todayRun?.result ?? null}
+                    standing={todayRun?.hold === 'claimable' ? null : (todayRun?.run.result ?? null)}
                     onAgain={() => practise(ended.day!)}
                     onLeave={() => (ended.day === today ? toMenu() : navigate(gameArchiveHref(SLUG)))}
                   />
                 ) : null
               ) : null}
-              {lateSave != null && ui.phase === 'menu' && todayRun?.result ? (
+              {lateSave && lateUp && ui.phase === 'menu' ? (
                 <ScoreSaveCard
                   gameSlug={SLUG}
-                  score={lateSave}
+                  score={lateSave.score}
                   title="Today’s result"
-                  subtitle={`Today’s Wanted #${dayNumber(today)} · found ${todayRun.result.found ?? ROUNDS} of ${ROUNDS}`}
+                  subtitle={`Today’s Wanted #${dayNumber(today)} · found ${lateSave.found} of ${ROUNDS}`}
                   previousBest={Math.max(previousBestRef.current, apiBest)}
+                  owner={ownerAccount(lateSave.owner)}
                   onDone={() => setLateSave(null)}
+                  onSaved={savedAs(today, lateSave)}
                 />
               ) : null}
             </div>

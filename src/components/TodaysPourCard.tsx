@@ -15,6 +15,7 @@ import { dayPlan, ROUNDS, type DayPlan } from '../games/halffull/plan'
 import { glassesWords, glassNames, pourPlan } from '../games/halffull/planSvg'
 import { formatBoard, judgeLevels, markFor, tierFor, type JudgedDay } from '../games/halffull/score'
 import { useTodayBoard, type TodayBoard } from '../games/halffull/todayBoard'
+import { useAccountId } from '../hooks/useAccountId'
 import { gameArchiveHref, gamePlayHref } from '../hooks/useHashRoute'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { inkOn } from '../lib/color'
@@ -48,17 +49,22 @@ function nextPourAt(now = Date.now()) {
 }
 
 /**
- * Today, its glasses, what this device has poured of them and the day's board, rolled over at midnight.
- * `judged` is this device's pour once all five are in, worked out again from their levels.
+ * Today, its glasses, what you have poured of them on this device and the day's board, rolled over at
+ * midnight. `judged` is your pour here once all five are in, worked out again from their levels. Only your
+ * own run counts (lib/deviceRuns.ts): not one another account poured here, nor one poured signed out,
+ * which only the game itself offers to take up.
  */
 function useTodaysPour(): { day: string; plan: DayPlan; run: DayRun | null; judged: JudgedDay | null; board: TodayBoard | null } {
   const [day, setDay] = useState(pourDay)
-  const [run, setRun] = useState(() => dayRun(day))
+  const viewer = useAccountId()
+  const [held, setHeld] = useState(() => ({ day, viewer, run: dayRun(day, viewer) }))
   useEffect(() => {
-    const read = () => setRun(dayRun(day))
+    const read = () => setHeld({ day, viewer, run: dayRun(day, viewer) })
     read()
     return subscribePourDay(read)
-  }, [day])
+  }, [day, viewer])
+  // Read for another day or viewer, until it's read again: never shown for this one.
+  const run = held.day === day && held.viewer === viewer ? held.run : dayRun(day, viewer)
   useEffect(() => {
     const t = window.setInterval(() => setDay(pourDay()), 30_000)
     return () => window.clearInterval(t)

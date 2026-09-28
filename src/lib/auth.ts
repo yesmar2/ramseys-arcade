@@ -13,11 +13,14 @@ import {
 } from './leaderboard'
 import { clearActiveGroup } from './groups'
 import { isImpersonating } from './impersonate'
+import { hashString } from './seededRandom'
 import { clearTournamentIdentity } from './tournaments'
 
-const SESSION_KEY = 'arcade-session'
+import { ACCOUNT_ID_EVENT, AUTH_EVENT, SESSION_ACCOUNT_KEY, SESSION_KEY } from './accountEvents'
+
+export { ACCOUNT_ID_EVENT, AUTH_EVENT, subscribeAccountId } from './accountEvents'
+
 const ACCOUNT_TAGS_KEY = 'arcade-account-tags'
-export const AUTH_EVENT = 'arcade-auth'
 
 import type { PlanLimits } from './plans'
 
@@ -51,7 +54,6 @@ export const API_BASE = resolveApiBase()
 
 /** Bumps on every session write so in-flight /auth/me calls can be ignored. */
 let authGeneration = 0
-let lastAccountId: string | null = null
 
 function bumpAuthGeneration() {
   authGeneration += 1
@@ -62,8 +64,86 @@ export function getAuthGeneration() {
   return authGeneration
 }
 
-function setLastAccountId(accountId: string | null) {
-  lastAccountId = accountId
+/*
+ * Which account is signed in, known at once on every page and in every tab: the account's id, kept with a
+ * fingerprint of the session it was said for (never the token itself). A daily's run on this device is
+ * stamped with it (lib/deviceRuns.ts), so a run is only ever shown and sent as its own player's. It's
+ * written whenever the session's account is said (a sign-in, /auth/me), and goes with the session: a
+ * new session's account isn't known until it's said, even one begun in a tab still on an older bundle,
+ * which doesn't keep it (the fingerprint won't match the session before it).
+ */
+type SessionAccount = { of: number; id: string }
+
+/** This tab's own copy, for when storage won't keep one. */
+let knownAccount: SessionAccount | null = null
+
+function fingerprintOf(token: string): number {
+  return hashString(`session:${token}`)
+}
+
+/** The session signed in now, as a fingerprint that tells sessions apart; null signed out. */
+export function sessionFingerprint(): number | null {
+  const token = getSessionToken()
+  return token ? fingerprintOf(token) : null
+}
+
+function readSessionAccount(): SessionAccount | null {
+  try {
+    const raw = localStorage.getItem(SESSION_ACCOUNT_KEY)
+    const saved = raw ? (JSON.parse(raw) as Partial<SessionAccount> | null) : null
+    if (saved && typeof saved.of === 'number' && typeof saved.id === 'string' && saved.id) return { of: saved.of, id: saved.id }
+  } catch {
+    /* this tab's copy stands in */
+  }
+  return null
+}
+
+/**
+ * The account signed in now: its id; null signed out; undefined while the session's account isn't known
+ * yet (a session from before the account was kept, until /auth/me answers). Read afresh on every call, so
+ * every tab agrees the moment another signs in, out, or as someone else.
+ */
+export function currentAccountId(): string | null | undefined {
+  const token = getSessionToken()
+  if (!token) return null
+  const of = fingerprintOf(token)
+  const saved = readSessionAccount()
+  if (saved?.of === of) return saved.id
+  return knownAccount?.of === of ? knownAccount.id : undefined
+}
+
+/** Tell whoever shows a player's own things that the account signed in changed, if it did. */
+function announceAccountId(before: string | null | undefined) {
+  if (typeof window !== 'undefined' && currentAccountId() !== before) {
+    window.dispatchEvent(new Event(ACCOUNT_ID_EVENT))
+  }
+}
+
+/** Keep the session's account, said by the API, for the session signed in now. */
+function setLastAccountId(accountId: string) {
+  const token = getSessionToken()
+  if (!token || !accountId) return
+  const before = currentAccountId()
+  knownAccount = { of: fingerprintOf(token), id: accountId }
+  const saved = readSessionAccount()
+  // Said again on every /auth/me: other tabs hear only of a change.
+  if (saved?.of === knownAccount.of && saved.id === accountId) return
+  try {
+    localStorage.setItem(SESSION_ACCOUNT_KEY, JSON.stringify(knownAccount))
+  } catch {
+    /* this tab's copy stands in */
+  }
+  announceAccountId(before)
+}
+
+/** The session is over, or another has begun: whichever account it was isn't this one's. */
+function forgetSessionAccount() {
+  knownAccount = null
+  try {
+    localStorage.removeItem(SESSION_ACCOUNT_KEY)
+  } catch {
+    /* ignore */
+  }
 }
 
 function emitAuth() {
@@ -82,14 +162,21 @@ export function getSessionToken(): string | null {
 
 export function setSessionToken(token: string | null, opts?: { emit?: boolean }) {
   bumpAuthGeneration()
-  if (!token) setLastAccountId(null)
+  const before = currentAccountId()
+  const changed = !token || token !== getSessionToken()
   try {
     if (token) localStorage.setItem(SESSION_KEY, token)
     else localStorage.removeItem(SESSION_KEY)
   } catch {
     /* ignore */
   }
-  if (opts?.emit !== false) emitAuth()
+  // After the token, so another tab hears of the new session first: asking /auth/me for the old one
+  // just as it ends leaves that tab signed out (useAuth drops an answer for a session that's gone).
+  if (changed) forgetSessionAccount()
+  if (opts?.emit !== false) {
+    announceAccountId(before)
+    emitAuth()
+  }
 }
 
 export function authHeaders(): Record<string, string> {
@@ -370,9 +457,12 @@ export async function linkCurrentNameToAccount(
   } catch {
     /* tournaments optional */
   }
-  applyOwnedNames(data.names ?? [], lastAccountId ?? undefined)
+  // The session's own account, as it is now: another tab may have signed in as someone else since this
+  // one last heard, and its account mustn't be said for this session.
+  const accountId = currentAccountId() ?? undefined
+  applyOwnedNames(data.names ?? [], accountId)
   setPlayerNameLocal(data.name)
-  if (lastAccountId) rememberAccountTag(lastAccountId, data.name)
+  if (accountId) rememberAccountTag(accountId, data.name)
   return { name: data.name, token: data.token }
 }
 
@@ -385,6 +475,7 @@ export async function logoutAccount() {
   } catch {
     /* ignore */
   }
+  const accountBefore = currentAccountId()
   setSessionToken(null, { emit: false })
   // Drop local identity with the session. Per-account tag memory remains so
   // the next sign-in can restore this account's own tag — not the last one's.
@@ -392,6 +483,7 @@ export async function logoutAccount() {
   clearAllClaimTokens()
   clearActiveGroup()
   clearTournamentIdentity()
+  announceAccountId(accountBefore)
   emitAuth()
 }
 

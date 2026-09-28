@@ -6,6 +6,7 @@ import { BugPortrait } from '../games/findbug/Portrait'
 import { formatFindbugBoardScore, formatFindbugMs } from '../games/findbug/score'
 import { useTodayBoard, type TodayBoard } from '../games/findbug/todayBoard'
 import type { WantedBug } from '../games/findbug/wanted'
+import { useAccountId } from '../hooks/useAccountId'
 import { gameArchiveHref, gamePlayHref } from '../hooks/useHashRoute'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { inkOn } from '../lib/color'
@@ -33,15 +34,21 @@ const ClockIcon = () => (
   </svg>
 )
 
-/** Today, who's wanted, what this device has done and the day's board, rolled over at midnight. */
+/**
+ * Today, who's wanted, what the player has done on this device (their own run, never another account's
+ * or one played signed out while they're signed in) and the day's board, rolled over at midnight.
+ */
 function useTodaysWanted(): { day: string; wanted: WantedBug[]; run: DayRun | null; board: TodayBoard | null } {
   const [day, setDay] = useState(bugDay)
-  const [run, setRun] = useState(() => dayRun(day))
+  const viewer = useAccountId()
+  const [held, setHeld] = useState(() => ({ for: viewer, run: dayRun(day, viewer) }))
   useEffect(() => {
-    const read = () => setRun(dayRun(day))
+    const read = () => setHeld({ for: viewer, run: dayRun(day, viewer) })
     read()
     return subscribeBugDay(read)
-  }, [day])
+  }, [day, viewer])
+  // Read at once for someone just signed in or out, before the effect above catches up.
+  const run = held.for === viewer ? held.run : dayRun(day, viewer)
   useEffect(() => {
     const t = window.setInterval(() => setDay(bugDay()), 30_000)
     return () => window.clearInterval(t)

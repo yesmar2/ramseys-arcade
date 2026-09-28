@@ -19,11 +19,15 @@ import { copyText } from '../../components/ShareBoardButton'
 import { SoundPackSelect } from '../../components/SoundPackSelect'
 import { SoundToggle } from '../../components/SoundToggle'
 import { isGameListed } from '../../data/games'
+import { useAccountId } from '../../hooks/useAccountId'
+import { useAuth } from '../../hooks/useAuth'
 import { useDeliberatePress } from '../../hooks/useDeliberatePress'
 import { gameArchiveHref } from '../../hooks/useHashRoute'
 import { usePersonalBest } from '../../hooks/usePersonalBest'
 import { usePlayerName } from '../../hooks/usePlayerName'
+import { currentAccountId } from '../../lib/auth'
 import { fitCardToSpace } from '../../lib/cardFit'
+import { ownerAccount, ownerOf, SIGNED_OUT, type Viewer } from '../../lib/deviceRuns'
 import { gameAccentStyle } from '../../lib/gameAccentStyle'
 import { noteRunBegun } from '../../lib/engagement'
 import { haptic } from '../../lib/haptics'
@@ -32,17 +36,20 @@ import { ordinal } from '../../lib/profileMath'
 import { beginRun, resumeRun, runIdFor } from '../../lib/runSession'
 import { sfx } from '../../lib/sound'
 import {
+  claimDayRun,
   dayDone,
-  dayRun,
   dayTag,
+  keepRunId,
   keptResults,
   msUntilNextDay,
   pourDay,
   shareText,
   subscribePourDay,
   updateDayRun,
+  viewerRuns,
   weekdayShort,
   type DayRun,
+  type ViewerRuns,
 } from './daily'
 import {
   AUTO_LOCK,
@@ -133,14 +140,20 @@ function prefersStill() {
   return typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches
 }
 
-function useDayRun(day: string): DayRun | null {
-  const [run, setRun] = useState(() => dayRun(day))
+/** The day's runs on this device as the viewer has them, read again whenever they or the viewer change. */
+function useViewerRuns(day: string, viewer: Viewer): ViewerRuns {
+  const [held, setHeld] = useState(() => ({ day, viewer, runs: viewerRuns(day, viewer) }))
   useEffect(() => {
-    setRun(dayRun(day))
-    return subscribePourDay(() => setRun(dayRun(day)))
-  }, [day])
-  return run
+    const read = () => setHeld({ day, viewer, runs: viewerRuns(day, viewer) })
+    read()
+    return subscribePourDay(read)
+  }, [day, viewer])
+  // Read for another day or viewer, until they're read again: never shown for this one.
+  return held.day === day && held.viewer === viewer ? held.runs : viewerRuns(day, viewer)
 }
+
+/** The counted run a page is playing: when it began, and whose it is (its stamp, lib/deviceRuns.ts). */
+type PageRun = { startedAt: number; owner: string }
 
 export function HalfFullGame({ testDay = null }: { testDay?: string | null }) {
   // Today moves on at midnight (checked below); a past day from the archive is always practice.
@@ -148,8 +161,14 @@ export function HalfFullGame({ testDay = null }: { testDay?: string | null }) {
   const day = testDay ?? today
   const pastDay = testDay != null
   const plan = useMemo(() => dayPlan(day), [day])
-  const run = useDayRun(day)
+  // Who's playing: a counted pour is stamped as theirs as it begins, so it waits until that's known. Asking
+  // who's signed in is what makes it known, for a session from before accounts were kept on the device.
+  useAuth()
+  const viewer = useAccountId()
+  // The player's own run of the day, and where it's kept; with none, one played signed out here, to take up or not.
+  const { own: run, owner: runOwner, claimable } = useViewerRuns(day, viewer)
   const kept = useMemo(() => keptResults(plan, run), [plan, run])
+  const claimableKept = useMemo(() => keptResults(plan, claimable), [plan, claimable])
 
   const stateRef = useRef<GameState>(createState(plan))
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -179,12 +198,18 @@ export function HalfFullGame({ testDay = null }: { testDay?: string | null }) {
     axis: 'x' | 'y' | null
   } | null>(null)
   const fontRef = useRef('system-ui, sans-serif')
-  /** The counted run this page is playing, by when it began: a lock is kept only onto that run. */
-  const pageRun = useRef<number | null>(null)
+  /**
+   * The counted run this page is playing, by when it began and whose it is: a lock is kept only onto that
+   * run, under its owner, whoever is signed in by then.
+   */
+  const pageRun = useRef<PageRun | null>(null)
   /** The counted run this page opened on the API, by when it began: its id may still be on the way. */
   const openedRun = useRef<number | null>(null)
-  /** A finished first pour put on the board late, from the day's card (played signed out, or its save never landed). */
-  const [lateSave, setLateSave] = useState(false)
+  /**
+   * A finished first pour put on the board late, from the day's card (played signed out, or its save never
+   * landed), and whose it is.
+   */
+  const [lateSave, setLateSave] = useState<{ run: DayRun; owner: string } | null>(null)
   /** Saves that have had their answer: the day's card reads the board again after each. */
   const [settledSaves, setSettledSaves] = useState(0)
   const noteSaved = useCallback(() => setSettledSaves((n) => n + 1), [])
@@ -196,7 +221,7 @@ export function HalfFullGame({ testDay = null }: { testDay?: string | null }) {
   const board = useTodayBoard(
     pastDay || !saves || ui.phase !== 'menu' ? null : today,
     me,
-    `${run?.levels.length ?? 0}|${run?.board ?? ''}|${lateSave}|${settledSaves}`,
+    `${run?.levels.length ?? 0}|${run?.board ?? ''}|${lateSave?.run.startedAt ?? ''}|${settledSaves}`,
   )
 
   const refresh = useCallback(() => setUi(snapOf(stateRef.current, movedRef.current)), [])
@@ -216,13 +241,17 @@ export function HalfFullGame({ testDay = null }: { testDay?: string | null }) {
       handled.current += 1
       if (!s.practice) {
         const at = handled.current - 1
+        const page = pageRun.current
         let keptIt = false
-        updateDayRun(s.plan.day, (prev) => {
-          // Only onto the run this page began, glass by glass: another tab's run, or one cleared, isn't this.
-          if (!prev || prev.startedAt !== pageRun.current || prev.levels.length !== at) return prev
-          keptIt = true
-          return { ...prev, levels: [...prev.levels, r.level], auto: [...prev.auto, r.auto] }
-        })
+        // Under the owner it began with, glass by glass, whoever has signed in since.
+        if (page) {
+          updateDayRun(s.plan.day, page.owner, (prev) => {
+            // Only onto the run this page began: another tab's run, or one cleared, isn't this.
+            if (!prev || prev.startedAt !== page.startedAt || prev.levels.length !== at) return prev
+            keptIt = true
+            return { ...prev, levels: [...prev.levels, r.level], auto: [...prev.auto, r.auto] }
+          })
+        }
         // Something else has the day's run now, so this one plays on as practice.
         if (!keptIt) s.practice = true
       }
@@ -251,8 +280,13 @@ export function HalfFullGame({ testDay = null }: { testDay?: string | null }) {
     if (r.runId || openedRun.current !== r.startedAt) resumeRun(SLUG, r.runId)
   }, [])
 
+  /**
+   * Pour the day's glasses: as practice, or as the day's first pour, the one that counts. That's the
+   * player's own left halfway, carried on; with `takeUp`, one played signed out here, carried on as theirs;
+   * or a new one, stamped as theirs.
+   */
   const begin = useCallback(
-    (practice: boolean) => {
+    (practice: boolean, takeUp = false) => {
       // A card left up past midnight: show the new day's first.
       const now = pourDay()
       if (!testDay && now !== today) {
@@ -262,21 +296,32 @@ export function HalfFullGame({ testDay = null }: { testDay?: string | null }) {
       let done: PourResult[] = []
       pageRun.current = null
       if (!practice) {
-        if (run) {
-          // A first pour left halfway carries on under the id it was opened with.
-          pageRun.current = run.startedAt
-          done = kept
-          keepRun(run)
+        // Not until it's known who's signed in, and only for the player the card was drawn for: another tab
+        // may have signed someone else in a moment ago, and the card is drawn again for them first.
+        const owner = ownerOf(viewer)
+        if (owner === undefined || currentAccountId() !== viewer) return
+        const carry = takeUp ? claimable : run
+        if (takeUp && (!carry || dayDone(carry))) return
+        if (carry) {
+          // A first pour left halfway carries on under the id it was opened with, as the player's own from
+          // here on: one played signed out, taken up by the account signed in, or one kept from before runs
+          // were stamped, carried on signed out.
+          if (takeUp || runOwner !== owner) claimDayRun(day, carry.startedAt, owner)
+          pageRun.current = { startedAt: carry.startedAt, owner }
+          done = takeUp ? claimableKept : kept
+          keepRun(carry)
         } else {
-          // Today's first pour, the one that counts: opened on the API and kept on the device as it goes.
+          // Today's first pour, the one that counts: opened on the API and kept on the device as it goes,
+          // as the player's.
           const startedAt = Date.now()
-          pageRun.current = startedAt
+          pageRun.current = { startedAt, owner }
           openedRun.current = startedAt
           beginRun(SLUG)
-          updateDayRun(day, () => ({ startedAt, levels: [], auto: [] }))
-          // Kept whenever it comes, even after the fifth glass: a late save goes under it.
+          updateDayRun(day, owner, () => ({ startedAt, levels: [], auto: [] }))
+          // Kept whenever it comes, even after the fifth glass (a late save goes under it), on the run
+          // whoever's it is by then.
           void runIdFor(SLUG).then((runId) => {
-            if (runId) updateDayRun(day, (r) => (r && r.startedAt === startedAt && !r.runId ? { ...r, runId } : r))
+            if (runId) keepRunId(day, startedAt, runId)
           })
         }
       } else {
@@ -291,7 +336,7 @@ export function HalfFullGame({ testDay = null }: { testDay?: string | null }) {
       drag.current = null
       refresh()
     },
-    [day, keepRun, kept, plan, refresh, run, testDay, today],
+    [claimable, claimableKept, day, keepRun, kept, plan, refresh, run, runOwner, testDay, today, viewer],
   )
 
   const toMenu = useCallback(() => {
@@ -324,12 +369,21 @@ export function HalfFullGame({ testDay = null }: { testDay?: string | null }) {
     }
   }, [plan, refresh])
 
-  /** A finished first pour that isn't on the board: save it now, under the run it was opened with. */
-  const saveLate = useCallback(() => {
-    if (!run || run.levels.length < ROUNDS) return
-    keepRun(run)
-    setLateSave(true)
-  }, [keepRun, run])
+  /**
+   * A finished first pour that isn't on the board: save it now, under the run it was opened with, as its
+   * owner's. The player's own (not one kept from before runs were stamped, whose player isn't known), or,
+   * with `takeUp`, one played signed out here, saved as the account signed in's.
+   */
+  const saveLate = useCallback(
+    (takeUp: boolean) => {
+      const r = takeUp ? claimable : run
+      const owner = takeUp ? SIGNED_OUT : runOwner
+      if (!r || r.levels.length < ROUNDS || owner == null) return
+      keepRun(r)
+      setLateSave({ run: r, owner })
+    },
+    [claimable, keepRun, run, runOwner],
+  )
 
   const doLock = useCallback(() => {
     const s = stateRef.current
@@ -657,19 +711,39 @@ export function HalfFullGame({ testDay = null }: { testDay?: string | null }) {
                   plan={plan}
                   run={run}
                   kept={kept}
+                  legacy={run != null && runOwner == null}
+                  claimable={claimable}
+                  claimableKept={claimableKept}
+                  waiting={!pastDay && viewer === undefined}
                   pastDay={pastDay}
                   board={board}
                   saves={saves}
                   onStart={() => begin(pastDay || dayDone(run))}
+                  onTakeUp={() => begin(false, true)}
                   onPractice={() => begin(true)}
-                  onSave={saveLate}
+                  onSave={() => saveLate(false)}
+                  onSaveClaimable={() => saveLate(true)}
                 />
               ) : null}
-              {ui.phase === 'done' && !ui.practice && !pastDay && saves ? (
-                <DaySave plan={plan} results={ui.results} previousBest={apiBest} onDone={toMenu} onSettled={noteSaved} />
+              {ui.phase === 'done' && !ui.practice && !pastDay && saves && pageRun.current ? (
+                <DaySave
+                  plan={plan}
+                  results={ui.results}
+                  counted={pageRun.current}
+                  previousBest={apiBest}
+                  onDone={toMenu}
+                  onSettled={noteSaved}
+                />
               ) : null}
-              {lateSave && ui.phase === 'menu' && run && run.levels.length >= ROUNDS ? (
-                <DaySave plan={plan} results={kept} previousBest={apiBest} onDone={() => setLateSave(false)} onSettled={noteSaved} />
+              {lateSave && ui.phase === 'menu' ? (
+                <DaySave
+                  plan={plan}
+                  results={keptResults(plan, lateSave.run)}
+                  counted={{ startedAt: lateSave.run.startedAt, owner: lateSave.owner }}
+                  previousBest={apiBest}
+                  onDone={() => setLateSave(null)}
+                  onSettled={noteSaved}
+                />
               ) : null}
               {ui.phase === 'done' && (ui.practice || pastDay || !saves) ? (
                 <DayCard
@@ -891,9 +965,9 @@ function SoundRow() {
 }
 
 /** The day's five as squares, each with how full it was. */
-function Marks({ results }: { results: readonly PourResult[] }) {
+function Marks({ results, label = 'Your five pours' }: { results: readonly PourResult[]; label?: string }) {
   return (
-    <ol className="halffull-card__marks" aria-label="Your five pours">
+    <ol className="halffull-card__marks" aria-label={label}>
       {results.map((r, i) => (
         <li key={i} className={`halffull-card__mark halffull-card__mark--${markClass(r.score)}`}>
           <span aria-hidden="true">{markFor(r.score)}</span>
@@ -916,31 +990,55 @@ function StartCard({
   plan,
   run,
   kept,
+  legacy,
+  claimable,
+  claimableKept,
+  waiting,
   pastDay,
   board,
   saves,
   onStart,
+  onTakeUp,
   onPractice,
   onSave,
+  onSaveClaimable,
 }: {
   plan: DayPlan
+  /** The player's own run of the day on this device. */
   run: DayRun | null
   kept: readonly PourResult[]
+  /** Their run is one kept from before runs were stamped (signed out only): whose it was isn't known. */
+  legacy: boolean
+  /** With none of their own, a pour played signed out on this device, which they may take up. */
+  claimable: DayRun | null
+  claimableKept: readonly PourResult[]
+  /** It isn't known yet who's signed in: a counted pour waits for it. */
+  waiting: boolean
   pastDay: boolean
   board: TodayBoard | null
   /** Whether a day goes on a board (not while the game is on deck). */
   saves: boolean
   onStart: () => void
+  onTakeUp: () => void
   onPractice: () => void
   onSave: () => void
+  onSaveClaimable: () => void
 }) {
   const done = !pastDay && dayDone(run)
   const started = !pastDay && kept.length > 0 && !done
   const sum = done && kept.length >= ROUNDS ? summarize(kept) : null
   // Poured on another device: the board has the figure, this device never saw the pours.
   const elsewhere = done && !sum && run?.board != null ? run.board : null
-  // A finished first pour the board hasn't got (played signed out, or its save never landed).
-  const offBoard = saves && sum != null && board != null && !board.you
+  // A finished first pour the board hasn't got (played signed out, or its save never landed). Not one kept
+  // from before runs were stamped: it may have been anyone's.
+  const offBoard = saves && sum != null && board != null && !board.you && !legacy
+  // Poured here while signed out, by whoever it was, and the player signed in has no pour of their own
+  // here: theirs to take up if it was them (it goes on the board as theirs), or to leave, pouring their
+  // own first pour. One begun but with nothing locked is nothing to take up.
+  const claim = pastDay || run || !claimable?.levels.length ? null : claimable
+  const claimDone = dayDone(claim)
+  const claimSum = claimDone && claimableKept.length >= ROUNDS ? summarize(claimableKept) : null
+  const claimOffBoard = saves && claimSum != null && board != null && !board.you
   const standing = pastDay ? null : todayWords(board)
   return (
     <Card label="Half Full">
@@ -956,9 +1054,13 @@ function StartCard({
             ? 'That’s your pour for today. New glasses at midnight; pour these again as much as you like, for practice.'
             : started
               ? `Your pour today is waiting at glass ${kept.length + 1} of ${ROUNDS}. The ones you locked are kept.`
-              : pastDay
-                ? 'A past day’s five glasses, to pour again. Nothing here counts.'
-                : 'Fill four glasses half full: by what they hold, not how tall they are. Then share one jug fairly between two friends. Your first pour of the day is your result.'}
+              : claim
+                ? claimDone
+                  ? 'Today’s glasses were poured on this device while signed out. If that was you, put it on today’s board as yours; if not, pour your own.'
+                  : `A pour begun on this device while signed out is waiting at glass ${claimableKept.length + 1} of ${ROUNDS}. Carry it on if it’s yours, or pour your own.`
+                : pastDay
+                  ? 'A past day’s five glasses, to pour again. Nothing here counts.'
+                  : 'Fill four glasses half full: by what they hold, not how tall they are. Then share one jug fairly between two friends. Your first pour of the day is your result.'}
         </p>
       </div>
       {sum ? (
@@ -971,8 +1073,13 @@ function StartCard({
           <strong>{formatBoard(elsewhere)}</strong>
           <span>{tierFor(elsewhere / 100)} · poured on another device</span>
         </div>
+      ) : claimSum ? (
+        <div className="halffull-card__result">
+          <strong>{claimSum.scoreText}</strong>
+          <span>{claimSum.tier} · poured here signed out</span>
+        </div>
       ) : null}
-      {sum ? <Marks results={kept} /> : null}
+      {sum ? <Marks results={kept} /> : claimSum ? <Marks results={claimableKept} label="The five pours made here signed out" /> : null}
       {standing ? <p className="halffull-card__standing">{standing}</p> : null}
       <SoundRow />
       <div className="game-card__actions">
@@ -988,12 +1095,39 @@ function StartCard({
               Pour again · doesn’t count
             </button>
           </>
+        ) : claim ? (
+          // Not shared from here: it's only theirs once they've taken it up.
+          <>
+            {!claimDone ? (
+              // Never focused first: the day's usual Space or Enter mustn't take up someone else's pour.
+              <button type="button" className="panel__btn" onClick={onTakeUp}>
+                Carry on
+              </button>
+            ) : claimOffBoard ? (
+              <button type="button" className="panel__btn" onClick={onSaveClaimable}>
+                Put it on today’s board
+              </button>
+            ) : null}
+            <button
+              type="button"
+              className={claimDone && !claimOffBoard ? 'panel__btn' : 'panel__btn panel__btn--ghost'}
+              onClick={onStart}
+              autoFocus={claimDone && !claimOffBoard}
+            >
+              Pour your own
+            </button>
+          </>
         ) : (
-          <button type="button" className="panel__btn" onClick={onStart} autoFocus>
+          <button type="button" className="panel__btn" onClick={onStart} autoFocus disabled={waiting}>
             {started ? 'Carry on' : pastDay ? 'Pour' : 'Start'}
           </button>
         )}
       </div>
+      {waiting ? (
+        <p className="halffull-card__note" role="status">
+          Checking who’s signed in…
+        </p>
+      ) : null}
       {!pastDay ? <p className="halffull-card__note">New glasses in {untilNext(msUntilNextDay())}</p> : null}
       {saves ? (
         <a className="halffull-card__archive" href={gameArchiveHref(SLUG)}>
@@ -1008,26 +1142,35 @@ function StartCard({
 
 /**
  * Today's pour on the boards: the site's own run report (place, tickets, the day's record), with the pours
- * sent along for the API to score the day from.
+ * sent along for the API to score the day from. It goes on as its owner's: one an account began waits for
+ * that account to be signed in, and one played signed out goes on as whoever signs in, and is theirs from
+ * then on, on this device too.
  */
 function DaySave({
   plan: planNow,
   results: resultsNow,
+  counted: countedNow,
   previousBest,
   onDone,
   onSettled,
 }: {
   plan: DayPlan
   results: readonly PourResult[]
+  /** The first pour it is: when it began, and whose it is. */
+  counted: PageRun
   previousBest: number
   onDone: () => void
   onSettled: () => void
 }) {
   // The day it was poured on, kept: midnight moving the page on mustn't re-score it against the new glasses.
-  const [{ plan, results }] = useState(() => ({ plan: planNow, results: resultsNow }))
+  const [{ plan, results, counted }] = useState(() => ({ plan: planNow, results: resultsNow, counted: countedNow }))
   const sum = summarize(results)
   const levels = results.map((r) => r.level)
   const pours = { day: plan.day, levels, auto: results.map((r) => r.auto) }
+  const onSaved = () => {
+    const account = currentAccountId()
+    if (counted.owner === SIGNED_OUT && typeof account === 'string') claimDayRun(plan.day, counted.startedAt, account)
+  }
   return (
     <ScoreSaveCard
       gameSlug={SLUG}
@@ -1037,8 +1180,10 @@ function DaySave({
       previousBest={previousBest}
       pours={pours}
       shareLine={shareText(plan, results, window.location.origin)}
+      owner={ownerAccount(counted.owner)}
       onDone={onDone}
       onSettled={onSettled}
+      onSaved={onSaved}
     />
   )
 }

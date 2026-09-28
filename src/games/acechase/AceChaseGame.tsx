@@ -1,38 +1,43 @@
 import '../../styles/acechase.css'
-import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import { useEffect, useReducer, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { GamePlayChrome, PlayReadout, PlayReadoutScore } from '../../components/GameHud'
 import { GameStage } from '../../components/GameStage'
 import { GamePauseOverlay, PauseButton } from '../../components/PauseControls'
 import { PlayReadoutStats, PlayStat } from '../../components/PlayStats'
+import { useAccountId } from '../../hooks/useAccountId'
 import { gameArchiveHref, gameHref, navigate } from '../../hooks/useHashRoute'
 import { useGamePause } from '../../hooks/useGamePause'
 import { usePersonalBest } from '../../hooks/usePersonalBest'
 import { usePlayerName } from '../../hooks/usePlayerName'
+import { currentAccountId } from '../../lib/auth'
+import { ownerAccount, ownerOf, SIGNED_OUT } from '../../lib/deviceRuns'
 import { gameAccentStyle } from '../../lib/gameAccentStyle'
 import { haptic } from '../../lib/haptics'
 import { normalizePlayerName } from '../../lib/leaderboard'
 import {
+  claimablePast,
   markPastSolved,
   pastProgress,
   savePastProgress,
   solvedHere,
   subscribePastHoles,
   syncPastHoles,
+  takeUpPast,
   useHoleBoard,
-  type PastProgress,
 } from '../../lib/pastHoles'
 import {
+  claimableDay,
   dailyDay,
   dailyServer,
   dayProgress,
+  dayResult,
   patternOf,
   recordSolved,
   saveProgress,
   subscribeDaily,
   syncDaily,
+  takeUpDay,
   todaysHole,
-  type DailyServer,
-  type DayProgress,
   type TodaysHole,
 } from '../../lib/dailyHole'
 import { sfx } from '../../lib/sound'
@@ -190,11 +195,15 @@ function Dial({
   )
 }
 
-/** Keep where today's play stands, and a bullseye as the day's result. */
-function keepDay(today: TodaysHole, s: GameState) {
-  const before = dayProgress(today.day)
+/**
+ * Keep where today's play stands, on the run of the player it began with (`owner`, lib/deviceRuns.ts)
+ * whoever is signed in by now, and a bullseye as their result for the day.
+ */
+function keepDay(today: TodaysHole, owner: string, s: GameState) {
+  // Their run so far: one from before runs had owners, carried on signed out, is the signed-out run from here.
+  const before = dayProgress(today.day, ownerAccount(owner))
   // What the day already has (its result, whether it's sent, what it paid) stays as it is.
-  saveProgress(today.day, {
+  saveProgress(today.day, owner, {
     ...before,
     tries: s.tries,
     shots: [...s.shots],
@@ -203,13 +212,13 @@ function keepDay(today: TodaysHole, s: GameState) {
     angle: s.angle,
   })
   const last = s.shots[s.shots.length - 1]
-  if (last?.bull && !before?.solved) recordSolved(today.day, { tries: s.tries, at: Date.now(), pattern: patternOf(s.shots) })
+  if (last?.bull && !before?.solved) recordSolved(today.day, owner, { tries: s.tries, at: Date.now(), pattern: patternOf(s.shots) })
 }
 
-/** Keep where a past hole's play stands, and its first bullseye as its result (lib/pastHoles.ts). */
-function keepPast(hole: TodaysHole, s: GameState) {
-  const before = pastProgress(hole.day)
-  savePastProgress(hole.day, {
+/** Keep where a past hole's play stands, on its run's player's, and its first bullseye as their result (lib/pastHoles.ts). */
+function keepPast(hole: TodaysHole, owner: string, s: GameState) {
+  const before = pastProgress(hole.day, ownerAccount(owner))
+  savePastProgress(hole.day, owner, {
     tries: s.tries,
     shots: [...s.shots],
     ghosts: s.ghosts.map((g) => [...g]),
@@ -218,13 +227,8 @@ function keepPast(hole: TodaysHole, s: GameState) {
     ...(before?.solved ? { solved: before.solved, sent: before.sent } : {}),
   })
   const last = s.shots[s.shots.length - 1]
-  if (last?.bull && !before?.solved) markPastSolved(hole.day, { tries: s.tries, at: Date.now(), pattern: patternOf(s.shots) })
+  if (last?.bull && !before?.solved) markPastSolved(hole.day, owner, { tries: s.tries, at: Date.now(), pattern: patternOf(s.shots) })
 }
-
-/** A past hole's play on this device, for its cards. */
-type PastPlay = { progress: PastProgress | null; solved: ReturnType<typeof solvedHere> }
-
-const pastPlayOf = (day: string): PastPlay => ({ progress: pastProgress(day), solved: solvedHere(day) })
 
 /**
  * Ace Chase: Today's Hole in 3D, played with numbers. Set the power and the angle, putt, and see where it
@@ -235,6 +239,11 @@ const pastPlayOf = (day: string): PastPlay => ({ progress: pastProgress(day), so
  * coming back carries on the count, and the first bullseye is the day's result: lib/dailyHole.ts keeps
  * it, and signed in sends it up, where the API puts it on Ace Chase's board. After that the hole can be
  * played again for practice, which counts for nothing.
+ *
+ * A run is its player's (lib/deviceRuns.ts): the account signed in as it begins, or signed out. It's kept
+ * and sent as theirs even if someone else signs in before it ends, and another player on the same device
+ * starts their own. One played signed out is the one thing another player can take up, here only: carry
+ * it on, put it on the board, or sign in with its result card up.
  *
  * The camera is yours between shots (drag, pinch, two fingers, or the Tee, Target and Above buttons).
  * Keys: ↑ ↓ power (Shift for 5), ← → angle (Shift for 1°), Space or Enter to putt, and again to see how
@@ -253,7 +262,13 @@ export function AceChaseGame({ ahead, past }: { ahead?: TodaysHole; past?: Today
   const today = todayRef.current
   /** A past hole, for the loop to keep its tries. */
   const pastRef = useRef<TodaysHole | null>(past ?? null)
-  const [pastPlay, setPastPlay] = useState<PastPlay | null>(() => (past ? pastPlayOf(past.day) : null))
+  // Who's looking: the start cards show their own play, and never another account's.
+  const viewer = useAccountId()
+  /** Whose the counted run under way, or just ended, is: its stamp (lib/deviceRuns.ts); null for practice or a trial. */
+  const runOwner = useRef<string | null>(null)
+  const [runBy, setRunBy] = useState<string | null>(null)
+  // What this device and the API have is read as it's drawn: this asks for a fresh look when either changes.
+  const [, refreshDevice] = useReducer((n: number) => n + 1, 0)
   const playerName = normalizePlayerName(usePlayerName())
   const [boardVersion, setBoardVersion] = useState(0)
   const holeBoard = useHoleBoard(past ? past.day : null, playerName, boardVersion)
@@ -266,8 +281,6 @@ export function AceChaseGame({ ahead, past }: { ahead?: TodaysHole; past?: Today
         ? createInitialState(past.def, 'daily')
         : createInitialState(ahead!.def, 'test')
   if (!stateRef.current) stateRef.current = fresh()
-  const [progress, setProgress] = useState<DayProgress | null>(() => (today ? dayProgress(today.day) : null))
-  const [server, setServer] = useState<DailyServer | null>(() => dailyServer())
   /** How many of today's shots are kept on the device. */
   const keptShots = useRef(0)
   const holderRef = useRef<HTMLDivElement>(null)
@@ -340,17 +353,19 @@ export function AceChaseGame({ ahead, past }: { ahead?: TodaysHole; past?: Today
         if (before.phase !== 'holed' && stateRef.current.phase === 'holed') haptic('hit')
       }
       const s = stateRef.current!
-      // Today's tries are kept the moment each one ends, however it ended: a skip, a bullseye, a miss.
+      // Today's tries are kept the moment each one ends, however it ended: a skip, a bullseye, a miss. They're
+      // kept on the run's own player's, whoever is signed in by now.
       const hole = todayRef.current
-      if (hole && s.mode === 'daily' && !s.practice && s.shots.length > keptShots.current) {
+      const owner = runOwner.current
+      if (hole && owner && s.mode === 'daily' && !s.practice && s.shots.length > keptShots.current) {
         keptShots.current = s.shots.length
-        keepDay(hole, s)
+        keepDay(hole, owner, s)
       }
       // And a past hole's, the same way.
       const pastHole = pastRef.current
-      if (pastHole && s.mode === 'daily' && !s.practice && s.shots.length > keptShots.current) {
+      if (pastHole && owner && s.mode === 'daily' && !s.practice && s.shots.length > keptShots.current) {
         keptShots.current = s.shots.length
-        keepPast(pastHole, s)
+        keepPast(pastHole, owner, s)
       }
       // Open the result card the moment the hole's done, so a stray tap can't start another first.
       if (s.phase === 'gameover' && shownBull.current !== s.bulls) {
@@ -384,11 +399,7 @@ export function AceChaseGame({ ahead, past }: { ahead?: TodaysHole; past?: Today
   // Today's Hole: what this device has done at it, and what the API says about everyone's day.
   useEffect(() => {
     if (!today) return
-    const update = () => {
-      setProgress(dayProgress(today.day))
-      setServer(dailyServer())
-    }
-    const off = subscribeDaily(update)
+    const off = subscribeDaily(refreshDevice)
     void syncDaily(true)
     return off
   }, [today])
@@ -396,9 +407,8 @@ export function AceChaseGame({ ahead, past }: { ahead?: TodaysHole; past?: Today
   // A past hole: what this device has done at it, sent up if it's waiting on a sign-in.
   useEffect(() => {
     if (!past) return
-    const update = () => setPastPlay(pastPlayOf(past.day))
-    const off = subscribePastHoles(update)
-    void syncPastHoles().then(update)
+    const off = subscribePastHoles(refreshDevice)
+    void syncPastHoles().then(() => refreshDevice())
     return off
   }, [past])
 
@@ -446,28 +456,48 @@ export function AceChaseGame({ ahead, past }: { ahead?: TodaysHole; past?: Today
   const refresh = () => setUi(toSnapshot(stateRef.current!))
 
   const restart = (practice = false) => {
+    const viewerNow = currentAccountId()
+    const owner = ownerOf(viewerNow)
+    const again = practice || dailyDone()
+    // A counted run is its player's, so none starts until the account signed in is known (lib/deviceRuns.ts).
+    if ((today || past) && !again && owner === undefined) return
     saveOpenRef.current = false
     setSaveOpen(false)
     startGrace.current = performance.now() + 260
     if (today) {
-      // Today's Hole carries on from where the device left it; once it's done, it's practice.
-      const p = dayProgress(today.day)
-      const again = practice || Boolean(p?.solved)
+      // Today's Hole carries on from where the player's own run left it; once they have a result, here or
+      // on the board, it's practice.
+      const p = dayProgress(today.day, viewerNow)
       const resume = p && !again ? { tries: p.tries, shots: p.shots, ghosts: p.ghosts, power: p.power, angle: p.angle } : null
       stateRef.current = startGame(stateRef.current!, Math.random, resume, again)
       keptShots.current = stateRef.current.shots.length
     } else if (past) {
-      // A past hole carries on from where the device left it too; with a result on it already, it's practice.
-      const p = pastProgress(past.day)
-      const again = practice || pastDone()
+      // A past hole carries on from where the player left it too; with a result on it already, it's practice.
+      const p = pastProgress(past.day, viewerNow)
       const resume = p && !again ? { tries: p.tries, shots: p.shots, ghosts: p.ghosts, power: p.power, angle: p.angle } : null
       stateRef.current = startGame(stateRef.current!, Math.random, resume, again)
       keptShots.current = stateRef.current.shots.length
     } else {
       stateRef.current = startGame(stateRef.current!)
     }
+    // Stamped as it begins, and kept and sent as theirs to the end, whoever signs in meanwhile.
+    runOwner.current = (today || past) && !again ? (owner ?? null) : null
+    setRunBy(runOwner.current)
     setView('tee')
     refresh()
+  }
+
+  /** Carry on a run from signed out as the account signed in: it's theirs from here. */
+  const takeUp = () => {
+    if (today) takeUpDay(today.day)
+    else if (past) takeUpPast(past.day)
+    restart()
+  }
+
+  /** The run that has ended is `owner`'s now: put on the board from signed out by the account signed in. */
+  const ownRunAs = (owner: string) => {
+    runOwner.current = owner
+    setRunBy(owner)
   }
 
   const change = (f: (s: GameState) => GameState) => {
@@ -509,11 +539,31 @@ export function AceChaseGame({ ahead, past }: { ahead?: TodaysHole; past?: Today
     }
   }
 
-  /** A past hole has the player's result already: on this device, or on its board. */
-  const pastDone = () => Boolean(past && (solvedHere(past.day) || holeBoard?.you))
+  /** Today's Hole has the player's result already: their own bullseye here, or one on the board from wherever. */
+  const todayDone = () => {
+    if (!today) return false
+    const told = dailyServer()
+    return dayResult(dayProgress(today.day, currentAccountId()), told?.day === today.day ? told.you : undefined) != null
+  }
+
+  /** A past hole has the player's result already: their own on this device, or on its board. */
+  const pastDone = () => Boolean(past && (solvedHere(past.day, currentAccountId()) || holeBoard?.you))
 
   /** Today's Hole (or a past one) is done: only its card's buttons play it again, a stray tap doesn't. */
-  const dailyDone = () => Boolean(today && dayProgress(today.day)?.solved) || pastDone()
+  const dailyDone = () => todayDone() || pastDone()
+
+  /**
+   * A tap or a key starts the hole only when that's the one thing to do: not once it's done, not before
+   * the account signed in is known, and not while a run from signed out is on offer to take up.
+   */
+  const tapStarts = () => {
+    if (dailyDone()) return false
+    const viewerNow = currentAccountId()
+    const known = ownerOf(viewerNow) !== undefined
+    if (today) return known && (Boolean(dayProgress(today.day, viewerNow)) || !claimableDay(today.day, viewerNow))
+    if (past) return known && (Boolean(pastProgress(past.day, viewerNow)) || !claimablePast(past.day, viewerNow))
+    return true
+  }
 
   const onPointerDown = (e: ReactPointerEvent<HTMLElement>) => {
     if (saveOpenRef.current || pausedRef.current) return
@@ -521,7 +571,7 @@ export function AceChaseGame({ ahead, past }: { ahead?: TodaysHole; past?: Today
     // A tap at the start card starts the hole; the end of one waits for its card.
     if (s.phase === 'menu') {
       e.preventDefault()
-      if (performance.now() >= startGrace.current && !dailyDone()) restart()
+      if (performance.now() >= startGrace.current && tapStarts()) restart()
       return
     }
     if (s.phase === 'intro') change(skipIntro)
@@ -538,7 +588,7 @@ export function AceChaseGame({ ahead, past }: { ahead?: TodaysHole; past?: Today
         e.preventDefault()
         if (e.repeat) return
         if (s.phase === 'menu') {
-          if (performance.now() >= startGrace.current && !dailyDone()) restart()
+          if (performance.now() >= startGrace.current && tapStarts()) restart()
         } else if (s.phase === 'intro') change(skipIntro)
         else shoot()
         return
@@ -559,6 +609,16 @@ export function AceChaseGame({ ahead, past }: { ahead?: TodaysHole; past?: Today
   const showMiss = (ui.phase === 'missed' || ui.phase === 'return') && last && !last.bull
   const cinema = CINEMA.has(ui.phase)
   const touch = touchScreen()
+
+  // The viewer's own play at the hole, and a run from signed out they may take up, for the start cards.
+  const own = today ? dayProgress(today.day, viewer) : null
+  const claim = today ? claimableDay(today.day, viewer) : null
+  const server = today ? dailyServer() : null
+  const pastOwn = past ? pastProgress(past.day, viewer) : null
+  const pastClaim = past ? claimablePast(past.day, viewer) : null
+  // The run that has just ended, as its own player has it, for its result card.
+  const ended = today && runBy ? dayProgress(today.day, ownerAccount(runBy)) : null
+  const pastEnded = past && runBy ? pastProgress(past.day, ownerAccount(runBy)) : null
 
   return (
     <section className={`acechase acechase--fullscreen${cinema ? ' acechase--cinema' : ''}`} style={gameAccentStyle(SLUG)}>
@@ -688,16 +748,27 @@ export function AceChaseGame({ ahead, past }: { ahead?: TodaysHole; past?: Today
             <div className="acechase__overlay">
               <GamePauseOverlay slug={SLUG} personalBest={apiBest} paused={paused} onResume={resume} />
               {today && ui.phase === 'menu' && !saveOpen && !paused && !noGl ? (
-                <DailyStartCard hole={today} progress={progress} server={server} onStart={() => restart()} onPractice={() => restart(true)} />
+                <DailyStartCard
+                  hole={today}
+                  progress={own}
+                  claim={claim}
+                  server={server}
+                  onStart={() => restart()}
+                  onTakeUp={takeUp}
+                  onPractice={() => restart(true)}
+                />
               ) : null}
               {ahead && ui.phase === 'menu' && !saveOpen && !paused && !noGl ? <TrialStartCard hole={ahead} onStart={() => restart()} /> : null}
               {past && ui.phase === 'menu' && !saveOpen && !paused && !noGl ? (
                 <PastStartCard
                   hole={past}
-                  progress={pastPlay?.progress ?? null}
-                  solved={pastPlay?.solved ?? null}
+                  progress={pastOwn}
+                  solved={solvedHere(past.day, viewer)}
+                  claim={pastClaim}
                   board={holeBoard}
                   onStart={() => restart()}
+                  onTakeUp={takeUp}
+                  onSent={() => setBoardVersion((v) => v + 1)}
                   onPractice={() => restart(true)}
                 />
               ) : null}
@@ -706,9 +777,15 @@ export function AceChaseGame({ ahead, past }: { ahead?: TodaysHole; past?: Today
                   hole={past}
                   tries={last?.n ?? ui.tries}
                   practice={ui.practice}
-                  solved={pastPlay?.progress?.solved ? { ...pastPlay.progress.solved, sent: pastPlay.progress.sent } : null}
+                  solved={pastEnded?.solved ? { ...pastEnded.solved, sent: pastEnded.sent } : null}
+                  owner={runBy}
                   board={holeBoard}
-                  onSent={() => setBoardVersion((v) => v + 1)}
+                  onSent={(answer) => {
+                    setBoardVersion((v) => v + 1)
+                    // Put on the board from signed out, it's the account's run now.
+                    const account = currentAccountId()
+                    if (answer.kept && runOwner.current === SIGNED_OUT && typeof account === 'string') ownRunAs(account)
+                  }}
                   onPractice={() => restart(true)}
                   onLeave={() => navigate(gameArchiveHref(SLUG))}
                 />
@@ -716,9 +793,12 @@ export function AceChaseGame({ ahead, past }: { ahead?: TodaysHole; past?: Today
               {today && ui.phase === 'gameover' && saveOpen ? (
                 <DailyResultCard
                   hole={today}
-                  progress={progress}
+                  progress={ended}
+                  own={own}
                   server={server}
                   practice={ui.practice}
+                  owner={runBy}
+                  onTakenUp={ownRunAs}
                   onPractice={() => restart(true)}
                   onLeave={() => navigate(gameHref(SLUG))}
                 />

@@ -2,12 +2,13 @@ import { useEffect, useId, useRef, useState, type PointerEvent as ReactPointerEv
 import { GamePanelBody } from '../../components/PauseControls'
 import { TicketGlyph } from '../../components/prizes/Ticket'
 import { ReportSignIn, TagSlots } from '../../components/RunReport'
+import { useAccountId } from '../../hooks/useAccountId'
 import { useAuth } from '../../hooks/useAuth'
 import { useDeliberatePress } from '../../hooks/useDeliberatePress'
 import { gamePlayHref, navigate, prizesHref } from '../../hooks/useHashRoute'
 import { usePlayerName } from '../../hooks/usePlayerName'
 import { useSaveWait } from '../../hooks/useSaveWait'
-import { linkCurrentNameToAccount } from '../../lib/auth'
+import { linkCurrentNameToAccount, recallAccountTag } from '../../lib/auth'
 import { fitCardToSpace } from '../../lib/cardFit'
 import { gameAccentStyle } from '../../lib/gameAccentStyle'
 import { ApiError, getLastPlayerName, normalizePlayerName } from '../../lib/leaderboard'
@@ -226,6 +227,8 @@ type LapSave =
   /** Slower than your best on the board, which stands: nothing to save. */
   | { phase: 'stands' }
   | { phase: 'signedOut' }
+  /** Driven under another account than the one signed in now: it waits for that one. */
+  | { phase: 'otherAccount' }
   | { phase: 'noTag' }
   | { phase: 'failed'; error: string }
 
@@ -271,7 +274,8 @@ function LapTag() {
 /**
  * After a lap of a past track: its time, and it goes on the track's board, signed in, when it beats your
  * best there. The save goes on under the card; Drive it again waits on it a moment (useSaveWait), and the
- * lap goes out under its own run, taken as it ended, whatever comes after.
+ * lap goes out under its own run, taken as it ended, whatever comes after. It's its driver's alone: a lap
+ * driven as one account waits for that account (lib/deviceRuns.ts).
  */
 export function PastResultCard({
   course,
@@ -280,6 +284,7 @@ export function PastResultCard({
   splits,
   run,
   board,
+  owner,
   onSaved,
   onAgain,
   onDone,
@@ -292,12 +297,16 @@ export function PastResultCard({
   /** The run the lap was driven in. */
   run: Promise<string | undefined> | null
   board: TrackBoard | null
+  /** Whose the lap is, as ScoreSaveCard takes it: an account's id, saved only while it's signed in; null driven signed out, saved as whoever signs in. */
+  owner?: string | null
   onSaved: (result: TrackLapResult) => void
   onAgain: () => void
   onDone: () => void
 }) {
   const allow = useDeliberatePress()
   const { signedIn, loading } = useAuth()
+  const accountId = useAccountId()
+  const otherAccount = typeof owner === 'string' && accountId !== owner
   const name = normalizePlayerName(usePlayerName())
   const known = board?.you?.score ?? null
   const [save, setSave] = useState<LapSave>({ phase: 'waiting' })
@@ -315,8 +324,16 @@ export function PastResultCard({
 
   useEffect(() => {
     if (sent.current || loading) return
+    // Signed out, even under the lap's own player: signing in (as them) sends it.
     if (!signedIn) {
       setSave({ phase: 'signedOut' })
+      return
+    }
+    // A new session's account not said yet: wait for it, never sending it or calling it someone else's.
+    if (typeof owner === 'string' && accountId === undefined) return
+    // Never on the board as someone else's: it goes once its own account is signed in again.
+    if (otherAccount) {
+      setSave({ phase: 'otherAccount' })
       return
     }
     if (!name) {
@@ -346,7 +363,7 @@ export function PastResultCard({
         if (shown.current) setSave(next)
       },
     )
-  }, [loading, signedIn, name, known, score, run, course.n])
+  }, [loading, otherAccount, owner, accountId, signedIn, name, known, score, run, course.n])
 
   const pending = save.phase === 'waiting' || save.phase === 'saving'
   const waited = useSaveWait(pending)
@@ -367,7 +384,16 @@ export function PastResultCard({
         onSignedIn={() => undefined}
       />
     )
-  else if (save.phase === 'noTag') status = <LapTag />
+  else if (save.phase === 'otherAccount') {
+    const tag = typeof owner === 'string' ? recallAccountTag(owner) : ''
+    status = (
+      <p className="game-card__hint">
+        {tag
+          ? `Played as ${tag}. Sign in as ${tag} to put it on the track’s board.`
+          : 'Played as another account. Sign in as that account to put it on the track’s board.'}
+      </p>
+    )
+  } else if (save.phase === 'noTag') status = <LapTag />
   else if (save.phase === 'failed') status = <p className="panel__error">{save.error}</p>
   // Taking a track's record pays, once a track.
   const paid = result?.tickets?.earned ? (

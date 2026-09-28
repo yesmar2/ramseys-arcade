@@ -3,7 +3,8 @@ import { announceSecrets, type SecretFound } from './secrets'
 import { DAILY_PLAN } from '../games/acechase/dailyPlan'
 import type { PathPoint, Shot, ShotEnd } from '../games/acechase/game'
 import type { HoleDef, Style } from '../games/acechase/physics'
-import { AUTH_EVENT, getSessionToken } from './auth'
+import { currentAccountId, sessionFingerprint } from './auth'
+import { claimableRun, ownRun, SIGNED_OUT, subscribeViewer, type OwnedRuns, type Viewer } from './deviceRuns'
 import { detectDeviceType } from './device'
 import { api } from './leaderboard'
 import { noteTicketsPaid } from './tickets'
@@ -17,11 +18,17 @@ import { noteTicketsPaid } from './tickets'
  * coming back carries on the count. The first bullseye is the day's result. Signed in, it goes to the API,
  * which keeps one result a day for each account, first one kept, and puts it on Ace Chase's board under
  * the account's tag, paying its tickets (with no tag yet, as soon as there is one); signed out, the device
- * keeps it and hands it over when the player signs in that day.
+ * keeps it, and whoever signs in can put it on the board from Ace Chase that day.
+ *
+ * Each run on the device is its player's (lib/deviceRuns.ts): stamped with the account it began under, or
+ * as played signed out. A day keeps one run for each, so another player on the same device never sees,
+ * carries on or sends one that isn't theirs.
  */
 
 const TZ = 'America/New_York'
-const STORE_KEY = 'skermix-acechase-daily'
+const STORE_KEY = 'skermix-acechase-days'
+/** Where the device kept its days before runs had owners: read, never written, so an older page still open can't upset either. */
+const LEGACY_KEY = 'skermix-acechase-daily'
 export const DAILY_EVENT = 'skermix-acechase-daily'
 
 const dayFormat = new Intl.DateTimeFormat('en-CA', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit' })
@@ -72,69 +79,133 @@ export type DayProgress = {
   tickets?: number
 }
 
-type Store = { v: 1; days: Record<string, DayProgress> }
+/** Each day's runs, by owner (lib/deviceRuns.ts). */
+type Store = { v: 1; days: Record<string, OwnedRuns<DayProgress>> }
 
-function readStore(): Store {
+/** Null when storage can't be read at all, so this visit's own copy stands in. */
+function readStore(): Store | null {
   try {
     const raw = localStorage.getItem(STORE_KEY)
     const parsed = raw ? (JSON.parse(raw) as Partial<Store>) : null
     if (parsed?.v === 1 && parsed.days && typeof parsed.days === 'object') return { v: 1, days: parsed.days }
+    return { v: 1, days: {} }
   } catch {
     // A private window or full storage: today's tries are kept for this visit.
+    return null
   }
-  return { v: 1, days: {} }
+}
+
+/** The days as the device kept them before runs had owners: one run a day, whoever played it. */
+function readLegacy(): Record<string, DayProgress> {
+  try {
+    const raw = localStorage.getItem(LEGACY_KEY)
+    const parsed = raw ? (JSON.parse(raw) as { v?: number; days?: Record<string, DayProgress> }) : null
+    if (parsed?.v === 1 && parsed.days && typeof parsed.days === 'object') return parsed.days
+  } catch {
+    // Nothing kept from before, then.
+  }
+  return {}
 }
 
 let store: Store | null = null
+let legacy: Record<string, DayProgress> | null = null
+/** Storage didn't take the last write, so this visit's copy is the one to build on. */
+let unkept = false
 
 function current(): Store {
-  if (!store) store = readStore()
+  store ??= readStore() ?? { v: 1, days: {} }
   return store
+}
+
+function legacyDays(): Record<string, DayProgress> {
+  legacy ??= readLegacy()
+  return legacy
 }
 
 function writeStore(next: Store) {
   store = next
   try {
     localStorage.setItem(STORE_KEY, JSON.stringify(next))
+    unkept = false
   } catch {
     // Kept in memory for this visit.
+    unkept = true
   }
   window.dispatchEvent(new Event(DAILY_EVENT))
 }
 
-export function dayProgress(day: string): DayProgress | null {
-  return current().days[day] ?? null
+/**
+ * The viewer's own run at a day's hole on this device (lib/deviceRuns.ts): the one stamped with their
+ * account, or signed out, the one played signed out (or kept from before runs had owners). Never another
+ * account's, nor, signed in, one played signed out, which only Ace Chase itself offers to take up
+ * (claimableDay). Null for none, and while the account signed in isn't known yet.
+ */
+export function dayProgress(day: string, viewer: Viewer): DayProgress | null {
+  return ownRun(current().days[day], legacyDays()[day], viewer)
+}
+
+/** A run at a day's hole played signed out on this device, which the account signed in may take up in Ace Chase. */
+export function claimableDay(day: string, viewer: Viewer): DayProgress | null {
+  return claimableRun(current().days[day], viewer)
+}
+
+/** The run a day keeps under one stamp, exactly: an account's id, or SIGNED_OUT. */
+function keptRun(day: string, owner: string): DayProgress | null {
+  return current().days[day]?.[owner] ?? null
 }
 
 const round2 = (v: number) => Math.round(v * 100) / 100
 
-/** Keep a day's play: the last fortnight is kept, and only today's paths, rounded to the centimetre. */
-export function saveProgress(day: string, progress: DayProgress) {
-  const days = { ...current().days, [day]: progress }
-  const keep = Object.keys(days).sort().slice(-14)
-  const next: Record<string, DayProgress> = {}
-  for (const d of keep) {
-    const p = days[d]!
-    next[d] = {
-      ...p,
-      shots: p.shots.slice(-30),
-      ghosts: d === day ? p.ghosts.slice(-3).map((g) => g.map(([x, y, z]) => [round2(x), round2(y), round2(z)] as PathPoint)) : [],
+/**
+ * Change a day's runs, and keep the last fortnight: each run's last 30 shots, and only that day's paths,
+ * rounded to the centimetre.
+ */
+function keepRuns(day: string, change: (runs: OwnedRuns<DayProgress>) => OwnedRuns<DayProgress>) {
+  // Read afresh: another tab may have kept another player's run since this one last looked.
+  if (!unkept) store = readStore() ?? store
+  const days = { ...current().days, [day]: change({ ...current().days[day] }) }
+  const next: Store['days'] = {}
+  for (const d of Object.keys(days).sort().slice(-14)) {
+    const runs: OwnedRuns<DayProgress> = {}
+    for (const [owner, p] of Object.entries(days[d]!)) {
+      if (!p) continue
+      runs[owner] = {
+        ...p,
+        shots: p.shots.slice(-30),
+        ghosts: d === day ? p.ghosts.slice(-3).map((g) => g.map(([x, y, z]) => [round2(x), round2(y), round2(z)] as PathPoint)) : [],
+      }
     }
+    next[d] = runs
   }
   writeStore({ v: 1, days: next })
 }
 
-/** Days in a row with a bullseye: counting today if it's done, or up to yesterday while it isn't. */
-export function deviceStreak(day = dailyDay()): number {
-  const days = current().days
-  const solved = (d: string) => Boolean(days[d]?.solved)
-  let d = solved(day) ? day : previousDay(day)
-  let n = 0
-  while (solved(d)) {
-    n++
-    d = previousDay(d)
-  }
-  return n
+/** Keep where a run's play at a day's hole stands, under the stamp it began with (lib/deviceRuns.ts). */
+export function saveProgress(day: string, owner: string, progress: DayProgress) {
+  keepRuns(day, (runs) => ({ ...runs, [owner]: progress }))
+}
+
+/** Stamp a day's run with another owner: the account that took it up. Whatever that account had there, it's this now. */
+function restamp(day: string, from: string, to: string, run: DayProgress) {
+  keepRuns(day, (runs) => {
+    const next = { ...runs, [to]: run }
+    if (from !== to) delete next[from]
+    return next
+  })
+}
+
+/**
+ * Carry on a half-played run from signed out as the account signed in (its Carry on, in Ace Chase): it's
+ * theirs from here on. Only while they have no run of their own that day, and no result on the board.
+ */
+export function takeUpDay(day: string): boolean {
+  const account = currentAccountId()
+  const run = keptRun(day, SIGNED_OUT)
+  if (typeof account !== 'string' || !run || run.solved || keptRun(day, account)) return false
+  const told = dailyServer()
+  if (told?.day === day && told.you?.tries != null) return false
+  restamp(day, SIGNED_OUT, account, run)
+  return true
 }
 
 function previousDay(day: string): string {
@@ -186,100 +257,182 @@ export type DailyServer = {
     tag?: string | null
     /** Today's result is on the board. */
     board?: boolean
+    /** Today's result's tries, 'o' a miss and 'b' the bullseye (left out by an older API). */
+    pattern?: string | null
   }
   /** What today's result paid as it went on the board, said once, by the reply that put it there. */
   tickets?: { earned: number; balance: number }
 }
 
 let server: DailyServer | null = null
+/** The session `server` was asked for (auth.ts's sessionFingerprint): its "you" is that session's, and no one else's. */
+let serverFor: number | null = null
 
+/** What the API says about today: how everyone did, and how you did only when it was asked as you. */
 export function dailyServer(): DailyServer | null {
-  return server
+  if (!server || serverFor === sessionFingerprint()) return server
+  return { ...server, you: undefined, tickets: undefined }
 }
 
-function apply(reply: DailyServer, token: string | null) {
-  const mine = token === getSessionToken()
-  server = mine ? reply : { ...reply, you: undefined, tickets: undefined }
-  // The tickets are said once: the header's count, and the day's cards, keep them.
+/** The API's word on today, asked as `session` and, as far as this device knew then, as `account`. */
+function apply(reply: DailyServer, session: number | null, account: Viewer) {
+  const mine = session === sessionFingerprint()
+  // One asked for another session (signed in, out, or as someone else since) still says how everyone
+  // did, but it never takes the place of this session's own.
+  if (mine || serverFor !== sessionFingerprint()) {
+    server = reply
+    serverFor = session
+  }
+  // The tickets are said once: the header's count, and the day's cards (on the run of the account they
+  // were paid to), keep them.
   if (mine && reply.tickets?.earned) {
     noteTicketsPaid(reply.tickets)
-    const p = dayProgress(reply.day)
-    if (p) saveProgress(reply.day, { ...p, tickets: (p.tickets ?? 0) + reply.tickets.earned })
+    const p = typeof account === 'string' ? keptRun(reply.day, account) : null
+    if (p) saveProgress(reply.day, account!, { ...p, tickets: (p.tickets ?? 0) + reply.tickets.earned })
   }
   window.dispatchEvent(new Event(DAILY_EVENT))
 }
 
+/**
+ * A run kept before runs had owners, taken as the account's own when it's exactly their result on today's
+ * board, tries and every miss in order (the pattern; a count of tries alone is too often someone else's).
+ * Never over a run of their own, and never before the API says the pattern.
+ */
+function adopt(reply: DailyServer, account: string) {
+  const tries = reply.you?.tries
+  const pattern = reply.you?.pattern
+  const kept = legacyDays()[reply.day]
+  if (tries == null || !pattern || !kept?.solved || kept.solved.tries !== tries || kept.solved.pattern !== pattern) return
+  if (keptRun(reply.day, account)) return
+  // What it paid went to whoever sent it, which this can't say.
+  saveProgress(reply.day, account, { ...kept, sent: true, tickets: undefined })
+}
+
 const SYNC_EVERY_MS = 60_000
-let syncedAt = 0
-let syncing: Promise<void> | null = null
+/** The last sync, and who it was for: another session, or the same one's account coming to be known, asks again at once. */
+let synced: { for: number | null; as: Viewer; at: number } | null = null
+let syncing: { for: number | null; as: Viewer; done: Promise<void> } | null = null
 
 /**
- * Ask the API how today stands, and signed in, send up a result this device has and the API doesn't:
- * today's, or yesterday's if it came in just before midnight. Pages call this freely: once a minute at most.
+ * Ask the API how today stands, and signed in, send up the account's own result this device has and the
+ * API doesn't: today's, or yesterday's if it came in just before midnight. Only ever the account's own
+ * run: never another account's, one kept before runs had owners, or one played signed out, which only
+ * Ace Chase offers to take up (claimDay). Pages call this freely: once a minute at most.
  */
 export function syncDaily(force = false): Promise<void> {
-  if (syncing) return syncing
-  if (!force && Date.now() - syncedAt < SYNC_EVERY_MS) return Promise.resolve()
-  syncedAt = Date.now()
-  syncing = (async () => {
-    const token = getSessionToken()
+  const session = sessionFingerprint()
+  // Whose results go up: the account signed in as this starts, and only while it still is.
+  const account = currentAccountId()
+  if (syncing && syncing.for === session && syncing.as === account) return syncing.done
+  if (!force && synced && synced.for === session && synced.as === account && Date.now() - synced.at < SYNC_EVERY_MS) {
+    return Promise.resolve()
+  }
+  synced = { for: session, as: account, at: Date.now() }
+  const done: Promise<void> = (async () => {
     try {
-      apply(await api<DailyServer>('/daily-hole'), token)
-      if (!token) return
+      const reply = await api<DailyServer>('/daily-hole')
+      apply(reply, session, account)
+      if (typeof account !== 'string') return
+      if (currentAccountId() !== account || sessionFingerprint() !== session) return
+      adopt(reply, account)
       const today = dailyDay()
       for (const day of [previousDay(today), today]) {
-        const p = dayProgress(day)
-        if (!p?.solved || p.sent) continue
-        await sendResult(day, p.solved, token)
+        const p = keptRun(day, account)
+        if (!p?.solved || p.sent || currentAccountId() !== account) continue
+        await sendResult(day, account, p.solved, account)
       }
     } catch {
       // Today's Hole plays without the API; it catches up next time.
     }
   })().finally(() => {
-    syncing = null
+    if (syncing?.done === done) syncing = null
   })
-  return syncing
+  syncing = { for: session, as: account, done }
+  return done
 }
 
-async function sendResult(day: string, solved: DailySolved, token: string) {
+/**
+ * Send a run's bullseye as `account`, the account signed in now: its own run, or one played signed out
+ * that it's taking up, stamped as theirs once the API has it. Only the same run is marked sent: one
+ * played since (after a midnight, say) isn't this result.
+ */
+async function sendResult(day: string, owner: string, solved: DailySolved, account: string) {
+  const session = sessionFingerprint()
   const reply = await api<DailyServer & { secrets?: SecretFound[] }>('/daily-hole/results', {
     method: 'POST',
     body: JSON.stringify({ day, tries: solved.tries, pattern: solved.pattern, device: detectDeviceType() }),
   })
   // Hole in One, on the first try (lib/secrets.ts).
   announceSecrets(reply.secrets)
-  const p = dayProgress(day)
-  if (p) saveProgress(day, { ...p, sent: true })
-  if (reply.day === dailyDay()) apply(reply, token)
+  const p = keptRun(day, owner)
+  if (p?.solved?.at === solved.at) restamp(day, owner, account, { ...p, sent: true })
+  if (reply.day === dailyDay()) apply(reply, session, account)
 }
 
-/** Today's bullseye: kept here, and signed in, sent to the API. */
-export function recordSolved(day: string, solved: DailySolved) {
-  const p = dayProgress(day)
+/**
+ * A run's bullseye, its owner's result for the day: kept on their run, and sent to the API while they're
+ * the account signed in. Another account's waits for that account to sign in here again (syncDaily); one
+ * played signed out waits to be taken up (claimDay).
+ */
+export function recordSolved(day: string, owner: string, solved: DailySolved) {
+  const p = keptRun(day, owner)
   if (!p || p.solved) return
-  saveProgress(day, { ...p, solved, sent: false })
-  const token = getSessionToken()
-  if (token) void sendResult(day, solved, token).catch(() => {})
+  saveProgress(day, owner, { ...p, solved, sent: false })
+  if (owner !== SIGNED_OUT && currentAccountId() === owner) void sendResult(day, owner, solved, owner).catch(() => {})
 }
 
-/** Listen for changes here or in another tab, for what the API says, and for signing in or out. */
+/**
+ * Put a finished run played signed out on the day's board as the account signed in: taken up in Ace Chase
+ * only, by the player's own act ("Put it on today's board", or signing in with its result card up). Sent
+ * only while that account has no result that day and no bullseye of its own here; once the API has it,
+ * it's stamped as theirs. Says whether it went.
+ */
+export async function claimDay(day: string): Promise<boolean> {
+  const account = currentAccountId()
+  if (typeof account !== 'string') return false
+  // How the account's day stands, asked afresh: the API keeps its first result, so with one already the
+  // signed-out run can't be it.
+  await syncDaily(true)
+  const run = keptRun(day, SIGNED_OUT)
+  if (currentAccountId() !== account || !run?.solved || run.sent || keptRun(day, account)?.solved) return false
+  const told = dailyServer()
+  if (told?.day === day && told.you?.tries != null) return false
+  await sendResult(day, SIGNED_OUT, run.solved, account)
+  return true
+}
+
+/**
+ * The viewer's result on a day's hole: the API's word first (it keeps an account's first result, from
+ * whichever device), else the bullseye of their own run here. Its tries' pattern only when their own run
+ * here is that result.
+ */
+export function dayResult(progress: DayProgress | null, you: DailyServer['you']): { tries: number; pattern: string | null } | null {
+  const own = progress?.solved ?? null
+  const told = you?.tries ?? null
+  if (told == null) return own ? { tries: own.tries, pattern: own.pattern } : null
+  return { tries: told, pattern: own?.tries === told ? own.pattern : null }
+}
+
+/** Listen for changes here or in another tab, for what the API says, and for signing in, out, or as someone else. */
 export function subscribeDaily(onChange: () => void): () => void {
   const onStorage = (e: StorageEvent) => {
-    if (e.key !== STORE_KEY) return
+    // A storage cleared all at once names no key.
+    if (e.key != null && e.key !== STORE_KEY && e.key !== LEGACY_KEY) return
     store = null
+    legacy = null
     onChange()
   }
-  const onAuth = () => {
-    if (server) server = { ...server, you: undefined }
+  // Another viewer: their own runs show, and their day is asked for at once (and their result sent, if it's waiting).
+  const onViewer = () => {
     onChange()
     void syncDaily(true)
   }
   window.addEventListener(DAILY_EVENT, onChange)
   window.addEventListener('storage', onStorage)
-  window.addEventListener(AUTH_EVENT, onAuth)
+  const stopViewer = subscribeViewer(onViewer)
   return () => {
     window.removeEventListener(DAILY_EVENT, onChange)
     window.removeEventListener('storage', onStorage)
-    window.removeEventListener(AUTH_EVENT, onAuth)
+    stopViewer()
   }
 }

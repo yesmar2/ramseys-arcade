@@ -18,12 +18,14 @@ import { formatBoard, judgeLevels, markFor, tierFor } from '../games/halffull/sc
 import { dailyTrack, trackDay } from '../games/hotlap/daily'
 import { keptLap } from '../games/hotlap/lap'
 import { formatLap } from '../games/hotlap/score'
+import { useAccountId } from '../hooks/useAccountId'
 import { useAuth } from '../hooks/useAuth'
 import { focusFromUrl, gameBoardHref, gamePlayHref, tournamentHref } from '../hooks/useHashRoute'
 import { useLiveEvents } from '../hooks/useLiveEvents'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { capitalName, huntDay, huntPick, huntStats, openBugHunt, subscribeHunt } from '../lib/bugHunt'
 import { dailyDay, dayProgress, subscribeDaily, syncDaily, todaysHole } from '../lib/dailyHole'
+import type { Viewer } from '../lib/deviceRuns'
 import { formatLeaderboardScore } from '../lib/leaderboardFormat'
 import { normalizePlayerName } from '../lib/leaderboard'
 import { numberWord } from '../lib/numberWord'
@@ -147,13 +149,17 @@ function daysBetween(from: string, to: string): number {
 const triesWords = (n: number) => `${n} ${n === 1 ? 'try' : 'tries'}`
 
 /*
- * Each daily's punch. Signed in, the account's own results (the API's) come first: this device may hold
- * someone else's. Until the API has today's, what this device did stands in.
+ * Each daily's punch, for the viewer (lib/deviceRuns.ts). The account's own results (the API's) come
+ * first. What this device did counts only when it's the viewer's own run: the device may hold another
+ * player's, or a run played signed out that only its game can take up, and neither is ever shown as the
+ * viewer's. Their own run adds to their result (each square, or a punch before the API has it), and only
+ * their own half-played run says Carry on.
  */
 
-function holePunch(day: string, server: TodayServer | null): PunchDay {
+function holePunch(day: string, server: TodayServer | null, viewer: Viewer): PunchDay {
   const hole = todaysHole(day)
-  const progress = dayProgress(day)
+  // The viewer's own run on this device only (lib/dailyHole.ts): never another account's, nor, signed in, one played signed out.
+  const progress = dayProgress(day, viewer)
   const tries = server?.results.hole?.tries ?? progress?.solved?.tries ?? null
   const done = tries != null || Boolean(server?.done.hole)
   const tried = done ? 0 : (progress?.tries ?? 0)
@@ -169,11 +175,12 @@ function holePunch(day: string, server: TodayServer | null): PunchDay {
   }
 }
 
-function trackPunch(server: TodayServer | null): PunchDay {
+function trackPunch(server: TodayServer | null, viewer: Viewer): PunchDay {
   const tday = trackDay()
   const track = dailyTrack(tday)
   const serverLap = server?.results.track?.score ?? null
-  const lapTime = keptLap(tday)?.time ?? null
+  // The viewer's own best lap on this device (never another player's, nor one driven signed out while they're signed in).
+  const lapTime = keptLap(tday, viewer)?.time ?? null
   const lapWords = serverLap != null ? formatLeaderboardScore('hotlap', serverLap) : lapTime != null ? formatLap(lapTime) : null
   const done = lapWords != null || Boolean(server?.done.track)
   return {
@@ -188,10 +195,10 @@ function trackPunch(server: TodayServer | null): PunchDay {
   }
 }
 
-function wantedPunch(server: TodayServer | null): PunchDay {
+function wantedPunch(server: TodayServer | null, viewer: Viewer): PunchDay {
   const bday = bugDay()
   const serverRun = server?.results.wanted?.score ?? null
-  const device = dayRun(bday)
+  const device = dayRun(bday, viewer)
   const deviceRun = device?.result ?? null
   // The device's run tells more (what was found, each scene's square), when it's the same run as the API's.
   const run = deviceRun && (serverRun == null || findbugBoardScore(deviceRun.ms) === serverRun) ? deviceRun : null
@@ -215,12 +222,13 @@ function wantedPunch(server: TodayServer | null): PunchDay {
   }
 }
 
-function pourPunch(server: TodayServer | null): PunchDay {
+function pourPunch(server: TodayServer | null, viewer: Viewer): PunchDay {
   const pday = pourDay()
   // Its title names the day's glasses, so the day's plan is built (once a page) whenever the pour is on the ticket.
   const plan = dayPlan(pday)
   const serverPour = server?.results.pour?.score ?? null
-  const run = pourRun(pday)
+  // The viewer's own pour here, if any: never another account's, nor one poured signed out (only the game takes that up).
+  const run = pourRun(pday, viewer)
   const levels = run?.levels ?? []
   const judged = levels.length >= ROUNDS ? judgeLevels(plan, levels.slice(0, ROUNDS)) : null
   // The device's pours tell more (each glass's square, the tier), when they're the same pour as the API's.
@@ -239,15 +247,18 @@ function pourPunch(server: TodayServer | null): PunchDay {
   }
 }
 
-function punchDay(key: TodayKey, day: string, server: TodayServer | null): PunchDay {
-  if (key === 'hole') return holePunch(day, server)
-  if (key === 'track') return trackPunch(server)
-  if (key === 'wanted') return wantedPunch(server)
-  return pourPunch(server)
+function punchDay(key: TodayKey, day: string, server: TodayServer | null, viewer: Viewer): PunchDay {
+  if (key === 'hole') return holePunch(day, server, viewer)
+  if (key === 'track') return trackPunch(server, viewer)
+  if (key === 'wanted') return wantedPunch(server, viewer)
+  return pourPunch(server, viewer)
 }
 
-/** The day's live dailies, as this device and the API have them, kept fresh and rolled over at midnight. */
-function useTicket(): { day: string; punches: Punch[]; server: TodayServer | null; live: TodayDaily[] } {
+/**
+ * The day's live dailies, as this device and the API have them for the viewer, kept fresh and rolled over
+ * at midnight.
+ */
+function useTicket(viewer: Viewer): { day: string; punches: Punch[]; server: TodayServer | null; live: TodayDaily[] } {
   const [, refresh] = useReducer((n: number) => n + 1, 0)
   const [day, setDay] = useState(dailyDay)
   useEffect(() => subscribeDaily(refresh), [])
@@ -274,7 +285,7 @@ function useTicket(): { day: string; punches: Punch[]; server: TodayServer | nul
     label: d.label,
     game: getGame(d.slug)?.name ?? d.label,
     fresh: d.from ? daysBetween(d.from, day) < FRESH_DAYS : false,
-    ...punchDay(d.key, day, server),
+    ...punchDay(d.key, day, server, viewer),
   }))
   return { day, punches, server, live }
 }
@@ -289,11 +300,13 @@ function useHuntPunch(): { name: string; bugId: string; found: boolean } {
 
 /**
  * Friends', or a group's, day on the dailies: asked again when the player's own day moves, when the tab
- * comes back, and every two minutes. The pick of friends or a group is this device's.
+ * comes back, when another account signs in, and every two minutes. The pick of friends or a group is
+ * this device's.
  */
-function useRivals(signedIn: boolean): { data: Rivals | null; group: string | null; pick: (group: string | null) => void } {
+function useRivals(signedIn: boolean, viewer: Viewer): { data: Rivals | null; group: string | null; pick: (group: string | null) => void } {
   const [group, setGroup] = useState<string | null>(rivalsScope)
-  const [data, setData] = useState<Rivals | null>(null)
+  // The table, with the account it was asked for: another account's is never shown, even while theirs is asked.
+  const [held, setHeld] = useState<{ for: Viewer; data: Rivals | null }>({ for: null, data: null })
   const [tick, bump] = useReducer((n: number) => n + 1, 0)
   useEffect(() => subscribeToday(bump), [])
   useEffect(() => {
@@ -302,17 +315,18 @@ function useRivals(signedIn: boolean): { data: Rivals | null; group: string | nu
   }, [])
   useEffect(() => {
     if (!signedIn) {
-      setData(null)
+      setHeld({ for: viewer, data: null })
       return
     }
     let cancelled = false
     void fetchRivals(group, tick > 0).then((next) => {
-      if (!cancelled) setData(next)
+      if (!cancelled) setHeld({ for: viewer, data: next })
     })
     return () => {
       cancelled = true
     }
-  }, [signedIn, group, tick])
+  }, [signedIn, viewer, group, tick])
+  const data = held.for === viewer ? held.data : null
   const pick = (next: string | null) => {
     setRivalsScope(next)
     setGroup(next)
@@ -531,8 +545,10 @@ function Featured({ punch, then, rival }: { punch: Punch; then: Punch | null; ri
 
 export function TodayCard() {
   const { signedIn } = useAuth()
-  const { day, punches, server, live } = useTicket()
-  const rivals = useRivals(signedIn)
+  // Who's looking: each punch is theirs, and never another account's that played on this device.
+  const viewer = useAccountId()
+  const { day, punches, server, live } = useTicket(viewer)
+  const rivals = useRivals(signedIn, viewer)
   // The punch the player picked to see big; until then, the first still to do.
   const [picked, setPicked] = useState<TodayKey | null>(null)
   // Said aloud only when the player picks a punch, never when the panel changes on its own.

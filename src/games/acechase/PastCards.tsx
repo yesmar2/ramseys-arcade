@@ -2,15 +2,18 @@ import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import { GoogleSignInButton } from '../../components/GoogleSignInButton'
 import { TicketGlyph } from '../../components/prizes/Ticket'
 import { TagSlots } from '../../components/RunReport'
+import { useAccountId } from '../../hooks/useAccountId'
 import { useAuth } from '../../hooks/useAuth'
 import { gameArchiveHref, navigate, prizesHref } from '../../hooks/useHashRoute'
 import { usePlayerName } from '../../hooks/usePlayerName'
 import { linkCurrentNameToAccount } from '../../lib/auth'
 import { PLACE_NAME, type DailySolved, type TodaysHole } from '../../lib/dailyHole'
+import { SIGNED_OUT } from '../../lib/deviceRuns'
 import { gameAccentStyle } from '../../lib/gameAccentStyle'
 import { ApiError, getLastPlayerName, normalizePlayerName } from '../../lib/leaderboard'
 import { pastHoleAnswer, sendPastResult, type HoleBoard, type PastHoleResult, type PastProgress } from '../../lib/pastHoles'
 import { ordinal } from '../../lib/scoreboard'
+import { PlayedAs } from './DailyCards'
 
 /*
  * A past hole's two cards (/games/acechase/play?hole=day:YYYY-MM-DD, from the archive): the one it opens
@@ -70,27 +73,74 @@ function Archive() {
   )
 }
 
+/**
+ * A bullseye on a past hole from signed out on this device, put on the hole's board by the account signed
+ * in, under its tag (a tag first, if it has none): theirs from then on (lib/pastHoles.ts).
+ */
+function PutOnHoleBoard({ day, solved, onSent }: { day: string; solved: DailySolved; onSent: () => void }) {
+  const name = normalizePlayerName(usePlayerName())
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const put = async () => {
+    if (busy) return
+    setBusy(true)
+    setError(null)
+    try {
+      const answer = await sendPastResult(day, SIGNED_OUT, solved)
+      if (answer) onSent()
+      else setError('Sign in with a tag to put it on the board.')
+    } catch (err) {
+      setError(err instanceof Error && err.message ? err.message : 'That result didn’t go on the board. Try again.')
+    } finally {
+      setBusy(false)
+    }
+  }
+  // Tagless: the tag first, and then it goes on the board in the same press.
+  if (!name) return <HoleTag onTagged={() => void put()} />
+  return (
+    <>
+      {error ? <p className="panel__error">{error}</p> : null}
+      <button type="button" className="panel__btn" disabled={busy} onClick={() => void put()}>
+        {busy ? 'Saving…' : 'Put it on the hole’s board'}
+      </button>
+    </>
+  )
+}
+
 /** The card a past hole opens on: its record, where you stand, and how its board works. */
 export function PastStartCard({
   hole,
   progress,
   solved,
+  claim,
   board,
   onStart,
+  onTakeUp,
+  onSent,
   onPractice,
 }: {
   hole: TodaysHole
+  /** The player's own play at it on this device (lib/deviceRuns.ts). */
   progress: PastProgress | null
-  /** This device's result on it, from its day or since. */
+  /** The player's own result on it on this device, from its day or since. */
   solved: DailySolved | null
+  /** Play at it from signed out on this device, which the account signed in may take up. */
+  claim: PastProgress | null
   board: HoleBoard | null
   onStart: () => void
+  /** Carry on the play from signed out, as theirs. */
+  onTakeUp: () => void
+  /** A result from signed out went on the board. */
+  onSent: () => void
   onPractice: () => void
 }) {
   const { signedIn } = useAuth()
+  const viewer = useAccountId()
   const you = board?.you ?? null
   const done = Boolean(you || solved)
   const tries = progress?.tries ?? 0
+  // Played signed out here, which the account signed in can make theirs while they've none of their own.
+  const open = !done && !progress ? claim : null
   return (
     <Card label={`${hole.def.name}, a past hole`}>
       <div className="game-card__head">
@@ -116,15 +166,37 @@ export function PastStartCard({
                 ? `${triesWords(tries)} so far`
                 : 'Not played yet'}
         </Row>
+        {open ? <Row label="Played signed out">{open.solved ? `Bullseye in ${open.solved.tries}` : `${triesWords(open.tries)} so far`}</Row> : null}
       </div>
       {!signedIn && !done ? <p className="game-card__hint">Sign in to put your result on its board.</p> : null}
+      {open ? (
+        <p className="game-card__hint">
+          {open.solved
+            ? 'Someone got it here signed out. Put it on the hole’s board as yours, or play your own.'
+            : 'Someone played it here signed out. Carry it on as yours, or start your own.'}
+        </p>
+      ) : null}
       <div className="game-card__actions">
         {done ? (
           <button type="button" className="panel__btn" onClick={onPractice}>
             Play it again · doesn&rsquo;t count
           </button>
+        ) : open ? (
+          <>
+            {open.solved ? (
+              <PutOnHoleBoard day={hole.day} solved={open.solved} onSent={onSent} />
+            ) : (
+              <button type="button" className="panel__btn" onClick={onTakeUp}>
+                Carry it on
+              </button>
+            )}
+            <button type="button" className="panel__btn panel__btn--ghost" onClick={onStart}>
+              {open.solved ? 'Play your own' : 'Start your own'}
+            </button>
+          </>
         ) : (
-          <button type="button" className="panel__btn" onClick={onStart}>
+          // A counted run is its player's, so it waits until the account signed in is known.
+          <button type="button" className="panel__btn" disabled={viewer === undefined} onClick={onStart}>
             {tries > 0 ? 'Carry on' : 'Start'}
           </button>
         )}
@@ -141,10 +213,11 @@ type Send =
   | { phase: 'done'; answer: PastHoleResult }
   | { phase: 'signedOut' }
   | { phase: 'noTag' }
+  | { phase: 'otherAccount' }
   | { phase: 'failed'; error: string }
 
 /** Signed in with no tag yet: a tag puts the result on the hole's board, which the card then does. */
-function HoleTag() {
+function HoleTag({ onTagged }: { onTagged?: () => void } = {}) {
   const id = useId()
   const [draft, setDraft] = useState(() => getLastPlayerName())
   const [busy, setBusy] = useState(false)
@@ -156,6 +229,7 @@ function HoleTag() {
     setError(null)
     try {
       await linkCurrentNameToAccount(name)
+      onTagged?.()
     } catch (err) {
       setError(err instanceof Error && err.message ? err.message : 'That tag didn’t work. Try another.')
     } finally {
@@ -174,13 +248,16 @@ function HoleTag() {
 
 /**
  * The card a past hole's bullseye brings up. The first one's result goes on the hole's board, signed in
- * with a tag, sent from here (once: lib/pastHoles.ts); after that, a bullseye is practice.
+ * with a tag, sent from here (once: lib/pastHoles.ts); after that, a bullseye is practice. It goes as its
+ * own player's (lib/deviceRuns.ts): played signed out, as whoever signs in with the card up; played as an
+ * account, only once that account is signed in.
  */
 export function PastResultCard({
   hole,
   tries,
   practice,
   solved,
+  owner,
   board,
   onSent,
   onPractice,
@@ -192,20 +269,25 @@ export function PastResultCard({
   practice: boolean
   /** The hole's result on this device, to send if it hasn't gone. */
   solved: (DailySolved & { sent?: boolean }) | null
+  /** Whose the run is: its stamp (lib/deviceRuns.ts); null for practice. */
+  owner: string | null
   board: HoleBoard | null
-  onSent: () => void
+  onSent: (answer: PastHoleResult) => void
   onPractice: () => void
   onLeave: () => void
 }) {
   const { signedIn, loading } = useAuth()
+  const viewer = useAccountId()
   const name = normalizePlayerName(usePlayerName())
   const [send, setSend] = useState<Send>(() => {
-    const answer = pastHoleAnswer(hole.day)
+    const answer = pastHoleAnswer(hole.day, viewer)
     return answer ? { phase: 'done', answer } : { phase: 'waiting' }
   })
   const shown = useRef(true)
   const sentRef = useRef(onSent)
   sentRef.current = onSent
+  // Played as one account, and another (or nobody) signed in now: it waits for its own player.
+  const otherAccount = owner != null && owner !== SIGNED_OUT && viewer !== undefined && owner !== viewer
 
   useEffect(() => {
     shown.current = true
@@ -216,19 +298,25 @@ export function PastResultCard({
 
   useEffect(() => {
     if (practice || loading || send.phase === 'done' || send.phase === 'sending') return
-    if (!solved || solved.sent) return
+    if (!solved || solved.sent || !owner) return
+    if (otherAccount) {
+      setSend({ phase: 'otherAccount' })
+      return
+    }
     if (!signedIn) {
       setSend({ phase: 'signedOut' })
       return
     }
+    // Signed in, but whose account it is isn't known yet: asked again once it is.
+    if (viewer === undefined) return
     if (!name) {
       setSend({ phase: 'noTag' })
       return
     }
     setSend({ phase: 'sending' })
-    sendPastResult(hole.day, solved).then(
+    sendPastResult(hole.day, owner, solved).then(
       (answer) => {
-        if (answer) sentRef.current()
+        if (answer) sentRef.current(answer)
         if (!shown.current) return
         setSend(answer ? { phase: 'done', answer } : { phase: 'noTag' })
       },
@@ -241,7 +329,7 @@ export function PastResultCard({
     )
     // The send's own phase changes aren't a reason to send again.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [practice, loading, signedIn, name, solved, hole.day])
+  }, [practice, loading, signedIn, viewer, otherAccount, name, solved, owner, hole.day])
 
   const answer = send.phase === 'done' ? send.answer : null
   const record = answer ? answer.record : (board?.entries[0] ?? null)
@@ -255,6 +343,7 @@ export function PastResultCard({
   else if (answer?.tookRecord) status = <p className="acechase-past__news">Hole record! Nobody has done it in fewer.</p>
   else if (answer && !answer.kept) status = <p className="game-card__hint">You had a result here already, which stands.</p>
   else if (answer && you) status = <p className="game-card__hint">On the hole’s board: {ordinal(you.place)} of {players}.</p>
+  else if (send.phase === 'otherAccount') status = <PlayedAs owner={owner} signedIn={signedIn} />
   else if (send.phase === 'signedOut')
     status = (
       <div className="acechase-daily__signin">

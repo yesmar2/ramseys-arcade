@@ -1,7 +1,7 @@
 import { isGameListed } from '../data/games'
 import { TODAY_FROM } from '../games/halffull/daily'
 import { currentRoute, homeHref, navigate, ROUTE_EVENT } from '../hooks/useHashRoute'
-import { AUTH_EVENT, getSessionToken } from './auth'
+import { sessionFingerprint, subscribeAccountId } from './auth'
 import { api, ApiError, type LeaderboardGame } from './leaderboard'
 import { formatLeaderboardScore } from './leaderboardFormat'
 
@@ -15,8 +15,10 @@ import { formatLeaderboardScore } from './leaderboardFormat'
  *
  * The API keeps the streak for a signed-in account (GET /today, its today.ts), and settles its rewards
  * when asked. This module holds the API's word and asks again whenever something may have changed it:
- * a daily finished, tickets paid, a page changed, the tab come back. The card also knows what this
- * device has done today, so it punches at once and works signed out.
+ * a daily finished, tickets paid, a page changed, the tab come back. The word is the session's it was
+ * asked for, and only ever shown to that session: another account signed in on this device (or in
+ * another tab) is asked for its own at once. The card also knows what this device has done today, so it
+ * punches at once and works signed out.
  */
 
 export type TodayKey = 'hole' | 'track' | 'wanted' | 'pour'
@@ -106,41 +108,49 @@ export const TODAY_MILESTONES: readonly { day: number; prize: string }[] = [
 export const TODAY_EVENT = 'skermix:today'
 
 /** Things that may move the card along: a hole solved, a day's bugs found or glasses poured, tickets paid for a lap. */
-const NUDGES = ['skermix-acechase-daily', 'skermix-findbug-daily', 'skermix-halffull-daily', 'arcade-tickets', ROUTE_EVENT, AUTH_EVENT] as const
+const NUDGES = ['skermix-acechase-daily', 'skermix-findbug-daily', 'skermix-halffull-daily', 'arcade-tickets', ROUTE_EVENT] as const
 /** Asked again at most this often, however many nudges come. */
 const FRESH_MS = 4000
 
 let held: TodayServer | null = null
+/** The session `held` was asked for (auth.ts's sessionFingerprint): it's that session's day, and no one else's. */
+let heldFor: number | null = null
 let heldAt = 0
-let asking: Promise<TodayServer | null> | null = null
+/** The question out now, and the session it went out for. */
+let asking: { for: number; reply: Promise<TodayServer | null> } | null = null
 
 export function todayServer(): TodayServer | null {
-  return held
+  return held && heldFor === sessionFingerprint() ? held : null
 }
 
 /** The signed-in account's Today, from the API, or null signed out. */
 export function fetchToday(force = false): Promise<TodayServer | null> {
-  if (!getSessionToken()) {
-    if (held) {
-      held = null
-      window.dispatchEvent(new Event(TODAY_EVENT))
-    }
-    return Promise.resolve(null)
+  const session = sessionFingerprint()
+  // Another session's day (signed out now, or signed in as someone else) goes at once, and is said to go.
+  if (held && heldFor !== session) {
+    held = null
+    heldFor = null
+    window.dispatchEvent(new Event(TODAY_EVENT))
   }
-  if (asking) return asking
+  if (session == null) return Promise.resolve(null)
+  if (asking?.for === session) return asking.reply
   if (!force && held && Date.now() - heldAt < FRESH_MS) return Promise.resolve(held)
-  asking = api<TodayServer>('/today')
+  const reply = api<TodayServer>('/today')
     .then((state) => {
+      // Signed in as someone else while it was asked: it isn't theirs to see.
+      if (sessionFingerprint() !== session) return null
       held = state
+      heldFor = session
       heldAt = Date.now()
       window.dispatchEvent(new Event(TODAY_EVENT))
       return state
     })
-    .catch(() => held)
+    .catch(() => todayServer())
     .finally(() => {
-      asking = null
+      if (asking?.reply === reply) asking = null
     })
-  return asking
+  asking = { for: session, reply }
+  return reply
 }
 
 let listening = 0
@@ -153,6 +163,9 @@ const nudge = () => {
 const onVisible = () => {
   if (document.visibilityState === 'visible') nudge()
 }
+// Signed in, out, or as someone else, here or in another tab: the day is asked for again at once.
+const onAccount = () => void fetchToday(true)
+let stopAccount: (() => void) | null = null
 
 /** Keep the API's word fresh while anything shows it. */
 export function subscribeToday(onChange: () => void): () => void {
@@ -160,6 +173,7 @@ export function subscribeToday(onChange: () => void): () => void {
   if (listening++ === 0) {
     for (const name of NUDGES) window.addEventListener(name, nudge)
     document.addEventListener('visibilitychange', onVisible)
+    stopAccount = subscribeAccountId(onAccount)
   }
   void fetchToday()
   return () => {
@@ -167,6 +181,8 @@ export function subscribeToday(onChange: () => void): () => void {
     if (--listening === 0) {
       for (const name of NUDGES) window.removeEventListener(name, nudge)
       document.removeEventListener('visibilitychange', onVisible)
+      stopAccount?.()
+      stopAccount = null
       window.clearTimeout(nudgeTimer)
     }
   }
@@ -276,19 +292,24 @@ export function setRivalsScope(group: string | null) {
   }
 }
 
+/** Tables kept by the session they were asked for as well as whose day they show: one account's is never another's. */
 const rivalsHeld = new Map<string, { at: number; value: TodayRivals }>()
 
 /** Friends' (or a group's) day on the dailies, from the API; null signed out. */
 export async function fetchRivals(group: string | null, force = false): Promise<TodayRivals | null> {
-  if (!getSessionToken()) return null
-  const key = group ?? 'friends'
+  const session = sessionFingerprint()
+  if (session == null) return null
+  const key = `${session}:${group ?? 'friends'}`
   const hit = rivalsHeld.get(key)
   if (!force && hit && Date.now() - hit.at < RIVALS_FRESH_MS) return hit.value
   try {
     const value = await api<TodayRivals>(`/today/rivals${group ? `?group=${encodeURIComponent(group)}` : ''}`)
+    // Signed in as someone else while it was asked: it isn't theirs to see.
+    if (sessionFingerprint() !== session) return null
     rivalsHeld.set(key, { at: Date.now(), value })
     return value
   } catch (err) {
+    if (sessionFingerprint() !== session) return null
     // A group left or gone: back to friends.
     if (group && err instanceof ApiError && (err.status === 403 || err.status === 404)) {
       setRivalsScope(null)

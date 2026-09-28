@@ -2,6 +2,7 @@ import { useEffect, useMemo, useReducer, useRef, useState, type CSSProperties } 
 import { getGame } from '../data/games'
 import { ShareButton } from '../games/acechase/DailyCards'
 import { drawHolePlan } from '../games/acechase/holePlan'
+import { useAccountId } from '../hooks/useAccountId'
 import { gameArchiveHref, gamePlayHref } from '../hooks/useHashRoute'
 import { inkOn } from '../lib/color'
 import {
@@ -9,6 +10,7 @@ import {
   dailyDay,
   dailyServer,
   dayProgress,
+  dayResult,
   msUntilNextHole,
   subscribeDaily,
   syncDaily,
@@ -40,10 +42,14 @@ const ClockIcon = () => (
   </svg>
 )
 
-/** Today's hole, what this device has done at it, and what the API says, kept fresh and rolled over at midnight. */
+/**
+ * Today's hole, what the player has done at it on this device (their own run only: lib/deviceRuns.ts),
+ * and what the API says, kept fresh and rolled over at midnight.
+ */
 function useTodaysHole(): { hole: TodaysHole; progress: DayProgress | null; server: DailyServer | null } {
   const [day, setDay] = useState(dailyDay)
   const hole = useMemo(() => todaysHole(day), [day])
+  const viewer = useAccountId()
   const [, refresh] = useReducer((n: number) => n + 1, 0)
   useEffect(() => subscribeDaily(refresh), [])
   useEffect(() => {
@@ -57,7 +63,7 @@ function useTodaysHole(): { hole: TodaysHole; progress: DayProgress | null; serv
     return () => window.clearInterval(t)
   }, [])
   const server = dailyServer()
-  return { hole, progress: dayProgress(day), server: server?.day === day ? server : null }
+  return { hole, progress: dayProgress(day, viewer), server: server?.day === day ? server : null }
 }
 
 /** The hole from above, redrawn when its box changes size. */
@@ -86,11 +92,11 @@ export function HolePlan({ hole }: { hole: TodaysHole }) {
 }
 
 function standing(progress: DayProgress | null, server: DailyServer | null): string {
-  const solved = progress?.solved
-  if (solved) {
+  const result = dayResult(progress, server?.you)
+  if (result) {
     const place = server?.you?.place
     const streak = server?.you?.streak ?? 0
-    return `You got it in ${solved.tries}${place != null && server ? `, ${ordinal(place)} of ${server.solved}` : ''}.${
+    return `You got it in ${result.tries}${place != null && server ? `, ${ordinal(place)} of ${server.solved}` : ''}.${
       streak > 1 ? ` That’s ${streak} days in a row.` : ''
     }`
   }
@@ -109,7 +115,8 @@ function standing(progress: DayProgress | null, server: DailyServer | null): str
 export function TodaysHoleCard() {
   const { hole, progress, server } = useTodaysHole()
   const href = gamePlayHref(SLUG)
-  const solved = progress?.solved
+  // Their result, on the board or their own bullseye here: shared only with its tries' pattern, which only their own run here has.
+  const solved = dayResult(progress, server?.you)
   const tries = progress?.tries ?? 0
   const accent = resolveGameAccent(SLUG, getGame(SLUG)?.accent ?? '#2eb8a0')
   const style = { '--e': accent, '--e-ink': inkOn(accent) } as CSSProperties
@@ -145,11 +152,11 @@ export function TodaysHoleCard() {
         <a className="evp-daily__archive" href={gameArchiveHref(SLUG)}>
           Past holes
         </a>
-        {solved ? (
+        {solved?.pattern ? (
           <ShareButton hole={hole} tries={solved.tries} pattern={solved.pattern} className="evp-btn evp-btn--small" />
         ) : (
           <a className="evp-btn evp-btn--small" href={href}>
-            {tries > 0 ? 'Carry on' : 'Play the hole'}
+            {solved ? 'Play again' : tries > 0 ? 'Carry on' : 'Play the hole'}
           </a>
         )}
       </div>
@@ -166,7 +173,7 @@ function nextHoleAt(now = Date.now()) {
 export function TodaysHoleOnNow() {
   const { hole, progress, server } = useTodaysHole()
   const accent = resolveGameAccent(SLUG, getGame(SLUG)?.accent ?? '#2eb8a0')
-  const solved = progress?.solved
+  const solved = dayResult(progress, server?.you)
   const tries = progress?.tries ?? 0
   return (
     <a className="onnow-card" href={gamePlayHref(SLUG)} style={{ '--ev-accent': accent } as CSSProperties}>

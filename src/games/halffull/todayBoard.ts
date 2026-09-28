@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
-import { useAuth } from '../../hooks/useAuth'
+import { useAccountId } from '../../hooks/useAccountId'
+import { currentAccountId, recallAccountTag } from '../../lib/auth'
 import { playersFromRuns } from '../../lib/gameBoard'
 import { getLeaderboard } from '../../lib/leaderboard'
-import { adoptBoardResult, dayDone, dayRun, pourDay } from './daily'
+import { adoptBoardResult, pourDay } from './daily'
 
 /*
  * Today's Pour's board, for its cards: how many have poured, who leads, and where you are. Signed in, a
@@ -20,13 +21,13 @@ export type TodayBoard = {
 }
 
 /**
- * Today's board and your place on it, asked again when the day, your tag or `again` changes; null `day`
- * for none. Only the answer to the latest ask is returned, so a board from before a pour never stands in
- * for the one after it.
+ * Today's board and your place on it, asked again when the day, your tag, the account signed in or `again`
+ * changes; null `day` for none. Only the answer to the latest ask is returned, so a board from before a
+ * pour never stands in for the one after it.
  */
 export function useTodayBoard(day: string | null, me: string, again: unknown = null): TodayBoard | null {
-  const { signedIn } = useAuth()
-  const ask = day ? `${day}|${me}|${String(again)}|${signedIn}` : null
+  const viewer = useAccountId()
+  const ask = day ? `${day}|${me}|${String(again)}|${String(viewer)}` : null
   const [got, setGot] = useState<{ ask: string; board: TodayBoard } | null>(null)
   useEffect(() => {
     if (!day || !ask) return
@@ -44,7 +45,10 @@ export function useTodayBoard(day: string | null, me: string, again: unknown = n
           : you && onDay(you.at)
             ? { place: you.rank, score: you.score }
             : null
-        if (yours && signedIn && !dayDone(dayRun(day))) adoptBoardResult(day, yours.score, Date.now())
+        // Only the account's own pour, under its own tag, and only while it's still the one signed in: a tag
+        // left over from whoever was signed in before is never read as this account's.
+        const own = typeof viewer === 'string' && me !== '' && recallAccountTag(viewer) === me
+        if (yours && own && currentAccountId() === viewer) adoptBoardResult(day, viewer, yours.score, Date.now())
         setGot({
           ask,
           board: {
@@ -61,6 +65,6 @@ export function useTodayBoard(day: string | null, me: string, again: unknown = n
     return () => {
       cancelled = true
     }
-  }, [ask, day, me, signedIn])
+  }, [ask, day, me, viewer])
   return got && got.ask === ask ? got.board : null
 }
