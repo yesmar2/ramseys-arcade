@@ -4,7 +4,7 @@ import { TicketGlyph } from '../../components/prizes/Ticket'
 import { TagSlots } from '../../components/RunReport'
 import { copyText } from '../../components/ShareBoardButton'
 import { useAuth } from '../../hooks/useAuth'
-import { gameArchiveHref, gamePlayHref, navigate, prizesHref } from '../../hooks/useHashRoute'
+import { gameArchiveHref, navigate, prizesHref, todayShareHref } from '../../hooks/useHashRoute'
 import { linkCurrentNameToAccount } from '../../lib/auth'
 import { gameAccentStyle } from '../../lib/gameAccentStyle'
 import { getLastPlayerName, normalizePlayerName } from '../../lib/leaderboard'
@@ -89,7 +89,8 @@ export function ShareButton({
 }) {
   const [copied, setCopied] = useState(false)
   const share = () => {
-    const url = `${window.location.origin}${gamePlayHref(SLUG)}`
+    // The day's own link, which unfurls into the day's card and opens at today's ticket.
+    const url = `${window.location.origin}${todayShareHref(hole.day)}`
     const text = `${shareText(hole, tries, pattern)}\n${url}`
     const touch = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches
     if (touch && typeof navigator.share === 'function') {

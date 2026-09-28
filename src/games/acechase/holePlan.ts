@@ -6,10 +6,12 @@ import { RINGS, type HoleDef, type Pt, type Spot, type Style } from './physics'
  * round it, with its rails, the target and the tee. Play runs left to right. It's how Today's Hole shows
  * itself off the course, on the Events page and the game's page, before anyone plays it.
  *
- * The colours are the scene's (scene.ts, PLACES), for a picture with no light but its own.
+ * The colours are the scene's (scene.ts, PLACES), for a picture with no light but its own. Its parts (the
+ * view, the props, the shaded ground, the rails) are worked out apart from the drawing, so holePlanSvg.ts
+ * can draw the same hole as an SVG, for the card a day's share link unfurls into.
  */
 
-type Palette = {
+export type Palette = {
   /** The ground round the course. */
   off: number
   stripes: readonly [number, number]
@@ -26,7 +28,7 @@ type Palette = {
   props: 'trees' | 'craters' | 'none'
 }
 
-const PALETTES: Record<Style, Palette> = {
+export const PALETTES: Record<Style, Palette> = {
   garden: {
     off: 0x4b7d3d,
     stripes: [0x3f9f55, 0x359149],
@@ -65,17 +67,17 @@ const PALETTES: Record<Style, Palette> = {
   },
 }
 
-const GOLD = 0xf5b942
+export const GOLD = 0xf5b942
 /** A rock's grey, as the scene draws its boulders. */
-const STONE = 0x9a9d96
+export const STONE = 0x9a9d96
 /** A bunker's sand, as the scene draws it. */
 const SAND_RGB = [0xdc, 0xc3, 0x8e]
 
-const css = (hex: number, alpha = 1) =>
+export const css = (hex: number, alpha = 1) =>
   `rgba(${(hex >> 16) & 255}, ${(hex >> 8) & 255}, ${hex & 255}, ${alpha})`
 
 /** Samples a metre, for the shading; the edges are drawn sharp at any size. */
-const SAMPLES = 12
+export const SAMPLES = 12
 /** Round the green, in metres, at the least. */
 const PAD = 1.4
 /** How much steeper than they are the slopes are shaded, so a gentle roll still reads. */
@@ -87,7 +89,7 @@ const LIGHT = (() => {
   return [v[0]! / n, v[1]! / n, v[2]! / n] as const
 })()
 
-type View = {
+export type View = {
   /** Metres to pixels. */
   s: number
   /** The picture's left edge, as a distance down the hole (−z), and its top, across it (x). */
@@ -96,16 +98,16 @@ type View = {
 }
 
 /** Down the hole is to the right, the player's right is down the picture. */
-const toPx = (view: View, x: number, z: number): [number, number] => [(-z - view.u0) * view.s, (x - view.v0) * view.s]
+export const toPx = (view: View, x: number, z: number): [number, number] => [(-z - view.u0) * view.s, (x - view.v0) * view.s]
 
-function boundsOf(green: readonly Pt[]) {
+export function boundsOf(green: readonly Pt[]) {
   const xs = green.map((p) => p[0])
   const zs = green.map((p) => p[1])
   return { x0: Math.min(...xs), x1: Math.max(...xs), z0: Math.min(...zs), z1: Math.max(...zs) }
 }
 
 /** The whole hole, with room round it, fitted to the picture. */
-function fit(def: HoleDef, width: number, height: number): View {
+export function fit(def: HoleDef, width: number, height: number): View {
   const b = boundsOf(def.green)
   const long = b.z1 - b.z0 + PAD * 2
   const wide = b.x1 - b.x0 + PAD * 2
@@ -147,11 +149,15 @@ function distanceToGreen(green: readonly Pt[], x: number, z: number): number {
   return best
 }
 
+/** A tree or a crater round the course, in pixels, and a tree's green. */
+export type Prop = { kind: 'tree' | 'crater'; px: number; py: number; rad: number; leaf: number }
+
 /** Trees round a garden, craters round the Moon: in the same places every time a hole is drawn. */
-function drawProps(ctx: CanvasRenderingContext2D, view: View, def: HoleDef, pal: Palette, width: number, height: number) {
-  if (pal.props === 'none') return
+export function propsOf(view: View, def: HoleDef, pal: Palette, width: number, height: number): Prop[] {
+  if (pal.props === 'none') return []
   const r = mulberry32(hashString(`plan:${def.name}`))
   const count = pal.props === 'trees' ? 70 : 34
+  const props: Prop[] = []
   for (let i = 0; i < count; i++) {
     const u = view.u0 + (r() * 1.1 - 0.05) * (width / view.s)
     const v = view.v0 + (r() * 1.1 - 0.05) * (height / view.s)
@@ -160,13 +166,20 @@ function drawProps(ctx: CanvasRenderingContext2D, view: View, def: HoleDef, pal:
     const size = pal.props === 'trees' ? 0.8 + r() * 0.9 : 0.4 + r() ** 2 * 2.2
     if (distanceToGreen(def.green, x, z) < size + 0.7) continue
     const [px, py] = toPx(view, x, z)
-    const rad = size * view.s
-    if (pal.props === 'trees') {
+    const tree = pal.props === 'trees'
+    props.push({ kind: tree ? 'tree' : 'crater', px, py, rad: size * view.s, leaf: tree ? (r() < 0.5 ? 0x2f6b34 : 0x3a7a3a) : 0 })
+  }
+  return props
+}
+
+function drawProps(ctx: CanvasRenderingContext2D, props: readonly Prop[]) {
+  for (const { kind, px, py, rad, leaf } of props) {
+    if (kind === 'tree') {
       ctx.fillStyle = 'rgba(12, 32, 14, 0.32)'
       ctx.beginPath()
       ctx.arc(px + rad * 0.3, py + rad * 0.35, rad, 0, Math.PI * 2)
       ctx.fill()
-      ctx.fillStyle = css(r() < 0.5 ? 0x2f6b34 : 0x3a7a3a)
+      ctx.fillStyle = css(leaf)
       ctx.beginPath()
       ctx.arc(px, py, rad, 0, Math.PI * 2)
       ctx.fill()
@@ -193,8 +206,11 @@ function drawProps(ctx: CanvasRenderingContext2D, view: View, def: HoleDef, pal:
   }
 }
 
-/** The green's ground: mown in stripes, lighter where it's high, shaded by its slopes, sheer in places. */
-function shadeGreen(def: HoleDef, spot: Spot, pal: Palette): HTMLCanvasElement {
+/**
+ * The green's ground, as pixels at SAMPLES a metre: mown in stripes, lighter where it's high, shaded by
+ * its slopes, sheer in places. Column i is down the hole, row j across it, from the green's corner.
+ */
+export function shadePixels(def: HoleDef, spot: Spot, pal: Palette): { cols: number; rows: number; data: Uint8ClampedArray } {
   const b = boundsOf(def.green)
   const cols = Math.ceil((b.z1 - b.z0) * SAMPLES) + 3
   const rows = Math.ceil((b.x1 - b.x0) * SAMPLES) + 3
@@ -210,11 +226,7 @@ function shadeGreen(def: HoleDef, spot: Spot, pal: Palette): HTMLCanvasElement {
   const rock = [(pal.steep >> 16) & 255, (pal.steep >> 8) & 255, pal.steep & 255]
   const lost = [(pal.lost >> 16) & 255, (pal.lost >> 8) & 255, pal.lost & 255]
   const flat = LIGHT[1]
-  const out = document.createElement('canvas')
-  out.width = cols
-  out.height = rows
-  const octx = out.getContext('2d')!
-  const img = octx.createImageData(cols, rows)
+  const data = new Uint8ClampedArray(cols * rows * 4)
   for (let j = 0; j < rows; j++) {
     for (let i = 0; i < cols; i++) {
       const at = j * cols + i
@@ -245,12 +257,23 @@ function shadeGreen(def: HoleDef, spot: Spot, pal: Palette): HTMLCanvasElement {
       const nl = Math.hypot(nx, 1, nz)
       const lit = (nx * LIGHT[0] + LIGHT[1] + nz * LIGHT[2]) / nl / flat
       const shade = Math.max(0.55, Math.min(1.35, lit))
-      img.data[at * 4] = Math.min(255, c[0]! * shade)
-      img.data[at * 4 + 1] = Math.min(255, c[1]! * shade)
-      img.data[at * 4 + 2] = Math.min(255, c[2]! * shade)
-      img.data[at * 4 + 3] = 255
+      data[at * 4] = Math.min(255, c[0]! * shade)
+      data[at * 4 + 1] = Math.min(255, c[1]! * shade)
+      data[at * 4 + 2] = Math.min(255, c[2]! * shade)
+      data[at * 4 + 3] = 255
     }
   }
+  return { cols, rows, data }
+}
+
+function shadeGreen(def: HoleDef, spot: Spot, pal: Palette): HTMLCanvasElement {
+  const { cols, rows, data } = shadePixels(def, spot, pal)
+  const out = document.createElement('canvas')
+  out.width = cols
+  out.height = rows
+  const octx = out.getContext('2d')!
+  const img = octx.createImageData(cols, rows)
+  img.data.set(data)
   octx.putImageData(img, 0, 0)
   return out
 }
@@ -264,7 +287,7 @@ function stroke(ctx: CanvasRenderingContext2D, view: View, ax: number, az: numbe
   ctx.stroke()
 }
 
-type Rail = { a: Pt; b: Pt; body: string; cap: string; wide: number }
+export type Rail = { a: Pt; b: Pt; body: string; cap: string; wide: number }
 
 /** Rails seen from above: every body first, then every cap along their tops, so the joins run clean. */
 function drawRails(ctx: CanvasRenderingContext2D, view: View, rails: readonly Rail[]) {
@@ -275,6 +298,29 @@ function drawRails(ctx: CanvasRenderingContext2D, view: View, rails: readonly Ra
       stroke(ctx, view, r.a[0], r.a[1], r.b[0], r.b[1])
     }
   }
+}
+
+/** The rails round the edge, a cushion where one is soft, and the rails standing on the green. */
+export function railsOf(def: HoleDef, pal: Palette): Rail[] {
+  const g = def.green
+  const rails: Rail[] = g.map((a, i) => {
+    const b = g[(i + 1) % g.length]!
+    const mx = (a[0] + b[0]) / 2
+    const mz = (a[1] + b[1]) / 2
+    if (def.soft?.(mx, mz)) return { a, b, body: css(pal.cushion), cap: css(pal.cushion), wide: 0.34 }
+    if (def.rubber?.(mx, mz) !== undefined) return { a, b, body: css(pal.rubber), cap: css(GOLD), wide: 0.24 }
+    return { a, b, body: css(pal.rail), cap: css(pal.cap), wide: 0.24 }
+  })
+  for (const w of def.walls ?? []) {
+    rails.push({
+      a: [w.ax, w.az],
+      b: [w.bx, w.bz],
+      body: css(w.rubber ? pal.rubber : pal.rail),
+      cap: css(w.rubber ? GOLD : pal.cap),
+      wide: 0.24,
+    })
+  }
+  return rails
 }
 
 /**
@@ -295,7 +341,7 @@ export function drawHolePlan(canvas: HTMLCanvasElement, def: HoleDef, spot: Spot
 
   ctx.fillStyle = css(pal.off)
   ctx.fillRect(0, 0, width, height)
-  drawProps(ctx, view, def, pal, width, height)
+  drawProps(ctx, propsOf(view, def, pal, width, height))
 
   // The course stands on its banks, a little above the ground round it. (A shadow is in device pixels.)
   ctx.save()
@@ -338,25 +384,7 @@ export function drawHolePlan(canvas: HTMLCanvasElement, def: HoleDef, spot: Spot
   }
 
   // The rails round the edge, a cushion where one is soft; the rails and posts standing on the green.
-  const g = def.green
-  const rails: Rail[] = g.map((a, i) => {
-    const b = g[(i + 1) % g.length]!
-    const mx = (a[0] + b[0]) / 2
-    const mz = (a[1] + b[1]) / 2
-    if (def.soft?.(mx, mz)) return { a, b, body: css(pal.cushion), cap: css(pal.cushion), wide: 0.34 }
-    if (def.rubber?.(mx, mz) !== undefined) return { a, b, body: css(pal.rubber), cap: css(GOLD), wide: 0.24 }
-    return { a, b, body: css(pal.rail), cap: css(pal.cap), wide: 0.24 }
-  })
-  for (const w of def.walls ?? []) {
-    rails.push({
-      a: [w.ax, w.az],
-      b: [w.bx, w.bz],
-      body: css(w.rubber ? pal.rubber : pal.rail),
-      cap: css(w.rubber ? GOLD : pal.cap),
-      wide: 0.24,
-    })
-  }
-  drawRails(ctx, view, rails)
+  drawRails(ctx, view, railsOf(def, pal))
   for (const p of def.bumpers ?? []) {
     const [px, py] = toPx(view, p.x, p.z)
     ctx.fillStyle = 'rgba(0, 0, 0, 0.3)'

@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { copyText } from '../../components/ShareBoardButton'
-import { gameArchiveHref, gamePlayHref } from '../../hooks/useHashRoute'
+import { gameArchiveHref, todayShareHref } from '../../hooks/useHashRoute'
 import { archiveDayWords } from '../../lib/archive'
 import { fitCardToSpace } from '../../lib/cardFit'
 import { gameAccentStyle } from '../../lib/gameAccentStyle'
@@ -88,7 +88,8 @@ export function WantedLineup({ wanted, size = 44 }: { wanted: readonly WantedBug
 export function ShareDay({ day, result, className = 'panel__btn' }: { day: string; result: DayResult; className?: string }) {
   const [copied, setCopied] = useState(false)
   const share = () => {
-    const text = `${shareText(day, result)}\n${window.location.origin}${gamePlayHref(SLUG)}`
+    // The day's own link, which unfurls into the day's card and opens at today's ticket.
+    const text = `${shareText(day, result)}\n${window.location.origin}${todayShareHref(day)}`
     const touch = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches
     if (touch && typeof navigator.share === 'function') {
       navigator.share({ text }).catch(() => {})

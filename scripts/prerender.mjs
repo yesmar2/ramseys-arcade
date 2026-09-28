@@ -170,6 +170,15 @@ try {
   }
   mkdirSync(join(DIST, 'og/challenge'), { recursive: true })
   writeFileSync(join(DIST, 'og/challenge/games.json'), JSON.stringify(cardGames))
+  // A day's share link, /today/<day>, and the card of the day it unfurls into (today-cards.mjs). A card
+  // that can't be drawn mustn't stop the site shipping: without them, a day's link unfurls as the site does.
+  try {
+    const { writeTodayCards } = await import('./today-cards.mjs')
+    const days = await writeTodayCards({ server, dist: DIST, pageHtml, outFile, appName: APP_NAME })
+    console.log(`made ${days.made} day cards and pages (${days.drawn} drawn afresh), ${days.from} to ${days.to}`)
+  } catch (err) {
+    console.warn('prerender: no day cards this build:', err)
+  }
   writeFileSync(join(DIST, 'robots.txt'), robotsTxt())
   writeFileSync(join(DIST, 'sitemap.xml'), sitemapXml(paths))
   console.log(

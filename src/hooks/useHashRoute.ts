@@ -147,8 +147,16 @@ export function focusFromUrl(): string | null {
   return TODAY_PATH.test(window.location.pathname.replace(/^\/+/, '').replace(/\/+$/, '')) ? 'today' : null
 }
 
-/** A day's share link (api/today-page.js unfurls it): /today, or /today/YYYY-MM-DD. */
+/**
+ * A day's share link: /today, or /today/YYYY-MM-DD, which the build gives a page of its own that unfurls
+ * into the day's card (scripts/today-cards.mjs).
+ */
 const TODAY_PATH = /^today(?:\/\d{4}-\d{2}-\d{2})?$/
+
+/** The link a daily's Share sends: the day's own, so it unfurls into that day's card. */
+export function todayShareHref(day: string) {
+  return `/today/${encodeURIComponent(day)}`
+}
 
 /**
  * A canonical href that still asks for the section the current URL does.
