@@ -13,14 +13,21 @@ import { capitalName, huntDay, huntPick, huntStats, openBugHunt, subscribeHunt }
 import { dailyDay, dayProgress, subscribeDaily, syncDaily, todaysHole } from '../lib/dailyHole'
 import { formatLeaderboardScore } from '../lib/leaderboardFormat'
 import { normalizePlayerName } from '../lib/leaderboard'
+import { ordinal } from '../lib/profileMath'
 import {
   daysToGo,
+  fetchRivals,
+  rivalsScope,
+  rivalStanding,
+  rivalWords,
+  setRivalsScope,
   subscribeToday,
   TODAY_ANCHOR,
   TODAY_MILESTONES,
   todayServer,
   todayShareText,
   type TodayKey,
+  type TodayRivals as Rivals,
   type TodayServer,
 } from '../lib/today'
 import type { TournamentSummary } from '../lib/tournaments'
@@ -29,6 +36,7 @@ import { BugPortrait } from './BugHunt'
 import { GameArt } from './GameArt'
 import { GameThumbArt } from './GameThumbArt'
 import { FlameIcon } from './TodayChip'
+import { TodayRivals } from './TodayRivals'
 import '../styles/today.css'
 
 /*
@@ -190,6 +198,49 @@ function useHuntPunch(): { name: string; bugId: string; found: boolean } {
   return { name: capitalName(pick.bug), bugId: pick.bug.id, found: huntStats().foundToday }
 }
 
+/**
+ * Friends', or a group's, day on the three: asked again when the player's own day moves, when the tab
+ * comes back, and every two minutes. The pick of friends or a group is this device's.
+ */
+function useRivals(signedIn: boolean): { data: Rivals | null; group: string | null; pick: (group: string | null) => void } {
+  const [group, setGroup] = useState<string | null>(rivalsScope)
+  const [data, setData] = useState<Rivals | null>(null)
+  const [tick, bump] = useReducer((n: number) => n + 1, 0)
+  useEffect(() => subscribeToday(bump), [])
+  useEffect(() => {
+    const t = window.setInterval(bump, 120_000)
+    return () => window.clearInterval(t)
+  }, [])
+  useEffect(() => {
+    if (!signedIn) {
+      setData(null)
+      return
+    }
+    let cancelled = false
+    void fetchRivals(group, tick > 0).then((next) => {
+      if (!cancelled) setData(next)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [signedIn, group, tick])
+  const pick = (next: string | null) => {
+    setRivalsScope(next)
+    setGroup(next)
+  }
+  return { data, group: data?.scope.kind === 'group' ? data.scope.id : null, pick }
+}
+
+/** A punch's line on the rivals: where you stand among them, or who leads while you haven't. */
+function rivalLine(data: Rivals | null, key: TodayKey): string | null {
+  if (!data) return null
+  const standing = rivalStanding(data.rivals, key)
+  if (!standing) return null
+  if ('leader' in standing) return `${standing.leader.name} leads, ${rivalWords(key, standing.leader[key]!)}`
+  if (standing.place === 1) return data.scope.kind === 'group' ? `Best in ${data.scope.name}` : 'Best of your friends'
+  return `${ordinal(standing.place)} of ${standing.field} today`
+}
+
 function eventGame(t: TournamentSummary): string {
   const slug = t.games[0]
   return t.games.length === 1 && slug ? (getGame(slug)?.name ?? slug) : `${t.games.length} games`
@@ -237,25 +288,27 @@ function BonusPunches() {
 }
 
 /** The share: the phone's share sheet where there is one, else copied. */
-function ShareDay({ text, all, className }: { text: string; all: boolean; className: string }) {
+function ShareDay({ text, day, all, className }: { text: string; day: string; all: boolean; className: string }) {
   const [copied, setCopied] = useState(false)
   useEffect(() => {
     if (!copied) return
     const t = window.setTimeout(() => setCopied(false), 2200)
     return () => window.clearTimeout(t)
   }, [copied])
+  // The day's own page: it lands on today's ticket, and unfurls with the day's card.
+  const url = `${window.location.origin}/today/${day}`
   const share = async () => {
     const touch = window.matchMedia('(hover: none) and (pointer: coarse)').matches
     if (touch && navigator.share) {
       try {
-        await navigator.share({ text: `${text}\n${window.location.origin}/` })
+        await navigator.share({ text: `${text}\n${url}` })
         return
       } catch {
         /* closed, or not allowed: copy instead */
       }
     }
     try {
-      await navigator.clipboard.writeText(`${text}\n${window.location.origin}/`)
+      await navigator.clipboard.writeText(`${text}\n${url}`)
       setCopied(true)
     } catch {
       /* nothing to copy to */
@@ -306,6 +359,7 @@ function Rewards({ current, best }: { current: number; best: number }) {
 export function TodayCard() {
   const { signedIn } = useAuth()
   const { day, punches, server } = useTicket()
+  const rivals = useRivals(signedIn)
   const doneN = punches.filter((p) => p.done).length
   const total = punches.length
   const all = total > 0 && doneN === total
@@ -392,7 +446,7 @@ export function TodayCard() {
             <span className="today-card__progress">
               {doneN} of {total} done
             </span>
-            {doneN > 0 ? <ShareDay text={shareText} all={all} className="today-card__share" /> : null}
+            {doneN > 0 ? <ShareDay text={shareText} day={day} all={all} className="today-card__share" /> : null}
           </div>
           <ul className="today-card__punches">
             {punches.map((p) => (
@@ -406,6 +460,7 @@ export function TodayCard() {
                   <b className="today-punch__game">{p.game}</b>
                   <span className="today-punch__title">{p.title}</span>
                   {p.done && p.mine ? <span className="today-punch__mine">You: {p.mine}</span> : null}
+                  {rivalLine(rivals.data, p.key) ? <span className="today-punch__rival">{rivalLine(rivals.data, p.key)}</span> : null}
                 </div>
                 {p.done ? null : (
                   <a className="today-punch__go" href={gamePlayHref(p.slug)}>
@@ -417,10 +472,11 @@ export function TodayCard() {
               </li>
             ))}
           </ul>
-          {doneN > 0 ? <ShareDay text={shareText} all={all} className="today-card__share today-card__share--foot" /> : null}
+          {doneN > 0 ? <ShareDay text={shareText} day={day} all={all} className="today-card__share today-card__share--foot" /> : null}
           <BonusPunches />
         </div>
       </div>
+      {signedIn ? <TodayRivals data={rivals.data} group={rivals.group} onPick={rivals.pick} /> : null}
       {signedIn ? <Rewards current={current} best={Math.max(streak.best, current)} /> : null}
     </section>
   )

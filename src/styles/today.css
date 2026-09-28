@@ -515,6 +515,221 @@
   height: 0.75rem;
 }
 
+/* ---------- rivals: friends, or a group, on today's three (TodayRivals) ---------- */
+
+.today-punch__rival {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.today-rivals {
+  box-sizing: border-box;
+  padding: 1.3rem 1.5rem;
+  border-radius: 1.4rem;
+  background: var(--surface);
+  border: 1px solid rgba(var(--ink-rgb), 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.today-rivals__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.6rem 1rem;
+}
+
+.today-rivals__head h3 {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 800;
+}
+
+.today-rivals__scopes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.today-rivals__scope {
+  min-height: 2.25rem;
+  padding: 0 0.85rem;
+  border-radius: 999px;
+  border: 1px solid rgba(var(--ink-rgb), 0.16);
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.today-rivals__scope:hover,
+.today-rivals__scope:focus-visible {
+  color: var(--ink);
+  outline: none;
+  border-color: color-mix(in srgb, var(--ticket, #ff8552) 60%, transparent);
+}
+
+.today-rivals__scope[aria-pressed='true'] {
+  color: var(--ink);
+  border-color: var(--ticket, #ff8552);
+  background: color-mix(in srgb, var(--ticket, #ff8552) 14%, transparent);
+}
+
+.today-rivals__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
+.today-rivals__table th,
+.today-rivals__table td {
+  padding: 0.55rem 0.5rem;
+  text-align: center;
+  font-size: 0.9rem;
+  border-bottom: 1px solid rgba(var(--ink-rgb), 0.07);
+  white-space: nowrap;
+}
+
+.today-rivals__table thead th {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.today-rivals__table tbody tr:last-child > * {
+  border-bottom: none;
+}
+
+.today-rivals__table .today-rivals__who {
+  width: 38%;
+  text-align: left;
+}
+
+.today-rivals__col {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.today-rivals__thumb {
+  --inline-thumb-size: 1.3rem;
+}
+
+.today-rivals__player {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  max-width: 100%;
+  color: var(--ink);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.today-rivals__player:hover .today-rivals__name,
+.today-rivals__player:focus-visible .today-rivals__name {
+  text-decoration: underline;
+}
+
+.today-rivals__name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.today-rivals__me > * {
+  background: color-mix(in srgb, var(--ticket, #ff8552) 9%, transparent);
+}
+
+.today-rivals__best {
+  color: var(--ticket-text, #c2461d);
+  font-weight: 800;
+}
+
+.today-rivals__best svg {
+  width: 0.9rem;
+  height: 0.9rem;
+  margin-right: 0.25rem;
+  vertical-align: -0.1rem;
+}
+
+.today-rivals__none {
+  color: var(--muted);
+}
+
+.today-rivals__streak {
+  font-weight: 800;
+}
+
+.today-rivals__streak-head svg {
+  width: 1rem;
+  height: 1rem;
+  color: var(--ticket, #ff8552);
+  vertical-align: -0.15rem;
+}
+
+.today-rivals__sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.today-rivals__empty {
+  margin: 0;
+  font-size: 0.92rem;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.today-rivals__empty a {
+  color: var(--ticket-text, #c2461d);
+  font-weight: 700;
+}
+
+@media (max-width: 48rem) {
+  .today-rivals {
+    padding: 1rem 0.85rem;
+  }
+
+  .today-rivals__table th,
+  .today-rivals__table td {
+    padding: 0.5rem 0.2rem;
+    font-size: 0.8rem;
+  }
+
+  .today-rivals__table thead th {
+    font-size: 0.64rem;
+    letter-spacing: 0.06em;
+  }
+
+  .today-rivals__col {
+    flex-direction: column;
+    gap: 0.2rem;
+  }
+
+  .today-rivals__table .today-rivals__who {
+    width: auto;
+  }
+
+  .today-rivals__player {
+    gap: 0.4rem;
+    max-width: 7.5rem;
+  }
+
+  .today-rivals__best svg {
+    display: none;
+  }
+}
+
 /* ---------- the streak's rewards ---------- */
 
 .today-rewards {

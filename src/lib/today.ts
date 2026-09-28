@@ -1,6 +1,7 @@
 import { currentRoute, homeHref, navigate, ROUTE_EVENT } from '../hooks/useHashRoute'
 import { AUTH_EVENT, getSessionToken } from './auth'
-import { api } from './leaderboard'
+import { api, ApiError } from './leaderboard'
+import { formatLeaderboardScore } from './leaderboardFormat'
 
 /*
  * The Today set: the day's three dailies on one punch card (components/TodayCard.tsx, on the home page),
@@ -151,3 +152,103 @@ export function todayShareText(opts: {
   if (opts.streak > 0) lines.push(`🔥 Day ${opts.streak}`)
   return lines.join('\n')
 }
+
+/* ---------- rivals: friends, or a group, on today's three ---------- */
+
+export type TodayRival = {
+  name: string
+  me: boolean
+  /** Tries on today's hole, the best lap's board score, the bug run's board score; null if not yet. */
+  hole: number | null
+  track: number | null
+  wanted: number | null
+  streak: number
+  avatarId: string
+}
+
+export type TodayRivals = {
+  day: string
+  scope: { kind: 'friends' } | { kind: 'group'; id: string; name: string }
+  rivals: TodayRival[]
+  groups: { id: string; name: string }[]
+}
+
+const RIVALS_KEY = 'skermix-today-rivals'
+/** A rivals table is asked again at most this often, unless the player's own day moved. */
+const RIVALS_FRESH_MS = 20_000
+
+/** Whose day the table shows: a group's id, or null for friends. This device remembers the pick. */
+export function rivalsScope(): string | null {
+  try {
+    return localStorage.getItem(RIVALS_KEY) || null
+  } catch {
+    return null
+  }
+}
+
+export function setRivalsScope(group: string | null) {
+  try {
+    if (group) localStorage.setItem(RIVALS_KEY, group)
+    else localStorage.removeItem(RIVALS_KEY)
+  } catch {
+    /* storage may be off; the pick lasts the visit */
+  }
+}
+
+const rivalsHeld = new Map<string, { at: number; value: TodayRivals }>()
+
+/** Friends' (or a group's) day on the three, from the API; null signed out. */
+export async function fetchRivals(group: string | null, force = false): Promise<TodayRivals | null> {
+  if (!getSessionToken()) return null
+  const key = group ?? 'friends'
+  const hit = rivalsHeld.get(key)
+  if (!force && hit && Date.now() - hit.at < RIVALS_FRESH_MS) return hit.value
+  try {
+    const value = await api<TodayRivals>(`/today/rivals${group ? `?group=${encodeURIComponent(group)}` : ''}`)
+    rivalsHeld.set(key, { at: Date.now(), value })
+    return value
+  } catch (err) {
+    // A group left or gone: back to friends.
+    if (group && err instanceof ApiError && (err.status === 403 || err.status === 404)) {
+      setRivalsScope(null)
+      return fetchRivals(null, force)
+    }
+    return hit?.value ?? null
+  }
+}
+
+/** A result on one of the three, in words: "3 tries", a lap, a run's time. */
+export function rivalWords(key: TodayKey, value: number): string {
+  if (key === 'hole') return `${value} ${value === 1 ? 'try' : 'tries'}`
+  return formatLeaderboardScore(key === 'track' ? 'hotlap' : 'findbug', value)
+}
+
+/** Which way is better on each: fewer tries on the hole, a higher board score for the lap and the bugs. */
+export function rivalResult(r: TodayRival, key: TodayKey): number | null {
+  return r[key]
+}
+
+export function betterFirst(key: TodayKey): (a: number, b: number) => number {
+  return key === 'hole' ? (a, b) => a - b : (a, b) => b - a
+}
+
+/** Where the player stands among those who've done one of the three, or who leads if they haven't. */
+export function rivalStanding(
+  rivals: readonly TodayRival[],
+  key: TodayKey,
+): { place: number; field: number } | { leader: TodayRival } | null {
+  const done = rivals.filter((r) => r[key] != null)
+  const others = rivals.filter((r) => !r.me)
+  if (!others.length || !done.length) return null
+  const order = betterFirst(key)
+  const me = rivals.find((r) => r.me)
+  const mine = me?.[key]
+  if (mine == null) {
+    const leader = [...done].sort((a, b) => order(a[key]!, b[key]!))[0]
+    return leader ? { leader } : null
+  }
+  if (done.length < 2) return null
+  const place = 1 + done.filter((r) => !r.me && order(r[key]!, mine) < 0).length
+  return { place, field: done.length }
+}
+
