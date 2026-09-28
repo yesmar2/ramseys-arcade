@@ -23,6 +23,11 @@ export type View = {
   /** Kept clear at the top (the chrome and the prompt) and the bottom (the controls). */
   top: number
   bottom: number
+  /**
+   * How far up from the bottom the buttons reach, their timer ring and a gap included: nothing on the
+   * counter may stand lower, or a glass's foot sits on "That's half".
+   */
+  clear: number
   font: string
   /** Seconds, for bubbles and wobble. */
   time: number
@@ -89,7 +94,8 @@ type Scene = {
 }
 
 function sceneFor(v: View): Scene {
-  const counterY = v.h - v.bottom + Math.min(26, v.bottom * 0.25)
+  // The counter's front holds the buttons; its top, where everything stands, is always above them.
+  const counterY = Math.min(v.h - v.bottom + Math.min(26, v.bottom * 0.25), v.h - v.clear)
   const guestSize = clamp(v.h * 0.11, 48, 104)
   const pitcher = clamp(Math.min(v.w, v.h) * 0.15, 44, 76)
   const room = Math.min(v.w - 32, 620)

@@ -111,6 +111,9 @@ function insets(h: number, safe: Safe) {
   }
 }
 
+/** Above the buttons, clear of the ring that closes round "That's half" (7 px) and of a glass's shadow. */
+const OVER_BUTTONS = 15
+
 function isGoKey(e: KeyboardEvent) {
   return e.code === 'Space' || e.code === 'Enter' || e.key === ' ' || e.key === 'Enter'
 }
@@ -142,6 +145,8 @@ export function HalfFullGame({ testDay = null }: { testDay?: string | null }) {
   const playRef = useRef<HTMLDivElement>(null)
   const safeRef = useRef<HTMLDivElement>(null)
   const safe = useRef<Safe>({ top: 0, bottom: 0 })
+  /** How far up from the bottom the button row reaches, as laid out (0 until it's been measured). */
+  const buttons = useRef(0)
   const movedRef = useRef(false)
   const [ui, setUi] = useState<Snap>(() => snapOf(stateRef.current, false))
   const handled = useRef(0)
@@ -169,7 +174,10 @@ export function HalfFullGame({ testDay = null }: { testDay?: string | null }) {
   const refresh = useCallback(() => setUi(snapOf(stateRef.current, movedRef.current)), [])
 
   const viewOf = useCallback((w: number, h: number, time: number): View => {
-    return { w, h, ...insets(h, safe.current), font: fontRef.current, time }
+    // Until the row has been laid out, what the stylesheet makes it: 0.75rem (or the home bar) under a
+    // 3.6rem button.
+    const row = buttons.current || Math.max(12, safe.current.bottom) + 58
+    return { w, h, ...insets(h, safe.current), clear: row + OVER_BUTTONS, font: fontRef.current, time }
   }, [])
 
   /** Keep the counted run's pours on the device as they lock, and sound each one. */
@@ -370,6 +378,10 @@ export function HalfFullGame({ testDay = null }: { testDay?: string | null }) {
       if (uiAcc > 0.07) {
         uiAcc = 0
         setUi(snapOf(s, movedRef.current))
+        // Where the button row really is (the home bar, a bigger text size): the counter stays above it.
+        const play = playRef.current
+        const row = play?.querySelector<HTMLElement>('.halffull__controls')
+        if (play && row && play.clientHeight > 0) buttons.current = play.clientHeight - row.offsetTop
       }
       const canvas = canvasRef.current
       const parent = canvas?.parentElement
