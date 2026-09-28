@@ -1,0 +1,381 @@
+/* Half Full: a kitchen counter, a glass to fill half full, and the jug that says how full it was. */
+
+.halffull--fullscreen {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.halffull__play {
+  --hf-ink: #1a2b3c;
+  --hf-red: #e0413a;
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  cursor: ns-resize;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  background: #f7cfa7;
+}
+
+.halffull__canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* ---------- the words over the counter ---------- */
+
+.halffull__prompt {
+  position: absolute;
+  z-index: 9;
+  top: max(0.45rem, env(safe-area-inset-top, 0px));
+  left: 50%;
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: min(28rem, calc(100% - 6.4rem));
+  box-sizing: border-box;
+  padding: 0.35rem 0.95rem 0.45rem;
+  border-radius: 1rem;
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: 0 6px 18px -10px rgba(90, 40, 20, 0.5);
+  color: var(--hf-ink);
+  text-align: center;
+  pointer-events: none;
+}
+
+.halffull__kicker {
+  display: block;
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #9a5b33;
+}
+
+.halffull__main {
+  margin: 0.05rem 0 0;
+  font-family: var(--font-display);
+  font-size: clamp(1.02rem, 4.4vw, 1.4rem);
+  font-weight: 700;
+  line-height: 1.15;
+  text-wrap: balance;
+}
+
+.halffull__main em {
+  font-style: normal;
+  font-weight: 900;
+  color: var(--hf-red);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.halffull__prompt--result .halffull__main {
+  font-size: clamp(1.3rem, 6vw, 1.75rem);
+}
+
+.halffull__sub {
+  margin: 0.1rem 0 0;
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: #5a4636;
+}
+
+.halffull__score {
+  font-weight: 800;
+}
+
+.halffull__score--bull,
+.halffull__score--green {
+  color: #17864f;
+}
+
+.halffull__score--yellow {
+  color: #a87a00;
+}
+
+.halffull__score--orange {
+  color: #c25a0c;
+}
+
+.halffull__score--red {
+  color: #c42a25;
+}
+
+.halffull__hint {
+  position: absolute;
+  z-index: 8;
+  left: 50%;
+  top: 44%;
+  transform: translate(-50%, -50%);
+  margin: 0;
+  padding: 0.45rem 0.9rem;
+  border-radius: 999px;
+  background: rgba(26, 43, 60, 0.82);
+  color: #fff;
+  font-size: 0.9rem;
+  font-weight: 700;
+  white-space: nowrap;
+  pointer-events: none;
+  animation: halffull-hint 1.6s ease-in-out infinite;
+}
+
+.halffull__hint--split {
+  top: 30%;
+}
+
+@keyframes halffull-hint {
+  0%,
+  100% {
+    opacity: 0.95;
+    transform: translate(-50%, -50%);
+  }
+  50% {
+    opacity: 0.7;
+    transform: translate(-50%, calc(-50% - 6px));
+  }
+}
+
+.halffull__skip {
+  position: absolute;
+  z-index: 8;
+  left: 0;
+  right: 0;
+  bottom: max(1.2rem, env(safe-area-inset-bottom, 0px));
+  margin: 0;
+  text-align: center;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.85);
+  pointer-events: none;
+}
+
+/* ---------- the controls, on the counter's front ---------- */
+
+.halffull__controls {
+  position: absolute;
+  z-index: 10;
+  left: 0;
+  right: 0;
+  bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.7rem;
+  padding: 0 0.75rem;
+  cursor: default;
+}
+
+.halffull__nudge {
+  appearance: none;
+  display: grid;
+  place-items: center;
+  width: 3.3rem;
+  height: 3.3rem;
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 0;
+  border: 2px solid var(--hf-ink);
+  border-radius: 999px;
+  background: #fffaf1;
+  color: var(--hf-ink);
+  font-size: 1.05rem;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 0 3px 0 rgba(26, 43, 60, 0.35);
+  touch-action: none;
+}
+
+.halffull__nudge:active {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 rgba(26, 43, 60, 0.35);
+}
+
+.halffull__lock {
+  appearance: none;
+  position: relative;
+  min-width: min(12rem, 52vw);
+  height: 3.6rem;
+  margin: 0;
+  padding: 0 1.4rem;
+  border: 2px solid var(--hf-ink);
+  border-radius: 999px;
+  background: var(--celeb-accent, #f5b942);
+  color: var(--hf-ink);
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 4px 0 rgba(26, 43, 60, 0.45);
+  transition: opacity 0.15s;
+}
+
+.halffull__lock:active:not(.halffull__lock--wait) {
+  transform: translateY(2px);
+  box-shadow: 0 2px 0 rgba(26, 43, 60, 0.45);
+}
+
+.halffull__lock--wait {
+  opacity: 0.55;
+  cursor: default;
+}
+
+/* From 20 s, a ring closes round the lock: at 30 s the pour locks where it is. */
+.halffull__lock--ring::after {
+  content: '';
+  position: absolute;
+  inset: -7px;
+  border-radius: inherit;
+  background: conic-gradient(var(--hf-red) var(--ring, 0deg), rgba(255, 255, 255, 0.5) 0);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  padding: 3px;
+  pointer-events: none;
+}
+
+.halffull__lock--go {
+  min-width: min(14rem, 70vw);
+}
+
+/* ---------- the cards ---------- */
+
+.halffull__overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 12;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  cursor: default;
+}
+
+.halffull__overlay > * {
+  pointer-events: auto;
+}
+
+.halffull-card__result {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1rem;
+}
+
+.halffull-card__result strong {
+  font-family: var(--font-display);
+  font-size: 2rem;
+  font-weight: 800;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.halffull-card__result span {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--panel-accent-ink);
+}
+
+.halffull-card__result--big strong {
+  font-size: 2.8rem;
+}
+
+.halffull-card__marks {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.3rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.halffull-card__mark {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1rem;
+  padding: 0.35rem 0 0.3rem;
+  border-radius: 0.6rem;
+  background: var(--panel-fill);
+  font-size: 1.1rem;
+  line-height: 1.1;
+}
+
+.halffull-card__mark small {
+  font-size: 0.72rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+.halffull-card__team {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  margin: 0;
+}
+
+.halffull-card__team strong {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+}
+
+.halffull-card__team span,
+.halffull-card__story {
+  font-size: 0.86rem;
+  color: var(--muted);
+}
+
+.halffull-card__story {
+  margin: 0;
+  font-style: italic;
+}
+
+.halffull-card__note {
+  margin: -0.2rem 0 0;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .halffull__hint {
+    animation: none;
+  }
+}
+
+/* Read by the game for the notch and the home bar, so the counter sits where the controls do. */
+.halffull__safe {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 0;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/* The kitchen is light in either theme, so the chrome over it keeps light-theme ink. */
+.halffull .game-play-chrome {
+  --ink: #1a2b3c;
+  --ink-rgb: 26, 43, 60;
+  --surface-rgb: 255, 255, 255;
+}
+
+/* The start card's rules: not a blurb, so a short screen keeps them. */
+.halffull-card__rules {
+  margin: 0;
+  font-size: 0.92rem;
+  line-height: 1.4;
+  color: var(--muted);
+  text-wrap: pretty;
+}

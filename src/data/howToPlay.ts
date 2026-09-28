@@ -288,6 +288,21 @@ export const HOW_TO_PLAY: Record<string, HowToPlay> = {
     ends: 'At the line, one lap from the start. Drive it as often as you like.',
     tip: 'Brake in a straight line before a corner, then squeeze back on the gas as it opens out. The blue car is the lap to beat: your best today, or the pace car’s.',
   },
+  halffull: {
+    goal: 'Fill each of today’s glasses exactly half full: by what it holds, not how tall it is. New glasses every day at midnight, New York time.',
+    controls: [
+      { does: 'Pour · take back', touch: 'Drag up or down · ▲ ▼', keys: '↑ ↓ (Shift for a hair)' },
+      { does: 'Share the last glass', touch: 'Drag sideways · ◀ ▶', keys: '← →' },
+      { does: 'Done', touch: 'That’s half · That’s fair', keys: 'Enter or Space' },
+    ],
+    scores: [
+      { what: 'Each glass', pts: 'up to 100', sub: 'less 2 for every point off half: 45% full scores 90' },
+      { what: 'The last glass', pts: 'up to 100', sub: 'a fair share: 58 to 42 scores 84' },
+      { what: 'Your day', pts: 'the average of the five' },
+    ],
+    ends: 'After the fifth glass. Your first pour of the day is your result; after that, pour it again for practice.',
+    tip: 'Wide at the top? Half is higher than it looks. Narrow at the top? Lower. And some glasses are just what they look like.',
+  },
 }
 
 export function howToPlayFor(slug: string): HowToPlay | null {

@@ -47,7 +47,10 @@ const utcNoon = (day: string) => Date.parse(`${day}T12:00:00Z`)
 
 /** A real day, as YYYY-MM-DD. */
 export function isDay(day: string | null | undefined): day is string {
-  return typeof day === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(day) && new Date(utcNoon(day)).toISOString().slice(0, 10) === day
+  if (typeof day !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(day)) return false
+  // A month 13 or a day 32 parses to NaN, which toISOString would throw on.
+  const t = utcNoon(day)
+  return Number.isFinite(t) && new Date(t).toISOString().slice(0, 10) === day
 }
 
 /** The day's number: #1 on the first day. */

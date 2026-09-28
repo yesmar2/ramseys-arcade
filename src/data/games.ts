@@ -228,6 +228,17 @@ export const games: Game[] = [
     inDevelopment: true,
     daily: true,
   },
+  {
+    name: 'Half Full',
+    slug: 'halffull',
+    tags: ['quick', 'puzzle'],
+    description: 'Pour exactly half. The jug will tell.',
+    accent: PALETTE.amber,
+    playable: true,
+    daily: true,
+    // A prototype: plays at /games/halffull/play and is listed nowhere until it has a board.
+    onDeck: true,
+  },
 ]
 
 export function getGame(slug: string) {
