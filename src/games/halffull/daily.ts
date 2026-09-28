@@ -12,7 +12,7 @@ import type { DayPlan } from './plan'
 
 const TZ = 'America/New_York'
 /** Half Full #1. A prototype's date for now: set it to the launch day. */
-export const FIRST_DAY = '2026-09-27'
+export const FIRST_DAY = '2026-09-28'
 
 const STORE_KEY = 'skermix-halffull-daily'
 const EVENT = 'skermix-halffull-daily'
