@@ -268,6 +268,17 @@ function Actions({
     case 'challenge-beaten':
       out = link(n.href, 'Take it back', true)
       break
+    case 'today-beaten':
+      // A lap can be driven again today; the hole and the bugs count once, so there's only today's ticket to see.
+      out = playHref ? (
+        <>
+          {link(playHref, 'Take it back', true)}
+          {link(n.href, 'See today ›')}
+        </>
+      ) : (
+        link(n.href, 'See today ›')
+      )
+      break
     case 'record-lost':
       out = (
         <>
