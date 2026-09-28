@@ -11,8 +11,14 @@ import { ROUNDS, type DayPlan } from './plan'
  */
 
 const TZ = 'America/New_York'
-/** Half Full #1. A prototype's date for now: set it to the launch day. */
+/** Half Full #1: its board, day points and record book count from this day (the API's HALFFULL_FIRST_DAY). */
 export const FIRST_DAY = '2026-09-28'
+
+/**
+ * The day Today's Pour joins today's ticket (lib/today.ts), YYYY-MM-DD: null until Half Full's launch. The
+ * launch sets it here and in the API's halffull/launch.ts HALFFULL_TODAY_FROM (`npm run check:halffull`).
+ */
+export const TODAY_FROM: string | null = null
 
 const STORE_KEY = 'skermix-halffull-daily'
 const EVENT = 'skermix-halffull-daily'
