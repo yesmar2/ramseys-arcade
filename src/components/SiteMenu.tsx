@@ -2,7 +2,16 @@ import { useState, type CSSProperties, type ReactNode, type Ref } from 'react'
 import { useTickets } from '../lib/tickets'
 import { TicketGlyph } from './prizes/Ticket'
 import { createPortal } from 'react-dom'
-import { aboutHref, adminHref, privacyHref, rankHref, prizesHref, statsHref, termsHref } from '../hooks/useHashRoute'
+import {
+  aboutHref,
+  adminHref,
+  notificationSettingsHref,
+  privacyHref,
+  rankHref,
+  prizesHref,
+  statsHref,
+  termsHref,
+} from '../hooks/useHashRoute'
 import { useIsAdmin } from '../lib/admin'
 import { AVATARS_ENABLED, avatarWashColor, resolveAvatar } from '../lib/avatars'
 import { APP_NAME } from '../lib/brand'
@@ -30,7 +39,7 @@ import {
 } from './chromeIcons'
 import type { AvatarWear } from './AvatarStudio'
 import { DevImpersonateControl } from './DevImpersonateControl'
-import { Inbox, type NotificationsState } from './NotificationBell'
+import { Inbox, InboxSettingsLink, type NotificationsState } from './NotificationBell'
 import { useInboxLook } from '../hooks/useNotifications'
 import { inboxSummary } from '../lib/notifications'
 import { PendingInvitesStrip } from './PendingInvitesStrip'
@@ -232,6 +241,7 @@ export function SiteMenu({
               Notifications
             </h2>
             {freshCount > 0 ? <span className="inbox__new">{freshCount} new</span> : null}
+            <InboxSettingsLink onNavigate={onClose} />
             <button type="button" className="site-menu__close" aria-label="Close menu" onClick={onClose}>
               <CloseIcon />
             </button>
@@ -380,6 +390,15 @@ export function SiteMenu({
               <span className="site-menu__cap">Music</span>
               <MusicToggle variant="seg" className="site-menu__seg" />
             </div>
+            {signedIn ? (
+              <a className="site-menu__setting site-menu__setting-link" href={notificationSettingsHref()} onClick={onClose}>
+                <span className="site-menu__cap">Notifications</span>
+                <span className="site-menu__setting-go">
+                  What tells you, and how
+                  <ChevronRightIcon />
+                </span>
+              </a>
+            ) : null}
             <DevImpersonateControl variant="drawer" />
           </section>
 

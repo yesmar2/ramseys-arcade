@@ -3,9 +3,9 @@ import { authHeaders } from './auth'
 /**
  * The inbox.
  *
- * Everything the arcade wants to tell you lands here. Only bracket match
- * clocks and a friend beating your challenge are ever also pushed to a
- * device — see `push.ts`.
+ * Everything the arcade wants to tell you lands here, unless you've turned
+ * its kind off. What is also pushed to your devices is your choice too, on
+ * the Notifications settings page (lib/notificationSettings.ts).
  */
 export type NotificationKind =
   | 'match-open'

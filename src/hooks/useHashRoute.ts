@@ -64,6 +64,7 @@ export type Route =
   | { name: 'admin'; section?: AdminSection }
   | { name: 'stats' }
   | { name: 'prizes' }
+  | { name: 'notificationSettings' }
   | { name: 'privacy' }
   | { name: 'terms' }
   | { name: 'devCelebrate' }
@@ -236,6 +237,11 @@ export function statsHref() {
 /** The prize counter, where tickets trade for looks. */
 export function prizesHref() {
   return '/prizes'
+}
+
+/** What tells you, and how: each kind of notification in the inbox, pushed to your devices, or off. */
+export function notificationSettingsHref() {
+  return '/settings/notifications'
 }
 
 export function tournamentsHref() {
@@ -483,6 +489,8 @@ export function parseUrl(pathname: string, search: string): Route {
   }
   if (path === 'stats') return { name: 'stats' }
   if (path === 'prizes') return { name: 'prizes' }
+  // Notifications are all the settings there are so far, so /settings is them too.
+  if (path === 'settings' || path === 'settings/notifications') return { name: 'notificationSettings' }
   if (path === 'privacy') return { name: 'privacy' }
   if (path === 'terms') return { name: 'terms' }
   if (path === 'dev/celebrate' && import.meta.env.DEV) return { name: 'devCelebrate' }
@@ -660,6 +668,7 @@ const SITE_SECTIONS: ReadonlySet<string> = new Set([
   'privacy',
   'rank',
   'records',
+  'settings',
   'stats',
   'terms',
   'today',

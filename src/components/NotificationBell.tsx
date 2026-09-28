@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { getGame } from '../data/games'
 import { useFriends } from '../hooks/useFriends'
+import { notificationSettingsHref } from '../hooks/useHashRoute'
 import { useInboxLook, type NotificationsState } from '../hooks/useNotifications'
 import { AVATAR_PINS, AVATAR_RINGS, type AvatarPin, type AvatarRing } from '../lib/avatars'
 import { inkOn } from '../lib/color'
@@ -17,6 +18,7 @@ import {
 import type { AvatarWear } from './AvatarStudio'
 import { GameThumbGlyph } from './GameThumbArt'
 import { PlayerAvatar } from './PlayerAvatar'
+import { SlidersIcon } from './chromeIcons'
 import { PushToggle } from './PushToggle'
 import { EventCup, HuntSetJar, MonthlyTrophyCup, SecretArt, TopTenRibbon, WeeklyMedal } from './TrophyArt'
 import '../styles/inbox.css'
@@ -419,8 +421,17 @@ export function Inbox({
           </>
         )}
       </div>
-      <PushToggle />
+      <PushToggle onNavigate={onNavigate} />
     </>
+  )
+}
+
+/** The way to the settings page, beside the inbox's title: what tells you, and how. */
+export function InboxSettingsLink({ onNavigate }: { onNavigate?: () => void }) {
+  return (
+    <a className="inbox__settings" href={notificationSettingsHref()} onClick={onNavigate} aria-label="Notification settings" title="Notification settings">
+      <SlidersIcon />
+    </a>
   )
 }
 
@@ -483,6 +494,7 @@ export function NotificationBell({ notes, onWear }: { notes: NotificationsState;
           <header className="inbox__head">
             <h2 className="inbox__title">Notifications</h2>
             {freshCount > 0 ? <span className="inbox__new">{freshCount} new</span> : null}
+            <InboxSettingsLink onNavigate={() => setOpen(false)} />
           </header>
           <Inbox
             notes={notes}

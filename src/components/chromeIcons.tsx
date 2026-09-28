@@ -270,3 +270,14 @@ export function DevicesIcon() {
     </Stroke>
   )
 }
+
+/** Settings: two sliders, each at its own setting. */
+export function SlidersIcon() {
+  return (
+    <Stroke>
+      <path d="M4 7.5h9.5M18.5 7.5H20M4 16.5h1.5M10.5 16.5H20" />
+      <circle cx="16" cy="7.5" r="2.5" />
+      <circle cx="8" cy="16.5" r="2.5" />
+    </Stroke>
+  )
+}

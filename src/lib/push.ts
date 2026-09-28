@@ -1,12 +1,13 @@
 import { authHeaders } from './auth'
 
 /**
- * Opting a device in to match and challenge alerts.
+ * Opting a device in to alerts.
  *
- * Push is the only notification channel that can interrupt someone, so it
- * carries only two kinds: the alerts that expire (your match opened, your
- * match is about to close) and a friend beating a challenge you sent them.
- * Everything else lives in the inbox.
+ * Push is the only notification channel that can interrupt someone, so what
+ * it carries is the player's choice, kind by kind, on the Notifications
+ * settings page (lib/notificationSettings.ts). By default that's what they can
+ * act on: a match clock, a friend beating their challenge or their lap on
+ * Today's Track. Everything else waits in the inbox.
  */
 
 function resolveApiBase() {

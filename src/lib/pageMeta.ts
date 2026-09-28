@@ -13,6 +13,7 @@ import {
   recordsIndexHref,
   siteRecordsHref,
   statsHref,
+  notificationSettingsHref,
   prizesHref,
   termsHref,
   tournamentCreateHref,
@@ -300,6 +301,8 @@ export function pageMeta(route: Route): PageMeta {
       }
     case 'stats':
       return { ...site, title: titled('Your stats'), path: statsHref(), noindex: true }
+    case 'notificationSettings':
+      return { ...site, title: titled('Notifications'), path: notificationSettingsHref(), noindex: true }
     case 'prizes':
       return {
         ...site,

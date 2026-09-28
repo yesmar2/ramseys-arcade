@@ -1,4 +1,5 @@
-import { useEffect, useId, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
+import { notificationSettingsHref } from '../hooks/useHashRoute'
 import { APP_NAME } from '../lib/brand'
 import {
   disablePush,
@@ -21,25 +22,48 @@ const REASONS: Record<string, string> = {
 }
 
 /**
- * The one opt-in, stated plainly.
+ * Alerts on this device, stated plainly.
  *
- * Everything else in the arcade stays in the inbox above this, so the promise
- * here is narrow enough to keep: a match you could lose by not playing, and a
- * friend beating your challenge, never at night.
+ * What they carry is the player's choice, kind by kind, on the Notifications
+ * settings page. By default it's what they can act on: a match they could
+ * lose by not playing, a friend beating their challenge or their lap on
+ * Today's Track. Never at night. The inbox shows this under its list, and the
+ * settings page at its top (`where`).
  */
-export function PushToggle() {
+export function PushToggle({
+  where = 'inbox',
+  onStatus,
+  onNavigate,
+}: {
+  where?: 'inbox' | 'settings'
+  /** Told what the server says about push, when it first answers and after every change. */
+  onStatus?: (status: PushStatus | null) => void
+  /** Leaving for the settings page from the inbox: whatever the inbox sits in closes. */
+  onNavigate?: () => void
+} = {}) {
   const [status, setStatus] = useState<PushStatus | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const labelId = useId()
+  const tell = useRef(onStatus)
+  tell.current = onStatus
+
+  const update = (next: PushStatus | null) => {
+    setStatus(next)
+    tell.current?.(next)
+  }
 
   useEffect(() => {
     let cancelled = false
     void fetchPushStatus()
       .then((s) => {
-        if (!cancelled) setStatus(s)
+        if (cancelled) return
+        setStatus(s)
+        tell.current?.(s)
       })
-      .catch(() => undefined)
+      .catch(() => {
+        if (!cancelled) tell.current?.(null)
+      })
     return () => {
       cancelled = true
     }
@@ -57,10 +81,10 @@ export function PushToggle() {
     setError(null)
     try {
       if (on) {
-        setStatus(await disablePush())
+        update(await disablePush())
       } else {
         const result = await enablePush()
-        if (result.ok) setStatus(result.status)
+        if (result.ok) update(result.status)
         else setError(REASONS[result.reason] ?? REASONS.failed!)
       }
     } catch {
@@ -71,7 +95,7 @@ export function PushToggle() {
   }
 
   return (
-    <div className="inbox-alerts">
+    <div className={`inbox-alerts${where === 'settings' ? ' inbox-alerts--settings' : ''}`}>
       <div className="inbox-alerts__row">
         <span className="inbox-alerts__mark" aria-hidden="true">
           <svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" focusable="false">
@@ -83,10 +107,19 @@ export function PushToggle() {
           <span className="inbox-alerts__label" id={labelId}>
             Alerts on this device
           </span>
-          <span className="inbox-alerts__hint">
-            A match you could lose by not playing, and a friend beating your challenge. Nothing between 10pm and
-            8am.
-          </span>
+          {where === 'settings' ? (
+            <span className="inbox-alerts__hint">
+              Anything set to Push below comes here too. Nothing between 10pm and 8am, and no more than 8 a day.
+            </span>
+          ) : (
+            <span className="inbox-alerts__hint">
+              For what you pick in{' '}
+              <a className="inbox-alerts__link" href={notificationSettingsHref()} onClick={onNavigate}>
+                settings
+              </a>
+              . Nothing between 10pm and 8am.
+            </span>
+          )}
         </span>
         <button
           type="button"
