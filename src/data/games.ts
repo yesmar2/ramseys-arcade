@@ -233,12 +233,11 @@ export const games: Game[] = [
     name: 'Half Full',
     slug: 'halffull',
     tags: ['quick', 'puzzle'],
-    description: 'Pour exactly half. The jug will tell.',
+    description: 'Five new glasses every day, the same for everyone. Pour each exactly half full, by what it holds, not how tall it is: your first pour is your result.',
     accent: PALETTE.amber,
     playable: true,
+    inDevelopment: true,
     daily: true,
-    // A prototype: plays at /games/halffull/play and is listed nowhere until it has a board.
-    onDeck: true,
   },
 ]
 

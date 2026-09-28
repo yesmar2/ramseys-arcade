@@ -322,7 +322,7 @@ export function PrizeCounterPage() {
           </span>
           <p>
             A run pays by the score it reaches, like an arcade machine: 1 ticket, then 3, 5, 7 and 10 at the scores each game’s How to play
-            shows. Today’s Hole and Today’s Track pay your best of the day once, up to 15, and each day’s top three get 10, 6 and 3 more after
+            shows. Today’s Hole, Today’s Track and Today’s Pour pay your best of the day once, up to 15, and each day’s top three get 10, 6 and 3 more after
             midnight. A new best pays 5 more, and Crosswalk one for each ticket picked up. Runs pay up to 200 a day; the rest comes on top.
           </p>
         </div>

@@ -66,9 +66,9 @@ const SECRET_RULES: Record<SecretKey, string> = {
     'A run saved between 3:00 and 3:59 in the morning on the player’s own clock. The site sends the player’s time zone with each score.',
   earlybird: 'The day’s bug caught before 8 in the morning on the player’s own clock.',
   grandtour:
-    'A saved run on every one of the 17 games the site lists (all but Simon and Spotter) in one day on the boards’ clock, New York time. Ace Chase counts when the day’s hole is solved, and solving it can finish the tour.',
+    'A saved run on every one of the 18 games the site lists (all but Simon and Spotter) in one day on the boards’ clock, New York time. Ace Chase counts when the day’s hole is solved, and solving it can finish the tour.',
   palindrome:
-    'A saved score of 1,001 or more that reads the same backwards, like 1,221 or 34,543. Games scored in points only: not Ace Chase, Spotter, Find the Bug or Hot Lap.',
+    'A saved score of 1,001 or more that reads the same backwards, like 1,221 or 34,543. Games scored in points only: not Ace Chase, Spotter, Find the Bug, Hot Lap or Half Full.',
   sevens: 'A saved score made only of sevens: 777, 7,777, 77,777 and so on. Games scored in points only.',
   photofinish: 'A saved score that ties first place on that game’s board this week, where another player already has the same score.',
   soclose: 'A saved score exactly one point below the game’s all-time record as it stood before the run. Games scored in points only.',
@@ -201,10 +201,10 @@ export function AdminTrophies() {
         </div>
         <p className="adm-card__sub">
           Today’s ticket, on the home page: a streak day is one with any three of the day’s live dailies done (Today’s
-          Hole solved, a lap on Today’s Track saved, Today’s Wanted’s first run saved, and, from the day Half Full’s
-          Today’s Pour joins the ticket, its first pour saved), on the boards’ New York day. Until Today’s Pour joins,
-          that’s all three. With more than three live, doing every one is a Full ticket: a gold mark in the week and
-          “Full” on the header chip, with no reward of its own. The Daily, the One Shot and the bug hunt are bonus
+          Hole solved, a lap on Today’s Track saved, Today’s Wanted’s first run saved, Today’s Pour’s first pour
+          saved), on the boards’ New York day. Before Today’s Pour joined, on 28 September 2026, that was all three.
+          Doing all four is a Full ticket: a gold mark in the week and “Full” on the header chip, with no reward of
+          its own. The Daily, the One Shot and the bug hunt are bonus
           punches and don’t count. Signed-in players with a tag see the streak in the header too. Each reward comes
           once an account, however often a streak breaks, with a note in the inbox.
         </p>
@@ -305,7 +305,7 @@ export function AdminTrophies() {
             <div className="adm-row__main">
               <b className="adm-row__title">Game pins ({AVATAR_GAME_PINS.length})</b>
               <span className="adm-row__sub">
-                One for each game (not Ace Chase or Hot Lap yet): reach the all-time top ten on that game.
+                One for each game (not Ace Chase, Hot Lap or Half Full yet): reach the all-time top ten on that game.
               </span>
             </div>
           </li>

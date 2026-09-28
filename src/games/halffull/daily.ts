@@ -15,10 +15,10 @@ const TZ = 'America/New_York'
 export const FIRST_DAY = '2026-09-28'
 
 /**
- * The day Today's Pour joins today's ticket (lib/today.ts), YYYY-MM-DD: null until Half Full's launch. The
- * launch sets it here and in the API's halffull/launch.ts HALFFULL_TODAY_FROM (`npm run check:halffull`).
+ * The day Today's Pour joined today's ticket (lib/today.ts), YYYY-MM-DD: Half Full's launch. The same day as
+ * the API's halffull/launch.ts HALFFULL_TODAY_FROM (`npm run check:halffull`).
  */
-export const TODAY_FROM: string | null = null
+export const TODAY_FROM: string | null = '2026-09-28'
 
 const STORE_KEY = 'skermix-halffull-daily'
 const EVENT = 'skermix-halffull-daily'
