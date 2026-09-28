@@ -295,6 +295,24 @@ export function placeOf(sk: Skin, theme: Theme): Place {
       }
       break
     }
+    case 'volcano': {
+      // An island of black sand and ash, and a rail of dark basalt.
+      const ash = mix(tone('red', 0.12, dark ? 0.3 : 0.34), tone('amber', 0.2, 0.3), 0.3)
+      const rough = dark ? mix(mix(f, [4, 6, 10], 0.3), ash, 0.28) : mix(mix(f, ash, 0.5), [70, 60, 58], 0.12)
+      const rock = mix(tone('red', 0.1, dark ? 0.36 : 0.3), tone('sky', 0.08, 0.3), 0.4)
+      place = {
+        rough,
+        roughHi: dark ? mix(rough, white, 0.1) : mix(rough, white, 0.3),
+        roughLo: dark ? mix(rough, black, 0.4) : mix(rough, black, 0.25),
+        grain: 'sand',
+        rail: dark ? mix(f, rock, 0.62) : mix(f, rock, 0.72),
+        railLit: dark ? mix(f, rock, 0.82) : mix(f, rock, 0.5),
+        railLine: hsla(hueOf('red'), 14, dark ? 60 : 30, 0.9),
+        railStyle: 'rock',
+        railW: 2.6,
+      }
+      break
+    }
     default:
       place = {
         rough: sk.rough,
@@ -344,6 +362,7 @@ const WOODS: Record<Theme, [Decor['kind'], number][]> = {
     ['pine', 0.82],
     ['tree', 0.18],
   ],
+  volcano: [['palm', 1]],
 }
 
 /** What fills the strip along the rails, by share. */
@@ -371,6 +390,10 @@ const VERGE: Record<Theme, [Decor['kind'], number][]> = {
     ['stone', 0.52],
     ['bush', 0.24],
     ['flowers', 0.24],
+  ],
+  volcano: [
+    ['stone', 0.62],
+    ['bush', 0.38],
   ],
 }
 
@@ -402,7 +425,15 @@ export function gardenOf(hole: Hole, edges: readonly Vec[][]): Prop[] {
   const course = (p: Vec) => unionSdf(hole.green, p, hole.blend)
   const water = (p: Vec) => (hole.water.length ? unionSdf(hole.water, p) : Infinity)
   const pit = (p: Vec) => (hole.pits.length ? unionSdf(hole.pits, p) : Infinity)
-  const clearOfMills = (p: Vec, r: number) => hole.mills.every((m) => Math.hypot(p.x - m.x, p.y - m.y) > m.reach + r + 1.5)
+  // Nothing grows under a windmill's sails, or under a loop's ring of track standing on its posts beside the lane.
+  const rings = hole.loops.map((lp) => ({
+    x: lp.x - Math.sin(lp.dir) * lp.side * lp.r,
+    y: lp.y + Math.cos(lp.dir) * lp.side * lp.r,
+    R: lp.r + lp.w / 2,
+  }))
+  const clearOfBuilt = (p: Vec, r: number) =>
+    hole.mills.every((m) => Math.hypot(p.x - m.x, p.y - m.y) > m.reach + r + 1.5) &&
+    rings.every((q) => Math.hypot(p.x - q.x, p.y - q.y) > q.R + r + 1.5)
   // Anything big placed by hand (a tower, a keep, a lighthouse, a wall, a bed) keeps the scatter off it. A
   // wall runs from its point; a bed is centred on it.
   const big = hole.decor.filter((d) => !TREES.has(d.kind) && (d.r >= 4 || d.len !== undefined))
@@ -469,7 +500,7 @@ export function gardenOf(hole: Hole, edges: readonly Vec[][]): Prop[] {
           const cone = k++ % 2 === 0
           const r = cone ? 2.3 : 2.7
           const p = { x: c.x + n.x * 6.6, y: c.y + n.y * 6.6 }
-          if (course(p) < r + 3.2 || !dry(p, r) || !clearOfMills(p, r) || !clearOfBig(p, r) || !clearOfPipes(p, r)) continue
+          if (course(p) < r + 3.2 || !dry(p, r) || !clearOfBuilt(p, r) || !clearOfBig(p, r) || !clearOfPipes(p, r)) continue
           if (near(p, r)) continue
           props.push({ kind: cone ? 'cone' : 'topiary', x: p.x, y: p.y, r, seed: rnd() })
         }
@@ -485,7 +516,7 @@ export function gardenOf(hole: Hole, edges: readonly Vec[][]): Prop[] {
     for (let gx = -10; gx < 110; gx += cell) {
       const p = { x: gx + rnd() * cell, y: gy + rnd() * cell }
       const r = 6.5 + rnd() * 5
-      if (course(p) < r + 3 || !dry(p, r) || !clearOfMills(p, r) || !clearOfBig(p, r) || !clearOfPipes(p, r * 0.95)) continue
+      if (course(p) < r + 3 || !dry(p, r) || !clearOfBuilt(p, r) || !clearOfBig(p, r) || !clearOfPipes(p, r * 0.95)) continue
       if (crowded(p, r, 0.82)) continue
       if (props.some((q) => !TREES.has(q.kind) && q.kind !== 'snow' && Math.hypot(q.x - p.x, q.y - p.y) < q.r + r * 0.8)) continue
       props.push({ kind: pick(woods, rnd()), x: p.x, y: p.y, r, seed: rnd() })
@@ -497,7 +528,7 @@ export function gardenOf(hole: Hole, edges: readonly Vec[][]): Prop[] {
     const p = { x: -4 + rnd() * 108, y: rnd() * hole.h }
     const d = course(p)
     if (d < 4 || d > 13) continue
-    if (!dry(p, 2.5) || water(p) < 2.5 || !clearOfMills(p, 2) || !clearOfBig(p, 2) || !clearOfPipes(p, 2)) continue
+    if (!dry(p, 2.5) || water(p) < 2.5 || !clearOfBuilt(p, 2) || !clearOfBig(p, 2) || !clearOfPipes(p, 2)) continue
     if (crowded(p, 2.5, 0.95)) continue
     if (props.some((q) => !TREES.has(q.kind) && q.kind !== 'snow' && Math.hypot(q.x - p.x, q.y - p.y) < q.r + 3.2)) continue
     const kind = pick(verge, rnd())

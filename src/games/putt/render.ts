@@ -9,6 +9,7 @@ import {
   type Drawbridge,
   type Gate,
   type Hole,
+  type Loop,
   type Mill,
   type Portal,
   type Ramp,
@@ -21,13 +22,14 @@ import {
 import {
   BALL_R,
   bridgeLevel,
-  COURSE,
   CUP_R,
   cupAt,
   currentHole,
   edgesOf,
   fieldFrame,
   gateLevel,
+  loopFrame,
+  loopPoint,
   mapLayout,
   mapShown,
   millOver,
@@ -44,7 +46,7 @@ import {
 } from './game'
 import { css, gardenOf, hexRgb, isFlat, mix, placeOf, skin, type Place, type RGB, type Skin } from './paint'
 import { drawLiveProp, isLive, paintProp, paintPropShadow } from './scenery'
-import { boundsOf, contours, inAny, unionSdf } from './terrain'
+import { boundsOf, contours, inAny, inside, unionSdf } from './terrain'
 
 /*
  * Putt, drawn. Each hole is a green laid through a place — a garden, a
@@ -431,6 +433,10 @@ function paintBlades(g: Ctx, sk: Skin, ya: number, yb: number) {
  */
 function paintWater(g: Ctx, sk: Skin, place: Place, loops: Vec[][], look: WaterLook) {
   if (!loops.length) return
+  if (look === 'lava') {
+    paintLava(g, sk, loops)
+    return
+  }
   if (look === 'moat') {
     // The masonry lining, laid first so the water covers its inner half.
     loopsPath(g, loops)
@@ -471,6 +477,90 @@ function paintWater(g: Ctx, sk: Skin, place: Place, loops: Vec[][], look: WaterL
   loopsPath(g, loops)
   g.strokeStyle = look === 'sea' ? (sk.dark ? 'rgba(220, 238, 255, 0.7)' : 'rgba(255, 255, 255, 0.95)') : sk.waterLine
   g.lineWidth = look === 'sea' ? 0.7 : 0.34
+  g.stroke()
+}
+
+/** Lava's colours: molten, the heat along its banks, and the crust that cools on it. */
+function lavaTones(sk: Skin): { body: RGB; hot: RGB; crust: RGB } {
+  return {
+    body: sk.dark ? [196, 62, 30] : [214, 78, 38],
+    hot: [255, 178, 70],
+    crust: sk.dark ? [52, 22, 18] : [78, 32, 22],
+  }
+}
+
+/**
+ * Lava: molten orange under a crust that has cracked into plates, hottest
+ * along its banks, and at dusk giving off a glow over the ground round it. It
+ * costs a stroke, as water does.
+ */
+function paintLava(g: Ctx, sk: Skin, loops: Vec[][]) {
+  const { body, hot, crust } = lavaTones(sk)
+  if (sk.dark) {
+    g.save()
+    const m = g.getTransform()
+    g.shadowColor = 'rgba(255, 110, 40, 0.55)'
+    g.shadowBlur = 3.2 * Math.hypot(m.a, m.b)
+    loopsPath(g, loops)
+    g.fillStyle = css(body)
+    g.fill('evenodd')
+    g.restore()
+  }
+  loopsPath(g, loops)
+  g.fillStyle = css(body)
+  g.fill('evenodd')
+  g.save()
+  loopsPath(g, loops)
+  g.clip('evenodd')
+  loopsPath(g, loops)
+  g.strokeStyle = css(hot, 0.8)
+  g.lineWidth = 2.6
+  g.stroke()
+  // The crust: plates of cooled rock afloat on it, with the heat showing in the seams between.
+  let x0 = Infinity
+  let y0 = Infinity
+  let x1 = -Infinity
+  let y1 = -Infinity
+  for (const line of loops) {
+    for (const p of line) {
+      x0 = Math.min(x0, p.x)
+      y0 = Math.min(y0, p.y)
+      x1 = Math.max(x1, p.x)
+      y1 = Math.max(y1, p.y)
+    }
+  }
+  const step = 3.1
+  g.fillStyle = css(crust, 0.55)
+  for (let j = Math.floor(y0 / step) - 1; j * step < y1 + step; j++) {
+    for (let i = Math.floor(x0 / step) - 1; i * step < x1 + step; i++) {
+      const rnd = spotRandom(i, j, 41)
+      if (rnd() > 0.58) continue
+      const cx = (i + 0.2 + rnd() * 0.6) * step
+      const cy = (j + 0.2 + rnd() * 0.6) * step
+      const r = 0.8 + rnd() * 0.8
+      const n = 5 + Math.floor(rnd() * 2)
+      const turn = rnd() * Math.PI
+      g.beginPath()
+      for (let k = 0; k < n; k++) {
+        const a = turn + (k / n) * Math.PI * 2
+        const rr = r * (0.7 + rnd() * 0.45)
+        if (k === 0) g.moveTo(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr)
+        else g.lineTo(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr)
+      }
+      g.closePath()
+      g.fill()
+    }
+  }
+  castShadow(g, 1.4, 0.8, sk.shadow, () => {
+    loopsPath(g, loops)
+    g.lineWidth = 1.2
+    g.stroke()
+  })
+  g.restore()
+  // The bank: a line of dark rock.
+  loopsPath(g, loops)
+  g.strokeStyle = sk.dark ? 'rgba(30, 14, 12, 0.9)' : 'rgba(64, 26, 18, 0.9)'
+  g.lineWidth = 0.4
   g.stroke()
 }
 
@@ -573,7 +663,7 @@ function paintSlope(g: Ctx, sk: Skin, sl: Slope, loops: Vec[][]) {
       g.fillRect(b.x0 - 1, b.y0 - 1, b.x1 - b.x0 + 2, b.y1 - b.y0 + 2)
     } else {
       const grad = g.createLinearGradient(cx - dx * along * 0.5, cy - dy * along * 0.5, cx + dx * along * 0.5, cy + dy * along * 0.5)
-      if (look === 'ramp') {
+      if (look === 'ramp' || look === 'bank') {
         // One even tilt, in shade, fading out at its foot where it meets the flat, so no edge shows there.
         grad.addColorStop(0, css(sk.greenLo, 0.26))
         grad.addColorStop(0.65, css(sk.greenLo, 0.18))
@@ -591,7 +681,7 @@ function paintSlope(g: Ctx, sk: Skin, sl: Slope, loops: Vec[][]) {
       g.lineWidth = 0.45
       g.lineCap = 'round'
       g.lineJoin = 'round'
-      for (let m = -across / 2 + 6; along * across < BANK_AREA && m < across / 2 - 3; m += 11) {
+      for (let m = -across / 2 + 6; look !== 'bank' && along * across < BANK_AREA && m < across / 2 - 3; m += 11) {
         for (let k = -along / 2 + 3; k < along / 2 - 1; k += 6) {
           const x = cx + px * m + dx * k
           const y = cy + py * m + dy * k
@@ -602,6 +692,45 @@ function paintSlope(g: Ctx, sk: Skin, sl: Slope, loops: Vec[][]) {
           g.stroke()
         }
       }
+    }
+  } else if (sl.repel && sl.shape.kind === 'arc' && sl.look === 'cone') {
+    // A volcano's cone: rock showing through the turf, most toward the rim; lit on the side toward the light
+    // and in shade on the other; and ridges running down it from the rim.
+    const sh = sl.shape
+    const top = sh.R - sh.r
+    const foot = sh.R + sh.r
+    const rock: RGB = sk.dark ? [96, 46, 34] : [128, 66, 46]
+    const grad = g.createRadialGradient(sh.x, sh.y, top, sh.x, sh.y, foot)
+    grad.addColorStop(0, css(rock, sk.dark ? 0.62 : 0.52))
+    grad.addColorStop(0.55, css(rock, 0.24))
+    grad.addColorStop(1, css(rock, 0))
+    g.fillStyle = grad
+    g.fillRect(b.x0 - 1, b.y0 - 1, b.x1 - b.x0 + 2, b.y1 - b.y0 + 2)
+    const L = Math.hypot(LIGHT.x, LIGHT.y)
+    const ux = LIGHT.x / L
+    const uy = LIGHT.y / L
+    const lit = g.createLinearGradient(sh.x - ux * foot, sh.y - uy * foot, sh.x + ux * foot, sh.y + uy * foot)
+    lit.addColorStop(0, `rgba(255, 255, 255, ${sk.dark ? 0.08 : 0.16})`)
+    lit.addColorStop(0.5, 'rgba(255, 255, 255, 0)')
+    lit.addColorStop(1, `rgba(0, 0, 0, ${sk.dark ? 0.22 : 0.16})`)
+    g.fillStyle = lit
+    g.fillRect(b.x0 - 1, b.y0 - 1, b.x1 - b.x0 + 2, b.y1 - b.y0 + 2)
+    g.strokeStyle = css(mix(rock, BLACK, 0.3), sk.dark ? 0.5 : 0.4)
+    g.lineCap = 'round'
+    const rnd = mulberry32(Math.round(sh.x * 31 + sh.y * 7))
+    for (let k = 0; k < 30; k++) {
+      const a0 = (k / 30) * Math.PI * 2 + (rnd() - 0.5) * 0.12
+      const reach = top + (foot - top) * (0.45 + rnd() * 0.45)
+      g.lineWidth = 0.28 + rnd() * 0.22
+      g.beginPath()
+      for (let rr = top + 0.9; rr <= reach; rr += 1.2) {
+        const a = a0 + Math.sin(rr * 0.5 + k) * 0.035
+        const x = sh.x + Math.cos(a) * rr
+        const y = sh.y + Math.sin(a) * rr
+        if (rr === top + 0.9) g.moveTo(x, y)
+        else g.lineTo(x, y)
+      }
+      g.stroke()
     }
   } else if (sl.repel && sl.shape.kind === 'arc') {
     // A hilltop: the slope darker the further down it, ringed like a contour map.
@@ -651,6 +780,23 @@ function paintSlope(g: Ctx, sk: Skin, sl: Slope, loops: Vec[][]) {
     g.fillRect(b.x0 - 1, b.y0 - 1, b.x1 - b.x0 + 2, b.y1 - b.y0 + 2)
   }
   g.restore()
+  // A crater's rim: a lip of dark rock, glowing on its inside.
+  if (sl.repel && sl.shape.kind === 'arc' && sl.look === 'cone') {
+    const sh = sl.shape
+    const top = sh.R - sh.r
+    const { hot } = lavaTones(sk)
+    g.strokeStyle = sk.dark ? 'rgba(34, 16, 14, 0.95)' : 'rgba(70, 30, 22, 0.92)'
+    g.lineWidth = 1.7
+    g.beginPath()
+    g.arc(sh.x, sh.y, top + 0.7, 0, Math.PI * 2)
+    g.stroke()
+    g.strokeStyle = css(hot, sk.dark ? 0.75 : 0.65)
+    g.lineWidth = 0.7
+    g.beginPath()
+    g.arc(sh.x, sh.y, top - 0.45, 0, Math.PI * 2)
+    g.stroke()
+    return
+  }
   // A hilltop's flat top, lit, with its lip drawn so the edge of it can be read from below.
   if (sl.repel && sl.shape.kind === 'arc') {
     const sh = sl.shape
@@ -819,6 +965,124 @@ function paintRamp(g: Ctx, sk: Skin, rp: Ramp) {
     g.moveTo(l.x, l.y)
     g.lineTo(tip.x, tip.y)
     g.lineTo(r.x, r.y)
+    g.stroke()
+  }
+}
+
+/**
+ * A loop-the-loop: a ring of track up on posts beside the lane, red between
+ * white kerbs, climbing a little as it goes round so it crosses back over the
+ * lane where it left it. The lane through it is laid as track too, from a
+ * little before the loop to a little past it, so the way reads as one track
+ * that loops. The ring's shadow falls on the ground under it, and arrows
+ * round it show the way a ball runs.
+ */
+function paintLoop(g: Ctx, sk: Skin, lp: Loop) {
+  const steps = 96
+  const along = (lat: number) => {
+    const pts: Vec[] = []
+    for (let i = 0; i <= steps; i++) pts.push(loopPoint(lp, (i / steps) * Math.PI * 2, lat))
+    return pts
+  }
+  const stroke = (pts: readonly Vec[]) => {
+    g.beginPath()
+    pts.forEach((p, i) => (i === 0 ? g.moveTo(p.x, p.y) : g.lineTo(p.x, p.y)))
+  }
+  const middle = along(0)
+  g.lineCap = 'butt'
+  g.lineJoin = 'round'
+  // The lane's stretch of track, inside its rails.
+  {
+    const { d } = loopFrame(lp)
+    const lead = 16
+    const straight = (lat: number): Vec[] => {
+      const nx = -d.y
+      const ny = d.x
+      return [
+        { x: lp.x - d.x * lead + nx * lat, y: lp.y - d.y * lead + ny * lat },
+        { x: lp.x + d.x * (lp.span + lead) + nx * lat, y: lp.y + d.y * (lp.span + lead) + ny * lat },
+      ]
+    }
+    const tw = lp.w - EDGE_T * 2 - 0.4
+    stroke(straight(0))
+    g.strokeStyle = css(sk.roof)
+    g.lineWidth = tw
+    g.stroke()
+    for (const side of [1, -1]) {
+      stroke(straight(side * (tw / 2 - 0.55)))
+      g.strokeStyle = css(sk.sail)
+      g.lineWidth = 1.1
+      g.stroke()
+      g.setLineDash([1.6, 1.6])
+      g.strokeStyle = css(sk.roofLit)
+      g.stroke()
+      g.setLineDash([])
+    }
+  }
+  // Up on its posts: the shadow falls well off it.
+  castShadow(g, 3.2, 1.2, sk.shadow, () => {
+    stroke(middle)
+    g.lineWidth = lp.w
+    g.stroke()
+  })
+  // The posts, where they show past the track's edge.
+  const { c } = loopFrame(lp)
+  for (let k = 0; k < 8; k++) {
+    const a = (k / 8) * Math.PI * 2 + 0.2
+    const x = c.x + Math.cos(a) * (lp.r + lp.w / 2 - 0.4)
+    const y = c.y + Math.sin(a) * (lp.r + lp.w / 2 - 0.4)
+    g.fillStyle = css(sk.stone)
+    g.strokeStyle = sk.stoneLine
+    g.lineWidth = 0.22
+    g.beginPath()
+    g.arc(x, y, 0.9, 0, Math.PI * 2)
+    g.fill()
+    g.stroke()
+  }
+  // The track, and its edges.
+  stroke(middle)
+  g.strokeStyle = sk.roofLine
+  g.lineWidth = lp.w + 0.7
+  g.stroke()
+  g.strokeStyle = css(sk.roof)
+  g.lineWidth = lp.w
+  g.stroke()
+  // The inside of the ring is banked: in shade toward it, lit toward the outside.
+  stroke(along(-lp.w * 0.28))
+  g.strokeStyle = css(sk.roofShade, 0.55)
+  g.lineWidth = lp.w * 0.34
+  g.stroke()
+  stroke(along(lp.w * 0.3))
+  g.strokeStyle = css(sk.roofLit, 0.6)
+  g.lineWidth = lp.w * 0.22
+  g.stroke()
+  // Kerbs either side, white with red blocks.
+  for (const side of [1, -1]) {
+    const kerb = along(side * (lp.w / 2 - 0.55))
+    stroke(kerb)
+    g.strokeStyle = css(sk.sail)
+    g.lineWidth = 1.1
+    g.stroke()
+    g.setLineDash([1.6, 1.6])
+    g.strokeStyle = css(sk.roofLit)
+    g.lineWidth = 1.1
+    g.stroke()
+    g.setLineDash([])
+  }
+  // Arrows round the ring, the way the ball goes.
+  g.strokeStyle = css(sk.sail, 0.9)
+  g.lineWidth = 0.55
+  g.lineCap = 'round'
+  for (const phi of [Math.PI * 0.55, Math.PI, Math.PI * 1.45]) {
+    const p = loopPoint(lp, phi)
+    const q = loopPoint(lp, phi + 0.05)
+    const len = Math.hypot(q.x - p.x, q.y - p.y) || 1
+    const tx = (q.x - p.x) / len
+    const ty = (q.y - p.y) / len
+    g.beginPath()
+    g.moveTo(p.x - tx * 1.2 - ty * 1.8, p.y - ty * 1.2 + tx * 1.8)
+    g.lineTo(p.x + tx * 0.8, p.y + ty * 0.8)
+    g.lineTo(p.x - tx * 1.2 + ty * 1.8, p.y - ty * 1.2 - tx * 1.8)
     g.stroke()
   }
 }
@@ -1494,6 +1758,7 @@ function paintGround(g: Ctx, hole: Hole, sk: Skin, ya: number, yb: number) {
   for (const sh of hole.bridges) if (nearShape(sh)) paintBridge(g, sk, sh)
   if (near(hole.tee.y - 6, hole.tee.y + 6)) paintTee(g, sk, hole.tee)
   for (const rp of hole.ramps) if (near(rp.y - 4, rp.y + rp.h + 4)) paintRamp(g, sk, rp)
+  for (const lp of hole.loops) if (near(lp.y - lp.r * 2 - lp.w, lp.y + lp.r * 2 + lp.w)) paintLoop(g, sk, lp)
   for (const rk of hole.rocks) if (near(rk.y - rk.r - 4, rk.y + rk.r + 4)) paintRock(g, sk, rk)
   for (const m of hole.mills) if (near(m.y - m.r - 12, m.y + m.r + 12)) paintTower(g, sk, m)
   paintPortals(g, sk, place, hole)
@@ -1686,6 +1951,112 @@ function flowOf(sh: Extract<Shape, { kind: 'ribbon' }>): Flow {
   return f
 }
 
+type Bubble = { x: number; y: number; phase: number; period: number }
+const bubbles = new WeakMap<Shape, Bubble[]>()
+
+/** Where a stretch of lava bubbles, and how often each spot does: the same every time, worked out once. */
+function bubblesIn(sh: Shape): Bubble[] {
+  let list = bubbles.get(sh)
+  if (list) return list
+  list = []
+  const b = boundsOf(sh)
+  const step = 4.2
+  for (let j = Math.floor(b.y0 / step); j * step < b.y1; j++) {
+    for (let i = Math.floor(b.x0 / step); i * step < b.x1; i++) {
+      const rnd = spotRandom(i, j, 53)
+      if (rnd() > 0.45) continue
+      const x = (i + rnd()) * step
+      const y = (j + rnd()) * step
+      if (!inside(sh, { x, y })) continue
+      list.push({ x, y, period: 1.6 + rnd() * 1.6, phase: rnd() * 10 })
+    }
+  }
+  bubbles.set(sh, list)
+  return list
+}
+
+/**
+ * Lava on the move: bubbles welling up here and there and bursting, and a
+ * flow running down a channel from its top end, the way it was drawn.
+ */
+function drawLava(g: Ctx, sk: Skin, hole: Hole, inView: readonly Shape[], clock: number, ya: number, yb: number) {
+  const { hot } = lavaTones(sk)
+  g.save()
+  loopsPath(g, outlineOf(hole.water, hole.h))
+  g.clip('evenodd')
+  for (const sh of inView) {
+    for (const bub of bubblesIn(sh)) {
+      if (bub.y < ya - 2 || bub.y > yb + 2) continue
+      const u = (((clock + bub.phase) % bub.period) + bub.period) % bub.period / bub.period
+      const r = 0.25 + u * 1.15
+      g.globalAlpha = (1 - u) * 0.85
+      g.fillStyle = css(hot, 0.55)
+      g.beginPath()
+      g.arc(bub.x, bub.y, r, 0, Math.PI * 2)
+      g.fill()
+      g.strokeStyle = css(hot)
+      g.lineWidth = 0.22
+      g.stroke()
+    }
+    // Down a channel: bright streaks running from its top end to its foot.
+    if (sh.kind === 'capsule') {
+      const dx = sh.b.x - sh.a.x
+      const dy = sh.b.y - sh.a.y
+      const len = Math.hypot(dx, dy) || 1
+      const tx = dx / len
+      const ty = dy / len
+      g.strokeStyle = css(hot)
+      g.lineCap = 'round'
+      g.lineWidth = 0.4
+      for (let k = 0; k < 5; k++) {
+        const u = ((clock * 5 + k * (len / 5)) % len) / len
+        const side = ((k * 0.618) % 1) * 2 - 1
+        const x = sh.a.x + dx * u - ty * side * sh.r * 0.5
+        const y = sh.a.y + dy * u + tx * side * sh.r * 0.5
+        g.globalAlpha = 0.35 + 0.5 * Math.sin(u * Math.PI)
+        g.beginPath()
+        g.moveTo(x - tx * 1.2, y - ty * 1.2)
+        g.lineTo(x + tx * 1.2, y + ty * 1.2)
+        g.stroke()
+      }
+    }
+  }
+  g.globalAlpha = 1
+  g.restore()
+}
+
+/**
+ * Smoke off a volcano's crater, and the glow in it breathing: puffs rise off
+ * its far rim and drift away from the cup, thinning as they go.
+ */
+function drawSmoke(g: Ctx, sk: Skin, hole: Hole, clock: number, ya: number, yb: number) {
+  for (const sl of hole.slopes) {
+    if (sl.look !== 'cone' || sl.shape.kind !== 'arc') continue
+    const sh = sl.shape
+    const top = sh.R - sh.r
+    if (sh.y + top + 4 < ya || sh.y - top - 40 > yb) continue
+    const { hot } = lavaTones(sk)
+    g.strokeStyle = css(hot, 0.18 + 0.16 * Math.sin(clock * 2.2))
+    g.lineWidth = 1.3
+    g.beginPath()
+    g.arc(sh.x, sh.y, top - 0.6, 0, Math.PI * 2)
+    g.stroke()
+    const vx = sh.x + 3
+    const vy = sh.y - top - 0.5
+    for (let i = 0; i < 6; i++) {
+      const u = (clock * 0.16 + i / 6) % 1
+      const x = vx + Math.sin(u * 5 + i * 2) * 1.8 + u * 9
+      const y = vy - u * 24
+      const r = 1.5 + u * 5
+      const a = (sk.dark ? 0.24 : 0.3) * Math.sin(u * Math.PI)
+      g.fillStyle = sk.dark ? `rgba(170, 168, 176, ${a})` : `rgba(116, 112, 118, ${a})`
+      g.beginPath()
+      g.arc(x, y, r, 0, Math.PI * 2)
+      g.fill()
+    }
+  }
+}
+
 /** Glints on the water, running with a stream the way it was drawn, drifting on a pond. */
 function drawGlints(g: Ctx, sk: Skin, hole: Hole, clock: number, ya: number, yb: number) {
   const inView = hole.water.filter((sh) => {
@@ -1693,6 +2064,10 @@ function drawGlints(g: Ctx, sk: Skin, hole: Hole, clock: number, ya: number, yb:
     return b.y1 > ya && b.y0 < yb
   })
   if (!inView.length) return
+  if (hole.waterLook === 'lava') {
+    drawLava(g, sk, hole, inView, clock, ya, yb)
+    return
+  }
   g.save()
   loopsPath(g, outlineOf(hole.water, hole.h))
   g.clip('evenodd')
@@ -2590,7 +2965,8 @@ export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, w: n
       }
     }
     const flying = state.air > 0 && state.airMax > 0
-    const lift = flying ? Math.sin(Math.PI * (1 - state.air / state.airMax)) : 0
+    // Round a loop it rides up on the track, its shadow on the ground under it.
+    const lift = flying ? Math.sin(Math.PI * (1 - state.air / state.airMax)) : state.looping ? 0.3 : 0
     const r = BALL_R * state.drop * (1 + 0.5 * lift)
     // The shadow falls away from the light, further the higher the ball.
     const sx = b.x + LIGHT.x * (0.6 + lift * 7)
@@ -2621,6 +2997,7 @@ export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, w: n
     drawLiveProp(ctx, sk, p, state.clock)
   }
 
+  drawSmoke(ctx, sk, hole, state.clock, ya, yb)
   drawSplashes(ctx, sk, state)
   const cupNow = cupAt(hole, state.clock)
   if (state.phase === 'sunk') drawConfetti(ctx, cupNow, state.t)
@@ -2710,40 +3087,30 @@ export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, w: n
   // ---- the map, in its corner
   if (state.phase !== 'menu' && mapShown(f, state.mapSide)) drawMap(ctx, state, hole, f, sk, dpr, cam)
 
-  // ---- the band above: hole, par and strokes
+  // ---- the band above: the hole's par and strokes, at the right. The hole's number and the round against
+  // par are the readout's, at the left over this (PuttGame).
   if (state.phase !== 'menu') {
-    const holeNo = Math.min(state.holeIndex + 1, COURSE.length)
     const inset = Math.max(w * 0.12, 56)
     const cy = f.top * 0.55
-    const left = `HOLE ${holeNo}`
     const strokeWord = state.strokes === 1 ? 'STROKE' : 'STROKES'
     const best = state.holeBests[hole.name]
     const withBest = best !== undefined ? `PAR ${hole.par}  ·  BEST ${best}  ·  ${state.strokes} ${strokeWord}` : null
     const plain = `PAR ${hole.par}  ·  ${state.strokes} ${strokeWord}`
-    // The two labels share one line: a size that fits both, and the best only if there is room for it.
-    let leftSize = Math.max(12, textScale * 0.035)
-    let rightSize = Math.max(11, textScale * 0.03)
+    // In the right half of the line, clear of the readout's figures at the left: the best only if there is
+    // room for it.
+    let size = Math.max(11, textScale * 0.03)
     let right = withBest ?? plain
-    const room = w - inset * 2 - 12
+    const room = w / 2 - inset
     const fits = () => {
-      ctx.font = font(leftSize, 800)
-      const a = ctx.measureText(left).width
-      ctx.font = font(rightSize, 750)
-      return a + ctx.measureText(right).width <= room
+      ctx.font = font(size, 750)
+      return ctx.measureText(right).width <= room
     }
     if (!fits() && withBest) right = plain
-    for (let i = 0; i < 3 && !fits(); i++) {
-      leftSize *= 0.85
-      rightSize *= 0.85
-    }
-    ctx.textAlign = 'left'
-    ctx.textBaseline = 'middle'
-    ctx.font = font(leftSize, 800)
-    ctx.fillStyle = ink(sk, 0.92)
-    ctx.fillText(left, inset, cy)
+    for (let i = 0; i < 3 && !fits(); i++) size *= 0.85
     ctx.textAlign = 'right'
+    ctx.textBaseline = 'middle'
     ctx.fillStyle = ink(sk, 0.62)
-    ctx.font = font(rightSize, 750)
+    ctx.font = font(size, 750)
     ctx.fillText(right, w - inset, cy)
   }
 
@@ -2850,6 +3217,7 @@ const RAIL_MARKS: Record<Hole['theme'], number[]> = {
   castle: [3.2],
   coast: [1.1, 7.5],
   summit: [1.7, 4.3],
+  volcano: [1.7, 4.3],
 }
 
 /**
@@ -2867,4 +3235,5 @@ export function warmHole(hole: Hole) {
     outlineOfShape(sh, hole.h)
   }
   for (const step of RAIL_MARKS[hole.theme]) marksAlong(hole, step)
+  if (hole.waterLook === 'lava') for (const sh of hole.water) bubblesIn(sh)
 }

@@ -1,12 +1,9 @@
 /*
  * The course, the same every round, so a score means the same thing to
- * everyone on the board: two short holes to start, then five long ones, each
- * somewhere of its own.
- *
- * A long hole is a place, not a diagram: a green laid through a garden, a
- * castle, a beach or a mountain, several parts to it, each with something of
- * its own to get past or a way to choose, so a good round is five or six
- * strokes a hole. The short ones fit on one screen, one thing to play past.
+ * everyone on the board: five short holes, each somewhere of its own and each
+ * with one thing to play past, a jump, pipes, a windmill, a loop and a
+ * volcano. Every hole has a shot that holes out in one, and a surer way
+ * round that takes two or three.
  *
  * A hole is painted. Its ground is a soft union of shapes — discs, ribbons
  * through a line of points, capsules, arcs — inside a box 100 units wide and
@@ -72,8 +69,11 @@ export type Slope = {
   /**
    * How a hill is drawn: a slope, a flight of steps, open ground a wind blows
    * across, or a ramp, one even tilt that fades out where it meets the flat.
+   * A bank is a ramp's even tilt with no arrows on it, for a rise too short to
+   * need them. A hilltop can be a volcano's cone, rock falling away all round
+   * from the rim of its crater.
    */
-  look?: 'hill' | 'steps' | 'wind' | 'ramp'
+  look?: 'hill' | 'steps' | 'wind' | 'ramp' | 'bank' | 'cone'
 }
 
 /** A bare windmill blade: a bar `len` long turning about (x, y) at `speed` radians a second. */
@@ -160,6 +160,18 @@ export type Ramp = Rect & { dir: number; len: number; min?: number; longest?: nu
  */
 export type Rover = { x: number; y: number; r: number; speed: number; heading: number; pen: Rect; look?: 'ball' | 'crab' }
 
+/**
+ * A loop-the-loop: a ring of track standing beside the lane, meeting it at
+ * (x, y). A ball rolling up the lane along `dir` at least `min` fast runs
+ * off into the ring there, round it, and back onto the lane `span` further
+ * on, heading the way it was and keeping `keep` of its speed. Any slower and
+ * it runs part way round, comes back, and rolls back down the lane. `r` is
+ * the ring's radius to the middle of its track, `side` which side of the
+ * lane it stands (1 on the right going along `dir`, -1 on the left), and `w`
+ * how wide the track is: where the ring meets it, the lane is that wide.
+ */
+export type Loop = { x: number; y: number; dir: number; r: number; side: 1 | -1; min: number; keep: number; span: number; w: number }
+
 /** A mark on the ground: a chevron at (x, y) pointing along `dir`, a hint and nothing more. */
 export type Mark = { x: number; y: number; dir: number }
 
@@ -167,10 +179,13 @@ export type Mark = { x: number; y: number; dir: number }
 export type Rock = Bumper & { look?: 'boulder' | 'planter' | 'sandcastle' | 'turret' }
 
 /** Where a hole is: what its rails are made of, the ground round it, and what grows there. */
-export type Theme = 'garden' | 'formal' | 'castle' | 'coast' | 'summit'
+export type Theme = 'garden' | 'formal' | 'castle' | 'coast' | 'summit' | 'volcano'
 
-/** What a hole's water looks like: a stream, a moat between stone walls, or the sea. */
-export type WaterLook = 'creek' | 'moat' | 'sea'
+/**
+ * What a hole's water looks like: a stream, a moat between stone walls, the
+ * sea, or lava, which costs a stroke the same.
+ */
+export type WaterLook = 'creek' | 'moat' | 'sea' | 'lava'
 
 /**
  * What grows or stands around the green: set by hand where it matters, and
@@ -245,6 +260,7 @@ export type Hole = {
   gates: Gate[]
   sliders: Slider[]
   portals: Portal[]
+  loops: Loop[]
   rovers: Rover[]
   marks: Mark[]
   /** Scenery placed by hand; more is scattered round it. */
@@ -259,7 +275,6 @@ export const SAIL_T = 1.6
 /** Half of a traced edge wall's thickness. */
 export const EDGE_T = 0.9
 
-const BAR = 2.2
 
 export const UP = -Math.PI / 2
 export const DOWN = Math.PI / 2
@@ -301,55 +316,8 @@ function hilltop(x: number, y: number, top: number, foot: number, strength: numb
   return { shape: arc(x, y, (top + foot) / 2, 0, Math.PI * 2, (foot - top) / 2), repel: strength }
 }
 
-/** A floor that dishes toward its middle this hard, with nothing to stop a ball sliding all the way in. */
-function dish(shape: Shape, strength: number): Slope {
-  return { shape, dish: strength }
-}
-
 function decor(kind: Decor['kind'], x: number, y: number, r: number, angle?: number, len?: number): Decor {
   return { kind, x, y, r, angle, len }
-}
-
-function rock(x: number, y: number, r: number, look?: Rock['look']): Rock {
-  return { x, y, r, look }
-}
-
-/** A plain bar of wall from (x1, y1) to (x2, y2), `t` half-thick. */
-function bar(x1: number, y1: number, x2: number, y2: number, t = BAR): Wall {
-  return { a: { x: x1, y: y1 }, b: { x: x2, y: y2 }, t }
-}
-
-/**
- * A ring of wall round (x, y), radius R, `t` half-thick, open where `gaps`
- * say: each an angle and how wide the opening is, in units.
- */
-function ring(x: number, y: number, R: number, t: number, gaps: [number, number][]): Wall[] {
-  // An even count, so openings across from each other come out the same width, and fine enough that an
-  // opening comes out close to the width asked for.
-  const n = Math.max(24, Math.round(R) * 4)
-  const open = (a: number) =>
-    gaps.some(([g, w]) => {
-      const d = Math.abs((((a - g) % (Math.PI * 2)) + Math.PI * 3) % (Math.PI * 2) - Math.PI)
-      return d < w / 2 / R
-    })
-  const walls: Wall[] = []
-  for (let i = 0; i < n; i++) {
-    const a0 = (i / n) * Math.PI * 2
-    const a1 = ((i + 1) / n) * Math.PI * 2
-    if (open((a0 + a1) / 2)) continue
-    walls.push(bar(x + Math.cos(a0) * R, y + Math.sin(a0) * R, x + Math.cos(a1) * R, y + Math.sin(a1) * R, t))
-  }
-  return walls
-}
-
-/** A gate across from (x1, y1) to (x2, y2): open for the first `open` share of every `period` seconds. */
-function gate(x1: number, y1: number, x2: number, y2: number, period: number, open: number, phase = 0): Gate {
-  return { a: { x: x1, y: y1 }, b: { x: x2, y: y2 }, t: 1, period, open, phase }
-}
-
-/** A drawbridge over the water, hinged at its far end: down for the first `down` share of every `period` seconds. */
-function drawbridge(shape: Shape, period: number, down: number, look?: Drawbridge['look']): Drawbridge {
-  return { shape, period, down, look }
 }
 
 /** A pipe: in at (ax, ay), out at (bx, by) heading along `out`; its colour, mouth, run and so on in `more`. */
@@ -368,20 +336,6 @@ function pipe(
 /** Points for a pipe's run, from pairs. */
 function run(...pts: [number, number][]): Vec[] {
   return pts.map(([x, y]) => ({ x, y }))
-}
-
-/** A crab, scuttling side to side across its strip of beach at `speed`. */
-function crab(x: number, y: number, speed: number, heading: number, pen: Rect): Rover {
-  return { x, y, r: 2.3, speed, heading, pen, look: 'crab' }
-}
-
-/** A beam turning on a post at (x, y), `len` long, at `speed` radians a second. */
-function beam(x: number, y: number, len: number, speed: number, phase = 0): Spinner {
-  return { x, y, len, speed, phase }
-}
-
-function box(x: number, y: number, w: number, h: number): Rect {
-  return { x, y, w, h }
 }
 
 type Spec = Pick<Hole, 'name' | 'par' | 'h' | 'tee' | 'cup'> &
@@ -412,73 +366,81 @@ function hole(spec: Spec): Hole {
     gates: spec.gates ?? [],
     sliders: spec.sliders ?? [],
     portals: spec.portals ?? [],
+    loops: spec.loops ?? [],
     rovers: spec.rovers ?? [],
     marks: spec.marks ?? [],
     decor: spec.decor ?? [],
   }
 }
 
+/** A loop-the-loop beside the lane, meeting it at (x, y): see Loop. */
+function loop(x: number, y: number, dir: number, r: number, side: 1 | -1, min: number, keep: number, span = 6, w = 9): Loop {
+  return { x, y, dir, r, side, min, keep, span, w }
+}
+
 export const COURSE: Hole[] = [
   /*
-   * Lily Pond, a short one to start: the whole hole on one screen, the cup
-   * in sight from the tee. A long pond lies across the middle, lilies on it,
-   * and a ramp at its near edge: the jump has to be judged. Too soft and the
-   * ball rolls up the ramp into the water, or takes off and comes down in
-   * it; right, and it lands on the green, most times a putt from the cup and
-   * now and then rolling in; firm, and it runs on into the bunker behind the
-   * flag; a full pull flies the whole hole and is out of bounds. Or go round
-   * the pond either side, the safe way, and putt from there.
+   * Over the Wall. A round garden inside a clipped hedge, the cup in the
+   * middle of it, and a ramp on the lawn in front of the hedge, square to the
+   * cup: jump the hedge. Hard enough to take off and the ball comes down on
+   * the garden's lawn, stops short and rolls to the cup; a touch harder and
+   * it lands past the cup and runs into the bunker at the back; much harder,
+   * it flies the garden and is out of bounds; too soft and it never leaves
+   * the ramp, and the hedge sends it back. Or go round by the path up the
+   * left, the long way to the gate in the hedge's back corner, and putt in
+   * through it: sure, and a stroke more.
    */
   hole({
-    name: 'Lily Pond',
+    name: 'Over the Wall',
     par: 2,
-    h: 190,
-    tee: { x: 50, y: 172 },
-    cup: { x: 54, y: 38 },
+    theme: 'formal',
+    h: 200,
+    tee: { x: 56, y: 182 },
+    cup: { x: 56, y: 62 },
     blend: 9,
     green: [
-      disc(50, 168, 13),
-      ribbon(14, [50, 168], [50, 146]),
-      // Round the pond: the ground runs on under it, so a ball that comes down short is in.
-      capsule(50, 94, 50, 116, 30),
-      disc(52, 40, 26),
+      disc(56, 180, 13),
+      // The lawn, up to its hedge.
+      ribbon(15, [56, 180], [55, 140], [55, 107]),
+      // The garden in its own hedge, a gravel walk between it and the lawn's.
+      disc(56, 62, 24),
+      // The path round the left, clear of the garden's hedge until it comes in at the gate.
+      ribbon(9, [42, 114], [24, 100], [16, 72], [20, 46], [32, 32]),
+      capsule(32, 33, 41, 45, 5),
     ],
-    water: [capsule(50, 94, 50, 112, 12)],
-    ramps: [ramp(44, 128, 12, 8, UP, 48, 90, 4, 0.15)],
-    // Deep enough that a jump that lands running doesn't come back off the rail and all the way down into the pond.
-    sand: [ribbon(7.5, [30, 25], [52, 20], [74, 25])],
+    ramps: [ramp(51, 112, 10, 8, UP, 46, 80, 2.2, 0.04)],
+    // The lawn rises to its hedge, and nothing rests on the rise: a ball that never took off, or came back
+    // off the hedge, rolls back down past the ramp for another run at it.
+    slopes: [{ ...hill(rect(46, 90, 22, 22), 0, 24, 'bank'), slick: true }],
+    // Behind the cup, inside the hedge: a jump that comes down past the cup stays there rather than coming
+    // back off the hedge to the cup.
+    sand: [ribbon(3.4, [45, 46], [56, 43], [67, 46])],
+    paving: [arc(56, 62, 13, 0, Math.PI * 2, 1.1)],
     decor: [
-      decor('lily', 45, 100, 2.4),
-      decor('lily', 55, 110, 2),
-      decor('lily', 47, 88, 1.8),
-      decor('reeds', 61, 92, 2.2),
-      decor('flowers', 22, 154, 3),
-      decor('flowers', 79, 150, 2.6),
-      decor('bush', 16, 64, 3.2),
-      decor('blossom', 87, 62, 5.5),
+      decor('bed', 74, 150, 3, DOWN, 40),
+      decor('bed', 36, 160, 3, DOWN, 30),
     ],
   }),
   /*
-   * Three Pipes, another short one, and a bank shot twice over, in an old
-   * garden's waterworks. The tee sits at the foot of a lane up the
-   * right-hand side; the lane's head is cut across by a wall at a slant,
-   * which turns the ball left along a gallery, and in the paved floor at the
-   * gallery's far end three pipes open, evenly one above another, small
-   * enough to miss, and a ball going too fast runs over them. Which one the
-   * ball finds depends on how it came off the wall. Blue, in the middle, is
-   * where a shot straight up the lane goes: its pipe climbs to the foot of
-   * the terrace above and lets the ball out there, as far from the cup as
-   * the terrace goes. The terrace is an L, up the left side and across the
-   * top to a round green where the cup is, with its corner cut across at a
-   * slant like the one below: the corner stands between the ball and the
-   * cup, so from blue it is a bank shot off that wall to hole out in two.
-   * Gold, the bottom one, takes a shot a touch right of straight and little
-   * else: its pipe crosses the garden and comes up in the round green beside
-   * the cup, pointing at it, and the ball drops. Red, the top one, catches a
-   * shot pulled left and much of the ceiling's bounce; its pipe runs down the
-   * garden and round to the tee. The gallery runs downhill, so a ball that
-   * finds none of them rolls back out of it to the lane. The pipes are the
-   * only way up to the terrace.
+   * Three Pipes, a bank shot twice over, in an old garden's waterworks. The
+   * tee sits at the foot of a lane up the right-hand side; the lane's head is
+   * cut across by a wall at a slant, which turns the ball left along a
+   * gallery, and in the paved floor at the gallery's far end three pipes
+   * open, evenly one above another, small enough to miss, and a ball going
+   * too fast runs over them. Which one the ball finds depends on how it came
+   * off the wall. Blue, in the middle, is where a shot straight up the lane
+   * goes: its pipe climbs to the foot of the terrace above and lets the ball
+   * out there, as far from the cup as the terrace goes. The terrace is an L,
+   * up the left side and across the top to a round green where the cup is,
+   * with its corner cut across at a slant like the one below: the corner
+   * stands between the ball and the cup, so from blue it is a bank shot off
+   * that wall to hole out in two. Gold, the bottom one, takes a shot a touch
+   * right of straight and little else: its pipe crosses the garden and comes
+   * up in the round green beside the cup, pointing at it, and the ball drops.
+   * Red, the top one, catches a shot pulled left and much of the ceiling's
+   * bounce; its pipe runs down the garden and round to the tee. The gallery
+   * runs downhill, so a ball that finds none of them rolls back out of it to
+   * the lane. The pipes are the only way up to the terrace.
    */
   hole({
     name: 'Three Pipes',
@@ -544,329 +506,121 @@ export const COURSE: Hole[] = [
     ],
   }),
   /*
-   * Mill Creek. Off the tee straight at a windmill standing across the
-   * fairway: the only way on is the tunnel under it, and a sail across a
-   * door shuts it, so the run through is timed. Out the far side the
-   * fairway bends into a meadow, sand in its middle and a creek along its
-   * top. Two ways over. On the right a footbridge, narrow and railed, into
-   * the long way round: up the right side and over the top of a horseshoe
-   * of green that circles a garden. On the left a ramp at the water's edge,
-   * at the head of a pocket up the meadow's side: hit straight up it from the
-   * pocket, hard enough and no harder, and the ball flies the creek and the
-   * garden's foot and lands on the horseshoe's other leg, most of the long way
-   * saved. Not quite hard enough and it lands in the bunker at the foot of the
-   * leg; too hard and it flies off the top; crooked, off the side; too soft
-   * and the creek has it. From the top of the
-   * horseshoe a neck winds up past two boulders to a two-tier green: the
-   * cup is on the upper tier, behind a ridge that sends a timid putt back
-   * down, with sand either side.
+   * The Windmill. It stands across the lawn, and the way straight to the cup
+   * is the tunnel through its tower: in one door and out the other, and the
+   * green with the cup on it lies dead ahead. The sails sweep down past both
+   * doors, and a door is shut while a sail is across it, so the putt is
+   * timed; one that gets there as a sail comes down thuds off it and comes
+   * back. Or go round the tower, either side, by the narrow way between it and
+   * the rail: no sails to wait for, and a longer way to the cup.
    */
   hole({
-    name: 'Mill Creek',
-    par: 7,
-    h: 900,
-    tee: { x: 50, y: 862 },
-    cup: { x: 58, y: 74 },
+    name: 'The Windmill',
+    par: 2,
+    h: 220,
+    tee: { x: 50, y: 202 },
+    cup: { x: 50, y: 60 },
     blend: 9,
     green: [
-      disc(50, 858, 15),
-      ribbon(16, [50, 858], [50, 800], [50, 730], [48, 700]),
-      ribbon(17, [48, 704], [42, 664], [36, 626], [34, 596]),
-      // The meadow, and a pocket up its left side to the ramp.
-      ribbon(22, [28, 566], [50, 556], [74, 542]),
-      ribbon(10, [24, 566], [24, 528]),
-      // The meadow runs on under the creek, so a ball that is not stopped there goes in.
-      ribbon(12, [12, 532], [48, 520], [86, 506]),
-      // The footbridge.
-      capsule(72, 528, 72, 474, 4.6),
-      // The horseshoe: its right leg, its crown, and its left leg down to where the ramp lands.
-      ribbon(12.5, [72, 478], [78, 420], [78, 360]),
-      arc(50, 360, 28, Math.PI, Math.PI * 2, 12.5),
-      ribbon(12.5, [22, 360], [22, 424]),
-      // The neck, an S up to the green.
-      ribbon(12, [50, 336], [46, 304], [37, 270], [37, 236], [50, 206], [60, 176], [56, 148], [52, 130]),
-      disc(50, 96, 38),
+      disc(50, 200, 13),
+      ribbon(15, [50, 200], [50, 146]),
+      // The mill's yard, the tower in its middle and a narrow way round it either side.
+      disc(50, 118, 25),
+      // The green beyond.
+      disc(50, 67, 28),
     ],
-    water: [ribbon(7.5, [-12, 526], [16, 522], [48, 511], [80, 498], [112, 492])],
-    bridges: [capsule(72, 528, 72, 474, 4.6)],
-    mills: [mill(50, 752, 19, UP, 0.8)],
-    ramps: [ramp(19, 532, 10, 12, UP, 128, 105)],
-    rocks: [
-      { x: 44, y: 252, r: 4.2 },
-      { x: 55, y: 190, r: 3.6 },
-    ],
-    sand: [
-      ribbon(5, [44, 576], [53, 571], [60, 563]),
-      // Where a jump that isn't quite right comes down.
-      ribbon(8, [22, 396], [22, 420]),
-      ribbon(4.5, [83, 424], [84, 398]),
-      ribbon(4.5, [21, 96], [23, 83], [29, 72]),
-      ribbon(4.5, [69, 125], [77, 121], [83, 113]),
-    ],
-    slopes: [hill(ribbon(7, [12, 110], [50, 104], [88, 110]), 0, 70)],
+    mills: [mill(50, 118, 17, UP, 0.95)],
+    // Behind the cup, deep enough that a putt out of the tunnel with too much on it stays there.
+    sand: [ribbon(7, [32, 48], [50, 43], [68, 48])],
     decor: [
-      decor('blossom', 50, 402, 8.5),
-      decor('bush', 43, 440, 3),
-      decor('flowers', 57, 436, 3),
-      decor('flowers', 44, 372, 2.6),
-      decor('stone', 58, 376, 1.8),
+      decor('flowers', 30, 184, 3),
+      decor('flowers', 72, 176, 2.8),
+      decor('bush', 22, 140, 3.2),
+      decor('blossom', 84, 150, 5.5),
+      decor('flowers', 18, 96, 2.6),
     ],
   }),
   /*
-   * Fountain Court. A formal garden laid out on one line. Off the tee up an
-   * avenue with three stone planters set across it in turn, so there is no
-   * straight way through. At its head a paved plaza that dishes down into
-   * a fountain: a ball crossing it bends toward the basin, and one that
-   * slows on it slides all the way in. Out of the plaza's far corners two
-   * walks run either side of a long pool: the west walk has a rill down
-   * part of its middle, a lane either side of it; the east walk has two more
-   * planters to get round. They meet at the top of the pool, and a flight
-   * of steps climbs to a terrace where the cup sits in the middle of a knot
-   * garden, two rings of clipped hedge with their gaps lined up, toward the
-   * steps and side to side: putt straight up through both from the head of
-   * the steps, or across from either side. Inside the inner ring the ground
-   * dishes gently down to the cup.
+   * Loop-the-Loop. Up a lane that narrows to a single track, and on it a
+   * loop: a ball rolling up the track fast enough runs off round the ring on
+   * the right and back onto the track past where it went in, still heading
+   * up, into the green with the cup dead ahead. Not fast enough and it runs
+   * part way round, comes back, and rolls back down the lane; much too fast
+   * and it comes out of the loop with plenty left, past the cup and into the
+   * bunker behind it. Or take the path round the left, the long way up,
+   * without the loop.
    */
   hole({
-    name: 'Fountain Court',
-    par: 7,
-    theme: 'formal',
-    h: 900,
-    tee: { x: 50, y: 866 },
-    cup: { x: 50, y: 150 },
-    blend: 8,
+    name: 'Loop-the-Loop',
+    par: 2,
+    h: 230,
+    tee: { x: 50, y: 210 },
+    cup: { x: 50, y: 64 },
+    blend: 9,
     green: [
-      disc(50, 862, 14),
-      ribbon(15, [50, 862], [50, 760], [50, 596]),
-      disc(50, 560, 38),
-      ribbon(11, [27, 534], [18, 488], [18, 400], [24, 344]),
-      ribbon(11, [73, 534], [82, 488], [82, 400], [76, 344]),
-      ribbon(10, [24, 344], [50, 318], [76, 344]),
-      ribbon(11, [50, 318], [50, 196]),
-      disc(50, 150, 40),
+      disc(50, 208, 13),
+      ribbon(12, [50, 208], [50, 160]),
+      // The track, one ball wide and a little more, through the loop and on to the green.
+      capsule(50, 166, 50, 88, 4.5),
+      disc(50, 64, 26),
+      // The path round the left.
+      ribbon(8, [42, 176], [26, 158], [18, 124], [22, 96], [32, 78]),
     ],
-    paving: [disc(50, 560, 38)],
-    water: [disc(50, 560, 9), ribbon(1.6, [18, 462], [18, 430]), rect(37, 370, 26, 118)],
-    slopes: [dish(disc(50, 560, 31), 38), hill(ribbon(11, [50, 300], [50, 214]), 0, 55, 'steps'), dish(disc(50, 150, 10), 24)],
-    rocks: [
-      rock(45, 790, 4.2, 'planter'),
-      rock(56, 748, 4.2, 'planter'),
-      rock(45, 706, 4.2, 'planter'),
-      rock(77, 472, 3.8, 'planter'),
-      rock(87, 424, 3.8, 'planter'),
-    ],
-    walls: [
-      ...ring(50, 150, 22, 1.1, [
-        [Math.PI, 13],
-        [0, 13],
-        [DOWN, 16],
-      ]),
-      ...ring(50, 150, 11.5, 1.1, [
-        [Math.PI, 12],
-        [0, 12],
-        [DOWN, 10],
-      ]),
-    ],
+    loops: [loop(50, 120, UP, 14, 1, 95, 0.85)],
+    // Behind the cup, deep enough that a ball out of the loop with too much on it stays there, and doesn't
+    // come back off the rail to the cup.
+    sand: [ribbon(7, [32, 50], [50, 45], [68, 50])],
     decor: [
-      decor('fountain', 50, 560, 9),
-      decor('bed', 22, 770, 3.4, DOWN, 70),
-      decor('bed', 78, 770, 3.4, DOWN, 70),
-      decor('urn', 33, 876, 1.9),
-      decor('urn', 67, 876, 1.9),
-      decor('urn', 36, 296, 1.9),
-      decor('urn', 64, 296, 1.9),
-      decor('bed', 50, 356, 2.6, 0, 20),
+      decor('flowers', 70, 190, 3),
+      decor('bush', 78, 168, 3.2),
+      decor('blossom', 86, 94, 5.5),
+      decor('flowers', 10, 190, 2.6),
     ],
   }),
   /*
-   * Castle Keep. Up a winding road to the moat, and over it by the
-   * drawbridge, which is down a little more than half the time: roll onto
-   * it while it is up and the moat has you. The portcullis in the gate
-   * behind it is up while the bridge is down. Or, at the far left of the
-   * bank and behind a boulder, a drain with a grate over it takes a ball
-   * under the walls, no waiting, and lets it out at the foot of the bailey
-   * rolling toward the quintain's side. Inside, the keep
-   * stands in the middle and the way on is round it, past the well on the
-   * left or past the quintain on the right, a beam that swings round on its
-   * post. They meet behind the keep, and a lane runs up through the inner
-   * wall, where a second portcullis keeps a time of its own, to the keep's
-   * garden, where a turret stands between the way in and the cup. Past the
-   * well, before the paths meet, a narrow postern runs up the inside of the
-   * curtain wall, through the inner wall without a gate, and into the garden
-   * off to the turret's side, with nothing between it and the cup.
+   * Volcano. The cup is in its crater, on the flat floor at the top of the
+   * cone. Putt up the lawn and up the cone: too soft and the ball runs up
+   * and rolls back down; just right and it comes over the rim onto the floor
+   * of the crater and stops there, or in the cup; firm, and it crosses the
+   * crater and runs down the far side into the ash, or on into the lava if
+   * it is really moving. Lava runs down both flanks too, for a ball that
+   * comes up the cone crooked and rolls off sideways.
    */
   hole({
-    name: 'Castle Keep',
-    par: 7,
-    theme: 'castle',
-    waterLook: 'moat',
-    h: 920,
-    tee: { x: 50, y: 888 },
-    cup: { x: 50, y: 136 },
+    name: 'Volcano',
+    par: 3,
+    theme: 'volcano',
+    waterLook: 'lava',
+    h: 230,
+    tee: { x: 50, y: 210 },
+    cup: { x: 50, y: 80 },
     blend: 9,
     green: [
-      disc(50, 884, 14),
-      ribbon(13, [50, 884], [46, 836], [32, 796], [30, 752], [42, 716], [50, 690]),
-      ribbon(20, [18, 678], [50, 674], [82, 678]),
-      ribbon(10, [10, 656], [90, 656]),
-      capsule(50, 666, 50, 596, 5.2),
-      ribbon(22, [28, 570], [50, 578], [72, 570]),
-      ribbon(11, [26, 556], [19, 490], [21, 410], [30, 356]),
-      ribbon(11, [74, 556], [81, 490], [79, 410], [70, 356]),
-      ribbon(11, [30, 356], [50, 336], [70, 356]),
-      ribbon(11, [50, 336], [50, 250], [50, 196]),
-      // The postern.
-      ribbon(6, [21, 410], [14, 362], [12, 300], [16, 236], [29, 190]),
-      disc(50, 156, 34),
+      disc(50, 208, 13),
+      ribbon(15, [50, 208], [50, 118]),
+      // The volcano, with the ash and the lava behind it on the same ground.
+      disc(50, 80, 49),
     ],
-    water: [ribbon(8, [-12, 652], [30, 650], [70, 650], [112, 652]), disc(20, 470, 5.4)],
-    drawbridges: [drawbridge(capsule(50, 666, 50, 636, 5.2), 6, 0.55)],
-    gates: [gate(44.8, 608, 55.2, 608, 6, 0.55), gate(39.2, 300, 60.8, 300, 5, 0.5, 2.5)],
-    portals: [pipe(12, 670, 18, 574, RIGHT, 'drain')],
-    spinners: [beam(80, 470, 17, 1.5)],
-    rocks: [rock(50, 166, 7, 'turret'), rock(22, 667, 4.2)],
-    sand: [ribbon(4.5, [41, 804], [36, 776])],
-    decor: [
-      decor('keep', 50, 452, 13),
-      decor('wall', -2, 608, 4, 0, 36),
-      decor('wall', 66, 608, 4, 0, 36),
-      decor('tower', 37, 608, 6.2),
-      decor('tower', 63, 608, 6.2),
-      decor('wall', -1, 604, 3, UP, 500),
-      decor('wall', 101, 604, 3, UP, 500),
-      // The inner wall, with the postern's opening in it on the left.
-      decor('wall', -2, 294, 3, 0, 7),
-      decor('wall', 19, 294, 3, 0, 21),
-      decor('tower', 4, 294, 2.4),
-      decor('tower', 20, 294, 2.4),
-      decor('wall', 62, 294, 3, 0, 40),
-      decor('tower', 39, 294, 4.6),
-      decor('tower', 61, 294, 4.6),
-      decor('wall', -2, 104, 4, 0, 104),
-      decor('tower', 2, 104, 7),
-      decor('tower', 98, 104, 7),
-      decor('tower', 2, 608, 7),
-      decor('tower', 98, 608, 7),
-    ],
-  }),
-  /*
-   * Lighthouse Point. Along a boardwalk by the sea, past a boulder and
-   * where the sea washes in, to a lagoon, and over it by the sandbar, which
-   * is dry while the tide is out and under when it comes back in, or by the
-   * pier out on the right, narrow and always there, which runs on as a
-   * boardwalk up the right of the beach, past everything on it, to the point.
-   * Up the beach past two crabs scuttling back and forth across it and a
-   * sandcastle in the middle, then out along the point, with a wind off the
-   * sea that leans a rolling ball toward a cove biting into its side, to a
-   * green at the foot of the lighthouse with a cove biting into it downwind.
-   */
-  hole({
-    name: 'Lighthouse Point',
-    par: 7,
-    theme: 'coast',
-    waterLook: 'sea',
-    h: 920,
-    tee: { x: 60, y: 886 },
-    cup: { x: 60, y: 116 },
-    blend: 9,
-    green: [
-      disc(60, 882, 14),
-      ribbon(13, [60, 882], [62, 820], [58, 760], [52, 716]),
-      ribbon(18, [30, 700], [56, 696], [84, 700]),
-      ribbon(10, [22, 670], [88, 670]),
-      capsule(46, 692, 46, 628, 6),
-      capsule(82, 696, 82, 626, 4.2),
-      ribbon(24, [44, 616], [60, 606], [82, 614]),
-      ribbon(24, [52, 600], [50, 520], [50, 452]),
-      // The boardwalk, on from the pier, far enough off the beach to stay its own way.
-      ribbon(5, [82, 624], [90, 590], [92, 530], [90, 484], [80, 454], [64, 438]),
-      ribbon(13, [50, 452], [64, 410], [68, 360], [54, 312], [46, 262], [56, 214], [62, 170], [60, 136]),
-      disc(60, 124, 30),
-    ],
+    // The cone, and the crater's floor falling gently to its middle, where the cup is.
+    slopes: [{ ...hilltop(50, 80, 13, 30, 42), look: 'cone' }, { shape: disc(50, 80, 13), dish: 26 }],
     water: [
-      ribbon(22, [-16, 940], [0, 850], [6, 770], [-4, 700], [-6, 600], [0, 480], [6, 380], [10, 300], [4, 200], [-8, 120], [-16, 60]),
-      ribbon(9, [-12, 660], [20, 658], [50, 660], [80, 662], [112, 658]),
-      ribbon(20, [118, 470], [108, 380], [104, 300], [110, 200], [118, 120]),
-      ribbon(22, [-16, 28], [50, 12], [116, 28]),
-      // The sea washing into the boardwalk.
-      disc(44, 792, 7),
-      // Coves off the point downwind, one biting into it, and one biting into the green.
-      disc(47, 366, 8.5),
-      disc(29, 262, 7),
-      disc(31, 112, 6),
+      // Down the flanks, off to either side: a ball that comes up the cone crooked, or rolls back down it
+      // sideways, can find them; one that comes up at the crater can't.
+      capsule(67.7, 89.4, 83.6, 97.8, 2.6),
+      capsule(32.3, 89.4, 16.4, 97.8, 2.6),
+      // Behind, past the ash, up to the rail: only a ball that crossed the crater really moving gets there.
+      arc(50, 80, 46.8, -Math.PI + 0.45, -0.45, 2.4),
+      // Round the island, off the course.
+      ribbon(9, [-12, 150], [-4, 110], [-6, 70], [0, 30], [26, -4], [74, -4], [100, 30], [106, 70], [104, 110], [112, 150]),
     ],
-    drawbridges: [drawbridge(capsule(46, 692, 46, 628, 6), 7, 0.55, 'sandbar')],
-    bridges: [capsule(82, 696, 82, 626, 4.2)],
-    rovers: [crab(40, 560, 24, 0, box(27, 552, 48, 16)), crab(64, 494, 30, Math.PI, box(27, 486, 48, 16))],
-    rocks: [rock(50, 527, 5, 'sandcastle'), rock(66, 752, 3.4)],
-    slopes: [hill(ribbon(17, [58, 430], [68, 360], [54, 312], [46, 262], [56, 214]), -36, 0, 'wind'), hill(disc(60, 124, 31), -12, 0, 'wind')],
+    // At the cone's foot behind, where a ball over the crater comes down: deep enough to stop most of them.
+    sand: [arc(50, 80, 38.5, -Math.PI + 0.3, -0.3, 6)],
     decor: [
-      decor('lighthouse', 24, 78, 9),
-      decor('boat', 8, 300, 5, -0.6),
-      decor('boat', 94, 250, 4.5, 2.3),
-      decor('boat', 30, 22, 5, 0.2),
-      decor('umbrella', 80, 566, 3.2),
-      decor('umbrella', 80, 506, 3),
-      decor('umbrella', 84, 780, 3.4),
+      decor('palm', 16, 170, 7),
+      decor('palm', 86, 180, 6.5),
+      decor('palm', 84, 132, 6),
+      decor('palm', 14, 128, 6.5),
     ],
-  }),
-  /*
-   * The Summit. Up the mountainside by three switchbacks on a slope that
-   * leans every roll toward the valley, so each leg is aimed uphill of
-   * where it needs to go. At the top of them a ledge, and a drop right
-   * across the mountain. Two ways over, both of them skill: the ramp in the
-   * middle of the ledge, hit hard enough and straight, or the cave at its far
-   * left end, a small mouth to find, which comes out on the far side heading
-   * up the path. Up beside the falls, past two boulders, and a flight of steps
-   * to the summit, a broad flat top with a mound in the middle, and the cup
-   * on the mound's own flat top: short, and the ball rolls back down; long,
-   * and it runs over the top and down the far side. Only a ball that arrives
-   * just so stays up there.
-   */
-  hole({
-    name: 'The Summit',
-    par: 7,
-    theme: 'summit',
-    h: 960,
-    tee: { x: 46, y: 928 },
-    cup: { x: 50, y: 120 },
-    blend: 9,
-    green: [
-      disc(46, 924, 14),
-      ribbon(
-        12.5,
-        [46, 924],
-        [60, 902],
-        [76, 870],
-        [80, 842],
-        [66, 822],
-        [40, 806],
-        [22, 782],
-        [20, 754],
-        [34, 734],
-        [62, 716],
-        [78, 692],
-        [76, 662],
-        [62, 640],
-        [58, 614],
-      ),
-      ribbon(14, [22, 612], [50, 606], [80, 612]),
-      // The ledge and the far side both run on over the edge, so a ball that is not stopped goes down.
-      ribbon(8, [18, 589], [30, 588], [70, 592], [84, 589]),
-      ribbon(18, [26, 550], [50, 544], [74, 550]),
-      ribbon(8, [18, 566], [30, 565], [70, 569], [84, 566]),
-      ribbon(12, [50, 540], [42, 480], [34, 424], [40, 372], [54, 332]),
-      ribbon(12, [54, 332], [58, 270], [50, 210], [50, 170]),
-      // The summit: nearly the width of the mountain, flat round a mound in its middle.
-      disc(50, 124, 47),
-    ],
-    pits: [ribbon(9, [-12, 580], [30, 576], [70, 580], [112, 574])],
-    water: [ribbon(4, [112, 300], [94, 340], [92, 420], [93, 500], [92, 552], [88, 572]), ribbon(12, [-16, 960], [4, 930], [10, 890])],
-    ramps: [ramp(44, 600, 12, 10, UP, 58, 115)],
-    portals: [pipe(14, 604, 34, 538, -Math.PI / 3, 'cave')],
-    slopes: [hill(rect(0, 630, 100, 310), 0, 16), hill(ribbon(12, [58, 300], [50, 214]), 0, 50, 'steps'), hilltop(50, 120, 15, 32, 50)],
-    rocks: [rock(40, 452, 4), rock(46, 396, 3.6)],
-    decor: [decor('waterfall', 88, 566, 4, DOWN)],
   }),
 ]
 

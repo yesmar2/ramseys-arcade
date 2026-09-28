@@ -13,6 +13,7 @@ import {
   type Drawbridge,
   type Gate,
   type Hole,
+  type Loop,
   type Mill,
   type Portal,
   type Rect,
@@ -156,6 +157,18 @@ const ROVER_CARRY = 0.5
 const SUBSTEPS = 6
 /** Keyboard aim turns this fast, in radians a second. */
 const KEY_TURN = 1.9
+/**
+ * Round a loop: the ball runs round the ring at no less than this, so a slow one still gets round in a
+ * moment, the ride taking between these times; one that doesn't make it comes back at this share of its
+ * speed. The track straightens a ball that came in at an angle by half.
+ */
+const LOOP_PACE = 70
+const LOOP_RIDE_MIN = 0.55
+const LOOP_RIDE_MAX = 1.2
+const LOOP_BACK = 0.6
+const LOOP_STRAIGHTEN = 0.5
+/** However hard a ball went into a loop, it comes out no faster than this: the ring takes the rest. */
+const LOOP_TOP = 150
 
 export type Ball = { x: number; y: number; vx: number; vy: number }
 
@@ -167,6 +180,14 @@ export type RoverState = { x: number; y: number; vx: number; vy: number; cool: n
  * along it takes, how fast it comes out, and where it was when it dropped.
  */
 export type Transit = { pipe: number; t: number; run: number; speed: number; from: Vec }
+
+/**
+ * A ball on a loop: which loop, how long it has been on, how long the ride
+ * takes, how fast it went in and which way it was heading, how far across
+ * the track from its middle, whether it gets round, and how far round it gets
+ * before it comes back if it doesn't.
+ */
+export type LoopRide = { loop: number; t: number; dur: number; speed: number; heading: number; lat: number; made: boolean; reach: number }
 
 export type HoleResult = {
   strokes: number
@@ -224,6 +245,8 @@ export type GameState = {
   airKeep: number
   /** Down a pipe; null the rest of the time. */
   transit: Transit | null
+  /** Round a loop; null the rest of the time. */
+  looping: LoopRide | null
   /** Ball scale while dropping into the cup. */
   drop: number
   /** Flash timers per bumper and per wall (kickers), for the renderer. */
@@ -498,6 +521,7 @@ export function createInitialState(w = 540, h = 720): GameState {
     airMax: 0,
     airKeep: LAND_KEEP,
     transit: null,
+    looping: null,
     drop: 1,
     bumperFlash: first.bumpers.map(() => 0),
     wallFlash: wallsOf(first).map(() => 0),
@@ -599,6 +623,7 @@ function beginHole(state: GameState, index: number): GameState {
     airMax: 0,
     airKeep: LAND_KEEP,
     transit: null,
+    looping: null,
     drop: 1,
     bumperFlash: hole.bumpers.map(() => 0),
     wallFlash: wallsOf(hole).map(() => 0),
@@ -1001,6 +1026,7 @@ function downPipe(s: GameState, hole: Hole, dt: number): GameState {
   return {
     ...s,
     transit: null,
+    looping: null,
     restT: 0,
     ball: {
       x: pipe.b.x + Math.cos(pipe.out) * (r + BALL_R),
@@ -1009,6 +1035,138 @@ function downPipe(s: GameState, hole: Hole, dt: number): GameState {
       vy: Math.sin(pipe.out) * tr.speed,
     },
   }
+}
+
+/** A loop's way along the lane, the way across it toward the ring, and the ring's middle. */
+export function loopFrame(lp: Loop) {
+  const d = { x: Math.cos(lp.dir), y: Math.sin(lp.dir) }
+  const n = { x: -d.y * lp.side, y: d.x * lp.side }
+  return { d, n, c: { x: lp.x + n.x * lp.r, y: lp.y + n.y * lp.r } }
+}
+
+/**
+ * Where a ball is `phi` of the way round a loop, `lat` off the middle of its
+ * track: it leaves the lane at the loop's foot heading along the lane, runs
+ * on round the ring, and comes back onto the lane `span` further on, the
+ * ring climbing a little each turn to cross over the lane where it went in.
+ */
+export function loopPoint(lp: Loop, phi: number, lat = 0): Vec {
+  const { d, n, c } = loopFrame(lp)
+  const r = lp.r - lat
+  const on = (lp.span * phi) / (Math.PI * 2)
+  return {
+    x: c.x + r * (-n.x * Math.cos(phi) + d.x * Math.sin(phi)) + d.x * on,
+    y: c.y + r * (-n.y * Math.cos(phi) + d.y * Math.sin(phi)) + d.y * on,
+  }
+}
+
+/** How far round the loop a ride is at a moment: out and round, or out, part way, and back. */
+function ridePhi(ride: LoopRide) {
+  const u = Math.max(0, Math.min(1, ride.t / ride.dur))
+  if (ride.made) return Math.PI * 2 * u
+  // Up and slowing, then back down the same way, gathering pace.
+  return ride.reach * (u < 0.5 ? 1 - (1 - u * 2) ** 2 : 1 - (u * 2 - 1) ** 2)
+}
+
+/** A ball round a loop, for drawing it: which loop, where the ball is, and how far round it is. */
+export function loopView(s: GameState): { loop: Loop; at: Vec; phi: number } | null {
+  const ride = s.looping
+  const lp = ride ? currentHole(s).loops[ride.loop] : undefined
+  if (!ride || !lp) return null
+  const phi = ridePhi(ride)
+  return { loop: lp, at: loopPoint(lp, phi, ride.lat), phi }
+}
+
+/**
+ * A ball that has reached a loop's foot rolling along the lane: round it goes,
+ * or part way and back. The ride takes the ring's length at the ball's own
+ * pace, never slower than LOOP_PACE.
+ */
+function startRide(s: GameState, loop: number, lp: Loop, ball: Ball): GameState {
+  const speed = Math.hypot(ball.vx, ball.vy)
+  const { n } = loopFrame(lp)
+  const lat = Math.max(-lp.w / 2 + BALL_R, Math.min(lp.w / 2 - BALL_R, (ball.x - lp.x) * n.x + (ball.y - lp.y) * n.y))
+  const made = speed >= lp.min
+  const reach = made ? Math.PI * 2 : Math.PI * 2 * Math.max(0.12, Math.min(0.8, (speed / lp.min) ** 2 * 0.8))
+  const length = made ? Math.PI * 2 * lp.r + lp.span : reach * lp.r * 2
+  const dur = Math.max(LOOP_RIDE_MIN, Math.min(LOOP_RIDE_MAX, length / Math.max(LOOP_PACE, speed * (made ? 1 : 0.7))))
+  sfx('whoosh', 3)
+  const heading = Math.atan2(ball.vy, ball.vx)
+  return {
+    ...s,
+    ball: { x: ball.x, y: ball.y, vx: 0, vy: 0 },
+    looping: { loop, t: 0, dur, speed, heading, lat, made, reach },
+  }
+}
+
+/**
+ * A ball round a loop, a frame on. Round it, it comes back onto the lane past
+ * where it went in, heading the way it came in with half of any angle taken
+ * out, and a share of its speed gone; not round it, it comes back out where it
+ * went in, rolling back down.
+ */
+function rideLoop(s: GameState, hole: Hole, dt: number): GameState {
+  const ride = s.looping!
+  const lp = hole.loops[ride.loop]
+  if (!lp) return { ...s, looping: null }
+  const t = ride.t + dt
+  if (t < ride.dur) {
+    const next: GameState = { ...s, looping: { ...ride, t } }
+    const at = loopPoint(lp, ridePhi({ ...ride, t }), ride.lat)
+    return { ...next, ball: { x: at.x, y: at.y, vx: 0, vy: 0 } }
+  }
+  const { d, n } = loopFrame(lp)
+  if (ride.made) {
+    let off = ride.heading - lp.dir
+    off = Math.atan2(Math.sin(off), Math.cos(off))
+    const heading = lp.dir + off * LOOP_STRAIGHTEN
+    const speed = Math.min(LOOP_TOP, ride.speed * lp.keep)
+    sfx('tap', 1)
+    return {
+      ...s,
+      looping: null,
+      restT: 0,
+      ball: {
+        x: lp.x + d.x * lp.span + n.x * ride.lat,
+        y: lp.y + d.y * lp.span + n.y * ride.lat,
+        vx: Math.cos(heading) * speed,
+        vy: Math.sin(heading) * speed,
+      },
+    }
+  }
+  // Back where it went in, and a little short of it, rolling back down the lane.
+  const speed = ride.speed * LOOP_BACK
+  return {
+    ...s,
+    looping: null,
+    restT: 0,
+    ball: {
+      x: lp.x - d.x * 1.6 + n.x * ride.lat,
+      y: lp.y - d.y * 1.6 + n.y * ride.lat,
+      vx: -d.x * speed,
+      vy: -d.y * speed,
+    },
+  }
+}
+
+/**
+ * The loop whose foot a ball is at, rolling up the lane along it, or -1: at
+ * the foot means across the track and within a little of the point where the
+ * ring leaves the lane, and rolling up the lane means within about 35° of it.
+ */
+function loopAt(hole: Hole, ball: Ball): number {
+  const speed = Math.hypot(ball.vx, ball.vy)
+  if (speed < STOP_SPEED) return -1
+  for (let i = 0; i < hole.loops.length; i++) {
+    const lp = hole.loops[i]!
+    const { d, n } = loopFrame(lp)
+    const along = (ball.x - lp.x) * d.x + (ball.y - lp.y) * d.y
+    const across = (ball.x - lp.x) * n.x + (ball.y - lp.y) * n.y
+    if (Math.abs(along) > 1.3 || Math.abs(across) > lp.w / 2) continue
+    if (ball.vx * d.x + ball.vy * d.y < speed * RAMP_SQUARE) continue
+    return i
+  }
+  return -1
 }
 
 type StepOut = {
@@ -1024,6 +1182,8 @@ type StepOut = {
   /** Dropped into this pipe, -1 for none, to come out at `pipeSpeed`. */
   pipe: number
   pipeSpeed: number
+  /** Reached the foot of this loop, -1 for none. */
+  loop: number
   launched: boolean
   landed: boolean
   /** Landed off the ground altogether. */
@@ -1087,6 +1247,7 @@ function step(ball: Ball, hole: Hole, rovers: RoverState[], flight: Flight, dt: 
     water: false,
     pipe: -1,
     pipeSpeed: 0,
+    loop: -1,
     launched: false,
     landed: false,
     oob: false,
@@ -1254,6 +1415,9 @@ function step(ball: Ball, hole: Hole, rovers: RoverState[], flight: Flight, dt: 
     out.pipeSpeed = pipe.speed ?? Math.max(70, Math.hypot(ball.vx, ball.vy))
     return out
   }
+  // At a loop's foot rolling up the lane: the loop has it from here.
+  out.loop = loopAt(hole, ball)
+  if (out.loop >= 0) return out
   // The rails have the last word: nothing that moves, not a blade, a bar, a door or a rover, pushes a
   // ball through one. A ball caught between them stays on its side and the thing passes over it.
   for (const wall of wallsNear(hole, ball)) {
@@ -1342,6 +1506,7 @@ function penalty(state: GameState, title: string, word: string): GameState {
     ball: { x: state.strokeStart.x, y: state.strokeStart.y, vx: 0, vy: 0 },
     air: 0,
     transit: null,
+    looping: null,
     aiming: 'none',
     power: 0,
     inSand: false,
@@ -1366,6 +1531,7 @@ function readyToAim(s: GameState): GameState {
     restT: 0,
     air: 0,
     transit: null,
+    looping: null,
   }
 }
 
@@ -1435,6 +1601,7 @@ export function tick(state: GameState, dt: number): GameState {
     case 'roll': {
       const hole = currentHole(s)
       if (s.transit) return downPipe(s, hole, dt)
+      if (s.looping) return rideLoop(s, hole, dt)
       const ball = { ...s.ball }
       const flight: Flight = { air: s.air, max: s.airMax, keep: s.airKeep }
       const sub = dt / SUBSTEPS
@@ -1493,6 +1660,7 @@ export function tick(state: GameState, dt: number): GameState {
             transit: { pipe: out.pipe, t: 0, run: pipeRunTime(pipe), speed: out.pipeSpeed, from: { x: ball.x, y: ball.y } },
           }
         }
+        if (out.loop >= 0) return startRide(carried, out.loop, hole.loops[out.loop]!, ball)
         if (out.oob) return penalty(carried, 'Out of bounds', 'OUT')
         if (out.water) return penalty(carried, 'Splash', 'SPLASH')
         if (out.pit) return penalty(carried, 'Over the edge', 'DROP')

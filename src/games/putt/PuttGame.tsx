@@ -5,6 +5,7 @@ import { GameStage } from '../../components/GameStage'
 import { AdminWaveSkip } from '../../components/AdminWaveSkip'
 import { GameStartCard } from '../../components/GameStartCard'
 import { GamePauseOverlay, PauseButton } from '../../components/PauseControls'
+import { PlayReadoutStats, PlayStat } from '../../components/PlayStats'
 import { ScoreSaveCard } from '../../components/ScoreSaveCard'
 import { TournamentScoreCard } from '../../components/TournamentScoreCard'
 import { useGamePause } from '../../hooks/useGamePause'
@@ -47,9 +48,15 @@ const TAP_SLOP = 6
 const KEY_PAN = 180
 
 function toParLabel(toPar: number) {
-  if (toPar === 0) return 'Level par'
+  if (toPar === 0) return 'Even par'
   const n = Math.abs(toPar)
   return `${n} ${toPar < 0 ? 'under' : 'over'} par`
+}
+
+/** The round against par so far, the way a scoreboard puts it: E for even, +2 over, −1 under. */
+function toParFigure(toPar: number) {
+  if (toPar === 0) return 'E'
+  return toPar > 0 ? `+${toPar}` : `−${-toPar}`
 }
 
 /** "2 under par · 3 holes at a new best", or just the par when nothing was beaten. */
@@ -371,6 +378,13 @@ export function PuttGame() {
               {pausable || paused ? <PauseButton paused={paused} onToggle={togglePause} /> : null}
             </GamePlayChrome>
             <PlayReadout>
+              {/* Where the round stands: the hole it is on, and the holes played against their par. */}
+              {ui.phase !== 'menu' ? (
+                <PlayReadoutStats>
+                  <PlayStat label="Hole" value={`${Math.min(ui.holeIndex + 1, COURSE.length)}/${COURSE.length}`} />
+                  <PlayStat label="To par" value={toParFigure(ui.toPar)} />
+                </PlayReadoutStats>
+              ) : null}
               <PlayReadoutScore hot={inRun && ui.score > previousBestRef.current}>
                 {ui.score}
               </PlayReadoutScore>

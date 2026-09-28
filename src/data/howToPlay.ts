@@ -214,7 +214,7 @@ export const HOW_TO_PLAY: Record<string, HowToPlay> = {
     ends: 'A wrong move, or too slow.',
   },
   putt: {
-    goal: 'Seven holes of mini golf: two short, five long.',
+    goal: 'Five holes of mini golf, each with a trick to it.',
     controls: [
       { does: 'Shoot', touch: 'Pull back, let go', keys: 'Arrows, hold Space' },
       { does: 'Look ahead', touch: 'Drag the map', keys: '↑ ↓' },
@@ -224,8 +224,8 @@ export const HOW_TO_PLAY: Record<string, HowToPlay> = {
       { what: 'Bogey', pts: '100' },
       { what: 'Hole in one', pts: '+200 more' },
     ],
-    ends: 'After seven holes. Par is 39.',
-    tip: 'Water, or rolling off an edge, costs a stroke.',
+    ends: 'After five holes. Par is 11.',
+    tip: 'Water, lava, or flying off the course costs a stroke.',
   },
   frenzy: {
     goal: 'Eat smaller fish. Don’t get eaten.',
