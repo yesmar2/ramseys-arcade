@@ -54,7 +54,7 @@ export type Standing = {
   /** The run that moves them next; none for the player in first. */
   next: Step | null
   /** For the player in first: who is next, and how far back. */
-  chaser: { name: string; gap: number } | null
+  chaser: { name: string; gap: number; score: number } | null
 }
 
 /**
@@ -84,7 +84,7 @@ export function standingOn(players: BoardPlayer[], you: BoardYou): Standing {
     bar: barPosition(player.place, field),
     lines,
     next,
-    chaser: !above && below ? { name: below.name, gap: player.best.score - below.best.score } : null,
+    chaser: !above && below ? { name: below.name, gap: player.best.score - below.best.score, score: below.best.score } : null,
   }
 }
 

@@ -93,6 +93,8 @@ import '../styles/evp.css'
 
 // Today's Wanted draws its bugs, so it comes in a chunk of its own rather than with the Events page.
 const TodaysWantedCard = lazyPage(() => import('../components/TodaysWantedCard').then((m) => m.TodaysWantedCard))
+// Today's Pour builds the day's glasses, so it comes in one too.
+const TodaysPourCard = lazyPage(() => import('../components/TodaysPourCard').then((m) => m.TodaysPourCard))
 
 async function fetchTournamentDetail(
   id: string,
@@ -875,6 +877,11 @@ export function TournamentsPage() {
               {isGameListed('findbug') ? (
                 <Suspense fallback={null}>
                   <TodaysWantedCard />
+                </Suspense>
+              ) : null}
+              {isGameListed('halffull') ? (
+                <Suspense fallback={null}>
+                  <TodaysPourCard />
                 </Suspense>
               ) : null}
               {lineup.lastWeekly ? (

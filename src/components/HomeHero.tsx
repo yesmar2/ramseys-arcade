@@ -5,13 +5,14 @@ import { useLiveEvents } from '../hooks/useLiveEvents'
 import { APP_NAME } from '../lib/brand'
 import { useDefaultPeriod } from '../lib/defaultPeriod'
 import { useDeviceType } from '../lib/device'
+import { gapBetween, gapFigure } from '../lib/gameBoard'
 import { hasGamePreview } from '../lib/gamePreviews'
 import { useGlobalRank } from '../lib/globalRank'
 import { cachedMyGroups, useActiveGroup } from '../lib/groups'
 import { heroSlug, newestSlug } from '../lib/homePicks'
 import { useRecentGames } from '../lib/lastPlayed'
 import { getLeaderboard, normalizePlayerName, PERIOD_LABELS, type LeaderboardPeriod } from '../lib/leaderboard'
-import { formatLeaderboardScore, formatTimeGap, isTimeBoard } from '../lib/leaderboardFormat'
+import { formatLeaderboardScore } from '../lib/leaderboardFormat'
 import { numberWord } from '../lib/numberWord'
 import { resolveGameAccent } from '../lib/theme'
 import { howItWins, type TournamentSummary } from '../lib/tournaments'
@@ -38,27 +39,6 @@ type Place = { name: string; score: number; rank: number }
  * that, so the line still shows second and third.
  */
 type Rung = { you: Place; above: Place | null; below: Place | null; third?: Place | null }
-
-/** What each game counts, where it is not points. Time boards count seconds. */
-const UNITS: Record<string, [string, string]> = {
-  crosswalk: ['row', 'rows'],
-  stacker: ['block', 'blocks'],
-  simon: ['round', 'rounds'],
-  fireflies: ['note', 'notes'],
-  acechase: ['try', 'tries'],
-}
-
-/** A gap between two scores as a bare figure: 9, 1,250, 2.4s. */
-function gapFigure(slug: string, gap: number): string {
-  return isTimeBoard(slug) ? formatTimeGap(slug, gap) : gap.toLocaleString()
-}
-
-/** A gap in the game's own unit: 9 rows, 1 point, 2.4s. */
-function gapText(slug: string, gap: number): string {
-  if (isTimeBoard(slug)) return gapFigure(slug, gap)
-  const [one, many] = UNITS[slug] ?? ['point', 'points']
-  return `${gap.toLocaleString()} ${gap === 1 ? one : many}`
-}
 
 /** A points figure that agrees with itself: 1 pt, 2 pts. */
 function pts(n: number) {
@@ -206,7 +186,7 @@ function RaceLine({ slug, name, rung }: { slug: string; name: string; rung: Rung
   }
 
   return (
-    <div className="hero-race" role="img" aria-label={`${name} all-time board: ${said.join(', ')}`}>
+    <div className="hero-race" role="img" aria-label={`${name} ${isDailyGame(slug) ? 'today’s' : 'all-time'} board: ${said.join(', ')}`}>
       <span className="hero-race__track" />
       {gap > 0 ? <span className="hero-race__lit" style={{ left: `${x.mid}%`, width: `${x.hi - x.mid}%` }} /> : null}
       {s.lo && x.lo != null ? mark(s.lo, x.lo, 'lo', ' hero-race__label--start') : null}
@@ -215,7 +195,7 @@ function RaceLine({ slug, name, rung }: { slug: string; name: string; rung: Rung
       {mark(s.mid, x.mid, 'mid', s.lo ? ' hero-race__label--end' : '')}
       {gap > 0 ? (
         <span className="hero-race__label hero-race__label--under hero-race__label--gap" style={{ left: `${(x.mid + x.hi) / 2}%` }}>
-          {gapFigure(slug, gap)} {onTop ? 'ahead' : 'to go'}
+          {gapFigure(slug, s.hi.score, s.mid.score)} {onTop ? 'ahead' : 'to go'}
         </span>
       ) : null}
     </div>
@@ -433,7 +413,7 @@ export function HomeHero() {
     const belowGap = below ? you.score - below.score : 0
     const behind = below
       ? belowGap > 0
-        ? `${below.name} is ${gapText(slug, belowGap)} behind you`
+        ? `${below.name} is ${gapBetween(slug, you.score, below.score)} behind you`
         : `${below.name} is tied with you`
       : null
     const kicker = above ? (above.rank === 1 ? 'Your next record' : 'Your next place') : 'Your record'
@@ -449,7 +429,7 @@ export function HomeHero() {
     } else if (below) {
       body =
         belowGap > 0
-          ? `Your ${fmt(you.score)} leads ${below.name} by ${gapText(slug, belowGap)}.`
+          ? `Your ${fmt(you.score)} leads ${below.name} by ${gapBetween(slug, you.score, below.score)}.`
           : `Your ${fmt(you.score)} is tied with ${below.name}, and you got there first.`
     } else {
       body = `Your ${fmt(you.score)} tops the board.`
@@ -461,13 +441,14 @@ export function HomeHero() {
           <div className="home-banner__kicker-row">
             <p className="home-banner__kicker">{kicker}</p>
             <span className="home-banner__kicker-note">
-              {game.name} · all time{group ? ` · ${group}` : ''}
+              {/* A daily's rung is on today's board (fetchRung), so it says so. */}
+              {game.name} · {isDailyGame(slug) ? 'today' : 'all time'}{group ? ` · ${group}` : ''}
             </span>
           </div>
           <h2 className="home-banner__goal">
             {above && gap > 0 ? (
               <>
-                <span className="home-banner__gap">{gapText(slug, gap)}</span> from {target}.
+                <span className="home-banner__gap">{gapBetween(slug, above.score, you.score)}</span> from {target}.
               </>
             ) : above ? (
               <>Tied with {target}.</>

@@ -13,7 +13,8 @@ import {
   type GlobalBoardEntry,
   type GlobalBoardResult,
 } from '../lib/leaderboard'
-import { fetchGameRecords, formatRecordScore, GAMES_WITH_RECORDS, type RecordSummary } from '../lib/records'
+import { recordValue } from '../lib/recordBook'
+import { fetchGameRecords, GAMES_WITH_RECORDS, type RecordSummary } from '../lib/records'
 import { fetchSiteRecords, siteRecordUnitWord, type SiteRecordBoard, type SiteRecordId } from '../lib/siteRecords'
 import { resolveGameAccent } from '../lib/theme'
 import { GameThumbArt } from './GameThumbArt'
@@ -189,7 +190,7 @@ function RecordBook({ slug, records }: { slug: string; records: RecordSummary[] 
           : set.map((r) => (
               <li key={r.id} className="hb-record">
                 <span className="hb-record__label">{r.label}</span>
-                <span className="hb-record__value">{formatRecordScore(r.top!.score, r.unit, r.id)}</span>
+                <span className="hb-record__value">{recordValue(r, r.top!.score)}</span>
                 <span className="hb-record__who">{r.top!.name}</span>
               </li>
             ))}

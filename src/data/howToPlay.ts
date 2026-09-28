@@ -299,6 +299,7 @@ export const HOW_TO_PLAY: Record<string, HowToPlay> = {
       { what: 'Each glass', pts: 'up to 100', sub: 'less 2 for every point off half: 45% full scores 90' },
       { what: 'The last glass', pts: 'up to 100', sub: 'a fair share: 58 to 42 scores 84' },
       { what: 'Your day', pts: 'the average of the five' },
+      { what: 'Your first pour today', pts: 'today’s board', sub: 'and its record book · a past day is practice' },
     ],
     ends: 'After the fifth glass. Your first pour of the day is your result; after that, pour it again for practice.',
     tip: 'Wide at the top? Half is higher than it looks. Narrow at the top? Lower. And some glasses are just what they look like.',

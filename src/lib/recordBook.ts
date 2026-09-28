@@ -1,6 +1,8 @@
 import { getGame, isGameListed } from '../data/games'
+import { formatBoard } from '../games/halffull/boardFigure'
 import { gamePlayHref } from '../hooks/useHashRoute'
 import { normalizePlayerName } from './leaderboard'
+import { formatPercentGap } from './leaderboardFormat'
 import { numberWord } from './numberWord'
 import { GAMES_WITH_RECORDS, type RecordGame, type RecordSummary } from './records'
 import { boardToday } from './scoreboard'
@@ -17,15 +19,22 @@ type RecordLike = { id: string; unit: 'ms' | 'count' }
 /* ---------- a track's or a hole's record ---------- */
 
 /**
- * The dailies' courses: each Hot Lap track keeps its fastest lap, each Ace Chase hole its fewest tries, and
- * each Find the Bug day its fastest sweep, a record a track, hole or day (track-3, hole-12, day-2), named
- * after it and kept for good from its day on.
+ * The dailies' courses: each Hot Lap track keeps its fastest lap, each Ace Chase hole its fewest tries,
+ * each Find the Bug day its fastest sweep and each Half Full day its closest pour, a record a track, hole
+ * or day (track-3, hole-12, day-2, pour-1), named after it and kept for good from its day on. Half Full's
+ * are pour-N, not day-N, because these words go by the record's id and a pour's number is a percent.
  */
-const COURSE_FIRST_DAY: Partial<Record<string, string>> = { hotlap: '2026-09-26', acechase: '2026-09-25', findbug: '2026-09-27' }
+const COURSE_FIRST_DAY: Partial<Record<string, string>> = {
+  hotlap: '2026-09-26',
+  acechase: '2026-09-25',
+  findbug: '2026-09-27',
+  // Half Full #1: the same day as the game's daily.ts FIRST_DAY and the API's halffull/launch.ts.
+  halffull: '2026-09-28',
+}
 
 /** Which track, hole or day a record is, or null for any other. */
 export function courseNumber(record: { id: string }): number | null {
-  const match = /^(?:track|hole|day)-(\d+)$/.exec(record.id)
+  const match = /^(?:track|hole|day|pour)-(\d+)$/.exec(record.id)
   return match ? Number(match[1]) : null
 }
 
@@ -56,7 +65,8 @@ const tries = (n: number) => `${n.toLocaleString()} ${n === 1 ? 'try' : 'tries'}
 
 /**
  * Where a course's record is played: today's track or hole is the day's game; one whose day has gone is
- * played on its own (?track=, ?hole=), where a lap or result goes on its board and so into its record.
+ * played on its own (?track=, ?hole=), where a lap or result goes on its board and so into its record; a
+ * past day (?day=) is practice.
  */
 export function coursePlayHref(game: string, record: { id: string }, now = Date.now()): string | null {
   const n = courseNumber(record)
@@ -67,8 +77,9 @@ export function coursePlayHref(game: string, record: { id: string }, now = Date.
   if (n === today) return gamePlayHref(game)
   if (game === 'hotlap') return `${gamePlayHref(game)}?track=${n}`
   const day = new Date(Date.UTC(y!, m! - 1, d! + n - 1)).toISOString().slice(0, 10)
-  // A past Find the Bug day plays again as practice; its record was set on its day.
-  return game === 'findbug' ? `${gamePlayHref(game)}?day=${day}` : `${gamePlayHref(game)}?hole=day:${day}`
+  // A past Find the Bug or Half Full day plays again as practice; its record was set on its day.
+  if (game === 'findbug' || game === 'halffull') return `${gamePlayHref(game)}?day=${day}`
+  return `${gamePlayHref(game)}?hole=day:${day}`
 }
 
 /** The books on show: every game with records, less the hidden and on-deck ones. */
@@ -102,10 +113,11 @@ const COUNT_WORDS: Record<string, [string, string]> = {
   'chasers-eaten': ['chaser', 'chasers'],
 }
 
-/** A record's number in its own terms: 2:51.1, ×36, 19 days, 13 in a row, 33 tickets, a lap's 45.18s, 2 tries. */
+/** A record's number in its own terms: 2:51.1, ×36, 19 days, 13 in a row, 33 tickets, a lap's 45.18s, 2 tries, a pour's 91.2%. */
 export function recordValue(record: RecordLike, score: number): string {
   if (record.id.startsWith('track-')) return lapTime(score)
   if (record.id.startsWith('hole-')) return tries(score)
+  if (record.id.startsWith('pour-')) return formatBoard(score)
   if (record.unit === 'ms') return recordTime(score)
   if (record.id === 'highest-combo') return `×${score}`
   if (record.id === 'longest') return `length ${score}`
@@ -124,11 +136,13 @@ export function recordBrief(record: RecordLike, score: number): string {
 /**
  * The difference between two results, in the record's terms: 2.5s, 1 day, 3.
  * Times are taken from the tenths on show, so 3:58.9 against 3:51.2 reads
- * 7.7s, whatever the milliseconds underneath make it.
+ * 7.7s, whatever the milliseconds underneath make it; a pour's the same way,
+ * 91.2% against 90.8% is 0.4%.
  */
 export function recordGap(record: RecordLike, a: number, b: number): string {
   if (record.id.startsWith('track-')) return lapTime(Math.abs(Math.round(a / 10) - Math.round(b / 10)) * 10)
   if (record.id.startsWith('hole-')) return tries(Math.abs(a - b))
+  if (record.id.startsWith('pour-')) return formatPercentGap(a, b)
   if (record.unit === 'ms') return recordTime(Math.abs(Math.round(a / 100) - Math.round(b / 100)) * 100)
   const gap = Math.abs(a - b)
   const words = COUNT_WORDS[record.id]
@@ -197,6 +211,10 @@ const COURSES: Partial<Record<string, { title: string; sub: string }>> = {
   findbug: {
     title: 'Day records',
     sub: 'Each day’s fastest sweep of its five scenes. Only a day’s first run counts, so each is set on its day.',
+  },
+  halffull: {
+    title: 'Day records',
+    sub: 'Each day’s closest pour. Only a day’s first pour counts, so each is set on its day.',
   },
 }
 
@@ -333,7 +351,9 @@ export function bookLede(game: string, records: RecordSummary[]): string {
           ? 'fewest tries at every hole'
           : game === 'findbug'
             ? 'fastest sweep of every day'
-            : 'best on every course',
+            : game === 'halffull'
+              ? 'closest pour of every day'
+              : 'best on every course',
     clock: (CLOCKS[game]?.title ?? 'fastest times').toLowerCase(),
     run: 'best single runs',
     streaks: 'longest streaks',

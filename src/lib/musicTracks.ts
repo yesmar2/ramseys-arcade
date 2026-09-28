@@ -412,6 +412,7 @@ const GAME_MUSIC: Record<string, TrackId> = {
   putt: 'paper',
   acechase: 'paper',
   findbug: 'paper',
+  halffull: 'paper',
   spotter: 'paper',
   // A tune to sing back wants no other melody over it: only the pond.
   fireflies: 'pond',

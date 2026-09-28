@@ -109,7 +109,10 @@ function gameMeta(slug: string, path: string, verb?: string): PageMeta {
   }
 }
 
-/** The games whose play page is the day's own, by its name: Ace Chase is Today's Hole, Find the Bug Today's Wanted. */
+/**
+ * The games whose play page is the day's own, by its name: Ace Chase is Today's Hole, Find the Bug Today's
+ * Wanted, Half Full Today's Pour.
+ */
 const PLAY_OF_THE_DAY: Readonly<Record<string, { title: string; description: string }>> = {
   acechase: {
     title: 'Today’s Hole',
@@ -120,6 +123,11 @@ const PLAY_OF_THE_DAY: Readonly<Record<string, { title: string; description: str
     title: 'Today’s Wanted',
     description:
       'Five new Find the Bug scenes every day, the same for everyone, with a bug wanted in each. Your first run is your result: find them fast, then share how it went.',
+  },
+  halffull: {
+    title: 'Today’s Pour',
+    description:
+      'Five new Half Full glasses every day, the same for everyone. Fill each exactly half full by what it holds: your first pour is your result. Share it without giving it away.',
   },
 }
 
@@ -138,6 +146,7 @@ const ARCHIVE_META: Readonly<Record<string, { title: string; what: string }>> = 
   acechase: { title: 'Past holes', what: 'hole' },
   hotlap: { title: 'Past tracks', what: 'track' },
   findbug: { title: 'Past days', what: 'five scenes' },
+  halffull: { title: 'Past days', what: 'five glasses' },
 }
 
 function gameName(slug: string) {
@@ -292,9 +301,11 @@ export function pageMeta(route: Route): PageMeta {
             ? 'Hole Book'
             : route.section === 'tracks'
               ? 'Track Book'
-              : route.section === 'trophies'
-                ? 'Trophies'
-                : 'Admin',
+              : route.section === 'pours'
+                ? 'Pour Book'
+                : route.section === 'trophies'
+                  ? 'Trophies'
+                  : 'Admin',
         ),
         path: adminHref(route.section),
         noindex: true,

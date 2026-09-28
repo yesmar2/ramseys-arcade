@@ -2,7 +2,7 @@ import { getGame } from '../../data/games'
 import { prizeById } from '../../data/prizes'
 import { prizesHref } from '../../hooks/useHashRoute'
 import { scoreText } from '../../lib/gameBoard'
-import { formatLeaderboardScore, isTimeBoard } from '../../lib/leaderboardFormat'
+import { formatLeaderboardScore, isPercentBoard, isTimeBoard } from '../../lib/leaderboardFormat'
 import { useTickets, type LadderStep, type RunTickets } from '../../lib/tickets'
 import { TicketGlyph, TicketStub } from './Ticket'
 
@@ -17,10 +17,11 @@ function stepWords(step: LadderStep, game: string): string {
   return step.label ?? `${scoreText(game, step.at)} or better`
 }
 
-/** The next step up, to aim for: Hot Lap's with the time it takes. */
+/** The next step up, to aim for: Hot Lap's with the time it takes, Half Full's with the figure (Steady Hand, 92.0%). */
 function nextWords(next: LadderStep, game: string): string {
   if (!next.label) return `${next.tickets} at ${scoreText(game, next.at)}`
-  return `${next.tickets} for ${next.label}${isTimeBoard(game) ? ` (${formatLeaderboardScore(game, next.at)})` : ''}`
+  const figure = isTimeBoard(game) || isPercentBoard(game)
+  return `${next.tickets} for ${next.label}${figure ? ` (${formatLeaderboardScore(game, next.at)})` : ''}`
 }
 
 function why(paid: RunTickets, game: string): string {

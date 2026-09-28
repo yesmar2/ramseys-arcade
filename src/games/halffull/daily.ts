@@ -1,5 +1,5 @@
 import { judge, summarize, type PourResult } from './game'
-import type { DayPlan } from './plan'
+import { ROUNDS, type DayPlan } from './plan'
 
 /*
  * Half Full as a daily: new glasses at midnight on the boards' clock (New York), the same for everyone.
@@ -69,10 +69,17 @@ export function weekdayShort(day: string): string {
 
 export type DayRun = {
   startedAt: number
+  /** The id the API opened the run under, so its save carries it even after a reload. */
+  runId?: string
   /** Each locked pour's level, glass by glass (the split's is the first glass's). */
   levels: number[]
   /** Which of them the clock locked. */
   auto: boolean[]
+  /**
+   * The day's board figure when the board already has this account's pour from another device: the day is
+   * done here too, though this device never saw its pours.
+   */
+  board?: number
 }
 
 type Store = Record<string, DayRun>
@@ -113,6 +120,16 @@ export function updateDayRun(day: string, change: (run: DayRun | null) => DayRun
   if (next) store[day] = next
   else delete store[day]
   writeStore(store)
+}
+
+/** Whether the day's pour is done: all five glasses locked here, or poured on another device. */
+export function dayDone(run: DayRun | null | undefined): boolean {
+  return !!run && (run.levels.length >= ROUNDS || run.board != null)
+}
+
+/** The board already has this account's pour today, from another device: it's the day's here too. */
+export function adoptBoardResult(day: string, board: number, at: number) {
+  updateDayRun(day, (run) => (dayDone(run) ? run : { startedAt: run?.startedAt ?? at, runId: run?.runId, levels: [], auto: [], board }))
 }
 
 export function subscribePourDay(onChange: () => void): () => void {

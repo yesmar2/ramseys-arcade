@@ -379,3 +379,23 @@
   color: var(--muted);
   text-wrap: pretty;
 }
+
+/* Where today stands: your place, or who leads. */
+.halffull-card__standing {
+  margin: -0.2rem 0 0;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--panel-accent-ink);
+}
+
+.halffull-card__archive {
+  align-self: center;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--panel-accent-ink);
+  text-decoration: none;
+}
+
+.halffull-card__archive:hover {
+  text-decoration: underline;
+}

@@ -228,12 +228,18 @@ export type RunSummary = {
   story: string
 }
 
-function ratioWords(percent: number): string {
-  const big = Math.max(percent, 100 - percent)
-  const small = Math.max(0.01, Math.min(percent, 100 - percent))
-  const ratio = big / small
-  if (ratio >= 1.5) return `${(Math.round(10 * ratio) / 10).toString()}× as much as`
-  return `${Math.round(100 * (ratio - 1))}% more than`
+function shareStory(percent: number): string {
+  const small = Math.min(percent, 100 - percent)
+  // A split that reads 100:0 gave the other friend nothing to speak of.
+  if (Math.round(small) === 0) return 'I gave one friend all of it.'
+  const ratio = Math.max(percent, 100 - percent) / small
+  const words =
+    ratio >= 10
+      ? `${Math.round(ratio)}× as much as`
+      : ratio >= 1.5
+        ? `${(Math.round(10 * ratio) / 10).toString()}× as much as`
+        : `${Math.round(100 * (ratio - 1))}% more than`
+  return `I gave one friend ${words} the other.`
 }
 
 export function summarize(results: readonly PourResult[]): RunSummary {
@@ -252,7 +258,7 @@ export function summarize(results: readonly PourResult[]): RunSummary {
     story = off === '0.0' ? 'Closest pour: dead on half.' : `Closest pour: ${off} ${off === '1.0' ? 'point' : 'points'} off half.`
   }
   else if (worst.kind === 'half') story = `My worst “half” was ${Math.round(worst.percent)}% full.`
-  else story = `I gave one friend ${ratioWords(worst.percent)} the other.`
+  else story = shareStory(worst.percent)
   return {
     score,
     scoreText: formatScore(score),

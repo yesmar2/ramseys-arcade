@@ -1,6 +1,13 @@
 import { getGame } from '../data/games'
 import { normalizePlayerName, type LeaderboardEntry } from './leaderboard'
-import { formatLeaderboardScore, formatTimeGap, isInvertedBoard, isTimeBoard } from './leaderboardFormat'
+import {
+  formatLeaderboardScore,
+  formatPercentGap,
+  formatTimeGap,
+  isInvertedBoard,
+  isPercentBoard,
+  isTimeBoard,
+} from './leaderboardFormat'
 import { numberWord } from './numberWord'
 import { ordinal, type PeriodCopy, type Stat } from './scoreboard'
 
@@ -67,29 +74,46 @@ function count(n: number, one: string, many = `${one}s`): string {
   return `${n.toLocaleString()} ${n === 1 ? one : many}`
 }
 
-/** What a score counts, to set beside the figure: rows, blocks, points; nothing for a time or tries, which say it. */
+/** What a score counts, to set beside the figure: rows, blocks, points; nothing for a time, tries or a percent, which say it. */
 export function scoreUnit(slug: string, score: number): string {
-  if (isInvertedBoard(slug)) return ''
+  if (isInvertedBoard(slug) || isPercentBoard(slug)) return ''
   const [one, many] = UNITS[slug] ?? ['point', 'points']
   return score === 1 ? one : many
 }
 
-/** A gap between two scores in the game's own terms: 9 rows, 1 point, 0.4s. */
+/**
+ * A gap between two scores in the game's own terms: 9 rows, 1 point, 0.4s, 0.4%. A percent's gap alone is
+ * read the way a figure is shown, to the tenth (0.04% under one); gapBetween works it from both figures.
+ */
 export function gapText(slug: string, gap: number): string {
   if (isTimeBoard(slug)) return formatTimeGap(slug, gap)
+  if (isPercentBoard(slug)) return formatPercentGap(gap, 0)
   const [one, many] = UNITS[slug] ?? ['point', 'points']
   return count(gap, one, many)
 }
 
-/** A score in the game's own terms, for a sentence: 49 rows, 1,000 points, 9.9s, 3 tries. */
+/** The gap between two scores in the game's own terms, a percent's from the tenths on show: 91.2% is 0.4% over 90.8%. */
+export function gapBetween(slug: string, a: number, b: number): string {
+  if (isPercentBoard(slug)) return formatPercentGap(a, b)
+  return gapText(slug, Math.abs(a - b))
+}
+
+/** The gap between two scores as a bare figure, for beside words that say the rest: 9, 1,250, 2.4s, 0.4%. */
+export function gapFigure(slug: string, a: number, b: number): string {
+  if (isPercentBoard(slug)) return formatPercentGap(a, b)
+  const gap = Math.abs(a - b)
+  return isTimeBoard(slug) ? formatTimeGap(slug, gap) : gap.toLocaleString()
+}
+
+/** A score in the game's own terms, for a sentence: 49 rows, 1,000 points, 9.9s, 3 tries, 91.2%. */
 export function scoreText(slug: string, score: number): string {
-  if (isInvertedBoard(slug)) return formatLeaderboardScore(slug, score)
+  if (isInvertedBoard(slug) || isPercentBoard(slug)) return formatLeaderboardScore(slug, score)
   return gapText(slug, score)
 }
 
-/** The unit a gap is counted in, for a label under the figure: rows, points; nothing for time. */
+/** The unit a gap is counted in, for a label under the figure: rows, points; nothing for a time or a percent. */
 function gapUnit(slug: string, gap: number): string {
-  if (isTimeBoard(slug)) return ''
+  if (isTimeBoard(slug) || isPercentBoard(slug)) return ''
   const [one, many] = UNITS[slug] ?? ['point', 'points']
   return `${gap === 1 ? one : many} `
 }
@@ -104,7 +128,7 @@ export function boardHeadline(
   const [first, second] = players
   if (first && second) {
     const gap = first.best.score - second.best.score
-    if (gap > 0) return { name: first.name, rest: ` leads ${game} by ${gapText(slug, gap)}.` }
+    if (gap > 0) return { name: first.name, rest: ` leads ${game} by ${gapBetween(slug, first.best.score, second.best.score)}.` }
     return { name: '', rest: `${first.name} and ${second.name} are tied at the top of ${game}.` }
   }
   if (first) return { name: first.name, rest: `’s alone on ${game}${copy.noun ? ` ${copy.phrase}` : ''}.` }
@@ -158,12 +182,12 @@ export function youOnBoard(players: BoardPlayer[], runs: LeaderboardEntry[], me:
 /** How far to the player above and how far back the one below is, in the game's own terms. */
 export function boardYouStats(slug: string, you: BoardYou): Stat[] {
   const stats: Stat[] = []
-  const versus = (other: BoardPlayer, gap: number, side: string): Stat =>
-    gap > 0
-      ? { value: isTimeBoard(slug) ? gapText(slug, gap) : gap.toLocaleString(), label: `${gapUnit(slug, gap)}${side} ${other.name}` }
+  const versus = (other: BoardPlayer, high: number, low: number, side: string): Stat =>
+    high > low
+      ? { value: gapFigure(slug, high, low), label: `${gapUnit(slug, high - low)}${side} ${other.name}` }
       : { value: 'Tied', label: `with ${other.name}` }
-  if (you.above) stats.push(versus(you.above, you.above.best.score - you.player.best.score, 'behind'))
-  if (you.below) stats.push(versus(you.below, you.player.best.score - you.below.best.score, 'ahead of'))
+  if (you.above) stats.push(versus(you.above, you.above.best.score, you.player.best.score, 'behind'))
+  if (you.below) stats.push(versus(you.below, you.player.best.score, you.below.best.score, 'ahead of'))
   return stats
 }
 
@@ -173,17 +197,18 @@ export function boardCallout(slug: string, you: BoardYou): string {
   if (above) {
     return `Beat ${formatLeaderboardScore(slug, above.best.score)} for ${ordinal(player.place - 1)}, and it pays ${placePoints(player.place - 1, field)}.`
   }
-  if (below) return `You hold first. ${below.name} is ${gapText(slug, player.best.score - below.best.score)} back.`
+  if (below) return `You hold first. ${below.name} is ${gapBetween(slug, player.best.score, below.best.score)} back.`
   return 'You hold first.'
 }
 
 /**
  * What gets a player onto a game's board: any run, but on a daily that counts the day's first result
- * only, that one (Find the Bug's first run, Ace Chase's first bullseye).
+ * only, that one (Find the Bug's first run, Ace Chase's first bullseye, Half Full's first pour).
  */
 export function whatPutsYouOn(slug: string): string {
   if (slug === 'findbug') return 'Your first run of the day puts you on the board'
   if (slug === 'acechase') return 'Your first bullseye of the day puts you on the board'
+  if (slug === 'halffull') return 'Your first pour of the day puts you on the board'
   return 'Any run puts you on the board'
 }
 

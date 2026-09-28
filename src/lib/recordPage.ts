@@ -67,10 +67,11 @@ export function recordBetter(record: Rec, a: number, b: number): boolean {
   return record.direction === 'lower' ? a < b : a > b
 }
 
-/** What beats a result: under 3:51.2, or 13 in a row, or a lap under 45.18s, or 2 tries or fewer. */
+/** What beats a result: under 3:51.2, or 13 in a row, or a lap under 45.18s, or 2 tries or fewer, or a pour over 91.2%. */
 export function recordBeat(record: Rec, score: number): string {
   if (record.id.startsWith('track-')) return `under ${recordValue(record, score)}`
   if (record.id.startsWith('hole-')) return score <= 1 ? 'an ace, to tie it' : `${recordValue(record, score - 1)} or fewer`
+  if (record.id.startsWith('pour-')) return `over ${recordValue(record, score)}`
   return record.unit === 'ms' ? `under ${recordTime(score)}` : recordValue(record, score + 1)
 }
 
@@ -111,7 +112,9 @@ export function recordRule(game: string, record: Rec, period: LeaderboardPeriod,
       ? `The fastest lap of ${courseName(record)} anyone has driven`
       : record.id.startsWith('day-')
         ? `The fastest anyone found all five bugs on ${courseName(record)}`
-        : `The fewest tries anyone has needed at ${courseName(record)}`
+        : record.id.startsWith('pour-')
+          ? `The closest anyone has poured ${courseName(record)}’s five glasses`
+          : `The fewest tries anyone has needed at ${courseName(record)}`
   } else if (kind === 'clock') {
     const verb = game === 'asteroids' ? 'cleared' : game === 'snake' ? 'grown to' : 'reached'
     subject = `The fastest anyone has ${verb} ${milestone(game, record.label)}`
@@ -135,6 +138,7 @@ export function onTheBoard(game: string, record: Rec): string {
   const kind = recordKind(record)
   if (kind === 'course') {
     if (record.id.startsWith('track-')) return 'Drive a lap of it'
+    if (record.id.startsWith('pour-')) return 'Pour it on its day'
     return record.id.startsWith('day-') ? 'Play it on its day' : 'Hit the bullseye on it'
   }
   if (kind === 'clock') return `${game === 'asteroids' ? 'Clear' : 'Reach'} ${milestone(game, record.label)} once`

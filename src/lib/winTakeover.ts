@@ -1,7 +1,7 @@
 import { getGame } from '../data/games'
 import { rankHref } from '../hooks/useHashRoute'
 import { eventSpan, gameList, ordinal, standingsTable } from './eventPages'
-import { gapText } from './gameBoard'
+import { gapBetween } from './gameBoard'
 import { normalizePlayerName, type GlobalRankResult, type LeaderboardPeriod } from './leaderboard'
 import { formatLeaderboardScore } from './leaderboardFormat'
 import { periodCopy } from './scoreboard'
@@ -133,7 +133,7 @@ export function eventWinTakeover(detail: TournamentDetail, me: string): WinTakeo
     const gap = mine.total - second.total
     margin =
       gap > 0
-        ? `, ${points ? gap.toLocaleString() : single ? gapText(single, gap) : gap.toLocaleString()} ahead of ${second.name}`
+        ? `, ${points ? gap.toLocaleString() : single ? gapBetween(single, mine.total, second.total) : gap.toLocaleString()} ahead of ${second.name}`
         : `, tied with ${second.name} and ahead on the tie-break`
   }
 

@@ -41,6 +41,7 @@ export const LEADERBOARD_GAMES = [
   'fireflies',
   'acechase',
   'hotlap',
+  'halffull',
 ] as const
 export type LeaderboardGame = (typeof LEADERBOARD_GAMES)[number]
 
@@ -628,6 +629,9 @@ export async function checkQualifies(
   return api(`/leaderboards/${slug}/qualifies?score=${encodeURIComponent(String(score))}`)
 }
 
+/** A Half Full day as it's saved: the API works the score out from these, never from the figure sent. */
+export type SavedPours = { day: string; levels: number[]; auto: boolean[] }
+
 export async function addLeaderboardScore(
   slug: string,
   name: string,
@@ -641,6 +645,8 @@ export async function addLeaderboardScore(
     pickups?: number
     /** Hot Lap: the day's blue car, in milliseconds, which its ticket ladder goes by. */
     pace?: number
+    /** Half Full: the day and its five locked levels, which the API scores the day from. */
+    pours?: SavedPours
   } = {},
 ): Promise<{
   entries: LeaderboardEntry[]
@@ -698,6 +704,7 @@ export async function addLeaderboardScore(
       ...(opts.challengeId ? { challengeId: opts.challengeId } : {}),
       ...(opts.pickups ? { pickups: Math.floor(opts.pickups) } : {}),
       ...(opts.pace ? { pace: Math.round(opts.pace) } : {}),
+      ...(opts.pours ? { pours: opts.pours } : {}),
     }),
   })
 

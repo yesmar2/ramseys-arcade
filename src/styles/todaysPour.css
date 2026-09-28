@@ -1,0 +1,142 @@
+/*
+ * Today's Pour (TodaysPourCard.tsx) and Half Full's archive (PourArchive.tsx): the day's glasses standing
+ * empty on the kitchen's shelf and counter (planSvg.ts), in the game's own colours, dimmer in the dark.
+ * The colours are planSvg.ts's POUR_COLOURS, which draws the same picture for the build's cards.
+ */
+.tpc-plan {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.tpc-plan__wall {
+  fill: #fde9d2;
+}
+
+.tpc-plan__tiles {
+  fill: rgba(255, 255, 255, 0.34);
+}
+
+.tpc-plan__shelf {
+  fill: #fffaf3;
+}
+
+.tpc-plan__ledge {
+  fill: #e9c6a2;
+}
+
+.tpc-plan__counter {
+  fill: #48b3a6;
+}
+
+.tpc-plan__front {
+  fill: #2f8b82;
+}
+
+.tpc-plan__shadow {
+  fill: rgba(90, 40, 20, 0.16);
+}
+
+.tpc-plan__foot {
+  fill: rgba(225, 242, 250, 0.85);
+}
+
+.tpc-plan__glass {
+  fill: rgba(255, 255, 255, 0.4);
+}
+
+.tpc-plan__grout,
+.tpc-plan__ink,
+.tpc-plan__edge,
+.tpc-plan__glint {
+  fill: none;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.tpc-plan__grout {
+  stroke: rgba(190, 120, 80, 0.2);
+}
+
+.tpc-plan__ink {
+  stroke: #1a2b3c;
+}
+
+.tpc-plan__edge {
+  stroke: #f4fbff;
+}
+
+.tpc-plan__glint {
+  stroke: rgba(255, 255, 255, 0.7);
+}
+
+html:not([data-theme='light']) .tpc-plan__wall {
+  fill: #4a382c;
+}
+
+html:not([data-theme='light']) .tpc-plan__tiles {
+  fill: rgba(255, 255, 255, 0.06);
+}
+
+html:not([data-theme='light']) .tpc-plan__shelf {
+  fill: #6e5646;
+}
+
+html:not([data-theme='light']) .tpc-plan__ledge {
+  fill: #56412f;
+}
+
+html:not([data-theme='light']) .tpc-plan__counter {
+  fill: #2d7d74;
+}
+
+html:not([data-theme='light']) .tpc-plan__front {
+  fill: #1d5751;
+}
+
+html:not([data-theme='light']) .tpc-plan__shadow {
+  fill: rgba(0, 0, 0, 0.3);
+}
+
+html:not([data-theme='light']) .tpc-plan__foot {
+  fill: rgba(225, 242, 250, 0.6);
+}
+
+html:not([data-theme='light']) .tpc-plan__glass {
+  fill: rgba(255, 255, 255, 0.12);
+}
+
+html:not([data-theme='light']) .tpc-plan__grout {
+  stroke: rgba(0, 0, 0, 0.22);
+}
+
+html:not([data-theme='light']) .tpc-plan__ink {
+  stroke: #0d1720;
+}
+
+html:not([data-theme='light']) .tpc-plan__edge {
+  stroke: rgba(236, 246, 252, 0.92);
+}
+
+html:not([data-theme='light']) .tpc-plan__glint {
+  stroke: rgba(255, 255, 255, 0.5);
+}
+
+/* The day's five squares, as the pour's share sends them. */
+.tpc-marks {
+  margin: 0.15rem 0 0;
+  font-size: 1.2rem;
+  line-height: 1.2;
+  letter-spacing: 0.1em;
+  white-space: nowrap;
+}
+
+/* A day's name is its four glasses, too long for one line in the archive: two lines there. */
+.arch-grid--halffull .arch-card__title {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  white-space: normal;
+}

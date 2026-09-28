@@ -24,6 +24,7 @@ export const GAME_PREVIEWS: Record<string, () => Promise<{ createPreview(): Game
   findbug: () => import('../games/findbug/preview'),
   fireflies: () => import('../games/fireflies/preview'),
   frenzy: () => import('../games/frenzy/preview'),
+  halffull: () => import('../games/halffull/preview'),
   patriot: () => import('../games/patriot/preview'),
   pellets: () => import('../games/pellets/preview'),
   pop: () => import('../games/whack/preview'),

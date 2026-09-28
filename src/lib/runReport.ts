@@ -1,6 +1,6 @@
 import { getGame } from '../data/games'
 import { noteTicketsPaid, type RunTickets } from './tickets'
-import { gapText, playersFromRuns, wouldPlace, type BoardPlayer } from './gameBoard'
+import { gapBetween, gapFigure, playersFromRuns, wouldPlace, type BoardPlayer } from './gameBoard'
 import { refreshGlobalRank } from './globalRank'
 import {
   addLeaderboardScore,
@@ -10,6 +10,7 @@ import {
   type GlobalRankResult,
   type LeaderboardEntry,
   type LeaderboardPeriod,
+  type SavedPours,
 } from './leaderboard'
 import { formatLeaderboardScore, isTimeBoard } from './leaderboardFormat'
 import { rememberPersonalBest } from './personalBest'
@@ -150,7 +151,7 @@ function bestLine(f: RunFacts): ReportLine {
     return { ...line, detail: `Your first ${gameName(slug)} score`, value: figure(slug, score), tone: 'plain' }
   }
   if (score > priorBest) {
-    const gain = gapText(slug, score - priorBest)
+    const gain = gapBetween(slug, score, priorBest)
     return {
       ...line,
       icon: 'up',
@@ -160,7 +161,7 @@ function bestLine(f: RunFacts): ReportLine {
     }
   }
   if (score === priorBest) return { ...line, detail: 'Tied it', value: figure(slug, priorBest), tone: 'plain' }
-  const gap = gapText(slug, priorBest - score)
+  const gap = gapBetween(slug, priorBest, score)
   return {
     ...line,
     detail: time ? `${gap} off it` : `${gap} more to beat it`,
@@ -215,7 +216,7 @@ function boardLine(f: RunFacts, copy: PeriodCopy): BoardRead | null {
   const climbed = before == null || place < before
   const behind = (other: BoardPlayer) => {
     const gap = other.best.score - mine.best.score
-    return gap > 0 ? `${gapText(slug, gap)} behind ${other.name}` : `tied with ${other.name}`
+    return gap > 0 ? `${gapBetween(slug, other.best.score, mine.best.score)} behind ${other.name}` : `tied with ${other.name}`
   }
   const read = (detail: string | null, tone: ReportTone, icon: ReportIcon = 'board', newTop = false): BoardRead => ({
     line: { id: 'board', icon, label, detail, value: `#${place}`, tone },
@@ -227,7 +228,7 @@ function boardLine(f: RunFacts, copy: PeriodCopy): BoardRead | null {
 
   if (place === 1) {
     if (!below) return read(before == null ? 'The first run on the board' : 'Nobody else on it yet', 'plain')
-    const lead = gapText(slug, mine.best.score - below.best.score)
+    const lead = gapBetween(slug, mine.best.score, below.best.score)
     // First from somebody: the one now second held it before this run.
     if (before !== 1) return read(`passed ${below.name} by ${lead}`, 'gold', 'crown', true)
     return read(`${lead} ahead of ${below.name}`, 'plain')
@@ -304,6 +305,7 @@ const TONE_ORDER: Record<ReportTone, number> = { gold: 0, accent: 1, plain: 2 }
 export function challengeReportLine(slug: string, score: number, challenge: { name: string; score: number }): ReportLine {
   const won = score > challenge.score
   const gap = Math.abs(score - challenge.score)
+  const words = gapBetween(slug, score, challenge.score)
   // A clock is "off" by its gap, as the record book says it, and slower reads as a plus.
   const time = isTimeBoard(slug)
   return {
@@ -311,11 +313,11 @@ export function challengeReportLine(slug: string, score: number, challenge: { na
     icon: 'flag',
     label: `${challenge.name}’s challenge`,
     detail: won
-      ? `beat ${figure(slug, challenge.score)} by ${gapText(slug, gap)}`
+      ? `beat ${figure(slug, challenge.score)} by ${words}`
       : gap > 0
-        ? `${gapText(slug, gap)} ${time ? 'off' : 'short of'} ${figure(slug, challenge.score)}`
+        ? `${words} ${time ? 'off' : 'short of'} ${figure(slug, challenge.score)}`
         : `tied with ${figure(slug, challenge.score)}, and a tie doesn’t beat it`,
-    value: won ? 'Won' : gap > 0 ? (time ? `+${gapText(slug, gap)}` : `−${gap.toLocaleString()}`) : 'Tied',
+    value: won ? 'Won' : gap > 0 ? (time ? `+${words}` : `−${gapFigure(slug, score, challenge.score)}`) : 'Tied',
     tone: won ? 'gold' : 'plain',
   }
 }
@@ -487,6 +489,8 @@ type SaveInput = {
   pickups?: number
   /** Hot Lap: the day's blue car, in milliseconds. */
   pace?: number
+  /** Half Full: the day's five pours, which the API scores the day from. */
+  pours?: SavedPours
 }
 
 /** Saves in flight or just done, so the same run asked twice is saved once. */
@@ -513,10 +517,10 @@ export function saveRunForReport(input: SaveInput): Promise<RunFacts> {
   return promise
 }
 
-async function saveAndRead({ slug, name, score, period, priorBest, challengeId, run, pickups, pace }: SaveInput): Promise<RunFacts> {
+async function saveAndRead({ slug, name, score, period, priorBest, challengeId, run, pickups, pace, pours }: SaveInput): Promise<RunFacts> {
   const me = normalizePlayerName(name)
   const priorOverall = await fetchGlobalRank(me, period).catch(() => null)
-  const saved = await addLeaderboardScore(slug, me, score, { challengeId, run, pickups, pace })
+  const saved = await addLeaderboardScore(slug, me, score, { challengeId, run, pickups, pace, pours })
   noteTicketsPaid(saved.tickets)
   for (const hit of saved.streakRecords ?? []) {
     if (

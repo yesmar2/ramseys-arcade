@@ -32,6 +32,7 @@ import '../styles/adminBooks.css'
 // The books draw every planned day, so each comes in a chunk of its own, when it's opened.
 const AdminHoleBook = lazyPage(() => import('../components/AdminHoleBook').then((m) => m.AdminHoleBook))
 const AdminTrackBook = lazyPage(() => import('../components/AdminTrackBook').then((m) => m.AdminTrackBook))
+const AdminPourBook = lazyPage(() => import('../components/AdminPourBook').then((m) => m.AdminPourBook))
 
 const SECTIONS: { section?: AdminSection; label: string; title: string; blurb: string }[] = [
   {
@@ -53,6 +54,12 @@ const SECTIONS: { section?: AdminSection; label: string; title: string; blurb: s
     blurb: 'Every planned day of Hot Lap’s Today’s Track, to test drive ahead of its day.',
   },
   {
+    section: 'pours',
+    label: 'Pour Book',
+    title: 'Pour Book',
+    blurb: 'Every day of Half Full’s Today’s Pour: its five glasses, how hard it came out for its weekday, and any day that missed.',
+  },
+  {
     section: 'trophies',
     label: 'Trophies',
     title: 'Trophies and easter eggs',
@@ -63,10 +70,10 @@ const SECTIONS: { section?: AdminSection; label: string; title: string; blurb: s
 /*
  * The admin's page: what players sent, what broke in their browsers, scores
  * that looked wrong on the way in, tickets, and banned tags; and, a tab each,
- * the daily games' books of what's planned (/admin/holes, /admin/tracks) and
- * every trophy, secret, easter egg and bit of flair there is (/admin/trophies). It
- * opens for the emails in the API's ADMIN_EMAILS (Render): the API is asked,
- * and it's the API that answers every card.
+ * the daily games' books of what's planned (/admin/holes, /admin/tracks,
+ * /admin/pours) and every trophy, secret, easter egg and bit of flair there is
+ * (/admin/trophies). It opens for the emails in the API's ADMIN_EMAILS
+ * (Render): the API is asked, and it's the API that answers every card.
  */
 
 type Gate = 'checking' | 'signedOut' | 'notAdmin' | 'failed' | 'ready'
@@ -153,6 +160,10 @@ export function AdminPage({ section }: { section?: AdminSection }) {
               <Suspense fallback={<p className="adm-note">Opening the Track Book…</p>}>
                 <AdminTrackBook />
               </Suspense>
+            ) : section === 'pours' ? (
+              <Suspense fallback={<p className="adm-note">Opening the Pour Book…</p>}>
+                <AdminPourBook />
+              </Suspense>
             ) : section === 'trophies' ? (
               <AdminTrophies />
             ) : (
@@ -224,8 +235,8 @@ function DailyGamesCard() {
         </h2>
       </div>
       <p className="adm-card__sub">
-        What the daily games have planned, day by day, and pages to try things on. A hole on trial, a test drive and
-        the bug hunt’s test mode keep nothing.
+        What the daily games have planned, day by day, and pages to try things on. A hole on trial, a test drive, a
+        past day’s pour and the bug hunt’s test mode keep nothing.
       </p>
       <div className="adm-books">
         <a className="adm-book" href={adminHref('holes')}>
@@ -236,11 +247,19 @@ function DailyGamesCard() {
           <b>Track Book</b>
           <span>Hot Lap: every planned Today’s Track, to test drive</span>
         </a>
+        <a className="adm-book" href={adminHref('pours')}>
+          <b>Pour Book</b>
+          <span>Half Full: every day’s glasses, how hard each came out, and any day off its band</span>
+        </a>
       </div>
       <ul className="adm-links">
         <li>
           <a href={gamePlayHref('acechase')}>Ace Chase · Today’s Hole</a>
           <span>the real one, where your tries count; the Hole Book plays any day ahead</span>
+        </li>
+        <li>
+          <a href={gamePlayHref('halffull')}>Half Full · Today’s Pour</a>
+          <span>the real one, where your first pour counts; the Pour Book pours any past day again</span>
         </li>
         {HUNT_ANCHORS[0] ? (
           <li>

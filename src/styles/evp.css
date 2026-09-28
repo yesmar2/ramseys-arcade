@@ -396,7 +396,10 @@ a.evp-screen:focus-visible .evp-screen__play {
 
 /* ---------- the list: today, last week, your own ---------- */
 
-/* Three across at most: today's three (the daily, the One Shot, Today's Hole), then last week and your own. */
+/*
+ * Three across at most: today's (the daily, the One Shot, and each daily game's Today's card), then last
+ * week and your own.
+ */
 .evp-trio {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(max(18rem, calc((100% - 2rem) / 3)), 1fr));
@@ -568,7 +571,9 @@ a.evp-screen:focus-visible .evp-screen__play {
 
 /*
  * Three across with a card left over (the daily event, One Shot, the three daily games and last week's,
- * say): Run your own, always last, takes the whole row and lies along it, its parts side by side.
+ * say): Run your own, always last, takes the whole row and lies along it, its parts side by side. With
+ * two left over (a fourth daily game), it takes the two places left on its row, and lies along those: its
+ * mark and words, then what it runs, with the button under the words.
  */
 @media (min-width: 64rem) {
   .evp-trio > .evp-own:last-child:nth-child(3n + 1) {
@@ -584,6 +589,29 @@ a.evp-screen:focus-visible .evp-screen__play {
   }
 
   .evp-trio > .evp-own:last-child:nth-child(3n + 1) > .evp-own__yours {
+    grid-column: 1 / -1;
+  }
+
+  .evp-trio > .evp-own:last-child:nth-child(3n + 2) {
+    grid-column: span 2;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1.1fr) minmax(0, 1fr);
+    /* As tall as last week's beside it: its parts sit in the middle. */
+    align-content: center;
+    gap: 0.9rem 1.6rem;
+  }
+
+  .evp-trio > .evp-own:last-child:nth-child(3n + 2) > .evp-own__list {
+    grid-row: span 2;
+    align-self: center;
+  }
+
+  .evp-trio > .evp-own:last-child:nth-child(3n + 2) > .evp-btn {
+    grid-column: 2;
+    justify-self: start;
+  }
+
+  .evp-trio > .evp-own:last-child:nth-child(3n + 2) > .evp-own__yours {
     grid-column: 1 / -1;
   }
 }

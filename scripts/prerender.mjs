@@ -137,18 +137,22 @@ try {
     spotter: { clock: 'seconds', base: SPOTTER_SCORE_BASE },
     hotlap: { clock: 'hundredths', base: HOTLAP_SCORE_BASE },
   }
+  // The boards that keep a percent, in hundredths of a point (Half Full's 9120 is 91.2%): the figure says its unit.
+  const PERCENTS = new Set(['halffull'])
   /** What the challenge functions need to word and colour a game's card. */
   const cardGames = {}
   let challengePages = 0
   for (const game of games) {
     const time = isTimeBoard(game.slug)
+    const percent = PERCENTS.has(game.slug)
     if (time && !CLOCKS[game.slug]) console.warn(`prerender: no clock for ${game.slug}; its challenge cards count points`)
     cardGames[game.slug] = {
       name: game.name,
       accent: game.accent,
-      unit: time ? null : [scoreUnit(game.slug, 1), scoreUnit(game.slug, 2)],
+      unit: time || percent ? null : [scoreUnit(game.slug, 1), scoreUnit(game.slug, 2)],
       clock: CLOCKS[game.slug]?.clock ?? null,
       base: CLOCKS[game.slug]?.base ?? 0,
+      ...(percent ? { percent: true } : {}),
     }
     const description = `A friend has a score for you to beat on ${game.name}. It plays right here in your browser, no account needed.`
     const card = `/og/challenge/${game.slug}.png`

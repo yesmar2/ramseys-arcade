@@ -1,11 +1,12 @@
 /*
- * The admin's tabs, its Daily games card, the daily games' books (AdminHoleBook, AdminTrackBook): every
- * planned day of Ace Chase's Today's Hole and Hot Lap's Today's Track; and the Trophies tab (AdminTrophies).
- * Cards are the admin page's own (.adm-card, admin.css); the switches are the site's (.seg, .chips).
+ * The admin's tabs, its Daily games card, the daily games' books (AdminHoleBook, AdminTrackBook,
+ * AdminPourBook): every planned day of Ace Chase's Today's Hole and Hot Lap's Today's Track, and Half
+ * Full's days; and the Trophies tab (AdminTrophies). Cards are the admin page's own (.adm-card,
+ * admin.css); the switches are the site's (.seg, .chips).
  */
 
 .adm-tabs.seg {
-  width: min(100%, 38rem);
+  width: min(100%, 46rem);
 }
 
 @media (max-width: 36rem) {
@@ -748,6 +749,111 @@ html[data-theme='dark'] .tb {
     animation: none;
     box-shadow: 0 0 0 3px color-mix(in srgb, var(--panel-accent) 60%, transparent);
   }
+}
+
+/* ---------- the Pour Book ---------- */
+
+.pb {
+  --pb-off: #d0563b;
+  display: grid;
+  gap: 1.1rem;
+  min-width: 0;
+}
+
+html[data-theme='dark'] .pb {
+  --pb-off: #f08a6e;
+}
+
+.pb-dot--off {
+  background: var(--pb-off);
+}
+
+.pb-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 18rem), 1fr));
+  align-items: start;
+  gap: 0.8rem;
+}
+
+.pb-day {
+  display: grid;
+  gap: 0.55rem;
+  min-width: 0;
+  padding: 0.7rem 0.75rem 0.75rem;
+  border-radius: 1rem;
+  background: var(--surface);
+  border: 1px solid var(--panel-line);
+}
+
+.pb-day--today {
+  border-color: var(--panel-accent);
+  box-shadow: 0 0 0 1px var(--panel-accent);
+}
+
+.pb-day--past {
+  opacity: 0.6;
+}
+
+.pb-day--off {
+  border-color: var(--pb-off);
+}
+
+.pb-flag {
+  padding: 0.05rem 0.5rem;
+  border-radius: 999px;
+  background: var(--pb-off);
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* The glasses stand against the game's own kitchen wall, in the game's colours in either theme. */
+.pb-glasses {
+  display: block;
+  width: 100%;
+  height: auto;
+  padding: 0.5rem 0.45rem 0.2rem;
+  box-sizing: border-box;
+  border-radius: 0.7rem;
+  background: linear-gradient(180deg, #fde9d2, #f7cfa7);
+}
+
+.pb-glass__inside {
+  fill: rgba(255, 255, 255, 0.55);
+}
+
+.pb-glass__wall {
+  fill: none;
+  stroke: rgba(96, 62, 40, 0.62);
+  stroke-width: 1.1;
+  stroke-linejoin: round;
+}
+
+.pb-glass__miss {
+  font-size: 10px;
+  font-weight: 750;
+  text-anchor: middle;
+  fill: #87583a;
+  font-variant-numeric: tabular-nums;
+}
+
+.pb-figs {
+  grid-template-columns: repeat(4, auto);
+}
+
+.pb-bad {
+  color: var(--pb-off);
+}
+
+.pb-go {
+  justify-self: start;
+  font-size: 0.85rem;
+}
+
+.pb-more {
+  justify-self: center;
 }
 
 /* ---------- the Trophies tab (AdminTrophies): a row with its picture ---------- */

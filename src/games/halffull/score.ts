@@ -1,3 +1,4 @@
+import { boardScore } from './boardFigure'
 import { LEVELS, frac, type Glass } from './glasses'
 import { HALF_ROUNDS, ROUNDS, splitShare, type DayPlan, type Split } from './plan'
 
@@ -36,18 +37,8 @@ export function dayScore(scores: readonly number[]): number {
   return scores.length ? scores.reduce((a, b) => a + b, 0) / scores.length : 0
 }
 
-/**
- * The board's figure: hundredths of a point, rounded down like the day as it's shown, so the board never
- * reads a tenth more than the player's own card (9156 is 91.5%).
- */
-export function boardScore(day: number): number {
-  return Math.floor(100 * day + 1e-6)
-}
-
-/** A board figure as the board shows it: "91.5%". */
-export function formatBoard(board: number): string {
-  return `${(Math.floor(board / 10) / 10).toFixed(1)}%`
-}
+// The board's figure lives on its own, for the pages that show it without playing.
+export { boardScore, formatBoard } from './boardFigure'
 
 /** The day to a tenth, rounded down, as it's shown and as its tier is judged: never "96.0%" short of Spot On. */
 export function dayTenths(day: number): number {

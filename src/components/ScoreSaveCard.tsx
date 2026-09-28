@@ -25,6 +25,7 @@ import {
   normalizePlayerName,
   type LeaderboardGame,
   type LeaderboardPeriod,
+  type SavedPours,
 } from '../lib/leaderboard'
 import { formatLeaderboardScore } from '../lib/leaderboardFormat'
 import { gameHasRecords } from '../lib/records'
@@ -65,9 +66,13 @@ type ScoreSaveProps = {
   pickups?: number
   /** Hot Lap: the day's blue car, in milliseconds, which its ticket ladder goes by. */
   pace?: number
+  /** Half Full: the day's five pours, which the API scores the day from (the `score` is only what's shown). */
+  pours?: SavedPours
   /** A daily's run to send on, its day's link included (Hot Lap's lap): a Share link under the report. */
   shareLine?: string
   onDone: () => void
+  /** Once the save has an answer, saved or not, even after the card has closed: a board to read again. */
+  onSettled?: () => void
 }
 
 type Phase = 'checking' | 'needAuth' | 'needName' | 'saving' | 'saved' | 'assisted' | 'error'
@@ -106,7 +111,7 @@ function boardsHref(gameSlug: string, period: LeaderboardPeriod) {
  * in without a tag, it takes one in slots. A run that used the admin stage
  * jump is not saved at all. Leave, top left, goes to the game's page.
  */
-export function ScoreSaveCard({ gameSlug, score, title, subtitle, previousBest, pickups, pace, shareLine, onDone }: ScoreSaveProps) {
+export function ScoreSaveCard({ gameSlug, score, title, subtitle, previousBest, pickups, pace, pours, shareLine, onDone, onSettled }: ScoreSaveProps) {
   const { signedIn, loading: authLoading } = useAuth()
   const impersonation = useImpersonation()
   const canSaveScores = signedIn || Boolean(impersonation)
@@ -137,6 +142,10 @@ export function ScoreSaveCard({ gameSlug, score, title, subtitle, previousBest, 
   pickupsRef.current = pickups
   const paceRef = useRef(pace)
   paceRef.current = pace
+  const poursRef = useRef(pours)
+  poursRef.current = pours
+  const settledRef = useRef(onSettled)
+  settledRef.current = onSettled
   const titleId = useId()
   const tagId = useId()
 
@@ -243,7 +252,9 @@ export function ScoreSaveCard({ gameSlug, score, title, subtitle, previousBest, 
         run,
         pickups: pickupsRef.current,
         pace: paceRef.current,
+        pours: poursRef.current,
       })
+      settledRef.current?.()
       if (closed) return
       setSavedAs(facts.name)
       setFacts(facts)
@@ -252,6 +263,7 @@ export function ScoreSaveCard({ gameSlug, score, title, subtitle, previousBest, 
     }
 
     save().catch((err: unknown) => {
+      settledRef.current?.()
       if (closed) return
       const next = afterFailure(err)
       setError(next.error)
@@ -295,7 +307,9 @@ export function ScoreSaveCard({ gameSlug, score, title, subtitle, previousBest, 
         run: runRef.current ?? runIdFor(gameSlug),
         pickups: pickupsRef.current,
         pace: paceRef.current,
+        pours: poursRef.current,
       })
+      settledRef.current?.()
       setSavedAs(facts.name)
       setFacts(facts)
       setReport(composeReport(facts))

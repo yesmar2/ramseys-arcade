@@ -11,7 +11,7 @@ import { WORDMARK } from './wordmark.js'
 
 /**
  * @typedef {{ id: string, game: string, name: string, score: number, createdAt: number, replyTo: string | null }} Challenge
- * @typedef {{ name: string, accent: string, unit: [string, string] | null, clock: 'tenths' | 'hundredths' | 'seconds' | null, base: number }} GameInfo
+ * @typedef {{ name: string, accent: string, unit: [string, string] | null, clock: 'tenths' | 'hundredths' | 'seconds' | null, base: number, percent?: boolean }} GameInfo
  * @typedef {{ headers: Record<string, string | string[] | undefined>, url?: string }} Req
  */
 
@@ -89,11 +89,13 @@ export function readGames(origin) {
 }
 
 /**
- * A score as the board shows it: 447, 14,310, 47.5s, or a lap's 53.36s.
+ * A score as the board shows it: 447, 14,310, 47.5s, a lap's 53.36s, or Half Full's 91.2% (kept in
+ * hundredths of a point, shown to the tenth below, as the game's own card shows it).
  * @param {GameInfo | undefined} info
  * @param {number} score
  */
 export function figure(info, score) {
+  if (info?.percent) return `${(Math.floor(score / 10) / 10).toFixed(1)}%`
   if (info?.clock) {
     const ms = Math.max(0, info.base - score)
     if (info.clock === 'seconds') {
@@ -115,12 +117,12 @@ export function figure(info, score) {
 }
 
 /**
- * What a score counts, to set after it: rows, points; nothing for a time.
+ * What a score counts, to set after it: rows, points; nothing for a time or a percent.
  * @param {GameInfo | undefined} info
  * @param {number} score
  */
 export function unitOf(info, score) {
-  if (info?.clock) return ''
+  if (info?.clock || info?.percent) return ''
   const [one, many] = info?.unit ?? ['point', 'points']
   return score === 1 ? one : many
 }

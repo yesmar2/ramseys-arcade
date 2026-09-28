@@ -14,15 +14,25 @@ import { GameStage } from '../../components/GameStage'
 import { HapticsToggle } from '../../components/HapticsToggle'
 import { MusicToggle } from '../../components/MusicToggle'
 import { ScoreGuide } from '../../components/ScoreGuide'
+import { ScoreSaveCard } from '../../components/ScoreSaveCard'
 import { copyText } from '../../components/ShareBoardButton'
 import { SoundPackSelect } from '../../components/SoundPackSelect'
 import { SoundToggle } from '../../components/SoundToggle'
+import { isGameListed } from '../../data/games'
 import { useDeliberatePress } from '../../hooks/useDeliberatePress'
+import { gameArchiveHref } from '../../hooks/useHashRoute'
+import { usePersonalBest } from '../../hooks/usePersonalBest'
+import { usePlayerName } from '../../hooks/usePlayerName'
 import { fitCardToSpace } from '../../lib/cardFit'
 import { gameAccentStyle } from '../../lib/gameAccentStyle'
+import { noteRunBegun } from '../../lib/engagement'
 import { haptic } from '../../lib/haptics'
+import { normalizePlayerName } from '../../lib/leaderboard'
+import { ordinal } from '../../lib/profileMath'
+import { beginRun, resumeRun, runIdFor } from '../../lib/runSession'
 import { sfx } from '../../lib/sound'
 import {
+  dayDone,
   dayRun,
   dayTag,
   keptResults,
@@ -56,7 +66,8 @@ import { absVolume, levelForAbsVol } from './glasses'
 import { glassOwner, guestFor, guestName } from './looks'
 import { dayPlan, ROUNDS, splitLevelB, type DayPlan } from './plan'
 import { dragSpan, renderHalfFull, splitDragSpan, splitGlassAt, splitLevels, type View } from './render'
-import { formatOff, formatPercent, formatPoints, markFor } from './score'
+import { formatBoard, formatOff, formatPercent, formatPoints, judgeLevels, markFor, tierFor } from './score'
+import { useTodayBoard, type TodayBoard } from './todayBoard'
 
 /*
  * Half Full: fill four glasses exactly half full, by what they hold, then share a jug fairly between
@@ -169,7 +180,24 @@ export function HalfFullGame({ testDay = null }: { testDay?: string | null }) {
   } | null>(null)
   const fontRef = useRef('system-ui, sans-serif')
   /** The counted run this page is playing, by when it began: a lock is kept only onto that run. */
-  const runId = useRef<number | null>(null)
+  const pageRun = useRef<number | null>(null)
+  /** The counted run this page opened on the API, by when it began: its id may still be on the way. */
+  const openedRun = useRef<number | null>(null)
+  /** A finished first pour put on the board late, from the day's card (played signed out, or its save never landed). */
+  const [lateSave, setLateSave] = useState(false)
+  /** Saves that have had their answer: the day's card reads the board again after each. */
+  const [settledSaves, setSettledSaves] = useState(0)
+  const noteSaved = useCallback(() => setSettledSaves((n) => n + 1), [])
+  const apiBest = usePersonalBest(SLUG)
+  const me = normalizePlayerName(usePlayerName())
+  // Nothing goes on a board while the game is on deck, but in the dev build.
+  const saves = isGameListed(SLUG) || import.meta.env.DEV
+  // Read for the day's card, not glass by glass: again once the day's pour has moved on, or gone on late.
+  const board = useTodayBoard(
+    pastDay || !saves || ui.phase !== 'menu' ? null : today,
+    me,
+    `${run?.levels.length ?? 0}|${run?.board ?? ''}|${lateSave}|${settledSaves}`,
+  )
 
   const refresh = useCallback(() => setUi(snapOf(stateRef.current, movedRef.current)), [])
 
@@ -191,7 +219,7 @@ export function HalfFullGame({ testDay = null }: { testDay?: string | null }) {
         let keptIt = false
         updateDayRun(s.plan.day, (prev) => {
           // Only onto the run this page began, glass by glass: another tab's run, or one cleared, isn't this.
-          if (!prev || prev.startedAt !== runId.current || prev.levels.length !== at) return prev
+          if (!prev || prev.startedAt !== pageRun.current || prev.levels.length !== at) return prev
           keptIt = true
           return { ...prev, levels: [...prev.levels, r.level], auto: [...prev.auto, r.auto] }
         })
@@ -215,6 +243,14 @@ export function HalfFullGame({ testDay = null }: { testDay?: string | null }) {
     }
   }, [])
 
+  /**
+   * Go on under a counted run's id: the one kept on the device, or, while that isn't back yet, the one this
+   * page asked the API for (which the device's blank would otherwise overwrite).
+   */
+  const keepRun = useCallback((r: DayRun) => {
+    if (r.runId || openedRun.current !== r.startedAt) resumeRun(SLUG, r.runId)
+  }, [])
+
   const begin = useCallback(
     (practice: boolean) => {
       // A card left up past midnight: show the new day's first.
@@ -224,16 +260,28 @@ export function HalfFullGame({ testDay = null }: { testDay?: string | null }) {
         return
       }
       let done: PourResult[] = []
-      runId.current = null
+      pageRun.current = null
       if (!practice) {
         if (run) {
-          runId.current = run.startedAt
+          // A first pour left halfway carries on under the id it was opened with.
+          pageRun.current = run.startedAt
           done = kept
+          keepRun(run)
         } else {
+          // Today's first pour, the one that counts: opened on the API and kept on the device as it goes.
           const startedAt = Date.now()
-          runId.current = startedAt
+          pageRun.current = startedAt
+          openedRun.current = startedAt
+          beginRun(SLUG)
           updateDayRun(day, () => ({ startedAt, levels: [], auto: [] }))
+          // Kept whenever it comes, even after the fifth glass: a late save goes under it.
+          void runIdFor(SLUG).then((runId) => {
+            if (runId) updateDayRun(day, (r) => (r && r.startedAt === startedAt && !r.runId ? { ...r, runId } : r))
+          })
         }
+      } else {
+        // Practice opens nothing on the API: a run there would make the day's real first pour not the first.
+        noteRunBegun()
       }
       const s = startRun(plan, practice, done)
       stateRef.current = s
@@ -243,7 +291,7 @@ export function HalfFullGame({ testDay = null }: { testDay?: string | null }) {
       drag.current = null
       refresh()
     },
-    [day, kept, plan, refresh, run, testDay, today],
+    [day, keepRun, kept, plan, refresh, run, testDay, today],
   )
 
   const toMenu = useCallback(() => {
@@ -275,6 +323,13 @@ export function HalfFullGame({ testDay = null }: { testDay?: string | null }) {
       refresh()
     }
   }, [plan, refresh])
+
+  /** A finished first pour that isn't on the board: save it now, under the run it was opened with. */
+  const saveLate = useCallback(() => {
+    if (!run || run.levels.length < ROUNDS) return
+    keepRun(run)
+    setLateSave(true)
+  }, [keepRun, run])
 
   const doLock = useCallback(() => {
     const s = stateRef.current
@@ -600,13 +655,23 @@ export function HalfFullGame({ testDay = null }: { testDay?: string | null }) {
               {ui.phase === 'menu' ? (
                 <StartCard
                   plan={plan}
+                  run={run}
                   kept={kept}
                   pastDay={pastDay}
-                  onStart={() => begin(pastDay || kept.length >= ROUNDS)}
+                  board={board}
+                  saves={saves}
+                  onStart={() => begin(pastDay || dayDone(run))}
                   onPractice={() => begin(true)}
+                  onSave={saveLate}
                 />
               ) : null}
-              {ui.phase === 'done' ? (
+              {ui.phase === 'done' && !ui.practice && !pastDay && saves ? (
+                <DaySave plan={plan} results={ui.results} previousBest={apiBest} onDone={toMenu} onSettled={noteSaved} />
+              ) : null}
+              {lateSave && ui.phase === 'menu' && run && run.levels.length >= ROUNDS ? (
+                <DaySave plan={plan} results={kept} previousBest={apiBest} onDone={() => setLateSave(false)} onSettled={noteSaved} />
+              ) : null}
+              {ui.phase === 'done' && (ui.practice || pastDay || !saves) ? (
                 <DayCard
                   plan={plan}
                   results={ui.results}
@@ -839,27 +904,49 @@ function Marks({ results }: { results: readonly PourResult[] }) {
   )
 }
 
+/** Where today stands for everyone, and for you once you're on it. */
+function todayWords(board: TodayBoard | null): string | null {
+  if (!board) return null
+  if (board.you) return `You’re ${ordinal(board.you.place)} of ${board.count}`
+  if (!board.leader) return 'Nobody’s poured yet'
+  return `${board.leader.name} leads with ${formatBoard(board.leader.score)}`
+}
+
 function StartCard({
   plan,
+  run,
   kept,
   pastDay,
+  board,
+  saves,
   onStart,
   onPractice,
+  onSave,
 }: {
   plan: DayPlan
+  run: DayRun | null
   kept: readonly PourResult[]
   pastDay: boolean
+  board: TodayBoard | null
+  /** Whether a day goes on a board (not while the game is on deck). */
+  saves: boolean
   onStart: () => void
   onPractice: () => void
+  onSave: () => void
 }) {
-  const done = !pastDay && kept.length >= ROUNDS
+  const done = !pastDay && dayDone(run)
   const started = !pastDay && kept.length > 0 && !done
-  const sum = done ? summarize(kept) : null
+  const sum = done && kept.length >= ROUNDS ? summarize(kept) : null
+  // Poured on another device: the board has the figure, this device never saw the pours.
+  const elsewhere = done && !sum && run?.board != null ? run.board : null
+  // A finished first pour the board hasn't got (played signed out, or its save never landed).
+  const offBoard = saves && sum != null && board != null && !board.you
+  const standing = pastDay ? null : todayWords(board)
   return (
     <Card label="Half Full">
       <div className="game-card__head">
         <span className="game-card__kicker">
-          Half Full {dayTag(plan.day)} · {weekdayShort(plan.day)} · {plan.label}
+          {pastDay ? `Half Full ${dayTag(plan.day)}` : `Today’s Pour ${dayTag(plan.day)}`} · {weekdayShort(plan.day)} · {plan.label}
           {pastDay ? ' · a past day' : ''}
         </span>
         <h2 className="game-card__title game-card__title--big">Half Full</h2>
@@ -879,14 +966,25 @@ function StartCard({
           <strong>{sum.scoreText}</strong>
           <span>{sum.tier}</span>
         </div>
+      ) : elsewhere != null ? (
+        <div className="halffull-card__result">
+          <strong>{formatBoard(elsewhere)}</strong>
+          <span>{tierFor(elsewhere / 100)} · poured on another device</span>
+        </div>
       ) : null}
-      {done ? <Marks results={kept} /> : null}
+      {sum ? <Marks results={kept} /> : null}
+      {standing ? <p className="halffull-card__standing">{standing}</p> : null}
       <SoundRow />
       <div className="game-card__actions">
         {done ? (
           <>
-            <ShareButton plan={plan} results={kept} autoFocus />
-            <button type="button" className="panel__btn panel__btn--ghost" onClick={onPractice}>
+            {offBoard ? (
+              <button type="button" className="panel__btn" onClick={onSave}>
+                Put it on today’s board
+              </button>
+            ) : null}
+            {sum ? <ShareButton plan={plan} results={kept} autoFocus={!offBoard} ghost={offBoard} /> : null}
+            <button type="button" className="panel__btn panel__btn--ghost" onClick={onPractice} autoFocus={!sum}>
               Pour again · doesn’t count
             </button>
           </>
@@ -897,8 +995,51 @@ function StartCard({
         )}
       </div>
       {!pastDay ? <p className="halffull-card__note">New glasses in {untilNext(msUntilNextDay())}</p> : null}
-      <p className="halffull-card__note">A preview: nothing goes on a board yet.</p>
+      {saves ? (
+        <a className="halffull-card__archive" href={gameArchiveHref(SLUG)}>
+          Past days ›
+        </a>
+      ) : (
+        <p className="halffull-card__note">A preview: nothing goes on a board yet.</p>
+      )}
     </Card>
+  )
+}
+
+/**
+ * Today's pour on the boards: the site's own run report (place, tickets, the day's record), with the pours
+ * sent along for the API to score the day from.
+ */
+function DaySave({
+  plan: planNow,
+  results: resultsNow,
+  previousBest,
+  onDone,
+  onSettled,
+}: {
+  plan: DayPlan
+  results: readonly PourResult[]
+  previousBest: number
+  onDone: () => void
+  onSettled: () => void
+}) {
+  // The day it was poured on, kept: midnight moving the page on mustn't re-score it against the new glasses.
+  const [{ plan, results }] = useState(() => ({ plan: planNow, results: resultsNow }))
+  const sum = summarize(results)
+  const levels = results.map((r) => r.level)
+  const pours = { day: plan.day, levels, auto: results.map((r) => r.auto) }
+  return (
+    <ScoreSaveCard
+      gameSlug={SLUG}
+      score={judgeLevels(plan, levels).board}
+      title={sum.tier}
+      subtitle={`Today’s Pour ${dayTag(plan.day)} · ${sum.marks.join('')} · Team Half-${sum.team}`}
+      previousBest={previousBest}
+      pours={pours}
+      shareLine={shareText(plan, results, window.location.origin)}
+      onDone={onDone}
+      onSettled={onSettled}
+    />
   )
 }
 
@@ -970,11 +1111,14 @@ function ShareButton({
   results,
   allow,
   autoFocus = false,
+  ghost = false,
 }: {
   plan: DayPlan
   results: readonly PourResult[]
   allow?: (e: ReactMouseEvent) => boolean
   autoFocus?: boolean
+  /** The quieter button, beside a bigger one. */
+  ghost?: boolean
 }) {
   const [copied, setCopied] = useState(false)
   const share = (e: ReactMouseEvent) => {
@@ -993,7 +1137,7 @@ function ShareButton({
     else if (copyText(text)) done()
   }
   return (
-    <button type="button" className="panel__btn" onClick={share} autoFocus={autoFocus}>
+    <button type="button" className={ghost ? 'panel__btn panel__btn--ghost' : 'panel__btn'} onClick={share} autoFocus={autoFocus}>
       {copied ? 'Copied' : 'Share'}
     </button>
   )

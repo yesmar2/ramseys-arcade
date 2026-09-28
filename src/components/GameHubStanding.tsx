@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import type { HubBoard } from '../hooks/useGameHub'
-import { gapText, whatPutsYouOn, wouldPlace, youOnBoard } from '../lib/gameBoard'
+import { gapBetween, whatPutsYouOn, wouldPlace, youOnBoard } from '../lib/gameBoard'
 import { anyRunPays, firstRunAims, standingOn, type Standing } from '../lib/gameHub'
 import type { LeaderboardGame, LeaderboardPeriod } from '../lib/leaderboard'
 import { formatLeaderboardScore } from '../lib/leaderboardFormat'
@@ -196,7 +196,7 @@ function OnBoard({ slug, standing, when }: { slug: LeaderboardGame; standing: St
         </Callout>
       ) : (
         <Callout badge="1st">
-          You hold 1st{chaser ? `, and ${chaser.name} is ${gapText(slug, chaser.gap)} back` : ''}.
+          You hold 1st{chaser ? `, and ${chaser.name} is ${gapBetween(slug, best, chaser.score)} back` : ''}.
         </Callout>
       )}
     </>
