@@ -1,5 +1,5 @@
 import { useState, type CSSProperties } from 'react'
-import { homeGames, TAG_LABELS, type Game, type GameTag } from '../data/games'
+import { TAG_LABELS, wallGames, type Game, type GameTag } from '../data/games'
 import { useBoardLeaders, type BoardLeader } from '../hooks/useBoardLeaders'
 import { gameHref } from '../hooks/useHashRoute'
 import { useLiveEvents } from '../hooks/useLiveEvents'
@@ -162,10 +162,11 @@ const ONE: Span = { w: 1, h: 1 }
 const PLACES = ['1st', '2nd', '3rd']
 
 /**
- * The wall: every game as an arcade cabinet, in a grid that runs five across
- * on a desktop and three on a phone, and no two cabinets of one colour side by
- * side. The finished games stand on the floor; the ones still being tuned get
- * a row of their own under them, which on a phone runs on from the floor with
+ * The wall: every game but the dailies (they're on today's ticket, above it)
+ * as an arcade cabinet, in a grid that runs five across on a desktop and three
+ * on a phone, and no two cabinets of one colour side by side. The finished
+ * games stand on the floor; the ones still being tuned get a row of their own
+ * under them, which on a phone runs on from the floor with
  * a New badge on each instead of a heading. Each cabinet's screen shows its game, which
  * plays when asked; under the screen go the name, the board's high score and
  * yours. The daily's game and the weekly's wear a badge. Tabs along the top
@@ -183,7 +184,7 @@ export function GameWall() {
   const { byGame } = useGlobalRank()
   const leaders = useBoardLeaders(period)
 
-  const all = homeGames(device)
+  const all = wallGames(device)
   const shown = all.filter((g) => inTab(g, tab))
   const floor = arrangeWall(shown.filter((g) => !isFresh(g)), null, () => ONE)
   const fresh = arrangeWall(shown.filter(isFresh), null, () => ONE)

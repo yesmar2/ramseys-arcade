@@ -333,6 +333,14 @@ export function homeGames(device: DeviceType) {
     .sort((a, b) => homeRank(a) - homeRank(b))
 }
 
+/**
+ * The games on the home page's wall, and on each game page's shelf: every one but the dailies, which have
+ * a place of their own, today's ticket above the wall.
+ */
+export function wallGames(device: DeviceType) {
+  return homeGames(device).filter((g) => !g.daily)
+}
+
 export function deviceRequirementLabel(game: Game) {
   if (!game.devices?.length) return null
   return `${game.name} plays on ${formatDeviceList(game.devices)}.`

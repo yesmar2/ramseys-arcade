@@ -8,7 +8,7 @@ import { GameHubRecords } from '../components/GameHubRecords'
 import { GameHubStanding } from '../components/GameHubStanding'
 import { WallTile } from '../components/GameWall'
 import { PageShell } from '../components/PageShell'
-import { gamePlayableOn, getGame, homeGames } from '../data/games'
+import { gamePlayableOn, getGame, wallGames } from '../data/games'
 import { useAuth } from '../hooks/useAuth'
 import { useBoardLeaders } from '../hooks/useBoardLeaders'
 import { useHubBoard, useHubEvents, useHubHighScore, useHubRecords } from '../hooks/useGameHub'
@@ -104,7 +104,7 @@ export function GameHubPage({ slug, board: boardFromRoute }: GameHubPageProps) {
 
   const accent = resolveGameAccent(slug, game.accent)
   const hasRecords = gameHasRecords(game.slug)
-  const shelf = homeGames(device)
+  const shelf = wallGames(device)
   const more = moreLike(game, shelf)
   const style = {
     '--gh-accent': accent,
