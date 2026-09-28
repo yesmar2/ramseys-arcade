@@ -8487,8 +8487,19 @@ a.lb-share:visited:focus-visible {
   color: var(--muted);
 }
 
-.site-search__form:focus-within .site-search__kbd {
+/*
+ * The "/" that opens search from anywhere stays in the field while it's empty, focused or not, so opening
+ * the field (by the icon, where search folds away) still shows the way in; it goes once there's typing.
+ * A phone has no "/" to press.
+ */
+.site-search__form:has(.site-search__input:not(:placeholder-shown)) .site-search__kbd {
   display: none;
+}
+
+@media (hover: none) and (pointer: coarse) {
+  .site-search__kbd {
+    display: none;
+  }
 }
 
 .site-search__results {

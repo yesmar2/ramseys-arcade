@@ -290,6 +290,8 @@ export function SiteSearch() {
         type="button"
         className="site-search__toggle"
         aria-label="Search"
+        title="Search (press /)"
+        aria-keyshortcuts="/"
         aria-expanded={open}
         onClick={() => {
           setOpen((was) => {
@@ -319,6 +321,7 @@ export function SiteSearch() {
           value={q}
           placeholder="Search games, players, events"
           aria-label="Search games, players and events"
+          aria-keyshortcuts="/"
           autoComplete="off"
           spellCheck={false}
           role="combobox"
