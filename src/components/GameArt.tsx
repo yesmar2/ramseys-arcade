@@ -1295,6 +1295,73 @@ function Fireflies({ id }: { id: Id }) {
   )
 }
 
+/**
+ * Half Full on its kitchen counter: a glass that flares to its rim, filled to where half looks to be,
+ * with the red line where half really is, well above it; beside it the measuring jug that told, a
+ * third full under its own HALF line, and a guest peeking over the counter's end. Ink and flat colour,
+ * as the game draws it.
+ */
+function HalfFull({ id }: { id: Id }) {
+  // The glass's inside, rim to foot: wide at the top, so half of what it holds is high up.
+  const glass = 'M10.2 7.6 L25.4 7.6 L20.9 24.2 L14.7 24.2 Z'
+  return (
+    <>
+      <Backdrop
+        id={id}
+        stops={[
+          [0, '#fbe0c2'],
+          [1, '#f2b98a'],
+        ]}
+      />
+      <rect x="-1" y="15.5" width="42" height="9.5" fill="#fff" opacity="0.22" />
+      <path d="M-1 18.6 H41 M-1 21.7 H41 M3 15.5 V25 M9.2 15.5 V25 M15.4 15.5 V25 M21.6 15.5 V25 M27.8 15.5 V25 M34 15.5 V25" {...line('#be7850', 0.2, 0.3)} />
+      <rect x="-1" y="25" width="42" height="1.4" fill="#48b3a6" />
+      <rect x="-1" y="26.4" width="42" height="5" fill="#2f8b82" />
+      <ellipse cx="17.9" cy="25.2" rx="4.6" ry="0.7" fill="#5a2814" opacity="0.18" />
+      <defs>
+        <clipPath id={id('in')}>
+          <path d={glass} />
+        </clipPath>
+        <linearGradient id={id('drink')} x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0" stopColor="#f7c93c" />
+          <stop offset="0.6" stopColor="#f7c93c" />
+          <stop offset="1" stopColor="#e2a91c" />
+        </linearGradient>
+      </defs>
+      {/* The glass behind, its drink up to where half looked to be, and the drink's top. */}
+      <path d={glass} fill="#fff" opacity="0.3" />
+      <g clipPath={`url(#${id('in')})`}>
+        <rect x="12" y="17.8" width="12" height="8" fill={`url(#${id('drink')})`} />
+      </g>
+      <ellipse cx="17.8" cy="17.8" rx="5.15" ry="0.75" fill="#fde58c" stroke="#e2a91c" strokeWidth="0.2" />
+      <path d={glass} fill="none" stroke={INK} strokeWidth="1.15" strokeLinejoin="round" />
+      <path d={glass} fill="none" stroke="#f4fbff" strokeWidth="0.6" strokeLinejoin="round" />
+      <ellipse cx="17.8" cy="7.6" rx="7.6" ry="1.1" fill="none" stroke={INK} strokeWidth="1.15" />
+      <ellipse cx="17.8" cy="7.6" rx="7.6" ry="1.1" fill="none" stroke="#f4fbff" strokeWidth="0.6" />
+      <path d="M13 10 L15.6 21.6 M14.6 10.2 L15.9 15.4" {...line('#fff', 0.45, 0.6)} />
+      {/* Where half really was. */}
+      <path d="M10.8 11.6 H25.6" stroke="#fff" strokeWidth="0.9" opacity="0.9" />
+      <path d="M10.8 11.6 H25.6" stroke="#e0413a" strokeWidth="0.5" strokeDasharray="1.1 0.7" />
+      {/* The measuring jug: a third full, under its HALF line. */}
+      <rect x="27.6" y="10.4" width="5.6" height="14.4" rx="0.5" fill="#fff" opacity="0.45" />
+      <rect x="27.6" y="19.6" width="5.6" height="5.2" fill="#f7c93c" />
+      <ellipse cx="30.4" cy="19.6" rx="2.8" ry="0.45" fill="#fde58c" />
+      <path d="M27.6 17.6 H33.2" stroke="#e0413a" strokeWidth="0.45" strokeDasharray="0.9 0.6" />
+      <path d="M27.8 13 H28.9 M27.8 15.4 H28.6 M27.8 20.2 H28.6 M27.8 22.6 H28.6" {...line(INK, 0.22, 0.5)} />
+      <rect x="27.6" y="10.4" width="5.6" height="14.4" rx="0.5" fill="none" stroke={INK} strokeWidth="0.9" />
+      <rect x="27.6" y="10.4" width="5.6" height="14.4" rx="0.5" fill="none" stroke="#f4fbff" strokeWidth="0.45" />
+      <path d="M33.2 12.4 C35.4 12.4 35.4 18 33.2 18" fill="none" stroke={INK} strokeWidth="0.9" />
+      <path d="M33.2 12.4 C35.4 12.4 35.4 18 33.2 18" fill="none" stroke="#f4fbff" strokeWidth="0.45" />
+      {/* A guest peeking over the counter's end. */}
+      <circle cx="37.6" cy="23.2" r="2.1" {...inked('#f5dcab', 0.35)} />
+      <path d="M35.9 22 A2.1 2.1 0 0 1 39.3 22 Z" {...inked('#8a6ad4', 0.3)} />
+      <circle cx="36.9" cy="23.4" r="0.32" fill={INK} />
+      <circle cx="38.3" cy="23.4" r="0.32" fill={INK} />
+      <path d="M36.3 21.2 Q35.6 19.8 35 19.6 M38.9 21.2 Q39.6 19.8 40.2 19.6" {...line(INK, 0.25)} />
+    </>
+  )
+}
+
 const SCENES: Record<string, Scene> = {
   asteroids: Asteroids,
   patriot: Patriot,
@@ -1313,6 +1380,7 @@ const SCENES: Record<string, Scene> = {
   fireflies: Fireflies,
   acechase: AceChase,
   hotlap: HotLap,
+  halffull: HalfFull,
 }
 
 /**

@@ -418,6 +418,17 @@ function FrenzyThumb({ accent }: { accent: string }) {
   )
 }
 
+/** A glass that flares to its rim, filled low, with the line where half really is, higher up. */
+function HalfFullThumb({ accent }: { accent: string }) {
+  return (
+    <>
+      <path d="M6.6 17.6 L25.4 17.6 L22.6 27 L9.4 27 Z" fill={accent} opacity="0.55" />
+      <path d="M4.5 5 L27.5 5 L21.9 27 L10.1 27 Z" {...mark(accent, 0.12, 1.7)} />
+      <path d="M5.4 10.4 H26.6" stroke={accent} strokeWidth="1.5" strokeLinecap="round" strokeDasharray="2.2 1.6" />
+    </>
+  )
+}
+
 const thumbBySlug: Record<string, (props: { accent: string }) => ReactNode> = {
   putt: PuttThumb,
   bop: BopThumb,
@@ -436,6 +447,7 @@ const thumbBySlug: Record<string, (props: { accent: string }) => ReactNode> = {
   findbug: FindBugThumb,
   frenzy: FrenzyThumb,
   fireflies: FirefliesThumb,
+  halffull: HalfFullThumb,
 }
 
 /**

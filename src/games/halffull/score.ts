@@ -1,5 +1,5 @@
-import { frac, type Glass } from './glasses'
-import { splitShare, type Split } from './plan'
+import { LEVELS, frac, type Glass } from './glasses'
+import { HALF_ROUNDS, ROUNDS, splitShare, type DayPlan, type Split } from './plan'
 
 /*
  * Half Full's scoring. A pour is judged by how full the glass really is: 45% full scores 90, 31% full
@@ -36,9 +36,17 @@ export function dayScore(scores: readonly number[]): number {
   return scores.length ? scores.reduce((a, b) => a + b, 0) / scores.length : 0
 }
 
-/** The board's figure: hundredths of a point. */
+/**
+ * The board's figure: hundredths of a point, rounded down like the day as it's shown, so the board never
+ * reads a tenth more than the player's own card (9156 is 91.5%).
+ */
 export function boardScore(day: number): number {
-  return Math.round(100 * day)
+  return Math.floor(100 * day + 1e-6)
+}
+
+/** A board figure as the board shows it: "91.5%". */
+export function formatBoard(board: number): string {
+  return `${(Math.floor(board / 10) / 10).toFixed(1)}%`
 }
 
 /** The day to a tenth, rounded down, as it's shown and as its tier is judged: never "96.0%" short of Spot On. */
@@ -95,4 +103,41 @@ export function formatOff(percent: number): string {
 /** A pour's points: "100", "99.4". */
 export function formatPoints(score: number): string {
   return Number.isInteger(score) ? String(score) : score.toFixed(1)
+}
+
+/* ---------- a day's five pours, judged ---------- */
+
+/**
+ * Whether five levels could be a run of this day: whole numbers, a glass's four from empty to the brim,
+ * and the split's (the tall glass's) within what its juice allows.
+ */
+export function levelsFit(plan: DayPlan, levels: readonly unknown[]): levels is number[] {
+  if (levels.length !== ROUNDS) return false
+  return levels.every((level, round) => {
+    if (typeof level !== 'number' || !Number.isInteger(level)) return false
+    if (round >= HALF_ROUNDS) return level >= plan.split.lo && level <= plan.split.hi
+    return level >= 0 && level <= LEVELS
+  })
+}
+
+export type JudgedDay = {
+  /** How full each was (the split: the tall glass's share), in percent. */
+  percents: number[]
+  /** Each pour's points, 0..100. */
+  scores: number[]
+  /** The day's score, their mean. */
+  day: number
+  /** The board's figure (boardScore). */
+  board: number
+  team: Team
+}
+
+/** A day's result from its five levels: the site's run and the API's check work it out the same way. */
+export function judgeLevels(plan: DayPlan, levels: readonly number[]): JudgedDay {
+  const percents = levels.map((level, round) =>
+    round >= HALF_ROUNDS ? sharePercent(plan.split, level) : fillPercent(plan.pours[round]!, level),
+  )
+  const scores = percents.map(pourScore)
+  const day = dayScore(scores)
+  return { percents, scores, day, board: boardScore(day), team: teamFor(percents.slice(0, HALF_ROUNDS)) }
 }
