@@ -120,7 +120,8 @@ export function PrizePanel({
   const saving = tickets.goal === prize.id
   const tryOn = wearPrize(avatar, prize.kind, prize.id)
   const shownView = views.includes(view) ? view : views[0]
-  const siblings = PRIZES.filter((p) => p.kind === prize.kind)
+  // What a streak earns isn't on the counter, so it isn't among the ones to flick through.
+  const siblings = PRIZES.filter((p) => p.kind === prize.kind && (!p.earned || p.id === prize.id))
   // A long list (there are two dozen titles) scrolls in its own box, kept on the one picked.
   const variantsRef = useRef<HTMLDivElement>(null)
   useEffect(() => {

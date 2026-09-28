@@ -5,7 +5,7 @@ import { SignArt } from '../components/prizes/SignArt'
 import { TicketGlyph } from '../components/prizes/Ticket'
 import { PrizePanel } from '../components/prizes/PrizePanel'
 import { openSiteMenu } from '../components/siteNav'
-import { PRIZE_KINDS, PRIZES, prizeById, SHELVES, SIGNS, TICKETS_A_DAY, type Prize, type PrizeKind } from '../data/prizes'
+import { FOR_SALE, PRIZE_KINDS, PRIZES, prizeById, SHELVES, SIGNS, TICKETS_A_DAY, type Prize, type PrizeKind } from '../data/prizes'
 import { useAuth } from '../hooks/useAuth'
 import { useMyAvatarId } from '../hooks/useMyAvatarId'
 import { usePlayerName } from '../hooks/usePlayerName'
@@ -75,12 +75,12 @@ export function PrizeCounterPage() {
   const [openId, setOpenId] = useState<string | null>(null)
   const goal = prizeById(tickets.goal)
   const balance = signedIn ? tickets.balance : 0
-  const shown = PRIZES.filter((p) => p.kind !== 'sign' && (filter === 'all' || p.kind === filter))
+  const shown = FOR_SALE.filter((p) => p.kind !== 'sign' && (filter === 'all' || p.kind === filter))
   const ownedCount = PRIZES.filter((p) => owned.has(p.id)).length
 
   const counts = useMemo(() => {
     const out: Record<string, number> = { all: 0 }
-    for (const p of PRIZES) {
+    for (const p of FOR_SALE) {
       if (p.kind === 'sign') continue
       out.all = (out.all ?? 0) + 1
       out[p.kind] = (out[p.kind] ?? 0) + 1

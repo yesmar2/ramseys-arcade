@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactElement } from 'react'
+import { Suspense, useEffect, useState, type ReactElement } from 'react'
 import { GameWall } from '../components/GameWall'
 import { HomeBoards } from '../components/HomeBoards'
 import { HomeGroupsBand } from '../components/HomeGroupsBand'
@@ -11,7 +11,11 @@ import { PendingInvitesStrip } from '../components/PendingInvitesStrip'
 import { BugHuntStrip } from '../components/BugHunt'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { useRecentGames } from '../lib/lastPlayed'
+import { lazyPage } from '../lib/lazyPage'
 import { normalizePlayerName } from '../lib/leaderboard'
+
+/** Today's ticket (lib/today.ts), in a chunk of its own with the dailies' plans. */
+const TodayCard = lazyPage(() => import('../components/TodayCard').then((m) => m.TodayCard))
 
 /** A phone, where the home page runs lighter (the rules in home.css under the same width). */
 const PHONE = '(max-width: 36rem)'
@@ -28,7 +32,7 @@ function usePhone(): boolean {
   return phone
 }
 
-type Part = 'hero' | 'hunt' | 'invites' | 'onnow' | 'wall' | 'boards' | 'spotter' | 'groups'
+type Part = 'hero' | 'today' | 'hunt' | 'invites' | 'onnow' | 'wall' | 'boards' | 'spotter' | 'groups'
 
 /*
  * On a phone the games come straight after the banner. The page used to run
@@ -39,13 +43,17 @@ type Part = 'hero' | 'hunt' | 'invites' | 'onnow' | 'wall' | 'boards' | 'spotter
  * hears it the way it's seen; each part keeps its key, so turning a phone
  * sideways moves the parts rather than starting them again.
  *
+ * Today's ticket, the day's three dailies and the streak, comes straight
+ * after the banner for anyone who has played, phone or not.
+ *
  * A first visit (no tag, nothing played on this device, as the banner has it)
- * gets the phone's order at any width: the games right after the banner, and
+ * gets the games right after the banner at any width, and today's ticket,
  * what's on and the bug hunt, which only mean something once you've played,
  * after them.
  */
-const WIDE: Part[] = ['hero', 'hunt', 'invites', 'onnow', 'wall', 'boards', 'spotter', 'groups']
-const NARROW: Part[] = ['hero', 'invites', 'wall', 'onnow', 'hunt', 'boards', 'spotter', 'groups']
+const WIDE: Part[] = ['hero', 'today', 'hunt', 'invites', 'onnow', 'wall', 'boards', 'spotter', 'groups']
+const NARROW: Part[] = ['hero', 'today', 'invites', 'wall', 'onnow', 'hunt', 'boards', 'spotter', 'groups']
+const FIRST: Part[] = ['hero', 'invites', 'wall', 'today', 'onnow', 'hunt', 'boards', 'spotter', 'groups']
 
 /**
  * The front door, at the width of the screen: a banner for the one game to
@@ -61,6 +69,11 @@ export function HomePage() {
   const firstVisit = !name && recent.length === 0
   const parts: Record<Part, ReactElement> = {
     hero: <HomeHero key="hero" />,
+    today: (
+      <Suspense key="today" fallback={null}>
+        <TodayCard />
+      </Suspense>
+    ),
     hunt: <BugHuntStrip key="hunt" />,
     invites: <PendingInvitesStrip key="invites" />,
     onnow: <HomeOnNow key="onnow" />,
@@ -72,7 +85,7 @@ export function HomePage() {
   return (
     <>
       <PageShell variant="home">
-        <div className="home-rail">{(phone || firstVisit ? NARROW : WIDE).map((part) => parts[part])}</div>
+        <div className="home-rail">{(firstVisit ? FIRST : phone ? NARROW : WIDE).map((part) => parts[part])}</div>
       </PageShell>
       <InstallPrompt />
     </>

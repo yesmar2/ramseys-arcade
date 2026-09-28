@@ -31,6 +31,7 @@ import { navActive, OPEN_MENU_EVENT, SITE_NAV_LINKS } from './siteNav'
 import { BugHuntHost } from './BugHunt'
 import { FeedbackHost } from './FeedbackPanel'
 import { TicketChip } from './prizes/TicketChip'
+import { TodayChip } from './TodayChip'
 import { PlayerName } from './PlayerName'
 
 /**
@@ -227,6 +228,7 @@ export function SiteHeader() {
         </div>
 
         <div className="site-bar__end">
+          {tagged ? <TodayChip /> : null}
           <SiteSearch />
           {showScope ? <SiteScopeControl /> : null}
           {tagged ? <TicketChip here={route.name === 'prizes'} /> : null}

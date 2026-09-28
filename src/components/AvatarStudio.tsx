@@ -281,11 +281,17 @@ export function AvatarStudio({ name, current, wear, onSaved, onClose }: AvatarSt
         type="button"
         className={`studio__tile${mine ? '' : ' studio__tile--locked'}`}
         aria-pressed={draft.badge === b}
-        aria-label={mine ? BADGE_LABELS[b] : `${BADGE_LABELS[b]}, ${prize?.price.toLocaleString()} tickets at the prize counter`}
+        aria-label={
+          mine
+            ? BADGE_LABELS[b]
+            : prize?.earned
+              ? `${BADGE_LABELS[b]}: ${prize.earned.by.toLowerCase()} earns it`
+              : `${BADGE_LABELS[b]}, ${prize?.price.toLocaleString()} tickets at the prize counter`
+        }
         onClick={() => go({ ...draft, badge: b })}
       >
         <Mark avatar={{ ...base, badge: b }} name={name} size={56} />
-        <span>{mine ? BADGE_LABELS[b] : `${prize?.price.toLocaleString()}`}</span>
+        <span>{mine ? BADGE_LABELS[b] : prize?.earned ? prize.earned.short : `${prize?.price.toLocaleString()}`}</span>
         {mine ? null : (
           <span className="studio__tile-lock" aria-hidden="true">
             <LockIcon />

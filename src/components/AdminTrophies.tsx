@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { prizesHref } from '../hooks/useHashRoute'
 import { AVATAR_GAME_PINS, AVATAR_PINS, AVATAR_RINGS, isGamePin, pinInfo, RING_INFO } from '../lib/avatars'
 import { SECRETS, type SecretKey } from '../lib/secrets'
+import { TODAY_MILESTONES } from '../lib/today'
 import type { TrophyTone } from '../lib/trophies'
 import { EventCup, HuntSetJar, MonthlyTrophyCup, SecretArt, TopTenRibbon, WeeklyMedal } from './TrophyArt'
 
@@ -84,6 +85,15 @@ const SECRET_RULES: Record<SecretKey, string> = {
   corner: 'Watching the screen saver hit a corner (see Easter eggs).',
   cheats: 'Trying an old game cheat (see Easter eggs).',
   continue: 'Putting a coin in at Game Over (see Easter eggs).',
+}
+
+/** What each Today streak reward is, beyond the card's words. */
+const TODAY_REWARD_NOTES: Record<number, string> = {
+  3: '10 tickets.',
+  7: 'The Today pin, a punched ticket on deep orange. The flame pin stays for playing any game seven days in a row.',
+  14: '25 tickets.',
+  30: 'The Gold badge finish. Never for sale: it isn’t on the counter, and the API refuses to trade for it.',
+  100: 'The “Every Day” title, on a plate in lights. Never for sale.',
 }
 
 const EGGS: { key: string; name: string; how: string; does: string; clue: string; secret: string }[] = [
@@ -178,6 +188,32 @@ export function AdminTrophies() {
         <ul className="adm-list">
           {TROPHIES.map((t) => (
             <ThingRow key={t.key} thing={t} />
+          ))}
+        </ul>
+      </section>
+
+      <section className="adm-card" aria-labelledby="adm-today">
+        <div className="adm-card__head">
+          <h2 className="adm-card__title" id="adm-today">
+            Today streak
+            <span className="adm-card__count">{TODAY_MILESTONES.length}</span>
+          </h2>
+        </div>
+        <p className="adm-card__sub">
+          Today’s ticket, on the home page: a streak day is one with all three of the day’s dailies done (Today’s Hole
+          solved, a lap on Today’s Track saved, and Today’s Wanted’s first run saved), on the boards’ New York day. The
+          Daily, the One Shot and the bug hunt are bonus punches and don’t count. Signed-in players with a tag see the
+          streak in the header too. Each reward comes once an account, however often a streak breaks, with a note in
+          the inbox.
+        </p>
+        <ul className="adm-list">
+          {TODAY_MILESTONES.map((m) => (
+            <li key={m.day} className="adm-row">
+              <div className="adm-row__main">
+                <b className="adm-row__title">Day {m.day}</b>
+                <span className="adm-row__sub">{TODAY_REWARD_NOTES[m.day] ?? m.prize}</span>
+              </div>
+            </li>
           ))}
         </ul>
       </section>

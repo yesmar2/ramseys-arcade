@@ -55,6 +55,9 @@ export function prizeGlow(prize: Prize, avatar: Avatar): string {
       return 'rgba(255,106,36,0.22)'
     case 'aurora':
       return 'rgba(62,224,143,0.2)'
+    case 'gilded':
+    case 't-everyday':
+      return 'rgba(247,201,72,0.24)'
     case 'nm-neon':
     case 'nm-retro':
     case 'cd-carpet':

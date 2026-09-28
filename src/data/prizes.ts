@@ -18,6 +18,11 @@ export type Prize = {
   price: number
   /** What it is, in a line, for the prize's panel. */
   blurb: string
+  /**
+   * Never for sale: a Today streak earns it (lib/today.ts), and its price is nought. `by` says what earns
+   * it, `short` the same for a tile.
+   */
+  earned?: { by: string; short: string }
 }
 
 export const PRIZE_KINDS: Record<PrizeKind, { one: string; many: string }> = {
@@ -89,6 +94,23 @@ export const PRIZES: readonly Prize[] = [
   { id: 'sign-marquee', kind: 'sign', name: 'Marquee', price: 6500, blurb: 'Your tag in lights, ringed with bulbs like a show’s opening night.' },
   { id: 'sign', kind: 'sign', name: 'Neon sign', price: 10_000, blurb: 'Your tag in lit tubes across your player card.' },
   { id: 'sign-rooftop', kind: 'sign', name: 'Rooftop', price: 15_000, blurb: 'Your tag in giant neon on a rooftop over the city at night.' },
+  // Earned by a Today streak, never traded for (the API's prizes.ts has them too).
+  {
+    id: 'gilded',
+    kind: 'finish',
+    name: 'Gold',
+    price: 0,
+    blurb: 'Your badge in gold leaf, with a shine across it.',
+    earned: { by: 'A 30-day Today streak', short: '30 days' },
+  },
+  {
+    id: 't-everyday',
+    kind: 'title',
+    name: 'Every Day',
+    price: 0,
+    blurb: LIT,
+    earned: { by: 'A 100-day Today streak', short: '100 days' },
+  },
 ]
 
 const byId = new Map(PRIZES.map((p) => [p.id, p]))
@@ -96,6 +118,9 @@ const byId = new Map(PRIZES.map((p) => [p.id, p]))
 export function prizeById(id: string | null | undefined): Prize | null {
   return (id && byId.get(id)) || null
 }
+
+/** What the counter sells: everything but what a streak earns. */
+export const FOR_SALE: readonly Prize[] = PRIZES.filter((p) => !p.earned)
 
 /** The badge finishes, as the words an avatar's badge takes. */
 export const FINISH_IDS = PRIZES.filter((p) => p.kind === 'finish').map((p) => p.id)
@@ -113,14 +138,16 @@ export const SIGNS: readonly Prize[] = PRIZES.filter((p) => p.kind === 'sign').s
 export type PlateTier = 'plain' | 'enamel' | 'lit'
 
 export function plateTier(prize: Prize): PlateTier {
+  // An earned title is in lights: a hundred days of Todays is worth it.
+  if (prize.earned) return 'lit'
   return prize.price >= 900 ? 'lit' : prize.price >= 300 ? 'enamel' : 'plain'
 }
 
 /** The counter's three shelves, dearest first. The signs hang on the wall above them. */
 export const SHELVES: { id: 'top' | 'mid' | 'low'; label: string; range: string; holds: (p: Prize) => boolean }[] = [
-  { id: 'top', label: 'Top shelf', range: '900 and up', holds: (p) => p.kind !== 'sign' && p.price >= 900 },
-  { id: 'mid', label: 'Worth saving for', range: '300 and up', holds: (p) => p.price >= 300 && p.price < 900 },
-  { id: 'low', label: 'Pocket change', range: 'Under 300', holds: (p) => p.price < 300 },
+  { id: 'top', label: 'Top shelf', range: '900 and up', holds: (p) => !p.earned && p.kind !== 'sign' && p.price >= 900 },
+  { id: 'mid', label: 'Worth saving for', range: '300 and up', holds: (p) => !p.earned && p.price >= 300 && p.price < 900 },
+  { id: 'low', label: 'Pocket change', range: 'Under 300', holds: (p) => !p.earned && p.price < 300 },
 ]
 
 /** How many days of play a number of tickets is, for "about 3 days": a day's steady play pays about this many. */

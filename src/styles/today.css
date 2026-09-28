@@ -1,0 +1,816 @@
+/*
+ * The Today set (lib/today.ts): the header's chip (TodayChip) and today's ticket on the home page
+ * (TodayCard): a stub with the streak and the week, three punches, the bonus punches, and the streak's
+ * rewards under it. Ticket orange is the prize counter's (prizes.css).
+ */
+
+/* ---------- the header's chip ---------- */
+
+.today-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex: none;
+  min-height: 2.6rem;
+  box-sizing: border-box;
+  padding: 0 0.85rem 0 0.65rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--ticket, #ff8552) 45%, transparent);
+  background: color-mix(in srgb, var(--ticket, #ff8552) 12%, transparent);
+  color: var(--ink);
+  font-size: 0.9rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-decoration: none;
+  white-space: nowrap;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease;
+}
+
+.today-chip:hover,
+.today-chip:focus-visible {
+  border-color: color-mix(in srgb, var(--ticket, #ff8552) 80%, transparent);
+  outline: none;
+}
+
+.today-chip svg {
+  width: 1.15rem;
+  height: 1.15rem;
+  flex: none;
+  color: var(--ticket, #ff8552);
+}
+
+.today-chip__count {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.today-chip__day + .today-chip__count::before,
+.today-chip__word + .today-chip__count::before,
+.today-chip__word + .today-chip__day::before {
+  content: '·';
+  margin-right: 0.4rem;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.today-chip--all {
+  background: color-mix(in srgb, var(--ticket, #ff8552) 22%, transparent);
+}
+
+.today-chip--all .today-chip__count {
+  color: var(--ticket-text, #c2461d);
+}
+
+/* Narrower, the word goes; on a phone the chip is the streak and the count. */
+@media (max-width: 1180px) {
+  .today-chip__word {
+    display: none;
+  }
+
+  .today-chip__word + .today-chip__day::before,
+  .today-chip__word + .today-chip__count::before {
+    content: none;
+  }
+}
+
+@media (max-width: 900px) {
+  .site-bar .today-chip {
+    order: 0;
+    min-height: 2.4rem;
+    padding: 0 0.65rem 0 0.5rem;
+    font-size: 0.85rem;
+    gap: 0.3rem;
+  }
+}
+
+/* ---------- today's ticket ---------- */
+
+.today {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  scroll-margin-top: 6rem;
+}
+
+.today-card {
+  position: relative;
+  display: flex;
+  border-radius: 1.6rem;
+  background: var(--surface);
+  border: 1px solid color-mix(in srgb, var(--ticket, #ff8552) 38%, transparent);
+  box-shadow: var(--shadow-soft);
+}
+
+.today-card__label {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ticket-text, #c2461d);
+}
+
+/* The stub: the streak, and the week under it. */
+.today-card__stub {
+  position: relative;
+  flex: none;
+  width: 16.5rem;
+  box-sizing: border-box;
+  padding: 1.7rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  border-right: 2px dashed color-mix(in srgb, var(--ticket, #ff8552) 38%, transparent);
+}
+
+/* The notches either end of the tear line. */
+.today-card__notch {
+  position: absolute;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  background: var(--bg);
+  right: -1.05rem;
+}
+
+.today-card__notch--a {
+  top: -1.1rem;
+  box-shadow: inset 0 -1px 0 color-mix(in srgb, var(--ticket, #ff8552) 38%, transparent);
+}
+
+.today-card__notch--b {
+  bottom: -1.1rem;
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--ticket, #ff8552) 38%, transparent);
+}
+
+.today-card__stub-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.today-card__date-short {
+  display: none;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.today-card__streak {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  column-gap: 0.55rem;
+  row-gap: 0.5rem;
+}
+
+.today-card__streak-n {
+  font-family: var(--font-display);
+  font-size: 4.6rem;
+  font-weight: 800;
+  line-height: 0.9;
+  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+}
+
+.today-card__streak > svg {
+  width: 2.1rem;
+  height: 2.1rem;
+  margin-bottom: 0.35rem;
+  color: var(--ticket, #ff8552);
+}
+
+.today-card__streak-line {
+  flex-basis: 100%;
+  font-size: 0.95rem;
+  line-height: 1.4;
+  color: var(--muted);
+}
+
+.today-card__signin {
+  margin: 0;
+  font-size: 0.95rem;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.today-card__rule {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+/* The week: seven days, today last. */
+.today-week {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  gap: 0.4rem;
+}
+
+.today-week__day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.today-week__mark {
+  display: grid;
+  place-items: center;
+  width: 1.7rem;
+  height: 1.7rem;
+  box-sizing: border-box;
+  border-radius: 50%;
+  border: 2px solid rgba(var(--ink-rgb), 0.12);
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: var(--ticket-text, #c2461d);
+}
+
+.today-week__mark svg {
+  width: 0.95rem;
+  height: 0.95rem;
+}
+
+.today-week__day--kept .today-week__mark {
+  border-color: var(--ticket, #ff8552);
+  background: var(--ticket, #ff8552);
+  color: var(--ticket-ink, #3a1406);
+}
+
+.today-week__day--today .today-week__mark {
+  border: 2px dashed var(--ticket, #ff8552);
+}
+
+.today-week__name {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+/* The ticket itself. */
+.today-card__body {
+  flex: 1;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 1.7rem 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.today-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.today-card__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.75rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
+.today-card__date {
+  margin: 0.2rem 0 0;
+  font-size: 0.95rem;
+  color: var(--muted);
+}
+
+.today-card__share {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  flex: none;
+  min-height: 2.75rem;
+  padding: 0 1.2rem;
+  border-radius: 999px;
+  border: 1px solid rgba(var(--ink-rgb), 0.2);
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.today-card__share:hover,
+.today-card__share:focus-visible {
+  border-color: var(--ticket, #ff8552);
+  outline: none;
+}
+
+.today-card__share svg {
+  width: 1.05rem;
+  height: 1.05rem;
+}
+
+.today-card__punches {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1.1rem;
+}
+
+.today-punch {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  text-align: center;
+  min-width: 0;
+}
+
+.today-punch__art {
+  position: relative;
+  display: block;
+  width: 8rem;
+  height: 8rem;
+  flex: none;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 3px solid rgba(var(--ink-rgb), 0.14);
+  box-sizing: border-box;
+}
+
+.today-punch__scene {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.today-punch--done .today-punch__art::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: rgba(12, 18, 24, 0.55);
+}
+
+.today-punch__stamp {
+  position: absolute;
+  inset: 0.85rem;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 3px solid var(--ticket, #ff8552);
+  color: var(--ticket, #ff8552);
+  font-size: 1.1rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  transform: rotate(-12deg);
+}
+
+.today-punch__text {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.today-punch__kicker {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.today-punch__game {
+  font-size: 1.15rem;
+  font-weight: 800;
+}
+
+.today-punch__title {
+  max-width: 100%;
+  font-size: 0.85rem;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.today-punch__mine {
+  margin-top: 0.15rem;
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--ticket-text, #c2461d);
+}
+
+.today-punch__go {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 2.6rem;
+  padding: 0 1.1rem;
+  border-radius: 999px;
+  background: var(--ticket, #ff8552);
+  color: var(--ticket-ink, #3a1406);
+  font-size: 0.92rem;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.today-punch__go:hover,
+.today-punch__go:focus-visible {
+  background: var(--ticket-deep, #e0602e);
+  outline: none;
+}
+
+.today-punch__go svg {
+  width: 0.85rem;
+  height: 0.85rem;
+}
+
+.today-punch__go-short {
+  display: none;
+}
+
+/* The bonus punches: the day's other things, which don't count. */
+.today-card__bonus {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.today-card__bonus .today-card__label {
+  color: var(--muted);
+}
+
+.today-card__bonus ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.today-bonus {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-height: 2.6rem;
+  box-sizing: border-box;
+  padding: 0.3rem 0.9rem 0.3rem 0.35rem;
+  border-radius: 999px;
+  border: 1px dashed rgba(var(--ink-rgb), 0.24);
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.today-bonus:hover,
+.today-bonus:focus-visible {
+  border-color: var(--ticket, #ff8552);
+  outline: none;
+}
+
+.today-bonus__art {
+  --inline-thumb-size: 1.9rem;
+  border-radius: 50%;
+}
+
+.today-bonus__bug {
+  flex: none;
+  width: 1.9rem;
+  height: 1.9rem;
+}
+
+.today-bonus--done {
+  border-style: solid;
+  border-color: color-mix(in srgb, var(--ticket, #ff8552) 55%, transparent);
+}
+
+.today-bonus__check {
+  display: grid;
+  place-items: center;
+  width: 1.2rem;
+  height: 1.2rem;
+  border-radius: 50%;
+  background: var(--ticket, #ff8552);
+  color: var(--ticket-ink, #3a1406);
+}
+
+.today-bonus__check svg {
+  width: 0.75rem;
+  height: 0.75rem;
+}
+
+/* ---------- the streak's rewards ---------- */
+
+.today-rewards {
+  box-sizing: border-box;
+  padding: 1.4rem 1.6rem;
+  border-radius: 1.4rem;
+  background: var(--surface);
+  border: 1px solid rgba(var(--ink-rgb), 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+}
+
+.today-rewards__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.4rem 1rem;
+}
+
+.today-rewards__head h3 {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 800;
+}
+
+.today-rewards__head p {
+  margin: 0;
+  font-size: 0.88rem;
+  color: var(--muted);
+}
+
+.today-rewards__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.8rem;
+}
+
+.today-reward {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  text-align: center;
+}
+
+.today-reward__mark {
+  display: grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  box-sizing: border-box;
+  border-radius: 50%;
+  background: rgba(var(--ink-rgb), 0.07);
+  color: var(--muted);
+}
+
+.today-reward__mark svg {
+  width: 1.15rem;
+  height: 1.15rem;
+}
+
+.today-reward--got .today-reward__mark {
+  background: var(--ticket, #ff8552);
+  color: var(--ticket-ink, #3a1406);
+}
+
+.today-reward--next .today-reward__mark {
+  background: transparent;
+  border: 2px solid var(--ticket, #ff8552);
+  color: var(--ticket, #ff8552);
+}
+
+.today-reward__day {
+  font-size: 0.95rem;
+}
+
+.today-reward__prize {
+  max-width: 9rem;
+  font-size: 0.82rem;
+  line-height: 1.35;
+  color: var(--muted);
+}
+
+.today-reward__togo {
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: var(--ticket-text, #c2461d);
+}
+
+/* ---------- narrower: the stub on top, the punches in rows ---------- */
+
+@media (max-width: 48rem) {
+  .today-card {
+    flex-direction: column;
+    border-radius: 1.4rem;
+  }
+
+  .today-card__stub {
+    width: auto;
+    padding: 1.2rem 1.1rem 1.1rem;
+    gap: 0.75rem;
+    border-right: none;
+    border-bottom: 2px dashed color-mix(in srgb, var(--ticket, #ff8552) 38%, transparent);
+  }
+
+  .today-card__notch {
+    top: auto;
+    right: auto;
+    bottom: -1.05rem;
+    width: 1.8rem;
+    height: 1.8rem;
+    box-shadow: none;
+  }
+
+  .today-card__notch--a {
+    left: -0.95rem;
+    top: auto;
+  }
+
+  .today-card__notch--b {
+    right: -0.95rem;
+  }
+
+  .today-card__date-short {
+    display: block;
+  }
+
+  .today-card__streak {
+    align-items: center;
+    flex-wrap: nowrap;
+  }
+
+  .today-card__streak-n {
+    font-size: 3.4rem;
+    line-height: 1;
+  }
+
+  .today-card__streak > svg {
+    width: 1.8rem;
+    height: 1.8rem;
+    margin: 0;
+  }
+
+  .today-card__streak-line {
+    flex-basis: auto;
+    font-size: 0.9rem;
+  }
+
+  .today-week {
+    gap: 0.7rem;
+  }
+
+  .today-card__rule {
+    display: none;
+  }
+
+  .today-card__body {
+    padding: 1.1rem;
+    gap: 1rem;
+  }
+
+  .today-card__head {
+    align-items: baseline;
+  }
+
+  .today-card__title {
+    font-size: 1.35rem;
+  }
+
+  .today-card__date {
+    display: none;
+  }
+
+  .today-card__head .today-card__share {
+    display: none;
+  }
+
+  .today-card__punches {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.85rem;
+  }
+
+  .today-punch {
+    flex-direction: row;
+    align-items: center;
+    gap: 0.85rem;
+    text-align: left;
+  }
+
+  .today-punch__art {
+    width: 4.4rem;
+    height: 4.4rem;
+    border-width: 2px;
+  }
+
+  .today-punch__stamp {
+    inset: 0.45rem;
+    border-width: 2px;
+    font-size: 0.62rem;
+    letter-spacing: 0.1em;
+  }
+
+  .today-punch__text {
+    flex: 1;
+    align-items: flex-start;
+  }
+
+  .today-punch__game {
+    font-size: 1.05rem;
+  }
+
+  .today-punch__go {
+    flex: none;
+    min-height: 2.75rem;
+    padding: 0 1rem;
+  }
+
+  .today-punch__go svg,
+  .today-punch__go-long {
+    display: none;
+  }
+
+  .today-punch__go-short {
+    display: inline;
+  }
+
+  .today-card__bonus {
+    gap: 0.5rem;
+  }
+
+  .today-rewards {
+    padding: 1rem 1.1rem;
+  }
+
+  .today-rewards__head p {
+    display: none;
+  }
+
+  .today-rewards__list {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.2rem;
+  }
+
+  .today-reward {
+    flex-direction: row;
+    gap: 0.75rem;
+    text-align: left;
+    padding: 0.35rem 0;
+  }
+
+  .today-reward__mark {
+    width: 2rem;
+    height: 2rem;
+    flex: none;
+  }
+
+  .today-reward__day {
+    width: 4rem;
+    flex: none;
+  }
+
+  .today-reward__prize {
+    flex: 1;
+    max-width: none;
+  }
+}
+
+/* On a phone the count sits by the title, and the share goes under the punches. */
+.today-card__progress,
+.today-card__share--foot {
+  display: none;
+}
+
+@media (max-width: 48rem) {
+  .today-card__progress {
+    display: block;
+    flex: none;
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: var(--muted);
+  }
+
+  .today-card__share--foot {
+    display: inline-flex;
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .today-chip,
+  .today-bonus {
+    transition: none;
+  }
+}

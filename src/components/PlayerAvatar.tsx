@@ -33,8 +33,8 @@ const INK = '#10202c'
  * earned, both in their own colours so they mean the same thing on everyone.
  *
  * A finish from the prize counter (Glitter, Starfield, 8-bit, Neon, Lava,
- * Holo, Aurora) is the badge's own surface, inside its edge, so it never reads
- * as a ring or a pin.
+ * Holo, Aurora, and Gold, which only a 30-day Today streak earns) is the
+ * badge's own surface, inside its edge, so it never reads as a ring or a pin.
  * Its gradients and glow need ids, made per avatar so any number can share a
  * page.
  */
@@ -51,6 +51,8 @@ function finishRim(badge: AvatarBadge): string {
       return 'rgba(255,138,61,0.35)'
     case 'aurora':
       return 'rgba(126,240,196,0.3)'
+    case 'gilded':
+      return 'rgba(255,244,200,0.5)'
     case 'pixels':
       return 'rgba(10,16,24,0.35)'
     case 'paper':
@@ -114,6 +116,8 @@ function monoInks(avatar: Avatar): { pattern: string; letter: string; line: stri
       return { pattern: '', letter: '#fff0dc', line: '#ff8a3d' }
     case 'aurora':
       return { pattern: '', letter: '#eafff6', line: '#3ee08f' }
+    case 'gilded':
+      return { pattern: '', letter: '#3a2604', line: '#fff1c2' }
     case 'glitter':
     case 'pixels':
       return { pattern: '', letter: inkOn(body, INK), line }
@@ -288,6 +292,30 @@ function FinishSurface({ avatar, uid }: { avatar: Avatar; uid: string }) {
           </g>
           {AURORA_STARS.map(([x, y, r]) => (
             <circle key={`${x}-${y}`} cx={x} cy={y} r={r} fill="#fff" opacity="0.85" />
+          ))}
+        </>
+      )
+    case 'gilded':
+      return (
+        <>
+          <defs>
+            <linearGradient id={`${uid}gold`} x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stopColor="#fff0b3" />
+              <stop offset="0.35" stopColor="#f7c948" />
+              <stop offset="0.7" stopColor="#d99a1e" />
+              <stop offset="1" stopColor="#a8700c" />
+            </linearGradient>
+            <linearGradient id={`${uid}goldsheen`} x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0.34" stopColor="#fff" stopOpacity="0" />
+              <stop offset="0.46" stopColor="#fff" stopOpacity="0.65" />
+              <stop offset="0.56" stopColor="#fff" stopOpacity="0" />
+            </linearGradient>
+          </defs>
+          <path d={BADGE_ART.disc} fill={`url(#${uid}gold)`} />
+          <path d={BADGE_ART.disc} fill={`url(#${uid}goldsheen)`} />
+          <circle cx="32" cy="34" r="24.5" fill="none" stroke="rgba(120,78,6,0.35)" strokeWidth="1" />
+          {HOLO_SPARKS.map(([x, y, s]) => (
+            <path key={`${x}-${y}`} d={sparkle(x, y, s)} fill="#fffbe6" opacity="0.95" />
           ))}
         </>
       )
