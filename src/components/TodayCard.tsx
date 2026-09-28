@@ -60,8 +60,9 @@ import { TodayRivals } from './TodayRivals'
 import '../styles/today.css'
 
 /*
- * Today's ticket, on the home page (lib/today.ts): the day's live dailies as a strip of punches with one
- * of them shown big (the next to play, or the one picked), the streak on its stub with the week under
+ * Today's ticket, on the home page (lib/today.ts): the day's live dailies as punches, all across on a
+ * desktop, and on a phone a strip with one of them shown big (the next to play, or the one picked), the
+ * streak on its stub with the week under
  * it, the day's share, the bonus punches (the Daily, the One Shot and the bug hunt, which don't count),
  * and the streak's rewards. What this device has done punches at once; the streak is the API's, for a
  * signed-in account. It comes in a chunk of its own, with the dailies' plans.
@@ -449,6 +450,49 @@ function Rewards({ current, best }: { current: number; best: number }) {
   )
 }
 
+/**
+ * The ticket on a desktop: every daily across, each with its picture, the day's own, how it went or where it
+ * stands, and its way in. A phone has the strip and the punch shown big instead (the stylesheet picks).
+ */
+function PunchRow({ punches, rival }: { punches: Punch[]; rival: (key: TodayKey) => string | null }) {
+  return (
+    <ul
+      className={`today-row${punches.length > 3 ? ' today-row--wide' : ''}${punches.length > 4 ? ' today-row--many' : ''}`}
+      style={{ '--n': punches.length } as CSSProperties}
+    >
+      {punches.map((p) => {
+        const href = gamePlayHref(p.slug)
+        const line = rival(p.key)
+        return (
+          <li key={p.key} className={`today-slot${p.done ? ' today-slot--done' : ''}`}>
+            <a className="today-slot__art" href={href} tabIndex={-1} aria-hidden="true">
+              <GameArt slug={p.slug} className="today-slot__scene" />
+              {p.done ? <span className="today-slot__stamp">Punched</span> : null}
+            </a>
+            <div className="today-slot__text">
+              <span className="today-slot__kicker">
+                {p.kicker}
+                {p.fresh && !p.done ? <span className="today-feature__new">New</span> : null}
+              </span>
+              <b className="today-slot__game">{p.game}</b>
+              <span className="today-slot__title">{p.title}</span>
+              {p.done && p.mine ? <span className="today-slot__mine">You: {p.mine}</span> : null}
+              {!p.done && p.carry ? <span className="today-slot__mine">{p.carry}</span> : null}
+              {line ? <span className="today-slot__rival">{line}</span> : null}
+            </div>
+            {p.done ? null : (
+              <a className="today-slot__go" href={href}>
+                <PlayIcon />
+                {p.go}
+              </a>
+            )}
+          </li>
+        )
+      })}
+    </ul>
+  )
+}
+
 /** The punch shown big: its whole picture, the day's own, how it went or where it stands, and the way in. */
 function Featured({ punch, then, rival }: { punch: Punch; then: Punch | null; rival: string | null }) {
   const href = gamePlayHref(punch.slug)
@@ -603,6 +647,7 @@ export function TodayCard() {
             </span>
             {doneN > 0 ? <ShareDay text={shareText} day={day} all={all} className="today-card__share" /> : null}
           </div>
+          <PunchRow punches={punches} rival={(key) => rivalLine(rivals.data, key)} />
           <ul
             className={`today-card__punches${total > 4 ? ' today-card__punches--many' : ''}`}
             style={{ '--n': total } as CSSProperties}
