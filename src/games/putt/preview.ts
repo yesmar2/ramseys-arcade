@@ -660,8 +660,8 @@ export function makeSim(): Sim<Run> {
       const fr = framing(run, zw, zh)
       return { x: fr.x, y: fr.y }
     },
-    // The still: the ball in the air off the ramp on Over the Wall, over the hedges (it drops for an ace).
-    poster: { seed: 1, at: 5.15 },
+    // The still: the ball in the air off the ramp on Over the Wall, over the hedges on its way into the garden.
+    poster: { seed: 6, at: 5.7 },
     hold: 2,
   }
 }

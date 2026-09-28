@@ -224,7 +224,7 @@ export const HOW_TO_PLAY: Record<string, HowToPlay> = {
       { what: 'Bogey', pts: '100' },
       { what: 'Hole in one', pts: '+200 more' },
     ],
-    ends: 'After five holes. Par is 11.',
+    ends: 'After five holes. Par is 10.',
     tip: 'Water, lava, or flying off the course costs a stroke.',
   },
   frenzy: {

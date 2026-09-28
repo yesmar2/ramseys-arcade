@@ -380,45 +380,46 @@ function loop(x: number, y: number, dir: number, r: number, side: 1 | -1, min: n
 
 export const COURSE: Hole[] = [
   /*
-   * Over the Wall. A round garden inside a clipped hedge, the cup in the
-   * middle of it, and a ramp on the lawn in front of the hedge, square to the
-   * cup: jump the hedge. Hard enough to take off and the ball comes down on
-   * the garden's lawn, stops short and rolls to the cup; a touch harder and
-   * it lands past the cup and runs into the bunker at the back; much harder,
+   * Over the Wall. A round garden inside a clipped hedge, the cup in it
+   * inside a ring of sand, and a ramp on the lawn in front of the hedge: jump
+   * the hedge. The tee is off to the right, so the ball comes to the ramp at a
+   * slant and flies on a little to the left of where it crossed it: to come
+   * down on the turf round the cup, it has to cross the ramp just so. Only
+   * just hard enough to take off, and it drops on the turf and runs in; a
+   * touch harder, or off line, and it comes down in the sand; much harder,
    * it flies the garden and is out of bounds; too soft and it never leaves
    * the ramp, and the hedge sends it back. Or go round by the path up the
-   * left, the long way to the gate in the hedge's back corner, and putt in
-   * through it: sure, and a stroke more.
+   * left, the long way to the gate in the hedge's back corner, where the sand
+   * opens, and putt in through it: sure, and a stroke more.
    */
   hole({
     name: 'Over the Wall',
     par: 2,
     theme: 'formal',
     h: 200,
-    tee: { x: 56, y: 182 },
-    cup: { x: 56, y: 62 },
+    tee: { x: 76, y: 184 },
+    cup: { x: 54, y: 56 },
     blend: 9,
     green: [
-      disc(56, 180, 13),
-      // The lawn, up to its hedge.
-      ribbon(15, [56, 180], [55, 140], [55, 107]),
+      disc(76, 182, 12),
+      // The lawn, bending up from the tee to its hedge.
+      ribbon(14, [76, 182], [70, 160], [62, 140], [57, 122], [56, 104]),
       // The garden in its own hedge, a gravel walk between it and the lawn's.
-      disc(56, 62, 24),
+      disc(54, 56, 22),
       // The path round the left, clear of the garden's hedge until it comes in at the gate.
-      ribbon(9, [42, 114], [24, 100], [16, 72], [20, 46], [32, 32]),
-      capsule(32, 33, 41, 45, 5),
+      ribbon(9, [46, 126], [28, 104], [17, 76], [19, 50], [28, 35]),
+      capsule(28, 36, 37, 43, 5),
     ],
-    ramps: [ramp(51, 112, 10, 8, UP, 46, 80, 2.2, 0.04)],
+    ramps: [ramp(51, 116, 10, 8, UP, 76, 60, 2.2, 0.3)],
     // The lawn rises to its hedge, and nothing rests on the rise: a ball that never took off, or came back
     // off the hedge, rolls back down past the ramp for another run at it.
-    slopes: [{ ...hill(rect(46, 90, 22, 22), 0, 24, 'bank'), slick: true }],
-    // Behind the cup, inside the hedge: a jump that comes down past the cup stays there rather than coming
-    // back off the hedge to the cup.
-    sand: [ribbon(3.4, [45, 46], [56, 43], [67, 46])],
-    paving: [arc(56, 62, 13, 0, Math.PI * 2, 1.1)],
+    slopes: [{ ...hill(rect(45, 92, 23, 24), 0, 24, 'bank'), slick: true }],
+    // Round the cup, a ring of sand, open only toward the gate: a jump that comes down short of the cup or
+    // past it, or off to the side, stops in it.
+    sand: [arc(54, 56, 11, -1.75, 3.25, 5.5)],
     decor: [
-      decor('bed', 74, 150, 3, DOWN, 40),
-      decor('bed', 36, 160, 3, DOWN, 30),
+      decor('bed', 88, 150, 3, DOWN, 30),
+      decor('bed', 40, 166, 3, DOWN, 26),
     ],
   }),
   /*
@@ -507,107 +508,109 @@ export const COURSE: Hole[] = [
   }),
   /*
    * The Windmill. It stands across the lawn, and the way straight to the cup
-   * is the tunnel through its tower: in one door and out the other, and the
-   * green with the cup on it lies dead ahead. The sails sweep down past both
-   * doors, and a door is shut while a sail is across it, so the putt is
-   * timed; one that gets there as a sail comes down thuds off it and comes
-   * back. Or go round the tower, either side, by the narrow way between it and
-   * the rail: no sails to wait for, and a longer way to the cup.
+   * is the tunnel through its tower, which runs at a slant, on the line from
+   * the tee off to the right to the cup off to the left: in one door and out
+   * the other, the line has to be just right, or the ball catches the
+   * tunnel's side. The sails sweep down past both doors, and a door is shut
+   * while a sail is across it, so the putt is timed as well; one that gets
+   * there as a sail comes down thuds off it and comes back. Too hard and it
+   * runs past the cup into the bunker. Or go round the tower, either side, by
+   * the narrow way between it and the rail: no sails to wait for, and a
+   * longer way to the cup.
    */
   hole({
     name: 'The Windmill',
     par: 2,
     h: 220,
-    tee: { x: 50, y: 202 },
-    cup: { x: 50, y: 60 },
+    tee: { x: 74, y: 203 },
+    cup: { x: 39, y: 72 },
     blend: 9,
     green: [
-      disc(50, 200, 13),
-      ribbon(15, [50, 200], [50, 146]),
+      disc(74, 201, 12),
+      ribbon(14, [74, 201], [66, 170], [59, 146]),
       // The mill's yard, the tower in its middle and a narrow way round it either side.
-      disc(50, 118, 25),
-      // The green beyond.
-      disc(50, 67, 28),
+      disc(52, 120, 25),
+      // The green beyond, off up the tunnel's line.
+      disc(40, 70, 27),
     ],
-    mills: [mill(50, 118, 17, UP, 0.95)],
+    // The tunnel runs at a slant, on the line from the tee to the cup.
+    mills: [mill(52, 120, 17, UP - 0.26, 1.2)],
     // Behind the cup, deep enough that a putt out of the tunnel with too much on it stays there.
-    sand: [ribbon(7, [32, 48], [50, 43], [68, 48])],
+    sand: [arc(40, 70, 21, -2.75, -0.85, 6)],
     decor: [
-      decor('flowers', 30, 184, 3),
-      decor('flowers', 72, 176, 2.8),
-      decor('bush', 22, 140, 3.2),
-      decor('blossom', 84, 150, 5.5),
-      decor('flowers', 18, 96, 2.6),
+      decor('flowers', 50, 190, 3),
+      decor('flowers', 90, 168, 2.8),
+      decor('bush', 28, 150, 3.2),
+      decor('blossom', 84, 110, 5.5),
+      decor('flowers', 76, 60, 2.6),
     ],
   }),
   /*
-   * Loop-the-Loop. Up a lane that narrows to a single track, and on it a
-   * loop: a ball rolling up the track fast enough runs off round the ring on
-   * the right and back onto the track past where it went in, still heading
-   * up, into the green with the cup dead ahead. Not fast enough and it runs
-   * part way round, comes back, and rolls back down the lane; much too fast
-   * and it comes out of the loop with plenty left, past the cup and into the
-   * bunker behind it. Or take the path round the left, the long way up,
-   * without the loop.
+   * Loop-the-Loop. The whole hole runs on a slant, up and to the right from a
+   * tee in the corner: a lane that narrows to a single track, and on it a
+   * loop. A ball rolling up the track fast enough runs off round the ring on
+   * the right and back onto the track past where it went in, heading the way
+   * it came in with half of any angle taken out, into the green with the cup
+   * ahead: on the line, it's in. Not fast enough and it runs part way round,
+   * comes back, and rolls back down the lane; too fast and it comes out of
+   * the loop with plenty left, past the cup and into the bunker behind it.
+   * Or take the path round the left, the long way up, without the loop.
    */
   hole({
     name: 'Loop-the-Loop',
     par: 2,
     h: 230,
-    tee: { x: 50, y: 210 },
-    cup: { x: 50, y: 64 },
+    tee: { x: 32, y: 212 },
+    cup: { x: 63.7, y: 63.3 },
     blend: 9,
     green: [
-      disc(50, 208, 13),
-      ribbon(12, [50, 208], [50, 160]),
-      // The track, one ball wide and a little more, through the loop and on to the green.
-      capsule(50, 166, 50, 88, 4.5),
-      disc(50, 64, 26),
+      disc(32, 210, 12),
+      ribbon(12, [32, 210], [42.8, 161.1]),
+      // The track, one ball wide and a little more, through the loop and on to the green, all on the slant.
+      capsule(41.6, 167.0, 58.3, 88.8, 4.5),
+      disc(62.9, 67.3, 25),
       // The path round the left.
-      ribbon(8, [42, 176], [26, 158], [18, 124], [22, 96], [32, 78]),
+      ribbon(8, [34.3, 172.9], [18, 150], [14, 116], [20, 86], [40.9, 73.3]),
     ],
-    loops: [loop(50, 120, UP, 14, 1, 95, 0.85)],
+    loops: [loop(51.2, 122.0, UP + 0.21, 14, 1, 110, 0.85)],
     // Behind the cup, deep enough that a ball out of the loop with too much on it stays there, and doesn't
     // come back off the rail to the cup.
-    sand: [ribbon(7, [32, 50], [50, 45], [68, 50])],
+    sand: [arc(62.9, 67.3, 19.5, UP + 0.21 - 0.95, UP + 0.21 + 0.95, 5.5)],
     decor: [
-      decor('flowers', 70, 190, 3),
-      decor('bush', 78, 168, 3.2),
-      decor('blossom', 86, 94, 5.5),
-      decor('flowers', 10, 190, 2.6),
+      decor('flowers', 62, 196, 3),
+      decor('bush', 76, 176, 3.2),
+      decor('blossom', 90, 150, 5.5),
+      decor('flowers', 8, 196, 2.6),
     ],
   }),
   /*
    * Volcano. The cup is in its crater, on the flat floor at the top of the
-   * cone. Putt up the lawn and up the cone: too soft and the ball runs up
-   * and rolls back down; just right and it comes over the rim onto the floor
-   * of the crater and stops there, or in the cup; firm, and it crosses the
-   * crater and runs down the far side into the ash, or on into the lava if
-   * it is really moving. Lava runs down both flanks too, for a ball that
-   * comes up the cone crooked and rolls off sideways.
+   * cone, and the tee is off to the left, so the putt goes up the lawn and
+   * the cone at a slant. Too soft and the ball runs up and rolls back down;
+   * just right and it comes over the rim onto the floor of the crater and
+   * stops there, or in the cup, if it was dead on line: the cone turns away
+   * anything that isn't. Firm, and it crosses the crater and runs down the
+   * far side into the ash, or on into the lava if it is really moving.
    */
   hole({
     name: 'Volcano',
-    par: 3,
+    par: 2,
     theme: 'volcano',
     waterLook: 'lava',
     h: 230,
-    tee: { x: 50, y: 210 },
+    tee: { x: 22, y: 208 },
     cup: { x: 50, y: 80 },
     blend: 9,
     green: [
-      disc(50, 208, 13),
-      ribbon(15, [50, 208], [50, 118]),
+      disc(22, 206, 12),
+      // The lawn, up from the tee off to one side toward the foot of the cone.
+      ribbon(14, [22, 206], [29, 172], [39, 128]),
       // The volcano, with the ash and the lava behind it on the same ground.
       disc(50, 80, 49),
     ],
     // The cone, and the crater's floor falling gently to its middle, where the cup is.
-    slopes: [{ ...hilltop(50, 80, 13, 30, 42), look: 'cone' }, { shape: disc(50, 80, 13), dish: 26 }],
+    slopes: [{ ...hilltop(50, 80, 11, 30, 46), look: 'cone' }],
     water: [
-      // Down the flanks, off to either side: a ball that comes up the cone crooked, or rolls back down it
-      // sideways, can find them; one that comes up at the crater can't.
-      capsule(67.7, 89.4, 83.6, 97.8, 2.6),
-      capsule(32.3, 89.4, 16.4, 97.8, 2.6),
       // Behind, past the ash, up to the rail: only a ball that crossed the crater really moving gets there.
       arc(50, 80, 46.8, -Math.PI + 0.45, -0.45, 2.4),
       // Round the island, off the course.
@@ -616,10 +619,10 @@ export const COURSE: Hole[] = [
     // At the cone's foot behind, where a ball over the crater comes down: deep enough to stop most of them.
     sand: [arc(50, 80, 38.5, -Math.PI + 0.3, -0.3, 6)],
     decor: [
-      decor('palm', 16, 170, 7),
-      decor('palm', 86, 180, 6.5),
-      decor('palm', 84, 132, 6),
-      decor('palm', 14, 128, 6.5),
+      decor('palm', 52, 186, 7),
+      decor('palm', 84, 176, 6.5),
+      decor('palm', 80, 140, 6),
+      decor('palm', 6, 150, 6.5),
     ],
   }),
 ]
