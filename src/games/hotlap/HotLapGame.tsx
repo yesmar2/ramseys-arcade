@@ -25,7 +25,7 @@ import { sfx } from '../../lib/sound'
 import { useTrackBoard } from '../../lib/trackBoards'
 import { useTournamentPlay } from '../../tournaments/TournamentPlayContext'
 import { CarSound } from './audio'
-import { fetchBoardGhost, sendBoardGhost, type BoardGhost } from './boardGhost'
+import { fetchBoardGhost, sendBoardGhost, standIn, type BoardGhost } from './boardGhost'
 import { dayWords, msUntilNextTrack, trackDay, trackState, untilWords } from './daily'
 import { bestLapOf, claimLap, Ghost, hotlapCourse, keepBestLap, progressOf, type Course, type GhostLap } from './lap'
 import { TrackMap } from './map'
@@ -117,6 +117,11 @@ type Chasing = { who: 'rival'; name: string } | { who: 'you' } | { who: 'pace' }
 
 /** The lap to chase, and whose it is. */
 type Chase = { lap: GhostLap; chasing: Chasing }
+
+/** The name over the ghost car: whose lap it drives. */
+function ghostTag(chasing: Chasing): string {
+  return chasing.who === 'rival' ? chasing.name : chasing.who === 'you' ? 'You' : 'Blue car'
+}
 
 type Ui = {
   phase: Phase
@@ -250,10 +255,11 @@ function TrackTiles({ course, ghost, chasing, test, past }: { course: Course; gh
  * board. One whose day has gone keeps a board of its own for good: a lap on it goes there, under a run
  * of its own, and never on today's board.
  *
- * The ghost is the lap to beat, driven alongside you the whole way: the board's fastest (today's #1, or
- * a past track's record holder: boardGhost.ts), unless your own best on this device is faster; before
- * either, the blue car's. It stays on the road all lap, fainter while it's right on top of you, and waits
- * where it finished if it gets there first. A cut across the grass skips a gate and the lap
+ * The ghost is the lap to beat, driven alongside you the whole way, its name over it: the board's #1
+ * (today's #1, or a past track's record holder: boardGhost.ts), on the blue car's line at their time when
+ * their own isn't known; unless your own best on this device is faster; with nobody on the board, the blue
+ * car's. It stays on the road all lap, fainter while it's right on top of you, and waits where it finished
+ * if it gets there first. A cut across the grass skips a gate and the lap
  * can't count; R or the restart button starts another.
  *
  * Keys: ↑ or W gas, ↓, S or Space brake, ← → or A D steer, R restart, P or Escape pause. On a touch
@@ -289,14 +295,17 @@ function HotLapDay({
   nameRef.current = playerName
 
   /**
-   * The lap to beat: the board's fastest, unless your own best here is faster; before either, the blue
-   * car's. Your own is the one of whoever is signed in now: another player's lap on this device isn't yours.
+   * The lap to beat: the board's #1, on their own line, or on the blue car's at their time when theirs isn't
+   * known (boardGhost.ts standIn); unless your own best here is faster. With nobody on the board, your best,
+   * or the blue car's. Your own is the one of whoever is signed in now: another player's lap on this device
+   * isn't yours.
    */
   const chase = (): Chase => {
     const mine = bestLapOf(day, test, currentAccountId())
     const top = topRef.current
-    if (top && (!mine || top.lap.time < mine.time)) {
-      return { lap: top.lap, chasing: top.name === nameRef.current ? { who: 'you' } : { who: 'rival', name: top.name } }
+    if (top && (!mine || top.time < mine.time - 0.0005)) {
+      const lap = top.lap ?? standIn(pace, top.time)
+      return { lap, chasing: top.name === nameRef.current ? { who: 'you' } : { who: 'rival', name: top.name } }
     }
     return mine ? { lap: mine, chasing: { who: 'you' } } : { lap: pace, chasing: { who: 'pace' } }
   }
@@ -427,14 +436,15 @@ function HotLapDay({
   }, [viewer])
 
   /**
-   * A lap saved on the board sends where the car went, if it's faster than the ghost there is: the API
-   * keeps it if it's the board's fastest (the tag's lap on the board is at least that fast), and then it's
+   * A lap saved on the board sends where the car went, unless the board's #1 is faster or their line is
+   * already known: the API keeps it if it's the tag's lap on the board and the fastest there, and then it's
    * everyone's ghost, yours included from your next lap.
    */
   const sendGhost = (lap: { time: number; score: number; splits: number[]; path: GhostPath }, name: string) => {
     if (!onBoard || !signedIn || !name) return
     const top = topRef.current
-    if (top && top.lap.time <= lap.time) return
+    // The #1 is faster, or their line is known already and at least as fast.
+    if (top && (top.time < lap.time - 0.0005 || (top.lap && top.lap.time <= lap.time + 0.0005))) return
     void sendBoardGhost(course.n, name, { score: lap.score, splits: lap.splits, path: lap.path }).then(async (kept) => {
       if (!kept) return
       const fresh = await fetchBoardGhost(course.n, true)
@@ -607,7 +617,14 @@ function HotLapDay({
       const pose = g.phase === 'menu' ? null : g.ghost.at(g.t)
       try {
         scene.frame(
-          { run, showroom: g.phase === 'menu', driving: g.phase !== 'menu' && g.phase !== 'countdown', ghost: pose, cardAside: wide.matches },
+          {
+            run,
+            showroom: g.phase === 'menu',
+            driving: g.phase !== 'menu' && g.phase !== 'countdown',
+            ghost: pose,
+            ghostTag: ghostTag(g.chasing),
+            cardAside: wide.matches,
+          },
           live ? dt : 0,
         )
         failed = 0

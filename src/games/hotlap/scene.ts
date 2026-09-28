@@ -19,6 +19,8 @@ export type SceneFrame = {
   driving: boolean
   /** The ghost's car, where it is now; none, and it isn't drawn. */
   ghost: GhostPose | null
+  /** The name over the ghost car: whose lap it drives. */
+  ghostTag?: string | null
   /** The card stands at the right of a wide screen: the showroom keeps the car to its left. */
   cardAside: boolean
 }
@@ -72,6 +74,9 @@ export class HotLapScene {
   private shake = 0
   private showroomAngle = -2.2
   private disposed = false
+  /** The name over the ghost car, and what it says. */
+  private ghostTag: THREE.Sprite | null = null
+  private ghostTagText = ''
   /** Where the ghost and the camera were last found on the track, to find them again quickly. */
   private ghostNear = -1
   private camNear = -1
@@ -1171,6 +1176,7 @@ export class HotLapScene {
   frame(f: SceneFrame, dt: number) {
     this.poseCar(f.run, dt)
     if (f.driving) this.layRubber(f.run)
+    this.tagGhost(f.ghostTag ?? null)
     this.poseGhost(f.ghost, f.run, dt)
     this.frameCamera(f, dt)
     this.renderer.render(this.scene, this.camera)
@@ -1216,6 +1222,63 @@ export class HotLapScene {
     const apart = Math.hypot(pose.x - run.x, pose.y - run.y)
     const opacity = GHOST_OVERLAP + (GHOST_SEE - GHOST_OVERLAP) * Math.min(1, Math.max(0, (apart - 0.5) / 2.5))
     for (const m of ghost.see) m.opacity = opacity
+    // Its name fades as it comes alongside, so it never sits in front of your own car.
+    if (this.ghostTag) (this.ghostTag.material as THREE.SpriteMaterial).opacity = 0.95 * Math.min(1, Math.max(0, (apart - 4) / 6))
+  }
+
+  /** The name over the ghost car, painted again only when it changes. */
+  private tagGhost(text: string | null) {
+    const want = text ?? ''
+    if (want === this.ghostTagText) return
+    this.ghostTagText = want
+    const old = this.ghostTag
+    if (old) {
+      this.ghostCar.group.remove(old)
+      const material = old.material as THREE.SpriteMaterial
+      const map = material.map
+      material.dispose()
+      if (map) {
+        map.dispose()
+        const at = this.textures.indexOf(map)
+        if (at >= 0) this.textures.splice(at, 1)
+        const lettered = this.lettered.findIndex(([tex]) => tex === map)
+        if (lettered >= 0) this.lettered.splice(lettered, 1)
+      }
+      this.ghostTag = null
+    }
+    if (!want) return
+    // A dark pill with the name in white, the site's display face, over the car's roof.
+    const tex = this.paint(
+      512,
+      128,
+      (g, w, h) => {
+        g.clearRect(0, 0, w, h)
+        g.font = `800 58px ${FONT}`
+        const width = Math.min(w - 8, g.measureText(want).width + 64)
+        const x = (w - width) / 2
+        const r = 40
+        g.fillStyle = 'rgba(12, 22, 34, 0.62)'
+        g.beginPath()
+        g.moveTo(x + r, 24)
+        g.lineTo(x + width - r, 24)
+        g.arc(x + width - r, 24 + r, r, -Math.PI / 2, Math.PI / 2)
+        g.lineTo(x + r, 24 + 2 * r)
+        g.arc(x + r, 24 + r, r, Math.PI / 2, (3 * Math.PI) / 2)
+        g.closePath()
+        g.fill()
+        g.fillStyle = '#ffffff'
+        g.textAlign = 'center'
+        g.textBaseline = 'middle'
+        g.fillText(want, w / 2, 24 + r + 3)
+      },
+      true,
+    )
+    // The same size on the screen near or far, as a racing game's name plates are: far ahead, it's how you find the ghost.
+    const tag = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false, sizeAttenuation: false }))
+    tag.scale.set(0.22, 0.055, 1)
+    tag.position.set(0, 2.3, 0)
+    this.ghostCar.group.add(tag)
+    this.ghostTag = tag
   }
 
   /*

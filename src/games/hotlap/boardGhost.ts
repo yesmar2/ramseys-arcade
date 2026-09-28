@@ -3,18 +3,20 @@ import type { GhostLap } from './lap'
 import { GHOST_RATE, type GhostPath } from './sim'
 
 /*
- * The #1's ghost: the fastest lap on a track's board that came with its path (the API's lapGhosts.ts), for
- * everyone to race. On today's track it's today's #1; on a past track, its record holder. A lap saved on a
- * board sends its path after it, ten times a second, and the API keeps it if it's the track's fastest yet.
+ * The #1's ghost (the API's lapGhosts.ts), for everyone to race: on today's track, today's #1; on a past
+ * track, its record holder. A lap saved on a board sends its path after it, ten times a second, and the API
+ * keeps it when it's the tag's lap on the board and the track's fastest yet. The #1 is always told, path or
+ * not: a lap saved before laps sent their paths, or from an old copy of the site, has none, and then the
+ * ghost drives the blue car's line at the #1's time (standIn).
  */
 
-/** A board's fastest lap, to race: whose it is, and the lap. */
-export type BoardGhost = { name: string; avatarId?: string; lap: GhostLap }
+/** A board's #1: whose lap, its time in seconds, and the lap itself when its path is known. */
+export type BoardGhost = { name: string; avatarId?: string; time: number; lap: GhostLap | null }
 
 /** Of a lap's samples (30 a second), every third goes: ten a second is plenty to drive it again from. */
 const SEND_EVERY = 3
 
-type GhostReply = { name: string; avatarId?: string; time: number; splits: number[]; rate: number; path: number[] }
+type GhostReply = { name: string; avatarId?: string; time: number; splits?: number[]; rate?: number; path: number[] | null }
 
 /** A path sent at `rate` samples a second, filled back in to the ghost's own rate. */
 function fillIn(path: number[], rate: number): GhostPath {
@@ -35,17 +37,41 @@ function fillIn(path: number[], rate: number): GhostPath {
   return out
 }
 
-/** A track's fastest lap with its path, or null if nobody's has come with one yet. `fresh` asks past the browser's copy. */
+/** A track's #1, with their lap when its path is known; null while nobody has a lap on it. `fresh` asks past the browser's copy. */
 export async function fetchBoardGhost(track: number, fresh = false): Promise<BoardGhost | null> {
   try {
     const reply = await api<GhostReply>(`/tracks/hotlap/${track}/ghost`, fresh ? { cache: 'no-cache' } : undefined)
-    const { path, splits } = reply
-    if (!Array.isArray(path) || path.length < 30 || path.length % 3 !== 0 || !Array.isArray(splits) || splits.length !== 3) return null
-    if (!(reply.time > 0) || !(reply.rate > 0)) return null
-    return { name: reply.name, avatarId: reply.avatarId, lap: { time: reply.time / 1000, splits, ghost: fillIn(path, reply.rate) } }
+    if (typeof reply.name !== 'string' || !(reply.time > 0)) return null
+    const time = reply.time / 1000
+    const { path, splits, rate } = reply
+    const known =
+      Array.isArray(path) && path.length >= 30 && path.length % 3 === 0 && Array.isArray(splits) && splits.length === 3 && rate != null && rate > 0
+    return { name: reply.name, avatarId: reply.avatarId, time, lap: known ? { time, splits: splits!, ghost: fillIn(path!, rate!) } : null }
   } catch {
     return null
   }
+}
+
+/**
+ * A lap of `time` seconds along another lap's line: the blue car's, driven faster or slower all the way
+ * round in step, so it crosses each sector's end and the line at the same share of `time` as its own lap.
+ * For a #1 whose path isn't known: their time, on the blue car's line.
+ */
+export function standIn(line: GhostLap, time: number): GhostLap {
+  const scale = time / line.time
+  const g = line.ghost
+  const samples = g.length / 3
+  const out: number[] = []
+  // Samples as often as the ghost's own rate, each where the line was at the same share of its lap.
+  const count = Math.max(2, Math.round((samples - 1) * scale) + 1)
+  for (let k = 0; k < count; k++) {
+    const at = Math.min(samples - 1, k / scale)
+    const i = Math.min(samples - 2, Math.floor(at))
+    const f = at - i
+    const turn = Math.atan2(Math.sin(g[i * 3 + 5]! - g[i * 3 + 2]!), Math.cos(g[i * 3 + 5]! - g[i * 3 + 2]!))
+    out.push(g[i * 3]! + (g[i * 3 + 3]! - g[i * 3]!) * f, g[i * 3 + 1]! + (g[i * 3 + 4]! - g[i * 3 + 1]!) * f, g[i * 3 + 2]! + turn * f)
+  }
+  return { time, splits: line.splits.map((s) => s * scale), ghost: out }
 }
 
 /** Send a saved lap's path, under the tag it was saved as. Answers whether it's the track's ghost now. */
