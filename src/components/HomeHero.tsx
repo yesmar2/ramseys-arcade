@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type CSSProperties, type MouseEvent } from 'react'
-import { getGame, homeGames } from '../data/games'
+import { getGame, homeGames, isDailyGame } from '../data/games'
 import { aboutHref, gameHref, gamePlayHref, rankHref, tournamentHref } from '../hooks/useHashRoute'
 import { useLiveEvents } from '../hooks/useLiveEvents'
 import { APP_NAME } from '../lib/brand'
@@ -10,7 +10,7 @@ import { useGlobalRank } from '../lib/globalRank'
 import { cachedMyGroups, useActiveGroup } from '../lib/groups'
 import { heroSlug, newestSlug } from '../lib/homePicks'
 import { useRecentGames } from '../lib/lastPlayed'
-import { getLeaderboard, normalizePlayerName, PERIOD_LABELS } from '../lib/leaderboard'
+import { getLeaderboard, normalizePlayerName, PERIOD_LABELS, type LeaderboardPeriod } from '../lib/leaderboard'
 import { formatLeaderboardScore, formatTimeGap, isTimeBoard } from '../lib/leaderboardFormat'
 import { numberWord } from '../lib/numberWord'
 import { resolveGameAccent } from '../lib/theme'
@@ -80,14 +80,16 @@ const RUNG_PAGE = 25
  * nobody is ahead of you.
  */
 async function fetchRung(slug: string, name: string): Promise<Rung | null> {
-  const { you } = await getLeaderboard(slug, 'all', name, { limit: 1 })
+  // A daily's all time is its day points (leaderboardFormat isDayPointsBoard): its next place up is today's.
+  const board: LeaderboardPeriod = isDailyGame(slug) ? 'daily' : 'all'
+  const { you } = await getLeaderboard(slug, board, name, { limit: 1 })
   if (!you) return null
   const wanted = you.rank === 1 ? 2 : 1
   let above: Place | null = null
   const behind: Place[] = []
   let offset = Math.max(0, you.rank - 2)
   for (let page = 0; page < 3 && behind.length < wanted; page += 1) {
-    const { entries } = await getLeaderboard(slug, 'all', name, { offset, limit: RUNG_PAGE })
+    const { entries } = await getLeaderboard(slug, board, name, { offset, limit: RUNG_PAGE })
     for (const [i, e] of entries.entries()) {
       const place: Place = { name: e.name, score: e.score, rank: offset + 1 + i }
       if (place.name === name) continue
@@ -327,6 +329,8 @@ export function HomeHero() {
   const slug = heroSlug(device, recent)
   const name = normalizePlayerName(usePlayerName())
   const period = useDefaultPeriod()
+  // The game's own figures are the period's, but a daily's are today's: its week and all time are day points.
+  const boardPeriod: LeaderboardPeriod = slug && isDailyGame(slug) ? 'daily' : period
   // Every figure below is group-scoped on the wire; switching group has to
   // refetch them or the banner keeps quoting the last group's board.
   const groupId = useActiveGroup()
@@ -347,7 +351,7 @@ export function HomeHero() {
       return
     }
     let cancelled = false
-    getLeaderboard(slug, period, name || undefined, { limit: 1 })
+    getLeaderboard(slug, boardPeriod, name || undefined, { limit: 1 })
       .then(({ entries, you }) => {
         if (cancelled) return
         const leader = entries[0]
@@ -364,7 +368,7 @@ export function HomeHero() {
     return () => {
       cancelled = true
     }
-  }, [name, slug, period, groupId])
+  }, [name, slug, boardPeriod, groupId])
 
   useEffect(() => {
     if (!rungKey || !slug) return
@@ -395,6 +399,7 @@ export function HomeHero() {
   const accent = game.accent
   const style = { '--hero-accent': accent, '--hero-ink': inkOn(accent), '--tile-accent': accent } as CSSProperties
   const periodWord = PERIOD_LABELS[period].toLowerCase()
+  const boardWord = PERIOD_LABELS[boardPeriod].toLowerCase()
   const fmt = (score: number) => formatLeaderboardScore(slug, score)
   const acts = (
     <div className="home-banner__acts">
@@ -582,7 +587,7 @@ export function HomeHero() {
         {scores && scores.top > 0 ? (
           <dl className="home-banner__figures" aria-label={`${game.name} scores`}>
             <div className="home-banner__figure">
-              <dt>Top {periodWord}</dt>
+              <dt>Top {boardWord}</dt>
               <dd>
                 {fmt(scores.top)}
                 {scores.topName ? <small> by {scores.topName}</small> : null}

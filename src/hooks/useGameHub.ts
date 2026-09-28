@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { isDailyGame } from '../data/games'
 import { playersFromRuns, type BoardPlayer } from '../lib/gameBoard'
 import {
   getLeaderboard,
@@ -105,7 +106,8 @@ export function useHubHighScore(slug: LeaderboardGame | null, groupId: string | 
     if (!slug) return
     let cancelled = false
     setTop(null)
-    getLeaderboard(slug, 'all', undefined, { limit: 1 })
+    // A daily's all time is its day points, not a run: its screen shows today's best instead.
+    getLeaderboard(slug, isDailyGame(slug) ? 'daily' : 'all', undefined, { limit: 1 })
       .then((board) => {
         if (!cancelled) setTop(board.entries[0] ?? null)
       })

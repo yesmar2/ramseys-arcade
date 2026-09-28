@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { isDailyGame } from '../data/games'
 import {
   DEFAULT_PERIOD_EVENT,
   defaultPeriod,
@@ -432,8 +433,11 @@ export function hrefForRoute(
 /** Period encoded in the current route, if any. */
 export function periodFromRoute(route: Route): LeaderboardPeriod | undefined {
   switch (route.name) {
-    case 'game':
     case 'gameLeaderboard':
+      // A daily's board has a day of its own, today's, beside its day points (leaderboardFormat isDayPointsBoard).
+      if (route.period === 'daily' && isDailyGame(route.game)) return 'daily'
+      return route.period ? coerceVisiblePeriod(route.period) : undefined
+    case 'game':
     case 'leaderboards':
     case 'rank':
     case 'records':
@@ -691,15 +695,16 @@ export function useRoute(): Route {
     const start = currentRoute()
     const p = periodFromRoute(start)
     // Record books default to `all`, a period of their own — landing on one
-    // must not overwrite the sticky period the rest of the site shares.
-    if (p && start.name !== 'records') setDefaultPeriod(p)
+    // must not overwrite the sticky period the rest of the site shares. Nor
+    // does a daily's board for today, a period only a daily's board has.
+    if (p && p !== 'daily' && start.name !== 'records') setDefaultPeriod(p)
   }, [])
 
   useEffect(() => {
     const syncRoute = () => {
       let next = currentRoute()
       const p = periodFromRoute(next)
-      if (p && next.name !== 'records') setDefaultPeriod(p)
+      if (p && p !== 'daily' && next.name !== 'records') setDefaultPeriod(p)
       const groupParams = new URLSearchParams(window.location.search)
       if (groupParams.has('group')) {
         setActiveGroup(parseGroupQuery(window.location.search))

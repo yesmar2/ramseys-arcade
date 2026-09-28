@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react'
-import { getGame } from '../data/games'
+import { getGame, isDailyGame } from '../data/games'
 import { gameBoardHref, gamePlayHref, rankHref } from '../hooks/useHashRoute'
 import { useRunsAround, type BoardRow, type GameBest } from '../hooks/useProfileBoards'
 import { inkOn } from '../lib/color'
@@ -70,7 +70,8 @@ export function ProfileBestBoard({
   bests: Record<string, GameBest> | null
   groupId: string | null
 }) {
-  const best = bests ? bestBoard(bests) : null
+  // A daily's all-time board is its day points, not a run: the best board is a run's (leaderboardFormat isDayPointsBoard).
+  const best = bests ? bestBoard(Object.fromEntries(Object.entries(bests).filter(([slug]) => !isDailyGame(slug)))) : null
   const line = best ? nextRunLine(best.rank, best.total) : null
   const runs = useRunsAround(best?.slug ?? null, best?.rank ?? 0, line && line.rank > 1 ? line.rank : null, groupId)
 

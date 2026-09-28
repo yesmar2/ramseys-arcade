@@ -18,7 +18,7 @@ import {
   type GroupTable,
 } from '../lib/groupPages'
 import { groupsIndexHref, type GroupPublic } from '../lib/groups'
-import { formatLeaderboardScore } from '../lib/leaderboardFormat'
+import { formatBoardScore } from '../lib/leaderboardFormat'
 import { normalizePlayerName, type GlobalBoardEntry } from '../lib/leaderboard'
 import { resolveGameAccent } from '../lib/theme'
 import { getGame } from '../data/games'
@@ -410,7 +410,7 @@ export function GroupRecords({ group, me, records }: { group: GroupPublic; me: s
                     <PlayerAvatar name={holder} avatarId={r.best.avatarId} size="sm" />
                     <span className="grp-name">{holder}</span>
                   </a>
-                  <span className="grp-rec__score">{formatLeaderboardScore(r.slug, r.best.score)}</span>
+                  <span className="grp-rec__score">{formatBoardScore(r.slug, r.best.score, 'all')}</span>
                   <span className="grp-rec__when">{whenSet(r.best.at)}</span>
                 </li>
               )
@@ -442,7 +442,7 @@ export function NewestRecords({ records }: { records: GroupRecord[] | null }) {
                 <PlayerAvatar name={name} avatarId={r.best.avatarId} size="md" />
                 <span>
                   <span className="grp-feed__what">
-                    <b>{name}</b> set the {gameName(r.slug)} record: <b>{formatLeaderboardScore(r.slug, r.best.score)}</b>
+                    <b>{name}</b> set the {gameName(r.slug)} record: <b>{formatBoardScore(r.slug, r.best.score, 'all')}</b>
                   </span>
                   <span className="grp-fine">{whenSet(r.best.at)}</span>
                 </span>

@@ -19,11 +19,11 @@ import {
   VISIBLE_LEADERBOARD_PERIODS,
   type LeaderboardPeriod,
 } from '../lib/leaderboard'
-import { formatLeaderboardScore } from '../lib/leaderboardFormat'
 import {
   headline,
   lastStats,
   lede,
+  lineScore,
   moves,
   ordinal,
   periodCopy,
@@ -500,7 +500,7 @@ function Place({ line, top, place, you }: { line: BoardLine; top: BoardTop | und
         {place === 1 ? <CrownIcon /> : null}
         <span>{top.name}</span>
       </span>
-      <span className="sb-board__score">{formatLeaderboardScore(line.slug, top.score)}</span>
+      <span className="sb-board__score">{lineScore(line, top.score)}</span>
     </span>
   )
 }
@@ -525,7 +525,7 @@ function BoardRow({
   const cell = standing ? youCell(line, standing, best, next) : null
   const players = line.players == null ? '' : `${line.players.toLocaleString()} ${line.players === 1 ? 'player' : 'players'}`
   const podium = line.top
-    .map((t, i) => `${ordinal(i + 1)} ${t.name} ${formatLeaderboardScore(line.slug, t.score)}`)
+    .map((t, i) => `${ordinal(i + 1)} ${t.name} ${lineScore(line, t.score)}`)
     .join(', ')
   const label = [
     `${name} board`,

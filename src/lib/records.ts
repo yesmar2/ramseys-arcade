@@ -213,8 +213,8 @@ export function recordNavShortLabel(row: { id: string; label: string }): string 
   if (length != null) return `L${length}`
   const crosswalkRow = parseCrosswalkRowFromRecordId(row.id)
   if (crosswalkRow != null) return `${crosswalkRow}`
-  // A Hot Lap track's or an Ace Chase hole's record, by its number.
-  const course = /^(?:track|hole)-(\d+)$/.exec(row.id)
+  // A Hot Lap track's, an Ace Chase hole's or a Find the Bug day's record, by its number.
+  const course = /^(?:track|hole|day)-(\d+)$/.exec(row.id)
   if (course) return `#${course[1]}`
   return row.label
 }
@@ -865,9 +865,10 @@ export const GAMES_WITH_RECORDS = [
   'pellets',
   'crumbtrail',
   'fireflies',
-  // The dailies: each track's and each hole's record (the API's records.ts COURSES).
+  // The dailies: each track's, hole's and day's record (the API's records.ts COURSES).
   'hotlap',
   'acechase',
+  'findbug',
 ] as const
 export type RecordGame = (typeof GAMES_WITH_RECORDS)[number]
 

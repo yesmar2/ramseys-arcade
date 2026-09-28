@@ -17,6 +17,8 @@ export type LeaderboardEntry = {
   at: number
   device?: DeviceType
   avatarId?: string
+  /** On a daily's board for longer than a day, where the score is day points: the days they came from. */
+  days?: number
 }
 
 export const LEADERBOARD_GAMES = [

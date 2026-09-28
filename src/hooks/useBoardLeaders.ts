@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { isDailyGame } from '../data/games'
 import { useActiveGroup } from '../lib/groups'
 import {
   fetchLeaderboardsSummary,
@@ -20,6 +21,8 @@ export type BoardLeader = {
 
 function topOf(games: GameBoardPreview[], period: LeaderboardPeriod, into: Record<string, BoardLeader>) {
   for (const game of games) {
+    // A daily's table is today's runs: its week, month and all time are day points, not runs.
+    if (isDailyGame(game.slug) !== (period === 'daily')) continue
     const entry = game.entries[0]
     if (entry && !into[game.slug]) into[game.slug] = { entry, entries: game.entries.slice(0, TABLE), period }
   }
@@ -40,14 +43,19 @@ export function useBoardLeaders(period: LeaderboardPeriod): Record<string, Board
 
   useEffect(() => {
     let cancelled = false
-    const loads = [fetchLeaderboardsSummary(period, TABLE)]
-    if (period !== 'all') loads.push(fetchLeaderboardsSummary('all', TABLE))
+    // The period's tables, all time's for a board nobody's on yet, and today's for the dailies.
+    const loads = [
+      fetchLeaderboardsSummary(period, TABLE),
+      period !== 'all' ? fetchLeaderboardsSummary('all', TABLE) : Promise.resolve(null),
+      period !== 'daily' ? fetchLeaderboardsSummary('daily', TABLE) : Promise.resolve(null),
+    ]
     Promise.all(loads)
-      .then(([current, allTime]) => {
+      .then(([current, allTime, today]) => {
         if (cancelled) return
         const next: Record<string, BoardLeader> = {}
         topOf(current ?? [], period, next)
         if (allTime) topOf(allTime, 'all', next)
+        if (today) topOf(today, 'daily', next)
         setLeaders(next)
       })
       .catch(() => {

@@ -8,7 +8,7 @@ import {
   type LeaderboardGame,
   type LeaderboardPeriod,
 } from './leaderboard'
-import { formatLeaderboardScore } from './leaderboardFormat'
+import { formatDayPoints, formatLeaderboardScore } from './leaderboardFormat'
 import { numberWord } from './numberWord'
 import type { TrophyAward } from './trophies'
 
@@ -24,7 +24,7 @@ import type { TrophyAward } from './trophies'
  * added together (see placePoints in the API's store).
  */
 
-/** One player's best run on a board. */
+/** One player's best run on a board, or on a daily's board for longer than a day, their day points. */
 export type BoardTop = { name: string; score: number; avatarId?: string }
 
 /** One game's board for the period: its top three players and how many are on it. */
@@ -33,6 +33,13 @@ export type BoardLine = {
   top: BoardTop[]
   /** Players on the board; null when nothing on hand says. */
   players: number | null
+  /** A daily's board for longer than a day, whose scores are day points (leaderboardFormat isDayPointsBoard). */
+  points?: boolean
+}
+
+/** A score on a line's board: a run's, or a daily's day points. */
+export function lineScore(line: BoardLine, score: number): string {
+  return line.points ? formatDayPoints(score) : formatLeaderboardScore(line.slug, score)
 }
 
 /** A row of the overall standings, with the places behind its points. */
@@ -394,11 +401,13 @@ export function lastStats(copy: PeriodCopy, last: LastFinal | null, me: string):
 /** A board with one player on it pays any run 50, and a run that beats theirs 100. */
 function loneBoard(line: BoardLine): Move {
   const holder = line.top[0]
-  const score = formatLeaderboardScore(line.slug, holder.score)
+  const score = lineScore(line, holder.score)
   return {
     amount: '50 to 100',
     what: gameName(line.slug),
-    why: `${holder.name}’s alone on it with ${score}. Any run pays 50; beat ${score} and it pays 100.`,
+    why: line.points
+      ? `${holder.name}’s alone on it with ${score}. Play a day and it pays 50; out-point them and it pays 100.`
+      : `${holder.name}’s alone on it with ${score}. Any run pays 50; beat ${score} and it pays 100.`,
   }
 }
 
@@ -532,13 +541,16 @@ export function youCell(
 ): YouCell {
   const place = you.byGame[line.slug]
   if (place) {
-    const a = best != null ? `#${place.place} · ${formatLeaderboardScore(line.slug, best)}` : `#${place.place}`
+    const a = best != null ? `#${place.place} · ${lineScore(line, best)}` : `#${place.place}`
+    // A daily's day points climb a day at a time: say how far the next place is, not a score to beat.
     const b =
       place.place === 1
         ? 'You lead it'
-        : next
-          ? `Beat ${formatLeaderboardScore(line.slug, next.score)} for ${ordinal(place.place - 1)}`
-          : count(place.points, 'point')
+        : next && line.points && best != null
+          ? `${formatDayPoints(Math.max(0, next.score - best))} off ${ordinal(place.place - 1)}`
+          : next
+            ? `Beat ${lineScore(line, next.score)} for ${ordinal(place.place - 1)}`
+            : count(place.points, 'point')
     return { a, b, tone: 'on' }
   }
   if (line.players === 1 && line.top[0]) {
@@ -560,7 +572,7 @@ export function phoneLine(line: BoardLine, you: YouStanding | null, cell: YouCel
   }
   const rest = line.top
     .slice(1)
-    .map((t, i) => `${ordinal(i + 2)} ${t.name} ${formatLeaderboardScore(line.slug, t.score)}`)
+    .map((t, i) => `${ordinal(i + 2)} ${t.name} ${lineScore(line, t.score)}`)
   if (rest.length) return rest.join(' · ')
   return line.top[0] ? `Just ${line.top[0].name} so far. Any run pays 50` : ''
 }

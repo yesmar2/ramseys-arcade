@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react'
-import { gamePlayableOn, getGame, type Game } from '../data/games'
+import { gamePlayableOn, getGame, isDailyGame, type Game } from '../data/games'
 import { gameBoardHref, gameHref, gamePlayHref, leaderboardHref } from '../hooks/useHashRoute'
 import type { GameBest } from '../hooks/useProfileBoards'
 import { useDeviceType } from '../lib/device'
@@ -10,6 +10,7 @@ import {
   type LeaderboardGame,
   type LeaderboardPeriod,
 } from '../lib/leaderboard'
+import { formatDayPoints } from '../lib/leaderboardFormat'
 import { ordinal, periodWord, scoreWithUnit } from '../lib/profileMath'
 import { resolveGameAccent } from '../lib/theme'
 import { GameArt } from './GameArt'
@@ -48,12 +49,15 @@ function Cabinet({
         : null
     : null
   const word = periodWord(period)
+  // A daily's all-time board is its day points, not a run (leaderboardFormat isDayPointsBoard).
+  const daily = isDailyGame(game.slug)
+  const bestFigure = (score: number) => (daily ? formatDayPoints(score) : scoreWithUnit(game.slug, score))
   const label = [
     game.name,
     place
       ? `${ordinal(place.place)}${place.total ? ` of ${place.total}` : ''} ${word}, ${place.points} points`
       : `no run ${word}`,
-    best ? `best run ${scoreWithUnit(game.slug, best.score)}, ${ordinal(best.rank)} of ${best.total} all time` : null,
+    best ? `${daily ? 'day points' : 'best run'} ${bestFigure(best.score)}, ${ordinal(best.rank)} of ${best.total} all time` : null,
   ]
     .filter(Boolean)
     .join(', ')
@@ -101,10 +105,10 @@ function Cabinet({
             )}
           </span>
           <span className="pgame__line">
-            <span className="pgame__tag">BEST</span>
+            <span className="pgame__tag">{daily ? 'ALL TIME' : 'BEST'}</span>
             {best ? (
               <>
-                <span className="pgame__figure">{scoreWithUnit(game.slug, best.score)}</span>
+                <span className="pgame__figure">{bestFigure(best.score)}</span>
                 <span className="pgame__of">
                   {ordinal(best.rank)} of {best.total.toLocaleString()}
                 </span>

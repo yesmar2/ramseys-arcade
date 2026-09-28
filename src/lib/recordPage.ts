@@ -109,7 +109,9 @@ export function recordRule(game: string, record: Rec, period: LeaderboardPeriod,
   if (kind === 'course') {
     subject = record.id.startsWith('track-')
       ? `The fastest lap of ${courseName(record)} anyone has driven`
-      : `The fewest tries anyone has needed at ${courseName(record)}`
+      : record.id.startsWith('day-')
+        ? `The fastest anyone found all five bugs on ${courseName(record)}`
+        : `The fewest tries anyone has needed at ${courseName(record)}`
   } else if (kind === 'clock') {
     const verb = game === 'asteroids' ? 'cleared' : game === 'snake' ? 'grown to' : 'reached'
     subject = `The fastest anyone has ${verb} ${milestone(game, record.label)}`
@@ -131,7 +133,10 @@ export function recordRule(game: string, record: Rec, period: LeaderboardPeriod,
 /** What puts a player on a record's board at all: Clear wave 12 once. */
 export function onTheBoard(game: string, record: Rec): string {
   const kind = recordKind(record)
-  if (kind === 'course') return record.id.startsWith('track-') ? 'Drive a lap of it' : 'Hit the bullseye on it'
+  if (kind === 'course') {
+    if (record.id.startsWith('track-')) return 'Drive a lap of it'
+    return record.id.startsWith('day-') ? 'Play it on its day' : 'Hit the bullseye on it'
+  }
   if (kind === 'clock') return `${game === 'asteroids' ? 'Clear' : 'Reach'} ${milestone(game, record.label)} once`
   if (record.id === 'play-days-streak') return 'Play one day'
   if (record.id === 'threshold-streak' && threshold(record.label)) return `Score over ${threshold(record.label)} once`

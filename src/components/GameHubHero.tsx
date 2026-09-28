@@ -124,7 +124,7 @@ export function GameHubHero({
         {hasGamePreview(game.slug) ? <GamePreview slug={game.slug} className="gh-screen__game" autoplay /> : null}
         <span className="gh-screen__top">
           <span className="gh-screen__hi">
-            Hi score
+            {game.daily ? 'Today’s best' : 'Hi score'}
             <b>{highScore ? formatLeaderboardScore(game.slug, highScore.score) : 'Open'}</b>
           </span>
           {highScore ? <span className="gh-screen__who">{highScore.name}</span> : null}

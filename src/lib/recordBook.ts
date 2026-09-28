@@ -17,14 +17,15 @@ type RecordLike = { id: string; unit: 'ms' | 'count' }
 /* ---------- a track's or a hole's record ---------- */
 
 /**
- * The dailies' courses: each Hot Lap track keeps its fastest lap, and each Ace Chase hole its fewest tries,
- * a record a track or hole (track-3, hole-12), named after it and kept for good from its day on.
+ * The dailies' courses: each Hot Lap track keeps its fastest lap, each Ace Chase hole its fewest tries, and
+ * each Find the Bug day its fastest sweep, a record a track, hole or day (track-3, hole-12, day-2), named
+ * after it and kept for good from its day on.
  */
-const COURSE_FIRST_DAY: Partial<Record<string, string>> = { hotlap: '2026-09-26', acechase: '2026-09-25' }
+const COURSE_FIRST_DAY: Partial<Record<string, string>> = { hotlap: '2026-09-26', acechase: '2026-09-25', findbug: '2026-09-27' }
 
-/** Which track or hole a record is, or null for any other. */
+/** Which track, hole or day a record is, or null for any other. */
 export function courseNumber(record: { id: string }): number | null {
-  const match = /^(?:track|hole)-(\d+)$/.exec(record.id)
+  const match = /^(?:track|hole|day)-(\d+)$/.exec(record.id)
   return match ? Number(match[1]) : null
 }
 
@@ -38,7 +39,7 @@ export function lowerIsBetter(record: RecordLike): boolean {
   return record.unit === 'ms' || record.id.startsWith('hole-')
 }
 
-/** A course's name alone, from its record's label: Seneca Glen, from #3 Seneca Glen. */
+/** A course's name alone, from its record's label: Seneca Glen, from #3 Seneca Glen; Mon, Sep 28, from #2 Mon, Sep 28. */
 export function courseName(record: { label: string }): string {
   return record.label.replace(/^#\d+\s+/, '')
 }
@@ -65,7 +66,9 @@ export function coursePlayHref(game: string, record: { id: string }, now = Date.
   const today = Math.round((boardToday(now) - Date.UTC(y!, m! - 1, d!)) / 86_400_000) + 1
   if (n === today) return gamePlayHref(game)
   if (game === 'hotlap') return `${gamePlayHref(game)}?track=${n}`
-  return `${gamePlayHref(game)}?hole=day:${new Date(Date.UTC(y!, m! - 1, d! + n - 1)).toISOString().slice(0, 10)}`
+  const day = new Date(Date.UTC(y!, m! - 1, d! + n - 1)).toISOString().slice(0, 10)
+  // A past Find the Bug day plays again as practice; its record was set on its day.
+  return game === 'findbug' ? `${gamePlayHref(game)}?day=${day}` : `${gamePlayHref(game)}?hole=day:${day}`
 }
 
 /** The books on show: every game with records, less the hidden and on-deck ones. */
@@ -190,6 +193,10 @@ const COURSES: Partial<Record<string, { title: string; sub: string }>> = {
   acechase: {
     title: 'Hole records',
     sub: 'Each hole’s fewest tries. A player’s first result on a hole is their only one, on its day or after.',
+  },
+  findbug: {
+    title: 'Day records',
+    sub: 'Each day’s fastest sweep of its five scenes. Only a day’s first run counts, so each is set on its day.',
   },
 }
 
@@ -319,7 +326,14 @@ export function bookLede(game: string, records: RecordSummary[]): string {
   const held = records.filter((r) => r.top).length
   const kinds = recordGroups(game, records).map((g) => g.kind)
   const parts: Record<RecordKind, string> = {
-    course: game === 'hotlap' ? 'fastest lap of every track' : game === 'acechase' ? 'fewest tries at every hole' : 'best on every course',
+    course:
+      game === 'hotlap'
+        ? 'fastest lap of every track'
+        : game === 'acechase'
+          ? 'fewest tries at every hole'
+          : game === 'findbug'
+            ? 'fastest sweep of every day'
+            : 'best on every course',
     clock: (CLOCKS[game]?.title ?? 'fastest times').toLowerCase(),
     run: 'best single runs',
     streaks: 'longest streaks',

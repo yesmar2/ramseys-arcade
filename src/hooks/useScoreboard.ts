@@ -22,6 +22,7 @@ import {
   type Standing,
   type YouStanding,
 } from '../lib/scoreboard'
+import { isDayPointsBoard } from '../lib/leaderboardFormat'
 import { fetchRecentTrophies } from '../lib/trophies'
 
 export type ScoreboardData = {
@@ -135,7 +136,8 @@ export function useScoreboard(
             const players =
               sizes[slug] ??
               (whole ? new Set(runs.map((r) => normalizePlayerName(r.name ?? ''))).size : null)
-            return { slug, top, players }
+            // A daily's board for longer than a day is its day points (leaderboardFormat isDayPointsBoard).
+            return { slug, top, players, points: isDayPointsBoard(slug, period) }
           }),
         )
         if (cancelled) return

@@ -118,7 +118,7 @@ function Stats({ stats }: { stats: Stat[] }) {
 function playTarget(game: string, name: string, record: { id: string } | null | undefined) {
   const course = record ? coursePlayHref(game, record) : null
   if (!course) return { href: gamePlayHref(game), label: `Play ${name}` }
-  return { href: course, label: game === 'hotlap' ? 'Drive this track' : 'Play this hole' }
+  return { href: course, label: game === 'hotlap' ? 'Drive this track' : game === 'findbug' ? 'Play this day' : 'Play this hole' }
 }
 
 function PlayLink({ game, record }: { game: string; record?: { id: string } | null }) {

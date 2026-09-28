@@ -1,6 +1,6 @@
 import { GameBoard } from '../components/GameBoard'
 import { PageShell } from '../components/PageShell'
-import { getGame } from '../data/games'
+import { getGame, isDailyGame } from '../data/games'
 import { defaultPeriod } from '../lib/defaultPeriod'
 import { coerceVisiblePeriod, type LeaderboardGame, type LeaderboardPeriod } from '../lib/leaderboard'
 
@@ -9,9 +9,12 @@ type GameLeaderboardPageProps = {
   period?: LeaderboardPeriod
 }
 
-/** One game's own board: its players at their best runs, and what each place pays. */
+/**
+ * One game's own board: its players at their best runs, and what each place pays. A daily's opens on
+ * today's, and its week, month and all time are its day points (leaderboardFormat isDayPointsBoard).
+ */
 export function GameLeaderboardPage({ game: gameSlug, period: periodFromRoute }: GameLeaderboardPageProps) {
-  const period = coerceVisiblePeriod(periodFromRoute ?? defaultPeriod())
+  const period = isDailyGame(gameSlug) ? (periodFromRoute ?? 'daily') : coerceVisiblePeriod(periodFromRoute ?? defaultPeriod())
 
   if (!getGame(gameSlug)) {
     return (

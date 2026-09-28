@@ -25,10 +25,11 @@ import {
   normalizePlayerName,
   PERIOD_LABELS,
   VISIBLE_LEADERBOARD_PERIODS,
+  type LeaderboardEntry,
   type LeaderboardGame,
   type LeaderboardPeriod,
 } from '../lib/leaderboard'
-import { formatLeaderboardScore } from '../lib/leaderboardFormat'
+import { formatBoardScore, formatDayPoints, formatLeaderboardScore, isDayPointsBoard } from '../lib/leaderboardFormat'
 import { numberWord } from '../lib/numberWord'
 import { gameHasRecords } from '../lib/records'
 import { ordinal, periodCopy, type PeriodCopy, type Stat } from '../lib/scoreboard'
@@ -48,6 +49,10 @@ import { PlayerName } from './PlayerName'
  * you stand on it and your runs, and the board itself: one row per player at
  * their best run, with what their place pays, and every run a tap away. Beside
  * it, what a run is worth here and the way on to the other boards.
+ *
+ * A daily's board opens on today's. Its week, month and all time are its day points (leaderboardFormat
+ * isDayPointsBoard): the points each day's board paid its players by place, added up, drawn as a plain
+ * table of players, their days and their points.
  */
 
 const MEDALS = ['gold', 'silver', 'bronze'] as const
@@ -120,15 +125,19 @@ function Stats({ stats }: { stats: Stat[] }) {
 
 /* ---------- the banner ---------- */
 
+/** A daily's boards: today's runs, then its day points for the week, the month and all time. */
+const DAILY_PERIODS: readonly LeaderboardPeriod[] = ['daily', 'weekly', 'monthly', 'all']
+
 function PeriodTabs({ slug, period }: { slug: LeaderboardGame; period: LeaderboardPeriod }) {
+  const periods = isDailyGame(slug) ? DAILY_PERIODS : VISIBLE_LEADERBOARD_PERIODS
   return (
     <div
       className="seg sb-periods gb-periods"
       role="tablist"
       aria-label="Period"
-      style={{ '--seg-count': VISIBLE_LEADERBOARD_PERIODS.length } as CSSProperties}
+      style={{ '--seg-count': periods.length } as CSSProperties}
     >
-      {VISIBLE_LEADERBOARD_PERIODS.map((p) => (
+      {periods.map((p) => (
         <a
           key={p}
           role="tab"
@@ -164,7 +173,8 @@ function Banner({
   const game = getGame(slug)!
   const accent = resolveGameAccent(slug, game.accent)
   const canPlay = gamePlayableOn(game, device)
-  const head = boardHeadline(slug, copy, players)
+  const points = isDayPointsBoard(slug, period)
+  const head = points ? pointsHeadline(copy, players) : boardHeadline(slug, copy, players)
   const leader = players[0]
   // When it closes, without the trophies: those go to the standings across every board, not one game's.
   const closes = periodCopy(period, Date.now(), true).closes
@@ -195,9 +205,15 @@ function Banner({
           )}
         </h1>
         <p className="home-banner__blurb gb-lede">
-          {loading ? <span className="skel-line" style={{ '--skel-w': '20rem' } as CSSProperties} /> : boardLede(slug, copy, players, runs)}
+          {loading ? (
+            <span className="skel-line" style={{ '--skel-w': '20rem' } as CSSProperties} />
+          ) : points ? (
+            POINTS_LEDE
+          ) : (
+            boardLede(slug, copy, players, runs)
+          )}
         </p>
-        {isDailyGame(slug) ? null : <PeriodTabs slug={slug} period={period} />}
+        <PeriodTabs slug={slug} period={period} />
         <div className="home-banner__acts">
           {canPlay ? (
             <a className="home-banner__cta" href={gamePlayHref(slug)}>
@@ -216,7 +232,7 @@ function Banner({
           <ShareBoardButton
             className="home-banner__ghost"
             text="Share"
-            label={`${game.name} high scores on ${APP_NAME} (${PERIOD_LABELS[period]}). Your move.`}
+            label={`${game.name} ${points ? 'points' : 'high scores'} on ${APP_NAME} (${PERIOD_LABELS[period]}). Your move.`}
             url={gameBoardHref(slug, period)}
           />
         </div>
@@ -237,8 +253,8 @@ function Banner({
         ) : null}
         {leader ? (
           <span className="gb-marquee">
-            <span>Hi-score</span>
-            <b>{formatLeaderboardScore(slug, leader.best.score)}</b>
+            <span>{points ? 'Most points' : 'Hi-score'}</span>
+            <b>{formatBoardScore(slug, leader.best.score, period)}</b>
             <span>{leader.name}</span>
           </span>
         ) : null}
@@ -438,7 +454,7 @@ function OtherBoards({ others, period }: { others: ReturnType<typeof useGameBoar
                 <span className="gb-more__text">
                   <span className="gb-more__name">{game.name}</span>
                   <span className="gb-more__lead">
-                    {o.leader ? `${o.leader.name} · ${formatLeaderboardScore(o.slug, o.leader.score)}` : 'No runs yet'}
+                    {o.leader ? `${o.leader.name} · ${formatBoardScore(o.slug, o.leader.score, period)}` : 'No runs yet'}
                   </span>
                 </span>
                 {o.place ? <span className="gb-more__you">You #{o.place}</span> : <span />}
@@ -590,11 +606,158 @@ function Board({
   )
 }
 
+/* ---------- a daily's day points ---------- */
+
+const POINTS_LEDE =
+  'Each day’s board pays its players up to 100 points by place: first gets 100, halfway up about 50. The days add up, so coming back every day counts.'
+
+/** Who leads a daily's day points, with the name apart so it can wear the gold. */
+function pointsHeadline(copy: PeriodCopy, players: BoardPlayer[]): { name: string; rest: string } {
+  const [first, second] = players
+  if (!first) return { name: '', rest: `Nobody’s on it ${copy.noun ? copy.phrase : 'yet'}.` }
+  const lead = second ? `, ${formatDayPoints(first.best.score - second.best.score)} clear of ${second.name}` : ''
+  return { name: first.name, rest: ` leads with ${formatDayPoints(first.best.score)}${lead}.` }
+}
+
+/** "3 days": the days a player's day points came from. */
+function daysWords(entry: LeaderboardEntry): string {
+  const n = entry.days ?? 1
+  return `${n} ${n === 1 ? 'day' : 'days'}`
+}
+
+function PointsYou({ slug, copy, players, you }: { slug: LeaderboardGame; copy: PeriodCopy; players: BoardPlayer[]; you: string }) {
+  const mine = you ? players.find((p) => p.name === you) : undefined
+  if (!mine) {
+    return (
+      <div className="sb-card sb-first">
+        <p className="sb-kicker">Get on it</p>
+        <h2 className="sb-first__title">Play a day and you’re on it.</h2>
+        <p className="sb-first__text">Every day’s board pays by place, so a day played is points, and the days add up {copy.phrase}.</p>
+        <PlayLink slug={slug} />
+      </div>
+    )
+  }
+  const above = players[mine.place - 2]
+  return (
+    <div className="sb-card sb-you__card">
+      <div className="sb-you__top">
+        <PlayerMark name={mine.name} avatarId={mine.best.avatarId} className="sb-you__mark" />
+        <span className="sb-you__kicker">
+          {mine.name} · {copy.phrase}
+        </span>
+      </div>
+      <p className="sb-you__big">
+        <b>#{mine.place}</b>
+        <span>of {players.length.toLocaleString()}</span>
+      </p>
+      <p className="sb-you__line">
+        {formatDayPoints(mine.best.score)} from {daysWords(mine.best)}
+        {above ? ` · ${formatDayPoints(above.best.score - mine.best.score)} off ${ordinal(mine.place - 1)}` : ' · you lead it'}
+      </p>
+    </div>
+  )
+}
+
+function PointsRow({ player, you, period }: { player: BoardPlayer; you: string; period: LeaderboardPeriod }) {
+  const mine = Boolean(you) && player.name === you
+  const medal = MEDALS[player.place - 1]
+  return (
+    <li className={`gb-row${medal ? ` gb-row--${medal}` : ''}${mine ? ' gb-row--you' : ''}`}>
+      <a className="gb-row__link" href={rankHref(player.name, period)}>
+        <span className="gb-row__ord">{ordinal(player.place).toUpperCase()}</span>
+        <PlayerMark name={player.name} avatarId={player.best.avatarId} className="gb-row__mark" />
+        <span className="gb-row__who">
+          <span className="gb-row__name">
+            <PlayerName name={player.name} avatarId={player.best.avatarId} />
+            {mine ? <span className="sb-row__you">You</span> : null}
+          </span>
+          <span className="gb-row__runs">{daysWords(player.best)}</span>
+        </span>
+        <span className="gb-row__best">{formatDayPoints(player.best.score)}</span>
+        <span className="gb-row__set">
+          <DeviceIcon device={player.best.device} />
+          {dayOf(player.best.at)}
+        </span>
+        <span className="gb-row__pays">
+          {player.pays}
+          <small> pts</small>
+        </span>
+      </a>
+    </li>
+  )
+}
+
+/** A daily's day points for the week, the month or all time: a row a player, their days and their points. */
+function PointsBoard({
+  slug,
+  period,
+  copy,
+  data,
+  players,
+  you,
+}: {
+  slug: LeaderboardGame
+  period: LeaderboardPeriod
+  copy: PeriodCopy
+  data: ReturnType<typeof useGameBoard>
+  players: BoardPlayer[]
+  you: string
+}) {
+  const [shown, setShown] = useState(FIRST_ROWS)
+  const left = players.length - shown
+  return (
+    <section className="sb-card gb-board" aria-labelledby="gb-board-title" data-hunt={`b-board-${slug}`}>
+      <div className="gb-board__head">
+        <h2 id="gb-board-title" className="gb-board__title">
+          Day points
+        </h2>
+        {!data.loading && players.length ? (
+          <span className="gb-board__count">
+            {players.length.toLocaleString()} {players.length === 1 ? 'player' : 'players'}
+          </span>
+        ) : null}
+      </div>
+      <p className="gb-board__note">
+        One row per player: the points each day’s board paid them by place, added up. Their place here is what pays toward the standings.
+      </p>
+      {data.loading ? (
+        <BoardSkeleton rows={FIRST_ROWS} />
+      ) : !players.length ? (
+        <div className="gb-board__empty">
+          <p className="gb-board__empty-title">{groupBoardEmptyTitle(`Nobody’s played a day ${copy.noun ? copy.phrase : 'yet'}.`)}</p>
+          <p className="gb-board__empty-text">Today’s first player takes first, and all 100 points.</p>
+          <PlayLink slug={slug} />
+        </div>
+      ) : (
+        <>
+          <div className="gb-board__cols" aria-hidden="true">
+            <span>Place</span>
+            <span />
+            <span>Player</span>
+            <span className="gb-board__num">Points</span>
+            <span className="gb-board__set">Last day</span>
+            <span className="gb-board__num">Pays</span>
+          </div>
+          <ol className="gb-rows">
+            {players.slice(0, shown).map((p) => (
+              <PointsRow key={p.name} player={p} you={you} period={period} />
+            ))}
+          </ol>
+        </>
+      )}
+      {!data.loading && left > 0 ? (
+        <button type="button" className="gb-board__more" onClick={() => setShown((n) => n + MORE_ROWS)}>
+          Show {Math.min(left, MORE_ROWS).toLocaleString()} more players
+          <span> · {left.toLocaleString()} to go</span>
+        </button>
+      ) : null}
+    </section>
+  )
+}
+
 /* ---------- the page ---------- */
 
-export function GameBoard({ slug, period: asked }: { slug: LeaderboardGame; period: LeaderboardPeriod }) {
-  // A daily's board is the day's, whatever period was asked for (the API keeps it so).
-  const period: LeaderboardPeriod = isDailyGame(slug) ? 'daily' : asked
+export function GameBoard({ slug, period }: { slug: LeaderboardGame; period: LeaderboardPeriod }) {
   const you = normalizePlayerName(usePlayerName())
   const groupId = useActiveGroup()
   const data = useGameBoard(slug, period, you, groupId)
@@ -610,6 +773,28 @@ export function GameBoard({ slug, period: asked }: { slug: LeaderboardGame; peri
       <div className="sb gb" style={style}>
         <Banner slug={slug} period={period} copy={copy} players={[]} runs={0} loading={false} group={group} />
         <BoardEmpty title="Couldn’t load scores" detail="Check your connection and try again." />
+      </div>
+    )
+  }
+
+  // A daily's week, month or all time: its day points, one row a player.
+  if (isDayPointsBoard(slug, period)) {
+    return (
+      <div className="sb gb" style={style}>
+        <Banner slug={slug} period={period} copy={copy} players={players} runs={data.total} loading={data.loading} group={group} />
+        {!data.loading ? (
+          <section className="sb-you gb-you" aria-label="Your place on this board">
+            <PointsYou slug={slug} copy={copy} players={players} you={you} />
+          </section>
+        ) : null}
+        <div className="gb-main">
+          <PointsBoard key={`${slug}-${period}`} slug={slug} period={period} copy={copy} data={data} players={players} you={you} />
+          {!data.loading ? (
+            <aside className="gb-side" aria-label="More about this board">
+              <OtherBoards others={data.others} period={period} />
+            </aside>
+          ) : null}
+        </div>
       </div>
     )
   }

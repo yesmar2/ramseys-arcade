@@ -14,7 +14,7 @@ import {
   youLine,
 } from '../lib/groupPages'
 import { groupHref, type GroupPublic } from '../lib/groups'
-import { formatLeaderboardScore } from '../lib/leaderboardFormat'
+import { formatBoardScore } from '../lib/leaderboardFormat'
 import { normalizePlayerName, type GlobalBoardEntry } from '../lib/leaderboard'
 import { resolveGameAccent } from '../lib/theme'
 import { getGame } from '../data/games'
@@ -239,7 +239,7 @@ export function GroupCard({
                   <PlayerAvatar name={newest.best.name} avatarId={newest.best.avatarId} size="sm" />
                   <span>
                     <b>{normalizePlayerName(newest.best.name)}</b> set the {gameName(newest.slug)} record,{' '}
-                    {formatLeaderboardScore(newest.slug, newest.best.score)}, {whenSet(newest.best.at)}
+                    {formatBoardScore(newest.slug, newest.best.score, 'all')}, {whenSet(newest.best.at)}
                   </span>
                 </p>
               ) : null}

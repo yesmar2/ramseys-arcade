@@ -10,7 +10,7 @@ import { useDeviceType } from '../lib/device'
 import { hasGamePreview } from '../lib/gamePreviews'
 import { useGlobalRank } from '../lib/globalRank'
 import { normalizePlayerName, PERIOD_LABELS, type GlobalGamePlace } from '../lib/leaderboard'
-import { formatLeaderboardScore } from '../lib/leaderboardFormat'
+import { formatBoardScore, formatLeaderboardScore } from '../lib/leaderboardFormat'
 import { numberWord } from '../lib/numberWord'
 import { resolveGameAccent } from '../lib/theme'
 import { GameArt } from './GameArt'
@@ -302,9 +302,11 @@ export function WallTile({
           ? { label: 'New', kind: 'new' }
           : null
   const fmt = (score: number) => formatLeaderboardScore(game.slug, score)
+  // Your best and place are the period's: on a daily, that's its day points (leaderboardFormat isDayPointsBoard).
+  const fmtBest = (score: number) => formatBoardScore(game.slug, score, period)
   const place = standing?.place ?? null
   const total = standing?.total ?? null
-  const periodWord = PERIOD_LABELS[game.daily ? 'daily' : period].toLowerCase()
+  const periodWord = PERIOD_LABELS[period].toLowerCase()
   const rows = top ? (top.entries.length > 0 ? top.entries : [top.entry]) : []
   const kind = (game.tags ?? []).map((tag) => TAG_LABELS[tag]).join(' · ') || 'Game'
   const label = [
@@ -314,7 +316,7 @@ export function WallTile({
       ? `high score ${fmt(top.entry.score)} by ${top.entry.name}${top.period === 'all' ? ', all time' : ''}`
       : 'no high score yet',
     place ? `you are #${place}${total ? ` of ${total}` : ''} ${periodWord}` : null,
-    best ? `your best ${fmt(best)}` : null,
+    best ? `your best ${fmtBest(best)}` : null,
   ]
     .filter(Boolean)
     .join(', ')
@@ -387,7 +389,7 @@ export function WallTile({
                     </>
                   ) : null}
                   {place && best ? ' · ' : null}
-                  {best ? fmt(best) : null}
+                  {best ? fmtBest(best) : null}
                 </span>
               </span>
             ) : null}

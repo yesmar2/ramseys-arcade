@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { isDailyGame } from '../data/games'
 import {
   fetchGlobalRank,
   fetchLeaderboardsSummary,
@@ -82,7 +83,8 @@ export function useGameBoard(
           runs.push(...next.entries)
         }
         let allTimeBest: number | null = null
-        if (me && !first.you && period !== 'all') {
+        // A daily's run on another day was on another track, hole or scenes: nothing to measure today's board by.
+        if (me && !first.you && period !== 'all' && !isDailyGame(slug)) {
           try {
             allTimeBest = (await getLeaderboard(slug, 'all', me, { limit: 1 })).you?.score ?? null
           } catch {
@@ -113,7 +115,8 @@ export function useGameBoard(
         if (cancelled) return
         const leaders = new Map(summary.map((g) => [g.slug, distinctTop(g.entries, 1)[0] ?? null]))
         const places = mine?.byGame ?? {}
-        const others = VISIBLE_LEADERBOARD_GAMES.filter((g) => g !== slug).map((g) => ({
+        // Only a daily has a board for today, so today's way onward is the other dailies.
+        const others = VISIBLE_LEADERBOARD_GAMES.filter((g) => g !== slug && (period !== 'daily' || isDailyGame(g))).map((g) => ({
           slug: g,
           leader: leaders.get(g) ?? null,
           place: places[g]?.place ?? null,
