@@ -415,6 +415,7 @@ export function PatriotGame() {
               }
               paused={paused && !needsRotate}
               onResume={resume}
+              onRestart={restart}
               tools={
                 ui.phase === 'playing' || ui.phase === 'waveClear' ? (
                   <AdminWaveSkip

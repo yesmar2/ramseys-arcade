@@ -208,6 +208,7 @@ export function FirefliesGame() {
                 personalBest={inRun(ui.phase) ? previousBestRef.current : apiBest}
                 paused={paused}
                 onResume={resume}
+                onRestart={restart}
               />
               {ui.phase === 'menu' && !saveOpen && !paused && <GameStartCard title="Fireflies" slug="fireflies" />}
               {ui.phase === 'gameover' &&

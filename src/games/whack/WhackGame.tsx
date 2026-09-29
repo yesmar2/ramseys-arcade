@@ -291,6 +291,7 @@ export function WhackGame() {
               personalBest={ui.phase === 'playing' ? previousBestRef.current : apiBest}
               paused={paused}
               onResume={resume}
+              onRestart={restart}
             />
             {ui.phase === 'menu' && !saveOpen && !paused && (
               <GameStartCard

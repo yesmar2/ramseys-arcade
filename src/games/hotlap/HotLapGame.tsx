@@ -1014,6 +1014,7 @@ function HotLapDay({
                 hideRecord={test}
                 paused={paused}
                 onResume={resume}
+                onRestart={start}
                 extraMeta={extra}
               />
               {showroom && !saveOpen && !paused && !noGl ? (

@@ -422,6 +422,7 @@ export function CrumbtrailGame() {
                 personalBest={ui.phase === 'playing' ? previousBestRef.current : apiBest}
                 paused={paused}
                 onResume={resume}
+                onRestart={restart}
                 tools={
                   ui.phase === 'playing' ? (
                     <AdminWaveSkip

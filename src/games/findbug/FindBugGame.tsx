@@ -1026,6 +1026,7 @@ export function FindBugGame({ day: askedDay }: { day?: string } = {}) {
                 personalBest={isLive(ui.phase) ? previousBestRef.current : apiBest}
                 paused={paused}
                 onResume={resume}
+                onRestart={countedDay.current ? undefined : () => (tournament ? startEventRun() : playedDay.current ? practise(playedDay.current) : undefined)}
               />
               {menuUp ? (
                 tournament ? (

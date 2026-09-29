@@ -764,6 +764,7 @@ export function AsteroidsGame() {
               hideBest
               paused={paused}
               onResume={resume}
+              onRestart={restart}
               extraMeta={
                 <>
                   <div className="game-pause-meta__row">

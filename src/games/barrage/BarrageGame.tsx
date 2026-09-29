@@ -428,6 +428,7 @@ export function BarrageGame() {
                 personalBest={ui.phase === 'menu' ? apiBest : previousBestRef.current}
                 paused={paused}
                 onResume={resume}
+                onRestart={restart}
                 tools={
                   pausable ? (
                     <AdminWaveSkip

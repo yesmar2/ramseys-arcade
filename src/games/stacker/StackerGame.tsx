@@ -224,6 +224,7 @@ export function StackerGame() {
             personalBest={ui.status === 'playing' ? previousBestRef.current : apiBest}
             paused={paused}
             onResume={resume}
+            onRestart={restart}
             tools={
               ui.status === 'playing' ? (
                 <AdminWaveSkip

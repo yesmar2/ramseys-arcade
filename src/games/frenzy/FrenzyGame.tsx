@@ -317,6 +317,7 @@ export function FrenzyGame() {
               personalBest={inRun ? previousBestRef.current : apiBest}
               paused={paused}
               onResume={resume}
+              onRestart={restart}
             />
             {ui.phase === 'menu' && !saveOpen && !paused && (
               <GameStartCard title="Frenzy" slug="frenzy" />

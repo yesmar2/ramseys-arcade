@@ -368,6 +368,7 @@ export function PelletsGame() {
                 personalBest={ui.phase === 'playing' ? previousBestRef.current : apiBest}
                 paused={paused}
                 onResume={resume}
+                onRestart={restart}
                 tools={
                   ui.phase === 'playing' || ui.phase === 'clearing' || ui.phase === 'dying' ? (
                     <AdminWaveSkip

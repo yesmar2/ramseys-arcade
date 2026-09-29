@@ -403,6 +403,7 @@ export function PuttGame() {
             personalBest={inRun ? previousBestRef.current : apiBest}
             paused={paused}
             onResume={resume}
+            onRestart={restart}
             tools={
               inRun ? (
                 <AdminWaveSkip
