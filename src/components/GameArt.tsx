@@ -1091,13 +1091,15 @@ function AceChase({ id }: { id: Id }) {
 }
 
 /**
- * Hot Lap's racer from behind, as the chase camera sees it, its wheels on the road at (x, y): a dark
- * gunmetal body over wide haunches, a smoked-glass canopy on a dark spine, and orange light along the
- * haunches and round the tail. The ghost is the same car drawn in cyan light, seen through, as the game
- * draws it since its neon look (2026-09-28).
+ * Hot Lap's racer from behind, as the chase camera sees it, its wheels on the road at (x, y): the Indy car
+ * since 2026-09-29. Its open wheels, the front pair further off; a slim dark body narrowing to the road,
+ * lit along its edges, with a bar of light at the tail; a pod each side; the glass bubble over the driver;
+ * and the rear wing across it all, lit along its edge. The ghost is the same car drawn in cyan light, seen
+ * through, as the game draws it.
  */
 function RacerBack({ x, y, s, ghost = false }: { x: number; y: number; s: number; ghost?: boolean }) {
   const body = ghost ? '#46e4ff' : '#262d36'
+  const tyre = ghost ? '#46e4ff' : '#0b0e12'
   const light = ghost ? '#aaf6ff' : '#ff6a1a'
   // The ghost is its outline, lit, over a faint body.
   const outline = ghost ? { stroke: '#8ff8ff', strokeWidth: 0.34, strokeLinejoin: 'round' as const } : {}
@@ -1105,18 +1107,24 @@ function RacerBack({ x, y, s, ghost = false }: { x: number; y: number; s: number
   return (
     <g transform={`translate(${x} ${y}) scale(${s})`}>
       {ghost ? null : <ellipse cx="0" cy="0.15" rx="7.6" ry="0.85" fill="#000" opacity="0.4" />}
-      <rect x="-6.9" y="-3.5" width="2.1" height="3.5" rx="0.8" fill={ghost ? body : '#0b0e12'} fillOpacity={faint} {...outline} />
-      <rect x="4.8" y="-3.5" width="2.1" height="3.5" rx="0.8" fill={ghost ? body : '#0b0e12'} fillOpacity={faint} {...outline} />
-      <path d="M-6.75 -2.9 V-0.7 M6.75 -2.9 V-0.7" {...line(light, 0.34)} />
-      <path d="M-7.2 -2.5 Q-7.6 -5.2 -5.4 -6 Q0 -6.9 5.4 -6 Q7.6 -5.2 7.2 -2.5 Q6.2 -1.5 4.4 -1.3 L-4.4 -1.3 Q-6.2 -1.5 -7.2 -2.5 Z" fill={body} fillOpacity={faint} {...outline} />
-      {ghost ? null : <path d="M-6.4 -4.6 Q0 -5.9 6.4 -4.6" {...line('#5a6776', 0.3, 0.7)} />}
-      <path d="M-7.2 -2.5 Q-6.2 -1.5 -4.4 -1.3 L4.4 -1.3 Q6.2 -1.5 7.2 -2.5 Q6.8 -3.3 5.6 -3.4 L-5.6 -3.4 Q-6.8 -3.3 -7.2 -2.5 Z" fill={ghost ? '#2fb8d6' : '#10151b'} opacity={ghost ? 0.25 : 0.9} />
-      <path d="M-4.4 -1.3 L4.4 -1.3 L3.8 -0.5 L-3.8 -0.5 Z" fill="#0a0d11" fillOpacity={faint} />
-      <path d="M-6.6 -3.1 Q0 -2.4 6.6 -3.1" {...line(light, 0.42)} />
-      <path d="M-6.1 -3.7 Q-5.9 -5.3 -3.6 -5.9 M6.1 -3.7 Q5.9 -5.3 3.6 -5.9" {...line(light, 0.26)} />
-      <path d="M-2.9 -5.95 Q-2.6 -8.4 0 -8.6 Q2.6 -8.4 2.9 -5.95 Z" fill={ghost ? body : '#0d1620'} fillOpacity={faint} {...outline} />
-      <path d="M0 -8.6 V-6.1" {...line(ghost ? '#8ff8ff' : '#3a434e', 0.36)} />
-      {ghost ? null : <path d="M-1.9 -7.8 Q-1 -8.25 -0.3 -8.32" {...line('#9fdfff', 0.18, 0.5)} />}
+      <rect x="-5.1" y="-7.7" width="1.6" height="2.8" rx="0.5" fill={tyre} fillOpacity={faint} {...outline} />
+      <rect x="3.5" y="-7.7" width="1.6" height="2.8" rx="0.5" fill={tyre} fillOpacity={faint} {...outline} />
+      <path d="M-5 -7.2 V-5.4 M5 -7.2 V-5.4" {...line(light, 0.26)} />
+      <path d="M-4.8 -3.4 L-3 -3.4 L-2.5 -1.5 L-4.8 -1.5 Z M4.8 -3.4 L3 -3.4 L2.5 -1.5 L4.8 -1.5 Z" fill={body} fillOpacity={faint} {...outline} />
+      <path d="M-4.7 -3.25 H-3.1 M4.7 -3.25 H3.1" {...line(light, 0.24)} />
+      <rect x="-7.3" y="-4.6" width="2.5" height="4.6" rx="0.7" fill={tyre} fillOpacity={faint} {...outline} />
+      <rect x="4.8" y="-4.6" width="2.5" height="4.6" rx="0.7" fill={tyre} fillOpacity={faint} {...outline} />
+      <path d="M-7.1 -3.9 V-0.7 M7.1 -3.9 V-0.7" {...line(light, 0.34)} />
+      <path d="M-3 -6.4 L3 -6.4 L2.2 -1.4 L-2.2 -1.4 Z" fill={body} fillOpacity={faint} {...outline} />
+      <path d="M-2.2 -1.4 L2.2 -1.4 L1.8 -0.4 L-1.8 -0.4 Z" fill="#0a0d11" fillOpacity={faint} />
+      <path d="M-2.9 -6.1 L-2.15 -1.7 M2.9 -6.1 L2.15 -1.7" {...line(light, 0.26)} />
+      <path d="M-1.2 -2.3 H1.2" {...line(light, 0.5)} />
+      <path d="M-1.6 -6.35 Q-1.5 -8.9 0 -9.1 Q1.5 -8.9 1.6 -6.35 Z" fill={ghost ? body : '#0d1620'} fillOpacity={faint} {...outline} />
+      {ghost ? null : <path d="M-0.95 -8.3 Q-0.5 -8.72 0 -8.78" {...line('#9fdfff', 0.18, 0.5)} />}
+      <rect x="-6.2" y="-6.25" width="12.4" height="0.9" rx="0.15" fill={body} fillOpacity={faint} {...outline} />
+      <rect x="-6.55" y="-7.4" width="0.45" height="3" rx="0.12" fill={body} fillOpacity={faint} {...outline} />
+      <rect x="6.1" y="-7.4" width="0.45" height="3" rx="0.12" fill={body} fillOpacity={faint} {...outline} />
+      <path d="M-5.9 -5.45 H5.9" {...line(light, 0.4)} />
     </g>
   )
 }
@@ -1163,7 +1171,7 @@ function HotLap({ id }: { id: Id }) {
       <circle cx="18.5" cy="9.72" r="0.11" fill="#2eb8a0" />
       <RacerBack x={18.2} y={17.3} s={0.34} ghost />
       <Glow id={id} name="glow" cx={20} cy={27.4} r={8} colour="#ff6a1a" strength={0.55} />
-      <Glow id={id} name="tail" cx={20} cy={24.5} r={3.4} colour="#ff6a1a" strength={0.4} />
+      <Glow id={id} name="tail" cx={20} cy={25.1} r={2.8} colour="#ff6a1a" strength={0.4} />
       <RacerBack x={20} y={27.4} s={1} />
     </>
   )
