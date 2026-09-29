@@ -854,10 +854,10 @@ function DailiesStep({
 
 type Way = { key: string; slug: string; big: string; small: string; title: string; text: string; href?: string }
 
-/** What a way does to the rank, big and small: the place it takes, or what it adds. */
-function effect(o: Outcome, rank: number, where: string, who: Who): { big: string; small: string } {
+/** What a way does to the rank, big and small: the place it moves them up to, from the one they hold, or what it adds. */
+function effect(o: Outcome, rank: number, who: Who): { big: string; small: string } {
   if (o.rank == null) return { big: `+${o.gain}`, small: passedWords(o) }
-  if (o.rank < rank) return { big: ordinal(o.rank), small: o.rank === 1 ? where : passedWords(o) }
+  if (o.rank < rank) return { big: ordinal(o.rank), small: `up from ${ordinal(rank)}` }
   return { big: `+${o.gain}`, small: `toward ${whose(who)} rank` }
 }
 
@@ -881,7 +881,6 @@ function waysUp({
   above,
   who,
   words,
-  where,
   playedToday,
 }: {
   data: ScoreboardData
@@ -889,7 +888,6 @@ function waysUp({
   above: { entries: Standing[]; offset: number } | null
   who: Who
   words: PeriodWords
-  where: string
   playedToday: Record<string, boolean> | null
 }): Way[] {
   const byGame = me?.byGame ?? {}
@@ -901,17 +899,20 @@ function waysUp({
   const empties = data.boards.filter((b) => b.top.length === 0 && onWall(b.slug))
   if (empties[0]) {
     const slug = empties[0].slug
+    const takes = `Nobody’s played ${gameName(slug)} ${when}, so any run takes 1st, and 1st pays 100.`
     const also = empties.slice(1).map((b) => gameName(b.slug))
-    const alsoLine = also.length ? ` ${andList(also, 4)} ${also.length === 1 ? 'is' : 'are'} open too.` : ''
+    const alsoLine = also.length ? ` The same goes for ${andList(also, 4)}.` : ''
     if (me && above) {
       const o = outcome(me, { kind: 'first', slug, place: 1, field: 1 }, above.entries, above.offset)
-      const moved = o.rank == null || o.rank < me.rank
+      // Who it passes, while the big figure is the place it takes (else they're under the figure).
+      const passed = o.rank != null && o.rank < me.rank ? passedWords(o).replace(/^past /, '') : ''
+      const total = ` ${capital(whose(who))} ${me.score.toLocaleString()} points would become ${o.score.toLocaleString()}${passed ? `, passing ${passed}` : ''}.`
       ways.first = {
         key: 'first',
         slug,
-        ...effect(o, me.rank, where, who),
+        ...effect(o, me.rank, who),
         title: `Play ${gameName(slug)}`,
-        text: `Nobody’s played it ${when}, so any run takes 1st, and 1st pays 100.${moved ? ` That’s ${o.score.toLocaleString()}.` : ''}${alsoLine}`,
+        text: `${takes}${total}${alsoLine}`,
         href: href(slug),
       }
     } else if (!me) {
@@ -921,7 +922,7 @@ function waysUp({
         big: '1st',
         small: `on ${gameName(slug)}`,
         title: `Play ${gameName(slug)}`,
-        text: `Nobody’s played it ${when}, so any run takes 1st, and 1st pays 100.${alsoLine}`,
+        text: `${takes}${alsoLine}`,
         href: href(slug),
       }
     }
@@ -946,7 +947,7 @@ function waysUp({
       const field = climb.field
       // What this climb adds a place, so the rounding can't have "about 1" add 2.
       const each = Math.max(1, Math.round(o.gain / places))
-      const worth = `${field <= 10 ? 'Only ' : ''}${field.toLocaleString()} ${field === 1 ? 'is' : 'are'} on it, so each place there is worth about ${each}.`
+      const worth = `${field <= 10 ? 'Only ' : ''}${field.toLocaleString()} ${field === 1 ? 'player is' : 'players are'} on it${words.noun ? ` ${words.phrase}` : ''}, so each place there is worth about ${each}.`
       const passing = passes ? passedWords(o) : ''
       const passesWords = passing ? ` and ${you} ${who.self ? 'pass' : 'passes'} ${passing.replace(/^past /, '')}` : ''
       // "Beat X for Nth" whenever N is exactly what beating the next player up takes.
@@ -958,7 +959,7 @@ function waysUp({
       ways.climb = {
         key: 'climb',
         slug: climb.slug,
-        ...effect(o, me.rank, where, who),
+        ...effect(o, me.rank, who),
         title: `Climb ${gameName(climb.slug)}`,
         text: `${worth}${step}${adds}`,
         href: href(climb.slug),
@@ -1020,7 +1021,7 @@ function waysUp({
       ways.fresh = {
         key: 'fresh',
         slug,
-        ...(o && me ? effect(o, me.rank, where, who) : { big: '+50', small: 'any run' }),
+        ...(o && me ? effect(o, me.rank, who) : { big: '+50', small: 'any run' }),
         title: `Play ${gameName(slug)}`,
         text: `Only ${holder.name} has played it${words.noun ? ` ${words.phrase}` : ''}. Any run pays 50, and beating ${formatLeaderboardScore(slug, holder.score)} pays 100.`,
         href: href(slug),
@@ -1030,7 +1031,7 @@ function waysUp({
       const o = me && above ? outcome(me, { kind: 'join', slug, place: half.place, field: half.field }, above.entries, above.offset) : null
       const about = players >= 10 ? 50 : placePoints(half.place, half.field)
       const lands = o && me && o.rank != null && o.rank < me.rank ? `, which would put ${you} about ${ordinal(o.rank)}` : ''
-      const on = `${players.toLocaleString()} ${words.noun ? `are on it ${words.phrase}` : 'have played it'}`
+      const on = `${players.toLocaleString()} players ${words.noun ? `are on it ${words.phrase}` : 'have played it'}`
       ways.fresh = {
         key: 'fresh',
         slug,
@@ -1405,7 +1406,7 @@ function PlayerHow({
     : null
 
   if (place == null) {
-    const ways = waysUp({ data, me: null, above: null, who, words, where, playedToday })
+    const ways = waysUp({ data, me: null, above: null, who, words, playedToday })
     const when = words.noun ? ` ${words.phrase}` : ''
     return (
       <>
@@ -1438,7 +1439,7 @@ function PlayerHow({
   const rows = selfRow ? nearby.map((r) => (r.name === name ? { ...r, byGame: r.byGame ?? byGame } : r)) : [...nearby, me].sort((a, b) => a.rank - b.rank)
   const aboveRow = rows.find((r) => r.rank === place - 1)
   // Standings that didn't load measure no ways against them: the ways that claim no place still show.
-  const ways = above ? waysUp({ data, me, above: above.failed ? null : above, who, words, where, playedToday }) : []
+  const ways = above ? waysUp({ data, me, above: above.failed ? null : above, who, words, playedToday }) : []
   const works = placed
     .filter((p) => isDailyGame(p.slug))
     .map((p) => dailyWork(p.slug, byGame, data.bests, days, period, today))
